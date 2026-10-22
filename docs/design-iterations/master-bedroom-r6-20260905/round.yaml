@@ -1,0 +1,659 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: master-bedroom-r6-20260905
+index:
+  order: 21
+  topic: master-bedroom
+  review_state: blocked
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: master-bedroom-r6-20260905
+  subject: 主卧 R6 北墙衣柜与床位完整布局预演
+  priority:
+    user_goal: 废弃 R5 横向隔断柜；北墙 z=4.30 设置 600×580×2050mm 双平开门衣柜（pivot）；床移至 (3.20,7.40)；保留南窗六抽矮柜与两只380×350×500mm候选普通床头柜（runtime高495–505mm）。
+    ranked:
+      - 空间通行与门扇/HVAC检修
+      - 床与床头柜功能关系
+      - 南窗既有矮柜原位保留
+      - 窗帘软包络真实表达
+      - 视觉完整性
+    non_negotiables:
+      - 不修改 model-geometry.yaml
+      - 不修改 overlay.yaml
+      - 不修改 d_mb
+      - 不修改 DEC-045/洗手柜/HVAC几何
+      - 不把南窗六抽矮柜删除或移动
+    tradeoffs_accepted:
+      - 南帘堆叠与真实产品外廓未确认前保持 site_pending/blocking
+      - 衣柜防倾倒待东墙结构确认
+  frozen: true
+  freeze_record:
+    alignment_id: R6-plan-atom-morbius-punisher
+    source: 用户提供的 R6 执行计划
+    normalized_decision: 按计划实施候选预演，不宣称施工冻结或 delivery_ready
+    timestamp: '2026-09-05'
+  allowed_scope:
+    files:
+      - config/house.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/materials.yaml
+      - config/procurement.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - scripts/verify/placement/verify-furniture-placement.ts
+      - tests/server/master-bedroom-dressing.test.ts
+      - docs/design-iterations/master-bedroom-r6-20260905/
+      - docs/decision_log.md
+    objects:
+      - bed_180
+      - master_north_wall_wardrobe_600
+      - master_bedside_cabinet_350_north
+      - master_bedside_cabinet_350_south
+      - master_hot_season_low_dresser
+      - bedside_electrical_group
+      - curtain_master_south
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+    objects:
+      - d_mb
+      - mb_washbasin_cabinet
+      - mb_vanity_base_cabinet
+      - mb_vanity_lower_board
+      - mb_vanity_main_board
+      - mb_vanity_pvc_box
+    assumptions:
+      - 南帘堆叠/下垂已确认
+      - 门套执手余量已确认
+      - HVAC回风滤网检修已确认
+      - 东墙可直接固定
+      - 真实产品外廓已锁定
+  open_questions:
+    - id: pending-south-curtain
+      status: site_pending
+      owner: site
+      question: 南帘实际轨道、下垂厚度、堆叠端与南床头柜关系
+    - id: pending-door-trim-handle
+      status: site_pending
+      owner: site
+      question: d_mb 门套/执手与衣柜东缘净距
+    - id: pending-hvac-inspection
+      status: site_pending
+      owner: hvac
+      question: 北墙衣柜下方/邻近 HVAC 回风与滤网检修包络
+    - id: pending-east-wall-structure
+      status: site_pending
+      owner: site
+      question: w_mb_east 结构及衣柜防倾倒节点
+    - id: pending-product-outlines
+      status: site_pending
+      owner: site
+      question: 床架、床头柜、衣柜真实完成面外廓
+  alignment:
+    records:
+      - R6-plan-atom-morbius-punisher
+    unresolved:
+      - pending-south-curtain
+      - pending-door-trim-handle
+      - pending-hvac-inspection
+      - pending-east-wall-structure
+      - pending-product-outlines
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run verify:furniture
+      - npm run verify:all
+      - npm run test:server
+      - npm run typecheck
+      - npm run test:app
+      - npm run build:app
+    browser_evidence_required: true
+    required_views:
+      - 主卧入口
+      - 衣柜双门开启
+      - 床头正立面
+      - 南帘
+      - HVAC/回风
+      - 高位整体
+    aesthetic_review: pending
+    functional_review: pending
+    construction_review: BLOCKED
+    blocking_issues:
+      - 南帘真实包络未测
+      - HVAC检修未证明
+      - 门套执手余量未测
+      - 东墙结构未确认
+      - 真实家具外廓未锁定
+    done_when:
+      - 配置与runtime同源
+      - 适用验证通过
+      - 同版本浏览器证据有效
+      - 功能/审美评审完成
+      - site_pending明确保留
+  delivery_ready: false
+  source_version: r6-master-bedroom-20260905
+  notes:
+    - 候选预演；不得作为施工下单尺寸。
+    - R5 横向隔断柜及其测试基线 superseded。
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: master-bedroom-r6-20260905
+  units: m
+  coordinate_system: Three.js右手系，Y向上，+x东，+z南
+  status: implementation
+  datums:
+    - id: datum-r6-north-wardrobe
+      name: R6 北墙双平开门衣柜
+      anchor:
+        kind: wall_anchor
+        ref: north_wall_segment_z4.30
+        wall_side: south
+        service_ref: null
+      plan:
+        origin: 主卧局部坐标
+        axes: x东西/z南北
+        position:
+          x: 2.9
+          z: 4.575
+        rotation: 0
+        dimensions:
+          width: 0.6
+          depth: 0.58
+        semantics: total_candidate
+      elevation:
+        viewing_side: south
+        vertical_axis: 'y'
+        height: 2.05
+        dimensions:
+          width: 0.6
+          height: 2.05
+        semantics: total_candidate
+      section:
+        cut_direction: north-south
+        depth_axis: z
+        rear_z: 4.285
+        front_z: 4.865
+        depth: 0.58
+        top: 2.05
+        semantics: total_candidate
+      constraints:
+        - 背贴 z=4.30 北侧实体墙
+        - 柜门朝南
+        - 双门各约0.30m
+        - 不侵 d_mb 门扇或 HVAC 检修包络
+    - id: datum-r6-bed
+      name: R6 主卧床
+      anchor:
+        kind: room_anchor
+        ref: master_bedroom
+        wall_side: east
+        service_ref: null
+      plan:
+        origin: 主卧局部坐标
+        axes: x东西/z南北
+        position:
+          x: 3.2
+          z: 7.4
+        rotation: 270
+        dimensions:
+          width: 1.8
+          length: 2
+        semantics: total_candidate
+      elevation:
+        viewing_side: west
+        vertical_axis: 'y'
+        semantics: existing_recipe_candidate
+      section:
+        cut_direction: north-south
+        depth_axis: z
+        south_curtain: site_pending
+        semantics: candidate
+      constraints:
+        - 床头贴东墙
+        - 朝向不变
+        - 相对R5 z=7.10向南0.30m
+    - id: datum-r6-bedside-north
+      name: R6 北床头柜
+      anchor:
+        kind: free_position
+        ref: bed_180
+        wall_side: null
+        service_ref: sock_master_bed_l
+      plan:
+        position:
+          x: 4.01
+          z: 6.245
+        rotation: 0
+        dimensions:
+          width: 0.38
+          depth: 0.35
+          height: 0.5
+        runtime_height_range:
+          - 0.495
+          - 0.505
+        target_aabb:
+          x:
+            - 3.82
+            - 4.2
+          z:
+            - 6.07
+            - 6.42
+        semantics: candidate
+    - id: datum-r6-bedside-south
+      name: R6 南床头柜
+      anchor:
+        kind: free_position
+        ref: bed_180
+        wall_side: null
+        service_ref: sock_master_bed_r_head
+      plan:
+        position:
+          x: 4.01
+          z: 8.555
+        rotation: 0
+        dimensions:
+          width: 0.38
+          depth: 0.35
+          height: 0.5
+        runtime_height_range:
+          - 0.495
+          - 0.505
+        target_aabb:
+          x:
+            - 3.82
+            - 4.2
+          z:
+            - 8.38
+            - 8.73
+        semantics: candidate
+      section:
+        south_curtain:
+          candidate_z:
+            - 9.56
+            - 9.68
+          confidence: inferred
+          status: site_pending
+          conflict_policy: warning_BLOCKED
+    - id: datum-r6-curtain-soft-envelope
+      name: 南窗窗帘软包络
+      anchor:
+        kind: ceiling_anchor
+        ref: curtain_box_master_south
+        wall_side: null
+        service_ref: null
+      plan:
+        axes: x东西/z南北
+        top_box:
+          z:
+            - 8.7
+            - 8.95
+          role: ceiling_only
+          confidence: confirmed
+          status: confirmed
+        fabric_drop:
+          wall_z: 9.8
+          interior_offset: 0.12
+          thickness: 0.12
+          z:
+            - 9.56
+            - 9.68
+          confidence: inferred
+          status: site_pending
+          conflict_policy: warning_BLOCKED
+        stack_end:
+          actual_end: null
+          thickness: null
+          confidence: site_pending
+          status: site_pending
+        semantics: soft_candidate
+      constraints:
+        - 不把 curtain_box 地面投影当硬禁区
+        - 无通宽500mm地面硬禁区
+        - 六抽矮柜保持原位/可见/可移
+        - verify-furniture检查南床头柜与六抽柜
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: master-bedroom-r6-20260905
+  status: implementation
+  source_policy:
+    authority_refs:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/house.yaml
+      - config/electrical.yaml
+      - config/ceiling.yaml
+    plan_ref: /home/tao/.kimi-code/sessions/wd_bontop-design-log_f957d2ec2c5f/session_534afdcb-9468-42bd-906a-e1c3433337bd/agents/main/plans/atom-morbius-punisher.md
+  facts:
+    confirmed:
+      - id: fact-north-wall
+        statement: 主卧北侧实体墙段基准为 z=4.30；衣柜候选背贴该墙，门朝南
+        source_refs:
+          - R6计划
+          - config/layout/model-geometry.yaml
+        status: resolved
+      - id: fact-bed-r6
+        statement: bed_180 候选中心 (3.20,7.40)，rotation=270，逻辑 AABB x[2.20,4.20] z[6.50,8.30]
+        source_refs:
+          - R6计划
+          - shared/types.ts
+        status: resolved
+      - id: fact-wardrobe-r6
+        statement: 北墙衣柜候选 600W×580D×2050H mm，AABB x[2.60,3.20] z[4.285,4.865]，双平开门（pivot），中浅胡桃/暖烟熏橡木、四腿、古铜拉手
+        source_refs:
+          - R6计划
+          - config/materials.yaml
+        status: resolved
+      - id: fact-r6-bedside-height
+        statement: 两只普通床头柜候选规格统一为 380W×350D×500H mm，真实 recipe 最高Y 495–505mm；南侧床头服务带继续与床位关系复核
+        source_refs:
+          - R6计划
+          - shared/render/FixtureFactory.ts
+        confidence: confirmed
+        status: resolved
+      - id: fact-r6-electrical-band
+        statement: 南侧插座 z=7.802，双控 z=7.898，均在东墙实体墙服务带
+        source_refs:
+          - R6计划
+          - config/electrical.yaml
+        status: resolved
+      - id: fact-r6-bridges
+        statement: DEC-045 两个 bridge 各 180mm，仅为视觉衔接件，不单独计价
+        source_refs:
+          - R6计划
+          - config/house.yaml
+        status: resolved
+      - id: fact-r6-curtain-envelope
+        statement: 窗帘软包络不是地面硬禁区：顶部盒体 z[8.70,8.95] 仅吊顶构件；依据 runtime 默认 interior offset=0.12m，闭帘候选厚度 0.12m、z[9.56,9.68]，confidence=inferred/status=site_pending；开帘端部未知时为空
+        source_refs:
+          - curtain-soft-envelope-preview.yaml
+          - shared/render/SceneBuilder.ts
+        confidence: inferred
+        status: resolved
+      - id: fact-bedside-r6
+        statement: 两只普通床头柜候选平面规格 380W（沿x）×350D（沿z），北 z[6.07,6.42]，南 z[8.38,8.73]
+        source_refs:
+          - R6计划
+        confidence: confirmed
+        status: resolved
+      - id: fact-south-dresser-retained
+        statement: master_hot_season_low_dresser 必须原位 (1.00,9.31), rotation=180，约1400×480×850mm
+        source_refs:
+          - R6计划
+          - config/house.yaml
+        status: resolved
+      - id: fact-electrical-wall
+        statement: 床头电气继续挂 w_mb_east 实体墙，wall_side=west；门口双控保持原位
+        source_refs:
+          - AGENTS.md
+          - config/electrical.yaml
+        status: resolved
+    inferred:
+      - id: fact-bed-runtime
+        statement: 按现有 bed_180 recipe，runtime AABB 约 x[2.20,4.20] z[6.47,8.33]
+        basis: recipe 外扩与 R6 计划
+        status: resolved
+    site_pending:
+      - id: pending-south-curtain
+        statement: 南帘真实轨道、下垂、堆叠端与床头柜净距未实测
+        owner: site
+        status: open
+      - id: pending-door-trim-handle
+        statement: d_mb 门套/执手突出量未实测
+        owner: site
+        status: open
+      - id: pending-hvac-inspection
+        statement: 北墙衣柜邻近 HVAC 回风/滤网检修包络未证明
+        owner: hvac
+        status: open
+      - id: pending-east-wall-structure
+        statement: 东墙结构与防倾倒固定节点未确认
+        owner: site
+        status: open
+      - id: pending-product-outlines
+        statement: 真实床架、床头柜、衣柜外廓未锁定
+        owner: site
+        status: open
+  notes:
+    - R5 旧床位/横柜/电气测试基线不再适用于 R6。
+    - 南窗六抽不得因窗帘预演被隐藏、删除或移动。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: master-bedroom-r6-20260905
+  source_version: r6-master-bedroom-20260905
+  object_policy:
+    candidate_state: true
+    responsibility_boundary: 家具不承担 HVAC、结构、防倾倒或窗帘轨道责任
+  objects:
+    - id: master_north_wall_wardrobe_600
+      type: furniture
+      owner: furniture
+      function: 北墙热季挂衣收纳
+      geometry_source: shared/render/FixtureFactory.ts
+      datum_refs:
+        - datum-r6-north-wardrobe
+      dependencies:
+        - d_mb
+        - ceiling_master_ac
+      collision:
+        policy: real_mesh_four_state_matrix
+        configurations:
+          - closed
+          - left_open
+          - right_open
+          - both_open
+        open_angles_deg:
+          - -95
+          - 95
+        review_ref: tests/server/shared/scene-builder.test.ts
+      maintenance:
+        standing_space: site_pending
+        hvac_access_clearance: site_pending
+      interfaces:
+        - d_mb
+        - mb_vanity_lower_board_bridge
+        - mb_vanity_main_board_bridge
+        - bed_180
+        - bedside_cabinets
+        - dressing_table_and_stool
+        - modeled_hvac
+      status: alignment_frozen_construction_pending
+    - id: bed_180
+      type: furniture
+      owner: furniture
+      function: 睡眠
+      geometry_source: shared/render/FixtureFactory.ts
+      datum_refs:
+        - datum-r6-bed
+      dependencies:
+        - master_north_wall_wardrobe_600
+        - master_bedside_cabinet_350_north
+        - master_bedside_cabinet_350_south
+      collision:
+        policy: reviewed_candidate
+        review_ref: verify:furniture
+      maintenance:
+        access_clearance: 0.35
+      status: candidate_not_frozen
+    - id: master_bedside_cabinet_350_north
+      type: furniture
+      owner: furniture
+      function: 北侧380×350×500mm候选普通床头柜
+      geometry_source: shared/render/FixtureFactory.ts
+      datum_refs:
+        - datum-r6-bedside-north
+      dimensions:
+        candidate_mm:
+          - 380
+          - 350
+          - 500
+        runtime_height_mm:
+          - 495
+          - 505
+      interfaces:
+        - sock_master_bed_l
+      status: alignment_frozen_construction_pending
+    - id: master_bedside_cabinet_350_south
+      type: furniture
+      owner: furniture
+      function: 南侧380×350×500mm候选普通床头柜
+      geometry_source: shared/render/FixtureFactory.ts
+      datum_refs:
+        - datum-r6-bedside-south
+      dimensions:
+        candidate_mm:
+          - 380
+          - 350
+          - 500
+        runtime_height_mm:
+          - 495
+          - 505
+      collision:
+        curtain_closed_candidate: warning_BLOCKED
+      interfaces:
+        - sock_master_bed_r_head
+        - switch_master_bed_l
+        - curtain_master_south
+      status: alignment_frozen_construction_pending
+    - id: master_hot_season_low_dresser
+      type: furniture
+      owner: furniture
+      function: 南窗六抽热季折叠衣物与overflow
+      geometry_source: shared/render/FixtureFactory.ts
+      datum_refs:
+        - datum-master-hot-season-low-dresser
+      collision:
+        curtain_closed_candidate: warning_BLOCKED
+      status: existing_retained
+    - id: bedside_electrical_group
+      type: electrical
+      owner: electrical
+      function: 两插座、双控和两盏壁灯随床候选重排
+      geometry_source: config/electrical.yaml
+      interfaces:
+        - w_mb_east
+        - bed_180
+      status: alignment_frozen_construction_pending
+    - id: curtain_master_south
+      type: soft_furnishing
+      owner: site
+      function: 南窗遮光/纱帘软包络预演
+      geometry_source: curtain-soft-envelope-preview.yaml + config/ceiling.yaml + site_measurement
+      datum_refs:
+        - datum-r6-curtain-soft-envelope
+      collision:
+        policy: no_hard_floor_collision
+        closed_candidate:
+          thickness_m: 0.12
+          z:
+            - 9.56
+            - 9.68
+          confidence: inferred
+          status: site_pending
+          conflict_level: warning
+          acceptance: BLOCKED
+        open_stack:
+          end: null
+          status: site_pending
+      status: site_pending
+  validation_refs:
+    - verify:furniture
+    - verify:all
+    - tests/server/master-bedroom-dressing.test.ts
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: master-bedroom-r6-20260905
+  source_version: r6-master-bedroom-20260905
+  state: blocked
+  alignment_frozen: true
+  construction_frozen: false
+  delivery_frozen: false
+  delivery_ready: false
+  fact_table: fact-table.yaml
+  decision_brief: decision-brief.yaml
+  design_datum: design-datum.yaml
+  object_manifest: object-manifest.yaml
+  blocking_issues:
+    - 南帘闭帘 0.12m 候选软包络为 inferred/site_pending；真实堆叠/下垂/开启扇未测，不形成地面硬禁区
+    - d_mb 门套执手余量未测
+    - HVAC 回风与滤网检修包络未证明
+    - 东墙结构与防倾倒节点未确认
+    - 床、380×350×500床头柜、600×580×2050衣柜真实产品外廓未锁定
+    - 衣柜门前人体站位空间仍 site_pending，不以真实 mesh 无碰撞伪造人体 PASS
+  verification:
+    status: passed_with_warnings
+    results:
+      - command: npx tsx --test tests/server/master-bedroom-dressing.test.ts tests/server/shared/scene-builder.test.ts
+        status: PASS
+        summary: 50/50
+        notes:
+          - bridge full-mesh world gap 15mm for both bridges; PVC clear
+          - wardrobe closed/left_open/right_open/both_open real-mesh matrix clear
+      - command: npm run verify:furniture
+        status: PASS
+        notes:
+          - '2 warnings: south_balcony skipped; south curtain closed 0.12m candidate and open stack remain site_pending'
+      - command: npm run verify:all
+        status: PASS
+        notes:
+          - topology/layout/furniture/rules/collision/consistency/MEP/electrical/render-facts/lighting all completed with existing warnings
+      - command: npm run test:server
+        status: PASS
+        summary: 526/526
+      - command: npm run typecheck
+        status: PASS
+      - command: npm run test:app
+        status: PASS
+        summary: 434/434
+      - command: npm run build:app
+        status: PASS
+  evidence:
+    status: blocked
+    required_views:
+      - entry
+      - wardrobe-open
+      - bedside
+      - south-curtain
+      - hvac
+      - overall
+    runtime_check:
+      app_ready: true
+      error_banner: []
+      r6_objects_loaded: true
+      aabb_query: 'FAIL: page eval does not expose THREE; returned null bounds; no runtime AABB claim made'
+    captured:
+      - view: entry
+        path: evidence/r6-entry-wardrobe-closed.png
+        snapshot: evidence/r6-entry.snapshot.txt
+        valid: false
+        reason: 相机截图未能证明稳定目标机位与对象包络
+      - view: wardrobe-open
+        path: evidence/r6-wardrobe-both-open.png
+        snapshot: evidence/r6-wardrobe-open.snapshot.txt
+        valid: false
+        reason: 门状态查询因浏览器 eval 环境缺少 THREE 失败，不能证明真实 world rotation/AABB
+      - view: bedside
+        path: evidence/r6-bedside-electrical.png
+        valid: false
+        reason: 缺少同版本 runtime AABB 与目标对象查询绑定
+      - view: south-curtain
+        path: evidence/r6-south-curtain-dresser.png
+        valid: false
+        reason: 缺少同版本 runtime AABB 与窗帘软包络查询绑定
+      - view: overall
+        path: r6-overall.png
+        valid: false
+        reason: 全屋 overview，不是目标主卧非总览证据
+    blocking_reason: 已保存部分定向截图与 snapshot，但当前证据无法满足稳定目标对象、runtime AABB、真实门 rotation 和每个目标关系的绑定要求；不能冒充有效交付证据。
+  reviews:
+    aesthetic: blocked_by_evidence
+    functional: blocked_by_evidence
+    construction: blocked

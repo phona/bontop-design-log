@@ -28,6 +28,6 @@ V1–V4截图、运行时记录和评审均保留作历史对照：[V1总览](ev
 
 静态运行时外廓与用户给定设备尺寸一致；`typecheck`与`gate:visual`通过。最新`verify:all`为16/17，唯一失败是另一份电气决策文档的DEC重号；家具布局/碰撞等几何核验通过。`test:server`当前1008项中998通过、10失败，涉及工作区既有预算/关系/日照/MEP断言、浏览器边界静态词条误判、Node纹理测试缺少`document`等；详见`review-manifest.json`。墙控操作、电源负荷、设备实际补水/维护包络、冰箱动态开门、RO柜内净空及滤芯抽取仍未通过本轮模型验证，故此档案不是施工放行。
 
-评审、范围审计和待核项见 [review-manifest.json](review-manifest.json)。
+评审、范围审计和待核项见 [round.yaml 的 review 段](round.yaml)。
 
 形体修正记录：[V2](s1-shape-correction-v2.md) · [V3](s1-shape-correction-v3.md) · [V4](s1-shape-correction-v4.md) · [V5](s1-shape-correction-v5.md)

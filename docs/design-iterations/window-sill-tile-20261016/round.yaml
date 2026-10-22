@@ -1,0 +1,1439 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: window-sill-tile-20261016
+index:
+  order: 42
+  topic: tile-finish
+  review_state: blocked
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: window-sill-tile-20261016
+  subject: 卧室与书房落地窗防水台统一贴砖
+  priority:
+    user_goal: 所有卧室和书房落地窗根部防水台贴砖，延续客厅/主卫低反坎的L型收口，统一视觉语言。
+    ranked:
+      - 全部卧室/书房落地窗根部覆盖
+      - 同一墙砖并覆盖front与top两面
+      - 先采用统一估算并在量房后修正
+    non_negotiables:
+      - 新增反坎采用height=0.15m、depth=0.15m、sill=0m的现行估算。
+      - 每段反坎贴front竖面和top台面，材料跟随当前wall_tile_01候选。
+      - 当前尺寸明确标待量房复核；不得表述为实测。
+    tradeoffs_accepted:
+      - 按resolved窗台路径19.7102m估算，新增贴砖5.91305㎡；曲角终点、完成面和现场构造可能改变最终量和费用。
+      - 当前候选价用于估算，不是成交价。
+  frozen: true
+  freeze_record:
+    alignment_id: alignment-user-20261016-01
+    original_user_response: 先改进去，防水台尺寸都一样的。到时候量完房，改下尺寸就行了。
+    normalized_decisions:
+      - 范围为master_bedroom、bedroom_nw、bedroom_se、study的全部六段落地窗。
+      - 新增6座bay_sill，每座挂front和top两条sill_region。
+      - 六座均暂按height=0.15m、depth=0.15m、sill=0m；量房后回写实际尺寸。
+      - 新贴砖面沿用当前wall selection，保持同一视觉语言。
+      - 量房后同步更新构件、贴砖面积、成本估算和验收记录。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-16T09:54:37+08:00'
+    evidence_refs:
+      - conversation: 用户原话
+  allowed_scope:
+    files:
+      - config/layout/overlay.yaml
+      - config/acceptance.yaml
+      - config/budget-pitfalls.yaml
+      - config/materials.yaml
+      - schedule/phase-1/control.yaml
+      - schedule/phase-1/budget.md
+      - schedule/phase-1/checklist.md
+      - schedule/procurement.md
+      - docs/pending-site-data.md
+      - docs/decisions/11-tile-finish.md
+      - docs/decisions/README.md
+      - tests/server/masonry-takeoff.test.ts
+      - tests/server/masonry-quotes.test.ts
+      - tests/server/budget-calculator.test.ts
+      - tests/server/budget-parity-contracts.test.ts
+      - tests/server/wall-tile-inspection.test.ts
+      - app/src/scene/HouseScene.test.ts
+      - docs/design-iterations/window-sill-tile-20261016/*
+    objects:
+      - master_bedroom_west_upper_ledge
+      - master_bedroom_west_mid_ledge
+      - master_bedroom_south_ledge
+      - study_south_ledge
+      - bedroom_nw_north_ledge
+      - bedroom_se_south_ledge
+    archetypes:
+      - bay_sill
+      - sill_region
+    views:
+      - plan
+      - elevation
+      - perspective
+    changes:
+      - 6个bay_sill构件和12条front/top贴砖声明
+      - 新增估算面积5.91305㎡，全屋墙砖与窗台贴砖总量36.72360㎡
+      - 对齐PKG-060/COST-060-08数量和估算，特殊工艺人工仍待书面报价
+      - 同步验收标准、量房待办、决策记录及采购入口
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/electrical.yaml
+      - config/plumbing.yaml
+      - config/hvac.yaml
+      - config/house.yaml
+    objects:
+      - entry_garden_floor
+      - existing_high_bay_sills
+    assumptions:
+      - 不把现有sill=2.07m的高位bay_sill当成低反坎尺寸。
+      - 不把150×150mm估算标成实测值。
+      - 不把特殊工艺人工重复加进已含常规铺贴的18,500元预算池。
+    out_of_scope_changes:
+      - 不修改model-geometry房间/墙体坐标或既有高位bay_sill几何。
+      - 不更改地面材料、其他房间墙面方案或入户花园预算。
+      - 不替业主批准预算来源或商家成交价。
+  open_questions:
+    - id: Q-site-dimensions
+      category: geometry
+      question: 量房复核六段反坎高度、内出檐、圆角终点与完成面尺寸。
+      fact_refs:
+        - F01
+        - F05
+        - F06
+      options:
+        - 按实测更新bay_sill与算量
+      selected: 量房后处理
+      user_response: 到时候量完房，改下尺寸就行了。
+      status: site_pending
+    - id: Q-curtain-clearance
+      category: interface
+      question: 当前帘面偏移0.12m，比150mm暂估反坎出檐0.15m少约0.03m；量房/窗帘深化时要采用什么轨道偏移或反坎净距？
+      fact_refs:
+        - F02
+        - F07
+      options:
+        - 现场确认净距后调窗帘轨道
+        - 现场确认净距后调整低反坎出檐
+      selected: 量房与窗帘深化时处理；处理前功能评审保持BLOCKED
+      user_response: 用户已确认尺寸量房后修正，未授权现在移动窗帘轨道。
+      status: site_pending
+    - id: Q-window-drainage
+      category: interface
+      question: 门窗方确认窗框泄水孔、top坡向/滴水边和连续打胶接口，确保贴砖/胶不封排水。
+      fact_refs:
+        - F06
+        - F08
+      options:
+        - 量房及门窗交底时确认
+      selected: 现场前保持site_pending
+      user_response: null
+      status: site_pending
+  alignment:
+    records:
+      - alignment_id: alignment-user-20261016-01
+        original_response: 先改进去，防水台尺寸都一样的。到时候量完房，改下尺寸就行了。
+        normalized_decisions:
+          - 六段统一150×150mm估算
+          - front+top贴砖
+          - 量房后修正尺寸和成本
+        affected_refs:
+          - F01
+          - F02
+          - F05
+          - F06
+        confirmed_at: '2026-10-16T09:54:37+08:00'
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run verify:all
+      - npm run test:server
+      - npm run test:app
+      - npm run typecheck
+      - npm run verify:schedule
+      - npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - 主卧西墙与南墙窗根部front/top连续性
+      - 书房南窗根部front/top贴砖
+      - 西北次卧北窗根部front/top贴砖
+      - 东南客房南窗根部front/top贴砖
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: pending
+    blocking_issues:
+      - 六段反坎尺寸待量房
+      - 默认窗帘净距存在约30mm模型交叠待窗帘深化
+      - 窗框top坡向和泄水孔接口待门窗方确认
+    done_when:
+      - 六段玻璃墙根各有bay_sill，且每座均声明front+top贴砖面。
+      - masonry-takeoff、测试与预算记录对齐新增5.91305㎡、总贴砖量36.72360㎡。
+      - 新旧声明无重复，材质一致且无静默漏算。
+      - 当前渲染有ready信号、运行时对象、指定机位截图及独立审美/功能复核。
+      - 窗帘净距不再与反坎top面相交；门窗排水、top坡向、泄水孔与打胶收口有明确做法。
+      - 量房任务有owner、触发条件和配置回写位置；当前值标为估算。
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: window-sill-tile-20261016
+  subject: 六段落地窗低反坎统一L型贴砖
+  units: m
+  coordinate_system: Three.js右手系；Y向上，X东西/Z南北。墙线与room朝向取自model-geometry和overlay。
+  status: frozen
+  datums:
+    - id: D01
+      name: 主卧西墙上段
+      anchor:
+        kind: wall_anchor
+        ref: w_west_upper
+        wall_side: master_bedroom
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F01
+          - F05
+          - F06
+        decision_refs:
+          - DEC-2026-10-16-TILE-01
+      views:
+        plan:
+          required: true
+          origin: 当前墙段端点
+          axes: x/z
+          direction: 沿完整幕墙段
+          position:
+            x: 0
+            z: 5.55
+          rotation: null
+          dimensions:
+            length: 3.25
+            width: 0.15
+            depth: 0.15
+            offset: 0
+          dimension_semantics: along_wall
+        elevation:
+          required: true
+          viewing_side: master_bedroom
+          vertical_axis: 'y'
+          height: 0.15
+          dimensions:
+            width: 3.25
+            height: 0.15
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 垂直w_west_upper
+          depth_axis: 房间法线
+          clearances:
+            front: 0
+            rear: 0
+            top: 0
+            bottom: 0
+          thickness: 0.15
+          dimension_semantics: assembly
+      geometry:
+        x: 0
+        'y': 0
+        z: 5.55
+        width: null
+        depth: 0.15
+        height: 0.15
+        length: 3.25
+        rotation: null
+        along: null
+      constraints:
+        - sill=0
+        - front+top贴砖
+        - 150×150mm估算待量房
+      interfaces:
+        - w_west_upper幕墙
+        - wall_tile_01
+      validation_refs:
+        - masonry-takeoff
+        - browser-runtime
+      status: confirmed
+    - id: D02
+      name: 主卧西墙中段
+      anchor:
+        kind: wall_anchor
+        ref: w_west_mid
+        wall_side: master_bedroom
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F01
+          - F05
+          - F06
+        decision_refs:
+          - DEC-2026-10-16-TILE-01
+      views:
+        plan:
+          required: true
+          origin: 当前墙段端点
+          axes: x/z
+          direction: 沿完整幕墙段
+          position:
+            x: 0
+            z: 2.86
+          rotation: null
+          dimensions:
+            length: 2.69
+            width: 0.15
+            depth: 0.15
+            offset: 0
+          dimension_semantics: along_wall
+        elevation:
+          required: true
+          viewing_side: master_bedroom
+          vertical_axis: 'y'
+          height: 0.15
+          dimensions:
+            width: 2.69
+            height: 0.15
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 垂直w_west_mid
+          depth_axis: 房间法线
+          clearances:
+            front: 0
+            rear: 0
+            top: 0
+            bottom: 0
+          thickness: 0.15
+          dimension_semantics: assembly
+      geometry:
+        x: 0
+        'y': 0
+        z: 2.86
+        width: null
+        depth: 0.15
+        height: 0.15
+        length: 2.69
+        rotation: null
+        along: null
+      constraints:
+        - sill=0
+        - front+top贴砖
+        - 150×150mm估算待量房
+        - top面朝master_bedroom
+      interfaces:
+        - w_west_mid幕墙
+        - 百叶/窗帘完成面待复尺
+        - wall_tile_01
+      validation_refs:
+        - masonry-takeoff
+        - browser-runtime
+      status: confirmed
+    - id: D03
+      name: 主卧南墙
+      anchor:
+        kind: wall_anchor
+        ref: w_mb_south
+        wall_side: master_bedroom
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F01
+          - F05
+          - F06
+        decision_refs:
+          - DEC-2026-10-16-TILE-01
+      views:
+        plan:
+          required: true
+          origin: 当前墙段端点
+          axes: x/z
+          direction: 沿完整幕墙段
+          position:
+            x: 0
+            z: 9.8
+          rotation: null
+          dimensions:
+            length: 4.770165578
+            width: 0.15
+            depth: 0.15
+            offset: 0
+          dimension_semantics: along_wall
+        elevation:
+          required: true
+          viewing_side: master_bedroom
+          vertical_axis: 'y'
+          height: 0.15
+          dimensions:
+            width: 4.770165578
+            height: 0.15
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 垂直w_mb_south
+          depth_axis: 房间法线
+          clearances:
+            front: 0
+            rear: 0
+            top: 0
+            bottom: 0
+          thickness: 0.15
+          dimension_semantics: assembly
+      geometry:
+        x: 0
+        'y': 0
+        z: 9.8
+        width: null
+        depth: 0.15
+        height: 0.15
+        length: 4.770165578
+        rotation: null
+        along: null
+      constraints:
+        - sill=0
+        - front+top贴砖
+        - 150×150mm估算待量房
+      interfaces:
+        - w_mb_south幕墙
+        - wall_tile_01
+      validation_refs:
+        - masonry-takeoff
+        - browser-runtime
+      status: confirmed
+    - id: D04
+      name: 书房南墙
+      anchor:
+        kind: wall_anchor
+        ref: w_st_south
+        wall_side: study
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F01
+          - F05
+          - F06
+        decision_refs:
+          - DEC-2026-10-16-TILE-01
+      views:
+        plan:
+          required: true
+          origin: 当前墙段端点
+          axes: x/z
+          direction: 沿完整幕墙段
+          position:
+            x: 4.2
+            z: 9.8
+          rotation: null
+          dimensions:
+            length: 3
+            width: 0.15
+            depth: 0.15
+            offset: 0
+          dimension_semantics: along_wall
+        elevation:
+          required: true
+          viewing_side: study
+          vertical_axis: 'y'
+          height: 0.15
+          dimensions:
+            width: 3
+            height: 0.15
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 垂直w_st_south
+          depth_axis: 房间法线
+          clearances:
+            front: 0
+            rear: 0
+            top: 0
+            bottom: 0
+          thickness: 0.15
+          dimension_semantics: assembly
+      geometry:
+        x: 4.2
+        'y': 0
+        z: 9.8
+        width: null
+        depth: 0.15
+        height: 0.15
+        length: 3
+        rotation: null
+        along: null
+      constraints:
+        - sill=0
+        - front+top贴砖
+        - 150×150mm估算待量房
+      interfaces:
+        - w_st_south幕墙
+        - wall_tile_01
+      validation_refs:
+        - masonry-takeoff
+        - browser-runtime
+      status: confirmed
+    - id: D05
+      name: 西北次卧北墙
+      anchor:
+        kind: wall_anchor
+        ref: w_nw_north
+        wall_side: bedroom_nw
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F01
+          - F05
+          - F06
+        decision_refs:
+          - DEC-2026-10-16-TILE-01
+      views:
+        plan:
+          required: true
+          origin: 当前墙段端点
+          axes: x/z
+          direction: 沿完整幕墙段
+          position:
+            x: 2.6
+            z: 1.1
+          rotation: null
+          dimensions:
+            length: 3
+            width: 0.15
+            depth: 0.15
+            offset: 0
+          dimension_semantics: along_wall
+        elevation:
+          required: true
+          viewing_side: bedroom_nw
+          vertical_axis: 'y'
+          height: 0.15
+          dimensions:
+            width: 3
+            height: 0.15
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 垂直w_nw_north
+          depth_axis: 房间法线
+          clearances:
+            front: 0
+            rear: 0
+            top: 0
+            bottom: 0
+          thickness: 0.15
+          dimension_semantics: assembly
+      geometry:
+        x: 2.6
+        'y': 0
+        z: 1.1
+        width: null
+        depth: 0.15
+        height: 0.15
+        length: 3
+        rotation: null
+        along: null
+      constraints:
+        - sill=0
+        - front+top贴砖
+        - 150×150mm估算待量房
+      interfaces:
+        - w_nw_north幕墙
+        - wall_tile_01
+      validation_refs:
+        - masonry-takeoff
+        - browser-runtime
+      status: confirmed
+    - id: D06
+      name: 东南客房南墙
+      anchor:
+        kind: wall_anchor
+        ref: w_be_south
+        wall_side: bedroom_se
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F01
+          - F05
+          - F06
+        decision_refs:
+          - DEC-2026-10-16-TILE-01
+      views:
+        plan:
+          required: true
+          origin: 当前墙段端点
+          axes: x/z
+          direction: 沿完整幕墙段
+          position:
+            x: 13.4
+            z: 8.7
+          rotation: null
+          dimensions:
+            length: 3
+            width: 0.15
+            depth: 0.15
+            offset: 0
+          dimension_semantics: along_wall
+        elevation:
+          required: true
+          viewing_side: bedroom_se
+          vertical_axis: 'y'
+          height: 0.15
+          dimensions:
+            width: 3
+            height: 0.15
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 垂直w_be_south
+          depth_axis: 房间法线
+          clearances:
+            front: 0
+            rear: 0
+            top: 0
+            bottom: 0
+          thickness: 0.15
+          dimension_semantics: assembly
+      geometry:
+        x: 13.4
+        'y': 0
+        z: 8.7
+        width: null
+        depth: 0.15
+        height: 0.15
+        length: 3
+        rotation: null
+        along: null
+      constraints:
+        - sill=0
+        - front+top贴砖
+        - 150×150mm估算待量房
+      interfaces:
+        - w_be_south幕墙
+        - wall_tile_01
+      validation_refs:
+        - masonry-takeoff
+        - browser-runtime
+      status: confirmed
+  notes:
+    - 实际完成面、反坎尺寸、圆角终点与top面的房间法线，量房后依实测更新；本轮墙段长度仅作估算。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: window-sill-tile-20261016
+  subject: 卧室与书房落地窗防水台贴砖
+  created_at: '2026-10-16T09:54:37+08:00'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/materials.yaml
+      - data/current-scheme.json
+      - config/acceptance.yaml
+      - schedule/phase-1/control.yaml
+    observation_refs:
+      - 用户明确表示卧室、书房落地窗边均有防水台且需要贴砖以统一视觉语言
+    measurement_refs: []
+    runtime_refs:
+      - gate:visual baseline CLEAR 2026-10-16
+    evidence_refs: []
+  facts:
+    confirmed:
+      - id: F01
+        category: confirmed
+        statement: 房间与幕墙配置覆盖主卧、西北次卧、东南客房和书房；六段长度按resolved bay_sill墙路径实算。
+        value:
+          lengths_m:
+            w_west_upper: 3.25
+            w_west_mid: 2.69
+            w_mb_south: 4.770165578
+            w_st_south: 3
+            w_nw_north: 3
+            w_be_south: 3
+          total_length_m: 19.710165578
+        source_refs:
+          - config/layout/model-geometry.yaml:137-174
+          - config/layout/overlay.yaml:9-93
+          - config/layout/overlay.yaml:99-161
+        basis: 墙段端点及 curtain_run / bay_sill 声明；当前长度是模型值，待量房校正。
+        confidence: high
+        impact: material
+        affected_objects:
+          - master_bedroom_west_upper_ledge
+          - master_bedroom_west_mid_ledge
+          - master_bedroom_south_ledge
+          - study_south_ledge
+          - bedroom_nw_north_ledge
+          - bedroom_se_south_ledge
+        affected_views:
+          - plan
+          - elevation
+          - perspective
+        owner: 业主/设计
+        status: resolved
+        verification_method: shared/masonry-takeoff.ts 实算并与墙线复核
+        user_confirmation_ref: null
+      - id: F02
+        category: confirmed
+        statement: 现有低反坎示例为sill=0、height=0.15m、depth=0.15m；旧高位bay_sill的2.07m标高不是低反坎尺寸。
+        value:
+          low_ledge_height_m: 0.15
+          low_ledge_depth_m: 0.15
+          high_bay_sill_m: 2.07
+          high_bay_height_m: 0.76
+          high_bay_depth_m: 1.1
+        source_refs:
+          - config/layout/overlay.yaml:99-169
+          - config/layout/overlay.yaml:171-203
+          - docs/pending-site-data.md:95
+        basis: 当前配置及历史量房待办。
+        confidence: high
+        impact: material
+        affected_objects:
+          - existing_high_bay_sills
+          - existing_living_master_bath_low_ledges
+        affected_views:
+          - elevation
+          - section
+          - perspective
+        owner: 业主/设计
+        status: resolved
+        verification_method: 对照overlay bay_sill声明与待量房项
+        user_confirmation_ref: null
+      - id: F03
+        category: confirmed
+        statement: 当前方案墙砖选择为wall_tile_01候选；单片¥12、覆盖0.18㎡、损耗率1.05，非成交价。
+        value:
+          option_id: wall_tile_01
+          unit_price_cny: 12
+          coverage_sqm: 0.18
+          loss_multiplier: 1.05
+          status: candidate
+        source_refs:
+          - data/current-scheme.json:12-15
+          - config/materials.yaml:139-160
+        basis: 当前方案默认wall selection与材料候选记录。
+        confidence: high
+        impact: material
+        affected_objects:
+          - wall_tile_regions
+        affected_views:
+          - perspective
+        owner: 业主/采购
+        status: resolved
+        verification_method: 对照current-scheme与materials配置
+        user_confirmation_ref: null
+    inferred:
+      - id: F04
+        category: inferred
+        statement: 按高0.15m、内出檐0.15m，六段front与top贴砖面积为5.91305㎡。
+        value:
+          formula: 19.710165578m × (0.15m + 0.15m)
+          area_sqm: 5.9130496735
+        source_refs:
+          - config/layout/model-geometry.yaml:137-174
+          - config/layout/overlay.yaml:421-468
+        basis: 墙长乘竖面和台面带宽；圆角与完成面尺寸待量房复核。
+        confidence: medium
+        impact: material
+        affected_objects:
+          - six_new_low_ledges
+        affected_views:
+          - plan
+          - elevation
+          - perspective
+        owner: 设计/瓦工
+        status: resolved
+        verification_method: masonry-takeoff逐面实算
+        user_confirmation_ref: null
+    user_decision:
+      - id: F05
+        category: user_decision
+        statement: 所有卧室和书房落地窗边防水台都贴砖，尺寸统一，量房后按实测修正。
+        value:
+          rooms:
+            - master_bedroom
+            - bedroom_nw
+            - bedroom_se
+            - study
+          nominal_height_m: 0.15
+          nominal_depth_m: 0.15
+          tiled_faces:
+            - front
+            - top
+        source_refs:
+          - conversation: 用户“先改进去，防水台尺寸都一样的。到时候量完房，改下尺寸就行了。”
+        basis: 前一轮已给出150×150mm现行口径，用户确认统一沿用并后续复尺。
+        confidence: high
+        impact: material
+        affected_objects:
+          - six_new_low_ledges
+        affected_views:
+          - plan
+          - elevation
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 配置审查、量房复核、贴砖检视态运行时检查
+        user_confirmation_ref: alignment-user-20261016-01
+    site_pending:
+      - id: F06
+        category: site_pending
+        statement: 六段反坎的实际高度、向室内出檐、圆角切线及完成面关系待交房量房确认。
+        value:
+          current_nominal_height_m: 0.15
+          current_nominal_depth_m: 0.15
+          status: estimated_pending_measurement
+        source_refs:
+          - docs/pending-site-data.md:95
+          - docs/decisions/11-tile-finish.md:68-73
+        basis: 用户明确先使用统一估算，现场复尺后更新。
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - six_new_low_ledges
+        affected_views:
+          - plan
+          - elevation
+          - section
+        owner: 业主/量房
+        status: open
+        verification_method: 量每段高度、出檐、起止、圆角与窗框密封/排水做法
+        user_confirmation_ref: alignment-user-20261016-01
+      - id: F07
+        category: site_pending
+        statement: 六处落地窗默认帘面偏移0.12m，小于150mm暂估反坎出檐0.15m约0.03m；帘布/百叶与窗台top面有模型交叠风险。
+        value:
+          curtain_plane_offset_m: 0.12
+          estimated_ledge_depth_m: 0.15
+          nominal_overlap_m: 0.03
+          status: site_interface_conflict
+        source_refs:
+          - config/layout/overlay.yaml:307-327
+          - config/layout/overlay.yaml:208-249
+          - shared/render/SceneBuilder.ts:556-557
+        basis: 暂估出檐减当前帘面偏移；实际窗框、轨道及帘型完成面尚未实测。
+        confidence: high
+        impact: operation
+        affected_objects:
+          - six_new_low_ledges
+          - related_window_curtains
+        affected_views:
+          - plan
+          - section
+          - perspective
+        owner: 业主/量房/设计/窗帘商
+        status: open
+        verification_method: 量窗框/轨道/帘布实际偏移，确认调轨道或调低反坎出檐；最小净距达成前保持site_pending
+        user_confirmation_ref: null
+      - id: F08
+        category: site_pending
+        statement: 六段反坎top的实际坡向、窗框泄水孔、滴水边及打胶收口仍未核；瓷砖胶或密封胶不能封堵泄水孔。
+        value:
+          slope_direction: unknown
+          weep_hole_clearance: unknown
+          sealant_interface: unknown
+          status: site_pending
+        source_refs:
+          - config/acceptance.yaml:128-136
+          - docs/pending-site-data.md:95
+        basis: 设计按front+top贴砖，当前模型没有窗框排水构造和坡度实测信息。
+        confidence: not_applicable
+        impact: water_management
+        affected_objects:
+          - six_new_low_ledges
+        affected_views:
+          - section
+          - perspective
+        owner: 门窗方/瓦工/量房
+        status: open
+        verification_method: 门窗方交底泄水孔位置、top坡向与滴水边，瓦工确认连续打胶且排水孔未封
+        user_confirmation_ref: null
+  unknowns_requiring_alignment: []
+  notes:
+    - “卧室”范围明确为主卧、西北次卧和东南客房；不含入户花园或阳台。
+    - 旧记录的“干区反坎存在但不贴砖”由本轮业主决定推翻；历史原文保留并说明被替代。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: window-sill-tile-20261016
+  subject: 六段卧室/书房落地窗低反坎
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - &ref_0
+      id: master_bedroom_west_upper_ledge
+      type: bay_sill + sill_region pair
+      archetypes:
+        - bay_sill
+        - sill_region
+      owner: 业主（设计决策）/瓦工（施工）
+      function: 主卧窗根低反坎，front与top贴砖并做连续收口。
+      material: current wall selection wall_tile_01
+      geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_west_upper
+      datum_refs:
+        - D01
+      fact_refs:
+        - F01
+        - F02
+        - F05
+        - F06
+      decision_refs:
+        - DEC-2026-10-16-TILE-01
+      dependencies:
+        - w_west_upper幕墙
+        - master_bedroom房间侧
+      interfaces:
+        - id: top-face-room-normal
+          target_object_id: master_bedroom
+          kind: visual
+          requirement: top面朝房间侧
+          status: confirmed
+      collision:
+        policy: none
+        geometry_ref: bay_sill
+        review_ref: 项目碰撞豁免类型
+      maintenance:
+        boundary: 窗框下沿防水胶与窗台砖交界
+        access_clearance: 窗台可擦洗
+        replaceable_parts:
+          - front砖
+          - top砖
+        inspection_requirements:
+          - 倒水检查窗框下沿渗漏
+          - 复核出檐和转角收口
+      parts:
+        - id: front
+          role: 竖直前脸
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=front
+          datum_refs:
+            - D01
+          dependencies:
+            - master_bedroom_west_upper_ledge
+          collision: none
+          maintenance_boundary: 窗框下沿打胶
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+        - id: top
+          role: 向室内出檐台面
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=top
+          datum_refs:
+            - D01
+          dependencies:
+            - master_bedroom_west_upper_ledge
+          collision: none
+          maintenance_boundary: 台面可擦洗
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+      visual_relationships:
+        - target_object_id: existing_living_and_master_bath_low_ledges
+          relation: aligned
+          requirement: 同150×150mm估算、同front+top、同墙砖候选
+          evidence_refs: []
+      validation_refs:
+        - masonry-takeoff
+        - verify:all
+        - agent-browser
+      status: planned
+    - '<<': *ref_0
+      id: master_bedroom_west_mid_ledge
+      function: 主卧西墙中段窗根低反坎；避让现有百叶与窗帘完成面，front与top统一贴砖。
+      geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_west_mid
+      datum_refs:
+        - D02
+      dependencies:
+        - w_west_mid幕墙
+        - master_bedroom房间侧
+        - 百叶/窗帘完成面待量房
+      interfaces:
+        - id: top-face-room-normal
+          target_object_id: master_bedroom
+          kind: visual
+          requirement: top面朝房间侧；窗帘净距待量房/窗帘深化
+          status: site_pending
+      parts:
+        - id: front
+          role: 竖直前脸
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=front
+          datum_refs:
+            - D02
+          dependencies:
+            - master_bedroom_west_mid_ledge
+          collision: none
+          maintenance_boundary: 窗框下沿打胶
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+        - id: top
+          role: 向室内出檐台面
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=top
+          datum_refs:
+            - D02
+          dependencies:
+            - master_bedroom_west_mid_ledge
+          collision: none
+          maintenance_boundary: 台面可擦洗
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+    - '<<': *ref_0
+      id: master_bedroom_south_ledge
+      function: 主卧南墙窗根低反坎；front与top统一贴砖并做连续收口。
+      geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_mb_south
+      datum_refs:
+        - D03
+      dependencies:
+        - w_mb_south幕墙
+        - master_bedroom房间侧
+      interfaces:
+        - id: top-face-room-normal
+          target_object_id: master_bedroom
+          kind: visual
+          requirement: top面朝房间侧
+          status: confirmed
+      parts:
+        - id: front
+          role: 竖直前脸
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=front
+          datum_refs:
+            - D03
+          dependencies:
+            - master_bedroom_south_ledge
+          collision: none
+          maintenance_boundary: 窗框下沿打胶
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+        - id: top
+          role: 向室内出檐台面
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=top
+          datum_refs:
+            - D03
+          dependencies:
+            - master_bedroom_south_ledge
+          collision: none
+          maintenance_boundary: 台面可擦洗
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+    - '<<': *ref_0
+      id: study_south_ledge
+      function: 书房南墙窗根低反坎；front与top统一贴砖并做连续收口。
+      geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_st_south
+      datum_refs:
+        - D04
+      dependencies:
+        - w_st_south幕墙
+        - study房间侧
+      interfaces:
+        - id: top-face-room-normal
+          target_object_id: study
+          kind: visual
+          requirement: top面朝房间侧
+          status: confirmed
+      parts:
+        - id: front
+          role: 竖直前脸
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=front
+          datum_refs:
+            - D04
+          dependencies:
+            - study_south_ledge
+          collision: none
+          maintenance_boundary: 窗框下沿打胶
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+        - id: top
+          role: 向室内出檐台面
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=top
+          datum_refs:
+            - D04
+          dependencies:
+            - study_south_ledge
+          collision: none
+          maintenance_boundary: 台面可擦洗
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+    - '<<': *ref_0
+      id: bedroom_nw_north_ledge
+      function: 西北次卧北墙窗根低反坎；front与top统一贴砖并做连续收口。
+      geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_nw_north
+      datum_refs:
+        - D05
+      dependencies:
+        - w_nw_north幕墙
+        - bedroom_nw房间侧
+      interfaces:
+        - id: top-face-room-normal
+          target_object_id: bedroom_nw
+          kind: visual
+          requirement: top面朝房间侧
+          status: confirmed
+      parts:
+        - id: front
+          role: 竖直前脸
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=front
+          datum_refs:
+            - D05
+          dependencies:
+            - bedroom_nw_north_ledge
+          collision: none
+          maintenance_boundary: 窗框下沿打胶
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+        - id: top
+          role: 向室内出檐台面
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=top
+          datum_refs:
+            - D05
+          dependencies:
+            - bedroom_nw_north_ledge
+          collision: none
+          maintenance_boundary: 台面可擦洗
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+    - '<<': *ref_0
+      id: bedroom_se_south_ledge
+      function: 东南客房南墙窗根低反坎；front与top统一贴砖并做连续收口。
+      geometry_source: config/layout/model-geometry.yaml + config/layout/overlay.yaml wall w_be_south
+      datum_refs:
+        - D06
+      dependencies:
+        - w_be_south幕墙
+        - bedroom_se房间侧
+      interfaces:
+        - id: top-face-room-normal
+          target_object_id: bedroom_se
+          kind: visual
+          requirement: top面朝房间侧
+          status: confirmed
+      parts:
+        - id: front
+          role: 竖直前脸
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=front
+          datum_refs:
+            - D06
+          dependencies:
+            - bedroom_se_south_ledge
+          collision: none
+          maintenance_boundary: 窗框下沿打胶
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+        - id: top
+          role: 向室内出檐台面
+          independent: true
+          owner: 瓦工
+          material: wall_tile_01
+          geometry_source: sill_region face=top
+          datum_refs:
+            - D06
+          dependencies:
+            - bedroom_se_south_ledge
+          collision: none
+          maintenance_boundary: 台面可擦洗
+          validation_refs:
+            - masonry-takeoff
+            - browser-runtime
+  notes:
+    - 每座反坎主体独立建模，front与top是同一主体的独立贴砖声明；不引用wall_region，不加入碰撞集合。
+    - 现场接口未闭环：默认窗帘帘面偏移0.12m，低反坎暂估出檐0.15m，平面存在约0.03m交叠；六处需由窗帘商/设计在量房后确认轨道偏移或反坎出檐，未确认前功能评审BLOCKED。窗框由门窗方确认top坡向、泄水孔与连续打胶，瓷砖胶/密封胶不得封堵泄水孔。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: window-sill-tile-20261016
+  subject: 卧室与书房落地窗低反坎统一贴砖
+  state: blocked
+  state_note: 业主批准的贴砖范围、尺寸暂估、overlay构件/贴面声明、共享算量和预算记录已写入；整体设计评审仍BLOCKED：默认窗帘帘面与150mm暂估出檐交叠约30mm，窗框排水接口待门窗方确认，候选砖实际质感/样板未核。只将本轮视作范围和算量录入完成，不作为可直接施工或下单依据。
+  source_version:
+    config_refs:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/materials.yaml
+      - config/procurement.yaml
+      - data/current-scheme.json
+      - config/acceptance.yaml
+      - config/budget-pitfalls.yaml
+      - schedule/phase-1/control.yaml
+      - config/tile-comparison.yaml
+    asset_refs:
+      - shared/masonry-takeoff.ts
+      - shared/render/SceneBuilder.ts
+      - app/src/render/HouseScene.ts
+      - app/src/scene/HouseScene.test.ts
+    render_facts_ref: data/current-scheme.json + /api/project；gate:visual CLEAR，浏览器 window.__APP__.isReady()=true
+    source_digest: sha256 list — model-geometry.yaml=585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f; overlay.yaml=cd72ffa6bd69d30e6e3442065fb826800064951135b9f7f02ff01fc088d90a9b; materials.yaml=68c2f18550be563845e90356ff8f1b2e3781a3bc0ae4bdf8f22b6c8bc213e24a; procurement.yaml=c4bdbaaf4bb2027c593e4853de732d2123a5034ca1c5dabb9556987acf8bae68; acceptance.yaml=b8c457bf236b25bb0c346c1377ca9aefb5cd94efcf22c4a5d875645ffa1a3687; budget-pitfalls.yaml=8f2beee3766ad32fa5425d514e445b37f630c86406996f2deb2e0e6f6312616d; tile-comparison.yaml=9cae3f9f3252ae99104e58569d56d8e97a9143a8dda651d1b57f7e8379f06ae2; current-scheme.json=b1799873a28be04c8b7a0b7ae27f2f21db559909522e6f58aa075cc972cb7218; control.yaml=284169650a56ab26e35f88866694efd65755ee9cc6e827ce839ddc926dd01ef7; pending-site-data.md=eeb537ecaaa4af5e20f24c2d271a5ec0db4a47fe162b0aea8a660fc627fc9865; masonry-takeoff.ts=316a759a34787f6f8b1fe65a643409d53d0325d6767beb060fe2c0246b6ed230; SceneBuilder.ts=10829303d0a1c259851a3a03a6baba48bd42e8c3cc76295f9f482371a35da729; HouseScene.ts=59580a009ed429a64d052f9ad6eeb4420f9b84ad2a8b513f6c18a8b26b6ffcaa; HouseScene.test.ts=ab5e9857d5a68b953c1ec578d2fc34eb3f2268cc177114f48612c63e58fcc568; fact-table.yaml=0d51b58880efcc5cd143c7d59d32174e418bbe7aacad5c8770059e817e00a5e5; decision-brief.yaml=e51f54b59b7ea4099f489ad4fd3315f7525e617d08f5bd6ab93d1150aa1207d7; design-datum.yaml=0de3da26595bb755ce0a59f3ea4690775925ee896f34b6b1235ee504ace471dc; object-manifest.yaml=b51081b359d9903cb19e19f05058d0cd70f36bd0c8c627af032e428bf5e5461f; runtime-review.json=7029da02b3bdc51d6a67b2451b54394fe147a4e186980cf3468151034140c34a; decisions/11-tile-finish.md=3e15b172be85ea52ebb1787849ebf672d21918a07c83af1cd88ab1149b3e8d52; decisions/README.md=85c0e692e812036b7bc10f0f8adabee24f11d832aaeff21a94c5cdf206d24390; phase-1/budget.md=147bed29dbf2272e8af8bd0d1c19fe3b11fabd1f97b5671edfc113fa273cb050; phase-1/checklist.md=3adc2f29cff4076b903cfda3ae3554abb35beeb33f03d5d93bd79f934f6184a1; phase-1/schedule.md=d82789e5e4507e37b334e23353f1b4e27b139a5ddd4e2356c54e771d907303e2; schedule/procurement.md=01954c6cb94c00270e299617faf87be45ed1ebbc0bff88555a9366315ff27bf7; budget-parity-contracts.test.ts=312b4b19547e1d6581ef9d7791a522aac6d2fa880a857537fc00f6435ff5ad63; budget-calculator.test.ts=cf50ee7ff7ccd927e9c10f281e34695e7a6376189b79cc297ee6b5a4257f4d7b; masonry-takeoff.test.ts=1a2f75b01c646348ab739182170daf74ee62886443eb3375d9b02096b39db931; masonry-quotes.test.ts=a0b4a2a8fa01fbc035fb5720bc76f1b98a02c14966cfcd2ffe41f41951efa12c; wall-tile-inspection.test.ts=66cb07270f05e770b3d9ecd02517fb36fee8ea28112ae9f864ea633601f01cd7
+    generated_at: '2026-10-16T02:36:02Z'
+  validation:
+    commands:
+      - node --import tsx/esm scripts/schedule/control.ts
+      - npm run typecheck
+      - npm run verify:all
+      - npm run test:server
+      - node --import tsx/esm --test tests/server/budget-parity-contracts.test.ts
+      - npx vitest run src/scene/HouseScene.test.ts -t "wall-tile audit surface|wall-tile audit reads ShapeGeometry"
+      - node --import tsx/esm scripts/gate/visual-state-gate.ts
+    results:
+      - command: node --import tsx/esm scripts/schedule/control.ts
+        result: PASS; 3 phases, 23 phase-1 packages, 104 cost components, ¥36,365 known pending gap
+        output_ref: conversation 2026-10-16
+      - command: npm run typecheck
+        result: PASS; root + app TypeScript
+        output_ref: conversation 2026-10-16
+      - command: npm run verify:all
+        result: PASS 17/17, 0 failed; warning count includes existing ledger warnings
+        output_ref: conversation 2026-10-16
+      - command: npm run test:server
+        result: 'PARTIAL 1004/1008 pass; 4 failures: totalActual current 65,903 vs unchanged 65,608 anchor; shared solar α≤0 expected 0.15 but actual 0; two wall-face-materials tests require document unavailable in Node.'
+        output_ref: /tmp/sill-test-server-final2.log
+      - command: node --import tsx/esm --test tests/server/budget-parity-contracts.test.ts
+        result: PASS 12/12 after updating stale old-area and precision assertions
+        output_ref: conversation 2026-10-16
+      - command: npx vitest run src/scene/HouseScene.test.ts -t "wall-tile audit surface|wall-tile audit reads ShapeGeometry"
+        result: PASS 2/2; 57 unrelated tests skipped by name filter
+        output_ref: conversation 2026-10-16
+      - command: node --import tsx/esm scripts/gate/visual-state-gate.ts
+        result: CLEAR; rendered config is current
+        output_ref: conversation 2026-10-16
+    config_status: PASS
+    geometry_status: PASS for current estimated model geometry; field dimensions remain site_pending
+    consistency_status: PASS; shared takeoff/control/budget figures agree
+    functional_checks_status: BLOCKED by curtain clearance and window drainage interfaces
+    application_status: PASS; ready=true, no alert banner, tile status query returned all rooms/faces
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    session: bontop-411f9225-8344-428d-ad97-7f1ff45ce6bf
+    lifecycle: open → wait --load networkidle → poll window.__APP__.isReady()=true → runtime query → snapshot -i -c → screenshot → PNG file/hash validation; tile layer enabled temporarily for inspection → close (success)
+    runtime_query_ref: docs/design-iterations/window-sill-tile-20261016/evidence/runtime-review.json
+    snapshot: docs/design-iterations/window-sill-tile-20261016/evidence/snapshot-tile-inspection.txt
+    runtime_summary:
+      url: http://localhost:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      alerts: []
+      tile_status_total_sqm_rounded_by_app: 36.722
+      new_ledge_count: 6
+      declared_faces: 12
+      main_bedroom_arc_mesh_segments: 17
+    views:
+      main-bedroom-corner:
+        target_id: master_bedroom_west_upper/mid + master_bedroom_south_waterproof_ledge
+        camera:
+          mode: orbit
+          is_overview: false
+          position:
+            - 1.1
+            - 0.72
+            - 8.62
+          target:
+            - 0.05
+            - 0.08
+            - 9.55
+        ready: true
+        banner: ''
+        snapshot: docs/design-iterations/window-sill-tile-20261016/evidence/snapshot-tile-inspection.txt
+        runtime_query: docs/design-iterations/window-sill-tile-20261016/evidence/runtime-review.json
+        screenshot: docs/design-iterations/window-sill-tile-20261016/evidence/master-bedroom.png
+        png_sha256: 4a41dfddc48386eade289662a84a5f202ee184443c78589f8f6e6988d4813b77
+        png_check: 1280x577, PNG, non-empty; blue inspection overlay, not final tile texture
+      study-south-window:
+        target_id: study_south_waterproof_ledge
+        camera:
+          mode: orbit
+          is_overview: false
+          position:
+            - 6.8
+            - 1.5
+            - 8.9
+          target:
+            - 6.8
+            - 0.075
+            - 9.65
+        ready: true
+        banner: ''
+        snapshot: docs/design-iterations/window-sill-tile-20261016/evidence/snapshot-tile-inspection.txt
+        runtime_query: docs/design-iterations/window-sill-tile-20261016/evidence/runtime-review.json
+        screenshot: docs/design-iterations/window-sill-tile-20261016/evidence/study.png
+        png_sha256: 476573d181b08f8af26e3cc068bf2e4fc20ae580b837c5b4297a87dcdc63bb85
+        png_check: 1280x577, PNG, non-empty; blue inspection overlay, not final tile texture
+      bedroom-nw-north-window:
+        target_id: bedroom_nw_north_waterproof_ledge
+        camera:
+          mode: orbit
+          is_overview: false
+          position:
+            - 5.4
+            - 1.65
+            - 2.55
+          target:
+            - 5.4
+            - 0.075
+            - 1.17
+        ready: true
+        banner: ''
+        snapshot: docs/design-iterations/window-sill-tile-20261016/evidence/snapshot-tile-inspection.txt
+        runtime_query: docs/design-iterations/window-sill-tile-20261016/evidence/runtime-review.json
+        screenshot: docs/design-iterations/window-sill-tile-20261016/evidence/bedroom-nw.png
+        png_sha256: 0a43fea6626a69eec144111bfa12e8dc170c7526e0ae42450d0ab2140c3b39a5
+        png_check: 1280x577, PNG, non-empty; blue inspection overlay, not final tile texture
+      bedroom-se-south-window:
+        target_id: bedroom_se_south_waterproof_ledge
+        camera:
+          mode: orbit
+          is_overview: false
+          position:
+            - 14.9
+            - 1.6
+            - 7.5
+          target:
+            - 14.9
+            - 0.075
+            - 8.62
+        ready: true
+        banner: ''
+        snapshot: docs/design-iterations/window-sill-tile-20261016/evidence/snapshot-tile-inspection.txt
+        runtime_query: docs/design-iterations/window-sill-tile-20261016/evidence/runtime-review.json
+        screenshot: docs/design-iterations/window-sill-tile-20261016/evidence/bedroom-se.png
+        png_sha256: fc1f996a72f4dd17e7f6385579123622f39be07912484288c948204b0a334821
+        png_check: 1280x577, PNG, non-empty; blue inspection overlay, not final tile texture
+  aesthetic_review:
+    verdict: BLOCKED
+    blocking_issues:
+      - Blue transparent inspection screenshots cannot establish final wall_tile_01 color, texture, or gloss.
+      - Current views are close-up crops without full room scale, furnishings, curtain, or sightline context.
+      - The main-bedroom image supports corner continuity, but other three views do not clearly show front and top as separate finished faces.
+    non_blocking_notes:
+      - The declared six ledges share wall_tile_01 and front/top faces; the inspection blue appears consistent.
+      - Main-bedroom curved corner shows no obvious break in the inspection mesh.
+    evidence_refs:
+      - docs/design-iterations/window-sill-tile-20261016/evidence/master-bedroom.png
+      - docs/design-iterations/window-sill-tile-20261016/evidence/study.png
+      - docs/design-iterations/window-sill-tile-20261016/evidence/bedroom-nw.png
+      - docs/design-iterations/window-sill-tile-20261016/evidence/bedroom-se.png
+      - docs/design-iterations/window-sill-tile-20261016/evidence/runtime-review.json
+    requested_changes:
+      - After wall_tile_01 SKU/sample is confirmed, capture actual finish in the same room views.
+      - Add a full-room view with window and curtain context and a slanted section-like view showing the 150×150 nominal geometry.
+    assumptions:
+      - wall_tile_01 remains a candidate; exact color, surface, sample, and local delivery price are not verified.
+  functional_review:
+    verdict: FAIL
+    blocking_issues:
+      - Current curtain-plane offset 0.12m is 0.03m inside the estimated 0.15m ledge projection; six window clearances need field and curtain-shop resolution before the modeled geometry is buildable.
+      - Top slope, drip edge, weep-hole location, and sealant interface are not specified; adhesives or caulk must not block drainage.
+      - COST-060-08 planned_cny remains ¥800 while current candidate material estimate is about ¥2,571; this is pending owner budget review, not a locked order amount.
+      - COST-060-05 incremental ¥394 special labor is not included in package need and awaits written quote/confirmation that it is not already in standard labor.
+    non_blocking_notes:
+      - Shared masonry takeoff yields 19.710165578m / 5.9130496735㎡ incremental and 36.723599347㎡ total; control and budget agree.
+      - 'The scope, owner, trigger, and config write-back are recorded in pending-site-data #20.'
+    evidence_refs:
+      - docs/design-iterations/window-sill-tile-20261016/evidence/runtime-review.json
+      - docs/design-iterations/window-sill-tile-20261016/fact-table.yaml:F06-F08
+      - docs/design-iterations/window-sill-tile-20261016/decision-brief.yaml:open_questions
+      - docs/pending-site-data.md:95
+      - schedule/phase-1/control.yaml:1085-1086
+    requested_changes:
+      - At handover measure all six ledges and curtain offsets; change the track or projection until a non-overlapping clearance is confirmed.
+      - Have the window supplier define top slope, drip, weep-hole, and continuous sealant details before tile/adhesive layout.
+      - Obtain written special-labor pricing and confirm inclusion/exclusion from the standard labor pool; owner to review ¥800 planned vs ¥2,571 current estimate before purchase.
+    assumptions:
+      - 150×150mm is the owner-approved nominal estimate, not a field measurement.
+      - wall_tile_01 is a price/appearance candidate, not a selected or purchased SKU.
+  risks:
+    - Six ledges use the owner-approved 150×150mm nominal estimate; height, projection, curve endpoints, and finished window relation remain site_pending.
+    - Default curtain plane offset 0.12m vs nominal ledge depth 0.15m implies an estimated 0.03m overlap; no curtain-track movement was authorized.
+    - Window sill slope, drainage/weep holes, drip edge, and sealant interface are unverified; this can silently impair drainage if not checked.
+    - wall_tile_01 remains a candidate; SKU, color, sample, batch, local price, and written install scope are unverified.
+    - COST-060-08 current estimate (~¥2,571) and pending plan amount (¥800) remain separate until owner review; COST-060-05 labor is not included in PKG-060 need.
+    - The parity contract compares total tiled area; component errors could theoretically offset unless wall/sill subtotals and room-level declarations are also checked.
+  retrospective:
+    triggered: true
+    triggers:
+      - Original endpoint sum 20.14m disagreed with the shared resolver path after the rounded main-bedroom south wall was measured as a polyline.
+      - Independent budget review found the old low-sill labor length used the main-bath chord rather than its resolved arc path.
+      - The new tile scope exposed a curtain-to-ledge clearance conflict and a stale old budget note.
+    records:
+      - No historical decision, candidate, or pricing evidence was deleted. DEC-2026-10-16-TILE-01 explicitly overturns the earlier dry-area exclusion; old C17/R11 text remains historical.
+      - Raw endpoint sum 20.14m is superseded by shared resolved path length 19.710165578m; added area is 5.9130496735㎡.
+      - Old main-bath low-sill chord 3.36m is superseded by resolved west 0.76m + north arc 3.170165578m = 3.930165578m. Current whole low-ledger run is 29.840331156m (~¥597 at ¥20/m), excluding the kitchen 3.60m high bay.
+      - The stale tile-comparison PKG-060 gap note now points to current control/budget sources and no longer presents the old gap as current.
+    rebaselined: true
+  delivery:
+    status: blocked
+    blocking_issues:
+      - Curtain clearance estimate overlaps by about 30mm.
+      - Actual ledge dimensions and window drainage/sealant details await handover/site review.
+      - Actual material appearance is not reviewable until wall_tile_01 sample/SKU is confirmed.
+      - Owner review and written labor quote remain open.
+    completion_conditions:
+      - Measure all six ledges and update overlay/sill regions and takeoff.
+      - Resolve curtain-track/ledge clearance for all six window runs.
+      - Document slope, drip edge, weep-hole, and sealant details without blocking drainage.
+      - Review planned ¥800 against current material estimate and obtain written special-labor quote.
+      - Capture same-version actual wall_tile_01 finish and full-room/close-up views; aesthetic and functional reviewers return PASS.
+    follow_up_site_pending:
+      - 'Owner/measurement team: measure height, depth, curve endpoints, and finished frame relation at all six windows before tile layout/order.'
+      - 'Curtain vendor/design: resolve the 0.12m vs 0.15m projection overlap and verify curtain/blind movement.'
+      - 'Window supplier/mason: define top slope, weep-hole clearance, drip edge, and sealant interface; test frame drainage.'
+    delivery_ready: false

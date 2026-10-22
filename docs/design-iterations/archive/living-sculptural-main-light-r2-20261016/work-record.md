@@ -41,7 +41,7 @@
 
 ## 审查状态
 
-- `review-manifest.json`保存审美与功能审查的固定契约结果。
+- `round.yaml` 的 review 段保存审美与功能审查的固定契约结果。
 - 施工/商品审查尚未完成：模型中的吊杆和弧脚是渲染关系，不是承重构造证据。
 
 ## 未解决的现场/采购事项
@@ -56,4 +56,4 @@
 - **推翻了什么**：推翻R1“低矮贴顶”的外观方案，因为业主看图后明确指出仍像普通吸顶灯。宽面漫射、3000K、Ra≥90、均匀度目标和既有电气接口没有被推翻。
 - **新增内容何时会静默失效**：若实际候选的3000K输出/配光不足、风口射流造成摆动或积灰、梁位/顶板不支持固定、检修需要拆顶，模型的可见造型仍会显示但不适于施工；若浏览器与GLB绕过共享生成器，两个输出会分叉；若移动电气锚点却不更新拓扑和MEP，安装关系会错位。
 
-本轮记录见[decision brief](decision-brief.yaml)、[design datum](design-datum.yaml)、[object manifest](object-manifest.yaml)、[fact table](fact-table.yaml)与[review manifest](review-manifest.json)。
+本轮结构化记录见 [round.yaml](round.yaml)（批 3 由五件套合并）。

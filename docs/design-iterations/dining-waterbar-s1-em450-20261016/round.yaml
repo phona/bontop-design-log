@@ -1,0 +1,2700 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: dining-waterbar-s1-em450-20261016
+index:
+  order: 48
+  topic: dining
+  review_state: blocked
+  supersedes: none
+  note: README 与 s1-shape-correction-v5.md 止于 V5，但 fact-table 已标 I-S1-SHAPE-V5 superseded_by V6（DEC-2026-10-17-R11，出水腔改 106mm 窄面）；2026-10-20 已在 README 与 v5 文档加 V5->V6 标注并补 V6 结论段
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: dining-waterbar-s1-em450-20261016
+  subject: 餐厅水吧并置米家S1与德龙EM450，厨房水槽柜内放RO机身的真实模型预演
+  priority:
+    user_goal: 按业主给定的设备尺寸，把台式即热饮水机与同一台EM450并置到餐厅水吧，在真实Three.js模型中查看效果；1400G净水器机身预演放在厨房水槽柜下。
+    ranked:
+      - 遵从业主最新指向表达东侧前出水、西侧后置水箱；保留312×106×280mm外廓、中心、rotationY=90°与台面接触，水箱内部结构仍不作真实性承诺
+      - 保留S1高位开放出水仓、圆角主机身/水位标识、柔圆全宽机头和带栅格接水盘等可见细节
+      - 保持冰箱、800mm水吧柜候选位、餐桌、玄关半高柜、吊顶、墙体、门洞和玻璃门的现有位置
+      - 同一台EM450从厨房移至餐厅，不复制设备
+      - 按业主尺寸建模米家S1及RO净水器机身
+      - 保持设备、家具与基础设施松耦合，不新增跨房间供水或设备包覆
+      - 用真实运行时外包络和固定视角确认空间关系
+    non_negotiables:
+      - 不移动冰箱、餐桌、玄关半高柜、吊顶、门洞、墙体和玻璃门
+      - 不增加冰箱侧板或通顶柜
+      - 不新增餐厅给排水、插座、回路或墙控迁改
+      - 不把家具柜壳AABB包含关系当成RO机身实际安装通过
+      - 不把候选低柜尺寸、设备外观代理或设备SKU写成施工定稿/采购结论
+      - 不把V5西侧水箱壳体解释为厂家真实水箱容积、盖板拆取方向或维护结构
+    tradeoffs_accepted:
+      - 本轮水吧低柜以800W×420D×850H mm作为视觉预演代理，尺寸尚未由业主确认
+      - RO图片中独立出水龙头本轮不建模，因缺准确SKU外廓与点位
+      - 磨豆机没有SKU/尺寸，不建模；本轮只看EM450机身与S1的并置
+  frozen: true
+  freeze_record:
+    alignment_id: chat-2026-10-16-waterbar-s1-em450-under-sink-preview
+    original_user_response: 那就调整模型吧；S1尺寸312×106×280mm，1400G净水器机身尺寸163×445×379mm。随后确认净水器机身放厨下、同一台EM450移到水吧。
+    normalized_decisions:
+      - 餐厅预演放入用户给定尺寸的米家S1，并把既有同一台EM450从厨房移到水吧，不新增第二台。
+      - 1400G净水器机身按用户给定尺寸放在厨房水槽地柜内预演。
+      - 冰箱、餐桌、水吧柜候选、玄关半高柜及建筑/吊顶对象保持现有位置。
+      - 800×420×850mm水吧低柜只作为当前效果图代理，最终柜体尺寸待业主看图确认。
+      - 不修改电气、给排水或墙控配置；设备安装和使用条件继续待现场/机电核验。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-16'
+    evidence_refs:
+      - conversation:2026-10-16-waterbar-appliance-placement
+      - docs/design-iterations/dining-waterbar-s1-em450-20261016/fact-table.yaml
+  allowed_scope:
+    files:
+      - config/house.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - config/spatial-validation.yaml
+      - config/anti-penetration.yaml
+      - scripts/verify/placement/verify-furniture-placement.ts
+      - docs/dressing-map.md (generated from declared sources)
+      - docs/decisions/02-layout-public.md
+      - docs/decisions/README.md
+      - docs/design-iterations/dining-waterbar-s1-em450-20261016/
+    objects:
+      - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+      - furniture:living_dining:coffee_machine_em450:16
+      - furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+      - furniture:living_dining:fridge:13 (read-only)
+      - furniture:living_dining:dining_table:8 (read-only)
+      - furniture:living_dining:entry_half_height_cabinet:7 (read-only)
+    archetypes:
+      - freestanding_appliance
+      - movable_cabinet
+      - under_sink_appliance
+    views:
+      - perspective
+      - plan
+    changes:
+      - 把米家S1、同一台EM450放在既有水吧带候选低柜台面上，程序化外廓按业主尺寸表达。
+      - 把米家1400G净水器机身作为柜内包络对象，放在厨房水槽柜组东侧相邻格。
+      - 删除当前餐厅已放置的立式茶吧机与旧390×400×920mm低边柜候选；替换为800×420×850mm水吧柜几何代理。
+      - 把EM450的唯一放置实例从厨房移到餐厅，不复制。
+      - 按业主“出水口朝东，水箱朝西”将S1几何部件从局部宽轴分排改为沿局部深度前后分层；外廓、位置和rotation不变。
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/plumbing.yaml
+      - config/ceiling.yaml
+      - config/hvac.yaml
+    objects:
+      - 冰箱、餐桌、餐椅、玄关半高柜、吊顶、墙体、门洞、玻璃门、墙控和既有机电点位
+    assumptions:
+      - 不将水吧柜代理尺寸解释为业主确认的家具尺寸或施工尺寸
+      - 不将RO机身位于简化柜壳AABB内解释为隔板/存水弯/滤芯维护已通过
+      - 不将没有建模的独立净水龙头、电源、磨豆机或设备操作空间解释为已经落实
+      - 不将静态冰箱与水吧间距解释为冰箱门、抽屉、取水和站人动态净距
+    out_of_scope_changes:
+      - 新增餐厅专用回路/插座或迁移墙控
+      - 新增餐厅供水、排水、管线机或跨房间RO水路
+      - 确认水吧定制柜施工尺寸或内部结构
+      - 确认RO产品完整SKU、出水龙头型号、滤芯维护空间或采购价格
+      - 建模磨豆机、粉锤、压粉区及完整咖啡工作流
+  open_questions:
+    - id: OQ-CABINET-DIMENSIONS
+      category: preference
+      question: 800×420×850mm候选低柜的外形比例与材质方向看图是否接受？
+      fact_refs:
+        - I-CABINET-PREVIEW-DATUM
+      options: []
+      selected: null
+      user_response: null
+      status: open
+    - id: OQ-DINING-POWER
+      category: mep
+      question: S1与EM450的中国SKU铭牌功率、同时使用负荷及餐厅可及接地插座/回路尚未落实。
+      fact_refs:
+        - S-DINING-POWER
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: OQ-WALL-CONTROL-ACCESS
+      category: function
+      question: 水吧柜体z范围与既有墙控带重叠；实际面板外廓及从柜前伸手操作尚未验证。
+      fact_refs:
+        - S-WALL-CONTROL-ACCESS
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: OQ-RO-CABINET-INTERNALS
+      category: maintenance
+      question: 水槽柜内部隔板、下水器/存水弯、滤芯或滤瓶抽取、进排水、电源与独立出水龙头点位尚未建立真实净空。
+      fact_refs:
+        - S-RO-INTERNAL-FIT
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+  alignment:
+    records:
+      - id: chat-2026-10-16-waterbar-appliance-placement
+        user_response: 净水器机身放厨下；同一台EM450移到水吧。
+        normalized_decision: RO机身按给定外廓置于水槽柜下；餐厅水吧并置S1与原EM450，不增加第二台。
+        fact_refs:
+          - F-RO-DIMS-USER
+          - F-S1-DIMS-USER
+          - F-EM450-DIMS-USER
+        status: frozen_for_visual_preview
+      - id: chat-2026-10-16-s1-reference-shape-correction
+        user_response: 建模不对，偏离效果图了。
+        normalized_decision: S1可见轮廓按最新参考图改为左侧偏置出水凹腔、右侧连续主机身/水位窗和跨宽上盖；保留312×106×280mm尺寸、中心、正面朝东与台面位置。
+        fact_refs:
+          - F-S1-DIMS-USER
+          - F-S1-SHAPE-V3
+        status: frozen_for_visual_preview
+      - id: chat-2026-10-16-s1-v4-visual-feedback
+        user_response: 哦，我填错了，mijia_instant_dispenser_s1_preview，这个才对吧；那为什么这个模型那么奇怪？
+        normalized_decision: 继续修正S1外观代理：打开较高的左侧出水仓至接水盘，移除不准确的下方面板/方块标记，做出更厚的栅格接水盘、贴合机身的圆头水位窗和柔圆外壳；保留312×106×280mm包络、中心、朝向和台面位置。
+        fact_refs:
+          - F-S1-DIMS-USER
+          - F-RUNTIME-S1
+          - I-S1-SHAPE-V4
+        status: frozen_for_visual_preview
+      - id: chat-2026-10-16-s1-v5-east-west-direction
+        user_response: 出水口朝东，水箱朝西。
+        normalized_decision: 保留S1父级rotationY=90°，将局部+z设为东侧前出水区、局部-z设为西侧后水箱区；以程序化几何表达方向，不推断水箱内部或拆取结构。
+        fact_refs:
+          - F-S1-DIMS-USER
+          - F-RUNTIME-S1
+          - U-S1-V5-DIRECTION
+          - I-S1-SHAPE-V5
+        status: frozen_for_visual_preview
+    unresolved:
+      - 水吧柜候选外廓/颜色是否接受
+      - 两台餐厅电器的插座、回路负荷及墙控操作可达性
+      - RO柜内真实净空、排水方式、滤芯维护及独立净水龙头
+      - 磨豆机SKU和完整咖啡工作流程
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run verify:furniture
+      - npm run verify:all
+      - npm run test:server
+      - npm run typecheck
+      - npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - 餐厅人眼总览：S1、EM450、低柜和冰箱关系
+      - 水吧设备近景：柜体台面、S1与EM450的真实尺度及间距
+      - Three.js运行时对象坐标与AABB：含厨房RO机身及受保护对象
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: pending
+    blocking_issues:
+      - 水吧低柜尺寸是视觉代理，尚未由业主冻结
+      - 餐厅设备供电、墙控操作、补水与清洁净空未通过工程核验
+      - RO机身柜内位置未验证隔板、存水弯和滤芯维护空间
+    done_when:
+      - 当前Three.js页面ready且配置错误横幅为空。
+      - 同一台EM450只存在一个放置实例，位于餐厅水吧。
+      - S1与RO机身的运行时外廓分别符合业主给定尺寸。
+      - S1近景能读出东侧前置高位出水仓/喷嘴/接水盘与西侧后置机身的前后层级，顶盖分区沿设备深度轴；细部比例仍标记为图像估读。
+      - V5近景能读出东侧出水仓/喷嘴/接水盘与西侧后置机身的前后分层；水箱细部仍标记为外观代理推断。
+      - 冰箱、餐桌、半高柜和建筑坐标与保护基线一致。
+      - 总览、近景截图与当前配置版本一致且非默认总览相机。
+      - 工程待核事项明确保留，不误写为施工通过。
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: dining-waterbar-s1-em450-20261016
+  subject: 低柜台面放置S1与EM450，RO机身进入厨房水槽柜包络
+  units: m
+  coordinate_system: Three.js right-handed; Y up; +x east, +z south; rotationY=90° makes local +z face east.
+  status: frozen
+  datums:
+    - id: D-WATERBAR-CABINET
+      name: 餐厅水吧自由摆放矮柜候选
+      anchor:
+        kind: free_position
+        ref: null
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F-RUNTIME-WATERBAR
+          - I-CABINET-PREVIEW-DATUM
+        decision_refs:
+          - chat-2026-10-16-waterbar-appliance-placement
+      views:
+        plan:
+          required: true
+          origin: 水吧低柜几何中心
+          axes: x为东西深度，z为沿墙长度
+          direction: 中心(7.43,3.87)，rotationY=90°，柜体长边沿z轴
+          position:
+            x: 7.43
+            z: 3.87
+          rotation: 90
+          dimensions:
+            length: 0.8
+            width: 0.42
+            depth: 0.42
+            offset: 0
+          dimension_semantics: total
+        elevation:
+          required: true
+          viewing_side: 东侧，柜体正面朝东
+          vertical_axis: 'y'
+          height: 0.85
+          dimensions:
+            width: 0.8
+            height: 0.85
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: x轴东西向
+          depth_axis: x
+          clearances:
+            front: null
+            rear: null
+            top: null
+            bottom: null
+          thickness: null
+          dimension_semantics: overall
+      geometry:
+        x: 7.43
+        'y': 0
+        z: 3.87
+        width: 0.42
+        depth: 0.42
+        height: 0.85
+        length: 0.8
+        rotation: 90
+        along: 0.8
+      constraints:
+        - 水吧低柜是可移动家具外形代理，不固定墙体。
+        - 保持冰箱、餐桌、餐椅、玄关柜、墙体、玻璃门、门洞和吊顶位置。
+        - 800×420×850mm为本轮预演尺寸，业主未冻结。
+      interfaces:
+        - S-DINING-POWER
+        - S-WALL-CONTROL-ACCESS
+      validation_refs:
+        - evidence/runtime-query.json#furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      status: confirmed
+    - id: D-S1-COUNTERTOP
+      name: 米家S1台式即热饮水机预演位置
+      anchor:
+        kind: free_position
+        ref: D-WATERBAR-CABINET
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F-S1-DIMS-USER
+          - F-RUNTIME-S1
+          - I-S1-SHAPE-V6
+          - I-S1-SHAPE-V5
+        decision_refs:
+          - U-S1-ON-WATERBAR
+          - U-S1-V6-OFFICIAL-FORM
+          - U-S1-V5-DIRECTION
+      views:
+        plan:
+          required: true
+          origin: 设备中心
+          axes: x为柜深，z为柜长
+          direction: V6（DEC-2026-10-17-R11）：出水腔在106mm窄面，局部+z=世界东=出水腔正面；312mm长轴沿局部z（世界东西向），西端为水箱端；rotationY=90°保持不变
+          position:
+            x: 7.47
+            z: 3.64
+          rotation: 90
+          dimensions:
+            length: 0.106
+            width: 0.106
+            depth: 0.312
+            offset: 0
+          dimension_semantics: overall
+        elevation:
+          required: true
+          viewing_side: 东侧正面
+          vertical_axis: 'y'
+          height: 0.28
+          dimensions:
+            width: 0.106
+            height: 0.28
+            sill: 0.85
+            datum_offset: 0.85
+          dimension_semantics: above_floor
+        section:
+          required: true
+          cut_direction: x轴东西向
+          depth_axis: x
+          clearances:
+            front: 0.014
+            rear: 0.094
+            top: null
+            bottom: 0
+          thickness: null
+          dimension_semantics: service_clearance
+      geometry:
+        x: 7.47
+        'y': 0.85
+        z: 3.64
+        width: 0.312
+        depth: 0.106
+        height: 0.28
+        length: 0.106
+        rotation: 90
+        along: 0.106
+      constraints:
+        - 设备底面与矮柜台面y=0.85m接触；东侧106窄面为出水正面，西端为水箱端，南北312长面带近西端把手槽。
+        - V6形体按官方三视尺寸图（营销图）估读：出水腔深42mm、把手槽/顶盖分缝位置是外观代理，不代表厂家内部结构或真实拆取路径。
+        - 机身补水、顶部水箱取放、接水盘清洁和墙控操作包络未验证。
+      interfaces:
+        - S-DINING-POWER
+      validation_refs:
+        - evidence/runtime-query-s1-form-v6.json#objects.mijia_instant_dispenser_s1_preview
+        - evidence/runtime-query-s1-form-v6.json#fixedCameras.waterbar_close
+        - evidence/runtime-query-s1-form-v5.json#objects.mijia_instant_dispenser_s1_preview
+      status: confirmed
+    - id: D-EM450-WATERBAR
+      name: 同一台德龙EM450餐厅水吧预演位置
+      anchor:
+        kind: free_position
+        ref: D-WATERBAR-CABINET
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F-EM450-DIMS-USER
+          - F-RUNTIME-EM450
+        decision_refs:
+          - U-EM450-MOVE
+      views:
+        plan:
+          required: true
+          origin: 设备中心
+          axes: x为柜深，z为柜长
+          direction: 局部前向+z经rotationY=90°朝东
+          position:
+            x: 7.37
+            z: 4
+          rotation: 90
+          dimensions:
+            length: 0.22
+            width: 0.285
+            depth: 0.285
+            offset: 0
+          dimension_semantics: overall
+        elevation:
+          required: true
+          viewing_side: 东侧正面
+          vertical_axis: 'y'
+          height: 0.305
+          dimensions:
+            width: 0.22
+            height: 0.305
+            sill: 0.85
+            datum_offset: 0.85
+          dimension_semantics: above_floor
+        section:
+          required: true
+          cut_direction: x轴东西向
+          depth_axis: x
+          clearances:
+            front: 0.1275
+            rear: 0.0075
+            top: null
+            bottom: 0
+          thickness: null
+          dimension_semantics: service_clearance
+      geometry:
+        x: 7.37
+        'y': 0.85
+        z: 4
+        width: 0.285
+        depth: 0.285
+        height: 0.305
+        length: 0.22
+        rotation: 90
+        along: 0.22
+      constraints:
+        - EM450底面与矮柜台面y=0.85m接触；设备前面朝东。
+        - 按业主尺寸的模型外廓，不包含磨豆机、粉锤和咖啡操作包络。
+      interfaces:
+        - S-DINING-POWER
+      validation_refs:
+        - evidence/runtime-query.json#furniture:living_dining:coffee_machine_em450:16
+      status: confirmed
+    - id: D-RO-UNDER-SINK
+      name: 米家1400G净水器机身厨下包络候选
+      anchor:
+        kind: free_position
+        ref: null
+        wall_side: null
+        service_ref: plumbing:faucet_kitchen_purifier
+      source_refs:
+        fact_refs:
+          - F-RO-DIMS-USER
+          - F-RUNTIME-RO
+          - S-RO-INTERNAL-FIT
+          - S-RO-INTERFACES
+        decision_refs:
+          - U-RO-UNDER-SINK
+      views:
+        plan:
+          required: true
+          origin: 机身中心
+          axes: x为东西宽度，z为柜深
+          direction: rotation=0，长边沿z
+          position:
+            x: 10.05
+            z: 0.32
+          rotation: 0
+          dimensions:
+            length: 0.445
+            width: 0.163
+            depth: 0.445
+            offset: 0
+          dimension_semantics: overall
+        elevation:
+          required: true
+          viewing_side: 水槽柜东侧相邻格
+          vertical_axis: 'y'
+          height: 0.379
+          dimensions:
+            width: 0.163
+            height: 0.379
+            sill: 0.08
+            datum_offset: 0.08
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: x轴东西向
+          depth_axis: z
+          clearances:
+            front: null
+            rear: null
+            top: null
+            bottom: 0.08
+          thickness: null
+          dimension_semantics: service_clearance
+      geometry:
+        x: 10.05
+        'y': 0.08
+        z: 0.32
+        width: 0.163
+        depth: 0.445
+        height: 0.379
+        length: 0.445
+        rotation: 0
+        along: 0.445
+      constraints:
+        - 对象属于厨下机身尺寸预演；主柜运行时外形为简化实心代理，不表示真实内腔。
+        - 不移动水槽/橱柜和机电点位；不在本轮新增净水龙头或水路。
+        - 检修、更换滤芯、浓水接管、供电及独立龙头开孔全部待确认。
+      interfaces:
+        - S-RO-INTERNAL-FIT
+        - S-RO-INTERFACES
+      validation_refs:
+        - evidence/runtime-query.json#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+      status: blocked
+  notes:
+    - 世界包围盒是Three.js运行时几何；施工净空应以现场完成面、柜体内腔与产品说明为准。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: dining-waterbar-s1-em450-20261016
+  subject: 餐厅水吧S1与EM450、厨房水槽柜内RO机身预演
+  created_at: '2026-10-16T11:00:28Z'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/house.yaml
+      - config/spatial-validation.yaml
+      - config/anti-penetration.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - config/electrical.yaml
+      - config/plumbing.yaml
+    observation_refs:
+      - conversation:2026-10-16-s1-v4-visual-feedback
+      - user_image:image-9.png
+    measurement_refs: []
+    runtime_refs:
+      - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query.json
+      - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v4.json
+    evidence_refs:
+      - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/waterbar-overview.png
+      - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/waterbar-close.png
+      - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v4-close.png
+  entry_shape:
+    id: ''
+    category: confirmed
+    statement: ''
+    value: null
+    source_refs: []
+    basis: ''
+    confidence: high
+    impact: material
+    affected_objects: []
+    affected_views:
+      - plan
+      - perspective
+    owner: ''
+    status: open
+    verification_method: ''
+    user_confirmation_ref: null
+  facts:
+    confirmed:
+      - id: F-S1-DIMS-USER
+        category: confirmed
+        statement: 业主给定米家即热饮水机S1外廓为宽312×深106×高280mm。
+        value:
+          width_m: 0.312
+          depth_m: 0.106
+          height_m: 0.28
+        source_refs:
+          - conversation:2026-10-16-waterbar-appliance-placement
+        basis: 业主提供产品图并直接给出尺寸；不代表本轮独立核验销售SKU。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 与Three.js运行时AABB逐轴比较。
+        user_confirmation_ref: conversation:2026-10-16-waterbar-appliance-placement
+      - id: F-RO-DIMS-USER
+        category: confirmed
+        statement: 业主给定米家净水器机身外廓为宽163×深445×高379mm；图中另有独立出水龙头，但本轮未指定龙头尺寸和点位。
+        value:
+          body_width_m: 0.163
+          body_depth_m: 0.445
+          body_height_m: 0.379
+          faucet_dimensions: null
+          faucet_position: null
+        source_refs:
+          - conversation:2026-10-16-waterbar-appliance-placement
+        basis: 业主提供产品图并直接给出机身尺寸，并确认机身放厨下。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+        affected_views:
+          - section
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 与Three.js运行时AABB逐轴比较；柜内施工净空仍单独待核。
+        user_confirmation_ref: conversation:2026-10-16-waterbar-appliance-placement
+      - id: F-EM450-DIMS-USER
+        category: confirmed
+        statement: 本项目既有业主给定德龙EM450预演尺寸为宽220×深285×高305mm；本轮移动同一台机器，不复制。
+        value:
+          width_m: 0.22
+          depth_m: 0.285
+          height_m: 0.305
+          placed_instances: 1
+        source_refs:
+          - conversation:2026-10-16-em450-dimensions
+          - config/house.yaml#living_dining.furnishings
+        basis: 既有业主尺寸输入；运行时仅存在一个placed实例。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:coffee_machine_em450:16
+        affected_views:
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 查询场景家具注册表和Three.js运行时AABB。
+        user_confirmation_ref: conversation:2026-10-16-waterbar-appliance-placement
+      - id: F-RUNTIME-WATERBAR
+        category: confirmed
+        statement: 当前运行时低柜代理外包络为800×420×850mm，中心(7.43,0,3.87)、rotationY=90°；台面上表面y=0.85m，正面朝东。
+        value:
+          center_x_m: 7.43
+          center_z_m: 3.87
+          rotation_deg: 90
+          aabb_x_m:
+            - 7.22
+            - 7.64
+          aabb_y_m:
+            - 0
+            - 0.85
+          aabb_z_m:
+            - 3.47
+            - 4.27
+          dimensions_world_m:
+            - 0.42
+            - 0.85
+            - 0.8
+        source_refs:
+          - config/house.yaml#living_dining.furnishings
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query.json
+        basis: Three.js场景中7个Mesh的世界变换后AABB。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        affected_views:
+          - plan
+          - elevation
+          - perspective
+        owner: 设计预演
+        status: resolved
+        verification_method: 遍历对象全部Mesh并变换几何包围盒顶点。
+        user_confirmation_ref: null
+      - id: F-RUNTIME-S1
+        category: confirmed
+        statement: S1运行时外廓为312×106×280mm，底面与低柜台面y=0.85m接触；V5模型按业主指示表达东侧出水、西侧后置水箱。
+        value:
+          object_id: furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+          aabb_x_m:
+            - 7.447
+            - 7.553
+          aabb_y_m:
+            - 0.85
+            - 1.13
+          aabb_z_m:
+            - 3.484
+            - 3.796
+          dimensions_world_m:
+            - 0.106
+            - 0.28
+            - 0.312
+        source_refs:
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query.json
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v3.json
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v4.json
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v5.json
+        basis: Three.js运行时世界AABB和部件局部坐标；V5外观代理按业主东/西指示重排，但外包络、中心、rotationY和台面接触标高均保持不变。水箱内部/厂家实际位置不由该模型证明。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - perspective
+        owner: 设计预演
+        status: resolved
+        verification_method: 对照用户尺寸及柜台面标高。
+        user_confirmation_ref: null
+      - id: F-S1-SHAPE-V2
+        category: confirmed
+        statement: S1 V2程序化外观曾加入外挑上盖、对称凹腔、向下出水口及水位窗；运行时11个Mesh、外包络312×106×280mm。该对称凹腔后被V3非对称布局覆盖。
+        value:
+          mesh_count: 11
+          aabb_x_m:
+            - 7.447
+            - 7.553
+          aabb_y_m:
+            - 0.85
+            - 1.13
+          aabb_z_m:
+            - 3.484
+            - 3.796
+          dimensions_world_m:
+            - 0.106
+            - 0.28
+            - 0.312
+          position_changed: false
+        source_refs:
+          - shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v2
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v2.json
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v2-close.png
+        basis: 历史V2 FixtureFactory配方、运行时AABB/mesh数量及V2同机位截图。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - elevation
+          - perspective
+        owner: 设计预演
+        status: superseded
+        verification_method: V2历史外观对照；不作为当前V3形体证据。
+        user_confirmation_ref: conversation:2026-10-16-s1-horizontal-appearance-feedback
+      - id: F-S1-SHAPE-V3
+        category: confirmed
+        statement: S1 V3按参考图表达左侧偏置出水凹腔、右侧主机身/正面水位窗和跨宽上盖；运行时12个Mesh，包围盒仍为312×106×280mm。
+        value:
+          mesh_count: 12
+          aabb_x_m:
+            - 7.447
+            - 7.553
+          aabb_y_m:
+            - 0.85
+            - 1.13
+          aabb_z_m:
+            - 3.484
+            - 3.796
+          dimensions_world_m:
+            - 0.106
+            - 0.28
+            - 0.312
+          position_changed: false
+        source_refs:
+          - shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v3
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v3.json
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v3-close.png
+        basis: 直接检查V3 FixtureFactory配方、Three.js世界AABB/mesh数量与固定机位截图。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - elevation
+          - perspective
+        owner: 设计预演
+        status: superseded
+        verification_method: 对照用户参考图核对左侧凹腔/右侧主壳/水位窗位置；同机位比较V2/V3且核验外廓不变。
+        user_confirmation_ref: conversation:2026-10-16-s1-reference-shape-correction
+      - id: F-RUNTIME-EM450
+        category: confirmed
+        statement: EM450运行时外廓为220×285×305mm，底面与低柜台面y=0.85m接触，朝东；餐厅中仅有这一台。
+        value:
+          object_id: furniture:living_dining:coffee_machine_em450:16
+          aabb_x_m:
+            - 7.2275
+            - 7.5125
+          aabb_y_m:
+            - 0.85
+            - 1.155
+          aabb_z_m:
+            - 3.89
+            - 4.11
+          dimensions_world_m:
+            - 0.285
+            - 0.305
+            - 0.22
+        source_refs:
+          - config/house.yaml#living_dining.furnishings
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query.json
+        basis: Three.js运行时24个Mesh的世界AABB；厨房配置中已移除原唯一摆位。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:coffee_machine_em450:16
+        affected_views:
+          - perspective
+        owner: 设计预演
+        status: resolved
+        verification_method: 场景注册表按类型全数查询并与来源配置核对。
+        user_confirmation_ref: null
+      - id: F-RUNTIME-RO
+        category: confirmed
+        statement: RO机身运行时外廓为163×445×379mm，中心x=10.05,z=0.32，底面y=0.08m，位于水槽柜组东侧相邻格的包络候选位。
+        value:
+          object_id: furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+          aabb_x_m:
+            - 9.9685
+            - 10.1315
+          aabb_y_m:
+            - 0.08
+            - 0.459
+          aabb_z_m:
+            - 0.0975
+            - 0.5425
+          dimensions_world_m:
+            - 0.163
+            - 0.379
+            - 0.445
+        source_refs:
+          - config/house.yaml#kitchen.furnishings
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query.json
+        basis: Three.js运行时5个Mesh的世界AABB；柜组内部当前仍为简化实体外壳。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+          - furniture:kitchen:kitchen_cabinet_run:2
+        affected_views:
+          - section
+          - perspective
+        owner: 设计预演
+        status: resolved
+        verification_method: 查询场景对象并比较用户给定外廓；不据此判定柜内安装可行。
+        user_confirmation_ref: null
+      - id: F-PROTECTED-OBJECTS
+        category: confirmed
+        statement: 冰箱、餐桌、玄关半高柜位置与本轮约束一致，运行时坐标分别为(7.5025,2.9865,r270)、(9.8,3.45,r90)、(11.5,4.0,r90)。
+        value:
+          fridge_aabb_x_m:
+            - 7.2025
+            - 7.8025
+          fridge_aabb_z_m:
+            - 2.57
+            - 3.403
+          table_aabb_x_m:
+            - 9.4
+            - 10.2
+          table_aabb_z_m:
+            - 2.75
+            - 4.15
+          half_cabinet_aabb_x_m:
+            - 11.305
+            - 11.698
+          half_cabinet_aabb_z_m:
+            - 2.98
+            - 5.02
+        source_refs:
+          - config/house.yaml#living_dining.furnishings
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query.json
+        basis: 同一Three.js运行时注册表与既有正式配置。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:fridge:13
+          - furniture:living_dining:dining_table:8
+          - furniture:living_dining:entry_half_height_cabinet:7
+        affected_views:
+          - plan
+          - perspective
+        owner: 设计预演
+        status: resolved
+        verification_method: 运行时中心、朝向及AABB与保护基线逐项比较。
+        user_confirmation_ref: conversation:2026-10-16-waterbar-appliance-placement
+    inferred:
+      - id: I-CABINET-PREVIEW-DATUM
+        category: inferred
+        statement: 当前800×420×850mm低柜是在既有V1水吧尺寸范围内选取的模型预演参数，不是业主已冻结的正式柜体尺寸。
+        value:
+          width_along_wall_m: 0.8
+          depth_m: 0.42
+          height_m: 0.85
+          design_status: visual_preview_only
+        source_refs:
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/decision-brief.yaml
+          - config/house.yaml#living_dining.furnishings
+        basis: V1提出约800–850mm宽、400–450mm深、850–880mm高候选；本轮为便于看图取800×420×850mm。
+        confidence: medium
+        impact: material
+        affected_objects:
+          - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        affected_views:
+          - plan
+          - elevation
+          - perspective
+        owner: 设计预演
+        status: open
+        verification_method: 业主看图确认方向后再复尺并定柜体外尺寸。
+        user_confirmation_ref: null
+      - id: I-APPLIANCE-GAP
+        category: inferred
+        statement: V6后S1北缘与EM450南缘沿柜长方向间隔约197mm（V5时为94mm；S1的z向厚度由312变为106），属于静态几何间距，不等于完整操作台宽度或维护净空。
+        value:
+          gap_m: 0.197
+          s1_north_end_margin_m: 0.117
+          em450_south_end_margin_m: 0.16
+          v5_gap_m: 0.094
+        source_refs:
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v6.json
+        basis: 对V6运行时AABB的z坐标相减（DEC-2026-10-17-R11 摆位联动）。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+          - furniture:living_dining:coffee_machine_em450:16
+          - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        affected_views:
+          - plan
+          - perspective
+        owner: 设计预演
+        status: open
+        verification_method: 业主看图后评估设备间操作区；待选磨豆机后重算。
+        user_confirmation_ref: null
+      - id: I-S1-SHAPE-V4
+        category: inferred
+        statement: V3的开口被下方面板和短侧颊压成小方洞，接水盘/水位窗的厚度与贴合关系也偏离参考图；V4按透视图估读提高凹腔和盘体比例、贴合水位窗并软化外壳。V4后被业主指出方向读成横置，当前形体由V5覆盖。
+        value:
+          bay_open_height_m: 0.184
+          tray_width_m: 0.176
+          tray_depth_m: 0.07
+          tray_height_m: 0.018
+          tray_grille_slots: 8
+          water_window_m:
+            - 0.008
+            - 0.154
+            - 0.002
+          shell_corner_radius_m:
+            - 0.003
+            - 0.01
+          envelope_changed: false
+        source_refs:
+          - conversation:2026-10-16-s1-v4-visual-feedback
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v3-close.png
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v4-close.png
+          - shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v4
+        basis: 从业主透视产品图估读局部比例，再以当前Three.js近景和运行时外包络核验；无厂家三视图/CAD，局部部件尺寸为外观近似而非实测。
+        confidence: medium
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - elevation
+          - perspective
+        owner: 设计预演
+        status: superseded
+        superseded_by: I-S1-SHAPE-V5
+        verification_method: V4固定机位核对高凹腔、栅格盘、圆头贴合窗和柔化壳体，并对比运行时AABB确认包络未变。
+        user_confirmation_ref: conversation:2026-10-16-s1-v4-visual-feedback
+      - id: I-S1-SHAPE-V5
+        category: inferred
+        statement: V5把设备局部+z定义为东侧前出水区、局部-z定义为西侧后置水箱区；该轴向重排遵从业主指向。水箱壳体具体占深/内部结构仍是外观代理推断，因为当前只有单张透视图、无厂家背视图或剖面。V5后业主提供官方三视尺寸图，显示出水腔在106mm窄面、312mm长面是带把手槽的侧面，形体由V6覆盖。
+        value:
+          tank_shell_local_z_m:
+            - -0.053
+            - -0.006
+          front_bay_local_z_m:
+            - -0.004
+            - 0.053
+          outlet_local_z_m: 0.032
+          tray_local_z_m: 0.031
+          level_indicator_local_z_m: -0.005
+          envelope_changed: false
+        source_refs:
+          - conversation:2026-10-16-s1-v5-east-west-direction
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v5-close.png
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v5.json
+          - shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v5
+        basis: rotationY=90°将局部+z映射到世界+x东、局部-z映射到世界-x西；V5部件局部坐标与当前Three.js截图/运行时包络相符。水箱实际容量、拆取结构和维护路径未被建模。
+        confidence: medium
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - plan
+          - elevation
+          - perspective
+        owner: 设计预演
+        status: superseded
+        superseded_by: I-S1-SHAPE-V6
+        verification_method: 检查局部+z/-z部件范围、运行时AABB与台面接触，并复核东侧近景和水吧总览。
+        user_confirmation_ref: conversation:2026-10-16-s1-v5-east-west-direction
+      - id: I-S1-SHAPE-V6
+        category: inferred
+        statement: V6按业主提供的官方三视尺寸图重排形体——出水腔在106mm窄面（局部+z仍朝东）、312mm长轴转为局部z（世界东西向、西端为水箱端）、双侧面板近西端各一道100mm深色把手槽、顶面一道横向水箱盖分缝、实心机身+南柱/北柱承托通长悬挑机头、踏台接水盘前伸至包络东缘。出水腔凹入42mm、腔宽55mm、把手槽与顶盖分缝位置仍是营销图估读的外观代理，非CAD实测。
+        value:
+          aabb_m:
+            - 0.312
+            - 0.2803
+            - 0.106
+          body_front_plane_local_z_m: 0.126
+          bay_back_wall_local_z_m: 0.084
+          bay_opening_local_x_m:
+            - -0.015
+            - 0.04
+          tray_front_local_z_m: 0.156
+          side_slot_local_z_m: -0.075
+          side_slot_y_m:
+            - 0.085
+            - 0.185
+          top_lid_seam_local_z_m: -0.026
+          center_x: 7.47
+          envelope_changed: false
+        source_refs:
+          - conversation:2026-10-17-s1-v6-official-render
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query-s1-form-v6.json
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v6-close.png
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/s1-form-v6-east-face.png
+          - shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6
+        basis: 官方三视图106mm/312mm尺寸箭头分别对应出水腔窄面与带槽长面底边；rotationY=90°下局部+z仍映射世界+x东，故312长轴沿局部z、106沿局部x；运行时AABB 0.312×0.2803×0.106m（+0.3mm为顶盖分缝浮雕线），底面接触台面y=0.85，整机XY在台面范围内。水箱容量、补水/拆取路径、腔体真实深度未建模。
+        confidence: medium
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - plan
+          - elevation
+          - perspective
+        owner: 设计预演
+        status: resolved
+        verification_method: 三个固定机位截图（水吧总览/东南近景/东面正视）+ 运行时逐件AABB与局部范围查询；FURNITURE_DIMS轴向对换后verify:furniture通过。
+        user_confirmation_ref: conversation:2026-10-17-s1-v6-official-render
+    user_decision:
+      - id: U-S1-ON-WATERBAR
+        category: user_decision
+        statement: 将给定尺寸的S1放在餐厅水吧台面进行真实模型预演。
+        value: true
+        source_refs:
+          - conversation:2026-10-16-waterbar-appliance-placement
+        basis: 业主说“那就调整模型吧”并提供产品尺寸。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 模型运行时对象与固定视角截图。
+        user_confirmation_ref: conversation:2026-10-16-waterbar-appliance-placement
+      - id: U-S1-V4-SHAPE-REVISION
+        category: user_decision
+        statement: 业主指出S1 V3观感奇怪，并确认本次目标对象为mijia_instant_dispenser_s1_preview；按所附商品图继续修正可见外形。
+        value:
+          target_type: mijia_instant_dispenser_s1_preview
+          preserve_envelope: true
+          preserve_position_and_rotation: true
+        source_refs:
+          - conversation:2026-10-16-s1-v4-visual-feedback
+          - user_image:image-9.png
+          - user_image:image-7.png
+        basis: 业主在查看运行模型截图后提出外形问题，并纠正目标对象ID；首张尺寸产品图仍提供S1外形参照。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 按商品图和业主尺寸对照当前Three.js模型；外廓、中心、朝向和台面接触不变。
+        user_confirmation_ref: conversation:2026-10-16-s1-v4-visual-feedback
+      - id: U-S1-V5-DIRECTION
+        category: user_decision
+        statement: S1出水口朝东、水箱朝西；以设备局部+z为东、局部-z为西表达，保留既有中心和rotationY=90°。
+        value:
+          outlet_direction: east
+          water_tank_direction: west
+          preserve_center: true
+          preserve_rotation: true
+          preserve_envelope: true
+        source_refs:
+          - conversation:2026-10-16-s1-v5-east-west-direction
+        basis: 业主明确回答“出水口朝东，水箱朝西”。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        affected_views:
+          - plan
+          - elevation
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 运行时检查父级rotationY与前后部件局部z范围；外廓/位置不变。
+        user_confirmation_ref: conversation:2026-10-16-s1-v5-east-west-direction
+      - id: U-S1-V6-OFFICIAL-FORM
+        category: user_decision
+        statement: 业主提供米家即热饮水机S1官方三视尺寸图（312×106×280mm），确认出水腔在106mm窄面、312mm长面是带把手槽的侧面；出水口朝东、水箱端朝西的房间指向保持，摆位中心x 7.50→7.47（保台面包含），z与rotation=90°不变。
+        value:
+          bay_face_width_mm: 106
+          tank_direction: west
+          length_axis_world: east_west
+          new_center:
+            - 7.47
+            - 3.64
+          preserve_rotation: true
+          dims_axis_swap: true
+        source_refs:
+          - conversation:2026-10-17-s1-v6-official-render
+        basis: 业主附官方三视尺寸图并要求“调整对小米S1的程序化建模”；尺寸标注箭头与两面底边一一对应。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+          - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        affected_views:
+          - plan
+          - elevation
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: V6三机位截图+运行时AABB查询（evidence/runtime-query-s1-form-v6.json）；verify:furniture通过。
+        user_confirmation_ref: conversation:2026-10-17-s1-v6-official-render
+      - id: U-EM450-MOVE
+        category: user_decision
+        statement: 同一台EM450从厨房移至餐厅水吧，不在厨房保留副本。
+        value:
+          source_room: kitchen
+          target_room: living_dining
+          placed_instances: 1
+        source_refs:
+          - conversation:2026-10-16-waterbar-appliance-placement
+        basis: 业主明确回答“移到水吧”。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:coffee_machine_em450:16
+        affected_views:
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 按类型查询placed对象数与房间归属。
+        user_confirmation_ref: conversation:2026-10-16-waterbar-appliance-placement
+      - id: U-RO-UNDER-SINK
+        category: user_decision
+        statement: 1400G净水器图示机身按厨下机身处理，不作为水槽台面设备。
+        value:
+          installation_zone: under_sink_cabinet
+        source_refs:
+          - conversation:2026-10-16-waterbar-appliance-placement
+        basis: 业主明确回答“厨下机身”。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+        affected_views:
+          - section
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 运行时RO机身标高及其与水槽柜段的关系。
+        user_confirmation_ref: conversation:2026-10-16-waterbar-appliance-placement
+    site_pending:
+      - id: S-DINING-POWER
+        category: site_pending
+        statement: 餐厅水吧候选位没有本轮确认的可及接地插座、回路容量和设备同时使用负荷；未新增电气点位。
+        value: null
+        source_refs:
+          - config/electrical.yaml
+          - docs/pending-site-data.md
+        basis: 本轮只改家具/预演设备配置，电气源文件没有变更；中国SKU铭牌功率也未独立核验。
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+          - furniture:living_dining:coffee_machine_em450:16
+        affected_views:
+          - perspective
+        owner: 业主/电工/家电方
+        status: open
+        verification_method: 定SKU后核对铭牌、插头、插座可达、回路/导线/断路器及同时负荷。
+        user_confirmation_ref: null
+      - id: S-WALL-CONTROL-ACCESS
+        category: site_pending
+        statement: 既有墙控点标高约1.30m且其z范围与低柜带相交；柜体台面下方会遮住墙面，真实面板及伸手操作可达性未证明。
+        value:
+          wall_control_z_band_m:
+            - 3.98
+            - 4.1
+          wall_control_height_m: 1.3
+          cabinet_z_band_m:
+            - 3.47
+            - 4.27
+          cabinet_top_m: 0.85
+        source_refs:
+          - config/electrical.yaml
+          - config/house.yaml#living_dining.furnishings
+          - docs/design-iterations/dining-waterbar-s1-em450-20261016/evidence/runtime-query.json
+        basis: 点位/家具静态坐标关系；没有真实86型面板与手部操作包络。
+        confidence: medium
+        impact: blocking
+        affected_objects:
+          - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        affected_views:
+          - elevation
+          - perspective
+        owner: 业主/电工/定制柜商
+        status: open
+        verification_method: 取得面板外廓与位置，按柜体剖面和真人操作检查；需要时在电气设计阶段协调。
+        user_confirmation_ref: null
+      - id: S-RO-INTERNAL-FIT
+        category: site_pending
+        statement: 水槽柜有效内腔尚未建模；净水器机身与柜壳AABB嵌套不证明与隔板、下水器、存水弯、滤芯抽取和柜门维修净空兼容。
+        value:
+          purifier_body_m:
+            - 0.163
+            - 0.445
+            - 0.379
+          nominal_cabinet_run_span_x_m:
+            - 9.1
+            - 10.78
+          nominal_depth_m: 0.6
+        source_refs:
+          - config/house.yaml#kitchen.furnishings
+          - config/plumbing.yaml
+          - config/electrical.yaml
+          - config/anti-penetration.yaml
+        basis: 模型柜体run为完整简化实体代理，不含内部隔板/管件；当前contained waiver显式说明限制。
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+          - furniture:kitchen:kitchen_cabinet_run:2
+        affected_views:
+          - section
+        owner: 业主/橱柜商/净水器安装方
+        status: open
+        verification_method: 复尺水槽柜有效内宽/净高/净深、排水和滤芯抽取包络，按最终SKU柜内排布。
+        user_confirmation_ref: null
+      - id: S-RO-INTERFACES
+        category: site_pending
+        statement: 项目已有水槽同位的净水器冷水/排水/电源候选点与协调级支路；它们仍属inferred/pending，不能证明现场可以直接安装。独立出水龙头尺寸/开孔、浓水防虹吸/水气分离和滤芯检修条件仍未确认，本轮未修改任何点位。
+        value:
+          faucet_kitchen_sink:
+            - 9.5
+            - 0.3
+          faucet_kitchen_purifier:
+            - 9.5
+            - 0.3
+          drain_kitchen_sink:
+            - 9.5
+            - 0.3
+          sock_kitchen_purifier:
+            - 9.5
+            - 0.3
+          route_status: inferred_or_pending
+          faucet_product_location: null
+        source_refs:
+          - config/plumbing.yaml
+          - config/electrical.yaml
+          - docs/pending-site-data.md
+        basis: 模型配置包含水槽/净水器候选点和水槽排水路线，但相关水源/立管仍待量房；图片未给出独立龙头尺寸和点位，RO排水接管方案须按最终SKU确定。
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+        affected_views:
+          - section
+        owner: 业主/电工/水工/净水器安装方
+        status: open
+        verification_method: 锁定SKU后按说明书和现场点位设计，并实测维护包络。
+        user_confirmation_ref: null
+      - id: S-APPLIANCE-SKU
+        category: site_pending
+        statement: 三台设备的当前型号名称/地区SKU未由本轮采购研究独立核实；模型外形只采用业主提供尺寸，采购价与售后不在本轮结论内。
+        value: null
+        source_refs:
+          - conversation:2026-10-16-waterbar-appliance-placement
+        basis: 用户图和尺寸输入可支持几何预演，不等于SKU/技术参数核验。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+          - furniture:living_dining:coffee_machine_em450:16
+          - furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+        affected_views:
+          - perspective
+        owner: 业主/采购
+        status: open
+        verification_method: 采购前核对中国大陆SKU、铭牌、说明书、净空与服务条件。
+        user_confirmation_ref: null
+  unknowns_requiring_alignment:
+    - id: ALIGN-WATERBAR-CABINET-DATUM
+      question: 看过当前总览和近景后，是否接受800×420×850mm低柜作为下一轮深化基线？
+      reason_result_changes: 最终低柜外形变化会改变台面设备间距、与冰箱的关系、墙控可达性和当前固定视角，不能把代理尺寸直接写成施工尺寸。
+      fact_refs:
+        - F-RUNTIME-WATERBAR
+        - I-CABINET-PREVIEW-DATUM
+        - S-WALL-CONTROL-ACCESS
+      option_refs:
+        - 保留当前800×420×850mm视觉候选
+        - 确认后按现场复尺重设外廓
+      status: asked
+    - id: ALIGN-APPLIANCE-ORDER
+      question: 是否接受当前S1靠冰箱一侧、EM450靠南端的台面摆放顺序？
+      reason_result_changes: 调换顺序会改变日常取水、咖啡操作、端部余量及墙控附近空间关系。
+      fact_refs:
+        - F-RUNTIME-S1
+        - F-RUNTIME-EM450
+        - I-APPLIANCE-GAP
+      option_refs:
+        - 保留当前顺序
+        - 看图后调整设备顺序
+      status: asked
+  notes:
+    - 报告中的尺寸是模型外廓或用户给定商品外廓，柜内可施工净空需另测。
+    - 本轮未运行shopping-research，不输出价格、官方型号、滤芯成本或品质/售后判断。
+    - 商品选型的购买前提仍遵循项目shopping-research工作流。
+    - 业主指出V1水吧截图中的S1观感像横放，并指出V2偏离参考图；V3据图改为左侧偏置出水凹腔与右侧主机身/水位窗，继续保持用户尺寸/中心/朝向不变。
+    - 业主查看V3运行截图后仍认为形体奇怪。V4证实并修正了V3侧颊/后壁偏短、下方面板挡凹腔、接水盘过薄、窗口脱面和直角壳体问题；V3审美PASS不再作为当前外观结论。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: dining-waterbar-s1-em450-20261016
+  subject: 低柜、S1、EM450和厨下RO机身四个相互独立的预演对象
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      type: waterbar_low_cabinet_800_preview
+      archetypes:
+        - movable_cabinet
+        - beverage_station
+      owner: 家具
+      function: 餐厅可移动饮水/咖啡操作与储物柜候选
+      material: 暖白柜体与浅木色台面外观代理
+      geometry_source: shared/render/FixtureFactory.ts#waterbar_low_cabinet_800_preview + config/house.yaml
+      datum_refs:
+        - D-WATERBAR-CABINET
+      fact_refs:
+        - F-RUNTIME-WATERBAR
+        - I-CABINET-PREVIEW-DATUM
+      decision_refs:
+        - chat-2026-10-16-waterbar-appliance-placement
+      dependencies:
+        - fridge:13位置保护
+        - dining_table:8位置保护
+      interfaces:
+        - id: power-reach
+          target_object_id: config/electrical.yaml
+          kind: electrical
+          requirement: 保持墙控可操作并给两台设备提供合规可及电源
+          status: blocked
+        - id: appliance-support
+          target_object_id: furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+          kind: structural
+          requirement: 设备底面接触柜面，柜面承托不表示柜体承载/防倾倒通过
+          status: confirmed
+        - id: coffee-support
+          target_object_id: furniture:living_dining:coffee_machine_em450:16
+          kind: structural
+          requirement: 设备底面接触柜面
+          status: confirmed
+      collision:
+        policy: reviewed
+        geometry_ref: evidence/runtime-query-s1-form-v4.json#objects.waterbar_low_cabinet_800_preview
+        review_ref: review-manifest.json
+      maintenance:
+        boundary: 独立柜体；门/抽屉只做静态模型，内部储物和五金尚未深化。
+        access_clearance: 需现场核实墙控面板、柜门扫掠及柜体移动通道。
+        replaceable_parts:
+          - 整柜候选
+          - 台面代理
+        inspection_requirements:
+          - 柜内结构
+          - 防倾倒方式
+          - 门扇开启
+          - 电源检修可达
+      parts:
+        - id: carcass
+          role: 矮柜柜体与柜门代理
+          independent: true
+          owner: 家具
+          material: 暖白
+          geometry_source: shared/render/FixtureFactory.ts
+          datum_refs:
+            - D-WATERBAR-CABINET
+          dependencies: []
+          collision: reviewed
+          maintenance_boundary: 内部有效空间未建模
+          validation_refs:
+            - evidence/runtime-query-s1-form-v4.json
+            - evidence/runtime-query-s1-form-v3.json
+        - id: top
+          role: 设备承托台面外观代理
+          independent: true
+          owner: 家具
+          material: 浅木色
+          geometry_source: shared/render/FixtureFactory.ts
+          datum_refs:
+            - D-WATERBAR-CABINET
+          dependencies:
+            - carcass
+          collision: reviewed
+          maintenance_boundary: 台面耐水/耐热/耐磨性能尚未选材
+          validation_refs:
+            - evidence/s1-form-v4-close.png
+            - evidence/s1-form-v3-close.png
+      visual_relationships:
+        - target_object_id: furniture:living_dining:fridge:13
+          relation: custom
+          requirement: 低柜+双台面设备形成次级服务组，冰箱保持独立体块并与柜体留静态间距
+          evidence_refs:
+            - evidence/s1-form-v4-overview.png
+            - evidence/s1-form-v3-overview.png
+        - target_object_id: furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+          relation: supported
+          requirement: S1底面与台面y=0.85m接触
+          evidence_refs:
+            - evidence/s1-form-v4-close.png
+            - evidence/s1-form-v3-close.png
+        - target_object_id: furniture:living_dining:coffee_machine_em450:16
+          relation: supported
+          requirement: EM450底面与台面y=0.85m接触
+          evidence_refs:
+            - evidence/s1-form-v4-close.png
+            - evidence/s1-form-v3-close.png
+      validation_refs:
+        - evidence/runtime-query-s1-form-v4.json
+        - evidence/s1-form-v4-overview.png
+        - evidence/s1-form-v4-close.png
+        - evidence/runtime-query-s1-form-v3.json
+      status: implemented
+    - id: furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+      type: mijia_instant_dispenser_s1_preview
+      archetypes:
+        - countertop_appliance
+        - hot_water_dispenser
+      owner: 家电
+      function: 餐厅日常即热饮水
+      material: 白色机身外观代理
+      geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6 + owner supplied official 312×106×280mm render (2026-10-17)
+      datum_refs:
+        - D-S1-COUNTERTOP
+      fact_refs:
+        - F-S1-DIMS-USER
+        - F-RUNTIME-S1
+        - U-S1-ON-WATERBAR
+        - U-S1-V6-OFFICIAL-FORM
+        - U-S1-V5-DIRECTION
+        - I-S1-SHAPE-V6
+        - I-S1-SHAPE-V5
+      decision_refs:
+        - chat-2026-10-16-waterbar-appliance-placement
+        - chat-2026-10-16-s1-v4-visual-feedback
+        - chat-2026-10-16-s1-v5-east-west-direction
+        - chat-2026-10-17-s1-v6-official-render
+      dependencies:
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      interfaces:
+        - id: power
+          target_object_id: config/electrical.yaml
+          kind: electrical
+          requirement: 核对具体SKU铭牌/插头/回路和电源可及位置
+          status: blocked
+        - id: water-refill
+          target_object_id: user
+          kind: maintenance
+          requirement: 需核实水箱取放、人工接水补水与清洁动作
+          status: open
+      collision:
+        policy: reviewed
+        geometry_ref: evidence/runtime-query-s1-form-v6.json#objects.mijia_instant_dispenser_s1_preview
+        review_ref: review-manifest.json
+      maintenance:
+        boundary: V6按官方三视图表达可见形体：出水腔在106mm窄面、西端为水箱端、双侧面板近西端把手槽；未建真实内部水箱/水路；实际补水、拆洗和散热要求按最终SKU说明书核对。
+        access_clearance: 东侧106窄面出水腔与接水盘（前缘与包络东缘平齐，距台面东缘14mm）；水箱在机身内后段，顶盖取放方向、后方可达空间和前方接水/清洁站位待核。
+        replaceable_parts:
+          - 水箱
+          - 接水盘
+          - 滤件若有
+        inspection_requirements:
+          - 中国SKU
+          - 铭牌功率
+          - 插头/插座
+          - 水箱拆装
+          - 定期清洗
+      parts:
+        - id: chassis
+          role: 实心机身块与南柱/北柱承托结构（出水腔即挖在前脸两柱之间）
+          independent: true
+          owner: 家电外形代理
+          material: 柔圆白色机壳
+          geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6
+          datum_refs:
+            - D-S1-COUNTERTOP
+          dependencies: []
+          collision: reviewed
+          maintenance_boundary: 不表示内部水箱容量/隔腔/服务接口
+          validation_refs:
+            - evidence/runtime-query-s1-form-v6.json
+            - evidence/s1-form-v6-close.png
+        - id: head
+          role: 通长悬挑机头与顶面横向水箱盖分缝
+          independent: true
+          owner: 家电外形代理
+          material: 白色圆角机壳
+          geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6
+          datum_refs:
+            - D-S1-COUNTERTOP
+          dependencies:
+            - chassis
+          collision: reviewed
+          maintenance_boundary: 顶盖/水箱真实拆取路径未建模
+          validation_refs:
+            - evidence/s1-form-v6-close.png
+        - id: east-bay
+          role: 东侧106窄面出水腔（腔底板、徽标点、下向出水口）
+          independent: true
+          owner: 家电外形代理
+          material: 圆角白色机壳/浅灰腔底/金属小件
+          geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6
+          datum_refs:
+            - D-S1-COUNTERTOP
+          dependencies:
+            - chassis
+            - head
+          collision: reviewed
+          maintenance_boundary: 杯具与喷嘴操作尺度、腔体真实深度待SKU核验
+          validation_refs:
+            - evidence/runtime-query-s1-form-v6.json
+            - evidence/s1-form-v6-east-face.png
+        - id: stage-and-tray
+          role: 前伸置杯踏台与带栅格/排水凹位的接水盘（前缘与包络东缘平齐）
+          independent: true
+          owner: 家电外形代理
+          material: 白色圆角机壳/灰色金属栅格
+          geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6
+          datum_refs:
+            - D-S1-COUNTERTOP
+          dependencies:
+            - east-bay
+          collision: reviewed
+          maintenance_boundary: 接水盘拆洗方式和真实容量未建模
+          validation_refs:
+            - evidence/s1-form-v6-close.png
+        - id: side-tank-slots
+          role: 南北双侧面板近西端的深色把手槽外观代理
+          independent: true
+          owner: 家电外形代理
+          material: 深色胶囊凹槽读法
+          geometry_source: shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v6
+          datum_refs:
+            - D-S1-COUNTERTOP
+          dependencies:
+            - chassis
+          collision: reviewed
+          maintenance_boundary: 把手槽是否双侧对称、是否为水箱提手以实机为准
+          validation_refs:
+            - evidence/s1-form-v6-close.png
+            - evidence/runtime-query-s1-form-v6.json
+      visual_relationships:
+        - target_object_id: furniture:living_dining:waterbar_low_cabinet_800_preview:14
+          relation: supported
+          requirement: 底面y=0.85m与柜面相切，整机XY在台面范围内
+          evidence_refs:
+            - evidence/runtime-query-s1-form-v6.json
+            - evidence/s1-form-v6-overview.png
+        - target_object_id: furniture:living_dining:coffee_machine_em450:16
+          relation: spaced
+          requirement: 沿z方向留0.197m静态间距（V6转轴后由0.094m增大）；不是操作宽度保证
+          evidence_refs:
+            - evidence/runtime-query-s1-form-v6.json
+            - evidence/s1-form-v6-overview.png
+      validation_refs:
+        - evidence/runtime-query-s1-form-v6.json
+        - evidence/s1-form-v6-overview.png
+        - evidence/s1-form-v6-close.png
+        - evidence/s1-form-v6-east-face.png
+        - evidence/runtime-query-s1-form-v5.json
+      status: implemented
+    - id: furniture:living_dining:coffee_machine_em450:16
+      type: coffee_machine_em450
+      archetypes:
+        - countertop_appliance
+        - espresso_machine
+      owner: 家电
+      function: 半自动意式咖啡制作设备；当前只验证机身落台
+      material: 不锈钢/深色细节程序化外观代理
+      geometry_source: shared/render/FixtureFactory.ts#coffee_machine_em450 + owner supplied 220×285×305mm
+      datum_refs:
+        - D-EM450-WATERBAR
+      fact_refs:
+        - F-EM450-DIMS-USER
+        - F-RUNTIME-EM450
+        - U-EM450-MOVE
+      decision_refs:
+        - chat-2026-10-16-waterbar-appliance-placement
+      dependencies:
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      interfaces:
+        - id: power
+          target_object_id: config/electrical.yaml
+          kind: electrical
+          requirement: 核对具体SKU铭牌和与S1并用的回路负荷
+          status: blocked
+        - id: grinder-zone
+          target_object_id: not-modeled
+          kind: circulation
+          requirement: 磨豆机与压粉操作区无SKU/尺寸，未纳入本轮
+          status: open
+      collision:
+        policy: reviewed
+        geometry_ref: evidence/runtime-query-s1-form-v4.json#objects.coffee_machine_em450
+        review_ref: review-manifest.json
+      maintenance:
+        boundary: 当前外廓不含磨豆机、粉锤、牛奶/清洁物品及配件。
+        access_clearance: 前方站位、蒸汽棒摆动、滴水盘和水箱抽取范围待真实SKU/说明书核对。
+        replaceable_parts:
+          - 水箱
+          - 滴水盘
+          - 手柄
+          - 粉碗
+        inspection_requirements:
+          - 中国销售SKU
+          - 铭牌功率
+          - 维护/取件包络
+          - 与S1并用电气审查
+      parts: []
+      visual_relationships:
+        - target_object_id: furniture:living_dining:waterbar_low_cabinet_800_preview:14
+          relation: supported
+          requirement: 底面y=0.85m与柜面相切
+          evidence_refs:
+            - evidence/s1-form-v4-close.png
+            - evidence/s1-form-v3-close.png
+        - target_object_id: furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+          relation: spaced
+          requirement: 以静态包围盒留距，不代表双设备可同时操作
+          evidence_refs:
+            - evidence/s1-form-v4-close.png
+            - evidence/s1-form-v3-close.png
+      validation_refs:
+        - evidence/runtime-query-s1-form-v4.json
+        - evidence/s1-form-v4-close.png
+        - evidence/runtime-query-s1-form-v3.json
+      status: implemented
+    - id: furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+      type: mijia_ro_purifier_1400g_under_sink_preview
+      archetypes:
+        - under_sink_appliance
+        - water_purifier
+      owner: 家电
+      function: 厨房集中饮用净水预演机身
+      material: 白色机身外观代理
+      geometry_source: shared/render/FixtureFactory.ts#mijia_ro_purifier_1400g_under_sink_preview + owner supplied 163×445×379mm
+      datum_refs:
+        - D-RO-UNDER-SINK
+      fact_refs:
+        - F-RO-DIMS-USER
+        - F-RUNTIME-RO
+        - S-RO-INTERNAL-FIT
+        - S-RO-INTERFACES
+      decision_refs:
+        - U-RO-UNDER-SINK
+      dependencies:
+        - furniture:kitchen:kitchen_cabinet_run:2
+        - plumbing:faucet_kitchen_purifier
+        - plumbing:drain_kitchen_sink
+        - electrical:sock_kitchen_purifier
+      interfaces:
+        - id: cabinet-cavity
+          target_object_id: furniture:kitchen:kitchen_cabinet_run:2
+          kind: maintenance
+          requirement: 实测有效内腔、隔板、滤芯抽取、阀件和存水弯位置
+          status: blocked
+        - id: drain
+          target_object_id: plumbing:drain_kitchen_sink
+          kind: plumbing
+          requirement: 按最终SKU确定水槽排水三通/防虹吸/水气分离，禁止默认接密封下水
+          status: blocked
+        - id: faucet
+          target_object_id: plumbing:faucet_kitchen_purifier
+          kind: plumbing
+          requirement: 独立净水龙头位置及开孔需重新深化
+          status: open
+        - id: power
+          target_object_id: electrical:sock_kitchen_purifier
+          kind: electrical
+          requirement: 柜内插座可及性与漏水风险防护待核
+          status: open
+      collision:
+        policy: reviewed
+        geometry_ref: evidence/runtime-query-s1-form-v4.json#objects.mijia_ro_purifier_1400g_under_sink_preview
+        review_ref: review-manifest.json
+      maintenance:
+        boundary: 柜壳为简化实心模型，RO机身以contained豁免表达预期柜内放置，不代表可安装。
+        access_clearance: 滤芯更换/机身更换的竖向和前向抽取包络未知。
+        replaceable_parts:
+          - 滤芯
+          - 净水器机身
+        inspection_requirements:
+          - 柜内有效尺寸
+          - 隔板
+          - 存水弯/下水器
+          - 进水阀
+          - 浓水管
+          - 插座
+          - 龙头开孔
+          - 滤芯抽取
+      parts: []
+      visual_relationships:
+        - target_object_id: furniture:kitchen:kitchen_cabinet_run:2
+          relation: concealed
+          requirement: 机身预演位于水槽柜组东侧相邻格，默认视角不可见
+          evidence_refs:
+            - evidence/runtime-query-s1-form-v4.json
+            - evidence/runtime-query-s1-form-v3.json
+      validation_refs:
+        - evidence/runtime-query-s1-form-v4.json
+        - evidence/runtime-query-s1-form-v3.json
+        - config/anti-penetration.yaml#kitchen_ro_purifier_inside_sink_base
+      status: blocked
+  notes:
+    - 固定家具只作为本轮未移动基线引用：冰箱、餐桌、玄关半高柜。
+    - 独立RO龙头尚未建模；不得将机身对象吸收成给排水/电气系统对象。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: dining-waterbar-s1-em450-20261016
+  subject: 餐厅S1+EM450水吧及厨房厨下RO机身预演
+  state: blocked
+  source_version:
+    config_refs:
+      - config/house.yaml
+      - config/spatial-validation.yaml
+      - config/anti-penetration.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - shared/render/SceneBuilder.ts
+      - app/src/render/HouseScene.ts
+      - app/src/App.ts
+      - data/project-render-facts.json
+      - scripts/verify/placement/verify-furniture-placement.ts
+    asset_refs:
+      - evidence/s1-form-v5-overview.png
+      - evidence/s1-form-v5-close.png
+    render_facts_ref: data/project-render-facts.json
+    source_digest: sha256:a3553ac682129410753b1daa97997ce1a6baf55707c96ac291cd32c1f7b8eb0e
+    generated_at: '2026-10-16T14:50:05.918Z'
+  validation:
+    commands:
+      - npm run verify:all
+      - npm run typecheck
+      - npm run test:server
+      - npm run gate:visual
+      - node --import=tsx scripts/gate/visual-state-gate.ts
+    results:
+      - command: npm run verify:all
+        status: FAIL
+        detail: 16/17 verifier通过；唯一失败为 verify-facts 报 docs/decisions/06-electrical.md 的 DEC-2026-10-16-R7 重复（541/580行），属于另一工作区文档改动。verify-furniture通过（2条既有警告），空间/碰撞/penetration等几何检查通过。
+      - command: npm run typecheck
+        status: PASS
+        detail: 根目录与app的TypeScript检查均通过。
+      - command: npm run test:server
+        status: FAIL
+        detail: 1008项中998通过、10失败；涉及既有预算/算量与关系豁免断言、verify:mep/electrical期望、computeLightState、旧FixtureFactory部件名触发浏览器边界静态词条检查、以及Node纹理测试缺document。S1局部几何没有单独测试失败。
+      - command: npm run gate:visual
+        status: BLOCKED
+        detail: tsx CLI在受限沙箱创建/tmp/tsx-1000/*.pipe时返回EPERM。使用同一脚本的直接Node加载方式完成当前配置对账，结果CLEAR。
+      - command: node --import=tsx scripts/gate/visual-state-gate.ts
+        status: CLEAR
+        detail: 对重启后的本地API核验ceiling/electrical/plumbing/materials全部当前；浏览器ready=true且配置错误横幅为空。
+    config_status: PARTIAL
+    geometry_status: PASS
+    consistency_status: PARTIAL
+    functional_checks_status: BLOCKED
+    application_status: PASS
+    typecheck_status: PASS
+    test_server_status: FAIL
+    generated_files_touched_directly: false
+  evidence:
+    - id: waterbar-overview
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T11:00:28Z'
+      config_error_banner: ''
+      target_objects:
+        - 餐厅水吧候选矮柜、S1、同一台EM450与冰箱
+      target_object_ids:
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+        - furniture:living_dining:fridge:13
+      runtime_query_refs:
+        - evidence/runtime-query.json#scene.objects
+        - evidence/runtime-query.json#relationships
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 9.55
+          - 1.7
+          - 3.98
+        target:
+          - 7.75
+          - 0.88
+          - 3.74
+        view_type: perspective
+      snapshot_path: evidence/waterbar-overview.snapshot.txt
+      screenshot_path: evidence/waterbar-overview.png
+      screenshot_sha256: dadbc49ea15308d8517697501f5fc8e4c4c32e5ea21792aadf9077da358618d1
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - source_digest:sha256:ed812dd63d4169e27207498edcb3ef4cf452b6b3d52075005a7dc06a1f22af63
+      status: superseded
+      invalid_reason: S1 procedural shell changed in V2; preserved as V1 history, not current-shape evidence.
+    - id: waterbar-close
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T11:00:28Z'
+      config_error_banner: ''
+      target_objects:
+        - S1、EM450与候选矮柜台面的真实尺度和相邻关系
+      target_object_ids:
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+      runtime_query_refs:
+        - evidence/runtime-query.json#scene.objects
+        - evidence/runtime-query.json#relationships
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8.95
+          - 1.55
+          - 4.62
+        target:
+          - 7.43
+          - 0.93
+          - 3.88
+        view_type: perspective
+      snapshot_path: evidence/waterbar-close.snapshot.txt
+      screenshot_path: evidence/waterbar-close.png
+      screenshot_sha256: 6dfb033ee562ec350fb41f8c74dd6dd822ae365f5378630f3735311143c764af
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - source_digest:sha256:ed812dd63d4169e27207498edcb3ef4cf452b6b3d52075005a7dc06a1f22af63
+      status: superseded
+      invalid_reason: S1 procedural shell changed in V2; preserved as V1 history, not current-shape evidence.
+    - id: s1-form-v2-overview
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T11:32:40Z'
+      config_error_banner: ''
+      target_objects:
+        - S1 V2外形、EM450、低柜和冰箱关系
+      target_object_ids:
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        - furniture:living_dining:fridge:13
+      runtime_query_refs:
+        - evidence/runtime-query-s1-form-v2.json#scene.objects
+        - evidence/runtime-query-s1-form-v2.json#scene.fixedCameras.waterbar_overview
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 9.55
+          - 1.7
+          - 3.98
+        target:
+          - 7.75
+          - 0.88
+          - 3.74
+        view_type: perspective
+      snapshot_path: evidence/s1-form-v2-overview.snapshot.txt
+      screenshot_path: evidence/s1-form-v2-overview.png
+      screenshot_sha256: 47cfef66f5491dfdeaa14343efdc115879cee71dec4d387dfdebcc874e88a05f
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - shared/render/FixtureFactory.ts
+        - source_digest:sha256:cf7df6b7c7fab79eef9a52e760d5f660958b9355ccf80007b124d9a3587989f6
+      status: superseded
+      invalid_reason: V3 replaced the symmetric V2 bay with a left-offset dispensing bay; retained as historical evidence.
+    - id: s1-form-v2-close
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T11:32:40Z'
+      config_error_banner: ''
+      target_objects:
+        - S1 V2外挑上盖、内凹出水腔、出水口和水位窗
+      target_object_ids:
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      runtime_query_refs:
+        - evidence/runtime-query-s1-form-v2.json#scene.objects
+        - evidence/runtime-query-s1-form-v2.json#scene.fixedCameras.waterbar_close
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8.95
+          - 1.55
+          - 4.62
+        target:
+          - 7.43
+          - 0.93
+          - 3.88
+        view_type: perspective
+      snapshot_path: evidence/s1-form-v2-close.snapshot.txt
+      screenshot_path: evidence/s1-form-v2-close.png
+      screenshot_sha256: 0b01bf93a17faa00f087611febc8b005755e7e17d2bc82d3cb35ea93414c2c58
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - shared/render/FixtureFactory.ts
+        - source_digest:sha256:cf7df6b7c7fab79eef9a52e760d5f660958b9355ccf80007b124d9a3587989f6
+      status: superseded
+      invalid_reason: V3 replaced the symmetric V2 bay with a left-offset dispensing bay; retained as historical evidence.
+    - id: s1-form-v3-overview
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T11:44:54Z'
+      config_error_banner: ''
+      target_objects:
+        - S1 V3左侧出水凹腔、右侧主机身与水吧/冰箱关系
+      target_object_ids:
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        - furniture:living_dining:fridge:13
+      runtime_query_refs:
+        - evidence/runtime-query-s1-form-v3.json#scene.objects
+        - evidence/runtime-query-s1-form-v3.json#scene.fixedCameras.waterbar_overview
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 9.55
+          - 1.7
+          - 3.98
+        target:
+          - 7.75
+          - 0.88
+          - 3.74
+        view_type: perspective
+      snapshot_path: evidence/s1-form-v3-overview.snapshot.txt
+      screenshot_path: evidence/s1-form-v3-overview.png
+      screenshot_sha256: 5b6d1020e4519a6b7829d601f2da792d50d6204991d135ad85cbb2d695ebdcb8
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - shared/render/FixtureFactory.ts
+        - source_digest:sha256:2032842c1240c28aabec6cd30ed92d414bdb697c88d93fa5f738630b7ba386ce
+      status: superseded
+      invalid_reason: V4 corrected the short cup bay, detached water window, thin tray and square shell; retained as V3 history.
+    - id: s1-form-v3-close
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T11:44:54Z'
+      config_error_banner: ''
+      target_objects:
+        - S1 V3左偏置接水腔、右侧水位窗、全宽机头和接水盘
+      target_object_ids:
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      runtime_query_refs:
+        - evidence/runtime-query-s1-form-v3.json#scene.objects
+        - evidence/runtime-query-s1-form-v3.json#scene.fixedCameras.waterbar_close
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8.95
+          - 1.55
+          - 4.62
+        target:
+          - 7.43
+          - 0.93
+          - 3.88
+        view_type: perspective
+      snapshot_path: evidence/s1-form-v3-close.snapshot.txt
+      screenshot_path: evidence/s1-form-v3-close.png
+      screenshot_sha256: 62d1d80b7c2ab9a0147c8eeafb46e79e1c886699885a445651010f5f6698fd33
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - shared/render/FixtureFactory.ts
+        - source_digest:sha256:2032842c1240c28aabec6cd30ed92d414bdb697c88d93fa5f738630b7ba386ce
+      status: superseded
+      invalid_reason: V4 corrected the short cup bay, detached water window, thin tray and square shell; retained as V3 history.
+    - id: s1-form-v4-overview
+      url: http://127.0.0.1:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T12:21:03Z'
+      config_error_banner: ''
+      target_objects:
+        - V4 S1圆角机身/高位出水仓、EM450、水吧柜和冰箱关系
+      target_object_ids:
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        - furniture:living_dining:fridge:13
+      runtime_query_refs:
+        - evidence/runtime-query-s1-form-v4.json#objects
+        - evidence/runtime-query-s1-form-v4.json#fixedCameras.waterbar_overview
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 9.55
+          - 1.7
+          - 3.98
+        target:
+          - 7.75
+          - 0.88
+          - 3.74
+        fovDeg: 58
+        view_type: perspective
+      snapshot_path: evidence/s1-form-v4-overview.snapshot.txt
+      screenshot_path: evidence/s1-form-v4-overview.png
+      screenshot_sha256: 5d39b15bad6219015bc36f508eebde023f72c49d713a261d80a85fe7f7ea6ad1
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - shared/render/FixtureFactory.ts
+        - data/project-render-facts.json
+        - source_digest:sha256:db09b17a97b6938de31bf9ddc50494c5cb0f29e41baff750e477c78f5d32bd62
+      status: superseded
+      invalid_reason: V5 replaced the V4 width-axis split with the user-directed east-front dispensing / west-rear tank depth arrangement; preserved as V4 history.
+    - id: s1-form-v4-close
+      url: http://127.0.0.1:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T12:21:03Z'
+      config_error_banner: ''
+      target_objects:
+        - V4 S1高位开放出水仓、贴合圆头水位窗、栅格接水盘与EM450
+      target_object_ids:
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      runtime_query_refs:
+        - evidence/runtime-query-s1-form-v4.json#objects
+        - evidence/runtime-query-s1-form-v4.json#fixedCameras.waterbar_close
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8.28
+          - 1.4
+          - 4.18
+        target:
+          - 7.47
+          - 0.99
+          - 3.72
+        fovDeg: 42
+        view_type: perspective
+      snapshot_path: evidence/s1-form-v4-close.snapshot.txt
+      screenshot_path: evidence/s1-form-v4-close.png
+      screenshot_sha256: 5519817516ed4c4ecdf7723e62b6f2f1755ebbec2eb2d2758d7474888044d471
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - shared/render/FixtureFactory.ts
+        - data/project-render-facts.json
+        - source_digest:sha256:db09b17a97b6938de31bf9ddc50494c5cb0f29e41baff750e477c78f5d32bd62
+      status: superseded
+      invalid_reason: V5 replaced the V4 width-axis split with the user-directed east-front dispensing / west-rear tank depth arrangement; preserved as V4 history.
+    - url: http://127.0.0.1:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T14:50:05.918Z'
+      config_error_banner: ''
+      runtime_query_refs:
+        - evidence/runtime-query-s1-form-v5.json#objects
+        - evidence/runtime-query-s1-form-v5.json#relationships
+      version_refs:
+        - config/house.yaml
+        - shared/render/FixtureFactory.ts
+        - data/project-render-facts.json
+        - source_digest:sha256:a3553ac682129410753b1daa97997ce1a6baf55707c96ac291cd32c1f7b8eb0e
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      status: valid
+      invalid_reason: null
+      id: s1-form-v5-overview
+      target_objects:
+        - V5 S1东侧出水/西侧后置水箱、EM450、水吧柜和冰箱关系
+      target_object_ids:
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+        - furniture:living_dining:fridge:13
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 9.55
+          - 1.7
+          - 3.98
+        target:
+          - 7.75
+          - 0.88
+          - 3.74
+        fovDeg: 58
+        view_type: perspective
+      snapshot_path: evidence/s1-form-v5-overview.snapshot.txt
+      screenshot_path: evidence/s1-form-v5-overview.png
+      screenshot_sha256: e85c582534e8af27749b284b413be6424396cf8fce63838db752836b358b5c58
+    - url: http://127.0.0.1:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T14:50:05.918Z'
+      config_error_banner: ''
+      runtime_query_refs:
+        - evidence/runtime-query-s1-form-v5.json#objects
+        - evidence/runtime-query-s1-form-v5.json#relationships
+      version_refs:
+        - config/house.yaml
+        - shared/render/FixtureFactory.ts
+        - data/project-render-facts.json
+        - source_digest:sha256:a3553ac682129410753b1daa97997ce1a6baf55707c96ac291cd32c1f7b8eb0e
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      status: valid
+      invalid_reason: null
+      id: s1-form-v5-close
+      target_objects:
+        - S1东侧出水仓、喷嘴、接水盘及西侧后置机身的前后层级，与EM450静态间距
+      target_object_ids:
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+        - furniture:living_dining:coffee_machine_em450:16
+        - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8.28
+          - 1.4
+          - 4.18
+        target:
+          - 7.47
+          - 0.99
+          - 3.72
+        fovDeg: 42
+        view_type: perspective
+      snapshot_path: evidence/s1-form-v5-close.snapshot.txt
+      screenshot_path: evidence/s1-form-v5-close.png
+      screenshot_sha256: 866c69870240d54ade4a477051554de237e3eceeb300ef2b06cf213a2412117b
+    - id: s1-form-v5-west-rear-obstructed
+      url: http://127.0.0.1:5174/
+      title: 和萃 701 - 3D 装修设计
+      target_objects:
+        - 试图从西侧查看V5后置水箱
+      target_object_ids:
+        - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+      screenshot_path: evidence/s1-form-v5-west-rear-obstructed.png
+      screenshot_sha256: e3cc00eadb63be6880a348e15108986b246f8de0672c2a2c889ced3ce143df8c
+      status: invalid
+      invalid_reason: 从西侧的相机被实体墙遮挡，画面没有显示S1；保留作失败机位记录，不作为V5外观证据。
+  aesthetic_review_v3:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - V3近景已经清楚表达左侧偏置的出水凹腔，右侧保留连续主机身，并在右侧正面形成竖向水位窗识别带，形体方向与参考图关键轮廓一致。
+      - 跨越312mm宽度的上盖形成统一上部机头。它虽有水平线，但下方被左侧凹腔、出水口和右侧连续机身打断，整体读作立式饮水机，而不是横放的扁盒。
+      - V3总览中细部会因距离和白色材质而减弱，但上盖、竖向主体和下部接水盘仍形成可识别的立式轮廓；近景足以审查细部。
+      - V3没有改变S1的312×106×280mm外廓、中心(7.50,3.64)、rotationY=90°、台面标高0.85m或正面朝东；与EM450仍保持近齐平设备顶部和同一低柜台面关系。
+      - 暖木台面、白色矮柜和白色S1形成连续背景；左凹腔、喷嘴、水位窗与阴影提供识别，EM450深色面板作为旁侧视觉焦点。
+      - 本轮替换了V2对称凹腔、居中出水口和对应外壳表达；没有删除S1实例、用户尺寸、既有摆位、低柜、EM450、冰箱、餐桌、半高柜或建筑坐标。
+      - V3会在最终SKU左右结构/正面定义不同、真实机头和凹腔比例差异明显、改变旋转/机位仍沿用截图，或灯光和白色材质抹去凹腔/水位窗细节时静默失效。
+    evidence_refs:
+      - evidence/s1-form-v3-overview.png
+      - evidence/s1-form-v3-close.png
+      - evidence/runtime-query-s1-form-v3.json
+      - s1-shape-correction-v3.md
+    requested_changes: []
+    assumptions:
+      - V3基于用户给定外廓和效果图轮廓做程序化外观代理，不等于厂家CAD或内部结构确认。
+      - 本复核只判断产品识别、比例、材质层次和与低柜/EM450的视觉关系，不验收补水、出水、清洁、散热、维修或电气功能。
+      - 形体、尺寸、中心、朝向或机位变更时，当前V3审美证据失效，需要重新固定机位评审。
+  functional_review_v3:
+    verdict: BLOCKED
+    blocking_issues:
+      - id: dining_power_unresolved
+        status: site_pending
+        fact: S1和EM450均位于餐厅低柜台面上；本轮没有新增餐厅插座、回路或线缆。现有墙控不是电源点，旧厨房冰箱插座也不服务餐厅水吧。
+        issue: 无法确认两台设备的中国SKU功率、同时使用负荷、接地插座、回路容量、漏保和可维护断电位置。项目电气口径对2kW及以上设备要求单独核回路。
+        required_change: 取得两台设备铭牌/说明书，落实餐厅可及接地插座和回路方案；不得把墙控点、旧冰箱点或普通插线板当作已解决电源。
+      - id: wall_control_access_unresolved
+        status: site_pending
+        fact: 低柜AABB为x[7.22,7.64]、z[3.47,4.27]、顶高0.85m；既有墙控带约z[3.98,4.10]、安装高1.30m。
+        issue: 控制点标高高于台面，但面板外廓、底盒、台面物品和从柜前伸手操作空间未建模。柜体z范围覆盖墙控带，不能仅凭无垂直AABB重叠判定可达。
+        required_change: 按实际面板尺寸、柜体剖面和真人操作包络复核；必要时为墙控保留开放后段或调整柜体分段。
+      - id: s1_maintenance_unresolved
+        status: site_pending
+        fact: S1 V3 AABB为x[7.447,7.553]、y[0.85,1.13]、z[3.484,3.796]；中心、朝向、台面支承和EM450之间94mm静态间隔不变。
+        issue: 顶部补水、水箱拆取、杯具放置、接水盘清洁、出水操作及侧后维修空间未建模；V3可见外壳不能替代厂家维护尺寸。
+        required_change: 取得准确SKU说明书/实机资料，补做补水、取杯、清洁、拆卸和侧后维护包络。
+      - id: fridge_dynamic_clearance_unresolved
+        status: site_pending
+        fact: 冰箱AABB约x[7.2025,7.8025]、z[2.57,3.403]；低柜北缘约z=3.47，柜与冰箱静态间距约67mm，S1到冰箱静态间距约81mm。
+        issue: 静态机身不重叠不能证明冰箱门扇、抽屉、拉手、人员站位和整机更换路径不会与水吧操作冲突。
+        required_change: 叠加厂家门扇/抽屉包络，核验冰箱开启、S1取水、EM450操作及人员站位。
+      - id: ro_cabinet_internal_fit_unresolved
+        status: site_pending
+        fact: RO机身AABB约x[9.9685,10.1315]、y[0.08,0.459]、z[0.0975,0.5425]，被简化柜体包络包含。
+        issue: contained豁免只表达设备收在柜内的预期，不证明隔板、有效内宽、存水弯、下水器、滤芯抽取、进水阀、电源和柜门维修净空通过。
+        required_change: 按最终RO SKU复尺水槽柜有效内腔，确认隔板拆改、滤芯/整机抽取路径、存水弯和下水器空间，并做柜门开启与维修演示。
+      - id: ro_water_drain_faucet_unresolved
+        status: site_pending
+        fact: 项目已有水槽/净水器候选点：faucet_kitchen_sink与faucet_kitchen_purifier同位(9.50,0.30)，drain_kitchen_sink同位，sock_kitchen_purifier同位；相关路线和立管仍为inferred/pending。
+        issue: 这些点位能支持候选接入方向，不能证明现场已有可直接施工的给水、排水、电源和独立净水龙头。独立出水龙头尺寸、开孔和安装位置在本轮未建模。
+        required_change: 复尺水槽柜、给水阀、排水立管和电源；按RO说明书确定净水龙头开孔、浓水三通、防虹吸/水气分离和检修方式。
+    non_blocking_notes:
+      - id: static_geometry_pass
+        status: confirmed
+        note: 当前运行时含低柜、S1、EM450、RO、冰箱和餐桌；各设备按业主给定外廓落位，低柜台面高0.85m，S1/EM450底面接触台面，静态AABB未直接穿模。
+      - id: v3_shape_only_no_new_functional_collision
+        status: confirmed
+        note: V3把出水凹腔左移并保留右侧机身/水位窗；S1中心、rotation、AABB、台面支承、与EM450的94mm静态间距均不变，未新增静态碰撞。餐厅电源、墙控、设备维护、冰箱动态净空和RO柜内安装仍为阻断项。
+      - id: v3_geometry_scope_audit
+        status: confirmed
+        note: 独立功能复核基于V3 source digest和V3截图；确认V3只改S1可见外形，不改外廓、朝向、位置、支承或机电对象。
+      - id: ro_candidate_route_exists
+        status: inferred
+        note: 厨房已有水槽到净水器的候选给水支路和水槽排水路线；它们仍是协调级/待量房路线，不能当作施工完成事实。
+      - id: cabinet_service_boundary
+        status: confirmed_limitation
+        note: 低柜为800×420×850mm视觉代理；门扇、抽屉、隔板、背板、承重和防倾倒节点未深化。
+      - id: no_new_cross_room_plumbing
+        status: confirmed
+        note: 本轮没有新增餐厅给排水，也没有把厨房RO水路跨房间接到餐厅。
+    evidence_refs:
+      - evidence/runtime-query-s1-form-v3.json
+      - evidence/s1-form-v3-overview.png
+      - evidence/s1-form-v3-close.png
+      - s1-shape-correction-v3.md
+      - fact-table.yaml
+      - design-datum.yaml
+      - object-manifest.yaml
+      - config/plumbing.yaml:faucet_kitchen_sink,faucet_kitchen_purifier,drain_kitchen_sink,drain_riser_kitchen
+      - config/electrical.yaml:sock_kitchen_purifier,sock_kitchen_counter,switch_dining,switch_corridor,ac_panel_dining
+      - config/electrical-topology.yaml:ordinary_power_kitchen,dedicated_kitchen_fridge
+      - config/anti-penetration.yaml:kitchen_ro_purifier_inside_sink_base
+      - config/house.yaml:living_dining,kitchen
+    requested_changes:
+      - 补充S1与EM450中国SKU铭牌、功率、插头和说明书。
+      - 落实餐厅可及电源、回路、漏保和同时使用负荷。
+      - 用真实墙控面板和柜体剖面验证墙控可达性。
+      - 取得S1补水/清洁和EM450维护包络，复核94mm设备间隔是否足够。
+      - 叠加冰箱厂家门扇/抽屉动态包络。
+      - 复尺RO水槽柜有效内腔，确认隔板、存水弯、滤芯更换、进水阀、浓水排放、独立净水龙头和柜内插座。
+      - RO浓水不得默认直插密封下水；必须按最终SKU确定水槽三通、防虹吸和水气分离做法。
+    assumptions:
+      - assumption: 本轮设备尺寸来自业主输入，模型AABB可作为视觉预演尺寸。
+        classification: confirmed_for_preview
+        failure_condition: 实际中国SKU尺寸、功率、插头、顶部结构或维护要求变化时，所有位置和电气结论需重算。
+      - assumption: RO机身位于水槽柜组东侧相邻格。
+        classification: user_decision_candidate
+        failure_condition: 柜体内部隔板、下水器、存水弯或滤芯抽取空间不足时，contained模型豁免失效。
+      - assumption: S1与EM450共用800×420×850mm低柜台面只是预演。
+        classification: inferred_candidate
+        failure_condition: 柜体尺寸、门扇、插座或设备操作区变化时，94mm间隔和墙控关系需重审。
+      - assumption: 本轮删除厨房EM450原摆放并把唯一实例移到餐厅，替换旧餐厅茶吧机/390×400×920mm低柜候选为S1+EM450+800×420×850mm低柜预演。
+        classification: substantive_content_audit
+        failure_condition: 若后续把EM450放回厨房、恢复旧茶吧机或恢复旧低柜尺寸，当前runtime截图、AABB和电源审查全部失效。
+      - assumption: 静默失效条件包括RO滤芯抽取空间不足、S1/EM450同时使用导致回路超载、墙控面板外扩、冰箱开门侵入设备站位、低柜柜门扫掠碰撞、或现场实测水槽柜与模型柜壳不同。
+        classification: site_pending
+        failure_condition: 任一条件成立时，本轮只能保留为概念预演，不得升级为柜商下料或水电施工定位。
+      - assumption: 独立功能审查针对V3新外形重新检查；确认V3没有改变尺寸/中心/朝向/支承，但原电源、墙控、维护、冰箱动态净空及RO柜内安装阻断项仍有效。
+        classification: reviewed_against_v3_source_digest
+        failure_condition: 如果后续改设备外廓、朝向或位置，V3运行时和功能复核均须重做。
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 整体构图成立：800mm低柜形成低位服务基座，浅木色台面把暖色地面与冷白背景墙分开；深色EM450提供视觉锚点，白色S1作为轻量设备，邻接冰箱提供竖向尺度和独立体块。
+      - 比例关系基本协调：低柜运行时外廓为420×800×850mm，S1和EM450均与850mm台面接触；S1、两台设备间距和台面端部余量在总览中形成一组连续的水吧操作带。
+      - 近景中S1与EM450没有视觉相交，约94mm静态间距可读；S1的东侧出水区、西侧后置水箱语义与EM450朝东的操作面一致，设备组合方向统一。
+      - 材料和色彩关系清楚：暖白柜体、浅木台面、浅木地面与冷白墙面形成温差；EM450的黑色控制面和深色底部阴影与柜体深色底座相互呼应；S1的白色机身与墙面接近，但棕色水位标识和灰色接水盘保留了识别度。
+      - 总览中低柜北端与冰箱之间约67mm静态间隔，S1距柜体对应端部约14mm，而另一端EM450余量约160mm，设备组存在明显端部偏置。当前属于候选柜体和未完成操作验证下的构图风险，不足以作为审美阻塞项；最终柜体定尺时应复核端部平衡。
+      - 白色S1、白色柜体、白色墙面和冰箱在远景中对比偏弱；近景仍可辨识，整体没有失去层级。若最终材质继续采用高亮白，S1可能进一步融入背景。
+      - 冰箱1.91m高体块明显高于850mm水吧柜，但作为邻接独立设备形成尺度参照，没有压倒水吧组；总览中的空间关系协调。
+      - 实质内容审计：V5只替换S1内部主机身/出水仓的方向表达，没有删除水吧柜、S1、EM450或冰箱对象，也没有推翻低柜与冰箱的场景关系。V5的东西向设备角色会在最终柜体外廓、台面深度或设备朝向改变时失效，届时须重新生成总览与近景证据。
+    evidence_refs:
+      - evidence/s1-form-v5-overview.png
+      - evidence/s1-form-v5-close.png
+      - evidence/runtime-query-s1-form-v5.json#sourceDigest
+      - evidence/runtime-query-s1-form-v5.json#objects
+      - evidence/runtime-query-s1-form-v5.json#relationships
+      - fact-table.yaml#F-RUNTIME-WATERBAR
+      - fact-table.yaml#F-RUNTIME-S1
+      - fact-table.yaml#F-RUNTIME-EM450
+      - fact-table.yaml#F-PROTECTED-OBJECTS
+      - fact-table.yaml#I-APPLIANCE-GAP
+      - object-manifest.yaml#furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      - object-manifest.yaml#furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+      - object-manifest.yaml#furniture:living_dining:coffee_machine_em450:16
+      - review-manifest.json#source_version
+    requested_changes: []
+    assumptions:
+      - 800×420×850mm低柜仍是视觉候选，不是业主冻结的正式柜体尺寸；其端部余量和与冰箱的67mm间隔只代表当前预演状态。
+      - 94mm设备间距、14mm端部余量和160mm另一端余量是静态几何事实，不代表同时操作、维护、散热或取件净空。
+      - S1东侧出水、西侧水箱依据业主方向确认和runtime局部z范围判定；商品图没有提供背视图或厂家CAD，水箱内部结构仍是外观代理。
+      - EM450、S1、柜体和冰箱的材料均为程序化视觉代理；本审查不把它们写成最终SKU材质、颜色或施工完成面。
+      - 本次审查只覆盖餐厅水吧的整体审美与空间构图；操作维护、供电、墙控和RO柜内安装不由审美PASS证明。
+  functional_review:
+    verdict: BLOCKED
+    blocking_issues:
+      - object: 800mm水吧柜/台面
+        fact: 柜体运行时外廓为800×420×850mm，但仍是未冻结的视觉代理；柜门/抽屉扫掠、内部结构、防倾倒、台面耐水耐热和设备承托条件未验证。
+        evidence:
+          - evidence/runtime-query-s1-form-v5.json#objects.waterbar_low_cabinet_800_preview
+          - fact-table.yaml#I-CABINET-PREVIEW-DATUM
+          - object-manifest.yaml#waterbar_low_cabinet_800_preview
+        required_change: 确认柜体外廓与内部结构，补做柜门/抽屉扫掠、防倾倒、台面承托和柜体移动/检修路径验证。
+      - object: S1与EM450双机操作维护
+        fact: 两机沿z方向静态间距为94mm；S1距柜体北端14mm，EM450后侧模型余量约7.5mm。静态间距不证明取杯、补水、蒸汽棒、散热、接水盘清洁和双机同时操作成立。
+        evidence:
+          - evidence/runtime-query-s1-form-v5.json#objects
+          - evidence/runtime-query-s1-form-v5.json#relationships
+          - fact-table.yaml#I-APPLIANCE-GAP
+          - object-manifest.yaml#S1
+          - object-manifest.yaml#EM450
+        required_change: 按最终SKU说明书或实机补做两台设备的操作、补水、蒸汽棒、散热、清洁、拆卸和同时使用包络。
+      - object: 水吧与邻接冰箱
+        fact: 冰箱AABB约为x[7.2025,7.8025]、z[2.57,3.403]；低柜北缘约z=3.47，静态间距约67mm；S1与冰箱静态间距约81mm。模型没有冰箱门扇、抽屉、拉手、人员站位和搬运更换动态包络。
+        evidence:
+          - evidence/runtime-query-s1-form-v5.json#objects.fridge
+          - evidence/runtime-query-s1-form-v5.json#objects.waterbar_low_cabinet_800_preview
+          - fact-table.yaml#F-PROTECTED-OBJECTS
+          - review-manifest.json#delivery.follow_up_site_pending
+        required_change: 叠加冰箱厂家门扇/抽屉开启包络，验证冰箱开启、取水、咖啡操作、人员站位及整机更换路径。
+      - object: 现有墙控与供电关系
+        fact: 墙控带约z[3.98,4.10]、安装高1.30m，位于低柜z[3.47,4.27]范围内且与EM450 z[3.89,4.11]重叠。餐厅可及接地插座、回路容量、两机同时负荷、漏保和断电检修位置未落实。
+        evidence:
+          - fact-table.yaml#S-WALL-CONTROL-ACCESS
+          - fact-table.yaml#S-DINING-POWER
+          - object-manifest.yaml#waterbar_low_cabinet_800_preview
+          - object-manifest.yaml#S1
+          - object-manifest.yaml#EM450
+        required_change: 按真实面板外廓、柜体剖面和真人站位验证墙控可达性；按最终SKU铭牌落实插座、回路、同时负荷、漏保和检修断电位置。
+    non_blocking_notes:
+      - V5 runtime ready=true，错误横幅为空；S1 AABB为0.106×0.280×0.312m，EM450 AABB为0.285×0.305×0.220m。
+      - S1与EM450均与0.85m台面接触，当前柜体、S1、EM450和冰箱之间没有静态AABB重叠。
+      - 水吧柜与冰箱静态z间距约67mm，S1与冰箱约81mm，S1与EM450约94mm；这些数值不能升级为动态使用净空。
+      - V5将S1局部+z定义为东侧出水、局部-z定义为西侧后置水箱，未改变水吧摆位或静态碰撞结论。
+    evidence_refs:
+      - evidence/runtime-query-s1-form-v5.json
+      - evidence/s1-form-v5-close.png
+      - evidence/s1-form-v5-overview.png
+      - fact-table.yaml
+      - object-manifest.yaml
+    requested_changes:
+      - 冻结并深化800×420×850mm水吧柜的外廓、内部结构、柜门/抽屉和承托条件。
+      - 补齐S1与EM450的真实操作、维护、清洁、散热和同时使用包络。
+      - 补齐冰箱门扇/抽屉动态净距、人员站位和搬运更换路径。
+      - 落实墙控可达性、餐厅插座、回路、同时负荷、漏保和检修断电位置。
+    assumptions:
+      - S1和EM450当前尺寸来自业主输入，runtime AABB只支持视觉预演。
+      - 冰箱AABB代表静态机身，不代表门扇、抽屉、拉手或人员动态范围。
+      - 静态无碰撞不代表水吧能够施工、操作或维护通过。
+      - 本次评审范围不包含厨房RO。
+  scope_audit:
+    deleted:
+      - placed dining mijia_tea_bar_pro
+      - placed waterbar_low_sideboard_400_preview
+      - kitchen placement of the single coffee_machine_em450
+      - one duplicate kitchen_ro_purifier_inside_sink_base containment waiver; retained the single complete record
+      - V1 flat S1 shell representation
+      - V2 symmetric dispensing bay/centered spout representation
+      - V3 62mm lower fascia that blocked the cup bay
+      - V3 14×12mm dark rectangular front mark
+      - V4当前版S1中居中跨深度主机身、沿局部x横向分开的出水仓/机身以及70mm深接水盘几何；历史代码/截图/审查记录仍保留。
+    added:
+      - 800×420×850mm waterbar low-cabinet preview
+      - Mijia S1 preview
+      - Mijia 1400G under-sink body envelope
+      - S1 V3 left-offset dispensing bay/right continuous body/full-width head
+      - S1 V4 184mm open bay, rounded shell and flush capsule window, 176×70×18mm grated drip tray with 8 slots
+      - V5东侧前出水仓/喷嘴/44mm接水盘、西侧后置水箱壳体/盖板、东西方向分开的头盖；S1外廓不变。
+    moved:
+      - the single EM450 placement from kitchen to living_dining; no duplicate added
+    superseded:
+      - DEC-2026-10-16-R02 kitchen placement of EM450
+      - DEC-2026-10-16-R03 floor-standing tea-bar appliance
+      - DEC-2026-10-16-R04 390×400×920mm movable sideboard
+      - V1 and V2 S1 shape screenshots and review evidence
+      - DEC-2026-10-16-R06 V2 symmetric-bay shape as current baseline
+      - DEC-2026-10-16-R07 V3 short bay/local shell geometry and its aesthetic PASS as current acceptance
+      - DEC-2026-10-16-R08的V4几何作为当前朝向基线及V4当前审美PASS；被业主新方向指示覆盖。
+    unchanged:
+      - fridge
+      - dining table and chairs
+      - entry half-height cabinet
+      - ceiling
+      - walls
+      - door openings
+      - glass doors
+      - electrical points
+      - plumbing points
+    silent_failure_conditions:
+      - The cabinet's 800×420×850mm preview proxy is not user-frozen; a different cabinet footprint invalidates both screenshots and device margins.
+      - The S1 is only 14mm from the cabinet's north edge; actual cup, water-tank, cleaning and edge-use motions may need more room.
+      - The wall-control band overlaps the cabinet's z range; panel size and hand access from the cabinet front are unverified.
+      - S1/EM450 power requirements, simultaneous circuit load, plug position and accessible outlet are not modeled.
+      - The V4 recess/tray/window/radii were estimated from one perspective image; different China-market SKU details or a second product view can invalidate the local shape proportions.
+      - RO body is inside a simplified solid cabinet proxy; real partitions, trap, feed/drain, filter extraction and replacement path may make the body position impossible.
+      - The RO faucet shown in the user image, coffee grinder and full espresso workflow are not modeled.
+      - V5西侧后置水箱壳体是方向外观代理，真实SKU若水箱不在西侧、顶盖/出水仓朝向或拆取路径不同，需按背视图/CAD/说明书重核。
+    substantive_review:
+      deleted: V4居中跨深度机身与沿312mm宽轴横向分开的部件布局被替换；V1–V4历史证据未删。
+      overturned: V4当前可接受外观基线被业主反馈推翻；S1位置、方向角、包络、台面接触和两设备间距未被推翻。
+      silent_failure_conditions: 真实SKU水箱不在西侧、上盖拆取方向不同、东侧出水仓/标识面不同、接水盘尺寸或维护方式不同，或后续修改对象旋转却沿用V5截图。
+  risks:
+    - id: waterbar-cabinet-size-is-preview
+      status: open
+      owner: 业主/家具深化
+      trigger: 确认是否进入柜体深化前
+    - id: dining-appliance-power-and-wall-control
+      status: site_pending
+      owner: 业主/电工/家电方
+      trigger: 电气点位和设备SKU冻结前
+    - id: ro-under-sink-service-envelope
+      status: site_pending
+      owner: 业主/橱柜商/净水器安装方
+      trigger: 水槽柜图签认与RO安装前
+  retrospective:
+    triggered: true
+    triggers:
+      - repeated_visual_shape_mismatch
+      - user_rejected_v3_visual
+      - runtime_aabb_mismatch_from_rounded_geometry_argument_order
+      - user_rejected_v4_direction
+      - repeated_front_back_semantic_mismatch
+    records:
+      - Preserved V1/V2/V3 screenshots and runtime JSON; V3 reviewer PASS was superseded after the user still found the model strange. V4 identified the short bay, blocking lower fascia, thin tray, detached window and boxy shell; after the RoundedBoxGeometry argument-order error briefly shrank the runtime AABB, the constructor was corrected, the browser was reloaded, and the final 312×106×280mm AABB/tabletop contact were revalidated. Added DEC-2026-10-16-R08, V4 facts/object parts, current-version browser evidence and independent reviews.
+      - 保留V1–V4代码/截图/runtime/审查；业主指出V4仍像横置并明确东侧出水、西侧水箱。坐标审计确认rotationY=90°本身正确，失败在V4部件沿宽轴排布；V5改沿深度轴分层，补齐ready=true的当前sourceDigest、运行时AABB、close/overview图证及独立审查。西侧试拍被实体墙遮挡，标invalid并保留，不作为形体证据。
+    rebaselined: true
+  delivery:
+    status: incomplete
+    blocking_issues:
+      - 当前视觉PASS只覆盖候选模型；低柜800×420×850mm的外廓/材质尚未由业主冻结。
+      - S1/EM450操作、补水、清洁、散热、拆卸、双机使用和维护空间未通过功能审查。
+      - 柜体内部结构、柜门/抽屉扫掠、防倾倒、台面承托及移动/检修路径未验证。
+      - 水吧与邻接冰箱门扇/抽屉动态净距、人员站位及更换路径未验证。
+      - 餐厅插座、回路容量、同时负荷、漏保、断电检修及墙控可达性未落实。
+      - RO柜内有效空间、给排水、电源、独立龙头和滤芯维护路径尚未核实。
+      - npm run test:server 1008项中998通过、10失败；失败见validation.results。
+      - npm run verify:all 16/17；唯一失败为docs/decisions/06-electrical.md中另一决策条目的重复DEC编号。
+    completion_conditions:
+      - 业主看图确认是否继续保留此水吧方向及低柜比例。
+      - 后续只有在转入深化时，才需要补齐电源、墙控、设备维护、冰箱动态净空和RO柜内净空。
+    follow_up_site_pending:
+      - S1/EM450 SKU铭牌、同时负荷和餐厅电源
+      - 墙控可达性
+      - 两设备补水/清洁/操作包络
+      - 冰箱门扇/抽屉动态范围
+      - RO柜内隔板/存水弯/滤芯更换/供排水/电源/独立龙头
+    delivery_ready: false
+  validation_v4:
+    commands:
+      - npm run generate:project-render-facts
+      - npm run verify:all
+      - npm run test:server
+      - npm run typecheck
+      - npm run gate:visual
+      - npm run export:dressing-map
+    results:
+      - command: npm run generate:project-render-facts
+        status: PASS
+        detail: Regenerated data/project-render-facts.json after verify:all identified it as stale; artifact was written by the declared generator, not edited directly.
+      - command: npm run verify:all
+        status: PASS
+        detail: 'V4 source: 17/17 passed, 0 failed, including furniture placement; warning classes remain in furniture/rules/penetration/consistency/MEP/electrical/facts.'
+      - command: npm run test:server
+        status: FAIL
+        detail: The run exited 1; tests/server/wall-face-materials.test.ts invokes TextureFactory in Node where document is undefined. This path is separate from the S1 FixtureFactory recipe; failure remains open.
+      - command: npm run typecheck
+        status: PASS
+        detail: Root and app TypeScript checks passed after the final RoundedBoxGeometry argument-order fix.
+      - command: npm run gate:visual
+        status: CLEAR
+        detail: Ceiling, electrical, plumbing and materials current-config hashes match the reloaded browser render state after V4.
+      - command: npm run export:dressing-map
+        status: PASS
+        detail: 10 lights, 37 topics; last generated at V3 baseline. V4 changes only S1 shared fixture geometry and does not alter dressing-map inputs.
+    config_status: PASS
+    geometry_status: PASS
+    consistency_status: PASS
+    functional_checks_status: BLOCKED
+    application_status: PASS
+    typecheck_status: PASS
+    test_server_status: FAIL
+    generated_files_touched_directly: false
+  aesthetic_review_v4:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - V3的主要审美问题已实际修正：左侧出水仓从矮小方洞变为贯穿上盖至接水盘的高凹腔；接水盘由薄条变为有深度的圆角托盘，并加入8条排水槽和中央排水孔；主机身与机头增加圆角；水位窗改为圆头胶囊形。
+      - V4保持产品整体比例和场景尺度：参考图标注312×106×280mm，与runtime AABB 0.312×0.106×0.280m一致；台面高度关系和设备间距未改变。
+      - V4近景中S1与EM450的并置层级清楚；S1的左凹腔、上盖、右侧水位窗和下方托盘可以辨认。总览中设备较小，但与低柜比例协调。
+      - 机头顶面中央分缝比参考图更规整、略显对称；产品图里的米家标志没有建模。这两点不阻塞轮廓识别，且代码没有虚构logo。
+      - 本轮没有删除放置对象，也没有推翻S1中心、旋转、包围盒或场景位置；新增rounded_box/capsule、凹腔和托盘细节均已在当前截图中可见，没有发现当前渲染链路静默丢失。
+      - test:server失败来自Node环境下TextureFactory访问document；这属于独立验证问题，不改变本次视觉审查结论。
+    evidence_refs:
+      - evidence/s1-form-v4-close.png
+      - evidence/s1-form-v4-overview.png
+      - evidence/s1-form-v4-close.snapshot.txt
+      - evidence/s1-form-v4-overview.snapshot.txt
+      - evidence/runtime-query-s1-form-v4.json
+      - review-v4-aesthetic.json
+      - shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v4
+    requested_changes: []
+    assumptions:
+      - 用户首张产品图是S1可见轮廓和细节的唯一视觉参考；没有厂家CAD或多角度图用于判断背面和内部结构。
+      - 本verdict只覆盖审美范围；尺寸包围盒、碰撞、功能和施工接口由其他验证层判断。
+      - 用户截图中的tooltip显示hvac:A2:terminal:supply_dining，但它是第一人称中心射线命中；S1家具ID保持mijia_instant_dispenser_s1_preview。
+  functional_review_v4:
+    verdict: BLOCKED
+    blocking_issues:
+      - object: S1 / EM450水吧操作与维护
+        fact: V4证明静态AABB、台面接触和94mm间距；补水/取杯/接水盘清洁、EM450蒸汽棒/散热、同时操作和维护净空仍未核。S1距柜北端14mm，EM450后侧模型余量约7.5mm。
+        required_change: 按最终SKU说明书或实机补做操作、补水、清洁、拆卸、散热和维护包络验证。
+      - object: 餐厅电源与墙控
+        fact: 餐厅可及接地插座、回路容量、同时负荷、漏保、断电位置和墙控操作可达性仍未落实；墙控带z=3.98–4.10m与EM450 z=3.89–4.11m相交。
+        required_change: 核对设备铭牌/回路/插座，并按真实面板、柜体剖面和真人站位验证墙控可达性。
+      - object: furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+        fact: RO机身AABB被简化柜体包络包含，但有效内腔、隔板、存水弯、进排水、电源、独立龙头和滤芯/整机抽取路径未验证。
+        required_change: 按最终RO SKU和柜体实测内腔建立剖面与维护包络，确认给排水、电源、龙头开孔和滤芯更换路径。
+    non_blocking_notes:
+      - V4 overview/close、snapshots、runtime query、对象ID、相机、ready状态、空错误横幅、PNG哈希和sourceDigest均已登记并匹配。
+      - S1外廓为312×106×280mm，EM450外廓为220×285×305mm；两者底面与0.85m台面接触。
+      - test:server仍有Node环境document未定义失败；不改变本次功能审查仍被现场条件阻断的结论。
+      - V4改善外观代理，不证明实际出水、补水、排水、清洁或维护能力。
+    evidence_refs:
+      - review-v4-functional.json
+      - evidence/runtime-query-s1-form-v4.json
+      - evidence/s1-form-v4-close.png
+      - evidence/s1-form-v4-overview.png
+      - fact-table.yaml
+      - object-manifest.yaml
+    requested_changes:
+      - 补齐S1/EM450现场操作、维护、清洁、散热和补水验证。
+      - 落实餐厅电源、同时负荷、漏保、插座可达性和墙控操作验证。
+      - 补齐RO柜内有效空间、进排水、电源、独立龙头和滤芯维护路径验证。
+    assumptions:
+      - 当前AABB和台面接触仅作为静态视觉预演事实。
+      - V4是基于单张透视图的程序化外观代理，不代表厂家CAD或内部结构。
+      - RO contained结果不代表柜内安装通过。
+  aesthetic_review_v5_s1:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - V5已把V4沿设备宽度排开的主机身/出水仓改成前后层叠：局部+z为东侧出水仓、喷嘴与接水盘，局部-z为西侧后置机身/水箱代理；主机身和出水仓的宽轴范围重叠，当前不再是V4那种南北两块并排。
+      - 保留312×106×280mm运行时外廓、父级位置(7.50,3.64)、rotationY=90°和0.85m台面接触；S1近景与总览图绑定当前sourceDigest。
+      - 近景从东南侧观察，可读出东侧出水/接水区；水箱后部被前部结构遮住一部分，需要理解为外观代理的前后关系，单张截图无法展示实际水箱内腔。
+      - 参考商品图把出水仓与主机身呈现为沿产品长向的左右关系；业主随后明确要求东侧出水、西侧水箱，V5按该方向重排，因此空间语义服从业主指示，不能据此断言真实SKU内部水箱位于后部。
+      - 当前没有删除设备实例或场景对象；FixtureFactory中V4主机身/腔体/盖板布局被V5深度分层替换，旧V1–V4图片、快照、runtime和审查结论仍保留。
+      - V5推翻了V4的当前形体基线与审美PASS，因为业主仍读成横置；V4的圆角、开口、栅格盘和水位标识等细节继续保留并在V5截图中可见。
+      - 新增几何若静默失效，最可能原因是后续改rotation却沿用旧证据、真实SKU背面结构不同、或实际水箱开盖/补水方向与模型推断不同。
+    evidence_refs:
+      - evidence/s1-form-v5-close.png
+      - evidence/s1-form-v5-overview.png
+      - evidence/s1-form-v5-close.snapshot.txt
+      - evidence/s1-form-v5-overview.snapshot.txt
+      - evidence/runtime-query-s1-form-v5.json
+      - shared/render/FixtureFactory.ts#mijia_instant_dispenser_s1_preview@v5
+    requested_changes: []
+    assumptions:
+      - 商品图仍是唯一的产品外观参照图；没有厂家CAD、背视图或剖面图证明真实水箱内部位置。
+      - 当前审查是独立外观审查，不证明补水、出水、清洁、散热、维护、电源或施工条件。
+      - V5几何的东/西语义来自业主明确指示；后置壳体比例只是在用户外廓内建立的程序化表达。
+    substantive_review:
+      deleted: V4中居中跨深度的主机身和沿局部x横向分开的出水仓/左右顶盖表达；历史模型和证据未删。
+      overturned: V4审美PASS作为当前可接受形体基线；业主反馈说明其仍读成横置。
+      silent_failure_conditions: 真实SKU的水箱方位/盖板/出水腔与用户单张参考图和方向指示不同，或后续旋转改变但仍沿用V5证据。
+  functional_review_v5_full_scope:
+    verdict: BLOCKED
+    blocking_issues:
+      - object: S1 / EM450 waterbar operation and maintenance
+        fact: V5 confirms the same placement, countertop contact, outer envelope, and 94mm static gap as V4. S1 refill, cup placement, drip-tray cleaning, tank removal, EM450 operation/steam-wand clearance, heat dissipation, and simultaneous-use space remain unverified. S1 remains 14mm from the cabinet north edge; EM450 rear model margin remains about 7.5mm.
+        evidence:
+          - evidence/runtime-query-s1-form-v5.json#objects
+          - evidence/runtime-query-s1-form-v5.json#relationships
+          - fact-table.yaml#I-APPLIANCE-GAP
+          - object-manifest.yaml#S1
+          - object-manifest.yaml#EM450
+        required_change: 按最终SKU说明书或实机补做操作、补水、清洁、拆卸、散热和维护包络验证。
+      - object: Dining power and wall-control interfaces
+        fact: V5 does not move the cabinet, S1, EM450, or wall-control band. Accessible grounded outlets, circuit capacity, simultaneous load, protection, and wall-control reachability remain unresolved.
+        evidence:
+          - fact-table.yaml#S-DINING-POWER
+          - fact-table.yaml#S-WALL-CONTROL-ACCESS
+          - evidence/runtime-query-s1-form-v5.json#objects
+        required_change: 按实际面板、柜体剖面、设备铭牌和回路资料验证墙控与供电。
+      - object: RO under-sink preview
+        fact: V5 only changes S1. The RO internal cabinet cavity, partitions, trap, feed/drain, power, faucet, and filter/device extraction path remain unverified.
+        evidence:
+          - fact-table.yaml#S-RO-INTERNAL-FIT
+          - fact-table.yaml#S-RO-INTERFACES
+          - object-manifest.yaml#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9
+        required_change: 按最终RO SKU和水槽柜实测内腔建立维护剖面并确认全部接口。
+    non_blocking_notes:
+      - V5 runtime确认ready=true、configErrorBanner为空，S1 AABB为0.106×0.280×0.312m，底面仍与0.85m台面接触，EM450静态间距仍为0.094m。
+      - 水位标识local z范围[-0.006,-0.004]m，水箱壳体范围[-0.053,-0.006]m；指标贴在壳体东/前表面并向局部+z凸出2mm。局部+z映射世界东侧，所以没有发现它位于西侧或新增遮挡。
+      - V5没有新增静态AABB碰撞；水箱壳体、盖板、水位标识和东侧出水结构仍是程序化外观代理，不能证明真实流路、容量、排水或维修路径。
+      - V5 runtime、close/overview snapshots、截图哈希和sourceDigest已登记到review-manifest；被墙体完全遮挡的west-camera试拍单独标为invalid，不作为当前模型证据。
+      - V5 test-server结果含既有worktree失败，没有报告S1几何本身失败；verify:all最新结果16/17，唯一失败是另一份电气决策文档的重复DEC编号。
+    evidence_refs:
+      - evidence/runtime-query-s1-form-v5.json
+      - evidence/s1-form-v5-close.png
+      - evidence/s1-form-v5-close.snapshot.txt
+      - evidence/s1-form-v5-overview.png
+      - evidence/s1-form-v5-overview.snapshot.txt
+      - fact-table.yaml
+      - object-manifest.yaml
+    requested_changes:
+      - 继续核验S1/EM450现场操作、维护、清洁、散热、供电和墙控。
+      - 继续核验RO柜内有效空间、给排水、电源、独立龙头和滤芯维护路径。
+    assumptions:
+      - V5 runtime AABB和静态间距可以作为预演几何事实，但不能替代SKU功能净空。
+      - 水位标识的东侧定位依据runtime directionalPartRangesLocalM和坐标映射确认；其真实产品结构仍未核验。
+      - 新增水箱壳体、顶盖、出水仓和接水盘仍是程序化外观代理。
+      - RO contained结果不代表柜内安装通过。
+    substantive_review:
+      deleted: V4当前几何中的通用右侧主机身、横向分置凹腔及70mm深接水盘表达被V5形体替换；V1–V4历史文件全部保留。
+      overturned: V4的当前空间语义由左出水腔/右主机身改为东侧前出水区/西侧后置水箱区；对象中心、朝向、外廓、台面接触、静态间距结论未被推翻。
+      silent_failure_conditions: 真实SKU水箱不在西侧、顶盖拆取方向不同、出水仓/水位标识朝向不同、接水盘深度/容量/拆洗方式不符，或后续改变旋转却沿用V5证据。
+  review_scope: 餐厅水吧整组：800mm低柜/台面、S1、EM450与邻接冰箱；厨房RO沿用既有site_pending，不纳入本轮水吧美学验收。
+  whole_waterbar_acceptance:
+    scope_objects:
+      - furniture:living_dining:waterbar_low_cabinet_800_preview:14
+      - furniture:living_dining:mijia_instant_dispenser_s1_preview:15
+      - furniture:living_dining:coffee_machine_em450:16
+      - furniture:living_dining:fridge:13
+    source_digest: sha256:a3553ac682129410753b1daa97997ce1a6baf55707c96ac291cd32c1f7b8eb0e
+    evidence_refs:
+      - evidence/runtime-query-s1-form-v5.json
+      - evidence/s1-form-v5-overview.png
+      - evidence/s1-form-v5-close.png
+      - evidence/s1-form-v5-overview.snapshot.txt
+      - evidence/s1-form-v5-close.snapshot.txt
+    aesthetic_verdict: PASS
+    functional_verdict: BLOCKED
+    status: blocked
+    limitation: PASS只适用于当前视觉预演；800×420×850mm柜体尺寸/材质仍是候选，动态净距、设备操作维护、电源和墙控尚未通过，因此不代表最终柜体或施工验收。
+    review_files:
+      - review-whole-waterbar-aesthetic-v1.json
+      - review-whole-waterbar-functional-v1.json
+    reviewed_at_utc: '2026-10-16T15:14:11Z'
+    decision_brief_frozen: true

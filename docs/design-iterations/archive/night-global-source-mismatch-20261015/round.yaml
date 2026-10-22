@@ -1,0 +1,641 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: night-global-source-mismatch-20261015
+index:
+  order: 52
+  topic: lighting-ceiling
+  review_state: delivery_ready
+  supersedes: none
+  note: 2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: night-global-source-mismatch-20261015
+  subject: 夜景模式只保留室内灯并消除静态东南主光
+  priority:
+    user_goal: 夜间预演中不出现来自静态日间预设的全局方向光或环境补光。
+    ranked:
+      - 夜景手动模式显式关闭太阳、环境光、辅助补光和 IBL。
+      - 关闭日照控制时保留已选夜间状态，避免静态东南日光突然恢复。
+      - 保持室内灯色温、亮度、人工总开关和房间开关可用。
+    non_negotiables:
+      - 太阳高度角小于等于零时只渲染室内灯。
+      - 日间静态预设和日间日照模拟保持原有光照。
+      - 不改地砖方向、室内灯具位置和正式灯光配置。
+    tradeoffs_accepted:
+      - 未被室内灯照到的区域会明显变暗。
+  frozen: true
+  freeze_record:
+    alignment_id: user-message-night-only-20261015
+    original_user_response: 不能全关掉吗？只留室内照明。
+    normalized_decisions:
+      - 夜景手动模式的语义是仅由室内配置灯具照明。
+      - 在夜间关闭日照模拟后，继续保持夜景和室内灯自动状态。
+      - 静态日间光只在当前选定状态为白天且未启用夜景手动时恢复。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-15'
+    evidence_refs:
+      - docs/design-iterations/archive/night-only-indoor-lighting-20261015/decision-brief.yaml
+  allowed_scope:
+    files:
+      - app/src/render/EnvironmentManager.ts
+      - app/src/App.ts
+      - app/src/ui/LightingPreviewPanel.ts
+      - app/src/render/EnvironmentManager.test.ts
+    objects:
+      - global_environment_lighting
+      - indoor_fixtures
+    archetypes:
+      - perspective
+    views:
+      - perspective
+    changes:
+      - 夜景手动模式通过 EnvironmentManager 关闭全部全局照明。
+      - 关闭日照模拟时保留已选夜间状态与室内灯自动联动。
+      - UI 明确标注夜景手动仅保留室内灯。
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/materials.yaml
+      - config/render/lighting.yaml
+    objects:
+      - floor_tile_orientation
+      - wall_finish
+      - fixture_placement
+    assumptions:
+      - 把用户截图中的方向光直接归因为太阳模拟开关状态，未以运行时证明。
+    out_of_scope_changes:
+      - 改变日间静态光源坐标、强度或开关语义。
+      - 禁用所有室内投影；本轮只移除全局东南方向光。
+  open_questions: []
+  alignment:
+    records:
+      - id: user-message-night-only-20261015
+        original_response: 不能全关掉吗？只留室内照明。
+        normalized_decision: 夜间只留室内灯，任何夜景入口都不应保留全局静态日光。
+        affected_refs:
+          - global_environment_lighting
+          - indoor_fixtures
+        timestamp: '2026-10-15T03:18:00Z'
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run typecheck
+      - VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - night_manual_interior
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: not_applicable
+    blocking_issues: []
+    done_when:
+      - 21:00 且日照模拟关闭时，全局方向光、环境光、辅助补光为零且 IBL 为空。
+      - 夜景手动模式即使处于白天太阳状态也关闭全部全局照明。
+      - 室内灯保留人工开关和分房开关；日间静态预设不变。
+      - 新版本浏览器截图与运行时查询通过独立审美及功能复核。
+  delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: night-global-source-mismatch-20261015
+  subject: 夜间场景级照明模式
+  units: m
+  coordinate_system: Three.js 右手坐标系；本轮不改模型几何，运行时依据 solar altitude 选择全局光状态。
+  status: frozen
+  datums:
+    - id: night_mode_scene_state
+      name: 只保留室内灯的场景状态
+      anchor:
+        kind: free_position
+        ref: app/src/render/EnvironmentManager.ts#applyCurrentState
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - static_southeast_light
+          - disabled_solar_does_not_apply_time
+          - manual_mode_scope_gap
+        decision_refs:
+          - only_indoor_lighting_at_night
+      views:
+        plan:
+          required: false
+          origin: ''
+          axes: ''
+          direction: ''
+          position:
+            x: null
+            z: null
+          rotation: null
+          dimensions:
+            length: null
+            width: null
+            depth: null
+            offset: null
+          dimension_semantics: not_applicable
+        elevation:
+          required: false
+          viewing_side: ''
+          vertical_axis: 'y'
+          height: null
+          dimensions:
+            width: null
+            height: null
+            sill: null
+            datum_offset: null
+          dimension_semantics: not_applicable
+        section:
+          required: false
+          cut_direction: ''
+          depth_axis: ''
+          clearances:
+            front: null
+            rear: null
+            top: null
+            bottom: null
+          thickness: null
+          dimension_semantics: not_applicable
+      geometry:
+        x: null
+        'y': null
+        z: null
+        width: null
+        depth: null
+        height: null
+        length: null
+        rotation: null
+        along: null
+      constraints:
+        - 夜景手动或 lastState.isNight 时全局照明关闭。
+        - 日间静态预设与室内灯配置原位保留。
+      interfaces:
+        - solar_state
+        - indoor_lighting_preview
+      validation_refs:
+        - evidence/night-manual-after-runtime.json
+      status: confirmed
+  notes:
+    - 本轮只修复渲染状态，不移动灯具或任何家具/墙体。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: night-global-source-mismatch-20261015
+  subject: 夜景仍出现东南方向全局光影
+  created_at: '2026-10-15T03:18:00Z'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - app/src/render/EnvironmentManager.ts
+      - app/src/App.ts
+      - app/src/ui/LightingPreviewPanel.ts
+      - app/src/render/InteriorLightingSystem.ts
+    observation_refs:
+      - evidence/user-reported-southeast-shadow.png
+      - 用户此前决定：夜间只留室内照明。
+    measurement_refs: []
+    runtime_refs:
+      - evidence/night-state-sunlight-off-runtime.json
+    evidence_refs:
+      - evidence/night-state-sunlight-off.png
+      - evidence/night-state-sunlight-off-snapshot.txt
+  entry_shape:
+    id: ''
+    category: confirmed
+    statement: ''
+    value: null
+    source_refs: []
+    basis: ''
+    confidence: high
+    impact: material
+    affected_objects: []
+    affected_views: []
+    owner: codex
+    status: resolved
+    verification_method: ''
+    user_confirmation_ref: null
+  facts:
+    confirmed:
+      - id: static_southeast_light
+        category: confirmed
+        statement: 日照模拟关闭时，静态日间主方向光位于东南方向且会投射阴影。
+        value: DirectionalLight position=[12,20,8], intensity=0.9, castShadow=true
+        source_refs:
+          - app/src/render/EnvironmentManager.ts:72-79
+          - app/src/render/EnvironmentManager.ts:146-157
+        basis: 项目坐标规定 +x 东、+z 南；applyStaticPreset 恢复固定坐标与强度。
+        confidence: high
+        impact: material
+        affected_objects:
+          - global_sun
+          - global_ambient
+          - global_fill
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 运行时读取 DirectionalLight.position、intensity 和 castShadow。
+        user_confirmation_ref: null
+      - id: disabled_solar_does_not_apply_time
+        category: confirmed
+        statement: 日照模拟关闭时，SunlightSystem 仍可记录夜间时刻，但原逻辑会让 EnvironmentManager 保持静态日间预设。
+        value: hour=21; altitude=-38.4°; sunlightEnabled=false; dir=0.9; ambient=0.55; fill=0.3; IBL=present
+        source_refs:
+          - app/src/render/EnvironmentManager.ts:95-111
+          - app/src/App.ts:468-490
+          - evidence/night-state-sunlight-off-runtime.json
+        basis: 5174 实例以 21:00、日照关闭复现上述运行时状态。
+        confidence: high
+        impact: material
+        affected_objects:
+          - global_environment_lighting
+          - indoor_fixtures
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 浏览器查询太阳状态、开关和各全局光源。
+        user_confirmation_ref: null
+      - id: manual_mode_scope_gap
+        category: confirmed
+        statement: 旧版“夜景手动”只控制室内灯，没有关闭静态日光、环境光或 IBL。
+        value: LightingPreviewPanel → InteriorLightingSystem.setPreviewMode only
+        source_refs:
+          - app/src/ui/LightingPreviewPanel.ts:39-66
+          - app/src/App.ts:492-503
+        basis: 回调没有更新 EnvironmentManager。
+        confidence: high
+        impact: material
+        affected_objects:
+          - global_environment_lighting
+          - indoor_fixtures
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 代码调用链检查及浏览器运行时查询。
+        user_confirmation_ref: null
+    inferred:
+      - id: screenshot_source_is_static_sun
+        category: inferred
+        statement: 用户红框里的东南来光与静态日间主方向光吻合；截图没有显示日照开关状态，不能仅从图像确认该开关当时为关闭。
+        value: 静态日间光是高置信度来源候选
+        source_refs:
+          - evidence/user-reported-southeast-shadow.png
+          - static_southeast_light
+          - disabled_solar_does_not_apply_time
+        basis: 运行时复现的光源方位、强度与用户截图描述一致。
+        confidence: high
+        impact: material
+        affected_objects:
+          - global_sun
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 修正后浏览器运行时确认全局方向光关闭，再检查残余阴影是否由室内灯产生。
+        user_confirmation_ref: null
+    user_decision:
+      - id: only_indoor_lighting_at_night
+        category: user_decision
+        statement: 夜间预演只保留室内照明，关闭全局光源。
+        value: night manual = only configured indoor fixtures
+        source_refs:
+          - 用户消息：不能全关掉吗？只留室内照明。
+        basis: 用户明确要求。
+        confidence: high
+        impact: material
+        affected_objects:
+          - global_environment_lighting
+          - indoor_fixtures
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 21:00 与手动夜景模式下查询 global lights 与室内灯状态。
+        user_confirmation_ref: user-message-night-only-20261015
+    site_pending: []
+  unknowns_requiring_alignment: []
+  notes:
+    - 上一轮实现只覆盖“日照模拟开启且太阳低于地平线”；本轮补上手动夜景及关闭日照开关时的状态保持。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: night-global-source-mismatch-20261015
+  subject: 夜景全局光源关闭、室内照明保留
+  object_policy:
+    fixed_count_required: false
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: global_environment_lighting
+      type: scene_lighting_group
+      archetypes:
+        - perspective
+      owner: rendering_system
+      function: 根据太阳状态或夜景手动预演开关全局光源。
+      material: null
+      geometry_source: app/src/render/EnvironmentManager.ts
+      datum_refs:
+        - night_mode_scene_state
+      fact_refs:
+        - static_southeast_light
+        - disabled_solar_does_not_apply_time
+      decision_refs:
+        - only_indoor_lighting_at_night
+      dependencies:
+        - solar_state
+        - manual_preview_mode
+      interfaces: []
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 不适用：渲染状态，不存在实体维护。
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements: []
+      parts: []
+      visual_relationships:
+        - target_object_id: configured_indoor_fixtures
+          relation: custom
+          requirement: 夜景中全局光不产生额外投影，室内灯具仍控制室内照明。
+          evidence_refs:
+            - evidence/night-manual-after-room.png
+      validation_refs:
+        - app/src/render/EnvironmentManager.ts
+        - evidence/night-manual-after-runtime.json
+      status: verified
+    - id: configured_indoor_fixtures
+      type: indoor_lighting_group
+      archetypes:
+        - perspective
+      owner: lighting_preview
+      function: 以现有配置和房间级开关照亮室内。
+      material: 由现有灯光和材料配置决定
+      geometry_source: config/render/lighting.yaml + app/src/render/InteriorLightingSystem.ts
+      datum_refs:
+        - night_mode_scene_state
+      fact_refs:
+        - manual_mode_scope_gap
+      decision_refs:
+        - only_indoor_lighting_at_night
+      dependencies:
+        - solar_state
+        - global_environment_lighting
+      interfaces: []
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 本轮只复核现有灯具显隐与光照状态。
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements: []
+      parts: []
+      visual_relationships:
+        - target_object_id: global_environment_lighting
+          relation: custom
+          requirement: 全局光为零时，已启用室内灯仍可见、可照亮场景。
+          evidence_refs:
+            - evidence/night-manual-after-room.png
+      validation_refs:
+        - app/src/render/InteriorLightingSystem.ts
+        - app/src/App.ts
+      status: verified
+  notes:
+    - 地砖方向、墙色和灯具实体位置不在本次范围。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: night-global-source-mismatch-20261015
+  subject: 修复夜景仍出现东南静态日光
+  state: delivery_ready
+  source_version:
+    config_refs:
+      - config/render/lighting.yaml
+      - config/layout/overlay.yaml
+    asset_refs:
+      - config/materials.yaml
+    render_facts_ref: server/generated/project-render-facts.json
+    source_digest: app/src/render/EnvironmentManager.ts:e9771fcd3632843d62fe05f0586a5f91ed1c1acccc19612d610c3b195dbbe3a0; app/src/App.ts:ed9df62853f89052ae52c8f0d6222685f69e5b43a394bb036627504fb4ae5e50; app/src/ui/LightingPreviewPanel.ts:ae6510ca8857bf5ffd79c43b69c4f87332120f951853334a3270b17d30e5f199; app/src/render/EnvironmentManager.test.ts:ea7004fe533744e875c3e018c0b83bce42198561db527b9b0072771f4c01e248
+    generated_at: '2026-10-15T03:30:12Z'
+  validation:
+    commands:
+      - npm run typecheck
+      - VISUAL_GATE_API=http://127.0.0.1:5173 npm run gate:visual
+    results:
+      - command: VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual
+        result: CLEAR
+        output_ref: conversation:pre-change-gate
+      - command: npm run typecheck
+        result: PASS
+        output_ref: conversation:post-change-typecheck
+      - command: VISUAL_GATE_API=http://127.0.0.1:5173 npm run gate:visual
+        result: CLEAR
+        output_ref: conversation:post-change-gate
+    config_status: PASS
+    geometry_status: NOT_APPLICABLE
+    consistency_status: NOT_APPLICABLE
+    functional_checks_status: PASS
+    application_status: PASS
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: user_reported_southeast_shadow
+      url: ''
+      title: 业主提供的和萃 701 夜间预演截图
+      ready: false
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: null
+      config_error_banner: 状态不可见
+      target_objects:
+        - 用户标出的客厅东南地面阴影
+      target_object_ids: []
+      runtime_query_refs: []
+      camera:
+        mode: 业主原始截图视角
+        is_overview: true
+        position: null
+        target: null
+        view_type: perspective
+      snapshot_path: ''
+      screenshot_path: evidence/user-reported-southeast-shadow.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - user-provided image; runtime state not visible
+      status: diagnostic
+      invalid_reason: 用户截图没有显示日照模拟开关状态，不能单独用于归因。
+    - id: reproduced_static_sun_at_21
+      url: http://127.0.0.1:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-15T03:15:51Z'
+      config_error_banner: ''
+      target_objects:
+        - 客餐厅地面与全局方向光
+      target_object_ids:
+        - floor:living_dining
+      runtime_query_refs:
+        - evidence/night-state-sunlight-off-runtime.json
+      camera:
+        mode: orbit overview
+        is_overview: true
+        position:
+          - 7.4
+          - 14
+          - 19.2
+        target:
+          - 7.4
+          - 0
+          - 3.65
+        view_type: perspective
+      snapshot_path: evidence/night-state-sunlight-off-snapshot.txt
+      screenshot_path: evidence/night-state-sunlight-off.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - pre-change code
+        - runtime solar altitude=-38.4°, sunlightEnabled=false
+      status: diagnostic
+      invalid_reason: 截图时出现后端连接状态提示，作为状态复现记录保留，不用于审美评审。
+    - id: night_auto_after
+      url: http://127.0.0.1:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-15T03:30:12Z'
+      config_error_banner: ''
+      target_objects:
+        - 客餐厅地面与室内灯具
+      target_object_ids:
+        - floor:living_dining
+        - light_living_dome
+        - light_dining_pendant
+      runtime_query_refs:
+        - evidence/night-auto-after-runtime.json
+      camera:
+        mode: orbit perspective interior
+        is_overview: false
+        position:
+          - 12.6
+          - 1.8
+          - 8.6
+        target:
+          - 10.6
+          - 0.5
+          - 7.3
+        view_type: perspective
+      snapshot_path: evidence/night-auto-after-snapshot.txt
+      screenshot_path: evidence/night-auto-after-room.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - source_version.source_digest
+        - solar altitude=-38.4°, sunlightEnabled=false
+      status: valid
+      invalid_reason: null
+    - id: night_manual_after
+      url: http://127.0.0.1:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-15T03:26:15Z'
+      config_error_banner: ''
+      target_objects:
+        - 客餐厅地面与室内灯具
+      target_object_ids:
+        - floor:living_dining
+        - light_living_dome
+        - light_dining_pendant
+      runtime_query_refs:
+        - evidence/night-manual-after-runtime.json
+      camera:
+        mode: orbit perspective interior
+        is_overview: false
+        position:
+          - 12.6
+          - 1.8
+          - 8.6
+        target:
+          - 10.6
+          - 0.5
+          - 7.3
+        view_type: perspective
+      snapshot_path: evidence/night-manual-after-snapshot.txt
+      screenshot_path: evidence/night-manual-after-room.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - source_version.source_digest
+        - solar altitude=-38.4°, sunlightEnabled=false, mode=manual
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 全局东南方向光导致的整体投影已消失；家具下方仍保留由室内灯形成的局部柔和阴影，地面分块和木纹仍可读。
+      - After 视角与业主原图不同；光源状态通过同版本运行时证据确认。
+    evidence_refs:
+      - evidence/user-reported-southeast-shadow.png
+      - evidence/night-auto-after-room.png
+      - evidence/night-auto-after-runtime.json
+      - evidence/night-manual-after-room.png
+    requested_changes: []
+    assumptions:
+      - 室内灯具产生的局部影子属于预演目标的一部分。
+  functional_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 21:00 且日照模拟关闭时，太阳方向光不可见且强度为零，ambient/fill=0、environment=null，15 个室内灯仍可见。
+      - 夜景手动模式在白天太阳状态下也关闭全局光；日间静态预设、房间级灯具开关路径保留。
+      - 未单独截图单房间关闭后的效果；房间显隐链路由 InteriorLightingSystem.setRoomLights 维持。
+    evidence_refs:
+      - evidence/night-auto-after-runtime.json
+      - evidence/night-manual-after-runtime.json
+      - app/src/render/EnvironmentManager.ts
+      - app/src/App.ts
+      - app/src/render/InteriorLightingSystem.ts
+    requested_changes: []
+    assumptions:
+      - 夜景手动表示只保留室内灯具。
+  risks:
+    - 未运行 test:app；更新了既有 EnvironmentManager 夜间状态断言。
+    - 当前只有 light_dining_pendant 具备室内灯投影能力；若用户仍觉得红框内有投影，需单独验证这盏灯的局部阴影。
+    - 日照模拟开关关闭且时间为白天时，继续使用静态日间光源。
+  retrospective:
+    triggered: true
+    triggers:
+      - 用户截图与先前仅室内夜景验收不一致：运行时模拟关闭时恢复了东南静态方向光。
+    records:
+      - 本迭代复盘静态全局光与 Night Manual 语义缺口；旧截图保留在前一迭代。
+    rebaselined: true
+  delivery:
+    status: complete
+    blocking_issues: []
+    completion_conditions:
+      - 夜间时间无论日照模拟开关状态，均不会留下东南静态日光。
+      - 夜景手动明确关闭所有全局光并保留室内灯具控制。
+      - typecheck、视觉门禁、浏览器证据和独立审美/功能评审通过。
+    follow_up_site_pending: []
+    delivery_ready: true

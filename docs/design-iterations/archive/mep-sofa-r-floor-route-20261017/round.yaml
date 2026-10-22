@@ -1,0 +1,689 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: mep-sofa-r-floor-route-20261017
+index:
+  order: 17
+  topic: mep
+  review_state: delivery_ready
+  supersedes: none
+  note: 2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: mep-sofa-r-floor-route-20261017
+  subject: 客厅南臂地插右位从强电箱侧走垫层
+  priority:
+    user_goal: 让客厅南臂地插不再从南侧吊顶自由垂降，优先比较强电箱客厅侧下行后走垫层的路线
+    ranked:
+      - 无开放空间长竖降
+      - 保持 sock_living_sofa_r 坐标及 ordinary_power_living 回路
+      - 现场施工前明确箱体出线和垫层条件
+    non_negotiables:
+      - 不在推断剪力墙内开槽
+      - 不把玻璃幕墙作为依托
+      - 不移动地插点位
+      - 不新增回路/断路器
+      - construction_status 保持 pending
+    tradeoffs_accepted:
+      - 候选管线由约2.98m增加至约9.78m
+      - 箱体出线方向和垫层做法留待量房核实
+  frozen: true
+  freeze_record:
+    alignment_id: user-agreement-20261017-panel-floor-route-sofa-r
+    original_user_response: 嗯。另外不是有linter了吗？怎么这种飞线没有检查出来
+    normalized_decisions:
+      - 把 sofa-r 既有吊顶缘垂降候选替换为强电箱客厅侧下行并走地面垫层的候选支路；同步修正渲染器端点高度与 MEP 支撑检查；保持同一插座、回路和待施工状态
+    confirmed_by_user: true
+    confirmed_at: '2026-10-17'
+    evidence_refs:
+      - evidence/before-route-runtime.json
+      - evidence/before.png
+  allowed_scope:
+    files:
+      - config/mep-hvac-coordination.yaml
+      - app/src/render/MepCoordinationRenderer.ts
+      - app/src/render/MepCoordinationRenderer.test.ts
+      - shared/mep-hvac-lint.ts
+      - tests/server/mep-hvac-lint.test.ts
+      - docs/design-iterations/archive/mep-sofa-r-floor-route-20261017
+      - docs/decisions/06-electrical.md
+      - docs/decisions/README.md
+      - docs/pending-site-data.md
+      - docs/mep-construction-guidance.md
+      - docs/design-iterations/mep-lint-governance-20261006/review-manifest.json
+    objects:
+      - mep:route:strong-power-living-sofa-r
+    views:
+      - sofa-r-route-closeup
+      - living-east-side-route
+    changes:
+      - 强电箱侧下行候选
+      - 垫层正交支路
+      - renderer/linter端点高度与竖段依托一致性
+  forbidden:
+    files:
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/house.yaml
+    objects:
+      - sock_living_sofa_r坐标
+      - ordinary_power_living回路成员
+      - 强电箱位置
+      - 南侧玻璃幕墙
+      - sofa-l支路
+      - 餐厅地插支路
+    assumptions:
+      - 剪力墙可以凿槽
+      - 地面垫层可容纳φ20线管
+      - 强电箱底部已存在可用出线口
+      - 未复测的箱位是实测施工尺寸
+    out_of_scope_changes:
+      - 新增插座或回路
+      - 改家具/沙发位置
+      - 穿墙/幕墙开孔
+      - 宣称施工放线完成
+  supersession_review:
+    - prior_decision: DEC-2026-10-07-M04
+      prior_conclusion: sofa-r 从南侧 curtain_box_living 吊顶带下引进垫层，再北行到点位。
+      proposed_supersession: 仅替换 sofa-r 分支；保留 sofa-l、餐厅地插和客餐厅普通强电主干。
+      reason: 用户指出自由垂降不合适；同版 runtime 显示从吊顶到地面穿过开放空间，南墙为玻璃幕墙。
+      status: superseded_for_sofa_r
+    - prior_decision: DEC-2026-10-07-F01
+      prior_conclusion: sofa-l/r 吊顶缘分支不变。
+      proposed_supersession: 只重开 sofa-r，不改 F01 主干沿东侧墙链改道。
+      reason: 该条分支的竖向依托未经论证，linter 原实现跳过纯竖直段。
+      status: partially_superseded_for_sofa_r
+  open_questions:
+    - id: panel-floor-exit
+      status: site_pending
+      question: 强电箱客厅侧底边是否有现成出线空间；若无，表面保护管如何落地且不凿 w_foyer_east？
+      required_for:
+        - 施工放线
+      interim: 当前仅作候选几何；沿墙保护管、不在剪力墙开槽。
+      owner: 业主 + 电工
+      trigger: 量房 / 水电交底前
+    - id: screed-capacity-and-threshold
+      status: site_pending
+      question: 客厅垫层是否有约φ20线管所需空间，且与 d_bese 门槛和既有水电管线无冲突？
+      required_for:
+        - 施工放线
+      interim: '地面路由保持 construction_status: pending。'
+      owner: 电工 + 业主
+      trigger: 量房 / 水电交底前
+  alignment:
+    records:
+      - 业主回复“嗯”确认强电箱客厅侧落地走垫层为优先候选
+    unresolved:
+      - 箱底出线
+      - 垫层厚度/暗埋管线
+      - 门槛净距
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run gate:visual
+      - npm run verify:all
+      - npm run test:server
+      - npm run test:app
+      - npm run typecheck
+    browser_evidence_required: true
+    required_views:
+      - 右侧沙发地插线路改前改后同机位
+      - 客厅东侧从强电箱到地插的全路径视图
+    aesthetic_review: PASS required_for_route_readability
+    functional_review: PASS required_for_candidate_geometry
+    construction_review: site_pending
+    blocking_issues: []
+    done_when:
+      - renderer与linter同用解析点位高度
+      - 无依托的长竖降和陡斜终段能报unsupported_span
+      - 新候选不触发unsupported_span
+      - 同回路/端点不变
+      - gate CLEAR且配置错误横幅为空
+      - 现场核实仍显式标为pending
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: mep-sofa-r-floor-route-20261017
+  subject: 客厅南臂地插右位的强电箱侧落地候选路线
+  units: m
+  coordinate_system: Three.js右手系，Y向上；水平X东西、Z南北；北为-Z，南为+Z。
+  status: frozen
+  datums:
+    - id: panel-to-sofa-r-floor-branch
+      name: 强电箱客厅侧下行，再沿东侧垫层到右侧沙发地插
+      anchor:
+        kind: service_route
+        ref: config/mep-hvac-coordination.yaml:63
+        wall_side: west
+        service_ref: panel_strong_entry_left
+      source_refs:
+        fact_refs:
+          - strong-panel-anchor
+          - sofa-r-endpoint
+          - panel-wall-structure
+          - south-wall-is-glass
+          - rendered-before-route
+          - panel-floor-route-length
+        decision_refs:
+          - DEC-2026-10-17-R4
+      views:
+        plan:
+          required: true
+          origin: project local coordinates
+          axes: x/z
+          direction: 北朝上(-z)，南朝下(+z)
+          position:
+            from:
+              x: 13.4
+              z: 3.6
+            offset_to_room_side:
+              x: 13.2
+              z: 3.6
+            floor_turn:
+              x: 13.2
+              z: 9.35
+            endpoint:
+              x: 11
+              z: 9.35
+          dimensions:
+            panel_to_face_offset: 0.2
+            south_run: 5.75
+            west_run: 2.2
+          dimension_semantics: 以项目局部坐标计的正交中心线路由；所有水平段位于地面垫层候选层
+        elevation:
+          required: true
+          viewing_side: 从客厅内部看东侧强电箱墙面
+          vertical_axis: 'y'
+          height:
+            panel_bottom: 1.65
+            floor_route: 0.02
+          dimensions:
+            wall_drop: 1.63
+          dimension_semantics: 箱底标高到模型地面垫层管线标高；箱体实际出线口待量房
+        section:
+          required: true
+          cut_direction: 由客厅向东侧墙/门洞看
+          depth_axis: local_x
+          clearances:
+            wall_side: west
+            wall_groove: forbidden
+            screed_capacity: site_pending
+            bedroom_threshold_d_bese: site_pending
+          thickness:
+            conduit_diameter: 0.02
+            floor_layer: site_pending
+          dimension_semantics: x=13.34 按模型0.12m墙厚取 w_foyer_east 客厅侧面；实际墙厚、箱体出线面待量房复核，不是剪力墙开槽中心线
+      geometry:
+        route_points:
+          - x: 13.4
+            z: 3.6
+            'y': 1.65
+            role: strong_panel_bottom
+          - x: 13.34
+            z: 3.6
+            'y': 1.65
+            role: modeled_living_wall_face
+          - x: 13.34
+            z: 3.6
+            'y': 0.02
+            role: wall_side_drop_to_screed
+          - x: 13.34
+            z: 9.35
+            'y': 0.02
+            role: southbound_screed_run
+          - x: 11
+            z: 9.35
+            'y': 0.02
+            role: floor_socket_endpoint
+        total_length_m: 9.78
+      constraints:
+        - 不穿 w_foyer_east，不在剪力墙开槽；箱体到墙面的出线方式现场核实
+        - 垫层段沿客厅侧墙带和地面，不穿 w_be_west，也不依赖门洞墙体承托
+        - 终点必须仍绑定 sock_living_sofa_r 且 y=0.02；与 ordinary_power_living 同回路
+        - route 状态保持 inferred/proposed/construction_status=pending
+      interfaces:
+        - panel_strong_entry_left
+        - sock_living_sofa_r
+        - ordinary_power_living
+        - w_foyer_east
+        - w_liv_east
+        - w_be_west
+        - d_bese
+        - living_south_curtain
+      validation_refs:
+        - evidence/before-route-runtime.json
+        - evidence/after-runtime.json
+        - evidence/after.png
+      status: frozen_candidate
+  notes:
+    - 实际箱底出线口、保护管收口、垫层厚度、门槛和既有暗埋管线是现场待核，不能从该datum推断为已施工可行。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: mep-sofa-r-floor-route-20261017
+  subject: 客厅南臂地插右位从强电箱侧走垫层
+  created_at: '2026-10-17'
+  status: evidence_review
+  source_policy:
+    authority_refs:
+      - config/mep-hvac-coordination.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - shared/mep-hvac-coordination-schema.ts
+      - shared/mep-hvac-lint.ts
+      - app/src/render/MepCoordinationRenderer.ts
+    observation_refs:
+      - '2026-10-17 user message: ceiling drop is unsuitable; prefer floor route from strong panel'
+      - docs/decisions/06-electrical.md:DEC-2026-10-07-M04
+      - docs/decisions/06-electrical.md:DEC-2026-10-07-F01
+    measurement_refs: []
+    runtime_refs:
+      - http://127.0.0.1:5173/
+      - window.__APP__.isReady()
+      - window.__APP__.houseScene.getRouteObject('strong-power-living-sofa-r')
+    evidence_refs:
+      - evidence/before.png
+      - evidence/before-snapshot.txt
+      - evidence/before-route-runtime.json
+  facts:
+    confirmed:
+      - id: sofa-r-endpoint
+        category: confirmed
+        statement: 右侧沙发地插位仍为 (11.00,9.35)，高度 y=0.02m，归属 ordinary_power_living。
+        value:
+          x: 11
+          z: 9.35
+          'y': 0.02
+          circuit: ordinary_power_living
+        source_refs:
+          - config/electrical.yaml:46-54
+          - config/electrical-topology.yaml:167-175
+        basis: 点位配置和回路拓扑
+        confidence: high
+        impact: material
+        affected_objects:
+          - sock_living_sofa_r
+          - strong-power-living-sofa-r
+        affected_views:
+          - sofa-r-route-closeup
+          - living-east-side-route
+        owner: 项目配置
+        status: current
+        verification_method: 同版运行时读取 MEP endpoint 和 circuit member
+      - id: strong-panel-anchor
+        category: confirmed
+        statement: 当前协调锚点是 panel_strong_entry_left，(13.40,3.60)，箱底标高 1.65m；点位位置仍为 inferred。
+        value:
+          x: 13.4
+          z: 3.6
+          mount_height: 1.65
+          position_status: inferred
+        source_refs:
+          - config/electrical.yaml:673-686
+        basis: 项目点位配置；不是交房复尺
+        confidence: medium
+        impact: material
+        affected_objects:
+          - panel_strong_entry_left
+          - strong-power-living-sofa-r
+        affected_views:
+          - living-east-side-route
+        owner: 项目配置
+        status: design_anchor_only
+        verification_method: 交房后打开强电箱并复测箱位/底边/出线方向
+      - id: panel-wall-structure
+        category: confirmed
+        statement: w_foyer_east 当前按 structure=shear、structure_status=inferred；不将其假设为可开槽墙。
+        value:
+          wall: w_foyer_east
+          structure: shear
+          structure_status: inferred
+        source_refs:
+          - config/layout/model-geometry.yaml:170-171
+        basis: 邻户结构图轴线推断，待自家结构资料核实
+        confidence: medium
+        impact: material
+        affected_objects:
+          - panel_strong_entry_left
+          - strong-power-living-sofa-r
+        affected_views:
+          - living-east-side-route
+        owner: 项目模型
+        status: inferred_constraint
+        verification_method: 物业结构图和量房现场核实；此路线按客厅侧表面保护管表达，不开槽
+      - id: south-wall-is-glass
+        category: confirmed
+        statement: 客厅南墙 w_liv_south 在 overlay 中被 suppress，替换为落地玻璃幕墙。
+        value:
+          wall: w_liv_south
+          type: curtain_run
+          suppressed: true
+        source_refs:
+          - config/layout/overlay.yaml:16-18
+          - config/layout/overlay.yaml:81-86
+        basis: 当前权威 overlay 意图
+        confidence: high
+        impact: material
+        affected_objects:
+          - strong-power-living-sofa-r
+        affected_views:
+          - sofa-r-route-closeup
+        owner: 项目配置
+        status: current
+        verification_method: 核对 overlay suppress 和 curtain_run 声明
+      - id: rendered-before-route
+        category: confirmed
+        statement: 改前浏览器运行时把 sofa-r route 绘成 (11,9.65,2.70) → (11,9.65,0.02) → (11,9.35,2.55)；末端回升来自 renderer 对字符串 endpoint 使用强电层默认高度。
+        value:
+          points:
+            - x: 11
+              z: 9.65
+              'y': 2.7
+            - x: 11
+              z: 9.65
+              'y': 0.02
+            - x: 11
+              z: 9.35
+              'y': 2.55
+          source_refs:
+            - evidence/before-runtime.json
+            - app/src/render/MepCoordinationRenderer.ts:71-76
+        source_refs:
+          - evidence/before-route-runtime.json
+          - app/src/render/MepCoordinationRenderer.ts:71-76
+        basis: 同一浏览器版本的串行 userData.points 查询与 segment 查询
+        confidence: high
+        impact: material
+        affected_objects:
+          - strong-power-living-sofa-r
+        affected_views:
+          - sofa-r-route-closeup
+        owner: 当前实现
+        status: reproduced_before_fix
+        verification_method: 改后 runtime points 检查显式 endpoint height
+    inferred:
+      - id: panel-floor-route-length
+        category: inferred
+        statement: 箱体客厅侧偏至模型墙面 x=13.34 后沿墙侧垫层南行至 z=9.35，再向西至地插，正交路线长约 9.78m。
+        value:
+          segments_m:
+            - 0.06
+            - 1.63
+            - 5.75
+            - 2.34
+          total_m: 9.78
+        source_refs:
+          - config/electrical.yaml:673-686
+          - config/electrical.yaml:46-54
+          - config/mep-hvac-coordination.yaml:63
+        basis: 按 Three.js 平面坐标和箱底/地插标高做折线长度计算
+        confidence: medium
+        impact: material
+        affected_objects:
+          - strong-power-living-sofa-r
+        affected_views:
+          - living-east-side-route
+        owner: 当前迭代
+        status: candidate_geometry
+        verification_method: 路由点 runtime A/B 检查；量房后复测
+    user_decision:
+      - id: prefer-panel-side-floor-route
+        category: user_decision
+        statement: 业主确认优先把 sofa-r 改为强电箱客厅侧下行、再走地面垫层到地插的候选路线。
+        value:
+          circuit: ordinary_power_living
+          keep_endpoint: sock_living_sofa_r
+          construction_status: pending
+        source_refs:
+          - '2026-10-17 user response: 嗯'
+        basis: 对助手已列出的箱体侧落地、沿东侧墙脚走垫层、到地插前转西方案的确认
+        confidence: high
+        impact: material
+        affected_objects:
+          - strong-power-living-sofa-r
+        affected_views:
+          - sofa-r-route-closeup
+          - living-east-side-route
+        owner: 业主
+        status: frozen_for_candidate_route
+        verification_method: 改后配置、MEP lint、同版 runtime points
+    site_pending:
+      - id: panel-exit-and-screed
+        category: site_pending
+        statement: 强电箱客厅侧底部能否出线、表面保护管如何收口、垫层厚度/暗埋水电和 d_bese 门槛净距均未实测。
+        value: null
+        source_refs:
+          - docs/pending-site-data.md:64
+          - config/layout/model-geometry.yaml:170-171
+          - config/layout/model-geometry.yaml:252-258
+        basis: 尚未交房；现场条件未知
+        confidence: high
+        impact: construction
+        affected_objects:
+          - panel_strong_entry_left
+          - strong-power-living-sofa-r
+        affected_views:
+          - living-east-side-route
+        owner: 业主 + 电工
+        status: open
+        verification_method: 量房时查看箱底出线空间、墙面保护管落位、门槛高度和地面暗埋管线
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: mep-sofa-r-floor-route-20261017
+  subject: 客厅南臂地插右位的强电箱侧落地候选路线
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - circuit
+      - construction_review
+    visual_relationship_required: true
+  objects:
+    - id: mep:route:strong-power-living-sofa-r
+      type: mep_coordination_route
+      archetypes:
+        - strong_power
+        - panel_to_floor_socket_branch
+      owner: project_model / electrician for site verification
+      function: 为 sock_living_sofa_r 表达 ordinary_power_living 同回路候选导管路径；不是施工放线图
+      material: φ20 强电管候选
+      geometry_source: config/mep-hvac-coordination.yaml:63
+      datum_refs:
+        - panel-to-sofa-r-floor-branch
+      fact_refs:
+        - strong-panel-anchor
+        - sofa-r-endpoint
+        - panel-wall-structure
+        - south-wall-is-glass
+        - panel-floor-route-length
+        - panel-exit-and-screed
+      decision_refs:
+        - DEC-2026-10-17-R4
+      dependencies:
+        - config/electrical.yaml
+        - config/electrical-topology.yaml
+        - config/layout/model-geometry.yaml
+        - config/layout/overlay.yaml
+        - config/mep-hvac-coordination.yaml
+        - shared/mep-hvac-lint.ts
+        - app/src/render/MepCoordinationRenderer.ts
+      interfaces:
+        - id: source-panel
+          target_object_id: panel_strong_entry_left
+          kind: electrical_source
+          requirement: 强电箱客厅侧出线，实际箱底出线口待现场确认
+          status: site_pending
+        - id: destination-floor-socket
+          target_object_id: sock_living_sofa_r
+          kind: electrical_endpoint
+          requirement: 保持坐标(11.00
+          9.35)、高度0.02和ordinary_power_living成员关系: null
+          status: confirmed_in_config
+        - id: panel-wall
+          target_object_id: w_foyer_east
+          kind: structure
+          requirement: shear/inferred；使用客厅侧表面保护管，不开槽
+          status: inferred_constraint
+        - id: screed-and-threshold
+          target_object_id: d_bese
+          kind: floor_route
+          requirement: 地面空间/垫层厚度/门槛净距需实测
+          status: site_pending
+      collision:
+        policy: route_support_by_wall_and_screed
+        geometry_ref: config/layout/model-geometry.yaml + config/layout/overlay.yaml
+        review_ref: evidence/after-runtime.json
+      maintenance:
+        boundary: 本轮只表达固定导管候选，不增加设备/接头/可活动部件
+        access_clearance: 垫层封闭前完成穿线和连续性验收，现场留照片/坐标记录
+        replaceable_parts:
+          - panel_to_floor_conduit_candidate
+        inspection_requirements:
+          - 确认强电箱出线方向
+          - 确认垫层和既有暗埋水电
+          - 确认d_bese门槛净距
+      parts:
+        - panel_face_offset
+        - wall_side_vertical_drop
+        - screed_south_run
+        - westbound_socket_run
+      visual_relationships:
+        - target_object_id: panel_strong_entry_left
+          relation: source
+          requirement: 路线从箱体客厅侧接出并沿墙面落地
+          evidence_refs:
+            - evidence/after.png
+            - evidence/after-runtime.json
+        - target_object_id: sock_living_sofa_r
+          relation: destination
+          requirement: 地面支路终止于原地插位置
+          evidence_refs:
+            - evidence/after.png
+            - evidence/after-runtime.json
+      validation_refs:
+        - npm run gate:visual
+        - npm run verify:all
+        - npm run test:server
+        - npm run test:app
+        - npm run typecheck
+        - evidence/after-runtime.json
+      status: candidate_verified_for_model_only
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: mep-sofa-r-floor-route-20261017
+  subject: 客厅南臂右地插改为强电箱侧下行垫层支路，并修复竖向飞线与净空误报
+  source_version:
+    config_refs:
+      - config/mep-hvac-coordination.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/facts.yaml
+    source_digest: 'sha256 manifest: evidence/source-after.sha256 (sha256 1c2e52508d5d01281ecce5f4e309dac17fa2d902f444cafd19518ed65647476b)'
+    tests_touched:
+      - app/src/render/MepCoordinationRenderer.test.ts
+      - tests/server/mep-hvac-lint.test.ts
+      - tests/server/facts-lint.test.ts
+      - tests/server/mep-guidance-baseline.test.ts
+    generated_files: []
+  state: delivery_ready
+  state_note: '候选路线、运行时证据与 lint 修复已交付并通过项目门禁。该 route 仍是 inferred / proposed / construction_status: pending；强电箱出线、模型墙厚、垫层与 d_bese 门槛必须在量房/水电交底前核实，当前不作为施工放线。'
+  validation:
+    gate_visual:
+      status: passed
+      note: CLEAR：客户端 ceiling 50c1c81f9ec8、electrical 94c988caaf0b、plumbing 7f1513d14f27、materials 64176f576326。
+    verify_all:
+      status: passed
+      note: 17/17 passed，0 failed；verify:mep 0 error / 133 warnings（must_fix 32、survey 80、envelope 21），verify:electrical 0 error / 51 warnings。
+    verify_facts:
+      status: passed
+      note: c.mep_layer_below_drop_bottom 实算 51 处 / 42 条路线 / 14 区，与 verify:mep 同口径。
+    typecheck:
+      status: passed
+    focused_tests:
+      status: passed
+      note: tests/server/mep-hvac-lint.test.ts + tests/server/facts-lint.test.ts：75/75；MepCoordinationRenderer.test.ts：6/6。
+    full_test_server:
+      status: passed_with_external_failures
+      note: 本会话较早的全量 run 为 1000 passed / 8 failed；失败在其他未改动工作流/环境（FixtureFactory 浏览器依赖、预算候选价差异、anti-penetration registry/waiver、solar 与 TextureManager DOM 依赖）。本轮相关 linter 文件单测 75/75，verify:all 通过。
+    full_test_app:
+      status: passed_with_external_failures
+      note: 本会话较早的全量 run 为 502 passed / 56 failed（3 files）；失败由既有无浏览器环境依赖（THREE.Color.setRGB、TextureManager CanvasTexture.center、HouseScene ResizeObserver）触发。本轮 renderer 聚焦测试 6/6。
+    mep_takeoff:
+      status: passed
+      note: shared/mep-takeoff.ts 同回路复算：ordinary_power_living conduitM 24.65m→31.85m，2.5mm² 三芯 wireM 77.65m→100.33m；详见 evidence/takeoff-ordinary-power-living.json。
+  evidence:
+    - id: before-route-runtime
+      url: http://127.0.0.1:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      snapshot: 旧路线为 (11.00,9.65,2.70)→(11.00,9.65,0.02)→(11.00,9.35,2.55)；renderer 将字符串 socket 端点画到层默认 y=2.55。有效基线见 evidence/before-route-runtime.json 与 evidence/before.png。
+    - id: after-route-runtime
+      url: http://127.0.0.1:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      snapshot: MEP visible=true、configErrorBanner 为空；目标 route points 为 (13.40,3.60,1.65)→(13.34,3.60,1.65)→(13.34,3.60,0.02)→(13.34,9.35,0.02)→(11.00,9.35,0.02)，4 segments visible，lintCodes=[]。见 evidence/after-runtime.json 与 evidence/after-east-side-runtime.json。
+    - id: after-target-focus
+      url: http://127.0.0.1:5173/
+      ready: true
+      snapshot: 只显示 strong-power-living-sofa-r 的隔离视图；wall-side vertical drop、垫层南行与到地插西折由 after.png / after-plan-route.png 呈现，运行时在 evidence/after-target-focus-runtime.json。
+    - id: historical-clearance-diagnostic
+      url: http://127.0.0.1:5173/
+      ready: true
+      snapshot: 旧 clearance 规则把 sofa-r 的两个低位垫层段误报为 ceiling_living / ceiling_entry_foyer 冲突；保存在 after-runtime-pre-clearance-fix.json，仅作历史诊断，不代表当前 lint。
+    - id: visual-source-hashes
+      url: workspace source digest
+      ready: true
+      snapshot: evidence/source-before.sha256 与 evidence/source-after.sha256。
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    notes: after.png 与 after-plan-route.png 清楚显示贴客厅东侧墙面的落地段和垫层支路；after-east-side-full.png 作为整体 MEP 关系补充图。
+    evidence_ref: evidence/aesthetic-review.json
+  functional_review:
+    verdict: conditional_pass
+    blocking_issues:
+      - construction_status 仍 pending：x=13.34 依据模型默认 0.12m 墙厚推导，必须核实强电箱客厅侧出线、实际墙厚/表面固定、垫层/暗埋水电及 d_bese 门槛净距。owner=业主+电工；trigger=量房和水电交底前。
+    notes: 目标点位、普通电源回路、沙发与玻璃幕墙关系均兼容；d_bese 开口下方支路依赖垫层承载，不依赖门垛/墙体固定。
+    evidence_ref: evidence/functional-review.json
+  linter_review:
+    verdict: PASS
+    blocking_issues: []
+    notes: 旧支持规则跳过纯竖直段并按平面长度采样；现按 3D 长度检查水平/陡斜/竖直段。floor_branch(_candidate) 只有在实际 point 落入 y≤0.35m 时退出净空比较，高位误标由 floor_branch_missing_floor_band 提醒，3D unsupported_span 仍负责支撑。
+    evidence_ref: evidence/linter-review.json
+  construction_review:
+    verdict: site_pending
+    blocking_issues:
+      - 强电箱底部/客厅侧实际出线口和箱位未量；panel_strong_entry_left 仍 inferred。
+      - x=13.34 依据渲染模型默认墙厚 0.12m，不是已实测墙面；w_foyer_east 为 shear/inferred，表面保护管固定方式须现场定。
+      - 垫层厚度、既有暗埋水电、φ20 导管空间及 d_bese 门槛/门套净距未核。
+    owner: 业主 + 电工
+    trigger: 量房和水电交底前；垫层封闭前完成连续性验收并留管线照片和坐标。
+  retrospective:
+    what_worked:
+      - 真实 runtime 暴露了 route renderer 与共享 endpoint resolver 的高度不一致。
+      - 把 lint 问题拆成 3D 依托与吊顶完成面比较，补上旧垂直段豁免和陡斜段采样的测试。
+      - facts 和 MEP 共用吊顶 footprint/segment 相交，解决 51/42/14 的双引擎计数漂移。
+    what_was_removed_or_superseded:
+      - 在役 sofa-r 吊顶垂降折点被新强电箱侧支路替换；M04/F01 历史结论和有效改前 runtime 保留。
+      - 最初 x=13.20 轴线被 x=13.34 模型墙面候选取代；三维路线长度仍 9.78m，同回路 takeoff 重新计算为 31.85m。
+      - 旧 after-runtime 的两个 clearance 误报不再作为当前证据，原 warning/points 诊断已归档到 after-runtime-pre-clearance-fix.json。
+    what_to_improve:
+      - 运行时几何和 route metadata 之外，截图视角也需确认能看到箱体侧起点与地插终点；目标隔离视图与全场 MEP 图分别留档。
+  delivery:
+    status: delivered
+    handover_notes:
+      - 当前路线是经审查的可逆候选，维持 inferred / proposed / pending，不作施工放线。
+      - 任一现场条件不成立时由业主 + 电工重画同回路支路；不得恢复无依托的吊顶自由垂降。
+      - 施工前后需重新运行 verify:all、gate:visual，并按量房后的墙厚/箱位/垫层高度重新派生回路 union。
+    blocking_owner: 业主 + 电工（现场接口核验）
+    expected_unblock: 量房/水电交底前确认箱体出线面、x=13.34 实际墙面、垫层和 d_bese 净距；垫层封闭前验收通路并留影像与坐标。

@@ -1,0 +1,441 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: hvac-preinstall-20261011
+index:
+  order: 8
+  topic: mep
+  review_state: delivery_ready
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: hvac-preinstall-20261011
+  subject: 中央空调排水初稿与3D候选状态检视
+  priority:
+    user_goal: 在安装人员上门前形成可核对的初稿，交付后少漏水、返味、拆顶和维护。
+    ranked:
+      - 真实受纳点与可检修性
+      - 短而可靠的排水路线
+      - 风感与性能
+      - 同口径成本
+    non_negotiables:
+      - 不得把候选终点渲染成已接通
+      - 未核实的坐标不作施工放线
+    tradeoffs_accepted:
+      - 必要时保留厂家原配水泵，而非为去泵牺牲维护性
+  frozen: true
+  freeze_record:
+    alignment_id: user-low-maintenance-20261011
+    original_user_response: 无泵不是目的，目的是怎么去部署中央空调的坑是最小的，而不是花了钱，还得操心它。
+    normalized_decisions:
+      - 候选线只作为检视
+      - 六台逐台比选重力与带泵完整路线
+      - 不凭空画新接入点
+      - 入户花园排水从客房候选中排除
+    confirmed_by_user: true
+    confirmed_at: '2026-10-11'
+    evidence_refs:
+      - user:2026-10-11
+  allowed_scope:
+    files:
+      - docs/hvac/hvac-pitfall-audit-20261011.md
+      - app/src/render/MepCoordinationRenderer.ts
+      - app/src/render/MepCoordinationRenderer.test.ts
+      - app/src/render/HouseScene.ts
+      - app/src/ui/InfoPanel.ts
+      - app/src/ui/InfoPanel.test.ts
+    objects:
+      - 六条现有 condensate MEP 路线及候选终点
+    archetypes:
+      - inspection_only
+    views:
+      - plan
+      - perspective
+    changes:
+      - 修订方案初稿
+      - 以非实体视觉状态呈现未连接受纳点
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/plumbing.yaml
+    objects:
+      - 真实冷凝水接口
+      - 新穿墙点
+    assumptions:
+      - 候选点即真实排水口
+      - 带泵机可擅自停泵
+      - 入户花园可作客房排水点
+    out_of_scope_changes:
+      - 新增未经核实的施工路线
+      - 锁定设备 SKU
+  open_questions:
+    - id: site-receivers
+      category: mep
+      question: 六条路线接入哪些可用排水接口及其标高？
+      status: site_pending
+  alignment:
+    records:
+      - user-low-maintenance-20261011
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run test:app
+      - npm run typecheck
+      - npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - master_candidate_perspective
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: not_applicable
+    blocking_issues: []
+    done_when:
+      - 六条候选终点均清晰标识未接真实排水点
+      - 文档不将泵或重力方案写成可施工事实
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: hvac-preinstall-20261011
+  subject: 冷凝水候选终点视觉标记
+  units: m
+  coordinate_system: Three.js Y向上；x东西，z南北；坐标来自 MEP route 已声明终点。
+  status: frozen
+  datums:
+    - id: mep-condensate-endpoint
+      name: 六条冷凝水候选线的末端
+      anchor:
+        kind: service_route
+        ref: null
+        wall_side: null
+        service_ref: config/mep-hvac-coordination.yaml
+      source_refs:
+        fact_refs:
+          - six-candidate-routes
+        decision_refs:
+          - user-low-maintenance-20261011
+      views:
+        plan:
+          required: true
+          origin: MEP route.to
+          axes: x/z
+          direction: 北为负z
+          position:
+            x: null
+            z: null
+          dimension_semantics: not_applicable
+        elevation:
+          required: true
+          viewing_side: route endpoint
+          vertical_axis: 'y'
+          height: null
+          dimension_semantics: not_applicable
+        section:
+          required: false
+          cut_direction: null
+          depth_axis: null
+          dimension_semantics: not_applicable
+      geometry:
+        x: null
+        'y': null
+        z: null
+        width: null
+        depth: null
+        height: null
+        length: null
+        rotation: null
+        along: null
+      constraints:
+        - 标记位置只读取 route.to 解析坐标，不独立维护一套位置。
+      interfaces:
+        - MEP 冷凝水检视层
+      validation_refs:
+        - app/src/render/MepCoordinationRenderer.test.ts
+      status: confirmed
+  notes:
+    - 不创建新的真实管道、地漏或穿墙几何。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: hvac-preinstall-20261011
+  subject: 中央空调排水初稿及未接受纳点检视
+  created_at: '2026-10-11'
+  status: aligned
+  source_policy:
+    authority_refs:
+      - config/hvac.yaml
+      - config/mep-hvac-coordination.yaml
+      - config/plumbing.yaml
+      - config/layout/model-geometry.yaml
+    observation_refs:
+      - docs/decisions/05-hvac.md
+      - schedule/procurement.md
+    measurement_refs: []
+    runtime_refs:
+      - docs/design-iterations/hvac-preinstall-20261011/evidence/runtime-query.json
+    evidence_refs:
+      - docs/hvac/hvac-pitfall-audit-20261011.md
+  facts:
+    confirmed:
+      - id: contract-six-pumps
+        statement: 已签合同配置六台 P-SS 带泵内机；业主确认目前仅付定金，内机未交付未装，门店是否采购/锁货待核。
+        source_refs:
+          - config/hvac.yaml
+          - docs/decisions/05-hvac.md
+          - user:2026-10-11
+        status: resolved
+      - id: six-candidate-routes
+        statement: 当前 MEP 有六条冷凝水候选线，其终点均为 HVAC 候选坐标而非确认的排水接口。
+        source_refs:
+          - config/mep-hvac-coordination.yaml
+          - config/hvac.yaml
+        status: resolved
+    inferred:
+      - id: master-gravity-potential
+        statement: 主卧和儿童房有优先比较短重力路线的模型条件，但末端接入尚未闭合。
+        source_refs:
+          - config/mep-hvac-coordination.yaml
+          - config/plumbing.yaml
+        confidence: medium
+        status: open
+      - id: living-kitchen-plan-corridor
+        statement: 客厅至厨房推断立管有约5.25m正交平面候选，可沿现有边吊和门厅/北服务带调查；标高与受纳接口未确认。
+        source_refs:
+          - config/ceiling.yaml
+          - config/layout/model-geometry.yaml
+          - config/plumbing.yaml
+        confidence: medium
+        status: open
+      - id: study-guest-bath-plan-corridor
+        statement: 书房北向客卫洗漱区有约2.50m正交平面候选，穿越模型中的w_st_north门洞外墙段；墙材、结构、许可与标高待核。
+        source_refs:
+          - config/ceiling.yaml
+          - config/layout/model-geometry.yaml
+        confidence: medium
+        status: open
+    user_decision:
+      - id: low-maintenance-priority
+        statement: 业主优先追求交付后少操心，去泵不是目标本身。
+        source_refs:
+          - user:2026-10-11
+        status: resolved
+      - id: exclude-entry-garden-drain
+        statement: 业主明确不考虑入户花园作为东南客房冷凝水受纳区，只研究厨卫接入。
+        source_refs:
+          - user:2026-10-11
+        status: resolved
+    site_pending:
+      - id: actual-receivers
+        statement: 六条路线的真实排水接口、梁底与标高尚待交房实测及厂家深化。
+        source_refs:
+          - docs/pending-site-data.md
+          - config/plumbing.yaml
+        verification_method: 三方量房与签认排水剖面
+        status: open
+  unknowns_requiring_alignment: []
+  notes:
+    - 本次只标注候选线及未连接端点，不增补推断管路。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: hvac-preinstall-20261011
+  subject: 冷凝水候选末端检视对象
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - maintenance
+      - interface
+    visual_relationship_required: true
+  objects:
+    - id: unverified-condensate-receiver
+      type: inspection_marker
+      archetypes:
+        - inspection_only
+      owner: MepCoordinationRenderer
+      function: 表示冷凝水候选线尚未接入真实排水口
+      material: red_marker
+      geometry_source: MEP route.to resolved from config/hvac.yaml
+      datum_refs:
+        - mep-condensate-endpoint
+      fact_refs:
+        - six-candidate-routes
+      decision_refs:
+        - user-low-maintenance-20261011
+      dependencies:
+        - MEP condensate route
+        - HVAC candidate terminal
+      interfaces:
+        - id: route-end
+          target_object_id: MEP-route
+          kind: hvac
+          requirement: 与候选线终点重合且仅在 MEP 检视层显示
+          status: confirmed
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 检视态非实体
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements: []
+      parts:
+        - id: red-octahedron
+          role: unverified-terminal
+          independent: true
+          owner: MepCoordinationRenderer
+          material: red_marker
+          geometry_source: MEP route.to
+          datum_refs:
+            - mep-condensate-endpoint
+          dependencies:
+            - MEP-route
+          collision: none
+          maintenance_boundary: not_applicable
+          validation_refs:
+            - app/src/render/MepCoordinationRenderer.test.ts
+      visual_relationships:
+        - target_object_id: MEP-route
+          relation: centered
+          requirement: 位于青色候选路线终点
+          evidence_refs:
+            - docs/design-iterations/hvac-preinstall-20261011/evidence/master-candidate-after.png
+      validation_refs:
+        - app/src/render/MepCoordinationRenderer.test.ts
+      status: verified
+  notes:
+    - 六条路线、五个不同候选位置；客餐厅两条共享终点。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: hvac-preinstall-20261011
+  subject: 中央空调安装前核对初稿与冷凝水未接受纳点检视
+  state: delivery_ready
+  source_version:
+    config_refs:
+      - config/hvac.yaml
+      - config/mep-hvac-coordination.yaml
+      - config/plumbing.yaml
+    asset_refs: []
+    render_facts_ref: null
+    source_digest: docs/hvac/hvac-pitfall-audit-20261011.md sha256:511e3cfdf583b78cc2dbcbc2d348540e78adcf2de0869de0a51ae0eeedc21e98
+    generated_at: '2026-10-11'
+  validation:
+    commands:
+      - npm run test:app
+      - npm run typecheck
+      - npm run gate:visual
+    results:
+      - test:app 68 files / 565 tests passed
+      - targeted renderer and InfoPanel 13 tests passed after final UI change
+      - typecheck passed
+      - gate:visual CLEAR
+    config_status: 'PASS: no authoritative config changed'
+    geometry_status: 'PASS: no design geometry changed'
+    consistency_status: 'PASS: route data unchanged'
+    functional_checks_status: 'PASS: candidate endpoints remain linted and are now visibly marked'
+    application_status: 'PASS: runtime ready, six markers present'
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: master-candidate-perspective
+      url: http://localhost:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-11'
+      config_error_banner: ''
+      target_objects:
+        - condensate-master route
+        - unverified-condensate-receiver marker
+      target_object_ids:
+        - mep:route:condensate-master
+      runtime_query_refs:
+        - docs/design-iterations/hvac-preinstall-20261011/evidence/runtime-query.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 6
+          - 5.2
+          - 7
+        target:
+          - 2.5
+          - 1.5
+          - 3.1
+        view_type: perspective
+      snapshot_path: docs/design-iterations/hvac-preinstall-20261011/evidence/master-snapshot.txt
+      screenshot_path: docs/design-iterations/hvac-preinstall-20261011/evidence/master-candidate-after.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/mep-hvac-coordination.yaml sha256:62caee04f37d8c2af4aeea28215588982bebd80abc87cfad7298f1f529e920b9
+        - app/src/render/MepCoordinationRenderer.ts sha256:d6c381c6eec871bd17716454ed13e25680b2d5f5e61a94de9eafeb4ef876b86f
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 红色终点标记在主卧目标视角可见但较小。
+    evidence_refs:
+      - docs/design-iterations/hvac-preinstall-20261011/evidence/master-candidate-after.png
+    requested_changes: []
+    assumptions: []
+  functional_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 既有 MEP lint 继续检查候选几何；真实排水受纳点仍需现场和厂家深化。
+      - 独立路线复核未发现 v4.2 平面长度重大错算；新增厨卫路线只有平面下限，尚无可施工标高。
+    evidence_refs:
+      - app/src/render/MepCoordinationRenderer.ts
+      - docs/hvac/hvac-pitfall-audit-20261011.md
+      - config/ceiling.yaml
+      - config/layout/model-geometry.yaml
+    requested_changes: []
+    assumptions: []
+  substantive_review:
+    removed_or_reframed:
+      - 旧稿直接回 R6、零成本和四维净退化改为历史方案比选；已在文档历史证据节恢复逐房容量和旧取舍原因。
+      - 17/19dB、700×450×200、主卧玻璃17.9㎡和6.8–8.6kW、0.6m风口3.5–4.2m/s算例均恢复为旧参考，明确不得套成交/P-SS或替代逐房计算。
+      - 旧稿无泵三台、C40A/6mm²、售价3199/2599和深洗200–400元的确定说法降为待厂家或门店核验的历史线索。
+      - 旧稿两卫沉箱300/330mm及2.8m落差可支持280m水平管的算术未计梁、吊顶与真实接点，故撤销施工推论；两卫无排气道导致排风无解保留为待现场验证的条件结论。
+    superseded_conclusions:
+      - DEC-2026-10-05-R1取代R6逐房表；新22.7kW只是比选，不改合同。
+      - 客餐厅与东南客房按业主最新方向研究厨房共用主管；客卫作为餐厅和客房备选，原未接真实排水点的3D线不作施工依据。
+    silent_failure_conditions:
+      - 本合同精确型号若不允许所画泵后汇流/扬程/止回，则J1/J2共管方案失效。
+      - 现有A/B承载层窗口仅给J1到厨房4.60m主管约4mm理论余量；三台全程重力支管起点均超过模型A区上限，若未重画泵压段和吊顶剖面，四台带泵的设备选择也不能让排水方案自动成立。
+      - 实测梁底、门头、厨房受水接口或墙材与模型不符，则对应路线和孔位数需重画。
+      - 一期管线若被二期柜体包死，当前可检修方案失效。
+    evidence_refs:
+      - docs/decisions/05-hvac.md
+      - config/hvac.yaml
+      - config/ceiling.yaml
+      - config/mep-hvac-coordination.yaml
+      - schedule/phase-scope.yaml
+  risks:
+    - 该稿是安装前核对初稿，不能作为施工放线图；六台真实排水接点均未确认。
+    - 新研究的厨房/客卫平面候选尚未写入 MEP 几何或 3D，必须先取得准确内机接水出口、泵扬程与可用接口标高。
+  retrospective:
+    triggered: false
+    triggers: []
+    records: []
+    rebaselined: false
+  delivery:
+    status: inspection_draft_ready
+    blocking_issues: []
+    completion_conditions:
+      - 逐台风险和需补图纸已写入初稿
+      - 六个候选终点在3D中明确标为未接真实排水点
+    follow_up_site_pending:
+      - 六台真实受纳点、梁底和接入标高
+      - 准确型号安装图、逐房负荷计算书和外机平台图
+    delivery_ready: true

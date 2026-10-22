@@ -1,0 +1,958 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: living-antique-eight-globe-light-20261017
+index:
+  order: 27
+  topic: living
+  review_state: delivery_ready
+  supersedes: none
+  note: 2026-10-22 更正——本轮 review-manifest 状态键为 status、值 delivery_ready（R6 双评审 PASS，业主 2026-10-17 确认）；INDEX 原按 state 键回抽误记 none；同日按关账规则清理 evidence，仅留 R6 五视角终稿
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: living-antique-eight-globe-light-20261017
+  subject: 客厅主灯换8头古铜木色吊灯R6预演
+  priority:
+    user_goal: 用业主提供的8头复古吊灯参考图替换当前客厅主灯模型，先查看3D效果。
+    ranked:
+      - 参考图的8头球罩与古铜/木色外观关系
+      - 总高445mm，使用单根100mm长杆
+      - 客厅主灯锚点保持现状，以便直接比较造型
+      - 配光只作渲染预演，不作为实物照度结论
+    non_negotiables:
+      - 不改 electrical light_living_dome 的位置、高度、电气回路、控制关系或HVAC/MEP路径。
+      - 当前10头灯完整保存在 living-main-light-archive-20261017 归档中；此轮只替换活动预览配置。
+      - 图片未标注的臂弯、水平3D方位、中心支撑结构和表面工艺均标为预演推断，不冒充商品尺寸/材质规格。
+  tradeoffs_accepted:
+    - 首版R2/R3曾按两个4头垂直层级、层间45°错位构造；该垂直球罩高差被R4业主澄清推翻，历史R2/R3证据仍保留。
+    - R4当前按两个水平4头组、平面45°错位构造，8个球罩中心统一在y=2.425m；实际商品俯视结构仍未知。
+    - R5按业主进一步澄清将8根弧臂根部统一至上盘同一台面，并使用相同向上拱起的曲线；灯臂末端再下降接入同高灯座。
+    - R6按业主进一步指定，统一臂根台面改为下方下杯，8根仍同向rise至同高灯座；R5上盘起弧保留为历史。
+    - 用程序化纯色材质表示木色与古铜色；未制作商品级木纹或金属工艺贴图。
+    - 当前照明强度仍是视觉近似值，不以亮斑/亮度判断产品实测光度。
+  frozen: true
+  allowed_scope:
+    - config/render/lighting.yaml 中 light_living_dome 外观条目
+    - shared/types.ts 与 shared/project-render-facts-schema.ts 中多球泡外观声明的必要兼容
+    - shared/render/MultiGlobeChandelierGeometry.ts 的木色/古铜 finish 和球罩比例表现
+    - 更新生成的 data/project-render-facts.json 与受影响灯具导出/渲染断言
+    - 本目录的事实、设计基准、证据、评审和工作记录
+  forbidden:
+    - 移动/重定向 light_living_dome 或改 electrical/topology/MEP/ceiling/furnishings
+    - 购买、施工、承重或光度结论
+    - 覆盖、删除旧10头灯归档或历史决策证据
+  open_questions: []
+  acceptance:
+    - R6浏览器中 electrical:light_living_dome 有8个球罩与8根单头弧臂；8个球罩中心同高y=2.425m，只在水平方向分组错位；8根弧臂根部共用下杯y=2.4405m平面并上拱。
+    - 外包络约Ø0.88m；顶面锚点y=2.80m；最低点约y=2.355m（445mm预演总高）。
+    - R4中心车削尾饰最低点约y=2.3555m，不超出445mm总高包络；R2尾饰球体低点保留在历史runtime-r2。
+    - 球罩横向150mm、纵向140mm；吸顶盘Ø130×35mm；木棕、古铜棕、乳白色调接近参考图。
+    - 灯位、电气回路、控制与MEP不变；浏览器与GLB构造保持同源。
+    - 提供非总览 context、closeup、elevation 的同版浏览器截图与运行时数据。
+    - 实质审计记录旧模型切换掉什么、哪些旧结论被推翻、哪些新假设会静默失效。
+  alignment:
+    aligned_at: '2026-10-17'
+    responses:
+      - question: 试模使用哪档总高
+        original_answer: 445 mm（推荐，接近当前450mm）
+        normalized_decision: 只装100mm长杆，总高445mm
+      - question: 正视图中8个灯罩的支臂结构如何建模
+        original_answer: 8根单头弧臂，分两层错高（推荐，按图可见端头建模）
+        normalized_decision: 8根单头弧臂，两个4头水平组；此处首轮对“两层错高”的垂直解释后来被R4澄清覆盖
+      - question: 8个球罩的垂直平面如何布置
+        original_answer: 是的，8个球罩同高，只在水平方向错开
+        normalized_decision: 8个球罩中心统一y=2.425m；两个4头组仅在平面方位上错45°
+        aligned_at: 2026-10-17 R4
+      - question: 8根弧臂从哪个高度起弧
+        original_answer: 所有灯珠应该是从同一个台面往上曲的呀
+        normalized_decision: 8根臂根共用上盘台面y=2.585m，半径0.07m，同向rise拱线，随后下降接入同高灯座
+        aligned_at: 2026-10-17 R5
+      - question: 共同起弧台面具体是哪一个中心台
+        original_answer: 是从下面那个台子往上曲的，而不是上面那个台子
+        normalized_decision: 8根臂根统一连接下杯台面y=2.4405m，径向半径0.058m，统一rise弧线
+        aligned_at: 2026-10-17 R6
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: living-antique-eight-globe-light-20261017
+  subject: 客厅主灯8头古铜木色吊灯R6预演
+  units: m
+  coordinate_system: Three.js右手系；Y向上；x东西、z南北；+z为南；俯视北朝上(-z)。
+  status: frozen
+  datums:
+    - id: living-main-fixture-antique-8
+      name: 客厅主灯天花锚点与8头同高吊灯预演包络
+      anchor:
+        kind: ceiling_anchor
+        ref: light_living_dome
+        wall_side: null
+        service_ref: strong-light-living
+      source_refs:
+        fact_refs:
+          - fact-table.yaml#existing-anchor
+          - fact-table.yaml#reference-dimensions
+          - fact-table.yaml#user-height-selection
+          - fact-table.yaml#user-arm-layout
+          - fact-table.yaml#user-globe-plane-selection
+          - fact-table.yaml#user-arm-root-plane-selection
+          - fact-table.yaml#user-arm-root-support-selection
+          - fact-table.yaml#radial-layout-proposal
+          - fact-table.yaml#total-height-datum
+        decision_refs:
+          - decision-brief.yaml#alignment
+      views:
+        plan:
+          required: true
+          origin: 以客厅主灯现有中心线为平面原点，使用项目局部坐标。
+          axes: x东西；z南北
+          direction: 北朝上(-z)
+          position:
+            x: 10.8
+            z: 7.15
+          rotation: 0
+          dimensions:
+            length: 0.88
+            width: 0.88
+            depth: 0.88
+            offset: 0
+          dimension_semantics: overall
+        elevation:
+          required: true
+          viewing_side: 从客厅起居区仰视；天花锚点保持y=2.80m。
+          vertical_axis: 'y'
+          height: 2.8
+          dimensions:
+            width: 0.88
+            height: 0.445
+            sill: null
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 沿z方向剖过吸顶盘、100mm吊杆、中心装饰件和同高球罩平面。
+          depth_axis: z方向；8个球罩同高，两个4头平面组按45°错位环绕中心；R6八根臂根共用下杯台面。
+          clearances:
+            front: null
+            rear: null
+            top: 0
+            bottom: 0.445
+          thickness: 0.445
+          dimension_semantics: overall
+      geometry:
+        x: 10.8
+        'y': 2.8
+        z: 7.15
+        width: 0.88
+        depth: 0.88
+        height: 0.445
+        length: 0.88
+        rotation: 0
+        along: null
+      constraints:
+        - 商品图标注外径Ø880mm；预演采用横向球罩直径150mm，球心半径0.365m，使 0.365+0.075=0.440m，符合Ø880mm概念外包络。
+        - 商品图标注球罩150×140mm；渲染使用椭球近似，垂直方向140mm。
+        - 商品图吸顶盘Ø130×35mm；杆长只装100mm长杆；用户选择总高445mm。
+        - R4按业主澄清：8个球罩中心统一在y=2.425m，两个4头组只在平面中错45°；不再做垂直灯罩层差。
+        - R5历史：8根弧臂曾共用上盘台面y=2.585m、半径0.07m。
+        - R6按业主进一步澄清：8根弧臂根部共用下杯台面y=2.4405m、半径0.058m，均以`rise`和0.10m拱高起弧；t=0.25处中心线y=2.492625m（高于根平面52mm），再连接球罩顶部灯座底部。
+        - R4的上下分层臂根及R5的上盘臂根均留作历史版本，当前R6全部从下杯台起弧。
+        - 单张正视图没有厂家俯视结构；45°平面方位与0.365m球心半径仍是满足外包络的预演拟合值。
+        - 最低点按天花锚点至球罩下缘解释：y≈2.355m；商品图未明示精确测量基准，视为模型假设。
+        - R3中心车削尾饰最低点y=2.3555m，与低层球罩y=2.355m相差0.5mm，均在445mm活动包络内；schema按尾饰轮廓声明总高校验。历史R2球形尾饰最低点同为y=2.3555m，详见runtime-r2与work-record。
+        - R4八个同高球罩下缘均为y=2.355m；尾饰底y=2.3555m，与原445mm总高包络保持一致。
+        - R3球罩顶部阶纹灯座竖直放置（Ø40×50mm），8根弧臂终点接灯座底部；两层臂根分别位于上盘/下杯，均向外上扬。该连接形式是根据厂家正视图对R2“侧插灯座”错误的修正，不代表厂商结构图。
+        - 木纹棕、古铜棕、乳白玻璃为图片视觉取色，不是材质或商品工艺确认。
+        - 灯体、球罩、灯臂仅表示造型关系，不代表实际承重、安装、换泡或配光。
+      interfaces:
+        - 保留light_living_dome (10.80,7.15,h=2.80)、living_base回路、双控和strong-light-living路由。
+        - 不改变客厅吊顶、HVAC、家具或其他灯具。
+        - 当前照明渲染不代表真实流明、照度或光斑。
+      validation_refs:
+        - evidence/manufacturer-reference.png
+        - docs/design-iterations/living-main-light-archive-20261017/evidence/user-context.png
+        - evidence/user-feedback-r2-underside.png
+        - evidence/runtime-r3.json
+        - evidence/closeup-r3-v002.png
+        - evidence/elevation-r3-v002.png
+        - evidence/runtime-r4.json
+        - evidence/elevation-r4-v002.png
+        - evidence/runtime-r5.json
+        - evidence/closeup-r5-v001.png
+        - evidence/elevation-r5-v001.png
+        - evidence/runtime-r6.json
+        - evidence/closeup-r6-v001.png
+        - evidence/elevation-r6-v001.png
+      status: frozen_proposal
+  notes:
+    - 高度/内部分解是预演，具体SKU尺寸仍以厂商完整安装图为准。
+    - 当前10头灯原样归档于 docs/design-iterations/living-main-light-archive-20261017/。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: living-antique-eight-globe-light-20261017
+  subject: 客厅主灯换8头古铜木色吊灯R6预演
+  created_at: '2026-10-17'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/render/lighting.yaml
+      - shared/render/MultiGlobeChandelierGeometry.ts
+      - app/src/render/InteriorLightingSystem.ts
+    observation_refs:
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/manufacturer-reference.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/user-context.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/user-feedback-r2-underside.png
+    runtime_refs:
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/runtime-r2.json
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/runtime-r3.json
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/runtime-r4.json
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/runtime-r5.json
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/runtime-r6.json
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/context-r2-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/closeup-r2-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/topdown-envelope-r2-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/context-r3-v002.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/closeup-r3-v002.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/underside-r3-v002.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/topdown-envelope-r3-v002.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/elevation-r3-v002.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/context-r4-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/closeup-r4-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/underside-r4-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/topdown-envelope-r4-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/elevation-r4-v002.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/context-r5-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/closeup-r5-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/underside-r5-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/topdown-envelope-r5-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/elevation-r5-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/context-r6-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/closeup-r6-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/underside-r6-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/topdown-envelope-r6-v001.png
+      - docs/design-iterations/living-antique-eight-globe-light-20261017/evidence/elevation-r6-v001.png
+  facts:
+    confirmed:
+      - id: existing-anchor
+        category: confirmed
+        statement: 客厅主灯沿用 light_living_dome 原电气锚点 x=10.8m、z=7.15m、顶面 y=2.80m；回路、开关和机电路由由原配置控制。
+        value:
+          x: 10.8
+          z: 7.15
+          ceiling_y_m: 2.8
+          circuit: living_base
+        source_refs:
+          - config/electrical.yaml
+          - config/electrical-topology.yaml
+        basis: 当前权威电气配置
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - plan
+          - context
+        owner: project
+        status: resolved
+        verification_method: runtime 目标对象与权威点位坐标一致
+        user_confirmation_ref: null
+      - id: reference-dimensions
+        category: confirmed
+        statement: 业主提供的商品参数图标注8头、外径Ø880mm、玻璃球罩150×140mm、吸顶盘Ø130×35mm；短杆50mm、长杆100mm，三档总高约395/445/495mm。
+        value:
+          heads: 8
+          outer_diameter_mm: 880
+          globe_width_mm: 150
+          globe_height_mm: 140
+          canopy_diameter_mm: 130
+          canopy_height_mm: 35
+          short_rod_mm: 50
+          long_rod_mm: 100
+          total_height_options_mm:
+            - 395
+            - 445
+            - 495
+        source_refs:
+          - evidence/manufacturer-reference.png
+        basis: 商品参数图直接标注
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - plan
+          - elevation
+          - closeup
+        owner: project
+        status: resolved
+        verification_method: 配置字段和 runtime AABB / parts count 对照
+        user_confirmation_ref: 用户提供参考图并要求试换
+      - id: user-height-selection
+        category: user_decision
+        statement: 试模选总高445mm，仅装100mm长杆；试验时沿用现有灯位。
+        value:
+          total_height_mm: 445
+          rod: long_only_100mm
+          anchor_ref: light_living_dome
+        source_refs:
+          - conversation-2026-10-17-height-selection
+        basis: 业主明确选择“445 mm（推荐，接近当前450mm）”
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - context
+          - elevation
+        owner: owner
+        status: resolved
+        verification_method: runtime lowest point approximately y=2.355m
+        user_confirmation_ref: 445 mm（推荐，接近当前450mm）
+      - id: user-arm-layout
+        category: user_decision
+        statement: 业主确认8根单头弧臂分成两个错位组；首轮把“错高”解释为灯罩垂直分层，R4按最新澄清改为8个球罩同高、只在平面内错开。
+        value:
+          arms: 8
+          heads_per_arm: 1
+          horizontal_groups: 2
+          globe_planes: 1
+          horizontal_offset_deg: 45
+        source_refs:
+          - conversation-2026-10-17-arm-layout
+        basis: 保留首轮选择与R4后续澄清；最新球罩高度决定优先
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - underside
+          - elevation
+          - context
+        owner: owner
+        status: resolved
+        verification_method: runtime confirms 8 heads and one shared globe center Y
+        user_confirmation_ref: 8根单头弧臂，分两层错高（推荐，按图可见端头建模）；是的，8个球罩同高，只在水平方向错开
+      - id: user-globe-plane-selection
+        category: user_decision
+        statement: 业主明确8个球罩中心同高，两个4头组只在水平方向错开；不做垂直高低层。
+        value:
+          globe_center_y_m: 2.425
+          globe_center_offset_m: -0.375
+          globe_planes: 1
+          horizontal_group_offsets_deg:
+            - 0
+            - 45
+        source_refs:
+          - conversation-2026-10-17-globes-same-plane
+        basis: 业主最新明确澄清“8个球罩同高，只在水平方向错开”
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - elevation
+          - underside
+          - topdown-envelope
+          - context
+        owner: owner
+        status: resolved
+        verification_method: R4 runtime globeCenterYValues are all 2.425m
+        user_confirmation_ref: 是的，8个球罩同高，只在水平方向错开
+      - id: user-arm-root-plane-selection
+        category: user_decision
+        statement: 业主进一步明确8根灯臂应从同一个中心台面起弧，全部使用向上拱起的弧线，再接入同高球罩顶部灯座。
+        value:
+          arm_root_y_m: 2.585
+          arm_root_radius_m: 0.07
+          arm_root_hub: upper_disc
+          arm_bow_m: 0.1
+          sweep: rise
+          arm_root_planes: 1
+        source_refs:
+          - conversation-2026-10-17-arms-common-plane
+        basis: 业主最新明确“所有灯珠应该是从同一个台面往上曲的呀”
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - underside
+          - elevation
+          - closeup
+          - context
+        owner: owner
+        status: resolved
+        verification_method: R5 runtime armRootYValues all 2.585m; armQuarterPointYValues all 2.601m
+        user_confirmation_ref: 所有灯珠应该是从同一个台面往上曲的呀
+      - id: user-arm-root-support-selection
+        category: user_decision
+        statement: 业主明确指定共面起弧的台面是下面的下杯台，不是上盘；8根弧臂从下杯同一标高向上拱。
+        value:
+          arm_root_y_m: 2.4405
+          arm_root_radius_m: 0.058
+          arm_root_hub: lower_disc
+          arm_root_planes: 1
+          sweep: rise
+        source_refs:
+          - conversation-2026-10-17-arm-root-on-lower-bowl
+        basis: 业主最新明确“是从下面那个台子往上曲的，而不是上面那个台子”
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - underside
+          - elevation
+          - closeup
+          - context
+        owner: owner
+        status: resolved
+        verification_method: R6 runtime armRootYValues all 2.4405m; hubAttachment lower_disc for all arms
+        user_confirmation_ref: 是从下面那个台子往上曲的，而不是上面那个台子
+    inferred:
+      - id: r2-shape-diagnosis-r3-geometry-correction
+        category: inferred
+        statement: 业主指出R2造型不对；对照代码与截图确认R2灯座轴线沿径向横置并由球罩侧面插入，8臂又同高起于上盘。R3将灯座竖置在球罩顶部，灯臂接灯座底部，上下两层分别从上盘/下杯起弧，中心下杯与尾饰改为浅碗和车削轮廓。
+        value:
+          r2_socket_axis: radial
+          r2_arm_endpoint: globe_side
+          r3_socket_axis: vertical
+          r3_arm_endpoint: socket_base
+          upper_attachment: upper_disc
+          lower_attachment: lower_disc
+        source_refs:
+          - evidence/user-feedback-r2-underside.png
+          - shared/render/MultiGlobeChandelierGeometry.ts
+          - evidence/context-r3-v002.png
+          - evidence/closeup-r3-v002.png
+        basis: 用户反馈图及活动构造器的方向/端点代码；R3 runtime parts 与同版图像
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - underside
+          - elevation
+          - closeup
+        owner: design
+        status: implemented_preview_waiting_review
+        verification_method: runtime灯座位置/轴向、8头计数、同机位截图目检
+        user_confirmation_ref: 为什么造型不太对？
+      - id: appearance-from-image
+        category: inferred
+        statement: 依据图片可见效果，预演采用木纹棕色吸顶盘、铜棕色金属臂/灯头/中心件和乳白玻璃球；颜色、光泽与表面纹理没有独立文字规格支持。
+        value:
+          canopy: warm_wood_brown
+          metal: antique_copper_brown
+          globes: warm_opal_white
+        source_refs:
+          - evidence/manufacturer-reference.png
+        basis: 商品图片的视觉观察
+        confidence: medium
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - closeup
+          - context
+        owner: design
+        status: resolved_for_preview
+        verification_method: 同机位截图目检并由业主反馈
+        user_confirmation_ref: 我想换成这个，看看你的方案
+      - id: radial-layout-proposal
+        category: inferred
+        statement: 单张正视图没有给出8个灯头的3D方位。R4按业主澄清设为同一球罩高度，平面内分两个4头组错45°、同半径构造，并以Ø880mm外包络约束球心半径。
+        value:
+          group_counts:
+            - 4
+            - 4
+          angular_offsets_deg:
+            - 0
+            - 45
+          globe_center_radius_m: 0.365
+          globe_center_offset_y_m: -0.375
+          globe_horizontal_diameter_m: 0.15
+        source_refs:
+          - evidence/manufacturer-reference.png
+          - user-arm-layout
+        basis: 对称视觉预演；0.365+0.075=0.44m，符合Ø880mm概念外包络
+        confidence: medium
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - plan
+          - underside
+          - context
+        owner: design
+        status: proposed
+        verification_method: top-down runtime bounds and visual review
+        user_confirmation_ref: null
+      - id: total-height-datum
+        category: inferred
+        statement: 把商品图“总高445mm”按天花锚点到灯具最低可见点解释，锚点y=2.80m，因此目标最低点约y=2.355m。
+        value:
+          ceiling_anchor_y_m: 2.8
+          total_drop_m: 0.445
+          globe_lowest_point_y_m: 2.355
+          finial_lowest_point_y_m: 2.3555
+        source_refs:
+          - evidence/manufacturer-reference.png
+          - existing-anchor
+          - user-height-selection
+        basis: 商品图总高箭头从吸顶盘顶至灯体下端；尾饰实际下端按运行时球体几何校核并收进0.445m包络
+        confidence: medium
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - elevation
+        owner: design
+        status: resolved_for_preview
+        verification_method: runtime y-bounds
+        user_confirmation_ref: null
+    site_pending:
+      - id: manufacturer-installation-data
+        category: site_pending
+        statement: 灯具重量、底盘固定、实际接线、灯头型号、球罩固定/换泡方式和真实配光仍需SKU及现场资料核验；本轮只预演外形。
+        value: null
+        source_refs:
+          - evidence/manufacturer-reference.png
+        basis: 商品参数图未提供上述数据
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - construction
+          - service
+        owner: owner_and_supplier
+        status: open
+        verification_method: 核对完整商品页、安装图和现场条件
+        user_confirmation_ref: null
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: living-antique-eight-globe-light-20261017
+  subject: 客厅主灯8头古铜木色吊灯R6预演
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: light_living_dome
+      type: multi_globe_chandelier_preview
+      archetypes:
+        - wood_canopy
+        - antique_copper_turned_center_drop
+        - eight_curved_arms_two_horizontal_groups
+        - vertical_ribbed_sockets
+        - same_height_warm_opal_ellipsoid_globes
+      owner: 业主
+      function: 客厅主灯造型候选预演；不代表已选SKU或实际照度。
+      material: 木色吸顶盘、古铜棕金属件、乳白球罩为商品图视觉近似。
+      geometry_source: config/render/lighting.yaml + shared/render/MultiGlobeChandelierGeometry.ts；浏览器与GLB/export共用。
+      datum_refs:
+        - design-datum.yaml#living-main-fixture-antique-8
+      fact_refs:
+        - fact-table.yaml#reference-dimensions
+        - fact-table.yaml#user-height-selection
+        - fact-table.yaml#user-arm-layout
+        - fact-table.yaml#user-globe-plane-selection
+        - fact-table.yaml#user-arm-root-plane-selection
+        - fact-table.yaml#user-arm-root-support-selection
+        - fact-table.yaml#appearance-from-image
+        - fact-table.yaml#radial-layout-proposal
+      decision_refs:
+        - decision-brief.yaml#alignment
+      dependencies:
+        - electrical:light_living_dome
+        - circuit:living_base
+        - strong-light-living
+      interfaces:
+        - id: electrical-anchor
+          target_object_id: electrical:light_living_dome
+          kind: electrical
+          requirement: 保持现有位置/高度/回路/控制/MEP；只换渲染造型。
+          status: confirmed
+        - id: installation-and-maintenance
+          target_object_id: ceiling_living
+          kind: structural
+          requirement: 实际重量、底盘固定、灯头与球罩检修换泡待SKU/现场核验。
+          status: open
+      collision:
+        policy: reviewed
+        geometry_ref: 吸顶灯具，不作为可行走场景碰撞墙；需复核概念Ø0.88m×0.445m包络位于现有灯位。
+        review_ref: review-manifest.json#reviewers.functional
+      maintenance:
+        boundary: 供应商/电工负责安装与检修；球罩固定与灯泡更换方式待完整商品资料。
+        access_clearance: null
+        replaceable_parts:
+          - bulbs_x8
+          - opal_globes_x8
+          - arms_x8
+          - center_ornament
+          - wood_canopy
+        inspection_requirements:
+          - SKU冻结前确认灯重、固定底盘、接线方式、球罩拆装和换泡路径。
+      parts:
+        - id: canopy-and-stem
+          role: 木纹棕吸顶盘Ø130×35mm，连接一根100mm长杆。
+          independent: true
+          owner: 灯具供应商
+          material: 木色程序材质与古铜杆仅为屏幕近似。
+          geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
+          datum_refs:
+            - design-datum.yaml#living-main-fixture-antique-8
+          dependencies: []
+          collision: reviewed
+          maintenance_boundary: 底盒固定与盘内电气待SKU安装图。
+          validation_refs:
+            - evidence/closeup-r6-v001.png
+            - evidence/context-r6-v001.png
+        - id: center-hub-and-drop
+          role: 古铜色中心连接件；下杯台统一承接8根弧臂，上盘与车削连接杆、下垂尾饰负责中心装饰。
+          independent: true
+          owner: 灯具供应商
+          material: 古铜棕金属色为视觉推断，不视为表面工艺。
+          geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
+          datum_refs:
+            - design-datum.yaml#living-main-fixture-antique-8
+          dependencies:
+            - canopy-and-stem
+          collision: reviewed
+          maintenance_boundary: 中心件内部接线/拆装路径待核。
+          validation_refs:
+            - evidence/closeup-r6-v001.png
+            - evidence/elevation-r6-v001.png
+        - id: eight-single-head-arms
+          role: 8根单头古铜色弧臂，八根臂根共用下杯台面y=2.4405m/半径0.058m，同一向上拱曲线；两个4头组只在水平面错45°并接至同高灯座；径向半径按Ø880mm外包络拟合。
+          independent: true
+          owner: 灯具供应商
+          material: 古铜棕金属色为视觉近似；杆径、弧长和角度未由图纸标注。
+          geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
+          datum_refs:
+            - design-datum.yaml#living-main-fixture-antique-8
+          dependencies:
+            - center-hub-and-drop
+          collision: reviewed
+          maintenance_boundary: 臂座连接、受力、变形与可拆性待厂家资料。
+          validation_refs:
+            - evidence/underside-r6-v001.png
+            - evidence/elevation-r6-v001.png
+            - evidence/topdown-envelope-r6-v001.png
+            - evidence/closeup-r6-v001.png
+        - id: eight-ellipsoid-globes
+          role: 8个乳白玻璃球罩，横向150mm、垂直140mm；每只球罩顶部有古铜阶纹灯座并与弧臂相接。
+          independent: true
+          owner: 灯具供应商
+          material: 乳白球罩屏幕近似；实际透光率、眩光和色温未知。
+          geometry_source: shared/render/MultiGlobeChandelierGeometry.ts
+          datum_refs:
+            - design-datum.yaml#living-main-fixture-antique-8
+          dependencies:
+            - eight-single-head-arms
+          collision: reviewed
+          maintenance_boundary: 球罩固定、灯泡规格和更换路径待SKU说明书。
+          validation_refs:
+            - evidence/closeup-r6-v001.png
+            - evidence/context-r6-v001.png
+            - evidence/underside-r6-v001.png
+      visual_relationships:
+        - target_object_id: sofa_3seat
+          relation: adjacent
+          requirement: 客厅主灯作为起居区视觉焦点，复核坐姿视线与压迫感。
+          evidence_refs:
+            - evidence/context-r6-v001.png
+        - target_object_id: light_dining_pendant
+          relation: sibling
+          requirement: 与餐厅灯形成协调的复古/金属色关系，不误改餐厅灯。
+          evidence_refs:
+            - evidence/context-r6-v001.png
+      validation_refs:
+        - review-manifest.json#reviewers.aesthetic
+        - review-manifest.json#reviewers.functional
+      status: implemented_preview
+  notes:
+    - R6确认八个球罩同高、八根弧臂共用下杯台面起弧并同向上拱；水平角度组仍按45°错位预演。
+    - R5曾从上盘起弧，R4曾将根部分接上盘和下杯，R3曾将球罩建成垂直两层，均保留为历史版本；当前活动模型以R6为准。
+    - 供应商真实连接结构、承重、换泡和配光未核实。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: living-antique-eight-globe-light-20261017
+  subject: 客厅主灯8头古铜木色吊灯R6预演
+  status: delivery_ready
+  evidence_binding:
+    url_template: http://localhost:5173/?v=20261017-antique8-r6
+    required_views:
+      - context
+      - closeup
+      - elevation
+      - underside
+      - topdown-envelope
+    captured_views:
+      - context-r6-v001
+      - closeup-r6-v001
+      - underside-r6-v001
+      - topdown-envelope-r6-v001
+      - elevation-r6-v001
+    version_bound: true
+    notes: R6同版图绑定 ?v=20261017-antique8-r6；runtime-r6.json记录ready=true、无配置错误、8球心Y=2.425m、8臂根Y=2.4405m、8个灯座Y=2.52m、8 arms/globes/sockets/PointLights及445mm/Ø880mm声明包络。R6改前/改后gate:visual均CLEAR；R6双评审PASS。业主2026-10-17确认“差不多了，就这样。提交吧。”，接受范围为3D造型预演。R2-R5图/runtime/复核均保留历史。
+  review_history:
+    R2:
+      aesthetic:
+        status: passed
+        verdict: PASS
+        reviewed_version: R2 / 2026-10-17
+        contract: references/review-contracts.md
+        summary: 8头双层球泡结构、木色/古铜/乳白关系与参考商品图核心造型可辨认；R2中心尾饰已收进445mm包络。
+        findings:
+          - 非阻塞：程序材质没有木纹、螺纹灯座和细致古铜表面，铜色略亮橙；当前是视觉预演近似。
+          - 非阻塞：俯视图读成规则八辐轮形。参考商品图只有正视图，三维臂位和两层错45°属于预演推断。
+          - 非阻塞：客厅远景受现有吊顶深色梁遮挡，closeup、underside和topdown仍能判断灯体造型；球罩亮度与顶墙光晕不证明实际配光。
+        blocking_issues: []
+        evidence_refs:
+          - evidence/manufacturer-reference.png
+          - evidence/context-r2-v001.png
+          - evidence/closeup-r2-v001.png
+          - evidence/underside-r2-v001.png
+          - evidence/topdown-envelope-r2-v001.png
+          - evidence/elevation-r2-v001.png
+          - evidence/runtime-r2.json
+          - decision-brief.yaml
+      functional:
+        status: passed
+        verdict: PASS
+        reviewed_version: R2 / 2026-10-17
+        contract: references/review-contracts.md
+        summary: R2运行时确认8个球罩、弧臂、灯座和PointLights；声明包络0.88×0.88×0.445m，最低球罩底y=2.355m、尾饰球底y=2.3555m；电气锚点、回路、控制与照明路由保持不变。
+        findings:
+          - 尺寸基于用户选定的445mm总高、仅装100mm长杆和图示Ø880mm拟合；两层各4头、错45°为三维预演假设。
+          - 包络依据声明几何和视觉检查，不是最终Three.js网格AABB或实物安装公差；R2未生成臂管、灯座、球罩和中心件的网格最小距离报告。
+          - 灯重、结构固定、拆罩换泡、接线与真实光度仍需完整SKU资料和现场核对；符合R2仅做视觉预演的范围。
+        blocking_issues: []
+        evidence_refs:
+          - evidence/runtime-r2.json
+          - evidence/context-r2-v001.png
+          - evidence/closeup-r2-v001.png
+          - evidence/elevation-r2-v001.png
+          - evidence/underside-r2-v001.png
+          - evidence/topdown-envelope-r2-v001.png
+          - fact-table.yaml
+          - design-datum.yaml
+          - object-manifest.yaml
+    R3:
+      aesthetic:
+        status: passed
+        verdict: PASS
+        reviewed_version: R3 / 2026-10-17
+        contract: references/review-contracts.md
+        summary: R3修正了R2侧插灯座、弧臂端点和同高臂根问题；参考图中的木色、古铜、乳白与竖向装饰轴均可辨，造型接近复古多球泡吊灯。
+        findings:
+          - R3中球罩顶部出现竖直灯座，弧臂在灯座底部收口，上下两层分别连接中心层级，中心尾饰也保持在总高包络内；R2不再出现横向插球或悬空端点读法。
+          - 非阻塞：程序材质仍缺真实木纹、灯座螺纹和古铜层次；俯视为规则八辐形，45°臂位仍只是参考正视图无法核验的预演推断。
+          - 非阻塞：客厅远景仍受吊顶梁和远景尺度影响；closeup、underside和elevation足以判断本轮形态。渲染光晕和球罩亮度不代表实际配光。
+        blocking_issues: []
+        assumptions:
+          - 两层各4头、45°错位及0.365m球心半径是满足外包络的视觉拟合值，不代表厂家实际三维结构。
+          - 445mm按天花锚点至最低点解释；runtime-r3最低球罩y=2.355m，尾饰最低y=2.3555m。
+          - 颜色是按图片视觉取色，真实木纹、镀层和玻璃透光率仍未知。
+        evidence_refs:
+          - evidence/manufacturer-reference.png
+          - evidence/user-feedback-r2-underside.png
+          - evidence/context-r3-v002.png
+          - evidence/closeup-r3-v002.png
+          - evidence/underside-r3-v002.png
+          - evidence/topdown-envelope-r3-v002.png
+          - evidence/elevation-r3-v002.png
+          - evidence/runtime-r3.json
+      functional:
+        status: passed
+        verdict: PASS
+        reviewed_version: R3 / 2026-10-17
+        contract: references/review-contracts.md
+        summary: R3确认8个竖直顶部灯座及对应球罩、弧臂、PointLights；臂端进入灯座底约4mm，分层根部位于各自中心件范围内，实际网格边界符合声明的Ø880mm×445mm包络，电气接口保持不变。
+        findings:
+          - 实际边界：x[10.36,11.24]、z[6.71,7.59]、y[2.355,2.80]；低层球罩底y=2.355m，车削尾饰底y=2.3555m。
+          - 非阻塞：`hubAttachment`用于schema校验，渲染取显式`armStartRadius/armStartOffsetY`；当前配置与上盘/下杯吻合，后续改几何时须同步两者。
+          - 非阻塞：未归档独立GLB与逐零件AABB；浏览器和GLB共用构造器，目标导出测试通过，足以支持本轮视觉预演。
+          - 灯重、固定、换泡/拆罩、接线和真实配光仍待SKU资料与现场核对。
+        blocking_issues: []
+        assumptions:
+          - 445mm按天花锚点到最低可见点解释；外包络按8个Ø150mm球罩中心半径0.365m拟合。
+          - 8头的45°方位、两层角度和中心装饰细节是视觉拟合，不代表厂商真实结构。
+          - 当前只复核预演几何和电气/渲染接口，不批准SKU、安装、承重或真实光度。
+        evidence_refs:
+          - evidence/runtime-r3.json
+          - evidence/context-r3-v002.png
+          - evidence/closeup-r3-v002.png
+          - evidence/underside-r3-v002.png
+          - evidence/topdown-envelope-r3-v002.png
+          - evidence/elevation-r3-v002.png
+          - shared/render/MultiGlobeChandelierGeometry.ts
+          - config/render/lighting.yaml
+          - app/src/render/InteriorLightingSystem.test.ts
+          - tests/server/cli-glb-export.test.ts
+    R4:
+      aesthetic:
+        status: pending
+        verdict: BLOCKED
+        reviewed_version: R5 / 2026-10-17
+        contract: references/review-contracts.md
+        summary: R5把8个弧臂根部统一至上盘台面并改为同一上拱曲线；等待基于R5同版截图的独立审美复核。
+        findings: []
+        blocking_issues:
+          - R5独立审美复核尚未返回。
+      functional:
+        status: pending
+        verdict: BLOCKED
+        reviewed_version: R5 / 2026-10-17
+        contract: references/review-contracts.md
+        summary: R5目标单测确认8个弧臂起点同高并在四分之一曲线上拱；等待独立功能复核共同根平面、灯座连接和包络。
+        findings: []
+        blocking_issues:
+          - R5独立功能复核尚未返回。
+    R5:
+      aesthetic:
+        status: passed
+        verdict: PASS
+        reviewed_version: R5 / 2026-10-17
+        contract: references/review-contracts.md
+        summary: R5的8根弧臂统一从上盘起弧，曲线先上拱再接至同高灯座；斜角视图不再读成上下层触手，中心连接关系更清楚。
+        findings:
+          - runtime-r5确认8根根部Y全为2.585m、四分之一曲线点全为2.601m、灯座中心Y全为2.52m，8个球心仍统一在2.425m。
+          - 非阻塞：closeup中8根弧臂形成连续对称上拱；elevation中部分球罩因45°水平错位与视角重叠，topdown的八向排布完整分开。
+          - 非阻塞：木纹、古铜工艺和渲染光晕仍是视觉近似；45°水平布置与0.365m半径未由厂商俯视图确认。
+        blocking_issues: []
+        assumptions:
+          - 8根灯臂统一上盘根平面和rise曲线属于业主明确要求的视觉预演，不代表厂商结构图。
+          - 45°水平错位、0.365m半径、445mm总高口径沿用此前预演假设。
+        evidence_refs:
+          - evidence/manufacturer-reference.png
+          - evidence/context-r5-v001.png
+          - evidence/closeup-r5-v001.png
+          - evidence/underside-r5-v001.png
+          - evidence/topdown-envelope-r5-v001.png
+          - evidence/elevation-r5-v001.png
+          - evidence/runtime-r5.json
+      functional:
+        status: passed
+        verdict: PASS
+        reviewed_version: R5 / 2026-10-17
+        contract: references/review-contracts.md
+        summary: R5八根弧臂共用根平面、rise曲线和顶部灯座端点；8个球心同高，臂端与灯座相接，实际网格包络符合445mm/Ø880mm声明。
+        findings:
+          - 根部Y均为2.585m，t=0.25处均为2.601m，实际弧线最高约2.614m；随后统一下降至y=2.499m的臂端，进入灯座底部约4mm。
+          - 弧臂中心线最小相互间距约0.0536m，弧管直径0.014m，未发现实体互穿；实际GLB AABB为x[10.36,11.24]、y[2.355,2.80]、z[6.71,7.59]。
+          - 非阻塞：45°水平错位和0.365m球心半径仍为缺少厂家俯视图时的推断；`hubAttachment`与显式根坐标需保持同步。
+          - 完整verify:all仅verify-facts因既有MEP登记52处、实算51处失败；与本灯具几何无关，未列为功能阻塞。
+        blocking_issues: []
+        assumptions:
+          - 锚点为(10.8,2.8,7.15)，总高按最低可见点计算；8球心Y均为2.425m，根平面Y=2.585m。
+          - 浏览器与CLI GLB共用MultiGlobeChandelierGeometry；目标单测与实际临时GLB检查均包含8弧臂、8球罩和8顶部灯座。
+          - 水平分组方位仍为预演，SKU安装、承重、维护和真实配光不在本轮批准范围内。
+        evidence_refs:
+          - evidence/runtime-r5.json
+          - evidence/context-r5-v001.png
+          - evidence/closeup-r5-v001.png
+          - evidence/underside-r5-v001.png
+          - evidence/topdown-envelope-r5-v001.png
+          - evidence/elevation-r5-v001.png
+          - config/render/lighting.yaml
+          - shared/render/MultiGlobeChandelierGeometry.ts
+          - shared/project-render-facts-schema.ts
+          - app/src/render/InteriorLightingSystem.test.ts
+          - tests/server/cli-glb-export.test.ts
+  reviewers:
+    aesthetic:
+      status: passed
+      verdict: PASS
+      reviewed_version: R6 / 2026-10-17
+      contract: references/review-contracts.md
+      summary: R6八根弧臂确从下杯同一台面起弧，使用统一rise曲线并接到同高灯座；近景读法自然，未见反向或悬空臂。
+      findings:
+        - 下杯起弧关系较上盘起弧更贴近商品图中心下杯结构；underside能数清8臂，topdown水平八辐完整。
+        - 非阻塞：context/elevation受远景、梁遮挡和水平错位影响显得紧凑；近景能判断统一曲线和连接关系。
+        - 非阻塞：45°水平分组和0.365m半径仍是正视图推断；木纹、古铜工艺和光晕均为程序预演。
+      blocking_issues: []
+      assumptions:
+        - 下杯台面y=2.4405m作为8根弧臂共同起弧面，armBow=0.10m。
+        - 8个球心同高y=2.425m；水平45°方位仍未获厂商俯视图确认。
+        - 445mm总高按天花锚点至最低点解释，实物材质/重量/安装/配光仍未核验。
+      evidence_refs:
+        - evidence/manufacturer-reference.png
+        - evidence/context-r6-v001.png
+        - evidence/closeup-r6-v001.png
+        - evidence/underside-r6-v001.png
+        - evidence/topdown-envelope-r6-v001.png
+        - evidence/elevation-r6-v001.png
+        - evidence/runtime-r6.json
+    functional:
+      status: passed
+      verdict: PASS
+      reviewed_version: R6 / 2026-10-17
+      contract: references/review-contracts.md
+      summary: R6八根弧臂均从下杯同一平面起弧并连接到同高顶部灯座；8个球心同高，实际网格边界符合445mm/Ø880mm包络。
+      findings:
+        - 根点Y均为2.4405m、半径0.058m且关联lower_disc；球心Y均为2.425m。弧线t=0.25均为2.492625m，端点2.499m进入灯座底部2.495m约4mm。
+        - 实际GLB AABB约x[10.36,11.24]、y[2.355,2.80]、z[6.71,7.59]；弧臂中心线最小相互间距约0.0444m，弧管直径0.014m，无实体互穿。
+        - 非阻塞：根点位于浅碗侧壁内略有嵌入，形成接合；若要更像从碗口台沿出杆，可再提高到碗口高度。
+        - 非阻塞：45°水平错位和0.365m半径仍是正视图不足时的三维预演假设；hubAttachment与显式根坐标需同步。
+      blocking_issues: []
+      assumptions:
+        - 下杯台面按y=2.4405m作为8根弧臂共同起弧面，半径0.058m。
+        - 浏览器与CLI GLB共用MultiGlobeChandelierGeometry，目标测试和临时GLB节点检查一致。
+        - 本轮不批准真实安装、承重、维护或光度。
+      evidence_refs:
+        - evidence/runtime-r6.json
+        - evidence/context-r6-v001.png
+        - evidence/closeup-r6-v001.png
+        - evidence/underside-r6-v001.png
+        - evidence/topdown-envelope-r6-v001.png
+        - evidence/elevation-r6-v001.png
+        - config/render/lighting.yaml
+        - shared/render/MultiGlobeChandelierGeometry.ts
+        - shared/project-render-facts-schema.ts
+        - app/src/render/InteriorLightingSystem.test.ts
+        - tests/server/cli-glb-export.test.ts
+  review_rounds:
+    - round: 1
+      version: R2（445mm总高、100mm长杆、8根单头弧臂、两层各4头错45°）
+      aesthetic: PASS（参考图配色与8头关系可辨；后被业主指出实际R2连接造型不对，结论仅作历史）
+      functional: PASS（R2计数、包络及电气接口通过；R3不沿用本轮当前造型结论）
+      outcome: R2截图/runtime/评审全文保留；业主反馈触发R3改模。
+    - round: 2
+      version: R3（竖直顶部阶纹灯座、分层臂根、浅碗与车削中心件）
+      aesthetic: PASS（侧插灯座和同高臂根已修正；45°3D臂位假设、简化材质及远景梁遮挡列为非阻塞）
+      functional: PASS（灯座朝向/端点、分层根部、445mm最低点与Ø880mm包络通过；`hubAttachment`需与显式根坐标同步）
+      outcome: R3独立审美与功能复核均通过；等待业主确认造型观感。
+    - round: 3
+      version: R4（八个球罩同高y=2.425m，两个4头组只在水平面错45°）
+      aesthetic: PASS（八个球心Y全为2.425m；45°平面错位导致立面局部遮挡，俯视八方位完整；均为预演几何）
+      functional: PASS（8个球心同高、8灯座与8弧臂正确连接、实际GLB AABB符合445mm/Ø880mm；投影视图重叠但三维无穿插）
+      outcome: R4独立审美与功能复核均通过；等待业主确认立面局部遮挡是否可接受。
+    - round: 4
+      version: R5（8臂同一上盘台面起弧，统一上拱；8个球罩同高）
+      aesthetic: PASS（八臂共用上盘根平面和rise曲线，中心线t=0.25高于根面16mm；水平错位导致立面局部重叠）
+      functional: PASS（共面臂根、统一rise曲线、顶部灯座连接、53.6mm最小中心线净距及445mm/Ø880mm包络通过）
+      outcome: R5独立审美与功能复核均通过；等待业主确认弧臂造型观感。
+    - round: 5
+      version: R6（8根弧臂统一从下杯台面起弧，向上拱至同高灯座）
+      aesthetic: PASS（8臂从下杯同一台面起弧、统一rise曲线接至同高灯座；未见反向或悬空）
+      functional: PASS（8根根点同为下杯台面y=2.4405m，弧线统一rise至同高灯座，44.4mm最小中心线净距，包络未变）
+      outcome: R6独立审美与功能复核均通过；等待业主确认下杯起弧与弧线观感。
+  delivery_gate:
+    aesthetic_pass_required: true
+    functional_pass_required: true
+    blocking_issues: []

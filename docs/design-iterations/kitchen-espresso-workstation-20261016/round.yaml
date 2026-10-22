@@ -1,0 +1,912 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: kitchen-espresso-workstation-20261016
+index:
+  order: 38
+  topic: kitchen-dining-equipment
+  review_state: evidence_review
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: kitchen-espresso-workstation-20261016
+  subject: 厨房北侧台面 EM450 咖啡工作站程序化模型预演
+  priority:
+    user_goal: 在厨房现有连续台面上固定表达 EM450 咖啡机，观察咖啡与备菜能否分区而不需要每次清空整段台面。
+    ranked:
+      - 保留建筑、现有台面、冰箱、餐桌、吊顶与水吧位置
+      - 以用户提供的 EM450 机身尺寸进行程序化表达
+      - 给咖啡机保留约800mm台面工作区，不虚构磨豆机型号和外形
+    non_negotiables:
+      - 不改 model-geometry.yaml 或 overlay.yaml
+      - 不移动、增删或改尺寸任何既有家具、柜体、台面、电器或建筑构件
+      - 不增加插座、回路、给排水、固定背板或吊柜
+    tradeoffs_accepted:
+      - 仅把本轮作为模型预演；磨豆机、真实电源可及性和燃气表位置未闭合
+  frozen: true
+  freeze_record:
+    alignment_id: chat-2026-10-16-espresso-kitchen-implementation
+    original_user_response: 改正式模型，我看看效果如何。程序化建模尽可能贴紧现实物品。；开始落地。
+    normalized_decisions:
+      - 仅新增 EM450 预演对象，落在厨房现有北侧柜台西段；柜体与台面不重做。
+      - 预演工作区按 x[7.22,8.02] 的800mm长度表达，先按用户给出的220×285×305mm机身尺寸。
+      - 模型用于视觉与基本几何核验，不作为施工定位或完整磨豆工作流验证。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-16'
+    evidence_refs:
+      - docs/design-iterations/kitchen-espresso-workstation-20261016/fact-table.yaml
+  allowed_scope:
+    files:
+      - config/house.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - config/spatial-validation.yaml
+      - scripts/verify/placement/verify-furniture-placement.ts
+      - docs/decisions/02-layout-public.md
+      - docs/design-iterations/kitchen-espresso-workstation-20261016/
+      - docs/dressing-map.md (generated from declared sources)
+    objects:
+      - furniture:kitchen:coffee_machine_em450
+      - furniture:kitchen:kitchen_cabinet_run:0 (existing support surface; read-only)
+    archetypes:
+      - kitchen_appliance
+      - countertop_appliance
+    views:
+      - plan
+      - perspective
+    changes:
+      - 在 FixtureFactory 中新增与外形尺寸对应的 EM450 程序化部件
+      - 在 house.yaml 将咖啡机放到现有柜台，底面标高由模型部件锁在0.89m
+      - 登记家具平面尺寸、空间角色与柜台叠放校验关系
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/plumbing.yaml
+      - config/ceiling.yaml
+    objects:
+      - fridge
+      - dining_table
+      - kitchen_cabinet_run
+      - kitchen_countertop_bridge
+      - water_heater
+      - sink
+      - gas_stove
+      - range_hood
+      - all existing architecture, ceiling and glass objects
+    assumptions:
+      - 不假设未选定磨豆机的尺寸、功率或具体落位
+      - 不把推定燃气表坐标当成实测边界
+      - 不把当前预留插座当成已确定可及的成品插座
+      - 不把海外 EM450.M 页面尺寸冒充中国销售 SKU 的最终尺寸
+    out_of_scope_changes:
+      - 柜体分段、台面改造或固定装置
+      - 磨豆机、压粉器、咖啡杯、收纳件等未选设备/用品
+      - 西墙餐厅水吧及所有冰箱、餐桌、门洞、玻璃门、吊顶位置
+      - 采购预算、商品价格和施工图
+  open_questions:
+    - id: OQ-EM450-CN-SKU
+      category: function
+      question: 实际中国销售 SKU 铭牌/说明书是否与本轮用户提供尺寸及模型造型一致？
+      fact_refs:
+        - F-EM450-USER-DIMS
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: OQ-GRINDER
+      category: function
+      question: 磨豆机 SKU、尺寸与电气负荷尚未提供；当前模型不含磨豆机。
+      fact_refs:
+        - U-COFFEE-WORKFLOW
+      options: []
+      selected: null
+      user_response: null
+      status: open
+    - id: OQ-GAS-METER
+      category: mep
+      question: 厨房燃气表配置中的推定位置需现场复尺，并核对阀门和检修范围。
+      fact_refs:
+        - S-GAS-METER
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: OQ-POWER
+      category: mep
+      question: EM450 的插座实际落位、插头可操作性及磨豆机/高功率设备同时使用的回路负荷需电气深化。
+      fact_refs:
+        - S-COUNTER-SOCKET
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+  alignment:
+    records:
+      - id: chat-2026-10-16-espresso-kitchen-implementation
+        user_response: 改正式模型，我看看效果如何。程序化建模尽可能贴紧现实物品。；开始落地。
+        normalized_decision: 新增真实尺寸的 EM450 厨房台面预演对象；不改其他空间和设备位置。
+        fact_refs:
+          - F-EM450-USER-DIMS
+          - U-COFFEE-WORKFLOW
+        status: frozen_for_preview
+    unresolved:
+      - 中国销售 SKU 复核
+      - 磨豆机与完整咖啡流程台面占用
+      - 燃气表实位与检修面
+      - 可及插座及总负荷
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run verify:furniture
+      - npm run verify:all
+      - npm run typecheck
+      - npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - 同版本厨房南侧人眼视角，展示 EM450、800mm台面段及东侧备菜台面
+      - 同版本局部俯视图，检查机身 footprint、玻璃后距与台面边界
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: pending
+    blocking_issues:
+      - 施工放行需中国 SKU、磨豆机、燃气表实测和电气深化资料
+    done_when:
+      - Three.js 运行时物体存在，尺寸与目标尺寸一致
+      - EM450 底面接触现有台面顶面，未改变既有对象坐标
+      - 指定固定机位截图、snapshot、运行时查询均与当前配置版本绑定
+      - 独立审美与功能复核针对同一版本和证据完成
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: kitchen-espresso-workstation-20261016
+  subject: 厨房北侧台面 EM450 咖啡工作站程序化模型预演
+  units: m
+  coordinate_system: Three.js right-handed x east-west, y up, z north-south; +z is south.
+  status: draft
+  datums:
+    - id: DAT-EM450-KITCHEN-NORTH
+      name: EM450 on existing north counter
+      anchor:
+        kind: free_position
+        ref: existing kitchen north counter, furniture:kitchen:kitchen_cabinet_run:0
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F-NORTH-RUN
+          - F-EM450-USER-DIMS
+          - I-COFFEE-SEGMENT
+          - S-GLASS-CLEARANCE
+        decision_refs:
+          - DEC-2026-10-16-R02
+      views:
+        plan:
+          required: true
+          origin: kitchen local coordinates
+          axes: x east-west; z north-south
+          direction: top view, north up (-z)
+          position:
+            x: 7.62
+            z: 0.22
+          rotation: 0
+          dimensions:
+            length: 0.8
+            width: 0.22
+            depth: 0.285
+            offset: 0.4
+          dimension_semantics: along_wall
+        elevation:
+          required: true
+          viewing_side: south looking north toward appliance front
+          vertical_axis: 'y'
+          height: 0.305
+          dimensions:
+            width: 0.22
+            height: 0.305
+            sill: 0.89
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: north-south through appliance center
+          depth_axis: z
+          clearances:
+            front: 0.2575
+            rear: 0.0775
+            top: null
+            bottom: 0
+          thickness: 0.285
+          dimension_semantics: service_clearance
+      geometry:
+        x: 7.62
+        'y': 0.89
+        z: 0.22
+        width: 0.22
+        depth: 0.285
+        height: 0.305
+        length: null
+        rotation: 0
+        along: null
+      constraints:
+        - Machine body footprint is x[7.51,7.73], z[0.0775,0.3625].
+        - Machine body envelope is y[0.89,1.195]; support surface top is y=0.89.
+        - Machine front faces +z toward the kitchen operator.
+        - 800mm working segment is x[7.22,8.02]; it is an intent zone, not a cabinet modification.
+        - Keep north glass, inferred gas point, water heater, counter run, sink, dishwasher bridge and all other scene objects in their existing positions.
+        - Do not model or dimension an unselected grinder.
+      interfaces:
+        - Existing countertop support; contact only, no penetration.
+        - Electrical access is pending; this fixture does not declare a socket or circuit.
+        - Gas meter actual service envelope is pending site measurement.
+      validation_refs:
+        - runtime AABB query
+        - npm run verify:furniture
+        - npm run verify:all
+        - npm run gate:visual
+      status: open
+  notes:
+    - The recipe pins the base to y=0.89m; if countertop height changes, update the fixture recipe and re-verify.
+    - Dimensions are the user's listing dimensions, not a manufacturer CAD file.
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: kitchen-espresso-workstation-20261016
+  subject: 厨房北侧台面 EM450 咖啡工作站程序化模型预演
+  created_at: '2026-10-16'
+  status: aligned
+  source_policy:
+    authority_refs:
+      - config/house.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - config/spatial-validation.yaml
+      - config/electrical.yaml
+      - config/layout/model-geometry.yaml
+    observation_refs: []
+    measurement_refs: []
+    runtime_refs:
+      - evidence/runtime-query.json
+    evidence_refs:
+      - evidence/kitchen-human-eye.png
+      - evidence/kitchen-station-close.png
+      - evidence/kitchen-station-plan.png
+  entry_shape:
+    id: ''
+    category: confirmed
+    statement: ''
+    value: null
+    source_refs: []
+    basis: ''
+    confidence: high
+    impact: material
+    affected_objects: []
+    affected_views:
+      - plan
+      - perspective
+    owner: ''
+    status: open
+    verification_method: ''
+    user_confirmation_ref: null
+  facts:
+    confirmed:
+      - id: F-NORTH-RUN
+        category: confirmed
+        statement: 厨房北侧西段柜台现有长度1.28m、深度0.60m，中心(7.86,0.32)，台面标高0.89m。
+        value:
+          x: 7.86
+          z: 0.32
+          length: 1.28
+          depth: 0.6
+          top_y: 0.89
+        source_refs:
+          - config/house.yaml#kitchen.kitchen_cabinet_run-0
+        basis: cabinetHeight 0.86m + countertopThickness 0.03m; x bounds are [7.22,8.50], z bounds are [0.02,0.62].
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:kitchen_cabinet_run:0
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: runtime world bounding box and rendered countertop surface
+        user_confirmation_ref: null
+      - id: F-EM450-USER-DIMS
+        category: user_decision
+        statement: 业主提供待建模德龙 EM450 外形尺寸为220×285×305mm。
+        value:
+          width: 0.22
+          depth: 0.285
+          height: 0.305
+          unit: m
+        source_refs:
+          - conversation:user EM450 product specification
+        basis: Use user-supplied dimensions for this Chinese-market candidate model.
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:coffee_machine_em450
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: runtime AABB compared with declared W×D×H
+        user_confirmation_ref: chat-2026-10-16-espresso-kitchen-implementation
+      - id: F-EM450-OFFICIAL-REGIONAL
+        category: confirmed
+        statement: De’Longhi 官方 EM450.M 页面展示不锈钢机身、压力表、4个按键、蒸汽棒、可拆滴水盘；该海外页面规格为226×283×310mm、1325W，不能代替中国 SKU 铭牌。
+        value:
+          width: 0.226
+          depth: 0.283
+          height: 0.31
+          power_w: 1325
+          voltage_v: 220-240
+          region: UK
+        source_refs:
+          - https://www.delonghi.com/en-gb/p/delonghi-classic-delonghi-classic-manual-espresso-maker-em450.m/EM450.M.html
+        basis: Manufacturer page technical specs and feature description, observed 2026-10-16.
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:coffee_machine_em450
+        affected_views:
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: compare user-market listing and physical model nameplate before construction release
+        user_confirmation_ref: null
+      - id: F-EM450-RUNTIME
+        category: confirmed
+        statement: Three.js 客户端已加载正式咖啡机对象；运行时包围盒与用户尺寸一致，底面接触现有柜台顶面。
+        value:
+          object_id: furniture:kitchen:coffee_machine_em450:9
+          x:
+            - 7.51
+            - 7.73
+          'y':
+            - 0.89
+            - 1.195
+          z:
+            - 0.0775
+            - 0.3625
+          mesh_part_count: 24
+        source_refs:
+          - evidence/runtime-query.json#scene.coffee_machine
+        basis: Runtime child Mesh world transforms were unioned into a world AABB; existing kitchen cabinet top is y=0.89m.
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:coffee_machine_em450
+          - furniture:kitchen:kitchen_cabinet_run:0
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: reproduce runtime query from same source hashes; verify all bounds and counter contact
+        user_confirmation_ref: null
+    inferred:
+      - id: I-COFFEE-SEGMENT
+        category: inferred
+        statement: 将现有柜台西端 x[7.22,8.02] 定为800mm工作站区域，不改变台面几何。
+        value:
+          x_min: 7.22
+          x_max: 8.02
+          width: 0.8
+          z_min: 0.02
+          z_max: 0.62
+        source_refs:
+          - config/house.yaml#kitchen.kitchen_cabinet_run-0
+        basis: User approved implementing the kitchen espresso workflow after the 800mm feasibility proposal; segment is measured from the existing run west endpoint.
+        confidence: medium
+        impact: material
+        affected_objects:
+          - furniture:kitchen:kitchen_cabinet_run:0
+          - furniture:kitchen:coffee_machine_em450
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: open
+        verification_method: fixed view and owner review
+        user_confirmation_ref: chat-2026-10-16-espresso-kitchen-implementation
+    user_decision:
+      - id: U-COFFEE-WORKFLOW
+        category: user_decision
+        statement: 完整意式咖啡工作站优先放厨房，咖啡机需尽量以真实物品尺寸程序化建模；先看正式模型效果。
+        value: kitchen_countertop_station
+        source_refs:
+          - conversation:user espresso workflow proposal
+          - conversation:user "开始落地"
+        basis: Explicit user direction in the current conversation.
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:coffee_machine_em450
+        affected_views:
+          - plan
+          - perspective
+        owner: owner
+        status: resolved
+        verification_method: owner review of fixed-view render
+        user_confirmation_ref: chat-2026-10-16-espresso-kitchen-implementation
+    site_pending:
+      - id: S-GAS-METER
+        category: site_pending
+        statement: gas_meter_kitchen is an inferred marker near (8.00,0.20), h=1.50m, uncertainty approximately ±0.20m; actual meter body, valve and service envelope are not measured.
+        value:
+          x: 8
+          z: 0.2
+          height: 1.5
+          uncertainty_m: 0.2
+        source_refs:
+          - config/plumbing.yaml#gas_meter_kitchen
+        basis: Existing configuration marks the point inferred and not for construction.
+        confidence: low
+        impact: blocking
+        affected_objects:
+          - furniture:kitchen:coffee_machine_em450
+        affected_views:
+          - perspective
+        owner: owner/contractor/gas provider
+        status: open
+        verification_method: site measure actual meter and valve, then confirm service access
+        user_confirmation_ref: null
+      - id: S-COUNTER-SOCKET
+        category: site_pending
+        statement: sock_kitchen_counter is at (8.60,0.30), but final accessible outlet form and placement are pending; there is no separate outlet object at the coffee machine.
+        value:
+          x: 8.6
+          z: 0.3
+          position_status: pending
+        source_refs:
+          - config/electrical.yaml#sock_kitchen_counter
+        basis: Electrical config leaves final form/side-panel location pending.
+        confidence: medium
+        impact: blocking
+        affected_objects:
+          - furniture:kitchen:coffee_machine_em450
+        affected_views:
+          - plan
+        owner: electrician/cabinet shop
+        status: open
+        verification_method: cabinet shop and electrician show a reachable socket and validate circuit loading
+        user_confirmation_ref: null
+      - id: S-GLASS-CLEARANCE
+        category: site_pending
+        statement: North kitchen edge is a glass curtain wall; current model countertop clearance is not a construction clearance and needs site verification.
+        value:
+          user_machine_back_z: 0.0775
+          model_wall_reference: glass_curtain
+        source_refs:
+          - config/layout/model-geometry.yaml
+          - config/layout/overlay.yaml
+        basis: The wall is classified as glass/curtain and cannot support a fixed back panel or electrical point.
+        confidence: medium
+        impact: material
+        affected_objects:
+          - furniture:kitchen:coffee_machine_em450
+        affected_views:
+          - plan
+          - perspective
+        owner: surveyor/cabinet shop
+        status: open
+        verification_method: measure finished glass/frame and appliance rear spacing after handover
+        user_confirmation_ref: null
+  unknowns_requiring_alignment:
+    - id: ALIGNMENT-RENDER-POSITION
+      question: 预演中机器中心先按(7.62,0.22)摆放；业主看固定视角后确认是否保留该可移动设备位置。
+      reason_result_changes: Machine position changes visible prep space and clearance around the unmeasured gas marker.
+      fact_refs:
+        - F-NORTH-RUN
+        - F-EM450-USER-DIMS
+        - I-COFFEE-SEGMENT
+        - S-GAS-METER
+      option_refs:
+        - coffee_machine_em450 at current preview position
+      status: asked
+  notes:
+    - This is a model preview, not a construction location or a full coffee-workflow fit check.
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: kitchen-espresso-workstation-20261016
+  subject: 厨房北侧台面 EM450 咖啡工作站程序化模型预演
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: furniture:kitchen:coffee_machine_em450
+      type: coffee_machine_em450
+      archetypes:
+        - kitchen_appliance
+        - countertop_appliance
+      owner: owner
+      function: espresso extraction and steam milk, as a permanently placed but removable countertop appliance
+      material: stainless-steel body, dark polymer tray/panel, chrome controls and group
+      geometry_source: shared/render/FixtureFactory.ts coffee_machine_em450 recipe; dimensions from user-provided SKU listing
+      datum_refs:
+        - DAT-EM450-KITCHEN-NORTH
+      fact_refs:
+        - F-EM450-USER-DIMS
+        - F-EM450-OFFICIAL-REGIONAL
+        - F-NORTH-RUN
+      decision_refs:
+        - DEC-2026-10-16-R02
+      dependencies:
+        - furniture:kitchen:kitchen_cabinet_run:0
+        - config/spatial-validation.yaml#furniture_profiles.coffee_machine_em450
+      interfaces:
+        - id: EM450-support
+          target_object_id: furniture:kitchen:kitchen_cabinet_run:0
+          kind: structural
+          requirement: bottom y=0.89m contacts, but does not penetrate, the existing countertop top surface
+          status: confirmed
+        - id: EM450-power
+          target_object_id: config/electrical.yaml#sock_kitchen_counter
+          kind: electrical
+          requirement: Provide a reachable outlet after confirming exact machine plug and total load.
+          status: open
+        - id: EM450-gas-service-clearance
+          target_object_id: config/plumbing.yaml#gas_meter_kitchen
+          kind: maintenance
+          requirement: Keep inferred meter and valve visible/reachable; verify actual position and service envelope on site.
+          status: blocked
+      collision:
+        policy: reviewed
+        geometry_ref: footprint 0.220×0.285m; vertical contact at y=0.89m
+        review_ref: scripts/verify/placement/verify-furniture-placement.ts stacked pair with kitchen_cabinet_run
+      maintenance:
+        boundary: Removable appliance. Keep water tank, portafilter, steam wand and drip tray accessible from above, front and right side.
+        access_clearance:
+          front: 0.2575
+          rear: 0.0775
+          top: null
+        replaceable_parts:
+          - water tank
+          - drip tray
+          - portafilter
+          - steam wand
+        inspection_requirements:
+          - Verify exact China-market SKU, plug and product dimensions before fixing socket location.
+          - Confirm the actual gas meter/valve can be inspected without moving the appliance or blocking the station.
+          - Verify rear spacing to finished glass/frame and countertop edge after handover.
+      parts:
+        - id: EM450-shell
+          role: stainless appliance body and rear water-tank window
+          independent: true
+          owner: owner
+          material: brushed stainless steel with smoked polymer detail
+          geometry_source: FixtureFactory recipe; all bounds inside 0.220×0.305×0.285m
+          datum_refs:
+            - DAT-EM450-KITCHEN-NORTH
+          dependencies: []
+          collision: reviewed
+          maintenance_boundary: visual shell approximation; not a manufacturer CAD model
+          validation_refs:
+            - runtime bounding box
+        - id: EM450-front-controls
+          role: pressure gauge, four buttons, selector knob and brew group
+          independent: true
+          owner: owner
+          material: dark control fascia, metallic fittings
+          geometry_source: FixtureFactory recipe based on manufacturer feature description
+          datum_refs:
+            - DAT-EM450-KITCHEN-NORTH
+          dependencies:
+            - EM450-shell
+          collision: none
+          maintenance_boundary: controls face +z toward operator
+          validation_refs:
+            - fixed kitchen perspective screenshot
+        - id: EM450-service-parts
+          role: drip tray, portafilter and steam wand
+          independent: true
+          owner: owner
+          material: dark tray and chrome accessories
+          geometry_source: FixtureFactory recipe within the declared appliance envelope
+          datum_refs:
+            - DAT-EM450-KITCHEN-NORTH
+          dependencies:
+            - EM450-shell
+          collision: none
+          maintenance_boundary: represent removable/operated parts, but not their full extraction sweep
+          validation_refs:
+            - fixed kitchen perspective screenshot
+      visual_relationships:
+        - target_object_id: furniture:kitchen:kitchen_cabinet_run:0
+          relation: supported
+          requirement: Machine sits on the existing white countertop without a new platform, side panel or wall backboard.
+          evidence_refs: []
+      validation_refs:
+        - npm run verify:furniture
+        - npm run verify:all
+        - runtime scene object lookup and AABB
+      status: implemented
+  notes:
+    - No grinder, accessories, new electrical point, plumbing point, countertop or cabinet geometry is introduced.
+    - The 800mm workstation segment is a design intention in the existing worktop, not a modeled partition.
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: kitchen-espresso-workstation-20261016
+  subject: 厨房北侧台面 EM450 咖啡工作站程序化模型预演
+  state: evidence_review
+  source_version:
+    config_refs:
+      - config/house.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - config/spatial-validation.yaml
+      - scripts/verify/placement/verify-furniture-placement.ts
+    asset_refs: []
+    render_facts_ref: current app runtime, evidence/runtime-query.json
+    source_digest: Per-file SHA256 values are recorded in evidence/runtime-query.json
+    generated_at: '2026-10-16T04:09:49Z'
+  validation:
+    commands:
+      - node --import tsx scripts/generate-dressing-map.ts
+      - node --import tsx scripts/verify/placement/verify-furniture-placement.ts
+      - npm run verify:all
+      - npm run typecheck
+      - npm run gate:visual
+    results:
+      - command: node --import tsx scripts/generate-dressing-map.ts
+        result: PASS
+        details: Generated docs/dressing-map.md from config/house.yaml and declared furnishing dimensions.
+      - command: node --import tsx scripts/verify/placement/verify-furniture-placement.ts
+        result: PASS
+        details: 0 placement errors, 2 existing warnings (south_balcony count-only skip; master bedroom curtain envelope).
+      - command: npm run verify:all
+        result: PASS
+        details: 17/17 verifiers passed; 0 failed. Existing warning output remains in several verifier groups.
+      - command: npm run typecheck
+        result: PASS
+        details: Shared and app TypeScript noEmit checks passed.
+      - command: npm run gate:visual
+        result: PASS
+        details: CLEAR for ceiling/electrical/plumbing/materials; app runtime separately confirmed current furnishing object and no config error banner.
+    config_status: PASS
+    geometry_status: PASS
+    consistency_status: PASS
+    functional_checks_status: BLOCKED
+    application_status: PASS
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: kitchen-human-eye
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T04:09:49Z'
+      config_error_banner: ''
+      target_objects:
+        - coffee_machine_em450
+        - kitchen_cabinet_run
+        - kitchen_countertop_bridge
+        - sink
+      target_object_ids:
+        - furniture:kitchen:coffee_machine_em450:9
+        - furniture:kitchen:kitchen_cabinet_run:0
+        - furniture:kitchen:kitchen_countertop_bridge:1
+        - furniture:kitchen:sink:7
+      runtime_query_refs:
+        - evidence/runtime-query.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8.3
+          - 1.62
+          - 2.55
+        target:
+          - 8.12
+          - 1.02
+          - 0.32
+        view_type: perspective
+      snapshot_path: evidence/kitchen-human-eye.snapshot.txt
+      screenshot_path: evidence/kitchen-human-eye.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - evidence/runtime-query.json#source_sha256
+      status: valid
+      invalid_reason: null
+    - id: kitchen-station-close
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T04:09:49Z'
+      config_error_banner: ''
+      target_objects:
+        - coffee_machine_em450
+        - kitchen_cabinet_run
+      target_object_ids:
+        - furniture:kitchen:coffee_machine_em450:9
+        - furniture:kitchen:kitchen_cabinet_run:0
+      runtime_query_refs:
+        - evidence/runtime-query.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 7.95
+          - 1.58
+          - 1.55
+        target:
+          - 7.62
+          - 1.04
+          - 0.22
+        view_type: perspective
+      snapshot_path: evidence/kitchen-station-close.snapshot.txt
+      screenshot_path: evidence/kitchen-station-close.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - evidence/runtime-query.json#source_sha256
+      status: valid
+      invalid_reason: null
+    - id: kitchen-station-plan
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T04:09:49Z'
+      config_error_banner: ''
+      target_objects:
+        - coffee_machine_em450
+        - kitchen_cabinet_run
+      target_object_ids:
+        - furniture:kitchen:coffee_machine_em450:9
+        - furniture:kitchen:kitchen_cabinet_run:0
+      runtime_query_refs:
+        - evidence/runtime-query.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 7.62
+          - 2.1
+          - 0.22
+        target:
+          - 7.62
+          - 0.89
+          - 0.22
+        view_type: perspective
+      snapshot_path: evidence/kitchen-station-plan.snapshot.txt
+      screenshot_path: evidence/kitchen-station-plan.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - evidence/runtime-query.json#source_sha256
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - EM450按用户提供的220×285×305mm比例落在890mm台面上，顶部约1.195m；体量克制，不遮挡厨房纵深。
+      - 不锈钢机身、深色面板、铬色冲煮组件与白色台面形成清楚的材质层次；当前读作独立咖啡机，而不是完整工作站。
+      - 北侧玻璃提供对比背景，近景周围留白较多；只对机器本体审美关系给PASS。
+      - 本轮没有删除墙体、玻璃、台面、柜体、冰箱、餐桌或吊顶；仅新增EM450预演对象，并将此前通用设备占位更新为具体规格模型。
+    evidence_refs:
+      - evidence/kitchen-human-eye.png
+      - evidence/kitchen-station-close.png
+      - evidence/kitchen-station-plan.png
+      - evidence/runtime-query.json
+    requested_changes: []
+    assumptions:
+      - 本评审只覆盖EM450本体比例、材质和与台面/北侧玻璃的画面关系，不覆盖完整咖啡工作流。
+      - 程序化模型采用业主提供的中国销售页尺寸，不等同厂家CAD或最终实物；白色台面、蓝色玻璃与灯光仍为模型预演。
+      - 完整工作站尚未包含磨豆机、杯具和用品；电气、燃气表检修与施工条件未验证。
+  functional_review:
+    verdict: BLOCKED
+    blocking_issues:
+      - id: gas_meter_service_envelope_unverified
+        object: furniture:kitchen:coffee_machine_em450
+        fact: S-GAS-METER
+        issue: 推定燃气表位于x=8.00±0.20m，实际表体、阀门和检修包络未实测，当前不能证明长期摆放机器后仍可检修。
+        required_change: 现场复尺燃气表、阀门及服务包络，并与咖啡机和800mm工作区叠合核验。
+      - id: electrical_access_and_load_unverified
+        object: config/electrical.yaml:sock_kitchen_counter
+        fact: S-COUNTER-SOCKET
+        issue: 可及插座形式、插头方向和ordinary_power_kitchen总负荷未闭合。
+        required_change: 落实可徒手拔插的插座位置和设备总负荷核验。
+      - id: glass_and_maintenance_clearance_unverified
+        object: furniture:kitchen:coffee_machine_em450
+        fact: S-GLASS-CLEARANCE
+        issue: 运行时后距77.5mm仅为模型值；玻璃完成面、顶部维修净空以及水箱、滴水盘和蒸汽棒完整取出包络未验证。
+        required_change: 复尺玻璃框并核对中国销售SKU说明书中的后方、上方和部件操作净空。
+      - id: complete_workflow_not_evidenced
+        object: 800mm coffee workstation intent zone
+        fact: I-COFFEE-SEGMENT
+        issue: 当前仅验证EM450本体，磨豆机、压粉区、杯具、清洁物品和洗碗机开启状态均未建模，不能证明完整现磨咖啡工作流无需清台或移动物品。
+        required_change: 选定磨豆机后补充设备和操作包络；在此之前把验收范围限制为EM450本体落台预演。
+    non_blocking_notes:
+      - 运行时已确认机身AABB为x[7.51,7.73]、y[0.89,1.195]、z[0.0775,0.3625]，外形约220×285×305mm，底面与台面顶面接触且未穿透。
+      - 运行时记录的餐桌、冰箱、北侧柜体、台面桥、水槽和热水器坐标未改变；机器前方模型余量约257.5mm。
+      - 此前的runtime evidence gap已解除；当前档案含物体ID、AABB、Mesh数量、既有对象坐标、固定机位和源码哈希。
+      - 德龙海外EM450.M规格为226×283×310mm，与用户提供值略有差异；中国销售SKU需核对后再定施工尺寸。
+    evidence_refs:
+      - evidence/runtime-query.json
+      - fact-table.yaml:F-EM450-RUNTIME
+      - fact-table.yaml:F-NORTH-RUN
+      - evidence/kitchen-human-eye.png
+      - evidence/kitchen-station-close.png
+      - evidence/kitchen-station-plan.png
+      - design-datum.yaml
+      - object-manifest.yaml
+      - config/house.yaml#kitchen
+      - config/electrical.yaml#sock_kitchen_counter
+      - config/plumbing.yaml#gas_meter_kitchen
+    requested_changes:
+      - 现场复尺燃气表、阀门和检修范围。
+      - 落实咖啡机可及插座、插头方向和厨房回路负荷。
+      - 核对成品玻璃、机器后方及顶部维护净空。
+      - 磨豆机未定前，不把本轮结果称为完整现磨咖啡工作站通过。
+    assumptions:
+      - 当前确认的是EM450本体在现有台面上的模型摆放，不是完整咖啡工作流或施工放行。
+      - 燃气表服务包络、电源可及性、回路负荷、玻璃完成面、顶部维修空间和中国销售SKU仍未冻结。
+      - 新增模型会在真实燃气表进入检修区、插座无法可及、实际机身/维护空间更大、或台面标高/机位变更时失效；配置变化后固定截图也必须重采。
+  risks:
+    - id: R-GAS
+      status: site_pending
+      owner: owner/contractor/gas provider
+      trigger: site measure and review actual gas meter/valve service envelope before cabinet/electrical release
+    - id: R-POWER
+      status: site_pending
+      owner: cabinet shop/electrician
+      trigger: fix reachable outlet and validate total appliance load before electrical freeze
+    - id: R-GRINDER
+      status: open
+      owner: owner
+      trigger: select grinder SKU before claiming complete coffee workflow fit
+    - id: R-SKU
+      status: site_pending
+      owner: owner/appliance supplier
+      trigger: check physical China-market SKU dimensions and plug before construction release
+    - id: R-COUNTER-DATUM
+      status: design_dependency
+      owner: design
+      trigger: if countertop height changes from 0.89m, update the fixture recipe
+  retrospective:
+    triggered: false
+    triggers: []
+    records: []
+    rebaselined: false
+  delivery:
+    status: incomplete
+    blocking_issues:
+      - Functional review is BLOCKED for site/M&E conditions and incomplete grinder workflow.
+      - User should review the provisional model position before it is treated as a final installation location.
+      - This iteration is not construction-ready.
+    completion_conditions:
+      - Owner confirms or changes the preview position after viewing the fixed images.
+      - Site/M&E conditions and exact grinder workflow are verified before construction-ready status.
+    follow_up_site_pending:
+      - China-market EM450 SKU and dimensions
+      - grinder SKU and total station footprint
+      - actual gas meter and valve service envelope
+      - reachable socket/circuit load
+      - finished glass-to-machine clearance
+    delivery_ready: false

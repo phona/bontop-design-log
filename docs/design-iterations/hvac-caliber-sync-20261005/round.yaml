@@ -1,0 +1,304 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: hvac-caliber-sync-20261005
+index:
+  order: 2
+  topic: mep
+  review_state: implementation
+  supersedes: hvac-contract-mapping-20261005
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: hvac-caliber-sync-20261005
+  subject: HVAC 口径收口与旧口径清除
+  priority:
+    user_goal: 把 2026-10-05 已确认的六台 /P-SS 成交口径落到渲染层、测试层与全部文档，并删掉仍把 R6 旧口径当"现行"陈述的内容。
+    ranked:
+      - 旧口径不再被读成现行
+      - 坐标四层一致
+      - 不引入新事实
+  frozen: true
+  freeze_record:
+    alignment_id: user-20261005-caliber-cleanup
+    original_user_response: wave2要做，甚至要删掉只是作为历史记录出现。toast改成现在的方案。要跑，不过可以复用5174呀
+    normalized_decisions:
+      - Wave 2 执行"删除"而不是"标注历史"：只承担旧口径、无引用、无契约依赖的内容整段删除。
+      - app/src/App.ts 的 HVAC toast 改为不带数量的「空调协调已就绪：外机 n / 内机 n / 预深化路线 n」。
+      - 运行时取证要跑，dev server 端口复用 5174。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-05'
+  supersedes: hvac-contract-mapping-20261005
+  allowed_scope:
+    files:
+      - config/house.yaml
+      - config/mep-hvac-coordination.yaml
+      - config/materials.yaml
+      - config/facts.yaml
+      - config/procurement.yaml
+      - data/project-render-facts.json
+      - tests/server/mep-hvac-coordination.test.ts
+      - tests/server/vrf-config.test.ts
+      - shared/render/FixtureFactory.ts
+      - shared/types.ts
+      - app/src/render/HouseScene.ts
+      - app/src/App.ts
+      - app/src/App.test.ts
+      - app/src/render/FixtureFactory.test.ts
+      - tests/server/cli-glb-export.test.ts
+      - tests/server/shared/scene-builder.test.ts
+      - docs/hvac/hvac_options_analysis.md
+      - docs/hvac/hvac-deepening-20260907.md
+      - docs/hvac/hvac-rfq-brief-20261003.md
+      - docs/material_selection_log.md
+      - docs/pending-site-data.md
+      - docs/decisions/
+      - docs/design-iterations/hvac-caliber-sync-20261005/
+    changes:
+      - x=3.70（业主已在 hvac-contract-mapping-20261005 选定）向渲染层/测试层机械落地
+      - cli-glb-export HVAC 实体与端子计数断言按第六台修正
+      - HVAC toast 去掉硬编码台数
+      - 删除只承担 R6/一拖五旧口径的文档段落
+      - materials.yaml hvac_01 改为成交口径、hvac_02 改判 rejected
+      - facts.yaml 失效守卫注释更正与空转豁免删除
+      - '新增 pending-site-data #47 并同步计数'
+      - 补齐第六台入 A2 diagram 时前一轮漏同步的投影产物与两处测试夹具
+  scope_addendum_note: data/project-render-facts.json、tests/server/mep-hvac-coordination.test.ts 与 tests/server/vrf-config.test.ts 是第六台（餐厅 42T2 / ac_dining）进入 A2 diagram 时 前一轮留下的同步缺口：投影产物与两处测试夹具都还按五台口径。本轮补齐，内容经 `npm run generate:project-render-facts` 重跑逐字节一致，`verify:facts` 与 `test:server` 全绿，故补登进 allowed_scope.files。
+  forbidden:
+    assumptions:
+      - 不得猜 42T2/56T2 外廓
+      - 不得猜厂家配电与泵出口接法
+      - 不得从型号自行推断机位
+    out_of_scope_changes:
+      - 不得删除 docs/decisions/ 与 docs/design-iterations/* 的既有条目（历史决议只登记不改写）； 位置迁移（如 2026-10-09 DEC-2026-10-09-S01 的主题拆分）须另登记 DEC，且不得改写条目正文
+      - 不得删除 config/procurement.yaml 外键引用的 materials 条目（hvac_01 / hvac_02 只能改内容）
+      - 除已选主卧内机中心 x=3.70 外移动机位或电气点位
+      - 未确认前冻结冷媒或冷凝水施工路线
+  open_questions:
+    - id: x370-coupling
+      question: x=3.70 是否需同步渲染层与测试层
+      status: resolved
+      selected: 同步（机械落地，不引入新事实）
+      handling: 冷凝水横管由 0.30m 延长到 0.40m 以保持接到 x=4.10 墙完成面
+    - id: old-caliber-docs
+      question: 旧口径文档段落如何处理
+      status: resolved
+      selected: 删除无引用、无契约依赖者；被不可改写记录引用的只删旧口径陈述
+      handling: hvac-deepening-20260907.md 因决策日志引用只删状态行旧口径；architecture 对比表保留
+    - id: secondary-bedroom-label-count
+      question: 合同附图"次卧"标签数与转录/空间模型冲突
+      status: site_pending
+      handling: '新增 docs/pending-site-data.md #47，量房时逐房核对'
+  acceptance:
+    validation_commands:
+      - npm run verify:all
+      - npm run test:server
+      - npm run test:app
+      - npm run typecheck
+    construction_review: construction_not_frozen
+    done_when:
+      - docs/config 中不再有把 R6 21.6kW/1.08 或一拖五陈述为现行的段落
+      - x=3.70 在 config/render/自检/测试四层一致
+      - test:server 与 test:app 全绿
+      - HVAC 待核项与次卧标签数冲突已显式登记
+datum:
+  schema: interior-design-datum/v3
+  iteration_id: hvac-caliber-sync-20261005
+  anchor: coordinate_coupling
+  datum:
+    - id: ac_master
+      plan: 业主选定中心 (3.70,5.10)。本轮把该 0.10m 位移从 config 层推到渲染层：config/house.yaml 的 condensate_pipe_ac_outlet 锚点 3.80→3.70，shared/render/FixtureFactory.ts 横管由 0.30m 延长到 0.40m（中心偏移 0.15→0.20），柜内竖管中心由 0.30→0.40，使全链仍接到 x=4.10 墙完成面。
+      elevation: unchanged：横管与竖管仍在 y=2.65。
+      section: app/src/render/HouseScene.ts inspectMasterBedroomCondensate 的期望端点首段由 (3.80,2.65,5.10)→(3.70,2.65,5.10)；MEP supply-air-master / return-air-master 的 via 由 3.80/3.90 收到 3.70，与 supply_master / return_master 端子轴对齐。
+    - id: hvac_a2_diagram
+      plan: 餐厅第六台（ac_dining）进入 A2 diagram 后，实体数 16→19、端子数 10→12；tests/server/cli-glb-export.test.ts 的断言与 id 清单同步补 indoor_dining / power_dining / branch_dining / supply_dining / return_dining。
+      elevation: n/a
+      section: n/a
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: hvac-caliber-sync-20261005
+  subject: HVAC 口径收口与旧口径清除
+  status: implementation
+  updated_at: '2026-10-05'
+  facts:
+    confirmed:
+      - id: F-current-caliber
+        statement: 现行成交口径唯一入口是 config/procurement.yaml（hvac_01）与 config/hvac.yaml：美的领航者Ⅳ MJV-200W-E01-LHIV 20kW + 六台 /P-SS 双出风带泵内机，DEC-2026-10-04-R1 成交 ¥36,000；DEC-2026-10-05-R1 逐房映射客厅 71T2/餐厅 42T2/主卧 56T2/父母房·儿童房·东南书房各 28T2，合计 25.3kW、连接率 1.265（约 1.27）。
+        source_refs:
+          - config/procurement.yaml
+          - config/hvac.yaml
+          - DEC-2026-10-04-R1
+          - DEC-2026-10-05-R1
+        confidence: high
+        impact: material
+      - id: F-x370-master-center
+        statement: 主卧内机中心 x=3.70 为业主 2026-10-05 选定，与送回风轴 x=3.70 对齐。本轮把该坐标同步到 config/house.yaml、config/mep-hvac-coordination.yaml、shared/render/FixtureFactory.ts、shared/types.ts、app/src/render/HouseScene.ts 与三处测试夹具。
+        source_refs:
+          - 业主 2026-10-05 会话轴线选择
+          - config/ceiling.yaml
+          - config/house.yaml
+        confidence: high
+        impact: material
+      - id: F-deleted-old-caliber
+        statement: docs/material_selection_log.md 的「6 匹一拖五」推荐块与三种配置候选对比表、以及把 R6 21.6kW/1.08 陈述为"现行配置"的段落已删除；config/facts.yaml 中指向已不存在内容的风管机豁免与旧现行型号串注释已更正/删除。
+        source_refs:
+          - docs/material_selection_log.md
+          - docs/hvac/hvac_options_analysis.md
+          - docs/hvac/hvac-deepening-20260907.md
+          - config/facts.yaml
+        confidence: high
+        impact: material
+    superseded:
+      - id: X-r6-caliber
+        statement: DEC-2026-10-03-R6 的 6 台 21.6kW / 连接率 1.08（71+28+45+28+22+22）与 DEC-2026-09-07-055 的 21.4kW / 7HP 均已被 DEC-2026-10-04-R1 + DEC-2026-10-05-R1 取代；不再作为可行口径出现在任何 live 文档中。
+        source_refs:
+          - DEC-2026-10-04-R1
+          - DEC-2026-10-05-R1
+        impact: material
+    site_pending:
+      - id: S-secondary-bedroom-labels
+        statement: 合同附图与 CAD 的"次卧"标签数与转录和空间模型不一致：cad/design/01_floor_plan/floor_plan_design_2026-07-05.dxf 与 Drawing2.dxf 各出现 3 个"次卧"标注（其中两间同为 8.39㎡ 但周长不同，另一间 8.35㎡），转录写"次卧×5"，空间模型 model-geometry.yaml 只有三间次级卧室（study / bedroom_nw / bedroom_se）。逐房型号映射按模型三间落地，但标签数冲突未裁决。
+        source_refs:
+          - 'docs/pending-site-data.md #47'
+          - config/layout/model-geometry.yaml
+          - cad/design/01_floor_plan/
+        impact: material
+      - id: S-pss-body
+        statement: /PX-TS 参数表不作为成交 /P-SS 外廓依据；56T2 与 42T2 的机身外廓、检修净空待厂家正式安装图。
+        source_refs:
+          - docs/design-iterations/hvac-contract-mapping-20261005/evidence/
+          - config/ceiling.yaml
+        impact: material
+      - id: S-mep-interfaces
+        statement: 六台带提升泵是成交事实，但泵后排水接法、冷凝水接入点、内外机正式配电图仍缺；既有线路继续作为协调候选，不作施工放线依据。
+        source_refs:
+          - config/mep-hvac-coordination.yaml
+          - config/electrical-topology.yaml
+        impact: material
+objects:
+  schema: interior-design-object-manifest/v3
+  iteration_id: hvac-caliber-sync-20261005
+  objects:
+    - id: hvac_01
+      owner: procurement
+      purchased_model: MJV-200W-E01-LHIV + 6×/P-SS
+      caliber: contracted
+      note: materials.yaml 由预研候选改写为成交口径 ¥36,000
+    - id: hvac_02
+      owner: procurement
+      caliber: rejected
+      note: 一拖三挂机+一拖二挂机备选，因单平台与室内美观度出局；保留 id 供 procurement 外键引用
+    - id: ac_master
+      owner: hvac
+      purchased_model: MJV-56T2/P-SS
+      plan_center:
+        - 3.7
+        - 5.1
+      interface_status: pending_p_ss_body_and_maintenance_review
+      note: 本轮把 x=3.70 同步到渲染几何与自检
+    - id: condensate_pipe_ac_outlet
+      owner: render
+      plan_center:
+        - 3.7
+        - 5.1
+      interface_status: inspection_only
+      note: 横管 0.30→0.40m，仍接 x=4.10 墙完成面；厂家出口位置 pending
+  interfaces:
+    coordinate: x=3.70 已四层一致：config/house.yaml、config/mep-hvac-coordination.yaml、FixtureFactory 几何、HouseScene.inspectMasterBedroomCondensate 期望端点。
+    ui: App.ts HVAC toast 改为不带台数的「空调协调已就绪：外机 n / 内机 n / 预深化路线 n」。
+    docs: 旧口径段落已删除；decision_log 与既有 design-iterations 按项目铁律未改写。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: hvac-caliber-sync-20261005
+  subject: HVAC 口径收口与旧口径清除
+  state: implementation
+  state_note: x=3.70 四层一致、旧口径删除、全量门禁通过；inspectMasterBedroomCondensate 在浏览器侧为存量缺陷（HEAD 同样为 false），本轮已登记不修。
+  validation:
+    commands:
+      verify:all:
+        exit: 0
+        note: verify:mep 0 error/167 warning；verify:electrical 0 error；verify:project-render-facts OK；verify:furniture OK(2 warn)；verify:facts OK(1 warn = 已知 DEC-045)；verify:schedule valid
+      test:server:
+        exit: 0
+        pass: 609
+        fail: 0
+        note: cli-glb-export 的 19/12 断言与 5 个新 id 已修好，此前为唯一红灯
+      test:app:
+        exit: 0
+        pass: 470
+        fail: 0
+        files: 56
+        note: FixtureFactory 冷凝水连续性（0.70→4.10 三段端点 gap≤0.03）与 App toast 断言通过
+      typecheck:
+        exit: 0
+      generate:project-render-facts:
+        exit: 0
+        note: 重跑产物与运行前逐字节一致（geometry 不在该产物内）
+    runtime:
+      port: 5174
+      agent_browser_session: bontop-20f4571e-c7b9-4e73-a6de-dad14f29aa52
+      ready: true
+      config_error_banner: ''
+      anchors:
+        indoor_master:
+          - 3.7
+          - 2.85
+          - 5.1
+        indoor_dining:
+          - 8
+          - 2.85
+          - 4.75
+        supply_dining:
+          - 8
+          - 2.65
+          - 5.21
+        return_dining:
+          - 7.55
+          - 2.49
+          - 4.75
+      cli_glb_export:
+        hvacEquipment: 19
+        hvacTerminals: 12
+        hvacStatus: implemented
+        condensatePartsInExportRoot: 13
+      inspectMasterBedroomCondensate:
+        ok: false
+        preExisting: true
+        note: 浏览器 exportRoot 只有 3 个 condensate 零件（mb_vanity_pvc_box / mb_vanity_pvc_wardrobe_entry 各自的部分）；相同输入在 CLI/Node 路径下有 13 个且 scene-builder 测试的 10 段连续性全绿。git stash 到 HEAD 复测同为 false，确认与本轮坐标改动无关。缺口在于浏览器构建路径与 CLI 构建路径不一致，属独立缺陷，未在本轮范围。
+  evidence:
+    - id: frozen-brief
+      ready: true
+      path: docs/design-iterations/hvac-contract-mapping-20261005/decision-brief.yaml
+      note: x=3.70 与六台 /P-SS 映射的原始批准
+    - id: scope-addendum
+      ready: true
+      note: hvac-contract-mapping-20261005/decision-brief.yaml 的 scope_addendum 登记了渲染层与测试层文件
+    - id: master-runtime
+      ready: true
+      path: docs/design-iterations/hvac-caliber-sync-20261005/evidence/master-runtime.png
+      sha256: 0dc013f2dca28a9b3abe7aebb47280d670924467a183a9ec6d671f732cef006e
+    - id: dining-runtime
+      ready: true
+      path: docs/design-iterations/hvac-caliber-sync-20261005/evidence/dining-runtime.png
+      sha256: 91a3cc61b2a4c93ec74e58a5b63ec443acbb95eb7e8bcf9a0bc3ddc8831914a1
+    - id: master-snapshot
+      ready: true
+      path: docs/design-iterations/hvac-caliber-sync-20261005/evidence/master.snapshot.txt
+    - id: dining-snapshot
+      ready: true
+      path: docs/design-iterations/hvac-caliber-sync-20261005/evidence/dining.snapshot.txt
+  aesthetic_review:
+    verdict: not_applicable
+    blocking_issues: []
+  functional_review:
+    verdict: passed_with_known_defect
+    blocking_issues: []
+  construction_review:
+    verdict: site_pending
+    blocking_issues:
+      - 主卧56T2/P-SS与餐厅42T2/P-SS实际外廓及维修净空
+      - 厂家配电和泵后排水接法
+      - '合同附图次卧标签数与空间模型三间的冲突（pending-site-data #47）'
+      - 浏览器 inspectMasterBedroomCondensate 与 CLI 构建路径不一致（存量缺陷，与本轮无关）

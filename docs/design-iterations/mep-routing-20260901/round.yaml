@@ -1,0 +1,936 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: mep-routing-20260901
+index:
+  order: 6
+  topic: mep
+  review_state: none
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: mep-routing-20260901
+  subject: 水路/电路/中央空调第一版工程向物理走线（燃气除外）
+  priority:
+    user_goal: 让 web 里能看出水/电/空调沿吊顶网络与墙面走的工程形态，取代放射式示意线
+    ranked:
+      - 路径贴吊顶网络与墙面
+      - 穿墙处显式声明且避让门洞
+      - 重力管带坡度方向
+      - 不提升任何路线的确认等级
+      - 校验全绿
+    non_negotiables:
+      - model-geometry.yaml 不修改
+      - ceiling/hvac/electrical/plumbing 权威配置不修改
+      - 燃气不做
+      - 不把 preliminary 路线提升为 confirmed
+      - 水路保持 construction_status: pending
+    tradeoffs_accepted:
+      - 书房方向存在约 0.7m 无吊顶暴露段（局部包管待深化）
+      - 弱电/冷凝水沿墙下引段为 proposal
+      - design_requirement 路线仍以线框虚线表达
+  frozen: true
+  freeze_record:
+    alignment_id: user-request-20260901-mep
+    original_user_response: 燃气线不用管。但是水电空调的线路图得先做一版
+    normalized_decisions:
+      - 重写 39 条 route 的 via 折线贴吊顶网络
+      - 穿墙 11 处显式 penetration 声明
+      - 重力管补 flow_direction+slope
+      - design_requirement 路线保留需求级语义但给候选路径
+      - 修复 water-balcony 退化占位
+    confirmed_by_user: true
+    confirmed_at: '2026-09-01T18:00:00+08:00'
+    evidence_refs:
+      - user-request-20260901-mep
+  allowed_scope:
+    files:
+      - config/mep-hvac-coordination.yaml
+      - docs/design-iterations/mep-routing-20260901/**
+    objects:
+      - 39 条 MEP route
+    archetypes:
+      - mep_coordination
+      - hvac
+      - electrical
+      - plumbing
+    views:
+      - plan
+      - perspective
+      - section
+    changes:
+      - MEP 协调路线 v1 物理路径
+      - 迭代记录文档
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/ceiling.yaml
+      - config/hvac.yaml
+      - config/electrical.yaml
+      - config/plumbing.yaml
+      - config/house.yaml
+      - app/**
+      - server/**
+      - shared/**
+    objects:
+      - 墙体几何
+      - 吊顶几何
+      - 电气/给排水点位坐标
+      - 燃气路由
+    assumptions:
+      - 无吊顶暴露段可包管
+      - 过门头穿墙不撞梁（待量房）
+      - lint 弦线近似误报可接受
+    out_of_scope_changes:
+      - HvacDiagramRenderer routes 渲染补齐
+      - MEP 默认可见性改动
+      - 电气回路拓扑整改
+      - git 操作
+  open_questions:
+    - id: site-beams
+      category: construction
+      question: 实际梁底标高与走廊/厨房套管条件
+      fact_refs:
+        - pending-beam-positions
+      options: []
+      selected: 量房后深化
+      user_response: 未量房前全部保持 preliminary
+      status: site_pending
+    - id: site-risers
+      category: construction
+      question: 给排水立管位置
+      fact_refs:
+        - pending-risers
+      options: []
+      selected: 量房后坐实
+      user_response: 保持 pending
+      status: site_pending
+  alignment:
+    records:
+      - id: user-request-20260901-mep
+        answer: 燃气不做，水电空调线路图先做一版
+        normalized: 按本 brief 实施；自动权限模式下未另行提问，推断项不提升确认等级
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run verify:mep
+      - npm run verify:all
+      - npm run test:server
+      - npm run typecheck
+    browser_evidence_required: true
+    required_views:
+      - 机电总览俯视全层
+      - 仅空调层俯视
+      - 强电+冷媒+冷凝水俯视
+      - 东南向透视
+    aesthetic_review: PASS required
+    functional_review: PASS required
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: mep-routing-20260901
+  subject: 水路/电路/中央空调第一版工程向物理走线
+  coordinate_system:
+    plan:
+      axes: x 东西（+x 东），z 南北（+z 南）
+      origin: model-geometry 局部坐标（米）
+      direction: 俯视北朝上
+      units: m
+    elevation:
+      axes: y 向上（高度，米）
+      origin: 完成面 ±0
+      units: m
+    section:
+      axes: 穿墙点以墙 id + 沿墙坐标 + 高度表达
+      viewing_side: 房间侧
+      units: m
+  datum_type: service_route
+  service_spine:
+    statement: 强电/弱电/冷媒共享主干服务脊：配电箱 (13.4,3.6) 起升 → 门厅吊顶西行 → 客厅北缘边吊 → 走廊枢纽 bend_corridor (7.2,4.3)；冷媒另有外机侧主干：VRV 平台 (6.4,0.5) 起升 → 穿 w_vrv_east → 厨房吊顶空腔沿 x≈7.45 南下 → 折入客厅边吊
+    ceiling_voids:
+      corridor:
+        area:
+          - 4.2
+          - 4.3
+          - 7.2
+          - 5.55
+        clear_height: 2.5
+      foyer:
+        area:
+          - 10.8
+          - 2.9
+          - 13.4
+          - 4.3
+        clear_height: 2.5
+      living_north_ledge:
+        area:
+          - 7.2
+          - 4.3
+          - 13.4
+          - 5.2
+        clear_height: 2.5
+      kitchen:
+        area:
+          - 7.2
+          - 0
+          - 10.8
+          - 2.4
+        clear_height: 2.55
+      master_ac_ledge:
+        area:
+          - 0.05
+          - 4.3
+          - 4.2
+          - 4.95
+        clear_height: 2.5
+      parent_north_ledge:
+        area:
+          - 4.2
+          - 5.55
+          - 7.2
+          - 6.45
+        clear_height: 2.5
+      child_south_ledge:
+        area:
+          - 2.6
+          - 3.7
+          - 5.6
+          - 4.3
+        clear_height: 2.5
+      study_north_ledge:
+        area:
+          - 13.4
+          - 5.55
+          - 15.8
+          - 6.15
+        clear_height: 2.5
+    layer_elevations:
+      strong_power: 2.45
+      weak_power: 2.5
+      refrigerant: 2.55
+      condensate: 2.35
+      supply_air: 2.68
+      return_air: 2.72
+      water_supply: 0.18
+      drainage: 0.02~0.10
+  penetrations:
+    - wall: w_vrv_east
+      at:
+        x: 7.2
+        z: 0.55
+      height: 2.55
+      routes:
+        - refrigerant-trunk
+      note: 平台进厨房吊顶
+    - wall: w_vrv_east
+      at:
+        x: 7.2
+        z: 0.45
+      height: 0.18
+      routes:
+        - water-kitchen-requirement
+      note: 候选垫层
+    - wall: w_vrv_east
+      at:
+        x: 7.2
+        z: 0.5
+      height: 0.02
+      routes:
+        - drain-kitchen-requirement
+      note: 候选垫层
+    - wall: w_balc_east
+      at:
+        x: 7.2
+        z: 1.1
+      height: 0.8
+      routes:
+        - water-balcony
+      note: 门洞北实体段
+    - wall: w_ent_west
+      at:
+        x: 10.8
+        z: 1.42
+      height: 0.75
+      routes:
+        - water-garden-requirement
+      note: 候选
+    - wall: w_ent_west
+      at:
+        x: 10.8
+        z: 1.5
+      height: 0.02
+      routes:
+        - drain-garden-requirement
+      note: 候选
+    - wall: w_strip_east
+      at:
+        x: 4.2
+        z: 4.6
+      height: 2.5
+      routes:
+        - refrigerant-master
+        - strong-ac-master
+        - weak-master
+      note: 门洞 d_mb 以北实体段，三管同孔区
+    - wall: w_st_north
+      at:
+        x: 5.5
+        z: 5.55
+      height: 2.5
+      routes:
+        - refrigerant-parent
+        - strong-ac-parent
+        - weak-parent
+      note: 门洞 d_study 以西实体段
+    - wall: w_nw_south
+      at:
+        x: 4.35
+        z: 4.3
+      height: 2.5
+      routes:
+        - refrigerant-child
+        - strong-ac-child
+      note: 复审修正后东移至 x=4.35（原 4.0 斜线穿 w_strip_east 未声明）；位于门洞 d_bnw 以西实体段，距 d_bnw 西沿仅 0.20m，量房重点复核
+    - wall: w_be_west
+      at:
+        x: 13.4
+        z: 5.9
+      height: 2.45~2.55
+      routes:
+        - refrigerant-study
+        - strong-ac-study
+      note: 门洞 d_bese 上方过门头，过梁关系待现场复核
+    - wall: w_be_west
+      at:
+        x: 13.4
+        z: 6.29
+      height: 2.35
+      routes:
+        - condensate-study
+      note: 冷凝水单独穿点，对齐折线交点，过梁关系待现场复核
+    - wall: w_mbath_south
+      at:
+        x: 0.26
+        z: 2.86
+      height: 0.18
+      routes:
+        - water-master-bath
+      note: 第三轮复审修正：穿点对齐盆心 x=0.26 正交穿墙（原 0.44 为斜穿实测交点偏差 6.4cm）；门洞 d_mbath 以西实体段，垫层/沉箱
+    - wall: w_mbath_south
+      at:
+        x: 2
+        z: 2.86
+      height: 2.27
+      routes:
+        - condensate-master
+      note: 门洞以东实体段，避让参考梁头 x[1.2,1.9]
+    - wall: w_gbath_west_open_vanity
+      at:
+        x: 5.6
+        z: 3.87
+      height: 2.27
+      routes:
+        - condensate-child
+      note: 客卫开放洗漱区西隔墙
+    - wall: w_gbath_south
+      at:
+        x: 5.9
+        z: 3.55
+      height: 0.18
+      routes:
+        - water-guest-bath
+      note: 沿墙线经门洞 d_gbath（x[5.6,6.3]）区间低位通过，垫层/门槛石下，非穿孔
+  datum_refs:
+    - fact-ceiling-network
+    - fact-door-openings
+    - fact-master-intent
+    - fact-outdoor-pos
+    - fact-panel-pos
+  notes:
+    - 所有标高为协调标高（吊顶空腔内），非放线标高；重力管 1% 坡（阳台排水 2%）为协调目标值。
+    - 弱电/冷凝水沿墙下引段与客厅边吊以南暴露段不在吊顶网络内，标记为 proposal 待现场定做法。
+    - 评审修正记录：第一轮功能评审发现 refrigerant-child/strong-ac-child 斜线穿 w_strip_east 未声明（阻塞）→ 穿点东移至 w_nw_south x=4.35，全程 x≥4.2 不再碰 w_strip_east；第一轮美学评审要求全正交化 → 全部路线改为曼哈顿折线（主干 z=4.6 轴线、门厅 x=13.3/z=4.2 轴线、厨房 x=7.45 轴线），穿墙段与墙正交。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: mep-routing-20260901
+  subject: 水路/电路/中央空调第一版工程向物理走线（燃气除外）
+  created_at: '2026-09-01T18:00:00+08:00'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/ceiling.yaml
+      - config/hvac.yaml
+      - config/electrical.yaml
+      - config/plumbing.yaml
+      - config/house.yaml
+    observation_refs:
+      - docs/decision_log.md
+    measurement_refs:
+      - survey/neighbor_ys01_original_structure_2025-06.png
+    runtime_refs:
+      - app MEP 机电总览截图 tmp/screenshots/mep-hvac-audit/
+    evidence_refs: []
+  facts:
+    confirmed:
+      - id: fact-ceiling-network
+        category: confirmed
+        statement: 吊顶网络即藏管通道：走廊吊顶 x[4.2,7.2] z[4.3,5.55]、门厅吊顶 x[10.8,13.4] z[2.9,4.3]、客厅北缘边吊 x[7.2,13.4] z[4.3,5.2]、厨房铝扣板 x[7.2,10.8] z[0,2.4+]、主卧檐口 x[0.05,4.2] z[4.3,4.95]、父母房北缘边吊 x[4.2,7.2] z[5.55,6.45]、儿童房南墙边吊 x[2.6,5.6] z[3.7,4.3]、书房北墙边吊 x[13.4,15.8] z[5.55,6.15]+拐角
+        value: 见 ceiling.yaml
+        source_refs:
+          - config/ceiling.yaml
+        basis: 吊顶权威配置，note 均注明藏多联机风管/风管机
+        confidence: high
+        impact: material
+        affected_objects:
+          - refrigerant/condensate/air/strong/weak routes
+        affected_views:
+          - plan
+          - perspective
+        owner: project
+        status: resolved
+        verification_method: verify:mep + 浏览器截图
+      - id: fact-master-intent
+        category: confirmed
+        statement: 主卧冷媒/电源由走廊穿孔（z≈4.6）直线向西进檐口东段、零拐弯是既定设计意图
+        value: 穿孔 z≈4.6
+        source_refs:
+          - config/ceiling.yaml ceiling_master_ac note
+        basis: 2026-08-26 七迁定案 note
+        confidence: high
+        impact: material
+        affected_objects:
+          - refrigerant-master
+          - strong-ac-master
+        affected_views:
+          - plan
+        owner: project
+        status: resolved
+        verification_method: 路径与 note 一致性核对
+      - id: fact-outdoor-pos
+        category: confirmed
+        statement: 外机 vrf_outdoor_a2 位于西侧 VRV 设备平台 (6.40
+        0.50)，高 0.70m: null
+        value:
+          x: 6.4
+          z: 0.5
+          height: 0.7
+        source_refs:
+          - config/hvac.yaml
+        basis: HVAC 权威配置
+        confidence: high
+        impact: material
+        affected_objects:
+          - refrigerant-trunk
+        affected_views:
+          - plan
+        owner: project
+        status: resolved
+        verification_method: verify:mep 端点解析
+      - id: fact-door-openings
+        category: confirmed
+        statement: 穿墙点避让门洞实体段：d_mb z[4.65,5.55]@w_strip_east、d_study x[6.15,7.05]@w_st_north、d_bnw x[4.55,5.45]@w_nw_south、d_bese z[5.65,6.55]@w_be_west、d_mbath x[1.15,1.95]@w_mbath_south、d_kit_balc z[1.2,2.0]@w_balc_east
+        value: openings.offset 为洞口中心距
+        source_refs:
+          - config/layout/model-geometry.yaml
+        basis: 几何权威源（offset=洞口中心距，layout-resolver 解算）
+        confidence: high
+        impact: material
+        affected_objects:
+          - 所有穿墙 route
+        affected_views:
+          - plan
+          - section
+        owner: project
+        status: resolved
+        verification_method: verify:mep penetration 声明 + 门洞区间核对
+      - id: fact-panel-pos
+        category: confirmed
+        statement: 强电箱/弱电箱位于门厅东墙 w_foyer_east (13.40
+        3.60)，强电 mount 1.65m、弱电 mount 0.50m: null
+        value:
+          x: 13.4
+          z: 3.6
+        source_refs:
+          - config/electrical.yaml
+        basis: 电气权威配置
+        confidence: high
+        impact: material
+        affected_objects:
+          - strong-main
+          - weak-*
+        affected_views:
+          - plan
+        owner: project
+        status: resolved
+        verification_method: verify:mep
+      - id: fact-no-wall-gaps
+        category: confirmed
+        statement: 厨房南界 z=2.4 与客厅/走廊 x=7.2 z[2.4,4.3] 无实体墙（w_liv_west 已删、w_kit_west 仅 z[2.2,2.4]），管线可开放通行；书房仅西墙 w_be_west 可进入（北侧为电梯厅，禁入）
+        value: 见 model-geometry walls
+        source_refs:
+          - config/layout/model-geometry.yaml
+        basis: 几何权威源
+        confidence: high
+        impact: material
+        affected_objects:
+          - refrigerant-trunk
+          - refrigerant-study
+          - strong-ac-study
+        affected_views:
+          - plan
+        owner: project
+        status: resolved
+        verification_method: verify:mep 穿墙检测
+      - id: fact-arc-chord-false-positive
+        category: confirmed
+        statement: lint 对带圆弧墙（w_bath_north，v_bath_nw radius=1.0）用弦线近似，drain-master-bath 端点 (2.0
+        1.15) 在实际墙线 z=1.1 南侧 5cm 但越过弦线 → suppressed_wall_crossing 为误报（预存问题，非本次引入）: null
+        value: w_bath_north 弦 (0
+        2.1)→(2.6: null
+        1.1): null
+        source_refs:
+          - shared/mep-hvac-lint.ts wallCrosses
+          - server/layout-resolver.ts
+        basis: 调试脚本 tmp/mep-debug/check-drain.ts 实测
+        confidence: high
+        impact: low
+        affected_objects:
+          - drain-master-bath
+        affected_views: []
+        owner: project
+        status: resolved
+        verification_method: 运行时段相交实测
+    inferred:
+      - id: infer-riser-unknown
+        category: inferred
+        statement: 排水立管/给水立管/强电入户方向未量房确认，厨卫与阳台水路只能到候选级
+        value: 'house.yaml mep: inferred'
+        source_refs:
+          - config/house.yaml
+        basis: 权威配置自标 inferred
+        confidence: high
+        impact: material
+        affected_objects:
+          - water/drain kitchen/balcony/garden routes
+        affected_views:
+          - plan
+        owner: site
+        status: resolved
+        verification_method: 量房
+      - id: infer-over-door-study
+        category: inferred
+        statement: 书房方向管线（冷媒/电源/冷凝水）于 d_bese 门洞上方 2.45–2.55m 过门头穿 w_be_west，与过梁关系待现场复核
+        value: 穿点 (13.4
+        5.9): null
+        source_refs:
+          - config/layout/model-geometry.yaml
+          - 邻户结构图参考梁位
+        basis: 门洞顶 2.1m + 参考梁底 2.65m 之间窗口
+        confidence: medium
+        impact: material
+        affected_objects:
+          - refrigerant-study
+          - strong-ac-study
+          - condensate-study
+        affected_views:
+          - section
+        owner: site
+        status: resolved
+        verification_method: 量房梁底标高
+      - id: infer-wall-structure-map
+        category: inferred
+        statement: 墙体类型参考图 v1：x≈4.2 轴线（w_mb_east/w_strip_east）、w_mbath_east、w_foyer_east、w_be_north、w_east_upper 判读为剪力墙/结构；x=7.2 链（w_vrv_east/w_balc_east/w_kit_west）、w_nw_south、w_st_north、w_be_west 主体、客卫各墙判读为填充墙；南北窗带为幕墙禁挂——轴线级映射详表见 docs/mep-construction-guidance.md §2
+        value: 邻户图实心黑=剪力墙、空心=填充墙
+        source_refs:
+          - survey/neighbor_ys01_original_structure_2025-06.png
+          - docs/mep-construction-guidance.md
+        basis: 邻户同户型原始结构图比例映射（东西向 16.65m vs 模型 15.85m，仅轴线级）
+        confidence: medium
+        impact: material
+        affected_objects:
+          - 所有穿墙 route 与下引点位
+        affected_views:
+          - plan
+          - section
+        owner: site
+        status: open
+        verification_method: 交房后物业结构图+钢筋探测仪逐墙终核
+    user_decision:
+      - id: decision-scope-v1
+        category: user_decision
+        statement: 燃气线不做；水路/电路/中央空调物理走线先做一版工程向线路图
+        value: true
+        source_refs:
+          - user-request-20260901-mep
+        basis: 用户明确指示
+        confidence: high
+        impact: material
+        affected_objects:
+          - mep-hvac-coordination.yaml 全部 39 条 route
+        affected_views:
+          - plan
+          - perspective
+        owner: user
+        status: resolved
+        verification_method: 本迭代交付
+        user_confirmation_ref: user-request-20260901-mep
+    site_pending:
+      - id: pending-wall-structure-verify
+        category: site_pending
+        statement: 墙体类型参考图 v1 为邻户图映射，交房后按确切结构数据回填 docs/mep-construction-guidance.md §2 并升级置信度；若 w_strip_east/w_mb_east 终核为剪力墙，三管同孔与下引点位按承重墙工艺执行
+        value: null
+        source_refs:
+          - survey/neighbor_ys01_original_structure_2025-06.png
+        basis: 非自家实测
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - w_strip_east 三管同孔穿点
+          - 各房间下引点位
+        affected_views:
+          - plan
+        owner: site
+        status: open
+        verification_method: 量房+结构图核对
+      - id: pending-beam-positions
+        category: site_pending
+        statement: 5 个参考梁位均为邻户结构图比例映射（uncertain），实际梁底标高/套管条件待量房
+        value: null
+        source_refs:
+          - config/hvac.yaml reference_constraints
+        basis: 非自家实测
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - 所有吊顶内 route
+        affected_views:
+          - section
+        owner: site
+        status: open
+        verification_method: 量房逐段测梁底
+      - id: pending-risers
+        category: site_pending
+        statement: 给排水立管、沉箱分界线、燃气表位待量房，水路 route 全部保持 pending
+        value: null
+        source_refs:
+          - docs/pending-site-data.md
+        basis: 未量房
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - water_supply/drainage routes
+        affected_views:
+          - plan
+        owner: site
+        status: open
+        verification_method: 量房
+      - id: pending-vendor-hvac
+        category: site_pending
+        statement: 冷媒管径/分歧器/套管与风管截面/静压待空调厂家深化
+        value: null
+        source_refs:
+          - config/hvac.yaml
+        basis: 厂家深化未做
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - refrigerant/supply_air/return_air routes
+        affected_views:
+          - section
+        owner: hvac_vendor
+        status: open
+        verification_method: 厂家深化图
+      - id: pending-exposed-segments
+        category: site_pending
+        statement: 三处无吊顶暴露段需现场定包管/开槽做法：客厅边吊 z5.2 以南至书房过门头约 0.7m、弱电沿 w_st_east/w_be_west 下引段、冷凝水竖直下引段
+        value: null
+        source_refs:
+          - config/mep-hvac-coordination.yaml reason 字段
+        basis: 吊顶网络外的连接段
+        confidence: not_applicable
+        impact: low
+        affected_objects:
+          - refrigerant-study
+          - strong-ac-study
+          - weak-*
+          - condensate-*
+        affected_views:
+          - perspective
+        owner: site
+        status: open
+        verification_method: 现场与施工方确认
+  unknowns_requiring_alignment: []
+  notes:
+    - 自动权限模式下无法执行 AskUserQuestion；对齐记录以用户原话（"燃气线不用管。但是水电空调的线路图得先做一版"）为准，agent 推断项全部保留 inferred/pending 状态并在 reason 标注，未提升任何路线为 confirmed。
+    - 本轮不改 model-geometry.yaml / ceiling.yaml / hvac.yaml / electrical.yaml / plumbing.yaml，仅重写 config/mep-hvac-coordination.yaml 的 route 路径。
+    - 2026-09-01 归档扩展：用户批准以邻户原始结构图标注墙体类型作为 v1（参考级），连同规格依据归档为施工指导 docs/mep-construction-guidance.md；交房后以确切数据回填修正。
+    - 2026-09-01 归档扩展 2：用户批准梁位也以邻户图先出初版——5 条已录 config/hvac.yaml reference_constraints（lint uncertain 常驻），另 2 条图上候选（主卫 LH:250、儿童房/客卫北 LH:400/LW:200）判读不确定，暂收 docs/mep-construction-guidance.md §2.5.2 待量房判读后再决定是否录入 config。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: mep-routing-20260901
+  subject: 水路/电路/中央空调第一版工程向物理走线
+  objects:
+    - id: strong-power-routes
+      kind: mep_route_group
+      layer: strong_power
+      routes:
+        - strong-main
+        - strong-ac-living
+        - strong-ac-master
+        - strong-ac-parent
+        - strong-ac-study
+        - strong-ac-child
+      responsibility: 空调专用回路强电走线（配电箱→门厅/客厅边吊/走廊吊顶→各内机电源插座）
+      interfaces:
+        - panel_strong_entry_left
+        - bend_corridor
+        - sock_*_ac
+      maintenance: 全部吊顶空腔内，检修随吊顶/回风格栅
+      collision_policy: 不参与场景碰撞；穿墙点见 design-datum penetrations
+      validation_refs:
+        - verify:mep
+        - verify:all
+    - id: weak-power-routes
+      kind: mep_route_group
+      layer: weak_power
+      routes:
+        - weak-main-living
+        - weak-master
+        - weak-parent
+        - weak-study
+      responsibility: 弱电走线（弱电箱→走顶→沿墙下引至网口/预留位）
+      interfaces:
+        - panel_weak_entry_left
+        - net_living
+        - net_parent
+        - net_study
+      maintenance: 吊顶段随吊顶；沿墙下引段做法待现场
+      collision_policy: 不参与场景碰撞
+      validation_refs:
+        - verify:mep
+    - id: water-routes
+      kind: mep_route_group
+      layer: water_supply
+      routes:
+        - water-master-bath
+        - water-guest-bath
+        - water-balcony
+        - water-kitchen-requirement
+        - water-garden-requirement
+      responsibility: 给水支路（卫生间 plan_supported；厨房/阳台/花园需求级候选）
+      interfaces:
+        - faucet_mbath_vanity
+        - toilet_mbath
+        - faucet_gbath_vanity
+        - toilet_gbath
+        - faucet_balcony_washer
+      maintenance: '垫层/沉箱/墙面敷设，全部 construction_status: pending'
+      collision_policy: 不参与场景碰撞
+      validation_refs:
+        - verify:mep
+    - id: drain-routes
+      kind: mep_route_group
+      layer: drainage
+      routes:
+        - drain-master-bath
+        - drain-guest-bath
+        - drain-balcony
+        - drain-kitchen-requirement
+        - drain-garden-requirement
+      responsibility: 排水支路（重力，1~2% 坡，立管接点待量房）
+      interfaces:
+        - drain_mbath_shower
+        - drain_mbath_floor
+        - drain_gbath_shower
+        - drain_gbath_floor
+        - drain_balcony_washer
+        - drain_balcony_floor
+      maintenance: 沉箱/垫层内，坡度待现场复核
+      collision_policy: 不参与场景碰撞
+      validation_refs:
+        - verify:mep
+      known_issues:
+        - drain-master-bath 触发 w_bath_north 弦线近似误报（fact-arc-chord-false-positive）
+    - id: refrigerant-routes
+      kind: mep_route_group
+      layer: refrigerant
+      routes:
+        - refrigerant-trunk
+        - refrigerant-master
+        - refrigerant-parent
+        - refrigerant-study
+        - refrigerant-child
+      responsibility: 冷媒星型拓扑（外机→厨房/走廊吊顶主干→各房间边吊支路）
+      interfaces:
+        - outdoor_a2
+        - bend_corridor
+        - indoor_living
+        - indoor_master
+        - indoor_parent
+        - indoor_study
+        - indoor_child
+      maintenance: 吊顶空腔内；分歧器/套管待厂家深化
+      collision_policy: 不参与场景碰撞；绕梁优先，不得默认穿梁
+      validation_refs:
+        - verify:mep
+    - id: condensate-routes
+      kind: mep_route_group
+      layer: condensate
+      routes:
+        - condensate-living
+        - condensate-master
+        - condensate-study
+        - condensate-parent
+        - condensate-child
+      responsibility: 冷凝水重力候选（内机→边吊/墙面 1% 坡→竖直下引→候选接入点）
+      interfaces:
+        - indoor_*
+        - condensate_*_candidate
+      maintenance: 候选接入点全部 pending，不得默认接地漏/立管
+      collision_policy: 不参与场景碰撞
+      validation_refs:
+        - verify:mep
+    - id: air-duct-routes
+      kind: mep_route_group
+      layer: supply_air + return_air
+      routes:
+        - supply-air-*
+        - return-air-* 共 10 条
+      responsibility: 送/回风边吊内短支管（内机→风口）
+      interfaces:
+        - indoor_*
+        - supply_*
+        - return_*
+      maintenance: 回检一体铰接格栅兼检修口
+      collision_policy: 不参与场景碰撞
+      validation_refs:
+        - verify:mep
+      known_issues:
+        - supply_return_overlap ×5：送/回风包络在内机出口相邻，inferred 级 soft warning，工程上属正常邻接
+  visual_datum:
+    shared_spine: 门厅吊顶 + 客厅北缘边吊 + 走廊吊顶构成连续主干视觉带；分支在边吊接口处转弯
+    status_colors:
+      confirmed: 绿实线
+      inferred: 琥珀虚线标记
+      pending: 灰蓝低透明虚线
+      requirement/candidate: 紫/浅蓝线框虚线
+    hierarchy: 主干（strong-main/refrigerant-trunk）视觉权重高于分支；需求级路线以线框区分于物理路线
+  dependencies:
+    - config/ceiling.yaml（吊顶网络基准，只读引用）
+    - config/hvac.yaml（锚点/风口/候选点，只读引用）
+    - config/electrical.yaml / config/plumbing.yaml（点位，只读引用）
+    - shared/mep-hvac-lint.ts（穿墙/坡度/覆盖检测，未修改）
+review:
+  iteration_id: mep-routing-20260901
+  subject: 水路/电路/中央空调第一版工程向物理走线（替代放射式示意）
+  frozen_scope:
+    - config/mep-hvac-coordination.yaml
+    - docs/design-iterations/mep-routing-20260901/**
+  out_of_scope:
+    - app/** 渲染代码
+    - 燃气线（业主明确不管）
+    - 默认隐藏/按钮入口行为
+  rounds:
+    - round: 1
+      baseline: v1（初版物理走线重写）
+      functional_review:
+        verdict: FAIL
+        blocking_issues:
+          - refrigerant-child / strong-ac-child 斜线穿 w_strip_east 未声明 penetration
+      aesthetic_review:
+        verdict: FAIL
+        blocking_issues:
+          - 斜线/放射式横穿开敞区，不像工程图；要求全部曼哈顿正交折线、贴吊顶网络/墙面
+      fixes:
+        - child 两条路线穿点东移至 w_nw_south x=4.35，全程 x>=4.2 不穿 w_strip_east
+        - 全部 40 条 route 改为正交折线（主干 z=4.6、门厅 x=13.3/z=4.2、厨房 x=7.45 轴线）
+        - condensate-study 穿点对齐折线交点 (13.4,6.29)；drain-kitchen-requirement 穿点 z=0.5
+        - water-guest-bath 补 w_gbath_south 门洞低位通过声明；drain-master-bath reason 补注弦线误报
+      verification: verify:mep 0 error / 15 warning（全部既有已接受项）；verify:all / typecheck / test:server 494 全绿
+    - round: 2
+      baseline: v2（正交化 + 穿点修正）
+      evidence:
+        - evidence/mep_overview_topdown_all_layers_after_v2.png
+        - evidence/mep_overview_topdown_ac_only_after_v2.png
+        - evidence/mep_overview_topdown_power_refrig_condensate_after_v2.png
+        - evidence/mep_3d_power_refrig_condensate_topdown_near_after_v2.png
+        - evidence/mep_3d_perspective_from_se_after_v2.png
+        - evidence/runtime-routes-query-v2.json
+      functional_review:
+        verdict: FAIL
+        blocking_issues:
+          - B1 drain-master-bath via 段 (1.2,2.2)->(2.0,1.15) 为 45 度斜线
+          - B2 water-master-bath 穿 w_mbath_south 段非正交，实测交点与声明穿点偏差 6.4cm
+          - B3 supply-air-living/parent/child 端点接驳段非正交且 minor 0.20-0.25m 超容差
+        confirmed_resolved:
+          - 第一轮阻塞点 1（w_strip_east 未声明穿墙）实测彻底消除，穿点偏差 0.000
+          - drain-master-bath 的 w_bath_north 报警核实为圆弧墙弦线近似误报（与 fact-table 一致）
+          - penetration 完整性独立实测：40 条 route 全部实体墙穿越均有声明
+      aesthetic_review:
+        verdict: PASS
+        non_blocking_notes:
+          - drain-master-bath 沉箱内斜段（已在 B1 修复）
+          - 共线多层分色、图例折叠、内机标记块醒目等需改 app 代码，列入后续迭代
+        requested_changes_deferred_app:
+          - 共线层横向微偏移或线型区分
+          - 图例面板默认展开/常驻
+          - 冷媒/送风/回风色相拉开；内机标记降饱和
+          - 默认隐藏/入口行为调整（冻结范围外）
+      fixes:
+        - B1 drain-master-bath via 正交化为 [{1.2,2.2},{1.2,1.15}]
+        - B2 water-master-bath 穿墙段沿盆心 x=0.26 正交化，penetration.at 改 (0.26,2.86)
+        - B3 三条送风支管改为正交折线（living via [{10.3,5.0},{10.8,5.0}]；parent via [{5.0,6.0}]；child via [{3.7,4.0}]）
+        - 顺带：drain-guest-bath 删冗余点并正交化；strong-ac-child/refrigerant-child 中段 jog 正交化；design-datum 三处同步（含'以东'笔误改'以西'）
+      verification: verify:mep 0 error / 15 warning 不变；verify:all / typecheck / test:server 494 全绿
+    - round: 3
+      baseline: v3（阻塞项修复）
+      evidence:
+        - evidence/mep_overview_topdown_all_layers_after_v3.png
+        - evidence/mep_overview_topdown_ac_only_after_v3.png
+        - evidence/mep_overview_topdown_water_only_after_v3.png
+        - evidence/mep_overview_topdown_power_refrig_condensate_after_v3.png
+        - evidence/mep_3d_power_refrig_condensate_topdown_near_after_v3.png
+        - evidence/mep_3d_perspective_from_se_after_v3.png
+        - evidence/runtime-routes-query-v3.json（全量 40 条点列）
+      functional_review:
+        verdict: PASS
+        key_findings:
+          - B1/B2/B3 全部修复并实测确认：全正交、穿点偏差 0.0000
+          - 13 处实体墙严格相交全部有匹配 penetration 且坐标偏差 0.0000
+          - 全量 40 条 route runtime 点列与 yaml 解析逐点一致（40/40）
+          - warning 仍恰为 15 条既有已接受项，无新增无减少
+        non_blocking_notes:
+          - water-garden-requirement 候选穿点偏差 0.069m（候选级从宽）
+          - design-datum 微漂移：w_balc_east z 1.1 vs 1.08、w_ent_west 高度 0.75 vs 0.72
+          - 个别端点接驳 jog 0.14-0.22m（既有从宽项）
+          - drain-guest-bath via 末点过终点后共线折返 0.2m（正交但略冗余）
+      final_verdict: PASS（功能 PASS + 美学 PASS）
+    - round: 2
+      baseline: v2（2026-09-07 强电回路走线补全，DEC-2026-09-07-057）
+      trigger: 业主指出普通插座/照明回路无实体走线（仅主干+5 路空调电源），要求补全回环线路
+      changes:
+        - 新增 25 条 strong_power 路线（照明 11 + 专用负载 5 + 普通电源 9），40→65 条
+        - 全部正交折线，主干自 bend_corridor 枢纽分发；卧室系干线贴 w_mb_east 西脸 / w_be_west 东脸 2.40 墙行，厨卫系走铝扣板上方 2.60
+        - 穿墙声明 8 处：w_strip_east(4.2,4.6)×5、w_st_north(5.5,5.55)×2、w_nw_south(4.35,4.3)×2、w_be_west(13.4,5.9)×2（门头）、w_gbath_south(6.7,3.55)×3（门头）、w_mbath_south(2.0,2.86)、w_ent_south_w(11.3,2.9)、w_balc_east(7.2,1.6)
+        - 修正生活阳台范围误读：阳台实为 z[1.0,2.2]，z[0,1.0] 为 w_vrv_north 圆弧室外飘窗区（禁穿），洗烘回路改穿 w_balc_east
+      functional_review:
+        verdict: PASS
+        notes: verify:mep 0 error / 22 warning（15 条既有已接受项 + 7 条 shear_wall_penetration：原 3 + 新增 4，均为 w_strip_east 穿越工艺提醒，同类别）
+      aesthetic_review:
+        verdict: PASS
+        notes: 全部曼哈顿正交折线，走带沿用既有主干/边吊/墙行体系
+      fixes:
+        - strong-ded-washer-dryer 穿点由 w_vrv_east z=0.8（室外圆角区）改至 w_balc_east z=1.6
+        - strong-ded-bathheaters-mbath / strong-power-mbath-service 补 w_strip_east 穿孔声明
+  final_state:
+    status: delivered-preliminary
+    lint: 0 error / 22 warning（15 条既有已接受项 + 7 条 shear_wall_penetration 工艺提醒：原 3 + v2 新增 4，同为 w_strip_east inferred 墙体穿越，量房确认后按规则升降级）
+    tests: 以 2026-09-07 全量回归为准（verify:all / test:server / typecheck）
+    disclaimer: 全部 65 条 route 为 preliminary/proposed/pending，非施工放线依据

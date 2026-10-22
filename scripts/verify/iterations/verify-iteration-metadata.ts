@@ -4,21 +4,25 @@ import { fileURLToPath } from 'node:url';
 import { load as loadYaml } from 'js-yaml';
 
 /**
- * iteration 元数据可解析性门禁（design-iterations 五件套）。
+ * iteration 元数据可解析性门禁（design-iterations round.yaml 一件套）。
  *
- * 为什么需要它：`docs/design-iterations/<round>/` 下的 decision-brief.yaml /
- * fact-table.yaml / design-datum.yaml / object-manifest.yaml / review-manifest.json
- * 是每轮设计的机读元数据，但**全是 AI 手写的，写入时没有任何工具校验语法**。
- * 已实测：这些文件里有 24 个 YAML/JSON 语法损坏（流式集合缺逗号 11、缩进错误 11、
- * 重复键 1、JSON 语法 1），坏了两三年无人发现——因为没有任何读者。
+ * 为什么需要它：`docs/design-iterations/<round>/round.yaml`（2026-10-22 文档
+ * 精简批 3 由五件套合并而来）是每轮设计的机读元数据，但**全是 AI 手写的，
+ * 写入时没有任何工具校验语法**。五件套时代已实测有 24 个 YAML/JSON 语法损坏
+ * （流式集合缺逗号 11、缩进错误 11、重复键 1、JSON 语法 1），坏了两三年无人
+ * 发现——因为没有任何读者。
  *
  * 本 verifier 把「必须可解析」变成门禁：递归解析 scope 内所有 .yaml/.json，
  * 不可解析的连错误类型与行号一起报。这样两类失效都会当场显形：
- *   ① 新写的五件套语法坏掉 → 写的时候就被拦，不留给三个月后
- *   ② 想按 manifest 做机读聚合（自动生成轮次状态报表）→ 工具不会静默跳过坏文件
+ *   ① 新写的 round.yaml 语法坏掉 → 写的时候就被拦，不留给三个月后
+ *   ② 想按 round.yaml 做机读聚合（INDEX.yaml 即由其 index 段生成）→ 工具
+ *      不会静默跳过坏文件
+ * 另加一条结构契约：每个轮次目录（含 archive/ 下）必须有 round.yaml
+ * （round_yaml_missing），保证「每轮一件套」不漏登记。
  *
- * 刻意不做语义校验：本脚本只回答「能不能解析」，不回答「内容对不对」。
- * 语义校验属于各轮自己的 review 与 config 对账，混进来会让这个门禁变得不可维护。
+ * 刻意不做语义校验：本脚本只回答「能不能解析、登记全不全」，不回答
+ * 「内容对不对」。语义校验属于各轮自己的 review 与 config 对账，混进来会让
+ * 这个门禁变得不可维护。
  *
  * CLI 契约与 verify-model-package-links 一致：`--json` 不含时间戳、issue 按
  * code/entity/message 稳定排序；errors > 0 → exit 1。
@@ -106,6 +110,29 @@ function main(): void {
         entity: rel,
         source: rel,
         message: `${code}${at ? ` @ ${at}` : ''}：${message.slice(0, 160)}`,
+      });
+    }
+  }
+
+  // 结构契约：每个轮次目录必须有 round.yaml（一件套登记不漏）。
+  const roundDirs: string[] = [];
+  for (const base of [SCOPE, `${SCOPE}/archive`]) {
+    const abs = path.join(ROOT, base);
+    if (!fs.existsSync(abs)) continue;
+    for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      if (base === SCOPE && entry.name === 'archive') continue; // archive 是容器
+      roundDirs.push(`${base}/${entry.name}`);
+    }
+  }
+  for (const dir of roundDirs) {
+    if (!fs.existsSync(path.join(ROOT, dir, 'round.yaml'))) {
+      issues.push({
+        level: 'error',
+        code: 'round_yaml_missing',
+        entity: dir,
+        source: dir,
+        message: `轮次目录缺少 round.yaml：${dir}`,
       });
     }
   }

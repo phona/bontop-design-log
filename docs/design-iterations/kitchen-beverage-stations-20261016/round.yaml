@@ -1,0 +1,906 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: kitchen-beverage-stations-20261016
+index:
+  order: 37
+  topic: kitchen-dining-equipment
+  review_state: evidence_review
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-stations-20261016
+  subject: 厨房EM450咖啡机与餐厅米家茶吧机分区预演
+  priority:
+    user_goal: 将意式咖啡机留在厨房，把独立饮水/茶吧机放回餐厅水吧候选区，查看两台设备的正式模型关系。
+    ranked:
+      - 厨房 EM450 与餐厅饮水机分区，既有家具/建筑位置不变
+      - 饮水机使用业主给定310×315×1155mm实物尺寸
+      - 仅落饮水机本体，不把水吧柜体或电气接口假装已定
+    non_negotiables:
+      - 不移动冰箱、餐桌、餐椅、半高柜、厨房柜体、门洞、墙体、玻璃或吊顶
+      - 不新增墙控迁移、插座、回路、给排水或固定柜体
+      - 将设备位置标为预演候选，不当作施工定位
+    tradeoffs_accepted:
+      - 饮水机先作为独立落地设备；水吧收纳柜和插座还要另外深化
+  frozen: true
+  freeze_record:
+    alignment_id: chat-2026-10-16-tea-dispenser-in-model
+    original_user_response: 饮水机呢？
+    normalized_decisions:
+      - 在已授权的正式模型预演中补入米家茶吧机Pro，沿用用户此前给定的外形尺寸。
+      - 使用西侧水吧候选区北段的独立落地位；位置暂为(7.38,3.72)，供业主看图调整。
+      - 不新增水吧柜体或假设插座/控制面板已解决。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-16'
+    evidence_refs:
+      - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/design-datum.yaml#west-dry-bar
+      - docs/design-iterations/kitchen-beverage-stations-20261016/fact-table.yaml
+  allowed_scope:
+    files:
+      - config/house.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - config/spatial-validation.yaml
+      - docs/decisions/02-layout-public.md
+      - docs/decisions/README.md
+      - docs/design-iterations/kitchen-beverage-stations-20261016/
+      - docs/dressing-map.md (generated from declared sources)
+    objects:
+      - furniture:living_dining:mijia_tea_bar_pro
+      - furniture:living_dining:fridge:13 (existing; read-only)
+      - furniture:kitchen:coffee_machine_em450:9 (existing; read-only)
+    archetypes:
+      - freestanding_appliance
+      - beverage_station
+    views:
+      - plan
+      - perspective
+    changes:
+      - 程序化添加米家茶吧机Pro立式机身，按用户三围控制包络
+      - 在living_dining新增独立落地设备预演对象
+      - 登记freestanding空间校验角色
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/plumbing.yaml
+      - config/ceiling.yaml
+    objects:
+      - fridge
+      - dining_table
+      - dining_chair
+      - entry_half_height_cabinet
+      - kitchen_cabinet_run
+      - kitchen_countertop_bridge
+      - wall controls and all architecture
+    assumptions:
+      - 不将预演AABB净距等同厂家散热/检修距离
+      - 不把现有墙控点附近自动解释成饮水机插座
+      - 不把view-only水吧柜代理当作正式柜体
+    out_of_scope_changes:
+      - 水吧低柜、台面、抽屉和储物结构
+      - 墙控、空调面板、冰箱插座、电气回路或给排水修改
+      - 购买决策、价格、安装和施工定位
+  open_questions:
+    - id: OQ-TEA-POWER
+      category: mep
+      question: 饮水机实际额定功率、插头/插座可及位置和回路负荷待实物铭牌与电气深化确认。
+      fact_refs:
+        - S-TEA-POWER
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: OQ-TEA-CONTROLS
+      category: maintenance
+      question: 设备本体到既有墙控最近约107mm平面距离；须核对开关面板外廓和手指操作空间。
+      fact_refs:
+        - I-TEA-LOCATION
+        - S-WALL-CONTROLS
+      options: []
+      selected: null
+      user_response: null
+      status: open
+    - id: OQ-TEA-WATERBAR-CABINET
+      category: construction
+      question: 这次只加入落地设备，水吧柜/储物仍未定；若后续增加下柜，须为北端机器位及南端墙控检修留开口。
+      fact_refs:
+        - F-OLD-WATERBAR-PREVIEW
+      options: []
+      selected: null
+      user_response: null
+      status: open
+  alignment:
+    records:
+      - id: chat-2026-10-16-tea-dispenser-in-model
+        user_response: 饮水机呢？
+        normalized_decision: 补入此前指定的米家茶吧机Pro尺寸，在餐厅西侧水吧候选区做独立落地预演。
+        fact_refs:
+          - F-TEA-DIMS
+          - F-OLD-WATERBAR-PREVIEW
+        status: frozen_for_preview
+    unresolved:
+      - 实际插座、电源负荷和墙控外廓
+      - 水吧柜体是否分段以及设备维护路径
+      - 实物SKU说明书中的上方补水和侧后维修净空
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run verify:furniture
+      - npm run verify:all
+      - npm run typecheck
+      - npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - 餐厅看向西墙，展示饮水机与冰箱、餐桌关系
+      - 饮水机近景，核对尺度、墙控关系和站立位置
+      - 俯视局部，核对冰箱间距与现有水吧候选范围
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: pending
+    blocking_issues:
+      - 插座、铭牌功率、墙控可及性、水吧柜体和厂家净空未闭合
+    done_when:
+      - Three.js运行时对象存在，尺寸约310×315×1155mm
+      - 冰箱、餐桌及既有建筑物坐标保持不变
+      - 固定机位截图和运行时对象查询绑定当前源版本
+      - 审美与功能评审均针对同一版图证据完成
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-stations-20261016
+  subject: 厨房EM450咖啡机与餐厅米家茶吧机分区预演
+  units: m
+  coordinate_system: Three.js right-handed x east-west, y up, z north-south; +x east, +z south.
+  status: draft
+  datums:
+    - id: DAT-TEA-BAR-DINING-WEST
+      name: Mijia Tea Bar Pro free-standing preview near west wall
+      anchor:
+        kind: free_position
+        ref: prior west dry-bar candidate north end
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F-TEA-DIMS
+          - F-FRIDGE-LOCATION
+          - F-OLD-WATERBAR-PREVIEW
+          - F-WALL-CONTROLS
+          - I-TEA-LOCATION
+        decision_refs:
+          - DEC-2026-10-16-R03
+      views:
+        plan:
+          required: true
+          origin: living_dining local coordinates
+          axes: x east-west; z north-south
+          direction: top view, north up (-z)
+          position:
+            x: 7.38
+            z: 3.72
+          rotation: 90
+          dimensions:
+            length: 0.31
+            width: 0.31
+            depth: 0.315
+            offset: 0.16
+          dimension_semantics: total
+        elevation:
+          required: true
+          viewing_side: east looking west at appliance front
+          vertical_axis: 'y'
+          height: 1.155
+          dimensions:
+            width: 0.31
+            height: 1.155
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: east-west through appliance center
+          depth_axis: x
+          clearances:
+            front: null
+            rear: 0.0625
+            top: null
+            bottom: 0
+          thickness: 0.315
+          dimension_semantics: service_clearance
+      geometry:
+        x: 7.38
+        'y': 0
+        z: 3.72
+        width: 0.31
+        depth: 0.315
+        height: 1.155
+        length: null
+        rotation: 90
+        along: null
+      constraints:
+        - Candidate world footprint x[7.2225,7.5375], z[3.565,3.875]; body faces east (+x).
+        - Nearest guest-bath east wall face is x≈7.16; preview rear gap is approximately62.5mm, not a manufacturer installation allowance.
+        - Runtime fridge southern edge is z≈3.403; preview plan gap is approximately162mm, not a maintenance aisle.
+        - Nearest declared switch point is around (7.20,3.98); body-to-point plan distance is approximately107mm, but switch plate size and hand access are not modelled.
+        - Keep the original fridge, dining table, dining chairs, half-height cabinet and architecture in place.
+        - Do not add the water-bar cabinet, socket or plumbing in this iteration.
+      interfaces:
+        - Existing floor support.
+        - Electrical point and circuit remain unassigned.
+        - Top fill, tea-pot extraction, ventilation and servicing remain pending actual SKU manual.
+      validation_refs:
+        - runtime object query and AABB
+        - npm run verify:furniture
+        - npm run verify:all
+        - npm run gate:visual
+      status: open
+  notes:
+    - The body occupies the north end of the view-only 850mm dry-bar region; the 850mm cabinet itself remains unmodelled.
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-stations-20261016
+  subject: 厨房EM450咖啡机与餐厅米家茶吧机分区预演
+  created_at: '2026-10-16'
+  status: aligned
+  source_policy:
+    authority_refs:
+      - config/house.yaml
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/electrical.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+    observation_refs:
+      - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/evidence/runtime-candidate-v2.json
+    measurement_refs: []
+    runtime_refs:
+      - evidence/runtime-query.json
+    evidence_refs: []
+  entry_shape:
+    id: ''
+    category: confirmed
+    statement: ''
+    value: null
+    source_refs: []
+    basis: ''
+    confidence: high
+    impact: material
+    affected_objects: []
+    affected_views:
+      - plan
+      - perspective
+    owner: ''
+    status: open
+    verification_method: ''
+    user_confirmation_ref: null
+  facts:
+    confirmed:
+      - id: F-TEA-DIMS
+        category: user_decision
+        statement: 业主指定米家米家智能茶吧机Pro立式款，外形尺寸310×315×1155mm。
+        value:
+          width: 0.31
+          depth: 0.315
+          height: 1.155
+          unit: m
+        source_refs:
+          - conversation:user tea-bar model and dimensions
+        basis: Use the dimensions supplied by the user for this exact product candidate.
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_tea_bar_pro
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: runtime AABB against supplied three dimensions
+        user_confirmation_ref: chat-2026-10-16-tea-dispenser-in-model
+      - id: F-FRIDGE-LOCATION
+        category: confirmed
+        statement: Existing fridge remains at center (7.5025,2.9865), rotation270, front east.
+        value:
+          x: 7.5025
+          z: 2.9865
+          rotation: 270
+        source_refs:
+          - config/house.yaml#living_dining.fridge
+        basis: Existing formal furnishing configuration.
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:fridge:13
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: runtime transform and AABB
+        user_confirmation_ref: null
+      - id: F-OLD-WATERBAR-PREVIEW
+        category: confirmed
+        statement: Prior view-only west-wall dry-bar candidate covers x[7.20,7.85], z[3.443,4.293]; it is not a formal cabinet and no electrical points are confirmed there.
+        value:
+          x: 7.55
+          z: 3.868
+          depth: 0.6
+          length: 0.85
+          x_bounds:
+            - 7.2
+            - 7.85
+          z_bounds:
+            - 3.443
+            - 4.293
+          status: view_only
+        source_refs:
+          - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/design-datum.yaml#west-dry-bar
+          - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/evidence/runtime-candidate-v2.json#objects
+        basis: Prior runtime candidate and datum; wall controls and electrical access remain blockers for cabinet.
+        confidence: high
+        impact: material
+        affected_objects:
+          - fridge
+          - wall_controls
+          - dry_bar_candidate
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: prior evidence reference and current runtime placement
+        user_confirmation_ref: null
+      - id: F-WALL-CONTROLS
+        category: confirmed
+        statement: Wall-control points exist near the south end of the dry-bar candidate at z≈3.98 and z≈4.10, height1.30m.
+        value:
+          - id: switch_dining
+            x: 7.2
+            z: 3.98
+            height: 1.3
+          - id: switch_corridor
+            x: 7.2
+            z: 4.1
+            height: 1.3
+          - id: ac_panel_dining
+            x: 7.2
+            z: 4.1
+            height: 1.3
+        source_refs:
+          - config/electrical.yaml#switch_dining
+          - config/electrical.yaml#switch_corridor
+          - config/electrical.yaml#ac_panel_dining
+        basis: Existing electrical point configuration.
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_tea_bar_pro
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: current device footprint to point coordinates, plus site review of actual switch plate size
+        user_confirmation_ref: null
+    inferred:
+      - id: I-TEA-LOCATION
+        category: inferred
+        statement: Place the tea-bar candidate at center (7.38,3.72), rotation90, facing east; it occupies the north end of the former water-bar view-only zone.
+        value:
+          x: 7.38
+          z: 3.72
+          rotation: 90
+          aabb_x:
+            - 7.2225
+            - 7.5375
+          aabb_z:
+            - 3.565
+            - 3.875
+          fridge_z_gap: 0.162
+          west_wall_gap: 0.0625
+          nearest_control_point_plan_distance: 0.107
+        source_refs:
+          - F-TEA-DIMS
+          - F-FRIDGE-LOCATION
+          - F-OLD-WATERBAR-PREVIEW
+          - F-WALL-CONTROLS
+          - evidence/runtime-query.json
+        basis: Runtime AABBs show the tea-bar candidate 162mm south of the fridge body; it sits north of the wall-control points. This is a preview choice, not a user-frozen installation coordinate.
+        confidence: medium
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_tea_bar_pro
+          - furniture:living_dining:fridge:13
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: open
+        verification_method: fixed-view owner review, then site measure wall/control/plug extents
+        user_confirmation_ref: null
+    user_decision:
+      - id: U-BEVERAGE-AREAS
+        category: user_decision
+        statement: EM450 stays in the kitchen; the selected vertical tea-bar machine is the dining-room water dispenser candidate.
+        value:
+          coffee: kitchen
+          tea_bar: living_dining
+        source_refs:
+          - conversation:user complete espresso workflow in kitchen
+          - conversation:user tea-bar machine and dimensions
+          - conversation:user "饮水机呢？"
+        basis: Current and prior explicit user direction.
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:coffee_machine_em450
+          - furniture:living_dining:mijia_tea_bar_pro
+        affected_views:
+          - plan
+          - perspective
+        owner: owner
+        status: resolved
+        verification_method: owner review of the combined model
+        user_confirmation_ref: chat-2026-10-16-tea-dispenser-in-model
+    site_pending:
+      - id: S-TEA-POWER
+        category: site_pending
+        statement: No accessible power outlet/circuit is assigned to the candidate dispenser position.
+        value: null
+        source_refs:
+          - config/electrical.yaml
+        basis: Existing dining wall-control points are not appliance outlets; product nameplate wattage and circuit routing are not provided here.
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - furniture:living_dining:mijia_tea_bar_pro
+        affected_views:
+          - plan
+        owner: electrician/owner
+        status: open
+        verification_method: confirm model nameplate, outlet, circuit, RCD and cable access
+        user_confirmation_ref: null
+      - id: S-TEA-MAINTENANCE
+        category: site_pending
+        statement: Top filling, pitcher/tea-pot extraction, rear ventilation and service envelopes need the actual product manual and site finished-wall dimensions.
+        value: null
+        source_refs:
+          - conversation:user tea-bar model listing
+        basis: Dimensions establish only the outside body envelope.
+        confidence: medium
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_tea_bar_pro
+        affected_views:
+          - section
+          - perspective
+        owner: owner/appliance supplier
+        status: open
+        verification_method: obtain Chinese SKU manual and mock up top/side service access
+        user_confirmation_ref: null
+  unknowns_requiring_alignment:
+    - id: ALIGN-TEA-POSE
+      question: 当前候选中心为(7.38,3.72)，面朝东；最终地面位置请业主看模型后确认。
+      reason_result_changes: Moving the device changes fridge spacing and wall-control access.
+      fact_refs:
+        - I-TEA-LOCATION
+        - F-WALL-CONTROLS
+      option_refs:
+        - current preview candidate
+      status: open
+  notes:
+    - Current scene adds only the dispenser body; the 850mm cabinet/counter remains view-only and absent from formal furnishings.
+    - Manufacturer images are used only for a restrained silhouette approximation; body dimensions come from the user.
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-stations-20261016
+  subject: 厨房EM450咖啡机与餐厅米家茶吧机分区预演
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: furniture:living_dining:mijia_tea_bar_pro
+      type: mijia_tea_bar_pro
+      archetypes:
+        - freestanding_appliance
+        - beverage_station
+      owner: owner
+      function: quick hot water and tea dispensing in the dining room
+      material: white appliance enclosure, dark touch panel and metallic dispensing parts; visual proxy
+      geometry_source: shared/render/FixtureFactory.ts mijia_tea_bar_pro recipe; outer dimensions from user listing
+      datum_refs:
+        - DAT-TEA-BAR-DINING-WEST
+      fact_refs:
+        - F-TEA-DIMS
+        - F-FRIDGE-LOCATION
+        - F-WALL-CONTROLS
+        - I-TEA-LOCATION
+      decision_refs:
+        - DEC-2026-10-16-R03
+      dependencies:
+        - furniture:living_dining:fridge:13
+        - config/spatial-validation.yaml#furniture_profiles.mijia_tea_bar_pro
+      interfaces:
+        - id: tea-power
+          target_object_id: config/electrical.yaml#nearby-dining-wall
+          kind: electrical
+          requirement: Provide a reachable grounded outlet and circuit rated for the actual product nameplate.
+          status: blocked
+        - id: tea-controls
+          target_object_id: config/electrical.yaml#switch_dining
+          kind: maintenance
+          requirement: Keep switches/AC controller visible and hand-accessible; current point-to-body distance is only a model check.
+          status: open
+        - id: tea-fridge-separation
+          target_object_id: furniture:living_dining:fridge:13
+          kind: circulation
+          requirement: Preserve the preview 162mm north-south gap and verify actual fridge door/drawer operation.
+          status: open
+      collision:
+        policy: reviewed
+        geometry_ref: declared footprint 0.310×0.315m, rotation90, current formal neighbors have no plan AABB overlap
+        review_ref: evidence/runtime-query.json#spatial
+      maintenance:
+        boundary: freestanding removable appliance; no cabinet enclosure included
+        access_clearance:
+          front: null
+          rear: 0.0625
+          top: null
+        replaceable_parts:
+          - water tank
+          - touchscreen module
+          - outlets
+          - drip tray
+          - tea pot
+          - sterilizer compartment
+        inspection_requirements:
+          - Verify actual China-market SKU, plug, nameplate power and manual.
+          - Confirm switch plates and AC controller remain operable while the device is in place.
+          - Confirm product top filling, tea-pot removal and rear/side service clearances.
+          - The current object is north of the formal fridge body; verify both fridge doors and drawers on site.
+      parts:
+        - id: tea-bar-body
+          role: white vertical case, top cap, upper touchscreen, dual outlets and cup tray
+          independent: true
+          owner: owner
+          material: white matte enclosure, dark display, metallic outlet details
+          geometry_source: procedure approximated from public product image; exact envelope from user dimensions
+          datum_refs:
+            - DAT-TEA-BAR-DINING-WEST
+          dependencies: []
+          collision: reviewed
+          maintenance_boundary: all body geometry within 0.310×1.155×0.315m
+          validation_refs:
+            - runtime AABB
+            - fixed dining perspective
+      visual_relationships:
+        - target_object_id: furniture:living_dining:fridge:13
+          relation: adjacent
+          requirement: Tea bar sits south of the fridge, faces east, and does not shift or overlap the fridge body.
+          evidence_refs: []
+      validation_refs:
+        - npm run verify:furniture
+        - npm run verify:all
+        - runtime AABB
+      status: implemented
+  notes:
+    - This iteration places only the tea-bar appliance; it does not formalize the 850mm sideboard or add power/water connections.
+    - The Xiaomi unit is not claimed to match manufacturer CAD; actual product dimensions are user-supplied and appearance is a simplified proxy.
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-stations-20261016
+  subject: 厨房EM450咖啡机与餐厅米家茶吧机分区预演
+  state: evidence_review
+  source_version:
+    config_refs:
+      - config/house.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - config/spatial-validation.yaml
+      - scripts/verify/placement/verify-furniture-placement.ts
+    asset_refs: []
+    render_facts_ref: current local app runtime; see evidence/runtime-query.json
+    source_digest: Per-file SHA256 values recorded in evidence/runtime-query.json
+    generated_at: '2026-10-16T04:25:14Z'
+  validation:
+    commands:
+      - node --import tsx scripts/generate-dressing-map.ts
+      - node --import tsx scripts/verify/placement/verify-furniture-placement.ts
+      - npm run verify:all
+      - npm run typecheck
+      - npm run gate:visual
+    results:
+      - command: node --import tsx scripts/generate-dressing-map.ts
+        result: PASS
+        details: docs/dressing-map.md regenerated from formal furnishings and dimensions.
+      - command: node --import tsx scripts/verify/placement/verify-furniture-placement.ts
+        result: PASS
+        details: 0 placement errors; 2 existing warnings related to count-only south_balcony and master-bedroom curtain envelope.
+      - command: npm run verify:all
+        result: PASS
+        details: 17/17 verifiers passed, 0 failed; existing warning groups remain.
+      - command: npm run typecheck
+        result: PASS
+        details: Shared and app TypeScript noEmit checks passed.
+      - command: npm run gate:visual
+        result: PASS
+        details: CLEAR for ceiling/electrical/plumbing/materials; app runtime separately confirmed ready, banner empty, and both appliances present.
+    config_status: PASS
+    geometry_status: PASS
+    consistency_status: PASS
+    functional_checks_status: BLOCKED
+    application_status: PASS
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: beverage-zones-overview
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T04:25:14Z'
+      config_error_banner: ''
+      target_objects:
+        - mijia_tea_bar_pro
+        - coffee_machine_em450
+        - fridge
+        - dining_table
+      target_object_ids:
+        - furniture:living_dining:mijia_tea_bar_pro:14
+        - furniture:kitchen:coffee_machine_em450:9
+        - furniture:living_dining:fridge:13
+        - furniture:living_dining:dining_table:8
+      runtime_query_refs:
+        - evidence/runtime-query.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 9
+          - 1.6
+          - 5
+        target:
+          - 7.5
+          - 1
+          - 1.6
+        view_type: perspective
+      snapshot_path: evidence/beverage-zones-overview.snapshot.txt
+      screenshot_path: evidence/beverage-zones-overview.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - evidence/runtime-query.json#source_sha256
+      status: valid
+      invalid_reason: null
+    - id: dining-tea-bar-close
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T04:25:14Z'
+      config_error_banner: ''
+      target_objects:
+        - mijia_tea_bar_pro
+        - fridge
+        - wall controls
+      target_object_ids:
+        - furniture:living_dining:mijia_tea_bar_pro:14
+        - furniture:living_dining:fridge:13
+      runtime_query_refs:
+        - evidence/runtime-query.json#scene
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8.5
+          - 1.58
+          - 4
+        target:
+          - 7.38
+          - 0.7
+          - 3.72
+        view_type: perspective
+      snapshot_path: evidence/dining-tea-bar-close.snapshot.txt
+      screenshot_path: evidence/dining-tea-bar-close.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - evidence/runtime-query.json#source_sha256
+      status: valid
+      invalid_reason: null
+    - id: tea-bar-plan
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T04:25:14Z'
+      config_error_banner: ''
+      target_objects:
+        - mijia_tea_bar_pro
+        - fridge
+        - wall controls
+      target_object_ids:
+        - furniture:living_dining:mijia_tea_bar_pro:14
+        - furniture:living_dining:fridge:13
+      runtime_query_refs:
+        - evidence/runtime-query.json#scene.derived_plan_relations
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 7.38
+          - 2.1
+          - 3.72
+        target:
+          - 7.38
+          - 0.9
+          - 3.72
+        view_type: perspective
+      snapshot_path: evidence/tea-bar-plan.snapshot.txt
+      screenshot_path: evidence/tea-bar-plan.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - evidence/runtime-query.json#source_sha256
+      status: valid
+      invalid_reason: null
+    - id: kitchen-coffee-close
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T04:25:14Z'
+      config_error_banner: ''
+      target_objects:
+        - coffee_machine_em450
+        - kitchen_cabinet_run
+      target_object_ids:
+        - furniture:kitchen:coffee_machine_em450:9
+        - furniture:kitchen:kitchen_cabinet_run:0
+      runtime_query_refs:
+        - evidence/runtime-query.json#scene.coffee_machine
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 7.95
+          - 1.58
+          - 1.55
+        target:
+          - 7.62
+          - 1.04
+          - 0.22
+        view_type: perspective
+      snapshot_path: evidence/kitchen-coffee-close.snapshot.txt
+      screenshot_path: evidence/kitchen-coffee-close.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - evidence/runtime-query.json#source_sha256
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 茶吧机外形约310×315×1155mm，与冰箱形成清晰高低层级；白色机身协调，触控屏和出水部件提供细节对比。
+      - 总览中厨房EM450与餐厅立式茶吧机形成两个分开的饮品节点，没有堆成一排家电；近景中茶吧机因未配柜体，读作独立落地设备。
+      - 本轮没有删除或移动冰箱、餐桌、餐椅、半高柜、厨房柜体、吊顶、玻璃门或建筑对象；只新增茶吧机候选对象。
+    evidence_refs:
+      - evidence/beverage-zones-overview.png
+      - evidence/dining-tea-bar-close.png
+      - evidence/tea-bar-plan.png
+      - evidence/kitchen-coffee-close.png
+      - evidence/runtime-query.json
+    requested_changes: []
+    assumptions:
+      - 设备位置(7.38,3.72)、朝东是预演候选，不是施工冻结坐标。
+      - 茶吧机外形按业主尺寸和公开产品图作低细节近似，不等同厂家CAD；水吧柜体、插座、给排水仍未加入。
+      - 审美评审不覆盖开门、取壶、补水、墙控操作或施工净空。
+  functional_review:
+    verdict: BLOCKED
+    blocking_issues:
+      - id: tea_power_missing
+        object: furniture:living_dining:mijia_tea_bar_pro
+        fact: S-TEA-POWER
+        issue: 没有确认可及插座、额定功率、插头/回路/漏保条件。
+        required_change: 核对中国SKU铭牌并落实可徒手插拔的接地插座和回路容量。
+      - id: wall_control_access_unverified
+        object: switch_dining/switch_corridor/ac_panel_dining
+        fact: F-WALL-CONTROLS
+        issue: 最近声明控制点距机身约107mm，但不含面板外廓、底盒和操作手部空间。
+        required_change: 现场按面板尺寸和真人站位复核操作可达性。
+      - id: tea_service_envelope_unverified
+        object: furniture:living_dining:mijia_tea_bar_pro
+        fact: S-TEA-MAINTENANCE
+        issue: 62.5mm模型后距不是安装净距；顶部补水、取壶、清洁和侧后维修包络未验证。
+        required_change: 取得准确SKU说明书并复核前/后/上/侧操作净空。
+      - id: fridge_operation_unverified
+        object: furniture:living_dining:fridge:13
+        fact: F-FRIDGE-LOCATION
+        issue: 162mm机身间距不代表冰箱门扇/抽屉和茶吧站人操作互不干涉。
+        required_change: 叠加厂家门扇/抽屉包络并现场验证两设备并用。
+    non_blocking_notes:
+      - 运行时对象ID furniture:living_dining:mijia_tea_bar_pro:14 存在，AABB约310×315×1155mm；与冰箱、餐桌及现有建筑AABB不重叠。
+      - 当前落地茶吧机独立于view-only水吧柜候选，未增加柜体、插座或给排水；配置校验通过只证明静态几何，不代表功能或施工放行。
+    evidence_refs:
+      - evidence/runtime-query.json
+      - evidence/dining-tea-bar-close.png
+      - evidence/beverage-zones-overview.png
+      - evidence/tea-bar-plan.png
+      - fact-table.yaml
+      - design-datum.yaml
+      - object-manifest.yaml
+    requested_changes:
+      - 确认准确SKU、铭牌功率、插头和说明书。
+      - 落实独立可及插座与回路负荷。
+      - 按真实墙控外廓、手部和设备维修包络复核107mm点距。
+      - 验证冰箱门扇/抽屉与茶吧操作共存。
+    assumptions:
+      - 当前模型只确认310×315×1155mm机身落位候选，不确认安装净空。
+      - 预演中心(7.38,3.72)、朝东；改变位置或加入水吧柜体会使冰箱与墙控关系重算。
+      - 62.5mm墙距、162mm冰箱机身间距和107mm墙控点距离均为模型坐标推算，不含实物外廓/操作包络。
+  risks:
+    - id: R-TEA-POWER
+      status: site_pending
+      owner: owner/electrician
+      trigger: before electrical freeze or dispenser purchase
+    - id: R-TEA-CONTROLS
+      status: site_pending
+      owner: surveyor/owner
+      trigger: when actual switch panels and control access can be measured
+    - id: R-TEA-MAINTENANCE
+      status: site_pending
+      owner: owner/appliance supplier
+      trigger: before cabinet/shop drawing and appliance purchase
+    - id: R-TEA-FRIDGE
+      status: site_pending
+      owner: owner/appliance supplier
+      trigger: when fridge door/drawer swing data is available
+    - id: R-TEA-BAR
+      status: open
+      owner: owner/cabinet shop
+      trigger: if water-bar cabinetry is resumed, split it around the appliance and preserve control access
+  retrospective:
+    triggered: false
+    triggers: []
+    records: []
+    rebaselined: false
+  delivery:
+    status: incomplete
+    blocking_issues:
+      - Functional review is BLOCKED for power, wall-control access, appliance maintenance and fridge operation envelopes.
+      - Tea-bar position is a candidate pending user review.
+      - The 850mm water-bar cabinet is still view-only and not included.
+    completion_conditions:
+      - Owner confirms or moves the tea-bar candidate after viewing fixed images.
+      - Verify the product manual, socket/circuit, wall controls and fridge operation before construction-ready status.
+    follow_up_site_pending:
+      - China-market SKU power/manual
+      - accessible power point and circuit
+      - wall control plate and hand envelope
+      - tea bar refill/tea-pot/maintenance clearances
+      - fridge door/drawer movement
+      - future cabinet split and service access
+    delivery_ready: false

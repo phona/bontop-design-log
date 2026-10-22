@@ -1,0 +1,803 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: tile-plank-comparison-20261006
+index:
+  order: 40
+  topic: tile-finish
+  review_state: delivery_ready
+  supersedes: none
+  note: 被 tests/server/tile-cost-comparison.test.ts 与 masonry-quotes.test.ts 硬编码引用 evidence 图片路径
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: tile-plank-comparison-20261006
+  subject: 干区木纹长条砖双方案比较
+  priority:
+    user_goal: 同时看到KT 200×1200与金意陶约900×150的效果及成本
+    ranked:
+      - 同条件可比效果
+      - 同面积材料预算
+      - 保留原门店报价及未知费用
+    non_negotiables:
+      - 不猜具体SKU花色
+      - 不把材料价当全安装价
+      - 不覆盖未选定的当前方案
+    tradeoffs_accepted:
+      - 使用同一占位材质隔离砖幅差异
+      - 按现行8%损耗做计划估算
+  frozen: true
+  freeze_record:
+    alignment_id: 本会话2026-10-06两种都考虑
+    original_user_response: 两种都考虑，我需要做效果，跟成本计算
+    normalized_decisions:
+      - 两个候选并行比较
+      - 暂不选择最终产品
+      - 主客卫及厨房墙砖加入两店新方案比较
+      - 金意陶原图无法辨认处允许标注不确定性的推演
+      - 生活阳台未见新报价并保留现行基线
+    confirmed_by_user: true
+    confirmed_at: '2026-10-06'
+    evidence_refs:
+      - config/tile-comparison.yaml
+      - schedule/procurement.md
+  allowed_scope:
+    files:
+      - config/materials.yaml
+      - config/tile-comparison.yaml
+      - server/tile-cost-comparison.ts
+      - server/routes.ts
+      - server/index.ts
+      - app/vite.config.ts
+      - schedule/procurement.md
+      - docs/decision_log.md
+      - docs/design-iterations/tile-plank-comparison-20261006
+    objects:
+      - 干区两款材料候选
+      - KT主客卫及厨房墙砖候选
+      - 金意陶厨卫待识别条目
+      - 现行湿区材料预算基线
+    archetypes:
+      - floor_region
+    views:
+      - plan
+      - perspective
+    changes:
+      - 新增候选
+      - 可复算成本
+      - 同机位规格效果图
+      - 两店厨卫与厨墙报价分区
+      - 采购摘要
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - data/current-scheme.json
+    objects:
+      - 最终默认地砖
+    assumptions:
+      - 门店实物颜色与占位图相同
+      - 报价包含人工辅材
+      - 门店规格约数为精确尺寸
+    out_of_scope_changes:
+      - 几何改动
+      - 施工图定标
+      - 购买
+  open_questions:
+    - id: jyt-zone-spec
+      category: material
+      question: 金意陶厨房砖规格、卫生间①—④房间/墙地归属及②④规格是什么
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: balcony-scope
+      category: material
+      question: 生活阳台是否也纳入两店新方案
+      selected: null
+      user_response: null
+      status: site_pending
+  alignment:
+    records:
+      - 本会话业主要求两款都做效果和成本
+      - 本会话业主确认主客卫与厨房墙砖一起作为新设计比较
+      - 本会话业主上传两张手写原单并允许按照片推断但标注不确定
+    unresolved:
+      - 金意陶厨卫归属及规格待门店核验
+      - 生活阳台无新报价
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run test:server
+      - npm run test:app
+      - npm run typecheck
+      - npm run verify:all
+    browser_evidence_required: true
+    required_views:
+      - 同机位客餐厅近景KT
+      - 同机位客餐厅近景金意陶
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: not_applicable
+    blocking_issues: []
+    done_when:
+      - 主砖同机位效果清楚
+      - 干区与KT已知卫浴地面面积及损耗可复算
+      - 厨卫及厨墙原始报价与推演分层
+      - 未知规格用平面色占位或明确留空
+      - 湿区基线与未知费用分开
+      - 不冒充真实SKU或全安装价
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: tile-plank-comparison-20261006
+  subject: 干区木纹长条砖规格比较
+  units: m
+  coordinate_system: Three.js右手系，Y向上，X东西，Z南北；平面北为-Z
+  status: frozen
+  datums:
+    - id: dry-floor-polygons
+      name: 六个干区现行房间地面
+      anchor:
+        kind: room_anchor
+        ref: config/layout/model-geometry.yaml
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - dry-area
+        decision_refs:
+          - two-options
+      views:
+        plan:
+          required: true
+          origin: 各房间现行多边形
+          axes: x/z
+          direction: 北朝上
+          position:
+            x: null
+            z: null
+          rotation: null
+          dimensions:
+            length: null
+            width: null
+            depth: null
+            offset: null
+          dimension_semantics: net
+        elevation:
+          required: false
+          viewing_side: 不适用
+          vertical_axis: 'y'
+          height: null
+          dimensions:
+            width: null
+            height: null
+            sill: null
+            datum_offset: null
+          dimension_semantics: not_applicable
+        section:
+          required: false
+          cut_direction: 不适用
+          depth_axis: 'y'
+          clearances:
+            front: null
+            rear: null
+            top: null
+            bottom: null
+          thickness: null
+          dimension_semantics: not_applicable
+      geometry:
+        x: null
+        'y': null
+        z: null
+        width: null
+        depth: null
+        height: null
+        length: null
+        rotation: null
+        along: null
+      constraints:
+        - 不改房间边界和标高
+        - 两款使用同一地面多边形与同一机位
+      interfaces:
+        - 现行湿区材料在本轮视觉比较中不变
+      validation_refs:
+        - GET /api/tiles/comparison
+        - evidence/kt-detail.png
+        - evidence/jyt-detail.png
+      status: confirmed
+    - id: wet-floor-polygons
+      name: 主卫与客卫现行地面多边形
+      anchor:
+        kind: room_anchor
+        ref: config/layout/model-geometry.yaml
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - baseline
+        decision_refs:
+          - authorized-inference
+      views:
+        plan:
+          required: true
+          origin: 主卫与客卫多边形
+          axes: x/z
+          direction: 北朝上
+          position:
+            x: null
+            z: null
+          rotation: null
+          dimensions:
+            length: null
+            width: null
+            depth: null
+            offset: null
+          dimension_semantics: net
+        elevation:
+          required: false
+          viewing_side: 不适用
+          vertical_axis: 'y'
+          height: null
+          dimensions:
+            width: null
+            height: null
+            sill: null
+            datum_offset: null
+          dimension_semantics: not_applicable
+        section:
+          required: false
+          cut_direction: 不适用
+          depth_axis: 'y'
+          clearances:
+            front: null
+            rear: null
+            top: null
+            bottom: null
+          thickness: null
+          dimension_semantics: not_applicable
+      geometry:
+        x: null
+        'y': null
+        z: null
+        width: null
+        depth: null
+        height: null
+        length: null
+        rotation: null
+        along: null
+      constraints:
+        - 不改地漏与找坡
+        - 材质为占位效果
+      interfaces:
+        - 防滑性能与施工排水待现场和产品核验
+      validation_refs:
+        - evidence/kt-guest-bath-plan.png
+        - evidence/jyt-guest-bath-hypothesis.png
+      status: confirmed
+    - id: wet-wall-finishes
+      name: 厨房及主客卫现行墙面
+      anchor:
+        kind: room_anchor
+        ref: config/layout/model-geometry.yaml
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - baseline
+        decision_refs:
+          - two-options
+      views:
+        plan:
+          required: false
+          origin: 厨房与卫浴房间
+          axes: x/z
+          direction: 北朝上
+          position:
+            x: null
+            z: null
+          rotation: null
+          dimensions:
+            length: null
+            width: null
+            depth: null
+            offset: null
+          dimension_semantics: not_applicable
+        elevation:
+          required: true
+          viewing_side: 以场景当前内视机位
+          vertical_axis: 'y'
+          height: null
+          dimensions:
+            width: null
+            height: null
+            sill: null
+            datum_offset: null
+          dimension_semantics: not_applicable
+        section:
+          required: false
+          cut_direction: 不适用
+          depth_axis: 'y'
+          clearances:
+            front: null
+            rear: null
+            top: null
+            bottom: null
+          thickness: null
+          dimension_semantics: not_applicable
+      geometry:
+        x: null
+        'y': null
+        z: null
+        width: null
+        depth: null
+        height: null
+        length: null
+        rotation: null
+        along: null
+      constraints:
+        - 真实净贴面积及铺向未冻结
+        - 金意陶墙砖规格未知
+      interfaces:
+        - 门窗洞口
+        - 橱柜完成面
+        - 防水层
+      validation_refs:
+        - evidence/kt-kitchen-wall.png
+        - evidence/jyt-kitchen-wall-unknown.png
+      status: confirmed
+  notes:
+    - 200×1200和约900×150仅为单片标称规格；未从截图推断房间坐标或门店实际尺寸。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: tile-plank-comparison-20261006
+  subject: 干区木纹长条砖双方案效果与成本比较
+  created_at: '2026-10-06'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/layout/model-geometry.yaml
+      - config/materials.yaml
+      - data/current-scheme.json
+      - config/design-rules.yaml
+    observation_refs:
+      - config/tile-comparison.yaml
+      - evidence/kt-quote-original.jpg
+      - evidence/jyt-quote-original.jpg
+    measurement_refs: []
+    runtime_refs:
+      - evidence/kt-detail.png
+      - evidence/jyt-detail.png
+    evidence_refs:
+      - schedule/procurement.md
+  facts:
+    confirmed:
+      - id: dry-area
+        statement: 六个干区以当前几何解析得净铺面积111.864㎡
+        source_refs:
+          - config/layout/model-geometry.yaml
+          - config/design-rules.yaml
+        impact: material
+        verification_method: GET /api/tiles/comparison
+      - id: baseline
+        statement: 当前保存的方案仍为600×1200默认地砖，主卫、客卫、生活阳台另有覆盖
+        source_refs:
+          - data/current-scheme.json
+        impact: material
+        verification_method: 读取当前方案
+    inferred:
+      - id: seam-density
+        statement: 约900×150的砖缝较200×1200更密；同色同铺法近景已显示差别
+        source_refs:
+          - evidence/kt-detail.png
+          - evidence/jyt-detail.png
+        basis: 同机位、同占位纹理、仅变更标称砖幅
+        confidence: high
+        impact: low
+    user_decision:
+      - id: two-options
+        statement: 两款窄长木纹砖连同主客卫、厨房墙砖都做效果与成本比较，暂不二选一
+        source_refs:
+          - 本会话业主2026-10-06答复
+        impact: material
+      - id: authorized-inference
+        statement: 金意陶手写缺字可按照片推断，但必须标注不确定
+        source_refs:
+          - 本会话业主2026-10-06答复
+        impact: material
+    site_pending:
+      - id: real-product
+        statement: 两款实际SKU、花色、釉面、样板、箱规、同批供应、施工及配送报价未核实
+        source_refs:
+          - config/tile-comparison.yaml
+        impact: material
+        verification_method: 门店书面报价与实物样板
+  unknowns_requiring_alignment:
+    - id: jyt-zone-spec
+      question: 金意陶厨砖规格、卫浴①—④的房间/墙地归属及②④规格
+      reason_result_changes: 原图无法可靠读取，影响两店完整新设计效果与按房间算量
+      fact_refs:
+        - baseline
+      option_refs:
+        - 门店正式明细
+        - 业主文字确认
+      status: site_pending
+    - id: balcony-scope
+      question: 生活阳台是否纳入两店新方案
+      reason_result_changes: 两份手写清单均无明确生活阳台分项
+      fact_refs:
+        - baseline
+      option_refs:
+        - 纳入
+        - 保留现行基线
+      status: site_pending
+  notes:
+    - 两张手写原图已归档；金意陶厨卫折后6660元为用户按整笔九折推算，照片未确认锁价。
+    - 不能在金意陶厨卫归属与规格缺失时交付完整新方案效果；已完成的干区比较仍可单独复核。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: tile-plank-comparison-20261006
+  subject: 干区地砖比较对象
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - material
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: floor_tile_kt_200x1200_01
+      type: floor_material_candidate
+      archetypes:
+        - floor_region
+      owner: 业主待定标
+      function: 干区地面选材候选与预算比较
+      material: 占位浅暖木纹，非KT实物
+      geometry_source: config/layout/model-geometry.yaml
+      datum_refs:
+        - dry-floor-polygons
+      fact_refs:
+        - dry-area
+        - two-options
+      decision_refs:
+        - DEC-2026-10-06-TILE-01
+      dependencies:
+        - config/materials.yaml
+        - config/tile-comparison.yaml
+      interfaces:
+        - id: wet-boundary
+          target_object_id: existing-wet-floor
+          kind: material
+          requirement: 本轮不改变湿区分区
+          status: confirmed
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 地砖与近色缝
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements:
+          - 样板和铺贴工艺待门店核验
+      parts: []
+      visual_relationships:
+        - target_object_id: floor_tile_jyt_900x150_01
+          relation: aligned
+          requirement: 同占位色纹同机位比较砖幅
+          evidence_refs:
+            - evidence/kt-detail.png
+            - evidence/jyt-detail.png
+      validation_refs:
+        - evidence/kt-detail.png
+      status: verified
+    - id: floor_tile_jyt_900x150_01
+      type: floor_material_candidate
+      archetypes:
+        - floor_region
+      owner: 业主待定标
+      function: 干区地面选材候选与预算比较
+      material: 占位浅暖木纹，非金意陶实物
+      geometry_source: config/layout/model-geometry.yaml
+      datum_refs:
+        - dry-floor-polygons
+      fact_refs:
+        - dry-area
+        - two-options
+      decision_refs:
+        - DEC-2026-10-06-TILE-01
+      dependencies:
+        - config/materials.yaml
+        - config/tile-comparison.yaml
+      interfaces:
+        - id: wet-boundary
+          target_object_id: existing-wet-floor
+          kind: material
+          requirement: 本轮不改变湿区分区
+          status: confirmed
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 地砖与近色缝
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements:
+          - 实际尺寸及样板待门店核验
+      parts: []
+      visual_relationships:
+        - target_object_id: floor_tile_kt_200x1200_01
+          relation: aligned
+          requirement: 同占位色纹同机位比较砖幅
+          evidence_refs:
+            - evidence/kt-detail.png
+            - evidence/jyt-detail.png
+      validation_refs:
+        - evidence/jyt-detail.png
+      status: verified
+    - id: floor_tile_kt_600x600_01
+      type: wet_floor_material_candidate
+      archetypes:
+        - floor_region
+      owner: 业主待定标
+      function: KT主客卫地面材料比较
+      material: 600×600中性色占位，防滑与花色未验证
+      geometry_source: config/layout/model-geometry.yaml
+      datum_refs:
+        - wet-floor-polygons
+      fact_refs:
+        - two-options
+      decision_refs:
+        - DEC-2026-10-06-TILE-01
+      dependencies:
+        - config/materials.yaml
+        - config/tile-comparison.yaml
+      interfaces: []
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 地砖与砖缝
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements:
+          - 湿脚防滑与找坡待门店及施工方核验
+      parts: []
+      visual_relationships: []
+      validation_refs:
+        - evidence/kt-guest-bath-plan.png
+        - evidence/bath-floor-format.svg
+      status: verified
+    - id: wall_tile_kt_600x1200_01
+      type: wall_material_candidate
+      archetypes:
+        - wall
+      owner: 业主待定标
+      function: KT厨房及主客卫墙面材料比较
+      material: 600×1200中性色占位，花色和铺向未验证
+      geometry_source: config/layout/model-geometry.yaml
+      datum_refs:
+        - wet-wall-finishes
+      fact_refs:
+        - two-options
+      decision_refs:
+        - DEC-2026-10-06-TILE-01
+      dependencies:
+        - config/materials.yaml
+        - config/tile-comparison.yaml
+      interfaces: []
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 砖面、阴阳角与收口
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements:
+          - 真实净贴面积与铺贴方向待核验
+      parts: []
+      visual_relationships: []
+      validation_refs:
+        - evidence/kt-kitchen-wall.png
+      status: verified
+  notes:
+    - 金意陶厨卫规格不明处不是可确认材料对象，仅以低置信度推演和无砖缝占位图表达；待店家明细后补对象。
+    - 生活阳台保持现行材料预算基线，未纳入两店新报价。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: tile-plank-comparison-20261006
+  subject: 木纹长条砖与厨卫墙地砖效果及材料成本预演
+  state: delivery_ready
+  source_version:
+    config_refs:
+      - config/materials.yaml
+      - config/tile-comparison.yaml
+      - data/current-scheme.json
+      - config/layout/model-geometry.yaml
+    asset_refs:
+      - app/src/render/TextureFactory.ts
+      - app/src/render/TextureManager.ts
+      - shared/three-scene-geometry.ts
+    render_facts_ref: data/project-render-facts.json
+    source_digest: cdb19fcd7de867fdbb555bdc231e339d993fbca74d40735cb03763c610f7df5e
+    generated_at: '2026-10-06'
+  validation:
+    commands:
+      - npm run verify:all
+      - npm run test:server
+      - npm run test:app
+      - npm run typecheck
+    results:
+      - verify:all PASS (13 existing fact warnings)
+      - test:server PASS 648/648
+      - test:app PASS 479/479
+      - typecheck PASS
+    config_status: PASS
+    geometry_status: PASS
+    consistency_status: PASS
+    functional_checks_status: PASS
+    application_status: PASS
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: dry-floor-pair
+      url: http://127.0.0.1:5176/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady() && houseScene.isReady()
+      ready_checked_at: '2026-10-06'
+      config_error_banner: ''
+      target_objects:
+        - 客餐厅与六个干区地面
+      target_object_ids:
+        - floor:living_dining
+      runtime_query_refs:
+        - evidence/evidence-notes.md
+      camera:
+        mode: orbit-top-down
+        is_overview: false
+        position:
+          - 9.3
+          - 6.5
+          - 7.3
+        target:
+          - 9.3
+          - 0
+          - 7.29
+        view_type: plan
+      snapshot_path: evidence/app-snapshot.txt
+      screenshot_path: evidence/kt-detail.png + evidence/jyt-detail.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - cdb19fcd7de867fdbb555bdc231e339d993fbca74d40735cb03763c610f7df5e
+      status: valid
+      invalid_reason: null
+    - id: bath-floor-pair
+      url: http://127.0.0.1:5176/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady() && houseScene.isReady()
+      ready_checked_at: '2026-10-06'
+      config_error_banner: ''
+      target_objects:
+        - 客卫地面与KT墙面占位
+      target_object_ids:
+        - floor:guest_bath
+      runtime_query_refs:
+        - evidence/evidence-notes.md
+      camera:
+        mode: orbit-top-down
+        is_overview: false
+        position:
+          - 6.35
+          - 5.5
+          - 3.26
+        target:
+          - 6.35
+          - 0
+          - 3.25
+        view_type: plan
+      snapshot_path: evidence/app-snapshot.txt
+      screenshot_path: evidence/kt-guest-bath-plan.png + evidence/jyt-guest-bath-hypothesis.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - cdb19fcd7de867fdbb555bdc231e339d993fbca74d40735cb03763c610f7df5e
+      status: valid
+      invalid_reason: null
+    - id: kitchen-wall-pair
+      url: http://127.0.0.1:5176/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady() && houseScene.isReady()
+      ready_checked_at: '2026-10-06'
+      config_error_banner: ''
+      target_objects:
+        - 厨房西墙
+      target_object_ids:
+        - w_kit_west
+      runtime_query_refs:
+        - evidence/evidence-notes.md
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 9
+          - 1.7
+          - 1.2
+        target:
+          - 7.2
+          - 1.4
+          - 1.2
+        view_type: perspective
+      snapshot_path: evidence/app-snapshot.txt
+      screenshot_path: evidence/kt-kitchen-wall.png + evidence/jyt-kitchen-wall-unknown.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - cdb19fcd7de867fdbb555bdc231e339d993fbca74d40735cb03763c610f7df5e
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 同尺度浴室示意图使600与400砖缝密度可读；墙面未知处用平面色占位
+    evidence_refs:
+      - evidence/kt-detail.png
+      - evidence/jyt-detail.png
+      - evidence/bath-floor-format.svg
+      - evidence/kt-kitchen-wall.png
+      - evidence/jyt-kitchen-wall-unknown.png
+    requested_changes: []
+    assumptions:
+      - 金意陶400×400用于两卫只是业主授权的低至中置信度推演
+  functional_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - KT含保留阳台的地面子合计¥15,444；金意陶厨卫规格及归属未知未被写成确定方案
+    evidence_refs:
+      - config/tile-comparison.yaml
+      - server/tile-cost-comparison.ts
+      - schedule/procurement.md
+    requested_changes: []
+    assumptions:
+      - 通过范围限于规格效果和计划材料成本预演，非采购定标
+  risks:
+    - 金意陶厨卫逐项归属与部分规格待门店书面确认
+    - 两店SKU、实物釉面、防滑、箱规和全安装费用待核
+  retrospective:
+    triggered: true
+    triggers:
+      - 初版直接换材后未触发渲染，截图相同
+      - 旧墙面归一化UV与米制矩形砖纹理不匹配
+      - 一次后端断连的诊断截图无效
+    records:
+      - 补调用 renderFrame/重拍同机位
+      - 墙面UV改米制并加入测试
+      - 无效截图未交付，独立服务恢复后重拍
+    rebaselined: true
+  delivery:
+    status: comparative_preview_ready
+    blocking_issues: []
+    completion_conditions:
+      - 两款主砖同机位示意
+      - KT厨卫已知规格示意
+      - 金意陶厨卫未知清楚标示
+      - 成本与报价口径可追溯
+      - 验证及双评通过
+    follow_up_site_pending:
+      - 取得金意陶厨卫逐项正式报价
+      - 取得两店实际SKU和样板
+      - 复尺净贴面积及确认施工全包价
+    delivery_ready: true

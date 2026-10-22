@@ -1,0 +1,1096 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: kitchen-beverage-modules-20261016
+index:
+  order: 36
+  topic: kitchen-dining-equipment
+  review_state: blocked
+  supersedes: none
+  note: 摆位已被 DEC-2026-10-17-R11 取代（水吧改放 living_dining，立式茶吧机与 390 低边柜代理退出）；2026-10-20 已建 README 加状态块，现行摆位见 config/house.yaml:530,535,537
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-modules-20261016
+  subject: 餐厅独立边柜与落地茶吧机的软耦合组合预演
+  priority:
+    user_goal: 用真实三维模型解释“不定制柜台时，活动边柜如何与落地茶吧机形成水吧组合”，并展示空间效果。
+    ranked:
+      - 不移动冰箱、茶吧机、餐桌、半高柜、吊顶、门洞、玻璃门和墙体
+      - 茶吧机独立落地；边柜独立可移动，不包覆家电
+      - 用尺度、背线对齐和相邻关系建立视觉联系
+      - 当前EM450仍留在厨房；餐厅只保留未来搬放的可能
+    non_negotiables:
+      - 不新增通顶柜、冰箱侧板或固定包边
+      - 不改既有家具或建筑坐标
+      - 不假设插座、回路、给排水和墙控迁移已解决
+      - 不把候选尺寸写成成品商品或施工尺寸
+    tradeoffs_accepted:
+      - 接受边柜与茶吧机留28mm分缝，以保持可拆可移
+      - 接受边柜前沿比茶吧机前沿多出约85mm，获得约400mm台面深度
+      - 本轮不把EM450复制到餐厅，避免把未来选项误作当前状态
+  frozen: true
+  freeze_record:
+    alignment_id: chat-2026-10-16-movable-waterbar-module-preview
+    original_user_response: 没太听懂，你改一下模型给我看看效果。
+    normalized_decisions:
+      - 用一件不固定、可搬动的低边柜紧邻落地茶吧机，做一个真实模型预演例子。
+      - 边柜为通用几何代理，尺寸、位置和材质仍可看图后调整，不代表已选成品SKU。
+      - 茶吧机、冰箱、餐桌和既有建筑位置保持不变；EM450继续留在厨房。
+      - 通过边柜与茶吧机背线对齐、沿墙留28mm分缝，展示“有关联但不固定”的模块关系。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-16'
+    evidence_refs:
+      - docs/design-iterations/kitchen-beverage-stations-20261016/decision-brief.yaml
+      - docs/design-iterations/kitchen-beverage-modules-20261016/evidence/runtime-query.json
+  allowed_scope:
+    files:
+      - config/house.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - config/spatial-validation.yaml
+      - scripts/verify/placement/verify-furniture-placement.ts
+      - docs/dressing-map.md (generated from declared sources)
+      - docs/decisions/02-layout-public.md
+      - docs/decisions/README.md
+      - docs/design-iterations/kitchen-beverage-modules-20261016/
+    objects:
+      - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+      - furniture:living_dining:mijia_tea_bar_pro:14 (read-only)
+      - furniture:living_dining:fridge:13 (read-only)
+      - furniture:living_dining:dining_table:8 (read-only)
+      - furniture:kitchen:coffee_machine_em450:9 (read-only)
+    archetypes:
+      - freestanding_appliance
+      - movable_sideboard
+      - beverage_station
+    views:
+      - perspective
+      - plan
+    changes:
+      - 在living_dining增加390×400×920mm独立边柜候选对象。
+      - 边柜后缘与茶吧机后缘对齐，沿z方向留28mm分缝。
+      - 使用真实Three.js固定视角截图和运行时对象查询展示相邻关系。
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/plumbing.yaml
+      - config/ceiling.yaml
+    objects:
+      - 冰箱、茶吧机、EM450、餐桌、餐椅、玄关半高柜
+      - 吊顶、墙体、门洞、玻璃门和既有墙控
+    assumptions:
+      - 不把62.5mm后墙空气缝解释为检修通道或厂家安装净距
+      - 不把机身间距解释成冰箱门扇、抽屉或人员操作净距
+      - 不把模型边柜尺寸解释成已选商品、报价或施工图
+    out_of_scope_changes:
+      - 定制柜、固定台面、连续背板、墙面挂装或封闭茶吧机
+      - 新增电源、回路、线缆路径、给排水或墙控迁改
+      - 将咖啡机移入餐厅或在餐厅复制第二台
+  open_questions:
+    - id: OQ-SIDEBOARD-SKU
+      category: preference
+      question: 能否找到尺寸和颜色合适的成品边柜，需另行选品核实。
+      fact_refs:
+        - I-SIDEBOARD-PROXY
+      options: []
+      selected: null
+      user_response: null
+      status: open
+    - id: OQ-WALL-CONTROLS
+      category: mep
+      question: 墙控点位在边柜后方z范围上方，柜前是否能自然操作需按面板和真人动作验证。
+      fact_refs:
+        - S-WALL-CONTROLS
+        - I-RELATIONSHIPS
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: OQ-POWER
+      category: mep
+      question: 茶吧机候选位没有已确认可及插座和回路资料；咖啡机若未来搬来，也需核对负荷。
+      fact_refs:
+        - S-TEA-POWER
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: OQ-SERVICE
+      category: maintenance
+      question: 茶吧机补水、取壶、滴水盘清洁、侧后检修与冰箱动态开门范围未按真实SKU核验。
+      fact_refs:
+        - S-TEA-SERVICE
+        - S-FRIDGE-OPERATION
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+  alignment:
+    records:
+      - id: chat-2026-10-16-movable-waterbar-module-preview
+        user_response: 没太听懂，你改一下模型给我看看效果。
+        normalized_decision: 用一件不固定、可移动的低边柜紧邻落地茶吧机，在真实模型中演示水吧组合。
+        fact_refs:
+          - F-TEA-RUNTIME
+          - F-SOFT-COUPLING
+        status: frozen_for_visual_preview
+    unresolved:
+      - 成品边柜SKU、材料色差、报价和可获得性
+      - 墙控操作、电源、茶吧机维护和冰箱动态开门范围
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - node --import tsx scripts/verify/placement/verify-furniture-placement.ts
+      - node --import tsx scripts/verify/verify-all.ts
+      - npm run typecheck (previous pass; no TypeScript behavior changed in the final alignment adjustment)
+      - node --import tsx scripts/gate/visual-state-gate.ts
+    browser_evidence_required: true
+    required_views:
+      - 餐厅人眼总览：显示边柜、茶吧机和冰箱关系
+      - 茶吧机与边柜近景：显示背线、分缝和台面高度层级
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: pending
+    blocking_issues:
+      - 边柜SKU与真实尺寸未确定，预演不是采购推荐
+      - 墙控、电源、茶吧维护及冰箱开门/抽屉操作未验证
+    done_when:
+      - Three.js运行时边柜对象存在，外包络约400×390×920mm。
+      - 茶吧机、冰箱、餐桌及其他固定对象坐标未改变。
+      - 总览和近景截图与当前配置版本一致。
+      - 清楚呈现边柜为独立活动家具，不与茶吧机或墙体固定连接。
+      - 业主看图后再决定是否选成品边柜或调整尺寸。
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-modules-20261016
+  subject: 餐厅独立边柜与落地茶吧机的软耦合组合预演
+  units: m
+  coordinate_system: Three.js右手坐标；Y向上，X向东，Z向南；rotationY为弧度，正面朝东对应90°。
+  status: draft
+  datums:
+    - id: tea-bar-existing
+      name: 米家茶吧机独立落地基准（本轮只读）
+      anchor:
+        kind: free_position
+        ref: furniture:living_dining:mijia_tea_bar_pro:14
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F-TEA-DIMS
+          - F-TEA-RUNTIME
+        decision_refs:
+          - DEC-2026-10-16-R03
+      views:
+        plan:
+          required: true
+          origin: 机身中心
+          axes: X东/西，Z南/北
+          direction: 正面朝东（+x）
+          position:
+            x: 7.38
+            z: 3.72
+          rotation: 1.570796
+          dimensions:
+            length: 0.31
+            width: 0.315
+            depth: 0.315
+            offset: null
+          dimension_semantics: total
+        elevation:
+          required: true
+          viewing_side: east
+          vertical_axis: 'y'
+          height: 1.155
+          dimensions:
+            width: 0.31
+            height: 1.155
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: east-west
+          depth_axis: x
+          clearances:
+            front: null
+            rear: 0.0625
+            top: null
+            bottom: 0
+          thickness: null
+          dimension_semantics: overall
+      geometry:
+        x: 7.38
+        'y': 0
+        z: 3.72
+        width: 0.31
+        depth: 0.315
+        height: 1.155
+        length: 0.31
+        rotation: 1.570796
+        along: z
+      constraints:
+        - 保持既有位置；本轮只读。
+        - 散热、补水、清洁、检修及整体搬出空间待厂家说明书和现场动作验证。
+      interfaces:
+        - 与冰箱静态机身沿z约留0.162m；不代表动态操作净空。
+        - 独立电源和可及插座未确认。
+      validation_refs:
+        - evidence/runtime-query.json#scene.objects.mijia_tea_bar_pro
+        - evidence/waterbar-module-close.png
+      status: confirmed
+    - id: movable-sideboard-preview
+      name: 可移动低边柜候选（不固定、不包覆家电）
+      anchor:
+        kind: free_position
+        ref: 与tea-bar-existing共享后缘标高的自由放置候选
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F-SIDEBOARD-RUNTIME
+          - I-SIDEBOARD-PROXY
+          - I-RELATIONSHIPS
+        decision_refs:
+          - DEC-2026-10-16-R04
+      views:
+        plan:
+          required: true
+          origin: 柜体中心
+          axes: X东西向深度，Z南北向长度
+          direction: 正面朝东（+x）；后缘与茶吧机后缘对齐
+          position:
+            x: 7.4225
+            z: 4.098
+          rotation: 1.570796
+          dimensions:
+            length: 0.39
+            width: 0.4
+            depth: 0.4
+            offset: 0
+          dimension_semantics: total
+        elevation:
+          required: true
+          viewing_side: east
+          vertical_axis: 'y'
+          height: 0.92
+          dimensions:
+            width: 0.39
+            height: 0.92
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: east-west
+          depth_axis: x
+          clearances:
+            front: null
+            rear: 0.0625
+            top: null
+            bottom: 0
+          thickness: 0.02
+          dimension_semantics: overall
+      geometry:
+        x: 7.4225
+        'y': 0
+        z: 4.098
+        width: 0.39
+        depth: 0.4
+        height: 0.92
+        length: 0.39
+        rotation: 1.570796
+        along: z
+      constraints:
+        - 独立成品家具代理，不挂墙、不与茶吧机或冰箱连接。
+        - 后缘x=7.2225m对齐茶吧机后缘；沿z方向与茶吧机留0.028m缝。
+        - 后方0.0625m为空气缝，不作为人员通道、检修通道或厂家净距。
+        - 前沿比茶吧机前沿多出约0.085m，形成低柜台面和轻微深度台阶。
+        - 当前台面不放置EM450；咖啡机仍只在厨房建模。
+      interfaces:
+        - 茶吧机：沿z相邻，28mm分缝，无物理固定连接。
+        - 墙控：点位位于柜体后方区间且高于柜面，柜前操作舒适度未验证。
+        - 电源：本轮未新增插座、回路或线缆。
+      validation_refs:
+        - evidence/runtime-query.json#scene.objects.waterbar_low_sideboard_400_preview
+        - evidence/waterbar-module-close.png
+        - scripts/verify/placement/verify-furniture-placement.ts
+      status: open
+  notes:
+    - 此datum只定义一次可视预演坐标和外廓，不是采购或施工冻结尺寸。
+    - 静态模型不证明真人取物、墙控操作、家电开门、散热或维护净空。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-modules-20261016
+  subject: 餐厅独立边柜与落地茶吧机的软耦合组合预演
+  created_at: '2026-10-16T08:39:12Z'
+  status: aligned
+  source_policy:
+    authority_refs:
+      - config/house.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - config/spatial-validation.yaml
+    observation_refs:
+      - docs/design-iterations/kitchen-beverage-modules-20261016/evidence/beverage-modules-overview.png
+      - docs/design-iterations/kitchen-beverage-modules-20261016/evidence/waterbar-module-close.png
+    measurement_refs: []
+    runtime_refs:
+      - docs/design-iterations/kitchen-beverage-modules-20261016/evidence/runtime-query.json
+    evidence_refs:
+      - docs/design-iterations/kitchen-beverage-stations-20261016/decision-brief.yaml
+  facts:
+    confirmed:
+      - id: F-TEA-DIMS
+        statement: 茶吧机模型按业主提供的米家茶吧机Pro外形尺寸制作。
+        value:
+          width_m: 0.31
+          depth_m: 0.315
+          height_m: 1.155
+        source_refs:
+          - 业主提供产品尺寸
+          - shared/render/FixtureFactory.ts#mijia_tea_bar_pro
+        basis: 用户给定三围；模型程序化表达该外廓。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_tea_bar_pro:14
+        affected_views:
+          - plan
+          - perspective
+        owner: 业主/家电方
+        status: resolved
+        verification_method: Three.js运行时包围盒
+        user_confirmation_ref: chat-2026-10-16-tea-dispenser-in-model
+      - id: F-TEA-RUNTIME
+        statement: 茶吧机中心为(7.38,0,3.72)、rotationY=90°；AABB x[7.2225,7.5375]、y[0,1.155]、z[3.565,3.875]m，共13个Mesh。
+        value:
+          position:
+            - 7.38
+            - 0
+            - 3.72
+          rotation_deg: 90
+          aabb_m:
+            x:
+              - 7.2225
+              - 7.5375
+            'y':
+              - 0
+              - 1.155
+            z:
+              - 3.565
+              - 3.875
+          mesh_count: 13
+        source_refs:
+          - config/house.yaml#living_dining
+          - evidence/runtime-query.json#scene.objects.mijia_tea_bar_pro
+        basis: 当前客户端真实Three.js运行时变换和Mesh世界坐标包围盒。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_tea_bar_pro:14
+        affected_views:
+          - plan
+          - perspective
+        owner: 设计模型
+        status: resolved
+        verification_method: agent-browser对象遍历和AABB计算
+        user_confirmation_ref: chat-2026-10-16-tea-dispenser-in-model
+      - id: F-SIDEBOARD-RUNTIME
+        statement: 边柜候选中心为(7.4225,0,4.098)、rotationY=90°；AABB x[7.2225,7.6225]、y[0,0.92]、z[3.903,4.293]m，共5个Mesh。
+        value:
+          position:
+            - 7.4225
+            - 0
+            - 4.098
+          rotation_deg: 90
+          aabb_m:
+            x:
+              - 7.2225
+              - 7.6225
+            'y':
+              - 0
+              - 0.92
+            z:
+              - 3.903
+              - 4.293
+          mesh_count: 5
+        source_refs:
+          - config/house.yaml#living_dining
+          - evidence/runtime-query.json#scene.objects.waterbar_low_sideboard_400_preview
+        basis: 当前客户端真实Three.js运行时变换和Mesh世界坐标包围盒。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+        affected_views:
+          - plan
+          - perspective
+        owner: 设计模型
+        status: resolved
+        verification_method: agent-browser对象遍历和AABB计算
+        user_confirmation_ref: chat-2026-10-16-movable-waterbar-module-preview
+      - id: F-FRIDGE-RUNTIME
+        statement: 冰箱中心为(7.5025,0,2.9865)、rotationY=270°；AABB x[7.2025,7.8025]、y[0,1.91]、z[2.57,3.403]m。
+        value:
+          position:
+            - 7.5025
+            - 0
+            - 2.9865
+          rotation_deg: 270
+          aabb_m:
+            x:
+              - 7.2025
+              - 7.8025
+            'y':
+              - 0
+              - 1.91
+            z:
+              - 2.57
+              - 3.403
+        source_refs:
+          - config/house.yaml#living_dining
+          - evidence/runtime-query.json#scene.objects.fridge
+        basis: 当前客户端真实Three.js运行时位置与几何包围盒。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:fridge:13
+        affected_views:
+          - plan
+          - perspective
+        owner: 设计模型
+        status: resolved
+        verification_method: agent-browser对象遍历和AABB计算
+        user_confirmation_ref: chat-2026-10-16-west-fridge-dining-table
+      - id: F-TABLE-AND-EM450
+        statement: 餐桌保持(9.8,0,3.45)、rotationY=90°，AABB x[9.4,10.2]、z[2.75,4.15]m；EM450仍在厨房(7.62,0,0.22)、rotationY=0°，AABB x[7.51,7.73]、y[0.89,1.195]、z[0.0775,0.3625]m。
+        value:
+          dining_table_position:
+            - 9.8
+            - 0
+            - 3.45
+          dining_table_rotation_deg: 90
+          dining_table_aabb_m:
+            x:
+              - 9.4
+              - 10.2
+            z:
+              - 2.75
+              - 4.15
+          coffee_machine_position:
+            - 7.62
+            - 0
+            - 0.22
+          coffee_machine_aabb_m:
+            x:
+              - 7.51
+              - 7.73
+            'y':
+              - 0.89
+              - 1.195
+            z:
+              - 0.0775
+              - 0.3625
+        source_refs:
+          - config/house.yaml#living_dining
+          - config/house.yaml#kitchen
+          - evidence/runtime-query.json
+        basis: 当前Three.js运行时查询；本轮没有改变餐桌或EM450位置，也没有在餐厅复制咖啡机。
+        confidence: high
+        impact: low
+        affected_objects:
+          - furniture:living_dining:dining_table:8
+          - furniture:kitchen:coffee_machine_em450:9
+        affected_views:
+          - perspective
+        owner: 设计模型
+        status: resolved
+        verification_method: agent-browser运行时查询并与house.yaml对照
+        user_confirmation_ref: chat-2026-10-16-movable-waterbar-module-preview
+    inferred:
+      - id: I-SIDEBOARD-PROXY
+        statement: 边柜是390W×400D×920Hmm的通用可移动家具代理，不是定制柜图或指定商品SKU。
+        value:
+          width_m: 0.39
+          depth_m: 0.4
+          height_m: 0.92
+        source_refs:
+          - shared/types.ts#FURNITURE_DIMS
+          - shared/render/FixtureFactory.ts#waterbar_low_sideboard_400_preview
+        basis: 为演示“成品边柜+落地茶吧机”而选择的比例候选，需看图和实际选品后调整。
+        confidence: medium
+        impact: material
+        affected_objects:
+          - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+        affected_views:
+          - plan
+          - perspective
+        owner: 业主/后续选品
+        status: open
+        verification_method: 确认成品SKU并复核尺寸、承重、门板、材料和颜色
+        user_confirmation_ref: null
+      - id: I-RELATIONSHIPS
+        statement: 边柜与茶吧机后缘同为x=7.2225m；沿z留28mm间隔，边柜前沿多出约85mm；边柜后方到墙面模型x=7.16m约62.5mm。
+        value:
+          rear_plane_x_m: 7.2225
+          gap_along_z_m: 0.028
+          front_step_m: 0.085
+          wall_air_gap_m: 0.0625
+        source_refs:
+          - evidence/runtime-query.json#relationships
+        basis: 由运行时AABB和现有墙面模型计算；不是家具厂家净距或人员检修通道。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:mijia_tea_bar_pro:14
+          - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+        affected_views:
+          - plan
+          - perspective
+        owner: 设计模型
+        status: resolved
+        verification_method: 运行时包围盒差值和固定视角
+        user_confirmation_ref: null
+    user_decision:
+      - id: F-SOFT-COUPLING
+        statement: 用户希望软装保持松耦合，避免餐厅水吧成为无法调整的一锤子买卖。
+        value: movable_furniture_preferred
+        source_refs:
+          - 本对话："我不想一锤子买卖，我也希望软装是松耦合的。"
+        basis: 用户明确表达偏好。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+          - furniture:living_dining:mijia_tea_bar_pro:14
+        affected_views:
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 边柜不挂墙、不连接茶吧机，在house.yaml中作为独立家具对象放置
+        user_confirmation_ref: chat-2026-10-16-movable-waterbar-module-preview
+      - id: F-COFFEE-STAYS-KITCHEN
+        statement: 当前EM450仍放厨房；未来如搬到餐厅，使用同一台设备，不应把第二台复制进模型。
+        value: EM450_remains_in_kitchen
+        source_refs:
+          - docs/design-iterations/kitchen-espresso-workstation-20261016/decision-brief.yaml
+          - 本对话的可逆摆放讨论
+        basis: 既有用户决策与当前模型对象数量。
+        confidence: high
+        impact: material
+        affected_objects:
+          - furniture:kitchen:coffee_machine_em450:9
+        affected_views:
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 确认house.yaml中餐厅没有第二个EM450
+        user_confirmation_ref: chat-2026-10-16-kitchen-coffee-station
+    site_pending:
+      - id: S-WALL-CONTROLS
+        statement: 墙控点位位于边柜相邻的z范围内，标高约1.30m、高于柜面0.92m；能否从柜前自然操作需按实际面板和真人手臂动作核验。
+        value:
+          panel_height_m: 1.3
+          sideboard_top_m: 0.92
+        source_refs:
+          - config/electrical.yaml#switch_dining
+          - switch_corridor
+          - ac_panel_dining
+          - docs/design-iterations/kitchen-beverage-stations-20261016/review-manifest.json
+        basis: 模型控制点的高度关系不包含面板外廓和真人动作。
+        confidence: medium
+        impact: blocking
+        affected_objects:
+          - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+          - config/electrical.yaml
+        affected_views:
+          - plan
+          - perspective
+        owner: 业主/电工
+        status: open
+        verification_method: 用真实面板外廓和真人操作包络现场试放
+        user_confirmation_ref: null
+      - id: S-TEA-POWER-AND-SERVICE
+        statement: 茶吧机候选位未确认可及插座、回路负荷和准确中国SKU安装/维护说明；补水、取壶、清洁、后侧检修未验证。
+        value: null
+        source_refs:
+          - config/electrical.yaml
+          - docs/design-iterations/kitchen-beverage-stations-20261016/review-manifest.json
+        basis: 本轮只加家具与设备外形，不添加电气点位或给排水。
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - furniture:living_dining:mijia_tea_bar_pro:14
+          - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+        affected_views:
+          - plan
+          - section
+          - perspective
+        owner: 家电方/电工/业主
+        status: open
+        verification_method: 核实铭牌和说明书，落实可及插座，再模拟补水/取壶/清洁
+        user_confirmation_ref: null
+      - id: S-FRIDGE-OPERATION
+        statement: 冰箱机身南缘到茶吧机北缘静态间距约162mm；冰箱开门、抽屉、站位和换机路径仍未验证。
+        value:
+          fridge_to_tea_body_gap_m: 0.162
+        source_refs:
+          - evidence/runtime-query.json#relationships
+          - docs/design-iterations/kitchen-beverage-stations-20261016/review-manifest.json
+        basis: AABB静态计算，不含厂家门扇和使用者动态操作包络。
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - furniture:living_dining:fridge:13
+          - furniture:living_dining:mijia_tea_bar_pro:14
+        affected_views:
+          - plan
+          - perspective
+        owner: 家电方/柜商/业主
+        status: open
+        verification_method: 叠加冰箱厂家门扇/抽屉包络并现场模拟并行使用
+        user_confirmation_ref: null
+  unknowns_requiring_alignment: []
+  notes:
+    - 这是可视预演，不是商品推荐或施工放行。
+    - 软装可移动性不等于墙控、电源、检修与家电净空合格。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-modules-20261016
+  subject: 餐厅独立边柜与落地茶吧机的软耦合组合预演
+  object_policy:
+    fixed_count_required: false
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: furniture:living_dining:waterbar_low_sideboard_400_preview:15
+      type: movable_low_sideboard_preview
+      archetypes:
+        - movable_sideboard
+        - beverage_station
+      owner: 家具/业主
+      function: 杯具、茶包与日用品收纳；提供可移动临时台面，未来可按需承接小家电。
+      material: 暖白柜门和暖白台面外观示意，不代表指定板材或色号。
+      geometry_source: config/house.yaml + FURNITURE_DIMS + FixtureFactory recipe waterbar_low_sideboard_400_preview
+      datum_refs:
+        - movable-sideboard-preview
+      fact_refs:
+        - F-SIDEBOARD-RUNTIME
+        - I-SIDEBOARD-PROXY
+        - I-RELATIONSHIPS
+      decision_refs:
+        - DEC-2026-10-16-R04
+      dependencies:
+        - furniture:living_dining:mijia_tea_bar_pro:14
+      interfaces:
+        - id: tea-bar-spacing
+          target_object_id: furniture:living_dining:mijia_tea_bar_pro:14
+          kind: visual
+          requirement: 后缘对齐，沿z留28mm分缝，两件家具不相互固定。
+          status: confirmed
+        - id: wall-control-access
+          target_object_id: config/electrical.yaml:existing_wall_controls
+          kind: electrical
+          requirement: 按真实面板外廓和手部包络验证柜前可达性。
+          status: blocked
+      collision:
+        policy: reviewed
+        geometry_ref: evidence/runtime-query.json#scene.objects.waterbar_low_sideboard_400_preview.aabb
+        review_ref: evidence/runtime-query.json#checks.verify_furniture
+      maintenance:
+        boundary: 活动家具代理；背板、层板、门铰和实际承重取决于最终成品。
+        access_clearance:
+          rear_wall_air_gap_m: 0.0625
+          status: geometry_only_not_service_clearance
+        replaceable_parts:
+          - 整件边柜可搬走或替换，实际通道需现场确认
+        inspection_requirements:
+          - 墙控可达性
+          - 电源路径
+          - 门扇开启范围
+          - 设备维护与冰箱操作
+      parts:
+        - id: sideboard-carcass
+          role: 低柜主体的外形代理
+          independent: true
+          owner: 家具/业主
+          material: 暖白表面示意
+          geometry_source: FixtureFactory.waterbar_low_sideboard_400_preview
+          datum_refs:
+            - movable-sideboard-preview
+          dependencies: []
+          collision: required
+          maintenance_boundary: 内部结构未作为成品柜图深化。
+          validation_refs:
+            - F-SIDEBOARD-RUNTIME
+        - id: sideboard-door-faces
+          role: 两扇静态门面，未建动态开门扫掠
+          independent: true
+          owner: 家具/业主
+          material: 暖白表面示意
+          geometry_source: FixtureFactory.waterbar_low_sideboard_400_preview
+          datum_refs:
+            - movable-sideboard-preview
+          dependencies:
+            - sideboard-carcass
+          collision: required
+          maintenance_boundary: 门铰链、开启方向和内部层板待实际成品确定。
+          validation_refs:
+            - F-SIDEBOARD-RUNTIME
+      visual_relationships:
+        - target_object_id: furniture:living_dining:mijia_tea_bar_pro:14
+          relation: adjacent
+          requirement: 形成同一饮品区；背线对齐、留28mm阴影缝，低柜前沿外出约85mm。
+          evidence_refs:
+            - evidence/waterbar-module-close.png
+            - evidence/beverage-modules-overview.png
+      validation_refs:
+        - evidence/runtime-query.json
+        - node --import tsx scripts/verify/placement/verify-furniture-placement.ts
+      status: implemented
+    - id: furniture:living_dining:mijia_tea_bar_pro:14
+      type: freestanding_tea_bar_appliance
+      archetypes:
+        - freestanding_appliance
+      owner: 家电/业主
+      function: 独立饮水和茶饮设备；保持落地，不嵌入低柜。
+      material: 白色家电机身外观代理
+      geometry_source: config/house.yaml + FixtureFactory recipe mijia_tea_bar_pro
+      datum_refs:
+        - tea-bar-existing
+      fact_refs:
+        - F-TEA-DIMS
+        - F-TEA-RUNTIME
+      decision_refs:
+        - DEC-2026-10-16-R03
+      dependencies:
+        - future_accessible_power
+        - furniture:living_dining:fridge:13
+      interfaces:
+        - id: power-and-load
+          target_object_id: config/electrical.yaml:future_accessible_power
+          kind: electrical
+          requirement: 核对中国SKU铭牌、插头、可达插座和线路负荷。
+          status: blocked
+        - id: service-and-fridge
+          target_object_id: furniture:living_dining:fridge:13
+          kind: maintenance
+          requirement: 核对取壶、补水、清洁、检修和冰箱门/抽屉动态包络。
+          status: blocked
+      collision:
+        policy: reviewed
+        geometry_ref: evidence/runtime-query.json#scene.objects.mijia_tea_bar_pro.aabb
+        review_ref: evidence/runtime-query.json#checks.verify_furniture
+      maintenance:
+        boundary: 可单独移动、替换；厂家后方及顶部净空要求待真实SKU手册。
+        access_clearance:
+          rear_wall_air_gap_m: 0.0625
+          status: geometry_only
+        replaceable_parts:
+          - 补水部件
+          - 滴水盘
+          - 整机
+        inspection_requirements:
+          - 厂家说明书净空
+          - 取壶
+          - 补水
+          - 清洗
+          - 搬出路径
+      parts: []
+      visual_relationships:
+        - target_object_id: furniture:living_dining:waterbar_low_sideboard_400_preview:15
+          relation: adjacent
+          requirement: 独立设备与低柜同属饮品区，但保持可分离。
+          evidence_refs:
+            - evidence/waterbar-module-close.png
+      validation_refs:
+        - evidence/runtime-query.json
+        - docs/design-iterations/kitchen-beverage-stations-20261016/review-manifest.json
+      status: implemented
+    - id: furniture:kitchen:coffee_machine_em450:9
+      type: protected_existing_countertop_appliance
+      archetypes:
+        - freestanding_appliance
+      owner: 家电/业主
+      function: 当前完整咖啡工作流留厨房；餐厅只保留未来可搬动的家具自由度。
+      material: 不锈钢/黑色家电外观代理
+      geometry_source: config/house.yaml, read-only in this iteration
+      datum_refs: []
+      fact_refs:
+        - F-TABLE-AND-EM450
+        - F-COFFEE-STAYS-KITCHEN
+      decision_refs:
+        - DEC-2026-10-16-R02
+      dependencies:
+        - kitchen_north_counter
+      interfaces:
+        - id: optional-future-move
+          target_object_id: furniture:living_dining:waterbar_low_sideboard_400_preview:15
+          kind: visual
+          requirement: 将来如搬到餐厅，只移动同一台设备并复核台面和电源；本轮不复制对象。
+          status: open
+      collision:
+        policy: reviewed
+        geometry_ref: evidence/runtime-query.json#scene.objects.coffee_machine_em450.aabb
+        review_ref: docs/design-iterations/kitchen-espresso-workstation-20261016/review-manifest.json
+      maintenance:
+        boundary: 厨房摆位只读；本轮不迁移。
+        access_clearance:
+          status: existing_kitchen_preview
+        replaceable_parts:
+          - 滴水盘
+          - 水箱
+          - 蒸汽棒
+        inspection_requirements:
+          - 沿用厨房电源和燃气表待核事项
+      parts: []
+      visual_relationships:
+        - target_object_id: furniture:living_dining:waterbar_low_sideboard_400_preview:15
+          relation: custom
+          requirement: 保留以后搬放的可逆选择；当前厨房仍是咖啡机位置。
+          evidence_refs:
+            - evidence/runtime-query.json
+      validation_refs:
+        - docs/design-iterations/kitchen-espresso-workstation-20261016/review-manifest.json
+      status: verified
+  notes:
+    - 本轮只新增独立低边柜候选；茶吧机、冰箱、餐桌、餐椅、半高柜、吊顶及建筑构件均保持原位置。
+    - 边柜是比例代理，不等于已选品牌、成品型号或柜商施工图。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: kitchen-beverage-modules-20261016
+  subject: 餐厅独立边柜与落地茶吧机的软耦合组合预演
+  state: blocked
+  source_version:
+    config_refs:
+      - config/house.yaml
+      - config/spatial-validation.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - scripts/verify/placement/verify-furniture-placement.ts
+      - docs/dressing-map.md
+    asset_refs: []
+    render_facts_ref: data/project-render-facts.json
+    source_digest: sha256:2c231c6d086bc63bb01b2a05ec4b8a3543f0a1225841dce73679838839e52e68
+    generated_at: '2026-10-16T08:39:12Z'
+  validation:
+    commands:
+      - node --import tsx scripts/verify/placement/verify-furniture-placement.ts
+      - node --import tsx scripts/verify/verify-all.ts
+      - npm run typecheck
+      - node --import tsx scripts/gate/visual-state-gate.ts
+    results:
+      - command: verify-furniture-placement
+        status: PASS
+        details: OK; 2 existing warnings unrelated to this dining furniture placement.
+      - command: verify:all
+        status: PASS
+        details: 17/17 verifiers passed, 0 failed; project-wide warnings remain.
+      - command: typecheck
+        status: PASS
+        details: Passed after model implementation; final edit changed only the cabinet x position in config and a source comment.
+      - command: gate:visual
+        status: CLEAR
+        details: Gate ran after final cabinet coordinates; client and config agree.
+    config_status: PASS
+    geometry_status: PASS
+    consistency_status: PASS
+    functional_checks_status: BLOCKED
+    application_status: PASS
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: dining-overview
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T08:39:12Z'
+      config_error_banner: ''
+      target_objects:
+        - 餐厅边柜、米家茶吧机、冰箱、餐桌
+      target_object_ids:
+        - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+        - furniture:living_dining:mijia_tea_bar_pro:14
+        - furniture:living_dining:fridge:13
+        - furniture:living_dining:dining_table:8
+      runtime_query_refs:
+        - evidence/runtime-query.json#scene.objects
+        - evidence/runtime-query.json#relationships
+      camera:
+        mode: orbit-perspective
+        is_overview: false
+        position:
+          - 9.55
+          - 1.7
+          - 3.86
+        target:
+          - 7.75
+          - 0.88
+          - 3.62
+        view_type: perspective
+      snapshot_path: evidence/beverage-modules-overview.snapshot.txt
+      screenshot_path: evidence/beverage-modules-overview.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - source_digest:sha256:2c231c6d086bc63bb01b2a05ec4b8a3543f0a1225841dce73679838839e52e68
+      status: valid
+      invalid_reason: null
+    - id: waterbar-module-close
+      url: http://localhost:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-16T08:39:12Z'
+      config_error_banner: ''
+      target_objects:
+        - 米家茶吧机与独立可移动低边柜
+      target_object_ids:
+        - furniture:living_dining:mijia_tea_bar_pro:14
+        - furniture:living_dining:waterbar_low_sideboard_400_preview:15
+      runtime_query_refs:
+        - evidence/runtime-query.json#scene.objects
+        - evidence/runtime-query.json#relationships
+      camera:
+        mode: orbit-perspective
+        is_overview: false
+        position:
+          - 9.25
+          - 1.75
+          - 3.82
+        target:
+          - 7.45
+          - 0.68
+          - 3.84
+        view_type: perspective
+      snapshot_path: evidence/waterbar-module-close.snapshot.txt
+      screenshot_path: evidence/waterbar-module-close.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/house.yaml
+        - source_digest:sha256:2c231c6d086bc63bb01b2a05ec4b8a3543f0a1225841dce73679838839e52e68
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 边柜后缘与茶吧机后缘对齐后，两个白色体块构成一个可读的饮品模块；茶吧机仍能识别为独立落地设备。
+      - 低柜约920mm、茶吧机1155mm、冰箱1910mm形成自然的三级高度关系；28mm分缝读作受控的阴影缝，前沿约85mm的深度台阶可接受。
+      - 白色机身、台面和冰箱保持同一色系，屏幕和底部踢脚留下少量对比，画面没有靠装饰造型堆叠。
+      - 删除内容：无。被覆盖的旧表达：DEC-2026-10-16-R03中‘水吧柜体仍不入模’的预演范围，本轮仅添加活动边柜；茶吧机保持独立、不被包覆这一结论没有推翻。
+      - 静默失效条件：成品边柜深度、后缘或颜色与代理不同；固定填死28mm缝；增加背板/高柜或挡水条；冰箱门、墙控或设备维修要求迫使移动模块。
+    evidence_refs:
+      - evidence/waterbar-module-close.png
+      - evidence/beverage-modules-overview.png
+      - evidence/runtime-query.json
+    requested_changes: []
+    assumptions:
+      - 本审查判断的是当前几何代理的比例和层次，不代表成品柜SKU或施工材料。
+      - 审美通过不覆盖墙控、电源、冰箱开门、茶吧机服务净空等功能条件。
+  functional_review:
+    verdict: BLOCKED
+    blocking_issues:
+      - id: wall_control_access_unverified
+        status: site_pending
+        issue: 墙控点的z范围与边柜重叠，虽然点位高于0.92m柜面，仍缺面板外廓和真人伸手操作验证。
+        required_change: 按真实面板外廓和边柜剖面验证可达；柜上方和前方保持开放。
+      - id: tea_power_missing
+        status: site_pending
+        issue: 茶吧机没有已确认可及插座、铭牌功率和回路负荷。
+        required_change: 核对中国SKU并落实可达接地插座、线缆路径和回路负荷。
+      - id: tea_maintenance_unverified
+        status: site_pending
+        issue: 62.5mm后墙间隙仅是几何空气缝，不是检修通道；补水、取壶、清洁和搬出包络未按说明书核实。
+        required_change: 取得真实SKU说明书并验证顶部、前方、侧后维护动作。
+      - id: fridge_operation_unverified
+        status: site_pending
+        issue: 冰箱至茶吧机162mm是机身间距，不含门扇、抽屉及站人操作包络。
+        required_change: 叠加冰箱厂家门扇/抽屉包络并模拟设备并用。
+      - id: sideboard_door_sweep_unmodeled
+        status: site_pending
+        issue: 模型有静态双门门面，但未建铰链位置、开启方向或扫掠体。
+        required_change: 按最终成品柜结构复核门扇/抽屉与设备、墙控和站位的关系。
+    non_blocking_notes:
+      - 此前提出的runtime_evidence_mismatch已由本迭代当前页运行时对象、AABB查询和同源截图解除；静态几何没有直接碰撞。
+      - 本轮删除对象：无；移动既有对象：无。只新增一个独立边柜候选。
+      - 预演会在以下条件下失效：成品尺寸变动、墙体完成面不同、墙控/插座被遮挡、茶吧机说明书需要更大净空、冰箱动态开门进入设备区。
+    evidence_refs:
+      - evidence/runtime-query.json
+      - evidence/waterbar-module-close.png
+      - evidence/beverage-modules-overview.png
+    requested_changes:
+      - 完成成品边柜选型后验证真实尺寸、柜门开启和内部收纳。
+      - 现场核对墙控操作、电源、茶吧服务净空和冰箱动态包络。
+    assumptions:
+      - 边柜AABB为当前配置版本：x[7.2225,7.6225]、y[0,0.92]、z[3.903,4.293]。
+      - 28mm分缝只表示当前静态不重叠，不代表安装公差、清洁缝或搬出空间。
+  scope_audit:
+    deleted: []
+    added:
+      - one freestanding 390×400×920mm low-sideboard preview object
+    superseded:
+      - The prior R03 preview scope left the waterbar cabinet view-only; R04 adds a movable sideboard for visual evaluation.
+    unchanged:
+      - fridge
+      - tea bar
+      - dining table and chairs
+      - entry half-height cabinet
+      - ceiling
+      - walls
+      - doors
+      - glass
+      - kitchen EM450
+    silent_failure_conditions:
+      - The off-the-shelf sideboard SKU differs from this proxy in depth, height or back construction.
+      - The 28mm visual gap is filled or changed without rechecking movement and maintenance.
+      - Wall controls, power, tea-bar maintenance, fridge opening or replacement require a different furniture position.
+  risks:
+    - id: sideboard-product-not-selected
+      status: open
+      owner: 业主/选品
+      trigger: 购买成品家具前
+    - id: power-wall-controls-and-appliance-clearances
+      status: site_pending
+      owner: 业主/电工/家电方
+      trigger: 电气及家具定型前
+  retrospective:
+    triggered: false
+    triggers: []
+    records: []
+    rebaselined: false
+  delivery:
+    status: blocked
+    blocking_issues:
+      - 功能审查尚未通过；本次只完成可视预演。
+    completion_conditions:
+      - 业主看图确认边柜体块关系和尺寸是否值得保留。
+      - 若进入深化，选定成品边柜并现场核实控制点、电源、设备维护与冰箱动态净空。
+    follow_up_site_pending:
+      - 真实边柜尺寸/材料
+      - 墙控手部可达
+      - 茶吧机电源与维护
+      - 冰箱门扇/抽屉/站位
+    delivery_ready: false

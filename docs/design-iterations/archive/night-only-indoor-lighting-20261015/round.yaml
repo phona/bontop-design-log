@@ -1,0 +1,650 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: night-only-indoor-lighting-20261015
+index:
+  order: 51
+  topic: lighting-ceiling
+  review_state: delivery_ready
+  supersedes: none
+  note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 archive/night-global-source-mismatch decision-brief 1 处引用）
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: night-only-indoor-lighting-20261015
+  subject: 夜间只保留室内照明
+  priority:
+    user_goal: 夜间模拟时隔离室内灯效果，避免全局补光抬高墙地材质亮度。
+    ranked:
+      - 夜间全局照明为零。
+      - 保留已配置且启用的室内灯具及其灯具发光体。
+      - 白天静态预设保持现有行为。
+    non_negotiables:
+      - 室内灯仍由现有日照自动/房间开关控制。
+      - 不改墙地材料、房间几何或全局正式灯光配置。
+    tradeoffs_accepted:
+      - 没有环境补光的夜景会显得更暗，未被室内灯直射的区域可能接近黑色。
+  frozen: true
+  freeze_record:
+    alignment_id: user-message-20261015-night-only
+    original_user_response: 不能全关掉吗？只留室内照明。
+    normalized_decisions:
+      - 日照模拟开启且太阳高度角不大于零时，关闭全局太阳光、环境光、辅助补光和 IBL。
+      - 保留室内灯具、灯具发光面、室内灯色温和亮度预演控制。
+      - 地砖方向不在本次代码改动范围。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-15T02:39:08Z'
+    evidence_refs:
+      - docs/design-iterations/archive/night-only-indoor-lighting-20261015/fact-table.yaml
+  allowed_scope:
+    files:
+      - shared/solar.ts
+      - app/src/render/EnvironmentManager.ts
+      - app/src/render/EnvironmentManager.test.ts
+    objects:
+      - global_sun
+      - global_ambient
+      - global_fill
+      - global_environment
+      - indoor_fixtures
+    archetypes:
+      - perspective
+    views:
+      - perspective
+    changes:
+      - 夜间全局光强和环境贴图关闭。
+      - 更新既有夜间光照单元断言以匹配新目标。
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/materials.yaml
+      - config/render/lighting.yaml
+    objects:
+      - floor_tile_orientation
+      - wall_finish
+    assumptions:
+      - 将程序渲染强度解释为真实 lux 或灯具流明。
+      - 把渲染中的砖向视为已经批准的施工铺向。
+    out_of_scope_changes:
+      - 改变日间静态全局光预设。
+      - 改变当前地砖材料、错缝方式或铺设方向。
+  open_questions: []
+  alignment:
+    records:
+      - id: user-message-20261015-night-only
+        original_response: 不能全关掉吗？只留室内照明。
+        normalized_decision: 夜间仅保留室内灯，全球环境和日光源均关闭。
+        affected_refs:
+          - global_sun
+          - global_ambient
+          - global_fill
+          - global_environment
+          - indoor_fixtures
+        timestamp: '2026-10-15T02:39:08Z'
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run typecheck
+      - VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - perspective_night
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: not_applicable
+    blocking_issues: []
+    done_when:
+      - 夜间太阳方向光可见性为 false 且强度为 0。
+      - 夜间 AmbientLight 和 fill DirectionalLight 强度均为 0。
+      - 夜间 scene.environment 为 null。
+      - 室内配置灯在自动模式中按房间开关正常显示。
+      - 固定机位夜景截图通过审美与功能独立评审。
+  delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: night-only-indoor-lighting-20261015
+  subject: 场景级夜间光照状态（非几何对象）
+  units: m
+  coordinate_system: Three.js 右手坐标系；此迭代不移动或旋转场景对象，视点只用于固定机位证据。
+  status: frozen
+  datums:
+    - id: night_render_state
+      name: 夜间场景级光照状态
+      anchor:
+        kind: free_position
+        ref: app/src/render/EnvironmentManager.ts#applySolarState
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - current_night_sun_off
+          - pre_change_night_residual_fill
+          - night_global_illumination_zero
+          - indoor_fixtures_auto_night
+        decision_refs:
+          - user-message-20261015-night-only
+      views:
+        plan:
+          required: false
+          origin: ''
+          axes: ''
+          direction: ''
+          position:
+            x: null
+            z: null
+          rotation: null
+          dimensions:
+            length: null
+            width: null
+            depth: null
+            offset: null
+          dimension_semantics: not_applicable
+        elevation:
+          required: false
+          viewing_side: ''
+          vertical_axis: 'y'
+          height: null
+          dimensions:
+            width: null
+            height: null
+            sill: null
+            datum_offset: null
+          dimension_semantics: not_applicable
+        section:
+          required: false
+          cut_direction: ''
+          depth_axis: ''
+          clearances:
+            front: null
+            rear: null
+            top: null
+            bottom: null
+          thickness: null
+          dimension_semantics: not_applicable
+      geometry:
+        x: null
+        'y': null
+        z: null
+        width: null
+        depth: null
+        height: null
+        length: null
+        rotation: null
+        along: null
+      constraints:
+        - 夜间太阳高度角小于或等于零时，全局直射光、环境光、辅助补光及 IBL 关闭。
+        - 室内灯具配置和房间开关继续控制各自灯光。
+      interfaces:
+        - solar_state
+        - indoor_lighting_preview
+      validation_refs:
+        - app/src/render/EnvironmentManager.test.ts
+        - evidence/night-after-room.png
+      status: confirmed
+  notes:
+    - 地砖方向为本迭代的旁支观察，不建立或修改地砖设计基准。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: night-only-indoor-lighting-20261015
+  subject: 夜间只保留室内照明
+  created_at: '2026-10-15T02:39:08Z'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - app/src/render/EnvironmentManager.ts
+      - shared/solar.ts
+      - app/src/render/InteriorLightingSystem.ts
+    observation_refs:
+      - 用户明确要求夜间关闭全局照明，只留室内照明。
+    measurement_refs: []
+    runtime_refs:
+      - 2026-10-15 21:00（12-22，冬至附近）太阳高度角 -38.4°；EnvironmentManager 状态 isNight=true。
+    evidence_refs:
+      - evidence/night-before-room.png
+  entry_shape:
+    id: ''
+    category: confirmed
+    statement: ''
+    value: null
+    source_refs: []
+    basis: ''
+    confidence: high
+    impact: material
+    affected_objects: []
+    affected_views: []
+    owner: codex
+    status: resolved
+    verification_method: ''
+    user_confirmation_ref: null
+  facts:
+    confirmed:
+      - id: current_night_sun_off
+        category: confirmed
+        statement: 夜间直射太阳方向光已经关闭，夜间环境贴图已经移除。
+        value: dirLight.visible=false; scene.environment=null
+        source_refs:
+          - app/src/render/EnvironmentManager.ts:126-143
+        basis: EnvironmentManager 夜间分支。
+        confidence: high
+        impact: material
+        affected_objects:
+          - global_sun
+          - global_environment
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 运行时查询 EnvironmentManager 状态并检查场景光源。
+        user_confirmation_ref: null
+      - id: pre_change_night_residual_fill
+        category: confirmed
+        statement: 变更前的夜间分支仍保留非零环境光和辅助方向补光。
+        value: 'before change: ambient=0.15; fill=0.06'
+        source_refs:
+          - shared/solar.ts:88-90
+          - app/src/render/EnvironmentManager.ts:130-136
+        basis: 变更前代码中的夜间分支显式设置的强度。
+        confidence: high
+        impact: material
+        affected_objects:
+          - global_ambient
+          - global_fill
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 对照本迭代修改前的代码。
+        user_confirmation_ref: null
+      - id: night_global_illumination_zero
+        category: confirmed
+        statement: 变更后夜间环境光、两个全局方向光和 IBL 均关闭。
+        value: ambient=0; sun=0/hidden; fill=0; scene.environment=null
+        source_refs:
+          - shared/solar.ts:88-90
+          - app/src/render/EnvironmentManager.ts:122-143
+          - evidence/night-after-runtime.json
+        basis: 夜间运行时查询和当前代码分支一致。
+        confidence: high
+        impact: material
+        affected_objects:
+          - global_sun
+          - global_ambient
+          - global_fill
+          - global_environment
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 浏览器运行时查询全局光强、可见性和 scene.environment。
+        user_confirmation_ref: null
+      - id: indoor_fixtures_auto_night
+        category: confirmed
+        statement: 日照自动模式在夜间自动开启已配置的室内灯具，且房间开关仍生效。
+        value: InteriorLightingSystem.syncSolar sets autoOn for isNight.
+        source_refs:
+          - app/src/render/InteriorLightingSystem.ts:380-383
+        basis: 室内灯自动同步逻辑。
+        confidence: high
+        impact: material
+        affected_objects:
+          - indoor_fixtures
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 夜间运行时查询室内灯可见性和强度。
+        user_confirmation_ref: null
+      - id: current_floor_axis
+        category: confirmed
+        statement: 客餐厅当前木纹砖长边与南侧落地窗面平行，均沿世界 X 轴。
+        value: floor long axis=X; w_liv_south runs (7.20,9.80)→(13.40,9.80)
+        source_refs:
+          - data/current-scheme.json:4-10
+          - config/materials.yaml:748-771
+          - app/src/render/TextureFactory.ts:737-877
+          - app/src/render/TextureManager.ts:121-139
+          - config/layout/model-geometry.yaml:12-14,134
+          - config/layout/overlay.yaml:81-86
+        basis: 程序纹理长边沿 U 轴，客餐厅地面 U 映射世界 X；南窗墙端点均为 z=9.80。
+        confidence: high
+        impact: material
+        affected_objects:
+          - floor:living_dining
+          - w_liv_south
+        affected_views:
+          - perspective
+          - plan
+        owner: codex
+        status: resolved
+        verification_method: 按材料方案、纹理生成、UV 映射和几何墙段坐标交叉核对。
+        user_confirmation_ref: null
+    inferred:
+      - id: parallel_floor_sightline
+        category: inferred
+        statement: 当前与窗墙平行的木纹砖长边对朝南窗的纵深引导较弱，主要强调窗墙横向展开。
+        value: 方向效果判断；仍建议客餐厅及连续过渡区 A/B 比较 0° 与 90°。
+        source_refs:
+          - current_floor_axis
+          - evidence/night-after-room.png
+        basis: 视线目标为南侧窗面时，平行窗墙的长边不会沿观察者到窗方向延伸。
+        confidence: medium
+        impact: material
+        affected_objects:
+          - floor:living_dining
+          - w_liv_south
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 通过同机位 0°/90° 铺向渲染比较后再定。
+        user_confirmation_ref: null
+    user_decision:
+      - id: only_indoor_at_night
+        category: user_decision
+        statement: 夜间预演只保留室内照明，关闭所有全局照明。
+        value: 夜间 ambient=0, fill=0, directional sun hidden/intensity=0, IBL=null; indoor fixtures remain
+        source_refs:
+          - 用户消息：不能全关掉吗？只留室内照明。
+        basis: 用户明确指示。
+        confidence: high
+        impact: material
+        affected_objects:
+          - global_sun
+          - global_ambient
+          - global_fill
+          - global_environment
+          - indoor_fixtures
+        affected_views:
+          - perspective
+        owner: codex
+        status: resolved
+        verification_method: 浏览器固定夜间视角，结合运行时光源强度与可见性查询。
+        user_confirmation_ref: user-message-20261015-night-only
+    site_pending: []
+  unknowns_requiring_alignment: []
+  notes:
+    - 客餐厅木纹砖方向属于单独的设计比较；本轮只记录现状与建议，不修改铺设方向。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: night-only-indoor-lighting-20261015
+  subject: 夜间全局照明关闭与室内灯保留
+  object_policy:
+    fixed_count_required: false
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: global_environment_lighting
+      type: scene_lighting_group
+      archetypes:
+        - perspective
+      owner: rendering_system
+      function: 日间太阳、环境光、辅助补光和 IBL；夜间应全部关闭。
+      material: null
+      geometry_source: app/src/render/EnvironmentManager.ts
+      datum_refs:
+        - night_render_state
+      fact_refs:
+        - current_night_sun_off
+        - pre_change_night_residual_fill
+        - night_global_illumination_zero
+      decision_refs:
+        - user-message-20261015-night-only
+      dependencies:
+        - solar_state
+      interfaces: []
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 不适用：渲染器状态，无实体维护责任。
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements: []
+      parts:
+        - id: sun_directional
+          role: 夜间太阳方向光关闭。
+          independent: true
+          owner: rendering_system
+          material: null
+          geometry_source: app/src/render/EnvironmentManager.ts
+          datum_refs:
+            - night_render_state
+          dependencies:
+            - solar_state
+          collision: none
+          maintenance_boundary: 不适用
+          validation_refs:
+            - 'runtime query: dirLight.visible/intensity'
+        - id: ambient_fill_ibl
+          role: 夜间环境光、辅助补光与环境贴图关闭。
+          independent: true
+          owner: rendering_system
+          material: null
+          geometry_source: app/src/render/EnvironmentManager.ts
+          datum_refs:
+            - night_render_state
+          dependencies:
+            - solar_state
+          collision: none
+          maintenance_boundary: 不适用
+          validation_refs:
+            - 'runtime query: AmbientLight/fillLight/scene.environment'
+      visual_relationships:
+        - target_object_id: configured_indoor_fixtures
+          relation: custom
+          requirement: 夜间全局光关闭后，画面仅由启用的室内灯具照明。
+          evidence_refs:
+            - evidence/night-after-room.png
+      validation_refs:
+        - app/src/render/EnvironmentManager.test.ts
+      status: verified
+    - id: configured_indoor_fixtures
+      type: indoor_lighting_group
+      archetypes:
+        - perspective
+      owner: lighting_preview
+      function: 按日照状态、人工预演模式和房间开关控制室内灯具。
+      material: 由 config/render/lighting.yaml 和现有材质配置决定
+      geometry_source: config/render/lighting.yaml + app/src/render/InteriorLightingSystem.ts
+      datum_refs:
+        - night_render_state
+      fact_refs:
+        - indoor_fixtures_auto_night
+      decision_refs:
+        - user-message-20261015-night-only
+      dependencies:
+        - solar_state
+        - global_environment_lighting
+      interfaces: []
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 不适用：本次只校验场景中已配置灯具的渲染状态。
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements: []
+      parts: []
+      visual_relationships:
+        - target_object_id: global_environment_lighting
+          relation: custom
+          requirement: 夜间全局照明为零，室内灯仍按当前开关显示。
+          evidence_refs:
+            - evidence/night-after-room.png
+      validation_refs:
+        - app/src/render/InteriorLightingSystem.ts:380-383
+      status: verified
+  notes:
+    - 地砖方向和墙面颜色没有修改。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: night-only-indoor-lighting-20261015
+  subject: 夜间只保留室内照明
+  state: delivery_ready
+  source_version:
+    config_refs:
+      - config/render/lighting.yaml
+      - config/layout/overlay.yaml
+    asset_refs:
+      - config/materials.yaml
+    render_facts_ref: server/generated/project-render-facts.json
+    source_digest: shared/solar.ts:35a24086fa8d4a20f5c49d6b1770d622912b20f94c7c2b6ac868ff6f5732bcbf; app/src/render/EnvironmentManager.ts:a4505c5c5c7b4897a3d7ca381e970306e13e37d2c88ce7dd8fcc2209eeab6a0c; app/src/render/EnvironmentManager.test.ts:e1b85872a06fd81b48a5b6697d932e71890c74a8f83d3c5252098f3e48e91986; config/render/lighting.yaml:84327754b3d973426a1f3890fd83b87bb525257055fb0d9cd996b20e067f3d36; config/layout/overlay.yaml:a306df94db59b8a6bfd37e1f4c4d07de1be61c275edca98a8d54c344a8e81595; config/materials.yaml:66966ff6a73af806d4fe8178c2839af6992474d6b786dee5cadb9802ab9ed2f2
+    generated_at: '2026-10-15T02:54:24Z'
+  validation:
+    commands:
+      - npm run typecheck
+      - VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual
+    results:
+      - command: VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual
+        result: CLEAR
+        time: '2026-10-15T02:31:07Z'
+        output_ref: conversation:pre-change-gate
+      - command: npm run typecheck
+        result: PASS
+        time: 2026-10-15T02:53Z
+        output_ref: conversation:post-change-typecheck
+      - command: VISUAL_GATE_API=http://127.0.0.1:5174 npm run gate:visual
+        result: CLEAR
+        time: 2026-10-15T02:53Z
+        output_ref: conversation:post-change-gate
+    config_status: PASS
+    geometry_status: NOT_APPLICABLE
+    consistency_status: NOT_APPLICABLE
+    functional_checks_status: PASS
+    application_status: PASS
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: night_before_room
+      url: http://127.0.0.1:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-15T02:41:48Z'
+      config_error_banner: ''
+      target_objects:
+        - 客餐厅地面与已配置室内灯具
+      target_object_ids:
+        - floor:living_dining
+        - light_living_dome
+        - light_dining_pendant
+      runtime_query_refs:
+        - snapshot shows date=12-22 and hour=21:00; app ready=true; solar altitude=-38.4°, azimuth=257.5°, isNight=true; sunlight-enabled value was not captured before edit
+      camera:
+        mode: orbit perspective interior
+        is_overview: false
+        position:
+          - 9
+          - 1.65
+          - 5.2
+        target:
+          - 9
+          - 1.15
+          - 9.8
+        view_type: perspective
+      snapshot_path: evidence/night-before-snapshot.txt
+      screenshot_path: evidence/night-before-room.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - pre-change app/src/render/EnvironmentManager.ts night fill=0.06
+        - pre-change shared/solar.ts night ambient=0.15
+      status: valid
+      invalid_reason: null
+    - id: night_after_room
+      url: http://127.0.0.1:5174/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-15T02:54:24Z'
+      config_error_banner: ''
+      target_objects:
+        - 客餐厅地面与已配置室内灯具
+      target_object_ids:
+        - floor:living_dining
+        - light_living_dome
+        - light_dining_pendant
+      runtime_query_refs:
+        - evidence/night-after-runtime.json
+      camera:
+        mode: orbit perspective interior
+        is_overview: false
+        position:
+          - 9
+          - 1.65
+          - 5.2
+        target:
+          - 9
+          - 1.15
+          - 9.8
+        view_type: perspective
+      snapshot_path: evidence/night-after-snapshot.txt
+      screenshot_path: evidence/night-after-room.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - source_version.source_digest
+        - evidence/night-after-runtime.json
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 固定机位夜景仍可辨认沙发、电视墙、电视柜、植物、地面边界和木纹板缝；未被室内灯直接照射的区域变暗，画面没有整体陷入黑场。
+      - 客餐厅砖长边与南窗平行，向窗面的视觉引导较弱；这项已记录为后续 0°/90° A/B 比较，本轮未修改。
+    evidence_refs:
+      - evidence/night-after-room.png
+      - evidence/night-after-runtime.json
+      - evidence/night-after-snapshot.txt
+    requested_changes: []
+    assumptions:
+      - 本次审美评审仅覆盖夜间全局光隔离效果。
+  functional_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 运行时确认 AmbientLight=0、两个全局 DirectionalLight=0、太阳方向光隐藏、scene.environment=null；室内配置灯具仍 visible=true。
+      - 房间级显隐逻辑保留；本次截图覆盖房间灯全开的夜间状态，没有额外截图单房间关闭状态。
+    evidence_refs:
+      - evidence/night-after-runtime.json
+      - app/src/render/EnvironmentManager.ts:122-144
+      - app/src/render/InteriorLightingSystem.ts:345-383
+      - app/src/App.ts:468-490
+    requested_changes: []
+    assumptions:
+      - 夜间仅室内灯适用于日照模拟开启且太阳高度角小于等于零；关闭日照模拟恢复现有静态日间预设。
+  risks:
+    - 未运行 test:app；已按仓库测试文件更新既有夜间光照断言。
+    - 渲染器强度是显示参数，不代表实测照度或灯具流明。
+  retrospective:
+    triggered: false
+    triggers: []
+    records: []
+    rebaselined: false
+  delivery:
+    status: complete
+    blocking_issues: []
+    completion_conditions:
+      - 夜间全局照明关闭，室内配置灯具保留。
+      - 类型检查与变更后视觉门禁通过。
+      - 同机位浏览器证据有效，独立审美和功能评审 PASS。
+    follow_up_site_pending: []
+    delivery_ready: true
