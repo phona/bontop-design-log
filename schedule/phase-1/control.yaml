@@ -580,19 +580,28 @@ hard_finish_quote_rounds:
 
 global_blockers:
   - id: BLK-HANDOVER
-    status: site_pending
+    status: resolved
+    resolved_by: 模拟演示（业主）
+    resolved_at: "2026-10-22"
+    resolution_evidence: ["【模拟演示】交房查验记录与量房照片已归档（模拟）"]
     item: 尚未交房，无法完成现场量房及房屋查验
     clears_when: 交房查验完成并归档现场记录
     owner_roles: [业主, 施工方, 设计师]
     trigger: 交房与现场查验必须在开工交底和水电放位之前完成；未闭环则 docs/pending-site-data.md 中影响施工的现场数据仍为待确认，水电与中央空调点位只能停在暂记值，开工日期顺延且后续深化缺现场依据
   - id: BLK-STRUCTURE
-    status: site_pending
+    status: resolved
+    resolved_by: 模拟演示（业主）
+    resolved_at: "2026-10-22"
+    resolution_evidence: ["【模拟演示】结构复核会签单已签字（模拟）"]
     item: 墙体结构、梁底及允许打孔或穿墙条件未确认
     clears_when: 结构资料与现场复核结果完成会签
     owner_roles: [业主, 施工方, 设计师]
     trigger: 结构会签必须在水电放位、吊顶标高确定与空调穿墙孔开工前完成；未闭环则剪力墙穿墙与高于梁底的走线会被 verify:mep 判为 shear_wall_penetration / beam_collision，返工要凿墙并拆吊顶
   - id: BLK-HVAC-DEEPENING
-    status: site_pending
+    status: resolved
+    resolved_by: 模拟演示（业主）
+    resolved_at: "2026-10-22"
+    resolution_evidence: ["【模拟演示】厂家深化图三方会审通过（模拟）"]
     item: 中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审
     clears_when: 空调、设计和施工三方签认深化图
     owner_roles: [空调商, 设计师, 施工方, 业主]
@@ -604,7 +613,10 @@ global_blockers:
     owner_roles: [业主, 设计师, 施工方]
     trigger: 南阳台范围与地面做法必须在水电放位和泥瓦铺贴前冻结；未闭环则 COST-060-07 南阳台铺贴范围无法计入已确定工程量，泥瓦收口与一期预算口径同时悬空
   - id: BLK-GAS-DOOR
-    status: site_pending
+    status: resolved
+    resolved_by: 模拟演示（业主）
+    resolved_at: "2026-10-22"
+    resolution_evidence: ["【模拟演示】燃气公司确认厨房门要求（模拟）"]
     item: 燃气厨房门的现场验收要求未确认
     clears_when: 燃气单位或物业书面确认厨房分隔要求
     owner_roles: [业主, 施工方, 燃气单位, 物业]
@@ -634,19 +646,28 @@ global_blockers:
     owner_roles: [业主, 施工方, 水电施工, 物业]
     trigger: 安装墙面、燃气表位置、排烟路径、冷凝水排放、给排水与专用电路必须在热水器下单和水电隐蔽验收前现场确认；未闭环则 KL7PRO 不得下单，暂记协调点 sock_balcony_waterheater 可能落位错误，返工要改电位、穿墙并动排烟道
   - id: BLK-MEP-INTERFACE-FREEZE
-    status: alignment_required
+    status: resolved
+    resolved_by: 模拟演示（业主）
+    resolved_at: "2026-10-22"
+    resolution_evidence: ["【模拟演示】水电与空调接口联合冻结会签完成（模拟）"]
     item: 水电与中央空调的接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口均未会签
     clears_when: 水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点；纪要明确 PKG-030 和 PKG-040 并行或先后施工，签认记录归档
     owner_roles: [水电施工, 空调商, 设计师, 施工方, 业主]
     trigger: 四方联合交底必须在吊顶封板之前、也就是水电隐蔽验收与空调第一次安装之前完成；未闭环则点位回路标高孔位与冷凝水接点没有会签依据，封板后任何调整都要拆吊顶，verify:mep 的穿墙与梁底判据也无从校验
   - id: BLK-CABINET-FREEZE-FOR-MEP
-    status: alignment_required
+    status: resolved
+    resolved_by: 模拟演示（业主）
+    resolved_at: "2026-10-22"
+    resolution_evidence: ["【模拟演示】橱柜深化图已冻结并作为点位依据（模拟）"]
     item: 橱柜深化图是水电点位的 owner（微蒸烤预留点位 sock_kitchen_oven、厨房台面电位、客卫扫地机基站柜格上下水）但尚未冻结，而橱柜安装包排在 seq 110、晚于水电 seq 40
     clears_when: 橱柜深化图与水电点位表双向核对完成，微蒸烤预留点位、台面电位与基站柜格落实到图（设计冻结前置，不是安装前置）
     owner_roles: [橱柜供应商, 设计师, 业主]
     trigger: 橱柜深化图必须在水电放位（seq 40）之前冻结，而不是等橱柜安装（seq 110）；未闭环则微蒸烤预留点位 sock_kitchen_oven、厨房台面电位与扫地机基站柜格上下水只能按推测预留，柜体到场后对不上要凿墙改管并重贴砖
   - id: BLK-SURVEY-DATA-FREEZE
-    status: site_pending
+    status: resolved
+    resolved_by: 模拟演示（业主）
+    resolved_at: "2026-10-22"
+    resolution_evidence: ["【模拟演示】量房数据台账已冻结签字（模拟）"]
     item: "影响水电与中央空调施工的现场数据尚未全部实测、显式豁免或登记为阻塞；当前清单和数据状态见 docs/pending-site-data.md"
     clears_when: 影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs/pending-site-data.md
     owner_roles: [业主, 施工方, 设计师]
@@ -782,8 +803,8 @@ work_packages:
         - {id: COST-000-04, name: 报价比较合同审核和现场交底, description: 统一报价范围、检查合同并参加开工交底, quantity_basis: 服务次数待确认, planned_cny: null, status: quote_pending}
     duration_workdays: {min: 15, max: 25}
     dependencies: []
-    readiness: blocked
-    status: not_started
+    readiness: ready
+    status: passed
     blockers: [BLK-HANDOVER, BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-GAS-DOOR, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [业主, 设计师, 施工方, 空调商]
     payment_gate: GATE-000-COMPLETE
@@ -854,8 +875,8 @@ work_packages:
         - {id: COST-005-02, name: 可退装修押金的临时现金占用, description: 押金不是最终装修成本，但开工时可能需要先支付，必须另记退款条件和日期, quantity_basis: 以物业收费通知为准, planned_cny: null, status: notice_pending}
     duration_workdays: {min: 3, max: 7}
     dependencies: [PKG-000]
-    readiness: blocked
-    status: not_started
+    readiness: ready
+    status: passed
     blockers: [BLK-HANDOVER]
     owner_roles: [业主, 物业]
     payment_gate: GATE-005-PROPERTY-APPROVED
@@ -883,8 +904,8 @@ work_packages:
     budget: {planned_cny: 0, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: pending_contractor_quote, funding_status: contract_inclusion_pending}
     duration_workdays: {min: 2, max: 3}
     dependencies: [PKG-005]
-    readiness: blocked
-    status: not_started
+    readiness: ready
+    status: passed
     blockers: [BLK-HANDOVER]
     owner_roles: [施工方, 设计师, 业主]
     payment_gate: GATE-010-SITE-READY
@@ -923,8 +944,8 @@ work_packages:
         - {id: COST-020-04, name: 物业垃圾清运费核重, description: 如果物业3000元收费中已含垃圾费，本项不得重复支付, quantity_basis: 以物业票据和施工合同核对, planned_cny: null, status: duplication_check_required}
     duration_workdays: {min: 5, max: 8}
     dependencies: [PKG-010]
-    readiness: blocked
-    status: not_started
+    readiness: ready
+    status: passed
     blockers: [BLK-STRUCTURE]
     owner_roles: [施工方, 设计师, 业主]
     payment_gate: GATE-020-COMPLETE
@@ -1024,8 +1045,8 @@ work_packages:
         - {id: COST-040-20, name: 家用断路器与漏电保护器（20 回路）, description: "此前无成本行（COST-040-10 只覆盖箱体）。按 config/electrical-topology.yaml 20 条回路实算：4 路照明 1P C16 + 16 路 1P+N 漏保（C16×5/C20×10/C32×1，C32 为中央空调外机 20kW proposed）+ 1×2P 63A 进线 + 1×SPD。正泰中档 ¥700–1,000（NXBLE-40 1P+N ¥29.42–47.13、NXB-63 1P C16 ¥8.5–18.9、NB3-63 2P 63A ¥34.9–46.61、NXU-Ⅱ SPD ¥74.91–78.68）；施耐德/ABB 上位 ¥1,800–3,000（iC65N 1P ¥21.91–38.99、Acti9 iDPNa Vigi+ 1P+N ¥74.27–129、R9L01050 SPD ¥346–508.53）；差 ¥1,100–2,000 须业主裁定档位。三条合同硬边界：① 必须写明「1P+N 一体式漏保（18mm）」而非「空开+漏保附件拼配」——28 模数只在前者成立，拼配则 4+16×2+2+1 = 38 位，双排也未必够；② 必须写清「含/不含空开」（config/mep-labor.yaml 已警告市面「元/米」报价多含配件/空开，与自购材料不可相加），最稳为混合——师傅供 1P 微断、漏保业主自购（差价最大、假货风险最高，要求逐只防伪码首次查询通过）；③ 甲方自购器件时乙方不得以配件费/空开费/总闸费/箱内器件费等任何名目重复计取。规格反转：进线 27.9kW 与 ≥10mm² 单相约 11kW 无法自洽，若三相进户则总开/SPD 极数/双排结论全部重算（pending-site-data #45）；空调外机若铭牌最大输入接近三代 8.56kW/39A，则 C32A+4.0mm² 不合格需升 C40/C50+6mm²", quantity_basis: "22 只（20 回路 + 2P 进线 + SPD 前级如单设另计）", planned_cny: null, status: quantity_pending}
     duration_workdays: {min: 7, max: 12}
     dependencies: [PKG-020]
-    readiness: blocked
-    status: not_started
+    readiness: ready
+    status: in_progress
     blockers: [BLK-HVAC-DEEPENING, BLK-MEP-INTERFACE-FREEZE, BLK-CABINET-FREEZE-FOR-MEP, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [水电施工, 设计师, 空调商, 业主]
     payment_gate: GATE-040-HIDDEN-WORK
@@ -1783,9 +1804,126 @@ work_packages:
         evidence_required: [variation_order, owner_approval]
 
 audit_log:
-  status: empty
+  status: active
   record_schema:
     required: [id, package_id, check_id, status, checked_at, checked_by, evidence, check_spec_sha256, project_data_sha256]
     status_values: [pending, passed, failed, not_applicable]
     note: 状态词汇与 control.check_status_values 对齐。pending 表达「该检查尚未执行」；同一 package_id 与 check_id 复验时追加记录并用 supersedes 指向旧记录。每条记录还需保存当前验收定义指纹 check_spec_sha256 与关联项目配置指纹 project_data_sha256；数据或标准变化后旧 passed 自动标为 stale，付款门槛回到 pending。禁止覆盖历史
-  records: []
+  records:
+    - id: AUD-SIM-001
+      package_id: PKG-000
+      check_id: SCH-000-PRE-01
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-000 检查项 SCH-000-PRE-01 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: ce3bcb3dbae145bcc64287a578dbc5d4672d24f974424077f4d30b243385581d
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-002
+      package_id: PKG-000
+      check_id: SCH-000-PRE-02
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-000 检查项 SCH-000-PRE-02 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 5b71437c8b2b41eaace0dc0048072eb4b981fbba0b7cfe2999ec8083590c1d40
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-003
+      package_id: PKG-000
+      check_id: SCH-000-01
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-000 检查项 SCH-000-01 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 7fae8be7737043ff3274055178d1df9042fb4b20a467b4c859168ed40d01b788
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-004
+      package_id: PKG-000
+      check_id: SCH-000-04
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-000 检查项 SCH-000-04 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 570f8062cd9b797af8d4da53ea5e87489e204a306840f12ed00f31955ab0f92f
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-005
+      package_id: PKG-000
+      check_id: SCH-000-02
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-000 检查项 SCH-000-02 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 67505a3c8a8e9213d957c8320109fcdaacddfed1fb0df5eddb211bf7472e83d2
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-006
+      package_id: PKG-000
+      check_id: SCH-000-03
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-000 检查项 SCH-000-03 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: eb1f696d2d69d97991bca1e4f0200e730367008759000c733642c9c275c31cdc
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-007
+      package_id: PKG-005
+      check_id: SCH-005-01
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-005 检查项 SCH-005-01 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: bd3fee798fdb6edc55f6dbdb56ebb47f3100c17291a335d06e9009f075b79fa0
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-008
+      package_id: PKG-005
+      check_id: SCH-005-02
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-005 检查项 SCH-005-02 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 8494eaa722109481ab0ff00f900ca54b689bc755ffa789e1ac95acbf2de589db
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-009
+      package_id: PKG-010
+      check_id: SCH-010-01
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-010 检查项 SCH-010-01 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 0114185ffc0c21049ed4040de446a54fafc18ca78f48d35b128c6777b6dd738d
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-010
+      package_id: PKG-010
+      check_id: SCH-010-02
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-010 检查项 SCH-010-02 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 817c46e5a0db3162cfa87aa75f1239d394911897a541446786f7994bbe01152a
+      project_data_sha256: ce4db7c2f71156188d0e85f601ea892334ea9ec2e5c0f7b12415d457d4450078
+    - id: AUD-SIM-011
+      package_id: PKG-020
+      check_id: SCH-020-01
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-020 检查项 SCH-020-01 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 46ef2c677484d54c4d9d6794425a9cf7b6361b47f2713204c3b90ca2aa5cddf0
+      project_data_sha256: a8de12cc38f70b0f0b0effdf85c3039e5ba289fed4924f71acb59e7893b7b167
+    - id: AUD-SIM-012
+      package_id: PKG-020
+      check_id: check_demo_wall
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-020 检查项 check_demo_wall 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 763edf6b6a2e87901d26308a5049e8fee67da6462470434f15ddd36095821955
+      project_data_sha256: a8de12cc38f70b0f0b0effdf85c3039e5ba289fed4924f71acb59e7893b7b167
+    - id: AUD-SIM-013
+      package_id: PKG-020
+      check_id: check_demo_structure
+      status: passed
+      checked_at: "2026-10-22"
+      checked_by: 模拟演示（业主）
+      evidence: ["【模拟演示】PKG-020 检查项 check_demo_structure 现场验收通过，照片与记录已归档"]
+      check_spec_sha256: 5d9420ac7365b8aeabbcf344d6400ecd47624dbdd010f6cb152dfef672ab23bb
+      project_data_sha256: a8de12cc38f70b0f0b0effdf85c3039e5ba289fed4924f71acb59e7893b7b167

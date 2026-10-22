@@ -1,36 +1,34 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"d63ea5272fae3c11b575df541c8fb0c473c00945c0f6916e04628b1c1e2069c7","config/ceiling.yaml":"4469b08f84abf2442eb2df64ddec205bd78da9d646480056d5683c163fa8c899","config/electrical-topology.yaml":"112be80a82973e59b3dac07790042bc3d9b46086cc38268f298947be0feb5c00","config/electrical.yaml":"5ccf809f2c1134e0c0e3c1c5afaf7c6f71c916280f0e662de88fa20f1173fca7","config/house.yaml":"52b1b8ade6969ddf9d17fbe45bb3c2ec4bafed65545225600a1735d91d788f5e","config/hvac.yaml":"ab93cb47ff04083f7d8cb8bb2a5cdcd7d2e3e62d8357aef0fb7914897e30871c","config/layout/model-geometry.yaml":"585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f","config/layout/overlay.yaml":"69bd817f08391ef7cbb19f9b9cf85c1014809ea296406f3bae678a6620a47dbc","config/mep-hvac-coordination.yaml":"5090867df2224edcfafee8c66d8be50e228dda5dbde790559826e0a76dde3206","config/model-package-links.yaml":"6f351ff5231cc650de48e5ef89c8f2fa13650b81312badd9ed6c525373e04f7e","config/plumbing.yaml":"8f501540a5ea8e739c1c95171fd09c178245915270efe9a76e0a46afc130473b","docs/pending-site-data.md":"e480707ecfc9779dcba50c6dc45b1108f67df9ec5b892a5fad6023cc5e34d946","schedule/phase-1/control.yaml":"6a139c395aa026d647ee31ddf2429c01f7dce70f8fe940c9f7ae21878c1ec4de","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"d63ea5272fae3c11b575df541c8fb0c473c00945c0f6916e04628b1c1e2069c7","config/ceiling.yaml":"4469b08f84abf2442eb2df64ddec205bd78da9d646480056d5683c163fa8c899","config/electrical-topology.yaml":"112be80a82973e59b3dac07790042bc3d9b46086cc38268f298947be0feb5c00","config/electrical.yaml":"5ccf809f2c1134e0c0e3c1c5afaf7c6f71c916280f0e662de88fa20f1173fca7","config/house.yaml":"52b1b8ade6969ddf9d17fbe45bb3c2ec4bafed65545225600a1735d91d788f5e","config/hvac.yaml":"ab93cb47ff04083f7d8cb8bb2a5cdcd7d2e3e62d8357aef0fb7914897e30871c","config/layout/model-geometry.yaml":"585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f","config/layout/overlay.yaml":"69bd817f08391ef7cbb19f9b9cf85c1014809ea296406f3bae678a6620a47dbc","config/mep-hvac-coordination.yaml":"5090867df2224edcfafee8c66d8be50e228dda5dbde790559826e0a76dde3206","config/model-package-links.yaml":"6f351ff5231cc650de48e5ef89c8f2fa13650b81312badd9ed6c525373e04f7e","config/plumbing.yaml":"8f501540a5ea8e739c1c95171fd09c178245915270efe9a76e0a46afc130473b","docs/pending-site-data.md":"e480707ecfc9779dcba50c6dc45b1108f67df9ec5b892a5fad6023cc5e34d946","schedule/phase-1/control.yaml":"a8fab51b989cf91edb892f2899176821c521964f754dcfe1bf78fe07a5cbf963","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:a2d7d213ab5a2163eeda43a2914e9c067b52b1e8e329a8024481f016a5415410`（15 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:a541e0ac091d74ba90ea20db0a4e5abd0ff9550be670b204bde9231d2a75bc37`（15 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
 ## 当前推进位置
 
-- **当前工作包**：PKG-000｜设计、量房与开工准备（执行：`not_started`；就绪：`blocked`）。
-- **本包要做什么**：交房前可先做有据可查的初版设计预演和现场资料准备；交房后再量房、回填配置、冻结专业图纸、同范围报价并签约。预演检查通过不代表具备施工放线或采购条件。
+- **当前工作包**：PKG-030｜中央空调第一次安装（执行：`not_started`；就绪：`blocked`）。
+- **本包要做什么**：在吊顶封闭前安装空调室内机、铜管、保温层、冷凝水排水管、风管和控制线，并完成压力保持、排水和检修空间检查。
 - **开工前先关闭**：
-  - `BLK-HANDOVER` 尚未交房，无法完成现场量房及房屋查验；解除条件：交房查验完成并归档现场记录
   - `BLK-STRUCTURE` 墙体结构、梁底及允许打孔或穿墙条件未确认；解除条件：结构资料与现场复核结果完成会签
   - `BLK-HVAC-DEEPENING` 中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审；解除条件：空调、设计和施工三方签认深化图
-  - `BLK-GAS-DOOR` 燃气厨房门的现场验收要求未确认；解除条件：燃气单位或物业书面确认厨房分隔要求
+  - `BLK-MEP-INTERFACE-FREEZE` 水电与中央空调的接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口均未会签；解除条件：水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点；纪要明确 PKG-030 和 PKG-040 并行或先后施工，签认记录归档
   - `BLK-SURVEY-DATA-FREEZE` 影响水电与中央空调施工的现场数据尚未全部实测、显式豁免或登记为阻塞；当前清单和数据状态见 docs/pending-site-data.md；解除条件：影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs/pending-site-data.md
-- **当前可推进的预交房检查点**：SCH-000-PRE-01｜建立交房前初版设计基线（仅预演，不作施工图）（pre_handover_design）；按下表方法检查，通过标准是：初版基线写清目标、优先级、采用的事实及来源、未决现场变量、备选路径、什么实测结果会反转当前方案；明确标注“不可施工/不可放线/不可下单”。
-- **施工状态保持 blocked**：此项只推进初版设计或现场准备；通过它不会解除量房、专业会审、放线、采购或施工阻塞。
-- **参与责任角色**：业主、设计师、施工方、空调商。
-- **通过后进入**：PKG-005｜物业装修手续与物业收费；仍须满足其依赖、阻塞项与开工门槛。
+- **解除阻塞后的首个现场检查点**：check_hvac_weld｜铜管焊接质量（引用）；按下表方法检查，通过标准是：充氮焊接，无氧化皮
+- **参与责任角色**：空调商、设计师、施工方、业主。
+- **通过后进入**：PKG-040｜水电改造；仍须满足其依赖、阻塞项与开工门槛。
 
 ### 工作包进度导航
 
 | 顺序 | 工作包 | 执行状态 | 开工条件 | 未通过检查数 | 付款/放行门槛 |
 |---:|---|---|---|---:|---|
-| 0 | [PKG-000｜设计、量房与开工准备](#pkg-000) | not_started | blocked | 6 | pending |
-| 5 | [PKG-005｜物业装修手续与物业收费](#pkg-005) | not_started | blocked | 2 | pending |
-| 10 | [PKG-010｜施工现场保护与施工位置标记](#pkg-010) | not_started | blocked | 2 | pending |
-| 20 | [PKG-020｜拆改、墙体新建与清运](#pkg-020) | not_started | blocked | 3 | pending |
+| 0 | [PKG-000｜设计、量房与开工准备](#pkg-000) | passed | ready | 0 | passed |
+| 5 | [PKG-005｜物业装修手续与物业收费](#pkg-005) | passed | ready | 0 | passed |
+| 10 | [PKG-010｜施工现场保护与施工位置标记](#pkg-010) | passed | ready | 0 | passed |
+| 20 | [PKG-020｜拆改、墙体新建与清运](#pkg-020) | passed | ready | 0 | passed |
 | 30 | [PKG-030｜中央空调第一次安装](#pkg-030) | not_started | blocked | 9 | pending |
-| 40 | [PKG-040｜水电改造](#pkg-040) | not_started | blocked | 21 | pending |
+| 40 | [PKG-040｜水电改造](#pkg-040) | in_progress | ready | 21 | pending |
 | 50 | [PKG-050｜防水及闭水](#pkg-050) | not_started | blocked | 6 | pending |
 | 60 | [PKG-060｜泥瓦与铺贴](#pkg-060) | not_started | blocked | 6 | pending |
 | 65 | [PKG-065｜卫生间美缝（先行）](#pkg-065) | not_started | blocked | 5 | pending |
@@ -133,9 +131,9 @@
 
 - 通俗说明：交房前可先做有据可查的初版设计预演和现场资料准备；交房后再量房、回填配置、冻结专业图纸、同范围报价并签约。预演检查通过不代表具备施工放线或采购条件。
 - 预算：¥8,000；合同：—；已付：¥0；预测：—
-- 依赖：无；就绪：`blocked`；执行：`not_started`
+- 依赖：无；就绪：`ready`；执行：`passed`
 - 责任角色：业主、设计师、施工方、空调商；付款门槛：`GATE-000-COMPLETE`
-- 当前付款门槛状态：`pending`
+- 当前付款门槛状态：`passed`
 - 阻塞项：BLK-HANDOVER、BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-GAS-DOOR、BLK-SURVEY-DATA-FREEZE
 
 ### 关联项目数据
@@ -162,12 +160,12 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | SCH-000-PRE-01 | major/pre_handover_design/可在 blocked 中推进，仅预演不放施工 | 建立交房前初版设计基线（仅预演，不作施工图） | 只使用当前权威配置、已有DEC和可追溯证据；逐项标记 confirmed、inferred、site_pending 或 user_decision。可并行比较平面、家具、吊顶/HVAC、照明和机电方案；尺寸依赖梁位、立管或现场净空的部分保留选项，不猜坐标或最终接口。 | 初版基线写清目标、优先级、采用的事实及来源、未决现场变量、备选路径、什么实测结果会反转当前方案；明确标注“不可施工/不可放线/不可下单”。 | preliminary_design_baseline、fact_and_decision_register、reversal_conditions | `ce3bcb3dbae145bcc64287a578dbc5d4672d24f974424077f4d30b243385581d` | pending |
-| [ ] | SCH-000-PRE-02 | major/pre_handover_site_prep/可在 blocked 中推进，仅预演不放施工 | 整理交房量房路线和现场资料责任表 | 按 docs/pending-site-data.md 的编号把任务分为量房当日实测、深化冻结前关闭、下单前核验、供应商资料待补和业主决策；每项标出负责人、输入工具/资料、照片/记录方式、影响工作包与触发点。 | 影响下一步水电、空调、结构和柜体接口的项目能按房间和现场路线执行；不能当日解决的项目有 owner、触发条件和保持 blocked 的工作包；本检查通过不关闭任何 site_pending blocker。 | survey_route、survey_record_template、site_data_owner_trigger_register | `5b71437c8b2b41eaace0dc0048072eb4b981fbba0b7cfe2999ec8083590c1d40` | pending |
-| [ ] | SCH-000-01 | critical/handover_survey/阻塞解除后 | 交房查验和现场量房完成 | 按 docs/pending-site-data.md 逐房走查并按顺序记录：①交房缺陷和现场保护边界；②房间净长宽、对角线、墙厚、门窗及开启方向；③梁柱、梁底、结构墙和可打孔边界；④强弱电箱、给排水、燃气表、排烟道、沉箱和外机平台；⑤家具家电接口、吊顶净空和检修条件。每条记录对应稳定编号、实测值/单位、测量人、日期、照片编号与精度；邻户或模型推断值不得写成实测。 | 形成逐房测量记录和可定位照片索引；交房缺陷有责任方与处理状态；未能实测的项目保留原状态并登记负责人和触发条件。 | handover_defect_record、measurement_record、site_photo_index | `7fae8be7737043ff3274055178d1df9042fb4b20a467b4c859168ed40d01b788` | pending |
-| [ ] | SCH-000-04 | critical/data_backfill/阻塞解除后 | 量房结果回填到项目权威配置并完成一致性复核 | 先更新几何、结构、家具和机电权威配置，再同步 house.yaml 镜像字段与 pending-site-data.md 状态；运行适用的 layout、MEP、家具、facts 与 schedule 检查。任何影响吊顶、空调或水电放位的数据未解决时，维持对应 blocker。 | 实测事实有来源和照片索引，模型推断没有被误标为 measured；影响当前施工的数据已实测或显式豁免；其他待决项有 owner、触发条件和下一步。 | updated_authority_config_refs、verification_report、updated_site_data_ledger、open_issue_register | `570f8062cd9b797af8d4da53ea5e87489e204a306840f12ed00f31955ab0f92f` | pending |
-| [ ] | SCH-000-02 | critical/design_freeze/阻塞解除后 | 施工图与专业深化完成会审 | 业主、设计、施工、水电、空调和橱柜方逐版核对拆改、吊顶标高、灯位、回路、给排水、冷凝水、风口/检修口、柜体和家电接口；记录设计图编号、版本、日期及逐项冲突责任人。 | 施工图和专业深化图有一致的冻结版本；影响近期工序的冲突已关闭；剩余 site_pending 项有负责人、触发节点和停工边界。 | signed_drawing_set、coordination_record、closed_conflict_register | `67505a3c8a8e9213d957c8320109fcdaacddfed1fb0df5eddb211bf7472e83d2` | pending |
-| [ ] | SCH-000-03 | critical/payment/阻塞解除后 | 报价和合同口径完整 | 比较至少三份同口径报价并核对数量、单价、辅材、安装、损耗、增项和付款节点 | 一期承诺额不超过总控且预备金未打包给施工方 | quote_comparison、signed_contract、owner_budget_approval_if_overrun | `eb1f696d2d69d97991bca1e4f0200e730367008759000c733642c9c275c31cdc` | pending |
+| [x] | SCH-000-PRE-01 | major/pre_handover_design/可在 blocked 中推进，仅预演不放施工 | 建立交房前初版设计基线（仅预演，不作施工图） | 只使用当前权威配置、已有DEC和可追溯证据；逐项标记 confirmed、inferred、site_pending 或 user_decision。可并行比较平面、家具、吊顶/HVAC、照明和机电方案；尺寸依赖梁位、立管或现场净空的部分保留选项，不猜坐标或最终接口。 | 初版基线写清目标、优先级、采用的事实及来源、未决现场变量、备选路径、什么实测结果会反转当前方案；明确标注“不可施工/不可放线/不可下单”。 | preliminary_design_baseline、fact_and_decision_register、reversal_conditions | `ce3bcb3dbae145bcc64287a578dbc5d4672d24f974424077f4d30b243385581d` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-000 检查项 SCH-000-PRE-01 现场验收通过，照片与记录已归档 |
+| [x] | SCH-000-PRE-02 | major/pre_handover_site_prep/可在 blocked 中推进，仅预演不放施工 | 整理交房量房路线和现场资料责任表 | 按 docs/pending-site-data.md 的编号把任务分为量房当日实测、深化冻结前关闭、下单前核验、供应商资料待补和业主决策；每项标出负责人、输入工具/资料、照片/记录方式、影响工作包与触发点。 | 影响下一步水电、空调、结构和柜体接口的项目能按房间和现场路线执行；不能当日解决的项目有 owner、触发条件和保持 blocked 的工作包；本检查通过不关闭任何 site_pending blocker。 | survey_route、survey_record_template、site_data_owner_trigger_register | `5b71437c8b2b41eaace0dc0048072eb4b981fbba0b7cfe2999ec8083590c1d40` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-000 检查项 SCH-000-PRE-02 现场验收通过，照片与记录已归档 |
+| [x] | SCH-000-01 | critical/handover_survey/阻塞解除后 | 交房查验和现场量房完成 | 按 docs/pending-site-data.md 逐房走查并按顺序记录：①交房缺陷和现场保护边界；②房间净长宽、对角线、墙厚、门窗及开启方向；③梁柱、梁底、结构墙和可打孔边界；④强弱电箱、给排水、燃气表、排烟道、沉箱和外机平台；⑤家具家电接口、吊顶净空和检修条件。每条记录对应稳定编号、实测值/单位、测量人、日期、照片编号与精度；邻户或模型推断值不得写成实测。 | 形成逐房测量记录和可定位照片索引；交房缺陷有责任方与处理状态；未能实测的项目保留原状态并登记负责人和触发条件。 | handover_defect_record、measurement_record、site_photo_index | `7fae8be7737043ff3274055178d1df9042fb4b20a467b4c859168ed40d01b788` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-000 检查项 SCH-000-01 现场验收通过，照片与记录已归档 |
+| [x] | SCH-000-04 | critical/data_backfill/阻塞解除后 | 量房结果回填到项目权威配置并完成一致性复核 | 先更新几何、结构、家具和机电权威配置，再同步 house.yaml 镜像字段与 pending-site-data.md 状态；运行适用的 layout、MEP、家具、facts 与 schedule 检查。任何影响吊顶、空调或水电放位的数据未解决时，维持对应 blocker。 | 实测事实有来源和照片索引，模型推断没有被误标为 measured；影响当前施工的数据已实测或显式豁免；其他待决项有 owner、触发条件和下一步。 | updated_authority_config_refs、verification_report、updated_site_data_ledger、open_issue_register | `570f8062cd9b797af8d4da53ea5e87489e204a306840f12ed00f31955ab0f92f` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-000 检查项 SCH-000-04 现场验收通过，照片与记录已归档 |
+| [x] | SCH-000-02 | critical/design_freeze/阻塞解除后 | 施工图与专业深化完成会审 | 业主、设计、施工、水电、空调和橱柜方逐版核对拆改、吊顶标高、灯位、回路、给排水、冷凝水、风口/检修口、柜体和家电接口；记录设计图编号、版本、日期及逐项冲突责任人。 | 施工图和专业深化图有一致的冻结版本；影响近期工序的冲突已关闭；剩余 site_pending 项有负责人、触发节点和停工边界。 | signed_drawing_set、coordination_record、closed_conflict_register | `67505a3c8a8e9213d957c8320109fcdaacddfed1fb0df5eddb211bf7472e83d2` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-000 检查项 SCH-000-02 现场验收通过，照片与记录已归档 |
+| [x] | SCH-000-03 | critical/payment/阻塞解除后 | 报价和合同口径完整 | 比较至少三份同口径报价并核对数量、单价、辅材、安装、损耗、增项和付款节点 | 一期承诺额不超过总控且预备金未打包给施工方 | quote_comparison、signed_contract、owner_budget_approval_if_overrun | `eb1f696d2d69d97991bca1e4f0200e730367008759000c733642c9c275c31cdc` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-000 检查项 SCH-000-03 现场验收通过，照片与记录已归档 |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -178,9 +176,9 @@
 
 - 通俗说明：向物业提交装修申请，确认施工时间、人员进出、公区使用、垃圾清运和禁止施工事项；所有收费按物业票据记录，可退押金与实际消费分开记账。
 - 预算：¥3,000；合同：—；已付：¥0；预测：—
-- 依赖：PKG-000；就绪：`blocked`；执行：`not_started`
+- 依赖：PKG-000；就绪：`ready`；执行：`passed`
 - 责任角色：业主、物业；付款门槛：`GATE-005-PROPERTY-APPROVED`
-- 当前付款门槛状态：`pending`
+- 当前付款门槛状态：`passed`
 - 阻塞项：BLK-HANDOVER
 
 ### 关联项目数据
@@ -205,8 +203,8 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | SCH-005-01 | critical/before_start/阻塞解除后 | 物业允许装修施工 | 提交物业要求的装修申请、施工图、施工单位和人员资料，核对允许施工时间及禁止事项 | 已取得物业允许进场施工的书面或系统记录 | property_approval | `bd3fee798fdb6edc55f6dbdb56ebb47f3100c17291a335d06e9009f075b79fa0` | pending |
-| [ ] | SCH-005-02 | major/payment/阻塞解除后 | 物业收费和可退押金分开登记 | 逐张核对装修管理费、垃圾清运费、出入证费用和装修押金票据 | 每笔费用有票据；可退押金单独标记退款条件和预计退款时间 | fee_receipts、refundable_deposit_register | `8494eaa722109481ab0ff00f900ca54b689bc755ffa789e1ac95acbf2de589db` | pending |
+| [x] | SCH-005-01 | critical/before_start/阻塞解除后 | 物业允许装修施工 | 提交物业要求的装修申请、施工图、施工单位和人员资料，核对允许施工时间及禁止事项 | 已取得物业允许进场施工的书面或系统记录 | property_approval | `bd3fee798fdb6edc55f6dbdb56ebb47f3100c17291a335d06e9009f075b79fa0` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-005 检查项 SCH-005-01 现场验收通过，照片与记录已归档 |
+| [x] | SCH-005-02 | major/payment/阻塞解除后 | 物业收费和可退押金分开登记 | 逐张核对装修管理费、垃圾清运费、出入证费用和装修押金票据 | 每笔费用有票据；可退押金单独标记退款条件和预计退款时间 | fee_receipts、refundable_deposit_register | `8494eaa722109481ab0ff00f900ca54b689bc755ffa789e1ac95acbf2de589db` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-005 检查项 SCH-005-02 现场验收通过，照片与记录已归档 |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -217,9 +215,9 @@
 
 - 通俗说明：施工方进场后先保护电梯、公区、入户门、窗户和已有成品，再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。
 - 预算：¥0；合同：—；已付：¥0；预测：—
-- 依赖：PKG-005；就绪：`blocked`；执行：`not_started`
+- 依赖：PKG-005；就绪：`ready`；执行：`passed`
 - 责任角色：施工方、设计师、业主；付款门槛：`GATE-010-SITE-READY`
-- 当前付款门槛状态：`pending`
+- 当前付款门槛状态：`passed`
 - 阻塞项：BLK-HANDOVER
 
 ### 关联项目数据
@@ -234,8 +232,8 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | SCH-010-01 | critical/before_start/阻塞解除后 | 公区、入户门、窗户和已有成品完成保护 | 逐处检查保护膜、保护板和护角是否连续、牢固，搬运通道和易碰位置是否覆盖 | 施工及搬运可能接触的位置均已保护，无明显裸露、松脱或影响消防通行的情况 | site_protection_photos | `0114185ffc0c21049ed4040de446a54fafc18ca78f48d35b128c6777b6dd738d` | pending |
-| [ ] | SCH-010-02 | major/before_start/阻塞解除后 | 图纸上的施工位置已经标到现场并共同核对 | 逐房核对新墙、门洞、柜体、水电点位、空调内机、送回风口、检修口和吊顶边界的现场标记 | 关键位置和尺寸与确认图纸一致，业主、设计师和施工方完成现场交底签认 | setting_out_photos、signed_site_brief | `817c46e5a0db3162cfa87aa75f1239d394911897a541446786f7994bbe01152a` | pending |
+| [x] | SCH-010-01 | critical/before_start/阻塞解除后 | 公区、入户门、窗户和已有成品完成保护 | 逐处检查保护膜、保护板和护角是否连续、牢固，搬运通道和易碰位置是否覆盖 | 施工及搬运可能接触的位置均已保护，无明显裸露、松脱或影响消防通行的情况 | site_protection_photos | `0114185ffc0c21049ed4040de446a54fafc18ca78f48d35b128c6777b6dd738d` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-010 检查项 SCH-010-01 现场验收通过，照片与记录已归档 |
+| [x] | SCH-010-02 | major/before_start/阻塞解除后 | 图纸上的施工位置已经标到现场并共同核对 | 逐房核对新墙、门洞、柜体、水电点位、空调内机、送回风口、检修口和吊顶边界的现场标记 | 关键位置和尺寸与确认图纸一致，业主、设计师和施工方完成现场交底签认 | setting_out_photos、signed_site_brief | `817c46e5a0db3162cfa87aa75f1239d394911897a541446786f7994bbe01152a` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-010 检查项 SCH-010-02 现场验收通过，照片与记录已归档 |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -246,9 +244,9 @@
 
 - 通俗说明：按确认图纸拆除允许拆除的墙体或构件，新建隔墙和门洞，并把施工垃圾运走；任何墙体性质未确认时都不能先拆再说。参考同户型半包实付（拆砌人工6,000元+物业垃圾清运1,059元），本包由5,000元上调至7,000元，差额2,000元经业主批准从未分配额度划拨。
 - 预算：¥7,000；合同：—；已付：¥0；预测：—
-- 依赖：PKG-010；就绪：`blocked`；执行：`not_started`
+- 依赖：PKG-010；就绪：`ready`；执行：`passed`
 - 责任角色：施工方、设计师、业主；付款门槛：`GATE-020-COMPLETE`
-- 当前付款门槛状态：`pending`
+- 当前付款门槛状态：`passed`
 - 阻塞项：BLK-STRUCTURE
 
 ### 关联项目数据
@@ -274,9 +272,9 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | check_demo_wall | critical/引用 | 拆除范围核对 | 对照拆墙图，用卷尺量拆除边界。<br>重点检查：是否多拆了不该拆的墙，尤其是承重墙。<br> | 拆除范围与图纸一致，误差 < 5cm | 照片或检测记录 | `763edf6b6a2e87901d26308a5049e8fee67da6462470434f15ddd36095821955` | pending |
-| [ ] | check_demo_structure | critical/引用 | 梁柱状况检查 | 拆完后检查裸露的梁、柱、楼板是否有裂缝或损伤 | 无结构性裂缝，钢筋无锈蚀 | 照片或检测记录 | `5d9420ac7365b8aeabbcf344d6400ecd47624dbdd010f6cb152dfef672ab23bb` | pending |
-| [ ] | SCH-020-01 | major/completion/阻塞解除后 | 新建墙体、门洞和现场清运完成 | 对照拆改图检查墙体位置、垂直平整、门洞尺寸、过梁及建渣清运 | 尺寸满足确认图纸且现场无遗留建渣 | measurement_record、completion_photos | `46ef2c677484d54c4d9d6794425a9cf7b6361b47f2713204c3b90ca2aa5cddf0` | pending |
+| [x] | check_demo_wall | critical/引用 | 拆除范围核对 | 对照拆墙图，用卷尺量拆除边界。<br>重点检查：是否多拆了不该拆的墙，尤其是承重墙。<br> | 拆除范围与图纸一致，误差 < 5cm | 照片或检测记录 | `763edf6b6a2e87901d26308a5049e8fee67da6462470434f15ddd36095821955` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-020 检查项 check_demo_wall 现场验收通过，照片与记录已归档 |
+| [x] | check_demo_structure | critical/引用 | 梁柱状况检查 | 拆完后检查裸露的梁、柱、楼板是否有裂缝或损伤 | 无结构性裂缝，钢筋无锈蚀 | 照片或检测记录 | `5d9420ac7365b8aeabbcf344d6400ecd47624dbdd010f6cb152dfef672ab23bb` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-020 检查项 check_demo_structure 现场验收通过，照片与记录已归档 |
+| [x] | SCH-020-01 | major/completion/阻塞解除后 | 新建墙体、门洞和现场清运完成 | 对照拆改图检查墙体位置、垂直平整、门洞尺寸、过梁及建渣清运 | 尺寸满足确认图纸且现场无遗留建渣 | measurement_record、completion_photos | `46ef2c677484d54c4d9d6794425a9cf7b6361b47f2713204c3b90ca2aa5cddf0` | passed；模拟演示（业主）；2026-10-22；证据：【模拟演示】PKG-020 检查项 SCH-020-01 现场验收通过，照片与记录已归档 |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -340,7 +338,7 @@
 
 - 通俗说明：根据家具和设备位置铺设电线、网线、给水管、排水管和热水回水管，设置插座、开关及专用电路；封墙封地前必须测试并拍照定位。
 - 预算：¥15,000；合同：—；已付：¥0；预测：—
-- 依赖：PKG-020；就绪：`blocked`；执行：`not_started`
+- 依赖：PKG-020；就绪：`ready`；执行：`in_progress`
 - 责任角色：水电施工、设计师、空调商、业主；付款门槛：`GATE-040-HIDDEN-WORK`
 - 当前付款门槛状态：`pending`
 - 阻塞项：BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-CABINET-FREEZE-FOR-MEP、BLK-SURVEY-DATA-FREEZE

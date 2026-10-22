@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"6a139c395aa026d647ee31ddf2429c01f7dce70f8fe940c9f7ae21878c1ec4de","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"a8fab51b989cf91edb892f2899176821c521964f754dcfe1bf78fe07a5cbf963","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
 # 一期施工计划
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:ff944f111bcc117770eb599c16c0a0641d7f616cacb6e230735d041d9e5af90d`（2 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:7c047525466ad303b4c98722fb238e526674f235361c012a31b6930d722af224`（2 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -14,12 +14,12 @@
 
 | 顺序 | 系统编号 | 施工项目 | 这一步具体做什么 | 参考工期 | 前一步必须完成 | 是否具备开工条件 | 当前进度 | 尚未解决的事项 | 预算 |
 |---:|---|---|---|---:|---|---|---|---|---:|
-| 0 | PKG-000 | 设计、量房与开工准备 | 交房前可先做有据可查的初版设计预演和现场资料准备；交房后再量房、回填配置、冻结专业图纸、同范围报价并签约。预演检查通过不代表具备施工放线或采购条件。 | 15—25天 | 无 | blocked | not_started | BLK-HANDOVER、BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-GAS-DOOR、BLK-SURVEY-DATA-FREEZE | ¥8,000 |
-| 5 | PKG-005 | 物业装修手续与物业收费 | 向物业提交装修申请，确认施工时间、人员进出、公区使用、垃圾清运和禁止施工事项；所有收费按物业票据记录，可退押金与实际消费分开记账。 | 3—7天 | PKG-000 | blocked | not_started | BLK-HANDOVER | ¥3,000 |
-| 10 | PKG-010 | 施工现场保护与施工位置标记 | 施工方进场后先保护电梯、公区、入户门、窗户和已有成品，再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。 | 2—3天 | PKG-005 | blocked | not_started | BLK-HANDOVER | ¥0 |
-| 20 | PKG-020 | 拆改、墙体新建与清运 | 按确认图纸拆除允许拆除的墙体或构件，新建隔墙和门洞，并把施工垃圾运走；任何墙体性质未确认时都不能先拆再说。参考同户型半包实付（拆砌人工6,000元+物业垃圾清运1,059元），本包由5,000元上调至7,000元，差额2,000元经业主批准从未分配额度划拨。 | 5—8天 | PKG-010 | blocked | not_started | BLK-STRUCTURE | ¥7,000 |
+| 0 | PKG-000 | 设计、量房与开工准备 | 交房前可先做有据可查的初版设计预演和现场资料准备；交房后再量房、回填配置、冻结专业图纸、同范围报价并签约。预演检查通过不代表具备施工放线或采购条件。 | 15—25天 | 无 | ready | passed | BLK-HANDOVER、BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-GAS-DOOR、BLK-SURVEY-DATA-FREEZE | ¥8,000 |
+| 5 | PKG-005 | 物业装修手续与物业收费 | 向物业提交装修申请，确认施工时间、人员进出、公区使用、垃圾清运和禁止施工事项；所有收费按物业票据记录，可退押金与实际消费分开记账。 | 3—7天 | PKG-000 | ready | passed | BLK-HANDOVER | ¥3,000 |
+| 10 | PKG-010 | 施工现场保护与施工位置标记 | 施工方进场后先保护电梯、公区、入户门、窗户和已有成品，再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。 | 2—3天 | PKG-005 | ready | passed | BLK-HANDOVER | ¥0 |
+| 20 | PKG-020 | 拆改、墙体新建与清运 | 按确认图纸拆除允许拆除的墙体或构件，新建隔墙和门洞，并把施工垃圾运走；任何墙体性质未确认时都不能先拆再说。参考同户型半包实付（拆砌人工6,000元+物业垃圾清运1,059元），本包由5,000元上调至7,000元，差额2,000元经业主批准从未分配额度划拨。 | 5—8天 | PKG-010 | ready | passed | BLK-STRUCTURE | ¥7,000 |
 | 30 | PKG-030 | 中央空调第一次安装 | 在吊顶封闭前安装空调室内机、铜管、保温层、冷凝水排水管、风管和控制线，并完成压力保持、排水和检修空间检查。 | 4—7天 | PKG-020 | blocked | not_started | BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-SURVEY-DATA-FREEZE | ¥36,000 |
-| 40 | PKG-040 | 水电改造 | 根据家具和设备位置铺设电线、网线、给水管、排水管和热水回水管，设置插座、开关及专用电路；封墙封地前必须测试并拍照定位。 | 7—12天 | PKG-020 | blocked | not_started | BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-CABINET-FREEZE-FOR-MEP、BLK-SURVEY-DATA-FREEZE | ¥15,000 |
+| 40 | PKG-040 | 水电改造 | 根据家具和设备位置铺设电线、网线、给水管、排水管和热水回水管，设置插座、开关及专用电路；封墙封地前必须测试并拍照定位。 | 7—12天 | PKG-020 | ready | in_progress | BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-CABINET-FREEZE-FOR-MEP、BLK-SURVEY-DATA-FREEZE | ¥15,000 |
 | 50 | PKG-050 | 防水及闭水 | 在卫生间、厨房和北阳台等需要防水的位置处理基层、涂刷防水材料并蓄水检查，确认本层和楼下都不渗漏后才能覆盖。 | 4—6天 | PKG-040 | blocked | not_started | 无 | ¥5,000 |
 | 60 | PKG-060 | 泥瓦与铺贴 | 修正墙地面高低差，铺贴地砖、全屋已声明墙砖与窗边防水台砖，处理门槛、地漏坡度、砖缝及边角；重点检查空响、平整和排水积水。 | 12—18天 | PKG-050 | blocked | not_started | BLK-SOUTH-BALCONY | ¥30,000 |
 | 65 | PKG-065 | 卫生间美缝（先行） | 两卫及客卫开放洗漱区的瓷砖美缝，先行于其余区域（DEC-2026-10-22-R03 自 PKG-130 拆出）：清理并填充主卫、客卫确认范围内的墙地砖缝，砖缝干燥确认后施工；完成后做饰面层闭水，通过后放行洁具安装（PKG-100）。其余区域美缝见 PKG-130。 | 1—2天 | PKG-060 | blocked | not_started | 无 | ¥500 |
@@ -43,18 +43,18 @@
 
 | ID | 状态 | 事项 | 解除条件 |
 |---|---|---|---|
-| BLK-HANDOVER | site_pending | 尚未交房，无法完成现场量房及房屋查验 | 交房查验完成并归档现场记录 |
-| BLK-STRUCTURE | site_pending | 墙体结构、梁底及允许打孔或穿墙条件未确认 | 结构资料与现场复核结果完成会签 |
-| BLK-HVAC-DEEPENING | site_pending | 中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审 | 空调、设计和施工三方签认深化图 |
+| BLK-HANDOVER | resolved | 尚未交房，无法完成现场量房及房屋查验 | 交房查验完成并归档现场记录 |
+| BLK-STRUCTURE | resolved | 墙体结构、梁底及允许打孔或穿墙条件未确认 | 结构资料与现场复核结果完成会签 |
+| BLK-HVAC-DEEPENING | resolved | 中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审 | 空调、设计和施工三方签认深化图 |
 | BLK-SOUTH-BALCONY | alignment_required | 南阳台使用方式、地面和预算边界未冻结 | 业主确认范围并同步预算及施工图 |
-| BLK-GAS-DOOR | site_pending | 燃气厨房门的现场验收要求未确认 | 燃气单位或物业书面确认厨房分隔要求 |
+| BLK-GAS-DOOR | resolved | 燃气厨房门的现场验收要求未确认 | 燃气单位或物业书面确认厨房分隔要求 |
 | BLK-MASTER-WARDROBE | alignment_required | 主卧北墙通顶定制衣柜（藏空调冷凝水管槽，必须定制）随2026-09-12压缩决策整体后移至二期，一期用成品衣架和斗柜过渡；门扇、位置、高度及空调检修关系仍未关闭 | 二期启动前深化图经业主、设计和厂家共同确认 |
 | BLK-CURTAIN-SCOPE | alignment_required | 一期窗帘范围需要统一：本阻塞项写主卧/父母房/西北次卧，PKG-145写主卧/书房/西北次卧，schedule/phase-scope.yaml还包含两个卫生间；未统一前不冻结采购范围 | 业主确认一期窗帘房间与产品范围，并同步本阻塞项、PKG-145、phase-scope.yaml 和预算 |
 | BLK-PHASE1-APPLIANCES | alignment_required | 一期家电额度在原9,000元下探组合基础上追加云鲸J6上下水版3,000元，2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤按4,000元进入一期后现按16,000元控制；J6型号和金额已由业主确认，客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结 | 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金 |
 | BLK-WATER-HEATER-SITE | site_pending | 已确认一期采用燃气热水器；模型虽有厨房西侧实体墙的暂定协调点，但交房前仍未确认是否已有开发商设备、实际安装墙面、燃气表位置、排烟路径、冷凝水排放和物业审批条件 | 现场核对现有设备和燃气条件，形成最终安装位置、排烟、给排水、专用电路及物业审批记录 |
-| BLK-MEP-INTERFACE-FREEZE | alignment_required | 水电与中央空调的接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口均未会签 | 水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点；纪要明确 PKG-030 和 PKG-040 并行或先后施工，签认记录归档 |
-| BLK-CABINET-FREEZE-FOR-MEP | alignment_required | 橱柜深化图是水电点位的 owner（微蒸烤预留点位 sock_kitchen_oven、厨房台面电位、客卫扫地机基站柜格上下水）但尚未冻结，而橱柜安装包排在 seq 110、晚于水电 seq 40 | 橱柜深化图与水电点位表双向核对完成，微蒸烤预留点位、台面电位与基站柜格落实到图（设计冻结前置，不是安装前置） |
-| BLK-SURVEY-DATA-FREEZE | site_pending | 影响水电与中央空调施工的现场数据尚未全部实测、显式豁免或登记为阻塞；当前清单和数据状态见 docs/pending-site-data.md | 影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs/pending-site-data.md |
+| BLK-MEP-INTERFACE-FREEZE | resolved | 水电与中央空调的接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口均未会签 | 水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点；纪要明确 PKG-030 和 PKG-040 并行或先后施工，签认记录归档 |
+| BLK-CABINET-FREEZE-FOR-MEP | resolved | 橱柜深化图是水电点位的 owner（微蒸烤预留点位 sock_kitchen_oven、厨房台面电位、客卫扫地机基站柜格上下水）但尚未冻结，而橱柜安装包排在 seq 110、晚于水电 seq 40 | 橱柜深化图与水电点位表双向核对完成，微蒸烤预留点位、台面电位与基站柜格落实到图（设计冻结前置，不是安装前置） |
+| BLK-SURVEY-DATA-FREEZE | resolved | 影响水电与中央空调施工的现场数据尚未全部实测、显式豁免或登记为阻塞；当前清单和数据状态见 docs/pending-site-data.md | 影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs/pending-site-data.md |
 | BLK-FRIDGE-FIT | site_pending | 设计模型把冰箱位暂记为约700毫米宽×700毫米深，当前收集到的501升候选有宽约833毫米者，冰箱型号不能在净开口复测前下单 | 现场复测完成面净宽、净深、净高、开门余量和散热缝，并筛选出尺寸满足的型号 |
 | BLK-MASTER-VANITY-SKU | alignment_required | 主卫浴室柜预算已按1,500元入账（DEC-2026-10-07-R02），但柜型、台盆形式与龙头形式未定（路径A 柜体+岩板台面+台上盆+壁挂龙头单配 / B 成品一体盆柜全包 / C 维持R12设计3,000）。若弃用台上盆与壁挂龙头，则 faucet_mbath_vanity 盆心 x=0.575、drain_mbath_vanity 墙排中心、water-master-bath 穿 w_mbath_south 点 x=0.575（该路线为 plan_supported，DEC-2026-10-06-R1 刚正交化，且同时供台盆龙头与马桶）与 DEC-2026-10-03-R1 的预埋口径同时作废，主卫给排水退回 pending 重画；厂家电商/1688 方案的 MOQ、起批数、运费、是否含安装与南宁配送口径亦未核 | 柜体SKU与台盆/龙头形式冻结，主卫给排水预埋点回填或重画并经量房复核，且含安装的南宁到手价取得 |
 
