@@ -1134,6 +1134,52 @@ work_packages:
         pass_condition: 形成确认版排版图或现场放样记录
         evidence_required: [tile_layout, signed_mockup_photos]
 
+  - id: PKG-065
+    sequence: 65
+    name: 卫生间美缝（先行）
+    description: 两卫及客卫开放洗漱区的瓷砖美缝，先行于其余区域（DEC-2026-10-22-R03 自 PKG-130 拆出）：清理并填充主卫、客卫确认范围内的墙地砖缝，砖缝干燥确认后施工；完成后做饰面层闭水，通过后放行洁具安装（PKG-100）。其余区域美缝见 PKG-130。
+    budget_pool: hard_finish
+    budget:
+      planned_cny: 500
+      contracted_cny: null
+      paid_cny: 0
+      forecast_cny: null
+      source_ref: mortar
+      allocation_status: pending_measurement
+      components:
+        - {id: COST-065-01, name: 美缝材料（卫生间）, description: 写明品牌、系列、颜色、使用区域和材料数量（湿区用料与干区分开登记）, quantity_basis: "全屋美缝定额 4,500 按砖缝长度估算占比拆分（湿区约 56m / 全屋约 750m，DEC-2026-10-22-R03），待铺砖完成后按实测缝长复核", planned_cny: null, status: quantity_pending}
+        - {id: COST-065-02, name: 清缝填缝和清理人工（卫生间）, description: 包含施工前清缝、填充、压缝和完工清理, quantity_basis: 明确按面积、长度或包干计价, planned_cny: null, status: quote_pending}
+    duration_workdays: {min: 1, max: 2}
+    dependencies: [PKG-060]
+    readiness: blocked
+    status: not_started
+    blockers: []
+    owner_roles: [美缝施工, 业主]
+    payment_gate: GATE-065-COMPLETE
+    acceptance_refs: [check_tile_grout_dry, check_wp_finish_flood]
+    checks:
+      - id: SCH-065-01
+        severity: major
+        checkpoint: before_start
+        item: 美缝前砖缝干燥确认（卫生间，DEC-2026-10-22-R02/R03）
+        method: 按 config/acceptance.yaml 的 check_tile_grout_dry 确认两卫范围：粘结层养护期满、缝内干燥无明水，倒水试验后晾置满 48h 复查
+        pass_condition: 两卫砖缝干燥确认记录齐全，确认日期不早于铺贴完成 7 天
+        evidence_required: [dimensioned_photos, defect_list]
+      - id: SCH-065-02
+        severity: major
+        checkpoint: completion
+        item: 卫生间美缝范围、颜色和成品质量逐段检查
+        method: 按两卫沿每条砖缝检查漏做、断缝、气泡、凹陷、色差和瓷砖污染
+        pass_condition: 两卫确认范围内无漏项，填充连续饱满，颜色符合样板，瓷砖表面清洁
+        evidence_required: [signed_sample_photos, room_completion_photos, defect_list]
+      - id: SCH-065-03
+        severity: critical
+        checkpoint: completion
+        item: 饰面层闭水试验（DEC-2026-10-22-R02，洁具安装前置门禁；原 SCH-130-03 随拆包迁入）
+        method: 按 config/acceptance.yaml 的 check_wp_finish_flood 执行：美缝养护满后两卫分别蓄水 3–5cm、48h，查水位与楼下天花；不合格整改后重新计时复验
+        pass_condition: 两卫饰面闭水 48h 水位无明显下降、楼下无渗漏，记录齐全
+        evidence_required: [dimensioned_photos, completion_photos]
+
   - id: PKG-070
     sequence: 70
     name: 吊顶龙骨、隐蔽复验与封板
@@ -1249,7 +1295,7 @@ work_packages:
   - id: PKG-100
     sequence: 100
     name: 两个卫生间的洁具与五金
-    description: 安装马桶、浴室柜、台盆、龙头、花洒、地漏和相关五金，逐件试水、排水并检查接头是否渗漏、安装是否牢固。饰面层闭水通过（PKG-130 放行，DEC-2026-10-22-R02）后方可安装。
+    description: 安装马桶、浴室柜、台盆、龙头、花洒、地漏和相关五金，逐件试水、排水并检查接头是否渗漏、安装是否牢固。饰面层闭水通过（PKG-065 卫生间美缝先行包放行，DEC-2026-10-22-R02/R03）后方可安装。
     budget_pool: hard_finish
     budget:
       planned_cny: 8000
@@ -1269,7 +1315,7 @@ work_packages:
         - {id: COST-100-05, name: 淋浴区玻璃隔断, description: "2026-10-07（DEC-2026-10-07-R02）归属定案归 PKG-100，ownership_pending 关闭：8mm 钢化+3C 固定玻璃约900/台×2=1,800（主客卫各一处，与 DEC-2026-09-07-054 客卫整面固定玻璃无门一致；不做昂贵推拉淋浴房，复杂轨道与门铰属可砍溢价）。家电池 PKG-160 need 16,496 已超计划额496，不接这笔。config/materials.yaml 的 shower_enclosure_01 notes 已同步为 PKG-100 / COST-100-05，家电池不计；本条为记账权威", quantity_basis: "2处（主卫/客卫各1处）", planned_cny: 1800, status: ownership_resolved}
         - {id: COST-100-06, name: 卫生间取暖换气设备, description: "业主定标自购（DEC-2026-10-05-R3）：奥普 S2-Air 浴霸×2（风暖 2750W+换气 49W+照明 24W 三合一，集成吊顶式、线控面板），京东自营国补价 680.97/台（2026-10-05 页面观察，非成交价），两台 ≈1,362、目标 1,500 含配件余量；换气模块承担原独立排气；收房仍核对开发商场既有设备，若已提供则反转删项", quantity_basis: 2台；下单窗口在量房与扣板开孔方案冻结后, planned_cny: 1500, status: candidate}
     duration_workdays: {min: 3, max: 5}
-    dependencies: [PKG-060, PKG-080, PKG-040, PKG-130]
+    dependencies: [PKG-060, PKG-080, PKG-040, PKG-065]
     readiness: blocked
     status: not_started
     blockers: [BLK-MASTER-VANITY-SKU]
@@ -1397,11 +1443,11 @@ work_packages:
 
   - id: PKG-130
     sequence: 130
-    name: 瓷砖美缝
-    description: 清理并填充所有确认范围内的瓷砖缝，施工前确认材料、颜色、计价长度或面积，完成后逐段检查饱满、平整、颜色一致和污染情况。
+    name: 瓷砖美缝（其余区域）
+    description: 清理并填充其余区域（不含两卫及客卫开放洗漱区，该范围先行施工见 PKG-065，DEC-2026-10-22-R03）确认范围内的瓷砖缝，施工前确认材料、颜色、计价长度或面积，完成后逐段检查饱满、平整、颜色一致和污染情况。
     budget_pool: hard_finish
     budget:
-      planned_cny: 4500
+      planned_cny: 4000
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -1417,7 +1463,7 @@ work_packages:
     blockers: []
     owner_roles: [美缝施工, 业主]
     payment_gate: GATE-130-COMPLETE
-    acceptance_refs: [check_tile_grout_dry, check_wp_finish_flood]
+    acceptance_refs: [check_tile_grout_dry]
     checks:
       - id: SCH-130-01
         severity: major
@@ -1430,16 +1476,9 @@ work_packages:
         severity: major
         checkpoint: before_start
         item: 美缝前砖缝干燥确认（DEC-2026-10-22-R02）
-        method: 按 config/acceptance.yaml 的 check_tile_grout_dry 逐区确认：粘结层养护期满、缝内干燥无明水，卫生间倒水试验后晾置满 48h 复查
-        pass_condition: 两卫及其他区域砖缝干燥确认记录齐全，确认日期不早于铺贴完成 7 天
+        method: 按 config/acceptance.yaml 的 check_tile_grout_dry 逐区确认本包范围：粘结层养护期满、缝内干燥无明水
+        pass_condition: 本包范围砖缝干燥确认记录齐全，确认日期不早于铺贴完成 7 天
         evidence_required: [dimensioned_photos, defect_list]
-      - id: SCH-130-03
-        severity: critical
-        checkpoint: completion
-        item: 饰面层闭水试验（DEC-2026-10-22-R02，洁具安装前置门禁）
-        method: 按 config/acceptance.yaml 的 check_wp_finish_flood 执行：美缝养护满后两卫分别蓄水 3–5cm、48h，查水位与楼下天花；不合格整改后重新计时复验
-        pass_condition: 两卫饰面闭水 48h 水位无明显下降、楼下无渗漏，记录齐全
-        evidence_required: [dimensioned_photos, completion_photos]
 
   - id: PKG-135
     sequence: 135

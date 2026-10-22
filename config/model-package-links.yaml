@@ -75,6 +75,12 @@ links:
     scope:
       - {source: model_geometry, select: {collections: [rooms]}}
       - {source: overlay, select: {types: [floor_region, wall_region, sill_region]}}
+  - id: MODEL-PKG-065
+    phase_id: phase_1_basic_occupancy
+    budget_ref: {source: phase_1_budget, id: PKG-065}
+    mapping_status: mapped
+    scope:
+      - {source: overlay, select: {types: [floor_region, wall_region, sill_region], room_ids: [master_bath, guest_bath]}}
   - id: MODEL-PKG-070
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-070}
