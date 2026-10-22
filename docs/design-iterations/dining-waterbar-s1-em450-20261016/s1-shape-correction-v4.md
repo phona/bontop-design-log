@@ -29,4 +29,4 @@
 
 - V4近景：[s1-form-v4-close.png](evidence/s1-form-v4-close.png)；总览：[s1-form-v4-overview.png](evidence/s1-form-v4-overview.png)；运行时查询：[runtime-query-s1-form-v4.json](evidence/runtime-query-s1-form-v4.json)。
 - 固定近景机位为东南侧视角，面向水吧设备；S1仍保持312mm宽、280mm高、106mm柜深的运行时外廓。
-- `npm run gate:visual` 为CLEAR，`npm run verify:all`（17/17）和`npm run typecheck`通过。`npm run test:server`未通过，其中`wall-face-materials.test.ts`在Node环境调用`TextureFactory`时遇到`document is not defined`；该失败不在本轮FixtureFactory S1模型链路。审美与功能独立审查见`review-manifest.json`；视觉预演不等于实机/施工通过。
+- `npm run gate:visual` 为CLEAR，`npm run verify:all`（17/17）和`npm run typecheck`通过。`npm run test:server`未通过，其中`wall-face-materials.test.ts`在Node环境调用`TextureFactory`时遇到`document is not defined`；该失败不在本轮FixtureFactory S1模型链路。审美与功能独立审查见`round.yaml（review 段）`；视觉预演不等于实机/施工通过。

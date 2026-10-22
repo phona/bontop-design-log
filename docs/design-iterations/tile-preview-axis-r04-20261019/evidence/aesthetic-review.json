@@ -7,8 +7,8 @@
     "两张截图都显示预演面板与方向说明，且运行时configErrors为空、ready=true；改后gate:visual也已CLEAR。"
   ],
   "evidence_refs": [
-    "docs/design-iterations/tile-preview-axis-r04-20261019/decision-brief.yaml",
-    "docs/design-iterations/tile-preview-axis-r04-20261019/design-datum.yaml",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/round.yaml（brief 段）",
+    "docs/design-iterations/tile-preview-axis-r04-20261019/round.yaml（datum 段）",
     "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/runtime-verification.json",
     "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/default-page.snapshot.txt",
     "docs/design-iterations/tile-preview-axis-r04-20261019/evidence/restored-page.snapshot.txt",

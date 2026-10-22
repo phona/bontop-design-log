@@ -33,7 +33,7 @@
 
 - **电与空调走顶**：主干藏走廊满吊（z=4.6 轴线）/门厅满吊/客厅北缘边吊，分支进各房间边吊；到点位上方后**沿墙竖直下引**（开关 1.3m、低位插座 0.3m、床头 0.6–0.7m）。空调插座贴边吊下沿，不下引。分层标高按 **A/B 分区口径**（DEC-2026-10-06-R5，见 §3.3.1）：A 区（完成面 2.50）强电 2.55 / 弱电 2.60 / 冷凝水 2.65 / 冷媒 2.60，B 区铝扣板（完成面 2.65）进入段 2.70–2.76；参考梁约束带内 ≤ 梁底−0.05。
 - **水走地**：给水垫层内 0.18m，排水贴地 0.02–0.10m；重力管（排水/冷凝水）全程 1% 坡（阳台 2%），禁止上弯。
-- **全部正交折线**，穿墙段与墙正交；穿墙点逐条声明在 `docs/design-iterations/mep-routing-20260901/design-datum.yaml`（v1 留档，penetrations 15 条），每条含墙 id、坐标、标高、门洞避让关系。
+- **全部正交折线**，穿墙段与墙正交；穿墙点逐条声明在 `docs/design-iterations/mep-routing-20260901/round.yaml` 的 datum 段（v1 留档，penetrations 15 条），每条含墙 id、坐标、标高、门洞避让关系。
   > 口径：现行 route 级穿墙声明写在 `config/mep-hvac-coordination.yaml` 每条 route 的 `penetration` 数组里，合计 40 条声明、落在 21 个不同孔位（同一墙同一坐标由多条路线共用一孔，如 w_strip_east(4.2,4.6) 三管同孔）；`design-datum.yaml` 是 2026-09-01 v1 留档（15 条），**不是现行清点工具**，两套都以量房实测终核。
 - 权威几何：`config/layout/model-geometry.yaml`；吊顶通道：`config/ceiling.yaml`；走线：`config/mep-hvac-coordination.yaml`（每条 route 的 reason 字段含逐条说明）。
 
@@ -256,4 +256,4 @@ R20历史快照：166 个 error 属于当时 verify:mep 阻断项；本轮基线
 
 **仍未建模的检查边界**：MEP lint 现在检查门洞本身和静态柜体/家电实体，但 config 尚无门扇开启扫掠区、冰箱/洗碗机/洗烘开门区与检修抽拉区的权威几何，因此不能判定运行时活动包络是否挡线。飘窗规则也按路线中心线判定实体相交，未按管径计算贴边净距。要把这两类也纳入判定，需要先在权威配置声明扫掠/净距几何，代码不得自行猜开门角度或边界。
 
-> 上表六组是**历史分类台账快照**，不是「已接受项」清单。逐条的 accept / reject / pending_adjudication 裁决、依据 DEC、责任人与解除条件，见治理台账 `docs/design-iterations/mep-lint-governance-20261006/review-manifest.json`（本轮新建）。旧的 `docs/design-iterations/mep-routing-20260901/review-manifest.json` 只留 v1/v2/v3 三轮评审结论，其中「15 条已接受项 / 22 warning」是 2026-09-07 的快照，**不再是现行基线**。
+> 上表六组是**历史分类台账快照**，不是「已接受项」清单。逐条的 accept / reject / pending_adjudication 裁决、依据 DEC、责任人与解除条件，见治理台账 `docs/design-iterations/mep-lint-governance-20261006/review-manifest.json`（本轮新建）。旧的 `docs/design-iterations/mep-routing-20260901/round.yaml 的 review 段` 只留 v1/v2/v3 三轮评审结论，其中「15 条已接受项 / 22 warning」是 2026-09-07 的快照，**不再是现行基线**。

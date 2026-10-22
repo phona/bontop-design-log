@@ -1,0 +1,786 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: guest-bath-open-vanity-floor-split-20261018
+index:
+  order: 54
+  topic: bath
+  review_state: blocked
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: guest-bath-open-vanity-floor-split-20261018
+  subject: 客卫开放洗漱区与内卫地面材质分区
+  priority:
+    user_goal: 开放洗漱干区跟随室内木纹砖，门内客卫保留小花砖。
+    ranked:
+      - 让外置台盆区与走廊/客餐厅地面连续
+      - 保留内卫的小花砖视觉主题
+      - 渲染、预算算量、采购口径一致
+    non_negotiables:
+      - 不拆分或改写model-geometry的guest_bath房间拓扑
+      - 不改变客卫房间总地面面积3.15㎡
+      - 内卫2.025㎡继续使用floor_tile_deco_small
+      - 开放洗漱区1.125㎡跟随living_dining当前有效地材
+      - 不把未核验木纹砖SKU、防滑等级或安装费写成已确认事实
+    tradeoffs_accepted:
+      - 当前方案是产品候选和设计预演，现场复尺与防滑资料仍待核
+  frozen: true
+  freeze_record:
+    alignment_id: chat-2026-10-18-guest-bath-floor-split
+    original_user_response: 那就帮我落地吧
+    normalized_decisions:
+      - 开放洗漱区floor_region follow: living_dining
+      - 内卫保留guest_bath room override为floor_tile_deco_small
+      - 以用户已确认的空间界面z=3.55作为饰面分界，不新增墙或改房间边界
+    confirmed_by_user: true
+    confirmed_at: '2026-10-18T15:26:15+08:00'
+    evidence_refs:
+      - ../evidence/baseline.png
+      - ../evidence/baseline-runtime.json
+  allowed_scope:
+    files:
+      - config/layout/overlay.yaml
+      - shared/types.ts
+      - shared/masonry-takeoff.ts
+      - server/overlay-merge.ts
+      - server/budget-calculator.ts
+      - server/tile-cost-comparison.ts
+      - server/routes.ts
+      - config/tile-comparison.yaml
+      - schedule/phase-1/control.yaml
+      - docs/decisions/11-tile-finish.md
+      - schedule/procurement.md
+      - tests/server/masonry-takeoff.test.ts
+      - tests/server/masonry-quotes.test.ts
+      - tests/server/budget-calculator.test.ts
+      - tests/server/tile-cost-comparison.test.ts
+      - tests/server/tile-comparison-api.test.ts
+      - tests/server/overlay-merge.test.ts
+      - app/src/render/TextureManager.ts
+      - app/src/render/TextureManager.test.ts
+      - docs/design-iterations/guest-bath-open-vanity-floor-split-20261018/**
+    objects:
+      - guest_bath_open_vanity_floor
+      - floor:guest_bath
+    archetypes:
+      - floor_material_zone
+    views:
+      - plan
+      - perspective
+    changes:
+      - 新增客卫内部地面分区，follow客餐厅有效地材
+      - takeoff按内部地材分区转移面积，保持全屋总量守恒
+      - budget材料行和tile comparison展示分材质面积
+      - 保留旧DEC-042为历史背景，追加本次明确推翻范围的新DEC
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - data/project-render-facts.json
+      - config/facts.yaml
+      - config/mep-hvac-coordination.yaml
+      - docs/decisions/13-mep-integration.md
+    objects:
+      - walls
+      - doors
+      - vanity
+      - plumbing
+      - electrical
+      - guest_bath room boundary
+    assumptions:
+      - 不推断最终SKU、湿态防滑等级或全安装价
+      - 不推断门口最终高差、挡水和防水收口做法
+    out_of_scope_changes:
+      - MEP线路、配电、给排水、HVAC方案
+      - 房间拓扑、墙体或家具布局
+  open_questions:
+    - id: site-boundary-check
+      category: construction
+      question: 交房复尺后，门洞及开放洗漱区完成面边界是否仍为当前模型范围？
+      fact_refs:
+        - open-vanity-area
+        - material-transition-at-door
+      options:
+        - 按模型分界排砖
+        - 量房后按实调整
+      selected: 按模型分界排砖，现场测量后更新尺寸
+      user_response: 开放洗漱区木纹砖、内卫小花砖，按现有布局落地
+      status: site_pending
+  alignment:
+    records:
+      - id: chat-2026-10-18-guest-bath-floor-split
+        original_response: 那就帮我落地吧
+        normalized_decision: 开放洗漱区跟木纹砖，内卫保留小花砖，按现有几何分界实现
+        status: confirmed
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run typecheck
+      - npm run test:server
+      - npm run test:app
+      - npm run verify:all
+      - npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - 客卫门外开放洗漱区望向内卫的局部斜俯视
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: required
+    blocking_issues: []
+    done_when:
+      - 房间网格仍为一个guest_bath，overlay新区域准确覆盖1.125㎡
+      - 内卫地面材质为小花砖，开放洗漱区材质随客餐厅木纹砖
+      - wet/dry数量为6.601㎡/116.739㎡，总量123.34㎡不变
+      - 材料预算分别计入2.025㎡小花砖及1.125㎡木纹砖，人工报价未知保持显形
+      - tile comparison API不再把开放洗漱区并入客卫小花砖
+      - 相关验证全绿，浏览器ready且错误横幅为空
+      - 独立美学与功能评审均PASS
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: guest-bath-open-vanity-floor-split-20261018
+  subject: 客卫开放洗漱区木纹砖地面分区
+  units: m
+  coordinate_system: Three.js右手系；Y向上，+x向东，+z向南，俯视北朝上
+  status: frozen
+  datums:
+    - id: guest-bath-open-vanity-floor
+      name: 客卫南侧开放洗漱区地面
+      anchor:
+        kind: room_anchor
+        ref: guest_bath
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - room-boundary
+          - open-vanity-area
+          - finish-split
+        decision_refs:
+          - DEC-2026-10-18-TILE-02
+      views:
+        plan:
+          required: true
+          origin: model-geometry局部原点
+          axes: x东西、z南北
+          direction: 北朝上（-z）
+          position:
+            x: 6.35
+            z: 3.925
+          rotation: null
+          dimensions:
+            length: 1.5
+            width: 0.75
+            depth: null
+            offset: null
+          dimension_semantics: total
+        elevation:
+          required: false
+          viewing_side: 南侧开放边望向北
+          vertical_axis: 'y'
+          height: null
+          dimensions:
+            width: null
+            height: null
+            sill: null
+            datum_offset: null
+          dimension_semantics: not_applicable
+        section:
+          required: false
+          cut_direction: 沿z方向，跨越门洞分界z=3.55
+          depth_axis: z
+          clearances:
+            front: null
+            rear: null
+            top: null
+            bottom: null
+          thickness: null
+          dimension_semantics: not_applicable
+      geometry:
+        x: 6.35
+        'y': 0.005
+        z: 3.925
+        width: 1.5
+        depth: 0.75
+        height: null
+        length: null
+        rotation: null
+        along: null
+      constraints:
+        - 区域边界x[5.60,7.10]、z[3.55,4.30]，面积1.125㎡
+        - 北边z=3.55与内卫南侧门洞墙线重合；不移动门、墙、台盆
+        - 内卫余区约2.025㎡，保持floor_tile_deco_small
+        - 新区跟随living_dining当前有效floor选型
+      interfaces:
+        - floor:guest_bath
+        - current floor roomOverrides
+        - masonry-takeoff
+        - tile comparison
+      validation_refs:
+        - verify:all
+        - test:server
+        - test:app
+        - gate:visual
+      status: confirmed
+  notes:
+    - 门洞位置和完成面仍为模型值，交房复尺后核验，不在本轮改几何。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: guest-bath-open-vanity-floor-split-20261018
+  subject: 客卫开放洗漱区与内卫地面材质分区
+  created_at: '2026-10-18T15:26:15+08:00'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/materials.yaml
+      - config/tile-comparison.yaml
+      - data/current-scheme.json
+    observation_refs: []
+    measurement_refs: []
+    runtime_refs:
+      - evidence/baseline-runtime.json
+      - evidence/after-runtime.json
+    evidence_refs:
+      - evidence/baseline.snapshot.txt
+      - evidence/baseline.png
+      - evidence/after.snapshot.txt
+      - evidence/after.png
+  entry_shape:
+    id: fact-entry-template
+    category: confirmed
+    statement: template only
+    value: null
+    source_refs: []
+    basis: null
+    confidence: high
+    impact: none
+    affected_objects: []
+    affected_views: []
+    owner: null
+    status: resolved
+    verification_method: null
+    user_confirmation_ref: null
+  facts:
+    confirmed:
+      - id: room-boundary
+        category: confirmed
+        statement: 客卫语义房间包含内卫与南侧开放洗漱区，当前resolved footprint为3.15㎡。
+        value:
+          room_id: guest_bath
+          area_sqm: 3.15
+          bounds_x:
+            - 5.6
+            - 7.1
+          bounds_z:
+            - 2.2
+            - 4.3
+        source_refs:
+          - config/layout/model-geometry.yaml:94-99
+          - config/layout/model-geometry.yaml:31-39
+        basis: 权威房间边界顶点与resolved room数据
+        confidence: high
+        impact: material
+        affected_objects:
+          - floor:guest_bath
+          - guest_bath_open_vanity_floor
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: runtime room query + masonry takeoff
+        user_confirmation_ref: null
+      - id: open-vanity-area
+        category: confirmed
+        statement: 开放洗漱区位于客卫南侧z=3.55至4.30，横向覆盖x=5.60至7.10。
+        value:
+          bounds_x:
+            - 5.6
+            - 7.1
+          bounds_z:
+            - 3.55
+            - 4.3
+          area_sqm: 1.125
+        source_refs:
+          - config/layout/model-geometry.yaml:32-39
+          - config/layout/model-geometry.yaml:94-99
+          - config/house.yaml:570-572
+        basis: 几何分界与外置台盆声明
+        confidence: high
+        impact: material
+        affected_objects:
+          - guest_bath_open_vanity_floor
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: resolved polygon area + runtime object bounds
+        user_confirmation_ref: null
+      - id: current-floor-selection
+        category: confirmed
+        statement: 当前默认地面材料为KT 200×1200木纹砖；客卫整房覆盖为复古小花砖。
+        value:
+          default: floor_tile_kt_200x1200_01
+          guest_bath_override: floor_tile_deco_small
+        source_refs:
+          - data/current-scheme.json:4-10
+          - config/tile-comparison.yaml:162-169
+        basis: 当前方案及选型基准
+        confidence: high
+        impact: material
+        affected_objects:
+          - floor:guest_bath
+          - guest_bath_open_vanity_floor
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: browser officialScheme query
+        user_confirmation_ref: null
+      - id: finish-render-granularity
+        category: confirmed
+        statement: 当前基础房间地面按roomId设材质，floor_region支持follow指定房间的有效地材。
+        value:
+          base_floor_object: floor:guest_bath
+          region_follow: living_dining
+        source_refs:
+          - app/src/topics/FloorTopic.ts:30-49
+          - shared/render/SceneBuilder.ts:577-595
+        basis: 当前渲染代码
+        confidence: high
+        impact: material
+        affected_objects:
+          - floor:guest_bath
+          - guest_bath_open_vanity_floor
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: code path + browser object query
+        user_confirmation_ref: null
+      - id: takeoff-current-limit
+        category: confirmed
+        statement: 当前落在已计费房间内的floor_region会被跳过；需新增内部材料分区算量语义以避免视觉/预算不一致。
+        value:
+          current_behavior: skip_inside_costed_room
+          target_behavior: transfer_area_to_follow_material_bucket
+        source_refs:
+          - shared/masonry-takeoff.ts:789-815
+          - server/budget-calculator.ts:898-928
+        basis: 当前共享算量和预算材料行实现
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - guest_bath_open_vanity_floor
+          - masonry.floor
+        affected_views:
+          - plan
+        owner: design-engineering
+        status: resolved
+        verification_method: focused tests + verify:all
+        user_confirmation_ref: null
+    inferred:
+      - id: material-transition-at-door
+        category: inferred
+        statement: 地面换材边界放在内卫南门洞墙线z=3.55，与空间开闭边界一致。
+        value:
+          transition_z: 3.55
+        source_refs:
+          - config/layout/model-geometry.yaml:32-39
+          - config/layout/model-geometry.yaml:226-235
+        basis: 门外开放洗漱区、门内封闭内卫
+        confidence: high
+        impact: material
+        affected_objects:
+          - guest_bath_open_vanity_floor
+        affected_views:
+          - plan
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: geometry boundary and camera review
+        user_confirmation_ref: null
+    user_decision:
+      - id: finish-split
+        category: user_decision
+        statement: 开放洗漱区用客餐厅当前木纹砖，内卫主体保留小花砖。
+        value:
+          open_vanity_follow: living_dining
+          inner_bath_material: floor_tile_deco_small
+        source_refs:
+          - data/current-scheme.json:4-10
+        basis: 用户2026-10-18明确确认并要求落地
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - guest_bath_open_vanity_floor
+          - floor:guest_bath
+        affected_views:
+          - plan
+          - perspective
+        owner: homeowner
+        status: resolved
+        verification_method: same-view visual evidence + material line items
+        user_confirmation_ref: user-message-2026-10-18-implementation
+    site_pending:
+      - id: final-measurement
+        category: site_pending
+        statement: 交房复尺后核对门洞墙线、台盆占地和完成面边界；在排砖和下单前更新分区面积。
+        value: null
+        source_refs:
+          - config/layout/model-geometry.yaml:94-99
+          - docs/pending-site-data.md
+        basis: 当前为设计预演模型，非现场测量
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - guest_bath_open_vanity_floor
+        affected_views:
+          - plan
+        owner: homeowner + site measurer
+        status: open
+        verification_method: 现场完成面复尺、排砖图复核
+        user_confirmation_ref: null
+      - id: slip-rating
+        category: site_pending
+        statement: 木纹砖候选SKU、表面与湿态防滑等级尚未核验；台盆溅水区需核实样品和检测资料。
+        value: null
+        source_refs:
+          - config/materials.yaml:752-771
+        basis: current material entry declares product SKU and finish pending
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - guest_bath_open_vanity_floor
+        affected_views:
+          - perspective
+        owner: homeowner + tile supplier
+        status: open
+        verification_method: requested sample, product sheet and slip-resistance evidence
+        user_confirmation_ref: null
+  unknowns_requiring_alignment: []
+  notes:
+    - 房间总地面面积仍为3.15㎡；内卫基材面积2.025㎡，开放洗漱区1.125㎡。
+    - 人工报价卡中卫生间按间300元/间的歧义保持待核，不因材质分区擅自取消或追加。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: guest-bath-open-vanity-floor-split-20261018
+  subject: 客卫开放洗漱区与内卫地面材质分区
+  object_policy:
+    fixed_count_required: false
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: guest_bath_open_vanity_floor
+      type: floor_region
+      archetypes:
+        - floor_material_zone
+      owner: design
+      function: 在内卫门外开放洗漱区延续客餐厅地面材质
+      material:
+        selection_source: floor.selection.effective(living_dining)
+        current_option: floor_tile_kt_200x1200_01
+      geometry_source: config/layout/overlay.yaml points; host room from config/layout/model-geometry.yaml guest_bath
+      datum_refs:
+        - guest-bath-open-vanity-floor
+      fact_refs:
+        - room-boundary
+        - open-vanity-area
+        - current-floor-selection
+        - finish-render-granularity
+      decision_refs:
+        - DEC-2026-10-18-TILE-02
+      dependencies:
+        - floor:guest_bath
+        - current floor scheme
+        - masonry takeoff
+      interfaces:
+        - id: material-selection
+          target_object_id: floor:living_dining
+          kind: material
+          requirement: 跟随客餐厅当前有效地材，避免双写具体木纹SKU。
+          status: confirmed
+        - id: area-conservation
+          target_object_id: floor:guest_bath
+          kind: visual
+          requirement: 内部分区从guest_bath 3.15㎡中转出1.125㎡，剩余面积2.025㎡；总量不变。
+          status: confirmed
+        - id: sink-water-exposure
+          target_object_id: floor:guest_bath
+          kind: maintenance
+          requirement: 产品样品、湿态防滑和防水收口待供应商及现场核实。
+          status: open
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 地面区域本身无设备维护；材料清洁随瓷砖表面处理
+        access_clearance: null
+        replaceable_parts: []
+        inspection_requirements:
+          - 现场防水闭水验收
+          - 湿态防滑资料核验
+      parts: []
+      visual_relationships:
+        - target_object_id: floor:living_dining
+          relation: adjacent
+          requirement: 南侧开放洗漱区与走廊连续，分界落在内卫门洞墙线。
+          evidence_refs:
+            - baseline.png
+            - after.png
+        - target_object_id: floor:guest_bath
+          relation: adjacent
+          requirement: 门内小花砖止于门洞分界，内外两种材质清晰收口。
+          evidence_refs:
+            - baseline.png
+            - after.png
+      validation_refs:
+        - shared/masonry-takeoff.ts
+        - server/budget-calculator.ts
+        - gate:visual
+      status: implemented
+  notes:
+    - 不改room boundary或台盆/洁具/给排水对象；floor_region不参与碰撞。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: guest-bath-open-vanity-floor-split-20261018
+  subject: 客卫开放洗漱区与内卫地面材质分区
+  state: blocked
+  source_version:
+    config_refs:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/tile-comparison.yaml
+      - config/materials.yaml
+      - data/current-scheme.json
+      - schedule/phase-1/control.yaml
+    asset_refs: []
+    render_facts_ref: data/project-render-facts.json
+    source_digest: sha256:d7e141b801ed1af443a0d4121b2387938064c6019bf427fdbce1c69575761d28
+    generated_at: '2026-10-18T16:03:41+08:00'
+  validation:
+    commands:
+      - npm run typecheck
+      - npm run test:server
+      - npm run test:app
+      - npm run verify:all
+      - npm run schedule:render
+      - npm run verify:schedule
+      - npm run gate:visual
+      - node --import tsx --test tests/server/masonry-takeoff.test.ts tests/server/masonry-quotes.test.ts tests/server/budget-calculator.test.ts tests/server/tile-cost-comparison.test.ts tests/server/tile-comparison-api.test.ts tests/server/overlay-merge.test.ts
+      - cd app && npx vitest run src/render/TextureManager.test.ts
+    results:
+      - 'PASS: npm run typecheck.'
+      - 'PASS: six floor-specific server test files: masonry takeoff, masonry quotes, budget calculator, tile cost comparison, tile-comparison API, and overlay merge.'
+      - 'PASS: TextureManager tests, 9/9; verifies follow material assignment and retained polygon offset.'
+      - 'PASS: npm run schedule:render and npm run verify:schedule; regenerated schedule/phase-1/budget.md from the control source.'
+      - 'PASS: npm run gate:visual returned CLEAR for ceiling, electrical, plumbing, and materials.'
+      - 'PASS: browser runtime is ready, the config error banner is empty, the base room resolves to floor_tile_deco_small, and guest_bath_open_vanity_floor resolves to floor_tile_kt_200x1200_01 with the expected room/follow bounds and polygon offset.'
+      - 'BLOCKED: npm run verify:all passed 16/17 verifiers; verify-mep fails against the in-progress MEP workspace configuration. Topology, layout, consistency, finish-scope, and schedule verifiers passed.'
+      - 'BLOCKED: npm run test:server completed 946/966 tests; 20 fail. Three /api/project tests receive 500 because config/model-package-links.yaml cannot parse config/mep-hvac-coordination.yaml (deficient indentation at line 163); MEP/fact and registry tests also fail. Separate current failures include a shared-render browser-boundary assertion and node tests that call TextureManager without a document.'
+      - 'BLOCKED: npm run test:app completed 513/561 tests; 48 HouseScene tests fail because ResizeObserver is undefined in the test environment, and App.test.ts fails during import because its Three.js mock lacks Color.setRGB. The touched TextureManager suite passes 9/9.'
+    config_status: PASS
+    geometry_status: PASS
+    consistency_status: PASS
+    functional_checks_status: BLOCKED
+    application_status: BLOCKED
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: guest-bath-baseline
+      url: http://localhost:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-18T15:29:00+08:00'
+      config_error_banner: ''
+      target_objects:
+        - floor:guest_bath
+      target_object_ids:
+        - floor:guest_bath
+      runtime_query_refs:
+        - evidence/baseline-runtime.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          x: 6.5
+          'y': 4.7
+          z: 5.45
+        target:
+          x: 6.35
+          'y': 0
+          z: 3.25
+        view_type: perspective
+      snapshot_path: evidence/baseline.snapshot.txt
+      screenshot_path: evidence/baseline.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - gate:visual CLEAR before implementation
+        - data/current-scheme.json updatedAt 2026-10-12
+      status: valid
+      invalid_reason: null
+    - id: guest-bath-after
+      url: http://localhost:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-18T15:55:00+08:00'
+      config_error_banner: ''
+      target_objects:
+        - floor:guest_bath
+        - guest_bath_open_vanity_floor
+      target_object_ids:
+        - floor:guest_bath
+        - guest_bath_open_vanity_floor
+      runtime_query_refs:
+        - evidence/after-runtime.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          x: 6.5
+          'y': 4.7
+          z: 5.45
+        target:
+          x: 6.35
+          'y': 0
+          z: 3.25
+        view_type: perspective
+      snapshot_path: evidence/after.snapshot.txt
+      screenshot_path: evidence/after.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - source_digest d7e141b801ed1af443a0d4121b2387938064c6019bf427fdbce1c69575761d28
+        - npm run gate:visual CLEAR at 2026-10-18 16:02 +08:00
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 同机位对比中，材质分界落在门洞墙线z=3.55，边界直且清楚；未见明显接缝、漏铺、z-fighting或材质串区。
+      - 木纹砖延续外部动线的色调和铺向，开放台盆区不再被小花砖截断；小花砖保留为内卫视觉焦点，面积比例合适。
+      - 施工前复尺确认门洞/完成面边界，并核验木纹砖在台盆溅水区的湿态防滑、防水和收口。
+    evidence_refs:
+      - evidence/baseline.png
+      - evidence/after.png
+      - evidence/after-runtime.json
+      - round.yaml（brief 段）
+    requested_changes: []
+    assumptions:
+      - 按本轮同机位截图判断视觉效果；未把未核验SKU、色号、防滑等级或现场完成面尺寸当作事实。
+      - overlay中的1.5m×0.75m开放洗漱区和z=3.55分界继续有效。
+  functional_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 地面范围功能通过：base guest_bath 使用 floor_tile_deco_small，guest_bath_open_vanity_floor 使用 floor_tile_kt_200x1200_01；roomId/follow/bounds/polygonOffset均已由runtime确认。
+      - 面积3.15㎡守恒为小花砖2.025㎡+木纹砖1.125㎡；takeoff、预算和tile comparison均按材质分开计算，6组地面专项server测试通过。
+      - 完整test:server、test:app和verify:all仍受范围外MEP配置与测试环境问题阻断；不改变本次地面功能verdict，也不代表仓库整体交付通过。
+      - 现场仍需复尺门洞完成面、门槛/压条、高差、防水连续性，并核验具体SKU及湿态防滑资料。
+    evidence_refs:
+      - evidence/after-runtime.json
+      - evidence/after.snapshot.txt
+      - evidence/after.png
+      - config/layout/overlay.yaml
+      - shared/masonry-takeoff.ts
+      - server/budget-calculator.ts
+      - server/tile-cost-comparison.ts
+      - tests/server/masonry-takeoff.test.ts
+      - tests/server/masonry-quotes.test.ts
+      - tests/server/budget-calculator.test.ts
+      - tests/server/tile-cost-comparison.test.ts
+      - tests/server/tile-comparison-api.test.ts
+      - tests/server/overlay-merge.test.ts
+      - app/src/render/TextureManager.test.ts
+    requested_changes: []
+    assumptions:
+      - 本verdict只针对客卫地面分区的实现、算量、预算分材和浏览器功能证据；仓库全量门禁状态另行记录。
+      - 当前模型z=3.55门洞线和1.125㎡区域边界仍是设计预演值，现场复尺后如边界变化需重新计算。
+  construction_review:
+    verdict: BLOCKED
+    blocking_issues:
+      - z=3.55为模型材质边界，门洞完成面、门槛/压条或同高硬碰、留缝位置、门扇扫掠与最终高差尚未复尺。
+      - 开放洗漱区属于台盆溅水环境，KT具体SKU、表面处理、吸水/湿态防滑资料和样板尚未核验。
+      - 需在施工交底中标明内外区防水连续、门槛泛水和墙地交界做法，并留防水前后照片及闭水记录。
+    non_blocking_notes:
+      - 面积与模型分区自洽：3.15㎡ = 内卫2.025㎡ + 开放洗漱区1.125㎡；after runtime查询到边界x[5.60,7.10]、z[3.55,4.30]。
+      - 预算/采购已分为2.025㎡小花砖和1.125㎡木纹砖；切割、门口收口、过渡件、人工、辅材与卫生间按间费用仍需书面报价。
+      - 当前设计只把木纹砖放在门外开放洗漱区，不进入淋浴区；实物防滑资料不适用时应反转选材。
+    evidence_refs:
+      - evidence/after.png
+      - evidence/after-runtime.json
+      - config/layout/overlay.yaml
+      - docs/decisions/11-tile-finish.md
+      - schedule/procurement.md
+    requested_changes:
+      - 交房后复尺门洞完成面、门槛位置、开放洗漱区边界与两区完成面高差，确定门口收口方式。
+      - 采购前核验KT具体SKU、样板、表面/吸水率和湿态防滑资料。
+      - 防水施工交底明确两区防水连续、门槛泛水和墙地交界，完成照片与闭水记录。
+      - 瓦工按两种地材分项确认人工、按间费用、切割损耗、门口收口和过渡件书面报价。
+    assumptions:
+      - z=3.55对应内卫南侧门洞；当前模型墙体中心线不能代替现场完成面尺寸。
+      - 木纹砖仅用于门外开放洗漱区，但该区域仍按可能受潮地面验收。
+  substantive_review:
+    deleted: 现行采购口径中“客卫小花砖约3㎡”已被替换为内卫2.025㎡小花砖+开放洗漱区1.125㎡木纹砖；原始门店报价、SKU候选和历史DEC证据均保留。
+    overturned: DEC-2026-08-21-042中客卫整房小花砖的覆盖范围被DEC-2026-10-18-TILE-02推翻；小花砖风格意图和guest_bath基底override保留。
+    silent_failure_conditions:
+      - 若follow房间选材失效，floor_region材质解析会回退到地面默认材质；若默认材质与follow目标不同，可能静默显示错误。
+      - 若后续只改渲染、不让takeoff和budget读取room+follow内部区，区域会被按整间客卫错误计量。
+      - 若SceneBuilder或TextureManager材质复制丢失floor_region的polygonOffset，内部区与基底可能闪烁。
+      - 若现场门洞完成面、台盆占地或溅水范围改变，当前z=3.55边界和材料分配需要重审。
+  risks:
+    - KT 200×1200当前是设计基准；具体SKU、表面处理与湿态防滑等级未核验。
+    - 门洞完成面、门槛/压条、留缝和最终高差需交房复尺；防水连续性和闭水验收尚未发生。
+    - 瓦工费率和卫生间按间300元/间的替代/叠加解释仍待书面核验。
+    - 当前仓库全量server/app测试及MEP验证受本轮范围外workspace状态影响，交付保持blocked。
+  retrospective:
+    triggered: true
+    triggers:
+      - 重复的verify:all运行均在verify-mep失败，完整test:server也重复因当前MEP配置解析问题失败，触发范围外workspace状态复盘。
+    records:
+      - 未删除历史门店报价、旧范围DEC或已研究候选；旧的房间干湿面积只保留为历史基线，并已在schedule/phase-1/control.yaml和生成预算中标明。
+      - 错误堆栈将/api/project失败定位到config/model-package-links.yaml读取config/mep-hvac-coordination.yaml时在第163行遇到缩进错误；verify:all仅verify-mep失败。六组地面server专项测试、TextureManager 9/9和浏览器目标对象均通过。
+      - 本轮未修改范围外MEP文件，也未改变已确认的地面几何或材质基线；全量验证需在MEP配置修复后重新运行，当前不重基准。
+    rebaselined: false
+  delivery:
+    status: blocked
+    blocking_issues:
+      - 完整test:server 20/966失败，当前配置中config/mep-hvac-coordination.yaml在第163行缩进异常，并导致3个/api/project测试无法加载MEP authority；还有MEP/facts/registry及非本次的测试环境失败。
+      - 完整test:app有48项HouseScene测试因ResizeObserver未定义失败，App.test.ts导入因Three.js测试桩缺Color.setRGB失败。
+      - verify:all 16/17通过，唯一失败为verify-mep；项目的完整验证门槛尚未全绿。
+      - 施工界面复核仍要求交房后复尺门槛、高差、防水连续性，并核验台盆溅水区木纹砖湿态防滑资料。
+    completion_conditions:
+      - 修复或隔离当前workspace内范围外的MEP YAML与相关全量验证失败，并重新通过test:server、test:app和verify:all。
+      - 业主/现场方复尺后书面确认门口完成面、门槛/压条、高差、防水节点及湿态防滑材料条件。
+      - 两位设计review保持PASS；现场事实变化后更新after证据与算量，再按固定review契约复核。
+    follow_up_site_pending:
+      - 交房后复尺门洞完成面、门槛/压条、开放洗漱区边界和高差；排砖前更新实际分界。
+      - 供应商提供当前KT候选SKU、样板、表面处理及湿态防滑资料；确认台盆溅水条件适用。
+      - 施工交底确认门槛泛水、防水连续、留缝/压条、墙地交界和闭水验收。
+      - 瓦工书面拆分两种地材人工、切割损耗、收口/过渡件、辅材及卫生间按间费用。
+    delivery_ready: false

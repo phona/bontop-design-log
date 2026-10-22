@@ -17,14 +17,18 @@ test('reports JSON and YAML parser locations as line:column', () => {
 });
 
 test('decision brief exposes its dual-PASS delivery gate and retains review list', () => {
-  const brief = load(readFileSync(
-    'docs/design-iterations/hvac-dual-outlet-threeline-20261007/decision-brief.yaml', 'utf8',
+  // 批 3 起五件套并入 round.yaml：原 decision-brief.yaml 的内容在 brief 段，断言不变。
+  const round = load(readFileSync(
+    'docs/design-iterations/hvac-dual-outlet-threeline-20261007/round.yaml', 'utf8',
   )) as {
-    acceptance: {
-      review_required: string[];
-      delivery_gate: { all_required_reviews_must_pass: boolean; required_reviews: string[] };
+    brief: {
+      acceptance: {
+        review_required: string[];
+        delivery_gate: { all_required_reviews_must_pass: boolean; required_reviews: string[] };
+      };
     };
   };
+  const brief = round.brief;
   assert.deepEqual(brief.acceptance.review_required, ['aesthetic', 'functional']);
   assert.deepEqual(brief.acceptance.delivery_gate, {
     all_required_reviews_must_pass: true,

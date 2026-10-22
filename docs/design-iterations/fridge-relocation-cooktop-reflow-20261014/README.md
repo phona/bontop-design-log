@@ -12,7 +12,7 @@
 - 烟道锚点 (10.60,1.50) 仍是 inferred、±0.20m、not_for_construction；燃气报警器插座保持 (10.80,0.20)，h=2.35。
 - 推定的“门头柜”候选对象是 `entry_half_height_cabinet`，中心 (11.50,4.00)，占地约 x[11.325,11.675]、z[3.00,5.00]；请业主确认该映射。
 
-完整来源、状态与影响见 `fact-table.yaml`。
+完整来源、状态与影响见 `round.yaml（fact_table 段）`。
 
 ## 施工前待核
 
@@ -83,7 +83,7 @@
 ### 源版本、证据与复核
 
 - v004 源指纹：`8544a676ceb70445369ef234ee0cfedeac345e3672c2e28c93faaabc4c0634ec`，文件清单见 `evidence/source-fingerprint-v004.json`。浏览器为 `http://127.0.0.1:5173/`，标题“和萃 701 - 3D 装修设计”，ready=true、错误横幅为空。v004 只把 `overlay.yaml` 里旧的“固定扇与冰箱邻接”注释标为历史，门体几何与开闭态未变。
-- 可比较视角：`evidence/fridge-slider-open-after-v004.png`、`fridge-slider-closed-after-v004.png`、`fridge-front-after-v004.png`、`fridge-open-door-envelope-after-v004.png`、`cooktop-candidate-after-v004.png`；runtime bounds 和门板 AABB 见 `evidence/runtime-trial-after-v004.json`。对应截图 SHA-256、相机和状态在 `review-manifest.json`。
+- 可比较视角：`evidence/fridge-slider-open-after-v004.png`、`fridge-slider-closed-after-v004.png`、`fridge-front-after-v004.png`、`fridge-open-door-envelope-after-v004.png`、`cooktop-candidate-after-v004.png`；runtime bounds 和门板 AABB 见 `evidence/runtime-trial-after-v004.json`。对应截图 SHA-256、相机和状态在 `round.yaml（review 段）`。
 - `npm run gate:visual` CLEAR（ceiling `bd9dd7b0743d` / electrical `01bf1db01b27` / plumbing `7f1513d14f27`）；`npm run verify:all -- --json` 17/17 pass、0 errors（284 warnings/6 unknownCounts）；`npm run test:server` 1005/1005；`npm run test:app` 570/570；`npm run typecheck` pass。`verify:furniture` pass，有2条既有 warning。
 - aesthetic 与 functional 独立复核均 PASS，结论只覆盖本次空间试案。厂家安装净空、可逆铰链、现场烟道实体、燃气公司方案、专用电源以及“门头柜”对象映射仍是下一步核对项，不构成施工定位。
 

@@ -21,7 +21,7 @@ V1 的程序化外壳只有连续平面塔身和小圆出水口，缺少产品�
 - V2 运行时数据：[runtime-query-s1-form-v2.json](evidence/runtime-query-s1-form-v2.json)
 - V1 旧截图仍保留在 `evidence/waterbar-overview.png` / `waterbar-close.png`，仅供形态历史对照；不得用于当前V2审美评审。
 
-两组相机采用完全相同的位置、目标点和FOV。V2运行时仍为11个Mesh，包围盒与V1一致；`verify:furniture`通过、`verify:all` 17/17通过、`typecheck`通过、`gate:visual` CLEAR。独立审美复核 PASS，确认形体不再读作横向盒子；功能复核仍 BLOCKED，因为电源、墙控、维护、冰箱动态净空和RO柜内接口不受本轮造型修正影响。完整审查见 `review-manifest.json`。
+两组相机采用完全相同的位置、目标点和FOV。V2运行时仍为11个Mesh，包围盒与V1一致；`verify:furniture`通过、`verify:all` 17/17通过、`typecheck`通过、`gate:visual` CLEAR。独立审美复核 PASS，确认形体不再读作横向盒子；功能复核仍 BLOCKED，因为电源、墙控、维护、冰箱动态净空和RO柜内接口不受本轮造型修正影响。完整审查见 `round.yaml（review 段）`。
 
 ## 实质内容审计
 

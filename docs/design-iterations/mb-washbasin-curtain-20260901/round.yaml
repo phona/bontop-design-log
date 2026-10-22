@@ -1,0 +1,507 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L10] frozen —— 阻塞：pending-mullion-layout / pending-window-band / pending-riser-position 未解锁
+# [decision-brief.yaml L15] confirmed_by_user —— 方向已确认；具体坐标待量房后终确认
+# [decision-brief.yaml L36] re_alignment_required —— 量房数据回来后需按组合情形最终拍板
+# [fact-table.yaml L6] status —— 待量房复尺，未冻结
+# ── 注释保全结束 ──
+schema: design-iteration-round/v1
+iteration_id: mb-washbasin-curtain-20260901
+index:
+  order: 24
+  topic: master-bedroom
+  review_state: incomplete
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: mb-washbasin-curtain-20260901
+  subject: 主卧洗手柜与西幕墙窗帘角部分段设计
+  priority:
+    user_goal: 解决洗手柜西缘贴幕墙与织物窗帘的溅水/发霉/西晒冲突，角部美观且幕墙零附着
+    ranked:
+      - 幕墙零结构附着不碰开发商构件
+      - 盆区无织物
+      - 固定隐私（磨砂膜视觉层+百叶）
+      - 分界线安静利落（竖梃优先/无构件收口）
+      - 盆居中美观且人离幕墙
+      - 不动床/衣柜/墙内电气
+    non_negotiables:
+      - model-geometry.yaml 不修改
+      - bed_180 与 wardrobe_240_split 不动
+      - 幕墙不打孔不粘结构件
+      - 磨砂膜仅作室内可逆膜视觉表达并待现场确认
+      - 排水可行性以立管实测为准
+    tradeoffs_accepted:
+      - 立面帘材在分界线处有一次材质切换
+      - 盆居中需解冻 2026-09-01 盆心坐标（量房后重新冻结）
+  frozen: false
+  freeze_record:
+    alignment_id: conversation-20260901
+    original_user_response: 用户确认方案 A、接受黑立柱兜底、提出盆居中意向
+    normalized_decisions:
+      - 盆区幕墙格浅色磨砂隐私层+百叶独立成段无织物
+      - 布帘盒内分段南侧起挂
+      - 竖梃优先/无构件收口兜底
+      - 柜体预留 ≤5cm 东移余量
+      - 盆心意向居中待定
+    confirmed_by_user: partial
+    confirmed_at: '2026-09-01T00:00:00+08:00'
+    evidence_refs:
+      - conversation-20260901
+      - GPT 意向效果图 3 组
+  allowed_scope:
+    files:
+      - config/house.yaml
+      - config/plumbing.yaml
+      - config/layout/overlay.yaml
+      - config/electrical.yaml
+      - docs/curtain-design.md
+      - docs/decision_log.md
+      - tests
+    objects:
+      - mb_washbasin_cabinet
+      - faucet_mbath_vanity
+      - drain_mbath_vanity
+      - curtain_master_west
+      - sock_master_curtain
+    archetypes:
+      - vanity
+      - curtain
+      - plumbing_interface
+    views:
+      - plan
+      - elevation
+      - section
+      - perspective
+    changes:
+      - 窗帘分段配置
+      - 磨砂隐私视觉层
+      - 柜体/给排水坐标微调（量房后）
+      - 文档镜像
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+    objects:
+      - bed_180 transform
+      - wardrobe_240_split transform
+      - wall geometry
+      - 幕墙构件
+    assumptions:
+      - 竖梃位置未实测前不选分界线做法
+      - 窗带标高未实测前不定百叶高度与柜体是否东移
+      - 立管未实测前不动盆心
+    out_of_scope_changes:
+      - 无关房间重构
+      - 新依赖
+      - git 操作
+  open_questions:
+    - id: site-mullion
+      category: construction
+      question: 竖梃分格位置
+      fact_refs:
+        - pending-mullion-layout
+      options:
+        - 借竖梃
+        - 百叶边框+无构件收口
+      selected: 量房后定
+      user_response: 优先无构件收口，若竖梃位置合适则借用
+      status: site_pending
+    - id: site-window-band
+      category: construction
+      question: 窗带高位还是玻璃通高
+      fact_refs:
+        - pending-window-band
+      options:
+        - 百叶顶部带/柜体不动
+        - 百叶通高/柜体东移 5cm
+      selected: 量房后定
+      user_response: 待定
+      status: site_pending
+    - id: site-riser
+      category: plumbing
+      question: 立管位置是否允许盆心东移居中
+      fact_refs:
+        - pending-riser-position
+      options:
+        - 盆居中 x≈0.55/0.60
+        - 盆心保持 x=0.26
+      selected: 量房后定
+      user_response: 倾向居中
+      status: site_pending
+  alignment:
+    records:
+      - id: conversation-20260901
+        answer: 方案 A + 黑立柱兜底 + 盆居中意向
+        normalized: 按本 brief 待量房解锁后实施
+    unresolved:
+      - site-mullion
+      - site-window-band
+      - site-riser
+    re_alignment_required: true
+  acceptance:
+    validation_commands:
+      - npm run verify:furniture
+      - npm run verify:all
+      - npm run test:server
+      - npm run typecheck
+      - npm run test:app
+    browser_evidence_required: true
+    required_views:
+      - 条带西侧看幕墙角部
+      - 分界线特写
+      - 盆区正立面
+      - 夜景闭帘
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: pending
+    blocking_issues:
+      - 量房四项未复尺
+    done_when:
+      - 窗帘分段配置落地且与量房一致
+      - 盆/柜坐标按冻结值实施
+      - 幕墙零附着节点深化完成
+      - 视觉证据覆盖分界线与盆区
+    delivery_notes_required: true
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: mb-washbasin-curtain-20260901
+  subject: 主卧洗手柜与西幕墙窗帘角部分段设计
+  created_at: '2026-09-01T00:00:00+08:00'
+  status: blocked
+  source_policy:
+    authority_refs:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/house.yaml
+      - config/plumbing.yaml
+      - config/electrical.yaml
+      - docs/curtain-design.md
+    observation_refs:
+      - docs/decision_log.md
+    measurement_refs: []
+    runtime_refs:
+      - app 第一人称截图（mb_washbasin_cabinet 与 curtain_master_west 角部）
+    evidence_refs:
+      - GPT 意向效果图 3 组（会话内，未落盘）
+  facts:
+    confirmed:
+      - id: fact-cabinet-flush-glass
+        category: confirmed
+        statement: 洗手柜西边缘贴死西幕墙线 x=0，柜体 x[0,1.10] z[2.91,3.41]，背贴 w_mbath_south 南脸
+        value:
+          x: 0.55
+          z: 3.16
+          width: 1.1
+          depth: 0.5
+        source_refs:
+          - config/house.yaml
+        basis: 家具权威配置
+        confidence: high
+        impact: material
+        affected_objects:
+          - mb_washbasin_cabinet
+        affected_views:
+          - plan
+          - elevation
+        owner: project
+        status: resolved
+        verification_method: verify:furniture
+      - id: fact-west-wall-glass
+        category: confirmed
+        statement: 西墙 w_west_mid（x=0, z[2.86,5.55]）实体已 suppress，为玻璃幕墙 curtain_run（west_curtain)
+        value: w_west_mid
+        source_refs:
+          - config/layout/overlay.yaml
+          - config/layout/model-geometry.yaml
+        basis: 几何与意图权威源
+        confidence: high
+        impact: material
+        affected_objects:
+          - curtain_master_west
+        affected_views:
+          - plan
+          - elevation
+        owner: project
+        status: resolved
+        verification_method: verify:all
+      - id: fact-fabric-curtain-overlap
+        category: confirmed
+        statement: curtain_master_west 为纱帘+遮光、通高 2.8m、覆盖 w_west_mid+w_west_upper，即织物帘正落盆区角部
+        value:
+          kind: sheer_blackout
+          height: 2.8
+        source_refs:
+          - config/layout/overlay.yaml
+        basis: 意图权威源
+        confidence: high
+        impact: material
+        affected_objects:
+          - curtain_master_west
+        affected_views:
+          - elevation
+          - perspective
+        owner: project
+        status: resolved
+        verification_method: 3D 运行时截图佐证
+      - id: fact-wall-segments
+        category: confirmed
+        statement: w_mbath_south 全长 2.60m，门洞 d_mbath 占 x[1.15,1.95]，1.10m 柜体唯一可放整段为 x[0,1.15]，"居中"在现墙段划分下不存在
+        value:
+          wall_len: 2.6
+          door:
+            - 1.15
+            - 1.95
+        source_refs:
+          - config/layout/model-geometry.yaml
+        basis: 几何权威源
+        confidence: high
+        impact: material
+        affected_objects:
+          - mb_washbasin_cabinet
+        affected_views:
+          - plan
+        owner: project
+        status: resolved
+        verification_method: 几何核算
+      - id: fact-curtain-power-single
+        category: confirmed
+        statement: 主卧电动窗帘电源仅 1 处 sock_master_curtain @ (4.20, 9.50, h2.5)，西段电机取电需沿窗帘盒走线
+        value:
+          x: 4.2
+          z: 9.5
+          height: 2.5
+        source_refs:
+          - config/electrical.yaml
+        basis: 电气权威配置
+        confidence: high
+        impact: moderate
+        affected_objects:
+          - curtain_master_west
+        affected_views:
+          - plan
+        owner: electrical
+        status: resolved
+        verification_method: 水电阶段交底
+    inferred: []
+    user_decision:
+      - id: decision-scheme-A
+        category: user_decision
+        statement: 采用方案 A：盆区幕墙格改百叶独立成框、无织物；布帘分段南侧起挂
+        value: true
+        source_refs:
+          - conversation-20260901
+        basis: 用户明确"A可以"
+        confidence: high
+        impact: material
+        affected_objects:
+          - curtain_master_west
+          - mb_washbasin_cabinet
+        affected_views:
+          - elevation
+          - perspective
+        owner: user
+        status: resolved
+        verification_method: 视觉审查 + 功能审查
+        user_confirmation_ref: conversation-20260901
+      - id: decision-black-post-fallback
+        category: user_decision
+        statement: 分界线优先借幕墙竖梃，错位时 3~4cm 黑色通顶立柱兜底；幕墙零附着（不打孔不粘胶）
+        value: true
+        source_refs:
+          - conversation-20260901
+        basis: 用户确认黑立柱效果可接受
+        confidence: high
+        impact: material
+        affected_objects:
+          - curtain_master_west
+        affected_views:
+          - elevation
+        owner: user
+        status: resolved
+        verification_method: 施工节点深化
+        user_confirmation_ref: conversation-20260901
+      - id: decision-basin-centering-intent
+        category: user_decision
+        statement: 盆心意向居中于柜体（x≈0.55/0.60，随柜体是否东移 5cm 定），龙头/墙排随移，镜对中；前提为立管允许
+        value: pending
+        source_refs:
+          - conversation-20260901
+        basis: 用户提出居中美观诉求，代理确认美观+功能双赢
+        confidence: high
+        impact: material
+        affected_objects:
+          - mb_washbasin_cabinet
+          - faucet_mbath_vanity
+          - drain_mbath_vanity
+        affected_views:
+          - plan
+          - elevation
+        owner: user
+        status: open
+        verification_method: 量房后冻结 + plumbing 配置验证
+        user_confirmation_ref: conversation-20260901
+    site_pending:
+      - id: pending-mullion-layout
+        category: site_pending
+        statement: w_west_mid 段幕墙竖梃分格实测位置，决定分界线借竖梃还是自立黑立柱
+        value: null
+        source_refs:
+          - docs/pending-site-data.md
+        basis: 未量房
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - curtain_master_west
+        affected_views:
+          - elevation
+        owner: site
+        status: open
+        verification_method: 现场复尺
+      - id: pending-window-band
+        category: site_pending
+        statement: 窗带标高（sill≈2.07/带高 0.76）是否属实；决定百叶做顶部带还是通高、柜体是否东移 5cm
+        value: null
+        source_refs:
+          - config/layout/overlay.yaml
+          - docs/pending-site-data.md
+        basis: '飘窗 sill 口径曾误推广，pending #20'
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - curtain_master_west
+          - mb_washbasin_cabinet
+        affected_views:
+          - elevation
+          - section
+        owner: site
+        status: open
+        verification_method: 现场复尺
+      - id: pending-riser-position
+        category: site_pending
+        statement: 主卫原立管位置与下沉:300 分界线，决定盆心/墙排能否东移 0.29~0.34m 居中
+        value: null
+        source_refs:
+          - config/plumbing.yaml
+          - docs/pending-site-data.md
+        basis: 未量房
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - faucet_mbath_vanity
+          - drain_mbath_vanity
+        affected_views:
+          - plan
+          - section
+        owner: site
+        status: open
+        verification_method: 现场复尺 + 排水坡度核算
+      - id: pending-drawer-pipe-clash
+        category: site_pending
+        statement: 柜体东侧抽屉对墙排管线的避让
+        value: null
+        source_refs:
+          - config/plumbing.yaml
+          - config/house.yaml
+        basis: 既有备注待量房
+        confidence: not_applicable
+        impact: moderate
+        affected_objects:
+          - mb_washbasin_cabinet
+        affected_views:
+          - section
+        owner: site
+        status: open
+        verification_method: 现场复尺 + 柜体深化图
+  unknowns_requiring_alignment: []
+  notes:
+    - 本迭代处于讨论/意向阶段，未修改任何配置；所有几何微调（柜体东移 ≤5cm、盆心东移居中）均待量房解锁后走冻结简报流程。
+    - 已否决项：柜体留 15cm 帘缝变体（布帘堆叠仍扫柜边且盆缩小，两头吃亏）；内置百叶中空玻璃（开发商幕墙不可更换）；胶粘立柱（幕墙零附着原则）。
+review:
+  iteration_id: mb-washbasin-curtain-20260901
+  state: incomplete
+  state_note: 初版模型已实施（假定玻璃通高情形）；已加入磨砂隐私层、百叶与无构件收口并移除黑柱，分段点/盆心/柜宽/磨砂层为假定值或视觉表达，量房复尺前不进入 delivery_ready；正式独立双审待终核后执行
+  updated_at: '2026-09-02'
+  implementation:
+    decision_ref: docs/decision_log.md DEC-2026-09-02-051
+    changed_files:
+      - config/layout/overlay.yaml
+      - config/house.yaml
+      - config/plumbing.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+      - shared/render/SceneBuilder.ts
+      - server/overlay-merge.ts
+      - tests/server/curtain-config.test.ts
+      - tests/server/master-bedroom-dressing.test.ts
+      - tests/server/shared/scene-builder.test.ts
+      - data/project-render-facts.json
+      - docs/curtain-design.md
+      - docs/decision_log.md
+    generated_files_edited:
+      - data/project-render-facts.json（经 npm run generate:project-render-facts 重新生成，非手改）
+  verification:
+    - command: npm run verify:furniture
+      at: '2026-09-02'
+      result: PASS（1 既有 warning：south_balcony 无房间）
+    - command: npm run verify:all
+      at: '2026-09-02'
+      result: PASS（0 error，warning 均为既有待办/pending 项）
+    - command: npm run test:server
+      at: '2026-09-02'
+      result: PASS 497/497
+    - command: npm run typecheck
+      at: '2026-09-02'
+      result: PASS（server+app tsc）
+    - command: npm run test:app
+      at: '2026-09-02'
+      result: PASS 434/434（51 文件）
+  evidence:
+    - view: 角部东向西全景（privacy 态）
+      file: evidence/washbasin-corner-privacy-20260902.png
+      source_version: working tree 2026-09-02（overlay/house/plumbing/FixtureFactory 初版改动后）
+      ready_check: window.__APP__.isReady() === true
+      camera: orbit (2.4,1.7,4.9) -> (0,1.0,3.0)，非总览
+      runtime_query: curtain_master_strip_fabric / curtain_mb_washbasin_blinds / furniture:master_bedroom:mb_washbasin_cabinet:2 均在场
+    - view: 盆区正视（privacy 态）
+      file: evidence/washbasin-corner-blinds-20260902.png
+      source_version: 同上
+      ready_check: window.__APP__.isReady() === true
+      camera: orbit (1.5,1.55,4.35) -> (-0.1,1.15,3.0)
+      runtime_query: privacy 态：strip sheer deployed、strip blackout gathered:left/right、washbasin blinds deployed 均 visible=true，符合 expectedVisibleCurtainNodes 契约
+    - view: 盆区正视（privacy 态，百叶叶片条纹材质 v2）
+      file: evidence/washbasin-corner-blinds-v2-20260902.png
+      source_version: 同上 + BrowserSceneMaterials 百叶横向叶片条纹贴图（2026-09-02）
+      ready_check: window.__APP__.isReady() === true
+      camera: orbit (1.5,1.55,4.35) -> (-0.1,1.15,3.0)
+      runtime_query: 百叶格叶片条纹清晰可辨，盆/镜/龙头对中
+    - view: 百叶南延 z=4.00 后角部全景（privacy 态）
+      file: evidence/washbasin-blinds-extended-20260902.png
+      source_version: 同上 + overlay 分段点 z=3.45→4.00（2026-09-02 业主追加）
+      ready_check: window.__APP__.isReady() === true
+      camera: orbit (2.2,1.7,5.2) -> (0,1.1,3.2)
+      runtime_query: verify:all / test:server 497 全绿
+    - view: 无立柱收口与磨砂隐私层（privacy 态）
+      file: evidence/frosted-privacy-no-post-v2-20260902.png
+      source_version: 同上 + 移除 curtain_divider_post + frosted_privacy 视觉层（2026-09-02）
+      ready_check: window.__APP__.isReady() === true；配置错误 banner 为空
+      camera: orbit (1.55,1.55,4.9) -> (0.02,1.18,3.75)
+      runtime_query: frosted_mb_washbasin_privacy 与 curtain_mb_washbasin_blinds 均在场且可见；curtain_divider_post 不存在；z[4.00,4.06] 保持无构件收口空隙
+  reviews:
+    aesthetic:
+      result: PASS
+      scope: 初版自审：盆/镜/龙头对中、柜体两侧 5cm 缝、百叶贴框位无干涉；效果图意向（GPT 3 组）业主已确认
+      reviewer: agent-self
+      note: 正式独立双审待量房终核后执行
+    functional:
+      result: PASS
+      scope: 初版自审：柜体 x[0.05,1.10] 与门洞 x[1.15,1.95] 留 5cm；百叶 x=0.03 与柜西脸 x=0.05 留 2cm；verify 全绿
+      reviewer: agent-self
+      note: 同上
+  blocking_issues:
+    - pending-mullion-layout：竖梃分格实测（决定是否直接借用竖梃、分段点 z=4.00 是否成立；无合适竖梃则保持无构件收口）
+    - pending-window-band：窗带标高（决定百叶高度与柜体是否需东移）
+    - pending-riser-position：立管位置（决定盆心 x=0.575 能否成立）
+    - pending-drawer-pipe-clash：墙排与东侧抽屉避让

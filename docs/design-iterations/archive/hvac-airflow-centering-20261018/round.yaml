@@ -1,0 +1,368 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L1] Decision Brief — 客餐厅底面四口整体居中
+# [design-datum.yaml L1] Design Datum — 客餐厅底面四口整体居中
+# [fact-table.yaml L1] Fact Table — 客餐厅底面四口整体居中（DEC-2026-10-18-R02）
+# [object-manifest.yaml L1] Object Manifest — 客餐厅底面功能口整体居中
+# ── 注释保全结束 ──
+schema: design-iteration-round/v1
+iteration_id: hvac-airflow-centering-20261018
+index:
+  order: 10
+  topic: mep
+  review_state: superseded
+  supersedes: none
+  note: 被 DEC-2026-10-19-R01 推翻。2026-10-20 批次 2 迁入 archive/（同步 mep-plan-axis R22-v0.5-iteration 与 hvac-airflow-row-centering 共 3 处引用）
+brief:
+  schema: interior-design-decision-brief/v1
+  iteration_id: hvac-airflow-centering-20261018
+  decision_ref: DEC-2026-10-18-R02
+  frozen: true
+  frozen_at: '2026-10-18'
+  owner: 业主
+  priority:
+    - 四个底面功能口的中心值平均对齐 ceiling_living 中心 x=10.30。
+    - 保留相邻中心距1.10/1.20/1.10m与供回风分行，避免只调一排造成整体偏心。
+    - 保持两台机组回风/下出风独立，装饰段继续封闭。
+  allowed_scope:
+    - config/hvac.yaml 的两处下出风、两处回风和底面封闭装饰段。
+    - config/mep-hvac-coordination.yaml 的四条对应支路终点及正交预演路径。
+    - 直接相关 DEC、渲染数据和本轮取证。
+  forbidden:
+    - 改动内机位置、侧送风口、冷媒干管、吊顶边界或吊顶标高。
+    - 把四个端子中心重叠在一条线上或把装饰段接入风道。
+    - 将预演结果标成已完成气流计算或施工定位。
+  decisions:
+    - id: DEC-2026-10-18-R02
+      content: 四个底面功能口整体从 R01 坐标向东平移0.60m，中心值平均 x=10.30；新中心为8.60/9.70/10.90/12.00。
+      status: owner_directed_design_candidate
+  open_questions:
+    - 精确机型的双出风风量分配及推荐接风方式。
+    - 回风自由面积、风量、外静压、噪声及过滤/检修净空。
+    - 实际支管、风箱和梁底净空是否支持所示正交路径。
+  acceptance:
+    datum: ceiling_living center_x=10.30
+    terminals_west_to_east:
+      - id: supply_dining_bottom
+        x: 8.6
+        z: 4.85
+        length: 0.9
+      - id: return_dining
+        x: 9.7
+        z: 4.45
+        length: 0.9
+      - id: supply_living_bottom
+        x: 10.9
+        z: 4.85
+        length: 0.9
+      - id: return_living
+        x: 12
+        z: 4.45
+        length: 1
+    center_mean_x: 10.3
+    center_spacing_x:
+      - 1.1
+      - 1.2
+      - 1.1
+    checks:
+      - 四个端子不越出 ceiling_living x[7.20,13.40]。
+      - 各功能口与封闭装饰段不重叠，装饰段不连接风道。
+      - MEP路线端点与HVAC端子一致，转折保持正交表达。
+      - 同版本3D场景实际坐标匹配配置。
+      - 气流、静压、噪声和检修仍为施工前工程复核项。
+datum:
+  schema: interior-design-design-datum/v1
+  iteration_id: hvac-airflow-centering-20261018
+  coordinate_system: Three.js 右手系；+x=东、+z=南；俯视北朝上；单位 m
+  datums:
+    - id: datum-band
+      object: ceiling_living
+      plan:
+        x_range:
+          - 7.2
+          - 13.4
+        z_range:
+          - 4.3
+          - 5.55
+        center_x: 10.3
+      elevation: bottom_y=2.50
+      basis:
+        - f_band
+    - id: datum-centered-terminal-group
+      object:
+        - supply_dining_bottom
+        - return_dining
+        - supply_living_bottom
+        - return_living
+      plan:
+        supply_dining_bottom:
+          center:
+            x: 8.6
+            z: 4.85
+          length: 0.9
+          x_range:
+            - 8.15
+            - 9.05
+        return_dining:
+          center:
+            x: 9.7
+            z: 4.45
+          length: 0.9
+          x_range:
+            - 9.25
+            - 10.15
+        supply_living_bottom:
+          center:
+            x: 10.9
+            z: 4.85
+          length: 0.9
+          x_range:
+            - 10.45
+            - 11.35
+        return_living:
+          center:
+            x: 12
+            z: 4.45
+          length: 1
+          x_range:
+            - 11.5
+            - 12.5
+        center_mean_x: 10.3
+        center_spacing_x:
+          - 1.1
+          - 1.2
+          - 1.1
+      elevation: 下出风 y=2.50；回风 y=2.49。
+      basis:
+        - i_centered_group
+        - f_band
+  non_datums:
+    - 精确型号风量、射程、静压及回风接口。
+    - 梁底、箱体截面和滤网/接水盘/泵/电控检修净空。
+fact_table:
+  schema: interior-design-fact-table/v1
+  iteration_id: hvac-airflow-centering-20261018
+  facts:
+    - id: f_band
+      status: confirmed
+      statement: ceiling_living 东西范围 x[7.20,13.40]，中心 x=10.30。
+      source_refs:
+        - config/ceiling.yaml:1-8
+      impact: 本轮以整条边吊中心作为四个底面功能口组的居中基准。
+      affected_objects:
+        - ceiling_living
+        - supply_dining_bottom
+        - return_dining
+        - supply_living_bottom
+        - return_living
+      owner: design
+      verification: 读取当前权威吊顶配置。
+    - id: f_units
+      status: confirmed
+      statement: ac_dining/ac_living 中心 x=8.00/10.30；下出风长度各 0.90m；回风长度餐厅0.90m、客厅1.00m；供应/回风仍在 z=4.85/4.45 两行。
+      source_refs:
+        - config/ceiling.yaml:10-28
+        - config/hvac.yaml:221-265
+      impact: 保留两台机位、端子长度和前后两排，不改吊顶几何。
+      affected_objects:
+        - ac_dining
+        - ac_living
+        - supply_dining_bottom
+        - return_dining
+        - supply_living_bottom
+        - return_living
+      owner: design
+      verification: 当前配置声明。
+    - id: f_r01_baseline
+      status: confirmed
+      statement: R01 候选四口中心为 x=8.00/9.10/10.30/11.40，四口中心值平均 x=9.70，比边吊中心偏西0.60m。
+      source_refs:
+        - docs/design-iterations/archive/hvac-airflow-grouping-20261018/round.yaml（review 段）
+        - docs/decisions/05-hvac.md:185-195
+      impact: 说明本轮向东整体调整0.60m的来源及被覆盖的坐标。
+      affected_objects:
+        - supply_dining_bottom
+        - return_dining
+        - supply_living_bottom
+        - return_living
+      owner: design
+      verification: 由四个端子中心坐标计算。
+    - id: f_clearance
+      status: confirmed
+      statement: R20 曾指出旧餐厅回风西缘与冷媒主管轴相切；本轮新餐厅回风西缘 x=9.25，距主管轴 x=7.45 为1.80m。
+      source_refs:
+        - docs/decisions/02-layout-public.md:435
+        - config/hvac.yaml:257-265
+      impact: 继续远离已记录的主管轴相切风险。
+      affected_objects:
+        - return_dining
+        - refrigerant-trunk
+      owner: HVAC coordinator
+      verification: 由终端长度与中心坐标计算；主管实际截面仍待深化。
+    - id: f_standard
+      status: confirmed
+      statement: 规范/指南要求按送风射流、人员区覆盖和维护校核回风；未规定四个装饰口必须按几何中线等距。
+      source_refs:
+        - GB 50736-2012:7.4.12
+        - https://jst.nx.gov.cn/zzb/gzwj_72355/202304/P020230424583759484309.pdf
+        - https://handbook.ashrae.org/Handbooks/A23/SI/a23_ch58/a23_ch58_si.aspx
+      impact: 本轮居中处理解决视觉基准，气流功能仍需工程复核。
+      affected_objects:
+        - supply_dining_bottom
+        - return_dining
+        - supply_living_bottom
+        - return_living
+      owner: HVAC designer
+      verification: 现有标准依据；不替代实测或厂家性能数据。
+    - id: i_centered_group
+      status: inferred
+      statement: 四个功能口中心 x=8.60/9.70/10.90/12.00，中心值平均 x=10.30；相邻中心距1.10/1.20/1.10m；由R01整体向东平移0.60m。
+      source_refs:
+        - user instruction 2026-10-18
+        - f_band
+        - f_r01_baseline
+      impact: 让四口作为一组居中于边吊，同时保留间距节奏和送回风分行。
+      affected_objects:
+        - supply_dining_bottom
+        - return_dining
+        - supply_living_bottom
+        - return_living
+      owner: design
+      verification: 配置几何计算、MEP lint、同版本 Three.js 运行时复核。
+    - id: f_airflow_pending
+      status: site_pending
+      statement: 精确 P-SS 型号出回风接口、风量分配、射程、静压、噪声、检修净空仍未由厂家图或计算确认。
+      source_refs:
+        - config/hvac.yaml:42-52
+        - docs/pending-site-data.md
+      impact: R02 可用于设计预演；实际施工前如风量短路或检修不满足须改位。
+      affected_objects:
+        - ac_dining
+        - ac_living
+        - supply_dining_bottom
+        - return_dining
+        - supply_living_bottom
+        - return_living
+      owner: 业主/空调厂家
+      verification: 后续按实际机型参数和现场调试复核。
+objects:
+  schema: interior-design-object-manifest/v1
+  iteration_id: hvac-airflow-centering-20261018
+  objects:
+    - id: ac_dining_air_group
+      owner: HVAC
+      unit: ac_dining / MJV-42T2/P-SS
+      parts:
+        - supply_dining_bottom
+        - return_dining
+        - return-air-dining
+        - supply-air-dining-bottom
+      function: 餐厅独立服务组；本轮下出风 x=8.60、回风 x=9.70。
+      relationships: 送回风中心距1.10m；该组相对机身 x=8.00 同向东移0.60/1.70m；送风覆盖和回风短路待核。
+      maintenance: 回风格栅兼检修的开口净空仍需工程确认。
+      validation_refs:
+        - f_airflow_pending
+        - i_centered_group
+    - id: ac_living_air_group
+      owner: HVAC
+      unit: ac_living / MJV-71T2/P-SS
+      parts:
+        - supply_living_bottom
+        - return_living
+        - return-air-living
+        - supply-air-living-bottom
+      function: 客厅独立服务组；本轮下出风 x=10.90、回风 x=12.00。
+      relationships: 送回风中心距1.10m；该组相对机身 x=10.30 同向东移0.60/1.70m；送风覆盖和回风短路待核。
+      maintenance: 回风格栅兼检修的开口净空仍需工程确认。
+    - id: closed_decorative_runs
+      owner: interior
+      parts:
+        - LD-deco-supply-west
+        - LD-deco-supply-mid
+        - LD-deco-supply-east
+        - LD-deco-return-west
+        - LD-deco-return-mid
+        - LD-deco-return-east
+      function: 仅延续三层黑槽的视觉线条，不形成有效风口。
+      relationships: 各封闭段按 R02 新功能段端点填充；无风道、滤网或检修功能。
+  constraints:
+    - 不移动两台室内机或其侧送风口。
+    - 两台机组送回风保持独立。
+    - R02 是居中设计候选；不以本轮预演替代施工前风量与检修校核。
+review:
+  schema: interior-design-review-manifest/v1
+  iteration_id: hvac-airflow-centering-20261018
+  decision_ref: DEC-2026-10-18-R02
+  subject: 客餐厅下出风与回风整体居中至边吊中心 x=10.30
+  state: superseded
+  implementation:
+    state: superseded_by_DEC-2026-10-19-R01
+    changed_objects:
+      - supply_dining_bottom
+      - return_dining
+      - supply_living_bottom
+      - return_living
+      - supply-air-dining-bottom
+      - return-air-dining
+      - supply-air-living-bottom
+      - return-air-living
+      - LD-deco-supply-west
+      - LD-deco-supply-mid
+      - LD-deco-supply-east
+      - LD-deco-return-west
+      - LD-deco-return-mid
+      - LD-deco-return-east
+    not_changed:
+      - ac_dining
+      - ac_living
+      - supply_dining
+      - supply_living
+      - ceiling_living
+      - refrigerant-trunk
+      - condensate routes
+  evidence:
+    prior_candidate: DEC-2026-10-18-R01, preserved in docs/design-iterations/archive/hvac-airflow-grouping-20261018/
+    current_browser: 'reloaded 2026-10-18T15:52:21Z: http://127.0.0.1:5175/ via API http://localhost:4111; isReady=true, no config error, visual gate CLEAR'
+    candidate_runtime: confirmed in current Three.js scene at evidence/runtime-query.json; four live HVAC groups match x=8.60/9.70/10.90/12.00
+    manufacturer_drawings: not required to create this owner-directed preview; still required before construction airflow/interface verification
+    screenshots:
+      - view1-centered-band.png
+      - centered-plan.svg
+  checks:
+    yaml_parse: passed for config/hvac.yaml, config/mep-hvac-coordination.yaml, config/ceiling.yaml
+    verify_project_render_facts: 'passed: electrical=17, plumbing=33, ceiling=25'
+    verify_mep_candidate: 139 errors / 215 warnings (repository-wide existing error set); approximate supply_return_overlap remains between side supply-air-dining and return-air-dining at 0.035m; no down-supply/return pair overlap reported
+    gate_visual: 'CLEAR: ceiling 754f3847a058; electrical c541506a0427; plumbing 81c5778c1239; materials 64176f576326'
+    typecheck: passed
+    tests: not run
+    runtime_reconnect: 'passed: scene ready and all four terminal transforms match candidate; see evidence/runtime-query.json'
+    terminal_and_decorative_geometry: 'passed: supply row and return row each cover x[7.20,13.40] without gaps or overlaps; terminal centers average x=10.30; center gaps 1.10/1.20/1.10m'
+    verify_all: 15/17 passed; verify-mep fails with repository-wide errors; verify-facts reports one dangling decision reference at untouched docs/pending-site-data.md:3, unrelated to this iteration
+  review:
+    aesthetic:
+      status: passed
+      verdict: PASS
+      note: 独立审美复评确认全长设备带与比例平面图支持四口整体居中；端部余量0.95/0.90m，回风长度差与0.20/0.30/0.15m开口间隙在连续黑槽中未形成明显失衡。
+      evidence_refs:
+        - evidence/view1-centered-band.png
+        - evidence/centered-plan.svg
+        - evidence/runtime-query.json
+      deleted: 仅删除本轮R02中间视图 view2-centered-plan.png，因为其全屋/吊顶状态遮挡风口；既有R01/R03/R18/R20决策与证据均保留。
+      overturned: R02覆盖R01四口中心8.00/9.10/10.30/11.40；保留1.10/1.20/1.10m中心节奏。
+      silent_failure_conditions: 若实测边吊中心/边界、端子长度、装饰段长度或材质线条改变，当前居中和视觉结论需重算、复评。
+    functional:
+      status: blocked
+      verdict: BLOCKED_FOR_CONSTRUCTION_ONLY
+      note: R02预演坐标与Three.js运行态一致；MEP lint为139 errors/215 warnings，仍有餐厅侧送风—回风 0.035m 近似包络警告，且风量、射流、静压、噪声和维护净空未证实。
+      evidence_refs:
+        - evidence/runtime-query.json
+        - config/mep-hvac-coordination.yaml:162,177,179-180
+        - evidence/evidence-notes.md
+      deleted: 未删除既有工程结论或历史证据；仅剔除了本轮一张遮挡风口的中间调试图。
+      overturned: R02按业主指令覆盖R01四口中心；不据此推翻既有独立机组、侧送方向或其他气流事实。
+      silent_failure_conditions: 若侧送射流进入餐厅回风、自由面积/静压/风量不达标、噪声超限、机组接口不支持或滤网/水盘/泵/电控无法维护，施工位置必须调整。
+  verdict:
+    deleted: Only the R02 intermediate view2-centered-plan.png was removed because it showed an obstructed whole-house/ceiling view; no prior R01/R03/R18/R20 decisions or historical evidence were deleted.
+    overturned: 'DEC-2026-10-19-R01 replaces R02 combined-only centering: R02 row means were supply x=9.75 and return x=10.85; R03 moves the rows so each center is x=10.30. No earlier history removed.'
+    silent_failure_conditions: If the site datum changes, actual ceiling band differs, outlets exceed clearances, supply jets enter returns, or manufacturer flow/service conditions fail, this preview must be revised before construction. R02 visual evidence is historical and is not a runtime proof of the current R03 coordinates.

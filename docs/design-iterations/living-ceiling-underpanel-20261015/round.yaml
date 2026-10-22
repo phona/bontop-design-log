@@ -1,0 +1,769 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: living-ceiling-underpanel-20261015
+index:
+  order: 28
+  topic: living
+  review_state: incomplete
+  supersedes: none
+  note: evidence/before 与 after 的 snapshot.txt 字节相同，疑修复未生效或快照不捕获差异，待核
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: living-ceiling-underpanel-20261015
+  subject: 修复圆角边吊下方整板缺失
+  priority:
+    user_goal: 客厅中央空调设备边吊呈现完整下方板面，同时保留已声明的圆角轮廓和空调风口。
+    ranked:
+      - 圆角边吊下方覆盖完整，不再只显示边缘环。
+      - 保持 config 中面积、厚度、R100 和 HVAC 风口坐标不变。
+      - 不改变混合凹角轮廓、吊顶分区高亮及其他构件职责。
+    non_negotiables:
+      - 几何继续由 config/ceiling.yaml 声明，代码只按声明生成。
+      - 客厅中央空调的底装风口和回风检修格栅保持可见。
+      - 不改 HVAC 设计、预算、材料、施工状态或生成数据。
+    tradeoffs_accepted:
+      - 纯凸圆角下挂区使用完整实体挤出，代替只有 20mm 边缘宽度的空心外圈。
+      - 共享 builder 的相同纯圆角分支同时修复 ceiling_master_ac。
+  frozen: true
+  freeze_record:
+    alignment_id: align-2026-10-15-ceiling-underpanel-01
+    original_user_response: go
+    normalized_decisions:
+      - 保留 ceiling_living 的 0.30m 厚度、R0.10m 圆角和现有下出风/回风坐标。
+      - 将纯凸圆角分支的环形挤出改为覆盖完整轮廓的封闭实体挤出。
+      - 混合凹角轮廓分支与所有设计配置保持不变。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-15'
+    evidence_refs:
+      - conversation:2026-10-15:user-go
+      - evidence/before-runtime.json
+  allowed_scope:
+    files:
+      - shared/render/CeilingZoneBuilder.ts
+      - app/src/render/CeilingZoneBuilder.test.ts
+      - docs/decisions/08-ceiling-form.md
+      - docs/design-iterations/living-ceiling-underpanel-20261015/
+    objects:
+      - ceiling:ceiling_living
+      - ceiling:ceiling_master_ac
+      - hvac:A2:terminal:supply_living_bottom
+      - hvac:A2:terminal:return_living
+    archetypes:
+      - pure-convex-rounded-drop-zone
+    views:
+      - perspective
+      - section
+    changes:
+      - 修复纯凸圆角挤出体，补回其覆盖区域的下方整板。
+      - 通过运行时检查确认客厅风口未被隐藏。
+  forbidden:
+    files:
+      - config/ceiling.yaml
+      - config/hvac.yaml
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - data/project-render-facts.json
+    objects:
+      - HVAC 内机位置、风口位置及送回风分区
+      - 吊顶范围、标高、圆角半径、凹角/cove 声明
+    assumptions:
+      - 不推断施工尺寸或实际安装接口。
+      - 不把渲染修复提升为现场施工确认。
+    out_of_scope_changes:
+      - 设计配置、坐标、造价或采购决策
+      - 混合凹角分支和非圆角吊顶生成
+      - HVAC 风口规格或气流性能
+  open_questions: []
+  alignment:
+    records:
+      - alignment_id: align-2026-10-15-ceiling-underpanel-01
+        question: 是否按具体建议修复圆角边吊的完整下方面板，并保留 R100 与风口位置？
+        answer: go
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run typecheck
+      - npm run verify:all
+      - VISUAL_GATE_API=http://127.0.0.1:43729 npm run gate:visual
+      - npm run test:app
+      - npm run test:server
+      - npm run test:app -- src/render/CeilingZoneBuilder.test.ts
+      - node --import tsx --test tests/server/ceiling-cove.test.ts
+    browser_evidence_required: true
+    required_views:
+      - living-device-band-underside
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: not_applicable
+    blocking_issues:
+      - 全量 test:app 与 test:server 当前未通过；focused ceiling regressions 通过，full-suite failures 仍需环境/存量排障后才能标记 delivery_ready。
+    done_when:
+      - 改后 ceiling:ceiling_living 的圆角挤出体完整覆盖边吊底面。
+      - 下出风、回风及连续装饰格栅保留且与板面可见关系正确。
+      - 原 R100 外轮廓、尺寸和标高不变；混合凹角分支保持原语义。
+      - typecheck、verify:all 和 visual gate 通过。
+      - app 与 server 全量测试通过后方可标记 delivery_ready。
+      - 同机位 before/after 有效截图、运行时查询与两项独立评审均已记录。
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: living-ceiling-underpanel-20261015
+  subject: 客厅空调边吊完整下方面板显示基准
+  created_at: '2026-10-15T09:39:11+08:00'
+  units: m
+  coordinate_system: Three.js 右手坐标系；Y 向上；+X 向东；+Z 向南；北朝 -Z。
+  status: frozen
+  datums:
+    - id: D1
+      name: ceiling_living 圆角下挂实体与底面
+      anchor:
+        kind: ceiling_anchor
+        ref: ceiling:ceiling_living
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - F1
+          - F2
+          - F3
+        decision_refs:
+          - align-2026-10-15-ceiling-underpanel-01
+      views:
+        plan:
+          required: true
+          origin: model local coordinate origin
+          axes: x 东西、z 南北
+          direction: 北朝上（-z）
+          position:
+            x: 10.3
+            z: 4.75
+          rotation: null
+          dimensions:
+            length: 6.2
+            width: 0.9
+            depth: null
+            offset: null
+          dimension_semantics: total
+        elevation:
+          required: true
+          viewing_side: 由客厅室内向上看设备边吊底面
+          vertical_axis: 'y'
+          height: 2.5
+          dimensions:
+            width: 6.2
+            height: 0.3
+            sill: null
+            datum_offset: 0.002
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 平行 x 轴穿过 x=10.30；相机从室内仰视
+          depth_axis: z
+          clearances:
+            front: null
+            rear: null
+            top: null
+            bottom: null
+          thickness: 0.3
+          dimension_semantics: assembly
+      geometry:
+        x: 10.3
+        'y': 2.5
+        z: 4.75
+        width: 6.2
+        depth: 0.9
+        height: 0.3
+        length: 6.2
+        rotation: null
+        along: x
+      constraints:
+        - area bbox x[7.20,13.40] × z[4.30,5.20]；外轮廓四角 R0.10m。
+        - 下方实体板面覆盖完整圆角轮廓；挤出体不得有内孔。
+        - HVAC 底装构件保持 config 坐标，并从室内目标视角可辨认。
+        - Before/after 使用同一机位；相机不处于 overview。
+      interfaces:
+        - HVAC 底装下出风 supply_living_bottom，中心 (10.30,2.50,4.85)。
+        - HVAC 底装回风/检修 return_living，中心 (12.60,2.49,4.45)。
+      validation_refs:
+        - evidence/before-runtime.json
+        - evidence/after-runtime.json
+      status: confirmed
+  notes:
+    - D1 是模型验收基准；不代表现场复尺或施工放线数据。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: living-ceiling-underpanel-20261015
+  subject: 修复圆角边吊下方整板缺失
+  created_at: '2026-10-15T09:39:11+08:00'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/ceiling.yaml
+      - config/hvac.yaml
+      - shared/render/CeilingZoneBuilder.ts
+    observation_refs:
+      - evidence/before.png
+    measurement_refs: []
+    runtime_refs:
+      - evidence/before-runtime.json
+      - evidence/after-runtime.json
+      - evidence/after-hvac-batches.json
+    evidence_refs:
+      - evidence/gate-before.txt
+      - evidence/before-snapshot.txt
+  facts:
+    confirmed:
+      - id: F1
+        category: confirmed
+        statement: 客厅设备边吊范围 x[7.20,13.40]、z[4.30,5.20]，厚度 0.30m，四角 R0.10m，完成面约 y=2.50m。
+        value:
+          area:
+            - 7.2
+            - 4.3
+            - 13.4
+            - 5.2
+          thickness: 0.3
+          corner_radius: 0.1
+          finish_y: 2.5
+        source_refs:
+          - config/ceiling.yaml#ceiling_living
+        basis: 权威吊顶配置直接声明。
+        confidence: high
+        impact: material
+        affected_objects:
+          - ceiling:ceiling_living
+        affected_views:
+          - perspective
+          - section
+        owner: project
+        status: resolved
+        verification_method: 配置解析与浏览器运行时对象查询。
+        user_confirmation_ref: null
+      - id: F2
+        category: confirmed
+        statement: 基线运行时把 slab 设为不可见；圆角挤出体含一个内孔，因此没有覆盖中央的下方整板。
+        value:
+          slab_visible: false
+          rounded_perimeter_holes: 1
+        source_refs:
+          - shared/render/CeilingZoneBuilder.ts#658
+          - shared/render/CeilingZoneBuilder.ts#680
+          - evidence/before-runtime.json
+        basis: 代码分支与客户端对象树查询一致。
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - ceiling:ceiling_living
+        affected_views:
+          - perspective
+          - section
+        owner: agent
+        status: resolved
+        verification_method: 目标对象的几何参数、可见性和包围盒运行时查询。
+        user_confirmation_ref: null
+      - id: F3
+        category: confirmed
+        statement: 客厅下出风口、回风口和装饰格栅均在 HVAC 配置中声明，且在基线场景树中存在。
+        value:
+          - hvac:A2:terminal:supply_living_bottom
+          - hvac:A2:terminal:return_living
+          - hvac:A2:terminal:LD-deco-supply-mid
+        source_refs:
+          - config/hvac.yaml
+          - evidence/before-runtime.json
+        basis: 权威配置与浏览器运行时对象查询。
+        confidence: high
+        impact: material
+        affected_objects:
+          - hvac:A2:terminal:supply_living_bottom
+          - hvac:A2:terminal:return_living
+        affected_views:
+          - perspective
+        owner: project
+        status: resolved
+        verification_method: 改后同机位检查运行时对象与包围盒。
+        user_confirmation_ref: null
+      - id: F4
+        category: confirmed
+        statement: 基线应用业务就绪，配置错误横幅为空，视觉状态门禁的四个域均 CLEAR。
+        value:
+          ready: true
+          config_error_banner: ''
+          gate: CLEAR
+        source_refs:
+          - evidence/before-runtime.json
+          - evidence/gate-before.txt
+        basis: 应用就绪信号、配置横幅和 gate 输出。
+        confidence: high
+        impact: material
+        affected_objects:
+          - ceiling:ceiling_living
+        affected_views:
+          - perspective
+        owner: agent
+        status: resolved
+        verification_method: 隔离应用 gate 与浏览器状态查询。
+        user_confirmation_ref: null
+      - id: F5
+        category: confirmed
+        statement: 改后圆角实体包络覆盖整个客厅边吊区域且没有内孔；下出风和回风终端的合批实例均可见。
+        value:
+          holes: 0
+          bbox:
+            x:
+              - 7.2
+              - 13.4
+            'y':
+              - 2.502
+              - 2.802
+            z:
+              - 4.3
+              - 5.2
+          hvac_batch_instances_visible: true
+        source_refs:
+          - evidence/after-runtime.json
+          - evidence/after-hvac-batches.json
+        basis: 改后浏览器运行时查询；独立功能评审确认批次元数据和显隐。
+        confidence: high
+        impact: material
+        affected_objects:
+          - ceiling:ceiling_living
+          - hvac:A2:terminal:supply_living_bottom
+          - hvac:A2:terminal:return_living
+        affected_views:
+          - perspective
+          - section
+        owner: agent
+        status: resolved
+        verification_method: 场景对象包围盒、shape hole 数、HVAC batchUserData 和同机位截图复核。
+        user_confirmation_ref: null
+    inferred:
+      - id: I1
+        category: inferred
+        statement: 圆角边吊下方整板缺失是 builder 隐藏 slab、但纯圆角挤出体实际只有带孔外圈所致。
+        value: full roundedRectangleShape extrusion
+        source_refs:
+          - F1
+          - F2
+        basis: 将纯圆角分支改为无孔完整轮廓挤出，可填满声明区域并保留圆角。
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - ceiling:ceiling_living
+          - ceiling:ceiling_master_ac
+        affected_views:
+          - perspective
+          - section
+        owner: agent
+        status: resolved
+        verification_method: 改后浏览器对象树、包围盒和目标视角复核。
+        user_confirmation_ref: null
+    user_decision:
+      - id: U1
+        category: user_decision
+        statement: 用户以“go”批准按此前具体修复建议纠正圆角吊顶渲染，保留 R100 与现有风口位置。
+        value: 保持声明几何，修复纯圆角 builder 的整板生成。
+        source_refs:
+          - conversation:2026-10-15:user-go
+        basis: 对具体修复建议的明确批准。
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - ceiling:ceiling_living
+        affected_views:
+          - perspective
+          - section
+        owner: user
+        status: resolved
+        verification_method: 按批准范围实现并使用同版本浏览器验收。
+        user_confirmation_ref: conversation:2026-10-15:user-go
+    site_pending: []
+  unknowns_requiring_alignment: []
+  notes:
+    - 本轮只纠正共享渲染器；不改 ceiling.yaml、hvac.yaml 的设计意图或坐标。
+    - ceiling_master_ac 也使用同一纯圆角分支，会一并恢复完整底面；含凹角的混合轮廓分支不在修改范围。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: living-ceiling-underpanel-20261015
+  subject: 客厅设备边吊底板与空调风口职责
+  created_at: '2026-10-15T09:39:11+08:00'
+  object_policy:
+    fixed_count_required: false
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: OBJ-CEILING-LIVING
+      type: rounded_ceiling_solid
+      archetypes:
+        - drop
+        - pure_convex_round
+      owner: project
+      function: 按 ceiling_living 声明生成完整下方板面与边缘实体。
+      material: COLOR_DROP
+      geometry_source:
+        - config/ceiling.yaml#ceiling_living
+        - shared/render/CeilingZoneBuilder.ts
+      datum_refs:
+        - D1
+      fact_refs:
+        - F1
+        - F2
+      decision_refs:
+        - align-2026-10-15-ceiling-underpanel-01
+      dependencies: []
+      interfaces:
+        - id: IF-CEILING-SUPPLY
+          target_object_id: OBJ-HVAC-SUPPLY-LIVING
+          kind: hvac
+          requirement: 下出风构件保持在边吊底面位置并可见。
+          status: confirmed
+        - id: IF-CEILING-RETURN
+          target_object_id: OBJ-HVAC-RETURN-LIVING
+          kind: hvac
+          requirement: 回风/检修构件保持在边吊底面位置并可见。
+          status: confirmed
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 本轮只涉及渲染实体，不修改实际检修构造。
+        access_clearance: site_pending
+        replaceable_parts: []
+        inspection_requirements:
+          - 实际检修尺寸仍按厂家安装图深化
+      parts:
+        - id: PART-ROUNDED-SOLID
+          role: 圆角板面及吊顶厚度实体
+          independent: false
+          owner: project
+          material: COLOR_DROP
+          geometry_source: shared/render/CeilingZoneBuilder.ts
+          datum_refs:
+            - D1
+          dependencies: []
+          collision: none
+          maintenance_boundary: 不改变施工检修边界。
+          validation_refs:
+            - evidence/after-runtime.json
+            - evidence/after-hvac-batches.json
+            - evidence/after.png
+      visual_relationships:
+        - target_object_id: OBJ-HVAC-SUPPLY-LIVING
+          relation: adjacent
+          requirement: 格栅贴合连续底板且仍可辨认。
+          evidence_refs:
+            - evidence/after.png
+        - target_object_id: OBJ-HVAC-RETURN-LIVING
+          relation: adjacent
+          requirement: 回风/检修格栅不被实体遮蔽。
+          evidence_refs:
+            - evidence/after.png
+      validation_refs:
+        - evidence/after-runtime.json
+        - evidence/after-hvac-batches.json
+        - evidence/after.png
+      status: verified
+    - id: OBJ-HVAC-SUPPLY-LIVING
+      type: hvac_terminal
+      archetypes:
+        - bottom_linear_supply
+      owner: project
+      function: 客厅 71T2 下出风口示意渲染；不改通风规格或位置。
+      material: matte_black
+      geometry_source:
+        - config/hvac.yaml#supply_living_bottom
+        - shared/render/HvacGeometryBuilder.ts
+      datum_refs:
+        - D1
+      fact_refs:
+        - F3
+      decision_refs: []
+      dependencies:
+        - OBJ-CEILING-LIVING
+      interfaces:
+        - id: IF-SUPPLY-CEILING
+          target_object_id: OBJ-CEILING-LIVING
+          kind: visual
+          requirement: 风口位于边吊底面并从室内可见。
+          status: confirmed
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 实际风口维护与风量按厂家安装图；本轮只检查渲染可见性。
+        access_clearance: site_pending
+        replaceable_parts: []
+        inspection_requirements:
+          - 运行时检查未被 ceiling:ceiling_living 隐藏
+      parts:
+        - id: PART-SUPPLY-LOUVER
+          role: 线性送风叶片
+          independent: true
+          owner: project
+          material: matte_black
+          geometry_source: shared/render/HvacGeometryBuilder.ts
+          datum_refs:
+            - D1
+          dependencies:
+            - OBJ-CEILING-LIVING
+          collision: none
+          maintenance_boundary: 只作渲染表达。
+          validation_refs:
+            - evidence/after-runtime.json
+            - evidence/after-hvac-batches.json
+            - evidence/after.png
+      visual_relationships:
+        - target_object_id: OBJ-CEILING-LIVING
+          relation: adjacent
+          requirement: 格栅附着于连续底板并可辨识。
+          evidence_refs:
+            - evidence/after.png
+      validation_refs:
+        - evidence/after-runtime.json
+        - evidence/after-hvac-batches.json
+      status: verified
+    - id: OBJ-HVAC-RETURN-LIVING
+      type: hvac_terminal
+      archetypes:
+        - bottom_linear_return_access
+      owner: project
+      function: 客厅 71T2 回风/检修格栅示意渲染；不改尺寸或位置。
+      material: matte_black
+      geometry_source:
+        - config/hvac.yaml#return_living
+        - shared/render/HvacGeometryBuilder.ts
+      datum_refs:
+        - D1
+      fact_refs:
+        - F3
+      decision_refs: []
+      dependencies:
+        - OBJ-CEILING-LIVING
+      interfaces:
+        - id: IF-RETURN-CEILING
+          target_object_id: OBJ-CEILING-LIVING
+          kind: maintenance
+          requirement: 格栅保持可见；实际检修空间由厂家图核对。
+          status: confirmed
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: null
+      maintenance:
+        boundary: 实际滤网和铰接检修由施工深化；本轮只检查渲染可见性。
+        access_clearance: site_pending
+        replaceable_parts:
+          - 滤网（施工深化确认）
+        inspection_requirements:
+          - 运行时检查未被 ceiling:ceiling_living 隐藏
+      parts:
+        - id: PART-RETURN-LOUVER
+          role: 线性回风/检修格栅
+          independent: true
+          owner: project
+          material: matte_black
+          geometry_source: shared/render/HvacGeometryBuilder.ts
+          datum_refs:
+            - D1
+          dependencies:
+            - OBJ-CEILING-LIVING
+          collision: none
+          maintenance_boundary: 实际维修方式按厂家安装图。
+          validation_refs:
+            - evidence/after-runtime.json
+            - evidence/after-hvac-batches.json
+            - evidence/after.png
+      visual_relationships:
+        - target_object_id: OBJ-CEILING-LIVING
+          relation: adjacent
+          requirement: 格栅附着于连续底板并可辨认。
+          evidence_refs:
+            - evidence/after.png
+      validation_refs:
+        - evidence/after-runtime.json
+        - evidence/after-hvac-batches.json
+      status: verified
+  shared_visual_datum: HVAC 底装格栅仍按 config/hvac.yaml 与吊顶完成面的关系显示；不合并 HVAC 与吊顶的对象责任。
+  notes:
+    - 同一纯圆角 builder 分支也为 ceiling_master_ac 生成几何；修复后同步补回该区完整实体底面。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: living-ceiling-underpanel-20261015
+  subject: 修复纯圆角边吊下方整板缺失
+  state: incomplete
+  source_version:
+    config_refs:
+      - config/ceiling.yaml
+      - config/hvac.yaml
+    asset_refs: []
+    render_facts_ref: data/project-render-facts.json
+    source_digest: 'after: builder=809c9bc94671e02fbe366d735430338c44b756d9be2ff039e39c70193647370a; ceiling=34b4357c2fcd977bf1fe1eae5829c98cb4e71958b1e83a90c3513b0148e69af7; hvac=9bbee64e7cc5a6d17db093f27772581ba57c3f4e4cbd85b0ffd08a323737eab2; render_facts=39469f961b952015732f560581bdc896939fb3205226170d8251a214421c7424'
+    generated_at: '2026-10-15T09:50:34+08:00'
+  validation:
+    commands:
+      - npm run typecheck
+      - npm run verify:all
+      - VISUAL_GATE_API=http://127.0.0.1:43729 npm run gate:visual
+      - npm run test:app
+      - npm run test:server
+      - npm run test:app -- src/render/CeilingZoneBuilder.test.ts
+      - node --import tsx --test tests/server/ceiling-cove.test.ts
+    results:
+      - 'npm run typecheck: PASS after the regression test was added.'
+      - 'npm run verify:all: PASS, 17/17 verifiers.'
+      - 'gate:visual: baseline and after CLEAR for ceiling/electrical/plumbing/materials.'
+      - 'Focused app ceiling builder tests: PASS, 18/18; focused server ceiling-cove tests: PASS, 4/4.'
+      - 'Full test:app FAILED: 42 test files failed / 26 passed, 68 tests failed / 205 passed. Failures include missing ResizeObserver in jsdom and Unknown system error -122 writes; the focused CeilingZoneBuilder suite passes.'
+      - 'Full test:server FAILED: temporary writes report Unknown system error -122; the penetration CLI integration and TextureManager wall-face tests also fail outside the changed builder. Focused ceiling-cove tests pass.'
+    config_status: PASS
+    geometry_status: PASS
+    consistency_status: PASS
+    functional_checks_status: PASS
+    application_status: PASS
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: baseline-living-device-band-underside
+      url: http://127.0.0.1:45178/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-15T09:39:11+08:00'
+      config_error_banner: ''
+      target_objects:
+        - ceiling_living 下方面板与客厅 HVAC 底装风口
+      target_object_ids:
+        - ceiling:ceiling_living
+        - hvac:A2:terminal:supply_living_bottom
+        - hvac:A2:terminal:return_living
+        - hvac:A2:terminal:LD-deco-supply-mid
+      runtime_query_refs:
+        - evidence/before-runtime.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 11
+          - 1.9
+          - 9.5
+        target:
+          - 10.3
+          - 2.5
+          - 4.75
+        view_type: perspective
+      snapshot_path: evidence/before-snapshot.txt
+      screenshot_path: evidence/before.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/ceiling.yaml
+        - config/hvac.yaml
+        - shared/render/CeilingZoneBuilder.ts@c5cce6895e7a7601
+      status: valid
+      invalid_reason: null
+    - id: after-living-device-band-underside
+      url: http://127.0.0.1:45178/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady()
+      ready_checked_at: '2026-10-15T09:50:34+08:00'
+      config_error_banner: ''
+      target_objects:
+        - ceiling_living 完整底板与客厅 HVAC 底装风口
+      target_object_ids:
+        - ceiling:ceiling_living
+        - hvac:A2:terminal:supply_living_bottom
+        - hvac:A2:terminal:return_living
+        - hvac:A2:terminal:LD-deco-supply-mid
+      runtime_query_refs:
+        - evidence/after-runtime.json
+        - evidence/after-hvac-batches.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 11
+          - 1.9
+          - 9.5
+        target:
+          - 10.3
+          - 2.5
+          - 4.75
+        view_type: perspective
+      snapshot_path: evidence/after-snapshot.txt
+      screenshot_path: evidence/after.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - config/ceiling.yaml
+        - config/hvac.yaml
+        - shared/render/CeilingZoneBuilder.ts@809c9bc94671e02f
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 同机位画面显示完整连续底面与清楚的深色线性格栅层次；设备带两端未完整入镜，R100 由运行时圆角数据确认。
+    evidence_refs:
+      - evidence/before.png
+      - evidence/after.png
+      - evidence/after-runtime.json
+    requested_changes: []
+    assumptions: []
+  functional_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 运行时确认 supply_living_bottom、return_living 批次实例均可见；HVAC 尺寸、风量、静压、安装净距和检修方式仍待厂家图/现场核实。
+    evidence_refs:
+      - evidence/after-runtime.json
+      - evidence/after-hvac-batches.json
+      - evidence/after.png
+    requested_changes: []
+    assumptions: []
+  substance_review:
+    deleted: 移除了只生成空心 20mm 外圈的 roundedPerimeterShape helper；未删除既有设计决议、候选、证据或数值依据。
+    overturned: 没有推翻既有设计结论；DEC-2026-10-05-R18 的边吊范围、R100 圆角和 HVAC 位置均保留。仅纠正旧实现注释把带孔挤出体误称完整实体的假设。
+    silent_failure_conditions:
+      - 若未来在 slab.visible=false 时重新传入带内孔的挤出轮廓，中央下板会再次缺失。
+      - 若浏览器加载旧 render-facts 或旧 bundle，页面不会显示本次修复。
+      - 若 HVAC projection 未加载或合批实例被隐藏，风口仍可能缺失；这与圆角板面生成分属不同对象链路。
+  risks:
+    - 全量 app/server 测试目前未通过；失败发生在 ResizeObserver、临时文件写入配额和无 DOM 的 TextureManager 测试路径，focused ceiling suites 通过。
+    - ceiling_master_ac 使用同一纯圆角分支，也会恢复其完整实体底面。
+  retrospective:
+    triggered: false
+    triggers: []
+    records: []
+    rebaselined: false
+  delivery:
+    status: incomplete
+    blocking_issues:
+      - 全量 test:app 和 test:server 未通过，不能按项目流程标记 delivery_ready；失败路径与本次吊顶 builder 不同。
+    completion_conditions:
+      - 完整纯圆角挤出体取代带内孔的环形挤出体。
+      - 下出风与回风格栅在目标视角仍可辨认。
+      - typecheck、verify:all、gate:visual 与浏览器运行时证据完成。
+      - 独立审美和功能评审均 PASS。
+      - 全量 test:app 与 test:server 通过，或另行解决其当前非本次改动失败。
+    follow_up_site_pending: []
+    delivery_ready: false

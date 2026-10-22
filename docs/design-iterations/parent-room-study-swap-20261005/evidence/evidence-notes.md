@@ -30,7 +30,7 @@
 ### R3（2026-10-05）不急着开工，持续讨论
 
 - 业主确认：先把方案聊透；同意建立本迭代工作区（五件协议）。
-- 本工作区建立：`fact-table.yaml` / `object-manifest.yaml` / `decision-brief.yaml` / `design-datum.yaml` / `review-manifest.json` / `evidence-notes.md`。
+- 本工作区建立：`round.yaml（fact_table 段）` / `round.yaml（objects 段）` / `round.yaml（brief 段）` / `round.yaml（datum 段）` / `round.yaml（review 段）` / `evidence-notes.md`。
 - 状态：`frozen: false`、`delivery_ready: false`、10 项 alignment 待收口。
 
 ## 已知文档漂移（本轮发现，实施前必须处理）

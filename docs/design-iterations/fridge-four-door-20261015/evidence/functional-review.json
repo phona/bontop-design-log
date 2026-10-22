@@ -12,7 +12,7 @@
     "evidence/after-runtime.json",
     "evidence/after-room-context-runtime.json",
     "evidence/after-room-context.png",
-    "object-manifest.yaml",
+    "round.yaml（objects 段）",
     "shared/render/FixtureFactory.ts",
     "shared/render/SceneBuilder.ts",
     "shared/types.ts",

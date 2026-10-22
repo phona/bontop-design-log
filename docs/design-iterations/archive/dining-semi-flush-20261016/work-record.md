@@ -2,7 +2,7 @@
 
 ## 状态
 
-`delivery_ready（模型范围）`。独立审美与功能复核均 PASS（review-manifest.json 一轮记录）；桌面照度与 SKU 未核、明装段路由待量房，均为 site_pending，不可施工或采购定案。
+`delivery_ready（模型范围）`。独立审美与功能复核均 PASS（round.yaml（review 段） 一轮记录）；桌面照度与 SKU 未核、明装段路由待量房，均为 site_pending，不可施工或采购定案。
 
 ## 本轮输入
 
@@ -47,7 +47,7 @@ URL `http://localhost:5173/?v=20261016-r12c`；四视图 runtime+snapshot+PNG �
 
 ## 独立复核结论
 
-一轮（review-manifest.json 固定 JSON 契约）：审美 **PASS**（四件分解比例协调、罩深径比 1:4.3 真浅穹顶、Ø520 为桌宽65%/桌长37% 尺度合适、与客厅十头灯同家族不触发 §十一 避免项）；功能 **PASS**（灯位与桌心严格同心、罩底距桌 1.77m/距椅背约 1.6m、路由空腔段不进无吊顶区+0.45m 明装段显式登记、电气接口全未动、照度双口径与 SKU 研究 site_pending、不做吊扇灯已落档）。非阻塞项全部处理：短杆文档 160→140mm、finish 更名、距离口径统一 1.77m、证据版本统一 r12c、MEP reason 措辞精确化（「垂直下引」→南行 0.75m 伴随微升）、overrides basis 文案、§十一 改判、procurement 餐桌行同步。
+一轮（round.yaml（review 段） 固定 JSON 契约）：审美 **PASS**（四件分解比例协调、罩深径比 1:4.3 真浅穹顶、Ø520 为桌宽65%/桌长37% 尺度合适、与客厅十头灯同家族不触发 §十一 避免项）；功能 **PASS**（灯位与桌心严格同心、罩底距桌 1.77m/距椅背约 1.6m、路由空腔段不进无吊顶区+0.45m 明装段显式登记、电气接口全未动、照度双口径与 SKU 研究 site_pending、不做吊扇灯已落档）。非阻塞项全部处理：短杆文档 160→140mm、finish 更名、距离口径统一 1.77m、证据版本统一 r12c、MEP reason 措辞精确化（「垂直下引」→南行 0.75m 伴随微升）、overrides basis 文案、§十一 改判、procurement 餐桌行同步。
 
 ## 独立复核/遗留（site_pending）
 

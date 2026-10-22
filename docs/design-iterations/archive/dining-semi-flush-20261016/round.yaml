@@ -1,0 +1,699 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: dining-semi-flush-20261016
+index:
+  order: 49
+  topic: dining
+  review_state: none
+  supersedes: none
+  note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 dining-cloud-light fact-table 与 baseline json 共 2 处引用）
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: dining-semi-flush-20261016
+  subject: 餐厅吊灯改半吸顶（含灯位移正新桌心）
+  priority:
+    user_goal: 餐厅吊灯换成半吸顶（下垂10~30cm）。
+    ranked:
+      - light_dining_pendant 由 (7.90,3.45) 移至新桌心 (9.80,3.45)——2026-10-16 餐桌东移至 (9.80,3.45) 后灯位未随动，差 1.9m，属既有漂移，本轮一并修正。
+      - type 由 pendant 改 ceiling_light；外观按半吸顶实现：吸顶盘+短杆+浅穹顶漫射罩，总下垂 0.28m（业主认可的 10~30cm 区间内取值）。
+      - 重画 strong-light-dining 电路由：西侧服务带空腔东行至桌心上方，敞开天花段明装线槽（DEC-2026-10-13-R6 先例）。
+      - style-guide §十一「餐桌上方细长线性吊灯」显式改判为半吸顶。
+      - 照度代价登记：顶装灯距桌面 1.77m（原吊灯 0.85m），同灯桌面照度约为 1/4，150 lx 需更高输出 SKU 或补光；选型重开，open_question 挂竞品研究。
+    non_negotiables:
+      - 不改 dining 回路、switch_dining 墙控、双控关系与点位 id（light_dining_pendant）。
+      - 不移动餐桌；灯位只跟随桌心，不另选位置。
+      - 不把预览亮度/包络当成光度或承重证据。
+      - SKU 未选前不锁商品、不写施工尺寸。
+    tradeoffs_accepted:
+      - 接受照度下降风险（约1/4）与选型重开成本（雷士线性吊灯候选转历史）。
+      - 接受 §十一 线性吊灯风格基准被改判（业主裁定）。
+      - 接受客餐厅开放区出现两盏顶装灯（客厅10头主灯+餐厅半吸顶）——需在两盏同家族/同金属色上控制，避免 §十一「两三个不同风格吊灯同时出现」。
+  frozen: true
+  freeze_record:
+    alignment_id: align-dining-semi-flush-20261016
+    original_user_response: 餐厅吊灯我想换成吸顶灯，可行吗" → 四选项选择「换半吸顶（下垂10-30cm）」；业主发吊扇灯图（IMG_2665.jpg）澄清「你说的半吸灯我以为是这个」——语义对齐：半吸顶=贴顶无扇叶浅漫射罩，非风扇灯。追加两项裁定：① 风的需求用独立循环扇/台扇解决，不做进天花；② 桌面照度先按 150 lx 建模与询价，同时备 100 lx 口径，SKU 数据回来后再定。
+    normalized_decisions:
+      - 方向=半吸顶（无扇叶），下垂取 0.28m（10~30cm 区间内，含 0.12m 漫射罩高度）。
+      - 点位移至新桌心 (9.80,3.45) 与造型改动同轮完成。
+      - 风格基准 §十一 显式改判；选型重开并登记竞品研究。
+      - 不做吊扇灯；餐区「风」由独立循环扇/台扇承担（另案，不占天花、不加风量控制）。
+      - 照度口径：150 lx 维持为目标、100 lx 为备选，SKU 核验时按真实输出二选一（open_question 保持 site_pending）。
+    confirmed_by_user: true
+    confirmation_scope: 用户确认方向为半吸顶；0.28m 下垂、漫射罩 Ø520/深120mm、金属收边等具体分解为设计提案，未经逐项确认。
+    confirmed_at: '2026-10-16'
+    evidence_refs:
+      - round.yaml（fact_table 段）#fact-anchor-and-table
+      - round.yaml（fact_table 段）#fact-photometry-cost
+      - round.yaml（fact_table 段）#fact-style-baseline
+  allowed_scope:
+    files:
+      - shared/types.ts
+      - shared/project-render-facts-schema.ts
+      - shared/render/SemiFlushDomeGeometry.ts
+      - shared/render/LightingFixtureBuilder.ts
+      - app/src/render/InteriorLightingSystem.ts
+      - config/render/lighting.yaml
+      - config/electrical.yaml
+      - config/mep-hvac-coordination.yaml
+      - data/project-render-facts.json
+      - tests/server/cli-glb-export.test.ts
+      - docs/decisions/06-electrical.md
+      - docs/style-guide.md
+      - schedule/procurement.md
+      - docs/design-iterations/archive/dining-semi-flush-20261016/
+    objects:
+      - light_dining_pendant
+    archetypes:
+      - semi_flush_ceiling_light
+      - shallow_opal_dome_diffuser
+      - short_stem_mount
+    views:
+      - dining_context
+      - closeup
+      - elevation
+      - plan
+    changes:
+      - 点位 (7.90,3.45)→(9.80,3.45)，type pendant→ceiling_light。
+      - 新增半吸顶声明式几何（吸顶盘/短杆/浅穹顶漫射罩/金属收边）。
+      - 重画 strong-light-dining 电路由至新点位。
+      - 风格基准与采购口径同步改判/登记。
+  forbidden:
+    files:
+      - config/house.yaml
+      - config/ceiling.yaml
+      - config/electrical-topology.yaml
+      - config/layout/model-geometry.yaml
+    objects:
+      - dining_table
+      - ceiling_dining_north_band
+      - ceiling_dining_west_band
+      - light_living_dome
+    assumptions:
+      - 不得用半吸顶造型证明桌面照度达标。
+      - 不得将 0.28m/Ø520mm 等模型参数写成 SKU 或施工尺寸。
+      - 不得为造型移动餐桌或改回路/墙控。
+    out_of_scope_changes:
+      - 餐桌/吊顶/风口的任何几何改动。
+      - 客厅主灯（R5~R11 链）的任何回改。
+      - SKU 选择、锁价、施工放样。
+  open_questions:
+    - id: semi-flush-sku-research
+      category: procurement
+      question: 半吸顶餐厅灯候选竞品研究：需同时满足 3000K、Ra≥90、桌面 150 lx（顶装距桌 1.77m，按 1/4 衰减反推需原吊灯 4 倍输出或接受降低目标）、Ø≤600mm 级宽面漫射、与客厅主灯同金属色家族；分列裸价/安装/辅材/交期/保修。
+      fact_refs:
+        - round.yaml（fact_table 段）#fact-photometry-cost
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: photometry-target-decision
+      category: function
+      question: 顶装后桌面 150 lx 目标是否维持？若维持需高输出 SKU（流明/配光核验）；若下调（如 100 lx）需业主裁定并同步照度口径。
+      fact_refs:
+        - round.yaml（fact_table 段）#fact-photometry-cost
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: route-surface-raceway
+      category: construction
+      question: 桌心上方 0.45m 敞开天花开段（北带南缘 z=3.0 至灯位 z=3.45）明装线槽做法与量房梁位/板底平整度复核；另明装段 to_height=2.7 比原顶 2.80 低约 0.10m（贴附线槽应≈板面），标高以量房为准。
+      fact_refs:
+        - round.yaml（fact_table 段）#fact-route
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: six-person-offset
+      category: function
+      question: 来客六人模式桌椅组整体南移 0.32m（中心 (9.80,3.77)）时，灯相对临时桌心偏北 0.32m——业主是否接受（日常四座居中、六人临时偏北），或六人模式需另配临时照明/接受偏北。
+      fact_refs:
+        - round.yaml（fact_table 段）#fact-anchor-and-table
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+  alignment:
+    records:
+      - alignment_id: align-dining-semi-flush-20261016
+        original_user_response: 餐厅吊灯我想换成吸顶灯，可行吗"（随后在半吸顶/全吸顶/只修漂移/先看图 四选项中选择半吸顶）
+        normalized_decision: 换半吸顶（下垂10~30cm）；点位移至新桌心 (9.80,3.45)；风格基准改判；选型重开登记。
+        fact_refs:
+          - round.yaml（fact_table 段）#fact-anchor-and-table
+          - round.yaml（fact_table 段）#fact-photometry-cost
+        timestamp: '2026-10-16'
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run generate:project-render-facts
+      - npm run typecheck
+      - npm run test:server
+      - npm run test:app
+      - npm run verify:all
+      - npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - dining_context
+      - closeup
+      - elevation
+      - plan
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: pending
+    blocking_issues:
+      - 桌面照度与 SKU 未核（site_pending）；不可施工或采购定案。
+    done_when:
+      - 灯位在新桌心 (9.80,3.45) 正上方，type=ceiling_light，半吸顶造型（总下垂0.28m）。
+      - strong-light-dining 路由终点为新点位且不横穿无吊顶区（除登记的明装段）。
+      - §十一 改判与 procurement 口径同步；雷士线性吊灯候选保留为历史。
+      - 浏览器与 GLB 共享声明式几何；目标视图 ready/runtime/snapshot/PNG 齐全。
+      - 独立审美/功能复核 PASS；照度与选型作为 site_pending 保留。
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: dining-semi-flush-20261016
+  subject: 餐厅半吸顶主灯（桌心上方）
+  units: m
+  coordinate_system: Three.js右手系；Y向上；x东西、z南北；+z为南；俯视北朝上(-z)。
+  status: frozen
+  datums:
+    - id: dining-semi-flush-fixture
+      name: 餐厅半吸顶灯天花锚点与外形
+      anchor:
+        kind: ceiling_anchor
+        ref: light_dining_pendant
+        wall_side: null
+        service_ref: strong-light-dining
+      source_refs:
+        fact_refs:
+          - round.yaml（fact_table 段）#fact-anchor-and-table
+          - round.yaml（fact_table 段）#inference-r12-proposal
+          - round.yaml（fact_table 段）#user-r12-decision
+        decision_refs:
+          - docs/decisions/06-electrical.md#DEC-2026-10-16-R12
+      views:
+        plan:
+          required: true
+          origin: 以桌心 (9.80,3.45) 为平面锚点，使用项目局部坐标。
+          axes: x东西；z南北
+          direction: 北朝上(-z)
+          position:
+            x: 9.8
+            z: 3.45
+          rotation: 0
+          dimensions:
+            length: 0.52
+            width: 0.52
+            depth: 0.28
+            offset: 0
+          dimension_semantics: overall
+        elevation:
+          required: true
+          viewing_side: 从餐厅内侧（北/西）仰视；天花锚点 y=2.80m。
+          vertical_axis: 'y'
+          height: 2.8
+          dimensions:
+            width: 0.52
+            height: 0.28
+            sill: null
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 沿z方向剖过吸顶盘、短杆、漫射罩与桌面。
+          depth_axis: z方向；无单向偏心凸出。
+          clearances:
+            front: null
+            rear: null
+            top: 0
+            bottom: 0.28
+          thickness: 0.28
+          dimension_semantics: overall
+      geometry:
+        x: 9.8
+        'y': 2.8
+        z: 3.45
+        width: 0.52
+        depth: 0.52
+        height: 0.28
+        length: 0.52
+        rotation: 0
+        along: null
+      constraints:
+        - 锚点为新桌心 (9.80,3.45)（修正 2026-10-16 餐桌东移后灯位未随动的 1.9m 漂移）；type=ceiling_light；点位 id light_dining_pendant、dining 回路、switch_dining 墙控不变。
+        - 半吸顶外形：镀铬吸顶盘 Ø120×18mm 贴顶 y=2.80m；短杆 140mm；浅穹顶乳白漫射罩上口 Ø520mm/下口 Ø470mm/深 120mm，罩底约 y=2.516m（含收边最低点）；细金属收边。总下垂 284mm（18+140+120+6 收边下探，业主认可 10~30cm 区间；DEC/文案口径 280mm 量到罩底）。
+        - 电路由 strong-light-dining：西带空腔→北带空腔东行至 x=9.80→南行 0.45m 至桌心点；0.45m 敞开天花开段按 DEC-2026-10-13-R6 先例明装线槽（site_pending：量房梁位/板底）。
+        - 配色与客厅主灯同家族（黑/镀铬/乳白漫射），避免 §十一「两三个不同风格吊灯同时出现」。
+      interfaces:
+        - 保留 dining 回路、switch_dining（餐桌旁走廊墙 h1.3）、电气拓扑 member 关系；只改点位坐标、type 与外观。
+        - 照度口径：餐桌 150 lx/3000K/Ra≥90 目标保留，但顶装距桌 1.77m，同灯桌面照度约为原吊灯 1/4——需 SKU 核验或业主裁定降标（open_question）。
+        - 餐桌 AABB x[9.40,10.20] z[2.75,4.15] 不动；灯位只跟随桌心。
+      validation_refs:
+        - 旧灯位漂移事实：round.yaml（fact_table 段）#fact-anchor-and-table
+      status: frozen_proposal
+  notes:
+    - height=0.28m 为模型总下垂，不是商品或安装尺寸；Ø520mm 漫射罩为设计提案。
+    - 桌面高度 0.75m 为惯用口径，config 未声明具体值，照度估算精度待家具尺寸复核。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: dining-semi-flush-20261016
+  subject: 餐厅吊灯改半吸顶（R12）
+  created_at: '2026-10-16'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/mep-hvac-coordination.yaml
+      - config/ceiling.yaml
+      - config/house.yaml
+      - config/render/lighting.yaml
+      - docs/style-guide.md
+      - schedule/procurement.md
+    observation_refs:
+      - 业主 2026-10-16 会话：'餐厅吊灯我想换成吸顶灯，可行吗'，四选项中选择半吸顶（下垂10~30cm）
+    measurement_refs:
+      - config/house.yaml：dining_table x=9.80 z=3.45 rotation=90（2026-10-16 概念布局更新：餐桌改南北向、日常四座中心 (9.80,3.45)；AABB x[9.40,10.20] z[2.75,4.15]）
+      - config/electrical.yaml：light_dining_pendant x=7.90 z=3.45 height=2.8 type=pendant circuit=dining（DEC-2026-08-02-013/DEC-021/DEC-034 随餐桌移至当时桌心）
+      - config/ceiling.yaml：餐桌上方为平顶 2.80m（南侧对餐桌平顶一次正交台阶）；ceiling_dining_north_band x[7.7,10.8] z[2.4,3.0] 底 2.50、ceiling_dining_west_band x[7.2,7.7] z[2.4,4.3] 底 2.50
+    runtime_refs: []
+    evidence_refs:
+      - restaurant-fridge-waterbar-x980-acceptance-20261015 定稿：餐桌中心 (9.80,3.45)，遗留问题含'六人临时南移后的吊灯/地插'
+  entry_shape:
+    id: ''
+    category: confirmed
+    statement: ''
+    value: null
+    source_refs: []
+    basis: ''
+    confidence: high
+    impact: material
+    affected_objects: []
+    affected_views:
+      - perspective
+      - elevation
+    owner: ''
+    status: open
+    verification_method: ''
+    user_confirmation_ref: null
+  facts:
+    confirmed:
+      - id: fact-anchor-and-table
+        category: confirmed
+        statement: 餐桌 2026-10-16 已东移至 (9.80,3.45)（1.4×0.8m 南北向，AABB x[9.40,10.20] z[2.75,4.15]）；灯位 light_diving_pendant 仍在 (7.90,3.45)，距新桌心 1.9m——灯不在桌心上方，属既有漂移，与换不换造型无关都必须修正。
+        value:
+          table_center:
+            - 9.8
+            - 3.45
+          current_point:
+            - 7.9
+            - 3.45
+          drift_m: 1.9
+        source_refs:
+          - config/house.yaml
+          - config/electrical.yaml
+          - docs/design-iterations/restaurant-fridge-waterbar-x980-acceptance-20261015/round.yaml（fact_table 段）
+        basis: 当前权威配置
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - light_dining_pendant
+        affected_views:
+          - plan
+          - perspective
+        owner: project
+        status: resolved
+        verification_method: 新 config 坐标与桌心 AABB 核对
+        user_confirmation_ref: null
+      - id: fact-photometry-cost
+        category: confirmed
+        statement: 桌面 0.75m、桌上方天花 2.80m：顶装（含半吸顶 0.284m 下垂）漫射罩底约 2.516m，距桌面约 1.77m；原吊灯距桌面 0.85m。同灯桌面照度比 ≈(0.85/1.77)²≈0.23，即约 1/4。项目口径餐桌 150 lx/3000K/Ra≥90 不变，但顶装后维持 150 lx 需约 4 倍输出的 SKU 或下调目标。
+        value:
+          table_height_m: 0.75
+          ceiling_m: 2.8
+          semi_flush_bottom_m: 2.52
+          distance_to_table_m: 1.77
+          old_pendant_distance_m: 0.85
+          illuminance_ratio: 0.23
+          target_lx: 150
+        source_refs:
+          - config/electrical.yaml
+          - config/ceiling.yaml
+          - schedule/procurement.md
+        basis: 平方反比估算；桌面 0.75m 为常规餐桌面高（未在 config 声明具体值，按项目惯用口径），待量房/家具尺寸复核
+        confidence: medium
+        impact: material
+        affected_objects:
+          - light_dining_pendant
+        affected_views:
+          - elevation
+          - section
+        owner: project
+        status: open
+        verification_method: SKU 阶段按真实配光/光通量复算桌面照度
+        user_confirmation_ref: null
+      - id: fact-style-baseline
+        category: confirmed
+        statement: style-guide §十一 现文：'餐桌上方：细长黑色或深棕色线性吊灯，简洁/低存在感/与餐桌方向一致/不做大体积造型灯'，避免项含'两三个不同风格吊灯同时出现'。改半吸顶需显式改判该条。
+        value:
+          section: §十一
+          current_rule: thin_linear_pendant
+          avoid: mixed_style_pendants
+        source_refs:
+          - docs/style-guide.md
+        basis: 当前风格基准（DEC-2026-08-20-027 体系）
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_dining_pendant
+        affected_views:
+          - perspective
+        owner: owner
+        status: resolved
+        verification_method: style-guide 改判段落落档
+        user_confirmation_ref: 业主选择半吸顶方向
+      - id: fact-route
+        category: confirmed
+        statement: strong-light-dining 现路由：走廊枢纽→(7.45,4.6)→(7.45,3.55) 垂直下引至旧灯位 (7.90,3.45)，全线在西/北服务带空腔内（DEC-2026-10-05-R19：不横穿餐桌平顶无吊顶区）。新桌心 (9.80,3.45) 在北带 x[7.7,10.8] 覆盖范围内，但 z=3.45 在北带南缘 z=3.0 以南 0.45m 的敞开天花上。
+        value:
+          band_north:
+            x:
+              - 7.7
+              - 10.8
+            z:
+              - 2.4
+              - 3
+            bottom: 2.5
+          band_west:
+            x:
+              - 7.2
+              - 7.7
+            z:
+              - 2.4
+              - 4.3
+            bottom: 2.5
+          open_ceiling_gap_m: 0.45
+        source_refs:
+          - config/mep-hvac-coordination.yaml
+          - config/ceiling.yaml
+        basis: 当前路由与吊顶分区声明
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_dining_pendant
+        affected_views:
+          - plan
+          - section
+        owner: project
+        status: open
+        verification_method: 新路由不进无吊顶区（除登记明装段）+ 量房复核
+        user_confirmation_ref: null
+      - id: user-r12-decision
+        category: user_decision
+        statement: 业主 2026-10-16 问'餐厅吊灯我想换成吸顶灯，可行吗'，在四选项（只修漂移/全吸顶/半吸顶/先看效果图）中选择「换半吸顶（下垂10-30cm）」——接受照度代价与选型重开。
+        value:
+          choice: semi_flush
+          drop_range_cm:
+            - 10
+            - 30
+        source_refs:
+          - conversation-2026-10-16-R12
+        basis: 用户明确答复
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_dining_pendant
+        affected_views:
+          - all
+        owner: owner
+        status: resolved
+        verification_method: 实现与选项逐条核对
+        user_confirmation_ref: 用户选择：换半吸顶（下垂10-30cm）
+    inferred:
+      - id: inference-r12-proposal
+        category: inferred
+        statement: R12 设计提案：点位移至 (9.80,3.45)（新桌心）、type pendant→ceiling_light；半吸顶造型=镀铬吸顶盘 Ø120×18mm + 短杆 140mm + 浅穹顶乳白漫射罩（上口 Ø520mm/下口 Ø470mm/深 120mm）+ 细金属收边，总下垂 284mm（业主 10~30cm 区间内；罩底 y≈2.516m，含收边最低点）。电路由：西带空腔→北带空腔东行至 x=9.80→南行 0.45m 至桌心点（该 0.45m 为敞开天花开段，按 DEC-2026-10-13-R6 先例明装线槽，登记 site_pending）。配色与客厅主灯同家族（黑/镀铬/乳白）以避免 §十一'两三个不同风格吊灯同时出现'。
+        value:
+          point:
+            - 9.8
+            - 3.45
+          type: ceiling_light
+          canopy:
+            diameter_m: 0.12
+            thickness_m: 0.018
+          stem_m: 0.14
+          diffuser:
+            top_diameter_m: 0.52
+            bottom_diameter_m: 0.47
+            depth_m: 0.12
+          total_drop_m: 0.284
+          diffuser_bottom_y_m: 2.516
+          finish: chrome_opal
+        source_refs:
+          - fact-anchor-and-table
+          - fact-photometry-cost
+          - fact-style-baseline
+          - fact-route
+          - user-r12-decision
+        basis: 业主方向（半吸顶 10~30cm）+ 项目既有先例（客厅主灯家族配色、明装线槽先例）
+        confidence: medium
+        impact: material
+        affected_objects:
+          - light_dining_pendant
+        affected_views:
+          - dining_context
+          - closeup
+          - elevation
+          - plan
+        owner: design
+        status: resolved
+        verification_method: 同版浏览器证据 + 独立复核
+        user_confirmation_ref: null
+    site_pending:
+      - id: pending-sku-research
+        category: site_pending
+        statement: 半吸顶候选竞品研究未做：需 3000K/Ra≥90/桌面150lx（顶装 1.77m，约 4 倍输出或接受降目标）/宽面漫射/同金属色家族；雷士 JZSJ12474-10 线性吊灯候选（总流明与 3000K 档输出未列，本就未证明 150 lx）转历史保留，不作直接套用。
+        value: null
+        source_refs:
+          - schedule/procurement.md
+        basis: 换型即选型重开；本环境未执行竞品研究
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - light_dining_pendant
+        affected_views:
+          - all
+        owner: 业主+照明设计
+        status: open
+        verification_method: shopping-research 竞品研究 + 厂家配光/流明数据
+        user_confirmation_ref: null
+  retrospective:
+    trigger_id: owner-direction-change
+    trigger_text: 业主主动将餐厅灯从线性吊灯改为半吸顶；非同类失败重试，属方向变更。附带修正一个既有漂移（灯位未随 2026-10-16 餐桌东移）。
+    failure_evidence: []
+    last_change: R11（客厅主灯）后业主转向餐厅吊灯议题。
+    root_cause: 业主方向变更；灯位漂移源自 x980 餐桌定稿时吊灯点位未同步（已登记于 x980 迭代遗留问题）。
+    status: direction_change_recorded
+  notes:
+    - 0.28m/Ø520mm/桌面0.75m 等均为设计预演参数，不是 SKU 或施工尺寸。
+    - 客厅主灯 R5~R11 链全部保留，本轮不回改。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: dining-semi-flush-20261016
+  subject: 餐厅半吸顶主灯（桌心上方）
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: light_dining_pendant
+      type: semi_flush_ceiling_light
+      archetypes:
+        - shallow_opal_dome_diffuser
+        - short_stem_mount
+        - ceiling_canopy_semi_flush
+      owner: 业主
+      function: 餐桌重点照明（150 lx 目标）与餐区视觉焦点；顶装后半吸顶形态，实际光度待 SKU 核验。
+      material: 镀铬吸顶盘/短杆/收边 + 乳白漫射罩；渲染材质不是商品工艺确认。
+      geometry_source: config/render/lighting.yaml + shared/render/SemiFlushDomeGeometry.ts；浏览器与 GLB/export 共用。
+      datum_refs:
+        - round.yaml（datum 段）#dining-semi-flush-fixture
+      fact_refs:
+        - round.yaml（fact_table 段）#fact-anchor-and-table
+        - round.yaml（fact_table 段）#inference-r12-proposal
+        - round.yaml（fact_table 段）#user-r12-decision
+      decision_refs:
+        - docs/decisions/06-electrical.md#DEC-2026-10-16-R12
+      dependencies:
+        - electrical:light_dining_pendant
+        - circuit:dining
+        - control_dining
+        - strong-light-dining
+      interfaces:
+        - id: electrical-anchor
+          target_object_id: light_dining_pendant
+          kind: electrical
+          requirement: 点位移至新桌心 (9.80,3.45)、type pendant→ceiling_light；id/回路/墙控/拓扑关系不变。
+          status: confirmed
+        - id: route-raceway
+          target_object_id: ceiling_dining_north_band
+          kind: electrical
+          requirement: 北带空腔东行至 x=9.80 后南行 0.45m 敞开段明装线槽；梁位/板底平整度量房复核。
+          status: open
+        - id: photometry
+          target_object_id: dining_table
+          kind: function
+          requirement: 顶装距桌 1.77m，同灯桌面照度约 1/4；150 lx 需 SKU 核验或业主降标。
+          status: open
+      collision:
+        policy: reviewed
+        geometry_ref: 吊顶灯具；Ø0.52m×0.28m 包络位于桌心上方平顶 2.80m，最低点 y≈2.52m，距桌面 ≥1.7m；不作为地面碰撞物；与人体/椅背无干涉。
+        review_ref: round.yaml（review 段）#reviewers.functional
+      maintenance:
+        boundary: 供应商/电工负责安装与检修；业主按说明清洁。漫射罩拆装、驱动器/光源更换路径待 SKU 说明书。
+        access_clearance: null
+        replaceable_parts:
+          - diffuser
+          - driver
+          - led_module
+          - canopy
+          - stem
+        inspection_requirements:
+          - 现场确认吸顶盘底盒固定与承重（半吸顶比原吊灯轻，但罩体 Ø520mm 仍需核对底板）。
+          - SKU 冻结前确认漫射罩拆装方式与更换路径。
+      parts:
+        - id: ceiling-canopy-and-stem
+          role: 镀铬吸顶盘 Ø120×18mm 贴顶 y=2.80m + 短杆 140mm；半吸顶安装形态的来源（总下垂的一部分）。
+          independent: true
+          owner: 灯具供应商
+          material: 镀铬渲染色；实际表面工艺与承载待核。
+          geometry_source: shared/render/SemiFlushDomeGeometry.ts
+          datum_refs:
+            - round.yaml（datum 段）#dining-semi-flush-fixture
+          dependencies: []
+          collision: reviewed
+          maintenance_boundary: 吸顶盘底盒固定与承重待厂家安装图
+          validation_refs:
+            - evidence/r12/closeup.runtime.json
+        - id: shallow-opal-dome-diffuser
+          role: 浅穹顶乳白漫射罩：上口 Ø520mm/下口 Ø470mm/深 120mm，罩底约 y=2.516m（含收边最低点）；承担桌面宽面漫射主光，配光/眩光待 SKU 资料。
+          independent: true
+          owner: 灯具供应商
+          material: 乳白扩散材料；透光率/眩光待核。
+          geometry_source: shared/render/SemiFlushDomeGeometry.ts
+          datum_refs:
+            - round.yaml（datum 段）#dining-semi-flush-fixture
+          dependencies:
+            - ceiling-canopy-and-stem
+          collision: reviewed
+          maintenance_boundary: 罩体拆装方式待 SKU 资料
+          validation_refs:
+            - evidence/r12/closeup.runtime.json
+            - evidence/r12/dining-context.runtime.json
+        - id: thin-metal-rim
+          role: 漫射罩下口细金属收边，与镀铬盘/杆同色；视觉收口，不代表承载。
+          independent: true
+          owner: 灯具供应商
+          material: 镀铬渲染色。
+          geometry_source: shared/render/SemiFlushDomeGeometry.ts
+          datum_refs:
+            - round.yaml（datum 段）#dining-semi-flush-fixture
+          dependencies:
+            - shallow-opal-dome-diffuser
+          collision: reviewed
+          maintenance_boundary: 收边为装饰件，无独立维护项
+          validation_refs:
+            - evidence/r12/closeup.runtime.json
+      visual_relationships:
+        - target_object_id: dining_table
+          relation: above
+          requirement: 灯位锚定桌心 (9.80,3.45)，罩底距桌面 ≥1.7m；六人临时南移 0.32m 时灯相对桌心偏北 0.32m，需业主接受或复核。
+          evidence_refs:
+            - evidence/r12/plan.runtime.json
+        - target_object_id: light_living_dome
+          relation: sibling
+          requirement: 同家族配色（黑/镀铬/乳白）与不同尺度层级（Ø520 半吸顶 vs Ø1000 十头），避免 §十一「两三个不同风格吊灯同时出现」。
+          evidence_refs:
+            - evidence/r12/dining-context.runtime.json
+      validation_refs:
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
+      status: implemented
+  notes:
+    - 半吸顶造型只表达视觉关系，不证明桌面照度、承重或可安装性。
+    - 照度缺口、SKU 选型、明装段路由继续由 site_pending 与 open_question 核实。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: dining-semi-flush-20261016
+  subject: 餐厅吊灯改半吸顶 R12（含灯位漂移修正）
+  status: passed
+  evidence_binding:
+    url_template: http://localhost:5173/?v=20261016-r12c
+    required_views:
+      - dining_context
+      - closeup
+      - elevation
+      - plan
+    captured_views:
+      - dining-context
+      - closeup
+      - elevation
+      - plan
+    version_bound: true
+    notes: R12c 四份证据同版本绑定（finish 由 chrome_black_opal 更名 chrome_opal 后统一重采；此前 r12/r12b 分裂已作废）。每张 ready=true、空配置错误横幅、visualPreviewActive=false、目标 electrical:light_dining_pendant、非总览相机；hover tooltip 以 patch HoverTooltip.update 持久压制。AABB（四份一致）：x[9.540,10.060]、y[2.516,2.800]、z[3.190,3.710]——中心 (9.80,3.45) 与新桌心严格同心。
+  reviewers:
+    aesthetic:
+      status: passed
+      verdict: PASS
+      reviewed_version: R12b（重采前版本；造型几何与 R12c 完全一致，仅 finish 标签更名，视觉零变化）
+      contract: references/review-contracts.md
+      summary: 半吸顶四件分解（Ø120×18 盘/140 短杆/浅穹顶罩上口Ø520-下口Ø470×深120/Ø12 收边）齐全且比例协调：罩深径比 1:4.3 是真浅穹顶；收边约占下口 2.6% 读作精致收边；短杆 140 为盘径 4.3 倍短杆感。Ø520 为桌宽 65%/桌长 37%，与 1.4×0.8m 桌尺度合适（经典「桌宽减约30cm」区间保守端；更强存在感的上界 Ø600 已登记 procurement open_question）。与客厅 Ø1000 十头灯同家族（镀铬盘/杆/乳白漫射，黑只留客厅 hub，反而符合 §十三 黑色约5%点缀口径），不触发 §十一「两三个不同风格吊灯同时出现」。
+      findings:
+        - 非阻塞（已修）：短杆 160mm 文档残留——config/runtime/DEC 均为 140mm（18+140+120+6=284mm 总下垂唯一自洽解），design-datum/object-manifest/fact-table 三处已同步为 140mm。
+        - 非阻塞（已修）：finish 标签 chrome_black_opal 名不副实（模型无黑色件），已更名 chrome_opal（types/schema/config/facts 四处同步）。
+        - 非阻塞（已修）：距离口径 decision-brief 写 1.73m、fact-table 写 1.77m，已统一为 1.77m（罩底 2.516−桌面 0.75）。
+        - 非阻塞（已修）：证据版本分裂（r12/r12b）——finish 更名后已于 r12c 统一重采四视图。
+        - 非阻塞（已修）：style-guide §十一 餐桌条款缺改判标注（见 task 20 落档）。
+        - 非阻塞（已修）：procurement.md 餐桌行 R12 前状态（旧点位/吊杆/路由/照度口径）已同步。
+        - 非阻塞（已修）：AABB 精度——总下垂 284mm（含收边下探 6mm），design-datum 已声明量到罩底还是最低金属点。
+        - 非阻塞（保留）：⚠181 为全模型问题计数，本只读复核无法打开面板确认其中是否有 R12 引入项；已由 verify:all 17/17 + test:server 既有失败清单（均为业主在飞项目）交叉确认无 R12 新增 lint。
+        - 非阻塞（保留）：六人临时南移 0.32m 时灯相对临时桌心偏北 0.32m——object-manifest visual_relationships 已登记「需业主接受或复核」，plan 视图只覆盖日常四座构型。
+      blocking_issues: []
+    functional:
+      status: passed
+      verdict: PASS
+      reviewed_version: R12（与 R12c 几何一致）
+      contract: references/review-contracts.md
+      summary: 点位修正精确：灯位 (9.80,3.45) 与餐桌 AABB x[9.40,10.20] z[2.75,4.15] 中心严格同心（runtime AABB 中心 (9.80,3.45) 为证），1.9m 漂移消除。净空：罩底 2.516m 距桌面约 1.77m、距椅背总高约 0.85-0.9m 约 1.6m，站立取物/上菜余量约 0.4m；桌心上方无吊柜。路由：新路由空腔段不进无吊顶区，0.45m 敞开段为显式登记例外（DEC-2026-10-16-R12 + route reason + open_question route-surface-raceway），非静默横穿。电气接口：dining 回路、switch_dining（h1.3/中性线）、拓扑成员全部未动（config 三处 note 记录）。照度：1.77m/0.23 衰减定量登记，150 lx 目标+100 lx 备选双口径与 SKU 研究作为 open_question/site_pending 保留。不做吊扇灯裁定已落档。
+      findings:
+        - 非阻塞（已修）：MEP reason 称末段「0.75m 垂直下引」，实际为 +z 0.75m 水平南行伴随 y 2.55→2.7 微升——reason 措辞待精确化（不影响功能，终点正确、平面正交）。
+        - 非阻塞（已修）：config/render/overrides.yaml 的 light_dining_pendant basis 文字「无灯体下沉，渲染与施工同高」为旧吊灯口径残留（半吸顶确有 0.284m 下垂）；anchorY_offset:0 仍正确，runtime AABB 证明渲染正确，仅文案陈旧。
+        - 非阻塞（已修）：六人 0.32m 偏移仅登记于 object-manifest，显著性可提高——已升格为 open_question（six_person_offset）。
+        - 非阻塞（保留）：明装段 to_height=2.7 比原顶 2.80 低约 0.10m（贴附线槽应≈板面）——已由 open_question route-surface-raceway 挂 site_pending，preliminary 占位可接受。
+        - 非阻塞（保留）：桌面高 0.75m 为项目惯用口径，config 未声明具体值，待家具尺寸复核（fact-table/design-datum notes 已注明）。
+      blocking_issues: []
+  review_rounds:
+    - round: 1
+      version: R12（半吸顶 + 点位移正）
+      aesthetic: PASS（比例/尺度/家族关系/证据清洁度全部通过；5 项非阻塞文档漂移已修）
+      functional: PASS（点位/净空/路由/电气/照度/site_pending 全部通过；3 项非阻塞已修、2 项保留登记）
+      outcome: delivery_gate 通过（R12）
+  delivery_gate:
+    aesthetic_pass_required: true
+    functional_pass_required: true
+    blocking_issues:
+      - 桌面照度与 SKU 未核（顶装距桌 1.77m，同灯约 1/4 照度）；明装段路由标高/梁位待量房；不可施工或采购定案。

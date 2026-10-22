@@ -8,7 +8,7 @@
         "evidence/phase1-j6-final-runtime.json",
         "evidence/phase1_j6_final_closeup_r4.png",
         "config/house.yaml",
-        "docs/design-iterations/phase1-scope-20260912/design-datum.yaml"
+        "docs/design-iterations/phase1-scope-20260912/round.yaml（datum 段）"
       ],
       "required_change": "After product model and site measurements are confirmed, verify the cabinet opening, approach path, automatic water/drain interfaces, electrical protection, and service clearance, then rerun the functional review."
     },
@@ -16,9 +16,9 @@
       "object": "master_bedroom seasonal transitional hanger",
       "fact": "The hanger is not selected or modeled, so its clearance, circulation, and maintenance impact cannot be verified as part of the frozen一期 scope.",
       "evidence": [
-        "docs/design-iterations/phase1-scope-20260912/decision-brief.yaml",
-        "docs/design-iterations/phase1-scope-20260912/fact-table.yaml",
-        "docs/design-iterations/phase1-scope-20260912/review-manifest.json"
+        "docs/design-iterations/phase1-scope-20260912/round.yaml（brief 段）",
+        "docs/design-iterations/phase1-scope-20260912/round.yaml（fact_table 段）",
+        "docs/design-iterations/phase1-scope-20260912/round.yaml（review 段）"
       ],
       "required_change": "Keep the hanger outside the modeled acceptance scope until the user selects a product and provides verifiable dimensions."
     }

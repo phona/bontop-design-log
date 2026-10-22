@@ -1,0 +1,1305 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L10] frozen —— 历史真值：2026-09-12 业主确认时点本 brief 确为 frozen。但范围（尤其一期预算上限）已被下方 supersession 列出的 DEC 与 config 字段取代；frozen 标记保留作历史留档，不再代表现行口径
+# [decision-brief.yaml L49] ---------------------------------------------------------------------------
+# [decision-brief.yaml L50] supersession：2026-10-11 业主审计登记。本 brief 的结构化冻结值（203000 等）
+# [decision-brief.yaml L51] 已过期，但 scripts/ / server/ / tests/ 对 decision-brief.yaml 零引用
+# [decision-brief.yaml L52] （config/facts.yaml:150 亦把 design-iterations 的 decision-brief 登记为
+# [decision-brief.yaml L53] 「迭代过程留档，非现行事实源」），故过期不会响。
+# [decision-brief.yaml L54] 上方 frozen: true 与下方 freeze_record 一律不改写，保持历史真值。
+# [decision-brief.yaml L55] ---------------------------------------------------------------------------
+# ── 注释保全结束 ──
+schema: design-iteration-round/v1
+iteration_id: phase1-scope-20260912
+index:
+  order: 57
+  topic: general
+  review_state: blocked
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: phase1-scope-20260912
+  subject: 一期家具逐房范围冻结（最低浪费、保证日常）
+  priority:
+    user_goal: 在20万元一期上限内优先保证两人日常睡眠、用餐、起居和入户收纳，减少不可复用或未定尺寸采购
+    ranked:
+      - 两人基本入住
+      - 家具可复用
+      - 先满足收纳和日常动线
+      - 延后影音与装饰性小件
+    non_negotiables:
+      - 一期预算上限203000元
+      - 云鲸J6上下水版按3000元纳入一期
+      - 主卧床/床垫/两床头柜/过渡斗柜
+      - 父母房床/床垫/成品衣柜
+      - 客餐厅沙发/餐桌椅/玄关收纳组合
+      - 西北次卧一期仅窗帘
+      - 未定尺寸衣架不建模
+    tradeoffs_accepted:
+      - 主卧通顶定制衣柜后移
+      - 过渡期使用成品衣架和斗柜
+      - 客厅无电视及咖啡桌等小件
+      - 东南书房和西北次卧家具空置至二期
+      - 邻居CAD仅作预演基线
+  frozen: true
+  freeze_record:
+    alignment_id: user-request-20260912-phase1-minimum-waste
+    original_user_response: 一期采用最低浪费、保证日常；后续明确云鲸J6价格为3000元并要求追加进入一期；邻居CAD为预演基线，实际尺寸site_pending
+    normalized_decisions:
+      - 云鲸J6上下水版按3000元追加一期且一期上限增至203000元
+      - 主卧保留床/床垫/两床头柜/过渡斗柜
+      - 主卧衣架待选宜家或成品且未定尺寸不建模
+      - 父母房保留床/床垫/成品衣柜
+      - 客餐厅保留沙发/餐桌椅/玄关收纳组合
+      - 西北次卧仅一期窗帘
+      - 客厅低柜/电视/咖啡桌/地灯/绿植二期
+      - 主卧梳妆桌凳二期
+      - 东南书房和西北次卧家具二期
+    confirmed_by_user: true
+    confirmed_at: '2026-09-12T21:50:00+08:00'
+    evidence_refs:
+      - user-message-20260912-phase1-scope
+  allowed_scope:
+    files:
+      - schedule/phase-1/control.yaml
+      - schedule/roadmap.yaml
+      - schedule/phase-2/control.yaml
+      - schedule/phase-scope.yaml
+      - config/design-rules.yaml
+      - config/materials.yaml
+      - data/current-scheme.json
+      - server/project-catalog.ts
+      - server/phase-scope.ts
+      - server/routes.ts
+      - shared/types.ts
+      - app/src/state/StateSync.ts
+      - app/src/App.ts
+      - app/src/ui/OverviewMenu.ts
+      - app/src/ui/SchemePanel.ts
+      - app/index.html
+      - app/style.css
+      - tests/server/api.test.ts
+      - tests/server/budget-api.test.ts
+      - app/src/state/StateSync.test.ts
+      - app/src/ui/OverviewMenu.test.ts
+      - app/src/ui/SchemePanel.test.ts
+      - docs/decision_log.md
+      - docs/design-iterations/phase1-scope-20260912/
+    objects:
+      - robot_dock_gbath
+      - master_bed
+      - master_mattress
+      - master_bedside_north
+      - master_bedside_south
+      - master_transitional_dresser
+      - master_transitional_rack
+      - parent_bed
+      - parent_mattress
+      - parent_wardrobe
+      - living_sofa
+      - dining_table
+      - dining_chairs
+      - entry_storage
+      - nw_curtain
+      - living_low_cabinet
+      - living_tv
+      - living_coffee_table
+      - living_floor_lamp
+      - living_plant
+      - master_dressing_table
+      - master_dressing_stool
+      - study_furniture
+      - nw_furniture
+    archetypes:
+      - furniture
+      - curtain
+      - phase_scope
+    views:
+      - plan
+      - perspective
+    changes:
+      - 一期范围文档
+      - 预算/工作包语义
+      - 二期排除项
+      - 阶段切换与full/phase1 A/B场景
+      - 派生schedule文档
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/house.yaml
+    objects:
+      - master_transitional_rack
+    assumptions:
+      - 邻居CAD尺寸等同实际完成面
+      - 未定尺寸衣架进入3D模型
+      - 二期对象提前采购
+    out_of_scope_changes:
+      - 任何家具坐标或渲染配方变更
+      - 修改几何或house镜像字段
+      - git操作
+  open_questions:
+    - id: rack-selection
+      category: function
+      question: 主卧过渡衣架最终品牌/型号/尺寸
+      fact_refs:
+        - pending-rack-selection
+      options:
+        - 宜家可复用成品
+        - 其他可复用成品
+      selected: 待选
+      user_response: 优先宜家等可复用成品，未定尺寸不建模
+      status: site_pending
+    - id: room-measurement
+      category: construction
+      question: 一期家具完成面尺寸、固定和搬运条件
+      fact_refs:
+        - pending-room-measurement
+      options:
+        - 交房后复尺
+      selected: 交房后复尺
+      user_response: 邻居CAD为预演基线，实际尺寸site_pending
+      status: site_pending
+  alignment:
+    records:
+      - id: user-request-20260912-phase1-minimum-waste
+        answer: 业主确认最低浪费、保证日常及逐房一期/二期边界
+        normalized: 按本brief实施并冻结范围
+      - id: user-request-20260912-j6-phase1
+        answer: J6就3000块，追加到一期里
+        normalized: 云鲸J6上下水版预算3000元，追加一期上限并从二期移除
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run schedule:render
+      - npm run verify:all
+      - npm run test:server
+      - npm run test:app
+      - npm run typecheck
+      - npm run verify:schedule
+    browser_evidence_required: true
+    required_views:
+      - phase1 overview
+      - full overview
+      - phase1 living
+      - phase1 master
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: site_pending（不阻塞阶段范围与A/B软件交付，阻塞采购下单及施工定尺）
+    blocking_issues: []
+    done_when:
+      - 一期/二期范围在控制源和路线图一致
+      - 云鲸J6在phase1场景可见且按3000元进入一期控制额
+      - phase1与full可切换且过滤范围正确
+      - overview/living/master四类目标视图有同版本证据
+      - 阶段切换不改变几何和house镜像字段
+      - 预算语义按当前阶段显示且不重复计费
+      - 派生schedule文档成功生成
+      - 未定尺寸衣架未进入config/house.yaml
+    delivery_notes_required: true
+  supersession:
+    status: superseded
+    superseded_at: '2026-10-05'
+    recorded_at: '2026-10-11'
+    superseded_by:
+      - DEC-2026-10-03-R3（docs/decisions/05-hvac.md:38）：中央空调定标美的领航者四代一拖六200外机，一期执行上限 203,000 → 206,000
+      - DEC-2026-10-05-R4（docs/decisions/01-control-budget.md:229）：美的 GC5 微蒸烤一体机按 4,000 元进入一期，一期执行上限 206,000 → 210,000
+      - config 字段 schedule/roadmap.yaml:15（phases[0].budget.ceiling_cny/allocated_cny）与 schedule/phase-1/control.yaml:62（budget_reconciliation.phase_1_ceiling_cny）为现行权威值，取代本 brief 的 203000
+      - config/facts.yaml:558-561（fact.phase1_ceiling_cny，value 指向 control.yaml 的 210000）为现行对账口径
+      - 'iteration parent-room-study-swap-20261005（frozen: false，讨论轮次）：config/house.yaml 家具段整段重写，取代本 brief 的逐房家具归属描述'
+    drift:
+      - frozen: priority.non_negotiables「一期预算上限203000元」与 freeze_record.normalized_decisions「一期上限增至203000元」
+        now: 一期执行上限 210,000 元，已分配 210,000，未分配 0
+        verify_at: schedule/roadmap.yaml:15 与 schedule/phase-1/control.yaml:62；对账口径见 config/facts.yaml:558-561
+      - frozen: priority.user_goal「在20万元一期上限内」
+        now: 业主口径已三次抬升：200,000 → 203,000（DEC-2026-09-12-R3，docs/decisions/01-control-budget.md:202）→ 206,000（DEC-2026-10-03-R3）→ 210,000（DEC-2026-10-05-R4）
+        verify_at: schedule/phase-1/control.yaml:60-64 的 budget_reconciliation.explanation（三次抬升目前只存在于这段散文里，无独立 DEC 条目承载 206,000 一步的完整账目）
+      - frozen: forbidden.files 含 config/house.yaml（本 brief 冻结期内禁止改动）
+        now: config/house.yaml 家具段已于 2026-10-05 房间互换后整段重写：bedroom_se 由书房改客房（config/house.yaml:460-473），study 由父母房改书房（config/house.yaml:474-485）；原 brief 的 allowed_scope.objects 里 parent_bed / parent_mattress / parent_wardrobe / study_furniture / nw_furniture 在 house.yaml 中已无对应 type，仅 robot_dock_gbath 存活（config/house.yaml:547）
+        verify_at: 'config/house.yaml:462 与 config/house.yaml:476 的「2026-10-05 功能互换 v0」注释；互换依据 iteration docs/design-iterations/parent-room-study-swap-20261005/round.yaml（brief 段）（该轮 frozen: false）'
+      - frozen: acceptance.done_when「未定尺寸衣架未进入config/house.yaml」
+        now: 该条仍然成立（master_transitional_rack 至今未进 house.yaml），故不构成 drift，仅登记以免误判
+        verify_at: config/house.yaml furnishings 段无 master_transitional_rack 条目
+    reason: 根因是「没有任何代码读者」：scripts/、server/、tests/、app/ 对 round.yaml（brief 段） 零引用（grep 全库仅命中 docs/ 自身与 config/facts.yaml:150 的豁免说明），config/facts.yaml 的 include/exclude 也把 docs/design-iterations/ 整体排除在事实核验之外。因此冻结值只能靠人工比对 config 才能发现漂移；本 brief 的三次抬升全部只落在 control.yaml 的 budget_reconciliation.explanation 散文段落里，没有任何门禁会因为「brief 与 config 不一致」而失败。修法不是改本文件，而是承认本 brief 已被 DEC 与 schedule/phase-1/control.yaml 取代，并把现行口径指向 schedule/roadmap.yaml:15。
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: phase1-scope-20260912
+  subject: 一期家具逐房范围冻结（最低浪费、保证日常）
+  units: m
+  coordinate_system: Three.js右手系，Y向上，+x东，+z南；采用model-geometry局部坐标
+  status: blocked
+  datums:
+    - id: datum-j6-phase1
+      name: 云鲸J6一期既有安装锚点
+      anchor:
+        kind: room_anchor
+        ref: guest_bath
+        wall_side: west
+        service_ref: sock_gbath_robot
+      source_refs:
+        fact_refs:
+          - j6-phase1
+        decision_refs:
+          - user-request-20260912-j6-phase1
+          - DEC-2026-09-09-R6
+      views:
+        plan:
+          required: true
+          origin: guest_bath room center
+          axes: x东西/z南北
+          direction: north=-z
+          position:
+            x: 6.823
+            z: 3.925
+          rotation: 270
+          dimensions:
+            width: 0.41
+            depth: 0.4335
+          dimension_semantics: config/house.yaml既有J6实尺寸模型
+        elevation:
+          required: true
+          viewing_side: west
+          vertical_axis: 'y'
+          position:
+            floor_y: 0
+          height: 0.198
+          dimensions:
+            width: 0.41
+            height: 0.198
+          dimension_semantics: J6上下水版既有协调尺寸
+        section:
+          required: true
+          cut_direction: east-west
+          depth_axis: x
+          position:
+            x: 6.823
+            z: 3.925
+          dimensions:
+            depth: 0.4335
+            height: 0.198
+          dimension_semantics: 台盆柜下安装包络
+      geometry:
+        position:
+          x: 6.823
+          z: 3.925
+          rotation: 270
+        dimensions:
+          width: 0.41
+          depth: 0.4335
+          height: 0.198
+        status: existing_candidate_site_pending
+      constraints:
+        - 沿用已建模的客卫台盆下主位
+        - 不改家具坐标或配方
+        - 采购前复核具体版本与柜下净空
+        - 自动进水和墙排现场条件未确认
+      interfaces:
+        - id: j6-power
+          target: sock_gbath_robot
+          kind: electrical
+          status: site_pending
+        - id: j6-water-drain
+          target: drain_gbath_vanity
+          kind: plumbing
+          status: site_pending
+      validation_refs:
+        - verify:furniture
+        - verify:mep
+        - phase1 API object audit
+        - handover_measurement
+      status: blocked
+    - id: datum-master-phase1
+      name: 主卧一期家具范围锚点
+      anchor:
+        kind: room_anchor
+        ref: master_bedroom
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - master-phase1
+          - master-rack
+          - pending-room-measurement
+        decision_refs:
+          - user-request-20260912-phase1-minimum-waste
+      views:
+        plan:
+          required: true
+          origin: master_bedroom room center
+          axes: x东西/z南北
+          direction: north=-z
+          position: null
+          rotation: null
+          dimensions: null
+          dimension_semantics: site_pending
+        elevation:
+          required: true
+          viewing_side: room interior
+          vertical_axis: 'y'
+          position: null
+          height: null
+          dimensions: null
+          dimension_semantics: site_pending
+        section:
+          required: true
+          cut_direction: north-south
+          depth_axis: z
+          position: null
+          dimensions: null
+          dimension_semantics: site_pending
+      geometry:
+        position: null
+        dimensions: null
+        status: site_pending
+      constraints:
+        - 主卧床/床垫/两床头柜/过渡斗柜列入一期
+        - 衣架型号和尺寸确认前不建模
+        - 通道与空调检修净空现场复核
+      interfaces:
+        - id: master-bedside-electrical
+          target: master_bedside_north
+          kind: electrical
+          status: site_pending
+        - id: hvac-inspection
+          target: master_transitional_rack
+          kind: maintenance
+          status: site_pending
+      validation_refs:
+        - handover_measurement
+        - furniture_shop_drawings
+        - verify:furniture
+      status: blocked
+    - id: datum-parent-phase1
+      name: 父母房一期家具范围锚点
+      anchor:
+        kind: room_anchor
+        ref: study
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - parent-phase1
+          - pending-room-measurement
+        decision_refs:
+          - user-request-20260912-phase1-minimum-waste
+      views:
+        plan:
+          required: true
+          origin: study room center
+          axes: x东西/z南北
+          direction: north=-z
+          position: null
+          rotation: null
+          dimensions: null
+          dimension_semantics: site_pending
+        elevation:
+          required: true
+          viewing_side: room interior
+          vertical_axis: 'y'
+          position: null
+          height: null
+          dimensions: null
+          dimension_semantics: site_pending
+        section:
+          required: true
+          cut_direction: north-south
+          depth_axis: z
+          position: null
+          dimensions: null
+          dimension_semantics: site_pending
+      geometry:
+        position: null
+        dimensions: null
+        status: site_pending
+      constraints:
+        - 父母房床/床垫/成品衣柜列入一期
+        - 成品衣柜防倾倒和通道现场复核
+      interfaces:
+        - id: wardrobe-fixing
+          target: parent_wardrobe
+          kind: construction
+          status: site_pending
+      validation_refs:
+        - handover_measurement
+        - furniture_shop_drawings
+        - verify:furniture
+      status: blocked
+    - id: datum-living-phase1
+      name: 客餐厅一期家具范围锚点
+      anchor:
+        kind: room_anchor
+        ref: living_dining
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - living-phase1
+          - deferred-furniture
+          - pending-room-measurement
+        decision_refs:
+          - user-request-20260912-phase1-minimum-waste
+      views:
+        plan:
+          required: true
+          origin: living_dining room center
+          axes: x东西/z南北
+          direction: north=-z
+          position: null
+          rotation: null
+          dimensions: null
+          dimension_semantics: site_pending
+        elevation:
+          required: true
+          viewing_side: room interior
+          vertical_axis: 'y'
+          position: null
+          height: null
+          dimensions: null
+          dimension_semantics: site_pending
+        section:
+          required: true
+          cut_direction: east-west
+          depth_axis: x
+          position: null
+          dimensions: null
+          dimension_semantics: site_pending
+      geometry:
+        position: null
+        dimensions: null
+        status: site_pending
+      constraints:
+        - 一期只列沙发/餐桌椅/玄关收纳组合
+        - 客厅低柜/电视/咖啡桌/地灯/绿植二期
+        - 搬运和主通道现场复核
+      interfaces:
+        - id: entry-electrical
+          target: entry_storage
+          kind: electrical
+          status: site_pending
+        - id: tv-reservation
+          target: living_tv
+          kind: electrical
+          status: deferred_to_phase_2
+      validation_refs:
+        - handover_measurement
+        - furniture_shop_drawings
+        - verify:furniture
+      status: blocked
+    - id: datum-bedroom-phase-boundaries
+      name: 东南书房与西北次卧阶段边界锚点
+      anchor:
+        kind: room_anchor
+        ref: bedroom_se
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - nw-curtain
+          - deferred-furniture
+          - pending-room-measurement
+        decision_refs:
+          - user-request-20260912-phase1-minimum-waste
+      views:
+        plan:
+          required: true
+          origin: bedroom_se room center
+          axes: x东西/z南北
+          direction: north=-z
+          position: null
+          rotation: null
+          dimensions: null
+          dimension_semantics: site_pending
+        elevation:
+          required: false
+          viewing_side: room interior
+          vertical_axis: 'y'
+          position: null
+          height: null
+          dimensions: null
+          dimension_semantics: site_pending
+        section:
+          required: false
+          cut_direction: north-south
+          depth_axis: z
+          position: null
+          dimensions: null
+          dimension_semantics: site_pending
+      geometry:
+        position: null
+        dimensions: null
+        status: site_pending
+      constraints:
+        - 东南书房全部家具二期
+        - 西北次卧床/柜/书桌/椅子/置物架二期且仅窗帘一期
+        - 二期对象不因全案config模型而提前采购
+      interfaces:
+        - id: study-power-reservation
+          target: study_furniture
+          kind: electrical
+          status: deferred_to_phase_2
+        - id: nw-curtain-box
+          target: nw_curtain
+          kind: construction
+          status: site_pending
+      validation_refs:
+        - phase2_scope
+        - curtain_measurement
+        - handover_measurement
+      status: blocked
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: phase1-scope-20260912
+  subject: 一期家具逐房范围冻结（最低浪费、保证日常）
+  created_at: '2026-09-12T22:00:00+08:00'
+  status: decision_brief_frozen
+  updated_at: '2026-09-12T22:00:00+08:00'
+  source_policy:
+    authority_refs:
+      - schedule/phase-1/control.yaml
+      - schedule/roadmap.yaml
+      - schedule/phase-2/control.yaml
+      - config/house.yaml
+    observation_refs:
+      - docs/decision_log.md
+    measurement_refs: []
+    runtime_refs: []
+    evidence_refs: []
+  facts:
+    confirmed:
+      - id: phase-budget
+        category: confirmed
+        statement: 一期上限203000元且已全部分配，必需家电预算为12000元，其中云鲸J6为业主确认的3000元追加预算
+        value:
+          ceiling_cny: 203000
+          allocated_cny: 203000
+          unallocated_cny: 0
+          appliance_budget_cny: 12000
+          robot_vacuum_cny: 3000
+        source_refs:
+          - schedule/phase-1/control.yaml
+          - docs/decision_log.md
+        basis: 一期执行控制源与业主追加决定
+        confidence: high
+        impact: material
+        affected_objects:
+          - all_phase1_furnishings
+          - robot_dock_gbath
+        affected_views:
+          - plan
+          - perspective
+        owner: project
+        status: resolved
+        verification_method: schedule:render
+      - id: cad-baseline
+        category: confirmed
+        statement: 邻居CAD和现有config/house.yaml只作为预演与全案基线，实际完成面尺寸、通道、固定和防倾倒条件仍需交房量房
+        value:
+          measurement_status: site_pending
+        source_refs:
+          - docs/decision_log.md:1337-1345
+          - schedule/phase-1/control.yaml:178-218
+        basis: 项目当前尚未交房
+        confidence: high
+        impact: material
+        affected_objects:
+          - all_furnishings
+        affected_views:
+          - plan
+          - perspective
+        owner: site
+        status: open
+        verification_method: handover survey
+    user_decision:
+      - id: j6-phase1
+        category: user_decision
+        statement: 云鲸J6上下水版按3000元追加进入一期并从二期移除
+        value:
+          model: 云鲸J6上下水版
+          planned_cny: 3000
+          phase: phase_1_basic_occupancy
+        source_refs:
+          - docs/decision_log.md
+          - schedule/phase-1/control.yaml
+        basis: 业主明确回复“J6就3000块，追加到一期里”
+        confidence: high
+        impact: material
+        affected_objects:
+          - robot_dock_gbath
+        affected_views:
+          - plan
+          - perspective
+        owner: user
+        status: resolved
+        verification_method: phase scope API and schedule reconciliation
+      - id: master-phase1
+        category: user_decision
+        statement: 主卧一期保留床、床垫、两只床头柜和过渡斗柜
+        value:
+          bed: 1
+          mattress: 1
+          bedside_cabinets: 2
+          transitional_dresser: 1
+        source_refs:
+          - docs/decision_log.md:1337-1345
+        basis: 业主冻结最低浪费、保证日常范围
+        confidence: high
+        impact: material
+        affected_objects:
+          - master_bed
+          - master_mattress
+          - master_bedside_north
+          - master_bedside_south
+          - master_transitional_dresser
+        affected_views:
+          - plan
+          - perspective
+        owner: user
+        status: resolved
+        verification_method: phase1 procurement checklist
+      - id: master-rack
+        category: user_decision
+        statement: 主卧衣架待选宜家或其他可复用成品，尺寸未定前不进入config/house.yaml建模
+        value:
+          quantity: 1
+          model: pending
+          modeled: false
+        source_refs:
+          - docs/decision_log.md:1337-1345
+          - schedule/phase-1/control.yaml:1039-1042
+        basis: 避免未定尺寸对象污染几何与渲染基线
+        confidence: high
+        impact: material
+        affected_objects:
+          - master_transitional_rack
+        affected_views:
+          - plan
+          - perspective
+        owner: user
+        status: resolved
+        verification_method: 采购前现场复尺
+      - id: parent-phase1
+        category: user_decision
+        statement: 父母房一期保留床、床垫和成品衣柜
+        value:
+          bed: 1
+          mattress: 1
+          wardrobe: 1
+        source_refs:
+          - docs/decision_log.md:1337-1345
+          - schedule/phase-1/control.yaml:1035-1038
+          - schedule/phase-1/control.yaml:1041
+        basis: 两人入住的必要家具
+        confidence: high
+        impact: material
+        affected_objects:
+          - parent_bed
+          - parent_mattress
+          - parent_wardrobe
+        affected_views:
+          - plan
+          - perspective
+        owner: user
+        status: resolved
+        verification_method: furniture procurement checklist
+      - id: living-phase1
+        category: user_decision
+        statement: 客餐厅一期保留沙发、餐桌椅和玄关收纳组合
+        value:
+          sofa: 1
+          dining_table: 1
+          dining_chairs: 4
+          entry_storage: 1
+        source_refs:
+          - docs/decision_log.md:1337-1345
+          - schedule/phase-1/control.yaml:1038-1041
+        basis: 日常起居、用餐和入户收纳最低闭环
+        confidence: high
+        impact: material
+        affected_objects:
+          - living_sofa
+          - dining_table
+          - dining_chairs
+          - entry_storage
+        affected_views:
+          - plan
+          - perspective
+        owner: user
+        status: resolved
+        verification_method: completed-room measurement and installation check
+      - id: nw-curtain
+        category: user_decision
+        statement: 西北次卧一期仅保留窗帘，家具全部后移二期
+        value:
+          curtain: phase_1
+          furniture: phase_2
+        source_refs:
+          - schedule/phase-1/control.yaml:984
+          - schedule/phase-1/control.yaml:1037
+          - schedule/phase-2/control.yaml:31
+        basis: 明确区分遮光需求与可延后家具
+        confidence: high
+        impact: material
+        affected_objects:
+          - nw_curtain
+          - nw_furniture
+        affected_views:
+          - plan
+          - elevation
+        owner: user
+        status: resolved
+        verification_method: curtain measurement and phase checklist
+      - id: deferred-furniture
+        category: user_decision
+        statement: 客厅低柜、电视、咖啡桌、地灯、绿植、主卧梳妆桌凳、东南书房家具及西北次卧家具均二期
+        value:
+          phase: phase_2
+        source_refs:
+          - docs/decision_log.md:1337-1345
+          - schedule/roadmap.yaml:16-24
+          - schedule/phase-2/control.yaml:20-35
+        basis: 预算压缩下优先保证日常使用
+        confidence: high
+        impact: material
+        affected_objects:
+          - living_low_cabinet
+          - living_tv
+          - living_coffee_table
+          - living_floor_lamp
+          - living_plant
+          - master_dressing_table
+          - master_dressing_stool
+          - study_furniture
+          - nw_furniture
+        affected_views:
+          - plan
+          - perspective
+        owner: user
+        status: resolved
+        verification_method: phase scope audit
+    site_pending:
+      - id: pending-room-measurement
+        category: site_pending
+        statement: 一期所有家具的完成面尺寸、搬运路径、墙体固定和防倾倒条件尚未现场复核
+        value: null
+        source_refs:
+          - schedule/phase-1/control.yaml:178-218
+        basis: 当前尚未交房
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - all_phase1_furnishings
+        affected_views:
+          - plan
+          - perspective
+        owner: site
+        status: open
+        verification_method: 交房量房和家具深化
+      - id: pending-rack-selection
+        category: site_pending
+        statement: 主卧过渡衣架品牌、型号和尺寸未定
+        value: null
+        source_refs:
+          - schedule/phase-1/control.yaml:1039-1042
+        basis: 优先宜家等可复用成品但尚未选型
+        confidence: not_applicable
+        impact: low
+        affected_objects:
+          - master_transitional_rack
+        affected_views:
+          - plan
+          - perspective
+        owner: user
+        status: open
+        verification_method: 采购前复尺
+  unknowns_requiring_alignment: []
+  notes:
+    - 本轮只冻结一期采购边界和二期排除项，不把未定尺寸衣架写入config/house.yaml，也不改变全案几何基线。
+    - 一期家具包已拆成父母房成品衣柜、主卧过渡斗柜和待选衣架；东南书房、西北次卧家具及客厅影音/小件全部标记deferred_to_phase_2。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: phase1-scope-20260912
+  subject: 一期家具逐房范围冻结（最低浪费、保证日常）
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: guest_bath_j6_phase1
+      type: appliance
+      archetypes:
+        - robot_vacuum
+        - automatic_water_dock
+      owner: appliance_supplier
+      function: 一期日常清洁与防尘
+      material: existing_model_candidate
+      geometry_source: config/house.yaml robot_dock_gbath; no coordinate changes
+      datum_refs:
+        - datum-j6-phase1
+      fact_refs:
+        - j6-phase1
+      decision_refs:
+        - user-request-20260912-j6-phase1
+        - DEC-2026-09-09-R6
+      dependencies: []
+      interfaces:
+        - id: power
+          target: sock_gbath_robot
+          kind: electrical
+          status: site_pending
+        - id: water-drain
+          target: drain_gbath_vanity
+          kind: plumbing
+          status: site_pending
+      collision:
+        policy: reviewed
+        geometry_ref: config/house.yaml
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 可抽出检修设备
+        access_clearance: site_pending
+        replaceable_parts:
+          - 尘袋
+          - 清洁液
+          - 耗材
+      parts: []
+      visual_relationships:
+        - target_object_id: guest_bath_vanity
+          relation: nested_below
+          requirement: 完整藏入悬空台盆柜下且可抽出检修
+      validation_refs:
+        - phase1 API object audit
+        - handover_measurement
+        - commissioning_record
+      status: blocked
+    - id: master_phase1_furniture
+      type: furniture
+      archetypes:
+        - bed
+        - mattress
+        - bedside_cabinet
+        - dresser
+      owner: furniture
+      function: 主卧日常睡眠与过渡收纳
+      material: reusable_finished_products
+      geometry_source: phase1 procurement; no new coordinates
+      datum_refs:
+        - datum-master-phase1
+      fact_refs:
+        - master-phase1
+      decision_refs:
+        - user-request-20260912-phase1-minimum-waste
+      dependencies: []
+      interfaces:
+        - id: bedside-power
+          target: master_bedside_north
+          kind: electrical
+          status: blocked
+      collision:
+        policy: reviewed
+        geometry_ref: site_measurement
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 可移动家具
+        access_clearance: site_pending
+        replaceable_parts:
+          - 床垫
+      parts: []
+      visual_relationships:
+        - target_object_id: master_bed
+          relation: grouped
+          requirement: 两床头柜服务床头两侧
+      validation_refs:
+        - handover_measurement
+        - furniture_shop_drawings
+      status: blocked
+    - id: master_transitional_rack
+      type: furniture
+      archetypes:
+        - clothes_rack
+      owner: furniture
+      function: 主卧衣物过渡收纳
+      material: reusable_finished_product
+      geometry_source: none until product selected
+      datum_refs:
+        - datum-master-phase1
+      fact_refs:
+        - master-rack
+        - pending-rack-selection
+      decision_refs:
+        - user-request-20260912-phase1-minimum-waste
+      dependencies: []
+      interfaces:
+        - id: hvac-inspection
+          target: master_hvac
+          kind: maintenance
+          status: blocked
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: handover_measurement
+      maintenance:
+        boundary: 可移动家具
+        access_clearance: site_pending
+        replaceable_parts: []
+      parts: []
+      visual_relationships: []
+      validation_refs:
+        - product_selection
+        - handover_measurement
+      status: blocked
+    - id: parent_phase1_furniture
+      type: furniture
+      archetypes:
+        - bed
+        - mattress
+        - wardrobe
+      owner: furniture
+      function: 父母房日常睡眠与衣物收纳
+      material: reusable_finished_products
+      geometry_source: phase1 procurement; no new coordinates
+      datum_refs:
+        - datum-parent-phase1
+      fact_refs:
+        - parent-phase1
+      decision_refs:
+        - user-request-20260912-phase1-minimum-waste
+      dependencies: []
+      interfaces:
+        - id: anti-tip-fixing
+          target: parent_wardrobe
+          kind: construction
+          status: blocked
+      collision:
+        policy: reviewed
+        geometry_ref: site_measurement
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 可移动或防倾倒固定
+        access_clearance: site_pending
+        replaceable_parts:
+          - 门板
+          - 层板
+      parts: []
+      visual_relationships: []
+      validation_refs:
+        - handover_measurement
+        - furniture_shop_drawings
+      status: blocked
+    - id: living_phase1_furniture
+      type: furniture
+      archetypes:
+        - sofa
+        - dining_table
+        - dining_chair
+        - entry_storage
+      owner: furniture
+      function: 客餐厅起居、用餐和入户收纳
+      material: reusable_finished_products
+      geometry_source: phase1 procurement; no new coordinates
+      datum_refs:
+        - datum-living-phase1
+      fact_refs:
+        - living-phase1
+      decision_refs:
+        - user-request-20260912-phase1-minimum-waste
+      dependencies: []
+      interfaces:
+        - id: entry-power
+          target: entry_storage
+          kind: electrical
+          status: blocked
+      collision:
+        policy: reviewed
+        geometry_ref: site_measurement
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 可移动或防倾倒固定
+        access_clearance: site_pending
+        replaceable_parts: []
+      parts: []
+      visual_relationships:
+        - target_object_id: dining_table
+          relation: grouped
+          requirement: 保留主通道
+      validation_refs:
+        - handover_measurement
+        - furniture_shop_drawings
+      status: blocked
+    - id: nw_curtain_phase1
+      type: curtain
+      archetypes:
+        - manual_curtain
+      owner: curtain_supplier
+      function: 西北次卧遮光和隐私
+      material: site_selection
+      geometry_source: schedule/phase-1/control.yaml
+      datum_refs:
+        - datum-bedroom-phase-boundaries
+      fact_refs:
+        - nw-curtain
+      decision_refs:
+        - user-request-20260912-phase1-minimum-waste
+      dependencies: []
+      interfaces:
+        - id: curtain-box
+          target: nw_window
+          kind: construction
+          status: blocked
+      collision:
+        policy: reviewed
+        geometry_ref: site_measurement
+        review_ref: curtain_check
+      maintenance:
+        boundary: 可拆洗
+        access_clearance: site_pending
+        replaceable_parts:
+          - 布帘
+          - 轨道
+      parts: []
+      visual_relationships: []
+      validation_refs:
+        - curtain_measurement
+        - handover_measurement
+      status: blocked
+    - id: phase2_deferred_furniture
+      type: furniture
+      archetypes:
+        - custom_wardrobe
+        - low_cabinet
+        - tv
+        - coffee_table
+        - floor_lamp
+        - plant
+        - dressing_table
+        - dressing_stool
+        - study_furniture
+        - nw_furniture
+      owner: furniture
+      function: 明确排除的一期家具
+      material: phase2_selection
+      geometry_source: config/house.yaml; source baseline only
+      datum_refs:
+        - datum-living-phase1
+        - datum-bedroom-phase-boundaries
+        - datum-master-phase1
+      fact_refs:
+        - deferred-furniture
+      decision_refs:
+        - user-request-20260912-phase1-minimum-waste
+      dependencies: []
+      interfaces:
+        - id: phase2-power-reservation
+          target: reserved_circuits
+          kind: electrical
+          status: planned
+      collision:
+        policy: none
+        geometry_ref: null
+        review_ref: phase2_scope_review
+      maintenance:
+        boundary: 二期采购与深化
+        access_clearance: site_pending
+        replaceable_parts: []
+      parts: []
+      visual_relationships: []
+      validation_refs:
+        - phase2_scope
+      status: planned
+  notes:
+    - 本manifest只登记范围与责任边界；不授权修改config/house.yaml中的全案渲染对象。
+    - 未定尺寸主卧衣架不建模，选型后另开迭代。
+    - 云鲸J6沿用既有客卫台盆下模型与机电协调点，本轮只改变阶段归属和预算，不改变几何。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: phase1-scope-20260912
+  subject: 一期家具逐房范围冻结（最低浪费、保证日常）
+  state: blocked
+  state_note: 最终 r4 浏览器证据已登记并确认一期预算/J6 运行时对象；独立美学与功能评审均因证据范围及 site_pending 条件保持 BLOCKED。
+  source_version:
+    config_refs:
+      - config/house.yaml
+      - config/layout/model-geometry.yaml
+      - schedule/phase-1/control.yaml
+      - schedule/roadmap.yaml
+      - schedule/phase-2/control.yaml
+    asset_refs: []
+    render_facts_ref: 待app/server取证后登记
+    source_digest: phase1-scope-20260912-j6-phase1-r4
+    generated_at: '2026-09-12T15:52:14+08:00'
+  validation:
+    commands:
+      - npm run schedule:render
+      - npm run verify:all
+      - npm run verify:furniture
+      - npm run test:server
+      - npm run typecheck
+      - npm run test:app
+    results: []
+    config_status: PENDING
+    geometry_status: PENDING_SITE_MEASUREMENT
+    consistency_status: PENDING
+    functional_checks_status: PENDING_SITE_MEASUREMENT
+    application_status: PASS_RUNTIME_EVIDENCE
+    typecheck_status: PENDING
+    generated_files_touched_directly: false
+  evidence:
+    - id: phase1-j6-final-closeup-r4
+      status: valid
+      view: guest_bath_j6_closeup
+      url: http://127.0.0.1:5173/?v=j6-phase1-final-r4
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      phase: phase_1_basic_occupancy
+      camera:
+        mode: orbit
+        position:
+          - 6
+          - 0.8
+          - 3
+        target:
+          - 6.823
+          - 0.2
+          - 3.925
+        is_overview: false
+      object_ids:
+        - furniture:guest_bath:robot_dock_gbath:4
+      runtime_query: evidence/phase1-j6-final-runtime.json
+      snapshot: evidence/phase1-j6-final-closeup-snapshot.txt
+      png: evidence/phase1_j6_final_closeup_r4.png
+      source_version: phase1-scope-20260912-j6-phase1-r4
+      notes: 目标 J6 在客卫台盆柜下方/旁侧近景中可见；PNG 同时保留应用 UI chrome，审美评审不将其视作清洁交付图。
+    - id: phase1-j6-budget-r4
+      status: valid
+      view: phase1_budget_and_j6_catalog
+      url: http://127.0.0.1:5173/?v=j6-phase1-final-r4
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      phase: phase_1_basic_occupancy
+      camera:
+        mode: orbit
+        position:
+          - 6
+          - 0.8
+          - 3
+        target:
+          - 6.823
+          - 0.2
+          - 3.925
+        is_overview: false
+      object_ids:
+        - furniture:guest_bath:robot_dock_gbath:4
+      runtime_query: evidence/phase1-j6-final-runtime.json
+      snapshot: evidence/phase1-j6-budget-middle-snapshot.txt
+      png: evidence/phase1_j6_budget_middle_r4.png
+      source_version: phase1-scope-20260912-j6-phase1-r4
+      notes: 同版本 UI 证据显示 robot_vacuum_narwal_j6_01、203000 元一期上限/已分配和 128449.954 元动态估算；预算截图用于数据上下文，不替代目标物审美图。
+    - id: pre-r4-hmr-captures
+      status: diagnostic
+      superseded_by: phase1-scope-20260912-j6-phase1-r4
+      artifacts:
+        - evidence/phase1_j6_after_r1.png
+        - evidence/phase1_j6_closeup_r3.png
+        - evidence/phase1_j6_closeup_collapsed_r3.png
+        - evidence/phase1_j6_closeup_hiddenpanel_r3.png
+        - evidence/phase1_j6_closeup_minimized_r3.png
+        - evidence/phase1_j6_southlow_r3.png
+        - evidence/phase1_j6_floorlevel_r3.png
+        - evidence/phase1-j6-runtime-snapshot.txt
+        - evidence/phase1-j6-closeup-snapshot.txt
+        - evidence/phase1-j6-closeup-collapsed-snapshot.txt
+        - evidence/phase1-j6-closeup-hiddenpanel-snapshot.txt
+        - evidence/phase1-j6-closeup-minimized-snapshot.txt
+        - evidence/phase1-j6-southlow-snapshot.txt
+        - evidence/phase1-j6-floorlevel-snapshot.txt
+      reason: 这些文件在最终实现 HMR/源版本稳定前采集，或未能清晰证明目标关系；保留用于复盘，不得作为最终评审证据。
+  aesthetic_review:
+    verdict: BLOCKED
+    review_file: evidence/aesthetic-review-final.json
+    blocking_issues:
+      - 最终同版本近景已证明 J6 存在，但只有带应用 chrome 的低机位 debug 视图，缺少可判断比例、材质、层次和台盆柜开口关系的清洁 room-context 视图
+    non_blocking_notes:
+      - J6 在最终近景中可见并与客卫台盆柜同框；旧 HMR 前截图已标 diagnostic/superseded，不参与结论
+    evidence_refs:
+      - evidence/aesthetic-review-final.json
+      - evidence/phase1-j6-final-runtime.json
+      - evidence/phase1-j6-final-closeup-snapshot.txt
+      - evidence/phase1_j6_final_closeup_r4.png
+    requested_changes: []
+    assumptions:
+      - 邻居CAD仅作为预演基线，不能替代完成面视觉证据
+      - J6 产品外观和台盆柜开口完成面仍待选型/量房
+  functional_review:
+    verdict: BLOCKED
+    review_file: evidence/functional-review-final.json
+    blocking_issues:
+      - J6 实机型号、柜下净高、机器人进出净空、自动上下水、电气防溅和检修接口仍 site_pending，运行时尺寸不能替代现场/产品确认
+      - 主卧过渡衣架未选型或建模，无法验证一期动线、净空和维护边界
+    non_blocking_notes:
+      - 最终运行时无配置错误横幅；一期预算上限与已分配均为 203000 元，动态 appliances 为 7800 元
+    evidence_refs:
+      - evidence/functional-review-final.json
+      - evidence/phase1-j6-final-runtime.json
+      - evidence/phase1-j6-final-body.txt
+      - evidence/phase1_j6_final_closeup_r4.png
+    requested_changes: []
+    assumptions:
+      - 未定尺寸衣架不进入模型
+      - 一期范围控制源已冻结但不等同施工验收
+      - 0.41m × 0.4335m 为预演 datum，不是已确认采购型号尺寸
+  risks:
+    - 邻居CAD不是施工尺寸
+    - 一期未分配额度为0，预备金/contingency 仍按 control.yaml 管理
+    - 云鲸J6 客卫台盆下自动上下水、柜下净空、进出路径与检修条件待现场确认
+    - 全案config/house.yaml仍包含二期对象，取证必须使用一期过滤逻辑
+    - 主卧衣架未选型
+    - 审美清洁视图不足，当前不能给出最终视觉 PASS
+  retrospective:
+    triggered: true
+    triggers:
+      - 最终实现 HMR 在前期浏览器取证期间发生，旧截图与运行时版本不再一致；旧证据已按 diagnostic/superseded 处理
+    records:
+      - trigger_id: RETRO-2026-09-12-HMR-R4
+        iteration: 2
+        failure_evidence_refs:
+          - evidence/phase1_j6_after_r1.png
+          - evidence/phase1_j6_closeup_r3.png
+          - evidence/phase1-j6-runtime-snapshot.txt
+        last_change: 实现代理更新 app/src/App.ts 并触发 HMR
+        root_cause: environment/external-workspace-version-mismatch
+        confidence: confirmed
+        recovery: 源文件稳定后复用同一独占 session reload，重新选择一期并采集 source digest phase1-scope-20260912-j6-phase1-r4 的 runtime/snapshot/PNG
+    rebaselined: true
+  delivery:
+    status: verification_blocked
+    blocking_issues:
+      - 独立美学评审 BLOCKED：缺少清洁 room-context 视图
+      - 独立功能评审 BLOCKED：J6 实机/接口/净空与现场量房未完成
+      - 主卧过渡衣架未选型，相关动线与检修净空未验证
+    completion_conditions:
+      - 同版本agent-browser证据齐全且一期场景包含robot_dock_gbath
+      - 美学和功能review均PASS
+      - 交房后家具与J6接口复核完成
+    follow_up_site_pending:
+      - 云鲸J6具体版本与柜下净空、进水、墙排和检修条件
+      - 一期家具完成面复尺
+      - 主卧衣架型号与尺寸
+      - 父母房成品衣柜防倾倒
+      - 客餐厅玄关收纳组合尺寸与插座避让
+    delivery_ready: false
+    delivered_at: null
+    delivery_notes: r4 运行时证据已完成并绑定 source digest；评审和现场条件仍阻塞交付，当前不得将本 manifest 标记为 delivery_ready。
+  git: 本轮未执行任何 git 操作

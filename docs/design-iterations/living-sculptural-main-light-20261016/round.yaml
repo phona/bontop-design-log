@@ -1,0 +1,884 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: living-sculptural-main-light-20261016
+index:
+  order: 26
+  topic: living
+  review_state: none
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-20261016
+  subject: 客厅浅吸顶雕塑主灯
+  priority:
+    user_goal: 在现代轻中古胡桃风格中为客厅建立视觉重心，同时保留宽面主光并避免由餐桌决定灯位。
+    ranked:
+      - 视觉造型能成为客厅起居区焦点
+      - 宽面漫射、3000K、Ra≥90 的功能要求仍可验证
+      - 保留现有客厅电气锚点，餐桌摆位独立
+      - 灯具低矮、适配原顶2.80m
+    non_negotiables:
+      - 不恢复集中窄束轨道灯作为客厅唯一基础光
+      - 不新增一圈灯槽来替代功能照明
+      - 不暗中修改餐桌、餐厅吊灯、电气回路、墙控或吊顶几何
+    tradeoffs_accepted: []
+  frozen: true
+  freeze_record:
+    alignment_id: align-envelope-20261016
+    original_user_response: 好，开始；模型外轮廓选择1000×1000×120mm（沿用参考灯的1m体量）。
+    normalized_decisions:
+      - 客厅主灯采用浅吸顶、偏心暖铜弧+乳白漫射盘造型。
+      - 视觉锚定现有客厅主灯位，不按餐桌桌心定位。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-16'
+    evidence_refs:
+      - round.yaml（fact_table 段）#decision-focal-lamp
+      - round.yaml（fact_table 段）#decision-envelope
+  allowed_scope:
+    files:
+      - app/src/render/InteriorLightingSystem.ts
+      - shared/render/LightingFixtureBuilder.ts
+      - shared/render/SculpturalDomeGeometry.ts
+      - shared/types.ts
+      - config/render/lighting.yaml
+      - config/render/overrides.yaml
+      - shared/project-render-facts-schema.ts
+      - shared/project-render-facts-projection.ts
+      - docs/style-guide.md
+      - docs/decisions/06-electrical.md
+      - schedule/procurement.md
+      - docs/design-iterations/living-sculptural-main-light-20261016/
+    objects:
+      - light_living_dome
+    archetypes:
+      - broad_opal_diffuser
+      - offset_warm_bronze_arc
+    views:
+      - plan
+      - elevation
+      - perspective
+    changes:
+      - 在现有客厅主灯视觉锚点实现单个浅吸顶雕塑灯，浏览器与 GLB 共用几何。
+      - 更新决策记录，列明重开的旧结论、保留的照明约束及未知。
+  forbidden:
+    files:
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/mep-hvac-coordination.yaml
+      - config/ceiling.yaml
+      - config/house.yaml
+      - config/layout/model-geometry.yaml
+      - data/project-render-facts.json
+    objects:
+      - light_dining_pendant
+      - dining_table
+      - ceiling_living
+    assumptions:
+      - 不得把商品参数、真实光通量或 U0 写成已验证事实。
+      - 不得以当前概念造型代替现场承重、梁位或安装资料。
+    out_of_scope_changes:
+      - 删除餐桌吊灯点、回路、开关绑定或强电路由。
+      - 改动客厅吊顶、照明点位/回路/控制或采购 SKU。
+  open_questions:
+    - id: overall-envelope
+      category: geometry
+      question: 外轮廓宽×深×离顶总厚度选择？
+      fact_refs:
+        - round.yaml（fact_table 段）#overall-envelope
+      options:
+        - 800×800×100mm
+        - 1000×1000×120mm
+        - 先比较两个外轮廓
+      selected: 1000×1000×120mm
+      user_response: 1000×1000×120mm（推荐）：沿用参考灯的1m体量，焦点明确；客厅灯具包络较大，需复核风口/梁净距。
+      status: answered
+  alignment:
+    records:
+      - alignment_id: align-form-20261016
+        original_user_response: 好，开始
+        normalized_decision: 同意浅吸顶、偏心暖铜弧+乳白漫射盘，锚定客厅起居区现有主灯位。
+        fact_refs:
+          - round.yaml（fact_table 段）#decision-focal-lamp
+          - round.yaml（fact_table 段）#fact-existing-anchor
+        timestamp: '2026-10-16'
+      - alignment_id: align-envelope-20261016
+        original_user_response: 1000×1000×120mm（推荐）：沿用参考灯的1m体量，焦点明确；客厅灯具包络较大，需复核风口/梁净距。
+        normalized_decision: 灯具总外轮廓为外宽1.0m、外深1.0m、离顶总厚度0.12m。
+        fact_refs:
+          - round.yaml（fact_table 段）#decision-envelope
+          - round.yaml（fact_table 段）#fact-ceiling-plane
+        timestamp: '2026-10-16'
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run gate:visual (before and after)
+      - npm run typecheck
+    browser_evidence_required: true
+    required_views:
+      - perspective_living_light
+      - elevation_living_light
+      - top_down_fixture_envelope
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: pending
+    blocking_issues:
+      - 客厅总光通量口径在 procurement.md 中存在算术冲突；SKU/照度结论保持未冻结。
+      - 实际承重和灯具检修方式待现场/候选 SKU 核验。
+    done_when:
+      - 用户选定的1000×1000×120mm外轮廓在模型中按原顶锚点表达。
+      - 浏览器和 GLB 使用同一声明式灯具几何。
+      - same-version runtime views show target fixture and empty config-error banner.
+      - 独立审美/功能审查通过；不宣称未验证的真实照度。
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-20261016
+  subject: 客厅浅吸顶雕塑主灯
+  units: m
+  coordinate_system: Three.js 右手系，Y向上；水平面x东西、z南北；+x东、+z南；见 AGENTS.md。
+  status: frozen
+  datums:
+    - id: living-main-fixture
+      name: 客厅主灯现有天花锚点
+      anchor:
+        kind: ceiling_anchor
+        ref: light_living_dome
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - round.yaml（fact_table 段）#fact-existing-anchor
+          - round.yaml（fact_table 段）#fact-ceiling-plane
+        decision_refs:
+          - docs/decisions/06-electrical.md#DEC-2026-10-13-R1
+          - docs/decisions/06-electrical.md#DEC-2026-10-16-R1
+      views:
+        plan:
+          required: true
+          origin: 原点以该点灯具中心线为基准；全局坐标仍沿项目局部坐标。
+          axes: x东西，z南北
+          direction: 俯视北朝上(-z)，南朝下(+z)
+          position:
+            x: 10.8
+            z: 7.15
+          rotation: 0
+          dimensions:
+            length: 1
+            width: 1
+            depth: 0.12
+            offset: 0
+          dimension_semantics: overall
+        elevation:
+          required: true
+          viewing_side: 客厅起居区向上看；固定锚点对应原顶2.80m
+          vertical_axis: 'y'
+          height: 2.8
+          dimensions:
+            width: 1
+            height: 0.12
+            sill: null
+            datum_offset: 0
+          dimension_semantics: install_height
+        section:
+          required: true
+          cut_direction: 沿x方向剖过弧线最高点与灯具中心，展示偏心暖铜弧的浅拱和乳白盘厚度
+          depth_axis: z轴；弧线相对灯具中心向南偏置
+          clearances:
+            front: null
+            rear: null
+            top: 0
+            bottom: 0.12
+          thickness: 0.12
+          dimension_semantics: overall
+      geometry:
+        x: 10.8
+        'y': 2.8
+        z: 7.15
+        width: 1
+        depth: 1
+        height: 0.12
+        length: 1
+        rotation: 0
+        along: null
+      constraints:
+        - 沿用现有 light_living_dome 点位，避免变更电气/MEP路由。
+        - 灯体贴原顶、不得落入客厅北缘边吊包络；灯位位于边吊南缘z=5.55以南。
+        - 乳白漫射盘为主发光面；弧线为次要雕塑部件。
+        - 不以该概念模型代替实际梁位、固定承重或配光文件。
+      interfaces:
+        - 现有 strong-light-living 终点/高度保持；灯具外轮廓不得改变线路锚点。
+        - 光学目标3000K、Ra≥90、宽面漫射；流明 target unresolved。
+      validation_refs:
+        - tmp/screenshots/living-main-light/living_main_light_before_v001.png
+        - tmp/screenshots/living-main-light/living_main_light_after_context_view_v010.png
+        - tmp/screenshots/living-main-light/living_main_light_after_top_down_v008.png
+        - tmp/screenshots/living-main-light/living_main_light_after_elevation_profile_v002.png
+      status: frozen
+  notes:
+    - 外轮廓由业主确认1000×1000×120mm；弧线内部比例为本轮设计造型，随同机位审阅。
+    - 该尺寸是视觉模型包络，不是已选SKU或施工尺寸；现场承重/净距仍待量房和厂家资料。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-20261016
+  subject: 客厅主灯造型改为浅吸顶雕塑灯
+  created_at: '2026-10-16'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/electrical.yaml
+      - config/ceiling.yaml
+      - config/house.yaml
+      - config/render/lighting.yaml
+      - config/render/overrides.yaml
+      - schedule/procurement.md
+      - docs/style-guide.md
+      - docs/decisions/06-electrical.md
+    observation_refs:
+      - tmp/screenshots/living-main-light/living_main_light_before_v001.png
+      - tmp/screenshots/living-main-light/living_main_light_after_context_view_v010.png
+      - tmp/screenshots/living-main-light/living_main_light_after_top_down_v008.png
+      - tmp/screenshots/living-main-light/living_main_light_after_elevation_profile_v002.png
+    measurement_refs: []
+    runtime_refs:
+      - http://localhost:5175/; title=和萃 701 - 3D 装修设计; window.__APP__.isReady()=true; config-error-banner empty; camera=orbit focused on electrical:light_living_dome
+      - evidence/living_light_context_runtime.json; ready=true; errorBanner empty; visualPreviewActive=false; objectId=electrical:light_living_dome
+      - evidence/living_light_topdown_final_runtime.json; ready=true; errorBanner empty; visualPreviewActive=false; objectId=electrical:light_living_dome
+      - evidence/living_light_elevation_profile_runtime.json; ready=true; errorBanner empty; visualPreviewActive=false; objectId=electrical:light_living_dome
+    evidence_refs:
+      - npm run gate:visual => CLEAR; ceiling=50c1c81f9ec8; electrical=f2b49b7bcdb3; plumbing=7f1513d14f27; materials=64176f576326
+      - npm run typecheck => PASS
+      - npm run verify:lighting-config => PASS
+  entry_shape:
+    id: ''
+    category: confirmed
+    statement: ''
+    value: null
+    source_refs: []
+    basis: ''
+    confidence: high
+    impact: material
+    affected_objects: []
+    affected_views: []
+    owner: ''
+    status: open
+    verification_method: ''
+    user_confirmation_ref: null
+  facts:
+    confirmed:
+      - id: fact-existing-anchor
+        category: confirmed
+        statement: 现役客厅主灯点位 light_living_dome 为 x=10.80m、z=7.15m、安装高度 2.80m、3000K、回路 living_base；此次建议沿用点位、回路和控制关系。
+        value:
+          x: 10.8
+          z: 7.15
+          height_m: 2.8
+          temperature_k: 3000
+          circuit: living_base
+        source_refs:
+          - config/electrical.yaml
+          - config/electrical-topology.yaml
+        basis: 电气权威配置
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+          - control_living_entrance_corridor
+          - strong-light-living
+        affected_views:
+          - plan
+          - perspective
+        owner: project
+        status: resolved
+        verification_method: config、runtime objectId 与相机视图交叉核对
+        user_confirmation_ref: null
+      - id: fact-ceiling-plane
+        category: confirmed
+        statement: 客厅中部为原顶 2.80m；既有客厅北缘边吊止于 z=5.55m，主灯 z=7.15m 位于平顶区域。
+        value:
+          ceiling_height_m: 2.8
+          edge_drop_south_edge_z_m: 5.55
+          lamp_z_m: 7.15
+        source_refs:
+          - config/ceiling.yaml
+          - config/electrical.yaml
+        basis: 吊顶和电气权威配置
+        confidence: high
+        impact: material
+        affected_objects:
+          - ceiling_living
+          - light_living_dome
+        affected_views:
+          - plan
+          - elevation
+          - section
+        owner: project
+        status: resolved
+        verification_method: 同版本 Web runtime 与 config 核对
+        user_confirmation_ref: null
+      - id: fact-table-offset
+        category: confirmed
+        statement: 当前餐桌中心为 (9.80,3.45)m，临时六人布局整体南移 0.32m；客厅主灯点与当前桌心平面距离约 3.83m。
+        value:
+          table_center:
+            x: 9.8
+            z: 3.45
+          temporary_south_shift_m: 0.32
+          fixture_to_table_center_m: 3.83
+        source_refs:
+          - config/house.yaml
+          - config/electrical.yaml
+        basis: 按权威坐标计算 sqrt((10.8-9.8)^2+(7.15-3.45)^2)
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+          - dining_table
+        affected_views:
+          - plan
+          - perspective
+        owner: project
+        status: resolved
+        verification_method: 坐标计算并与当前布局配置核对
+        user_confirmation_ref: null
+      - id: fact-light-requirements
+        category: confirmed
+        statement: 客厅主灯保留宽漫射、3000K、Ra≥90、一般活动约100lx且目标均匀度 U0≥0.7 的项目要求；餐桌局部目标约150lx。客厅流明目标在采购记录内部存在算术冲突，7100–8500lm 与公式结果约9287.5lm尚未统一。
+        value:
+          cct_k: 3000
+          cri_min: 90
+          living_general_lux: 100
+          uniformity_u0_min: 0.7
+          dining_task_lux: 150
+          lumen_target_status: conflicting
+        source_refs:
+          - schedule/procurement.md
+          - docs/decisions/06-electrical.md
+        basis: 现行选型口径表及其后续算术冲突注记
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - light_living_dome
+          - light_dining_pendant
+        affected_views:
+          - perspective
+        owner: 业主+照明设计
+        status: open
+        verification_method: 在 SKU 决策前修正算量，并用厂家配光数据/计算验证工作面照度
+        user_confirmation_ref: null
+      - id: fact-current-render
+        category: confirmed
+        statement: 本轮实施前的 Web 基线以约400mm 半球 SphereGeometry 与 PointLight 表现 dome；详细灯具配置 fixtures 为空，不能表达本次雕塑造型。
+        value:
+          generic_dome_diameter_m: 0.4
+          detailed_fixtures: []
+        source_refs:
+          - app/src/render/InteriorLightingSystem.ts
+          - config/render/lighting.yaml
+        basis: 渲染代码和配置读取
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - perspective
+          - elevation
+        owner: project
+        status: resolved
+        verification_method: runtime target object inspection and source review
+        user_confirmation_ref: null
+      - id: fact-implemented-geometry
+        category: confirmed
+        statement: 实施后 light_living_dome 使用声明式1000×1000×120mm浅吸顶几何；乳白盘、偏心暖铜弧、铜色外圈与支撑由浏览器和GLB共用的几何生成器创建。
+        value:
+          outer_width_m: 1
+          outer_depth_m: 1
+          total_thickness_m: 0.12
+          arc_offset_z_m: 0.1
+          arc_sag_m: 0.035
+          arc_tube_radius_m: 0.01
+        source_refs:
+          - config/render/lighting.yaml
+          - shared/render/SculpturalDomeGeometry.ts
+          - app/src/render/InteriorLightingSystem.ts
+          - shared/render/LightingFixtureBuilder.ts
+        basis: 同版本 runtime dimensions/material query、浏览器截图与共享浏览器/GLB源码路径
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - perspective
+          - elevation
+          - plan
+        owner: project
+        status: resolved
+        verification_method: npm run verify:lighting-config、npm run typecheck、gate:visual CLEAR，并核对最终 runtime objectId/material/dimensions
+        user_confirmation_ref: 用户选择：1000×1000×120mm；‘好，开始’
+      - id: fact-prior-decision
+        category: confirmed
+        statement: DEC-2026-10-13-R1 以宽面漫射吸顶灯替换原点状轨道方案；本次只重开可见造型，不推翻均匀照明、显色、色温或桌面照度要求。
+        value: visual_form_reopened; photometric_requirements_preserved
+        source_refs:
+          - docs/decisions/06-electrical.md
+          - schedule/procurement.md
+        basis: 业主已明确要求主灯承担视觉重心，并确认新的浅吸顶造型
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - perspective
+          - elevation
+        owner: 业主
+        status: resolved
+        verification_method: 新 DEC 逐项列出被重开的旧结论及保留的工程约束
+        user_confirmation_ref: 用户原话：‘好，开始’
+    inferred:
+      - id: infer-form
+        category: inferred
+        statement: 大面积乳白漫射盘可保留主光面，单条偏心暖铜弧可增加可见轮廓而不把灯具变成多头点光组合。
+        value: broad_diffuser_plus_single_arc
+        source_refs:
+          - decision-focal-lamp
+          - docs/style-guide.md
+          - docs/decisions/06-electrical.md
+        basis: 造型提案与已冻结的宽漫射/克制中古风格相容；仍需照明和审美复核
+        confidence: medium
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - perspective
+          - elevation
+        owner: designer
+        status: open
+        verification_method: 同机位 A/B 截图及独立审美/功能复核
+        user_confirmation_ref: null
+    user_decision:
+      - id: decision-focal-lamp
+        category: user_decision
+        statement: 现代轻中古胡桃方向需要客厅视觉重心；主灯采用浅吸顶、偏心暖铜弧+乳白漫射盘，固定在起居区现有灯位，不以餐桌中心定位。
+        value: shallow_semi_flush; offset_warm_bronze_arc; broad_opal_diffuser; living_zone_anchor
+        source_refs:
+          - docs/style-guide.md
+          - conversation-2026-10-16
+        basis: 用户表示全屋普通吸顶灯过于单调，并对助手提出的具体形态回复‘好，开始’
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - perspective
+          - elevation
+          - section
+        owner: 业主
+        status: resolved
+        verification_method: 客厅主视角由业主审阅
+        user_confirmation_ref: 用户原话：‘好，开始’
+      - id: decision-envelope
+        category: user_decision
+        statement: 灯具模型外轮廓采用1000×1000×120mm（外宽×外深×离顶总厚度）。
+        value:
+          overall_width_m: 1
+          overall_depth_m: 1
+          overall_thickness_m: 0.12
+        source_refs:
+          - conversation-2026-10-16
+        basis: 用户选择沿用参考灯1m体量并指定浅吸顶总厚度
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - plan
+          - elevation
+          - section
+          - perspective
+        owner: 业主
+        status: resolved
+        verification_method: 模型同机位截图与runtime包络查询
+        user_confirmation_ref: 用户选择：1000×1000×120mm
+    site_pending:
+      - id: pending-mounting
+        category: site_pending
+        statement: 实际顶板/梁位置、接线盒承重与灯具固定方式须在量房和厂家安装图阶段确认；当前未交房且未施工。
+        value: null
+        source_refs:
+          - AGENTS.md
+          - docs/pending-site-data.md
+        basis: 当前项目施工状态与待现场测量条件
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - section
+        owner: 业主+电工+灯具供应商
+        status: open
+        verification_method: 量房提供梁位/板底；供应商提供安装底盘、重量及固定要求
+        user_confirmation_ref: null
+      - id: pending-serviceability
+        category: site_pending
+        statement: 驱动、电源与漫射盘的可更换方式、拆装和清洁要求尚未由具体 SKU 证明。
+        value: null
+        source_refs:
+          - docs/decisions/06-electrical.md
+          - schedule/procurement.md
+        basis: 当前仅做造型方案，尚无确定商品或说明书
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - section
+        owner: 业主+灯具供应商
+        status: open
+        verification_method: 在候选详情/说明书中核对拆装结构、驱动更换和保修条件
+        user_confirmation_ref: null
+  unknowns_requiring_alignment:
+    - id: overall-envelope
+      question: 雕塑灯总外轮廓采用多大？请确认外宽×外深×离顶总厚度。
+      reason_result_changes: 整体尺度会改变客厅顶面的视觉重心、对主灯点周边 HVAC/梁位的占用和渲染包络；没有数值不能建立可复核的几何模型。
+      fact_refs:
+        - decision-focal-lamp
+        - fact-existing-anchor
+        - fact-ceiling-plane
+      option_refs:
+        - 800×800×100mm
+        - 1000×1000×120mm
+        - 先比较两个外轮廓
+      status: answered
+      response: 1000×1000×120mm（推荐）：沿用参考灯的1m体量，焦点明确；客厅灯具包络较大，需复核风口/梁净距。
+  notes:
+    - 外轮廓已对齐；实际承重、配光、驱动检修仍保留现场/候选SKU待核。
+    - 先前 style-guide §11 的‘客厅建议取消独立主吊灯’由本轮用户决定重开；旧记录与理由不删除。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-20261016
+  subject: 客厅浅吸顶雕塑主灯
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: light_living_dome
+      type: sculptural_semi_flush_dome
+      archetypes:
+        - broad_opal_diffuser
+        - offset_warm_bronze_arc
+      owner: 业主
+      function: 客厅宽面基础照明与单一视觉焦点
+      material: 乳白漫射面；低反光暖铜/青铜弧线；具体表面光泽待验证
+      geometry_source: config/render/lighting.yaml 声明 + shared/render/SculpturalDomeGeometry.ts，浏览器与GLB共用
+      datum_refs:
+        - round.yaml（datum 段）#living-main-fixture
+      fact_refs:
+        - round.yaml（fact_table 段）#decision-focal-lamp
+        - round.yaml（fact_table 段）#fact-existing-anchor
+        - round.yaml（fact_table 段）#fact-light-requirements
+      decision_refs:
+        - docs/decisions/06-electrical.md#DEC-2026-10-13-R1
+        - docs/decisions/06-electrical.md#DEC-2026-10-16-R1
+      dependencies:
+        - electrical:light_living_dome
+        - circuit:living_base
+        - control_living_entrance_corridor
+      interfaces:
+        - id: electrical-anchor
+          target_object_id: light_living_dome
+          kind: electrical
+          requirement: 保留现有坐标/安装高度/回路/墙控成员；renderer只替换fixture geometry。
+          status: confirmed
+        - id: hvac-clearance
+          target_object_id: ceiling_living
+          kind: hvac
+          requirement: 主灯位位于边吊南缘以南；实机灯体、梁位、底盒与送风口净距仍需厂家/量房确认。
+          status: open
+        - id: replaceable-light-engine
+          target_object_id: light_living_dome
+          kind: maintenance
+          requirement: 后续候选应说明漫射盘、LED板、驱动器的拆换方式；服务由梯具完成且不拆吊顶。
+          status: open
+      collision:
+        policy: reviewed
+        geometry_ref: Ceiling-only object; no walkable collision requirement, but retain installation envelope/ceiling proximity review.
+        review_ref: round.yaml（review 段）#reviewers.functional
+      maintenance:
+        boundary: 灯具本体由灯具供应商/电工安装维护；业主清洁漫射盘。
+        access_clearance: null
+        replaceable_parts:
+          - opal_diffuser
+          - LED_board
+          - driver
+          - bronze_arc_fasteners
+        inspection_requirements:
+          - 确认灯罩拆开后可更换驱动与光源，不把可更换性写成事实直至候选说明书核实。
+          - 确认固定底盘与灯体重量、锚固方式；Site pending。
+      parts:
+        - id: opal-diffuser
+          role: 主照明的宽面乳白漫射发光面
+          independent: true
+          owner: 灯具供应商
+          material: 乳白扩散材料；实物SKU待选
+          geometry_source: shared lighting fixture geometry
+          datum_refs:
+            - round.yaml（datum 段）#living-main-fixture
+          dependencies:
+            - light-driver
+            - ceiling-anchor
+          collision: reviewed
+          maintenance_boundary: 能从灯具底侧拆卸并清洁/更换；具体结构待SKU
+          validation_refs: []
+        - id: offset-bronze-arc
+          role: 偏心弧线视觉轮廓，不承担主照度
+          independent: true
+          owner: 灯具供应商
+          material: 低反光暖铜/青铜饰面；建模为哑光/缎面暖铜，工艺待SKU
+          geometry_source: shared lighting fixture geometry
+          datum_refs:
+            - round.yaml（datum 段）#living-main-fixture
+          dependencies:
+            - ceiling-anchor
+          collision: reviewed
+          maintenance_boundary: 表面清洁与紧固件检查
+          validation_refs: []
+      visual_relationships:
+        - target_object_id: dining_table
+          relation: spaced
+          requirement: 主灯锚定客厅起居区；餐桌移动或改向不驱动主灯位置。
+          evidence_refs:
+            - round.yaml（fact_table 段）#fact-table-offset
+        - target_object_id: sofa_3seat
+          relation: adjacent
+          requirement: 在起居区形成焦点；弧线视觉尺度不得压过乳白发光面或沙发主体。
+          evidence_refs:
+            - round.yaml（fact_table 段）#fact-existing-anchor
+      validation_refs:
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
+        - tmp/screenshots/living-main-light/living_main_light_after_context_view_v010.png
+        - tmp/screenshots/living-main-light/living_main_light_after_top_down_v008.png
+        - tmp/screenshots/living-main-light/living_main_light_after_elevation_profile_v002.png
+      status: implemented
+  notes:
+    - 桌面150lx不能由此造型自动保证；仍需独立光度计算或按项目验收口径验证。
+    - 1000×1000×120mm外轮廓已由业主确认并按共享几何实现；该尺寸仍是视觉模型包络，不是SKU或施工尺寸。
+    - 实际承重、梁位、驱动检修和漫射盘维护方式保持现场/候选SKU待核。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-20261016
+  subject: 客厅浅吸顶雕塑主灯
+  status: delivery_ready
+  delivery_scope: 本轮交付项目模型中的灯具造型、浏览器/GLB共享几何与审美/功能复核；不冻结SKU、真实光度、安装或施工。
+  source_version:
+    visual_gate: CLEAR
+    ceiling: 50c1c81f9ec8
+    electrical: f2b49b7bcdb3
+    plumbing: 7f1513d14f27
+    materials: 64176f576326
+    url: http://localhost:5175/?v=20261016-r2
+    title: 和萃 701 - 3D 装修设计
+    source_sha256:
+      shared/render/SculpturalDomeGeometry.ts: 33286eb4d22a6537dc526db146fa0db8daa8bb08b4aed19f5cac0242c8f570cc
+      shared/render/LightingFixtureBuilder.ts: 1350b9f24f9f75b21765cee1f8b4a8ce8949f568a33f35df6d06cb2cdfb560bc
+      app/src/render/InteriorLightingSystem.ts: fd98d5354d890e8fc3495099e172b72fcbd3efd69111e708e7a315128ed31047
+      config/render/lighting.yaml: 3779978c5491e94ed2b22304d14c18d728c3a71a9698ea98dd85143ef36de4dc
+      config/render/overrides.yaml: ba68b55af39a817a68d0864b93a2e3dd9acf547a011f1980e5775d13ef056f60
+      shared/types.ts: 536588703ab036999f78a086072eac324974e507d06472d849e4bbc2f0245752
+      shared/project-render-facts-schema.ts: dadca4a692ab95b3088ff08005e73d4236c1a6a9d3f1eba5ee612c5b64e258c0
+  baseline_evidence:
+    app_ready: true
+    config_error_banner: ''
+    camera_mode: orbit
+    camera_position:
+      - 14.8
+      - 6.8
+      - 11.15
+    camera_target:
+      - 10.8
+      - 2.8
+      - 7.15
+    target_object_id: electrical:light_living_dome
+    target_type: dome
+    screenshot: tmp/screenshots/living-main-light/living_main_light_before_v001.png
+    snapshot: 基线可访问性快照曾在浏览器会话中读取但未单独保存；本manifest中的 final_evidence 保存了实施后快照。
+  final_evidence:
+    - id: context-three-quarter
+      ready: true
+      config_error_banner: ''
+      visual_preview_active: false
+      camera_mode: first-person
+      camera_position:
+        - 9
+        - 1.7
+        - 9.5
+      camera_direction:
+        - 0.4290568145682878
+        - 0
+        - -0.9032775043542898
+      camera_fov_deg: 70
+      target_object_id: electrical:light_living_dome
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_context_view_v010.png
+      snapshot: docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_context.snapshot.txt
+      runtime: docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_context_runtime.json
+      status: valid
+    - id: top-down-envelope-and-room-relationship
+      ready: true
+      config_error_banner: ''
+      visual_preview_active: false
+      camera_mode: top-down
+      camera_position:
+        - 10.3
+        - 30
+        - 6.1
+      camera_target:
+        - 10.3
+        - 0
+        - 6.1
+      camera_fov_deg: 45
+      camera_zoom: 3.2
+      target_object_id: electrical:light_living_dome
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_top_down_v008.png
+      snapshot: docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_topdown_final.snapshot.txt
+      runtime: docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_topdown_final_runtime.json
+      status: valid
+    - id: low-side-elevation-profile
+      ready: true
+      config_error_banner: ''
+      visual_preview_active: false
+      camera_mode: first-person
+      camera_position:
+        - 8.2
+        - 2.55
+        - 7.15
+      camera_direction:
+        - 1
+        - 0
+        - 0
+      camera_fov_deg: 45
+      camera_zoom: 1
+      target_object_id: electrical:light_living_dome
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_elevation_profile_v002.png
+      snapshot: docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_elevation_profile.snapshot.txt
+      runtime: docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_elevation_profile_runtime.json
+      status: valid
+  validation:
+    commands:
+      - npm run gate:visual
+      - npm run typecheck
+      - npm run verify:lighting-config
+    results:
+      - 变更前 gate:visual CLEAR; ceiling=50c1c81f9ec8, electrical=f2b49b7bcdb3
+      - gate:visual CLEAR; ceiling=50c1c81f9ec8, electrical=f2b49b7bcdb3, plumbing=7f1513d14f27, materials=64176f576326
+      - typecheck PASS
+      - verify:lighting-config PASS; 1 detailed fixture
+    test_suites: 未运行测试套件；本轮按任务要求完成类型、配置与视觉门禁验证。
+  reviewers:
+    aesthetic:
+      status: passed
+      verdict: PASS
+      blocking_issues: []
+      non_blocking_notes:
+        - 暖铜弧在乳白漫射盘与浅色天花上清晰可读，成为独立的偏心造型元素。
+        - 直径1000mm的圆盘在2.80m层高下形成明确客厅焦点，视觉分量不过重。
+        - 三分之四视角中的灯具、沙发、HVAC边吊与餐桌构成协调关系；灯具属于起居区，不与餐桌耦合。
+        - 黑色HVAC长带仍是强水平线，但与圆形乳白盘和暖铜弧形成足够层次。
+        - 俯视确认1m包络和客厅位置；侧剖确认120mm浅厚度与克制投影。
+      evidence_refs:
+        - tmp/screenshots/living-main-light/living_main_light_after_context_view_v010.png
+        - tmp/screenshots/living-main-light/living_main_light_after_top_down_v008.png
+        - tmp/screenshots/living-main-light/living_main_light_after_elevation_profile_v002.png
+        - docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_context_runtime.json
+        - docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_topdown_final_runtime.json
+        - docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_elevation_profile_runtime.json
+      requested_changes: []
+      assumptions:
+        - 审美复核不验证真实流明、3000K输出、U0、眩光、承重或维护性能。
+        - 用户确认的1000×1000×120mm包络、客厅锚点、HVAC几何和餐桌位置未改变。
+    functional:
+      status: passed
+      verdict: PASS
+      blocking_issues: []
+      non_blocking_notes:
+        - 浏览器和GLB/export共享 SculpturalDomeGeometry.ts；灯具包络为1.0×1.0×0.12m，最高点齐原顶2.80m、最低点约2.68m。
+        - 构件水平范围位于批准包络内；客厅边吊HVAC设备带止于z=5.55，灯具包络约为z=6.65–7.65，模型层位无直接重叠。
+        - 灯具电气坐标、3000K、living_base回路、双控和strong-light-living路由保持不变。
+        - 运行时确认暖铜弧、外圈、底盘和支撑 color=9a6948 且 emissiveIntensity=0；灯光预演只归一化漫射盘并保留暖铜色。
+        - 运行时没有单独的包围盒或自动碰撞报告；净距结论来自声明几何、schema约束和配置坐标。
+        - 梁位、顶板承重、底盘固定、接线盒承重、驱动更换、漫射盘拆装及清洁仍需现场/厂家核实。
+      evidence_refs:
+        - docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_context_runtime.json
+        - docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_topdown_final_runtime.json
+        - docs/design-iterations/living-sculptural-main-light-20261016/evidence/living_light_elevation_profile_runtime.json
+        - shared/render/SculpturalDomeGeometry.ts:24-157
+        - app/src/render/InteriorLightingSystem.ts:261-264,338-353,485-505
+        - shared/render/LightingFixtureBuilder.ts:75-89,129-159
+        - config/render/lighting.yaml:13-28
+        - config/electrical.yaml:934-943
+        - config/electrical-topology.yaml:39-48,239-244
+        - config/mep-hvac-coordination.yaml:42
+      requested_changes: []
+      assumptions:
+        - 本PASS覆盖概念几何、渲染状态、HVAC层位和接口保持，不代表实际照度、光通量、Ra、U0、灯具重量或施工承重已确认。
+        - 无自动包围盒证据；包络判断基于共享几何构造和runtime尺寸。
+    construction:
+      status: site_pending
+      verdict: null
+      blocking_issues: []
+      non_blocking_notes:
+        - 当前尚未交房和施工，现场梁位、顶板结构与实际安装净距无法测量；本轮不构成施工放样或采购冻结。
+        - 灯具底盘/接线盒承重、重量、驱动与LED板更换、漫射盘拆装和保修仍需供应商资料及电工确认。
+      evidence_refs:
+        - docs/design-iterations/living-sculptural-main-light-20261016/round.yaml（fact_table 段）#pending-mounting
+        - docs/design-iterations/living-sculptural-main-light-20261016/round.yaml（fact_table 段）#pending-serviceability
+      requested_changes: []
+      assumptions:
+        - 施工接口待交房量房、安装图和候选SKU资料核实。
+  approved_envelope_m:
+    width: 1
+    depth: 1
+    ceiling_to_bottom: 0.12
+  blocking_issues: []
+  follow_up_site_pending:
+    - 采购SKU冻结前统一7,100–8,500lm与公式约9,287.5lm的客厅流明口径，并核厂家3000K/Ra≥90/配光数据及桌面约150lx目标。
+    - 量房/安装图核对梁位、风口净距、顶板与接线盒承重、固定底盘方式，以及漫射盘/LED板/驱动器检修更换路径。
+  deletions_and_reversals:
+    deleted:
+      - object-manifest中‘当前尺寸未知，manifest保持草案，禁止实现几何’的过期注记已移除，因为业主已确认1000×1000×120mm且模型已实现；批准记录保留在fact-table和decision-brief。
+      - 未删除采购候选、价格口径、光通量冲突、轨道灯淘汰证据或历史截图。
+    reopened:
+      - DEC-2026-10-13-R1的客厅普通dome可见造型及style-guide §十一‘客厅建议取消独立主吊灯’；用户因普通吸顶灯缺少视觉重心而批准重开。
+    preserved:
+      - 宽面漫射、3000K、Ra≥90、客厅均匀照明目标、现有电气点位/回路/控制/路由。
+      - 此前窄束轨道灯配光不均的淘汰理由、餐桌吊灯关系与光通量冲突记录。
+    silent_failure_conditions:
+      - 漫射盘输出不足或配光不均会使房间周边变暗；真实流明和照度不能由渲染光源代替。
+      - 浏览器与GLB若绕开共享几何生成器，会造成外观静默分叉。
+      - 电气锚点变化若未同步拓扑和MEP路由会失效；本轮没有变更这些接口。
+      - housing/metal若被错误纳入发光材质集合，InteriorLightingSystem.applyAppearance会将其颜色重置为漫射盘色；非发光灯具材质显式设emissiveIntensity=0，runtime材料检查可发现回归。
+      - 驱动不可单独更换或顶板承重不匹配会增加维修和安装风险，需SKU/现场资料确认。
+  delivery:
+    status: complete
+    blocking_issues: []
+    completion_conditions:
+      - 用户确认的1000×1000×120mm浅吸顶造型已按现有客厅锚点建模。
+      - 浏览器与GLB/export共用声明式几何；电气、控制、HVAC和餐桌对象保持原配置。
+      - 同版本近景、客餐厅关系、俯视与侧剖证据有效，runtime ready且无配置错误。
+      - typecheck、灯具配置校验和视觉门禁通过；独立审美与功能复核均PASS。
+    follow_up_site_pending:
+      - 真实光度/SKU/桌面照度口径；现场梁位、承重与维护方式。
+    delivery_ready: true

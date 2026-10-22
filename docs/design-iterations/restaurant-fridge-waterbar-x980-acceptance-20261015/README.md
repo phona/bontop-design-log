@@ -14,7 +14,7 @@
 - 餐厅服务墙：`service-wall-x980-v2.png`
 - 厨房看向餐厅：`kitchen-to-dining-x980-v2.png`
 
-三张图是 2026-10-15 的概念预演记录，来自项目现有 Three.js 场景，1600 × 1000，FOV 55，眼高 1.60m；相机位置、朝向见 review-manifest.json。注：本轮全部视角截图当时只落在 git 忽略的 `tmp/screenshots/` 下、从未入仓，现已不可考（正是批 0「证据分级与退场铁律」要杜绝的形态）；文件名保留作机位索引，本轮若复启验收，按新规矩重拍并入仓 `evidence/final/`。无障碍快照、PNG 验证、运行时对象及 AABB 见 evidence/runtime-candidate-v2.json 和同目录 snapshot 文件。
+三张图是 2026-10-15 的概念预演记录，来自项目现有 Three.js 场景，1600 × 1000，FOV 55，眼高 1.60m；相机位置、朝向见 round.yaml（review 段）。注：本轮全部视角截图当时只落在 git 忽略的 `tmp/screenshots/` 下、从未入仓，现已不可考（正是批 0「证据分级与退场铁律」要杜绝的形态）；文件名保留作机位索引，本轮若复启验收，按新规矩重拍并入仓 `evidence/final/`。无障碍快照、PNG 验证、运行时对象及 AABB 见 evidence/runtime-candidate-v2.json 和同目录 snapshot 文件。
 
 六人临时模式固定视角：
 
@@ -68,11 +68,11 @@
 
 ## 文件
 
-- decision-brief.yaml：本轮审查边界和未冻结的决定简报。
-- fact-table.yaml：已确认、推断和现场待核事实。
-- design-datum.yaml：候选对象坐标、尺寸语义和固定机位。
-- object-manifest.yaml：对象责任、接口和维护边界。
-- review-manifest.json：状态、版本、验证、证据和独立审查结果。
+- round.yaml（brief 段）：本轮审查边界和未冻结的决定简报。
+- round.yaml（fact_table 段）：已确认、推断和现场待核事实。
+- round.yaml（datum 段）：候选对象坐标、尺寸语义和固定机位。
+- round.yaml（objects 段）：对象责任、接口和维护边界。
+- round.yaml（review 段）：状态、版本、验证、证据和独立审查结果。
 - evidence/formal-layout-runtime-20261016.json：正式日常家具落位、浏览器运行时复核、AABB、校验结果和配置哈希。
 - evidence/runtime-candidate-v2.json：Three.js 运行时对象、包围盒、相机与源哈希。
 - evidence/guest-seat-envelope.json：日常四座、临时5人固定桌位、临时6人南移候选的包围盒筛查。

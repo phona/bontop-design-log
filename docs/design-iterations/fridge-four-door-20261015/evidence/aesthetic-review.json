@@ -12,7 +12,7 @@
     "evidence/after.png",
     "evidence/after-room-context.png",
     "evidence/after-runtime.json",
-    "decision-brief.yaml",
+    "round.yaml（brief 段）",
     "shared/render/FixtureFactory.ts"
   ],
   "requested_changes": [],

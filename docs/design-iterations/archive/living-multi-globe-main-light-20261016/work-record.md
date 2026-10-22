@@ -2,7 +2,7 @@
 
 ## 状态
 
-`delivery_ready（模型范围）`。独立审美与功能复核均 PASS（R6 轮，review-manifest.json 记录）；安装、承重、换泡路径、真实光度与补光层仍为 site_pending，不可直接转为商品/施工定案。R4 深钟形侧架造型由本轮替换；R1–R5b 模型、截图、评审、DEC 与价格口径全部保留为历史，不删除。
+`delivery_ready（模型范围）`。独立审美与功能复核均 PASS（R6 轮，round.yaml（review 段） 记录）；安装、承重、换泡路径、真实光度与补光层仍为 site_pending，不可直接转为商品/施工定案。R4 深钟形侧架造型由本轮替换；R1–R5b 模型、截图、评审、DEC 与价格口径全部保留为历史，不删除。
 
 ## 本轮输入
 
@@ -99,7 +99,7 @@ URL `http://localhost:5173/?v=20261016-r7`；四视图 runtime+snapshot+PNG：un
 
 ## 独立复核结论
 
-四轮（review-manifest.json 固定 JSON 契约）：
+四轮（round.yaml（review 段） 固定 JSON 契约）：
 1. R5 首版：审美 PASS（附非阻塞意见：上层上挑量不足、黑灯盘偏薄、包络口径差、underside tooltip、topdown 为全户总览）；功能 PASS（附 requested_changes：AABB 口径入档、内部分解同步、重采 underside+补包络俯视、electrical.yaml 指针、fact-table refs 补齐）。→ 落地为 R5b 几何修正 + 证据重采 + 文档同步。
 2. R5b：审美 PASS；功能 FAIL（B1 object-manifest parts 尺寸未同步；B2 DEC-2026-10-16-R5 正文仍写首版比例且被 record_pointers 声明共为权威，权威记录自相矛盾）。
 3. R5b 复审：审美 PASS（维持）；功能 PASS（B1/B2 核销，另有三项非阻塞：manifest 版本指针、fact-table 措辞、work-record 回填，均已处理）。

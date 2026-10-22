@@ -1,0 +1,931 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: living-sculptural-main-light-r3-20261016
+index:
+  order: 32
+  topic: living
+  review_state: none
+  supersedes: none
+  note: 2026-10-20 批次 2 迁入 archive/（同步 living-sculptural-r4 fact-table/review-manifest 共 4 处引用）
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-r3-20261016
+  subject: 客厅主灯侧架垂吊造型R3
+  priority:
+    user_goal: 保留客厅视觉焦点，但从仰视和空间视角都明确读成悬挂灯，而不是浅吸顶盘。
+    ranked:
+      - 解决R2底部仰视仍像吸顶灯的问题，显示清楚的顶盘—吊杆—灯体侧缘关系。
+      - 保留约1m平面尺度、250–350mm总下垂范围和客厅原锚点。
+      - 乳白宽面漫射仍是主发光面；暖铜弧从盘上方装饰移到灯体外侧，成为可见三维结构。
+      - 灯位不按餐桌位置决定。
+    non_negotiables:
+      - 不改电气锚点、高度、回路、双控、strong-light-living路由、HVAC或吊顶。
+      - 不把渲染强度作为真实光度或承重证明。
+      - 350mm只作为本轮模型预演值，不是商品或施工尺寸。
+    tradeoffs_accepted:
+      - R3提案把乳白灯体改为上宽下收、深200mm的钟形罩，并让暖铜侧架更可见；视觉厚度高于R2，但仍在已批准1m×1m与350mm包络内。
+  frozen: true
+  freeze_record:
+    alignment_id: align-r3-continue-build-20261016
+    original_user_response: '我发错了，你应该继续处理灯具的模型构建。[Image #1]，看起来还是像吸顶灯。'
+    normalized_decisions:
+      - 继续重做客厅主灯造型，仰视必须能明确看出垂吊关系。
+      - 沿用此前批准的约1m平面尺度、250–350mm总下垂、乳白宽面漫射和现有客厅主灯锚点。
+      - R3模型审查提案：下垂取350mm，增加深灯体，将吊杆接到侧壳，并让单条暖铜弧沿外侧露出。
+    confirmed_by_user: true
+    confirmed_at: '2026-10-16'
+    evidence_refs:
+      - round.yaml（fact_table 段）#fact-user-r3-direction
+      - round.yaml（fact_table 段）#fact-r2-failed-silhouette
+  allowed_scope:
+    files:
+      - shared/types.ts
+      - shared/project-render-facts-schema.ts
+      - shared/render/SculpturalDomeGeometry.ts
+      - config/render/lighting.yaml
+      - data/project-render-facts.json
+      - docs/decisions/06-electrical.md
+      - docs/style-guide.md
+      - schedule/procurement.md
+      - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/
+    objects:
+      - light_living_dome
+    archetypes:
+      - deep_opal_pendant
+      - visible_outer_side_arch
+      - side_attached_suspension_rods
+    views:
+      - underside
+      - perspective
+      - elevation
+      - section
+      - plan
+    changes:
+      - 把薄平盘改为较深的宽面乳白灯体，形成可见侧面。
+      - 把暖铜弧与吊杆移到灯体侧缘/外侧，使仰视可看到悬挂结构。
+      - 只改灯具可见几何与相关记录，不改建筑、电气、家具或机电路由。
+  forbidden:
+    files:
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/mep-hvac-coordination.yaml
+      - config/ceiling.yaml
+      - config/house.yaml
+      - config/layout/model-geometry.yaml
+    objects:
+      - light_dining_pendant
+      - dining_table
+      - ceiling_living
+    assumptions:
+      - 不得用3D吊杆、弧脚或顶盘证明真实承重。
+      - 不得将预演尺寸写成已选SKU、施工尺寸或实际光度。
+      - 不得为造型效果擅自移灯位、超过350mm最大下垂或修改餐桌。
+    out_of_scope_changes:
+      - 移动灯位或改变电气/回路/墙控/MEP、吊顶/HVAC。
+      - 选择SKU、锁采购价或形成施工放样尺寸。
+  open_questions:
+    - id: fixture-installation-and-service
+      category: construction
+      question: 量房梁位、承重、风口与厂家安装图是否支持R3造型？
+      fact_refs:
+        - round.yaml（fact_table 段）#pending-installation
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+    - id: photometry
+      category: function
+      question: 具体SKU能否满足3000K/Ra≥90、客厅照度和均匀度目标？
+      fact_refs:
+        - round.yaml（fact_table 段）#pending-photometry
+      options: []
+      selected: null
+      user_response: null
+      status: site_pending
+  alignment:
+    records:
+      - alignment_id: align-r3-continue-build-20261016
+        original_user_response: '我发错了，你应该继续处理灯具的模型构建。[Image #1]，看起来还是像吸顶灯。'
+        normalized_decision: 继续迭代，优先修正悬挂语义；保留1m尺度、250–350mm总下垂范围和现有锚点。
+        fact_refs:
+          - round.yaml（fact_table 段）#fact-r2-failed-silhouette
+          - round.yaml（fact_table 段）#fact-user-r3-direction
+        timestamp: '2026-10-16'
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run generate:project-render-facts
+      - npm run typecheck
+      - npm run verify:lighting-config
+      - npm run verify:all
+      - npm run gate:visual
+    browser_evidence_required: true
+    required_views:
+      - underside_same_user_feedback_view
+      - three_quarter_living_context
+      - closeup_side_frame
+      - elevation
+      - top_down_envelope
+    aesthetic_review: PASS required
+    functional_review: PASS required
+    construction_review: pending
+    blocking_issues:
+      - 现场梁位、安装承重、风口射流、真实光度和维修方式未核实；不可施工或采购定案。
+    done_when:
+      - R3同版仰视图从灯体正下方仍能看到侧架与吊杆，明确读作垂吊灯体。
+      - 外形保持1m×1m，最大下垂350mm；电气锚点与所有接口不变。
+      - 浏览器与GLB共享声明式几何；目标视图具有ready状态、runtime、snapshot和有效PNG。
+      - 独立审美/功能复核对R3最终证据按固定JSON契约通过。
+      - 安装与光度风险作为site_pending保留。
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-r3-20261016
+  subject: 客厅侧架垂吊主灯
+  units: m
+  coordinate_system: Three.js右手系；Y向上；x东西、z南北；+z为南；俯视北朝上(-z)。
+  status: frozen
+  datums:
+    - id: living-main-fixture-r3
+      name: 客厅主灯天花锚点与垂吊灯体外包络
+      anchor:
+        kind: ceiling_anchor
+        ref: light_living_dome
+        wall_side: null
+        service_ref: strong-light-living
+      source_refs:
+        fact_refs:
+          - round.yaml（fact_table 段）#fact-anchor-and-room
+          - round.yaml（fact_table 段）#fact-user-r3-direction
+          - round.yaml（fact_table 段）#inference-r3-proposal
+        decision_refs:
+          - docs/decisions/06-electrical.md#DEC-2026-10-16-R3
+      views:
+        plan:
+          required: true
+          origin: 以现有客厅主灯中心线为平面原点，使用项目局部坐标。
+          axes: x东西；z南北
+          direction: 北朝上(-z)
+          position:
+            x: 10.8
+            z: 7.15
+          rotation: 0
+          dimensions:
+            length: 1
+            width: 1
+            depth: 1
+            offset: 0
+          dimension_semantics: overall
+        elevation:
+          required: true
+          viewing_side: 从客厅起居区仰视；天花锚点保持y=2.80m。
+          vertical_axis: 'y'
+          height: 2.8
+          dimensions:
+            width: 1
+            height: 0.35
+            sill: null
+            datum_offset: 0
+          dimension_semantics: overall
+        section:
+          required: true
+          cut_direction: 沿x方向剖过灯体、南侧外弧和三根侧壳吊杆。
+          depth_axis: z方向；暖铜弧向南(+z)外凸，最前缘仍在0.5m包络内。
+          clearances:
+            front: null
+            rear: null
+            top: 0
+            bottom: 0.35
+          thickness: 0.35
+          dimension_semantics: overall
+      geometry:
+        x: 10.8
+        'y': 2.8
+        z: 7.15
+        width: 1
+        depth: 1
+        height: 0.35
+        length: 1
+        rotation: 0
+        along: null
+      constraints:
+        - R3预演外包络1.0×1.0×0.35m，乳白钟形体上口Ø0.90m、下口Ø0.72m、深0.20m，底面y=2.45m。
+        - 三根支撑杆由顶盘斜向外折，再沿锥形侧壳外侧下行；杆体在灯体投影外露出，末端接下表面以上0.06m的侧壳。
+        - 单条暖铜弧从灯体侧下缘两点连接，弧段向南前凸；侧脚和吊杆只表示视觉承接，不代表真实承重。
+        - 继续沿用客厅主灯点；不得把灯位移到餐桌中心。
+      interfaces:
+        - 保留light_living_dome (10.80,7.15,h=2.80)、living_base、双控和strong-light-living。
+        - 宽面漫射、3000K、Ra≥90和照度/均匀度要求不变；SKU光度待核。
+        - 现场梁位、顶板承重、风口、沙发视线和维护路径属于site_pending。
+      validation_refs:
+        - 用户R2反馈图：/home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-13.png
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json
+      status: confirmed
+  notes:
+    - bottom=0.35m仅表示模型总下垂，不是商品或安装尺寸。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-r3-20261016
+  subject: 客厅主灯从浅盘式改为侧架可见的垂吊灯体
+  created_at: '2026-10-16'
+  status: frozen
+  source_policy:
+    authority_refs:
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/ceiling.yaml
+      - config/mep-hvac-coordination.yaml
+      - config/render/lighting.yaml
+      - config/render/overrides.yaml
+      - shared/render/SculpturalDomeGeometry.ts
+      - shared/project-render-facts-schema.ts
+      - docs/decisions/06-electrical.md
+    observation_refs:
+      - /home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-13.png
+      - tmp/screenshots/living-main-light/living_main_light_after_context_view_v014.png
+      - tmp/screenshots/living-main-light/living_main_light_after_r2_closeup_v005.png
+      - tmp/screenshots/living-main-light/living_main_light_after_r2_side_view_v004.png
+    measurement_refs: []
+    runtime_refs:
+      - docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json
+      - docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/closeup.runtime.json
+    evidence_refs:
+      - R2 R6 runtime ready=true; empty config-error banner; visualPreviewActive=false; target electrical:light_living_dome.
+      - npm run gate:visual before R3 => CLEAR; ceiling=50c1c81f9ec8; electrical=f2b49b7bcdb3; plumbing=7f1513d14f27; materials=64176f576326.
+  entry_shape:
+    id: ''
+    category: confirmed
+    statement: ''
+    value: null
+    source_refs: []
+    basis: ''
+    confidence: high
+    impact: material
+    affected_objects: []
+    affected_views:
+      - perspective
+      - elevation
+    owner: ''
+    status: open
+    verification_method: ''
+    user_confirmation_ref: null
+  facts:
+    confirmed:
+      - id: fact-anchor-and-room
+        category: confirmed
+        statement: 客厅灯 light_living_dome 锚点(10.80,7.15,h=2.80m)不变；餐桌中心(9.80,3.45)m，客厅主灯不由餐桌定位。
+        value:
+          x: 10.8
+          z: 7.15
+          ceiling_y_m: 2.8
+          dining_table_center:
+            - 9.8
+            - 3.45
+        source_refs:
+          - config/electrical.yaml
+          - config/house.yaml
+        basis: 当前权威配置
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+          - dining_table
+        affected_views:
+          - plan
+          - perspective
+        owner: project
+        status: resolved
+        verification_method: runtime stable objectId与配置坐标核对
+        user_confirmation_ref: null
+      - id: fact-r2-failed-silhouette
+        category: confirmed
+        statement: 业主在R2 R6仰视图中指出灯仍像吸顶灯；盘体Ø0.90×0.07m，铜弧在盘上方，三根细杆落在盘顶。
+        value:
+          total_drop_m: 0.3
+          diffuser_diameter_m: 0.9
+          diffuser_thickness_m: 0.07
+          arch_position: above_diffuser
+        source_refs:
+          - /home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-13.png
+          - docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json
+        basis: R2声明几何、runtime尺寸和用户反馈
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - underside
+          - perspective
+        owner: owner
+        status: superseded
+        verification_method: 保留R2原图并在R3同仰视机位复核
+        user_confirmation_ref: 用户反馈：看起来还是像吸顶灯
+      - id: fact-lighting-target
+        category: confirmed
+        statement: 宽面漫射、3000K、Ra≥90、客厅约100lx/U0≥0.7和餐桌约150lx照明目标保留；渲染不证明光度。
+        value:
+          cct_k: 3000
+          cri_min: 90
+          living_lux: 100
+          uniformity_u0_min: 0.7
+          dining_lux: 150
+        source_refs:
+          - docs/decisions/06-electrical.md#DEC-2026-10-16-R2
+          - schedule/procurement.md
+        basis: 既有项目照明要求
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+          - light_dining_pendant
+        affected_views:
+          - plan
+          - perspective
+        owner: project
+        status: resolved
+        verification_method: SKU阶段核厂家IES/LDT或等效数据
+        user_confirmation_ref: null
+      - id: user-r3-direction
+        category: user_decision
+        statement: 业主要求继续建模并指出R2仍像吸顶灯；保留约1m尺度、250–350mm总下垂范围、宽面乳白主光和客厅原锚点。
+        value:
+          footprint_m: 1
+          allowed_drop_m:
+            - 0.25
+            - 0.35
+          diffuser: broad_opal
+          must_read_as: pendant
+          anchor_unchanged: true
+        source_refs:
+          - conversation-2026-10-16-R3
+          - docs/decisions/06-electrical.md#DEC-2026-10-16-R2
+        basis: 用户最新原话“继续处理灯具的模型构建……看起来还是像吸顶灯”及此前范围确认
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - underside
+          - elevation
+          - perspective
+        owner: owner
+        status: resolved
+        verification_method: 相同仰视、三分之四、侧视相机复核
+        user_confirmation_ref: 用户回复：继续处理灯具的模型构建
+    inferred:
+      - id: inference-r2-root-cause
+        category: inferred
+        statement: 主要失败来自平盘占据仰视主轮廓：铜弧像盘上装饰，细杆接到盘顶后被遮挡；不是灯位或餐桌关系导致。
+        value:
+          root_cause: hidden_suspension_and_flat_diffuser
+        source_refs:
+          - fact-r2-failed-silhouette
+          - shared/render/SculpturalDomeGeometry.ts
+        basis: 两位独立审美/功能审查者均指出盘薄、弧高置、吊杆贴顶且仰视被遮
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - underside
+          - elevation
+          - perspective
+        owner: design
+        status: resolved
+        verification_method: R3仰视同机位检查侧架与吊杆是否露出
+        user_confirmation_ref: null
+      - id: inference-r3-proposal
+        category: inferred
+        statement: R3预演提案：总下垂350mm；乳白钟形体上口Ø0.90m、下口Ø0.72m、深0.20m；三根外露侧向支撑杆沿锥形外壳下行，单条暖铜弧从下缘绕出。
+        value:
+          drop_m: 0.35
+          diffuser_top_diameter_m: 0.9
+          diffuser_bottom_diameter_m: 0.72
+          diffuser_depth_m: 0.2
+          housing_band_offset_m: 0.004
+          suspension_route: bent_external_side_braces
+          arch_attachment: lower_side_shell
+        source_refs:
+          - inference-r2-root-cause
+          - fact-user-r3-direction
+        basis: 在已批准平面与下垂范围内，通过改变可见连接关系强化垂吊识别度
+        confidence: medium
+        impact: material
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - underside
+          - elevation
+          - perspective
+        owner: design
+        status: open
+        verification_method: R3同版浏览器证据及独立审美/功能复核
+        user_confirmation_ref: null
+    site_pending:
+      - id: pending-installation
+        category: site_pending
+        statement: 梁位、顶板/底盒承重、灯体重量、厂家吊装底盘/侧架连接、风口气流和检修路径未现场核实。
+        value: null
+        source_refs:
+          - docs/pending-site-data.md
+          - docs/decisions/06-electrical.md#DEC-2026-10-16-R2
+        basis: 未交房且无R3商品安装图
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - section
+          - elevation
+        owner: 业主+量房/施工方+电工+灯具供应商
+        status: open
+        verification_method: 量房确认梁/顶板；厂家提供底盘、吊杆、侧架与检修安装图
+        user_confirmation_ref: null
+      - id: pending-photometry
+        category: site_pending
+        statement: 真实候选在3000K/Ra≥90时的光通量、配光、眩光和U0未验证；客厅7,100–8,500lm与复算约9,287.5lm仍有冲突。
+        value:
+          lumen_target_status: conflicting
+        source_refs:
+          - schedule/procurement.md
+          - docs/decisions/06-electrical.md#DEC-2026-10-16-R2
+        basis: 本轮只验证外形
+        confidence: high
+        impact: blocking
+        affected_objects:
+          - light_living_dome
+        affected_views:
+          - all
+        owner: 业主+照明设计+灯具供应商
+        status: open
+        verification_method: SKU阶段统一算量并核厂家配光文件
+        user_confirmation_ref: null
+  retrospective:
+    trigger_id: repeated-same-kind-aesthetic-failure
+    trigger_text: R1浅吸顶被业主指出仍像吸顶灯；R2悬垂300mm但仰视图仍被指出像吸顶灯。
+    failure_evidence:
+      - /home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-13.png
+      - docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.runtime.json
+    last_change: R2用Ø900×70mm薄盘、盘上方铜弧和盘顶吊杆，diffuserDrop=300mm。
+    root_cause: 高置信：仰视主轮廓仍是一张平盘，悬挂件被灯体遮挡；形状语义和杆/盘连接关系不足。
+    status: rebaselined_for_r3_preview
+  notes:
+    - R3只作为造型预演，不是SKU或施工尺寸。
+    - 保留R1/R2旧图、DEC、审查和尺寸作为历史，不覆盖失败证据。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-r3-20261016
+  subject: 客厅侧架垂吊主灯
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: light_living_dome
+      type: suspended_side_arch_opal_lantern
+      archetypes:
+        - deep_opal_diffuser
+        - side_attached_bronze_arch
+        - visible_suspension_rods
+      owner: 业主
+      function: 客厅宽面主光灯体候选造型和起居区视觉焦点；实际光度待SKU核验。
+      material: 乳白灯体、缎面暖铜侧架与吊杆；渲染材质不是商品工艺确认。
+      geometry_source: config/render/lighting.yaml + shared/render/SculpturalDomeGeometry.ts；浏览器与GLB/export共用。
+      datum_refs:
+        - round.yaml（datum 段）#living-main-fixture-r3
+      fact_refs:
+        - round.yaml（fact_table 段）#fact-user-r3-direction
+        - round.yaml（fact_table 段）#inference-r3-proposal
+      decision_refs:
+        - docs/decisions/06-electrical.md#DEC-2026-10-16-R3
+      dependencies:
+        - electrical:light_living_dome
+        - circuit:living_base
+        - control_living_entrance_corridor
+        - strong-light-living
+      interfaces:
+        - id: electrical-anchor
+          target_object_id: light_living_dome
+          kind: electrical
+          requirement: 保持现有位置/高度/回路/墙控/MEP；只替换渲染外形。
+          status: confirmed
+        - id: hvac-airflow
+          target_object_id: ceiling_living
+          kind: hvac
+          requirement: 模型层位不替代现场送风射流、风噪、摆动与积灰核验。
+          status: open
+        - id: structure-and-service
+          target_object_id: ceiling_living
+          kind: structural
+          requirement: 实际灯重、梁/顶板固定、侧架连接和检修拆换需厂家安装图。
+          status: open
+      collision:
+        policy: reviewed
+        geometry_ref: 吊顶灯具；核对1m×1m×0.35m概念包络与房间/HVAC层位，不作为地面碰撞物。
+        review_ref: round.yaml（review 段）#reviewers.functional
+      maintenance:
+        boundary: 供应商/电工负责安装与检修；业主按说明清洁。灯盘、驱动器和外架拆换方式待SKU说明书。
+        access_clearance: null
+        replaceable_parts:
+          - opal_diffuser
+          - driver
+          - led_board
+          - canopy
+          - suspension_rods
+          - side_arch_fasteners
+        inspection_requirements:
+          - 现场确认底盘、梁/顶板固定、杆端及铜弧脚的实物连接。
+          - SKU冻结前确认灯罩、LED板、驱动器更换路径和保修。
+      parts:
+        - id: deep-opal-body
+          role: 上口Ø0.90m、下口Ø0.72m、深0.20m的乳白钟形宽面灯体；由宽肩向下收口，形成可见侧面和垂吊轮廓。
+          independent: true
+          owner: 灯具供应商
+          material: 乳白扩散材料；光通量/眩光/可更换性待SKU资料。
+          geometry_source: shared/render/SculpturalDomeGeometry.ts
+          datum_refs:
+            - round.yaml（datum 段）#living-main-fixture-r3
+          dependencies:
+            - driver
+            - led_board
+          collision: reviewed
+          maintenance_boundary: 拆装方式待SKU资料
+          validation_refs:
+            - evidence/closeup.runtime.json
+        - id: outer-bronze-arch
+          role: 单条偏心暖铜3D弧从灯体侧下缘连接并沿南侧外凸；不再停留于盘面上方。
+          independent: true
+          owner: 灯具供应商
+          material: 低反光暖铜渲染色；实际表面工艺与连接强度待核。
+          geometry_source: shared/render/SculpturalDomeGeometry.ts
+          datum_refs:
+            - round.yaml（datum 段）#living-main-fixture-r3
+          dependencies:
+            - arch_feet
+          collision: reviewed
+          maintenance_boundary: 侧脚紧固与清洁待实物构造
+          validation_refs:
+            - evidence/closeup.runtime.json
+            - evidence/underside.runtime.json
+        - id: side-suspension-rods
+          role: 三根外露暖铜支撑杆从顶盘斜向外折，再沿锥形灯体外侧下行到下缘以上0.06m的侧壳，避免被灯体遮住。
+          independent: true
+          owner: 灯具供应商
+          material: 缎面暖铜；杆径是模型参数，不是承载选型。
+          geometry_source: shared/render/SculpturalDomeGeometry.ts
+          datum_refs:
+            - round.yaml（datum 段）#living-main-fixture-r3
+          dependencies:
+            - ceiling_canopy
+            - deep-opal-body
+          collision: reviewed
+          maintenance_boundary: 实际杆径、吊点和受力需厂家安装图
+          validation_refs:
+            - evidence/elevation-profile.runtime.json
+            - evidence/underside.runtime.json
+      visual_relationships:
+        - target_object_id: sofa_3seat
+          relation: adjacent
+          requirement: 客厅起居区形成焦点；复核电视上缘遮挡和坐姿压迫感。
+          evidence_refs:
+            - evidence/context.runtime.json
+        - target_object_id: dining_table
+          relation: spaced
+          requirement: 灯位固定于客厅，不随餐桌中心移动。
+          evidence_refs:
+            - evidence/topdown.runtime.json
+      validation_refs:
+        - round.yaml（review 段）#reviewers.aesthetic
+        - round.yaml（review 段）#reviewers.functional
+      status: implemented
+  notes:
+    - R3模型侧架和吊杆明确表达视觉悬挂关系，但不是承重证明。
+    - 光度、承重、气流、视线与维修继续由SKU/现场资料核实。
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: living-sculptural-main-light-r3-20261016
+  subject: 客厅主灯R3钟形灯体与侧架垂吊造型
+  status: incomplete
+  delivery_scope: 客厅主灯项目模型的可见造型与共享浏览器/GLB几何复核；不冻结SKU、真实光度、安装或施工。
+  source_version:
+    url: http://localhost:5175/?v=20261016-r8
+    title: 和萃 701 - 3D 装修设计
+    visual_gate: CLEAR
+    ceiling: 50c1c81f9ec8
+    electrical: f2b49b7bcdb3
+    plumbing: 7f1513d14f27
+    materials: 64176f576326
+    source_sha256:
+      shared/render/SculpturalDomeGeometry.ts: f0ed38d3ad8cd86bf28638b5f369784449bfb97c94cfbd878e4e197e08594223
+      shared/render/LightingFixtureBuilder.ts: 1350b9f24f9f75b21765cee1f8b4a8ce8949f568a33f35df6d06cb2cdfb560bc
+      app/src/render/InteriorLightingSystem.ts: fd98d5354d890e8fc3495099e172b72fcbd3efd69111e708e7a315128ed31047
+      config/render/lighting.yaml: 69a02ec67ad09a0e3a60c9116f02c61f472aef220fa6e1aabe34df26e49dc54d
+      config/render/overrides.yaml: 800e56c2f4c43393418e97140b70f92ed1a679c653e5481255766c6458402b01
+      shared/types.ts: 2c92ec937a4fc50d2677a72daba3dde6de15da1f485359bf51c587f6faadb42e
+      shared/project-render-facts-schema.ts: 347d76ca957297d79535d8775fe66a597398503cec24e233eaba61276d64bc42
+      data/project-render-facts.json: e566c520da1738059809e112fcbcff783835dfd48c67fc2baf508bb4de57e5ff
+      docs/decisions/06-electrical.md: 74457e71ff199a79dd3691d9cb9e13f298790a979fdcf7e6c7709ef188daccbc
+      docs/style-guide.md: ffada243f5038ac1cc30e31d2262ed356d29777e750f5f042018e36483e2eca0
+      schedule/procurement.md: 1510385fcd3260e395aab5397aeeaf447d752780d0f52b58c27189372f297995
+      config/electrical.yaml: 36af13da088029c3066bbb0282cd2e35464731b6b6d15016a7c8c5f95d645767
+      config/electrical-topology.yaml: e314e7dacba1543e4585a8c39a4279f38a18a2aa6aa47df28959efee35ba3923
+      config/mep-hvac-coordination.yaml: 1198752efc2443c8c10e7859a22925d2e1f4a1c95b1d4b0bbf9fdfc8080ebb4d
+      config/ceiling.yaml: 9ba9ba68919becbf6df64313c3d63f7f8284db741af328dff79e5d414cdba4b9
+  baseline_evidence:
+    description: R2最新仰视仍被业主指出像吸顶灯；该图和源runtime保留作失败基线。
+    screenshot: /home/tao/.shellboard/uploads/s_EAmoN0mKnwA/image-13.png
+    runtime: docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/underside.runtime.json
+    snapshot: docs/design-iterations/archive/living-sculptural-main-light-r2-20261016/evidence/context.snapshot.txt
+  final_evidence:
+    - id: same-user-feedback-underside
+      ready: true
+      config_error_banner: ''
+      visual_preview_active: false
+      tooltip_hidden_for_evidence: true
+      camera_mode: first-person
+      camera_position:
+        - 10.9
+        - 1.55
+        - 8.1
+      camera_target:
+        - 10.8
+        - 2.53
+        - 7.15
+      camera_fov_deg: 55
+      viewport:
+        - 1600
+        - 1000
+      target_object_id: electrical:light_living_dome
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v001.png
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.snapshot.txt
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json
+      status: valid
+    - id: closeup-side-frame
+      ready: true
+      config_error_banner: ''
+      visual_preview_active: false
+      tooltip_hidden_for_evidence: true
+      camera_mode: first-person
+      camera_position:
+        - 11.3
+        - 1.7
+        - 9.5
+      camera_target:
+        - 10.8
+        - 2.55
+        - 7.15
+      camera_fov_deg: 50
+      viewport:
+        - 1600
+        - 1000
+      target_object_id: electrical:light_living_dome
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_r3_closeup_v001.png
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/closeup.snapshot.txt
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/closeup.runtime.json
+      status: valid
+    - id: side-elevation
+      ready: true
+      config_error_banner: ''
+      visual_preview_active: false
+      tooltip_hidden_for_evidence: true
+      camera_mode: first-person
+      camera_position:
+        - 8.8
+        - 2.35
+        - 7.15
+      camera_target:
+        - 10.8
+        - 2.55
+        - 7.15
+      camera_fov_deg: 45
+      viewport:
+        - 1600
+        - 1000
+      target_object_id: electrical:light_living_dome
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_r3_side_view_v001.png
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.snapshot.txt
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.runtime.json
+      status: valid
+    - id: living-context
+      ready: true
+      config_error_banner: ''
+      visual_preview_active: false
+      tooltip_hidden_for_evidence: true
+      camera_mode: first-person
+      camera_position:
+        - 9
+        - 1.7
+        - 9.5
+      camera_target:
+        - 10.9
+        - 1.7
+        - 5.5
+      camera_fov_deg: 70
+      viewport:
+        - 1600
+        - 1000
+      target_object_id: electrical:light_living_dome
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_context_view_v015.png
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/context.snapshot.txt
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/context.runtime.json
+      status: valid
+    - id: topdown-envelope
+      ready: true
+      config_error_banner: ''
+      visual_preview_active: false
+      tooltip_hidden_for_evidence: true
+      camera_mode: top-down
+      camera_position:
+        - 10.3
+        - 30
+        - 6.1
+      camera_target:
+        - 10.3
+        - 0
+        - 6.1
+      camera_fov_deg: 45
+      camera_zoom: 3.2
+      viewport:
+        - 1600
+        - 1000
+      target_object_id: electrical:light_living_dome
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_top_down_v012.png
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/topdown.snapshot.txt
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/topdown.runtime.json
+      status: valid
+  validation:
+    commands:
+      - npm run generate:project-render-facts
+      - npm run typecheck
+      - npm run verify:lighting-config
+      - npm run verify:all
+      - npm run gate:visual
+    results:
+      - generate:project-render-facts PASS; generated 15 lighting fixtures
+      - typecheck PASS
+      - verify:lighting-config PASS; 1 detailed fixture
+      - verify:all PASS; 17/17 verifiers, 0 failed
+      - gate:visual CLEAR; ceiling 50c1c81f9ec8; electrical f2b49b7bcdb3; plumbing 7f1513d14f27; materials 64176f576326
+    test_suites: 未运行测试套件；本轮按任务范围执行生成、类型、配置、全项目验证和视觉门禁。
+  reviewers:
+    aesthetic:
+      verdict: PASS
+      blocking_issues: []
+      non_blocking_notes:
+        - R3修复了R2平盘主导的问题；仰视中铜侧弧、两个侧脚、加厚漫射侧缘和垂直侧壳构成可辨的吊挂组件。
+        - 铜弧读成灯体外侧框架，不再像盘面上的提手；近景、仰视和侧视中的灯盘与弧架前后关系清楚。
+        - Ø0.90m上口、Ø0.72m下口、200mm深灯体和350mm总下垂让灯具形成客厅焦点并保留约1m平面尺度。
+        - 客厅三分之四视角显示为起居区吊灯，不跟餐桌定位，也未形成第二个桌心焦点。
+        - 单条铜弧和少量吊杆没有形成密笼；侧壳的竖向开口略有灯笼感，是后续真实产品造型需要克制的细节。
+      evidence_refs:
+        - tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v001.png
+        - tmp/screenshots/living-main-light/living_main_light_after_r3_closeup_v001.png
+        - tmp/screenshots/living-main-light/living_main_light_after_r3_side_view_v001.png
+        - tmp/screenshots/living-main-light/living_main_light_after_context_view_v015.png
+        - tmp/screenshots/living-main-light/living_main_light_after_top_down_v012.png
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/closeup.runtime.json
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.runtime.json
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/context.runtime.json
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/topdown.runtime.json
+      requested_changes: []
+      assumptions:
+        - 审美审查不验证真实流明、3000K性能、眩光、顶面锚固、结构承载或维护。
+        - 五份runtime为同一R8版本，ready=true、错误横幅空、visualPreviewActive=false，目标为electrical:light_living_dome。
+        - 1m左右包络、客厅锚点和餐桌位置不变。
+    functional:
+      verdict: PASS
+      blocking_issues: []
+      non_blocking_notes:
+        - 五份R8 runtime确认1.0×1.0×0.35m声明包络；顶面y=2.80m、盘底约y=2.45m、盘顶约y=2.65m，弧脚与侧杆落点在几何范围内。
+        - 灯体上口Ø0.90m、下口Ø0.72m；弧线x约±0.375m、z最前约+0.475m；吊杆和弧脚均在1m平面包络内。
+        - 三根吊杆从canopy下表面连接到housingBand范围内的侧壳；弧端与侧脚位置一致，截图未见明显悬空。
+        - 浏览器与GLB/export继续共用shared/render/SculpturalDomeGeometry.ts；现有电气点、锚点、回路、控制和MEP终点保持不变。
+        - schema覆盖上下口直径、总下垂、侧壳高度、弧线深度、侧脚和吊杆端点关系；未自动计算TubeGeometry最终AABB或实物受力。
+        - 现场梁/顶板承重、canopy固定、侧吊杆承载、弧脚连接、灯具重量、检修、光度和气流仍为site_pending。
+      evidence_refs:
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/underside.runtime.json
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/closeup.runtime.json
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/elevation-profile.runtime.json
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/context.runtime.json
+        - docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/topdown.runtime.json
+        - shared/render/SculpturalDomeGeometry.ts
+        - shared/project-render-facts-schema.ts
+        - config/render/lighting.yaml
+        - config/electrical.yaml
+        - config/electrical-topology.yaml
+        - config/mep-hvac-coordination.yaml
+      requested_changes: []
+      assumptions:
+        - 功能PASS仅覆盖当前概念几何、1m包络、350mm下垂、共享渲染路径和既有接口；不代表真实光度、承重或维护已确认。
+        - 目前无独立runtime Box3或最终灯管swept AABB结果；几何判断依据runtime配置尺寸与代码公式。
+        - 施工前由业主、量房/施工方、电工和厂家确认梁位、固定底盘、侧杆受力、弧脚连接和检修路径。
+    construction:
+      status: site_pending
+      verdict: null
+      blocking_issues: []
+      non_blocking_notes:
+        - 项目尚未交房；无实际梁位、承重、商品安装图或维护证据。
+      evidence_refs:
+        - round.yaml（fact_table 段）#pending-installation
+        - round.yaml（fact_table 段）#pending-photometry
+      requested_changes: []
+      assumptions:
+        - 模型外观不是施工节点或灯具SKU。
+  approved_envelope_m:
+    width: 1
+    depth: 1
+    ceiling_to_bottom: 0.35
+  blocking_issues:
+    - 现场梁位、承重、风口气流、真实光度、灯具重量与维修方式仍待量房/厂家核实。
+    - 客厅流明目标仍有7,100–8,500lm与复算约9,287.5lm的口径冲突。
+  deletions_and_reversals:
+    deleted:
+      - R2薄圆盘与盘上铜弧/盘顶吊杆组合退出当前模型；R1/R2历史决定、截图和审查继续保留。
+      - 没有删除灯具采购候选、价格口径、旧光度冲突或轨道灯淘汰证据。
+    reopened:
+      - 推翻R2的视觉主形充分性判断，因为业主最新仰视图仍明确反馈像吸顶灯；本轮仅重开可见轮廓与吊挂关系。
+    preserved:
+      - 现有客厅电气锚点、回路、双控、MEP终点、吊顶/HVAC、餐桌及餐吊配置。
+      - 1m平面尺度、250–350mm下垂范围、宽面漫射、3000K、Ra≥90及照度/均匀度目标。
+    silent_failure_conditions:
+      - 真实商品若无侧向吊点/弧脚连接，视觉上连贯但无法按图安装。
+      - 真实候选光通量或配光不足时，3D外观仍完整但房间可能偏暗或不均匀。
+      - 现场梁位、承重、风口或沙发视线与模型不同，render不会自动报警。
+      - 浏览器和GLB若绕开共享几何生成器会静默分叉。
+  follow_up_site_pending:
+    - item: 量房确认梁位、顶板/接线盒承重与最低点净高；供应商给重量、底盘、吊杆和侧架安装图。
+      owner: 业主+量房/施工方+电工+灯具供应商
+      trigger: SKU冻结/安装图确认前
+    - item: 核实真实送风方向/射程、固定沙发视线和维护拆换路径。
+      owner: 业主+HVAC施工方+供应商
+      trigger: 安装深化阶段
+    - item: 统一流明口径并核3000K/Ra≥90、IES/LDT、照度/均匀度和驱动/灯板检修。
+      owner: 业主+照明设计+灯具供应商
+      trigger: SKU冻结前
+  delivery:
+    status: incomplete
+    model_scope_complete: true
+    delivery_ready: false
+    completion_conditions:
+      - R3模型已按R8同版五视图验证，审美与功能独立复核均PASS。
+      - 共享浏览器/GLB几何、1m包络与现有电气/MEP接口得到核验。
+      - generate facts、typecheck、lighting config、verify:all和visual gate通过。
+    remaining_conditions:
+      - 完成follow_up_site_pending中的现场结构、气流、光度和维护资料后，方可讨论SKU或施工放行。
+  superseded_by: archive/living-sculptural-main-light-r4-20261016
+  supersession_note: R8审美/功能PASS只针对R8几何；R9五视图随后显示支撑仍被灯体遮挡且仰视仍以圆盘为主。R9没有独立双审，且source_sha256仍绑定R8，因此只作为诊断证据。R3保持incomplete，由R4完成后续审图。
+  evidence_state:
+    r8: historical_intermediate_review; reviewer PASS applies only to R8 geometry
+    r9: diagnostic_only; not independently reviewed and not source-hash-bound in this manifest
+    current: superseded_by_r4
+  diagnostic_evidence:
+    - id: r9-underside
+      url: http://localhost:5175/?v=20261016-r9
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/underside.runtime.json
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/underside.snapshot.txt
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_r3_underside_v002.png
+      status: diagnostic
+      reason: R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。
+    - id: r9-closeup
+      url: http://localhost:5175/?v=20261016-r9
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/closeup.runtime.json
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/closeup.snapshot.txt
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_r3_closeup_v002.png
+      status: diagnostic
+      reason: R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。
+    - id: r9-side_view
+      url: http://localhost:5175/?v=20261016-r9
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/elevation-profile.runtime.json
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/elevation-profile.snapshot.txt
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_r3_side_view_v002.png
+      status: diagnostic
+      reason: R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。
+    - id: r9-context
+      url: http://localhost:5175/?v=20261016-r9
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/context.runtime.json
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/context.snapshot.txt
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_r3_context_v002.png
+      status: diagnostic
+      reason: R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。
+    - id: r9-topdown
+      url: http://localhost:5175/?v=20261016-r9
+      runtime: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/topdown.runtime.json
+      snapshot: docs/design-iterations/archive/living-sculptural-main-light-r3-20261016/evidence/r9/topdown.snapshot.txt
+      screenshot: tmp/screenshots/living-main-light/living_main_light_after_r3_topdown_v002.png
+      status: diagnostic
+      reason: R3仍呈浅盘观感并暴露吊杆与锥壳相交/遮挡；该证据仅触发R4重构。

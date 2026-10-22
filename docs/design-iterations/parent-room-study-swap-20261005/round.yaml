@@ -1,0 +1,2722 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L13] frozen —— 讨论轮次；10 项 alignment 未收口、无浏览器证据、无配置改动
+# [design-datum.yaml L7] status —— 全部为候选，未施工冻结；几何权威源不允许改动
+# [fact-table.yaml L6] status —— 纯讨论轮次，未改任何配置、未宣称冻结；frozen=false、delivery_ready=false
+# ── 注释保全结束 ──
+schema: design-iteration-round/v1
+iteration_id: parent-room-study-swap-20261005
+index:
+  order: 56
+  topic: general
+  review_state: batch_a_b1_b2_done
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: parent-room-study-swap-20261005
+  subject: 父母房↔书房功能互换（几何不动）+ 客房隔开 + 书房储物扩容 + 删除轻训练器材
+  priority:
+    user_goal: 把客房（供父母/客人）放到东南角 bedroom_se，与主人区（主卧/主卫）完全隔开；西侧中间房 study 改纯书房并扩容储物；删除书房轻训练器材。全程只换功能不换几何，不急着开工，先把方案聊透
+    subject_refs:
+      - study
+      - bedroom_se
+      - bed_150
+      - wardrobe_180
+      - study_seasonal_wardrobe_wall
+      - desk
+      - chair
+      - shelf
+      - home_fitness_light_set
+    review_priority:
+      - 起夜动线 8–9m 的接受度与照明对策
+      - 电梯井共墙隔声
+      - 客房面积从 12.75㎡ 收缩到 8.35/9.45㎡ 后的家具排布
+      - 书房东墙柜体与客厅 65 寸电视挂装的关系
+      - 书房储物装什么与预算出处
+    ranked:
+      - 功能互换零硬成本（合同/机电/天花全部不动）
+      - 客房与主人区隔开（父母诉求）
+      - 老人使用安全（起夜动线、防滑、床边可达）
+      - 家具成品化可逆（不通顶、可搬走）
+      - 书房储物扩容但不塞满（保留一间房改回卧室的可能）
+      - 预算只做平移与等额置换（不新增科目）
+    non_negotiables:
+      - model-geometry.yaml / overlay.yaml 只允许改 name 与注释文字，禁止任何几何/顶点/墙体/房间边界改动
+      - 两房空调 MJV-28T2/P-SS 机位、风管、冷凝水与 ¥36,000 成交合同不动
+      - 家具不得侵入 d_study 扫掠域 x[6.15,7.05] z[5.55,6.45] 与 d_bese 扫掠域 x[13.40,14.30] z[5.65,6.55]
+      - bedroom_se 内衣柜/柜体高度 ≤2.40m（北墙边吊与东北角吊底 2.50m）
+      - 电气挂墙点位必须在实体墙上、玻璃幕墙不得挂载
+      - 不新增同义家具类型（复用 bed_150/mattress_150/wardrobe_180/shelf/study_seasonal_wardrobe_wall）
+    tradeoffs_accepted:
+      - 客卫只能共用，东南翼加卫生间须改西侧排水立管、不现实
+      - 起夜动线由约 2m 增至约 8–9m，客房至客卫门口由低位引导灯缓解；客卫内用现有主灯手动照明
+      - 客房面积收缩且北墙贴电梯井、西墙贴客厅电视墙，用床头方位（靠东外墙）与北墙衣柜声屏障缓解
+      - 书房东墙是客厅电视墙，深柜方案受限，可能改用吊柜/矮柜或把主力储物放到南墙/西墙
+      - 删除健身器材释放的预算（约 ¥1
+      - 800 未核价）大概率被书房柜体增量吃掉，净值接近零
+  frozen: false
+  freeze_record: null
+  allowed_scope:
+    files:
+      - config/house.yaml
+      - config/layout/model-geometry.yaml（仅 name/注释）
+      - config/layout/overlay.yaml（仅 name/注释/reason 文字）
+      - config/electrical.yaml
+      - config/ceiling.yaml（仅注释）
+      - config/hvac.yaml（仅 basis/note 文字）
+      - config/materials.yaml
+      - config/design-rules.yaml
+      - config/procurement.yaml
+      - config/facts.yaml
+      - schedule/phase-1/control.yaml
+      - schedule/phase-1/schedule.md
+      - schedule/phase-1/budget.md
+      - schedule/phase-1/checklist.md
+      - docs/decision_log.md
+      - docs/dressing-map.md
+      - data/project-render-facts.json（仅经生成命令）
+      - tests/server/study-seasonal-storage.test.ts
+      - tests/server/cli-glb-export.test.ts
+      - tests/server/shared/scene-builder.test.ts
+      - tests/server/furniture-profile.test.ts
+      - docs/design-iterations/parent-room-study-swap-20261005/
+    objects:
+      - study
+      - bedroom_se
+      - bed_150
+      - mattress_150
+      - wardrobe_180
+      - desk
+      - chair
+      - study_seasonal_wardrobe_wall
+      - shelf
+      - bench_adjustable
+      - adjustable_dumbbell_pair
+      - rollable_training_mat
+      - home_fitness_light_set
+      - sock_parent_bed_l
+      - sock_parent_bed_r
+      - switch_parent_door
+      - sock_study_desk
+      - sock_study_extra
+      - switch_study
+      - sock_parent_curtain
+      - sock_study_curtain
+      - light_parent_dome
+      - light_study_dome
+      - ac_parent
+      - ac_study
+    archetypes:
+      - room_function
+      - bedroom_furniture
+      - study_storage
+      - electrical_interface
+      - seasonal_storage
+    views:
+      - plan
+      - elevation
+      - section
+      - perspective
+    changes:
+      - 房间 name/notes 功能改写
+      - 家具配置增删迁与摆位候选
+      - 电气点位语义重定位与新增（床头双侧电位/小夜灯）
+      - 天花板与 HVAC 注释改写
+      - 预算/采购条目增删
+      - facts.yaml 跨文件对账改写
+      - 专项校验与测试改写
+      - 生成物再生成（仅经生成命令）
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml（几何部分）
+      - config/layout/overlay.yaml（几何部分）
+    objects:
+      - w_mb_east
+      - w_be_west
+      - w_be_north
+      - w_st_north
+      - w_st_east
+      - d_study
+      - d_bese
+      - ac_parent
+      - ac_study
+      - ceiling_study_ac
+      - ceiling_study_ac_corner
+      - ceiling_parent_ac
+      - curtain_box_study_south
+      - curtain_parent_south
+      - curtain_study_south
+      - guest_bath
+      - master_bath
+      - master_bedroom
+      - bedroom_nw
+    assumptions:
+      - 电梯井夜间噪声可接受（实测前不得假定）
+      - 客房北墙/西墙可开孔可挂重（结构/构造确认前不得假定）
+      - 飘窗台高 2.07m（量房确认前不得假定）
+      - 1.8m 成品衣柜可在 bedroom_se 落地（须以 AABB 与扫掠域证明）
+      - 起夜路径照明可实施（电气回路容量确认前不得假定）
+    out_of_scope_changes:
+      - 不做通顶定制柜（所有新柜体 ≤2.40m、成品化）
+      - 不在东南翼新增卫生间
+      - 不改动空调合同/机型/机位/风管/冷凝水
+      - 不新增第二间健身空间
+      - 不把候选尺寸写成施工冻结值
+      - 不做家具软布线
+      - 无关房间重构（儿童房/主卧/客厅家具一律不动）
+      - 新依赖
+      - git 操作
+      - 直接编辑生成物
+  open_questions:
+    - id: align-guest-bath-distance
+      category: function
+      question: 起夜动线由约 2m 增至约 8–9m 是否接受？低位感应照明/床头小夜灯/客卫门口扶手防滑做到什么程度？
+      fact_refs:
+        - fact-night-path-distance
+        - fact-bathrooms-only-west
+        - fact-lighting-baseline
+      options:
+        - 接受并用照明+扶手缓解
+        - 只能接受更短动线（则互换方案需重议）
+        - 暂不决定
+      selected: 接受并用照明缓解（2026-10-05 R4 业主拍板），且照明升级为必做项：人接近即自动亮起的起夜地面灯，覆盖客房→客厅→主走廊→客卫全程
+      user_response: '''这个没关系，我们还需要做，接近就自动亮起地面灯，提高起夜的体验感'''
+      status: resolved
+    - id: align-elevator-noise
+      category: function
+      question: 客房北墙与电梯井共墙，是否在量房时实测夜间噪声并预留北墙隔声预算？床头是否因此固定靠东外墙？
+      fact_refs:
+        - fact-elevator-adjacency
+        - pending-elevator-noise
+      options:
+        - 量房实测后定床头方位与隔声
+        - 先按床头靠东外墙设计、不做隔声
+        - 暂不决定
+      selected: null
+      user_response: null
+      status: open
+    - id: align-study-storage-content
+      category: function
+      question: 书房储物具体装什么（书/文件/设备/行李箱被褥/换季衣物）？决定开架 vs 封闭柜、深度、是否吊柜
+      fact_refs:
+        - fact-study-storage-walls
+        - decision-study-storage
+      options:
+        - 以书+文件为主（南墙开架+东墙吊柜）
+        - 以换季被褥/行李箱为主（北墙后台柜+床箱思路延续）
+        - 混合（开架+封闭柜都做）
+        - 暂不决定
+      selected: null
+      user_response: null
+      status: open
+    - id: align-study-east-wall-tv
+      category: construction
+      question: 书房东墙即客厅电视墙（客厅侧通顶柜 z[5.55,6.90]、低柜 z[6.95,9.05]、65" 挂装 z=8.00 已占满），书房侧深柜/吊柜如何避让挂装锚栓与双层墙厚？
+      fact_refs:
+        - fact-study-storage-walls
+      options:
+        - 东墙只做吊柜（底≥1.60m）+矮柜（≤0.85m），中部留空给挂装区
+        - 东墙整体留空、主力储物改南墙+西墙
+        - 暂不决定
+      selected: null
+      user_response: null
+      status: open
+    - id: align-guest-room-layout
+      category: geometry
+      question: 客房排布：方案一（床靠东外墙 x[14.40,16.40]、1.8m 衣柜北墙边吊下、床尾半进凸窗带）vs 方案二（床靠北墙全避凸窗带、衣柜缩至 1.2–1.5m 放西墙门下）？
+      fact_refs:
+        - fact-room-geometry-bedroom-se
+        - fact-doors-both-rooms
+        - fact-bay-band-limits
+        - pending-wardrobe-product
+      options:
+        - 方案一（收纳足、床头远离双噪声源、衣柜门前约 0.4m 偏紧）
+        - 方案二（通道宽松、收纳少、床头贴电梯井墙）
+        - 3D 评审后定
+      selected: null
+      user_response: null
+      status: open
+    - id: align-wardrobe-180-fit
+      category: budget
+      question: 1.8m 成品衣柜是否保留（PKG-150 池内、¥19,000 描述改写）还是缩到 1.5m/1.2m？2.4m 高推拉门款何时选型
+      fact_refs:
+        - fact-phase1-scope
+        - pending-wardrobe-product
+      options:
+        - 保留 1.8m（方案一北墙落位）
+        - 缩 1.5m/1.2m（方案二西墙落位）
+        - 暂不决定
+      selected: null
+      user_response: null
+      status: open
+    - id: align-study-storage-budget
+      category: budget
+      question: 书房柜体增量预算出处：删除健身释放的约 ¥1,800 + QR-2026-10-03-26（¥18,000 固定柜体候选，未下单）扩范围，还是归二期？
+      fact_refs:
+        - fact-fitness-budget
+        - fact-phase1-scope
+        - fact-preprovision-list
+      options:
+        - PKG-150/QR-26 范围内调剂
+        - 归二期
+        - 暂不决定
+      selected: 归二期：书房柜体与起夜照明的采购/安装全部推到二期；但 fact-preprovision-list 预留条件（床头双侧电位、现有路径灯位的供电条件、床头零线、网口、北墙隔声条件）按当前方案留在一期水电交底清单内；客卫不预埋内置夜灯，成本接近零（多走管多留盒），否则二期变成砸墙工程
+      user_response: 推到二期。但是我们可以先设计3D模型，做好规划
+      status: resolved
+    - id: align-fitness-cancellation
+      category: budget
+      question: 健身器材彻底取消（删 home_fitness_light_set +  procurement 条目），还是迁移到主卧/客厅保留轻训练？
+      fact_refs:
+        - fact-fitness-budget
+        - decision-fitness-removal
+      options:
+        - 彻底取消
+        - 迁移保留（迁移目标与收纳方式另定）
+        - 暂不决定
+      selected: null
+      user_response: null
+      status: open
+    - id: align-naming-scope
+      category: scope
+      question: room id 一律不改、仅改 name 与注释，并在决策日志建'旧功能→新功能'映射表；HVAC/电气点位 id（ac_parent/ac_study/sock_study_*）只改注释不改 id。是否采纳？
+      fact_refs:
+        - decision-function-swap-only
+      options:
+        - 采纳（低风险、可追溯）
+        - 连 id 一起改名（接受几十处级联改动与测试回归）
+        - 暂不决定
+      selected: null
+      user_response: null
+      status: open
+    - id: align-facts-crossfile-rewrite
+      category: data
+      question: config/facts.yaml 跨文件对账当前把'父母房 12.75㎡'与 HVAC 220W/㎡ 绑定；互换后改写为'父母房 8.35㎡ / 书房 12.75㎡' 并重算 W/㎡，是否随本轮收口？
+      fact_refs:
+        - fact-swap-cost-neutral
+      options:
+        - 随本轮一并改写并跑 verify:facts
+        - 留到实施轮处理
+        - 暂不决定
+      selected: null
+      user_response: null
+      status: open
+    - id: align-night-path-lighting-design
+      category: electrical
+      question: 起夜地面灯方案：点位（客房内床边/客房门外/客厅过渡段/主走廊/客卫门口与内卫）、是否新增独立照明回路（建议 lighting_night_path，避免与日常灯混回路）、控制策略（独立 PIR 感应保底 vs 智能网关联动 vs 混合），照度/色温/防眩光/延时参数如何定？
+      fact_refs:
+        - fact-lighting-baseline
+        - decision-night-path-lighting
+        - pending-night-path-surfaces
+        - pending-night-path-illuminance
+      options:
+        - 混合：路径独立感应保底 + 客房内智能调光小夜灯
+        - 全独立感应回路（简单可靠、无网络依赖）
+        - 全智能联动（依赖网关与配置）
+        - 暂不决定
+      selected: R15：保留夜路径低位灯并入既有照明回路；R12：客卫 NP-6/7/8 内置灯删除，进卫使用 light_gbath_panel + switch_gbath 手动照明，入住后如需要再按需增加可插拔感应夜灯。当前保留 5 个建模夜灯点位（NP-2 规划为插电式）；业主决定删除 NP-4b，不新增替代点位。NP-4a→柜体 NP-5 直线约 5.97m，超过 3m 暗区候选上限，覆盖缺口待路径实走与照度复核。
+      user_response: A+B 一起做；2026-10-07 确认删除客卫三个内置夜灯，后续按需使用可插拔感应灯
+      status: resolved
+    - id: align-guest-positioning
+      category: function
+      question: 客房定位：父母偶尔来住 / 季节性长住 / 长期同住？是否需为轮椅助行器预留？
+      fact_refs:
+        - decision-guest-room-positioning
+        - fact-preprovision-list
+      options:
+        - A 正常客房（偶尔来住、成品化、可逆）
+        - B 季节性长住（按老人房标准加码）
+        - C 长期同住（建议重新评估是否互换）
+      selected: A 正常客房：不加码无障碍/隔声预设，保持成品化可逆可升级；'以后有预算再慢慢改'必须以 fact-preprovision-list 的预留条件为前提（水电交底前留电位/回路/底盒/零线/网口）
+      user_response: '''你想复杂了，就按正常的客房设计，之后有预算了再慢慢改'''
+      status: resolved
+    - id: align-portfolio-scope
+      category: scope
+      question: 业主表示'不只这套房子'：起夜照明是否沉淀为可复用标准（路径定义方法/点位规则/回路规则/验收清单），以便应用到其他住宅？
+      fact_refs:
+        - decision-accept-hard-costs
+        - decision-night-path-lighting
+      options:
+        - 沉淀为独立可复用标准文档
+        - 只在本项目内做
+        - 暂不决定
+      selected: A+B 一起做：成文 docs/standards/night-path-lighting.md v1（不绑坐标、可复用）+ 本户按标准落地（night-path-lighting-instance.md）；本户定位按'客房（父母/客人）'推进
+      user_response: '''A + B一起做。我们继续其它议题'''
+      status: resolved
+  alignment:
+    records: []
+    unresolved:
+      - align-study-storage-content
+      - align-fitness-cancellation
+      - align-elevator-noise
+      - align-study-east-wall-tv
+      - align-guest-room-layout
+      - align-wardrobe-180-fit
+      - align-naming-scope
+      - align-facts-crossfile-rewrite
+    re_alignment_required: true
+  acceptance:
+    validation_commands:
+      - npm run generate:project-render-facts
+      - npm run export:dressing-map
+      - npm run verify:furniture
+      - npm run verify:consistency
+      - npm run verify:facts
+      - npm run verify:mep
+      - npm run verify:all
+      - npm run test:server
+      - npm run test:app
+      - npm run typecheck
+      - npm run build:app
+    browser_evidence_required: true
+    required_views:
+      - 客房门口视角（含 d_bese 扫掠域）
+      - 客房床/衣柜视角（方案一与方案二各一）
+      - 客房北墙电梯井侧视角
+      - 书房北墙季节后台柜视角
+      - 书房南墙书架/东墙柜体视角
+      - 书房桌面工作视角
+      - 起夜路径（客房→客卫）第一人称视角
+    aesthetic_review: BLOCKED
+    functional_review: BLOCKED
+    construction_review: pending
+    blocking_issues:
+      - 起夜路径 NP-4a→NP-5 约 5.97m 覆盖缺口待复核
+      - 电梯井共墙噪声未实测
+      - 客房面积收缩后排布未定（方案一/二）
+      - 书房储物内容与柜体形式未定
+      - 书房东墙与客厅 65" 电视挂装关系未处理
+      - 1.8m 衣柜 2.4m 高款未选型
+      - 书房柜体预算出处未定
+      - 健身器材彻底取消还是迁移未定
+      - 命名口径未确认
+      - facts.yaml 跨文件对账未改写
+    done_when:
+      - 10 项 alignment 全部关闭
+      - 客房与书房家具候选 AABB 通过 verify:furniture（含门扫掠/凸窗带/吊顶高度约束）
+      - facts.yaml 跨文件对账改写后 verify:facts 通过
+      - test:server/test:app/verify:all/typecheck 全绿
+      - 同版本浏览器证据 valid（含起夜路径视角）
+      - 美学/功能双评审 PASS
+      - decision_log 新增 DEC 条目并建新旧功能映射表
+    delivery_notes_required: true
+    freeze_gates:
+      - 起夜动线接受度对齐
+      - 电梯井噪声实测与床头方位对齐
+      - 客房排布方案选定
+      - 书房储物内容与柜体形式对齐
+      - 书房东墙/电视挂装边界对齐
+      - 衣柜选型与预算出处对齐
+      - 健身器材处置对齐
+      - 命名口径对齐
+      - facts 跨文件改写回归
+  discussion_log:
+    - round: 1
+      date: '2026-10-05'
+      summary: 业主提出交换父母房与书房并删除健身器材；确认只换功能不换几何。产出：互换零硬成本结论（合同/机电/天花不动）、两房布置草案、三个待解决问题（面积/动线/噪音）、四项待拍板
+    - round: 2
+      date: '2026-10-05'
+      summary: 父母建议客房与主人区隔开 → 支持东南客房方案；书房承担更多储物。产出：隔开的收益与三个新问题（起夜动线、电梯井共墙[新发现]、客厅共墙）、书房四面墙储物盘点、客房两个排布方案
+    - round: 3
+      date: '2026-10-05'
+      summary: 业主确认不急着开工、持续讨论，同意建立本迭代工作区（五件协议）
+    - round: 4
+      date: '2026-10-05'
+      summary: 业主确认接受互换的功能代价（面积收缩/起夜动线/卫浴共用），方案继续；同时立项起夜路径照明——人接近即自动亮起的地面灯（覆盖客房→客厅→主走廊→客卫）；业主补充'不只这套房子'，需确认是否沉淀为可复用标准
+    - round: 5
+      date: '2026-10-05'
+      summary: 业主拍板 A+B：起夜照明同时'本户落地 + 沉淀为可复用标准'。产出 docs/standards/night-path-lighting.md v1（坐标无关标准）+ 本户实例 8–9 个候选点位（NP-1..NP-9）与独立回路 lighting_night_path；发现过渡段暗区超 3m 上限需补 NP-9。剩余 9 项 alignment，转入客房排布议题
+    - round: 6
+      date: '2026-10-05'
+      summary: 业主要求先聊透约束（'不然我觉得你会做偏'）。产出约束台账 constraints-ledger.md v1（A 几何结构/B 合同采购/C 既有决策/D 标准验证/E 自我审计 7 项/F 优先队列），并把待决事项重排为 Tier 0/1/2 一次只问一个
+    - round: 7
+      date: '2026-10-05'
+      summary: Q1 关闭：客房按正常客房设计（偶尔来住），不做无障碍/隔声加码，'有预算再慢慢改'；同时明确该承诺成立的前提是 fact-preprovision-list（水电交底前必须预留电位/回路/底盒/零线/网口/北墙隔声条件），可后补项与必预留项分开列。电梯噪声仍实测，但缓解手段只用免费的（床头靠东外墙+北墙衣柜声屏障）
+    - round: 8
+      date: '2026-10-05'
+      summary: Q2 关闭：书房柜体与起夜照明采购/安装全部推到二期；但预留条件（床头双侧电位、lighting_night_path 回路与底盒、调光零线、网口、北墙隔声条件）必须进一期水电交底清单，否则二期变砸墙。业主同意先做 3D 设计与规划、不急着继续。推进方式改为三阶段：阶段0 纸面预演（零改动）→ 阶段1 候选入配置+3D 评审（可回滚）→ 阶段2 量房实测后定稿并走正式实施+二期采购
+    - round: 9
+      date: '2026-10-05'
+      summary: 业主拍板开始：v0 最小交换按稳健摆法实施完毕（DEC-2026-10-05-R9）。两房家具/名称互换、健身器材全链路删除、facts 对账更新、测试与生成物同步、schedule PKG-150 描述改写；verify:all + test:server 608 + test:app 470 + typecheck 全绿，全部 candidate_not_frozen、可回滚。下一步：量房四项实测（凸窗带/电梯噪声/门洞位置/墙体构造）后定客房排布终版与书房储物
+    - round: 10
+      date: '2026-10-07'
+      summary: DEC-2026-10-07-R12：业主决定删除客卫 NP-6/7/8 三个内置低位夜灯，使用现有客卫主灯手动照明；入住后如确有需要，再按需添置可插拔感应夜灯。
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: parent-room-study-swap-20261005
+  subject: 客房（bedroom_se）与书房（study）候选 datum——仅讨论，未落配置
+  units: m
+  coordinate_system: Three.js右手系，Y向上，+x东，+z南，北朝上
+  status: discussion
+  datums:
+    - id: datum-guest-room
+      name: 客房（bedroom_se，几何边界 datum）
+      anchor:
+        kind: room_anchor
+        ref: bedroom_se
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - fact-room-geometry-bedroom-se
+          - fact-doors-both-rooms
+        decision_refs:
+          - decision-guest-separation
+      views:
+        plan:
+          required: true
+          origin: 房间局部坐标
+          axes: x东西/z南北
+          direction: 北墙 z=5.55 共电梯井；西门 x=13.40 有门洞；南向凸窗内缘 z=7.60
+          boundary:
+            x:
+              - 13.4
+              - 16.4
+            z:
+              - 5.55
+              - 8.7
+          drop_north:
+            x:
+              - 13.4
+              - 15.8
+            z:
+              - 5.55
+              - 6.15
+            bottom: 2.5
+          drop_ne_corner:
+            x:
+              - 15.8
+              - 16.4
+            z:
+              - 5.55
+              - 5.85
+            bottom: 2.5
+          door_sweep:
+            x:
+              - 13.4
+              - 14.3
+            z:
+              - 5.65
+              - 6.55
+          bay_inner_z: 7.6
+          dimension_semantics: confirmed_geometry
+        elevation:
+          required: true
+          viewing_side: west
+          vertical_axis: 'y'
+          height: 2.8
+          clearances:
+            ceiling_drop_bottom: 2.5
+            wardrobe_max_height: 2.4
+          dimension_semantics: confirmed_geometry
+        section:
+          required: true
+          cut_direction: north-south
+          depth_axis: z
+          clearances:
+            elevator_shared_wall: site_pending
+            living_shared_wall: site_pending
+          thickness: null
+          dimension_semantics: confirmed_geometry
+      geometry:
+        x:
+          - 13.4
+          - 16.4
+        z:
+          - 5.55
+          - 8.7
+      constraints:
+        - 几何/天花/机电路由一律不动（只换功能）
+        - 衣柜/柜体高度 ≤2.40m
+        - 家具不得侵入 d_bese 扫掠域
+        - 凸窗外凸 1.10m，东/西墙柜体段实际至 z=7.60
+      interfaces:
+        - d_bese
+        - ac_study
+        - elevator_shaft
+        - living_dining
+      status: confirmed_geometry
+    - id: datum-guest-layout-a
+      name: 客房排布方案 A（倾向）——床靠东外墙 + 1.8m 衣柜北墙
+      anchor:
+        kind: wall_anchor
+        ref: w_east_upper
+        wall_side: west
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - fact-bay-band-limits
+          - fact-elevator-adjacency
+          - pending-wardrobe-product
+        decision_refs:
+          - align-guest-room-layout
+      views:
+        plan:
+          required: true
+          origin: 房间局部坐标
+          axes: x东西/z南北
+          direction: 床头靠东外墙 x=16.40、床体西伸；床尾半进凸窗带
+          position:
+            bed:
+              x:
+                - 14.4
+                - 16.4
+              z:
+                - 6.55
+                - 8.55
+            wardrobe:
+              x:
+                - 14.2
+                - 16
+              z:
+                - 5.55
+                - 6.15
+          rotation: 0
+          dimensions:
+            bed:
+              width: 1.5
+              length: 2
+            wardrobe:
+              width: 1.8
+              depth: 0.6
+          dimension_semantics: candidate
+        elevation:
+          required: true
+          viewing_side: east
+          vertical_axis: 'y'
+          height: null
+          dimensions:
+            wardrobe_height: 2.4
+          dimension_semantics: candidate
+        section:
+          required: true
+          cut_direction: east-west
+          depth_axis: x
+          clearances:
+            wardrobe_front_channel: 0.4
+            note: 偏紧，需 3D 复核；可南移床体换取 0.10–0.15m
+          thickness: 0.6
+          dimension_semantics: candidate
+      geometry:
+        bed:
+          x:
+            - 14.4
+            - 16.4
+          z:
+            - 6.55
+            - 8.55
+        wardrobe:
+          x:
+            - 14.2
+            - 16
+          z:
+            - 5.55
+            - 6.15
+      constraints:
+        - 床头同时远离电梯井（北）与客厅电视墙（西）
+        - 北墙衣柜兼电梯井侧声屏障（效果 site_pending）
+        - 床尾进入凸窗带约 0.95m，凸窗带为可用地面但南侧玻璃
+        - 衣柜门前通道约 0.40m，低于本项目 0.65m 口径，3D 评审须显式接受或调整
+      interfaces:
+        - bed_150_guest
+        - wardrobe_180_guest
+        - d_bese
+        - ceiling_study_ac
+      status: candidate_not_frozen
+    - id: datum-guest-layout-b
+      name: 客房排布方案 B——床靠北墙全避凸窗带 + 衣柜缩西墙门下
+      anchor:
+        kind: wall_anchor
+        ref: w_be_north
+        wall_side: south
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - fact-doors-both-rooms
+          - fact-bay-band-limits
+        decision_refs:
+          - align-guest-room-layout
+      views:
+        plan:
+          required: true
+          origin: 房间局部坐标
+          axes: x东西/z南北
+          direction: 床头靠北墙（z=5.55，电梯井侧），床体南伸至凸窗内缘
+          position:
+            bed:
+              x:
+                - 14.35
+                - 15.85
+              z:
+                - 5.6
+                - 7.6
+            wardrobe:
+              x:
+                - 13.4
+                - 14
+              z:
+                - 6.6
+                - 7.75
+          rotation: 0
+          dimensions:
+            bed:
+              width: 1.5
+              length: 2
+            wardrobe:
+              width: 1.2
+              depth: 0.6
+          dimension_semantics: candidate
+        elevation:
+          required: true
+          viewing_side: north
+          vertical_axis: 'y'
+          height: null
+          dimensions:
+            wardrobe_height: 2.4
+          dimension_semantics: candidate
+        section:
+          required: true
+          cut_direction: east-west
+          depth_axis: x
+          clearances:
+            entry_channel: x13.40–14.30 约 1.0m，含门扫掠
+          thickness: 0.6
+          dimension_semantics: candidate
+      geometry:
+        bed:
+          x:
+            - 14.35
+            - 15.85
+          z:
+            - 5.6
+            - 7.6
+        wardrobe:
+          x:
+            - 13.4
+            - 14
+          z:
+            - 6.6
+            - 7.75
+      constraints:
+        - 床完全避开凸窗带、通道宽松
+        - 床头贴电梯井共墙（隔声 site_pending）
+        - 衣柜仅 1.05m 净墙段可用（西墙门下 z[6.55,7.60]），须缩至 1.2m 级
+        - 收纳量明显低于方案 A
+      interfaces:
+        - bed_150_guest
+        - wardrobe_180_guest
+        - d_bese
+        - elevator_shaft
+      status: candidate_not_frozen
+    - id: datum-study-room
+      name: 书房（study，几何边界 datum）
+      anchor:
+        kind: room_anchor
+        ref: study
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - fact-room-geometry-study
+          - fact-furniture-current
+        decision_refs:
+          - decision-function-swap-only
+      views:
+        plan:
+          required: true
+          origin: 房间局部坐标
+          axes: x东西/z南北
+          direction: 北门 d_study 开口 x6.15–7.05；书桌+椅西墙南端原位保留
+          boundary:
+            x:
+              - 4.2
+              - 7.2
+            z:
+              - 5.55
+              - 9.8
+          drop_north:
+            z:
+              - 5.55
+              - 6.45
+            bottom: 2.5
+          door_sweep:
+            x:
+              - 6.15
+              - 7.05
+            z:
+              - 5.55
+              - 6.45
+          south_bay_outer_z: 10.9
+          dimension_semantics: confirmed_geometry
+        elevation:
+          required: true
+          viewing_side: east
+          vertical_axis: 'y'
+          height: 2.8
+          clearances:
+            ceiling_drop_bottom: 2.5
+            cabinet_max_height: 2.4
+            south_sill: 2.07
+          dimension_semantics: confirmed_geometry
+        section:
+          required: true
+          cut_direction: east-west
+          depth_axis: x
+          clearances:
+            tv_mount_zone: 客厅侧 z=8.00 挂装位
+          thickness: null
+          dimension_semantics: confirmed_geometry
+      geometry:
+        x:
+          - 4.2
+          - 7.2
+        z:
+          - 5.55
+          - 9.8
+      constraints:
+        - 几何不动，仅 name/注释与家具/点位语义改写
+        - 原床/床头插座/衣柜迁出；书桌椅原位
+        - 保留改回卧室的可能：墙面不全部占满，预留 1.5m 床位
+      interfaces:
+        - d_study
+        - ac_parent
+        - tv_65
+        - living_dining
+      status: confirmed_geometry
+    - id: datum-study-north-cabinet
+      name: 书房北墙季节后台柜（由客房东墙平移）
+      anchor:
+        kind: wall_anchor
+        ref: w_st_north
+        wall_side: south
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - fact-furniture-current
+          - fact-study-storage-walls
+        decision_refs:
+          - decision-study-storage
+      views:
+        plan:
+          required: true
+          origin: 房间局部坐标
+          axes: x东西/z南北
+          direction: 柜门朝南入房；避让 d_study 扫掠 x6.15–7.05
+          position:
+            x:
+              - 4.3
+              - 6
+            z:
+              - 5.55
+              - 6.1
+          rotation: 0
+          dimensions:
+            length: 1.7
+            depth: 0.55
+            height: 2.4
+          dimension_semantics: candidate
+        elevation:
+          required: true
+          viewing_side: north
+          vertical_axis: 'y'
+          height: 2.4
+          dimensions:
+            top_panel: 0.1
+            drop_bottom: 2.5
+          dimension_semantics: candidate
+        section:
+          required: true
+          cut_direction: north-south
+          depth_axis: z
+          clearances:
+            door_sweep: x≥6.15 避让
+            hvac_inspection: site_pending
+          thickness: 0.55
+          dimension_semantics: candidate
+      geometry:
+        x:
+          - 4.3
+          - 6
+        z:
+          - 5.55
+          - 6.1
+        height: 2.4
+      constraints:
+        - 沿用原 wardrobe_180 的 footprint 包络 x4.20–6.00 z5.55–6.15（吊顶条件平移成立）
+        - 防倾倒固定待墙体构造确认
+        - 内容物（换季/被褥/行李箱）由 align-study-storage-content 裁定
+      interfaces:
+        - d_study
+        - ceiling_parent_ac
+        - ac_parent
+      status: candidate_not_frozen
+    - id: datum-study-south-shelf
+      name: 书房南墙书架/开架（飘窗台下）
+      anchor:
+        kind: wall_anchor
+        ref: w_st_south
+        wall_side: north
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - fact-study-storage-walls
+          - pending-bay-sill-height
+        decision_refs:
+          - decision-study-storage
+      views:
+        plan:
+          required: true
+          origin: 房间局部坐标
+          axes: x东西/z南北
+          direction: 贴南墙、西端避让书桌 footprint
+          position:
+            x:
+              - 5.2
+              - 7
+            z:
+              - 9.45
+              - 9.8
+          rotation: 0
+          dimensions:
+            length: 1.8
+            depth: 0.35
+            height: 2
+          dimension_semantics: candidate
+        elevation:
+          required: true
+          viewing_side: south
+          vertical_axis: 'y'
+          height: 2
+          dimensions:
+            sill_height: 2.07
+            note: '窗台 2.07m 为推断值，量房 #20 待核；柜高 ≤2.00m'
+          dimension_semantics: candidate
+        section:
+          required: true
+          cut_direction: east-west
+          depth_axis: x
+          clearances:
+            bay_window_outside: 外凸至 z=10.90
+          thickness: 0.35
+          dimension_semantics: candidate
+      geometry:
+        x:
+          - 5.2
+          - 7
+        z:
+          - 9.45
+          - 9.8
+        height: 2
+      constraints:
+        - 飘窗台高 2.07m 量房确认前柜高不得放宽
+        - 西端避让书桌/椅 footprint
+        - 开架 vs 封闭柜由 align-study-storage-content 裁定
+      interfaces:
+        - study_south_bay
+        - desk
+      status: candidate_not_frozen
+    - id: datum-study-east-wall
+      name: 书房东墙储物候选（受限：客厅电视墙）
+      anchor:
+        kind: wall_anchor
+        ref: w_st_east
+        wall_side: west
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - fact-study-storage-walls
+        decision_refs:
+          - align-study-east-wall-tv
+      views:
+        plan:
+          required: true
+          origin: 房间局部坐标
+          axes: x东西/z南北
+          direction: 贴东墙 x=7.20，z6.45–9.80 共 3.35m；客厅侧同墙已占满（通顶柜 z5.55–6.90、低柜 z6.95–9.05、65 寸挂装 z=8.00）
+          position:
+            x:
+              - 6.65
+              - 7.2
+            z:
+              - 6.45
+              - 9.8
+          rotation: 90
+          dimensions:
+            run_length: 3.35
+            depth: 0.55
+          dimension_semantics: candidate
+        elevation:
+          required: true
+          viewing_side: west
+          vertical_axis: 'y'
+          height: null
+          dimensions:
+            tv_mount_z: 8
+          dimension_semantics: candidate
+        section:
+          required: true
+          cut_direction: north-south
+          depth_axis: z
+          clearances:
+            tv_anchor_zone: 挂装锚栓与双层墙厚未处理
+          thickness: 0.55
+          dimension_semantics: candidate
+      geometry:
+        x:
+          - 6.65
+          - 7.2
+        z:
+          - 6.45
+          - 9.8
+      constraints:
+        - 客厅侧 65 寸挂装锚栓（z=8.00）与书房侧柜体的墙内冲突未证明前，不得做满墙深柜
+        - 候选形态：吊柜（底≥1.60m）+矮柜（≤0.85m）+中部留空，或整墙留空改南/西墙
+        - 墙体为隔墙/剪力墙属性与厚度 site_pending
+      interfaces:
+        - tv_65
+        - wall_cabinet_tall
+        - tv_wall_low
+      status: candidate_not_frozen
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: parent-room-study-swap-20261005
+  subject: 父母房↔书房功能互换（几何不动）+ 客房与主人区隔开 + 书房储物扩容 + 删除轻训练器材
+  created_at: '2026-10-05T14:00:00+08:00'
+  status: discussion
+  updated_at: '2026-10-05T14:00:00+08:00'
+  source_policy:
+    authority_refs:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/house.yaml
+      - config/electrical.yaml
+      - config/ceiling.yaml
+      - config/hvac.yaml
+      - config/materials.yaml
+      - config/design-rules.yaml
+      - config/procurement.yaml
+      - config/facts.yaml
+    observation_refs:
+      - docs/decision_log.md
+      - schedule/phase-1/schedule.md
+      - schedule/phase-1/budget.md
+      - docs/design-iterations/master-flexible-frontstage-20260903/
+    measurement_refs: []
+    runtime_refs:
+      - scripts/verify/placement/verify-furniture-placement.ts
+    evidence_refs: []
+  facts:
+    confirmed:
+      - id: fact-room-geometry-study
+        category: confirmed
+        statement: 西侧中间房 room id=study（现 name=父母房）：x[4.20,7.20] z[5.55,9.80]，house.yaml area 镜像 12.75㎡（模型多边形毛口径；点石设计图该房净标注 8.39㎡ 属不同量纲）；南向外凸飘窗（南缘 z=10.90、外挑 1.10m）；北墙边吊 z[5.55,6.45] 底 2.50m；与主卧共墙 w_mb_east x=4.20（structure=shear, structure_status=inferred）
+        value:
+          x:
+            - 4.2
+            - 7.2
+          z:
+            - 5.55
+            - 9.8
+          area_mirror: 12.75
+          south_bay_outer_z: 10.9
+          north_drop:
+            z:
+              - 5.55
+              - 6.45
+            bottom: 2.5
+          shared_wall_with_master: w_mb_east
+        source_refs:
+          - config/layout/model-geometry.yaml:65-69,196-208
+          - config/house.yaml:146-157
+          - config/ceiling.yaml:115-119
+          - config/layout/overlay.yaml:115-121
+        basis: 几何/天花/镜像字段权威源
+        confidence: high
+        impact: material
+        affected_objects:
+          - study
+          - bed_150
+          - wardrobe_180
+          - desk
+          - chair
+        affected_views:
+          - plan
+          - section
+        owner: project
+        status: resolved
+        verification_method: verify:all + 量房复核
+      - id: fact-room-geometry-bedroom-se
+        category: confirmed
+        statement: 东南角房 room id=bedroom_se（现 name=书房）：x[13.40,16.40] z[5.55,8.70]，bbox 9.45㎡、设计图净标注 8.35㎡；z[8.70,9.80] 为室外凹口（DEC-2026-08-27-047）；南向凸窗向内凸 1.10m、内缘 z=7.60（curtain_box_study_south area z[7.60,7.85]）；北墙边吊 x[13.40,15.80] z[5.55,6.15] 底 2.50m；东北角吊 x[15.80,16.40] z[5.55,5.85] 底 2.50m
+        value:
+          x:
+            - 13.4
+            - 16.4
+          z:
+            - 5.55
+            - 8.7
+          bbox_area: 9.45
+          net_marked: 8.35
+          outdoor_recess_z:
+            - 8.7
+            - 9.8
+          bay_inner_z: 7.6
+          north_drop:
+            x:
+              - 13.4
+              - 15.8
+            z:
+              - 5.55
+              - 6.15
+            bottom: 2.5
+          ne_corner_drop:
+            x:
+              - 15.8
+              - 16.4
+            z:
+              - 5.55
+              - 5.85
+            bottom: 2.5
+        source_refs:
+          - config/layout/model-geometry.yaml:106-110
+          - config/house.yaml:122-133
+          - config/ceiling.yaml:138-152
+          - docs/decision_log.md DEC-2026-08-27-047
+        basis: 几何/天花权威源 + 历史决议
+        confidence: high
+        impact: material
+        affected_objects:
+          - bedroom_se
+          - study_seasonal_wardrobe_wall
+          - d_bese
+          - ac_study
+        affected_views:
+          - plan
+          - section
+        owner: project
+        status: resolved
+        verification_method: verify:all + 量房复核
+      - id: fact-doors-both-rooms
+        category: confirmed
+        statement: d_study 位于 w_st_north（z=5.55），开口约 x[6.15,7.05]，门扇扫掠域 x∈[6.15,7.05] z∈[5.55,6.45]；d_bese 位于 w_be_west（x=13.40），门扇扫掠域 x[13.40,14.30] z[5.65,6.55]、洞高 2.10m。注意：model-geometry.yaml:249 的 anchor/offset（v_be_se_s, offset 3.7）与该扫掠域口径不一致，属既有文档漂移，实施前必须以门洞实际位置复核
+        value:
+          d_study:
+            wall: w_st_north
+            opening_x:
+              - 6.15
+              - 7.05
+            sweep:
+              x:
+                - 6.15
+                - 7.05
+              z:
+                - 5.55
+                - 6.45
+          d_bese:
+            wall: w_be_west
+            sweep:
+              x:
+                - 13.4
+                - 14.3
+              z:
+                - 5.65
+                - 6.55
+            height: 2.1
+        source_refs:
+          - config/layout/model-geometry.yaml:196-201,243-250
+          - config/house.yaml:456,469
+          - scripts/verify/placement/verify-furniture-placement.ts:400
+          - config/mep-hvac-coordination.yaml strong-ac-study 注释
+        basis: 几何权威源 + 家具摆位校验脚本 + MEP 穿墙注释三方交叉（d_bese 出现口径漂移）
+        confidence: medium
+        impact: material
+        affected_objects:
+          - d_study
+          - d_bese
+        affected_views:
+          - plan
+        owner: project
+        status: open
+        verification_method: 量房核对两处门洞实际位置后再定家具扫掠判据
+      - id: fact-hvac-symmetric
+        category: confirmed
+        statement: 两房空调容量与型号完全对称，均为成交设备 MJV-28T2/P-SS 2.8kW 双出风带泵：ac_parent（room=study）机位 @(5.50,6.00) h2.85；ac_study（room=bedroom_se）机位 @(15.10,5.85) h2.85。合同已于 DEC-2026-10-04-R1 成交 ¥36,000 并逐房映射（DEC-2026-10-05-R1），互换功能不改动合同、机型、机位与风管走向
+        value:
+          ac_parent:
+            room: study
+            x: 5.5
+            z: 6
+            model: MJV-28T2/P-SS 2.8kW
+          ac_study:
+            room: bedroom_se
+            x: 15.1
+            z: 5.85
+            model: MJV-28T2/P-SS 2.8kW
+          contract: ¥36,000 已成交，六台逐房映射
+        source_refs:
+          - config/ceiling.yaml:38-56
+          - config/hvac.yaml
+          - config/house.yaml:343
+          - docs/decision_log.md DEC-2026-10-04-R1/DEC-2026-10-05-R1
+        basis: 天花/配置权威源 + 成交决议
+        confidence: high
+        impact: material
+        affected_objects:
+          - ac_parent
+          - ac_study
+        affected_views:
+          - plan
+          - section
+        owner: hvac
+        status: resolved
+        verification_method: verify:all + 厂家正式配置图（仍 site_pending）
+      - id: fact-furniture-current
+        category: confirmed
+        statement: 现家具配置：父母房（study）bed_150 @(5.20,7.75) r90 床头靠西墙、wardrobe_180 @(5.10,5.85) r180（沿北墙、2.40m 柜体+0.10m 顶封板抵 2.50m 吊底、避开门扇 x<6.15）、desk @(4.50,9.20) r90、chair @(5.10,9.20) r270、mattress_150/curtain_set/ceiling_light count-only；书房（bedroom_se）desk @(13.70,8.05) r90 贴西墙南段、chair @(14.40,8.05) r270、study_seasonal_wardrobe_wall @(16.075,6.75) r270（AABB x[15.80,16.35] z[5.90,7.60]，1.70m×0.55m×2.40m 非通顶）、bench_adjustable/adjustable_dumbbell_pair/rollable_training_mat 三件 placed 收纳态、curtain_set/ceiling_light
+        value:
+          study:
+            bed_150:
+              - 5.2
+              - 7.75
+            wardrobe_180:
+              - 5.1
+              - 5.85
+            desk:
+              - 4.5
+              - 9.2
+            chair:
+              - 5.1
+              - 9.2
+          bedroom_se:
+            desk:
+              - 13.7
+              - 8.05
+            chair:
+              - 14.4
+              - 8.05
+            study_seasonal_wardrobe_wall:
+              - 16.075
+              - 6.75
+            fitness_placed:
+              - bench_adjustable
+              - adjustable_dumbbell_pair
+              - rollable_training_mat
+        source_refs:
+          - config/house.yaml:455-477
+        basis: 家具摆位权威源
+        confidence: high
+        impact: material
+        affected_objects:
+          - bed_150
+          - wardrobe_180
+          - desk
+          - chair
+          - study_seasonal_wardrobe_wall
+          - bench_adjustable
+          - adjustable_dumbbell_pair
+          - rollable_training_mat
+        affected_views:
+          - plan
+        owner: project
+        status: resolved
+        verification_method: verify:furniture
+      - id: fact-fitness-budget
+        category: confirmed
+        statement: 轻训练器材预算口径：home_fitness_light_set_01（topic home_fitness）¥1,800 candidate 未核价、count-only 单套一次计价；可见三件（哑铃对+底座/可调凳/卷垫）只渲染不各自映射预算；procurement.yaml 条目 current_stage=selection、未下单
+        value:
+          material_id: home_fitness_light_set_01
+          price_per_unit: 1800
+          status: candidate
+          procurement_stage: selection
+        source_refs:
+          - config/materials.yaml:1389-1410
+          - config/procurement.yaml:461-468
+          - config/design-rules.yaml:90-93
+          - docs/design-iterations/master-flexible-frontstage-20260903/round.yaml（brief 段）
+        basis: 材料库/采购/规则三处交叉核对
+        confidence: high
+        impact: material
+        affected_objects:
+          - home_fitness_light_set
+          - bench_adjustable
+          - adjustable_dumbbell_pair
+          - rollable_training_mat
+        affected_views: []
+        owner: budget
+        status: resolved
+        verification_method: 预算回归测试 + procurement 条目删除
+      - id: fact-phase1-scope
+        category: confirmed
+        statement: 采购阶段边界：PKG-150 一期家具池 ¥19,000 含'父母房床、床垫和成品衣柜'；'东南书房全部家具'明确后移二期、尚未采购（DEC-2026-09-12-R1/R2 与 schedule/phase-1 一致）。QR-2026-10-03-26（衣柜/玄关柜/其他固定柜体 ¥18,000）为一期硬装候选报价、未下单
+        value:
+          pkg_150: 19000
+          includes:
+            - 父母房床
+            - 父母房床垫
+            - 父母房成品衣柜
+          deferred_phase2:
+            - 东南书房全部家具
+            - 西北次卧全部家具
+          qr_2026_10_03_26: 18000
+        source_refs:
+          - schedule/phase-1/schedule.md:34
+          - schedule/phase-1/budget.md:74,132,155
+          - docs/decision_log.md:1410-1413
+        basis: 进度/预算控制源
+        confidence: high
+        impact: material
+        affected_objects:
+          - bed_150
+          - mattress_150
+          - wardrobe_180
+          - home_fitness_light_set
+        affected_views: []
+        owner: budget
+        status: resolved
+        verification_method: control.yaml PKG-150 描述同步改写
+      - id: fact-electrical-current
+        category: confirmed
+        statement: 现电气点位：父母房（study）sock_parent_bed_l/r @(4.20,6.60/8.90) h0.70 挂 w_mb_east（wall_side east）、switch_parent_door 门垛中心 x=6.075、net/socket @(4.20,9.00) h0.30、sock_parent_curtain @(7.20,9.50) h2.50、sock_parent_ac @(5.50,6.20) h2.50、light_parent_dome @(5.70,7.675)；书房（bedroom_se）sock_study_desk/net_study @(13.40,7.90) h0.30 count 3、sock_study_extra @(14.50,5.55) h0.30 挂 w_be_north、switch_study @(13.40,7.00) h1.3、ac_panel_study @(13.40,7.12) h1.3、sock_study_curtain @(13.40,8.40) h2.50、sock_study_ac @(14.80,6.00) h2.50、light_study_dome @(14.90,7.125)。两房均已有网口与电动窗帘电源
+        value:
+          study:
+            bed_sockets:
+              - - 4.2
+                - 6.6
+              - - 4.2
+                - 8.9
+            door_switch_x: 6.075
+            curtain_socket:
+              - 7.2
+              - 9.5
+            ac_socket:
+              - 5.5
+              - 6.2
+          bedroom_se:
+            desk_socket:
+              - 13.4
+              - 7.9
+            extra_socket:
+              - 14.5
+              - 5.55
+            door_switch:
+              - 13.4
+              - 7
+            ac_panel:
+              - 13.4
+              - 7.12
+            curtain_socket:
+              - 13.4
+              - 8.4
+            ac_socket:
+              - 14.8
+              - 6
+        source_refs:
+          - config/electrical.yaml:228-360,730-780,915-945
+        basis: 电气权威源逐条核对
+        confidence: high
+        impact: material
+        affected_objects:
+          - sock_parent_bed_l
+          - sock_parent_bed_r
+          - switch_parent_door
+          - sock_study_desk
+          - sock_study_extra
+          - switch_study
+          - ac_panel_study
+          - sock_study_curtain
+        affected_views:
+          - plan
+          - elevation
+        owner: electrical
+        status: resolved
+        verification_method: verify:all + 点位专项
+      - id: fact-bathrooms-only-west
+        category: confirmed
+        statement: 全屋卫生间仅两处：主卫（主卧套内 x[0,2.60] z[0,2.86]+条带）与客卫 guest_bath（x[5.60,7.10] z[2.20,4.30]，内卫 z[2.20,3.55]+南侧开放洗漱区 z[3.55,4.30]）；东南翼无任何卫生间，新增须改西侧排水立管
+        value:
+          master_bath: 主卧套内
+          guest_bath:
+            x:
+              - 5.6
+              - 7.1
+            z:
+              - 2.2
+              - 4.3
+          main_corridor:
+            x:
+              - 4.2
+              - 7.2
+            z:
+              - 4.3
+              - 5.55
+        source_refs:
+          - config/layout/model-geometry.yaml:85-90
+          - config/layout/overlay.yaml:192-209
+        basis: 几何权威源
+        confidence: high
+        impact: material
+        affected_objects:
+          - guest_bath
+          - master_bath
+        affected_views:
+          - plan
+        owner: project
+        status: resolved
+        verification_method: verify:all
+      - id: fact-elevator-adjacency
+        category: confirmed
+        statement: 新发现：bedroom_se 北墙 z=5.55 的 x[13.40,15.25] 段与 elevator_shaft（x[13.40,15.25] z[2.90,5.55]）直接共墙；北面开敞外廊含电梯厅与消防通道（house.yaml 项目注记）。客房贴电梯井的隔声与振动影响此前任何轮次均未评估
+        value:
+          elevator_shaft:
+            x:
+              - 13.4
+              - 15.25
+            z:
+              - 2.9
+              - 5.55
+          shared_wall: bedroom_se 北墙 x[13.40,15.25] z=5.55
+        source_refs:
+          - config/layout/model-geometry.yaml:111-115
+          - config/house.yaml:293
+        basis: 几何权威源
+        confidence: high
+        impact: material
+        affected_objects:
+          - bedroom_se
+          - w_be_north
+        affected_views:
+          - plan
+          - section
+        owner: project
+        status: open
+        verification_method: 量房实测电梯运行噪声/振动（含夜间）后再定床头方位与隔声措施
+      - id: fact-v0-implemented
+        category: confirmed
+        statement: 2026-10-05 v0 已实施（候选未冻结）：bedroom_se=客房（wardrobe_180 @15.25,5.85 r180 + bed_150 @15.35,7.60 r270 + mattress_150）；study=书房（desk/chair 原位 + study_seasonal_wardrobe_wall @5.15,5.825 r0）。轻训练 placed 三件与 home_fitness 预算/采购/topic 全删；facts 对账措辞随功能名更新；verify:all / test:server 608 / test:app 470 / typecheck 全绿。决议见 docs/decision_log.md DEC-2026-10-05-R9
+        value:
+          guest:
+            wardrobe_180:
+              - 15.25
+              - 5.85
+            bed_150:
+              - 15.35
+              - 7.6
+          study:
+            study_seasonal_wardrobe_wall:
+              - 5.15
+              - 5.825
+          removed:
+            - bench_adjustable
+            - adjustable_dumbbell_pair
+            - rollable_training_mat
+            - home_fitness_light_set_01
+        source_refs:
+          - config/house.yaml
+          - docs/decision_log.md DEC-2026-10-05-R9
+        basis: 本轮实施记录
+        confidence: high
+        impact: material
+        affected_objects:
+          - bedroom_se
+          - study
+          - wardrobe_180
+          - bed_150
+          - study_seasonal_wardrobe_wall
+        affected_views:
+          - plan
+        owner: project
+        status: resolved
+        verification_method: verify:all + test:server + test:app + typecheck 全绿
+      - id: fact-lighting-baseline
+        category: confirmed
+        statement: 起夜路径照明基线：全屋现有零个感应/低位夜灯；可用既有资源为 lighting_entry_base 回路（light_corridor_1 @(7.90,5.00) 客厅北缘下照、light_entry_down、light_entry_foyer）、lighting_bedrooms_bath 回路（各寝区吸顶灯+厨卫面板灯）、control_corridor_downlight/control_living_entrance_corridor/control_parent_bed_door 等开关绑定；house.yaml 已声明'智能预留 B 级：智能开关零线+网关位+电动窗帘电源+人体传感器位'（主卧/客厅/父母房/书房）
+        value:
+          existing_night_lights: 0
+          night_path: 客房 d_bese → 客厅东侧 → 主走廊 → 客卫 d_gbath → 内卫
+          available_circuits:
+            - lighting_entry_base
+            - lighting_bedrooms_bath
+            - ordinary_power_study
+          smart_reservation: B 级（零线+网关+传感器位）
+        source_refs:
+          - config/electrical-topology.yaml:57-74,230-258
+          - config/electrical.yaml:945-953,824
+          - config/house.yaml:381-415
+        basis: 电气拓扑与配置权威源逐条核对
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_corridor_1
+          - light_parent_dome
+          - light_study_dome
+          - switch_corridor
+        affected_views:
+          - plan
+          - elevation
+        owner: electrical
+        status: open
+        verification_method: 新增点位/回路申报 + verify:all + 点位专项
+    inferred:
+      - id: fact-swap-cost-neutral
+        category: inferred
+        statement: 功能互换为纯语义层变更：几何/墙体/门/天花/HVAC 机位与风管/冷凝水/窗帘盒全部不动；两房空调容量对称（均 2.8kW），对调后书房 2.8kW÷12.75㎡≈220W/㎡（与原父母房设计口径一致）、客房 2.8kW÷8.35㎡≈335W/㎡（超配无害）。结论：无合同变更、无机电拆改，成本集中在家具选型、电气点位语义与文档
+        value:
+          study_after: 220W/㎡
+          guest_after: 335W/㎡
+        source_refs:
+          - fact-hvac-symmetric
+          - fact-room-geometry-study
+          - fact-room-geometry-bedroom-se
+        basis: 由 confirmed 事实推导的面积/容量换算
+        confidence: high
+        impact: material
+        affected_objects:
+          - ac_parent
+          - ac_study
+        affected_views: []
+        owner: project
+        status: resolved
+        verification_method: facts.yaml 跨文件对账改写后回归
+      - id: fact-guest-separation-achievable
+        category: inferred
+        statement: 换房后客房（bedroom_se）与主人区（主卧/主卫）之间隔客餐厅+主走廊，不共墙、不共用卫生间门口、不共用电视墙；而现西侧中间房与主卧直接共墙 w_mb_east。四间卧室中只有 bedroom_se 能实现业主父母要求的'隔开'
+        value: null
+        source_refs:
+          - fact-room-geometry-study
+          - fact-room-geometry-bedroom-se
+        basis: 相邻关系推导
+        confidence: high
+        impact: material
+        affected_objects:
+          - bedroom_se
+          - study
+        affected_views:
+          - plan
+        owner: project
+        status: resolved
+        verification_method: 3D 动线评审
+      - id: fact-night-path-distance
+        category: inferred
+        statement: 起夜动线粗算（未经工具核算）：现父母房门口 d_study @(6.60,5.55) 经主走廊到客卫门 d_gbath ≈2m；换到东南客房后由 d_bese @(13.40,≈6.1) 出西门→穿客厅东侧→主走廊→客卫 ≈8–9m
+        value:
+          current_parent_to_gbath_m: 2
+          guest_after_to_gbath_m: 8-9
+        source_refs:
+          - fact-doors-both-rooms
+          - fact-bathrooms-only-west
+        basis: 平面几何粗算
+        confidence: medium
+        impact: material
+        affected_objects:
+          - bedroom_se
+          - guest_bath
+        affected_views:
+          - plan
+        owner: project
+        status: open
+        verification_method: 3D/量房路径核算 + 照明深化
+      - id: fact-study-storage-walls
+        category: inferred
+        statement: 书房（西侧中间房）可做储物墙面清单：北墙边吊下 x[4.20,6.15] 1.95m（柜体≤2.40m，避让 d_study 扫掠 x[6.15,7.05]）；东墙 x=7.20 的 z[6.45,9.80] 共 3.35m 无吊顶（但该墙即客厅电视墙，客厅侧已被通顶柜 z[5.55,6.90]、低柜 z[6.95,9.05] 与 65" 挂装位 z=8.00 占满）；南墙飘窗台下约 1.8m（柜高≤2.00m，窗台 2.07m 待量房核）；西墙北段 z[6.45,8.40] 1.95m
+        value:
+          north_wall:
+            length: 1.95
+            max_height: 2.4
+          east_wall:
+            length: 3.35
+            max_height: 2.8
+            caveat: 客厅电视墙
+          south_wall:
+            length: 1.8
+            max_height: 2
+          west_wall_north:
+            length: 1.95
+            max_height: 2.8
+        source_refs:
+          - fact-room-geometry-study
+          - fact-furniture-current
+          - config/house.yaml:478-490
+        basis: 几何边界 + 现有家具 footprint 推导
+        confidence: medium
+        impact: material
+        affected_objects:
+          - study_seasonal_wardrobe_wall
+          - shelf
+          - bookshelf
+        affected_views:
+          - plan
+          - elevation
+        owner: project
+        status: open
+        verification_method: 柜体候选 AABB + verify:furniture + 3D 评审
+      - id: fact-bay-band-limits
+        category: inferred
+        statement: bedroom_se 东/西墙可做柜体的墙段实际至凸窗内缘 z=7.60（study_seasonal_wardrobe_wall 南缘齐 z=7.60 即该约束实例）；凸窗带 z[7.60,8.70]（3.0m×1.1m）为可用地面但南侧为玻璃、不宜塞满固定家具
+        value:
+          wall_run_max_z: 7.6
+          bay_band:
+            x:
+              - 13.4
+              - 16.4
+            z:
+              - 7.6
+              - 8.7
+        source_refs:
+          - fact-room-geometry-bedroom-se
+          - fact-furniture-current
+          - scripts/render/glb/compare-glb.ts:213
+        basis: 内凸凸窗语义 + 现有柜体边界实例
+        confidence: medium
+        impact: material
+        affected_objects:
+          - wardrobe_180
+          - bed_150
+          - study_seasonal_wardrobe_wall
+        affected_views:
+          - plan
+        owner: project
+        status: open
+        verification_method: 柜体/床候选 AABB 与凸窗带边界断言
+    user_decision:
+      - id: decision-function-swap-only
+        category: user_decision
+        statement: 2026-10-05 第一轮：只交换功能、不交换几何。父母房与书房两房功能对调，几何/墙体/门/天花/机电路由一律不动
+        value: null
+        source_refs:
+          - 业主会话 2026-10-05
+        basis: 业主明确
+        confidence: high
+        impact: material
+        affected_objects:
+          - study
+          - bedroom_se
+        affected_views:
+          - plan
+        owner: user
+        status: resolved
+        verification_method: 决策日志 DEC 条目 + 五件协议互链
+      - id: decision-fitness-removal
+        category: user_decision
+        statement: 2026-10-05 第一轮：删除书房健身器材。范围包括 placed 三件（bench_adjustable/adjustable_dumbbell_pair/rollable_training_mat）与 home_fitness_light_set 预算/采购条目；'彻底取消购买'还是'迁移到主卧/客厅'业主尚未拍板
+        value:
+          remove_placed:
+            - bench_adjustable
+            - adjustable_dumbbell_pair
+            - rollable_training_mat
+          remove_budget_item: home_fitness_light_set_01
+          migration: undecided
+        source_refs:
+          - 业主会话 2026-10-05
+          - fact-fitness-budget
+        basis: 业主明确删除、范围细节待 alignment
+        confidence: high
+        impact: material
+        affected_objects:
+          - bench_adjustable
+          - adjustable_dumbbell_pair
+          - rollable_training_mat
+          - home_fitness_light_set
+        affected_views:
+          - plan
+        owner: user
+        status: open
+        verification_method: align-fitness-cancellation 关闭后实施
+      - id: decision-guest-separation
+        category: user_decision
+        statement: 2026-10-05 第二轮（父母建议）：客房应该跟主人区隔开。该诉求支持把客房放到 bedroom_se（与主卧/主卫之间隔客餐厅+主走廊，不共墙），并作为本轮主线；同时接受卫浴只能共用客卫
+        value: null
+        source_refs:
+          - 业主会话 2026-10-05
+        basis: 业主转述父母建议
+        confidence: high
+        impact: material
+        affected_objects:
+          - bedroom_se
+          - study
+        affected_views:
+          - plan
+        owner: user
+        status: resolved
+        verification_method: align-guest-bath-distance + align-elevator-noise 收口后评审
+      - id: decision-study-storage
+        category: user_decision
+        statement: 2026-10-05 第二轮：书房要承担更多的储物收纳功能。具体装什么（书/文件/设备/行李箱被褥/换季）尚未明确，柜体形式与预算出处待定
+        value: null
+        source_refs:
+          - 业主会话 2026-10-05
+          - fact-study-storage-walls
+        basis: 业主明确方向、细节待 alignment
+        confidence: high
+        impact: material
+        affected_objects:
+          - study_seasonal_wardrobe_wall
+          - shelf
+          - bookshelf
+        affected_views:
+          - plan
+          - elevation
+        owner: user
+        status: open
+        verification_method: align-study-storage-content 关闭后实施
+      - id: decision-discussion-mode
+        category: user_decision
+        statement: 2026-10-05 第三轮：不急着开工，先把方案聊透；同意建立本迭代工作区（五件协议）并把讨论结论逐条沉淀
+        value: null
+        source_refs:
+          - 业主会话 2026-10-05
+        basis: 业主明确
+        confidence: high
+        impact: low
+        affected_objects: []
+        affected_views: []
+        owner: user
+        status: resolved
+        verification_method: 本工作区文档持续更新
+      - id: decision-accept-hard-costs
+        category: user_decision
+        statement: 2026-10-05 第四轮：业主确认接受功能互换的功能代价（面积收缩、起夜动线变长、卫浴共用），互换方案继续推进；并明确'我们不只这套房子'——本户型并非父母唯一/长期住所（口径待最终确认，见 align-portfolio-scope）
+        value:
+          accepted:
+            - area_shrink
+            - night_path_distance
+            - shared_bathroom
+          portfolio_note: 业主表示不只这一套房，含义（偶尔住 vs 多房复用）待确认
+        source_refs:
+          - 业主会话 2026-10-05
+        basis: 业主明确“这个没关系，我们还需要做”
+        confidence: high
+        impact: material
+        affected_objects:
+          - bedroom_se
+          - study
+        affected_views: []
+        owner: user
+        status: resolved
+        verification_method: align-guest-bath-distance 收口
+      - id: decision-night-path-lighting
+        category: user_decision
+        statement: 2026-10-05 第四轮：业主要求做起夜路径照明——人接近即自动亮起的地面灯，提高起夜体验感。作为互换方案中'起夜动线变长'的对策正式立项（不再只是可选项）
+        value:
+          trigger: 人体接近感应
+          target: 客房→客厅→主走廊→客卫门口
+          bathroom_mode: light_gbath_panel + switch_gbath 手动照明
+          future_optional: 可插拔感应夜灯
+          purpose: 起夜体验与安全
+        source_refs:
+          - 业主会话 2026-10-05
+          - fact-lighting-baseline
+        basis: 业主要求
+        confidence: high
+        impact: material
+        affected_objects:
+          - light_corridor_1
+          - light_parent_dome
+          - light_study_dome
+          - sock_parent_bed_l
+        affected_views:
+          - plan
+          - elevation
+        owner: user
+        status: resolved
+        verification_method: align-night-path-lighting-design 关闭后申报新增点位/回路
+      - id: decision-night-path-standard
+        category: user_decision
+        statement: 2026-10-05 第五轮：起夜照明采取 A+B——本户按标准落地 + 沉淀为坐标无关的可复用标准（业主'不只这套房子'）。当时按 6 个候选点推进；R12/R15 后当前保留 5 个内置夜灯。本户定位按'客房（父母/客人）'推进，不再按长期同住老人房设计
+        value:
+          mode: A+B
+          standard_doc: docs/standards/night-path-lighting.md v1
+          instance_doc: docs/design-iterations/parent-room-study-swap-20261005/night-path-lighting-instance.md
+        source_refs:
+          - 业主会话 2026-10-05
+        basis: 业主明确"A+B 一起做"
+        confidence: high
+        impact: material
+        affected_objects:
+          - 当前 5 个建模 night_light 点位
+          - lighting_entry_base
+          - lighting_bedrooms_bath
+          - light_gbath_panel
+        affected_views:
+          - plan
+        owner: user
+        status: resolved
+        verification_method: 标准 v1 在本户实施验证后回改升 v2
+      - id: decision-guest-room-positioning
+        category: user_decision
+        statement: 2026-10-05 第七轮（Q1 关闭）：客房按'正常客房'设计——偶尔来住、不做无障碍加码、不预设轮椅/助行器、不做隔声升级预设；以后有预算再逐步改善。设计保持成品化、可逆、可升级
+        value:
+          option: A_正常客房
+          accessibility_upgrade: 不在本轮
+          acoustic_upgrade: 不在本轮（电梯噪声仍实测，仅作免费缓解：床头靠东外墙+北墙衣柜声屏障）
+          future_upgrade: 有预算后逐步
+        source_refs:
+          - 业主会话 2026-10-05
+        basis: 业主原话"你想复杂了，就按正常的客房设计，之后有预算了再慢慢改"
+        confidence: high
+        impact: material
+        affected_objects:
+          - bedroom_se
+          - wardrobe_180
+          - NP 点位
+          - elevator_shaft
+        affected_views:
+          - plan
+        owner: user
+        status: resolved
+        verification_method: align-guest-room-layout 收口时核对不引入本轮未授权的加码项
+      - id: decision-phase-deferral
+        category: user_decision
+        statement: 2026-10-05 第八轮（Q2 关闭）：书房柜体与起夜照明的采购/安装推到二期（当时 6 个候选，后由 R15 删除 NP-4b）；但必要的床头电位/零线、网口与北墙隔声条件仍需按实际方案安排；路径灯并入既有回路，客卫内置灯与其预埋取消，否则二期变成砸墙工程。业主同意先做 3D 设计与规划，不急着继续
+        value:
+          procurement_phase: 二期
+          preprovision_phase: 一期水电交底
+          model_now: true
+        source_refs:
+          - 业主会话 2026-10-05
+          - fact-preprovision-list
+        basis: 业主原话"推到二期。但是我们可以先设计3D模型，做好规划"
+        confidence: high
+        impact: material
+        affected_objects:
+          - 当前 5 个建模 night_light 点位
+          - 书房柜体候选
+          - 可插拔客卫感应灯（未来可选）
+        affected_views:
+          - plan
+        owner: user
+        status: resolved
+        verification_method: schedule/phase-1 水电交底清单新增预留条目 + 二期采购清单登记
+      - id: fact-preprovision-list
+        category: confirmed
+        statement: '''以后有预算再改''成立的前提：部分升级必须在水电交底前预留条件，否则后期要敲墙。必须现在留的：床头双侧电位数量与高度、当前 5 个夜路径灯相关电气点位按既有照明回路供电（NP-2 采用插电小夜灯，电气映射另收口）；不预埋客卫夜灯与独立起夜回路、客房床头调光/智能零线、网口数量、北墙隔声（若未来可能做，必须在吊顶/墙面施工前定）。可后补（无需预留）：小夜灯升级款、客卫防滑垫/明装扶手、衣柜内部配件、起夜灯换调光/雷达感应款、窗帘电机'
+        value:
+          must_preprovision:
+            - 床头双侧电位
+            - 当前路径灯位按既有照明回路供电
+            - 床头开关零线
+            - 网口
+            - 北墙隔声条件
+          can_upgrade_later:
+            - 小夜灯
+            - 防滑垫
+            - 明装扶手
+            - 衣柜配件
+            - 感应器升级
+            - 窗帘电机
+        source_refs:
+          - config/electrical.yaml
+          - config/electrical-topology.yaml
+          - AGENTS.md 电气铁律
+        basis: 电气与施工工序推导（未施工，敲墙成本=返工）
+        confidence: high
+        impact: material
+        affected_objects:
+          - sock_parent_bed_l
+          - sock_parent_bed_r
+          - 当前 5 个建模 night_light 点位
+          - net_study
+        affected_views:
+          - plan
+          - elevation
+        owner: electrical
+        status: open
+        verification_method: 水电交底清单与本清单逐条核对
+    site_pending:
+      - id: pending-elevator-noise
+        category: site_pending
+        statement: 电梯井与客房北墙共墙（x[13.40,15.25] z=5.55）的夜间运行噪声/振动未实测；直接影响床头方位与是否做北墙隔声
+        value: null
+        source_refs:
+          - fact-elevator-adjacency
+        basis: 现场声学未测
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - bed_150
+          - w_be_north
+        affected_views:
+          - plan
+          - section
+        owner: site
+        status: open
+        verification_method: 量房期间分时段实测电梯噪声
+      - id: pending-guest-wall-construction
+        category: site_pending
+        statement: 客房北墙/西墙构造与厚度未实测；决定床头电位开孔条件与隔声做法
+        value: null
+        source_refs:
+          - fact-room-geometry-bedroom-se
+        basis: 量房未完成
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - w_be_north
+          - w_be_west
+        affected_views:
+          - section
+        owner: site
+        status: open
+        verification_method: 量房记录墙体构造/厚度
+      - id: pending-bay-sill-height
+        category: site_pending
+        statement: '卧室系飘窗台高 2.07m 系样板间视频推断（量房待核 #20），直接决定书房南墙柜体限高（≤2.00m）'
+        value:
+          assumed_sill: 2.07
+        source_refs:
+          - config/layout/overlay.yaml:96-98
+        basis: 推断值待实测
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - shelf
+          - bookshelf
+        affected_views:
+          - elevation
+        owner: site
+        status: open
+        verification_method: 量房实测飘窗台高
+      - id: pending-wardrobe-product
+        category: site_pending
+        statement: 客房衣柜真实产品外廓未锁定：须 ≤2.40m 高（北墙边吊/东北角吊底 2.50m）、1.8m 宽沿北墙、推拉门（DEC-2026-08-02-013 全屋衣柜统一推拉门）；挂衣容量与柜前通道余量待核
+        value:
+          max_height: 2.4
+          nominal:
+            - 1.8
+            - 0.6
+        source_refs:
+          - fact-phase1-scope
+          - fact-room-geometry-bedroom-se
+        basis: 采购未锁定
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - wardrobe_180
+        affected_views:
+          - plan
+          - elevation
+        owner: site
+        status: open
+        verification_method: 选型 + 实物外廓测量
+      - id: pending-night-path-lighting
+        category: site_pending
+        statement: 起夜路径（客房→客厅→主走廊→客卫 ≈8–9m）的低位感应照明、床头小夜灯电位、NP-4b 已删除；NP-4a 到柜体 NP-5 约 5.97m 的路径覆盖缺口与感应覆盖未深化；客卫内使用既有主灯手动照明
+        value: null
+        source_refs:
+          - fact-night-path-distance
+        basis: 本轮新提出、未深化
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - light_corridor_1
+          - sock_parent_bed_l
+        affected_views:
+          - plan
+        owner: site
+        status: open
+        verification_method: 照明深化方案 + 电气点位申报
+      - id: pending-d-bese-position-drift
+        category: site_pending
+        statement: model-geometry.yaml d_bese anchor(v_be_se_s)/offset 3.7 与 verify-furniture-placement 门扇扫掠域 x[13.40,14.30] z[5.65,6.55] 口径不一致；家具排布以扫掠域为准，但口径漂移须在实施前修正或澄清
+        value: null
+        source_refs:
+          - fact-doors-both-rooms
+        basis: 权威源内部漂移
+        confidence: not_applicable
+        impact: medium
+        affected_objects:
+          - d_bese
+          - bed_150
+          - wardrobe_180
+        affected_views:
+          - plan
+        owner: project
+        status: open
+        verification_method: 量房核对门洞 + 修正 model-geometry 注解
+      - id: pending-night-path-surfaces
+        category: site_pending
+        statement: 起夜路径地面完成面未定：客房西门有无门槛/推拉门、客餐厅过渡地面材质分界（DEC-041）、主走廊地面完成面影响路径灯位置与照度；客卫不设固定低位灯，另核 switch_gbath 从入口处是否便于操作
+        value: null
+        source_refs:
+          - fact-lighting-baseline
+          - config/layout/overlay.yaml 地面补区
+        basis: 量房未完成
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - light_corridor_1
+          - 新增夜灯点位
+        affected_views:
+          - plan
+          - elevation
+        owner: site
+        status: open
+        verification_method: 量房记录门槛高差与地面分材线
+      - id: pending-night-path-illuminance
+        category: site_pending
+        statement: 起夜路径照度目标未定量（建议地面 5–15lx、色温 3000K、防眩光）；灯具型号/感应方式（PIR vs 存在感应）/延时参数未选型
+        value:
+          targets: 路径地面 5–15lx；3000K；防眩光；客卫使用现有主灯
+        source_refs:
+          - fact-lighting-baseline
+        basis: 本轮提出、未深化选型
+        confidence: not_applicable
+        impact: material
+        affected_objects:
+          - 新增夜灯点位
+        affected_views:
+          - elevation
+        owner: site
+        status: open
+        verification_method: 选型 + 现场照度复测
+      - id: pending-robot-base-conflict
+        category: site_pending
+        statement: 客卫开放洗漱区台盆下已有扫地机基站（robot_dock_gbath，DEC-2026-09-09-R6），入住后如添可插拔夜灯，再按实物位置核对基站与进出通道
+        value: null
+        source_refs:
+          - config/house.yaml:539
+        basis: 既有 DEC 约束
+        confidence: not_applicable
+        impact: low
+        affected_objects:
+          - robot_dock_gbath
+          - 可选插电夜灯
+        affected_views:
+          - plan
+        owner: project
+        status: open
+        verification_method: 客卫平面深化时同图核对
+  unknowns_requiring_alignment:
+    - id: align-guest-bath-distance
+      question: 起夜动线由约 2m 增至约 8–9m 是否接受？照明/扶手/防滑做到什么程度？
+      blocks:
+        - 客房排布冻结
+        - decision-brief 冻结
+    - id: align-elevator-noise
+      question: 客房北墙与电梯井共墙，是否量房时实测夜间噪声并预留北墙隔声处理预算？
+      blocks:
+        - 床头方位选择
+        - 客房预算
+    - id: align-study-storage-content
+      question: 书房储物具体装什么（书/文件/设备/行李箱被褥/换季衣物）？决定开架 vs 封闭柜、深度与是否做吊柜
+      blocks:
+        - 书房柜体形式
+        - 预算出处
+    - id: align-study-east-wall-tv
+      question: 书房东墙即客厅电视墙（65" 挂装 z=8.00 + 通顶柜/低柜占满客厅侧），书房侧做深柜/吊柜如何避让挂装锚栓与双层墙厚？
+      blocks:
+        - 书房东墙柜体方案
+    - id: align-guest-room-layout
+      question: 客房排布：方案一（床靠东外墙+1.8m 衣柜北墙、床尾半进凸窗带）vs 方案二（床靠北墙全避凸窗带+衣柜缩至 1.2–1.5m 放西墙门下）？
+      blocks:
+        - 客房家具摆位
+    - id: align-wardrobe-180-fit
+      question: 1.8m 成品衣柜是否保留（PKG-150 池内）还是缩到 1.5m/1.2m？2.4m 高推拉门款选型
+      blocks:
+        - 采购选型
+        - PKG-150 描述
+    - id: align-study-storage-budget
+      question: 书房柜体预算出处：删除健身释放的约 ¥1,800 + QR-2026-10-03-26（¥18,000 固定柜体候选）扩范围，还是归二期定制？
+      blocks:
+        - 预算/采购配置
+    - id: align-fitness-cancellation
+      question: 健身器材彻底取消，还是迁移到主卧/客厅保留轻训练？
+      blocks:
+        - procurement 条目处置
+    - id: align-naming-scope
+      question: 命名口径确认：room id 一律不改，仅改 model-geometry/house 的 name 与注释，在决策日志建'旧功能→新功能'映射表；HVAC/电气点位 id（ac_parent/ac_study/sock_study_* 等）只改注释不改 id。是否采纳？
+      blocks:
+        - 实施范围
+    - id: align-facts-crossfile-rewrite
+      question: config/facts.yaml 跨文件对账当前把'父母房 12.75㎡'与 HVAC 220W/㎡ 口径绑定；互换后须改写为'父母房 8.35㎡ / 书房 12.75㎡'并重算 W/㎡，是否随本轮一并收口？
+      blocks:
+        - verify:facts 回归
+    - id: align-guest-bath-distance-resolved
+      question: （2026-10-05 R4 已收口）起夜动线由约 2m 增至约 8–9m 由业主接受；对策升级为必做项——人接近即自动亮起的地面灯，见 decision-night-path-lighting
+      blocks: []
+    - id: align-night-path-lighting-design
+      question: 起夜照明按 R15/R12 形成当前基线：5 个内置路径灯并入既有回路，NP-4b 已删除，客卫用主灯手动控制；NP-4a→NP-5 约 5.97m 覆盖缺口及感应参数待深化
+      blocks:
+        - 电气点位申报
+        - 预算条目
+        - decision-brief 冻结
+    - id: align-portfolio-scope
+      question: 业主表示'不只这套房子'：本方案是按'父母偶尔来住'定位，还是要把起夜照明沉淀成可复用到其他住宅的标准？
+      blocks:
+        - 是否新增可复用标准文档
+        - 方案详细程度
+  notes:
+    - 本轮为纯讨论轮次：未修改任何配置文件、未生成任何渲染证据、未宣称施工冻结。
+    - 三轮讨论口径：R1 只换功能不换几何 + 删除健身器材；R2 父母要求客房与主人区隔开（支持东南客房方案）+ 书房承担更多储物；R3 不急着开工、持续讨论并建立本工作区。
+    - 历史关联：DEC-2026-08-26-046（书房多功能+杠铃训练）、DEC-2026-09-03-053（轻训练三件套）在本轮整体作废范围由 align-fitness-cancellation 最终裁定；DEC-2026-08-02-013'父母房预留改书房'的弹性设计转写对象改为客房。
+    - model-geometry.yaml 的 room name 字段（study=父母房 / bedroom_se=书房）与 overlay.yaml 窗帘 reason 注释在实施时需同步改写，但仅限 name/注释文字，禁止任何几何改动。
+    - 所有'约/粗算'数值（起夜距离、面积口径、W/㎡）均为未交房状态下由几何推导，量房后须复核。
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: parent-room-study-swap-20261005
+  subject: 功能互换对象清单（客房=bedroom_se / 书房=study / 健身器材删除）
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+      - collision
+      - maintenance
+      - interface
+      - review
+    visual_relationship_required: true
+    candidate_state: true
+    source_version: discussion-20261005
+    responsibility_boundary: 家具不承担 HVAC、冷凝水、结构、隔声责任；电梯井隔声、墙体构造、门洞位置须由现场/结构责任人确认；所有坐标均为候选，未施工冻结
+  objects:
+    - id: guest_room_bedroom_se
+      type: room_function
+      archetypes:
+        - guest_bedroom
+      owner: project
+      function: 客房（供父母/客人）：与主人区（主卧/主卫）隔开，独立于卧室翼
+      material: 既有墙体/天花/玻璃幕墙（不改）
+      geometry_source: config/layout/model-geometry.yaml（bedroom_se，几何不动）
+      datum_refs:
+        - datum-guest-room
+        - datum-guest-layout-a
+        - datum-guest-layout-b
+      fact_refs:
+        - fact-room-geometry-bedroom-se
+        - fact-guest-separation-achievable
+        - fact-elevator-adjacency
+        - fact-night-path-distance
+        - decision-guest-separation
+      decision_refs:
+        - decision-guest-separation
+      dependencies:
+        - d_bese
+        - ac_study
+        - w_be_west
+        - w_be_north
+        - w_east_upper
+      interfaces:
+        - id: guest-door-sweep
+          target_object_id: d_bese
+          kind: clearance
+          requirement: 床/衣柜/床头柜 AABB 不得侵入扫掠域 x[13.40,14.30] z[5.65,6.55]
+          status: open
+        - id: guest-elevator-noise
+          target_object_id: elevator_shaft
+          kind: acoustic
+          requirement: 北墙共墙隔声与床头方位待量房实测噪声后定
+          status: open
+        - id: guest-wardrobe-height
+          target_object_id: ceiling_study_ac
+          kind: clearance
+          requirement: 柜体高度 ≤2.40m（北墙边吊/东北角吊底 2.50m）
+          status: open
+      collision:
+        policy: candidate_aabb
+        geometry_ref: datum-guest-room
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 成品家具可拆走，房间可退回书房（保留网口/桌用插座/电动窗帘电源）
+        access_clearance: site_pending
+        replaceable_parts: []
+        inspection_requirements:
+          - 不承担 HVAC/冷凝水责任
+          - 床头电位开孔待墙体构造确认
+      parts: []
+      visual_relationships:
+        - target_object_id: living_dining
+          relation: separated
+          requirement: 西墙贴客厅电视墙，床靠东外墙远离噪声源
+        - target_object_id: master_bedroom
+          relation: separated
+          requirement: 隔客餐厅+主走廊，不共墙（父母'隔开'诉求的实现点）
+      validation_refs:
+        - verify:furniture
+        - verify:all
+      status: candidate_not_frozen
+    - id: study_west
+      type: room_function
+      archetypes:
+        - study
+      owner: project
+      function: 书房（纯书房）：工作/学习 + 全屋扩容储物层之一
+      material: 既有墙体/天花/飘窗（不改）
+      geometry_source: config/layout/model-geometry.yaml（study，几何不动）
+      datum_refs:
+        - datum-study-room
+        - datum-study-north-cabinet
+        - datum-study-south-shelf
+        - datum-study-east-wall
+      fact_refs:
+        - fact-room-geometry-study
+        - fact-study-storage-walls
+        - decision-study-storage
+      decision_refs:
+        - decision-study-storage
+      dependencies:
+        - d_study
+        - ac_parent
+        - w_st_east
+        - w_st_south
+        - w_mb_east
+      interfaces:
+        - id: study-door-sweep
+          target_object_id: d_study
+          kind: clearance
+          requirement: 柜体 AABB 不得侵入扫掠域 x[6.15,7.05] z[5.55,6.45]
+          status: open
+        - id: study-east-tv-mount
+          target_object_id: tv_65
+          kind: clearance
+          requirement: 东墙柜体须避让客厅侧 65" 挂装锚栓（z=8.00）与双层墙厚，方案未定
+          status: open
+        - id: study-south-sill
+          target_object_id: study_south_bay
+          kind: clearance
+          requirement: 南墙柜体高度 ≤2.00m（飘窗台 2.07m 待量房核）
+          status: open
+      collision:
+        policy: candidate_aabb
+        geometry_ref: datum-study-room
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 成品柜/开架可拆走，房间可退回卧室（预留 1.5m 床位可能，墙面不全部占满）
+        access_clearance: site_pending
+        replaceable_parts: []
+        inspection_requirements:
+          - 不承担 HVAC/冷凝水责任
+      parts: []
+      visual_relationships:
+        - target_object_id: living_dining
+          relation: shared_wall
+          requirement: 东墙即客厅电视墙，柜体与挂装/柜体双层关系待处理
+        - target_object_id: master_bedroom
+          relation: shared_wall
+          requirement: 西墙与主卧共剪力墙（shear inferred），吊柜固定待结构确认
+      validation_refs:
+        - verify:furniture
+        - verify:all
+      status: candidate_not_frozen
+    - id: bed_150_guest
+      type: furniture
+      archetypes:
+        - bed
+      owner: furniture
+      function: 客房 1.5m 床（成品，可搬走；PKG-150 一期池内随功能迁至 bedroom_se）
+      material: 待选成品（含液压床箱低箱款选型待定）
+      geometry_source: 候选（本轮未落坐标）
+      datum_refs:
+        - datum-guest-layout-a
+        - datum-guest-layout-b
+      fact_refs:
+        - fact-furniture-current
+        - fact-phase1-scope
+        - fact-bay-band-limits
+      decision_refs:
+        - decision-guest-separation
+      dependencies:
+        - wardrobe_180_guest
+        - d_bese
+        - sock_parent_bed_l
+        - sock_parent_bed_r
+      interfaces:
+        - id: bed-door-sweep
+          target_object_id: d_bese
+          kind: clearance
+          requirement: AABB 不得交扫掠域 x[13.40,14.30] z[5.65,6.55]
+          status: open
+        - id: bed-head-power
+          target_object_id: sock_parent_bed_l
+          kind: electrical
+          requirement: 床头双侧电位：现仅 sock_study_extra @(14.50,5.55) 一侧，另一侧需申报新增
+          status: open
+      collision:
+        policy: candidate_aabb
+        geometry_ref: datum-guest-layout-a
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 成品可搬走，房间可退回书房
+        access_clearance: site_pending
+        replaceable_parts: []
+        inspection_requirements: []
+      parts: []
+      visual_relationships:
+        - target_object_id: elevator_shaft
+          relation: oriented
+          requirement: 床头避开北墙（电梯井侧）——方案一靠东外墙
+          status: open
+      validation_refs:
+        - verify:furniture
+      status: candidate_not_frozen
+    - id: wardrobe_180_guest
+      type: furniture
+      archetypes:
+        - wardrobe
+      owner: furniture
+      function: 客房衣柜 1.8m×0.6m×≤2.40m 推拉门（PKG-150 一期池内；2.4m 高度款受限吊顶）
+      material: 待选成品
+      geometry_source: 候选（本轮未落坐标）
+      datum_refs:
+        - datum-guest-layout-a
+        - datum-guest-layout-b
+      fact_refs:
+        - fact-room-geometry-bedroom-se
+        - pending-wardrobe-product
+      decision_refs:
+        - decision-guest-separation
+      dependencies:
+        - bed_150_guest
+        - ceiling_study_ac
+        - ceiling_study_ac_corner
+        - d_bese
+      interfaces:
+        - id: wardrobe-height-limit
+          target_object_id: ceiling_study_ac
+          kind: clearance
+          requirement: 柜体 ≤2.40m（吊底 2.50m，留顶封板 0.10m）
+          status: open
+        - id: wardrobe-acoustic-role
+          target_object_id: elevator_shaft
+          kind: acoustic
+          requirement: 方案一中北墙衣柜兼作电梯井侧声屏障（效果待实测）
+          status: open
+      collision:
+        policy: candidate_aabb
+        geometry_ref: datum-guest-layout-a
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 成品可搬走
+        access_clearance: site_pending
+        replaceable_parts:
+          - 门板
+          - 滑轮
+        inspection_requirements:
+          - 防倾倒固定待墙体构造确认
+      parts: []
+      visual_relationships:
+        - target_object_id: bed_150_guest
+          relation: separated
+          requirement: 柜前通道余量方案一约 0.4m（偏紧，3D 复核）
+          status: open
+      validation_refs:
+        - verify:furniture
+      status: candidate_not_frozen
+    - id: study_desk_chair_west
+      type: furniture
+      archetypes:
+        - desk
+      owner: furniture
+      function: 书房书桌+椅（原位保留：西墙南端 desk @(4.50,9.20)+chair @(5.10,9.20)，桌后插座原位有效）
+      material: 现有
+      geometry_source: config/house.yaml study 段（不变）
+      datum_refs:
+        - datum-study-room
+      fact_refs:
+        - fact-furniture-current
+        - fact-electrical-current
+      decision_refs:
+        - decision-function-swap-only
+      dependencies:
+        - sock_parent_desk
+        - w_st_south
+        - study_south_bay
+      interfaces:
+        - id: desk-power-keep
+          target_object_id: sock_parent_desk
+          kind: electrical
+          requirement: 桌后插座/网口原位保留，交叉验证偏差 <1.5m
+          status: resolved
+      collision:
+        policy: existing_placed
+        geometry_ref: datum-study-room
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 成品
+        access_clearance: site_pending
+        replaceable_parts: []
+        inspection_requirements: []
+      parts: []
+      visual_relationships: []
+      validation_refs:
+        - verify:furniture
+      status: existing_unchanged
+    - id: study_seasonal_wardrobe_wall_moved
+      type: furniture
+      archetypes:
+        - seasonal_storage
+      owner: furniture
+      function: 季节后台柜 1.70m×0.55m×2.40m：由 bedroom_se 东墙原位移至 study 北墙边吊下（安装条件平移成立：2.40m 柜体+0.10m 顶封板抵 2.50m 吊底）
+      material: 待选成品/模块化
+      geometry_source: 候选（新坐标未落）
+      datum_refs:
+        - datum-study-north-cabinet
+      fact_refs:
+        - fact-furniture-current
+        - fact-room-geometry-study
+        - fact-study-storage-walls
+      decision_refs:
+        - decision-study-storage
+      dependencies:
+        - d_study
+        - ceiling_parent_ac
+      interfaces:
+        - id: cabinet-door-sweep
+          target_object_id: d_study
+          kind: clearance
+          requirement: 避让扫掠域 x[6.15,7.05] z[5.55,6.45]；候选 footprint 参照原 wardrobe_180 x[4.20,6.00] z[5.55,6.15]
+          status: open
+        - id: cabinet-anti-tip
+          target_object_id: w_st_north
+          kind: structure
+          requirement: 防倾倒固定待墙体构造/钢筋探测确认
+          status: open
+      collision:
+        policy: candidate_aabb
+        geometry_ref: datum-study-north-cabinet
+        review_ref: verify:furniture
+      maintenance:
+        boundary: 可移动/拆装
+        access_clearance: site_pending
+        replaceable_parts:
+          - 门板
+        inspection_requirements: []
+      parts: []
+      visual_relationships: []
+      validation_refs:
+        - verify:furniture
+      status: candidate_not_frozen
+    - id: fitness_removal_set
+      type: removal
+      archetypes:
+        - light_fitness
+      owner: budget
+      function: 删除书房轻训练器材：placed 三件（bench_adjustable/adjustable_dumbbell_pair/rollable_training_mat）+ home_fitness_light_set 预算/采购条目（约 ¥1,800 candidate 未核价、未下单）
+      material: 无
+      geometry_source: config/house.yaml bedroom_se 段 + config/materials.yaml + config/procurement.yaml
+      datum_refs: []
+      fact_refs:
+        - fact-fitness-budget
+        - decision-fitness-removal
+      decision_refs:
+        - decision-fitness-removal
+      dependencies:
+        - study-seasonal-storage.test.ts
+        - design-rules.yaml furnishingTypeToTopic
+      interfaces:
+        - id: fitness-budget-removal
+          target_object_id: home_fitness_light_set
+          kind: budget
+          requirement: 删除后须保证不伪造节省；彻底取消或迁移由 align-fitness-cancellation 裁定
+          status: open
+      collision:
+        policy: n_a
+        geometry_ref: null
+        review_ref: verify:furniture
+      maintenance:
+        boundary: n_a
+        access_clearance: n_a
+        replaceable_parts: []
+        inspection_requirements: []
+      parts: []
+      visual_relationships: []
+      validation_refs:
+        - verify:furniture
+        - verify:all
+      status: pending_alignment
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: parent-room-study-swap-20261005
+  subject: 父母房↔书房功能互换（几何不动）+ 客房隔开 + 书房储物扩容 + 删除轻训练器材
+  state: batch_a_b1_b2_done
+  state_note: 批次 A（衣柜 roomOverride）+ B-1（B5-A 电脑回路改道）+ B-2（起夜路径点位 + 客房床头组）已完成；R17 不做客房嵌入/壁装床头灯。R12 删除客卫 NP-6/7/8 内置低位灯；R15 删除客厅中段 NP-4b。当前电气点位 107 个、建模夜灯点位 5 个，NP-5 采用 wall_cabinet_tall 北端板柜体锚点与侧向隐藏供电。NP-4a→NP-5 直线约 5.97m 的覆盖缺口、量房墙体/门洞复核及批次 D 浏览器证据仍开放。R13 的几何类型保留墙装/落地两种通用形态；本户开敞区柱状点 NP-4b 已删除。人体感应触发仍未在浏览器实现；NP-2 的插电灯型与现有墙面电气点位映射待单独收口。 R16 已从夜灯通用几何中移除落地柱分支，未锚定墙面/柜面的 night_light 现在拒绝渲染。
+  source_version:
+    config_refs:
+      - config/house.yaml
+      - config/electrical.yaml
+      - config/ceiling.yaml
+      - config/hvac.yaml
+      - config/materials.yaml
+      - config/design-rules.yaml
+      - config/procurement.yaml
+      - config/facts.yaml
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+    asset_refs:
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+    render_facts_ref: data/project-render-facts.json（derived；R14 已重生成，NP-5 mountAnchor 指向柜体北端板）
+    source_digest: 现行配置即为讨论基线：study=父母房 12.75㎡（bed_150/wardrobe_180/desk/chair），bedroom_se=书房 9.45㎡bbox/8.35㎡净（desk/chair/study_seasonal_wardrobe_wall + 轻训练三件 placed），两房均为 MJV-28T2/P-SS 2.8kW（ac_parent @5.50,6.00 / ac_study @15.10,5.85），home_fitness_light_set ¥1,800 candidate 未核价未下单，PKG-150 ¥19,000 一期家具池含父母房床/床垫/成品衣柜
+    generated_at: '2026-10-05T14:00:00+08:00'
+  validation:
+    commands:
+      - npm run verify:all
+      - compiled verifier set from TypeScript output in /tmp (same verifier entrypoints)
+      - npm run typecheck
+      - verify:lighting-config + verify:project-render-facts (compiled entrypoints)
+      - agent-browser local visual inspection
+      - compiled verify:spatial / verify:project-render-facts / verify:lighting-config after R14
+    results:
+      - npm run verify:all blocked before the first verifier by sandbox tsx IPC listen EPERM at /tmp/tsx-1000/*.pipe
+      - 'Compiled verifier entrypoints: 13 passed; verify-data-consistency reports the pre-existing sock_child_ac wall-segment error tracked in docs/pending-site-data.md #42'
+      - 'project-render-facts regenerated successfully: 21 lighting fixtures; YAML/JSON parse checks passed'
+      - 'npm run typecheck: passed'
+      - 'verify:lighting-config: passed; verify:project-render-facts: passed (21 fixtures)'
+      - Browser ready at http://localhost:5175/; wall and floor night_light objectIds present; close-up evidence saved under tmp/screenshots/night-lights/
+      - 'R14 furniture-face anchor: spatial verification passed (0 errors); project-render-facts verified 21 fixtures; lighting config verified'
+      - 'R14 exact npm run verify:all reached verify-data-consistency, then stopped at pre-existing sock_child_ac wall-segment error #42; preceding topology/layout/furniture/rules/collision/spatial checks passed.'
+      - Supplementary compiled verifier set passed MEP/electrical/project-render-facts/lighting/facts/takeoff/schedule; parallel DEC-2026-10-07-M05 route expansion (102→133) was present and passed its takeoff checks.
+      - 'R14 verify:mep: 0 errors / 125 warnings after updating the NP-5 cabinet-face route.'
+      - 'R14 verify:mep-takeoff: PASS; 133 route endpoints resolved; conduit total increased 539.8m→540.2m for the cabinet-end route.'
+    config_status: PASS_WITH_EXISTING_WARNING_BASELINE
+    geometry_status: PASS_WITH_EXISTING_WARNINGS
+    consistency_status: FAIL_UNRELATED_EXISTING_SOCK_CHILD_AC
+    functional_checks_status: PARTIAL_VERIFIED
+    application_status: PARTIAL_BROWSER_VERIFIED_R14_CABINET_FACE
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+    note: 'R15 source config, topology, docs and generated render facts are synchronized. `npm run verify:all` was run with IPC access and stopped at the existing unrelated `sock_child_ac` wall projection error #42; prior topology/layout/furniture/rules/collision/spatial checks passed. One unrelated existing point-placement error remains at sock_child_ac (#42). No test suite was run. `typecheck`, `verify:mep` (0 errors/125 warnings), electrical lint (0 errors/53 warnings), render-facts (20 fixtures), lighting-config, facts, and MEP takeoff passed; takeoff reports 132 routes and 534.0m conduit. R13 static model visual review passed; browser runtime still has no proximity-trigger/PIR behavior. NP-4b was subsequently deleted by owner decision R15. R14 anchor resolves to the actual placed cabinet instance and fits its north end face with the declared 3mm gap. Final NP-5 preview confirms furniture-face anchor; current functional blockers are the NP-4a→NP-5 coverage gap and live proximity-trigger behavior; NP-4b was deleted by owner decision R15. R14 also updated strong-light-entry-night-corridor to the cabinet face; MEP lint/takeoff pass after the route update.'
+  evidence:
+    required_views:
+      - 客房门口视角（含 d_bese 扫掠域）
+      - 客房床/衣柜视角（方案一与方案二各一）
+      - 客房北墙电梯井侧视角
+      - 书房北墙季节后台柜视角
+      - 书房南墙书架/东墙柜体视角
+      - 书房桌面工作视角
+      - 起夜路径（客房→客卫）第一人称视角
+    status: partial
+    items:
+      - id: night_wall_closeup_after_v4
+        view: 客厅低位墙灯近景
+        url: http://localhost:5175/
+        title: 和萃 701 - 3D 装修设计
+        app_ready: true
+        config_error_banner: false
+        ui_warning_badge: 178 (existing MEP warning summary)
+        camera:
+          position:
+            - 12.05
+            - 1.15
+            - 6.75
+          target:
+            - 13.36
+            - 0.3
+            - 5.1
+        object_ids:
+          - electrical:night_living_north
+        runtime_query: type=Group; mountKind=wall; position≈[13.323,0.30,5.10]; wallSide=west
+        snapshot: tmp/screenshots/night-lights/night_wall_closeup_after_v4.snapshot.txt
+        png: tmp/screenshots/night-lights/night_wall_closeup_after_v4.png
+        source_refs:
+          - shared/render/NightLightGeometry.ts
+          - app/src/render/InteriorLightingSystem.ts
+      - id: night_corridor_isolated_after_v2
+        view: 走廊口落地灯近景（仅该夜灯 SpotLight 可见）
+        url: http://localhost:5175/
+        title: 和萃 701 - 3D 装修设计
+        app_ready: true
+        config_error_banner: false
+        ui_warning_badge: 178 (existing MEP warning summary)
+        camera:
+          position:
+            - 8.8
+            - 1.2
+            - 7.5
+          target:
+            - 7.6
+            - 0.15
+            - 5.3
+        object_ids:
+          - electrical:night_corridor
+        runtime_query: type=Group; mountKind=floor_standing; position=[7.60,0,5.30]; totalHeight≈0.30m
+        snapshot: tmp/screenshots/night-lights/night_corridor_isolated_after_v2.snapshot.txt
+        png: tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png
+        source_refs:
+          - shared/render/NightLightGeometry.ts
+          - app/src/render/InteriorLightingSystem.ts
+        superseded: true
+        superseded_by: night_corridor_cabinet_face_after_v1
+        note: Pre-R14 diagnostic screenshot of the bollard at the obsolete floor position; retained for history only.
+      - id: night_corridor_cabinet_face_after_v1
+        view: NP-5 cabinet north end-panel close-up
+        url: http://localhost:5175/
+        title: 和萃 701 - 3D 装修设计
+        app_ready: true
+        config_error_banner: false
+        ui_warning_badge: 178 (existing MEP warning summary)
+        camera:
+          position:
+            - 8.1
+            - 1.2
+            - 4.1
+          target:
+            - 7.45
+            - 0.3
+            - 5.55
+        object_ids:
+          - electrical:night_corridor
+          - furniture:living_dining:wall_cabinet_tall:0
+        runtime_query: electrical:night_corridor mountKind=furniture_face, furnitureId=furniture:living_dining:wall_cabinet_tall:0, hostFace=north, normal=[0,0,-1], position≈[7.45,0.30,5.533]
+        snapshot: tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.snapshot.txt
+        png: tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.png
+        source_refs:
+          - config/electrical.yaml
+          - config/render/overrides.yaml
+          - shared/render/NightLightGeometry.ts
+          - app/src/render/InteriorLightingSystem.ts
+        superseded: true
+        superseded_by: night_corridor_cabinet_face_after_v2
+        note: Initial cabinet-face diagnostic screenshot; superseded by the final regenerated projection capture.
+      - id: night_corridor_cabinet_face_after_v2
+        view: NP-5 snapped to cabinet north end panel
+        url: http://localhost:5176/
+        title: 和萃 701 - 3D 装修设计
+        app_ready: true
+        config_error_banner: false
+        ui_warning_badge: 178 (existing MEP warning summary)
+        camera:
+          position:
+            - 8.1
+            - 1.2
+            - 4.1
+          target:
+            - 7.45
+            - 0.3
+            - 5.55
+        object_ids:
+          - electrical:night_corridor
+          - furniture:living_dining:wall_cabinet_tall:0
+        runtime_query: mountKind=furniture_face; furnitureId=furniture:living_dining:wall_cabinet_tall:0; hostFace=north; normal=[0,0,-1]; fixture position≈[7.45,0.30,5.533]
+        snapshot: tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.snapshot.txt
+        png: tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.png
+        source_refs:
+          - config/electrical.yaml
+          - data/project-render-facts.json
+          - shared/render/NightLightGeometry.ts
+          - app/src/render/InteriorLightingSystem.ts
+    runtime_browser:
+      wrapper: /home/tao/.local/bin/agent-browser
+      command: agent-browser --session bontop-f957d2ec2c5f (open, wait networkidle, app ready poll, snapshot, runtime query, screenshot, close)
+      status: partial_valid
+      session: bontop-f957d2ec2c5f
+      url: http://localhost:5176/
+      app_ready: true
+      warnings:
+        - 178 UI warning badge is the existing MEP summary; no config-error banner observed
+      banner: null
+      snapshot: tmp/screenshots/night-lights/night_wall_closeup_after_v4.snapshot.txt; tmp/screenshots/night-lights/night_corridor_isolated_after_v2.snapshot.txt; tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.snapshot.txt; tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.snapshot.txt
+      png: tmp/screenshots/night-lights/night_wall_closeup_after_v4.png; tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png; tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.png; tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.png
+      runtime_query: 'Historical R13 capture showed floor-standing NP-5; final R14 capture showed NP-5 mountKind=furniture_face. Current source: 5 night_light points (NP-1/2/3/4a wall; NP-5 cabinet face); DEC-2026-10-07-R16 removes the generic floor-standing branch.'
+      note: Includes historical R13 wall/floor archetype close-ups and final R14 cabinet-face NP-5 capture. Full bedroom-to-bath path remains unreviewed; NP-4a→NP-5 coverage remains unresolved and live PIR behavior is not implemented; NP-4b was deleted by owner decision R15.
+  aesthetic_review:
+    verdict: BLOCKED
+    blocking_issues:
+      - 未采集同版本浏览器证据（客房/书房/起夜路径视角）
+    non_blocking_notes: []
+    evidence_refs: []
+    requested_changes: []
+    assumptions:
+      - 讨论轮次不产出美学结论
+  functional_review:
+    verdict: BLOCKED
+    blocking_issues:
+      - 起夜照明方案（点位/回路/控制策略）未定
+      - 电梯井共墙噪声未实测
+      - 客房面积收缩后排布未定
+      - 书房储物内容/柜体形式未定
+      - 书房东墙与 65 寸电视挂装关系未处理
+    non_blocking_notes:
+      - 起夜动线 8–9m 的代价已由业主接受（R4），对策升级为必做项：接近自动亮起的起夜地面灯
+    evidence_refs: []
+    requested_changes: []
+    assumptions:
+      - 家具不承担 HVAC/结构/隔声责任
+  risks:
+    - 起夜动线显著变长（老人安全）
+    - 客房北墙贴电梯井（隔声/振动未知）
+    - 客房面积 12.75→8.35/9.45㎡ 后排布拥挤（衣柜门前约 0.4m）
+    - 书房东墙即客厅电视墙，深柜受限
+    - 配置未改但文档（name/注释/facts 对账）已开始漂移
+    - 删除健身释放预算可能被书房柜体增量吃掉，净值接近零
+  runtime_aabb:
+    note: 本轮无新 AABB；候选坐标仅存在于 round.yaml（datum 段）（datum-guest-layout-a/b、datum-study-*），未经 verify:furniture 验证
+  site_pending_preserved:
+    - 电梯井夜间噪声
+    - 客房北墙/西墙构造与厚度
+    - '飘窗台高 2.07m（量房 #20）'
+    - 衣柜真实产品外廓（≤2.40m/1.8m）
+    - 起夜路径照明深化
+    - d_bese 门洞位置文档漂移
+    - 门套/执手突出量（沿用）
+  retrospective:
+    triggered: true
+    triggers:
+      - user_defined_new_goal（功能互换 + 客房隔开 + 书房储物扩容）
+    records:
+      - R1：只换功能不换几何 + 删除健身器材
+      - R2：父母建议客房与主人区隔开 → 东南客房；书房承担更多储物；新发现电梯井共墙
+      - R3：不急着开工、持续讨论、建立五件协议工作区
+    rebaselined: false
+  delivery:
+    status: blocked
+    blocking_issues:
+      - P0-1
+      - P0-2
+      - B5 未定
+      - 量房未回
+      - 证据未采集
+    delivery_ready: false
+    follow_up_site_pending:
+      - 电梯井噪声实测
+      - 客房墙体构造
+      - 飘窗台高
+      - 衣柜选型
+      - 起夜照明深化
+    delivery_notes: v0 已让模型说真话：房间功能名、家具、预算条目与测试断言一致；下一轮按 alignment 顺序推进（凸窗带/电梯噪声实测 → 客房排布定稿 → 书房储物 → 二期采购）。
+  review:
+    verdict: BLOCKED
+    blocking_issues:
+      - 量房四项未回（剪力墙/凸窗带/门洞/飘窗台高）
+      - NP-4a 到柜体 NP-5 的约 5.97m 覆盖缺口待复核（NP-4b 已删除）
+      - 同版本浏览器证据未采集
+  local_reviews:
+    night_light_model:
+      aesthetic:
+        verdict: PASS
+        blocking_issues: []
+        non_blocking_notes:
+          - Historical R13 capture showed both wall and bollard forms; R16 removes the bollard branch. Current project instances use wall or cabinet-face anchors.
+        evidence_refs:
+          - tmp/screenshots/night-lights/night_wall_closeup_after_v4.png
+          - tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png
+        requested_changes: []
+        assumptions:
+          - Review covers static shape and visible light only.
+      functional:
+        verdict: BLOCKED
+        blocking_issues:
+          - NP-4b was deleted by owner decision R15; NP-4a to cabinet-mounted NP-5 has an approximately 5.97m straight-line coverage gap.
+          - Sensor windows/bands are visual only; no proximity-trigger, night threshold, or timeout behavior is implemented.
+        non_blocking_notes:
+          - NP-5 is snapped to the north end panel of wall_cabinet_tall at (7.45,5.55), oriented north with a 3mm surface gap; the corridor post has been removed.
+          - NP-4a→NP-5 is approximately 5.97m in straight-line distance; path coverage remains unresolved after NP-4b deletion.
+        evidence_refs:
+          - tmp/screenshots/night-lights/night_wall_closeup_after_v4.png
+          - tmp/screenshots/night-lights/night_corridor_isolated_after_v2.png
+          - app/src/render/InteriorLightingSystem.ts
+          - config/render/overrides.yaml
+          - config/electrical.yaml
+          - docs/design-iterations/parent-room-study-swap-20261005/night-path-lighting-instance.md
+          - tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v1.png
+          - config/electrical.yaml
+          - shared/render/NightLightGeometry.ts
+          - tmp/screenshots/night-lights/night_corridor_cabinet_face_after_v2.png
+          - scripts/verify/spatial/verify-spatial.ts
+        requested_changes: []
+        assumptions:
+          - The current requested scope was static night-light model improvement; collision and sensor interaction remain separate implementation scope.

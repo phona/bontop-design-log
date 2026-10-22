@@ -1,0 +1,339 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L17] frozen —— 历史真值：2026-10-04 业主确认时点本 brief 确为 frozen。但其中的回路基数（外机供电单独成路 = 第 20 路、箱体结论按 20 路重算）已被下方 supersession 列出的 DEC 与 config 字段取代；frozen 标记保留作历史留档，不再代表现行回路/箱体口径。本 brief 的暖通成交选型与 ¥36,000 商务口径未被任何 DEC 反转，不在此列
+# [decision-brief.yaml L118] ---------------------------------------------------------------------------
+# [decision-brief.yaml L119] supersession：2026-10-11 业主审计登记。本 brief 冻结的回路基数（外机供电单独成路
+# [decision-brief.yaml L120] = 第 20 路、箱体结论按 20 路重算）已过期，但 scripts/ / server/ / tests/ /
+# [decision-brief.yaml L121] app/ 对 decision-brief.yaml 零引用（config/facts.yaml:150 亦把
+# [decision-brief.yaml L122] design-iterations 的 decision-brief 登记为「迭代过程留档，非现行事实源」），
+# [decision-brief.yaml L123] 故过期不会响——没有任何门禁会因为「brief 的回路数与
+# [decision-brief.yaml L124] config/electrical-topology.yaml 不一致」而失败。
+# [decision-brief.yaml L125] 上方 frozen: true 与下方 freeze_record / validation_record 一律不改写，保持历史真值。
+# [decision-brief.yaml L126] 范围限定：supersession 只覆盖「回路基数与箱体结论」；本 brief 的暖通成交选型、
+# [decision-brief.yaml L127] ¥36,000 商务口径、容量偏差不返工等结论未被任何 DEC 反转，仍为现行有效留档。
+# [decision-brief.yaml L128] ---------------------------------------------------------------------------
+# ── 注释保全结束 ──
+schema: design-iteration-round/v1
+iteration_id: hvac-resix-20261003
+index:
+  order: 1
+  topic: mep
+  review_state: delivery_ready
+  supersedes: box-spec
+  note: facts.yaml L937/L941 的 error 级读者指向本目录 fact-table.yaml 与 design-datum.yaml，路径不可动
+  exempt_files:
+    - fact-table.yaml
+    - design-datum.yaml
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: hvac-resix-20261003
+  subject: 中央空调重配：20kW 外机 + 双出风内机，36,000 成交，数据模型收口
+  priority:
+    user_goal: 在 ¥36,000 暖通池内把空调从"销售堆容量"改回"按空间负荷配"，并让仓库对同一问题只有一个当前答案
+    ranked:
+      - 按负荷配内机
+      - 外机容量留合理余量
+      - 数据一致性
+      - 可施工冻结
+    non_negotiables:
+      - GB 55038-2025 7.4.3-1：电源插座回路 ≤30mA RCD
+      - GB 55038-2025 7.4.4：2kW 及以上用电设备回路分别设置（外机单独成路）
+      - CJJ/T 146-2011：燃气探测器距灶具及排风口 >0.5m、天然气近顶 ≤0.3m
+      - 同一问题在仓库所有入口只有一个当前答案
+    tradeoffs_accepted:
+      - 接受销售的双出风 /P-SS 系列（升级：全带泵、解决直吹、省 3D 面板）
+      - 接受容量表 25.3kW/1.27 而非设计 21.6kW/1.08（业主决定不返工，以风口与温度管理）
+      - 接受第七台/厨房扩展空间关闭
+  frozen: true
+  freeze_record:
+    alignment_id: user-decision-20261003-20261004
+    original_user_response: 业主先后提供美的参数表、同小区参考报价、4.4 万高配报价、成交合同附件，并逐轮质询（面积重复计量、换机能省多少、为什么要加长风管、外机供电）
+    normalized_decisions:
+      - 配置：领航者Ⅳ MJV-200W-E01-LHIV 20kW + 6 台双出风内机，成交 36,000
+      - 容量偏差不返工，保留餐区 56T2，改以百叶角度（0 元）+ 餐区 26℃ + 条件性挪风口管理
+      - 外机供电单独成路（第 20 路），箱体结论按 20 路重算
+    confirmed_by_user: true
+    confirmed_at: '2026-10-04T00:00:00+08:00'
+    evidence_refs:
+      - evidence/evidence-notes.md
+      - evidence/evidence-hashes.txt
+  allowed_scope:
+    files:
+      - config/hvac.yaml
+      - config/ceiling.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/mep-hvac-coordination.yaml
+      - config/acceptance.yaml
+      - config/house.yaml
+      - docs/decision_log.md
+      - docs/pending-site-data.md
+      - docs/material_selection_log.md
+      - docs/hvac/hvac-rfq-brief-20261003.md
+      - docs/mep-construction-guidance.md
+      - schedule/phase-1/control.yaml
+      - schedule/procurement.md
+      - docs/design-iterations/hvac-resix-20261003/*
+    objects:
+      - electrical
+      - plumbing
+      - topology
+      - acceptance
+      - mep_routing
+      - procurement
+    changes:
+      - 新增点位/回路/走线
+      - 燃气位北移
+      - 回路口径修正
+      - 验收项扩充与接门禁
+      - 证据归档
+      - 计价边界核清
+  forbidden:
+    assumptions:
+      - 不得把照片判读的容量表写成事实（房间映射未到手前）
+      - 不得把方案级降额估算写成设备确定性能
+      - 不得以外邻居经验类推风口加长费用
+    out_of_scope_changes:
+      - git 操作（commit/push 由业主指令触发）
+      - 未取证即升格任何 pending 字段
+  open_questions:
+    - id: contract-mapping
+      question: 合同房间映射与逐台容量表
+      status: site_pending
+      selected: 待合同附图
+      handling: 到手后以 r1_amendment 回写 config
+    - id: box-spec
+      question: 强电箱单排/双排与是否换箱
+      status: site_pending
+      selected: 待量房
+      handling: 20 路下单排出局；单排则换箱或上移至 ≥1.80m
+      basis_status: handling 基于已过期的 20 路基数（DEC-2026-10-04-R2 时点），原 question「箱体单/双排与是否换箱」仍未闭环；按 21/22 路的重推见下方 box-spec-21-22
+    - id: box-spec-21-22
+      question: 按现行 21 路（微蒸烤预留激活后 22 路）重推：390mm 箱单排是否仍出局、是否必须换箱？
+      status: site_pending
+      selected: 待量房开箱（箱体实际位数/单双排/净深均未实测）
+      supersedes: box-spec
+      relation_to_box_spec: box-spec 的 handling 原文一字未改，仅加 basis_status 标注其 20 路基数已过期；本条是重推，不是新决定——原判据在新基数下逐条复算，结论不变
+      derivation:
+        original_criterion:
+          what: 位数不够（不是净深不够）：390mm 单排箱约 20 位，扣 2P 进线开关 + 浪涌后约 16 位可用；回路数对约 16 位可用确定装不下 → 单排出局，必须双排或换箱
+          source: docs/decisions/06-electrical.md:215（DEC-2026-10-04-R2 ②「外机供电四层补齐 + 第 20 路 + 单排箱出局」）；「390mm 箱单排撑死 ~20 位」这一前提出处 docs/decisions/06-electrical.md:186（DEC-2026-10-03-R1 现场待确认①）
+          secondary: GB 55038-2025 7.4.3-2：单排箱底边 ≥1.80m、双排 ≥1.60m；现 panel_strong_entry_left mount_height 1.65m 仅双排合规。该条与回路数无关，21/22 路下不变
+        cases:
+          - base: 21
+            arithmetic: 21 路 vs 约 16 位可用 → 缺 5 位（含 2P 进线开关 + 浪涌的总位需求约 25 位，对单排约 20 位超出 5 位）
+            conclusion: 单排仍确定装不下 → 单排出局，结论与 20 路时相同；缺口由 20 路时的 4 位扩大到 5 位
+            verify_at: config/electrical-topology.yaml:319（现行 21 路箱体口径）与同文件:11（头部注释第 4 条「21 路…结论不变」）；docs/pending-site-data.md:105（#30）
+          - base: 22
+            precondition: 仅当 sock_kitchen_oven 激活（业主确认采购 + 橱柜 600 宽高柜冻结，二者缺一不可，config/electrical-topology.yaml:330）
+            arithmetic: 22 路 vs 约 16 位可用 → 缺 6 位（含 2P 进线开关 + 浪涌的总位需求约 26 位，对单排约 20 位超出 6 位）
+            conclusion: 单排仍确定装不下，结论不变；激活只放大缺口，不改变「双排或换箱」的方向
+            verify_at: config/electrical-topology.yaml:330（激活动作 = 新增 dedicated_kitchen_oven 回路并使 fact.circuit_count 走 21→22）
+        conclusion: 新基数下结论不变：单排出局，必须双排或换箱；且 1.65m 安装高度仅在双排时合规。
+      not_concluded:
+        - '「必须换箱」不是事实：390mm / 单排约 20 位 / 约 16 位可用均为 DEC-2026-10-04-R2 的方案推算值，非实测（docs/pending-site-data.md #30 的单/双排与箱体规格仍 pending）。若现场箱体实测为双排或位数 ≥26，则不必换箱'
+        - 「外机回路是否占箱位」未定：仍待厂家正式配电图（由强电箱单独放缆，还是接开发商外立面预留插座），会影响箱位需求基数
+      missing_inputs:
+        - id: box-actual-spec
+          owner: site
+          trigger: '量房开箱（docs/pending-site-data.md #30，与 #4 同源，量房后合并口径）'
+          need: 现有 panel_strong_entry_left 箱体实测位数、单/双排、净深、本体高度；只有实测位数小于 21 路 + 2P 进线开关 + 浪涌需求（21 路约 25 位）时，「必须换箱」才成立
+        - id: oven-activation
+          owner: 业主
+          trigger: 业主确认采购微蒸烤 且 橱柜 600 宽高柜冻结（缺一不可，config/electrical-topology.yaml:330）
+          need: 是否激活 sock_kitchen_oven → 新增 dedicated_kitchen_oven 回路；决定箱位按 21 还是 22 路下单
+  alignment:
+    records:
+      - 2026-10-03：R6 定版 20kW + 21.6kW 设计口径，出询价需求书
+      - 2026-10-04：R1 成交 36,000、容量偏差闭环；R2 三路审计收口（外机第 20 路、燃气位重算、验收接门禁）
+    unresolved: []
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run verify:all
+      - npm run verify:schedule
+      - npm run test:server
+      - npm run typecheck
+    validation_record:
+      verified_at: '2026-10-04'
+      verify_all: exit 0
+      verify_schedule: exit 0（75 auditable checks）
+      test_server: 547 pass / 0 fail
+      typecheck: 干净
+    browser_evidence_required: false
+    required_views: []
+    aesthetic_review: not_applicable
+    functional_review: PASS（外机命中需求书；容量表待合同附图回写）
+    construction_review: construction_not_frozen（量房与水电交底前机位/电源/冷凝水/穿墙不冻结）
+    blocking_issues: []
+    done_when:
+      - '五件协议齐全且 frozen: true'
+      - 证据原件 + 转录 + sha256 入库
+      - A 类仓库收尾（7.4.4 验收项、历史撞号、house.yaml 平台供电、COST-030-02 计价口径）完成
+    delivery_notes_required: true
+  supersession:
+    status: superseded
+    superseded_at: '2026-10-06'
+    recorded_at: '2026-10-11'
+    superseded_by:
+      - DEC-2026-10-04-R2（docs/decisions/06-electrical.md:214-215）：20kW 外机按 GB 55038-2025 7.4.4 单独成路，回路总数 19 → 20——即本 brief 冻结时的「第 20 路」，该步本身仍成立，是后续演进的起点
+      - DEC-2026-10-05-R3（docs/decisions/04-bathrooms.md:225，账目见同文件:230）：dedicated_bath_heaters 拆为 dedicated_bath_heater_mbath / dedicated_bath_heater_gbath 每卫一路，回路总数 20 → 21
+      - DEC-2026-10-06-R2（docs/decisions/06-electrical.md:242）：微蒸烤预留接口落 sock_kitchen_oven（config/electrical-topology.yaml:330），未激活前不进 topology 回路、不占箱位；激活动作 = 新增 dedicated_kitchen_oven 回路并使 fact.circuit_count 走 21 → 22
+      - config 字段 config/electrical-topology.yaml:28 起的 circuits.length（实测 21 条）与 config/facts.yaml:464-467 的 fact.circuit_count（derived，value 指向 circuits.length）为现行权威口径，取代本 brief 的「第 20 路」
+      - 箱体结论的现行口径见 config/electrical-topology.yaml:319 与 docs/pending-site-data.md:105（#30）：390mm 箱单/双排未知，单排约 20 位、扣 2P 进线开关 + 浪涌后约 16 位可用，21 路确定装不下 → 单排出局
+    drift:
+      - frozen: freeze_record.normalized_decisions「外机供电单独成路（第 20 路），箱体结论按 20 路重算」与 open_questions.box-spec handling「20 路下单排出局；单排则换箱或上移至 ≥1.80m」
+        now: 回路总数 21 路（微蒸烤预留激活后 22 路）；箱体结论已按 21 路重推（本文件 open_questions.box-spec-21-22），单排出局的结论不变但缺口由 4 位扩大到 5 位（22 路时 6 位）
+        verify_at: config/electrical-topology.yaml:28 起 circuits 段（21 条）与同文件:319；派生口径见 config/facts.yaml:464-467（fact.circuit_count）
+      - frozen: open_questions.box-spec 的 question「强电箱单排/双排与是否换箱」与 selected「待量房」
+        now: '问题本身仍未闭环（docs/pending-site-data.md #30 单/双排与箱体规格 pending），但已新增 open_questions.box-spec-21-22 记录 21/22 路重推结论、推导依据与所缺输入；box-spec 原文一字未改，仅加 basis_status 标注其 20 路基数已过期'
+        verify_at: 本文件 open_questions.box-spec-21-22；docs/pending-site-data.md:105（#30）
+      - frozen: subject「中央空调重配：20kW 外机 + 双出风内机，36,000 成交」与 freeze_record.normalized_decisions 的选型/商务结论
+        now: 该部分未过期，不构成 drift，仅登记范围边界：美的领航者Ⅳ MJV-200W-E01-LHIV 20kW + 6 台双出风内机、成交 36,000 仍为现行口径，无 DEC 反转
+        verify_at: docs/decisions/05-hvac.md:38（DEC-2026-10-03-R3 定标）与 config/hvac.yaml 现行成交口径
+    reason: '根因是「没有任何代码读者」：scripts/、server/、tests/、app/ 对 round.yaml（brief 段） 零引用（grep 全库仅命中 docs/ 自身与 config/facts.yaml:150 的豁免说明），config/facts.yaml 的 include/exclude 也把 docs/design-iterations/ 整体排除在事实核验之外。事实核验只镜像 config 的回路数（fact.circuit_count），从不回读本 freeze_record，因此「冻 20 路 / 实际 21 路」可以无限期不响。本 brief 的回路演进（19→20→21，及 22 路的预留激活动作）全部只落在 docs/decisions/06-electrical.md、docs/decisions/04-bathrooms.md、config/electrical-topology.yaml 的注释与 docs/pending-site-data.md #30 里，无人回写该 freeze_record。现行回路与箱体口径的唯一权威是 config/electrical-topology.yaml 的 circuits.length 及其 :319 箱体结论。'
+objects:
+  iteration_id: hvac-resix-20261003
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - layer
+      - review
+    visual_relationship_required: false
+  objects:
+    additions:
+      - id: sock_dining_ac
+        owner: electrical
+        change: '新增餐区第 6 台内机电源点位 @(8.00,4.75,2.5)，并入 hvac_power_living，position_status: pending'
+      - id: ac_panel_dining
+        owner: electrical
+        change: 新增餐区线控器点位（第 6 台配套）；两版坐标错误后回正到 (7.20,4.10) 挂 w_gbath_east_open_vanity
+      - id: sock_vrf_outdoor_a2
+        owner: electrical
+        change: 新增外机专用取电点位 @(7.20,0.50,1.60) 挂 w_vrv_east 厨房侧（room 试 west_platform 被 existence 拦，平台不并入已建模房间）
+      - id: hvac_power_outdoor_a2
+        owner: topology
+        change: 新增第 20 回路（GB 55038 7.4.4 独立成路），C32A+漏保 / 4.0mm²(φ20) proposed
+      - id: mep_dining_routes
+        owner: mep
+        change: refrigerant-dining / condensate-dining / supply-air-dining / return-air-dining / strong-ac-dining / strong-ac-outdoor 六条
+    corrections:
+      - id: sock_kitchen_gas
+        owner: electrical
+        change: (10.80,0.55) → (10.80,0.20)，note 改为机体最近缘口径
+      - id: hvac_power_wire_size
+        owner: topology
+        change: hvac_power_living / hvac_power_bedrooms wire_size 1.5mm² → 2.5mm²（与自家 §3.1「插座 ≥2.5mm²」对齐）；capacity 改为内机自身电负荷口径（压缩机在室外机）
+      - id: net_ap_corridor
+        owner: electrical
+        change: (8.60,5.80) → (8.60,4.75)，落进 ceiling_living 边吊空腔（原位在所有已声明吊顶之外）
+      - id: return_air_dining
+        owner: mep
+        change: 回风西端 7.30 → 7.55，避免越 ceiling_living 西缘进入走廊吊顶接缝区
+      - id: control_yaml_status
+        owner: schedule
+        change: PKG-030 contracted_cny null→36000、allocation_status pending_vendor_quote→pending_breakdown、COST-030-01「五台」→「六台」、quote_pending→contract_scope_pending
+      - id: house_yaml_hvac
+        owner: config
+        change: hvac.system 与 pending_verification 段由「一拖五/7HP/21.4kW/品牌未定标」改为 DEC-2026-10-04-R1 现行口径，历史留档
+    topology_corrections:
+      - id: circuit_count
+        change: 19 → 20；covered points 67 → 68
+    acceptance:
+      - id: electrical_check_items
+        change: R1 从 2 项扩到 11 项（4 critical）；其中 9 项本轮接入 control.yaml acceptance_refs（PKG-040 接 7 项、PKG-125 接 2 项），可审计检查 66 → 75
+      - id: check_elec_circuit_separation
+        change: 新增 GB 55038 7.4.4 分路合规独立验收项（收尾项，接 PKG-040）
+    code:
+      - id: tests_baseline
+        change: circuits 19→20、coveredPoints 67→68、api errors 97→98、api warnings 21→22、mep routes 72→73×3，共 11 处
+    evidence:
+      - id: hvac_evidence
+        change: archive 5 份原件 + evidence-notes.md 全文转录 + evidence-hashes.txt sha256
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: hvac-resix-20261003
+  subject: 中央空调重配成交 36,000 与数据模型收口
+  source_version:
+    config_refs:
+      - config/hvac.yaml
+      - config/ceiling.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/mep-hvac-coordination.yaml
+      - config/acceptance.yaml
+      - config/house.yaml
+    source_digest: electrical 97 点位 / topology 20 回路 68 members / mep 73 条走线 / acceptance electrical_check 11 项
+    tests_touched:
+      - tests/server/electrical-lint.test.ts
+      - tests/server/render-facts-api.test.ts
+      - tests/server/mep-hvac-lint.test.ts
+      - tests/server/mep-hvac-coordination.test.ts
+    generated_files:
+      - data/project-render-facts.json
+      - schedule/phase-1/budget.md
+      - schedule/phase-1/checklist.md
+  state: delivery_ready
+  state_note: A 类仓库收尾完成；剩余全部为外部输入（合同房间映射、外机尺寸与平台散热、厂家配电图、冷负荷计算书与 SKU）与业主决定（箱体单排时换箱）
+  validation:
+    generate_project_render_facts:
+      status: passed
+    verify_all:
+      status: passed
+      note: exit 0；rules 0 error、电气 0 error/49 warning、mep 0 error/22 warning、点位专项 0 error/6 warning
+    verify_schedule:
+      status: passed
+      note: exit 0，75 auditable checks
+    test_server:
+      status: passed
+      note: 547 pass / 0 fail
+    typecheck:
+      status: passed
+  evidence:
+    - id: hvac-contract-attachment
+      ready: true
+      note: 合同附件两页（第十二条报价清单 + 27 项辅材表）
+    - id: midea-indoor-unit-spec
+      ready: true
+      note: 美的 MJV-T2 官方参数表
+    - id: reference-quote-bangtai
+      ready: true
+      note: 同小区参考报价（单价锚点 + 免费管长口径）
+    - id: dealer1-quote
+      ready: true
+      note: 落选的 4.4 万高配报价
+  aesthetic_review:
+    verdict: not_applicable
+    blocking_issues: []
+  functional_review:
+    verdict: PASS_with_open_verification
+    blocking_issues: []
+    notes: 外机与需求书一致；容量表 25.3kW 为照片判读，房间映射以合同附图为准
+  construction_review:
+    verdict: site_pending
+    blocking_issues:
+      - 合同房间映射与逐台容量表（config 回写前置）
+      - 外机实测尺寸与 1.6×1.55m 西平台散热核算
+      - 厂家多台内机合并供电 + 外机正式配电图
+      - 分房间冷负荷计算书（RFQ 硬性交付物，至今无记录）
+      - 风口加长与复合风管金额（合同不含）
+      - 强电箱：20 路下单排出局，单排须换箱或上移至 ≥1.80m（唯一可能加钱项）
+  retrospective:
+    what_worked:
+      - 先写需求书再询价，使外机型号与分项报价可逐条核对
+      - 证据先归档再下结论——归档合同附件时当场发现并更正了'含复合风管'的错误判断
+      - 三路只读审计把'只改 config 没改下游'这类漏网一次抓出 4 BLOCKER
+    what_to_improve:
+      - 多轮结论只在对话里修正、未同步回写仓库，导致同一错误在多个文件并存
+      - 曾把估算值（降额链）与设备性能混写
+      - 外机供电这类'决策的下游消费方'最初完全没进模型
+  delivery:
+    status: delivered
+    handover_notes:
+      - config 当前容量表仍为设计口径 21.6kW，采购 25.3kW 只活在 note 字符串——合同附图到手后必须回写，这是唯一悬置的设计输入
+      - local 领先 origin 的 commit 由业主指令 push

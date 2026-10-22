@@ -1,0 +1,556 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L1] Decision Brief — 客餐厅双出风风口三层线语言（frozen）
+# [decision-brief.yaml L63] review_required —— （双 PASS 才 delivery_ready）
+# [design-datum.yaml L1] Design Datum — 客餐厅双出风内机风口三层线语言（DEC-2026-10-07-R03）
+# [design-datum.yaml L22] supply_living —— 71T2 功能段
+# [design-datum.yaml L23] LD-deco-side-south —— 封闭装饰段
+# [design-datum.yaml L24] supply_dining —— 42T2 功能段
+# [design-datum.yaml L25] LD-deco-side-north —— 封闭装饰段；西端 [7.20,7.70] 保持与 ceiling_dining_west_band 正交交接不贴百叶
+# [design-datum.yaml L32] supply_living_bottom —— 71T2 第二出口（下出风）
+# [design-datum.yaml L33] supply_dining_bottom —— 42T2 第二出口（下出风）
+# [design-datum.yaml L35] LD-deco-supply-mid —— 两台机器之间非功能区
+# [design-datum.yaml L43] return_living —— 71T2 回风/检修
+# [design-datum.yaml L44] return_dining —— 42T2 回风/检修（R20 收界值）
+# [design-datum.yaml L46] LD-deco-return-mid —— 两台机器之间非功能区
+# [fact-table.yaml L1] Fact Table — 客餐厅三层线风口（DEC-2026-10-07-R03）
+# [object-manifest.yaml L1] Object Manifest — 客餐厅三层线风口（DEC-2026-10-07-R03）
+# ── 注释保全结束 ──
+schema: design-iteration-round/v1
+iteration_id: hvac-dual-outlet-threeline-20261007
+index:
+  order: 7
+  topic: mep
+  review_state: none
+  supersedes: none
+  note: 被两个 render/capture 脚本硬编码引用 evidence 路径
+brief:
+  schema: interior-design-decision-brief/v1
+  iteration_id: hvac-dual-outlet-threeline-20261007
+  frozen: true
+  frozen_at: '2026-10-07'
+  owner: 业主
+  priority:
+    - 保持现有吊顶几何、梁体关系、设备带位置、客餐厅空间设计不变，只修正风口表达与施工节点
+    - 两台双出风内机（71T2 客厅 / 42T2 餐厅）送回风各自独立，不得画成共用风道
+    - 一眼看过去是完整设备带，不是 6 个设备洞；底面不得出现 4 块孤立矩形百叶
+    - 三层风口平行、对齐、同一设计语言；风口实际尺寸以安装要求/有效通风面积/检修空间为约束，不为美观压缩到不可施工
+  allowed_scope:
+    - config/hvac.yaml 的客餐厅 terminals（三层线口径 + 8 个封闭装饰段）
+    - shared/types.ts、shared/project-render-facts-schema.ts 的 HvacTerminal 扩展（decorative/linear_slot/grille_height）
+    - shared/render/HvacGeometryBuilder.ts 的 linear_slot 渲染分支
+    - config/ceiling.yaml、config/mep-hvac-coordination.yaml 的说明文字（不动几何/路线）
+    - data/project-render-facts.json（脚本重生成）、tests 计数同步、docs/design-iterations/hvac-dual-outlet-threeline-20261007/ 五件套、docs/decision_log.md DEC-2026-10-07-R03
+  forbidden:
+    - 修改吊顶分区/标高/梁体/圆角/机位
+    - 增加 MEP 路线（装饰段不挂路线，87 条不变）
+    - 把装饰段接入任何风道/滤网/检修口
+    - 修改其余房间风口语言（panel 不变）
+    - 修改 generated 文件（data/project-render-facts.json 只能脚本重生成）
+    - 用效果图像素反推坐标；以"基本完成"替代验证门
+  decisions:
+    - id: DEC-2026-10-07-R03
+      content: 三层线语言：侧立面上出风 / 底面前侧下出风 / 底面后侧回风检修，各自功能段独立 + 8 个 LD-deco-* 封闭装饰段延续；linear_slot 渲染；回风改 matte_black
+      status: frozen
+    - id: DEC-2026-10-07-R03-schema
+      content: HvacSystem+decorative、kind+decorative_louver（schema 强制 confirmed=false/render_interior=true/render_coordination=false）、render_style、grille_height
+      status: frozen
+  open_questions:
+    - q1: 双出风两出口方向/风量分配、42T2 旋转 180° 允许性、下出风有效面积/静压、回风底回/侧回——美的 MJV-XXT2/P-SS 厂家安装图（site_pending，不改配置；公开渠道未找到 /P-SS 说明书，勿用 /DX-GC 等非同族手册替代）
+    - q2: 回风排是否回退标准白（当前黑，三层同语言；回退=改 finish 一个字段）
+    - q3: git 提交方式（Skill 禁令与 AGENTS.md 提交要求冲突，沿用上轮待裁定）
+    - q4: 模型示意高度（回风 0.25）与合同名义 300mm 的差异、模型段长与合同 1000/1300 的差异——待厂家图/现场复核
+  acceptance:
+    validation_commands:
+      - npm run generate:project-render-facts
+      - npm run verify:all
+      - npm run test:server
+      - npm run typecheck
+      - cd app && npm run test:app
+    evidence_required:
+      - 客餐厅主效果图（完整设备带）
+      - 从客厅看餐厅视角
+      - 从餐厅看客厅视角
+      - 设备带近景（仰视见底面两层线）
+      - D1 两台内机平面布置/风口对应关系图
+      - D2 天花剖面节点图
+    acceptance_criteria:
+      - 一眼看过去是完整设备带，不是 6 个设备洞
+      - 两台机器的实际送回风区域清楚且独立
+      - 三层风口全部平行、对齐、同一设计语言
+      - 不改变现有客餐厅吊顶总体结构
+      - 图纸能直接给空调施工方和木工讨论深化尺寸
+    review_required:
+      - aesthetic
+      - functional
+    delivery_gate:
+      all_required_reviews_must_pass: true
+      required_reviews:
+        - aesthetic
+        - functional
+  alignment:
+    - id: align1
+      channel: 直接指令（双出风结构说明 + 参考视觉三层线）
+      answer: 三层线语言 + 装饰段封闭延续 —— ud1
+    - id: align2
+      channel: 直接指令（"统一宽度、轴线、材质和百叶形式"）
+      answer: 回风排跟随 matte_black 黑槽语言 —— ud2
+datum:
+  schema: interior-design-design-datum/v1
+  iteration_id: hvac-dual-outlet-threeline-20261007
+  coordinate_system: Three.js 右手系；+x=东 +z=南；俯视北朝上；单位 m；楼板 2.80
+  datums:
+    - id: datum-strip-ceiling_living
+      object: ceiling_living
+      plan:
+        x_range:
+          - 7.2
+          - 13.4
+        z_range:
+          - 4.3
+          - 5.2
+        bottom_y: 2.5
+        thickness: 0.3
+      elevation: 完成面 2.50；南立面 z=5.20=客厅侧；北立面 z=4.30=餐厅侧；底面 z 跨度 0.9m
+      basis:
+        - d_strip_geometry
+        - dec-2026-10-07-r03
+      unchanged_from: DEC-2026-10-05-R18 / R01（几何、标高、圆角、梁关系本轮未动）
+    - id: datum-unit-positions
+      plan: ac_living (10.30, 4.75) 71T2 MJV-71T2/P-SS；ac_dining (8.00, 4.75) 42T2 MJV-42T2/P-SS（旋转 180° 朝北）
+      elevation: 机身中心 z=4.75；两台反向安装、各自服务客厅/餐厅、独立温控
+      basis:
+        - dec-2026-10-05-r18
+        - dec-2026-10-04-r1
+    - id: datum-layer-side-supply
+      object:
+        - supply_living
+        - supply_dining
+        - LD-deco-side-south
+        - LD-deco-side-north
+      plan:
+        supply_living:
+          center_x: 11.45
+          z: 5.21
+          face: south
+          length: 3.5
+          x_range:
+            - 9.7
+            - 13.2
+        LD-deco-side-south:
+          center_x: 8.45
+          z: 5.21
+          face: south
+          length: 2.5
+          x_range:
+            - 7.2
+            - 9.7
+        supply_dining:
+          center_x: 8.7
+          z: 4.3
+          face: north
+          length: 2
+          x_range:
+            - 7.7
+            - 9.7
+        LD-deco-side-north:
+          center_x: 11.55
+          z: 4.3
+          face: north
+          length: 3.7
+          x_range:
+            - 9.7
+            - 13.4
+      elevation: y=2.65；全部 linear_slot + matte_black；侧立面上出风层
+      basis:
+        - dec-2026-10-07-r03
+    - id: datum-layer-bottom-supply
+      object:
+        - supply_living_bottom
+        - supply_dining_bottom
+        - LD-deco-supply-west
+        - LD-deco-supply-mid
+        - LD-deco-supply-east
+      plan:
+        supply_living_bottom:
+          center_x: 10.3
+          z: 4.85
+          length: 0.9
+          x_range:
+            - 9.85
+            - 10.75
+        supply_dining_bottom:
+          center_x: 8
+          z: 4.85
+          length: 0.9
+          x_range:
+            - 7.55
+            - 8.45
+        LD-deco-supply-west:
+          center_x: 7.375
+          z: 4.85
+          length: 0.35
+          x_range:
+            - 7.2
+            - 7.55
+        LD-deco-supply-mid:
+          center_x: 9.15
+          z: 4.85
+          length: 1.4
+          x_range:
+            - 8.45
+            - 9.85
+        LD-deco-supply-east:
+          center_x: 12.075
+          z: 4.85
+          length: 2.65
+          x_range:
+            - 10.75
+            - 13.4
+      elevation: y=2.50（吊顶底面）；linear_slot + matte_black + grille_height 0.15；底面前侧下出风层
+      basis:
+        - dec-2026-10-07-r03
+        - dec-2026-10-05-r18
+    - id: datum-layer-bottom-return
+      object:
+        - return_living
+        - return_dining
+        - LD-deco-return-west
+        - LD-deco-return-mid
+        - LD-deco-return-east
+      plan:
+        return_living:
+          center_x: 12.6
+          z: 4.45
+          length: 1
+          x_range:
+            - 12.1
+            - 13.1
+        return_dining:
+          center_x: 7.9
+          z: 4.45
+          length: 0.9
+          x_range:
+            - 7.45
+            - 8.35
+        LD-deco-return-west:
+          center_x: 7.325
+          z: 4.45
+          length: 0.25
+          x_range:
+            - 7.2
+            - 7.45
+        LD-deco-return-mid:
+          center_x: 10.225
+          z: 4.45
+          length: 3.75
+          x_range:
+            - 8.35
+            - 12.1
+        LD-deco-return-east:
+          center_x: 13.25
+          z: 4.45
+          length: 0.3
+          x_range:
+            - 13.1
+            - 13.4
+      elevation: y=2.49；linear_slot + matte_black + grille_height 0.25；铰接回检一体（仅功能段开滤网/检修口）；底面后侧回风/检修层
+      basis:
+        - dec-2026-10-07-r03
+        - dec-2026-10-05-r20
+    - id: datum-render-language
+      object: HvacTerminal.render_style / grille_height
+      plan: linear_slot=满长连续叶片+端部小压条，无成品外框、无状态方框；功能段保留槽内贴边状态发丝线，装饰段无状态线
+      elevation: panel 语言仍用于其余房间（主卧/书房/客房/儿童房）不变
+      basis:
+        - dec-2026-10-07-r03
+    - id: datum-size-caliber
+      plan: 合同附件（DEC-2026-10-04-R1）出风名义 750×150 / 1000×150、回风名义 1000×300 / 1300×300、通长加长 100 元/米另计
+      elevation: 模型示意高度：送风排 0.15 / 回风排 0.25；与名义 300mm 的差异登记 site_pending
+      basis:
+        - dec-2026-10-04-r1
+        - q1
+  non_datums:
+    - 双出风两出口风量分配、42T2 旋转 180° 允许性、下出风有效面积/静压、回风底回/侧回形式：以厂家安装图为约束（q1，本轮不改配置）
+    - 风口最终名义尺寸（含合同附件与模型的差）：厂家安装图/现场复核，不得由效果图反推
+    - git 提交方式：与 AGENTS.md 提交要求的冲突待业主裁定（沿用上轮 open_question）
+fact_table:
+  schema: interior-design-fact-table/v1
+  iteration_id: hvac-dual-outlet-threeline-20261007
+  facts:
+    - id: f-three-lines
+      statement: 客餐厅设备带读作三层水平线：侧立面上出风层（supply_living 南 [9.70,13.20] / supply_dining 北 [7.70,9.70]，y=2.65）、底面前侧下出风层（z=4.85，supply_living_bottom x=10.30 / supply_dining_bottom x=8.00，y=2.50）、底面后侧回风/检修层（z=4.45，return_living x=12.60 / return_dining x=7.90，y=2.49）
+      basis:
+        - config/hvac.yaml
+        - dec-2026-10-07-r03
+      affects:
+        - 风口表达
+        - 效果图
+        - 剖面节点
+    - id: f-decorative-sealed
+      statement: 8 个 LD-deco-*（kind=decorative_louver / system=decorative）为封闭装饰段：背板封闭、无风道连接、不进 MEP 路线、装饰回风段不开滤网/检修口；两台机器送回风各自独立，不存在共用风道
+      basis:
+        - config/hvac.yaml
+        - dec-2026-10-07-r03
+      affects:
+        - 施工交底
+        - MEP
+    - id: f-render-language
+      statement: HvacTerminal 新增 render_style=linear_slot（满长连续叶片、无成品外框、无状态方框；功能段保留槽内贴边状态发丝线、装饰段无状态线）与 grille_height 显式高度；客餐厅 14 个风口全部 linear_slot，其余房间维持 panel
+      basis:
+        - shared/render/HvacGeometryBuilder.ts
+        - dec-2026-10-07-r03
+      affects:
+        - Web/CLI 渲染
+        - GLB 导出
+    - id: f-return-color-change
+      statement: 回风排 finish 由缺省（标准白）改 matte_black，三层同语言；回退选项=仅 finish 回白（一个字段）
+      basis:
+        - config/hvac.yaml
+        - dec-2026-10-07-r03
+      affects:
+        - 视觉
+        - 吊顶封板前交底
+    - id: f-geometry-frozen
+      statement: 吊顶分区仍 25、标高/梁体/机位（x=10.30/8.00）未动；R18 正交语言与 R100 阳角继续适用；MEP routes 仍 87 条
+      basis:
+        - config/ceiling.yaml
+        - config/mep-hvac-coordination.yaml
+        - verify:all
+      affects:
+        - 验收
+    - id: f-contract-sizes
+      statement: 合同附件（DEC-2026-10-04-R1）出风名义 750×150/1000×150、回风名义 1000×300/1300×300、通长加长 100 元/米另计；模型示意高度送风 0.15/回风 0.25 与名义 300mm 的差 site_pending
+      basis:
+        - config/hvac.yaml load_design.basis
+        - q1
+      affects:
+        - 深化尺寸
+    - id: f-counts
+      statement: A2 diagram terminals 20 → 27（其中客餐厅 6 功能 + 8 装饰 + 5 冷凝水候选；其余房间 8）；可渲染 terminal 14 → 22；cli-glb-export.test.ts 同步
+      basis:
+        - tests/server/cli-glb-export.test.ts
+        - data/project-render-facts.json
+      affects:
+        - 测试
+  open_items:
+    - 厂家安装图未回：双出风两出口方向/风量分配、42T2 旋转 180° 允许性（接水盘/泵/电控盒朝向）、下出风有效面积/静压、回风底回/侧回
+    - 回风黑色 vs 标准白回退决策
+    - git 提交方式
+objects:
+  schema: interior-design-object-manifest/v1
+  iteration_id: hvac-dual-outlet-threeline-20261007
+  band:
+    - id: ceiling_living
+      role: 客餐厅设备带（藏 71T2/42T2 + 三层风口），x[7.20,13.40] × z[4.30,5.20]，底 2.50，本轮几何未动
+  functionals:
+    - id: supply_living / supply_dining
+      role: 侧立面上出风功能段（71T2 朝南 x[9.70,13.20] 3.5m / 42T2 旋转 180° 朝北 x[7.70,9.70] 2.0m）
+      style: linear_slot + matte_black，y=2.65
+      maintenance: 叶片可调避直吹；有效面积/静压按厂家风量核算
+    - id: supply_living_bottom / supply_dining_bottom
+      role: 底面前侧下出风功能段（71T2 x=10.30 / 42T2 x=8.00，各 0.9m，同 z=4.85 轴线）
+      style: linear_slot + matte_black + grille_height 0.15，y=2.50
+      maintenance: 检修口随厂家图
+    - id: return_living / return_dining
+      role: 底面后侧回风/滤网/检修一体功能段（71T2 x=12.60 1.0m / 42T2 x=7.90 0.9m，z=4.45）
+      style: linear_slot + matte_black + grille_height 0.25，y=2.49（R16'回风暂标准白'本轮改黑，回退项见 decision-brief）
+      maintenance: 铰接回检一体，滤网及内机经格栅维护；装饰段不开检修口
+  decoratives:
+    - id: LD-deco-side-south / LD-deco-side-north
+      role: 侧立面上出风层装饰延续（南 [7.20,9.70] 2.5m / 北 [9.70,13.40] 3.7m）
+      sealed: 背板封闭、无风道连接、不进 MEP 路线；北段西端保持与 ceiling_dining_west_band 正交交接
+    - id: LD-deco-supply-west / LD-deco-supply-mid / LD-deco-supply-east
+      role: 底面前侧下出风层装饰延续（[7.20,7.55] / [8.45,9.85] / [10.75,13.40]）
+      sealed: 背板封闭、无风道连接、不进 MEP 路线；mid 段位于两台机器之间，两台送风各自独立
+    - id: LD-deco-return-west / LD-deco-return-mid / LD-deco-return-east
+      role: 底面后侧回风层装饰延续（[7.20,7.45] / [8.35,12.10] / [13.10,13.40]）
+      sealed: 背板封闭、无风道连接、不开滤网/检修口；mid 段位于两台回风之间，两台回风/检修各自独立
+  separation:
+    - 71T2（ac_living x=10.30）：supply_living + supply_living_bottom + return_living + MEP supply-air-living / supply-air-living-bottom / return-air-living
+    - 42T2（ac_dining x=8.00）：supply_dining + supply_dining_bottom + return_dining + MEP supply-air-dining / supply-air-dining-bottom / return-air-dining
+    - 两台之间不存在共用风道；装饰段不得被读作风道（reason 逐条声明）
+  schema_effects:
+    - HvacSystem: +decorative
+    - HvacTerminal.kind: +decorative_louver（强制 system=decorative、confirmed=false、render_interior=true、render_coordination=false）
+    - HvacTerminal: +render_style（linear_slot|panel）、+grille_height
+    - CLI/Web terminal 计数 14 → 22（cli-glb-export.test.ts 同步）
+review:
+  schema: interior-design-review-manifest/v1
+  iteration_id: hvac-dual-outlet-threeline-20261007
+  decision_ref: DEC-2026-10-07-R03
+  subject: 客餐厅双出风内机风口三层线语言：6 功能段独立 + 8 封闭装饰段，linear_slot 渲染，吊顶几何/路线不变
+  runtime_query:
+    method: npx tsx scripts/render/diagrams/ld-threeline-runtime-check.ts（buildHvacGeometry over data/project-render-facts.json）
+    hvacTerminals: 22
+    living_dining_objects:
+      supply_living:
+        position:
+          - 11.45
+          - 2.65
+          - 5.21
+        render_style: linear_slot
+        decorative: false
+        size:
+          - 3.516
+          - 0.15
+          - 0.033
+      LD-deco-side-south:
+        position:
+          - 8.45
+          - 2.65
+          - 5.21
+        render_style: linear_slot
+        decorative: true
+        size:
+          - 2.516
+          - 0.15
+          - 0.033
+      supply_dining:
+        position:
+          - 8.7
+          - 2.65
+          - 4.3
+        render_style: linear_slot
+        decorative: false
+        size:
+          - 2.016
+          - 0.15
+          - 0.033
+      LD-deco-side-north:
+        position:
+          - 11.55
+          - 2.65
+          - 4.3
+        render_style: linear_slot
+        decorative: true
+        size:
+          - 3.716
+          - 0.15
+          - 0.033
+      supply_living_bottom:
+        position:
+          - 10.3
+          - 2.5
+          - 4.85
+        render_style: linear_slot
+        decorative: false
+        size:
+          - 0.916
+          - 0.033
+          - 0.15
+      supply_dining_bottom:
+        position:
+          - 8
+          - 2.5
+          - 4.85
+        render_style: linear_slot
+        decorative: false
+        size:
+          - 0.916
+          - 0.033
+          - 0.15
+      LD-deco-supply-west:
+        position:
+          - 7.375
+          - 2.5
+          - 4.85
+        render_style: linear_slot
+        decorative: true
+        size:
+          - 0.366
+          - 0.033
+          - 0.15
+      LD-deco-supply-mid:
+        position:
+          - 9.15
+          - 2.5
+          - 4.85
+        render_style: linear_slot
+        decorative: true
+        size:
+          - 1.416
+          - 0.033
+          - 0.15
+      LD-deco-supply-east:
+        position:
+          - 12.075
+          - 2.5
+          - 4.85
+        render_style: linear_slot
+        decorative: true
+        size:
+          - 2.666
+          - 0.033
+          - 0.15
+      return_living:
+        position:
+          - 12.6
+          - 2.49
+          - 4.45
+        render_style: linear_slot
+        decorative: false
+        size:
+          - 1.016
+          - 0.033
+          - 0.25
+      return_dining:
+        position:
+          - 7.9
+          - 2.49
+          - 4.45
+        render_style: linear_slot
+        decorative: false
+        size:
+          - 0.916
+          - 0.033
+          - 0.25
+      LD-deco-return-west:
+        position:
+          - 7.325
+          - 2.49
+          - 4.45
+        render_style: linear_slot
+        decorative: true
+        size:
+          - 0.266
+          - 0.033
+          - 0.25
+      LD-deco-return-mid:
+        position:
+          - 10.225
+          - 2.49
+          - 4.45
+        render_style: linear_slot
+        decorative: true
+        size:
+          - 3.766
+          - 0.033
+          - 0.25
+      LD-deco-return-east:
+        position:
+          - 13.25
+          - 2.49
+          - 4.45
+        render_style: linear_slot
+        decorative: true
+        size:
+          - 0.316
+          - 0.033
+          - 0.25
+    continuity_check:
+      bottom_supply_row_z_4.85: 功能段 [7.55,8.45]+[9.85,10.75] 与装饰段 [7.20,7.55]+[8.45,9.85]+[10.75,13.40] 拼满 x[7.20,13.40] 无缺口
+      bottom_return_row_z_4.45: 功能段 [7.45,8.35]+[12.10,13.10] 与装饰段 [7.20,7.45]+[8.35,12.10]+[13.10,13.40] 拼满 x[7.20,13.40] 无缺口
+      side_south_face_z_5.20: 装饰 [7.20,9.70] + 功能 [9.70,13.20]；东端 [13.20,13.40] 为与走廊吊顶的正交交接，不贴百叶
+      side_north_face_z_4.30: 西端 [7.20,7.70] 正交交接不贴百叶；功能 [7.70,9.70] + 装饰 [9.70,13.40]
+      isolation_removed: 底面两排各为一条连续线（linear_slot 无成品外框），不再有 4 个孤立矩形百叶
+  unchanged:
+    - 吊顶分区 25 / 标高 / 梁体 / 机位 x=10.30、8.00 / R18 正交语言 / R100 阳角
+    - MEP routes 87 条（装饰段不挂路线；两机送回风支路各自独立）
+    - 其余房间风口 panel 渲染语言
+  open_risks:
+    - 厂家安装图未回（双出风口方向/风量分配、42T2 旋转 180° 允许性、下出风有效面积/静压、回风形式）——公开渠道未找到 MJV-XXT2/P-SS 说明书，勿用非同族手册替代
+    - 模型示意高度（回风 0.25）与合同名义 300mm 的差异待厂家图/现场复核
+    - git 提交方式待业主裁定
+  drive_by_fix: scripts/verify/rules/verify-rules.ts 的 buckle_panel 校验块漏定义 panel 引用（R01 未提交工作遗留 ReferenceError），已补 const panel = c.buckle_panel; 使 verify:rules/verify:all 可运行；改动一行，与本迭代无关但阻断验证门

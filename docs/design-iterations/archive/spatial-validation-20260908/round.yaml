@@ -1,0 +1,308 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: spatial-validation-20260908
+index:
+  order: 64
+  topic: general
+  review_state: verification
+  supersedes: none
+  note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 archive/master-bedroom-bedside-electrical fact-table 1 处引用）
+brief:
+  iteration_id: spatial-validation-20260908
+  state: verification
+  frozen: true
+  alignment:
+    id: spatial-validation-v1
+    original_request: 完成可执行第一版统一 validator/CLI、verify:all 门禁、关键 fail-closed 反例与文档；不扩展到 3D UI 面板
+    normalized_decision: 只在权威几何/意图/placed runtime 数据上实现墙墙拓扑、suppress 替代、玻璃/栏杆重复与实体墙冲突、家具真实 runtime 包络、家具关系、吊顶和灯具宿主校验；实际灯具 mesh 法向/旋转明确不在本轮覆盖
+    timestamp: '2026-09-08'
+  priority:
+    - fail_closed_on_authority_mismatch
+    - avoid_false_positive_from_openings_and_runtime_wall_segments
+    - stable_cli_report_for_verify_all_and_ci
+    - runtime_part_path_identity_and_solid_wall_slab_checks
+  allowed_scope:
+    - package.json
+    - config/spatial-validation.yaml
+    - shared/spatial-validation.ts
+    - scripts/verify/spatial/verify-spatial.ts
+    - tests/server/spatial-validation.test.ts
+    - docs/spatial-validation.md
+    - docs/design-iterations/archive/spatial-validation-20260908/*
+  forbidden:
+    - app/src
+    - 3D UI panels
+    - generated render outputs
+    - unrelated HVAC/electrical/display source changes
+  open_questions:
+    - id: site_wall_thickness
+      status: site_pending
+      question: 交房量房后是否需要把 runtime 默认墙厚替换为实测墙厚字段
+      handling: 当前由实际 SceneBuilder mesh 反推；量房后重新对齐 authority
+    - id: lighting_mesh_orientation
+      status: site_pending
+      question: 后续是否提供可查询的灯具 mesh 朝向/法向证据并纳入独立 functional review
+      handling: 本轮保持未覆盖；normalDot 仅作纯函数反例，不把 CLI 结果解释为实际朝向通过
+  acceptance:
+    commands:
+      - npm run verify:spatial
+      - npm run verify:all
+      - npm run test:server
+      - npm run typecheck
+    required: synthetic and CLI integration fail-closed tests pass, including same-element path joins and shallow runtime wall-slab entry; current baseline must retain and report the two detected furniture-wall blockers rather than hiding them
+datum:
+  iteration_id: spatial-validation-20260908
+  state: verification
+  frozen: true
+  coordinate_system:
+    plan_axes: x=东/西, z=南/北; y=up
+    units: m
+    source: AGENTS.md
+  anchors:
+    - id: wall_centerline
+      type: wall_anchor
+      plan: resolved model-geometry wall segments
+      elevation: runtime wall mesh y bounds
+      section: BoxGeometry thickness and runtime y bounds
+      source_refs:
+        - config/layout/model-geometry.yaml
+        - shared/render/SceneBuilder.ts
+    - id: runtime_solid_wall_slab
+      type: wall_anchor
+      plan: finite runtime wall segment plus BoxGeometry thickness; generic injected scenes use solid slab overlap
+      elevation: runtime wall mesh y bounds
+      section: segmentSolidOverlapDepth catches entry into one wall face before centreline crossing; SceneBuilder CLI declares source-centerline contact semantics
+      source_refs:
+        - shared/spatial-validation.ts
+        - scripts/verify/spatial/verify-spatial.ts
+        - tests/server/spatial-validation.test.ts
+    - id: runtime_glass_path_join
+      type: wall_anchor
+      plan: concrete element/part/refIndex/path id from overlay wallRefs
+      elevation: runtime structural mesh Box3; internal railing pieces excluded from sibling-pane pairwise
+      section: only exact configured continuous/butt/endpoint/t/overlap geometry can close a same-element path pair
+      source_refs:
+        - config/spatial-validation.yaml
+        - shared/spatial-validation.ts
+        - scripts/verify/spatial/verify-spatial.ts
+    - id: furniture_runtime_envelope
+      type: free_position
+      plan: THREE.Box3 setFromObject after SceneBuilder/FixtureFactory build
+      elevation: same Box3 minY/maxY
+      section: actual child mesh envelope, not declared dimensions alone
+      source_refs:
+        - config/house.yaml
+        - shared/render/SceneBuilder.ts
+        - shared/render/FixtureFactory.ts
+    - id: ceiling_zone
+      type: ceiling_anchor
+      plan: ceiling.yaml area and runtime ceiling_zone_solid
+      elevation: room.height minus declared thickness
+      section: runtime ceiling zone AABB
+      source_refs:
+        - config/ceiling.yaml
+        - shared/render/CeilingZoneBuilder.ts
+    - id: lighting_host_semantics
+      type: wall_anchor
+      plan: declared electrical point and resolved host wall/wall_side
+      elevation: declared/runtime fixture vertical envelope only
+      section: host, room side, opening and vertical checks; actual fixture mesh normal/rotation not covered
+      source_refs:
+        - config/electrical.yaml
+        - config/spatial-validation.yaml
+        - scripts/verify/spatial/verify-spatial.ts
+  validation_views:
+    - plan: wall topology and structural overlays
+    - section: furniture/ceiling and lighting vertical envelopes
+    - host_elevation: wall-lamp host wall, side, opening, and orientation semantics
+fact_table:
+  iteration_id: spatial-validation-20260908
+  state: verification
+  scope: 统一空间校验第一版 CLI、共享几何原语、verify:all 门禁与反例
+  facts:
+    - id: authority_sources
+      status: confirmed
+      value: model-geometry/overlay/house/ceiling/electrical + SceneBuilder/FixtureFactory
+      source_refs:
+        - config/layout/model-geometry.yaml
+        - config/layout/overlay.yaml
+        - config/house.yaml
+        - config/ceiling.yaml
+        - config/electrical.yaml
+        - shared/render/SceneBuilder.ts
+        - shared/render/FixtureFactory.ts
+      verification: verify:spatial reads these sources directly
+    - id: wall_mesh_thickness
+      status: confirmed
+      value: runtime wall mesh carries the rendered thickness; verifier derives it from BoxGeometry
+      source_refs:
+        - shared/render/SceneBuilder.ts
+        - scripts/verify/spatial/verify-spatial.ts
+      verification: host clearance uses runtime mesh segment/thickness
+    - id: runtime_wall_slab_collision
+      status: confirmed
+      value: validateRuntimeScene uses segmentSolidOverlapDepth for injected runtime walls with thickness; SceneBuilder adapter records centerline representation contact explicitly
+      source_refs:
+        - shared/spatial-validation.ts
+        - scripts/verify/spatial/verify-spatial.ts
+        - tests/server/spatial-validation.test.ts
+      verification: pure shallow slab-entry counterexample plus CLI wall penetration evidence
+      impact: a shallow entry is fail-closed in the generic runtime API without turning current centerline-authored contacts into false baseline errors
+    - id: runtime_glass_path_identity
+      status: confirmed
+      value: runtime glass/curtain paths retain element, part, refIndex and stable path id; same-element distinct paths pairwise-check while sibling meshes bound to one path are ignored
+      source_refs:
+        - config/spatial-validation.yaml
+        - shared/spatial-validation.ts
+        - scripts/verify/spatial/verify-spatial.ts
+        - tests/server/spatial-validation.test.ts
+      verification: same-element 90-degree unjoined corner fails; concrete continuous join passes
+    - id: placed_semantics
+      status: confirmed
+      value: furnishings entries with placement fields are runtime objects; count-only entries are not
+      source_refs:
+        - AGENTS.md
+        - config/house.yaml
+        - shared/render/SceneBuilder.ts
+      verification: runtime/source cardinality checks
+    - id: suppressed_wall_ownership
+      status: confirmed
+      value: each suppress wall has exactly one structural replacement; parts.wallRefs are canonical
+      source_refs:
+        - config/layout/overlay.yaml
+        - config/spatial-validation.yaml
+        - shared/spatial-validation.ts
+      verification: validateOverlayReplacements
+    - id: current_site_state
+      status: confirmed
+      value: 尚未交房，硬装、水电、吊顶和空调均未施工
+      source_refs:
+        - AGENTS.md
+      verification: project instruction
+    - id: active_furniture_states
+      status: site_pending
+      value: 活动门扇/训练器械状态不由第一版 CLI 全量枚举
+      source_refs:
+        - docs/spatial-validation.md
+        - tests/server/master-bedroom-dressing.test.ts
+      verification: 专项状态矩阵测试与后续 runtime evidence
+      impact: 不能把第一版 CLI 报告解释为所有活动状态已验证
+    - id: lighting_mesh_orientation
+      status: site_pending
+      value: 实际灯具 runtime mesh 的法向/旋转本轮未可靠校验；仅保留声明式宿主与纯函数 normalDot 反例
+      source_refs:
+        - config/electrical.yaml
+        - shared/spatial-validation.ts
+        - scripts/verify/spatial/verify-spatial.ts
+      verification: 后续 runtime mesh 法向查询与独立 functional review
+      impact: 不能声称灯具实际朝向已由 verify:spatial 验证
+    - id: detected_furniture_wall_blockers
+      status: confirmed
+      value: verify:spatial 当前保留两处真实实体墙穿越：entry_half_height_cabinet↔w_ent_south_w 与 tv_wall_low↔w_st_east
+      source_refs:
+        - config/house.yaml
+        - config/layout/model-geometry.yaml
+        - scripts/verify/spatial/verify-spatial.ts
+      verification: npm run verify:spatial -- --json; exit 1 with two furniture_wall_collision errors
+      impact: verify:all 门禁保持失败；不得通过修改/移动家具或宽泛豁免伪造 PASS
+objects:
+  iteration_id: spatial-validation-20260908
+  state: verification
+  frozen: true
+  objects:
+    - id: wall_topology
+      owner: shared/spatial-validation.ts
+      authority: config/layout/model-geometry.yaml
+      collision_policy: cross/T/collinear overlap fail unless declared junction
+      validation_refs:
+        - validateWallTopology
+    - id: structural_overlay
+      owner: shared/spatial-validation.ts
+      authority: config/layout/overlay.yaml
+      collision_policy: one suppress owner; no unsuppressed wall overlap; concrete runtime element/part/path pairwise checks; internal railing construction pieces are not sibling panes
+      validation_refs:
+        - validateOverlayReplacements
+        - validateGlassSegments
+        - validateGlassAgainstWalls
+        - deriveRuntimeGlassJoins
+        - glass_runtime_collision
+    - id: placed_furniture_runtime
+      owner: scripts/verify/spatial/verify-spatial.ts
+      authority: config/house.yaml + SceneBuilder + FixtureFactory
+      collision_policy: runtime AABB against runtime glass/ceiling and furniture pairs; finite runtime wall slab depth with explicit SceneBuilder centerline representation policy
+      interfaces:
+        - relationships
+        - wall_host_clearance
+        - site_trim
+      validation_refs:
+        - furniture_runtime_cardinality
+        - furniture_wall_collision
+        - segmentSolidOverlapDepth
+        - furniture_glass_collision
+        - furniture_ceiling_collision
+        - furniture_furniture_collision
+    - id: lighting_host
+      owner: scripts/verify/spatial/verify-spatial.ts
+      authority: config/electrical.yaml + config/render/overrides.yaml + runtime lighting fixtures
+      collision_policy: host wall, room side, suppressed wall, opening and vertical runtime envelope
+      validation_refs:
+        - validateWallLampMount
+        - lighting_runtime_missing
+        - lighting_mount_wall_side_mismatch
+      known_uncovered: actual runtime fixture mesh normal/rotation; validateWallLampMount normalDot is a pure-function counterexample only
+    - id: ceiling_solid
+      owner: scripts/verify/spatial/verify-spatial.ts
+      authority: config/ceiling.yaml
+      collision_policy: runtime ceiling_zone_solid AABB
+      validation_refs:
+        - furniture_ceiling_collision
+        - lighting_runtime_vertical_collision
+review:
+  iteration_id: spatial-validation-20260908
+  state: verification
+  status: incomplete
+  scope: 统一空间校验第一版
+  evidence:
+    commands:
+      - npm run verify:spatial
+      - npm run verify:all
+      - npx tsx --test tests/server/spatial-validation.test.ts
+      - npm run test:server
+      - npm run typecheck
+    verification_results:
+      npm run verify:spatial: 'EXPECTED FAIL / detected baseline blocker: 2 errors, 10 warnings; entry_half_height_cabinet↔w_ent_south_w and tv_wall_low↔w_st_east are reported as real furniture-wall penetrations'
+      npm run verify:all: EXPECTED FAIL at verify:spatial with the same 2 detected furniture-wall blockers; no upstream gate is hidden
+      npx tsx --test tests/server/spatial-validation.test.ts: 'PASS: 7 tests / same-element path join, internal sibling mesh, shallow wall-slab and CLI integration counterexamples'
+      npm run test:server: 'PASS: 539 tests / 67 suites / 0 failures'
+      npm run typecheck: 'PASS: server and app TypeScript'
+    browser: not applicable to CLI/data validator; no 3D UI panel scope
+  functional_review:
+    status: PASS
+    reviewer: independent Luna Max
+    verdict_scope: validator mechanism only; current project geometry remains blocked by detected model errors
+    evidence_refs:
+      - /tmp/spatial-review-third.json
+      - tests/server/spatial-validation.test.ts
+      - shared/spatial-validation.ts
+      - scripts/verify/spatial/verify-spatial.ts
+    blocking_notes:
+      - 活动门扇、训练器械状态未由第一版 CLI 全量枚举
+      - 真实墙厚/产品外廓/厂家安装与量房数据仍 site_pending
+      - 实际灯具 runtime mesh 法向/旋转本轮未覆盖；不得把 pure normalDot 反例当作实际朝向验证
+      - 同 element runtime path 只允许 concrete part/path join；栏杆 handrail/bar 标记为内部构造件，不冒充独立 pane
+      - 通用 runtime validator 默认以实际墙厚实体 slab fail-closed；当前 CLI 的 SceneBuilder 墙/家具共用中心线 datum，故显式记录 centerline representation contact policy
+      - 两处 config/house.yaml 家具实体墙穿越为 detected baseline blocker，需用户确认墙材/移动方案后再修源数据
+  aesthetic_review:
+    status: not_applicable_to_validator
+    reason: 本迭代只改验证器、配置和文档，不改设计视觉方案
+  retrospective:
+    status: triggered_and_recorded
+    trigger_checks:
+      - opening false-positive fixed by runtime wall segments and y overlap
+      - suppress duplicate and structural owner checks are fail-closed
+      - JSON output is deterministic and --out is verified
+      - independent reviewer found broad type-only relationships and runtime pairwise false positives; second round replaced them with exact instance/path checks
+      - third-round reviewer found same-element unconditional skip and centreline-only wall collision; fixed with path identity/internal-component classification and solid-slab pure counterexample
+      - verification intentionally preserves the two detected furniture-wall blockers
+  delivery_gate: validator mechanism independently passed; project remains incomplete until the 2 detected furniture-wall errors are resolved and verify:all passes

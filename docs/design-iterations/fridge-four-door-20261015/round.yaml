@@ -1,0 +1,716 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: fridge-four-door-20261015
+index:
+  order: 35
+  topic: kitchen-dining-equipment
+  review_state: blocked
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v3
+  project: bontop-design-log
+  iteration_id: fridge-four-door-20261015
+  subject: 客餐厅试位冰箱改为法式四门外观
+  priority:
+    user_goal: 将当前冰箱模型改成参考图式法式四门外观，并查看客餐厅效果
+    ranked:
+      - 四门结构一眼可辨
+      - 接近参考图的暖白与深色细分缝
+      - 保持当前试位包络与场景关系
+    non_negotiables:
+      - 只做外观概念
+      - 不声称与图片SKU完全一致
+      - 不改中心坐标/朝向/外包络/开门假设
+      - 不加入广告文字贴纸人物或宠物
+    tradeoffs_accepted:
+      - 下部抽屉只做关闭态外观
+      - 不模拟真实铰链/抽拉
+      - 使用通用哑光暖白而非厂家实物色号
+  frozen: true
+  freeze_record:
+    alignment_id: user-image-french-four-door-20261015
+    original_user_response: 冰箱的建模我想调整成这种法式四门的，看看你的方案
+    normalized_decisions:
+      - 上部左右双开门加下部上下两只整宽抽屉
+      - 暖白低光泽门面和浅灰侧板
+      - 窄深色阴影表达门缝/暗槽
+      - 保留当前试位和0.833×0.600×1.910m外包络
+      - 不改产品SKU/安装/电气/碰撞配置
+    confirmed_by_user: true
+    confirmed_at: '2026-10-15T09:43:42+08:00'
+    evidence_refs:
+      - user_message.image_1
+      - evidence/before.png
+      - evidence/before-runtime.json
+  allowed_scope:
+    files:
+      - shared/render/FixtureFactory.ts
+      - tests/server/shared/scene-builder.test.ts
+      - docs/design-iterations/fridge-four-door-20261015
+      - docs/decisions/14-style-furniture.md
+      - docs/decisions/README.md
+    objects:
+      - furniture:living_dining:fridge:13
+    archetypes:
+      - freestanding_appliance_visual
+    views:
+      - fridge_front_west
+      - living_dining_context
+    changes:
+      - 分拆上部门板与下部抽屉正面
+      - 暖白低光泽门面与浅灰侧板
+      - 暗色窄缝和低矮底部阴影线
+  forbidden:
+    files:
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - config/anti-penetration.yaml
+      - config/electrical.yaml
+      - config/electrical-topology.yaml
+      - config/mep-hvac-coordination.yaml
+    objects:
+      - fridge_position
+      - refrigerator_open_envelope
+      - kitchen_door_and_furniture
+      - fridge_power_route
+    assumptions:
+      - 参考图型号与现有HR-518WUFIPZ为同一SKU
+      - 参考图机身尺寸等于当前试位尺寸
+      - 上门铰链与下抽屉行程已确认
+    out_of_scope_changes:
+      - 采购选型
+      - 施工定位
+      - 实际开门动画
+      - 插座或线路迁改
+      - 门头柜/推拉门/餐桌椅调整
+  supersession_review:
+    - prior_decision: DEC-2026-10-14-R01
+      prior_conclusion: HR-518WUFIPZ作为living_dining的3D试位候选，中心(10.94,3.48)、rotation=90、trial机身833×600×1910mm，非施工定位。
+      proposed_supersession: 不推翻产品候选、坐标、朝向或包络；只替换FixtureFactory中未声明产品特征的银灰单面板占位外观。
+      reason: 业主本轮要求法式四门视觉表现，未要求确认参考图SKU或改变尺寸。
+      status: preserved_except_generic_visual_treatment
+  open_questions:
+    - id: exact-reference-product
+      status: site_pending
+      question: 本轮参考图型号HR-518WUFNDIGZ是否要在采购层替换当前trial记录的HR-518WUFIPZ？
+      required_for:
+        - manufacturer_fidelity
+        - purchase_decision
+        - construction_freeze
+      interim: 当前只作外观参考；保持既有试位包络，不把图中型号当作设备选型结论。
+      owner: 业主/厂家/橱柜方
+      trigger: 实际设备下单或橱柜深化前
+    - id: actual-door-behavior
+      status: site_pending
+      question: 真实型号上部门开启方向、下抽屉拉出行程及安装净空是什么？
+      required_for:
+        - functional_clearance_review
+        - construction_freeze
+      interim: 本轮关闭态外观沿用现有0.60m西向活动假设，不新增动态行为。
+      owner: 业主/厂家/橱柜方
+      trigger: 实际设备下单或橱柜深化前
+  alignment:
+    records:
+      - 业主在本会话明确要求以图片作为法式四门外观参考并查看方案
+    unresolved:
+      - 参考图具体SKU与项目现行trial型号的关系
+      - 实际门扇/抽屉开启数据
+    re_alignment_required: false
+  acceptance:
+    validation_commands:
+      - npm run gate:visual
+      - npm run test:app
+      - npm run test:server
+      - npm run typecheck
+      - npm run verify:all
+    browser_evidence_required: true
+    required_views:
+      - 冰箱朝西正面近景同机位改前改后
+      - 客餐厅包含推拉门和门头柜的关系视图
+    aesthetic_review: PASS required
+    functional_review: PASS required_for_unchanged_trial_envelope
+    construction_review: not_applicable_to_visual_study
+    blocking_issues: []
+    done_when:
+      - 上部双门和下部两只整宽抽屉清楚可辨
+      - 门面与侧板颜色层次接近参考图
+      - 运行时AABB不超过当前trial包络
+      - visual gate CLEAR且配置错误横幅为空
+      - 同版本运行时证据和独立审查完成
+      - 未把SKU或厂家净空未知写成事实
+    delivery_notes_required: true
+datum:
+  schema: interior-design-datum/v3
+  project: bontop-design-log
+  iteration_id: fridge-four-door-20261015
+  subject: 客餐厅试位冰箱法式四门关闭态外观
+  units: m
+  coordinate_system: Three.js右手系，Y向上；水平X东西、Z南北；北为-Z。
+  status: frozen
+  datums:
+    - id: fridge-trial-front-west
+      name: 客餐厅试位冰箱，外观正面朝西
+      anchor:
+        kind: free_position
+        ref: config/house.yaml:508-513
+        wall_side: null
+        service_ref: null
+      source_refs:
+        fact_refs:
+          - current-fridge-trial
+          - current-trial-envelope
+          - existing-opening-assumption
+        decision_refs:
+          - french-four-door-appearance
+      views:
+        plan:
+          required: true
+          origin: fridge furnishing instance center
+          axes: x/z
+          direction: 北朝上；instance rotation=90°
+          position:
+            x: 10.94
+            z: 3.48
+          rotation: 90
+          dimensions:
+            length: null
+            width: 0.833
+            depth: 0.6
+            offset: 0
+          dimension_semantics: trial body envelope W×D；旋转后world x宽0.600、world z宽0.833
+        elevation:
+          required: true
+          viewing_side: west
+          vertical_axis: 'y'
+          height: 1.91
+          dimensions:
+            width: 0.833
+            height: 1.91
+            sill: 0
+            datum_offset: 0
+          dimension_semantics: 现有试位外包络；非参考图片SKU规格
+        section:
+          required: true
+          cut_direction: 从西侧向东看冰箱正面
+          depth_axis: local_z
+          clearances:
+            front: 当前试位活动假设0.600且不变
+            rear: site_pending
+            top: site_pending
+            bottom: 0
+          thickness: 正面板/暗缝/底部阴影线必须落在local z[-0.300,0.300]范围内
+          dimension_semantics: 关闭态外观；不表达真实门铰链或抽屉行程
+      geometry:
+        x: 10.94
+        'y': 0
+        z: 3.48
+        width: 0.833
+        depth: 0.6
+        height: 1.91
+        length: null
+        rotation: 90
+        along: null
+      constraints:
+        - 上部左右双门，下部上下两只整宽抽屉；本轮只表示关闭态外观
+        - 正面位于局部z=-0.300，旋转后朝西；禁止外凸长把手
+        - 世界AABB保持x[10.64,11.24]、y[0,1.910]、z[3.0635,3.8965]
+        - 不改相邻长虹门、entry_half_height_cabinet、餐桌椅及0.60m活动包络
+      interfaces:
+        - 现有0.60m西向开门假设保留
+        - 实际SKU/安装净空/电源/门与抽屉行为仍site_pending
+      validation_refs:
+        - evidence/before-runtime.json
+        - evidence/after-runtime.json
+        - evidence/after.png
+      status: frozen
+  notes:
+    - 参考图文字型号与项目现行试位型号不同；本datum固定的是外观预演包络，不做产品规格推断。
+fact_table:
+  schema: interior-design-fact-table/v3
+  project: bontop-design-log
+  iteration_id: fridge-four-door-20261015
+  subject: 客餐厅试位冰箱改为法式四门外观
+  created_at: '2026-10-15T09:43:42+08:00'
+  status: evidence_review
+  updated_at: '2026-10-15T09:57:32+08:00'
+  source_policy:
+    authority_refs:
+      - config/house.yaml
+      - config/anti-penetration.yaml
+      - shared/types.ts
+      - shared/render/FixtureFactory.ts
+    observation_refs:
+      - user_message.image_1
+      - 'docs/decisions/02-layout-public.md: DEC-2026-10-14-R01'
+    measurement_refs: []
+    runtime_refs:
+      - http://localhost:5173/
+      - window.__APP__.isReady()
+      - furniture:living_dining:fridge:13
+    evidence_refs:
+      - evidence/before.png
+      - evidence/before-runtime.json
+      - evidence/before-snapshot.txt
+  facts:
+    confirmed:
+      - id: current-fridge-trial
+        category: confirmed
+        statement: 当前配置只有一台 fridge；living_dining 中心(10.94,3.48)、rotation=90。它是空间/视觉试位，不是施工定位。
+        value:
+          count: 1
+          room: living_dining
+          center:
+            x: 10.94
+            z: 3.48
+          rotation: 90
+          object_id: furniture:living_dining:fridge:13
+        source_refs:
+          - config/house.yaml:508-511
+          - evidence/before-runtime.json
+        basis: 配置与同版本运行时查询一致
+        confidence: high
+        impact: material
+        affected_objects:
+          - fridge
+        affected_views:
+          - fridge_front_west
+          - living_dining_context
+        owner: 本轮模型
+        status: resolved
+        verification_method: 同版本运行时核objectId、位置、朝向和数量
+      - id: current-trial-envelope
+        category: confirmed
+        statement: 现有试位包络W×D×H=0.833×0.600×1.910m；rotation=90后AABB x[10.64,11.24]、y[0,1.910]、z[3.0635,3.8965]。不是参考图SKU的规格确认。
+        value:
+          width_m: 0.833
+          depth_m: 0.6
+          height_m: 1.91
+          world_aabb_m:
+            x:
+              - 10.64
+              - 11.24
+            'y':
+              - 0
+              - 1.91
+            z:
+              - 3.0635
+              - 3.8965
+        source_refs:
+          - config/house.yaml:512-513
+          - shared/types.ts:1700
+          - shared/render/FixtureFactory.ts
+          - evidence/before-runtime.json
+        basis: 项目trial声明与运行时顶点包围盒
+        confidence: high
+        impact: material
+        affected_objects:
+          - fridge
+          - fridge_open_envelope
+        affected_views:
+          - plan
+          - fridge_front_west
+        owner: 本轮模型
+        status: resolved_for_visual_trial
+        verification_method: 改后重算运行时几何AABB，不超过当前trial包络
+      - id: existing-opening-assumption
+        category: confirmed
+        statement: anti-penetration中的冰箱活动包络为朝西0.60m视觉研究假设，不是已确认的铰链/厂家数据。
+        value:
+          open_face: west
+          swing_m: 0.6
+          basis: visual_study_assumption
+        source_refs:
+          - config/anti-penetration.yaml:241-246
+          - docs/decisions/02-layout-public.md: DEC-2026-10-14-R01
+        basis: 现行配置声明
+        confidence: high
+        impact: material
+        affected_objects:
+          - fridge
+          - env.fridge.door
+        affected_views:
+          - plan
+          - fridge_front_west
+        owner: 项目
+        status: preserved
+        verification_method: 本轮不改开门/抽屉动态行为或活动包络
+      - id: pre-construction-state
+        category: confirmed
+        statement: 项目当前尚未交房，硬装、水电、吊顶和空调均未施工。
+        value: null
+        source_refs:
+          - AGENTS.md project rules supplied in session
+        basis: 当前项目控制口径
+        confidence: high
+        impact: context
+        affected_objects:
+          - fridge
+        affected_views: []
+        owner: 业主
+        status: current
+        verification_method: 以后续业主更新的项目状态为准
+    user_decision:
+      - id: french-four-door-appearance
+        category: user_decision
+        statement: 业主要求把冰箱建模调整为所附参考图的法式四门风格，并查看方案。
+        value:
+          image_ref: user_message.image_1
+          requested_style: french_four_door
+        source_refs:
+          - 2026-10-15 user message
+        basis: 用户明确视觉要求
+        confidence: high
+        impact: material
+        affected_objects:
+          - fridge
+        affected_views:
+          - fridge_front_west
+          - living_dining_context
+        owner: 业主
+        status: frozen
+        verification_method: 非overview冰箱正面机位复看四门分区与色材
+    inferred:
+      - id: reference-door-layout
+        category: inferred
+        statement: 参考图可读为上部左右两扇门、下部上下两只整宽抽屉；深色细分缝用阴影/暗槽表达。
+        value:
+          upper: two_side_by_side_doors
+          lower: two_full_width_drawers
+          handles: no_projecting_bar_handles
+        source_refs:
+          - user_message.image_1
+        basis: 图片正面可见上部中央竖缝和两条下部横向分隔；不从广告透视推尺寸
+        confidence: medium
+        impact: material
+        affected_objects:
+          - fridge
+        affected_views:
+          - fridge_front_west
+        owner: 本轮模型
+        status: accepted_for_visual_study
+        verification_method: 目标机位第一眼可辨上双门与下双抽屉
+    site_pending:
+      - id: exact-reference-product
+        category: site_pending
+        statement: 参考图可见型号HR-518WUFNDIGZ；项目既有试位DEC使用HR-518WUFIPZ。真实尺寸、门体结构、铰链侧和安装净空未核验，且不视为同一SKU。
+        value:
+          reference_image_label: HR-518WUFNDIGZ
+          existing_trial_label: HR-518WUFIPZ
+        source_refs:
+          - user_message.image_1
+          - 'docs/decisions/02-layout-public.md: DEC-2026-10-14-R01'
+          - config/house.yaml:512-513
+        basis: 图片文字与项目现行trial记录不同
+        confidence: high
+        impact: material
+        affected_objects:
+          - fridge
+          - cabinetry_clearance
+          - power_access
+        affected_views:
+          - fridge_front_west
+          - plan
+        owner: 业主/厂家/橱柜方
+        trigger: 实际设备下单或橱柜深化前
+        status: open
+        verification_method: 核设备铭牌/厂家规格书、开门方向、散热净空和可及电源后再更新
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: fridge-four-door-20261015
+  subject: 客餐厅试位冰箱法式四门外观
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - visual_part
+      - function
+      - review
+    visual_relationship_required: true
+  objects:
+    - id: furniture:living_dining:fridge:13
+      type: furniture_fixture
+      archetypes:
+        - freestanding_refrigerator
+        - french_four_door_visual
+      owner: project_model
+      function: 当前仅承担客餐厅空间试位和法式四门外观预演；不代替产品SKU/安装图
+      material: 暖白低光泽门板、浅灰侧板、深灰窄分缝
+      geometry_source: shared/render/FixtureFactory.ts
+      datum_refs:
+        - fridge-trial-front-west
+      fact_refs:
+        - current-fridge-trial
+        - current-trial-envelope
+        - reference-door-layout
+        - exact-reference-product
+      decision_refs:
+        - DEC-2026-10-14-R01
+        - DEC-2026-10-15-R01
+      dependencies:
+        - config/house.yaml
+        - shared/types.ts
+        - shared/render/FixtureFactory.ts
+        - app/src/render/HouseScene.ts
+        - tests/server/shared/scene-builder.test.ts
+      interfaces:
+        - id: existing-open-envelope
+          target_object_id: env.fridge.door
+          kind: clearance
+          requirement: 保留west/0.60m试算包络；不新增真实铰链或抽屉行为
+          status: confirmed_for_visual_trial
+        - id: power-access
+          target_object_id: sock_kitchen_fridge
+          kind: electrical
+          requirement: 旧回路端点不代表新试位可及供电；本轮不重连
+          status: site_pending
+        - id: product-dimensions
+          target_object_id: HR-518WUFNDIGZ
+          kind: manufacturer_spec
+          requirement: 参考图型号与现行试位SKU关系及尺寸未核验
+          status: site_pending
+      collision:
+        policy: existing_trial_body_envelope
+        geometry_ref: FURNITURE_DIMS.fridge + FixtureFactory fridge body
+        review_ref: evidence/after-runtime.json
+      maintenance:
+        boundary: 本轮只生成关闭态外观面板
+        access_clearance: site_pending
+        replaceable_parts:
+          - upper_left_door_face
+          - upper_right_door_face
+          - lower_drawer_face_1
+          - lower_drawer_face_2
+        inspection_requirements:
+          - 实际SKU/门铰链/抽屉行程/清洁可达性待厂家规格确认
+      parts:
+        - case
+        - two_upper_door_faces
+        - two_full_width_drawer_faces
+        - recessed_shadow_seams
+        - base_shadow_line
+      visual_relationships:
+        - target_object_id: reference_image_1
+          relation: emulate_visible_form
+          requirement: 读取上双门+下双抽屉和暖白门面，不复制广告素材
+          evidence_refs:
+            - user_message.image_1
+            - evidence/after.png
+        - target_object_id: entry_half_height_cabinet
+          relation: adjacent_existing_object
+          requirement: 保持当前65mm试位侧缝关系，不移动对象
+          evidence_refs:
+            - evidence/after-room-context.png
+        - target_object_id: kitchen_dining_sliding_door
+          relation: adjacent_existing_object
+          requirement: 不改变现有开闭状态、门板和门轨
+          evidence_refs:
+            - evidence/after-room-context.png
+      validation_refs:
+        - npm run gate:visual
+        - npm run test:app
+        - npm run test:server
+        - tests/server/shared/scene-builder.test.ts
+        - npm run typecheck
+        - npm run verify:all
+        - evidence/after-runtime.json
+      status: verified_for_visual_trial
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: fridge-four-door-20261015
+  subject: 客餐厅试位冰箱改为法式四门外观
+  state: blocked
+  state_note: 视觉方案与独立复核完成；全量 test:app / test:server 在当前 DOM-less 测试环境失败，需补齐受支持的 ResizeObserver/canvas/document 测试环境后再关闭验证门。
+  source_version:
+    config_refs:
+      - config/house.yaml
+      - config/anti-penetration.yaml
+    asset_refs:
+      - shared/render/FixtureFactory.ts
+      - shared/types.ts
+    render_facts_ref: data/project-render-facts.json
+    source_digest: FixtureFactory.ts=6640424cf9ccb3d415b95705cb8a573df394a57394bf4fe57bcba4ba0090e2c1; scene-builder.test.ts=c4836d616e9bd5b4ea635ba43792c4429d6514ac8ed1e5bb86c784e1637d4db1; house.yaml=7d27b1b8311fc33e95c1485f991953353dbe14972a05d878c5f577cf5816852f; anti-penetration.yaml=096e3940b1c9bcffc15af48f469cd0f63d3dbefedee29ad031f6d87f79d2dafd; render_facts=39469f961b952015732f560581bdc896939fb3205226170d8251a214421c7424
+    generated_at: '2026-10-15T09:57:32+08:00'
+  validation:
+    commands:
+      - npm run gate:visual
+      - npm run test:app
+      - npm run test:server
+      - npx tsx --test tests/server/shared/scene-builder.test.ts
+      - npm run typecheck
+      - npm run verify:all
+    results:
+      - 基线与改后 gate:visual 四域 CLEAR。
+      - 改后运行时 isReady=true、配置错误横幅为空、fridge objectId 仍为 furniture:living_dining:fridge:13；AABB 与当前试位包络相同。
+      - npm run verify:all：17/17 PASS；npm run typecheck：PASS。
+      - 聚焦 scene-builder 测试：42/42 PASS，覆盖四门部件与未扩张的机身包络。
+      - npm run test:server：1003/1005 PASS；剩余2项为 tests/server/wall-face-materials.test.ts 的 document is not defined（TextureFactory DOM依赖）。
+      - npm run test:app：503/571 PASS；3个测试文件、68项失败，错误包含 ResizeObserver 未定义与 JSDOM canvas.getContext 未实现；当前完整 app 测试环境未提供这些浏览器 API。
+    config_status: PASS
+    geometry_status: PASS_TRIAL_ENVELOPE
+    consistency_status: PASS
+    functional_checks_status: PASS_FOR_VISUAL_TRIAL_SITE_ITEMS_PENDING
+    application_status: PASS_BROWSER_TEST_ENVIRONMENT_BLOCKED
+    typecheck_status: PASS
+    generated_files_touched_directly: false
+  evidence:
+    - id: baseline-fridge-front-west
+      view: 当前银灰单面板冰箱同机位基线
+      url: http://localhost:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady() === true
+      config_error_banner: ''
+      target_objects:
+        - furniture:living_dining:fridge:13
+      target_object_ids:
+        - furniture:living_dining:fridge:13
+      runtime_query_refs:
+        - evidence/before-runtime.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8
+          - 2.05
+          - 4.25
+        target:
+          - 10.64
+          - 0.98
+          - 3.48
+        view_type: perspective
+      snapshot_path: evidence/before-snapshot.txt
+      screenshot_path: evidence/before.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - shared/render/FixtureFactory.ts@9f580e9037b2
+        - config/house.yaml@7d27b1b8311f
+      status: valid
+      invalid_reason: null
+    - id: after-fridge-front-west
+      view: 法式四门正面近景，同机位改后
+      url: http://localhost:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady() === true
+      config_error_banner: ''
+      target_objects:
+        - furniture:living_dining:fridge:13
+      target_object_ids:
+        - furniture:living_dining:fridge:13
+      runtime_query_refs:
+        - evidence/after-runtime.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8
+          - 2.05
+          - 4.25
+        target:
+          - 10.64
+          - 0.98
+          - 3.48
+        view_type: perspective
+      snapshot_path: evidence/after-snapshot.txt
+      screenshot_path: evidence/after.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - shared/render/FixtureFactory.ts@6640424cf9cc
+        - config/house.yaml@7d27b1b8311f
+      status: valid
+      invalid_reason: null
+    - id: after-living-dining-context
+      view: 客餐厅关系视角，含长虹门与半高柜
+      url: http://localhost:5173/
+      title: 和萃 701 - 3D 装修设计
+      ready: true
+      ready_signal: window.__APP__.isReady() === true
+      config_error_banner: ''
+      target_objects:
+        - furniture:living_dining:fridge:13
+      target_object_ids:
+        - furniture:living_dining:fridge:13
+      runtime_query_refs:
+        - evidence/after-room-context-runtime.json
+      camera:
+        mode: orbit
+        is_overview: false
+        position:
+          - 8
+          - 1.8
+          - 5.5
+        target:
+          - 10.64
+          - 0.95
+          - 3.48
+        view_type: perspective
+      snapshot_path: evidence/after-room-context-snapshot.txt
+      screenshot_path: evidence/after-room-context.png
+      png_exists: true
+      png_readable: true
+      non_empty_screenshot: true
+      version_refs:
+        - shared/render/FixtureFactory.ts@6640424cf9cc
+        - config/house.yaml@7d27b1b8311f
+      status: valid
+      invalid_reason: null
+  aesthetic_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 近景中四门分区清楚；中央竖缝、两条横向暗缝和底部深色阴影线形成接近参考图的层次比例。
+      - 客餐厅关系视图中，冰箱与推拉门、半高柜关系协调，体量没有破坏门洞和柜体层次。
+      - 冷白环境下暖白门面与白墙反差偏弱，远景细缝可能变淡；更换机位、灯光或真实SKU后应复核门缝与色号。
+    evidence_refs:
+      - evidence/aesthetic-review.json
+      - evidence/after.png
+      - evidence/after-room-context.png
+    requested_changes: []
+    assumptions:
+      - 'inferred: 参考图按可见外观读取为上部左右双门、下部两只整宽抽屉。'
+      - 'site_pending: 真实SKU色号/五金尚未核验。'
+  functional_review:
+    verdict: PASS
+    blocking_issues: []
+    non_blocking_notes:
+      - 运行时确认只有一个冰箱实例；meshCount=6 是静态合批后的子网格数，不是冰箱对象数。
+      - 改后世界AABB为x[10.64,11.24]、y[0,1.91]、z[3.0635,3.8965]，与既有0.833×0.600×1.910m试位包络一致。
+      - rotation=90°时局部-z正面朝世界西；与半高柜侧缝约65mm、与推拉门开态南缘间距约0.5435m，均为当前模型关系。
+      - 0.60m西向活动范围仍是shadow假设；旧厨房插座不是客餐厅新试位的可及供电证明。
+    evidence_refs:
+      - evidence/functional-review.json
+      - evidence/after-runtime.json
+      - evidence/after-room-context-runtime.json
+      - config/anti-penetration.yaml:241-246
+    requested_changes: []
+    assumptions:
+      - 'site_pending: 参考图HR-518WUFNDIGZ与项目HR-518WUFIPZ的SKU关系、实际尺寸、铰链/抽屉行程、散热净空和可及电源。'
+  risks:
+    - 参考图可见型号HR-518WUFNDIGZ与项目试位HR-518WUFIPZ不同；只借用视觉结构，不确认SKU或尺寸相同。
+    - 若以后加入真实开门/抽屉动画，0.60m西向活动假设须按厂家铰链和抽屉行程重新核验。
+  retrospective:
+    triggered: false
+    triggers: []
+    records: []
+    rebaselined: false
+  delivery:
+    status: blocked
+    blocking_issues:
+      - npm run test:server 有2项由 document is not defined 导致的 wall-face-materials 失败。
+      - npm run test:app 有68项失败，当前测试环境缺少 ResizeObserver 与 canvas.getContext 实现。
+    completion_conditions:
+      - 同一运行时对象呈现上部双门、下部两只整宽抽屉。
+      - 运行时世界包围盒保持现有试位尺寸与位置。
+      - gate:visual CLEAR；verify:all、typecheck及冰箱专项scene-builder测试通过。
+      - 同版本非overview截图、snapshot和runtime查询有效。
+      - 独立审美与功能审查均PASS，且未把SKU/安装未知写成事实。
+      - 项目补齐支持DOM/Canvas API的全量测试环境并重跑test:app与test:server。
+    follow_up_site_pending:
+      - 业主/厂家/橱柜方在下单或深化前核型号、尺寸、铰链/抽屉行程、散热净空与可及电源。
+    delivery_ready: false

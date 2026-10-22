@@ -9,8 +9,8 @@
     "截图中的告警计数为407，但运行时configErrors为空，且本审查范围没有证据表明它影响本轮展示结果。"
   ],
   "evidence_refs": [
-    "docs/design-iterations/presentation-defaults-20261019/decision-brief.yaml",
-    "docs/design-iterations/presentation-defaults-20261019/design-datum.yaml",
+    "docs/design-iterations/presentation-defaults-20261019/round.yaml（brief 段）",
+    "docs/design-iterations/presentation-defaults-20261019/round.yaml（datum 段）",
     "docs/design-iterations/presentation-defaults-20261019/evidence/default-state-runtime.json",
     "docs/design-iterations/presentation-defaults-20261019/evidence/preview-applied-runtime.json",
     "docs/design-iterations/presentation-defaults-20261019/evidence/final-page.snapshot.txt",

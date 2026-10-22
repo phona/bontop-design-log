@@ -7,9 +7,9 @@
       "evidence": [
         "evidence/runtime-query-s1-form-v5.json#objects",
         "evidence/runtime-query-s1-form-v5.json#relationships",
-        "fact-table.yaml#I-APPLIANCE-GAP",
-        "object-manifest.yaml#S1",
-        "object-manifest.yaml#EM450"
+        "round.yaml（fact_table 段）#I-APPLIANCE-GAP",
+        "round.yaml（objects 段）#S1",
+        "round.yaml（objects 段）#EM450"
       ],
       "required_change": "按最终SKU说明书或实机补做操作、补水、清洁、拆卸、散热和维护包络验证。"
     },
@@ -17,8 +17,8 @@
       "object": "Dining power and wall-control interfaces",
       "fact": "V5 does not move the cabinet, S1, EM450, or wall-control band. Accessible grounded outlets, circuit capacity, simultaneous load, protection, and wall-control reachability remain unresolved.",
       "evidence": [
-        "fact-table.yaml#S-DINING-POWER",
-        "fact-table.yaml#S-WALL-CONTROL-ACCESS",
+        "round.yaml（fact_table 段）#S-DINING-POWER",
+        "round.yaml（fact_table 段）#S-WALL-CONTROL-ACCESS",
         "evidence/runtime-query-s1-form-v5.json#objects"
       ],
       "required_change": "按实际面板、柜体剖面、设备铭牌和回路资料验证墙控与供电。"
@@ -27,9 +27,9 @@
       "object": "RO under-sink preview",
       "fact": "V5 only changes S1. The RO internal cabinet cavity, partitions, trap, feed/drain, power, faucet, and filter/device extraction path remain unverified.",
       "evidence": [
-        "fact-table.yaml#S-RO-INTERNAL-FIT",
-        "fact-table.yaml#S-RO-INTERFACES",
-        "object-manifest.yaml#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9"
+        "round.yaml（fact_table 段）#S-RO-INTERNAL-FIT",
+        "round.yaml（fact_table 段）#S-RO-INTERFACES",
+        "round.yaml（objects 段）#furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9"
       ],
       "required_change": "按最终RO SKU和水槽柜实测内腔建立维护剖面并确认全部接口。"
     }
@@ -47,8 +47,8 @@
     "evidence/s1-form-v5-close.snapshot.txt",
     "evidence/s1-form-v5-overview.png",
     "evidence/s1-form-v5-overview.snapshot.txt",
-    "fact-table.yaml",
-    "object-manifest.yaml"
+    "round.yaml（fact_table 段）",
+    "round.yaml（objects 段）"
   ],
   "requested_changes": [
     "继续核验S1/EM450现场操作、维护、清洁、散热、供电和墙控。",

@@ -1,0 +1,267 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 原五件套注释保全（批 3 迁移时自原文逐条提取；[文件 L行号] 为原文位置，语义注释不得当作字段删除）──
+# [decision-brief.yaml L1] Decision Brief — 地砖预演方向轴约定修正
+# [design-datum.yaml L1] Design Datum — 临时地砖铺向控制
+# [fact-table.yaml L1] Fact Table — 地砖预演方向轴约定修正（DEC-2026-10-19-R04）
+# [object-manifest.yaml L1] Object Manifest — 地砖预演角度语义
+# ── 注释保全结束 ──
+schema: design-iteration-round/v1
+iteration_id: tile-preview-axis-r04-20261019
+index:
+  order: 41
+  topic: tile-finish
+  review_state: delivery_ready
+  supersedes: DEC-2026-10-19-R03 中仅有关地砖预演默认 90 度和 0/90 方向说明的部分
+brief:
+  schema: interior-design-decision-brief/v1
+  iteration_id: tile-preview-axis-r04-20261019
+  decision_ref: DEC-2026-10-19-R04
+  frozen: true
+  frozen_at: '2026-10-19'
+  owner: 业主
+  priority:
+    - 地砖预演角度0°代表长边南北向，90°代表长边东西向。
+    - 地砖预演默认0°。
+    - 只改变临时预演的方向映射；正式铺贴方案与材料选择保持不变。
+  allowed_scope:
+    - app/src/App.ts 的地砖预演默认值与方向到贴图旋转的转换。
+    - app/src/ui/MaterialPreviewPanel.ts 的方向说明文字。
+    - R04决策、验证和浏览器证据。
+  forbidden:
+    - 修改 data/current-scheme.json、config/materials.yaml、data/project-render-facts.json、config/layout/model-geometry.yaml 或 overlay.yaml。
+    - 将预演方向声明为正式铺贴方向、施工排版或产品选型。
+    - 改变R03的全屋窗帘open决定。
+  alignment:
+    id: owner-alignment-2026-10-19-tile-preview-axis
+    original_answer: “0°是南北向，90°才是东西向，默认0°。”
+    normalized_decision: sliderDeg 0→内部texture rotation 90°（世界Z/南北）；sliderDeg 90→内部texture rotation 0°（世界X/东西）；默认sliderDeg=0。
+    supersedes: DEC-2026-10-19-R03中仅有关地砖预演默认90°和0/90方向说明的部分。
+    retained: DEC-2026-10-19-R03中窗帘default=open，以及正式floor scheme不变。
+    site_pending: []
+  acceptance:
+    checks:
+      - 首屏地砖预演滑块与materialPreviewState.floorRotationDeg均为0。
+      - 0°触发预演后选中floor和floor_region贴图rotation为π/2，画面长边南北向。
+      - 90°触发预演后贴图rotation为0，画面长边东西向。
+      - 恢复正式材料后previewActive=false、预演slider回0、正式floor selection与覆盖不变、正式texture rotation为0。
+    browser_view: 客餐厅朝南窗近景；camera position=(12.6,2.6,6.0)，target=(10.3,0.4,9.3)。
+    evidence_refs:
+      - evidence/default-page.snapshot.txt
+      - evidence/restored-page.snapshot.txt
+      - evidence/runtime-verification.json
+      - evidence/north-south-preview-0.png
+      - evidence/east-west-preview-90.png
+datum:
+  schema: interior-design-design-datum/v1
+  iteration_id: tile-preview-axis-r04-20261019
+  coordinate_system: Three.js右手系；+x=东，-x=西；+z=南，-z=北；Y向上；单位m。
+  datums:
+    - id: floor-preview-direction
+      object: material-preview-floor-rotation
+      plan:
+        slider_degrees:
+          '0':
+            plank_axis: world_z
+            direction: 南北向
+            texture_rotation_deg: 90
+          '90':
+            plank_axis: world_x
+            direction: 东西向
+            texture_rotation_deg: 0
+        conversion: texture_rotation_deg = 90 - slider_degrees
+      elevation: 仅贴图UV预演；不改变楼板/砖块几何、标高或施工放样。
+      basis:
+        - user decision R04
+        - TextureManager.applyPreviewRotation
+    - id: browser-review-camera
+      object: browser-evidence-camera
+      plan:
+        room: living_dining
+        camera_position:
+          x: 12.6
+          'y': 2.6
+          z: 6
+        target:
+          x: 10.3
+          'y': 0.4
+          z: 9.3
+      basis:
+        - resolved living_dining bounds
+        - R03 evidence camera
+  non_datums:
+    - 正式地面材料方向和施工排砖。
+    - 墙砖、立面贴砖或正式材料SKU。
+fact_table:
+  schema: interior-design-fact-table/v1
+  iteration_id: tile-preview-axis-r04-20261019
+  facts:
+    - id: f_owner_axis
+      status: user_decision
+      statement: 业主明确地砖预演控件0°代表南北向，90°代表东西向，默认0°。
+      source_refs:
+        - user message 2026-10-19
+      impact: 预演控件读数、材质旋转变换和说明文字必须使用同一方向约定。
+      affected_objects:
+        - material-preview-floor-rotation
+        - floor-material-preview
+      owner: homeowner
+      verification: 运行时读取默认控件和TextureManager贴图rotation，并以客餐厅近景复核。
+    - id: f_uv_rotation
+      status: confirmed
+      statement: TextureManager的rotationDeg=0保持木纹长边沿世界X（东西向）；内部纹理旋转90°后长边沿世界Z（南北向）。
+      source_refs:
+        - shared/types.ts
+        - app/src/render/TextureManager.ts
+        - app/src/ui/MaterialPreviewPanel.ts
+      impact: 用户方向值需转换为物理贴图角度90° - sliderDeg。
+      affected_objects:
+        - floor-material-preview
+        - floor-region-material-preview
+      owner: design
+      verification: 浏览器中slider 0°→贴图rotation π/2；slider 90°→贴图rotation 0。
+    - id: f_preview_only
+      status: confirmed
+      statement: 地砖铺向控件是临时预演；恢复正式材料后正式scheme选择不变，正式材质纹理rotation为0。
+      source_refs:
+        - app/src/ui/MaterialPreviewPanel.ts
+        - app/src/App.ts
+        - data/current-scheme.json
+      impact: 本轮不改变正式铺贴方案、正式材料或施工口径。
+      affected_objects:
+        - current-floor-selection
+        - floor-room-overrides
+      owner: design
+      verification: 恢复运行时比较floor selection、previewActive及floor texture rotation。
+    - id: f_curtain_r03
+      status: confirmed
+      statement: R03设置的全屋窗帘默认open仍有效；本轮只覆盖R03中地砖预演角度方向约定与默认值。
+      source_refs:
+        - DEC-2026-10-19-R03
+        - data/presentation-state.json
+        - data/project-render-facts.json
+      impact: R04不得重开或删除窗帘决定。
+      affected_objects:
+        - all-declared-curtains
+      owner: design
+      verification: 运行时curtainPresentationState.default仍为open。
+objects:
+  schema: interior-design-object-manifest/v1
+  iteration_id: tile-preview-axis-r04-20261019
+  objects:
+    - id: floor-direction-slider
+      owner: material-preview-ui
+      parts:
+        - MaterialPreviewPanel.floorRotation
+        - MaterialPreviewPanel.floorRotationDeg
+      function: 以用户选择的0–90°方向值表示南北至东西铺向；默认南北向。
+      relationships: sliderDeg=0对应世界Z，sliderDeg=90对应世界X。
+      maintenance: not_applicable
+      interfaces:
+        - app/src/App.ts
+        - app/src/ui/MaterialPreviewPanel.ts
+      collision: no_geometry_change
+      validation_refs:
+        - f_owner_axis
+        - f_uv_rotation
+    - id: preview-texture-transform
+      owner: floor-material-preview
+      parts:
+        - TextureManager.map
+        - TextureManager.normalMap
+        - TextureManager.roughnessMap
+      function: 由App转换textureRotationDeg=90-sliderDeg，再经TextureManager应用到预演贴图。
+      relationships: 所有floor mesh与floor_region遵循同一临时预演值。
+      maintenance: not_applicable
+      interfaces:
+        - App.getPreviewFloorAppearance
+        - TextureManager.applyPreviewRotation
+      collision: no_geometry_change
+      validation_refs:
+        - f_uv_rotation
+        - f_preview_only
+    - id: formal-floor-selection
+      owner: current-scheme
+      parts:
+        - floor.default
+        - floor.roomOverrides
+      function: 保持现有正式选材与房间覆盖。
+      relationships: 临时预演重置后恢复原正式材质，不读R04 slider方向值。
+      maintenance: not_applicable
+      interfaces:
+        - data/current-scheme.json
+        - HouseScene floor meshes
+      collision: no_geometry_change
+      validation_refs:
+        - f_preview_only
+  constraints:
+    - 不修改户型几何、贴砖区域、正式材料或R03窗帘展示状态。
+    - 不删除R03历史记录；R04只替代其地砖预演角度约定。
+review:
+  schema: interior-design-review-manifest/v1
+  iteration_id: tile-preview-axis-r04-20261019
+  decision_ref: DEC-2026-10-19-R04
+  subject: 地砖预演默认0°南北向、90°东西向；正式地面方案保持不变
+  state: delivery_ready
+  implementation:
+    state: complete
+    changed_sources:
+      - app/src/App.ts
+      - app/src/ui/MaterialPreviewPanel.ts
+    not_changed:
+      - data/current-scheme.json
+      - config/materials.yaml
+      - data/project-render-facts.json
+      - config/layout/model-geometry.yaml
+      - config/layout/overlay.yaml
+      - data/presentation-state.json
+  version:
+    source_sha256:
+      app/src/App.ts: 1b0cb4a1fa5a6b877c82f01c4eb12232f55b9617b8a5c37f51173d655964a5dc
+      app/src/ui/MaterialPreviewPanel.ts: f16b7e0e592ca1fd17339062fef3bf7d2fbe6df28dfd349e3b024b48cb53a0bd
+      shared/types.ts: d2d1af734a71b2f4ec652e6de3c8cafb7ae9321cd039624d88c1af2068613ef0
+      app/src/render/TextureManager.ts: 31f3cf6497ca90adae4a055d437a7f1ab057c4e1d96fb5167c832699fab28a86
+      data/current-scheme.json: b1799873a28be04c8b7a0b7ae27f2f21db559909522e6f58aa075cc972cb7218
+      config/materials.yaml: 68c2f18550be563845e90356ff8f1b2e3781a3bc0ae4bdf8f22b6c8bc213e24a
+      config/layout/model-geometry.yaml: 585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f
+      data/presentation-state.json: 7746ea4b84949bc94662947f5ecfe34c1b5bcdcc3ebf3ebd2f26fbafe3f68789
+      data/project-render-facts.json: ca447742780bddfcbdb690d069292465d83d23af5dcd31007f9e66da154aee03
+  evidence:
+    browser_url: http://localhost:5173/?v=20261019-axis-r04
+    title: 和萃 701 - 3D 装修设计
+    is_ready: true
+    config_error_banner: empty
+    snapshots:
+      - evidence/default-page.snapshot.txt
+      - evidence/restored-page.snapshot.txt
+    runtime: evidence/runtime-verification.json
+    screenshots:
+      - evidence/north-south-preview-0.png
+      - evidence/east-west-preview-90.png
+    screenshot_sha256:
+      evidence/north-south-preview-0.png: 3559f411328804cc1089999f0df9aa61afe8ddeaa4ae280ea55fb8111145673b
+      evidence/east-west-preview-90.png: 779b3e38a2b0de4ef85793d8dc27f6b7c8869ae980cee5534f74d15a0db660f3
+    target_view: 客餐厅朝南窗近景；camera=(12.6,2.6,6.0)，target=(10.3,0.4,9.3)。
+  checks:
+    pre_change_gate_visual: CLEAR; ceiling=7509d6377e73, electrical=c541506a0427, plumbing=81c5778c1239, materials=64176f576326
+    post_change_gate_visual: CLEAR; ceiling=7509d6377e73, electrical=c541506a0427, plumbing=81c5778c1239, materials=64176f576326
+    typecheck: passed
+    tests: not run
+    runtime: 'passed: 0°→texture rotation π/2; 90°→texture rotation 0; restore returns official selection and texture state'
+  review:
+    aesthetic:
+      status: passed
+      verdict: PASS
+      review_file: evidence/aesthetic-review.json
+      blocking_issues: []
+      non_blocking_notes: []
+    functional:
+      status: passed
+      verdict: PASS
+      review_file: evidence/functional-review.json
+      blocking_issues: []
+      non_blocking_notes: []
+  verdict:
+    deleted: No room geometry, floor regions, materials, furniture, curtain objects, evidence or historical DEC were deleted.
+    overturned: R04 supersedes only R03's tile preview angle default and 0/90 mapping. R03's curtain default=open and formal floor selection remain in force.
+    silent_failure_conditions: If the slider label changes without the App conversion, direction and visual result diverge. If only the mapping changes but the default or fallback does not, startup values diverge. If preview is inactive, official materials keep their original orientation; this is intentional.

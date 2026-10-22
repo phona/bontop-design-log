@@ -38,7 +38,8 @@
     "export:dressing-map": "tsx scripts/generate-dressing-map.ts",
     "export:glb": "tsx scripts/render/glb/export-glb.ts",
     "compare:glb": "tsx scripts/render/glb/compare-glb.ts",
-    "gate:visual": "tsx scripts/gate/visual-state-gate.ts"
+    "gate:visual": "tsx scripts/gate/visual-state-gate.ts",
+    "docs:generate-index": "tsx scripts/docs/generate-iteration-index.ts"
   },
   "dependencies": {
     "@opencode-ai/sdk": "^1.17.13",

@@ -1,0 +1,10 @@
+# 本轮的全部结构化记录（文档精简批 3 由五件套合并；原文见 git 历史）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: mep-condensate-topology-20261019
+index:
+  order: 16
+  topic: mep
+  review_state: none
+  supersedes: none
+  note: '拓扑已进 config + DEC-2026-10-19-R25，但施工冻结部分结论悬空，卡 pending #39。2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）'

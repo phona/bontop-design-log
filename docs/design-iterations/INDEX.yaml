@@ -1,118 +1,107 @@
-# docs/design-iterations 导航索引
-#
-# 用途：把 64 个平铺 iteration 目录变成可检索的结构。只记录事实，不派生结论。
-# 建立日：2026-10-20（降噪方案批次 0）。
-#
-# 本文件是合法 YAML，可被 js-yaml / yaml.load() 直接解析。
-# entries 为条目列表；meta 记录口径、硬编码路径与批次历史。
-
+# docs/design-iterations 导航索引（机读生成物，禁止手改）
+# 生成：npm run docs:generate-index（scripts/docs/generate-iteration-index.ts）
+# 数据源：每轮 round.yaml 的 index 段；external_refs 由生成时 git grep 现算。
+# freshness 由 verify-iteration-metadata 的 index_stale 契约逐字节校验。
 meta:
-  established: "2026-10-20"
+  schema: design-iterations-index/v2
+  generated: true
+  established: '2026-10-20'
   dir_count: 64
   stray_file_count: 1
-  external_refs_total: 84
-
-  # 字段口径：怎么来的，可否信
+  external_refs_total: 150
   field_provenance:
-    topic: "按目录名前缀归类，非按内容判读（命名事实）"
-    review_state: "各目录 review-manifest.json 的 state 字段原文；无 manifest 记 none（机器可读）"
-    supersedes: "各目录 decision-brief.yaml 的 supersedes 字段原文；无字段记 none（机器可读）"
-    external_refs: "grep -rl 排除 node_modules/tmp/.venv 与本目录自身后的命中文件数（实测）"
-    note: "仅登记已核实的结构性事实；无 note = 未核查，不等于无问题"
-
-  external_refs_zero_meaning: "该目录在任何 md/yaml/json/ts/py 里都没被按名引用，只能靠 DEC 行号或猜测找到"
-
-  # 被代码或测试硬编码引用的目录（搬迁前必须同步改代码）
+    topic: round.yaml index.topic 原文（原按目录名前缀归类，命名事实）
+    review_state: round.yaml index.review_state 原文（来自原 review-manifest 的 state/status 字段；无 manifest 记 none）
+    supersedes: round.yaml index.supersedes 原文（来自原 decision-brief 的 supersedes 字段；无字段记 none）
+    external_refs: 生成时现算：本轮目录之外（不含 INDEX.yaml 本身）的已跟踪文件中包含本轮目录名的文件数（git grep -l）
+    note: round.yaml index.note 原文（仅登记已核实的结构性事实；无 note = 未核查，不等于无问题）
+  external_refs_zero_meaning: 该目录在任何 md/yaml/json/ts/py 里都没被按名引用，只能靠 DEC 行号或猜测找到
   hardcoded_paths:
     - dir: hvac-dual-outlet-threeline-20261007
       locations:
-        - "scripts/render/diagrams/draw-hvac-ld-threeline.py:190"
-        - "scripts/render/capture/capture_hvac_ld_threeline_views.py:19"
+        - scripts/render/diagrams/draw-hvac-ld-threeline.py:190
+        - scripts/render/capture/capture_hvac_ld_threeline_views.py:19
     - dir: tile-plank-comparison-20261006
       locations:
-        - "tests/server/tile-cost-comparison.test.ts:132,169"
-        - "tests/server/masonry-quotes.test.ts:181"
+        - tests/server/tile-cost-comparison.test.ts:132,169
+        - tests/server/masonry-quotes.test.ts:181
     - dir: mep-lint-governance-20261006
       locations:
-        - "tests/server/mep-guidance-baseline.test.ts:25（活门禁）"
-
-  # config/facts.yaml L937/L941 把 hvac-resix 的这两个文件登记为 error 级读者，路径不可动
+        - tests/server/mep-guidance-baseline.test.ts:25（活门禁）
   facts_error_level_readers:
-    - "hvac-resix-20261003/fact-table.yaml"
-    - "hvac-resix-20261003/design-datum.yaml"
-
+    - hvac-resix-20261003/fact-table.yaml
+    - hvac-resix-20261003/design-datum.yaml
   batch_log:
     - batch: 1
-      date: "2026-10-20"
+      date: '2026-10-20'
       moved: 9
-      criterion: "零外部引用且零目录内互引"
+      criterion: 零外部引用且零目录内互引
       refs_changed: 0
       ls_before: 65
       ls_after: 56
     - batch: 2
-      date: "2026-10-20"
+      date: '2026-10-20'
       moved: 11
-      criterion: "零外部引用但有目录内互引"
+      criterion: 零外部引用但有目录内互引
       refs_changed: 125
-      refs_detail: "32 处跨目录引用 + 91 处自引用 + 2 处裸目录名，涉及 20 个文件"
+      refs_detail: 32 处跨目录引用 + 91 处自引用 + 2 处裸目录名，涉及 20 个文件
       ls_before: 56
       ls_after: 45
-      residual: "docs/decisions/02-layout-public.md:430 以裸名提及 hvac-dining-ceiling-20261005；按 decisions 归档纪律「历史条目只登记不改写」未动，待业主裁定是否补一条修正 DEC"
-    - batches_total:
+      residual: docs/decisions/02-layout-public.md:430 以裸名提及 hvac-dining-ceiling-20261005；按 decisions 归档纪律「历史条目只登记不改写」未动，待业主裁定是否补一条修正 DEC
+    - batches_total: null
       archive_dirs: 20
-      git_state: "309 rename + 4 modified + 0 untracked"
-      gates: "verify:all 16/17（verify-mep 149 error 为 2026-10-19 已登记存量基线）；test:server 1040/1003/37；typecheck 通过"
-
-  # 维护纪律
+      git_state: 309 rename + 4 modified + 0 untracked
+      gates: verify:all 16/17（verify-mep 149 error 为 2026-10-19 已登记存量基线）；test:server 1040/1003/37；typecheck 通过
+    - batch: slimming-3
+      date: '2026-10-22'
+      action: 五件套合并 round.yaml + INDEX 生成化（文档精简批 3）
+      detail: 277 个五件套文件并入 64 个 round.yaml；INDEX.yaml 改由 scripts/docs/generate-iteration-index.ts 生成，meta 全局信息（hardcoded_paths/facts 读者/batch_log/maintenance 口径）由生成器承接；hvac-resix 两件与 mep-lint-governance review-manifest 按原路径豁免保留
   maintenance:
-    - "新增 iteration 目录时，在 entries 对应 topic 追加一条，五个字段填全"
-    - "external_refs 会随引用增减漂移，不设自动校验；校准命令见仓库 scripts/verify 或重跑 grep"
-    - "本文件不是第二份真相：review_state/supersedes 的权威仍在各目录自己的 manifest 与 brief 里"
-    - "目录搬迁后更新 dir 值，并在 commit message 里记录旧到新路径映射"
-
+    - 新增 iteration 目录时，先在该轮 round.yaml 的 index 段填全字段（order 取当前最大值 +1），再重跑 npm run docs:generate-index；禁止手改 INDEX.yaml
+    - external_refs 由生成时 git grep 现算（口径见 field_provenance），仍会随引用增减漂移；每次生成即校准，不再单设校验
+    - 本文件不是第二份真相：review_state/supersedes 的权威在各轮 round.yaml 的 index 段（源头为原 manifest/brief），本文件只是汇总视图
+    - 目录搬迁后更新对应 round.yaml 与各处引用，并在 commit message 里记录旧到新路径映射
 entries:
-
-  # ---------------------------------------------------------------- mep
   - dir: hvac-resix-20261003
     topic: mep
     review_state: delivery_ready
     supersedes: box-spec
-    external_refs: 9
-    note: "facts.yaml L937/L941 的 error 级读者指向本目录 fact-table.yaml 与 design-datum.yaml，路径不可动"
+    external_refs: 13
+    note: facts.yaml L937/L941 的 error 级读者指向本目录 fact-table.yaml 与 design-datum.yaml，路径不可动
   - dir: hvac-caliber-sync-20261005
     topic: mep
     review_state: implementation
     supersedes: hvac-contract-mapping-20261005
-    external_refs: 4
+    external_refs: 3
   - dir: hvac-contract-mapping-20261005
     topic: mep
     review_state: superseded_by_hvac-caliber-sync-20261005
     supersedes: none
     external_refs: 2
-    note: "目录被 caliber-sync 取代，但结论由 DEC-2026-10-05-R1 收口且仍在 config/hvac.yaml 现行"
+    note: 目录被 caliber-sync 取代，但结论由 DEC-2026-10-05-R1 收口且仍在 config/hvac.yaml 现行
   - dir: mep-lint-governance-20261006
     topic: mep
     review_state: none
     supersedes: none
-    external_refs: 4
-    note: "唯一有活测试读者的目录（tests/server/mep-guidance-baseline.test.ts:25），随 DEC 滚动归档"
+    external_refs: 8
+    note: 唯一有活测试读者的目录（tests/server/mep-guidance-baseline.test.ts:25），随 DEC 滚动归档
   - dir: mep-power-water-freeze-20261003
     topic: mep
     review_state: delivery_ready
     supersedes: none
-    external_refs: 2
-    note: "manifest 自称 delivery_ready/19 路，但同目录 decision-brief.yaml:127-149 已登记 supersession.status: superseded（19 路 -> 20 -> 21）；2026-10-20 已在 manifest 加 superseded 字段回标"
+    external_refs: 1
+    note: 'manifest 自称 delivery_ready/19 路，但同目录 round.yaml（brief 段）:127-149 已登记 supersession.status: superseded（19 路 -> 20 -> 21）；2026-10-20 已在 manifest 加 superseded 字段回标'
   - dir: mep-routing-20260901
     topic: mep
     review_state: none
     supersedes: none
-    external_refs: 2
+    external_refs: 3
   - dir: hvac-dual-outlet-threeline-20261007
     topic: mep
     review_state: none
     supersedes: none
-    external_refs: 1
-    note: "被两个 render/capture 脚本硬编码引用 evidence 路径"
+    external_refs: 5
+    note: 被两个 render/capture 脚本硬编码引用 evidence 路径
   - dir: hvac-preinstall-20261011
     topic: mep
     review_state: delivery_ready
@@ -127,52 +116,50 @@ entries:
     topic: mep
     review_state: superseded
     supersedes: none
-    external_refs: 0
-    note: "被 DEC-2026-10-19-R01 推翻。2026-10-20 批次 2 迁入 archive/（同步 mep-plan-axis R22-v0.5-iteration 与 hvac-airflow-row-centering 共 3 处引用）"
+    external_refs: 2
+    note: 被 DEC-2026-10-19-R01 推翻。2026-10-20 批次 2 迁入 archive/（同步 mep-plan-axis R22-v0.5-iteration 与 hvac-airflow-row-centering 共 3 处引用）
   - dir: archive/hvac-airflow-grouping-20261018
     topic: mep
     review_state: superseded
     supersedes: none
-    external_refs: 0
-    note: "被 DEC-2026-10-18-R02 推翻。2026-10-20 批次 2 迁入 archive/（同步 hvac-airflow-row-centering manifest 与 hvac-airflow-centering 共 3 处引用）"
+    external_refs: 2
+    note: 被 DEC-2026-10-18-R02 推翻。2026-10-20 批次 2 迁入 archive/（同步 hvac-airflow-row-centering manifest 与 hvac-airflow-centering 共 3 处引用）
   - dir: archive/hvac-airflow-row-centering-20261019
     topic: mep
     review_state: superseded
     supersedes: none
-    external_refs: 0
-    note: "x 结论现行于 config/hvac.yaml，z 结论被 DEC-2026-10-19-R02 覆盖。2026-10-20 批次 2 迁入 archive/（同步 archive/hvac-airflow-north-south-centering 2 处引用）"
+    external_refs: 1
+    note: x 结论现行于 config/hvac.yaml，z 结论被 DEC-2026-10-19-R02 覆盖。2026-10-20 批次 2 迁入 archive/（同步 archive/hvac-airflow-north-south-centering 2 处引用）
   - dir: archive/hvac-airflow-north-south-centering-20261019
     topic: mep
     review_state: incomplete
     supersedes: none
     external_refs: 0
-    note: "airflow 链末端；z 坐标已落 config/hvac.yaml，但射流/静压/噪声/厂家接口未核。2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）"
+    note: airflow 链末端；z 坐标已落 config/hvac.yaml，但射流/静压/噪声/厂家接口未核。2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
   - dir: archive/hvac-dining-ceiling-20261005
     topic: mep
     review_state: reviews_passed_delivery_blocked
     supersedes: none
-    external_refs: 0
-    note: "2026-10-20 批次 2 迁入 archive/（零外部引用；同步 hvac-airflow-grouping fact-table 1 处引用）"
+    external_refs: 3
+    note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 hvac-airflow-grouping fact-table 1 处引用）
   - dir: archive/mep-b-class-20261006
     topic: mep
     review_state: none
     supersedes: none
     external_refs: 0
-    note: "引用孤儿；产出已进 config/acceptance.yaml 与父 DEC-2026-10-06-R1/R2。2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）"
+    note: 引用孤儿；产出已进 config/acceptance.yaml 与父 DEC-2026-10-06-R1/R2。2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
   - dir: archive/mep-condensate-topology-20261019
     topic: mep
     review_state: none
     supersedes: none
     external_refs: 0
-    note: "拓扑已进 config + DEC-2026-10-19-R25，但施工冻结部分结论悬空，卡 pending #39。2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）"
+    note: '拓扑已进 config + DEC-2026-10-19-R25，但施工冻结部分结论悬空，卡 pending #39。2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）'
   - dir: archive/mep-sofa-r-floor-route-20261017
     topic: mep
     review_state: delivery_ready
     supersedes: none
     external_refs: 0
-    note: "2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）"
-
-  # ------------------------------------------------------- master-bedroom
+    note: 2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
   - dir: master-bedroom-r7-20260906
     topic: master-bedroom
     review_state: blocked
@@ -187,7 +174,7 @@ entries:
     topic: master-bedroom
     review_state: verification
     supersedes: none
-    external_refs: 1
+    external_refs: 2
   - dir: master-bedroom-r6-20260905
     topic: master-bedroom
     review_state: blocked
@@ -197,79 +184,75 @@ entries:
     topic: master-bedroom
     review_state: blocked
     supersedes: none
-    external_refs: 1
-    note: "85 文件 / 1 md，全仓最大 evidence 目录之一；其 r5-correction-adjacent/door1..4.png 五图 md5 相同（同名不同义）"
+    external_refs: 3
+    note: 85 文件 / 1 md，全仓最大 evidence 目录之一；其 r5-correction-adjacent/door1..4.png 五图 md5 相同（同名不同义）
   - dir: mb-bedshift-stripcabinet-20260902
     topic: master-bedroom
     review_state: delivery_ready
     supersedes: none
-    external_refs: 1
+    external_refs: 3
   - dir: mb-washbasin-curtain-20260901
     topic: master-bedroom
     review_state: incomplete
     supersedes: none
-    external_refs: 1
+    external_refs: 7
   - dir: archive/master-bedroom-bedside-electrical-20260908
     topic: master-bedroom
     review_state: implementation_verified_site_pending
     supersedes: none
     external_refs: 0
-    note: "2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）"
-
-  # ----------------------------------------------------------------- living
+    note: 2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
   - dir: living-sculptural-main-light-20261016
     topic: living
     review_state: none
     supersedes: none
-    external_refs: 2
+    external_refs: 3
   - dir: living-antique-eight-globe-light-20261017
     topic: living
     review_state: delivery_ready
     supersedes: none
     external_refs: 1
-    note: "2026-10-22 更正——本轮 review-manifest 状态键为 status、值 delivery_ready（R6 双评审 PASS，业主 2026-10-17 确认）；INDEX 原按 state 键回抽误记 none；同日按关账规则清理 evidence，仅留 R6 五视角终稿"
+    note: 2026-10-22 更正——本轮 review-manifest 状态键为 status、值 delivery_ready（R6 双评审 PASS，业主 2026-10-17 确认）；INDEX 原按 state 键回抽误记 none；同日按关账规则清理 evidence，仅留 R6 五视角终稿
   - dir: living-ceiling-underpanel-20261015
     topic: living
     review_state: incomplete
     supersedes: none
-    external_refs: 1
-    note: "evidence/before 与 after 的 snapshot.txt 字节相同，疑修复未生效或快照不捕获差异，待核"
+    external_refs: 2
+    note: evidence/before 与 after 的 snapshot.txt 字节相同，疑修复未生效或快照不捕获差异，待核
   - dir: living-main-light-archive-20261017
     topic: living
     review_state: none
     supersedes: none
-    external_refs: 1
+    external_refs: 3
   - dir: archive/living-multi-globe-main-light-20261016
     topic: living
     review_state: none
     supersedes: none
-    external_refs: 0
-    note: "2026-10-20 批次 2 迁入 archive/（零外部引用；同步 living-main-light-archive README 1 处引用）"
+    external_refs: 1
+    note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 living-main-light-archive README 1 处引用）
   - dir: archive/living-sculptural-main-light-r2-20261016
     topic: living
     review_state: none
     supersedes: none
-    external_refs: 0
-    note: "2026-10-20 批次 2 迁入 archive/（同步 living-sculptural-r3 与 r4 的 fact-table/review-manifest 共 11 处引用）"
+    external_refs: 3
+    note: 2026-10-20 批次 2 迁入 archive/（同步 living-sculptural-r3 与 r4 的 fact-table/review-manifest 共 11 处引用）
   - dir: archive/living-sculptural-main-light-r3-20261016
     topic: living
     review_state: none
     supersedes: none
-    external_refs: 0
-    note: "2026-10-20 批次 2 迁入 archive/（同步 living-sculptural-r4 fact-table/review-manifest 共 4 处引用）"
+    external_refs: 1
+    note: 2026-10-20 批次 2 迁入 archive/（同步 living-sculptural-r4 fact-table/review-manifest 共 4 处引用）
   - dir: archive/living-sculptural-main-light-r4-20261016
     topic: living
     review_state: none
     supersedes: none
-    external_refs: 0
-    note: "2026-10-20 批次 2 迁入 archive/（同步 living-sculptural-r3 manifest superseded_by 与 living-multi-globe fact-table/design-datum 共 3 处引用）"
-
-  # ------------------------------------------ kitchen-dining-equipment
+    external_refs: 2
+    note: 2026-10-20 批次 2 迁入 archive/（同步 living-sculptural-r3 manifest superseded_by 与 living-multi-globe fact-table/design-datum 共 3 处引用）
   - dir: fridge-relocation-cooktop-reflow-20261014
     topic: kitchen-dining-equipment
     review_state: implementation
     supersedes: none
-    external_refs: 1
+    external_refs: 2
   - dir: fridge-four-door-20261015
     topic: kitchen-dining-equipment
     review_state: blocked
@@ -280,35 +263,33 @@ entries:
     review_state: blocked
     supersedes: none
     external_refs: 1
-    note: "摆位已被 DEC-2026-10-17-R11 取代（水吧改放 living_dining，立式茶吧机与 390 低边柜代理退出）；2026-10-20 已建 README 加状态块，现行摆位见 config/house.yaml:530,535,537"
+    note: 摆位已被 DEC-2026-10-17-R11 取代（水吧改放 living_dining，立式茶吧机与 390 低边柜代理退出）；2026-10-20 已建 README 加状态块，现行摆位见 config/house.yaml:530,535,537
   - dir: kitchen-beverage-stations-20261016
     topic: kitchen-dining-equipment
     review_state: evidence_review
     supersedes: none
-    external_refs: 1
+    external_refs: 2
   - dir: kitchen-espresso-workstation-20261016
     topic: kitchen-dining-equipment
     review_state: evidence_review
     supersedes: none
-    external_refs: 1
+    external_refs: 2
   - dir: restaurant-fridge-waterbar-x980-acceptance-20261015
     topic: kitchen-dining-equipment
     review_state: blocked
     supersedes: none
-    external_refs: 1
-
-  # ------------------------------------------------------------ tile-finish
+    external_refs: 3
   - dir: tile-plank-comparison-20261006
     topic: tile-finish
     review_state: delivery_ready
     supersedes: none
     external_refs: 9
-    note: "被 tests/server/tile-cost-comparison.test.ts 与 masonry-quotes.test.ts 硬编码引用 evidence 图片路径"
+    note: 被 tests/server/tile-cost-comparison.test.ts 与 masonry-quotes.test.ts 硬编码引用 evidence 图片路径
   - dir: tile-preview-axis-r04-20261019
     topic: tile-finish
     review_state: delivery_ready
-    supersedes: "DEC-2026-10-19-R03 中仅有关地砖预演默认 90 度和 0/90 方向说明的部分"
-    external_refs: 1
+    supersedes: DEC-2026-10-19-R03 中仅有关地砖预演默认 90 度和 0/90 方向说明的部分
+    external_refs: 2
   - dir: window-sill-tile-20261016
     topic: tile-finish
     review_state: blocked
@@ -319,27 +300,25 @@ entries:
     review_state: delivery_ready
     supersedes: none
     external_refs: 0
-    note: "2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）"
+    note: 2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
   - dir: tile-scope-owner-review-20261007.md
     topic: tile-finish
     review_state: none
     supersedes: none
-    external_refs: 1
-    note: "这是散落在 design-iterations 根下的 md 文件，不是目录；被 docs/decisions/11-tile-finish.md 引用"
-
-  # ----------------------------------------------------------------- dining
+    external_refs: 2
+    note: 这是散落在 design-iterations 根下的 md 文件，不是目录；被 docs/decisions/11-tile-finish.md 引用。散文件无 round.yaml，登记字段在本生成脚本维护
   - dir: dining-ceiling-cove-restore-20261008
     topic: dining
     review_state: implemented_runtime_review_pending
     supersedes: none
     external_refs: 3
-    note: "brief 冻结于 R03 态，但同目录 fact-table/design-datum/object-manifest 已到 R05 终态（垂面弧全拆 + concave_fillets_open），以 R05 为准；2026-10-20 已在 brief 顶部加状态块"
+    note: brief 冻结于 R03 态，但同目录 fact-table/design-datum/object-manifest 已到 R05 终态（垂面弧全拆 + concave_fillets_open），以 R05 为准；2026-10-20 已在 brief 顶部加状态块
   - dir: dining-ceiling-no-cove-20261008
     topic: dining
     review_state: implementation
     supersedes: none
-    external_refs: 2
-    note: "「取消 cove_fillets」部分已被 R03 废止（见 cove-restore/fact-table.yaml 的 f_r02_superseded），R05 以镜像凹弧达成硬相交；2026-10-20 已建 README 加状态块"
+    external_refs: 4
+    note: 「取消 cove_fillets」部分已被 R03 废止（见 cove-restore/round.yaml（fact_table 段） 的 f_r02_superseded），R05 以镜像凹弧达成硬相交；2026-10-20 已建 README 加状态块
   - dir: dining-cloud-light-20261017
     topic: dining
     review_state: incomplete
@@ -349,42 +328,38 @@ entries:
     topic: dining
     review_state: blocked
     supersedes: none
-    external_refs: 1
-    note: "README 与 s1-shape-correction-v5.md 止于 V5，但 fact-table 已标 I-S1-SHAPE-V5 superseded_by V6（DEC-2026-10-17-R11，出水腔改 106mm 窄面）；2026-10-20 已在 README 与 v5 文档加 V5->V6 标注并补 V6 结论段"
+    external_refs: 3
+    note: README 与 s1-shape-correction-v5.md 止于 V5，但 fact-table 已标 I-S1-SHAPE-V5 superseded_by V6（DEC-2026-10-17-R11，出水腔改 106mm 窄面）；2026-10-20 已在 README 与 v5 文档加 V5->V6 标注并补 V6 结论段
   - dir: archive/dining-semi-flush-20261016
     topic: dining
     review_state: none
     supersedes: none
-    external_refs: 0
-    note: "2026-10-20 批次 2 迁入 archive/（零外部引用；同步 dining-cloud-light fact-table 与 baseline json 共 2 处引用）"
-
-  # -------------------------------------------------------- lighting-ceiling
+    external_refs: 2
+    note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 dining-cloud-light fact-table 与 baseline json 共 2 处引用）
   - dir: continuous-band-1250-20261015
     topic: lighting-ceiling
     review_state: incomplete
     supersedes: none
-    external_refs: 1
-    note: "几何结论已归档；涂装范围结论被 visual-calibration-floor-angle 轮后续推翻"
+    external_refs: 2
+    note: 几何结论已归档；涂装范围结论被 visual-calibration-floor-angle 轮后续推翻
   - dir: archive/night-only-indoor-lighting-20261015
     topic: lighting-ceiling
     review_state: delivery_ready
     supersedes: none
-    external_refs: 0
-    note: "2026-10-20 批次 2 迁入 archive/（零外部引用；同步 archive/night-global-source-mismatch decision-brief 1 处引用）"
+    external_refs: 1
+    note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 archive/night-global-source-mismatch decision-brief 1 处引用）
   - dir: archive/night-global-source-mismatch-20261015
     topic: lighting-ceiling
     review_state: delivery_ready
     supersedes: none
     external_refs: 0
-    note: "2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）"
+    note: 2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
   - dir: archive/dome-anchor-migration-20261017
     topic: lighting-ceiling
     review_state: none
     supersedes: none
     external_refs: 0
-    note: "2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）"
-
-  # -------------------------------------------------------------------- bath
+    note: 2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
   - dir: guest-bath-open-vanity-floor-split-20261018
     topic: bath
     review_state: blocked
@@ -395,18 +370,16 @@ entries:
     review_state: none
     supersedes: none
     external_refs: 1
-
-  # ---------------------------------------------------------------- general
   - dir: parent-room-study-swap-20261005
     topic: general
     review_state: batch_a_b1_b2_done
     supersedes: none
-    external_refs: 6
+    external_refs: 15
   - dir: phase1-scope-20260912
     topic: general
     review_state: blocked
     supersedes: none
-    external_refs: 4
+    external_refs: 2
   - dir: electrical-upgrade-20260908
     topic: general
     review_state: delivery_ready
@@ -421,7 +394,7 @@ entries:
     topic: general
     review_state: incomplete
     supersedes: none
-    external_refs: 1
+    external_refs: 2
   - dir: furniture-wall-clearance-20260908
     topic: general
     review_state: delivery_ready
@@ -436,16 +409,16 @@ entries:
     topic: general
     review_state: none
     supersedes: none
-    external_refs: 1
+    external_refs: 2
   - dir: archive/spatial-validation-20260908
     topic: general
     review_state: verification
     supersedes: none
-    external_refs: 0
-    note: "2026-10-20 批次 2 迁入 archive/（零外部引用；同步 archive/master-bedroom-bedside-electrical fact-table 1 处引用）"
+    external_refs: 1
+    note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 archive/master-bedroom-bedside-electrical fact-table 1 处引用）
   - dir: archive/visual-calibration-floor-angle-20261015
     topic: general
     review_state: delivery_ready
     supersedes: none
     external_refs: 0
-    note: "2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）"
+    note: 2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
