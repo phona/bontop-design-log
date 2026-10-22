@@ -1202,7 +1202,6 @@ x_decision_files: &decision_files
   - docs/decisions/09-ceiling-takeoff.md
   - docs/decisions/10-paint.md
   - docs/decisions/11-tile-finish.md
-  - docs/decisions/11-tile-finish-archive.md
   - docs/decisions/12-plumbing.md
   - docs/decisions/13-mep-integration.md
   - docs/decisions/14-style-furniture.md

@@ -79,7 +79,8 @@
 | [`03-master-bedroom.md`](./03-master-bedroom.md) | 主卧 | 21 | 43 KB | `DEC-2026-08-26-045` … `DEC-2026-09-07-R10` |
 | [`04-bathrooms.md`](./04-bathrooms.md) | 主卫 + 客卫 | 19 | 38 KB | `DEC-2026-08-21-036` … `DEC-2026-10-07-R02` |
 | [`05-hvac.md`](./05-hvac.md) | 中央空调 | 16 | 45 KB | `DEC-2026-09-07-055` … `DEC-2026-10-19-R02` |
-| [`06-electrical.md`](./06-electrical.md) | 电气回路/走线/审计 | 53 | 165 KB | `DEC-2026-08-05-017` … `DEC-2026-10-17-R20` |
+| [`06-electrical.md`](./06-electrical.md) | 电气回路/走线/审计 | 49 | 152 KB | `DEC-2026-08-05-017` … `DEC-2026-10-17-R20` |
+| [`06-electrical-archive.md`](./06-electrical-archive.md) | 电气归档分册（已被全量推翻的条目，批 5 分卷） | 4 | 14 KB | `DEC-2026-08-26-043` … `DEC-2026-10-16-R12` |
 | [`07-lighting.md`](./07-lighting.md) | 照明与起夜灯 | 7 | 14 KB | `DEC-2026-10-05-R15` … `DEC-2026-10-07-R16` |
 | [`08-ceiling-form.md`](./08-ceiling-form.md) | 吊顶造型（弧面返工全链） | 15 | 34 KB | `DEC-2026-10-07-R01` … `DEC-2026-10-15-C02` |
 | [`09-ceiling-takeoff.md`](./09-ceiling-takeoff.md) | 吊顶算量与报价 | 10 | 49 KB | `DEC-2026-10-08-C01` … `DEC-2026-10-08-C13` |
