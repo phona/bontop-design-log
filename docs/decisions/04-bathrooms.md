@@ -26,6 +26,7 @@
 - `DEC-2026-10-05-R12` 卫浴洁具目标下调归档（花洒/客卫浴室柜）
 - `DEC-2026-10-07-R02` 卫浴 PKG-100 第二次收口：主卫柜先入账 1,500 + 花洒降档 + 玻璃屏归属定案 + 条带定制柜划归二期
 - `DEC-2026-10-22-R02` 卫生间施工与 QA 门禁收口（第一批）：防水高度改 2.00 + 双阶段闭水 + 主卫沉箱测试拆分 + 洁具门禁
+- `DEC-2026-10-22-R03` 卫生间施工与 QA 门禁收口（第二批）：美缝拆包 PKG-065 卫生间先行 + 洁具门禁改指 + 规范条号复核结论
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -277,4 +278,19 @@
 - **遗留**（均带 owner 与触发条件）：① 客卫沉箱建模与专项验收——owner 量房方/业主，触发 = #74 关闭后另行 DEC；② 美缝拆包（方案 A：新增卫生间先行美缝包）——owner 业主，触发 = 本批合入后启动第二批；③ 规范条号原文复核与 `standard_ref` 细化——owner 设计侧，触发 = 下次改动相关验收条目时一并完成；④ 两卫排风路径（#56）、LEB 位置（#43）等既有阻塞与本条无关，不在本批处理。
 - **验证**：worktree 分支 `feat/bathroom-qa-gates`（基线 = master `fcf1665` 干净树）落地。`schedule:render` 后可审计检查 95 → 100（+5 = 沉箱蓄水/饰面闭水/干燥确认三条 refs + SCH-130-02/03 两条包级检查）；`verify:schedule` 通过；`verify:facts` OK（104 warnings 与基线一致，期间修通两处计数契约同步：pending 权威锚 `量表共 74 条` 与验收计数契约 `expect_matches` 50 → 53，均按契约自身变更日志体例登记）；`verify:all` 19/21，失败仅 `verify-mep`（149 errors / 238 warnings）与 `verify-document-references`（9 errors），与基线干净树逐项同数，**零新增失败**（mep 红为 master 存量，由并行门禁修复线处理，不属本批）。`test:server` 全量 1009 个测试与基线对照：基线 37 个失败（MEP/几何存量红），改后失败集合与基线逐项相同，唯一差异为 pending 计数口径测试——已按该测试自身的变更日志体例把硬编码行数 74 → 75 同步（新增编号的既定同步点），复跑该条通过。自查：全仓 `1.8` 残留归类完毕（防水语境仅剩本条作废注释与历史 DEC，余为配电箱高度/家具尺寸等无关值）；客卫二次排水表述全仓统一为条件式。
 - **关联文件**：`config/acceptance.yaml`、`config/budget-pitfalls.yaml`、`schedule/phase-1/control.yaml`、`docs/pending-site-data.md`、`config/facts.yaml`、`docs/mep-construction-guidance.md`、生成文件 `schedule/phase-1/checklist.md`/`budget.md`/`schedule.md`（render 产生）。
+- **决策人**：业主。
+
+### DEC-2026-10-22-R03 卫生间施工与 QA 门禁收口（第二批）：美缝拆包 PKG-065 卫生间先行 + 洁具门禁改指 + 规范条号复核结论
+
+- **日期**：2026-10-22。触发：DEC-2026-10-22-R02 遗留②（美缝拆包，第一批合入后启动）；第一批已合入 master（PR #5，merge commit 12be29e），业主指示继续。本批只做美缝拆包（方案 A）；客卫沉箱仍待 pending #74 量房数据，不在本批。
+- **被推翻的旧结论**：① R02 的过渡口径「洁具由 PKG-130 整体放行」——PKG-130 依赖油工 PKG-080，卫生间美缝被全屋面漆拖住正是 R02 要解决的问题，当时以整体门禁先保住闭水不漏检；本批拆包后门禁改由先行包承载（门禁意图不变、承载包变更）。② `config/tile-comparison.yaml` grout_model 把 PKG-130 当全屋美缝唯一定额持有包的对账口径（拆分后按裁定④同步）。
+- **裁定①（拆包）**：新增 **PKG-065 卫生间美缝（先行）**（sequence 65，dependencies 仅 `[PKG-060]`，payment_gate `GATE-065-COMPLETE`）：范围 = 主卫、客卫（含客卫开放洗漱区）的墙砖/地砖/窗台砖缝，即 overlay 中 room 为 master_bath / guest_bath 的贴砖区域；`config/model-package-links.yaml` 新增 MODEL-PKG-065 同口径链接。**PKG-130 改名「瓷砖美缝（其余区域）」**，范围排除两卫，dependencies `[PKG-060, PKG-080]` 不变。两包可同队同日进场，但验收与放行分开记录。
+- **裁定②（检查迁移）**：饰面层闭水检查由 SCH-130-03 移至 PKG-065 改号 **SCH-065-03**，`check_wp_finish_flood` 的 acceptance_refs 随迁；`check_tile_grout_dry` 两包共享（PKG-065 前置检查 SCH-065-01、PKG-130 前置检查 SCH-130-02 各管本包范围）；PKG-065 另设完工质量检查 SCH-065-02（两卫范围）。PKG-130 检查只余 SCH-130-01/02。删除的 SCH-130-03 不是取消检查，是迁移改号，检查内容一字未减。
+- **裁定③（洁具门禁改指）**：PKG-100 dependencies 中 PKG-130 → **PKG-065**（`[PKG-060, PKG-080, PKG-040, PKG-065]`），description 放行口径同步改指。PKG-135 dependencies `[PKG-100, PKG-130]` 不动（经 PKG-100 传递覆盖 PKG-065）。依赖自检：065 → {060}，100 → 065 → 060，无环。
+- **裁定④（预算拆分）**：美缝定额 ¥4,500（DEC-2026-08-22 暂估）按**砖缝长度估算占比**拆为 PKG-065 ¥500 / PKG-130 ¥4,000，合计不变、全局 allocated 不变。估算依据（仓库自身公式 缝长 ≈ 面积 ×（1/长+1/宽））：湿区墙砖约 12.1㎡ × 2.5（600×1200）≈ 30m + 两卫地砖 7.726㎡ × 3.33（600×600）≈ 26m，湿区合计约 56m；全屋约 750m（干区 KT 200×1200 缝长 652.5m 见 grout_model + 湿区约 56m + 厨房墙砖 11.07㎡ × 2.5 ≈ 28m + 阳台等余区约 14m），湿区占比约 7.5%，取整 500。两包 allocation_status 均为 pending_measurement、组件均未定价；**此拆分是排期门禁的记账拆分，不是结算价**，铺贴完成后按实测缝长与施工方计价方式（元/米或元/㎡）复核。tile-comparison 对账同步：干区实算 ¥2,237 本就只属 PKG-130 范围，其 planned 改 4,000 后余量 2,263 → 1,763。
+- **裁定⑤（规范条号复核，R02 遗留③阶段性关闭）**：2026-10-22 联网复核结论——GB 55038-2025 条文**内容**（淋浴区 ≥2.00m 且不低于喷淋口、洗面器区 ≥1.20m）多源一致，但条号「4.1.9」未取得规范原文/目录级证据；GB 55030-2022 可证「防水层完成后蓄水试验 ≥24h、蓄水 ≥20mm」，而「保护层或装饰面层完成后第二次蓄水」的可查成文依据是北京市住宅工程防水施工指南（地方指南），外部审查所称「GB 55030-2022 6.0.12 双阶段」归属**未证实**。据此：本项目 `standard_ref` 维持只写规范号、不写条号；双阶段闭水的项目依据登记为 R02 裁定 + 上述地方指南，不冒充国标条号。后续取得规范原文再细化。
+- **工期影响**：卫生间美缝窗口提前至 PKG-060 验收后（与吊顶/油工并行），PKG-065 工期 1–2 天；洁具关键路径不再等全屋美缝，只等卫生间美缝 + 饰面闭水 48h，较第一批口径再省 PKG-130 的 3–5 天串行等待。
+- **遗留**：① 客卫沉箱建模与专项验收——owner 量房方/业主，触发 = pending #74 关闭后另行 DEC（不变）；② 拆分比例实测复核——owner 业主+施工方，触发 = 铺贴完成量缝长时；③ 规范原文取得后的 standard_ref 条号细化——owner 设计侧，触发 = 取得 GB 55038-2025 / GB 55030-2022 原文时。
+- **验证**：worktree 分支 `feat/bathroom-qa-batch2`（基线 = master `12be29e`）。`schedule:render` 后工作包 24 → 25、可审计检查 100 → 102（PKG-065 新增三条检查、干燥确认 refs 双包各计一次、饰面闭水检查迁移改号净零），allocated ¥210,000 与 known pending gap ¥36,365 均不变；`verify:schedule` 通过；`verify:facts` OK（104 warnings 与基线逐项一致——期间按项目约定把 tile-comparison 对账 prose 的新余量字面量改为字段引用，避免新增未登记数值出现）；`verify:all` 20/21，唯一红 `verify-mep`（138 条）与基线同数；`test:server` 1009 个测试 1000 通过 / 8 失败，失败集合与基线逐项相同，**零新增失败**。
+- **关联文件**：`schedule/phase-1/control.yaml`（PKG-065 新增、PKG-130 改名改范围、PKG-100 改指）、`config/model-package-links.yaml`（MODEL-PKG-065）、`config/tile-comparison.yaml`（grout_model 对账）、`schedule/procurement.md` §14、`config/acceptance.yaml`（两处挂接注释改指）、生成文件（render 产生）。
 - **决策人**：业主。
