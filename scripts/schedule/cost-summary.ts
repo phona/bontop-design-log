@@ -381,8 +381,11 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
 /**
  * 报价卡凭据核验（2026-10-23 复审续）：在 status 锁定类断言之外，按卡 id 回
  * config/mep-quotes.yaml 原卡（经 loadMepQuotes 的规范解析路径）核对：
- * ① 原卡存在；② 原卡 status 与登记处捕获的 cardStatus 一致（防捕获值与原文
- * 漂移）；③ 承包商名（contractor）非空；④ 报价日期（quoted_at）非空；
+ * ① 原卡存在；② 原卡 status 与登记处捕获的 cardStatus 一致（口径如实：
+ * 生产路径上捕获值与原卡同出一文件、同一 parser，本检查实际防的是「捕
+ * 获 / 注入两份数据的口径不一致」——捕获链将来若改走独立来源，该漂移
+ * 检查自动生效；在那之前不得把它称作防生产漂移）；③ 承包商名
+ *（contractor）非空；④ 报价日期（quoted_at）非空；
  * ⑤ 证据等级必须为 written_quote（正向强制，见下）；⑥ 费率来源不得为公开
  * 参考价（第二层，见下）；⑦ 被引用卡必须为文件的 active 卡（生效绑定，
  * 自主扫描 D4）；⑧ evidence.currency 若声明必须为 CNY（自主扫描 D5）。
@@ -399,7 +402,15 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
  * 核实层。故逐行核验该卡 rates 的来源：任一行 scope_note 含
  * `public_reference` 标记、或行级 evidence.kind 为 public_reference 类，即
  * 视为公开参考价来源，抛错并点名行键（evidence.kind === 'written_quote' 的
- * 卡也过不了这一层）。
+ * 卡也过不了这一层）。两条如实边界（自主扫描 G7/G9）：(i) scope_note 的
+ * public_reference 标记是卡作者的**自愿声明**——本检查只能拦已声明者，
+ * 未声明的公开来源是数据纪律问题，不在守卫可核范围（与「纸质合同不在仓
+ * 内」同级边界）；行级 evidence.kind 分支 2026-10-23 前因上游 parseRate
+ * 静默丢弃行级 evidence 而在生产路径永假，现 parser 已同口径保留，且
+ * kind='public_reference' 不在三级枚举内、会在解析期即被拒并点名行键，
+ * 守卫侧判断保留为注入路径的第二道。(ii) evidence 的 status / source /
+ * observed_at / quote_status 由 parser 透传、本守卫**不解读**（与上游
+ * comparable 门禁同口径）——它们不构成凭据强度的一部分。
  * 作用域边界（如实）：本函数只在某行**声称已核实**（tier=verified 且凭据为
  * 报价卡）时被调用。现行 5 张 MEP 卡均无结构化 evidence 字段——按 ⑤，此后
  * 任何 MEP 卡在补登书面证据前**不得**支撑已核实层，这是刻意的 fail-closed；

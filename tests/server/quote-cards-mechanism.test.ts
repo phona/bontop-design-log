@@ -158,6 +158,48 @@ test('resolveActiveQuoteRates：回落源名走 spec.fallbackLabel，域不自�
   assert.equal(none.floor.per_unit, 45);
 });
 
+// ─── 行级 evidence：解析保留 + 非法 kind 解析期拒绝（2026-10-23 自主扫描 G7）──
+
+test('行级 evidence 经 parser 保留，不再被 parseRate 静默丢弃', () => {
+  // 2026-10-23 前 parseRate 只回 { per_unit, unit, scope_note? }——行级
+  // evidence 在解析时被静默丢弃，消费方（如成本总表的报价卡守卫）的行级
+  // 证据检查在生产路径永假、只有注入原始对象的测试能测绿。现在带
+  // evidence 的行必须经 parseEvidence 同口径校验后保留进 QuoteCardRate。
+  const parsed = parseQuoteCards(
+    file([{
+      id: 'r', contractor: '行级证据卡', quoted_at: '2026-10-06', status: 'contracted',
+      rates: {
+        floor: { per_unit: 40, unit: '元/㎡', evidence: { kind: 'photo', status: 'rate_card_photo', source: 'docs/x/rate.jpg' } },
+        wall: { per_unit: 50, unit: '元/㎡' },
+      },
+    }], 'r'),
+    SPEC,
+  );
+  const card = parsed.quotes[0];
+  assert.equal(card.rates.floor?.evidence?.kind, 'photo', '行级 evidence.kind 必须保留');
+  assert.equal(card.rates.floor?.evidence?.status, 'rate_card_photo', '行级 evidence.status 必须保留');
+  assert.equal(card.rates.wall?.evidence, undefined, '未声明 evidence 的行保持无字段');
+});
+
+test('行级 evidence.kind 越界（public_reference）→ 解析期抛错点名行键', () => {
+  // public_reference 不在三级证据枚举内：一行若声明 evidence.kind 为
+  // public_reference，解析期即 fail-closed 抛错（错误路径含行键），
+  // 不会静默流入下游再靠守卫兜底。
+  assert.throws(
+    () => parseQuoteCards(
+      file([{
+        id: 'r', contractor: '行级公开价卡', quoted_at: '2026-10-06', status: 'contracted',
+        rates: {
+          floor: { per_unit: 40, unit: '元/㎡', evidence: { kind: 'public_reference', status: 'web_price' } },
+        },
+      }], 'r'),
+      SPEC,
+    ),
+    /rates\.floor\.evidence\.kind/,
+    '行级 evidence.kind 越界必须在解析期抛错并点名行键',
+  );
+});
+
 // ─── 回归：既有吊顶卡不受新逻辑影响 ─────────────────────────────────────────
 
 test('既有吊顶卡没有 evidence → comparable 判据不变（不误伤）', () => {

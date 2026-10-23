@@ -32,6 +32,7 @@ import {
   compareMepQuotes,
   loadMepQuotes,
   mepQuoteFallback,
+  parseMepQuotes,
 } from '../../server/mep-quotes.js';
 
 /**
@@ -640,6 +641,49 @@ describe('成本总表 cost-summary', () => {
         `总额为 ${badTotal} 必须抛错`,
       );
     }
+  });
+
+  it('报价卡守卫真实 parser 路径：合成 YAML 经 parseMepQuotes 后公开参考价行仍被点名（G7）', () => {
+    // 自主扫描 G7：守卫的行级来源检查此前只有注入原始对象的测试覆盖——
+    // 生产路径上 parseRate 静默丢弃行级 evidence、且未经真实 parser 验证。
+    // 这里走真实解析路径：合成 YAML → parseMepQuotes → 守卫。卡级
+    // written_quote + contracted + active 绑定全过，唯一问题是一行
+    // scope_note 声明 public_reference → 必须抛错点名该行键。
+    const yaml = [
+      'version: 1',
+      'active: g7_card',
+      'quotes:',
+      '  - id: g7_card',
+      '    contractor: 合成施工方',
+      '    quoted_at: "2026-10-01"',
+      '    status: contracted',
+      '    evidence:',
+      '      kind: written_quote',
+      '      status: 书面报价单',
+      '    rates:',
+      '      labor_by_area:',
+      '        per_unit: 40',
+      '        unit: 元/㎡',
+      '        scope_note: 施工方书面报价人工',
+      '      water_cold_20:',
+      '        per_unit: 28',
+      '        unit: 元/m',
+      '        scope_note: "public_reference: 伟星官网公开价"',
+      '',
+    ].join('\n');
+    const parsed = parseMepQuotes(yaml) as unknown as AnyRecord;
+    const control = parseYaml(readFileSync('schedule/phase-1/control.yaml', 'utf8')) as AnyRecord;
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'g7_card', cardStatus: 'contracted' }, control, parsed),
+      /water_cold_20.*public_reference/,
+      '经真实 parser 路径的公开参考价行必须被守卫点名',
+    );
+    // 对照：同一张卡去掉公开参考价声明 → 守卫通过（不误伤真实解析路径）
+    const cleanParsed = parseMepQuotes(yaml.replace('public_reference: 伟星官网公开价', '施工方书面报价')) as unknown as AnyRecord;
+    assert.doesNotThrow(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'g7_card', cardStatus: 'contracted' }, control, cleanParsed),
+      '无公开参考价声明的真实解析卡必须通过',
+    );
   });
 
   it('覆盖检查：全部未决条目已登记归属，三类计数对上未决总数', () => {
