@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
+  assertVerifiedTierBasis,
   buildCostSummary,
   computeActiveMepQuote,
   renderCostSummary,
@@ -93,13 +94,55 @@ describe('成本总表 cost-summary', () => {
     assert.equal(data.verifiedSubtotalCny, verified.reduce((sum, row) => sum + (row.amountCny ?? 0), 0));
     assert.equal(data.provisionalSubtotalCny, provisional.reduce((sum, row) => sum + (row.amountCny ?? 0), 0));
     assert.equal(data.verifiedSubtotalCny + data.provisionalSubtotalCny, data.knownSubtotalCny);
-    // 已核实层只许已锁定或完整实算且无未决标记的行：按现数据只有签约空调与生效报价卡水电
-    assert.deepEqual(verified.map((row) => row.id).sort(), ['cost-hvac', 'cost-mep']);
+    // 已核实层只许来源状态可断言锁定的行：按现数据只有签约空调
+    assert.deepEqual(verified.map((row) => row.id).sort(), ['cost-hvac']);
     // 评审 P1 点名：防水人工有未关闭去重、泥瓦构成全未锁价，两者都不许进已核实层
     assert.equal(rowById(data, 'cost-waterproof-labor')?.tier, 'provisional', '防水人工待去重确认，必须在暂估层');
     assert.equal(rowById(data, 'cost-masonry')?.tier, 'provisional', '泥瓦未锁价，必须在暂估层');
+    // 复核 P1 点名：水电生效卡是业主基线（baseline）、且 COST-040-15 界面未决，必须在暂估层且理由写明两点
+    const mepRow = rowById(data, 'cost-mep');
+    assert.equal(mepRow?.tier, 'provisional', '水电生效卡为业主基线，必须在暂估层');
+    assert.match(mepRow?.tierReason ?? '', /baseline/, '水电层级理由必须点名生效卡 baseline 状态');
+    assert.match(mepRow?.tierReason ?? '', /COST-040-15/, '水电层级理由必须点名 COST-040-15 界面未决');
+    assert.equal(data.verifiedSubtotalCny, pkgOf(control, 'PKG-030').budget.contracted_cny, '已核实小计按现数据恰为签约空调合同额');
     const markdown = renderCostSummary(data, '# 测试表头\n\n');
     assert.ok(markdown.includes('不得读作已核实成本'), '口径说明必须写明已知合计不是已核实成本');
+  });
+
+  it('层级守卫：已核实凭据逐行断言，伪造 baseline 卡声称已核实必须抛错', () => {
+    // 报价卡凭据：只有锁定类 status 能支撑已核实层
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'owner_baseline_40', cardStatus: 'baseline' }, control),
+      /owner_baseline_40.*不是锁定类状态/,
+      'baseline 卡声称已核实必须抛错',
+    );
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'candidate' }, control),
+      /不是锁定类状态/,
+    );
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'quoted' }, control),
+      /不是锁定类状态/,
+      '普通书面报价（quoted）未锁定，同样不许支撑已核实层',
+    );
+    assert.doesNotThrow(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'contracted' }, control),
+    );
+    // 无凭据声称已核实必须抛错
+    assert.throws(() => assertVerifiedTierBasis('cost-mep', undefined, control), /未登记来源凭据/);
+    // 合同凭据：真实 control 通过；删掉 contract_ref 或 contracted_cny 必须抛错
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
+    const noRef = structuredClone(control) as AnyRecord;
+    const qr = (noRef.hard_finish_quote_rounds.records as AnyRecord[]).find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+    delete qr.contract_ref;
+    assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, noRef), /缺 contract_ref/);
+    const noContracted = structuredClone(control) as AnyRecord;
+    delete pkgOf(noContracted, 'PKG-030').budget.contracted_cny;
+    assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, noContracted), /缺 contracted_cny/);
+    // 现行数据的已核实行（签约空调）凭据必须真实在位——守卫不是摆设
+    const hvacRow = rowById(data, 'cost-hvac');
+    assert.equal(hvacRow?.verifiedBasis?.type, 'contract');
   });
 
   it('覆盖检查：全部未决条目已登记归属，三类计数对上未决总数', () => {

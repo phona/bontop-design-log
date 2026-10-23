@@ -22,6 +22,13 @@
  *     且无未决去重/待报价标记；其余未锁价等级（封顶价、预算池、候选价、定标目标、
  *     参考实付、定额暂估，以及带未关闭 dedup 的实算行）一律暂估。汇总分三行呈现：
  *     已核实小计 + 暂估小计 = 已知合计；已知合计不得被表述为已核实成本。
+ *     层级不是静态标签（2026-10-23 复核）：tier = verified 的行必须登记
+ *     verifiedBasis 并过 assertVerifiedTierBasis 守卫——报价卡行断言生效卡
+ *     status ∈ 锁定类（contracted/locked；baseline/candidate/quoted 不许），
+ *     合同行断言 contracted_cny 与轮次 contract_ref/locked 状态齐备；来源状态
+ *     变未决即生成抛错。水电行即因此降层：生效卡 owner_baseline_40 是业主口径
+ *     基线（status: baseline、费率多为 public_reference），且 COST-040-15 的
+ *     interface_pending 未关闭，两点都写在该行 tierReason 里。
  *
  * ── 数据源映射裁定（每行唯一来源 + 防双算理由）────────────────────────────
  *  中央空调 36,000 ← control.yaml PKG-030 budget.contracted_cny（已转合同，
@@ -34,6 +41,8 @@
  *    config/mep-quotes.yaml 生效卡单价，与 scripts/project/mep-takeoff.ts 同一条路）。
  *    科目 water_electric 的 6,218（人工一口价 5,000 + 候选 1,218）是同范围的旧科目
  *    口径，且其候选里混着热水器（属家电包）与开关插座占位价，不采用。
+ *    层级只入暂估：生效卡是业主基线（baseline）而非锁价，且 COST-040-15 的
+ *    施工界面未书面划清（interface_pending）——见该行 tierReason 与层级守卫。
  *  防水人工 366 ← 计算器科目 waterproof 的 actual。经核：该科目 verified/candidate/
  *    manual/auto 全为 0，366 纯粹是 computeLabor 的防水人工——base.json 费率 20 元/㎡ ×
  *    needs_waterproof 房间面积 18.286 ㎡。（曾被误读为「材料候选价」，以数据为准纠正：
@@ -147,6 +156,50 @@ export const COST_INPUT_PATHS: string[] = [
 /** 核实层级：verified = 已锁定或完整实算且无未决去重/待报价；provisional = 暂估（未锁价等级）。 */
 export type CostTier = 'verified' | 'provisional';
 
+/**
+ * 已核实层的来源凭据（层级守卫的断言对象，见 assertVerifiedTierBasis）：
+ *  - contract：合同行——control.yaml 里该包 contracted_cny 存在，且对应询价轮次
+ *    status = locked、locked_cny 与合同额一致、contract_ref 非空。
+ *  - quote-card：报价卡行——生效卡 status 必须是锁定类（见
+ *    LOCKED_QUOTE_CARD_STATUSES）；cardStatus 在构建时从比较结果原样捕获，
+ *    不是登记处自填的字符串。
+ */
+export type VerifiedBasis =
+  | { type: 'contract'; packageId: string; quoteRoundId: string }
+  | { type: 'quote-card'; cardId: string; cardStatus: string };
+
+/** 报价卡 status 的锁定类白名单（QuoteCardStatus 枚举）：contracted 才算锁定；baseline / candidate / quoted / rejected 一律不许支撑已核实层。另接受 locked（询价轮次口径）以防枚举扩展。 */
+export const LOCKED_QUOTE_CARD_STATUSES: ReadonlySet<string> = new Set(['contracted', 'locked']);
+
+/**
+ * 层级守卫（2026-10-23 复核总评：层级不能是静态标记）：tier = verified 的行必须
+ * 凭 verifiedBasis 过本断言——来源状态一旦变未决（生效卡被换成 baseline、
+ * 合同额或 contract_ref 被删），生成直接抛错，而不是让旧层级静默通过。
+ */
+export function assertVerifiedTierBasis(rowId: string, basis: VerifiedBasis | undefined, control: AnyRecord): void {
+  if (!basis) {
+    throw new Error(`cost summary: 定价行 ${rowId} 声称已核实（tier=verified）但未登记来源凭据（verifiedBasis）——已核实层必须有可断言的锁定来源，请先在登记处补凭据或降为暂估层`);
+  }
+  if (basis.type === 'quote-card') {
+    if (!LOCKED_QUOTE_CARD_STATUSES.has(basis.cardStatus)) {
+      throw new Error(`cost summary: 定价行 ${rowId} 声称已核实，但其依据的报价卡 ${basis.cardId} 的 status=${basis.cardStatus} 不是锁定类状态（仅 contracted/locked 可支撑已核实层；baseline/candidate/quoted/rejected 一律不许）——请把该行降为暂估层，或更换为锁定类生效卡`);
+    }
+    return;
+  }
+  const pkg = pkgOf(control, basis.packageId);
+  const contracted = pkg.budget?.contracted_cny;
+  if (typeof contracted !== 'number' || contracted <= 0) {
+    throw new Error(`cost summary: 定价行 ${rowId} 声称已核实（合同凭据），但 ${basis.packageId} 缺 contracted_cny——合同额不存在，已核实层不成立`);
+  }
+  const qr = qrOf(control, basis.quoteRoundId);
+  if (typeof qr.contract_ref !== 'string' || qr.contract_ref.length === 0) {
+    throw new Error(`cost summary: 定价行 ${rowId} 声称已核实（合同凭据），但询价轮次 ${basis.quoteRoundId} 缺 contract_ref——无合同引用，已核实层不成立`);
+  }
+  if (qr.status !== 'locked' || qr.locked_cny !== contracted) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据对不上：${basis.quoteRoundId} status=${qr.status}、locked_cny=${qr.locked_cny}，与 ${basis.packageId} contracted_cny=${contracted} 不一致`);
+  }
+}
+
 export interface CostRow {
   id: string;
   name: string;
@@ -161,6 +214,8 @@ export interface CostRow {
    */
   tier?: CostTier;
   tierReason?: string;
+  /** 已核实层的来源凭据：tier = verified 的行必填，由 assertVerifiedTierBasis 在构建时断言（层级守卫）。 */
+  verifiedBasis?: VerifiedBasis;
   /** 覆盖登记：本行金额显式计入的未决条目 id（组件 COST-* / 询价轮次 QR-*）。 */
   coversItems?: string[];
 }
@@ -461,8 +516,11 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '已签约',
       tier: 'verified',
       tierReason: '已转合同、成交价锁定（合同外不含项另在未定价与待核清单登记，不属本行金额）',
-      // 整包合同覆盖机组/管路主体/支架风口/两次安装/线控器（-07 已裁定含在合同内、增量 ¥0）；
-      // -02 的合同外增量与 -06 的可能增项另列待核，与本行并行登记。
+      verifiedBasis: { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' },
+      // 整包合同覆盖机组/管路主体/支架风口/两次安装/线控器本体（-07 金额按业主口述
+      // 含在合同内、增量 ¥0，但型号/数量/对码责任/线芯数四项门店书面确认未闭，
+      // 与待核清单双归属登记，见 DUAL_ATTRIBUTIONS）；
+      // -02 的合同外增量与 -06 的可能增项另列待核，与本行并行登记（-02 同为双归属）。
       coversItems: ['COST-030-01', 'COST-030-02', 'COST-030-03', 'COST-030-04', 'COST-030-05', 'COST-030-07', 'QR-2026-10-03-24'],
       derivation: `合同额：QR-2026-10-03-24（${qr.item}）已转合同（contract_ref ${qr.contract_ref}），成交 ${yuan(contracted)}（含辅材；不含复合风管与风口加长、不含税）；本行金额 = PKG-030 的 contracted_cny。PKG-140 二次安装含在本包合同（included_in_other_package），不另计`,
     });
@@ -487,8 +545,11 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-040'],
       amountCny: Math.round(total),
       grade: '报价卡实算',
-      tier: 'verified',
-      tierReason: '生效报价卡全行计价、无待报价行，由算量引擎完整实算',
+      tier: 'provisional',
+      tierReason: '生效卡 owner_baseline_40 是业主口径基线（contractor 为「业主口径基线」、status: baseline、费率多取 public_reference 公开参考价），属业主自建基线而非施工方书面报价或锁价；且 coversItems 中 COST-040-15 状态 interface_pending（封槽料与 PKG-080 基层修补的边界须书面划清、尚未关闭）——两点都与已核实口径（锁定或完整实算且无未决标记）不符，降暂估层（2026-10-23 复核 P1）',
+      // 来源凭据照实登记（卡 id + 构建时捕获的 status）：本行现为暂估层不触发守卫；
+      // 若将来把本行改回已核实，层级守卫会按此 status 断言、baseline 必抛错。
+      verifiedBasis: { type: 'quote-card', cardId: comparison.id, cardStatus: comparison.status },
       // 报价卡逐行覆盖给排水/线路/器件：panel=强电箱、leb_kit+增项=等电位、gas_alarm_kit=报警器、
       // exhaust_duct_kit=排风、spd=浪涌、breaker=断路器、entry_valve_kit=阀件、hot_pipe_insulation=保温、
       // aux_lump 包干行与 -18 同名同范围、开孔/打压测试在增项行、封槽料与套管属辅材包干（与 PKG-080
@@ -886,11 +947,14 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     { label: '科目 hvac（选品镜像）', amountCny: categoryTotal('hvac'), reason: '与空调合同同额：来源以 control.yaml 的 contracted_cny 为准，科目侧只是镜像' },
   ];
 
-  // 层级完整性：每条定价行必须已在登记处裁定 tier 与理由，缺失即抛错（不许渲染层猜）。
+  // 层级完整性：每条定价行必须已在登记处裁定 tier 与理由，缺失即抛错（不许渲染层猜）；
+  // 声称已核实的行还要过层级守卫——凭 verifiedBasis 断言来源此刻仍是锁定状态，
+  // 来源状态变未决（生效卡换成 baseline、合同凭据缺失）时生成失败，不许静默沿用旧层级。
   for (const row of rows) {
     if (!row.tier || !row.tierReason) {
       throw new Error(`cost summary: 定价行 ${row.id} 缺核实层级裁定（tier/tierReason）——请先在 cost-summary.ts 登记处裁定，再重新生成`);
     }
+    if (row.tier === 'verified') assertVerifiedTierBasis(row.id, row.verifiedBasis, control);
   }
   const coverage = assertCoverage(control, rows, unpriced, pendingChecks, excludedItems);
   const verifiedSubtotalCny = rows.filter((row) => row.tier === 'verified').reduce((sum, row) => sum + (row.amountCny ?? 0), 0);
@@ -923,7 +987,7 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += '## 口径说明\n\n';
   markdown += '- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。\n';
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
-  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定（签约）或由生效数据源完整实算（生效报价卡全行计价、无待报价行）、且无未决去重/待报价标记的行；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。每行的层级与理由登记在生成器中，逐行可查。\n';
+  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract_ref（轮次 status 须 locked），报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同额/合同引用/卡 status 在构建时读取），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
   markdown += '- 未定价项目将来必花钱，真实总成本必然高于已知合计，高多少要等其报价/量房后才知道。\n';
   markdown += '- **覆盖检查**：生成时全量扫描 `schedule/phase-1/control.yaml` 的成本组件与询价轮次登记，凡状态未决或去重未关闭的条目必须登记归属（计入定价行 / 未定价与待核 / 不计价登记），缺一即生成失败——未定价与待核清单不是手写名单。\n';
   markdown += '- **成色定义**：已签约 = 已转合同的成交价；报价卡实算 = 算量引擎实算量 × 生效报价卡单价；报价轮实算 = 业主询价轮次逐项构成的实算目标；定标目标 = 业主定标时裁定的目标价、非成交价；参考实付 = 同户型已发生的实付锚、非本户报价；算量费率 = 算量面积 × 静态费率（人工）；候选价 = 当前选品的候选价、未取证未成交；定额暂估 = 按定额登记的暂估额、非算量非报价。\n';
