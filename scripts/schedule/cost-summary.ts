@@ -17,6 +17,11 @@
  *     算量费率 / 候选价 / 定额暂估。推导在现有数据里追不到构成时，只许降格成色，
  *     不许编造拆解；构成分解与来源金额对不上时构建直接抛错（fail-closed），逼着先
  *     更新本映射表再出表。
+ *  5. 小计必须分层（2026-10-23 评审 P1）：每行登记核实层级（tier）——已核实 =
+ *     金额已锁定（签约）或由生效数据源完整实算（生效报价卡全行计价、无待报价行），
+ *     且无未决去重/待报价标记；其余未锁价等级（封顶价、预算池、候选价、定标目标、
+ *     参考实付、定额暂估，以及带未关闭 dedup 的实算行）一律暂估。汇总分三行呈现：
+ *     已核实小计 + 暂估小计 = 已知合计；已知合计不得被表述为已核实成本。
  *
  * ── 数据源映射裁定（每行唯一来源 + 防双算理由）────────────────────────────
  *  中央空调 36,000 ← control.yaml PKG-030 budget.contracted_cny（已转合同，
@@ -32,7 +37,9 @@
  *  防水人工 366 ← 计算器科目 waterproof 的 actual。经核：该科目 verified/candidate/
  *    manual/auto 全为 0，366 纯粹是 computeLabor 的防水人工——base.json 费率 20 元/㎡ ×
  *    needs_waterproof 房间面积 18.286 ㎡。（曾被误读为「材料候选价」，以数据为准纠正：
- *    未定价的是防水**材料**，不是人工。）
+ *    未定价的是防水**材料**，不是人工。）金额虽为费率实算，但 QR-2026-10-03-03 的
+ *    dedup_rule 明文「若瓦工 18,500 元预算池已含防水人工，最终报价必须去重」且未关闭，
+ *    本行可能已含于泥瓦行内——去重关闭前只入暂估层（评审 P1）。
  *  泥瓦 45,071 ← PKG-060 estimated_need_cny（构成：QR-2026-10-03-04/05/06 的
  *    20,000 + 18,500 + 4,000 = 42,500，加 DEC-2026-10-16-TILE-01 终核的墙砖主材
  *    36.7236 ㎡ × 70 元/㎡ ≈ 2,571；代码断言构成和 == need）。
@@ -122,6 +129,9 @@ export const COST_INPUT_PATHS: string[] = [
   'schedule/phase-1/control.yaml',
 ].sort();
 
+/** 核实层级：verified = 已锁定或完整实算且无未决去重/待报价；provisional = 暂估（未锁价等级）。 */
+export type CostTier = 'verified' | 'provisional';
+
 export interface CostRow {
   id: string;
   name: string;
@@ -130,6 +140,12 @@ export interface CostRow {
   amountCny: number | null;
   grade: string;
   derivation: string;
+  /**
+   * 核实层级与理由：定价行必须在登记处显式裁定（数据驱动，渲染层不临时判断），
+   * buildCostSummary 对缺失 tier 的定价行直接抛错；未定价行不入层级，留空。
+   */
+  tier?: CostTier;
+  tierReason?: string;
 }
 
 export interface ExcludedFigure {
@@ -143,6 +159,11 @@ export interface CostSummaryData {
   unpriced: CostRow[];
   notSeparate: Array<{ name: string; packageIds: string[]; note: string }>;
   excluded: ExcludedFigure[];
+  /** 已核实层小计（tier = verified 的行）。 */
+  verifiedSubtotalCny: number;
+  /** 暂估层小计（tier = provisional 的行）。 */
+  provisionalSubtotalCny: number;
+  /** 已知合计 = 已核实 + 暂估；只是已定价行之和，不得读作已核实成本。 */
   knownSubtotalCny: number;
 }
 
@@ -251,6 +272,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-020'],
       amountCny: labor + haul,
       grade: '参考实付',
+      tier: 'provisional',
+      tierReason: '同户型实付锚、非本户报价，未锁价',
       derivation: `同户型半包实付锚（PKG-020 说明原文）：拆砌人工 ${yuan(labor)} + 物业垃圾清运 ${yuan(haul)}。非本户报价，本户金额待量房后按确认图纸复核；QR-2026-10-03-01 的 ${yuan(qrOf(control, 'QR-2026-10-03-01').owner_target_cny)} 是候选目标、非价格，不采用`,
     });
   }
@@ -269,6 +292,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-030', 'PKG-140'],
       amountCny: contracted,
       grade: '已签约',
+      tier: 'verified',
+      tierReason: '已转合同、成交价锁定（合同外不含项另在未定价与待核清单登记，不属本行金额）',
       derivation: `合同额：QR-2026-10-03-24（${qr.item}）已转合同（contract_ref ${qr.contract_ref}），成交 ${yuan(contracted)}（含辅材；不含复合风管与风口加长、不含税）；本行金额 = PKG-030 的 contracted_cny。PKG-140 二次安装含在本包合同（included_in_other_package），不另计`,
     });
   }
@@ -292,6 +317,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-040'],
       amountCny: Math.round(total),
       grade: '报价卡实算',
+      tier: 'verified',
+      tierReason: '生效报价卡全行计价、无待报价行，由算量引擎完整实算',
       derivation: `算量 × 生效报价卡：shared/mep-takeoff.ts 按路由实算（强电计价管长 ${qty(takeoff.conduit.strongPowerTotalM)} m、导线 ${qty(takeoff.wire.totalWireM)} m，给排水与器件逐项），× config/mep-quotes.yaml 生效卡 ${comparison.id} 单价，${comparison.rows.length} 行全部计价、无待报价行——清包人工 ${yuan(laborPart)}（${qty(areaSqm, 2)} ㎡ × ${yuan(laborRate)}/㎡）、导线 ${yuan(wirePart)}、线管 ${yuan(conduitPart)}、其余管材/器件/增项 ${yuan(restPart)}，卡总额 ${yuan(total)} 取整。本行按本分支算量（平面 union 口径，DEC-2026-10-07-M02）；竖直段补计（DEC-2026-10-23-R01，PR #11）合入后约 +¥1,300，届时重生成自动更新`,
     });
   }
@@ -317,7 +344,9 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-050'],
       amountCny: Math.round(waterproof.actual),
       grade: '算量费率',
-      derivation: `计算器科目 waterproof 的人工：费率 ${yuan(wetRate)}/㎡（config/budget/base.json 的 waterproof.labor）× 湿区面积 ${qty(wetArea, 2)} ㎡（needs_waterproof 房间——主卫、客卫、厨房、北阳台——面积合计）= ${yuan(waterproof.actual)}，仅人工；防水材料未定价（见未定价清单）`,
+      tier: 'provisional',
+      tierReason: '费率实算，但 QR-2026-10-03-03 的 dedup_rule 未关闭——可能已含于瓦工预算池，去重确认前不入已核实层',
+      derivation: `计算器科目 waterproof 的人工：费率 ${yuan(wetRate)}/㎡（config/budget/base.json 的 waterproof.labor）× 湿区面积 ${qty(wetArea, 2)} ㎡（needs_waterproof 房间——主卫、客卫、厨房、北阳台——面积合计）= ${yuan(waterproof.actual)}，仅人工；防水材料未定价（见未定价与待核清单）。**待去重确认**：QR-2026-10-03-03 的 dedup_rule 明文「若瓦工 ${yuan(18500)} 预算池已含防水人工，最终报价必须去重」，该去重尚未关闭，本行可能已含于泥瓦行的瓦工预算池内——去重关闭前只入暂估层`,
     });
   }
 
@@ -336,6 +365,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-060'],
       amountCny: need,
       grade: '报价轮实算',
+      tier: 'provisional',
+      tierReason: '构成含瓷砖封顶价、瓦工预算池（quote_pending）、待报价辅材与候选墙砖，均未锁价',
       derivation: `业主询价轮次（QR-2026-10-03-04/05/06）：瓷砖主材封顶 ${yuan(20000)} + 瓦工人工预算池 ${yuan(18500)} + 辅材约 ${yuan(4000)} = ${yuan(42500)}；墙砖主材按 DEC-2026-10-16-TILE-01 终核另计：masonry-takeoff 全量 ${qty(tileSqm, 4)} ㎡ × wall_tile_01 候选 ${yuan(70)}/㎡ ≈ ${yuan(wallTilePart)}；合计 = PKG-060 的 estimated_need_cny ${yuan(need)}。COST-060-05 小砖条人工约 ${yuan(394)} 待书面报价、未计入（need 口径如此）`,
     });
   }
@@ -357,6 +388,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-065', 'PKG-130'],
       amountCny: target,
       grade: '定额暂估',
+      tier: 'provisional',
+      tierReason: '定额暂估、pending_quote，门店按米终核未取得',
       derivation: `定额暂估：DEC-2026-08-22 环氧彩砂暂估入账，QR-2026-10-03-07 登记 ${yuan(target)}（price_type: candidate、pending_quote，暂估非算量）；DEC-2026-10-22-R03 按砖缝长度估算拆两包（湿区约 56 m → PKG-065、其余全屋约 750 m → PKG-130），本表合并一行，金额取 QR 登记定额、不取两包 planned_cny。交叉核对：干区实算 ${yuan(computed)}（111.864 ㎡ × ${yuan(20)}/㎡ 包工包料，业主口述、未确认；config/tile-comparison.yaml grout_model），在定额内；门店按米终核未取得`,
     });
   }
@@ -371,6 +404,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-070'],
       amountCny: need,
       grade: '定标目标',
+      tier: 'provisional',
+      tierReason: '定标目标价、非成交价，裸价重报未取得',
       derivation: `业主定标后重算（DEC-2026-10-05-R3）：石膏板吊顶与窗帘盒目标 ${yuan(13500)} + 铝扣板裸价目标 ${yuan(4500)}（设备拆分后反推目标、非成交价，裸价重报待取得）= PKG-070 的 estimated_need_cny ${yuan(need)}；实际以生效报价卡 + COST-070 逐项报价为准`,
     });
   }
@@ -399,6 +434,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-080'],
       amountCny: laborPart + materialPart,
       grade: '算量费率+候选价',
+      tier: 'provisional',
+      tierReason: '人工为静态费率、材料为候选价，均未锁价',
       derivation: `计算器科目 painting：人工 ${yuan(laborPart)} = 涂装净面积约 ${qty(paintArea, 1)} ㎡（shared/paint-scope.ts 按 overlay 的 paint_region 声明实算）× ${yuan(paintRate)}/㎡（config/budget/base.json 的 painting.labor）；材料 ${yuan(materialPart)} = 选品 ${paintItem.optionId} 候选价 ${yuan(paintItem.unitPrice)}/桶 ÷ ${qty(paintItem.coveragePerUnit)} ㎡/桶 × ${qty(paintItem.lossRate, 2)} 损耗 × 同面积`,
     });
   }
@@ -413,6 +450,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-100'],
       amountCny: need,
       grade: '报价轮实算',
+      tier: 'provisional',
+      tierReason: '报价轮构成含封顶价与候选项（马桶未锁定、浴室柜待报价），未锁价',
       derivation: `业主询价轮次（2026-10-03）经 DEC-2026-10-05-R12、DEC-2026-10-07-R02 两次收口：智能马桶封顶 ${yuan(5598)}（九牧 ZQ6650 cap、未锁定）+ 浴室柜 ${yuan(3500)}（主卫 ${yuan(1500)} + 客卫 ${yuan(2000)}）+ 花洒 ${yuan(1300)} + 龙头下水角阀 ${yuan(1100)} + 固定玻璃屏 ${yuan(1800)} + 通用五金 ${yuan(1500)} = PKG-100 的 estimated_need_cny ${yuan(need)}。不含浴霸：COST-100-06 业主自购待决策（QR-2026-10-05-01 ${yuan(1362)}）未计入`,
     });
   }
@@ -427,6 +466,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-110'],
       amountCny: need,
       grade: '报价轮实算',
+      tier: 'provisional',
+      tierReason: '报价轮目标构成、两轮询价均 pending_quote，未锁价',
       derivation: `业主询价轮次（QR-2026-10-03-20/21）：橱柜 + PET 柜门 + 20mm 石英石目标 ${yuan(12000)} + 水槽与厨房龙头约 ${yuan(1500)} = PKG-110 的 estimated_need_cny ${yuan(need)}`,
     });
   }
@@ -445,6 +486,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-120'],
       amountCny: amount,
       grade: '候选价',
+      tier: 'provisional',
+      tierReason: '选品候选价、未取证未成交',
       derivation: `选品候选价：config/materials.yaml 的 lighting_01 ${yuan(amount)} × 1 套（计算器科目 lighting 的 candidateActual）；QR-2026-10-03-23 的 ${yuan(qrOf(control, 'QR-2026-10-03-23').owner_target_cny)} 是询价目标、非价格，不采用`,
     });
   }
@@ -463,6 +506,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: [],
       amountCny: amount,
       grade: '候选价',
+      tier: 'provisional',
+      tierReason: '选品候选价、未取证未成交',
       derivation: `选品候选价：config/materials.yaml 的 range_hood_01 ${yuan(amount)} × 1 台（计算器科目 range_hood 的 candidateActual）。无独立工作包；灶具属家电包，不在本表`,
     });
   }
@@ -521,7 +566,15 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     { label: '科目 hvac（选品镜像）', amountCny: categoryTotal('hvac'), reason: '与空调合同同额：来源以 control.yaml 的 contracted_cny 为准，科目侧只是镜像' },
   ];
 
-  const knownSubtotalCny = rows.reduce((sum, row) => sum + (row.amountCny ?? 0), 0);
+  // 层级完整性：每条定价行必须已在登记处裁定 tier 与理由，缺失即抛错（不许渲染层猜）。
+  for (const row of rows) {
+    if (!row.tier || !row.tierReason) {
+      throw new Error(`cost summary: 定价行 ${row.id} 缺核实层级裁定（tier/tierReason）——请先在 cost-summary.ts 登记处裁定，再重新生成`);
+    }
+  }
+  const verifiedSubtotalCny = rows.filter((row) => row.tier === 'verified').reduce((sum, row) => sum + (row.amountCny ?? 0), 0);
+  const provisionalSubtotalCny = rows.filter((row) => row.tier === 'provisional').reduce((sum, row) => sum + (row.amountCny ?? 0), 0);
+  const knownSubtotalCny = verifiedSubtotalCny + provisionalSubtotalCny;
   return {
     rows,
     unpriced,
@@ -533,6 +586,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       { name: '硬装预备金', packageIds: ['PKG-900'], note: '预算储备，不是成本，按本表口径不列' },
     ],
     excluded,
+    verifiedSubtotalCny,
+    provisionalSubtotalCny,
     knownSubtotalCny,
   };
 }
@@ -544,7 +599,8 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += '## 口径说明\n\n';
   markdown += '- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。\n';
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
-  markdown += '- **已知小计（不含未定价）**：只是已定价行的合计；未定价项目将来必花钱，真实总成本必然高于小计，高多少要等其报价/量房后才知道。\n';
+  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定（签约）或由生效数据源完整实算（生效报价卡全行计价、无待报价行）、且无未决去重/待报价标记的行；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。每行的层级与理由登记在生成器中，逐行可查。\n';
+  markdown += '- 未定价项目将来必花钱，真实总成本必然高于已知合计，高多少要等其报价/量房后才知道。\n';
   markdown += '- **成色定义**：已签约 = 已转合同的成交价；报价卡实算 = 算量引擎实算量 × 生效报价卡单价；报价轮实算 = 业主询价轮次逐项构成的实算目标；定标目标 = 业主定标时裁定的目标价、非成交价；参考实付 = 同户型已发生的实付锚、非本户报价；算量费率 = 算量面积 × 静态费率（人工）；候选价 = 当前选品的候选价、未取证未成交；定额暂估 = 按定额登记的暂估额、非算量非报价。\n';
   markdown += '- **数据源**：`schedule/phase-1/control.yaml`（合同额、estimated_need、询价轮次）、`server/budget-calculator.ts` 科目快照（量 × 选品价）、`shared/mep-takeoff.ts` 算量 × `config/mep-quotes.yaml` 生效报价卡。映射裁定与防双算理由固化在 `scripts/schedule/cost-summary.ts` 文件头。\n\n';
   markdown += '## 硬装成本（含中央空调）\n\n';
@@ -552,7 +608,9 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   for (const row of data.rows) {
     markdown += `| ${escapeCell(row.name)} | ${row.packageIds.join('、') || '—'} | ${row.amountCny == null ? '—' : yuan(row.amountCny)} | ${escapeCell(row.grade)} | ${escapeCell(row.derivation)} |\n`;
   }
-  markdown += `| **已知小计（不含未定价）** | | **${yuan(data.knownSubtotalCny)}** | | 仅为上列已定价 ${data.rows.length} 行之和；未定价 ${data.unpriced.length} 项不在内 |\n`;
+  markdown += `| **已核实小计** | | **${yuan(data.verifiedSubtotalCny)}** | | 已锁定或完整实算且无未决去重/待报价标记的行之和 |\n`;
+  markdown += `| **暂估小计** | | **${yuan(data.provisionalSubtotalCny)}** | | 未锁价等级的行之和（封顶/预算池/候选/目标/参考/暂估/待去重） |\n`;
+  markdown += `| **已知合计（不含未定价）** | | **${yuan(data.knownSubtotalCny)}** | | 已核实 + 暂估，共 ${data.rows.length} 行；未定价 ${data.unpriced.length} 项不在内，本行不是已核实成本 |\n`;
   markdown += '\n## 未定价（必花但尚无真实价格，不计入小计）\n\n';
   markdown += '| 项目 | 归属工作包 | 成本 | 量与价格现状 |\n|---|---|---|---|\n';
   for (const row of data.unpriced) {

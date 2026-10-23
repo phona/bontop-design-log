@@ -82,6 +82,26 @@ describe('成本总表 cost-summary', () => {
     assert.equal(rowById(data, 'cost-mep')?.amountCny, Math.round(comparison.total as number));
   });
 
+  it('小计分层：每行恰属一层，已核实 + 暂估 = 已知合计', () => {
+    for (const row of data.rows) {
+      assert.ok(row.tier === 'verified' || row.tier === 'provisional', `${row.id} 必须有且仅有一个层级`);
+      assert.ok((row.tierReason ?? '').length > 0, `${row.id} 必须有层级理由`);
+    }
+    const verified = data.rows.filter((row) => row.tier === 'verified');
+    const provisional = data.rows.filter((row) => row.tier === 'provisional');
+    assert.equal(verified.length + provisional.length, data.rows.length, '每行恰属一层');
+    assert.equal(data.verifiedSubtotalCny, verified.reduce((sum, row) => sum + (row.amountCny ?? 0), 0));
+    assert.equal(data.provisionalSubtotalCny, provisional.reduce((sum, row) => sum + (row.amountCny ?? 0), 0));
+    assert.equal(data.verifiedSubtotalCny + data.provisionalSubtotalCny, data.knownSubtotalCny);
+    // 已核实层只许已锁定或完整实算且无未决标记的行：按现数据只有签约空调与生效报价卡水电
+    assert.deepEqual(verified.map((row) => row.id).sort(), ['cost-hvac', 'cost-mep']);
+    // 评审 P1 点名：防水人工有未关闭去重、泥瓦构成全未锁价，两者都不许进已核实层
+    assert.equal(rowById(data, 'cost-waterproof-labor')?.tier, 'provisional', '防水人工待去重确认，必须在暂估层');
+    assert.equal(rowById(data, 'cost-masonry')?.tier, 'provisional', '泥瓦未锁价，必须在暂估层');
+    const markdown = renderCostSummary(data, '# 测试表头\n\n');
+    assert.ok(markdown.includes('不得读作已核实成本'), '口径说明必须写明已知合计不是已核实成本');
+  });
+
   it('中央空调在硬装板块内，不单列为非硬装', () => {
     const hvacRow = rowById(data, 'cost-hvac');
     assert.ok(hvacRow, '必须有空调行');
@@ -95,7 +115,9 @@ describe('成本总表 cost-summary', () => {
 
   it('渲染纪律：小计标注含未定价说明，未定价行不显示金额', () => {
     const markdown = renderCostSummary(data, '# 测试表头\n\n');
-    assert.ok(markdown.includes('已知小计（不含未定价）'));
+    assert.ok(markdown.includes('已知合计（不含未定价）'));
+    assert.ok(markdown.includes('已核实小计'));
+    assert.ok(markdown.includes('暂估小计'));
     assert.ok(markdown.includes(`¥${data.knownSubtotalCny.toLocaleString('zh-CN')}`));
     for (const row of data.unpriced) {
       const line = markdown.split('\n').find((text) => text.startsWith(`| ${row.name} |`));
