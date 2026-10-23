@@ -63,6 +63,13 @@ export interface QuoteCardRate {
   unit: string;
   /** 含项/不含项声明：含辅材、安装、损耗、税费的口径不同就不可直接比较。 */
   scope_note?: string;
+  /**
+   * 行级证据（可选）：这一行的费率来源证据，与卡级 evidence 同口径校验
+   *（kind 三级枚举 + status 必填）。2026-10-23 前 parseRate 不保留此字段、
+   * 行级 evidence 在解析时被静默丢弃，消费方的行级证据检查在生产路径永
+   * 假；现经 parseEvidence 校验后保留。
+   */
+  evidence?: QuoteCardEvidence;
 }
 
 export interface QuoteCard<Key extends string> {
@@ -176,6 +183,9 @@ function parseRate(value: unknown, quoteId: string, key: string): QuoteCardRate 
     per_unit: perUnit as number | null,
     unit: record.unit as string,
     ...(record.scope_note !== undefined ? { scope_note: record.scope_note as string } : {}),
+    // 行级 evidence 与卡级同口径：经 parseEvidence 校验后保留（kind 不在
+    // 三级枚举内即解析期抛错、点名行键）；不带 evidence 的行保持无字段。
+    ...(record.evidence !== undefined ? { evidence: parseEvidence(record.evidence, `${quoteId}.rates.${key}`) } : {}),
   };
 }
 
