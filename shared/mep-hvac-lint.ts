@@ -1178,9 +1178,22 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
           const previous = points[rise - 1], current = points[rise];
           add(result, issue('warning', 'gravity_slope_geometry_mismatch', `Gravity route ${route.id} segment #${rise} (${previous.x},${previous.z})→(${current.x},${current.z}) rises ${(previous.y as number).toFixed(3)}m → ${(current.y as number).toFixed(3)}m; flow_direction down requires non-increasing via heights`, route.id));
         }
-        for (const deficit of gravitySlopeDeficits(points, slope)) {
-          add(result, issue('error', 'gravity_slope_below_design_target',
-            `Gravity route ${route.id} segment #${deficit.index} has ${(deficit.drop * 1000).toFixed(1)}mm fall over ${deficit.length.toFixed(2)}m (${(deficit.ratio * 100).toFixed(2)}%); the declared minimum is ${(slope * 100).toFixed(2)}%, with ${GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M * 1000}mm geometry-only tolerance and no construction tolerance declared`, route.id));
+        // DEC-2026-10-23-R02：墙排（gravity_wall_drain）恢复全线汇总口径——柜内转角
+        // 本就吃落差，逐段判必然误报（该口径曾被 bf29283 改 code 名时静默取消，本次
+        // 经业主裁定恢复）。全线落差/全线水平长与声明坡度比，不足才报一条；其余重力
+        // 路线维持逐段（含 R01 短段链）判。
+        if (route.method?.includes('wall_drain')) {
+          const drop = Math.abs((points[points.length - 1].y as number) - (points[0].y as number));
+          const requiredDrop = slope * totalPlanRun;
+          if (totalPlanRun >= GRAVITY_MIN_RUN && requiredDrop > GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M && drop + GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M < requiredDrop) {
+            add(result, issue('error', 'gravity_slope_below_design_target',
+              `Gravity route ${route.id} wall-drain run has ${(drop * 1000).toFixed(1)}mm fall over ${totalPlanRun.toFixed(2)}m (${(drop / totalPlanRun * 100).toFixed(2)}%); the declared minimum is ${(slope * 100).toFixed(2)}% judged on the whole run, with ${GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M * 1000}mm geometry-only tolerance and no construction tolerance declared`, route.id));
+          }
+        } else {
+          for (const deficit of gravitySlopeDeficits(points, slope)) {
+            add(result, issue('error', 'gravity_slope_below_design_target',
+              `Gravity route ${route.id} segment #${deficit.index} has ${(deficit.drop * 1000).toFixed(1)}mm fall over ${deficit.length.toFixed(2)}m (${(deficit.ratio * 100).toFixed(2)}%); the declared minimum is ${(slope * 100).toFixed(2)}%, with ${GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M * 1000}mm geometry-only tolerance and no construction tolerance declared`, route.id));
+          }
         }
       }
       if (route.method === 'gravity_floor_drain' && points.slice(1).some((point, index) => {
