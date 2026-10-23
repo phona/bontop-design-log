@@ -556,6 +556,13 @@ describe('成本总表 cost-summary', () => {
     // 口径表述纪律（复审续）：暂估金额可调减、可退押金不是最终成本——不许再作「必然高于」方向断言
     assert.ok(!markdown.includes('必然高于已知合计'), '不得断言真实总成本必然高于已知合计');
     assert.ok(markdown.includes('不必然高于、也不必然低于已知合计'), '口径句必须如实表述：总额方向以正式报价与结算为准');
+    // 未计入口径限定（复审 P2 续）：未计入含或然项（空调可能增项，触发才
+    // 发生）、待业主裁定项（固定柜体是否纳入一期）与范围未定项（南阳台铺
+    // 贴范围可能缩小）——取得报价 ≠ 必然发生，总述必须带三重限定，旧的无
+    // 条件表述不得再现
+    assert.ok(markdown.includes('确认纳入一期、实际发生、且未被其他定价行包含'), '未计入口径必须带三重限定（确认纳入一期/实际发生/未被其他定价行包含）');
+    assert.ok(!markdown.includes('取得价格后会增加总额'), '旧无条件表述（取得价格后会增加总额）不得再现');
+    assert.ok(!markdown.includes('定价后才增加'), '旧无条件表述（定价后才增加）不得再现');
     assert.ok(markdown.includes('已知合计（不含未定价）'));
     assert.ok(markdown.includes('已核实小计'));
     assert.ok(markdown.includes('暂估小计'));
