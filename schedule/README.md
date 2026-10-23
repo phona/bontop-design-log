@@ -10,6 +10,7 @@
 | `checklist.md` | 自动生成 | 项目总入口：当前阶段、下一工作包、阶段门槛和项目数据版本 |
 | `phase-1/control.yaml` | 一期维护源 | 一期预算、施工、验收、证据、状态和付款门槛 |
 | `phase-1/budget.md` | 自动生成 | 一期预算计划、合同额、已付、预测和门槛状态 |
+| `phase-1/cost.md` | 自动生成 | 一期硬装（含中央空调）成本总表：逐行实际成本、成色与推导，未定价显形、不计入已知小计；只列成本不列预算，映射见 `scripts/schedule/cost-summary.ts` |
 | `phase-1/schedule.md` | 自动生成 | 一期工序、工期、依赖和阻塞项 |
 | `phase-1/checklist.md` | 自动生成 | 一期现场执行清单：当前工作包、checkpoint、验收证据和项目数据关联 |
 | `phase-2/control.yaml` | 规划源 | 二期增强设备和家具，尚未冻结 |

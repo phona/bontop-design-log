@@ -10,6 +10,7 @@ authority:
   baseline_budget: config/budget/base.json
   generated_views:
     - schedule/phase-1/budget.md
+    - schedule/phase-1/cost.md
     - schedule/phase-1/schedule.md
     - schedule/phase-1/checklist.md
 

@@ -171,6 +171,9 @@ scan:
     - path: schedule/phase-1/budget.md
       pattern: '.'
       reason: control.yaml generated_views 渲染产物，金额与回路数由 schedule/phase-1/control.yaml 生成，非事实源
+    - path: schedule/phase-1/cost.md
+      pattern: '.'
+      reason: control.yaml generated_views 渲染产物，成本金额由 control.yaml、报价卡与计算器快照等权威源生成（映射见 scripts/schedule/cost-summary.ts），非事实源
     - path: schedule/phase-1/schedule.md
       pattern: '.'
       reason: control.yaml generated_views 渲染产物，金额由 schedule/phase-1/control.yaml 生成，非事实源
@@ -379,6 +382,10 @@ scan:
       scalars: [model_string]
       pattern: 'MJV-|JSQ|领航者|理想家'
       reason: control.yaml generated_views 渲染产物，型号由控制源生成，非事实源
+    - path: schedule/phase-1/cost.md
+      scalars: [model_string]
+      pattern: 'MJV-|JSQ|领航者|理想家'
+      reason: control.yaml generated_views 渲染产物，推导列复述的定标型号由 control.yaml 与询价轮次生成，非事实源
     - path: schedule/README.md
       scalars: [model_string]
       pattern: '领航者|理想家'

@@ -4,6 +4,7 @@ import process from 'node:process';
 import { createHash } from 'node:crypto';
 import * as yaml from 'js-yaml';
 import { computeGateStatus } from './gate-status.js';
+import { buildCostSummary, renderCostSummary, COST_INPUT_PATHS, COST_SUMMARY_PATH } from './cost-summary.js';
 import { loadModelPackageLinks, MODEL_PACKAGE_LINKS_PATH } from '../../server/model-package-links.js';
 
 type AnyRecord = Record<string, any>;
@@ -910,6 +911,21 @@ projectChecklist += '## 当前关联项目数据版本\n\n| 数据源 | 当前 S
 for (const [source, hash] of Object.entries(projectSnapshot)) projectChecklist += `| [${source}](../${source}) | \`${hash}\` |\n`;
 projectChecklist += '\n任何输入源变化都会使此清单的输入指纹变化；验证器会报告旧视图及变化文件。已通过的现场检查还会比较自身记录的项目数据指纹和验收标准指纹，变化后转为 stale 并阻止付款放行。\n';
 
+// 成本总表（cost.md）：数据源横跨 control.yaml、计算器快照与水电报价卡，映射与推导在
+// cost-summary.ts。算不出就报错——render 模式直接失败、check 模式把 cost.md 报 stale，
+// 不许静默出一张缺行或口径漂移的表。
+let costMd: string | null = null;
+let costError: string | null = null;
+try {
+  costMd = renderCostSummary(buildCostSummary(control), header('一期成本总表（硬装，含中央空调）', controlRelPath, COST_INPUT_PATHS));
+} catch (error) {
+  costError = error instanceof Error ? error.message : String(error);
+}
+if (costError && renderMode) {
+  console.error(`- cost summary failed: ${costError}`);
+  process.exit(1);
+}
+
 const outputViews: Array<{path: string; content: string}> = [
   {path: 'schedule/phase-1/budget.md', content: budgetMd},
   {path: 'schedule/phase-1/schedule.md', content: scheduleMd},
@@ -918,8 +934,10 @@ const outputViews: Array<{path: string; content: string}> = [
   {path: phase2ChecklistPath, content: phase2Checklist},
   {path: phase3ChecklistPath, content: phase3Checklist},
 ];
+if (costMd != null) outputViews.splice(1, 0, {path: COST_SUMMARY_PATH, content: costMd});
 
 const staleViews: string[] = [];
+if (costError) staleViews.push(`${COST_SUMMARY_PATH}: cost summary failed: ${costError}`);
 if (renderMode) {
   for (const view of outputViews) fs.writeFileSync(path.join(root, view.path), view.content);
 } else {
@@ -940,6 +958,8 @@ if (renderMode) {
     }
     const currentSnapshot = fileSnapshot(view.path === 'schedule/phase-1/budget.md'
       ? [controlRelPath]
+      : view.path === COST_SUMMARY_PATH
+        ? COST_INPUT_PATHS
       : view.path === 'schedule/phase-1/schedule.md'
         ? [controlRelPath, roadmapRelPath]
         : view.path === 'schedule/phase-1/checklist.md'

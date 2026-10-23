@@ -1,0 +1,68 @@
+<!-- schedule-input-snapshot:{"config/budget/base.json":"48833b4a90d7d559468fdd7b0c7dae047728a9e5334b17e76e4513f6e91c4e4d","config/ceiling-quotes.yaml":"31b6f26f41d5cf07034d28e426c93e759e3a81be56c07a896a0c49a6e67293bb","config/ceiling.yaml":"4469b08f84abf2442eb2df64ddec205bd78da9d646480056d5683c163fa8c899","config/design-rules.yaml":"3e3be49856354f32ea4e0ac58ef86b8d21d1138ab80599c182a4ed8bf5686a2c","config/electrical-topology.yaml":"112be80a82973e59b3dac07790042bc3d9b46086cc38268f298947be0feb5c00","config/electrical.yaml":"5ccf809f2c1134e0c0e3c1c5afaf7c6f71c916280f0e662de88fa20f1173fca7","config/house.yaml":"52b1b8ade6969ddf9d17fbe45bb3c2ec4bafed65545225600a1735d91d788f5e","config/hvac.yaml":"ab93cb47ff04083f7d8cb8bb2a5cdcd7d2e3e62d8357aef0fb7914897e30871c","config/layout/model-geometry.yaml":"585d6a03b3ed1d4b5daf6b2cb2802878ff5d5f1eabff14e569376948bcf56b0f","config/layout/overlay.yaml":"69bd817f08391ef7cbb19f9b9cf85c1014809ea296406f3bae678a6620a47dbc","config/masonry-labor.yaml":"fb22a6c69da9c9830025051d08c9561e2accce5e3150d3b505cdb746473d3a07","config/materials.yaml":"f1707fe9243ff9d2c53bb1b7264a1c6852ac88ee68d1b67a33da614f70deadc2","config/mep-hvac-coordination.yaml":"5090867df2224edcfafee8c66d8be50e228dda5dbde790559826e0a76dde3206","config/mep-labor.yaml":"97284f9c45ff0a3e9a853bf22341a2d1fcfc1195c130b997d53598097a78fdfc","config/mep-quotes.yaml":"630efd4c0c7b543a880e918e6fe034ad2b8ebc28a67ef01079216a4a6d6639dd","config/mep-takeoff.yaml":"4ac05572b5915b25ec22fab1bbaabd67844ef32e33f3fa991a52b1a87c4cb85b","config/plumbing.yaml":"8f501540a5ea8e739c1c95171fd09c178245915270efe9a76e0a46afc130473b","config/tile-comparison.yaml":"2002508bf9ff89cad6dcda18a326c701a0bfc01e7f9281e0d13f0e732ae6b783","data/current-scheme.json":"b1799873a28be04c8b7a0b7ae27f2f21db559909522e6f58aa075cc972cb7218","schedule/phase-1/control.yaml":"bff9795fbef2c103222f8c20304adae70b70efa0a0106e248ad29abfe00ede5e"} -->
+# 一期成本总表（硬装，含中央空调）
+
+> 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
+> 项目数据指纹：`sha256:3431cff272c19e3040021ccbd85aeea1ceda2f394d9e37f1049efaab7f6e8640`（20 个输入文件；验证时会检查本页是否过期）
+> 控制源声明更新日期：2026-10-20  
+> 当前阶段：pre_handover；总体状态：planning
+
+本表是**成本**总表，不是预算表：每一行都是按当前数据实际算出或已有来源的价格，并标注成色与推导；没有真实价格的项目只登记为「未定价」，不填金额、不按 0 计入合计。
+
+## 口径说明
+
+- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。
+- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。
+- **已知小计（不含未定价）**：只是已定价行的合计；未定价项目将来必花钱，真实总成本必然高于小计，高多少要等其报价/量房后才知道。
+- **成色定义**：已签约 = 已转合同的成交价；报价卡实算 = 算量引擎实算量 × 生效报价卡单价；报价轮实算 = 业主询价轮次逐项构成的实算目标；定标目标 = 业主定标时裁定的目标价、非成交价；参考实付 = 同户型已发生的实付锚、非本户报价；算量费率 = 算量面积 × 静态费率（人工）；候选价 = 当前选品的候选价、未取证未成交；定额暂估 = 按定额登记的暂估额、非算量非报价。
+- **数据源**：`schedule/phase-1/control.yaml`（合同额、estimated_need、询价轮次）、`server/budget-calculator.ts` 科目快照（量 × 选品价）、`shared/mep-takeoff.ts` 算量 × `config/mep-quotes.yaml` 生效报价卡。映射裁定与防双算理由固化在 `scripts/schedule/cost-summary.ts` 文件头。
+
+## 硬装成本（含中央空调）
+
+| 项目 | 归属工作包 | 成本 | 成色 | 推导 |
+|---|---|---:|---|---|
+| 拆改、墙体新建与清运 | PKG-020 | ¥7,059 | 参考实付 | 同户型半包实付锚（PKG-020 说明原文）：拆砌人工 ¥6,000 + 物业垃圾清运 ¥1,059。非本户报价，本户金额待量房后按确认图纸复核；QR-2026-10-03-01 的 ¥3,000 是候选目标、非价格，不采用 |
+| 中央空调 | PKG-030、PKG-140 | ¥36,000 | 已签约 | 合同额：QR-2026-10-03-24（美的领航者四代 一拖六 200外机）已转合同（contract_ref DEC-2026-10-04-R1），成交 ¥36,000（含辅材；不含复合风管与风口加长、不含税）；本行金额 = PKG-030 的 contracted_cny。PKG-140 二次安装含在本包合同（included_in_other_package），不另计 |
+| 水电改造 | PKG-040 | ¥14,905 | 报价卡实算 | 算量 × 生效报价卡：shared/mep-takeoff.ts 按路由实算（强电计价管长 256.5 m、导线 829.8 m，给排水与器件逐项），× config/mep-quotes.yaml 生效卡 owner_baseline_40 单价，32 行全部计价、无待报价行——清包人工 ¥3,790（94.76 ㎡ × ¥40/㎡）、导线 ¥3,023、线管 ¥522、其余管材/器件/增项 ¥7,570，卡总额 ¥14,905 取整。本行按本分支算量（平面 union 口径，DEC-2026-10-07-M02）；竖直段补计（DEC-2026-10-23-R01，PR #11）合入后约 +¥1,300，届时重生成自动更新 |
+| 防水人工 | PKG-050 | ¥366 | 算量费率 | 计算器科目 waterproof 的人工：费率 ¥20/㎡（config/budget/base.json 的 waterproof.labor）× 湿区面积 18.29 ㎡（needs_waterproof 房间——主卫、客卫、厨房、北阳台——面积合计）= ¥366，仅人工；防水材料未定价（见未定价清单） |
+| 泥瓦与铺贴 | PKG-060 | ¥45,071 | 报价轮实算 | 业主询价轮次（QR-2026-10-03-04/05/06）：瓷砖主材封顶 ¥20,000 + 瓦工人工预算池 ¥18,500 + 辅材约 ¥4,000 = ¥42,500；墙砖主材按 DEC-2026-10-16-TILE-01 终核另计：masonry-takeoff 全量 36.7236 ㎡ × wall_tile_01 候选 ¥70/㎡ ≈ ¥2,571；合计 = PKG-060 的 estimated_need_cny ¥45,071。COST-060-05 小砖条人工约 ¥394 待书面报价、未计入（need 口径如此） |
+| 美缝（全屋） | PKG-065、PKG-130 | ¥4,500 | 定额暂估 | 定额暂估：DEC-2026-08-22 环氧彩砂暂估入账，QR-2026-10-03-07 登记 ¥4,500（price_type: candidate、pending_quote，暂估非算量）；DEC-2026-10-22-R03 按砖缝长度估算拆两包（湿区约 56 m → PKG-065、其余全屋约 750 m → PKG-130），本表合并一行，金额取 QR 登记定额、不取两包 planned_cny。交叉核对：干区实算 ¥2,237（111.864 ㎡ × ¥20/㎡ 包工包料，业主口述、未确认；config/tile-comparison.yaml grout_model），在定额内；门店按米终核未取得 |
+| 吊顶 | PKG-070 | ¥18,000 | 定标目标 | 业主定标后重算（DEC-2026-10-05-R3）：石膏板吊顶与窗帘盒目标 ¥13,500 + 铝扣板裸价目标 ¥4,500（设备拆分后反推目标、非成交价，裸价重报待取得）= PKG-070 的 estimated_need_cny ¥18,000；实际以生效报价卡 + COST-070 逐项报价为准 |
+| 墙顶面基层与涂装 | PKG-080 | ¥9,357 | 算量费率+候选价 | 计算器科目 painting：人工 ¥7,716 = 涂装净面积约 308.7 ㎡（shared/paint-scope.ts 按 overlay 的 paint_region 声明实算）× ¥25/㎡（config/budget/base.json 的 painting.labor）；材料 ¥1,641 = 选品 latex_paint_01 候选价 ¥580/桶 ÷ 120 ㎡/桶 × 1.1 损耗 × 同面积 |
+| 洁具与五金 | PKG-100 | ¥14,798 | 报价轮实算 | 业主询价轮次（2026-10-03）经 DEC-2026-10-05-R12、DEC-2026-10-07-R02 两次收口：智能马桶封顶 ¥5,598（九牧 ZQ6650 cap、未锁定）+ 浴室柜 ¥3,500（主卫 ¥1,500 + 客卫 ¥2,000）+ 花洒 ¥1,300 + 龙头下水角阀 ¥1,100 + 固定玻璃屏 ¥1,800 + 通用五金 ¥1,500 = PKG-100 的 estimated_need_cny ¥14,798。不含浴霸：COST-100-06 业主自购待决策（QR-2026-10-05-01 ¥1,362）未计入 |
+| 橱柜及台面 | PKG-110 | ¥13,500 | 报价轮实算 | 业主询价轮次（QR-2026-10-03-20/21）：橱柜 + PET 柜门 + 20mm 石英石目标 ¥12,000 + 水槽与厨房龙头约 ¥1,500 = PKG-110 的 estimated_need_cny ¥13,500 |
+| 基础灯具 | PKG-120 | ¥2,500 | 候选价 | 选品候选价：config/materials.yaml 的 lighting_01 ¥2,500 × 1 套（计算器科目 lighting 的 candidateActual）；QR-2026-10-03-23 的 ¥3,000 是询价目标、非价格，不采用 |
+| 烟灶（油烟机） | — | ¥1,200 | 候选价 | 选品候选价：config/materials.yaml 的 range_hood_01 ¥1,200 × 1 台（计算器科目 range_hood 的 candidateActual）。无独立工作包；灶具属家电包，不在本表 |
+| **已知小计（不含未定价）** | | **¥167,256** | | 仅为上列已定价 12 行之和；未定价 5 项不在内 |
+
+## 未定价（必花但尚无真实价格，不计入小计）
+
+| 项目 | 归属工作包 | 成本 | 量与价格现状 |
+|---|---|---|---|
+| 物业手续与物业收费 | PKG-005 | 未定价 | 量未建模：金额以物业收费通知与票据为准（COST-005-01/02 均为 notice_pending）；其中可退押金属临时现金占用、非最终成本，须与本表分开记账 |
+| 防水材料 | PKG-050 | 未定价 | 量未建模：COST-050-01/02 待量房后按面积、高度、涂刷遍数报价（site_measurement_pending）；base.json 的 waterproof 无材料价、无对应选品 topic。人工已按算量费率计入定价行 |
+| 室内门及厨房门 | PKG-090 | 未定价 | 量已声明：室内门 4 樘 + 卫生间门 2 樘 + 厨房联动玻璃推拉门 1 组（COST-090-01/02/03，quote_pending），门洞修正待复尺；门扇价格待询价（计算器 door_count 未接通家具清单、当前为 0，不构成价格） |
+| 开关插座面板与基础智能 | PKG-125 | 未定价 | 量已算出：面板点位 17 只灯控 + 56 只插座 + 6 个网口面板（COST-125-01，quantity_pending），智能开关 11 只 + 无线 6 只 + 网关 0–1 台待选型（COST-125-02，selection_pending）；面板选品未定价。计算器 switch_socket 候选 ¥18 与 smart_home 一口价候选均为占位价、无逐项构成，不采用 |
+| 踢脚线、收边与竣工保洁 | PKG-135 | 未定价 | 量未算出：踢脚线长度待完成面复核（COST-135-01，quantity_pending）、收边位置清单未形成（COST-135-02，scope_schedule_pending）、验收缺陷修复待责任判定、竣工保洁按面积报价未取得（COST-135-04，quote_pending） |
+
+## 不单独计价
+
+- **施工现场保护与施工位置标记**（PKG-010）：funding_status 为 contract_inclusion_pending：拟包含在施工合同中，未落实为合同条款前不计价（QR-2026-10-03-25 的目标为待拆分候选、非价格）。
+- **中央空调第二次安装与调试**（PKG-140）：含在中央空调行（PKG-030 合同，included_in_other_package），不另计。
+- **基础硬装后的临时入住放行**（PKG-142）：流程放行包，无独立成本。
+- **竣工联合验收、整改与资料移交**（PKG-170）：验收流程包，无独立成本。
+- **硬装预备金**（PKG-900）：预算储备，不是成本，按本表口径不列。
+
+## 防双算登记（科目侧同范围数字，未采用）
+
+计算器科目视图与本表是同一所房子的两套切分：下列科目数字与上表行同范围，一律不另计，只登记备查。
+
+| 科目侧数字 | 金额 | 不采用理由 |
+|---|---:|---|
+| 科目 masonry（人工 + 地砖/墙砖候选） | ¥29,212 | 与泥瓦行同范围：包口径 estimated_need 为业主轮次口径，优先 |
+| 科目 water_electric（人工一口价 + 候选） | ¥6,218 | 与水电行同范围：报价卡实算优先；且其候选混有热水器（属家电包）与开关插座占位价 |
+| 科目 kitchen_cabinet（柜体 + 台面候选） | ¥5,795 | 与橱柜行同范围：包口径 estimated_need 优先 |
+| 科目 sanitary（洁具安装人工） | ¥1,600 | 只是安装人工（200 元/件 × 点位数），洁具本体在洁具行内 |
+| 科目 carpentry（吊顶板面人工） | ¥1,714 | 与吊顶行同范围：只是板面人工，吊顶行是定标全包目标 |
+| 科目 miscellaneous（通用五金候选） | ¥1,800 | hardware_01 候选与洁具行构成里的通用五金同范围 |
+| 科目 smart_home（一口价候选） | ¥2,000 | 占位选品、无逐项构成；PKG-125 组件口径为未定价，不足以据此定价 |
+| 科目 hvac（选品镜像） | ¥36,000 | 与空调合同同额：来源以 control.yaml 的 contracted_cny 为准，科目侧只是镜像 |
