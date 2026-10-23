@@ -253,10 +253,23 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
  * 报价卡凭据核验（2026-10-23 复审续）：在 status 锁定类断言之外，按卡 id 回
  * config/mep-quotes.yaml 原卡（经 loadMepQuotes 的规范解析路径）核对：
  * ① 原卡存在；② 原卡 status 与登记处捕获的 cardStatus 一致（防捕获值与原文
- * 漂移）；③ 承包商名（contractor）非空；④ 报价日期（quoted_at）非空。
- * 强度边界（如实）：原卡字段本身仍是仓库内登记数据，本核验拦的是「凭据指向
- * 空卡/无名卡/状态漂移」，不证明报价的商业真实性——那要靠卡上的 evidence
- * 分级（written_quote 等），不在本守卫口径内。
+ * 漂移）；③ 承包商名（contractor）非空；④ 报价日期（quoted_at）非空；
+ * ⑤ 费率来源不得为公开参考价（见下）。
+ * ⑤ 的来由（复审再续·凭据边界）：status=contracted 只证明登记状态，不证明
+ * 费率是施工方真实报价——一张费率取自公开参考价的卡若被标成 contracted，
+ * 早先版本的本守卫会全项放行，公开参考价照样进已核实层。故本守卫逐行核验
+ * 该卡 rates 的来源：任一行 scope_note 含 `public_reference` 标记，即视为
+ * 公开参考价来源，抛错并点名行键；卡级结构化 evidence.kind 若为
+ * public_reference 类，同样抛错。仓库现行数据的实际形态：MEP 卡无结构化
+ * evidence 字段、费率行只有 scope_note，公开参考价只经 scope_note 标记——
+ * 故 scope_note 通道是现行有效判据，evidence.kind 通道是枚举扩展时的前防。
+ * 作用域边界：本函数只在某行**声称已核实**（tier=verified 且凭据为报价卡）
+ * 时被调用；现行生效卡 owner_baseline_40 在暂估层、不经本核验，它的
+ * public_reference 费率行不因此报错——把基线卡误升已核实层才会触发。
+ * 强度边界（如实）：其余核验仍只拦「凭据指向空卡/无名卡/状态漂移/公开参考
+ * 价冒充」，不证明报价的商业真实性——证据强度分级（photo / owner_reported /
+ * written_quote 的可比性判断）在 quote-cards 的 comparable 门禁那边，不在本
+ * 守卫口径内。
  * quotesFile 参数仅供测试注入合成卡文件；生产路径不传、走真实文件。
  */
 function assertQuoteCardCredential(rowId: string, basis: { cardId: string; cardStatus: string }, quotesFile?: AnyRecord): void {
@@ -276,6 +289,20 @@ function assertQuoteCardCredential(rowId: string, basis: { cardId: string; cardS
   }
   if (typeof card.quoted_at !== 'string' || card.quoted_at.trim().length === 0) {
     throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据不全：卡 ${basis.cardId} 在 config/mep-quotes.yaml 中缺报价日期（quoted_at）——无日期报价不算凭据`);
+  }
+  // ⑤ 费率来源核验：公开参考价（public_reference）不是施工方报价，哪怕卡被标成
+  // contracted 也不许据此声称已核实。逐行查 rates 的 scope_note 标记，命中即
+  // 点名行键抛错；卡级 evidence.kind 为 public_reference 类同罪。
+  const cardEvidenceKind = (card.evidence as AnyRecord | undefined)?.kind;
+  if (cardEvidenceKind === 'public_reference') {
+    throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据来源不合格：卡 ${basis.cardId} 的 evidence.kind=${cardEvidenceKind}（公开参考价）——公开参考价不是施工方报价，不得支撑已核实层，请降为暂估层`);
+  }
+  for (const [rateKey, rate] of Object.entries((card.rates ?? {}) as Record<string, AnyRecord>)) {
+    const scopeNote = typeof rate?.scope_note === 'string' ? rate.scope_note : '';
+    const rateEvidenceKind = (rate?.evidence as AnyRecord | undefined)?.kind;
+    if (scopeNote.includes('public_reference') || rateEvidenceKind === 'public_reference') {
+      throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据来源不合格：卡 ${basis.cardId} 的费率行 ${rateKey} 来源为公开参考价（public_reference）——公开参考价不是施工方报价，不得支撑已核实层，请把该行降为暂估层或更换为施工方报价卡`);
+    }
   }
 }
 
