@@ -552,7 +552,7 @@ describe('成本总表 cost-summary', () => {
       'pending-hvac-excluded-extras': 'uncounted', // COST-030-02 待核面是合同外增量，不在 ¥36,000 内
       'pending-hvac-risk-extras': 'uncounted', // COST-030-06 可能增项：现未计入任何行
       'pending-hvac-controller-confirmation': 'counted', // COST-030-07 金额已按业主口述含于空调合同
-      'pending-masonry-leveling': 'uncounted', // COST-060-03 找平：未计入泥瓦行构成
+      'pending-masonry-leveling': 'uncertain', // COST-060-03 找平：是否含于瓦工人工预算池未明示，按 uncertain 定义改判（自主扫描 C1）
       'pending-masonry-logistics': 'uncounted', // COST-060-06 搬运退补：未计入泥瓦行构成
       'pending-south-balcony-tiling': 'uncounted', // COST-060-07 铺贴范围：现状按未含处理
       'pending-ceiling-keel': 'uncounted', // COST-070-01 龙骨：未单独计入吊顶行构成
@@ -577,8 +577,8 @@ describe('成本总表 cost-summary', () => {
     const uncountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncounted').length;
     const uncertainN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncertain').length;
     assert.equal(countedN, expectedCount('counted'), '已计入条数必须与期望表一致（4）');
-    assert.equal(uncountedN, expectedCount('uncounted'), '未计入条数必须与期望表一致（10）');
-    assert.equal(uncertainN, expectedCount('uncertain'), '待确认条数必须与期望表一致（2）');
+    assert.equal(uncountedN, expectedCount('uncounted'), '未计入条数必须与期望表一致（9）');
+    assert.equal(uncertainN, expectedCount('uncertain'), '待确认条数必须与期望表一致（3）');
     // 渲染：总述三类条数由登记生成、与期望值一致；每条待核行带自己的分类标签
     const markdown = renderCostSummary(data, '# 测试表头\n\n');
     assert.ok(markdown.includes(`待核未计入 ${uncountedN} 项`), '总述必须带未计入条数（生成值）');
@@ -594,6 +594,18 @@ describe('成本总表 cost-summary', () => {
       const line = markdown.split('\n').find((text) => text.startsWith(`| ${entry.name} |`));
       assert.ok(line?.includes(PENDING_COUNTED_STATUS_LABELS[entry.countedStatus]), `${entry.name} 的清单行必须明示计入状态标签`);
     }
+  });
+
+  it('美缝交叉核对限定干区：不得读成全屋定额已被验证', () => {
+    // 自主扫描 R2：美缝 ¥4,500 定额覆盖干区（约 750 m）+ 湿区（约 56 m），
+    // 而交叉核对的实算 ¥2,237 只算了干区一侧——湿区按米成本在核对中没有
+    // 任何估值，「在定额内」的旧措辞会被读成全屋定额已被验证够用。推导
+    // 必须明示核对仅覆盖干区、不能证明全屋 ≤ 定额。
+    const grout = rowById(data, 'cost-grout');
+    assert.ok(grout, '必须有美缝行');
+    assert.ok(grout.derivation.includes('交叉核对（仅干区）'), '美缝交叉核对必须标注仅干区');
+    assert.ok(grout.derivation.includes('不能据此证明全屋美缝'), '美缝推导必须写明不能证明全屋 ≤ 定额');
+    assert.ok(!grout.derivation.includes('在定额内'), '旧措辞（在定额内）不得再现');
   });
 
   it('渲染纪律：小计标注含未定价说明，未定价行不显示金额', () => {

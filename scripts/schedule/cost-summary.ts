@@ -62,7 +62,9 @@
  *    （DEC-2026-08-22 暂估入账、price_type candidate、文件自述「暂估非算量」），
  *    成色只能给「定额暂估」。金额**不**取 PKG-065/130 的 planned_cny（500 + 4,000
  *    是这笔定额按 DEC-2026-10-22-R03 拆进预算的镜像，读它即违反口径 1）；
- *    config/tile-comparison.yaml grout_model 的干区实算 2,237 只作交叉核对。
+ *    config/tile-comparison.yaml grout_model 的干区实算 2,237 只作交叉核对
+ *    （仅干区：湿区约 56 m 按米成本无估值，该核对不构成全屋 ≤ 定额的证明，
+ *    推导文本已按此限定，防读者误读为全屋定额已被验证）。
  *  吊顶 18,000 ← PKG-070 estimated_need_cny（DEC-2026-10-05-R3 定标目标
  *    13,500 + 4,500，断言构成和）。科目 carpentry 的 1,714 是吊顶板面人工
  *    （40 元/㎡ × ceiling_zones），与本行同范围，不另计；窗帘盒人工在科目侧
@@ -1037,7 +1039,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       tier: 'provisional',
       tierReason: '定额暂估、pending_quote，门店按米终核未取得',
       coversItems: ['COST-065-01', 'COST-065-02', 'COST-130-01', 'COST-130-02', 'QR-2026-10-03-07'],
-      derivation: `定额暂估：DEC-2026-08-22 环氧彩砂暂估入账，QR-2026-10-03-07 登记 ${yuan(target)}（price_type: candidate、pending_quote，暂估非算量）；DEC-2026-10-22-R03 按砖缝长度估算拆两包（湿区约 56 m → PKG-065、其余全屋约 750 m → PKG-130），本表合并一行，金额取 QR 登记定额、不取两包 planned_cny。交叉核对：干区实算 ${yuan(computed)}（111.864 ㎡ × ${yuan(20)}/㎡ 包工包料，业主口述、未确认；config/tile-comparison.yaml grout_model），在定额内；门店按米终核未取得`,
+      derivation: `定额暂估：DEC-2026-08-22 环氧彩砂暂估入账，QR-2026-10-03-07 登记 ${yuan(target)}（price_type: candidate、pending_quote，暂估非算量）；DEC-2026-10-22-R03 按砖缝长度估算拆两包（湿区约 56 m → PKG-065、其余全屋约 750 m → PKG-130），本表合并一行，金额取 QR 登记定额、不取两包 planned_cny。交叉核对（仅干区）：干区实算 ${yuan(computed)}（111.864 ㎡ × ${yuan(20)}/㎡ 包工包料，业主口述、未确认；config/tile-comparison.yaml grout_model），未超定额；但本核对只覆盖干区——湿区约 56 m 的按米成本尚无任何估值，门店按米终核未取得前，不能据此证明全屋美缝 ≤ 定额 ${yuan(target)}`,
     });
   }
 
@@ -1207,11 +1209,15 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   //    封槽界面（封槽料金额已在水电卡辅材包干内、待核的只是与涂装的划界）、
   //    线控器确认（金额已按业主口述含于空调合同、待核的只是门店书面确认）、
   //    清运核重（¥1,059 已在拆改行实付锚内、待核对物业收费是否已含）；
-  //  uncertain（2 条）——灯具安装人工、面板安装人工：是否已含于水电合同未定；
-  //  uncounted（10 条）——小砖条人工、燃气管道费、空调合同外增量（COST-030-02
-  //    待核面）、空调可能增项、墙地面找平、搬运退补、南阳台范围、吊顶龙骨、
-  //    闭水责任、固定柜体：注脚均明示未计入任何定价行；其中含或然/待裁定/
-  //    范围未定项，须确认纳入一期、实际发生且未被其他行包含后才进总额。
+  //  uncertain（3 条）——灯具安装人工、面板安装人工（是否已含于水电合同未
+  //    定）、墙地面找平（是否含于瓦工人工预算池未明示——候选包含方是现行定
+  //    价行内的瓦工池，按 uncertain 的自有定义「是否已含未定」改判，自主扫
+  //    描 C1；与搬运退补区分：搬运的待决是未来施工合同的范围、无现行定价
+  //    行可含，仍判 uncounted）；
+  //  uncounted（9 条）——小砖条人工、燃气管道费、空调合同外增量（COST-030-02
+  //    待核面）、空调可能增项、搬运退补、南阳台范围、吊顶龙骨、闭水责任、
+  //    固定柜体：注脚均明示未计入任何定价行；其中含或然/待裁定/范围未定项，
+  //    须确认纳入一期、实际发生且未被其他行包含后才进总额。
   const pendingChecks: PendingEntry[] = [
     {
       id: 'pending-sill-tile-labor',
@@ -1299,8 +1305,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '墙地面找平',
       packageIds: ['PKG-060'],
       statusLabel: 'site_measurement_pending · 待量房',
-      countedStatus: 'uncounted',
-      note: '待现场测量平整度，超厚找平的触发条件和单价另列；是否含于瓦工人工预算池未明示，未计入泥瓦行构成',
+      countedStatus: 'uncertain',
+      note: '待现场测量平整度，超厚找平的触发条件和单价另列；是否含于瓦工人工预算池未明示，未计入泥瓦行构成——因「是否已含」未定，本条计入状态按定义判「待确认是否已含」：确认含于池则不另计，未含则按实测另计',
       coversItems: ['COST-060-03'],
     },
     {
