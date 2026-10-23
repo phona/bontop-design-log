@@ -69,6 +69,21 @@
  *    手续 / PKG-050 防水材料 / PKG-090 室内门 / PKG-125 开关面板 / PKG-135 踢脚线
  *    收边保洁）。科目 smart_home 的 2,000 是一口价占位选品、无逐项构成，
  *    不足以给 PKG-125 定价；switch_socket 候选 ¥18 同为占位价，均不采用。
+ *
+ * ── 覆盖检查（2026-10-23 评审 P2）：清单不许手写，漏项必须出不了表 ──────────
+ *  生成时全量扫描 control.yaml 全部工作包的 budget.components 与
+ *  hard_finish_quote_rounds 全部记录。凡「未决」条目，必须在本模块的覆盖登记里
+ *  有且至少一处归属：(a) 某定价行的 coversItems（计入该行）；(b) 未定价/待核
+ *  条目的 coversItems；(c) 不计价登记 excludedItems（带理由）。无归属或登记指向
+ *  不存在的条目 → 构建抛错、verify 失败。本表范围外包（design_preparation /
+ *  curtains / furniture / appliances 池）的组件按包登记排除理由，不逐项进本表。
+ *  未决分类（按 control.yaml 实际数据摸全，代码内 assertCoverage 注释同步）：
+ *  组件 status 除已决白名单 {ownership_resolved, deferred_to_phase_2,
+ *  excluded_to_phase_2} 外全部按未决处理——含 *_pending / pending_* /
+ *  duplication_check_required / alignment_required / candidate 等，未知新 status
+ *  默认未决（fail-closed）；询价轮次 status ≠ locked 即未决（每条记录都带
+ *  dedup_rule，记录未 locked 视为去重未关闭）。appliance_quote_register 属家电
+ *  池、budget_reconciliation 无条目级状态，两者不在本表扫描内。
  *  miscellaneous 科目的 1,800（hardware_01 通用五金候选）与洁具行构成里的通用
  *    五金 1,500 同范围，不另计（防双算登记里显形）。
  * ────────────────────────────────────────────────────────────────────────
@@ -146,6 +161,39 @@ export interface CostRow {
    */
   tier?: CostTier;
   tierReason?: string;
+  /** 覆盖登记：本行金额显式计入的未决条目 id（组件 COST-* / 询价轮次 QR-*）。 */
+  coversItems?: string[];
+}
+
+/** 未定价与待核清单条目（金额一律不进合计）。 */
+export interface PendingEntry {
+  id: string;
+  name: string;
+  packageIds: string[];
+  /** 渲染用状态标签：数据里的实际 status + 中文短注。 */
+  statusLabel: string;
+  note: string;
+  /** 本条目承接的未决条目 id（组件 / 询价轮次）。 */
+  coversItems: string[];
+}
+
+/** 不计价登记：未决条目经裁定不进本表（带理由）。 */
+export interface ExcludedItem {
+  item: string;
+  label: string;
+  reason: string;
+}
+
+export interface CoverageReport {
+  scannedComponentCount: number;
+  scannedQuoteRoundCount: number;
+  /** 强制归属的未决条目数（本表范围组件未决 + 询价轮次未 locked）。 */
+  unresolvedItemCount: number;
+  countedItemCount: number;
+  pendingItemCount: number;
+  excludedItemCount: number;
+  /** 范围外包（设计准备/窗帘/家具/家电）的组件数，按包登记排除。 */
+  outOfScopeComponentCount: number;
 }
 
 export interface ExcludedFigure {
@@ -157,6 +205,11 @@ export interface ExcludedFigure {
 export interface CostSummaryData {
   rows: CostRow[];
   unpriced: CostRow[];
+  /** 待核条目（去重/合同包含/范围对齐等未关闭事项），与 unpriced 同表呈现、不计入合计。 */
+  pendingChecks: PendingEntry[];
+  /** 未决条目的不计价登记（带理由）。 */
+  excludedItems: ExcludedItem[];
+  coverage: CoverageReport;
   notSeparate: Array<{ name: string; packageIds: string[]; note: string }>;
   excluded: ExcludedFigure[];
   /** 已核实层小计（tier = verified 的行）。 */
@@ -247,6 +300,118 @@ export function computeActiveMepQuote(): { comparison: MepQuoteComparison; takeo
   return { comparison, takeoff, areaSqm };
 }
 
+/** 本表范围：硬装（hard_finish）+ 中央空调（hvac）两个预算池。范围外包的组件按包登记排除理由。 */
+const IN_SCOPE_POOLS = new Set(['hard_finish', 'hvac']);
+const OUT_OF_SCOPE_PACKAGE_REASONS: Record<string, string> = {
+  'PKG-000': '设计准备池，不在本表硬装范围',
+  'PKG-145': '窗帘池，不在本表范围',
+  'PKG-150': '家具池，不在本表范围',
+  'PKG-160': '家电池，不在本表范围',
+};
+
+/**
+ * 组件已决状态白名单（按 control.yaml 实际数据摸全）：
+ *  ownership_resolved = 归属已裁定（且已在洁具 need 构成内）；deferred_to_phase_2 /
+ *  excluded_to_phase_2 = 已裁定移出的一期范围。其余全部 status 一律按未决处理：
+ *  notice_pending / quote_pending / quantity_pending / selection_pending /
+ *  site_measurement_pending / interface_pending / duplication_check_required /
+ *  contract_scope_pending / risk_pending / vendor_written_confirmation_pending /
+ *  equipment_parameters_pending / cap_pending_store_quote /
+ *  budget_pool_confirmed_quote_pending / owner_decision_pending / alignment_required /
+ *  quoted_pending_optimization / gas_requirement_pending /
+ *  owner_selected_pending_verification / candidate_pending_quote / candidate /
+ *  scope_schedule_pending / responsibility_pending（以上为本表范围内实际出现者）；
+ *  status 缺失同样按未决处理——未知状态默认未决（fail-closed），新 status 不登记
+ *  白名单就必须走覆盖归属。询价轮次 status ≠ locked 即未决（每条记录都带
+ *  dedup_rule，记录未 locked 视为去重未关闭）。
+ */
+const RESOLVED_COMPONENT_STATUSES = new Set(['ownership_resolved', 'deferred_to_phase_2', 'excluded_to_phase_2']);
+
+/**
+ * 覆盖检查（fail-closed）：全量扫描 control.yaml 的组件与询价轮次，每个未决条目
+ * 必须在覆盖登记里有归属（定价行 coversItems / 未定价与待核 coversItems / 不计价
+ * 登记），登记指向不存在的条目同样报错。清单因此不是手写名单：数据新增未决
+ * 条目而登记未跟上时，生成直接失败、verify 报错。
+ */
+function assertCoverage(
+  control: AnyRecord,
+  rows: CostRow[],
+  unpriced: CostRow[],
+  pendingChecks: PendingEntry[],
+  excludedItems: ExcludedItem[],
+): CoverageReport {
+  const coveredBy = new Map<string, string>();
+  const claim = (id: string, where: string) => {
+    if (!coveredBy.has(id)) coveredBy.set(id, where);
+  };
+  for (const row of rows) for (const id of row.coversItems ?? []) claim(id, 'counted');
+  for (const entry of unpriced) for (const id of entry.coversItems ?? []) claim(id, 'pending');
+  for (const entry of pendingChecks) for (const id of entry.coversItems) claim(id, 'pending');
+  for (const item of excludedItems) claim(item.item, 'excluded');
+
+  const knownIds = new Set<string>();
+  const unresolvedIds = new Set<string>();
+  const missing: string[] = [];
+  let scannedComponentCount = 0;
+  let outOfScopeComponentCount = 0;
+  const referencedPackages = new Set<string>();
+  for (const list of [rows, unpriced]) for (const entry of list) for (const id of entry.packageIds) referencedPackages.add(id);
+  for (const entry of pendingChecks) for (const id of entry.packageIds) referencedPackages.add(id);
+
+  for (const pkg of control.work_packages ?? []) {
+    const components: AnyRecord[] = pkg.budget?.components ?? [];
+    const inScope = IN_SCOPE_POOLS.has(pkg.budget_pool);
+    if (!inScope && !OUT_OF_SCOPE_PACKAGE_REASONS[pkg.id]) {
+      missing.push(`${pkg.id}（范围外工作包未在 OUT_OF_SCOPE_PACKAGE_REASONS 登记）`);
+    }
+    if (inScope && components.length > 0 && !referencedPackages.has(pkg.id)) {
+      missing.push(`${pkg.id}（带组件的本表范围工作包未被任何定价行/清单引用）`);
+    }
+    for (const component of components) {
+      scannedComponentCount += 1;
+      knownIds.add(component.id);
+      if (!inScope) {
+        outOfScopeComponentCount += 1;
+        continue;
+      }
+      if (typeof component.status === 'string' && RESOLVED_COMPONENT_STATUSES.has(component.status)) continue;
+      unresolvedIds.add(component.id);
+      if (!coveredBy.has(component.id)) {
+        missing.push(`${component.id}（${pkg.id} 组件，status=${component.status ?? '缺失'}）`);
+      }
+    }
+  }
+  let scannedQuoteRoundCount = 0;
+  for (const record of control.hard_finish_quote_rounds?.records ?? []) {
+    scannedQuoteRoundCount += 1;
+    knownIds.add(record.id);
+    if (record.status === 'locked') continue;
+    unresolvedIds.add(record.id);
+    if (!coveredBy.has(record.id)) {
+      missing.push(`${record.id}（询价轮次，status=${record.status}）`);
+    }
+  }
+  for (const id of coveredBy.keys()) {
+    if (!knownIds.has(id)) missing.push(`${id}（覆盖登记指向不存在的条目，登记已腐烂）`);
+  }
+  if (missing.length > 0) {
+    throw new Error(`cost summary: 覆盖检查失败，下列未决条目未登记归属：${missing.join('；')}——请先在 scripts/schedule/cost-summary.ts 的覆盖登记中裁定（计入定价行 coversItems / 未定价与待核条目 / 不计价登记 excludedItems），再重新生成`);
+  }
+  const kindOf = (id: string) => coveredBy.get(id) ?? 'missing';
+  const countedItemCount = [...unresolvedIds].filter((id) => kindOf(id) === 'counted').length;
+  const pendingItemCount = [...unresolvedIds].filter((id) => kindOf(id) === 'pending').length;
+  const excludedItemCount = [...unresolvedIds].filter((id) => kindOf(id) === 'excluded').length;
+  return {
+    scannedComponentCount,
+    scannedQuoteRoundCount,
+    unresolvedItemCount: unresolvedIds.size,
+    countedItemCount,
+    pendingItemCount,
+    excludedItemCount,
+    outOfScopeComponentCount,
+  };
+}
+
 export function buildCostSummary(control: AnyRecord): CostSummaryData {
   const catalog = ProjectCatalog.load('.');
   const rulesConfig = RuleEngine.load('config/design-rules.yaml').getConfig();
@@ -274,6 +439,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '参考实付',
       tier: 'provisional',
       tierReason: '同户型实付锚、非本户报价，未锁价',
+      // 实付锚覆盖拆除/新建/清运三项范围；-04 清运核重是去重问题，另列待核。
+      coversItems: ['COST-020-01', 'COST-020-02', 'COST-020-03', 'QR-2026-10-03-01'],
       derivation: `同户型半包实付锚（PKG-020 说明原文）：拆砌人工 ${yuan(labor)} + 物业垃圾清运 ${yuan(haul)}。非本户报价，本户金额待量房后按确认图纸复核；QR-2026-10-03-01 的 ${yuan(qrOf(control, 'QR-2026-10-03-01').owner_target_cny)} 是候选目标、非价格，不采用`,
     });
   }
@@ -294,6 +461,9 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '已签约',
       tier: 'verified',
       tierReason: '已转合同、成交价锁定（合同外不含项另在未定价与待核清单登记，不属本行金额）',
+      // 整包合同覆盖机组/管路主体/支架风口/两次安装/线控器（-07 已裁定含在合同内、增量 ¥0）；
+      // -02 的合同外增量与 -06 的可能增项另列待核，与本行并行登记。
+      coversItems: ['COST-030-01', 'COST-030-02', 'COST-030-03', 'COST-030-04', 'COST-030-05', 'COST-030-07', 'QR-2026-10-03-24'],
       derivation: `合同额：QR-2026-10-03-24（${qr.item}）已转合同（contract_ref ${qr.contract_ref}），成交 ${yuan(contracted)}（含辅材；不含复合风管与风口加长、不含税）；本行金额 = PKG-030 的 contracted_cny。PKG-140 二次安装含在本包合同（included_in_other_package），不另计`,
     });
   }
@@ -319,6 +489,11 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '报价卡实算',
       tier: 'verified',
       tierReason: '生效报价卡全行计价、无待报价行，由算量引擎完整实算',
+      // 报价卡逐行覆盖给排水/线路/器件：panel=强电箱、leb_kit+增项=等电位、gas_alarm_kit=报警器、
+      // exhaust_duct_kit=排风、spd=浪涌、breaker=断路器、entry_valve_kit=阀件、hot_pipe_insulation=保温、
+      // aux_lump 包干行与 -18 同名同范围、开孔/打压测试在增项行、封槽料与套管属辅材包干（与 PKG-080
+      // 的边界是签约划界事项，金额已在卡内计一次）。只有 -09 燃气管道不在卡内，另列待核。
+      coversItems: ['COST-040-01', 'COST-040-02', 'COST-040-03', 'COST-040-04', 'COST-040-05', 'COST-040-06', 'COST-040-07', 'COST-040-08', 'COST-040-10', 'COST-040-11', 'COST-040-12', 'COST-040-13', 'COST-040-14', 'COST-040-15', 'COST-040-16', 'COST-040-17', 'COST-040-18', 'COST-040-19', 'COST-040-20'],
       derivation: `算量 × 生效报价卡：shared/mep-takeoff.ts 按路由实算（强电计价管长 ${qty(takeoff.conduit.strongPowerTotalM)} m、导线 ${qty(takeoff.wire.totalWireM)} m，给排水与器件逐项），× config/mep-quotes.yaml 生效卡 ${comparison.id} 单价，${comparison.rows.length} 行全部计价、无待报价行——清包人工 ${yuan(laborPart)}（${qty(areaSqm, 2)} ㎡ × ${yuan(laborRate)}/㎡）、导线 ${yuan(wirePart)}、线管 ${yuan(conduitPart)}、其余管材/器件/增项 ${yuan(restPart)}，卡总额 ${yuan(total)} 取整。本行按本分支算量（平面 union 口径，DEC-2026-10-07-M02）；竖直段补计（DEC-2026-10-23-R01，PR #11）合入后约 +¥1,300，届时重生成自动更新`,
     });
   }
@@ -367,7 +542,9 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '报价轮实算',
       tier: 'provisional',
       tierReason: '构成含瓷砖封顶价、瓦工预算池（quote_pending）、待报价辅材与候选墙砖，均未锁价',
-      derivation: `业主询价轮次（QR-2026-10-03-04/05/06）：瓷砖主材封顶 ${yuan(20000)} + 瓦工人工预算池 ${yuan(18500)} + 辅材约 ${yuan(4000)} = ${yuan(42500)}；墙砖主材按 DEC-2026-10-16-TILE-01 终核另计：masonry-takeoff 全量 ${qty(tileSqm, 4)} ㎡ × wall_tile_01 候选 ${yuan(70)}/㎡ ≈ ${yuan(wallTilePart)}；合计 = PKG-060 的 estimated_need_cny ${yuan(need)}。COST-060-05 小砖条人工约 ${yuan(394)} 待书面报价、未计入（need 口径如此）`,
+      // need 构成逐项对应：-01 主材封顶、-04 人工池、-02 辅材、-08 墙砖；其余四项不在构成内，另列待核。
+      coversItems: ['COST-060-01', 'COST-060-02', 'COST-060-04', 'COST-060-08', 'QR-2026-10-03-04', 'QR-2026-10-03-05', 'QR-2026-10-03-06'],
+      derivation: `业主询价轮次（QR-2026-10-03-04/05/06）：瓷砖主材封顶 ${yuan(20000)} + 瓦工人工预算池 ${yuan(18500)} + 辅材约 ${yuan(4000)} = ${yuan(42500)}；墙砖主材按 DEC-2026-10-16-TILE-01 终核另计：masonry-takeoff 全量 ${qty(tileSqm, 4)} ㎡ × wall_tile_01 候选 ${yuan(70)}/㎡ ≈ ${yuan(wallTilePart)}；合计 = PKG-060 的 estimated_need_cny ${yuan(need)}。COST-060-05 小砖条人工待书面报价、未计入 need（已登记在未定价与待核清单）`,
     });
   }
 
@@ -390,6 +567,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '定额暂估',
       tier: 'provisional',
       tierReason: '定额暂估、pending_quote，门店按米终核未取得',
+      coversItems: ['COST-065-01', 'COST-065-02', 'COST-130-01', 'COST-130-02', 'QR-2026-10-03-07'],
       derivation: `定额暂估：DEC-2026-08-22 环氧彩砂暂估入账，QR-2026-10-03-07 登记 ${yuan(target)}（price_type: candidate、pending_quote，暂估非算量）；DEC-2026-10-22-R03 按砖缝长度估算拆两包（湿区约 56 m → PKG-065、其余全屋约 750 m → PKG-130），本表合并一行，金额取 QR 登记定额、不取两包 planned_cny。交叉核对：干区实算 ${yuan(computed)}（111.864 ㎡ × ${yuan(20)}/㎡ 包工包料，业主口述、未确认；config/tile-comparison.yaml grout_model），在定额内；门店按米终核未取得`,
     });
   }
@@ -406,6 +584,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '定标目标',
       tier: 'provisional',
       tierReason: '定标目标价、非成交价，裸价重报未取得',
+      // 定标目标覆盖面层/集成吊顶/边缘处理与两条来源轮次；-01 龙骨材料含否未明示，另列待核。
+      coversItems: ['COST-070-02', 'COST-070-03', 'COST-070-04', 'QR-2026-10-03-08', 'QR-2026-10-03-09'],
       derivation: `业主定标后重算（DEC-2026-10-05-R3）：石膏板吊顶与窗帘盒目标 ${yuan(13500)} + 铝扣板裸价目标 ${yuan(4500)}（设备拆分后反推目标、非成交价，裸价重报待取得）= PKG-070 的 estimated_need_cny ${yuan(need)}；实际以生效报价卡 + COST-070 逐项报价为准`,
     });
   }
@@ -436,6 +616,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '算量费率+候选价',
       tier: 'provisional',
       tierReason: '人工为静态费率、材料为候选价，均未锁价',
+      coversItems: ['COST-080-01', 'COST-080-02', 'COST-080-03', 'COST-080-04'],
       derivation: `计算器科目 painting：人工 ${yuan(laborPart)} = 涂装净面积约 ${qty(paintArea, 1)} ㎡（shared/paint-scope.ts 按 overlay 的 paint_region 声明实算）× ${yuan(paintRate)}/㎡（config/budget/base.json 的 painting.labor）；材料 ${yuan(materialPart)} = 选品 ${paintItem.optionId} 候选价 ${yuan(paintItem.unitPrice)}/桶 ÷ ${qty(paintItem.coveragePerUnit)} ㎡/桶 × ${qty(paintItem.lossRate, 2)} 损耗 × 同面积`,
     });
   }
@@ -452,6 +633,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '报价轮实算',
       tier: 'provisional',
       tierReason: '报价轮构成含封顶价与候选项（马桶未锁定、浴室柜待报价），未锁价',
+      // need 构成逐项对应 -01..-05 与六条来源轮次；-06 浴霸自购，不计价登记。
+      coversItems: ['COST-100-01', 'COST-100-02', 'COST-100-03', 'COST-100-04', 'COST-100-05', 'QR-2026-10-03-14', 'QR-2026-10-03-15', 'QR-2026-10-03-16', 'QR-2026-10-03-17', 'QR-2026-10-03-18', 'QR-2026-10-03-19'],
       derivation: `业主询价轮次（2026-10-03）经 DEC-2026-10-05-R12、DEC-2026-10-07-R02 两次收口：智能马桶封顶 ${yuan(5598)}（九牧 ZQ6650 cap、未锁定）+ 浴室柜 ${yuan(3500)}（主卫 ${yuan(1500)} + 客卫 ${yuan(2000)}）+ 花洒 ${yuan(1300)} + 龙头下水角阀 ${yuan(1100)} + 固定玻璃屏 ${yuan(1800)} + 通用五金 ${yuan(1500)} = PKG-100 的 estimated_need_cny ${yuan(need)}。不含浴霸：COST-100-06 业主自购待决策（QR-2026-10-05-01 ${yuan(1362)}）未计入`,
     });
   }
@@ -468,6 +651,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '报价轮实算',
       tier: 'provisional',
       tierReason: '报价轮目标构成、两轮询价均 pending_quote，未锁价',
+      coversItems: ['COST-110-01', 'COST-110-02', 'COST-110-03', 'COST-110-04', 'COST-110-05', 'QR-2026-10-03-20', 'QR-2026-10-03-21'],
       derivation: `业主询价轮次（QR-2026-10-03-20/21）：橱柜 + PET 柜门 + 20mm 石英石目标 ${yuan(12000)} + 水槽与厨房龙头约 ${yuan(1500)} = PKG-110 的 estimated_need_cny ${yuan(need)}`,
     });
   }
@@ -488,6 +672,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       grade: '候选价',
       tier: 'provisional',
       tierReason: '选品候选价、未取证未成交',
+      // 本行只有灯具本体候选价；-02 安装人工的合同包含关系未确认，另列待核。
+      coversItems: ['COST-120-01'],
       derivation: `选品候选价：config/materials.yaml 的 lighting_01 ${yuan(amount)} × 1 套（计算器科目 lighting 的 candidateActual）；QR-2026-10-03-23 的 ${yuan(qrOf(control, 'QR-2026-10-03-23').owner_target_cny)} 是询价目标、非价格，不采用`,
     });
   }
@@ -519,6 +705,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-005'],
       amountCny: null,
       grade: '未定价',
+      coversItems: ['COST-005-01', 'COST-005-02'],
       derivation: '量未建模：金额以物业收费通知与票据为准（COST-005-01/02 均为 notice_pending）；其中可退押金属临时现金占用、非最终成本，须与本表分开记账',
     },
     {
@@ -527,6 +714,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-050'],
       amountCny: null,
       grade: '未定价',
+      coversItems: ['COST-050-01', 'COST-050-02'],
       derivation: '量未建模：COST-050-01/02 待量房后按面积、高度、涂刷遍数报价（site_measurement_pending）；base.json 的 waterproof 无材料价、无对应选品 topic。人工已按算量费率计入定价行',
     },
     {
@@ -535,6 +723,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-090'],
       amountCny: null,
       grade: '未定价',
+      coversItems: ['COST-090-01', 'COST-090-02', 'COST-090-03', 'COST-090-04', 'QR-2026-10-03-11', 'QR-2026-10-03-12'],
       derivation: '量已声明：室内门 4 樘 + 卫生间门 2 樘 + 厨房联动玻璃推拉门 1 组（COST-090-01/02/03，quote_pending），门洞修正待复尺；门扇价格待询价（计算器 door_count 未接通家具清单、当前为 0，不构成价格）',
     },
     {
@@ -543,6 +732,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-125'],
       amountCny: null,
       grade: '未定价',
+      coversItems: ['COST-125-01', 'COST-125-02', 'QR-2026-10-03-22'],
       derivation: '量已算出：面板点位 17 只灯控 + 56 只插座 + 6 个网口面板（COST-125-01，quantity_pending），智能开关 11 只 + 无线 6 只 + 网关 0–1 台待选型（COST-125-02，selection_pending）；面板选品未定价。计算器 switch_socket 候选 ¥18 与 smart_home 一口价候选均为占位价、无逐项构成，不采用',
     },
     {
@@ -551,8 +741,138 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-135'],
       amountCny: null,
       grade: '未定价',
+      coversItems: ['COST-135-01', 'COST-135-02', 'COST-135-03', 'COST-135-04', 'QR-2026-10-03-13'],
       derivation: '量未算出：踢脚线长度待完成面复核（COST-135-01，quantity_pending）、收边位置清单未形成（COST-135-02，scope_schedule_pending）、验收缺陷修复待责任判定、竣工保洁按面积报价未取得（COST-135-04，quote_pending）',
     },
+  ];
+
+  // 待核清单：金额未定或归属未决的在册事项（去重 / 合同包含 / 范围对齐 / 待决策）。
+  // 每条都由覆盖检查与 control.yaml 的扫描结果对齐——这里漏登任何一条在册未决
+  // 条目，构建就会抛错（见 assertCoverage），不许靠人记得补。
+  const pendingChecks: PendingEntry[] = [
+    {
+      id: 'pending-sill-tile-labor',
+      name: '窗边台小砖条等特殊铺贴人工',
+      packageIds: ['PKG-060'],
+      statusLabel: 'quote_pending · 待书面报价',
+      note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价`,
+      coversItems: ['COST-060-05'],
+    },
+    {
+      id: 'pending-lighting-install-labor',
+      name: '灯具安装和调试人工',
+      packageIds: ['PKG-120'],
+      statusLabel: 'duplication_check_required · 待确认合同包含',
+      note: '灯具行只有灯具本体候选价；本项待明确是否包含开孔、组装、安装和故障排查，避免与水电人工重复计取',
+      coversItems: ['COST-120-02'],
+    },
+    {
+      id: 'pending-panel-install-labor',
+      name: '面板安装标识和调试人工',
+      packageIds: ['PKG-125'],
+      statusLabel: 'duplication_check_required · 待确认合同包含',
+      note: '待核对是否包含在水电合同中；面板本体在未定价清单内，本项只涉逐点安装、测试与配电箱回路标识人工',
+      coversItems: ['COST-125-03'],
+    },
+    {
+      id: 'pending-waterproof-dedup',
+      name: '防水人工去重确认',
+      packageIds: ['PKG-050', 'PKG-060'],
+      statusLabel: 'dedup_rule 未关闭 · 待最终报价核对',
+      note: `QR-2026-10-03-03 的 dedup_rule 明文：若瓦工 ${yuan(18500)} 预算池已含防水人工，最终报价必须去重。关闭前防水人工 ${yuan(366)} 只入暂估层，且不得与泥瓦行重复主张`,
+      coversItems: ['QR-2026-10-03-03'],
+    },
+    {
+      id: 'pending-gas-piping',
+      name: '燃气管道改造或移位费',
+      packageIds: ['PKG-040'],
+      statusLabel: 'quote_pending · 燃气公司单独结算',
+      note: `须由燃气公司或其授权单位施工、单独报价单独结算，不在水电报价卡范围内，未计入水电行；参考同类实付约 ${yuan(570)}，以燃气公司书面报价为准`,
+      coversItems: ['COST-040-09'],
+    },
+    {
+      id: 'pending-hvac-excluded-extras',
+      name: '空调合同明确不含项（风口加长/复合风管/税）',
+      packageIds: ['PKG-030'],
+      statusLabel: 'site_measurement_pending · 合同外增量',
+      note: `合同附件已核清：风口加长 ${yuan(100)}/米、复合风管、不含税均不含于 ${yuan(36000)} 合同额（DEC-2026-10-04-R1/R2）；铜管主体在签约行内，本项只登记合同外增量，金额待最终风口布置图核定`,
+      coversItems: ['COST-030-02'],
+    },
+    {
+      id: 'pending-hvac-risk-extras',
+      name: '空调可能增项（运输/高空/超长管等）',
+      packageIds: ['PKG-030'],
+      statusLabel: 'risk_pending · 触发条件未定',
+      note: '可能增加费用的触发条件和单价必须在合同中写明，现未计入任何行',
+      coversItems: ['COST-030-06'],
+    },
+    {
+      id: 'pending-masonry-leveling',
+      name: '墙地面找平',
+      packageIds: ['PKG-060'],
+      statusLabel: 'site_measurement_pending · 待量房',
+      note: '待现场测量平整度，超厚找平的触发条件和单价另列；是否含于瓦工人工预算池未明示，未计入泥瓦行构成',
+      coversItems: ['COST-060-03'],
+    },
+    {
+      id: 'pending-masonry-logistics',
+      name: '搬运上楼和材料退补',
+      packageIds: ['PKG-060'],
+      statusLabel: 'contract_scope_pending · 待合同说明',
+      note: '电梯搬运上楼费及剩余材料处理待合同说明，未计入泥瓦行构成',
+      coversItems: ['COST-060-06'],
+    },
+    {
+      id: 'pending-south-balcony-tiling',
+      name: '南阳台铺贴范围',
+      packageIds: ['PKG-060'],
+      statusLabel: 'alignment_required · 范围待对齐',
+      note: '铺贴范围待对齐；范围变化会改变泥瓦算量与 estimated_need，现状按未含处理',
+      coversItems: ['COST-060-07'],
+    },
+    {
+      id: 'pending-ceiling-keel',
+      name: '吊顶龙骨材料',
+      packageIds: ['PKG-070'],
+      statusLabel: 'quantity_pending · 含否待确认',
+      note: 'QR-2026-10-03-09 的 dedup_rule 称龙骨材料（COST-070-01）未含在本项；吊顶定标目标是否含龙骨待拆项报价确认，未单独计入吊顶行构成',
+      coversItems: ['COST-070-01'],
+    },
+    {
+      id: 'pending-flood-test-liability',
+      name: '闭水试验及问题重做责任',
+      packageIds: ['PKG-050'],
+      statusLabel: 'contract_scope_pending · 待防水合同写明',
+      note: '测试时长、楼下检查和不合格后的返工责任待防水合同写清；防水行现只计涂刷人工，闭水人工未单独计价',
+      coversItems: ['COST-050-03'],
+    },
+    {
+      id: 'pending-demolition-haulage-dedup',
+      name: '物业垃圾清运费核重',
+      packageIds: ['PKG-020', 'PKG-005'],
+      statusLabel: 'duplication_check_required · 待票据核对',
+      note: `如果物业收费中已含垃圾清运费，拆改行实付锚中的 ${yuan(1059)} 不得重复支付，以物业票据和施工合同核对为准`,
+      coversItems: ['COST-020-04'],
+    },
+    {
+      id: 'pending-fixed-cabinetry',
+      name: '固定柜体（衣柜/玄关柜等扩展硬装）',
+      packageIds: [],
+      statusLabel: 'pending_decision · 业主待决策',
+      note: `QR-2026-10-03-26 登记的扩展硬装询价，目标 ${yuan(18000)} 是目标非价格；是否纳入一期硬装待业主决策，未计入任何行（橱柜行只是厨房橱柜）`,
+      coversItems: ['QR-2026-10-03-26'],
+    },
+  ];
+
+  // 不计价登记：未决条目经裁定不进本表（业主自购 / 同范围未采用 / 合同包含），逐条带理由。
+  const bathHeaterQr = qrOf(control, 'QR-2026-10-05-01');
+  const excludedItems: ExcludedItem[] = [
+    { item: 'COST-100-06', label: '卫生间取暖换气设备（浴霸 ×2）', reason: `业主定标自购（DEC-2026-10-05-R3），不属施工成本支出口径，未计入；与 QR-2026-10-05-01 同项，洁具行推导已显形` },
+    { item: 'QR-2026-10-05-01', label: '奥普 S2-Air 浴霸询价登记', reason: `与 COST-100-06 同项：业主自购待决策，当前观察价 ${yuan(bathHeaterQr.owner_current_cny)}（非成交价），未计入` },
+    { item: 'QR-2026-10-03-02', label: '水电改造打包询价', reason: '同范围未采用：本表水电以生效报价卡实算为准；本轮回价后须与卡对账去重，不得叠加' },
+    { item: 'QR-2026-10-03-10', label: '墙顶面涂装询价', reason: `同范围未采用：涂装行以科目算量费率 + 候选价计价；本轮目标 ${yuan(11000)} 非价格` },
+    { item: 'QR-2026-10-03-23', label: '基础灯具询价', reason: `目标 ${yuan(3000)} 非价格，未采用：灯具行以选品候选价计价（推导已注明）` },
+    { item: 'QR-2026-10-03-25', label: '成品保护/垃圾清运/零星修补询价', reason: 'PKG-010 拟包含在施工合同中（contract_inclusion_pending），目标为待拆分候选、非价格，见「不单独计价」' },
   ];
 
   const excluded: ExcludedFigure[] = [
@@ -572,12 +892,16 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       throw new Error(`cost summary: 定价行 ${row.id} 缺核实层级裁定（tier/tierReason）——请先在 cost-summary.ts 登记处裁定，再重新生成`);
     }
   }
+  const coverage = assertCoverage(control, rows, unpriced, pendingChecks, excludedItems);
   const verifiedSubtotalCny = rows.filter((row) => row.tier === 'verified').reduce((sum, row) => sum + (row.amountCny ?? 0), 0);
   const provisionalSubtotalCny = rows.filter((row) => row.tier === 'provisional').reduce((sum, row) => sum + (row.amountCny ?? 0), 0);
   const knownSubtotalCny = verifiedSubtotalCny + provisionalSubtotalCny;
   return {
     rows,
     unpriced,
+    pendingChecks,
+    excludedItems,
+    coverage,
     notSeparate: [
       { name: '施工现场保护与施工位置标记', packageIds: ['PKG-010'], note: 'funding_status 为 contract_inclusion_pending：拟包含在施工合同中，未落实为合同条款前不计价（QR-2026-10-03-25 的目标为待拆分候选、非价格）' },
       { name: '中央空调第二次安装与调试', packageIds: ['PKG-140'], note: '含在中央空调行（PKG-030 合同，included_in_other_package），不另计' },
@@ -595,12 +919,13 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
 export function renderCostSummary(data: CostSummaryData, headerText: string): string {
   const escapeCell = (value: unknown) => String(value ?? '—').replaceAll('|', '\\|').replaceAll('\n', '<br>');
   let markdown = headerText;
-  markdown += '本表是**成本**总表，不是预算表：每一行都是按当前数据实际算出或已有来源的价格，并标注成色与推导；没有真实价格的项目只登记为「未定价」，不填金额、不按 0 计入合计。\n\n';
+  markdown += '本表是**成本**总表，不是预算表：每一行都是按当前数据实际算出或已有来源的价格，并标注成色与推导；没有真实价格的项目只登记为「未定价」、金额或归属未决的登记为「待核」，都不填金额、不按 0 计入合计。\n\n';
   markdown += '## 口径说明\n\n';
   markdown += '- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。\n';
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
   markdown += '- **小计分三层**：**已核实小计** = 金额已锁定（签约）或由生效数据源完整实算（生效报价卡全行计价、无待报价行）、且无未决去重/待报价标记的行；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。每行的层级与理由登记在生成器中，逐行可查。\n';
   markdown += '- 未定价项目将来必花钱，真实总成本必然高于已知合计，高多少要等其报价/量房后才知道。\n';
+  markdown += '- **覆盖检查**：生成时全量扫描 `schedule/phase-1/control.yaml` 的成本组件与询价轮次登记，凡状态未决或去重未关闭的条目必须登记归属（计入定价行 / 未定价与待核 / 不计价登记），缺一即生成失败——未定价与待核清单不是手写名单。\n';
   markdown += '- **成色定义**：已签约 = 已转合同的成交价；报价卡实算 = 算量引擎实算量 × 生效报价卡单价；报价轮实算 = 业主询价轮次逐项构成的实算目标；定标目标 = 业主定标时裁定的目标价、非成交价；参考实付 = 同户型已发生的实付锚、非本户报价；算量费率 = 算量面积 × 静态费率（人工）；候选价 = 当前选品的候选价、未取证未成交；定额暂估 = 按定额登记的暂估额、非算量非报价。\n';
   markdown += '- **数据源**：`schedule/phase-1/control.yaml`（合同额、estimated_need、询价轮次）、`server/budget-calculator.ts` 科目快照（量 × 选品价）、`shared/mep-takeoff.ts` 算量 × `config/mep-quotes.yaml` 生效报价卡。映射裁定与防双算理由固化在 `scripts/schedule/cost-summary.ts` 文件头。\n\n';
   markdown += '## 硬装成本（含中央空调）\n\n';
@@ -610,11 +935,15 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   }
   markdown += `| **已核实小计** | | **${yuan(data.verifiedSubtotalCny)}** | | 已锁定或完整实算且无未决去重/待报价标记的行之和 |\n`;
   markdown += `| **暂估小计** | | **${yuan(data.provisionalSubtotalCny)}** | | 未锁价等级的行之和（封顶/预算池/候选/目标/参考/暂估/待去重） |\n`;
-  markdown += `| **已知合计（不含未定价）** | | **${yuan(data.knownSubtotalCny)}** | | 已核实 + 暂估，共 ${data.rows.length} 行；未定价 ${data.unpriced.length} 项不在内，本行不是已核实成本 |\n`;
-  markdown += '\n## 未定价（必花但尚无真实价格，不计入小计）\n\n';
-  markdown += '| 项目 | 归属工作包 | 成本 | 量与价格现状 |\n|---|---|---|---|\n';
+  markdown += `| **已知合计（不含未定价）** | | **${yuan(data.knownSubtotalCny)}** | | 已核实 + 暂估，共 ${data.rows.length} 行；未定价与待核共 ${data.unpriced.length + data.pendingChecks.length} 项不在内，本行不是已核实成本 |\n`;
+  markdown += '\n## 未定价与待核（不计入合计）\n\n';
+  markdown += '「未定价」= 必花但尚无真实价格；「待核」= 金额或归属未决（去重未关闭、合同包含未确认、范围未对齐、待决策）。两类都不进合计。本清单由覆盖检查对着 control.yaml 全量扫描生成，漏登在册未决条目时本表生成失败（见文末覆盖登记）。\n\n';
+  markdown += '| 项目 | 归属工作包 | 成本 | 状态与现状 |\n|---|---|---|---|\n';
   for (const row of data.unpriced) {
     markdown += `| ${escapeCell(row.name)} | ${row.packageIds.join('、') || '—'} | 未定价 | ${escapeCell(row.derivation)} |\n`;
+  }
+  for (const entry of data.pendingChecks) {
+    markdown += `| ${escapeCell(entry.name)} | ${entry.packageIds.join('、') || '—'} | 待核 | ${escapeCell(entry.statusLabel)}：${escapeCell(entry.note)} |\n`;
   }
   markdown += '\n## 不单独计价\n\n';
   for (const item of data.notSeparate) {
@@ -626,5 +955,12 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   for (const figure of data.excluded) {
     markdown += `| ${escapeCell(figure.label)} | ${yuan(figure.amountCny)} | ${escapeCell(figure.reason)} |\n`;
   }
+  markdown += '\n## 不计价登记（未决条目的排除归属）\n\n';
+  markdown += '下列在册未决条目经裁定不进本表金额，逐条带理由；与「未定价与待核」的区别是：它们已有明确处置（自购/未采用/合同包含），不是悬而未决。\n\n';
+  markdown += '| 条目 | 内容 | 不计价理由 |\n|---|---|---|\n';
+  for (const item of data.excludedItems) {
+    markdown += `| ${escapeCell(item.item)} | ${escapeCell(item.label)} | ${escapeCell(item.reason)} |\n`;
+  }
+  markdown += `\n覆盖扫描：control.yaml 共 ${data.coverage.scannedComponentCount} 个成本组件、${data.coverage.scannedQuoteRoundCount} 条询价轮次登记；其中未决条目 ${data.coverage.unresolvedItemCount} 个已全部登记归属（计入定价行 ${data.coverage.countedItemCount} / 未定价与待核 ${data.coverage.pendingItemCount} / 不计价登记 ${data.coverage.excludedItemCount}）；范围外工作包（PKG-000 设计准备、PKG-145 窗帘、PKG-150 家具、PKG-160 家电）的 ${data.coverage.outOfScopeComponentCount} 个组件不属本表硬装范围，按包排除。\n`;
   return markdown;
 }

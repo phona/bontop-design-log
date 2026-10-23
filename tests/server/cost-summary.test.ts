@@ -102,6 +102,49 @@ describe('成本总表 cost-summary', () => {
     assert.ok(markdown.includes('不得读作已核实成本'), '口径说明必须写明已知合计不是已核实成本');
   });
 
+  it('覆盖检查：全部未决条目已登记归属，三类计数对上未决总数', () => {
+    const { coverage } = data;
+    assert.equal(coverage.scannedComponentCount, 106);
+    assert.equal(coverage.scannedQuoteRoundCount, 27);
+    assert.ok(coverage.unresolvedItemCount > 0, '必须真的扫到未决条目');
+    assert.equal(
+      coverage.countedItemCount + coverage.pendingItemCount + coverage.excludedItemCount,
+      coverage.unresolvedItemCount,
+      '计入定价行 + 未定价与待核 + 不计价登记 必须恰好覆盖全部未决条目',
+    );
+    const pendingCovers = new Set(data.pendingChecks.flatMap((entry) => entry.coversItems));
+    const unpricedCovers = new Set(data.unpriced.flatMap((row) => row.coversItems ?? []));
+    // 评审 P2 点名三项 + 未关闭的防水去重轮次，必须在待核/未定价清单里
+    for (const id of ['COST-060-05', 'COST-120-02', 'COST-125-03']) {
+      assert.ok(pendingCovers.has(id), `${id} 必须出现在待核清单`);
+    }
+    assert.ok(pendingCovers.has('QR-2026-10-03-03'), '防水去重轮次必须出现在待核清单');
+    assert.ok(unpricedCovers.has('COST-090-01') && unpricedCovers.has('COST-125-01'), '原未定价五项的覆盖登记必须在');
+    // 待核条目不进合计：合计仍恰为定价行之和
+    assert.equal(data.knownSubtotalCny, data.rows.reduce((sum, row) => sum + (row.amountCny ?? 0), 0));
+    const markdown = renderCostSummary(data, '# 测试表头\n\n');
+    for (const entry of data.pendingChecks) {
+      const line = markdown.split('\n').find((text) => text.startsWith(`| ${entry.name} |`));
+      assert.ok(line, `待核清单必须含 ${entry.name}`);
+      assert.equal(line.split('|')[3]?.trim(), '待核', `${entry.name} 的成本列必须是「待核」`);
+    }
+  });
+
+  it('覆盖检查 fail-closed：注入未登记的未决组件必须抛错', () => {
+    const doctored = structuredClone(control) as AnyRecord;
+    const pkg060 = pkgOf(doctored, 'PKG-060');
+    pkg060.budget.components.push({
+      id: 'COST-060-99',
+      name: '合成未决组件（测试注入）',
+      planned_cny: null,
+      status: 'quote_pending',
+    });
+    assert.throws(() => buildCostSummary(doctored), /覆盖检查失败.*COST-060-99/);
+    // 移除注入后恢复正常（基线 data 已在模块顶层构建成功即为证）
+    pkg060.budget.components.pop();
+    assert.doesNotThrow(() => buildCostSummary(doctored));
+  });
+
   it('中央空调在硬装板块内，不单列为非硬装', () => {
     const hvacRow = rowById(data, 'cost-hvac');
     assert.ok(hvacRow, '必须有空调行');
