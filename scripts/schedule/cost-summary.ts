@@ -1325,7 +1325,7 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += '## 口径说明\n\n';
   markdown += '- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。\n';
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
-  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract_ref（轮次 status 须 locked），且生成器按 contract_ref 回决策记录核对原文载有成交金额与成交事实；报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行，生成器另回原卡核对承包商名与报价日期；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同额/决策原文/原卡凭据在构建时读取核对），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
+  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract_ref（轮次 status 须 locked），且生成器按 contract_ref 回决策记录核对原文在总价语境行（标题行或带总价/合同额/定标成交等语义的行）载有成交金额与成交事实——分项金额不算；报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行，生成器另回原卡核对承包商名、报价日期与书面报价证据（evidence.kind 须为 written_quote，费率不得取自公开参考价）；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同额/决策原文/原卡凭据在构建时读取核对），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
   const pendingCountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'counted').length;
   const pendingUncountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncounted').length;
   const pendingUncertainN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncertain').length;
