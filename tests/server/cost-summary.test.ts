@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, symlinkSync, writeFileSync, rmSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
@@ -14,10 +15,13 @@ import {
   assertVerifiedTierBasis,
   buildCostSummary,
   computeActiveMepQuote,
-  extractGovernedTotalAmounts,
-  assertGovernedAmountsUnambiguous,
+  contractArchivePathProblem,
   findDecisionSection,
+  anchoredContractTotalAmounts,
   hasAffirmativeDealSemantics,
+  isValidCalendarDateText,
+  sectionAnchorsContractTotal,
+  sectionContainsAmountToken,
   DUAL_ATTRIBUTIONS,
   OUT_OF_SCOPE_DISPOSITIONS,
   PENDING_COUNTED_STATUS_LABELS,
@@ -183,7 +187,7 @@ describe('成本总表 cost-summary', () => {
     assert.equal(hvacRow?.verifiedBasis?.type, 'contract');
   });
 
-  it('层级守卫凭据核验：contract_ref 须解析到 DEC 原文且金额一致，报价卡须回原卡核对凭据字段', () => {
+  it('层级守卫凭据核验：contract_ref 须解析到 DEC 章节且登记金额三方一致，报价卡须回原卡核对凭据字段', () => {
     const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
     // 伪造 contract_ref 指向不存在的 DEC：字段自报齐全也必须被凭据核验拦下
     const badRef = structuredClone(control) as AnyRecord;
@@ -191,13 +195,13 @@ describe('成本总表 cost-summary', () => {
       .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
     badRefQr.contract_ref = 'DEC-2099-01-01-R99';
     assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, badRef), /解析不到/, 'contract_ref 解析不到 DEC 原文必须抛错');
-    // 金额篡改：control 内两处自报同步改掉，仍须与 DEC 原文（36,000）对不上而抛错
+    // 金额篡改：control 内两处自报同步改掉、登记块仍为 36,000，三方不一致必须抛错
     const badAmount = structuredClone(control) as AnyRecord;
     pkgOf(badAmount, 'PKG-030').budget.contracted_cny = 35000;
     const badAmountQr = (badAmount.hard_finish_quote_rounds.records as AnyRecord[])
       .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
     badAmountQr.locked_cny = 35000;
-    assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, badAmount), /金额对不上/, '合同额与 DEC 原文不符必须抛错');
+    assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, badAmount), /金额对不上/, '合同额与登记金额不符必须抛错');
     // 报价卡凭据：status 是 contracted 但原卡不存在——光信 status 不许过
     assert.throws(
       () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ghost_card', cardStatus: 'contracted' }, control),
@@ -223,144 +227,259 @@ describe('成本总表 cost-summary', () => {
     );
   });
 
-  it('合同凭据金额全词精确命中：子串金额（6,000 / 3,600）同步篡改必须抛错', () => {
-    // 复审 P1：DEC 原文写的是 36,000——「6,000」是它的子串、「3,600」是其数字
-    // 前缀变形。早先的 includes() 子串查法会把同步误改成 6,000 的合同额误判为
-    // 「原文载明」而放进已核实层；全词精确命中（提取金额 token 后逐一全等）
-    // 必须拦下这两种误改。控制源与轮次两处自报须同步改，字段一致性才骗得过
-    // 前置断言、走到凭据核验这一关——本用例正是按这个攻击面构造的。
+  it('合同凭据登记口径：改登记金额 / 删登记块 / 改成交状态 / 归档原件缺位 / 归档哈希篡改 / 归档路径越界必须抛错，DEC 金额在场核对双向钉死（复审 P1 / P2-a）', () => {
+    // 2026-10-23 归档收口：凭据 = QR 记录上的 contract 结构化登记块。旧口径
+    // 从 DEC 散文辖域提取金额，配套的全词命中 / 辖域 / 子类屏蔽 / 候选唯一
+    // 性用例已随提取整套退役；这里钉登记口径的篡改面。复审 P1/P2-a 后再补
+    // 两道回锚：登记金额必须在 DEC 章节中在场（在场核对，非辖域提取）、归
+    // 档原件字节由登记 sha256 钉死——金额不再只证登记自洽、原件不再只证存在。
     const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
-    for (const forged of [6000, 3600]) {
-      const doctored = structuredClone(control) as AnyRecord;
-      pkgOf(doctored, 'PKG-030').budget.contracted_cny = forged;
-      const qr = (doctored.hard_finish_quote_rounds.records as AnyRecord[])
-        .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
-      qr.locked_cny = forged;
-      assert.throws(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, doctored),
-        /金额对不上/,
-        `合同额被同步误改为 ${forged}（36,000 的子串/变形）必须被全词精确命中拦下`,
-      );
-    }
-    // 原值 36,000 在 DEC 原文中是全词 token，必须继续通过（不许把真凭据也拦了）
-    assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
-  });
-
-  it('合同凭据金额关键词辖域：分项金额与标题杂数字（6 / 10 / 200 / 2,131 / 14,124 / 8,400 / 35,000）同步篡改必须抛错', () => {
-    // 复审 P1 再续：全词命中 + 总价语境「行」仍不够——标题行除 36,000 外还
-    // 捎着编号/型号/台数（2026、10、200 主机、6 台、R1 的 1），正文总价论述
-    // 行还捎着设备价（2,131 / 2,050 / 2,493）与百分比（35），整行提取时它们
-    // 都是候选集成员、改成谁都放行。候选金额只许来自被总价关键词**直接辖
-    // 制**的位置：关键词在前（定标成交：36,000 元），或金额在前且总价词在
-    // 同小句近邻（36,000 为整包含价…总价）。实测现行 DEC 的辖域候选集恰
-    // 为 {36,000}，下列每个杂数字/分项数都不在辖域内。
-    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
-    // 6 / 10 / 200 = 标题行杂数字（台数 / 月份 / 主机型号）；2,131 = 总价论述
-    // 行里的设备价；14,124 / 8,400 = 分项金额；35,000 = 章节内不存在的近似数
-    for (const forged of [6, 10, 200, 2131, 14124, 8400, 35000]) {
-      const doctored = structuredClone(control) as AnyRecord;
-      pkgOf(doctored, 'PKG-030').budget.contracted_cny = forged;
-      const qr = (doctored.hard_finish_quote_rounds.records as AnyRecord[])
-        .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
-      qr.locked_cny = forged;
-      assert.throws(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, doctored),
-        /金额对不上/,
-        `合同额被同步误改为 ${forged}（不在总价关键词辖域内）必须被辖域校验拦下`,
-      );
-    }
-    // 原值 36,000 被总价关键词直接辖制（标题行定标成交 + 正文整包含价双重命中），必须继续通过
-    assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
-  });
-
-  it('合同凭据金额辖域否定屏蔽：身份否定句不产生候选，真命中逐字不误伤', () => {
-    // 复审 P1 四轮：形态 (b)（金额在前、同小句近邻总价词）无屏蔽时会把
-    // 「14,124 元不是总价；总价待定」里的分项金额误认成总价候选——金额与
-    // 「总价」之间只隔一个「不是」也算命中。屏蔽只认否定词紧贴关键词构
-    // 成的身份否定（不是 / 并非 / 不属于 + 总价 / 整包含价）。提取函数是守
-    // 卫唯一的文本相关步骤，合成章节在这一层逐字喂入即等价于守卫判定。
-    // 对抗合成章节：分项价被身份否定、且无其他总价陈述 → 不得产生候选
-    assert.deepEqual([...extractGovernedTotalAmounts('外机价 14,124 元不是总价；总价待定，后续另行确认。')], [], '「…不是总价」式身份否定不得产生总价候选');
-    assert.deepEqual([...extractGovernedTotalAmounts('设备价 14,124 元，并非总价，安装另计。')], [], '「并非总价」同样是身份否定');
-    assert.deepEqual([...extractGovernedTotalAmounts('该 8,400 元不属于总价范畴，系单项安装费。')], [], '「不属于总价」同样是身份否定');
-    // 对真值的否定陈述同样不得产生候选（哪怕金额恰是 36,000）
-    assert.deepEqual([...extractGovernedTotalAmounts('本轮口述价 36,000 元不是总价，仅为设备款。')], [], '对真值的否定陈述不得产生候选');
-    // 形态 (a)（关键词在前）同样过否定屏蔽（复审第九轮）：关键词紧邻前文
-    // 以身份否定词结尾（非 / 并非 / 不是）时，该出现陈述的是「这不是总
-    // 价/未成交」，其后金额不得被认作总价候选
-    assert.deepEqual([...extractGovernedTotalAmounts('本项目非总价：14,124 元，系外机分项价。')], [], '「非总价：14,124 元」不得产生候选（(a) 否定屏蔽）');
-    assert.deepEqual([...extractGovernedTotalAmounts('并非定标成交：36,000 元，仅为询价记录。')], [], '「并非定标成交：36,000 元」不得产生候选（(a) 否定屏蔽）');
-    assert.deepEqual([...extractGovernedTotalAmounts('此数不是合同总价：36,000 元，系设备与安装的拆分合计。')], [], '「不是合同总价：…」不得产生候选（(a) 否定屏蔽）');
-    // 不误伤一：现行 DEC 形态 (b) 真命中逐字复刻——「36,000 为整包含价，
-    // 换内机不改变总价」中「不改变总价」的否定作用于动词「改变」而非总
-    // 价身份，命中靠先行出现的「整包含价」成立，屏蔽不得误伤
-    assert.deepEqual(
-      [...extractGovernedTotalAmounts('36,000 为整包含价，换内机不改变总价，不存在金钱动机。')],
-      ['36,000'],
-      '真命中（整包含价 + 不改变总价）不得被否定屏蔽误伤',
-    );
-    // 不误伤二：真实 DEC 章节的辖域候选集在加屏蔽后仍恰为 {36,000}
-    const section = findDecisionSection('DEC-2026-10-04-R1');
-    assert.ok(section, 'DEC-2026-10-04-R1 章节必须解析得到');
-    assert.deepEqual([...extractGovernedTotalAmounts(section.text)], ['36,000'], '真实 DEC 辖域候选集必须恰为 {36,000}');
-    // 守卫层延续：点名负例 14,124 在加屏蔽后仍须抛错（全套负例见辖域测试）
-    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
-    const doctored = structuredClone(control) as AnyRecord;
-    pkgOf(doctored, 'PKG-030').budget.contracted_cny = 14124;
-    const qr = (doctored.hard_finish_quote_rounds.records as AnyRecord[])
+    const qrOfClone = (root: AnyRecord) => (root.hard_finish_quote_rounds.records as AnyRecord[])
       .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
-    qr.locked_cny = 14124;
-    assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, doctored), /金额对不上/, '分项金额 14,124 在加否定屏蔽后仍必须被守卫拦下');
+    // 改登记金额：登记值与 locked_cny / contracted_cny 脱节 → 三方不一致抛错
+    const badRegAmount = structuredClone(control) as AnyRecord;
+    qrOfClone(badRegAmount).contract.amount_cny = 35000;
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, badRegAmount),
+      /金额对不上/,
+      '登记金额被改必须被三方一致断言拦下',
+    );
+    // 删登记块：已转合同却无结构化登记 → 无凭据抛错
+    const noReg = structuredClone(control) as AnyRecord;
+    delete qrOfClone(noReg).contract;
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, noReg),
+      /缺 contract 结构化登记块/,
+      '删掉 contract 登记块必须抛错',
+    );
+    // 改成交状态：deal_status 不是 signed → 未签约不许进已核实层
+    const badStatus = structuredClone(control) as AnyRecord;
+    qrOfClone(badStatus).contract.deal_status = 'verbal_agreement';
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, badStatus),
+      /deal_status=verbal_agreement/,
+      'deal_status 被改必须抛错',
+    );
+    // 归档原件缺位：archive_paths 指向不存在的文件 → 原件缺位抛错
+    const badArchive = structuredClone(control) as AnyRecord;
+    qrOfClone(badArchive).contract.archive_paths = [{ path: 'contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p9_20261004.jpg', sha256: '0'.repeat(64) }];
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, badArchive),
+      /归档原件不存在/,
+      '归档原件缺位必须抛错',
+    );
+    // 归档哈希篡改（复审 P2-a）：登记 sha256 改一位 → 实算与登记不符，
+    // 抛错并点名路径（原件在原路径被换字节是同一条防线）
+    const badHash = structuredClone(control) as AnyRecord;
+    const badHashEntry = qrOfClone(badHash).contract.archive_paths[0] as AnyRecord;
+    badHashEntry.sha256 = (badHashEntry.sha256 as string).replace(/^./, (ch: string) => (ch === '0' ? '1' : '0'));
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, badHash),
+      /归档原件被替换.*QR-2026-10-03-24_中央空调_合同附件p1/,
+      '登记哈希被改必须被实算比对拦下并点名路径',
+    );
+    // 归档路径越界（复审 P2-a）：path 指向 contracts/ 之外的真实文件 →
+    // 前缀校验抛错（任意在仓文件不得登记成合同原件）
+    const badScope = structuredClone(control) as AnyRecord;
+    qrOfClone(badScope).contract.archive_paths = [{ path: 'schedule/phase-1/control.yaml', sha256: '0'.repeat(64) }];
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, badScope),
+      /归档路径越界/,
+      'archive path 指向 contracts/ 外必须抛错',
+    );
+    // 归档路径 ../ 穿越（复审第二轮 P1）：contracts/../ 前缀合法、解析出
+    // 界；且登记哈希取目标文件真实字节、自洽——仍必须以越界抛错，哈希
+    // 自洽救不了路径出界
+    const traversal = structuredClone(control) as AnyRecord;
+    const targetBytes = readFileSync('schedule/phase-1/control.yaml');
+    const targetSha = createHash('sha256').update(targetBytes).digest('hex');
+    qrOfClone(traversal).contract.archive_paths = [{ path: 'contracts/../schedule/phase-1/control.yaml', sha256: targetSha }];
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, traversal),
+      /归档路径越界/,
+      'contracts/../ 穿越到区外文件、且哈希自洽时仍必须抛错',
+    );
+    // 三方同步误改成分项金额（复审第二轮 P1 的原始攻击）：登记额、
+    // locked_cny、contracted_cny 一起改成 DEC 同章的外机分项 14,124——
+    // 三方一致、成交语义都在、14,124 也确实在章节里出现过，但它从未被
+    // 当作总价陈述，总价锚定必须抛错
+    const subtotalSwap = structuredClone(control) as AnyRecord;
+    qrOfClone(subtotalSwap).contract.amount_cny = 14124;
+    qrOfClone(subtotalSwap).locked_cny = 14124;
+    pkgOf(subtotalSwap, 'PKG-030').budget.contracted_cny = 14124;
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, subtotalSwap),
+      /金额与 DEC 脱节/,
+      '三方金额同步误改成同章分项金额 14,124 必须被总价锚定拦下',
+    );
+    // DEC 金额在场核对（复审 P1）双向钉死：
+    //  - 登记金额 token 在 DEC 章节里被删改（改写成 99,999）→ DEC 与登记
+    //    脱节，必须抛错——三方金额同步改错时这道回锚就是最后一道；
+    //  - 金额仍在场、只是措辞改写（无辖域词、换表述）→ 照常通过：在场核
+    //    对不是辖域提取，措辞自由；
+    //  - 同一注入去掉成交表述 → 仍因语义核对抛错（成交语义关仍在岗）。
+    const dir = mkdtempSync(join(tmpdir(), 'dec-anchor-'));
+    try {
+      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 定标成交：99,999 元\n\n- **成交事实**：测试章节，金额已被改写。\n');
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
+        /金额与 DEC 脱节/,
+        'DEC 章节里登记金额 36,000 被删改必须抛错（复审 P1）',
+      );
+      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 空调合同\n\n- 双方签订，本户成交价 36,000 元整，含辅材。\n');
+      assert.doesNotThrow(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
+        '登记金额在场、措辞改写（无辖域词）不得影响凭据结论',
+      );
+      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 询价记录\n\n- 本轮仅为询价，价格待议，暂记 36,000。\n');
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
+        /语义对不上/,
+        'DEC 章节失去正向成交表述必须抛错（成交语义核对）',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    // 真实登记 + 真实 DEC 必须继续通过（不许把真凭据也拦了）
+    assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
   });
 
-  it('辖域提取子类屏蔽与窗口收紧：分项总价不命中、跨标点不命中、系词可命中（G1/G2/G10）', () => {
-    // G1：关键词「总价」无左界——「分项总价：14,124」在旧实现直接命中。
-    // 子类前缀（分项/安装/设备/材料/单项/子项/预估/估算/预算）紧贴「总
-    // 价/总金额」的出现是分项小计，必须作废；正当总价短语不得误伤。
-    assert.deepEqual([...extractGovernedTotalAmounts('分项总价：14,124 元，双方已签约确认。')], [], '「分项总价：14,124 元」不得产生候选');
-    assert.deepEqual([...extractGovernedTotalAmounts('安装总价：8,400 元，含六台内机安装。')], [], '「安装总价：8,400 元」不得产生候选');
-    assert.deepEqual([...extractGovernedTotalAmounts('设备总金额：20,000 元，另行议定。')], [], '「设备总金额：…」不得产生候选');
-    assert.deepEqual([...extractGovernedTotalAmounts('本项目总价：36,000 元。')], ['36,000'], '「本项目总价」是正当总价短语，不得误伤');
-    assert.deepEqual([...extractGovernedTotalAmounts('工程总价：36,000 元，含税。')], ['36,000'], '「工程总价」不得误伤');
-    assert.deepEqual([...extractGovernedTotalAmounts('合同总价：36,000 元。')], ['36,000'], '「合同总价」是独立关键词，不得误伤');
-    // G2：形态 (b) 的窗口原可跨逗号/顿号/换行——隔着分句标点的金额也被
-    // 误认。收紧后跨「，」「、」与换行的近邻不算同小句。
-    assert.deepEqual([...extractGovernedTotalAmounts('设备款 14,124 元，总价待定。')], [], '金额与总价词隔逗号，不得产生候选');
-    assert.deepEqual([...extractGovernedTotalAmounts('设备款 14,124 元、总价待核。')], [], '金额与总价词隔顿号，不得产生候选');
-    assert.deepEqual([...extractGovernedTotalAmounts('设备款 14,124 元\n总价待定。')], [], '金额与总价词隔换行，不得产生候选');
-    // G10：关键词与金额之间允许系词（为/是）——「合同总价为 36,000 元」
-    // 是正当的总价陈述句式，旧实现因系词不在标点集内而假阴性
-    assert.deepEqual([...extractGovernedTotalAmounts('合同总价为 36,000 元，含辅材。')], ['36,000'], '「合同总价为 36,000 元」必须命中');
-    assert.deepEqual([...extractGovernedTotalAmounts('本单总价是 36,000 元整。')], ['36,000'], '「总价是 36,000 元」必须命中');
-    // 格式口径：小数金额不命中（防「36,000.5」被截成「36,000」）；无千
-    // 分位书写即使被提取也不会与千分位成员比对命中
-    assert.deepEqual([...extractGovernedTotalAmounts('定标成交：36,000.5 元。')], [], '小数金额不得产生候选');
-    assert.ok(!extractGovernedTotalAmounts('定标成交：36000 元。').has('36,000'), '无千分位书写不得命中千分位金额');
-    // 真实 DEC 在全部收紧/放宽后候选集仍恰为 {36,000}
+  it('金额在场核对的 token 边界：更长数字的一部分不算在场，只认千分位写法（复审 P1）', () => {
+    assert.equal(sectionContainsAmountToken('合计 36,000 元', 36000), true, '独立出现的千分位金额算在场');
+    assert.equal(sectionContainsAmountToken('合计 136,000 元', 36000), false, '136,000 里的 36,000 是更长数字的一部分，不算在场');
+    assert.equal(sectionContainsAmountToken('合计 36,000,000 元', 36000), false, '36,000,000 的首段不算在场');
+    assert.equal(sectionContainsAmountToken('报价 36000 元', 36000), false, '无千分位的裸数字不算在场（只认千分位写法）');
+    assert.equal(sectionContainsAmountToken('报价 3,600 元', 36000), false, '位数不同的金额不算在场');
+    // 小数尾（复审第二轮 P1）：36,000.5 是小数、不是 36,000 本身
+    assert.equal(sectionContainsAmountToken('合计 36,000.5 元', 36000), false, '36,000.5 的整数部分不得冒充 36,000');
+    assert.equal(sectionContainsAmountToken('合计 36,000 元整', 36000), true, '句末标点不影响完整 token 判定');
+  });
+
+  it('金额回锚总价语义：同章分项金额锚不上、总价分句才算数（复审第二轮 P1）', () => {
     const section = findDecisionSection('DEC-2026-10-04-R1');
     assert.ok(section);
-    assert.deepEqual([...extractGovernedTotalAmounts(section.text)], ['36,000'], '真实 DEC 候选集仍须恰为 {36,000}');
+    assert.equal(sectionAnchorsContractTotal(section.text, 36000), true, '真实章节的 36,000 有总价锚点（标题定标成交 / 合计 / 整包含价）');
+    assert.equal(sectionAnchorsContractTotal(section.text, 14124), false, '外机分项 14,124 虽在同章出现，但从未被当作总价陈述');
+    assert.equal(sectionAnchorsContractTotal(section.text, 8400), false, '安装分项 8,400 同样锚不上总价');
+    assert.equal(sectionAnchorsContractTotal('外机 14,124 元；合计 36,000 元', 14124), false, '分项金额与合计句同行不同分句，仍不得借合计句的锚');
+    assert.equal(sectionAnchorsContractTotal('外机 14,124 元；合计 36,000 元', 36000), true, '合计分句里的金额锚定成立');
+    assert.equal(sectionAnchorsContractTotal('本户成交价 36,000.5 元', 36000), false, '总价分句里出现小数金额也不得冒充整数总价');
+    assert.equal(sectionAnchorsContractTotal('本户成交价 36,000 元整', 36000), true, '成交价分句锚定成立');
+    assert.equal(sectionAnchorsContractTotal('暂记 36,000 元，待议', 36000), false, '无总价语义的分句只是提及、不算锚定');
+    // 分项总价反例（复审第三轮 P1；承 #13 退役提取器的「分项总价子类
+    // 屏蔽」用例，本轮按评审要求补回）：子目价写成「分项总价」时，
+    // 裸「总价」二字不得让它锚成合同总价
+    const subtotalSection = '双方已签约。外机分项总价：14,124 元。合同总价：36,000 元';
+    assert.equal(sectionAnchorsContractTotal(subtotalSection, 14124), false, '「外机分项总价：14,124」是子目价，不得锚成合同总价');
+    assert.equal(sectionAnchorsContractTotal(subtotalSection, 36000), true, '同章「合同总价：36,000」锚定成立');
+    assert.equal(sectionAnchorsContractTotal('外机分项合计：14,124 元', 14124), false, '「分项合计」的合计被子目语义屏蔽');
+    assert.equal(sectionAnchorsContractTotal('设备合计 14,124 元', 14124), false, '部件名紧邻在前的合计是子目合计、不是合同总价');
+    assert.equal(sectionAnchorsContractTotal('合计 36,000 元', 36000), true, '无子目语义的合计是合同总价锚点');
+    // 同句多金额（复审第四轮 P1）：总价词只对应与它直接相连的金额；
+    // 同句并列的括注/逗号后金额借不到总价词
+    assert.equal(sectionAnchorsContractTotal('合同总价36,000元（其中外机14,124元）', 36000), true, '与「合同总价」直接相连的 36,000 锚定成立');
+    assert.equal(sectionAnchorsContractTotal('合同总价36,000元（其中外机14,124元）', 14124), false, '括注里的分项金额与总价词之间隔着另一个金额与括号，对应断裂');
+    assert.equal(sectionAnchorsContractTotal('合同总价：36,000元（外机：14,124元）', 14124), false, '冒号+括号写法同理，分项金额不得借锚');
+    assert.equal(sectionAnchorsContractTotal('合同总价36,000元,外机14,124元', 14124), false, '英文逗号同句并列的分项金额不得借锚');
+    assert.equal(sectionAnchorsContractTotal('合同总价36,000元,外机14,124元', 36000), true, '英文逗号句中与总价词直接相连的仍是合同总价本身');
+    assert.equal(sectionAnchorsContractTotal('36,000元为合同总价（外机14,124元）', 14124), false, '金额在关键词之前的写法（后置对应）下，括注分项金额同样借不到锚');
+    assert.equal(sectionAnchorsContractTotal('36,000元为合同总价（外机14,124元）', 36000), true, '后置对应：金额与「合同总价」仅隔系词「为」时锚定成立');
   });
 
-  it('辖域候选唯一性：章节并存两个总价即歧义抛错（G3）', () => {
-    // 章节同时写「定标成交：36,000」与补充协议「总价：35,500」时，旧成
-    // 员判断会把两个都放行——同步误改成旧价照样过。候选集 >1 即抛错并
-    // 列出全部金额，须人工消歧。
-    const twoTotals = extractGovernedTotalAmounts('定标成交：36,000 元。后续补充协议：总价：35,500 元，覆盖原价。');
-    assert.deepEqual([...twoTotals].sort(), ['35,500', '36,000'], '合成双总价章节的候选集应为两个金额');
-    assert.throws(
-      () => assertGovernedAmountsUnambiguous(twoTotals, 'DEC-2099-01-01-R1'),
-      (error: unknown) => {
-        const message = (error as Error).message;
-        return message.includes('总价歧义') && message.includes('36,000') && message.includes('35,500');
-      },
-      '双总价候选必须抛错并列出全部金额',
+  it('同句多金额反例（守卫级）：总价句括注分项价时，三方同步改成分项价仍必须抛错（复审第四轮 P1）', () => {
+    // 评审的原始复现：章节只写一句「合同总价36,000元（其中外机14,124
+    // 元）」——同句、无分句隔断，第三轮口径下两个金额同享总价词。
+    // 第四轮位置对应后：总价词只对应直接相连的 36,000。
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    const swapped = structuredClone(control) as AnyRecord;
+    const qr = (swapped.hard_finish_quote_rounds.records as AnyRecord[])
+      .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+    qr.contract.amount_cny = 14124;
+    qr.locked_cny = 14124;
+    pkgOf(swapped, 'PKG-030').budget.contracted_cny = 14124;
+    const dir = mkdtempSync(join(tmpdir(), 'dec-samesentence-'));
+    try {
+      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 中央空调定标\n\n- **成交事实**：双方已签约。合同总价36,000元（其中外机14,124元）。\n');
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, swapped, undefined, dir),
+        /金额与 DEC 脱节/,
+        '同句括注的分项金额不得冒充合同总价：三方同步改成分项价必须被位置对应锚定拦下',
+      );
+      assert.doesNotThrow(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
+        '同一注入章节、登记仍为真实 36,000 时必须锚定通过（总价词直接对应 36,000）',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('分项总价反例（守卫级）：DEC 写明分项总价与合同总价时，三方同步改成分项价仍必须抛错（复审第三轮 P1）', () => {
+    // 评审的原始复现：章节同时有「外机分项总价：14,124」与「合同总价：
+    // 36,000」，把登记额 / locked_cny / contracted_cny 同步改成 14,124。
+    // 第二轮锚定只要求金额与「总价」同分句，分项价借「分项总价」里的
+    // 总价二字误锚放行；第三轮去裸总价 + 子目屏蔽后必须抛错。
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    const swapped = structuredClone(control) as AnyRecord;
+    const qr = (swapped.hard_finish_quote_rounds.records as AnyRecord[])
+      .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+    qr.contract.amount_cny = 14124;
+    qr.locked_cny = 14124;
+    pkgOf(swapped, 'PKG-030').budget.contracted_cny = 14124;
+    const dir = mkdtempSync(join(tmpdir(), 'dec-subtotal-'));
+    try {
+      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 中央空调定标\n\n- **成交事实**：双方已签约。外机分项总价：14,124 元。合同总价：36,000 元。\n');
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, swapped, undefined, dir),
+        /金额与 DEC 脱节/,
+        '分项总价不得冒充合同总价：三方同步改成分项价必须被总价锚定拦下',
+      );
+      // 同一注入章节、登记仍为真实 36,000 时照常通过（不许误杀真凭据）
+      assert.doesNotThrow(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
+        '章节含分项总价与合同总价时，真实登记金额 36,000 必须锚定通过',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('归档路径核查：规范路径放行、../ 与 symlink 拒绝（复审第二轮 P1）', () => {
+    assert.equal(
+      contractArchivePathProblem('contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg', '.'),
+      null,
+      '真实登记的归档原件必须放行',
     );
-    assert.doesNotThrow(() => assertGovernedAmountsUnambiguous(new Set(['36,000']), 'DEC-2026-10-04-R1'), '单一候选必须通过');
-    assert.doesNotThrow(() => assertGovernedAmountsUnambiguous(new Set(), 'DEC-2026-10-04-R1'), '空候选集由成员判断报错，不在本断言范围');
+    assert.match(contractArchivePathProblem('contracts/../schedule/phase-1/control.yaml', '.') ?? '', /归档路径越界/, '../ 穿越必须判越界');
+    assert.match(contractArchivePathProblem('contracts/./2026-10-03/x.jpg', '.') ?? '', /归档路径越界/, '. 段必须判越界');
+    assert.match(contractArchivePathProblem('schedule/phase-1/control.yaml', '.') ?? '', /归档路径越界/, '区外路径必须判越界');
+    assert.match(contractArchivePathProblem('contracts/2026-10-03/不存在的文件.jpg', '.') ?? '', /归档原件不存在/, '区内缺位文件必须点名不存在');
+    // symlink：contracts/ 内放一个指向区外真实文件的链接，lstat 阶段
+    // 即拒绝，不许跟随到区外字节
+    const probeDir = mkdtempSync(join(tmpdir(), 'archive-symlink-'));
+    const probeLink = 'contracts/2026-10-03/__symlink_probe__.jpg';
+    try {
+      const target = join(probeDir, 'outside.jpg');
+      writeFileSync(target, 'outside-bytes');
+      symlinkSync(target, probeLink);
+      assert.match(contractArchivePathProblem(probeLink, '.') ?? '', /符号链接/, '指向区外的符号链接必须拒绝');
+    } finally {
+      try { unlinkSync(probeLink); } catch { /* 链接未建成时无-op */ }
+      rmSync(probeDir, { recursive: true, force: true });
+    }
   });
 
-  it('成交语义正向集合：否定式提及不算成交，真实合同章节命中（G4）', () => {
+  it('严格日历日期：不存在的日期必须判假（复审第二轮 P2）', () => {
+    assert.equal(isValidCalendarDateText('2026-10-04'), true, '真实签约日必须放行');
+    assert.equal(isValidCalendarDateText('2026-02-30'), false, '2 月 30 日不存在（Date.parse 会归一化成 3 月 2 日，不得放行）');
+    assert.equal(isValidCalendarDateText('2026-04-31'), false, '4 月 31 日不存在');
+    assert.equal(isValidCalendarDateText('2026-02-29'), false, '2026 年不是闰年，2 月 29 日不存在');
+    assert.equal(isValidCalendarDateText('2024-02-29'), true, '2024 年是闰年，2 月 29 日存在');
+    assert.equal(isValidCalendarDateText('2026-13-01'), false, '13 月不存在');
+    assert.equal(isValidCalendarDateText('2026-1-4'), false, '未补零的写法不合 YYYY-MM-DD 格式');
+  });
+
+  it('成交语义正向集合：否定式提及与紧邻否定不算成交，真实合同章节命中（G4 / 复审 P2-b）', () => {
     // 旧检查 /(成交|签约|合同)/ 任中其一即过——「尚未签约、未成合同」的
     // 纯询价章节也能通过合同凭据的语义关。正向集合只认正向成交表述。
     assert.equal(
@@ -370,6 +489,22 @@ describe('成本总表 cost-summary', () => {
     );
     assert.equal(hasAffirmativeDealSemantics('双方已签订合同，总价：36,000 元。'), true, '「已签订」是正向成交表述');
     assert.equal(hasAffirmativeDealSemantics('本轮仅为询价，价格待议。'), false, '无成交表述的章节不得算作成交');
+    // 紧邻否定屏蔽（复审 P2-b）：关键词被紧邻否定词屏蔽时不算命中——子串
+    // 匹配分不清「定标成交」与「并非定标成交」。
+    assert.equal(hasAffirmativeDealSemantics('本项目并非定标成交，仅为意向沟通。'), false, '「并非定标成交」不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('双方尚未签订任何文件。'), false, '「尚未签订」不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('本轮未签订合同。'), false, '「未签订」不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('这不是已签约状态。'), false, '「不是已签约」不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('本轮没有签约方确认。'), false, '「没有签约方」唯一命中被屏蔽后不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('先前并非定标成交；后于 10 月 4 日双方已签订合同。'), true, '一处被屏蔽、另一处干净命中时必须算作成交（屏蔽逐命中判定、不是全章一票否决）');
+    // 裸「不」不入屏蔽集：「不改变定标成交事实」是正向陈述，不得误杀
+    assert.equal(hasAffirmativeDealSemantics('本条不改变定标成交事实。'), true, '「不改变定标成交事实」是正向表述，必须算作成交');
+    // 未然屏蔽（独立复审 F4）：待/拟/将/不日紧邻在关键词之前时，签订尚
+    // 未发生——「合同待签订」此前会被「签订」子串判成正向成交。
+    assert.equal(hasAffirmativeDealSemantics('本合同待签订。'), false, '「待签订」是未然状态，不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('双方拟签订合同。'), false, '「拟签订」不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('双方将签订合同。'), false, '「将签订」不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('合同不日签订。'), false, '「不日签订」不得算作成交');
     const section = findDecisionSection('DEC-2026-10-04-R1');
     assert.ok(section);
     assert.equal(hasAffirmativeDealSemantics(section.text), true, '真实合同章节 DEC-2026-10-04-R1 必须命中正向成交表述');
@@ -419,12 +554,40 @@ describe('成本总表 cost-summary', () => {
     assert.ok(findDecisionSection('DEC-2026-10-04-R1'), '真实 DEC 章节必须正常命中');
   });
 
-  it('报价卡凭据边界：证据须 written_quote 且费率不得含公开参考价来源', () => {
+  it('双总价歧义：章节内被锚定的不同金额超过一个即抛错（独立复审 F2）', () => {
+    // 单元层：锚定集合枚举
+    assert.deepEqual(anchoredContractTotalAmounts('合同总价：36,000 元。外机 14,124 元。'), [36000], '只有一个金额被总价词直接指称时集合为单元素');
+    assert.deepEqual(
+      anchoredContractTotalAmounts('合同总价：36,000 元。后补充协议改价，合同总价：35,500 元。'),
+      [35500, 36000],
+      '新旧两个总价并存时集合必须含两个不同金额（歧义要显形）',
+    );
+    const realSection = findDecisionSection('DEC-2026-10-04-R1');
+    assert.ok(realSection);
+    assert.deepEqual(anchoredContractTotalAmounts(realSection.text), [36000], '真实章节三处锚点同值，集合恒为 {36,000}');
+    // 守卫级：登记仍为 36,000 且能锚上，但章节多出第二个被锚定的总价
+    // （补充协议改价句）——歧义必须抛错，不得因「登记金额锚得上」放行。
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    const dir = mkdtempSync(join(tmpdir(), 'dec-ambiguity-'));
+    try {
+      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 中央空调定标\n\n- 定标成交：36,000 元。后补充协议改价，合同总价：35,500 元。\n');
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
+        /总价歧义/,
+        '章节内两个被锚定的不同总价并存时必须抛歧义错（恢复旧提取器时代的歧义检测）',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('报价卡凭据边界：证据须 written_quote、费率不得含公开参考价来源、行级证据不得低于 written_quote（复审 P2-c）', () => {
     // 复审凭据边界（两轮）：第一层正向强制证据等级——已核实层只认一级证据
     // written_quote（书面报价单，与 shared/quote-cards.ts 的证据分级及
     // comparable 门禁同口径）；缺证据、photo（照片判读）、owner_reported
     // （业主转述）一律抛错。第二层费率来源：evidence 合格也拦不住费率行取自
     // 公开参考价（scope_note 带 public_reference 标记，现行基线卡的形态）。
+    // 第三层行级证据（复审 P2-c）：卡级合格也拦不住某行自带低等级行级证据。
     const cardWith = (evidence: unknown, rates: unknown = { labor_by_area: { per_unit: 40, unit: '元/㎡', scope_note: '施工方书面报价，清包人工' } }) => ({
       active: 'ev_card',
       quotes: [{
@@ -462,6 +625,28 @@ describe('成本总表 cost-summary', () => {
         })),
       /费率行 water_cold_20.*public_reference/,
       'written_quote 卡费率行含公开参考价必须抛错并点名行键',
+    );
+    // 行级证据（复审 P2-c）：卡级 written_quote 合格，但某行自带 photo /
+    // owner_reported 行级证据 → 低等级证据逐行漏过，必须抛错点名行键与 kind
+    for (const kind of ['photo', 'owner_reported'] as const) {
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ev_card', cardStatus: 'contracted' }, control,
+          cardWith({ kind: 'written_quote', status: '书面报价单' }, {
+            water_cold_20: { per_unit: 18.5, unit: '元/m', scope_note: '门店现场口径', evidence: { kind, status: 'x' } },
+            labor_by_area: { per_unit: 40, unit: '元/㎡', scope_note: '施工方书面报价，清包人工' },
+          })),
+        new RegExp(`费率行 water_cold_20 的 evidence\\.kind=${kind}`),
+        `行级 evidence.kind=${kind} 必须抛错并点名行键`,
+      );
+    }
+    // 对照：行级 evidence 同为 written_quote → 放行（行级书面证据不误伤）
+    assert.doesNotThrow(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ev_card', cardStatus: 'contracted' }, control,
+        cardWith({ kind: 'written_quote', status: '书面报价单' }, {
+          water_cold_20: { per_unit: 18.5, unit: '元/m', scope_note: '施工方书面报价单第 3 项', evidence: { kind: 'written_quote', status: '书面报价单' } },
+          labor_by_area: { per_unit: 40, unit: '元/㎡', scope_note: '施工方书面报价，清包人工' },
+        })),
+      '行级 evidence 为 written_quote 必须放行',
     );
     // 对照：written_quote + 费率全部来自施工方报价 → 放行（不误伤真凭据）
     const cleanQuotes = {
