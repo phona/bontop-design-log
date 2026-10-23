@@ -14,6 +14,7 @@ import {
   renderCostSummary,
   type AttributionKind,
   type CostSummaryData,
+  type PendingCountedStatus,
   type PendingEntry,
 } from '../../scripts/schedule/cost-summary.js';
 
@@ -430,37 +431,67 @@ describe('成本总表 cost-summary', () => {
     assert.ok(!markdown.includes('非硬装'), '不得出现把空调划到硬装之外的板块');
   });
 
-  it('待核计入状态分类：必填 fail-closed，逐条分类与渲染计数一致', () => {
-    // 复审 P2：待核清单里混着「钱已在合计里、只待事项关闭」的条目（封槽界面、
-    // 线控器确认、防水去重），总述若笼统称「待核取得价格后会增加总额」，读者
-    // 会把已计入的钱再加一遍。每条待核必须有 countedStatus 分类，缺失即抛错。
+  it('待核计入状态分类：必填 fail-closed，全量 16 条逐条钉死，渲染计数由期望表推导', () => {
+    // 复审 P2：待核清单里混着「钱已在合计里、只待事项核对关闭」的条目（封槽
+    // 界面、线控器确认、防水去重），总述若笼统称「待核取得价格后会增加总
+    // 额」，读者会把已计入的钱再加一遍。每条待核必须有 countedStatus 分类，
+    // 缺失即抛错。
     const bare = [{ id: 'pending-x', name: 'x', packageIds: [], statusLabel: 'x', note: 'x', coversItems: [] }] as unknown as PendingEntry[];
     assert.throws(() => assertPendingClassifications(bare), /pending-x.*缺计入状态分类/, '缺分类的待核条目必须被校验拦下');
     const illegal = [{ ...bare[0], countedStatus: 'maybe' }] as unknown as PendingEntry[];
     assert.throws(() => assertPendingClassifications(illegal), /缺计入状态分类/, '非法分类值必须被拦下');
     assert.doesNotThrow(() => assertPendingClassifications(data.pendingChecks));
-    // 逐条按注脚事实裁定：已计入（金额在定价行内，只待事项关闭）四条
+    // 全量钉死（复审 P2 续）：16 条待核的 id → 计入状态以字面期望表写全，
+    // 逐条断言与登记一致；任何一条被误改分类（哪怕三类总数恰好不变、动态计
+    // 数仍自洽）都会令本测试变红。改判须有事实依据并同步改本表。
+    const EXPECTED_COUNTED_STATUS: Record<string, PendingCountedStatus> = {
+      'pending-sill-tile-labor': 'uncounted', // COST-060-05 小砖条人工：注脚明示未计入泥瓦行
+      'pending-lighting-install-labor': 'uncertain', // COST-120-02：是否含于水电合同未定
+      'pending-panel-install-labor': 'uncertain', // COST-125-03：是否含于水电合同未定
+      'pending-waterproof-dedup': 'counted', // 防水人工 ¥366 已在防水人工行，只待去重核对
+      'pending-gas-piping': 'uncounted', // COST-040-09 燃气费：不在水电卡范围内、未计入
+      'pending-mep-paint-interface': 'counted', // COST-040-15 封槽料金额已在水电卡辅材包干内
+      'pending-hvac-excluded-extras': 'uncounted', // COST-030-02 待核面是合同外增量，不在 ¥36,000 内
+      'pending-hvac-risk-extras': 'uncounted', // COST-030-06 可能增项：现未计入任何行
+      'pending-hvac-controller-confirmation': 'counted', // COST-030-07 金额已按业主口述含于空调合同
+      'pending-masonry-leveling': 'uncounted', // COST-060-03 找平：未计入泥瓦行构成
+      'pending-masonry-logistics': 'uncounted', // COST-060-06 搬运退补：未计入泥瓦行构成
+      'pending-south-balcony-tiling': 'uncounted', // COST-060-07 铺贴范围：现状按未含处理
+      'pending-ceiling-keel': 'uncounted', // COST-070-01 龙骨：未单独计入吊顶行构成
+      'pending-flood-test-liability': 'uncounted', // COST-050-03 闭水责任：闭水人工未单独计价
+      'pending-demolition-haulage-dedup': 'counted', // 清运 ¥1,059 已在拆改行实付锚内，只待核重
+      'pending-fixed-cabinetry': 'uncounted', // QR-2026-10-03-26 固定柜体：未计入任何行
+    };
+    assert.equal(data.pendingChecks.length, 16, '待核条目恰为 16 条（与期望表同量）');
     const byId = new Map(data.pendingChecks.map((entry) => [entry.id, entry.countedStatus]));
-    for (const id of ['pending-waterproof-dedup', 'pending-mep-paint-interface', 'pending-hvac-controller-confirmation', 'pending-demolition-haulage-dedup']) {
-      assert.equal(byId.get(id), 'counted', `${id} 金额已在定价行内，必须是 counted`);
+    assert.deepEqual(
+      [...byId.keys()].sort(),
+      Object.keys(EXPECTED_COUNTED_STATUS).sort(),
+      '待核条目 id 集合必须与期望表恰好一致（多一条、少一条都算漂移）',
+    );
+    for (const [id, expected] of Object.entries(EXPECTED_COUNTED_STATUS)) {
+      assert.equal(byId.get(id), expected, `${id} 的计入状态必须为 ${expected}（全量钉死）`);
     }
-    // 待确认是否已含于水电合同：灯具 / 面板安装人工两条
-    for (const id of ['pending-lighting-install-labor', 'pending-panel-install-labor']) {
-      assert.equal(byId.get(id), 'uncertain', `${id} 是否含于合同未定，必须是 uncertain`);
-    }
-    // 合同外增量（COST-030-02 的待核面）与注脚明示未计入的：uncounted
-    for (const id of ['pending-hvac-excluded-extras', 'pending-sill-tile-labor', 'pending-gas-piping', 'pending-fixed-cabinetry', 'pending-ceiling-keel']) {
-      assert.equal(byId.get(id), 'uncounted', `${id} 未计入合计，必须是 uncounted`);
-    }
-    // 渲染：总述三类条数由登记生成、与 data 一致；每条待核行带自己的分类标签
-    const markdown = renderCostSummary(data, '# 测试表头\n\n');
+    // 三类计数改由期望表推导，再与登记数据对照——不许只对生成数据自洽自证
+    const expectedCount = (status: PendingCountedStatus) =>
+      Object.values(EXPECTED_COUNTED_STATUS).filter((value) => value === status).length;
     const countedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'counted').length;
     const uncountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncounted').length;
     const uncertainN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncertain').length;
+    assert.equal(countedN, expectedCount('counted'), '已计入条数必须与期望表一致（4）');
+    assert.equal(uncountedN, expectedCount('uncounted'), '未计入条数必须与期望表一致（10）');
+    assert.equal(uncertainN, expectedCount('uncertain'), '待确认条数必须与期望表一致（2）');
+    // 渲染：总述三类条数由登记生成、与期望值一致；每条待核行带自己的分类标签
+    const markdown = renderCostSummary(data, '# 测试表头\n\n');
     assert.ok(markdown.includes(`待核未计入 ${uncountedN} 项`), '总述必须带未计入条数（生成值）');
     assert.ok(markdown.includes(`待核 ${countedN} 项`), '总述必须带已计入条数（生成值）');
     assert.ok(markdown.includes(`待核 ${uncertainN} 项`), '总述必须带待确认条数（生成值）');
     assert.ok(!markdown.includes('未定价与待核项目尚未计入合计：它们取得价格后会增加总额'), '旧总述（把已计入条目也说成未计入）不得再现');
+    // 去绝对化（复审 P2 续）：「已计入」只表示不得作为新费用再加，不表示结案
+    // 时金额不动——总述必须写明结案按核对结果修正已计金额（可增可减）
+    assert.ok(markdown.includes('事项关闭时以核对结果对已计金额做修正'), '总述必须写明已计入事项结案时修正已计金额');
+    assert.ok(markdown.includes('已计金额可增可减'), '总述必须写明已计金额可增可减');
+    assert.ok(!markdown.includes('关闭只了结事项、不动金额'), '旧绝对化表述（只关事项、金额不动）不得再现');
     for (const entry of data.pendingChecks) {
       const line = markdown.split('\n').find((text) => text.startsWith(`| ${entry.name} |`));
       assert.ok(line?.includes(PENDING_COUNTED_STATUS_LABELS[entry.countedStatus]), `${entry.name} 的清单行必须明示计入状态标签`);

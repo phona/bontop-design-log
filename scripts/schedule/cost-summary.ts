@@ -389,7 +389,9 @@ export interface CostRow {
  * 里」——如 COST-030-02 覆盖上是双归属，其待核条目登记的却是合同**外**增量
  * （钱不在合计里，计入状态为 uncounted）；防水去重覆盖上是 pending 登记，
  * 其 ¥366 却已在定价行里（计入状态为 counted）。
- *  - counted：金额已计入定价行，本条只待确认/划界/去重核对，**不得再往总额加**；
+ *  - counted：金额已计入定价行，本条待确认/划界/去重核对——**不得作为新费用
+ *    再往总额加一次**；但结案不是「只关事项、金额不动」：核对坐实后须对已计
+ *    金额做修正（去重坐实则把重复部分扣回、确认未含则补计），可增可减；
  *  - uncounted：金额未计入任何定价行，取得价格后才进总额；
  *  - uncertain：是否已含于某合同/报价未定，以确认结果为准，确认前不预断增减。
  * 每条待核条目必填（assertPendingClassifications 在构建时断言，缺失/非法即
@@ -1327,7 +1329,7 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   const pendingCountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'counted').length;
   const pendingUncountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncounted').length;
   const pendingUncertainN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncertain').length;
-  markdown += `- 未定价与待核对总额的影响必须按**计入状态**分别看（下列条数由清单登记生成）：**未计入**的（未定价 ${data.unpriced.length} 项 + 待核未计入 ${pendingUncountedN} 项）尚未计入合计，取得价格后会增加总额；**已计入**的（待核 ${pendingCountedN} 项）金额已经在定价行里，只是界面划分、书面确认或去重核对尚未关闭——关闭只了结事项、不动金额，**不得再把它们往总额上加一遍**；**待确认是否已含**的（待核 ${pendingUncertainN} 项）以确认结果为准，确认前不预断增减。同时，已知合计含未锁定的暂估金额（结算时可能调减），个别款项还是可退押金性质（如物业可退装修押金，只是临时现金占用、不是最终成本）——真实总成本以正式报价与结算为准，不必然高于、也不必然低于已知合计。\n`;
+  markdown += `- 未定价与待核对总额的影响必须按**计入状态**分别看（下列条数由清单登记生成）：**未计入**的（未定价 ${data.unpriced.length} 项 + 待核未计入 ${pendingUncountedN} 项）尚未计入合计，取得价格后会增加总额；**已计入**的（待核 ${pendingCountedN} 项）金额已经在定价行里，只是界面划分、书面确认或去重核对尚未关闭——**不得再把它们作为新费用往总额上加一遍**；事项关闭时以核对结果对已计金额做修正（去重坐实则扣回、确认未含则补计），已计金额可增可减；**待确认是否已含**的（待核 ${pendingUncertainN} 项）以确认结果为准，确认前不预断增减。同时，已知合计含未锁定的暂估金额（结算时可能调减），个别款项还是可退押金性质（如物业可退装修押金，只是临时现金占用、不是最终成本）——真实总成本以正式报价与结算为准，不必然高于、也不必然低于已知合计。\n`;
   markdown += '- **覆盖检查**：生成时全量扫描 `schedule/phase-1/control.yaml` 的成本组件与询价轮次登记，凡状态未决或去重未关闭的条目必须登记归属（计入定价行 / 未定价与待核 / 不计价登记），缺一即生成失败——未定价与待核清单不是手写名单。同一条目同时属两个分类（双归属）必须在生成器中显式声明并附理由，未声明的多重归属、出现在三个及以上分类、或被两条定价行重复计入，同样使生成失败。\n';
   markdown += '- **成色定义**：已签约 = 已转合同的成交价；报价卡实算 = 算量引擎实算量 × 生效报价卡单价；报价轮实算 = 业主询价轮次逐项构成的实算目标；定标目标 = 业主定标时裁定的目标价、非成交价；参考实付 = 同户型已发生的实付锚、非本户报价；算量费率 = 算量面积 × 静态费率（人工）；候选价 = 当前选品的候选价、未取证未成交；定额暂估 = 按定额登记的暂估额、非算量非报价。\n';
   markdown += '- **数据源**：`schedule/phase-1/control.yaml`（合同额、estimated_need、询价轮次）、`server/budget-calculator.ts` 科目快照（量 × 选品价）、`shared/mep-takeoff.ts` 算量 × `config/mep-quotes.yaml` 生效报价卡。映射裁定与防双算理由固化在 `scripts/schedule/cost-summary.ts` 文件头。\n\n';
@@ -1340,7 +1342,7 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += `| **暂估小计** | | **${yuan(data.provisionalSubtotalCny)}** | | 未锁价等级的行之和（封顶/预算池/候选/目标/参考/暂估/待去重） |\n`;
   markdown += `| **已知合计（不含未定价）** | | **${yuan(data.knownSubtotalCny)}** | | 已核实 + 暂估，共 ${data.rows.length} 行；未定价与待核共 ${data.unpriced.length + data.pendingChecks.length} 项不在内，本行不是已核实成本 |\n`;
   markdown += '\n## 未定价与待核（不计入合计）\n\n';
-  markdown += '「未定价」= 必花但尚无真实价格；「待核」= 金额或归属未决（去重未关闭、合同包含未确认、范围未对齐、待决策）。待核条目逐条标注**计入状态**：「已计入 · 待确认」= 金额已在定价行内、只待事项关闭，不得再加；「未计入 · 待定价」= 金额不在合计内、定价后才增加；「待确认是否已含」= 是否已含于合同未定、以确认为准。本清单由覆盖检查对着 control.yaml 全量扫描生成，漏登在册未决条目时本表生成失败（见文末覆盖登记）。\n\n';
+  markdown += '「未定价」= 必花但尚无真实价格；「待核」= 金额或归属未决（去重未关闭、合同包含未确认、范围未对齐、待决策）。待核条目逐条标注**计入状态**：「已计入 · 待确认」= 金额已在定价行内、不得作为新费用再加，事项关闭时按核对结果修正已计金额（可增可减）；「未计入 · 待定价」= 金额不在合计内、定价后才增加；「待确认是否已含」= 是否已含于合同未定、以确认为准。本清单由覆盖检查对着 control.yaml 全量扫描生成，漏登在册未决条目时本表生成失败（见文末覆盖登记）。\n\n';
   markdown += '| 项目 | 归属工作包 | 成本 | 状态与现状 |\n|---|---|---|---|\n';
   for (const row of data.unpriced) {
     markdown += `| ${escapeCell(row.name)} | ${row.packageIds.join('、') || '—'} | 未定价 | ${escapeCell(row.derivation)} |\n`;
