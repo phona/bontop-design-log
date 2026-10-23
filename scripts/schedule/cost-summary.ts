@@ -357,6 +357,40 @@ export interface CostRow {
   coversItems?: string[];
 }
 
+/**
+ * 待核条目的**计入状态**（2026-10-23 复审 P2）：这条待核事项所涉金额是否已在
+ * 已知合计里。注意它与覆盖归属（counted/pending/excluded 三类登记）是两个不同
+ * 的轴：覆盖归属管「未决条目在哪登记」，计入状态管「这条事项的钱在不在合计
+ * 里」——如 COST-030-02 覆盖上是双归属，其待核条目登记的却是合同**外**增量
+ * （钱不在合计里，计入状态为 uncounted）；防水去重覆盖上是 pending 登记，
+ * 其 ¥366 却已在定价行里（计入状态为 counted）。
+ *  - counted：金额已计入定价行，本条只待确认/划界/去重核对，**不得再往总额加**；
+ *  - uncounted：金额未计入任何定价行，取得价格后才进总额；
+ *  - uncertain：是否已含于某合同/报价未定，以确认结果为准，确认前不预断增减。
+ * 每条待核条目必填（assertPendingClassifications 在构建时断言，缺失/非法即
+ * 抛错）——早先 cost.md 总述笼统称「待核取得价格后会增加总额」，与已计入条目
+ * 自相矛盾、会引导读者重复加算，本分类就是来堵这个口子的。
+ */
+export type PendingCountedStatus = 'counted' | 'uncounted' | 'uncertain';
+
+/** 计入状态的渲染标签（待核清单逐条在状态列明示，防读者按总述误加）。 */
+export const PENDING_COUNTED_STATUS_LABELS: Record<PendingCountedStatus, string> = {
+  counted: '已计入 · 待确认',
+  uncounted: '未计入 · 待定价',
+  uncertain: '待确认是否已含',
+};
+
+const PENDING_COUNTED_STATUSES: ReadonlySet<string> = new Set(['counted', 'uncounted', 'uncertain']);
+
+/** 待核分类完整性（fail-closed）：每条待核条目必须已裁定计入状态，缺失或非法值即抛错——不许渲染层默认、不许新条目裸奔进清单。 */
+export function assertPendingClassifications(entries: PendingEntry[]): void {
+  for (const entry of entries) {
+    if (!entry.countedStatus || !PENDING_COUNTED_STATUSES.has(entry.countedStatus)) {
+      throw new Error(`cost summary: 待核条目 ${entry.id} 缺计入状态分类（countedStatus 必须为 counted / uncounted / uncertain 之一，实际 ${entry.countedStatus ?? '缺失'}）——请先按其注脚事实裁定：金额已在定价行内 = counted，未计入 = uncounted，是否已含未定 = uncertain`);
+    }
+  }
+}
+
 /** 未定价与待核清单条目（金额一律不进合计）。 */
 export interface PendingEntry {
   id: string;
@@ -365,6 +399,8 @@ export interface PendingEntry {
   /** 渲染用状态标签：数据里的实际 status + 中文短注。 */
   statusLabel: string;
   note: string;
+  /** 计入状态分类（必填，见 PendingCountedStatus）：本条所涉金额是否已在已知合计里。 */
+  countedStatus: PendingCountedStatus;
   /** 本条目承接的未决条目 id（组件 / 询价轮次）。 */
   coversItems: string[];
 }
@@ -1040,12 +1076,22 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   // 待核清单：金额未定或归属未决的在册事项（去重 / 合同包含 / 范围对齐 / 待决策）。
   // 每条都由覆盖检查与 control.yaml 的扫描结果对齐——这里漏登任何一条在册未决
   // 条目，构建就会抛错（见 assertCoverage），不许靠人记得补。
+  // 每条的 countedStatus 按注脚事实逐条裁定（复审 P2，口径见 PendingCountedStatus）：
+  //  counted（4 条）——防水人工去重（¥366 已在防水人工行、待核对是否与瓦工池重叠）、
+  //    封槽界面（封槽料金额已在水电卡辅材包干内、待核的只是与涂装的划界）、
+  //    线控器确认（金额已按业主口述含于空调合同、待核的只是门店书面确认）、
+  //    清运核重（¥1,059 已在拆改行实付锚内、待核对物业收费是否已含）；
+  //  uncertain（2 条）——灯具安装人工、面板安装人工：是否已含于水电合同未定；
+  //  uncounted（10 条）——小砖条人工、燃气管道费、空调合同外增量（COST-030-02
+  //    待核面）、空调可能增项、墙地面找平、搬运退补、南阳台范围、吊顶龙骨、
+  //    闭水责任、固定柜体：注脚均明示未计入任何定价行，定价后才进总额。
   const pendingChecks: PendingEntry[] = [
     {
       id: 'pending-sill-tile-labor',
       name: '窗边台小砖条等特殊铺贴人工',
       packageIds: ['PKG-060'],
       statusLabel: 'quote_pending · 待书面报价',
+      countedStatus: 'uncounted',
       note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价`,
       coversItems: ['COST-060-05'],
     },
@@ -1054,6 +1100,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '灯具安装和调试人工',
       packageIds: ['PKG-120'],
       statusLabel: 'duplication_check_required · 待确认合同包含',
+      countedStatus: 'uncertain',
       note: '灯具行只有灯具本体候选价；本项待明确是否包含开孔、组装、安装和故障排查，避免与水电人工重复计取',
       coversItems: ['COST-120-02'],
     },
@@ -1062,6 +1109,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '面板安装标识和调试人工',
       packageIds: ['PKG-125'],
       statusLabel: 'duplication_check_required · 待确认合同包含',
+      countedStatus: 'uncertain',
       note: '待核对是否包含在水电合同中；面板本体在未定价清单内，本项只涉逐点安装、测试与配电箱回路标识人工',
       coversItems: ['COST-125-03'],
     },
@@ -1070,6 +1118,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '防水人工去重确认',
       packageIds: ['PKG-050', 'PKG-060'],
       statusLabel: 'dedup_rule 未关闭 · 待最终报价核对',
+      countedStatus: 'counted',
       note: `QR-2026-10-03-03 的 dedup_rule 明文：若瓦工 ${yuan(18500)} 预算池已含防水人工，最终报价必须去重。关闭前防水人工 ${yuan(366)} 只入暂估层，且不得与泥瓦行重复主张`,
       coversItems: ['QR-2026-10-03-03'],
     },
@@ -1078,6 +1127,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '燃气管道改造或移位费',
       packageIds: ['PKG-040'],
       statusLabel: 'quote_pending · 燃气公司单独结算',
+      countedStatus: 'uncounted',
       note: `须由燃气公司或其授权单位施工、单独报价单独结算，不在水电报价卡范围内，未计入水电行；参考同类实付约 ${yuan(570)}，以燃气公司书面报价为准`,
       coversItems: ['COST-040-09'],
     },
@@ -1086,6 +1136,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '封槽料与基层修补的界面划分（水电/涂装）',
       packageIds: ['PKG-040', 'PKG-080'],
       statusLabel: 'interface_pending · 待书面划清',
+      countedStatus: 'counted',
       note: 'COST-040-15（封槽料与阴阳角网格布）金额已在水电报价卡辅材包干内计一次（水电行在册），本条待核的不是金额而是界面：它属水电开槽后的收口，与 PKG-080 基层修补的边界须书面划清（control 原文），防两边都说含或两边都不含。与水电行双归属登记（DUAL_ATTRIBUTIONS 已声明）：金额在水电行、界面事项在本清单',
       coversItems: ['COST-040-15'],
     },
@@ -1094,6 +1145,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '空调合同明确不含项（风口加长/复合风管/税）',
       packageIds: ['PKG-030'],
       statusLabel: 'site_measurement_pending · 合同外增量',
+      countedStatus: 'uncounted',
       note: `合同附件已核清：风口加长 ${yuan(100)}/米、复合风管、不含税均不含于 ${yuan(36000)} 合同额（DEC-2026-10-04-R1/R2）；铜管主体在签约行内，本项只登记合同外增量，金额待最终风口布置图核定`,
       coversItems: ['COST-030-02'],
     },
@@ -1102,6 +1154,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '空调可能增项（运输/高空/超长管等）',
       packageIds: ['PKG-030'],
       statusLabel: 'risk_pending · 触发条件未定',
+      countedStatus: 'uncounted',
       note: '可能增加费用的触发条件和单价必须在合同中写明，现未计入任何行',
       coversItems: ['COST-030-06'],
     },
@@ -1110,6 +1163,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '空调线控器书面确认（型号/数量/对码/线芯数）',
       packageIds: ['PKG-030'],
       statusLabel: 'vendor_written_confirmation_pending · 待门店书面确认',
+      countedStatus: 'counted',
       note: `金额已按业主 2026-10-12 口述含于空调行（路径 A：含在 ${yuan(36000)} 内、增量 ¥0），本条待核的不是金额而是门店书面确认四项：① 型号须 KJRF-90RT/MW（错配驱动不了双出风摆风与水泵功能）② 数量 6 只 ③ 安装对码责任与是否另收费 ④ 控制线芯数（同族 2/4/5 芯未定，封槽后不可逆）。与签约行双归属登记（DUAL_ATTRIBUTIONS 已声明）：钱在合同行、确认事项在本清单，口述不等于书面闭环`,
       coversItems: ['COST-030-07'],
     },
@@ -1118,6 +1172,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '墙地面找平',
       packageIds: ['PKG-060'],
       statusLabel: 'site_measurement_pending · 待量房',
+      countedStatus: 'uncounted',
       note: '待现场测量平整度，超厚找平的触发条件和单价另列；是否含于瓦工人工预算池未明示，未计入泥瓦行构成',
       coversItems: ['COST-060-03'],
     },
@@ -1126,6 +1181,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '搬运上楼和材料退补',
       packageIds: ['PKG-060'],
       statusLabel: 'contract_scope_pending · 待合同说明',
+      countedStatus: 'uncounted',
       note: '电梯搬运上楼费及剩余材料处理待合同说明，未计入泥瓦行构成',
       coversItems: ['COST-060-06'],
     },
@@ -1134,6 +1190,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '南阳台铺贴范围',
       packageIds: ['PKG-060'],
       statusLabel: 'alignment_required · 范围待对齐',
+      countedStatus: 'uncounted',
       note: '铺贴范围待对齐；范围变化会改变泥瓦算量与 estimated_need，现状按未含处理',
       coversItems: ['COST-060-07'],
     },
@@ -1142,6 +1199,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '吊顶龙骨材料',
       packageIds: ['PKG-070'],
       statusLabel: 'quantity_pending · 含否待确认',
+      countedStatus: 'uncounted',
       note: 'QR-2026-10-03-09 的 dedup_rule 称龙骨材料（COST-070-01）未含在本项；吊顶定标目标是否含龙骨待拆项报价确认，未单独计入吊顶行构成',
       coversItems: ['COST-070-01'],
     },
@@ -1150,6 +1208,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '闭水试验及问题重做责任',
       packageIds: ['PKG-050'],
       statusLabel: 'contract_scope_pending · 待防水合同写明',
+      countedStatus: 'uncounted',
       note: '测试时长、楼下检查和不合格后的返工责任待防水合同写清；防水行现只计涂刷人工，闭水人工未单独计价',
       coversItems: ['COST-050-03'],
     },
@@ -1158,6 +1217,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '物业垃圾清运费核重',
       packageIds: ['PKG-020', 'PKG-005'],
       statusLabel: 'duplication_check_required · 待票据核对',
+      countedStatus: 'counted',
       note: `如果物业收费中已含垃圾清运费，拆改行实付锚中的 ${yuan(1059)} 不得重复支付，以物业票据和施工合同核对为准`,
       coversItems: ['COST-020-04'],
     },
@@ -1166,6 +1226,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       name: '固定柜体（衣柜/玄关柜等扩展硬装）',
       packageIds: [],
       statusLabel: 'pending_decision · 业主待决策',
+      countedStatus: 'uncounted',
       note: `QR-2026-10-03-26 登记的扩展硬装询价，目标 ${yuan(18000)} 是目标非价格；是否纳入一期硬装待业主决策，未计入任何行（橱柜行只是厨房橱柜）`,
       coversItems: ['QR-2026-10-03-26'],
     },
@@ -1194,6 +1255,9 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     { label: '科目 range_hood（油烟机候选价）', amountCny: categoryTotal('range_hood'), reason: '范围外：油烟机在控制源归家电包（PKG-160），本表口径说明明确排除家电；其候选价在家电口径另行处理，不计入硬装合计' },
   ];
 
+  // 待核分类完整性：每条待核条目必须已裁定计入状态（countedStatus），缺失即抛错
+  // （复审 P2：总述与清单按此分类表述，分类缺位会让读者无从判断该不该往总额加）。
+  assertPendingClassifications(pendingChecks);
   // 层级完整性：每条定价行必须已在登记处裁定 tier 与理由，缺失即抛错（不许渲染层猜）；
   // 声称已核实的行还要过层级守卫——凭 verifiedBasis 断言来源此刻仍是锁定状态，
   // 来源状态变未决（生效卡换成 baseline、合同凭据缺失）时生成失败，不许静默沿用旧层级。
@@ -1235,7 +1299,10 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += '- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。\n';
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
   markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract_ref（轮次 status 须 locked），且生成器按 contract_ref 回决策记录核对原文载有成交金额与成交事实；报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行，生成器另回原卡核对承包商名与报价日期；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同额/决策原文/原卡凭据在构建时读取核对），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
-  markdown += '- 未定价与待核项目尚未计入合计：它们取得价格后会增加总额；但已知合计同时含未锁定的暂估金额（结算时可能调减），个别款项还是可退押金性质（如物业可退装修押金，只是临时现金占用、不是最终成本）——真实总成本以正式报价与结算为准，不必然高于、也不必然低于已知合计。\n';
+  const pendingCountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'counted').length;
+  const pendingUncountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncounted').length;
+  const pendingUncertainN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncertain').length;
+  markdown += `- 未定价与待核对总额的影响必须按**计入状态**分别看（下列条数由清单登记生成）：**未计入**的（未定价 ${data.unpriced.length} 项 + 待核未计入 ${pendingUncountedN} 项）尚未计入合计，取得价格后会增加总额；**已计入**的（待核 ${pendingCountedN} 项）金额已经在定价行里，只是界面划分、书面确认或去重核对尚未关闭——关闭只了结事项、不动金额，**不得再把它们往总额上加一遍**；**待确认是否已含**的（待核 ${pendingUncertainN} 项）以确认结果为准，确认前不预断增减。同时，已知合计含未锁定的暂估金额（结算时可能调减），个别款项还是可退押金性质（如物业可退装修押金，只是临时现金占用、不是最终成本）——真实总成本以正式报价与结算为准，不必然高于、也不必然低于已知合计。\n`;
   markdown += '- **覆盖检查**：生成时全量扫描 `schedule/phase-1/control.yaml` 的成本组件与询价轮次登记，凡状态未决或去重未关闭的条目必须登记归属（计入定价行 / 未定价与待核 / 不计价登记），缺一即生成失败——未定价与待核清单不是手写名单。同一条目同时属两个分类（双归属）必须在生成器中显式声明并附理由，未声明的多重归属、出现在三个及以上分类、或被两条定价行重复计入，同样使生成失败。\n';
   markdown += '- **成色定义**：已签约 = 已转合同的成交价；报价卡实算 = 算量引擎实算量 × 生效报价卡单价；报价轮实算 = 业主询价轮次逐项构成的实算目标；定标目标 = 业主定标时裁定的目标价、非成交价；参考实付 = 同户型已发生的实付锚、非本户报价；算量费率 = 算量面积 × 静态费率（人工）；候选价 = 当前选品的候选价、未取证未成交；定额暂估 = 按定额登记的暂估额、非算量非报价。\n';
   markdown += '- **数据源**：`schedule/phase-1/control.yaml`（合同额、estimated_need、询价轮次）、`server/budget-calculator.ts` 科目快照（量 × 选品价）、`shared/mep-takeoff.ts` 算量 × `config/mep-quotes.yaml` 生效报价卡。映射裁定与防双算理由固化在 `scripts/schedule/cost-summary.ts` 文件头。\n\n';
@@ -1248,13 +1315,13 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += `| **暂估小计** | | **${yuan(data.provisionalSubtotalCny)}** | | 未锁价等级的行之和（封顶/预算池/候选/目标/参考/暂估/待去重） |\n`;
   markdown += `| **已知合计（不含未定价）** | | **${yuan(data.knownSubtotalCny)}** | | 已核实 + 暂估，共 ${data.rows.length} 行；未定价与待核共 ${data.unpriced.length + data.pendingChecks.length} 项不在内，本行不是已核实成本 |\n`;
   markdown += '\n## 未定价与待核（不计入合计）\n\n';
-  markdown += '「未定价」= 必花但尚无真实价格；「待核」= 金额或归属未决（去重未关闭、合同包含未确认、范围未对齐、待决策）。两类都不进合计。本清单由覆盖检查对着 control.yaml 全量扫描生成，漏登在册未决条目时本表生成失败（见文末覆盖登记）。\n\n';
+  markdown += '「未定价」= 必花但尚无真实价格；「待核」= 金额或归属未决（去重未关闭、合同包含未确认、范围未对齐、待决策）。待核条目逐条标注**计入状态**：「已计入 · 待确认」= 金额已在定价行内、只待事项关闭，不得再加；「未计入 · 待定价」= 金额不在合计内、定价后才增加；「待确认是否已含」= 是否已含于合同未定、以确认为准。本清单由覆盖检查对着 control.yaml 全量扫描生成，漏登在册未决条目时本表生成失败（见文末覆盖登记）。\n\n';
   markdown += '| 项目 | 归属工作包 | 成本 | 状态与现状 |\n|---|---|---|---|\n';
   for (const row of data.unpriced) {
     markdown += `| ${escapeCell(row.name)} | ${row.packageIds.join('、') || '—'} | 未定价 | ${escapeCell(row.derivation)} |\n`;
   }
   for (const entry of data.pendingChecks) {
-    markdown += `| ${escapeCell(entry.name)} | ${entry.packageIds.join('、') || '—'} | 待核 | ${escapeCell(entry.statusLabel)}：${escapeCell(entry.note)} |\n`;
+    markdown += `| ${escapeCell(entry.name)} | ${entry.packageIds.join('、') || '—'} | 待核 | ${PENDING_COUNTED_STATUS_LABELS[entry.countedStatus]}｜${escapeCell(entry.statusLabel)}：${escapeCell(entry.note)} |\n`;
   }
   markdown += '\n## 不单独计价\n\n';
   for (const item of data.notSeparate) {
