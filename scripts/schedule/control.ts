@@ -479,7 +479,12 @@ const header = (title: string, sourcePath: string, inputPaths: string[]) => {
   return `${snapshotComment(snapshot)}# ${title}\n\n> 自动生成：请勿直接编辑。维护源：\`${sourcePath}\`  \n${text}> 控制源声明更新日期：${control.updated_at}  \n> ${phaseStatus}\n\n`;
 };
 const packageChecks = (pkg: AnyRecord) => [
-  ...(pkg.acceptance_refs ?? []).map((ref: string) => ({...acceptanceById.get(ref), id: ref, checkpoint: '引用', evidence_required: ['照片或检测记录']})),
+  // 引用型验收项的必需证据以 acceptance.yaml 的 evidence 为准（渲染与指纹同源）；
+  // 维护源未定义 evidence 时才回退泛称，避免清单只剩「照片或检测记录」而丢失具体证据要求。
+  ...(pkg.acceptance_refs ?? []).map((ref: string) => {
+    const item = acceptanceById.get(ref);
+    return {...item, id: ref, checkpoint: '引用', evidence_required: item?.evidence?.length ? item.evidence : ['照片或检测记录']};
+  }),
   ...(pkg.checks ?? []),
 ];
 const packageGateLabel = (pkg: AnyRecord) => pkg.gate_label ?? '付款门槛';
@@ -914,7 +919,7 @@ for (const pkg of control.work_packages) {
   for (const ref of pkg.acceptance_refs ?? []) {
     const item = acceptanceById.get(ref)!;
     const audit = auditDisplay(pkg.id, item.id);
-    checklistMd += `| ${audit.box} | ${item.id} | ${item.severity}/引用 | ${escapeCell(item.item)} | ${escapeCell(item.method)} | ${escapeCell(item.standard)} | 照片或检测记录 | \`${checkSpecHash(pkg, item.id)}\` | ${escapeCell(audit.result)} |\n`;
+    checklistMd += `| ${audit.box} | ${item.id} | ${item.severity}/引用 | ${escapeCell(item.item)} | ${escapeCell(item.method)} | ${escapeCell(item.standard)} | ${list(item.evidence?.length ? item.evidence : ['照片或检测记录'])} | \`${checkSpecHash(pkg, item.id)}\` | ${escapeCell(audit.result)} |\n`;
   }
   for (const item of pkg.checks ?? []) {
     const audit = auditDisplay(pkg.id, item.id);

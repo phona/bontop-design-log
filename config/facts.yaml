@@ -1381,7 +1381,10 @@ contracts:
         # （主卫沉箱蓄水 check_plumb_master_bath_box_flood / 饰面层闭水 check_wp_finish_flood /
         #   美缝前砖缝干燥确认 check_tile_grout_dry）→ 50 → 53；
         # 新项已挂 PKG-050/130 的 acceptance_refs 并 schedule:render 落 checklist。
-        expect_matches: 53
+        # 2026-10-23 DEC-2026-10-23-R03 客卫沉箱二次排水对等落地新增 2 项验收
+        # （check_plumb_guest_bath_secondary_drain / check_plumb_guest_bath_box_flood）→ 53 → 55；
+        # 新项已挂 PKG-050 的 acceptance_refs 并 schedule:render 落 checklist。
+        expect_matches: 55
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写

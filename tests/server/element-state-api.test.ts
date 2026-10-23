@@ -68,7 +68,7 @@ describe('element state API', () => {
     // 与 tests/server/element-state.test.ts 的真实台账快照同口径：两个吊顶分区仍未挂 DEC；
     // 厨房烟机插座因本轮移到试案位置，显式 position_status: pending。
     assert.equal(res.body.summary.undeclared, 2);
-    assert.equal(res.body.summary.pending, 32); // 含 #61 台盆镜柜、#64 冰箱新电源待定，以及试位中的 sock_kitchen_hood；DEC-2026-10-17-R20 +4：sock_fridge_living / sock_kitchen_east_counter / sock_weakbox（新增点位未画路由待复核）与 sock_gbath_towel（换墙迁移复核）落 pending（28→32）
+    assert.equal(res.body.summary.pending, 33); // 含 #61 台盆镜柜、#64 冰箱新电源待定，以及试位中的 sock_kitchen_hood；DEC-2026-10-17-R20 +4：sock_fridge_living / sock_kitchen_east_counter / sock_weakbox（新增点位未画路由待复核）与 sock_gbath_towel（换墙迁移复核）落 pending（28→32）；DEC-2026-10-23-R03 +1：#74 改写显名 drain_gbath_floor（客卫二次排水锚点，与主卫 drain_mbath_floor 绑 #50 同口径）落 pending（32→33）
     assert.equal(res.body.summary.byStatus.undeclared, 2);
     assert.ok(res.body.summary.byKind.electrical === 105 && res.body.summary.byKind.plumbing === 33); // 电气点位 107→105（R1）→101（R2 删两卫平板灯与墙控）→100（DEC-2026-10-13-R5 删电视墙灯带）；DEC-2026-10-17-R20 100→105、给排水 32→33
   });
