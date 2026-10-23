@@ -1182,8 +1182,11 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         // 本就吃落差，逐段判必然误报（该口径曾被 bf29283 改 code 名时静默取消，本次
         // 经业主裁定恢复）。全线落差/全线水平长与声明坡度比，不足才报一条；其余重力
         // 路线维持逐段（含 R01 短段链）判。
+        // 落差取带方向值（首点 − 末点，沿 from→to 流向）：PR #14 评审指出绝对值会把
+        // 上坡算成达标落差——flow_direction: up 且终点更高的墙排曾零命中静默通过；
+        // 带方向后净上坡为负落差、必然命中，down 流向的端点倒坡另有方向冲突检查兜底。
         if (route.method?.includes('wall_drain')) {
-          const drop = Math.abs((points[points.length - 1].y as number) - (points[0].y as number));
+          const drop = (points[0].y as number) - (points[points.length - 1].y as number);
           const requiredDrop = slope * totalPlanRun;
           if (totalPlanRun >= GRAVITY_MIN_RUN && requiredDrop > GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M && drop + GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M < requiredDrop) {
             add(result, issue('error', 'gravity_slope_below_design_target',

@@ -281,6 +281,22 @@ test('declared slope is checked per segment, but wall drains are judged on the w
   }), sources);
   const wallIssue = wallDrainFlat.errors.find((i) => i.code === 'gravity_slope_below_design_target')!;
   assert.match(wallIssue.message, /wall-drain run has 10\.0mm fall over 2\.25m \(0\.44%\); the declared minimum is 1\.00% judged on the whole run/);
+  // PR #14 评审回归：全线落差必须带方向——上坡 20mm/2m 的绝对值恰为 1% 会被 abs() 误判达标。
+  // down 流向净上坡（端点倒坡另有方向冲突兜底，本条专守全线判坡自身）与 up 流向墙排均须命中。
+  const wallDrainUphill = lintMepCoordination(sample({
+    id: 'wall-drain-uphill', layer: 'drainage', status: 'inferred', source_status: 'plan_supported',
+    method: 'gravity_wall_drain', diameter: 0.075, flow_direction: 'down', slope: 0.01,
+    from_height: 0.30, to_height: 0.32,
+    from: { x: 0, z: 0, y: 0.30 }, to: { x: 2, z: 0, y: 0.32 },
+  }), sources);
+  assert.ok(wallDrainUphill.errors.some((i) => i.code === 'gravity_slope_below_design_target' && i.routeId === 'wall-drain-uphill'), 'down 流向墙排净上坡应按带方向落差命中');
+  const wallDrainUpFlow = lintMepCoordination(sample({
+    id: 'wall-drain-upflow', layer: 'drainage', status: 'inferred', source_status: 'plan_supported',
+    method: 'gravity_wall_drain', diameter: 0.075, flow_direction: 'up', slope: 0.01,
+    from_height: 0.30, to_height: 0.32,
+    from: { x: 0, z: 0, y: 0.30 }, to: { x: 2, z: 0, y: 0.32 },
+  }), sources);
+  assert.ok(wallDrainUpFlow.errors.some((i) => i.code === 'gravity_slope_below_design_target' && i.routeId === 'wall-drain-upflow'), 'up 流向墙排不得把上升算成落差');
 });
 
 // ── (b) 相邻点斜线段 ──
