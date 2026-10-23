@@ -15,12 +15,20 @@ concurrency:
 permissions:
   contents: read
 
+# 基线 delta 门禁的对照基点：PR 取 base 分支头，push 取上一个提交。
+# 全零（新分支首推）或缺失时 check.mjs 自动跳过。
+env:
+  CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+
 jobs:
   typecheck:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # fetch-depth: 0 —— delta 门禁要 git show 读 base 提交的 ci/baseline，浅克隆取不到 base 对象
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -28,6 +36,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             app/package-lock.json
+      - run: node ci/check.mjs baseline-delta
       - run: npm ci
       - run: npm ci
         working-directory: app
@@ -37,7 +46,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # fetch-depth: 0 —— delta 门禁要 git show 读 base 提交的 ci/baseline，浅克隆取不到 base 对象
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -45,6 +57,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             app/package-lock.json
+      - run: node ci/check.mjs baseline-delta
       - run: npm ci
       - run: npm ci
         working-directory: app
@@ -54,7 +67,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # fetch-depth: 0 —— delta 门禁要 git show 读 base 提交的 ci/baseline，浅克隆取不到 base 对象
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -62,6 +78,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             app/package-lock.json
+      - run: node ci/check.mjs baseline-delta
       - run: npm ci
       - run: npm ci
         working-directory: app
@@ -71,7 +88,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # fetch-depth: 0 —— delta 门禁要 git show 读 base 提交的 ci/baseline，浅克隆取不到 base 对象
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -79,6 +99,7 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             app/package-lock.json
+      - run: node ci/check.mjs baseline-delta
       - run: npm ci
       - run: npm ci
         working-directory: app
