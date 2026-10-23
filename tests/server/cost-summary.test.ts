@@ -142,8 +142,9 @@ describe('成本总表 cost-summary', () => {
       /不是锁定类状态/,
       '普通书面报价（quoted）未锁定，同样不许支撑已核实层',
     );
-    // contracted 卡只有在原卡凭据可核（卡存在、承包商与报价日期非空）时才放行——注入合成卡文件
-    const contractedQuotes = { quotes: [{ id: 'some_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01' }] };
+    // contracted 卡只有在原卡凭据可核（卡存在、承包商与报价日期非空、证据为
+    // written_quote）时才放行——注入合成卡文件
+    const contractedQuotes = { quotes: [{ id: 'some_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01', evidence: { kind: 'written_quote', status: '书面报价单' } }] };
     assert.doesNotThrow(
       () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'contracted' }, control, contractedQuotes),
     );
@@ -249,41 +250,54 @@ describe('成本总表 cost-summary', () => {
     assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
   });
 
-  it('报价卡凭据边界：contracted 卡费率含公开参考价来源不得支撑已核实层', () => {
-    // 复审凭据边界：status=contracted 只证明登记状态——费率若取自公开参考价
-    // （scope_note 带 public_reference 标记，正是现行基线卡的形态），仍不是
-    // 施工方真实报价。守卫必须逐行核验来源、点名行键抛错，不许整卡放行。
-    const publicRefQuotes = {
+  it('报价卡凭据边界：证据须 written_quote 且费率不得含公开参考价来源', () => {
+    // 复审凭据边界（两轮）：第一层正向强制证据等级——已核实层只认一级证据
+    // written_quote（书面报价单，与 shared/quote-cards.ts 的证据分级及
+    // comparable 门禁同口径）；缺证据、photo（照片判读）、owner_reported
+    // （业主转述）一律抛错。第二层费率来源：evidence 合格也拦不住费率行取自
+    // 公开参考价（scope_note 带 public_reference 标记，现行基线卡的形态）。
+    const cardWith = (evidence: unknown, rates: unknown = { labor_by_area: { per_unit: 40, unit: '元/㎡', scope_note: '施工方书面报价，清包人工' } }) => ({
       quotes: [{
-        id: 'pub_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01',
-        rates: {
-          water_cold_20: { per_unit: 16.9, unit: '元/m', scope_note: '家装绿页面价｜public_reference｜https://example.com/sku' },
-          labor_by_area: { per_unit: 40, unit: '元/㎡', scope_note: '业主指定人工口径' },
-        },
+        id: 'ev_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01',
+        ...(evidence === undefined ? {} : { evidence }),
+        rates,
       }],
-    };
+    });
+    // 无 evidence → 抛错（现行 MEP 卡正是这形态：补登书面证据前不得支撑已核实）
     assert.throws(
-      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'pub_card', cardStatus: 'contracted' }, control, publicRefQuotes),
-      /费率行 water_cold_20.*public_reference/,
-      '含公开参考价费率行的 contracted 卡必须抛错并点名行键',
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ev_card', cardStatus: 'contracted' }, control, cardWith(undefined)),
+      /evidence\.kind=缺失.*written_quote/,
+      '无结构化证据的 contracted 卡必须抛错',
     );
-    // 结构化形态同罪：卡级 evidence.kind 为 public_reference 类
-    const publicKindQuotes = {
-      quotes: [{
-        id: 'pub_kind_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01',
-        evidence: { kind: 'public_reference', status: 'x' },
-        rates: { labor_by_area: { per_unit: 40, unit: '元/㎡', scope_note: '施工方报价' } },
-      }],
-    };
+    // photo / owner_reported 均非一级证据 → 抛错点名实际 kind
+    for (const kind of ['photo', 'owner_reported'] as const) {
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ev_card', cardStatus: 'contracted' }, control, cardWith({ kind, status: 'x' })),
+        new RegExp(`evidence\\.kind=${kind}.*written_quote`),
+        `evidence.kind=${kind} 的卡必须抛错`,
+      );
+    }
+    // 非枚举的公开参考类 kind 同样不是 written_quote → 抛错（旧用例口径保留）
     assert.throws(
-      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'pub_kind_card', cardStatus: 'contracted' }, control, publicKindQuotes),
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ev_card', cardStatus: 'contracted' }, control, cardWith({ kind: 'public_reference', status: 'x' })),
       /evidence\.kind=public_reference/,
       'evidence.kind 为公开参考类的卡必须抛错',
     );
-    // 对照：费率全部来自施工方报价的 contracted 卡必须放行（守卫只卡来源，不误伤真凭据）
+    // 第二层：written_quote 合格，但费率行含公开参考价 → 仍抛错并点名行键
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ev_card', cardStatus: 'contracted' }, control,
+        cardWith({ kind: 'written_quote', status: '书面报价单' }, {
+          water_cold_20: { per_unit: 16.9, unit: '元/m', scope_note: '家装绿页面价｜public_reference｜https://example.com/sku' },
+          labor_by_area: { per_unit: 40, unit: '元/㎡', scope_note: '业主指定人工口径' },
+        })),
+      /费率行 water_cold_20.*public_reference/,
+      'written_quote 卡费率行含公开参考价必须抛错并点名行键',
+    );
+    // 对照：written_quote + 费率全部来自施工方报价 → 放行（不误伤真凭据）
     const cleanQuotes = {
       quotes: [{
         id: 'clean_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01',
+        evidence: { kind: 'written_quote', status: '书面报价单' },
         rates: {
           water_cold_20: { per_unit: 18.5, unit: '元/m', scope_note: '施工方书面报价单第 3 项，含辅材' },
           labor_by_area: { per_unit: 40, unit: '元/㎡', scope_note: '施工方书面报价，清包人工' },
@@ -292,7 +306,7 @@ describe('成本总表 cost-summary', () => {
     };
     assert.doesNotThrow(
       () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'clean_card', cardStatus: 'contracted' }, control, cleanQuotes),
-      '费率均为施工方报价来源的 contracted 卡必须通过',
+      'written_quote 且费率均为施工方报价来源的 contracted 卡必须通过',
     );
   });
 

@@ -269,22 +269,29 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
  * config/mep-quotes.yaml 原卡（经 loadMepQuotes 的规范解析路径）核对：
  * ① 原卡存在；② 原卡 status 与登记处捕获的 cardStatus 一致（防捕获值与原文
  * 漂移）；③ 承包商名（contractor）非空；④ 报价日期（quoted_at）非空；
- * ⑤ 费率来源不得为公开参考价（见下）。
- * ⑤ 的来由（复审再续·凭据边界）：status=contracted 只证明登记状态，不证明
- * 费率是施工方真实报价——一张费率取自公开参考价的卡若被标成 contracted，
- * 早先版本的本守卫会全项放行，公开参考价照样进已核实层。故本守卫逐行核验
- * 该卡 rates 的来源：任一行 scope_note 含 `public_reference` 标记，即视为
- * 公开参考价来源，抛错并点名行键；卡级结构化 evidence.kind 若为
- * public_reference 类，同样抛错。仓库现行数据的实际形态：MEP 卡无结构化
- * evidence 字段、费率行只有 scope_note，公开参考价只经 scope_note 标记——
- * 故 scope_note 通道是现行有效判据，evidence.kind 通道是枚举扩展时的前防。
- * 作用域边界：本函数只在某行**声称已核实**（tier=verified 且凭据为报价卡）
- * 时被调用；现行生效卡 owner_baseline_40 在暂估层、不经本核验，它的
- * public_reference 费率行不因此报错——把基线卡误升已核实层才会触发。
- * 强度边界（如实）：其余核验仍只拦「凭据指向空卡/无名卡/状态漂移/公开参考
- * 价冒充」，不证明报价的商业真实性——证据强度分级（photo / owner_reported /
- * written_quote 的可比性判断）在 quote-cards 的 comparable 门禁那边，不在本
- * 守卫口径内。
+ * ⑤ 证据等级必须为 written_quote（正向强制，见下）；⑥ 费率来源不得为公开
+ * 参考价（第二层，见下）。
+ * ⑤ 的来由（复审再续·凭据边界收紧）：早先版本只**拒**公开参考价来源——缺
+ * 证据、或只有照片 / 业主转述的卡仍能过关，与证据分级口径不一致。
+ * shared/quote-cards.ts 的 QuoteCardEvidenceKind 三级（photo /
+ * owner_reported / written_quote）中，只有 written_quote（施工方/商家的书面
+ * 报价单，可签字、可追溯）是一级证据、能放心比价，该系统自身的 comparable
+ * 门禁同样以 `evidence.kind !== 'written_quote'` 判不可比。故本守卫正向强
+ * 制：卡必须带结构化 evidence 且 kind === 'written_quote'，缺失或为 photo /
+ * owner_reported 一律抛错点名。
+ * ⑥ 费率来源：status=contracted 只证明登记状态，不证明费率是施工方真实报
+ * 价——一张费率取自公开参考价的卡若被标成 contracted，公开参考价照样进已
+ * 核实层。故逐行核验该卡 rates 的来源：任一行 scope_note 含
+ * `public_reference` 标记、或行级 evidence.kind 为 public_reference 类，即
+ * 视为公开参考价来源，抛错并点名行键（evidence.kind === 'written_quote' 的
+ * 卡也过不了这一层）。
+ * 作用域边界（如实）：本函数只在某行**声称已核实**（tier=verified 且凭据为
+ * 报价卡）时被调用。现行 5 张 MEP 卡均无结构化 evidence 字段——按 ⑤，此后
+ * 任何 MEP 卡在补登书面证据前**不得**支撑已核实层，这是刻意的 fail-closed；
+ * 现行已核实行（签约空调）走合同凭据、不经本核验，不受影响；水电行在暂估
+ * 层，生效卡 owner_baseline_40 不经本核验、其 public_reference 费率行不因
+ * 此报错。强度边界：本守卫拦的是「凭据指向空卡/无名卡/状态漂移/证据等级
+ * 不足/公开参考价冒充」，不证明报价的商业真实性本身。
  * quotesFile 参数仅供测试注入合成卡文件；生产路径不传、走真实文件。
  */
 function assertQuoteCardCredential(rowId: string, basis: { cardId: string; cardStatus: string }, quotesFile?: AnyRecord): void {
@@ -305,13 +312,16 @@ function assertQuoteCardCredential(rowId: string, basis: { cardId: string; cardS
   if (typeof card.quoted_at !== 'string' || card.quoted_at.trim().length === 0) {
     throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据不全：卡 ${basis.cardId} 在 config/mep-quotes.yaml 中缺报价日期（quoted_at）——无日期报价不算凭据`);
   }
-  // ⑤ 费率来源核验：公开参考价（public_reference）不是施工方报价，哪怕卡被标成
-  // contracted 也不许据此声称已核实。逐行查 rates 的 scope_note 标记，命中即
-  // 点名行键抛错；卡级 evidence.kind 为 public_reference 类同罪。
+  // ⑤ 证据等级正向强制：已核实层只认一级证据 written_quote（书面报价单）；
+  // 缺 evidence、或 kind 为 photo / owner_reported（照片判读 / 业主转述）一律
+  // 不许——与 shared/quote-cards.ts 的证据分级及 comparable 门禁同口径。
   const cardEvidenceKind = (card.evidence as AnyRecord | undefined)?.kind;
-  if (cardEvidenceKind === 'public_reference') {
-    throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据来源不合格：卡 ${basis.cardId} 的 evidence.kind=${cardEvidenceKind}（公开参考价）——公开参考价不是施工方报价，不得支撑已核实层，请降为暂估层`);
+  if (cardEvidenceKind !== 'written_quote') {
+    throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据证据不合格：卡 ${basis.cardId} 的 evidence.kind=${typeof cardEvidenceKind === 'string' ? cardEvidenceKind : '缺失'}，不是 written_quote（书面报价单）——照片判读（photo）/ 业主转述（owner_reported）/ 无证据的卡不得支撑已核实层，请补登书面证据或降为暂估层`);
   }
+  // ⑥ 费率来源核验（第二层）：公开参考价（public_reference）不是施工方报价，
+  // 哪怕卡被标成 contracted、且 evidence 为 written_quote 也不许据此声称已核
+  // 实。逐行查 rates 的 scope_note 标记与行级 evidence.kind，命中即点名行键。
   for (const [rateKey, rate] of Object.entries((card.rates ?? {}) as Record<string, AnyRecord>)) {
     const scopeNote = typeof rate?.scope_note === 'string' ? rate.scope_note : '';
     const rateEvidenceKind = (rate?.evidence as AnyRecord | undefined)?.kind;
