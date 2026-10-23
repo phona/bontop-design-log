@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
@@ -370,6 +372,50 @@ describe('成本总表 cost-summary', () => {
     const section = findDecisionSection('DEC-2026-10-04-R1');
     assert.ok(section);
     assert.equal(hasAffirmativeDealSemantics(section.text), true, '真实合同章节 DEC-2026-10-04-R1 必须命中正向成交表述');
+  });
+
+  it('DEC 章节检索加固：非法 id 守卫式抛错、同 id 双章节歧义抛错（G5/G6）', () => {
+    // G5：decId 未校验未转义拼进 RegExp 时，「R8|R7」式交替能劫持到别的
+    // 章节、含括号的值抛裸 SyntaxError。非法 id 必须守卫式抛错点名。
+    assert.throws(
+      () => findDecisionSection('DEC-2026-10-04-R8|R7'),
+      (error: unknown) => !(error instanceof SyntaxError) && /不符合严格格式/.test((error as Error).message),
+      '交替形 ref 必须守卫式抛错（非 SyntaxError、非命中错章）',
+    );
+    assert.throws(() => findDecisionSection('DEC-2026-10-04'), /不符合严格格式/, '截断形 ref 必须抛错');
+    const control = parseYaml(readFileSync('schedule/phase-1/control.yaml', 'utf8')) as AnyRecord;
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    const hijacked = structuredClone(control) as AnyRecord;
+    const hijackedQr = (hijacked.hard_finish_quote_rounds.records as AnyRecord[])
+      .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+    hijackedQr.contract_ref = 'DEC-2026-10-04-R8|R7';
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, hijacked),
+      /不符合严格格式/,
+      '经守卫入口的交替形 contract_ref 必须抛错',
+    );
+    // G6：同 id 双章节（分卷重复）时旧实现首命中即返回、静默读错卷。用
+    // 临时目录双文件同 id 注入：必须抛错点名全部文件；删掉一份后恢复。
+    const dir = mkdtempSync(join(tmpdir(), 'dec-sections-'));
+    try {
+      writeFileSync(join(dir, 'a.md'), '### DEC-2099-01-01-R1 测试成交\n\n- **成交事实**：甲卷。\n');
+      writeFileSync(join(dir, 'b.md'), '### DEC-2099-01-01-R1 同名章节\n\n- 另一卷的同名章节。\n');
+      assert.throws(
+        () => findDecisionSection('DEC-2099-01-01-R1', dir),
+        (error: unknown) => {
+          const message = (error as Error).message;
+          return message.includes('章节歧义') && message.includes('a.md') && message.includes('b.md');
+        },
+        '同 id 双章节必须抛错并点名全部文件',
+      );
+      rmSync(join(dir, 'b.md'));
+      const single = findDecisionSection('DEC-2099-01-01-R1', dir);
+      assert.ok(single && single.text.includes('甲卷'), '单章节时必须正常返回该章节');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    // 真实仓库不变：现行合同章节唯一命中
+    assert.ok(findDecisionSection('DEC-2026-10-04-R1'), '真实 DEC 章节必须正常命中');
   });
 
   it('报价卡凭据边界：证据须 written_quote 且费率不得含公开参考价来源', () => {

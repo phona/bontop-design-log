@@ -190,36 +190,55 @@ export type VerifiedBasis =
 /** 报价卡 status 的锁定类白名单（QuoteCardStatus 枚举）：contracted 才算锁定；baseline / candidate / quoted / rejected 一律不许支撑已核实层。另接受 locked（询价轮次口径）以防枚举扩展。 */
 export const LOCKED_QUOTE_CARD_STATUSES: ReadonlySet<string> = new Set(['contracted', 'locked']);
 
+/** DEC id 严格格式（AGENTS.md 口径）：DEC-YYYY-MM-DD-(三位序号 | R 序号）。 */
+const DEC_ID_PATTERN = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
+
 /**
  * 按 DEC id 在 docs/decisions/*.md 中定位该决策的章节原文（从 `### <DEC id> …`
  * 标题行到下一个同级或更高级标题之前）。找不到返回 null。仓库现行 DEC 章节
  * 均为 ### 级标题；这里接受 ##–#### 级以防分卷调整。
+ * 两道 fail-closed（自主扫描 G5/G6）：
+ *  - decId 先按严格格式校验、再转义后拼进 RegExp——未校验未转义的原始拼
+ *    接下，「R8|R7」式交替可劫持到别的章节、含括号的值会让 RegExp 构造抛
+ *    裸 SyntaxError；非法 id 一律守卫式抛错点名，不进检索。
+ *  - 全部匹配章节都收集：同 id 出现在 >1 处（跨文件或同文件两章）即章
+ *    节歧义抛错并点名全部文件——旧实现首命中即返回，分卷重复时静默读
+ *    错卷、用错凭据原文。
+ * dir 参数仅供测试注入临时目录，生产路径不传、走 docs/decisions。
  */
-export function findDecisionSection(decId: string): { file: string; text: string } | null {
-  const dir = 'docs/decisions';
+export function findDecisionSection(decId: string, dir: string = 'docs/decisions'): { file: string; text: string } | null {
+  if (!DEC_ID_PATTERN.test(decId)) {
+    throw new Error(`cost summary: DEC id「${decId}」不符合严格格式 DEC-YYYY-MM-DD-(三位序号|R 序号）——contract_ref 只能是合法 DEC id，非法值不得拼进章节检索`);
+  }
   let names: string[];
   try {
     names = readdirSync(dir).filter((name) => name.endsWith('.md')).sort();
   } catch {
     return null;
   }
-  const headingPattern = new RegExp(`^#{2,4}\\s+${decId}(\\s|$)`);
+  const escapedId = decId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const headingPattern = new RegExp(`^#{2,4}\\s+${escapedId}(\\s|$)`);
+  const matches: Array<{ file: string; text: string }> = [];
   for (const name of names) {
     const lines = readFileSync(`${dir}/${name}`, 'utf8').split('\n');
-    const start = lines.findIndex((line) => headingPattern.test(line));
-    if (start < 0) continue;
-    const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
-    let end = lines.length;
-    for (let i = start + 1; i < lines.length; i += 1) {
-      const heading = lines[i].match(/^(#{1,6})\s/);
-      if (heading && heading[1].length <= level) {
-        end = i;
-        break;
+    for (let start = 0; start < lines.length; start += 1) {
+      if (!headingPattern.test(lines[start])) continue;
+      const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+      let end = lines.length;
+      for (let i = start + 1; i < lines.length; i += 1) {
+        const heading = lines[i].match(/^(#{1,6})\s/);
+        if (heading && heading[1].length <= level) {
+          end = i;
+          break;
+        }
       }
+      matches.push({ file: `${dir}/${name}`, text: lines.slice(start, end).join('\n') });
     }
-    return { file: `${dir}/${name}`, text: lines.slice(start, end).join('\n') };
   }
-  return null;
+  if (matches.length > 1) {
+    throw new Error(`cost summary: DEC ${decId} 有 ${matches.length} 个同名章节（${matches.map((match) => match.file).join('、')}）——章节歧义，无法判定哪一卷是凭据原文，须先消歧（合并或改名）再生成`);
+  }
+  return matches[0] ?? null;
 }
 
 /**
