@@ -1,3 +1,5 @@
+# HVAC 一拖五短名单已于 2026-10-22 从活动选项中退役：成交范围是 20kW 外机带六台内机，
+# 旧候选及量级仍可从 docs/hvac/hvac-deepening-20260907.md 追溯；现行采购边界见 schedule/procurement.md。
 tradeoffs:
   - topic: tile_installation
     label: "瓷砖铺贴"
@@ -46,30 +48,6 @@ tradeoffs:
         risk: high
         tips: "关注本地装修群、小区群开团信息"
         note: "价格最低，但发货周期不确定"
-
-  - topic: hvac_brand
-    label: "中央空调品牌（DEC-2026-09-07-055 深化：7HP 级一拖五，全包参考价）"
-    options:
-      - label: "A 美的 7匹（理想家IV/酷省电Pro）"
-        cost: 31000
-        risk: low
-        note: "主推：全直流变频、内机厚约200mm易藏吊顶、南宁售后密；2.8-3.4万"
-      - label: "B 格力 7匹档多联机"
-        cost: 35000
-        risk: low
-        note: "稳妥耐用；3.2-3.8万"
-      - label: "E 海尔智尊系列"
-        cost: 28500
-        risk: medium
-        note: "居中档 2.5-3.2万；南宁网点弱于美的/格力"
-      - label: "D 大金/日立（不推荐）"
-        cost: 60000
-        risk: medium
-        note: "APF 5.5+ 但超预算；6万+"
-      - label: "C 小米 6匹（有条件）"
-        cost: 20000
-        risk: high
-        note: "1.6-2.3万+10年质保，但 6HP 对 21.4kW 内机连接率 138% 超上限；须商家书面确认内机 ≤20kW 配置单，否则不碰"
 
   - topic: floor_material
     label: "客餐厅地面材料"

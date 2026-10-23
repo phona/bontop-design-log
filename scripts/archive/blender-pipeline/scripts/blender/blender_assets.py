@@ -90,7 +90,7 @@ FURNITURE_GLB = {
     # 客卫浴室柜：资产含木纹贴图；导入失败时保留程序化 vanity 回退。
     'vanity': {'path': 'assets/furniture/blenderkit_vanity/vanity.blend', 'width': 0.60},
     # 床 GLB（bed_soft_modern）暂不进管线：headless 下导入姿态不稳（baked 倾角+辅助 Cube，
-    # 见 docs/renders/pipeline-acceptance.md v16 节），回退程序化床体；待 GUI Blender 定姿后再启用
+    # 见 scripts/archive/blender-pipeline/docs/pipeline-acceptance.md v16 节），回退程序化床体；待 GUI Blender 定姿后再启用
 }
 
 

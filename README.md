@@ -45,9 +45,6 @@ interior-design-project/
 │   ├── design_service/
 │   ├── construction/
 │   └── material/
-├── renders/                   # 渲染与漫游
-│   ├── blender/
-│   └── web/
 ├── docs/                      # 文档
 │   ├── README.md              #   文档索引（13 个根文档的角色/状态/权威指向）
 │   ├── designer_brief.md
@@ -62,7 +59,7 @@ interior-design-project/
 │   │   └── <44 个现役轮次目录>/
 │   ├── standards/             # 起夜路径照明标准
 │   └── hvac/                  # 暖通专题文档（6 个）
-├── scripts/                   # Python工具脚本
+├── scripts/                   # 校验、渲染与自动化脚本
 └── schedule/                  # 进度计划
 ```
 
@@ -96,7 +93,7 @@ cat config/layout/model-geometry.yaml
 # 查看当前预算
 cat config/budget/base.json
 
-# 查看文档地图（16 个根文档的角色/状态/权威指向）
+# 查看文档入口与权威源
 cat docs/README.md
 
 # 查看待决策事项（决策日志入口：索引 + 模板 + 待决）
@@ -186,7 +183,7 @@ npm run state:project                # 人读：逐构件状态 + 未裁定/有�
 npm run state:project -- --json      # 机器可读：每构件一条 {status, statusSource, openQuestion, conflicts}
 ```
 
-回答一个问题：**每个构件确认到什么程度、卡在谁、和谁冲突。** 状态只派生不存储——权威仍在 `config/*.yaml` 的 `status`/`position_status`、`docs/pending-site-data.md` 的 55 条待决、179 条 DEC 与各 verifier 结论；本命令产出的是视图。优先级：门禁 error(`conflicted`) > config 字段 > 待决台账(`pending`) > DEC 引用(`confirmed`) > **`undeclared`（派生不出来，显形而不是默认已确认）**。规则顺序与状态词映射在 `config/state-model.yaml`，可评审。
+回答一个问题：**每个构件确认到什么程度、卡在谁、和谁冲突。** 状态只派生不存储——权威仍在 `config/*.yaml` 的 `status`/`position_status`、`docs/pending-site-data.md` 的 73 条待决、`docs/decisions/` 的 DEC 与各 verifier 结论；本命令产出的是视图。优先级：门禁 error(`conflicted`) > config 字段 > 待决台账(`pending`) > DEC 引用(`confirmed`) > **`undeclared`（派生不出来，显形而不是默认已确认）**。规则顺序与状态词映射在 `config/state-model.yaml`，可评审。
 
 当前快照：**164 个构件** = confirmed 73 / undeclared 68 / pending 21 / inferred 2（`tests/server/element-state.test.ts` 钉住总数与申报缺口，数字变化必须是有意的）。`sock_child_ac` 可答：「pending，卡在空调厂家深化图（#42）」。不需要 MCP——agent 读配置、跑这条命令、curl 既有 API 已足够。（2026-10-22 起 MCP 服务端已整体删除，本地 AI 直接拉文件 / 跑 CLI / curl API。）
 
