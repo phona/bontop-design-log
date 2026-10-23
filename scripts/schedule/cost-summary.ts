@@ -23,11 +23,16 @@
  *     参考实付、定额暂估，以及带未关闭 dedup 的实算行）一律暂估。汇总分三行呈现：
  *     已核实小计 + 暂估小计 = 已知合计；已知合计不得被表述为已核实成本。
  *     层级不是静态标签（2026-10-23 复核）：tier = verified 的行必须登记
- *     verifiedBasis 并过 assertVerifiedTierBasis 守卫——报价卡行断言生效卡
- *     status ∈ 锁定类（contracted/locked；baseline/candidate/quoted 不许），
- *     合同行断言 contracted_cny 与轮次 contract_ref/locked 状态齐备；来源状态
- *     变未决即生成抛错。水电行即因此降层：生效卡 owner_baseline_40 是业主口径
- *     基线（status: baseline、费率多为 public_reference），且 COST-040-15 的
+ *     verifiedBasis 并过 assertVerifiedTierBasis 守卫。守卫查的是实际凭据、
+ *     不是 control.yaml 的自报字段（2026-10-23 复审续）：合同行除断言
+ *     contracted_cny 与轮次 contract_ref/locked 状态齐备外，还按 contract_ref
+ *     （DEC id）回 docs/decisions/ 解析该 DEC 章节原文，核对原文载有与合同额
+ *     一致的成交金额与成交/签约/合同语义，解析不到或金额对不上即抛错；
+ *     报价卡行除断言生效卡 status ∈ 锁定类（contracted/locked；baseline/
+ *     candidate/quoted 不许）外，还按卡 id 回 config/mep-quotes.yaml 原卡
+ *     核对 status 与登记一致、承包商名与 quoted_at 非空。来源状态变未决即
+ *     生成抛错。水电行即因此降层：生效卡 owner_baseline_40 是业主口径基线
+ *     （status: baseline、费率多为 public_reference），且 COST-040-15 的
  *     interface_pending 未关闭，两点都写在该行 tierReason 里。
  *
  * ── 数据源映射裁定（每行唯一来源 + 防双算理由）────────────────────────────
@@ -88,7 +93,10 @@
  *  条目的 coversItems；(c) 不计价登记 excludedItems（带理由）。无归属或登记指向
  *  不存在的条目 → 构建抛错、verify 失败。归属是集合语义：同一条目可以同时属
  *  两个分类，但多重归属必须在 DUAL_ATTRIBUTIONS 显式声明并附理由（现声明
- *  COST-030-02、COST-030-07），未声明的多重归属或已腐烂的声明同样抛错；
+ *  COST-030-02、COST-030-07、COST-040-15），未声明的多重归属或已腐烂的声明
+ *  同样抛错；双归属上限为恰两个分类——同一条目出现在三个及以上分类必有
+ *  重复计价或处置冲突，抛错。另有一道防重复计价：同一条目被两条不同定价行
+ *  同时计入（同属 counted 分类、集合语义下看不见）必须抛错并点名两条行。
  *  覆盖计数按分类如实呈现、三类之和 = 未决总数 + 双归属数。本表范围外包
  *  （design_preparation / curtains / furniture / appliances 池）的组件按包登记
  *  排除理由，不逐项进本表。
@@ -103,7 +111,7 @@
  *    五金 1,500 同范围，不另计（防双算登记里显形）。
  * ────────────────────────────────────────────────────────────────────────
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { RuleEngine } from '../../server/rule-engine.js';
@@ -165,10 +173,12 @@ export type CostTier = 'verified' | 'provisional';
 /**
  * 已核实层的来源凭据（层级守卫的断言对象，见 assertVerifiedTierBasis）：
  *  - contract：合同行——control.yaml 里该包 contracted_cny 存在，且对应询价轮次
- *    status = locked、locked_cny 与合同额一致、contract_ref 非空。
+ *    status = locked、locked_cny 与合同额一致、contract_ref 非空；再按
+ *    contract_ref 回仓库凭据原文核验（见 assertContractCredential）。
  *  - quote-card：报价卡行——生效卡 status 必须是锁定类（见
  *    LOCKED_QUOTE_CARD_STATUSES）；cardStatus 在构建时从比较结果原样捕获，
- *    不是登记处自填的字符串。
+ *    不是登记处自填的字符串，且守卫会回原卡文件核对（见
+ *    assertQuoteCardCredential）。
  */
 export type VerifiedBasis =
   | { type: 'contract'; packageId: string; quoteRoundId: string }
@@ -178,18 +188,105 @@ export type VerifiedBasis =
 export const LOCKED_QUOTE_CARD_STATUSES: ReadonlySet<string> = new Set(['contracted', 'locked']);
 
 /**
+ * 按 DEC id 在 docs/decisions/*.md 中定位该决策的章节原文（从 `### <DEC id> …`
+ * 标题行到下一个同级或更高级标题之前）。找不到返回 null。仓库现行 DEC 章节
+ * 均为 ### 级标题；这里接受 ##–#### 级以防分卷调整。
+ */
+export function findDecisionSection(decId: string): { file: string; text: string } | null {
+  const dir = 'docs/decisions';
+  let names: string[];
+  try {
+    names = readdirSync(dir).filter((name) => name.endsWith('.md')).sort();
+  } catch {
+    return null;
+  }
+  const headingPattern = new RegExp(`^#{2,4}\\s+${decId}(\\s|$)`);
+  for (const name of names) {
+    const lines = readFileSync(`${dir}/${name}`, 'utf8').split('\n');
+    const start = lines.findIndex((line) => headingPattern.test(line));
+    if (start < 0) continue;
+    const level = (lines[start].match(/^#+/) as RegExpMatchArray)[0].length;
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i += 1) {
+      const heading = lines[i].match(/^(#{1,6})\s/);
+      if (heading && heading[1].length <= level) {
+        end = i;
+        break;
+      }
+    }
+    return { file: `${dir}/${name}`, text: lines.slice(start, end).join('\n') };
+  }
+  return null;
+}
+
+/**
+ * 合同凭据核验（2026-10-23 复审续）：contract_ref 在 control.yaml 里只是一个
+ * 自报字符串，光「字段在位」不算凭据。本核验按 contract_ref（现行数据只支持
+ * DEC id 形式）回 docs/decisions/ 解析对应 DEC 章节原文，断言：① 章节存在；
+ * ② 章节原文载有与 contracted_cny 一致的金额（千分位格式，如 36,000）；
+ * ③ 章节原文带成交/签约/合同语义。三者缺一即抛错。
+ * 强度边界（如实）：这是对仓库内决策原文的文本核验——能拦「引用不存在、
+ * 金额被改、引用挂错决策」，拦不住「DEC 原文与纸质合同本身不符」（纸质合同
+ * 不在仓库内，无从机读；DEC 是仓库内最接近合同的权威凭据）。
+ */
+function assertContractCredential(rowId: string, contractRef: string, contracted: number, packageId: string): void {
+  const section = findDecisionSection(contractRef);
+  if (!section) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据无从核验：contract_ref ${contractRef} 在 docs/decisions/ 中解析不到对应的 DEC 章节——引用不存在，已核实层不成立`);
+  }
+  const amountText = contracted.toLocaleString('en-US');
+  if (!section.text.includes(amountText)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）未载明金额 ${amountText}，与 ${packageId} contracted_cny=${contracted} 不符`);
+  }
+  if (!/(成交|签约|合同)/.test(section.text)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见成交/签约/合同语义，该决策不是成交凭据`);
+  }
+}
+
+/**
+ * 报价卡凭据核验（2026-10-23 复审续）：在 status 锁定类断言之外，按卡 id 回
+ * config/mep-quotes.yaml 原卡（经 loadMepQuotes 的规范解析路径）核对：
+ * ① 原卡存在；② 原卡 status 与登记处捕获的 cardStatus 一致（防捕获值与原文
+ * 漂移）；③ 承包商名（contractor）非空；④ 报价日期（quoted_at）非空。
+ * 强度边界（如实）：原卡字段本身仍是仓库内登记数据，本核验拦的是「凭据指向
+ * 空卡/无名卡/状态漂移」，不证明报价的商业真实性——那要靠卡上的 evidence
+ * 分级（written_quote 等），不在本守卫口径内。
+ * quotesFile 参数仅供测试注入合成卡文件；生产路径不传、走真实文件。
+ */
+function assertQuoteCardCredential(rowId: string, basis: { cardId: string; cardStatus: string }, quotesFile?: AnyRecord): void {
+  const file = quotesFile ?? (loadMepQuotes() as unknown as AnyRecord);
+  const card = ((file.quotes ?? []) as AnyRecord[]).find((quote) => quote.id === basis.cardId);
+  if (card && card.status !== basis.cardStatus) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据漂移：登记捕获的 ${basis.cardId} status=${basis.cardStatus}，与 config/mep-quotes.yaml 原卡 status=${card.status} 不一致——请重新生成捕获`);
+  }
+  if (!LOCKED_QUOTE_CARD_STATUSES.has(basis.cardStatus)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 声称已核实，但其依据的报价卡 ${basis.cardId} 的 status=${basis.cardStatus} 不是锁定类状态（仅 contracted/locked 可支撑已核实层；baseline/candidate/quoted/rejected 一律不许）——请把该行降为暂估层，或更换为锁定类生效卡`);
+  }
+  if (!card) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据无从核验：config/mep-quotes.yaml 中找不到卡 ${basis.cardId}——凭据指向不存在的卡，已核实层不成立`);
+  }
+  if (typeof card.contractor !== 'string' || card.contractor.trim().length === 0) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据不全：卡 ${basis.cardId} 在 config/mep-quotes.yaml 中缺承包商名（contractor）——无名报价不算凭据`);
+  }
+  if (typeof card.quoted_at !== 'string' || card.quoted_at.trim().length === 0) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据不全：卡 ${basis.cardId} 在 config/mep-quotes.yaml 中缺报价日期（quoted_at）——无日期报价不算凭据`);
+  }
+}
+
+/**
  * 层级守卫（2026-10-23 复核总评：层级不能是静态标记）：tier = verified 的行必须
  * 凭 verifiedBasis 过本断言——来源状态一旦变未决（生效卡被换成 baseline、
  * 合同额或 contract_ref 被删），生成直接抛错，而不是让旧层级静默通过。
+ * 断言分两层：先对 control.yaml 内的字段一致性（合同额/轮次锁定/引用在位、
+ * 卡状态锁定类），再回仓库凭据原文核验（合同 → DEC 章节；报价卡 → 原卡
+ * 字段），字段自报对不上原文同样抛错。quotesFile 仅供测试注入。
  */
-export function assertVerifiedTierBasis(rowId: string, basis: VerifiedBasis | undefined, control: AnyRecord): void {
+export function assertVerifiedTierBasis(rowId: string, basis: VerifiedBasis | undefined, control: AnyRecord, quotesFile?: AnyRecord): void {
   if (!basis) {
     throw new Error(`cost summary: 定价行 ${rowId} 声称已核实（tier=verified）但未登记来源凭据（verifiedBasis）——已核实层必须有可断言的锁定来源，请先在登记处补凭据或降为暂估层`);
   }
   if (basis.type === 'quote-card') {
-    if (!LOCKED_QUOTE_CARD_STATUSES.has(basis.cardStatus)) {
-      throw new Error(`cost summary: 定价行 ${rowId} 声称已核实，但其依据的报价卡 ${basis.cardId} 的 status=${basis.cardStatus} 不是锁定类状态（仅 contracted/locked 可支撑已核实层；baseline/candidate/quoted/rejected 一律不许）——请把该行降为暂估层，或更换为锁定类生效卡`);
-    }
+    assertQuoteCardCredential(rowId, basis, quotesFile);
     return;
   }
   const pkg = pkgOf(control, basis.packageId);
@@ -204,6 +301,7 @@ export function assertVerifiedTierBasis(rowId: string, basis: VerifiedBasis | un
   if (qr.status !== 'locked' || qr.locked_cny !== contracted) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据对不上：${basis.quoteRoundId} status=${qr.status}、locked_cny=${qr.locked_cny}，与 ${basis.packageId} contracted_cny=${contracted} 不一致`);
   }
+  assertContractCredential(rowId, qr.contract_ref, contracted, basis.packageId);
 }
 
 export interface CostRow {
@@ -411,15 +509,23 @@ export interface DualAttributionDeclaration {
  *    内、增量 ¥0），但型号（须 KJRF-90RT/MW）/数量 6 只/安装对码责任/控制线
  *    芯数四项门店书面确认未闭，另列待核——金额归属与确认归属分离，只登记
  *    counted 会把 closure 夸大成「已全闭」。
+ *  COST-040-15：封槽料与阴阳角网格布的金额已在水电报价卡辅材包干内计一次
+ *    （水电行计入），但它与 PKG-080 基层修补的施工界面须书面划清
+ *    （interface_pending，control 原文「防止两边都说含」）——金额归属与界面
+ *    归属分离，只藏在水电行 coversItems 里则成本表表面看不见这件未决事。
  */
 export const DUAL_ATTRIBUTIONS: DualAttributionDeclaration[] = [
   { item: 'COST-030-02', reason: '铜管主体计入空调签约行，合同外增量另列待核（已计金额与未决增量分属两类）' },
   { item: 'COST-030-07', reason: '线控器金额按业主口述计入空调签约行（增量 ¥0），型号/数量/对码责任/线芯数四项书面确认另列待核（金额归属与确认归属分离）' },
+  { item: 'COST-040-15', reason: '封槽料金额已计入水电行（报价卡辅材包干），与 PKG-080 基层修补的书面界面划分另列待核（金额归属与界面归属分离）' },
 ];
 
 /**
  * 双归属校验（纯函数，可独立测试）：claims 是条目 → 归属分类集合。
- * 未声明的多重归属抛错并点名 id；声明腐烂（声明的条目并非多重归属的未决
+ * 双归属上限为**恰两个分类**：同一条目出现在三个及以上分类（counted +
+ * pending + excluded 任意三路），无论是否已声明都抛错——三路登记必有重复
+ * 计价或处置冲突（2026-10-23 复审续）。两个分类的多重归属必须命中显式
+ * 声明，未声明抛错并点名 id；声明腐烂（声明的条目并非多重归属的未决
  * 条目）同样抛错。返回实际生效的双归属条目 id（排序后）。
  */
 export function assertAttributionClaims(
@@ -430,7 +536,11 @@ export function assertAttributionClaims(
   const declared = new Map(declarations.map((declaration) => [declaration.item, declaration]));
   const dualIds: string[] = [];
   for (const [id, kinds] of claims) {
-    if (!unresolvedIds.has(id) || kinds.size <= 1) continue;
+    if (!unresolvedIds.has(id)) continue;
+    if (kinds.size > 2) {
+      throw new Error(`cost summary: 覆盖检查失败，条目 ${id} 被三重归属（${[...kinds].join(' + ')}）——双归属上限为恰两个分类，三路登记必有重复计价或处置冲突，请裁定唯一处置后重新生成`);
+    }
+    if (kinds.size <= 1) continue;
     if (!declared.has(id)) {
       throw new Error(`cost summary: 覆盖检查失败，条目 ${id} 被多重归属（${[...kinds].join(' + ')}）但未在 DUAL_ATTRIBUTIONS 显式声明双归属及理由——多重归属不许静默取首个分类，请先裁定并声明，再重新生成`);
     }
@@ -446,12 +556,31 @@ export function assertAttributionClaims(
 }
 
 /**
+ * 重复计入校验（纯函数，可独立测试）：countedClaims 是条目 → 计入它的定价行
+ * 标识列表。集合语义的归属收集只能看见「分类」，看不见「同属 counted 的两条
+ * 不同定价行」——同一条目被两条定价行各计一次金额就是重复计价，必须抛错
+ * 并点名条目与两条行（2026-10-23 复审续）。同一行内重复登记同一条目不算
+ * （按行去重后判断）。
+ */
+export function assertNoDuplicateCountedClaims(
+  countedClaims: ReadonlyMap<string, readonly string[]>,
+): void {
+  for (const [id, rowIds] of countedClaims) {
+    const distinctRows = [...new Set(rowIds)];
+    if (distinctRows.length > 1) {
+      throw new Error(`cost summary: 覆盖检查失败，条目 ${id} 被多条定价行重复计入（${distinctRows.join('、')}）——同一条目的金额不许在两条定价行各计一次，请裁定唯一计入行，另一处改走未定价与待核或不计价登记`);
+    }
+  }
+}
+
+/**
  * 覆盖检查（fail-closed）：全量扫描 control.yaml 的组件与询价轮次，每个未决条目
  * 必须在覆盖登记里有归属（定价行 coversItems / 未定价与待核 coversItems / 不计价
  * 登记），登记指向不存在的条目同样报错。归属按集合语义收集：同一条目登记在
  * 多个分类时不取首个了事，必须命中 DUAL_ATTRIBUTIONS 的显式双归属声明
- * （见 assertAttributionClaims）。清单因此不是手写名单：数据新增未决
- * 条目而登记未跟上时，生成直接失败、verify 报错。
+ * （见 assertAttributionClaims）；同属 counted 分类的两条不同定价行重复计入
+ * 同一条目另由 assertNoDuplicateCountedClaims 拦截。清单因此不是手写名单：
+ * 数据新增未决条目而登记未跟上时，生成直接失败、verify 报错。
  */
 function assertCoverage(
   control: AnyRecord,
@@ -466,7 +595,16 @@ function assertCoverage(
     kinds.add(kind);
     claims.set(id, kinds);
   };
-  for (const row of rows) for (const id of row.coversItems ?? []) claim(id, 'counted');
+  // counted 归属另按行收集：集合语义看不见「两条不同定价行计入同一条目」，
+  // 重复计入（重复计价）由 assertNoDuplicateCountedClaims 单独拦截并点名。
+  const countedClaims = new Map<string, string[]>();
+  for (const row of rows) {
+    for (const id of row.coversItems ?? []) {
+      claim(id, 'counted');
+      countedClaims.set(id, [...(countedClaims.get(id) ?? []), `${row.id}（${row.name}）`]);
+    }
+  }
+  assertNoDuplicateCountedClaims(countedClaims);
   for (const entry of unpriced) for (const id of entry.coversItems ?? []) claim(id, 'pending');
   for (const entry of pendingChecks) for (const id of entry.coversItems) claim(id, 'pending');
   for (const item of excludedItems) claim(item.item, 'excluded');
@@ -625,8 +763,10 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       verifiedBasis: { type: 'quote-card', cardId: comparison.id, cardStatus: comparison.status },
       // 报价卡逐行覆盖给排水/线路/器件：panel=强电箱、leb_kit+增项=等电位、gas_alarm_kit=报警器、
       // exhaust_duct_kit=排风、spd=浪涌、breaker=断路器、entry_valve_kit=阀件、hot_pipe_insulation=保温、
-      // aux_lump 包干行与 -18 同名同范围、开孔/打压测试在增项行、封槽料与套管属辅材包干（与 PKG-080
-      // 的边界是签约划界事项，金额已在卡内计一次）。只有 -09 燃气管道不在卡内，另列待核。
+      // aux_lump 包干行与 -18 同名同范围、开孔/打压测试在增项行、封槽料与套管属辅材包干（金额已在
+      // 卡内计一次）；其中 -15 封槽料与 PKG-080 基层修补的边界须书面划清（interface_pending），
+      // 该未决事项另列待核清单与本行双归属登记（见 DUAL_ATTRIBUTIONS），不许只藏在本行里。
+      // 只有 -09 燃气管道不在卡内，另列待核。
       coversItems: ['COST-040-01', 'COST-040-02', 'COST-040-03', 'COST-040-04', 'COST-040-05', 'COST-040-06', 'COST-040-07', 'COST-040-08', 'COST-040-10', 'COST-040-11', 'COST-040-12', 'COST-040-13', 'COST-040-14', 'COST-040-15', 'COST-040-16', 'COST-040-17', 'COST-040-18', 'COST-040-19', 'COST-040-20'],
       derivation: `算量 × 生效报价卡：shared/mep-takeoff.ts 按路由实算（强电计价管长 ${qty(takeoff.conduit.strongPowerTotalM)} m、导线 ${qty(takeoff.wire.totalWireM)} m，给排水与器件逐项），× config/mep-quotes.yaml 生效卡 ${comparison.id} 单价，${comparison.rows.length} 行全部计价、无待报价行——清包人工 ${yuan(laborPart)}（${qty(areaSqm, 2)} ㎡ × ${yuan(laborRate)}/㎡）、导线 ${yuan(wirePart)}、线管 ${yuan(conduitPart)}、其余管材/器件/增项 ${yuan(restPart)}，卡总额 ${yuan(total)} 取整。本行按本分支算量（平面 union 口径，DEC-2026-10-07-M02）；竖直段补计（DEC-2026-10-23-R01，PR #11）合入后约 +¥1,300，届时重生成自动更新`,
     });
@@ -909,6 +1049,14 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       coversItems: ['COST-040-09'],
     },
     {
+      id: 'pending-mep-paint-interface',
+      name: '封槽料与基层修补的界面划分（水电/涂装）',
+      packageIds: ['PKG-040', 'PKG-080'],
+      statusLabel: 'interface_pending · 待书面划清',
+      note: 'COST-040-15（封槽料与阴阳角网格布）金额已在水电报价卡辅材包干内计一次（水电行在册），本条待核的不是金额而是界面：它属水电开槽后的收口，与 PKG-080 基层修补的边界须书面划清（control 原文），防两边都说含或两边都不含。与水电行双归属登记（DUAL_ATTRIBUTIONS 已声明）：金额在水电行、界面事项在本清单',
+      coversItems: ['COST-040-15'],
+    },
+    {
       id: 'pending-hvac-excluded-extras',
       name: '空调合同明确不含项（风口加长/复合风管/税）',
       packageIds: ['PKG-030'],
@@ -1053,9 +1201,9 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += '## 口径说明\n\n';
   markdown += '- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。\n';
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
-  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract_ref（轮次 status 须 locked），报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同额/合同引用/卡 status 在构建时读取），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
-  markdown += '- 未定价项目将来必花钱，真实总成本必然高于已知合计，高多少要等其报价/量房后才知道。\n';
-  markdown += '- **覆盖检查**：生成时全量扫描 `schedule/phase-1/control.yaml` 的成本组件与询价轮次登记，凡状态未决或去重未关闭的条目必须登记归属（计入定价行 / 未定价与待核 / 不计价登记），缺一即生成失败——未定价与待核清单不是手写名单。同一条目同时属两个分类（双归属）必须在生成器中显式声明并附理由，未声明的多重归属同样使生成失败。\n';
+  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract_ref（轮次 status 须 locked），且生成器按 contract_ref 回决策记录核对原文载有成交金额与成交事实；报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行，生成器另回原卡核对承包商名与报价日期；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同额/决策原文/原卡凭据在构建时读取核对），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
+  markdown += '- 未定价与待核项目尚未计入合计：它们取得价格后会增加总额；但已知合计同时含未锁定的暂估金额（结算时可能调减），个别款项还是可退押金性质（如物业可退装修押金，只是临时现金占用、不是最终成本）——真实总成本以正式报价与结算为准，不必然高于、也不必然低于已知合计。\n';
+  markdown += '- **覆盖检查**：生成时全量扫描 `schedule/phase-1/control.yaml` 的成本组件与询价轮次登记，凡状态未决或去重未关闭的条目必须登记归属（计入定价行 / 未定价与待核 / 不计价登记），缺一即生成失败——未定价与待核清单不是手写名单。同一条目同时属两个分类（双归属）必须在生成器中显式声明并附理由，未声明的多重归属、出现在三个及以上分类、或被两条定价行重复计入，同样使生成失败。\n';
   markdown += '- **成色定义**：已签约 = 已转合同的成交价；报价卡实算 = 算量引擎实算量 × 生效报价卡单价；报价轮实算 = 业主询价轮次逐项构成的实算目标；定标目标 = 业主定标时裁定的目标价、非成交价；参考实付 = 同户型已发生的实付锚、非本户报价；算量费率 = 算量面积 × 静态费率（人工）；候选价 = 当前选品的候选价、未取证未成交；定额暂估 = 按定额登记的暂估额、非算量非报价。\n';
   markdown += '- **数据源**：`schedule/phase-1/control.yaml`（合同额、estimated_need、询价轮次）、`server/budget-calculator.ts` 科目快照（量 × 选品价）、`shared/mep-takeoff.ts` 算量 × `config/mep-quotes.yaml` 生效报价卡。映射裁定与防双算理由固化在 `scripts/schedule/cost-summary.ts` 文件头。\n\n';
   markdown += '## 硬装成本（含中央空调）\n\n';

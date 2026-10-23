@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
   assertAttributionClaims,
+  assertNoDuplicateCountedClaims,
   assertVerifiedTierBasis,
   buildCostSummary,
   computeActiveMepQuote,
@@ -138,8 +139,10 @@ describe('成本总表 cost-summary', () => {
       /不是锁定类状态/,
       '普通书面报价（quoted）未锁定，同样不许支撑已核实层',
     );
+    // contracted 卡只有在原卡凭据可核（卡存在、承包商与报价日期非空）时才放行——注入合成卡文件
+    const contractedQuotes = { quotes: [{ id: 'some_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01' }] };
     assert.doesNotThrow(
-      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'contracted' }, control),
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'contracted' }, control, contractedQuotes),
     );
     // 无凭据声称已核实必须抛错
     assert.throws(() => assertVerifiedTierBasis('cost-mep', undefined, control), /未登记来源凭据/);
@@ -158,6 +161,46 @@ describe('成本总表 cost-summary', () => {
     assert.equal(hvacRow?.verifiedBasis?.type, 'contract');
   });
 
+  it('层级守卫凭据核验：contract_ref 须解析到 DEC 原文且金额一致，报价卡须回原卡核对凭据字段', () => {
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    // 伪造 contract_ref 指向不存在的 DEC：字段自报齐全也必须被凭据核验拦下
+    const badRef = structuredClone(control) as AnyRecord;
+    const badRefQr = (badRef.hard_finish_quote_rounds.records as AnyRecord[])
+      .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+    badRefQr.contract_ref = 'DEC-2099-01-01-R99';
+    assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, badRef), /解析不到/, 'contract_ref 解析不到 DEC 原文必须抛错');
+    // 金额篡改：control 内两处自报同步改掉，仍须与 DEC 原文（36,000）对不上而抛错
+    const badAmount = structuredClone(control) as AnyRecord;
+    pkgOf(badAmount, 'PKG-030').budget.contracted_cny = 35000;
+    const badAmountQr = (badAmount.hard_finish_quote_rounds.records as AnyRecord[])
+      .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+    badAmountQr.locked_cny = 35000;
+    assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, badAmount), /金额对不上/, '合同额与 DEC 原文不符必须抛错');
+    // 报价卡凭据：status 是 contracted 但原卡不存在——光信 status 不许过
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ghost_card', cardStatus: 'contracted' }, control),
+      /找不到卡 ghost_card/,
+      'contracted 状态但原卡不存在必须抛错',
+    );
+    // 原卡在但承包商名为空 / 报价日期为空：凭据不全必须抛错
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'contracted' }, control,
+        { quotes: [{ id: 'some_card', status: 'contracted', contractor: '  ', quoted_at: '2026-10-01' }] }),
+      /缺承包商名/,
+    );
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'contracted' }, control,
+        { quotes: [{ id: 'some_card', status: 'contracted', contractor: '测试施工方', quoted_at: null }] }),
+      /缺报价日期/,
+    );
+    // 状态漂移：登记捕获 contracted、原卡实为 candidate，必须抛错
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'contracted' }, control,
+        { quotes: [{ id: 'some_card', status: 'candidate', contractor: '测试施工方', quoted_at: '2026-10-01' }] }),
+      /凭据漂移/,
+    );
+  });
+
   it('覆盖检查：全部未决条目已登记归属，三类计数对上未决总数', () => {
     const { coverage } = data;
     assert.equal(coverage.scannedComponentCount, 106);
@@ -169,13 +212,15 @@ describe('成本总表 cost-summary', () => {
       coverage.unresolvedItemCount,
       '计入定价行 + 未定价与待核 + 不计价登记 − 双归属 必须恰好覆盖全部未决条目',
     );
-    assert.deepEqual(coverage.dualAttributedItemIds, ['COST-030-02', 'COST-030-07'], '双归属条目必须恰为已声明的两条');
+    assert.deepEqual(coverage.dualAttributedItemIds, ['COST-030-02', 'COST-030-07', 'COST-040-15'], '双归属条目必须恰为已声明的三条');
     const pendingCovers = new Set(data.pendingChecks.flatMap((entry) => entry.coversItems));
     const unpricedCovers = new Set(data.unpriced.flatMap((row) => row.coversItems ?? []));
     const countedCovers = new Set(data.rows.flatMap((row) => row.coversItems ?? []));
     // 复核 P2 点名：COST-030-02（合同外增量）与 COST-030-07（线控器书面确认）必须双归属——签约行计入 + 待核各一份
     assert.ok(countedCovers.has('COST-030-02') && pendingCovers.has('COST-030-02'), 'COST-030-02 必须双归属（计入签约行 + 待核合同外增量）');
     assert.ok(countedCovers.has('COST-030-07') && pendingCovers.has('COST-030-07'), 'COST-030-07 必须双归属（计入签约行 + 待核书面确认），不许只登记已计入而夸大 closure');
+    // 复审续点名：COST-040-15 的界面未决必须在成本表表面可见——计入水电行 + 待核界面划分各一份
+    assert.ok(countedCovers.has('COST-040-15') && pendingCovers.has('COST-040-15'), 'COST-040-15 必须双归属（计入水电行 + 待核界面划分），不许只藏在水电行 coversItems 里');
     // 评审 P2 点名三项 + 未关闭的防水去重轮次，必须在待核/未定价清单里
     for (const id of ['COST-060-05', 'COST-120-02', 'COST-125-03']) {
       assert.ok(pendingCovers.has(id), `${id} 必须出现在待核清单`);
@@ -195,30 +240,59 @@ describe('成本总表 cost-summary', () => {
   it('双归属校验：未声明的重复登记抛错并点名，声明双归属正常通过且计数正确', () => {
     const claimsOf = (entries: Array<[string, AttributionKind[]]>) =>
       new Map<string, Set<AttributionKind>>(entries.map(([id, kinds]) => [id, new Set(kinds)]));
-    const unresolved = new Set(['COST-030-02', 'COST-030-07', 'COST-099-01']);
+    const unresolved = new Set(['COST-030-02', 'COST-030-07', 'COST-040-15', 'COST-099-01']);
     // 未声明的多重归属：抛错并点名 id，不许静默取首个分类
     assert.throws(
       () => assertAttributionClaims(claimsOf([['COST-099-01', ['counted', 'pending']]]), DUAL_ATTRIBUTIONS, unresolved),
       /COST-099-01.*多重归属/,
     );
-    // 已声明的两条双归属：正常通过并如实返回
+    // 已声明的三条双归属：正常通过并如实返回
     assert.deepEqual(
       assertAttributionClaims(
         claimsOf([
           ['COST-030-02', ['counted', 'pending']],
           ['COST-030-07', ['counted', 'pending']],
+          ['COST-040-15', ['counted', 'pending']],
           ['COST-099-01', ['pending']],
         ]),
         DUAL_ATTRIBUTIONS,
         unresolved,
       ),
-      ['COST-030-02', 'COST-030-07'],
+      ['COST-030-02', 'COST-030-07', 'COST-040-15'],
     );
     // 声明腐烂：声明在册但条目已不是多重归属，必须抛错
     assert.throws(
       () => assertAttributionClaims(claimsOf([['COST-030-02', ['counted']]]), DUAL_ATTRIBUTIONS, unresolved),
       /COST-030-02.*已腐烂/,
     );
+  });
+
+  it('双归属上限：三重归属即使已声明也必须抛错（恰两个分类封顶）', () => {
+    const claimsOf = (entries: Array<[string, AttributionKind[]]>) =>
+      new Map<string, Set<AttributionKind>>(entries.map(([id, kinds]) => [id, new Set(kinds)]));
+    const unresolved = new Set(['COST-030-02', 'COST-030-07', 'COST-040-15']);
+    // COST-030-02 已在 DUAL_ATTRIBUTIONS 声明，但 counted+pending+excluded 三路仍不许
+    assert.throws(
+      () => assertAttributionClaims(claimsOf([['COST-030-02', ['counted', 'pending', 'excluded']]]), DUAL_ATTRIBUTIONS, unresolved),
+      /COST-030-02.*三重归属/,
+      '三重归属必须抛错并点名，双归属上限为恰两个分类',
+    );
+  });
+
+  it('重复计入校验：同一条目被两条不同定价行计入必须抛错并点名条目与两条行', () => {
+    assert.throws(
+      () => assertNoDuplicateCountedClaims(new Map<string, string[]>([
+        ['COST-099-01', ['cost-a（行甲）', 'cost-b（行乙）']],
+      ])),
+      /COST-099-01.*重复计入（cost-a（行甲）、cost-b（行乙））/,
+      '重复计入必须抛错，点名条目与两条行',
+    );
+    // 同一行内重复登记同一条目不算重复计入；不同条目分属不同行正常通过
+    assert.doesNotThrow(() => assertNoDuplicateCountedClaims(new Map<string, string[]>([
+      ['COST-099-01', ['cost-a（行甲）', 'cost-a（行甲）']],
+      ['COST-099-02', ['cost-b（行乙）']],
+    ])));
+    // 真实数据：模块顶层 buildCostSummary 已在 assertCoverage 内跑过本校验并通过
   });
 
   it('覆盖检查 fail-closed：注入未登记的未决组件必须抛错', () => {
@@ -249,6 +323,9 @@ describe('成本总表 cost-summary', () => {
 
   it('渲染纪律：小计标注含未定价说明，未定价行不显示金额', () => {
     const markdown = renderCostSummary(data, '# 测试表头\n\n');
+    // 口径表述纪律（复审续）：暂估金额可调减、可退押金不是最终成本——不许再作「必然高于」方向断言
+    assert.ok(!markdown.includes('必然高于已知合计'), '不得断言真实总成本必然高于已知合计');
+    assert.ok(markdown.includes('不必然高于、也不必然低于已知合计'), '口径句必须如实表述：总额方向以正式报价与结算为准');
     assert.ok(markdown.includes('已知合计（不含未定价）'));
     assert.ok(markdown.includes('已核实小计'));
     assert.ok(markdown.includes('暂估小计'));
