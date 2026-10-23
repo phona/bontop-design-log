@@ -602,6 +602,17 @@ describe('成本总表 cost-summary', () => {
     assert.ok(markdown.includes('确认纳入一期、实际发生、且未被其他定价行包含'), '未计入口径必须带三重限定（确认纳入一期/实际发生/未被其他定价行包含）');
     assert.ok(!markdown.includes('取得价格后会增加总额'), '旧无条件表述（取得价格后会增加总额）不得再现');
     assert.ok(!markdown.includes('定价后才增加'), '旧无条件表述（定价后才增加）不得再现');
+    // 押金不得混入「必花项」概述（复审四轮）：COST-005-02 是可退装修押
+    // 金（临时现金占用、非最终成本），住在未定价「物业手续与物业收费」
+    // 一条里——总述必须把它单列说明，旧笼统句与旧板块引言不得再现
+    assert.ok(markdown.includes('可退装修押金（COST-005-02）'), '总述必须单列可退押金');
+    assert.ok(markdown.includes('该项不得整体读作必花支出'), '总述必须写明含押金的未定价条目不得整体读作必花支出');
+    assert.ok(!markdown.includes('未定价的是必花项、取得价格后计入'), '旧笼统表述（未定价全是必花项）不得再现');
+    assert.ok(!markdown.includes('「未定价」= 必花但尚无真实价格'), '旧板块引言（未定价 = 必花）不得再现');
+    // 待核板块标题与内容一致（复审四轮）：板块内含 4 条已计入待核项，
+    // 标题再总括「不计入合计」自相矛盾；新标题钉死、旧标题不得再现
+    assert.ok(markdown.includes('## 未定价与待核（计入状态逐条标注）'), '待核板块标题必须如实表述为计入状态逐条标注');
+    assert.ok(!markdown.includes('未定价与待核（不计入合计）'), '旧标题（与已计入待核项矛盾）不得再现');
     assert.ok(markdown.includes('已知合计（不含未定价）'));
     assert.ok(markdown.includes('已核实小计'));
     assert.ok(markdown.includes('暂估小计'));
