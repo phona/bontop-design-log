@@ -226,8 +226,11 @@ export function findDecisionSection(decId: string): { file: string; text: string
  * 合同凭据核验（2026-10-23 复审续）：contract_ref 在 control.yaml 里只是一个
  * 自报字符串，光「字段在位」不算凭据。本核验按 contract_ref（现行数据只支持
  * DEC id 形式）回 docs/decisions/ 解析对应 DEC 章节原文，断言：① 章节存在；
- * ② 章节原文载有与 contracted_cny 一致的金额（千分位格式，如 36,000）；
- * ③ 章节原文带成交/签约/合同语义。三者缺一即抛错。
+ * ② 章节原文载有与 contracted_cny 一致的金额（千分位格式，如 36,000），且
+ * 辖域候选唯一（并存两价即歧义抛错，见 assertGovernedAmountsUnambiguous）；
+ * ③ 章节原文带**正向**成交表述（定标成交 / 成交事实 / 已签约 / 签订 / 签
+ * 约方 / 已成交；只有「合同/签约」字样、含否定式提及的不算，见
+ * hasAffirmativeDealSemantics）。三者缺一即抛错。
  * ② 的命中口径是**全词精确命中 + 总价关键词辖域**（复审三轮收紧）：
  * includes() 子串查法会把「6,000」误认成「36,000」的子串（第一轮堵）；
  * 全词精确命中仍不够——DEC 章节正文同时载有**分项金额**（如 DEC-2026-10-04-R1
@@ -269,21 +272,37 @@ export function findDecisionSection(decId: string): { file: string; text: string
  * 文论述行里的设备价等杂数字一并放行，故废止、只认辖域位置。
  */
 export function extractGovernedTotalAmounts(sectionText: string): Set<string> {
-  const amountPattern = String.raw`(?<![\d,])(\d{1,3}(?:,\d{3})+|\d+)(?![\d,])`;
+  // 金额格式口径：token 须以千分位书写（成员比对的对象是
+  // contracted.toLocaleString('en-US') 的千分位形式——无千分位书写如
+  // 「36000」即使被提取也不会与之全等命中）；小数金额不命中（尾界排除
+  // '.'，防「36,000.5」被截成「36,000」）。
+  const amountPattern = String.raw`(?<![\d,])(\d{1,3}(?:,\d{3})+|\d+)(?![\d,.])`;
   const governed = new Set<string>();
-  // (a) 关键词在前：关键词后只隔标点/空白即接金额（定标成交：36,000 元）。
-  // 同样须过否定屏蔽（复审第九轮，与 (b) 对称）：关键词紧邻前文以身份否
-  // 定词结尾（「本项目非总价：14,124 元」「并非定标成交：36,000 元」）时，
-  // 该出现陈述的恰是「这不是总价/未成交」，其后金额不得被认作总价候选。
-  const keywordFirst = new RegExp(`(定标成交|合同总价|总金额|总价|合同额|成交价)\\s*[:：]?\\s*${amountPattern}`, 'g');
+  // (a) 关键词在前：关键词后只隔标点/空白、至多一个系词（为 / 是）即接金
+  // 额（定标成交：36,000 元 / 合同总价为 36,000 元）。两层前文屏蔽：
+  //  - 否定屏蔽（复审第九轮，与 (b) 对称）：关键词紧邻前文以身份否定词结
+  //    尾（「本项目非总价：14,124 元」「并非定标成交：36,000 元」）时，该
+  //    出现陈述的恰是「这不是总价/未成交」，其后金额不得认作总价候选；
+  //  - 子类屏蔽（自主扫描 G1）：关键词「总价 / 总金额」无左界，「分项总
+  //    价：14,124」会直接命中——紧邻前文为子类前缀（分项 / 安装 / 设备 /
+  //    材料 / 单项 / 子项 / 预估 / 估算 / 预算）时该出现是分项小计、作废。
+  //    正当总价短语不受影响：「合同总价」是独立关键词、「项目总价 / 工
+  //    程总价」的前缀不在子类集内。
+  const keywordFirst = new RegExp(`(定标成交|合同总价|总金额|总价|合同额|成交价)\\s*[:：]?\\s*(?:为|是)?\\s*${amountPattern}`, 'g');
   for (const match of sectionText.matchAll(keywordFirst)) {
     const before = sectionText.slice(0, match.index);
     if (/(?:不是|并非|不属于|不属|非)$/.test(before)) continue;
+    if (
+      (match[1] === '总价' || match[1] === '总金额')
+      && /(?:分项|安装|设备|材料|单项|子项|预估|估算|预算)$/.test(before)
+    ) continue;
     governed.add(match[2]);
   }
   // (b) 金额在前：同小句近邻出现总价词（36,000 为整包含价，…不改变总价），
-  // 间隔不含其他数字、不跨句号/分号
-  const amountFirst = new RegExp(`${amountPattern}[^\\d。；]{0,24}?(?:总价|整包含价)`, 'g');
+  // 间隔不含其他数字、不跨句号/分号/逗号/顿号/换行（自主扫描 G2：窗口原
+  // 可跨「，」与换行，隔着分句标点的金额也会被误认；真实命中「36,000 为
+  // 整包含价」的关键词在首个逗号之前，收紧不误伤）
+  const amountFirst = new RegExp(`${amountPattern}[^\\d。；\\n、，]{0,24}?(?:总价|整包含价)`, 'g');
   for (const match of sectionText.matchAll(amountFirst)) {
     // match[0] 以金额开头（amountPattern 的前后顾均为零宽断言）；金额之后
     // 的部分是间隔 + 关键词。否定屏蔽：否定词紧贴关键词（「不是总价」式
@@ -296,6 +315,34 @@ export function extractGovernedTotalAmounts(sectionText: string): Set<string> {
   return governed;
 }
 
+/**
+ * 辖域候选唯一性（自主扫描 G3）：章节若并存两个被总价关键词辖制的金额
+ * （如原文写 36,000、补充协议又写 35,500），成员判断会把**两个**都放行
+ * ——同步误改成旧价照样过。故候选集含 >1 个不同金额即视为章节总价歧义、
+ * 抛错并列出全部金额，须人工消歧，不得用任一旧价放行。现行真实 DEC 候
+ * 选集恰为 {36,000}，本断言零影响。
+ */
+export function assertGovernedAmountsUnambiguous(governedAmounts: ReadonlySet<string>, contractRef: string): void {
+  if (governedAmounts.size > 1) {
+    throw new Error(`cost summary: ${contractRef} 章节的总价关键词辖域内出现 ${governedAmounts.size} 个不同金额（${[...governedAmounts].join('、')}）——章节总价歧义（新旧两价并存时无法判定哪个是现行合同额），须先人工消歧（删去失效的总价陈述或改走新的 contract_ref）再生成`);
+  }
+}
+
+/**
+ * 正向成交语义（自主扫描 G4）：旧检查 /(成交|签约|合同)/ 任中其一即过，
+ * 「尚未签约…未成合同」的纯询价章节也能全过——否定式提及不算成交事实。
+ * 改为正向成交表述集合：定标成交 / 成交事实 / 已签约 / 签订 / 签约方 /
+ * 已成交，任一命中才算。实测覆盖（2026-10-23，docs/decisions 全部 271
+ * 个 DEC 章节）：17 个章节命中旧正则但不命中本集合，逐一核对均为询价记
+ * 录 / 合同外事项 / 否定式提及，无一是成交章节；现行唯一生产合同章节
+ * DEC-2026-10-04-R1 同时命中定标成交、成交事实、签约方三项，通过有余量。
+ */
+const AFFIRMATIVE_DEAL_PATTERN = /(?:定标成交|成交事实|已签约|签订|签约方|已成交)/;
+
+export function hasAffirmativeDealSemantics(sectionText: string): boolean {
+  return AFFIRMATIVE_DEAL_PATTERN.test(sectionText);
+}
+
 function assertContractCredential(rowId: string, contractRef: string, contracted: number, packageId: string): void {
   const section = findDecisionSection(contractRef);
   if (!section) {
@@ -303,11 +350,12 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
   }
   const amountText = contracted.toLocaleString('en-US');
   const governedAmounts = extractGovernedTotalAmounts(section.text);
+  assertGovernedAmountsUnambiguous(governedAmounts, contractRef);
   if (!governedAmounts.has(amountText)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）的总价关键词辖域内（「定标成交：<金额>」式关键词直接辖制、或金额后同小句近邻总价词的形态）未载明金额 ${amountText}（须全词精确命中且被总价关键词直接辖制；子串、分项金额、标题内编号/型号/台数等杂数字、以及被身份否定（「…不是总价」式）的金额均不算），与 ${packageId} contracted_cny=${contracted} 不符`);
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）的总价关键词辖域内（「定标成交：<金额>」式关键词直接辖制、或金额后同小句近邻总价词的形态）未载明金额 ${amountText}（须全词精确命中且被总价关键词直接辖制；子串、分项金额、标题内编号/型号/台数等杂数字、以及被身份否定（「…不是总价」式）的金额均不算），与 ${packageId} contracted_cny=${contracted} 不符。（措辞提示：DEC 原文的合同总价须以千分位书写、由总价关键词直接辖制，如「定标成交：36,000 元」「合同总价为 36,000 元」；无千分位、小数、带子类前缀（「分项总价」等）或被身份否定的金额均不命中。）`);
   }
-  if (!/(成交|签约|合同)/.test(section.text)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见成交/签约/合同语义，该决策不是成交凭据`);
+  if (!hasAffirmativeDealSemantics(section.text)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见正向成交表述（定标成交 / 成交事实 / 已签约 / 签订 / 签约方 / 已成交）——只有「合同 / 签约」字样（含「尚未签约」「未成合同」式否定提及）不算成交凭据，该决策不是成交凭据`);
   }
 }
 

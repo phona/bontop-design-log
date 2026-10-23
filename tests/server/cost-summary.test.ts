@@ -13,7 +13,9 @@ import {
   buildCostSummary,
   computeActiveMepQuote,
   extractGovernedTotalAmounts,
+  assertGovernedAmountsUnambiguous,
   findDecisionSection,
+  hasAffirmativeDealSemantics,
   DUAL_ATTRIBUTIONS,
   OUT_OF_SCOPE_DISPOSITIONS,
   PENDING_COUNTED_STATUS_LABELS,
@@ -306,6 +308,68 @@ describe('成本总表 cost-summary', () => {
       .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
     qr.locked_cny = 14124;
     assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, doctored), /金额对不上/, '分项金额 14,124 在加否定屏蔽后仍必须被守卫拦下');
+  });
+
+  it('辖域提取子类屏蔽与窗口收紧：分项总价不命中、跨标点不命中、系词可命中（G1/G2/G10）', () => {
+    // G1：关键词「总价」无左界——「分项总价：14,124」在旧实现直接命中。
+    // 子类前缀（分项/安装/设备/材料/单项/子项/预估/估算/预算）紧贴「总
+    // 价/总金额」的出现是分项小计，必须作废；正当总价短语不得误伤。
+    assert.deepEqual([...extractGovernedTotalAmounts('分项总价：14,124 元，双方已签约确认。')], [], '「分项总价：14,124 元」不得产生候选');
+    assert.deepEqual([...extractGovernedTotalAmounts('安装总价：8,400 元，含六台内机安装。')], [], '「安装总价：8,400 元」不得产生候选');
+    assert.deepEqual([...extractGovernedTotalAmounts('设备总金额：20,000 元，另行议定。')], [], '「设备总金额：…」不得产生候选');
+    assert.deepEqual([...extractGovernedTotalAmounts('本项目总价：36,000 元。')], ['36,000'], '「本项目总价」是正当总价短语，不得误伤');
+    assert.deepEqual([...extractGovernedTotalAmounts('工程总价：36,000 元，含税。')], ['36,000'], '「工程总价」不得误伤');
+    assert.deepEqual([...extractGovernedTotalAmounts('合同总价：36,000 元。')], ['36,000'], '「合同总价」是独立关键词，不得误伤');
+    // G2：形态 (b) 的窗口原可跨逗号/顿号/换行——隔着分句标点的金额也被
+    // 误认。收紧后跨「，」「、」与换行的近邻不算同小句。
+    assert.deepEqual([...extractGovernedTotalAmounts('设备款 14,124 元，总价待定。')], [], '金额与总价词隔逗号，不得产生候选');
+    assert.deepEqual([...extractGovernedTotalAmounts('设备款 14,124 元、总价待核。')], [], '金额与总价词隔顿号，不得产生候选');
+    assert.deepEqual([...extractGovernedTotalAmounts('设备款 14,124 元\n总价待定。')], [], '金额与总价词隔换行，不得产生候选');
+    // G10：关键词与金额之间允许系词（为/是）——「合同总价为 36,000 元」
+    // 是正当的总价陈述句式，旧实现因系词不在标点集内而假阴性
+    assert.deepEqual([...extractGovernedTotalAmounts('合同总价为 36,000 元，含辅材。')], ['36,000'], '「合同总价为 36,000 元」必须命中');
+    assert.deepEqual([...extractGovernedTotalAmounts('本单总价是 36,000 元整。')], ['36,000'], '「总价是 36,000 元」必须命中');
+    // 格式口径：小数金额不命中（防「36,000.5」被截成「36,000」）；无千
+    // 分位书写即使被提取也不会与千分位成员比对命中
+    assert.deepEqual([...extractGovernedTotalAmounts('定标成交：36,000.5 元。')], [], '小数金额不得产生候选');
+    assert.ok(!extractGovernedTotalAmounts('定标成交：36000 元。').has('36,000'), '无千分位书写不得命中千分位金额');
+    // 真实 DEC 在全部收紧/放宽后候选集仍恰为 {36,000}
+    const section = findDecisionSection('DEC-2026-10-04-R1');
+    assert.ok(section);
+    assert.deepEqual([...extractGovernedTotalAmounts(section.text)], ['36,000'], '真实 DEC 候选集仍须恰为 {36,000}');
+  });
+
+  it('辖域候选唯一性：章节并存两个总价即歧义抛错（G3）', () => {
+    // 章节同时写「定标成交：36,000」与补充协议「总价：35,500」时，旧成
+    // 员判断会把两个都放行——同步误改成旧价照样过。候选集 >1 即抛错并
+    // 列出全部金额，须人工消歧。
+    const twoTotals = extractGovernedTotalAmounts('定标成交：36,000 元。后续补充协议：总价：35,500 元，覆盖原价。');
+    assert.deepEqual([...twoTotals].sort(), ['35,500', '36,000'], '合成双总价章节的候选集应为两个金额');
+    assert.throws(
+      () => assertGovernedAmountsUnambiguous(twoTotals, 'DEC-2099-01-01-R1'),
+      (error: unknown) => {
+        const message = (error as Error).message;
+        return message.includes('总价歧义') && message.includes('36,000') && message.includes('35,500');
+      },
+      '双总价候选必须抛错并列出全部金额',
+    );
+    assert.doesNotThrow(() => assertGovernedAmountsUnambiguous(new Set(['36,000']), 'DEC-2026-10-04-R1'), '单一候选必须通过');
+    assert.doesNotThrow(() => assertGovernedAmountsUnambiguous(new Set(), 'DEC-2026-10-04-R1'), '空候选集由成员判断报错，不在本断言范围');
+  });
+
+  it('成交语义正向集合：否定式提及不算成交，真实合同章节命中（G4）', () => {
+    // 旧检查 /(成交|签约|合同)/ 任中其一即过——「尚未签约、未成合同」的
+    // 纯询价章节也能通过合同凭据的语义关。正向集合只认正向成交表述。
+    assert.equal(
+      hasAffirmativeDealSemantics('本项目总价：14,124 元。尚未签约，未成合同，仅为询价记录，双方无任何成交约定。'),
+      false,
+      '只有否定式签约提及的章节不得算作成交',
+    );
+    assert.equal(hasAffirmativeDealSemantics('双方已签订合同，总价：36,000 元。'), true, '「已签订」是正向成交表述');
+    assert.equal(hasAffirmativeDealSemantics('本轮仅为询价，价格待议。'), false, '无成交表述的章节不得算作成交');
+    const section = findDecisionSection('DEC-2026-10-04-R1');
+    assert.ok(section);
+    assert.equal(hasAffirmativeDealSemantics(section.text), true, '真实合同章节 DEC-2026-10-04-R1 必须命中正向成交表述');
   });
 
   it('报价卡凭据边界：证据须 written_quote 且费率不得含公开参考价来源', () => {
