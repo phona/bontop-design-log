@@ -378,6 +378,37 @@ test('fail-closed：同 (墙,房间) 沿墙+竖向同时重叠即抛错（竖直
   assert.ok(stackedResult.regions.some((region) => region.id === 'walltile_probe_stacked'));
 });
 
+test('fail-closed：非相邻真重叠也必须抛错（旧相邻对检查漏检，2026-10-23 审计）', () => {
+  const input = buildInput();
+  // 主卫南墙自由带 [1.95,2.6]×[0.3,1.2]（现有 stacked 探针已证无洞口干扰）内摆三段：
+  // A=[1.95,2.60]×[0.3,0.9]、B=[2.05,2.30]×[1.0,1.2]、C=[2.35,2.55]×[0.6,1.1]。
+  // 排序后相邻对 A-B 竖向分离、B-C 沿墙分离，旧检查两对都放行，漏掉 A∩C
+  // （沿墙 [2.35,2.55]、竖向 [0.6,0.9] 真重叠）——全对检查必须抓到。
+  // 注：声明的 height 是顶标高（top），带区间 = [bottom, height]。
+  input.wallRegions = [
+    ...input.wallRegions,
+    { id: 'walltile_probe_nonadj_a', wall: 'w_mbath_south', room: 'master_bath', along: [1.95, 2.6] as [number, number], bottom: 0.3, height: 0.9 },
+    { id: 'walltile_probe_nonadj_b', wall: 'w_mbath_south', room: 'master_bath', along: [2.05, 2.3] as [number, number], bottom: 1.0, height: 1.2 },
+    { id: 'walltile_probe_nonadj_c', wall: 'w_mbath_south', room: 'master_bath', along: [2.35, 2.55] as [number, number], bottom: 0.6, height: 1.1 },
+  ];
+  assert.throws(() => computeMasonryTakeoff(input), /walltile_probe_nonadj_a 与 walltile_probe_nonadj_c 二维重叠/);
+});
+
+test('fail-closed：竖向完全分离不得误报（旧判定式缺 top > bottom 一半）', () => {
+  const input = buildInput();
+  // 高带 P1=[1.95,2.60]×[1.0,1.2] 与低带 P2=[2.05,2.45]×[0.35,0.9]：沿墙相交、
+  // 竖向完全分离（P2 顶 0.9 < P1 底 1.0）。旧判定式只查 P2.bottom < P1.top
+  // 会误报双计；完备判定（还要 P2.top > P1.bottom）必须放行。
+  input.wallRegions = [
+    ...input.wallRegions,
+    { id: 'walltile_probe_vsep_high', wall: 'w_mbath_south', room: 'master_bath', along: [1.95, 2.6] as [number, number], bottom: 1.0, height: 1.2 },
+    { id: 'walltile_probe_vsep_low', wall: 'w_mbath_south', room: 'master_bath', along: [2.05, 2.45] as [number, number], bottom: 0.35, height: 0.9 },
+  ];
+  const result = computeMasonryTakeoff(input);
+  assert.ok(result.regions.some((region) => region.id === 'walltile_probe_vsep_high'));
+  assert.ok(result.regions.some((region) => region.id === 'walltile_probe_vsep_low'));
+});
+
 test('fail-closed：同一 bay_sill 同一标高的水平贴砖面沿墙重叠即抛错', () => {
   const input = buildInput();
   input.sillRegions = [

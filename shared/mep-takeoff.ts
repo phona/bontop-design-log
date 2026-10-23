@@ -329,21 +329,25 @@ function routeLength(route: MepRoute, from?: { x: number; z: number; y?: number 
  * 不猜：只对端点是有点位高度声明的电气/给排水点位计算，负值（灯在顶面上）取 0。
  * 不开这个开关 = 已画线点位系统性少算约 2.2m/个，比不画线点位的 allowance 口径不一致。
  */
-function terminalDrop(
+/**
+ * 竖向下引段的标高跨度：{ endY（路由终点标高）, pointHeight（点位安装高度） }。
+ * 不适用（终点非点位引用 / 端点未解析 / 点位无高度声明 / 终点不高于点位）返回 null。
+ * terminalDrop（诊断长度）与回路计价的下引 stub 共用同一判定，不许两处各算一套。
+ */
+function terminalDropSpan(
   route: MepRoute,
   points: Map<string, { height?: number }>,
   to: { x: number; z: number; y?: number } | undefined,
-): number {
-  if (typeof route.to !== 'string') return 0;
-  const point = points.get(route.to);
-  const pointHeight = point?.height;
-  if (to === undefined || pointHeight === undefined) return 0;
+): { endY: number; pointHeight: number } | null {
+  if (typeof route.to !== 'string') return null;
+  const pointHeight = points.get(route.to)?.height;
+  if (to === undefined || pointHeight === undefined) return null;
   // 竖向下引段的终点标高：路由自己声明的 to_height 优先，其次才是解析出的端点 y。
   // 两者都缺 → 旧代码取 0，于是 `Math.max(0, 0 − pointHeight)` 恒为 0，**整段下引管消失**
   // （已画线点位因此系统性少算约 2.2m/个）。标高不可默认：缺声明就抛错。
   // 注：routeLength 的 requirePointY 已经先对同一个表达式 fail-closed（它用的就是
   // `mepRoutePoints` 的 `to_height ?? to.y`），所以这个分支今天不可达——保留它是为了让
-  // terminalDrop 自身自洽，将来若有人在新路径上先调它，不会静默退回 0。
+  // 本函数自身自洽，将来若有人在新路径上先调它，不会静默退回 0。
   let endY: number;
   if (route.to_height !== undefined) endY = route.to_height;
   else if (to.y !== undefined) endY = to.y;
@@ -352,7 +356,17 @@ function terminalDrop(
       `路由 ${route.id} 的终点标高无法确定（to_height 与端点 y 均未声明）：竖向下引段会整段消失，已画线点位将少算约 2.2m/个管。请到 config/mep-hvac-coordination.yaml 补 to_height`,
     );
   }
-  return Math.max(0, endY - pointHeight);
+  if (endY <= pointHeight) return null;
+  return { endY, pointHeight };
+}
+
+function terminalDrop(
+  route: MepRoute,
+  points: Map<string, { height?: number }>,
+  to: { x: number; z: number; y?: number } | undefined,
+): number {
+  const span = terminalDropSpan(route, points, to);
+  return span ? span.endY - span.pointHeight : 0;
 }
 
 
@@ -379,6 +393,84 @@ export function unionPlanLength(paths: Array<Array<{ x: number; z: number }>>, c
     }
   }
   return seen.size * cell;
+}
+
+/**
+ * 回路计价基数（DEC-2026-10-23-R01，修正 DEC-2026-10-07-M02 的 union 口径）：
+ * **平面 union + 竖直段**。
+ *
+ * M02 定同回路 union 是为治星形布线的平面重复计量，平面去重保留；但 unionPlanLength
+ * 只吃 {x,z}，竖直边（下引/立管）在平面投影是一个点，被整体归零——2026-10-22 审计
+ * 实测现行强电路由约 89m 竖直行程不在计价内，导线总量因此低估约 36%。
+ * 竖直段物理上每回路独占（各自的管、各自的线），不做跨回路去重；同一回路内多条
+ * 路由共享同一根立管时（同 x,z 的纯竖直边），按 y 区间合并只计一次，与平面 union
+ * 的去重哲学一致。带平面分量的斜边无法这样合并，其 |Δy| 按曼哈顿分量逐边计入。
+ * 终端下引（路由终点标高 → 点位安装高度，config include_terminal_drop 开启时）由
+ * computeMepTakeoff 以纯竖直 stub 路径并入本函数的入参，一并走区间合并计入。
+ *
+ * 2026-10-23 评审后修订（同 DEC 条目）：
+ * - 纯竖直路径的**平面分量恒为 0**：整条路径同 (x,z) 时送 union 前剔除——
+ *   unionPlanLength 的 5cm 网格会给退化路径也栅格化出一个 cell（0.05m），
+ *   生产约 34 个竖直位置曾因此累计多计约 1.70m。unionPlanLength 本体不改，
+ *   诊断口径（drawnRouteUnionM 等）保持原义。
+ * - **缺失标高 fail-closed**：任一点 y 缺失/非有限数即抛错。旧实现用 ?? 0 兜底，
+ *   缺标高的点被当成 y=0 静默出数。生产主路径的 y 由 mepRoutePoints 保证、
+ *   routeLength 已先 fail-closed；导出函数自身守同一口径，不许直接调用者绕过。
+ */
+export function pricedCircuitLength(paths: Array<Array<{ x: number; z: number; y?: number }>>): number {
+  for (let pi = 0; pi < paths.length; pi += 1) {
+    for (let i = 0; i < paths[pi].length; i += 1) {
+      const y = paths[pi][i].y;
+      if (y === undefined || !Number.isFinite(y)) {
+        throw new Error(
+          `pricedCircuitLength：第 ${pi} 条路径第 ${i} 个点缺失标高 y——计价基数不许默认标高（缺 y 曾被 ?? 0 静默当成 0 出数），请补 from/to_height 或 via 标高`,
+        );
+      }
+    }
+  }
+  const checked = paths.map((points) => points.map((p) => ({ x: p.x, z: p.z, y: p.y as number })));
+  // 平面分量：整条路径同 (x,z) 的退化路径（纯竖直/单点）贡献恒为 0，送 union 前剔除；
+  // 其竖直分量由下方区间逻辑计。全部路径都退化时平面分量为 0。
+  const planPaths = checked
+    .map((points) => points.map((p) => ({ x: p.x, z: p.z })))
+    .filter((points) => points.some((p) => Math.hypot(p.x - points[0].x, p.z - points[0].z) > 1e-9));
+  const plan = planPaths.length > 0 ? unionPlanLength(planPaths) : 0;
+  const intervals = new Map<string, Array<[number, number]>>();
+  let slantedDy = 0;
+  for (const points of checked) {
+    for (let i = 1; i < points.length; i += 1) {
+      const a = points[i - 1];
+      const b = points[i];
+      const dy = Math.abs(b.y - a.y);
+      if (dy <= 1e-9) continue;
+      const planD = Math.hypot(b.x - a.x, b.z - a.z);
+      if (planD <= 1e-9) {
+        const key = `${Math.round(a.x * 1000)},${Math.round(a.z * 1000)}`;
+        const list = intervals.get(key) ?? [];
+        list.push([Math.min(a.y, b.y), Math.max(a.y, b.y)]);
+        intervals.set(key, list);
+      } else {
+        slantedDy += dy;
+      }
+    }
+  }
+  let vertical = slantedDy;
+  for (const list of intervals.values()) {
+    list.sort((p, q) => p[0] - q[0]);
+    let curLo = list[0][0];
+    let curHi = list[0][1];
+    for (let i = 1; i < list.length; i += 1) {
+      if (list[i][0] <= curHi + 1e-9) {
+        curHi = Math.max(curHi, list[i][1]);
+      } else {
+        vertical += curHi - curLo;
+        curLo = list[i][0];
+        curHi = list[i][1];
+      }
+    }
+    vertical += curHi - curLo;
+  }
+  return plan + vertical;
 }
 
 export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
@@ -431,7 +523,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const resolvedById = new Map(resolution.routes.map((item) => [item.route.id, item]));
   const drawnPlanPaths: Array<Array<{ x: number; z: number }>> = [];
   /** 每条回路的画线路由平面路径（同回路 union：同一回路内共享段只铺一次管、只穿一次线）。 */
-  const circuitPaths = new Map<string, Array<Array<{ x: number; z: number }>>>();
+  const circuitPaths = new Map<string, Array<Array<{ x: number; z: number; y?: number }>>>();
   const strongPaths: Array<Array<{ x: number; z: number }>> = [];
   const byRoom: Record<string, { points: number; routed: number; unrouted: number; drawnRouteM: number }> = {};
   const unroutedPoints: Array<{ id: string; room: string; type: string; circuit?: string }> = [];
@@ -518,13 +610,29 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     penetrations += Array.isArray(route.penetration) ? route.penetration.length : 0;
     const drawnLength = routeLength(route, resolved.from, resolved.to);
     drawnMWithoutDrop += drawnLength;
-    const planPath = mepRoutePoints(route, resolved.from, resolved.to).map((point) => ({ x: point.x, z: point.z }));
+    const points3d = mepRoutePoints(route, resolved.from, resolved.to);
+    const planPath = points3d.map((point) => ({ x: point.x, z: point.z }));
     drawnPlanPaths.push(planPath);
     if (route.layer === 'strong_power') strongPaths.push(planPath);
     const circuitId = typeof route.to === 'string' ? pointCircuit.get(route.to) : undefined;
     if (circuitId) {
+      // 回路路径保留 3D 点：计价基数 pricedCircuitLength 需要 via/端点的 y 算竖直段。
       const list = circuitPaths.get(circuitId) ?? [];
-      list.push(planPath);
+      list.push(points3d);
+      if (rules.include_terminal_drop) {
+        // 终端下引进计价（DEC-2026-10-23-R01 评审后修订）：下引此前只进 drawn/layer
+        // 诊断长度，circuitPaths 只有路由折线，报价卡从 strongPowerTotalM 取量时
+        // 这段已声明的管线不在基数内（评审实测强电 0.95m）。把下引作为终端点
+        // (x,z) 处的纯竖直 stub 两点路径并入本回路——pricedCircuitLength 的同
+        // (x,z) y 区间合并会与路由自身竖直边去重，同一根立管只计一次。
+        const span = terminalDropSpan(route, pointHeights, resolved.to);
+        if (span && resolved.to) {
+          list.push([
+            { x: resolved.to.x, z: resolved.to.z, y: span.endY },
+            { x: resolved.to.x, z: resolved.to.z, y: span.pointHeight },
+          ]);
+        }
+      }
       circuitPaths.set(circuitId, list);
     }
     const endRoom = typeof route.to === 'string' ? roomOf(route.to) : undefined;
@@ -575,16 +683,24 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
 
   const drawnM = Object.values(layerLength).reduce((sum, value) => sum + value, 0);
 
-  // 同回路 union：同一回路内多端点星形回线的共享段只铺一次管、只穿一次线
+  // 同回路 union：同一回路内多端点星形回线的共享段只铺一次管、只穿一次线。
+  // circuitUnion 是纯平面 union（诊断口径，保持原义）；计价基数走 circuitPriced
+  // = 平面 union + 竖直段（DEC-2026-10-23-R01，见 pricedCircuitLength 注释）。
   const circuitUnion = new Map<string, number>();
-  for (const [circuitId, paths] of circuitPaths) circuitUnion.set(circuitId, unionPlanLength(paths));
+  const circuitPriced = new Map<string, number>();
+  for (const [circuitId, paths] of circuitPaths) {
+    circuitUnion.set(circuitId, unionPlanLength(paths));
+    circuitPriced.set(circuitId, pricedCircuitLength(paths));
+  }
   const strongUnionPerCircuitM = [...circuitUnion.values()].reduce((sum, value) => sum + value, 0);
+  const strongPricedPerCircuitM = [...circuitPriced.values()].reduce((sum, value) => sum + value, 0);
   // ---------- 3. 导线：按回路线径分桶 ----------
   const buckets = new Map<string, WireBucket>();
   for (const circuit of circuits) {
-    // 导线 = 该回路物理布线树（同回路 union，共享段只穿一次线）× 芯数 × 损耗。
-    // 不能用 Σ各条长度：同一回路多端点星形回线会把共享段穿 N 次线。
-    const conduit = circuitUnion.get(circuit.id) ?? 0;
+    // 导线 = 该回路物理布线树（同回路计价基数：平面 union + 竖直段，共享段只穿一次线）
+    // × 芯数 × 损耗。不能用 Σ各条长度：同一回路多端点星形回线会把共享段穿 N 次线；
+    // 也不能只用平面 union：竖直段是真实管线，见 pricedCircuitLength（DEC-2026-10-23-R01）。
+    const conduit = circuitPriced.get(circuit.id) ?? 0;
     if (conduit <= EPS) continue;
     const wireSize = parseWireSizeMm2(circuit.wire_size);
     if (!wireSize) {
@@ -781,7 +897,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       terminalDropM: drawnM - drawnMWithoutDrop,
       /** 已画线路由去重后的走线长度（并排只算一次）：人工/开槽按这个计价，管材按各条长度之和。 */
       drawnRouteUnionM: unionPlanLength(drawnPlanPaths),
-      strongPowerTotalM: strongUnionPerCircuitM,
+      // 计价口径的强电管总量（server/mep-quotes 的 conduit_20 行取此值）：
+      // Σ 回路计价基数（平面 union + 竖直段，DEC-2026-10-23-R01）。
+      // 纯平面 union 的诊断值见 strongPowerUnionPerCircuitM，两者不可混用。
+      strongPowerTotalM: strongPricedPerCircuitM,
       strongPowerLogicalM: layerLength.strong_power ?? 0,
       strongPowerUnionAllM: unionPlanLength(strongPaths),
       strongPowerUnionPerCircuitM: strongUnionPerCircuitM,
@@ -824,7 +943,8 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     },
     byCircuit: circuits.map((circuit) => {
       const bucket = [...buckets.values()].find((item) => item.circuits.includes(circuit.id));
-      const conduit = circuitUnion.get(circuit.id) ?? 0;
+      // 与分桶计价同一基数（平面 union + 竖直段），诊断表不许再报纯平面值误导采购。
+      const conduit = circuitPriced.get(circuit.id) ?? 0;
       return {
         circuitId: circuit.id,
         purpose: circuit.purpose ?? '未声明',
