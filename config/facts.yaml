@@ -523,10 +523,6 @@ facts:
         extract: '(\d+)\s*回路?'
         severity: error
         expect_matches: 10
-      - path: config/mep-material-baseline.yaml
-        extract: '(\d+)\s*路'
-        severity: error
-        expect_matches: 1
     exempt:
       - path: config/electrical-topology.yaml
         pattern: '路'
@@ -1278,8 +1274,11 @@ contracts:
 
   - id: c.referenced_material_exists
     kind: fk
+    # 负向前瞻排除 mep-quotes.yaml 的报价卡 id（owner_baseline_NN 等）：本契约只对账
+    # 「材料 id」，报价卡不是材料、住在 config/mep-quotes.yaml，procurement.md §02
+    # 历史金额段点名生效卡是如实记录其与 DEC-2026-10-07-M01 的冲突，不是材料引用腐烂。
     ref_pattern: |-
-      \b([a-z][a-z0-9]*(?:_[a-z0-9]+)*_\d{2})\b
+      \b(?!owner_baseline_\d{2}\b)([a-z][a-z0-9]*(?:_[a-z0-9]+)*_\d{2})\b
     ref_scope: [schedule/procurement.md]
     target: config/materials.yaml
     target_pattern: |-
@@ -1401,6 +1400,8 @@ contracts:
     allow:
       - path: shared/houseData.ts
         reason: 阶段 3 已删除的文件：invented HVAC 报价表（A1 30,500 / A2 29,000 / … / F2 31,500 + FLOOR_HEIGHT 3.0）与合同成交价 36,000 并存，业主端长期看到 29,000。注释保留该路径是为了写明被推翻的旧结论（决策铁律 3），不是引用活代码
+      - path: config/mep-material-baseline.yaml
+        reason: 已退役配置（无机器读者，退出配置见 DEC-2026-10-07-M01，规格落实在 docs/mep-construction-guidance.md）：schedule/procurement.md §02 选型基线段保留该路径是为了写明其退出配置的沿革，不是引用活配置
 
   # ④ 规则引用的家具 type 必须存在于 house.yaml furnishings。固化上一轮手修成果
   # （tv_stand / wardrobe_240 / master_freestanding_wardrobe_062 三类已补齐），
@@ -1775,7 +1776,7 @@ contracts:
   - id: c.floor_height_3m_forbidden
     kind: single_source
     expect: 0
-    scope: [README.md, config/, docs/, schedule/, shared/, server/, app/, scripts/, tests/, contracts/, renders/, survey/, cad/, assets/, data/]
+    scope: [README.md, config/, docs/, schedule/, shared/, server/, app/, scripts/, tests/, contracts/, survey/, cad/, assets/, data/]
     exclude: [docs/decisions/, docs/CURRENT-VALUES.md, docs/README.md, tests/, app/dist/, tmp/, node_modules/]
     patterns:
       - '(?:结构)?层高\s*(?:约|大约|近)?\s*3(?:\.0+)?\s*(?:m|米)'
@@ -1826,6 +1827,8 @@ coverage:
   # floor 材料量与 base.json masonry.labor 的 floor 人工行都读它——「地面面积」从此只有一处口径。
   - { file: config/tile-comparison.yaml, field: "dry_room_ids", readers: ["server/budget-calculator.ts", "server/tile-cost-comparison.ts"] }
   - { file: config/tile-comparison.yaml, field: "wet_room_ids", readers: ["server/budget-calculator.ts"] }
+  # grout_model 只剩 pkg130_reconciliation 对账最小集，cost-summary.ts 与 QR-2026-10-03-07 fail-closed 对账
+  - { file: config/tile-comparison.yaml, field: "grout_model", readers: ["scripts/schedule/cost-summary.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "quotes", readers: ["server/ceiling-quotes.ts", "server/routes.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "version", readers: [] }
@@ -2016,14 +2019,6 @@ coverage:
   - { file: config/mep-labor.yaml, field: "contingency_ratio", readers: [] }
   - { file: config/mep-labor.yaml, field: "contingency_note", readers: [] }
   - { file: config/mep-labor.yaml, field: "scopes", readers: [] }
-  # ─── 水电主材选型基线（2026-10-07 归档，DEC-2026-10-07-M01）───
-  # 说明：本文件是「选型方向」层，单价在 config/mep-quotes.yaml、米数由 takeoff 派生，
-  # 故多数字段的 reader 是引用它字段名的文档。2026-10-09 DEC-2026-10-09-S01 起
-  # DEC-2026-10-07-M01 住在 docs/decisions/13-mep-integration.md（原 docs/decision_log.md）。
-  - { file: config/mep-material-baseline.yaml, field: "version", readers: [] }
-  - { file: config/mep-material-baseline.yaml, field: "specs", readers: ["docs/decisions/13-mep-integration.md"] }
-  - { file: config/mep-material-baseline.yaml, field: "brand_tiers", readers: ["docs/decisions/13-mep-integration.md"] }
-  - { file: config/mep-material-baseline.yaml, field: "locked_choices", readers: ["docs/decisions/13-mep-integration.md", "schedule/procurement.md"] }
-  - { file: config/mep-material-baseline.yaml, field: "cost_target", readers: ["docs/decisions/13-mep-integration.md"] }
-  - { file: config/mep-material-baseline.yaml, field: "reversal_conditions", readers: ["docs/decisions/13-mep-integration.md", "schedule/procurement.md"] }
-  - { file: config/mep-material-baseline.yaml, field: "pending_actions", readers: ["schedule/procurement.md"] }
+  # ─── 水电主材选型基线 ───
+  # 原 config/mep-material-baseline.yaml 没有机器读者，已退役；选型摘要在
+  # schedule/procurement.md §02，技术规格与算量分别回到施工指导和现行 config。

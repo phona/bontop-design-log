@@ -22,6 +22,7 @@ scripts/archive/blender-pipeline/
 │   └── test-run-blender.sh
 ├── tests/server/                # gen-render-config and render-bundle tests
 ├── metadata/                    # scrubbed copies of four selected metadata files
+├── docs/                        # historical architecture, render debt, and acceptance notes
 ├── MANIFEST.json
 └── README.md
 ```
@@ -56,6 +57,14 @@ No `archive:blender:*` npm aliases are provided. This archive is a source snapsh
 To investigate a recovery, work in a separate disposable copy or branch and first reconstruct the historical paths from `MANIFEST.json`. Then restore external ignored resources from their existing locations, review environment-specific Blender configuration, and run wrapper/unit/bundle checks before attempting a render. Do not copy files over an active dirty workspace.
 
 Historical invocation examples in the paused documents are evidence only; they are not current commands.
+
+## Historical documentation
+
+- [Blender render architecture](docs/blender-render-architecture.md): source authority, render-only object boundaries, bundle/version evidence, and paused pipeline architecture.
+- [Render technical debt](docs/render-tech-debt.md): the backlog at pause time; not an active work list.
+- [Pipeline acceptance history](docs/pipeline-acceptance.md): v1–v16 render and bundle acceptance record.
+
+These documents stay beside the code snapshot so a future recovery has the design boundary and known failure context in one archive. Current project rules remain in the root `AGENTS.md` and active `scripts/README.md`. Render-decision-board metadata records historical image paths and hashes; PNG files themselves are not included in this archive.
 
 ## Last known validation context
 

@@ -21,7 +21,8 @@ scripts/
 │   ├── glb/                     # CLI GLB build/export/inspect/compare
 │   ├── capture/                 # browser floor-plan capture and watcher
 │   └── diagrams/                # top-down and MEP/HVAC diagrams
-└── archive/blender-pipeline/    # PAUSED/HISTORICAL Blender 冷归档
+└── archive/
+    └── blender-pipeline/        # PAUSED/HISTORICAL Blender 冷归档
 ```
 
 ## 正式入口
@@ -47,9 +48,9 @@ scripts/
 
 ## Blender 冷归档
 
-Blender runtime、wrapper、bundle、相机工具、`verify-render-bundle` 和相关测试位于 `scripts/archive/blender-pipeline/`。归档是 dirty/untracked 最终源码快照，不承诺从归档路径直接渲染，也没有 `archive:blender:*` npm alias。恢复前必须阅读其 `README.md` 和 `MANIFEST.json`，在独立副本中重建历史路径并验证，禁止覆盖当前 dirty 工作区。
+Blender runtime、wrapper、bundle、相机工具、`verify-render-bundle` 和相关测试位于 `scripts/archive/blender-pipeline/`。归档是 dirty/untracked 最终源码快照，不承诺从归档路径直接渲染，也没有 `archive:blender:*` npm alias。恢复前必须阅读其 `README.md` 和 `MANIFEST.json`，在独立副本中重建历史路径并验证，禁止覆盖当前 dirty 工作区。历史架构、渲染技术债、验收说明和正式渲染图元数据集中在该归档的 `docs/` 与 `metadata/` 子目录；图片文件没有纳入冷归档。
 
-大型 `assets/`、`hdri/`、`renders/`、`tmp/` 保持原位；缓存、`node_modules` 与 generated binaries 不进入归档。
+新视觉迭代的 PNG/runtime 证据归入 `docs/design-iterations/<iteration-id>/evidence/`；旧 Blender 图板只保留在 archive metadata，PNG 本体不进冷归档。`tmp/` 是可重生运行目录；缓存、`node_modules` 与 generated binaries 不进入归档。
 
 ## CAD
 

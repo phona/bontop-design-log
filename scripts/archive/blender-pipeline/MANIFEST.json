@@ -96,8 +96,8 @@
     {
       "originalPath": "scripts/blender/blender_assets.py",
       "archivePath": "scripts/archive/blender-pipeline/scripts/blender/blender_assets.py",
-      "bytes": 40866,
-      "sha256": "3f663c495df15d2bfa2874042b471597cdbf4103a1b6f07202ac4d0a06d6f2d8"
+      "bytes": 40891,
+      "sha256": "3429067ff82ce10ade67c2230f0d8bed0687c2a1bec43eedaab5fee4a5c31aef"
     },
     {
       "originalPath": "scripts/blender/blender_environment.py",
@@ -356,6 +356,33 @@
       "archivePath": "scripts/archive/blender-pipeline/tests/server/render-bundle.test.ts",
       "bytes": 31271,
       "sha256": "f37460fb73dfc07d72074440b642e2c7f96b061176a59d4f1d281e364aad08fc"
+    },
+    {
+      "originalPath": "docs/renders/blender-render-architecture.md",
+      "archivePath": "scripts/archive/blender-pipeline/docs/blender-render-architecture.md",
+      "bytes": 26456,
+      "sha256": "a6cacd2eda17854a8813af1969cb30049bd1157883c29ee9db18a2f9fda932d7"
+    },
+    {
+      "originalPath": "docs/render-tech-debt.md",
+      "archivePath": "scripts/archive/blender-pipeline/docs/render-tech-debt.md",
+      "bytes": 8890,
+      "sha256": "106d286c273a3838efd458cfba5ddfbd0b3bc9e041be95d21b35de90192f7665"
+    },
+    {
+      "originalPath": "docs/renders/pipeline-acceptance.md",
+      "archivePath": "scripts/archive/blender-pipeline/docs/pipeline-acceptance.md",
+      "bytes": 21439,
+      "sha256": "2f90cec4af8ea4ecd69b105cab7a2987ed5a346204f8be848caefca1137bed03"
     }
-  ]
+  ],
+  "postArchiveMigrations": {
+    "date": "2026-10-22",
+    "reason": "Centralize paused Blender documentation beside its source snapshot; preserve content and update the one in-archive document pointer.",
+    "files": [
+      "scripts/archive/blender-pipeline/docs/blender-render-architecture.md",
+      "scripts/archive/blender-pipeline/docs/render-tech-debt.md",
+      "scripts/archive/blender-pipeline/docs/pipeline-acceptance.md"
+    ]
+  }
 }
