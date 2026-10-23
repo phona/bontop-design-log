@@ -651,6 +651,50 @@ export function mepOutOfScopeFootnote(
   return `；另有 ${outOfScopeRows.length} 行被生效卡标为不在本家报价范围，金额未计入本行，逐行处置（登记于生成器 OUT_OF_SCOPE_DISPOSITIONS）——${details}`;
 }
 
+/**
+ * 水电行层级理由的事实绑定（自主扫描 D3）：cost-mep 的 tierReason 是写死
+ * 生效卡身份的静态散文——卡 id（owner_baseline_40）、status（baseline）、
+ * contractor（业主口径基线）、费率来源构成（多取 public_reference）与
+ * COST-040-15 的 interface_pending 状态。本行金额与 verifiedBasis 都在构
+ * 建时实时捕获，唯独理由是人写死的文本：生效卡切换或状态迁移后，金额跟
+ * 随新卡、理由却继续描述旧卡，verify:schedule 只核产物与输入一致、照样
+ * 绿灯。故构建时逐项断言理由所述事实此刻仍成立，任一不符抛错点名，迫使
+ * 改卡/改状态时同步重写理由（与层级守卫同一 fail-closed 口径）。
+ * 阈值按现行实测写死：生效卡共 32 行声明费率，其中 15 行 scope_note 带
+ * public_reference 标记（≈47%，即理由所称「费率多取 public_reference
+ * 公开参考价」）；公开参考价行数少于 15 即视为来源构成已变、理由失实。
+ * contractor 实测全称以「业主口径基线」开头（「业主口径基线（伟星家装绿
+ * + 远东 + …）」），理由里引的是其身份简称，故按前缀绑定。
+ */
+export function assertMepTierReasonFacts(
+  comparison: { id: string; status: string; contractor: string },
+  card: AnyRecord | undefined,
+  cost04015Status: string | undefined,
+): void {
+  if (comparison.id !== 'owner_baseline_40') {
+    throw new Error(`cost summary: 水电行 tierReason 绑定的是生效卡 owner_baseline_40，但当前生效卡是 ${comparison.id}——层级理由已失实，请先按新卡事实重写 tierReason 与本断言再生成`);
+  }
+  if (comparison.status !== 'baseline') {
+    throw new Error(`cost summary: 水电行 tierReason 称生效卡 status 为 baseline，实际 ${comparison.status}——层级理由已失实，请先重写理由与层级裁定再生成`);
+  }
+  if (!comparison.contractor.startsWith('业主口径基线')) {
+    throw new Error(`cost summary: 水电行 tierReason 称生效卡 contractor 为「业主口径基线」，实际「${comparison.contractor}」——层级理由已失实，请先重写理由与层级裁定再生成`);
+  }
+  if (!card) {
+    throw new Error(`cost summary: 水电行 tierReason 事实无从核验：报价文件里找不到生效卡 ${comparison.id}`);
+  }
+  const rates = Object.values((card.rates ?? {}) as Record<string, AnyRecord>);
+  const publicReferenceCount = rates.filter(
+    (rate) => typeof rate?.scope_note === 'string' && rate.scope_note.includes('public_reference'),
+  ).length;
+  if (publicReferenceCount < 15) {
+    throw new Error(`cost summary: 水电行 tierReason 称生效卡「费率多取 public_reference 公开参考价」，实测 ${rates.length} 行声明费率中只有 ${publicReferenceCount} 行带 public_reference 标记（绑定阈值 15，现行实测 15/32）——费率来源构成已变、理由失实，请先重写理由与本断言阈值再生成`);
+  }
+  if (cost04015Status !== 'interface_pending') {
+    throw new Error(`cost summary: 水电行 tierReason 称 COST-040-15 状态为 interface_pending，实际 ${cost04015Status ?? '缺失'}——界面未决状态已变，请先重写理由（并同步待核清单与双归属登记）再生成`);
+  }
+}
+
 /** 本表范围：硬装（hard_finish）+ 中央空调（hvac）两个预算池。范围外包的组件按包登记排除理由。 */
 const IN_SCOPE_POOLS = new Set(['hard_finish', 'hvac']);
 const OUT_OF_SCOPE_PACKAGE_REASONS: Record<string, string> = {
@@ -934,6 +978,13 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     // 否则静默少算；有此行时推导口径同步改写并附注脚显形。
     const outOfScopeRows = comparison.outOfScopeRows;
     assertMepOutOfScopeDispositions(outOfScopeRows);
+    // 层级理由事实绑定（见 assertMepTierReasonFacts）：理由是静态散文，
+    // 生效卡身份/状态/费率来源构成与 COST-040-15 未决状态任一变化都必须
+    // 先改理由再出表，不许金额跟新卡走、理由还停在旧卡。
+    const mepCard = (loadMepQuotes().quotes as unknown as AnyRecord[]).find((quote) => quote.id === comparison.id);
+    const cost04015Status = ((pkgOf(control, 'PKG-040').budget?.components ?? []) as AnyRecord[])
+      .find((component) => component.id === 'COST-040-15')?.status as string | undefined;
+    assertMepTierReasonFacts(comparison, mepCard, cost04015Status);
     const pricingNote = outOfScopeRows.length === 0
       ? `${comparison.rows.length} 行全部计价、无待报价行`
       : `${comparison.rows.length} 行中 ${comparison.rows.length - outOfScopeRows.length} 行计价、无待报价行${mepOutOfScopeFootnote(outOfScopeRows)}`;

@@ -7,6 +7,7 @@ import {
   assertMepOutOfScopeDispositions,
   assertNoDuplicateCountedClaims,
   assertPendingClassifications,
+  assertMepTierReasonFacts,
   assertVerifiedTierBasis,
   buildCostSummary,
   computeActiveMepQuote,
@@ -407,6 +408,56 @@ describe('成本总表 cost-summary', () => {
     assert.deepEqual(OUT_OF_SCOPE_DISPOSITIONS, {}, '现行登记表应为空（有行被排除时才逐行登记）');
     assert.equal(mepOutOfScopeFootnote([]), '', '无被排除行时注脚为空串');
     assert.ok(!rowById(data, 'cost-mep')!.derivation.includes('不在本家报价范围'), '现行水电行推导不得出现 out_of_scope 注脚');
+  });
+
+  it('水电层级理由事实绑定：换卡/改状态/改承包商/费率来源构成变/界面状态变必须抛错', () => {
+    // 自主扫描 D3：水电行 tierReason 是写死生效卡身份的静态散文——金额与
+    // verifiedBasis 都实时捕获，唯独理由不绑事实：换卡后金额跟新卡走、
+    // 理由仍写旧卡且 verify 照绿。构建时逐项断言理由所述事实（卡 id /
+    // status / contractor / public_reference 行数 / COST-040-15 状态）。
+    const { comparison } = computeActiveMepQuote();
+    const quotesFile = loadMepQuotes() as unknown as AnyRecord;
+    const realCard = (quotesFile.quotes as AnyRecord[]).find((quote) => quote.id === comparison.id) as AnyRecord;
+    const real04015Status = ((pkgOf(control, 'PKG-040').budget.components ?? []) as AnyRecord[])
+      .find((component) => component.id === 'COST-040-15')?.status as string;
+    // 真实事实必须通过（断言不是摆设）
+    assert.doesNotThrow(() => assertMepTierReasonFacts(comparison, realCard, real04015Status));
+    // 换卡：生效卡 id 变了，理由还在说 owner_baseline_40 → 抛错点名新卡
+    assert.throws(
+      () => assertMepTierReasonFacts({ ...comparison, id: 'weixing_home_green' }, realCard, real04015Status),
+      /tierReason.*weixing_home_green|生效卡是 weixing_home_green/,
+      '切换生效卡必须抛错',
+    );
+    // 改 status：卡被降级/否决，理由还在说 baseline → 抛错
+    assert.throws(
+      () => assertMepTierReasonFacts({ ...comparison, status: 'rejected' }, realCard, real04015Status),
+      /status.*rejected|实际 rejected/,
+      '生效卡 status 迁移必须抛错',
+    );
+    // 改 contractor：不再是业主口径基线 → 抛错
+    assert.throws(
+      () => assertMepTierReasonFacts({ ...comparison, contractor: '伟星家装绿' }, realCard, real04015Status),
+      /contractor/,
+      '生效卡 contractor 变化必须抛错',
+    );
+    // 费率来源构成变：把公开参考价标记抹掉，理由「费率多取公开参考价」失实 → 抛错
+    const scrubbedCard = structuredClone(realCard) as AnyRecord;
+    for (const rate of Object.values(scrubbedCard.rates as Record<string, AnyRecord>)) {
+      if (typeof rate.scope_note === 'string') rate.scope_note = rate.scope_note.replaceAll('public_reference', 'contractor_quote');
+    }
+    assert.throws(
+      () => assertMepTierReasonFacts(comparison, scrubbedCard, real04015Status),
+      /public_reference/,
+      '费率来源构成变化必须抛错',
+    );
+    // 界面状态变：COST-040-15 不再是 interface_pending → 抛错
+    assert.throws(
+      () => assertMepTierReasonFacts(comparison, realCard, 'resolved'),
+      /COST-040-15.*interface_pending|实际 resolved/,
+      'COST-040-15 状态变化必须抛错',
+    );
+    // 原卡找不到 → 无从核验，抛错
+    assert.throws(() => assertMepTierReasonFacts(comparison, undefined, real04015Status), /找不到生效卡/);
   });
 
   it('覆盖检查：全部未决条目已登记归属，三类计数对上未决总数', () => {
