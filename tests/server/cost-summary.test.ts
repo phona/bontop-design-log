@@ -4,19 +4,27 @@ import { describe, it } from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
   assertAttributionClaims,
+  assertMepOutOfScopeDispositions,
   assertNoDuplicateCountedClaims,
   assertPendingClassifications,
   assertVerifiedTierBasis,
   buildCostSummary,
   computeActiveMepQuote,
   DUAL_ATTRIBUTIONS,
+  OUT_OF_SCOPE_DISPOSITIONS,
   PENDING_COUNTED_STATUS_LABELS,
+  mepOutOfScopeFootnote,
   renderCostSummary,
   type AttributionKind,
   type CostSummaryData,
   type PendingCountedStatus,
   type PendingEntry,
 } from '../../scripts/schedule/cost-summary.js';
+import {
+  compareMepQuotes,
+  loadMepQuotes,
+  mepQuoteFallback,
+} from '../../server/mep-quotes.js';
 
 /**
  * 成本总表（schedule/phase-1/cost.md）的口径防线。业主 2026-10-23 裁定：
@@ -314,6 +322,46 @@ describe('成本总表 cost-summary', () => {
       () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'clean_card', cardStatus: 'contracted' }, control, cleanQuotes),
       'written_quote 且费率均为施工方报价来源的 contracted 卡必须通过',
     );
+  });
+
+  it('水电 out_of_scope 行显形：未登记处置抛错点名，登记后通过且注脚可见', () => {
+    // 复审 P2：compareMepQuotes 把卡上 out_of_scope 的行排除在总额之外、也
+    // 不进 pendingRows——水电行若只核总额与待报价行，这类行会被静默少算。
+    // 合成注入：克隆真实报价文件，给生效卡加一条 out_of_scope 行（行键
+    // gas_alarm_kit），经真实 compareMepQuotes 产出对比结果再喂守卫。
+    const { takeoff, areaSqm } = computeActiveMepQuote();
+    const labor = parseYaml(readFileSync('config/mep-labor.yaml', 'utf8')) as Parameters<typeof mepQuoteFallback>[0];
+    const doctoredFile = structuredClone(loadMepQuotes()) as unknown as AnyRecord;
+    const activeCard = (doctoredFile.quotes as AnyRecord[]).find((quote) => quote.id === doctoredFile.active) as AnyRecord;
+    activeCard.out_of_scope = ['gas_alarm_kit'];
+    const doctoredComparison = compareMepQuotes(
+      doctoredFile as unknown as Parameters<typeof compareMepQuotes>[0],
+      takeoff,
+      areaSqm,
+      mepQuoteFallback(labor),
+    ).find((entry) => entry.active);
+    assert.ok(doctoredComparison, '合成卡必须有生效对比');
+    assert.deepEqual(doctoredComparison.outOfScopeRows, ['gas_alarm_kit'], 'out_of_scope 行必须出现在对比结果的 outOfScopeRows 中');
+    assert.ok(!doctoredComparison.pendingRows.includes('gas_alarm_kit'), 'out_of_scope 行不在待报价行里（这正是静默少算的入口）');
+    // 未登记处置 → 抛错并点名行键与登记表
+    assert.throws(
+      () => assertMepOutOfScopeDispositions(doctoredComparison.outOfScopeRows),
+      /gas_alarm_kit.*OUT_OF_SCOPE_DISPOSITIONS/,
+      '未登记处置的 out_of_scope 行必须抛错并点名行键与登记表',
+    );
+    // 登记后 → 通过；注脚带行数与行键（水电行推导据此显形）
+    assert.doesNotThrow(
+      () => assertMepOutOfScopeDispositions(doctoredComparison.outOfScopeRows, { gas_alarm_kit: '测试处置：由其他报价覆盖' }),
+      '登记处置后必须通过',
+    );
+    const footnote = mepOutOfScopeFootnote(['gas_alarm_kit']);
+    assert.ok(footnote.includes('1 行') && footnote.includes('gas_alarm_kit') && footnote.includes('登记处置'), '注脚必须显形行数、行键与登记处置');
+    // 现行真实数据：生效卡无 out_of_scope 行、登记表为空、真实推导不带注脚
+    const { comparison } = computeActiveMepQuote();
+    assert.deepEqual(comparison.outOfScopeRows, [], '现行生效卡不得有 out_of_scope 行（有则先登记处置）');
+    assert.deepEqual(OUT_OF_SCOPE_DISPOSITIONS, {}, '现行登记表应为空（有行被排除时才逐行登记）');
+    assert.equal(mepOutOfScopeFootnote([]), '', '无被排除行时注脚为空串');
+    assert.ok(!rowById(data, 'cost-mep')!.derivation.includes('不在本家报价范围'), '现行水电行推导不得出现 out_of_scope 注脚');
   });
 
   it('覆盖检查：全部未决条目已登记归属，三类计数对上未决总数', () => {

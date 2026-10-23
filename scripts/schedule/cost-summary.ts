@@ -569,6 +569,38 @@ export function computeActiveMepQuote(): { comparison: MepQuoteComparison; takeo
   return { comparison, takeoff, areaSqm };
 }
 
+/**
+ * 水电报价卡 out_of_scope 行处置登记（2026-10-23 复审再续 · P2）：
+ * compareMepQuotes 把卡上标 out_of_scope 的行排除在 comparison.total 之外
+ * （「这家不报这项」，见 shared/quote-cards.ts），这类行也不进 pendingRows
+ * ——水电行推导若只核总额与待报价行，它们会被**静默少算**：总额不含、清单
+ * 不显，覆盖检查对着 control.yaml 组件扫描、也看不见费率行这一层。故
+ * fail-closed：生效卡每有一行 out_of_scope，必须在本表逐行登记处置（由哪条
+ * 待核/哪张卡覆盖，或为何不计价），缺登记者构建抛错并点名行键。行键是 MEP
+ * 费率行键（MEP_SPEC.keys，如 gas_alarm_kit），与 COST 组件 id 无自然对应，
+ * 故走显式登记表而非 coversItems 归属。现行生效卡 owner_baseline_40 无
+ * out_of_scope 行（其 comparability_notes 为空），本表为空——将来有行时先
+ * 登记再生成，登记内容会随推导注脚在成本表表面显形。
+ */
+export const OUT_OF_SCOPE_DISPOSITIONS: Record<string, string> = {};
+
+/** out_of_scope 处置校验（纯函数，可独立测试）：每个被排除行键必须有非空处置登记，缺一抛错并点名全部缺登行键。 */
+export function assertMepOutOfScopeDispositions(
+  outOfScopeRows: readonly string[],
+  dispositions: Record<string, string> = OUT_OF_SCOPE_DISPOSITIONS,
+): void {
+  const unregistered = outOfScopeRows.filter((key) => !dispositions[key]?.trim());
+  if (unregistered.length > 0) {
+    throw new Error(`cost summary: 生效水电报价卡有 ${unregistered.length} 行被标为 out_of_scope（不在本家报价范围：${unregistered.join('、')}），但未在 OUT_OF_SCOPE_DISPOSITIONS 登记处置——这类行被排除在卡总额之外、也不是待报价行，不登记就会被静默少算；请逐行登记处置（由哪条待核/哪张卡覆盖，或为何不计价）后重新生成`);
+  }
+}
+
+/** out_of_scope 渲染注脚（纯函数）：无被排除行时为空串（现行渲染不变）；有则在水电行推导里显形行数与行键，并指明已登记处置。 */
+export function mepOutOfScopeFootnote(outOfScopeRows: readonly string[]): string {
+  if (outOfScopeRows.length === 0) return '';
+  return `；另有 ${outOfScopeRows.length} 行被生效卡标为不在本家报价范围（${outOfScopeRows.join('、')}），金额未计入本行，已逐行在生成器 OUT_OF_SCOPE_DISPOSITIONS 登记处置`;
+}
+
 /** 本表范围：硬装（hard_finish）+ 中央空调（hvac）两个预算池。范围外包的组件按包登记排除理由。 */
 const IN_SCOPE_POOLS = new Set(['hard_finish', 'hvac']);
 const OUT_OF_SCOPE_PACKAGE_REASONS: Record<string, string> = {
@@ -847,6 +879,14 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   // ── 水电（PKG-040）：算量 × 生效报价卡 ──
   {
     const { comparison, takeoff, areaSqm } = computeActiveMepQuote();
+    // out_of_scope 行 fail-closed（见 OUT_OF_SCOPE_DISPOSITIONS 头注）：被生效
+    // 卡排除在总额之外的行既非待报价行、也不进总额，必须逐行登记处置，
+    // 否则静默少算；有此行时推导口径同步改写并附注脚显形。
+    const outOfScopeRows = comparison.outOfScopeRows;
+    assertMepOutOfScopeDispositions(outOfScopeRows);
+    const pricingNote = outOfScopeRows.length === 0
+      ? `${comparison.rows.length} 行全部计价、无待报价行`
+      : `${comparison.rows.length} 行中 ${comparison.rows.length - outOfScopeRows.length} 行计价、无待报价行${mepOutOfScopeFootnote(outOfScopeRows)}`;
     const total = comparison.total as number;
     const subtotalOf = (...keys: string[]) => comparison.rows
       .filter((row) => keys.includes(row.key))
@@ -875,7 +915,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       // 该未决事项另列待核清单与本行双归属登记（见 DUAL_ATTRIBUTIONS），不许只藏在本行里。
       // 只有 -09 燃气管道不在卡内，另列待核。
       coversItems: ['COST-040-01', 'COST-040-02', 'COST-040-03', 'COST-040-04', 'COST-040-05', 'COST-040-06', 'COST-040-07', 'COST-040-08', 'COST-040-10', 'COST-040-11', 'COST-040-12', 'COST-040-13', 'COST-040-14', 'COST-040-15', 'COST-040-16', 'COST-040-17', 'COST-040-18', 'COST-040-19', 'COST-040-20'],
-      derivation: `算量 × 生效报价卡：shared/mep-takeoff.ts 按路由实算（强电计价管长 ${qty(takeoff.conduit.strongPowerTotalM)} m、导线 ${qty(takeoff.wire.totalWireM)} m，给排水与器件逐项），× config/mep-quotes.yaml 生效卡 ${comparison.id} 单价，${comparison.rows.length} 行全部计价、无待报价行——清包人工 ${yuan(laborPart)}（${qty(areaSqm, 2)} ㎡ × ${yuan(laborRate)}/㎡）、导线 ${yuan(wirePart)}、线管 ${yuan(conduitPart)}、其余管材/器件/增项 ${yuan(restPart)}，卡总额 ${yuan(total)} 取整。算量口径含竖直段补计（DEC-2026-10-23-R01：计价基数 = 平面 union + 竖直段，PR #11 已合入）`,
+      derivation: `算量 × 生效报价卡：shared/mep-takeoff.ts 按路由实算（强电计价管长 ${qty(takeoff.conduit.strongPowerTotalM)} m、导线 ${qty(takeoff.wire.totalWireM)} m，给排水与器件逐项），× config/mep-quotes.yaml 生效卡 ${comparison.id} 单价，${pricingNote}——清包人工 ${yuan(laborPart)}（${qty(areaSqm, 2)} ㎡ × ${yuan(laborRate)}/㎡）、导线 ${yuan(wirePart)}、线管 ${yuan(conduitPart)}、其余管材/器件/增项 ${yuan(restPart)}，卡总额 ${yuan(total)} 取整。算量口径含竖直段补计（DEC-2026-10-23-R01：计价基数 = 平面 union + 竖直段，PR #11 已合入）`,
     });
   }
 
