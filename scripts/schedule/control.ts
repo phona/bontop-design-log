@@ -4,7 +4,7 @@ import process from 'node:process';
 import { createHash } from 'node:crypto';
 import * as yaml from 'js-yaml';
 import { computeGateStatus } from './gate-status.js';
-import { buildCostSummary, renderCostSummary, COST_INPUT_PATHS, COST_SUMMARY_PATH } from './cost-summary.js';
+import { buildCostSummary, renderCostSummary, contractArchivePathProblem, isValidCalendarDateText, COST_INPUT_PATHS, COST_SUMMARY_PATH } from './cost-summary.js';
 import { loadModelPackageLinks, MODEL_PACKAGE_LINKS_PATH } from '../../server/model-package-links.js';
 
 type AnyRecord = Record<string, any>;
@@ -311,12 +311,14 @@ for (const record of quoteRoundRecords) {
     // 合同结构化登记（2026-10-23 收口）：带 contract 块的轮次即已转合同，登记
     // 字段是成本总表守卫（cost-summary.ts）的机读单源。口径在这里就钉死，不
     // 许带病数据流到生成器才炸：金额须与 locked_cny 一致；deal_status 只认
-    // signed（唯一「已成交」取值）；signed_at 须为 YYYY-MM-DD（js-yaml 会把
-    // 未加引号的日期解析成 Date，两形态都认）；includes/excludes 必须在位；
-    // archive_paths 逐条为 {path, sha256}：path 限定 contracts/ 归档区、
-    // sha256 为 64 位十六进制（登记时钉死的原件字节哈希）、文件真实存在
-    // 且非空；哈希与文件字节的实算比对在成本守卫（cost-summary.ts）做，
-    // 数据层这里只钉形态、范围与在位。
+    // signed（唯一「已成交」取值）；signed_at 须为真实日历日期的
+    // YYYY-MM-DD（严格回读比对，与成本守卫共用 isValidCalendarDateText；
+    // 登记处已加引号走字符串形态）；includes/excludes 必须在位；
+    // archive_paths 逐条为 {path, sha256}：path 经共用核查
+    // contractArchivePathProblem 钉死在 contracts/ 归档区内（规范路径、
+    // 非符号链接、realpath 不出界）、sha256 为 64 位十六进制（登记时钉
+    // 死的原件字节哈希）、文件真实存在且非空；哈希与文件字节的实算比
+    // 对在成本守卫（cost-summary.ts）做，数据层这里只钉形态、范围与在位。
     const contract = record.contract;
     if (typeof contract !== 'object' || Array.isArray(contract)) {
       errors.push(`${record.id}: contract must be a mapping`);
@@ -332,8 +334,12 @@ for (const record of quoteRoundRecords) {
       const signedAtText = contract.signed_at instanceof Date
         ? contract.signed_at.toISOString().slice(0, 10)
         : contract.signed_at;
-      if (typeof signedAtText !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(signedAtText) || Number.isNaN(Date.parse(signedAtText))) {
-        errors.push(`${record.id}: contract.signed_at must be a YYYY-MM-DD date (got ${contract.signed_at})`);
+      // 严格日历校验（复审第二轮 P2）：Date.parse 会把 2026-02-30 归一
+      // 化成 03-02 而不报 NaN——必须逐项回读比对（isValidCalendarDateText
+      // 与成本守卫共用）。control.yaml 里 signed_at 已加引号走字符串形
+      // 态，归一化在解析期就不存在；Date 形态仅为兼容未加引号的旧写法。
+      if (typeof signedAtText !== 'string' || !isValidCalendarDateText(signedAtText)) {
+        errors.push(`${record.id}: contract.signed_at must be a real YYYY-MM-DD calendar date (got ${contract.signed_at})`);
       }
       if (typeof contract.includes !== 'string' || !contract.includes) {
         errors.push(`${record.id}: contract.includes missing`);
@@ -351,23 +357,19 @@ for (const record of quoteRoundRecords) {
           }
           const archivePath = archiveEntry.path;
           const archiveSha256 = archiveEntry.sha256;
-          if (typeof archivePath !== 'string' || !archivePath.startsWith('contracts/')) {
-            errors.push(`${record.id}: contract.archive_paths 的 path 必须位于 contracts/ 归档区内（got ${archivePath}）`);
+          if (typeof archivePath !== 'string') {
+            errors.push(`${record.id}: contract.archive_paths 的 path 必须是 contracts/ 归档区内的规范路径字符串（got ${archivePath}）`);
             continue;
           }
           if (typeof archiveSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(archiveSha256)) {
             errors.push(`${record.id}: contract.archive_paths 条目 ${archivePath} 的 sha256 必须是 64 位十六进制（got ${archiveSha256}）`);
             continue;
           }
-          let archiveError: string | null = null;
-          try {
-            const stat = fs.statSync(path.join(root, archivePath));
-            if (!stat.isFile()) archiveError = `contract.archive_paths 指向非文件：${archivePath}`;
-            else if (stat.size === 0) archiveError = `contract.archive_paths 指向空文件（0 字节）：${archivePath}`;
-          } catch {
-            archiveError = `contract.archive_paths does not exist: ${archivePath}`;
-          }
-          if (archiveError) errors.push(`${record.id}: ${archiveError}`);
+          // 路径边界与实体核查与成本守卫共用 contractArchivePathProblem
+          // （复审第二轮 P1）：规范路径（.. / . 段越界）、非符号链接、
+          // realpath 不离开 contracts/、文件存在非空，一处口径两处生效。
+          const archiveProblem = contractArchivePathProblem(archivePath, root);
+          if (archiveProblem) errors.push(`${record.id}: ${archiveProblem}`);
         }
       }
     }

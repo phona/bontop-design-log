@@ -547,7 +547,7 @@ hard_finish_quote_rounds:
       contract:
         amount_cny: 36000
         deal_status: signed
-        signed_at: 2026-10-04
+        signed_at: "2026-10-04" # 加引号走字符串形态：未加引号时 js-yaml 在解析期就把非法日期（如 02-30）归一化，严格日历校验无从拦起
         includes: 含辅材
         excludes: 不含复合风管与风口加长（加长 100 元/米另计）、不含税
         archive_paths:

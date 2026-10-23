@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { readFileSync, mkdtempSync, symlinkSync, writeFileSync, rmSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { describe, it } from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
@@ -14,8 +15,11 @@ import {
   assertVerifiedTierBasis,
   buildCostSummary,
   computeActiveMepQuote,
+  contractArchivePathProblem,
   findDecisionSection,
   hasAffirmativeDealSemantics,
+  isValidCalendarDateText,
+  sectionAnchorsContractTotal,
   sectionContainsAmountToken,
   DUAL_ATTRIBUTIONS,
   OUT_OF_SCOPE_DISPOSITIONS,
@@ -282,6 +286,31 @@ describe('成本总表 cost-summary', () => {
       /归档路径越界/,
       'archive path 指向 contracts/ 外必须抛错',
     );
+    // 归档路径 ../ 穿越（复审第二轮 P1）：contracts/../ 前缀合法、解析出
+    // 界；且登记哈希取目标文件真实字节、自洽——仍必须以越界抛错，哈希
+    // 自洽救不了路径出界
+    const traversal = structuredClone(control) as AnyRecord;
+    const targetBytes = readFileSync('schedule/phase-1/control.yaml');
+    const targetSha = createHash('sha256').update(targetBytes).digest('hex');
+    qrOfClone(traversal).contract.archive_paths = [{ path: 'contracts/../schedule/phase-1/control.yaml', sha256: targetSha }];
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, traversal),
+      /归档路径越界/,
+      'contracts/../ 穿越到区外文件、且哈希自洽时仍必须抛错',
+    );
+    // 三方同步误改成分项金额（复审第二轮 P1 的原始攻击）：登记额、
+    // locked_cny、contracted_cny 一起改成 DEC 同章的外机分项 14,124——
+    // 三方一致、成交语义都在、14,124 也确实在章节里出现过，但它从未被
+    // 当作总价陈述，总价锚定必须抛错
+    const subtotalSwap = structuredClone(control) as AnyRecord;
+    qrOfClone(subtotalSwap).contract.amount_cny = 14124;
+    qrOfClone(subtotalSwap).locked_cny = 14124;
+    pkgOf(subtotalSwap, 'PKG-030').budget.contracted_cny = 14124;
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, subtotalSwap),
+      /金额与 DEC 脱节/,
+      '三方金额同步误改成同章分项金额 14,124 必须被总价锚定拦下',
+    );
     // DEC 金额在场核对（复审 P1）双向钉死：
     //  - 登记金额 token 在 DEC 章节里被删改（改写成 99,999）→ DEC 与登记
     //    脱节，必须抛错——三方金额同步改错时这道回锚就是最后一道；
@@ -320,6 +349,57 @@ describe('成本总表 cost-summary', () => {
     assert.equal(sectionContainsAmountToken('合计 36,000,000 元', 36000), false, '36,000,000 的首段不算在场');
     assert.equal(sectionContainsAmountToken('报价 36000 元', 36000), false, '无千分位的裸数字不算在场（只认千分位写法）');
     assert.equal(sectionContainsAmountToken('报价 3,600 元', 36000), false, '位数不同的金额不算在场');
+    // 小数尾（复审第二轮 P1）：36,000.5 是小数、不是 36,000 本身
+    assert.equal(sectionContainsAmountToken('合计 36,000.5 元', 36000), false, '36,000.5 的整数部分不得冒充 36,000');
+    assert.equal(sectionContainsAmountToken('合计 36,000 元整', 36000), true, '句末标点不影响完整 token 判定');
+  });
+
+  it('金额回锚总价语义：同章分项金额锚不上、总价分句才算数（复审第二轮 P1）', () => {
+    const section = findDecisionSection('DEC-2026-10-04-R1');
+    assert.ok(section);
+    assert.equal(sectionAnchorsContractTotal(section.text, 36000), true, '真实章节的 36,000 有总价锚点（标题定标成交 / 合计 / 整包含价）');
+    assert.equal(sectionAnchorsContractTotal(section.text, 14124), false, '外机分项 14,124 虽在同章出现，但从未被当作总价陈述');
+    assert.equal(sectionAnchorsContractTotal(section.text, 8400), false, '安装分项 8,400 同样锚不上总价');
+    assert.equal(sectionAnchorsContractTotal('外机 14,124 元；合计 36,000 元', 14124), false, '分项金额与合计句同行不同分句，仍不得借合计句的锚');
+    assert.equal(sectionAnchorsContractTotal('外机 14,124 元；合计 36,000 元', 36000), true, '合计分句里的金额锚定成立');
+    assert.equal(sectionAnchorsContractTotal('本户成交价 36,000.5 元', 36000), false, '总价分句里出现小数金额也不得冒充整数总价');
+    assert.equal(sectionAnchorsContractTotal('本户成交价 36,000 元整', 36000), true, '成交价分句锚定成立');
+    assert.equal(sectionAnchorsContractTotal('暂记 36,000 元，待议', 36000), false, '无总价语义的分句只是提及、不算锚定');
+  });
+
+  it('归档路径核查：规范路径放行、../ 与 symlink 拒绝（复审第二轮 P1）', () => {
+    assert.equal(
+      contractArchivePathProblem('contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg', '.'),
+      null,
+      '真实登记的归档原件必须放行',
+    );
+    assert.match(contractArchivePathProblem('contracts/../schedule/phase-1/control.yaml', '.') ?? '', /归档路径越界/, '../ 穿越必须判越界');
+    assert.match(contractArchivePathProblem('contracts/./2026-10-03/x.jpg', '.') ?? '', /归档路径越界/, '. 段必须判越界');
+    assert.match(contractArchivePathProblem('schedule/phase-1/control.yaml', '.') ?? '', /归档路径越界/, '区外路径必须判越界');
+    assert.match(contractArchivePathProblem('contracts/2026-10-03/不存在的文件.jpg', '.') ?? '', /归档原件不存在/, '区内缺位文件必须点名不存在');
+    // symlink：contracts/ 内放一个指向区外真实文件的链接，lstat 阶段
+    // 即拒绝，不许跟随到区外字节
+    const probeDir = mkdtempSync(join(tmpdir(), 'archive-symlink-'));
+    const probeLink = 'contracts/2026-10-03/__symlink_probe__.jpg';
+    try {
+      const target = join(probeDir, 'outside.jpg');
+      writeFileSync(target, 'outside-bytes');
+      symlinkSync(target, probeLink);
+      assert.match(contractArchivePathProblem(probeLink, '.') ?? '', /符号链接/, '指向区外的符号链接必须拒绝');
+    } finally {
+      try { unlinkSync(probeLink); } catch { /* 链接未建成时无-op */ }
+      rmSync(probeDir, { recursive: true, force: true });
+    }
+  });
+
+  it('严格日历日期：不存在的日期必须判假（复审第二轮 P2）', () => {
+    assert.equal(isValidCalendarDateText('2026-10-04'), true, '真实签约日必须放行');
+    assert.equal(isValidCalendarDateText('2026-02-30'), false, '2 月 30 日不存在（Date.parse 会归一化成 3 月 2 日，不得放行）');
+    assert.equal(isValidCalendarDateText('2026-04-31'), false, '4 月 31 日不存在');
+    assert.equal(isValidCalendarDateText('2026-02-29'), false, '2026 年不是闰年，2 月 29 日不存在');
+    assert.equal(isValidCalendarDateText('2024-02-29'), true, '2024 年是闰年，2 月 29 日存在');
+    assert.equal(isValidCalendarDateText('2026-13-01'), false, '13 月不存在');
+    assert.equal(isValidCalendarDateText('2026-1-4'), false, '未补零的写法不合 YYYY-MM-DD 格式');
   });
 
   it('成交语义正向集合：否定式提及与紧邻否定不算成交，真实合同章节命中（G4 / 复审 P2-b）', () => {

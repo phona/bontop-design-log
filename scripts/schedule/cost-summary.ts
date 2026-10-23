@@ -29,10 +29,11 @@
  *     contract 结构化登记块（2026-10-23 归档收口）：登记金额与 locked_cny、
  *     contracted_cny 三方一致、deal_status 为 signed、archive_paths 逐条
  *     实算 sha256 与登记钉死值一致，再按 contract_ref 回 docs/decisions/
- *     核对 DEC 章节存在、含正向成交表述且登记金额在章节中在场——金额的
- *     权威值只认登记，DEC 只作在场核对、不作辖域提取（旧辖域提取整套已
- *     退役：从散文抠金额先后被子串误配、分项冒充、双总价歧义等形态逐轮
- *     攻破，根因在方法本身）；
+ *     核对 DEC 章节存在、含正向成交表述且登记金额在章节中锚定到总价
+ *     表述——金额的权威值只认登记，DEC 只作总价锚定核对、不作辖域提
+ *     取（旧辖域提取整套已退役：从散文抠金额先后被子串误配、分项冒
+ *     充、双总价歧义等形态逐轮攻破，根因在方法本身；第一轮的纯在场
+ *     核对又被同章分项金额绕过，第二轮起改锚总价语义）；
  *     报价卡行除断言生效卡 status ∈ 锁定类（contracted/locked；baseline/
  *     candidate/quoted 不许）外，还按卡 id 回 config/mep-quotes.yaml 原卡
  *     核对 status 与登记一致、承包商名与 quoted_at 非空。来源状态变未决即
@@ -120,7 +121,8 @@
  * ────────────────────────────────────────────────────────────────────────
  */
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { load as parseYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { RuleEngine } from '../../server/rule-engine.js';
@@ -281,15 +283,14 @@ export function hasAffirmativeDealSemantics(sectionText: string): boolean {
 }
 
 /**
- * 登记金额在场核对（复审 P1）：金额的权威值只认登记块，但登记金额的千分
- * 位写法（如 36,000）必须作为完整 token 出现在 contract_ref 的 DEC 章节
- * 原文里——token 前后不得紧贴数字或逗号（紧贴即更长数字的一部分：
- * 136,000 中的 36,000、36,000,000 的首段都不算在场）。这是 presence 核
- * 对：只问「这个数在不在章节里」，不问它被哪个词辖制、不做候选唯一性
- * 判定，与已退役的辖域提取（extractGovernedTotalAmounts）是两回事——章
- * 节措辞怎么改都不影响结论，唯独把金额本身删掉或改掉，会让登记与 DEC
- * 脱节、就此抛错。只认千分位写法：无千分位的裸数字（36000）不算在场，
- * 与 DEC 原文的书写口径一致。
+ * 金额完整 token 在场（复审 P1 的基础件）：千分位写法（如 36,000）作为
+ * 完整 token 出现——token 前后不得紧贴数字或逗号（紧贴即更长数字的一部
+ * 分：136,000 中的 36,000、36,000,000 的首段都不算），token 后紧跟
+ * 「.数字」也不算（36,000.5 是小数，不是 36,000；复审第二轮 P1 反例）。
+ * 只认千分位写法：无千分位的裸数字（36000）不算，与 DEC 原文的书写口
+ * 径一致。注意本函数只判「数在不在」，不判它是不是总价——把它单独当
+ * 合同金额回锚已被复审第二轮否掉（同章分项金额同样在场），凭据核验走
+ * 下面的 sectionAnchorsContractTotal。
  */
 export function sectionContainsAmountToken(sectionText: string, amountCny: number): boolean {
   const token = amountCny.toLocaleString('en-US');
@@ -297,10 +298,108 @@ export function sectionContainsAmountToken(sectionText: string, amountCny: numbe
   while (index !== -1) {
     const before = index > 0 ? sectionText[index - 1] : '';
     const after = index + token.length < sectionText.length ? sectionText[index + token.length] : '';
-    if (!/[0-9,]/.test(before) && !/[0-9,]/.test(after)) return true;
+    const afterNext = index + token.length + 1 < sectionText.length ? sectionText[index + token.length + 1] : '';
+    const decimalTail = after === '.' && /[0-9]/.test(afterNext);
+    if (!/[0-9,]/.test(before) && !/[0-9,]/.test(after) && !decimalTail) return true;
     index = sectionText.indexOf(token, index + 1);
   }
   return false;
+}
+
+/** 总价语义关键词：金额与其中任一词同处一个分句，才算被锚定为总价。 */
+const CONTRACT_TOTAL_KEYWORDS = ['合计', '总价', '成交价', '合同额', '合同总价', '整包含价', '定标成交'] as const;
+
+/**
+ * 登记金额回锚 DEC 总价语义（复审第二轮 P1）：presence 核对不够——真实
+ * 章节 DEC-2026-10-04-R1 同章并列外机分项 14,124、安装 8,400 与合同
+ * 合计 36,000，三方金额若被同步误改成 14,124，旧 presence 检查会命中
+ * 分项行放行。故回锚升级为：金额必须以完整 token 出现在一个**带总价
+ * 语义的分句**里。分句按行与中文标点（。，；、）切分（千分位逗号是
+ * ASCII 逗号，不在切分集内）；总价关键词 = 合计 / 总价 / 成交价 /
+ * 合同额 / 合同总价 / 整包含价 / 定标成交。真实章节里 36,000 有三处
+ * 锚点（标题「定标成交：36,000 元」、「合计 36,000 元」、「36,000 为
+ * 整包含价」），14,124 与 8,400 所在分句均无总价词，锚不上。这不是
+ * 已退役的辖域提取：不从散文抠金额、不做候选唯一性判定，金额权威值
+ * 仍只认登记块；这里只问「登记金额在 DEC 里被当作总价陈述过没有」。
+ */
+export function sectionAnchorsContractTotal(sectionText: string, amountCny: number): boolean {
+  for (const clause of sectionText.split(/[\n。，；;、]/)) {
+    if (!CONTRACT_TOTAL_KEYWORDS.some((keyword) => clause.includes(keyword))) continue;
+    if (sectionContainsAmountToken(clause, amountCny)) return true;
+  }
+  return false;
+}
+
+/**
+ * 严格日历日期（复审第二轮 P2）：YYYY-MM-DD 格式之外还必须是真实存在
+ * 的日期。`Date.parse('2026-02-30')` 在 JS 里被归一化成 2026-03-02、
+ * 不返回 NaN，只查 NaN 等于没查。故按年月日逐项构造 UTC 日期再逐项
+ * 比对回读值，归一化即不相等、判假。control.ts 的 signed_at 校验共用
+ * 本函数（两处同口径，禁止再各写一份）。
+ */
+export function isValidCalendarDateText(text: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
+}
+
+/**
+ * 合同归档路径核查（复审第二轮 P1）：登记 path 光有 contracts/ 前缀不
+ * 算数——`contracts/../schedule/...` 前缀合法、解析出界，仓内任意文件
+ * 都能配上自洽哈希冒充原件；前缀下的 symlink 同理（statSync 会跟随）。
+ * 本函数返回问题描述（以「归档路径越界 / 归档原件不存在 / 归档原件为
+ * 空文件 / 归档原件是符号链接」开头）或 null（合格）：
+ *  ① 文本层：必须是 contracts/ 下的规范相对路径——含 `\`、空段、`.`
+ *     段、`..` 段一律越界（先规范化再判前缀，不给绕法留形态）；
+ *  ② 实体层：lstat 命中符号链接直接拒绝（不跟随）；非文件、缺位、
+ *     0 字节分别点名；
+ *  ③ 真实路径层：realpath 后必须仍落在 realpath(contracts/) 之内——
+ *     中间目录是 symlink 跳出归档区同样越界。
+ * cost-summary.ts（生成时）与 control.ts（数据层）共用本函数，两处同
+ * 口径；rootDir 为仓库根（生成器/控制脚本都以仓根为 cwd/根）。
+ */
+export function contractArchivePathProblem(archivePath: string, rootDir: string): string | null {
+  if (archivePath.includes('\\')) {
+    return `归档路径越界：${archivePath} 含反斜杠，不是规范的 contracts/ 相对路径——合同原件只能登记归档区内的规范路径`;
+  }
+  const segments = archivePath.split('/');
+  if (!archivePath.startsWith('contracts/') || segments.some((segment) => segment === '' || segment === '.' || segment === '..')) {
+    return `归档路径越界：${archivePath} 不是 contracts/ 归档区内的规范路径（含 .. / . 段或多余斜杠的写法一律不认）——合同原件只能登记归档区内的文件`;
+  }
+  const absolute = resolve(rootDir, archivePath);
+  let lst;
+  try {
+    lst = lstatSync(absolute);
+  } catch {
+    return `归档原件不存在：contract.archive_paths 指向 ${archivePath}，磁盘上找不到该文件——原件缺位`;
+  }
+  if (lst.isSymbolicLink()) {
+    return `归档原件是符号链接：${archivePath}——归档原件必须是 contracts/ 内的真实文件，不接受符号链接（stat 会跟随链接把区外文件算作原件）`;
+  }
+  if (!lst.isFile()) {
+    return `归档原件不存在：contract.archive_paths 指向 ${archivePath}，该路径不是文件——原件缺位`;
+  }
+  if (lst.size === 0) {
+    return `归档原件为空文件：${archivePath}（0 字节）——原件缺位`;
+  }
+  let real: string;
+  let realArchiveRoot: string;
+  try {
+    real = realpathSync(absolute);
+    realArchiveRoot = realpathSync(resolve(rootDir, 'contracts'));
+  } catch {
+    return `归档原件不存在：contract.archive_paths 指向 ${archivePath}，真实路径解析失败——原件缺位`;
+  }
+  const rel = relative(realArchiveRoot, real);
+  if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) {
+    return `归档路径越界：${archivePath} 的真实路径已离开 contracts/ 归档区（经符号链接跳转）——合同原件只能登记归档区内的文件`;
+  }
+  return null;
 }
 
 /**
@@ -319,17 +418,22 @@ export function sectionContainsAmountToken(sectionText: string, amountCny: numbe
  *     contracted_cny——任一处被单独改动即抛错（前置断言已核 locked_cny ==
  *     contracted_cny，这里把登记值钉进同一等式）；
  *  ③ deal_status === 'signed'；
- *  ④ archive_paths 逐条 {path, sha256}（复审 P2-a）：path 必须位于
- *     contracts/ 归档区内，文件存在非空，且生成时实算其 sha256 与登记
- *     钉死值比对——原件在原路径被换字节、或登记指向归档区外文件，一律
- *     抛错点名路径；
+ *  ④ archive_paths 逐条 {path, sha256}（复审 P2-a；第二轮 P1 再收紧）：
+ *     path 必须经 contractArchivePathProblem 核查合格——contracts/ 内
+ *     的规范路径（.. / . 段与多余斜杠一律越界）、真实文件非空、非符号
+ *     链接、realpath 不离开归档区；再实算 sha256 与登记钉死值比对。
+ *     原件在原路径被换字节、登记指向归档区外文件、或用 ../ 与 symlink
+ *     把区外文件冒充原件，一律抛错点名路径；
  *  ⑤ contract_ref 的 DEC 章节存在且含正向成交表述（紧邻否定屏蔽，见
  *     hasAffirmativeDealSemantics）；
- *  ⑥ 登记金额回锚 DEC（复审 P1）：登记金额的千分位写法必须作为完整
- *     token 出现在该 DEC 章节原文中（sectionContainsAmountToken，在场
- *     核对、不是辖域提取）。三方金额若被同步改错成另一个数，只要 DEC
- *     章节里的成交金额没跟着改，⑥ 即抛错——金额不再只证登记自洽；
- *     金额在场时，其余措辞变化不影响结论。
+ *  ⑥ 登记金额回锚 DEC 总价语义（复审 P1；第二轮 P1 升级）：登记金额
+ *     必须在该 DEC 章节中锚定到总价表述（sectionAnchorsContractTotal：
+ *     完整 token 与合计/总价/成交价/合同额等关键词同处一个分句）。第
+ *     一轮的纯在场核对（presence）已被否：同章分项金额（外机 14,124、
+ *     安装 8,400）同样在场，三方同步误改成分项值也能放行。升级后三方
+ *     金额若被同步改错，只要 DEC 章节里的总价陈述没跟着改，⑥ 即抛
+ *     错——金额不再只证登记自洽；总价陈述的措辞在关键词集合内变化不
+ *     影响结论。
  * 强度边界（如实）：守卫能拦「登记缺失、三方不一致、原件缺位或被替换、
  * DEC 凭据消失、成交语义被否定句冒充、登记金额与 DEC 脱节」，拦不住
  * 「登记时就把假数同时写进登记块与 DEC 章节、并按假原件重算登记哈希」
@@ -358,23 +462,9 @@ function assertContractCredential(rowId: string, qr: AnyRecord, contracted: numb
       throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据归档登记形态不合格：contract.archive_paths 条目必须是 {path, sha256}（path 登记归档路径、sha256 为登记时钉死的原件字节哈希）——已核实层不成立`);
     }
     const archivePath = archiveEntry.path as string;
-    if (!archivePath.startsWith('contracts/')) {
-      throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据归档路径越界：${archivePath} 不在 contracts/ 归档区内——合同原件只能登记归档区内的文件，已核实层不成立`);
-    }
-    let isFile = false;
-    let size = 0;
-    try {
-      const stat = statSync(archivePath);
-      isFile = stat.isFile();
-      size = stat.size;
-    } catch {
-      isFile = false;
-    }
-    if (!isFile) {
-      throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据归档原件不存在：contract.archive_paths 指向 ${archivePath}，磁盘上找不到该文件——原件缺位，已核实层不成立`);
-    }
-    if (size === 0) {
-      throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据归档原件为空文件：${archivePath}（0 字节）——原件缺位，已核实层不成立`);
+    const archiveProblem = contractArchivePathProblem(archivePath, '.');
+    if (archiveProblem) {
+      throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据${archiveProblem}，已核实层不成立`);
     }
     const actualSha256 = createHash('sha256').update(readFileSync(archivePath)).digest('hex');
     if (actualSha256 !== archiveEntry.sha256) {
@@ -388,8 +478,8 @@ function assertContractCredential(rowId: string, qr: AnyRecord, contracted: numb
   if (!hasAffirmativeDealSemantics(section.text)) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见正向成交表述（定标成交 / 成交事实 / 已签约 / 签订 / 签约方 / 已成交）——只有「合同 / 签约」字样（含「尚未签约」「未成合同」式否定提及，或「并非定标成交」式紧邻否定屏蔽后的命中）不算成交凭据，该决策不是成交凭据`);
   }
-  if (!sectionContainsAmountToken(section.text, contract.amount_cny)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额与 DEC 脱节：登记金额 ${(contract.amount_cny as number).toLocaleString('en-US')} 未作为完整金额出现在 ${contractRef} 章节原文（${section.file}）中——DEC 叙事里的成交金额被删改、或登记金额写错，已核实层不成立`);
+  if (!sectionAnchorsContractTotal(section.text, contract.amount_cny)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额与 DEC 脱节：登记金额 ${(contract.amount_cny as number).toLocaleString('en-US')} 未在 ${contractRef} 章节原文（${section.file}）中锚定到总价表述（合计 / 总价 / 成交价 / 合同额等同一分句）——章节里只有分项金额同值、或总价已被删改时同样判脱节，已核实层不成立`);
   }
 }
 
@@ -1667,7 +1757,7 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += '## 口径说明\n\n';
   markdown += '- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。\n';
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
-  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract 登记块（轮次 status 须 locked），且生成器核对登记金额与 locked_cny、contracted_cny 三方一致、deal_status 为 signed、登记的合同原件逐条实算 sha256 与登记钉死值一致，并按 contract_ref 核对决策章节存在、含成交事实表述且登记金额在章节中在场（金额权威值只认登记，DEC 只作在场核对、不作辖域提取）；报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行，生成器另回原卡核对承包商名、报价日期与书面报价证据（evidence.kind 须为 written_quote，费率不得取自公开参考价、费率行级证据若存在亦须为 written_quote）；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同登记与归档原件/原卡凭据在构建时读取核对），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
+  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract 登记块（轮次 status 须 locked），且生成器核对登记金额与 locked_cny、contracted_cny 三方一致、deal_status 为 signed、登记的合同原件逐条实算 sha256 与登记钉死值一致，并按 contract_ref 核对决策章节存在、含成交事实表述且登记金额在章节中锚定到总价表述（金额权威值只认登记，DEC 只作总价锚定核对、不作辖域提取）；报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行，生成器另回原卡核对承包商名、报价日期与书面报价证据（evidence.kind 须为 written_quote，费率不得取自公开参考价、费率行级证据若存在亦须为 written_quote）；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同登记与归档原件/原卡凭据在构建时读取核对），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
   const pendingCountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'counted').length;
   const pendingUncountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncounted').length;
   const pendingUncertainN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncertain').length;
