@@ -225,6 +225,11 @@ export function findDecisionSection(decId: string): { file: string; text: string
  * DEC id 形式）回 docs/decisions/ 解析对应 DEC 章节原文，断言：① 章节存在；
  * ② 章节原文载有与 contracted_cny 一致的金额（千分位格式，如 36,000）；
  * ③ 章节原文带成交/签约/合同语义。三者缺一即抛错。
+ * ② 的命中口径是**全词精确命中**（复审再续）：从章节原文提取金额 token
+ * （千分位/整数形态，正则两侧以 (?<![\d,]) / (?![\d,]) 圈界），要求提取集合
+ * 里存在与目标金额格式化后**完全相等**的 token——早先的 includes() 子串查
+ * 法会把「6,000」误认成原文「36,000」的子串而放行（控制源与轮次金额被同步
+ * 误改时，错误金额照样进已核实层），子串/前缀命中一律不算。
  * 强度边界（如实）：这是对仓库内决策原文的文本核验——能拦「引用不存在、
  * 金额被改、引用挂错决策」，拦不住「DEC 原文与纸质合同本身不符」（纸质合同
  * 不在仓库内，无从机读；DEC 是仓库内最接近合同的权威凭据）。
@@ -235,8 +240,9 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据无从核验：contract_ref ${contractRef} 在 docs/decisions/ 中解析不到对应的 DEC 章节——引用不存在，已核实层不成立`);
   }
   const amountText = contracted.toLocaleString('en-US');
-  if (!section.text.includes(amountText)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）未载明金额 ${amountText}，与 ${packageId} contracted_cny=${contracted} 不符`);
+  const amountTokens: string[] = section.text.match(/(?<![\d,])(?:\d{1,3}(?:,\d{3})+|\d+)(?![\d,])/g) ?? [];
+  if (!amountTokens.includes(amountText)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）未载明金额 ${amountText}（全词精确命中，子串不算），与 ${packageId} contracted_cny=${contracted} 不符`);
   }
   if (!/(成交|签约|合同)/.test(section.text)) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见成交/签约/合同语义，该决策不是成交凭据`);

@@ -201,6 +201,29 @@ describe('成本总表 cost-summary', () => {
     );
   });
 
+  it('合同凭据金额全词精确命中：子串金额（6,000 / 3,600）同步篡改必须抛错', () => {
+    // 复审 P1：DEC 原文写的是 36,000——「6,000」是它的子串、「3,600」是其数字
+    // 前缀变形。早先的 includes() 子串查法会把同步误改成 6,000 的合同额误判为
+    // 「原文载明」而放进已核实层；全词精确命中（提取金额 token 后逐一全等）
+    // 必须拦下这两种误改。控制源与轮次两处自报须同步改，字段一致性才骗得过
+    // 前置断言、走到凭据核验这一关——本用例正是按这个攻击面构造的。
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    for (const forged of [6000, 3600]) {
+      const doctored = structuredClone(control) as AnyRecord;
+      pkgOf(doctored, 'PKG-030').budget.contracted_cny = forged;
+      const qr = (doctored.hard_finish_quote_rounds.records as AnyRecord[])
+        .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+      qr.locked_cny = forged;
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, doctored),
+        /金额对不上/,
+        `合同额被同步误改为 ${forged}（36,000 的子串/变形）必须被全词精确命中拦下`,
+      );
+    }
+    // 原值 36,000 在 DEC 原文中是全词 token，必须继续通过（不许把真凭据也拦了）
+    assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
+  });
+
   it('覆盖检查：全部未决条目已登记归属，三类计数对上未决总数', () => {
     const { coverage } = data;
     assert.equal(coverage.scannedComponentCount, 106);
