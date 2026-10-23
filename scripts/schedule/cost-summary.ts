@@ -225,19 +225,23 @@ export function findDecisionSection(decId: string): { file: string; text: string
  * DEC id 形式）回 docs/decisions/ 解析对应 DEC 章节原文，断言：① 章节存在；
  * ② 章节原文载有与 contracted_cny 一致的金额（千分位格式，如 36,000）；
  * ③ 章节原文带成交/签约/合同语义。三者缺一即抛错。
- * ② 的命中口径是**全词精确命中 + 总价语境行**（复审再续两轮）：先从章节原文
- * 提取金额 token（千分位/整数形态，正则两侧以 (?<![\d,]) / (?![\d,]) 圈界），
- * 要求存在与目标金额格式化后**完全相等**的 token——早先的 includes() 子串
- * 查法会把「6,000」误认成原文「36,000」的子串而放行，子串/前缀命中一律不
- * 算。但仅有全词命中还不够：DEC 章节正文里同时载有**分项金额**（如
- * DEC-2026-10-04-R1 章节内的外机 14,124 元、安装 8,400 元），控制源与轮次
- * 金额若被同步误改成分项数，全词命中照样通过。故再收一层：命中 token 必须
- * 出现在**总价语境行**上——章节标题行，或含总价语义关键词（总价 / 合同额 /
- * 成交价 / 总金额 / 定标成交）的行。关键词集的依据（按现行 DEC 措辞）：总价
- * 声明写在标题行（「…定标成交：36,000 元」）与正文的总价论述行（如「36,000
- * 为整包含价，换内机不改变总价」），而分项行只陈述构成（「外机 … 14,124
- * 元」「安装 1,400 元/台 × 6 = 8,400 元」），不带任何总价语义词——故分项金
- * 额永远进不了总价语境行的 token 集。章节内无总价语境行载有该金额即抛错。
+ * ② 的命中口径是**全词精确命中 + 总价关键词辖域**（复审三轮收紧）：
+ * includes() 子串查法会把「6,000」误认成「36,000」的子串（第一轮堵）；
+ * 全词精确命中仍不够——DEC 章节正文同时载有**分项金额**（如 DEC-2026-10-04-R1
+ * 章节内的外机 14,124 元、安装 8,400 元），同步误改成分项数照样通过（第二
+ * 轮堵）；按「总价语境行」整行提取仍不够——标题行除 36,000 外还捎着 DEC
+ * 编号与型号数字（2026、10、200 主机、6 台、R1 的 1），正文的总价论述行还
+ * 捎着设备价（2,131 / 2,050 / 2,493）与百分比（35）等数字，整行提取会把
+ * 它们全放进候选集，同步误改成 6 / 10 / 200 / 2,131 同样放行（第三轮堵）。
+ * 故候选金额只从被总价关键词**直接辖制**的位置提取，两种形态：
+ * (a) 关键词在前——（定标成交 / 合同总价 / 总金额 / 总价 / 合同额 / 成交价）
+ * 之后只隔标点/空白即接金额，如标题「定标成交：36,000 元」；
+ * (b) 金额在前——金额之后同小句近邻（间隔不含其他数字、不跨句号/分号、
+ * 24 字内）出现总价词，如正文「36,000 为整包含价，换内机不改变总价」。
+ * 实测现行 DEC-2026-10-04-R1：整行口径的候选集有 16 个 token，辖域口径下
+ * 恰为 {36,000}（(a) 标题行、(b) 整包含价行各命中一次）。章节内无任何辖域
+ * 位置载有该金额即抛错。「合计」刻意不入关键词集：合计行可能只是分项小
+ * 计，宁可 fail-closed 误拦、不可误放；现行 36,000 不依赖合计行命中。
  * 强度边界（如实）：这是对仓库内决策原文的文本核验——能拦「引用不存在、
  * 金额被改、引用挂错决策」，拦不住「DEC 原文与纸质合同本身不符」（纸质合同
  * 不在仓库内，无从机读；DEC 是仓库内最接近合同的权威凭据）。
@@ -248,16 +252,23 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据无从核验：contract_ref ${contractRef} 在 docs/decisions/ 中解析不到对应的 DEC 章节——引用不存在，已核实层不成立`);
   }
   const amountText = contracted.toLocaleString('en-US');
-  const amountTokenPattern = /(?<![\d,])(?:\d{1,3}(?:,\d{3})+|\d+)(?![\d,])/g;
-  // 总价语境行：章节标题行（切片首行），或含总价语义关键词的行（关键词集与
-  // 依据见函数头注）。分项金额只出现在构成陈述行上，进不了这个集合。
-  const totalPriceContextPattern = /(?:总价|合同额|成交价|总金额|定标成交)/;
-  const contextTokens: string[] = section.text
-    .split('\n')
-    .filter((line, index) => index === 0 || totalPriceContextPattern.test(line))
-    .flatMap((line) => line.match(amountTokenPattern) ?? []);
-  if (!contextTokens.includes(amountText)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）的总价语境行（标题行及含总价/合同额/成交价/总金额/定标成交语义的行）未载明金额 ${amountText}（须全词精确命中，子串与分项金额均不算），与 ${packageId} contracted_cny=${contracted} 不符`);
+  // 总价关键词辖域提取（两种形态与依据见函数头注）：候选金额只许来自被总价
+  // 关键词直接辖制的位置——整行提取会把标题里的编号/型号/台数、正文论述行
+  // 里的设备价等杂数字一并放行，故废止。
+  const amountPattern = String.raw`(?<![\d,])(\d{1,3}(?:,\d{3})+|\d+)(?![\d,])`;
+  const governedAmountPatterns = [
+    // (a) 关键词在前：关键词后只隔标点/空白即接金额（定标成交：36,000 元）
+    new RegExp(`(?:定标成交|合同总价|总金额|总价|合同额|成交价)\\s*[:：]?\\s*${amountPattern}`, 'g'),
+    // (b) 金额在前：同小句近邻出现总价词（36,000 为整包含价，…不改变总价），
+    // 间隔不含其他数字、不跨句号/分号
+    new RegExp(`${amountPattern}[^\\d。；]{0,24}?(?:总价|整包含价)`, 'g'),
+  ];
+  const governedAmounts = new Set<string>();
+  for (const pattern of governedAmountPatterns) {
+    for (const match of section.text.matchAll(pattern)) governedAmounts.add(match[1]);
+  }
+  if (!governedAmounts.has(amountText)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）的总价关键词辖域内（「定标成交：<金额>」式关键词直接辖制、或金额后同小句近邻总价词的形态）未载明金额 ${amountText}（须全词精确命中且被总价关键词直接辖制；子串、分项金额、标题内编号/型号/台数等杂数字均不算），与 ${packageId} contracted_cny=${contracted} 不符`);
   }
   if (!/(成交|签约|合同)/.test(section.text)) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见成交/签约/合同语义，该决策不是成交凭据`);
@@ -1325,11 +1336,11 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += '## 口径说明\n\n';
   markdown += '- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。\n';
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
-  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract_ref（轮次 status 须 locked），且生成器按 contract_ref 回决策记录核对原文在总价语境行（标题行或带总价/合同额/定标成交等语义的行）载有成交金额与成交事实——分项金额不算；报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行，生成器另回原卡核对承包商名、报价日期与书面报价证据（evidence.kind 须为 written_quote，费率不得取自公开参考价）；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同额/决策原文/原卡凭据在构建时读取核对），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
+  markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract_ref（轮次 status 须 locked），且生成器按 contract_ref 回决策记录核对原文在总价关键词辖域内（「定标成交：36,000 元」式、由总价/合同额/定标成交等关键词直接辖制的金额）载有成交金额与成交事实——分项金额与编号/型号/台数等杂数字不算；报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行，生成器另回原卡核对承包商名、报价日期与书面报价证据（evidence.kind 须为 written_quote，费率不得取自公开参考价）；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同额/决策原文/原卡凭据在构建时读取核对），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
   const pendingCountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'counted').length;
   const pendingUncountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncounted').length;
   const pendingUncertainN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncertain').length;
-  markdown += `- 未定价与待核对总额的影响必须按**计入状态**分别看（下列条数由清单登记生成）：**未计入**的（未定价 ${data.unpriced.length} 项 + 待核未计入 ${pendingUncountedN} 项）尚未计入合计，取得价格后会增加总额；**已计入**的（待核 ${pendingCountedN} 项）金额已经在定价行里，只是界面划分、书面确认或去重核对尚未关闭——**不得再把它们作为新费用往总额上加一遍**；事项关闭时以核对结果对已计金额做修正（去重坐实则扣回、确认未含则补计），已计金额可增可减；**待确认是否已含**的（待核 ${pendingUncertainN} 项）以确认结果为准，确认前不预断增减。同时，已知合计含未锁定的暂估金额（结算时可能调减），个别款项还是可退押金性质（如物业可退装修押金，只是临时现金占用、不是最终成本）——真实总成本以正式报价与结算为准，不必然高于、也不必然低于已知合计。\n`;
+  markdown += `- 未定价与待核对总额的影响必须按**计入状态**分别看（下列条数由清单登记生成）：**未计入**的（未定价 ${data.unpriced.length} 项 + 待核未计入 ${pendingUncountedN} 项）尚未计入合计：未定价的是必花项、取得价格后计入；待核未计入的含或然项（触发条件成立才发生，如空调可能增项）、待业主裁定项（如固定柜体是否纳入一期）与范围未定项（如南阳台铺贴范围可能缩小），只有在**确认纳入一期、实际发生、且未被其他定价行包含**后才计入并增加总额，未触发、裁定不纳入或范围缩减的则不计；**已计入**的（待核 ${pendingCountedN} 项）金额已经在定价行里，只是界面划分、书面确认或去重核对尚未关闭——**不得再把它们作为新费用往总额上加一遍**；事项关闭时以核对结果对已计金额做修正（去重坐实则扣回、确认未含则补计），已计金额可增可减；**待确认是否已含**的（待核 ${pendingUncertainN} 项）以确认结果为准，确认前不预断增减。同时，已知合计含未锁定的暂估金额（结算时可能调减），个别款项还是可退押金性质（如物业可退装修押金，只是临时现金占用、不是最终成本）——真实总成本以正式报价与结算为准，不必然高于、也不必然低于已知合计。\n`;
   markdown += '- **覆盖检查**：生成时全量扫描 `schedule/phase-1/control.yaml` 的成本组件与询价轮次登记，凡状态未决或去重未关闭的条目必须登记归属（计入定价行 / 未定价与待核 / 不计价登记），缺一即生成失败——未定价与待核清单不是手写名单。同一条目同时属两个分类（双归属）必须在生成器中显式声明并附理由，未声明的多重归属、出现在三个及以上分类、或被两条定价行重复计入，同样使生成失败。\n';
   markdown += '- **成色定义**：已签约 = 已转合同的成交价；报价卡实算 = 算量引擎实算量 × 生效报价卡单价；报价轮实算 = 业主询价轮次逐项构成的实算目标；定标目标 = 业主定标时裁定的目标价、非成交价；参考实付 = 同户型已发生的实付锚、非本户报价；算量费率 = 算量面积 × 静态费率（人工）；候选价 = 当前选品的候选价、未取证未成交；定额暂估 = 按定额登记的暂估额、非算量非报价。\n';
   markdown += '- **数据源**：`schedule/phase-1/control.yaml`（合同额、estimated_need、询价轮次）、`server/budget-calculator.ts` 科目快照（量 × 选品价）、`shared/mep-takeoff.ts` 算量 × `config/mep-quotes.yaml` 生效报价卡。映射裁定与防双算理由固化在 `scripts/schedule/cost-summary.ts` 文件头。\n\n';

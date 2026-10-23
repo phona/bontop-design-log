@@ -229,13 +229,18 @@ describe('成本总表 cost-summary', () => {
     assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
   });
 
-  it('合同凭据金额总价语境：分项金额（14,124 / 8,400）同步篡改必须抛错', () => {
-    // 复审 P1 续：全词命中仍不够——DEC-2026-10-04-R1 章节正文本身就载有分项
-    // 金额（外机 14,124 元、安装 8,400 元），同步误改成分项数时全词命中照样
-    // 通过。命中 token 必须落在总价语境行（标题行或含总价语义关键词的行）：
-    // 36,000 载于标题行（定标成交：36,000 元），分项数只在构成陈述行上。
+  it('合同凭据金额关键词辖域：分项金额与标题杂数字（6 / 10 / 200 / 2,131 / 14,124 / 8,400 / 35,000）同步篡改必须抛错', () => {
+    // 复审 P1 再续：全词命中 + 总价语境「行」仍不够——标题行除 36,000 外还
+    // 捎着编号/型号/台数（2026、10、200 主机、6 台、R1 的 1），正文总价论述
+    // 行还捎着设备价（2,131 / 2,050 / 2,493）与百分比（35），整行提取时它们
+    // 都是候选集成员、改成谁都放行。候选金额只许来自被总价关键词**直接辖
+    // 制**的位置：关键词在前（定标成交：36,000 元），或金额在前且总价词在
+    // 同小句近邻（36,000 为整包含价…总价）。实测现行 DEC 的辖域候选集恰
+    // 为 {36,000}，下列每个杂数字/分项数都不在辖域内。
     const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
-    for (const forged of [14124, 8400]) {
+    // 6 / 10 / 200 = 标题行杂数字（台数 / 月份 / 主机型号）；2,131 = 总价论述
+    // 行里的设备价；14,124 / 8,400 = 分项金额；35,000 = 章节内不存在的近似数
+    for (const forged of [6, 10, 200, 2131, 14124, 8400, 35000]) {
       const doctored = structuredClone(control) as AnyRecord;
       pkgOf(doctored, 'PKG-030').budget.contracted_cny = forged;
       const qr = (doctored.hard_finish_quote_rounds.records as AnyRecord[])
@@ -244,10 +249,10 @@ describe('成本总表 cost-summary', () => {
       assert.throws(
         () => assertVerifiedTierBasis('cost-hvac', contractBasis, doctored),
         /金额对不上/,
-        `合同额被同步误改为 ${forged}（DEC 章节内分项金额）必须被总价语境行校验拦下`,
+        `合同额被同步误改为 ${forged}（不在总价关键词辖域内）必须被辖域校验拦下`,
       );
     }
-    // 原值 36,000 在总价语境行上，必须继续通过
+    // 原值 36,000 被总价关键词直接辖制（标题行定标成交 + 正文整包含价双重命中），必须继续通过
     assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
   });
 
