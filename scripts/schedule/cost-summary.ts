@@ -261,15 +261,18 @@ export function findDecisionSection(decId: string, dir: string = 'docs/decisions
  * DEC-2026-10-04-R1 同时命中定标成交、成交事实、签约方三项，通过有余量。
  * 紧邻否定屏蔽（复审 P2-b）：正向集合是子串匹配，分不清「定标成交」与
  * 「并非定标成交」——后者也含「定标成交」。故逐个命中点查紧邻前文：关键
- * 词起点前最近 1–3 字以「并非 / 不是 / 尚未 / 没有」结尾、或最后一字为
- * 「未 / 没 / 非」，该命中视为被否定屏蔽、不计数；至少一个未被屏蔽的命
- * 中才算通过。边界：裸「不」不入屏蔽集——「不改变定标成交事实」是正向
- * 陈述，纳入裸「不」会把这类句子误杀；只屏蔽紧邻的明确否定形态。
+ * 词起点前最近 1–3 字以「并非 / 不是 / 尚未 / 没有 / 不日」结尾、或最后
+ * 一字为「未 / 没 / 非 / 待 / 拟 / 将」，该命中视为被否定屏蔽、不计数；
+ * 至少一个未被屏蔽的命中才算通过。「待 / 拟 / 将」是未然屏蔽（独立复审
+ * F4）：「合同待签订 / 拟签订 / 将签订」里的签订尚未发生，与已签约是两
+ * 回事，现行语料 0 处该写法、属防患。边界：裸「不」不入屏蔽集——「不改
+ * 变定标成交事实」是正向陈述，纳入裸「不」会把这类句子误杀；只屏蔽紧
+ * 邻的明确否定/未然形态。
  */
 const AFFIRMATIVE_DEAL_PATTERN = /(?:定标成交|成交事实|已签约|签订|签约方|已成交)/g;
 
-const DEAL_NEGATION_SUFFIXES = ['并非', '不是', '尚未', '没有'] as const;
-const DEAL_NEGATION_TRAILING = new Set(['未', '没', '非']);
+const DEAL_NEGATION_SUFFIXES = ['并非', '不是', '尚未', '没有', '不日'] as const;
+const DEAL_NEGATION_TRAILING = new Set(['未', '没', '非', '待', '拟', '将']);
 
 export function hasAffirmativeDealSemantics(sectionText: string): boolean {
   for (const match of sectionText.matchAll(AFFIRMATIVE_DEAL_PATTERN)) {
@@ -282,17 +285,7 @@ export function hasAffirmativeDealSemantics(sectionText: string): boolean {
   return false;
 }
 
-/**
- * 金额完整 token 在场（复审 P1 的基础件）：千分位写法（如 36,000）作为
- * 完整 token 出现——token 前后不得紧贴数字或逗号（紧贴即更长数字的一部
- * 分：136,000 中的 36,000、36,000,000 的首段都不算），token 后紧跟
- * 「.数字」也不算（36,000.5 是小数，不是 36,000；复审第二轮 P1 反例）。
- * 只认千分位写法：无千分位的裸数字（36000）不算，与 DEC 原文的书写口
- * 径一致。注意本函数只判「数在不在」，不判它是不是总价——把它单独当
- * 合同金额回锚已被复审第二轮否掉（同章分项金额同样在场），凭据核验走
- * 下面的 sectionAnchorsContractTotal。
- */
-/** 完整金额 token 在文本中的全部出现位置（起点下标，边界规则同上）。 */
+/** 完整金额 token 在文本中的全部出现位置（起点下标，边界规则见下）。 */
 function amountTokenOccurrences(sectionText: string, amountCny: number): number[] {
   const token = amountCny.toLocaleString('en-US');
   const starts: number[] = [];
@@ -308,6 +301,17 @@ function amountTokenOccurrences(sectionText: string, amountCny: number): number[
   return starts;
 }
 
+/**
+ * 金额完整 token 在场（复审 P1 的基础件）：千分位写法（如 36,000）作为
+ * 完整 token 出现——token 前后不得紧贴数字或逗号（紧贴即更长数字的一部
+ * 分：136,000 中的 36,000、36,000,000 的首段都不算），token 后紧跟
+ * 「.数字」也不算（36,000.5 是小数，不是 36,000；复审第二轮 P1 反例）。
+ * 只认千分位写法：无千分位的裸数字（36000）不算，与 DEC 原文的书写口
+ * 径一致。注意本函数只判「数在不在」，不判它是不是总价——把它单独当
+ * 合同金额回锚已被复审第二轮否掉（同章分项金额同样在场），凭据核验走
+ * 下面的 sectionAnchorsContractTotal；本函数是该锚定的在场前置（独立
+ * 复审 F3：生产调用点即在此，不得再沦为只有测试引用的死导出）。
+ */
 export function sectionContainsAmountToken(sectionText: string, amountCny: number): boolean {
   return amountTokenOccurrences(sectionText, amountCny).length > 0;
 }
@@ -366,9 +370,9 @@ const TOTAL_ANCHOR_SHIELD_WORDS = ['分项', '单项', '小计', '子项', '分�
  * 有」。
  */
 export function sectionAnchorsContractTotal(sectionText: string, amountCny: number): boolean {
+  if (!sectionContainsAmountToken(sectionText, amountCny)) return false;
   const tokenLength = amountCny.toLocaleString('en-US').length;
   const amountStarts = amountTokenOccurrences(sectionText, amountCny);
-  if (amountStarts.length === 0) return false;
   for (const keyword of CONTRACT_TOTAL_KEYWORDS) {
     let keywordIndex = sectionText.indexOf(keyword);
     while (keywordIndex !== -1) {
@@ -385,6 +389,23 @@ export function sectionAnchorsContractTotal(sectionText: string, amountCny: numb
     }
   }
   return false;
+}
+
+/**
+ * 章节内被锚定为合同总价的**全部不同金额**（独立复审 F2）：枚举章节
+ * 里所有千分位金额 token，逐个过 sectionAnchorsContractTotal，收集锚
+ * 定成立的不同值。用途是恢复随旧辖域提取器退役的双总价歧义检测：锚
+ * 定检查本身只问「登记金额锚没锚上」，章节日后若多出第二个被锚定的
+ * 总价（如补充协议改价后新旧总价并存），登记未变也会放行——歧义检
+ * 测要求全章被锚定的不同金额恰为一个。现行 R1 章节三处锚点同为
+ * 36,000，集合恒为 {36,000}。
+ */
+export function anchoredContractTotalAmounts(sectionText: string): number[] {
+  const candidates = new Set<number>();
+  for (const match of sectionText.matchAll(/[0-9]{1,3}(?:,[0-9]{3})+/g)) {
+    candidates.add(Number(match[0].replace(/,/g, '')));
+  }
+  return [...candidates].filter((amount) => sectionAnchorsContractTotal(sectionText, amount)).sort((a, b) => a - b);
 }
 
 /**
@@ -494,7 +515,11 @@ export function contractArchivePathProblem(archivePath: string, rootDir: string)
  *     总价与分项同句并列时分项借词锚上），故第四轮改位置对应。收
  *     紧后三方金额若被同步改错，只要 DEC 章节里的合同总价陈述没
  *     跟着改，⑥ 即抛错——金额不再只证登记自洽；总价陈述的措辞在
- *     关键词集合与连接段白名单内变化不影响结论。
+ *     关键词集合与连接段白名单内变化不影响结论。⑥ 附带双总价歧
+ *     义检测（独立复审 F2，恢复随旧提取器退役的性质）：章节内被锚
+ *     定的不同金额（anchoredContractTotalAmounts）超过一个即抛
+ *     错——补充协议改价后新旧总价并存时，登记金额仍能锚上也不放
+ *     行，须先清理旧总价陈述或更新登记。
  * 强度边界（如实）：守卫能拦「登记缺失、三方不一致、原件缺位或被替换、
  * DEC 凭据消失、成交语义被否定句冒充、登记金额与 DEC 脱节」，拦不住
  * 「登记时就把假数同时写进登记块与 DEC 章节、并按假原件重算登记哈希」
@@ -523,7 +548,7 @@ function assertContractCredential(rowId: string, qr: AnyRecord, contracted: numb
       throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据归档登记形态不合格：contract.archive_paths 条目必须是 {path, sha256}（path 登记归档路径、sha256 为登记时钉死的原件字节哈希）——已核实层不成立`);
     }
     const archivePath = archiveEntry.path as string;
-    const archiveProblem = contractArchivePathProblem(archivePath, '.');
+    const archiveProblem = contractArchivePathProblem(archivePath, process.cwd());
     if (archiveProblem) {
       throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据${archiveProblem}，已核实层不成立`);
     }
@@ -541,6 +566,10 @@ function assertContractCredential(rowId: string, qr: AnyRecord, contracted: numb
   }
   if (!sectionAnchorsContractTotal(section.text, contract.amount_cny)) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额与 DEC 脱节：登记金额 ${(contract.amount_cny as number).toLocaleString('en-US')} 未在 ${contractRef} 章节原文（${section.file}）中锚定到合同总价表述（合同总价 / 合同额 / 合计 / 成交价 / 定标成交 / 整包含价须与金额直接相连、仅隔空白/冒号/系词，且命中未被分项等子目语义屏蔽）——章节里只有分项金额同值（含写成「分项总价」的子目价、或与总价同句并列的括注金额）、或合同总价已被删改时同样判脱节，已核实层不成立`);
+  }
+  const anchoredAmounts = anchoredContractTotalAmounts(section.text);
+  if (anchoredAmounts.length > 1) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据章节总价歧义：${contractRef} 章节原文（${section.file}）中同时锚定了 ${anchoredAmounts.map((amount) => amount.toLocaleString('en-US')).join(' 与 ')} 两个以上不同的合同总价——章节里出现第二个被总价词直接指称的金额（如补充协议改价后新旧总价并存）时，登记金额即使仍能锚上也不得放行，须先在 DEC 里清理旧总价陈述或更新登记，已核实层不成立`);
   }
 }
 

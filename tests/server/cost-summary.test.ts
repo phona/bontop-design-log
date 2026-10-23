@@ -17,6 +17,7 @@ import {
   computeActiveMepQuote,
   contractArchivePathProblem,
   findDecisionSection,
+  anchoredContractTotalAmounts,
   hasAffirmativeDealSemantics,
   isValidCalendarDateText,
   sectionAnchorsContractTotal,
@@ -498,6 +499,12 @@ describe('成本总表 cost-summary', () => {
     assert.equal(hasAffirmativeDealSemantics('先前并非定标成交；后于 10 月 4 日双方已签订合同。'), true, '一处被屏蔽、另一处干净命中时必须算作成交（屏蔽逐命中判定、不是全章一票否决）');
     // 裸「不」不入屏蔽集：「不改变定标成交事实」是正向陈述，不得误杀
     assert.equal(hasAffirmativeDealSemantics('本条不改变定标成交事实。'), true, '「不改变定标成交事实」是正向表述，必须算作成交');
+    // 未然屏蔽（独立复审 F4）：待/拟/将/不日紧邻在关键词之前时，签订尚
+    // 未发生——「合同待签订」此前会被「签订」子串判成正向成交。
+    assert.equal(hasAffirmativeDealSemantics('本合同待签订。'), false, '「待签订」是未然状态，不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('双方拟签订合同。'), false, '「拟签订」不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('双方将签订合同。'), false, '「将签订」不得算作成交');
+    assert.equal(hasAffirmativeDealSemantics('合同不日签订。'), false, '「不日签订」不得算作成交');
     const section = findDecisionSection('DEC-2026-10-04-R1');
     assert.ok(section);
     assert.equal(hasAffirmativeDealSemantics(section.text), true, '真实合同章节 DEC-2026-10-04-R1 必须命中正向成交表述');
@@ -545,6 +552,33 @@ describe('成本总表 cost-summary', () => {
     }
     // 真实仓库不变：现行合同章节唯一命中
     assert.ok(findDecisionSection('DEC-2026-10-04-R1'), '真实 DEC 章节必须正常命中');
+  });
+
+  it('双总价歧义：章节内被锚定的不同金额超过一个即抛错（独立复审 F2）', () => {
+    // 单元层：锚定集合枚举
+    assert.deepEqual(anchoredContractTotalAmounts('合同总价：36,000 元。外机 14,124 元。'), [36000], '只有一个金额被总价词直接指称时集合为单元素');
+    assert.deepEqual(
+      anchoredContractTotalAmounts('合同总价：36,000 元。后补充协议改价，合同总价：35,500 元。'),
+      [35500, 36000],
+      '新旧两个总价并存时集合必须含两个不同金额（歧义要显形）',
+    );
+    const realSection = findDecisionSection('DEC-2026-10-04-R1');
+    assert.ok(realSection);
+    assert.deepEqual(anchoredContractTotalAmounts(realSection.text), [36000], '真实章节三处锚点同值，集合恒为 {36,000}');
+    // 守卫级：登记仍为 36,000 且能锚上，但章节多出第二个被锚定的总价
+    // （补充协议改价句）——歧义必须抛错，不得因「登记金额锚得上」放行。
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    const dir = mkdtempSync(join(tmpdir(), 'dec-ambiguity-'));
+    try {
+      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 中央空调定标\n\n- 定标成交：36,000 元。后补充协议改价，合同总价：35,500 元。\n');
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
+        /总价歧义/,
+        '章节内两个被锚定的不同总价并存时必须抛歧义错（恢复旧提取器时代的歧义检测）',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('报价卡凭据边界：证据须 written_quote、费率不得含公开参考价来源、行级证据不得低于 written_quote（复审 P2-c）', () => {
