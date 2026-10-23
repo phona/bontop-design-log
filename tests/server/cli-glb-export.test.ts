@@ -240,7 +240,7 @@ test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing s
   assert.ok(Math.abs(showers[0].position.x - 0.5) < 1e-6);
   assert.ok(Math.abs(showers[0].position.y) < 1e-6);
   assert.ok(Math.abs(showers[0].position.z - 2.785) < 1e-6, `master shower z=${showers[0].position.z}`);
-  assert.ok(Math.abs(showers[1].position.x - 7.025) < 1e-6, `guest shower x=${showers[1].position.x}`);
+  assert.ok(Math.abs(showers[1].position.x - 7.125) < 1e-6, `guest shower x=${showers[1].position.x}`); // DEC-2026-10-23-R04：shower_gbath 点位随东墙线 7.10→7.20
   assert.ok(Math.abs(showers[1].position.y) < 1e-6);
   assert.ok(Math.abs(showers[1].position.z - 2.45) < 1e-6);
   assert.equal(showers[1].userData.wallSide, 'west');

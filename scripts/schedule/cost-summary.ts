@@ -54,15 +54,16 @@
  *    未定价的是防水**材料**，不是人工。）金额虽为费率实算，但 QR-2026-10-03-03 的
  *    dedup_rule 明文「若瓦工 18,500 元预算池已含防水人工，最终报价必须去重」且未关闭，
  *    本行可能已含于泥瓦行内——去重关闭前只入暂估层（评审 P1）。
- *  泥瓦 45,071 ← PKG-060 estimated_need_cny（构成：QR-2026-10-03-04/05/06 的
+ *  泥瓦 45,091 ← PKG-060 estimated_need_cny（构成：QR-2026-10-03-04/05/06 的
  *    20,000 + 18,500 + 4,000 = 42,500，加 DEC-2026-10-16-TILE-01 终核的墙砖主材
- *    36.7236 ㎡ × 70 元/㎡ ≈ 2,571；代码断言构成和 == need）。
+ *    × 70 元/㎡；墙砖量 2026-10-23 DEC-2026-10-23-R04 后 37.0186 ㎡ ≈ 2,591（原 36.7236 ㎡ ≈ 2,571）；
+ *    代码断言构成和 == need）。
  *    科目 masonry 的人工 + 地砖候选与本行同范围，不另计。
  *  美缝 4,500 ← hard_finish_quote_rounds 的 QR-2026-10-03-07 登记定额
  *    （DEC-2026-08-22 暂估入账、price_type candidate、文件自述「暂估非算量」），
  *    成色只能给「定额暂估」。金额**不**取 PKG-065/130 的 planned_cny（500 + 4,000
  *    是这笔定额按 DEC-2026-10-22-R03 拆进预算的镜像，读它即违反口径 1）；
- *    config/tile-comparison.yaml grout_model 的干区实算 2,237 只作交叉核对
+ *    config/tile-comparison.yaml grout_model 的干区实算 2,308 只作交叉核对（R04 后干区 115.404 ㎡）
  *    （仅干区：湿区约 56 m 按米成本无估值，该核对不构成全屋 ≤ 定额的证明，
  *    推导文本已按此限定，防读者误读为全屋定额已被验证）。
  *  吊顶 18,000 ← PKG-070 estimated_need_cny（DEC-2026-10-05-R3 定标目标
@@ -1202,7 +1203,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   {
     const need = needOf(control, 'PKG-060');
     const tileSqm = loadMasonryTakeoff(catalog).totalTileSqm;
-    const wallTilePart = 2571;
+    const wallTilePart = 2591; // R04：墙砖量 36.7236→37.0186 ㎡ ×70 ≈ 2,591（原 2,571）
     if (Math.abs(tileSqm * 70 - wallTilePart) > 1) {
       throw new Error(`cost summary: 墙砖主材对不上（${qty(tileSqm, 4)} ㎡ × 70 = ${qty(tileSqm * 70, 2)}，映射登记 ${wallTilePart}）`);
     }
@@ -1241,7 +1242,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       tier: 'provisional',
       tierReason: '定额暂估、pending_quote，门店按米终核未取得',
       coversItems: ['COST-065-01', 'COST-065-02', 'COST-130-01', 'COST-130-02', 'QR-2026-10-03-07'],
-      derivation: `定额暂估：DEC-2026-08-22 环氧彩砂暂估入账，QR-2026-10-03-07 登记 ${yuan(target)}（price_type: candidate、pending_quote，暂估非算量）；DEC-2026-10-22-R03 按砖缝长度估算拆两包（湿区约 56 m → PKG-065、其余全屋约 750 m → PKG-130），本表合并一行，金额取 QR 登记定额、不取两包 planned_cny。交叉核对（仅干区）：干区实算 ${yuan(computed)}（111.864 ㎡ × ${yuan(20)}/㎡ 包工包料，业主口述、未确认；config/tile-comparison.yaml grout_model），未超定额；但本核对只覆盖干区——湿区约 56 m 的按米成本尚无任何估值，门店按米终核未取得前，不能据此证明全屋美缝 ≤ 定额 ${yuan(target)}`,
+      derivation: `定额暂估：DEC-2026-08-22 环氧彩砂暂估入账，QR-2026-10-03-07 登记 ${yuan(target)}（price_type: candidate、pending_quote，暂估非算量）；DEC-2026-10-22-R03 按砖缝长度估算拆两包（湿区约 56 m → PKG-065、其余全屋约 750 m → PKG-130），本表合并一行，金额取 QR 登记定额、不取两包 planned_cny。交叉核对（仅干区）：干区实算 ${yuan(computed)}（115.404 ㎡ × ${yuan(20)}/㎡ 包工包料，业主口述、未确认；config/tile-comparison.yaml grout_model），未超定额；但本核对只覆盖干区——湿区约 56 m 的按米成本尚无任何估值，门店按米终核未取得前，不能据此证明全屋美缝 ≤ 定额 ${yuan(target)}`,
     });
   }
 

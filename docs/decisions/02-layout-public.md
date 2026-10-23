@@ -34,6 +34,7 @@
 - `DEC-2026-10-05-R19` 厨房铝扣板收墙+餐厅两条服务带（案1）：餐桌区恢复 2.80 平顶
 - `DEC-2026-10-05-R20` 功能评审阻断项修复轮（三项）+ 双复评审通过
 - `DEC-2026-10-14-R01` 冰箱搬至长虹门南/入户门西侧的3D候选 + 东墙灶台段扩展
+- `DEC-2026-10-23-R04` 采 YS-01 原图读法修正两处几何：东南房玻璃线 9.88（废止凹进 8.70）+ 客卫东墙线 7.20
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -581,3 +582,28 @@
 - **验证与证据**：typecheck通过；`gate:visual` CLEAR（API 200、ready=true、配置错误横幅为空）。V6三张固定机位截图与运行时查询：`evidence/s1-form-v6-overview.png`、`evidence/s1-form-v6-close.png`、`evidence/s1-form-v6-east-face.png`、`evidence/runtime-query-s1-form-v6.json`（含源文件SHA-256与三个机位/目标点/FOV）。运行时部件计数为合并渲染节点口径（南柱/北柱、8条栅格缝、双侧把手槽合并），与V5证据口径一致，合并件包络均在声明值内，几何存在性以截图为准。既有失败归因：test:app在干净HEAD worktree复现完全一致的56 fail（FixtureFactory自身23个测试全过）；verify-mep三分桶224/80/91与改动前stash基线逐桶一致；verify-spatial的5个错误全为吊灯安装高度（本轮未触碰灯光）；test:server的31 fail集中于V5轮已记录的既有类别（预算/算量、MEP关系断言、computeLightState、纹理document环境）加spatial/penetration CLI集成，其中render facts API失败在干净HEAD复现一致。本轮在verify-facts新增的唯一失败（house.yaml:532引用本DEC）随本记录落档消除，复核后verify-facts仅剩灯光会话遗留的DEC-2026-10-17-R10简写失败。
 - **静默失效条件/责任与触发**：官方图为营销三视图，非CAD；水箱实际容量、取放方向、腔体真实深度、把手槽是否双侧对称仍是外观代理推断。责任人=业主/家电方；触发=获得中国SKU说明书/CAD/实机后重核 bay 深度、把手槽与顶盖分缝位置，以及水箱补水路径。若实际SKU的出水腔不在106窄面（如存在横竖两用安装），本V6及FURNITURE_DIMS轴向需重判。
 - **状态/决策人**：按业主官方三视图完成V6形体预演；中心(7.47,3.64)、rotation=90°、312×106×280mm外廓。工程待核项（补水/拆洗、电源、墙控、EM450净空）仍未关闭。
+
+---
+
+### DEC-2026-10-23-R04 采 YS-01 原图读法修正两处几何：东南房玻璃线 9.88（废止凹进 8.70）+ 客卫东墙线 7.20
+
+- **日期**：2026-10-23。触发：业主上传邻户原始结构图 PDF 原件（`120_1.pdf`，点石家装 YS-01 原始结构图，潘璐，2025-06，邦泰景和120；即仓内 `survey/neighbor_ys01_original_structure_2025-06.png` 的 PDF 原件，带文字层可程序化提取尺寸链）。业主逐项对账后裁定「改了提 PR」：按该图读法修正下列两处几何。**口径声明**：本条是业主裁定采邻户图值作模型工作几何，**不是量房升级**——`data_precision` / `survey_completed` 不动、几何状态仍为 inferred，自家交房量房终核；与 A2 参考约束「邻户资料不得改标 measured/confirmed」不冲突（本条改的是模型取值，不是溯源等级）。
+- **证据链（东南房）**：YS-01 东链自北累计——电梯井南墙带 5.40–5.68（与模型线 5.55 跨骑相符）→ 东南房玻璃线 9.88 → 其南 280 墙 + 1020 飘台 → 总数 11180 止于飘台南缘；300dpi 像素量测佐证：东南房 z 8.4–11.3 区间唯一的水平线在 z≈9.9–10.0，模型现值 8.70 处无任何线。故 1020 是**飘台进深**、不是玻璃凹进深度。
+- **被推翻的旧结论**（逐条说明）：
+  1. **DEC-2026-08-27-047「南玻璃栏板凹进 1.10 至 z=8.70、z[8.70,9.80] 为室外凹口」**：其依据三条均不成立——创想图尺寸链的 1100 与 YS-01 的 1020 同为飘台带进深（两图参考线不同：创想图自客厅南线量、YS-01 自玻璃线量，差 1.30m）；「邻户图同构凹进 1020」系把飘台进深误读为凹进深度；点石设计图净面积 8.35㎡ 是凹进读法下的派生标注、非独立证据。047 的其余部分（功能与级联的历史记录）保留为历史。
+  2. **house.yaml 客房「床尾半进凸窗带（z[7.60,8.70]）依赖凸窗带可站人」的 v0 前提**：凸窗带不复存在——玻璃在 9.88、其南是室外飘台板（上飘窗 sill≈2.07 的结构外凸），室内就是普通进深 4.33m。床位/窗帘盒的重新预演列复核项（见遗留），本条不顺带改设计摆位。
+  3. **客卫东墙线 x=7.10（v_balc_se / v_gbath_se / v_gbath_east_s）**：YS-01 像素量测该墙墙带 7.20–7.38 全段拉直（z=1.5/2.6/3.0/3.9 四行一致），西脸 7.20；且模型北段 w_balc_east 本就在 7.20，7.10 段与之形成无依据的 0.10 错台。改 7.20 后全线拉直。
+- **裁定①（东南房几何）**：`v_be_s_w / v_be_s_e` z 8.70→9.88；`v_be_se_s` z 9.80→9.88（客房西墙南端随玻璃线）；新增 `v_liv_se_s (13.40, 9.80)` 承客餐厅南墙东端与 living_dining 多边形东南角（两玻璃线错台 0.08）；`d_bese` offset 3.70→3.78 保持洞口中心 z=6.10 不变。客房多边形面积 9.45→12.99㎡（+3.54）。飘台板为室外结构、不入室、不建模（与全屋其他上飘窗投影口径一致）；`bedroom_se_south_bay`（sill 2.07）挂 w_be_south 随墙南移，sill 值与图（2830−750≈2.08）相符不动。junctions 同步：`be_south_to_west` 改 (13.40, 9.88)、新增 `liv_south_to_be_west` T 接 (13.40, 9.80)、overlay 接头 south_east_curtain 改 endpoint@9.88、新增 living_south_curtain endpoint@(13.40, 9.80)。
+- **裁定②（客卫东墙几何）**：三顶点 x 7.10→7.20；阳台多边形去掉与 v_balc_ne 同点的 v_balc_se（原 0.10 错台边消失）。客卫多边形 1.50×2.10→1.60×2.10（3.15→3.36㎡）。级联同批同步：挂墙点位 shower_gbath / toilet_gbath / sock_gbath_toilet x→7.20；东脸点位（sock_fridge_living / sock_waterbar / ac_panel_dining / switch_corridor / switch_dining）x 7.20→7.30（惯用 0.10 偏移不变）；冰箱概念位 (7.5025→7.6025) 随墙东移、后距约 43mm 不变；餐厅两条服务带 area x +0.10（西带 7.30–7.80、北带西端 7.80），冷媒轴线 7.45 仍在带内；MEP 沿墙段/穿墙点（water-guest-bath 沿墙段、两条 v1 干管穿 w_gbath_east 点、冰箱/水吧/走廊开关三条下引末段）同步 +0.10。`w_gbath_east` 起点由 v_balc_se 改挂 v_kit_s2（z=2.40），全段 z[2.40,3.55] 与 w_kit_west（z[0,2.40]）首尾相接不共线重叠（初稿曾以共线白名单登记，被算量双计显形后改挂点方案）；贴砖随之拆分：淋浴砖段 z[3.20,3.55] 段留 w_gbath_east、z[2.40,2.60] 段（原属该墙南段）改挂 w_kit_west 东脸新增 `walltile_gbath_east_shower_kitseg`，rest 段与东墙漆面段 along 同步收至 [0.35,1.15]；客卫北墙淋浴砖段与阳台南墙砖段随北墙长 1.50→1.60 贴满延至 1.60（墙砖总量 36.7236→37.0186㎡、wall_region 段数 17→18，COST-060-08 登记同步、PKG-060 need 45,071→45,091）。客卫吊顶分区 ceiling_guest_bath 东界随墙线 7.10→7.20（3.15→3.36㎡、铝扣板 185→192 块）。
+- **采信但暂不建模（登记 pending 邻户表）**：东南房西北角错台（北墙南偏约 0.15–0.3 / 西墙东偏约 0.2）、主卧/书房隔墙 x=4.2 书房侧墙垛 + 白框（并入 #25 一问）、厨房东南角约 0.4×0.2 小矩形——三者定性或量级未定，量房顺手核，不在本条发明几何。
+- **未采（维持现状）**：结构层高 2.83（模型 2.80 系约值、#3 不动）；下沉 330 归属冲突（图文字层 330 在主卫北区，与旧概括相反，列 #74 剩余项以自家量房为准）；南链分段和 16650 与总数 16725 差 75（图内瑕疵，南总数不作坐标锚）；house.yaml 窗记录（示意值，窗带权威在 overlay，sill 已与图相符）；门洞逐个位置、LD 梁带走向、管位符号（图不可定案，仍挂 pending）。
+- **「改判不工作时」的问题**（决策工作流铁律 1，带 owner 与触发）：
+  1. 自家东南玻璃线实为凹进（邻户与自家不一致）→ 客房多 3.54㎡ 是虚量、地面/涂装算量与成本暂估多计约 ¥140 量级且床尾预演全错：owner 量房方；触发 = 交房量房只量一个数（自家东南玻璃线到主体南墙线距离），不符即回滚裁定①并按实测改 geometry。
+  2. 自家客卫东墙实测西脸 ≠7.20 → 挂墙点位与冰箱后距整体偏 0.10：owner 量房方；触发 = 交房量房复测该墙带两脸，偏差 >0.03 即按实测回改本条全部级联点位。
+  3. 飘台板被误当可利用面（施工/验收按入室理解）→ 防水/饰面范围错：owner 施工交底；触发 = 水电/瓦工交底时明示飘台为室外结构、sill 2.07 上飘窗，室内按 9.88 玻璃线收口。
+- **金额影响**（成本口径，render 实算）：水电 ¥16,045→¥16,050（沿墙路线变长）、防水人工 ¥366→¥370（客卫 +0.21㎡）、泥瓦 ¥45,071→¥45,091（墙砖量 36.7236→37.0186㎡ ×¥70）、涂装 ¥9,357→¥9,481（客房墙面变大、吊顶展开微调）、暂估 ¥131,196→¥131,349、已知合计 ¥167,196→¥167,349（增量 +153 = 水电 5 + 防水 4 + 泥瓦 20 + 涂装 124，逐分闭合）；已核实 ¥36,000（空调合同）不变。地面总量 123.34→127.09㎡（干 120.279 / 湿 6.811，COST-060-01 登记侧已同步）。美缝干区交叉核对随干区面积 111.864→115.404㎡ 更新为 ¥2,308（定额 ¥4,500 不变、未超）。
+- **校验登记变化**（同批对账，均为几何改判的登记跟随、非消音）：verify:mep must_fix 138→135（route_overlap 与 suppressed_wall_crossing 各 −1、bay_sill_collision 清零）；survey 桶 ceiling_clearance_unverified 62→101——其中 +39 全部同源伪影：ceiling_guest_bath 东界移至 7.20 后其 SE 角点 (7.20,4.30) 与走廊枢纽 bend_corridor 坐标重合，39 条以该枢纽为端点的路线在起点单点触碰角部（2.55 < B 区完成面 2.65），逐条 diff 核实无一例实体穿越新增东界带；已按契约修正通道同步 facts registered_conflicts 62→101 与 §0/§6/治理台账，量房实测枢纽/角点任一偏移即消解；电气侧新增 curtain_power_near_curtain_wall ×1（sock_study_curtain 距新玻璃线 2.08m > 2.00m 阈值，随遗留①床尾区重新预演一并复核，已登记治理台账 pending_adjudication）。
+- **遗留**（带 owner 与触发）：① 客房床尾区重新预演（床位、curtain_box_study_south 盒位——现盒 z[7.60,7.85] 距玻璃线 2.28m、原「贴凸窗内缘/床尾半进凸窗带」口径失效，盒位暂保留待预演）——owner 业主+设计侧，触发 = 本条合入后下一轮客房布局讨论；② 东南玻璃线/客卫东墙自家实测终核——owner 量房方，触发 = 交房量房（与 #20/#74 同批）。
+- **验证**：本地 CI 四子命令实测（2026-10-23，分支 feat/ys01-geometry-adoption，基线对照）：ci:test-server 实际失败 0 条 = 基线 0 条；ci:test-app 实际失败 49 条 = 基线 49 条（存量 jsdom/three 环境基线）；ci:typecheck 实际失败 2 条 = 基线 2 条；ci:verify-all 通过（verify:all 21/22，唯一红 verify-mep 为在册基线红——交底前必清项存量，本条使其由 138 降至 135、非新增）。生成物经 schedule:render / docs:generate-current-values / generate:project-render-facts 重渲，verify:schedule、verify:current-values、verify:facts、verify:spatial 全绿。
+- **关联文件**：`config/layout/model-geometry.yaml`、`config/layout/overlay.yaml`（客卫东墙淋浴砖段拆二 + 北墙/阳台南墙砖段随墙长延展；bedroom_se_south_bay 挂墙随墙南移、声明未动）、`config/house.yaml`、`config/ceiling.yaml`、`config/electrical.yaml`、`config/plumbing.yaml`、`config/mep-hvac-coordination.yaml`、`config/spatial-validation.yaml`、`config/facts.yaml`（registered_conflicts 62→101）、`config/tile-comparison.yaml`（干区面积口径与美缝对账）、`schedule/phase-1/control.yaml`（COST-060-01/-08 登记量、PKG-060 need）、`scripts/schedule/cost-summary.ts`（墙砖映射 2,571→2,591）、`docs/pending-site-data.md`（邻户表补 4 行、#25 合并一问、#41 登记数注记、下沉归属注记）、`docs/mep-construction-guidance.md`（§0/§6 对账）、`docs/design-iterations/mep-lint-governance-20261006/review-manifest.json`、`schedule/procurement.md`、测试钉（masonry-takeoff / ceiling-takeoff / budget-calculator / tile-cost-comparison / mep-hvac-lint / mep-guidance-baseline）、生成文件（schedule 各 checklist/cost.md/budget.md、docs/CURRENT-VALUES.md、data/project-render-facts.json）。
+- **决策人**：业主。
