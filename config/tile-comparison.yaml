@@ -105,59 +105,23 @@ candidates:
       evidence: "业主 2026-10-12 口述复核 + config 内既有的 alternative_reported_full_material_total_yuan=27130"
       coverage_check: "178片×0.72㎡=128.16㎡，覆盖干区 111.864㎡ 后余 14.6%（损耗+切割），与 KT 的 10.7%、900×150 的 17.1% 同量级"
 
-same_store_landed_comparison:
-  basis: "仅比较干区主地面（同范围、同地区、同为门店报价）；厨卫砖、辅材、上楼、美缝均不计入，故不是全安装成本。面积源 config/layout/model-geometry.yaml，干区净铺 111.864㎡。工费取 config/masonry-labor.yaml 的费率卡（状态 preliminary，无施工方名称/日期/总价，从未有书面报价确认）。"
-  labor_bases:
-    net_area_111_864: "按净铺面积计价"
-    actual_laid_area: "按报价单片数折算的实铺面积计价（KT 123.84㎡ / 金意陶900×150 130.95㎡ / 金意陶600×1200 128.16㎡）"
-  rows:
-    - { candidate: kt_200x1200, spec: "200×1200", material_yuan: 14964, labor_net: 8390, landed_net: 23354, labor_actual: 9288, landed_actual: 24252, material_yuan_per_sqm: 120.8 }
-    - { candidate: jinyi_approx_900x150, spec: "约900×150", material_yuan: 17266, labor_net: 8390, landed_net: 25656, labor_actual: 9821, landed_actual: 27087, material_yuan_per_sqm: 131.9 }
-    - { candidate: jinyi_600x1200_alternative, spec: "600×1200", material_yuan: 20470, labor_net: 6153, landed_net: 26623, labor_actual: 7049, landed_actual: 27519, material_yuan_per_sqm: 159.7 }
-  conclusions:
-    - "两种工费口径下排序一致：KT 200×1200 < 金意陶约900×150 < 金意陶600×1200。结论对工费口径不敏感。"
-    - "金意陶同店内，长条（约900×150）比大砖（600×1200）落地低 967–1,432 元；大砖每平材料贵 21%，吃透其工费优势。这是本项目唯一同店、同报价单、只变规格的直比，因此作为大砖基准口径。"
-    - "KT 200×1200 是三者落地最低者；业主 2026-10-06 渲染对比后判定长条花面更丰富、直铺效果优于大砖，成本与效果同向。"
-    - "敏感性：长条工费不超过约 95 元/㎡ 时 KT 仍最低；金意陶长条要赢过大砖，需长条工费 ≤65 元/㎡ 或大砖工费 ≥85 元/㎡。"
-  not_comparable:
-    - "诺贝尔方向（floor_tile_04）：无报价、无型号、无样品，且若以「杂牌」计价会把规格差与品牌差混为一个变量，违反同口径比较铁律。降为预算超支时下探一档的备选，不作基准。"
-    - "config/materials.yaml floor_pbr_tile_612：price_per_unit=75 与 price_source「65/片≈102元/㎡」三数互不相容，禁止用作分母（见该条目 price_status）。"
-
+# 同店落地比较与美缝叙事已并入 schedule/procurement.md §09（2026-10-23 去重）：
+# 落地价三行双口径表与排序见 §09「工费敏感性复算」（旧 conclusions 的「低 967–1,432 元」
+# 与「65/85 元/㎡ 阈值」经 §09 重算证伪，勿再引用）；诺贝尔降备选见 materials.yaml
+# baseline_note；floor_pbr_tile_612 三数不相容见 materials.yaml 该条目 price_status。
 grout_model:
-  purpose: "美缝是按砖规格变化的唯一隐性成本：缝长随砖幅缩小近似按 1/长+1/宽 增长，而美缝定额不随规格变。本节把确定部分（缝长、面积、定额对照）算死，把唯一未知（材料价）显式挂起。2026-10-22（DEC-2026-10-22-R03）起美缝拆两包：PKG-065 卫生间先行（湿区）+ PKG-130 其余区域；本节实算的干区净铺属 PKG-130 范围，对账见 pkg130_reconciliation。"
-  formula: "缝长(m) ≈ 面积(㎡) × (1/砖长(m) + 1/砖宽(m))；与铺向无关。材料费 = 缝长 × 每米耗量(kg/m) × 单价(元/kg) × (1+损耗)，其中 每米耗量 = 缝宽 × 缝深 × 密度。"
-  area_basis: "干区净铺 111.864㎡（config/layout/model-geometry.yaml）"
-  joint_width_mm: 2
-  joint_width_source: "materials.yaml 各 wood_plank appearance 的 grout_mm: 2"
-  joint_length_by_spec:
-    - { spec: "600×1200", joint_length_m: 279.7, ratio_vs_600x1200: 1.00 }
-    - { spec: "200×1200（KT，当前基准）", joint_length_m: 652.5, ratio_vs_600x1200: 2.33 }
-    - { spec: "约900×150（金意陶）", joint_length_m: 870.1, ratio_vs_600x1200: 3.11 }
-  per_metre_consumption_reference:
-    note: "每米耗量 = 缝宽 × 缝深 × 密度；环氧彩砂密度按 1.4–1.7 kg/L。下表为行业常规推算，非项目数据，实际缝宽缝深以施工为准。"
-    rows:
-      - { joint_depth_mm: 3, gram_per_m: 9 }
-      - { joint_depth_mm: 4, gram_per_m: 12 }
-      - { joint_depth_mm: 5, gram_per_m: 15 }
-  owner_quote:
-    price_yuan_per_sqm: 20
-    scope: "包工包料（含材料与人工）"
-    source: "业主 2026-10-12 口述"
-    status: "owner_reported_unconfirmed"
-    must_confirm: "该 20 元/㎡ 是否覆盖 200×1200 规格。门店包工包料价通常按常规砖幅校准，而 KT 缝长是 600×1200 的 2.33 倍；若门店按 600×1200 报价，用于 KT 会被低估。问法：「200×1200、2mm 缝、环氧彩砂包工包料多少一平」。若门店按 元/kg 报，则必须追问「2mm 缝每公斤施工多少米」才能换算。"
-  computation:
-    total_yuan: 2237
-    formula_check: "111.864㎡ × 20 元/㎡ = 2,237.28"
-    per_metre_equivalent_yuan: 3.43
-    per_metre_check: "2,237 ÷ 652.5m = 3.43 元/米缝"
+  # 美缝叙事（公式、缝长 600×1200 279.7m / KT 652.5m / 约900×150 870.1m、¥20/㎡ 口述价
+  # 与核价问法、行业耗量参考、¥8/米压力测试、定额拆分口径）唯一存放于 §09「美缝规格敏感性」。
+  # 本节只保留 cost-summary.ts 的对账最小集：owner_target_cny 须与 QR-2026-10-03-07 的
+  # owner_target_cny fail-closed 一致；computed_need_cny 供干区交叉核对。
+  # docs/decisions/04-bathrooms.md 裁定④引用的干区缝长 652.5m 已随叙事迁至 §09。
   pkg130_reconciliation:
     pkg_id: "PKG-130"
     planned_cny: 4000
     owner_target_cny: 4500
     computed_need_cny: 2237
     headroom_cny: 1763
-    note: "定额拆分（DEC-2026-10-22-R03）：全屋美缝定额 ¥4,500（DEC-2026-08-22「美缝环氧彩砂暂估 4.5k」与 QR-2026-10-03-07，暂估非算量）按砖缝长度估算拆为 PKG-065 卫生间 ¥500 + PKG-130 其余区域 ¥4,000。本节实算 ¥2,237 是干区净铺 111.864㎡ × ¥20/㎡，属 PKG-130 范围，故 PKG-130 余量为 planned_cny − computed_need_cny（见 headroom_cny 字段）。即使换到缝长 3.11 倍的金意陶约900×150，材料按比例上升后仍应在定额内；但若门店包工包料价远高于 3.43 元/米缝（如 8 元/米以上），定额会转紧，需压缝宽或重估。"
-  conclusion: "美缝这一项换规格不会爆：缝长是确定值、可算，人工与材料在 ¥20/㎡ 包工包料口径下合并为一个总价，PKG-130（其余区域）余量见 pkg130_reconciliation、两包定额合计仍 ¥4,500。相比瓦工人工池（不随规格变、缺 ¥2,237），美缝是三个隐性口里最安全的一个。"
+    note: "定额拆分（DEC-2026-10-22-R03）：全屋美缝定额 ¥4,500（DEC-2026-08-22「美缝环氧彩砂暂估 4.5k」与 QR-2026-10-03-07，暂估非算量）按砖缝长度估算拆为 PKG-065 卫生间 ¥500 + PKG-130 其余区域 ¥4,000。干区实算 ¥2,237 = 111.864㎡ × ¥20/㎡（业主 2026-10-12 口述包工包料，未确认是否覆盖 200×1200），属 PKG-130 范围，余量 1,763。湿区（PKG-065，缝长约 56m）按米成本无任何估值，不据此证明全屋 ≤ 定额；若门店价远高于 3.43 元/米缝（如 8 元/米以上），定额转紧。"
 
 selection_baseline:
   decided_at: "2026-10-12"
