@@ -86,6 +86,16 @@ describe('成本总表 cost-summary', () => {
     assert.equal(rowById(data, 'cost-mep')?.amountCny, Math.round(comparison.total as number));
   });
 
+  it('范围纪律：烟灶（油烟机）属家电包，不入定价行、只进范围外登记', () => {
+    // 复核 P2：油烟机在控制源归家电包（PKG-160），本表口径排除家电——不得混入硬装合计
+    assert.equal(rowById(data, 'cost-range-hood'), undefined, '烟灶行必须已移出定价行');
+    assert.ok(!data.rows.some((row) => row.name.includes('烟灶')), '定价行不得出现烟灶');
+    const hoodFigure = data.excluded.find((figure) => figure.label.includes('range_hood'));
+    assert.ok(hoodFigure, 'range_hood 科目数字必须登记在防双算/范围外登记里');
+    assert.match(hoodFigure.reason, /家电包/, '登记理由必须写明属家电包、范围外');
+    assert.ok(hoodFigure.amountCny > 0, '登记金额照实呈现（候选价），只是不计入合计');
+  });
+
   it('小计分层：每行恰属一层，已核实 + 暂估 = 已知合计', () => {
     for (const row of data.rows) {
       assert.ok(row.tier === 'verified' || row.tier === 'provisional', `${row.id} 必须有且仅有一个层级`);

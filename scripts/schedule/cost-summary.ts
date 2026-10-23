@@ -72,8 +72,10 @@
  *    科目 kitchen_cabinet 候选（cabinet + countertop 两 topic）与本行同范围，不另计。
  *  灯具 2,500 ← 计算器科目 lighting 的 candidateActual（lighting_01 选品候选价）。
  *    QR-2026-10-03-23 的 3,000 是询价目标、非价格，不采用。
- *  烟灶 1,200 ← 计算器科目 range_hood 的 candidateActual（range_hood_01 候选价）。
- *    无独立工作包；灶具属家电包，不在本表。
+ *  烟灶（油烟机）不设行（2026-10-23 复核 P2）：科目 range_hood 的候选价 1,200
+ *    曾设为定价行，与本表范围自相矛盾——控制源将油烟机归家电包（PKG-160），
+ *    本表口径明确排除家电。现只登记在文末防双算/范围外登记，不计入合计；
+ *    其候选价在家电口径另行处理。
  *  未定价五项 ← 包侧 components 全部 planned_cny == null 的显形登记（PKG-005 物业
  *    手续 / PKG-050 防水材料 / PKG-090 室内门 / PKG-125 开关面板 / PKG-135 踢脚线
  *    收边保洁）。科目 smart_home 的 2,000 是一口价占位选品、无逐项构成，
@@ -810,25 +812,9 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     });
   }
 
-  // ── 烟灶（油烟机）：计算器科目 range_hood 候选价，无独立工作包 ──
-  {
-    const hood = cat('range_hood');
-    if (hood.actual !== 0 || (hood.verifiedActual ?? 0) !== 0) {
-      throw new Error('cost summary: 科目 range_hood 构成已变化，请重新裁定烟灶行');
-    }
-    const amount = Math.round(hood.candidateActual ?? 0);
-    if (amount <= 0) throw new Error('cost summary: 科目 range_hood 无候选价，烟灶行无来源');
-    rows.push({
-      id: 'cost-range-hood',
-      name: '烟灶（油烟机）',
-      packageIds: [],
-      amountCny: amount,
-      grade: '候选价',
-      tier: 'provisional',
-      tierReason: '选品候选价、未取证未成交',
-      derivation: `选品候选价：config/materials.yaml 的 range_hood_01 ${yuan(amount)} × 1 台（计算器科目 range_hood 的 candidateActual）。无独立工作包；灶具属家电包，不在本表`,
-    });
-  }
+  // ── 烟灶（油烟机）不设行：控制源归家电包（PKG-160），本表范围排除家电 ──
+  // 科目 range_hood 的候选价只登记在文末「防双算/范围外登记」，不计入合计
+  // （2026-10-23 复核 P2：原定价行与本表范围说明自相矛盾，已移除）。
 
   const unpriced: CostRow[] = [
     {
@@ -1024,6 +1010,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     { label: '科目 miscellaneous（通用五金候选）', amountCny: categoryTotal('miscellaneous'), reason: 'hardware_01 候选与洁具行构成里的通用五金同范围' },
     { label: '科目 smart_home（一口价候选）', amountCny: categoryTotal('smart_home'), reason: '占位选品、无逐项构成；PKG-125 组件口径为未定价，不足以据此定价' },
     { label: '科目 hvac（选品镜像）', amountCny: categoryTotal('hvac'), reason: '与空调合同同额：来源以 control.yaml 的 contracted_cny 为准，科目侧只是镜像' },
+    { label: '科目 range_hood（油烟机候选价）', amountCny: categoryTotal('range_hood'), reason: '范围外：油烟机在控制源归家电包（PKG-160），本表口径说明明确排除家电；其候选价在家电口径另行处理，不计入硬装合计' },
   ];
 
   // 层级完整性：每条定价行必须已在登记处裁定 tier 与理由，缺失即抛错（不许渲染层猜）；
@@ -1092,8 +1079,8 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   for (const item of data.notSeparate) {
     markdown += `- **${escapeCell(item.name)}**（${item.packageIds.join('、')}）：${escapeCell(item.note)}。\n`;
   }
-  markdown += '\n## 防双算登记（科目侧同范围数字，未采用）\n\n';
-  markdown += '计算器科目视图与本表是同一所房子的两套切分：下列科目数字与上表行同范围，一律不另计，只登记备查。\n\n';
+  markdown += '\n## 防双算与范围外登记（科目侧数字，未采用）\n\n';
+  markdown += '计算器科目视图与本表是同一所房子的两套切分：下列科目数字与上表行同范围、或属本表范围外，一律不计入合计，只登记备查。\n\n';
   markdown += '| 科目侧数字 | 金额 | 不采用理由 |\n|---|---:|---|\n';
   for (const figure of data.excluded) {
     markdown += `| ${escapeCell(figure.label)} | ${yuan(figure.amountCny)} | ${escapeCell(figure.reason)} |\n`;
