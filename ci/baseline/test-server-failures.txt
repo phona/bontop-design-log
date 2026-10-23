@@ -1,0 +1,3 @@
+# test:server 基线失败集（node:test TAP 口径：文件 :: suite 路径 > 叶子名，含 suite 汇总行）。
+# 维护纪律见 AGENTS.md「CI 基线纪律」：修掉存量失败须在同一 PR 删行；禁止塞入新失败放行。
+

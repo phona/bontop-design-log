@@ -1,0 +1,2 @@
+# verify:all 基线失败集（verify 名）。维护纪律见 AGENTS.md「CI 基线纪律」。
+verify-mep
