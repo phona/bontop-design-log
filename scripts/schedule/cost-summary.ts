@@ -768,7 +768,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       // 该未决事项另列待核清单与本行双归属登记（见 DUAL_ATTRIBUTIONS），不许只藏在本行里。
       // 只有 -09 燃气管道不在卡内，另列待核。
       coversItems: ['COST-040-01', 'COST-040-02', 'COST-040-03', 'COST-040-04', 'COST-040-05', 'COST-040-06', 'COST-040-07', 'COST-040-08', 'COST-040-10', 'COST-040-11', 'COST-040-12', 'COST-040-13', 'COST-040-14', 'COST-040-15', 'COST-040-16', 'COST-040-17', 'COST-040-18', 'COST-040-19', 'COST-040-20'],
-      derivation: `算量 × 生效报价卡：shared/mep-takeoff.ts 按路由实算（强电计价管长 ${qty(takeoff.conduit.strongPowerTotalM)} m、导线 ${qty(takeoff.wire.totalWireM)} m，给排水与器件逐项），× config/mep-quotes.yaml 生效卡 ${comparison.id} 单价，${comparison.rows.length} 行全部计价、无待报价行——清包人工 ${yuan(laborPart)}（${qty(areaSqm, 2)} ㎡ × ${yuan(laborRate)}/㎡）、导线 ${yuan(wirePart)}、线管 ${yuan(conduitPart)}、其余管材/器件/增项 ${yuan(restPart)}，卡总额 ${yuan(total)} 取整。本行按本分支算量（平面 union 口径，DEC-2026-10-07-M02）；竖直段补计（DEC-2026-10-23-R01，PR #11）合入后约 +¥1,300，届时重生成自动更新`,
+      derivation: `算量 × 生效报价卡：shared/mep-takeoff.ts 按路由实算（强电计价管长 ${qty(takeoff.conduit.strongPowerTotalM)} m、导线 ${qty(takeoff.wire.totalWireM)} m，给排水与器件逐项），× config/mep-quotes.yaml 生效卡 ${comparison.id} 单价，${comparison.rows.length} 行全部计价、无待报价行——清包人工 ${yuan(laborPart)}（${qty(areaSqm, 2)} ㎡ × ${yuan(laborRate)}/㎡）、导线 ${yuan(wirePart)}、线管 ${yuan(conduitPart)}、其余管材/器件/增项 ${yuan(restPart)}，卡总额 ${yuan(total)} 取整。算量口径含竖直段补计（DEC-2026-10-23-R01：计价基数 = 平面 union + 竖直段，PR #11 已合入）`,
     });
   }
 
