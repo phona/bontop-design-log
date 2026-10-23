@@ -1,4 +1,4 @@
-# typecheck 基线错误集（归一化键：文件 :: TS 错误码 :: 消息主体，已剥离行列号）。
+# typecheck 基线错误集（归一化键：子树前缀 root:/app: + 文件 :: TS 错误码 :: 消息主体，已剥离行列号）。
 # 计数对照：同一键出现几行就是几条，增减按条计。维护纪律见 AGENTS.md「CI 基线纪律」。
-scripts/schedule/control.ts :: TS7006 :: Parameter 'issue' implicitly has an 'any' type.
-scripts/schedule/control.ts :: TS7006 :: Parameter 'issue' implicitly has an 'any' type.
+root:scripts/schedule/control.ts :: TS7006 :: Parameter 'issue' implicitly has an 'any' type.
+root:scripts/schedule/control.ts :: TS7006 :: Parameter 'issue' implicitly has an 'any' type.
