@@ -1,0 +1,51 @@
+# test:app 基线失败集（vitest FAIL 行归一为仓库相对路径：app/文件 > suite > 用例；文件级失败保留 [ 文件 ] 形式）。
+# 多重集对照：同一键出现几行就是几条，实际多于基线即新失败。维护纪律见 AGENTS.md「CI 基线纪律」。
+app/src/App.test.ts [ app/src/App.test.ts ]
+app/src/scene/HouseScene.test.ts > HouseScene > builds correct ribbon boundary for straight curtain_run
+app/src/scene/HouseScene.test.ts > HouseScene > builds walls from scene elements when provided
+app/src/scene/HouseScene.test.ts > HouseScene > computes layout bounds from rooms and platform after buildFromCatalog
+app/src/scene/HouseScene.test.ts > HouseScene > curtain node naming contract (shared/curtain-projection) > blinds blackout: visible set equals expectedVisibleCurtainNodes (blackout normalizes to privacy)
+app/src/scene/HouseScene.test.ts > HouseScene > curtain node naming contract (shared/curtain-projection) > blinds open: visible set equals expectedVisibleCurtainNodes (blackout normalizes to privacy)
+app/src/scene/HouseScene.test.ts > HouseScene > curtain node naming contract (shared/curtain-projection) > blinds privacy: visible set equals expectedVisibleCurtainNodes (blackout normalizes to privacy)
+app/src/scene/HouseScene.test.ts > HouseScene > curtain node naming contract (shared/curtain-projection) > same-room curtains (e.g. master bedroom pair) export under the same room state
+app/src/scene/HouseScene.test.ts > HouseScene > curtain node naming contract (shared/curtain-projection) > sheer_blackout blackout: visible set equals expectedVisibleCurtainNodes
+app/src/scene/HouseScene.test.ts > HouseScene > curtain node naming contract (shared/curtain-projection) > sheer_blackout open: visible set equals expectedVisibleCurtainNodes
+app/src/scene/HouseScene.test.ts > HouseScene > curtain node naming contract (shared/curtain-projection) > sheer_blackout privacy: visible set equals expectedVisibleCurtainNodes
+app/src/scene/HouseScene.test.ts > HouseScene > curtain node naming contract (shared/curtain-projection) > sheer_blackout: gathered segments are :left/:right unique and metadata is complete
+app/src/scene/HouseScene.test.ts > HouseScene > curtain_run applies scale-y-flip to preserve overlay z
+app/src/scene/HouseScene.test.ts > HouseScene > floor_region preserves overlay z without an extra scale-y flip
+app/src/scene/HouseScene.test.ts > HouseScene > hovers infrastructure roots and resolves child mesh hits with readable names
+app/src/scene/HouseScene.test.ts > HouseScene > includes wall scene elements in layout bounds
+app/src/scene/HouseScene.test.ts > HouseScene > keeps business roots stable and avoids duplicate objects across rebuilds
+app/src/scene/HouseScene.test.ts > HouseScene > keeps infrastructure coordinates when wall is absent or unknown
+app/src/scene/HouseScene.test.ts > HouseScene > normalizes blind blackout to privacy and rebuilds without stale curtain entries
+app/src/scene/HouseScene.test.ts > HouseScene > prioritizes MEP routes over ceiling hits only in coordination overview
+app/src/scene/HouseScene.test.ts > HouseScene > prioritizes lighting fixtures over ceiling hits on the same ray
+app/src/scene/HouseScene.test.ts > HouseScene > projects wall-referenced infrastructure points onto the authored side of the nearest wall segment
+app/src/scene/HouseScene.test.ts > HouseScene > raycastFromScreenCenter with hoverableOnly skips non-hoverable objects
+app/src/scene/HouseScene.test.ts > HouseScene > reattaches the HVAC root after it is removed by a scene rebuild and exports equipment but not routes
+app/src/scene/HouseScene.test.ts > HouseScene > refreshes shared sliding door geometry without duplicate groups
+app/src/scene/HouseScene.test.ts > HouseScene > renders a shared wall once between adjacent rooms
+app/src/scene/HouseScene.test.ts > HouseScene > renders closed curtain_run as a single mesh with a hole
+app/src/scene/HouseScene.test.ts > HouseScene > renders curtain_run as a single continuous mesh
+app/src/scene/HouseScene.test.ts > HouseScene > renders strong and weak electrical panels with authored dimensions and metadata
+app/src/scene/HouseScene.test.ts > HouseScene > rounded curtain_run produces more boundary points than straight one
+app/src/scene/HouseScene.test.ts > HouseScene > should create floors and walls for each room
+app/src/scene/HouseScene.test.ts > HouseScene > should highlight object by id
+app/src/scene/HouseScene.test.ts > HouseScene > should initialize
+app/src/scene/HouseScene.test.ts > HouseScene > should register object click callback
+app/src/scene/HouseScene.test.ts > HouseScene > should render platform from catalog
+app/src/scene/HouseScene.test.ts > HouseScene > should render rooms from catalog
+app/src/scene/HouseScene.test.ts > HouseScene > should render without throwing
+app/src/scene/HouseScene.test.ts > HouseScene > should set camera target to room
+app/src/scene/HouseScene.test.ts > HouseScene > shows object-first hover name for floor
+app/src/scene/HouseScene.test.ts > HouseScene > shows readable platform hover name
+app/src/scene/HouseScene.test.ts > HouseScene > shows wall hover name with direction
+app/src/scene/HouseScene.test.ts > HouseScene > tags floor meshes with floor objectId
+app/src/scene/HouseScene.test.ts > HouseScene > uses data-driven open/privacy/blackout variants and synchronizes a room
+app/src/scene/HouseScene.test.ts > HouseScene > uses default layout bounds before a catalog is loaded
+app/src/scene/HouseScene.test.ts > HouseScene > uses single objectId for curtain_run mesh
+app/src/scene/HouseScene.test.ts > HouseScene 共墙按面给材质（DEC-2026-10-07-R12） > setPaintColor 跳过 tile 脸，两侧都 paint 时各染各的
+app/src/scene/HouseScene.test.ts > HouseScene 共墙按面给材质（DEC-2026-10-07-R12） > setWallColor 只染贴邻目标房间的侧面槽位
+app/src/scene/HouseScene.test.ts > HouseScene 共墙按面给材质（DEC-2026-10-07-R12） > 单材质墙仍走 roomId 整体匹配
+app/src/scene/HouseScene.test.ts > HouseScene 共墙按面给材质（DEC-2026-10-07-R12） > 畸形 face 数据 fail-closed：不抛错、不串脸
