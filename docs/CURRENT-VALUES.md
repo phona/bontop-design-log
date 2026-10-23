@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:7aa0501b1000565c0327ab1503111022fdeac93173918da236be4d4eedd46013 -->
+     inputs-fingerprint: sha256:283ecb60a463dde54a65fc8ee346c574a55343eb4167aa7d4b02383e2ea69673 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -56,7 +56,7 @@
 | B 区铝扣板完成面 | 2.65 m | config/mep-hvac-coordination.yaml:12 | 0.15m 板厚；厨房/主卫/客卫三区，空腔仅 150mm |
 | 客餐厅面积 | 44.58 ㎡ | config/house.yaml:178；config/hvac.yaml:36 | polygon 实测；bbox 45.88 ㎡含 1.3㎡ 凹口 ※ |
 | 套内面积 | 94.76 ㎡ | config/house.yaml:6 | 合同净口径；与毛口径/赠送/建面三口径未闭合见 pending-site-data.md #40 ※ |
-| MEP 路线总数 | 137 条 | config/mep-hvac-coordination.yaml:4 | 走线表 routes 条目数；fact.mep_routes_count ※ |
+| MEP 路线总数 | 138 条 | config/mep-hvac-coordination.yaml:4 | 走线表 routes 条目数；fact.mep_routes_count ※ |
 
 ## 材料选型
 

@@ -54,8 +54,8 @@ test('线径解析只认显式字符串，猜不了', () => {
   assert.equal(parseWireSizeMm2('待厂家铭牌核验'), null);
 });
 
-test('端点全部可解析：137 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
-  assert.equal(resolution.total, 137); // R1 删两条照明路由 137→135；R2 删四条卫浴照明路由 135→131；DEC-2026-10-13-R5 删电视墙灯带路由 131→130；DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由 130→128；同批走线专项为 7 个新点位补 7 条路线 128→135；DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条 135→136
+test('端点全部可解析：138 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
+  assert.equal(resolution.total, 138); // R1 删两条照明路由 137→135；R2 删四条卫浴照明路由 135→131；DEC-2026-10-13-R5 删电视墙灯带路由 131→130；DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由 130→128；同批走线专项为 7 个新点位补 7 条路线 128→135；DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条 135→136；DEC-2026-10-19-R25 新增客餐厅 DN32 共用主管 136→137；DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线 137→138
   assert.equal(resolution.unresolved, 0);
 });
 

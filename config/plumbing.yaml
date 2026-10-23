@@ -138,7 +138,7 @@
   x: 6.45
   z: 3.05
   height: 0.02
-  note: "2026-08-29 客卫南段马桶/干区地漏（地面，随马桶中心调整至 z=3.05）；DEC-2026-10-08-W03 已画推断路线 drain-gbath-floor-to-riser（1% 坡接客卫推断立管，construction_status: pending、不作为施工依据），立管实测位待量房；外置洗漱区地漏若需要另行深化"
+  note: "2026-08-29 客卫南段马桶/干区地漏（地面，随马桶中心调整至 z=3.05）；DEC-2026-10-08-W03 已画推断路线 drain-gbath-floor-to-riser（1% 坡接客卫推断立管，construction_status: pending、不作为施工依据），立管实测位待量房；外置洗漱区地漏若需要另行深化；DEC-2026-10-23-R03：本点兼作客卫沉箱二次排水口候选锚点（沉箱最低处候选，与 pending #74 客卫二次排水同位登记），二次排水需求路线 drain-gbath-secondary-requirement 以本点为最低处候选锚点、以 design_requirement 表达需求（示意段自锚点东侧 0.15m 起画，全程避开 drain-guest-bath 串联支路中线、独立接立管）——注意地面泄水与防水层下二次排水是两回事，不得并入同一接点（与主卫 drain_mbath_floor / #50 同口径），最低点与二次口位待量房"
 
 - id: faucet_kitchen_sink
   room: kitchen
