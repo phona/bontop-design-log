@@ -390,8 +390,11 @@ describe('成本总表 cost-summary', () => {
       () => assertMepOutOfScopeDispositions(doctoredComparison.outOfScopeRows, { gas_alarm_kit: '测试处置：由其他报价覆盖' }),
       '登记处置后必须通过',
     );
-    const footnote = mepOutOfScopeFootnote(['gas_alarm_kit']);
-    assert.ok(footnote.includes('1 行') && footnote.includes('gas_alarm_kit') && footnote.includes('登记处置'), '注脚必须显形行数、行键与登记处置');
+    const footnote = mepOutOfScopeFootnote(['gas_alarm_kit'], { gas_alarm_kit: '测试处置：由其他报价覆盖' });
+    assert.ok(footnote.includes('1 行') && footnote.includes('gas_alarm_kit'), '注脚必须显形行数与行键');
+    // 复审四轮：处置理由必须进生成表——只写「已登记处置」、理由留在生成
+    // 器源码里，读者在成本表表面仍看不到这些钱的去向
+    assert.ok(footnote.includes('测试处置：由其他报价覆盖'), '注脚必须逐行渲染登记表中的处置全文');
     // 现行真实数据：生效卡无 out_of_scope 行、登记表为空、真实推导不带注脚
     const { comparison } = computeActiveMepQuote();
     assert.deepEqual(comparison.outOfScopeRows, [], '现行生效卡不得有 out_of_scope 行（有则先登记处置）');

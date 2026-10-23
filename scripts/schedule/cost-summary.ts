@@ -619,10 +619,23 @@ export function assertMepOutOfScopeDispositions(
   }
 }
 
-/** out_of_scope 渲染注脚（纯函数）：无被排除行时为空串（现行渲染不变）；有则在水电行推导里显形行数与行键，并指明已登记处置。 */
-export function mepOutOfScopeFootnote(outOfScopeRows: readonly string[]): string {
+/**
+ * out_of_scope 渲染注脚（纯函数）：无被排除行时为空串（现行渲染不变）；
+ * 有则在水电行推导里显形行数与行键，并**逐行带上登记表中的处置全文**——
+ * 只写「已登记处置」而理由不进表，读者仍须回生成器源码才知道这些钱去了
+ * 哪（复审四轮点名）。处置缺登记时渲染占位（生产路径有
+ * assertMepOutOfScopeDispositions 先行抛错，此形态只会出现在绕过守卫的
+ * 直接调用里）。
+ */
+export function mepOutOfScopeFootnote(
+  outOfScopeRows: readonly string[],
+  dispositions: Record<string, string> = OUT_OF_SCOPE_DISPOSITIONS,
+): string {
   if (outOfScopeRows.length === 0) return '';
-  return `；另有 ${outOfScopeRows.length} 行被生效卡标为不在本家报价范围（${outOfScopeRows.join('、')}），金额未计入本行，已逐行在生成器 OUT_OF_SCOPE_DISPOSITIONS 登记处置`;
+  const details = outOfScopeRows
+    .map((key) => `${key}：${dispositions[key]?.trim() || '（处置未登记）'}`)
+    .join('；');
+  return `；另有 ${outOfScopeRows.length} 行被生效卡标为不在本家报价范围，金额未计入本行，逐行处置（登记于生成器 OUT_OF_SCOPE_DISPOSITIONS）——${details}`;
 }
 
 /** 本表范围：硬装（hard_finish）+ 中央空调（hvac）两个预算池。范围外包的组件按包登记排除理由。 */
