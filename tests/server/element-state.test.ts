@@ -240,7 +240,7 @@ describe('element census snapshot', () => {
     // 其台账条目留存历史、不再绑元素；新端点 sock_fridge_living 由 config position_status 标 pending。
     // 吊顶两个分区仍无出处，不因其他 pending 项而静默归类。
     assert.equal(result.summary.undeclared, 2, '真实台账下只剩 2 个无出处的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 32); // 包括 #61/#64 与本轮 position_status: pending 的 sock_kitchen_hood 试位；DEC-2026-10-17-R20 净 +4（sock_fridge_living / sock_kitchen_east_counter / sock_weakbox 新增未路由点位与 sock_gbath_towel 换墙迁移复核均落 pending，28→32，实测 derive 值）
+    assert.equal(result.summary.pending, 33); // 包括 #61/#64 与本轮 position_status: pending 的 sock_kitchen_hood 试位；DEC-2026-10-17-R20 净 +4（sock_fridge_living / sock_kitchen_east_counter / sock_weakbox 新增未路由点位与 sock_gbath_towel 换墙迁移复核均落 pending，28→32，实测 derive 值）；DEC-2026-10-23-R03 +1：#74 改写显名 drain_gbath_floor 落 pending（32→33，实测 derive 值）
     assert.ok((result.summary.byStatus.confirmed ?? 0) > 0, 'DEC 引用必须把构件绑成 confirmed');
   });
 });

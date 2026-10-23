@@ -163,6 +163,8 @@ pipe_route_segments:
   water-v1-entry-to-gbath-cold:  [{from_index: 0, to_index: 2, water_temp: cold, water_dn: 20}]
   water-v1-recirc-loop:          [{from_index: 0, to_index: 2, water_temp: hot, water_dn: 20}]
   drain-mbath-secondary-requirement:  [{from_index: 0, to_index: 2, drain_dn: 50}]
+  # DEC-2026-10-23-R03 客卫沉箱二次排水需求路线：与主卫同口径，整段 DN50。
+  drain-gbath-secondary-requirement:  [{from_index: 0, to_index: 2, drain_dn: 50}]
   # DEC-2026-10-08-W01 新增 2 条（端点均为点位 id，但规格需显式声明：
   # 净水器支路只走冷水、阳台地漏支管 de50 而入流立管 de110，端点规格不一致，禁止按首端点扩散）
   water-purifier-branch:           [{from_index: 0, to_index: 1, water_temp: cold, water_dn: 20}]

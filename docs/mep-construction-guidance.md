@@ -1,13 +1,13 @@
 # 机电走线施工指导（水路 / 电路 / 中央空调，燃气除外）
 
-> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（137 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73；2026-10-05 给排水 v1 补 5 条排水路线并改 water-kitchen-requirement 端点，73→78；2026-10-05 DEC-2026-10-05-R18 两台内机方向相反+下出风成组补 2 条送风路线，78→80；2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底补 7 条给排水路线，80→87；2026-10-07 v1 水路估算：6 条给水 + 1 条排水 requirement 按推断锚点提升为 physical（uncertainty ±0.3m、construction_status 恒 pending），并新增 5 条 water-v1-* 正交干管路由（热水器→两卫冷/热/回水），87→133；DEC-2026-10-07-R15 删除 NP-4b 夜灯路线后当前为 132；2026-10-08 DEC-2026-10-08-W01 上下水按最佳实践推断落库：新建 water_entry / drain_riser_balcony 两个推断点位（坐标取自既有候选路线端点，一个数都没新造），15 条给排水路线端点由内联坐标改绑点位 id，新增净水器进水与阳台地漏两条路线——132→134，给排水点位 27→29；全部 status: inferred / construction_status: pending / not_for_construction，量房日升级 measured；2026-10-12~10-17 各批删改以 config 同名头部计数链为准，DEC-2026-10-17-R20 水电 review 落地删除 2 条旧位路线（strong-ded-fridge / strong-power-parent-child-parentbed-l，新位走线专项另画），130→128；同批走线专项为 7 个新点位补 7 条路线（strong-ded-fridge-living / strong-power-waterbar / strong-power-kitchen-east / strong-power-weakbox / weak-ap-master / strong-light-balcony / strong-light-entry-night-mid），128→135）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
+> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（138 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73；2026-10-05 给排水 v1 补 5 条排水路线并改 water-kitchen-requirement 端点，73→78；2026-10-05 DEC-2026-10-05-R18 两台内机方向相反+下出风成组补 2 条送风路线，78→80；2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底补 7 条给排水路线，80→87；2026-10-07 v1 水路估算：6 条给水 + 1 条排水 requirement 按推断锚点提升为 physical（uncertainty ±0.3m、construction_status 恒 pending），并新增 5 条 water-v1-* 正交干管路由（热水器→两卫冷/热/回水），87→133；DEC-2026-10-07-R15 删除 NP-4b 夜灯路线后当前为 132；2026-10-08 DEC-2026-10-08-W01 上下水按最佳实践推断落库：新建 water_entry / drain_riser_balcony 两个推断点位（坐标取自既有候选路线端点，一个数都没新造），15 条给排水路线端点由内联坐标改绑点位 id，新增净水器进水与阳台地漏两条路线——132→134，给排水点位 27→29；全部 status: inferred / construction_status: pending / not_for_construction，量房日升级 measured；2026-10-12~10-17 各批删改以 config 同名头部计数链为准，DEC-2026-10-17-R20 水电 review 落地删除 2 条旧位路线（strong-ded-fridge / strong-power-parent-child-parentbed-l，新位走线专项另画），130→128；同批走线专项为 7 个新点位补 7 条路线（strong-ded-fridge-living / strong-power-waterbar / strong-power-kitchen-east / strong-power-weakbox / weak-ap-master / strong-light-balcony / strong-light-entry-night-mid），128→135；2026-10-23 DEC-2026-10-23-R03 客卫沉箱二次排水补 1 条需求路线，137→138）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
 > **不是施工放线依据**：所有坐标为协调值，穿墙点、梁位、立管、墙体类型均需交房量房后终核修正。配置驱动，修正只改 yaml，渲染与校验自动跟随。
 
 ## 0. 规模口径（与 config/facts.yaml 对账）
 
 | 数据源 | 条目数 | 登记事实 |
 |---|---:|---|
-| `config/mep-hvac-coordination.yaml` | 共 137 条路由 | `fact.mep_routes_count` |
+| `config/mep-hvac-coordination.yaml` | 共 138 条路由 | `fact.mep_routes_count` |
 | `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
 | `config/electrical.yaml` | 共 105 个点位 | `fact.electrical_points_count` |
 | `config/plumbing.yaml` | 共 33 个点位 | `fact.plumbing_points_count` |
@@ -176,7 +176,7 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 | 排水支管管径 | **de50** |
 | 水封 | 各受水点存水弯/水封 **≥50mm**；墙排/地漏均须保证 |
 | 通气管 / 间接排水 | 按需设通气管或间接排水；排水口不得密封直插（须留溢流/间接接入，防虹吸与气堵） |
-| 同层排水沉箱二次排水 | **主卫**：沉箱最低处设 **DN50 二次排水**，向二次口找 1% 坡 + 轻质回填；回填前通球与沉箱 24h 蓄水**分开验收**（见 pending-site-data #50、acceptance 主卫沉箱两条）。**客卫**：沉箱构造未核实（pending-site-data #74），核实开发商原始设计后另行定案，**本行不作为客卫施工要求**（DEC-2026-10-22-R02） |
+| 同层排水沉箱二次排水 | **主卫**：沉箱最低处设 **DN50 二次排水**，向二次口找 1% 坡 + 轻质回填；回填前通球与沉箱 24h 蓄水**分开验收**（见 pending-site-data #50、acceptance 主卫沉箱两条）。**客卫**：业主 2026-10-23 确认有沉箱、开发商未设二次排水、须自做——与主卫同口径：沉箱最低处设 **DN50 二次排水**，向二次口找 1% 坡 + 轻质回填；回填前通球与沉箱 24h 蓄水**分开验收**（见 pending-site-data #74、acceptance 客卫沉箱两条、DEC-2026-10-23-R03）；下沉深度/沉箱底防水现状/最低点口位待量房 |
 
 > **管径登记口径**：排污 de110 / 干管 de75 / 支管 de50 为施工分级口径；`config/plumbing.yaml` 排水立管的 `diameter: 0.075` 与其马桶排污/立管 note 已按本口径补 `de110` 注记（**只加 note 文本、不改 diameter 数值**——0.075m 是既有登记值，全宅 de110 批量升级属设计决策，留待 docs/pending-site-data.md #41 轮裁定）。
 
@@ -231,7 +231,7 @@ npm run typecheck
 - `penetration_door_clearance`（**本轮新增**）：声明穿点距同墙门洞 <0.15m。穿点高于门头、需复核梁底与套管的 16 条属于 survey warning；落在门洞高度带内、会打到门垛/门套的 2 条属于 must_fix error。
 - `shear_wall_parallel_route`（**本轮新增**）：长距离贴剪力墙敷设属于 must_fix error；须明确套管/剔槽/避钢筋策略，或移出剪力墙净距。
 - `endpoint_not_bound_to_point`（**DEC-2026-10-08-W02 新增**，must_fix error）：非 requirement/candidate 路线的 `from`/`to` 写成内联坐标、且与**同专业点位**平面重合 ≤0.02m（坐标两位小数的舍入量级再留一倍余量；>0.02m 视为有意的工艺差，如 `faucet_garden` 出水口 10.85 vs 底盒 10.80 的 0.05m，不报）。**这条规则存在的理由**：量房的标准动作是改点位坐标，内联端点不会跟随，而 `endpoint_unknown` / `endpoint_unresolved` 只能查 id 能不能解析、查不出"这个字面量本来是抄某个点位的"。同距多点位时消息里列出候选，要求按 route reason 裁定绑哪一个。requirement/candidate 路线豁免（`validateMepCoordination` 禁止 design_requirement 路线引用给排水点位 id，报了也改不掉）；只查 from/to 不查 via（via 是几何弯点不是设备位）。当前实算 0（DEC-2026-10-08-W02 已把 5 处全部焊死），是哨兵而非待办。
-- `inline_endpoint_without_point_anchor`（**DEC-2026-10-08-W02 新增**，warning，survey 桶）：给排水层的内联端点 0.02m 内没有任何同专业点位 → 进"量房判读清单"，不强行绑。当前 4 条：`drain-kitchen-requirement` to(6.95,0.5)（推断立管接入方向）、`water-water-heater-recirc-requirement` to(0.4,2.6)（回水阀预留）、`water-kitchen-dishwasher-branch` to(8.8,0.3)（洗碗机锚点）、`drain-mbath-secondary-requirement` to(1.4,1.15)（#50 二次排水口方向）。原第 5 条 `water-hot-water-gbath-requirement` to(6.7,2.7)（穿墙点）已由 DEC-2026-10-08-W03 改绑 `faucet_gbath_vanity` 并补 `w_gbath_south` 穿墙声明，该条归零。强电/弱电不报"无锚点"——它们的内联端点多数是吊顶缘汇流点（DEC-2026-10-07-M04 地插 from 口径），报了是纯噪音。
+- `inline_endpoint_without_point_anchor`（**DEC-2026-10-08-W02 新增**，warning，survey 桶）：给排水层的内联端点 0.02m 内没有任何同专业点位 → 进"量房判读清单"，不强行绑。当前 5 条：`drain-kitchen-requirement` to(6.95,0.5)（推断立管接入方向）、`water-water-heater-recirc-requirement` to(0.4,2.6)（回水阀预留）、`water-kitchen-dishwasher-branch` to(8.8,0.3)（洗碗机锚点）、`drain-mbath-secondary-requirement` to(1.4,1.15)（#50 二次排水口方向）、`drain-gbath-secondary-requirement` to(6.60,2.60)（#74 客卫二次排水口方向，DEC-2026-10-23-R03）。原第 5 条 `water-hot-water-gbath-requirement` to(6.7,2.7)（穿墙点）已由 DEC-2026-10-08-W03 改绑 `faucet_gbath_vanity` 并补 `w_gbath_south` 穿墙声明，该条归零。强电/弱电不报"无锚点"——它们的内联端点多数是吊顶缘汇流点（DEC-2026-10-07-M04 地插 from 口径），报了是纯噪音。
 
 **历史基线快照（2026-10-07 / 2026-10-17 R4；数字由 `tests/server/mep-guidance-baseline.test.ts` 动态对账，不写死）**：
 
@@ -240,8 +240,8 @@ npm run typecheck
 | 桶 / 规则组 | 条数 | 代码明细 |
 |---|---:|---|
 | MEP must_fix_before_briefing（交底前必须清，R19 硬门禁起整体计 error、由验收断言单独锁定 138） | 138 | route_overlap 69 + route_not_orthogonal 32 + route_furniture_collision 12 + unsupported_span 7 + suppressed_wall_crossing 8 + endpoint_inaccessible 5 + door_opening_collision 1 + mep_endpoint_service_conflict 2 + bay_sill_collision 1 + route_endpoint_unusable 1（DEC-2026-10-22-R01 对账实测：errors 合计 138；bf29283 逐段坡度规则带入的 11 条 gravity_slope_below_design_target 已由短段链门槛与 4 条路线几何建真坡度清零，route_overlap 实修 −1；上一态 R25 口径 149、R22-v0.5 口径 139）|
-| MEP survey_dependent（量房后自然消/复判） | 110 | ceiling_clearance_unverified 62 + penetration_door_clearance 16 + shear_wall_parallel_route 11 + shear_wall_penetration 10 + route_insulation_unverified 7 + inline_endpoint_without_point_anchor 4（DEC-2026-10-22-R01 对账实测：ceiling_clearance_unverified 为 R25 外包络复核口径，与 verify:facts 契约登记 62 处双引擎一致，见 §0；route_insulation_unverified 为 R25 同批新检查、保温厚度/状态未确认，登记治理台账 pending_adjudication 待厂家选型与量房；上一态 R21 口径 91）|
-| MEP envelope_approximation（模型包络近似/非物理需求） | 128 | route_clearance_unverified 40 + route_overlap 39 + bay_sill_crossing_declared 13 + route_overlap_declared_trunk 14 + nonphysical_route 8 + reference_constraint_uncertain 5 + route_not_orthogonal 4 + route_furniture_collision 2 + unsupported_span 2 + supply_return_overlap 1（DEC-2026-10-22-R01 对账实测，按 R25 外包络复核口径逐 code 对齐；上一态 R22-v0.5 快照 123）|
+| MEP survey_dependent（量房后自然消/复判） | 111 | ceiling_clearance_unverified 62 + penetration_door_clearance 16 + shear_wall_parallel_route 11 + shear_wall_penetration 10 + route_insulation_unverified 7 + inline_endpoint_without_point_anchor 5（DEC-2026-10-23-R03 对账：客卫二次排水内联端点 +1，4→5；DEC-2026-10-22-R01 对账实测：ceiling_clearance_unverified 为 R25 外包络复核口径，与 verify:facts 契约登记 62 处双引擎一致，见 §0；route_insulation_unverified 为 R25 同批新检查、保温厚度/状态未确认，登记治理台账 pending_adjudication 待厂家选型与量房；上一态 R21 口径 91）|
+| MEP envelope_approximation（模型包络近似/非物理需求） | 129 | route_clearance_unverified 40 + route_overlap 39 + bay_sill_crossing_declared 13 + route_overlap_declared_trunk 15 + nonphysical_route 8 + reference_constraint_uncertain 5 + route_not_orthogonal 4 + route_furniture_collision 2 + unsupported_span 2 + supply_return_overlap 1（DEC-2026-10-22-R01 对账实测，按 R25 外包络复核口径逐 code 对齐；上一态 R22-v0.5 快照 123；DEC-2026-10-23-R03 对账：客卫二次排水锚点三通汇流声明 route_overlap_declared_trunk +1，14→15、桶 128→129）|
 > R20历史快照：must_fix桶（166）已按 R19 硬门禁整体升为 errors、不在本表；本表仅承载两个 warning 桶。当前实跑分桶见上方 R25 快照。
 >
 > **DEC-2026-10-17-R20 走线专项增量**：为 R20 批次 7 个新点位落地 7 条路线（strong-ded-fridge-living / strong-power-waterbar / strong-power-kitchen-east / strong-power-weakbox / weak-ap-master / strong-light-balcony / strong-light-entry-night-mid，128→135），**must_fix 桶 166 逐 code 零增量**；增量全部落在允许的 survey/envelope 桶（survey +5、envelope +3，逐 code 见两行明细内注）——新路线自身不带任何交底前必清项，穿墙/共孔/贴干线均以声明通道表达。
@@ -253,6 +253,8 @@ npm run typecheck
 R20历史快照：166 个 error 属于当时 verify:mep 阻断项；本轮基线与当前值见 R25 快照。未确认风管/梁位 warning 不会仅因路线状态变成 confirmed 就自动升级。
 
 **DEC-2026-10-22-R01 对账结果（当前口径，取代 R25 快照）**：verify:mep 扫描 137/137 条路线，138 errors / 238 warnings；分桶 must_fix_before_briefing 138、survey_dependent 110、envelope_approximation 128。R25 记录的 11 条 gravity_slope_below_design_target 已清零（短段链门槛消除短段噪音 + condensate-child / condensate-master / 两条台盆墙排按声明 1% 建真坡度）；route_overlap error 侧实修 −1（70→69）一并销账；route_insulation_unverified 7 条已登记治理台账 pending_adjudication。上方 149/139 等数字均为历史快照。
+
+**DEC-2026-10-23-R03 对账增量（当前口径）**：verify:mep 扫描 138/138 条路线，138 errors / 240 warnings；分桶 must_fix_before_briefing 138（不变，钉死值不动）、survey_dependent 111（+1：drain-gbath-secondary-requirement 内联端点，量房判读清单）、envelope_approximation 129（+1：锚点三通汇流 route_overlap_declared_trunk 声明）。errors 零新增；§6 表与治理台账已同步。
 
 **仍未建模的检查边界**：MEP lint 现在检查门洞本身和静态柜体/家电实体，但 config 尚无门扇开启扫掠区、冰箱/洗碗机/洗烘开门区与检修抽拉区的权威几何，因此不能判定运行时活动包络是否挡线。飘窗规则也按路线中心线判定实体相交，未按管径计算贴边净距。要把这两类也纳入判定，需要先在权威配置声明扫掠/净距几何，代码不得自行猜开门角度或边界。
 

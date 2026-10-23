@@ -1084,7 +1084,7 @@ work_packages:
     blockers: []
     owner_roles: [防水施工, 施工方, 业主]
     payment_gate: GATE-050-FLOOD-TEST
-    acceptance_refs: [check_wp_coats, check_wp_flood, check_plumb_master_bath_secondary_drain, check_plumb_master_bath_box_flood, check_plumb_external_vanity_waterproof]
+    acceptance_refs: [check_wp_coats, check_wp_flood, check_plumb_master_bath_secondary_drain, check_plumb_master_bath_box_flood, check_plumb_guest_bath_secondary_drain, check_plumb_guest_bath_box_flood, check_plumb_external_vanity_waterproof]
     checks:
       - id: SCH-050-01
         severity: critical
