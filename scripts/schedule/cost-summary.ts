@@ -128,6 +128,7 @@ import {
   loadMepQuotes,
   mepQuoteFallback,
   type MepQuoteComparison,
+  type MepQuoteFallback,
 } from '../../server/mep-quotes.js';
 import {
   computeMepTakeoff,
@@ -316,7 +317,8 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
  * ① 原卡存在；② 原卡 status 与登记处捕获的 cardStatus 一致（防捕获值与原文
  * 漂移）；③ 承包商名（contractor）非空；④ 报价日期（quoted_at）非空；
  * ⑤ 证据等级必须为 written_quote（正向强制，见下）；⑥ 费率来源不得为公开
- * 参考价（第二层，见下）。
+ * 参考价（第二层，见下）；⑦ 被引用卡必须为文件的 active 卡（生效绑定，
+ * 自主扫描 D4）；⑧ evidence.currency 若声明必须为 CNY（自主扫描 D5）。
  * ⑤ 的来由（复审再续·凭据边界收紧）：早先版本只**拒**公开参考价来源——缺
  * 证据、或只有照片 / 业主转述的卡仍能过关，与证据分级口径不一致。
  * shared/quote-cards.ts 的 QuoteCardEvidenceKind 三级（photo /
@@ -338,6 +340,10 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
  * 层，生效卡 owner_baseline_40 不经本核验、其 public_reference 费率行不因
  * 此报错。强度边界：本守卫拦的是「凭据指向空卡/无名卡/状态漂移/证据等级
  * 不足/公开参考价冒充」，不证明报价的商业真实性本身。
+ * 另一条边界（自主扫描 D4）：被引用卡「全行计价、无待报价行」的性质**不**
+ * 在本守卫的断言范围——它由金额计算路径（computeActiveMepQuote 对生效卡
+ * 的 total / pendingRows / 完整性断言）在出金额时保证；本守卫只核凭据本
+ * 身（卡存在 / 状态 / 身份字段 / 生效绑定 / 证据等级 / 币种 / 费率来源）。
  * quotesFile 参数仅供测试注入合成卡文件；生产路径不传、走真实文件。
  */
 function assertQuoteCardCredential(rowId: string, basis: { cardId: string; cardStatus: string }, quotesFile?: AnyRecord): void {
@@ -358,12 +364,28 @@ function assertQuoteCardCredential(rowId: string, basis: { cardId: string; cardS
   if (typeof card.quoted_at !== 'string' || card.quoted_at.trim().length === 0) {
     throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据不全：卡 ${basis.cardId} 在 config/mep-quotes.yaml 中缺报价日期（quoted_at）——无日期报价不算凭据`);
   }
+  // ⑦ 生效卡绑定（自主扫描 D4）：被引用卡必须是文件里 active 的那张——引
+  // 用一张非生效的 contracted 卡过守卫，等于让一张没在用的卡给已核实层
+  // 背书。解析层（parseQuoteCards）保证 active 必在 quotes 内且恒有值；
+  // 注入对象缺 active 视为未绑定，同样抛错。
+  const activeCardId = (file as AnyRecord).active;
+  if (activeCardId !== basis.cardId) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据未绑定生效卡：引用的是 ${basis.cardId}，但报价文件当前 active 是 ${typeof activeCardId === 'string' ? activeCardId : '缺失'}——已核实层只能由生效卡支撑，请改引生效卡或先切换 active`);
+  }
   // ⑤ 证据等级正向强制：已核实层只认一级证据 written_quote（书面报价单）；
   // 缺 evidence、或 kind 为 photo / owner_reported（照片判读 / 业主转述）一律
   // 不许——与 shared/quote-cards.ts 的证据分级及 comparable 门禁同口径。
   const cardEvidenceKind = (card.evidence as AnyRecord | undefined)?.kind;
   if (cardEvidenceKind !== 'written_quote') {
     throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据证据不合格：卡 ${basis.cardId} 的 evidence.kind=${typeof cardEvidenceKind === 'string' ? cardEvidenceKind : '缺失'}，不是 written_quote（书面报价单）——照片判读（photo）/ 业主转述（owner_reported）/ 无证据的卡不得支撑已核实层，请补登书面证据或降为暂估层`);
+  }
+  // ⑧ 币种（自主扫描 D5）：evidence.currency 若声明必须为 CNY——本表金额
+  // 一律按人民币入表，一张 USD 计价的 written_quote 卡不得静默按 ¥ 汇总。
+  // 现行卡均无 evidence（已在 ⑤ 被拦下），本检查只在 evidence 存在且过
+  // ⑤ 后生效。
+  const cardCurrency = (card.evidence as AnyRecord | undefined)?.currency;
+  if (cardCurrency !== undefined && cardCurrency !== 'CNY') {
+    throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据币种不合格：卡 ${basis.cardId} 的 evidence.currency=${cardCurrency}，不是 CNY——外币报价不得静默按人民币入表，请换算登记或降为暂估层`);
   }
   // ⑥ 费率来源核验（第二层）：公开参考价（public_reference）不是施工方报价，
   // 哪怕卡被标成 contracted、且 evidence 为 written_quote 也不许据此声称已核
@@ -597,13 +619,57 @@ export function computeActiveMepQuote(): { comparison: MepQuoteComparison; takeo
     throw new Error('cost summary: config/house.yaml 的 project.usable_area 必须是正数（水电清包人工按㎡计价）');
   }
   const labor = parseYaml(readFileSync('config/mep-labor.yaml', 'utf8')) as Parameters<typeof mepQuoteFallback>[0];
-  const comparisons = compareMepQuotes(loadMepQuotes(), takeoff, areaSqm, mepQuoteFallback(labor));
+  const fallback = mepQuoteFallback(labor);
+  const comparisons = compareMepQuotes(loadMepQuotes(), takeoff, areaSqm, fallback);
   const comparison = comparisons.find((entry) => entry.active);
   if (!comparison) throw new Error('cost summary: config/mep-quotes.yaml 没有生效报价卡');
   if (comparison.total == null || comparison.pendingRows.length) {
     throw new Error(`cost summary: 生效水电报价卡 ${comparison.id} 存在待报价行（${comparison.pendingRows.join(', ')}），总额不可用`);
   }
+  assertActiveMepQuoteIntegrity(comparison, fallback);
   return { comparison, takeoff, areaSqm };
+}
+
+/**
+ * 生效水电报价卡的完整性断言（自主扫描 D1 / D2 / D6）：computeActiveMepQuote
+ * 原只断言 total 非 null + pendingRows 为空，三条静默通道不在其内——
+ * ① **fallback 顶替计价**（D1）：compareQuoteCards 对卡内**未声明**的费率
+ * 行以 fallback 计价并标 rate_source（上游铁律「回落必须看得见」）；材料行
+ * fallback 为 null（会进 pendingRows、安全），但 5 个人工行的 fallback 是
+ * mep-labor.yaml 的真实费率——生效卡整行漏声明任一人工行时，总额照常算
+ * 出、水电行推导却仍声称金额来自「生效卡单价」。本域实测细节：MEP 的
+ * spec.fallbackLabel = 'mep-labor.yaml'，回落行的 rate_source 运行时值是
+ * 回落源名而非字面 'fallback'，故断言以 `rate_source !== 'quote'` 判之
+ * （任何非卡内声明的来源都算顶替）。本表口径：水电金额必须全部来自生效
+ * 卡本身，顶替行必须显形为构建失败、点名行键。
+ * ② **单位一致**（D2）：量纲在解析层只是非空字符串、从不校验——某行被改
+ * 成不同量纲口径报价（如 panel 按 元/个 而非 元/模）时，per_unit 仍按原
+ * 量纲的数量相乘、静默倍乘/漏乘。故每行 unit 须与 mepQuoteFallback 的规
+ * 范单位表一致，不符抛错并点名行键与两个单位。
+ * ③ **总额健全性**（D6）：本行原是全表唯一定价行没有正数断言的（合同行
+ * 断言 contracted > 0、灯具行断言 amount > 0、美缝断言 target > 0）——算
+ * 量整体归零会静默出 ¥0 行、NaN 会渲染成 ¥NaN 且全文全等校验因确定性输
+ * 出而通过。故 total 必须有限且 > 0。
+ * out_of_scope 行不参与以上三查（它们已被排除在总额外，处置走
+ * assertMepOutOfScopeDispositions 的登记通道）。
+ */
+export function assertActiveMepQuoteIntegrity(
+  comparison: MepQuoteComparison,
+  fallback: MepQuoteFallback,
+): void {
+  if (typeof comparison.total !== 'number' || !Number.isFinite(comparison.total) || comparison.total <= 0) {
+    throw new Error(`cost summary: 生效水电报价卡 ${comparison.id} 总额不健全（total=${comparison.total}）——总额必须是有限正数；算量整体归零或出现 NaN 时不得静默出 ¥0 / ¥NaN 水电行`);
+  }
+  for (const row of comparison.rows) {
+    if (row.out_of_scope) continue;
+    if (row.rate_source !== 'quote') {
+      throw new Error(`cost summary: 生效水电报价卡 ${comparison.id} 的计价行 ${row.key} 未在卡内声明单价、由 fallback（${row.rate_source}）顶替计价——本表水电金额必须全部来自生效卡本身，请先在卡内补登该行单价（或标 out_of_scope 并登记处置）再生成`);
+    }
+    const canonicalUnit = fallback[row.key]?.unit;
+    if (canonicalUnit && row.unit !== canonicalUnit) {
+      throw new Error(`cost summary: 生效水电报价卡 ${comparison.id} 的计价行 ${row.key} 单位为「${row.unit}」，与规范单位「${canonicalUnit}」不一致——量纲对不上时 per_unit × 数量会静默倍乘/漏乘，请先对齐单位口径再生成`);
+    }
+  }
 }
 
 /**

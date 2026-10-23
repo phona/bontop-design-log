@@ -7,6 +7,7 @@ import {
   assertMepOutOfScopeDispositions,
   assertNoDuplicateCountedClaims,
   assertPendingClassifications,
+  assertActiveMepQuoteIntegrity,
   assertMepTierReasonFacts,
   assertVerifiedTierBasis,
   buildCostSummary,
@@ -156,7 +157,7 @@ describe('成本总表 cost-summary', () => {
     );
     // contracted 卡只有在原卡凭据可核（卡存在、承包商与报价日期非空、证据为
     // written_quote）时才放行——注入合成卡文件
-    const contractedQuotes = { quotes: [{ id: 'some_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01', evidence: { kind: 'written_quote', status: '书面报价单' } }] };
+    const contractedQuotes = { active: 'some_card', quotes: [{ id: 'some_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01', evidence: { kind: 'written_quote', status: '书面报价单' } }] };
     assert.doesNotThrow(
       () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'some_card', cardStatus: 'contracted' }, control, contractedQuotes),
     );
@@ -314,6 +315,7 @@ describe('成本总表 cost-summary', () => {
     // （业主转述）一律抛错。第二层费率来源：evidence 合格也拦不住费率行取自
     // 公开参考价（scope_note 带 public_reference 标记，现行基线卡的形态）。
     const cardWith = (evidence: unknown, rates: unknown = { labor_by_area: { per_unit: 40, unit: '元/㎡', scope_note: '施工方书面报价，清包人工' } }) => ({
+      active: 'ev_card',
       quotes: [{
         id: 'ev_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01',
         ...(evidence === undefined ? {} : { evidence }),
@@ -352,6 +354,7 @@ describe('成本总表 cost-summary', () => {
     );
     // 对照：written_quote + 费率全部来自施工方报价 → 放行（不误伤真凭据）
     const cleanQuotes = {
+      active: 'clean_card',
       quotes: [{
         id: 'clean_card', status: 'contracted', contractor: '测试施工方', quoted_at: '2026-10-01',
         evidence: { kind: 'written_quote', status: '书面报价单' },
@@ -364,6 +367,27 @@ describe('成本总表 cost-summary', () => {
     assert.doesNotThrow(
       () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'clean_card', cardStatus: 'contracted' }, control, cleanQuotes),
       'written_quote 且费率均为施工方报价来源的 contracted 卡必须通过',
+    );
+    // 生效卡绑定（自主扫描 D4）：被引用卡必须就是文件 active 的那张——引
+    // 用一张非生效的 contracted 卡过守卫，等于让没在用的卡给已核实层背书
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'clean_card', cardStatus: 'contracted' }, control,
+        { ...cleanQuotes, active: 'some_other_card' }),
+      /未绑定生效卡/,
+      '引用非 active 的 contracted 卡必须抛错',
+    );
+    // 币种（自主扫描 D5）：evidence.currency 若声明必须为 CNY，外币报价
+    // 不得静默按人民币入表；声明 CNY 则放行
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ev_card', cardStatus: 'contracted' }, control,
+        cardWith({ kind: 'written_quote', status: '书面报价单', currency: 'USD' })),
+      /currency=USD.*CNY/,
+      'evidence.currency 为 USD 的卡必须抛错',
+    );
+    assert.doesNotThrow(
+      () => assertVerifiedTierBasis('cost-mep', { type: 'quote-card', cardId: 'ev_card', cardStatus: 'contracted' }, control,
+        cardWith({ kind: 'written_quote', status: '书面报价单', currency: 'CNY' })),
+      'evidence.currency 为 CNY 的卡必须放行',
     );
   });
 
@@ -458,6 +482,54 @@ describe('成本总表 cost-summary', () => {
     );
     // 原卡找不到 → 无从核验，抛错
     assert.throws(() => assertMepTierReasonFacts(comparison, undefined, real04015Status), /找不到生效卡/);
+  });
+
+  it('水电完整性断言：fallback 顶替计价、单位错位、总额不健全必须抛错点名', () => {
+    // 自主扫描 D1/D2/D6：computeActiveMepQuote 原只断言 total 非 null +
+    // pendingRows 为空——生效卡整行漏声明人工行时 compareQuoteCards 以
+    // mep-labor.yaml 的真实费率 fallback 顶替计价（rate_source 非 'quote'），
+    // 总额照常算出且推导仍声称来自生效卡；单位全链路不校验，量纲错位会
+    // 静默倍乘；总额为 0/NaN 也无断言。三者必须在出金额前显形为构建失败。
+    const { takeoff, areaSqm, comparison } = computeActiveMepQuote();
+    const labor = parseYaml(readFileSync('config/mep-labor.yaml', 'utf8')) as Parameters<typeof mepQuoteFallback>[0];
+    const fallback = mepQuoteFallback(labor);
+    // 真实数据零影响：现行 5 张卡均声明全部 32 行、单位与规范表一致
+    assert.doesNotThrow(() => assertActiveMepQuoteIntegrity(comparison, fallback), '现行生效卡必须通过完整性断言');
+    const compareWith = (mutate: (card: AnyRecord) => void) => {
+      const file = structuredClone(loadMepQuotes()) as unknown as AnyRecord;
+      const card = (file.quotes as AnyRecord[]).find((quote) => quote.id === file.active) as AnyRecord;
+      mutate(card);
+      return compareMepQuotes(
+        file as unknown as Parameters<typeof compareMepQuotes>[0],
+        takeoff,
+        areaSqm,
+        fallback,
+      ).find((entry) => entry.active)!;
+    };
+    // fallback 顶替：删掉生效卡的人工行声明 → 该行被 mep-labor.yaml 顶替
+    // 计价（总额仍非 null、不进 pendingRows）→ 必须抛错点名行键
+    const fallbackComparison = compareWith((card) => { delete card.rates.labor_by_area; });
+    assert.ok(fallbackComparison.total != null && fallbackComparison.pendingRows.length === 0, '顶替场景下总额仍算得出（这正是静默通道）');
+    assert.throws(
+      () => assertActiveMepQuoteIntegrity(fallbackComparison, fallback),
+      /labor_by_area.*fallback|计价行 labor_by_area/,
+      'fallback 顶替计价必须抛错并点名行键',
+    );
+    // 单位错位：把一行单位改成不同量纲 → 必须抛错点名行键与两个单位
+    const unitComparison = compareWith((card) => { card.rates.water_cold_20.unit = '元/根'; });
+    assert.throws(
+      () => assertActiveMepQuoteIntegrity(unitComparison, fallback),
+      /water_cold_20.*元\/根.*元\/m/,
+      '单位与规范单位不一致必须抛错并点名行键与两单位',
+    );
+    // 总额健全性：0 与 NaN 都不得出表（断言函数层合成）
+    for (const badTotal of [0, Number.NaN]) {
+      assert.throws(
+        () => assertActiveMepQuoteIntegrity({ ...comparison, total: badTotal }, fallback),
+        /总额不健全/,
+        `总额为 ${badTotal} 必须抛错`,
+      );
+    }
   });
 
   it('覆盖检查：全部未决条目已登记归属，三类计数对上未决总数', () => {
