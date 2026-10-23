@@ -239,4 +239,74 @@ describe('BudgetAdvisor', () => {
     assert.equal(impossible.resultingTotal, 2000);
     assert.equal(impossible.maxSavings, 1500);
   });
+
+  /**
+   * 返回顺序与边际语义（2026-10-23 评审 P2）：互补场景——A 单独省 100、
+   * B 单独省 50，但 A+B 合计省 1,000（共享行项只在两者都降档时才降）。
+   * 贪心先选 A（边际 100），再选 B（在 A 之上的边际 900）。旧实现按 savings
+   * 降序重排成 [B:900, A:100]，读者按返回顺序单独执行 B 只省 50，与标注不符。
+   * 修复后：返回顺序恒为选入顺序 [A:100, B:900]，逐条按序应用的实际节省
+   * 恰为各自标注值。
+   */
+  it('complementary pair: suggestions keep greedy pick order, marginals are order-conditional', () => {
+    const topics = ['A', 'B'];
+    const fakeCatalog = {
+      getTopics: () => topics.map((id) => ({ id })),
+      getOptions: (topicId: string) => [
+        { id: `${topicId}-std`, name: `${topicId} 标准` },
+        { id: `${topicId}-down`, name: `${topicId} 降档`, data: { cons: ['测试降档代价'] } },
+      ],
+      getOption: (topicId: string, optionId: string) => ({
+        id: optionId,
+        name: optionId.endsWith('-down') ? `${topicId} 降档` : `${topicId} 标准`,
+      }),
+    };
+    const fakeCalc = {
+      calculate: (s: CurrentScheme): BudgetSnapshot => {
+        const downA = s.selections['A']?.default === 'A-down';
+        const downB = s.selections['B']?.default === 'B-down';
+        const lineItems = [
+          { topic: 'A', cost: downA ? 900 : 1000 },
+          { topic: 'B', cost: downB ? 950 : 1000 },
+          // 共享行项：只有 A、B 都降档才从 1000 降到 150（互补节省 850）。
+          { topic: 'shared', cost: downA && downB ? 150 : 1000 },
+        ];
+        return { lineItems } as unknown as BudgetSnapshot;
+      },
+    };
+    const fakeRules = { evaluate: () => ({ risks: [] }) };
+    const advisor = new BudgetAdvisor(
+      fakeCatalog as unknown as ProjectCatalog,
+      fakeCalc as unknown as BudgetCalculator,
+      fakeRules as unknown as RuleEngine
+    );
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: Object.fromEntries(
+        topics.map((t) => [t, { default: `${t}-std`, roomOverrides: {} }])
+      ),
+    };
+    const fullTotal = (s: CurrentScheme): number =>
+      fakeCalc.calculate(s).lineItems.reduce((sum, li) => sum + li.cost, 0);
+    assert.equal(fullTotal(scheme), 3000, '基线：A 单独省 100、B 单独省 50、A+B 省 1,000');
+
+    const result = advisor.suggest(scheme, 2000);
+    assert.equal(result.feasible, true);
+    assert.equal(result.resultingTotal, 2000);
+    assert.deepEqual(
+      result.suggestions.map((s) => [s.topic, s.savings]),
+      [['A', 100], ['B', 900]],
+      '顺序必须是选入顺序 [A:100, B:900]，不许按 savings 降序重排'
+    );
+    // 按返回顺序逐条应用：每一步实际总盘降幅恰为该条标注的边际 savings。
+    let acc = scheme;
+    let prev = result.currentTotal;
+    for (const sug of result.suggestions) {
+      acc = applySuggestions(acc, [sug]);
+      const now = fullTotal(acc);
+      assert.equal(prev - now, sug.savings, `${sug.topic} 的标注 savings 必须等于按序应用时的实际降幅`);
+      prev = now;
+    }
+    assert.equal(prev, result.resultingTotal);
+  });
 });

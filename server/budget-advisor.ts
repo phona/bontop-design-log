@@ -174,9 +174,12 @@ export class BudgetAdvisor {
       chosenTopics.add(bestCand.topic);
       resultingTotal = bestTotal;
     }
-    // 展示顺序按边际 savings 降序：贪心每轮取最大边际，选入序本已大体降序，
-    // 排序只做展示稳定化，不改变集合与 Σ 恒等式。
-    suggestions.sort((a, b) => b.savings - a.savings);
+    // 返回顺序 = 贪心选入顺序，**不得重排**（2026-10-23 评审 P2）：每条 savings
+    // 是「在排在它前面的建议已全部应用」前提下的边际节省——按返回顺序逐条
+    // 执行，每一步的实际节省恰为其标注值，累积到达 resultingTotal；若按
+    // savings 降序重排，互补型候选的边际值（如单独只省 50、组合里边际 900）
+    // 会跑到前面，读者按列表顺序单独执行该条时实际节省与其标注不符。
+    // 互补场景下选入序的 savings 本就不是单调降序，这是语义而非乱序。
 
     // maxSavings = 全部候选一并应用的真实组合节省，不是单项之和：联动场景下
     // 单项之和会把共享节省重复计入，虚增可省空间（评审实测可高估近一倍）。
