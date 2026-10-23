@@ -227,6 +227,28 @@ describe('成本总表 cost-summary', () => {
     assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
   });
 
+  it('合同凭据金额总价语境：分项金额（14,124 / 8,400）同步篡改必须抛错', () => {
+    // 复审 P1 续：全词命中仍不够——DEC-2026-10-04-R1 章节正文本身就载有分项
+    // 金额（外机 14,124 元、安装 8,400 元），同步误改成分项数时全词命中照样
+    // 通过。命中 token 必须落在总价语境行（标题行或含总价语义关键词的行）：
+    // 36,000 载于标题行（定标成交：36,000 元），分项数只在构成陈述行上。
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    for (const forged of [14124, 8400]) {
+      const doctored = structuredClone(control) as AnyRecord;
+      pkgOf(doctored, 'PKG-030').budget.contracted_cny = forged;
+      const qr = (doctored.hard_finish_quote_rounds.records as AnyRecord[])
+        .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+      qr.locked_cny = forged;
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, doctored),
+        /金额对不上/,
+        `合同额被同步误改为 ${forged}（DEC 章节内分项金额）必须被总价语境行校验拦下`,
+      );
+    }
+    // 原值 36,000 在总价语境行上，必须继续通过
+    assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
+  });
+
   it('报价卡凭据边界：contracted 卡费率含公开参考价来源不得支撑已核实层', () => {
     // 复审凭据边界：status=contracted 只证明登记状态——费率若取自公开参考价
     // （scope_note 带 public_reference 标记，正是现行基线卡的形态），仍不是

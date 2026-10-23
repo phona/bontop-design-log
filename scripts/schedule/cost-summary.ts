@@ -225,11 +225,19 @@ export function findDecisionSection(decId: string): { file: string; text: string
  * DEC id 形式）回 docs/decisions/ 解析对应 DEC 章节原文，断言：① 章节存在；
  * ② 章节原文载有与 contracted_cny 一致的金额（千分位格式，如 36,000）；
  * ③ 章节原文带成交/签约/合同语义。三者缺一即抛错。
- * ② 的命中口径是**全词精确命中**（复审再续）：从章节原文提取金额 token
- * （千分位/整数形态，正则两侧以 (?<![\d,]) / (?![\d,]) 圈界），要求提取集合
- * 里存在与目标金额格式化后**完全相等**的 token——早先的 includes() 子串查
- * 法会把「6,000」误认成原文「36,000」的子串而放行（控制源与轮次金额被同步
- * 误改时，错误金额照样进已核实层），子串/前缀命中一律不算。
+ * ② 的命中口径是**全词精确命中 + 总价语境行**（复审再续两轮）：先从章节原文
+ * 提取金额 token（千分位/整数形态，正则两侧以 (?<![\d,]) / (?![\d,]) 圈界），
+ * 要求存在与目标金额格式化后**完全相等**的 token——早先的 includes() 子串
+ * 查法会把「6,000」误认成原文「36,000」的子串而放行，子串/前缀命中一律不
+ * 算。但仅有全词命中还不够：DEC 章节正文里同时载有**分项金额**（如
+ * DEC-2026-10-04-R1 章节内的外机 14,124 元、安装 8,400 元），控制源与轮次
+ * 金额若被同步误改成分项数，全词命中照样通过。故再收一层：命中 token 必须
+ * 出现在**总价语境行**上——章节标题行，或含总价语义关键词（总价 / 合同额 /
+ * 成交价 / 总金额 / 定标成交）的行。关键词集的依据（按现行 DEC 措辞）：总价
+ * 声明写在标题行（「…定标成交：36,000 元」）与正文的总价论述行（如「36,000
+ * 为整包含价，换内机不改变总价」），而分项行只陈述构成（「外机 … 14,124
+ * 元」「安装 1,400 元/台 × 6 = 8,400 元」），不带任何总价语义词——故分项金
+ * 额永远进不了总价语境行的 token 集。章节内无总价语境行载有该金额即抛错。
  * 强度边界（如实）：这是对仓库内决策原文的文本核验——能拦「引用不存在、
  * 金额被改、引用挂错决策」，拦不住「DEC 原文与纸质合同本身不符」（纸质合同
  * 不在仓库内，无从机读；DEC 是仓库内最接近合同的权威凭据）。
@@ -240,9 +248,16 @@ function assertContractCredential(rowId: string, contractRef: string, contracted
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据无从核验：contract_ref ${contractRef} 在 docs/decisions/ 中解析不到对应的 DEC 章节——引用不存在，已核实层不成立`);
   }
   const amountText = contracted.toLocaleString('en-US');
-  const amountTokens: string[] = section.text.match(/(?<![\d,])(?:\d{1,3}(?:,\d{3})+|\d+)(?![\d,])/g) ?? [];
-  if (!amountTokens.includes(amountText)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）未载明金额 ${amountText}（全词精确命中，子串不算），与 ${packageId} contracted_cny=${contracted} 不符`);
+  const amountTokenPattern = /(?<![\d,])(?:\d{1,3}(?:,\d{3})+|\d+)(?![\d,])/g;
+  // 总价语境行：章节标题行（切片首行），或含总价语义关键词的行（关键词集与
+  // 依据见函数头注）。分项金额只出现在构成陈述行上，进不了这个集合。
+  const totalPriceContextPattern = /(?:总价|合同额|成交价|总金额|定标成交)/;
+  const contextTokens: string[] = section.text
+    .split('\n')
+    .filter((line, index) => index === 0 || totalPriceContextPattern.test(line))
+    .flatMap((line) => line.match(amountTokenPattern) ?? []);
+  if (!contextTokens.includes(amountText)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）的总价语境行（标题行及含总价/合同额/成交价/总金额/定标成交语义的行）未载明金额 ${amountText}（须全词精确命中，子串与分项金额均不算），与 ${packageId} contracted_cny=${contracted} 不符`);
   }
   if (!/(成交|签约|合同)/.test(section.text)) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见成交/签约/合同语义，该决策不是成交凭据`);
