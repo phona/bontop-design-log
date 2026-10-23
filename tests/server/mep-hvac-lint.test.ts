@@ -299,6 +299,38 @@ test('declared slope is checked per segment, but wall drains are judged on the w
   assert.ok(wallDrainUpFlow.errors.some((i) => i.code === 'gravity_slope_below_design_target' && i.routeId === 'wall-drain-upflow'), 'up 流向墙排不得把上升算成落差');
 });
 
+test('wall drain vertical drop must not subsidize an under-sloped horizontal run', () => {
+  // PR #14 评审回归：先竖直下落 0.30m、再接 2.00m 仅跌 5mm（0.25%）的横管。旧全线口径
+  // 用首末点总落差 0.305m 对 2.00m 判 15.25%「达标」，竖直落差把横管欠坡补贴掉了；
+  // 横管坡度只能由横管段自身落差供（与逐段口径 gravitySlopeDeficits 的 R01 原则一致：
+  // 纯竖直段与近竖直段是落水不是横管，不供落差）。
+  const subsidized = lintMepCoordination(sample({
+    id: 'wall-drain-vertical-subsidy', layer: 'drainage', status: 'inferred', source_status: 'plan_supported',
+    method: 'gravity_wall_drain', diameter: 0.075, flow_direction: 'down', slope: 0.01,
+    from_height: 0.60, to_height: 0.295,
+    from: { x: 0, z: 0, y: 0.60 }, via: [{ x: 0, z: 0, y: 0.30 }], to: { x: 2, z: 0, y: 0.295 },
+  }), sources);
+  const issue = subsidized.errors.find((i) => i.code === 'gravity_slope_below_design_target' && i.routeId === 'wall-drain-vertical-subsidy');
+  assert.ok(issue, '竖直落差不得让欠坡横管达标');
+  assert.match(issue.message, /wall-drain run has 5\.0mm fall over 2\.00m \(0\.25%\); the declared minimum is 1\.00% judged on the whole run/);
+  // 近竖直斜段（平面 0.10m 跌 0.30m，>45°）同理不供落差：其后横管仍只有 5mm/2.00m
+  const steep = lintMepCoordination(sample({
+    id: 'wall-drain-steep-subsidy', layer: 'drainage', status: 'inferred', source_status: 'plan_supported',
+    method: 'gravity_wall_drain', diameter: 0.075, flow_direction: 'down', slope: 0.01,
+    from_height: 0.60, to_height: 0.295,
+    from: { x: 0, z: 0, y: 0.60 }, via: [{ x: 0.1, z: 0, y: 0.30 }], to: { x: 2.1, z: 0, y: 0.295 },
+  }), sources);
+  assert.ok(steep.errors.some((i) => i.code === 'gravity_slope_below_design_target' && i.routeId === 'wall-drain-steep-subsidy'), '近竖直段落差不得让欠坡横管达标');
+  // 对照：同样的竖直下落 + 横管自身达标（2.00m 跌 25mm = 1.25%）→ 不得误报
+  const okRun = lintMepCoordination(sample({
+    id: 'wall-drain-vertical-ok', layer: 'drainage', status: 'inferred', source_status: 'plan_supported',
+    method: 'gravity_wall_drain', diameter: 0.075, flow_direction: 'down', slope: 0.01,
+    from_height: 0.60, to_height: 0.275,
+    from: { x: 0, z: 0, y: 0.60 }, via: [{ x: 0, z: 0, y: 0.30 }], to: { x: 2, z: 0, y: 0.275 },
+  }), sources);
+  assert.equal(okRun.errors.some((i) => i.code === 'gravity_slope_below_design_target' && i.routeId === 'wall-drain-vertical-ok'), false);
+});
+
 // ── (b) 相邻点斜线段 ──
 
 test('diagonal segments are flagged across MEP layers while coordinate jitter stays quiet', () => {
