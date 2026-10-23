@@ -219,6 +219,7 @@ hard_finish_quote_rounds:
       cap: 业主选品封顶价，不是成交价
       candidate: 候选价或下一轮询价目标
     status_note: locked 必须同时给出 locked_cny 与 contract_ref；supersedes 指向被本轮取代的上一轮记录，只追加不覆盖，历史轮次永久可追溯
+    contract_note: 已转合同的记录另带 contract 登记块（amount_cny / deal_status / signed_at / includes / excludes / archive_paths），由 control.ts 校验金额与 locked_cny 一致、deal_status 枚举、signed_at 格式与 archive_paths 逐条形态（{path, sha256}：path 限 contracts/ 下、sha256 为 64 位十六进制、文件存在非空）；成本总表守卫读登记块认金额，并实算归档哈希比对、回 DEC 章节核对登记金额锚定合同总价表述与成交语义，不再从 DEC 散文提取金额
   records:
     - id: QR-2026-10-03-01
       round_id: ROUND-2026-10-03
@@ -537,7 +538,26 @@ hard_finish_quote_rounds:
       dedup_rule: 业主定标方向，房间归属已于 2026-10-03 由业主补齐：客餐厅+开放厨房 71+56=12.7kW（两台，设计值 10.0kW 单台，+2.7kW）、主卧 45=4.5kW（与设计一致）、父母房 28=2.8kW（设计 2.5）、儿童房 28=2.8kW（设计 2.2）、书房 28=2.8kW（设计 2.2）；合计 25.6kW / 6 台，比 DEC-2026-09-07-055 的 21.4kW / 5 台多 1 台、+4.2kW。第 6 台内机落在客餐厅，因此不需要新增卧室穿墙，冷媒可在客厅北缘边吊内分歧；仍需确认：两台内机外廓与边吊长度/净空、南侧参考梁底 2.73m 的可用高度、送风与回风口布置、第二路冷凝水（现有候选点 (10.0,6.1)→(10.0,0.10)）、客餐厅第二电源点位与 hvac_power_living 回路容量、200 外机约 20kW 的连接率约 1.28（贴行业上限 1.30）与外机尺寸对西设备平台（1.6×1.55m）与临街立面的影响、+3,000 预算须业主书面追加。铜管/保温/风口/吊装/调试与两次安装边界必须写进合同 ‖ DEC-2026-10-03-R6：QR-2026-10-03-24 的 25.6kW/6 台/1.28 容量表已作废（容量偏大），现行配置为 20kW 外机 + 6 台 21.6kW、连接率 1.08（71T2 客厅区、28T2 餐区、45T2 主卧、28T2 父母房、22T2 儿童房、22T2 书房）；本条为 QR 原文留档。**DEC-2026-10-04-R1：该 QR 已转为合同，2026-10-04 定标成交 36,000 元（外机 MJV-200W-E01-LHIV 20kW + 6 台双出风内机 /P-SS 全带泵，含辅材；不含复合风管与风口加长（加长 100 元/米另计）、亦不含税，口径依据 docs/decisions/05-hvac.md DEC-2026-10-04-R1「更正」与 docs/design-iterations/hvac-resix-20261003/evidence/evidence-notes.md 合同附件备注 2/5）；容量表判读 25.3kW/1.27，房间映射以合同附图为准，核对后回写 config/hvac.yaml。owner_target_cny 36,000 已与成交价一致。**该 QR 已于 2026-10-04 转为合同（DEC-2026-10-04-R1），本条 status 保留为 QR 自身历史状态。
       locked_cny: 36000
       contract_ref: DEC-2026-10-04-R1
-      evidence_path: docs/design-iterations/hvac-resix-20261003/evidence/evidence-notes.md
+      evidence_path: contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg
+      # 合同结构化登记（2026-10-23 收口）：合同事实以本块为成本总表守卫的机读单源；
+      # DEC-2026-10-04-R1 章节作存在性、成交语义与登记金额合同总价锚定核对，不再从散文提取金额。
+      # archive_paths 逐条带 sha256 钉死原件字节（复审 P2-a），原件被替换即守卫报警。
+      # 证据等级注记（2026-10-23 第三轮复审）：excludes 的含否口径据 evidence-notes 对
+      # 合同附件备注 2/5 的历史转录；备注页原件不在已归档两页内（合同附件共 8 页），
+      # 原件补归档待办登记于 docs/pending-site-data.md #39 ⑥，补齐前为转录级证据。
+      # counterparty（签约方）仓内仅见于 hvac-resix fact-table F1 与 evidence-notes
+      # 门牌转录，未作结构化登记，本块不设该字段、不编造。
+      contract:
+        amount_cny: 36000
+        deal_status: signed
+        signed_at: "2026-10-04" # 加引号走字符串形态：未加引号时 js-yaml 在解析期就把非法日期（如 02-30）归一化，严格日历校验无从拦起
+        includes: 含辅材
+        excludes: 不含复合风管与风口加长（加长 100 元/米另计）、不含税
+        archive_paths:
+          - path: contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg
+            sha256: b1adfe5ca3aa6e31744cc14d6c329e952c5b8d715a4379b41fd69a6aacb5f61a
+          - path: contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p2_20261004.jpg
+            sha256: 4304b3b8eaa43d7164da1e2c69929bce0149e9e596ffbe0508031628b2ff47c2
     - id: QR-2026-10-03-25
       round_id: ROUND-2026-10-03
       item: 成品保护/垃圾清运/零星孔洞修补
