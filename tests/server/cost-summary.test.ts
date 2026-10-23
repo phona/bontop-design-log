@@ -365,6 +365,45 @@ describe('成本总表 cost-summary', () => {
     assert.equal(sectionAnchorsContractTotal('本户成交价 36,000.5 元', 36000), false, '总价分句里出现小数金额也不得冒充整数总价');
     assert.equal(sectionAnchorsContractTotal('本户成交价 36,000 元整', 36000), true, '成交价分句锚定成立');
     assert.equal(sectionAnchorsContractTotal('暂记 36,000 元，待议', 36000), false, '无总价语义的分句只是提及、不算锚定');
+    // 分项总价反例（复审第三轮 P1；承 #13 退役提取器的「分项总价子类
+    // 屏蔽」用例，本轮按评审要求补回）：子目价写成「分项总价」时，
+    // 裸「总价」二字不得让它锚成合同总价
+    const subtotalSection = '双方已签约。外机分项总价：14,124 元。合同总价：36,000 元';
+    assert.equal(sectionAnchorsContractTotal(subtotalSection, 14124), false, '「外机分项总价：14,124」是子目价，不得锚成合同总价');
+    assert.equal(sectionAnchorsContractTotal(subtotalSection, 36000), true, '同章「合同总价：36,000」锚定成立');
+    assert.equal(sectionAnchorsContractTotal('外机分项合计：14,124 元', 14124), false, '「分项合计」的合计被子目语义屏蔽');
+    assert.equal(sectionAnchorsContractTotal('设备合计 14,124 元', 14124), false, '部件名紧邻在前的合计是子目合计、不是合同总价');
+    assert.equal(sectionAnchorsContractTotal('合计 36,000 元', 36000), true, '无子目语义的合计是合同总价锚点');
+  });
+
+  it('分项总价反例（守卫级）：DEC 写明分项总价与合同总价时，三方同步改成分项价仍必须抛错（复审第三轮 P1）', () => {
+    // 评审的原始复现：章节同时有「外机分项总价：14,124」与「合同总价：
+    // 36,000」，把登记额 / locked_cny / contracted_cny 同步改成 14,124。
+    // 第二轮锚定只要求金额与「总价」同分句，分项价借「分项总价」里的
+    // 总价二字误锚放行；第三轮去裸总价 + 子目屏蔽后必须抛错。
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    const swapped = structuredClone(control) as AnyRecord;
+    const qr = (swapped.hard_finish_quote_rounds.records as AnyRecord[])
+      .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+    qr.contract.amount_cny = 14124;
+    qr.locked_cny = 14124;
+    pkgOf(swapped, 'PKG-030').budget.contracted_cny = 14124;
+    const dir = mkdtempSync(join(tmpdir(), 'dec-subtotal-'));
+    try {
+      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 中央空调定标\n\n- **成交事实**：双方已签约。外机分项总价：14,124 元。合同总价：36,000 元。\n');
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, swapped, undefined, dir),
+        /金额与 DEC 脱节/,
+        '分项总价不得冒充合同总价：三方同步改成分项价必须被总价锚定拦下',
+      );
+      // 同一注入章节、登记仍为真实 36,000 时照常通过（不许误杀真凭据）
+      assert.doesNotThrow(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
+        '章节含分项总价与合同总价时，真实登记金额 36,000 必须锚定通过',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('归档路径核查：规范路径放行、../ 与 symlink 拒绝（复审第二轮 P1）', () => {

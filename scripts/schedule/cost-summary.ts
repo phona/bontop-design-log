@@ -306,26 +306,53 @@ export function sectionContainsAmountToken(sectionText: string, amountCny: numbe
   return false;
 }
 
-/** 总价语义关键词：金额与其中任一词同处一个分句，才算被锚定为总价。 */
-const CONTRACT_TOTAL_KEYWORDS = ['合计', '总价', '成交价', '合同额', '合同总价', '整包含价', '定标成交'] as const;
+/**
+ * 合同总价语义关键词：金额与其中任一**未被屏蔽**的关键词同处一个分
+ * 句，才算被锚定为合同总价。裸「总价」不在集合内（第三轮 P1）：它是
+ * 「分项总价 / 单项总价 / 外机总价」等子目总价的子串，子目价写成
+ * 「分项总价：14,124」时同分句命中即误锚——明确关联合同总价的词只有
+ * 合同总价 / 合同额 / 成交价 / 定标成交 / 整包含价 / 合计。
+ */
+const CONTRACT_TOTAL_KEYWORDS = ['合同总价', '合同额', '合计', '成交价', '定标成交', '整包含价'] as const;
 
 /**
- * 登记金额回锚 DEC 总价语义（复审第二轮 P1）：presence 核对不够——真实
- * 章节 DEC-2026-10-04-R1 同章并列外机分项 14,124、安装 8,400 与合同
- * 合计 36,000，三方金额若被同步误改成 14,124，旧 presence 检查会命中
- * 分项行放行。故回锚升级为：金额必须以完整 token 出现在一个**带总价
- * 语义的分句**里。分句按行与中文标点（。，；、）切分（千分位逗号是
- * ASCII 逗号，不在切分集内）；总价关键词 = 合计 / 总价 / 成交价 /
- * 合同额 / 合同总价 / 整包含价 / 定标成交。真实章节里 36,000 有三处
- * 锚点（标题「定标成交：36,000 元」、「合计 36,000 元」、「36,000 为
- * 整包含价」），14,124 与 8,400 所在分句均无总价词，锚不上。这不是
- * 已退役的辖域提取：不从散文抠金额、不做候选唯一性判定，金额权威值
- * 仍只认登记块；这里只问「登记金额在 DEC 里被当作总价陈述过没有」。
+ * 总价关键词的屏蔽词：关键词命中点前 10 字内出现任一屏蔽词，该命中按
+ * 子目语义屏蔽、不计数（第三轮 P1，承 #13 第九轮「分项总价子类屏
+ * 蔽」的口径）。堵的是「外机分项合计：14,124」「设备合计 14,124」
+ * 这类子目合计借关键词锚定：合计前紧邻的部件/子目词说明这个合计是
+ * 某个子目的合计，不是合同总价。代价如实：DEC 里写总价陈述时不得在
+ * 关键词前紧邻部件名（如「设备与安装合计」会被屏蔽）——现行章节的
+ * 三处锚点均不受影响，措辞规约写在这里即为契约。
+ */
+const TOTAL_ANCHOR_SHIELD_WORDS = ['分项', '单项', '小计', '子项', '分部', '外机', '内机', '安装', '辅材', '设备', '主机'] as const;
+
+/**
+ * 登记金额回锚 DEC 合同总价语义（复审第二轮 P1；第三轮 P1 再收紧）：
+ * presence 核对不够——真实章节 DEC-2026-10-04-R1 同章并列外机分项
+ * 14,124、安装 8,400 与合同合计 36,000，三方金额若被同步误改成
+ * 14,124，旧 presence 检查会命中分项行放行。故回锚要求：金额必须以
+ * 完整 token 出现在一个**带合同总价语义的分句**里，且该分句里的总
+ * 价关键词命中未被子目语义屏蔽。分句按行与中文标点（。，；、）切分
+ * （千分位逗号是 ASCII 逗号，不在切分集内）。第二轮的关键词集合含
+ * 裸「总价」，被第三轮以「外机分项总价：14,124 元。合同总价：36,000
+ * 元」的章节复现误锚（分项价借「分项总价」里的总价二字锚上），故第
+ * 三轮去裸「总价」并加屏蔽词。真实章节里 36,000 有三处锚点（标题
+ * 「定标成交：36,000 元」、「合计 36,000 元」、「36,000 为整包含
+ * 价」），14,124 与 8,400 锚不上。这不是已退役的辖域提取：不从散
+ * 文抠金额、不做候选唯一性判定，金额权威值仍只认登记块；这里只问
+ * 「登记金额在 DEC 里被当作合同总价陈述过没有」。
  */
 export function sectionAnchorsContractTotal(sectionText: string, amountCny: number): boolean {
   for (const clause of sectionText.split(/[\n。，；;、]/)) {
-    if (!CONTRACT_TOTAL_KEYWORDS.some((keyword) => clause.includes(keyword))) continue;
-    if (sectionContainsAmountToken(clause, amountCny)) return true;
+    if (!sectionContainsAmountToken(clause, amountCny)) continue;
+    for (const keyword of CONTRACT_TOTAL_KEYWORDS) {
+      let keywordIndex = clause.indexOf(keyword);
+      while (keywordIndex !== -1) {
+        const prefix = clause.slice(Math.max(0, keywordIndex - 10), keywordIndex);
+        if (!TOTAL_ANCHOR_SHIELD_WORDS.some((word) => prefix.includes(word))) return true;
+        keywordIndex = clause.indexOf(keyword, keywordIndex + 1);
+      }
+    }
   }
   return false;
 }
@@ -426,14 +453,17 @@ export function contractArchivePathProblem(archivePath: string, rootDir: string)
  *     把区外文件冒充原件，一律抛错点名路径；
  *  ⑤ contract_ref 的 DEC 章节存在且含正向成交表述（紧邻否定屏蔽，见
  *     hasAffirmativeDealSemantics）；
- *  ⑥ 登记金额回锚 DEC 总价语义（复审 P1；第二轮 P1 升级）：登记金额
- *     必须在该 DEC 章节中锚定到总价表述（sectionAnchorsContractTotal：
- *     完整 token 与合计/总价/成交价/合同额等关键词同处一个分句）。第
- *     一轮的纯在场核对（presence）已被否：同章分项金额（外机 14,124、
- *     安装 8,400）同样在场，三方同步误改成分项值也能放行。升级后三方
- *     金额若被同步改错，只要 DEC 章节里的总价陈述没跟着改，⑥ 即抛
- *     错——金额不再只证登记自洽；总价陈述的措辞在关键词集合内变化不
- *     影响结论。
+ *  ⑥ 登记金额回锚 DEC 合同总价语义（复审 P1；第二轮升级、第三轮再
+ *     收紧）：登记金额必须在该 DEC 章节中锚定到合同总价表述
+ *     （sectionAnchorsContractTotal：完整 token 与合同总价/合同额/
+ *     合计/成交价/定标成交/整包含价同一分句，且关键词命中未被分项
+ *     等子目语义屏蔽；裸「总价」不入集合——它是分项总价的子串）。
+ *     第一轮的纯在场核对（presence）已被否：同章分项金额（外机
+ *     14,124、安装 8,400）同样在场，三方同步误改成分项值也能放行；
+ *     第二轮的同分句关键词又被「分项总价」形态绕过（第三轮复现）。
+ *     收紧后三方金额若被同步改错，只要 DEC 章节里的合同总价陈述没
+ *     跟着改，⑥ 即抛错——金额不再只证登记自洽；总价陈述的措辞在关
+ *     键词集合内变化不影响结论。
  * 强度边界（如实）：守卫能拦「登记缺失、三方不一致、原件缺位或被替换、
  * DEC 凭据消失、成交语义被否定句冒充、登记金额与 DEC 脱节」，拦不住
  * 「登记时就把假数同时写进登记块与 DEC 章节、并按假原件重算登记哈希」
@@ -479,7 +509,7 @@ function assertContractCredential(rowId: string, qr: AnyRecord, contracted: numb
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见正向成交表述（定标成交 / 成交事实 / 已签约 / 签订 / 签约方 / 已成交）——只有「合同 / 签约」字样（含「尚未签约」「未成合同」式否定提及，或「并非定标成交」式紧邻否定屏蔽后的命中）不算成交凭据，该决策不是成交凭据`);
   }
   if (!sectionAnchorsContractTotal(section.text, contract.amount_cny)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额与 DEC 脱节：登记金额 ${(contract.amount_cny as number).toLocaleString('en-US')} 未在 ${contractRef} 章节原文（${section.file}）中锚定到总价表述（合计 / 总价 / 成交价 / 合同额等同一分句）——章节里只有分项金额同值、或总价已被删改时同样判脱节，已核实层不成立`);
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额与 DEC 脱节：登记金额 ${(contract.amount_cny as number).toLocaleString('en-US')} 未在 ${contractRef} 章节原文（${section.file}）中锚定到合同总价表述（合同总价 / 合同额 / 合计 / 成交价 / 定标成交 / 整包含价同一分句，且命中未被分项等子目语义屏蔽）——章节里只有分项金额同值（含写成「分项总价」的子目价）、或合同总价已被删改时同样判脱节，已核实层不成立`);
   }
 }
 
@@ -1605,7 +1635,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-030'],
       statusLabel: 'site_measurement_pending · 合同外增量',
       countedStatus: 'uncounted',
-      note: `合同附件已核清：风口加长 ${yuan(100)}/米、复合风管、不含税均不含于 ${yuan(36000)} 合同额（DEC-2026-10-04-R1/R2）；铜管主体在签约行内，本项只登记合同外增量，金额待最终风口布置图核定`,
+      note: `据合同附件备注转录（evidence-notes）核清方向：风口加长 ${yuan(100)}/米、复合风管、不含税均不含于 ${yuan(36000)} 合同额（DEC-2026-10-04-R1/R2）；备注 2/5 原文页未归档、原件核验待办见 pending-site-data #39 ⑥，现为转录级证据；铜管主体在签约行内，本项只登记合同外增量，金额待最终风口布置图核定`,
       coversItems: ['COST-030-02'],
     },
     {
