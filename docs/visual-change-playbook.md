@@ -17,7 +17,7 @@ npm run gate:visual     # CLEAR / STALE + 修复命令；退出码 0/1/2
 ```
 
 - STALE 的处理只有一件事：**重启 dev server + 浏览器硬刷新**，不要怀疑自己的几何。
-- 环境已知坑（本 playbook 的存在理由）：`ProjectRenderFactsLoader` 的 chokidar watch 不可靠，且**失败是静默的**——schema 拒绝新字段时 load() 失败、旧 facts 原样保留。历史上它让业主对着 5 小时前的渲染给了六轮反馈。
+- 历史事故（本 playbook 的存在理由）：chokidar 单文件 watch 挂在文件 inode 上，git checkout、编辑器「写临时文件再改名」这类原子替换换掉 inode 后 watch 静默永久断线——旧 config 原样保留，曾让业主对着 5 小时前的渲染给了六轮反馈。**根因已于 2026-10-24 修复**：watch 改为目录级监听（事件挂目录 inode，替换/重建不丢）＋ 250ms 尾部重读（兜底 chokidar 50ms change 节流吞连写），回归测试见 `tests/server/config-loader.test.ts` 两个 watch 用例。剩下的 STALE 源只剩 schema 拒绝新字段一类——此时 config-status 轮询会亮错误横幅、服务日志有报错，**不再静默**。
 - 任何「改完了你看」的报告，必须先附本门的 CLEAR 输出。
 
 ## 2. 词汇门（第一轮回复内完成，硬规则）

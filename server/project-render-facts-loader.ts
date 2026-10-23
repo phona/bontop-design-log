@@ -1,4 +1,4 @@
-import { watch, type FSWatcher } from 'chokidar';
+import type { FSWatcher } from 'chokidar';
 import { readFileSync } from 'node:fs';
 import {
   parseCeilingZones,
@@ -11,7 +11,7 @@ import {
 } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
 import type { CurrentScheme, ProjectRenderFacts, RenderLightingOverride } from '../shared/types.js';
-import type { ConfigStatus, StatusLoader } from './config-loader.js';
+import { watchConfigFiles, type ConfigStatus, type StatusLoader } from './config-loader.js';
 
 export interface ProjectRenderFactsPaths {
   electrical: string;
@@ -107,15 +107,10 @@ export class ProjectRenderFactsLoader implements StatusLoader {
 
   startWatching(): void {
     if (this.watchers.length > 0) return;
-    for (const path of Object.values(this.paths)) {
-      const watcher = watch(path, { persistent: true, ignoreInitial: true });
-      watcher.on('change', () => this.load());
-      watcher.on('add', () => this.load());
-      watcher.on('error', (err: unknown) => {
-        console.error(`[project-render-facts-loader] Watcher error for ${path}:`, err);
-      });
-      this.watchers.push(watcher);
-    }
+    this.watchers = watchConfigFiles(
+      Object.values(this.paths).filter((p): p is string => Boolean(p)),
+      () => this.load()
+    );
   }
 
   async stopWatching(): Promise<void> {

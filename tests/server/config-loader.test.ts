@@ -1,9 +1,18 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, rmSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { ConfigLoader, ConfigRegistry, loadElectricalConfig, loadPlumbingConfig, loadCeilingConfig } from '../../server/config-loader.js';
+
+async function waitFor(condition: () => boolean, timeoutMs = 4000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (condition()) return;
+    await new Promise((resolveTimeout) => setTimeout(resolveTimeout, 50));
+  }
+  assert.ok(condition(), 'condition not met before timeout');
+}
 
 describe('ConfigLoader', () => {
   let dir: string;
@@ -49,6 +58,50 @@ describe('ConfigLoader', () => {
     const statuses = registry.getStatuses();
     assert.equal(statuses.length, 1);
     assert.equal(statuses[0].status, 'failed');
+  });
+
+  // 回归（2026-10-24）：单文件 watch 挂在 inode 上，git checkout/编辑器的原子替换
+  // （写临时文件再改名）换掉 inode 后 watch 静默永久断线。目录级监听必须让替换写、
+  // 以及替换之后的后续写（可能落在 chokidar 50ms change 节流窗口内，靠尾部重读兜底），
+  // 都继续触发 reload。
+  it('watch fires on in-place write', async () => {
+    const path = join(dir, 'watched.json');
+    writeFileSync(path, JSON.stringify({ n: 1 }));
+    let loads = 0;
+    const loader = new ConfigLoader(path, JSON.parse, () => { loads += 1; });
+    loader.load();
+    loader.startWatching();
+    try {
+      await new Promise((r) => setTimeout(r, 200));
+      writeFileSync(path, JSON.stringify({ n: 2 }));
+      await waitFor(() => loads >= 2);
+      assert.deepEqual(loader.getConfig(), { n: 2 });
+    } finally {
+      await loader.stopWatching();
+    }
+  });
+
+  it('watch survives atomic replace and keeps firing afterwards', async () => {
+    const path = join(dir, 'watched.json');
+    writeFileSync(path, JSON.stringify({ n: 1 }));
+    let loads = 0;
+    const loader = new ConfigLoader(path, JSON.parse, () => { loads += 1; });
+    loader.load();
+    loader.startWatching();
+    try {
+      await new Promise((r) => setTimeout(r, 200));
+      const staged = join(dir, 'staged.json');
+      writeFileSync(staged, JSON.stringify({ n: 2 }));
+      renameSync(staged, path);
+      await waitFor(() => loads >= 2);
+      assert.deepEqual(loader.getConfig(), { n: 2 }, 'atomic replace must trigger reload');
+
+      writeFileSync(path, JSON.stringify({ n: 3 }));
+      await waitFor(() => loads >= 3);
+      assert.deepEqual(loader.getConfig(), { n: 3 }, 'watch must still fire after inode swap');
+    } finally {
+      await loader.stopWatching();
+    }
   });
 });
 

@@ -13,7 +13,7 @@
 >
 > `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/layout/overlay.yaml` 出一切意图。代码只读、只执行，禁止推断。
 >
-> **视觉反馈类迭代**（业主看图说话 → 改模型 → 再看）开工前读 `docs/visual-change-playbook.md`，并跑 `npm run gate:visual` 确认客户端渲染的就是当前 config（本环境 config watch 不可靠且失败静默，曾把 2 轮返工放大成 6 轮）。
+> **视觉反馈类迭代**（业主看图说话 → 改模型 → 再看）开工前读 `docs/visual-change-playbook.md`，并跑 `npm run gate:visual` 确认客户端渲染的就是当前 config（config watch 曾因单文件监听挂 inode、原子替换写后静默断线而不可靠，2026-10-24 已改目录级监听修复；gate 对 schema 拒绝类 STALE 仍是保险丝）。
 >
 > `parse_cad.py` 仅用于从 CAD 初始化或参考导出，默认不覆盖 `model-geometry.yaml`。需要新行为 → 新增 element type + 声明式配置。
 >
