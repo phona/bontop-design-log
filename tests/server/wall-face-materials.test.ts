@@ -125,8 +125,16 @@ test('厨房东墙按面归属（w_ent_west：南段客餐厅 | 北段厨房，�
   );
 });
 
+// 本文件跑在 node:test（无 DOM）：applyToRoom 先经 getOrBuild → TextureFactory 用 canvas 合成程序化
+// 纹理，必然抛 document is not defined，槽位逻辑根本执行不到（两条 applyToRoom 用例自引入起即如此）。
+// 槽位路由只关心假材质被 copy 到哪个槽，故把 getOrBuild 打桩为返回空对象；纹理合成的覆盖归 app 侧 vitest。
+function stubMaterialBuild(tm: TextureManager): void {
+  (tm as unknown as { getOrBuild: () => object }).getOrBuild = () => ({});
+}
+
 test('TextureManager.applyToRoom 只染 faceRooms 命中的侧面槽位', () => {
   const tm = new TextureManager([]);
+  stubMaterialBuild(tm);
   const slots: Array<{ copyCalls: number; needsUpdate: boolean; copy: () => void }> = Array.from({ length: 6 }, () => ({
     copyCalls: 0,
     needsUpdate: false,
@@ -151,6 +159,7 @@ test('TextureManager.applyToRoom 只染 faceRooms 命中的侧面槽位', () => 
 
 test('TextureManager.applyToRoom 对畸形 face 数据安全跳过', () => {
   const tm = new TextureManager([]);
+  stubMaterialBuild(tm);
   const noSlots = { material: [], userData: { faceRooms: { left: 'a', right: 'b' } } };
   const wholeMesh = { material: { copyCalls: 0, copy(this: { copyCalls: number }) { this.copyCalls++; } }, userData: { roomId: 'guest_bath' } };
   tm.setMeshes([], [noSlots as unknown as THREE.Mesh, wholeMesh as unknown as THREE.Mesh], []);

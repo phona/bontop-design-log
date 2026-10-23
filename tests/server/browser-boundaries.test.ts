@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
-const forbidden = /\b(window|document|fetch|HTMLCanvasElement|WebGLRenderer)\b/;
+// 只禁 API 使用形态，不禁裸词：FixtureFactory 的零件名/注释含英文单词 window（家电窗格义，如
+// espresso-rear-water-tank-window、"smoked rear tank window."）曾被裸词正则误报——标识符与散文里的
+// 词不是浏览器依赖；成员访问（window.xxx / window[...] / window(...)，点号后必跟属性名）才是。
+const forbidden = /\b(?:window|document)\s*(?:\.\s*[A-Za-z_$]|\[|\()|globalThis\s*\.\s*(?:window|document)\b|\bfetch\s*\(|\bHTMLCanvasElement\b|\bWebGLRenderer\b/;
 
 test('shared render and CLI sources stay browser-free', async () => {
   const files = [

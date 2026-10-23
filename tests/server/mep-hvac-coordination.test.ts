@@ -26,7 +26,10 @@ function sourceIds(): MepEndpointSources {
     // 真实生产路径 endpointSourcesFromFacts（schema:214-226）从 plan.diagram.anchors 与 plan.outdoor 分建、
     // id 不重叠，所以生产不会撞车；此前夹具把 outdoor_a2 同时塞进两个 kind 是测试自身写错。
     // outdoor_a2 仍由下面的 outdoor 条目提供，sources.outdoor 一样能解析到 (6.4, 0.5)。
-    hvacAnchors: ['indoor_living', 'indoor_dining', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child', 'bend_corridor'].map((id) => ({ id, status: 'inferred', system: 'refrigerant' as const, position: { x: 0, y: 0, z: 0 } })),
+    hvacAnchors: [...['indoor_living', 'indoor_dining', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child', 'bend_corridor'].map((id) => ({ id, status: 'inferred' as const, system: 'refrigerant' as const, position: { x: 0, y: 0, z: 0 } })),
+      // DEC-2026-10-19-R25 汇流拓扑新增的两个出水口候选锚点（与 hvac.yaml/facts 口径一致：pending / condensate）——bf29283 当时漏同步本夹具，validate 在此抛 unknown endpoint
+      { id: 'condensate_living_outlet_candidate', status: 'pending' as const, system: 'condensate' as const, position: { x: 0, y: 0, z: 0 } },
+      { id: 'condensate_dining_outlet_candidate', status: 'pending' as const, system: 'condensate' as const, position: { x: 0, y: 0, z: 0 } }],
     hvacTerminals: ['supply_living', 'return_living', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child', 'condensate_living_candidate', 'condensate_master_candidate', 'condensate_study_candidate', 'condensate_parent_candidate', 'condensate_child_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
     outdoor: [{ id: 'outdoor_a2', platform: 'west_platform', x: 6.4, z: 0.5, direction: 'south', width: 0.9, depth: 0.335, height: 0.7, model: 'test' }],
   };
@@ -125,7 +128,7 @@ test('real render facts resolve all configured MEP routes through HVAC ceiling a
   }
   assert.equal(new Set(config.routes.filter((route) => route.layer === 'supply_air').map((route) => route.to)).size, 8); // DEC-2026-10-03-R6：+supply-air-dining；DEC-2026-10-05-R18：两台双出风内机第二出口下出风，+supply-air-living-bottom/+supply-air-dining-bottom，6→8
   assert.equal(new Set(config.routes.filter((route) => route.layer === 'return_air').map((route) => route.to)).size, 6); // DEC-2026-10-03-R6：+return-air-dining
-  assert.equal(config.routes.filter((route) => route.layer === 'condensate').length, 6); // DEC-2026-10-03-R6：+condensate-dining
+  assert.equal(config.routes.filter((route) => route.layer === 'condensate').length, 7); // DEC-2026-10-03-R6：+condensate-dining = 6；DEC-2026-10-19-R25：+condensate-living-dining-trunk（DN32 共用主管）= 7
   validateMepCoordination(config, factSources);
 });
 

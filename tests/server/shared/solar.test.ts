@@ -56,7 +56,7 @@ describe('computeLightState', () => {
     const s = computeLightState(-5);
     assert.equal(s.isNight, true);
     assert.equal(s.sunIntensity, 0);
-    assert.equal(s.ambientIntensity, 0.15);
+    assert.equal(s.ambientIntensity, 0); // 521fbcf（2026-10-15）刻意修复：夜间太阳侧环境光归零、隔离室内灯光（室内光由 EnvironmentManager 独立提供）；本断言当时漏更
   });
 
   it('白天强度随高度角单调递增且 ≤ 1', () => {

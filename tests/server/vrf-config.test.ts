@@ -50,6 +50,12 @@ test('hvac.yaml declares the complete A2 diagram against existing MEP facts', ()
     assert.ok(route.reason?.trim(), `${route.id} requires a review reason`);
   }
   for (const route of plan.diagram.routes.filter((route) => route.system === 'condensate')) {
+    // DEC-2026-10-19-R25 汇流拓扑：branch/equipment_outlet 路由止于锚点（汇合点/出水口候选），
+    // 只有 shared_trunk 与无 role 的候选路由直达 pending 候选终端——旧断言假设全数直达终端已失效
+    if (route.topology_role === 'branch' || route.topology_role === 'equipment_outlet') {
+      assert.ok(plan.diagram.anchors.some((anchor) => anchor.id === route.to), `${route.id} should end at a diagram anchor (${route.to})`);
+      continue;
+    }
     const candidate = plan.diagram.terminals.find((terminal) => terminal.id === route.to);
     assert.equal(candidate?.status, 'pending');
     assert.equal(candidate?.kind, 'condensate_drain_candidate');
@@ -133,6 +139,7 @@ test('HVAC semantic validation rejects duplicate ids and condensate candidates o
   assert.throws(() => validateProjectHvacFacts(duplicate, { electrical, ceiling }), /Duplicate HVAC diagram id/);
 
   const invalidSink = structuredClone(hvac);
-  invalidSink.plans[0].diagram.routes.find((route) => route.system === 'condensate')!.to = 'indoor_living';
+  // 须挑无 topology_role 的候选路由做夹具：第一条 condensate 路由是 branch，校验会按 role 分流报 junction anchor 文案（行为正确、更精确）
+  invalidSink.plans[0].diagram.routes.find((route) => route.id === 'condensate_master_candidate_route')!.to = 'indoor_living';
   assert.throws(() => validateProjectHvacFacts(invalidSink, { electrical, ceiling }), /must end at a pending condensate drain candidate/);
 });
