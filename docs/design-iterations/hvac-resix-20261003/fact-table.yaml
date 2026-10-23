@@ -22,12 +22,12 @@ facts:
   confirmed:
     - id: F1-contract
       statement: "2026-10-04 定标成交 36,000 元：外机美的领航者Ⅳ MJV-200W-E01-LHIV 20kW 14,124 + 安装 1,400×6=8,400 + 6 台双出风内机 /P-SS；签约方南宁长旺建材家居市场美的中央空调智慧空气馆长旺家中店；项目邦泰璟和 8-701"
-      source_refs: ["evidence/hvac-contract-attachment-p1-20261004.jpg"]
+      source_refs: ["contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg"]
       confidence: high
       impact: material
     - id: F2-capacity-mapping
       statement: "内机容量表为照片判读 71T2 + 42T2 + 56T2 + 28T2×3 = 25.3kW（连接率 1.27），与 R6 设计口径 21.6kW/1.08 不一致；房间映射须以合同正式选型附图为准"
-      source_refs: ["evidence/hvac-contract-attachment-p1-20261003.jpg", "docs/decision_log.md DEC-2026-10-04-R1"]
+      source_refs: ["contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg", "docs/decision_log.md DEC-2026-10-04-R1"]
       confidence: medium
       impact: material
       note: "**这是唯一悬而未决的设计输入**；到手前 config 的 indoor_nominal_kw_total 仍为设计口径 21.6，采购值只活在 note 字符串"
@@ -43,7 +43,7 @@ facts:
       impact: minor
     - id: F5-duct-pricing
       statement: "风口加长与复合风管不在 36,000 内：加长按 100 元/米另计；合同备注 5 声明不含税。故 36,000 非最终落地价"
-      source_refs: ["evidence/hvac-contract-attachment-p1-20261004.jpg 备注 2/5"]
+      source_refs: ["contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg 备注 2/5"]
       confidence: high
       impact: material
     - id: F6-indoor-power

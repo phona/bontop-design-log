@@ -122,14 +122,14 @@ fact_table:
       - id: F-contract-count
         statement: 合同报价附件列外机 MJV-200W-E01-LHIV 20kW、六台 /P-SS 双出风内机：71T2、42T2、56T2、28T2×3；合计 25.3kW，连接率 1.265。
         source_refs:
-          - docs/design-iterations/hvac-resix-20261003/evidence/hvac-contract-attachment-p1-20261004.jpg
+          - contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg
         confidence: high
         impact: material
       - id: F-user-room-map
         statement: 业主 2026-10-05 明确确认 56T2 装主卧、42T2 装餐厅；结合现有六台与其余合同清单，客厅 71T2，父母房、儿童房、东南书房各 28T2。
         source_refs:
           - 业主本次会话逐房映射
-          - docs/design-iterations/hvac-resix-20261003/evidence/hvac-contract-attachment-p1-20261004.jpg
+          - contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg
         confidence: high
         impact: material
       - id: F-master-axis
@@ -150,7 +150,7 @@ fact_table:
         statement: 业主第二张参数截图列 MN-42T2/P-SS 为 700×450×200mm，但合同转录为 MJV-42T2/P-SS，前缀不一致，且未找到可核对的厂家正式安装图；该尺寸只能作参考，成交机身/风口净空待核。
         source_refs:
           - docs/design-iterations/hvac-contract-mapping-20261005/evidence/owner-p-ss-table-20261005.png
-          - docs/design-iterations/hvac-resix-20261003/evidence/hvac-contract-attachment-p1-20261004.jpg
+          - contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg
         impact: material
       - id: S-mep-interfaces
         statement: 六台虽均带提升泵，但泵出口接法、冷凝水坡向与接入点、厂家内外机配电图均未确认，既有路线只作协调候选。
@@ -205,7 +205,7 @@ review:
   evidence:
     - id: contract-p1
       ready: true
-      path: docs/design-iterations/hvac-resix-20261003/evidence/hvac-contract-attachment-p1-20261004.jpg
+      path: contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg
     - id: user-room-map
       ready: true
       note: 2026-10-05 本次会话：56是主卧，42是餐厅；主卧中心 x=3.70
