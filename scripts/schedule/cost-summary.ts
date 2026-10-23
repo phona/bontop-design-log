@@ -238,6 +238,14 @@ export function findDecisionSection(decId: string): { file: string; text: string
  * 之后只隔标点/空白即接金额，如标题「定标成交：36,000 元」；
  * (b) 金额在前——金额之后同小句近邻（间隔不含其他数字、不跨句号/分号、
  * 24 字内）出现总价词，如正文「36,000 为整包含价，换内机不改变总价」。
+ * 形态 (b) 还须过**否定屏蔽**（第四轮堵）：「14,124 元不是总价；总价待定」
+ * 里金额与「总价」之间只隔一个「不是」，无屏蔽时会把分项金额误认成被总
+ * 价辖制。故 (b) 的每个关键词出现位置，若否定词（不是 / 并非 / 不属于）
+ * 紧贴关键词构成**身份否定**，该出现作废。判定只认「否定词紧贴关键词」
+ * 这一种形态，不按「句中出现不字」一刀切——「36,000 为整包含价，换内机
+ * 不改变总价」中「不改变总价」的否定作用于动词「改变」而非总价身份，该
+ * 句的真命中靠先行出现的「整包含价」成立，屏蔽不误伤（提取函数注释与测
+ * 试均有逐字对照）。
  * 实测现行 DEC-2026-10-04-R1：整行口径的候选集有 16 个 token，辖域口径下
  * 恰为 {36,000}（(a) 标题行、(b) 整包含价行各命中一次）。章节内无任何辖域
  * 位置载有该金额即抛错。「合计」刻意不入关键词集：合计行可能只是分项小
@@ -246,29 +254,43 @@ export function findDecisionSection(decId: string): { file: string; text: string
  * 金额被改、引用挂错决策」，拦不住「DEC 原文与纸质合同本身不符」（纸质合同
  * 不在仓库内，无从机读；DEC 是仓库内最接近合同的权威凭据）。
  */
+/**
+ * 总价关键词辖域提取（纯函数，与 assertContractCredential 共用、供测试直
+ * 接喂合成章节）：从 DEC 章节原文提取被总价关键词直接辖制的金额 token
+ * 集合（千分位格式字符串）。两种形态与否定屏蔽的依据见
+ * assertContractCredential 头注；整行提取会把标题里的编号/型号/台数、正
+ * 文论述行里的设备价等杂数字一并放行，故废止、只认辖域位置。
+ */
+export function extractGovernedTotalAmounts(sectionText: string): Set<string> {
+  const amountPattern = String.raw`(?<![\d,])(\d{1,3}(?:,\d{3})+|\d+)(?![\d,])`;
+  const governed = new Set<string>();
+  // (a) 关键词在前：关键词后只隔标点/空白即接金额（定标成交：36,000 元）
+  const keywordFirst = new RegExp(`(?:定标成交|合同总价|总金额|总价|合同额|成交价)\\s*[:：]?\\s*${amountPattern}`, 'g');
+  for (const match of sectionText.matchAll(keywordFirst)) governed.add(match[1]);
+  // (b) 金额在前：同小句近邻出现总价词（36,000 为整包含价，…不改变总价），
+  // 间隔不含其他数字、不跨句号/分号
+  const amountFirst = new RegExp(`${amountPattern}[^\\d。；]{0,24}?(?:总价|整包含价)`, 'g');
+  for (const match of sectionText.matchAll(amountFirst)) {
+    // match[0] 以金额开头（amountPattern 的前后顾均为零宽断言）；金额之后
+    // 的部分是间隔 + 关键词。否定屏蔽：否定词紧贴关键词（「不是总价」式
+    // 身份否定）时本次出现作废；否定作用于动词的（「不改变总价」）不
+    // 紧贴关键词、不作废。
+    const tail = match[0].slice(match[1].length);
+    if (/(?:不是|并非|不属于|不属)(?:总价|整包含价)/.test(tail)) continue;
+    governed.add(match[1]);
+  }
+  return governed;
+}
+
 function assertContractCredential(rowId: string, contractRef: string, contracted: number, packageId: string): void {
   const section = findDecisionSection(contractRef);
   if (!section) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据无从核验：contract_ref ${contractRef} 在 docs/decisions/ 中解析不到对应的 DEC 章节——引用不存在，已核实层不成立`);
   }
   const amountText = contracted.toLocaleString('en-US');
-  // 总价关键词辖域提取（两种形态与依据见函数头注）：候选金额只许来自被总价
-  // 关键词直接辖制的位置——整行提取会把标题里的编号/型号/台数、正文论述行
-  // 里的设备价等杂数字一并放行，故废止。
-  const amountPattern = String.raw`(?<![\d,])(\d{1,3}(?:,\d{3})+|\d+)(?![\d,])`;
-  const governedAmountPatterns = [
-    // (a) 关键词在前：关键词后只隔标点/空白即接金额（定标成交：36,000 元）
-    new RegExp(`(?:定标成交|合同总价|总金额|总价|合同额|成交价)\\s*[:：]?\\s*${amountPattern}`, 'g'),
-    // (b) 金额在前：同小句近邻出现总价词（36,000 为整包含价，…不改变总价），
-    // 间隔不含其他数字、不跨句号/分号
-    new RegExp(`${amountPattern}[^\\d。；]{0,24}?(?:总价|整包含价)`, 'g'),
-  ];
-  const governedAmounts = new Set<string>();
-  for (const pattern of governedAmountPatterns) {
-    for (const match of section.text.matchAll(pattern)) governedAmounts.add(match[1]);
-  }
+  const governedAmounts = extractGovernedTotalAmounts(section.text);
   if (!governedAmounts.has(amountText)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）的总价关键词辖域内（「定标成交：<金额>」式关键词直接辖制、或金额后同小句近邻总价词的形态）未载明金额 ${amountText}（须全词精确命中且被总价关键词直接辖制；子串、分项金额、标题内编号/型号/台数等杂数字均不算），与 ${packageId} contracted_cny=${contracted} 不符`);
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额对不上：${contractRef} 章节原文（${section.file}）的总价关键词辖域内（「定标成交：<金额>」式关键词直接辖制、或金额后同小句近邻总价词的形态）未载明金额 ${amountText}（须全词精确命中且被总价关键词直接辖制；子串、分项金额、标题内编号/型号/台数等杂数字、以及被身份否定（「…不是总价」式）的金额均不算），与 ${packageId} contracted_cny=${contracted} 不符`);
   }
   if (!/(成交|签约|合同)/.test(section.text)) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见成交/签约/合同语义，该决策不是成交凭据`);

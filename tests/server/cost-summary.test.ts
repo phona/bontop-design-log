@@ -10,6 +10,8 @@ import {
   assertVerifiedTierBasis,
   buildCostSummary,
   computeActiveMepQuote,
+  extractGovernedTotalAmounts,
+  findDecisionSection,
   DUAL_ATTRIBUTIONS,
   OUT_OF_SCOPE_DISPOSITIONS,
   PENDING_COUNTED_STATUS_LABELS,
@@ -262,6 +264,40 @@ describe('成本总表 cost-summary', () => {
     }
     // 原值 36,000 被总价关键词直接辖制（标题行定标成交 + 正文整包含价双重命中），必须继续通过
     assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
+  });
+
+  it('合同凭据金额辖域否定屏蔽：身份否定句不产生候选，真命中逐字不误伤', () => {
+    // 复审 P1 四轮：形态 (b)（金额在前、同小句近邻总价词）无屏蔽时会把
+    // 「14,124 元不是总价；总价待定」里的分项金额误认成总价候选——金额与
+    // 「总价」之间只隔一个「不是」也算命中。屏蔽只认否定词紧贴关键词构
+    // 成的身份否定（不是 / 并非 / 不属于 + 总价 / 整包含价）。提取函数是守
+    // 卫唯一的文本相关步骤，合成章节在这一层逐字喂入即等价于守卫判定。
+    // 对抗合成章节：分项价被身份否定、且无其他总价陈述 → 不得产生候选
+    assert.deepEqual([...extractGovernedTotalAmounts('外机价 14,124 元不是总价；总价待定，后续另行确认。')], [], '「…不是总价」式身份否定不得产生总价候选');
+    assert.deepEqual([...extractGovernedTotalAmounts('设备价 14,124 元，并非总价，安装另计。')], [], '「并非总价」同样是身份否定');
+    assert.deepEqual([...extractGovernedTotalAmounts('该 8,400 元不属于总价范畴，系单项安装费。')], [], '「不属于总价」同样是身份否定');
+    // 对真值的否定陈述同样不得产生候选（哪怕金额恰是 36,000）
+    assert.deepEqual([...extractGovernedTotalAmounts('本轮口述价 36,000 元不是总价，仅为设备款。')], [], '对真值的否定陈述不得产生候选');
+    // 不误伤一：现行 DEC 形态 (b) 真命中逐字复刻——「36,000 为整包含价，
+    // 换内机不改变总价」中「不改变总价」的否定作用于动词「改变」而非总
+    // 价身份，命中靠先行出现的「整包含价」成立，屏蔽不得误伤
+    assert.deepEqual(
+      [...extractGovernedTotalAmounts('36,000 为整包含价，换内机不改变总价，不存在金钱动机。')],
+      ['36,000'],
+      '真命中（整包含价 + 不改变总价）不得被否定屏蔽误伤',
+    );
+    // 不误伤二：真实 DEC 章节的辖域候选集在加屏蔽后仍恰为 {36,000}
+    const section = findDecisionSection('DEC-2026-10-04-R1');
+    assert.ok(section, 'DEC-2026-10-04-R1 章节必须解析得到');
+    assert.deepEqual([...extractGovernedTotalAmounts(section.text)], ['36,000'], '真实 DEC 辖域候选集必须恰为 {36,000}');
+    // 守卫层延续：点名负例 14,124 在加屏蔽后仍须抛错（全套负例见辖域测试）
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    const doctored = structuredClone(control) as AnyRecord;
+    pkgOf(doctored, 'PKG-030').budget.contracted_cny = 14124;
+    const qr = (doctored.hard_finish_quote_rounds.records as AnyRecord[])
+      .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+    qr.locked_cny = 14124;
+    assert.throws(() => assertVerifiedTierBasis('cost-hvac', contractBasis, doctored), /金额对不上/, '分项金额 14,124 在加否定屏蔽后仍必须被守卫拦下');
   });
 
   it('报价卡凭据边界：证据须 written_quote 且费率不得含公开参考价来源', () => {
