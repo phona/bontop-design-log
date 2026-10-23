@@ -84,8 +84,12 @@
  *  hard_finish_quote_rounds 全部记录。凡「未决」条目，必须在本模块的覆盖登记里
  *  有且至少一处归属：(a) 某定价行的 coversItems（计入该行）；(b) 未定价/待核
  *  条目的 coversItems；(c) 不计价登记 excludedItems（带理由）。无归属或登记指向
- *  不存在的条目 → 构建抛错、verify 失败。本表范围外包（design_preparation /
- *  curtains / furniture / appliances 池）的组件按包登记排除理由，不逐项进本表。
+ *  不存在的条目 → 构建抛错、verify 失败。归属是集合语义：同一条目可以同时属
+ *  两个分类，但多重归属必须在 DUAL_ATTRIBUTIONS 显式声明并附理由（现声明
+ *  COST-030-02、COST-030-07），未声明的多重归属或已腐烂的声明同样抛错；
+ *  覆盖计数按分类如实呈现、三类之和 = 未决总数 + 双归属数。本表范围外包
+ *  （design_preparation / curtains / furniture / appliances 池）的组件按包登记
+ *  排除理由，不逐项进本表。
  *  未决分类（按 control.yaml 实际数据摸全，代码内 assertCoverage 注释同步）：
  *  组件 status 除已决白名单 {ownership_resolved, deferred_to_phase_2,
  *  excluded_to_phase_2} 外全部按未决处理——含 *_pending / pending_* /
@@ -247,6 +251,9 @@ export interface CoverageReport {
   countedItemCount: number;
   pendingItemCount: number;
   excludedItemCount: number;
+  /** 显式声明的双归属条目数：同一条目在两个分类里各计一次（已含在上面分类计数内），故三类计数之和 = 未决总数 + 双归属数。 */
+  dualAttributedItemCount: number;
+  dualAttributedItemIds: string[];
   /** 范围外包（设计准备/窗帘/家具/家电）的组件数，按包登记排除。 */
   outOfScopeComponentCount: number;
 }
@@ -382,10 +389,66 @@ const OUT_OF_SCOPE_PACKAGE_REASONS: Record<string, string> = {
  */
 const RESOLVED_COMPONENT_STATUSES = new Set(['ownership_resolved', 'deferred_to_phase_2', 'excluded_to_phase_2']);
 
+/** 覆盖归属的三个分类：定价行计入 / 未定价与待核 / 不计价登记。 */
+export type AttributionKind = 'counted' | 'pending' | 'excluded';
+
+/** 双归属声明：同一未决条目同时登记在两个分类的唯一合法通道（带理由，逐条裁定）。 */
+export interface DualAttributionDeclaration {
+  item: string;
+  reason: string;
+}
+
+/**
+ * 双归属登记（2026-10-23 复核 P2）：归属是集合语义——一条目可以同时属于两个
+ * 分类，但多重归属必须在此显式声明并附理由；未声明的多重归属一律抛错，
+ * 声明与实际归属不符（条目已不再多重归属）同样抛错（防登记腐烂）。
+ *  COST-030-02：铜管主体金额计入空调签约行，其合同外增量（风口加长/复合风管/
+ *    税，DEC-2026-10-04-R1/R2 核清不含于 36,000）另列待核——「已计金额」与
+ *    「未决增量」是同一组件的两面。
+ *  COST-030-07：线控器金额按业主 2026-10-12 口述计入空调签约行（含在 36,000
+ *    内、增量 ¥0），但型号（须 KJRF-90RT/MW）/数量 6 只/安装对码责任/控制线
+ *    芯数四项门店书面确认未闭，另列待核——金额归属与确认归属分离，只登记
+ *    counted 会把 closure 夸大成「已全闭」。
+ */
+export const DUAL_ATTRIBUTIONS: DualAttributionDeclaration[] = [
+  { item: 'COST-030-02', reason: '铜管主体计入空调签约行，合同外增量另列待核（已计金额与未决增量分属两类）' },
+  { item: 'COST-030-07', reason: '线控器金额按业主口述计入空调签约行（增量 ¥0），型号/数量/对码责任/线芯数四项书面确认另列待核（金额归属与确认归属分离）' },
+];
+
+/**
+ * 双归属校验（纯函数，可独立测试）：claims 是条目 → 归属分类集合。
+ * 未声明的多重归属抛错并点名 id；声明腐烂（声明的条目并非多重归属的未决
+ * 条目）同样抛错。返回实际生效的双归属条目 id（排序后）。
+ */
+export function assertAttributionClaims(
+  claims: ReadonlyMap<string, ReadonlySet<AttributionKind>>,
+  declarations: readonly DualAttributionDeclaration[],
+  unresolvedIds: ReadonlySet<string>,
+): string[] {
+  const declared = new Map(declarations.map((declaration) => [declaration.item, declaration]));
+  const dualIds: string[] = [];
+  for (const [id, kinds] of claims) {
+    if (!unresolvedIds.has(id) || kinds.size <= 1) continue;
+    if (!declared.has(id)) {
+      throw new Error(`cost summary: 覆盖检查失败，条目 ${id} 被多重归属（${[...kinds].join(' + ')}）但未在 DUAL_ATTRIBUTIONS 显式声明双归属及理由——多重归属不许静默取首个分类，请先裁定并声明，再重新生成`);
+    }
+    dualIds.push(id);
+  }
+  for (const declaration of declarations) {
+    const kinds = claims.get(declaration.item);
+    if (!kinds || kinds.size <= 1 || !unresolvedIds.has(declaration.item)) {
+      throw new Error(`cost summary: 双归属声明 ${declaration.item} 已腐烂——该条目当前并非「多重归属的未决条目」，请删除声明或修正归属登记`);
+    }
+  }
+  return dualIds.sort();
+}
+
 /**
  * 覆盖检查（fail-closed）：全量扫描 control.yaml 的组件与询价轮次，每个未决条目
  * 必须在覆盖登记里有归属（定价行 coversItems / 未定价与待核 coversItems / 不计价
- * 登记），登记指向不存在的条目同样报错。清单因此不是手写名单：数据新增未决
+ * 登记），登记指向不存在的条目同样报错。归属按集合语义收集：同一条目登记在
+ * 多个分类时不取首个了事，必须命中 DUAL_ATTRIBUTIONS 的显式双归属声明
+ * （见 assertAttributionClaims）。清单因此不是手写名单：数据新增未决
  * 条目而登记未跟上时，生成直接失败、verify 报错。
  */
 function assertCoverage(
@@ -395,9 +458,11 @@ function assertCoverage(
   pendingChecks: PendingEntry[],
   excludedItems: ExcludedItem[],
 ): CoverageReport {
-  const coveredBy = new Map<string, string>();
-  const claim = (id: string, where: string) => {
-    if (!coveredBy.has(id)) coveredBy.set(id, where);
+  const claims = new Map<string, Set<AttributionKind>>();
+  const claim = (id: string, kind: AttributionKind) => {
+    const kinds = claims.get(id) ?? new Set<AttributionKind>();
+    kinds.add(kind);
+    claims.set(id, kinds);
   };
   for (const row of rows) for (const id of row.coversItems ?? []) claim(id, 'counted');
   for (const entry of unpriced) for (const id of entry.coversItems ?? []) claim(id, 'pending');
@@ -431,7 +496,7 @@ function assertCoverage(
       }
       if (typeof component.status === 'string' && RESOLVED_COMPONENT_STATUSES.has(component.status)) continue;
       unresolvedIds.add(component.id);
-      if (!coveredBy.has(component.id)) {
+      if (!claims.has(component.id)) {
         missing.push(`${component.id}（${pkg.id} 组件，status=${component.status ?? '缺失'}）`);
       }
     }
@@ -442,20 +507,24 @@ function assertCoverage(
     knownIds.add(record.id);
     if (record.status === 'locked') continue;
     unresolvedIds.add(record.id);
-    if (!coveredBy.has(record.id)) {
+    if (!claims.has(record.id)) {
       missing.push(`${record.id}（询价轮次，status=${record.status}）`);
     }
   }
-  for (const id of coveredBy.keys()) {
+  for (const id of claims.keys()) {
     if (!knownIds.has(id)) missing.push(`${id}（覆盖登记指向不存在的条目，登记已腐烂）`);
   }
   if (missing.length > 0) {
     throw new Error(`cost summary: 覆盖检查失败，下列未决条目未登记归属：${missing.join('；')}——请先在 scripts/schedule/cost-summary.ts 的覆盖登记中裁定（计入定价行 coversItems / 未定价与待核条目 / 不计价登记 excludedItems），再重新生成`);
   }
-  const kindOf = (id: string) => coveredBy.get(id) ?? 'missing';
-  const countedItemCount = [...unresolvedIds].filter((id) => kindOf(id) === 'counted').length;
-  const pendingItemCount = [...unresolvedIds].filter((id) => kindOf(id) === 'pending').length;
-  const excludedItemCount = [...unresolvedIds].filter((id) => kindOf(id) === 'excluded').length;
+  // 双归属校验：多重归属必须命中显式声明（未声明或声明腐烂都在此抛错并点名）。
+  const dualAttributedItemIds = assertAttributionClaims(claims, DUAL_ATTRIBUTIONS, unresolvedIds);
+  // 计数按集合语义逐类统计：双归属条目在两个分类各计一次，故三类之和
+  // = 未决总数 + 双归属数（渲染层与测试都按这个恒等式对账，不再假装互斥）。
+  const hasKind = (id: string, kind: AttributionKind) => claims.get(id)?.has(kind) ?? false;
+  const countedItemCount = [...unresolvedIds].filter((id) => hasKind(id, 'counted')).length;
+  const pendingItemCount = [...unresolvedIds].filter((id) => hasKind(id, 'pending')).length;
+  const excludedItemCount = [...unresolvedIds].filter((id) => hasKind(id, 'excluded')).length;
   return {
     scannedComponentCount,
     scannedQuoteRoundCount,
@@ -463,6 +532,8 @@ function assertCoverage(
     countedItemCount,
     pendingItemCount,
     excludedItemCount,
+    dualAttributedItemCount: dualAttributedItemIds.length,
+    dualAttributedItemIds,
     outOfScopeComponentCount,
   };
 }
@@ -868,6 +939,14 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       coversItems: ['COST-030-06'],
     },
     {
+      id: 'pending-hvac-controller-confirmation',
+      name: '空调线控器书面确认（型号/数量/对码/线芯数）',
+      packageIds: ['PKG-030'],
+      statusLabel: 'vendor_written_confirmation_pending · 待门店书面确认',
+      note: `金额已按业主 2026-10-12 口述含于空调行（路径 A：含在 ${yuan(36000)} 内、增量 ¥0），本条待核的不是金额而是门店书面确认四项：① 型号须 KJRF-90RT/MW（错配驱动不了双出风摆风与水泵功能）② 数量 6 只 ③ 安装对码责任与是否另收费 ④ 控制线芯数（同族 2/4/5 芯未定，封槽后不可逆）。与签约行双归属登记（DUAL_ATTRIBUTIONS 已声明）：钱在合同行、确认事项在本清单，口述不等于书面闭环`,
+      coversItems: ['COST-030-07'],
+    },
+    {
       id: 'pending-masonry-leveling',
       name: '墙地面找平',
       packageIds: ['PKG-060'],
@@ -989,7 +1068,7 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
   markdown += '- **小计分三层**：**已核实小计** = 金额已锁定且无未决去重/待报价标记的行——合同行须有 contracted_cny 与询价轮次 contract_ref（轮次 status 须 locked），报价卡行须生效卡 status 为锁定类（contracted）且全行计价、无待报价行；**暂估小计** = 其余未锁价等级的行（封顶价、预算池、候选价、定标目标、参考实付、定额暂估、业主基线卡实算，以及带未关闭去重规则的实算行）；**已知合计** = 两者之和，只是已定价行的总和，**不得读作已核实成本**。层级不是静态标签：生成器逐行凭来源凭据断言（合同额/合同引用/卡 status 在构建时读取），来源状态变未决即生成失败；每行的层级与理由登记在生成器中，逐行可查。\n';
   markdown += '- 未定价项目将来必花钱，真实总成本必然高于已知合计，高多少要等其报价/量房后才知道。\n';
-  markdown += '- **覆盖检查**：生成时全量扫描 `schedule/phase-1/control.yaml` 的成本组件与询价轮次登记，凡状态未决或去重未关闭的条目必须登记归属（计入定价行 / 未定价与待核 / 不计价登记），缺一即生成失败——未定价与待核清单不是手写名单。\n';
+  markdown += '- **覆盖检查**：生成时全量扫描 `schedule/phase-1/control.yaml` 的成本组件与询价轮次登记，凡状态未决或去重未关闭的条目必须登记归属（计入定价行 / 未定价与待核 / 不计价登记），缺一即生成失败——未定价与待核清单不是手写名单。同一条目同时属两个分类（双归属）必须在生成器中显式声明并附理由，未声明的多重归属同样使生成失败。\n';
   markdown += '- **成色定义**：已签约 = 已转合同的成交价；报价卡实算 = 算量引擎实算量 × 生效报价卡单价；报价轮实算 = 业主询价轮次逐项构成的实算目标；定标目标 = 业主定标时裁定的目标价、非成交价；参考实付 = 同户型已发生的实付锚、非本户报价；算量费率 = 算量面积 × 静态费率（人工）；候选价 = 当前选品的候选价、未取证未成交；定额暂估 = 按定额登记的暂估额、非算量非报价。\n';
   markdown += '- **数据源**：`schedule/phase-1/control.yaml`（合同额、estimated_need、询价轮次）、`server/budget-calculator.ts` 科目快照（量 × 选品价）、`shared/mep-takeoff.ts` 算量 × `config/mep-quotes.yaml` 生效报价卡。映射裁定与防双算理由固化在 `scripts/schedule/cost-summary.ts` 文件头。\n\n';
   markdown += '## 硬装成本（含中央空调）\n\n';
@@ -1025,6 +1104,6 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   for (const item of data.excludedItems) {
     markdown += `| ${escapeCell(item.item)} | ${escapeCell(item.label)} | ${escapeCell(item.reason)} |\n`;
   }
-  markdown += `\n覆盖扫描：control.yaml 共 ${data.coverage.scannedComponentCount} 个成本组件、${data.coverage.scannedQuoteRoundCount} 条询价轮次登记；其中未决条目 ${data.coverage.unresolvedItemCount} 个已全部登记归属（计入定价行 ${data.coverage.countedItemCount} / 未定价与待核 ${data.coverage.pendingItemCount} / 不计价登记 ${data.coverage.excludedItemCount}）；范围外工作包（PKG-000 设计准备、PKG-145 窗帘、PKG-150 家具、PKG-160 家电）的 ${data.coverage.outOfScopeComponentCount} 个组件不属本表硬装范围，按包排除。\n`;
+  markdown += `\n覆盖扫描：control.yaml 共 ${data.coverage.scannedComponentCount} 个成本组件、${data.coverage.scannedQuoteRoundCount} 条询价轮次登记；其中未决条目 ${data.coverage.unresolvedItemCount} 个已全部登记归属（计入定价行 ${data.coverage.countedItemCount} / 未定价与待核 ${data.coverage.pendingItemCount} / 不计价登记 ${data.coverage.excludedItemCount}）；其中双归属条目 ${data.coverage.dualAttributedItemCount} 个（${data.coverage.dualAttributedItemIds.join('、')}）同时登记在两个分类、在两类各计一次，故三类计数之和 = 未决总数 + 双归属数；范围外工作包（PKG-000 设计准备、PKG-145 窗帘、PKG-150 家具、PKG-160 家电）的 ${data.coverage.outOfScopeComponentCount} 个组件不属本表硬装范围，按包排除。\n`;
   return markdown;
 }

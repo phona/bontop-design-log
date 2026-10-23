@@ -3,10 +3,13 @@ import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
+  assertAttributionClaims,
   assertVerifiedTierBasis,
   buildCostSummary,
   computeActiveMepQuote,
+  DUAL_ATTRIBUTIONS,
   renderCostSummary,
+  type AttributionKind,
   type CostSummaryData,
 } from '../../scripts/schedule/cost-summary.js';
 
@@ -150,13 +153,19 @@ describe('成本总表 cost-summary', () => {
     assert.equal(coverage.scannedComponentCount, 106);
     assert.equal(coverage.scannedQuoteRoundCount, 27);
     assert.ok(coverage.unresolvedItemCount > 0, '必须真的扫到未决条目');
+    // 集合语义：双归属条目在两个分类各计一次，三类之和 = 未决总数 + 双归属数
     assert.equal(
-      coverage.countedItemCount + coverage.pendingItemCount + coverage.excludedItemCount,
+      coverage.countedItemCount + coverage.pendingItemCount + coverage.excludedItemCount - coverage.dualAttributedItemCount,
       coverage.unresolvedItemCount,
-      '计入定价行 + 未定价与待核 + 不计价登记 必须恰好覆盖全部未决条目',
+      '计入定价行 + 未定价与待核 + 不计价登记 − 双归属 必须恰好覆盖全部未决条目',
     );
+    assert.deepEqual(coverage.dualAttributedItemIds, ['COST-030-02', 'COST-030-07'], '双归属条目必须恰为已声明的两条');
     const pendingCovers = new Set(data.pendingChecks.flatMap((entry) => entry.coversItems));
     const unpricedCovers = new Set(data.unpriced.flatMap((row) => row.coversItems ?? []));
+    const countedCovers = new Set(data.rows.flatMap((row) => row.coversItems ?? []));
+    // 复核 P2 点名：COST-030-02（合同外增量）与 COST-030-07（线控器书面确认）必须双归属——签约行计入 + 待核各一份
+    assert.ok(countedCovers.has('COST-030-02') && pendingCovers.has('COST-030-02'), 'COST-030-02 必须双归属（计入签约行 + 待核合同外增量）');
+    assert.ok(countedCovers.has('COST-030-07') && pendingCovers.has('COST-030-07'), 'COST-030-07 必须双归属（计入签约行 + 待核书面确认），不许只登记已计入而夸大 closure');
     // 评审 P2 点名三项 + 未关闭的防水去重轮次，必须在待核/未定价清单里
     for (const id of ['COST-060-05', 'COST-120-02', 'COST-125-03']) {
       assert.ok(pendingCovers.has(id), `${id} 必须出现在待核清单`);
@@ -171,6 +180,35 @@ describe('成本总表 cost-summary', () => {
       assert.ok(line, `待核清单必须含 ${entry.name}`);
       assert.equal(line.split('|')[3]?.trim(), '待核', `${entry.name} 的成本列必须是「待核」`);
     }
+  });
+
+  it('双归属校验：未声明的重复登记抛错并点名，声明双归属正常通过且计数正确', () => {
+    const claimsOf = (entries: Array<[string, AttributionKind[]]>) =>
+      new Map<string, Set<AttributionKind>>(entries.map(([id, kinds]) => [id, new Set(kinds)]));
+    const unresolved = new Set(['COST-030-02', 'COST-030-07', 'COST-099-01']);
+    // 未声明的多重归属：抛错并点名 id，不许静默取首个分类
+    assert.throws(
+      () => assertAttributionClaims(claimsOf([['COST-099-01', ['counted', 'pending']]]), DUAL_ATTRIBUTIONS, unresolved),
+      /COST-099-01.*多重归属/,
+    );
+    // 已声明的两条双归属：正常通过并如实返回
+    assert.deepEqual(
+      assertAttributionClaims(
+        claimsOf([
+          ['COST-030-02', ['counted', 'pending']],
+          ['COST-030-07', ['counted', 'pending']],
+          ['COST-099-01', ['pending']],
+        ]),
+        DUAL_ATTRIBUTIONS,
+        unresolved,
+      ),
+      ['COST-030-02', 'COST-030-07'],
+    );
+    // 声明腐烂：声明在册但条目已不是多重归属，必须抛错
+    assert.throws(
+      () => assertAttributionClaims(claimsOf([['COST-030-02', ['counted']]]), DUAL_ATTRIBUTIONS, unresolved),
+      /COST-030-02.*已腐烂/,
+    );
   });
 
   it('覆盖检查 fail-closed：注入未登记的未决组件必须抛错', () => {
