@@ -505,6 +505,13 @@ export function assertVerifiedTierBasis(rowId: string, basis: VerifiedBasis | un
   if (qr.status !== 'locked' || qr.locked_cny !== contracted) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据对不上：${basis.quoteRoundId} status=${qr.status}、locked_cny=${qr.locked_cny}，与 ${basis.packageId} contracted_cny=${contracted} 不一致`);
   }
+  // 主体绑定（自主扫描 G8）：轮次记录自带 pkg_id（如 QR-2026-10-03-24 的
+  // pkg_id: PKG-030）——登记的 packageId 必须与轮次自己声明的归属包一
+  // 致；否则包 A 的合同轮次能给包 B 的行背书（金额碰巧相等时其余检查全
+  // 过）。缺失同样不许。
+  if (qr.pkg_id !== basis.packageId) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据主体对不上：询价轮次 ${basis.quoteRoundId} 自带 pkg_id=${typeof qr.pkg_id === 'string' ? qr.pkg_id : '缺失'}，与登记的 packageId=${basis.packageId} 不一致——轮次归属与行归属不是同一个包，已核实层不成立`);
+  }
   assertContractCredential(rowId, qr.contract_ref, contracted, basis.packageId);
 }
 

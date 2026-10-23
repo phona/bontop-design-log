@@ -643,6 +643,32 @@ describe('成本总表 cost-summary', () => {
     }
   });
 
+  it('合同凭据主体绑定：轮次 pkg_id 与登记 packageId 不符或缺失必须抛错（G8）', () => {
+    // 自主扫描 G8：QR 记录自带 pkg_id（QR-2026-10-03-24 → PKG-030），守
+    // 卫此前从不比对——包 A 的合同轮次可给包 B 的行背书。改归属或删字段
+    // 都必须抛错点名；真实 control 零影响。
+    const control = parseYaml(readFileSync('schedule/phase-1/control.yaml', 'utf8')) as AnyRecord;
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control), '真实 control 必须通过主体绑定');
+    const doctor = (mutate: (qr: AnyRecord) => void) => {
+      const cloned = structuredClone(control) as AnyRecord;
+      const qr = (cloned.hard_finish_quote_rounds.records as AnyRecord[])
+        .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+      mutate(qr);
+      return cloned;
+    };
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, doctor((qr) => { qr.pkg_id = 'PKG-999'; })),
+      /主体对不上.*PKG-999.*PKG-030/,
+      '轮次 pkg_id 被改到别的包必须抛错并点名两个包',
+    );
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, doctor((qr) => { delete qr.pkg_id; })),
+      /主体对不上.*缺失/,
+      '轮次 pkg_id 缺失必须抛错',
+    );
+  });
+
   it('报价卡守卫真实 parser 路径：合成 YAML 经 parseMepQuotes 后公开参考价行仍被点名（G7）', () => {
     // 自主扫描 G7：守卫的行级来源检查此前只有注入原始对象的测试覆盖——
     // 生产路径上 parseRate 静默丢弃行级 evidence、且未经真实 parser 验证。
