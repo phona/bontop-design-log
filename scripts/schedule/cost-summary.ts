@@ -403,7 +403,8 @@ function assertContractCredential(rowId: string, qr: AnyRecord, contracted: numb
  *（contractor）非空；④ 报价日期（quoted_at）非空；
  * ⑤ 证据等级必须为 written_quote（正向强制，见下）；⑥ 费率来源不得为公开
  * 参考价（第二层，见下）；⑦ 被引用卡必须为文件的 active 卡（生效绑定，
- * 自主扫描 D4）；⑧ evidence.currency 若声明必须为 CNY（自主扫描 D5）。
+ * 自主扫描 D4）；⑧ evidence.currency 若声明必须为 CNY（自主扫描 D5）；
+ * ⑨ 费率行级 evidence 若存在必须同为 written_quote（复审 P2-c，见下）。
  * ⑤ 的来由（复审再续·凭据边界收紧）：早先版本只**拒**公开参考价来源——缺
  * 证据、或只有照片 / 业主转述的卡仍能过关，与证据分级口径不一致。
  * shared/quote-cards.ts 的 QuoteCardEvidenceKind 三级（photo /
@@ -426,6 +427,13 @@ function assertContractCredential(rowId: string, qr: AnyRecord, contracted: numb
  * 守卫侧判断保留为注入路径的第二道。(ii) evidence 的 status / source /
  * observed_at / quote_status 由 parser 透传、本守卫**不解读**（与上游
  * comparable 门禁同口径）——它们不构成凭据强度的一部分。
+ * ⑨ 行级证据（复审 P2-c）：⑤ 的卡级 written_quote 只证明整卡带一份书面凭
+ * 据，证明不了每一行费率都来自书面报价——某行自带 photo / owner_reported
+ * 行级证据时，那一行就是照片判读 / 业主转述价；若只查卡级，这类行会逐行
+ * 漏进已核实层。故逐行再查：行级 evidence 存在且 kind !== 'written_quote'
+ * 一律抛错点名行键与 kind；无行级 evidence 的行沿用卡级凭据（现行生产卡
+ * 的形态，不受影响）。行级 kind='public_reference' 不在三级枚举内、生产
+ * 解析期即被拒，守卫侧由 ⑥ 的行级分支在注入路径兜住。
  * 作用域边界（如实）：本函数只在某行**声称已核实**（tier=verified 且凭据为
  * 报价卡）时被调用。现行 5 张 MEP 卡均无结构化 evidence 字段——按 ⑤，此后
  * 任何 MEP 卡在补登书面证据前**不得**支撑已核实层，这是刻意的 fail-closed；
@@ -483,11 +491,17 @@ function assertQuoteCardCredential(rowId: string, basis: { cardId: string; cardS
   // ⑥ 费率来源核验（第二层）：公开参考价（public_reference）不是施工方报价，
   // 哪怕卡被标成 contracted、且 evidence 为 written_quote 也不许据此声称已核
   // 实。逐行查 rates 的 scope_note 标记与行级 evidence.kind，命中即点名行键。
+  // ⑨ 行级证据等级（复审 P2-c）：同一循环内再查行级 evidence.kind——存在且
+  // 不是 written_quote（photo / owner_reported）即抛错点名行键与 kind；卡级
+  // 书面证据不能替行级低等级证据背书。
   for (const [rateKey, rate] of Object.entries((card.rates ?? {}) as Record<string, AnyRecord>)) {
     const scopeNote = typeof rate?.scope_note === 'string' ? rate.scope_note : '';
     const rateEvidenceKind = (rate?.evidence as AnyRecord | undefined)?.kind;
     if (scopeNote.includes('public_reference') || rateEvidenceKind === 'public_reference') {
       throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据来源不合格：卡 ${basis.cardId} 的费率行 ${rateKey} 来源为公开参考价（public_reference）——公开参考价不是施工方报价，不得支撑已核实层，请把该行降为暂估层或更换为施工方报价卡`);
+    }
+    if (rateEvidenceKind !== undefined && rateEvidenceKind !== 'written_quote') {
+      throw new Error(`cost summary: 定价行 ${rowId} 的报价卡凭据行级证据不合格：卡 ${basis.cardId} 的费率行 ${rateKey} 的 evidence.kind=${rateEvidenceKind}，不是 written_quote——照片判读（photo）/ 业主转述（owner_reported）级别的行级证据不得支撑已核实层（卡级书面证据不能替行级低等级证据背书），请把该行降为暂估层或补书面报价`);
     }
   }
 }
