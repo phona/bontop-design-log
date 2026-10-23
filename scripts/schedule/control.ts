@@ -307,6 +307,54 @@ for (const record of quoteRoundRecords) {
   if (record.status === 'locked' && (record.locked_cny == null || !record.contract_ref)) {
     errors.push(`${record.id}: status locked requires locked_cny and contract_ref`);
   }
+  if (record.contract != null) {
+    // 合同结构化登记（2026-10-23 收口）：带 contract 块的轮次即已转合同，登记
+    // 字段是成本总表守卫（cost-summary.ts）的机读单源。口径在这里就钉死，不
+    // 许带病数据流到生成器才炸：金额须与 locked_cny 一致；deal_status 只认
+    // signed（唯一「已成交」取值）；signed_at 须为 YYYY-MM-DD（js-yaml 会把
+    // 未加引号的日期解析成 Date，两形态都认）；includes/excludes 必须在位；
+    // archive_paths 逐一指向真实存在的非空文件（合同原件归档，见 contracts/）。
+    const contract = record.contract;
+    if (typeof contract !== 'object' || Array.isArray(contract)) {
+      errors.push(`${record.id}: contract must be a mapping`);
+    } else {
+      if (typeof contract.amount_cny !== 'number' || contract.amount_cny <= 0) {
+        errors.push(`${record.id}: contract.amount_cny must be a positive number`);
+      } else if (contract.amount_cny !== record.locked_cny) {
+        errors.push(`${record.id}: contract.amount_cny=${contract.amount_cny} 与 locked_cny=${record.locked_cny} 不一致——登记金额与锁定金额必须同值`);
+      }
+      if (contract.deal_status !== 'signed') {
+        errors.push(`${record.id}: contract.deal_status must be signed (got ${contract.deal_status})`);
+      }
+      const signedAtText = contract.signed_at instanceof Date
+        ? contract.signed_at.toISOString().slice(0, 10)
+        : contract.signed_at;
+      if (typeof signedAtText !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(signedAtText) || Number.isNaN(Date.parse(signedAtText))) {
+        errors.push(`${record.id}: contract.signed_at must be a YYYY-MM-DD date (got ${contract.signed_at})`);
+      }
+      if (typeof contract.includes !== 'string' || !contract.includes) {
+        errors.push(`${record.id}: contract.includes missing`);
+      }
+      if (typeof contract.excludes !== 'string' || !contract.excludes) {
+        errors.push(`${record.id}: contract.excludes missing`);
+      }
+      if (!Array.isArray(contract.archive_paths) || contract.archive_paths.length === 0) {
+        errors.push(`${record.id}: contract.archive_paths must be a non-empty array`);
+      } else {
+        for (const archivePath of contract.archive_paths) {
+          let archiveError: string | null = null;
+          try {
+            const stat = fs.statSync(path.join(root, String(archivePath)));
+            if (!stat.isFile()) archiveError = `contract.archive_paths 指向非文件：${archivePath}`;
+            else if (stat.size === 0) archiveError = `contract.archive_paths 指向空文件（0 字节）：${archivePath}`;
+          } catch {
+            archiveError = `contract.archive_paths does not exist: ${archivePath}`;
+          }
+          if (archiveError) errors.push(`${record.id}: ${archiveError}`);
+        }
+      }
+    }
+  }
   if (record.evidence_path) {
     // 证据存在性必须看**内容**，不能只看路径。fs.existsSync 对目录恒为 true 且不看条目，
     // 于是「一个只放了 README.md 的空目录」会被判成有证据——QR-2026-10-03-08
