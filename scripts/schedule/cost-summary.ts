@@ -255,11 +255,27 @@ export function findDecisionSection(decId: string, dir: string = 'docs/decisions
  * 个 DEC 章节）：17 个章节命中旧正则但不命中本集合，逐一核对均为询价记
  * 录 / 合同外事项 / 否定式提及，无一是成交章节；现行唯一生产合同章节
  * DEC-2026-10-04-R1 同时命中定标成交、成交事实、签约方三项，通过有余量。
+ * 紧邻否定屏蔽（复审 P2-b）：正向集合是子串匹配，分不清「定标成交」与
+ * 「并非定标成交」——后者也含「定标成交」。故逐个命中点查紧邻前文：关键
+ * 词起点前最近 1–3 字以「并非 / 不是 / 尚未 / 没有」结尾、或最后一字为
+ * 「未 / 没 / 非」，该命中视为被否定屏蔽、不计数；至少一个未被屏蔽的命
+ * 中才算通过。边界：裸「不」不入屏蔽集——「不改变定标成交事实」是正向
+ * 陈述，纳入裸「不」会把这类句子误杀；只屏蔽紧邻的明确否定形态。
  */
-const AFFIRMATIVE_DEAL_PATTERN = /(?:定标成交|成交事实|已签约|签订|签约方|已成交)/;
+const AFFIRMATIVE_DEAL_PATTERN = /(?:定标成交|成交事实|已签约|签订|签约方|已成交)/g;
+
+const DEAL_NEGATION_SUFFIXES = ['并非', '不是', '尚未', '没有'] as const;
+const DEAL_NEGATION_TRAILING = new Set(['未', '没', '非']);
 
 export function hasAffirmativeDealSemantics(sectionText: string): boolean {
-  return AFFIRMATIVE_DEAL_PATTERN.test(sectionText);
+  for (const match of sectionText.matchAll(AFFIRMATIVE_DEAL_PATTERN)) {
+    const start = match.index ?? 0;
+    const prefix = sectionText.slice(Math.max(0, start - 3), start);
+    const shielded = DEAL_NEGATION_SUFFIXES.some((suffix) => prefix.endsWith(suffix))
+      || (prefix.length > 0 && DEAL_NEGATION_TRAILING.has(prefix.slice(-1)));
+    if (!shielded) return true;
+  }
+  return false;
 }
 
 /**
