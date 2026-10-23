@@ -374,6 +374,43 @@ describe('成本总表 cost-summary', () => {
     assert.equal(sectionAnchorsContractTotal('外机分项合计：14,124 元', 14124), false, '「分项合计」的合计被子目语义屏蔽');
     assert.equal(sectionAnchorsContractTotal('设备合计 14,124 元', 14124), false, '部件名紧邻在前的合计是子目合计、不是合同总价');
     assert.equal(sectionAnchorsContractTotal('合计 36,000 元', 36000), true, '无子目语义的合计是合同总价锚点');
+    // 同句多金额（复审第四轮 P1）：总价词只对应与它直接相连的金额；
+    // 同句并列的括注/逗号后金额借不到总价词
+    assert.equal(sectionAnchorsContractTotal('合同总价36,000元（其中外机14,124元）', 36000), true, '与「合同总价」直接相连的 36,000 锚定成立');
+    assert.equal(sectionAnchorsContractTotal('合同总价36,000元（其中外机14,124元）', 14124), false, '括注里的分项金额与总价词之间隔着另一个金额与括号，对应断裂');
+    assert.equal(sectionAnchorsContractTotal('合同总价：36,000元（外机：14,124元）', 14124), false, '冒号+括号写法同理，分项金额不得借锚');
+    assert.equal(sectionAnchorsContractTotal('合同总价36,000元,外机14,124元', 14124), false, '英文逗号同句并列的分项金额不得借锚');
+    assert.equal(sectionAnchorsContractTotal('合同总价36,000元,外机14,124元', 36000), true, '英文逗号句中与总价词直接相连的仍是合同总价本身');
+    assert.equal(sectionAnchorsContractTotal('36,000元为合同总价（外机14,124元）', 14124), false, '金额在关键词之前的写法（后置对应）下，括注分项金额同样借不到锚');
+    assert.equal(sectionAnchorsContractTotal('36,000元为合同总价（外机14,124元）', 36000), true, '后置对应：金额与「合同总价」仅隔系词「为」时锚定成立');
+  });
+
+  it('同句多金额反例（守卫级）：总价句括注分项价时，三方同步改成分项价仍必须抛错（复审第四轮 P1）', () => {
+    // 评审的原始复现：章节只写一句「合同总价36,000元（其中外机14,124
+    // 元）」——同句、无分句隔断，第三轮口径下两个金额同享总价词。
+    // 第四轮位置对应后：总价词只对应直接相连的 36,000。
+    const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
+    const swapped = structuredClone(control) as AnyRecord;
+    const qr = (swapped.hard_finish_quote_rounds.records as AnyRecord[])
+      .find((record) => record.id === 'QR-2026-10-03-24') as AnyRecord;
+    qr.contract.amount_cny = 14124;
+    qr.locked_cny = 14124;
+    pkgOf(swapped, 'PKG-030').budget.contracted_cny = 14124;
+    const dir = mkdtempSync(join(tmpdir(), 'dec-samesentence-'));
+    try {
+      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 中央空调定标\n\n- **成交事实**：双方已签约。合同总价36,000元（其中外机14,124元）。\n');
+      assert.throws(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, swapped, undefined, dir),
+        /金额与 DEC 脱节/,
+        '同句括注的分项金额不得冒充合同总价：三方同步改成分项价必须被位置对应锚定拦下',
+      );
+      assert.doesNotThrow(
+        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
+        '同一注入章节、登记仍为真实 36,000 时必须锚定通过（总价词直接对应 36,000）',
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it('分项总价反例（守卫级）：DEC 写明分项总价与合同总价时，三方同步改成分项价仍必须抛错（复审第三轮 P1）', () => {
