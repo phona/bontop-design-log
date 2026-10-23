@@ -246,6 +246,10 @@ export function findDecisionSection(decId: string): { file: string; text: string
  * 不改变总价」中「不改变总价」的否定作用于动词「改变」而非总价身份，该
  * 句的真命中靠先行出现的「整包含价」成立，屏蔽不误伤（提取函数注释与测
  * 试均有逐字对照）。
+ * 形态 (a) 同样要过否定屏蔽（第九轮堵）：「本项目非总价：14,124 元」里
+ * 关键词「总价」紧邻前文是「非」，陈述的恰是「这不是总价」——(a) 的每个
+ * 命中须查关键词紧邻前文是否以身份否定词（不是 / 并非 / 不属于 / 不属 /
+ * 非）结尾，是则本次出现作废，与 (b) 同口径。
  * 实测现行 DEC-2026-10-04-R1：整行口径的候选集有 16 个 token，辖域口径下
  * 恰为 {36,000}（(a) 标题行、(b) 整包含价行各命中一次）。章节内无任何辖域
  * 位置载有该金额即抛错。「合计」刻意不入关键词集：合计行可能只是分项小
@@ -264,9 +268,16 @@ export function findDecisionSection(decId: string): { file: string; text: string
 export function extractGovernedTotalAmounts(sectionText: string): Set<string> {
   const amountPattern = String.raw`(?<![\d,])(\d{1,3}(?:,\d{3})+|\d+)(?![\d,])`;
   const governed = new Set<string>();
-  // (a) 关键词在前：关键词后只隔标点/空白即接金额（定标成交：36,000 元）
-  const keywordFirst = new RegExp(`(?:定标成交|合同总价|总金额|总价|合同额|成交价)\\s*[:：]?\\s*${amountPattern}`, 'g');
-  for (const match of sectionText.matchAll(keywordFirst)) governed.add(match[1]);
+  // (a) 关键词在前：关键词后只隔标点/空白即接金额（定标成交：36,000 元）。
+  // 同样须过否定屏蔽（复审第九轮，与 (b) 对称）：关键词紧邻前文以身份否
+  // 定词结尾（「本项目非总价：14,124 元」「并非定标成交：36,000 元」）时，
+  // 该出现陈述的恰是「这不是总价/未成交」，其后金额不得被认作总价候选。
+  const keywordFirst = new RegExp(`(定标成交|合同总价|总金额|总价|合同额|成交价)\\s*[:：]?\\s*${amountPattern}`, 'g');
+  for (const match of sectionText.matchAll(keywordFirst)) {
+    const before = sectionText.slice(0, match.index);
+    if (/(?:不是|并非|不属于|不属|非)$/.test(before)) continue;
+    governed.add(match[2]);
+  }
   // (b) 金额在前：同小句近邻出现总价词（36,000 为整包含价，…不改变总价），
   // 间隔不含其他数字、不跨句号/分号
   const amountFirst = new RegExp(`${amountPattern}[^\\d。；]{0,24}?(?:总价|整包含价)`, 'g');
@@ -1410,7 +1421,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
 export function renderCostSummary(data: CostSummaryData, headerText: string): string {
   const escapeCell = (value: unknown) => String(value ?? '—').replaceAll('|', '\\|').replaceAll('\n', '<br>');
   let markdown = headerText;
-  markdown += '本表是**成本**总表，不是预算表：每一行都是按当前数据实际算出或已有来源的价格，并标注成色与推导；没有真实价格的项目只登记为「未定价」、金额或归属未决的登记为「待核」，都不填金额、不按 0 计入合计。\n\n';
+  markdown += '本表是**成本**总表，不是预算表：每一行都是按当前数据实际算出或已有来源的价格，并标注成色与推导；没有真实价格的项目只登记为「未定价」、金额或归属未决的登记为「待核」——未定价与待核条目本身都不填金额；但待核中标注「已计入」的，所涉金额已含在定价行里（不重复计，计入状态见下「未定价与待核」），其余待核与未定价一样不计入合计。\n\n';
   markdown += '## 口径说明\n\n';
   markdown += '- **范围**：一期硬装，**含中央空调**（hvac 池并入本表，不单列）。家具、家电、窗帘、设计准备等其他预算池不在本表。\n';
   markdown += '- **无预算数**：本表任何一行都不取 planned_cny / 批准额；预算口径见 [一期预算控制表](budget.md)。\n';
@@ -1434,7 +1445,7 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   for (const row of data.rows) {
     markdown += `| ${escapeCell(row.name)} | ${row.packageIds.join('、') || '—'} | ${row.amountCny == null ? '—' : yuan(row.amountCny)} | ${escapeCell(row.grade)} | ${escapeCell(row.derivation)} |\n`;
   }
-  markdown += `| **已核实小计** | | **${yuan(data.verifiedSubtotalCny)}** | | 已锁定或完整实算且无未决去重/待报价标记的行之和 |\n`;
+  markdown += `| **已核实小计** | | **${yuan(data.verifiedSubtotalCny)}** | | 金额已锁定且无未决去重/待报价标记的行之和（已核实口径见上「小计分三层」） |\n`;
   markdown += `| **暂估小计** | | **${yuan(data.provisionalSubtotalCny)}** | | 未锁价等级的行之和（封顶/预算池/候选/目标/参考/暂估/待去重） |\n`;
   markdown += `| **已知合计（不含未定价）** | | **${yuan(data.knownSubtotalCny)}** | | 已核实 + 暂估，共 ${data.rows.length} 行；未定价 ${data.unpriced.length} 项不在内；待核 ${data.pendingChecks.length} 项不在本表逐行列示，其中已计入 ${pendingCountedN} 项的金额已含于定价行，本行不是已核实成本 |\n`;
   markdown += '\n## 未定价与待核（计入状态逐条标注）\n\n';
@@ -1462,6 +1473,6 @@ export function renderCostSummary(data: CostSummaryData, headerText: string): st
   for (const item of data.excludedItems) {
     markdown += `| ${escapeCell(item.item)} | ${escapeCell(item.label)} | ${escapeCell(item.reason)} |\n`;
   }
-  markdown += `\n覆盖扫描：control.yaml 共 ${data.coverage.scannedComponentCount} 个成本组件、${data.coverage.scannedQuoteRoundCount} 条询价轮次登记；其中未决条目 ${data.coverage.unresolvedItemCount} 个已全部登记归属（计入定价行 ${data.coverage.countedItemCount} / 未定价与待核 ${data.coverage.pendingItemCount} / 不计价登记 ${data.coverage.excludedItemCount}）；其中双归属条目 ${data.coverage.dualAttributedItemCount} 个（${data.coverage.dualAttributedItemIds.join('、')}）同时登记在两个分类、在两类各计一次，故三类计数之和 = 未决总数 + 双归属数；范围外工作包（PKG-000 设计准备、PKG-145 窗帘、PKG-150 家具、PKG-160 家电）的 ${data.coverage.outOfScopeComponentCount} 个组件不属本表硬装范围，按包排除。\n`;
+  markdown += `\n覆盖扫描：control.yaml 共 ${data.coverage.scannedComponentCount} 个成本组件、${data.coverage.scannedQuoteRoundCount} 条询价轮次登记；其中未决条目 ${data.coverage.unresolvedItemCount} 个已全部登记归属（计入定价行 ${data.coverage.countedItemCount} / 未定价与待核 ${data.coverage.pendingItemCount} / 不计价登记 ${data.coverage.excludedItemCount}）；其中双归属条目 ${data.coverage.dualAttributedItemCount} 个（${data.coverage.dualAttributedItemIds.join('、')}）同时登记在两个分类、在两类各计一次，故三类计数之和 = 未决总数 + 双归属数；范围外工作包（PKG-000 设计准备、PKG-145 窗帘、PKG-150 家具、PKG-160 家电）的 ${data.coverage.outOfScopeComponentCount} 个组件不属本表硬装范围，按包排除。（本段计数按条目计；上「未定价与待核」清单按归并条目行列示，共 ${data.unpriced.length + data.pendingChecks.length} 行——行数与条目数不相等是计数口径不同，不是漏登。）\n`;
   return markdown;
 }

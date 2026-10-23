@@ -278,6 +278,12 @@ describe('成本总表 cost-summary', () => {
     assert.deepEqual([...extractGovernedTotalAmounts('该 8,400 元不属于总价范畴，系单项安装费。')], [], '「不属于总价」同样是身份否定');
     // 对真值的否定陈述同样不得产生候选（哪怕金额恰是 36,000）
     assert.deepEqual([...extractGovernedTotalAmounts('本轮口述价 36,000 元不是总价，仅为设备款。')], [], '对真值的否定陈述不得产生候选');
+    // 形态 (a)（关键词在前）同样过否定屏蔽（复审第九轮）：关键词紧邻前文
+    // 以身份否定词结尾（非 / 并非 / 不是）时，该出现陈述的是「这不是总
+    // 价/未成交」，其后金额不得被认作总价候选
+    assert.deepEqual([...extractGovernedTotalAmounts('本项目非总价：14,124 元，系外机分项价。')], [], '「非总价：14,124 元」不得产生候选（(a) 否定屏蔽）');
+    assert.deepEqual([...extractGovernedTotalAmounts('并非定标成交：36,000 元，仅为询价记录。')], [], '「并非定标成交：36,000 元」不得产生候选（(a) 否定屏蔽）');
+    assert.deepEqual([...extractGovernedTotalAmounts('此数不是合同总价：36,000 元，系设备与安装的拆分合计。')], [], '「不是合同总价：…」不得产生候选（(a) 否定屏蔽）');
     // 不误伤一：现行 DEC 形态 (b) 真命中逐字复刻——「36,000 为整包含价，
     // 换内机不改变总价」中「不改变总价」的否定作用于动词「改变」而非总
     // 价身份，命中靠先行出现的「整包含价」成立，屏蔽不得误伤
@@ -613,6 +619,23 @@ describe('成本总表 cost-summary', () => {
     // 标题再总括「不计入合计」自相矛盾；新标题钉死、旧标题不得再现
     assert.ok(markdown.includes('## 未定价与待核（计入状态逐条标注）'), '待核板块标题必须如实表述为计入状态逐条标注');
     assert.ok(!markdown.includes('未定价与待核（不计入合计）'), '旧标题（与已计入待核项矛盾）不得再现');
+    // 表头口径句的待核例外（自主扫描 R3）：表头原称待核「都不填金额、不
+    // 按 0 计入合计」，对 4 条已计入待核项不成立（其金额经定价行计入合
+    // 计）——表头必须补计入状态例外指向，旧句不得再现
+    assert.ok(markdown.includes('待核中标注「已计入」的，所涉金额已含在定价行里'), '表头必须写明已计入待核项的金额已含在定价行');
+    assert.ok(!markdown.includes('都不填金额、不按 0 计入合计'), '表头旧句（待核一概不计入合计）不得再现');
+    // 已核实小计注与定义对齐（自主扫描 R5）：小计行注原作「已锁定或完整
+    // 实算…」，与口径定义句（小计分三层）的已核实定义措辞不一——两处关
+    // 键措辞必须一致（同为「金额已锁定且无未决去重/待报价标记」）
+    assert.ok(markdown.includes('**已核实小计** = 金额已锁定且无未决去重/待报价标记的行'), '口径定义句的已核实定义必须在位');
+    const verifiedLine = markdown.split('\n').find((text) => text.startsWith('| **已核实小计**'));
+    assert.ok(verifiedLine?.includes('金额已锁定且无未决去重/待报价标记的行之和'), '小计行注必须与定义句同口径');
+    assert.ok(!markdown.includes('已锁定或完整实算且无未决去重/待报价标记的行之和'), '小计行注旧措辞（完整实算）不得再现');
+    // 覆盖计数单位标注（自主扫描 R6）：文末覆盖行计数是条目数（105/68/
+    // 34/6），清单是归并行数（21 行）——覆盖行必须注明计数单位与清单行
+    // 数，免得读者按行数对账误以为漏登
+    assert.ok(markdown.includes('本段计数按条目计'), '覆盖行必须注明计数按条目计');
+    assert.ok(markdown.includes(`共 ${data.unpriced.length + data.pendingChecks.length} 行`), '覆盖行必须带清单归并行数（生成值）');
     assert.ok(markdown.includes('已知合计（不含未定价）'));
     assert.ok(markdown.includes('已核实小计'));
     assert.ok(markdown.includes('暂估小计'));
