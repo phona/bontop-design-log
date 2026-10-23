@@ -219,7 +219,7 @@ hard_finish_quote_rounds:
       cap: 业主选品封顶价，不是成交价
       candidate: 候选价或下一轮询价目标
     status_note: locked 必须同时给出 locked_cny 与 contract_ref；supersedes 指向被本轮取代的上一轮记录，只追加不覆盖，历史轮次永久可追溯
-    contract_note: 已转合同的记录另带 contract 登记块（amount_cny / deal_status / signed_at / includes / excludes / archive_paths），由 control.ts 校验金额与 locked_cny 一致、deal_status 枚举、signed_at 格式与 archive_paths 逐一存在；成本总表守卫只读登记块认金额，不再从 DEC 散文提取
+    contract_note: 已转合同的记录另带 contract 登记块（amount_cny / deal_status / signed_at / includes / excludes / archive_paths），由 control.ts 校验金额与 locked_cny 一致、deal_status 枚举、signed_at 格式与 archive_paths 逐条形态（{path, sha256}：path 限 contracts/ 下、sha256 为 64 位十六进制、文件存在非空）；成本总表守卫读登记块认金额，并实算归档哈希比对、回 DEC 章节核对登记金额在场与成交语义，不再从 DEC 散文提取金额
   records:
     - id: QR-2026-10-03-01
       round_id: ROUND-2026-10-03
@@ -539,8 +539,9 @@ hard_finish_quote_rounds:
       locked_cny: 36000
       contract_ref: DEC-2026-10-04-R1
       evidence_path: contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg
-      # 合同结构化登记（2026-10-23 收口）：合同事实以本块为成本总表守卫的机读单源，
-      # DEC-2026-10-04-R1 章节只作存在性与成交语义核对，不再从散文提取金额。
+      # 合同结构化登记（2026-10-23 收口）：合同事实以本块为成本总表守卫的机读单源；
+      # DEC-2026-10-04-R1 章节作存在性、成交语义与登记金额在场核对，不再从散文提取金额。
+      # archive_paths 逐条带 sha256 钉死原件字节（复审 P2-a），原件被替换即守卫报警。
       # counterparty（签约方）仓内仅见于 hvac-resix fact-table F1 与 evidence-notes
       # 门牌转录，未作结构化登记，本块不设该字段、不编造。
       contract:
@@ -550,8 +551,10 @@ hard_finish_quote_rounds:
         includes: 含辅材
         excludes: 不含复合风管与风口加长（加长 100 元/米另计）、不含税
         archive_paths:
-          - contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg
-          - contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p2_20261004.jpg
+          - path: contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg
+            sha256: b1adfe5ca3aa6e31744cc14d6c329e952c5b8d715a4379b41fd69a6aacb5f61a
+          - path: contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p2_20261004.jpg
+            sha256: 4304b3b8eaa43d7164da1e2c69929bce0149e9e596ffbe0508031628b2ff47c2
     - id: QR-2026-10-03-25
       round_id: ROUND-2026-10-03
       item: 成品保护/垃圾清运/零星孔洞修补

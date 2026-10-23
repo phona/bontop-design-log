@@ -313,7 +313,10 @@ for (const record of quoteRoundRecords) {
     // 许带病数据流到生成器才炸：金额须与 locked_cny 一致；deal_status 只认
     // signed（唯一「已成交」取值）；signed_at 须为 YYYY-MM-DD（js-yaml 会把
     // 未加引号的日期解析成 Date，两形态都认）；includes/excludes 必须在位；
-    // archive_paths 逐一指向真实存在的非空文件（合同原件归档，见 contracts/）。
+    // archive_paths 逐条为 {path, sha256}：path 限定 contracts/ 归档区、
+    // sha256 为 64 位十六进制（登记时钉死的原件字节哈希）、文件真实存在
+    // 且非空；哈希与文件字节的实算比对在成本守卫（cost-summary.ts）做，
+    // 数据层这里只钉形态、范围与在位。
     const contract = record.contract;
     if (typeof contract !== 'object' || Array.isArray(contract)) {
       errors.push(`${record.id}: contract must be a mapping`);
@@ -341,10 +344,24 @@ for (const record of quoteRoundRecords) {
       if (!Array.isArray(contract.archive_paths) || contract.archive_paths.length === 0) {
         errors.push(`${record.id}: contract.archive_paths must be a non-empty array`);
       } else {
-        for (const archivePath of contract.archive_paths) {
+        for (const archiveEntry of contract.archive_paths) {
+          if (typeof archiveEntry !== 'object' || archiveEntry === null || Array.isArray(archiveEntry)) {
+            errors.push(`${record.id}: contract.archive_paths 条目必须是 {path, sha256} 登记（got ${archiveEntry === null ? 'null' : typeof archiveEntry}）`);
+            continue;
+          }
+          const archivePath = archiveEntry.path;
+          const archiveSha256 = archiveEntry.sha256;
+          if (typeof archivePath !== 'string' || !archivePath.startsWith('contracts/')) {
+            errors.push(`${record.id}: contract.archive_paths 的 path 必须位于 contracts/ 归档区内（got ${archivePath}）`);
+            continue;
+          }
+          if (typeof archiveSha256 !== 'string' || !/^[0-9a-f]{64}$/.test(archiveSha256)) {
+            errors.push(`${record.id}: contract.archive_paths 条目 ${archivePath} 的 sha256 必须是 64 位十六进制（got ${archiveSha256}）`);
+            continue;
+          }
           let archiveError: string | null = null;
           try {
-            const stat = fs.statSync(path.join(root, String(archivePath)));
+            const stat = fs.statSync(path.join(root, archivePath));
             if (!stat.isFile()) archiveError = `contract.archive_paths 指向非文件：${archivePath}`;
             else if (stat.size === 0) archiveError = `contract.archive_paths 指向空文件（0 字节）：${archivePath}`;
           } catch {
