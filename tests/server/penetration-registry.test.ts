@@ -33,9 +33,9 @@ describe('anti-penetration registry', () => {
     const config = loadAntiPenetrationConfig();
     assert.deepEqual(validateAntiPenetrationRegistry(config), []);
     assert.equal(IMPLEMENTED_RULES.length, (config.rules ?? []).length);
-    // The original migration recorded 13 relationships. The 2026-10-14 fridge relocation removes the now-dead kitchen_fridge_corner relation, leaving 12 current waivers.
+    // The original migration recorded 13 relationships. The 2026-10-14 fridge relocation removes the now-dead kitchen_fridge_corner relation, leaving 12; 2026-10-17 (99c5b20) the RO purifier model adds kitchen_ro_purifier_inside_sink_base, back to 13 current waivers.
     // Remaining waivers must still carry reason/owner/expires and known rules, otherwise the registry must fail closed.
-    assert.equal((config.waivers ?? []).length, 12, 'the current relationship registry has 12 entries after removing the obsolete fridge-corner relation');
+    assert.equal((config.waivers ?? []).length, 13, 'the current relationship registry has 13 entries (12 post-fridge-removal + the 2026-10-17 purifier waiver)');
   });
 
   it('fails closed when config declares a rule with no implementation', () => {
@@ -131,7 +131,7 @@ describe('penetration waivers', () => {
 });
 
 describe('relationship waiver migration (2026-10-09)', () => {
-  // 历史：迁移前 `config/spatial-validation.yaml` 有13条 relationships 白名单（HEAD f6be0ab）；迁入 waivers[] 后，2026-10-14 冰箱移位使 `kitchen_fridge_corner` 成为死关系并移除，现锁12条仍适用的关系。
+  // 历史：迁移前 `config/spatial-validation.yaml` 有13条 relationships 白名单（HEAD f6be0ab）；迁入 waivers[] 后，2026-10-14 冰箱移位使 `kitchen_fridge_corner` 成为死关系并移除（12条）；2026-10-17 提交 99c5b20 给净水器建模时新增 `kitchen_ro_purifier_inside_sink_base`（contained，水槽柜内嵌），现锁13条仍适用的关系。
   // 少一条 = 合法叠放被误报成穿模；多一条 = 悄悄放行一次真互撞；保留本历史说明供差异追溯。
   const CURRENT_WAIVER_RELATIONSHIPS = [
     { id: 'laundry_stack', type: 'stacked', pair: ['furniture:balcony:washer:0', 'furniture:balcony:dryer:1'] },
@@ -146,9 +146,10 @@ describe('relationship waiver migration (2026-10-09)', () => {
     { id: 'kitchen_sink_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:sink:7'] },
     { id: 'kitchen_cooktop_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:4', 'furniture:kitchen:gas_stove:5'] },
     { id: 'wardrobe_top_pelmet', type: 'attached', pair: ['furniture:master_bedroom:master_north_wall_wardrobe_950:1', 'furniture:master_bedroom:master_wardrobe_top_pelmet:2'] },
+    { id: 'kitchen_ro_purifier_inside_sink_base', type: 'contained', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9'] },
   ];
 
-  it('keeps the 12 current migrated relationships as complete waivers carrying the original kind', () => {
+  it('keeps the 13 current migrated relationships as complete waivers carrying the original kind', () => {
     const config = loadAntiPenetrationConfig();
     const waivers = config.waivers ?? [];
     assert.equal(waivers.length, CURRENT_WAIVER_RELATIONSHIPS.length, 'one waiver per current relationship, no more no less');

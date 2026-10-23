@@ -1178,9 +1178,40 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
           const previous = points[rise - 1], current = points[rise];
           add(result, issue('warning', 'gravity_slope_geometry_mismatch', `Gravity route ${route.id} segment #${rise} (${previous.x},${previous.z})→(${current.x},${current.z}) rises ${(previous.y as number).toFixed(3)}m → ${(current.y as number).toFixed(3)}m; flow_direction down requires non-increasing via heights`, route.id));
         }
-        for (const deficit of gravitySlopeDeficits(points, slope)) {
-          add(result, issue('error', 'gravity_slope_below_design_target',
-            `Gravity route ${route.id} segment #${deficit.index} has ${(deficit.drop * 1000).toFixed(1)}mm fall over ${deficit.length.toFixed(2)}m (${(deficit.ratio * 100).toFixed(2)}%); the declared minimum is ${(slope * 100).toFixed(2)}%, with ${GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M * 1000}mm geometry-only tolerance and no construction tolerance declared`, route.id));
+        // DEC-2026-10-23-R02：墙排（gravity_wall_drain）恢复全线汇总口径——柜内转角
+        // 本就吃落差，逐段判必然误报（该口径曾被 bf29283 改 code 名时静默取消，本次
+        // 经业主裁定恢复）。全线落差/全线水平长与声明坡度比，不足才报一条；其余重力
+        // 路线维持逐段（含 R01 短段链）判。
+        // 落差取带方向值（沿 from→to 流向）：PR #14 评审指出绝对值会把
+        // 上坡算成达标落差——flow_direction: up 且终点更高的墙排曾零命中静默通过；
+        // 带方向后净上坡为负落差、必然命中，down 流向的端点倒坡另有方向冲突检查兜底。
+        // 汇总只统计横管段：PR #14 复审指出首末点总落差含竖直下落时，会把其后欠坡
+        // 横管补贴成达标（先竖直下落 0.30m、再接 0.25% 横管曾判 15% 通过）。与逐段
+        // 口径 gravitySlopeDeficits 的 R01 原则对齐：纯竖直段（平面长≈0）与近竖直段
+        // （落差 > 平面长，>45°）是落水不是横管，其落差与平面长均不计入全线汇总；
+        // 横管各段的落差仍按下式汇总（柜内转角等横管短段不逐段判，R02 口径不变）。
+        if (route.method?.includes('wall_drain')) {
+          let runLength = 0;
+          let runDrop = 0;
+          for (let i = 1; i < points.length; i += 1) {
+            const previous = points[i - 1], current = points[i];
+            const segmentRun = Math.hypot(current.x - previous.x, current.z - previous.z);
+            if (segmentRun < 1e-6) continue; // 纯竖直段：无横管长、不供落差
+            const segmentDrop = (previous.y as number) - (current.y as number);
+            if (segmentDrop > segmentRun) continue; // 近竖直下行段：落水，不供落差
+            runLength += segmentRun;
+            runDrop += segmentDrop;
+          }
+          const requiredDrop = slope * runLength;
+          if (runLength >= GRAVITY_MIN_RUN && requiredDrop > GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M && runDrop + GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M < requiredDrop) {
+            add(result, issue('error', 'gravity_slope_below_design_target',
+              `Gravity route ${route.id} wall-drain run has ${(runDrop * 1000).toFixed(1)}mm fall over ${runLength.toFixed(2)}m (${(runDrop / runLength * 100).toFixed(2)}%); the declared minimum is ${(slope * 100).toFixed(2)}% judged on the whole run, with ${GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M * 1000}mm geometry-only tolerance and no construction tolerance declared`, route.id));
+          }
+        } else {
+          for (const deficit of gravitySlopeDeficits(points, slope)) {
+            add(result, issue('error', 'gravity_slope_below_design_target',
+              `Gravity route ${route.id} segment #${deficit.index} has ${(deficit.drop * 1000).toFixed(1)}mm fall over ${deficit.length.toFixed(2)}m (${(deficit.ratio * 100).toFixed(2)}%); the declared minimum is ${(slope * 100).toFixed(2)}%, with ${GRAVITY_ELEVATION_NUMERIC_TOLERANCE_M * 1000}mm geometry-only tolerance and no construction tolerance declared`, route.id));
+          }
         }
       }
       if (route.method === 'gravity_floor_drain' && points.slice(1).some((point, index) => {

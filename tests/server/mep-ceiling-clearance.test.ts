@@ -66,7 +66,9 @@ describe('mep ceiling clearance lint (A1)', () => {
         routes: [{
           id: 'probe-drop', layer: 'strong_power' as const, status: 'inferred', source_status: 'proposed',
           construction_status: 'pending', method: 'conduit', diameter: 0.02, from_height: 2.55, to_height: 2.55,
-          from: { x: 7.5, z: 4.6 }, via: [{ x: 8.0, z: 4.6, y: 2.45 }], to: { x: 8.5, z: 4.6 },
+          // 下探改为同 x/z 竖直段（先平移、后竖降、再竖升）：8aef523 起「平面位移+Δy 同段」属
+          // route_not_orthogonal 硬违规，旧斜降几何会给探针自身添一条 error，与本用例无关
+          from: { x: 7.5, z: 4.6 }, via: [{ x: 8.0, z: 4.6, y: 2.55 }, { x: 8.0, z: 4.6, y: 2.45 }, { x: 8.0, z: 4.6, y: 2.55 }], to: { x: 8.5, z: 4.6 },
         }],
       },
       sources,
@@ -76,7 +78,9 @@ describe('mep ceiling clearance lint (A1)', () => {
       result.warnings.some((w) => w.code === 'ceiling_clearance_unverified' && w.routeId === 'probe-drop'),
       'expected a ceiling_clearance_unverified warning',
     );
-    assert.equal(result.errors.length, 0);
+    // 断言收窄到探针自身：本用例把 config.routes 整体换成探针一条，每台内机必然缺覆盖关系、
+    // 产生 ~30 条全局 hvac_coverage_missing error（8aef523 起 coverage 属 must_fix 桶），与探针无关
+    assert.equal(result.errors.filter((e) => e.routeId === 'probe-drop').length, 0);
   });
 
   it('does not flag a route that stays at or above the drop surface', () => {
@@ -103,20 +107,18 @@ describe('mep ceiling clearance lint (A1)', () => {
         ...coordination,
         routes: [{
           id: 'probe-mixed', layer: 'strong_power' as const, status: 'inferred', source_status: 'proposed',
-          construction_status: 'pending', method: 'conduit', diameter: 0.02, from_height: 2.55, to_height: 2.55,
+          construction_status: 'pending', method: 'conduit', diameter: 0.02, from_height: 2.55, to_height: 0.3,
           // (8.0,4.6)y=2.55 在 ceiling_living 的 footprint 内且高于完成面 2.50；
-          // 起点/终点也显式写 from_height/to_height=2.55，否则退回 strong_power 分层 2.45 制造假冲突。
+          // 起点也显式写 from_height=2.55，否则退回 strong_power 分层 2.45 制造假冲突。
           // (4.5,7.0)y=0.30 远低于任何完成面，但该坐标在主卧中部、不在任何吊顶分区里
           // （已逐区核对 config/ceiling.yaml 的 area，无任何 footprint 含 (4.5,7.0)）。
-          // 2026-10-07 夹具修正：原先这里写的是 (0.5,7.0)，从 (8.0,4.6) 直连 (0.5,7.0) 的对角段
-          // 会穿过 curtain_box_master_west（area [1.10,5.55,1.35,8.80]，完成面 2.65m），
-          // 触发 shared/mep-hvac-lint.ts:820-828 的「直线段跨 footprint 且两端低于完成面」规则，
-          // 于是本用例（只测 per-point 分支）反而报出一条 ceiling_clearance_unverified。
-          // 把该点从 (0.5,7.0) 东移到 (4.5,7.0) 后，两段都不再跨窗帘盒 footprint，只剩
-          // 「点在 footprint 内但高于完成面」与「点低于完成面但不在 footprint 内」两个 per-point 情形，
-          // 即本用例原本要守的不变量。注意真实 verify:mep 里这类 ceiling_clearance_unverified 属
-          // survey_dependent 桶（非 error、verifier 通过），说明生产接受该段级规则，故修夹具而非修规则。
-          from: { x: 7.5, z: 4.6 }, via: [{ x: 8.0, z: 4.6, y: 2.55 }, { x: 4.5, z: 7.0, y: 0.3 }], to: { x: 8.5, z: 4.6 },
+          // 2026-10-07 夹具修正（旧）：低点取 (4.5,7.0) 避开窗帘盒 footprint——但旧几何用两条长对角
+          // 斜降段连接高低点，是按「只看段两端点」的旧判定写的；bf29283（DEC-2026-10-19-R25）起
+          // 净空检查改为中心线 5cm 步长采样 + 管道包络，斜降段在 footprint 内的采样点确实破面，
+          // 新规则下旧几何必然报 3 条。故 2026-10-23 再修夹具：高位平移到 (4.5,7.0) 正上方后
+          // 同 x/z 竖直落到 0.30 作终点——「点在 footprint 内但高于完成面」与「点低于完成面但
+          // 不在 footprint 内」两个情形与原不变量不变，采样路径上不再有破面点。
+          from: { x: 7.5, z: 4.6 }, via: [{ x: 8.0, z: 4.6, y: 2.55 }, { x: 4.5, z: 7.0, y: 2.55 }], to: { x: 4.5, z: 7.0 },
         }],
       },
       sources,

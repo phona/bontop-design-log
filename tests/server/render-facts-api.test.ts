@@ -91,7 +91,7 @@ describe('render facts API', () => {
     const app = createApp(() => testFacts, undefined, () => context);
     const response = await request(app).get('/api/mep-coordination').expect(200);
     assert.deepEqual(response.body.lint.counts, direct.counts);
-    assert.ok(response.body.lint.warnings.some((item: { code: string }) => item.code === 'penetration_missing'));
+    assert.ok(response.body.lint.errors.some((item: { code: string }) => item.code === 'penetration_missing')); // penetration_missing 属 must_fix 桶，DEC-2026-10-17-R19 起进 errors[]（API 与直调一致性由上下 deepEqual/length 断言守）
     assert.ok(response.body.lint.warnings.some((item: { code: string }) => item.code === 'reference_constraint_uncertain'));
     assert.equal(response.body.lint.errors.length, direct.errors.length);
     assert.equal(response.body.lint.warnings.length, direct.warnings.length);
