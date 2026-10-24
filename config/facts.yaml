@@ -1626,12 +1626,7 @@ contracts:
     default_room_height: 2.8
     # R25: 双引擎都按外包络（管径 + 声明保温）逐点/每50mm采样；0为完成面几何容差，不代表施工允许偏差。
     tolerance: 0
-    registered_conflicts: 62
-    # 2026-10-24 强弱电箱点位迁移（邻户同户型施工实拍核实：两箱嵌于入户门西侧玄关墙 w_ent_south_w 南脸 x≈11.3，
-    # 箱门朝客餐厅；同日两次误判口径——w_foyer_east (13.40,3.60) 假设位、w_ent_west 厨房面 (10.80,2.10)——均废止，
-    # pending #4/#5）：13 条以两箱为起点的路线首段重画。箱顶上方即 ceiling_entry_foyer（出箱层 2.55/2.60 ≥ 完成面
-    # 2.50），对吊顶完成面口径**零增量**，登记数维持 62（50 条路线/15 分区）。同日厨房面误判口径曾瞬时计 71，
-    # 未入任何 commit，以 git 工作区存废为据。授权来源：业主 2026-10-24 指认 + 邻户实拍视频（pending #4/#5/#29）。
+    registered_conflicts: 101
     # 2026-10-12 DEC-2026-10-12-R1：删主卧两盏明装床头壁灯改小米床头灯插电，删 2 条照明路由，55→54。
     # 2026-10-12 DEC-2026-10-12-R2：业主裁定两卫照明用浴霸三合一自带、删 4 条卫浴照明路由，54→52。
     # 均为设计侧删灯具导致的真实减少，非消音。授权来源：docs/decisions/06-electrical.md §DEC-2026-10-12-R1 / R2。
@@ -1652,7 +1647,7 @@ contracts:
       exempt_layers: [water_supply, drainage]
       exemption_basis: 'DEC-2026-10-06-R5（docs/decisions/13-mep-integration.md「#41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」配套口径修正）'
       exemption_count_in_current_engine: 20
-      engine_note: '比较范围同为吊顶承载层 6 类；只有 floor_branch / floor_branch_candidate 且 route points 至少有一点落入 y≤0.35m 垫层带的路线退出吊顶面比较。缺少垫层点的误标路线由 verify:mep floor_branch_missing_floor_band 报出，空间起降依托仍由 3D unsupported_span 检查。两引擎共享 ceiling footprint 与 segment 相交算法，R22-v0.5 历史快照双引擎实算49（42 条路线/15 个分区）；R25 按管径及声明保温外包络复核后当前 verify:facts = registered_conflicts = verify:mep ceiling_clearance_unverified = 62（50 条路线/15 个分区）：R22-v0.5-3 纯重力迭代把 condensate-living / condensate-dining 走廊段抬至吊顶腔内（y2.48–2.52，重力口假设 2.52 待厂家 #39），两线 × 走廊/客厅带的 3 处低于完成面 hit 合法消失 −3（52→49）；客卫镜柜背后段仍在（B2a 视觉遮蔽口径，镜柜通高待业主裁定）。上一态 52：R21 厨房尾段竖井落地 −2（54→52）。上一态 54（44 条路线/15 个分区，ceiling_entry_foyer 为新增涉及分区）：DEC-2026-10-17-R20 一减一增——删 strong-ded-fridge/strong-power-parent-child-parentbed-l 两条旧位路线 −1（51→50），同批走线专项 4 条新路线（strong-ded-fridge-living/strong-power-waterbar/strong-power-kitchen-east/strong-power-weakbox）终点即设备点位本身、落吊顶分区边缘，属已登记①类「竖直下引至设备点位的末点」同类残留 +4（50→54）。修正记录见 DEC-2026-10-17-R4：移除有地面点路线的低于吊顶平面误报，并补上此前 facts 点检查漏掉的 strong-power-master × curtain_box_master_south 段内穿越。历史 24 处基线见 DEC-2026-10-06-R5。'
+      engine_note: '比较范围同为吊顶承载层 6 类；只有 floor_branch / floor_branch_candidate 且 route points 至少有一点落入 y≤0.35m 垫层带的路线退出吊顶面比较。缺少垫层点的误标路线由 verify:mep floor_branch_missing_floor_band 报出，空间起降依托仍由 3D unsupported_span 检查。两引擎共享 ceiling footprint 与 segment 相交算法，R22-v0.5 历史快照双引擎实算49（42 条路线/15 个分区）；R25 按管径及声明保温外包络复核后当前 verify:facts = registered_conflicts = verify:mep ceiling_clearance_unverified = 62（50 条路线/15 个分区）：R22-v0.5-3 纯重力迭代把 condensate-living / condensate-dining 走廊段抬至吊顶腔内（y2.48–2.52，重力口假设 2.52 待厂家 #39），两线 × 走廊/客厅带的 3 处低于完成面 hit 合法消失 −3（52→49）；客卫镜柜背后段仍在（B2a 视觉遮蔽口径，镜柜通高待业主裁定）。上一态 52：R21 厨房尾段竖井落地 −2（54→52）。上一态 54（44 条路线/15 个分区，ceiling_entry_foyer 为新增涉及分区）：DEC-2026-10-17-R20 一减一增——删 strong-ded-fridge/strong-power-parent-child-parentbed-l 两条旧位路线 −1（51→50），同批走线专项 4 条新路线（strong-ded-fridge-living/strong-power-waterbar/strong-power-kitchen-east/strong-power-weakbox）终点即设备点位本身、落吊顶分区边缘，属已登记①类「竖直下引至设备点位的末点」同类残留 +4（50→54）。修正记录见 DEC-2026-10-17-R4：移除有地面点路线的低于吊顶平面误报，并补上此前 facts 点检查漏掉的 strong-power-master × curtain_box_master_south 段内穿越。历史 24 处基线见 DEC-2026-10-06-R5。R04（2026-10-23 DEC-2026-10-23-R04）：ceiling_guest_bath 东界随客卫东墙线 7.10→7.20，其 SE 角点 (7.20,4.30) 与走廊枢纽 bend_corridor 坐标重合，39 条以该枢纽为端点的吊顶承载层路线在起点单点触碰角部（标高 2.55 < B 区完成面 2.65），双引擎实算 62→101（78 条路线/15 个分区）；逐条 diff 核实无一例实体穿越新增东界带，属角点单点触碰登记，量房实测枢纽/角点任一偏移即消解。'
     # ⑦ 修正通道（repair_channel）：本契约抓的既有冲突只能由**设计侧裁定**消解
     # （分层标高升入降板空腔 2.50–3.00m or 调整降板厚度/范围），而此前引擎只告诉人
     # 「不许静默消音」，没告诉人「正当修正长什么样」——于是任何一次几何改动都像消音。

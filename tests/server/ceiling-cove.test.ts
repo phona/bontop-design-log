@@ -25,7 +25,7 @@ test('DEC-2026-10-08-R05: 垂面弧全拆（回 R02 硬垂直面），三区均�
   assert.deepEqual(northBand?.concave_fillets, { sw: 0.15, se: 0.15 });
   assert.deepEqual(northBand?.concave_fillets_open, { se: 'sw' }, 'SE 凹弧填补西南开口（镜像，跨分区）');
   assert.equal(northBand?.corner_radii, undefined, '北带 SE 不再有阳角圆（R04 阳角圆已被 R05 废止）');
-  assert.deepEqual(northBand?.area, [7.70, 2.40, 10.80, 3.00]);
+  assert.deepEqual(northBand?.area, [7.80, 2.40, 10.80, 3.00]); // DEC-2026-10-23-R04：西端随餐厅服务带东移 7.70→7.80
   assert.deepEqual(westBand?.corner_radii, { nw: 0.15 });
   assert.deepEqual(westBand?.concave_fillets, { se: 0.15 });
   assert.deepEqual(foyer?.area, [10.80, 2.90, 13.40, 4.30]);

@@ -10,8 +10,8 @@
 //      的语义，数字由本测试从 CLI 的 JSON 输出实时取，两侧逐项断言相等。
 //   2. lint 新增规则/新增分桶时，本测试会因为「实算多出一个 code / 桶计数变大」
 //      而 fail，从而强制同步文档与台账——自动跟随，而不是永久绿。
-//   3. registry 已锁的规模数（110 / 80 / 27 / 25 / 8 / 153）除了与机器条目数对账，
-//      还额外与 verify:facts 的 INFO 输出对账（62 条路线 / 14 个吊顶分区）。
+//   3. registry 已锁的规模数除了与机器条目数对账，
+//      还额外与 verify:facts 的 INFO 输出对账（路线数 / 吊顶分区数，动态取 CLI 输出）。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -68,7 +68,7 @@ const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as {
   facts: Array<{ id: string; value?: string }>;
 };
 
-/** verify:facts 的 INFO 行是「62 条路线 / 14 个吊顶分区 / 153 处」的唯一机器口径。 */
+/** verify:facts 的 INFO 行是「路线点位低于吊顶完成面」处数/路线数/分区数的唯一机器口径（动态解析）。 */
 const factsRun = spawnSync('npx', ['tsx', 'scripts/verify/facts/verify-facts.ts'], { encoding: 'utf8' });
 const factsOut = `${factsRun.stdout ?? ''}${factsRun.stderr ?? ''}`;
 
@@ -106,9 +106,8 @@ for (const [bucket, bucketSummary] of Object.entries(mep.categories ?? {})) {
 
 test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必须等于实算（不写死 warning 总数）', () => {
   // ① error 契约：DEC-2026-10-17-R20 起 must_fix 桶统一进 errors（8aef523 硬门禁），
-  //    verify:mep 的 errors = must_fix 实算 138（route_overlap 69 等；DEC-2026-10-22-R01 对账；2026-10-24
-  //    箱位迁移邻户实拍核实后对 must_fix 口径零增量）；electrical 仍 0 error。
-  assert.equal(mep.counts.errors, 138, `verify:mep must_fix errors 应为 138，实际 ${mep.counts.errors}`);
+  //    verify:mep 的 errors = must_fix 实算 135（DEC-2026-10-23-R04 几何改判后实测：route_overlap 68 / suppressed_wall_crossing 7 / bay_sill_collision 0，较 R01 对账 138 净 −3，见 guidance §6 R04 对账增量）；electrical 仍 0 error。
+  assert.equal(mep.counts.errors, 135, `verify:mep must_fix errors 应为 135，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 
@@ -164,7 +163,7 @@ test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必�
 
 // ─── §0：规模口径与机器条目数逐项相等 ──────────────────────────────────────
 
-test('§0 规模表：路由/层/电点/给排水点/吊顶分区与机器条目数一致，153 与契约登记数一致', () => {
+test('§0 规模表：路由/层/电点/给排水点/吊顶分区与机器条目数一致，契约登记数与实算一致', () => {
   const mepCoordination = parseYaml(readFileSync('config/mep-hvac-coordination.yaml', 'utf8')) as {
     routes: unknown[];
     layers: Record<string, unknown>;
@@ -189,7 +188,7 @@ test('§0 规模表：路由/层/电点/给排水点/吊顶分区与机器条目
   // 路由数还要与 lint 自己解析出来的条数一致（lint 解析不了 = 空跑，规模口径就失真）
   assert.equal(mep.counts.routes, mepCoordination.routes.length, 'verify:mep 解析出的路由数必须等于 yaml 条目数');
 
-  // 153：契约 registered_conflicts ↔ §0 表行 prose ↔ verify:facts INFO
+  // 契约 registered_conflicts ↔ §0 表行 prose ↔ verify:facts INFO 三方对账
   const contract = registry.contracts.find((c) => c.id === 'c.mep_layer_below_drop_bottom');
   assert.ok(contract, 'config/facts.yaml 必须登记契约 c.mep_layer_below_drop_bottom');
   assert.equal(typeof contract!.registered_conflicts, 'number', '契约 registered_conflicts 必须存在');
@@ -203,7 +202,7 @@ test('§0 规模表：路由/层/电点/给排水点/吊顶分区与机器条目
   assert.match(lastRow, /契约 `c\.mep_layer_below_drop_bottom`/, '§0 末行的登记事实必须是契约名，不是 fact.mep_routes_count');
   assert.equal(/fact\.mep_routes_count`\s*\+\s*契约/.test(lastRow), false, '§0 末行不许再写「fact.* + 契约」这种不存在的组合');
 
-  // verify:facts 的 INFO 口径：153 处 / 62 条路线 / 14 个吊顶分区
+  // verify:facts 的 INFO 口径：实算处数 / 路线数 / 吊顶分区数（动态）
   const info = factsOut.match(/实算\s*(\d+)\s*处「路线点位低于所经吊顶完成面」，涉及\s*(\d+)\s*条路线\s*\/\s*(\d+)\s*个吊顶分区/);
   assert.ok(info, `verify:facts 必须输出「实算 N 处…涉及 N 条路线 / N 个吊顶分区」，实际输出片段：${factsOut.slice(0, 400)}`);
   assert.equal(Number(info![1]), contract!.registered_conflicts, '契约登记数必须等于 verify:facts 实算数');
@@ -294,7 +293,7 @@ test('治理台账 review-manifest.json：15 条逐项等于实算，且覆盖�
 test('文档不许再把 2026-09-07 的快照当现行基线', () => {
   // 旧基线 0 error / 22 warning、15 条已接受项、68 条路线 / 13 个吊顶分区、13 处穿墙点
   assert.equal(/0 error \/ 22 warning/.test(guidance), false, '§6 的旧基线「0 error / 22 warning」必须已替换为实跑口径');
-  assert.equal(/68 条路线/.test(guidance), false, '§0 必须已是 62 条路线，不许再出现 68 条路线');
+  assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
   assert.match(guidance, /涉及\s*\*\*69 条路线 \/ 14 个吊顶分区\*\*/);
   assert.equal(/13 个吊顶分区/.test(guidance), false, '§0 必须已是 14 个吊顶分区');
   assert.equal(/design-datum\.yaml`（13 处）/.test(guidance), false, '§1 的穿墙点留档条数必须已按 design-datum.yaml 实条数改写');

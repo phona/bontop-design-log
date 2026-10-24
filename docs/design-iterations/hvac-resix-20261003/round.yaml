@@ -297,7 +297,7 @@ review:
   evidence:
     - id: hvac-contract-attachment
       ready: true
-      note: 合同附件两页（第十二条报价清单 + 27 项辅材表）
+      note: 合同附件两页（第十二条报价清单 + 27 项辅材表）；原件 2026-10-23 归位至 contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg 与 …p2_20261004.jpg，本轮 evidence 只保留转录（evidence-notes.md）与哈希登记
     - id: midea-indoor-unit-spec
       ready: true
       note: 美的 MJV-T2 官方参数表

@@ -11,11 +11,13 @@ vertices:
   - { id: v_sw,      x: 0.00,  z: 9.80, radius: 1.00 }
   - { id: v_step_b,  x: 7.20,  z: 9.80 }
   - { id: v_step_t,   x: 7.20,  z: 9.80 }
-  - { id: v_be_se_s,  x: 13.40, z: 9.80 }
-  # 2026-08-27 书房南玻璃栏板凹进：南幕墙由 z=9.80 北移至 z=8.70（创想图右侧尺寸链凹进 1100；
-  # 点石设计图东南房净面积标注 8.35㎡ 同构；邻户结构图凹进 1020 同构），z[8.70,9.80]×x[13.40,16.40] 为室外凹口
-  - { id: v_be_s_w,   x: 13.40, z: 8.70 }
-  - { id: v_be_s_e,   x: 16.40, z: 8.70 }
+  - { id: v_be_se_s,  x: 13.40, z: 9.88 }   # 2026-10-23 DEC-2026-10-23-R04：随东南房南玻璃线改 9.88（见 v_be_s_w 注）；客餐厅东南角仍为 v_liv_se_s 9.80
+  - { id: v_liv_se_s, x: 13.40, z: 9.80 }   # 2026-10-23 新增：客餐厅南墙东端（与东南房玻璃线 9.88 错台 0.08，同 YS-01 东链读法）
+  # 2026-10-23 DEC-2026-10-23-R04 改判（业主裁定采 YS-01 读法）：东南房南玻璃线 = 9.88（YS-01 东链自北累计：
+  # 井道南墙带 5.40–5.68 + 房进深至玻璃线 9.88），其南 0.28 墙 + 1.02 飘台板外凸至 11.18（飘台为室外结构、不入室）；
+  # 废止 2026-08-27「凹进至 8.70、z[8.70,9.80] 为室外凹口」读法——该读法把飘台进深 1020 误读为玻璃凹进深度，参考线差 1.30m
+  - { id: v_be_s_w,   x: 13.40, z: 9.88 }
+  - { id: v_be_s_e,   x: 16.40, z: 9.88 }
   - { id: v_be_ne,   x: 16.40, z: 5.55 }
   - { id: v_ent_ne,  x: 15.25, z: 0.00 }
   - { id: v_foyer_se, x: 13.40, z: 2.90 }
@@ -34,9 +36,9 @@ vertices:
   - { id: v_gbath_west_s, x: 5.60, z: 4.30 } # 开放洗漱区西侧边界南端；不纳入 guest_bath room boundary
   - { id: v_vrv_se,  x: 7.20,  z: 1.00 }
   - { id: v_balc_ne, x: 7.20, z: 2.20 }
-  - { id: v_balc_se, x: 7.10, z: 2.20 }
-  - { id: v_gbath_se,x: 7.10,  z: 3.55 }   # 2026-08-29 客卫内卫南墙东端；与 v_nw_s 同高
-  - { id: v_gbath_east_s, x: 7.10, z: 4.30 } # 开放洗漱区东侧边界南端；不纳入 guest_bath room boundary
+  - { id: v_balc_se, x: 7.20, z: 2.20 }   # 2026-10-23 DEC-2026-10-23-R04：客卫/阳台东墙线 7.10→7.20（YS-01 墙带 7.20–7.38、西脸 7.20，与北段 w_balc_east 既有 7.20 拉直）
+  - { id: v_gbath_se,x: 7.20,  z: 3.55 }   # 2026-08-29 客卫内卫南墙东端；与 v_nw_s 同高；x 随 R04 改 7.20
+  - { id: v_gbath_east_s, x: 7.20, z: 4.30 } # 开放洗漱区东侧边界南端；不纳入 guest_bath room boundary；x 随 R04 改 7.20
   - { id: v_kit_w,   x: 7.20,  z: 0.00 }
   - { id: v_kit_s,   x: 7.20,  z: 4.30 }
   - { id: v_ent_kit, x: 10.80, z: 4.30 }
@@ -69,7 +71,7 @@ rooms:
     type: private
   - id: living_dining
     name: 客餐厅
-    boundary: [v_kit_s2, v_ent_kit2, v_ent_sw, v_foyer_se, v_be_se_s, v_step_t]
+    boundary: [v_kit_s2, v_ent_kit2, v_ent_sw, v_foyer_se, v_liv_se_s, v_step_t]
     height: 2.8
     type: public
   - id: main_corridor
@@ -104,7 +106,7 @@ rooms:
     type: service
   - id: balcony
     name: 生活阳台
-    boundary: [v_vrv_sw, v_vrv_se, v_balc_ne, v_balc_se, v_balc_sw]
+    boundary: [v_vrv_sw, v_vrv_se, v_balc_ne, v_balc_sw]  # 2026-10-23 DEC-2026-10-23-R04：v_balc_se 随东墙线改 7.20 后与 v_balc_ne 同点，阳台多边形去重（原 0.10 错台边消失）
     height: 2.8
     type: service
   - id: entry_garden
@@ -114,7 +116,7 @@ rooms:
     type: public
   - id: bedroom_se
     name: 客房
-    boundary: [v_be_sw, v_be_ne, v_be_s_e, v_be_s_w]  # 2026-08-27 南玻璃栏板凹进至 z=8.70（创想图凹进 1100），南侧 z[8.70,9.80] 为室外凹口
+    boundary: [v_be_sw, v_be_ne, v_be_s_e, v_be_s_w]  # 2026-10-23 DEC-2026-10-23-R04：南玻璃线 z=9.88（YS-01 东链读法），飘台板在其南外凸不入室；废止 2026-08-27 凹进 8.70 读法
     height: 2.8
     type: private
   - id: elevator_shaft
@@ -137,10 +139,10 @@ walls:
   - { id: w_west_lower, from: v_bath_ap,  to: v_mb_sw,  height: 2.8 }
   - { id: w_west_mid,   from: v_mb_sw,   to: v_mb_nw,  height: 2.8 }
   - { id: w_west_upper, from: v_mb_nw,   to: v_sw,     height: 2.8 }
-  # 外框 — 南墙（在 v_mb_se, v_step_b, v_step_t, v_be_se_s 处切开；书房段 2026-08-27 凹进至 z=8.70）
+  # 外框 — 南墙（在 v_mb_se, v_step_b, v_step_t, v_liv_se_s 处切开；东南房段 2026-10-23 改玻璃线 z=9.88，DEC-2026-10-23-R04）
   - { id: w_mb_south,   from: v_sw,      to: v_mb_se,  height: 2.8 }
   - { id: w_st_south,   from: v_mb_se,   to: v_step_b, height: 2.8 }
-  - { id: w_liv_south,  from: v_step_t,  to: v_be_se_s,height: 2.8 }
+  - { id: w_liv_south,  from: v_step_t,  to: v_liv_se_s,height: 2.8 }
   - { id: w_be_south,   from: v_be_s_w,  to: v_be_s_e, height: 2.8 }
   # 外框 — 东墙（在 v_be_ne 处切开；东南角随书房凹口截止于 v_be_s_e）
   # structure 标注约定（2026-09-01，v1 初版）：来源为邻户同户型原始结构图（survey/neighbor_ys01_original_structure_2025-06.png），
@@ -232,9 +234,9 @@ walls:
       # DEC-2026-09-09-R3：铰链由东缘（end）改西缘（start）——东铰链 90° 开门叶立于 x=6.30 挡住马桶动线（叶尖距玻璃隔断仅 0.05m），且扫掠半径 0.70m 撞上西墙毛巾架（最近点 0.62m）；西铰链后叶贴西墙 z[2.85,3.55]，马桶/淋浴隔断/毛巾架（已迁马桶上方）全部让开
       # DEC-2026-09-09-R4：门洞再东移 0.10m 至 x[5.70,6.40]——西缘原来顶着墙角（x=5.60 即西墙），铰链在角部时门叶中心落在西墙中线穿模不可见；东移后铰链 x=5.70，门叶贴西墙内侧可见，并获得 0.10m 门垛便于门套收口；马桶侧扫掠净距仍有 0.125m
       - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.45, width: 0.7, height: 2.1, room: guest_bath, swing: inward, hinge: start }
-  - { id: w_gbath_east, from: v_balc_se, to: v_gbath_se, height: 2.8 }
+  - { id: w_gbath_east, from: v_kit_s2, to: v_gbath_se, height: 2.8 }   # 2026-10-23 DEC-2026-10-23-R04：起点由 v_balc_se 改 v_kit_s2——墙线拉直 7.20 后 z[2.20,2.40] 段与 w_kit_west 共线重合，改由 w_kit_west 单独承载（两面饰面各挂一段），本墙辖 z[2.40,3.55]
   - { id: w_gbath_east_open_vanity, from: v_gbath_se, to: v_gbath_east_s, height: 2.8 }
-  # 内墙 — x=7.20 纵向墙（厨房西墙，在 v_vrv_se, v_balc_ne 处切开；DEC-014 南界缩至 z=2.90，z[2.9,4.3] 段由 w_gbath_east@x=7.1 覆盖）
+  # 内墙 — x=7.20 纵向墙（厨房西墙，在 v_vrv_se, v_balc_ne 处切开；DEC-014 南界缩至 z=2.90，z[2.9,4.3] 段由 w_gbath_east 覆盖；2026-10-23 R04 后该墙同在 x=7.20 全线拉直）
   - { id: w_vrv_east,   from: v_kit_w,   to: v_vrv_se, height: 2.8 }
   - id: w_balc_east
     from: v_vrv_se
@@ -255,5 +257,5 @@ walls:
     height: 2.8
     openings:
       # 2026-08-25 方向反转；2026-08-25 二次调整：向内开，合页移至 start 端
-      - { id: d_bese, type: door, anchor: v_be_se_s, offset: 3.7, width: 0.9, height: 2.1, room: bedroom_se, swing: inward, hinge: start }
+      - { id: d_bese, type: door, anchor: v_be_se_s, offset: 3.78, width: 0.9, height: 2.1, room: bedroom_se, swing: inward, hinge: start }   # 2026-10-23 R04：anchor 随 v_be_se_s 南移 0.08，offset 3.70→3.78 保持洞口中心 z=6.10 不变
   - { id: w_be_north,   from: v_be_sw,   to: v_be_ne,  height: 2.8, structure: shear, structure_status: inferred }

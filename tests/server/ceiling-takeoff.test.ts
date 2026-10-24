@@ -72,7 +72,7 @@ test('只量实心分区：19 个计量、6 台 ac_indoor 排除', () => {
 test('逐分区净面积与声明一致（含圆角/阴角修正）', () => {
   // 直角区：外框即净面积
   assert.ok(Math.abs(byId.get('ceiling_kitchen')!.netAreaM2 - 8.64) < 1e-9);
-  assert.ok(Math.abs(byId.get('ceiling_guest_bath')!.netAreaM2 - 3.15) < 1e-9);
+  assert.ok(Math.abs(byId.get('ceiling_guest_bath')!.netAreaM2 - 3.36) < 1e-9); // R04：东界 7.10→7.20
   assert.ok(Math.abs(byId.get('ceiling_main_corridor')!.netAreaM2 - 3.75) < 1e-9);
   // 客厅北缘边吊：6.20×1.25 − 两个外露东角 R100；走廊共边保持方正
   assert.ok(Math.abs(byId.get('ceiling_living')!.netAreaM2 - (7.75 - 2 * 0.01 * (1 - Math.PI / 4))) < 1e-9);
@@ -82,7 +82,7 @@ test('逐分区净面积与声明一致（含圆角/阴角修正）', () => {
   assert.ok(Math.abs(byId.get('ceiling_dining_west_band')!.netAreaM2 - 0.95) < 1e-9);
   // 北带（DEC-2026-10-08-R05）：SW 阴角 + SE 镜像凹弧（填西南开口、与门厅西缘相切），两处各加料 0.15²(1−π/4)
   assert.ok(
-    Math.abs(byId.get('ceiling_dining_north_band')!.netAreaM2 - (1.86 + 2 * 0.15 * 0.15 * (1 - Math.PI / 4))) < 1e-9,
+    Math.abs(byId.get('ceiling_dining_north_band')!.netAreaM2 - (1.80 + 2 * 0.15 * 0.15 * (1 - Math.PI / 4))) < 1e-9, // R04：西界 7.70→7.80，外框 1.86→1.80
   );
 });
 
@@ -102,10 +102,10 @@ test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）�
 test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   const { byClass } = takeoff;
   assert.equal(byClass.gypsum_board.zones, 10);
-  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 25.406) < 0.01);
+  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 25.346) < 0.01); // R04：北带 −0.06
   assert.equal(byClass.aluminum_buckle.zones, 3);
-  assert.ok(Math.abs(byClass.aluminum_buckle.netAreaM2 - 16.366) < 0.01);
-  assert.equal(byClass.aluminum_buckle.panelCount, 185);
+  assert.ok(Math.abs(byClass.aluminum_buckle.netAreaM2 - 16.576) < 0.01); // R04：客卫吊顶 +0.21
+  assert.equal(byClass.aluminum_buckle.panelCount, 192);
   // 窗帘盒：5 个分区全部计入，另单列延长米（行业主口径是元/米）
   assert.equal(byClass.curtain_box.zones, 5);
   assert.ok(Math.abs(byClass.curtain_box.netAreaM2 - 4.463) < 0.01);
@@ -113,8 +113,8 @@ test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   assert.equal(byClass.curtain_box.pricingUnit, 'linear_m');
   assert.equal(byClass.drying_rack.zones, 1);
   assert.ok(Math.abs(byClass.drying_rack.netAreaM2 - 1.08) < 1e-9);
-  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 47.314) < 0.01);
-  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 79.653) < 0.05);
+  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 47.464) < 0.01); // R04：北带 −0.06 + 客卫吊顶 +0.21
+  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 79.773) < 0.05);
 });
 
 test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () => {
@@ -134,9 +134,10 @@ test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () 
 test('铝扣板板块数：eps-ceil，浮点不会多算一块板', () => {
   assert.equal(byId.get('ceiling_kitchen')!.panelCount, 96);   // ⌈3.6/0.3⌉×⌈2.4/0.3⌉
   assert.equal(byId.get('ceiling_master_bath')!.panelCount, 54); // ⌈2.6/0.3⌉×⌈1.76/0.3⌉
-  // 1.5/0.3 在浮点下是 5.000000000000001：裸 Math.ceil 会算成 6×7=42
-  assert.equal(byId.get('ceiling_guest_bath')!.panelCount, 35);
-  assert.equal(takeoff.aluminumBucklePanelCount, 185);
+  // 旧宽 1.5/0.3 在浮点下是 5.000000000000001：裸 Math.ceil 会误算 6 列（eps-ceil 防线见实现）；
+  // 2026-10-23 R04 后客卫宽真实变为 1.60 → ⌈1.6/0.3⌉=6 列 × ⌈2.1/0.3⌉=7 行 = 42 为真值
+  assert.equal(byId.get('ceiling_guest_bath')!.panelCount, 42);
+  assert.equal(takeoff.aluminumBucklePanelCount, 192);
 });
 
 test('完成面标高与房间对照：原顶房间显形，不静默跳过', () => {

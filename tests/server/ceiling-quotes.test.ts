@@ -52,10 +52,10 @@ test('量与价分离：报价只改单价，工程量始终来自 takeoff', () 
   assert.ok(Math.abs(quantities.ceiling_zones - (takeoff.totalNetAreaM2 - takeoff.curtainBoxM2)) < 1e-9);
   assert.ok(Math.abs(quantities.curtain_box_linear - 17.85) < 1e-9);
   // C12：边吊按米、满吊按㎡，两者相加必须等于石膏板净面积（否则就是重复计费或漏计）
-  assert.ok(Math.abs(quantities.gypsum_edge_drop_linear - 21.475) < 1e-9, `边吊长度实测 ${quantities.gypsum_edge_drop_linear}`);
+  assert.ok(Math.abs(quantities.gypsum_edge_drop_linear - 21.375) < 1e-9, `边吊长度实测 ${quantities.gypsum_edge_drop_linear}`); // R04：餐厅北带长边 3.10→3.00
   assert.ok(Math.abs(quantities.gypsum_flat_sqm - 7.39) < 1e-9, `平顶面积实测 ${quantities.gypsum_flat_sqm}`);
   // C13：厨卫铝扣板独立成行，量取 takeoff.aluminumBuckleM2
-  assert.ok(Math.abs(quantities.aluminum_buckle_sqm - 16.366) < 1e-9);
+  assert.ok(Math.abs(quantities.aluminum_buckle_sqm - 16.576) < 1e-9); // R04：客卫吊顶 +0.21
   // 覆盖不变量：边吊面积 + 满吊面积必须等于石膏板净面积，且没有分区漏声明计价形态
   assert.ok(Math.abs(takeoff.edgeDropNetAreaM2 + takeoff.flatNetAreaM2 - takeoff.gypsumBoardM2) < 1e-9);
   assert.deepEqual(takeoff.unclassifiedPricingFormIds, []);
@@ -70,10 +70,10 @@ test('并排对比：总额、差额、可比性标记', () => {
   const a = comparison.find((entry) => entry.id === 'a')!;
   const b = comparison.find((entry) => entry.id === 'b')!;
   const c = comparison.find((entry) => entry.id === 'c')!;
-  // a：45×40.667 + 30×17.85 + 170×21.475 + 150×7.39 + 160×16.366
+  // a：45×板面 + 30×17.85 + 170×21.375 + 150×7.39 + 160×16.576（R04 后量）
   assert.ok(Math.abs(a.total! - (
     45 * (takeoff.totalNetAreaM2 - takeoff.curtainBoxM2)
-    + 30 * 17.85 + 170 * 21.475 + 150 * 7.39 + 160 * 16.366
+    + 30 * 17.85 + 170 * 21.375 + 150 * 7.39 + 160 * 16.576
   )) < 1e-6);
   assert.equal(a.active, true);
   assert.equal(a.comparable, true);
@@ -213,18 +213,18 @@ test('分形态计价：边吊按米、平顶按㎡，两者相加 = 石膏板�
   const flat = card.rows.find((row) => row.key === 'gypsum_flat_sqm')!;
   assert.equal(edge.per_unit, 160);
   assert.equal(flat.per_unit, 155);
-  assert.ok(Math.abs(edge.quantity - 21.475) < 1e-9, '边吊长度取 8 个边吊分区的长边之和');
+  assert.ok(Math.abs(edge.quantity - 21.375) < 1e-9, '边吊长度取 8 个边吊分区的长边之和');
   assert.ok(Math.abs(flat.quantity - 7.39) < 1e-9, '平顶面积取主走廊 + 入户门厅两个满吊分区');
-  // 边吊 21.475m×160 + 平顶 7.39㎡×155 + 窗帘盒 17.85m×105
-  assert.ok(Math.abs(card.total! - (21.475 * 160 + 7.39 * 155 + 17.85 * 105)) < 1e-6);
-  assert.ok(Math.abs(card.total! - 6455.7) < 1e-6);
+  // 边吊 21.375m×160 + 平顶 7.39㎡×155 + 窗帘盒 17.85m×105
+  assert.ok(Math.abs(card.total! - (21.375 * 160 + 7.39 * 155 + 17.85 * 105)) < 1e-6);
+  assert.ok(Math.abs(card.total! - 6439.7) < 1e-6);
 });
 
 test('out_of_scope 与待报价是两回事：不报的项目进总额、待报价的项目卡住总额', () => {
   const file = parseCeilingQuotes(readFileSync('config/ceiling-quotes.yaml', 'utf8'));
   const comparison = compareCeilingQuotes(file, takeoff, fallback);
   const card = comparison.find((entry) => entry.id === 'owner_turnkey_20261008')!;
-  // 板面行（含厨卫铝扣板 16.366㎡）这家不报 → 不算待报价、不影响总额
+  // 板面行（含厨卫铝扣板 16.576㎡）这家不报 → 不算待报价、不影响总额
   assert.deepEqual(card.outOfScopeRows, ['ceiling_zones', 'aluminum_buckle_sqm']);
   assert.deepEqual(card.pendingRows, []);
   assert.notEqual(card.total, null);
@@ -253,12 +253,12 @@ test('out_of_scope 拒绝未知计价行；active 切换只改一行', () => {
   assert.ok(readFileSync(path, 'utf8').includes('active: x'));
 });
 
-test('厨卫铝扣板独立计价（C13）：150 元/㎡ 估价卡 ¥2,454.90，且不与其他卡重复计费', () => {
+test('厨卫铝扣板独立计价（C13）：150 元/㎡ 估价卡 ¥2,486.40，且不与其他卡重复计费', () => { // R04 后铝扣板 16.576㎡
   const file = parseCeilingQuotes(readFileSync('config/ceiling-quotes.yaml', 'utf8'));
   const comparison = compareCeilingQuotes(file, takeoff, fallback);
   const card = comparison.find((entry) => entry.id === 'aluminum_buckle_owner_estimate_150')!;
-  assert.ok(Math.abs(card.total! - 16.366 * 150) < 1e-6);
-  assert.ok(Math.abs(card.total! - 2454.9) < 1e-6);
+  assert.ok(Math.abs(card.total! - 16.576 * 150) < 1e-6);
+  assert.ok(Math.abs(card.total! - 2486.4) < 1e-6);
   assert.deepEqual(card.pendingRows, []);
   assert.deepEqual(card.outOfScopeRows, ['ceiling_zones', 'curtain_box_linear', 'gypsum_edge_drop_linear', 'gypsum_flat_sqm']);
   assert.equal(card.coveredScope, '厨卫铝扣板（㎡）');
@@ -270,13 +270,13 @@ test('厨卫铝扣板独立计价（C13）：150 元/㎡ 估价卡 ¥2,454.90，
     .find((entry) => entry.id === 'aluminum_buckle_owner_estimate_150')!;
   assert.ok(parsed.contractor.includes('非报价单'));
   assert.ok(parsed.rates.aluminum_buckle_sqm?.scope_note?.includes('非成交价'));
-  assert.ok(parsed.note?.includes('¥2,454.90'));
+  assert.ok(parsed.note?.includes('¥2,486.40')); // R04 后铝扣板量 16.576㎡×150
   // 铝扣板在基线卡里也是超出范围：否则基线总额会被四行待报价永久卡住
   const baseline = comparison.find((entry) => entry.id === 'baseline_self_computed')!;
   assert.deepEqual(baseline.outOfScopeRows, ['gypsum_edge_drop_linear', 'gypsum_flat_sqm', 'aluminum_buckle_sqm']);
   assert.deepEqual(baseline.pendingRows, ['curtain_box_linear']);
-  // 石膏板卡不报铝扣板 → 超出范围，总额仍是 6,455.70
+  // 石膏板卡不报铝扣板 → 超出范围，总额仍是 6,439.70（R04 后边吊量）
   const gypsum = comparison.find((entry) => entry.id === 'owner_turnkey_20261008')!;
-  assert.ok(Math.abs(gypsum.total! - 6455.7) < 1e-6);
+  assert.ok(Math.abs(gypsum.total! - 6439.7) < 1e-6);
   assert.ok(gypsum.outOfScopeRows.includes('aluminum_buckle_sqm'));
 });

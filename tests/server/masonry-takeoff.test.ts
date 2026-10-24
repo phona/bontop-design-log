@@ -143,10 +143,10 @@ const close = (actual: number, expected: number, note?: string, tolerance = 1e-6
 
 // ── ① L2 几何交叉层：现行声明必须全部通过（不抛错）────────────────────────────
 
-test('overlay 的 37 段贴砖声明全部通过 L2 几何交叉层', () => {
+test('overlay 的 38 段贴砖声明全部通过 L2 几何交叉层', () => { // R04：客卫东墙淋浴砖段拆二（kitseg 新增）37→38
   const result = computeMasonryTakeoff(buildInput());
-  assert.equal(result.regions.length, 37, 'wall_region 17 + sill_region 20');
-  assert.equal(result.regions.filter((region) => region.kind === 'wall').length, 17);
+  assert.equal(result.regions.length, 38, 'wall_region 18 + sill_region 20');
+  assert.equal(result.regions.filter((region) => region.kind === 'wall').length, 18);
   assert.equal(result.regions.filter((region) => region.kind === 'sill').length, 20);
   assert.deepEqual(result.unknownRoomZoneIds, [], '所有声明的 room 都在房间表里');
   assert.deepEqual(result.unknownDryRoomIds, []);
@@ -157,13 +157,13 @@ test('overlay 的 37 段贴砖声明全部通过 L2 几何交叉层', () => {
 
 // ── ② 数量独立复算 ───────────────────────────────────────────────────────────
 
-test('wall_region 17 段实算 21.256㎡，逐房拆分', () => {
+test('wall_region 18 段实算 21.551㎡，逐房拆分', () => { // R04：客卫北墙砖段 +0.265㎡、阳台南墙砖段 +0.03㎡，东墙淋浴段拆二面积不变
   const result = computeMasonryTakeoff(buildInput());
-  close(result.wallTileSqm, 21.2555);
+  close(result.wallTileSqm, 21.5505); // R04：客卫北墙砖段 +0.265㎡ + 阳台南墙砖段 +0.03㎡
   close(result.byRoom.kitchen.wallTileSqm, 9.9);
-  close(result.byRoom.balcony.wallTileSqm, 0.81);
+  close(result.byRoom.balcony.wallTileSqm, 0.84); // R04：南墙阳台侧砖段随墙长 +0.03㎡
   close(result.byRoom.master_bath.wallTileSqm, 3.7705);
-  close(result.byRoom.guest_bath.wallTileSqm, 6.775);
+  close(result.byRoom.guest_bath.wallTileSqm, 7.04); // R04：北墙砖段 +0.265㎡（6.775→7.040）
   close(result.byRoom.living_dining.wallTileSqm, 0, '客厅只有 sill_region（防水台），没有 wall_region');
 });
 
@@ -188,9 +188,9 @@ test('sill_region 20 段实算 15.468㎡（含卧室/书房防水台 front+top�
   close(front.top, 2.83, 'front 是竖面，top = sill + height');
 });
 
-test('全部贴砖 36.853㎡ = wall_region + sill_region', () => {
+test('全部贴砖 37.019㎡ = wall_region + sill_region', () => { // R04 后实算（原 36.724）
   const result = computeMasonryTakeoff(buildInput());
-  close(result.totalTileSqm, 36.723599347, undefined, 1e-4);
+  close(result.totalTileSqm, 37.018599347, undefined, 1e-4);
   close(result.totalTileSqm, result.wallTileSqm + result.sillTileSqm);
   assert.deepEqual(Object.keys(result.byZone), ['visible'], 'C18 废止杂砖后全部 zone=visible');
 });
@@ -204,16 +204,16 @@ test('along 单位是米不是毫米（0.5–2.9 = 2.4m，除 1000 会得 0.02�
   close(region.areaSqm, 2.4 * 2.65, '6.36㎡；若误按毫米会得到 0.024㎡');
 });
 
-test('干区地面 111.864㎡ / 湿区 7.726㎡ / 合计 119.59㎡', () => {
+test('干区地面 115.404㎡ / 湿区 7.936㎡ / 合计 123.34㎡', () => { // 2026-10-23 DEC-2026-10-23-R04：东南房 +3.54 干、客卫 +0.21 湿（原 111.864 / 7.726 / 119.59）
   const result = computeMasonryTakeoff(buildInput());
-  close(result.dryRoomFloorSqm, 111.864);
-  close(result.wetRoomFloorSqm, 7.726);
-  close(result.totalRoomFloorSqm, 119.59);
-  // 与 schedule/phase-1/control.yaml:1081 的锚点（干区 111.864 + 湿区 7.726 = 119.59）逐位一致
+  close(result.dryRoomFloorSqm, 115.404);
+  close(result.wetRoomFloorSqm, 7.936);
+  close(result.totalRoomFloorSqm, 123.34);
+  // 与 schedule/phase-1/control.yaml 的锚点（干区 115.404 + 湿区 7.936 = 123.34）逐位一致
   close(result.byRoom.living_dining.dryFloorSqm, 44.58);
   close(result.byRoom.kitchen.dryFloorSqm, 8.64, '厨房归干区主地面（KT 200×1200 木纹砖）');
   close(result.byRoom.master_bath.wetFloorSqm, 4.576);
-  close(result.byRoom.guest_bath.wetFloorSqm, 2.025, '内卫小花砖余区');
+  close(result.byRoom.guest_bath.wetFloorSqm, 2.235, '内卫小花砖余区'); // R04：客卫 +0.21㎡
   close(result.byRoom.guest_bath.dryFloorSqm, 1.125, '开放洗漱区跟随客餐厅木纹砖');
 });
 
@@ -226,10 +226,10 @@ test('房间内floor_region按follow转移干湿材质量且不改变全屋地�
     follow: 'living_dining',
     areaSqm: 1.125,
   }]);
-  close(result.dryFloorSqm, 116.739, '干区总量包含客卫门外开放洗漱区');
-  close(result.wetFloorSqm, 6.601, '湿区总量扣除客卫门外开放洗漱区');
-  close(result.dryFloorSqm + result.wetFloorSqm, 123.34, '内部材质区转桶不改变包含走廊extra的全屋面积');
-  close(result.totalRoomFloorSqm, 119.59, '房间footprint总量不变');
+  close(result.dryFloorSqm, 120.279, '干区总量包含客卫门外开放洗漱区');
+  close(result.wetFloorSqm, 6.811, '湿区总量扣除客卫门外开放洗漱区');
+  close(result.dryFloorSqm + result.wetFloorSqm, 127.09, '内部材质区转桶不改变包含走廊extra的全屋面积');
+  close(result.totalRoomFloorSqm, 123.34, '房间footprint总量不变');
 });
 
 test('内部地面材质分区若越出声明宿主房间则fail closed', () => {
@@ -250,7 +250,7 @@ test('floor_region：走廊 3.75㎡ 计入，落在已计费房内的 10.39㎡ �
   close(result.floorRegionExtraSqm, 3.75, 'main_corridor_floor（DEC-2026-10-09-P16）');
   close(result.floorRegionSkippedInsideRoomSqm, 10.39, 'corridor_floor 6.75（整块在 study 内）+ entry_foyer_floor 3.64（整块在 living_dining 内）');
   close(result.floorRegionExcludedSqm, 14.505, 'entry_garden_floor 12.905 + north_platform_floor 1.60（圆角真实面积 1.3854 由调用方给）');
-  close(result.dryFloorSqm, 111.864 + 3.75 + 1.125, '干区含主走廊extra和客卫内部木纹区');
+  close(result.dryFloorSqm, 115.404 + 3.75 + 1.125, '干区含主走廊extra和客卫内部木纹区');
   assert.deepEqual(result.skippedInsideRoomFloorRegionIds, ['entry_foyer_floor', 'corridor_floor']);
   assert.deepEqual(result.excludedFloorRegionIds, ['entry_garden_floor', 'north_platform_floor']);
 });
@@ -270,20 +270,20 @@ test('防水台延长米 33.440m（按构件对 run 取并集，一条矮台只�
   assert.ok(result.sillFaceLinearM > result.extrasLinearM * 1.9, 'front+top 两条面 ≈ 2× 台长');
 });
 
-test('L2 独立推导：可贴墙长 vs 声明 union（厨房 4.80 / 主卫 4.36 / 客卫 5.70 / 阳台 3.90）', () => {
+test('L2 独立推导：可贴墙长 vs 声明 union（厨房 4.80 / 主卫 4.36 / 客卫 5.80 / 阳台 4.00）', () => { // R04：客卫/阳台共用北墙 1.50→1.60
   const result = computeMasonryTakeoff(buildInput());
   close(result.tileableWallLengthM.kitchen, 4.8);
   close(result.tileableWallLengthM.master_bath, 4.36, '北墙 suppress_north_recess、西墙 suppress_west_wall 均为玻璃幕墙');
-  close(result.tileableWallLengthM.guest_bath, 5.7, '南侧 z=4.30 不封横墙');
-  close(result.tileableWallLengthM.balcony, 3.9, 'D3=B 口径：门洞墙阳台侧 1.20m 既定不贴');
+  close(result.tileableWallLengthM.guest_bath, 5.8, '南侧 z=4.30 不封横墙');
+  close(result.tileableWallLengthM.balcony, 4.0, 'D3=B 口径：门洞墙阳台侧 1.20m 既定不贴');
   // 声明 union 必须 ⊆ 可贴墙长（union 按墙分组，多段堆叠只算一次墙长）
   for (const room of ['kitchen', 'master_bath', 'guest_bath', 'balcony', 'living_dining']) {
     const declared = result.declaredUnionLengthM[room] ?? 0;
     const tileable = result.tileableWallLengthM[room] ?? 0;
     assert.ok(declared <= tileable + 1e-9, `${room} 声明 union ${declared} 超可贴墙长 ${tileable}`);
   }
-  close(result.declaredUnionLengthM.guest_bath, 5.7, '客卫声明把可贴墙长贴满');
-  close(result.declaredUnionLengthM.balcony, 2.7, '阳台只贴洗衣机墙 + 南墙，缺口 1.20m = 门洞墙阳台侧');
+  close(result.declaredUnionLengthM.guest_bath, 5.8, '客卫声明把可贴墙长贴满');
+  close(result.declaredUnionLengthM.balcony, 2.8, '阳台只贴洗衣机墙 + 南墙（R04 后南墙 1.60），缺口 1.20m = 门洞墙阳台侧');
   close(result.declaredUnionLengthM.kitchen, 4.0, '缺口 0.80m = w_balc_east 上的 d_kit_balc 门洞（P11 瓷砖不扣洞）');
   close(result.declaredUnionLengthM.master_bath, 3.56, '缺口 0.80m = w_mbath_south 上的 d_mbath 门洞（P11）');
 });
@@ -298,7 +298,7 @@ test('生活阳台地面 1.92㎡ 既不在干区也不在湿区 → 显形，不
   // 反边/开孔/壁龛在 overlay 无声明源，必须显形（COST-060-05 锚点待报价轮）
   assert.ok(result.unpriced.some((item) => item.id === 'extras_uncovered'), 'extras 无声明源必须显形');
   // 生活阳台虽不进门地面干/湿两档，墙砖声明照算（D3=B 湿区 0.30m 口径）
-  close(result.byRoom.balcony.wallTileSqm, 0.81);
+  close(result.byRoom.balcony.wallTileSqm, 0.84); // R04：南墙砖段 +0.03㎡
 });
 
 test('sill_region 贴附 suppress 幕墙合法但留名；弧墙缺 along 的口径分叉必须告警', () => {
@@ -509,13 +509,19 @@ test('纯函数：masonryTileableWallLength 与 tmp/verify-wall-tile.ts 的 tile
   }));
   const points = (id: string): Array<{ x: number; z: number }> => {
     const room = (layout.rooms as any[]).find((candidate) => candidate.id === id)!;
-    return (room.points ?? []).map((point: any) => ({ x: point.x, z: point.z }));
+    if ((room.points ?? []).length) return room.points.map((point: any) => ({ x: point.x, z: point.z }));
+    // 2026-10-23 R04：阳台 boundary 去重后成矩形，resolver 改走 rect 口径不产 points，按中心±宽深补四角
+    const hw = room.width / 2, hd = room.depth / 2;
+    return [
+      { x: room.x - hw, z: room.z - hd }, { x: room.x + hw, z: room.z - hd },
+      { x: room.x + hw, z: room.z + hd }, { x: room.x - hw, z: room.z + hd },
+    ];
   };
   // tmp/verify-wall-tile.ts L2 的四个锚点（DEC-2026-10-07-R06 复算改判后的值）
   close(masonryTileableWallLength(points('kitchen'), walls), 4.8);
   close(masonryTileableWallLength(points('master_bath'), walls), 4.36);
-  close(masonryTileableWallLength(points('guest_bath'), walls), 5.7);
-  close(masonryTileableWallLength(points('balcony'), walls), 3.9);
+  close(masonryTileableWallLength(points('guest_bath'), walls), 5.8); // R04：北墙 1.50→1.60
+  close(masonryTileableWallLength(points('balcony'), walls), 4.0); // R04：北墙 1.50→1.60
   // suppress 的墙不计：主卫北墙/西墙整段是玻璃幕墙
   close(masonryTileableWallLength(points('master_bath'), walls.filter((wall) => !wall.suppressed)), 4.36);
 });

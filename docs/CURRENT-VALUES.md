@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:aa73db00adbf370154f4a00374af36953230d780ef94c9e594790c3211a0d78c -->
+     inputs-fingerprint: sha256:9a06d6c4178f1d261625d32a9a2c750972916ac10eb5be90caf0c9bbbf1eebc8 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -23,7 +23,7 @@
 | 一期预算池 | 6 池：基础硬装 126000 / 中央空调 36000 / 一期家具 19000 / 必需家电 16000 / 设计与开工准备 8000 / 一期窗帘 5000 | schedule/phase-1/control.yaml:34-52 | 六池合计 = 执行上限；家电 16000 含 GC5 追加 4000 |
 | 暖通执行池 | 36000 元 | schedule/phase-1/control.yaml:40 | 与合同成交价同额；原 33000 询价口径作废 |
 | 全硬装询价轮次目标 | all_in 205098 元（核心 187098 + 柜体 18000） | schedule/phase-1/control.yaml:203-207 | 业主提供的预算池/封顶/候选价，**不是合同承诺** |
-| 墙砖面积（wall_region 实算） | 21.2555 ㎡ | config/layout/overlay.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168 | 窗台/防水台 sill_region 另计 15.468 ㎡；合计 36.7236 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※ |
+| 墙砖面积（wall_region 实算） | 21.5505 ㎡ | config/layout/overlay.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168 | 窗台/防水台 sill_region 另计 15.468 ㎡；合计 37.0186 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※ |
 
 ## 暖通
 
