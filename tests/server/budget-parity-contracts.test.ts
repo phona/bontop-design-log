@@ -242,7 +242,7 @@ test('真实仓：预算口径与层高禁用契约已登记', () => {
   }
 });
 
-test('真实仓：墙砖面积三处一致（36.7236㎡），橱柜/地面两处口径各自闭合', (t) => {
+test('真实仓：墙砖面积三处一致（37.0186㎡），橱柜/地面两处口径各自闭合', (t) => { // DEC-2026-10-23-R04 后墙砖量
   // 直接跑入口脚本：契约 + 机器源 + 登记侧三方一起验，任何一侧坏都红。
   const run = spawnSync(process.execPath, ['--import', 'tsx', 'scripts/verify/facts/verify-facts.ts'], { encoding: 'utf8' });
   if ((run.error as NodeJS.ErrnoException | undefined)?.code === 'EPERM') {
@@ -250,8 +250,8 @@ test('真实仓：墙砖面积三处一致（36.7236㎡），橱柜/地面两处
     return;
   }
   assert.equal(run.status, 0, `verify-facts 必须退出 0。stderr: ${run.stderr}\nstdout: ${run.stdout}`);
-  assert.match(run.stdout, /c\.masonry_tile_area_parity：3 处一致 = 36\.72359934708642/);
-  assert.match(run.stdout, /c\.floor_quantity_parity：3 处一致 = 123\.34/);
+  assert.match(run.stdout, /c\.masonry_tile_area_parity：3 处一致 = 37\.01859934708642/);
+  assert.match(run.stdout, /c\.floor_quantity_parity：3 处一致 = 127\.09/); // R04：地面总量 123.34→127.09
   assert.match(run.stdout, /c\.cabinet_length_parity：3 处一致 = 5\.51/);
   assert.match(run.stdout, /c\.cabinet_area_parity：3 处一致 = 4\.2226/);
 });

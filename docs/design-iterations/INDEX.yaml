@@ -8,7 +8,7 @@ meta:
   established: '2026-10-20'
   dir_count: 64
   stray_file_count: 1
-  external_refs_total: 151
+  external_refs_total: 152
   field_provenance:
     topic: round.yaml index.topic 原文（原按目录名前缀归类，命名事实）
     review_state: round.yaml index.review_state 原文（来自原 review-manifest 的 state/status 字段；无 manifest 记 none）
@@ -83,7 +83,7 @@ entries:
     topic: mep
     review_state: none
     supersedes: none
-    external_refs: 8
+    external_refs: 9
     note: 唯一有活测试读者的目录（tests/server/mep-guidance-baseline.test.ts:25），随 DEC 滚动归档
   - dir: mep-power-water-freeze-20261003
     topic: mep

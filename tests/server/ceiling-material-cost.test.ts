@@ -88,23 +88,23 @@ test('材料合计区间与金额区间 = 各项相加 × takeoff 面积', () =>
   assert.equal(result.materialTotal.min, sumMin);
 });
 
-test('材料额度按施工方分形态口径算：112.16 元/㎡，判定 within_range（C12 修正 C11；扩深后基数 25.406㎡）', () => {
+test('材料额度按施工方分形态口径算：112.04 元/㎡，判定 within_range（C12 修正 C11；R04 后基数 25.346㎡）', () => {
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   assert.equal(result.contractor.basis, 'forms');
-  // 边吊 21.48m×160 + 平顶 7.39㎡×155 = 4,581.45；纯人工 21.48×60 + 7.39×60 = 1,731.90
+  // 边吊 21.375m×160 + 平顶 7.39㎡×155 = 4,565.45；纯人工 21.375×60 + 7.39×60 = 1,725.90（R04 餐厅北带西移后边吊 −0.10m）
   const breakdown = result.contractor.formBreakdown!;
   assert.equal(breakdown.length, 2);
   assert.equal(breakdown[0].form, 'edge_drop');
-  assert.equal(breakdown[0].quantity, 21.48);
-  assert.equal(breakdown[0].turnkeyYuan, 3436);
-  assert.equal(breakdown[0].materialYuan, 2147.5);
+  assert.equal(breakdown[0].quantity, 21.37);
+  assert.equal(breakdown[0].turnkeyYuan, 3420);
+  assert.equal(breakdown[0].materialYuan, 2137.5);
   assert.equal(breakdown[1].form, 'flat');
   assert.equal(breakdown[1].turnkeyYuan, 1145.45);
-  // 4,581.45 − 1,731.90 = 2,849.55 → ÷ 25.4055 = 112.16 元/㎡；扩深改变面积基数，不改变报价总额
-  assert.equal(result.contractor.allowancePerSqm, 112.16);
-  // 97～119 → 112.16 落在参考区间内
+  // 4,565.45 − 1,725.90 = 2,839.55 → ÷ 25.3455 = 112.04 元/㎡；面积基数与边吊长度随几何口径变，单价不变
+  assert.equal(result.contractor.allowancePerSqm, 112.04);
+  // 97～119 → 112.04 落在参考区间内
   assert.equal(result.verdict, 'within_range');
-  assert.equal(result.slackVsMaxYuanPerSqm, -6.84);
+  assert.equal(result.slackVsMaxYuanPerSqm, -6.96);
 });
 
 test('C11 的「低于下限」是旧口径的假象：全按 155 元/㎡ 算额度只有 95', () => {

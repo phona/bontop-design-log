@@ -469,7 +469,7 @@ elements:
     type: wall_region
     wall: w_balc_south
     room: balcony
-    along: [0.00, 1.50]      # x[5.60, 7.10] 段 = 1.50m（与客卫北墙共墙，本段为阳台侧脸）
+    along: [0.00, 1.60]      # x[5.60, 7.20] 段 = 1.60m（与客卫北墙共墙，本段为阳台侧脸；2026-10-23 DEC-2026-10-23-R04 随墙长 1.50→1.60）
     bottom: 0.00
     height: 0.30
     zone: visible
@@ -561,16 +561,25 @@ elements:
     type: wall_region
     wall: w_balc_south
     room: guest_bath
-    along: [0.00, 1.50]      # 1.50m，客卫北墙
+    along: [0.00, 1.60]      # 1.60m，客卫北墙（2026-10-23 DEC-2026-10-23-R04：东墙线 7.20 后北墙长 1.50→1.60，砖面随墙贴满）
     bottom: 0.00
     height: 2.65
     zone: visible
     reason: 客卫北墙，淋浴区砖到顶（业主 2026-10-07 终裁，吊顶完成面 2.65；北墙窗洞扣减量房后计）
+  - id: walltile_gbath_east_shower_kitseg
+    type: wall_region
+    wall: w_kit_west
+    room: guest_bath
+    along: [0.00, 0.20]      # z[2.20, 2.40] 段：2026-10-23 DEC-2026-10-23-R04 墙线拉直后该段由 w_kit_west 承载，西脸属客卫淋浴区
+    bottom: 0.00
+    height: 2.65
+    zone: visible
+    reason: 客卫东墙最北段（与 w_gbath_east 淋浴段同面连续），淋浴区砖到顶（业主 2026-10-07 终裁）
   - id: walltile_gbath_east_shower
     type: wall_region
     wall: w_gbath_east
     room: guest_bath
-    along: [0.00, 0.55]      # z[2.20, 2.75] 段 = 0.55m，淋浴贴东墙
+    along: [0.00, 0.35]      # z[2.40, 2.75] 段（R04 前为沿旧墙 [0.00,0.55]=z[2.20,2.75]，北段 0.20 已分出 kitseg）
     bottom: 0.00
     height: 2.65
     zone: visible
@@ -579,7 +588,7 @@ elements:
     type: wall_region
     wall: w_gbath_east
     room: guest_bath
-    along: [0.55, 1.35]      # z[2.75, 3.55] 段 = 0.80m
+    along: [0.35, 1.15]      # z[2.75, 3.55] 段 = 0.80m（R04 随墙起点南移沿墙坐标 −0.20）
     bottom: 0.00
     height: 0.30
     zone: visible
@@ -827,14 +836,14 @@ elements:
 
   # ── 客卫 4 段（2026-10-07 业主终裁：饰面"带+漆"，wall_finish 改 paint 后由 tmp/gen-paint-regions.ts
   #    产出 5 段、人工剔除 1 段）：北墙 w_balc_south 整面淋浴砖到顶（walltile_gbath_north_shower）不漆；
-  #    w_gbath_east 掐掉淋浴区间 [0,0.55]，只留马桶区 [0.55,1.35]。已知口径：0.30m 砖带/0.77→1.10 防溅带
+  #    w_gbath_east 掐掉淋浴区间，只留马桶区（沿墙坐标 2026-10-23 R04 后为 [0.35,1.15]，此前 [0.55,1.35]）。已知口径：0.30m 砖带/0.77→1.10 防溅带
   #    与漆面在高度上部分重叠（约 1.1㎡ 漆面多计，漆按桶采购内吸收）；内隔墙 w_gbath_south 两脸
   #    （约 5.5㎡，含门洞）待 paint-scope 支持同房间内隔墙双脸后增补，当前未声明。
   - id: paint_guest_bath_w_gbath_east
     type: paint_region
     wall: w_gbath_east
     room: guest_bath
-    along: [0.55, 1.35]
+    along: [0.35, 1.15]      # z[2.75, 3.55]（R04 随墙起点南移沿墙坐标 −0.20，原 [0.55,1.35]）
     bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_gbath_east_rest 的 0.30m 防水砖带
     height: 2.80
     reason: "客卫东墙南段（马桶区）上部涂装；[0,0.55] 为淋浴砖到顶不漆；0.30m 以下为 walltile_gbath_east_rest 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07）"

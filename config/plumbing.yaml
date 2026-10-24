@@ -104,7 +104,7 @@
   type: shower
   water_temp: "mixed"
   water_dn: 20
-  x: 7.10
+  x: 7.20
   z: 2.45
   height: 1.0
   note: "2026-08-29 客卫北端淋浴花洒；东墙实体墙西侧挂载，坐东朝西，淋浴区 z≈2.30~2.75；**本轮不画 MEP route**：给水管路由无定案（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 花洒 SKU 后单独深化（pending #44）；状态依据：花洒本体与挂位为 2026-08-29 确定的设计值（docs/decisions/12-plumbing.md 登记该两点给水路线端点内联问题），故 status=inferred；pending 的是给水管路而非本点位位置"
@@ -117,10 +117,10 @@
   type: toilet
   water_temp: "cold"
   water_dn: 20
-  x: 7.10
+  x: 7.20
   z: 3.05
   height: 0.3
-  note: "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.75,3.05)，真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.10,3.05) h=0.3、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31"
+  note: "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.75,3.05)，真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.20,3.05) h=0.3（2026-10-23 DEC-2026-10-23-R04 随东墙线 7.10→7.20 同步）、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31"
 
 - id: drain_gbath_shower
   room: guest_bath

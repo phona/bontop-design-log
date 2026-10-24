@@ -106,7 +106,7 @@ describe('Budget + Risks + Schemes API', () => {
     assert.match(body.tileBudgetPreview.scopeNote, /excludes bathroom, walls, balcony, and extras/);
     assert.deepEqual(
       body.tileBudgetPreview.dryFloorMaterialAndOrdinaryLaborByCandidate.map((row: { candidateId: string; sameScopeSubtotalYuan: number }) => [row.candidateId, row.sameScopeSubtotalYuan]),
-      [['kt_200x1200', 23005.8], ['jinyi_approx_900x150', 24320.8]],
+      [['kt_200x1200', 23735.3], ['jinyi_approx_900x150', 25102.5]],
     );
     assert.equal(body.totalActual, calc.calculate(state.getCurrentScheme()).totalActual);
     assert.deepEqual(body.categories.map((item: { key: string; actual: number }) => [item.key, item.actual]),
