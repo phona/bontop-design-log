@@ -85,12 +85,13 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 | ref_master_bath_local_beam_head | LH:420/LW:400 | 2.41m | x[1.2,1.9] z[3.5,4.1] | 主卫梁头；冷凝水穿点 x=2.0 已贴其东缘避让 |
 | ref_corridor_service_band | 走廊浅梁组 | 2.65m | x[6.9,7.5] z[3.6,8.0] | 主干/分支汇集区，偏差影响所有入房转弯 |
 
-> 状态口径（2026-10-06 与 `config/hvac.yaml` 对齐；2026-10-25 梁体修正后 10 条）：**3 条 `inferred`**（`ref_south_window_band_ld100` / `ref_kitchen_north_ld180` / `ref_corridor_service_band`）+ **7 条 `pending`**（原 2 条 `ref_kitchen_local_beam_head` / `ref_master_bath_local_beam_head`，其位置/归属存疑并各有并存候选 `ref_kitchen_dashed_beam_candidate` / `ref_master_bath_lh250_candidate`；新增 3 条候选 `ref_child_guest_bath_north_beam_candidate` / `ref_north_window_band_ld150_candidate` / `ref_north_window_band_ld100_candidate`）。**均未 confirmed**，`beam_collision` 规则因此休眠（见 §6），10 条都只以 `reference_constraint_uncertain` warning 形式常驻提醒；量房逐条实测后按 §6 的墙/约束 confirmed 口径升级。
+> 状态口径（2026-10-06 与 `config/hvac.yaml` 对齐；2026-10-25 梁体修正后 11 条；同日 Framework B 重算后仍 11 条）：**3 条 `inferred`**（`ref_south_window_band_ld100` / `ref_kitchen_north_ld180` / `ref_corridor_service_band`）+ **8 条 `pending`**（原 2 条 `ref_kitchen_local_beam_head` / `ref_master_bath_local_beam_head`，其位置/归属存疑并各有并存候选 `ref_kitchen_dashed_beam_candidate` / `ref_master_bath_lh250_candidate` / `ref_master_bath_lh420_candidate`；新增 3 条候选 `ref_child_guest_bath_north_beam_candidate` / `ref_north_window_band_ld150_candidate` / `ref_north_window_band_ld100_candidate`）。**均未 confirmed**，`beam_collision` 规则因此休眠（见 §6），11 条都只以 `reference_constraint_uncertain` warning 形式常驻提醒；量房逐条实测后按 §6 的墙/约束 confirmed 口径升级。
 
-### 2.5.2 图上可见的候选（2026-10-25 梁体修正后，LH:250 与 LH:400 已录入 config 为 pending 候选）
+### 2.5.2 图上可见的候选（2026-10-25 梁体修正后，LH:250、LH:400 与 LH:420 已录入 config 为 pending 候选）
 
-- **主卫 LH:250**（竖向虚线，约 x≈1.0 一线）→ 已录入 `ref_master_bath_lh250_candidate`（pending，梁底 2.58m），影响主卫冷凝水/给水贴顶段；也可能是沉箱构造线，待量房拍照判读后定 2.41 还是 2.58；
-- **儿童房/客卫北 LH:400/LW:200**（约 x≈4.0 一线）→ 已录入 `ref_child_guest_bath_north_beam_candidate`（pending，梁底 2.43m），紧邻儿童房穿点 x=4.35 所在墙面，**量房时优先核这条**；
+- **主卫 LH:250**（竖向虚线，约 x≈1.0 一线，文字约 z3.30）→ 已录入 `ref_master_bath_lh250_candidate`（pending，梁底 2.58m），影响主卫冷凝水/给水贴顶段；也可能是沉箱构造线，待量房拍照判读后定 2.41 还是 2.58；
+- **主卫 LH:420/LW:400**（约 x≈1.0 一线，文字约 z4.52）→ 已录入 `ref_master_bath_lh420_candidate`（pending，梁底 2.41m）；原登记 z3.5–4.1 疑为 LH:250（3.30）与 LH:420（4.52）两头 conflation，量房二选一或双确认；
+- **儿童房/客卫北 LH:400/LW:200**（约 x≈4.0 一线，文字约 z4.63）→ 已录入 `ref_child_guest_bath_north_beam_candidate`（pending，梁底 2.43m），紧邻儿童房穿点 x=4.35 所在墙面，**量房时优先核这条**；
 - 玄关区 LH:710、各房间南向 LH:750/760 + LW:1160/1380——按窗洞口判读，不计梁位。
 
 ### 2.5.3 硬规则
@@ -253,7 +254,7 @@ npm run typecheck
 |---|---:|---|
 | MEP must_fix_before_briefing（交底前必须清，R19 硬门禁起整体计 error、由验收断言单独锁定 135） | 135 | route_overlap 68 + route_not_orthogonal 32 + route_furniture_collision 12 + unsupported_span 7 + suppressed_wall_crossing 7 + endpoint_inaccessible 5 + door_opening_collision 1 + mep_endpoint_service_conflict 2 + route_endpoint_unusable 1（DEC-2026-10-23-R04 对账增量：几何改判后 route_overlap 与 suppressed_wall_crossing 各减一、bay_sill_collision 清零，合计由 138 降至 135；此前 DEC-2026-10-22-R01 对账实测 138：bf29283 逐段坡度规则带入的 11 条 gravity_slope_below_design_target 已由短段链门槛与 4 条路线几何建真坡度清零，route_overlap 实修 −1；上一态 R25 口径 149、R22-v0.5 口径 139）|
 | MEP survey_dependent（量房后自然消/复判） | 151 | ceiling_clearance_unverified 101 + penetration_door_clearance 16 + shear_wall_parallel_route 11 + shear_wall_penetration 10 + route_insulation_unverified 7 + inline_endpoint_without_point_anchor 6（DEC-2026-10-23-R04 对账：ceiling_clearance_unverified 由 62 增至 101，新增 39 条全为 bend_corridor 角点单点触碰登记，见 §0；DEC-2026-10-23-R03 对账：客卫二次排水示意段两端点 +2，4→6；DEC-2026-10-22-R01 对账实测：ceiling_clearance_unverified 为 R25 外包络复核口径，与 verify:facts 契约登记双引擎一致，见 §0；route_insulation_unverified 为 R25 同批新检查、保温厚度/状态未确认，登记治理台账 pending_adjudication 待厂家选型与量房；上一态 R21 口径 91）|
-| MEP envelope_approximation（模型包络近似/非物理需求） | 133 | route_clearance_unverified 40 + route_overlap 39 + bay_sill_crossing_declared 13 + route_overlap_declared_trunk 14 + nonphysical_route 8 + reference_constraint_uncertain 10 + route_not_orthogonal 4 + route_furniture_collision 2 + unsupported_span 2 + supply_return_overlap 1（2026-10-25 梁体修正对账：参考梁约束 5 条增至 10 条，提醒数同增 5，本桶 128→133；其余 code 不变）|
+| MEP envelope_approximation（模型包络近似/非物理需求） | 134 | route_clearance_unverified 40 + route_overlap 39 + bay_sill_crossing_declared 13 + route_overlap_declared_trunk 14 + nonphysical_route 8 + reference_constraint_uncertain 11 + route_not_orthogonal 4 + route_furniture_collision 2 + unsupported_span 2 + supply_return_overlap 1（2026-10-25 梁体修正对账：参考梁约束 5 条增至 10 条，提醒数同增 5，本桶 128→133；同日 Framework B 重算补登 LH:420 候选 1 条，本桶 133→134；其余 code 不变）|
 > R20历史快照：must_fix桶（166）已按 R19 硬门禁整体升为 errors、不在本表；本表仅承载两个 warning 桶。当前实跑分桶见上方 R25 快照。
 >
 > **DEC-2026-10-17-R20 走线专项增量**：为 R20 批次 7 个新点位落地 7 条路线（strong-ded-fridge-living / strong-power-waterbar / strong-power-kitchen-east / strong-power-weakbox / weak-ap-master / strong-light-balcony / strong-light-entry-night-mid，128→135），**must_fix 桶 166 逐 code 零增量**；增量全部落在允许的 survey/envelope 桶（survey +5、envelope +3，逐 code 见两行明细内注）——新路线自身不带任何交底前必清项，穿墙/共孔/贴干线均以声明通道表达。
