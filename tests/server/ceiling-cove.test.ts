@@ -28,7 +28,7 @@ test('DEC-2026-10-08-R05: 垂面弧全拆（回 R02 硬垂直面），三区均�
   assert.deepEqual(northBand?.area, [7.80, 2.40, 10.80, 3.00]); // DEC-2026-10-23-R04：西端随餐厅服务带东移 7.70→7.80
   assert.deepEqual(westBand?.corner_radii, { nw: 0.15 });
   assert.deepEqual(westBand?.concave_fillets, { se: 0.15 });
-  assert.deepEqual(foyer?.area, [10.80, 3.81, 12.96, 4.30]); // R01：门厅区随南墙与中竖墙缩小
+  assert.deepEqual(foyer?.area, [10.80, 3.00, 12.77, 4.30]); // R01 重算：门厅区随南墙至 3.00 与中竖墙至 12.77
 });
 
 test('DEC-2026-10-08-R05: 三区渲染均无 cove mesh，立面与平顶硬相交', () => {

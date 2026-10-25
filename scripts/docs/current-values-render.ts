@@ -416,7 +416,7 @@ const SECTIONS: Section[] = [
           return `${fmt2(room.area)} ㎡`;
         },
         source: 'config/house.yaml:178；config/hvac.yaml:36',
-        note: 'polygon 实测；bbox 45.88 ㎡含 4.43㎡ 凹口 ※（2026-10-25 DEC-2026-10-25-R01 后客餐厅 44.58→41.4484㎡，凹口 1.30→4.43㎡）',
+        note: 'polygon 实测；bbox 45.88 ㎡含 2.71㎡ 凹口 ※（2026-10-25 DEC-2026-10-25-R01 本体标定重算后客餐厅 44.58→43.1734㎡，凹口 1.30→2.71㎡）',
       },
       {
         label: '套内面积',
