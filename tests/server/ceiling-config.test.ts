@@ -30,7 +30,7 @@ test('ceiling.yaml: corridor/foyer gap entries exist with matching floor_region 
     ceiling_main_corridor: [4.20, 4.30, 7.20, 5.55],
     // 2026-08-26：父母房走廊吊顶收窄为衣柜深度边吊（z 5.55–6.45），z[6.45,7.8] 走廊地面由 study 房间基础顶面覆盖
     ceiling_corridor: [4.20, 5.55, 7.20, 6.45],
-    ceiling_entry_foyer: [10.80, 2.90, 13.40, 4.30],
+    ceiling_entry_foyer: [10.80, 3.81, 12.96, 4.30], // R01
   };
   for (const [id, area] of Object.entries(expected)) {
     const e = byId.get(id);

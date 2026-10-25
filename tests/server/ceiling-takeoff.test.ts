@@ -102,7 +102,7 @@ test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）�
 test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   const { byClass } = takeoff;
   assert.equal(byClass.gypsum_board.zones, 10);
-  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 25.346) < 0.01); // R04：北带 −0.06
+  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 22.764) < 0.01); // R01：门厅区 3.64→1.0584，石膏板净面积 −2.5816
   assert.equal(byClass.aluminum_buckle.zones, 3);
   assert.ok(Math.abs(byClass.aluminum_buckle.netAreaM2 - 16.576) < 0.01); // R04：客卫吊顶 +0.21
   assert.equal(byClass.aluminum_buckle.panelCount, 192);
@@ -113,8 +113,8 @@ test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   assert.equal(byClass.curtain_box.pricingUnit, 'linear_m');
   assert.equal(byClass.drying_rack.zones, 1);
   assert.ok(Math.abs(byClass.drying_rack.netAreaM2 - 1.08) < 1e-9);
-  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 47.464) < 0.01); // R04：北带 −0.06 + 客卫吊顶 +0.21
-  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 79.773) < 0.05);
+  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 44.882) < 0.01) // R01：门厅区 −2.5816; // R04：北带 −0.06 + 客卫吊顶 +0.21
+  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 76.381) < 0.05); // R01：门厅区展开面积同降
 });
 
 test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () => {

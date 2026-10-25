@@ -106,16 +106,16 @@ elements:
   it('GET /api/ceiling/material-cost returns range verdict without market judgement', async () => {
     const res = await request(app).get('/api/ceiling/material-cost').expect(200);
     assert.equal(res.body.areaBasis, 'gypsum_board');
-    // C11：欧松板 27～29（verified）+ C7 同级旁证 26～30 + 龙骨按「米价 × 新周长用量」折算 35～44
-    assert.equal(res.body.materialPerSqm.min, 97);
-    assert.equal(res.body.materialPerSqm.max, 119);
-    // C12 起按施工方分形态口径（边吊 160/米 + 平顶 155/㎡）算额度 → 112.04 元/㎡
-    // DEC-2026-10-23-R04 后石膏板基数 25.346㎡、边吊 21.375m，单位面积额度随之微调。
+    // C11：欧松板 27～29（verified）+ C7 同级旁证 26～30 + 龙骨按「米价 × 新周长用量」折算 36～45（R01）
+    assert.equal(res.body.materialPerSqm.min, 98);
+    assert.equal(res.body.materialPerSqm.max, 120);
+    // C12 起按施工方分形态口径（边吊 160/米 + 平顶 155/㎡）算额度 → 113.97 元/㎡
+    // DEC-2026-10-25-R01 后石膏板基数 22.764㎡、边吊 21.375m，单位面积额度随之微调。
     assert.equal(res.body.contractor.basis, 'forms');
-    assert.equal(res.body.contractor.allowancePerSqm, 112.04);
+    assert.equal(res.body.contractor.allowancePerSqm, 113.97);
     assert.equal(res.body.contractor.formBreakdown.length, 2);
     assert.equal(res.body.verdict, 'within_range');
-    assert.equal(res.body.slackVsMaxYuanPerSqm, -6.96);
+    assert.equal(res.body.slackVsMaxYuanPerSqm, -6.03); // R01
     assert.deepEqual(res.body.ownerOnlyPerSqm, { min: 70, max: 115 });
     assert.ok(!res.body.warnings.some((note: string) => note.includes('高于参考上限') || note.includes('低于参考下限')),
       '当前单位面积额度落在更新后的材料区间内，不应报高于/低于区间');
@@ -135,15 +135,15 @@ elements:
     assert.equal(gypsum.basisUsed, 'comparable');
     assert.equal(gypsum.offSpecEvidence.length, 2);
     assert.equal(gypsum.offSpecEvidence[0].sheet_size_m2, 3.6);
-    // 龙骨：逐构件折算 + 边龙骨用量由 takeoff 周长实算（2.85 米每平米，是大平顶经验值 0.4 的 7.1 倍）
+    // 龙骨：逐构件折算 + 边龙骨用量由 takeoff 周长实算（3.05 米每平米，R01）
     const frame = res.body.items.find((item: { id: string }) => item.id === 'lanzhen50_frame');
     assert.equal(frame.basis, 'per_metre_derived');
     assert.equal(frame.derivedComponents.length, 3);
     const edge = frame.derivedComponents.find((c: { component: string }) => c.component === '边龙骨');
-    assert.deepEqual(edge.metresPerSqm, [2.85, 2.85]);
+    assert.deepEqual(edge.metresPerSqm, [3.05, 3.05]);
     assert.equal(edge.usageStatus, 'model_derived_upper_bound');
-    assert.equal(frame.perSqm.min, 35);
-    assert.equal(frame.perSqm.max, 44);
+    assert.equal(frame.perSqm.min, 36);
+    assert.equal(frame.perSqm.max, 45);
     // 上人型主龙骨 20.81 元/米只登记不折算
     assert.ok(frame.offSpecEvidence.some((obs: { rate?: number }) => obs.rate === 20.81));
   });
@@ -151,16 +151,16 @@ elements:
   // C12：施工方其实按「边吊 160 元/米 + 平顶 155 元/㎡」两队计，代码现在能分开算
   it('GET /api/ceiling/quotes 分形态计价：边吊按米、平顶按㎡，总额不再被口径卡住', async () => {
     const res = await request(app).get('/api/ceiling/quotes').expect(200);
-    // 量：边吊长边 21.375m（按米计价）、满吊平顶 7.39㎡（按㎡计价），
+    // 量：边吊长边 21.375m（按米计价）、满吊平顶 4.8084㎡（按㎡计价，R01），
     // 覆盖不变量用**面积**验：边吊面积 + 平顶面积 = 石膏板净面积（两种单位不许相加）
     assert.ok(Math.abs(res.body.quantities.gypsum_edge_drop_linear - 21.375) < 1e-9);
-    assert.ok(Math.abs(res.body.quantities.gypsum_flat_sqm - 7.39) < 1e-9);
+    assert.ok(Math.abs(res.body.quantities.gypsum_flat_sqm - 4.8084) < 1e-9);
     assert.ok(Math.abs(res.body.takeoff.edgeDropNetAreaM2 + res.body.takeoff.flatNetAreaM2 - res.body.takeoff.gypsumNetAreaM2) < 1e-9);
     assert.deepEqual(res.body.takeoff.unclassifiedPricingFormIds, []);
     const card = res.body.comparison.find((entry: { id: string }) => entry.id === 'owner_turnkey_20261008')!;
-    // 21.375×160 + 7.39×155 + 17.85×105
-    assert.ok(Math.abs(card.total - (21.375 * 160 + 7.39 * 155 + 17.85 * 105)) < 1e-6);
-    assert.ok(Math.abs(card.total - 6439.7) < 1e-6);
+    // 21.375×160 + 4.8084×155 + 17.85×105
+    assert.ok(Math.abs(card.total - (21.375 * 160 + 4.8084 * 155 + 17.85 * 105)) < 1e-6);
+    assert.ok(Math.abs(card.total - 6039.552) < 1e-6);
     assert.deepEqual(card.pendingRows, []);
     // 混合口径的板面行（含厨卫铝扣板）这家不报：超出范围，不算待报价
     assert.deepEqual(card.outOfScopeRows, ['ceiling_zones', 'aluminum_buckle_sqm']);

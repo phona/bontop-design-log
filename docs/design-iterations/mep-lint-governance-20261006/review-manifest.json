@@ -48,10 +48,10 @@
     },
     {
       "code": "shear_wall_penetration",
-      "count": 10,
+      "count": 11,
       "category": "survey_dependent",
       "disposition": "accept",
-      "basis": "accept-as-warning：7 条均为 inferred 墙体穿越的工艺提醒（w_strip_east z≈4.6 三管同孔区等），shared/mep-hvac-lint.ts 的 shear_wall_penetration 规则对 inferred 墙只出 warning、对墙与路线双双 confirmed 才升 error，升级路径已由 tests/server/mep-hvac-lint.test.ts 锁定；§2.1 已声明交房量房确认墙体类型后按规则自动升降级｜DEC-2026-10-17-R20 走线专项 +1：weak-ap-master 穿 w_strip_east 既定穿孔区（距门垛 0.17m，survey 项）。",
+      "basis": "accept-as-warning：7 条均为 inferred 墙体穿越的工艺提醒（w_strip_east z≈4.6 三管同孔区等），shared/mep-hvac-lint.ts 的 shear_wall_penetration 规则对 inferred 墙只出 warning、对墙与路线双双 confirmed 才升 error，升级路径已由 tests/server/mep-hvac-lint.test.ts 锁定；§2.1 已声明交房量房确认墙体类型后按规则自动升降级｜DEC-2026-10-17-R20 走线专项 +1：weak-ap-master 穿 w_strip_east 既定穿孔区（距门垛 0.17m，survey 项）｜DEC-2026-10-25-R01 +1：strong-light-entry-base 花园段正交穿新中竖墙北段 w_cent_north 声明穿孔（剪力墙 inferred，量房复核套管）。",
       "owner": "量房（墙体类型终核）",
       "clearing_condition": "量房按物业结构图 + 钢筋探测仪逐墙确认，回填 config/layout/model-geometry.yaml 的 structure / structure_status 后规则自动升降级；本项不要求主动清除",
       "superseded_note": "2026-10-12 DEC-2026-10-12-R2 删 4 条卫浴照明路由后 10→9"
@@ -197,10 +197,10 @@
     }
   ],
   "summary": {
-    "mep_total_warnings": 279,
+    "mep_total_warnings": 280,
     "mep_buckets": {
-      "must_fix_before_briefing": 135,
-      "survey_dependent": 151,
+      "must_fix_before_briefing": 132,
+      "survey_dependent": 152,
       "envelope_approximation": 128
     },
     "electrical_total_warnings": 55,

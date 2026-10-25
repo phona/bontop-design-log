@@ -57,16 +57,16 @@ test('龙骨按「米价 × 用量」逐构件折算，用量可复核', () => {
   assert.equal(sub.rateYuanPerMetre, 6.34);
   assert.deepEqual(sub.metresPerSqm, [2.5, 3.33]); // 间距 400–300mm
   assert.deepEqual(sub.perSqm, [16, 21]);
-  // 边龙骨由 takeoff 周长实算：72.335m ÷ 25.4055㎡ = 2.85，不许手抄（扩深后面积和周长都按现行分区重算）
+  // 边龙骨由 takeoff 周长实算：69.435m ÷ 22.7639㎡ = 3.05，不许手抄（R01：门厅区缩小后周长与面积同降，米数反升；扩深后面积和周长都按现行分区重算）
   const edge = frame.derivedComponents.find((c) => c.component === '边龙骨')!;
   assert.equal(edge.rateYuanPerMetre, 4.1);
-  assert.deepEqual(edge.metresPerSqm, [2.85, 2.85]);
-  assert.deepEqual(edge.perSqm, [12, 12]);
+  assert.deepEqual(edge.metresPerSqm, [3.05, 3.05]);
+  assert.deepEqual(edge.perSqm, [13, 13]); // R01
   assert.equal(edge.usageStatus, 'model_derived_upper_bound');
-  assert.equal(frame.perSqm!.min, 35); // 7 + 16 + 12
-  assert.equal(frame.perSqm!.max, 44); // 11 + 21 + 12
+  assert.equal(frame.perSqm!.min, 36); // 7 + 16 + 13（R01：边龙骨 12→13）
+  assert.equal(frame.perSqm!.max, 45); // 11 + 21 + 13
   assert.ok(frame.derivation!.includes('8.5元/米'));
-  assert.ok(frame.derivation!.includes('2.85米每平米'));
+  assert.ok(frame.derivation!.includes('3.05米每平米'));
   assert.equal(frame.basisUsed, 'comparable', '米价是可耐福普通/卡式系列，蓝臻本身无公开价');
 });
 
@@ -80,18 +80,18 @@ test('分区碎是本案的结构性成本：边龙骨上界是经验值的 7.7 
 
 test('材料合计区间与金额区间 = 各项相加 × takeoff 面积', () => {
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
-  // 27+26+35+5+4 = 97；29+30+44+8+8 = 119
-  assert.equal(result.materialPerSqm.min, 97);
-  assert.equal(result.materialPerSqm.max, 119);
+  // R01：龙骨项下限 35→36、上限 44→45，合计下限 97→98、上限 119→120
+  assert.equal(result.materialPerSqm.min, 98);
+  assert.equal(result.materialPerSqm.max, 120);
   assert.equal(result.areaSqm, takeoff.gypsumBoardM2);
   const sumMin = Math.round(result.items.reduce((sum, item) => sum + (item.totalRange?.min ?? 0), 0) * 100) / 100;
   assert.equal(result.materialTotal.min, sumMin);
 });
 
-test('材料额度按施工方分形态口径算：112.04 元/㎡，判定 within_range（C12 修正 C11；R04 后基数 25.346㎡）', () => {
+test('材料额度按施工方分形态口径算：113.97 元/㎡，判定 within_range（C12 修正 C11；R01 后基数 22.764㎡）', () => {
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   assert.equal(result.contractor.basis, 'forms');
-  // 边吊 21.375m×160 + 平顶 7.39㎡×155 = 4,565.45；纯人工 21.375×60 + 7.39×60 = 1,725.90（R04 餐厅北带西移后边吊 −0.10m）
+  // 边吊 21.375m×160 + 平顶 4.8084㎡×155 = 4,165.30；纯人工 21.375×60 + 4.8084×60 = 1,571.00（R01 门厅区缩小）
   const breakdown = result.contractor.formBreakdown!;
   assert.equal(breakdown.length, 2);
   assert.equal(breakdown[0].form, 'edge_drop');
@@ -99,12 +99,12 @@ test('材料额度按施工方分形态口径算：112.04 元/㎡，判定 withi
   assert.equal(breakdown[0].turnkeyYuan, 3420);
   assert.equal(breakdown[0].materialYuan, 2137.5);
   assert.equal(breakdown[1].form, 'flat');
-  assert.equal(breakdown[1].turnkeyYuan, 1145.45);
-  // 4,565.45 − 1,725.90 = 2,839.55 → ÷ 25.3455 = 112.04 元/㎡；面积基数与边吊长度随几何口径变，单价不变
-  assert.equal(result.contractor.allowancePerSqm, 112.04);
-  // 97～119 → 112.04 落在参考区间内
+  assert.equal(breakdown[1].turnkeyYuan, 745.3); // R01：4.8084×155
+  // 4,165.30 − 1,571.00 = 2,594.30 → ÷ 22.7639 = 113.97 元/㎡；面积基数与边吊长度随几何口径变，单价不变
+  assert.equal(result.contractor.allowancePerSqm, 113.97);
+  // 98～120 → 113.97 落在参考区间内
   assert.equal(result.verdict, 'within_range');
-  assert.equal(result.slackVsMaxYuanPerSqm, -6.96);
+  assert.equal(result.slackVsMaxYuanPerSqm, -6.03);
 });
 
 test('C11 的「低于下限」是旧口径的假象：全按 155 元/㎡ 算额度只有 95', () => {

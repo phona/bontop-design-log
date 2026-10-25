@@ -452,8 +452,8 @@ test('CLI overlay and furniture world bboxes preserve the house z contract', () 
 
   assertZRange('corridor_floor', 5.55, 7.8);
   assertZRange('main_corridor_floor', 4.3, 5.55);
-  assertZRange('entry_foyer_floor', 2.9, 4.3);
-  assertZRange('entry_garden_floor', 0, 2.9);
+  assertZRange('entry_foyer_floor', 3.81, 4.3); // R01
+  assertZRange('entry_garden_floor', 0, 3.81); // R01：台阶区
 
   for (const id of ['entry_garden_north_railing', 'vrv_nw_railing']) {
     const railing = exportRoot.getObjectByName(id);

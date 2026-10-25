@@ -255,7 +255,9 @@ elements:
       - { x: 10.8, z: 0.00 }
       - { x: 15.25, z: 0.00 }
       - { x: 15.25, z: 2.90 }
-      - { x: 10.8, z: 2.90 }
+      - { x: 13.40, z: 2.90 }
+      - { x: 13.40, z: 3.81 }
+      - { x: 10.8, z: 3.81 }
     follow: entry_garden
     excluded: true
     reason: "入户花园地板（跟随入户花园房间地材，避免与房间地面重叠时材质分裂）。excluded: true —— DEC-041 开发商已铺，业主已裁定移出算量（该房间也不在 floor applyRooms 内，几何判定同样不会计入，这里显式排除是为了让「为什么不算」在声明处可读，而非靠读者推断）；渲染仍可视化但不计费"
@@ -263,9 +265,9 @@ elements:
   - id: entry_foyer_floor
     type: floor_region
     points:
-      - { x: 10.80, z: 2.90 }
-      - { x: 13.40, z: 2.90 }
-      - { x: 13.40, z: 4.30 }
+      - { x: 10.80, z: 3.81 }
+      - { x: 12.96, z: 3.81 }
+      - { x: 12.96, z: 4.30 }
       - { x: 10.80, z: 4.30 }
     follow: living_dining
     reason: "入户到客厅的过渡地面（DEC-041：跟随客厅有效地材，避免分房换材时断层）"
@@ -407,7 +409,7 @@ elements:
     type: wall_region
     wall: w_ent_west
     room: kitchen
-    along: [0.50, 2.90]      # z[2.40, 0.00] 段 = 2.40m（东墙，与入户门厅共墙）
+    along: [1.41, 3.81]      # z[2.40, 0.00] 段 = 2.40m（东墙，与入户门厅共墙；2026-10-25 DEC-2026-10-25-R01：v_ent_sw 移至 3.81，along 自新南端起算 3.81−z）
     bottom: 0.00
     height: 2.65
     zone: visible
@@ -719,30 +721,22 @@ elements:
     type: paint_region
     wall: w_ent_south_w
     room: living_dining
-    along: [0.00, 2.60]
+    along: [0.00, 2.16]
     height: 2.80
-    reason: "客餐厅墙面涂装（w_ent_south_w，入户花园侧另有一段见上）"
   - id: paint_living_dining_w_ent_west
     type: paint_region
     wall: w_ent_west
     room: living_dining
-    along: [0.00, 0.50]
+    along: [0.00, 1.41]
     height: 2.80
     reason: "客餐厅墙面涂装（w_ent_west 残段，入户花园侧另有一段见上）"
-  - id: paint_living_dining_w_foyer_east
+  - id: paint_living_dining_w_cent_south
     type: paint_region
-    wall: w_foyer_east
+    wall: w_cent_south
     room: living_dining
-    along: [0.00, 1.40]
+    along: [0.00, 1.74]
     height: 2.80
-    reason: "客餐厅墙面涂装（w_foyer_east）"
-  - id: paint_living_dining_w_liv_east
-    type: paint_region
-    wall: w_liv_east
-    room: living_dining
-    along: [0.00, 1.25]
-    height: 2.80
-    reason: "客餐厅墙面涂装（w_liv_east）"
+    reason: "客餐厅墙面涂装（w_cent_south；2026-10-25 DEC-2026-10-25-R01：替代旧 w_foyer_east / w_liv_east，z[3.81,5.55] 段，旧北段 z[2.90,3.81] 随墙线删除）"
   - id: paint_living_dining_w_st_east
     type: paint_region
     wall: w_st_east

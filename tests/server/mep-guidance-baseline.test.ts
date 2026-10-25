@@ -106,8 +106,8 @@ for (const [bucket, bucketSummary] of Object.entries(mep.categories ?? {})) {
 
 test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必须等于实算（不写死 warning 总数）', () => {
   // ① error 契约：DEC-2026-10-17-R20 起 must_fix 桶统一进 errors（8aef523 硬门禁），
-  //    verify:mep 的 errors = must_fix 实算 135（DEC-2026-10-23-R04 几何改判后实测：route_overlap 68 / suppressed_wall_crossing 7 / bay_sill_collision 0，较 R01 对账 138 净 −3，见 guidance §6 R04 对账增量）；electrical 仍 0 error。
-  assert.equal(mep.counts.errors, 135, `verify:mep must_fix errors 应为 135，实际 ${mep.counts.errors}`);
+  //    verify:mep 的 errors = must_fix 实算 132（DEC-2026-10-25-R01 厨房东南角墙线改判后实测：route_overlap 66 / route_not_orthogonal 30 / floor_band_method_mismatch 1，较 R04 对账 135 净 −3，见 guidance §6 R01 对账增量）；electrical 仍 0 error。
+  assert.equal(mep.counts.errors, 132, `verify:mep must_fix errors 应为 132，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 

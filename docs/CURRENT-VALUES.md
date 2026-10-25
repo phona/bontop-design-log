@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:4b16324d3eea359018be8888ca723d3672dd30d604b22080784195e73e9d443a -->
+     inputs-fingerprint: sha256:120fc81a8da54460a580a728a59127c20b6a5dba13b6653ddd631a271dce9e9d -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -54,7 +54,7 @@
 | 结构层高/室内净高 | 2.80 m | config/house.yaml:7；docs/mep-construction-guidance.md:76 | 邻户结构板 +2830 佐证；fact.floor_height_net 由 house.yaml 派生 ※ |
 | A 区吊顶完成面 | 2.50 m | config/mep-hvac-coordination.yaml:7 | 0.30m 降板（2.80−0.30）；完成面权威为 config/ceiling.yaml（guidance:141 明文） |
 | B 区铝扣板完成面 | 2.65 m | config/mep-hvac-coordination.yaml:12 | 0.15m 板厚；厨房/主卫/客卫三区，空腔仅 150mm |
-| 客餐厅面积 | 44.58 ㎡ | config/house.yaml:178；config/hvac.yaml:36 | polygon 实测；bbox 45.88 ㎡含 1.3㎡ 凹口 ※ |
+| 客餐厅面积 | 41.45 ㎡ | config/house.yaml:178；config/hvac.yaml:36 | polygon 实测；bbox 45.88 ㎡含 4.43㎡ 凹口 ※（2026-10-25 DEC-2026-10-25-R01 后客餐厅 44.58→41.4484㎡，凹口 1.30→4.43㎡） |
 | 套内面积 | 94.76 ㎡ | config/house.yaml:6 | 合同净口径；与毛口径/赠送/建面三口径未闭合见 pending-site-data.md #40 ※ |
 | MEP 路线总数 | 138 条 | config/mep-hvac-coordination.yaml:4 | 走线表 routes 条目数；fact.mep_routes_count ※ |
 
