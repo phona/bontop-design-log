@@ -38,7 +38,7 @@
     },
     {
       "code": "shear_wall_parallel_route",
-      "count": 11,
+      "count": 12,
       "category": "survey_dependent",
       "disposition": "pending_adjudication",
       "basis": "交底前必须清：7 条路线长距离贴 inferred 剪力墙平行敷设（w_mb_east 0.08–0.10m × 2.05–3.60m；2026-10-12 DEC-2026-10-12-R1 删主卧两盏明装床头壁灯后，原 strong-light-bedrooms-master-wall-l 贴 w_mb_east 平行 1.355m 那条随之删除，14→13、w_mbath_east 0.00–0.10m × 1.20–1.30m）；§3.2 剪力墙浅槽上限为 φ16 单回路、槽深 20–25mm，长距离贴墙段必须明确套管/剔槽/避钢筋策略，否则现场只能乱开槽。｜2026-10-13 DEC-2026-10-13-R3：主卧吸顶灯由 (2.60,7.60) 移至 (1.70,6.00) 后，strong-light-master（原 (4.1,4.6)→(4.1,7.6) 贴 w_mb_east 平行 3.0m）与 strong-light-bedrooms-master-bed-north（原 (4.1,7.6)→(4.1,6.288) 平行 1.31m）改走 ceiling_master_ac 门头盒空腔（x[2.925,4.20]×z[4.55,5.60]、完成面 2.50），盒内西行至西缘 x=2.925 出盒，两条墙行一并消失，13→11。这是减少剪力墙依赖，非降低标准。｜DEC-2026-10-17-R20：R14 起本 code 主桶迁入 survey（must_fix 侧另余 1）；旧 must_fix/reject 裁决随迁移失效，待按剪力墙实测复判。",
@@ -48,10 +48,10 @@
     },
     {
       "code": "shear_wall_penetration",
-      "count": 10,
+      "count": 11,
       "category": "survey_dependent",
       "disposition": "accept",
-      "basis": "accept-as-warning：7 条均为 inferred 墙体穿越的工艺提醒（w_strip_east z≈4.6 三管同孔区等），shared/mep-hvac-lint.ts 的 shear_wall_penetration 规则对 inferred 墙只出 warning、对墙与路线双双 confirmed 才升 error，升级路径已由 tests/server/mep-hvac-lint.test.ts 锁定；§2.1 已声明交房量房确认墙体类型后按规则自动升降级｜DEC-2026-10-17-R20 走线专项 +1：weak-ap-master 穿 w_strip_east 既定穿孔区（距门垛 0.17m，survey 项）。",
+      "basis": "accept-as-warning：7 条均为 inferred 墙体穿越的工艺提醒（w_strip_east z≈4.6 三管同孔区等），shared/mep-hvac-lint.ts 的 shear_wall_penetration 规则对 inferred 墙只出 warning、对墙与路线双双 confirmed 才升 error，升级路径已由 tests/server/mep-hvac-lint.test.ts 锁定；§2.1 已声明交房量房确认墙体类型后按规则自动升降级｜DEC-2026-10-17-R20 走线专项 +1：weak-ap-master 穿 w_strip_east 既定穿孔区（距门垛 0.17m，survey 项）｜DEC-2026-10-25-R01 +1：strong-light-entry-base 花园段正交穿新中竖墙北段 w_cent_north 声明穿孔（剪力墙 inferred，量房复核套管）。",
       "owner": "量房（墙体类型终核）",
       "clearing_condition": "量房按物业结构图 + 钢筋探测仪逐墙确认，回填 config/layout/model-geometry.yaml 的 structure / structure_status 后规则自动升降级；本项不要求主动清除",
       "superseded_note": "2026-10-12 DEC-2026-10-12-R2 删 4 条卫浴照明路由后 10→9"
@@ -116,7 +116,7 @@
       "count": 11,
       "category": "envelope_approximation",
       "disposition": "accept",
-      "basis": "模型包络近似：10 条邻户图比例映射的参考梁位（±150mm、not_for_construction）按 §2.5 口径只提醒不判碰撞，reference_constraint_uncertain 对 confirmed 约束直接跳过、永不出 error；§2.5.1 现状为 3 条 inferred + 7 条 pending（2026-10-25 梁体修正：原 5 条位置/归属存疑各有并存候选 + 新增 3 条候选），beam_collision 规则休眠",
+      "basis": "模型包络近似：11 条邻户图比例映射的参考梁位（±150mm、not_for_construction）按 §2.5 口径只提醒不判碰撞，reference_constraint_uncertain 对 confirmed 约束直接跳过、永不出 error；§2.5.1 现状为 3 条 inferred + 8 条 pending（2026-10-25 梁体修正：原 5 条中 2 条位置/归属存疑各有并存候选 + 新增 6 条候选），beam_collision 规则休眠",
       "owner": "量房（梁位实测）",
       "clearing_condition": "量房逐条实测梁底并转 confirmed 后由 beam_collision 接手硬判定；本项不要求提前清除，但 §5 的量房清单必须逐条拍照回填"
     },
@@ -197,10 +197,10 @@
     }
   ],
   "summary": {
-    "mep_total_warnings": 285,
+    "mep_total_warnings": 287,
     "mep_buckets": {
-      "must_fix_before_briefing": 135,
-      "survey_dependent": 151,
+      "must_fix_before_briefing": 132,
+      "survey_dependent": 153,
       "envelope_approximation": 134
     },
     "electrical_total_warnings": 55,

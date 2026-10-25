@@ -18,12 +18,17 @@ vertices:
   # 废止 2026-08-27「凹进至 8.70、z[8.70,9.80] 为室外凹口」读法——该读法把飘台进深 1020 误读为玻璃凹进深度，参考线差 1.30m
   - { id: v_be_s_w,   x: 13.40, z: 9.88 }
   - { id: v_be_s_e,   x: 16.40, z: 9.88 }
-  - { id: v_be_ne,   x: 16.40, z: 5.55 }
+  - { id: v_be_ne,   x: 16.40, z: 4.82 }   # 2026-10-25 R01 重算：北厚墙北脸线 4.82（原 R04 链值 5.55）
   - { id: v_ent_ne,  x: 15.25, z: 0.00 }
   - { id: v_foyer_se, x: 13.40, z: 2.90 }
-  - { id: v_foyer_ne, x: 15.25, z: 5.55 }
+  - { id: v_foyer_ne, x: 15.25, z: 4.82 }   # 2026-10-25 R01 重算：随北厚墙北脸线 4.82（原 R04 链值 5.55）
   - { id: v_ent_se,  x: 15.25, z: 2.90 }
-  - { id: v_ent_sw,  x: 10.80, z: 2.90 }
+  - { id: v_ent_sw,  x: 10.80, z: 3.00 }   # 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：入户南墙西段线为薄段北脸 z=3.00，厨房东墙南延至此
+  # 2026-10-25 DEC-2026-10-25-R01 新增（本体标定重算）：中竖墙（墙带西脸 12.77–东脸 13.05，模型线取西脸 12.77）与南墙东墙垛交接点
+  - { id: v_cent_j,  x: 12.77, z: 3.00 }   # 南墙/中竖墙 T 接点（薄段东端 12.75，墙带西脸 12.77；南墙线取薄段北脸 3.00）
+  - { id: v_cent_n,  x: 12.77, z: 2.72 }   # 中竖墙北端（黑块北脸，本体标定 2.72）
+  - { id: v_cent_be, x: 12.77, z: 4.82 }   # 中竖墙南端，落北厚墙北脸线 z=4.82（R04 链值 5.55 同场修正）
+  - { id: v_ent_step, x: 13.40, z: 3.00 }   # 南墙东墙垛南端 / 门厅东墙折线点（新南墙 z=3.00 与旧南墙东段 z=2.90 的折线交接，折差 0.10 在容差内保留拓扑）
   - { id: v_ent_nw,  x: 10.80, z: 0.00 }
   - { id: v_bath_n,  x: 2.60,  z: 0.00 }
   - { id: v_bath_s,  x: 2.60,  z: 4.30 }
@@ -45,8 +50,7 @@ vertices:
   # DEC-014 厨房新南界（创想图核对：与入户花园南墙 z=2.90 齐平）
   - { id: v_kit_s2,  x: 7.20,  z: 2.40 }
   - { id: v_ent_kit2, x: 10.80, z: 2.40 }
-  - { id: v_liv_se,  x: 13.40, z: 4.30 }
-  - { id: v_be_sw,   x: 13.40, z: 5.55 }
+  - { id: v_be_sw,   x: 13.40, z: 4.82 }   # 2026-10-25 R01 重算：北厚墙北脸线 4.82（原 R04 链值 5.55）
   - { id: v_mb_ne,   x: 4.20,  z: 5.55 }
   - { id: v_mb_se,   x: 4.20,  z: 9.80 }
   - { id: v_st_ne,   x: 7.20,  z: 5.55 }
@@ -71,7 +75,7 @@ rooms:
     type: private
   - id: living_dining
     name: 客餐厅
-    boundary: [v_kit_s2, v_ent_kit2, v_ent_sw, v_foyer_se, v_liv_se_s, v_step_t]
+    boundary: [v_kit_s2, v_ent_kit2, v_ent_sw, v_cent_j, v_cent_be, v_be_sw, v_liv_se_s, v_step_t]  # 2026-10-25 DEC-2026-10-25-R01（重算）：北缘随南墙至 3.00、东缘随中竖墙至 12.77、北厚墙处回 13.40
     height: 2.8
     type: public
   - id: main_corridor
@@ -111,7 +115,7 @@ rooms:
     type: service
   - id: entry_garden
     name: 入户花园
-    boundary: [v_ent_nw, v_ent_sw, v_ent_se, v_ent_ne]
+    boundary: [v_ent_nw, v_ent_sw, v_cent_j, v_ent_step, v_foyer_se, v_ent_se, v_ent_ne]  # 2026-10-25 DEC-2026-10-25-R01（重算）：南缘西段至 3.00、东段仍 2.90，折线在 13.40
     height: 2.8
     type: public
   - id: bedroom_se
@@ -121,7 +125,7 @@ rooms:
     type: private
   - id: elevator_shaft
     name: 电梯井
-    boundary: [v_foyer_se, v_ent_se, v_foyer_ne, v_be_sw]
+    boundary: [v_ent_step, v_foyer_se, v_ent_se, v_foyer_ne, v_cent_be, v_cent_j]  # 2026-10-25 DEC-2026-10-25-R01（重算）：西缘随中竖墙至 12.77、南缘东段仍 2.90、北缘随北厚墙至 4.82
     height: 2.8
     type: service
 
@@ -156,21 +160,28 @@ walls:
   - { id: w_ent_east,   from: v_ent_ne,  to: v_ent_se, height: 2.8 }
   - id: w_ent_south_w
     from: v_ent_sw
-    to: v_foyer_se
+    to: v_cent_j
     height: 2.8
     openings:
       # 2026-08-25 方向反转；2026-08-25 二次调整：向内开，合页移至 start 端
-      - { id: d_ent, type: door, anchor: v_ent_sw, offset: 1.5, width: 1.0, height: 2.1, room: entry_garden, swing: inward, hinge: start }
+      # 2026-10-25 DEC-2026-10-25-R01：洞口即门宽——薄段 1.21m、span 11.54–12.75、中心 12.15，offset = 12.15−10.80 = 1.35，开发商送门+锁不做定制门扇
+      - { id: d_ent, type: door, anchor: v_ent_sw, offset: 1.35, width: 1.21, height: 2.1, room: entry_garden, swing: inward, hinge: start }
+  # 2026-10-25 DEC-2026-10-25-R01 新增（重算）：南墙东墙垛段（中竖墙至门厅东墙折线点），开关/线控挂此段南脸
+  - { id: w_ent_south_w_east, from: v_cent_j, to: v_ent_step, height: 2.8 }
+  # 2026-10-25 DEC-2026-10-25-R01 新增（重算）：门厅东墙折线段（新南墙 3.00 与旧南墙东段 2.90 之间的折线墙）
+  - { id: w_foyer_east_step, from: v_ent_step, to: v_foyer_se, height: 2.8, structure: shear, structure_status: inferred }
+  # 2026-10-25 DEC-2026-10-25-R01 新增（重算）：中竖墙（北段为入户花园内墙垛、南段为客餐厅/电梯厅隔墙），替代旧 w_foyer_east / w_liv_east；北段 z[2.72,3.00]、南段 z[3.00,4.82]
+  - { id: w_cent_north, from: v_cent_n, to: v_cent_j, height: 2.8, structure: shear, structure_status: inferred }
+  - { id: w_cent_south, from: v_cent_j, to: v_cent_be, height: 2.8, structure: shear, structure_status: inferred }
   - id: w_ent_south_e
     from: v_foyer_se
     to: v_ent_se
     height: 2.8
     openings:
       - { id: d_elev, type: door, anchor: v_foyer_se, offset: 0.925, width: 1.0, height: 2.1, room: elevator_shaft }
-  - { id: w_ent_west,  from: v_ent_sw,   to: v_ent_nw, height: 2.8 }
+  - { id: w_ent_west,  from: v_ent_sw,   to: v_ent_nw, height: 2.8 }   # 2026-10-25 DEC-2026-10-25-R01（重算）：南端随 v_ent_sw 延至 3.00，黑块段（z[2.72,3.25]、x[10.81,11.59]）以本墙线代理，厚度/块体以 overlay 注记不另建墙
   - { id: w_ent_north_railing, from: v_ent_ne, to: v_ent_nw, height: 1.0 }
-  # 入户过渡区东墙（承重墙）
-  - { id: w_foyer_east, from: v_foyer_se, to: v_liv_se, height: 2.8, structure: shear, structure_status: inferred }
+  # 入户过渡区东墙（承重墙）——2026-10-25 DEC-2026-10-25-R01：旧 w_foyer_east（v_foyer_se→v_liv_se）与 w_liv_east（v_liv_se→v_be_sw）已删除，由中竖墙 w_cent_north / w_cent_south 替代；v_liv_se 随之删除（原为旧两墙交接点）
   # 外框 — 北墙（左翼凹进 z=1.10，西北角即圆角〔2026-09-17 业主确认，v_nw/w_west_top 已删〕，圆角→v_bath_ne 为幕墙；VRV/厨房北墙 z=0）
   - { id: w_bath_north, from: v_bath_nw,  to: v_bath_ne, height: 2.8 }
   - { id: w_nw_north,   from: v_bath_ne,  to: v_nw_ne,  height: 2.8 }
@@ -250,7 +261,6 @@ walls:
   # w_kit_east 已删除（2026-08-23）：与 w_ent_west 是同一堵物理墙（x=10.8, z 0→2.9，西侧厨房/客餐厅、东侧入户花园），
   # 重复定义导致 GLB 共面双层墙片，Cycles 阴影光线在 t≈0 被叠层截断 → 厨房东墙整片死黑（v28 kitchen_l_overview 确诊）。
   # 原 w_kit_east 的 4 个电气点位（z 1.0-2.05 均在 w_ent_west 跨度内）已改挂 w_ent_west。
-  - { id: w_liv_east,   from: v_liv_se,  to: v_be_sw,  height: 2.8 }
   - id: w_be_west
     from: v_be_sw
     to: v_be_se_s
@@ -258,4 +268,5 @@ walls:
     openings:
       # 2026-08-25 方向反转；2026-08-25 二次调整：向内开，合页移至 start 端
       - { id: d_bese, type: door, anchor: v_be_se_s, offset: 3.78, width: 0.9, height: 2.1, room: bedroom_se, swing: inward, hinge: start }   # 2026-10-23 R04：anchor 随 v_be_se_s 南移 0.08，offset 3.70→3.78 保持洞口中心 z=6.10 不变
+  - { id: w_be_north_west, from: v_cent_be, to: v_be_sw, height: 2.8, structure: shear, structure_status: inferred }  # 2026-10-25 DEC-2026-10-25-R01（重算）：北厚墙西段（中竖墙至客房西墙角），线 z=4.82
   - { id: w_be_north,   from: v_be_sw,   to: v_be_ne,  height: 2.8, structure: shear, structure_status: inferred }

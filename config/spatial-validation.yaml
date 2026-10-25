@@ -157,7 +157,7 @@ junctions:
   - { id: nw_north_to_balc_west, type: t, walls: [w_nw_north, w_balc_west], x: 5.60, z: 1.10 }
   - { id: be_south_to_west, type: t, walls: [w_be_south, w_be_west], x: 13.40, z: 9.88 }
   - { id: liv_south_to_be_west, type: t, walls: [w_liv_south, w_be_west], x: 13.40, z: 9.80, reason: "2026-10-23 DEC-2026-10-23-R04：东南房玻璃线 9.88 与客餐厅玻璃线 9.80 错台，w_be_west 南延跨过 w_liv_south 东端形成 T 接" }
-  - { id: foyer_outer_to_be_north, type: t, walls: [w_foyer_outer_east, w_be_north], x: 15.25, z: 5.55 }
+  - { id: foyer_outer_to_be_north, type: t, walls: [w_foyer_outer_east, w_be_north], x: 15.25, z: 4.82 }
   - { id: strip_east_to_nw_south, type: t, walls: [w_strip_east, w_nw_south], x: 4.20, z: 4.30 }
   - { id: vrv_gap_to_balc_west, type: t, walls: [w_vrv_nw_gap, w_balc_west], x: 5.60, z: 1.00 }
 

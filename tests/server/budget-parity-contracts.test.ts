@@ -251,7 +251,7 @@ test('真实仓：墙砖面积三处一致（37.0186㎡），橱柜/地面两处
   }
   assert.equal(run.status, 0, `verify-facts 必须退出 0。stderr: ${run.stderr}\nstdout: ${run.stdout}`);
   assert.match(run.stdout, /c\.masonry_tile_area_parity：3 处一致 = 37\.01859934708642/);
-  assert.match(run.stdout, /c\.floor_quantity_parity：3 处一致 = 127\.09/); // R04：地面总量 123.34→127.09
+  assert.match(run.stdout, /c\.floor_quantity_parity：3 处一致 = 127\.87339999999999/); // R01 重算：地面总量 123.9584→127.8734（浮点和原样打印）
   assert.match(run.stdout, /c\.cabinet_length_parity：3 处一致 = 5\.51/);
   assert.match(run.stdout, /c\.cabinet_area_parity：3 处一致 = 4\.2226/);
 });

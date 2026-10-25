@@ -71,18 +71,18 @@ describe('GET /api/paint/comparison', () => {
     const payload = body as any;
     // C06：入户花园出范围；当前含开放主走廊三段墙面声明，门窗洞按实扣除。
     assert.equal(payload.scope.paintRoomCount, 8);
-    assert.equal(payload.scope.wallRegionEntryCount, 32);
-    assert.ok(Math.abs(payload.scope.grossWallAreaSqm - 188.375) <= 0.02, `毛墙面 ${payload.scope.grossWallAreaSqm}`);
-    assert.equal(payload.scope.doorGapAreaSqm, 20.34, '门洞占位含主走廊三段墙脸的实际洞口');
+    assert.equal(payload.scope.wallRegionEntryCount, 31); // R01：净 −1
+    assert.ok(Math.abs(payload.scope.grossWallAreaSqm - 184.567) <= 0.02, `毛墙面 ${payload.scope.grossWallAreaSqm}`); // R01 重算
+    assert.equal(payload.scope.doorGapAreaSqm, 20.781, '门洞占位含主走廊三段墙脸的实际洞口（R01：入户门洞拓宽）');
     assert.equal(payload.scope.windowGapAreaSqm, 0, '窗洞当前为 0（窗全在玻璃幕墙上）');
-    assert.ok(Math.abs(payload.scope.netWallAreaSqm - 168.035) <= 0.02, `净墙面 ${payload.scope.netWallAreaSqm}`);
-    // 顶面仅由 paint_ceiling_region 选择；选中 footprint 118.45㎡ 减两间卫浴铝扣板 7.936㎡（R04 后）。
-    assert.ok(Math.abs(payload.scope.ceilingAreaSqm - 110.514) <= 0.02, `顶面 ${payload.scope.ceilingAreaSqm}`);
-    assert.ok(Math.abs(payload.scope.grossAreaSqm - 336.627) <= 0.02);
+    assert.ok(Math.abs(payload.scope.netWallAreaSqm - 163.786) <= 0.02, `净墙面 ${payload.scope.netWallAreaSqm}`);
+    // 顶面仅由 paint_ceiling_region 选择；选中 footprint 119.233㎡ 减两间卫浴铝扣板 7.936㎡（R01 重算后）。
+    assert.ok(Math.abs(payload.scope.ceilingAreaSqm - 111.297) <= 0.02, `顶面 ${payload.scope.ceilingAreaSqm}`); // R01 重算
+    assert.ok(Math.abs(payload.scope.grossAreaSqm - 333.602) <= 0.02); // R01 重算
     // 净面积 = 墙 + 顶 + 普通窗台 + 湿区窗台（全部涂装面，含单独计价的湿区）
-    assert.ok(Math.abs(payload.scope.netAreaSqm - 316.287) <= 0.02, `净计费面积 ${payload.scope.netAreaSqm}`);
+    assert.ok(Math.abs(payload.scope.netAreaSqm - 312.821) <= 0.02, `净计费面积 ${payload.scope.netAreaSqm}`); // R01 重算
     // 普通墙漆计价面积：湿区窗台单独计价，不按普通漆费率计费（旧 270.865 把湿区窗台也算进普通口径）
-    assert.ok(Math.abs(payload.scope.ordinaryAreaSqm - 312.732) <= 0.02, `普通计费面积 ${payload.scope.ordinaryAreaSqm}`);
+    assert.ok(Math.abs(payload.scope.ordinaryAreaSqm - 309.266) <= 0.02, `普通计费面积 ${payload.scope.ordinaryAreaSqm}`); // R01 重算
     // 守恒：普通 + 湿区 = 全部涂装面
     assert.ok(Math.abs(payload.scope.ordinaryAreaSqm + payload.scope.antiMoldSqm - payload.scope.netAreaSqm) <= 0.01);
     assert.equal(payload.scope.ordinarySillAreaSqm, 34.183, '其余 7 处上飘窗按普通漆计价（厨房 P09 改贴砖）');
@@ -98,9 +98,9 @@ describe('GET /api/paint/comparison', () => {
     // BaySillGeometry.reverse() 原地反转污染 wallPath，被配成横跨整条窗台的 1.803m 斜肢
     assert.equal(payload.scope.highlightedIn3d, 'walls_and_declared_sill_faces');
     // 3D 高亮与本接口必须是同一批声明：逐段都存在且能对上面积
-    assert.equal(payload.scope.entries.length, 32);
+    assert.equal(payload.scope.entries.length, 31); // R01：净 −1
     const byWallRoom = new Set(payload.scope.entries.map((entry: any) => `${entry.wall}|${entry.room}`));
-    assert.equal(byWallRoom.size, 31, '同一面墙的双面涂漆必须是不同 (墙, 房间) 组合');
+    assert.equal(byWallRoom.size, 30, '同一面墙的双面涂漆必须是不同 (墙, 房间) 组合（R01：删两段、增一段）');
     // DEC-2026-10-09-P07 砖漆互斥：7 段声明带 bottom（让出砖带），其中客卫开放洗漱区东墙
     // 被两条砖带切成上下两段，下段的 top 是 0.77（防溅带下沿）而不是 2.80。
     // 所以不变量是「top > bottom 且净面积为正」，不是「top 恒等于 2.80」。
@@ -130,30 +130,30 @@ describe('GET /api/paint/comparison', () => {
     const byId = new Map(payload.scenarios.map((scenario: any) => [scenario.scenarioId, scenario]));
     // 默认口径：2 遍 + 扣门窗洞。计价面积 = ordinaryAreaSqm（防霉漆窗台单列，不按普通漆计价）
     const deduct = byId.get('topcoats2_deduct') as any;
-    assert.equal(deduct.areaSqm, 312.732);
+    assert.equal(deduct.areaSqm, 309.266);
     assert.equal(deduct.topcoatBuckets, 6);
     assert.equal(deduct.primerBuckets, 3);
     assert.equal(deduct.materialYuan, 5220);
-    assert.equal(deduct.laborYuan, 7818.3);
-    assert.equal(deduct.subtotalYuan, 13038.3);
-    assert.equal(deduct.vsPlannedDeltaYuan, 1538.3);
-    assert.equal(deduct.vsOwnerTargetDeltaYuan, 2038.3);
-    // 对照：不扣洞 = 普通计费面积 + 门窗洞占位（312.732 + 20.34 = 333.072㎡）
+    assert.equal(deduct.laborYuan, 7731.65);
+    assert.equal(deduct.subtotalYuan, 12951.65);
+    assert.equal(deduct.vsPlannedDeltaYuan, 1451.65);
+    assert.equal(deduct.vsOwnerTargetDeltaYuan, 1951.65);
+    // 对照：不扣洞 = 普通计费面积 + 门窗洞占位（309.266 + 20.781 = 330.047㎡）
     const gross = byId.get('topcoats2_no_deduct') as any;
-    assert.equal(gross.areaSqm, 333.072);
+    assert.equal(gross.areaSqm, 330.047);
     assert.equal(gross.topcoatBuckets, 7);
     assert.equal(gross.primerBuckets, 4);
     assert.equal(gross.materialYuan, 6380);
-    assert.equal(gross.laborYuan, 8326.8);
-    assert.equal(gross.subtotalYuan, 14706.8);
-    assert.equal(gross.vsPlannedDeltaYuan, 3206.8);
-    assert.equal((byId.get('topcoats1_deduct') as any).areaSqm, 312.732);
-    assert.equal((byId.get('topcoats1_deduct') as any).subtotalYuan, 11298.3);
-    assert.equal((byId.get('topcoats1_deduct') as any).vsOwnerTargetDeltaYuan, 298.3);
-    assert.equal((byId.get('topcoats1_no_deduct') as any).areaSqm, 333.072);
-    assert.equal((byId.get('topcoats1_no_deduct') as any).subtotalYuan, 12966.8);
-    assert.equal((byId.get('topcoats1_no_deduct') as any).vsPlannedDeltaYuan, 1466.8);
-    assert.deepEqual(payload.reconciliation.modeledRangeCny, [11298.3, 14706.8]);
+    assert.equal(gross.laborYuan, 8251.18);
+    assert.equal(gross.subtotalYuan, 14631.18);
+    assert.equal(gross.vsPlannedDeltaYuan, 3131.18);
+    assert.equal((byId.get('topcoats1_deduct') as any).areaSqm, 309.266);
+    assert.equal((byId.get('topcoats1_deduct') as any).subtotalYuan, 11211.65);
+    assert.equal((byId.get('topcoats1_deduct') as any).vsOwnerTargetDeltaYuan, 211.65);
+    assert.equal((byId.get('topcoats1_no_deduct') as any).areaSqm, 330.047);
+    assert.equal((byId.get('topcoats1_no_deduct') as any).subtotalYuan, 12891.18);
+    assert.equal((byId.get('topcoats1_no_deduct') as any).vsPlannedDeltaYuan, 1391.18);
+    assert.deepEqual(payload.reconciliation.modeledRangeCny, [11211.65, 14631.18]); // R01 重算
     assert.ok(payload.assumptions.some((a: any) => a.status === 'assumed_unconfirmed'));
     assert.equal(payload.interpretation.selectedScenarioId, null);
     assert.match(payload.interpretation.disclaimer, /COST-080-01\/02\/04/);
@@ -212,19 +212,19 @@ describe('GET /api/budget paint preview overlay', () => {
     assert.equal(preview.includedInTotalActual, false);
     assert.equal(preview.includedInCategoryTotals, false);
     assert.equal(preview.scope.highlightedIn3d, 'walls_and_declared_sill_faces');
-    assert.ok(Math.abs(preview.scope.netAreaSqm - 316.287) <= 0.02);
+    assert.ok(Math.abs(preview.scope.netAreaSqm - 312.821) <= 0.02); // R01 重算
     // 湿区窗台单独计价：预览里必须显形，不能悄悄并进普通墙漆面积
     assert.equal(preview.scope.antiMoldSqm, 3.555);
     assert.equal(preview.scope.antiMoldStatus, 'pending_system_quote_and_site_validation');
-    assert.equal(preview.scope.doorGapAreaSqm, 20.34);
+    assert.equal(preview.scope.doorGapAreaSqm, 20.781); // R01
     // 涂装科目自身按声明+拆洞实算，取「普通墙漆计价面积」306.236㎡
     // （= 净面积 267.337 − 湿区窗台 4.193；旧值 270.865 把湿区窗台也算进普通口径）
     const painting = body.categories.find((category: any) => category.key === 'painting');
-    assert.ok(Math.abs(painting.autoActual - 1663) <= 1, `painting autoActual=${painting.autoActual}`);
+    assert.ok(Math.abs(painting.autoActual - 1644) <= 1, `painting autoActual=${painting.autoActual}`); // R01 重算
     // 阶段 5 口径变更：actual 只计已取证款 + 人工。
     // painting 的材料款（1,566.912）是候选价 → 不进 actual；人工 7,369 进。
-    assert.ok(Math.abs(painting.actual - 7818) <= 1, `painting actual=${painting.actual}`);
-    assert.ok(Math.abs(painting.candidateActual! - 1663) <= 1, `painting candidateActual=${painting.candidateActual}`);
+    assert.ok(Math.abs(painting.actual - 7732) <= 1, `painting actual=${painting.actual}`); // R01 重算
+    assert.ok(Math.abs(painting.candidateActual! - 1644) <= 1, `painting candidateActual=${painting.candidateActual}`); // R01 重算
     assert.equal(painting.status, 'ok');
   });
 

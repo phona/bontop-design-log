@@ -830,8 +830,8 @@ facts:
         severity: error
         expect_matches: 2
 
-  # 入户花园赠送面积：bbox 4.45×2.90 = 12.905㎡（A2 把旧值 11.06㎡ 改成 12.90㎡）。
-  # prose 按两位小数记 12.90，机器值 12.905；tolerance 0.01 只吸收四舍五入，
+  # 入户花园赠送面积：bbox 4.45×3.00 = 13.35㎡（2026-10-25 DEC-2026-10-25-R01 本体标定重算后南缘 2.90→3.00，旧值 12.905㎡）。
+  # prose 按两位小数记 13.35，机器值 13.35；tolerance 0.01 只吸收四舍五入，
   # 不容忍 11.06 那类量级漂移。
   - id: fact.entry_garden_area
     kind: derived
@@ -857,9 +857,9 @@ facts:
         severity: error
         expect_matches: 1
 
-  # 客餐厅 polygon 实测面积：44.58㎡（bbox 45.88㎡ 含 1.3㎡ 凹口，见
+  # 客餐厅 polygon 实测面积：43.1734㎡（bbox 45.88㎡ 含 2.71㎡ 凹口，见
   # fact.living_dining_bbox_area）。两者是**不同口径**，不可互相对账。
-  # 2026-10-20 措施 1 新建：此前 44.58 只在 config/hvac.yaml load_design.basis 与
+  # 2026-10-20 措施 1 新建：此前 44.58（2026-10-25 DEC-2026-10-25-R01 本体标定重算后为 43.1734）只在 config/hvac.yaml load_design.basis 与
   # docs/pending-site-data.md #39 以 prose 出现，无机器对账；建本条让
   # hvac.yaml 的叙述与速查表都不会静默漂移。
   - id: fact.living_dining_area
@@ -872,10 +872,12 @@ facts:
         severity: error
         expect_matches: 1
       # 2026-10-20 措施 1：现行值速查表 mirror。
+      # 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：速查表为两位小数（fmt2），43.1734 记 43.17，tolerance 0.01 吸收取舍（主卫面积同口径先例）；权威值仍为 geometry shoelace 43.1734。
       - path: docs/CURRENT-VALUES.md
         extract: '^\| 客餐厅面积 \| ([\d.]+) ㎡ \|'
         severity: error
         expect_matches: 1
+        tolerance: 0.01
 
   # 主卫面积：2.60×1.76 = 4.576㎡（prose 记 4.58，tolerance 吸收两位小数取舍）。
   - id: fact.master_bath_area
@@ -949,11 +951,11 @@ facts:
         pattern: '南向大阳台\s*[\d.]+\s*㎡'
         reason: "south_balcony status: not_modeled——模型未按室内地面建模、无几何权威源，13.95㎡ 是合同图标注口径；待量房/合同图确认地面通铺与计入规则后再建 mirror（docs/pending-site-data.md #40）"
       - path: config/house.yaml
-        pattern: '赠送约\s*28\.45㎡'
-        reason: "28.45㎡ = 12.90（entry_garden bbox）+ 13.95（south_balcony 合同标注）+ 1.60（platform bbox），是 #40 口径裁定用的推导和，不是独立事实；两个 bbox 加数分别由 fact.entry_garden_area / fact.west_platform_area 对账，第三个无几何权威源"
+        pattern: '赠送约\s*28\.90㎡'
+        reason: "28.90㎡ = 13.35（entry_garden bbox）+ 13.95（south_balcony 合同标注）+ 1.60（platform bbox），是 #40 口径裁定用的推导和，不是独立事实；两个 bbox 加数分别由 fact.entry_garden_area / fact.west_platform_area 对账，第三个无几何权威源"
       - path: config/house.yaml
-        pattern: '123\.21\s*≠\s*119\.38'
-        reason: "123.21㎡ = 94.76（合同净）+ 28.45（模型 bbox 毛+赠送）的推导和，与预测建面 119.38㎡ 的差就是 #40 要裁定的口径缺口；推导和被显式登记为不可对账项，避免再出现「≈」伪等式"
+        pattern: '123\.66\s*≠\s*119\.38'
+        reason: "123.66㎡ = 94.76（合同净）+ 28.90（模型 bbox 毛+赠送）的推导和，与预测建面 119.38㎡ 的差就是 #40 要裁定的口径缺口；推导和被显式登记为不可对账项，避免再出现「≈」伪等式"
 
   # 暖通内机合计功率无法用单一 regex 抽出权威值：config/hvac.yaml 同时存在
   # 「设计口径 load_design.rooms[].load_kw（R6 估算，合计约 23.0kW）」与
@@ -1647,7 +1649,7 @@ contracts:
       exempt_layers: [water_supply, drainage]
       exemption_basis: 'DEC-2026-10-06-R5（docs/decisions/13-mep-integration.md「#41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」配套口径修正）'
       exemption_count_in_current_engine: 20
-      engine_note: '比较范围同为吊顶承载层 6 类；只有 floor_branch / floor_branch_candidate 且 route points 至少有一点落入 y≤0.35m 垫层带的路线退出吊顶面比较。缺少垫层点的误标路线由 verify:mep floor_branch_missing_floor_band 报出，空间起降依托仍由 3D unsupported_span 检查。两引擎共享 ceiling footprint 与 segment 相交算法，R22-v0.5 历史快照双引擎实算49（42 条路线/15 个分区）；R25 按管径及声明保温外包络复核后当前 verify:facts = registered_conflicts = verify:mep ceiling_clearance_unverified = 62（50 条路线/15 个分区）：R22-v0.5-3 纯重力迭代把 condensate-living / condensate-dining 走廊段抬至吊顶腔内（y2.48–2.52，重力口假设 2.52 待厂家 #39），两线 × 走廊/客厅带的 3 处低于完成面 hit 合法消失 −3（52→49）；客卫镜柜背后段仍在（B2a 视觉遮蔽口径，镜柜通高待业主裁定）。上一态 52：R21 厨房尾段竖井落地 −2（54→52）。上一态 54（44 条路线/15 个分区，ceiling_entry_foyer 为新增涉及分区）：DEC-2026-10-17-R20 一减一增——删 strong-ded-fridge/strong-power-parent-child-parentbed-l 两条旧位路线 −1（51→50），同批走线专项 4 条新路线（strong-ded-fridge-living/strong-power-waterbar/strong-power-kitchen-east/strong-power-weakbox）终点即设备点位本身、落吊顶分区边缘，属已登记①类「竖直下引至设备点位的末点」同类残留 +4（50→54）。修正记录见 DEC-2026-10-17-R4：移除有地面点路线的低于吊顶平面误报，并补上此前 facts 点检查漏掉的 strong-power-master × curtain_box_master_south 段内穿越。历史 24 处基线见 DEC-2026-10-06-R5。R04（2026-10-23 DEC-2026-10-23-R04）：ceiling_guest_bath 东界随客卫东墙线 7.10→7.20，其 SE 角点 (7.20,4.30) 与走廊枢纽 bend_corridor 坐标重合，39 条以该枢纽为端点的吊顶承载层路线在起点单点触碰角部（标高 2.55 < B 区完成面 2.65），双引擎实算 62→101（78 条路线/15 个分区）；逐条 diff 核实无一例实体穿越新增东界带，属角点单点触碰登记，量房实测枢纽/角点任一偏移即消解。'
+      engine_note: '比较范围同为吊顶承载层 6 类；只有 floor_branch / floor_branch_candidate 且 route points 至少有一点落入 y≤0.35m 垫层带的路线退出吊顶面比较。缺少垫层点的误标路线由 verify:mep floor_branch_missing_floor_band 报出，空间起降依托仍由 3D unsupported_span 检查。两引擎共享 ceiling footprint 与 segment 相交算法，R22-v0.5 历史快照双引擎实算49（42 条路线/15 个分区）；R25 按管径及声明保温外包络复核后当前 verify:facts = registered_conflicts = verify:mep ceiling_clearance_unverified = 62（50 条路线/15 个分区）：R22-v0.5-3 纯重力迭代把 condensate-living / condensate-dining 走廊段抬至吊顶腔内（y2.48–2.52，重力口假设 2.52 待厂家 #39），两线 × 走廊/客厅带的 3 处低于完成面 hit 合法消失 −3（52→49）；客卫镜柜背后段仍在（B2a 视觉遮蔽口径，镜柜通高待业主裁定）。上一态 52：R21 厨房尾段竖井落地 −2（54→52）。上一态 54（44 条路线/15 个分区，ceiling_entry_foyer 为新增涉及分区）：DEC-2026-10-17-R20 一减一增——删 strong-ded-fridge/strong-power-parent-child-parentbed-l 两条旧位路线 −1（51→50），同批走线专项 4 条新路线（strong-ded-fridge-living/strong-power-waterbar/strong-power-kitchen-east/strong-power-weakbox）终点即设备点位本身、落吊顶分区边缘，属已登记①类「竖直下引至设备点位的末点」同类残留 +4（50→54）。修正记录见 DEC-2026-10-17-R4：移除有地面点路线的低于吊顶平面误报，并补上此前 facts 点检查漏掉的 strong-power-master × curtain_box_master_south 段内穿越。历史 24 处基线见 DEC-2026-10-06-R5。R04（2026-10-23 DEC-2026-10-23-R04）：ceiling_guest_bath 东界随客卫东墙线 7.10→7.20，其 SE 角点 (7.20,4.30) 与走廊枢纽 bend_corridor 坐标重合，39 条以该枢纽为端点的吊顶承载层路线在起点单点触碰角部（标高 2.55 < B 区完成面 2.65），双引擎实算 62→101（78 条路线/15 个分区）；逐条 diff 核实无一例实体穿越新增东界带，属角点单点触碰登记，量房实测枢纽/角点任一偏移即消解。R01（2026-10-25 DEC-2026-10-25-R01 复核）：strong-light-entry-night-guest-door 自直连段改为中竖墙/东南房西墙墙面带走线（12.77/12.71 面带、0.30m 高），但其墙面带段仍在 ceiling_study_ac / ceiling_living footprint 内且低于完成面（方法仍为 conduit、未走 floor_branch 口径），故该 hit 未消失；双引擎实算仍为 101（与 master 一致），登记数不改。本轮新增的量房桶 +1 来自 w_cent_north 穿孔声明（shear_wall_penetration 10→11），见 guidance §6。'
     # ⑦ 修正通道（repair_channel）：本契约抓的既有冲突只能由**设计侧裁定**消解
     # （分层标高升入降板空腔 2.50–3.00m or 调整降板厚度/范围），而此前引擎只告诉人
     # 「不许静默消音」，没告诉人「正当修正长什么样」——于是任何一次几何改动都像消音。
