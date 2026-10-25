@@ -2126,8 +2126,26 @@
           },
           "reference_beam_bottom_y": 2.56,
           "risk": "厨房局部梁头可能阻断北侧服务带的横向绕行。",
-          "reason": "邻户图 LH:270/LW:210 局部投影解读为小梁头，不是窗洞。",
-          "survey_confirmation": "量房拍照并测量自家梁头投影、梁底和相邻管井；不得据此开孔或穿梁。"
+          "reason": "邻户图 LH:270/LW:210 局部投影解读为小梁头，不是窗洞。位置存疑（2026-10-25 梁体修正）：LH:270/LW:210 文字约在 (9.10,3.24)，与本登记范围 z1.5–2.1 差约 1.4m；见并存候选 ref_kitchen_dashed_beam_candidate，量房定后删其一。几何与梁底暂不动，MEP 绕行注记仍引用本条。",
+          "survey_confirmation": "量房拍照并测量自家梁头投影、梁底和相邻管井，重点核 z≈3.2 虚线梁对与本登记 z1.5–2.1 哪一处为真；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "ref_kitchen_dashed_beam_candidate",
+          "status": "pending",
+          "source": "survey/neighbor_ys01_original_structure_2025-06.png",
+          "uncertainty_m": 0.15,
+          "not_for_construction": true,
+          "range": {
+            "x1": 7.37,
+            "x2": 10.15,
+            "z1": 3.09,
+            "z2": 3.29
+          },
+          "reference_bottom_drop_m": 0.27,
+          "reference_beam_bottom_y": 2.56,
+          "risk": "厨房虚线梁候选若为真，北侧服务带横向绕行与厨房吊顶衔接段均须避让。",
+          "reason": "邻户图厨房区虚线梁对（x7.37–10.15、z3.09/3.29，长约 2.78m、两线间距约 0.20m 对上 LW:210），按 LH:270 换算梁底 2.56；与 ref_kitchen_local_beam_head 并存候选，纸面上分不出真伪。",
+          "survey_confirmation": "量房实测该虚线梁对是否存在、梁底与截面；若确认，删除 ref_kitchen_local_beam_head 的 z1.5–2.1 登记并更新 MEP 绕行注记；不得据此开孔或穿梁。"
         },
         {
           "id": "ref_master_bath_local_beam_head",
@@ -2143,8 +2161,26 @@
           },
           "reference_beam_bottom_y": 2.41,
           "risk": "主卫局部梁头可能限制冷凝水支管抬高与检修空间。",
-          "reason": "邻户图 LH:420/LW:400 局部投影解读为小梁头，不是窗洞。",
-          "survey_confirmation": "量房拍照并测量自家梁头投影、梁底、沉箱和排水立管；不得据此开孔或穿梁。"
+          "reason": "邻户图 LH:420/LW:400 局部投影解读为小梁头，不是窗洞。归属存疑（2026-10-25 梁体修正）：LH:420/LW:400 文字约在 (1.44,5.27)，不在本登记范围 z3.5–4.1 内；反而 LH:250 文字约在 (1.44,3.90)，正落本范围，见并存候选 ref_master_bath_lh250_candidate。几何与梁底暂不动，MEP 压标高注记仍引用本条。",
+          "survey_confirmation": "量房拍照并测量自家梁头投影、梁底、沉箱和排水立管，两个西侧梁头（LH:250 与 LH:420）各量一遍再定归属；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "ref_master_bath_lh250_candidate",
+          "status": "pending",
+          "source": "survey/neighbor_ys01_original_structure_2025-06.png",
+          "uncertainty_m": 0.15,
+          "not_for_construction": true,
+          "range": {
+            "x1": 1.2,
+            "x2": 1.9,
+            "z1": 3.5,
+            "z2": 4.1
+          },
+          "reference_bottom_drop_m": 0.25,
+          "reference_beam_bottom_y": 2.58,
+          "risk": "主卫 LH:250 梁头若为真，冷凝水支管抬高与检修空间按 2.58m 复核，不按 2.41m。",
+          "reason": "邻户图 LH:250 文字约在 (1.44,3.90)，正落 ref_master_bath_local_beam_head 的登记范围；按 LH:250 换算梁底 2.58，与原登记 2.41 差 0.17m。本条与原条为同一足印的两种底沉读法，不是两个独立梁头。",
+          "survey_confirmation": "量房实测该足印内梁头的底沉，定 2.41 还是 2.58，删错误的一条；同时核 (1.44,5.27) 附近是否另有一条 LH:420 梁头；不得据此开孔或穿梁。"
         },
         {
           "id": "ref_corridor_service_band",
@@ -2161,8 +2197,62 @@
           "reference_bottom_drop_m": 0.18,
           "reference_beam_bottom_y": 2.65,
           "risk": "走廊服务带是主干与分支的汇集区，参考梁位偏差会影响所有入房转弯。",
-          "reason": "按邻户浅梁组及现有走廊吊顶示意划定的协调带，不是自家结构定位。",
+          "reason": "按邻户浅梁组及现有走廊吊顶示意划定的协调带，不是自家结构定位。五条中证据最弱：无单条 LH/LW 标签，定线前不得引用本带作梁底依据。",
           "survey_confirmation": "量房沿走廊逐段测梁底、宽度、套管条件和吊顶净高；绕梁优先，不得默认穿梁。"
+        },
+        {
+          "id": "ref_child_guest_bath_north_beam_candidate",
+          "status": "pending",
+          "source": "survey/neighbor_ys01_original_structure_2025-06.png",
+          "uncertainty_m": 0.15,
+          "not_for_construction": true,
+          "range": {
+            "x1": 4.4,
+            "x2": 4.8,
+            "z1": 5.1,
+            "z2": 5.5
+          },
+          "reference_bottom_drop_m": 0.4,
+          "reference_beam_bottom_y": 2.43,
+          "risk": "儿童房/客卫北侧梁头若为真，北侧房间吊顶与服务带须避让。",
+          "reason": "邻户图 LH:400/LW:200 文字约在 (4.60,5.31)，此前只在 MEP 注记提过“儿童房/客卫北候选梁约 x=4.0”，未进 reference_constraints；本条补登记，范围取文字点附近 ±0.2m 候选框。",
+          "survey_confirmation": "量房实测该处梁头是否存在、梁底与截面；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "ref_north_window_band_ld150_candidate",
+          "status": "pending",
+          "source": "survey/neighbor_ys01_original_structure_2025-06.png",
+          "uncertainty_m": 0.15,
+          "not_for_construction": true,
+          "range": {
+            "x1": 6.3,
+            "x2": 6.7,
+            "z1": 0.4,
+            "z2": 0.8
+          },
+          "reference_bottom_drop_m": 0.15,
+          "reference_beam_bottom_y": 2.68,
+          "risk": "北侧窗带浅梁若为真，可能影响主管转入与吊顶净空。",
+          "reason": "邻户图北侧窗带 LD:150 文字约在 (6.50,0.62)，此前漏登记；本条补登记，范围取文字点附近 ±0.2m 候选框。",
+          "survey_confirmation": "量房实测该处窗带梁底与范围；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "ref_north_window_band_ld100_candidate",
+          "status": "pending",
+          "source": "survey/neighbor_ys01_original_structure_2025-06.png",
+          "uncertainty_m": 0.15,
+          "not_for_construction": true,
+          "range": {
+            "x1": 3.5,
+            "x2": 3.9,
+            "z1": 1.6,
+            "z2": 2
+          },
+          "reference_bottom_drop_m": 0.1,
+          "reference_beam_bottom_y": 2.73,
+          "risk": "北侧窗带浅梁若为真，可能影响主管转入与吊顶净空。",
+          "reason": "邻户图北侧窗带 LD:100 文字约在 (3.72,1.77)，此前漏登记；本条补登记，范围取文字点附近 ±0.2m 候选框。",
+          "survey_confirmation": "量房实测该处窗带梁底与范围；不得据此开孔或穿梁。"
         }
       ]
     }
