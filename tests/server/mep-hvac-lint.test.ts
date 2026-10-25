@@ -41,7 +41,7 @@ test('real MEP configuration lints without false errors and reports warnings str
   const result = lintMepCoordination(config, sources);
   assert.equal(result.counts.routes, 138); // DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线 137→138；80→87（R1 给排水兜底）→92（v1 水路估算）→102（客客厅十条）→133（DEC-2026-10-07-M05 再补 23 条：书房/客房/儿童房 8 + 四卧两卫 16 + 走廊入户 7）→132（R15 删除 NP-4b 路线）→134（DEC-2026-10-08-W01 上下水：净水器进水 + 阳台地漏两条）→138（W03）→137（F01 撤并 east-wall 冗余竖直下引路由，取电由 curtain 上行段覆盖）→135（DEC-2026-10-12-R1 删主卧两盏明装床头壁灯及 strong-light-bedrooms-master-wall-l/-r 两条路由）；DEC-2026-10-13-R5 删 strong-light-tv 后 131→130；DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l（冰箱改由 sock_fridge_living 就近取电）后 130→128；DEC-2026-10-17-R20 走线专项为 R20 批次 7 个新点位补 7 条路线（strong-ded-fridge-living / strong-power-waterbar / strong-power-kitchen-east / strong-power-weakbox / weak-ap-master / strong-light-balcony / strong-light-entry-night-mid）128→135；DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条（F01 撤并的 sock_living_water 下引回补为实体路线）135→136；DEC-2026-10-19-R25 新增客餐厅DN32共用主管，136→137
   assert.equal(result.counts.resolvedRoutes, 138); // R25：routes/resolved 同步137，0悬空；DEC-2026-10-23-R03 后同步 138
-  assert.equal(result.errors.length, 104); // DEC-2026-10-17-R19/R20 契约（8aef523）：must_fix 桶自此进 errors[]，本用例旧「errors=0」口径随之失效；104 = 无 layout 口径的 must_fix 全集（route_overlap 68 + route_not_orthogonal 32 + 其余 4；route_overlap 随 DEC-2026-10-23-R04 几何改判 69→68），与下方分桶断言同源互锁
+  assert.equal(result.errors.length, 101); // DEC-2026-10-17-R19/R20 契约（8aef523）：must_fix 桶自此进 errors[]，本用例旧「errors=0」口径随之失效；101 = 无 layout 口径的 must_fix 全集（route_overlap 67 + route_not_orthogonal 30 + 其余 4；R01 后 overlap 68→66、orthogonal 32→30，floor_band_method_mismatch 不进本 harness 口径；R01 重算 guest-north 贴墙走线 overlap +1），与下方分桶断言同源互锁
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
   assert.equal(result.warnings.some((issue) => issue.code === 'ceiling_clearance_unverified' && issue.routeId === 'strong-power-living-sofa-r'), false,
     'a floor-branch candidate is not compared against ceiling finish heights; its supports remain checked in 3D');
@@ -66,9 +66,9 @@ test('real MEP configuration lints without false errors and reports warnings str
   assert.equal(result.warnings.filter((issue) => issue.code === 'ceiling_clearance_unverified').length, 101); // 走地 floor_branch(_candidate) 不参加吊顶净空比较；其起降仍由 3D unsupported_span 检查；51→62 为 R20/R21/R25 路线增补后的现值，62→101 为 DEC-2026-10-23-R04 角点触碰登记 +39（2026-10-23 实测重钉）
   // 当前无 layout：通用正交规则仍运行；墙、幕墙与剪力墙规则需要 layout 才运行。
   assert.equal(result.warnings.length, 220); // 2026-10-23 实测重钉（R19 升级前的 114 口径已失效）；DEC-2026-10-23-R03 客卫二次排水示意段两端点 +2 inline，179→181；DEC-2026-10-23-R04 ceiling_clearance 角点触碰 +39，181→220
-  // (e) 当前无 layout 的分桶（2026-10-23 实测）：must_fix = route_overlap 68 + route_not_orthogonal 32 + service_conflict 2 + floor_band 1 + endpoint_unusable 1；survey = ceiling 101 + insulation 7 + inline endpoint 6；envelope = clearance 40 + overlap 39 + declared_trunk 14 + nonphysical 8 + not_orthogonal 4 + supply_return 1
+  // (e) 当前无 layout 的分桶（2026-10-25 R01 重算实测）：must_fix = route_overlap 67 + route_not_orthogonal 30 + service_conflict 2 + floor_band 1 + endpoint_unusable 1；survey = ceiling 101 + insulation 7 + inline endpoint 6；envelope = clearance 40 + overlap 39 + declared_trunk 14 + nonphysical 8 + not_orthogonal 4 + supply_return 1
   const buckets = bucketsOf(result);
-  assert.equal(buckets.must_fix_before_briefing.count, 104); // R04：route_overlap 69→68
+  assert.equal(buckets.must_fix_before_briefing.count, 101); // R01：route_overlap 68→66、route_not_orthogonal 32→30；R01 重算 guest-north 贴墙走线 overlap +1
   assert.equal(buckets.survey_dependent.count, 114); // 无 layout：ceiling_clearance_unverified 101 + route_insulation_unverified 7 + inline_endpoint_without_point_anchor 6
   assert.equal(buckets.envelope_approximation.count, 106);
   assert.equal(Object.values(buckets).reduce((sum, bucket) => sum + bucket.count, 0), result.errors.length + result.warnings.length);
@@ -166,9 +166,9 @@ test('verify:mep JSON has stable result and exit contract', () => {
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
   assert.equal(result.counts.routes, 138); // DEC-2026-10-18-R21 补画 strong-power-living-water 后135→136；R25新增主管后137；DEC-2026-10-23-R03 新增客卫二次排水需求路线后138
-  assert.equal(result.counts.errors, 135); // 2026-10-23 实测重钉：R21 期 139 → bf29283（DEC-2026-10-19-R25 冷凝水汇流拓扑建模）errors −1 = 138，与 DEC-2026-10-22-R01 登记的 must_fix 钉死值一致（本测试此前漏跟这一变化）；DEC-2026-10-23-R04 几何改判（东南玻璃线 9.88 / 客卫东墙 7.20）后 route_overlap −1、suppressed_wall_crossing −1、bay_sill_collision −1 → 135
-  assert.equal(result.counts.warnings, 279); // survey_dependent 151 + envelope_approximation 128（2026-10-23 DEC-2026-10-23-R04 后实测：ceiling_clearance 62→101 角点触碰登记 +39；此前 DEC-2026-10-23-R03 客卫二次排水示意段两端点 +2 inline（survey）；envelope 不变）
-  assert.equal(result.categories.survey_dependent?.count, 151); // ceiling_clearance_unverified 101 + penetration_door_clearance 16 + shear_wall_parallel_route 11 + shear_wall_penetration 10 + route_insulation_unverified 7 + inline_endpoint 6（R04 角点触碰 +39；R03 客卫二次排水示意段两端点 +2）
+  assert.equal(result.counts.errors, 132); // 2026-10-25 实测重钉：DEC-2026-10-25-R01 厨房东南角墙线改判后 route_overlap 68→66、route_not_orthogonal 32→30、floor_band_method_mismatch 0→1，135→132；此前 DEC-2026-10-23-R04 几何改判（东南玻璃线 9.88 / 客卫东墙 7.20）后 route_overlap −1、suppressed_wall_crossing −1、bay_sill_collision −1 → 135
+  assert.equal(result.counts.warnings, 281); // survey_dependent 153 + envelope_approximation 128（2026-10-25 DEC-2026-10-25-R01 重算后实测：shear_wall_penetration 10→11（w_cent_north 声明穿孔）；shear_wall_parallel_route 11→12（guest-north 贴北墙面 1.10m）；ceiling_clearance 仍 101；envelope 不变）
+  assert.equal(result.categories.survey_dependent?.count, 153); // ceiling_clearance_unverified 101 + penetration_door_clearance 16 + shear_wall_parallel_route 12 + shear_wall_penetration 11 + route_insulation_unverified 7 + inline_endpoint 6（R01 w_cent_north 声明穿孔 +1；R01 重算 shear_parallel +1；R04 角点触碰 +39；R03 客卫二次排水示意段两端点 +2）
   assert.equal(result.categories.envelope_approximation?.count, 128); // route_clearance_unverified 40 + route_overlap 39 + route_overlap_declared_trunk 14 + bay_sill_crossing_declared 13 + nonphysical_route 8 + 其余零星
 });
 
@@ -441,12 +441,12 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   const result = lintMepCoordination(config, sources, realContext());
   assert.equal(result.counts.routes, 138); // DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线后 138（前史：DEC-2026-10-18-R21 补画 strong-power-living-water 后 135→136（前史：DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l 后 130→128（前史：R1 删两条照明路由 137→135；R2 删四条卫浴照明路由后 131；DEC-2026-10-13-R5 删 strong-light-tv 后 130）；同批走线专项 +7 条新点位路线后 128→135
   assert.equal(result.counts.resolvedRoutes, 138); // DEC-2026-10-18-R21后136；R25新增主管后与routes同步137；DEC-2026-10-23-R03 后同步 138（前史：R1 删 strong-light-bedrooms-master-wall-l/-r 后 135；R2 删 strong-light-gbath/-mbath-panel/-mbath-switch/-gbath-switch 四条卫浴照明路由后 routes/resolved 均 131；DEC-2026-10-17-R20 后 128；走线专项后与 routes 同步 135
-  assert.equal(result.errors.length, 118); // R19/R20 起 must_fix 桶即 errors[]。本 harness（realContext 无家具/飘窗/可达性上下文）为 118（DEC-2026-10-23-R04 几何改判后实测：route_overlap 与 suppressed_wall_crossing 各 −1，自 120 降至 118）；verify:mep 全上下文口径为 135（R04 登记值），差 17 = route_furniture_collision 12 + endpoint_inaccessible 5，只在全上下文下产生（bay_sill_collision 两口径均为 0）
+  assert.equal(result.errors.length, 116); // R19/R20 起 must_fix 桶即 errors[]。本 harness（realContext 无家具/飘窗/可达性上下文）为 116（DEC-2026-10-25-R01 厨房东南角墙线改判后实测：route_overlap 67、route_not_orthogonal 30、floor_band_method_mismatch 1，自 118 降至 116；重算 overlap +1）；verify:mep 全上下文口径为 132（R01 登记值），差 16 = route_furniture_collision 11 + endpoint_inaccessible 5，只在全上下文下产生（bay_sill_collision 两口径均为 0）
   // (a) 重力坡度：R1 后 14 条全清（地埋全平/过陡、冷凝水候选沿程、drain-balcony 2% 回算、墙排汇总不足坡）
   assert.equal(countByCode(result, 'gravity_slope_geometry_mismatch'), 0);
   assert.equal(result.warnings.some((i) => i.code === 'gravity_slope_geometry_mismatch' && i.routeId === 'drain-gbath-vanity-to-riser'), false);
   // (b) 全专业正交检查覆盖现行强弱电、冷媒、风管和给排水折点。
-  assert.equal(countByCode(result, 'route_not_orthogonal'), 36); // 2026-10-23 实测重钉（must_fix 32 + envelope 4；配置经 R01/R25 改善后自 R21 期 49 下降）
+  assert.equal(countByCode(result, 'route_not_orthogonal'), 34); // 2026-10-25 实测重钉（must_fix 30 + envelope 4；R01 正交化后自 R04 期 36 下降）
   // (c) 穿点距门洞：2026-10-07 M05 声明式补路由后 15 → 19；过门头 → survey_dependent，门洞高度内贴门垛 → must_fix
   const strip = result.warnings.filter((i) => i.code === 'penetration_door_clearance' && i.routeId === 'strong-ac-master');
   assert.equal(strip.length, 1);
@@ -457,7 +457,7 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // (d) 剪力墙并行 8 → 14（2026-10-07 M04/M05 补路由贴剪力墙竖槽，见各条 reason 扫筋声明）
   const masterParallel = result.warnings.find((i) => i.code === 'shear_wall_parallel_route' && i.routeId === 'strong-power-master')!;
   assert.match(masterParallel.message, /parallel to shear wall w_mb_east for 3\.60m at 0\.10m/);
-  assert.equal(countByCode(result, 'shear_wall_parallel_route'), 11); // DEC-2026-10-12-R1 删 strong-light-bedrooms-master-wall-l（贴 w_mb_east 平行 1.355m）后 14→13；DEC-2026-10-13-R3 主卧吸顶灯移位后两条照明路由改走门头盒空腔、不再贴 w_mb_east 长距离平行，13→11
+  assert.equal(countByCode(result, 'shear_wall_parallel_route'), 12); // DEC-2026-10-12-R1 删 strong-light-bedrooms-master-wall-l（贴 w_mb_east 平行 1.355m）后 14→13；DEC-2026-10-13-R3 主卧吸顶灯移位后两条照明路由改走门头盒空腔、不再贴 w_mb_east 长距离平行，13→11；R01 重算 guest-north 贴北墙面 1.10m +1
   // DEC-2026-10-13-R3 锁定改善：重画后的两条路由不得再贴 w_mb_east 长距离平行。
   // 若将来有人把几何改回贴墙（或把灯位改回 (2.60,7.60) 而不同步路由），这里立即 fail——
   // 正是本轮第一次提交时漏掉同步、导致 shear 13→11 / unsupported_span 7→9 双向漂移的那个失效模式。
@@ -475,11 +475,11 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // unsupported_span：F01/F02 首轮只检查水平段；2026-10-17 R2 后按3D长度检查水平/斜向/竖直段。
   // inline_endpoint_without_point_anchor 5 条：DEC-2026-10-08-W02 端点绑定兜底（给排水无锚点端点的量房判读清单；W03 客卫热水改绑 faucet_gbath_vanity 后由 5 降为 4；DEC-2026-10-23-R03 客卫二次排水示意段两端点 +2 至 6）
   // 2026-10-23 按本 harness 现行实测整体重钉（R21 期旧表已被 R25 拓扑/R01 登记/DEC-2026-10-23-R02 墙排口径取代；与 verify:mep 全上下文的差异见 errors 断言注释）
-  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { route_overlap: 68, route_not_orthogonal: 32, suppressed_wall_crossing: 7, unsupported_span: 7, mep_endpoint_service_conflict: 2, door_opening_collision: 1, route_endpoint_unusable: 1 }); // DEC-2026-10-23-R04：route_overlap 69→68、suppressed_wall_crossing 8→7
-  assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 101, penetration_door_clearance: 16, shear_wall_parallel_route: 11, shear_wall_penetration: 10, route_insulation_unverified: 7, inline_endpoint_without_point_anchor: 6 }); // R04：ceiling_clearance 62→101 角点触碰登记
+  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { route_overlap: 67, route_not_orthogonal: 30, suppressed_wall_crossing: 7, unsupported_span: 7, mep_endpoint_service_conflict: 2, door_opening_collision: 1, route_endpoint_unusable: 1, floor_band_method_mismatch: 1 }); // DEC-2026-10-25-R01：route_overlap 68→66、route_not_orthogonal 32→30、floor_band_method_mismatch 0→1；R01 重算 overlap +1
+  assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 101, penetration_door_clearance: 16, shear_wall_parallel_route: 12, shear_wall_penetration: 11, route_insulation_unverified: 7, inline_endpoint_without_point_anchor: 6 }); // R01：shear_wall_penetration 10→11（w_cent_north 声明穿孔）；R01 重算 shear_wall_parallel_route 11→12（guest-north 贴北墙面 1.10m）；R04：ceiling_clearance 62→101 角点触碰登记
   assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { route_clearance_unverified: 40, route_overlap: 39, route_overlap_declared_trunk: 14, nonphysical_route: 8, reference_constraint_uncertain: 5, route_not_orthogonal: 4, unsupported_span: 2, supply_return_overlap: 1 });
-  assert.equal(buckets.must_fix_before_briefing.count, 118); // R04 后与 errors.length 同值（见上）
-  assert.equal(buckets.survey_dependent.count, 151); // DEC-2026-10-23-R04 ceiling_clearance +39（角点触碰登记），112→151；此前 DEC-2026-10-23-R03 inline +2
+  assert.equal(buckets.must_fix_before_briefing.count, 116); // R01 重算后与 errors.length 同值（见上）
+  assert.equal(buckets.survey_dependent.count, 153); // DEC-2026-10-25-R01 shear_wall_penetration +1（w_cent_north 声明穿孔），151→152；R01 重算 shear_wall_parallel_route +1，152→153；此前 DEC-2026-10-23-R04 ceiling_clearance +39（角点触碰登记），112→151；此前 DEC-2026-10-23-R03 inline +2
   assert.equal(buckets.envelope_approximation.count, 113);
   // 飞线依托检查自证：最长飞线是 strong-power-living 出边吊后的 4.16m 无依托段（reason 声称「平吊板上方敷设」
   // 但 weak-ap reason 明说客厅中部保持原顶 2.80m 无吊顶——两处自相矛盾被机器显形）

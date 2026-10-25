@@ -195,22 +195,23 @@ test('全部贴砖 37.019㎡ = wall_region + sill_region', () => { // R04 后实
   assert.deepEqual(Object.keys(result.byZone), ['visible'], 'C18 废止杂砖后全部 zone=visible');
 });
 
-test('along 单位是米不是毫米（0.5–2.9 = 2.4m，除 1000 会得 0.02㎡）', () => {
+test('along 单位是米不是毫米（0.60–3.00 = 2.4m，除 1000 会得 0.02㎡）', () => { // R01：同 2.40m 厨房段随南端重锚
   const result = computeMasonryTakeoff(buildInput());
   const region = result.regions.find((item) => item.id === 'walltile_kitchen_ent_west')!;
-  close(region.from, 0.5);
-  close(region.to, 2.9);
+  close(region.from, 0.60);
+  close(region.to, 3.00);
   close(region.spanM, 2.4);
   close(region.areaSqm, 2.4 * 2.65, '6.36㎡；若误按毫米会得到 0.024㎡');
 });
 
-test('干区地面 115.404㎡ / 湿区 7.936㎡ / 合计 123.34㎡', () => { // 2026-10-23 DEC-2026-10-23-R04：东南房 +3.54 干、客卫 +0.21 湿（原 111.864 / 7.726 / 119.59）
+test('干区地面 116.1874㎡ / 湿区 7.936㎡ / 合计 124.1234㎡', () => { // 2026-10-25 DEC-2026-10-25-R01 重算：客餐厅 +1.725、东南房 +2.19 干（原 112.2724 / 7.936 / 120.2084）
   const result = computeMasonryTakeoff(buildInput());
-  close(result.dryRoomFloorSqm, 115.404);
+  close(result.dryRoomFloorSqm, 116.1874);
   close(result.wetRoomFloorSqm, 7.936);
-  close(result.totalRoomFloorSqm, 123.34);
-  // 与 schedule/phase-1/control.yaml 的锚点（干区 115.404 + 湿区 7.936 = 123.34）逐位一致
-  close(result.byRoom.living_dining.dryFloorSqm, 44.58);
+  close(result.totalRoomFloorSqm, 124.1234);
+  // 与 schedule/phase-1/control.yaml 的锚点（干区 116.1874 + 湿区 7.936 = 124.1234）逐位一致
+  close(result.byRoom.living_dining.dryFloorSqm, 43.1734); // R01 重算
+  close(result.byRoom.bedroom_se.dryFloorSqm, 15.18); // R01 重算：北墙线 5.55→4.82
   close(result.byRoom.kitchen.dryFloorSqm, 8.64, '厨房归干区主地面（KT 200×1200 木纹砖）');
   close(result.byRoom.master_bath.wetFloorSqm, 4.576);
   close(result.byRoom.guest_bath.wetFloorSqm, 2.235, '内卫小花砖余区'); // R04：客卫 +0.21㎡
@@ -226,10 +227,10 @@ test('房间内floor_region按follow转移干湿材质量且不改变全屋地�
     follow: 'living_dining',
     areaSqm: 1.125,
   }]);
-  close(result.dryFloorSqm, 120.279, '干区总量包含客卫门外开放洗漱区');
+  close(result.dryFloorSqm, 121.0624, '干区总量包含客卫门外开放洗漱区（R01 重算：客餐厅 +1.725、东南房 +2.19）');
   close(result.wetFloorSqm, 6.811, '湿区总量扣除客卫门外开放洗漱区');
-  close(result.dryFloorSqm + result.wetFloorSqm, 127.09, '内部材质区转桶不改变包含走廊extra的全屋面积');
-  close(result.totalRoomFloorSqm, 123.34, '房间footprint总量不变');
+  close(result.dryFloorSqm + result.wetFloorSqm, 127.8734, '内部材质区转桶不改变包含走廊extra的全屋面积');
+  close(result.totalRoomFloorSqm, 124.1234, '房间footprint总量随客餐厅/东南房变化');
 });
 
 test('内部地面材质分区若越出声明宿主房间则fail closed', () => {
@@ -245,12 +246,12 @@ test('内部地面材质分区若越出声明宿主房间则fail closed', () => 
   assert.throws(() => computeMasonryTakeoff(input), /not wholly inside declared host room guest_bath/);
 });
 
-test('floor_region：走廊 3.75㎡ 计入，落在已计费房内的 10.39㎡ 跳过，14.505㎡ 显式排除', () => {
+test('floor_region：走廊 3.75㎡ 计入，落在已计费房内的 9.311㎡ 跳过，14.765㎡ 显式排除', () => { // R01 重算：entry_foyer_floor 1.0584→2.561、entry_garden_floor 15.271→13.165
   const result = computeMasonryTakeoff(buildInput());
   close(result.floorRegionExtraSqm, 3.75, 'main_corridor_floor（DEC-2026-10-09-P16）');
-  close(result.floorRegionSkippedInsideRoomSqm, 10.39, 'corridor_floor 6.75（整块在 study 内）+ entry_foyer_floor 3.64（整块在 living_dining 内）');
-  close(result.floorRegionExcludedSqm, 14.505, 'entry_garden_floor 12.905 + north_platform_floor 1.60（圆角真实面积 1.3854 由调用方给）');
-  close(result.dryFloorSqm, 115.404 + 3.75 + 1.125, '干区含主走廊extra和客卫内部木纹区');
+  close(result.floorRegionSkippedInsideRoomSqm, 9.311, 'corridor_floor 6.75（整块在 study 内）+ entry_foyer_floor 2.561（整块在 living_dining 内，R01 重算门厅区随南墙至 3.00 扩大）');
+  close(result.floorRegionExcludedSqm, 14.765, 'entry_garden_floor 13.165（R01 重算花园南墙至 3.00）+ north_platform_floor 1.60（圆角真实面积 1.3854 由调用方给）');
+  close(result.dryFloorSqm, 116.1874 + 3.75 + 1.125, '干区含主走廊extra和客卫内部木纹区');
   assert.deepEqual(result.skippedInsideRoomFloorRegionIds, ['entry_foyer_floor', 'corridor_floor']);
   assert.deepEqual(result.excludedFloorRegionIds, ['entry_garden_floor', 'north_platform_floor']);
 });

@@ -130,24 +130,24 @@
 
 - id: switch_living_entrance
   room: living_dining
-  wall: w_ent_south_w
+  wall: w_ent_south_w_east
   wall_side: south
   type: switch_2way
   x: 13.10
-  z: 2.90
+  z: 3.00
   height: 1.3
   neutral: true
-  note: "客厅灯光双控（入户侧；DEC-2026-09-08-R1 由 x=11.60 移至门洞东墙垛中心 13.10：原位被 entry_half_height_cabinet（x[11.31,11.70]×h1.50）完全遮挡且在 d_ent 门扇（铰链西侧 x=11.80、内开）全开扫掠背面；东墙垛 x[12.80,13.40] 距铰链 1.30m 不受扫掠，距 opening 边缘 0.30m；量房复核门洞实际位置）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
+  note: "客厅灯光双控（入户侧；DEC-2026-09-08-R1 由 x=11.60 移至门洞东墙垛中心 13.10：原位被 entry_half_height_cabinet（x[11.31,11.70]×h1.50）完全遮挡且在 d_ent 门扇（铰链西侧 x=11.80、内开）全开扫掠背面；东墙垛 x[12.80,13.40] 距铰链 1.30m 不受扫掠，距 opening 边缘 0.30m；量房复核门洞实际位置）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随墙线 z2.90→3.00，x 不变，挂 w_ent_south_w_east 南脸，门洞东缘现为 12.75、距开关中心 0.35m，墙垛段 x[12.77,13.40]。"
 
 - id: ac_panel_living
   room: living_dining
-  wall: w_ent_south_w
+  wall: w_ent_south_w_east
   wall_side: south
   type: ac_controller
   x: 13.22
-  z: 2.90
+  z: 3.00
   height: 1.3
-  note: "客厅空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管；与 switch_living_entrance 组双联，板距 0.034m；品牌中立，定标后按厂商线控规格终核，site_pending）"
+  note: "客厅空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管；与 switch_living_entrance 组双联，板距 0.034m；品牌中立，定标后按厂商线控规格终核，site_pending）；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随开关同墙同移至（13.22,3.00）。"
 
 - id: ac_panel_dining
   room: living_dining
@@ -161,14 +161,14 @@
 
 - id: switch_living_corridor
   room: living_dining
-  wall: w_liv_east
+  wall: w_cent_south
   wall_side: west
   type: switch_2way
-  x: 13.40
-  z: 5.35
+  x: 12.77
+  z: 4.62
   height: 1.3
   neutral: true
-  note: "客厅灯光双控（走廊侧；DEC-2026-09-08-R1 由 z=5.55 墙段端点南退 0.20m 消除贴角，并补声明 wall_side west）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
+  note: "客厅灯光双控（走廊侧；DEC-2026-09-08-R1 由 z=5.55 墙段端点南退 0.20m 消除贴角，并补声明 wall_side west）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随中竖墙西移至（12.77,4.62），挂 w_cent_south 西脸，距北厚墙角 4.82 南退 0.20m 不变。"
 
 # 主卧
 - id: sock_master_bed_l
@@ -371,10 +371,10 @@
   wall_side: south
   type: socket
   x: 14.5
-  z: 5.55
+  z: 4.82
   height: 0.3
   count: 1
-  note: "客房北墙备用插座（DEC-2026-09-08-R1 补声明 wall_side south；2026-10-05 功能互换后位于床头北墙，但 h=0.3 为低位高度、不能当床头电位，床头电位另按 h=0.7 申报，见批次 B；B5-A 后并入 ordinary_power_parent_child）"
+  note: "客房北墙备用插座（DEC-2026-09-08-R1 补声明 wall_side south；2026-10-05 功能互换后位于床头北墙，但 h=0.3 为低位高度、不能当床头电位，床头电位另按 h=0.7 申报，见批次 B；B5-A 后并入 ordinary_power_parent_child；2026-10-25 R01 本体重算：随 w_be_north 北脸线 5.55→4.82 南移至 (14.50,4.82)）"
 
 - id: switch_study
   room: bedroom_se
@@ -694,44 +694,44 @@
 # x/z 为局部坐标系下的协调定位；墙体/侧别已按现场复核入口方案更新，仍不得据此生成施工级走线。
 - id: panel_strong_entry_left
   room: living_dining
-  wall: w_ent_south_w
-  wall_side: south
+  wall: w_ent_west
+  wall_side: west
   type: strong_panel
-  x: 11.30
-  z: 2.90
+  x: 10.80
+  z: 2.98
   mount_height: 1.65
   body_height: 0.39
   width: 0.39
   depth: 0.21
   status: measured
   position_status: inferred
-  note: "强电箱：开发商预留嵌墙箱，箱门朝客餐厅（玄关过道墙客厅面）。2026-10-24 邻户同户型施工实拍视频核实：两箱嵌于入户门洞（x[11.80,12.80]）西侧墙垛面——即 w_ent_south_w 西段 x[10.80,11.80] 南脸，视频帧高程换算强电箱底 ≈1.65m 与 GB 55038 7.4.3-2 双排箱底边 ≥1.60m 合规值吻合；同日废止同日早前两次误判口径：①w_foyer_east (13.40,3.60) 假设位、②w_ent_west 厨房面 (10.80,2.10)（邻户结构图上厨房面那个双线框符号经视频反证应为燃气表类符号，量房日核对）。x=11.30 为墙段居中占位（垛 0.50m/门 0.50m），横向偏移待量房实测回填；底部离地 1.65m 占位，本体高度待现场复测；箱体宽390mm×深210mm，回路数/容量待读取。嵌墙齐平则与玄关半高柜（x[11.33,11.68]×z[3.0,5.1]、柜高 1.5m，箱位在其北端板后方）无 protrusion 冲突，明装需避让；柜顶以上 0.15–0.54m 段外露可见。pending #4/#29/#30"
+  note: "强电箱：开发商预留嵌墙箱，箱门朝客餐厅（玄关过道墙客厅面）。2026-10-24 邻户同户型施工实拍视频曾解读为：两箱嵌于入户门洞（x[11.80,12.80]）西侧墙垛面——即 w_ent_south_w 西段 x[10.80,11.80] 南脸，视频帧高程换算强电箱底 ≈1.65m 与 GB 55038 7.4.3-2 双排箱底边 ≥1.60m 合规值吻合；同日废止同日早前两次误判口径：①w_foyer_east (13.40,3.60) 假设位、②w_ent_west 厨房面 (10.80,2.10)（邻户结构图上厨房面那个双线框符号经视频反证应为燃气表类符号，量房日核对）。2026-10-25 前 x=11.30 为墙段居中占位，现已作废，横向偏移待量房实测回填（模型线 10.80 与黑块西脸 10.81 差 0.01m）；底部离地 1.65m 占位，本体高度待现场复测；箱体宽390mm×深210mm，回路数/容量待读取。嵌墙齐平则与玄关半高柜（随墙南移至 z[3.10,5.10]、西移避门洞至 x[11.065,11.415]）无 protrusion 冲突（箱在柜西 0.265m 外）。pending #4/#29/#30；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：业主确认黑块西脸为开发商预留入户电箱位置，11.30 南墙位作废，本点直接落 A（10.80,2.98）西脸，不经中间态、不计移箱费。"
 
 - id: panel_weak_entry_left
   room: living_dining
-  wall: w_ent_south_w
-  wall_side: south
+  wall: w_ent_west
+  wall_side: west
   type: weak_panel
-  x: 11.30
-  z: 2.90
+  x: 10.80
+  z: 2.98
   mount_height: 0.50
   body_height: 0.40
   width: 0.40
   depth: 0.30
   status: likely
   position_status: inferred
-  note: "弱电箱：开发商预留嵌墙箱，箱门朝客餐厅（玄关过道墙客厅面）。2026-10-24 邻户施工实拍视频：弱电箱位于强电箱右下侧（帧高程换算 ≈0.5–0.9m，与占位值吻合），横向偏移量待量房实测回填——模型暂按与强电箱同 x=11.30 叠放（仅高度不同）。底部离地 0.50m 占位，本体高度待现场复测；箱体宽400mm×深300mm，入户线路待确认。嵌墙齐平与半高柜无 protrusion 冲突；0.50–0.90m 段在半高柜（柜高 1.5m）北端板后方，检修经柜北端与墙间 0.2m 空隙或柜内开口，D7 橱柜深化协同（owner 业主+橱柜设计）。pending #5/#72"
+  note: "弱电箱：开发商预留嵌墙箱，箱门朝客餐厅（玄关过道墙客厅面）。2026-10-24 邻户施工实拍视频曾解读：弱电箱位于强电箱右下侧（帧高程换算 ≈0.5–0.9m，与占位值吻合），横向偏移量待量房实测回填——模型暂按与强电箱同位叠放（仅高度不同，x 随箱至 10.80）。底部离地 0.50m 占位，本体高度待现场复测；箱体宽400mm×深300mm，入户线路待确认。嵌墙齐平与半高柜无 protrusion 冲突（箱在柜西 0.265m 外）；检修经箱西脸直接进行，D7 橱柜深化协同（owner 业主+橱柜设计）。pending #5/#72；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：同强电箱，黑块西脸 A（10.80,2.98），强弱同位不同高。"
 
 - id: sock_weakbox
   room: living_dining
-  wall: w_ent_south_w
-  wall_side: south
+  wall: w_ent_west
+  wall_side: west
   type: socket
-  x: 11.55
-  z: 2.90
+  x: 10.80
+  z: 3.23
   height: 0.4
   count: 1
-  note: "弱电箱供电/服务位（DEC-2026-10-17-R20 补齐；2026-10-24 随 panel_weak_entry_left 迁至 w_ent_south_w 南脸）：本点在弱电箱正下方沿墙东移 0.25m（箱本体 x[11.10,11.50]，本点 x=11.55 与箱位错开——嵌墙箱与插座同平面坐标会触发 coincident-endpoints 检查，沿墙错位为既有口径）——光猫/交换机若按运营商定案放弱电箱则必需（现方案放客厅高柜走 sock_gateway，该分工仍待定，两侧都要有电位才不返工）；横向偏移随弱电箱量房实测同步"
+  note: "弱电箱供电/服务位（DEC-2026-10-17-R20 补齐；2026-10-24 随 panel_weak_entry_left 迁至 w_ent_south_w 南脸）：本点在弱电箱南缘沿墙南移 0.05m（箱本体 z[2.78,3.18]，本点 z=3.23——嵌墙箱与插座同平面坐标会触发 coincident-endpoints 检查，沿墙错位为既有口径）——光猫/交换机若按运营商定案放弱电箱则必需（现方案放客厅高柜走 sock_gateway，该分工仍待定，两侧都要有电位才不返工）；横向偏移随弱电箱量房实测同步；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随箱至 w_ent_west 西脸，沿墙南移 0.25m 至（10.80,3.23），箱本体 z[2.78,3.18]、本点在其南缘 +0.05m。"
 
 # 入户花园
 - id: sock_garden
@@ -1045,12 +1045,12 @@
   room: living_dining
   type: downlight
   x: 12.4
-  z: 3.35
+  z: 4.05
   height: 2.5
   temp: 3000
   circuit: entry_base
   recessed: true
-  note: "室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区；状态依据：归入 topology 回路 lighting_entry_base（confirmed），门厅筒灯利用既有吊顶为设计声明→inferred；取红框中心避让半高柜与入户门，位置为设计值未实测"
+  note: "室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区；状态依据：归入 topology 回路 lighting_entry_base（confirmed），门厅筒灯利用既有吊顶为设计声明→inferred；取红框中心避让半高柜与入户门，位置为设计值未实测；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随入户门厅吊顶北缘 2.90→3.00、东缘 13.40→12.77，仍在新吊顶内（新吊顶 z[3.00,4.30]，中心 z≈4.05，x 不变）。"
   status: inferred
 - id: light_kitchen_panel
   room: kitchen
@@ -1196,14 +1196,14 @@
   status: inferred
 - id: night_living_north
   room: living_dining
-  wall: w_liv_east
+  wall: w_cent_south
   wall_side: west
   type: night_light
-  x: 13.40
-  z: 5.10
+  x: 12.77
+  z: 4.37
   height: 0.30
   circuit: entry_base
-  note: "起夜 NP-4a 客厅北段灯（R15）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-4a 客厅北段灯为设计声明→inferred；挂 w_liv_east 客厅侧，位置为设计值未实测"
+  note: "起夜 NP-4a 客厅北段灯（R15）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-4a 客厅北段灯为设计声明→inferred；挂 w_liv_east 客厅侧，位置为设计值未实测；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随中竖墙西移至（12.77,4.37），挂 w_cent_south 西脸，距北厚墙角 4.82 南退 0.45m（原 5.55 角南退 0.45m 口径不变）。"
   status: inferred
 
 - id: night_living_mid
@@ -1214,11 +1214,11 @@
     furniture_id: "furniture:living_dining:entry_half_height_cabinet:7"
     face: east
     surface_gap: 0.003
-  x: 11.68
+  x: 11.42
   z: 4.80
   height: 0.30
   circuit: entry_base
-  note: "起夜链中位补点（DEC-2026-10-17-R20）：night_living_north (13.40,5.10)→night_corridor (7.45,5.55) 之间约 6m 无低位引导，起夜主路径（客房门→走廊口）断链；吸附 entry_half_height_cabinet 东脸北端（面朝东侧主通道），仿 night_corridor (NP-5) 口径；固定方式/暗藏供电/感应朝向待柜体深化，site_pending。furniture_id 序号须与 SceneBuilder placed 顺序一致（该房 placed 顺序：wall_cabinet_tall:0/tv_wall_low:1/tv_65:2/floor_lamp:3/plant_fiddle:4/sofa_3seat:5/coffee_table:6/entry_half_height_cabinet:7，未放置对象不占序号）——已按 config/house.yaml（living_dining furnishings 第 8 个 placed 条目）与 shared/render/SceneBuilder.ts addFurniture 的 per-room placed 序号逻辑复核为 7"
+  note: "起夜链中位补点（DEC-2026-10-17-R20）：night_living_north (13.40,5.10)→night_corridor (7.45,5.55) 之间约 6m 无低位引导，起夜主路径（客房门→走廊口）断链；吸附 entry_half_height_cabinet 东脸北端（面朝东侧主通道），仿 night_corridor (NP-5) 口径；固定方式/暗藏供电/感应朝向待柜体深化，site_pending。furniture_id 序号须与 SceneBuilder placed 顺序一致（该房 placed 顺序：wall_cabinet_tall:0/tv_wall_low:1/tv_65:2/floor_lamp:3/plant_fiddle:4/sofa_3seat:5/coffee_table:6/entry_half_height_cabinet:7，未放置对象不占序号）——已按 config/house.yaml（living_dining furnishings 第 8 个 placed 条目）与 shared/render/SceneBuilder.ts addFurniture 的 per-room placed 序号逻辑复核为 7；2026-10-25 DEC-2026-10-25-R01：随半高柜西移至东脸 11.415+0.005=11.42，z 不变。"
 
 # 起夜路径 NP-5（主走廊）
 - id: night_corridor
