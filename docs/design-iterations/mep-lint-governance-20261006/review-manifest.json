@@ -113,10 +113,10 @@
     },
     {
       "code": "reference_constraint_uncertain",
-      "count": 5,
+      "count": 11,
       "category": "envelope_approximation",
       "disposition": "accept",
-      "basis": "模型包络近似：5 条邻户图比例映射的参考梁位（±150mm、not_for_construction）按 §2.5 口径只提醒不判碰撞，reference_constraint_uncertain 对 confirmed 约束直接跳过、永不出 error；§2.5.1 现状为 3 条 inferred + 2 条 pending，beam_collision 规则休眠",
+      "basis": "模型包络近似：11 条邻户图比例映射的参考梁位（±150mm、not_for_construction）按 §2.5 口径只提醒不判碰撞，reference_constraint_uncertain 对 confirmed 约束直接跳过、永不出 error；§2.5.1 现状为 3 条 inferred + 8 条 pending（2026-10-25 梁体修正：原 5 条中 2 条位置/归属存疑各有并存候选 + 新增 6 条候选），beam_collision 规则休眠",
       "owner": "量房（梁位实测）",
       "clearing_condition": "量房逐条实测梁底并转 confirmed 后由 beam_collision 接手硬判定；本项不要求提前清除，但 §5 的量房清单必须逐条拍照回填"
     },
@@ -197,11 +197,11 @@
     }
   ],
   "summary": {
-    "mep_total_warnings": 281,
+    "mep_total_warnings": 287,
     "mep_buckets": {
       "must_fix_before_briefing": 132,
       "survey_dependent": 153,
-      "envelope_approximation": 128
+      "envelope_approximation": 134
     },
     "electrical_total_warnings": 55,
     "electrical_by_disposition": {

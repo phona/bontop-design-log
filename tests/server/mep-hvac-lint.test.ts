@@ -167,9 +167,9 @@ test('verify:mep JSON has stable result and exit contract', () => {
   assert.ok(Array.isArray(result.warnings));
   assert.equal(result.counts.routes, 138); // DEC-2026-10-18-R21 补画 strong-power-living-water 后135→136；R25新增主管后137；DEC-2026-10-23-R03 新增客卫二次排水需求路线后138
   assert.equal(result.counts.errors, 132); // 2026-10-25 实测重钉：DEC-2026-10-25-R01 厨房东南角墙线改判后 route_overlap 68→66、route_not_orthogonal 32→30、floor_band_method_mismatch 0→1，135→132；此前 DEC-2026-10-23-R04 几何改判（东南玻璃线 9.88 / 客卫东墙 7.20）后 route_overlap −1、suppressed_wall_crossing −1、bay_sill_collision −1 → 135
-  assert.equal(result.counts.warnings, 281); // survey_dependent 153 + envelope_approximation 128（2026-10-25 DEC-2026-10-25-R01 重算后实测：shear_wall_penetration 10→11（w_cent_north 声明穿孔）；shear_wall_parallel_route 11→12（guest-north 贴北墙面 1.10m）；ceiling_clearance 仍 101；envelope 不变）
+  assert.equal(result.counts.warnings, 287); // survey_dependent 153 + envelope_approximation 134（2026-10-25 DEC-2026-10-25-R01 重算后实测：shear_wall_penetration 10→11（w_cent_north 声明穿孔）、shear_wall_parallel_route 11→12；同日梁体修正：参考梁约束 5→11 条，reference_constraint_uncertain +6，其余不变）
   assert.equal(result.categories.survey_dependent?.count, 153); // ceiling_clearance_unverified 101 + penetration_door_clearance 16 + shear_wall_parallel_route 12 + shear_wall_penetration 11 + route_insulation_unverified 7 + inline_endpoint 6（R01 w_cent_north 声明穿孔 +1；R01 重算 shear_parallel +1；R04 角点触碰 +39；R03 客卫二次排水示意段两端点 +2）
-  assert.equal(result.categories.envelope_approximation?.count, 128); // route_clearance_unverified 40 + route_overlap 39 + route_overlap_declared_trunk 14 + bay_sill_crossing_declared 13 + nonphysical_route 8 + 其余零星
+  assert.equal(result.categories.envelope_approximation?.count, 134); // route_clearance_unverified 40 + route_overlap 39 + route_overlap_declared_trunk 14 + bay_sill_crossing_declared 13 + nonphysical_route 8 + reference_constraint_uncertain 11 + 其余零星（2026-10-25 梁体修正：约束 5→11）
 });
 
 // ── 结构墙 / 梁碰撞规则（2026-09-01）──
@@ -477,10 +477,10 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // 2026-10-23 按本 harness 现行实测整体重钉（R21 期旧表已被 R25 拓扑/R01 登记/DEC-2026-10-23-R02 墙排口径取代；与 verify:mep 全上下文的差异见 errors 断言注释）
   assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { route_overlap: 67, route_not_orthogonal: 30, suppressed_wall_crossing: 7, unsupported_span: 7, mep_endpoint_service_conflict: 2, door_opening_collision: 1, route_endpoint_unusable: 1, floor_band_method_mismatch: 1 }); // DEC-2026-10-25-R01：route_overlap 68→66、route_not_orthogonal 32→30、floor_band_method_mismatch 0→1；R01 重算 overlap +1
   assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 101, penetration_door_clearance: 16, shear_wall_parallel_route: 12, shear_wall_penetration: 11, route_insulation_unverified: 7, inline_endpoint_without_point_anchor: 6 }); // R01：shear_wall_penetration 10→11（w_cent_north 声明穿孔）；R01 重算 shear_wall_parallel_route 11→12（guest-north 贴北墙面 1.10m）；R04：ceiling_clearance 62→101 角点触碰登记
-  assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { route_clearance_unverified: 40, route_overlap: 39, route_overlap_declared_trunk: 14, nonphysical_route: 8, reference_constraint_uncertain: 5, route_not_orthogonal: 4, unsupported_span: 2, supply_return_overlap: 1 });
+  assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { route_clearance_unverified: 40, route_overlap: 39, route_overlap_declared_trunk: 14, nonphysical_route: 8, reference_constraint_uncertain: 11, route_not_orthogonal: 4, unsupported_span: 2, supply_return_overlap: 1 }); // 2026-10-25 梁体修正：参考梁约束 5→11 条
   assert.equal(buckets.must_fix_before_briefing.count, 116); // R01 重算后与 errors.length 同值（见上）
   assert.equal(buckets.survey_dependent.count, 153); // DEC-2026-10-25-R01 shear_wall_penetration +1（w_cent_north 声明穿孔），151→152；R01 重算 shear_wall_parallel_route +1，152→153；此前 DEC-2026-10-23-R04 ceiling_clearance +39（角点触碰登记），112→151；此前 DEC-2026-10-23-R03 inline +2
-  assert.equal(buckets.envelope_approximation.count, 113);
+  assert.equal(buckets.envelope_approximation.count, 119); // 2026-10-25 梁体修正：reference_constraint_uncertain 5→11
   // 飞线依托检查自证：最长飞线是 strong-power-living 出边吊后的 4.16m 无依托段（reason 声称「平吊板上方敷设」
   // 但 weak-ap reason 明说客厅中部保持原顶 2.80m 无吊顶——两处自相矛盾被机器显形）
   // F01 改线批：33 条命中清至 8 条显式保留（每条 reason 带 DEC-2026-10-07-F01 归因）

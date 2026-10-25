@@ -75,22 +75,31 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 
 读图口径：图例中虚线 = 梁线；每个房间中央的 **+2830 = 结构板底标高**（与我们模型层高 2.8m 一致）；梁旁的 LD/LH 数字 = **板底下挂深度（mm）**，即 **梁底标高 ≈ 2.83 − 下挂/1000**。下挂 750/760 这类大数值更可能是窗洞口高度而非梁，不计入梁位。全部条目为轴线级映射，`verify:mep` 中以 `reference_constraint_uncertain` warning 形式常驻提醒，**不得据此开孔或穿梁**。
 
-### 2.5.1 已录入 config/hvac.yaml 的 5 条（lint 自动校验）
+### 2.5.1 已录入 config/hvac.yaml 的 11 条（lint 自动校验）
 
 | id | 图上标注 | 梁底参考 | 范围（模型坐标） | 影响 |
 |---|---|---|---|---|
 | ref_south_window_band_ld100 | 南侧窗带 LD:100 | 2.73m | x[1.8,15.2] z[9.65,9.95] | 南侧窗带浅梁压缩客厅/卧室吊顶净空 |
 | ref_kitchen_north_ld180 | 厨房北窗带 LD:180 | 2.65m | x[7.7,10.8] z[-0.15,0.25] | 影响冷媒主管转入与冷凝水坡度 |
-| ref_kitchen_local_beam_head | LH:270/LW:210 | 2.56m | x[9.0,9.4] z[1.5,2.1] | 厨房局部梁头，阻断北侧服务带横绕 |
-| ref_master_bath_local_beam_head | LH:420/LW:400 | 2.41m | x[1.2,1.9] z[3.5,4.1] | 主卫梁头；冷凝水穿点 x=2.0 已贴其东缘避让 |
-| ref_corridor_service_band | 走廊浅梁组 | 2.65m | x[6.9,7.5] z[3.6,8.0] | 主干/分支汇集区，偏差影响所有入房转弯 |
+| ref_kitchen_local_beam_head | LH:270/LW:210 | 2.56m | x[9.0,9.4] z[1.5,2.1] | 厨房局部梁头，阻断北侧服务带横绕；**位置存疑**（2026-10-25：LH:270/LW:210 文字约在 (9.10,3.24)，与本范围差约 1.4m，与 ref_kitchen_dashed_beam_candidate 并存，量房定后删其一） |
+| ref_kitchen_dashed_beam_candidate | LH:270/LW:210（虚线梁对） | 2.56m | x[7.37,10.15] z[2.48,2.66] | 厨房虚线梁候选；若为真，北侧服务带横向绕行与厨房吊顶衔接段均须避让 |
+| ref_master_bath_local_beam_head | LH:420/LW:400 | 2.41m | x[1.2,1.9] z[3.5,4.1] | 主卫梁头；冷凝水穿点 x=2.0 已贴其东缘避让；**归属存疑**（2026-10-25：LH:420/LW:400 文字约在 (1.44,5.27) 不在本范围，LH:250 文字约在 (1.44,3.90) 正落本范围，与 ref_master_bath_lh250_candidate 并存） |
+| ref_master_bath_lh250_candidate | LH:250 | 2.58m | x[1.2,1.9] z[3.10,3.50] | 主卫 LH:250 梁头候选（同一足印的两种底沉读法，非两个独立梁头） |
+| ref_master_bath_lh420_candidate | LH:420/LW:400 | 2.41m | x[1.2,1.9] z[4.32,4.72] | 主卫 LH:420 文字所在处候选梁头；若为真，按 2.41m 复核该处贴顶段 |
+| ref_corridor_service_band | 走廊浅梁组 | 2.65m | x[6.9,7.5] z[3.6,8.0] | 主干/分支汇集区，偏差影响所有入房转弯；原 5 条中证据最弱（无单条 LH/LW 标签），定线前不得引用作梁底依据 |
+| ref_child_guest_bath_north_beam_candidate | LH:400/LW:200 | 2.43m | x[4.4,4.8] z[4.43,4.83] | 儿童房/客卫北侧梁头候选，紧邻儿童房穿点 x=4.35 墙面，量房优先核这条 |
+| ref_north_window_band_ld150_candidate | 北侧窗带 LD:150 | 2.68m | x[6.3,6.7] z[0.17,0.57] | 北侧窗带浅梁候选，可能影响主管转入与吊顶净空 |
+| ref_north_window_band_ld100_candidate | 北侧窗带 LD:100 | 2.73m | x[3.5,3.9] z[1.28,1.68] | 北侧窗带浅梁候选，可能影响主管转入与吊顶净空 |
 
-> 状态口径（2026-10-06 与 `config/hvac.yaml` 对齐）：5 条中 **3 条 `inferred`**（`ref_south_window_band_ld100` / `ref_kitchen_north_ld180` / `ref_corridor_service_band`）+ **2 条 `pending`**（`ref_kitchen_local_beam_head` / `ref_master_bath_local_beam_head`，图上 LH：270/420 属局部投影，判读本身未定）。**均未 confirmed**，`beam_collision` 规则因此休眠（见 §6），5 条都只以 `reference_constraint_uncertain` warning 形式常驻提醒；量房逐条实测后按 §6 的墙/约束 confirmed 口径升级。
+> 状态口径（2026-10-06 与 `config/hvac.yaml` 对齐；2026-10-25 梁体修正后 11 条）：**3 条 `inferred`**（`ref_south_window_band_ld100` / `ref_kitchen_north_ld180` / `ref_corridor_service_band`）+ **8 条 `pending`**（原 2 条 `ref_kitchen_local_beam_head` / `ref_master_bath_local_beam_head`，其位置/归属存疑并各有并存候选；新增 6 条候选 `ref_kitchen_dashed_beam_candidate` / `ref_master_bath_lh250_candidate` / `ref_master_bath_lh420_candidate` / `ref_child_guest_bath_north_beam_candidate` / `ref_north_window_band_ld150_candidate` / `ref_north_window_band_ld100_candidate`）。**均未 confirmed**，`beam_collision` 规则因此休眠（见 §6），11 条都只以 `reference_constraint_uncertain` warning 形式常驻提醒；量房逐条实测后按 §6 的墙/约束 confirmed 口径升级。
+>
+> **z 标定口径（2026-10-25 Framework B，重要）**：邻户图的**竖向尺寸链相对平面主体被压缩约 11–13%**，直接按链读数会把所有 z 系统性读小。本表 z 值一律按平面主体两要素标定——厨房北墙北脸 pdf_y 325.8 ↔ z 0.00、客厅南墙北脸 pdf_y 840.0 ↔ z 9.80（52.469 pt/m，300dpi 下 orig_y = 977.4 + 157.4×z）。**注意：`DEC-2026-10-25-R01`（PR #21）的墙线 z 值仍按旧链式标定落模，系统性偏大 0.6–0.8m，需按同一 Framework B 口径复核回改**（见 §0 待办与 pending-site-data）。
 
-### 2.5.2 图上可见但未录入的候选（待判读，暂不收进 config）
+### 2.5.2 图上可见的候选（2026-10-25 梁体修正后，LH:250 / LH:420 / LH:400/LW:200 / LD:150 / LD:100 均已录入 config 为 pending 候选）
 
-- **主卫 LH:250**（竖向虚线，约 x≈1.0 一线）→ 若按梁读，梁底约 2.58m，影响主卫冷凝水/给水贴顶段；也可能是沉箱构造线，待量房拍照判读后再决定是否录入；
-- **儿童房/客卫北 LH:400/LW:200**（约 x≈4.0 一线）→ 若按梁头读，梁底约 2.43m，紧邻儿童房穿点 x=4.35 所在墙面，**量房时优先核这条**；
+- **主卫 LH:250**（竖向虚线，约 x≈1.0 一线）→ 已录入 `ref_master_bath_lh250_candidate`（pending，梁底 2.58m），影响主卫冷凝水/给水贴顶段；也可能是沉箱构造线，待量房拍照判读后定 2.41 还是 2.58；
+- **主卫 LH:420/LW:400**（约 (1.44,5.27)）→ 已录入 `ref_master_bath_lh420_candidate`（pending，梁底 2.41m）；量房时核该处是否另有一条 LH:420 梁头；
+- **儿童房/客卫北 LH:400/LW:200**（约 x≈4.0 一线）→ 已录入 `ref_child_guest_bath_north_beam_candidate`（pending，梁底 2.43m），紧邻儿童房穿点 x=4.35 所在墙面，**量房时优先核这条**；
 - 玄关区 LH:710、各房间南向 LH:750/760 + LW:1160/1380——按窗洞口判读，不计梁位。
 
 ### 2.5.3 硬规则
@@ -151,7 +160,7 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 
 分区上限：A 区 ≤**2.75**（轻钢龙骨+板材占用后）；B 区 ≤**2.76**。
 
-**梁硬约束（与 §2.5.1 的 5 条参考梁对应，上限 = 参考梁底 −0.05m）**：
+**梁硬约束（与 §2.5.1 的 11 条参考梁对应，上限 = 参考梁底 −0.05m）**：
 
 | 参考梁 | 参考梁底 | 带内上限 | 本轮处置 |
 |---|---:|---:|---|
@@ -223,7 +232,7 @@ npm run typecheck
 **Severity 口径（2026-10-17）**：`must_fix_before_briefing` 是硬门禁，不只是报表分桶；这类 finding 统一进入 `errors`，不因 route 仍是 inferred/pending 降级。只有明确归入 `survey_dependent` 或 `envelope_approximation` 的项保持 warning；数据近似一旦补齐并证明实体冲突，按对应硬规则报 error。`verify:mep` 在硬门禁未清时返回非零。
 
 - `shear_wall_penetration`：路线穿越 `structure: shear` 的墙 → warning；墙与路线双双 confirmed 时升 error（剪力墙开孔须实测结构数据 + 套管 + 避钢筋区）。墙类型标注在 `config/layout/model-geometry.yaml` 的 wall 条目上（`structure` / `structure_status`），当前全部 inferred，交房量房确认后转 confirmed。
-- `beam_collision`：`reference_constraints` 中 `status: confirmed` 且带 `reference_beam_bottom_y` 的梁位，物理路线在约束带内高于梁底 → error。当前 §2.5.1 的 5 条约束为 **3 条 inferred + 2 条 pending**（`ref_kitchen_local_beam_head` / `ref_master_bath_local_beam_head`），无一 confirmed，`beam_collision` 规则休眠；量房实测转 confirmed 后自动激活。
+- `beam_collision`：`reference_constraints` 中 `status: confirmed` 且带 `reference_beam_bottom_y` 的梁位，物理路线在约束带内高于梁底 → error。当前 §2.5.1 的 11 条约束为 **3 条 inferred + 8 条 pending**，无一 confirmed，`beam_collision` 规则休眠；量房实测转 confirmed 后自动激活。
 - `penetration_missing` / `penetration_point_mismatch`：逐墙核对——穿越的每面实体墙都要在 `penetration` 数组里有对应墙 id 的声明；缺声明或穿点与实际几何交点偏差 >0.25m 均为 must_fix error。
 - `ceiling_clearance_unverified`：管线外包络（管径与已声明保温）穿出所经实心吊顶（`drop` / `aluminum_buckle` / `integrated`）完成面 → warning。与 §0 的契约登记数同源不同级：契约 `c.mep_layer_below_drop_bottom` 用 error 锁「登记数 = 实算数」，本规则用 warning 逐条点名是哪条 route / 哪个分区。**DEC-2026-10-06-R5 明文授权的比较范围**：只含吊顶承载层（strong_power / weak_power / refrigerant / condensate / supply_air / return_air）；走地给排水（water_supply / drainage）与吊顶面无可比性，退出比较。DEC-2026-10-17-R4 又排除承载层中方法为 `floor_branch` / `floor_branch_candidate` 且至少一个 route point 落入 `y≤0.35m` 地面支持带的走地候选；缺少地面点的高位误标继续参与比较，并由 `floor_branch_missing_floor_band` 提醒。其开放起降仍由 3D `unsupported_span` 检查依托。facts lint 与 MEP lint 共享渲染用 rounded footprint、管线外包络（直径+已声明保温）及50mm中心线采样；R25两引擎当前均为 **62 条 route-zone warnings / 50 条路线 / 15 个吊顶分区**；历史变化链（R22-v0.5-3 纯重力迭代 −3：condensate 走廊段抬入腔；上一态 52/44 为 DEC-2026-10-17-R20 口径）strong-power-kitchen / strong-ded-dishwasher 尾段改 (10.8,2.35) 竖井落地，ceiling_kitchen hit 合法消失，登记数已同步；上一态 54/44/15 为 DEC-2026-10-17-R20 走线专项后口径）。相较原 facts 52 处，R4 退出 floor-branch 完成面误报，并把先前只在两 route points 之间穿过 `curtain_box_master_south` 的 `strong-power-master` 段纳入；旧的双引擎差异现已消除。历史 24 处残留类型见 §0 与 DEC-2026-10-06-R5 原裁定。
 - `reference_constraint_uncertain`：非 confirmed 的 `reference_constraints` 只提醒、不当硬碰撞；量房转 confirmed 后由 `beam_collision` 接手。
@@ -253,7 +262,7 @@ npm run typecheck
 |---|---:|---|
 | MEP must_fix_before_briefing（交底前必须清，R19 硬门禁起整体计 error、由验收断言单独锁定 132） | 132 | route_overlap 67 + route_not_orthogonal 30 + route_furniture_collision 11 + unsupported_span 7 + suppressed_wall_crossing 7 + endpoint_inaccessible 5 + door_opening_collision 1 + mep_endpoint_service_conflict 2 + route_endpoint_unusable 1 + floor_band_method_mismatch 1（DEC-2026-10-25-R01 对账增量：厨房东南角墙线改判后 route_overlap −2（东南房束随墙面带重画、旧 13.40 墙共线束解散）、route_not_orthogonal −2（花园线与弱电书房线正交化）、floor_band_method_mismatch +1（strong-light-entry-night-guest-door 墙面带走线 1.29m 落 0.30m 带、方法仍 conduit，属该规则对墙面带走线的启发式误标、非地面路径，计入 must_fix 显形不消音），合计由 135 降至 132；同日 R01 本体重算 composition 变化（总数不变）：route_overlap +1（guest-north 贴墙走线新增共线段）、route_furniture_collision −1（guest-north 避开 wardrobe_180）；DEC-2026-10-23-R04 对账增量：几何改判后 route_overlap 与 suppressed_wall_crossing 各减一、bay_sill_collision 清零，合计由 138 降至 135；此前 DEC-2026-10-22-R01 对账实测 138：bf29283 逐段坡度规则带入的 11 条 gravity_slope_below_design_target 已由短段链门槛与 4 条路线几何建真坡度清零，route_overlap 实修 −1；上一态 R25 口径 149、R22-v0.5 口径 139）|
 | MEP survey_dependent（量房后自然消/复判） | 153 | ceiling_clearance_unverified 101 + penetration_door_clearance 16 + shear_wall_parallel_route 12 + shear_wall_penetration 11 + route_insulation_unverified 7 + inline_endpoint_without_point_anchor 6（DEC-2026-10-25-R01 对账：剪力墙穿孔数 10→11（strong-light-entry-base 花园段正交穿新中竖墙北段 w_cent_north 的声明穿孔，剪力墙 inferred、量房复核套管）；ceiling_clearance_unverified 仍 101（strong-light-entry-night-guest-door 虽改墙面带走线、但其段仍在 ceiling_study_ac / ceiling_living footprint 内且低于完成面、方法未走 floor_branch 口径，故该 hit 未消失；weakbox×dining_north_band 新增 1 处与 guest-north 出 study_ac footprint 减少 1 处相抵，净零）；shear_wall_parallel_route 增加 1 条（guest-north 贴北墙面走线 1.10m 超 1.00m 阈值，见 R01 对账增量段）；DEC-2026-10-23-R04 对账：ceiling_clearance_unverified 由 62 增至 101，新增 39 条全为 bend_corridor 角点单点触碰登记，见 §0；DEC-2026-10-23-R03 对账：客卫二次排水示意段两端点 +2，4→6；DEC-2026-10-22-R01 对账实测：ceiling_clearance_unverified 为 R25 外包络复核口径，与 verify:facts 契约登记双引擎一致，见 §0；route_insulation_unverified 为 R25 同批新检查、保温厚度/状态未确认，登记治理台账 pending_adjudication 待厂家选型与量房；上一态 R21 口径 91）|
-| MEP envelope_approximation（模型包络近似/非物理需求） | 128 | route_clearance_unverified 40 + route_overlap 39 + bay_sill_crossing_declared 13 + route_overlap_declared_trunk 14 + nonphysical_route 8 + reference_constraint_uncertain 5 + route_not_orthogonal 4 + route_furniture_collision 2 + unsupported_span 2 + supply_return_overlap 1（DEC-2026-10-22-R01 对账实测，按 R25 外包络复核口径逐 code 对齐；上一态 R22-v0.5 快照 123；DEC-2026-10-23-R03 复核：客卫二次排水独立接立管、刻意不声明 shared_trunk，本桶不变）|
+| MEP envelope_approximation（模型包络近似/非物理需求） | 134 | route_clearance_unverified 40 + route_overlap 39 + bay_sill_crossing_declared 13 + route_overlap_declared_trunk 14 + nonphysical_route 8 + reference_constraint_uncertain 11 + route_not_orthogonal 4 + route_furniture_collision 2 + unsupported_span 2 + supply_return_overlap 1（2026-10-25 梁体修正对账：参考梁约束 5 条增至 11 条，reference_constraint_uncertain +6，本桶 128→134；DEC-2026-10-22-R01 对账实测，按 R25 外包络复核口径逐 code 对齐；上一态 R22-v0.5 快照 123；DEC-2026-10-23-R03 复核：客卫二次排水独立接立管、刻意不声明 shared_trunk，本桶不变）|
 > R20历史快照：must_fix桶（166）已按 R19 硬门禁整体升为 errors、不在本表；本表仅承载两个 warning 桶。当前实跑分桶见上方 R25 快照。
 >
 > **DEC-2026-10-17-R20 走线专项增量**：为 R20 批次 7 个新点位落地 7 条路线（strong-ded-fridge-living / strong-power-waterbar / strong-power-kitchen-east / strong-power-weakbox / weak-ap-master / strong-light-balcony / strong-light-entry-night-mid，128→135），**must_fix 桶 166 逐 code 零增量**；增量全部落在允许的 survey/envelope 桶（survey +5、envelope +3，逐 code 见两行明细内注）——新路线自身不带任何交底前必清项，穿墙/共孔/贴干线均以声明通道表达。
