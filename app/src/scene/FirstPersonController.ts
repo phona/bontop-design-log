@@ -41,6 +41,13 @@ export class FirstPersonController {
   private lockTime = 0;
   private sensitivity = MOUSE_SENSITIVITY;
 
+  // 移动端第一人称：触摸转向 + 摇杆移动（不依赖 pointer lock，iOS 可用）
+  private touchLook = false;
+  private lookTouchId: number | null = null;
+  private lastTouch = { x: 0, y: 0 };
+  private stick = { x: 0, y: 0 };
+  private static readonly STICK_DEAD_ZONE = 0.22;
+
   constructor(
     camera: THREE.PerspectiveCamera,
     domElement: HTMLCanvasElement,
@@ -103,6 +110,7 @@ export class FirstPersonController {
     document.addEventListener('keyup', this.onKeyUp);
     document.addEventListener('mousemove', this.onMouseMove);
     document.addEventListener('mousemove', this.onDragMouseMove);
+    if (this.touchLook) this.attachTouchLook();
   }
 
   private onDragMouseMove = (e: MouseEvent) => {
@@ -119,10 +127,12 @@ export class FirstPersonController {
     this.keys = { forward: false, backward: false, left: false, right: false };
     this.accumX = 0;
     this.accumY = 0;
+    this.stick = { x: 0, y: 0 };
     document.removeEventListener('keydown', this.onKeyDown);
     document.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('mousemove', this.onMouseMove);
     document.removeEventListener('mousemove', this.onDragMouseMove);
+    this.detachTouchLook();
     if (this.dragMode) this.exitDragMode();
     if (this._isLocked) {
       this.controls.unlock();
@@ -138,12 +148,75 @@ export class FirstPersonController {
   }
 
   get isAnyKeyDown(): boolean {
-    return this.keys.forward || this.keys.backward || this.keys.left || this.keys.right;
+    const dz = FirstPersonController.STICK_DEAD_ZONE;
+    return this.keys.forward || this.keys.backward || this.keys.left || this.keys.right
+      || this.stick.y <= -dz || this.stick.y >= dz || this.stick.x <= -dz || this.stick.x >= dz;
   }
 
   setSensitivity(v: number): void {
     this.sensitivity = v;
   }
+
+  /**
+   * 触摸主输入时开启画布拖拽转向。与鼠标 pointer-lock 路径互斥无关：
+   * 两条路径都汇入 accumX/accumY → yaw/pitch → clamp 管线，平滑与 ±80°
+   * 限制完全共用（铁律：不得移除 clamp 与平滑）。
+   */
+  setTouchLookEnabled(enabled: boolean): void {
+    if (enabled === this.touchLook) return;
+    this.touchLook = enabled;
+    if (this.enabled) {
+      if (enabled) this.attachTouchLook();
+      else this.detachTouchLook();
+    }
+  }
+
+  /** 虚拟摇杆输出（归一化 -1..1；死区在 update 里消费）。 */
+  setStickVector(x: number, y: number): void {
+    this.stick = { x, y };
+    if (x !== 0 || y !== 0) this.onRenderRequested?.();
+  }
+
+  private attachTouchLook(): void {
+    this.domElement.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    this.domElement.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    this.domElement.addEventListener('touchend', this.onTouchEnd);
+    this.domElement.addEventListener('touchcancel', this.onTouchEnd);
+  }
+
+  private detachTouchLook(): void {
+    this.domElement.removeEventListener('touchstart', this.onTouchStart);
+    this.domElement.removeEventListener('touchmove', this.onTouchMove);
+    this.domElement.removeEventListener('touchend', this.onTouchEnd);
+    this.domElement.removeEventListener('touchcancel', this.onTouchEnd);
+    this.lookTouchId = null;
+  }
+
+  private onTouchStart = (e: TouchEvent) => {
+    if (!this.enabled || this.lookTouchId !== null) return;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    this.lookTouchId = touch.identifier;
+    this.lastTouch = { x: touch.clientX, y: touch.clientY };
+  };
+
+  private onTouchMove = (e: TouchEvent) => {
+    if (!this.enabled || this.lookTouchId === null) return;
+    for (const touch of Array.from(e.changedTouches)) {
+      if (touch.identifier !== this.lookTouchId) continue;
+      this.accumX += touch.clientX - this.lastTouch.x;
+      this.accumY += touch.clientY - this.lastTouch.y;
+      this.lastTouch = { x: touch.clientX, y: touch.clientY };
+      if (e.cancelable) e.preventDefault();
+      this.onRenderRequested?.();
+    }
+  };
+
+  private onTouchEnd = (e: TouchEvent) => {
+    for (const touch of Array.from(e.changedTouches)) {
+      if (touch.identifier === this.lookTouchId) this.lookTouchId = null;
+    }
+  };
 
   setOnRenderRequested(cb: () => void): void {
     this.onRenderRequested = cb;
@@ -228,10 +301,12 @@ export class FirstPersonController {
 
     this.direction.set(0, 0, 0);
 
-    if (this.keys.forward) this.direction.z -= 1;
-    if (this.keys.backward) this.direction.z += 1;
-    if (this.keys.left) this.direction.x -= 1;
-    if (this.keys.right) this.direction.x += 1;
+    // WASD 与虚拟摇杆共用同一移动方向（摇杆死区外视为按下）
+    const dz = FirstPersonController.STICK_DEAD_ZONE;
+    if (this.keys.forward || this.stick.y <= -dz) this.direction.z -= 1;
+    if (this.keys.backward || this.stick.y >= dz) this.direction.z += 1;
+    if (this.keys.left || this.stick.x <= -dz) this.direction.x -= 1;
+    if (this.keys.right || this.stick.x >= dz) this.direction.x += 1;
 
     if (this.direction.lengthSq() === 0) return;
 

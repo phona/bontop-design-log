@@ -112,6 +112,7 @@ describe('FirstPersonController', () => {
   let camera: any;
   let canvas: any;
   let eventListeners: Record<string, Array<(e: any) => void>>;
+  let canvasListeners: Record<string, Array<(e: any) => void>>;
   let fakeTime = 0;
 
   beforeEach(() => {
@@ -121,7 +122,19 @@ describe('FirstPersonController', () => {
       position: new MockVector3(0, 1.7, 0),
       quaternion: new MockQuaternion(),
     };
-    canvas = { requestPointerLock: vi.fn() };
+    canvasListeners = {};
+    canvas = {
+      requestPointerLock: vi.fn(),
+      addEventListener: vi.fn((event: string, handler: (e: any) => void) => {
+        if (!canvasListeners[event]) canvasListeners[event] = [];
+        canvasListeners[event].push(handler);
+      }),
+      removeEventListener: vi.fn((event: string, handler: (e: any) => void) => {
+        if (canvasListeners[event]) {
+          canvasListeners[event] = canvasListeners[event].filter(h => h !== handler);
+        }
+      }),
+    };
     eventListeners = {};
     vi.stubGlobal('document', {
       addEventListener: vi.fn((event: string, handler: (e: any) => void) => {
@@ -608,6 +621,131 @@ describe('FirstPersonController', () => {
 
       const { yaw } = getYawPitch(camera.quaternion);
       expect(Math.abs(yaw)).toBeLessThan(0.001);
+      fp.dispose();
+    });
+  });
+
+  describe('touch look (mobile first-person)', () => {
+    function simulateTouch(type: string, touches: Array<{ identifier: number; clientX: number; clientY: number }>) {
+      const handlers = canvasListeners[type] ?? [];
+      for (const h of handlers) {
+        h({ changedTouches: touches, cancelable: true, preventDefault: vi.fn() });
+      }
+    }
+
+    async function makeTouchFp() {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.setTouchLookEnabled(true);
+      fp.enable();
+      return fp;
+    }
+
+    it('enable 后在画布挂 touch 监听；disable 后摘除', async () => {
+      const fp = await makeTouchFp();
+      expect(canvasListeners['touchstart']?.length).toBeGreaterThan(0);
+      expect(canvasListeners['touchmove']?.length).toBeGreaterThan(0);
+      fp.disable();
+      expect(canvasListeners['touchstart']?.length ?? 0).toBe(0);
+      expect(canvasListeners['touchmove']?.length ?? 0).toBe(0);
+      fp.dispose();
+    });
+
+    it('拖拽增量与鼠标同样 1:1 映射到 yaw', async () => {
+      const fp = await makeTouchFp();
+      simulateTouch('touchstart', [{ identifier: 1, clientX: 100, clientY: 100 }]);
+      simulateTouch('touchmove', [{ identifier: 1, clientX: 130, clientY: 100 }]);
+      fp.update(0.016);
+      const { yaw } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yaw - -(30 * MOUSE_SENSITIVITY))).toBeLessThan(0.001);
+      fp.dispose();
+    });
+
+    it('不依赖 pointer lock（iOS 无 lock 也能转）', async () => {
+      const fp = await makeTouchFp();
+      (document as any).pointerLockElement = null;
+      simulateTouch('touchstart', [{ identifier: 1, clientX: 0, clientY: 0 }]);
+      simulateTouch('touchmove', [{ identifier: 1, clientX: 25, clientY: 0 }]);
+      fp.update(0.016);
+      const { yaw } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yaw)).toBeGreaterThan(0.001);
+      expect(fp.isLocked).toBe(false);
+      fp.dispose();
+    });
+
+    it('触摸路径同样受 ±PITCH_LIMIT clamp 约束', async () => {
+      const fp = await makeTouchFp();
+      let y = 0;
+      simulateTouch('touchstart', [{ identifier: 1, clientX: 0, clientY: 0 }]);
+      for (let i = 0; i < 20; i++) {
+        y -= 1000; // touch 事件是绝对坐标：每帧继续上拖
+        simulateTouch('touchmove', [{ identifier: 1, clientX: 0, clientY: y }]);
+        fp.update(0.016);
+      }
+      const { pitch } = getYawPitch(camera.quaternion);
+      expect(pitch).toBeGreaterThan(0.5);
+      expect(pitch).toBeLessThanOrEqual(PITCH_LIMIT + 0.01);
+      fp.dispose();
+    });
+
+    it('非跟踪中的 touch 指印被忽略', async () => {
+      const fp = await makeTouchFp();
+      simulateTouch('touchstart', [{ identifier: 1, clientX: 0, clientY: 0 }]);
+      simulateTouch('touchmove', [{ identifier: 2, clientX: 500, clientY: 0 }]);
+      fp.update(0.016);
+      const { yaw } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yaw)).toBeLessThan(0.001);
+      fp.dispose();
+    });
+
+    it('touchend 后同指印不再累计', async () => {
+      const fp = await makeTouchFp();
+      simulateTouch('touchstart', [{ identifier: 1, clientX: 0, clientY: 0 }]);
+      simulateTouch('touchend', [{ identifier: 1, clientX: 10, clientY: 0 }]);
+      simulateTouch('touchmove', [{ identifier: 1, clientX: 400, clientY: 0 }]);
+      fp.update(0.016);
+      const { yaw } = getYawPitch(camera.quaternion);
+      expect(Math.abs(yaw)).toBeLessThan(0.001);
+      fp.dispose();
+    });
+  });
+
+  describe('virtual stick movement (mobile first-person)', () => {
+    it('死区外推杆产生位移，且 isAnyKeyDown 为真', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.setStickVector(0, -1); // 前推
+      expect(fp.isAnyKeyDown).toBe(true);
+      const z0 = camera.position.z;
+      fp.update(0.1);
+      expect(camera.position.z).toBeLessThan(z0);
+      fp.dispose();
+    });
+
+    it('死区内不产生位移', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.setStickVector(0.05, -0.05);
+      expect(fp.isAnyKeyDown).toBe(false);
+      const z0 = camera.position.z;
+      fp.update(0.1);
+      expect(camera.position.z).toBe(z0);
+      fp.dispose();
+    });
+
+    it('disable 清空推杆状态', async () => {
+      const { FirstPersonController } = await import('./FirstPersonController.js');
+      const { CollisionDetector } = await import('./CollisionDetector.js');
+      const fp = new FirstPersonController(camera, canvas, new CollisionDetector(walls));
+      fp.enable();
+      fp.setStickVector(1, 1);
+      fp.disable();
+      expect(fp.isAnyKeyDown).toBe(false);
       fp.dispose();
     });
   });

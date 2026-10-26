@@ -21,6 +21,7 @@ import { CommandRegistry, type Command } from './ui/CommandRegistry.js';
 import { SurfaceManager } from './ui/SurfaceManager.js';
 import { MobileTabBar } from './ui/MobileTabBar.js';
 import { isMobileChrome, readCapabilities, subscribeCapabilities, type InputCapabilities } from './ui/input-capability.js';
+import { VirtualJoystick } from './scene/VirtualJoystick.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
 import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
@@ -141,6 +142,7 @@ export class App {
   private commandPalette = new CommandPalette();
   private mobileTabBar: MobileTabBar | null = null;
   private viewPopover: Popover | null = null;
+  private virtualJoystick: VirtualJoystick | null = null;
   private unsubscribeCapabilities: (() => void) | null = null;
   private capabilities: InputCapabilities = { touchPrimary: false, narrowViewport: false };
   private furniturePanel = new FurniturePanel();
@@ -273,6 +275,7 @@ export class App {
         this.sensitivitySlider.hide();
         this.hoverTooltip.clear();
       }
+      this.syncFirstPersonTouchControls();
       this.updateModeIndicator();
     });
   }
@@ -1277,8 +1280,8 @@ export class App {
         engineeringNote: '选择家具类型进入摆放模式',
         category: '工程',
         shortcut: { code: 'KeyB' },
-        available: () => this.houseScene.mode === 'first-person',
-        unavailableReason: '仅第一人称模式可用',
+        available: () => this.houseScene.mode === 'first-person' && !this.capabilities.touchPrimary,
+        unavailableReason: this.capabilities.touchPrimary ? '编辑功能仅桌面端可用' : '仅第一人称模式可用',
         run: () => this.toggleFurniturePanel(),
       },
       {
@@ -1287,8 +1290,8 @@ export class App {
         engineeringNote: '进入点位摆放模式',
         category: '工程',
         shortcut: { code: 'KeyE' },
-        available: () => this.houseScene.mode === 'first-person',
-        unavailableReason: '仅第一人称模式可用',
+        available: () => this.houseScene.mode === 'first-person' && !this.capabilities.touchPrimary,
+        unavailableReason: this.capabilities.touchPrimary ? '编辑功能仅桌面端可用' : '仅第一人称模式可用',
         run: () => this.togglePlacementPanel(),
       },
       {
@@ -1297,8 +1300,8 @@ export class App {
         engineeringNote: '第一人称下拖拽准星对准的家具/点位',
         category: '工程',
         shortcut: { code: 'KeyG' },
-        available: () => this.houseScene.mode === 'first-person',
-        unavailableReason: '仅第一人称模式可用',
+        available: () => this.houseScene.mode === 'first-person' && !this.capabilities.touchPrimary,
+        unavailableReason: this.capabilities.touchPrimary ? '编辑功能仅桌面端可用' : '仅第一人称模式可用',
         run: () => this.enterDragForHovered(),
       },
       {
@@ -1307,8 +1310,8 @@ export class App {
         engineeringNote: '删除准星对准的电气/给排水点位',
         category: '工程',
         shortcut: { code: 'Delete' },
-        available: () => this.houseScene.mode === 'first-person',
-        unavailableReason: '仅第一人称模式可用',
+        available: () => this.houseScene.mode === 'first-person' && !this.capabilities.touchPrimary,
+        unavailableReason: this.capabilities.touchPrimary ? '编辑功能仅桌面端可用' : '仅第一人称模式可用',
         run: () => { void this.deleteHoveredPoint(); },
       },
     ]);
@@ -1474,6 +1477,12 @@ export class App {
     }
 
     // 输入能力 → body.mobile-chrome：CSS 与 JS 共用同一判定（触摸主输入或窄视口）
+    // 虚拟摇杆（移动端第一人称）：输出映射进 fpController 的 MovementKeys
+    const appRoot = document.getElementById('app');
+    if (appRoot && !this.virtualJoystick) {
+      this.virtualJoystick = new VirtualJoystick(appRoot);
+      this.virtualJoystick.onChange = (x, y) => this.fpController.setStickVector(x, y);
+    }
     this.capabilities = readCapabilities();
     this.applyCapabilities(this.capabilities);
     this.unsubscribeCapabilities = subscribeCapabilities((caps) => {
@@ -1482,11 +1491,19 @@ export class App {
     });
   }
 
+  /** 第一人称的触屏控件：摇杆显隐 + 触摸转向开关（仅触摸主输入）。 */
+  private syncFirstPersonTouchControls(): void {
+    const touch = this.capabilities.touchPrimary;
+    this.fpController.setTouchLookEnabled(touch);
+    this.virtualJoystick?.setVisible(touch && this.houseScene.mode === 'first-person');
+  }
+
   private applyCapabilities(caps: InputCapabilities): void {
     const mobile = isMobileChrome(caps);
     document.body.classList.toggle('mobile-chrome', mobile);
     this.mobileTabBar?.setVisible(mobile);
     this.mobileTabBar?.sync();
+    this.syncFirstPersonTouchControls();
     this.syncViewPanelOptions();
     this.updateModeIndicator();
   }
@@ -2084,6 +2101,8 @@ export class App {
       if (this.houseScene.mode === 'first-person' && !this.fpController.isLocked) {
         // 只有点击画布本身才重新锁定指针；点击面板/按钮等 UI 不应劫持鼠标
         if (e.target !== this.canvas) return;
+        // 触摸主输入没有 pointer lock（iOS 完全不可用）：转向/摇杆路径不依赖它
+        if (this.capabilities.touchPrimary) return;
         this.fpController.requestLock();
         return;
       }
@@ -2212,6 +2231,8 @@ export class App {
     });
 
     document.addEventListener('pointerlockerror', () => {
+      // 触摸端本就不走 pointer lock，不弹无意义的提示
+      if (this.capabilities.touchPrimary) return;
       this.showToast('请允许鼠标锁定以使用第一人称');
     });
   }
@@ -2893,6 +2914,7 @@ export class App {
       cancelAnimationFrame(this.rafId);
     }
     this.fpController.dispose();
+    this.virtualJoystick?.dispose();
     this.lightingPreviewPanel?.destroy();
     this.materialPreviewPanel?.destroy();
     this.unsubscribeCapabilities?.();
