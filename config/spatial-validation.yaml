@@ -160,6 +160,9 @@ junctions:
   - { id: foyer_outer_to_be_north, type: t, walls: [w_foyer_outer_east, w_be_north], x: 15.25, z: 4.82 }
   - { id: strip_east_to_nw_south, type: t, walls: [w_strip_east, w_nw_south], x: 4.20, z: 4.30 }
   - { id: vrv_gap_to_balc_west, type: t, walls: [w_vrv_nw_gap, w_balc_west], x: 5.60, z: 1.00 }
+  - { id: blk_north_to_ent_west, type: t, walls: [w_blk_north, w_ent_west], x: 10.80, z: 2.72, reason: "2026-10-26 DEC-2026-10-26-R01：黑块北脸西端落厨房东墙（w_ent_west）中部" }
+  - { id: blk_east_north_to_ent_south_w, type: t, walls: [w_blk_east_north, w_ent_south_w], x: 11.59, z: 3.00, reason: "2026-10-26 DEC-2026-10-26-R01：黑块东脸北段南端落入户南墙（w_ent_south_w）线，落门洞区间（11.545–12.755）内，量房定" }
+  - { id: blk_east_south_to_ent_south_w, type: t, walls: [w_blk_east_south, w_ent_south_w], x: 11.59, z: 3.00, reason: "2026-10-26 DEC-2026-10-26-R01：黑块东脸南段北端落入户南墙（w_ent_south_w）线，落门洞区间（11.545–12.755）内，量房定" }
 
 # 设备平台缺口与阳台西墙在量房线稿中保留 100mm 端部重合，作为一个
 # 声明式 T 接头处理；超过此值仍按墙线重复/穿插报错。
