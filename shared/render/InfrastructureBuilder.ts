@@ -161,6 +161,8 @@ function placeModel(
   y: number,
   wallSegments: ReadonlyMap<string, InfrastructureWallSegment[]> | undefined,
   frontProjection = 0,
+  /** Recessed box (strong/weak panel): its body sits inside the wall and the door position is tuned by frontProjection, so the thin-panel convention stays. */
+  recessed = false,
 ): void {
   const projected = projectPoint(point, wallSegments);
   if (!projected) {
@@ -169,7 +171,14 @@ function placeModel(
   }
   const nx = Math.sin(projected.rotation);
   const nz = Math.cos(projected.rotation);
-  const offset = WALL_THICKNESS / 2 + WALL_GAP + FIXTURE_HALF_THICKNESS - frontProjection;
+  // A fixture thicker than the wall cannot hang off the wall face under the thin-panel
+  // convention: its wall-facing extreme is pushed straight through into the room on the
+  // other side (2026-10-26: the toilet marker's tank landed inside the children's room).
+  // Anchor such a fixture by its wall-facing extreme, leaving only WALL_GAP to the wall face.
+  const towardWall = recessed ? 0 : Math.max(0, -new THREE.Box3().setFromObject(model).min.z);
+  const offset = towardWall > WALL_THICKNESS
+    ? WALL_THICKNESS / 2 + WALL_GAP + towardWall - frontProjection
+    : WALL_THICKNESS / 2 + WALL_GAP + FIXTURE_HALF_THICKNESS - frontProjection;
   model.position.set(projected.x + nx * offset, y, projected.z + nz * offset);
   model.rotation.y = projected.rotation;
 }
@@ -213,7 +222,7 @@ function buildElectrical(point: ElectricalPoint, wallSegments: ReadonlyMap<strin
       (point.depth ?? dimensions.depth) / dimensions.depth,
     );
   }
-  placeModel(model, point, dimensions ? mountHeight! + panelHeight! / 2 : point.type === 'floor_socket' ? 0.05 : point.height!, wallSegments, dimensions?.frontProjection ?? 0);
+  placeModel(model, point, dimensions ? mountHeight! + panelHeight! / 2 : point.type === 'floor_socket' ? 0.05 : point.height!, wallSegments, dimensions?.frontProjection ?? 0, dimensions !== undefined);
   model.userData = metadata(point, 'electrical', {
     label: point.type === 'strong_panel' ? '强电箱' : point.type === 'weak_panel' ? '弱电箱' : point.type === 'ac_controller' ? '线控器' : undefined,
     status: point.status,

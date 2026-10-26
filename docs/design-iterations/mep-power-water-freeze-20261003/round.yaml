@@ -301,9 +301,9 @@ datum:
     - id: drain_mbath_toilet
       anchor:
         plan_point: true
-      plan: (2.60, 1.50) h=0.02，主卫马桶排污口
+      plan: (2.275, 1.50) h=0.02，主卫马桶排污口（2026-10-26 坐标修正：原 (2.60, 1.50) 是 2026-09-08 家具马桶西移 25mm 后的东缘/共墙 w_mbath_east 中心线、被误记为马桶中心；按原对齐意图改为马桶本体 footprint/base 中心）
       elevation: h=0.02
-      derivation: 对齐马桶中心 (2.60,1.50)；同层排水沉箱，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏
+      derivation: '2026-10-26 坐标修正记录：原“对齐马桶中心 (2.60,1.50)”为误记——2026-09-08 家具马桶西移 25mm 后，(2.60,1.50) 只是马桶东缘与共墙 w_mbath_east 中心线（x=2.60）齐平之位，不是马桶中心；马桶本体 furniture:master_bath:toilet:0（placement x=2.275）footprint 为 x[2.050,2.600]、base 中心 (2.275,1.50)，按原对齐意图修正为 (2.275,1.50)（原登记值保留在本注内）。同层排水沉箱，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏'
       routing: '本轮不画 MEP route——坑距/坐便器形式/排水立管（pending #19）均未定；待 SKU 与量房后单独深化'
       site_pending: 坑距、落地/壁挂、主卫排水立管位置
     - id: topology_merge
@@ -384,7 +384,7 @@ fact_table:
         verification_method: 水电交底前按马桶 SKU 横向错开 ≥0.15m 或竖向分层；插座加防溅盒
       - id: F2
         category: confirmed
-        statement: 主卫马桶没有排污点；plumbing.yaml 中无主卫 toilet 对应 drain，最近为干区地漏 drain_mbath_floor (2.0,1.15)，距马桶中心 (2.60,1.50) 0.94m——地漏不能替代马桶排污口
+        statement: 主卫马桶没有排污点；plumbing.yaml 中无主卫 toilet 对应 drain，最近为干区地漏 drain_mbath_floor (2.0,1.15)，距马桶中心 (2.60,1.50) 0.94m——地漏不能替代马桶排污口（2026-10-26 修正注：本条为当轮历史问题登记、原值保留；其中“马桶中心 (2.60,1.50)”系误记——2026-09-08 家具马桶西移 25mm 后该点只是马桶东缘/共墙 w_mbath_east 中心线，马桶本体 base 中心实为 (2.275,1.50)，据此新增的 drain_mbath_toilet 已于 2026-10-26 修正为 footprint 中心 (2.275,1.50)）
         value: null
         source_refs:
           - config/plumbing.yaml:39-53
@@ -757,7 +757,7 @@ objects:
           - 点位专项
       - id: drain_mbath_toilet
         owner: plumbing
-        change: 新增 (2.60,1.50) h=0.02 type drain（主卫马桶排污口补齐）
+        change: 新增 (2.60,1.50) h=0.02 type drain（主卫马桶排污口补齐）（2026-10-26 修正注：本条为当轮变更登记、原值保留；该点坐标后改为马桶本体 footprint/base 中心 (2.275,1.50)——原 (2.60,1.50) 是 2026-09-08 家具马桶西移 25mm 后的东缘/共墙 w_mbath_east 中心线、被误记为马桶中心）
         interfaces:
           - toilet_mbath
           - '主卫排水立管（pending #19）'
