@@ -390,9 +390,9 @@
       "id": "drain_mbath_toilet",
       "room": "master_bath",
       "type": "drain",
-      "x": 2.6,
+      "x": 2.275,
       "z": 1.5,
-      "note": "DEC-2026-10-03-R1 主卫马桶排污口（对齐马桶中心 (2.60,1.50)）：同层排水沉箱内接入，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏。2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-toilet-to-riser`（gravity_floor_drain，同层沉箱内接入推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；坑距、坐便器形式（落地/壁挂，pending #31/#36）、主卫排水立管实测位置（pending #19）均待量房与 SKU 冻结后终核；DEC-2026-10-06-R1 管径分级：本马桶排污点口径 de110（管径字段本点未标 diameter，按 de110 分级补注）。",
+      "note": "DEC-2026-10-03-R1 主卫马桶排污口（对齐马桶中心 (2.60,1.50)）：同层排水沉箱内接入，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏。2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-toilet-to-riser`（gravity_floor_drain，同层沉箱内接入推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；坑距、坐便器形式（落地/壁挂，pending #31/#36）、主卫排水立管实测位置（pending #19）均待量房与 SKU 冻结后终核；DEC-2026-10-06-R1 管径分级：本马桶排污点口径 de110（管径字段本点未标 diameter，按 de110 分级补注）。2026-10-26 坐标修正记录：上文“对齐马桶中心 (2.60,1.50)”为误记——2026-09-08 家具马桶西移 25mm 后，(2.60,1.50) 只是马桶东缘与共墙 w_mbath_east 中心线（x=2.60）齐平之位，不是马桶中心；马桶本体 furniture:master_bath:toilet:0（placement x=2.275）footprint 为 x[2.050,2.600]、base 中心 (2.275,1.50)，本点按原对齐意图修正为 footprint 中心 (2.275,1.50)，排污口落盆体下方而非墙边；同时消除 0.15m 见方 drain marker（无墙引用按裸坐标放置）骑共墙中心线、东缘突出儿童房（bedroom_nw，x>2.66）1.5cm 的问题；MEP route drain-mbath-toilet-to-riser 按点位 id 绑定自动跟随（西段 2.30m→1.975m，坡度链同步回算，见该路线 reason）。",
       "height": 0.02,
       "drain_dn": 110
     },
