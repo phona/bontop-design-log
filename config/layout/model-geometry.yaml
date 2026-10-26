@@ -28,6 +28,11 @@ vertices:
   - { id: v_cent_j,  x: 12.77, z: 3.00 }   # 南墙/中竖墙 T 接点（薄段东端 12.75，墙带西脸 12.77；南墙线取薄段北脸 3.00）
   - { id: v_cent_n,  x: 12.77, z: 2.72 }   # 中竖墙北端（黑块北脸，本体标定 2.72）
   - { id: v_cent_be, x: 12.77, z: 4.82 }   # 中竖墙南端，落北厚墙北脸线 z=4.82（R04 链值 5.55 同场修正）
+  - { id: v_blk_nw, x: 10.80, z: 2.72 }   # 2026-10-26 DEC-2026-10-26-R01 入户黑块西北角（块北脸/西脸交点）
+  - { id: v_blk_ne, x: 11.59, z: 2.72 }   # 黑块东北角（块北脸/东脸交点）
+  - { id: v_blk_e,  x: 11.59, z: 3.00 }   # 黑块东脸与入户南墙线交点
+  - { id: v_blk_se, x: 11.59, z: 3.25 }   # 黑块东南角（块东脸/南脸交点）
+  - { id: v_blk_sw, x: 10.80, z: 3.25 }   # 黑块西南角（块西脸/南脸交点）
   - { id: v_ent_step, x: 13.40, z: 3.00 }   # 南墙东墙垛南端 / 门厅东墙折线点（新南墙 z=3.00 与旧南墙东段 z=2.90 的折线交接，折差 0.10 在容差内保留拓扑）
   - { id: v_ent_nw,  x: 10.80, z: 0.00 }
   - { id: v_bath_n,  x: 2.60,  z: 0.00 }
@@ -179,7 +184,13 @@ walls:
     height: 2.8
     openings:
       - { id: d_elev, type: door, anchor: v_foyer_se, offset: 0.925, width: 1.0, height: 2.1, room: elevator_shaft }
-  - { id: w_ent_west,  from: v_ent_sw,   to: v_ent_nw, height: 2.8 }   # 2026-10-25 DEC-2026-10-25-R01（重算）：南端随 v_ent_sw 延至 3.00，黑块段（z[2.72,3.25]、x[10.81,11.59]）以本墙线代理，厚度/块体以 overlay 注记不另建墙
+  - { id: w_ent_west,  from: v_ent_sw,   to: v_ent_nw, height: 2.8 }   # 2026-10-25 DEC-2026-10-25-R01（重算）：南端随 v_ent_sw 延至 3.00；2026-10-26 DEC-2026-10-26-R01 黑块建模后，本墙为块西脸北段（南段由 w_blk_west 续接，块体另立 w_blk_* 五段墙，不再以本墙线代理）
+  # 2026-10-26 DEC-2026-10-26-R01 入户黑块建模：端头厚块（邻户图 Framework B：x[10.81,11.59]×z[2.72,3.25]，模型线取西脸 10.80 / 北脸 2.72 / 东脸 11.59 / 南脸 3.25；inferred，量房终核），为强弱电箱（w_ent_west 西脸 (10.80,2.98)，沿墙跨度 z2.78–3.18）提供墙背衬；房间多边形不动（块体为墙垛式墙段，同 w_cent_north 口径）；无 structure 字段（邻墙 w_ent_south_w 同样无 structure，暂按填充墙推断，不发明剪力墙主张）
+  - { id: w_blk_west,       from: v_ent_sw, to: v_blk_sw, height: 2.8 }
+  - { id: w_blk_south,      from: v_blk_sw, to: v_blk_se, height: 2.8 }
+  - { id: w_blk_east_south, from: v_blk_e,  to: v_blk_se, height: 2.8 }
+  - { id: w_blk_east_north, from: v_blk_ne, to: v_blk_e,  height: 2.8 }
+  - { id: w_blk_north,      from: v_blk_nw, to: v_blk_ne, height: 2.8 }
   - { id: w_ent_north_railing, from: v_ent_ne, to: v_ent_nw, height: 1.0 }
   # 入户过渡区东墙（承重墙）——2026-10-25 DEC-2026-10-25-R01：旧 w_foyer_east（v_foyer_se→v_liv_se）与 w_liv_east（v_liv_se→v_be_sw）已删除，由中竖墙 w_cent_north / w_cent_south 替代；v_liv_se 随之删除（原为旧两墙交接点）
   # 外框 — 北墙（左翼凹进 z=1.10，西北角即圆角〔2026-09-17 业主确认，v_nw/w_west_top 已删〕，圆角→v_bath_ne 为幕墙；VRV/厨房北墙 z=0）

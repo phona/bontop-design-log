@@ -36,6 +36,7 @@
 - `DEC-2026-10-14-R01` 冰箱搬至长虹门南/入户门西侧的3D候选 + 东墙灶台段扩展
 - `DEC-2026-10-23-R04` 采 YS-01 原图读法修正两处几何：东南房玻璃线 9.88（废止凹进 8.70）+ 客卫东墙线 7.20
 - `DEC-2026-10-25-R01` 厨房东南角 / 入户花园西南角墙线按开发商交付改判：厨房东墙延至 3.00 + 入户南墙北脸 3.00 + 中竖墙西脸 12.77 替代 13.40 墙 + 入户门 1.21m + 电箱落 A 位（2026-10-25 晚 z 框架重算修正交付态）
+- `DEC-2026-10-26-R01` 入户黑块建模：端头厚块立墙，强弱电箱获墙背衬（推翻 R01“以墙线代理、不另建墙”）
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -640,4 +641,28 @@
 - **遗留**（带 owner 与触发）：① 白框定性与是否补 overlay 非墙元素——owner 量房方，触发 = 交房量房特写；② 开关 (13.10,3.00) 挂墙面合规复核（距东脸仅 0.05m）——owner 业主+设计侧，触发 = 本条合入后下一轮玄关布局讨论；③ 自家该角实测终核——owner 量房方，触发 = 交房量房（与 #20/#74 同批）；④ 梁带审计（2026-10-25 另行交付 PR #22、未入本条范围）的厨房虚线梁与本角厚块/中竖墙的关系，量房一并核；⑤ 半高柜西移 −0.26 提案——owner 业主，触发 = 业主过目本 PR 时点选（纯南移曾触发 pen.furniture.opening_blocked vs d_ent）；⑥ 复核所称 #75 出处未证实——owner 助手，触发 = 复核方提供 #75 来源文件与脸/中心定义，否则本条不引用；⑦ 东南玻璃线 9.88 带身份疑似（疑似带中心约 8.94）——owner 量房方，触发 = 交房量房核东南房南缘带身份。
 - **验证**：本地实测（分支 fix/kitchen-se-wall-delivered，基线对照）：verify:all 21/22（唯一红 verify-mep 为在册基线红，本条使其对 master 由 errors 135 降至 132、warnings 279→281、survey 151→153；对交付态则为 errors 132 不变、warnings 280→281、survey 152→153）；verify-spatial / verify-penetration / verify-finish-scope / verify-consistency / verify-schedule / verify-current-values / verify-project-render-facts / verify-facts 全绿（生成物经 schedule:render / docs:generate-current-values / generate:project-render-facts 重渲）；test-server 1069/1069（与 master 基线一致）、typecheck 基线 2（control.ts TS7006）、gate:visual CLEAR。
 - **关联文件**：`config/layout/model-geometry.yaml`、`config/layout/overlay.yaml`、`config/ceiling.yaml`、`config/house.yaml`、`config/hvac.yaml`（客餐厅 44.58→43.1734㎡、222→229W/㎡）、`config/electrical.yaml`、`config/mep-hvac-coordination.yaml`、`config/facts.yaml`（living_dining 43.1734、ceiling 契约 engine_note R01 复核句）、`schedule/phase-1/control.yaml`（COST-060-01 地面登记量 127.8734）、`docs/mep-construction-guidance.md`（§6 三桶钉死值与 R01 对账增量：must_fix 132、survey 153、envelope 128）、`docs/pending-site-data.md`（#41 R01 重算注记与本角待核项）、测试钉（mep-guidance-baseline errors 钉 132、地面/吊顶/瓦工钉重钉至重算值）、生成文件（schedule 各 checklist/cost.md/budget.md、docs/CURRENT-VALUES.md、data/project-render-facts.json）。
+- **决策人**：业主。
+
+---
+
+### DEC-2026-10-26-R01 入户黑块建模：端头厚块立墙，强弱电箱获墙背衬（推翻 R01“以墙线代理、不另建墙”）
+
+- **日期**：2026-10-26。触发：用户更新代码到 master 后在第一人称视角发现强弱电箱看似悬空；助手查实为沿墙超墙端（箱跨度 z2.78–3.18 vs w_ent_west 止于 z=3.00，南侧约 0.175–0.18m 无墙背衬），根因为 R01 注记“黑块以墙线代理、不另建墙”导致块体无几何（overlay 经查并无块体条目，代理实际等于缺失）；用户 2026-10-26 10:07 裁定“把黑块建出来，让箱子有墙背”。**口径声明**：本条是模型补建模，**不是量房升级**——块体尺寸源自邻户图 Framework B 推断（±0.15m），data_precision / survey_completed 不动、几何状态仍为 inferred，自家交房量房终核；箱位、电箱 A 位裁定、门洞、开关均不动。
+- **被推翻的旧结论（逐条说明）**：
+  1. **R01 裁定①注记“黑块段以本墙线代理，厚度/块体以 overlay 注记不另建墙”**：overlay 无块体条目，代理等于缺失；本条废止该注记，块体立墙，w_ent_west 注释同步改写。
+  2. **“箱体沿墙跨度超出墙端无妨”这一隐含前提**：渲染器按墙段投影放箱不报警、CI 无“箱体全宽需墙背衬”检查，全绿不等于有背衬；本条以实体墙背衬消除当前实例（检查本身未新增，见遗留③）。
+- **裁定①（块体几何）**：新增顶点 v_blk_nw (10.80,2.72)、v_blk_ne (11.59,2.72)、v_blk_e (11.59,3.00)、v_blk_se (11.59,3.25)、v_blk_sw (10.80,3.25)；新增墙段（均 h2.8、无 structure 字段——邻墙 w_ent_south_w 同样无 structure，暂按填充墙推断，不发明剪力墙主张；穿块路由因此不新增 shear_wall_penetration 登记）：w_blk_west（v_ent_sw→v_blk_sw，块西脸南段，与既有 w_ent_west 续成 z0–3.25 连续西脸，覆盖箱跨度 2.78–3.18）、w_blk_south（v_blk_sw→v_blk_se，南脸 z=3.25）、w_blk_east_south（v_blk_e→v_blk_se）、w_blk_east_north（v_blk_ne→v_blk_e，东脸以南墙线为界分段，避免内墙中心线交叉）、w_blk_north（v_blk_nw→v_blk_ne，北脸 z=2.72，闭合块环使花园侧亦读作实垛）。空间校验 T 接点 3 处（blk_north_to_ent_west (10.80,2.72)、blk_east_north_to_ent_south_w (11.59,3.00)、blk_east_south_to_ent_south_w (11.59,3.00)）。房间多边形不动（块体为墙垛式墙段，同 w_cent_north 口径；面积、地面不受影响）。成本随 4 处穿墙声明计价：水电 +¥100（extra_penetration 口径 ¥25/孔 × 4，管长/导线不变；南脸与南墙两穿点同属一次穿块体、但计价按声明数计，见验证）。
+- **裁定②（MEP 穿块声明）**：块体建模使两条花园线新增 4 处实穿点（此前穿南墙时块体不存在），逐墙补声明、verify-mep 计数零增量为目标：strong-light-entry-base 穿 w_blk_south (11.3,3.25,h2.55) 与 w_blk_east_north (11.59,2.94,h2.7)；strong-power-garden 穿 w_blk_south (11.0,3.25,h2.55) 与 w_blk_north (11.0,2.72,h2.7)。原南墙穿点 (11.3,3.00)/(11.0,3.00) 保留（落块体内，同属一次穿块体）。箱起北上腿（x=10.80 沿墙）与 w_blk_west 共线、过 (10.80,3.25) 角点，按 lint 口径不计穿墙，不声明。
+- **建模后显形的冲突（门洞项量房定、柜项用户已批南移解决）**：
+  1. 门洞 vs 块东脸：d_ent span 11.54–12.75 vs 块东脸 x=11.59，重叠 0.045m；门铰点 (11.545,3.00) 落块体内。两值均为邻户图推断，0.045m 在 ±0.15m 精度天花板内；门为用户裁定（洞口即门宽 1.21），本条不动门，量房定。
+  2. 半高柜北端 vs 块南脸（已解决）：原 entry_half_height_cabinet (11.24,4.10) 足迹北端 z=3.10 伸入块体（南脸 3.25）0.15m；verify-penetration 以 furniture_wall_collision 报 1 error、verify:all 跌至 20/22（此前“家具与墙线无通用校验拦截”的注记是错的：verify-furniture 不查，verify-penetration 查）；用户 2026-10-26 批准柜南移 0.25m 至 (11.24,4.35)，足迹 z[3.35,5.35]，北缘离块南墙面净空 0.10m，verify-penetration 回 0 error、verify:all 回 21/22。块南脸量房终核（3.10–3.40 带）仍待，但柜已不在块体内。
+  （注：门洞重叠项无通用校验拦截——空间校验不查门洞与墙段——故以 DEC 显形；柜冲突则由 verify-penetration 拦截。）
+- **未采（维持现状）**：箱位 A (10.80,2.98) 不动（不得为贴合代理墙线北移）；白框（R01-A）仍非墙登记；西侧黑条（10.20–10.81）仍不建模；块高取墙高 2.8（平面图无块高数据，量房核）；不新增“箱体全宽需墙背衬”校验（见遗留③）。
+- **「改判不工作时」的问题**（决策工作流铁律 1，带 owner 与触发）：
+  1. 自家该角块体尺寸与邻户不一致（南脸非 3.25、东脸非 11.59、北脸非 2.72）→ 箱背衬、门洞重叠、柜北端冲突、4 处穿点全部错位：owner 量房方；触发 = 交房量房复测块体三脸，任一偏差 >0.03 即按实测回改本条全部级联。
+  2. 块体实为承重/剪力墙 → 穿块 4 处须重审套管与结构：owner 量房方 + 结构侧；触发 = 量房/物业确认块体结构属性，承重则补 structure 字段并重审穿点。
+  3. 块高非 2.8（梁下/吊顶收口）→ 块顶与吊顶关系错：owner 量房方；触发 = 交房量房实测块顶标高。
+- **遗留**（带 owner 与触发）：① 块体三脸与块高量房终核——owner 量房方，触发 = 交房量房（与 #20/#74 同批）；② 门洞重叠量房定（柜冲突已由用户批准南移解决）——owner 量房方，触发 = 同上；③ “箱体全宽需墙背衬”校验未立——owner 助手，触发 = 下一轮校验专项评估是否把面板跨度检查纳入 verify（本条仅以实体墙消除当前实例）；④ R01-C 开关 0.05m、R01-A 白框、#75 出处等 R01 遗留不受本条影响。
+- **验证**（柜南移后本地实测，2026-10-26）：verify:all 21/22，唯一失败为基线 verify-mep；verify-mep must_fix 132 / survey 153 / envelope 134 / warnings 287，与 master 组合态（#21+#22 合入后）一模一样、零增量；verify-penetration 0 error（柜冲突消除前为 1 error、verify:all 20/22）；test:server 1069/1069 全绿（含穿透 16 项）；typecheck 基线 2 条（control.ts TS7006）不变；gate:visual CLEAR。成本：水电 ¥16,020（+¥100 穿墙声明）、暂估 ¥131,214、已知合计 ¥167,214、已核实 ¥36,000 不变。验收机位：客餐厅第一人称看入户西墙（两箱背后为连续墙面、不再悬空）；俯视入户角（柜北缘离黑块南墙面 0.10m）。review 同步修正（2026-10-26，合前）：独立 review 指出量房台账 #4/#5 仍写已作废的 3.65（PR #22 本体重算后台账未跟 electrical.yaml 的 2.98）；本条已同步为 A 位（z=2.98、span z2.78–3.18），弱电箱检修口径同步改为箱西脸直接进行；electrical.yaml 强电箱 note 的柜足迹同步为南移后 z[3.35,5.35]；两处 T 接点 reason 由“南墙中部”改为“落门洞区间（11.545–12.755）内，量房定”。
+- **关联文件**：`config/layout/model-geometry.yaml`、`config/spatial-validation.yaml`、`config/mep-hvac-coordination.yaml`、`config/house.yaml`（柜南移 0.25m）、`docs/decisions/README.md`（总数 269→275，含本条新增 1 条与旧索引漂移 5 条的实测更正）。
 - **决策人**：业主。
