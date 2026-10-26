@@ -94,6 +94,14 @@ export class LayersPanel {
     this.popover.close();
   }
 
+  /** 命令面板用：恢复上次组合（无存档时什么都不做）。 */
+  applyLastCombo(): void {
+    const combo = readSavedCombo();
+    if (combo.length === 0) return;
+    this.onApplyCombo(combo);
+    this.sync();
+  }
+
   /** persist=true 时把当前可见组合写入 localStorage，供「上次组合」恢复。 */
   sync(persist = false): void {
     const active = this.layers.filter((l) => l.isReady() && l.isActive()).map((l) => l.key);

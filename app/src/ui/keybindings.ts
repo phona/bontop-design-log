@@ -12,6 +12,7 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'V', code: 'KeyV', description: '切换视角模式', category: '视角', mode: 'all' },
   { key: 'Tab', code: 'Tab', description: '切换方案对比', category: '视角', mode: 'all' },
   { key: 'M', code: 'KeyM', description: '打开总览菜单', category: '视角', mode: 'all' },
+  { key: 'T', code: 'KeyT', description: '切换俯视/3D', category: '视角', mode: 'all' },
 
   // 移动（FP）
   { key: 'W / A / S / D', code: '', description: '前后左右行走', category: '移动', mode: 'first-person' },

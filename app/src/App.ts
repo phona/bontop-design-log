@@ -17,6 +17,7 @@ import { TopicRegistry } from './topics/TopicRegistry.js';
 import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
+import { CommandRegistry, type Command } from './ui/CommandRegistry.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
 import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
@@ -132,6 +133,7 @@ export class App {
   private compareShowing = false;
   private annotationRenderer?: AnnotationRenderer;
   private annotationGroupVisible = true;
+  private commandRegistry = new CommandRegistry();
   private commandPalette = new CommandPalette();
   private furniturePanel = new FurniturePanel();
   private furniturePlaceMode: { type: string } | null = null;
@@ -179,6 +181,7 @@ export class App {
       this.rejectReady = reject;
     });
     this.stateSync = new StateSync();
+    this.commandPalette.setRegistry(this.commandRegistry);
     this.houseScene = new HouseScene(canvas);
     this.collision = new CollisionDetector();
     this.fpController = new FirstPersonController(this.houseScene.camera, canvas, this.collision);
@@ -335,6 +338,7 @@ export class App {
     this.setupLightingPreviewPanel();
     this.setupHumidity();
     this.setupGlassFidelity();
+    this.setupCommandRegistry();
     this.updateModeIndicator();
     this.requestRender();
     this.readyState = 'ready';
@@ -1067,8 +1071,9 @@ export class App {
   // ─── 顶栏收敛：图层抽屉 / 告警聚合 / 弹出面板 ───
   // 编排只发生在 UI 层：这里通过各平级 setter 组合调用，不绕过它们碰场景或互相引用。
 
-  private setupLayersPanel(): void {
-    const layers: LayerDescriptor[] = [
+  /** 检视层 ready/active 谓词：图层抽屉与命令注册表共用，禁止两处各写一份。 */
+  private buildLayerDescriptors(): LayerDescriptor[] {
+    return [
       { key: 'mep_overview', isReady: () => this.hvacCoordinationState === 'ready' || this.mepCoordinationReady, isActive: () => this.mepOverviewVisible },
       { key: 'mep_coordination', isReady: () => this.mepCoordinationReady, isActive: () => this.mepCoordinationVisible },
       { key: 'hvac', isReady: () => this.hvacCoordinationState === 'ready', isActive: () => this.hvacCoordinationVisible },
@@ -1077,13 +1082,232 @@ export class App {
       { key: 'paint', isReady: () => this.paintState === 'ready', isActive: () => this.paintVisible },
       { key: 'ceiling_zone', isReady: () => this.ceilingZoneState === 'ready', isActive: () => this.ceilingZoneVisible },
     ];
+  }
+
+  private setupLayersPanel(): void {
     this.layersPanel = new LayersPanel({
-      layers,
+      layers: this.buildLayerDescriptors(),
       onClearAll: () => this.clearAllLayers(),
       onApplyCombo: (keys) => this.applyLayerCombo(keys),
       group: 'toolbar',
     });
     this.layersPanel.sync();
+  }
+
+  /**
+   * 命令注册表：唯一命令源。顶栏（桌面）、tab bar（移动端）、命令面板、快捷键提示
+   * 四处全部从这里渲染。run 一律委托上面的命令处理器，不重写业务逻辑；
+   * 检视层的 available/getActive 与图层抽屉共用 buildLayerDescriptors() 谓词。
+   */
+  private setupCommandRegistry(): void {
+    const layerOf = (key: LayerKey) => this.buildLayerDescriptors().find((l) => l.key === key)!;
+    const layerCommand = (key: LayerKey, label: string, engineeringNote: string, digit: string): Command => {
+      const descriptor = layerOf(key);
+      return {
+        id: `layer.${key}`,
+        label,
+        engineeringNote,
+        category: '检视',
+        shortcut: { code: `Digit${digit}` },
+        available: descriptor.isReady,
+        unavailableReason: '该检视层数据未就绪',
+        run: () => this.toggleLayerByKey(key),
+        getActive: descriptor.isActive,
+      };
+    };
+
+    this.commandRegistry.registerAll([
+      // 视角
+      {
+        id: 'view.toggle_mode',
+        label: '切换视角模式',
+        engineeringNote: '轨道 ↔ 第一人称；第一人称需 pointer lock（移动端为拖拽+摇杆）',
+        category: '视角',
+        shortcut: { code: 'KeyV' },
+        run: () => this.toggleMode(),
+      },
+      {
+        id: 'view.topdown',
+        label: '俯视',
+        engineeringNote: '正俯视平面图（T）',
+        category: '视角',
+        shortcut: { code: 'KeyT' },
+        run: () => this.toggleTopDownView(),
+      },
+      {
+        id: 'overview.open',
+        label: '总览菜单',
+        engineeringNote: '布局切换 / 阶段方案 / 当前方案 / 窗帘 / 决策记录 / 预算 / 风险 / 归档',
+        category: '视角',
+        shortcut: { code: 'KeyM' },
+        run: () => this.toggleOverviewMenu(),
+        getActive: () => this.overviewMenu.isVisible(),
+      },
+
+      // 方案
+      {
+        id: 'scheme.export_glb',
+        label: '导出 glb',
+        engineeringNote: '云渲染用；HVAC 协调 routes 已排除',
+        category: '方案',
+        run: () => { void this.handleExportGlb(); },
+      },
+
+      // 检视
+      layerCommand('mep_overview', '机电总览', '一键显示吊顶、点位、HVAC 与全部 MEP 路线', '1'),
+      layerCommand('mep_coordination', '水电走向', 'MEP 实体路线：仅表示走向，非施工路径', '2'),
+      layerCommand('hvac', '空调设备', 'HVAC 设备/约束（不显示实体路线）', '3'),
+      layerCommand('electrical_topology', '电路归属', '电气回路归属：面板—回路—点位归属，非电缆/线管/施工路径', '4'),
+      layerCommand('wall_tile', '贴砖', '贴砖检视态：厨卫已声明贴砖区（可见面蓝 / 遮蔽面橙）', '5'),
+      layerCommand('paint', '涂漆', '涂漆检视态：已声明涂漆墙面（按房间外偏移避免共面）', '6'),
+      layerCommand('ceiling_zone', '吊顶', '吊顶分区高亮：按 config/ceiling.yaml 逐分区声明上色', '7'),
+      {
+        id: 'layer.clear_all',
+        label: '关闭全部检视层',
+        engineeringNote: '不覆盖「上次组合」存档',
+        category: '检视',
+        shortcut: { code: 'Digit0' },
+        run: () => this.clearAllLayers(),
+      },
+      {
+        id: 'layer.restore_combo',
+        label: '恢复上次图层组合',
+        engineeringNote: '恢复上一次保存的检视层组合',
+        category: '检视',
+        run: () => this.layersPanel?.applyLastCombo(),
+      },
+
+      // 环境
+      {
+        id: 'env.sunlight',
+        label: '日照模拟',
+        engineeringNote: '日期 / 时刻 / 播放 / 热力图',
+        category: '环境',
+        run: () => {
+          this.envPopover?.close();
+          this.setSunlightEnabled(!this.sunlightEnabled);
+        },
+        getActive: () => this.sunlightEnabled,
+      },
+      {
+        id: 'env.humidity',
+        label: '湿度风险',
+        engineeringNote: '回南天窗口湿度风险',
+        category: '环境',
+        run: () => {
+          void this.humidityOverlay?.toggle().then(() => {
+            this.humidityButton?.sync();
+            this.requestRender();
+          });
+        },
+        getActive: () => this.humidityOverlay?.isActive() ?? false,
+      },
+
+      // 工具
+      {
+        id: 'tool.measurement',
+        label: '测量',
+        engineeringNote: '轨道模式点击两点测距',
+        category: '工具',
+        run: () => this.toggleMeasurementTool(),
+        getActive: () => this.analysisTools.measurement.active,
+      },
+      {
+        id: 'tool.lights',
+        label: '室内灯光',
+        engineeringNote: '室内照明总开关',
+        category: '工具',
+        shortcut: { code: 'KeyL' },
+        available: () => this.interiorLighting !== null,
+        unavailableReason: '室内灯光配置不可用',
+        run: () => this.toggleInteriorLights(),
+      },
+      {
+        id: 'tool.xray',
+        label: '透视图',
+        engineeringNote: 'X-ray 透视（轨道模式）',
+        category: '工具',
+        shortcut: { code: 'KeyW' },
+        available: () => this.houseScene.mode === 'orbit',
+        unavailableReason: '仅轨道模式可用',
+        run: () => this.toggleSeeThroughView(),
+      },
+      {
+        id: 'tool.curtains',
+        label: '全屋窗帘',
+        engineeringNote: '循环 open → privacy → blackout',
+        category: '工具',
+        shortcut: { code: 'KeyC' },
+        run: () => this.cycleCurtainState(),
+      },
+      {
+        id: 'tool.annotations',
+        label: '标注标签',
+        engineeringNote: '问题标注标签显隐',
+        category: '工具',
+        shortcut: { code: 'KeyP' },
+        run: () => this.toggleAnnotations(),
+        getActive: () => this.annotationGroupVisible,
+      },
+
+      // 设置
+      {
+        id: 'settings.glass_fidelity',
+        label: '玻璃质感',
+        engineeringNote: '高保真玻璃 transmission：draw call 翻倍，仅导出/取证时开启',
+        category: '设置',
+        run: () => this.setGlassHighFidelity(!this.houseScene.getGlassHighFidelity()),
+        getActive: () => this.houseScene.getGlassHighFidelity(),
+      },
+
+      // 工程（第一人称编辑态；桌面专属约束在 Step 4 由 available 收紧）
+      {
+        id: 'edit.furniture_panel',
+        label: '家具面板',
+        engineeringNote: '选择家具类型进入摆放模式',
+        category: '工程',
+        shortcut: { code: 'KeyB' },
+        available: () => this.houseScene.mode === 'first-person',
+        unavailableReason: '仅第一人称模式可用',
+        run: () => this.toggleFurniturePanel(),
+      },
+      {
+        id: 'edit.place_point',
+        label: '新增电气/给排水点位',
+        engineeringNote: '进入点位摆放模式',
+        category: '工程',
+        shortcut: { code: 'KeyE' },
+        available: () => this.houseScene.mode === 'first-person',
+        unavailableReason: '仅第一人称模式可用',
+        run: () => this.togglePlacementPanel(),
+      },
+      {
+        id: 'edit.drag',
+        label: '拖拽选中物体',
+        engineeringNote: '第一人称下拖拽准星对准的家具/点位',
+        category: '工程',
+        shortcut: { code: 'KeyG' },
+        available: () => this.houseScene.mode === 'first-person',
+        unavailableReason: '仅第一人称模式可用',
+        run: () => this.enterDragForHovered(),
+      },
+      {
+        id: 'edit.delete_point',
+        label: '删除选中点位',
+        engineeringNote: '删除准星对准的电气/给排水点位',
+        category: '工程',
+        shortcut: { code: 'Delete' },
+        available: () => this.houseScene.mode === 'first-person',
+        unavailableReason: '仅第一人称模式可用',
+        run: () => { void this.deleteHoveredPoint(); },
+      },
+    ]);
+
+    window.addEventListener('command-unavailable', ((e: CustomEvent<{ label?: string; reason?: string }>) => {
+      const label = e.detail?.label ?? '命令';
+      const reason = e.detail?.reason;
+      this.showToast(reason ? `${label}：${reason}` : `${label}当前不可用`);
+    }) as EventListener);
   }
 
   private setupToolbarPopovers(): void {
@@ -1356,27 +1580,31 @@ export class App {
 
   private setupExportButton(): void {
     const btn = document.getElementById('export-glb-btn');
-    btn?.addEventListener('click', async () => {
-      try {
-        const { blob, hvac } = await this.exportGlb();
-        const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `house-${stamp}.glb`;
-        a.click();
-        URL.revokeObjectURL(url);
-        if (hvac.required) {
-          const outdoor = hvac.included.filter((id) => id.includes(':anchor:') && id.includes('outdoor')).length;
-          const indoor = hvac.included.filter((id) => id.includes(':anchor:') && !id.includes('outdoor')).length;
-          this.showToast(`GLB 已导出：HVAC outdoor ${outdoor}/indoor ${indoor}/terminal ${hvac.terminalCount}；协调 routes 已排除`);
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'GLB 导出失败';
-        console.error(message, error);
-        this.showToast(message);
-      }
+    btn?.addEventListener('click', () => {
+      void this.handleExportGlb();
     });
+  }
+
+  private async handleExportGlb(): Promise<void> {
+    try {
+      const { blob, hvac } = await this.exportGlb();
+      const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `house-${stamp}.glb`;
+      a.click();
+      URL.revokeObjectURL(url);
+      if (hvac.required) {
+        const outdoor = hvac.included.filter((id) => id.includes(':anchor:') && id.includes('outdoor')).length;
+        const indoor = hvac.included.filter((id) => id.includes(':anchor:') && !id.includes('outdoor')).length;
+        this.showToast(`GLB 已导出：HVAC outdoor ${outdoor}/indoor ${indoor}/terminal ${hvac.terminalCount}；协调 routes 已排除`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'GLB 导出失败';
+      console.error(message, error);
+      this.showToast(message);
+    }
   }
 
   private exitFurniturePlaceMode(): void {
@@ -1556,27 +1784,19 @@ export class App {
 
       if (shouldToggleInteriorLights(e.code, e.repeat) && this.interiorLighting) {
         e.preventDefault();
-        this.interiorLighting.toggle();
-        this.syncLightingPreviewPanel();
-        this.houseScene.requestShadowUpdate();
+        this.toggleInteriorLights();
         return;
       }
 
       if (e.code === 'KeyM' && !e.repeat) {
         e.preventDefault();
-        if (this.overviewMenu.isVisible()) {
-          this.overviewMenu.hide();
-        } else {
-          void this.refreshOverviewData();
-          this.overviewMenu.show();
-        }
+        this.toggleOverviewMenu();
         return;
       }
 
       if (e.code === 'KeyT' && !e.repeat) {
         e.preventDefault();
-        this.houseScene.toggleTopDown();
-        this.topDownButton?.sync();
+        this.toggleTopDownView();
         return;
       }
 
@@ -1598,108 +1818,53 @@ export class App {
 
       if (shouldToggleSeeThrough(e.code, e.repeat, this.houseScene.mode)) {
         e.preventDefault();
-        this.analysisTools.toggleSeeThrough();
-        this.updateModeIndicator();
+        this.toggleSeeThroughView();
         return;
       }
 
       if (e.code === 'KeyC' && !e.repeat) {
         e.preventDefault();
-        const next: CurtainState = this.curtainPresentationState.default === 'open'
-          ? 'privacy'
-          : this.curtainPresentationState.default === 'privacy'
-            ? 'blackout'
-            : 'open';
-        void this.handleCurtainStateChange(next);
+        this.cycleCurtainState();
         return;
       }
 
       if (e.code === 'KeyP' && !e.repeat) {
         e.preventDefault();
-        this.annotationGroupVisible = !this.annotationGroupVisible;
-        this.annotationRenderer?.setVisible('all', this.annotationGroupVisible);
+        this.toggleAnnotations();
         return;
       }
 
       if (e.code === 'KeyL' && !e.repeat) {
         e.preventDefault();
-        this.analysisTools.toggleMeasurement();
-        if (this.houseScene.mode === 'orbit') {
-          this.houseScene.controls.enabled = !this.analysisTools.measurement.active;
-        }
-        this.updateModeIndicator();
-        this.updateCrosshairStyle();
+        this.toggleMeasurementTool();
         return;
       }
 
       if (this.houseScene.mode === 'first-person' && !e.repeat) {
-        if (e.code === 'BracketLeft') { e.preventDefault(); this.sensitivitySlider.step(-1); return; }
-        if (e.code === 'BracketRight') { e.preventDefault(); this.sensitivitySlider.step(1); return; }
+        if (e.code === 'BracketLeft') { e.preventDefault(); this.stepSensitivity(-1); return; }
+        if (e.code === 'BracketRight') { e.preventDefault(); this.stepSensitivity(1); return; }
 
         if (e.code === 'KeyB') {
           e.preventDefault();
-          if (this.furniturePlaceMode) {
-            this.exitFurniturePlaceMode();
-          }
-          this.furniturePanel.toggle();
+          this.toggleFurniturePanel();
           return;
         }
 
         if (e.code === 'KeyE') {
           e.preventDefault();
-          if (this.infrastructurePlaceMode) {
-            this.exitInfrastructurePlaceMode();
-          }
-          this.placementPanel.toggle();
+          this.togglePlacementPanel();
           return;
         }
 
         if (e.code === 'KeyG') {
           e.preventDefault();
-          if (this.fpController.isDragMode()) {
-            this.fpController.exitDragMode();
-            this.houseScene.hideGhost();
-            return;
-          }
-          const hovered = this.hoverTooltip.getCurrent();
-          if (hovered) {
-            const isInfrastructure = hovered.objectId.startsWith('electrical:') || hovered.objectId.startsWith('plumbing:');
-            if (hovered.type === 'furniture') {
-              const parts = hovered.objectId.split(':');
-              const type = parts[2] ?? parts[1];
-              const rot = 0;
-              this.fpController.enterDragMode(hovered.objectId, rot);
-              const pos = this.houseScene.getFurniturePosition(hovered.objectId);
-              if (pos) {
-                this.houseScene.showGhost(pos.x, pos.z, pos.rotation, type);
-              }
-            } else if (isInfrastructure) {
-              this.fpController.enterDragMode(hovered.objectId, 0);
-              const pos = this.houseScene.getObjectPosition(hovered.objectId);
-              if (pos) {
-                this.houseScene.showGhost(pos.x, pos.z, 0, 'dining_chair');
-              }
-            }
-          }
+          this.enterDragForHovered();
           return;
         }
 
         if (e.code === 'Delete') {
           e.preventDefault();
-          const hovered = this.hoverTooltip.getCurrent();
-          if (hovered) {
-            const isElectrical = hovered.objectId.startsWith('electrical:');
-            const isPlumbing = hovered.objectId.startsWith('plumbing:');
-            if (isElectrical || isPlumbing) {
-              const id = hovered.objectId.split(':').slice(1).join(':');
-              const apiUrl = isElectrical ? '/api/electrical' : '/api/plumbing';
-              fetch(`${apiUrl}/${id}`, { method: 'DELETE' })
-                .then(async () => {
-                  await this.refreshInfrastructure();
-                })
-                .catch((err) => console.error('Failed to delete annotation', err));
-            }
-          }
+          void this.deleteHoveredPoint();
           return;
         }
       }
@@ -1745,6 +1910,117 @@ export class App {
         this.handleCenterClick();
       }
     });
+  }
+
+  // ── 命令处理器：快捷键与命令面板共用同一实现，禁止两处各写一份 ──
+
+  private toggleOverviewMenu(): void {
+    if (this.overviewMenu.isVisible()) {
+      this.overviewMenu.hide();
+    } else {
+      void this.refreshOverviewData();
+      this.overviewMenu.show();
+    }
+  }
+
+  private toggleTopDownView(): void {
+    this.houseScene.toggleTopDown();
+    this.topDownButton?.sync();
+  }
+
+  private toggleSeeThroughView(): void {
+    this.analysisTools.toggleSeeThrough();
+    this.updateModeIndicator();
+  }
+
+  private toggleInteriorLights(): void {
+    this.interiorLighting?.toggle();
+    this.syncLightingPreviewPanel();
+    this.houseScene.requestShadowUpdate();
+  }
+
+  private toggleMeasurementTool(): void {
+    this.analysisTools.toggleMeasurement();
+    if (this.houseScene.mode === 'orbit') {
+      this.houseScene.controls.enabled = !this.analysisTools.measurement.active;
+    }
+    this.updateModeIndicator();
+    this.updateCrosshairStyle();
+  }
+
+  private cycleCurtainState(): void {
+    const next: CurtainState = this.curtainPresentationState.default === 'open'
+      ? 'privacy'
+      : this.curtainPresentationState.default === 'privacy'
+        ? 'blackout'
+        : 'open';
+    void this.handleCurtainStateChange(next);
+  }
+
+  private toggleAnnotations(): void {
+    this.annotationGroupVisible = !this.annotationGroupVisible;
+    this.annotationRenderer?.setVisible('all', this.annotationGroupVisible);
+  }
+
+  private stepSensitivity(delta: number): void {
+    this.sensitivitySlider.step(delta);
+  }
+
+  private toggleFurniturePanel(): void {
+    if (this.furniturePlaceMode) {
+      this.exitFurniturePlaceMode();
+    }
+    this.furniturePanel.toggle();
+  }
+
+  private togglePlacementPanel(): void {
+    if (this.infrastructurePlaceMode) {
+      this.exitInfrastructurePlaceMode();
+    }
+    this.placementPanel.toggle();
+  }
+
+  private enterDragForHovered(): void {
+    if (this.fpController.isDragMode()) {
+      this.fpController.exitDragMode();
+      this.houseScene.hideGhost();
+      return;
+    }
+    const hovered = this.hoverTooltip.getCurrent();
+    if (hovered) {
+      const isInfrastructure = hovered.objectId.startsWith('electrical:') || hovered.objectId.startsWith('plumbing:');
+      if (hovered.type === 'furniture') {
+        const parts = hovered.objectId.split(':');
+        const type = parts[2] ?? parts[1];
+        this.fpController.enterDragMode(hovered.objectId, 0);
+        const pos = this.houseScene.getFurniturePosition(hovered.objectId);
+        if (pos) {
+          this.houseScene.showGhost(pos.x, pos.z, pos.rotation, type);
+        }
+      } else if (isInfrastructure) {
+        this.fpController.enterDragMode(hovered.objectId, 0);
+        const pos = this.houseScene.getObjectPosition(hovered.objectId);
+        if (pos) {
+          this.houseScene.showGhost(pos.x, pos.z, 0, 'dining_chair');
+        }
+      }
+    }
+  }
+
+  private async deleteHoveredPoint(): Promise<void> {
+    const hovered = this.hoverTooltip.getCurrent();
+    if (!hovered) return;
+    const isElectrical = hovered.objectId.startsWith('electrical:');
+    const isPlumbing = hovered.objectId.startsWith('plumbing:');
+    if (!isElectrical && !isPlumbing) return;
+    const id = hovered.objectId.split(':').slice(1).join(':');
+    const apiUrl = isElectrical ? '/api/electrical' : '/api/plumbing';
+    try {
+      await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
+      await this.refreshInfrastructure();
+    } catch (err) {
+      console.error('Failed to delete annotation', err);
+    }
   }
 
   private setupPointerLockEvents(): void {
