@@ -93,7 +93,9 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 
 > 状态口径（2026-10-06 与 `config/hvac.yaml` 对齐；2026-10-25 梁体修正后 11 条）：**3 条 `inferred`**（`ref_south_window_band_ld100` / `ref_kitchen_north_ld180` / `ref_corridor_service_band`）+ **8 条 `pending`**（原 2 条 `ref_kitchen_local_beam_head` / `ref_master_bath_local_beam_head`，其位置/归属存疑并各有并存候选；新增 6 条候选 `ref_kitchen_dashed_beam_candidate` / `ref_master_bath_lh250_candidate` / `ref_master_bath_lh420_candidate` / `ref_child_guest_bath_north_beam_candidate` / `ref_north_window_band_ld150_candidate` / `ref_north_window_band_ld100_candidate`）。**均未 confirmed**，`beam_collision` 规则因此休眠（见 §6），11 条都只以 `reference_constraint_uncertain` warning 形式常驻提醒；量房逐条实测后按 §6 的墙/约束 confirmed 口径升级。
 >
-> **z 标定口径（2026-10-25 Framework B，重要）**：邻户图的**竖向尺寸链相对平面主体被压缩约 11–13%**，直接按链读数会把所有 z 系统性读小。本表 z 值一律按平面主体两要素标定——厨房北墙北脸 pdf_y 325.8 ↔ z 0.00、客厅南墙北脸 pdf_y 840.0 ↔ z 9.80（52.469 pt/m，300dpi 下 orig_y = 977.4 + 157.4×z）。**注意：`DEC-2026-10-25-R01`（PR #21）的墙线 z 值仍按旧链式标定落模，系统性偏大 0.6–0.8m，需按同一 Framework B 口径复核回改**（见 §0 待办与 pending-site-data）。
+> **z 标定口径（2026-10-25 Framework B，重要）**：邻户图的**竖向尺寸链相对平面主体被压缩约 11–13%**（链自报 10030mm 仅跨 orig y 1410px，而平面主体厨房北墙北脸 orig y 976–978 至客厅南墙北脸 orig y 2520 跨 1543px 对应 9.80m），直接按链读数会把所有 z 系统性读小。本表 z 值一律按平面主体两要素标定——厨房北墙北脸 pdf_y 325.8 ↔ z 0.00、客厅南墙北脸 pdf_y 840.0 ↔ z 9.80（52.469 pt/m，300dpi 下 orig_y = 977.4 + 157.4×z）。
+>
+> **R01 墙线已按本口径落模并经独立复测**：`DEC-2026-10-25-R01` 第二个 commit（3564c0d）已按本体标定重算，独立像素复测结果——南墙薄段北脸实测 z≈2.94（模型 3.00）、厚块实测 z[2.68,3.28]×x[10.75,11.63]（模型注记 z[2.72,3.25]×x[10.81,11.59]）、中竖墙实测 z[2.72,4.84] 西脸 x≈12.70（模型 12.77 / z[2.72,4.82]），主项偏差均 ≤0.07m。**唯一待核**：北厚墙模型线 4.82 注释写“北脸”，但实测墙带为 z[4.54,4.79]——4.82 实际贴近南脸（差 0.03m）、距北脸 0.28m，属取面标注不一致而非系统误差，量房时一并核该取哪个面。
 
 ### 2.5.2 图上可见的候选（2026-10-25 梁体修正后，LH:250 / LH:420 / LH:400/LW:200 / LD:150 / LD:100 均已录入 config 为 pending 候选）
 
