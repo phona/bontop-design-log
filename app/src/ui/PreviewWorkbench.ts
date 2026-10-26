@@ -6,6 +6,8 @@ export class PreviewWorkbench {
   private headers = new Map<PreviewWorkbenchPage, HTMLButtonElement>();
   private panels = new Map<PreviewWorkbenchPage, HTMLElement>();
   private activePage: PreviewWorkbenchPage | null = 'material';
+  /** 开合/切页变化回调（App 用于持久化） */
+  onChange: ((state: { open: boolean; page: PreviewWorkbenchPage | null }) => void) | null = null;
   // 画布优先：工作台默认收起，由 activate()/focusSunlight()/「预演」按钮按需呼出
   private open = false;
   private firstPerson = false;
@@ -32,12 +34,14 @@ export class PreviewWorkbench {
     this.activePage = page;
     this.syncActivePage();
     this.scrollContentToTop();
+    this.emitChange();
   }
 
   private toggle(page: PreviewWorkbenchPage): void {
     this.activePage = this.activePage === page ? null : page;
     this.syncActivePage();
     this.scrollContentToTop();
+    this.emitChange();
   }
 
   private syncActivePage(): void {
@@ -63,6 +67,11 @@ export class PreviewWorkbench {
     document.body.classList.toggle('workbench-closed', !open);
     this.root.setAttribute('aria-hidden', String(!open));
     if (resize) this.requestResize();
+    this.emitChange();
+  }
+
+  private emitChange(): void {
+    this.onChange?.({ open: this.open, page: this.activePage });
   }
 
   setFirstPerson(active: boolean): void {

@@ -30,7 +30,7 @@ describe('ElementStateButton', () => {
   it('is disabled while loading and unavailable; reflects active once ready', () => {
     const harness = setup();
     expect(harness.el().disabled).toBe(true);
-    expect(harness.el().textContent).toBe('工程状态：加载中');
+    expect(harness.el().textContent).toBe('工程状态');
     harness.setState('unavailable');
     expect(harness.el().disabled).toBe(true);
     expect(harness.el().textContent).toBe('工程状态：不可用');

@@ -15,7 +15,7 @@ describe('HvacCoordinationButton', () => {
     const btn = new HvacCoordinationButton({ onToggle: () => {}, getState: () => state, getActive: () => false });
     const el = document.getElementById('hvac-coordination-btn') as HTMLButtonElement;
     expect(el.disabled).toBe(true);
-    expect(el.textContent).toBe('加载中');
+    expect(el.textContent).toBe('空调设备');
 
     state = 'unimplemented';
     btn.sync();
@@ -33,13 +33,13 @@ describe('HvacCoordinationButton', () => {
     });
     const el = document.getElementById('hvac-coordination-btn') as HTMLButtonElement;
     expect(el.disabled).toBe(false);
-    expect(el.textContent).toBe('HVAC');
+    expect(el.textContent).toBe('空调设备');
     el.click();
     expect(toggled).toBe(true);
 
     active = true;
     btn.sync();
-    expect(el.textContent).toBe('HVAC · 路线');
+    expect(el.textContent).toBe('空调设备 · 显示中');
     expect(el.classList.contains('active')).toBe(true);
   });
 

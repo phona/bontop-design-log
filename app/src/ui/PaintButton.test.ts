@@ -15,12 +15,12 @@ describe('PaintButton', () => {
     const btn = new PaintButton({ onToggle: () => {}, getState: () => state, getActive: () => false });
     const el = document.getElementById('paint-btn') as HTMLButtonElement;
     expect(el.disabled).toBe(true);
-    expect(el.textContent).toBe('涂漆区：加载中');
+    expect(el.textContent).toBe('涂漆');
 
     state = 'ready';
     btn.sync();
     expect(el.disabled).toBe(false);
-    expect(el.textContent).toBe('涂漆区');
+    expect(el.textContent).toBe('涂漆');
   });
 
   it('ready 时点击触发切换，并反映 active 状态', () => {
@@ -33,18 +33,18 @@ describe('PaintButton', () => {
     });
     const el = document.getElementById('paint-btn') as HTMLButtonElement;
     expect(el.disabled).toBe(false);
-    expect(el.textContent).toBe('涂漆区');
+    expect(el.textContent).toBe('涂漆');
     el.click();
     expect(toggled).toBe(true);
 
     active = true;
     btn.sync();
-    expect(el.textContent).toBe('涂漆区 · 显示中');
+    expect(el.textContent).toBe('涂漆 · 显示中');
     expect(el.classList.contains('active')).toBe(true);
 
     active = false;
     btn.sync();
-    expect(el.textContent).toBe('涂漆区');
+    expect(el.textContent).toBe('涂漆');
     expect(el.classList.contains('active')).toBe(false);
   });
 
@@ -53,7 +53,7 @@ describe('PaintButton', () => {
     const el = document.getElementById('paint-btn') as HTMLButtonElement;
     expect(el.disabled).toBe(true);
     expect(el.classList.contains('active')).toBe(false);
-    expect(el.textContent).toBe('涂漆区：加载中');
+    expect(el.textContent).toBe('涂漆');
   });
 
   it('缺少 DOM 元素抛错', () => {

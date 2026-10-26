@@ -10,7 +10,8 @@ describe('keybindings', () => {
 
   it('covers every mode/view shortcut the App keydown handler dispatches', () => {
     // 展示表与处理器漂移曾漏掉 KeyT（俯视）；这里钉死处理器实际分发的全部 code。
-    const dispatched = ['KeyV', 'KeyM', 'KeyT', 'KeyW', 'KeyP', 'KeyL', 'KeyC', 'KeyG', 'KeyB', 'KeyE', 'Delete', 'Tab', 'Slash',
+    // KeyW 不再是用户快捷键（透视改 KeyX；W 专属第一人称前进，由 FP 控制器自理）
+    const dispatched = ['KeyV', 'KeyM', 'KeyT', 'KeyX', 'KeyP', 'KeyL', 'KeyC', 'KeyG', 'KeyB', 'KeyE', 'Delete', 'Tab', 'Slash',
       'Digit0', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'BracketLeft', 'BracketRight'];
     for (const code of dispatched) {
       expect(KEY_BINDINGS.some((b) => b.code === code), `missing binding for ${code}`).toBe(true);

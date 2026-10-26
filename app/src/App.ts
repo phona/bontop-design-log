@@ -22,6 +22,7 @@ import { SurfaceManager } from './ui/SurfaceManager.js';
 import { MobileTabBar } from './ui/MobileTabBar.js';
 import { isMobileChrome, readCapabilities, subscribeCapabilities, type InputCapabilities } from './ui/input-capability.js';
 import { VirtualJoystick } from './scene/VirtualJoystick.js';
+import { readViewState, writeViewState } from './ui/view-state-store.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
 import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
@@ -172,6 +173,7 @@ export class App {
   private alertsPopover: Popover | null = null;
   private settingsPopover: Popover | null = null;
   private layerComboSuppressed = false;
+  private pendingComboRestore: LayerKey[] | null = null;
   private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private readonly hvacCoordinationApi = (visible: boolean) => this.setHvacCoordinationVisible(Boolean(visible));
   private readonly materialTextureErrorHandler = (event: Event) => {
@@ -351,9 +353,11 @@ export class App {
     this.setupHumidity();
     this.setupGlassFidelity();
     this.setupCommandRegistry();
+    this.restorePersistedViewState();
     this.updateModeIndicator();
     this.requestRender();
     this.readyState = 'ready';
+    this.syncDataReadyChip();
     // 贴砖检视态不依赖 HVAC projection 的就绪时序，只等场景本身加载完成即可用。
     this.setWallTileState('ready');
     // 涂漆检视态同理：只依赖 overlay.yaml 的 paint_region 声明随场景一起建好。
@@ -370,6 +374,7 @@ export class App {
     this.resolveReady();
     } catch (error) {
       this.readyState = 'failed';
+      this.syncDataReadyChip();
       this.rejectReady(error);
       throw error;
     }
@@ -1004,7 +1009,7 @@ export class App {
     btn.id = 'element-state-btn';
     btn.title = '构件工程状态高亮：按 /api/element-state 给每个构件上「确认了吗 / 卡在谁 / 和谁冲突」的状态色（电气/给排水为合批渲染，以状态标记层显示）；显示层，权威状态见 npm run state:project';
     btn.disabled = true;
-    btn.textContent = '工程状态：加载中';
+    btn.textContent = '工程状态';
     const anchor = document.getElementById('ceiling-zone-btn');
     if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(btn, anchor.nextSibling);
     else document.getElementById('layers-panel')?.appendChild(btn);
@@ -1112,6 +1117,50 @@ export class App {
    * 四处全部从这里渲染。run 一律委托上面的命令处理器，不重写业务逻辑；
    * 检视层的 available/getActive 与图层抽屉共用 buildLayerDescriptors() 谓词。
    */
+  /** 刷新恢复：工作台开合与活跃页（瞬态不恢复——那些默认就是收起的）。 */
+  private restorePersistedViewState(): void {
+    const persisted = readViewState();
+    this.previewWorkbench.onChange = (state) => writeViewState({
+      workbenchOpen: state.open,
+      workbenchPage: state.page,
+    });
+    if (persisted.workbenchOpen) {
+      this.previewWorkbench.setOpen(true, false);
+      if (persisted.workbenchPage) this.previewWorkbench.activate(persisted.workbenchPage, false);
+    }
+    // 检视层组合：存档存在则启动自动恢复（替代手动点「上次组合」）
+    const combo = this.layersPanel?.getSavedCombo() ?? [];
+    if (combo.length > 0) {
+      this.pendingComboRestore = combo;
+      this.tryLayerComboRestore();
+    }
+  }
+
+  /** 存档里的层全部就绪后才应用；未就绪则等 syncLayersSummary 再试。 */
+  private tryLayerComboRestore(): void {
+    const combo = this.pendingComboRestore;
+    if (!combo) return;
+    const descriptors = this.buildLayerDescriptors();
+    const notReady = combo.filter((key) => {
+      const d = descriptors.find((x) => x.key === key);
+      return d ? !d.isReady() : false;
+    });
+    if (notReady.length > 0) return;
+    this.pendingComboRestore = null;
+    this.applyLayerCombo(combo);
+  }
+
+  /** 全局就绪指示：替代原先散落在按钮文案里的「：加载中」。 */
+  private syncDataReadyChip(): void {
+    const chip = document.getElementById('data-ready-chip');
+    if (!chip) return;
+    chip.hidden = this.readyState !== 'ready';
+    chip.textContent = this.readyState === 'ready' ? '数据就绪' : '';
+    chip.title = this.readyState === 'ready'
+      ? '户型与检视层数据已加载；未就绪的检视层按钮保持禁用'
+      : '';
+  }
+
   private setupCommandRegistry(): void {
     const layerOf = (key: LayerKey) => this.buildLayerDescriptors().find((l) => l.key === key)!;
     const layerCommand = (key: LayerKey, label: string, engineeringNote: string, digit: string): Command => {
@@ -1240,7 +1289,7 @@ export class App {
         label: '透视图',
         engineeringNote: 'X-ray 透视（轨道模式）',
         category: '工具',
-        shortcut: { code: 'KeyW' },
+        shortcut: { code: 'KeyX' },
         available: () => this.houseScene.mode === 'orbit',
         unavailableReason: '仅轨道模式可用',
         run: () => this.toggleSeeThroughView(),
@@ -1524,6 +1573,7 @@ export class App {
   private syncLayersSummary(persist = false): void {
     // 全关/恢复组合期间抑制持久化：清空不是一次"手动组合"，不应覆盖「上次组合」存档
     this.layersPanel?.sync(persist && !this.layerComboSuppressed);
+    this.tryLayerComboRestore();
   }
 
   /** 顶栏 ⚠ 徽章：聚合 MEP lint 与电气回路 lint 的告警计数（口径不同，明细在面板里分列）。 */
@@ -1651,7 +1701,7 @@ export class App {
     if (controls) controls.hidden = !this.mepCoordinationVisible;
     const button = document.getElementById('mep-coordination-btn') as HTMLButtonElement | null;
     button?.classList.toggle('active', this.mepCoordinationVisible);
-    if (button) this.setButtonLabel(button, this.mepCoordinationVisible ? 'MEP · 路线' : 'MEP 协调');
+    if (button) this.setButtonLabel(button, this.mepCoordinationVisible ? '水电走向 · 显示中' : '水电走向');
     this.syncLayersSummary(true);
     this.requestRender();
   }
@@ -1683,8 +1733,8 @@ export class App {
     const effectivelyVisible = ready && (this.electricalTopologyVisible || this.mepOverviewVisible);
     button.classList.toggle('active', effectivelyVisible);
     this.setButtonLabel(button, !ready
-      ? '电气回路归属：未就绪'
-      : effectivelyVisible ? '电气回路归属 · 开' : '电气回路归属');
+      ? '电路归属：未就绪'
+      : effectivelyVisible ? '电路归属 · 开' : '电路归属');
     if (!ready) {
       const badge = document.getElementById('electrical-topology-badge');
       if (badge) badge.hidden = true;
@@ -1772,7 +1822,7 @@ export class App {
     const mepLintBadge = document.getElementById('mep-lint-badge');
     if (mepLintBadge) renderMepLintBadge(mepLintBadge, this.mepLintResult);
     button.disabled = !ready;
-    this.setButtonLabel(button, ready ? 'MEP 协调' : 'MEP 未就绪');
+    this.setButtonLabel(button, ready ? '水电走向' : '水电走向 · 未就绪');
     button.classList.toggle('active', this.mepCoordinationVisible);
     this.syncLayersSummary();
     this.syncAlertsSummary();
@@ -1980,9 +2030,12 @@ export class App {
         return;
       }
 
-      if (shouldToggleInteriorLights(e.code, e.repeat) && this.interiorLighting) {
+      // L 只负责灯（2026-10-26 去陷阱：旧行为在灯未就绪时变成测量，一个键两种
+      // 含义）。测量改走命令面板/工具栏入口，不再占快捷键。
+      if (shouldToggleInteriorLights(e.code, e.repeat)) {
         e.preventDefault();
-        this.toggleInteriorLights();
+        if (this.interiorLighting) this.toggleInteriorLights();
+        else this.showToast('室内灯光配置不可用');
         return;
       }
 
@@ -2029,12 +2082,6 @@ export class App {
       if (e.code === 'KeyP' && !e.repeat) {
         e.preventDefault();
         this.toggleAnnotations();
-        return;
-      }
-
-      if (e.code === 'KeyL' && !e.repeat) {
-        e.preventDefault();
-        this.toggleMeasurementTool();
         return;
       }
 

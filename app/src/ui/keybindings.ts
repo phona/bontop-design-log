@@ -24,9 +24,9 @@ export const KEY_BINDINGS: KeyBinding[] = [
   { key: 'Delete', code: 'Delete', description: '删除选中点位', category: '编辑', mode: 'first-person' },
 
   // 工具
-  { key: 'W', code: 'KeyW', description: '透视图（X-ray）', category: '工具', mode: 'orbit' },
+  { key: 'X', code: 'KeyX', description: '透视图（X-ray）', category: '工具', mode: 'orbit' },
   { key: 'P', code: 'KeyP', description: '开关标注标签', category: '工具', mode: 'all' },
-  { key: 'L', code: 'KeyL', description: '室内灯光开关；灯光未就绪时切换测量', category: '工具', mode: 'all' },
+  { key: 'L', code: 'KeyL', description: '室内灯光开关', category: '工具', mode: 'all' },
   { key: 'C', code: 'KeyC', description: '循环全屋窗帘状态', category: '工具', mode: 'all' },
   // 图层抽屉（轨道模式，行序即数字键；详见图层抽屉各行）
   { key: '1', code: 'Digit1', description: '开/关 机电总览', category: '工具', mode: 'orbit' },

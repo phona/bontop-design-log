@@ -55,4 +55,4 @@
 - HouseScene 保留展开/收拢几何变体，按 `open / privacy / blackout` 切换；`open` 完全隐藏。GLB 只导出当前可见 active-only 节点，gathered 使用唯一 `:left/:right` 名称。
 - render bundle 冻结 projection 与源输入 hash，并严格校验 GLB 节点；Blender 不补窗帘、不猜状态、不接受普通 scenario 改开合，只按 layer/variant 赋材。`bare_shell` 可显式隐藏全部窗帘但不改变 canonical state。
 - `CurtainTopic`（id=curtain）选材切换：curtain_01 手动版 / curtain_02 电动版；开合状态独立持久化，不进入材料预算。
-- 快捷键 **C**：循环全屋 `open → privacy → blackout → open`。
+- 快捷键 **C**：循环全屋 `open → privacy → blackout → open`；命令面板（`?`）搜「全屋窗帘」或顶栏/底部入口同样可达（2026-10-26 控制面重构后快捷键不再是唯一入口）。

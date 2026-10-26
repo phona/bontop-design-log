@@ -939,6 +939,30 @@ body.workbench-closed #workbench-reopen { display: block; }
   pointer-events: none;
 }
 
+/* 全局就绪指示（控制面重构：替代按钮文案里的「：加载中」） */
+#data-ready-chip {
+  position: fixed;
+  top: 44px;
+  right: 16px;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  color: #86efac;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  z-index: 90;
+  pointer-events: none;
+}
+
+#data-ready-chip[hidden] {
+  display: none;
+}
+
+body.mobile-chrome #data-ready-chip {
+  top: 36px;
+  right: 8px;
+}
+
 #phase-indicator {
   position: fixed;
   bottom: 16px;

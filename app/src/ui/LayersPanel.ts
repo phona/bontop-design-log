@@ -91,6 +91,11 @@ export class LayersPanel {
     return this.popover.isOpen();
   }
 
+  /** 已存档的上次组合（启动自动恢复用；无存档返回空数组）。 */
+  getSavedCombo(): LayerKey[] {
+    return readSavedCombo();
+  }
+
   open(): void {
     this.popover.openPanel();
   }

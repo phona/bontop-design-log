@@ -387,7 +387,7 @@ describe('App', () => {
     expect(update).toHaveBeenCalledWith('privacy', undefined, '1');
   });
 
-  it('keeps the measurement L shortcut working when render projection is unavailable', async () => {
+  it('L only toggles lights; toasts (not measurement fallback) when projection is unavailable', async () => {
     vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
       if (urlStr.includes('/api/project')) return { ok: true, json: async () => mockProjectData } as Response;
@@ -408,7 +408,8 @@ describe('App', () => {
 
     keydown({ code: 'KeyL', repeat: false, preventDefault: vi.fn() });
 
-    expect(toggleMeasurement).toHaveBeenCalledOnce();
+    // 2026-10-26 去陷阱：L 只管灯；灯不可用时只 toast，不再顺手切换测量
+    expect(toggleMeasurement).not.toHaveBeenCalled();
     expect(toast).toHaveBeenCalledWith(expect.stringContaining('室内灯光配置不可用'));
   });
 
