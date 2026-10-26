@@ -37,7 +37,10 @@ describe('Popover', () => {
     expect(popover.isOpen()).toBe(false);
   });
 
-  it('粘性面板：点击面板外部（含场景/其它 UI）不收起', () => {
+  it('Popover 自身不监听外部点击；即收语义由 SurfaceManager.dismissTransient 负责', () => {
+    // 2026-10-26 控制面重构：旧的“粘性”默认（点场景不收起）已废除。
+    // Popover 退化为纯开合组件，画布单击清场/钉住豁免统一由 SurfaceManager 编排，
+    // 见 SurfaceManager.test.ts 的同源断言。
     const popover = new Popover('pop-btn', 'pop-panel');
     popover.openPanel();
     document.body.click();

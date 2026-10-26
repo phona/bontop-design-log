@@ -66,11 +66,12 @@ export class LayersPanel {
     onClearAll: () => void;
     onApplyCombo: (keys: LayerKey[]) => void;
     group?: string;
+    onToggle?: () => void;
   }) {
     this.layers = opts.layers;
     this.onClearAll = opts.onClearAll;
     this.onApplyCombo = opts.onApplyCombo;
-    this.popover = new Popover('layers-toggle-btn', 'layers-panel', { group: opts.group });
+    this.popover = new Popover('layers-toggle-btn', 'layers-panel', { group: opts.group, onToggle: opts.onToggle });
     this.countEl = document.getElementById('layers-active-count');
     this.comboBtn = document.getElementById('layers-last-combo-btn') as HTMLButtonElement | null;
     document.getElementById('layers-clear-btn')?.addEventListener('click', () => {
@@ -88,6 +89,10 @@ export class LayersPanel {
 
   isOpen(): boolean {
     return this.popover.isOpen();
+  }
+
+  open(): void {
+    this.popover.openPanel();
   }
 
   close(): void {

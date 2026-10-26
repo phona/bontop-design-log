@@ -18,6 +18,7 @@ import { AnalysisTools } from './render/analysis/AnalysisTools.js';
 import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
 import { CommandRegistry, type Command } from './ui/CommandRegistry.js';
+import { SurfaceManager } from './ui/SurfaceManager.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
 import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
@@ -134,6 +135,7 @@ export class App {
   private annotationRenderer?: AnnotationRenderer;
   private annotationGroupVisible = true;
   private commandRegistry = new CommandRegistry();
+  private surfaceManager = new SurfaceManager();
   private commandPalette = new CommandPalette();
   private furniturePanel = new FurniturePanel();
   private furniturePlaceMode: { type: string } | null = null;
@@ -243,6 +245,7 @@ export class App {
     this.setupElementStateButton();
     this.setupLayersPanel();
     this.setupToolbarPopovers();
+    this.setupSurfaces();
     const mepLintBadge = document.getElementById('mep-lint-badge');
     if (mepLintBadge) renderMepLintBadge(mepLintBadge, this.mepLintResult);
     this.setupDragHandlers();
@@ -1090,6 +1093,7 @@ export class App {
       onClearAll: () => this.clearAllLayers(),
       onApplyCombo: (keys) => this.applyLayerCombo(keys),
       group: 'toolbar',
+      onToggle: () => this.surfaceManager.toggle('layers'),
     });
     this.layersPanel.sync();
   }
@@ -1310,10 +1314,126 @@ export class App {
     }) as EventListener);
   }
 
+  /**
+   * 控制面注册：一次只开一个、点画布即收、可钉住、Esc 一键清场。
+   * 只编排开合——各面板的 open/close/isOpen 由既有组件提供，element id 与
+   * body class 契约不变。命令面板/家具/点位面板用自建容器（固定 id）。
+   */
+  private setupSurfaces(): void {
+    this.surfaceManager.registerAll([
+      {
+        id: 'scheme',
+        slot: 'left-drawer',
+        el: document.getElementById('scheme-panel'),
+        toggleEl: document.getElementById('scheme-panel-toggle'),
+        open: () => this.schemePanel.setPanelOpen(true),
+        close: () => this.schemePanel.setPanelOpen(false),
+        isOpen: () => this.schemePanel.isPanelOpen(),
+      },
+      {
+        id: 'workbench',
+        slot: 'right-dock',
+        el: document.getElementById('right-panel-stack'),
+        toggleEl: document.getElementById('workbench-reopen'),
+        open: () => this.previewWorkbench.setOpen(true),
+        close: () => this.previewWorkbench.setOpen(false),
+        isOpen: () => this.previewWorkbench.isOpen(),
+      },
+      {
+        id: 'overview',
+        slot: 'modal',
+        el: document.getElementById('overview-menu'),
+        open: () => this.overviewMenu.show(),
+        close: () => this.overviewMenu.hide(),
+        isOpen: () => this.overviewMenu.isVisible(),
+      },
+      {
+        id: 'layers',
+        slot: 'popover',
+        el: document.getElementById('layers-panel'),
+        toggleEl: document.getElementById('layers-toggle-btn'),
+        open: () => this.layersPanel?.open(),
+        close: () => this.layersPanel?.close(),
+        isOpen: () => this.layersPanel?.isOpen() ?? false,
+      },
+      {
+        id: 'env',
+        slot: 'popover',
+        el: document.getElementById('env-panel'),
+        toggleEl: document.getElementById('env-toggle-btn'),
+        open: () => this.envPopover?.openPanel(),
+        close: () => this.envPopover?.close(),
+        isOpen: () => this.envPopover?.isOpen() ?? false,
+      },
+      {
+        id: 'alerts',
+        slot: 'popover',
+        el: document.getElementById('alerts-panel'),
+        toggleEl: document.getElementById('alerts-toggle-btn'),
+        open: () => this.alertsPopover?.openPanel(),
+        close: () => this.alertsPopover?.close(),
+        isOpen: () => this.alertsPopover?.isOpen() ?? false,
+      },
+      {
+        id: 'settings',
+        slot: 'popover',
+        el: document.getElementById('settings-panel'),
+        toggleEl: document.getElementById('settings-toggle-btn'),
+        open: () => this.settingsPopover?.openPanel(),
+        close: () => this.settingsPopover?.close(),
+        isOpen: () => this.settingsPopover?.isOpen() ?? false,
+      },
+      {
+        id: 'palette',
+        slot: 'modal',
+        el: document.getElementById('command-palette'),
+        open: () => this.commandPalette.show(),
+        close: () => this.commandPalette.hide(),
+        isOpen: () => this.commandPalette.isVisible(),
+      },
+      {
+        id: 'furniture',
+        slot: 'panel',
+        el: document.getElementById('furniture-panel'),
+        open: () => this.furniturePanel.show(),
+        close: () => this.furniturePanel.hide(),
+        isOpen: () => this.furniturePanel.isVisible(),
+      },
+      {
+        id: 'placement',
+        slot: 'panel',
+        el: document.getElementById('placement-panel'),
+        open: () => this.placementPanel.show(),
+        close: () => this.placementPanel.hide(),
+        isOpen: () => this.placementPanel.isVisible(),
+      },
+    ]);
+
+    // 钉住 / 收起按钮（index.html 各表面头部，data-surface-pin / data-surface-close）
+    document.querySelectorAll<HTMLButtonElement>('[data-surface-pin]').forEach((btn) => {
+      const id = btn.getAttribute('data-surface-pin')!;
+      btn.addEventListener('click', () => {
+        const pinned = !this.surfaceManager.isPinned(id);
+        this.surfaceManager.setPinned(id, pinned);
+        btn.classList.toggle('pinned', pinned);
+        btn.title = pinned ? '已钉住：点画布不收起（Esc 仍可收）' : '钉住：点画布不收起（Esc 仍可收）';
+      });
+    });
+    document.querySelectorAll<HTMLButtonElement>('[data-surface-close]').forEach((btn) => {
+      const id = btn.getAttribute('data-surface-close')!;
+      btn.addEventListener('click', () => this.surfaceManager.close(id));
+    });
+
+    // 画布单击（落在任何已注册表面及其开关之外）→ 即收；拖拽由 pointer 移动量判别留给画布
+    document.addEventListener('pointerdown', (e: PointerEvent) => {
+      this.surfaceManager.dismissTransient(e.target);
+    });
+  }
+
   private setupToolbarPopovers(): void {
-    this.envPopover = new Popover('env-toggle-btn', 'env-panel', { group: 'toolbar' });
-    this.alertsPopover = new Popover('alerts-toggle-btn', 'alerts-panel', { group: 'toolbar' });
-    this.settingsPopover = new Popover('settings-toggle-btn', 'settings-panel', { group: 'toolbar' });
+    this.envPopover = new Popover('env-toggle-btn', 'env-panel', { group: 'toolbar', onToggle: () => this.surfaceManager.toggle('env') });
+    this.alertsPopover = new Popover('alerts-toggle-btn', 'alerts-panel', { group: 'toolbar', onToggle: () => this.surfaceManager.toggle('alerts') });
+    this.settingsPopover = new Popover('settings-toggle-btn', 'settings-panel', { group: 'toolbar', onToggle: () => this.surfaceManager.toggle('settings') });
     document.getElementById('alert-row-mep')?.addEventListener('click', () => {
       this.setMepCoordinationLayerVisible(true);
     });
@@ -1400,17 +1520,6 @@ export class App {
       case 'paint': this.setPaintInspectionVisible(!this.paintVisible, announce); return;
       case 'ceiling_zone': this.setCeilingZoneHighlightVisible(!this.ceilingZoneVisible, announce); return;
     }
-  }
-
-  private dismissToolbarPopovers(): boolean {
-    let closed = false;
-    for (const popover of [this.layersPanel, this.envPopover, this.alertsPopover, this.settingsPopover]) {
-      if (popover?.isOpen()) {
-        popover.close();
-        closed = true;
-      }
-    }
-    return closed;
   }
 
   private setupMepCoordinationButton(): void {
@@ -1765,11 +1874,9 @@ export class App {
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
       // ── Special cases that need extra logic ──
       if (e.code === 'Escape') {
-        if (this.dismissToolbarPopovers()) return;
-        if (this.overviewMenu.isVisible()) { this.overviewMenu.hide(); return; }
-        if (this.commandPalette.isVisible()) { this.commandPalette.hide(); return; }
-        if (this.placementPanel.isVisible()) { this.placementPanel.hide(); return; }
-        if (this.furniturePanel.isVisible()) { this.furniturePanel.hide(); return; }
+        // 控制面重构：表面开合全部走 SurfaceManager 一键清场（含钉住表面）；
+        // 非表面动作（退出放置/拖拽模式）接力在后
+        if (this.surfaceManager.dismissAll()) return;
         if (this.furniturePlaceMode) { this.exitFurniturePlaceMode(); return; }
         if (this.infrastructurePlaceMode) { this.exitInfrastructurePlaceMode(); return; }
         if (this.fpController.isDragMode()) { this.fpController.exitDragMode(); this.houseScene.hideGhost(); return; }

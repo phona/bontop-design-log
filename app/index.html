@@ -13,7 +13,10 @@
     <div id="scheme-panel" class="panel">
       <div class="panel-heading">
         <h3>方案</h3>
-        <button id="scheme-panel-toggle" class="panel-collapse-toggle" type="button" aria-controls="scheme-panel-content" aria-expanded="false" aria-label="方案面板折叠" title="展开">+</button>
+        <span class="panel-heading-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="scheme" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button id="scheme-panel-toggle" class="panel-collapse-toggle" type="button" aria-controls="scheme-panel-content" aria-expanded="false" aria-label="方案面板折叠" title="展开">+</button>
+        </span>
       </div>
       <div id="scheme-panel-content">
         <div id="topic-tabs"></div>
@@ -30,7 +33,10 @@
     <aside id="right-panel-stack" aria-label="预演与对象工作台">
       <div class="workbench-header">
         <strong>预演工作台</strong>
-        <button class="panel-collapse-toggle" type="button" data-workbench-close aria-label="收起预演工作台" title="收起工作台">−</button>
+        <span class="panel-heading-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="workbench" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="panel-collapse-toggle" type="button" data-workbench-close aria-label="收起预演工作台" title="收起工作台">−</button>
+        </span>
       </div>
       <div class="workbench-accordion" role="group" aria-label="工作台折叠区">
         <button type="button" class="workbench-accordion-header" data-workbench-toggle="object" aria-controls="workbench-page-object" aria-expanded="false">对象信息</button>
@@ -141,6 +147,13 @@
     </div>
 
     <div id="layers-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>检视层</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="layers" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="layers" title="收起">×</button>
+        </span>
+      </div>
       <div class="layers-actions">
         <button id="layers-last-combo-btn" type="button" title="恢复上一次使用的图层组合（不自动应用，刷新后默认全关）">上次组合</button>
         <button id="layers-clear-btn" type="button" title="关闭全部检视层（0）">全关</button>
@@ -179,11 +192,25 @@
     </div>
 
     <div id="env-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>环境</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="env" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="env" title="收起">×</button>
+        </span>
+      </div>
       <button id="sunlight-btn" title="日照模拟 开/关（开启后可调日期时刻、播放与热力图）">日照</button>
       <button id="humidity-btn" title="湿度风险">湿度</button>
     </div>
 
     <div id="alerts-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>问题提醒</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="alerts" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="alerts" title="收起">×</button>
+        </span>
+      </div>
       <div class="alert-row" id="alert-row-mep" title="点击打开 MEP 协调图层">
         <span>MEP 协调 lint</span>
         <span id="alert-mep-detail" class="alert-detail">未就绪</span>
@@ -196,6 +223,13 @@
     </div>
 
     <div id="settings-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>渲染设置</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="settings" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="settings" title="收起">×</button>
+        </span>
+      </div>
       <button id="glass-fidelity-btn" title="高保真玻璃 开/关（开启 transmission 折射更通透，但 draw call 翻倍、帧率减半；默认关闭保帧率）">玻璃质感</button>
       <div class="layers-note">玻璃质感走全场景二次渲染，只在导出/取证时临时开启。</div>
     </div>
