@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>和萃户型 - 3D 装修设计</title>
   <link rel="stylesheet" href="./style.css">
 </head>
@@ -136,15 +136,32 @@
     <div id="mode-indicator">轨道模式 · 按 V 切换第一人称 · 按 T 俯视</div>
     <div id="toolbar">
       <div class="toolbar-group" role="group" aria-label="视角">
-        <button id="topdown-btn" title="切换俯视/3D (T)">俯视</button>
+        <button id="view-toggle-btn" aria-controls="view-panel" aria-expanded="false" title="视角：轨道 / 俯视 / 第一人称">视角</button>
       </div>
-      <div class="toolbar-group" role="group" aria-label="图层与工具">
+      <div class="toolbar-group" role="group" aria-label="控制面">
+        <button id="scheme-toggle-btn" aria-controls="scheme-panel" aria-expanded="false" title="方案：主题 / 选项 / 导出">方案</button>
         <button id="layers-toggle-btn" aria-controls="layers-panel" aria-expanded="false" title="图层与检视层（轨道模式数字键 1-7 开关，0 全关）">图层<span id="layers-active-count" class="toolbar-count" hidden></span></button>
         <button id="env-toggle-btn" aria-controls="env-panel" aria-expanded="false" title="日照 / 湿度模拟">环境</button>
+        <button id="overview-toggle-btn" aria-controls="overview-menu" aria-expanded="false" title="总览菜单（M）">总览</button>
         <button id="alerts-toggle-btn" aria-controls="alerts-panel" aria-expanded="false" title="检视层问题汇总（MEP lint + 电气回路）" hidden>⚠<span id="alerts-count" class="toolbar-count"></span></button>
         <button id="settings-toggle-btn" aria-controls="settings-panel" aria-expanded="false" title="渲染设置">⚙</button>
       </div>
     </div>
+
+    <div id="view-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>视角</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="view" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="view" title="收起">×</button>
+        </span>
+      </div>
+      <button class="view-opt" id="view-orbit-btn" title="轨道模式：拖拽旋转 / 滚轮缩放">轨道模式</button>
+      <button class="view-opt" id="view-fp-btn" title="第一人称：WASD 行走（V）">第一人称</button>
+      <div class="view-opt-row"><button id="topdown-btn" title="切换俯视/3D (T)">俯视</button></div>
+    </div>
+
+    <nav id="mobile-tabbar" aria-label="移动端入口" hidden></nav>
 
     <div id="layers-panel" class="toolbar-popover" hidden>
       <div class="popover-head">

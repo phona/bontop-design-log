@@ -201,6 +201,7 @@ const mockDocument = {
   createElement: vi.fn((tag: string) => ({
     tagName: tag,
     className: '',
+    dataset: {},
     classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() },
     style: {},
     innerHTML: '',

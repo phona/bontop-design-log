@@ -28,12 +28,23 @@ export class SchemePanel {
     const getElementById = document.getElementById?.bind(document);
     const toggle = getElementById?.('scheme-panel-toggle') as HTMLButtonElement | null;
     const content = getElementById?.('scheme-panel-content');
-    if (toggle && content) this.collapseController = setupCollapsiblePanel(toggle, content, true);
+    if (toggle && content) {
+      this.collapseController = setupCollapsiblePanel(toggle, content, true);
+      // 抽屉滑入由 body.scheme-open 驱动（CSS）；内部折叠即关抽屉
+      toggle.addEventListener('click', () => this.syncDrawerClass());
+    }
   }
 
-  /** SurfaceManager 接线用：程序化展开/收起方案面板。 */
+  private syncDrawerClass(): void {
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('scheme-open', this.isPanelOpen());
+    }
+  }
+
+  /** SurfaceManager 接线用：程序化展开/收起方案面板（= 开/关左抽屉）。 */
   setPanelOpen(open: boolean): void {
     this.collapseController?.setCollapsed(!open);
+    this.syncDrawerClass();
   }
 
   isPanelOpen(): boolean {

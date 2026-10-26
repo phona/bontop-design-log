@@ -19,6 +19,8 @@ import { AnnotationRenderer } from './render/annotations/AnnotationRenderer.js';
 import { CommandPalette } from './ui/CommandPalette.js';
 import { CommandRegistry, type Command } from './ui/CommandRegistry.js';
 import { SurfaceManager } from './ui/SurfaceManager.js';
+import { MobileTabBar } from './ui/MobileTabBar.js';
+import { isMobileChrome, readCapabilities, subscribeCapabilities, type InputCapabilities } from './ui/input-capability.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
 import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
@@ -137,6 +139,10 @@ export class App {
   private commandRegistry = new CommandRegistry();
   private surfaceManager = new SurfaceManager();
   private commandPalette = new CommandPalette();
+  private mobileTabBar: MobileTabBar | null = null;
+  private viewPopover: Popover | null = null;
+  private unsubscribeCapabilities: (() => void) | null = null;
+  private capabilities: InputCapabilities = { touchPrimary: false, narrowViewport: false };
   private furniturePanel = new FurniturePanel();
   private furniturePlaceMode: { type: string } | null = null;
   private placementPanel = new PlacementPanel();
@@ -1320,12 +1326,25 @@ export class App {
    * body class 契约不变。命令面板/家具/点位面板用自建容器（固定 id）。
    */
   private setupSurfaces(): void {
+    this.viewPopover = new Popover('view-toggle-btn', 'view-panel', { group: 'toolbar', onToggle: () => this.surfaceManager.toggle('view') });
+    document.getElementById('view-orbit-btn')?.addEventListener('click', () => {
+      if (this.houseScene.isTopDown()) this.toggleTopDownView();
+      else if (this.houseScene.mode !== 'orbit') this.toggleMode();
+      this.surfaceManager.close('view');
+      this.syncViewPanelOptions();
+    });
+    document.getElementById('view-fp-btn')?.addEventListener('click', () => {
+      if (this.houseScene.mode !== 'first-person') this.toggleMode();
+      this.surfaceManager.close('view');
+      this.syncViewPanelOptions();
+    });
+
     this.surfaceManager.registerAll([
       {
         id: 'scheme',
         slot: 'left-drawer',
         el: document.getElementById('scheme-panel'),
-        toggleEl: document.getElementById('scheme-panel-toggle'),
+        toggleEl: document.getElementById('scheme-toggle-btn'),
         open: () => this.schemePanel.setPanelOpen(true),
         close: () => this.schemePanel.setPanelOpen(false),
         isOpen: () => this.schemePanel.isPanelOpen(),
@@ -1343,9 +1362,19 @@ export class App {
         id: 'overview',
         slot: 'modal',
         el: document.getElementById('overview-menu'),
-        open: () => this.overviewMenu.show(),
+        toggleEl: document.getElementById('overview-toggle-btn'),
+        open: () => { void this.refreshOverviewData(); this.overviewMenu.show(); },
         close: () => this.overviewMenu.hide(),
         isOpen: () => this.overviewMenu.isVisible(),
+      },
+      {
+        id: 'view',
+        slot: 'popover',
+        el: document.getElementById('view-panel'),
+        toggleEl: document.getElementById('view-toggle-btn'),
+        open: () => { this.viewPopover?.openPanel(); this.syncViewPanelOptions(); },
+        close: () => this.viewPopover?.close(),
+        isOpen: () => this.viewPopover?.isOpen() ?? false,
       },
       {
         id: 'layers',
@@ -1428,6 +1457,38 @@ export class App {
     document.addEventListener('pointerdown', (e: PointerEvent) => {
       this.surfaceManager.dismissTransient(e.target);
     });
+
+    // 移动端 tab bar：与桌面顶栏同一套 surface id，入口两端共用
+    const tabBarRoot = document.getElementById('mobile-tabbar');
+    if (tabBarRoot) {
+      this.mobileTabBar = new MobileTabBar({
+        root: tabBarRoot,
+        onSurface: (id) => {
+          this.surfaceManager.toggle(id);
+          this.mobileTabBar?.sync();
+        },
+        onPalette: () => this.commandPalette.show(),
+        isSurfaceOpen: (id) => this.surfaceManager.isOpen(id),
+        getAlertsCount: () => this.getAlertsTotal(),
+      });
+    }
+
+    // 输入能力 → body.mobile-chrome：CSS 与 JS 共用同一判定（触摸主输入或窄视口）
+    this.capabilities = readCapabilities();
+    this.applyCapabilities(this.capabilities);
+    this.unsubscribeCapabilities = subscribeCapabilities((caps) => {
+      this.capabilities = caps;
+      this.applyCapabilities(caps);
+    });
+  }
+
+  private applyCapabilities(caps: InputCapabilities): void {
+    const mobile = isMobileChrome(caps);
+    document.body.classList.toggle('mobile-chrome', mobile);
+    this.mobileTabBar?.setVisible(mobile);
+    this.mobileTabBar?.sync();
+    this.syncViewPanelOptions();
+    this.updateModeIndicator();
   }
 
   private setupToolbarPopovers(): void {
@@ -1449,6 +1510,12 @@ export class App {
   }
 
   /** 顶栏 ⚠ 徽章：聚合 MEP lint 与电气回路 lint 的告警计数（口径不同，明细在面板里分列）。 */
+  private getAlertsTotal(): number {
+    const mepCounts = this.mepLintResult?.counts;
+    const elecCounts = this.electricalTopology?.lint?.counts;
+    return (mepCounts?.errors ?? 0) + (mepCounts?.warnings ?? 0) + (elecCounts?.warnings ?? 0);
+  }
+
   private syncAlertsSummary(): void {
     const mepCounts = this.mepLintResult?.counts;
     const elecCounts = this.electricalTopology?.lint?.counts;
@@ -1478,6 +1545,13 @@ export class App {
         ? `${elecCounts.circuits} 条回路 · ⚠ ${elecWarnings} · 未覆盖 ${elecCounts.uncoveredPoints}`
         : '未就绪';
     }
+    this.mobileTabBar?.sync();
+  }
+
+  /** 视角面板选项的激活态（轨道/第一人称；俯视由 TopDownButton 自己同步）。 */
+  private syncViewPanelOptions(): void {
+    document.getElementById('view-orbit-btn')?.classList.toggle('on', this.houseScene.mode === 'orbit' && !this.houseScene.isTopDown());
+    document.getElementById('view-fp-btn')?.classList.toggle('on', this.houseScene.mode === 'first-person');
   }
 
   /** 全关：逐个调用平级 setter；未就绪的层由 setter 自身的 ready 钳制兜住。不覆盖「上次组合」存档。 */
@@ -2318,6 +2392,11 @@ export class App {
       this.applyScheme(scheme);
       this.infoPanel.setScheme(scheme);
       this.overviewMenu.setScheme(scheme);
+      // 画布优先后工作台默认收起：选材质/涂漆方案时呼出材质预演页，
+      // 否则预览面板更新在看不见的地方（对象信息/日照走各自的 activate 路径）
+      if (topicId === 'floor' || topicId === 'paint') {
+        this.previewWorkbench.activate('material');
+      }
     }
 
     const decisions = await this.stateSync.fetchDecisions();
@@ -2669,11 +2748,17 @@ export class App {
   private updateModeIndicator(): void {
     const measSuffix = this.analysisTools?.measurement.active ? ' · 📏 测量开启' : '';
     const seeThroughSuffix = this.analysisTools?.isSeeThrough() ? ' · 👁 透视' : '';
+    const mobile = isMobileChrome(this.capabilities);
     if (this.houseScene.mode === 'orbit') {
-      this.modeIndicator.textContent = `轨道模式 · 按 V 切换第一人称${measSuffix}${seeThroughSuffix}`;
+      this.modeIndicator.textContent = mobile
+        ? `轨道模式 · 拖拽旋转 · 双指缩放${measSuffix}${seeThroughSuffix}`
+        : `轨道模式 · 按 V 切换第一人称${measSuffix}${seeThroughSuffix}`;
     } else {
-      this.modeIndicator.textContent = `第一人称 · WASD 移动 · [ ] 灵敏度 · 按 V 切换轨道 · 按 M 总览${measSuffix}${seeThroughSuffix}`;
+      this.modeIndicator.textContent = mobile
+        ? `第一人称 · 拖拽转身 · 摇杆移动${measSuffix}${seeThroughSuffix}`
+        : `第一人称 · WASD 移动 · [ ] 灵敏度 · 按 V 切换轨道 · 按 M 总览${measSuffix}${seeThroughSuffix}`;
     }
+    this.syncViewPanelOptions();
   }
 
   private updateCrosshairStyle(): void {
@@ -2810,6 +2895,7 @@ export class App {
     this.fpController.dispose();
     this.lightingPreviewPanel?.destroy();
     this.materialPreviewPanel?.destroy();
+    this.unsubscribeCapabilities?.();
     window.removeEventListener('material-texture-error', this.materialTextureErrorHandler);
     this.houseScene.dispose();
     if ((window as Window & { setHvacCoordinationVisible?: unknown }).setHvacCoordinationVisible === this.hvacCoordinationApi) {
