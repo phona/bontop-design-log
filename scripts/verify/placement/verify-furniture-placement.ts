@@ -447,15 +447,15 @@ function main(): void {
   // 书房（study）：季节后台柜由客房东墙平移至北墙边吊下；d_study 门扇扫掠域禁入。
   const studyCabinet = placedIndex.get('study/study_seasonal_wardrobe_wall');
   const STUDY_DOOR_SWEEP: Aabb = { minX: 6.15, maxX: 7.05, minZ: 5.55, maxZ: 6.45 }; // d_study 北门扇扫掠域
-  const STUDY_NORTH_DROP_Z = 6.45; // 北墙边吊段（底 2.50m）：柜体 2.40m+顶封板 0.10m 抵吊底
+  // 2026-10-26 DEC-2026-10-26-R02 修正：删“南缘 ≤6.45”硬约束。原规则把“柜顶抵边吊底”（北段在边吊段 z[5.55,6.45] 内、底 2.50m 的设计意图）误作全柜硬约束；
+  // 事实是边吊段以南 z>6.45 恢复 2.80m 原顶（config/ceiling.yaml ceiling_corridor 注记：“走廊地面 z[6.45,7.8] 段恢复 2.80m 原顶”），
+  // 柜顶 2.50m（柜体 2.40m + 顶封板 0.10m）在原顶下留 0.30m 空隙，不撞吊底；南缘越出 6.45 本身不是碰撞，属非通顶柜正常形态。
+  // 本校验器为 2D（Aabb 无 Y），无法按柜顶标高 vs 实际吊底做高度判定，故不以南缘坐标代行高度检查；高度判定留待 3D 校验（见 DEC R02 遗留）。
   if (!studyCabinet) {
     errors.push('study: missing placed study_seasonal_wardrobe_wall (书房北墙季节后台柜，由客房平移)');
   } else {
     if (intersects(studyCabinet.box, STUDY_DOOR_SWEEP)) {
       errors.push(`${studyCabinet.label}: intersects d_study door sweep zone (6.15,5.55)→(7.05,6.45)`);
-    }
-    if (studyCabinet.box.maxZ > STUDY_NORTH_DROP_Z + GAP_EPS) {
-      errors.push(`${studyCabinet.label}: 南缘 z=${studyCabinet.box.maxZ.toFixed(3)} > ${STUDY_NORTH_DROP_Z.toFixed(2)}（越出北墙边吊段，柜顶将撞吊底）`);
     }
     if (studyCabinet.box.minZ < 5.55 - GAP_EPS) {
       errors.push(`${studyCabinet.label}: 北缘 z=${studyCabinet.box.minZ.toFixed(3)} < 5.55（越出房间北界）`);

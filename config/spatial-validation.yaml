@@ -163,6 +163,8 @@ junctions:
   - { id: blk_north_to_ent_west, type: t, walls: [w_blk_north, w_ent_west], x: 10.80, z: 2.72, reason: "2026-10-26 DEC-2026-10-26-R01：黑块北脸西端落厨房东墙（w_ent_west）中部" }
   - { id: blk_east_north_to_ent_south_w, type: t, walls: [w_blk_east_north, w_ent_south_w], x: 11.49, z: 3.00, reason: "2026-10-26 DEC-2026-10-26-R03：黑块东脸由 11.59 西缩至 11.49（避 d_ent 西铰链），本接点落入户南墙实墙段（x[10.80,11.54]），距门洞西 jamb 11.545 计 0.055m；块东脸量房终核" }
   - { id: blk_east_south_to_ent_south_w, type: t, walls: [w_blk_east_south, w_ent_south_w], x: 11.49, z: 3.00, reason: "2026-10-26 DEC-2026-10-26-R03：黑块东脸由 11.59 西缩至 11.49（避 d_ent 西铰链），本接点落入户南墙实墙段（x[10.80,11.54]），距门洞西 jamb 11.545 计 0.055m；块东脸量房终核" }
+  - { id: pier_north_to_mb_east, type: t, walls: [w_pier_north, w_mb_east], x: 4.20, z: 8.31, reason: "2026-10-26 DEC-2026-10-26-R02：墙垛北脸西端落主卧东墙（w_mb_east）中部" }
+  - { id: pier_south_to_mb_east, type: t, walls: [w_pier_south, w_mb_east], x: 4.20, z: 8.71, reason: "2026-10-26 DEC-2026-10-26-R02：墙垛南脸西端落主卧东墙（w_mb_east）中部" }
 
 # 设备平台缺口与阳台西墙在量房线稿中保留 100mm 端部重合，作为一个
 # 声明式 T 接头处理；超过此值仍按墙线重复/穿插报错。

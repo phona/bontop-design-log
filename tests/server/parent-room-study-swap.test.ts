@@ -7,10 +7,11 @@ import { FURNITURE_DIMS } from '../../shared/types.js';
 // 2026-10-05 父母房↔书房功能互换 v0（迭代 parent-room-study-swap-20261005，候选未冻结）：
 // bedroom_se 书房→客房（wardrobe_180 北墙边吊下 + bed_150 床头靠东外墙）；
 // study 父母房→书房（书桌椅原位 + study_seasonal_wardrobe_wall 由客房东墙平移至北墙边吊下）；
+// 2026-10-26 DEC-2026-10-26-R02（墙垛建模 + 衣柜南延）：书桌椅东移至 (6.90,7.80)/(6.30,7.80)，本文件坐标同步；“原位”指互换当时位置，现已作废。
 // 轻训练/重型器械整体删除（recipe/dims 在 shared/* 保留，预算与采购条目已移除）。
 // 本文件取代原 study-seasonal-storage.test.ts（书房后台柜 + 轻训练三件套收纳态专项，已随功能互换作废）。
 
-type Furnishing = { type: string; x?: number; z?: number; rotation?: number };
+type Furnishing = { type: string; x?: number; z?: number; rotation?: number; width?: number; depth?: number };
 type Aabb = { minX: number; maxX: number; minZ: number; maxZ: number };
 
 const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: Record<string, Furnishing[]> };
@@ -35,9 +36,12 @@ function placed(room: Furnishing[], type: string): Furnishing {
   return item;
 }
 
-// 世界 AABB：奇数 quarter-turn 旋转交换 width/depth（与 verify-furniture-placement 同口径）
+// 世界 AABB：奇数 quarter-turn 旋转交换 width/depth（与 verify-furniture-placement 同口径；
+// 行内 width/depth 覆盖 catalog——R02 南延段以行内 2.21×0.55 覆盖 catalog 1.70×0.55）
 function worldAabb(item: Furnishing): Aabb {
-  const dims = FURNITURE_DIMS[item.type];
+  const dims = item.width !== undefined && item.depth !== undefined
+    ? { width: item.width, depth: item.depth }
+    : FURNITURE_DIMS[item.type];
   assert.ok(dims, `no FURNITURE_DIMS for ${item.type}`);
   const quarterTurn = Math.round((item.rotation ?? 0) / 90) % 2 !== 0;
   const width = quarterTurn ? dims.depth : dims.width;
@@ -88,8 +92,9 @@ test('guest room keeps only sleeping furniture (no desk, chair, seasonal cabinet
 });
 
 test('study keeps its desk and chair in place and takes over the seasonal backstage cabinet', () => {
-  assert.deepEqual(placed(study, 'desk'), { type: 'desk', x: 4.50, z: 9.20, rotation: 90 });
-  assert.deepEqual(placed(study, 'chair'), { type: 'chair', x: 5.10, z: 9.20, rotation: 270 });
+  // R02（2026-10-26）：书桌椅东移（墙垛 x[4.20,4.63]×z[8.31,8.71] 建模后原桌位撞垛；插座/网口随移东墙）；旧坐标 (4.50,9.20)/(5.10,9.20) 作废。
+  assert.deepEqual(placed(study, 'desk'), { type: 'desk', x: 6.90, z: 7.80, rotation: 90 });
+  assert.deepEqual(placed(study, 'chair'), { type: 'chair', x: 6.30, z: 7.80, rotation: 90 });
   const cabinet = placed(study, 'study_seasonal_wardrobe_wall');
   assert.deepEqual(cabinet, { type: 'study_seasonal_wardrobe_wall', x: 5.15, z: 5.825, rotation: 0 });
   const box = worldAabb(cabinet); // x[4.30,6.00] z[5.55,6.10]
@@ -97,6 +102,12 @@ test('study keeps its desk and chair in place and takes over the seasonal backst
   assert.ok(Math.abs(box.minZ - 5.55) < GAP_EPS && Math.abs(box.maxZ - 6.10) < GAP_EPS);
   assert.equal(overlaps(box, STUDY_DOOR_SWEEP), false, 'cabinet enters the d_study door sweep');
   assert.equal(overlaps(box, STUDY_NORTH_DROP), true, 'cabinet must stay inside the north-wall drop segment');
+  // R02（2026-10-26）南延段：北段向南延至墙垛北脸 z=8.31（垛露出）；placed() 取首个同类型（北段），南延段按坐标另取。
+  const leg = study.find((item) => item.type === 'study_seasonal_wardrobe_wall' && item.x === 4.475);
+  assert.deepEqual(leg, { type: 'study_seasonal_wardrobe_wall', x: 4.475, z: 7.205, rotation: 90, width: 2.21, depth: 0.55 });
+  const legBox = worldAabb(leg!); // x[4.20,4.75] z[6.10,8.31]
+  assert.ok(Math.abs(legBox.minX - 4.20) < GAP_EPS && Math.abs(legBox.maxX - 4.75) < GAP_EPS);
+  assert.ok(Math.abs(legBox.minZ - 6.10) < GAP_EPS && Math.abs(legBox.maxZ - 8.31) < GAP_EPS);
   // 卧室家具随功能迁出
   for (const removed of ['bed_150', 'mattress_150', 'wardrobe_180']) {
     assert.equal(study.some((item) => item.type === removed), false, `${removed} must not remain in study furnishings`);

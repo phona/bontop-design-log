@@ -1427,6 +1427,16 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
           const lowServiceRun = (isFloorBranch || route.layer === 'water_supply' || route.layer === 'drainage')
             && aY <= SUPPORT_FLOOR_BAND_MAX && bY <= SUPPORT_FLOOR_BAND_MAX;
           if (lowServiceRun) continue;
+          // 2026-10-26 DEC-2026-10-26-R02：沿柜体面敷设的管段不计入“在柜内”长度——面贴合 ≠ 穿入（与
+          // verify-furniture 面接不计重叠同口径）。线型模型中墙为线、柜贴线建模，墙内管（如 w_mb_east
+          // 墙内联络管沿墙线 x=4.20 走）中心线恒等于柜面时，管在墙内、柜在室内，墙体隔开两者，并非
+          // 穿柜；只有中心线真正进入箱体内部的段才计。
+          const onFace = (v: number, min: number, max: number) => Math.abs(v - min) < 0.005 || Math.abs(v - max) < 0.005;
+          const runsAlongFace =
+            (Math.abs(b.x - a.x) < 1e-12 && onFace(a.x, volume.bounds.minX, volume.bounds.maxX)) ||
+            (Math.abs(b.z - a.z) < 1e-12 && onFace(a.z, volume.bounds.minZ, volume.bounds.maxZ)) ||
+            (Math.abs(bY - aY) < 1e-12 && onFace(aY, volume.bounds.minY, volume.bounds.maxY));
+          if (runsAlongFace) continue;
           const interval = segmentBoxInterval({ ...a, y: aY }, { ...b, y: bY }, volume.bounds, radius);
           if (!interval) continue;
           const segmentLength = Math.hypot(b.x - a.x, bY - aY, b.z - a.z);

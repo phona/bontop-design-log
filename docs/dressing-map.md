@@ -1,8 +1,8 @@
 # 装扮映射表（材质/家具/灯光的外观替换映射）
 
-生成：2026-10-22，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-10-26，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
-数据规模：house.yaml furnishings 共 89 件（与 `fact.furnishings_count` 对账）。
+数据规模：house.yaml furnishings 共 90 件（与 `fact.furnishings_count` 对账）。
 
 用法：渲染时按本表替换材质/家具/灯光外观；节点名即映射键。渲染线现状（2026-10-22 批 2 审阅修复）：Twinmotion/Blender 线已退场（其验收文档已删除，历史见 git），现行定妆走 Web 渲染线（app/ Three.js）；本表只保留与渲染器无关的映射数据与外观意图，§6 为现行回传流程。
 
@@ -92,9 +92,9 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | bedroom_se | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_se | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | bedroom_se | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
-| study | desk | 1 | 1.2×0.6 | (4.5, 9.2) / 90° |
-| study | chair | 1 | 0.5×0.5 | (5.1, 9.2) / 270° |
-| study | study_seasonal_wardrobe_wall | 1 | 1.7×0.55 | (5.15, 5.825) / 0° |
+| study | desk | 1 | 1.2×0.6 | (6.9, 7.8) / 90° |
+| study | chair | 1 | 0.5×0.5 | (6.3, 7.8) / 90° |
+| study | study_seasonal_wardrobe_wall | 2 | 1.7×0.55 | (5.15, 5.825) / 0°；(4.475, 7.205) / 90° |
 | study | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | study | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | living_dining | wall_cabinet_tall | 1 | 1.35×0.35 | (7.375, 6.225) / 270° |
@@ -104,10 +104,10 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | living_dining | plant_fiddle | 1 | 0.5×0.5 | (7.93, 9.18) / 270° |
 | living_dining | sofa_3seat | 1 | 2.8×0.9 | (11, 7.7) / 270° |
 | living_dining | coffee_table | 1 | 0.7×0.7 | (9.7, 7.7) / 0° |
-| living_dining | entry_half_height_cabinet | 1 | 2×0.35 | (11.5, 4) / 90° |
+| living_dining | entry_half_height_cabinet | 1 | 2×0.35 | (11.24, 4.35) / 90° |
 | living_dining | dining_table | 1 | 1.4×0.8 | (9.8, 3.45) / 90° |
 | living_dining | dining_chair | 4 | 0.45×0.45 | (9.125, 3) / 90°；(10.475, 3) / 270°；(9.125, 3.9) / 90°；(10.475, 3.9) / 270° |
-| living_dining | fridge | 1 | 0.833×0.6 | (7.5025, 2.9865) / 270° |
+| living_dining | fridge | 1 | 0.833×0.6 | (7.6025, 2.9865) / 270° |
 | living_dining | waterbar_low_cabinet_800_preview | 1 | 0.8×0.42 | (7.43, 3.87) / 90° |
 | living_dining | mijia_instant_dispenser_s1_preview | 1 | 0.106×0.312 | (7.47, 3.64) / 90° |
 | living_dining | coffee_machine_em450 | 1 | 0.22×0.285 | (7.37, 4) / 90° |
@@ -157,7 +157,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | — | 客房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中；2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），客房吸顶灯为设计声明→inferred；位置随房间南缘凹进取居中，为设计值未实测 |
 | light_corridor_1 | main_corridor | 筒灯 | (5.7, 4.9) | 2.5 | 3000 | entry_base | 历史旧位：坐标由原(7.9,5.75)调整至既有ceiling_living范围(7.9,5.0)，避开电视高柜x≤7.55并靠近走廊口；原点嵌入既有边吊、不新增吊顶；这些旧位理由和坐标由DEC-2026-10-15-C02覆盖。当前点：因距餐厅下出风槽投影边约75mm，迁至主走廊中段(5.70,4.90)，嵌入ceiling_main_corridor吊底y=2.50；归入lighting_entry_base的回路与开关控制拓扑保持，线路同步协调。开孔、上方风管/梁/冷媒/冷凝水/桥架与龙骨净距待现场复核；坐标是设计候选值，未实测。状态依据：lighting_entry_base回路confirmed，当前灯位为业主明确确认的预演位置。 |
 | light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | entry_base | 玄关筒灯；状态依据：归入 topology 回路 lighting_entry_base（confirmed），玄关筒灯为设计声明→inferred；位置为设计值未实测 |
-| light_entry_foyer | living_dining | 筒灯 | (12.4, 3.35) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区；状态依据：归入 topology 回路 lighting_entry_base（confirmed），门厅筒灯利用既有吊顶为设计声明→inferred；取红框中心避让半高柜与入户门，位置为设计值未实测 |
+| light_entry_foyer | living_dining | 筒灯 | (12.4, 4.05) | 2.5 | 3000 | entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区；状态依据：归入 topology 回路 lighting_entry_base（confirmed），门厅筒灯利用既有吊顶为设计声明→inferred；取红框中心避让半高柜与入户门，位置为设计值未实测；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随入户门厅吊顶北缘 2.90→3.00、东缘 13.40→12.77，仍在新吊顶内（新吊顶 z[3.00,4.30]，中心 z≈4.05，x 不变）。 |
 | light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.65 | 4000 | — | 厨房平板灯（4000K 工作区例外）；height=2.65 对齐 ceiling_kitchen 铝扣板吊顶完成面（DEC-2026-10-17-R12：安装完成面即吊顶底，原 2.8 与吊顶分区声明矛盾）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测 |
 
 ### 后续深化预留（当前未实施点位）

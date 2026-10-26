@@ -58,6 +58,10 @@ vertices:
   - { id: v_be_sw,   x: 13.40, z: 4.82 }   # 2026-10-25 R01 重算：北厚墙北脸线 4.82（原 R04 链值 5.55）
   - { id: v_mb_ne,   x: 4.20,  z: 5.55 }
   - { id: v_mb_se,   x: 4.20,  z: 9.80 }
+  - { id: v_pier_nw, x: 4.20,  z: 8.31 }
+  - { id: v_pier_ne, x: 4.63,  z: 8.31 }
+  - { id: v_pier_se, x: 4.63,  z: 8.71 }
+  - { id: v_pier_sw, x: 4.20,  z: 8.71 }
   - { id: v_st_ne,   x: 7.20,  z: 5.55 }
   - { id: v_suite_se, x: 2.60, z: 5.55 }
   - { id: v_strip_ne, x: 4.20, z: 4.30 }
@@ -238,6 +242,10 @@ walls:
   # 主卧东墙 / 书房西墙：连续实体隔墙（2026-10-05 功能互换后功能名，墙体不变）。
   # 原 w_mb_win 为无室内方案依据的 CAD 残留疑似窗洞；室内设计、电气和家具均按完整隔墙布置，暂不切洞，量房若确认真实存在再单独建模。
   - { id: w_mb_east, from: v_mb_ne, to: v_mb_se, height: 2.8, structure: shear, structure_status: inferred }
+  # 书房侧墙垛（2026-10-26 DEC-2026-10-26-R02：邻户图 YS-01 墙垛建模，推翻暂不建模；紧邻白框仍不建）
+  - { id: w_pier_north, from: v_pier_nw, to: v_pier_ne, height: 2.8, structure: shear, structure_status: inferred }
+  - { id: w_pier_east,  from: v_pier_ne, to: v_pier_se, height: 2.8, structure: shear, structure_status: inferred }
+  - { id: w_pier_south, from: v_pier_se, to: v_pier_sw, height: 2.8, structure: shear, structure_status: inferred }
   # 内墙 — VRV 平台 / 生活阳台 / 客卫
   - { id: w_vrv_nw_gap, from: v_nw_ne,   to: v_vrv_n,  height: 2.8 }
   - { id: w_balc_west,  from: v_vrv_sw,  to: v_balc_sw,height: 2.8 }

@@ -488,8 +488,8 @@ plans:
           render_interior: false
           render_coordination: true
           system: condensate
-          position: { x: 4.2, y: 0.1, z: 7.5 }
-          reason: "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。"
+          position: { x: 4.95, y: 0.1, z: 7.5 }
+          reason: "仅为冷凝水候选接入点，待量房确认；不是地漏、立管或施工点，不得假定接入现有地漏。；2026-10-26 DEC-2026-10-26-R02：原 (4.2,7.5) 落入衣柜南延段足迹，随 condensate-parent 改道东移至 (4.95,7.5)。"
         - id: condensate_child_candidate
           kind: condensate_drain_candidate
           status: pending

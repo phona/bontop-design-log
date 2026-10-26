@@ -321,24 +321,24 @@
 
 - id: sock_parent_desk
   room: study
-  wall: w_mb_east
-  wall_side: east
+  wall: w_st_east
+  wall_side: west
   type: socket
-  x: 4.20
-  z: 9.0
+  x: 7.20
+  z: 7.60
   height: 0.3
   count: 2
-  note: "书房书桌位（2026-10-05 B5-A 改道后为 ordinary_power_study 电脑专用回路终点，DEC-2026-10-05-R13；count 2=电脑+显示器）"
+  note: "书房书桌位（2026-10-05 B5-A 改道后为 ordinary_power_study 电脑专用回路终点，DEC-2026-10-05-R13；count 2=电脑+显示器）；2026-10-26 DEC-2026-10-26-R02 书桌东移：随书桌移至东墙 (7.20,7.60)（书桌中心 (6.90,7.80)，插座取中心北偏 0.20，沿用原相对偏移），回路终点不变（仍为 ordinary_power_study 电脑专用回路终点）"
 
 - id: net_parent
   room: study
-  wall: w_mb_east
-  wall_side: east
+  wall: w_st_east
+  wall_side: west
   type: network
-  x: 4.20
-  z: 9.0
+  x: 7.20
+  z: 7.60
   height: 0.3
-  note: "西南次卧网口；状态依据：书房电脑位网口，随 sock_parent_desk 同位→inferred；弱电点位，位置随书桌为设计值未实测"
+  note: "西南次卧网口；状态依据：书房电脑位网口，随 sock_parent_desk 同位→inferred；弱电点位，位置随书桌为设计值未实测；2026-10-26 DEC-2026-10-26-R02：随 sock_parent_desk 同位移至东墙 (7.20,7.60)"
   status: inferred
 
 # 客房（原东南次卧，2026-10-05 功能互换：原书房）
