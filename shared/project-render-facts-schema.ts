@@ -133,6 +133,8 @@ export const HvacTerminalSchema = z.object({
   finish: z.enum(['matte_white', 'matte_black']).optional(),
   render_style: z.enum(['linear_slot', 'panel']).optional(),
   grille_height: z.number().positive().optional(),
+  /** 检修口服务的内机 ceiling id（如 ac_dining）；仅 system=access 的终端使用，DEC-2026-10-27-R03。 */
+  serves_unit: z.string().optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.status !== 'confirmed' && !value.reason?.trim()) {
     ctx.addIssue({ code: 'custom', message: `${value.status} HVAC facts require reason`, path: ['reason'] });

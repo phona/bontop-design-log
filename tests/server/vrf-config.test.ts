@@ -23,8 +23,12 @@ test('hvac.yaml declares the complete A2 diagram against existing MEP facts', ()
   assert.equal(plan.diagram.anchors.find((anchor) => anchor.id === 'indoor_dining')?.ref?.id, 'ac_dining');
   assert.equal(plan.diagram.anchors.find((anchor) => anchor.id === 'power_dining')?.ref?.id, 'sock_dining_ac');
   const roomKeys = ['living', 'dining', 'master', 'study', 'parent', 'child'];
-  // 2026-08-26 回检一体：客厅、餐厅及各卧室的回风格栅兼作检修口，不另设 access 面板。
+  // 2026-08-26 回检一体：回风格栅兼作检修口，不另设 access 面板；DEC-2026-10-27-R03 缩窄适用范围：
+  // 餐厅/客房/儿童房/书房四台的回风离机身 0.50–1.65m、经风管连接够不到机身，另设检修面板；
+  // 主卧（回风同轴）与客厅（待服务侧）仍沿用回检一体。面板不是风管路由，故六间仍无 access 路由。
   const mergedAccessRooms = new Set(['living', 'dining', 'master', 'study', 'parent', 'child']);
+  // DEC-2026-10-27-R03 检修面板 id：书房为南立面侧口 access_parent_side，其余为底口 access_<room>。
+  const accessPanelIds: Record<string, string> = { dining: 'access_dining', study: 'access_study', child: 'access_child', parent: 'access_parent_side' };
   for (const room of roomKeys) {
     const indoor = `indoor_${room}`;
     const mergedAccess = mergedAccessRooms.has(room);
@@ -38,11 +42,13 @@ test('hvac.yaml declares the complete A2 diagram against existing MEP facts', ()
       assert.equal(plan.diagram.routes.filter((route) => route.system === 'access' && (route.from === indoor || route.to === indoor)).length, 0,
         `${room} should not have an access route (回检一体)`);
     }
-    const terminals = ['supply', 'return', ...(mergedAccess ? [] : ['access'])];
-    for (const terminal of terminals) {
+    for (const terminal of ['supply', 'return']) {
       assert.ok(plan.diagram.terminals.some((item) => item.id === `${terminal}_${room}`), `${room} missing ${terminal} terminal`);
     }
-    if (mergedAccess) {
+    const panelId = accessPanelIds[room];
+    if (panelId) {
+      assert.ok(plan.diagram.terminals.some((item) => item.id === panelId), `${room} missing access panel ${panelId} (DEC-2026-10-27-R03)`);
+    } else if (mergedAccess) {
       assert.ok(!plan.diagram.terminals.some((item) => item.id === `access_${room}`), `${room} should not have an access terminal (回检一体)`);
     }
   }

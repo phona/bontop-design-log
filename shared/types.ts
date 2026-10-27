@@ -1348,6 +1348,8 @@ export interface HvacTerminal {
   render_style?: 'linear_slot' | 'panel';
   /** 风口面板高度（米）显式覆盖；缺省按 system 默认（回风 0.25 / 其余 0.15）。合同附件名义尺寸见 reason。 */
   grille_height?: number;
+  /** 检修口服务的内机 ceiling id（如 ac_dining）；仅 system=access 的终端使用，DEC-2026-10-27-R03。 */
+  serves_unit?: string;
 }
 
 export interface HvacReferenceConstraint {

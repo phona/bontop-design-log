@@ -182,6 +182,35 @@ describe('buildProjectRenderFactsProjection', () => {
     assert.throws(() => validateProjectHvacFacts(constrained, facts), /unknown constraint/);
   });
 
+  it('parses access-panel terminals with serves_unit through the hvac schema', () => {
+    // DEC-2026-10-27-R03：serves_unit 必须经 schema 落到投影（strict 模式下未登记字段会被拒）。
+    const yaml = `plans:
+  - id: A2
+    kind: vrf_ducted
+    outdoor: { id: outdoor_1, platform: platform, x: 1, z: 2, direction: south, width: 1, depth: 1, height: 1, model: VRF }
+    diagram:
+      anchors: []
+      terminals:
+        - id: access_parent_side
+          status: inferred
+          system: access
+          position: { x: 5.75, y: 2.65, z: 6.45 }
+          mount_face: south
+          length: 0.6
+          grille_height: 0.25
+          serves_unit: ac_parent
+          reason: test
+      reference_constraints: []
+      routes: []
+`;
+    const parsed = parseProjectHvacFacts(yaml);
+    const terminal = parsed.plans[0].diagram.terminals[0];
+    assert.equal(terminal.serves_unit, 'ac_parent');
+    assert.equal(terminal.length, 0.6);
+    assert.equal(terminal.grille_height, 0.25);
+    assert.equal(terminal.mount_face, 'south');
+  });
+
   it('rejects missing, unknown, non-lighting, and duplicate overrides', () => {
     assert.throws(() => project(facts, [], scheme), /Missing render override/);
     assert.throws(() => project(facts, [override('unknown')], scheme), /unknown electrical id/);

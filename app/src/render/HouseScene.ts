@@ -241,6 +241,10 @@ export class HouseScene implements SceneApi {
   private hvacExpectedExportIds: string[] = [];
   private hvacProjection?: ProjectRenderFactsProjection;
   private hvacEntityIndex: HvacEntityIndex = { equipment: new Map(), terminals: new Map(), all: new Map() };
+  /** HVAC 开层前吊顶可见态快照（开层时吊顶半透明、关层时恢复；与 MEP 总览透视非 LIFO 叠加，见 setHvacCoordinationVisible）。 */
+  private hvacCeilingState?: { visible: boolean; opacity: number };
+  /** 已打开（隐藏面板）的检修口 objectId 集合。DEC-2026-10-27-R03。 */
+  private readonly accessPanelOpen = new Set<string>();
   private wallSegmentIndex = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>();
   private readyState: 'loading' | 'ready' | 'failed' = 'loading';
   private readyPromise: Promise<void>;
@@ -915,7 +919,45 @@ export class HouseScene implements SceneApi {
   setHvacCoordinationVisible(visible: boolean): void {
     this.hvacRenderer.setCoordinationVisible(visible);
     this.setPipeChaseInspectionVisible(visible);
+    // DEC-2026-10-27-R03：开 HVAC 协调层时吊顶半透明（腔内机身包络才可见），关层时恢复开层前吊顶态。
+    // 不走检视态的 inspectionInitial 快照机制（各检视层隔离、本开关自带保存/恢复、不互调）；
+    // 与 MEP 总览的吊顶透视非 LIFO 叠加——后关的一方恢复的是它开层前的快照，可能覆盖先开方的状态（同类既有限制）。
+    // 吊顶不存在时（或裸 prototype 测试替身未建 ceilingMeshes 时）跳过吊顶步，不抛错、不碰其他层。
+    const ceilings = this.ceilingMeshes ?? [];
+    if (visible) {
+      if (!this.hvacCeilingState && ceilings.length > 0) {
+        const first = ceilings[0];
+        this.hvacCeilingState = { visible: first.visible, opacity: (first.material as THREE.MeshStandardMaterial).opacity };
+      }
+      if (ceilings.length > 0) this.setCeilingVisible(true, 0.22);
+    } else if (this.hvacCeilingState) {
+      const state = this.hvacCeilingState;
+      this.hvacCeilingState = undefined;
+      if (ceilings.length > 0) this.setCeilingVisible(state.visible, state.opacity);
+    }
     this.requestRender();
+  }
+
+  /**
+   * 检修口开合（DEC-2026-10-27-R03，最小可用版）：点口 → 面板隐藏（移开）并高亮服务的内机包络；
+   * 再点 → 面板复位。打开时自动开 HVAC 协调层（吊顶半透明、包络可见）由调用方（App 点击分支）保证。
+   * 双通道：合批 unit 走 batcher.setUnitVisible；未合批的单件几何（单件不合批）走组 visible。
+   * 未找到面板返回 false；服务侧一律不猜（包络 service_side 恒为 pending）。
+   */
+  toggleAccessPanel(panelObjectId: string): boolean {
+    const panel = this.hvacEntityIndex.terminals.get(panelObjectId);
+    if (!panel) return false;
+    const open = !this.accessPanelOpen.has(panelObjectId);
+    this.batcher.setUnitVisible(panel, !open);
+    panel.visible = !open;
+    if (open) this.accessPanelOpen.add(panelObjectId);
+    else this.accessPanelOpen.delete(panelObjectId);
+    if (open) {
+      const servesUnit = panel.userData?.serves_unit as string | undefined;
+      if (servesUnit) this.hvacRenderer.highlightUnit(servesUnit);
+    }
+    this.requestRender();
+    return true;
   }
 
   setGlassHighFidelity(enabled: boolean): void {

@@ -549,6 +549,42 @@ plans:
           position: { x: 4.9, y: 2.49, z: 4.0 }
           mount_face: bottom
           reason: "儿童房回风口下回底装于南墙边吊顶底面、衣柜（x≤4.4）以东避让柜顶；回检一体（铰接回风格栅兼检修口，不另设面板），尺寸待厂家深化。"
+        - id: access_dining
+          status: inferred
+          system: access
+          position: { x: 8.00, y: 2.49, z: 4.70 }
+          mount_face: bottom
+          length: 0.6
+          grille_height: 0.6
+          serves_unit: ac_dining
+          reason: "DEC-2026-10-27-R03 餐厅内机检修口：底装于客厅北缘边吊底面，服务 ac_dining（42T2，机身 8.00, 4.75）；回风 return_dining 在机身东 1.65m 外够不到机身，故另设面板（不沿用回检一体口径）。暂定 600×600，中心 z=4.70（机身中心 4.75 南移 0.05，为避让 supply_dining_bottom 北缘 z=5.05、留 0.05 缝）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。"
+        - id: access_study
+          status: inferred
+          system: access
+          position: { x: 15.05, y: 2.49, z: 5.85 }
+          mount_face: bottom
+          length: 0.6
+          grille_height: 0.6
+          serves_unit: ac_study
+          reason: "DEC-2026-10-27-R03 客房内机检修口：底装于客房北墙边吊底面，服务 ac_study（28T2，机身 15.1, 5.85）；回风 return_study 在机身东 0.60m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=15.05（机身中心 15.1 西移 0.05，为避让 return_study 西缘 x=15.40、留 0.05 缝）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆；补前确认下方无柜体遮挡。"
+        - id: access_child
+          status: inferred
+          system: access
+          position: { x: 4.25, y: 2.49, z: 4.0 }
+          mount_face: bottom
+          length: 0.6
+          grille_height: 0.6
+          serves_unit: ac_child
+          reason: "DEC-2026-10-27-R03 儿童房内机检修口：底装于儿童房南墙边吊底面，服务 ac_child（28T2，机身 4.4, 4.0）；回风 return_child 在机身东 0.50m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=4.25（机身中心 4.4 西移 0.15，为避让 return_child 西缘 x=4.60、留 0.05 缝，仍覆盖机身西段）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。补前确认：机身 x=4.4 正处衣柜东缘，若实机压在衣柜上方则底口改侧口或移位（本 PR 先按底口建，待确认项，不静默定案）。"
+        - id: access_parent_side
+          status: inferred
+          system: access
+          position: { x: 5.75, y: 2.65, z: 6.45 }
+          mount_face: south
+          length: 0.6
+          grille_height: 0.25
+          serves_unit: ac_parent
+          reason: "DEC-2026-10-27-R03 书房内机检修口：侧装于书房北缘边吊南立面（z=6.45），服务 ac_parent（28T2，机身 5.5, 6.0）；回风 return_parent 在机身东 1.0m 外经风管连接够不到机身，故另设面板。禁令：机身正下方为北墙季节后台柜（x[4.20,6.00]×z[5.55,6.10]，柜顶 2.40、边吊底 2.50），底口打不开，故只设南立面侧口、不设底口。暂定 600 宽×250 高（高受 0.30 立面 2.50–2.80 限制，中心 y=2.65）；中心 x=5.75（机身中心 5.5 东移 0.25，为避让 supply_parent 东缘 x=5.40、留 0.05 缝，仍覆盖机身东段）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与立面同漆。若厂家服务侧布局要求更高开口，不得把侧口拉出立面，改双侧口或回风腔体 reach（须厂家书面确认），由业主确认。"
       routes:
         - id: refrigerant_trunk
           status: inferred

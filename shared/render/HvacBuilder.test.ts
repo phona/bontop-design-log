@@ -109,3 +109,30 @@ test('DEC-2026-10-07-R03 linear_slot: no frame/status rectangle, decorative segm
   assert.ok(Math.abs((returnBox.max.z - returnBox.min.z) - 0.25) < 0.06, `return-row height ${returnBox.max.z - returnBox.min.z}`);
   assert.ok(Math.abs((supplyBox.max.z - supplyBox.min.z) - 0.15) < 0.06, `supply-row height ${supplyBox.max.z - supplyBox.min.z}`);
 });
+
+test('shared HVAC geometry renders access panels at declared length x grille_height with served unit metadata', () => {
+  // DEC-2026-10-27-R03：检修口按 length×grille_height 出尺寸；缺省 0.45×0.42 保持旧行为；serves_unit 进 metadata。
+  const diagram: HvacDiagram = {
+    anchors: [],
+    terminals: [
+      { id: 'access_parent_side', status: 'inferred', system: 'access', position: { x: 5.75, y: 2.65, z: 6.45 }, mount_face: 'south', length: 0.6, grille_height: 0.25, serves_unit: 'ac_parent', reason: '书房侧口' },
+      { id: 'access_legacy', status: 'inferred', system: 'access', position: { x: 1, y: 2.49, z: 1 }, reason: '旧口（无尺寸）' },
+    ],
+    routes: [],
+    reference_constraints: [],
+  };
+  const projection = { version: '2.0', lightingFixtures: [], plumbing: [], ceiling: [], hvac: { status: 'implemented', planId: 'A2', diagram }, materials: { floor: { default: null, roomOverrides: {} } }, presentation: { curtains: {} } } as unknown as ProjectRenderFactsProjection;
+  const root = new THREE.Group();
+  const result = buildHvacGeometry(root, projection, { ceiling: [], outdoor: [] });
+  const side = result.index.terminals.get('hvac:A2:terminal:access_parent_side')!;
+  assert.equal(side.userData.serves_unit, 'ac_parent');
+  assert.equal(side.userData.mount_face, 'south');
+  assert.equal(side.userData.status, 'inferred');
+  const sideBody = side.children.find((child) => child instanceof THREE.Mesh) as THREE.Mesh;
+  assert.deepEqual((sideBody.geometry as THREE.BoxGeometry).parameters, { width: 0.6, height: 0.25, depth: 0.015, widthSegments: 1, heightSegments: 1, depthSegments: 1 });
+  assert.deepEqual(side.position.toArray(), [5.75, 2.65, 6.45]);
+  const legacy = result.index.terminals.get('hvac:A2:terminal:access_legacy')!;
+  const legacyBody = legacy.children.find((child) => child instanceof THREE.Mesh) as THREE.Mesh;
+  assert.deepEqual((legacyBody.geometry as THREE.BoxGeometry).parameters, { width: 0.45, height: 0.42, depth: 0.015, widthSegments: 1, heightSegments: 1, depthSegments: 1 });
+  assert.equal(legacy.userData.serves_unit, undefined);
+});

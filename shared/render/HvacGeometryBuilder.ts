@@ -103,9 +103,15 @@ function buildTerminalGeometry(terminal: HvacTerminal): THREE.Group {
   const statusLine = new THREE.LineBasicMaterial({ color: STATUS_COLOR[terminal.status] });
   const linearSlot = terminal.render_style === 'linear_slot';
   if (terminal.system === 'access') {
-    group.add(new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.42, 0.015), body));
-    group.add(frameOutline(0.45, 0.42, 0.02, frame));
-    group.add(statusFrame(0.45, 0.42, statusLine));
+    // DEC-2026-10-27-R03：检修口按 length×grille_height 出尺寸（缺省 0.45×0.42 保持旧行为）；
+    // 框线即面板缝（平时可见的缝）+ 状态框（inferred 琥珀 = 暂定、待厂家图终核）。
+    const panelWidth = terminal.length ?? 0.45;
+    const panelHeight = terminal.grille_height ?? 0.42;
+    group.add(new THREE.Mesh(new THREE.BoxGeometry(panelWidth, panelHeight, 0.015), body));
+    group.add(frameOutline(panelWidth, panelHeight, 0.02, frame));
+    group.add(statusFrame(panelWidth, panelHeight, statusLine));
+    // 注意：开合不靠 noBatch（合批检查只看单个 mesh 的 userData，组上标 noBatch 无效）；
+    // 点口开合走 batcher.setUnitVisible（合批 unit 级显隐）+ 组 visible 双通道，合批与否都能单改。
   } else if (linearSlot) {
     // DEC-2026-10-07-R03：通长线性槽——满长连续叶片、无成品外框；功能段留槽内贴边状态发丝线，
     // 装饰段（kind=decorative_louver，背板封闭无风道）不画任何状态线。
@@ -159,7 +165,7 @@ function addDescriptor(root: THREE.Group, descriptor: HvacEntityDescriptor, inde
   const source = descriptor.source as HvacTerminal;
   const anchor = descriptor.source as HvacAnchor;
   metadata(object, descriptor.kind === 'anchor' ? 'hvac_equipment' : 'hvac_terminal', descriptor, descriptor.kind === 'terminal'
-    ? { mount_face: source.mount_face ?? 'bottom', render_style: source.render_style ?? 'panel', decorative: source.kind === 'decorative_louver' }
+    ? { mount_face: source.mount_face ?? 'bottom', render_style: source.render_style ?? 'panel', decorative: source.kind === 'decorative_louver', ...(source.serves_unit ? { serves_unit: source.serves_unit } : {}) }
     : { hvacKind: anchor.ref?.source === 'outdoor' ? 'outdoor' : anchor.ref?.source === 'ceiling' ? 'indoor' : 'power' });
   let partIndex = 0;
   object.traverse((child) => {

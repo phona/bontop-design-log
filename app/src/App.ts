@@ -2030,6 +2030,12 @@ export class App {
         this.toggleSlidingDoor(target.objectId.slice('sliding_door:'.length));
         return;
       }
+      // DEC-2026-10-27-R03：点检修口 → 面板开合 + 自动开 HVAC 协调层（吊顶半透明、机身包络可见）
+      // + 高亮服务的内机；信息面板照常显示（服务哪台、尺寸、状态、只许放大不许缩小见 reason）。
+      if (target.type === 'hvac_terminal' && target.objectId.startsWith('hvac:') && target.objectId.includes(':terminal:access_')) {
+        this.houseScene.toggleAccessPanel(target.objectId);
+        if (!this.hvacCoordinationVisible) this.setHvacCoordinationVisible(true);
+      }
       this.infoPanel.showObject(target);
       this.previewWorkbench.activate('object');
       if (target.type === 'mep_coordination_route' && target.mep?.routeId) {
