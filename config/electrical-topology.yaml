@@ -12,7 +12,7 @@ version: '1.0'
 #    现 mount_height 1.65m 仅在双排时合规——箱体单/双排与容量列入 pending-site-data #30。
 # 口径：开关点位经 controls 绑定灯具、网络点位（含 DEC-2026-10-03-R1 新增 net_gateway / net_ap_corridor）
 # 归弱电箱系统，均不进入强电供电回路成员（Phase 1 口径）。
-# 点位口径：config/electrical.yaml 共 105 个点位（历史上 2026-10-06 R2 新增 sock_kitchen_oven 后为 111；DEC-2026-10-07-R12 删除客卫内置夜灯 NP-6/7/8、DEC-2026-10-07-R15 删除客厅 NP-4b 后减至 107；2026-10-12 业主裁定删主卧两盏明装床头壁灯（light_master_wall_l / light_master_wall_r）改小米床头灯插电后减至 105；2026-10-12 DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带、不另装平板灯，删 light_mbath_panel/light_gbath_panel/switch_mbath/switch_gbath 四点后减至 101；2026-10-13 DEC-2026-10-13-R5 业主裁定电视墙灯带不搞（删 light_tv_strip 与整条 lighting_tv_ambient 回路）后为 100；2026-10-17 DEC-2026-10-17-R20 水电点位 review 落地：+7（sock_fridge_living/sock_waterbar/sock_kitchen_east_counter/sock_weakbox/net_master_ap/light_balcony_dome/night_living_mid）−2（sock_kitchen_fridge/sock_parent_bed_l 删除）→105；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。2026-10-13 DEC-2026-10-13-R2 曾误判「主卫镜位零电位」并新增 sock_mbath_vanity，随即发现 config 早已存在同名点位（room master_bedroom、(0.78,2.96)、h=0.95、count 2、w_mbath_south 南脸），已撤销该新增——点位维持 101，见 docs/decisions/06-electrical.md DEC-2026-10-13-R2 的自我更正段。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
+# 点位口径：config/electrical.yaml 共 104 个点位（历史上 2026-10-06 R2 新增 sock_kitchen_oven 后为 111；DEC-2026-10-07-R12 删除客卫内置夜灯 NP-6/7/8、DEC-2026-10-07-R15 删除客厅 NP-4b 后减至 107；2026-10-12 业主裁定删主卧两盏明装床头壁灯（light_master_wall_l / light_master_wall_r）改小米床头灯插电后减至 105；2026-10-12 DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带、不另装平板灯，删 light_mbath_panel/light_gbath_panel/switch_mbath/switch_gbath 四点后减至 101；2026-10-13 DEC-2026-10-13-R5 业主裁定电视墙灯带不搞（删 light_tv_strip 与整条 lighting_tv_ambient 回路）后为 100；2026-10-17 DEC-2026-10-17-R20 水电点位 review 落地：+7（sock_fridge_living/sock_waterbar/sock_kitchen_east_counter/sock_weakbox/net_master_ap/light_balcony_dome/night_living_mid）−2（sock_kitchen_fridge/sock_parent_bed_l 删除）→105；2026-10-27 DEC-2026-10-27-R01 书房删除床头开关（删 switch_parent_bed）→104；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。2026-10-13 DEC-2026-10-13-R2 曾误判「主卫镜位零电位」并新增 sock_mbath_vanity，随即发现 config 早已存在同名点位（room master_bedroom、(0.78,2.96)、h=0.95、count 2、w_mbath_south 南脸），已撤销该新增——点位维持 101，见 docs/decisions/06-electrical.md DEC-2026-10-13-R2 的自我更正段。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
 
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
@@ -197,7 +197,7 @@ circuits:
     capacity: "≈1.3kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "书房 + 儿童房 + 客房普通电源（DEC-2026-10-03-R1 拆出；2026-10-05 B5-A 改道后：书房电脑走 ordinary_power_study 专用回路，书房原床头位改为书房备用，客房三席位并入本路）。capacity 为方案值，水电交底按实际用电设备终核；书房侧孤儿位 sock_parent_bed_l 待量房后定语义/位移；DEC-2026-10-17-R20 删除 sock_parent_bed_l（书房床头锚点随功能互换消失，删除审计见 DEC）；sock_parent_bed_r 语义改书桌下设备位；switch_parent_bed/ac_panel_parent 迁书桌区（坐标迁移不影响本回路成员口径）"
+    note: "书房 + 儿童房 + 客房普通电源（DEC-2026-10-03-R1 拆出；2026-10-05 B5-A 改道后：书房电脑走 ordinary_power_study 专用回路，书房原床头位改为书房备用，客房三席位并入本路）。capacity 为方案值，水电交底按实际用电设备终核；书房侧孤儿位 sock_parent_bed_l 待量房后定语义/位移；DEC-2026-10-17-R20 删除 sock_parent_bed_l（书房床头锚点随功能互换消失，删除审计见 DEC）；sock_parent_bed_r 语义改书桌下设备位；switch_parent_bed/ac_panel_parent 迁书桌区（坐标迁移不影响本回路成员口径）；2026-10-27 业主裁定删除 switch_parent_bed（书房只留吸顶灯），本回路不再含该开关"
   - id: ordinary_power_study
     panel_id: panel_strong
     purpose: ordinary_power
@@ -249,11 +249,11 @@ controls:
     target_point_ids: [light_master_dome]
     note: "主卧门口/南床头/北床头三控，受控灯具为主卧吸顶灯 light_master_dome（2026-09-02 确认双控绑定；DEC-2026-09-08-R1 增北床头开关升三控 switch_multiway，中途开关按接线序定，交底确认）。2026-10-12 业主删主卧两盏明装床头壁灯（原 w_mb_east、h=1.35m、与南北床头柜轴线对齐）改小米床头灯插电，故本条不再有「壁灯不走多控」的例外；床头阅读与起夜由小米床头灯承担，见 procurement.md §12。2026-10-13 DEC-2026-10-13-R3：light_master_dome 由 (2.60,7.60) 移至 (1.70,6.00)（原址正压 bed_180 投影、且把条带洗漱区甩到 3.91m/57°）；移位不改变本条三控绑定与接线序，只改灯具坐标"
   - id: control_parent_bed_door
-    kind: switch_2way
+    kind: switch
     status: proposed
-    switch_point_ids: [switch_parent_bed, switch_parent_door]
+    switch_point_ids: [switch_parent_door]
     target_point_ids: [light_parent_dome]
-    note: "书房床头/门口双控：受控为书房吸顶灯（2026-09-07-056 方案绑定，待交底确认）"
+    note: "书房门口单控：受控为书房吸顶灯（2026-09-07-056 方案绑定，待交底确认）；2026-10-27 业主裁定删除 switch_parent_bed（书房只留吸顶灯），双控改门口单控"
   - id: control_dining
     kind: switch
     status: proposed

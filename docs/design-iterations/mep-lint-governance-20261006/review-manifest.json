@@ -18,7 +18,7 @@
   "dispositions": [
     {
       "code": "ceiling_clearance_unverified",
-      "count": 99,
+      "count": 97,
       "category": "survey_dependent",
       "disposition": "pending_adjudication",
       "basis": "历史基线（2026-10-06 DEC-2026-10-06-R5）：160 处收敛为 24 处残留；旧项分类与现场复核条件见 docs/pending-site-data.md #41。当前快照（2026-10-17 R4）：verify:mep 与 verify:facts 均为 51 处 / 42 条路线 / 14 个吊顶分区。承载层 floor_branch(_candidate) 仅在至少一个 route point 落入 y≤0.35m 垫层带时退出完成面比较；无垫层点的误标路线由 floor_branch_missing_floor_band 提醒，开放起降仍由 3D unsupported_span 检查。facts 与 MEP 共用渲染 footprint 与 segment 相交逻辑。点/段差异已定位并修复：strong-power-master 在未声明 route vertex 之间穿过 curtain_box_master_south；sofa-r 与 sofa-l 的垫层路线不再产生吊顶面误报。registered_conflicts 52→51 是规则口径修正，无路线删除。｜DEC-2026-10-17-R20：删 2 条旧位路线 −1（51→50），同批走线专项 4 条新路线终点即设备点位（①类同类残留）+4（50→54，44 条路线/15 分区，ceiling_entry_foyer 新增涉及）；registered_conflicts 已同步 54。｜DEC-2026-10-22-R01 对账：R25 外包络复核（管径+声明保温、每 50mm 采样）后现行实算 62 处 / 50 条路线 / 15 分区，与 facts 契约 registered_conflicts 62 双引擎一致，本台账据实更新 50→62。｜DEC-2026-10-23-R04 对账：ceiling_guest_bath 东界随客卫东墙线 7.10→7.20，SE 角点 (7.20,4.30) 与走廊枢纽 bend_corridor 重合，39 条以该枢纽为端点的路线起点单点触碰角部新增登记（逐条 diff 核实无实体穿越），双引擎实算 62→101（78 条路线/15 分区），registered_conflicts 已同步 101，本台账据实更新 62→101。｜DEC-2026-10-26-R02 对账：书桌东移，strong-power-study 与 weak-parent 改道东墙、不再南下，两专线各减 1 处低于完成面 hit，双引擎实算 101→99，涉及路线 78→77，本台账据实更新 101→99。",
@@ -38,7 +38,7 @@
     },
     {
       "code": "shear_wall_parallel_route",
-      "count": 8,
+      "count": 7,
       "category": "survey_dependent",
       "disposition": "pending_adjudication",
       "basis": "交底前必须清：7 条路线长距离贴 inferred 剪力墙平行敷设（w_mb_east 0.08–0.10m × 2.05–3.60m；2026-10-12 DEC-2026-10-12-R1 删主卧两盏明装床头壁灯后，原 strong-light-bedrooms-master-wall-l 贴 w_mb_east 平行 1.355m 那条随之删除，14→13、w_mbath_east 0.00–0.10m × 1.20–1.30m）；§3.2 剪力墙浅槽上限为 φ16 单回路、槽深 20–25mm，长距离贴墙段必须明确套管/剔槽/避钢筋策略，否则现场只能乱开槽。｜2026-10-13 DEC-2026-10-13-R3：主卧吸顶灯由 (2.60,7.60) 移至 (1.70,6.00) 后，strong-light-master（原 (4.1,4.6)→(4.1,7.6) 贴 w_mb_east 平行 3.0m）与 strong-light-bedrooms-master-bed-north（原 (4.1,7.6)→(4.1,6.288) 平行 1.31m）改走 ceiling_master_ac 门头盒空腔（x[2.925,4.20]×z[4.55,5.60]、完成面 2.50），盒内西行至西缘 x=2.925 出盒，两条墙行一并消失，13→11。这是减少剪力墙依赖，非降低标准。｜DEC-2026-10-17-R20：R14 起本 code 主桶迁入 survey（must_fix 侧另余 1）；旧 must_fix/reject 裁决随迁移失效，待按剪力墙实测复判。｜DEC-2026-10-26-R02 对账：两专线不再贴 w_mb_east 南下 −2；干线/冷凝水东腿离墙 0.65/0.75、脱离贴墙并行 −2，实算 12→8，本台账据实更新 12→8。",
@@ -173,7 +173,7 @@
     },
     {
       "code": "point_uncovered",
-      "count": 29,
+      "count": 28,
       "category": "electrical_pending_dependency",
       "disposition": "pending_adjudication",
       "basis": "30 个点位未被 Phase 1 拓扑覆盖（弱网/AP/花园/客房等），属范围划分问题而非漏画：弱电网点按 DEC-2026-10-03-R1 归弱电箱系统、部分点位依赖 #48 入户花园去留与 SKU 冻结（R2 电气轮后由 29→30）｜DEC-2026-10-17-R20 +1：net_master_ap 弱电点位不进强电回路属口径内 uncovered。",
@@ -197,15 +197,15 @@
     }
   ],
   "summary": {
-    "mep_total_warnings": 279,
+    "mep_total_warnings": 276,
     "mep_buckets": {
-      "must_fix_before_briefing": 127,
-      "survey_dependent": 147,
+      "must_fix_before_briefing": 126,
+      "survey_dependent": 144,
       "envelope_approximation": 132
     },
-    "electrical_total_warnings": 55,
+    "electrical_total_warnings": 54,
     "electrical_by_disposition": {
-      "electrical_pending_dependency": 55
+      "electrical_pending_dependency": 54
     },
     "disposition_counts": {
       "pending_adjudication": 15,

@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:1c600bcf6d152c639d47fe93cbb9dae57b378702f2f5a009ce74684f285841a9 -->
+     inputs-fingerprint: sha256:7ac1e5872412e855e46cc1edeff4271353d8311576aa5d9f16ee70fd5dbcfcf8 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -44,7 +44,7 @@
 | 回路总数 | 20 路 | config/electrical-topology.yaml:5 | circuits.length=20；DEC-2026-10-13-R5 删电视墙灯带整条照明回路后回到 20；fact.circuit_count 对账 ※ |
 | 空调内机回路 | 2 路：hvac_power_living + hvac_power_bedrooms | config/electrical-topology.yaml:71,82 | 6 台内机暂并口径；厂家正式配电图确认前不冻结供电分组 |
 | 空调外机回路 | 1 路 hvac_power_outdoor_a2 | config/electrical-topology.yaml:94 | GB 55038 7.4.4 单独成路；C32A+漏保 / 4.0mm²(φ20) proposed，输入估 ≈6kW |
-| 电气点位数 | 105 个 | config/electrical-topology.yaml:15 | 即 config/electrical.yaml 条目数；点位增删必须同步此数与 fact.electrical_points_count ※ |
+| 电气点位数 | 104 个 | config/electrical-topology.yaml:15 | 即 config/electrical.yaml 条目数；点位增删必须同步此数与 fact.electrical_points_count ※ |
 | 强电箱 | 底边离地 1.65m；箱体 390×390×210mm | config/electrical.yaml:702-705 | 20 路 + 2P 进线 + 浪涌需**双排**；单/双排与进线截面待复测（pending-site-data.md #30） |
 
 ## 几何与标高
@@ -56,7 +56,7 @@
 | B 区铝扣板完成面 | 2.65 m | config/mep-hvac-coordination.yaml:12 | 0.15m 板厚；厨房/主卫/客卫三区，空腔仅 150mm |
 | 客餐厅面积 | 43.17 ㎡ | config/house.yaml:178；config/hvac.yaml:36 | polygon 实测；bbox 45.88 ㎡含 2.71㎡ 凹口 ※（2026-10-25 DEC-2026-10-25-R01 本体标定重算后客餐厅 44.58→43.1734㎡，凹口 1.30→2.71㎡） |
 | 套内面积 | 94.76 ㎡ | config/house.yaml:6 | 合同净口径；与毛口径/赠送/建面三口径未闭合见 pending-site-data.md #40 ※ |
-| MEP 路线总数 | 138 条 | config/mep-hvac-coordination.yaml:4 | 走线表 routes 条目数；fact.mep_routes_count ※ |
+| MEP 路线总数 | 137 条 | config/mep-hvac-coordination.yaml:4 | 走线表 routes 条目数；fact.mep_routes_count ※ |
 
 ## 材料选型
 

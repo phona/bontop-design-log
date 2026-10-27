@@ -13,6 +13,7 @@
 - `DEC-2026-10-07-R14` NP-5 吸附到最近柜体端板，取消通道落地柱
 - `DEC-2026-10-07-R15` 删除客厅中段 NP-4b 起夜灯
 - `DEC-2026-10-07-R16` 移除夜灯通用落地柱形态
+- `DEC-2026-10-27-R01` 书房删除床头开关，只留吸顶灯门口单控
 
 > 目录与下方条目标题同源；改标题时同步这一行。
 
@@ -84,3 +85,11 @@
 - **验证**：`npm run typecheck` 通过；`verify:project-render-facts` 确认当前 20 个灯具投影有效；未运行测试套件。
 
 
+### DEC-2026-10-27-R01 书房删除床头开关，只留吸顶灯门口单控
+
+- **业主决定**（2026-10-27，书房西墙维修性讨论中裁定）：删除 `switch_parent_bed`（书房西墙开关）及其供电路 `strong-light-bedrooms-parent-bed`；书房只留吸顶灯 `light_parent_dome`，由门口开关 `switch_parent_door` 单控。
+- **推翻了什么**：本文件 R3（2026-10-05 功能互换后“三个床头遗物保留改语义”）中 `switch_parent_bed` 改“西墙双控备用联”的保留决定——仅此一项作废；`sock_parent_bed_l` 已于 R20 删除，`ac_panel_parent`（书房墙面线控器）保留不受影响。R3 的其余部分不变。
+- **实现**：`config/electrical.yaml` 删点位；`config/electrical-topology.yaml` 控制 `control_parent_bed_door` 由 `switch_2way` 改 `switch`（单控），`switch_point_ids` 缩为 `[switch_parent_door]`；`config/mep-hvac-coordination.yaml` 删床头路线，门口路线 reason 改单控表述；三处历史 note/reason（电路、线控器、书房干线）追加 dated 删除说明，不改写历史正文。
+- **附带效果**：西墙高 2.7m 的床头开关线（`x=4.20，z[7.675,8.8]`）随路线删除而消失，书房 L 腿做到顶不再盖住任何墙上线——维修性讨论中的墙上线代价项清零。
+- **验证**：待全链（verify:all / test:server / typecheck）与生成物重渲结果；点位/控制计数变动以验证器输出为准同步。
+- **改判不工作时**：若业主日后想要书房双控回来，需同时恢复点位 + 床头路线 + 控制改回 `switch_2way`（三者缺一不可，否则拓扑校验报点位未覆盖或控制悬空）。

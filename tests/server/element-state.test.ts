@@ -223,7 +223,7 @@ describe('element census snapshot', () => {
   it('pins the element census so undeclared elements cannot slip in silently', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, ledger: { entries: [] }, issues: [] });
-    assert.equal(result.summary.total, 163, '构件总数（电气 105 + 给排水 33 + 吊顶/HVAC 25；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33）');
+    assert.equal(result.summary.total, 162, '构件总数（电气 104 + 给排水 33 + 吊顶/HVAC 25；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104）');
     // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
     // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
     // 本轮将烟机插座试位 (z=1.50) 显式标为 pending，故空台账快照仍留下 5 个未知：
