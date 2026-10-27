@@ -1628,12 +1628,13 @@ contracts:
     default_room_height: 2.8
     # R25: 双引擎都按外包络（管径 + 声明保温）逐点/每50mm采样；0为完成面几何容差，不代表施工允许偏差。
     tolerance: 0
-    registered_conflicts: 99
+    registered_conflicts: 97
     # 2026-10-12 DEC-2026-10-12-R1：删主卧两盏明装床头壁灯改小米床头灯插电，删 2 条照明路由，55→54。
     # 2026-10-12 DEC-2026-10-12-R2：业主裁定两卫照明用浴霸三合一自带、删 4 条卫浴照明路由，54→52。
     # 均为设计侧删灯具导致的真实减少，非消音。授权来源：docs/decisions/06-electrical.md §DEC-2026-10-12-R1 / R2。
     # 2026-10-18 DEC-2026-10-18-R21：走线修复批改 strong-power-kitchen / strong-ded-dishwasher 尾段（R13 误序还原 + 「电源走地面」落地重画），两条路线的厨房幕墙脸下引竖段不再进入 ceiling_kitchen footprint 低于完成面，2 处 hit 合法消失，54→52。授权来源：docs/decisions/13-mep-integration.md §DEC-2026-10-18-R21。
     # 2026-10-17 DEC-2026-10-17-R4：承载层 floor_branch(_candidate) 且有 route point 进入 y≤0.35m 垫层带时退出吊顶完成面比较；高位误标仍被计入。开放起降继续由 unsupported_span 检查。事实引擎复用 MEP footprint/段相交逻辑，纳入 strong-power-master × curtain_box_master_south 段内穿越项；最终双引擎同为 51/42 条路线/14 区，本轮较旧登记少 1 处，无路线被删除。
+    # 2026-10-27 DEC-2026-10-27-R01：书房删除床头开关，删 strong-light-bedrooms-parent-bed 路线，99→97（灯位端点 + 开关端点 2 处低于完成面 hit 随路线消失）。
     prose:
       - path: docs/mep-construction-guidance.md
         extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'

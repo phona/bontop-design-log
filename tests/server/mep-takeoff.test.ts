@@ -55,7 +55,7 @@ test('线径解析只认显式字符串，猜不了', () => {
 });
 
 test('端点全部可解析：138 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
-  assert.equal(resolution.total, 138); // R1 删两条照明路由 137→135；R2 删四条卫浴照明路由 135→131；DEC-2026-10-13-R5 删电视墙灯带路由 131→130；DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由 130→128；同批走线专项为 7 个新点位补 7 条路线 128→135；DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条 135→136；DEC-2026-10-19-R25 新增客餐厅 DN32 共用主管 136→137；DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线 137→138
+  assert.equal(resolution.total, 137); // DEC-2026-10-27-R01 删床头路线 strong-light-bedrooms-parent-bed 后 138→137； // R1 删两条照明路由 137→135；R2 删四条卫浴照明路由 135→131；DEC-2026-10-13-R5 删电视墙灯带路由 131→130；DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由 130→128；同批走线专项为 7 个新点位补 7 条路线 128→135；DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条 135→136；DEC-2026-10-19-R25 新增客餐厅 DN32 共用主管 136→137；DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线 137→138
   assert.equal(resolution.unresolved, 0);
 });
 
@@ -152,7 +152,7 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   // DEC-2026-10-17-R20：删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由，
   //   sock_kitchen_fridge / sock_parent_bed_l 两点随之退出 routed（97→95）；本轮新增 7 电气点 +
   //   faucet_kitchen_dishwasher 均未画路由，全部落在 unrouted 侧显形（routed 不增）。
-  assert.equal(takeoff.coverage.routedPointIds.length, 102); // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
+  assert.equal(takeoff.coverage.routedPointIds.length, 101); // DEC-2026-10-27-R01 删床头开关与供电路，routed 点位 102→101； // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
   assert.equal(takeoff.coverage.byType.socket?.routed, 36); // DEC-2026-10-17-R20：删 sock_kitchen_fridge / sock_parent_bed_l（原 routed）后 34→32；同批走线专项 sock_fridge_living / sock_waterbar / sock_weakbox / sock_kitchen_east_counter 四个插座点位随新路线进入 routed 32→36
   assert.equal(takeoff.coverage.byType.faucet?.routed, 5);
   assert.equal(takeoff.coverage.byType.shower?.routed, 2);
@@ -164,7 +164,7 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   assert.equal(takeoff.coverage.byType.drain_riser?.routed, 4);
   assert.equal(takeoff.coverage.byType.water_supply?.routed, 1);
   assert.equal(takeoff.coverage.byType.water_heater?.routed, 1);
-  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 102); // R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97；DEC-2026-10-17-R20 已路由 97→95（+8 新点全部未路由：7 电气 + faucet_kitchen_dishwasher）；同批走线专项 7 条新路线后已路由 95→102
+  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 101); // DEC-2026-10-27-R01 删床头开关（已路由点），常量 102→101（未路由数不变）；R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97；DEC-2026-10-17-R20 已路由 97→95（+8 新点全部未路由：7 电气 + faucet_kitchen_dishwasher）；同批走线专项 7 条新路线后已路由 95→102
   // 未路由点位逐条显形，不进采购量
   assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
 });
@@ -205,7 +205,7 @@ test('空调层与非水电设施被排除并带 reason', () => {
 });
 
 test('设备量：底盒/模数/断路器/穿墙孔', () => {
-  assert.equal(takeoff.devices.boxes, 78); // DEC-2026-10-12-R2 删 switch_mbath/switch_gbath 两个开关底盒后 77→75；DEC-2026-10-17-R20 +sock_waterbar/+sock_weakbox/+sock_kitchen_east_counter 三个强电底盒（sock_fridge_living 换位 sock_kitchen_fridge 净 0；弱电 net_master_ap 与灯具点位不占强电底盒）75→78
+  assert.equal(takeoff.devices.boxes, 77); // DEC-2026-10-27-R01 删 switch_parent_bed 开关底盒 78→77； // DEC-2026-10-12-R2 删 switch_mbath/switch_gbath 两个开关底盒后 77→75；DEC-2026-10-17-R20 +sock_waterbar/+sock_weakbox/+sock_kitchen_east_counter 三个强电底盒（sock_fridge_living 换位 sock_kitchen_fridge 净 0；弱电 net_master_ap 与灯具点位不占强电底盒）75→78
   // 28 = ceil((20 回路 + 2P 进线 + 1 SPD) × 1.2)；DEC-2026-10-13-R5 删电视墙灯带整条照明回路后 21→20 路，模数 29→28、断路器 21→20
   assert.equal(takeoff.devices.panelModules, Math.ceil((20 + 2 + 1) * 1.2));
   assert.equal(takeoff.devices.breakers.total, 20);

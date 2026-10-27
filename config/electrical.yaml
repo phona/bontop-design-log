@@ -287,17 +287,6 @@
   note: "西南次卧床右侧（DEC-017 随床头改西墙）；状态依据：DEC-017 床头插座归入 topology 回路 ordinary_power_parent_child→inferred；随床头西墙为设计值未实测；DEC-2026-10-17-R20 语义改『书桌下设备位（主机/盘位）』——原床头右位锚点已随功能互换消失；sock_parent_bed_l 已删除（删除审计见 DEC-2026-10-17-R20）"
   status: inferred
 
-- id: switch_parent_bed
-  room: study
-  wall: w_mb_east
-  wall_side: east
-  type: switch_2way
-  x: 4.20
-  z: 8.80
-  height: 1.3
-  neutral: true
-  note: "西南次卧灯光双控（床头，DEC-017 随床头改西墙）；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）；DEC-2026-10-17-R20 迁书桌区——原『床头 h0.7』锚点随 2026-10-05 功能互换（床迁客房）消失，西墙中段 h0.7 无使用场景；门口侧 switch_parent_door 保留，双控第二站落书桌区上方"
-
 - id: switch_parent_door
   room: study
   wall: w_st_north
@@ -317,7 +306,7 @@
   x: 4.20
   z: 9.15
   height: 1.3
-  note: "书房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：床头东墙，（2026-10-05 功能互换：原父母房，点位原位保留）与 switch_parent_bed（z=6.40）/sock_parent_bed_l（z=6.60）组床头三联 h=0.7（取证发现门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door 西半已被衣柜侧板遮挡，线控器无处落位，改床头同主卧口径）；品牌中立，定标后按厂商线控规格终核，site_pending；DEC-2026-10-17-R20 随书桌区重锚（原床头锚点已随功能互换消失）；线控器服务真实内机 ac_parent，位置本就自由"
+  note: "书房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：床头东墙，（2026-10-05 功能互换：原父母房，点位原位保留）与 switch_parent_bed（z=6.40）/sock_parent_bed_l（z=6.60）组床头三联 h=0.7（取证发现门口门垛 x[6.00,6.15] 仅容一板且 switch_parent_door 西半已被衣柜侧板遮挡，线控器无处落位，改床头同主卧口径）；品牌中立，定标后按厂商线控规格终核，site_pending；DEC-2026-10-17-R20 随书桌区重锚（原床头锚点已随功能互换消失）；线控器服务真实内机 ac_parent，位置本就自由；2026-10-27 业主裁定删除 switch_parent_bed，床头三联不复存在（sock_parent_bed_l 已于 R20 删除），线控器点位本身保留"
 
 - id: sock_parent_desk
   room: study
