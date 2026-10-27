@@ -90,7 +90,7 @@
 | [`11-tile-finish.md`](./11-tile-finish.md) | 贴砖与饰面终裁 | 15 | 59 KB | `DEC-2026-10-06-TILE-01` … `DEC-2026-10-18-TILE-02` |
 | [`12-plumbing.md`](./12-plumbing.md) | 给排水 | 6 | 27 KB | `DEC-2026-10-07-F03` … `DEC-2026-10-17-W05` |
 | [`13-mep-integration.md`](./13-mep-integration.md) | MEP 标高/路由/水电主材基线 | 14 | 37 KB | `DEC-2026-10-06-R1` … `DEC-2026-10-23-R02` |
-| [`14-style-furniture.md`](./14-style-furniture.md) | 风格/家具/地面 | 11 | 25 KB | `DEC-2026-08-20-024` … `DEC-2026-10-19-R05` |
+| [`14-style-furniture.md`](./14-style-furniture.md) | 风格/家具/地面 | 12 | 27 KB | `DEC-2026-08-20-024` … `DEC-2026-10-26-R04` |
 | [`15-penetration-lint.md`](./15-penetration-lint.md) | 防穿模 linter（实体互撞/净距） | 1 | 9 KB | `DEC-2026-10-09-P01` |
 | [`16-verify-gate.md`](./16-verify-gate.md) | 门禁编排与工程状态 | 2 | 8 KB | `DEC-2026-10-09-G01` … `DEC-2026-10-17-R19` |
 | [`17-paint-scope-extension.md`](./17-paint-scope-extension.md) | 涂装范围扩展（显式顶面/上飘窗外露面/全飘窗入算/面层核查层/墙顶独立选择） | 16 | 72 KB | `DEC-2026-10-09-P02` … `DEC-2026-10-15-P17` |

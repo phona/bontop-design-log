@@ -2,7 +2,7 @@ import type { Command, CommandRegistry } from './CommandRegistry.js';
 import { escapeHtml } from './escape-html.js';
 
 /**
- * 可执行命令面板：从 CommandRegistry 渲染，支持模糊过滤、方向键选择、回车执行。
+ * 可执行命令面板：从 CommandRegistry 渲染，支持子串过滤（对中文标签比模糊匹配更好用）、方向键选择、回车执行。
  * 快捷键 `?`（shift + /）开合；Esc 关闭由 App 的全局键盘链统一收口。
  */
 export class CommandPalette {

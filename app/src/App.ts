@@ -22,6 +22,7 @@ import { SurfaceManager } from './ui/SurfaceManager.js';
 import { MobileTabBar } from './ui/MobileTabBar.js';
 import { isMobileChrome, readCapabilities, subscribeCapabilities, type InputCapabilities } from './ui/input-capability.js';
 import { VirtualJoystick } from './scene/VirtualJoystick.js';
+import { PointerIntent } from './scene/pointer-intent.js';
 import { readViewState, writeViewState } from './ui/view-state-store.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
@@ -174,6 +175,7 @@ export class App {
   private settingsPopover: Popover | null = null;
   private layerComboSuppressed = false;
   private pendingComboRestore: LayerKey[] | null = null;
+  private readonly surfaceDismissIntent = new PointerIntent();
   private curtainPresentationState: CurtainPresentationState = { default: 'open', roomOverrides: {}, updatedAt: '' };
   private readonly hvacCoordinationApi = (visible: boolean) => this.setHvacCoordinationVisible(Boolean(visible));
   private readonly materialTextureErrorHandler = (event: Event) => {
@@ -1505,8 +1507,22 @@ export class App {
       btn.addEventListener('click', () => this.surfaceManager.close(id));
     });
 
-    // 画布单击（落在任何已注册表面及其开关之外）→ 即收；拖拽由 pointer 移动量判别留给画布
-    document.addEventListener('pointerdown', (e: PointerEvent) => {
+    // 方案/总览工具栏入口：没有 Popover 承载 onToggle，直接挂管理器 toggle
+    //（2026-10-27 review 修复：这两个按钮此前只作了 toggleEl 声明，从未挂监听）
+    document.getElementById('scheme-toggle-btn')?.addEventListener('click', () => {
+      this.surfaceManager.toggle('scheme');
+      this.syncSurfaceToggleButton('scheme');
+    });
+    document.getElementById('overview-toggle-btn')?.addEventListener('click', () => {
+      this.surfaceManager.toggle('overview');
+      this.syncSurfaceToggleButton('overview');
+    });
+
+    // 画布清场改 tap 判别（2026-10-27 review 修复）：拖拽旋转/环轨进行中的
+    // 面板不再被误收——按下只记录，抬起时判定 tap 才清场
+    document.addEventListener('pointerdown', (e: PointerEvent) => this.surfaceDismissIntent.begin(e.clientX, e.clientY));
+    document.addEventListener('pointerup', (e: PointerEvent) => {
+      if (this.surfaceDismissIntent.end(e.clientX, e.clientY) !== 'tap') return;
       this.surfaceManager.dismissTransient(e.target);
     });
 
@@ -1519,7 +1535,7 @@ export class App {
           this.surfaceManager.toggle(id);
           this.mobileTabBar?.sync();
         },
-        onPalette: () => this.commandPalette.show(),
+        onPalette: () => this.surfaceManager.toggle('palette'),
         isSurfaceOpen: (id) => this.surfaceManager.isOpen(id),
         getAlertsCount: () => this.getAlertsTotal(),
       });
@@ -2128,7 +2144,7 @@ export class App {
       // ── Command palette toggle (shift + /) ──
       if (e.code === 'Slash' && e.shiftKey && !e.repeat) {
         e.preventDefault();
-        this.commandPalette.toggle();
+        this.surfaceManager.toggle('palette');
         return;
       }
 
@@ -2162,12 +2178,15 @@ export class App {
   // ── 命令处理器：快捷键与命令面板共用同一实现，禁止两处各写一份 ──
 
   private toggleOverviewMenu(): void {
-    if (this.overviewMenu.isVisible()) {
-      this.overviewMenu.hide();
-    } else {
-      void this.refreshOverviewData();
-      this.overviewMenu.show();
-    }
+    // 走 SurfaceManager：modal 语义（打开时清场其它表面）与 Esc/画布清场才生效
+    this.surfaceManager.toggle('overview');
+    this.syncSurfaceToggleButton('overview');
+  }
+
+  /** 方案/总览工具栏按钮的 aria-expanded 同步（这两个入口没有 Popover 代管）。 */
+  private syncSurfaceToggleButton(id: 'scheme' | 'overview'): void {
+    const btn = document.getElementById(id === 'scheme' ? 'scheme-toggle-btn' : 'overview-toggle-btn');
+    btn?.setAttribute('aria-expanded', String(this.surfaceManager.isOpen(id)));
   }
 
   private toggleTopDownView(): void {

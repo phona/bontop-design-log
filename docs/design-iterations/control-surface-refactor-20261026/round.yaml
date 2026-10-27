@@ -16,14 +16,14 @@ index:
 brief:
   schema: interior-design-decision-brief/v1
   iteration_id: control-surface-refactor-20261026
-  decision_ref: DEC-2026-10-26-R02
+  decision_ref: DEC-2026-10-26-R04
   frozen: true
   frozen_at: '2026-10-26'
   owner: 业主
   priority:
     - 控制面重构：唯一命令源（CommandRegistry）+ 面板管理器（SurfaceManager），桌面与移动端共用一套交互模型。
     - 画布优先：两端启动均为全出血画布，所有面板默认收起、按需呼出。
-    - 常驻入口收敛为 5 个（视角/方案/图层/环境/总览）+ 命令面板兜底全部命令。
+    - 常驻入口收敛为 5 个（视角/方案/图层/环境/总览）+ 命令面板兜底全部 25 条命令（18 显式 + 7 检视层）。
     - 移动端可用：底部 tab bar + 底部 sheet + 触摸加固 + 第一人称摇杆与拖拽转向。
     - 业主语言命名（水电走向/空调设备/电路归属…），工程全称进 tooltip。
   allowed_scope:
@@ -53,7 +53,7 @@ brief:
       - docs/curtain-design.md
     site_pending: []
   decisions:
-    - id: DEC-2026-10-26-R02
+    - id: DEC-2026-10-26-R04
       content: 控制面重构五步实施（命令注册表/面板管理器/响应式呈现/FP 触摸操控/持久化与去陷阱），桌面移动端统一交互模型。
       status: owner_directed_implementation
   acceptance:
@@ -237,7 +237,7 @@ objects:
 review:
   schema: interior-design-review-manifest/v1
   iteration_id: control-surface-refactor-20261026
-  decision_ref: DEC-2026-10-26-R02
+  decision_ref: DEC-2026-10-26-R04
   subject: 控制面重构 + 移动端统一增强（桌面/移动端同一交互模型）
   state: implemented_runtime_review_pending
   implementation:
@@ -258,6 +258,7 @@ review:
       - app/src/ui/keybindings.ts
       - app/src/ui/view-state-store.ts
       - app/src/ui/PaintButton.ts
+      - app/src/ui/WallTileButton.ts
       - app/src/ui/CeilingZoneButton.ts
       - app/src/ui/HvacCoordinationButton.ts
       - app/src/ui/ElementStateButton.ts
@@ -277,20 +278,21 @@ review:
       - FirstPersonController clamp/平滑
   version:
     source_sha256:
-      app/src/App.ts: 07394d67095a5a0b29f2ba9edd759b4cca1355803d6c536cd3abde7afd1a34cf
+      app/src/App.ts: 6f17a33b2f775fecd8bbf71fb391065c89c0109b78610bfa13b6898996056bef
       app/src/ui/CommandRegistry.ts: 40213b9d8ee68c9bd1b7ff6f402a7067d8faf5b953e8ec7b130739ff95922a3c
       app/src/ui/SurfaceManager.ts: 41a1c20c299ddae33d6e24a32409145a4d42d6859c28c9b9cae7256c84c00904
+      app/src/ui/WallTileButton.ts: c1f3a770456b4784e7c545c07c2eb48a47507fe518ea59570d228bf2c79846ad
       app/src/ui/MobileTabBar.ts: 84f65d3320c60d1b1140ead55ada069ef29739a116a69db6b05cd47879083f1b
       app/src/ui/input-capability.ts: 2ba924322078670ff59527f8d33b68997246864710d34a6f77f8e973ffe38dc8
-      app/src/ui/CommandPalette.ts: fd183caaa691a73e679974263d41a53886432f68bf87a8a0e72a3464204bd241
+      app/src/ui/CommandPalette.ts: 0861bd0463d08d563a077a119f9bbdb554de4a2fc1ab8c0321c3f5e10c6d7591
       app/src/ui/PreviewWorkbench.ts: ca231b0ceca2ad7327fb0256ca014caa954c8ea4b0fee975453b253f9c78e50d
       app/src/ui/Popover.ts: 7afcdac25c4a3cb42cad90542f799094e143b3872dcab962c5136b8b6afb2729
       app/src/ui/view-state-store.ts: a4590a1bfa7bc17e5d3c506bef079f7eeb37c708959a43b09a16c0b732429ca4
-      app/src/scene/VirtualJoystick.ts: 9db5e7847b5c9e93a721313d9382ff43e207f786662c33266059e93c691c3da9
+      app/src/scene/VirtualJoystick.ts: 990dc6c469c2c378fcb968c927bff9425596859afeb8ea3df7a0b11296c9cecb
       app/src/scene/pointer-intent.ts: 61919653f5e38ae8580bb932fbcdecf4d8b66128cd4bc2969134457bbc7eef23
       app/src/scene/FirstPersonController.ts: 7c9a4e7e9f65d72b777ea0a8a7793f590ea88f6596cb0f13555113fe08698ec0
       app/src/render/HouseScene.ts: 94d7719392545da39fb5537013b138b921f5f78a26e2a3d329d6260f64674726
-      app/index.html: 90ba5ad0164d0e2d092b3f53220651ff12d3bf8dc518f8efe7a281f5717f0eae
+      app/index.html: 903a042cb442a0676caa5e33d0d036a7d2a7fde64253da8f64a407986d41e27c
       app/style.css: 0d5514daa98852f264431d249ae6f6fb5fcc7ab58a331e00b9e0bed04fb5273a
   evidence:
     browser_url: http://localhost:5173/
@@ -308,7 +310,7 @@ review:
     verify_project_render_facts: not applicable（未改 config/data 投影）
     typecheck: 'passed（仅 2 条存量基线错 scripts/schedule/control.ts TS7006，与本轮无关）'
     tests: 'passed：ci:test-app 48=48 无基线外新失败；Step 2 修 App.test.ts 存量红并删基线行（50→48）；新增/改写测试 CommandRegistry 6、CommandPalette 7、SurfaceManager 9、PreviewWorkbench 7、MobileTabBar 4、input-capability 5、VirtualJoystick 7、pointer-intent 6、FirstPersonController +9'
-    runtime: 'passed：无头浏览器实测桌面 1400px 与 420px 窄屏默认态/tab bar/工具栏/就绪 chip/新标签均生效，无 JS 错误；verify:all 21/22（唯一失败为存量基线 verify-mep）'
+    runtime: 'passed：无头浏览器实测桌面 1400px 与 420px 窄屏默认态/tab bar/工具栏/就绪 chip/新标签均生效，无 JS 错误；review 后 CDP 真实鼠标事件复测：方案/总览/图层入口可点、aria-expanded 同步、modal 清场、拖拽不清场、tap 即收全部通过；verify:all 21/22（唯一失败为存量基线 verify-mep）'
   review:
     aesthetic:
       status: pending_owner_acceptance
@@ -330,7 +332,7 @@ review:
       SurfaceManager 接管）；② 按钮文案里的「：加载中」（改禁用样式 + 全局就绪 chip）；③ keybindings.ts
       的 length===23 魔数断言（改派生不变量）与 KeyT 漏登记（已补）。无任何具体候选/证据/历史结论被静默删除。
     overturned: >-
-      推翻了四个旧结论：① 「浮层应粘性、点场景不收起」（Popover.ts 原注释）→ 单击画布即收 + 钉住可选；
+      推翻了四个旧结论：① 「浮层应粘性、点场景不收起」（Popover.ts 原注释）→ tap 画布即收（拖拽不清场）+ 钉住可选；
       ② 「工作台启动即开、材质预演默认可见」→ 画布优先，默认收起，选材质/点对象/开日照时按需呼出；
       ③ 「W 在轨道模式是透视」与「L 灯未就绪时切测量」两个同键异义 → X-ray 改 X、L 只管灯；
       ④ 「画布按下即拾取对象」→ tap 判定后拾取。几何/机电/预算结论零推翻。
@@ -339,4 +341,11 @@ review:
       ② 关闭态若改回纯 transform 而无 visibility，dock 避让 tab bar 后会漏出顶部一条（本轮实测过）；
       ③ 检视层组合自动恢复依赖 localStorage 存档与就绪时序，若存档损坏或层永不就绪则静默不恢复
       （「上次组合」按钮仍可作为手动路径）；④ matchMedia 不可用时按桌面处理，移动形态静默降级；
-      ⑤ 触摸阈值（10px/400ms、摇杆死区 0.22）是估值，真机不适配时表现为“难用”而非报错。
+      ⑤ 触摸阈值（10px/400ms、摇杆死区 0.22）是估值，真机不适配时表现为“难用”而非报错；
+      ⑥ 仓库级盲点（review 实证）：ci/check.mjs 的 parseVitest 只统计 `^ FAIL` 行，vitest 的
+      "Errors N"（unhandled error）不计入门禁——VirtualJoystick.test.ts 曾带 5 个 uncaught error
+      （jsdom 无 setPointerCapture）通过全绿门禁；已修生产代码守卫，但盲点本身仍在，任何新测试
+      文件的 unhandled error 都不可见。后续让 checker 也统计 Errors 行须连同存量 HouseScene 的
+      5 个 error 一起定基线，按基线纪律需业主评审，不在本轮动；
+      ⑦ 新 surface 入口必须有一条可达路径并 CDP 实测点击——本轮方案/总览工具栏按钮曾只声明
+      toggleEl 未挂监听（桌面方案抽屉完全不可达），门禁全绿但功能死，review 用真实鼠标事件才发现。

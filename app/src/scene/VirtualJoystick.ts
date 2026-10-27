@@ -36,7 +36,10 @@ export class VirtualJoystick {
       e.preventDefault();
       this.active = true;
       this.pointerId = e.pointerId;
-      this.base.setPointerCapture(e.pointerId);
+      // jsdom 等环境没有 setPointerCapture；守卫避免测试里冒 uncaught error
+      if (typeof this.base.setPointerCapture === 'function') {
+        this.base.setPointerCapture(e.pointerId);
+      }
       this.applyFromEvent(e);
     });
     this.base.addEventListener('pointermove', (e) => {
