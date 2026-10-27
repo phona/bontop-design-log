@@ -1216,7 +1216,19 @@ function buildFurniture(item: FurnishingsYaml[string][number]): THREE.Group | nu
     return buildBathSideCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight });
   }
   if (item.type === 'wardrobe_180') return buildWardrobe180(item.cabinetHeight);
-  return buildFixture(item.type);
+  const model = buildFixture(item.type);
+  if (model && item.width !== undefined && item.depth !== undefined) {
+    // 行内尺寸优先于目录尺寸：verify-furniture 已按行内宽/深算 AABB，渲染必须同口径，
+    // 否则模型与 3D 所见脱节（如书房南延腿：模型 2.21m，渲染仍按目录 1.70m，两端各留 0.255m 缝）。
+    // 缩放在局部空间做：调用方随后按局部轴施加 rotation（rotation=90 时局部 x 即世界 z），
+    // 故缩放后的长边仍沿柜体走向。注意：配方为固定零件的非柜类 fixture 被行内尺寸缩放时会等比拉伸，
+    // 目前全仓仅书房南延腿一个行内宽/深用例（柜体配方，拉伸即加宽柜体，符合实物）。
+    const dims = FURNITURE_DIMS[item.type];
+    if (dims && dims.width > 0 && dims.depth > 0) {
+      model.scale.set(item.width / dims.width, 1, item.depth / dims.depth);
+    }
+  }
+  return model;
 }
 
 function addCeilingZones(root: THREE.Group, zones: CeilingZoneSpec[], rooms: ResolvedRoom[], report: SceneBuildReport): void {
@@ -1400,7 +1412,12 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
       model.userData.furnishingType = item.type;
       if (item.sourceIndex !== undefined) model.userData.sourceIndex = item.sourceIndex;
       const declaredDimensions = FURNITURE_DIMS[item.type];
-      if (declaredDimensions) model.userData.declaredDimensions = { ...declaredDimensions };
+      if (declaredDimensions) {
+        model.userData.declaredDimensions = {
+          width: item.width ?? declaredDimensions.width,
+          depth: item.depth ?? declaredDimensions.depth,
+        };
+      }
       if (placement.wallId !== undefined) {
         model.userData.wallId = placement.wallId;
         model.userData.wallSide = placement.wallSide;

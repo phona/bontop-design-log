@@ -1718,6 +1718,8 @@ export interface FurnishingItem {
   wall_clearance?: number;
   /** Declarative dimensions for a continuous cabinet run (metres). */
   length?: number;
+  /** Declarative width override for a single cabinet module (metres). When present, placement and render use it instead of the catalog width (e.g. the study south leg: 2.21 vs catalog 1.70). */
+  width?: number;
   depth?: number;
   cabinetHeight?: number;
   countertopThickness?: number;
