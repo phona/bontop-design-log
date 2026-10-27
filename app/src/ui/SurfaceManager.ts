@@ -53,6 +53,10 @@ export class SurfaceManager {
     return this.pinned.has(id);
   }
 
+  isOpen(id: string): boolean {
+    return this.surfaces.get(id)?.isOpen() ?? false;
+  }
+
   setPinned(id: string, pinned: boolean): void {
     if (pinned) this.pinned.add(id);
     else this.pinned.delete(id);
