@@ -332,6 +332,41 @@ describe('SchemePanel', () => {
     expect(panel.getActiveOptionId()).toBe('A1');
   });
 
+  it('applySchemeSelections keeps the current topic when it still has a selection', () => {
+    // 回归：用户切到 floor tab 点了选项后，StateSync.pollScheme()（约 1s）也会触发
+    // applyScheme。若无条件跳回「第一个有选案的主题」（hvac 打头且始终有选案），
+    // 用户刚点的选案会被拽回 hvac tab。当前主题仍有选案时必须原地保留。
+    const onSelect = () => {};
+    panel.init(mockTopics, onSelect);
+
+    panel.applySchemeSelections({ hvac: 'A1' });
+    panel.setActiveTopic('floor');
+    // 模拟用户在 floor 点了 tile 后 poll 回来的新 scheme（hvac 选案仍在）
+    panel.applySchemeSelections({ hvac: 'A1', floor: 'tile' });
+
+    expect(panel.getActiveTopicId()).toBe('floor');
+    expect(panel.getActiveOptionId()).toBe('tile');
+    expect(nameEl.textContent).toBe('瓷砖');
+    const options = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
+    expect(options[0]._className).toContain('active'); // tile
+  });
+
+  it('applySchemeSelections falls back to the first topic with a selection when the current topic has none', () => {
+    // 当前主题已无选案（或不在面板）时才回退：floor 从未被选过，新 scheme 只有 hvac。
+    const onSelect = () => {};
+    panel.init(mockTopics, onSelect);
+
+    panel.applySchemeSelections({ hvac: 'A1' });
+    panel.setActiveTopic('floor');
+    panel.applySchemeSelections({ hvac: 'A1' });
+
+    expect(panel.getActiveTopicId()).toBe('hvac');
+    expect(panel.getActiveOptionId()).toBe('A1');
+    const options = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
+    expect(options[0]._className).toContain('active'); // A1
+    expect(options[1]._className).not.toContain('active'); // E1
+  });
+
   it('setActiveOption memory is restored when switching back via setActiveTopic', () => {
     const onSelect = () => {};
     panel.init(mockTopics, onSelect);

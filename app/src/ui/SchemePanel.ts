@@ -94,9 +94,15 @@ export class SchemePanel {
 
   /**
    * 用一份方案选案（topicId → optionId）刷新面板：按主题记忆选案，并展示
-   * 「第一个有选案的面板主题」（带上该主题的选中项与 info）；无选案则展示第一个主题。
+   * 「当前主题」（带上该主题的选中项与 info）；当前主题失效（未知主题或无选案）时
+   * 回退到第一个有选案的主题，再回退第一个主题，最后 ''。
    *
-   * 取代旧 applyScheme 里「遍历所有 selections 键逐个 setActiveOption」：那会让
+   * 不能无条件跳回「第一个有选案的主题」：applyScheme 不只在新方案加载时调用，
+   * 用户自己点击选案后约 1 秒 StateSync.pollScheme() 检测到 diff 也会触发它——
+   * 主题顺序 hvac 打头且 hvac 始终有选案，无条件跳回会把用户刚切到窗帘/洁具
+   * 点的选案拽回 hvac tab。仅当当前主题已不在面板或该主题无选案时才回退。
+   *
+   * 同样取代旧 applyScheme 里「遍历所有 selections 键逐个 setActiveOption」：那会让
    * activeTopicId 停在最后一个键——可能不是面板的导航主题（如 robot_vacuum），
    * 于是无 tab 激活、选项列表全空。这里只展示面板真实拥有的主题，未知键进 map 但不影响展示。
    */
@@ -105,8 +111,19 @@ export class SchemePanel {
     for (const [topicId, optionId] of Object.entries(selections)) {
       if (optionId) this.activeOptionByTopic.set(topicId, optionId);
     }
+    const currentValid = this.topics.some(
+      (t) => t.id === this.activeTopicId && this.activeOptionByTopic.has(t.id),
+    );
     const firstWithSelection = this.topics.find((t) => this.activeOptionByTopic.has(t.id));
-    this.setActiveTopic(firstWithSelection?.id ?? this.topics[0]?.id ?? '');
+    const target = currentValid
+      ? this.activeTopicId
+      : (firstWithSelection?.id ?? this.topics[0]?.id ?? '');
+    const remembered = this.activeOptionByTopic.get(target);
+    if (remembered) {
+      this.setActiveOption(target, remembered, []);
+    } else {
+      this.setActiveTopic(target);
+    }
   }
 
   getActiveTopicId() {
