@@ -541,13 +541,13 @@ test('CLI overlay and furniture world bboxes preserve the house z contract', () 
   assert.ok(lowDresserBox.min.z <= 8.96 + 1e-5 && lowDresserBox.min.z >= 8.96 - 0.02, `dresser min.z=${lowDresserBox.min.z} (drawer/handle protrusion north of the body edge)`);
   assert.ok(lowDresserBox.max.y < 2.07, `dresser height ${lowDresserBox.max.y} must stay below the 2.07m sill`);
 
-  // 2026-10-05 功能互换 v0：书房（study）北墙季节后台柜 @(5.15,5.825) r0，权威 AABB x[4.30,6.00] z[5.55,6.10]；
+  // 2026-10-05 功能互换 v0：书房（study）北墙季节后台柜，2026-10-27 业主裁定做齐平：西延顶墙（1.70→1.80m）@(5.10,5.825) r0，权威 AABB x[4.20,6.00] z[5.55,6.10]；
   // 由原 bedroom_se 东墙柜平移而来（安装条件平移：2.40m 柜体顶封板抵 2.50m 北墙边吊底）
   const seasonalWardrobe = findByType(exportRoot, 'study', 'study_seasonal_wardrobe_wall');
   assert.ok(seasonalWardrobe, 'missing study_seasonal_wardrobe_wall export');
-  assert.deepEqual(seasonalWardrobe.position.toArray(), [5.15, 0, 5.825]);
+  assert.deepEqual(seasonalWardrobe.position.toArray(), [5.10, 0, 5.825]);
   const seasonalBox = new THREE.Box3().setFromObject(seasonalWardrobe);
-  assert.ok(near(seasonalBox.min.x, 4.30) && near(seasonalBox.max.x, 6.00), `seasonal x=[${seasonalBox.min.x},${seasonalBox.max.x}]`);
+  assert.ok(near(seasonalBox.min.x, 4.20) && near(seasonalBox.max.x, 6.00), `seasonal x=[${seasonalBox.min.x},${seasonalBox.max.x}]`);
   // 名义 AABB z[5.55,6.10]；门板/门缝朝南（入房）突出 ≤0.03m，故 runtime max.z≈6.128
   assert.ok(near(seasonalBox.min.z, 5.55), `seasonal min.z=${seasonalBox.min.z}`);
   assert.ok(seasonalBox.max.z >= 6.10 - 1e-5 && seasonalBox.max.z <= 6.10 + 0.03 + 1e-3, `seasonal max.z=${seasonalBox.max.z} (door protrusion south of the 6.10 body edge)`);

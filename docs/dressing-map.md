@@ -1,6 +1,6 @@
 # 装扮映射表（材质/家具/灯光的外观替换映射）
 
-生成：2026-10-26，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
+生成：2026-10-27，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
 数据规模：house.yaml furnishings 共 90 件（与 `fact.furnishings_count` 对账）。
 
@@ -94,7 +94,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | bedroom_se | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | study | desk | 1 | 1.2×0.6 | (6.9, 7.8) / 90° |
 | study | chair | 1 | 0.5×0.5 | (6.3, 7.8) / 90° |
-| study | study_seasonal_wardrobe_wall | 2 | 1.7×0.55 | (5.15, 5.825) / 0°；(4.475, 7.205) / 90° |
+| study | study_seasonal_wardrobe_wall | 2 | 1.7×0.55 | (5.1, 5.825) / 0°；(4.475, 7.219) / 90° |
 | study | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | study | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | living_dining | wall_cabinet_tall | 1 | 1.35×0.35 | (7.375, 6.225) / 270° |

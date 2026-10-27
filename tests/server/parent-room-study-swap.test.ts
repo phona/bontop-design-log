@@ -96,18 +96,18 @@ test('study keeps its desk and chair in place and takes over the seasonal backst
   assert.deepEqual(placed(study, 'desk'), { type: 'desk', x: 6.90, z: 7.80, rotation: 90 });
   assert.deepEqual(placed(study, 'chair'), { type: 'chair', x: 6.30, z: 7.80, rotation: 90 });
   const cabinet = placed(study, 'study_seasonal_wardrobe_wall');
-  assert.deepEqual(cabinet, { type: 'study_seasonal_wardrobe_wall', x: 5.15, z: 5.825, rotation: 0 });
-  const box = worldAabb(cabinet); // x[4.30,6.00] z[5.55,6.10]
-  assert.ok(Math.abs(box.minX - 4.30) < GAP_EPS && Math.abs(box.maxX - 6.00) < GAP_EPS);
+  assert.deepEqual(cabinet, { type: 'study_seasonal_wardrobe_wall', x: 5.10, z: 5.825, rotation: 0, width: 1.80, depth: 0.55 });
+  const box = worldAabb(cabinet); // x[4.20,6.00] z[5.55,6.10]（2026-10-27 齐平：北段西延顶墙）
+  assert.ok(Math.abs(box.minX - 4.20) < GAP_EPS && Math.abs(box.maxX - 6.00) < GAP_EPS);
   assert.ok(Math.abs(box.minZ - 5.55) < GAP_EPS && Math.abs(box.maxZ - 6.10) < GAP_EPS);
   assert.equal(overlaps(box, STUDY_DOOR_SWEEP), false, 'cabinet enters the d_study door sweep');
   assert.equal(overlaps(box, STUDY_NORTH_DROP), true, 'cabinet must stay inside the north-wall drop segment');
   // R02（2026-10-26）南延段：北段向南延至墙垛北脸 z=8.31（垛露出）；placed() 取首个同类型（北段），南延段按坐标另取。
   const leg = study.find((item) => item.type === 'study_seasonal_wardrobe_wall' && item.x === 4.475);
-  assert.deepEqual(leg, { type: 'study_seasonal_wardrobe_wall', x: 4.475, z: 7.205, rotation: 90, width: 2.21, depth: 0.55 });
-  const legBox = worldAabb(leg!); // x[4.20,4.75] z[6.10,8.31]
+  assert.deepEqual(leg, { type: 'study_seasonal_wardrobe_wall', x: 4.475, z: 7.219, rotation: 90, width: 2.182, depth: 0.55 });
+  const legBox = worldAabb(leg!); // x[4.20,4.75] z[6.128,8.31]（北端贴北段门面 6.128，非体面 6.10）
   assert.ok(Math.abs(legBox.minX - 4.20) < GAP_EPS && Math.abs(legBox.maxX - 4.75) < GAP_EPS);
-  assert.ok(Math.abs(legBox.minZ - 6.10) < GAP_EPS && Math.abs(legBox.maxZ - 8.31) < GAP_EPS);
+  assert.ok(Math.abs(legBox.minZ - 6.128) < GAP_EPS && Math.abs(legBox.maxZ - 8.31) < GAP_EPS);
   // 卧室家具随功能迁出
   for (const removed of ['bed_150', 'mattress_150', 'wardrobe_180']) {
     assert.equal(study.some((item) => item.type === removed), false, `${removed} must not remain in study furnishings`);
