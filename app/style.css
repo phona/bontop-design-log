@@ -248,7 +248,8 @@ body.scheme-open #scheme-panel {
   background: rgba(16, 18, 25, 0.98);
   border-left: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: -12px 0 32px rgba(0, 0, 0, 0.28);
-  transition: transform 0.25s ease, visibility 0.25s;
+  /* 打开时 visibility 0s 立即翻转（base 规则即收起态语义）；见下方 open 规则 */
+  transition: transform 0.25s ease, visibility 0s 0.25s;
 }
 
 body.workbench-open #gl {
@@ -263,6 +264,13 @@ body.workbench-open #hover-tooltip {
 body.workbench-open #mode-indicator { right: calc(var(--workbench-width) + 16px); }
 body.workbench-open #phase-indicator { right: calc(var(--workbench-width) + 16px); }
 body.workbench-open #toolbar { right: calc(var(--workbench-width) + 16px); }
+/* 打开态：visibility 不过渡——0s 立即可见。曾用 visibility 0.25s 过渡，帧推进
+   被节流（后台标签/无头）时会悬挂在 hidden，出现 body.workbench-open 与计算
+   visibility:hidden 并存的工作台不可见竞态；关闭态的延迟隐藏在 base 规则里。 */
+body.workbench-open #right-panel-stack {
+  transition: transform 0.25s ease, visibility 0s;
+}
+
 body.workbench-open .toolbar-popover { right: calc(var(--workbench-width) + 16px); }
 
 body.workbench-closed #right-panel-stack {

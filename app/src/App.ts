@@ -611,6 +611,8 @@ export class App {
     }, this.materialPreviewState, document.getElementById('material-preview-actions') ?? undefined);
     // The preview workbench opens with the default floor direction visible in the scene.
     // This remains an in-memory preview; finishVisualPreview() restores the official scheme.
+    // DEC-2026-10-19-R05 的「首屏呼出材质页」不在这里做——本方法早于 restorePersistedViewState
+    // 执行，无条件 activate 会跨刷新覆盖用户上次的收起；改由 restore 按存档决定（见那里）。
     this.applyMaterialPreviewState(initialPreviewState, false);
   }
 
@@ -1126,9 +1128,15 @@ export class App {
       workbenchOpen: state.open,
       workbenchPage: state.page,
     });
-    if (persisted.workbenchOpen) {
-      this.previewWorkbench.setOpen(true, false);
-      if (persisted.workbenchPage) this.previewWorkbench.activate(persisted.workbenchPage, false);
+    if (persisted.workbenchOpen !== undefined) {
+      // 有存档：严格遵从用户上次的开合（收起就不再自动展开）
+      if (persisted.workbenchOpen) {
+        this.previewWorkbench.setOpen(true, false);
+        if (persisted.workbenchPage) this.previewWorkbench.activate(persisted.workbenchPage, false);
+      }
+    } else {
+      // 无存档（首次访问）：DEC-2026-10-19-R05——自动展开材质页，铺向滑块首屏可见
+      this.previewWorkbench.activate('material');
     }
     // 检视层组合：存档存在则启动自动恢复（替代手动点「上次组合」）
     const combo = this.layersPanel?.getSavedCombo() ?? [];
@@ -1215,6 +1223,15 @@ export class App {
         engineeringNote: '云渲染用；HVAC 协调 routes 已排除',
         category: '方案',
         run: () => { void this.handleExportGlb(); },
+      },
+      {
+        // DEC-2026-10-19-R05「首屏显示地砖默认预演」的入口补全：铺向滑块在工作台
+        // 「材质预演」页，画布优先默认收起工作台导致用户找不到；命令面板直达该页。
+        id: 'material.floor_rotation',
+        label: '地砖铺向',
+        engineeringNote: '材质预演：地砖铺向 0°(南北向)↔90°(东西向)，仅临时预演，不改正式选材与铺贴',
+        category: '方案',
+        run: () => this.previewWorkbench.activate('material'),
       },
 
       // 检视
@@ -1517,12 +1534,17 @@ export class App {
     });
 
     // 画布清场改 tap 判别（2026-10-27 review 修复）：拖拽旋转/环轨进行中的
-    // 面板不再被误收——按下只记录，抬起时判定 tap 才清场
-    document.addEventListener('pointerdown', (e: PointerEvent) => this.surfaceDismissIntent.begin(e.clientX, e.clientY));
+    // 面板不再被误收——按下只记录，抬起时判定 tap 才清场。
+    // 两个监听都挂「捕获阶段」（第三参 true）：document 捕获先于 canvas 目标阶段执行，
+    // 于是「先清场、后拾取」。若用默认冒泡，canvas 的 pointerup → pickAt →
+    // previewWorkbench.activate('object') 会先在目标阶段把工作台打开，事件继续冒泡到
+    // document 才触发 dismissTransient，刚打开的对象信息被瞬间关掉（点击对象菜单闪退）。
+    // ownsTarget 豁免对捕获同样有效：点表面内部或其开关不清场，交给自身 toggle 逻辑。
+    document.addEventListener('pointerdown', (e: PointerEvent) => this.surfaceDismissIntent.begin(e.clientX, e.clientY), true);
     document.addEventListener('pointerup', (e: PointerEvent) => {
       if (this.surfaceDismissIntent.end(e.clientX, e.clientY) !== 'tap') return;
       this.surfaceManager.dismissTransient(e.target);
-    });
+    }, true);
 
     // 移动端 tab bar：与桌面顶栏同一套 surface id，入口两端共用
     const tabBarRoot = document.getElementById('mobile-tabbar');
@@ -2818,9 +2840,14 @@ export class App {
       if (effective) {
         // DEC-041：传整份 selection（default + roomOverrides），分房覆盖在渲染层生效
         this.houseScene.setSelection(topicId, effective, selection);
-        this.schemePanel.setActiveOption(topicId, effective, []);
       }
     }
+    // 方案面板改为「按主题记忆选案」展示第一个有选案的主题；不在这里逐键 setActiveOption——
+    // 那会让 activeTopicId 停在最后一个 selections 键（如 robot_vacuum 不在面板导航主题里），
+    // 导致无 tab 激活、选项列表全空（存量 bug，被控制面重构暴露）。
+    this.schemePanel.applySchemeSelections(
+      Object.fromEntries(Object.entries(scheme.selections).map(([k, v]) => [k, v.default])),
+    );
     if (this.visualPreviewActive && this.materialPreviewState) {
       this.applyMaterialPreviewState(this.materialPreviewState, this.visualPreviewPaintActive);
     } else if (this.materialPreviewPanel) {

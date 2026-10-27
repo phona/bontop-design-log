@@ -17,6 +17,8 @@ export class SchemePanel {
   private topics: Topic[] = [];
   private activeTopicId = 'hvac';
   private activeOptionId = '';
+  /** 按主题记忆当前选案：切 tab 时恢复该主题的选中项与 info，而非无条件清空。 */
+  private activeOptionByTopic = new Map<string, string>();
   private onSelect?: (topicId: string, optionId: string) => void;
   private els: SchemePanelElements;
   private compareActive = false;
@@ -60,13 +62,24 @@ export class SchemePanel {
 
   setActiveTopic(topicId: string) {
     this.activeTopicId = topicId;
-    this.activeOptionId = '';
+    // 恢复该主题记忆里的选案（而非无条件清空）：切回已选过的主题时能看到当前选案与 info。
+    this.activeOptionId = this.activeOptionByTopic.get(topicId) ?? '';
     this.renderTabs();
     this.renderOptions();
-    this.clearInfo();
+    const remembered = this.activeOptionByTopic.get(topicId);
+    const option = remembered
+      ? this.topics.find((t) => t.id === topicId)?.options.find((o) => o.id === remembered)
+      : undefined;
+    if (option) {
+      this.showInfo(option, []);
+    } else {
+      this.clearInfo();
+    }
   }
 
   setActiveOption(topicId: string, optionId: string, warnings: string[]) {
+    // 先记忆：之后切到别的主题再切回，setActiveTopic 能恢复这一选中态。
+    this.activeOptionByTopic.set(topicId, optionId);
     this.activeTopicId = topicId;
     this.activeOptionId = optionId;
     this.renderTabs();
@@ -76,6 +89,40 @@ export class SchemePanel {
     const option = topic?.options.find((o) => o.id === optionId);
     if (option) {
       this.showInfo(option, warnings);
+    }
+  }
+
+  /**
+   * 用一份方案选案（topicId → optionId）刷新面板：按主题记忆选案，并展示
+   * 「当前主题」（带上该主题的选中项与 info）；当前主题失效（未知主题或无选案）时
+   * 回退到第一个有选案的主题，再回退第一个主题，最后 ''。
+   *
+   * 不能无条件跳回「第一个有选案的主题」：applyScheme 不只在新方案加载时调用，
+   * 用户自己点击选案后约 1 秒 StateSync.pollScheme() 检测到 diff 也会触发它——
+   * 主题顺序 hvac 打头且 hvac 始终有选案，无条件跳回会把用户刚切到窗帘/洁具
+   * 点的选案拽回 hvac tab。仅当当前主题已不在面板或该主题无选案时才回退。
+   *
+   * 同样取代旧 applyScheme 里「遍历所有 selections 键逐个 setActiveOption」：那会让
+   * activeTopicId 停在最后一个键——可能不是面板的导航主题（如 robot_vacuum），
+   * 于是无 tab 激活、选项列表全空。这里只展示面板真实拥有的主题，未知键进 map 但不影响展示。
+   */
+  applySchemeSelections(selections: Record<string, string | null | undefined>): void {
+    this.activeOptionByTopic.clear();
+    for (const [topicId, optionId] of Object.entries(selections)) {
+      if (optionId) this.activeOptionByTopic.set(topicId, optionId);
+    }
+    const currentValid = this.topics.some(
+      (t) => t.id === this.activeTopicId && this.activeOptionByTopic.has(t.id),
+    );
+    const firstWithSelection = this.topics.find((t) => this.activeOptionByTopic.has(t.id));
+    const target = currentValid
+      ? this.activeTopicId
+      : (firstWithSelection?.id ?? this.topics[0]?.id ?? '');
+    const remembered = this.activeOptionByTopic.get(target);
+    if (remembered) {
+      this.setActiveOption(target, remembered, []);
+    } else {
+      this.setActiveTopic(target);
     }
   }
 
