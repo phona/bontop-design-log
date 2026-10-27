@@ -1222,10 +1222,21 @@ function buildFurniture(item: FurnishingsYaml[string][number]): THREE.Group | nu
     // 否则模型与 3D 所见脱节（如书房南延腿：模型 2.21m，渲染仍按目录 1.70m，两端各留 0.255m 缝）。
     // 缩放在局部空间做：调用方随后按局部轴施加 rotation（rotation=90 时局部 x 即世界 z），
     // 故缩放后的长边仍沿柜体走向。注意：配方为固定零件的非柜类 fixture 被行内尺寸缩放时会等比拉伸，
-    // 目前全仓仅书房南延腿一个行内宽/深用例（柜体配方，拉伸即加宽柜体，符合实物）。
+    // 目前全仓行内宽/深用例仅书房南延腿、行内高度用例仅书房通顶高腿（均为柜体配方，拉伸即加宽/加高柜体，符合实物）。
     const dims = FURNITURE_DIMS[item.type];
     if (dims && dims.width > 0 && dims.depth > 0) {
       model.scale.set(item.width / dims.width, 1, item.depth / dims.depth);
+    }
+  }
+  if (model && item.cabinetHeight !== undefined && item.cabinetHeight > 0) {
+    // 行内高度优先：柜体配方实建高（如书房柜 2.40m 柜体顶）按 cabinetHeight 等比拉高。
+    // Y 缩放与 X/Z 缩放无关（局部 Y 即世界 Y），分母用 THREE.Box3 实测的模型 bbox 高，
+    // 不依赖目录高度（FURNITURE_DIMS 无 height 字段）。内件（挂杆/层板）随之等比拉高，
+    // 但柜门关闭后不可见，只以外包络为准；非柜类配方被拉高时同样等比拉伸（同上警告）。
+    const box = new THREE.Box3().setFromObject(model);
+    const builtHeight = box.max.y - box.min.y;
+    if (builtHeight > 0) {
+      model.scale.y = item.cabinetHeight / builtHeight;
     }
   }
   return model;
@@ -1416,6 +1427,8 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
         model.userData.declaredDimensions = {
           width: item.width ?? declaredDimensions.width,
           depth: item.depth ?? declaredDimensions.depth,
+          // 高度只在行内 cabinetHeight 存在时登记，不给其他件编造目录高度（目录无 height 字段）。
+          ...(item.cabinetHeight !== undefined ? { height: item.cabinetHeight } : {}),
         };
       }
       if (placement.wallId !== undefined) {

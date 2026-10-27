@@ -2,7 +2,7 @@
 
 生成：2026-10-27，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json
 
-数据规模：house.yaml furnishings 共 90 件（与 `fact.furnishings_count` 对账）。
+数据规模：house.yaml furnishings 共 91 件（与 `fact.furnishings_count` 对账）。
 
 用法：渲染时按本表替换材质/家具/灯光外观；节点名即映射键。渲染线现状（2026-10-22 批 2 审阅修复）：Twinmotion/Blender 线已退场（其验收文档已删除，历史见 git），现行定妆走 Web 渲染线（app/ Three.js）；本表只保留与渲染器无关的映射数据与外观意图，§6 为现行回传流程。
 
@@ -94,7 +94,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | bedroom_se | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | study | desk | 1 | 1.2×0.6 | (6.9, 7.8) / 90° |
 | study | chair | 1 | 0.5×0.5 | (6.3, 7.8) / 90° |
-| study | study_seasonal_wardrobe_wall | 2 | 1.7×0.55 | (5.1, 5.825) / 0°；(4.475, 7.219) / 90° |
+| study | study_seasonal_wardrobe_wall | 3 | 1.7×0.55 | (5.1, 5.825) / 0°；(4.475, 6.289) / 90°；(4.475, 7.38) / 90° |
 | study | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | study | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | living_dining | wall_cabinet_tall | 1 | 1.35×0.35 | (7.375, 6.225) / 270° |
