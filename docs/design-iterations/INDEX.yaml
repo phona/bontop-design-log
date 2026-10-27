@@ -6,9 +6,9 @@ meta:
   schema: design-iterations-index/v2
   generated: true
   established: '2026-10-20'
-  dir_count: 64
+  dir_count: 65
   stray_file_count: 1
-  external_refs_total: 152
+  external_refs_total: 153
   field_provenance:
     topic: round.yaml index.topic 原文（原按目录名前缀归类，命名事实）
     review_state: round.yaml index.review_state 原文（来自原 review-manifest 的 state/status 字段；无 manifest 记 none）
@@ -410,6 +410,11 @@ entries:
     review_state: none
     supersedes: none
     external_refs: 2
+  - dir: control-surface-refactor-20261026
+    topic: general
+    review_state: implemented_runtime_review_pending
+    supersedes: none
+    external_refs: 1
   - dir: archive/spatial-validation-20260908
     topic: general
     review_state: verification

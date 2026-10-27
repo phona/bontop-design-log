@@ -50,7 +50,7 @@ describe('App electrical topology toggle', () => {
     assert.equal(controls.hidden, false);
     assert.equal(button.disabled, false);
     assert.equal(button.classList.contains('active'), true);
-    assert.equal(button.textContent, '电气回路归属 · 开');
+    assert.equal(button.textContent, '电路归属 · 开');
   });
 
   it('keeps the topology button unavailable when the API did not load topology', () => {
@@ -64,7 +64,7 @@ describe('App electrical topology toggle', () => {
     assert.equal(controls.hidden, true);
     assert.equal(button.disabled, true);
     assert.equal(button.classList.contains('active'), false);
-    assert.equal(button.textContent, '电气回路归属：未就绪');
+    assert.equal(button.textContent, '电路归属：未就绪');
   });
 
   it('couples overview visibility while preserving the independent topology preference', () => {

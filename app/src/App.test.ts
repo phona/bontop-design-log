@@ -51,7 +51,12 @@ vi.mock('three', async (importOriginal: any) => {
       copy(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }
       clone() { return new (this.constructor as any)(this.x, this.y, this.z); }
     },
-    Color: class { set() { return this; } copy() { return this; } clone() { return new (this.constructor as any)(); } },
+    Color: class {
+      set() { return this; }
+      setRGB() { return this; }
+      copy() { return this; }
+      clone() { return new (this.constructor as any)(); }
+    },
     PlaneGeometry: class {
       getAttribute() {
         return { count: 0, getX: () => 0, getY: () => 0, setXY() {}, needsUpdate: false };
@@ -103,8 +108,9 @@ vi.mock('./render/EnvironmentManager.js', () => ({
     setTimeOfDay() {}
     toggleIBL() {}
     setSunlightEnabled() {}
+    setInteriorOnlyNightPreview() {}
     requestShadowUpdate() {}
-    getLightingState() { return { hour: 12, azimuth: 180, elevation: 60, iblEnabled: false }; }
+    getLightingState() { return { hour: 12, azimuth: 180, elevation: 60, iblEnabled: false, isNight: false, altitudeDeg: 60 }; }
   },
 }));
 
@@ -141,6 +147,12 @@ const mockCancelAnimationFrame = vi.fn();
 
 vi.stubGlobal('requestAnimationFrame', mockRequestAnimationFrame);
 vi.stubGlobal('cancelAnimationFrame', mockCancelAnimationFrame);
+// jsdom 没有 ResizeObserver；HouseScene 构造时新建一个观察画布尺寸
+vi.stubGlobal('ResizeObserver', class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+});
 
 const mockWindow = {
   innerWidth: 800,
@@ -148,6 +160,7 @@ const mockWindow = {
   devicePixelRatio: 1,
   addEventListener: vi.fn(),
   removeEventListener: vi.fn(),
+  dispatchEvent: vi.fn(),
   setTimeout,
 };
 vi.stubGlobal('window', mockWindow);
@@ -168,6 +181,9 @@ function createMockElement(id?: string) {
     onclick: null,
     setAttribute: vi.fn(),
     appendChild: vi.fn(),
+    replaceChildren: vi.fn(),
+    remove: vi.fn(),
+    querySelector: vi.fn(() => createMockElement()),
     querySelectorAll: vi.fn(() => []),
     addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
@@ -185,10 +201,14 @@ const mockDocument = {
   createElement: vi.fn((tag: string) => ({
     tagName: tag,
     className: '',
+    dataset: {},
+    classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() },
     style: {},
     innerHTML: '',
     textContent: '',
     appendChild: vi.fn(),
+    replaceChildren: vi.fn(),
+    remove: vi.fn(),
     addEventListener: vi.fn(),
     setAttribute: vi.fn(),
     querySelector: vi.fn(() => createMockElement()),
@@ -199,8 +219,12 @@ const mockDocument = {
     documentEventListeners[event].push(handler);
   }),
   removeEventListener: vi.fn(),
+  querySelectorAll: vi.fn(() => []),
   pointerLockElement: null,
-  body: { appendChild: vi.fn() } as unknown as HTMLBodyElement,
+  body: {
+    appendChild: vi.fn(),
+    classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() },
+  } as unknown as HTMLBodyElement,
 };
 vi.stubGlobal('document', mockDocument);
 
@@ -363,7 +387,7 @@ describe('App', () => {
     expect(update).toHaveBeenCalledWith('privacy', undefined, '1');
   });
 
-  it('keeps the measurement L shortcut working when render projection is unavailable', async () => {
+  it('L only toggles lights; toasts (not measurement fallback) when projection is unavailable', async () => {
     vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
       if (urlStr.includes('/api/project')) return { ok: true, json: async () => mockProjectData } as Response;
@@ -384,7 +408,8 @@ describe('App', () => {
 
     keydown({ code: 'KeyL', repeat: false, preventDefault: vi.fn() });
 
-    expect(toggleMeasurement).toHaveBeenCalledOnce();
+    // 2026-10-26 去陷阱：L 只管灯；灯不可用时只 toast，不再顺手切换测量
+    expect(toggleMeasurement).not.toHaveBeenCalled();
     expect(toast).toHaveBeenCalledWith(expect.stringContaining('室内灯光配置不可用'));
   });
 

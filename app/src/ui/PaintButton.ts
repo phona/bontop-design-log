@@ -28,9 +28,7 @@ export class PaintButton {
     const state = this.getState();
     const active = state === 'ready' && this.getActive();
     this.el.disabled = state !== 'ready';
-    this.el.textContent = state === 'loading'
-      ? '涂漆区：加载中'
-      : active ? '涂漆区 · 显示中' : '涂漆区';
+    this.el.textContent = active ? '涂漆 · 显示中' : '涂漆';
     this.el.classList.toggle('active', active);
   }
 }

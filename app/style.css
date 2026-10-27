@@ -13,10 +13,17 @@ html, body {
   color: #eee;
 }
 
+/* 控制面重构（2026-10-26）：dvh 防 iOS Safari 浏览器 chrome 裁切底部入口 */
 #app {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   position: relative;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 #gl {
@@ -62,12 +69,75 @@ html, body {
   background: rgba(255, 255, 255, 0.14);
 }
 
+/* 控制面重构（2026-10-26）：表面头部通用区（钉住/收起） */
+.panel-heading-acts,
+.popover-head-acts {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ddd;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.icon-btn.pinned {
+  background: rgba(59, 130, 246, 0.45);
+  border-color: rgba(59, 130, 246, 0.7);
+  color: #fff;
+}
+
+.popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 2px 8px;
+  font-size: 13px;
+  color: #eee;
+}
+
+.toolbar-popover .popover-head {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  margin-bottom: 6px;
+}
+
+/* 控制面重构（2026-10-26）：方案面板 = 左抽屉，默认收起（画布优先），
+   body.scheme-open 驱动滑入（SchemePanel 开合即开关抽屉）。 */
 #scheme-panel {
-  left: 16px;
-  top: 16px;
-  width: 360px;
-  max-height: calc(50vh - 24px);
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 300px;
+  max-height: none;
   overflow-y: auto;
+  border-radius: 0 12px 12px 0;
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform 0.22s ease, visibility 0.22s;
+  z-index: 150;
+}
+
+body.scheme-open #scheme-panel {
+  transform: none;
+  visibility: visible;
 }
 
 #scheme-panel h3 {
@@ -178,7 +248,7 @@ html, body {
   background: rgba(16, 18, 25, 0.98);
   border-left: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: -12px 0 32px rgba(0, 0, 0, 0.28);
-  transition: transform 0.25s ease;
+  transition: transform 0.25s ease, visibility 0.25s;
 }
 
 body.workbench-open #gl {
@@ -198,6 +268,9 @@ body.workbench-open .toolbar-popover { right: calc(var(--workbench-width) + 16px
 body.workbench-closed #right-panel-stack {
   transform: translateX(100%);
   pointer-events: none;
+  /* 控制面重构：收起态用 visibility 保证不可见——transform 推出自身高度在
+     dock 避让 tab bar（bottom 偏移）后会漏出顶部一条，勿改回纯 transform */
+  visibility: hidden;
 }
 
 .workbench-header {
@@ -866,6 +939,30 @@ body.workbench-closed #workbench-reopen { display: block; }
   pointer-events: none;
 }
 
+/* 全局就绪指示（控制面重构：替代按钮文案里的「：加载中」） */
+#data-ready-chip {
+  position: fixed;
+  top: 44px;
+  right: 16px;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  color: #86efac;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  z-index: 90;
+  pointer-events: none;
+}
+
+#data-ready-chip[hidden] {
+  display: none;
+}
+
+body.mobile-chrome #data-ready-chip {
+  top: 36px;
+  right: 8px;
+}
+
 #phase-indicator {
   position: fixed;
   bottom: 16px;
@@ -956,6 +1053,134 @@ body.workbench-closed #workbench-reopen { display: block; }
 
 .toolbar-popover[hidden] {
   display: none;
+}
+
+/* 视角面板选项（轨道 / 第一人称 / 俯视行） */
+.view-opt {
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #eee;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+}
+
+.view-opt:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.view-opt.on {
+  background: rgba(59, 130, 246, 0.35);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+.view-opt .k,
+.view-opt kbd {
+  font-size: 11px;
+  color: #999;
+  font-family: monospace;
+}
+
+.view-opt-row {
+  display: flex;
+}
+
+.view-opt-row #topdown-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #eee;
+  font-size: 13px;
+  cursor: pointer;
+  min-height: 40px;
+}
+
+.view-opt-row #topdown-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.view-opt-row #topdown-btn.active {
+  background: rgba(59, 130, 246, 0.35);
+  border-color: rgba(59, 130, 246, 0.6);
+}
+
+/* 移动端底部 tab bar（input-capability 判定移动形态时由 JS 显示） */
+#mobile-tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 160;
+  display: none;
+  align-items: stretch;
+  background: rgba(16, 18, 25, 0.97);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+#mobile-tabbar[hidden] {
+  display: none;
+}
+
+body.mobile-chrome #mobile-tabbar {
+  display: flex;
+}
+
+.mobile-tab {
+  flex: 1;
+  min-width: 44px;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 0;
+  background: transparent;
+  color: #999;
+  font-size: 11px;
+  cursor: pointer;
+  position: relative;
+}
+
+.mobile-tab.on {
+  color: #fff;
+}
+
+.mobile-tab.on .mobile-tab-label {
+  color: #93c5fd;
+}
+
+.mobile-tab-badge {
+  position: absolute;
+  top: 6px;
+  right: calc(50% - 26px);
+  background: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  border-radius: 8px;
+  font-size: 10px;
+  line-height: 14px;
+  padding: 0 4px;
+}
+
+.mobile-tab-badge[hidden] {
+  display: none;
+}
+
+.mobile-tab-palette {
+  flex: 0 0 52px;
+  font-size: 16px;
+  color: #bbb;
 }
 
 #layers-panel > button {
@@ -1247,7 +1472,7 @@ body.workbench-closed #workbench-reopen { display: block; }
     box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.28);
   }
 
-  body.workbench-closed #right-panel-stack { transform: translateY(100%); }
+  body.workbench-closed #right-panel-stack { transform: translateY(100%); visibility: hidden; }
 
   /* 底部 dock 占用自身布局高度，模型视口保持可见且不被抽屉盖住。 */
   body.workbench-open #gl {
@@ -1307,4 +1532,121 @@ body.workbench-closed #workbench-reopen { display: block; }
   z-index: 10000;
   font-size: 14px;
   display: none;
+}
+
+/* ============ 控制面重构（2026-10-26）：移动形态 ============
+   body.mobile-chrome 由 input-capability 判定（触摸主输入或窄视口）后由 JS 落下。
+   能力驱动的部分（tab bar 显隐、桌面顶栏让位、触控专用提示文案）放这里；
+   窄视口几何（底部 sheet / 全屏总览 / dock 避让）放下面 @media 块。 */
+body.mobile-chrome #toolbar {
+  display: none;
+}
+
+body.mobile-chrome #mobile-tabbar {
+  display: flex;
+}
+
+body.mobile-chrome #mode-indicator {
+  top: 8px;
+  right: 8px;
+  font-size: 11px;
+  max-width: 40vw;
+}
+
+body.mobile-chrome #phase-indicator {
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  right: 8px;
+  font-size: 10px;
+}
+
+/* 工作台呼出按钮：避让底部 tab bar（等特异性、后声明，覆盖旧 ≤700px 底部贴条规则） */
+body.mobile-chrome #workbench-reopen {
+  top: auto;
+  right: 12px;
+  bottom: calc(60px + env(safe-area-inset-bottom));
+  transform: none;
+  writing-mode: horizontal-tb;
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 8px;
+  background: rgba(16, 18, 25, 0.9);
+}
+
+/* 触摸端没有 pointer lock / 鼠标灵敏度概念 */
+body.mobile-chrome #pointer-lock-toast,
+body.mobile-chrome #sensitivity-slider {
+  display: none !important;
+}
+
+/* 触控目标 ≥44px */
+body.mobile-chrome .topic-tab,
+body.mobile-chrome .workbench-accordion-header,
+body.mobile-chrome .scheme-btn,
+body.mobile-chrome #layers-panel > button,
+body.mobile-chrome #env-panel > button {
+  min-height: 44px;
+}
+
+body.mobile-chrome .panel-collapse-toggle {
+  width: 36px;
+  height: 36px;
+}
+
+/* 窄视口几何：浮层改底部 sheet、总览全屏、工作台 dock 避让 tab bar */
+@media (max-width: 700px) {
+  .toolbar-popover {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 62dvh;
+    border-radius: 14px 14px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+  }
+
+  #overview-menu {
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  #right-panel-stack {
+    bottom: calc(52px + env(safe-area-inset-bottom));
+  }
+
+  body.workbench-open #gl {
+    height: calc(100dvh - var(--workbench-height) - 52px - env(safe-area-inset-bottom));
+  }
+
+  #workbench-reopen {
+    bottom: calc(60px + env(safe-area-inset-bottom));
+    right: 12px;
+    top: auto;
+    transform: none;
+    writing-mode: horizontal-tb;
+    padding: 8px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 8px;
+  }
+
+  #humidity-info-panel {
+    bottom: calc(120px + env(safe-area-inset-bottom));
+    max-height: 40dvh;
+  }
+
+  #scheme-panel {
+    width: min(300px, 85vw);
+  }
+
+  .measurement-panel {
+    max-width: calc(100vw - 24px);
+  }
 }

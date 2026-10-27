@@ -1,0 +1,351 @@
+# 本轮的全部结构化记录（控制面重构 + 移动端统一增强，单文件 round.yaml）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+# ── 决策来源注释保全 ──
+# [alignment] 2026-10-26 业主四轮对齐：①两端画布优先；②常驻 5 入口+命令面板；
+#   ③业主语言命名、工程全称进 tooltip；④单击画布全部即收+可钉住；⑤第一人称
+#   移动端本轮做（拖拽转向+虚拟摇杆）；⑥视觉风格不动只改结构。
+# [plan] 实施计划五步：命令注册表 → 面板管理器 → 响应式呈现 → FP 触摸操控 →
+#   持久化/加载态/键位去陷阱/命名。每步独立 commit 与门禁。
+schema: design-iteration-round/v1
+iteration_id: control-surface-refactor-20261026
+index:
+  order: 64
+  topic: general
+  review_state: implemented_runtime_review_pending
+  supersedes: none
+brief:
+  schema: interior-design-decision-brief/v1
+  iteration_id: control-surface-refactor-20261026
+  decision_ref: DEC-2026-10-26-R04
+  frozen: true
+  frozen_at: '2026-10-26'
+  owner: 业主
+  priority:
+    - 控制面重构：唯一命令源（CommandRegistry）+ 面板管理器（SurfaceManager），桌面与移动端共用一套交互模型。
+    - 画布优先：两端启动均为全出血画布，所有面板默认收起、按需呼出。
+    - 常驻入口收敛为 5 个（视角/方案/图层/环境/总览）+ 命令面板兜底全部 25 条命令（18 显式 + 7 检视层）。
+    - 移动端可用：底部 tab bar + 底部 sheet + 触摸加固 + 第一人称摇杆与拖拽转向。
+    - 业主语言命名（水电走向/空调设备/电路归属…），工程全称进 tooltip。
+  allowed_scope:
+    - app/src/ui/** 与 app/src/scene/**（新增 CommandRegistry/SurfaceManager/MobileTabBar/input-capability/VirtualJoystick/pointer-intent/view-state-store）。
+    - app/src/App.ts 仅装配层（命令注册、表面接线、能力订阅、持久化恢复）。
+    - app/index.html 只增不改既有 element id；app/style.css 布局与新增组件样式。
+    - docs/hvac/hvac-pitfall-audit-20261011.md 与 docs/curtain-design.md 的入口/路径同步。
+  forbidden:
+    - 改 config/**、server/**、shared/**、data/** 或任何户型几何/机电/预算逻辑。
+    - 改检视层平级铁律（set*InspectionVisible 互不引用、inspectionInitial 快照可逆）。
+    - 移除 FirstPersonController 的 pitch ±80° clamp 或平滑；改 CameraAnimator.interrupt 语义。
+    - PWA/离线、渲染性能分档（明确留待后续轮次）。
+  alignment:
+    id: owner-alignment-2026-10-26-control-surface
+    original_request: “本项目我想支持移动端。看看你的建议”→“桌面端我觉得也挺难用的”→“面板功能键多，而且总是弹出会话栏占用可视面积”→“这一轮我们对交互做重构，对桌面端跟移动端统一做更强的改进，如何？”→“切分支来改，改完走pr合并”
+    clarified_answer: “直接改完吧。我统一验收，有问题再改”（跳过原型签字，五步连续实施）
+    normalized_decision: >-
+      以 CommandRegistry + SurfaceManager 为骨架统一桌面/移动端交互：画布优先、5 入口 + 命令面板、
+      单击画布即收 + 钉住豁免 + Esc 全清；移动端 tab bar/sheet + 第一人称摇杆与拖拽转向；
+      刷新恢复工作台状态与检视层组合；加载态收敛为禁用样式 + 全局就绪 chip；
+      X-ray 改 X、L 只管灯；命名用业主语言。
+    affected_refs:
+      - app/src/App.ts
+      - app/index.html
+      - app/style.css
+      - docs/hvac/hvac-pitfall-audit-20261011.md
+      - docs/curtain-design.md
+    site_pending: []
+  decisions:
+    - id: DEC-2026-10-26-R04
+      content: 控制面重构五步实施（命令注册表/面板管理器/响应式呈现/FP 触摸操控/持久化与去陷阱），桌面移动端统一交互模型。
+      status: owner_directed_implementation
+  acceptance:
+    checks:
+      - 每步门禁：typecheck（仅 2 条存量基线错 scripts/schedule/control.ts）、ci:test-app 48=48 无基线外新失败、gate:visual CLEAR。
+      - Step 2 修掉存量红 App.test.ts 并删除对应基线行（50→48）；Step 4 起按铁律加跑 verify:all（21/22，唯一失败为存量基线 verify-mep）。
+      - 无头浏览器实测：桌面 1400px 与窄屏 420px 两端默认态、tab bar、工具栏、就绪 chip、新标签均生效，无 JS 错误。
+      - 不改任何 config/几何/机电数据（verify:all 与 gate:visual 佐证）。
+    browser_view: 桌面默认态（画布全宽、工具诸入口收起、右上「数据就绪」）；420px 窄屏默认态（底部 tab bar 六项、告警徽章挂图层）。
+    evidence_refs:
+      - tmp/capture/proto-desktop.png
+      - tmp/capture/proto-mobile.png
+      - tmp/capture/proto-mobile-fp.png
+      - tmp/capture/app-desktop-v2.png
+      - tmp/capture/app-mobile-v2.png
+    residual_note: 过程截图按「过程物不进 git」暂存 tmp/capture/；终稿证据待业主统一验收后按关账挑选入 evidence/final/（每视角至多 1 张）。第一人称移动端手感（拖拽灵敏度/摇杆位置）需真机确认。
+datum:
+  schema: interior-design-design-datum/v1
+  iteration_id: control-surface-refactor-20261026
+  coordinate_system: Three.js右手系；+x=东、+z=南、Y向上；单位m。本轮不改几何，坐标口径仅作界面锚定参照。
+  datums:
+    - id: command-registry-single-source
+      object: control-surface-entry-model
+      state: 四端同源（桌面顶栏/移动 tab bar/命令面板/快捷键提示全部从 CommandRegistry 渲染）
+      meaning: 入口收敛为 5 个常驻入口 + 命令面板兜底；「总览只有 M 键」与「20 个快捷键靠背」两个不可发现问题同源解决。
+      basis:
+        - f_popover_sticky_pain
+        - d_owner_scope
+    - id: canvas-first-default
+      object: app-boot-layout
+      state: 两端启动零面板（方案抽屉/工作台/浮层全部默认收起）
+      meaning: 画布可视面积从 ~48% 提到 100%；面板按需呼出、一次只开一个。
+      basis:
+        - f_panel_realestate
+        - d_owner_scope
+    - id: transient-dismissal-with-pin
+      object: surface-lifecycle
+      state: 单击画布（非拖拽）全部即收；钉住豁免画布清场但不豁免 Esc
+      meaning: 取代 Popover 旧「粘性」默认（点场景不收起）；连续调图层用钉住按钮。
+      basis:
+        - f_popover_sticky_pain
+        - d_owner_scope
+    - id: mobile-first-person-input
+      object: first-person-touch-controls
+      plan:
+        look: 画布拖拽转向，增量汇入 accumX/accumY → tanh 平滑 → yaw/pitch → ±80° clamp（与鼠标共用管线）
+        move: 左下 120px 虚拟摇杆，0.22 死区，映射 MovementKeys
+        pick: tap 判定（位移 ≤10px，与时长无关）后才 raycast 拾取
+      meaning: 不依赖 pointer lock（iOS 不可用）；桌面 WASD + pointer lock 路径不变。
+      basis:
+        - f_pointer_lock_mobile_gap
+        - d_owner_scope
+  non_datums:
+    - 任何户型几何、墙体、机电、预算数据（本轮零改动）。
+    - 检视层平级语义与各自 setter 的就绪钳制。
+    - 视觉风格（配色/圆角/模糊背景保持原样）。
+fact_table:
+  schema: interior-design-fact-table/v1
+  iteration_id: control-surface-refactor-20261026
+  facts:
+    - id: f_popover_sticky_pain
+      status: confirmed
+      statement: Popover.ts 旧注释明示「面板是粘性的：点场景或其它 UI 不收起」，是「总是弹出占用可视面积」的直接机制；PreviewWorkbench 旧默认 open=true 使 390px 工作台启动即占位。
+      source_refs:
+        - app/src/ui/Popover.ts
+        - app/src/ui/PreviewWorkbench.ts
+      impact: 即收/钉住语义与画布优先默认态针对这两个根因。
+      affected_objects:
+        - layers-panel
+        - env-panel
+        - right-panel-stack
+      owner: 业主（2026-10-26「面板功能键多，而且总是弹出会话栏占用可视面积」）
+      verification: git show 96d0235^:app/src/ui/Popover.ts 第 1-3 行注释
+    - id: f_panel_realestate
+      status: confirmed
+      statement: 1440px 宽屏上左 360px 方案面板 + 右 390px 工作台共占 750px，画布仅剩约 690px（48%）。
+      source_refs:
+        - app/style.css
+      impact: 画布优先默认态 + 左抽屉化。
+      affected_objects:
+        - scheme-panel
+      owner: 业主
+      verification: '重构前 style.css #scheme-panel/#right-panel-stack 规则'
+    - id: f_pointer_lock_mobile_gap
+      status: confirmed
+      statement: 第一人称旧实现依赖 PointerLockControls + WASD，pointer lock 在 iOS Safari 完全不可用；且 onMouseMove 以 document.pointerLockElement 为门槛，无拖拽转向退化路径。
+      source_refs:
+        - app/src/scene/FirstPersonController.ts
+      impact: 触摸转向路径与摇杆；编辑类命令桌面专属。
+      affected_objects:
+        - FirstPersonController
+      owner: 业主
+      verification: git show 96d0235^:app/src/scene/FirstPersonController.ts
+    - id: f_keybinding_drift
+      status: confirmed
+      statement: keybindings.ts 漏登记 KeyT（俯视）——App 处理器有、展示表没有，命令面板快捷键反查必然缺失；同表还登记了 L 的双行为（灯未就绪时切测量）。
+      source_refs:
+        - app/src/ui/keybindings.ts
+        - app/src/App.ts
+      impact: Step 1 补 KeyT 并把魔数断言改不变量断言；Step 5 拆 L、X-ray 改 X。
+      affected_objects:
+        - keybindings.ts
+        - CommandPalette
+      owner: AI 发现
+      verification: 重构前 findBinding('KeyT') 返回 undefined（测试实证）
+    - id: f_app_test_baseline_red
+      status: confirmed
+      statement: App.test.ts 文件级红（mock 缺口：THREE.Color.setRGB、createMockElement.querySelector/replaceChildren/remove、document.querySelectorAll、body.classList、window.dispatchEvent、ResizeObserver、EnvironmentManager.setInteriorOnlyNightPreview）。
+      source_refs:
+        - app/src/App.test.ts
+        - ci/baseline/test-app-failures.txt
+      impact: Step 2 修复并删基线行（50→48）。
+      affected_objects:
+        - App.test.ts
+      owner: AI 发现
+      verification: ci/baseline/test-app-failures.txt 第 4 行（已删）
+objects:
+  schema: interior-design-object-manifest/v1
+  iteration_id: control-surface-refactor-20261026
+  objects:
+    - id: CommandRegistry
+      owner: app/src/ui/CommandRegistry.ts
+      parts:
+        - register/registerAll/get/list/grouped/execute/isAvailable/shortcutOf
+      function: 唯一命令源；run 委托 App 既有处理器，shortcutOf 从 keybindings.ts 反查展示键位
+      relationships: CommandPalette/MobileTabBar/快捷键提示三处消费
+      maintenance: 新命令必须带 label（业主语言）与 engineeringNote（tooltip）
+      interfaces: execute() 被 available() 拦截时发 command-unavailable 事件
+      collision: 与 keybindings.ts 双源风险由 shortcutOf 反查 + 不变量测试封住
+      validation_refs:
+        - app/src/ui/CommandRegistry.test.ts
+    - id: SurfaceManager
+      owner: app/src/ui/SurfaceManager.ts
+      parts:
+        - 同 slot 互斥 / modal 清场 / dismissTransient / dismissAll / 钉住集合
+      function: 面板生命周期总管；只编排开合，不拥有 DOM
+      relationships: 注册 10 个表面（scheme/workbench/overview/view/layers/env/alerts/settings/palette/furniture/placement）
+      maintenance: 新表面必须声明 el/toggleEl（清场判据）与 slot
+      interfaces: open/close/toggle/dismissTransient/dismissAll/isPinned/setPinned
+      collision: 与 Popover 同组互斥重叠——同组保留，管理器追加跨 slot/modal 语义
+      validation_refs:
+        - app/src/ui/SurfaceManager.test.ts
+    - id: MobileTabBar
+      owner: app/src/ui/MobileTabBar.ts
+      parts:
+        - 5 入口 + 命令面板按钮 + 告警徽章
+      function: 移动形态底部入口；与桌面顶栏同一套 surface id
+      relationships: input-capability 判定显隐；SurfaceManager.toggle 执行
+      maintenance: 入口集合与桌面工具栏保持一致
+      interfaces: setVisible/sync
+      collision: '与桌面 #toolbar 互斥显隐（body.mobile-chrome）'
+      validation_refs:
+        - app/src/ui/MobileTabBar.test.ts
+    - id: VirtualJoystick
+      owner: app/src/scene/VirtualJoystick.ts
+      parts:
+        - 120px 触控区 + knob + 0.22 死区
+      function: 移动端第一人称移动输入
+      relationships: 输出进 FirstPersonController.setStickVector；显隐由 FP 模式 + touchPrimary 决定
+      maintenance: 死区与触控区尺寸是手感参数，真机验收后可能要调
+      interfaces: onChange/setVisible/getVector/dispose
+      collision: 与 WASD 共用 MovementKeys 方向，互不干扰
+      validation_refs:
+        - app/src/scene/VirtualJoystick.test.ts
+    - id: PointerIntent
+      owner: app/src/scene/pointer-intent.ts
+      parts:
+        - begin/end/hasDragged/cancel
+      function: tap/拖拽判别（位移 ≤10px 为 tap，与时长无关——慢触/输入延迟曾因 400ms 门槛被误判成 drag）
+      relationships: HouseScene 拾取从按下即 raycast 改为 tap 后拾取
+      maintenance: 阈值是误触与灵敏的权衡，真机验收后可能要调
+      interfaces: end() 返回 'tap'|'drag'|null
+      collision: 与 measurement/orbit 拖拽共存：拖拽不拾取不清场
+      validation_refs:
+        - app/src/scene/pointer-intent.test.ts
+  constraints:
+    - element id 全稳定（index.html 只增不改）——OverviewMenu.test.ts/LayersPanel/PreviewWorkbench 构造器按 id 寻址。
+    - body.workbench-open/closed class 必须继续发射（CSS 布局契约）。
+    - #warnings 父元素与 #ceiling-zone-btn 锚点不许移动（SchemePanel 预算条/ElementStateButton 注入依赖）。
+    - 关闭态一律 visibility/display 或推出视口，不依赖 overflow 裁剪 transform 元素（原型阶段实测的 Blink 行为）。
+review:
+  schema: interior-design-review-manifest/v1
+  iteration_id: control-surface-refactor-20261026
+  decision_ref: DEC-2026-10-26-R04
+  subject: 控制面重构 + 移动端统一增强（桌面/移动端同一交互模型）
+  state: implemented_runtime_review_pending
+  implementation:
+    state: complete
+    changed_sources:
+      - app/src/App.ts
+      - app/index.html
+      - app/style.css
+      - app/src/ui/CommandRegistry.ts
+      - app/src/ui/SurfaceManager.ts
+      - app/src/ui/MobileTabBar.ts
+      - app/src/ui/input-capability.ts
+      - app/src/ui/CommandPalette.ts
+      - app/src/ui/PreviewWorkbench.ts
+      - app/src/ui/Popover.ts
+      - app/src/ui/LayersPanel.ts
+      - app/src/ui/SchemePanel.ts
+      - app/src/ui/keybindings.ts
+      - app/src/ui/view-state-store.ts
+      - app/src/ui/PaintButton.ts
+      - app/src/ui/WallTileButton.ts
+      - app/src/ui/CeilingZoneButton.ts
+      - app/src/ui/HvacCoordinationButton.ts
+      - app/src/ui/ElementStateButton.ts
+      - app/src/scene/FirstPersonController.ts
+      - app/src/scene/VirtualJoystick.ts
+      - app/src/scene/pointer-intent.ts
+      - app/src/render/HouseScene.ts
+      - docs/hvac/hvac-pitfall-audit-20261011.md
+      - docs/curtain-design.md
+    regenerated: []
+    not_changed:
+      - config/**
+      - server/**
+      - shared/**
+      - data/**
+      - 检视层平级 setter 语义
+      - FirstPersonController clamp/平滑
+  version:
+    source_sha256:
+      app/src/App.ts: 6f17a33b2f775fecd8bbf71fb391065c89c0109b78610bfa13b6898996056bef
+      app/src/ui/CommandRegistry.ts: 40213b9d8ee68c9bd1b7ff6f402a7067d8faf5b953e8ec7b130739ff95922a3c
+      app/src/ui/SurfaceManager.ts: 41a1c20c299ddae33d6e24a32409145a4d42d6859c28c9b9cae7256c84c00904
+      app/src/ui/WallTileButton.ts: c1f3a770456b4784e7c545c07c2eb48a47507fe518ea59570d228bf2c79846ad
+      app/src/ui/MobileTabBar.ts: 84f65d3320c60d1b1140ead55ada069ef29739a116a69db6b05cd47879083f1b
+      app/src/ui/input-capability.ts: 2ba924322078670ff59527f8d33b68997246864710d34a6f77f8e973ffe38dc8
+      app/src/ui/CommandPalette.ts: 0861bd0463d08d563a077a119f9bbdb554de4a2fc1ab8c0321c3f5e10c6d7591
+      app/src/ui/PreviewWorkbench.ts: ca231b0ceca2ad7327fb0256ca014caa954c8ea4b0fee975453b253f9c78e50d
+      app/src/ui/Popover.ts: 7afcdac25c4a3cb42cad90542f799094e143b3872dcab962c5136b8b6afb2729
+      app/src/ui/view-state-store.ts: a4590a1bfa7bc17e5d3c506bef079f7eeb37c708959a43b09a16c0b732429ca4
+      app/src/scene/VirtualJoystick.ts: 990dc6c469c2c378fcb968c927bff9425596859afeb8ea3df7a0b11296c9cecb
+      app/src/scene/pointer-intent.ts: 61919653f5e38ae8580bb932fbcdecf4d8b66128cd4bc2969134457bbc7eef23
+      app/src/scene/FirstPersonController.ts: 7c9a4e7e9f65d72b777ea0a8a7793f590ea88f6596cb0f13555113fe08698ec0
+      app/src/render/HouseScene.ts: 94d7719392545da39fb5537013b138b921f5f78a26e2a3d329d6260f64674726
+      app/index.html: 903a042cb442a0676caa5e33d0d036a7d2a7fde64253da8f64a407986d41e27c
+      app/style.css: 0d5514daa98852f264431d249ae6f6fb5fcc7ab58a331e00b9e0bed04fb5273a
+  evidence:
+    browser_url: http://localhost:5173/
+    title: 和萃 701 - 3D 装修设计
+    is_ready: true
+    config_error_banner: empty
+    snapshot: pending（过程截图在 tmp/capture/，业主验收后按关账挑选入 evidence/final/）
+    screenshots: []
+    screenshot_sha256: {}
+    target_view: 桌面默认态全屏 + 420px 窄屏默认态（tab bar）；待业主统一验收后补终稿视角。
+  checks:
+    pre_change_gate_visual: 'CLEAR; ceiling=0ae29721c809, electrical=b82045ced877, plumbing=33fd2018c33b, materials=64176f576326'
+    post_change_gate_visual: 'CLEAR; ceiling=0ae29721c809, electrical=b82045ced877, plumbing=33fd2018c33b, materials=64176f576326'
+    generate_project_render_facts: not applicable（未改 config/data 投影）
+    verify_project_render_facts: not applicable（未改 config/data 投影）
+    typecheck: 'passed（仅 2 条存量基线错 scripts/schedule/control.ts TS7006，与本轮无关）'
+    tests: 'passed：ci:test-app 48=48 无基线外新失败；Step 2 修 App.test.ts 存量红并删基线行（50→48）；新增/改写测试 CommandRegistry 6、CommandPalette 7、SurfaceManager 9、PreviewWorkbench 7、MobileTabBar 4、input-capability 5、VirtualJoystick 7、pointer-intent 6、FirstPersonController +9'
+    runtime: 'passed：无头浏览器实测桌面 1400px 与 420px 窄屏默认态/tab bar/工具栏/就绪 chip/新标签均生效，无 JS 错误；review 后 CDP 真实鼠标事件复测：方案/总览/图层入口可点、aria-expanded 同步、modal 清场、拖拽不清场、tap 即收全部通过；verify:all 21/22（唯一失败为存量基线 verify-mep）'
+  review:
+    aesthetic:
+      status: pending_owner_acceptance
+      verdict: PENDING
+      review_file: null
+      blocking_issues: []
+      non_blocking_notes:
+        - 视觉风格按业主要求保持原样（深色玻璃风），本轮只改布局/入口/交互/命名。
+    functional:
+      status: pending_owner_acceptance
+      verdict: PENDING
+      review_file: null
+      blocking_issues: []
+      non_blocking_notes:
+        - 移动端第一人称手感（拖拽灵敏度/摇杆位置/死区）与 tap 阈值需真机确认。
+  verdict:
+    deleted: >-
+      删除了三类东西并都在commit message逐条列明：① Popover 的粘性语义与对应测试断言（改为即收+钉住，
+      SurfaceManager 接管）；② 按钮文案里的「：加载中」（改禁用样式 + 全局就绪 chip）；③ keybindings.ts
+      的 length===23 魔数断言（改派生不变量）与 KeyT 漏登记（已补）。无任何具体候选/证据/历史结论被静默删除。
+    overturned: >-
+      推翻了四个旧结论：① 「浮层应粘性、点场景不收起」（Popover.ts 原注释）→ tap 画布即收（拖拽不清场）+ 钉住可选；
+      ② 「工作台启动即开、材质预演默认可见」→ 画布优先，默认收起，选材质/点对象/开日照时按需呼出；
+      ③ 「W 在轨道模式是透视」与「L 灯未就绪时切测量」两个同键异义 → X-ray 改 X、L 只管灯；
+      ④ 「画布按下即拾取对象」→ tap 判定后拾取。几何/机电/预算结论零推翻。
+    silent_failure_conditions: >-
+      ① body.workbench-open/closed class 或 element id 若被后续改动破坏，抽屉/dock 布局会静默错位；
+      ② 关闭态若改回纯 transform 而无 visibility，dock 避让 tab bar 后会漏出顶部一条（本轮实测过）；
+      ③ 检视层组合自动恢复依赖 localStorage 存档与就绪时序，若存档损坏或层永不就绪则静默不恢复
+      （「上次组合」按钮仍可作为手动路径）；④ matchMedia 不可用时按桌面处理，移动形态静默降级；
+      ⑤ 触摸阈值（位移 10px、摇杆死区 0.22）是估值，真机不适配时表现为“难用”而非报错；
+      ⑥ 仓库级盲点（review 实证）：ci/check.mjs 的 parseVitest 只统计 `^ FAIL` 行，vitest 的
+      "Errors N"（unhandled error）不计入门禁——VirtualJoystick.test.ts 曾带 5 个 uncaught error
+      （jsdom 无 setPointerCapture）通过全绿门禁；已修生产代码守卫，但盲点本身仍在，任何新测试
+      文件的 unhandled error 都不可见。后续让 checker 也统计 Errors 行须连同存量 HouseScene 的
+      5 个 error 一起定基线，按基线纪律需业主评审，不在本轮动；
+      ⑦ 新 surface 入口必须有一条可达路径并 CDP 实测点击——本轮方案/总览工具栏按钮曾只声明
+      toggleEl 未挂监听（桌面方案抽屉完全不可达），门禁全绿但功能死，review 用真实鼠标事件才发现。

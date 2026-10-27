@@ -66,11 +66,12 @@ export class LayersPanel {
     onClearAll: () => void;
     onApplyCombo: (keys: LayerKey[]) => void;
     group?: string;
+    onToggle?: () => void;
   }) {
     this.layers = opts.layers;
     this.onClearAll = opts.onClearAll;
     this.onApplyCombo = opts.onApplyCombo;
-    this.popover = new Popover('layers-toggle-btn', 'layers-panel', { group: opts.group });
+    this.popover = new Popover('layers-toggle-btn', 'layers-panel', { group: opts.group, onToggle: opts.onToggle });
     this.countEl = document.getElementById('layers-active-count');
     this.comboBtn = document.getElementById('layers-last-combo-btn') as HTMLButtonElement | null;
     document.getElementById('layers-clear-btn')?.addEventListener('click', () => {
@@ -90,8 +91,25 @@ export class LayersPanel {
     return this.popover.isOpen();
   }
 
+  /** 已存档的上次组合（启动自动恢复用；无存档返回空数组）。 */
+  getSavedCombo(): LayerKey[] {
+    return readSavedCombo();
+  }
+
+  open(): void {
+    this.popover.openPanel();
+  }
+
   close(): void {
     this.popover.close();
+  }
+
+  /** 命令面板用：恢复上次组合（无存档时什么都不做）。 */
+  applyLastCombo(): void {
+    const combo = readSavedCombo();
+    if (combo.length === 0) return;
+    this.onApplyCombo(combo);
+    this.sync();
   }
 
   /** persist=true 时把当前可见组合写入 localStorage，供「上次组合」恢复。 */

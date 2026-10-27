@@ -30,7 +30,7 @@ export class CeilingZoneButton {
     const state = this.getState();
     const active = state === 'ready' && this.getActive();
     this.el.disabled = state !== 'ready';
-    this.el.textContent = state === 'loading' ? '吊顶分区：加载中' : active ? '吊顶分区 · 显示中' : '吊顶分区';
+    this.el.textContent = active ? '吊顶 · 显示中' : '吊顶';
     this.el.classList.toggle('active', active);
   }
 }

@@ -27,7 +27,7 @@ export class HvacCoordinationButton {
     const state = this.getState();
     const active = state === 'ready' && this.getActive();
     this.el.disabled = state !== 'ready';
-    this.el.textContent = state === 'loading' ? '加载中' : state === 'unimplemented' ? '未实现' : active ? 'HVAC · 路线' : 'HVAC';
+    this.el.textContent = state === 'unimplemented' ? '未实现' : active ? '空调设备 · 显示中' : '空调设备';
     this.el.classList.toggle('active', active);
   }
 }

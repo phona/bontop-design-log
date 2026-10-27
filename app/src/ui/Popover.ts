@@ -1,6 +1,7 @@
 // 顶栏弹出面板的通用开合器（图层抽屉 / 环境 / 告警 / 设置共用）。
-// 面板是"粘性"的：点场景或其它 UI 不收起，只有再次点开关按钮、按 Esc
-// （由 App 统一收口）、或打开同组另一个面板（互斥替换）才会关闭。
+// 本组件只做开合同步（hidden + aria-expanded）与同组互斥，是纯开合组件：
+// 画布单击清场、钉住豁免、Esc 一键清场由 SurfaceManager 统一编排
+// （2026-10-26 控制面重构废除了旧的“粘性”默认——点场景不收起）。
 const groups = new Map<string, Set<Popover>>();
 
 export class Popover {
@@ -9,7 +10,7 @@ export class Popover {
   private open = false;
   private group: string | undefined;
 
-  constructor(toggleBtnId: string, panelId: string, opts?: { group?: string }) {
+  constructor(toggleBtnId: string, panelId: string, opts?: { group?: string; onToggle?: () => void }) {
     const btn = document.getElementById(toggleBtnId);
     const panel = document.getElementById(panelId);
     if (!btn || !panel) {
@@ -23,7 +24,8 @@ export class Popover {
       set.add(this);
       groups.set(this.group, set);
     }
-    btn.addEventListener('click', () => this.toggle());
+    // onToggle 提供时，开关按钮走外部编排（SurfaceManager），互斥与清场统一收口
+    btn.addEventListener('click', () => (opts?.onToggle ? opts.onToggle() : this.toggle()));
     this.sync();
   }
 

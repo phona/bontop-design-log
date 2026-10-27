@@ -30,13 +30,14 @@ describe('CeilingZoneButton', () => {
   it('is disabled while loading and reflects the active state once ready', () => {
     const harness = setup();
     expect(harness.el().disabled).toBe(true);
-    expect(harness.el().textContent).toBe('吊顶分区：加载中');
+    // 控制面重构：加载态不再把「：加载中」写进文案，禁用样式即信号
+    expect(harness.el().textContent).toBe('吊顶');
     harness.setReady();
     expect(harness.el().disabled).toBe(false);
-    expect(harness.el().textContent).toBe('吊顶分区');
+    expect(harness.el().textContent).toBe('吊顶');
     expect(harness.el().classList.contains('active')).toBe(false);
     harness.setActive(true);
-    expect(harness.el().textContent).toBe('吊顶分区 · 显示中');
+    expect(harness.el().textContent).toBe('吊顶 · 显示中');
     expect(harness.el().classList.contains('active')).toBe(true);
   });
 

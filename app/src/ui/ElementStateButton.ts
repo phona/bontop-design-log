@@ -32,7 +32,7 @@ export class ElementStateButton {
     const active = state === 'ready' && this.getActive();
     this.el.disabled = state !== 'ready';
     this.el.textContent = state === 'loading'
-      ? '工程状态：加载中'
+      ? '工程状态'
       : state === 'unavailable'
         ? '工程状态：不可用'
         : active

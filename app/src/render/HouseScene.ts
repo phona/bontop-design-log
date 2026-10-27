@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { PointerIntent } from '../scene/pointer-intent.js';
 import { mergeUnitMaterials } from './SceneMeshMerger.js';
 import { SceneBatcher } from './SceneBatcher.js';
 
@@ -205,6 +206,7 @@ export class HouseScene implements SceneApi {
   private doorMeshes: THREE.Mesh[] = [];
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
+  private readonly pointerIntent = new PointerIntent();
   private lastPointer = new THREE.Vector2(0, 0);
   cameraAnimator: CameraAnimator;
   topDownView: TopDownView;
@@ -322,7 +324,12 @@ export class HouseScene implements SceneApi {
     window.addEventListener('resize', this.boundOnWindowResize);
     this.canvasResizeObserver = new ResizeObserver(() => this.onResize());
     this.canvasResizeObserver.observe(canvas);
-    canvas.addEventListener('pointerdown', (e) => this.onPointerDown(e));
+    canvas.addEventListener('pointerdown', (e) => this.pointerIntent.begin(e.clientX, e.clientY));
+    canvas.addEventListener('pointerup', (e) => {
+      // 控制面重构：按下即拾取改为 tap 判定——拖拽（旋转/环轨）不再误触对象信息
+      if (this.pointerIntent.end(e.clientX, e.clientY) !== 'tap') return;
+      this.pickAt(e.clientX, e.clientY);
+    });
     canvas.addEventListener('pointermove', (e) => {
       if (document.pointerLockElement) return;
       const rect = canvas.getBoundingClientRect();
@@ -2916,9 +2923,14 @@ export class HouseScene implements SceneApi {
   }
 
   private onPointerDown(event: PointerEvent) {
+    this.pickAt(event.clientX, event.clientY);
+  }
+
+  /** tap 手势的拾取：raycast 场景并回调 onClickCallback。 */
+  private pickAt(clientX: number, clientY: number) {
     const rect = this.canvas.getBoundingClientRect();
-    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const target = this.targetFromIntersects(
       this.raycaster.intersectObjects(this.scene.children, true),

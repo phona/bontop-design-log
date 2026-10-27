@@ -1,5 +1,5 @@
 import type { Topic, TopicOption, SchemeDiff, BudgetSnapshot } from '@shared/types';
-import { setupCollapsiblePanel } from './CollapsiblePanel.js';
+import { setupCollapsiblePanel, type CollapsiblePanelController } from './CollapsiblePanel.js';
 import { escapeHtml } from './escape-html.js';
 
 export interface SchemePanelElements {
@@ -21,13 +21,34 @@ export class SchemePanel {
   private els: SchemePanelElements;
   private compareActive = false;
   private compareArchiveName = '';
+  private collapseController: CollapsiblePanelController | null = null;
 
   constructor(els: SchemePanelElements) {
     this.els = els;
     const getElementById = document.getElementById?.bind(document);
     const toggle = getElementById?.('scheme-panel-toggle') as HTMLButtonElement | null;
     const content = getElementById?.('scheme-panel-content');
-    if (toggle && content) setupCollapsiblePanel(toggle, content, true);
+    if (toggle && content) {
+      this.collapseController = setupCollapsiblePanel(toggle, content, true);
+      // 抽屉滑入由 body.scheme-open 驱动（CSS）；内部折叠即关抽屉
+      toggle.addEventListener('click', () => this.syncDrawerClass());
+    }
+  }
+
+  private syncDrawerClass(): void {
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('scheme-open', this.isPanelOpen());
+    }
+  }
+
+  /** SurfaceManager 接线用：程序化展开/收起方案面板（= 开/关左抽屉）。 */
+  setPanelOpen(open: boolean): void {
+    this.collapseController?.setCollapsed(!open);
+    this.syncDrawerClass();
+  }
+
+  isPanelOpen(): boolean {
+    return this.collapseController ? !this.collapseController.isCollapsed() : false;
   }
 
   init(topics: Topic[], onSelect: (topicId: string, optionId: string) => void) {

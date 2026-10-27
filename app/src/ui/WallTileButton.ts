@@ -30,7 +30,7 @@ export class WallTileButton {
     const state = this.getState();
     const active = state === 'ready' && this.getActive();
     this.el.disabled = state !== 'ready';
-    this.el.textContent = state === 'loading' ? '贴砖区：加载中' : active ? '贴砖区 · 显示中' : '贴砖区';
+    this.el.textContent = active ? '贴砖 · 显示中' : '贴砖';
     this.el.classList.toggle('active', active);
   }
 }

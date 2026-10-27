@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>和萃户型 - 3D 装修设计</title>
   <link rel="stylesheet" href="./style.css">
 </head>
@@ -13,7 +13,10 @@
     <div id="scheme-panel" class="panel">
       <div class="panel-heading">
         <h3>方案</h3>
-        <button id="scheme-panel-toggle" class="panel-collapse-toggle" type="button" aria-controls="scheme-panel-content" aria-expanded="false" aria-label="方案面板折叠" title="展开">+</button>
+        <span class="panel-heading-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="scheme" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button id="scheme-panel-toggle" class="panel-collapse-toggle" type="button" aria-controls="scheme-panel-content" aria-expanded="false" aria-label="方案面板折叠" title="展开">+</button>
+        </span>
       </div>
       <div id="scheme-panel-content">
         <div id="topic-tabs"></div>
@@ -30,7 +33,10 @@
     <aside id="right-panel-stack" aria-label="预演与对象工作台">
       <div class="workbench-header">
         <strong>预演工作台</strong>
-        <button class="panel-collapse-toggle" type="button" data-workbench-close aria-label="收起预演工作台" title="收起工作台">−</button>
+        <span class="panel-heading-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="workbench" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="panel-collapse-toggle" type="button" data-workbench-close aria-label="收起预演工作台" title="收起工作台">−</button>
+        </span>
       </div>
       <div class="workbench-accordion" role="group" aria-label="工作台折叠区">
         <button type="button" class="workbench-accordion-header" data-workbench-toggle="object" aria-controls="workbench-page-object" aria-expanded="false">对象信息</button>
@@ -128,26 +134,51 @@
 
     <div id="phase-indicator" aria-live="polite">FULL DESIGN</div>
     <div id="mode-indicator">轨道模式 · 按 V 切换第一人称 · 按 T 俯视</div>
+    <div id="data-ready-chip" hidden>数据就绪</div>
     <div id="toolbar">
       <div class="toolbar-group" role="group" aria-label="视角">
-        <button id="topdown-btn" title="切换俯视/3D (T)">俯视</button>
+        <button id="view-toggle-btn" aria-controls="view-panel" aria-expanded="false" title="视角：轨道 / 俯视 / 第一人称">视角</button>
       </div>
-      <div class="toolbar-group" role="group" aria-label="图层与工具">
+      <div class="toolbar-group" role="group" aria-label="控制面">
+        <button id="scheme-toggle-btn" aria-controls="scheme-panel" aria-expanded="false" title="方案：主题 / 选项 / 导出">方案</button>
         <button id="layers-toggle-btn" aria-controls="layers-panel" aria-expanded="false" title="图层与检视层（轨道模式数字键 1-7 开关，0 全关）">图层<span id="layers-active-count" class="toolbar-count" hidden></span></button>
         <button id="env-toggle-btn" aria-controls="env-panel" aria-expanded="false" title="日照 / 湿度模拟">环境</button>
+        <button id="overview-toggle-btn" aria-controls="overview-menu" aria-expanded="false" title="总览菜单（M）">总览</button>
         <button id="alerts-toggle-btn" aria-controls="alerts-panel" aria-expanded="false" title="检视层问题汇总（MEP lint + 电气回路）" hidden>⚠<span id="alerts-count" class="toolbar-count"></span></button>
         <button id="settings-toggle-btn" aria-controls="settings-panel" aria-expanded="false" title="渲染设置">⚙</button>
       </div>
     </div>
 
+    <div id="view-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>视角</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="view" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="view" title="收起">×</button>
+        </span>
+      </div>
+      <button class="view-opt" id="view-orbit-btn" title="轨道模式：拖拽旋转 / 滚轮缩放">轨道模式</button>
+      <button class="view-opt" id="view-fp-btn" title="第一人称：WASD 行走（V）">第一人称</button>
+      <div class="view-opt-row"><button id="topdown-btn" title="切换俯视/3D (T)">俯视</button></div>
+    </div>
+
+    <nav id="mobile-tabbar" aria-label="移动端入口" hidden></nav>
+
     <div id="layers-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>检视层</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="layers" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="layers" title="收起">×</button>
+        </span>
+      </div>
       <div class="layers-actions">
         <button id="layers-last-combo-btn" type="button" title="恢复上一次使用的图层组合（不自动应用，刷新后默认全关）">上次组合</button>
         <button id="layers-clear-btn" type="button" title="关闭全部检视层（0）">全关</button>
       </div>
       <div class="layers-section">机电协调</div>
       <button id="mep-overview-btn" title="一键显示吊顶、点位、HVAC 与全部 MEP 路线">机电总览</button>
-      <button id="mep-coordination-btn" title="MEP 实体水电 + HVAC 路线" disabled><span class="btn-label">MEP 实体路线：加载中</span><span id="mep-lint-badge" class="btn-badge" hidden></span></button>
+      <button id="mep-coordination-btn" title="水电走向（MEP 实体路线）：仅表示走向，非施工路径" disabled><span class="btn-label">水电走向</span><span id="mep-lint-badge" class="btn-badge" hidden></span></button>
       <div id="mep-coordination-controls" class="mep-controls" hidden>
         <label><input id="mep-bends-toggle" type="checkbox" checked> 转折点/标高</label>
         <div id="mep-route-summary" class="mep-route-summary"></div>
@@ -157,8 +188,8 @@
           <div id="mep-status-legend" class="mep-status-legend" aria-label="路线状态图例"></div>
         </details>
       </div>
-      <button id="hvac-coordination-btn" title="HVAC 设备与约束（不显示实体路线）" disabled>HVAC 设备/约束：加载中</button>
-      <button id="electrical-topology-btn" title="显示电气回路归属；仅表示面板—回路—点位归属，不代表电缆、线管或施工路径"><span class="btn-label">电气回路归属</span><span id="electrical-topology-badge" class="btn-badge" hidden></span></button>
+      <button id="hvac-coordination-btn" title="空调设备（HVAC 设备/约束，不显示实体路线）" disabled>空调设备</button>
+      <button id="electrical-topology-btn" title="显示电气回路归属；仅表示面板—回路—点位归属，不代表电缆、线管或施工路径"><span class="btn-label">电路归属</span><span id="electrical-topology-badge" class="btn-badge" hidden></span></button>
       <div id="electrical-topology-controls" class="mep-controls electrical-topology-controls" hidden>
         <strong>电气回路归属</strong>
         <div class="mep-controls-note">仅表示面板—回路—点位归属，不表示电缆、线管、墙内/吊顶内/地面施工路径。</div>
@@ -170,20 +201,34 @@
         </details>
       </div>
       <div class="layers-section">装修饰面</div>
-      <button id="wall-tile-btn" title="贴砖检视态：高亮厨卫已声明的贴砖区（可见面蓝 / 遮蔽面橙，透视显示）；显示层，不作出料依据" disabled>贴砖区：加载中</button>
-      <button id="paint-btn" title="涂漆检视态：高亮已声明的涂漆墙面（按房间外偏移避免与贴砖面共面，透视显示）；顶面涂装只在成本口径中单列，不在本层显示" disabled>涂漆区：加载中</button>
-      <button id="ceiling-zone-btn" title="吊顶分区高亮：按 config/ceiling.yaml 的逐分区声明上色（同工艺同色族、每区一色），并给出面积/延长米/板块数；显示层，报价以 GET /api/ceiling/takeoff 为准" disabled>吊顶分区：加载中</button>
+      <button id="wall-tile-btn" title="贴砖检视态：高亮厨卫已声明的贴砖区（可见面蓝 / 遮蔽面橙，透视显示）；显示层，不作出料依据" disabled>贴砖</button>
+      <button id="paint-btn" title="涂漆检视态：高亮已声明的涂漆墙面（按房间外偏移避免与贴砖面共面，透视显示）；顶面涂装只在成本口径中单列，不在本层显示" disabled>涂漆</button>
+      <button id="ceiling-zone-btn" title="吊顶分区高亮：按 config/ceiling.yaml 的逐分区声明上色（同工艺同色族、每区一色），并给出面积/延长米/板块数；显示层，报价以 GET /api/ceiling/takeoff 为准" disabled>吊顶</button>
       <div class="layers-section">数据与报价</div>
       <button id="ceiling-quote-btn" title="吊顶报价：多家报价并排对比（工程量不变，只换单价），点卡内按钮切换生效报价（改写 config/ceiling-quotes.yaml 的 active，需进 Git）">吊顶报价</button>
-      <div class="layers-note">各检视层平级独立、可叠加显示；开关状态不随刷新保留。面板不会因点其它区域收起：Esc 或再点「图层」关闭。</div>
+      <div class="layers-note">各检视层平级独立、可叠加显示；组合随刷新自动恢复。点画布或 Esc 收起本面板，「钉」可钉住不被画布点击收走。</div>
     </div>
 
     <div id="env-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>环境</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="env" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="env" title="收起">×</button>
+        </span>
+      </div>
       <button id="sunlight-btn" title="日照模拟 开/关（开启后可调日期时刻、播放与热力图）">日照</button>
       <button id="humidity-btn" title="湿度风险">湿度</button>
     </div>
 
     <div id="alerts-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>问题提醒</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="alerts" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="alerts" title="收起">×</button>
+        </span>
+      </div>
       <div class="alert-row" id="alert-row-mep" title="点击打开 MEP 协调图层">
         <span>MEP 协调 lint</span>
         <span id="alert-mep-detail" class="alert-detail">未就绪</span>
@@ -196,6 +241,13 @@
     </div>
 
     <div id="settings-panel" class="toolbar-popover" hidden>
+      <div class="popover-head">
+        <strong>渲染设置</strong>
+        <span class="popover-head-acts">
+          <button class="icon-btn pin" type="button" data-surface-pin="settings" title="钉住：点画布不收起（Esc 仍可收）">钉</button>
+          <button class="icon-btn" type="button" data-surface-close="settings" title="收起">×</button>
+        </span>
+      </div>
       <button id="glass-fidelity-btn" title="高保真玻璃 开/关（开启 transmission 折射更通透，但 draw call 翻倍、帧率减半；默认关闭保帧率）">玻璃质感</button>
       <div class="layers-note">玻璃质感走全场景二次渲染，只在导出/取证时临时开启。</div>
     </div>

@@ -1,6 +1,5 @@
 # test:app 基线失败集（vitest FAIL 行归一为仓库相对路径：app/文件 > suite > 用例；文件级失败保留 [ 文件 ] 形式）。
 # 多重集对照：同一键出现几行就是几条，实际多于基线即新失败。维护纪律见 AGENTS.md「CI 基线纪律」。
-app/src/App.test.ts [ app/src/App.test.ts ]
 app/src/scene/HouseScene.test.ts > HouseScene > builds correct ribbon boundary for straight curtain_run
 app/src/scene/HouseScene.test.ts > HouseScene > builds walls from scene elements when provided
 app/src/scene/HouseScene.test.ts > HouseScene > computes layout bounds from rooms and platform after buildFromCatalog

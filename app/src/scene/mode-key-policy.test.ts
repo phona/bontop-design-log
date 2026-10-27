@@ -2,23 +2,27 @@ import { describe, it, expect } from 'vitest';
 import { shouldToggleSeeThrough, shouldInterruptCameraAnimation, shouldToggleInteriorLights } from './mode-key-policy.js';
 
 describe('shouldToggleSeeThrough', () => {
-  it('toggles on W in orbit mode', () => {
-    expect(shouldToggleSeeThrough('KeyW', false, 'orbit')).toBe(true);
+  it('toggles on X in orbit mode', () => {
+    expect(shouldToggleSeeThrough('KeyX', false, 'orbit')).toBe(true);
   });
 
-  it('does NOT toggle on W in first-person (W must walk forward)', () => {
-    expect(shouldToggleSeeThrough('KeyW', false, 'first-person')).toBe(false);
+  it('does NOT toggle on X in first-person', () => {
+    expect(shouldToggleSeeThrough('KeyX', false, 'first-person')).toBe(false);
   });
 
-  it('does not toggle on W in top-down', () => {
-    expect(shouldToggleSeeThrough('KeyW', false, 'top-down')).toBe(true);
+  it('does not toggle on X in top-down', () => {
+    expect(shouldToggleSeeThrough('KeyX', false, 'top-down')).toBe(true);
   });
 
-  it('ignores auto-repeat W', () => {
-    expect(shouldToggleSeeThrough('KeyW', true, 'orbit')).toBe(false);
+  it('ignores auto-repeat X', () => {
+    expect(shouldToggleSeeThrough('KeyX', true, 'orbit')).toBe(false);
   });
 
-  it('ignores non-W keys', () => {
+  it('W 不再触发透视（2026-10-26 去陷阱：W 专属第一人称前进）', () => {
+    expect(shouldToggleSeeThrough('KeyW', false, 'orbit')).toBe(false);
+  });
+
+  it('ignores non-X keys', () => {
     expect(shouldToggleSeeThrough('KeyA', false, 'orbit')).toBe(false);
     expect(shouldToggleSeeThrough('KeyP', false, 'orbit')).toBe(false);
   });
