@@ -353,7 +353,9 @@ describe('App', () => {
     await app.start();
 
     const setSelectionSpy = vi.spyOn(app['houseScene'], 'setSelection');
-    const setActiveOptionSpy = vi.spyOn(app['schemePanel'], 'setActiveOption');
+    // 方案面板改走 applySchemeSelections（按主题记忆选案，展示第一个有选案的主题），
+    // 不再逐键 setActiveOption——后者会让 activeTopicId 停在最后一个 selections 键。
+    const applySelectionsSpy = vi.spyOn(app['schemePanel'], 'applySchemeSelections');
 
     const schemeCallback = app['stateSync']['schemeCallbacks'][0];
     schemeCallback({
@@ -364,7 +366,10 @@ describe('App', () => {
     });
 
     expect(setSelectionSpy).toHaveBeenCalledWith('hvac', 'A1', { default: 'A1', roomOverrides: {} });
-    expect(setActiveOptionSpy).toHaveBeenCalledWith('hvac', 'A1', []);
+    expect(applySelectionsSpy).toHaveBeenCalledWith({ hvac: 'A1' });
+    // 面板展示落到第一个有选案的主题与其选中项
+    expect(app['schemePanel'].getActiveTopicId()).toBe('hvac');
+    expect(app['schemePanel'].getActiveOptionId()).toBe('A1');
   });
 
   it('applies polled presentation state to the scene and panels', async () => {

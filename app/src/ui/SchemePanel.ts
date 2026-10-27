@@ -17,6 +17,8 @@ export class SchemePanel {
   private topics: Topic[] = [];
   private activeTopicId = 'hvac';
   private activeOptionId = '';
+  /** 按主题记忆当前选案：切 tab 时恢复该主题的选中项与 info，而非无条件清空。 */
+  private activeOptionByTopic = new Map<string, string>();
   private onSelect?: (topicId: string, optionId: string) => void;
   private els: SchemePanelElements;
   private compareActive = false;
@@ -60,13 +62,24 @@ export class SchemePanel {
 
   setActiveTopic(topicId: string) {
     this.activeTopicId = topicId;
-    this.activeOptionId = '';
+    // 恢复该主题记忆里的选案（而非无条件清空）：切回已选过的主题时能看到当前选案与 info。
+    this.activeOptionId = this.activeOptionByTopic.get(topicId) ?? '';
     this.renderTabs();
     this.renderOptions();
-    this.clearInfo();
+    const remembered = this.activeOptionByTopic.get(topicId);
+    const option = remembered
+      ? this.topics.find((t) => t.id === topicId)?.options.find((o) => o.id === remembered)
+      : undefined;
+    if (option) {
+      this.showInfo(option, []);
+    } else {
+      this.clearInfo();
+    }
   }
 
   setActiveOption(topicId: string, optionId: string, warnings: string[]) {
+    // 先记忆：之后切到别的主题再切回，setActiveTopic 能恢复这一选中态。
+    this.activeOptionByTopic.set(topicId, optionId);
     this.activeTopicId = topicId;
     this.activeOptionId = optionId;
     this.renderTabs();
@@ -77,6 +90,23 @@ export class SchemePanel {
     if (option) {
       this.showInfo(option, warnings);
     }
+  }
+
+  /**
+   * 用一份方案选案（topicId → optionId）刷新面板：按主题记忆选案，并展示
+   * 「第一个有选案的面板主题」（带上该主题的选中项与 info）；无选案则展示第一个主题。
+   *
+   * 取代旧 applyScheme 里「遍历所有 selections 键逐个 setActiveOption」：那会让
+   * activeTopicId 停在最后一个键——可能不是面板的导航主题（如 robot_vacuum），
+   * 于是无 tab 激活、选项列表全空。这里只展示面板真实拥有的主题，未知键进 map 但不影响展示。
+   */
+  applySchemeSelections(selections: Record<string, string | null | undefined>): void {
+    this.activeOptionByTopic.clear();
+    for (const [topicId, optionId] of Object.entries(selections)) {
+      if (optionId) this.activeOptionByTopic.set(topicId, optionId);
+    }
+    const firstWithSelection = this.topics.find((t) => this.activeOptionByTopic.has(t.id));
+    this.setActiveTopic(firstWithSelection?.id ?? this.topics[0]?.id ?? '');
   }
 
   getActiveTopicId() {

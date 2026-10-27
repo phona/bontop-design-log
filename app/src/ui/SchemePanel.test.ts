@@ -201,7 +201,9 @@ describe('SchemePanel', () => {
     expect(warningDivs[0].textContent).toContain('注意安装位置');
   });
 
-  it('should clear info when switching topic', () => {
+  it('clears info when switching to a topic with no remembered selection', () => {
+    // 新语义：切 tab 不再无条件清空选案——只有目标主题没有记忆选案时才 clearInfo。
+    // 这里 floor 从未被选过，所以切过去 info 仍被清空（结果同旧行为，但原因已变）。
     const onSelect = () => {};
     panel.init(mockTopics, onSelect);
 
@@ -268,5 +270,78 @@ describe('SchemePanel', () => {
 
     const options = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
     expect(options[0]._className).toContain('active');
+  });
+
+  it('applySchemeSelections shows the first topic that has a selection and marks its option active', () => {
+    const onSelect = () => {};
+    panel.init(mockTopics, onSelect);
+
+    // topics 顺序 [hvac, floor]，两者都有选案 → 展示第一个（hvac）
+    panel.applySchemeSelections({ floor: 'tile', hvac: 'A1' });
+
+    expect(panel.getActiveTopicId()).toBe('hvac');
+    expect(panel.getActiveOptionId()).toBe('A1');
+    const options = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
+    expect(options[0]._className).toContain('active'); // A1
+    expect(options[1]._className).not.toContain('active'); // E1
+    expect(nameEl.textContent).toBe('A1 方案');
+  });
+
+  it('switching to another topic with a selection shows that topic selection and info', () => {
+    const onSelect = () => {};
+    panel.init(mockTopics, onSelect);
+
+    panel.applySchemeSelections({ floor: 'tile', hvac: 'A1' });
+    panel.setActiveTopic('floor');
+
+    expect(panel.getActiveTopicId()).toBe('floor');
+    expect(panel.getActiveOptionId()).toBe('tile');
+    expect(nameEl.textContent).toBe('瓷砖');
+    const options = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
+    expect(options[0]._className).toContain('active'); // tile
+  });
+
+  it('switching to a topic without a selection shows an empty selection', () => {
+    const onSelect = () => {};
+    panel.init(mockTopics, onSelect);
+
+    panel.applySchemeSelections({ hvac: 'A1' }); // 只选了 hvac
+    panel.setActiveTopic('floor'); // floor 无选案
+
+    expect(panel.getActiveTopicId()).toBe('floor');
+    expect(panel.getActiveOptionId()).toBe('');
+    expect(nameEl.textContent).toBe('请选择一个方案');
+    const options = (optionsEl as any)._children.filter((c: any) => c._tag === 'button');
+    expect(options[0]._className).not.toContain('active');
+  });
+
+  it('applySchemeSelections ignores unknown topicIds and falls back to the first panel topic', () => {
+    const onSelect = () => {};
+    panel.init(mockTopics, onSelect);
+
+    // robot_vacuum 不在面板导航主题里：进 map 但不影响展示，回退到第一个主题 hvac。
+    // 这条正是缺陷 2 的根因回归——旧实现会把 activeTopicId 停在 robot_vacuum，
+    // 导致无 tab 激活、选项列表全空。
+    panel.applySchemeSelections({ robot_vacuum: 'X1' });
+    expect(panel.getActiveTopicId()).toBe('hvac');
+    expect(panel.getActiveOptionId()).toBe('');
+
+    // 未知键与已知键并存时，展示第一个「面板拥有的」有选案主题，而非最后一个 selections 键。
+    panel.applySchemeSelections({ robot_vacuum: 'X1', floor: 'tile', hvac: 'A1' });
+    expect(panel.getActiveTopicId()).toBe('hvac');
+    expect(panel.getActiveOptionId()).toBe('A1');
+  });
+
+  it('setActiveOption memory is restored when switching back via setActiveTopic', () => {
+    const onSelect = () => {};
+    panel.init(mockTopics, onSelect);
+
+    panel.setActiveOption('hvac', 'A1', ['注意安装位置']);
+    panel.setActiveTopic('floor');
+    panel.setActiveTopic('hvac');
+
+    expect(panel.getActiveTopicId()).toBe('hvac');
+    expect(panel.getActiveOptionId()).toBe('A1');
+    expect(nameEl.textContent).toBe('A1 方案');
   });
 });
