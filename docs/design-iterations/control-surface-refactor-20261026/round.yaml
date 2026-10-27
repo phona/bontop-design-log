@@ -101,7 +101,7 @@ datum:
       plan:
         look: 画布拖拽转向，增量汇入 accumX/accumY → tanh 平滑 → yaw/pitch → ±80° clamp（与鼠标共用管线）
         move: 左下 120px 虚拟摇杆，0.22 死区，映射 MovementKeys
-        pick: tap 判定（位移 ≤10px 且 ≤400ms）后才 raycast 拾取
+        pick: tap 判定（位移 ≤10px，与时长无关）后才 raycast 拾取
       meaning: 不依赖 pointer lock（iOS 不可用）；桌面 WASD + pointer lock 路径不变。
       basis:
         - f_pointer_lock_mobile_gap
@@ -222,7 +222,7 @@ objects:
       owner: app/src/scene/pointer-intent.ts
       parts:
         - begin/end/hasDragged/cancel
-      function: tap/拖拽判别（≤10px 且 ≤400ms 为 tap）
+      function: tap/拖拽判别（位移 ≤10px 为 tap，与时长无关——慢触/输入延迟曾因 400ms 门槛被误判成 drag）
       relationships: HouseScene 拾取从按下即 raycast 改为 tap 后拾取
       maintenance: 阈值是误触与灵敏的权衡，真机验收后可能要调
       interfaces: end() 返回 'tap'|'drag'|null
@@ -341,7 +341,7 @@ review:
       ② 关闭态若改回纯 transform 而无 visibility，dock 避让 tab bar 后会漏出顶部一条（本轮实测过）；
       ③ 检视层组合自动恢复依赖 localStorage 存档与就绪时序，若存档损坏或层永不就绪则静默不恢复
       （「上次组合」按钮仍可作为手动路径）；④ matchMedia 不可用时按桌面处理，移动形态静默降级；
-      ⑤ 触摸阈值（10px/400ms、摇杆死区 0.22）是估值，真机不适配时表现为“难用”而非报错；
+      ⑤ 触摸阈值（位移 10px、摇杆死区 0.22）是估值，真机不适配时表现为“难用”而非报错；
       ⑥ 仓库级盲点（review 实证）：ci/check.mjs 的 parseVitest 只统计 `^ FAIL` 行，vitest 的
       "Errors N"（unhandled error）不计入门禁——VirtualJoystick.test.ts 曾带 5 个 uncaught error
       （jsdom 无 setPointerCapture）通过全绿门禁；已修生产代码守卫，但盲点本身仍在，任何新测试

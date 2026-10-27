@@ -1399,8 +1399,8 @@ export class App {
         slot: 'left-drawer',
         el: document.getElementById('scheme-panel'),
         toggleEl: document.getElementById('scheme-toggle-btn'),
-        open: () => this.schemePanel.setPanelOpen(true),
-        close: () => this.schemePanel.setPanelOpen(false),
+        open: () => { this.schemePanel.setPanelOpen(true); this.syncSurfaceToggleButton('scheme'); },
+        close: () => { this.schemePanel.setPanelOpen(false); this.syncSurfaceToggleButton('scheme'); },
         isOpen: () => this.schemePanel.isPanelOpen(),
       },
       {
@@ -1417,8 +1417,8 @@ export class App {
         slot: 'modal',
         el: document.getElementById('overview-menu'),
         toggleEl: document.getElementById('overview-toggle-btn'),
-        open: () => { void this.refreshOverviewData(); this.overviewMenu.show(); },
-        close: () => this.overviewMenu.hide(),
+        open: () => { void this.refreshOverviewData(); this.overviewMenu.show(); this.syncSurfaceToggleButton('overview'); },
+        close: () => { this.overviewMenu.hide(); this.syncSurfaceToggleButton('overview'); },
         isOpen: () => this.overviewMenu.isVisible(),
       },
       {
@@ -1511,11 +1511,9 @@ export class App {
     //（2026-10-27 review 修复：这两个按钮此前只作了 toggleEl 声明，从未挂监听）
     document.getElementById('scheme-toggle-btn')?.addEventListener('click', () => {
       this.surfaceManager.toggle('scheme');
-      this.syncSurfaceToggleButton('scheme');
     });
     document.getElementById('overview-toggle-btn')?.addEventListener('click', () => {
       this.surfaceManager.toggle('overview');
-      this.syncSurfaceToggleButton('overview');
     });
 
     // 画布清场改 tap 判别（2026-10-27 review 修复）：拖拽旋转/环轨进行中的
@@ -2178,9 +2176,9 @@ export class App {
   // ── 命令处理器：快捷键与命令面板共用同一实现，禁止两处各写一份 ──
 
   private toggleOverviewMenu(): void {
-    // 走 SurfaceManager：modal 语义（打开时清场其它表面）与 Esc/画布清场才生效
+    // 走 SurfaceManager：modal 语义（打开时清场其它表面）与 Esc/画布清场才生效；
+    // aria-expanded 同步在 surface 的 open/close 闭包里，所有路径共用
     this.surfaceManager.toggle('overview');
-    this.syncSurfaceToggleButton('overview');
   }
 
   /** 方案/总览工具栏按钮的 aria-expanded 同步（这两个入口没有 Popover 代管）。 */
