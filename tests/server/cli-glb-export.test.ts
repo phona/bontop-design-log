@@ -329,14 +329,14 @@ test('CLI with real render facts exports every renderable A2 HVAC anchor and ter
   assert.equal(report.hvacStatus, 'implemented');
   assert.equal(new Set(ids).size, ids.length);
   assert.equal(report.hvacEquipment, 22); // DEC-2026-10-19-R25（bf29283）汇流拓扑新增 3 个 condensate 锚点后 19→22，具名清单同步补齐
-  assert.equal(report.hvacTerminals, 22); // DEC-2026-10-05-R18：+supply_living_bottom/+supply_dining_bottom 12→14；DEC-2026-10-07-R03：客餐厅三层线 +8 个 LD-deco-* 封闭装饰段（背板封闭无风道）14→22
+  assert.equal(report.hvacTerminals, 26); // DEC-2026-10-05-R18：+supply_living_bottom/+supply_dining_bottom 12→14；DEC-2026-10-07-R03：客餐厅三层线 +8 个 LD-deco-* 封闭装饰段（背板封闭无风道）14→22；DEC-2026-10-27-R03：检修口 4 个（餐厅/客房/儿童房底口 + 书房侧口）22→26
   for (const id of [
     'outdoor_a2', 'indoor_living', 'indoor_dining', 'indoor_master', 'indoor_study', 'indoor_parent', 'indoor_child',
     'power_living', 'power_dining', 'power_master', 'power_study', 'power_parent', 'power_child',
     'bend_corridor', 'branch_dining', 'branch_master', 'branch_study', 'branch_parent', 'branch_child',
     'condensate_living_dining_merge', 'condensate_living_outlet_candidate', 'condensate_dining_outlet_candidate',
   ]) assert.ok(exportRoot.getObjectByName(`hvac:A2:anchor:${id}`), `missing HVAC anchor ${id}`);
-  for (const id of ['supply_living', 'return_living', 'supply_dining', 'return_dining', 'supply_living_bottom', 'supply_dining_bottom', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child']) {
+  for (const id of ['supply_living', 'return_living', 'supply_dining', 'return_dining', 'supply_living_bottom', 'supply_dining_bottom', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child', 'access_dining', 'access_study', 'access_child', 'access_parent_side']) {
     assert.ok(exportRoot.getObjectByName(`hvac:A2:terminal:${id}`), `missing HVAC terminal ${id}`);
   }
   const supply = index.hvac.terminals.get('hvac:A2:terminal:supply_master');

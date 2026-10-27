@@ -80,7 +80,7 @@
 | [`02-layout-public.md`](./02-layout-public.md) | 布局 · 公共区 | 45 | 145 KB | `DEC-2026-07-05-002` … `DEC-2026-10-27-R02` |
 | [`03-master-bedroom.md`](./03-master-bedroom.md) | 主卧 | 21 | 43 KB | `DEC-2026-08-26-045` … `DEC-2026-09-07-R10` |
 | [`04-bathrooms.md`](./04-bathrooms.md) | 主卫 + 客卫 | 22 | 38 KB | `DEC-2026-08-21-036` … `DEC-2026-10-23-R03` |
-| [`05-hvac.md`](./05-hvac.md) | 中央空调 | 16 | 45 KB | `DEC-2026-09-07-055` … `DEC-2026-10-19-R02` |
+| [`05-hvac.md`](./05-hvac.md) | 中央空调 | 17 | 52 KB | `DEC-2026-09-07-055` … `DEC-2026-10-27-R03` |
 | [`06-electrical.md`](./06-electrical.md) | 电气回路/走线/审计 | 50 | 152 KB | `DEC-2026-08-05-017` … `DEC-2026-10-23-R01` |
 | [`06-electrical-archive.md`](./06-electrical-archive.md) | 电气归档分册（已被全量推翻的条目，批 5 分卷） | 4 | 14 KB | `DEC-2026-08-26-043` … `DEC-2026-10-16-R12` |
 | [`07-lighting.md`](./07-lighting.md) | 照明与起夜灯 | 8 | 15 KB | `DEC-2026-10-05-R15` … `DEC-2026-10-27-R01` |

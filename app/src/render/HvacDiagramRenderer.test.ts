@@ -62,6 +62,51 @@ describe('HvacDiagramRenderer', () => {
     expect(byId(scene, 'hvac:A2:reference:south_band')?.parent?.visible).toBe(true);
   });
 
+  it('builds provisional indoor-unit envelopes from ac_indoor sources only', () => {
+    // DEC-2026-10-27-R03：包络 0.90×0.25×0.50、腔内中心 y=2.65、inferred、服务侧恒 pending；非 ac_indoor 与无坐标项不出包络。
+    const scene = new THREE.Scene();
+    const value = new HvacDiagramRenderer(scene);
+    value.render('A2', diagram, {
+      outdoor: [], electrical: [],
+      ceiling: [
+        { id: 'ac_parent', room: 'study', type: 'ac_indoor', x: 5.5, z: 6.0, height: 2.85 },
+        { id: 'drop_1', room: 'study', type: 'drop' },
+        { id: 'ac_no_pos', room: 'study', type: 'ac_indoor' },
+      ],
+    });
+    const envelope = byId(scene, 'hvac:A2:unit:ac_parent');
+    expect(envelope?.userData).toMatchObject({ type: 'hvac_unit_envelope', unitId: 'ac_parent', status: 'inferred', service_side: 'pending' });
+    expect(envelope?.parent?.name).toBe('HVAC_COORDINATION');
+    expect(envelope?.position.toArray()).toEqual([5.5, 2.65, 6.0]);
+    const box = new THREE.Box3().setFromObject(envelope!);
+    const size = box.getSize(new THREE.Vector3());
+    expect(size.x).toBeCloseTo(0.9, 5);
+    expect(size.y).toBeCloseTo(0.25, 5);
+    expect(size.z).toBeCloseTo(0.5, 5);
+    expect(byId(scene, 'hvac:A2:unit:drop_1')).toBeUndefined();
+    expect(byId(scene, 'hvac:A2:unit:ac_no_pos')).toBeUndefined();
+    value.clear();
+  });
+
+  it('highlightUnit boosts the served envelope and returns false for unknown units', () => {
+    const scene = new THREE.Scene();
+    const value = new HvacDiagramRenderer(scene);
+    value.render('A2', diagram, {
+      outdoor: [], electrical: [],
+      ceiling: [{ id: 'ac_parent', room: 'study', type: 'ac_indoor', x: 5.5, z: 6.0, height: 2.85 }],
+    });
+    expect(value.highlightUnit('ac_missing')).toBe(false);
+    expect(value.highlightUnit('ac_parent')).toBe(true);
+    const envelope = byId(scene, 'hvac:A2:unit:ac_parent')!;
+    let fill: THREE.MeshStandardMaterial | undefined;
+    envelope.traverse((child) => {
+      if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) fill = child.material;
+    });
+    expect(fill!.emissive.getHex()).toBe(0xf59e0b);
+    expect(fill!.opacity).toBeCloseTo(0.67, 5);
+    value.clear();
+  });
+
   it('clears old coordination objects on render and disposes its root group', () => {
     const { scene, value } = renderer();
     value.render('A2', { anchors: [], terminals: [], routes: [], reference_constraints: [] }, { outdoor: [], ceiling: [], electrical: [] });

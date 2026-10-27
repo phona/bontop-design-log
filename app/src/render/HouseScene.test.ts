@@ -141,3 +141,31 @@ describe('HouseScene ceiling zones', () => {
     expect(source).toContain('setCeilingVisible(mode === \'first-person\')');
   });
 });
+
+describe('HouseScene access panels (DEC-2026-10-27-R03)', () => {
+  it('toggles panels via batcher + group visibility and highlights the served unit envelope', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toContain('toggleAccessPanel(panelObjectId: string)');
+    expect(source).toContain('this.hvacEntityIndex.terminals.get(panelObjectId)');
+    expect(source).toContain('this.batcher.setUnitVisible(panel, !open)');
+    expect(source).toContain('this.hvacRenderer.highlightUnit(servesUnit)');
+    expect(source).toContain('accessPanelOpen');
+  });
+
+  it('opens the HVAC layer with semi-transparent ceilings and restores the prior ceiling state on close', async () => {
+    const fs = await import('node:fs');
+    const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    expect(source).toContain('hvacCeilingState');
+    expect(source).toContain('this.setCeilingVisible(true, 0.22)');
+    expect(source).toContain('this.setCeilingVisible(state.visible, state.opacity)');
+  });
+
+  it('App click branch opens panels and ensures the HVAC layer is visible', async () => {
+    const fs = await import('node:fs');
+    const app = fs.readFileSync('./src/App.ts', 'utf8');
+    expect(app).toContain("target.objectId.includes(':terminal:access_')");
+    expect(app).toContain('this.houseScene.toggleAccessPanel(target.objectId)');
+    expect(app).toContain('if (!this.hvacCoordinationVisible) this.setHvacCoordinationVisible(true)');
+  });
+});
