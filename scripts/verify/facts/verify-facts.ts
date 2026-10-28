@@ -277,4 +277,10 @@ for (const line of result.notes ?? []) console.log(`  INFO ${line}`);
 console.log(result.errors.length
   ? `verify-facts: ${result.errors.length} fail(s), ${result.warnings.length} warning(s)`
   : `verify-facts: OK (${result.warnings.length} warning(s))`);
-process.exit(result.errors.length ? 1 : 0);
+// 必须用 exitCode 自然退出，不许 process.exit()：stdout 是管道时（CI 捕获、测试 spawnSync）
+// console.log 的写入是异步的，process.exit() 不等 flush 就终止进程——尾部输出整段丢失、
+// 退出码仍为 0。2026-10-28 实测：并发争用下 35KB 输出被截到 28KB（WARN 之后的契约行全丢），
+// budget-parity-contracts / mep-guidance-baseline / facts-lint 三个 spawn 本脚本的用例
+// 在 master 血统提交上间歇假红，同一 commit rerun 即绿。本脚本无 watcher/timer 挂住事件循环，
+// 设 exitCode 后 Node 会在 stdout 排空后自然退出，退出码不变。
+process.exitCode = result.errors.length ? 1 : 0;
