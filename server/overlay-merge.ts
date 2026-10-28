@@ -109,6 +109,23 @@ const SillRegionSchema = z
   })
   .strict();
 
+// 踢脚线常显条带（DEC-2026-10-28-R02）：与 wall_region/paint_region 的检视态不同，
+// 本类型在正常视图里就可见。height 必填、代码与 schema 均不得给默认值——高度是可调数据，
+// 只由 overlay 声明（本文件外 YAML 锚点统一）给出；改高度改声明，不改代码。
+const SkirtingRegionSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('skirting_region'),
+    wall: z.string().min(1),
+    room: z.string().min(1),
+    along: z.tuple([z.number().nonnegative(), z.number().positive()]),
+    bottom: z.number().nonnegative().default(0),
+    height: z.number().positive(),
+    color: z.string().optional(),
+    reason: z.string().optional(),
+  })
+  .strict();
+
 // 涂漆检视态叠加层（墙顶面涂装 PKG-080）：inspection-only，与 wall_region 平级且互不引用。
 // wall 必须在 model-geometry 的墙声明中存在且未被 suppress；along 自该墙 from 端累计。
 // room 声明漆面归属房间——渲染端据此把平面朝该房间侧外偏移，避免与同墙贴砖面/另一侧涂漆面共面。
@@ -299,6 +316,7 @@ const OverlaySchema = z
           WallRunSchema,
           WallRegionSchema,
           SillRegionSchema,
+          SkirtingRegionSchema,
   PaintRegionSchema,
   PaintSillRegionSchema,
   PaintCeilingRegionSchema,

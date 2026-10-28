@@ -1155,6 +1155,82 @@ export class HouseScene implements SceneApi {
    * 与贴砖层的唯一差别：涂漆平面在 SceneBuilder 已沿墙法线朝声明房间侧外偏移，
    * 故同一段墙上的贴砖面与本侧/另一侧涂漆面不会共面 z-fighting。
    */
+  /**
+   * 踢脚线常显条带·逐段明细（DEC-2026-10-28-R02）。与贴砖/涂漆检视态不同：
+   * 踢脚线在正常视图里就可见，没有层开关可关，所以审计面不做显隐切换，只做
+   * 「声明了几段、场景里真有这几段吗、各房多少米」的卡点对账。长度取 SceneBuilder
+   * 写入的 userData.lengthM（门洞实扣后的每块净长），不重算沿墙区间，避免弧墙
+   * 逐段拆块后沿墙区间重复计。
+   */
+  inspectSkirtingRegions(): {
+    ok: boolean;
+    regions: Array<{ id: string; objectId: string; wall: string; room: string; bottom: number; height: number; lengthM: number; areaSqm: number }>;
+    checks: { missingWallRefs: string[] };
+  } {
+    const meshes: THREE.Mesh[] = [];
+    this.exportRoot.traverse((object) => {
+      if (object.userData?.type === 'skirting_region') meshes.push(object as THREE.Mesh);
+    });
+    const wallIds = new Set<string>();
+    this.exportRoot.traverse((object) => {
+      if (object.userData?.type === 'wall' && object.userData?.objectId) {
+        const raw = String(object.userData.objectId);
+        wallIds.add(raw);
+        // 墙网格 objectId 常带 :segment / .faceSpan 后缀（addWallElement），去后缀后才是墙 id。
+        wallIds.add(raw.replace(/:\d+(\.\d+)?$/, '').replace(/\.\d+$/, ''));
+      }
+    });
+    const regions = meshes.map((mesh) => {
+      const height = Number(mesh.userData.height ?? 0);
+      const lengthM = +(Number(mesh.userData.lengthM ?? 0)).toFixed(4);
+      const id = String(mesh.userData.objectId ?? '');
+      return {
+        id, objectId: id, wall: String(mesh.userData.wallId ?? ''),
+        room: String(mesh.userData.roomId ?? ''),
+        bottom: Number(mesh.userData.bottom ?? 0), height,
+        lengthM, areaSqm: +(lengthM * height).toFixed(4),
+      };
+    }).sort((a, b) => a.id.localeCompare(b.id));
+    const missingWallRefs = [...new Set(regions.filter((r) => r.wall && !wallIds.has(r.wall)).map((r) => r.wall))];
+    return { ok: missingWallRefs.length === 0 && regions.length > 0, regions, checks: { missingWallRefs } };
+  }
+
+  /** 踢脚线常显条带·状态摘要（对齐 getWallTileInspectionStatus 的 required/ready 口径）。 */
+  getSkirtingStatus(): {
+    required: boolean;
+    ready: boolean;
+    expected: string[];
+    included: string[];
+    missing: string[];
+    byRoom: Record<string, { segments: number; lengthM: number; areaSqm: number }>;
+    totalLengthM: number;
+    totalAreaSqm: number;
+  } {
+    const inspected = this.inspectSkirtingRegions();
+    const byRoom: Record<string, { segments: number; lengthM: number; areaSqm: number }> = {};
+    for (const r of inspected.regions) {
+      byRoom[r.room] ??= { segments: 0, lengthM: 0, areaSqm: 0 };
+      byRoom[r.room].segments += 1;
+      byRoom[r.room].lengthM += r.lengthM;
+      byRoom[r.room].areaSqm += r.areaSqm;
+    }
+    for (const room of Object.values(byRoom)) {
+      room.lengthM = +room.lengthM.toFixed(3);
+      room.areaSqm = +room.areaSqm.toFixed(3);
+    }
+    const included = [...new Set(inspected.regions.map((r) => String(r.id).replace(/:s\d+$/, '')))];
+    return {
+      required: included.length > 0,
+      ready: inspected.ok && inspected.checks.missingWallRefs.length === 0,
+      expected: included,
+      included,
+      missing: inspected.checks.missingWallRefs,
+      byRoom,
+      totalLengthM: +inspected.regions.reduce((s, r) => s + r.lengthM, 0).toFixed(3),
+      totalAreaSqm: +inspected.regions.reduce((s, r) => s + r.areaSqm, 0).toFixed(3),
+    };
+  }
+
   setPaintInspectionVisible(visible: boolean): void {
     this.exportRoot.traverse((object) => {
       if (object.userData?.inspectionLayer !== 'wall-paint') return;

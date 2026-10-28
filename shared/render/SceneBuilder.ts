@@ -1055,6 +1055,99 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       });
       return;
     }
+    case 'skirting_region': {
+      // 踢脚线常显条带（DEC-2026-10-28-R02）：与 wall_region/paint_region 的检视态不同，
+      // 本类型在正常视图里就可见：不透明、贴房间侧墙面（PAINT_FACE_OFFSET，半墙厚 + 8mm，
+      // 约等于瓷砖条带出墙面厚度）、门洞处由 splitSegmentByOpenings 实扣断开。
+      // 高度不得在代码里写死：element.height 必填（类型与 overlay schema 均无默认值），
+      // 读不到合法高度时 fail-closed 报 unsupported，不静默用一个数顶上。
+      // 碰撞：按 AGENTS.md 新类型评估，本类型是墙脚薄片饰面，与 floor_region/bay_sill 同款
+      // 不需要碰撞（不参与 extractCollisionWalls 的墙/幕墙清单）。
+      const wall = walls.find((candidate) => candidate.id === element.wall);
+      if (!wall) {
+        report.unsupported.push(`${id}: skirting_region references unknown wall ${element.wall}`);
+        return;
+      }
+      const room = rooms.find((candidate) => candidate.id === element.room);
+      if (!room) {
+        report.unsupported.push(`${id}: skirting_region references unknown room ${element.room}`);
+        return;
+      }
+      if (!Number.isFinite(room.x) || !Number.isFinite(room.z)) {
+        report.unsupported.push(`${id}: skirting_region room ${element.room} has no resolved centre (x/z)`);
+        return;
+      }
+      const polyline: WallSegment[] = wall.segments?.length
+        ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+      const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+      const from = Math.min(element.along[0], element.along[1]);
+      const to = Math.max(element.along[0], element.along[1]);
+      const bottom = element.bottom ?? 0;
+      const height = element.height;
+      if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+        report.unsupported.push(`${id}: skirting_region along [${from}, ${to}] is outside wall ${element.wall} (length ${total.toFixed(3)})`);
+        return;
+      }
+      if (!(height > bottom)) {
+        report.unsupported.push(`${id}: skirting_region height ${height} must exceed bottom ${bottom} (height is data, never defaulted in code)`);
+        return;
+      }
+      const clipped = clipAlongSpan(polyline, from, to);
+      if (!clipped.length) {
+        report.unsupported.push(`${id}: skirting_region resolved to a zero-length span on wall ${element.wall}`);
+        return;
+      }
+      const material = new THREE.MeshStandardMaterial({
+        color: new THREE.Color(element.color ?? DEFAULT_PAINT),
+        roughness: 0.9,
+        side: THREE.DoubleSide,
+      });
+      let pieceIndex = 0;
+      for (const { a, b } of clipped) {
+        const subsegments = (wall as { openings?: ResolvedOpening[] }).openings?.length
+          ? splitSegmentByOpenings({ x1: a.x, z1: a.z, x2: b.x, z2: b.z }, (wall as { openings: ResolvedOpening[] }).openings)
+          : [{ x1: a.x, z1: a.z, x2: b.x, z2: b.z }];
+        for (const sub of subsegments) {
+          const segSpan = Math.hypot(sub.x2 - sub.x1, sub.z2 - sub.z1);
+          if (segSpan <= 1e-9) continue;
+          const segDx = sub.x2 - sub.x1;
+          const segDz = sub.z2 - sub.z1;
+          const segDir = Math.hypot(segDx, segDz) || 1;
+          const segLeft = { x: -segDz / segDir, z: segDx / segDir };
+          const segMid = { x: (sub.x1 + sub.x2) / 2, z: (sub.z1 + sub.z2) / 2 };
+          const segSide = (room.x - segMid.x) * segLeft.x + (room.z - segMid.z) * segLeft.z;
+          const segNormal = Math.abs(segSide) > 1e-6 ? (segSide > 0 ? segLeft : { x: -segLeft.x, z: -segLeft.z }) : segLeft;
+          const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, height - bottom), material);
+          mesh.position.set(
+            segMid.x + segNormal.x * PAINT_FACE_OFFSET,
+            bottom + (height - bottom) / 2,
+            segMid.z + segNormal.z * PAINT_FACE_OFFSET,
+          );
+          mesh.rotation.y = Math.atan2(-segDz, segDx);
+          mesh.receiveShadow = true;
+          const meshId = pieceIndex === 0 ? id : `${id}:s${pieceIndex}`;
+          setSceneObjectMetadata(mesh, element.type, meshId);
+          mesh.userData = {
+            ...mesh.userData,
+            wallId: element.wall,
+            roomId: element.room,
+            regionId: id,
+            regionAlong: [from, to],
+            bottom,
+            height,
+            lengthM: segSpan,
+          };
+          mesh.visible = true;
+          root.add(mesh);
+          pieceIndex += 1;
+        }
+      }
+      if (pieceIndex === 0) {
+        report.unsupported.push(`${id}: skirting_region resolved to no visible piece on wall ${element.wall} (fully blocked by openings)`);
+      }
+      return;
+    }
     case 'paint_sill_region': {
       const bay = allElements.find((candidate): candidate is Extract<SceneElement, { type: 'bay_sill' }> => candidate.id === element.element && candidate.type === 'bay_sill');
       const room = rooms.find((candidate) => candidate.id === element.room);

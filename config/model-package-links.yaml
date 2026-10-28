@@ -154,7 +154,7 @@ links:
     mapping_status: partial
     scope:
       - {source: model_geometry, select: {collections: [rooms, walls, openings]}}
-      - {source: overlay, select: {types: [floor_region, wall_region, paint_region, sill_region]}}
+      - {source: overlay, select: {types: [floor_region, wall_region, paint_region, sill_region, skirting_region]}}
   - id: MODEL-PKG-140
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-140}

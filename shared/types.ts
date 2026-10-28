@@ -916,6 +916,10 @@ export type SceneElement =
   | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean; parts?: CurtainRunPart[] }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   | { type: 'wall_region'; id: string; wall: string; room?: string; along: [number, number]; bottom?: number; height: number; zone?: 'visible' | 'covered'; color?: string; reason?: string }
+  // 踢脚线常显条带（DEC-2026-10-28-R01/R02）：与 wall_region/paint_region 的检视态不同，
+  // 本类型在正常视图里就可见、不透明、贴房间侧墙面。height 必填且代码里不得给默认值——
+  // 高度是可调数据，只由 overlay 声明（锚点统一）给出，改高度改声明不改代码。
+  | { type: 'skirting_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height: number; color?: string; reason?: string }
   | { type: 'sill_region'; id: string; element: string; face: 'front' | 'top' | 'underside'; along?: [number, number]; zone?: 'visible' | 'covered'; color?: string; room?: string; reason?: string }
   | { type: 'paint_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height?: number; color?: string; reason?: string }
   | { type: 'paint_sill_region'; id: string; element: string; room: string; faces: Array<'underside' | 'front' | 'start_end' | 'end_end'>; finish: 'ordinary' | 'anti_mold'; color?: string; reason?: string }
