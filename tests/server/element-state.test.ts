@@ -228,7 +228,9 @@ describe('element census snapshot', () => {
     // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
     // 本轮将烟机插座试位 (z=1.50) 显式标为 pending，故空台账快照仍留下 5 个未知：
     // 两个吊顶分区 + 阳台洗衣机排水 + 主卧两窗帘盒。
-    assert.equal(result.summary.undeclared, 5, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
+    // DEC-2026-10-28-R05：主卧南窗帘盒归位时 note 补了 DEC 全引 → 该盒不再是申报缺口，5→4
+    //（剩余：两个吊顶分区 + 阳台洗衣机排水 + 主卧西窗帘盒；后者不在本轮范围，留作后续）。
+    assert.equal(result.summary.undeclared, 4, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
     assert.ok(result.summary.undeclared / result.summary.total < 0.15, '申报缺口应维持在低位；重新升高说明有新构件没申报');
   });
 

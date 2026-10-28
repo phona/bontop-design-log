@@ -1205,7 +1205,7 @@ describe('BudgetCalculator', () => {
     // 实测 157870.46361048135，差额 +11,662 = 瓦工人工 +4,662 + hvac +7,000。
     // **当前实测 66,310**：65,922 + R01 重算净 +388（客餐厅 +1.725、东南房 +2.19 与门厅吊顶区 1.0584→2.561 传导至漆工/木工/瓦工人工与材料）；
     // actual 不含candidateActual材料款，只保留已取证款、人工/人工录入与其他明确来源。
-    assert.equal(snapshot.totalActual, 66310, '现行 totalActual 锚点（已含 R01 重算）');
+    assert.equal(snapshot.totalActual, 66337, '现行 totalActual 锚点（已含 R01 重算；DEC-2026-10-28-R05 窗帘盒归位后涂装计价面积 +1.100㎡、人工 +¥27.50，66310→66337）');
     assert.ok(candidateTotal > 90000, `候选价应仍在 92,696 量级（当前 ${candidateTotal}），不得被静默清零`);
   });
 
