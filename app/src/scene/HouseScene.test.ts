@@ -1938,3 +1938,47 @@ describe('HouseScene 共墙按面给材质（DEC-2026-10-07-R12）', () => {
     expect(noSlotsSpies.every((s: any) => !s.mock.calls.length)).toBe(true);
   });
 });
+
+// ─── 踢脚线常显条带审计面（DEC-2026-10-28-R02）──────────────────────────────────
+describe('HouseScene 踢脚线审计面', () => {
+  function mockScene() {
+    const scene = Object.create((HouseScene as any).prototype);
+    scene.exportRoot = new THREE.Group();
+    return scene;
+  }
+  function skirtMesh(id: string, wall: string, room: string, lengthM: number, height = 0.08) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    mesh.userData = { type: 'skirting_region', objectId: id, wallId: wall, roomId: room, regionId: id, bottom: 0, height, lengthM };
+    return mesh;
+  }
+  function wallMesh(id: string) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    mesh.userData = { type: 'wall', objectId: id };
+    return mesh;
+  }
+
+  it('声明段齐全时 ready=true，按房汇总总长与面积', () => {
+    const scene = mockScene();
+    scene.exportRoot.add(wallMesh('w_nw_south'));
+    scene.exportRoot.add(wallMesh('w_be_west:0'));
+    scene.exportRoot.add(skirtMesh('skirt_a', 'w_nw_south', 'bedroom_nw', 2.1));
+    scene.exportRoot.add(skirtMesh('skirt_b', 'w_be_west', 'bedroom_se', 3.15));
+    const status = scene.getSkirtingStatus();
+    expect(status.required).toBe(true);
+    expect(status.ready).toBe(true);
+    expect(status.missing).toEqual([]);
+    expect(status.totalLengthM).toBeCloseTo(5.25, 3);
+    expect(status.totalAreaSqm).toBeCloseTo(5.25 * 0.08, 3);
+    expect(status.byRoom.bedroom_nw.lengthM).toBeCloseTo(2.1, 3);
+  });
+
+  it('墙引用丢失时 ready=false 并报 missing（墙网格带 :segment 后缀时不误报）', () => {
+    const scene = mockScene();
+    scene.exportRoot.add(wallMesh('w_be_west:0'));
+    scene.exportRoot.add(skirtMesh('skirt_b', 'w_be_west', 'bedroom_se', 3.15));
+    scene.exportRoot.add(skirtMesh('skirt_x', 'w_gone', 'study', 1.0));
+    const status = scene.getSkirtingStatus();
+    expect(status.ready).toBe(false);
+    expect(status.missing).toEqual(['w_gone']);
+  });
+});

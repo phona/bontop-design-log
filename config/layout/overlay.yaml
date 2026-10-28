@@ -895,6 +895,231 @@ elements:
     height: 2.80
     reason: "主卫南墙干区涂装；[0,1.20] 为淋浴砖到顶跨不漆，0.30m 以下为 walltile_mbath_south_dry 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07）；门洞跨内部分拆洞实扣"
 
+  # ── 踢脚线常显条带（DEC-2026-10-28-R01/R02）──
+  # 口径：24 段 = 非卫浴漆面 paint_region 逐段跟随（墙/房间/沿墙区间与漆面声明一致，
+  # 两卫漆面段不在此列：卫内墙脚是贴砖到地/0.30m 砖带，DEC-2026-10-28-R01 明确不重复贴）。
+  # 高度可调、不要写死：首段 height 定义锚点 &skirting_height，其余段用 *skirting_height 引用；
+  # 改高度只改首段锚点值（当前 0.08m = 业主 2026-10-28 定 80mm），不得改渲染代码默认值
+  # （代码与 schema 均无高度默认值，读不到合法高度即 fail-closed）。颜色同理用 &skirting_color 锚点，
+  # 当前 '#e5e2db' 仅为暖白占位、随墙砖终选走，不等于墙砖 SKU 已锁。门洞处渲染时由
+  # splitSegmentByOpenings 实扣断开，声明沿墙区间本身不预扣洞。
+  - id: skirt_bedroom_nw_w_balc_west
+    type: skirting_region
+    wall: w_balc_west
+    room: bedroom_nw
+    along: [0.10, 1.20]
+    bottom: 0
+    height: &skirting_height 0.08
+    color: &skirting_color '#e5e2db'
+    reason: "踢脚线常显条带，跟随 paint_bedroom_nw_w_balc_west 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_bedroom_nw_w_gbath_west
+    type: skirting_region
+    wall: w_gbath_west
+    room: bedroom_nw
+    along: [0.00, 1.35]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_bedroom_nw_w_gbath_west 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_bedroom_nw_w_gbath_west_open_vanity
+    type: skirting_region
+    wall: w_gbath_west_open_vanity
+    room: bedroom_nw
+    along: [0.00, 0.75]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_bedroom_nw_w_gbath_west_open_vanity 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_bedroom_nw_w_mbath_east
+    type: skirting_region
+    wall: w_mbath_east
+    room: bedroom_nw
+    along: [0.00, 3.20]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_bedroom_nw_w_mbath_east 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_bedroom_nw_w_nw_south
+    type: skirting_region
+    wall: w_nw_south
+    room: bedroom_nw
+    along: [0.00, 3.00]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_bedroom_nw_w_nw_south 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_bedroom_se_w_be_north
+    type: skirting_region
+    wall: w_be_north
+    room: bedroom_se
+    along: [0.00, 3.00]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_bedroom_se_w_be_north 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_bedroom_se_w_be_west
+    type: skirting_region
+    wall: w_be_west
+    room: bedroom_se
+    along: [0.00, 3.15]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_bedroom_se_w_be_west 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_bedroom_se_w_east_upper
+    type: skirting_region
+    wall: w_east_upper
+    room: bedroom_se
+    along: [0.00, 3.15]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_bedroom_se_w_east_upper 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_living_dining_w_be_west
+    type: skirting_region
+    wall: w_be_west
+    room: living_dining
+    along: [0.00, 4.25]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_living_dining_w_be_west 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_living_dining_w_ent_south_w
+    type: skirting_region
+    wall: w_ent_south_w
+    room: living_dining
+    along: [0.00, 1.97]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_living_dining_w_ent_south_w 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_living_dining_w_ent_west
+    type: skirting_region
+    wall: w_ent_west
+    room: living_dining
+    along: [0.00, 0.60]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_living_dining_w_ent_west 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_living_dining_w_cent_south
+    type: skirting_region
+    wall: w_cent_south
+    room: living_dining
+    along: [0.00, 1.82]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_living_dining_w_cent_south 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_living_dining_w_st_east
+    type: skirting_region
+    wall: w_st_east
+    room: living_dining
+    along: [0.00, 4.25]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_living_dining_w_st_east 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_main_corridor_w_strip_east
+    type: skirting_region
+    wall: w_strip_east
+    room: main_corridor
+    along: [0.00, 1.25]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_main_corridor_w_strip_east 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_main_corridor_w_st_north
+    type: skirting_region
+    wall: w_st_north
+    room: main_corridor
+    along: [0.00, 3.00]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_main_corridor_w_st_north 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_main_corridor_w_nw_south
+    type: skirting_region
+    wall: w_nw_south
+    room: main_corridor
+    along: [1.60, 3.00]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_main_corridor_w_nw_south 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_master_bedroom_w_mb_east
+    type: skirting_region
+    wall: w_mb_east
+    room: master_bedroom
+    along: [0.00, 4.25]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_master_bedroom_w_mb_east 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_master_bedroom_w_mbath_east
+    type: skirting_region
+    wall: w_mbath_east
+    room: master_bedroom
+    along: [1.76, 3.20]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_master_bedroom_w_mbath_east 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_master_bedroom_w_mbath_south
+    type: skirting_region
+    wall: w_mbath_south
+    room: master_bedroom
+    along: [0.00, 2.60]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_master_bedroom_w_mbath_south 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_master_bedroom_w_nw_south
+    type: skirting_region
+    wall: w_nw_south
+    room: master_bedroom
+    along: [0.00, 1.60]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_master_bedroom_w_nw_south 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_master_bedroom_w_strip_east
+    type: skirting_region
+    wall: w_strip_east
+    room: master_bedroom
+    along: [0.00, 1.25]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_master_bedroom_w_strip_east 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_study_w_mb_east
+    type: skirting_region
+    wall: w_mb_east
+    room: study
+    along: [0.00, 4.25]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_study_w_mb_east 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_study_w_st_east
+    type: skirting_region
+    wall: w_st_east
+    room: study
+    along: [0.00, 4.25]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_study_w_st_east 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+  - id: skirt_study_w_st_north
+    type: skirting_region
+    wall: w_st_north
+    room: study
+    along: [0.00, 3.00]
+    bottom: 0
+    height: *skirting_height
+    color: *skirting_color
+    reason: "踢脚线常显条带，跟随 paint_study_w_st_north 的漆面墙脚（DEC-2026-10-28-R02）；高度由锚点统一，见本节首段注释"
+
   # ── 显式顶面范围：沿用原有房间顶面涂装口径，但只扣除 config/ceiling.yaml 明确为铝扣板的投影。 ──
   # 飘窗底面/窗台本体按其 bay_sill 几何另计；主卫顶面铝扣板覆盖主卫投影，故不计普通墙漆。
   - id: paint_ceiling_bedroom_nw

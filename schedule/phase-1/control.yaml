@@ -1504,7 +1504,7 @@ work_packages:
   - id: PKG-135
     sequence: 135
     name: 踢脚线、明确收边项目与竣工深度清洁
-    description: 安装奶白瓷砖踢脚线（DEC-2026-10-28-R01：跟厨卫墙砖同款/同色系暖白，高度提议 80–100mm 待单值锁定，首选同系列成品、无成品时现场切；适用漆面落地墙脚，已贴砖到地段与固定柜体/洁具遮挡段不重复贴），按已经列明的位置处理门套、柜体、台面、洁具和墙地面交界，修复清单中记录的表面缺陷，最后逐房进行深度清洁；不得用“零星收口”作为未列项目的收费口袋。
+    description: 安装奶白瓷砖踢脚线（DEC-2026-10-28-R01/R02：跟厨卫墙砖同款/同色系暖白，高度现值 80mm、可调锚点、调整区间 80–100mm，首选同系列成品、无成品时现场切；适用漆面落地墙脚，已贴砖到地段与固定柜体/洁具遮挡段不重复贴），按已经列明的位置处理门套、柜体、台面、洁具和墙地面交界，修复清单中记录的表面缺陷，最后逐房进行深度清洁；不得用“零星收口”作为未列项目的收费口袋。
     budget_pool: hard_finish
     budget:
       planned_cny: 5500
@@ -1514,7 +1514,7 @@ work_packages:
       source_ref: miscellaneous_remainder
       allocation_status: pending_breakdown
       components:
-        - {id: COST-135-01, name: 踢脚线材料和安装, description: 奶白瓷砖踢脚线（DEC-2026-10-28-R01：跟厨卫墙砖同款/同色系暖白，高度提议 80–100mm 待单值锁定，首选同系列成品、无成品时现场切：原厂边朝上、切口朝下封胶、磨边/倒角，顶边弹性防霉胶）；写明转角配件、固定方式和安装人工, quantity_basis: 待交房量房按实际长度复核（现行精度 ±0.15m 不能算量；切割损耗另算，不用余料赌）, planned_cny: null, status: quantity_pending}
+        - {id: COST-135-01, name: 踢脚线材料和安装, description: 奶白瓷砖踢脚线（DEC-2026-10-28-R01/R02：跟厨卫墙砖同款/同色系暖白，高度现值 80mm、可调锚点、调整区间 80–100mm，首选同系列成品、无成品时现场切：原厂边朝上、切口朝下封胶、磨边/倒角，顶边弹性防霉胶）；写明转角配件、固定方式和安装人工, quantity_basis: 待交房量房按实际长度复核（现行精度 ±0.15m 不能算量；切割损耗另算，不用余料赌）, planned_cny: null, status: quantity_pending}
         - {id: COST-135-02, name: 已列明交界位置的收边处理, description: 按门套、柜体、台面、洁具、风口和墙地交界逐处列数量、材料和责任方, quantity_basis: 待形成收边位置清单, planned_cny: null, status: scope_schedule_pending}
         - {id: COST-135-03, name: 验收缺陷修复, description: 只处理缺陷清单中的具体问题；原合同施工质量问题由责任方免费整改, quantity_basis: 按缺陷责任判定, planned_cny: null, status: responsibility_pending}
         - {id: COST-135-04, name: 竣工深度清洁, description: 逐房清洁地墙顶、门柜、玻璃、洁具和设备表面并清走施工垃圾, quantity_basis: 按建筑面积和服务范围报价, planned_cny: null, status: quote_pending}
@@ -1529,9 +1529,9 @@ work_packages:
       - id: SCH-135-01
         severity: major
         checkpoint: completion
-        item: 踢脚线与清单所列收边逐项检查
-        method: 按位置清单逐段检查固定、拼缝、转角、交界密封、污染和高低差；核对高度单值全屋一致、现场切的原厂边朝上且切口不外露、顶边为弹性防霉胶
-        pass_condition: 每个清单位置均有结果，无漏项、松动、明显缝隙或影响使用的问题；高度在锁定单值内，切口无外露胚体，顶边无硬填开裂
+        item: 踢脚线与清单所列收边逐项检查（方案落地卡点：本项不通过，GATE-135-COMPLETE 不放行）
+        method: 按位置清单逐段检查固定、拼缝、转角、交界密封、污染和高低差；核对高度全屋一致且等于当前锁定单值（现值 80mm、可调锚点、调整区间 80–100mm，见 DEC-2026-10-28-R02）、现场切的原厂边朝上且切口不外露、顶边为弹性防霉胶；对照 3D 踢脚线审计面（getSkirtingStatus）核对声明段无缺失
+        pass_condition: 每个清单位置均有结果，无漏项、松动、明显缝隙或影响使用的问题；高度等于当前锁定单值，切口无外露胚体，顶边无硬填开裂；3D 审计面 ready=true
         evidence_required: [finish_location_schedule, completion_photos, defect_list]
       - id: SCH-135-02
         severity: major

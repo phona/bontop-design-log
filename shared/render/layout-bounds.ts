@@ -66,6 +66,9 @@ export function computeLayoutBounds(input: LayoutBoundsInput): LayoutBounds {
       case 'wall_region':
         // 贴砖检视态叠加层：几何落在所引用墙的 along 区间内，bounds 由该墙线段承担。
         break;
+      case 'skirting_region':
+        // 踢脚线常显条带：几何落在所引用墙的 along 区间内，bounds 同理由该墙线段承担。
+        break;
       case 'sill_region':
         // 防水台贴砖带（R11 D4）：几何落在所引用 bay_sill 的墙跑上，bounds 由该构件承担。
         break;
