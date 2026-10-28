@@ -50,7 +50,7 @@
 - id: ac_parent
   room: study
   type: ac_indoor
-  x: 5.5
+  x: 6.5
   z: 6.0
   height: 2.85
   model: "MJV-28T2/P-SS 2.8kW（业主确认：书房双出风带泵室内机型号；机位坐标为当前设计预演值）"

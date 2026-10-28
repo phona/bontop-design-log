@@ -83,7 +83,7 @@
     },
     {
       "code": "route_clearance_unverified",
-      "count": 40,
+      "count": 35,
       "category": "envelope_approximation",
       "disposition": "pending_adjudication",
       "basis": "DEC-2026-10-17-R20 首登 warning 侧。"
@@ -136,7 +136,7 @@
     },
     {
       "code": "supply_return_overlap",
-      "count": 1,
+      "count": 2,
       "category": "envelope_approximation",
       "disposition": "accept",
       "basis": "模型包络近似：shared/mep-hvac-lint.ts 的 airRouteBox 注释明确风路线没有 height、depth 只是竖向代理，「can produce a warning, but never supports a confirmed error」——本代码结构上不可能升 error；8 条对应 6 台双出风内机的送/回风支管（含 supply-air-*-bottom 组装段），实际风口位置随厂家深化图定",
@@ -197,11 +197,11 @@
     }
   ],
   "summary": {
-    "mep_total_warnings": 276,
+    "mep_total_warnings": 272,
     "mep_buckets": {
-      "must_fix_before_briefing": 126,
+      "must_fix_before_briefing": 125,
       "survey_dependent": 144,
-      "envelope_approximation": 132
+      "envelope_approximation": 128
     },
     "electrical_total_warnings": 54,
     "electrical_by_disposition": {
