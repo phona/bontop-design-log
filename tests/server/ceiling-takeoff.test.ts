@@ -65,8 +65,8 @@ test('只量实心分区：19 个计量、6 台 ac_indoor 排除', () => {
   assert.deepEqual(takeoff.unclassifiedZoneIds, []);
   // 已知待裁定项：主卧西窗帘盒 z[5.55,8.80] 与南窗帘盒 z[8.70,8.95] 在 x[1.10,1.35] 上重叠 0.25×0.10m。
   // 这里**不擅自改几何**（分区边界属设计裁定），只要求它被算量子系统显形并单独计量。
-  assert.deepEqual(takeoff.overlaps, ['curtain_box_master_south ↔ curtain_box_master_west (0.250×0.100m)']);
-  assert.ok(Math.abs(takeoff.overlapAreaM2 - 0.025) < 1e-9);
+  assert.deepEqual(takeoff.overlaps, []); // DEC-2026-10-28-R05：主卧南窗帘盒归位玻璃线后与主卧西窗帘盒的 0.25×0.10m 角部重叠随之消除（原位 z[8.70,8.95] 压在西盒南端 z≤8.80 上，本身就是旧读法遗留的几何缺陷）
+  assert.ok(Math.abs(takeoff.overlapAreaM2 - 0) < 1e-9); // DEC-2026-10-28-R05：盒间重叠消除，重叠面积 0.025→0
 });
 
 test('逐分区净面积与声明一致（含圆角/阴角修正）', () => {

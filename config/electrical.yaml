@@ -384,7 +384,7 @@
   x: 13.40
   z: 7.12
   height: 1.3
-  note: "客房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：与 switch_study（z=7.0）组双联，距 d_bese 门洞边缘 0.57m；（2026-10-05 功能互换，id/位置不变）品牌中立，定标后按厂商线控规格终核，site_pending"
+  note: "客房空调线控器（DEC-2026-09-08-R1 全屋六房预留线控底盒+信号线管）：与 switch_study（z=7.0）组双联，距 d_bese 门洞边缘 0.57m；（2026-10-05 功能互换，id/位置不变）品牌中立，定标后按厂商线控规格终核，site_pending；2026-10-28 DEC-2026-10-28-R06 业主裁定线控器留门边、不移床头（门边双联在进门动线上、进房即可控温；床头侧控制由后续智能家居接入覆盖），本点位品牌中立 86 底盒+信号线管即该接入的物理载体、不得被拆除或替换；底盒是否预埋零线、信号线芯数口径与门边取电位三项待核，见 pending-site-data #58（封槽前不可逆）"
 
 # 儿童房（西北次卧）
 - id: sock_child_bed
@@ -793,10 +793,10 @@
   wall_side: west
   type: socket
   x: 4.20
-  z: 8.82
+  z: 9.675
   height: 2.65
   count: 1
-  note: "主卧电动窗帘电源（DEC-2026-10-06-R2 移入窗帘盒（盒底 2.65m）藏电机；原 (4.20,9.50) 偏离 curtain_box_master_south（z[8.70,8.95]）0.55m 且落在南飘窗窗洞包络内、无吊顶/无 route，现贴盒中线 z=8.82、h=2.65 与 curtain_box_master_south 盒底标高齐平；wall 仍挂 w_mb_east 实体隔墙（非 suppress），wall_side west 朝寝区不变；走线 route 见 config/mep-hvac-coordination.yaml）"
+  note: "主卧电动窗帘电源（DEC-2026-10-06-R2 移入窗帘盒（盒底 2.65m）藏电机；原 (4.20,9.50) 偏离 curtain_box_master_south（z[8.70,8.95]）0.55m 且落在南飘窗窗洞包络内、无吊顶/无 route，现贴盒中线 z=8.82、h=2.65 与 curtain_box_master_south 盒底标高齐平；wall 仍挂 w_mb_east 实体隔墙（非 suppress），wall_side west 朝寝区不变；走线 route 见 config/mep-hvac-coordination.yaml）。2026-10-28 DEC-2026-10-28-R05：窗帘盒归位至南玻璃线内侧 z[9.55,9.80]，本点随盒南移至新盒中线 z=9.675（回到 R2 之前近玻璃的原始意图）；顶升分支路由仍未画线（自 2026-10-07 起只写在 strong-power-master reason 内），裸点状态由 mep-takeoff 未路由清单显形，补画另案"
 
 # 书房电动窗帘（2026-10-05 功能互换：原父母房）
 # DEC-2026-10-06-R2：原位 (7.20,9.50) 偏离 curtain_box_parent_south（z[8.70,8.95]）0.55m
@@ -810,10 +810,10 @@
   wall_side: west
   type: socket
   x: 7.20
-  z: 8.82
+  z: 9.675
   height: 2.65
   count: 1
-  note: "客房电动窗帘电源（DEC-2026-10-06-R2 移入窗帘盒（盒底 2.65m）藏电机；原 (7.20,9.50) 偏离 curtain_box_parent_south（z[8.70,8.95]）0.55m 且落在南飘窗窗洞包络内、无吊顶/无 route，现贴盒中线 z=8.82、h=2.65 与 curtain_box_parent_south 盒底标高齐平；wall 仍挂 w_st_east 实体隔墙（非 suppress），wall_side west 朝 study 不变；DEC-2026-09-08-R1 补声明 wall_side west；2026-10-05 功能互换，id/位置不变；B5-A 后并入 ordinary_power_parent_child；走线 route 见 config/mep-hvac-coordination.yaml）"
+  note: "客房电动窗帘电源（DEC-2026-10-06-R2 移入窗帘盒（盒底 2.65m）藏电机；原 (7.20,9.50) 偏离 curtain_box_parent_south（z[8.70,8.95]）0.55m 且落在南飘窗窗洞包络内、无吊顶/无 route，现贴盒中线 z=8.82、h=2.65 与 curtain_box_parent_south 盒底标高齐平；wall 仍挂 w_st_east 实体隔墙（非 suppress），wall_side west 朝 study 不变；DEC-2026-09-08-R1 补声明 wall_side west；2026-10-05 功能互换，id/位置不变；B5-A 后并入 ordinary_power_parent_child；走线 route 见 config/mep-hvac-coordination.yaml）。2026-10-28 DEC-2026-10-28-R05：窗帘盒归位至南玻璃线内侧 z[9.55,9.80]，本点随盒南移至新盒中线 z=9.675；供电路由 strong-power-parent-child-study-curtain 末段贴 w_st_east 南延至新盒位"
 
 # 客房电动窗帘（2026-10-05 功能互换：原书房）
 # DEC-2026-10-06-R2：原位 (13.40,8.40) 偏离 curtain_box_study_south（z[7.60,7.85]）0.55m
@@ -828,10 +828,10 @@
   wall_side: east
   type: socket
   x: 13.40
-  z: 7.72
+  z: 9.755
   height: 2.65
   count: 1
-  note: "客房电动窗帘电源（DEC-2026-10-06-R2 移入窗帘盒（盒底 2.65m）藏电机；原 (13.40,8.40) 偏离 curtain_box_study_south（z[7.60,7.85]）0.55m 且落在南飘窗窗洞包络内、无吊顶/无 route，现贴盒中线 z=7.72、h=2.65 与 curtain_box_study_south 盒底标高齐平；wall 仍挂 w_be_west 实体隔墙（非 suppress，且距 d_bese 门洞近缘 1.08m 不侵门洞），wall_side east 朝客房不变；西墙南端天花内走线到南墙窗帘电机；2026-08-27 随南墙凹进北移；2026-10-05 功能互换，id/位置不变；走线 route 见 config/mep-hvac-coordination.yaml）"
+  note: "客房电动窗帘电源（DEC-2026-10-06-R2 移入窗帘盒（盒底 2.65m）藏电机；原 (13.40,8.40) 偏离 curtain_box_study_south（z[7.60,7.85]）0.55m 且落在南飘窗窗洞包络内、无吊顶/无 route，现贴盒中线 z=7.72、h=2.65 与 curtain_box_study_south 盒底标高齐平；wall 仍挂 w_be_west 实体隔墙（非 suppress，且距 d_bese 门洞近缘 1.08m 不侵门洞），wall_side east 朝客房不变；西墙南端天花内走线到南墙窗帘电机；2026-08-27 随南墙凹进北移；2026-10-05 功能互换，id/位置不变；走线 route 见 config/mep-hvac-coordination.yaml）。2026-10-28 DEC-2026-10-28-R05：窗帘盒归位至南玻璃线内侧 z[9.63,9.88]（R04 登记复核项落地），本点随盒南移至新盒中线 z=9.755、距 d_bese 门洞沿墙远 3.2m 无侵扰；取电路由 strong-power-parent-child-guest-west-curtain 改为同墙竖直上行+沿墙南行两段正交折线"
 
 # 客房空调内机电源（2026-10-05 功能互换：原书房）
 - id: sock_study_ac
@@ -1141,10 +1141,10 @@
   wall_side: west
   type: switch_2way
   x: 16.40
-  z: 7.60
+  z: 8.55
   height: 1.3
   neutral: true
-  note: "客房床头双控（2026-10-05 R15 新增）：与门边 switch_study 组双控控制客房吸顶灯 light_study_dome；control_study_light 由单控扩为双控。剪力墙 inferred，底盒预埋条件 site_pending；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）"
+  note: "客房床头双控（2026-10-05 R15 新增）：与门边 switch_study 组双控控制客房吸顶灯 light_study_dome；control_study_light 由单控扩为双控。剪力墙 inferred，底盒预埋条件 site_pending；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）。2026-10-28 DEC-2026-10-28-R04 业主看图修正：原 (16.40,7.60) 位于 bed_150 床头板正后方——床头板 AABB x[16.25,16.35] z[6.85,8.35]、板顶 0.80m、床东缘距墙仅 0.05m，1.30m 开关隔板不可达、观感呈「压在床头正中」；南移至床南缘外 0.20m 的 (16.40,8.55)（床南缘 8.35、南玻璃 9.88，仍在 w_east_upper 实体段内），与二期床头柜同侧、床上即达；night_guest_head 同点同步南移以保持共用竖直下引（MEP strong-light-bedrooms-study-guest-night 不变式）"
 
 # 起夜路径 NP-1/NP-2（客房内）
 - id: night_guest_bed_side
@@ -1164,10 +1164,10 @@
   wall_side: west
   type: night_light
   x: 16.40
-  z: 7.60
+  z: 8.55
   height: 0.35
   circuit: lighting_bedrooms_bath
-  note: "起夜 NP-2 床头小夜灯（R15）：床头正上方低位，触摸+感应双模；w_east_upper 剪力墙 inferred，挂装条件 site_pending；状态依据：status 归入 topology 回路 lighting_bedrooms_bath（proposed），起夜 NP-2 床头小夜灯→inferred；position_status w_east_upper 剪力墙 inferred 挂装条件 site_pending（note 原文）→pending"
+  note: "起夜 NP-2 床头小夜灯（R15）：床头正上方低位，触摸+感应双模；w_east_upper 剪力墙 inferred，挂装条件 site_pending；状态依据：status 归入 topology 回路 lighting_bedrooms_bath（proposed），起夜 NP-2 床头小夜灯→inferred；position_status w_east_upper 剪力墙 inferred 挂装条件 site_pending（note 原文）→pending。2026-10-28 DEC-2026-10-28-R04：随 switch_guest_bed 一并南移至 (16.40,8.55)——原 (16.40,7.60) 同被 bed_150 床头板遮挡（板顶 0.80m 高于本灯 0.35m，触摸位不可达、光线被挡回墙面），新位在床南缘外 0.20m、 bedside 即触即亮，且与 switch_guest_bed 保持同点竖直流叠（MEP strong-light-bedrooms-study-guest-night 共享下引段不变）"
   status: inferred
   position_status: pending
 

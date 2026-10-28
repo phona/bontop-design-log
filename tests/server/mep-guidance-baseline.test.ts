@@ -294,8 +294,9 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
   // 旧基线 0 error / 22 warning、15 条已接受项、68 条路线 / 13 个吊顶分区、13 处穿墙点
   assert.equal(/0 error \/ 22 warning/.test(guidance), false, '§6 的旧基线「0 error / 22 warning」必须已替换为实跑口径');
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
-  assert.match(guidance, /涉及\s*\*\*69 条路线 \/ 14 个吊顶分区\*\*/);
-  assert.equal(/13 个吊顶分区/.test(guidance), false, '§0 必须已是 14 个吊顶分区');
+  assert.match(guidance, /涉及\s*\*\*72 条路线 \/ 13 个吊顶分区\*\*/); // DEC-2026-10-28-R05 后现值 72/13
+  // DEC-2026-10-28-R05：三个旧 curtain_box_* 分区退出涉及集合，分区数合法回到 13（16→13），旧快照守卫改钉路线数
+  assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
   assert.equal(/design-datum\.yaml`（13 处）/.test(guidance), false, '§1 的穿墙点留档条数必须已按 design-datum.yaml 实条数改写');
   assert.equal(/plumbing type 枚举暂不扩展/.test(guidance), false, '§3.1a 的 LEB 枚举口径必须已按 shared/types.ts 现状改写');
   assert.equal(/两卫所有插座 note 已声明防溅盒/.test(guidance), false, '§3.1a 的防溅盒口径必须已按 6/8 实况改写');
