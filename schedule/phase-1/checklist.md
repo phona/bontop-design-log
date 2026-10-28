@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"2073ae223d39584f438e2be0fe231b0719b456b863e0c379c216681089b90e9f","config/ceiling.yaml":"9235822b1161c4cf6ab10d966b9267bb96ef3830252b4eb81d56cd88a6be27eb","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"de3a159e4370875ab060b797c17e73d0807ecb06fe77f8203dae8d9c5826e3c9","config/house.yaml":"8339729d1ac0f00960930eefdb00d58dcf4c6cac417fea55ad8473f89fbadf44","config/hvac.yaml":"408556c1420a2bf0f8a58ce94244c7aa6c61608072b1a2228ca2420f2c5d692c","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"d9271c4ea1824d8bf57be73c089fab5c321c007a93cff7f781a604e90c904f44","config/mep-hvac-coordination.yaml":"7dc1c3326f7c1af266a7da0c9b99e994696b74c3452aeb367eafcfc7656e73c9","config/model-package-links.yaml":"6f351ff5231cc650de48e5ef89c8f2fa13650b81312badd9ed6c525373e04f7e","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"08caa0c978fa546571c1cf14554082de1444006d1b825835ff5d8f841aa7937c","schedule/phase-1/control.yaml":"3e22e4c85f7e21eb6549b8f7df382e6d8991b6e68cc22569d95bb6beba4e7d6c","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"2073ae223d39584f438e2be0fe231b0719b456b863e0c379c216681089b90e9f","config/ceiling.yaml":"9235822b1161c4cf6ab10d966b9267bb96ef3830252b4eb81d56cd88a6be27eb","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"de3a159e4370875ab060b797c17e73d0807ecb06fe77f8203dae8d9c5826e3c9","config/house.yaml":"8339729d1ac0f00960930eefdb00d58dcf4c6cac417fea55ad8473f89fbadf44","config/hvac.yaml":"408556c1420a2bf0f8a58ce94244c7aa6c61608072b1a2228ca2420f2c5d692c","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"d9271c4ea1824d8bf57be73c089fab5c321c007a93cff7f781a604e90c904f44","config/mep-hvac-coordination.yaml":"7dc1c3326f7c1af266a7da0c9b99e994696b74c3452aeb367eafcfc7656e73c9","config/model-package-links.yaml":"6f351ff5231cc650de48e5ef89c8f2fa13650b81312badd9ed6c525373e04f7e","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"08caa0c978fa546571c1cf14554082de1444006d1b825835ff5d8f841aa7937c","schedule/phase-1/control.yaml":"8e437392e220dabbf1586b09a16e1d17fbae1c41f6ced2c95bc1be45c232ecef","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:8ce4f6ab196d322542dd58b6da51e5338999f196dc4c9cbfebc19f4d2cd597e2`（15 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:ff634072accb634ea98a7e83bd4ea7006d94c990840e0989370d462ecabc37fc`（15 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -882,7 +882,7 @@
 <a id="pkg-135"></a>
 ## PKG-135｜踢脚线、明确收边项目与竣工深度清洁
 
-- 通俗说明：安装踢脚线，按已经列明的位置处理门套、柜体、台面、洁具和墙地面交界，修复清单中记录的表面缺陷，最后逐房进行深度清洁；不得用“零星收口”作为未列项目的收费口袋。
+- 通俗说明：安装奶白瓷砖踢脚线（DEC-2026-10-28-R01：跟厨卫墙砖同款/同色系暖白，高度提议 80–100mm 待单值锁定，首选同系列成品、无成品时现场切；适用漆面落地墙脚，已贴砖到地段与固定柜体/洁具遮挡段不重复贴），按已经列明的位置处理门套、柜体、台面、洁具和墙地面交界，修复清单中记录的表面缺陷，最后逐房进行深度清洁；不得用“零星收口”作为未列项目的收费口袋。
 - 预算：¥5,500；合同：—；已付：¥0；预测：—
 - 依赖：PKG-090、PKG-100、PKG-110、PKG-120、PKG-125、PKG-130；就绪：`blocked`；执行：`not_started`
 - 责任角色：施工方、踢脚线供应商、保洁、业主；付款门槛：`GATE-135-COMPLETE`
@@ -902,7 +902,7 @@
 
 | 勾选 | 优先级 | 费用ID | 独立费用项 | 包含内容 | 数量或计价依据 | 当前金额 | 状态 |
 |---|---|---|---|---|---|---:|---|
-| [ ] | — | COST-135-01 | 踢脚线材料和安装 | 写明材质、高度、颜色、长度、转角配件、固定方式和安装人工 | 待完成面按实际长度复核 | 待报价/待算量 | quantity_pending |
+| [ ] | — | COST-135-01 | 踢脚线材料和安装 | 奶白瓷砖踢脚线（DEC-2026-10-28-R01：跟厨卫墙砖同款/同色系暖白，高度提议 80–100mm 待单值锁定，首选同系列成品、无成品时现场切：原厂边朝上、切口朝下封胶、磨边/倒角，顶边弹性防霉胶）；写明转角配件、固定方式和安装人工 | 待交房量房按实际长度复核（现行精度 ±0.15m 不能算量；切割损耗另算，不用余料赌） | 待报价/待算量 | quantity_pending |
 | [ ] | — | COST-135-02 | 已列明交界位置的收边处理 | 按门套、柜体、台面、洁具、风口和墙地交界逐处列数量、材料和责任方 | 待形成收边位置清单 | 待报价/待算量 | scope_schedule_pending |
 | [ ] | — | COST-135-03 | 验收缺陷修复 | 只处理缺陷清单中的具体问题；原合同施工质量问题由责任方免费整改 | 按缺陷责任判定 | 待报价/待算量 | responsibility_pending |
 | [ ] | — | COST-135-04 | 竣工深度清洁 | 逐房清洁地墙顶、门柜、玻璃、洁具和设备表面并清走施工垃圾 | 按建筑面积和服务范围报价 | 待报价/待算量 | quote_pending |
@@ -912,8 +912,8 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | SCH-135-01 | major/completion/阻塞解除后 | 踢脚线与清单所列收边逐项检查 | 按位置清单逐段检查固定、拼缝、转角、交界密封、污染和高低差 | 每个清单位置均有结果，无漏项、松动、明显缝隙或影响使用的问题 | finish_location_schedule、completion_photos、defect_list | `d7c1d64da803b6871c173975fdef868751ec84256566a456a5a4ab7e8f8bd549` | pending |
-| [ ] | SCH-135-02 | major/completion/阻塞解除后 | 深度清洁及成品完好检查 | 逐房检查地墙顶、门柜、玻璃、洁具和设备表面，并核对施工垃圾清运 | 无施工垃圾和明显污染，成品损伤已登记、定责并整改 | room_completion_photos、defect_list | `d8e9ef7ad6ab1f9c04ddf4a96dab55cc274ba6b5bb5a3f44a8dcb82ab0343c7d` | pending |
+| [ ] | SCH-135-01 | major/completion/阻塞解除后 | 踢脚线与清单所列收边逐项检查 | 按位置清单逐段检查固定、拼缝、转角、交界密封、污染和高低差；核对高度单值全屋一致、现场切的原厂边朝上且切口不外露、顶边为弹性防霉胶 | 每个清单位置均有结果，无漏项、松动、明显缝隙或影响使用的问题；高度在锁定单值内，切口无外露胚体，顶边无硬填开裂 | finish_location_schedule、completion_photos、defect_list | `cfbc26964d13414b296ff4a906d4718c00ba4ba24f610b083d7bc42d1885537b` | pending |
+| [ ] | SCH-135-02 | major/completion/阻塞解除后 | 深度清洁及成品完好检查 | 逐房检查地墙顶、门柜、玻璃、洁具和设备表面，并核对施工垃圾清运 | 无施工垃圾和明显污染，成品损伤已登记、定责并整改 | room_completion_photos、defect_list | `cc24f870a5279f912f211e759d5efdd726c77f9b285e614a16f56f30fa9e4bdc` | pending |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
