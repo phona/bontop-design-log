@@ -106,8 +106,8 @@ for (const [bucket, bucketSummary] of Object.entries(mep.categories ?? {})) {
 
 test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必须等于实算（不写死 warning 总数）', () => {
   // ① error 契约：DEC-2026-10-17-R20 起 must_fix 桶统一进 errors（8aef523 硬门禁），
-  //    verify:mep 的 errors = must_fix 实算 127（DEC-2026-10-26-R02 书房墙垛建模 + 书桌东移 + 衣柜南延后实测：route_overlap 63 / route_not_orthogonal 28 / route_furniture_collision 10 / unsupported_span 9 / floor_band_method_mismatch 1，其余 code 不变，较 R01 对账 132 净 −5，见 guidance §6 R02 对账增量）；electrical 仍 0 error。
-  assert.equal(mep.counts.errors, 126, `verify:mep must_fix errors 应为 126，实际 ${mep.counts.errors}`);
+  //    verify:mep 的 errors = must_fix 实算 125（DEC-2026-10-28-R03 书房酒店布局后实测：route_overlap 63 / route_not_orthogonal 27 / route_furniture_collision 10 / unsupported_span 8 / floor_band_method_mismatch 1，其余 code 不变，较 R02 对账 126 净 −1（回风 return-air-parent 正交化），见 guidance §6 R03 对账增量；DEC-2026-10-26-R02 书房墙垛建模 + 书桌东移 + 衣柜南延后实测 127，DEC-2026-10-27-R01 删床头路线后 126）；electrical 仍 0 error。
+  assert.equal(mep.counts.errors, 125, `verify:mep must_fix errors 应为 125，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 

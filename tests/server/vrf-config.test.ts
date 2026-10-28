@@ -24,11 +24,12 @@ test('hvac.yaml declares the complete A2 diagram against existing MEP facts', ()
   assert.equal(plan.diagram.anchors.find((anchor) => anchor.id === 'power_dining')?.ref?.id, 'sock_dining_ac');
   const roomKeys = ['living', 'dining', 'master', 'study', 'parent', 'child'];
   // 2026-08-26 回检一体：回风格栅兼作检修口，不另设 access 面板；DEC-2026-10-27-R03 缩窄适用范围：
-  // 餐厅/客房/儿童房/书房四台的回风离机身 0.50–1.65m、经风管连接够不到机身，另设检修面板；
-  // 主卧（回风同轴）与客厅（待服务侧）仍沿用回检一体。面板不是风管路由，故六间仍无 access 路由。
+  // 餐厅/客房/儿童房三台的回风离机身 0.50–1.65m、经风管连接够不到机身，另设检修面板；
+  // 主卧（回风同轴）与客厅（待服务侧）仍沿用回检一体；DEC-2026-10-28-R03 书房机身移至回风口正上方，
+  // 恢复回检一体（回风口兼机身检修口），侧口 access_parent_side 删除。面板不是风管路由，故六间仍无 access 路由。
   const mergedAccessRooms = new Set(['living', 'dining', 'master', 'study', 'parent', 'child']);
-  // DEC-2026-10-27-R03 检修面板 id：书房为南立面侧口 access_parent_side，其余为底口 access_<room>。
-  const accessPanelIds: Record<string, string> = { dining: 'access_dining', study: 'access_study', child: 'access_child', parent: 'access_parent_side' };
+  // DEC-2026-10-27-R03 检修面板 id：其余为底口 access_<room>；书房侧口已由 DEC-2026-10-28-R03 删除（恢复回检一体）。
+  const accessPanelIds: Record<string, string> = { dining: 'access_dining', study: 'access_study', child: 'access_child' };
   for (const room of roomKeys) {
     const indoor = `indoor_${room}`;
     const mergedAccess = mergedAccessRooms.has(room);
