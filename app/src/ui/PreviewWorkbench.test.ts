@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { PreviewWorkbench } from './PreviewWorkbench.js';
 
 function installDom(): HTMLElement {
@@ -88,5 +88,15 @@ describe('PreviewWorkbench', () => {
   it('缺少手风琴部件时构造抛错（DOM 契约）', () => {
     document.body.innerHTML = '<aside id="right-panel-stack"></aside><button id="workbench-reopen"></button>';
     expect(() => new PreviewWorkbench(document.getElementById('right-panel-stack')!)).toThrow(/accordion item/);
+  });
+
+  it('开合不派发 window resize：悬浮工作台不碰画布尺寸（防闪烁回归）', () => {
+    const wb = new PreviewWorkbench(installDom());
+    const spy = vi.spyOn(window, 'dispatchEvent');
+    wb.setOpen(true);
+    wb.setOpen(false);
+    const resizeCalls = spy.mock.calls.filter(([event]) => (event as Event).type === 'resize');
+    expect(resizeCalls).toHaveLength(0);
+    spy.mockRestore();
   });
 });
