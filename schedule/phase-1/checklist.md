@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"2ac4d8c81d16eda6d59e9b722b8a31362235dae78ea41da19f86073a102de866","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"bb2db6362e93590d2011942ed42da5f338aa6a5d4bf0958b2c7b6c1e06e8bbbf","config/house.yaml":"8339729d1ac0f00960930eefdb00d58dcf4c6cac417fea55ad8473f89fbadf44","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"c3e4b08f604d4e20dc62dcedd6150289fee839e6491362583a551ea2827d346e","config/mep-hvac-coordination.yaml":"46fc84a896d7d1b236c8cf05c99a8ab4c29375471e09cb0e5d53484a693510b6","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"b27d616d34ba15aa2e2c018606551332e40b866ce106d9391ea6e56fa049c988","schedule/phase-1/control.yaml":"67c4a16725a9efe787fc2ea554017d4bc018939594f87c6b8b2b3379b837590a","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"6996a5bc04dadf1300fc085d3da7dcc30222b8aa88049fb05e37260ef33c299c","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"bb2db6362e93590d2011942ed42da5f338aa6a5d4bf0958b2c7b6c1e06e8bbbf","config/house.yaml":"8339729d1ac0f00960930eefdb00d58dcf4c6cac417fea55ad8473f89fbadf44","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"c3e4b08f604d4e20dc62dcedd6150289fee839e6491362583a551ea2827d346e","config/mep-hvac-coordination.yaml":"46fc84a896d7d1b236c8cf05c99a8ab4c29375471e09cb0e5d53484a693510b6","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"b27d616d34ba15aa2e2c018606551332e40b866ce106d9391ea6e56fa049c988","schedule/phase-1/control.yaml":"1916d21ac4b17ed20b2ce65b7869dd275e58464451f21a2c639fbba9774037a9","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:faae31d9b66ddc662ae10bd348adbad84dc887c3be8aef4ab2d0b2953aee1b3a`（15 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:61922359a448499eab492cfa58f11ba69c33b429ae99c6af6eb83153c2b9fa69`（15 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -29,12 +29,12 @@
 | 5 | [PKG-005｜物业装修手续与物业收费](#pkg-005) | not_started | blocked | 2 | pending |
 | 10 | [PKG-010｜施工现场保护与施工位置标记](#pkg-010) | not_started | blocked | 2 | pending |
 | 20 | [PKG-020｜拆改、墙体新建与清运](#pkg-020) | not_started | blocked | 3 | pending |
-| 30 | [PKG-030｜中央空调第一次安装](#pkg-030) | not_started | blocked | 9 | pending |
-| 40 | [PKG-040｜水电改造](#pkg-040) | not_started | blocked | 21 | pending |
-| 50 | [PKG-050｜防水及闭水](#pkg-050) | not_started | blocked | 8 | pending |
-| 60 | [PKG-060｜泥瓦与铺贴](#pkg-060) | not_started | blocked | 6 | pending |
+| 30 | [PKG-030｜中央空调第一次安装](#pkg-030) | not_started | blocked | 10 | pending |
+| 40 | [PKG-040｜水电改造](#pkg-040) | not_started | blocked | 22 | pending |
+| 50 | [PKG-050｜防水及闭水](#pkg-050) | not_started | blocked | 10 | pending |
+| 60 | [PKG-060｜泥瓦与铺贴](#pkg-060) | not_started | blocked | 7 | pending |
 | 65 | [PKG-065｜卫生间美缝（先行）](#pkg-065) | not_started | blocked | 5 | pending |
-| 70 | [PKG-070｜吊顶龙骨、隐蔽复验与封板](#pkg-070) | not_started | blocked | 4 | pending |
+| 70 | [PKG-070｜吊顶龙骨、隐蔽复验与封板](#pkg-070) | not_started | blocked | 5 | pending |
 | 80 | [PKG-080｜墙顶面基层与涂装](#pkg-080) | not_started | blocked | 4 | pending |
 | 90 | [PKG-090｜室内门及厨房门](#pkg-090) | not_started | blocked | 3 | pending |
 | 100 | [PKG-100｜两个卫生间的洁具与五金](#pkg-100) | not_started | blocked | 3 | pending |
@@ -145,7 +145,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | [docs/pending-site-data.md](../../docs/pending-site-data.md) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:cd94e557b889fbb423ad309afc445e45f2eca6f8cd85b86466d8fcbda2ba61b3`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:91b501f5696314b2c048e46ab22b72987f5f4b6d540ea232e096d94379f7a0e6`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -190,7 +190,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | [docs/pending-site-data.md](../../docs/pending-site-data.md) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:cd94e557b889fbb423ad309afc445e45f2eca6f8cd85b86466d8fcbda2ba61b3`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:91b501f5696314b2c048e46ab22b72987f5f4b6d540ea232e096d94379f7a0e6`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -229,7 +229,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | [docs/pending-site-data.md](../../docs/pending-site-data.md) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:cd94e557b889fbb423ad309afc445e45f2eca6f8cd85b86466d8fcbda2ba61b3`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:91b501f5696314b2c048e46ab22b72987f5f4b6d540ea232e096d94379f7a0e6`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -257,7 +257,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | collections=walls,openings | mapped |
 
-当前项目数据指纹：`sha256:d51736e948046c5f4045e16528df6c1dd62c2283ca47d06ea7ed487192635a83`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:d42e7c8937f7f244e03a27dfb186e0382df7eb90c59b8016287498fa26dbaf7e`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -301,7 +301,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_ac,sock_dining_ac,sock_master_ac,sock_parent_ac,sock_child_ac,sock_study_ac,sock_vrf_outdoor_a2,ac_panel_living,ac_panel_dining,ac_panel_master,ac_panel_parent,ac_panel_child,ac_panel_study | partial |
 | [docs/pending-site-data.md](../../docs/pending-site-data.md) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:b26955c8e4f457aa4c2a28d7eeb16389056a097d5da35ce6d91efcf48bb894ec`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:337aa9d5a93e495d0ad028085197ff5d5682acde6442ca4d7c269e515002388e`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -323,6 +323,7 @@
 |---|---|---|---|---|---|---|---|---|
 | [ ] | check_hvac_weld | critical/引用 | 铜管焊接质量 | 检查焊接处有无氧化、砂眼 | 充氮焊接，无氧化皮 | 照片或检测记录 | `6c1e6b6aa5eabe057b44e85c28bbc09e29db5e8aabd76ce26e71c1dcacfe2277` | pending |
 | [ ] | check_hvac_drain | critical/引用 | 冷凝水排水 | 内机注水测试 | 排水通畅无积水 | 照片或检测记录 | `3258623ad3ecaecbf3988b8794ba85b23dd5363847658ae1165b1917a4efb07f` | pending |
+| [ ] | check_hvac_condensate_before_ceiling | critical/引用 | 封板前冷凝水测试：满水或通水 + 关机回流观察 + 接水盘不积水 | 1. 封板前做冷凝水满水或通水测试：倒水看坡度方向对不对、排气口通不通、倒水后排不排。<br>2. 关机静置后观察是否回流、接水盘是否积水；回流或积水，不得封板。<br>3. 没过先整改坡度或加装单向阀，再复测；不得先封吊顶、后补冷凝水。<br> | 倒水顺畅排出；关机静置后不回流；接水盘不积水 | 封板前冷凝水测试照片（倒水与排水可辨）、关机静置后接水盘照片 | `48ddc37b0f6a629791c654a5ad7932ec3de7f44a76d804cdd0795357e639cbd9` | pending |
 | [ ] | check_hvac_level | major/引用 | 内机水平度 | 水平尺测量四角 | 误差 < 2mm | 照片或检测记录 | `8fdc80c6e67b14ebfb7468201a42a603d510d6a0a3011ce2e8fca3c42d95a3b0` | pending |
 | [ ] | check_hvac_outdoor | major/引用 | 外机散热 | 测量外机位通风尺寸 | 百叶通风面积 ≥ 80% | 照片或检测记录 | `49e9f3b5bddac93fcf6020e24c89f8714473cf5af0db3d91f960a530469d9709` | pending |
 | [ ] | check_hvac_exhaust_outlet | major/引用 | 两卫浴霸排风管出外墙 φ100 防火止回阀，禁接公共烟道与排水立管 | 1. 两卫浴霸换气模块排风管各自由最短路径出外墙，外墙孔处装 φ100 防火止回阀（带逆止叶片）。<br>2. 排风管严禁接入公共烟道与排水立管：接排水立管会返臭串气，接公共烟道会倒灌并与油烟互相串味。<br>3. 外墙开孔须留物业/外立面审批记录（孔位、孔径、恢复与配色方案），未取得审批不得开孔。<br>4. 管路过墙处套管、坡度向外；软管与阀体连接处抱箍锁紧，不得折扁，不得在内墙折 90° 死弯。<br> | 两处 φ100 防火止回阀安装到位；无接入公共烟道与排水立管；外墙开孔有审批记录 | 排风管路径照片（吊顶内段 + 出墙段）、外墙防火止回阀安装照片（含外立面）、物业/外立面审批记录扫描件 | `cd510ab80acbf811a9a15e6b995a64fbd1635dcd9e15db5ad38fdc30c66b4242` | pending |
@@ -355,7 +356,7 @@
 | [config/mep-hvac-coordination.yaml](../../config/mep-hvac-coordination.yaml) | layers=strong_power,weak_power,water_supply,drainage | partial |
 | [docs/pending-site-data.md](../../docs/pending-site-data.md) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:0f6395a5f26a6e559bd00b1ca44711ce0c23566a237bf1209cf8363d6a81373e`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:702b4983c0ebb97ea4436a3144ee36ef259579d7bb00ad55c03b166d97b8bedc`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -389,6 +390,7 @@
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
 | [ ] | check_plumb_pressure | critical/引用 | 水管打压试验 | 1. 堵住所有出水口，接打压泵<br>2. 加压至 0.8MPa<br>3. 保压 30 分钟，观察压力表<br> | 0.8MPa 保压 30min，压降 ≤ 0.05MPa，接头无渗漏 | 照片或检测记录 | `70d928fb667c3bf68bfdcdeb2da20e393882336b065ff4df41fb9a0ede5ef3df` | pending |
+| [ ] | check_plumb_pressure_gate | critical/引用 | 打压封槽门禁：合同写明档位 + 冷热水串联全屋 + 热熔满 24 小时 + 接头纸巾擦 | 1. 封槽前先核对合同已写明打压压力与保压时长档位；合同未写明档位，不得封槽。<br>2. 冷热水管必须串联，用软管把冷热水管连通、整体加压验收；只打一路、只打厨卫主管道、跳过阳台与备用管路，等于一半管路没验收。<br>3. 热熔完满 24 小时再打压；刚熔的接头没完全固化就打压，会损伤熔接层、测不准真实质量。<br>4. 保压过程中用纸巾擦一遍所有接头、弯头、阀门、冷热水口，看有没有水印；只看压力表不查接头，不算通过。<br> | 合同已写明打压档位；冷热水串联全屋加压；热熔满 24 小时；接头纸巾擦无水印 | 合同打压档位页照片或截图、冷热水串联加压照片、接头纸巾擦查记录照片 | `2dcb11a44b4bf14f2d9a90d073a5f9c7e6b8b15ad3ba48dcf47aec049997bbb5` | pending |
 | [ ] | check_plumb_drain | critical/引用 | 排水坡度与存水弯 | 1. 检查排水管坡度、地漏/下水存水弯。<br>2. 按 docs/mep-construction-guidance.md 地漏防臭落地方案逐点核对密封类型：湿区淋浴地漏为深水封（双水封核查优先：管下已有存水弯时改用仅机械密封），干区地漏与生活阳台地面泄水地漏为机械自封为主，洗衣机专用墙排不共用地面泄水地漏。<br>3. 逐支路核查不得双水封：管下已有存水弯的支路，地漏不得再加深水封。<br>4. 干区机械封做干态闭合试验（芯子到货后、贴砖前）：注水排空后检查密封件回位闭合（翻板回位 / 磁吸吸合 / T 型弹簧回位）、无可见缝隙；芯子须可拆洗。<br> | 排水坡度 ≥ 1%；用水封的点位水封 ≥ 50mm；干区机械封干态闭合；同一支路无双水封；芯子可拆洗 | 逐点密封类型照片（湿区深水封 / 干区机械自封）、干区机械封干态闭合照片、芯子可拆洗照片 | `6e4897e480ed9a16656915caea8ac6fc511df5c4b44aa1bdb52d56fe03d90f66` | pending |
 | [ ] | check_elec_continuity | critical/引用 | 通断测试 | 用测电笔逐个插座测试 | 全部通电，零火线正确 | 照片或检测记录 | `825edfc3788627e32b49427540bb9607a2959a13319bade3ce3b096014e93663` | pending |
 | [ ] | check_elec_switch | major/引用 | 开关功能 | 逐个开关测试 | 双控/单控功能正常 | 照片或检测记录 | `985ef2e6ce38dadb99a7cbc1e6a3502aef8d2ca7e2bc5ab433e5e76f23fd9f1f` | pending |
@@ -431,7 +433,7 @@
 | [config/plumbing.yaml](../../config/plumbing.yaml) | room_ids=master_bath,guest_bath,kitchen,balcony | partial |
 | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) | room_ids=master_bath,guest_bath,kitchen,balcony; types=floor_region,wall_region | partial |
 
-当前项目数据指纹：`sha256:12ee91a83c3435443b4f34c14247474c1481fb69834a4558f5e9d53526ced8a1`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:5facfed2d943f125bfffccaf062a7f7efa462b70693b5a39702ceb7f98863eb0`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -449,10 +451,12 @@
 |---|---|---|---|---|---|---|---|---|
 | [ ] | check_wp_coats | critical/引用 | 涂刷遍数检查 | 墙面防水：淋浴区刷到不低于 2.00m、且不低于喷淋口高度，地面满刷。<br>每一遍干透后再刷下一遍，至少 2 遍。<br> | 涂刷均匀，无漏刷、无堆积；淋浴区墙面防水高度 ≥2.00m 且不低于喷淋口高度 | 照片或检测记录 | `031815a29ab6e2e2693b57b5cc0526a38f750f26dcde5127e2bd95e7ae5916ec` | pending |
 | [ ] | check_wp_flood | critical/引用 | 闭水试验 | 1. 堵住所有地漏，放水 3~5cm 深<br>2. 标记水位线<br>3. 等待 48 小时<br>4. 去楼下邻居家看天花板有无渗水<br> | 48h 后水位无明显下降，楼下无渗水 | 照片或检测记录 | `6859d13f44e3e4df1965bcd43d1618ee0ebb825df6c017964f6fe44041472136` | pending |
+| [ ] | check_wp_dry_gate | critical/引用 | 闭水前干透门禁 + 淋浴区防水宽度 + 楼下复查 | 1. 防水刷完先干透再闭水：常温通风至少 24-48 小时，阴雨天和冬天延长到 48-72 小时，手摸干爽不粘手才算干透；未干透就放水属于无效测试，不得闭水。<br>2. 淋浴区防水宽度：从花洒往两边各扩 80cm，不得只做 1 米宽；宽度未做足，闭水合格也不算该项通过。<br>3. 闭水后去楼下看对应天花无渗水、无湿痕，并留照片；楼下复查未做，不得进入下一工序。<br> | 防水干透（手摸干爽不粘手）；淋浴区从花洒往两边各扩 80cm；楼下天花无渗水、无湿痕 | 防水干透确认记录（刷完日期与闭水日期）、淋浴区防水宽度照片（花洒两边各扩 80cm 可辨）、楼下天花无渗漏照片 | `7213ea1d0afdc6dceaef102de331e714ac694414f6dfb0e9a43081e25fa0420d` | pending |
 | [ ] | check_plumb_master_bath_secondary_drain | critical/引用 | 主卫沉箱二次排水 DN50（最低处）+ 1% 找坡 + 轻质回填 + 回填前通球 | 1. 同层排水沉箱内最低处设 DN50 二次排水口，与马桶排污口、地漏支管各自独立，不得并入地漏或马桶排污。<br>2. 沉箱底向二次排水口找坡 1%：泼水试验水应全部流向二次排水口，不得积在角落。<br>3. 回填前做通球试验（球能顺利通过支管进入立管）。<br>4. 回填只用轻质材料（陶粒/泡沫混凝土等），严禁建筑垃圾、砖渣回填。<br>5. 坡度/通球/回填材料三类工序证据齐了、且沉箱蓄水试验（下条）通过后才能回填；回填后本项不得补做。<br> | 二次排水口在沉箱最低处；坡度 ≥1%；通球顺畅；轻质回填、无建渣 | 泼水找坡照片（含二次排水口位置）、通球过程照片、回填材料照片（可见轻质材料） | `00f15fadb845add61fd764c3871e4e926a95b075b41cedf4c2dab7b7fcfd64b5` | pending |
 | [ ] | check_plumb_master_bath_box_flood | critical/引用 | 主卫沉箱蓄水试验（回填前 24h） | 1. 蓄水前先封堵沉箱内全部排水口——含二次排水口、地漏支管口与马桶排污预留口，逐口查封堵严密；二次排水口不封堵，蓄水会经二次排水支管流失，试验无效。<br>2. 向沉箱注水做 24h 蓄水试验，标记起始水位线。<br>3. 24h 后查水位无明显下降，并到楼下看对应天花无渗漏、无湿痕。<br>4. 试后放水，拆除全部封堵、恢复二次排水口，向二次排水口注水复核其畅通（顺畅流入、无返溢）；封堵未拆净或复核不畅通，不得回填。<br>5. 不合格先查漏整改，复验重新计时；记录追加，不覆盖前次结果。<br>本条与上一条的通球/找坡（排水通畅性）分开记录、分开留证，不得互相替代。<br> | 蓄水 24h 水位无明显下降；楼下天花无渗漏、无湿痕；试后封堵全拆、二次排水口恢复畅通 | 封堵口全景/逐口照片（二次排水口、地漏支管口、马桶排污预留口全部封堵口可见）、起始水位线照片、24h 水位线照片、楼下天花无渗漏照片、试后拆堵恢复与二次排水畅通复核照片 | `44101b6f012c1565fd09d4ca53b9ef9245d049030b641b4e062741152186f10a` | pending |
 | [ ] | check_plumb_guest_bath_secondary_drain | critical/引用 | 客卫沉箱二次排水 DN50（最低处）+ 1% 找坡 + 轻质回填 + 回填前通球 | 1. 同层排水沉箱内最低处设 DN50 二次排水口，与马桶排污口、地漏支管各自独立，不得并入地漏或马桶排污。<br>2. 沉箱底向二次排水口找坡 1%：泼水试验水应全部流向二次排水口，不得积在角落。<br>3. 回填前做通球试验（球能顺利通过支管进入立管）。<br>4. 回填只用轻质材料（陶粒/泡沫混凝土等），严禁建筑垃圾、砖渣回填。<br>5. 坡度/通球/回填材料三类工序证据齐了、且沉箱蓄水试验（下条）通过后才能回填；回填后本项不得补做。<br> | 二次排水口在沉箱最低处；坡度 ≥1%；通球顺畅；轻质回填、无建渣 | 泼水找坡照片（含二次排水口位置）、通球过程照片、回填材料照片（可见轻质材料） | `ffb4c1a21dbfbd6539fe464f33238526b101606b31cd1b33c8d5a25b66768305` | pending |
 | [ ] | check_plumb_guest_bath_box_flood | critical/引用 | 客卫沉箱蓄水试验（回填前 24h） | 1. 蓄水前先封堵沉箱内全部排水口——含二次排水口、地漏支管口与马桶排污预留口，逐口查封堵严密；二次排水口不封堵，蓄水会经二次排水支管流失，试验无效。<br>2. 向沉箱注水做 24h 蓄水试验，标记起始水位线。<br>3. 24h 后查水位无明显下降，并到楼下看对应天花无渗漏、无湿痕。<br>4. 试后放水，拆除全部封堵、恢复二次排水口，向二次排水口注水复核其畅通（顺畅流入、无返溢）；封堵未拆净或复核不畅通，不得回填。<br>5. 不合格先查漏整改，复验重新计时；记录追加，不覆盖前次结果。<br>本条与上一条的通球/找坡（排水通畅性）分开记录、分开留证，不得互相替代。<br> | 蓄水 24h 水位无明显下降；楼下天花无渗漏、无湿痕；试后封堵全拆、二次排水口恢复畅通 | 封堵口全景/逐口照片（二次排水口、地漏支管口、马桶排污预留口全部封堵口可见）、起始水位线照片、24h 水位线照片、楼下天花无渗漏照片、试后拆堵恢复与二次排水畅通复核照片 | `f9b7b0c86a64aad5ee4734ef15395cce1ae8dda890ab28a7fecfd0a24e278a6a` | pending |
+| [ ] | check_covering_gate_secondary_drain | critical/引用 | 封回填门禁：两卫坡度、通球、回填材料证据齐 + 蓄水通过，缺一不得回填 | 1. 封回填前逐卫核对三类证据齐了：泼水找坡照片、通球过程照片、回填材料照片；缺一类，不得回填。<br>2. 同卫沉箱蓄水试验通过后才能回填；回填后本项不得补做，失效只能打凿返工。<br>3. 客卫构造核实（pending #74 剩余项）未完成前，不得照搬主卫坐标施工；本条不改变客卫口位以量房实测定最低点为准的口径。<br> | 两卫坡度、通球、回填材料三类证据齐；同卫蓄水通过；缺一不得回填 | 两卫封回填前证据清单打勾记录（坡度、通球、回填材料、蓄水四项） | `5600d22ad4ae8a97ba2d1785f33ac2ffda979f0c0e5a399bae9d882bc88b5fbe` | pending |
 | [ ] | check_plumb_external_vanity_waterproof | critical/引用 | 两处外移位（主卧条带 + 客卫开放洗漱区）防水连体 + 柜内防漏水托盘 + 基站柜格溢水报警 | 1. 两处外移位台盆后墙面防水刷到不低于 1.20m 高，其余墙面 0.3–0.5m（含柜体背板与台面以下墙体）；地面做防水挡水坎，与卫内防水连成整体，不得在两套防水之间留施工缝。<br>2. 柜内设不锈钢或 PP 防漏水托盘，托盘带导流嘴，把意外溢水导向可见处或排水点，不是让水泡柜底板。<br>3. 客卫开放洗漱区下方扫地机基站柜格设溢水报警，探头放在柜底最低处。<br>4. 防水施工前先拍挡水坎与泛水收头；柜体与基站安装后复核托盘就位、报警器可触发。<br> | 两处外移区台盆后墙面防水 ≥1.20m、其余墙面 0.3–0.5m；挡水坎与卫内防水连续无断点；托盘带导流嘴且就位；基站柜格溢水报警可触发 | 防水施工前的挡水坎与泛水收头照片（两处各一套）、柜内防漏水托盘就位照片（导流嘴可辨）、基站柜格溢水报警探头位置与触发测试照片 | `d82e6ea8c1dee07af8847cf332827f9310d32455a691ee237f6a6d7b46885b62` | pending |
 | [ ] | SCH-050-01 | critical/before_covering/阻塞解除后 | 防水范围和节点有施工前后记录 | 核对两卫、厨房、北阳台及门槛、管根、墙地交界加强处理 | 范围与确认图纸及产品工艺一致，照片可追溯 | waterproof_before_photos、waterproof_after_photos | `7c819edec4c5667f6f014d5de47b65f0c18c0bbbd42ac47940f5b90bfeab7b38` | pending |
 
@@ -477,7 +481,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | collections=rooms | mapped |
 | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) | types=floor_region,wall_region,sill_region | mapped |
 
-当前项目数据指纹：`sha256:70fa008d6299fcdae6e98df46c1cf95692a8b5ab1ba29fa4366408d57cc6eee7`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:8a0b571df6f54344ded44052b758f39406faed361559148f206fcedd1ff75ed6`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -502,6 +506,7 @@
 | [ ] | check_tile_gap | major/引用 | 缝隙均匀 | 用塞尺测量相邻砖缝 | 2mm ± 0.5mm | 照片或检测记录 | `d3291b0d68794f436b61195ca629097ec75c355b0285d4d878817af661c866f4` | pending |
 | [ ] | check_tile_flatness | major/引用 | 平整度 | 2m靠尺贴墙面，测量最大空隙 | < 2mm | 照片或检测记录 | `c6188a747c969c74291b0d5bafee3fbdb41c0c5ecedee46f696e0ea03fc4f155` | pending |
 | [ ] | check_tile_slope | critical/引用 | 坡度检查 | 倒水测试是否流向地漏 | 不积水 | 照片或检测记录 | `a75a4b24204068c267741eb3174f6084556987e5dde044d73fc9c0974c57907e` | pending |
+| [ ] | check_tile_slope_same_day | critical/引用 | 贴砖当天倒水测坡：半盆水 10 秒内全部流向地漏 | 1. 贴砖当天倒半盆水，看水是不是顺畅流向地漏，10 秒内全部流向地漏、地面没有明显积水才算通过。<br>2. 水积在某一块不走，说明那块地面比地漏高、坡度做反；水流得很慢，说明坡度不够；两种情况都要当天返工重找坡。<br>3. 美缝后再发现坡度问题，返工成本翻倍；不得以“等美缝后再看”为由放过当天项。<br> | 贴砖当天倒半盆水，10 秒内全部流向地漏，地面无明显积水 | 贴砖当天倒水测坡照片或视频截图（水流向地漏可辨） | `9a1b15e3dbf683daf0072c4828bc206884fd8872f81f73d73bb42b1082ee3a9e` | pending |
 | [ ] | check_sill_tile | major/引用 | 窗台/防水台面砖检查 | 逐个落地窗核对防水台 L 型两段——客厅、主卫、主卧、书房、西北次卧、东南客房的矮台竖面与水平台面是否都贴砖/窗台石、是否出檐收口、打胶是否连续；倒水试验窗框下沿不渗漏 | 声明范围内的防水台竖面与水平台面全段贴砖或窗台石；出檐/打胶收口连续，窗框下沿倒水不渗。当前卧室/书房估算150×150mm，量房后复核 | 客厅/主卫/主卧/书房/西北次卧/东南客房落地窗根部防水台竖面与台面铺贴照片、窗框下沿倒水试验照片 | `262b0111b0546665ef6fe377bacc02edb8ce2a9d324b878496cb3768a24d52a3` | pending |
 | [ ] | SCH-060-01 | major/before_start/阻塞解除后 | 排版、起铺点和收口方案确认 | 按房间核对铺贴方向、通缝关系、窄条位置、门槛和墙地收口 | 形成确认版排版图或现场放样记录 | tile_layout、signed_mockup_photos | `ba1ec3ec0c6ca3db10319d9e7c85a184f91fcf7cea623bc0724239e21ce4f57e` | pending |
 
@@ -524,7 +529,7 @@
 |---|---|---|
 | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) | room_ids=master_bath,guest_bath; types=floor_region,wall_region,sill_region | mapped |
 
-当前项目数据指纹：`sha256:45cc21342061e1f7ef2b942c317354a4c61eb177a619e3732798d337c4bf2655`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:5b7df4262e0a6c3e620357d8f5a535b62e9f15d43b588ce95726d71fc7fd85c6`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -565,7 +570,7 @@
 |---|---|---|
 | [config/ceiling.yaml](../../config/ceiling.yaml) | all=true | mapped |
 
-当前项目数据指纹：`sha256:041acebb5db660962a226d48ffd91a01c5a9d53f8549b28a393387155b3191d4`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:dfcc541b5b59f12bec1d944732e03db57ed4bd6f1ad6e63be0bb487393b8d9c3`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -584,6 +589,7 @@
 |---|---|---|---|---|---|---|---|---|
 | [ ] | check_carp_keel | critical/引用 | 吊顶龙骨间距 | 测量主龙骨间距，检查吊杆是否牢固 | 龙骨间距 ≤ 400mm，吊杆无松动 | 照片或检测记录 | `e4c2c6a281d8c050c0064271a79aa81484132e01c249ca4f2a79c199145537c4` | pending |
 | [ ] | check_carp_board | major/引用 | 石膏板拼接 | 检查板间是否留缝、转角是否整板 | 板间留 V 型缝，转角用整板（7字角），背板 ≥ 9mm | 照片或检测记录 | `05b8fcf167282210d43b905b472f9f527ba1708cec38d92f35c22cda38daa25f` | pending |
+| [ ] | check_hvac_access_coordination_before_ceiling | critical/引用 | 封板前三方对接：检修口对准电控盒、回风密封、风口不被遮挡 | 1. 吊顶、空调、全屋定制三方在封板前对接定位：检修口对准电控盒、能伸头检修，不得被衣柜、灯具、窗帘盒挡住。<br>2. 回风口与吊顶之间缝隙要密封，不得留大缝吸吊顶内灰尘；密封后回风口滤网清洗频率要写进交接记录。<br>3. 送回风口与吊顶风口对齐、无遮挡；对不齐或被挡住，不得封板。<br> | 检修口对准电控盒且不被遮挡；回风缝隙密封；风口对齐无遮挡 | 封板前三方对接定位照片（检修口、电控盒、回风口位置可辨） | `cea0586087ab4b2597542811f6eae223b66179c42f796729df2dfd9719bf6d16` | pending |
 | [ ] | SCH-070-01 | critical/before_covering/阻塞解除后 | 吊顶封板联合验收 | 复查空调保压、冷凝水、风口、回风、检修口、上部水电和全部隐蔽影像 | PKG-030与PKG-040关键验收全部通过并完成相关方签字 | signed_ceiling_close_permit、concealed_work_photos | `5fd4284960f87b888357d18810c6518f5e5a487d2d33e62f3408d7f3b1380462` | pending |
 | [ ] | SCH-070-02 | critical/completion/阻塞解除后 | 吊顶完成面和设备开口复核 | 测量标高、平整度、板缝处理、检修口和风口开孔尺寸 | 与确认图纸及厂家尺寸一致，设备可安装和检修 | measurement_record、completion_photos | `c1d6327e2e679c7ce1d158c52d5a00314bd72b2523e37d23b771f3bf0919e65c` | pending |
 
@@ -606,7 +612,7 @@
 |---|---|---|
 | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) | types=paint_region | mapped |
 
-当前项目数据指纹：`sha256:45cc21342061e1f7ef2b942c317354a4c61eb177a619e3732798d337c4bf2655`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:5b7df4262e0a6c3e620357d8f5a535b62e9f15d43b588ce95726d71fc7fd85c6`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -649,7 +655,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | collections=openings | partial |
 | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) | types=sliding_door_run | partial |
 
-当前项目数据指纹：`sha256:70fa008d6299fcdae6e98df46c1cf95692a8b5ab1ba29fa4366408d57cc6eee7`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:8a0b571df6f54344ded44052b758f39406faed361559148f206fcedd1ff75ed6`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -692,7 +698,7 @@
 | [config/plumbing.yaml](../../config/plumbing.yaml) | room_ids=master_bath,guest_bath,master_bedroom | partial |
 | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) | types=shower_screen | partial |
 
-当前项目数据指纹：`sha256:9d0ef90a18f7864b72d99ae7766aab254fb9f1cf2ab895e2fdc1ea42b98f5cbd`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:739f5bf8064a577c61859e8a65eb45d9e1d86b76ceb4f54de74e7b09e64bcae4`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -734,7 +740,7 @@
 |---|---|---|
 | [config/house.yaml](../../config/house.yaml) | room_ids=kitchen; types=kitchen_cabinet_run,kitchen_countertop_bridge,cabinet_base,cabinet_wall,countertop_quartz,sink | mapped |
 
-当前项目数据指纹：`sha256:90776aadb255125413fbb7e524dad6e278e8055310f9163be774dea716c897b4`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:b373de3a90de0b76fce5be2c0d44ba6089706d844e78229fbca26962c65e708c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -776,7 +782,7 @@
 |---|---|---|
 | [config/electrical.yaml](../../config/electrical.yaml) | types=ceiling_light,dome,downlight,night_light | mapped |
 
-当前项目数据指纹：`sha256:f5aa13855b887a3bfa8eb4eb0af317a1d0bd3f7928281e226abca01131c2a9c3`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:7d6a70c788dc7fb0cd6ca4d4da31f32712737fa19a55e86b7110f23ad448979c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -815,7 +821,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | types=socket,switch,switch_2way,network,floor_socket | mapped |
 | [config/electrical-topology.yaml](../../config/electrical-topology.yaml) | all=true | mapped |
 
-当前项目数据指纹：`sha256:7355365738ca9e7d78a5060dfa7a5ee920eaab2e3fb95ec919eb78af770cd135`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:3664d9c0814886665ca4eb140542e771ef0a3c11d2c1b93e7e1017657cac3f8f`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -856,7 +862,7 @@
 |---|---|---|
 | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) | types=floor_region,wall_region,sill_region | mapped |
 
-当前项目数据指纹：`sha256:45cc21342061e1f7ef2b942c317354a4c61eb177a619e3732798d337c4bf2655`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:5b7df4262e0a6c3e620357d8f5a535b62e9f15d43b588ce95726d71fc7fd85c6`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -895,7 +901,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | collections=rooms,walls,openings | partial |
 | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) | types=floor_region,wall_region,paint_region,sill_region,skirting_region | partial |
 
-当前项目数据指纹：`sha256:70fa008d6299fcdae6e98df46c1cf95692a8b5ab1ba29fa4366408d57cc6eee7`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:8a0b571df6f54344ded44052b758f39406faed361559148f206fcedd1ff75ed6`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -936,7 +942,7 @@
 | [config/mep-hvac-coordination.yaml](../../config/mep-hvac-coordination.yaml) | layers=refrigerant,condensate,supply_air,return_air | partial |
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_ac,sock_dining_ac,sock_master_ac,sock_parent_ac,sock_child_ac,sock_study_ac,sock_vrf_outdoor_a2,ac_panel_living,ac_panel_dining,ac_panel_master,ac_panel_parent,ac_panel_child,ac_panel_study | partial |
 
-当前项目数据指纹：`sha256:30bed34997665b909f68b6b60daf09b47b58c6a2df5922068c697cfd94d0265b`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:04d373f2735943b920f10c83da568d8c556a1a655ac43bcdaaa4761000d8accf`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -975,7 +981,7 @@
 | [config/ceiling.yaml](../../config/ceiling.yaml) | all=true | project_scope |
 | [docs/pending-site-data.md](../../docs/pending-site-data.md) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:bb614eef0be6a1bdcf86b042555c692c7081769b10ebf3b3e1c00173a122c73e`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:31dbe27e8367916c8c57c48099a2e3b6d510f0392ad4f1d6bad4da4795b46711`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1006,7 +1012,7 @@
 | [config/ceiling.yaml](../../config/ceiling.yaml) | trade=curtain_box | partial |
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_curtain,sock_master_curtain,sock_parent_curtain,sock_study_curtain | partial |
 
-当前项目数据指纹：`sha256:f3894c6cf9f61bde44ea9339d7a7b4d33235c754414041854a4ef507b918d91a`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:ab56c0f78b41cf4d651d09dce562583b6efb47946fcecbc35b7364099161aa54`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1043,7 +1049,7 @@
 |---|---|---|
 | [config/house.yaml](../../config/house.yaml) | all=true | partial |
 
-当前项目数据指纹：`sha256:90776aadb255125413fbb7e524dad6e278e8055310f9163be774dea716c897b4`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:b373de3a90de0b76fce5be2c0d44ba6089706d844e78229fbca26962c65e708c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1094,7 +1100,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_fridge_living,sock_kitchen_hood,sock_kitchen_gas,sock_kitchen_oven,sock_balcony_washer,sock_balcony_dryer,sock_balcony_waterheater,sock_gbath_robot | partial |
 | [config/plumbing.yaml](../../config/plumbing.yaml) | ids=faucet_balcony_washer,drain_balcony_washer,faucet_gbath_vanity,drain_gbath_vanity | partial |
 
-当前项目数据指纹：`sha256:023930c1db1e15970647846a8b05d61a60ec14b828c2aac9d1b3aa3d3d8f9756`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:dfc2f5f432c5414f6b86ed505be12bdb4c9b16d0ee3886efa223d6b5d4590aee`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1144,7 +1150,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 
-当前项目数据指纹：`sha256:d51736e948046c5f4045e16528df6c1dd62c2283ca47d06ea7ed487192635a83`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:d42e7c8937f7f244e03a27dfb186e0382df7eb90c59b8016287498fa26dbaf7e`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1173,7 +1179,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 
-当前项目数据指纹：`sha256:d51736e948046c5f4045e16528df6c1dd62c2283ca47d06ea7ed487192635a83`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:d42e7c8937f7f244e03a27dfb186e0382df7eb90c59b8016287498fa26dbaf7e`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
