@@ -1385,7 +1385,13 @@ contracts:
         # 2026-10-23 DEC-2026-10-23-R03 客卫沉箱二次排水对等落地新增 2 项验收
         # （check_plumb_guest_bath_secondary_drain / check_plumb_guest_bath_box_flood）→ 53 → 55；
         # 新项已挂 PKG-050 的 acceptance_refs 并 schedule:render 落 checklist。
-        expect_matches: 55
+        # 2026-10-30 隐蔽验收门禁补齐新增 6 项验收
+        # （check_wp_dry_gate / check_plumb_pressure_gate / check_covering_gate_secondary_drain /
+        #   check_tile_slope_same_day / check_hvac_condensate_before_ceiling /
+        #   check_hvac_access_coordination_before_ceiling）→ 55 → 61；
+        # 新项已挂 PKG-030/040/050/060/070 的 acceptance_refs 并 schedule:render 落 checklist；
+        # 本条只作门禁，不锁打压、闭水档位数值（档位待 D5 拍板）。
+        expect_matches: 61
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写
