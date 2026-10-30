@@ -1391,7 +1391,13 @@ contracts:
         #   check_hvac_access_coordination_before_ceiling）→ 55 → 61；
         # 新项已挂 PKG-030/040/050/060/070 的 acceptance_refs 并 schedule:render 落 checklist；
         # 本条只作门禁，不锁打压、闭水档位数值（档位待 D5 拍板）。
-        expect_matches: 61
+        # 2026-10-30 开发商窗交房验收新增 6 项验收
+        # （check_window_paper_per_window / check_window_gasket_sealant / check_window_drain_hole /
+        #   check_window_lowe_doc / check_window_rain_recheck / check_window_external_issue_report）→ 61 → 67；
+        # 新项已挂 PKG-000 交房查验（SCH-000-01 handover_survey）的 acceptance_refs 并 schedule:render 落 checklist；
+        # 不挂 PKG-170 竣工联合验收：交房缺陷追责窗口在竣工前已过，且施工期间归属易搅浑；
+        # 本阶段只验开发商已封好的窗，不涉及用户自己买窗。
+        expect_matches: 67
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写
