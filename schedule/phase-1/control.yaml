@@ -808,6 +808,7 @@ work_packages:
     blockers: [BLK-HANDOVER, BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-GAS-DOOR, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [业主, 设计师, 施工方, 空调商]
     payment_gate: GATE-000-COMPLETE
+    acceptance_refs: [check_window_paper_per_window, check_window_gasket_sealant, check_window_drain_hole, check_window_lowe_doc, check_window_rain_recheck, check_window_external_issue_report]
     checks:
       - id: SCH-000-PRE-01
         severity: major
@@ -1757,7 +1758,7 @@ work_packages:
     blockers: []
     owner_roles: [业主, 设计师, 施工方, 各供应商]
     payment_gate: GATE-170-FINAL
-    acceptance_refs: [check_occ_formaldehyde, check_window_paper_per_window, check_window_gasket_sealant, check_window_drain_hole, check_window_lowe_doc, check_window_rain_recheck, check_window_external_issue_report]
+    acceptance_refs: [check_occ_formaldehyde]
     checks:
       - id: SCH-170-01
         severity: critical
