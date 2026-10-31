@@ -167,6 +167,15 @@ scan:
       pattern: '.'
       reason: 迭代过程留档（fact-table / decision-brief / evidence），非现行事实源
 
+    # 决策门禁登记表（verify:decision-gates 的唯一输入）：表里的档位数字是**待拍板选项**，
+    # 不是权威值——权威值落在 DEC 与 acceptance.yaml 的 standard。拍板后 decided_value
+    # 会写入品牌、型号与具体档位，那些数字与型号串的权威源在别处，在本表出现只是
+    # 决策记录。整表豁免 T1 数值扫描；表的结构自洽由 c.decision_gate_decided_fields
+    # 与 verify:decision-gates 负责。
+    - path: config/decision-gates.yaml
+      pattern: '.'
+      reason: 决策门禁登记表：档位数字与品牌型号是待拍板选项或决策记录，权威值在 DEC 与 acceptance.yaml 的 standard；结构完整性由 c.decision_gate_decided_fields 与 verify:decision-gates 负责，不做数值对账
+
     # --- control.yaml 的渲染产物：不是事实源，改了 control.yaml 会重新生成 ---
     - path: schedule/phase-1/budget.md
       pattern: '.'
@@ -1801,12 +1810,25 @@ contracts:
       - '3(?:\.0+)?\s*(?:m|米)\s*(?:左右|上下|约)?\s*层高'
       - '层高为?\s*(?:约|大约|近)?\s*3(?:\.0+)?\s*(?:m|米)'
 
+  # 拍板留痕契约：status=decided 的决策必须同级的 decided_value / decided_by /
+  # decided_at / decision_evidence 四件套齐全——没有 owner 与日期的「已拍板」
+  # 等于没拍板（DEC-2026-10-11 增补第 2 条的同口径机制化）。
+  - id: c.decision_gate_decided_fields
+    kind: requires
+    path: config/decision-gates.yaml
+    when: { field: status, equals: decided }
+    then: [decided_value, decided_by, decided_at, decision_evidence]
+
 # ─── T4 覆盖层 ───────────────────────────────────────────────────────────────
 
 coverage:
 # 每条登记的 readers 会被真的 grep：字段名一次都没出现就报
 # declared_reader_does_not_read（error）。readers: [] 表示「纯数据，无声称读者」。
   - { file: config/acceptance.yaml, field: "phases", readers: ["scripts/schedule/control.ts"] }
+  # 决策门禁登记表：version 由加载模块校验；decisions 由共享判定模块、
+  # control.ts（渲染阻塞注释与指纹）与专用校验器三方读。
+  - { file: config/decision-gates.yaml, field: "version", readers: ["scripts/schedule/decision-gates.ts"] }
+  - { file: config/decision-gates.yaml, field: "decisions", readers: ["scripts/schedule/decision-gates.ts", "scripts/schedule/control.ts", "scripts/verify/schedule/verify-decision-gates.ts"] }
   - { file: config/budget-pitfalls.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/budget-pitfalls.yaml, field: "pitfalls", readers: [] }
   - { file: config/budget-pitfalls.yaml, field: "templates", readers: [] }

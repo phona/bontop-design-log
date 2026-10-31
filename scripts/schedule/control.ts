@@ -6,6 +6,7 @@ import * as yaml from 'js-yaml';
 import { computeGateStatus } from './gate-status.js';
 import { buildCostSummary, renderCostSummary, contractArchivePathProblem, isValidCalendarDateText, COST_INPUT_PATHS, COST_SUMMARY_PATH } from './cost-summary.js';
 import { loadModelPackageLinks, MODEL_PACKAGE_LINKS_PATH } from '../../server/model-package-links.js';
+import { DECISION_GATES_PATH, loadDecisionGates, openGatesByCheck } from './decision-gates.js';
 
 type AnyRecord = Record<string, any>;
 
@@ -21,6 +22,10 @@ const control = yaml.load(fs.readFileSync(controlPath, 'utf8')) as AnyRecord;
 const acceptance = yaml.load(fs.readFileSync(acceptancePath, 'utf8')) as AnyRecord;
 const roadmap = yaml.load(fs.readFileSync(roadmapPath, 'utf8')) as AnyRecord;
 const modelPackageLinks = loadModelPackageLinks(MODEL_PACKAGE_LINKS_PATH);
+const decisionGates = loadDecisionGates(root);
+const openDecisionGates = decisionGates.decisions.filter((decision) => decision.scope === 'acceptance' && decision.status === 'open');
+const openGatedCheckCount = new Set(openDecisionGates.flatMap((decision) => decision.blocks ?? [])).size;
+const openGates = openGatesByCheck(decisionGates);
 
 const money = (value: number | null) => value == null ? '—' : `¥${value.toLocaleString('zh-CN')}`;
 const moneyOrPending = (value: number | null) => value == null ? '待报价/待算量' : money(value);
@@ -57,7 +62,7 @@ function packageModelLinks(packageId: string): AnyRecord[] {
 
 function packageProjectPaths(pkg: AnyRecord): string[] {
   const links = packageModelLinks(pkg.id);
-  const paths = [MODEL_PACKAGE_LINKS_PATH, 'schedule/phase-scope.yaml', 'config/acceptance.yaml'];
+  const paths = [MODEL_PACKAGE_LINKS_PATH, 'schedule/phase-scope.yaml', 'config/acceptance.yaml', DECISION_GATES_PATH];
   for (const link of links) {
     for (const scope of link.scope ?? []) {
       const authorityPath = modelPackageLinks.authorities[scope.source];
@@ -80,7 +85,7 @@ function packageProjectFingerprint(pkg: AnyRecord): string {
 
 function phaseInputPaths(phaseId: string, phaseControlPath: string): string[] {
   const links = modelPackageLinks.links.filter((link) => link.phase_id === phaseId);
-  const paths = [phaseControlPath, roadmapRelPath, 'schedule/phase-scope.yaml', MODEL_PACKAGE_LINKS_PATH, acceptanceRelPath];
+  const paths = [phaseControlPath, roadmapRelPath, 'schedule/phase-scope.yaml', MODEL_PACKAGE_LINKS_PATH, acceptanceRelPath, DECISION_GATES_PATH];
   if (phaseId === control.phase_id) paths.push('docs/pending-site-data.md');
   if (phaseId === 'phase_2_function_upgrade' || phaseId === 'phase_3_styling') paths.push('schedule/phase-1/control.yaml');
   if (phaseId === 'phase_3_styling') paths.push('schedule/phase-2/control.yaml');
@@ -95,7 +100,7 @@ function phaseInputPaths(phaseId: string, phaseControlPath: string): string[] {
 
 function phaseDataInputPaths(phaseId: string): string[] {
   const links = modelPackageLinks.links.filter((link) => link.phase_id === phaseId);
-  const paths = ['schedule/phase-scope.yaml', MODEL_PACKAGE_LINKS_PATH, acceptanceRelPath];
+  const paths = ['schedule/phase-scope.yaml', MODEL_PACKAGE_LINKS_PATH, acceptanceRelPath, DECISION_GATES_PATH];
   if (phaseId === 'phase_2_function_upgrade' || phaseId === 'phase_3_styling') paths.push('schedule/phase-1/control.yaml');
   if (phaseId === 'phase_3_styling') paths.push('schedule/phase-2/control.yaml');
   for (const link of links) {
@@ -115,6 +120,7 @@ const projectInputPaths = unique([
   'schedule/phase-2/control.yaml',
   'schedule/phase-3/control.yaml',
   'config/acceptance.yaml',
+  DECISION_GATES_PATH,
   MODEL_PACKAGE_LINKS_PATH,
   'docs/pending-site-data.md',
   ...Object.values(modelPackageLinks.authorities),
@@ -864,6 +870,7 @@ checklistMd += '- 按“当前推进位置”找到工作包；被阻塞时先�
 checklistMd += '- 若检查项标注“可在 blocked 中推进，仅预演不放施工”，可继续做可逆设计和资料准备；该项通过不会解除施工 readiness。\n';
 checklistMd += '- 每项通过后记录检查人、时间、证据、`check_spec_sha256` 和 `project_data_sha256`；整改复验追加新记录并用 `supersedes` 指向旧记录。\n';
 checklistMd += '- 关联的项目配置变化后，旧 PASS 自动显示 stale、对应验收/放行/付款门槛回到 pending；重新验收后追加新记录。\n';
+checklistMd += '- 清单中标注「决策门禁」的检查项被 config/decision-gates.yaml 里未拍板的决策阻塞：拍板前不得判 passed；拍板后须在登记表补 decided_value、decided_by、decided_at 与 decision_evidence，旧口径复验追加新记录。\n';
 checklistMd += '- 手写纸本只是现场记录；回填到 `control.yaml.audit_log.records` 后运行 `npm run schedule:render` 更新视图。\n\n';
 checklistMd += `## 项目总控\n\n- [ ] 一期已分配金额为 ${money(allocated)}，未分配 ${money(control.control.unallocated_cny)}，总上限 ${money(control.control.phase_ceiling_cny)}。\n- [ ] 基础硬装与中央空调合计 ${money(fixed)}，均属于一期固定工程。\n- [ ] 已量化但尚未分配的预算缺口为 ${money(knownPendingGap)}；未取得业主批准前保持待处理。\n- [ ] ${unpricedComponents.length}个待报价/待算量费用项已经逐项取得金额，并与父工作包控制额完成对账。\n- [ ] 所有现场未知项保持 blocked/site_pending，未以推测替代确认。\n\n`;
 checklistMd += '## 家电型号、公开报价与适配核对\n\n';
@@ -927,6 +934,24 @@ for (const pkg of control.work_packages) {
     const audit = auditDisplay(pkg.id, item.id);
     const executionWindow = item.can_run_while_blocked ? '可在 blocked 中推进，仅预演不放施工' : '阻塞解除后';
     checklistMd += `| ${audit.box} | ${item.id} | ${item.severity}/${item.checkpoint}/${executionWindow} | ${escapeCell(item.item)} | ${escapeCell(item.method)} | ${escapeCell(item.pass_condition)} | ${list(item.evidence_required)} | \`${checkSpecHash(pkg, item.id)}\` | ${escapeCell(audit.result)} |\n`;
+  }
+  // 决策门禁注释：本包检查项里被未拍板决策阻塞的，逐决策列出阻塞了哪些项。
+  // 语义与 computeGateStatus 同向——阻塞期间这些项不得出现 passed 记录，
+  // 付款门槛自然回到 pending；拍板记录写进 config/decision-gates.yaml。
+  const packageOpenGates = new Map<string, { topic: string; checks: string[] }>();
+  for (const check of packageChecks(pkg)) {
+    for (const decision of openGates.get(check.id) ?? []) {
+      const entry = packageOpenGates.get(decision.id) ?? { topic: decision.topic, checks: [] };
+      entry.checks.push(check.id);
+      packageOpenGates.set(decision.id, entry);
+    }
+  }
+  if (packageOpenGates.size) {
+    const detail = [...packageOpenGates.entries()]
+      .map(([decisionId, entry]) => `${decisionId} ${entry.topic} → ${entry.checks.join('、')}`)
+      .join('；');
+    const blockedCount = [...packageOpenGates.values()].reduce((sum, entry) => sum + entry.checks.length, 0);
+    checklistMd += `\n- [ ] 决策门禁：${blockedCount} 项检查被 ${packageOpenGates.size} 个未拍板决策阻塞（${detail}）；阻塞期间不得判 passed，付款门槛保持 pending，登记表见 config/decision-gates.yaml。\n`;
   }
   checklistMd += '\n- [ ] 所有 critical 检查通过；失败项已有整改和复验记录。\n';
   checklistMd += '- [ ] 必需证据路径已登记且文件可打开。\n';
@@ -1065,7 +1090,7 @@ if (!renderMode && (staleViews.length || staleAudits.length || stalePhaseGateRec
   process.exitCode = 1;
 }
 
-console.log(`schedule control valid: ${roadmapPhaseIds.size} phases, ${control.work_packages.length} phase-1 packages, ${componentIds.size} cost components (${unpricedComponents.length} unpriced), ${usedCheckIds.size} auditable checks, ${money(allocated)} allocated, ${money(knownPendingGap)} known pending gap`);
+console.log(`schedule control valid: ${roadmapPhaseIds.size} phases, ${control.work_packages.length} phase-1 packages, ${componentIds.size} cost components (${unpricedComponents.length} unpriced), ${usedCheckIds.size} auditable checks, ${money(allocated)} allocated, ${money(knownPendingGap)} known pending gap, ${openDecisionGates.length} open decision gates blocking ${openGatedCheckCount} checks`);
 if (renderMode && (staleAudits.length || stalePhaseGateRecords.length || packageGateIssues.length)) {
   console.warn(`stale or inconsistent gate state: ${[...staleAudits, ...stalePhaseGateRecords, ...packageGateIssues].join('; ')}`);
 }

@@ -1,0 +1,265 @@
+# ============================================================================
+# config/decision-gates.yaml —— 决策门禁登记表（npm run verify:decision-gates）
+#
+# 铁律来源（2026-10-30 重构报告 → 2026-10-31 落成机制）：
+#   「很多口径还没有唯一值：打压、闭水、强弱电间距、龙骨间距、石膏板厚度、
+#     铝扣板厚度、厨房线径、油漆遍数、美缝天数……全部只能并列旗标，
+#     不能直接写进验收合格线。」
+#   在此之前，这类「待拍板」只以散文形式写在 acceptance.yaml 的 knowledge 里
+#   （如「档位待 D5 拍板」），没有任何机器强制：check_carp_keel 写死 ≤400mm、
+#   D9 说 300/400 未拍板，两边互不知情，门禁全绿。
+#
+# 本表把每个未拍板决策登记成机器可判的门禁，两种范围：
+#   scope: acceptance —— 阻塞具体验收项。未拍板（status: open）期间，被阻塞
+#     验收项不得出现 passed 审计记录；没有 passed 就没有「全部检查通过」，
+#     付款门槛（computeGateStatus）自然回到 pending——宁可多 pending，
+#     不可错放款。拍板后必须补 decided_value / decided_by / decided_at /
+#     decision_evidence，缺一项 verify:facts 的 requires 契约与本校验器都报错。
+#   scope: tracked —— 不阻塞验收项的决策（采购、范围、流程类）。必须写
+#     tracking_note 说明为什么不阻塞、缺口由谁跟踪；防止「以为有门禁、
+#     其实没有」。
+#
+# 反向防线：acceptance.yaml 与 control.yaml 散文里出现的「待 Dx 拍板」必须能在
+# 本表找到对应决策，且散文点名的 check 必须登记在该决策的 blocks 里——
+# 门禁不许只活在注释里。
+#
+# 双登记对照：docs/pending-site-data.md「决策点登记 D1–D18」节是本表的叙事侧
+# （待拍板内容与缺的证据，人读版），两侧必须同步移动——只登记一侧，另一侧就
+# 静默失效。校验器对两侧编号集合做双向对照，缺一侧即报错。
+#
+# 档位数字（400mm、24h、0.8MPa 等）在本文件中是待拍板选项，不是权威值；
+# 权威值落在 DEC 与 acceptance.yaml 的 standard。故本表在 facts.yaml 的
+# T1 scan 里整表豁免，不参与数值对账。
+# ============================================================================
+
+version: 1
+
+decisions:
+  # ---- 阻塞验收项的决策（scope: acceptance）----
+
+  - id: D2
+    topic: 二次排水接法与干区地漏水封写法
+    scope: acceptance
+    question: 二排接法选单独存水弯、共用淋浴存水弯还是带存水弯专用二排器；干区「机械自封为主」与 GB 55020-2021 第 4.2.3 条字面冲突怎么写
+    options:
+      - 单独存水弯（现行已定 1% 找坡加独立支管）
+      - 共用淋浴存水弯
+      - 带存水弯专用二排器
+      - 干区改「水封加机械辅助」并补写水封位置
+    status: open
+    blocks:
+      - check_plumb_master_bath_secondary_drain
+      - check_plumb_guest_bath_secondary_drain
+      - check_plumb_drain
+    blocked_effect: 接法与干区写法未书面拍板前，两卫二次排水项与排水存水弯项不得判 passed；水电交底前拍板，贴砖后改是返工。
+
+  - id: D5
+    topic: 打压档位与闭水档位
+    scope: acceptance
+    question: 打压取哪一档；闭水取 24 小时还是 48 小时、蓄水深度取哪一档
+    options:
+      - 打压 0.6–0.8MPa 加 1 小时压降 ≤0.05MPa 再 2 小时 ≤0.03MPa
+      - 打压 0.8–1.0MPa 加 30 分钟以上压降 ≤0.05MPa
+      - GB 50242 转述档
+      - 闭水 24 小时
+      - 闭水 48 小时（现行 check_wp_flood 口径）
+    status: open
+    blocks:
+      - check_plumb_pressure
+      - check_plumb_pressure_gate
+      - check_wp_flood
+      - check_wp_finish_flood
+    blocked_effect: 档位写进合同前四项不得判 passed；check_wp_dry_gate 不锁时长与深度，不受本门禁阻塞（其 knowledge 已明示）。
+
+  - id: D6
+    topic: 强弱电间距对象划分
+    scope: acceptance
+    question: 平行管线间距、交叉屏蔽、强弱电箱距离三个对象是否分开建项、分开量测；30cm、20cm、50cm 各对应哪一个对象
+    options:
+      - 平行管线间距 30cm
+      - 平行管线间距 20cm
+      - 交叉处包锡纸屏蔽
+      - 强弱电箱距离 50cm
+    status: open
+    blocks:
+      - check_elec_strong_weak_separation
+    blocked_effect: 该项标准现为「按交底口径执行」，分对象取值未定前不得判 passed；封槽前量距，30/20/50 三个数字分属不同对象，不得合并成一条。
+
+  - id: D9
+    topic: 龙骨间距档位
+    scope: acceptance
+    question: 副龙骨取不超过 300mm 还是小于等于 40cm；主龙骨取 1000mm 以内还是小于等于 1.2m；吊杆与端头距离取哪档；是否按较严一档写进合同
+    options:
+      - 副龙骨 ≤300mm
+      - 副龙骨 ≤400mm（现行 check_carp_keel 口径）
+      - 主龙骨 ≤1000mm
+      - 主龙骨 ≤1200mm（现行口径）
+    status: open
+    blocks:
+      - check_carp_keel
+    blocked_effect: 报告口径为「按较严一档核对并写进合同后才升级为判据」；档位未写进合同前，check_carp_keel 的 400mm 不得判 passed。
+
+  - id: D11
+    topic: 空鼓分档与美缝天数
+    scope: acceptance
+    question: 空鼓分档是否采纳为合同验收标准；瓷砖泡水规则按吸水率区分的具体写法；美缝晾干天数与清缝打样是否写进合同；油漆兑水比例、同批次大样、雨天停工与养护是否进入合同
+    options:
+      - 空鼓按「墙面应无空鼓、地面边角 ≤5%」分档
+      - 空鼓按现行「单片 <15%、整面墙 <5%」
+      - 美缝贴砖后至少晾 7 天
+      - 基层干透经验 7–10 天
+    status: open
+    blocks:
+      - check_tile_hollow
+      - check_tile_grout_dry
+    blocked_effect: 空鼓分档与美缝天数未写进合同前两项不得判 passed；现行数值只是仓内旧口径，不是合同判据。
+
+  - id: D15
+    topic: 石膏板与辅材档位
+    scope: acceptance
+    question: 石膏板取 9.5mm 还是 12mm、耐潮还是耐水；铝扣板厚度、边框、烤漆覆膜、收边含不含报价；JS 涂料报 2009 版还是 2025 版；PPR S 系列是否写进合同
+    options:
+      - 石膏板 9.5mm
+      - 石膏板 12mm
+      - 背板 ≥9mm（现行 check_carp_board 口径）
+    status: open
+    blocks:
+      - check_carp_board
+    blocked_effect: 报告口径「条件不满足，回退到不下单」；厚度档位未定前 check_carp_board 不得判 passed；铝扣板与 JS 涂料仓内无验收项，属覆盖缺口。
+
+  - id: D16
+    topic: Low-E 膜面表述
+    scope: acceptance
+    question: 膜面表述张力是否并列保留；将来某块损坏换窗时是否按现行验收方法重新立项；Low-E 型号、单双银、膜面位置、检测报告等细节交房验收时是否逐块核对
+    options:
+      - 膜面第 2 面（南方两玻一腔遮阳型，现行口径）
+      - 膜面第 3 面（北方保温为主）
+      - 并列保留不合并
+    status: open
+    blocks:
+      - check_window_lowe_doc
+    blocked_effect: 该项标准含「膜面在第 2 面」，属报告并列旗标；细节未核实、措辞未拍板前不得判 passed（其方法里「不得记为已证实」同此口径）。
+
+  # ---- 不阻塞验收项的决策（scope: tracked，必须写 tracking_note）----
+
+  - id: D1
+    topic: 中央空调品牌与外机核算
+    scope: tracked
+    question: 是否批准「本轮证据下不换品牌」这个结论；是否继续比大金，继续比须先拿到经销商书面确认清单（P+ 20kW 档选型与一拖六上限、寰域容量段、各机型泵高与管径存水弯、分贝标称值、保修映射与细则、铜管与保温规格、通用检修口尺寸、价格）；外机实测尺寸与西平台散热核算是否先做
+    options:
+      - 维持已定标品牌（合同已签）
+      - 继续比大金，先补经销商书面确认清单
+      - 先做外机实测与西平台散热核算再定
+    status: open
+    tracking_note: 品牌合同已签、逐房映射已定，没有任何验收项以「换不换品牌」为通过条件；外机尺寸与平台散热的缺口由 BLK-HVAC-DEEPENING 跟踪，不阻塞本表任何验收项。叙事侧详见 docs/pending-site-data.md 决策点登记节。
+
+  - id: D3
+    topic: 踢脚线高度与贴法
+    scope: tracked
+    question: 高度维持 80mm 还是往 4–6cm 窄调；明贴还是暗贴；暗贴槽深取哪一档
+    options:
+      - 维持 80mm（可调 80–100mm，现行已定口径）
+      - 往 4–6cm 窄调
+      - 明贴
+      - 暗贴（槽深 2–3cm 或 1.2–1.5cm 两档旗标）
+    status: open
+    tracking_note: 仓内无踢脚线验收项（覆盖缺口，待另立清单改动补 check_skirting_*）；高度现值 80mm 为已定口径，本决策只在其上收窄，不阻塞现行验收项。
+
+  - id: D4
+    topic: 厨房台面、水槽与挡水条
+    scope: tracked
+    question: 做饭人身高与高低台落差定多少；烟机机型（顶吸还是侧吸）及安装高度；水槽真台下盆还是台中盆、挡水条无还是弧形、龙头是否抽拉款
+    options:
+      - 高低台按现场模拟定落差
+      - 烟机高度按机型说明书核对
+      - 真台下盆加卡扣云石胶支架三重固定
+      - 台中盆
+    status: open
+    tracking_note: 仓内无厨房台面、水槽、烟机对图验收项（覆盖缺口）；烟机与橱柜四方对图属 PKG-130 交底内容，不阻塞现行验收项。
+
+  - id: D7
+    topic: 厨房线径与专线
+    scope: tracked
+    question: 厨房插座、即热、烤箱、蒸烤箱的线径与专线取哪一档；是否按实际电器清单和负荷计算定
+    options:
+      - 2.5 平方配 C25
+      - 即热或烤箱 4 平方配 C32
+      - 大功率单独 4 平方
+      - 蒸烤箱 6 平方专线
+    status: open
+    tracking_note: 仓内电气口径以 config/electrical-topology.yaml 的 20 路为准，无线径专项验收项；改线径先改拓扑配置再谈验收，不阻塞现行验收项。
+
+  - id: D8
+    topic: 零冷水与热水智能
+    scope: tracked
+    question: 零冷水做与不做、走大循环还是末梢等待；走大循环选外置泵还是集成泵加末梢水压复核；主卫电热水器、智能联动、止逆阀是否立项
+    options:
+      - 不做零冷水，不预埋回水管也不加 H 型阀
+      - 做大循环，预埋回水管
+      - 大循环加外置单独循环泵
+    status: open
+    tracking_note: 封槽前是否预埋回水管是不可逆分水岭，但仓内无对应验收项；热水器类别候选由 control.yaml 的 must_confirm_before_order 跟踪，不阻塞现行验收项。
+
+  - id: D10
+    topic: 检修口与回风尺寸
+    scope: tracked
+    question: 书房回风底面格栅开口尺寸与电控盒对位、350mm 建议下限是否满足；其余房间送回风方式与检修口尺寸按匹数定档；送回风间距取通用档还是满墙衣柜场景；回风一体加长值取 35cm 还是 45cm；回风密封材料取哪一种
+    options:
+      - 检修口按匹数定档 400 / 450 / 500
+      - 送回风间距通用 ≥1.5m
+      - 满墙衣柜拉长风口场景最少 1m
+    status: open
+    tracking_note: check_hvac_access_coordination_before_ceiling 现用「能伸头检修、对准电控盒、不被遮挡」的可验收措辞，不依赖未定尺寸数字；350mm 与格栅开口由 BLK-HVAC-DEEPENING（厂家图深化）跟踪，不阻塞。
+
+  - id: D12
+    topic: 地面材料与地板结构
+    scope: tracked
+    question: 地面用木地板、瓷砖地面还是分区混用；木地板结构选纯三层、新三层、多层还是强化；瓷砖地面是否采纳笔记选购标准；铺法与损耗档位；满胶铺法是否采用
+    options:
+      - 分区混用
+      - 纯三层
+      - 新三层
+      - 强化地板
+    status: open
+    tracking_note: 地板批结论只到标题级（无代表性链接），仓内无地板验收项；地面材料线未定前不下单，不阻塞现行验收项。
+
+  - id: D13
+    topic: 定制柜范围与尺寸基线
+    scope: tracked
+    question: 是否进入本期硬装范围、位置与数量；尺寸基线（以谁的身高定高度、内净尺寸复核方法）是否采纳；板材与五金基线是否采纳；环保核查检测渠道与争议处理是否采纳；整柜第三方比价与仓内厂家核实是否另起任务
+    options:
+      - 进入本期范围，按内净尺寸双核对验收
+      - 暂不进入，仅预留电位与柜格
+    status: open
+    tracking_note: 仓内定制柜只有 check_carp_cabinet（门缝与开关），报告的内净尺寸双核对（净深、长衣短衣挂裤高度）尚无验收项——覆盖缺口，待另立清单改动；不阻塞现行项。
+
+  - id: D14
+    topic: 选材主材口径
+    scope: tracked
+    question: 地板五组旗标各取哪档；门窗是否维持「只作通用参考」；一门到顶取颗粒板加拉直器还是欧松板首选；乳胶漆以四标准口径中哪一口径为准、耐洗刷取 15000 次还是 ≥6000 次、深色兑水取 0 还是到 10%；合同字段与进场核对规则是否采纳
+    options:
+      - 乳胶漆按 GB/T 9756-2018 优等品口径
+      - 乳胶漆按 GB 30981.1-2025 口径
+      - 一门到顶欧松板首选
+    status: open
+    tracking_note: 均为下单前合同口径，仓内无对应验收项；进场核对规则（标签、吸水率、CMA 报告加授权证书）是覆盖缺口，待另立清单改动。
+
+  - id: D17
+    topic: 现场清单与机制落地
+    scope: tracked
+    question: 现场清单格式与 4 项提案、5 项仓库机制改动是否批准落地；经销商和安装方要图消息是否发送（措辞、对方姓名与渠道由谁定）；DWG 索取清单是否发送；量房清单是否落仓
+    options:
+      - 批准落地，按一题一 PR
+      - 暂不落地，先补齐决策点
+    status: open
+    tracking_note: 流程决策，不对应具体验收项；本登记表本身就是该类机制改动的一件，落地走一题一 PR、合并归业主。
+
+  - id: D18
+    topic: 点位对照表与底盒零线
+    scope: tracked
+    question: 第二篇木木点位表是否补入交底对照表；点位设计批床外径区分是否补入；除书房外哪些房间采用双控或三控；是否采纳每个开关底盒尽量预留零线；底盒深度标准是否定为「取更深者加按实际模块尺寸现场核对」；各空间插座高度是否另定本户高度表
+    options:
+      - 补入交底对照表后作为验收依据
+      - 维持现行点位口径
+    status: open
+    tracking_note: 全盒零线已由 DEC-2026-10-06-R2 定并落成 check_elec_zero_line_all_switches，报告 D18 该子项看起来已被仓内回答——与仓内 DEC 的关系需业主确认（并列旗标，不静默合并）；其余为对照表合并与高度表，无直接验收项。
