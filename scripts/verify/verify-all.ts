@@ -45,6 +45,7 @@ const VERIFIERS: VerifierSpec[] = [
   { name: 'verify-model-package-links', script: 'scripts/verify/model/verify-model-package-links.ts' },
   { name: 'verify-mep-takeoff', script: 'scripts/verify/mep/verify-mep-takeoff.ts' },
   { name: 'verify-schedule', script: 'scripts/schedule/control.ts' },
+  { name: 'verify-decision-gates', script: 'scripts/verify/schedule/verify-decision-gates.ts' },
   { name: 'verify-iteration-metadata', script: 'scripts/verify/iterations/verify-iteration-metadata.ts' },
   { name: 'verify-document-references', script: 'scripts/verify/documents/verify-document-references.ts' },
   { name: 'verify-doc-index', script: 'scripts/verify/documents/verify-doc-index.ts' },

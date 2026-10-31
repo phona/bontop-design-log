@@ -56,6 +56,17 @@ not_started -> in_progress -> ready_for_inspection -> passed
 
 二、三期在业主确认范围和预算前保持 `proposed/alignment_required`，不得被AI自动升级为已批准采购。
 
+### 决策门禁（未拍板不得验收）
+
+`config/decision-gates.yaml` 登记全部待拍板决策，两种范围：
+
+- `scope: acceptance`：未拍板（`status: open`）期间阻塞具体验收项。被阻塞验收项不得出现 `passed` 审计记录——没有 passed 就没有「全部检查通过」，付款门槛（`computeGateStatus`）自然判 pending，不释放节点款。拍板后必须在登记表补 `decided_value`、`decided_by`、`decided_at`、`decision_evidence` 四件套，缺一即报错：没有 owner 与日期的拍板等于没拍板。
+- `scope: tracked`：不阻塞验收项的决策（采购、范围、流程类），但必须写 `tracking_note` 说明为什么不阻塞、缺口由谁跟踪，防止「以为有门禁、其实没有」。
+
+`acceptance.yaml` 与 `control.yaml` 散文里出现的「待 Dx 拍板」必须能在登记表找到对应决策，且散文点名的验收项必须登记在该决策的 `blocks` 里——门禁不许只活在注释里。登记表是各阶段视图与通过记录的项目数据指纹输入之一，登记表变化后旧 PASS 自动转 stale，复验追加新记录。
+
+叙事侧登记表在 `docs/pending-site-data.md`「决策点登记」节（待拍板内容与缺的证据，人读版），两侧编号集合必须一致：只登记一侧，另一侧就静默失效，校验器做双向对照。业主拍板后同时更新两侧：本表补拍板留痕四件套，叙事节同步改写。校验入口 `npm run verify:decision-gates`，已并入 `verify:all`。
+
 ## 4. 工作包规范
 
 每个工作包至少包含：稳定ID和顺序、预算池、计划/合同/已付/预测金额、依赖和阻塞项、责任角色、验收项、验收方法、通过标准、必需证据、付款门槛及当前状态。
@@ -159,6 +170,8 @@ npm run typecheck
 `schedule:render` 是唯一写入生成视图的命令；`verify:schedule` 只读检查，不会替换旧视图。全量 `verify:all` 也会检查所有阶段清单是否过期。
 
 验证覆盖预算合计、ID唯一性、依赖、阻塞引用、验收引用、审计归属、通过证据、复验历史和付款门槛。
+
+决策门禁单独立项校验：`npm run verify:decision-gates` 检查登记表自洽（编号、选项、blocks 引用、拍板留痕四件套）与门禁语义（未拍板决策不得有 passed 记录、散文引用必须被登记表收编），与 `verify:schedule` 一同并入 `verify:all`。
 
 ## 10. 当前阶段边界
 
