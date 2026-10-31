@@ -1131,7 +1131,7 @@ export class App {
     if (persisted.workbenchOpen !== undefined) {
       // 有存档：严格遵从用户上次的开合（收起就不再自动展开）
       if (persisted.workbenchOpen) {
-        this.previewWorkbench.setOpen(true, false);
+        this.previewWorkbench.setOpen(true);
         if (persisted.workbenchPage) this.previewWorkbench.activate(persisted.workbenchPage, false);
       }
     } else {

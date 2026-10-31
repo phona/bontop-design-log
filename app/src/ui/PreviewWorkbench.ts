@@ -26,7 +26,7 @@ export class PreviewWorkbench {
     root.querySelector<HTMLButtonElement>('[data-workbench-close]')!.onclick = () => this.setOpen(false);
     document.getElementById('workbench-reopen')!.addEventListener('click', () => this.setOpen(true));
     this.syncActivePage();
-    this.setOpen(false, false);
+    this.setOpen(false);
   }
 
   activate(page: PreviewWorkbenchPage, reveal = true): void {
@@ -61,12 +61,13 @@ export class PreviewWorkbench {
     if (scroll) scroll.scrollTop = 0;
   }
 
-  setOpen(open: boolean, resize = true): void {
+  // 开合不再触发画布 resize：工作台是 fixed 悬浮层，画布尺寸不随开合变化；
+  // 派发 resize 会让 renderer 重设尺寸并清屏，与画布 CSS 尺寸逐帧变化叠加导致闪烁。
+  setOpen(open: boolean): void {
     this.open = open;
     document.body.classList.toggle('workbench-open', open);
     document.body.classList.toggle('workbench-closed', !open);
     this.root.setAttribute('aria-hidden', String(!open));
-    if (resize) this.requestResize();
     this.emitChange();
   }
 
@@ -102,9 +103,5 @@ export class PreviewWorkbench {
       const maxScroll = Math.max(0, scroll.scrollHeight - scroll.clientHeight);
       scroll.scrollTop = Math.min(maxScroll, Math.max(0, summaryTop - 8));
     });
-  }
-
-  private requestResize(): void {
-    requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
   }
 }
