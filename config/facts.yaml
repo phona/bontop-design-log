@@ -1822,13 +1822,19 @@ contracts:
     when: { field: status, equals: decided }
     then: [decided_value, decided_by, decided_at, decision_evidence]
 
-  # 开放侧结构契约：open 决策必须带齐 id/topic/scope/question/options。
+  # 结构契约：每个登记的决策必须带齐 id/topic/scope/question/options。
   # min_matches: 1 = 这条契约今天必须真的管到东西——登记表被清空、status 或
   # options 字段被改名时立刻报错，不让结构契约退化成永真式。
+  #
+  # when 为什么不能写 equals: open：status=open 的合法终态就是 0 命中（业主把
+  # D1–D18 全拍完的那天）。挂 min_matches: 1 又按 open 匹配，等于给「项目达到
+  # 目标状态」预埋了一条必炸的误报（required_condition_unmatched），且错误信息
+  # 会把人往「字段是否被改名」的歧路引。故按 status 的两个合法取值匹配，守卫只对
+  # 「表空了 / 字段没了」报警，不对「题拍完了」报警。
   - id: c.decision_gate_open_fields
     kind: requires
     path: config/decision-gates.yaml
-    when: { field: status, equals: open }
+    when: { field: status, pattern: '^(open|decided)$' }
     then: [id, topic, scope, question, options]
     min_matches: 1
 
