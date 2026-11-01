@@ -91,9 +91,9 @@ decisions:
     question: 副龙骨取不超过 300mm 还是小于等于 40cm；主龙骨取 1000mm 以内还是小于等于 1.2m；吊杆与端头距离取哪档；是否按较严一档写进合同
     options:
       - 副龙骨 ≤300mm
-      - 副龙骨 ≤400mm（现行 check_carp_keel 口径）
+      - 副龙骨 ≤400mm（check_carp_keel 现行标准只写「龙骨间距 ≤400mm」、未分主副，本行是解释性归并）
       - 主龙骨 ≤1000mm
-      - 主龙骨 ≤1200mm（现行口径）
+      - 主龙骨 ≤1200mm（报告旗标档位；仓内无此验收口径——1200mm 仅见于算量规范区间 800–1200mm，见 config/ceiling-material-cost.yaml 与 docs/decisions/09-ceiling-takeoff.md，不是验收线）
     status: open
     blocks:
       - check_carp_keel

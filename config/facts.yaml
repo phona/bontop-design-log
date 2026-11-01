@@ -1813,11 +1813,24 @@ contracts:
   # 拍板留痕契约：status=decided 的决策必须同级的 decided_value / decided_by /
   # decided_at / decision_evidence 四件套齐全——没有 owner 与日期的「已拍板」
   # 等于没拍板（DEC-2026-10-11 增补第 2 条的同口径机制化）。
+  # 不挂 min_matches：今天 18 个决策全部 open，命中 0 条是正常状态，挂 min_matches: 1
+  # 会误报。防「字段改名后静默空转」由开放侧契约 c.decision_gate_open_fields 承担
+  # （它今天有 18 条命中，status/options 等字段名一被改就炸）。
   - id: c.decision_gate_decided_fields
     kind: requires
     path: config/decision-gates.yaml
     when: { field: status, equals: decided }
     then: [decided_value, decided_by, decided_at, decision_evidence]
+
+  # 开放侧结构契约：open 决策必须带齐 id/topic/scope/question/options。
+  # min_matches: 1 = 这条契约今天必须真的管到东西——登记表被清空、status 或
+  # options 字段被改名时立刻报错，不让结构契约退化成永真式。
+  - id: c.decision_gate_open_fields
+    kind: requires
+    path: config/decision-gates.yaml
+    when: { field: status, equals: open }
+    then: [id, topic, scope, question, options]
+    min_matches: 1
 
 # ─── T4 覆盖层 ───────────────────────────────────────────────────────────────
 

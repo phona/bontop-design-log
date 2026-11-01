@@ -11,7 +11,6 @@ import { describe, it } from 'node:test';
 import { spawnSync } from 'node:child_process';
 import {
   collectProseMentions,
-  openDecisionsBlocking,
   parseDecisionGates,
   readNarrativeDecisionIds,
   validateDecisionGates,
@@ -261,7 +260,8 @@ describe('决策门禁：叙事登记表双向对照', () => {
   });
 });
 
-describe('collectProseMentions：散文引用提取', () => {  it('提取 D 编号与同段共现的验收项，3D / DEC 编号不误判', () => {
+describe('collectProseMentions：散文引用提取（锚定措辞，防 DEC 局部裁定码撞号）', () => {
+  it('提取「待 D5 拍板」与同句共现的验收项；DEC 编号与 3D 不误判', () => {
     const mentions = collectProseMentions(
       '本条不锁定档位：打压档位待 D5 拍板，不得擅自改写 check_plumb_pressure 的既有口径；3D 预览与 DEC-2026-10-06-R1 不受影响。',
       'config/acceptance.yaml:check_gate.knowledge',
@@ -272,25 +272,34 @@ describe('collectProseMentions：散文引用提取', () => {  it('提取 D 编�
     assert.equal(mentions[0].source, 'config/acceptance.yaml:check_gate.knowledge');
   });
 
-  it('没有决策编号的文本不产生引用', () => {
-    assert.deepEqual(collectProseMentions('普通验收描述，没有任何决策编号。', 'x'), []);
+  it('DEC 局部裁定码 D1=A/D2=补贴 同句出现也不产生引用（review 必改 1 的回归锚点）', () => {
+    // 仓内真实形态：schedule/phase-1/control.yaml estimated_need_note 与 docs/ 下数十处
+    // 「业主贴砖质询裁定 D1=A / D2=补贴 / D3=B / D5=补」——与全局决策点同字面不同语义。
+    const mentions = collectProseMentions(
+      '历史沿革：2026-10-07 业主裁定 D1=A / D2=补贴 / D3=B / D5=补，本项 check_tile_hollow 口径随之调整。',
+      'config/acceptance.yaml:check_tile_hollow.knowledge',
+    );
+    assert.deepEqual(mentions, []);
+  });
+
+  it('跨句共现不算数：前半列验收项、后半句才说待拍板，不误判阻塞关系', () => {
+    const mentions = collectProseMentions(
+      '相关项：check_wp_dry_gate、check_tile_grout_dry。本条只作门禁，不锁档位（档位待 D5 拍板）。',
+      'config/acceptance.yaml:check_gate.knowledge',
+    );
+    assert.equal(mentions.length, 1);
+    assert.equal(mentions[0].decisionId, 'D5');
+    assert.deepEqual(mentions[0].namedChecks, []);
+  });
+
+  it('没有「待 Dx 拍板」措辞的文本不产生引用', () => {
+    assert.deepEqual(collectProseMentions('普通验收描述，D5 早已拍板，没有任何待决编号。', 'x'), []);
   });
 });
 
-describe('parseDecisionGates 与 openDecisionsBlocking', () => {
+describe('parseDecisionGates', () => {
   it('缺少 decisions 列表 → 抛错（fail loud，不静默放行）', () => {
     assert.throws(() => parseDecisionGates('version: 1\n'), /缺少 decisions/);
-  });
-
-  it('openDecisionsBlocking 只返回开放中的验收门禁', () => {
-    const gates = gatesOf(
-      gate(),
-      gate({ id: 'D9', topic: '龙骨', status: 'decided', blocks: ['check_carp_keel'],
-        decided_value: 'v', decided_by: '业主', decided_at: '2026-10-31', decision_evidence: ['e'] }),
-      gate({ id: 'D1', topic: '品牌', scope: 'tracked', tracking_note: 'n' }),
-    );
-    assert.deepEqual(openDecisionsBlocking(gates, 'check_plumb_pressure').map((d) => d.id), ['D5']);
-    assert.deepEqual(openDecisionsBlocking(gates, 'check_carp_keel'), []);
   });
 });
 

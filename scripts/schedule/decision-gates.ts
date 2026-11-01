@@ -20,10 +20,18 @@ const NARRATIVE_SECTION_MARKER = '## 决策点登记';
 
 /** 决策编号形如 D5；report 的 D1–D18 与仓内既有引用都走这个形态。 */
 const DECISION_ID_PATTERN = /^D\d+$/;
-/** 散文里「待 Dx 拍板」的引用形态。 */
-const PROSE_DECISION_PATTERN = /\bD(\d+)\b/g;
-/** 散文里与决策共现的验收项编号。 */
+/**
+ * 散文里「待拍板」的引用形态。**必须锚定措辞，不能匹配裸编号**：仓内 D1–D5
+ * 早已是 DEC 内部的局部裁定码（`D1=A`／`D2=补贴`／`D3=B`／`D4=L`／`D5=补`，
+ * 见 schedule/phase-1/control.yaml estimated_need_note 与 docs/ 下数十处），
+ * 与全局决策点 D1–D18 同字面、不同语义。裸 `\bD(\d+)\b` 会把局部裁定码当全局
+ * 决策引用，制造假阳性并把维护者推向错的修法（把无关验收项挂进别的决策 blocks）。
+ */
+const PROSE_DECISION_PATTERN = /待\s*D(\d+)\s*拍板/g;
+/** 散文里与决策引用同句共现的验收项编号（只在同一句内算共现，见 collectProseMentions）。 */
 const PROSE_CHECK_PATTERN = /\b(check_[a-z0-9_]+)\b/g;
+/** 句子切分：句号、分号、换行。引文「待 D5 拍板，不得擅自改写 check_x」在同一句内。 */
+const SENTENCE_SPLIT = /[。；;\n]/;
 
 export type DecisionScope = 'acceptance' | 'tracked';
 export type DecisionStatus = 'open' | 'decided';
@@ -117,25 +125,27 @@ export function readNarrativeDecisionIds(root: string): Set<string> {
   return new Set([...section.matchAll(/^\|\s*(D\d+)\s/gm)].map((match) => match[1]));
 }
 
-/** 收集一段散文里的决策引用与共现验收项；decisionId 形如 D5（不带前缀 D 的数字不收）。 */
+/**
+ * 收集一段散文里的「待 Dx 拍板」引用与**同句**共现的验收项。
+ *
+ * 同句限定是必要的：一条 knowledge 里完全可以前半列一串验收项编号、后半句才说
+ * 「档位待 D5 拍板」（config/facts.yaml 的契约注释就是这个形态），跨句共现会把
+ * 无关验收项误判为「被 D5 阻塞」。句子按句号/分号/换行切。
+ */
 export function collectProseMentions(text: string, source: string): ProseMention[] {
   const mentions: ProseMention[] = [];
-  const decisionMatches = [...text.matchAll(PROSE_DECISION_PATTERN)];
-  if (!decisionMatches.length) return mentions;
-  const namedChecks = [...new Set([...text.matchAll(PROSE_CHECK_PATTERN)].map((match) => match[1]))];
-  for (const match of decisionMatches) {
-    mentions.push({ source, decisionId: `D${match[1]}`, namedChecks });
+  for (const sentence of text.split(SENTENCE_SPLIT)) {
+    const decisionMatches = [...sentence.matchAll(PROSE_DECISION_PATTERN)];
+    if (!decisionMatches.length) continue;
+    const namedChecks = [...new Set([...sentence.matchAll(PROSE_CHECK_PATTERN)].map((match) => match[1]))];
+    for (const match of decisionMatches) {
+      mentions.push({ source, decisionId: `D${match[1]}`, namedChecks });
+    }
   }
   return mentions;
 }
 
 /** 阻塞某个验收项的开放门禁（control.ts 渲染注释用）。 */
-export function openDecisionsBlocking(gates: DecisionGates, checkId: string): Decision[] {
-  return gates.decisions.filter(
-    (decision) => decision.scope === 'acceptance' && decision.status === 'open' && (decision.blocks ?? []).includes(checkId),
-  );
-}
-
 export function openGatesByCheck(gates: DecisionGates): Map<string, Decision[]> {
   const map = new Map<string, Decision[]>();
   for (const decision of gates.decisions) {
