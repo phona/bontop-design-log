@@ -32,6 +32,7 @@
     "docs:generate-current-values": "tsx scripts/docs/generate-current-values.ts",
     "verify:current-values": "tsx scripts/verify/documents/verify-current-values.ts",
     "verify:yaml-hash": "tsx scripts/verify/yaml/verify-inline-comments.ts",
+    "verify:decision-gates": "node --import tsx scripts/verify/schedule/verify-decision-gates.ts",
     "generate:project-render-facts": "tsx scripts/project/project-render-facts-projection.ts data/project-render-facts.json",
     "takeoff:ceiling": "tsx scripts/project/ceiling-takeoff.ts",
     "state:project": "tsx scripts/project/state-projection.ts",
