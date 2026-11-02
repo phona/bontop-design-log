@@ -581,10 +581,17 @@ describe('App', () => {
           json: async () => ({
             links: [
               // 同一包两条 link（2026-11-02 评审 P1：曾用 find 只取第一个）——必须都聚合
-              { budget_ref: { id: 'PKG-1' }, scope: [{ source: 'test', select: { room_ids: ['living_room'], ids: ['sock_kitchen_gas', 'plumbing:drain_kitchen'] } }] },
-              { budget_ref: { id: 'PKG-1' }, scope: [{ source: 'test', select: { ids: ['sock_living_ac'] } }] },
+              // source 用真实来源（electrical/plumbing）：select.ids 是裸 id，resolvePackageScope
+              // 归一化成场景 objectId 约定（electrical:sock_kitchen_gas）——2026-11-02 浏览器
+              // 实证裸 id 直接进高亮集合会全线静默不命中，这条断言就是那条回归的哨兵。
+              { budget_ref: { id: 'PKG-1' }, scope: [
+                { source: 'model_geometry', select: { room_ids: ['living_room'] } },
+                { source: 'electrical', select: { ids: ['sock_kitchen_gas'] } },
+                { source: 'plumbing', select: { ids: ['drain_kitchen'] } },
+              ] },
+              { budget_ref: { id: 'PKG-1' }, scope: [{ source: 'electrical', select: { ids: ['sock_living_ac'] } }] },
               // 别的包的 link：不能被算进来
-              { budget_ref: { id: 'PKG-2' }, scope: [{ source: 'test', select: { ids: ['sock_other'] } }] },
+              { budget_ref: { id: 'PKG-2' }, scope: [{ source: 'electrical', select: { ids: ['sock_other'] } }] },
             ],
           }),
         } as Response;
@@ -597,7 +604,7 @@ describe('App', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(objectsSpy).toHaveBeenCalledWith(['living_room']);
-    expect(pointsSpy).toHaveBeenCalledWith(['sock_kitchen_gas', 'plumbing:drain_kitchen', 'sock_living_ac']);
+    expect(pointsSpy).toHaveBeenCalledWith(['electrical:sock_kitchen_gas', 'plumbing:drain_kitchen', 'electrical:sock_living_ac']);
   });
 
   it('点包高亮：links 拉取失败时不高亮也不抛（高亮失败不打断审批流）', async () => {

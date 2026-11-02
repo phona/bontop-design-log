@@ -2180,6 +2180,11 @@ export class HouseScene implements SceneApi {
         this.highlightOriginals.delete(mesh);
       }, 1200);
     });
+    // 高亮是 1200ms 瞬时态：应用侧的渲染是按需的（renderQueued 门控），触发高亮的
+    // 点击往往在异步拉取 links **之前**就排过一帧，着色完成后没有新帧驱动——业主
+    // 看到「点了没反应」，直到下次相机移动才补上（2026-11-02 真实浏览器实证）。
+    // 着色落地后自己请求一帧，两条高亮路径都适用。
+    this.requestRender();
   }
 
   /**
@@ -2240,6 +2245,8 @@ export class HouseScene implements SceneApi {
       // 非批 mesh：单件点位兜底（组内不足 2 件不合批，留在原位）
       this.highlightUnbatchedPoint(obj as THREE.Mesh, targetIds);
     });
+    // 同 highlightObjects：着色完成后自请一帧，否则按需渲染门控下高亮不上屏
+    this.requestRender();
   }
 
   /**

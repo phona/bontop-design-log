@@ -2082,8 +2082,8 @@ describe('HouseScene highlightObjects 竞态防护', () => {
       const batch = new (THREE.BatchedMesh as any)();
       // SceneBatcher 的桥接形态：instanceId → unit/mesh userData
       batch.userData.batchUserData = new Map<number, Record<string, unknown>>([
-        [0, {objectId: 'sock_kitchen_gas'}],
-        [1, {objectId: 'sock_living_ac'}],
+        [0, {objectId: 'electrical:sock_kitchen_gas'}],
+        [1, {objectId: 'electrical:sock_living_ac'}],
       ]);
       // mock 的 setColorAt 收任意 {r,g,b}（真 three 的 Color 构造只收单参数，
       // 多参数写法过不了 tsc——这里用普通对象预置原色）
@@ -2091,13 +2091,13 @@ describe('HouseScene highlightObjects 竞态防护', () => {
       batch.setColorAt(1, {r: 0.4, g: 0.5, b: 0.6});
       scene.getScene().add(batch);
 
-      scene.highlightPoints(['sock_kitchen_gas']);
+      scene.highlightPoints(['electrical:sock_kitchen_gas']);
       expect(batch.colorLog.get(0)).toEqual({r: 1, g: 0xaa / 255, b: 0}); // 0xffaa00
       // 未命中的实例不动
       expect(batch.colorLog.get(1)).toEqual({r: 0.4, g: 0.5, b: 0.6});
 
       // 竞态窗口内再点一次：旧实现会把第一次的橙色当原色，恢复后永久卡橙
-      scene.highlightPoints(['sock_kitchen_gas']);
+      scene.highlightPoints(['electrical:sock_kitchen_gas']);
       vi.runAllTimers();
       // 必须恢复真实原色（不是第一次留下的橙）
       expect(batch.colorLog.get(0)).toEqual({r: 0.1, g: 0.2, b: 0.3});
@@ -2179,11 +2179,11 @@ describe('HouseScene 点位级高亮覆盖（第三步）', () => {
     vi.useFakeTimers();
     try {
       const scene = makeScene();
-      const batch = makeBatch([[0, 'sock_kitchen_gas'], [1, 'sock_living_ac']]);
+      const batch = makeBatch([[0, 'electrical:sock_kitchen_gas'], [1, 'electrical:sock_living_ac']]);
       scene.getScene().add(batch);
       // 真实批次从未 setColorAt → getColorAt 必抛 TypeError。两个命中实例都必须点亮
       // （旧实现在第一个实例就中断 traverse，一个都不亮）
-      expect(() => scene.highlightPoints(['sock_kitchen_gas', 'sock_living_ac'])).not.toThrow();
+      expect(() => scene.highlightPoints(['electrical:sock_kitchen_gas', 'electrical:sock_living_ac'])).not.toThrow();
       expect(batch.colorLog.get(0)).toEqual({ r: 1, g: 0xaa / 255, b: 0 }); // 0xffaa00
       expect(batch.colorLog.get(1)).toEqual({ r: 1, g: 0xaa / 255, b: 0 });
       vi.runAllTimers();
@@ -2199,11 +2199,11 @@ describe('HouseScene 点位级高亮覆盖（第三步）', () => {
     vi.useFakeTimers();
     try {
       const scene = makeScene();
-      const batch = makeBatch([[0, 'sock_kitchen_gas']]);
+      const batch = makeBatch([[0, 'electrical:sock_kitchen_gas']]);
       // three 对未激活/越界实例返回 null 且不写 color
       batch.getColorAt = () => null;
       scene.getScene().add(batch);
-      scene.highlightPoints(['sock_kitchen_gas']);
+      scene.highlightPoints(['electrical:sock_kitchen_gas']);
       expect(batch.colorLog.get(0)).toEqual({ r: 1, g: 0xaa / 255, b: 0 });
       vi.runAllTimers();
       expect(batch.colorLog.get(0)).toEqual({ r: 1, g: 1, b: 1 });
@@ -2217,11 +2217,11 @@ describe('HouseScene 点位级高亮覆盖（第三步）', () => {
     try {
       const scene = makeScene();
       const batch = makeBatch(
-        [[0, 'sock_kitchen_gas'], [1, 'sock_living_ac'], [2, 'sock_bedroom']],
+        [[0, 'electrical:sock_kitchen_gas'], [1, 'electrical:sock_living_ac'], [2, 'electrical:sock_bedroom']],
         [[0, { r: 0.1, g: 0.2, b: 0.3 }], [1, { r: 0.4, g: 0.5, b: 0.6 }], [2, { r: 0.7, g: 0.8, b: 0.9 }]],
       );
       scene.getScene().add(batch);
-      scene.highlightPoints(['sock_kitchen_gas', 'sock_bedroom']);
+      scene.highlightPoints(['electrical:sock_kitchen_gas', 'electrical:sock_bedroom']);
       expect(batch.colorLog.get(0)).toEqual({ r: 1, g: 0xaa / 255, b: 0 });
       expect(batch.colorLog.get(1)).toEqual({ r: 0.4, g: 0.5, b: 0.6 }); // 未命中不动
       expect(batch.colorLog.get(2)).toEqual({ r: 1, g: 0xaa / 255, b: 0 });
@@ -2236,20 +2236,20 @@ describe('HouseScene 点位级高亮覆盖（第三步）', () => {
 
   it('无匹配 id、batchUserData 缺失或不是 Map：不着色也不抛错', () => {
     const scene = makeScene();
-    const batch = makeBatch([[0, 'sock_kitchen_gas']]);
+    const batch = makeBatch([[0, 'electrical:sock_kitchen_gas']]);
     scene.getScene().add(batch);
     // 非空但命中为零
-    expect(() => scene.highlightPoints(['sock_not_here'])).not.toThrow();
+    expect(() => scene.highlightPoints(['electrical:sock_not_here'])).not.toThrow();
     expect(batch.colorLog.size).toBe(0);
     // batchUserData 整个缺失（真实场景：doors/hvac 等非点位批次的 BatchedMesh）
     const noMap = new (THREE.BatchedMesh as any)();
     scene.getScene().add(noMap);
     // batchUserData 存在但不是 Map（脏数据）
     const notMap = new (THREE.BatchedMesh as any)();
-    notMap.userData.batchUserData = { 0: { objectId: 'sock_kitchen_gas' } };
+    notMap.userData.batchUserData = { 0: { objectId: 'electrical:sock_kitchen_gas' } };
     scene.getScene().add(notMap);
     // 用真实点位的 id 调用：只有带 Map 的真批次被着色，两个脏批次被守卫挡下
-    expect(() => scene.highlightPoints(['sock_kitchen_gas'])).not.toThrow();
+    expect(() => scene.highlightPoints(['electrical:sock_kitchen_gas'])).not.toThrow();
     expect(batch.colorLog.size).toBe(1);
     expect(noMap.colorLog.size).toBe(0);
     expect(notMap.colorLog.size).toBe(0);
@@ -2260,12 +2260,12 @@ describe('HouseScene 点位级高亮覆盖（第三步）', () => {
     try {
       const scene = makeScene();
       const batch = makeBatch(
-        [[0, 'sock_kitchen_gas'], [1, 'sock_living_ac']],
+        [[0, 'electrical:sock_kitchen_gas'], [1, 'electrical:sock_living_ac']],
         [[0, { r: 0.1, g: 0.2, b: 0.3 }], [1, { r: 0.4, g: 0.5, b: 0.6 }]],
       );
       scene.getScene().add(batch);
-      scene.highlightPoints(['sock_kitchen_gas']); // 包 A
-      scene.highlightPoints(['sock_kitchen_gas', 'sock_living_ac']); // 包 B 与 A 共用实例 0
+      scene.highlightPoints(['electrical:sock_kitchen_gas']); // 包 A
+      scene.highlightPoints(['electrical:sock_kitchen_gas', 'electrical:sock_living_ac']); // 包 B 与 A 共用实例 0
       vi.runAllTimers();
       expect(batch.colorLog.get(0)).toEqual({ r: 0.1, g: 0.2, b: 0.3 });
       expect(batch.colorLog.get(1)).toEqual({ r: 0.4, g: 0.5, b: 0.6 });
@@ -2317,12 +2317,12 @@ describe('HouseScene 点位级高亮覆盖（第三步）', () => {
       wall.userData = { objectId: 'wall_x', roomId: 'room_a' };
       wall.material = { emissive: emissiveMock() };
       scene.getScene().add(wall);
-      const batch = makeBatch([[0, 'sock_kitchen_gas']], [[0, { r: 0.4, g: 0.5, b: 0.6 }]]);
+      const batch = makeBatch([[0, 'electrical:sock_kitchen_gas']], [[0, { r: 0.4, g: 0.5, b: 0.6 }]]);
       scene.getScene().add(batch);
 
       // App.highlightApprovalPackage 的聚合口径：房间/对象走 highlightObjects，点位走 highlightPoints
       scene.highlightObjects(['wall_x']);
-      scene.highlightPoints(['sock_kitchen_gas']);
+      scene.highlightPoints(['electrical:sock_kitchen_gas']);
       expect(wall.material.emissive.r).toBe(0xffaa00);
       expect(batch.colorLog.get(0)).toEqual({ r: 1, g: 0xaa / 255, b: 0 });
       // 批次对象自身 userData 没有 objectId/roomId → highlightObjects 不会重复着色合批实例

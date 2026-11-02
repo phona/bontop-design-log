@@ -66,19 +66,35 @@ describe('resolvePackageScope', () => {
     assert.deepEqual(result.unresolved, ['model_geometry.collections: openings']);
   });
 
-  it('点位级选择器：ids 进 pointIds 不高亮，layers/trade 进 unresolved', () => {
+  it('点位级选择器：ids 归一化成场景 objectId（<来源>:<裸id>），layers/trade 进 unresolved', () => {
     const result = resolvePackageScope({
       scope: [{
         source: 'electrical',
         select: {layers: ['strong_power', 'weak_power'], ids: ['sock_kitchen_gas'], trade: ['curtain_box']},
       }],
     }, project);
-    // 点位是合批渲染，本步高亮命中不了——不许混进 objectIds 充数（2026-11-02 评审 P1）
+    // 点位是合批渲染，按 batchUserData.objectId 逐实例命中——不许混进 objectIds 充数（2026-11-02 评审 P1）
     assert.deepEqual(result.objectIds, []);
-    assert.deepEqual(result.pointIds, ['sock_kitchen_gas']);
+    // 裸 id → 场景约定 id。2026-11-02 真实浏览器实证：links 的 select.ids 一律裸 id、
+    // 场景 objectId 一律带 electrical:/plumbing: 前缀，两边不匹配时 ids 选择器的点位
+    // 高亮经 UI 全部静默 no-op、点位反查同样断——mock 用裸 id 所以照不到。
+    assert.deepEqual(result.pointIds, ['electrical:sock_kitchen_gas']);
     assert.equal(result.unresolved.length, 2);
     assert.ok(result.unresolved.some((entry) => entry.includes('layers: strong_power,weak_power')));
     assert.ok(result.unresolved.some((entry) => entry.includes('trade: curtain_box')));
+  });
+
+  it('plumbing ids 同样加 plumbing: 前缀；未登记来源带 ids 显形不静默', () => {
+    const result = resolvePackageScope({
+      scope: [
+        {source: 'plumbing', select: {ids: ['faucet_kitchen', 'drain_kitchen']}},
+        {source: 'mystery_source', select: {ids: ['whatever']}},
+      ],
+    }, project);
+    assert.deepEqual(result.pointIds, ['plumbing:faucet_kitchen', 'plumbing:drain_kitchen']);
+    // 前缀约定未知的来源：不进 pointIds（造出来也对不上），显形给 UI
+    assert.equal(result.unresolved.length, 1);
+    assert.ok(result.unresolved[0].includes('mystery_source.ids'));
   });
 
   it('select all → projectScope，不给 3D 位置', () => {
@@ -110,10 +126,13 @@ describe('buildObjectPackageIndex', () => {
     assert.equal(index.get('w_kit_north'), undefined, '全项目范围包不得占反查');
   });
 
-  it('点位 id 也进反查索引（点电气/给排水对象的拾取链路通）', () => {
+  it('点位 id 也进反查索引，键是带前缀的场景 objectId（与拾取侧解析值对齐）', () => {
     const index = buildObjectPackageIndex([
       {id: 'MODEL-PKG-145', budget_ref: {id: 'PKG-145'}, scope: [{source: 'electrical', select: {ids: ['sock_kitchen_gas']}}]},
     ], project);
-    assert.deepEqual(index.get('sock_kitchen_gas'), ['PKG-145']);
+    // 拾取侧 targetFromIntersects 从 batchUserData 解析出的 objectId 带前缀——
+    // 索引键必须是同一形式，裸 id 键会让点点位的反查静默落空（浏览器实证）。
+    assert.deepEqual(index.get('electrical:sock_kitchen_gas'), ['PKG-145']);
+    assert.equal(index.get('sock_kitchen_gas'), undefined, '裸 id 键是坏口径，不得回退');
   });
 });

@@ -10,6 +10,9 @@
  * electrical/plumbing/ceiling/hvac 的 ids/layers/trade/plan_ids——挪到第三步，
  * 它们要逐类核对 BatchedMesh 的 batchUserData 桥接，风险后置）。展不开的
  * 选择器进 unresolved 由 UI 明示「本步高亮不到」，不静默丢弃、不硬凑。
+ * **2026-11-02 更新**：点位级高亮已由 PR #54 落地（highlightPoints 逐实例着色），
+ * select.ids 归一化为场景 objectId 约定（见 POINT_SOURCE_PREFIXES）；layers/trade/
+ * plan_ids 仍不展开，`select {all: true}` 对点位来源仍只判全项目范围（P2-9）。
  * 服务端 assertSelector（server/model-package-links.ts）已保证选择器引用的
  * id 在权威文档里真实存在；本模块只负责「场景里能高亮什么」。
  */
@@ -27,10 +30,9 @@ export interface PackageScopeResolution {
   /** 场景对象 id 集合（按 userData.objectId 匹配高亮；墙/叠加层区域/家具类）。 */
   objectIds: string[];
   /**
-   * 点位 id 集合（电气/给排水/HVAC 的 sock_ / ac_ / faucet_ 等前缀 id）。
-   * **本步不高亮**：点位走合批渲染（BatchedMesh），实例不在 traverse 的
-   * mesh.userData 上逐件命中，要按 batchUserData 桥接扩展（第三步）。反查仍用
-   * 它们——点点位对象的拾取链路是通的，能反查归属包。
+   * 点位 id 集合（场景 objectId 形式：`electrical:sock_living_ac` 等）。第三步已落地：
+   * HouseScene.highlightPoints 按 batchUserData 逐实例着色（未合批单件走 emissive 兜底），
+   * 反查索引同样用这批 id（拾取侧解析出的 objectId 带同一前缀）。
    */
   pointIds: string[];
   /** true = 全项目范围（project_scope/select all）：不硬找 3D 位置。 */
@@ -65,6 +67,21 @@ const COLLECTION_ELEMENT_TYPES: Record<string, string[]> = {
   walls: ['wall'],
 };
 
+/**
+ * 点位来源 → 场景 objectId 前缀（InfrastructureBuilder.ts:188 `objectId: \`${category}:\` + point.id`，
+ * InteriorLightingSystem.ts:251 电气灯具同约定）。links 的 select.ids 是**裸 id**（sock_living_ac），
+ * 场景 batchUserData.objectId 一律**带前缀**（electrical:sock_living_ac）——2026-11-02 真实浏览器
+ * 验证发现两边不匹配时，ids 选择器的点位高亮经 UI 全部静默 no-op（targetIds.has(objectId) 永不命中），
+ * 点位反查也同样断（索引键裸 id vs 拾取带回前缀 id）。mock 测试照不到是因为 mock 用了裸 id。
+ * 归一化只此一处：高亮与反查索引都消费这里的输出，改一处两边同时对。
+ */
+const POINT_SOURCE_PREFIXES: Record<string, string> = {
+  electrical: 'electrical:',
+  plumbing: 'plumbing:',
+  ceiling: 'ceiling:',
+  hvac: 'hvac:',
+};
+
 export function resolvePackageScope(link: PackageScopeLink, project: ProjectScopeInput): PackageScopeResolution {
   const roomIds = new Set<string>();
   const objectIds = new Set<string>();
@@ -85,9 +102,21 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
       // 只高亮真实存在的房间（服务端 assertSelector 已校验，这里再收一道）
       if (knownRoomIds.has(roomId)) roomIds.add(roomId);
     }
-    // ids = 点位级（sock_*/ac_*/faucet_* 等）：本步不进高亮集合（合批渲染命中不了，
-    // 见 pointIds 注释），但进反查索引（点点位的拾取链路是通的）。
-    for (const id of select.ids ?? []) pointIds.add(id);
+    // ids = 点位级（sock_*/ac_*/faucet_* 等）。归一化成场景 objectId 约定
+    // （<来源>:<裸 id>，见 POINT_SOURCE_PREFIXES）：合批渲染按 batchUserData.objectId
+    // 逐实例命中（HouseScene.highlightPoints，第三步已落地），反查索引也按这个键
+    // （拾取侧 targetFromIntersects 解析出的就是带前缀 id）。裸 id 直接进集合会
+    // 两边都静默不命中——2026-11-02 浏览器实证，勿回退。
+    for (const id of select.ids ?? []) {
+      const prefix = POINT_SOURCE_PREFIXES[scope.source];
+      if (prefix) {
+        pointIds.add(`${prefix}${id}`);
+      } else {
+        // 未登记的来源带 ids：前缀约定未知，宁肯显形也不静默造一个对不上的键
+        unresolved.push(`${scope.source}.ids: ${(select.ids ?? []).join(',')}（未登记的点位来源，objectId 前缀约定未知，不高亮也不进反查）`);
+        break;
+      }
+    }
     for (const type of select.types ?? []) {
       for (const element of sceneElements) {
         if (element.type === type && element.id) objectIds.add(element.id);
@@ -131,7 +160,7 @@ export function buildObjectPackageIndex(
     // 都跳它，噪声淹没真实归属
     if (projectScope) continue;
     // 点位也进索引：点电气/给排水对象的拾取链路（batchUserData 桥接）是通的，
-    // 能反查归属包；只是本步不高亮它们（见 pointIds 注释）。
+    // 能反查归属包；高亮侧同样消费这批 id（第三步已落地，见 pointIds 注释）。
     for (const id of [...roomIds, ...objectIds, ...pointIds]) {
       const existing = index.get(id);
       if (existing) {
