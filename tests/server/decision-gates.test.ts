@@ -16,7 +16,7 @@ import {
   validateDecisionGates,
   type Decision,
   type DecisionGates,
-} from '../../scripts/schedule/decision-gates.js';
+} from '../../shared/decision-gates.js';
 
 const gate = (overrides: Partial<Decision> = {}): Decision => ({
   id: 'D5',

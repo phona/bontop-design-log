@@ -1846,8 +1846,8 @@ coverage:
   - { file: config/acceptance.yaml, field: "phases", readers: ["scripts/schedule/control.ts"] }
   # 决策门禁登记表：version 由加载模块校验；decisions 由共享判定模块、
   # control.ts（渲染阻塞注释与指纹）与专用校验器三方读。
-  - { file: config/decision-gates.yaml, field: "version", readers: ["scripts/schedule/decision-gates.ts"] }
-  - { file: config/decision-gates.yaml, field: "decisions", readers: ["scripts/schedule/decision-gates.ts", "scripts/schedule/control.ts", "scripts/verify/schedule/verify-decision-gates.ts"] }
+  - { file: config/decision-gates.yaml, field: "version", readers: ["shared/decision-gates.ts"] }
+  - { file: config/decision-gates.yaml, field: "decisions", readers: ["shared/decision-gates.ts", "shared/schedule-state.ts", "scripts/verify/schedule/verify-decision-gates.ts"] }
   - { file: config/budget-pitfalls.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/budget-pitfalls.yaml, field: "pitfalls", readers: [] }
   - { file: config/budget-pitfalls.yaml, field: "templates", readers: [] }
