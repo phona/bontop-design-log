@@ -23,7 +23,7 @@ import {
   type DecisionGates,
   type GateIssue,
   type ProseMention,
-} from '../../schedule/decision-gates.js';
+} from '../../../shared/decision-gates.js';
 
 type AnyRecord = Record<string, any>;
 

@@ -1,4 +1,4 @@
 # typecheck 基线错误集（归一化键：子树前缀 root:/app: + 文件 :: TS 错误码 :: 消息主体，已剥离行列号）。
 # 计数对照：同一键出现几行就是几条，增减按条计。维护纪律见 AGENTS.md「CI 基线纪律」。
-root:scripts/schedule/control.ts :: TS7006 :: Parameter 'issue' implicitly has an 'any' type.
-root:scripts/schedule/control.ts :: TS7006 :: Parameter 'issue' implicitly has an 'any' type.
+# 2026-11-02：两条存量 TS7006（scripts/schedule/control.ts 隐式 any）随 shared/schedule-state.ts
+# 抽取修复——loader 接口化给 packageGateIssues/staleAudits 带来显式类型，基线清空。删行为 PR-A 战果。

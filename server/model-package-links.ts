@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
-import { ModelPackageLinksSchema, type ModelPackageLinks, type ModelPackageScopeRef } from '../shared/model-package-links.js';
+import { MODEL_PACKAGE_LINKS_PATH, ModelPackageLinksSchema, type ModelPackageLinks, type ModelPackageScopeRef } from '../shared/model-package-links.js';
 
-export const MODEL_PACKAGE_LINKS_PATH = 'config/model-package-links.yaml';
+// 2026-11-02（自装交互审批第一步）：常量迁至 shared/model-package-links.ts——
+// shared/schedule-state.ts 的指纹计算要用它，shared/ 不得反向依赖 server/。此处转发导出。
+export { MODEL_PACKAGE_LINKS_PATH };
 
 function containsId(value: unknown, id: string): boolean {
   if (Array.isArray(value)) return value.some((item) => containsId(item, id));

@@ -39,6 +39,13 @@ export const ModelPackageLinksSchema = z.object({
   links: z.array(ModelPackageLinkSchema),
 }).strict();
 
+/**
+ * 登记表文件路径（2026-11-02 自装交互审批第一步从 server/model-package-links.ts
+ * 迁到此处）：shared/schedule-state.ts 的指纹计算要用这个常量，而 shared/ 不得
+ * 反向依赖 server/。server/model-package-links.ts 转发导出，既有 import 不变。
+ */
+export const MODEL_PACKAGE_LINKS_PATH = 'config/model-package-links.yaml';
+
 export type ModelPackageLink = z.infer<typeof ModelPackageLinkSchema>;
 export type ModelPackageLinks = z.infer<typeof ModelPackageLinksSchema>;
 /** 单条 scope 引用（source + select）：服务端 assertSelector 用它取 selector 类型。 */

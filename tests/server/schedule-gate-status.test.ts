@@ -3,7 +3,7 @@
 // failed（任一 critical failed）、passed（**全部**检查 passed）、pending（其余，含无 critical 包）。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeGateStatus, type GateCheck } from '../../scripts/schedule/gate-status.js';
+import { computeGateStatus, type GateCheck } from '../../shared/gate-status.js';
 
 type Status = string | undefined;
 
