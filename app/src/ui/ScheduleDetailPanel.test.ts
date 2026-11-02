@@ -57,6 +57,12 @@ function packageView(overrides: Partial<SchedulePackageView> = {}): SchedulePack
         audit_status: 'stale', stale_reasons: ['项目数据已变化'], open_gates: ['DEC-瓷砖'],
         can_run_while_blocked: true, check_spec_sha256: '0f1e2d3c4b5a',
       }),
+      check({
+        id: 'SCH-010-03', item: '贴砖复验', severity: 'critical', checkpoint: '贴砖完成后',
+        method: '现场核对', pass_condition: '无空鼓', evidence_required: ['照片'],
+        audit_status: 'passed', audit: {id: 'AUD-PKG-010-SCH-010-03-001', checked_by: '业主', checked_at: '2026-10-30', evidence: []},
+        check_spec_sha256: '112233445566',
+      }),
     ],
     project_fingerprint: 'f'.repeat(64),
     ...overrides,
@@ -69,7 +75,7 @@ function snapshot(pkg: SchedulePackageView): ScheduleSnapshot {
       id: 'phase_1_basic_occupancy', status: 'in_progress', current_gate: 'GATE-量房冻结',
       ceiling_cny: 300000, allocated_cny: 250000, unallocated_cny: 50000, known_pending_gap_cny: 2000,
     },
-    counts: {packages: 1, checks: 2, cost_components: 3, unpriced_components: 1, open_decision_gates: 0, open_gated_checks: 0, ready_packages: 1},
+    counts: {packages: 1, checks: 3, cost_components: 3, unpriced_components: 1, open_decision_gates: 0, open_gated_checks: 0, ready_packages: 1},
     data_fingerprint: 'd'.repeat(64),
     packages: [pkg],
     decision_gates: {open: [], decided_count: 0},
@@ -169,7 +175,7 @@ describe('ScheduleDetailPanel', () => {
     expect(body.textContent).toContain('dddddddddddd');
     // 检查行 data-active 同步
     const rows = Array.from(body.querySelectorAll('tr[data-check-id]')) as HTMLElement[];
-    expect(rows.map((row) => row.dataset.checkId)).toEqual(['SCH-010-01', 'SCH-010-02']);
+    expect(rows.map((row) => row.dataset.checkId)).toEqual(['SCH-010-01', 'SCH-010-02', 'SCH-010-03']);
     expect(rows[0].dataset.active).toBe('false');
   });
 
@@ -326,6 +332,7 @@ function greenGates(): Array<{name: string; ok: boolean; detail: string}> {
     {name: '控制源校验', ok: true, detail: 'schedule control valid'},
     {name: '草稿校验', ok: true, detail: '1 条结果全部合法'},
     {name: '证据文件在位', ok: true, detail: '全部证据文件存在'},
+    {name: '前置与阻塞', ok: true, detail: '依赖包与阻塞项均已关闭'},
     {name: 'verify:schedule（当前树）', ok: true, detail: 'ok'},
   ];
 }
@@ -355,6 +362,7 @@ function prBodyText(): string {
     '',
     '### 付款节点',
     '- 付款门槛 `GATE-010-A`：当前 `pending`。',
+    '- **本次放行：无（包未全部通过：1/2）；付款只在合并后生效**',
   ].join('\n');
 }
 
@@ -489,7 +497,7 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
 
     // 草稿再变化 → 旧卡点结论作废（不许拿旧 gates 放行新草稿）
     click('#acceptance-run-gates');
-    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 4/4'));
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'));
     click('[data-status-btn="SCH-010-01"][data-status="passed"]');
     await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
     await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('还没跑过机械卡点'));
@@ -543,6 +551,7 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
       {name: '控制源校验', ok: true, detail: 'schedule control valid'},
       {name: '草稿校验', ok: false, detail: 'SCH-010-01: 缺少检查人（checked_by 必填）'},
       {name: '证据文件在位', ok: true, detail: '全部证据文件存在'},
+      {name: '前置与阻塞', ok: false, detail: '前置/阻塞未满足，不得提交：阻塞项 BLK-量房 尚未有证据关闭'},
       {name: 'verify:schedule（当前树）', ok: false, detail: 'stale audit: AUD-x\n第二行原因'},
     ]}})}});
     click('#acceptance-run-gates');
@@ -551,11 +560,13 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect(bar.textContent).toContain('✓');
     expect(bar.textContent).toContain('✗');
     expect(bar.textContent).toContain('草稿校验');
+    expect(bar.textContent).toContain('前置与阻塞');
     expect(bar.textContent).toContain('verify:schedule（当前树）');
     expect(bar.textContent).toContain('SCH-010-01: 缺少检查人（checked_by 必填）');
+    expect(bar.textContent).toContain('阻塞项 BLK-量房 尚未有证据关闭');
     expect(bar.textContent).toContain('stale audit: AUD-x');
     expect(bar.textContent).toContain('第二行原因');
-    expect(bar.textContent).toContain('卡点 2/4');
+    expect(bar.textContent).toContain('卡点 2/5');
     // 卡点不全绿 → 预演禁用
     expect((document.querySelector('#acceptance-dry-run') as HTMLButtonElement).disabled).toBe(true);
     expect((document.querySelector('#acceptance-submit') as HTMLButtonElement).disabled).toBe(true);
@@ -564,7 +575,7 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
   it('PR 预演：records 表格（id/检查/状态/指纹前 12 位）+ pr_body 预览', async () => {
     await mountPanel();
     click('#acceptance-run-gates');
-    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 4/4'));
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'));
     const dryButton = document.querySelector('#acceptance-dry-run') as HTMLButtonElement;
     expect(dryButton.disabled).toBe(false);
     dryButton.click();
@@ -583,7 +594,7 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect((document.querySelector('#acceptance-submit') as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('确认提交两步：第一次只进确认态，第二次才 POST；成功显示 PR 链接', async () => {
+  it('确认提交两步：第一次只进确认态，第二次才 POST；成功后禁用并显示分支/commit', async () => {
     let submitCount = 0;
     const {calls} = await mountPanel({handlers: {submit: (body) => {
       if ((body as {dry_run?: boolean})?.dry_run) {
@@ -591,15 +602,15 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
       }
       submitCount += 1;
       return {status: 201, body: {
-        branch: 'accept/PKG-010-20261102',
+        branch: 'accept/PKG-010-20261102-101530',
         commit: 'abc1234',
-        pr_url: submitCount === 1 ? 'https://github.com/phona/bontop-design-log/pull/99' : 'javascript:alert(1)',
+        pr_url: 'javascript:alert(1)',
         records: [],
         pr_body: prBodyText(),
       }};
     }}});
     click('#acceptance-run-gates');
-    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 4/4'));
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'));
     click('#acceptance-dry-run');
     await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演'));
 
@@ -611,26 +622,61 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect(submitButton().textContent).toContain('再点一次');
     expect(realSubmitCalls()).toEqual([]);
 
-    // 第二次：才 POST，成功显示 PR 链接 + 分支 + commit
+    // 第二次：才 POST，成功显示分支 + commit
     submitButton().click();
     await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('已开 PR'));
     expect(realSubmitCalls().length).toBe(1);
     expect(realSubmitCalls()[0].body).toEqual({package_id: 'PKG-010'});
+    const bar = document.querySelector('#acceptance-actions') as HTMLElement;
+    expect(bar.textContent).toContain('accept/PKG-010-20261102-101530');
+    expect(bar.textContent).toContain('abc1234');
+
+    // 非 http(s) 的 pr_url 只渲染纯文本 <code>，不当链接渲染
+    expect(document.querySelector('#acceptance-actions a')).toBeNull();
+    const codes = Array.from(document.querySelectorAll('#acceptance-actions code')).map((el) => el.textContent ?? '');
+    expect(codes.some((text) => text.includes('javascript:alert(1)'))).toBe(true);
+
+    // 提交成功后按钮禁用：服务端已清草稿+暂存，再点只会拿到空草稿（P1-4）
+    expect(submitButton().disabled).toBe(true);
+    submitButton().click();
+    expect(realSubmitCalls().length).toBe(1);
+  });
+
+  it('提交成功：禁用提交按钮并提示「已开 PR：<url>；草稿已清，勿重复提交」', async () => {
+    await mountPanel();
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'));
+    click('#acceptance-dry-run');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演'));
+
+    const submitButton = () => document.querySelector('#acceptance-submit') as HTMLButtonElement;
+    submitButton().click();
+    submitButton().click();
+    const bar = document.querySelector('#acceptance-actions') as HTMLElement;
+    await vi.waitFor(() => expect(bar.textContent).toContain('已开 PR'));
+    // http(s) 的 pr_url 渲染为安全链接
     const link = document.querySelector('#acceptance-actions a') as HTMLAnchorElement;
     expect(link.getAttribute('href')).toBe('https://github.com/phona/bontop-design-log/pull/99');
     expect(link.getAttribute('target')).toBe('_blank');
     expect(link.getAttribute('rel')).toBe('noopener noreferrer');
-    const bar = document.querySelector('#acceptance-actions') as HTMLElement;
-    expect(bar.textContent).toContain('accept/PKG-010-20261102');
-    expect(bar.textContent).toContain('abc1234');
+    // 「草稿已清，勿重复提交」显形 + 按钮禁用
+    expect(bar.textContent).toContain('草稿已清，勿重复提交');
+    expect(submitButton().disabled).toBe(true);
+    expect(submitButton().textContent).toContain('勿重复提交');
+  });
 
-    // 非 http(s) 的 pr_url 只渲染纯文本 <code>，不当链接渲染
-    submitButton().click();
-    submitButton().click();
-    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('javascript:alert(1)'));
-    expect(document.querySelector('#acceptance-actions a')).toBeNull();
-    const codes = Array.from(document.querySelectorAll('#acceptance-actions code')).map((el) => el.textContent ?? '');
-    expect(codes.some((text) => text.includes('javascript:alert(1)'))).toBe(true);
+  it('复验 supersedes：当前记录 id 显形（占位符+同行提示），不再是死路', async () => {
+    await mountPanel();
+    const input = document.querySelector('[data-supersedes="SCH-010-03"]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(input.placeholder).toBe('AUD-PKG-010-SCH-010-03-001');
+    expect(input.title).toContain('AUD-PKG-010-SCH-010-03-001');
+    const opRow = document.querySelector('tr[data-check-op="SCH-010-03"]') as HTMLElement;
+    expect(opRow.textContent).toContain('当前记录：AUD-PKG-010-SCH-010-03-001');
+    expect(opRow.textContent).toContain('仓库现值：已通过');
+    expect(opRow.textContent).toContain('AUD-PKG-010-SCH-010-03-001');
+    // pending 检查不显示 supersedes 行
+    expect(document.querySelector('[data-supersedes="SCH-010-01"]')).toBeNull();
   });
 
   it('refresh 重取草稿：服务端有值的以服务端为准，本地未保存的编辑不丢', async () => {

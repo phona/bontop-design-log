@@ -22,7 +22,7 @@ import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadModelPackageLinks } from './model-package-links.js';
 import { buildScheduleSnapshot, loadScheduleState } from '../shared/schedule-state.js';
 import {
-  AcceptanceError, clearStaging, finalizeEvidence, loadDraft, runPreSubmitGates, saveDraft, stageEvidence, submitAcceptance,
+  AcceptanceError, acceptBranchName, assertPackageCheckExists, finalizeEvidence, loadDraft, runPreSubmitGates, saveDraft, stageEvidence, submitAcceptance,
 } from './acceptance-draft-store.js';
 import { projectAuditRecords, renderPrBody } from '../shared/acceptance-draft.js';
 import {
@@ -414,6 +414,9 @@ export function createApiRouter(deps: ApiDeps): Router {
         res.status(400).json({error: 'request body must be {package_id, check_id, filename, data_base64}'});
         return;
       }
+      // 包/检查必须真实存在（P0-1）：package_id/check_id 直接拼进暂存目录路径，
+      // 含 `../` 即越界写暂存区外。store 内部还会再校验一次（纵深防御）。
+      assertPackageCheckExists(package_id, check_id);
       res.status(201).json(stageEvidence(package_id, check_id, filename, data_base64));
     } catch (err) {
       if (err instanceof AcceptanceError) { res.status(400).json({error: err.message}); return; }
@@ -428,6 +431,8 @@ export function createApiRouter(deps: ApiDeps): Router {
         res.status(400).json({error: 'request body must be {package_id, check_id, staging_path}'});
         return;
       }
+      // 同 evidence：先校验包/检查存在，再进 store（内部同样再校验）
+      assertPackageCheckExists(package_id, check_id);
       res.status(201).json(finalizeEvidence(package_id, check_id, staging_path));
     } catch (err) {
       if (err instanceof AcceptanceError) { res.status(400).json({error: err.message}); return; }
@@ -470,13 +475,13 @@ export function createApiRouter(deps: ApiDeps): Router {
           checkSpecSha256: (checkId) => state.checkSpecHash(rawPkg, checkId),
           projectDataSha256: state.packageProjectFingerprint(rawPkg),
         }, existingCounts);
-        res.json({dry_run: true, records, pr_body: renderPrBody(draft, pkg, `accept/${packageId}-<date>`)});
+        res.json({dry_run: true, records, pr_body: renderPrBody(draft, pkg, acceptBranchName(packageId, new Date()))});
         return;
       }
       res.status(201).json(submitAcceptance(packageId));
     } catch (err) {
       if (err instanceof AcceptanceError) {
-        res.status(err.message.includes('已中止并回滚') ? 409 : 422).json({error: err.message, detail: err.detail});
+        res.status(err.status ?? (err.message.includes('已中止并回滚') ? 409 : 422)).json({error: err.message, detail: err.detail});
         return;
       }
       res.status(500).json({error: err instanceof Error ? err.message : String(err)});

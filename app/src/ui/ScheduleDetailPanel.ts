@@ -401,10 +401,15 @@ export class ScheduleDetailPanel {
     const blockedNote = blocked
       ? `<span style="color:#e9c46a;font-size:11px;">被 ${escapeHtml(openGates.join('、'))} 未拍板决策阻塞：拍板前 passed 禁用</span>`
       : '';
+    // 复验 supersedes 联动（P1-1/P1-2）：服务端要求 supersedes 必须等于本包本检查
+    // 的**当前记录 id**（快照 audit.id）。这里把当前记录 id 显形（占位符 + 同行
+    // 提示），输入框不再是死路；指错会被服务端 422 挂回本行红字。
+    const currentRecordId = check.audit?.id ?? '';
     const supersedesRow = check.audit_status === 'passed'
       ? `<label style="color:#9aa4b2;white-space:nowrap;">复验 supersedes（旧记录 id）
-          <input type="text" data-supersedes="${escapeHtml(check.id)}" value="${escapeHtml(state.supersedes)}" placeholder="AUD-…" style="width:130px;padding:2px 5px;border:1px solid rgba(255,255,255,.2);border-radius:4px;background:#20203a;color:#e0e0e0;font-size:11px;">
-        </label>`
+          <input type="text" data-supersedes="${escapeHtml(check.id)}" value="${escapeHtml(state.supersedes)}" placeholder="${escapeHtml(currentRecordId || 'AUD-…')}" title="${escapeHtml(currentRecordId ? `复验必须填当前记录 id：${currentRecordId}` : '复验请填旧记录 id（AUD-…）')}" style="width:130px;padding:2px 5px;border:1px solid rgba(255,255,255,.2);border-radius:4px;background:#20203a;color:#e0e0e0;font-size:11px;">
+        </label>
+        ${currentRecordId ? `<span style="color:#9aa4b2;font-size:11px;white-space:nowrap;">当前记录：<code>${escapeHtml(currentRecordId)}</code></span>` : ''}`
       : '';
     const inputStyle = 'width:110px;padding:2px 5px;border:1px solid rgba(255,255,255,.2);border-radius:4px;background:#20203a;color:#e0e0e0;font-size:11px;';
     const wideStyle = 'width:180px;padding:2px 5px;border:1px solid rgba(255,255,255,.2);border-radius:4px;background:#20203a;color:#e0e0e0;font-size:11px;';
@@ -413,7 +418,7 @@ export class ScheduleDetailPanel {
         <div style="font-size:11px;color:#6fa8dc;margin-bottom:3px;">验收操作（写草稿，只进 tmp/）</div>
         <div style="font-size:11px;color:#9aa4b2;margin-bottom:4px;line-height:1.7;">
           仓库现值：<strong>${escapeHtml(labelOf(AUDIT_LABEL, check.audit_status))}</strong>
-          （${escapeHtml(check.audit?.checked_by ?? '—')} / ${escapeHtml(check.audit?.checked_at ?? '—')}）
+          （${escapeHtml(check.audit?.checked_by ?? '—')} / ${escapeHtml(check.audit?.checked_at ?? '—')}${check.audit?.id ? ` / ${escapeHtml(check.audit.id)}` : ''}）
           ｜草稿值：<strong data-draft-value="${escapeHtml(check.id)}" style="color:${state.status ? DRAFT_STATUS_COLOR[state.status] : NEUTRAL};">${escapeHtml(state.status ? DRAFT_STATUS_LABEL[state.status] : '未选择')}</strong>
           ｜证据要求：${check.evidence_required.map((evidence) => escapeHtml(evidence)).join('、') || '—'}
         </div>
@@ -572,8 +577,11 @@ export class ScheduleDetailPanel {
     const gatesTotal = this.gates?.gates.length ?? 0;
     const gatesPassed = this.gates?.gates.filter((gate) => gate.ok).length ?? 0;
     const dryReady = this.dryRun !== null && !this.dryRunLoading;
-    const submitDisabled = !dryReady || this.submitting;
-    const submitLabel = this.submitting ? '提交中…' : this.submitArmed ? '再点一次：确认开 PR' : '确认提交（开 PR）';
+    // 提交成功后按钮永久禁用：服务端已清草稿+暂存，再点只会拿到空草稿 422（P1-4）
+    const submitDisabled = !dryReady || this.submitting || this.submitResult !== null;
+    const submitLabel = this.submitting ? '提交中…'
+      : this.submitResult ? '已开 PR（草稿已清，勿重复提交）'
+      : this.submitArmed ? '再点一次：确认开 PR' : '确认提交（开 PR）';
     const submitStyle = this.submitArmed
       ? 'cursor:pointer;padding:4px 10px;border-radius:6px;font-size:12px;border:1px solid #d9534f;background:#5a2321;color:#ffd9d6;'
       : 'cursor:pointer;padding:4px 10px;border-radius:6px;font-size:12px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#c9cede;';
@@ -584,8 +592,8 @@ export class ScheduleDetailPanel {
       <div style="color:#9aa4b2;font-size:11px;margin-bottom:6px;">草稿只存 tmp/；进仓库的唯一路径是分支 + commit + PR，合并由业主亲手点（铁律）。</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
         <button type="button" id="acceptance-run-gates"${this.gatesLoading ? ' disabled' : ''} style="${this.gatesLoading ? disabledStyle : buttonStyle}">${this.gatesLoading ? '卡点执行中…' : '跑机械卡点'}</button>
-        <button type="button" id="acceptance-dry-run"${gatesGreen && !this.dryRunLoading ? '' : ' disabled'} title="${gatesGreen ? '只算将写入的记录与 PR 正文，不碰 git' : '先跑机械卡点且四道全绿'}" style="${gatesGreen && !this.dryRunLoading ? buttonStyle : disabledStyle}">${this.dryRunLoading ? '预演生成中…' : '生成 PR 预演'}</button>
-        <button type="button" id="acceptance-submit"${submitDisabled ? ' disabled' : ''} title="${dryReady ? '两步确认：第一次只进确认态，第二次才真正开 PR' : '先生成 PR 预演'}" style="${submitDisabled ? disabledStyle : submitStyle}">${escapeHtml(submitLabel)}</button>
+        <button type="button" id="acceptance-dry-run"${gatesGreen && !this.dryRunLoading ? '' : ' disabled'} title="${gatesGreen ? '只算将写入的记录与 PR 正文，不碰 git' : '先跑机械卡点且五道全绿'}" style="${gatesGreen && !this.dryRunLoading ? buttonStyle : disabledStyle}">${this.dryRunLoading ? '预演生成中…' : '生成 PR 预演'}</button>
+        <button type="button" id="acceptance-submit"${submitDisabled ? ' disabled' : ''} title="${this.submitResult ? '已开 PR 且草稿已清，勿重复提交' : dryReady ? '两步确认：第一次只进确认态，第二次才真正开 PR' : '先生成 PR 预演'}" style="${submitDisabled ? disabledStyle : submitStyle}">${escapeHtml(submitLabel)}</button>
         ${this.gates ? `<span style="font-size:11px;color:${this.gates.ok ? '#5cb85c' : '#d9534f'};">卡点 ${gatesPassed}/${gatesTotal}</span>` : ''}
       </div>
       ${this.renderGatesArea()}
@@ -601,7 +609,7 @@ export class ScheduleDetailPanel {
     if (!this.gates) {
       return this.gatesLoading
         ? `<div style="margin-top:6px;color:#9aa4b2;font-size:11px;">卡点执行中…（含 verify:schedule，可能数十秒）</div>`
-        : `<div style="margin-top:6px;color:#9aa4b2;font-size:11px;">还没跑过机械卡点：四道卡点（控制源校验 / 草稿校验 / 证据在位 / verify:schedule）全绿后才能生成 PR 预演。</div>`;
+        : `<div style="margin-top:6px;color:#9aa4b2;font-size:11px;">还没跑过机械卡点：五道卡点（控制源校验 / 草稿校验 / 证据在位 / 前置与阻塞 / verify:schedule）全绿后才能生成 PR 预演。</div>`;
     }
     const rows = this.gates.gates.map((gate) => {
       const mark = gate.ok ? '✓' : '✗';
@@ -655,8 +663,9 @@ export class ScheduleDetailPanel {
         ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color:#6fa8dc;">${escapeHtml(url)}</a>`
         : `<code>${escapeHtml(url)}</code>`;
       return `<div style="margin-top:6px;font-size:11px;line-height:1.8;">
-        <div><span style="color:#5cb85c;">✓</span> 已开 PR：${link}</div>
+        <div><span style="color:#5cb85c;">✓</span> 已开 PR：${link}；草稿已清，勿重复提交</div>
         <div style="color:#9aa4b2;">分支 <code>${escapeHtml(this.submitResult.branch)}</code>｜commit <code>${escapeHtml(this.submitResult.commit)}</code></div>
+        <div style="color:#e9c46a;">tmp/ 里的草稿与暂存区已随提交清掉：再点提交只会拿到空草稿；如需再提交，先刷新面板重新收集验收结果。</div>
         <div style="color:#9aa4b2;">合并由业主在 GitHub 上亲手点；刷新面板查看最新验收状态。</div>
       </div>`;
     }

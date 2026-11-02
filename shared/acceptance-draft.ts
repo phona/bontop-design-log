@@ -10,12 +10,22 @@
  * 本模块只负责组装与校验。
  */
 
-import type { SchedulePackageView, ScheduleSnapshot } from './schedule-state.js';
+import type { ScheduleCheckView, SchedulePackageView, ScheduleSnapshot } from './schedule-state.js';
 
 /** 文本手术的形状不符（fail-loud，不猜）。 */
 export class DraftTextError extends Error {}
 
 export type DraftCheckStatus = 'passed' | 'failed' | 'not_applicable';
+
+const DRAFT_STATUS_VALUES: readonly DraftCheckStatus[] = ['passed', 'failed', 'not_applicable'];
+
+/**
+ * 最终证据的仓内规范根目录（server store 的 EVIDENCE_REL_DIR 同源，单一出处）。
+ * passed 的证据必须落在 `<根>/<package_id>/<check_id>/` 下——audit 记录引用它、
+ * 随 PR 进 master，路径必须可机械核验，不许把别包/别检查甚至非证据文件
+ * （checklist.md）写进审计记录。
+ */
+export const ACCEPTANCE_EVIDENCE_REL_DIR = 'schedule/phase-1/evidence';
 
 export interface DraftCheckResult {
   check_id: string;
@@ -58,35 +68,121 @@ function isValidCalendarDateText(text: string): boolean {
   return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === month - 1 && parsed.getUTCDate() === day;
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * posix 风格规范化（折叠重复斜杠、去前缀 ./）：仓库路径统一 posix；shared 被
+ * 浏览器侧 import 类型，不引 node:path。`..`/绝对路径已在调用处先行拦掉。
+ */
+function normalizeRepoRelativePath(text: string): string {
+  return text.replaceAll('\\', '/').replace(/\/{2,}/g, '/').replace(/^\.\//, '');
+}
+
+/**
+ * 运行时形状校验（P1-7）：TS 类型在运行时不存在——草稿经 HTTP JSON 进来，
+ * results 可能不是数组、status 可能是任意字符串、checked_by 可能是数字。
+ * 非法形状一律记 issue（路由转 422），**不许抛 500**——那会把「用户填错」
+ * 伪装成「服务端故障」。返回的 broken 是形状非法的结果下标：这些条目不进入
+ * 后续假设形状合法的规则（否则 123.trim() 之类直接炸）。
+ */
+function draftShapeIssues(draft: AcceptanceDraft): {issues: DraftIssue[]; broken: Set<number>} {
+  const issues: DraftIssue[] = [];
+  const broken = new Set<number>();
+  if (!isPlainObject(draft)) {
+    issues.push({check_id: '*', message: '草稿必须是对象 {package_id, results}'});
+    return {issues, broken};
+  }
+  if (typeof draft.package_id !== 'string' || !draft.package_id.trim()) {
+    issues.push({check_id: '*', field: 'package_id', message: 'package_id 必须是非空字符串'});
+  }
+  if (!Array.isArray(draft.results)) {
+    issues.push({check_id: '*', field: 'results', message: 'results 必须是数组'});
+    return {issues, broken};
+  }
+  draft.results.forEach((result: unknown, index: number) => {
+    const at = `results[${index}]`;
+    if (!isPlainObject(result)) {
+      issues.push({check_id: '*', message: `${at} 必须是对象`});
+      broken.add(index);
+      return;
+    }
+    const checkId = typeof result.check_id === 'string' && result.check_id ? result.check_id : '*';
+    let itemBroken = false;
+    const mark = () => {itemBroken = true;};
+    if (typeof result.check_id !== 'string' || !result.check_id) {
+      issues.push({check_id: '*', field: 'check_id', message: `${at}.check_id 必须是非空字符串`});
+      mark();
+    }
+    if (!DRAFT_STATUS_VALUES.includes(result.status as DraftCheckStatus)) {
+      issues.push({check_id: checkId, field: 'status', message: `status 必须是 passed / failed / not_applicable（got ${JSON.stringify(result.status)}）`});
+      mark();
+    }
+    if (typeof result.checked_by !== 'string') {
+      issues.push({check_id: checkId, field: 'checked_by', message: 'checked_by 必须是字符串'});
+      mark();
+    }
+    if (typeof result.checked_at !== 'string') {
+      issues.push({check_id: checkId, field: 'checked_at', message: 'checked_at 必须是字符串'});
+      mark();
+    }
+    if (result.evidence !== undefined && (!Array.isArray(result.evidence) || result.evidence.some((item: unknown) => typeof item !== 'string'))) {
+      issues.push({check_id: checkId, field: 'evidence', message: 'evidence 必须是字符串数组'});
+      mark();
+    }
+    if (result.supersedes !== undefined && typeof result.supersedes !== 'string') {
+      issues.push({check_id: checkId, field: 'supersedes', message: 'supersedes 必须是字符串'});
+      mark();
+    }
+    if (result.note !== undefined && typeof result.note !== 'string') {
+      issues.push({check_id: checkId, field: 'note', message: 'note 必须是字符串'});
+      mark();
+    }
+    if (itemBroken) broken.add(index);
+  });
+  return {issues, broken};
+}
+
 /**
  * 草稿校验（纯）。规则与 audit_log.record_schema 和决策门禁语义逐条对齐：
+ *  - 形状（results 数组/status 枚举/字符串字段/evidence 字符串数组）——运行时校验，422 不抛 500；
  *  - 包必须在快照里；check 必须属于该包；
  *  - checked_by / checked_at 必填，日期须真实；
- *  - passed 必须有证据；not_applicable 须写理由（note）；
+ *  - passed 必须有证据，且证据锚定在本包本检查的规范前缀下；
+ *  - not_applicable 须写理由（note）；
  *  - 被 open 决策门禁阻塞的检查不得判 passed（阻塞期间付款门槛保持 pending）；
+ *  - 已有当前通过记录的检查再判 passed 必须填合法 supersedes（复验放行）；
+ *  - supersedes 若填必须等于本包本检查的当前记录 id；
  *  - 同一 check 在草稿里只允许一条结果。
  */
 export function validateDraft(draft: AcceptanceDraft, snapshot: ScheduleSnapshot): DraftValidation {
-  const issues: DraftIssue[] = [];
+  const shape = draftShapeIssues(draft);
+  const issues: DraftIssue[] = [...shape.issues];
+  // 形状坏到无法继续（草稿不是对象 / results 不是数组）：后续规则全部假设形状合法
+  if (!isPlainObject(draft) || !Array.isArray(draft.results)) {
+    return {ok: false, issues};
+  }
   const pkg = snapshot.packages.find((item) => item.id === draft.package_id);
   if (!pkg) {
-    return {ok: false, issues: [{check_id: '*', message: `包 ${draft.package_id} 不在当前快照里`}]};
+    return {ok: false, issues: [...issues, {check_id: '*', message: `包 ${draft.package_id} 不在当前快照里`}]};
   }
   // 空草稿不放行：一条结果都没有的 PR 没有内容，不开（机械卡点的一部分）
   if (!draft.results.length) {
-    return {ok: false, issues: [{check_id: '*', message: '草稿为空：至少选择一项检查结果再提交'}]};
+    return {ok: false, issues: [...issues, {check_id: '*', message: '草稿为空：至少选择一项检查结果再提交'}]};
   }
   const seen = new Set<string>();
-  for (const result of draft.results) {
+  draft.results.forEach((result: DraftCheckResult, index: number) => {
+    if (shape.broken.has(index)) return;
     if (seen.has(result.check_id)) {
       issues.push({check_id: result.check_id, message: '同一检查在草稿里有多条结果，只允许一条'});
-      continue;
+      return;
     }
     seen.add(result.check_id);
     const check = pkg.checks.find((item) => item.id === result.check_id);
     if (!check) {
       issues.push({check_id: result.check_id, message: `检查 ${result.check_id} 不属于 ${draft.package_id}`});
-      continue;
+      return;
     }
     if (!result.checked_by || !result.checked_by.trim()) {
       issues.push({check_id: result.check_id, field: 'checked_by', message: '缺少检查人（checked_by 必填）'});
@@ -106,20 +202,43 @@ export function validateDraft(draft: AcceptanceDraft, snapshot: ScheduleSnapshot
           message: `被未拍板决策门禁阻塞（${(check.open_gates ?? []).join('、')}）：拍板前不得判 passed，付款门槛保持 pending`,
         });
       }
-      // 已有当前通过的记录时不允许重复 passed（复验请用 supersedes 指旧记录）
-      if (check.audit_status === 'passed') {
-        issues.push({check_id: result.check_id, message: '该检查已有当前通过的记录；复验请用 supersedes 指向旧记录'});
+      // 复验放行（P1-1/P1-2）：已有当前通过记录的检查再判 passed，必须用
+      // supersedes 指向该记录（record_schema：复验追加记录并用 supersedes 指
+      // 旧记录，禁止覆盖历史）。不填或指错一律拦——曾无条件拦 passed，界面
+      // 的 supersedes 输入框是死路。
+      if (check.audit_status === 'passed' && result.supersedes !== check.audit?.id) {
+        issues.push({
+          check_id: result.check_id,
+          field: 'supersedes',
+          message: `该检查已有当前通过的记录；复验请用 supersedes 指向旧记录（当前记录 ${check.audit?.id ?? '不存在'}）`,
+        });
       }
     }
     if (result.status === 'not_applicable' && !(result.note ?? '').trim()) {
       issues.push({check_id: result.check_id, field: 'note', message: 'not_applicable 必须写理由（note）'});
     }
+    // supersedes 指向性（任何状态）：必须等于本包本检查的当前记录 id，不许指到
+    // 别包/别检查/不存在的记录（loader 也会查 referential integrity，这里先拦）
+    if (result.supersedes && result.supersedes !== check.audit?.id && check.audit_status !== 'passed') {
+      issues.push({
+        check_id: result.check_id,
+        field: 'supersedes',
+        message: `supersedes 必须指向本包本检查的当前记录（当前记录 ${check.audit?.id ?? '不存在'}，got ${result.supersedes}）`,
+      });
+    }
+    // 证据锚定（P1-5）：passed 的证据只能来自本包本检查的规范前缀——`..`/绝对
+    // 路径先拦，再验前缀；failed/not_applicable 的证据不强制同前缀。
+    const evidencePrefix = `${ACCEPTANCE_EVIDENCE_REL_DIR}/${draft.package_id}/${result.check_id}/`;
     for (const evidencePath of result.evidence ?? []) {
       if (evidencePath.includes('..') || evidencePath.startsWith('/')) {
         issues.push({check_id: result.check_id, field: 'evidence', message: `证据路径必须是仓内规范相对路径（got ${evidencePath})`});
+        continue;
+      }
+      if (result.status === 'passed' && !normalizeRepoRelativePath(evidencePath).startsWith(evidencePrefix)) {
+        issues.push({check_id: result.check_id, field: 'evidence', message: `passed 证据必须位于 ${evidencePrefix} 下（got ${evidencePath}）`});
       }
     }
-  }
+  });
   return {ok: issues.length === 0, issues};
 }
 
@@ -160,7 +279,8 @@ export function projectAuditRecords(
       status: result.status,
       checked_at: result.checked_at,
       checked_by: result.checked_by,
-      evidence: result.evidence,
+      // evidence 缺省空数组：record_schema 要求该字段必填，YAML 手术不接受 undefined
+      evidence: result.evidence ?? [],
       check_spec_sha256: fingerprints.checkSpecSha256(result.check_id),
       project_data_sha256: fingerprints.projectDataSha256,
     };
@@ -222,6 +342,15 @@ export function renderPrBody(draft: AcceptanceDraft, pkg: SchedulePackageView, b
   const untouched = pkg.checks
     .filter((check) => !draft.results.some((result) => result.check_id === check.id))
     .map((check) => `- \`${check.id}\`（${check.audit_status ?? 'pending'}）`);
+  // 付款节点结论（P1-8）：显式回答「本次合并放行哪个付款节点」——按草稿结果推算
+  // 提交后本包是否全部通过，不拿「当前 gate_status + 合并后按卡点判定」糊弄。
+  // 付款永远只在合并后生效，这里只给结论，不放行任何支付。
+  const passedAfterSubmit = (check: ScheduleCheckView) =>
+    check.audit_status === 'passed' || draft.results.some((result) => result.check_id === check.id && result.status === 'passed');
+  const passedCount = pkg.checks.filter(passedAfterSubmit).length;
+  const releaseLine = passedCount === pkg.checks.length
+    ? `- **本次放行：${pkg.payment_gate}（包已全部通过；合并后生效）**`
+    : `- **本次放行：无（包未全部通过：${passedCount}/${pkg.checks.length}）；付款只在合并后生效**`;
   return [
     `## 验收提交：${pkg.id}｜${pkg.name}`,
     '',
@@ -234,7 +363,8 @@ export function renderPrBody(draft: AcceptanceDraft, pkg: SchedulePackageView, b
     ...(untouched.length ? untouched : ['- （无）']),
     '',
     '### 付款节点',
-    `- ${pkg.gate_label} \`${pkg.payment_gate}\`：当前 \`${pkg.gate_status}\`。合并后按机械卡点判定是否放行。`,
+    `- ${pkg.gate_label} \`${pkg.payment_gate}\`：当前 \`${pkg.gate_status}\`。`,
+    releaseLine,
     '',
     '### 机械卡点',
     '- [ ] `npm run verify:schedule` 通过（含新记录的双指纹校验）',

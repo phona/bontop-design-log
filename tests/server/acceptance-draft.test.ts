@@ -1,7 +1,8 @@
 // shared/acceptance-draft.ts 的回归测试（自装审批第二步，2026-11-02）。
-// 守四件事：草稿校验规则与 audit_log.record_schema/决策门禁语义逐条对齐；
-// audit_log 文本手术只认两种形状、其余 fail-loud；PR 正文四要素齐全；
-// 记录 id 递进与指纹注入正确。
+// 守：草稿校验规则与 audit_log.record_schema/决策门禁语义逐条对齐（含运行时
+// 形状校验 422 不抛 500、passed 证据锚定本包本检查前缀、supersedes 复验放行）；
+// audit_log 文本手术只认两种形状、其余 fail-loud；PR 正文四要素与付款节点显式
+// 结论；记录 id 递进与指纹注入正确。
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,6 +21,20 @@ const pkg060 = (): SchedulePackageView => {
   const pkg = realSnapshot().packages.find((item) => item.id === 'PKG-060');
   assert.ok(pkg, 'PKG-060 必须在快照里');
   return pkg!;
+};
+
+/** 真实快照 + 给 check_tile_gap 注入一条当前 passed 记录（复验/supersedes 用例）。 */
+const snapshotWithCurrentRecord = (): ScheduleSnapshot => {
+  const snapshot = realSnapshot();
+  const check = snapshot.packages.find((item) => item.id === 'PKG-060')!.checks.find((item) => item.id === 'check_tile_gap')!;
+  check.audit_status = 'passed';
+  check.audit = {
+    id: 'AUD-PKG-060-check_tile_gap-001',
+    checked_by: '业主',
+    checked_at: '2026-10-30',
+    evidence: ['schedule/phase-1/evidence/PKG-060/check_tile_gap/old.jpg'],
+  };
+  return snapshot;
 };
 
 const draft = (overrides: Partial<AcceptanceDraft> = {}): AcceptanceDraft => ({
@@ -96,6 +111,98 @@ describe('validateDraft', () => {
     const escape = validateDraft(draft({results: [{...draft().results[0], evidence: ['../../etc/passwd']}]}), snapshot);
     assert.ok(escape.issues.some((issue) => /规范相对路径/.test(issue.message)));
   });
+
+  it('P1-7 运行时形状校验：status/checked_by/evidence/supersedes 非法一律 issue，不抛 500', () => {
+    const snapshot = realSnapshot();
+    const base = {check_id: 'check_tile_gap', checked_by: '业主', checked_at: '2026-11-02', evidence: []};
+    const badStatus = validateDraft({package_id: 'PKG-060', results: [{...base, status: 'bogus'}]} as never, snapshot);
+    assert.equal(badStatus.ok, false);
+    assert.ok(badStatus.issues.some((issue) => issue.field === 'status' && /passed \/ failed \/ not_applicable/.test(issue.message)));
+
+    const badBy = validateDraft({package_id: 'PKG-060', results: [{...base, status: 'passed', checked_by: 123}]} as never, snapshot);
+    assert.ok(badBy.issues.some((issue) => issue.field === 'checked_by' && /必须是字符串/.test(issue.message)));
+
+    const badEvidence = validateDraft({package_id: 'PKG-060', results: [{...base, status: 'passed', evidence: 'x'}]} as never, snapshot);
+    assert.ok(badEvidence.issues.some((issue) => issue.field === 'evidence' && /必须是字符串数组/.test(issue.message)));
+
+    const badSupersedes = validateDraft({package_id: 'PKG-060', results: [{...base, status: 'passed', supersedes: 42}]} as never, snapshot);
+    assert.ok(badSupersedes.issues.some((issue) => issue.field === 'supersedes' && /必须是字符串/.test(issue.message)));
+
+    const badNote = validateDraft({package_id: 'PKG-060', results: [{...base, status: 'not_applicable', note: 7}]} as never, snapshot);
+    assert.ok(badNote.issues.some((issue) => issue.field === 'note' && /必须是字符串/.test(issue.message)));
+
+    const notArray = validateDraft({package_id: 'PKG-060', results: 'nope'} as never, snapshot);
+    assert.ok(notArray.issues.some((issue) => issue.field === 'results' && /必须是数组/.test(issue.message)));
+
+    const notObject = validateDraft({package_id: 'PKG-060', results: ['x', null]} as never, snapshot);
+    assert.ok(notObject.issues.some((issue) => /必须是对象/.test(issue.message)));
+
+    // 形状非法的条目不进入后续规则（123.trim() 之类不会炸出 500）
+    const mixed = validateDraft({package_id: 'PKG-060', results: [
+      {check_id: 'check_tile_gap', status: 'bogus', checked_by: 123, checked_at: 2026, evidence: 'x'},
+      {...base, status: 'passed', evidence: ['schedule/phase-1/evidence/PKG-060/check_tile_gap/a.jpg']},
+    ]} as never, snapshot);
+    assert.equal(mixed.ok, false);
+    assert.ok(mixed.issues.some((issue) => issue.field === 'status'));
+  });
+
+  it('P1-5 passed 证据必须锚定在本包本检查的规范前缀下', () => {
+    const snapshot = realSnapshot();
+    const prefix = 'schedule/phase-1/evidence/PKG-060/check_tile_gap/';
+    // 仓内其他路径（非证据区）当证据 → 拦截
+    const checklist = validateDraft(draft({results: [{...draft().results[0], evidence: ['schedule/phase-1/checklist.md']}]}), snapshot);
+    assert.equal(checklist.ok, false);
+    assert.ok(checklist.issues.some((issue) => issue.field === 'evidence' && /必须位于/.test(issue.message)));
+    // 别包 / 别检查的前缀也不行
+    const otherPkg = validateDraft(draft({results: [{...draft().results[0], evidence: ['schedule/phase-1/evidence/PKG-070/check_x/a.jpg']}]}), snapshot);
+    assert.ok(otherPkg.issues.some((issue) => /必须位于/.test(issue.message)));
+    const otherCheck = validateDraft(draft({results: [{...draft().results[0], evidence: ['schedule/phase-1/evidence/PKG-060/check_tile_flatness/a.jpg']}]}), snapshot);
+    assert.ok(otherCheck.issues.some((issue) => /必须位于/.test(issue.message)));
+    // 正确前缀（含 ./ 前缀与重复斜杠的等价形态）→ 通过
+    const ok = validateDraft(draft({results: [{...draft().results[0], evidence: [`./${prefix}a.jpg`, `${prefix.replace('/check_tile_gap/', '//check_tile_gap/')}b.jpg`]}]}), snapshot);
+    assert.equal(ok.ok, true, JSON.stringify(ok.issues));
+    // failed 的证据不受该前缀约束（只拦 passed）
+    const failed = validateDraft(draft({results: [{...draft().results[0], status: 'failed', evidence: ['schedule/phase-1/checklist.md']}]}), snapshot);
+    assert.equal(failed.ok, true, JSON.stringify(failed.issues));
+  });
+
+  it('P1-1/P1-2 复验：合法 supersedes 指向当前记录 → passed 放行', () => {
+    const result = validateDraft(
+      draft({results: [{...draft().results[0], supersedes: 'AUD-PKG-060-check_tile_gap-001'}]}),
+      snapshotWithCurrentRecord(),
+    );
+    assert.equal(result.ok, true, JSON.stringify(result.issues));
+  });
+
+  it('P1-1/P1-2 已有当前通过记录：不填/指错 supersedes 再判 passed → 拦截', () => {
+    const snapshot = snapshotWithCurrentRecord();
+    const missing = validateDraft(draft(), snapshot);
+    assert.equal(missing.ok, false);
+    assert.ok(missing.issues.some((issue) => issue.field === 'supersedes' && /已有当前通过的记录/.test(issue.message)));
+
+    const wrongPkg = validateDraft(draft({results: [{...draft().results[0], supersedes: 'AUD-PKG-070-check_x-001'}]}), snapshot);
+    assert.ok(wrongPkg.issues.some((issue) => /supersedes/.test(issue.message) && /当前记录 AUD-PKG-060-check_tile_gap-001/.test(issue.message)));
+
+    // 空 supersedes 等同没填（不是「指了一个空 id」）
+    const empty = validateDraft(draft({results: [{...draft().results[0], supersedes: ''}]}), snapshot);
+    assert.equal(empty.ok, false);
+
+    // pending 检查（无当前记录）填 supersedes → 必须指向当前记录
+    const pending = validateDraft(draft({results: [{...draft().results[0], check_id: 'check_tile_flatness', supersedes: 'AUD-PKG-060-check_tile_gap-001'}]}), realSnapshot());
+    assert.ok(pending.issues.some((issue) => issue.field === 'supersedes' && /supersedes 必须指向本包本检查的当前记录/.test(issue.message)));
+  });
+
+  it('P1-1/P1-2 stale 记录复验：supersedes 可指该记录，不强制填（仅 passed 强制）', () => {
+    const snapshot = realSnapshot();
+    const check = snapshot.packages.find((item) => item.id === 'PKG-060')!.checks.find((item) => item.id === 'check_tile_gap')!;
+    check.audit_status = 'stale';
+    check.stale_reasons = ['项目数据已变化'];
+    check.audit = {id: 'AUD-PKG-060-check_tile_gap-001', checked_by: '业主', checked_at: '2026-10-30', evidence: []};
+    const withSuper = validateDraft(draft({results: [{...draft().results[0], supersedes: 'AUD-PKG-060-check_tile_gap-001'}]}), snapshot);
+    assert.equal(withSuper.ok, true, JSON.stringify(withSuper.issues));
+    const without = validateDraft(draft(), snapshot);
+    assert.equal(without.ok, true, JSON.stringify(without.issues));
+  });
 });
 
 describe('appendAuditRecords（control.yaml 文本手术）', () => {
@@ -166,5 +273,27 @@ describe('projectAuditRecords / renderPrBody', () => {
     assert.ok(body.split('\n').length > 10);
     assert.match(body, new RegExp(pkg.payment_gate));
     assert.match(body, /schedule\/phase-1\/evidence\/PKG-060\/check_tile_gap\/a\.jpg/);
+  });
+
+  it('P1-8 付款节点显式结论：未全部通过写「不放行 N/M」，全部通过写放行 GATE', () => {
+    const pkg = pkg060();
+    // 部分通过：草稿只过 1/7 → 明确写「本次放行：无」
+    const partial = renderPrBody(draft(), pkg, 'accept/PKG-060-20261102-101530');
+    assert.match(partial, /\*\*本次放行：无（包未全部通过：1\/7）；付款只在合并后生效\*\*/);
+    assert.doesNotMatch(partial, /本次放行：GATE-060-COMPLETE/);
+    // 全部通过：草稿覆盖 PKG-060 每一条检查且全 passed → 写放行的付款节点
+    const all = renderPrBody({
+      package_id: 'PKG-060',
+      results: pkg.checks.map((check) => ({
+        check_id: check.id,
+        status: 'passed',
+        checked_by: '业主',
+        checked_at: '2026-11-02',
+        evidence: [`schedule/phase-1/evidence/PKG-060/${check.id}/a.jpg`],
+      })),
+    }, pkg, 'accept/PKG-060-20261102-101530');
+    assert.match(all, /\*\*本次放行：GATE-060-COMPLETE（包已全部通过；合并后生效）\*\*/);
+    // 当前门槛状态仍如实呈现（结论与现值两行并存）
+    assert.match(all, new RegExp(`- 付款门槛 \`GATE-060-COMPLETE\`：当前 \`${pkg.gate_status}\``));
   });
 });

@@ -881,7 +881,9 @@ export interface ScheduleCheckView {
   can_run_while_blocked?: boolean;
   audit_status?: string;
   stale_reasons?: string[];
-  audit?: {checked_by?: string; checked_at?: string; evidence?: string[]; supersedes?: string};
+  /** 当前审计记录（auditByCheckKey 的最后一条）。id 是复验 supersedes 的锚点：
+   *  validateDraft 要求 supersedes 必须等于本包本检查的当前记录 id。 */
+  audit?: {id: string; checked_by?: string; checked_at?: string; evidence?: string[]; supersedes?: string};
   open_gates?: string[];
   check_spec_sha256: string;
 }
@@ -980,7 +982,7 @@ export function buildScheduleSnapshot(state: ScheduleState): ScheduleSnapshot {
           ? state.staleAuditReason(pkg, check.id, record)
           : undefined,
         audit: record
-          ? {checked_by: record.checked_by, checked_at: record.checked_at, evidence: record.evidence, supersedes: record.supersedes}
+          ? {id: record.id, checked_by: record.checked_by, checked_at: record.checked_at, evidence: record.evidence, supersedes: record.supersedes}
           : undefined,
         open_gates: openGateIds.length ? openGateIds : undefined,
         check_spec_sha256: state.checkSpecHash(pkg, check.id),
