@@ -20,6 +20,7 @@ import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-c
 import { buildPaintCostComparison, loadPaintComparisonConfig } from './paint-cost-comparison.js';
 import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadModelPackageLinks } from './model-package-links.js';
+import { buildScheduleSnapshot, loadScheduleState } from '../shared/schedule-state.js';
 import {
   loadCeilingQuotes,
   setActiveCeilingQuote,
@@ -353,6 +354,24 @@ export function createApiRouter(deps: ApiDeps): Router {
   router.get('/model-package-links', (_req, res) => {
     try {
       res.json(loadModelPackageLinks());
+    } catch (err) {
+      res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // 自装交互审批第一步：schedule 只读快照——进度图/门禁图/next-action 三视图的
+  // 唯一数据源（与 npm run verify:schedule 同一个 loader、同一份判定）。
+  // 只读、无 POST：验收状态 / audit_log / 门禁拍板的写路径一律走 PR（铁律），
+  // 浏览器不持有写仓库的令牌。控制源本身校验不过时 503 并列出问题——UI 不得
+  // 渲染一份来自坏配置的快照（与「机械卡点不过不让提交」同向）。
+  router.get('/schedule/state', (_req, res) => {
+    try {
+      const state = loadScheduleState('.', {modelPackageLinks: loadModelPackageLinks()});
+      if (state.errors.length) {
+        res.status(503).json({error: `schedule control invalid: ${state.errors.length} issue(s)`, issues: state.errors});
+        return;
+      }
+      res.json(buildScheduleSnapshot(state));
     } catch (err) {
       res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
     }

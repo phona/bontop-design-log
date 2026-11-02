@@ -1848,6 +1848,14 @@ coverage:
   # control.ts（渲染阻塞注释与指纹）与专用校验器三方读。
   - { file: config/decision-gates.yaml, field: "version", readers: ["shared/decision-gates.ts"] }
   - { file: config/decision-gates.yaml, field: "decisions", readers: ["shared/decision-gates.ts", "shared/schedule-state.ts", "scripts/verify/schedule/verify-decision-gates.ts"] }
+  # 包与模型关联索引（2026-11-02 自装交互审批第一步补登记）：此前完全未登记、只报
+  # field_uncovered warning；包级 3D 联动与预算父包引用全量压在这份文件上，改它却
+  # 没有门禁看。schema 只能挂 shared/model-package-links.ts——server 侧只有大写
+  # ModelPackageLinksSchema，\bschema\b 匹配不到（拿 server 文件当 schema 的 reader
+  # 会报 declared_reader_does_not_read）。
+  - { file: config/model-package-links.yaml, field: "schema", readers: ["shared/model-package-links.ts"] }
+  - { file: config/model-package-links.yaml, field: "authorities", readers: ["shared/model-package-links.ts", "server/model-package-links.ts", "shared/schedule-state.ts"] }
+  - { file: config/model-package-links.yaml, field: "links", readers: ["shared/model-package-links.ts", "server/model-package-links.ts", "shared/schedule-state.ts"] }
   - { file: config/budget-pitfalls.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/budget-pitfalls.yaml, field: "pitfalls", readers: [] }
   - { file: config/budget-pitfalls.yaml, field: "templates", readers: [] }
