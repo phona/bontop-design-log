@@ -335,7 +335,7 @@ export class ScheduleDetailPanel {
       <div>房间 ${roomIds.size} 个｜对象 ${objectIds.size} 个｜点位 ${pointIds.size} 个${projectScope ? '｜<span style="color:#9b8bd0;">全项目范围</span>' : ''}</div>
       <div style="color:#9aa4b2;font-size:11px;">房间：${escapeHtml([...roomIds].join('、') || '无')}</div>
       <div style="color:#9aa4b2;font-size:11px;">对象：${escapeHtml([...objectIds].join('、') || '无')}</div>
-      <div style="color:#9aa4b2;font-size:11px;">点位：${escapeHtml([...pointIds].join('、') || '无')}${pointIds.size ? '（电气/给排水点位为合批渲染，本步只反查不高亮；点位级高亮在第三步）' : ''}</div>
+      <div style="color:#9aa4b2;font-size:11px;">点位：${escapeHtml([...pointIds].join('、') || '无')}${pointIds.size ? '（电气/给排水点位为合批渲染，已支持逐实例高亮：BatchedMesh.setColorAt）' : ''}</div>
       <div style="color:#9aa4b2;font-size:11px;">未展开选择器：${unresolved.length ? escapeHtml([...new Set(unresolved)].join('；')) : '无（本步可高亮房间/墙/叠加层区域级）'}</div>
     </div>`;
   }

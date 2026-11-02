@@ -2181,6 +2181,51 @@ export class HouseScene implements SceneApi {
     });
   }
 
+  /**
+   * 点位级高亮（自装审批第三步，2026-11-02）：电气/给排水点位走合批渲染
+   * （BatchedMesh），实例不在 traverse 的 mesh.userData 上逐件命中——这里按
+   * 合批器的 batchUserData（instanceId → userData，见 SceneBatcher）反查目标
+   * 实例，用 BatchedMesh.setColorAt 逐实例着色，超时恢复。与 highlightObjects
+   * 同纪律：每实例一个递增令牌（旧超时作废）+ 首次保存真实原色（恢复后清除）。
+   */
+  private readonly pointHighlightTokens = new WeakMap<THREE.BatchedMesh, Map<number, number>>();
+  private readonly pointHighlightOriginals = new WeakMap<THREE.BatchedMesh, Map<number, THREE.Color>>();
+
+  highlightPoints(ids: string[]) {
+    const targetIds = new Set(ids);
+    if (!targetIds.size) return;
+    this.scene.traverse((obj) => {
+      const batch = obj as THREE.BatchedMesh;
+      if (!batch.isBatchedMesh) return;
+      const userDataById = batch.userData?.batchUserData as Map<number, Record<string, unknown>> | undefined;
+      if (!(userDataById instanceof Map)) return;
+      const tokens = this.pointHighlightTokens.get(batch) ?? new Map<number, number>();
+      const originals = this.pointHighlightOriginals.get(batch) ?? new Map<number, THREE.Color>();
+      this.pointHighlightTokens.set(batch, tokens);
+      this.pointHighlightOriginals.set(batch, originals);
+      for (const [instanceId, userData] of userDataById) {
+        const objectId = userData.objectId as string | undefined;
+        if (!objectId || !targetIds.has(objectId)) continue;
+        if (!originals.has(instanceId)) {
+          const original = new THREE.Color();
+          batch.getColorAt(instanceId, original);
+          originals.set(instanceId, original);
+        }
+        const token = (tokens.get(instanceId) ?? 0) + 1;
+        tokens.set(instanceId, token);
+        batch.setColorAt(instanceId, new THREE.Color(0xffaa00));
+        setTimeout(() => {
+          // 只有仍持有最新令牌的恢复才生效；被更新的高亮接管的实例不动
+          if (tokens.get(instanceId) !== token) return;
+          const original = originals.get(instanceId);
+          if (original) batch.setColorAt(instanceId, original);
+          tokens.delete(instanceId);
+          originals.delete(instanceId);
+        }, 1200);
+      }
+    });
+  }
+
   setCameraTarget(targetId: string) {
     const r = this.rooms[targetId];
     if (r) {

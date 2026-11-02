@@ -56,6 +56,21 @@ vi.mock('three', async (importOriginal: any) => {
     Group: class extends MockObject3D {},
     Mesh: class extends MockObject3D { material = new MockMaterial(); geometry: any = {}; constructor(geometry?: any, material?: any) { super(); if (geometry) this.geometry = geometry; if (material) this.material = material; } },
     Object3D: MockObject3D,
+    // 合批渲染 mock（highlightPoints 用）：isBatchedMesh + batchUserData（instanceId→userData）
+    // + setColorAt/getColorAt（three BatchedMesh 的逐实例着色 API）
+    BatchedMesh: class extends MockObject3D {
+      isBatchedMesh = true;
+      userData: Record<string, unknown> = {};
+      colorLog = new Map<number, {r: number; g: number; b: number}>();
+      setColorAt(id: number, color: {r: number; g: number; b: number}) {
+        this.colorLog.set(id, {r: color.r, g: color.g, b: color.b});
+      }
+      getColorAt(id: number, color: {r: number; g: number; b: number}) {
+        const found = this.colorLog.get(id);
+        if (found) { color.r = found.r; color.g = found.g; color.b = found.b; }
+        return color;
+      }
+    },
     Sprite: class extends MockObject3D {},
     PerspectiveCamera: class extends MockObject3D { aspect = 1; updateProjectionMatrix() {} lookAt() {} },
     AmbientLight: class extends MockObject3D {},
@@ -70,7 +85,24 @@ vi.mock('three', async (importOriginal: any) => {
       copy(v: any) { this.x = v.x; this.y = v.y; this.z = v.z; return this; }
       clone() { return new (this.constructor as any)(this.x, this.y, this.z); }
     },
-    Color: class { set() { return this; } copy() { return this; } clone() { return new (this.constructor as any)(); } },
+    // 带 r/g/b 的 Color（原桩无字段，highlightObjects/highlightPoints 的颜色断言不可用）；
+    // set/copy/clone 保持可供 spy。hex 形态只服务 0xffaa00 这类高亮色。
+    Color: class {
+      r = 0; g = 0; b = 0;
+      constructor(r?: number, g?: number, b?: number) {
+        if (r === undefined) return;
+        if (g === undefined && b === undefined && Number.isInteger(r)) {
+          this.r = ((r >> 16) & 255) / 255;
+          this.g = ((r >> 8) & 255) / 255;
+          this.b = (r & 255) / 255;
+          return;
+        }
+        this.r = r; this.g = g ?? 0; this.b = b ?? 0;
+      }
+      set(r: number, g?: number, b?: number) { this.r = r; this.g = g ?? 0; this.b = b ?? 0; return this; }
+      copy(c: any) { if (c) { this.r = c.r; this.g = c.g; this.b = c.b; } return this; }
+      clone() { const c = new (this.constructor as any)(this.r, this.g, this.b); return c; }
+    },
     PlaneGeometry: class {
       getAttribute() {
         return { count: 0, getX: () => 0, getY: () => 0, setXY() {}, needsUpdate: false };
@@ -2034,6 +2066,43 @@ describe('HouseScene highlightObjects 竞态防护', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('highlightPoints：合批点位按 batchUserData 反查实例，连点恢复真实原色不卡橙', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      // 真 BatchedMesh 构造要 3-4 参（tsc 查真类型）；mock 不要——as any 绕过
+      const batch = new (THREE.BatchedMesh as any)();
+      // SceneBatcher 的桥接形态：instanceId → unit/mesh userData
+      batch.userData.batchUserData = new Map<number, Record<string, unknown>>([
+        [0, {objectId: 'sock_kitchen_gas'}],
+        [1, {objectId: 'sock_living_ac'}],
+      ]);
+      // mock 的 setColorAt 收任意 {r,g,b}（真 three 的 Color 构造只收单参数，
+      // 多参数写法过不了 tsc——这里用普通对象预置原色）
+      batch.setColorAt(0, {r: 0.1, g: 0.2, b: 0.3});
+      batch.setColorAt(1, {r: 0.4, g: 0.5, b: 0.6});
+      scene.getScene().add(batch);
+
+      scene.highlightPoints(['sock_kitchen_gas']);
+      expect(batch.colorLog.get(0)).toEqual({r: 1, g: 0xaa / 255, b: 0}); // 0xffaa00
+      // 未命中的实例不动
+      expect(batch.colorLog.get(1)).toEqual({r: 0.4, g: 0.5, b: 0.6});
+
+      // 竞态窗口内再点一次：旧实现会把第一次的橙色当原色，恢复后永久卡橙
+      scene.highlightPoints(['sock_kitchen_gas']);
+      vi.runAllTimers();
+      // 必须恢复真实原色（不是第一次留下的橙）
+      expect(batch.colorLog.get(0)).toEqual({r: 0.1, g: 0.2, b: 0.3});
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('highlightPoints：空 ids 不动场景', () => {
+    const scene = makeScene();
+    expect(() => scene.highlightPoints([])).not.toThrow();
   });
 
   it('高亮结束后令牌与原色清空：下次现场变化重新捕获', async () => {

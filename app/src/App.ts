@@ -1205,12 +1205,16 @@ export class App {
         // 「房间/对象/点位」三段计数同口径。
         const roomIds = new Set<string>();
         const objectIds = new Set<string>();
+        const pointIds = new Set<string>();
         for (const link of (links.links ?? []).filter((item) => (item as {budget_ref?: {id?: string}}).budget_ref?.id === packageId)) {
           const resolution = resolvePackageScope(link, project);
           for (const id of resolution.roomIds) roomIds.add(id);
           for (const id of resolution.objectIds) objectIds.add(id);
+          // 点位（第三步起可高亮）：合批渲染走 BatchedMesh.setColorAt 逐实例着色
+          for (const id of resolution.pointIds) pointIds.add(id);
         }
         this.houseScene.highlightObjects([...roomIds, ...objectIds]);
+        if (pointIds.size) this.houseScene.highlightPoints([...pointIds]);
       } catch {
         // 高亮失败不打断审批流（清单与详情仍可读）
       }
