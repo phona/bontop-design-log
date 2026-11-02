@@ -158,7 +158,7 @@
       "roomOverrides": {}
     },
     "robot_vacuum": {
-      "default": "robot_vacuum_narwal_j6_01",
+      "default": "robot_vacuum_narwal_jx_01",
       "roomOverrides": {}
     }
   }

@@ -142,7 +142,7 @@ describe('Budget + Risks + Schemes API', () => {
     assert.equal(res.body.historicalBaseline.totalBudgetCny, 208000);
     assert.equal(res.body.historicalBaseline.status, 'historical_reference_only');
     const robot = res.body.lineItems.find((item: { topic: string }) => item.topic === 'robot_vacuum');
-    assert.equal(robot?.optionId, 'robot_vacuum_narwal_j6_01');
+    assert.equal(robot?.optionId, 'robot_vacuum_narwal_jx_01'); // 2026-11-02 本 PR：J6 改 JX，id 随型号改名，数量与 3000 元预算不变
     assert.equal(robot?.quantity, 1);
     assert.equal(robot?.cost, 3000);
   });

@@ -1712,14 +1712,14 @@ materials:
 
   # === 一期自动清洁设备（2026-09-12 DEC-2026-09-12-R3） ===
 
-  - id: "robot_vacuum_narwal_j6_01"
+  - id: "robot_vacuum_narwal_jx_01"
     topic_id: "robot_vacuum"
     alternative_group: "robot_vacuum"
     category: "清洁电器"
-    name: "云鲸 J6 上下水版"
+    name: "云鲸 JX 超薄上下水版"
     brand: "云鲸"
-    model: "J6 上下水版"
-    spec: "基站约410×433.5×198mm"
+    model: "JX 超薄上下水版 YJCC034"
+    spec: "基站410×433×280mm"
     unit: "台"
     price_per_unit: 3000
     coverage_per_unit: 1
@@ -1730,7 +1730,7 @@ materials:
     sample_acquired: false
     sample_date: null
     status: "user_budget_confirmed"
-    pros: ["自动上下水", "客卫台盆下隐藏", "承担日常防尘清洁"]
-    cons: ["柜下净空和墙排条件需现场复核"]
+    pros: ["自动上下水", "客卫台盆下隐藏", "承担日常防尘清洁", "AI双目避障"]
+    cons: ["柜下净空和墙排条件需现场复核", "基站顶余仅20mm，尘袋更换可达性待JX安装手册终核"]
     price_source: "业主确认预算"
-    notes: "2026-09-12业主确认按3,000元追加进入一期；沿用robot_dock_gbath既有模型和客卫台盆下机电协调位。"
+    notes: "2026-09-12业主确认按3,000元追加进入一期；沿用robot_dock_gbath既有模型和客卫台盆下机电协调位。2026-11-02本PR由J6改JX超薄上下水版YJCC034（京东商品编号100237988935，31000Pa、机身9.5cm、集尘2.3L）；京东自营旗舰店2026-11-02截图价¥3,099，与¥3,000预算差¥99未批，price_per_unit仍按预算3,000计、不按截图价锁成本；柜体底缘0.30不动，台下净空0.30，基站顶余20mm。"
