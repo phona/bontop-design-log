@@ -38,6 +38,7 @@ import { CeilingQuoteButton } from './ui/CeilingQuoteButton.js';
 import { SchedulePanel } from './ui/SchedulePanel.js';
 import { NextActionPanel } from './ui/NextActionPanel.js';
 import { ScheduleDetailPanel } from './ui/ScheduleDetailPanel.js';
+import { FlowChartPanel } from './ui/FlowChartPanel.js';
 import { ScheduleSelectionStore, type ScheduleSelection } from './state/schedule-selection.js';
 import { buildObjectPackageIndex, resolvePackageScope, type PackageScopeLink, type ProjectScopeInput } from '@shared/package-scope';
 import { TRADE_LABEL } from './render/analysis/ceiling-zone-colors.js';
@@ -125,6 +126,7 @@ export class App {
   private nextActionPanel: NextActionPanel | null = null;
   private schedulePanel: SchedulePanel | null = null;
   private scheduleDetailPanel: ScheduleDetailPanel | null = null;
+  private flowChartPanel: FlowChartPanel | null = null;
   private approvalView: ApprovalViewPage | null = null;
   /** 上次停留的审批页（关闭再开时回到那里；首次为 next_action）。 */
   private lastApprovalPage: ApprovalViewPage = 'next_action';
@@ -400,6 +402,15 @@ export class App {
     });
     this.scheduleDetailPanel = new ScheduleDetailPanel(this.scheduleSelection, {
       onHighlight: (packageId) => this.highlightApprovalPackage(packageId),
+    });
+    // 依赖流程图（2026-11-02 流程图任务）：包级节点/边/状态，点节点高亮 3D，
+    // 点 3D 对象反向标亮节点（多包全标，不静默取首个）。
+    this.flowChartPanel = new FlowChartPanel(this.scheduleSelection, {
+      onHighlight: (packageId) => this.highlightApprovalPackage(packageId),
+      onOpenDetail: (packageId) => {
+        this.scheduleSelection?.set({packageId, checkId: null});
+        this.showApprovalView('detail');
+      },
     });
     // 详情页订阅选中态（subscribe 幂等：重复调用先退订再订）；直接打开带
     // #pkg=… 的链接时，restoreFromHash 会把选中写回 store 并触发渲染。
@@ -1138,6 +1149,7 @@ export class App {
     this.nextActionPanel?.hide();
     this.schedulePanel?.hide();
     this.scheduleDetailPanel?.hide();
+    this.flowChartPanel?.hide();
     if (page === 'next_action') {
       this.nextActionPanel?.show();
       void this.nextActionPanel?.refresh();
@@ -1147,8 +1159,18 @@ export class App {
     } else if (page === 'detail') {
       this.scheduleDetailPanel?.show();
       void this.scheduleDetailPanel?.refresh();
+    } else if (page === 'flow') {
+      this.flowChartPanel?.show();
+      void this.flowChartPanel?.refresh();
     }
     writeViewState({approvalView: page});
+    // 审批页挂在右侧工作台栈里：工作台关着时面板全不可见（#49 遗留——首访自动开
+    // next_action 但工作台没展开，用户看到的是空白）。打开任一审批页时确保工作台
+    // 展开；关闭审批页不动工作台的开合（那是审阅流的自有状态）。
+    if (page !== null) this.previewWorkbench.setOpen(true);
+    // 流程图页加宽右坞（style.css 的 body.flow-wide）：12 层依赖图在 390px 里横滚
+    // 十几屏，达不到「一眼看到」；变量覆盖对所有 calc 消费者自动生效，可逆。
+    document.body.classList.toggle('flow-wide', page === 'flow');
     this.approvalToggleBtn?.setAttribute('aria-expanded', String(page !== null));
     this.mobileTabBar?.sync();
   }
@@ -1206,8 +1228,21 @@ export class App {
     }
     const packageIds = this.objectPackageIndex.get(objectId);
     if (!packageIds?.length) return;
+    // 选中与 hash 落在首个包（详情/分享链接需要一个确定目标），但多包共用对象
+    // 时绝不静默取首个（2026-11-02 流程图任务验收标准）：
+    //  - 多包 → 打开流程图，全部节点标出 + 「同属 N 个包」提示，由业主点选；
+    //  - 单包且流程图正开着 → 留在流程图反查高亮（选中条即详情摘要，「完整详情」一键可达，
+    //    切去详情页会让刚标亮的节点消失，双向联动就断了）；
+    //  - 单包且流程图没开 → 维持 #49 行为：打开详情页。
     this.scheduleSelection?.set({packageId: packageIds[0], checkId: null});
-    this.showApprovalView('detail');
+    if (packageIds.length > 1) {
+      this.showApprovalView('flow');
+      this.flowChartPanel?.highlightPackages(packageIds);
+    } else if (this.approvalView === 'flow') {
+      this.flowChartPanel?.highlightPackages(packageIds);
+    } else {
+      this.showApprovalView('detail');
+    }
   }
 
   // ─── 顶栏收敛：图层抽屉 / 告警聚合 / 弹出面板 ───
@@ -1527,6 +1562,14 @@ export class App {
         category: '工程',
         run: () => this.showApprovalView('detail'),
         getActive: () => this.approvalView === 'detail',
+      },
+      {
+        id: 'approval.flow_chart',
+        label: '审批：依赖流程图',
+        engineeringNote: '一期包级依赖图：并行/汇合/阻塞一眼可见；点节点高亮 3D，点 3D 对象反向标亮节点（多包全标）',
+        category: '工程',
+        run: () => this.showApprovalView('flow'),
+        getActive: () => this.approvalView === 'flow',
       },
     ]);
 
