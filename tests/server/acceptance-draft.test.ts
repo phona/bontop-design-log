@@ -296,4 +296,70 @@ describe('projectAuditRecords / renderPrBody', () => {
     // 当前门槛状态仍如实呈现（结论与现值两行并存）
     assert.match(all, new RegExp(`- 付款门槛 \`GATE-060-COMPLETE\`：当前 \`${pkg.gate_status}\``));
   });
+
+  // P1-B：放行结论必须以草稿结果为准。旧实现是
+  // `audit_status === 'passed' || 草稿 passed` 的纯加法——某检查此前已 passed、
+  // 本次草稿改判 failed / not_applicable 时仍被计入 passedCount，正文会写
+  // 「本次放行：GATE-xxx，包已全部通过」，而提交后该包实际退化了。
+  it('P1-B 已 passed 检查被草稿改判 failed → 不得放行，分母是包检查总数', () => {
+    const pkg = pkg060();
+    const regressed = pkg.checks.find((check) => check.id === 'check_tile_hollow')!;
+    regressed.audit_status = 'passed';   // 此前已通过
+    // 草稿覆盖全部 7 条：6 条 passed + 该检查改判 failed
+    const body = renderPrBody({
+      package_id: 'PKG-060',
+      results: pkg.checks.map((check) => ({
+        check_id: check.id,
+        status: check.id === regressed.id ? 'failed' : 'passed',
+        checked_by: '业主',
+        checked_at: '2026-11-02',
+        evidence: [`schedule/phase-1/evidence/PKG-060/${check.id}/a.jpg`],
+      })),
+    }, pkg, 'accept/PKG-060-20261102-101530');
+    assert.match(body, /\*\*本次放行：无（包未全部通过：6\/7）；付款只在合并后生效\*\*/);
+    assert.doesNotMatch(body, /本次放行：GATE-060-COMPLETE/, '退化的包不得写放行付款节点');
+    // 改判的检查在「本次改动」里如实呈现为 failed
+    assert.match(body, /`check_tile_hollow` → \*\*failed\*\*/);
+  });
+
+  it('P1-B 已 passed 检查被草稿改判 not_applicable → 同样不得放行', () => {
+    const pkg = pkg060();
+    const regressed = pkg.checks.find((check) => check.id === 'check_tile_hollow')!;
+    regressed.audit_status = 'passed';
+    const body = renderPrBody({
+      package_id: 'PKG-060',
+      results: pkg.checks.map((check) => ({
+        check_id: check.id,
+        status: check.id === regressed.id ? 'not_applicable' : 'passed',
+        checked_by: '业主',
+        checked_at: '2026-11-02',
+        note: check.id === regressed.id ? '本层无该构造' : undefined,
+        evidence: [`schedule/phase-1/evidence/PKG-060/${check.id}/a.jpg`],
+      })),
+    }, pkg, 'accept/PKG-060-20261102-101530');
+    assert.match(body, /\*\*本次放行：无（包未全部通过：6\/7）；付款只在合并后生效\*\*/);
+    assert.doesNotMatch(body, /本次放行：GATE-060-COMPLETE/);
+  });
+
+  it('P1-B 草稿没碰的已 passed 检查仍计入放行（untouched 语义不变）', () => {
+    const pkg = pkg060();
+    const alreadyPassed = pkg.checks.find((check) => check.id === 'check_tile_hollow')!;
+    alreadyPassed.audit_status = 'passed';
+    // 草稿只覆盖其余 6 条且全 passed → 连同 untouched 的那条已过项，7/7 放行
+    const body = renderPrBody({
+      package_id: 'PKG-060',
+      results: pkg.checks
+        .filter((check) => check.id !== alreadyPassed.id)
+        .map((check) => ({
+          check_id: check.id,
+          status: 'passed',
+          checked_by: '业主',
+          checked_at: '2026-11-02',
+          evidence: [`schedule/phase-1/evidence/PKG-060/${check.id}/a.jpg`],
+        })),
+    }, pkg, 'accept/PKG-060-20261102-101530');
+    assert.match(body, /\*\*本次放行：GATE-060-COMPLETE（包已全部通过；合并后生效）\*\*/);
+    // 它仍列在「未改动的检查」里（untouched 按 check_id 不在 draft.results 里算）
+    assert.match(body, /`check_tile_hollow`（passed）/);
+  });
 });

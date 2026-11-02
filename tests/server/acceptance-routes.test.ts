@@ -4,14 +4,19 @@
 // readiness 保持 blocked）、dry-run 预演的真实验证；全部走真实 deps 的 express 实例。
 // 安全审计轮（P0/P1）补充：evidence 接口路径穿越、提交分支安全（master 基线）、
 // clearStaging 与分支名唯一性。
+// 二轮审计（P1-A/P1-C）补充：finalizeEvidence 只许搬本包本检查段内的普通文件
+// （符号链接/目录/别包别检查段一律拒、目标已存在拒覆盖）、提交前先 fetch 并
+// 比对本地 master 与 origin/master（落后/分叉/fetch 失败都 409，不静默跳过）。
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync, symlinkSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import request from 'supertest';
 import express from 'express';
-import { mkdirSync, rmSync, existsSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
@@ -22,7 +27,7 @@ import { ConfigRegistry } from '../../server/config-loader.js';
 import { parseOverlay } from '../../server/overlay-merge.js';
 import { PresentationStateStore } from '../../server/presentation-state.js';
 import {
-  AcceptanceError, acceptBranchName, clearStaging, isAcceptanceBaseBranch, loadDraft, saveDraft, stageEvidence, submitAcceptance,
+  AcceptanceError, acceptBranchName, assertBaselineUpToDate, clearStaging, finalizeEvidence, isAcceptanceBaseBranch, loadDraft, saveDraft, stageEvidence, submitAcceptance,
 } from '../../server/acceptance-draft-store.js';
 
 const TEST_DATA_DIR = './tmp/test-data-acceptance';
@@ -322,5 +327,226 @@ describe('acceptance store：草稿清理 / 分支名 / 提交分支安全', () 
       return true;
     });
     assert.equal(listBranches(), before, '拒绝时不得创建分支');
+  });
+});
+
+// ─── P1-A finalizeEvidence：暂存段内 + 普通文件 + 不覆盖 ───
+// 旧实现只校验 staging_path 在暂存根之下，且 `!== 暂存根` 被放行：别包/别检查的
+// 暂存证据可被 rename 进本包证据目录（旁路「passed 证据必须锚定本包本检查前缀」），
+// 指向暂存根/包子目录时 renameSync 搬走整个目录再 sha256 读目录抛 500（搬移已发生），
+// 符号链接会被 existsSync + renameSync 跟随，目标已存在时 renameSync 静默覆盖。
+
+describe('acceptance store：finalizeEvidence 段内/普通文件/不覆盖（P1-A）', () => {
+  const GAP_STAGING = join(STAGING, 'PKG-060', 'check_tile_gap');
+
+  after(() => {
+    rmSync(STAGING, {recursive: true, force: true});
+    rmSync(EVIDENCE, {recursive: true, force: true});
+    rmSync('./tmp/capture/acceptance-link-target', {recursive: true, force: true});
+  });
+
+  it('P1-A 正常路径：本包本检查段内的普通文件落定，sha256 与内容一致且暂存件被搬走', () => {
+    const staged = stageEvidence('PKG-060', 'check_tile_gap', 'ok.jpg', Buffer.from('real-bytes').toString('base64'));
+    const out = finalizeEvidence('PKG-060', 'check_tile_gap', staged.staging_path);
+    assert.equal(out.final_path, 'schedule/phase-1/evidence/PKG-060/check_tile_gap/ok.jpg');
+    assert.equal(out.sha256, createHash('sha256').update('real-bytes').digest('hex'));
+    assert.ok(existsSync(join('.', out.final_path)), '最终证据必须落进仓内路径');
+    assert.ok(!existsSync(join('.', staged.staging_path)), '搬走后暂存文件消失（是 rename 不是 copy）');
+  });
+
+  it('P1-A 跨包 staging_path → 拒绝，别包暂存文件不被搬进本包证据目录', () => {
+    const other = stageEvidence('PKG-050', 'check_wp_flood', 'other.jpg', Buffer.from('other-pkg-bytes').toString('base64'));
+    assert.throws(() => finalizeEvidence('PKG-060', 'check_tile_gap', other.staging_path), (err: unknown) => {
+      assert.ok(err instanceof AcceptanceError, `必须是 AcceptanceError（got ${String(err)}）`);
+      assert.match(err.message, /必须在暂存区 tmp\/capture\/acceptance-staging\/PKG-060\/check_tile_gap\/ 段内且为普通文件/);
+      return true;
+    });
+    assert.ok(existsSync(join('.', other.staging_path)), '别包暂存文件不被搬走');
+    assert.ok(!existsSync('./schedule/phase-1/evidence/PKG-060/check_tile_gap/other.jpg'), '不得落进本包证据目录');
+  });
+
+  it('P1-A 跨检查段 staging_path → 拒绝，别检查的暂存文件不被搬走', () => {
+    const other = stageEvidence('PKG-060', 'check_tile_flatness', 'flat.jpg', Buffer.from('other-check-bytes').toString('base64'));
+    assert.throws(() => finalizeEvidence('PKG-060', 'check_tile_gap', other.staging_path), (err: unknown) => {
+      assert.ok(err instanceof AcceptanceError);
+      assert.match(err.message, /必须在暂存区 .*PKG-060\/check_tile_gap\/ 段内且为普通文件/);
+      return true;
+    });
+    assert.ok(existsSync(join('.', other.staging_path)), '别检查暂存文件不被搬走');
+    assert.ok(!existsSync('./schedule/phase-1/evidence/PKG-060/check_tile_gap/flat.jpg'));
+  });
+
+  it('P1-A 指向暂存根 / 包子目录 → 拒绝，目录不被 rename 搬走', () => {
+    mkdirSync(join('.', GAP_STAGING), {recursive: true});
+    for (const path of [STAGING, join(STAGING, 'PKG-060'), GAP_STAGING]) {
+      assert.throws(() => finalizeEvidence('PKG-060', 'check_tile_gap', path), (err: unknown) => {
+        assert.ok(err instanceof AcceptanceError);
+        assert.match(err.message, /必须在暂存区 .* 段内且为普通文件|必须是普通文件/);
+        return true;
+      });
+    }
+    assert.ok(existsSync(join('.', STAGING)), '暂存根目录不被搬走');
+    assert.ok(existsSync(join('.', STAGING, 'PKG-060')), '包子目录不被搬走');
+    assert.ok(existsSync(join('.', GAP_STAGING)), '段目录不被搬走');
+  });
+
+  it('P1-A 符号链接 → 拒绝（不跟随链接读链外文件），链外文件内容不变', () => {
+    const outsideDir = './tmp/capture/acceptance-link-target';
+    const outsideFile = join(outsideDir, 'outside.jpg');
+    mkdirSync(outsideDir, {recursive: true});
+    writeFileSync(outsideFile, 'outside-bytes');
+    mkdirSync(join('.', GAP_STAGING), {recursive: true});
+    const linkPath = join('.', GAP_STAGING, 'link.jpg');
+    symlinkSync(resolve(outsideFile), linkPath);
+    try {
+      assert.throws(() => finalizeEvidence('PKG-060', 'check_tile_gap', join(GAP_STAGING, 'link.jpg')), (err: unknown) => {
+        assert.ok(err instanceof AcceptanceError);
+        assert.match(err.message, /必须是普通文件（拒绝符号链接与目录）/);
+        return true;
+      });
+      assert.ok(existsSync(linkPath), '符号链接本身不被搬走');
+      assert.equal(readFileSync(outsideFile, 'utf8'), 'outside-bytes', '链外文件不被读取/搬移');
+      assert.ok(!existsSync('./schedule/phase-1/evidence/PKG-060/check_tile_gap/link.jpg'), '不得落进证据目录');
+    } finally {
+      rmSync(linkPath, {force: true});
+      rmSync(outsideDir, {recursive: true, force: true});
+    }
+  });
+
+  it('P1-A 目标证据已存在 → 拒绝覆盖，已落定文件与暂存文件都保持原样', () => {
+    const first = stageEvidence('PKG-060', 'check_tile_gap', 'dup.jpg', Buffer.from('first').toString('base64'));
+    finalizeEvidence('PKG-060', 'check_tile_gap', first.staging_path);
+    const second = stageEvidence('PKG-060', 'check_tile_gap', 'dup.jpg', Buffer.from('second').toString('base64'));
+    assert.throws(() => finalizeEvidence('PKG-060', 'check_tile_gap', second.staging_path), (err: unknown) => {
+      assert.ok(err instanceof AcceptanceError);
+      assert.match(err.message, /目标证据已存在，拒绝覆盖：schedule\/phase-1\/evidence\/PKG-060\/check_tile_gap\/dup\.jpg/);
+      return true;
+    });
+    assert.equal(readFileSync('./schedule/phase-1/evidence/PKG-060/check_tile_gap/dup.jpg', 'utf8'), 'first', '已落定证据不被覆盖');
+    assert.equal(readFileSync(join('.', second.staging_path), 'utf8'), 'second', '被拒的暂存文件还在（可换名重试）');
+  });
+});
+
+// ─── P1-C 提交前基线校验：本地 master 必须与 origin/master 一致 ───
+
+describe('acceptance store：提交前本地 master 与 origin/master 关系校验（P1-C）', () => {
+  const tempRoots: string[] = [];
+
+  after(() => {
+    for (const dir of tempRoots) rmSync(dir, {recursive: true, force: true});
+  });
+
+  function gitIn(dir: string, args: string[]): void {
+    const result = spawnSync(
+      'git',
+      ['-c', 'user.name=acceptance-test', '-c', 'user.email=acceptance-test@example.invalid', ...args],
+      {cwd: dir, encoding: 'utf8'},
+    );
+    if (result.status !== 0) throw new Error(`git ${args.join(' ')} 失败：${result.stdout ?? ''}${result.stderr ?? ''}`);
+  }
+
+  /**
+   * 造一个本地仓 + 裸 origin（都在 tmp/，跑完即删）。三种关系：
+   *  - behind：本地退回一格，origin/master 前进一格（behind 1 / ahead 0）
+   *  - diverged：本地另起一格、origin/master 另起一格（behind 1 / ahead 1）
+   *  - synced：本地与 origin/master 同点
+   */
+  function makeRepo(mode: 'behind' | 'diverged' | 'synced'): string {
+    const root = mkdtempSync(join(tmpdir(), 'acceptance-baseline-'));
+    tempRoots.push(root);
+    const origin = join(root, 'origin.git');
+    const work = join(root, 'work');
+    gitIn(root, ['init', '--quiet', '--bare', '-b', 'master', origin]);
+    gitIn(root, ['init', '--quiet', '-b', 'master', work]);
+    writeFileSync(join(work, 'a.txt'), 'a\n');
+    gitIn(work, ['add', 'a.txt']);
+    gitIn(work, ['commit', '--quiet', '-m', 'init']);
+    gitIn(work, ['remote', 'add', 'origin', origin]);
+    gitIn(work, ['push', '--quiet', '-u', 'origin', 'master']);
+    // 远端前进一格（此刻本地与 origin/master 同点）
+    writeFileSync(join(work, 'remote.txt'), 'remote\n');
+    gitIn(work, ['add', 'remote.txt']);
+    gitIn(work, ['commit', '--quiet', '-m', 'remote-side']);
+    gitIn(work, ['push', '--quiet', 'origin', 'master']);
+    if (mode === 'behind') {
+      gitIn(work, ['reset', '--quiet', '--hard', 'HEAD~1']);
+    } else if (mode === 'diverged') {
+      gitIn(work, ['reset', '--quiet', '--hard', 'HEAD~1']);
+      writeFileSync(join(work, 'local.txt'), 'local\n');
+      gitIn(work, ['add', 'local.txt']);
+      gitIn(work, ['commit', '--quiet', '-m', 'local-side']);
+    }
+    return work;
+  }
+
+  /** store 的 repoRoot() 是 process.cwd()：切进临时仓跑，跑完必须切回。 */
+  function inRepo<T>(dir: string, run: () => T): T {
+    const cwd = process.cwd();
+    process.chdir(dir);
+    try {
+      return run();
+    } finally {
+      process.chdir(cwd);
+    }
+  }
+
+  it('P1-C 本地 master 落后 origin/master → 409 拒绝，两边短哈希显形且不建分支', () => {
+    const work = makeRepo('behind');
+    inRepo(work, () => {
+      assert.throws(() => submitAcceptance('PKG-060'), (err: unknown) => {
+        assert.ok(err instanceof AcceptanceError, `必须是 AcceptanceError（got ${String(err)}）`);
+        assert.equal(err.status, 409);
+        assert.match(err.message, /本地 master 与 origin\/master 不一致本地落后/);
+        // 两边短哈希都要显形，业主才知道基线是什么
+        assert.match(err.message, /本地 [0-9a-f]{7,40}，origin\/master [0-9a-f]{7,40}；ahead 0 \/ behind 1/);
+        const detail = err.detail as {localSha: string; remoteSha: string; ahead: number; behind: number};
+        assert.equal(detail.ahead, 0);
+        assert.equal(detail.behind, 1);
+        assert.notEqual(detail.localSha, detail.remoteSha, '本地与远端短哈希必须不同（否则没有落后可言）');
+        return true;
+      });
+      const branches = spawnSync('git', ['branch', '--list', 'accept/*'], {cwd: work, encoding: 'utf8'}).stdout.trim();
+      assert.equal(branches, '', '拒绝时不得创建任何 accept/ 分支');
+    });
+  });
+
+  it('P1-C 本地 master 与 origin/master 分叉 → 409 拒绝', () => {
+    const work = makeRepo('diverged');
+    inRepo(work, () => {
+      assert.throws(() => submitAcceptance('PKG-060'), (err: unknown) => {
+        assert.ok(err instanceof AcceptanceError);
+        assert.equal(err.status, 409);
+        assert.match(err.message, /本地 master 与 origin\/master 不一致已分叉/);
+        assert.match(err.message, /ahead 1 \/ behind 1/);
+        return true;
+      });
+      const branches = spawnSync('git', ['branch', '--list', 'accept/*'], {cwd: work, encoding: 'utf8'}).stdout.trim();
+      assert.equal(branches, '', '拒绝时不得创建任何 accept/ 分支');
+    });
+  });
+
+  it('P1-C 本地与 origin/master 同点 → 基线校验放行（返回两边一致的关系）', () => {
+    const work = makeRepo('synced');
+    inRepo(work, () => {
+      const relation = assertBaselineUpToDate();
+      assert.equal(relation.ahead, 0);
+      assert.equal(relation.behind, 0);
+      assert.equal(relation.localSha, relation.remoteSha);
+    });
+  });
+
+  it('P1-C git fetch 失败（远端不可达）→ fail-loud 409，不静默跳过基线校验', () => {
+    const work = makeRepo('synced');
+    gitIn(work, ['remote', 'set-url', 'origin', join(work, 'no-such-origin.git')]);
+    inRepo(work, () => {
+      assert.throws(() => submitAcceptance('PKG-060'), (err: unknown) => {
+        assert.ok(err instanceof AcceptanceError);
+        assert.equal(err.status, 409);
+        assert.match(err.message, /git fetch origin master 失败，无法确认提交基线/);
+        return true;
+      });
+      const branches = spawnSync('git', ['branch', '--list', 'accept/*'], {cwd: work, encoding: 'utf8'}).stdout.trim();
+      assert.equal(branches, '', 'fetch 失败同样不得创建分支');
+    });
   });
 });

@@ -15,7 +15,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync,
+  existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -127,14 +127,25 @@ export function finalizeEvidence(packageId: string, checkId: string, stagingPath
   // 同 stageEvidence：包/检查必须真实存在（finalDir 由它们拼出）
   assertPackageCheckExists(packageId, checkId);
   const normalized = resolve(repoRoot(), stagingPath);
-  const stagingRoot = resolve(repoRoot(), STAGING_DIR);
-  // 暂存区前缀检查必须带路径分隔符：裸 startsWith 会把 `acceptance-staging-evil`
-  // 这类同前缀目录也放过去。仓库路径统一 posix 风格，这里固定用 '/'（不用
-  // path.sep——Windows 上 sep 是 '\\'，与 resolve() 的输出形态绑定会漏判）。
-  if (normalized !== stagingRoot && !normalized.startsWith(`${stagingRoot}/`)) {
-    throw new AcceptanceError('staging_path 必须在暂存区内');
+  // 段根：暂存区/<packageId>/<checkId>/。只校验暂存根是不够的（P1-A）——别包/
+  // 别检查的暂存证据会被 rename 进本包证据目录，旁路「passed 证据必须锚定本包
+  // 本检查前缀」的校验；staging_path 指到暂存根或某包子目录时 renameSync 会搬
+  // 走整个目录，随后 sha256OfFile 对目录读文件抛 500，而搬移已经发生。
+  const segmentRoot = resolve(repoRoot(), STAGING_DIR, packageId, checkId);
+  // 前缀检查必须带路径分隔符：裸 startsWith 会把同前缀目录也放过去。仓库路径
+  // 统一 posix 风格，这里固定用 '/'（不用 path.sep——Windows 上 sep 是 '\\'，
+  // 与 resolve() 的输出形态绑定会漏判）。段根本身是目录，同样被这条拒掉
+  // （严格 startsWith，没有 `!==` 放行）。
+  if (!normalized.startsWith(`${segmentRoot}/`)) {
+    throw new AcceptanceError(`staging_path 必须在暂存区 ${STAGING_DIR}/${packageId}/${checkId}/ 段内且为普通文件（got ${stagingPath}）`);
   }
-  if (!existsSync(normalized)) throw new AcceptanceError(`暂存文件不存在：${stagingPath}`);
+  // lstat 不看链接目标：符号链接一律拒（existsSync + renameSync 会跟随链接，
+  // 把链外文件搬进证据目录），目录也拒（renameSync 搬目录后 sha256 读不了）。
+  const entry = lstatSync(normalized, {throwIfNoEntry: false});
+  if (!entry) throw new AcceptanceError(`暂存文件不存在：${stagingPath}`);
+  if (!entry.isFile()) {
+    throw new AcceptanceError(`staging_path 必须是普通文件（拒绝符号链接与目录）：${stagingPath}`);
+  }
   // 目标文件名同样只允许字母数字与 . _ -（禁 `..` 之类把 rename 指到别处）
   const basename = normalized.split('/').pop()!;
   if (!/^[\w.\-]+$/.test(basename) || basename === '.' || basename === '..') {
@@ -143,6 +154,10 @@ export function finalizeEvidence(packageId: string, checkId: string, stagingPath
   const finalDir = join(repoRoot(), EVIDENCE_REL_DIR, packageId, checkId);
   mkdirSync(finalDir, {recursive: true});
   const target = join(finalDir, basename);
+  // 目标已存在时拒绝：renameSync 会静默覆盖已落定的证据（audit 记录可能已引用它）
+  if (existsSync(target)) {
+    throw new AcceptanceError(`目标证据已存在，拒绝覆盖：${join(EVIDENCE_REL_DIR, packageId, checkId, basename)}`);
+  }
   renameSync(normalized, target);
   return {final_path: join(EVIDENCE_REL_DIR, packageId, checkId, basename), sha256: sha256OfFile(target)};
 }
@@ -284,6 +299,48 @@ function abortBranch(branch: string, reason: string, untrackedBefore: ReadonlySe
 }
 
 /**
+ * 提交前基线校验（P1-C）：先 `git fetch origin master`，再比对本地 HEAD 与
+ * origin/master。落后（behind>0）或分叉（ahead>0 且 behind>0）一律拒绝——否则
+ * 会拿一份旧树跑完五道卡点并开出一个基线已过期的 PR。fetch 本身失败（离线、
+ * 远端不可达）同样 fail-loud，不许静默跳过（跳过了就等于没校验）。
+ * 返回两边短哈希与计数，供单测复述。
+ */
+export function assertBaselineUpToDate(): {localSha: string; remoteSha: string; ahead: number; behind: number} {
+  const fetched = git(['fetch', 'origin', 'master']);
+  if (fetched.status !== 0) {
+    throw new AcceptanceError(
+      `git fetch origin master 失败，无法确认提交基线（离线或远端不可达）：${fetched.output.trim().split('\n').slice(-2).join(' ')}`,
+      fetched.output,
+      409,
+    );
+  }
+  const local = git(['rev-parse', '--short', 'HEAD']);
+  if (local.status !== 0) throw new AcceptanceError('git rev-parse HEAD 失败', local.output, 409);
+  const remote = git(['rev-parse', '--short', 'origin/master']);
+  if (remote.status !== 0) {
+    throw new AcceptanceError('git rev-parse origin/master 失败（fetch 成功但读不到远端引用）', remote.output, 409);
+  }
+  const counts = git(['rev-list', '--left-right', '--count', 'HEAD...origin/master']);
+  if (counts.status !== 0) throw new AcceptanceError('git rev-list --left-right --count 失败', counts.output, 409);
+  const [ahead, behind] = counts.output.trim().split(/\s+/).map(Number);
+  if (!Number.isFinite(ahead) || !Number.isFinite(behind)) {
+    throw new AcceptanceError(`无法解析本地与 origin/master 的 commit 关系：${counts.output.trim()}`, counts.output, 409);
+  }
+  const localSha = local.output.trim();
+  const remoteSha = remote.output.trim();
+  if (behind > 0 || ahead > 0) {
+    const relation = behind > 0 && ahead > 0 ? '已分叉' : behind > 0 ? '本地落后' : '本地领先';
+    throw new AcceptanceError(
+      `本地 master 与 origin/master 不一致${relation}（本地 ${localSha}，origin/master ${remoteSha}；ahead ${ahead} / behind ${behind}）：`
+      + '请先与 origin/master 对齐再提交',
+      {localSha, remoteSha, ahead, behind},
+      409,
+    );
+  }
+  return {localSha, remoteSha, ahead, behind};
+}
+
+/**
  * 完整提交流（设计稿 §5）：卡点 → 建分支 → 写 audit_log → 落证据 → 重渲视图 →
  * 复跑卡点 → commit → push → 开 PR。任何一步失败都回滚到 master 原状。
  * 合并永远由业主在 GitHub 上亲手点——本模块只到开 PR 为止。
@@ -299,6 +356,10 @@ export function submitAcceptance(packageId: string): SubmitResult {
       409,
     );
   }
+  // 基线关系校验（P1-C）：本地 master 必须与 origin/master 一致。放在分支检查
+  // 之后、跑卡点与建分支之前——落后/分叉时基于旧树开 PR 没有意义，且卡点再绿
+  // 也不代表基线有效。
+  assertBaselineUpToDate();
   const gates = runPreSubmitGates(packageId);
   if (!gates.ok) {
     throw new AcceptanceError('机械卡点未通过，未创建任何分支', gates.gates.filter((gate) => !gate.ok));

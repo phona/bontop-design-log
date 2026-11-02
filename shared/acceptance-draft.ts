@@ -345,8 +345,14 @@ export function renderPrBody(draft: AcceptanceDraft, pkg: SchedulePackageView, b
   // 付款节点结论（P1-8）：显式回答「本次合并放行哪个付款节点」——按草稿结果推算
   // 提交后本包是否全部通过，不拿「当前 gate_status + 合并后按卡点判定」糊弄。
   // 付款永远只在合并后生效，这里只给结论，不放行任何支付。
-  const passedAfterSubmit = (check: ScheduleCheckView) =>
-    check.audit_status === 'passed' || draft.results.some((result) => result.check_id === check.id && result.status === 'passed');
+  // 以草稿结果为准（P1-B）：草稿里有该检查的结果就看草稿 status——此前已
+  // passed、本次改判 failed / not_applicable 时不得再计入 passedCount（旧实现
+  // 是 `audit_status === 'passed' || 草稿 passed` 的纯加法，会把退化的包写成
+  // 「本次放行：GATE-xxx，包已全部通过」）。草稿没碰这项才回退看 audit_status。
+  const passedAfterSubmit = (check: ScheduleCheckView) => {
+    const result = draft.results.find((item) => item.check_id === check.id);
+    return result ? result.status === 'passed' : check.audit_status === 'passed';
+  };
   const passedCount = pkg.checks.filter(passedAfterSubmit).length;
   const releaseLine = passedCount === pkg.checks.length
     ? `- **本次放行：${pkg.payment_gate}（包已全部通过；合并后生效）**`
