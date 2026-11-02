@@ -25,7 +25,7 @@
 
 | 末改 | 文件 | 本次改动性质 |
 |---|---|---|
-| 2026-11-02 | `docs/self-install-approval-design.md` | 自装交互审批设计定稿迁入 docs/ |
+| 2026-11-02 | `docs/self-install-approval-design.md` | 自装交互审批设计稿迁入 docs/（v1 口径定稿、v2 新增为提案待拍板） |
 | 2026-10-20 | `docs/README.md` | 新建（本索引） |
 | 2026-10-20 | `docs/pending-site-data.md` | #39 挂 hvac-ld 门禁指针 |
 | 2026-10-20 | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | v2 预研稿新建（两轮独立审查修订） |
@@ -81,7 +81,7 @@
 | `curtain-design.md` | 窗帘设计 | 现役（末改 09-02，近一月未动） | 4 |
 | `style-guide.md` | 风格指南 | 现役（末改 10-17） | 3 |
 | `ceiling-style-extension-guide.md` | 新增吊顶造型种类的开发步骤与文件清单 | 现役开发指南；新增类型时按其流程修改与验证 | 1 |
-| `self-install-approval-design.md` | 自装交互审批设计定稿：只读联动/流程图/验收写路径的架构、原则、落地偏差与残留 P2 登记 | 现役（2026-11-02 由 tmp/ 迁入；随 PR #47–#50 推进更新，#51 待合入后复核） | 0 |
+| `self-install-approval-design.md` | 自装交互审批设计稿（v1 口径定稿、v2 新增为提案待拍板）：只读联动/流程图/验收写路径的架构、原则、落地偏差与残留 P2 登记 | 现役（2026-11-02 由 tmp/ 迁入；随 PR #47–#50 推进更新，#51 待合入后复核） | 0 |
 
 ### 暖通专题常驻文档（2 个，均在 `docs/hvac/`）
 
