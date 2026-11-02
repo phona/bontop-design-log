@@ -22,6 +22,10 @@ import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadModelPackageLinks } from './model-package-links.js';
 import { buildScheduleSnapshot, loadScheduleState } from '../shared/schedule-state.js';
 import {
+  AcceptanceError, clearStaging, finalizeEvidence, loadDraft, runPreSubmitGates, saveDraft, stageEvidence, submitAcceptance,
+} from './acceptance-draft-store.js';
+import { projectAuditRecords, renderPrBody } from '../shared/acceptance-draft.js';
+import {
   loadCeilingQuotes,
   setActiveCeilingQuote,
   resolveActiveCeilingRates,
@@ -374,6 +378,108 @@ export function createApiRouter(deps: ApiDeps): Router {
       res.json(buildScheduleSnapshot(state));
     } catch (err) {
       res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // ─── 自装审批第二步：验收 PR 草稿（写路径的唯一入口） ───
+  // 浏览器永不直接写仓库：草稿在 tmp/，证据落定后随「分支+commit+PR」进 master，
+  // 合并由业主亲手点。机械卡点与 verify:schedule 同一判定（server/acceptance-draft-store.ts）。
+  router.get('/acceptance/draft', (req, res) => {
+    try {
+      const packageId = String(req.query.package_id ?? '');
+      if (!packageId) { res.status(400).json({error: 'package_id is required'}); return; }
+      res.json(loadDraft(packageId));
+    } catch (err) {
+      res.status(500).json({error: err instanceof Error ? err.message : String(err)});
+    }
+  });
+
+  router.put('/acceptance/draft', (req, res) => {
+    try {
+      if (!isRecord(req.body) || typeof req.body.package_id !== 'string' || !Array.isArray(req.body.results)) {
+        res.status(400).json({error: 'request body must be {package_id, results}'});
+        return;
+      }
+      const validation = saveDraft({package_id: req.body.package_id, results: req.body.results});
+      res.status(validation.ok ? 200 : 422).json(validation);
+    } catch (err) {
+      res.status(500).json({error: err instanceof Error ? err.message : String(err)});
+    }
+  });
+
+  router.post('/acceptance/evidence', (req, res) => {
+    try {
+      const {package_id, check_id, filename, data_base64} = req.body ?? {};
+      if (typeof package_id !== 'string' || typeof check_id !== 'string' || typeof filename !== 'string' || typeof data_base64 !== 'string') {
+        res.status(400).json({error: 'request body must be {package_id, check_id, filename, data_base64}'});
+        return;
+      }
+      res.status(201).json(stageEvidence(package_id, check_id, filename, data_base64));
+    } catch (err) {
+      if (err instanceof AcceptanceError) { res.status(400).json({error: err.message}); return; }
+      res.status(500).json({error: err instanceof Error ? err.message : String(err)});
+    }
+  });
+
+  router.post('/acceptance/evidence/finalize', (req, res) => {
+    try {
+      const {package_id, check_id, staging_path} = req.body ?? {};
+      if (typeof package_id !== 'string' || typeof check_id !== 'string' || typeof staging_path !== 'string') {
+        res.status(400).json({error: 'request body must be {package_id, check_id, staging_path}'});
+        return;
+      }
+      res.status(201).json(finalizeEvidence(package_id, check_id, staging_path));
+    } catch (err) {
+      if (err instanceof AcceptanceError) { res.status(400).json({error: err.message}); return; }
+      res.status(500).json({error: err instanceof Error ? err.message : String(err)});
+    }
+  });
+
+  router.post('/acceptance/gates', (req, res) => {
+    try {
+      const packageId = String(req.body?.package_id ?? '');
+      if (!packageId) { res.status(400).json({error: 'package_id is required'}); return; }
+      res.json(runPreSubmitGates(packageId));
+    } catch (err) {
+      res.status(500).json({error: err instanceof Error ? err.message : String(err)});
+    }
+  });
+
+  router.post('/acceptance/submit', (req, res) => {
+    try {
+      const packageId = String(req.body?.package_id ?? '');
+      const dryRun = req.body?.dry_run === true;
+      if (!packageId) { res.status(400).json({error: 'package_id is required'}); return; }
+      if (dryRun) {
+        // 预演：只跑卡点并算出将写入的记录与 PR 正文，不碰 git
+        const gates = runPreSubmitGates(packageId);
+        if (!gates.ok) { res.status(422).json({error: '机械卡点未通过', gates: gates.gates}); return; }
+        const state = loadScheduleState('.', {modelPackageLinks: loadModelPackageLinks()});
+        const snapshot = buildScheduleSnapshot(state);
+        const pkg = snapshot.packages.find((item) => item.id === packageId)!;
+        // checkSpecHash/packageProjectFingerprint 要 control.yaml 原始包对象——
+        // 传 snapshot 投影视图会算出与校验器不同的指纹，提交即 stale（冒烟实测）
+        const rawPkg = (state.control.work_packages ?? []).find((item: {id: string}) => item.id === packageId)!;
+        const draft = loadDraft(packageId);
+        const existingCounts = new Map<string, number>();
+        for (const record of state.control.audit_log?.records ?? []) {
+          const key = `${record.package_id}:${record.check_id}`;
+          existingCounts.set(key, (existingCounts.get(key) ?? 0) + 1);
+        }
+        const records = projectAuditRecords(draft, snapshot, {
+          checkSpecSha256: (checkId) => state.checkSpecHash(rawPkg, checkId),
+          projectDataSha256: state.packageProjectFingerprint(rawPkg),
+        }, existingCounts);
+        res.json({dry_run: true, records, pr_body: renderPrBody(draft, pkg, `accept/${packageId}-<date>`)});
+        return;
+      }
+      res.status(201).json(submitAcceptance(packageId));
+    } catch (err) {
+      if (err instanceof AcceptanceError) {
+        res.status(err.message.includes('已中止并回滚') ? 409 : 422).json({error: err.message, detail: err.detail});
+        return;
+      }
+      res.status(500).json({error: err instanceof Error ? err.message : String(err)});
     }
   });
 

@@ -312,3 +312,385 @@ describe('ScheduleDetailPanel', () => {
     expect(panel.isVisible()).toBe(false);
   });
 });
+
+// ─── 第二步写路径（验收操作）：草稿 / 保存 / 卡点 / 预演 / 提交 ───
+// 服务端契约见 server/routes.ts 的 /api/acceptance/* 与 tests/server/acceptance-routes.test.ts。
+
+interface RecordedCall {url: string; method: string; body: unknown}
+
+const STAGING_PATH = 'tmp/capture/acceptance-staging/PKG-010/SCH-010-01/a.jpg';
+const FINAL_PATH = 'schedule/phase-1/evidence/PKG-010/SCH-010-01/a.jpg';
+
+function greenGates(): Array<{name: string; ok: boolean; detail: string}> {
+  return [
+    {name: '控制源校验', ok: true, detail: 'schedule control valid'},
+    {name: '草稿校验', ok: true, detail: '1 条结果全部合法'},
+    {name: '证据文件在位', ok: true, detail: '全部证据文件存在'},
+    {name: 'verify:schedule（当前树）', ok: true, detail: 'ok'},
+  ];
+}
+
+function recordProjection(): Record<string, unknown> {
+  return {
+    id: 'AUD-PKG-010-SCH-010-01-001',
+    package_id: 'PKG-010',
+    check_id: 'SCH-010-01',
+    status: 'passed',
+    checked_at: '2026-11-02',
+    checked_by: '业主',
+    evidence: [FINAL_PATH],
+    check_spec_sha256: 'a'.repeat(64),
+    project_data_sha256: 'b'.repeat(64),
+  };
+}
+
+function prBodyText(): string {
+  return [
+    '## 验收提交：PKG-010｜拆改与砌筑',
+    '',
+    '分支 `accept/PKG-010-20261102`。合并仍由业主亲手点。',
+    '',
+    '### 本次改动的检查',
+    `- \`SCH-010-01\` → **passed**（业主 / 2026-11-02）证据：${FINAL_PATH}`,
+    '',
+    '### 付款节点',
+    '- 付款门槛 `GATE-010-A`：当前 `pending`。',
+  ].join('\n');
+}
+
+/** /api/acceptance/* 的可配置 stub：默认全部成功，逐测试覆盖失败分支。 */
+function stubAcceptance(
+  snapshotPayload: ScheduleSnapshot,
+  handlers: {
+    draft?: () => unknown;
+    putDraft?: (body: unknown) => {status?: number; body?: unknown};
+    evidence?: (body: unknown) => {status?: number; body?: unknown};
+    finalize?: (body: unknown) => {status?: number; body?: unknown};
+    gates?: () => {status?: number; body?: unknown};
+    submit?: (body: unknown) => {status?: number; body?: unknown};
+  } = {},
+): {calls: RecordedCall[]} {
+  const calls: RecordedCall[] = [];
+  const respond = (status: number, body: unknown) => ({ok: status >= 200 && status < 300, status, json: async () => body});
+  const mock = vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+    const method = (init?.method ?? 'GET').toUpperCase();
+    const parsed = init?.body ? JSON.parse(init.body) : undefined;
+    calls.push({url: String(url), method, body: parsed});
+    const path = String(url);
+    if (path.includes('/api/project')) return respond(200, projectPayload());
+    if (path.includes('/api/schedule/state')) return respond(200, snapshotPayload);
+    // 顺序要紧：finalize 是 evidence 的前缀
+    if (path.includes('/api/acceptance/evidence/finalize')) {
+      const out = (handlers.finalize ?? (() => ({status: 201, body: {final_path: FINAL_PATH, sha256: 'f'.repeat(64)}})))(parsed);
+      return respond(out.status ?? 201, out.body);
+    }
+    if (path.includes('/api/acceptance/evidence')) {
+      const out = (handlers.evidence ?? (() => ({status: 201, body: {staging_path: STAGING_PATH, sha256: 'a'.repeat(64), size: 1234}})))(parsed);
+      return respond(out.status ?? 201, out.body);
+    }
+    if (path.includes('/api/acceptance/draft')) {
+      if (method === 'PUT') {
+        const out = (handlers.putDraft ?? (() => ({status: 200, body: {ok: true}})))(parsed);
+        return respond(out.status ?? 200, out.body);
+      }
+      return respond(200, (handlers.draft ?? (() => ({package_id: 'PKG-010', results: []})))());
+    }
+    if (path.includes('/api/acceptance/gates')) {
+      const out = (handlers.gates ?? (() => ({status: 200, body: {ok: true, gates: greenGates()}})))();
+      return respond(out.status ?? 200, out.body);
+    }
+    if (path.includes('/api/acceptance/submit')) {
+      const out = (handlers.submit ?? ((body: unknown) => (
+        (body as {dry_run?: boolean})?.dry_run
+          ? {status: 200, body: {dry_run: true, records: [recordProjection()], pr_body: prBodyText()}}
+          : {status: 201, body: {branch: 'accept/PKG-010-20261102', commit: 'abc1234', pr_url: 'https://github.com/phona/bontop-design-log/pull/99', records: [], pr_body: prBodyText()}}
+      )))(parsed);
+      return respond(out.status ?? 200, out.body);
+    }
+    return respond(200, snapshotPayload);
+  });
+  vi.stubGlobal('fetch', mock as never);
+  return {calls};
+}
+
+/** 挂面板 + 选包 + 等快照与草稿都渲染完（不留静默空态再断言）。 */
+async function mountPanel(options: {
+  snapshot?: ScheduleSnapshot;
+  handlers?: Parameters<typeof stubAcceptance>[1];
+} = {}): Promise<{selection: ScheduleSelectionStore; panel: ScheduleDetailPanel; calls: RecordedCall[]}> {
+  const {calls} = stubAcceptance(options.snapshot ?? snapshot(packageView()), options.handlers);
+  const selection = new ScheduleSelectionStore();
+  const panel = new ScheduleDetailPanel(selection);
+  panel.subscribe();
+  selection.set({packageId: 'PKG-010'});
+  panel.show();
+  await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('拆改与砌筑'));
+  await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).not.toContain('草稿加载中'));
+  return {selection, panel, calls};
+}
+
+const click = (selector: string): void => {
+  (document.querySelector(selector) as HTMLButtonElement).click();
+};
+
+const setInput = (selector: string, value: string): void => {
+  const input = document.querySelector(selector) as HTMLInputElement;
+  input.value = value;
+  input.dispatchEvent(new Event('input', {bubbles: true}));
+};
+
+describe('ScheduleDetailPanel 验收操作（写路径）', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="right-panel-stack"></div>';
+  });
+
+  it('证据：选文件→暂存→选为最终证据→final_path 进草稿 evidence 列表', async () => {
+    const {calls} = await mountPanel();
+    const fileInput = document.querySelector('[data-evidence-file="SCH-010-01"]') as HTMLInputElement;
+    expect(fileInput).toBeTruthy();
+    const file = new File(['fake-image-bytes'], 'a.jpg', {type: 'image/jpeg'});
+    Object.defineProperty(fileInput, 'files', {value: [file], configurable: true});
+    fileInput.dispatchEvent(new Event('change', {bubbles: true}));
+
+    // 暂存：POST /api/acceptance/evidence，data_base64 只要逗号后段
+    await vi.waitFor(() => expect(calls.some((call) => call.url === '/api/acceptance/evidence' && call.method === 'POST')).toBe(true));
+    const staged = calls.find((call) => call.url === '/api/acceptance/evidence')!;
+    expect(staged.body).toEqual({
+      package_id: 'PKG-010',
+      check_id: 'SCH-010-01',
+      filename: 'a.jpg',
+      data_base64: btoa('fake-image-bytes'),
+    });
+    await vi.waitFor(() => expect(document.querySelector('[data-evidence-area="SCH-010-01"]')!.textContent).toContain(STAGING_PATH));
+
+    // 落定：POST /api/acceptance/evidence/finalize
+    click('[data-evidence-finalize="SCH-010-01"]');
+    await vi.waitFor(() => expect(calls.some((call) => call.url === '/api/acceptance/evidence/finalize')).toBe(true));
+    const finalized = calls.find((call) => call.url === '/api/acceptance/evidence/finalize')!;
+    expect(finalized.body).toEqual({package_id: 'PKG-010', check_id: 'SCH-010-01', staging_path: STAGING_PATH});
+
+    // final_path 进该行证据列表（带删除按钮）
+    const area = document.querySelector('[data-evidence-area="SCH-010-01"]') as HTMLElement;
+    await vi.waitFor(() => expect(area.textContent).toContain(FINAL_PATH));
+    expect(area.querySelector('[data-evidence-remove="SCH-010-01"]')).toBeTruthy();
+
+    // 选状态后 PUT 带上该证据
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    await vi.waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true), {timeout: 3000});
+    const put = calls.find((call) => call.method === 'PUT')!;
+    expect(put.url).toBe('/api/acceptance/draft');
+    expect(put.body).toEqual({
+      package_id: 'PKG-010',
+      results: [{check_id: 'SCH-010-01', status: 'passed', checked_by: '', checked_at: '2026-11-02', evidence: [FINAL_PATH]}],
+    });
+    // 保存成功有显式反馈（不留静默空态）
+    expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存');
+
+    // 草稿再变化 → 旧卡点结论作废（不许拿旧 gates 放行新草稿）
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 4/4'));
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('还没跑过机械卡点'));
+    expect((document.querySelector('#acceptance-dry-run') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('open_gates 非空的检查：passed 按钮 disabled 并注明阻塞原因', async () => {
+    await mountPanel();
+    const blockedPassed = document.querySelector('[data-status-btn="SCH-010-02"][data-status="passed"]') as HTMLButtonElement;
+    expect(blockedPassed.disabled).toBe(true);
+    expect(blockedPassed.title).toContain('DEC-瓷砖');
+    expect(blockedPassed.title).toContain('未拍板决策阻塞');
+    const opRow = document.querySelector('tr[data-check-op="SCH-010-02"]') as HTMLElement;
+    expect(opRow.textContent).toContain('被 DEC-瓷砖 未拍板决策阻塞');
+    // 同检查的另两个状态、以及无门禁检查的 passed 都可用
+    expect((document.querySelector('[data-status-btn="SCH-010-02"][data-status="failed"]') as HTMLButtonElement).disabled).toBe(false);
+    expect((document.querySelector('[data-status-btn="SCH-010-02"][data-status="not_applicable"]') as HTMLButtonElement).disabled).toBe(false);
+    expect((document.querySelector('[data-status-btn="SCH-010-01"][data-status="passed"]') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('保存 422：issues 逐条挂回对应行红字，包级 issue 进提示行', async () => {
+    await mountPanel({handlers: {putDraft: () => ({status: 422, body: {ok: false, issues: [
+      {check_id: 'SCH-010-01', field: 'checked_by', message: '缺少检查人（checked_by 必填）'},
+      {check_id: 'SCH-010-01', field: 'evidence', message: 'passed 必须附最终证据（evidence 至少一条）'},
+      {check_id: '*', message: '包级问题示例'},
+    ]}})}});
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    const issues = document.querySelector('[data-check-issues="SCH-010-01"]') as HTMLElement;
+    await vi.waitFor(() => expect(issues.textContent).toContain('缺少检查人'), {timeout: 3000});
+    expect(issues.textContent).toContain('passed 必须附最终证据');
+    expect(issues.textContent).toContain('[checked_by]');
+    expect(issues.querySelectorAll('div').length).toBe(2);
+    const saveLine = document.querySelector('[data-save-status]') as HTMLElement;
+    expect(saveLine.textContent).toContain('保存失败');
+    expect(saveLine.textContent).toContain('包级问题示例');
+    // 另一行不挂别人的 issues
+    expect(document.querySelector('[data-check-issues="SCH-010-02"]')!.textContent).toBe('');
+  });
+
+  it('没有任何已选状态时不发 PUT（避免空 results 覆盖 tmp/ 草稿）', async () => {
+    const {calls} = await mountPanel();
+    setInput('[data-checked-by="SCH-010-01"]', '业主');
+    setInput('[data-note="SCH-010-01"]', '先填着');
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(calls.filter((call) => call.method === 'PUT')).toEqual([]);
+    expect(document.querySelector('[data-save-status]')!.textContent).toContain('没有可保存的结果：先选一个状态');
+  });
+
+  it('机械卡点：各 gate ✓/✗ + name + detail，✗ 的 detail 完整显示', async () => {
+    await mountPanel({handlers: {gates: () => ({status: 200, body: {ok: false, gates: [
+      {name: '控制源校验', ok: true, detail: 'schedule control valid'},
+      {name: '草稿校验', ok: false, detail: 'SCH-010-01: 缺少检查人（checked_by 必填）'},
+      {name: '证据文件在位', ok: true, detail: '全部证据文件存在'},
+      {name: 'verify:schedule（当前树）', ok: false, detail: 'stale audit: AUD-x\n第二行原因'},
+    ]}})}});
+    click('#acceptance-run-gates');
+    const bar = document.querySelector('#acceptance-actions') as HTMLElement;
+    await vi.waitFor(() => expect(bar.textContent).toContain('控制源校验'));
+    expect(bar.textContent).toContain('✓');
+    expect(bar.textContent).toContain('✗');
+    expect(bar.textContent).toContain('草稿校验');
+    expect(bar.textContent).toContain('verify:schedule（当前树）');
+    expect(bar.textContent).toContain('SCH-010-01: 缺少检查人（checked_by 必填）');
+    expect(bar.textContent).toContain('stale audit: AUD-x');
+    expect(bar.textContent).toContain('第二行原因');
+    expect(bar.textContent).toContain('卡点 2/4');
+    // 卡点不全绿 → 预演禁用
+    expect((document.querySelector('#acceptance-dry-run') as HTMLButtonElement).disabled).toBe(true);
+    expect((document.querySelector('#acceptance-submit') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('PR 预演：records 表格（id/检查/状态/指纹前 12 位）+ pr_body 预览', async () => {
+    await mountPanel();
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 4/4'));
+    const dryButton = document.querySelector('#acceptance-dry-run') as HTMLButtonElement;
+    expect(dryButton.disabled).toBe(false);
+    dryButton.click();
+    const bar = document.querySelector('#acceptance-actions') as HTMLElement;
+    await vi.waitFor(() => expect(bar.textContent).toContain('PR 预演'));
+    expect(bar.textContent).toContain('AUD-PKG-010-SCH-010-01-001');
+    expect(bar.textContent).toContain('SCH-010-01');
+    expect(bar.textContent).toContain('passed');
+    expect(bar.textContent).toContain('aaaaaaaaaaaa');
+    expect(bar.textContent).toContain('bbbbbbbbbbbb');
+    const pre = bar.querySelector('pre') as HTMLElement;
+    expect(pre.textContent).toContain('## 验收提交：PKG-010｜拆改与砌筑');
+    expect(pre.textContent).toContain('GATE-010-A');
+    expect(pre.textContent).toContain('合并仍由业主亲手点');
+    // 预演已生成 → 确认提交可用
+    expect((document.querySelector('#acceptance-submit') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('确认提交两步：第一次只进确认态，第二次才 POST；成功显示 PR 链接', async () => {
+    let submitCount = 0;
+    const {calls} = await mountPanel({handlers: {submit: (body) => {
+      if ((body as {dry_run?: boolean})?.dry_run) {
+        return {status: 200, body: {dry_run: true, records: [recordProjection()], pr_body: prBodyText()}};
+      }
+      submitCount += 1;
+      return {status: 201, body: {
+        branch: 'accept/PKG-010-20261102',
+        commit: 'abc1234',
+        pr_url: submitCount === 1 ? 'https://github.com/phona/bontop-design-log/pull/99' : 'javascript:alert(1)',
+        records: [],
+        pr_body: prBodyText(),
+      }};
+    }}});
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 4/4'));
+    click('#acceptance-dry-run');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演'));
+
+    const submitButton = () => document.querySelector('#acceptance-submit') as HTMLButtonElement;
+    const realSubmitCalls = () => calls.filter((call) => call.url === '/api/acceptance/submit' && !(call.body as {dry_run?: boolean})?.dry_run);
+
+    // 第一次：只进确认态（按钮变红），没有真正的 submit POST
+    submitButton().click();
+    expect(submitButton().textContent).toContain('再点一次');
+    expect(realSubmitCalls()).toEqual([]);
+
+    // 第二次：才 POST，成功显示 PR 链接 + 分支 + commit
+    submitButton().click();
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('已开 PR'));
+    expect(realSubmitCalls().length).toBe(1);
+    expect(realSubmitCalls()[0].body).toEqual({package_id: 'PKG-010'});
+    const link = document.querySelector('#acceptance-actions a') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('https://github.com/phona/bontop-design-log/pull/99');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    const bar = document.querySelector('#acceptance-actions') as HTMLElement;
+    expect(bar.textContent).toContain('accept/PKG-010-20261102');
+    expect(bar.textContent).toContain('abc1234');
+
+    // 非 http(s) 的 pr_url 只渲染纯文本 <code>，不当链接渲染
+    submitButton().click();
+    submitButton().click();
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('javascript:alert(1)'));
+    expect(document.querySelector('#acceptance-actions a')).toBeNull();
+    const codes = Array.from(document.querySelectorAll('#acceptance-actions code')).map((el) => el.textContent ?? '');
+    expect(codes.some((text) => text.includes('javascript:alert(1)'))).toBe(true);
+  });
+
+  it('refresh 重取草稿：服务端有值的以服务端为准，本地未保存的编辑不丢', async () => {
+    const {panel} = await mountPanel({handlers: {draft: () => ({package_id: 'PKG-010', results: [
+      {check_id: 'SCH-010-01', status: 'failed', checked_by: '服务端的人', checked_at: '2026-11-01', evidence: []},
+    ]})}});
+    // 本地：给没有草稿的行填检查人；给已有草稿的行补一条服务端没有的备注
+    setInput('[data-checked-by="SCH-010-02"]', '本地未保存');
+    setInput('[data-note="SCH-010-01"]', '本地备注');
+    await panel.refresh();
+    await vi.waitFor(() => expect((document.querySelector('[data-checked-by="SCH-010-02"]') as HTMLInputElement).value).toBe('本地未保存'));
+    // 服务端有值的字段以服务端为准
+    const opRow = document.querySelector('tr[data-check-op="SCH-010-01"]') as HTMLElement;
+    expect(opRow.textContent).toContain('草稿值：failed（未通过）');
+    expect((document.querySelector('[data-checked-by="SCH-010-01"]') as HTMLInputElement).value).toBe('服务端的人');
+    // 服务端为空的字段保留本地值（不被重取静默抹掉）
+    expect((document.querySelector('[data-note="SCH-010-01"]') as HTMLInputElement).value).toBe('本地备注');
+  });
+
+  it('pr_body / 证据路径 / 卡点 detail 含 <img onerror> 不产生元素', async () => {
+    const {panel, calls} = await mountPanel({
+      handlers: {
+        draft: () => ({package_id: 'PKG-010', results: [{
+          check_id: 'SCH-010-01', status: 'passed', checked_by: '<b>业主</b>', checked_at: '2026-11-02',
+          evidence: ['<img src=x onerror=alert(1)>'],
+        }]}),
+        gates: () => ({status: 200, body: {ok: true, gates: [{name: '控制源校验', ok: true, detail: '<script>alert(2)</script>'}]}}),
+        submit: (body) => (
+          (body as {dry_run?: boolean})?.dry_run
+            ? {status: 200, body: {dry_run: true, records: [], pr_body: '正文含 <img src=x onerror=alert(1)> 与 <script>x</script>'}}
+            : {status: 201, body: {branch: 'b', commit: 'c', pr_url: 'https://example.invalid/pr/1', records: [], pr_body: ''}}
+        ),
+      },
+    });
+    // 草稿回填的证据路径被转义（有文本、无元素）
+    const evidenceArea = document.querySelector('[data-evidence-area="SCH-010-01"]') as HTMLElement;
+    await vi.waitFor(() => expect(evidenceArea.textContent).toContain('onerror=alert(1)'));
+    // 草稿值与仓库现值并排（草稿 passed vs 仓库 pending）
+    const opRow = document.querySelector('tr[data-check-op="SCH-010-01"]') as HTMLElement;
+    expect(opRow.textContent).toContain('仓库现值：未执行');
+    expect(opRow.textContent).toContain('草稿值：passed（通过）');
+    expect(document.querySelector('[data-draft-status]')!.textContent).toContain('已载入 tmp/ 草稿 1 条');
+
+    // refresh 后重新 GET 草稿并回填（audit 现值可能已变）
+    const draftGetsBefore = calls.filter((call) => call.url.startsWith('/api/acceptance/draft') && call.method === 'GET').length;
+    await panel.refresh();
+    await vi.waitFor(() => expect(calls.filter((call) => call.url.startsWith('/api/acceptance/draft') && call.method === 'GET').length).toBe(draftGetsBefore + 1));
+    await vi.waitFor(() => expect(document.querySelector('tr[data-check-op="SCH-010-01"]')!.textContent).toContain('草稿值：passed（通过）'));
+
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('控制源校验'));
+    click('#acceptance-dry-run');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演'));
+
+    const body = document.querySelector('#schedule-detail-body') as HTMLElement;
+    expect(body.querySelector('img')).toBeNull();
+    expect(body.querySelector('script')).toBeNull();
+    expect(body.querySelector('b')).toBeNull();
+    expect(body.textContent).toContain('onerror=alert(1)');
+    expect(body.textContent).toContain('<script>alert(2)</script>');
+    expect(body.textContent).toContain('正文含 <img src=x onerror=alert(1)>');
+  });
+});
