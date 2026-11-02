@@ -9,9 +9,14 @@
 
 const STORAGE_KEY = 'bontop-view-state/v1';
 
+/** 审批视图的三页（自装交互审批第一步，2026-11-02）：null = 审批视图未打开。 */
+export type ApprovalViewPage = 'next_action' | 'schedule' | 'detail';
+
 export interface PersistedViewState {
   workbenchOpen: boolean;
   workbenchPage: 'object' | 'material' | 'lighting' | null;
+  /** 上次停留在哪个审批页；首次访问（无存档）默认 next_action（设计稿决策）。 */
+  approvalView: ApprovalViewPage | null;
 }
 
 export function readViewState(): Partial<PersistedViewState> {
@@ -27,6 +32,9 @@ export function readViewState(): Partial<PersistedViewState> {
     if (obj.workbenchPage === 'object' || obj.workbenchPage === 'material' || obj.workbenchPage === 'lighting') {
       state.workbenchPage = obj.workbenchPage;
     }
+    if (obj.approvalView === 'next_action' || obj.approvalView === 'schedule' || obj.approvalView === 'detail') {
+      state.approvalView = obj.approvalView;
+    }
     return state;
   } catch {
     return {};
@@ -40,6 +48,7 @@ export function writeViewState(patch: Partial<PersistedViewState>): void {
     const merged: PersistedViewState = {
       workbenchOpen: patch.workbenchOpen ?? current.workbenchOpen ?? false,
       workbenchPage: patch.workbenchPage !== undefined ? patch.workbenchPage : current.workbenchPage ?? null,
+      approvalView: patch.approvalView !== undefined ? patch.approvalView : current.approvalView ?? null,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
   } catch {

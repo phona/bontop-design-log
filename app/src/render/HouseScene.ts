@@ -2139,6 +2139,33 @@ export class HouseScene implements SceneApi {
     });
   }
 
+  /**
+   * 包级高亮（自装交互审批第一步，2026-11-02）：把一组对象/房间 id 同时闪烁
+   * 高亮，供「点包 → 高亮该包 3D 范围」用。与 highlightObject 同一匹配口径
+   * （userData.objectId / userData.roomId），集合版。
+   * 已知边界：合批渲染的电气点位等 BatchedMesh 实例不在 traverse 的
+   * mesh.userData 上逐件命中（拾取侧才走 batchUserData 桥接）——点位级高亮是
+   * 第三步的事，届时按 batcher 桥接扩展，这里先只承诺房间/墙/叠加层区域级。
+   */
+  highlightObjects(ids: string[]) {
+    const targetIds = new Set(ids);
+    if (!targetIds.size) return;
+    this.scene.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      const mat = mesh.material as THREE.MeshStandardMaterial | undefined;
+      if (!mat || !mesh.userData) return;
+      const objectId = mesh.userData.objectId as string | undefined;
+      const roomId = mesh.userData.roomId as string | undefined;
+      if ((objectId && targetIds.has(objectId)) || (roomId && targetIds.has(roomId))) {
+        const original = mat.emissive?.clone() ?? new THREE.Color(0x000000);
+        mat.emissive.set(0xffaa00);
+        setTimeout(() => {
+          mat.emissive.copy(original);
+        }, 1200);
+      }
+    });
+  }
+
   setCameraTarget(targetId: string) {
     const r = this.rooms[targetId];
     if (r) {

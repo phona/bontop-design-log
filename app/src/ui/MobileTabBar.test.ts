@@ -36,11 +36,13 @@ describe('MobileTabBar', () => {
     document.body.innerHTML = '';
   });
 
-  it('渲染 5 个入口 + 命令面板按钮', () => {
+  // 2026-11-02 自装交互审批：新增「审批」入口（6 个常驻 + 命令面板）。
+  it('渲染 6 个入口 + 命令面板按钮', () => {
     const { root } = setup();
     const ids = Array.from(root.querySelectorAll<HTMLButtonElement>('.mobile-tab')).map((b) => b.dataset.surface);
-    expect(ids).toEqual(['view', 'scheme', 'layers', 'env', 'overview', 'palette']);
+    expect(ids).toEqual(['view', 'scheme', 'layers', 'approval', 'env', 'overview', 'palette']);
     expect(tab(root, 'layers').textContent).toContain('图层');
+    expect(tab(root, 'approval').textContent).toContain('审批');
   });
 
   it('点击入口回调 onSurface，点击 ? 回调 onPalette', () => {

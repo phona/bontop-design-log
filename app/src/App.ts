@@ -23,7 +23,7 @@ import { MobileTabBar } from './ui/MobileTabBar.js';
 import { isMobileChrome, readCapabilities, subscribeCapabilities, type InputCapabilities } from './ui/input-capability.js';
 import { VirtualJoystick } from './scene/VirtualJoystick.js';
 import { PointerIntent } from './scene/pointer-intent.js';
-import { readViewState, writeViewState } from './ui/view-state-store.js';
+import { readViewState, writeViewState, type ApprovalViewPage } from './ui/view-state-store.js';
 import { TopDownButton } from './ui/TopDownButton.js';
 import { HvacCoordinationButton, type HvacCoordinationButtonState } from './ui/HvacCoordinationButton.js';
 import { WallTileButton, type WallTileButtonState } from './ui/WallTileButton.js';
@@ -35,6 +35,11 @@ import { ElementStatePanel } from './render/analysis/ElementStatePanel.js';
 import type { ElementStateLike } from './render/analysis/element-state-colors.js';
 import { CeilingQuotePanel } from './render/analysis/CeilingQuotePanel.js';
 import { CeilingQuoteButton } from './ui/CeilingQuoteButton.js';
+import { SchedulePanel } from './ui/SchedulePanel.js';
+import { NextActionPanel } from './ui/NextActionPanel.js';
+import { ScheduleDetailPanel } from './ui/ScheduleDetailPanel.js';
+import { ScheduleSelectionStore, type ScheduleSelection } from './state/schedule-selection.js';
+import { buildObjectPackageIndex, resolvePackageScope, type PackageScopeLink, type ProjectScopeInput } from '@shared/package-scope';
 import { TRADE_LABEL } from './render/analysis/ceiling-zone-colors.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
@@ -113,6 +118,19 @@ export class App {
   private elementStateState: ElementStateButtonState = 'loading';
   private elementStateVisible = false;
   private elementStatePanel: ElementStatePanel | null = null;
+  // 自装交互审批（2026-11-02，设计稿 v2）：进度图/门禁图/next-action/详情四面板
+  // 共享 ScheduleSelectionStore 一个选中 ID（可进 URL hash）。与检视态叠加层
+  // 平级且互不引用：进度着色不碰 set*InspectionVisible、不共享材质。
+  private scheduleSelection: ScheduleSelectionStore | null = null;
+  private nextActionPanel: NextActionPanel | null = null;
+  private schedulePanel: SchedulePanel | null = null;
+  private scheduleDetailPanel: ScheduleDetailPanel | null = null;
+  private approvalView: ApprovalViewPage | null = null;
+  /** 上次停留的审批页（关闭再开时回到那里；首次为 next_action）。 */
+  private lastApprovalPage: ApprovalViewPage = 'next_action';
+  private approvalToggleBtn: HTMLButtonElement | null = null;
+  /** 3D 对象 id → 包 id 反查索引（点对象回详情用）；懒建懒缓存。 */
+  private objectPackageIndex: Map<string, string[]> | null = null;
   private mepCoordinationVisible = false;
   private mepCoordinationReady = false;
   private mepLintResult: MepLintResult | null = null;
@@ -373,6 +391,27 @@ export class App {
     // 不阻塞 ready；服务端没上这个端点就降级成「不可用」，不弹错误刷屏。
     this.elementStatePanel = new ElementStatePanel(this.houseScene);
     void this.loadElementStates();
+    // 自装交互审批（2026-11-02）：store 先行，三面板构造时注入；3D 高亮回调走
+    // highlightApprovalPackage（resolvePackageScope 展开房间/对象 id 集合）。
+    this.scheduleSelection = new ScheduleSelectionStore();
+    this.nextActionPanel = new NextActionPanel(this.scheduleSelection);
+    this.schedulePanel = new SchedulePanel(this.scheduleSelection, {
+      onHighlight: (packageId) => this.highlightApprovalPackage(packageId),
+    });
+    this.scheduleDetailPanel = new ScheduleDetailPanel(this.scheduleSelection, {
+      onHighlight: (packageId) => this.highlightApprovalPackage(packageId),
+    });
+    // 详情页订阅选中态（subscribe 幂等：重复调用先退订再订）；直接打开带
+    // #pkg=… 的链接时，restoreFromHash 会把选中写回 store 并触发渲染。
+    this.scheduleDetailPanel?.subscribe();
+    this.scheduleSelection?.restoreFromHash();
+    this.setupApprovalButton();
+    // 审批视图默认页（2026-11-02 设计稿决策）：记忆上次所在页；无存档的首次
+    // 访问默认 next_action（「打开来第一眼看到今天能干什么」）；带 #pkg=… 的
+    // 分享链接直接落详情页。必须放在面板就绪后——restorePersistedViewState 运行时
+    // 这三个面板还不存在（尾部按场景就绪才建）。
+    const hashPackageId = this.scheduleSelection?.get().packageId ?? null;
+    this.showApprovalView(readViewState().approvalView ?? (hashPackageId ? 'detail' : 'next_action'));
     this.resolveReady();
     } catch (error) {
       this.readyState = 'failed';
@@ -1089,6 +1128,80 @@ export class App {
     });
   }
 
+  // ─── 自装交互审批（2026-11-02，设计稿 v2 §3/§6/§7） ───
+  // 三个审批页互斥显示（同一右侧面板栈），与检视态叠加层平级互不引用。
+
+  /** 打开某个审批页（null = 关闭审批视图）。记忆上次所在页，见 restorePersistedViewState。 */
+  private showApprovalView(page: ApprovalViewPage | null): void {
+    this.approvalView = page;
+    if (page !== null) this.lastApprovalPage = page;
+    this.nextActionPanel?.hide();
+    this.schedulePanel?.hide();
+    this.scheduleDetailPanel?.hide();
+    if (page === 'next_action') {
+      this.nextActionPanel?.show();
+      void this.nextActionPanel?.refresh();
+    } else if (page === 'schedule') {
+      this.schedulePanel?.show();
+      void this.schedulePanel?.refresh();
+    } else if (page === 'detail') {
+      this.scheduleDetailPanel?.show();
+      void this.scheduleDetailPanel?.refresh();
+    }
+    writeViewState({approvalView: page});
+    this.approvalToggleBtn?.setAttribute('aria-expanded', String(page !== null));
+    this.mobileTabBar?.sync();
+  }
+
+  private toggleApprovalView(): void {
+    this.showApprovalView(this.approvalView === null ? this.lastApprovalPage : null);
+  }
+
+  private setupApprovalButton(): void {
+    const button = document.getElementById('approval-toggle-btn') as HTMLButtonElement | null;
+    if (!button) return;
+    this.approvalToggleBtn = button;
+    button.addEventListener('click', () => this.toggleApprovalView());
+  }
+
+  /**
+   * 点包 → 3D 高亮该包范围。作用域展开走 shared/package-scope.ts（房间/墙/叠加层
+   * 区域级；点位级选择器本步不展开，UI 在详情页明示）。数据用已在手的
+   * projectData（house.rooms/sceneElements）+ /api/model-package-links。
+   */
+  private highlightApprovalPackage(packageId: string): void {
+    const project = this.projectData as ProjectScopeInput | null;
+    if (!project?.house) return;
+    void (async () => {
+      try {
+        const response = await fetch('/api/model-package-links');
+        if (!response.ok) return;
+        const links = (await response.json()) as {links?: PackageScopeLink[]};
+        const link = (links.links ?? []).find((item) => (item as {budget_ref?: {id?: string}}).budget_ref?.id === packageId);
+        if (!link) return;
+        const {roomIds, objectIds} = resolvePackageScope(link, project);
+        this.houseScene.highlightObjects([...roomIds, ...objectIds]);
+      } catch {
+        // 高亮失败不打断审批流（清单与详情仍可读）
+      }
+    })();
+  }
+
+  /** 3D 反查：点对象 → 归属包 → 打开详情页（设计稿 §6 双向联动）。 */
+  private revealPackageForObject(objectId: string): void {
+    const project = this.projectData as ProjectScopeInput | null;
+    if (!project?.house) return;
+    if (!this.objectPackageIndex) {
+      // links 已在 projectData 里（phase=full 时）；当前 phase 过滤过的列表足够反查
+      const links = (this.projectData?.modelPackageLinks ?? []) as PackageScopeLink[];
+      this.objectPackageIndex = buildObjectPackageIndex(links, project);
+    }
+    const packageIds = this.objectPackageIndex.get(objectId);
+    if (!packageIds?.length) return;
+    this.scheduleSelection?.set({packageId: packageIds[0], checkId: null});
+    this.showApprovalView('detail');
+  }
+
   // ─── 顶栏收敛：图层抽屉 / 告警聚合 / 弹出面板 ───
   // 编排只发生在 UI 层：这里通过各平级 setter 组合调用，不绕过它们碰场景或互相引用。
 
@@ -1382,6 +1495,31 @@ export class App {
         unavailableReason: this.capabilities.touchPrimary ? '编辑功能仅桌面端可用' : '仅第一人称模式可用',
         run: () => { void this.deleteHoveredPoint(); },
       },
+      // 自装交互审批（2026-11-02）：三个审批页各一条命令，run 委托 showApprovalView。
+      {
+        id: 'approval.next_action',
+        label: '审批：下一步干什么',
+        engineeringNote: 'next-action 视图：就绪包/待拍板门禁/待询价/等外部方，按解除下游排序；数据与 npm run verify:schedule 同源',
+        category: '工程',
+        run: () => this.showApprovalView('next_action'),
+        getActive: () => this.approvalView === 'next_action',
+      },
+      {
+        id: 'approval.schedule',
+        label: '审批：进度图与门禁图',
+        engineeringNote: '一期包链进度 + 决策门禁/CI 口径（两个模式不合成一张）；点包高亮 3D 范围',
+        category: '工程',
+        run: () => this.showApprovalView('schedule'),
+        getActive: () => this.approvalView === 'schedule',
+      },
+      {
+        id: 'approval.detail',
+        label: '审批：包详情',
+        engineeringNote: '选中工作包的检查项/证据/物料三档/阻塞/付款节点/审计史；选中态可发链接（#pkg=…）',
+        category: '工程',
+        run: () => this.showApprovalView('detail'),
+        getActive: () => this.approvalView === 'detail',
+      },
     ]);
 
     window.addEventListener('command-unavailable', ((e: CustomEvent<{ label?: string; reason?: string }>) => {
@@ -1552,11 +1690,17 @@ export class App {
       this.mobileTabBar = new MobileTabBar({
         root: tabBarRoot,
         onSurface: (id) => {
-          this.surfaceManager.toggle(id);
+          // 'approval' 不是 SurfaceManager 的 surface（审批页是右侧动态面板，
+          // 不走 slot 互斥模型）——自装交互审批 2026-11-02 在此分流。
+          if (id === 'approval') {
+            this.toggleApprovalView();
+          } else {
+            this.surfaceManager.toggle(id);
+          }
           this.mobileTabBar?.sync();
         },
         onPalette: () => this.surfaceManager.toggle('palette'),
-        isSurfaceOpen: (id) => this.surfaceManager.isOpen(id),
+        isSurfaceOpen: (id) => (id === 'approval' ? this.approvalView !== null : this.surfaceManager.isOpen(id)),
         getAlertsCount: () => this.getAlertsTotal(),
       });
     }
@@ -2046,6 +2190,9 @@ export class App {
         if (circuitId) this.houseScene.highlightElectricalCircuit(circuitId);
       }
       this.stateSync.postViewContext(target.objectId);
+      // 自装交互审批（2026-11-02）：点 3D 对象 → 反查归属包 → 打开详情页（设计稿 §6）。
+      // 只在对象确有归属时触发，不打扰既有信息面板行为。
+      this.revealPackageForObject(target.objectId);
     });
   }
 
