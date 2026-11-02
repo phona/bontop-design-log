@@ -265,4 +265,29 @@ elements:
       .expect(201);
     assert.equal(res.body.type, 'set_camera_target');
   });
+
+  // 自装交互审批第一步：schedule 只读快照。与 npm run verify:schedule 同一个
+  // loader、同一份判定；只读无 POST（写路径走 PR）。
+  it('GET /api/schedule/state returns the read-only approval snapshot', async () => {
+    const res = await request(app).get('/api/schedule/state').expect(200);
+    assert.equal(res.body.counts.packages, 25);
+    assert.equal(res.body.counts.ready_packages, 0);
+    assert.equal(res.body.phase.ceiling_cny, 210000);
+    assert.ok(res.body.data_fingerprint.length === 64);
+    assert.ok(Array.isArray(res.body.next_actions) && res.body.next_actions.length > 0);
+    assert.ok(res.body.decision_gates.open.length > 0);
+    assert.ok(res.body.global_blockers.length > 0);
+    const pkg900 = res.body.packages.find((pkg: {id: string}) => pkg.id === 'PKG-900');
+    assert.ok(pkg900, 'PKG-900 预备金侧车道必须在快照里');
+    assert.equal(pkg900.payment_gate, 'GATE-900-OWNER-APPROVAL');
+    // 无 POST：写路径一律走 PR，路由表里不允许出现 schedule 的 mutator
+    assert.equal(res.body.packages[0].checks.length > 0, true);
+  });
+
+  it('GET /api/schedule/state is read-only (write path is PR-only)', async () => {
+    // 只读路由对 POST 一律 404（express 无匹配即 404）。将来若有人给 schedule
+    // 加了写入口，这条会红——写路径必须走 PR，浏览器不持有写仓库的令牌。
+    await request(app).post('/api/schedule/state').send({status: 'passed'}).expect(404);
+    await request(app).put('/api/schedule/state').send({status: 'passed'}).expect(404);
+  });
 });
