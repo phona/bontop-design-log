@@ -38,6 +38,7 @@ describe('resolvePackageScope', () => {
     assert.deepEqual(result.roomIds, ['master_bath', 'guest_bath']);
     assert.deepEqual(result.objectIds, ['floor_region:master_bath', 'wall_region:kitchen_north']);
     assert.equal(result.projectScope, false);
+    assert.deepEqual(result.pointIds, []);
     assert.deepEqual(result.unresolved, []);
   });
 
@@ -65,14 +66,16 @@ describe('resolvePackageScope', () => {
     assert.deepEqual(result.unresolved, ['model_geometry.collections: openings']);
   });
 
-  it('点位级选择器（layers/trade/plan_ids）本步不展开，进 unresolved', () => {
+  it('点位级选择器：ids 进 pointIds 不高亮，layers/trade 进 unresolved', () => {
     const result = resolvePackageScope({
       scope: [{
         source: 'electrical',
         select: {layers: ['strong_power', 'weak_power'], ids: ['sock_kitchen_gas'], trade: ['curtain_box']},
       }],
     }, project);
-    assert.deepEqual(result.objectIds, ['sock_kitchen_gas']);
+    // 点位是合批渲染，本步高亮命中不了——不许混进 objectIds 充数（2026-11-02 评审 P1）
+    assert.deepEqual(result.objectIds, []);
+    assert.deepEqual(result.pointIds, ['sock_kitchen_gas']);
     assert.equal(result.unresolved.length, 2);
     assert.ok(result.unresolved.some((entry) => entry.includes('layers: strong_power,weak_power')));
     assert.ok(result.unresolved.some((entry) => entry.includes('trade: curtain_box')));
@@ -85,6 +88,7 @@ describe('resolvePackageScope', () => {
     assert.equal(result.projectScope, true);
     assert.deepEqual(result.roomIds, []);
     assert.deepEqual(result.objectIds, []);
+    assert.deepEqual(result.pointIds, []);
   });
 
   it('不存在的 room_id 被收掉（不与场景对不上）', () => {
@@ -104,5 +108,12 @@ describe('buildObjectPackageIndex', () => {
     ], project);
     assert.deepEqual(index.get('floor_region:master_bath'), ['PKG-060', 'PKG-130']);
     assert.equal(index.get('w_kit_north'), undefined, '全项目范围包不得占反查');
+  });
+
+  it('点位 id 也进反查索引（点电气/给排水对象的拾取链路通）', () => {
+    const index = buildObjectPackageIndex([
+      {id: 'MODEL-PKG-145', budget_ref: {id: 'PKG-145'}, scope: [{source: 'electrical', select: {ids: ['sock_kitchen_gas']}}]},
+    ], project);
+    assert.deepEqual(index.get('sock_kitchen_gas'), ['PKG-145']);
   });
 });

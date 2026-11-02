@@ -318,19 +318,24 @@ export class ScheduleDetailPanel {
     const project: ProjectScopeInput = payload;
     const roomIds = new Set<string>();
     const objectIds = new Set<string>();
+    const pointIds = new Set<string>();
     const unresolved: string[] = [];
     let projectScope = false;
     for (const link of links) {
       const resolution = resolvePackageScope(link, project);
       for (const id of resolution.roomIds) roomIds.add(id);
       for (const id of resolution.objectIds) objectIds.add(id);
+      for (const id of resolution.pointIds) pointIds.add(id);
       unresolved.push(...resolution.unresolved);
       projectScope = projectScope || resolution.projectScope;
     }
+    // 计数与高亮承诺必须同口径（2026-11-02 评审 P1）：点位是合批渲染，本步高亮
+    // 命中不了，单列一段并注明第三步，不混进「对象」充数。
     return `<div style="font-size:12px;line-height:1.8;">
-      <div>房间 ${roomIds.size} 个｜对象 ${objectIds.size} 个${projectScope ? '｜<span style="color:#9b8bd0;">全项目范围</span>' : ''}</div>
+      <div>房间 ${roomIds.size} 个｜对象 ${objectIds.size} 个｜点位 ${pointIds.size} 个${projectScope ? '｜<span style="color:#9b8bd0;">全项目范围</span>' : ''}</div>
       <div style="color:#9aa4b2;font-size:11px;">房间：${escapeHtml([...roomIds].join('、') || '无')}</div>
       <div style="color:#9aa4b2;font-size:11px;">对象：${escapeHtml([...objectIds].join('、') || '无')}</div>
+      <div style="color:#9aa4b2;font-size:11px;">点位：${escapeHtml([...pointIds].join('、') || '无')}${pointIds.size ? '（电气/给排水点位为合批渲染，本步只反查不高亮；点位级高亮在第三步）' : ''}</div>
       <div style="color:#9aa4b2;font-size:11px;">未展开选择器：${unresolved.length ? escapeHtml([...new Set(unresolved)].join('；')) : '无（本步可高亮房间/墙/叠加层区域级）'}</div>
     </div>`;
   }

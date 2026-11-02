@@ -2146,7 +2146,15 @@ export class HouseScene implements SceneApi {
    * 已知边界：合批渲染的电气点位等 BatchedMesh 实例不在 traverse 的
    * mesh.userData 上逐件命中（拾取侧才走 batchUserData 桥接）——点位级高亮是
    * 第三步的事，届时按 batcher 桥接扩展，这里先只承诺房间/墙/叠加层区域级。
+   *
+   * 竞态防护（2026-11-02 评审 P1）：快速连点两个包时，旧实现把「当前 emissive」
+   * 当原色克隆——第二次调用克隆到的是第一次留下的橙色，恢复后 mesh 永久卡橙。
+   * 现制：每 mesh 一个递增令牌（旧超时作废）+ 首次高亮时保存真实原色
+   * （恢复后删除，下次现场变化重新捕获）。
    */
+  private readonly highlightTokens = new WeakMap<THREE.Mesh, number>();
+  private readonly highlightOriginals = new WeakMap<THREE.Mesh, THREE.Color>();
+
   highlightObjects(ids: string[]) {
     const targetIds = new Set(ids);
     if (!targetIds.size) return;
@@ -2156,13 +2164,20 @@ export class HouseScene implements SceneApi {
       if (!mat || !mesh.userData) return;
       const objectId = mesh.userData.objectId as string | undefined;
       const roomId = mesh.userData.roomId as string | undefined;
-      if ((objectId && targetIds.has(objectId)) || (roomId && targetIds.has(roomId))) {
-        const original = mat.emissive?.clone() ?? new THREE.Color(0x000000);
-        mat.emissive.set(0xffaa00);
-        setTimeout(() => {
-          mat.emissive.copy(original);
-        }, 1200);
+      if (!((objectId && targetIds.has(objectId)) || (roomId && targetIds.has(roomId)))) return;
+      if (!this.highlightOriginals.has(mesh)) {
+        this.highlightOriginals.set(mesh, mat.emissive?.clone() ?? new THREE.Color(0x000000));
       }
+      const token = (this.highlightTokens.get(mesh) ?? 0) + 1;
+      this.highlightTokens.set(mesh, token);
+      mat.emissive.set(0xffaa00);
+      setTimeout(() => {
+        // 只有仍持有最新令牌的恢复才生效；被更新的高亮接管的 mesh 不动
+        if (this.highlightTokens.get(mesh) !== token) return;
+        mat.emissive.copy(this.highlightOriginals.get(mesh) ?? new THREE.Color(0x000000));
+        this.highlightTokens.delete(mesh);
+        this.highlightOriginals.delete(mesh);
+      }, 1200);
     });
   }
 

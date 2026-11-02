@@ -24,8 +24,15 @@ export interface ProjectScopeInput {
 export interface PackageScopeResolution {
   /** 房间 id 集合（HouseScene 按 userData.roomId 匹配高亮）。 */
   roomIds: string[];
-  /** 场景对象 id 集合（按 userData.objectId 匹配高亮）。 */
+  /** 场景对象 id 集合（按 userData.objectId 匹配高亮；墙/叠加层区域/家具类）。 */
   objectIds: string[];
+  /**
+   * 点位 id 集合（电气/给排水/HVAC 的 sock_ / ac_ / faucet_ 等前缀 id）。
+   * **本步不高亮**：点位走合批渲染（BatchedMesh），实例不在 traverse 的
+   * mesh.userData 上逐件命中，要按 batchUserData 桥接扩展（第三步）。反查仍用
+   * 它们——点点位对象的拾取链路是通的，能反查归属包。
+   */
+  pointIds: string[];
   /** true = 全项目范围（project_scope/select all）：不硬找 3D 位置。 */
   projectScope: boolean;
   /** 本步不展开的选择器（人读说明，UI 原样展示）。 */
@@ -61,6 +68,7 @@ const COLLECTION_ELEMENT_TYPES: Record<string, string[]> = {
 export function resolvePackageScope(link: PackageScopeLink, project: ProjectScopeInput): PackageScopeResolution {
   const roomIds = new Set<string>();
   const objectIds = new Set<string>();
+  const pointIds = new Set<string>();
   const unresolved: string[] = [];
   let projectScope = false;
 
@@ -77,7 +85,9 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
       // 只高亮真实存在的房间（服务端 assertSelector 已校验，这里再收一道）
       if (knownRoomIds.has(roomId)) roomIds.add(roomId);
     }
-    for (const id of select.ids ?? []) objectIds.add(id);
+    // ids = 点位级（sock_*/ac_*/faucet_* 等）：本步不进高亮集合（合批渲染命中不了，
+    // 见 pointIds 注释），但进反查索引（点点位的拾取链路是通的）。
+    for (const id of select.ids ?? []) pointIds.add(id);
     for (const type of select.types ?? []) {
       for (const element of sceneElements) {
         if (element.type === type && element.id) objectIds.add(element.id);
@@ -103,7 +113,7 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
     }
   }
 
-  return {roomIds: [...roomIds], objectIds: [...objectIds], projectScope, unresolved};
+  return {roomIds: [...roomIds], objectIds: [...objectIds], pointIds: [...pointIds], projectScope, unresolved};
 }
 
 /** 反查索引：场景对象 id → 包 id 列表（点 3D 对象回详情面板用）。 */
@@ -116,11 +126,13 @@ export function buildObjectPackageIndex(
   for (const link of links) {
     const packageId = link.budget_ref?.id;
     if (!packageId) continue;
-    const {roomIds, objectIds, projectScope} = resolvePackageScope(link, project);
+    const {roomIds, objectIds, pointIds, projectScope} = resolvePackageScope(link, project);
     // 全项目范围的包（PKG-000/005/010/142/170 等）不占反查——否则点任何对象
     // 都跳它，噪声淹没真实归属
     if (projectScope) continue;
-    for (const id of [...roomIds, ...objectIds]) {
+    // 点位也进索引：点电气/给排水对象的拾取链路（batchUserData 桥接）是通的，
+    // 能反查归属包；只是本步不高亮它们（见 pointIds 注释）。
+    for (const id of [...roomIds, ...objectIds, ...pointIds]) {
       const existing = index.get(id);
       if (existing) {
         if (!existing.includes(packageId)) existing.push(packageId);
