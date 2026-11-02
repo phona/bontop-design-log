@@ -9,8 +9,8 @@
 
 const STORAGE_KEY = 'bontop-view-state/v1';
 
-/** 审批视图的三页（自装交互审批第一步，2026-11-02）：null = 审批视图未打开。 */
-export type ApprovalViewPage = 'next_action' | 'schedule' | 'detail';
+/** 审批视图的页面（自装交互审批第一步，2026-11-02）：null = 审批视图未打开。flow = 依赖流程图（2026-11-02 流程图任务）。 */
+export type ApprovalViewPage = 'next_action' | 'schedule' | 'detail' | 'flow';
 
 export interface PersistedViewState {
   workbenchOpen: boolean;
@@ -32,7 +32,7 @@ export function readViewState(): Partial<PersistedViewState> {
     if (obj.workbenchPage === 'object' || obj.workbenchPage === 'material' || obj.workbenchPage === 'lighting') {
       state.workbenchPage = obj.workbenchPage;
     }
-    if (obj.approvalView === 'next_action' || obj.approvalView === 'schedule' || obj.approvalView === 'detail') {
+    if (obj.approvalView === 'next_action' || obj.approvalView === 'schedule' || obj.approvalView === 'detail' || obj.approvalView === 'flow') {
       state.approvalView = obj.approvalView;
     }
     return state;

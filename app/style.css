@@ -231,6 +231,14 @@ body.scheme-open #scheme-panel {
   --workbench-width: 390px;
 }
 
+/* 自装审批流程图（2026-11-02 流程图任务）：流程图页激活时加宽右坞。12 层依赖图
+   在 390px 里要横滚十几屏，达不到简报要求的「一眼看到顺序/依赖/并行/汇合」。
+   只覆盖变量——所有 calc(var(--workbench-width)) 消费者（toolbar/模式指示器/
+   浮层）自动跟随，关闭流程图时移除该类即复原。 */
+body.flow-wide {
+  --workbench-width: min(72vw, 1100px);
+}
+
 #right-panel-stack {
   position: fixed;
   inset: 0 0 0 auto;
