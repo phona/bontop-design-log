@@ -339,6 +339,9 @@ describe('FlowChartPanel', () => {
     expect((document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement).textContent).toContain('点位级（可高亮）');
     const bar = document.querySelector('#flow-selection-bar') as HTMLElement;
     expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).disabled).toBe(false);
+    // 按钮 title 取点位级口径（逐实例着色），不再借 scene 通用文案
+    expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).title).toContain('点位');
+    expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).title).toContain('setColorAt');
   });
 
   it('highlightPackages 把传入的全部包都标出，并提示同属 N 个包', async () => {

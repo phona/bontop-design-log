@@ -564,4 +564,58 @@ describe('App', () => {
 
     await expect(app.exportGlbDataUrl()).rejects.toThrow('GLB 导出已阻止：HVAC 缺失 hvac:A2:terminal:supply_living');
   });
+
+  // 点包 3D 高亮的聚合路径（highlightApprovalPackage）：房间/对象走 highlightObjects、
+  // 点位走 highlightPoints（第三步落地后点位不再被静默丢弃）。start() 已把 projectData
+  // 拉到手，这里只覆写 links 响应，验证聚合口径与「失败不打断审批流」。
+  it('点包高亮聚合全部 link：房间进 highlightObjects、点位进 highlightPoints', async () => {
+    const app = new App(canvas);
+    await app.start();
+    const objectsSpy = vi.spyOn(app['houseScene'], 'highlightObjects');
+    const pointsSpy = vi.spyOn(app['houseScene'], 'highlightPoints');
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/model-package-links')) {
+        return {
+          ok: true,
+          json: async () => ({
+            links: [
+              // 同一包两条 link（2026-11-02 评审 P1：曾用 find 只取第一个）——必须都聚合
+              { budget_ref: { id: 'PKG-1' }, scope: [{ source: 'test', select: { room_ids: ['living_room'], ids: ['sock_kitchen_gas', 'plumbing:drain_kitchen'] } }] },
+              { budget_ref: { id: 'PKG-1' }, scope: [{ source: 'test', select: { ids: ['sock_living_ac'] } }] },
+              // 别的包的 link：不能被算进来
+              { budget_ref: { id: 'PKG-2' }, scope: [{ source: 'test', select: { ids: ['sock_other'] } }] },
+            ],
+          }),
+        } as Response;
+      }
+      // 其余端点与 beforeEach 默认同口径（ok + 空对象），避免给后台轮询面板制造新的未处理拒绝
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    app['highlightApprovalPackage']('PKG-1');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(objectsSpy).toHaveBeenCalledWith(['living_room']);
+    expect(pointsSpy).toHaveBeenCalledWith(['sock_kitchen_gas', 'plumbing:drain_kitchen', 'sock_living_ac']);
+  });
+
+  it('点包高亮：links 拉取失败时不高亮也不抛（高亮失败不打断审批流）', async () => {
+    const app = new App(canvas);
+    await app.start();
+    const objectsSpy = vi.spyOn(app['houseScene'], 'highlightObjects');
+    const pointsSpy = vi.spyOn(app['houseScene'], 'highlightPoints');
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      // 只有 links 端点失败（其余同 beforeEach 默认口径），隔离验证「拉取失败不抛不高亮」
+      if (urlStr.includes('/api/model-package-links')) return { ok: false, json: async () => ({}) } as Response;
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    expect(() => app['highlightApprovalPackage']('PKG-1')).not.toThrow();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(objectsSpy).not.toHaveBeenCalled();
+    expect(pointsSpy).not.toHaveBeenCalled();
+  });
 });

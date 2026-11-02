@@ -2144,8 +2144,9 @@ export class HouseScene implements SceneApi {
    * 高亮，供「点包 → 高亮该包 3D 范围」用。与 highlightObject 同一匹配口径
    * （userData.objectId / userData.roomId），集合版。
    * 已知边界：合批渲染的电气点位等 BatchedMesh 实例不在 traverse 的
-   * mesh.userData 上逐件命中（拾取侧才走 batchUserData 桥接）——点位级高亮是
-   * 第三步的事，届时按 batcher 桥接扩展，这里先只承诺房间/墙/叠加层区域级。
+   * mesh.userData 上逐件命中（拾取侧才走 batchUserData 桥接）——点位级高亮不走
+   * 本方法，走 highlightPoints（第三步已落地：合批实例按 batchUserData 逐实例
+   * 着色，未合批的单件点位在那里按父链 objectId 走 emissive 兜底）。
    *
    * 竞态防护（2026-11-02 评审 P1）：快速连点两个包时，旧实现把「当前 emissive」
    * 当原色克隆——第二次调用克隆到的是第一次留下的橙色，恢复后 mesh 永久卡橙。
@@ -2187,6 +2188,19 @@ export class HouseScene implements SceneApi {
    * 合批器的 batchUserData（instanceId → userData，见 SceneBatcher）反查目标
    * 实例，用 BatchedMesh.setColorAt 逐实例着色，超时恢复。与 highlightObjects
    * 同纪律：每实例一个递增令牌（旧超时作废）+ 首次保存真实原色（恢复后清除）。
+   *
+   * 未合批兜底（2026-11-02 评审 P1-1）：SceneBatcher「组内不足 2 件不合批，留在
+   * 原位」——独占一组的单件点位不进任何批次，只认 isBatchedMesh 的实现会静默漏掉
+   * 它（业主点点位包毫无反应）。点位 id 声明在 unit 组 userData 上（零件 mesh 只有
+   * part/materialRole，见 InfrastructureBuilder/InteriorLightingSystem），故兜底按
+   * 拾取侧 targetFromIntersects 同口径的父链上浮找 objectId，命中后用
+   * highlightObjects 同款 emissive 令牌纪律高亮；两路共用 highlightTokens /
+   * highlightOriginals，同一 mesh 被两条路径同时命中时令牌仍然自洽（先到者存原色，
+   * 后到者只递增令牌），不会各存一份原色、把橙色当原色恢复。
+   *
+   * 已知边界（真实浏览器验证待补）：setColorAt 是**乘法调制**（实例色 × 材质色），
+   * 不是 emissive 发光——深色材质点位的点亮亮度会明显低于 highlightObjects 的
+   * emissive 橙，两类高亮并排时有视觉差。回归验证须覆盖深色材质点位。
    */
   private readonly pointHighlightTokens = new WeakMap<THREE.BatchedMesh, Map<number, number>>();
   private readonly pointHighlightOriginals = new WeakMap<THREE.BatchedMesh, Map<number, THREE.Color>>();
@@ -2196,34 +2210,96 @@ export class HouseScene implements SceneApi {
     if (!targetIds.size) return;
     this.scene.traverse((obj) => {
       const batch = obj as THREE.BatchedMesh;
-      if (!batch.isBatchedMesh) return;
-      const userDataById = batch.userData?.batchUserData as Map<number, Record<string, unknown>> | undefined;
-      if (!(userDataById instanceof Map)) return;
-      const tokens = this.pointHighlightTokens.get(batch) ?? new Map<number, number>();
-      const originals = this.pointHighlightOriginals.get(batch) ?? new Map<number, THREE.Color>();
-      this.pointHighlightTokens.set(batch, tokens);
-      this.pointHighlightOriginals.set(batch, originals);
-      for (const [instanceId, userData] of userDataById) {
-        const objectId = userData.objectId as string | undefined;
-        if (!objectId || !targetIds.has(objectId)) continue;
-        if (!originals.has(instanceId)) {
-          const original = new THREE.Color();
-          batch.getColorAt(instanceId, original);
-          originals.set(instanceId, original);
+      if (batch.isBatchedMesh) {
+        const userDataById = batch.userData?.batchUserData as Map<number, Record<string, unknown>> | undefined;
+        if (!(userDataById instanceof Map)) return;
+        const tokens = this.pointHighlightTokens.get(batch) ?? new Map<number, number>();
+        const originals = this.pointHighlightOriginals.get(batch) ?? new Map<number, THREE.Color>();
+        this.pointHighlightTokens.set(batch, tokens);
+        this.pointHighlightOriginals.set(batch, originals);
+        for (const [instanceId, userData] of userDataById) {
+          const objectId = userData.objectId as string | undefined;
+          if (!objectId || !targetIds.has(objectId)) continue;
+          if (!originals.has(instanceId)) {
+            originals.set(instanceId, this.captureBatchInstanceColor(batch, instanceId));
+          }
+          const token = (tokens.get(instanceId) ?? 0) + 1;
+          tokens.set(instanceId, token);
+          batch.setColorAt(instanceId, new THREE.Color(0xffaa00));
+          setTimeout(() => {
+            // 只有仍持有最新令牌的恢复才生效；被更新的高亮接管的实例不动
+            if (tokens.get(instanceId) !== token) return;
+            const original = originals.get(instanceId);
+            if (original) batch.setColorAt(instanceId, original);
+            tokens.delete(instanceId);
+            originals.delete(instanceId);
+          }, 1200);
         }
-        const token = (tokens.get(instanceId) ?? 0) + 1;
-        tokens.set(instanceId, token);
-        batch.setColorAt(instanceId, new THREE.Color(0xffaa00));
-        setTimeout(() => {
-          // 只有仍持有最新令牌的恢复才生效；被更新的高亮接管的实例不动
-          if (tokens.get(instanceId) !== token) return;
-          const original = originals.get(instanceId);
-          if (original) batch.setColorAt(instanceId, original);
-          tokens.delete(instanceId);
-          originals.delete(instanceId);
-        }, 1200);
+        return;
       }
+      // 非批 mesh：单件点位兜底（组内不足 2 件不合批，留在原位）
+      this.highlightUnbatchedPoint(obj as THREE.Mesh, targetIds);
     });
+  }
+
+  /**
+   * 捕获合批实例的真实原色，fail-safe（2026-11-02 评审 P0-1）：three r166 的
+   * BatchedMesh.getColorAt 直接读 this._colorsTexture.image.data，而 _colorsTexture
+   * 只在 setColorAt 首次调用时懒初始化（_initColorsTexture 以**全 1 白色**填充）；
+   * 本仓 SceneBatcher 从不 setColorAt，真实批次的颜色纹理恒为 null——第一个命中的
+   * 实例就抛 TypeError，traverse 中断、一个实例都点不亮，异常还被 App 的「高亮失败
+   * 不打断审批流」catch 静默吞掉。懒初始化纹理本身就是全白填充，所以**白色就是真实
+   * 默认原色**（不是黑）：抛错 / 返回 null / 非有限值一律回落到 (1,1,1)。禁止调私有
+   * _initColorsTexture，禁止先 setColorAt 写一遍（那会多一次纹理上传且语义别扭）。
+   */
+  private captureBatchInstanceColor(batch: THREE.BatchedMesh, instanceId: number): THREE.Color {
+    const captured = new THREE.Color(1, 1, 1);
+    try {
+      // @types/three 把返回值声明成 void，真 three r166 对未激活/越界实例返回 null；
+      // 用 unknown 接住再判空，避免把「返回值」当成可用事实
+      const returned: unknown = batch.getColorAt(instanceId, captured);
+      if (returned !== null && returned !== undefined
+        && Number.isFinite(captured.r) && Number.isFinite(captured.g) && Number.isFinite(captured.b)) {
+        return captured;
+      }
+    } catch {
+      // 颜色纹理未初始化（见上）：回落白色
+    }
+    return new THREE.Color(1, 1, 1);
+  }
+
+  /**
+   * 未合批单件点位的 emissive 兜底（2026-11-02 评审 P1-1）。匹配口径与拾取侧
+   * targetFromIntersects 一致：点位 id 在 unit 组 userData 上，零件 mesh 只有
+   * part/materialRole，故从 mesh 沿父链上浮找第一个 objectId。恢复纪律与
+   * highlightObjects 完全相同且**共用** highlightTokens/highlightOriginals——同一
+   * mesh 若同时被两条路径命中，令牌自洽，不会把第一次留下的橙当成原色。
+   */
+  private highlightUnbatchedPoint(mesh: THREE.Mesh, targetIds: Set<string>): void {
+    const mat = mesh.material as THREE.MeshStandardMaterial | undefined;
+    // 只认带 emissive 的材质：真实 three 的 Group/Light/Sprite 没有 emissive，天然跳过
+    if (!mat?.emissive || !mesh.userData) return;
+    let node: THREE.Object3D | null = mesh;
+    let objectId: string | undefined;
+    while (node && !objectId) {
+      const candidate = node.userData?.objectId as string | undefined;
+      if (candidate) objectId = candidate;
+      else node = node.parent;
+    }
+    if (!objectId || !targetIds.has(objectId)) return;
+    if (!this.highlightOriginals.has(mesh)) {
+      this.highlightOriginals.set(mesh, mat.emissive.clone());
+    }
+    const token = (this.highlightTokens.get(mesh) ?? 0) + 1;
+    this.highlightTokens.set(mesh, token);
+    mat.emissive.set(0xffaa00);
+    setTimeout(() => {
+      // 只有仍持有最新令牌的恢复才生效；被更新的高亮接管的 mesh 不动
+      if (this.highlightTokens.get(mesh) !== token) return;
+      mat.emissive.copy(this.highlightOriginals.get(mesh) ?? new THREE.Color(0x000000));
+      this.highlightTokens.delete(mesh);
+      this.highlightOriginals.delete(mesh);
+    }, 1200);
   }
 
   setCameraTarget(targetId: string) {
