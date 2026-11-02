@@ -1,6 +1,8 @@
 /**
- * 移动端底部 tab bar：5 个常驻入口（视角/方案/图层/环境/总览）+ 命令面板按钮。
+ * 移动端底部 tab bar：6 个常驻入口（视角/方案/图层/审批/环境/总览）+ 命令面板按钮。
  * 与桌面顶栏同一套 surface id，点击走 SurfaceManager.toggle——两端共用交互模型。
+ * 例外：'approval'（自装审批视图，2026-11-02）不是 SurfaceManager 的 surface，
+ * 由 App 的 onSurface 分流处理（审批页是右侧动态面板，不走 slot 互斥模型）。
  * 仅在移动形态（触摸主输入或窄视口）显示，由 input-capability 判定。
  */
 export interface MobileTabBarOptions {
@@ -19,6 +21,7 @@ const TABS: Array<{ id: string; label: string }> = [
   { id: 'view', label: '视角' },
   { id: 'scheme', label: '方案' },
   { id: 'layers', label: '图层' },
+  { id: 'approval', label: '审批' },
   { id: 'env', label: '环境' },
   { id: 'overview', label: '总览' },
 ];

@@ -1,4 +1,17 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, afterAll } from 'vitest';
+
+// 文件级环境 shim（2026-11-02）：jsdom 不提供 ResizeObserver，而 HouseScene 构造
+// 时会 new ResizeObserver——本文件所有用例（不止高亮组）都因此抛在构造期，长期
+// 基线红 45 条。补最小 stub 后这些用例真正跑起来并通过；基线行已随本次提交删到
+// 实际失败的 3 条。**这个 shim 是承重墙**：删它 = 45 条用例回到基线外新失败。
+// 若将来换 vitest setupFiles 全局方案，记得同步这里与 ci/baseline。
+if (typeof (globalThis as { ResizeObserver?: unknown }).ResizeObserver === 'undefined') {
+  (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
 
 vi.mock('three', async (importOriginal: any) => {
   const __three = await importOriginal();
@@ -1980,5 +1993,65 @@ describe('HouseScene 踢脚线审计面', () => {
     const status = scene.getSkirtingStatus();
     expect(status.ready).toBe(false);
     expect(status.missing).toEqual(['w_gone']);
+  });
+});
+
+// 自装交互审批（2026-11-02）：包级集合高亮的竞态防护。
+// 场景：快速连点两个包——旧实现把「当前 emissive」当原色克隆，第二次克隆到的
+// 是第一次留下的橙色，恢复后 mesh 永久卡橙。现制：每 mesh 递增令牌 + 首次
+// 高亮保存真实原色。这里用带颜色的 emissive mock（默认 three mock 无颜色状态）。
+describe('HouseScene highlightObjects 竞态防护', () => {
+  const makeScene = () => new HouseScene({ addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement);
+
+  const emissiveMock = () => ({
+    r: 0.1, g: 0.2, b: 0.3,
+    set(r: number) { this.r = r; return this; },
+    copy(c: { r: number; g: number; b: number }) { this.r = c.r; this.g = c.g; this.b = c.b; return this; },
+    clone() { return { r: this.r, g: this.g, b: this.b, set() { return this; }, copy() { return this; } }; },
+  });
+
+  // material 断言处统一走 any：THREE.Mesh.material 是 Material | Material[]，
+  // emissive 只在 MeshStandardMaterial 上；本组只关心高亮恢复逻辑。
+  const meshWithId = (objectId: string): any => {
+    const mesh = new THREE.Mesh() as any;
+    mesh.userData = {objectId, roomId: 'room_a'};
+    mesh.material = {emissive: emissiveMock()};
+    return mesh;
+  };
+
+  it('快速连点两个包：恢复后回到真实原色，不卡橙', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const mesh = meshWithId('wall_x');
+      scene.getScene().add(mesh);
+      scene.highlightObjects(['wall_x']);
+      expect(mesh.material.emissive.r).toBe(0xffaa00);
+      // 1200ms 内再点一次（竞态窗口）：旧实现会在此刻把橙色当原色
+      scene.highlightObjects(['wall_x']);
+      vi.runAllTimers();
+      expect(mesh.material.emissive.r).toBe(0.1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('高亮结束后令牌与原色清空：下次现场变化重新捕获', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const mesh = meshWithId('wall_x');
+      scene.getScene().add(mesh);
+      scene.highlightObjects(['wall_x']);
+      vi.runAllTimers();
+      expect(mesh.material.emissive.r).toBe(0.1);
+      // 模拟现场变化：emissive 被别的系统改过，下次高亮应捕获新值为原色
+      mesh.material.emissive.r = 0.9;
+      scene.highlightObjects(['wall_x']);
+      vi.runAllTimers();
+      expect(mesh.material.emissive.r).toBe(0.9);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
