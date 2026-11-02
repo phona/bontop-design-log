@@ -2116,6 +2116,35 @@ describe('HouseScene highlightObjects 竞态防护', () => {
     }
   });
 
+  it('共享材质：两个 mesh 同一材质实例时只按材质捕获一次原色，恢复后不卡橙', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      // 2026-11-02 浏览器终验实证：场景 78 个共享材质（同一实例被 8 个 (mesh,slot)
+      // 共用）。旧簿记按 mesh 键——第二个 mesh 捕获时 emissive 已被第一个置橙，把橙
+      // 当原色存下，恢复写回橙：每次高亮后 340 个元素/55 个材质永久卡橙。簿记单元
+      // 必须是材质实例（突变单元），本测试在按 mesh 键的实现下必红。
+      const shared = {emissive: emissiveMock()};
+      const meshA = new THREE.Mesh() as any;
+      meshA.userData = {objectId: 'floor_a', roomId: 'room_a'};
+      meshA.material = shared;
+      const meshB = new THREE.Mesh() as any;
+      meshB.userData = {objectId: 'floor_b', roomId: 'room_a'};
+      meshB.material = shared; // 同一实例
+      scene.getScene().add(meshA);
+      scene.getScene().add(meshB);
+      scene.highlightObjects(['floor_a', 'floor_b']);
+      expect(shared.emissive.r).toBe(0xffaa00);
+      vi.runAllTimers();
+      // 必须回到真实原色 0.1，绝不是第二次捕获到的橙
+      expect(shared.emissive.r).toBe(0.1);
+      expect(shared.emissive.g).toBe(0.2);
+      expect(shared.emissive.b).toBe(0.3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('highlightPoints：合批点位按 batchUserData 反查实例，连点恢复真实原色不卡橙', async () => {
     vi.useFakeTimers();
     try {
