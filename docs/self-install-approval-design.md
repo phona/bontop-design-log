@@ -90,7 +90,7 @@ v1 的全部举例经核实为真并保留，无具体候选、证据口径、�
 - 包与模型关联：config/model-package-links.yaml（只做关联索引，不复制金额、坐标、证据；**当前未在 facts.yaml coverage 登记，第一步补登记**，否则改它没有门禁看）
 - 审计与合同：control.yaml 的 audit_log、contracts/ 原件加登记块（金额、成交状态、签约日期、含不含范围、archive_paths）
 
-**共享 loader 约束（硬性）**：scripts/schedule/control.ts 有模块级副作用（`renderMode` 在顶层，文件尾直接跑检测、console.log、设 exitCode），server 和前端不得直接 import 它。第一步先抽无副作用 loader（拆分 control.ts，或新建 shared/schedule-loader.ts），CLI、CI、新 API 三者共用同一个 loader——判定规则从此只有一处，见 §5.3。
+**共享 loader 约束（硬性）**：scripts/schedule/control.ts 有模块级副作用（`renderMode` 在顶层，文件尾直接跑检测、console.log、设 exitCode），server 和前端不得直接 import 它。第一步先抽无副作用 loader（拆分 control.ts 或新建共享 loader 模块——实际落点 shared/schedule-state.ts），CLI、CI、新 API 三者共用同一个 loader——判定规则从此只有一处，见 §5.3。
 
 视图层（同一站点，面板共用选中 ID）：
 - 首屏：next-action 视图（见 §7）
@@ -226,7 +226,7 @@ PKG-000 设计、量房与开工准备（先过交房、结构、空调深化、
 ## 11. 分阶段落地（代码先不动，方向已定）
 
 第一步（只读联动 + next-action）：
-- 抽无副作用共享 loader（拆分 scripts/schedule/control.ts，或新建 shared/schedule-loader.ts），CLI、CI、新 API 三者共用
+- 抽无副作用共享 loader（拆分 scripts/schedule/control.ts，或新建 shared/schedule-state.ts），CLI、CI、新 API 三者共用
 - 只读 API：包、检查、audit_log、决策门禁、成本组件（现状无 /api/schedule 出口：/api/project 是 ProjectCatalog 不含这些，/api/decisions 是浏览器可写的设计决策流水不是 D1-D18 门禁表）
 - facts.yaml coverage 登记新读者；补登记 model-package-links.yaml
 - 进度图、门禁图、next-action 视图；点包高亮范围、点对象反向高亮包；选中 ID 进链接
