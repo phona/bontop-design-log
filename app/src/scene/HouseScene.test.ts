@@ -2074,6 +2074,48 @@ describe('HouseScene highlightObjects 竞态防护', () => {
     }
   });
 
+  it('数组材质（GLB 墙按 group 分材质）：逐元素高亮与恢复，缺 emissive 的元素跳过不抛', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const mesh = meshWithId('wall_array') as any;
+      // 2026-11-02 浏览器实证：墙 mesh 带 6 元素材质数组，mat.emissive 对数组是
+      // undefined，.set 抛 TypeError 被 App 静默吞掉 → traverse 中断、后续范围全不
+      // 高亮。第三个元素故意缺 emissive，必须被跳过而不是炸掉。
+      mesh.material = [
+        {emissive: emissiveMock()},
+        {emissive: emissiveMock()},
+        {emissive: undefined},
+      ];
+      scene.getScene().add(mesh);
+      scene.highlightObjects(['wall_array']);
+      expect(mesh.material[0].emissive.r).toBe(0xffaa00);
+      expect(mesh.material[1].emissive.r).toBe(0xffaa00);
+      vi.runAllTimers();
+      expect(mesh.material[0].emissive.r).toBe(0.1);
+      expect(mesh.material[1].emissive.r).toBe(0.1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('点亮与熄灭都请求渲染（按需门控下不上屏 = 业主看到「点了没反应」）', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const renderSpy = vi.fn();
+      scene.setOnRenderRequested(renderSpy);
+      const mesh = meshWithId('wall_render');
+      scene.getScene().add(mesh);
+      scene.highlightObjects(['wall_render']);
+      expect(renderSpy).toHaveBeenCalledTimes(1); // 点亮请帧
+      vi.runAllTimers();
+      expect(renderSpy).toHaveBeenCalledTimes(2); // 熄灭也要请帧，否则画布留残影
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('highlightPoints：合批点位按 batchUserData 反查实例，连点恢复真实原色不卡橙', async () => {
     vi.useFakeTimers();
     try {

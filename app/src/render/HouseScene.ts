@@ -2154,30 +2154,45 @@ export class HouseScene implements SceneApi {
    * （恢复后删除，下次现场变化重新捕获）。
    */
   private readonly highlightTokens = new WeakMap<THREE.Mesh, number>();
-  private readonly highlightOriginals = new WeakMap<THREE.Mesh, THREE.Color>();
+  /** 原色按 mesh 存**数组**：GLB 墙带多材质数组（2026-11-02 浏览器实证），逐元素各存一份。 */
+  private readonly highlightOriginals = new WeakMap<THREE.Mesh, THREE.Color[]>();
 
   highlightObjects(ids: string[]) {
     const targetIds = new Set(ids);
     if (!targetIds.size) return;
     this.scene.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
-      const mat = mesh.material as THREE.MeshStandardMaterial | undefined;
-      if (!mat || !mesh.userData) return;
+      if (!mesh.userData) return;
       const objectId = mesh.userData.objectId as string | undefined;
       const roomId = mesh.userData.roomId as string | undefined;
       if (!((objectId && targetIds.has(objectId)) || (roomId && targetIds.has(roomId)))) return;
-      if (!this.highlightOriginals.has(mesh)) {
-        this.highlightOriginals.set(mesh, mat.emissive?.clone() ?? new THREE.Color(0x000000));
+      // 数组材质（GLB 墙按 group 分材质）必须逐元素处理：旧守卫只挡 !mat，mat.emissive
+      // 对数组是 undefined，.set 直接抛 TypeError——被 App 的「高亮失败不打断审批流」
+      // 静默吞掉，traverse 在第一个数组材质墙处中断：后续范围全部不高亮、末尾的
+      // requestRender 也不执行，业主看到「点了没反应」（2026-11-02 浏览器实证，
+      // PKG-060 56 个 scope id 只有中断前 13 个变色）。缺 emissive 的元素跳过。
+      const materials = (Array.isArray(mesh.material) ? mesh.material : [mesh.material])
+        .filter((mat): mat is THREE.MeshStandardMaterial =>
+          !!mat && !!(mat as THREE.MeshStandardMaterial).emissive);
+      if (!materials.length) return;
+      let originals = this.highlightOriginals.get(mesh);
+      if (!originals) {
+        originals = materials.map((mat) => mat.emissive.clone());
+        this.highlightOriginals.set(mesh, originals);
       }
       const token = (this.highlightTokens.get(mesh) ?? 0) + 1;
       this.highlightTokens.set(mesh, token);
-      mat.emissive.set(0xffaa00);
+      for (const mat of materials) mat.emissive.set(0xffaa00);
       setTimeout(() => {
         // 只有仍持有最新令牌的恢复才生效；被更新的高亮接管的 mesh 不动
         if (this.highlightTokens.get(mesh) !== token) return;
-        mat.emissive.copy(this.highlightOriginals.get(mesh) ?? new THREE.Color(0x000000));
+        const saved = this.highlightOriginals.get(mesh);
+        materials.forEach((mat, index) => mat.emissive.copy(saved?.[index] ?? new THREE.Color(0x000000)));
         this.highlightTokens.delete(mesh);
         this.highlightOriginals.delete(mesh);
+        // 熄灭同样要请帧：数据变回原色后画布不重绘就会留橙色残影
+        // （2026-11-02 浏览器实证：数据全白 2 分钟后截图仍有橙色像素）。
+        this.requestRender();
       }, 1200);
     });
     // 高亮是 1200ms 瞬时态：应用侧的渲染是按需的（renderQueued 门控），触发高亮的
@@ -2238,6 +2253,8 @@ export class HouseScene implements SceneApi {
             if (original) batch.setColorAt(instanceId, original);
             tokens.delete(instanceId);
             originals.delete(instanceId);
+            // 熄灭请帧：实例色变回原色后不重绘会留橙色残影
+            this.requestRender();
           }, 1200);
         }
         return;
@@ -2295,7 +2312,7 @@ export class HouseScene implements SceneApi {
     }
     if (!objectId || !targetIds.has(objectId)) return;
     if (!this.highlightOriginals.has(mesh)) {
-      this.highlightOriginals.set(mesh, mat.emissive.clone());
+      this.highlightOriginals.set(mesh, [mat.emissive.clone()]);
     }
     const token = (this.highlightTokens.get(mesh) ?? 0) + 1;
     this.highlightTokens.set(mesh, token);
@@ -2303,9 +2320,10 @@ export class HouseScene implements SceneApi {
     setTimeout(() => {
       // 只有仍持有最新令牌的恢复才生效；被更新的高亮接管的 mesh 不动
       if (this.highlightTokens.get(mesh) !== token) return;
-      mat.emissive.copy(this.highlightOriginals.get(mesh) ?? new THREE.Color(0x000000));
+      mat.emissive.copy(this.highlightOriginals.get(mesh)?.[0] ?? new THREE.Color(0x000000));
       this.highlightTokens.delete(mesh);
       this.highlightOriginals.delete(mesh);
+      this.requestRender();
     }, 1200);
   }
 
