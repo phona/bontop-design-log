@@ -231,12 +231,86 @@ body.scheme-open #scheme-panel {
   --workbench-width: 390px;
 }
 
-/* 自装审批流程图（2026-11-02 流程图任务）：流程图页激活时加宽右坞。12 层依赖图
-   在 390px 里要横滚十几屏，达不到简报要求的「一眼看到顺序/依赖/并行/汇合」。
-   只覆盖变量——所有 calc(var(--workbench-width)) 消费者（toolbar/模式指示器/
-   浮层）自动跟随，关闭流程图时移除该类即复原。 */
-body.flow-wide {
-  --workbench-width: min(72vw, 1100px);
+/* 自装审批独立页（2026-11-03 路由级）：全屏表面，z-index 压 HUD（100）但低于
+   总览菜单（200）与命令面板（250）。body.approval-page 控制显隐——默认 none，
+   不占布局。页内 tab 切四个子页；移动端（mobile-chrome）隐藏底部 tab 栏，
+   页内 tab 即导航。流程图不再需要 flow-wide：全屏宽度直接给够。 */
+#approval-page {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  flex-direction: column;
+  background: rgba(12, 14, 20, 0.98);
+}
+
+body.approval-page #approval-page {
+  display: flex;
+}
+
+body.mobile-chrome.approval-page #mobile-tabbar {
+  display: none;
+}
+
+.approval-page-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  flex-wrap: wrap;
+}
+
+.approval-page-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#approval-page-back {
+  cursor: pointer;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid #6fa8dc;
+  background: #2f4a63;
+  color: #e8f2ff;
+  font-size: 12px;
+}
+
+.approval-page-tabs {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.approval-page-tabs button {
+  cursor: pointer;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: #22242f;
+  color: #9aa4b2;
+  font-size: 12px;
+}
+
+.approval-page-tabs button.on {
+  border-color: #6fa8dc;
+  background: #2f4a63;
+  color: #e8f2ff;
+}
+
+#approval-page-panels {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+}
+
+/* 面板原为 390px 右坞设计（build() 内联 max-width 460-720px）；全屏页里拉满，
+   流程图 12 层依赖图尤其需要宽度。 */
+#approval-page-panels .dynamic-panel {
+  max-width: none;
 }
 
 #right-panel-stack {

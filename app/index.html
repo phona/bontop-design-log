@@ -80,6 +80,23 @@
     </aside>
     <button id="workbench-reopen" type="button" aria-label="打开预演工作台">预演</button>
 
+    <!-- 自装审批独立页（2026-11-03 路由级）：从预演工作台 dock 搬出，地址栏
+         #approval=<子页>&pkg=&check= 即状态；body.approval-page 控制显隐。
+         四个审批面板运行时挂到 #approval-page-panels（不再挤右坞）。 -->
+    <div id="approval-page" aria-label="自装审批">
+      <header class="approval-page-head">
+        <button id="approval-page-back" type="button" title="返回 3D（浏览器返回键同效）">← 返回 3D</button>
+        <span class="approval-page-title">自装审批</span>
+        <nav class="approval-page-tabs" aria-label="审批视图切换">
+          <button type="button" data-approval-tab="next_action">下一步干什么</button>
+          <button type="button" data-approval-tab="schedule">进度/门禁</button>
+          <button type="button" data-approval-tab="detail">包详情</button>
+          <button type="button" data-approval-tab="flow">流程图</button>
+        </nav>
+      </header>
+      <div id="approval-page-panels"></div>
+    </div>
+
     <div id="overview-menu" class="panel">
       <h3>总览</h3>
       <div id="overview-section-layout">
@@ -143,7 +160,7 @@
         <button id="scheme-toggle-btn" aria-controls="scheme-panel" aria-expanded="false" title="方案：主题 / 选项 / 导出">方案</button>
         <button id="layers-toggle-btn" aria-controls="layers-panel" aria-expanded="false" title="图层与检视层（轨道模式数字键 1-7 开关，0 全关）">图层<span id="layers-active-count" class="toolbar-count" hidden></span></button>
         <button id="env-toggle-btn" aria-controls="env-panel" aria-expanded="false" title="日照 / 湿度模拟">环境</button>
-        <button id="approval-toggle-btn" aria-controls="right-panel-stack" aria-expanded="false" title="自装审批：进度图 / 门禁图 / 下一步干什么（与 3D 联动，选中可发链接）">审批</button>
+        <button id="approval-toggle-btn" aria-controls="approval-page" aria-expanded="false" title="自装审批独立页：下一步干什么 / 进度门禁 / 包详情 / 依赖流程图（选中可发链接，去 3D 看包一键跳回）">审批</button>
         <button id="overview-toggle-btn" aria-controls="overview-menu" aria-expanded="false" title="总览菜单（M）">总览</button>
         <button id="alerts-toggle-btn" aria-controls="alerts-panel" aria-expanded="false" title="检视层问题汇总（MEP lint + 电气回路）" hidden>⚠<span id="alerts-count" class="toolbar-count"></span></button>
         <button id="settings-toggle-btn" aria-controls="settings-panel" aria-expanded="false" title="渲染设置">⚙</button>

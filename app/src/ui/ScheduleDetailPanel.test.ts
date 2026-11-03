@@ -124,7 +124,7 @@ function stubFetch(snapshotPayload: ScheduleSnapshot, project: unknown): ReturnT
 
 describe('ScheduleDetailPanel', () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div id="right-panel-stack"></div>';
+    document.body.innerHTML = '<div id="right-panel-stack"></div><div id="approval-page-panels"></div>';
   });
 
   it('选中包：头部 / 阻塞 / 预算 / 检查表 / 指纹前 12 位', async () => {
@@ -474,7 +474,7 @@ const setInput = (selector: string, value: string): void => {
 
 describe('ScheduleDetailPanel 验收操作（写路径）', () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div id="right-panel-stack"></div>';
+    document.body.innerHTML = '<div id="right-panel-stack"></div><div id="approval-page-panels"></div>';
   });
 
   it('证据：选文件→暂存→选为最终证据→final_path 进草稿 evidence 列表', async () => {

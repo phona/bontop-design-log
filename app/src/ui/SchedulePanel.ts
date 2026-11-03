@@ -310,7 +310,9 @@ export class SchedulePanel {
         <div id="schedule-panel-body"></div>
       </div>
     `;
-    const stack = document.getElementById('right-panel-stack');
+    // 2026-11-03 路由级独立页：挂到审批页容器（不再挤预演工作台右坞——那正是
+    // 「对象信息点开没东西」的挤压源）。测试只提供挂载点，见各测试 installDom。
+    const stack = document.getElementById('approval-page-panels');
     (stack ?? document.body).appendChild(el);
     const toggle = el.querySelector('#schedule-panel-toggle') as HTMLButtonElement | null;
     const content = el.querySelector('#schedule-panel-content') as HTMLElement | null;

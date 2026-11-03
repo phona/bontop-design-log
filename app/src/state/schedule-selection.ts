@@ -9,8 +9,11 @@
  *
  * 只存「业主正在看哪个包/哪项检查」，不存任何事实；事实唯一来源是
  * /api/schedule/state（config 投影）。localStorage 那套视图持久化沿用
- * view-state-store.ts，本模块只管选中与地址栏。
+ * view-state-store.ts，本模块只管选中与地址栏——地址栏的完整语法（含
+ * 「在不在审批页」的 approval 参数）归 approval-route.ts，这里委托它写。
  */
+
+import { writeSelectionRoute } from './approval-route.js';
 
 export interface ScheduleSelection {
   packageId: string | null;
@@ -32,15 +35,13 @@ export function readSelectionFromHash(hash: string): ScheduleSelection {
   }
 }
 
-/** 把选中写进地址栏（replaceState，不产生历史条目、不触发跳转）。 */
+/**
+ * 把选中写进地址栏。2026-11-03 起委托审批路由（approval-route.ts）：
+ * 选中写 hash 必须**保持当前子页**——在流程图里点包不会把人弹到详情页，
+ * 在 3D 页的选中写入也不会凭空打开审批页（子页只由显式导航切换）。
+ */
 export function writeSelectionToHash(selection: ScheduleSelection): void {
-  if (typeof history === 'undefined' || typeof location === 'undefined') return;
-  const params = new URLSearchParams();
-  if (selection.packageId) params.set('pkg', selection.packageId);
-  if (selection.checkId) params.set('check', selection.checkId);
-  const query = params.toString();
-  const next = query ? `#${query}` : '#';
-  if (location.hash !== next) history.replaceState(null, '', next);
+  writeSelectionRoute({packageId: selection.packageId, checkId: selection.checkId});
 }
 
 export class ScheduleSelectionStore {
@@ -70,10 +71,13 @@ export class ScheduleSelectionStore {
     };
   }
 
-  /** 启动时从地址栏恢复（直接打开某包的链接时用）。 */
-  restoreFromHash(): void {
+  /**
+   * 启动时从地址栏恢复（直接打开某包的链接时用）。force=true 时无条件应用
+   * （hashchange 用：返回 3D 页要把选中也清掉，不能因「没有 pkg」早退）。
+   */
+  restoreFromHash(options?: {force?: boolean}): void {
     const fromHash = typeof location === 'undefined' ? {packageId: null, checkId: null} : readSelectionFromHash(location.hash);
-    if (!fromHash.packageId && !fromHash.checkId) return;
+    if (!options?.force && !fromHash.packageId && !fromHash.checkId) return;
     this.current = fromHash;
     for (const listener of this.listeners) listener(fromHash);
   }

@@ -84,7 +84,7 @@ function snapshot(): ScheduleSnapshot {
 
 describe('SchedulePanel', () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div id="right-panel-stack"></div>';
+    document.body.innerHTML = '<div id="right-panel-stack"></div><div id="approval-page-panels"></div>';
   });
 
   it('show() 拉取快照并渲染包链表格（sequence 升序、含 PKG-900 侧车道）', async () => {

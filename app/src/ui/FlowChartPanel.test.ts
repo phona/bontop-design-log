@@ -244,7 +244,7 @@ function stubFetch(snap: ScheduleSnapshot = snapshot(), links: unknown = linksPa
 }
 
 function installDom(): void {
-  document.body.innerHTML = '<div id="right-panel-stack"></div>';
+  document.body.innerHTML = '<div id="right-panel-stack"></div><div id="approval-page-panels"></div>';
 }
 
 const layerOf = (packageId: string): string | null =>
