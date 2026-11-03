@@ -599,6 +599,73 @@ test('project-dxf: MEP 标高读 from_height/to_height 覆盖值而非端点原�
   assert.ok(!texts.some((e) => (e['1'] ?? '').includes('H0.50→0.90')));
 });
 
+test('project-dxf: 候选 anchor（pending/候选汇流节点）隔离 M-CAND，不与 junction 双画（codex 十审 blocking）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: {
+        version: '1', status: 'ok', layers: {},
+        routes: [{
+          id: 'in_a', layer: 'condensate' as never, status: 'confirmed' as never, route_kind: 'candidate',
+          from: 'condensate_outlet_cand', to: 'merge_node', via: [],
+        }],
+        junctions: [{
+          id: 'merge_node', layer: 'condensate' as never, kind: 'merge' as never,
+          position: { x: 1.5, z: 0, y: 2.5 }, inlet_routes: ['in_a'], outlet_route: 'out_x',
+          fitting: 'wye' as never, fitting_overlap_m: 0.05, reason: 'test',
+        }] as never,
+      } as never,
+      sources: {
+        electrical: [], plumbing: [], ceiling: [], hvacTerminals: [], outdoor: [],
+        hvacAnchors: [
+          { id: 'merge_node', status: 'pending' as never, system: 'condensate' as never, position: { x: 1.5, y: 2.5, z: 0 } },
+          { id: 'indoor_ok', status: 'confirmed' as never, system: 'refrigerant' as never, position: { x: 3, y: 2.8, z: 1 } },
+        ] as never,
+      } as never,
+    },
+  });
+  const entities = parseEntities(result.dxf);
+  // merge_node 只进 M-CAND（junction 一份 + anchor 隔离后同图层），不出现在 M-HVAC
+  assert.ok(!entities.some((e) => e['8'] === DXF_LAYERS.M_HVAC[0] && (e['1'] ?? '').includes('merge_node')));
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.M_CAND[0] && e.type === 'CIRCLE' && e['10'] === '1500.0000'));
+  // 正常 anchor 留 M-HVAC
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.M_HVAC[0] && e.type === 'TEXT' && (e['1'] ?? '').includes('indoor_ok')));
+  assert.ok(result.warnings.some((w) => w.includes('merge_node') && w.includes('M-CAND')));
+});
+
+test('project-dxf: 等高路线也标注安装标高（codex 十审 major）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: {
+        version: '1', status: 'ok', layers: {},
+        routes: [{ id: 'strong_main', layer: 'refrigerant' as never, status: 'confirmed' as never, route_kind: 'physical', from: { x: 0, z: 0, y: 2.55 }, to: { x: 3, z: 0, y: 2.55 }, via: [] }],
+        junctions: [],
+      } as never,
+      sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
+    },
+  });
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.M_ROUTE[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('strong_main') && (e['1'] ?? '').includes('H2.55')));
+});
+
+test('project-dxf: ascii 模式标高分隔符用 ->（codex 十审 minor）', () => {
+  const ascii = buildProjectDxf({
+    ...baseInput(),
+    labels: 'ascii',
+    mep: {
+      coordination: {
+        version: '1', status: 'ok', layers: {},
+        routes: [{ id: 'drop', layer: 'refrigerant' as never, status: 'confirmed' as never, route_kind: 'physical', from: { x: 1, z: 1, y: 1.30 }, to: { x: 1, z: 1, y: 0.35 }, via: [] }],
+        junctions: [],
+      } as never,
+      sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
+    },
+  });
+  assert.ok(ascii.dxf.includes('H1.30->0.35'));
+  assert.ok(!ascii.dxf.includes('→'));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });
