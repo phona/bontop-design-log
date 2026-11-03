@@ -141,6 +141,15 @@ interface PackageEditState {
    */
   serverSeq: number;
   /**
+   * 本包读取序号（codex 十九审 blocking 1）：每次 loadDraft(packageId) +1，
+   * 响应回头对不上 = 同包有更新的读取在途（含切走后又发起的那种），这份不碰
+   * 任何状态、由新读取落账。旧实现用「当前选中是不是本包」判定新旧：连续发起
+   * P 的 GET1/GET2 再切 Q，GET1 先返回也会合并并放行完整态，PUT 用 GET1 的
+   * 旧视图覆盖服务端、删掉只有 GET2 才带回的新条目。读取新旧只能由本包的读取
+   * 序号决定，与选中态无关（选中态只决定渲不渲染）。
+   */
+  loadSeq: number;
+  /**
    * 完整视图门（codex 十六审 blocking）：该包 draftResults 是否**已知包含
    * 服务端全部条目**。加载在途/加载失败/从未加载过 = false——此时客户端可能
    * 没见过服务端已有结果（首开包时GET未落账），而 PUT 是整份覆盖，发出去就会
@@ -295,7 +304,7 @@ export class ScheduleDetailPanel {
     if (!run) {
       run = {
         saveTimer: null, saveTarget: null, draftVersion: 0, lastServerDraft: null,
-        serverSeq: 0, draftComplete: false, putInFlight: false, saveDeferred: false,
+        serverSeq: 0, loadSeq: 0, draftComplete: false, putInFlight: false, saveDeferred: false,
         gates: null, gatesLoading: false, gatesError: null,
         dryRun: null, dryRunLoading: false, dryRunError: null,
         submitArmed: false, submitting: false, submitResult: null, submitError: null,
@@ -1010,6 +1019,10 @@ export class ScheduleDetailPanel {
     // （编辑/保存/合并都 bump）分不清这两种变化，正是误杀这里的根因；serverSeq
     // 只有保存落账才 bump，两个序号各管一件事。
     const serverSeqAtRequest = run.serverSeq;
+    // 本包读取序号：回头对不上 = 同包有更新的读取在途（codex 十九审 blocking 1）。
+    // 与面板级 draftSeq/draftPackageId 分工明确：那对管「加载中」显示槽归谁，
+    // 这个管「这份响应对本包是不是最新真相」——选中换走不影响前者判定后者。
+    const loadSeqAtRequest = (run.loadSeq += 1);
     // 被更新请求取代只置标志、**不提前 return**——finally 清 loading、尾部重绘与
     // maybeResumeSave 都要执行（提前 return 会跳过收尾：十审十一审在运行态上犯过
     // 同一类错误，十五审的 staleRead 也是为这个，这里不重犯）。
@@ -1018,43 +1031,42 @@ export class ScheduleDetailPanel {
       const response = await fetch(`/api/acceptance/draft?package_id=${encodeURIComponent(packageId)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = (await response.json()) as AcceptanceDraft;
-      // 是否早于一次已落账的保存（旧服务端内容，必须作废——十五审）
-      const staleBySave = run.serverSeq !== serverSeqAtRequest;
-      if (seq === this.draftSeq && this.draftPackageId === packageId) {
-        // 仍是对应包的最新读取：正常落账
-        if (staleBySave) run.draftComplete = true;
-        else {
-          this.applyDraft(packageId, data.results ?? []);
-          this.draftError = null;
-          run.draftComplete = true;
-          if (run.putInFlight) run.saveDeferred = true;
-        }
-      } else if (this.draftPackageId !== packageId) {
-        // 被**别的包**的加载取代（选中换走 / refresh）：没有更新的同包读取在途，
-        // 这份响应仍是该包最新的服务端真相——照常裁定，只是不渲染（选中守卫会
-        // 挡掉重绘）。旧实现在这里整份丢弃再恢复完整态：别处/别标签页新增的
-        // 结果因此永不觉察，恢复完整态后自动 PUT 只含旧缓存，整份覆盖把新结果
-        // 永久删掉（codex 十八审 blocking 2）。被同包更新读取取代时相反：新读取
-        // 在途，这份不碰任何状态，完整态继续关着等它落账。
+      if (run.loadSeq !== loadSeqAtRequest) {
+        // 同包有更新的读取在途（切走后又发起的那种也算）：它落账，这份不碰状态。
+        // 旧实现在这里按「当前选中是谁」放行：GET1/GET2 交错时 GET1 先返回也会
+        // 合并并置 draftComplete，PUT 用 GET1 的旧视图覆盖、删掉 GET2 才能带回
+        // 的新条目（codex 十九审 blocking 1，内存复现）。
         superseded = true;
-        if (staleBySave) run.draftComplete = true;
-        else {
-          this.applyDraft(packageId, data.results ?? []);
+      } else {
+        // 是否早于一次已落账的保存（旧服务端内容，必须作废——十五审）
+        const staleBySave = run.serverSeq !== serverSeqAtRequest;
+        if (staleBySave) {
+          // 保存已在读取在途期间落账：那份 PUT 的整份内容即服务端真相，旧 GET 作废
+          // （不回填——干净态逐字采用会把刚保存的结果回退成旧值）。
           run.draftComplete = true;
+        } else {
+          // 当前服务端真相：走合并回填（规则见 applyDraft）。**选中已换走也照常
+          // 合并**——没有更新的同包读取在途，这份就是该包最新真相；丢弃它会漏掉
+          // 别处/别标签页新增的结果，恢复完整态后 PUT 把旧缓存整份覆盖上去、永久
+          // 删掉它们（codex 十八审 blocking 2）。只是不渲染（选中守卫挡掉）。
+          this.applyDraft(packageId, data.results ?? []);
+          if (this.draftPackageId === packageId) this.draftError = null;
+          run.draftComplete = true;
+          // 合并落账时若有 PUT 在途：它的 body 缺这次新见的服务端条目，落账后必须
+          // 重发，否则在途 PUT 会把它们删掉（十六审复现路径的收尾）。
           if (run.putInFlight) run.saveDeferred = true;
         }
-      } else {
-        superseded = true; // 同包更新读取在途：它自带落账
       }
     } catch (err) {
-      if (seq === this.draftSeq && this.draftPackageId === packageId) {
+      if (run.loadSeq !== loadSeqAtRequest) {
+        superseded = true; // 更新的读取在途：错误也归它报
+      } else if (this.draftPackageId === packageId) {
         // 加载失败：视图仍不完整，保存继续搁置（draftError 有显式提示；重开本包 /
         // refresh 会重发加载）。不回填、不置 draftComplete——PUT 会删没见过的条目。
         this.draftError = err instanceof Error ? err.message : String(err);
       } else {
-        // 失败且被取代：视图不可验证（可能漏掉别处新增），保持不完整——保存继续
-        // 搁置，重开本包重载落账后恢复（十八审 blocking 2 的失败侧：宁可晚存，
-        // 不拿着已知可能过期的视图放行覆盖 PUT）。
+        // 失败且选中已换走：不设 draftError（那是别包加载的显示槽），视图同样
+        // 保持不完整——保存继续搁置，重开本包重载落账后恢复。
         superseded = true;
       }
     } finally {
@@ -1140,14 +1152,16 @@ export class ScheduleDetailPanel {
       } else if (!myCheckIds.has(checkId)) {
         // 别包的缓存条目：原样保留（切包不崩别包的未保存编辑）
         next.set(checkId, {...local, issues: []});
-      } else if (localWins) {
-        // 本包的未保存编辑：本地胜出（dirty 时本地是用户当前真相，含删空）
+      } else if (local.touched.size > 0) {
+        // 本包、服务端没返回、**这一行有未落账编辑**：本地胜出（用户新建的结果，
+        // 或失败周期里改过的行——本地是用户当前真相，含删空）。
         next.set(checkId, {...local, issues: []});
       }
-      // 本包、无未保存编辑、服务端也没返回 = 服务端删了这条结果——**丢弃**。
-      // 旧实现无条件保留，会把服务端删除的结果复活：下次编辑别的行时
-      // collectResults 又把它 PUT 回去，静默撤销别处的删除（codex 十二审
-      // blocking：切包重载复活已删结果）。
+      // 本包、服务端没返回、这一行也没动过（touched 为空）= 服务端删了这条结果
+      // ——**丢弃**。两条旧实现都错在这里：十二审前是无条件保留（干净态也复活）；
+      // 七审后改用包级 localWins（别行的编辑会把本行已删结果复活，下次 PUT 写回、
+      // 静默撤销服务端删除——codex 十九审 blocking 2）。裁定单位必须是**条目自己
+      // 的编辑意图**：这一行自上次服务端确认后没动过，服务端删了就是删了。
     }
     for (const [checkId, result] of byCheck) {
       if (next.has(checkId)) continue;

@@ -737,6 +737,109 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     }
   });
 
+  it('同包两次读取交错：旧读取晚到不放行覆盖保存（codex 十九审 blocking 1 回归）', async () => {
+    // 复现路径（codex 十九审 blocking 1）：连续发起 P 的 GET1、GET2 再切 Q。
+    // GET1 先返回时若被当成本包最新真相合并并置 draftComplete，搁置的保存立即
+    // 恢复，PUT 用 GET1 的旧视图覆盖服务端、删掉只有 GET2 才带回的新条目（别处
+    // 新增的 C2）。修：按包的读取序号判定新旧——GET1 回头发现本包已有更新读取
+    // 在途，不碰任何状态；读取新旧与当前选中谁无关。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    let pGets = 0;
+    let releaseGet1: () => void = () => {};
+    let releaseGet2: () => void = () => {};
+    const gate1 = new Promise<void>((resolve) => { releaseGet1 = resolve; });
+    const gate2 = new Promise<void>((resolve) => { releaseGet2 = resolve; });
+    const {selection, panel, calls} = await mountPanel({snapshot: twoPkg});
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET'
+        && String(url).includes('PKG-010')) {
+        pGets += 1;
+        await (pGets === 1 ? gate1 : gate2);
+        // GET1 只有 C1；GET2 才带回别处新增的 C2
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results:
+          pGets === 1
+            ? [{check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01'}]
+            : [{check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01'},
+               {check_id: 'SCH-010-02', status: 'failed', checked_by: '别处', checked_at: '2026-11-02'}]})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // ① 连续两次读 P（GET1、GET2 都在途）→ 编辑 C1 备注 → 保存被完整视图门搁置
+      const get1 = panel['loadDraft']('PKG-010');
+      const get2 = panel['loadDraft']('PKG-010');
+      setInput('[data-note="SCH-010-01"]', '新备注');
+      panel.flushSave();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(calls.filter((call) => call.method === 'PUT').length).toBe(0);
+      // ② 切 Q 再放行 GET1：不许合并、不许放行完整态、不许恢复保存（旧 bug 在这里
+      //    用 GET1 的旧视图发只含 C1 的 PUT，把服务端的 C2 删掉）
+      selection.set({packageId: 'PKG-020', checkId: null});
+      releaseGet1();
+      await get1;
+      await new Promise((resolve) => setTimeout(resolve, 400)); // 过完 debounce：仍无 PUT
+      expect(calls.filter((call) => call.method === 'PUT').length).toBe(0);
+      // ③ GET2 落账：合并（含别处新增的 C2）→ 搁置的保存恢复，PUT 两条都在
+      releaseGet2();
+      await get2;
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      const put = calls.find((call) => call.method === 'PUT')!.body as {results: Array<{check_id: string; note?: string; checked_by: string}>};
+      expect(put.results.map((r) => r.check_id).sort()).toEqual(['SCH-010-01', 'SCH-010-02']);
+      expect(put.results.find((r) => r.check_id === 'SCH-010-01')!.note).toBe('新备注');
+      expect(put.results.find((r) => r.check_id === 'SCH-010-02')!.checked_by).toBe('别处');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('别行编辑不复活服务端已删结果：缺失条目按条目级 touched 裁定（codex 十九审 blocking 2 回归）', async () => {
+    // 复现路径（codex 十九审 blocking 2）：缓存有 C1、C2，用户只改 C1 备注，服务端
+    // 已删除 C2。旧实现用包级 localWins：C2 这一行没动过也因「包 dirty」被保留，
+    // 下次 PUT 写回、静默撤销服务端删除。修：缺失条目按**这一行自己的** touched
+    // 裁定——没动过就是服务端删了，别行的编辑不能决定本行的命运。
+    let releaseGet: () => void = () => {};
+    const getGate = new Promise<void>((resolve) => { releaseGet = resolve; });
+    const {panel, calls} = await mountPanel({
+      handlers: {
+        draft: () => ({package_id: 'PKG-010', results: [
+          {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01', note: '旧备注'},
+          {check_id: 'SCH-010-02', status: 'failed', checked_by: '业主', checked_at: '2026-11-01'},
+        ]}),
+      },
+    });
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET') {
+        await getGate;
+        // 重载时服务端已删 C2，只返回 C1
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results: [
+          {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01', note: '旧备注'},
+        ]})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // ① 重载在途 → 只改 C1 备注（C2 这一行没动过）→ 保存搁置
+      const getPromise = panel['loadDraft']('PKG-010');
+      setInput('[data-note="SCH-010-01"]', '新备注');
+      panel.flushSave();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(calls.filter((call) => call.method === 'PUT').length).toBe(0);
+      // ② GET 落账：C1 字段级合并（备注用新的）；C2 服务端删了且本行没动过 → 丢弃
+      releaseGet();
+      await getPromise;
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      const put = calls.find((call) => call.method === 'PUT')!.body as {results: Array<{check_id: string; note?: string}>};
+      expect(put.results.map((r) => r.check_id)).toEqual(['SCH-010-01']); // C2 不许被写回
+      expect(put.results[0].note).toBe('新备注');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('重载被别包取代也照常合并：别处新增的结果不许被覆盖删除（codex 十八审 blocking 2 回归）', async () => {
     // 复现路径（codex 十八审 blocking 2）：P 的缓存只有 C1，另一标签页在服务端
     // 新增了 C2；重载 P 期间编辑 C1 并切到 Q。P 的响应（含 C1+C2）被 Q 的加载
