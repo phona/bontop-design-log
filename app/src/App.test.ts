@@ -166,8 +166,9 @@ const mockWindow = {
 vi.stubGlobal('window', mockWindow);
 
 // jsdom 没有 URL.createObjectURL（DXF/GLB 导出下载用）
+const createdBlobs: Blob[] = [];
 vi.stubGlobal('URL', class extends URL {
-  static createObjectURL = vi.fn(() => 'blob:mock');
+  static createObjectURL = vi.fn((blob: Blob) => { createdBlobs.push(blob); return 'blob:mock'; });
   static revokeObjectURL = vi.fn();
 });
 
@@ -300,6 +301,7 @@ describe('App', () => {
   };
 
   beforeEach(() => {
+    createdBlobs.length = 0;
     exportGlbButton.addEventListener.mockClear();
     exportDxfButton.addEventListener.mockClear();
     hvacCoordinationButton.addEventListener.mockClear();
@@ -714,6 +716,42 @@ describe('App', () => {
     expect(anchor.download).toMatch(/^house-\d{8}\.dxf$/);
     expect(toast).toHaveBeenCalledWith(expect.stringContaining('DXF 已导出'));
     toast.mockRestore();
+  });
+
+  it('export uses fresh facts.electrical, not cached projectData house.electrical (codex 十二审 blocking)', async () => {
+    // projectData 里是旧点位缓存；render-facts 返回新点位——导出必须用 facts
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => ({
+          electrical: [{ id: 'e_fresh', room: 'living_room', type: 'socket', x: 1.2, z: 0.8 }],
+          plumbing: [], ceiling: [],
+          hvac: { plans: [{ outdoor: {}, diagram: { anchors: [], terminals: [] } }] },
+        }) } as Response;
+      }
+      if (urlStr.includes('/api/mep-coordination')) {
+        return { ok: true, json: async () => ({ version: '1', status: 'ok', layers: {}, routes: [], junctions: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(createdBlobs.length).toBe(1);
+    const text = await createdBlobs[0].text();
+    expect(text).toContain('e_fresh');
+    expect(consoleWarn).not.toHaveBeenCalledWith('[dxf] warnings:', expect.arrayContaining([expect.stringContaining('plumbing:')]));
+    consoleWarn.mockRestore();
   });
 
   // 点包 3D 高亮的聚合路径（highlightApprovalPackage）：房间/对象走 highlightObjects、

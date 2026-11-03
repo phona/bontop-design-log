@@ -2227,7 +2227,10 @@ export class App {
         house: {
           rooms: (house.rooms ?? []) as never,
           furnishings: (house.furnishings ?? {}) as never,
-          electrical: (house.electrical ?? []) as never,
+          // 电气用本次拉取的 facts（codex 十二审 blocking）：projectData.house.electrical 是
+          // 页面加载缓存，点位编辑后不刷新（refreshInfrastructure 不回写 projectData）；
+          // facts 与 MEP 同源，保证点位与管线一致。facts 缺失时退回缓存。
+          electrical: ((facts?.electrical) ?? house.electrical ?? []) as never,
           ceilingZones: (house.ceilingZones ?? []) as never,
           sceneElements: (house.sceneElements ?? []) as never,
         },
