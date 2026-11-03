@@ -38,6 +38,8 @@ export const DXF_LAYERS = {
   M_ROUTE: ['M-ROUTE', 1],
   /** 候选/需求示意管路（route_kind: candidate/requirement、非物理路线、待复核）——不是施工放线依据，独立隔离。 */
   M_CAND: ['M-CAND', 9],
+  /** 图内交付说明（接口降级/近似边界等限制），随图走不依赖控制台。 */
+  D_NOTES: ['D-NOTES', 8],
 } as const satisfies Record<string, readonly [string, number]>;
 
 export interface ProjectDxfHouse {
@@ -54,6 +56,9 @@ export interface ProjectDxfInput {
   mep?: { coordination: MepCoordination; sources: MepEndpointSources };
   /** utf8（默认，中望/浩辰兼容）或 ascii（业主 CAD 乱码时的一行退路，只影响 TEXT 标注，不影响几何）。 */
   labels?: 'utf8' | 'ascii';
+  /** 图内说明（codex 七审 major）：接口降级、专业缺失等交付限制写进 D-NOTES 图层随图走，
+   *  施工方不依赖控制台/PR 描述也能区分「没设计」和「导出时缺数据」。 */
+  notes?: string[];
 }
 
 export interface ProjectDxfResult {
@@ -75,6 +80,7 @@ const OPENING_CAP_MM = 60;
 
 export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   const { house, plumbing, mep } = input;
+  const notes = [...(input.notes ?? [])];
   const labels = input.labels ?? 'utf8';
   const warnings: string[] = [];
   const writer = new DxfWriter();
@@ -116,6 +122,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   emitElectrical(writer, house.electrical, warnings, label, restrict);
   if (plumbing === undefined) {
     warnings.push('plumbing: 无输入，P-POINTS 图层为空（水路点位未导出）');
+    notes.push('PLUMBING NOT EXPORTED: plumbing data unavailable at export time');
   } else {
     for (const point of plumbing) {
       // 抽象服务点（codex 二审 blocking）：faucet/drain 的 H 是抽象服务高度，note 明确
@@ -138,12 +145,20 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
       }
     }
   }
-  emitCeiling(writer, house.ceilingZones, warnings, label);
+  emitCeiling(writer, house.ceilingZones, warnings, label, labels);
   emitFloorAndWallFinishes(writer, house.sceneElements, wallsById, warnings, label);
   if (mep === undefined) {
     warnings.push('mep: 无输入，M-HVAC/M-ROUTE 图层为空（MEP 协调未导出）');
+    notes.push('MEP NOT EXPORTED: coordination data unavailable at export time');
   } else {
     emitMep(writer, mep.coordination, mep.sources, warnings, label, restrict);
+  }
+
+  // 图内说明（D-NOTES，左上图框外）：交付限制随图走（codex 七审 major）。
+  let noteY = 500;
+  for (const note of notes) {
+    writer.addText(DXF_LAYERS.D_NOTES[0], 0, noteY, TEXT_HEIGHT_MM * 2, label(note, note));
+    noteY += TEXT_HEIGHT_MM * 4;
   }
 
   const stats = writer.layerStats();
@@ -395,7 +410,7 @@ function emitElectrical(
 
 // --- 吊顶（area 四元组角点，米；fillet 圆角 v1 不画，只出矩形外包络）---
 
-function emitCeiling(writer: DxfWriter, zones: CeilingZone[], warnings: string[], label: (text: string, fallback?: string) => string): void {
+function emitCeiling(writer: DxfWriter, zones: CeilingZone[], warnings: string[], label: (text: string, fallback?: string) => string, inputLabels: 'utf8' | 'ascii'): void {
   for (const zone of zones) {
     if (!zone.area) {
       // 无 area 的分区（如 ac_indoor 内机预留位）无平面矩形可画，显形跳过。
@@ -406,8 +421,14 @@ function emitCeiling(writer: DxfWriter, zones: CeilingZone[], warnings: string[]
     const [ax, ay] = toDxf(Math.min(x1, x2), Math.min(z1, z2));
     const [bx, by] = toDxf(Math.max(x1, x2), Math.max(z1, z2));
     writer.addPolyline(DXF_LAYERS.C_CEIL[0], [[ax, ay], [bx, ay], [bx, by], [ax, by]], true);
+    // 声明了圆角/阴角弧的分区（codex 七审 major）：DXF 出的是矩形包络，不可直接按线放样。
+    const rounded = (zone.corner_radius ?? 0) > 0 || Object.keys(zone.corner_radii ?? {}).length > 0 || Object.keys(zone.concave_fillets ?? {}).length > 0;
+    const approxSuffix = rounded
+      ? (inputLabels === 'ascii' ? ' RECT-ENVELOPE ONLY-NO FILLET' : ' 矩形示意-圆角未表达')
+      : '';
+    if (rounded) warnings.push(`ceiling ${zone.id}: 声明了圆角/阴角弧，DXF 为矩形包络示意，不可直接放线`);
     writer.addText(DXF_LAYERS.C_CEIL[0], ax, by + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
-      label(`${zone.id} ${zone.type}${zone.thickness !== undefined ? ` T${zone.thickness}` : ''}`, `${zone.id} ${zone.type}`));
+      label(`${zone.id} ${zone.type}${zone.thickness !== undefined ? ` T${zone.thickness}` : ''}${approxSuffix}`, `${zone.id} ${zone.type}`));
   }
 }
 

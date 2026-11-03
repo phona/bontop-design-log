@@ -500,6 +500,43 @@ test('project-dxf: ascii 模式房间标注显式用 id+sqm（codex 六审 minor
   assert.ok(!ascii.dxf.includes('客厅'));
 });
 
+test('project-dxf: 降级 notes 写入 D-NOTES 图层随图交付（codex 七审 major）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    notes: ['PLUMBING NOT EXPORTED: render-facts API failed at export time'],
+  });
+  const entities = parseEntities(result.dxf);
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('PLUMBING NOT EXPORTED')));
+});
+
+test('project-dxf: mep 缺失时自动加 MEP NOT EXPORTED 图内说明（codex 七审 major）', () => {
+  const result = buildProjectDxf(baseInput());
+  const entities = parseEntities(result.dxf);
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('MEP NOT EXPORTED')));
+  assert.ok(result.warnings.some((w) => w.startsWith('mep:')));
+});
+
+test('project-dxf: 声明圆角的吊顶标「矩形示意-圆角未表达」+ 告警（codex 七审 major）', () => {
+  const input = baseInput();
+  input.house.ceilingZones = [
+    { id: 'ceil_plain', room: 'living', type: 'drop', thickness: 0.08, area: [0, 0, 4, 2] },
+    { id: 'ceil_round', room: 'living', type: 'drop', thickness: 0.08, area: [0, 0, 4, 2], corner_radius: 0.1 },
+  ];
+  const result = buildProjectDxf(input);
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.C_CEIL[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('ceil_round') && (e['1'] ?? '').includes('矩形示意')));
+  assert.ok(!texts.some((e) => (e['1'] ?? '').includes('ceil_plain') && (e['1'] ?? '').includes('矩形示意')));
+  assert.ok(result.warnings.some((w) => w.includes('ceil_round') && w.includes('不可直接放线')));
+});
+
+test('project-dxf: ascii 模式吊顶近似说明用英文（codex 七审 major）', () => {
+  const input = baseInput();
+  input.house.ceilingZones = [{ id: 'ceil_round', room: 'living', type: 'drop', thickness: 0.08, area: [0, 0, 4, 2], corner_radii: { nw: 0.1 } }];
+  const ascii = buildProjectDxf({ ...input, labels: 'ascii' });
+  assert.ok(ascii.dxf.includes('RECT-ENVELOPE ONLY-NO FILLET'));
+  assert.ok(!ascii.dxf.includes('矩形示意'));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });
