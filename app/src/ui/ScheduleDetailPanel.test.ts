@@ -1247,6 +1247,34 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     }
   });
 
+  it('在途慢保存不误判：卡点等保存真正落账再跑（codex 二十四审 major 回归）', async () => {
+    // 复现路径（codex 二十四审 major）：ensureDraftPersisted 旧实现用三次 25ms
+    // 短轮询猜在途保存——正常慢 PUT（>75ms）被误判成「草稿还没保存成功」，业主
+    // 编辑后立刻点「跑机械卡点」白中止并报错，保存随后成功也不继续。修：同包保存
+    // 串成一条链，ensure await 这条链等真正落账。
+    const {panel} = await mountPanel();
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && init?.method === 'PUT') {
+        await new Promise((resolve) => setTimeout(resolve, 250)); // 慢保存（远超旧的 75ms 轮询上限）
+        return {ok: true, status: 200, json: async () => ({ok: true})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // 编辑 → 立即 flush（PUT 在途且慢）→ 马上点卡点
+      click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+      panel.flushSave();
+      click('#acceptance-run-gates');
+      // 卡点必须等保存落账后真的跑出来，且不出现误报的「草稿还没保存成功」
+      await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 5000});
+      expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('草稿还没保存成功');
+      expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('草稿重载未确认时提交按钮禁用：在途与读取失败都堵（codex 十四审 blocking 回归）', async () => {
     // A 生成预演 → 切 B → 服务端草稿被别处改动 → 切回 A：重载在途或 GET 失败
     // 期间旧预演还挂着，但服务端 submit 会重读草稿——业主预演的可能与将写入

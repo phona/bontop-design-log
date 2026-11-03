@@ -160,6 +160,12 @@ interface PackageEditState {
   /** 同包是否有 PUT 在途。两个 body 竞态落账时先发后到的那份会删掉新条目，
    *  因此在途期间同包新保存一律搁置到它落账（十六审根治）。 */
   putInFlight: boolean;
+  /**
+   * 同包保存链（codex 二十四审 major）：这一包已发出/排队中的保存。ensureDraftPersisted
+   * await 它即等「保存真正落账」——旧实现用三次 25ms 短轮询猜在途保存，正常慢
+   * PUT（>75ms）被误判成「草稿还没保存成功」，业主点卡点/预演/提交白中止。
+   */
+  saveChain: Promise<void> | null;
   /** 保存被完整视图门/在途 PUT 搁置过一次：加载落账或 PUT 落账后要重发。 */
   saveDeferred: boolean;
   /**
@@ -313,7 +319,7 @@ export class ScheduleDetailPanel {
       run = {
         saveTimer: null, saveTarget: null, draftVersion: 0, lastServerDraft: null,
         serverSeq: 0, loadSeq: 0, draftComplete: false, putInFlight: false, saveDeferred: false,
-        controlFingerprint: null,
+        saveChain: null, controlFingerprint: null,
         gates: null, gatesLoading: false, gatesError: null,
         dryRun: null, dryRunLoading: false, dryRunError: null,
         submitArmed: false, submitting: false, submitResult: null, submitError: null,
@@ -1355,7 +1361,26 @@ export class ScheduleDetailPanel {
     this.scheduleSave(packageId);
   }
 
-  private async saveDraft(packageId: string): Promise<void> {
+  /**
+   * 保存入口（codex 二十四审 major）：同包的保存串成一条链——两个 body 竞态
+   * 落账会互删条目（十六审），链式排队让「在途期间的新保存」自然等前一份落账
+   * 后用最新内容重发；ensureDraftPersisted 也能 await 这条链等**真正落账**，
+   * 不再用短轮询猜（慢 PUT 被误判成保存失败，动作白中止）。
+   */
+  private saveDraft(packageId: string): Promise<void> {
+    const run = this.runFor(packageId);
+    const previous = run.saveChain ?? Promise.resolve();
+    const next = previous
+      .then(() => this.saveDraftOnce(packageId))
+      .catch(() => undefined); // saveDraftOnce 内部已兜住所有失败，这里只是链的保险
+    run.saveChain = next;
+    void next.finally(() => {
+      if (run.saveChain === next) run.saveChain = null;
+    });
+    return next;
+  }
+
+  private async saveDraftOnce(packageId: string): Promise<void> {
     const record = this.saveRecordFor(packageId);
     const run = this.runFor(packageId);
     // 写路径两道门（2026-11-03 codex 十六审 blocking 根治，十八审判定顺序）。
@@ -1590,12 +1615,14 @@ export class ScheduleDetailPanel {
         run.saveTimer = null;
         const target = run.saveTarget;
         run.saveTarget = null;
-        if (target) await this.saveDraft(target);
+        if (target) this.saveDraft(target);
         continue;
       }
-      // 在途 PUT 等它落账（saveDraft 的 finally 才清 putInFlight）
-      if (run.putInFlight) {
-        await new Promise((resolve) => setTimeout(resolve, 25));
+      // 在途/排队中的保存：等这一包的保存链**真正落账**（codex 二十四审 major：
+      // 旧实现三次 25ms 短轮询猜在途保存，正常慢 PUT >75ms 就被误判成「草稿
+      // 还没保存成功」，动作白中止、保存随后成功也不继续）
+      if (run.saveChain) {
+        await run.saveChain;
         continue;
       }
       // 没有待发也没有在途却还 dirty = 上次保存失败：原地重试一次（仍失败则如实上报）
