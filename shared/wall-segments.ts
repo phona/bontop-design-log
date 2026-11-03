@@ -51,3 +51,27 @@ export function splitSegmentByOpenings(segment: SceneSegment, openings: SceneOpe
   }
   return result;
 }
+
+/**
+ * 沿折线链（墙的 segments 细分或单段主线）逐段累计取距离处的点——wall_region/paint_region/
+ * skirting_region 的 along 语义（3D 侧 SceneBuilder.pointAt 同算法，DXF 导出共用本实现）。
+ * 超出总长返回 null。
+ */
+export function pointAlongPolyline(segments: readonly SceneSegment[], distance: number): { x: number; z: number } | null {
+  let remaining = distance;
+  for (const segment of segments) {
+    const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
+    if (length <= 1e-9) continue;
+    if (remaining <= length + 1e-9) {
+      const t = Math.min(1, Math.max(0, remaining / length));
+      return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
+    }
+    remaining -= length;
+  }
+  return null;
+}
+
+/** 折线链总长（wall_region along 区间合法性校验用，与 SceneBuilder wall_region 分支同口径）。 */
+export function polylineLength(segments: readonly SceneSegment[]): number {
+  return segments.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+}

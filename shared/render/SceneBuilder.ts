@@ -14,6 +14,7 @@ import {
   buildWardrobe180,
 } from './FixtureFactory.js';
 import { computeWallFaceSpans, createLineMesh, createPolygonGeometry, setSceneObjectMetadata, splitSegmentByOpenings, wallFaceSlots } from '../three-scene-geometry.js';
+import { pointAlongPolyline, polylineLength } from '../wall-segments.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { curtainRibbonShape, curtainShape, gatheredCurtainSegments, offsetCurtainPointsInterior, roundedShape } from './CurtainGeometry.js';
 import { buildBaySillGeometry } from './BaySillGeometry.js';
@@ -629,20 +630,9 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       const polyline: WallSegment[] = wall.segments?.length
         ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
         : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-      const pointAt = (distance: number): Point | null => {
-        let remaining = distance;
-        for (const segment of polyline) {
-          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
-          if (length <= 1e-9) continue;
-          if (remaining <= length + 1e-9) {
-            const t = Math.min(1, Math.max(0, remaining / length));
-            return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
-          }
-          remaining -= length;
-        }
-        return null;
-      };
-      const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+      // along 插值与总长：与 DXF 导出共用 shared/wall-segments.ts 的单一实现。
+      const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
+      const total = polylineLength(polyline);
       const from = Math.min(element.along[0], element.along[1]);
       const to = Math.max(element.along[0], element.along[1]);
       const bottom = element.bottom ?? 0;
@@ -917,20 +907,9 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       const polyline: WallSegment[] = wall.segments?.length
         ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
         : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-      const pointAt = (distance: number): Point | null => {
-        let remaining = distance;
-        for (const segment of polyline) {
-          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
-          if (length <= 1e-9) continue;
-          if (remaining <= length + 1e-9) {
-            const t = Math.min(1, Math.max(0, remaining / length));
-            return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
-          }
-          remaining -= length;
-        }
-        return null;
-      };
-      const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+      // along 插值与总长：与 DXF 导出共用 shared/wall-segments.ts 的单一实现。
+      const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
+      const total = polylineLength(polyline);
       const from = Math.min(element.along[0], element.along[1]);
       const to = Math.max(element.along[0], element.along[1]);
       const bottom = element.bottom ?? 0;

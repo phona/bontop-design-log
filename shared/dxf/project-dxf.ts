@@ -11,9 +11,9 @@
  */
 
 import { FURNITURE_DIMS, type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type PlumbingPoint, type RoomLayout, type SceneElement } from '../types.js';
-import { type MepCoordination, type MepEndpointSources, mepRoutePoints, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
+import { type MepCoordination, type MepEndpointSources, mepRoutePoints, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
 import { resolveFurniturePlacement } from '../furniture-placement.js';
-import { splitSegmentByOpenings } from '../wall-segments.js';
+import { pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
 import { DxfWriter } from './dxf-writer.js';
 
 /** 图层清单（ASCII；CAD 侧按专业开关）。颜色为 ACI 色号。 */
@@ -35,6 +35,8 @@ export const DXF_LAYERS = {
   SKIRT: ['A-SKIRT', 253],
   M_HVAC: ['M-HVAC', 5],
   M_ROUTE: ['M-ROUTE', 1],
+  /** 候选/需求示意管路（route_kind: candidate/requirement、非物理路线、待复核）——不是施工放线依据，独立隔离。 */
+  M_CAND: ['M-CAND', 9],
 } as const satisfies Record<string, readonly [string, number]>;
 
 export interface ProjectDxfHouse {
@@ -131,6 +133,16 @@ function toDxf(localX: number, localZ: number): [number, number] {
 
 function emitWalls(writer: DxfWriter, elements: SceneElement[]): void {
   for (const element of elements) {
+    if (element.type === 'wall_run') {
+      // 实体墙声明（如 vanity_screen_halfwall 半墙）：SceneBuilder 按实体墙建 mesh（开放折线，不闭合），
+      // DXF 同进墙体图层，否则施工平面缺已设计墙体（codex 审 2026-11-03 blocking）。
+      if (element.points.length < 2) continue;
+      const pts = element.points.map((point) => toDxf(point.x, point.z));
+      writer.addPolyline(DXF_LAYERS.WALL[0], pts, false);
+      writer.addText(DXF_LAYERS.WALL[0], pts[0][0], pts[0][1] + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
+        `${element.id} H${element.height.toFixed(2)}`);
+      continue;
+    }
     if (element.type !== 'wall') continue;
     // 与 3D 渲染同口径（SceneBuilder.addWallElement）：有 segments 细分时优先画细分段，否则主线。
     const sourceSegments = element.segments?.length ? element.segments : [{ x1: element.x1, z1: element.z1, x2: element.x2, z2: element.z2 }];
@@ -332,23 +344,33 @@ function emitFloorAndWallFinishes(
         warnings.push(`${element.type} ${element.id}: 引用的墙 ${element.wall} 不在 sceneElements，未导出`);
         continue;
       }
-      const dx = wall.x2 - wall.x1;
-      const dz = wall.z2 - wall.z1;
-      const length = Math.hypot(dx, dz);
-      if (length < 1e-9) continue;
-      const ux = dx / length;
-      const uz = dz / length;
-      const startM = Math.max(0, Math.min(element.along[0], length));
-      const endM = Math.max(0, Math.min(element.along[1], length));
-      if (endM - startM < 1e-6) continue;
-      const [ax, ay] = toDxf(wall.x1 + ux * startM, wall.z1 + uz * startM);
-      const [bx, by] = toDxf(wall.x1 + ux * endM, wall.z1 + uz * endM);
+      // along 沿折线链逐段累计（与 3D SceneBuilder.pointAt 同口径）：带 segments 细分的墙
+      // 不能按主线直插，否则子线段错位。区间越界按 3D 同款显形跳过。
+      const chain: Array<{ x1: number; z1: number; x2: number; z2: number }> = wall.segments?.length
+        ? wall.segments
+        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+      const total = polylineLength(chain);
+      const from = Math.min(element.along[0], element.along[1]);
+      const to = Math.max(element.along[0], element.along[1]);
+      if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+        warnings.push(`${element.type} ${element.id}: along [${from}, ${to}] 超出墙 ${element.wall} 长度 ${total.toFixed(3)}，未导出`);
+        continue;
+      }
+      const startPoint = pointAlongPolyline(chain, from);
+      const endPoint = pointAlongPolyline(chain, to);
+      if (!startPoint || !endPoint) {
+        warnings.push(`${element.type} ${element.id}: along 插值失败（墙 ${element.wall}），未导出`);
+        continue;
+      }
+      const [ax, ay] = toDxf(startPoint.x, startPoint.z);
+      const [bx, by] = toDxf(endPoint.x, endPoint.z);
       const layer = element.type === 'wall_region'
         ? DXF_LAYERS.WFIN_TILE
         : element.type === 'paint_region' ? DXF_LAYERS.WFIN_PAINT : DXF_LAYERS.SKIRT;
       writer.addLine(layer[0], ax, ay, bx, by);
+      // height 是**顶标高**（SceneBuilder 按 height - bottom 建带高），不是带高——标注直接用声明顶标高。
       const bottom = element.bottom ?? 0;
-      const topText = element.height !== undefined ? `${(bottom + element.height).toFixed(2)}` : '?';
+      const topText = element.height !== undefined ? element.height.toFixed(2) : '?';
       writer.addText(layer[0], (ax + bx) / 2, (ay + by) / 2 + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
         label(`${element.id} ${bottom.toFixed(2)}~${topText}m`, element.id));
     }
@@ -372,11 +394,22 @@ function emitMep(
     }
     const points = mepRoutePoints(resolved.route, resolved.from, resolved.to);
     if (points.length < 2) continue;
+    // 候选/需求示意/非物理/待复核路线不是施工放线依据（codex 审 2026-11-03 blocking）：
+    // 隔离到 M-CAND 独立图层 + 告警，禁止混入 M-ROUTE 被当成施工事实交付。
+    const candidate = !resolved.metadata.physicalRoute
+      || resolved.metadata.pendingReview === true
+      || resolved.route.route_kind === 'candidate'
+      || resolved.route.route_kind === 'requirement';
+    const layer = candidate ? DXF_LAYERS.M_CAND : DXF_LAYERS.M_ROUTE;
+    if (candidate) {
+      warnings.push(`mep route ${resolved.route.id}: ${resolved.route.route_kind ?? 'nonphysical'}${resolved.metadata.pendingReview ? '/待复核' : ''}，已隔离至 M-CAND（非放线依据）`);
+    }
     const pts = points.map((point) => toDxf(point.x, point.z));
-    writer.addPolyline(DXF_LAYERS.M_ROUTE[0], pts);
+    writer.addPolyline(layer[0], pts);
     const first = pts[0];
-    writer.addText(DXF_LAYERS.M_ROUTE[0], first[0] + POINT_RADIUS_MM, first[1] + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(`${resolved.route.label ?? resolved.route.id} ${resolved.route.layer}`, resolved.route.id));
+    const name = resolved.route.label ?? resolved.route.id;
+    writer.addText(layer[0], first[0] + POINT_RADIUS_MM, first[1] + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
+      label(candidate ? `${name} ${resolved.route.layer} 候选-非放线依据` : `${name} ${resolved.route.layer}`, resolved.route.id));
   }
   for (const junction of coordination.junctions) {
     const [x, y] = toDxf(junction.position.x, junction.position.z);
@@ -384,10 +417,19 @@ function emitMep(
     writer.addText(DXF_LAYERS.M_ROUTE[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM, junction.id);
   }
   for (const anchor of sources.hvacAnchors) {
-    if (!anchor.position) continue;
-    const [x, y] = toDxf(anchor.position.x, anchor.position.z);
+    // 内机普遍经 ref: {source: ceiling} 定位（无直接 position）——复用 resolveMepEndpoint 解析引用
+    // （与管路端点同口径），解析不了显式告警，不再静默跳过（codex 审 2026-11-03 blocking）。
+    const position = anchor.position
+      ? { x: anchor.position.x, z: anchor.position.z }
+      : resolveMepEndpoint(anchor.id, sources, coordination.junctions);
+    if (!position) {
+      warnings.push(`mep anchor ${anchor.id}: 无 position 且引用无法解析，未导出`);
+      continue;
+    }
+    const [x, y] = toDxf(position.x, position.z);
     writer.addCircle(DXF_LAYERS.M_HVAC[0], x, y, POINT_RADIUS_MM * 2);
-    writer.addText(DXF_LAYERS.M_HVAC[0], x + POINT_RADIUS_MM * 2, y + POINT_RADIUS_MM * 2, TEXT_HEIGHT_MM, label(anchor.id, anchor.id));
+    writer.addText(DXF_LAYERS.M_HVAC[0], x + POINT_RADIUS_MM * 2, y + POINT_RADIUS_MM * 2, TEXT_HEIGHT_MM,
+      label(anchor.status !== 'confirmed' ? `${anchor.id} ${anchor.status}` : anchor.id, anchor.id));
   }
   for (const terminal of sources.hvacTerminals) {
     const [x, y] = toDxf(terminal.position.x, terminal.position.z);
