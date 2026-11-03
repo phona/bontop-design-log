@@ -2210,9 +2210,12 @@ export class App {
         | { rooms?: unknown[]; furnishings?: Record<string, unknown[]>; electrical?: unknown[]; ceilingZones?: unknown[]; sceneElements?: unknown[] }
         | undefined;
       if (!house) throw new Error('项目数据未加载，无法导出 DXF');
-      const [factsResponse, mepResponse] = await Promise.all([
+      const [factsResponse, mepResponse, furnishingsResponse] = await Promise.all([
         fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        // 家具直读服务端（codex 十四审 blocking）：projectData 缓存不随拖动保存回写，
+        // /api/furnishings 每次请求直读 house.yaml，是唯一新鲜源（与 CLI 同全案口径）。
+        fetch('/api/furnishings').then((response) => (response.ok ? response.json() : null)).catch(() => null),
       ]);
       const facts = factsResponse as ProjectRenderFacts | null;
       const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
@@ -2220,13 +2223,15 @@ export class App {
       const mep = facts?.hvac?.plans && mepPayload ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts) } : undefined;
       // 降级说明随图交付（codex 七审 major）：施工方拿到的 DXF 必须能区分「没设计」和「导出时接口失败」。
       // 阶段范围随图声明（codex 十一审 major）：web 按当前阶段过滤家具，与 CLI 全案口径不同，图内必须写明。
-      const notes: string[] = [`PHASE: ${this.phase} (${this.phase === 'full' ? 'all furnishings' : 'phase-filtered furnishings; electrical/MEP remain full-scope'})`];
+      // 家具改全案口径后与 CLI 一致；PHASE 声明随之固定 full（3D 页面可能按阶段渲染，图内注明）。
+      const notes: string[] = ['PHASE: full (all furnishings; the 3D view may render a phase-filtered subset)'];
+      if (!furnishingsResponse) notes.push('FURNISHINGS NOT EXPORTED: furnishings API failed at export time');
       if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
       const result = buildProjectDxf({
         house: {
           rooms: (house.rooms ?? []) as never,
-          furnishings: (house.furnishings ?? {}) as never,
+          furnishings: furnishingsResponse as never,
           // 电气用本次拉取的 facts（codex 十二/十三审 blocking）：projectData.house.electrical
           // 是页面加载缓存，点位编辑后不刷新且无法判断新旧——facts 失败时宁可 E-* 为空并
           // 在 D-NOTES 声明，也不把过期缓存当施工点位导出。

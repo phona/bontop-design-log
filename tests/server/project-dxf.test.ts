@@ -712,6 +712,20 @@ test('project-dxf: electrical 缺省时 E-* 为空 + D-NOTE + 告警，不缓存
   assert.ok(result.warnings.some((w) => w.startsWith('electrical:')));
 });
 
+test('project-dxf: furnishings 缺省时 A-FURN 为空 + D-NOTE + 告警（codex 十四审 blocking）', () => {
+  const input = baseInput();
+  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', x: 1, z: 1 }] };
+  const withData = buildProjectDxf(input);
+  assert.ok(withData.stats[DXF_LAYERS.FURN[0]] > 0);
+  const input2 = baseInput();
+  delete (input2.house as { furnishings?: unknown }).furnishings;
+  const result = buildProjectDxf(input2);
+  const entities = parseEntities(result.dxf);
+  assert.equal(result.stats[DXF_LAYERS.FURN[0]], undefined);
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('FURNISHINGS NOT EXPORTED')));
+  assert.ok(result.warnings.some((w) => w.startsWith('furnishings:')));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });

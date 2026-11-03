@@ -45,7 +45,8 @@ export const DXF_LAYERS = {
 
 export interface ProjectDxfHouse {
   rooms: RoomLayout[];
-  furnishings: FurnishingsYaml;
+  /** 缺省 = 家具数据本次不可得：A-FURN 图层为空 + D-NOTE 声明（禁止用页面缓存当施工摆位）。 */
+  furnishings?: FurnishingsYaml;
   /** 缺省 = 电气数据本次不可得：E-* 图层为空 + D-NOTE 声明（禁止用页面缓存当施工点位）。 */
   electrical?: ElectricalPoint[];
   ceilingZones: CeilingZone[];
@@ -120,7 +121,12 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   emitWalls(writer, house.sceneElements);
   emitGlazingAndDoors(writer, house.sceneElements, warnings);
   emitRooms(writer, house.rooms, labels);
-  emitFurniture(writer, house.furnishings, wallsById, warnings, label);
+  if (house.furnishings === undefined) {
+    warnings.push('furnishings: 无输入，A-FURN 图层为空（家具摆位未导出——数据不可得时禁止用页面缓存当施工摆位）');
+    notes.push('FURNISHINGS NOT EXPORTED: furnishings data unavailable at export time');
+  } else {
+    emitFurniture(writer, house.furnishings, wallsById, warnings, label);
+  }
   if (house.electrical === undefined) {
     warnings.push('electrical: 无输入，E-* 图层为空（电气点位未导出——数据不可得时禁止用页面缓存当施工点位）');
     notes.push('ELECTRICAL NOT EXPORTED: electrical data unavailable at export time');
