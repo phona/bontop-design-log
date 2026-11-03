@@ -63,9 +63,12 @@ GitHub 托管 runner 每次都是新磁盘。job 从 secret 恢复 `auth.json`�
 - 能往本仓库推分支的人可以改 workflow 并把 secret 读走。写权限只给可以接触这个 ChatGPT 账号的人。
 - 不要把触发器改成 `pull_request_target`。
 
-可选的 repository variable `CODEX_MODEL` 会传给 `codex exec -m`。留空就用账号默认模型。
+可选的 repository variable（Settings → Secrets and variables → Actions → Variables）。留空就不传，用账号或 CLI 的默认：
 
-Codex CLI 目前钉在 `@openai/codex@0.166.0`。升级时先看 `npm view @openai/codex version`，再改 workflow 里的安装行。0.166 的 `-a never` 和 `-s read-only` 要写在 `exec` 子命令前面。
+- `CODEX_MODEL` 传给 `codex exec -m`。
+- `CODEX_EFFORT` 传给 `codex exec -c model_reasoning_effort="<值>"`。`@openai/codex@0.166.0` 没有 `--effort`，这个参数会被 CLI 直接拒绝。这版实测接受并写进启动横幅的值是 `none`、`minimal`、`low`、`medium`、`high`、`xhigh`。某个模型不支持的档位会在审查启动后失败，不会静默改成别的档。
+
+Codex CLI 目前钉在 `@openai/codex@0.166.0`。升级时先看 `npm view @openai/codex version`，再改 workflow 里的安装行，并重新核对思考力度参数还是不是 `-c model_reasoning_effort`。0.166 的 `-a never` 和 `-s read-only` 要写在 `exec` 子命令前面。
 
 本地核对审查脚本：
 

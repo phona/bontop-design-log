@@ -1,4 +1,5 @@
-# PR 验证 CI：四套件并行跑，判红条件只有一个——出现 ci/baseline/ 之外的新失败。
+# PR 验证 CI：四个基线套件并行跑，判红条件只有一个——出现 ci/baseline/ 之外的新失败。
+# codex-review-scripts 只跑 .github/codex 下的 node:test，不进基线。
 # 基线内失败完整呈现在日志里；基线维护纪律见 AGENTS.md「CI 基线纪律」。
 # 本 workflow 不设分支保护：红不禁止合并，合并仍由业主决定。
 name: CI
@@ -104,3 +105,13 @@ jobs:
       - run: npm ci
         working-directory: app
       - run: node ci/check.mjs verify-all
+
+  codex-review-scripts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - run: node --test .github/codex/*.test.mjs

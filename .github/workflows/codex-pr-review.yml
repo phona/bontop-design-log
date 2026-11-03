@@ -137,6 +137,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
           CODEX_MODEL: ${{ vars.CODEX_MODEL }}
+          CODEX_EFFORT: ${{ vars.CODEX_EFFORT }}
         run: |
           set -euo pipefail
           node .github/codex/build-prompt.mjs "$RUNNER_TEMP/codex-prompt.md"
@@ -154,6 +155,14 @@ jobs:
           )
           if [ -n "${CODEX_MODEL:-}" ]; then
             cmd+=(-m "$CODEX_MODEL")
+          fi
+          # 0.166.0 的 exec 不接受 effort 长选项。空变量不传，沿用账号或 CLI 默认思考力度。
+          if [ -n "${CODEX_EFFORT:-}" ]; then
+            if [[ ! "$CODEX_EFFORT" =~ ^[A-Za-z0-9_-]+$ ]]; then
+              echo "CODEX_EFFORT must be one token (none, minimal, low, medium, high, xhigh)." >&2
+              exit 1
+            fi
+            cmd+=(-c "model_reasoning_effort=\"${CODEX_EFFORT}\"")
           fi
           unset GITHUB_TOKEN GH_TOKEN
           set +e

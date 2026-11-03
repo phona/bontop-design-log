@@ -33,3 +33,12 @@ test('secret use is guarded by the same-repo condition', () => {
   assert.match(workflow, /unset CODEX_AUTH_JSON/)
   assert.match(workflow, /unset GITHUB_TOKEN GH_TOKEN/)
 })
+
+test('CODEX_MODEL and CODEX_EFFORT are optional and use the 0.166 flags', () => {
+  assert.match(workflow, /CODEX_MODEL: \$\{\{ vars\.CODEX_MODEL \}\}/)
+  assert.match(workflow, /CODEX_EFFORT: \$\{\{ vars\.CODEX_EFFORT \}\}/)
+  assert.match(workflow, /if \[ -n "\$\{CODEX_MODEL:-}" \]; then\s+cmd\+=\(-m "\$CODEX_MODEL"\)/)
+  assert.match(workflow, /if \[ -n "\$\{CODEX_EFFORT:-}" \]; then/)
+  assert.match(workflow, /model_reasoning_effort=\\"\$\{CODEX_EFFORT\}\\"/)
+  assert.doesNotMatch(workflow, /--effort\b/)
+})
