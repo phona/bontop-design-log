@@ -244,7 +244,7 @@ function stubFetch(snap: ScheduleSnapshot = snapshot(), links: unknown = linksPa
 }
 
 function installDom(): void {
-  document.body.innerHTML = '<div id="right-panel-stack"></div>';
+  document.body.innerHTML = '<div id="right-panel-stack"></div><div id="approval-page-panels"></div>';
 }
 
 const layerOf = (packageId: string): string | null =>
@@ -310,7 +310,9 @@ describe('FlowChartPanel', () => {
     expect(node080.textContent).not.toContain('已关闭阻塞');
   });
 
-  it('点节点写选中态并调 onHighlight（有 3D 范围与点位级）；全项目范围不调', async () => {
+  it('点节点只写选中态不跳 3D；「在 3D 中高亮」按钮才调 onHighlight（2026-11-03 路由级）', async () => {
+    // 路由级后 onHighlight = 退出审批页跳 3D。节点/行点击再调它会把用户踢出
+    // 审批页、选中还被清（codex 审查实证）——故点击只选中，跳转只走显式按钮。
     stubFetch();
     const selection = new ScheduleSelectionStore();
     const onHighlight = vi.fn();
@@ -318,30 +320,31 @@ describe('FlowChartPanel', () => {
     panel.show();
     await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-020"]')).toBeTruthy());
 
-    // 有 3D 范围（room_ids/types）→ 写选中态 + 调高亮 + URL hash 往返
+    // 有 3D 范围（room_ids/types）→ 写选中态 + URL hash 往返，但**不调** onHighlight
     (document.querySelector('.flow-node[data-pkg-id="PKG-020"]') as HTMLElement).click();
     expect(selection.get()).toEqual({packageId: 'PKG-020', checkId: null});
-    expect(onHighlight).toHaveBeenCalledWith('PKG-020');
+    expect(onHighlight).not.toHaveBeenCalled();
     expect(location.hash).toContain('pkg=PKG-020');
     expect(document.querySelector('#flow-selection-bar')?.textContent).toContain('水电改造');
 
-    // 全项目范围（select.all）→ 不调高亮，徽标文字在
-    onHighlight.mockClear();
+    // 全项目范围（select.all）→ 徽标文字在，按钮禁用
     (document.querySelector('.flow-node[data-pkg-id="PKG-010"]') as HTMLElement).click();
     expect(selection.get().packageId).toBe('PKG-010');
-    expect(onHighlight).not.toHaveBeenCalled();
     expect((document.querySelector('.flow-node[data-pkg-id="PKG-010"]') as HTMLElement).textContent).toContain('全项目范围');
+    expect((document.querySelector('#flow-selection-bar #flow-highlight') as HTMLButtonElement).disabled).toBe(true);
 
-    // 点位级（第三步起可高亮：BatchedMesh.setColorAt 逐实例）→ 也调 onHighlight
-    onHighlight.mockClear();
+    // 点位级（第三步起可高亮：BatchedMesh.setColorAt 逐实例）→ 徽标在、按钮可用，
+    // 且只有点按钮才调 onHighlight
     (document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement).click();
-    expect(onHighlight).toHaveBeenCalledWith('PKG-040');
     expect((document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement).textContent).toContain('点位级（可高亮）');
     const bar = document.querySelector('#flow-selection-bar') as HTMLElement;
     expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).disabled).toBe(false);
     // 按钮 title 取点位级口径（逐实例着色），不再借 scene 通用文案
     expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).title).toContain('点位');
     expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).title).toContain('setColorAt');
+    expect(onHighlight).not.toHaveBeenCalled();
+    (bar.querySelector('#flow-highlight') as HTMLButtonElement).click();
+    expect(onHighlight).toHaveBeenCalledWith('PKG-040');
   });
 
   it('highlightPackages 把传入的全部包都标出，并提示同属 N 个包', async () => {

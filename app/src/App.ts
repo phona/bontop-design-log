@@ -40,6 +40,11 @@ import { NextActionPanel } from './ui/NextActionPanel.js';
 import { ScheduleDetailPanel } from './ui/ScheduleDetailPanel.js';
 import { FlowChartPanel } from './ui/FlowChartPanel.js';
 import { ScheduleSelectionStore, type ScheduleSelection } from './state/schedule-selection.js';
+import {
+  parseApprovalRoute, getApprovalRoute, setApprovalRoute, navigateApproval, exitApproval,
+  invalidateExitPop,
+  type ApprovalRoute, type ApprovalSubPage,
+} from './state/approval-route.js';
 import { buildObjectPackageIndex, resolvePackageScope, type PackageScopeLink, type ProjectScopeInput } from '@shared/package-scope';
 import { TRADE_LABEL } from './render/analysis/ceiling-zone-colors.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
@@ -398,18 +403,18 @@ export class App {
     this.scheduleSelection = new ScheduleSelectionStore();
     this.nextActionPanel = new NextActionPanel(this.scheduleSelection);
     this.schedulePanel = new SchedulePanel(this.scheduleSelection, {
-      onHighlight: (packageId) => this.highlightApprovalPackage(packageId),
+      onHighlight: (packageId) => this.viewPackageIn3d(packageId),
     });
     this.scheduleDetailPanel = new ScheduleDetailPanel(this.scheduleSelection, {
-      onHighlight: (packageId) => this.highlightApprovalPackage(packageId),
+      onHighlight: (packageId) => this.viewPackageIn3d(packageId),
     });
     // 依赖流程图（2026-11-02 流程图任务）：包级节点/边/状态，点节点高亮 3D，
     // 点 3D 对象反向标亮节点（多包全标，不静默取首个）。
     this.flowChartPanel = new FlowChartPanel(this.scheduleSelection, {
-      onHighlight: (packageId) => this.highlightApprovalPackage(packageId),
+      onHighlight: (packageId) => this.viewPackageIn3d(packageId),
       onOpenDetail: (packageId) => {
         this.scheduleSelection?.set({packageId, checkId: null});
-        this.showApprovalView('detail');
+        this.navigateToApproval('detail');
       },
     });
     // 详情页订阅选中态（subscribe 幂等：重复调用先退订再订）；直接打开带
@@ -417,12 +422,18 @@ export class App {
     this.scheduleDetailPanel?.subscribe();
     this.scheduleSelection?.restoreFromHash();
     this.setupApprovalButton();
-    // 审批视图默认页（2026-11-02 设计稿决策）：记忆上次所在页；无存档的首次
-    // 访问默认 next_action（「打开来第一眼看到今天能干什么」）；带 #pkg=… 的
-    // 分享链接直接落详情页。必须放在面板就绪后——restorePersistedViewState 运行时
-    // 这三个面板还不存在（尾部按场景就绪才建）。
-    const hashPackageId = this.scheduleSelection?.get().packageId ?? null;
-    this.showApprovalView(readViewState().approvalView ?? (hashPackageId ? 'detail' : 'next_action'));
+    // 2026-11-03 路由级：hashchange 监听与页内 tab 接线（只碰 DOM，面板此时
+    // 已就绪；boot 的路由应用在下方 start() 尾部）。
+    this.setupApprovalRoute();
+    this.setupApprovalPageTabs();
+    // 2026-11-03 路由级：boot 不再无脑自动开审批页——地址栏说在才在
+    // （#pkg=… 深链落 detail / #approval=… 落指定子页）。首访 = 3D 页
+    // （画布优先，且不再 hijack 预演工作台——那正是「对象信息被挤没」的链源）。
+    // 但「记忆上次所在审批页」的承诺要守：lastApprovalPage 从持久化状态恢复，
+    // 点工具栏「审批」仍回上次那个子页（codex 审查 minor：曾随 boot 改造丢失）。
+    // 必须放在面板就绪后：applyApprovalRoute 要 show/refresh 面板。
+    this.lastApprovalPage = readViewState().approvalView ?? 'next_action';
+    this.applyApprovalRoute(parseApprovalRoute(location.hash));
     this.resolveReady();
     } catch (error) {
       this.readyState = 'failed';
@@ -1139,10 +1150,25 @@ export class App {
     });
   }
 
-  // ─── 自装交互审批（2026-11-02，设计稿 v2 §3/§6/§7） ───
-  // 三个审批页互斥显示（同一右侧面板栈），与检视态叠加层平级互不引用。
+  // ─── 自装交互审批（2026-11-03 起路由级独立页，设计稿 v2 §3/§6/§7） ───
+  // 审批是 #approval-page 全屏表面（body.approval-page 控制显隐），与预演工作台
+  // 右坞彻底脱钩——2026-11-03 前它寄生在 #right-panel-stack 里，靠强制拉开工台
+  // 才能可见，挤出「对象信息点开没东西」/状态脱节/宽度互抢三个耦合病。
+  // 路由真相在地址栏：approval-route.ts 管语法，本区只做「路由 → UI」与入口。
 
-  /** 打开某个审批页（null = 关闭审批视图）。记忆上次所在页，见 restorePersistedViewState。 */
+  /** 把路由应用到 UI（boot / hashchange / 程序内导航共用，幂等）。 */
+  private applyApprovalRoute(route: ApprovalRoute): void {
+    setApprovalRoute(route);
+    // 退出/切换前先把详情面板里 debounce 中的草稿落盘——否则清选中会让待保存
+    // 定时器跳过 PUT，业主改完备注立刻返回即丢编辑（codex 审查 blocking）。
+    this.scheduleDetailPanel?.flushSave();
+    this.showApprovalView(route.subPage);
+    // 选中同步走 force：返回 3D 页时要把选中也清掉（不能因「没有 pkg」早退）；
+    // restoreFromHash 不写 hash，不会回头触发 hashchange。
+    this.scheduleSelection?.restoreFromHash({force: true});
+  }
+
+  /** 打开某个审批页（null = 3D 页）。记忆上次所在页（view-state-store）。 */
   private showApprovalView(page: ApprovalViewPage | null): void {
     this.approvalView = page;
     if (page !== null) this.lastApprovalPage = page;
@@ -1163,20 +1189,65 @@ export class App {
       this.flowChartPanel?.show();
       void this.flowChartPanel?.refresh();
     }
-    writeViewState({approvalView: page});
-    // 审批页挂在右侧工作台栈里：工作台关着时面板全不可见（#49 遗留——首访自动开
-    // next_action 但工作台没展开，用户看到的是空白）。打开任一审批页时确保工作台
-    // 展开；关闭审批页不动工作台的开合（那是审阅流的自有状态）。
-    if (page !== null) this.previewWorkbench.setOpen(true);
-    // 流程图页加宽右坞（style.css 的 body.flow-wide）：12 层依赖图在 390px 里横滚
-    // 十几屏，达不到「一眼看到」；变量覆盖对所有 calc 消费者自动生效，可逆。
-    document.body.classList.toggle('flow-wide', page === 'flow');
+    // 持久化「上次所在子页」而非「当前是否开着」：退出时若写 null，刷新后
+    // lastApprovalPage 永远回落 next_action，「记忆上次所在审批页」的承诺就
+    // 死了（2026-11-03 浏览器复验挖出的死代码）。lastApprovalPage 在上面刚
+    // 更新过，关页时写它 = 记住最后看过的子页。view-state 里没有别的读者
+    // 把这个字段当「开合状态」用（restorePersistedViewState 不碰它）。
+    writeViewState({approvalView: page ?? this.lastApprovalPage});
+    // 2026-11-03 codex 三审 blocking：第一人称带着指针锁进审批页（第一人称里点
+    // 对象反查就会），鼠标还被锁定的画布绑着、审批按钮点不动。进入即释放——切回
+    // orbit（fpController.disable() 放锁 + 相机回 orbit 视图）。不自动恢复第一
+    // 人称：回来就重新锁指针是敌意体验，想回去按 V。
+    if (page !== null && this.houseScene.mode === 'first-person') this.switchToOrbit();
+    document.body.classList.toggle('approval-page', page !== null);
+    this.syncApprovalTabs();
     this.approvalToggleBtn?.setAttribute('aria-expanded', String(page !== null));
     this.mobileTabBar?.sync();
   }
 
+  /** 页内 tab 高亮（子页视觉真相，与 this.approvalView 单源）。 */
+  private syncApprovalTabs(): void {
+    const root = document.getElementById('approval-page');
+    if (!root) return;
+    for (const button of Array.from(root.querySelectorAll<HTMLButtonElement>('[data-approval-tab]'))) {
+      button.classList.toggle('on', button.dataset.approvalTab === this.approvalView);
+    }
+  }
+
+  /**
+   * 命令/按钮/tab/3D 反查的统一入口：进审批页落在指定子页（保留当前选中）。
+   * 历史纪律：从 3D 页**进入**用 push（返回键 = 退出审批页）；已在审批页内切子页
+   * 用 replace（不污染历史）。
+   */
+  private navigateToApproval(subPage: ApprovalSubPage): void {
+    const current = getApprovalRoute();
+    navigateApproval(
+      {subPage, packageId: current.packageId, checkId: current.checkId},
+      current.subPage === null ? 'push' : 'replace',
+    );
+    this.applyApprovalRoute(getApprovalRoute());
+  }
+
+  /**
+   * 「在 3D 中高亮」（2026-11-03 路由级）：审批页是全屏的，高亮只有跳到 3D 页
+   * 才看得见——退出审批页 + 6s 时长应用（1.2s 瞬时在跳转落地时必错过）。
+   */
+  private viewPackageIn3d(packageId: string): void {
+    // exitApproval 返回 false = replace 兜底（深链首 entry 没得可 pop）——此时没人
+    // 触发 hashchange，必须自己应用路由，否则 hash 回了 3D 但审批页还开着，
+    // 6s 高亮在全屏页背后燃尽（2026-11-03 浏览器复验实证的缺陷 A）。
+    if (!exitApproval()) this.applyApprovalRoute(getApprovalRoute());
+    this.highlightApprovalPackage(packageId, 6000);
+  }
+
   private toggleApprovalView(): void {
-    this.showApprovalView(this.approvalView === null ? this.lastApprovalPage : null);
+    if (this.approvalView === null) {
+      this.navigateToApproval(this.lastApprovalPage);
+      return;
+    }
+    // exitApproval 返回 true = 已 pop（hashchange 会驱动 UI）；false = replace 兜底，这里直接应用
+    if (!exitApproval()) this.applyApprovalRoute(getApprovalRoute());
   }
 
   private setupApprovalButton(): void {
@@ -1186,6 +1257,32 @@ export class App {
     button.addEventListener('click', () => this.toggleApprovalView());
   }
 
+  /** 审批页的页内 tab 与「← 返回 3D」（2026-11-03 路由级新增的表面）。 */
+  private setupApprovalPageTabs(): void {
+    const root = document.getElementById('approval-page');
+    if (!root) return;
+    for (const button of Array.from(root.querySelectorAll<HTMLButtonElement>('[data-approval-tab]'))) {
+      button.addEventListener('click', () => {
+        const subPage = button.dataset.approvalTab as ApprovalSubPage | undefined;
+        if (subPage) this.navigateToApproval(subPage);
+      });
+    }
+    document.getElementById('approval-page-back')?.addEventListener('click', () => this.toggleApprovalView());
+  }
+
+  /**
+   * 2026-11-03 路由级：返回键/前进键/手改地址栏 → 应用路由。程序内导航不走这
+   * （pushState/replaceState 不触发 hashchange），只服务浏览器历史与手改。
+   */
+  private setupApprovalRoute(): void {
+    window.addEventListener('hashchange', () => {
+      // 用户驱动的导航（返回/前进/手改）作废 pop 资格——否则「返回 3D」可能
+      // back() 退到手改前的审批页，退不出去（codex 审查实证，blocking 2）。
+      invalidateExitPop();
+      this.applyApprovalRoute(parseApprovalRoute(location.hash));
+    });
+  }
+
   /**
    * 点包 → 3D 高亮该包范围。作用域展开走 shared/package-scope.ts（房间/墙/叠加层
    * 区域级 + 点位级：点位默认合批渲染，HouseScene.highlightPoints 按 batchUserData
@@ -1193,7 +1290,11 @@ export class App {
    * UI 在详情页明示）。数据用已在手的 projectData（house.rooms/sceneElements）
    * + /api/model-package-links。
    */
-  private highlightApprovalPackage(packageId: string): void {
+  /**
+   * @param durationMs 高亮持续毫秒。审批页内调用默认 1200（瞬时反馈）；
+   *   viewPackageIn3d 的跳转场景传 6000——落地时 1.2s 早已错过。
+   */
+  private highlightApprovalPackage(packageId: string, durationMs = 1200): void {
     const project = this.projectData as ProjectScopeInput | null;
     if (!project?.house) return;
     void (async () => {
@@ -1216,8 +1317,8 @@ export class App {
           // 点位：合批渲染走 BatchedMesh.setColorAt 逐实例着色，未合批单件走 emissive 兜底
           for (const id of resolution.pointIds) pointIds.add(id);
         }
-        this.houseScene.highlightObjects([...roomIds, ...objectIds]);
-        if (pointIds.size) this.houseScene.highlightPoints([...pointIds]);
+        this.houseScene.highlightObjects([...roomIds, ...objectIds], durationMs);
+        if (pointIds.size) this.houseScene.highlightPoints([...pointIds], durationMs);
       } catch {
         // 高亮失败不打断审批流（清单与详情仍可读）
       }
@@ -1241,15 +1342,22 @@ export class App {
     //  - 单包且流程图正开着 → 留在流程图反查高亮（选中条即详情摘要，「完整详情」一键可达，
     //    切去详情页会让刚标亮的节点消失，双向联动就断了）；
     //  - 单包且流程图没开 → 维持 #49 行为：打开详情页。
-    this.scheduleSelection?.set({packageId: packageIds[0], checkId: null});
+    // 2026-11-03 浏览器复验缺陷 B：**先导航、后写选中**。旧顺序 set→navigate，
+    // set 的 replaceState 会把当前 3D 页历史条目改写成 #pkg=…，而深链规则
+    // （pkg 无 approval 参数 = 开审批 detail）会在返回时把它重新解释成审批页——
+    // 用户被弹回审批页、要退两次。先 push 审批条目、再在其上 replace 选中，
+    // 3D 条目永不被染指，返回键一步回 3D。
     if (packageIds.length > 1) {
-      this.showApprovalView('flow');
+      // 多包共用：进流程图全部标出 + 「同属 N 个包」提示，由业主点选（不静默取首个）
+      this.navigateToApproval('flow');
       this.flowChartPanel?.highlightPackages(packageIds);
     } else if (this.approvalView === 'flow') {
       this.flowChartPanel?.highlightPackages(packageIds);
     } else {
-      this.showApprovalView('detail');
+      this.navigateToApproval('detail');
     }
+    // 选中与 hash 落在首个包（详情/分享链接需要一个确定目标）
+    this.scheduleSelection?.set({packageId: packageIds[0], checkId: null});
   }
 
   // ─── 顶栏收敛：图层抽屉 / 告警聚合 / 弹出面板 ───
@@ -1358,6 +1466,8 @@ export class App {
         label: '切换视角模式',
         engineeringNote: '轨道 ↔ 第一人称；第一人称需 pointer lock（移动端为拖拽+摇杆）',
         category: '视角',
+        available: () => this.approvalView === null,
+        unavailableReason: '审批页（全屏）打开时不可切视角——先返回 3D',
         shortcut: { code: 'KeyV' },
         run: () => this.toggleMode(),
       },
@@ -1551,7 +1661,7 @@ export class App {
         label: '审批：下一步干什么',
         engineeringNote: 'next-action 视图：就绪包/待拍板门禁/待询价/等外部方，按解除下游排序；数据与 npm run verify:schedule 同源',
         category: '工程',
-        run: () => this.showApprovalView('next_action'),
+        run: () => this.navigateToApproval('next_action'),
         getActive: () => this.approvalView === 'next_action',
       },
       {
@@ -1559,7 +1669,7 @@ export class App {
         label: '审批：进度图与门禁图',
         engineeringNote: '一期包链进度 + 决策门禁/CI 口径（两个模式不合成一张）；点包高亮 3D 范围',
         category: '工程',
-        run: () => this.showApprovalView('schedule'),
+        run: () => this.navigateToApproval('schedule'),
         getActive: () => this.approvalView === 'schedule',
       },
       {
@@ -1567,7 +1677,7 @@ export class App {
         label: '审批：包详情',
         engineeringNote: '选中工作包的检查项/证据/物料三档/阻塞/付款节点/审计史；选中态可发链接（#pkg=…）',
         category: '工程',
-        run: () => this.showApprovalView('detail'),
+        run: () => this.navigateToApproval('detail'),
         getActive: () => this.approvalView === 'detail',
       },
       {
@@ -1575,7 +1685,7 @@ export class App {
         label: '审批：依赖流程图',
         engineeringNote: '一期包级依赖图：并行/汇合/阻塞一眼可见；点节点高亮 3D，点 3D 对象反向标亮节点（多包全标）',
         category: '工程',
-        run: () => this.showApprovalView('flow'),
+        run: () => this.navigateToApproval('flow'),
         getActive: () => this.approvalView === 'flow',
       },
     ]);
@@ -2268,8 +2378,15 @@ export class App {
         if (this.furniturePlaceMode) { this.exitFurniturePlaceMode(); return; }
         if (this.infrastructurePlaceMode) { this.exitInfrastructurePlaceMode(); return; }
         if (this.fpController.isDragMode()) { this.fpController.exitDragMode(); this.houseScene.hideGhost(); return; }
+        // 2026-11-03 codex 审查 major：审批页是全屏表面，Esc 给个键盘出口——返回 3D
+        if (this.approvalView !== null) { this.toggleApprovalView(); return; }
         return;
       }
+
+      // 2026-11-03 codex 审查 major：审批页打开期间屏蔽场景快捷键——否则页内按
+      // V 会切第一人称并请求指针锁定，鼠标被画布抓走、页内按钮全废。命令面板
+      // （Shift+/，z 250 在审批页之上）不屏蔽：业主在审批页里仍要能叫命令。
+      if (this.approvalView !== null && !(e.code === 'Slash' && e.shiftKey)) return;
 
       if (e.code === 'KeyV' && !e.repeat) {
         e.preventDefault();
@@ -2535,6 +2652,11 @@ export class App {
   }
 
   private toggleMode(): void {
+    // 2026-11-03 codex 四审 major：审批页（全屏）里切视角模式会 requestLock 把
+    // 指针锁给背后的画布——命令面板的「切换视角模式」是键盘屏蔽的漏网入口
+    // （V 已被 setupKeyboard 的审批页守卫挡住，命令不会）。视角模式是 3D 页的
+    // 动作，审批页里一律不执行；命令同时标 available:false 不在面板里出现。
+    if (this.approvalView !== null) return;
     if (this.houseScene.cameraAnimator.isAnimating()) {
       this.houseScene.cameraAnimator.interrupt();
       return;

@@ -58,6 +58,16 @@ type ProjectState =
   | {status: 'ready'; payload: ProjectPayload}
   | {status: 'error'; message: string};
 
+/**
+ * 用户动过的草稿字段（2026-11-03 codex 十七审 blocking）。合并回填时**动过的
+ * 字段（含清空成空串）本地胜出，没动过的字段服务端逐字采用**——包级 dirty 只
+ * 说明「这个包有未保存编辑」，不说明「这一行每个字段都被编辑过」：首载前只改
+ * 备注时本地记录其余字段还是默认空值，整条胜出会把服务端已存的 status/验收人/
+ * 证据全部抹掉，collectResults 再跳过 status=null 的行，整份覆盖 PUT 把它永久
+ * 删掉（十七审复现路径）。没有这张表就分不清「用户清空了」与「用户还没填」。
+ */
+type DraftField = 'status' | 'checked_by' | 'checked_at' | 'note' | 'supersedes' | 'evidence';
+
 /** 一行检查的本地草稿态（未选状态时不进 PUT body）。 */
 interface CheckDraftState {
   /** null = 还没选状态；只有选过状态的行才会进 PUT。 */
@@ -74,6 +84,8 @@ interface CheckDraftState {
   uploading: boolean;
   /** 上次保存 422 挂回本行的 issues。 */
   issues: DraftIssue[];
+  /** 用户动过的字段：合并回填的裁定依据（见 DraftField）。 */
+  touched: Set<DraftField>;
 }
 
 type SaveStatus =
@@ -81,6 +93,100 @@ type SaveStatus =
   | {kind: 'saving'}
   | {kind: 'saved'; at: string}
   | {kind: 'error'; message: string};
+
+/** 一个包的草稿保存态（跨包响应互不可见的数据基础）。 */
+interface SaveRecord {
+  status: SaveStatus;
+  /** 有未保存编辑（保存失败也保持）。applyDraft 据此裁定本地/服务端谁胜出。 */
+  dirty: boolean;
+  /** 包级 422 issues（check_id='*'）；行级挂在 CheckDraftState.issues。 */
+  issues: DraftIssue[];
+}
+
+/**
+ * 一个包的保存/提交运行态（2026-11-03 codex 七审后结构性根治，十六审补全写路径门）。
+ * 根治前保存定时器与卡点/预演/提交四件套全是**面板级单槽**——包 A 的响应晚于
+ * 切包就写进包 B 的显示（五审跨包污染、六审清空门禁的同类）。现按包各一份，
+ * 跨包响应在数据结构上无处可漏；配合 saveByPkg/saveSeqByPkg（保存态）与
+ * draftSeq（草稿加载），异步写路径全部按包隔离或版本作废。
+ * 面板级单槽只剩 draftPackageId/draftLoading/draftError/draftSeq——它由
+ * draftSeq+draftPackageId 双重校验守旧响应（loadDraft 内 return），是既有
+ * 安全范式；且它只影响「加载中」显示，不落任何包的数据。
+ */
+interface PackageEditState {
+  saveTimer: ReturnType<typeof setTimeout> | null;
+  saveTarget: string | null;
+  /**
+   * 草稿版本号：本地编辑/保存成功/服务端草稿回填都 +1。卡点与预演请求发出时
+   * 记下当时版本，响应回头对不上即作废——**同包**的旧响应不许覆盖新草稿的
+   * 结论（按包隔离只解决跨包，这条解决同包；codex 八审 blocking：A 的预演
+   * 在途→草稿变化作废旧预演→旧响应晚到又把旧预演填回，提交按钮对着旧预览
+   * 重新可用，而真实提交读的是新草稿）。PUT 在途期间版本变过（编辑或合并
+   * 落账），成功回头也不算数——不清 dirty，由后续保存重发（十六审）。
+   */
+  draftVersion: number;
+  /** 上次回填的服务端草稿内容（序列化）：重载时内容没变不作废结论，变了才作废
+   *  （codex 九审 blocking：只 bump 版本拦不住「已落账的旧结论」——另一标签页
+   *  改过服务端草稿后切回来，新草稿加载了但旧预演和提交按钮还亮着）。 */
+  lastServerDraft: string | null;
+  /**
+   * 服务端推进序号（2026-11-03 codex 十六审根治）：**只有保存成功落账才 +1**。
+   * GET 请求发出时记下当时序号，回头对不上=这份响应早于一次已落账的保存，
+   * 看到的是旧服务端内容，必须整份作废（codex 十五审 blocking：旧 GET 回填
+   * 会把刚保存的结果删掉）。序号没变=响应就是当前服务端真相，**哪怕加载期间
+   * 用户编辑过**——编辑 bump 的是 draftVersion 不是 serverSeq，此时丢弃整份
+   * GET 会让客户端从没见过服务端已有条目，下次全量 PUT 把它们永久删掉
+   * （codex 十六审 blocking）。分不清「编辑过」与「保存成功过」正是十五审
+   * 守卫误杀十六审场景的根因，两个序号各管一件事。
+   */
+  serverSeq: number;
+  /**
+   * 本包读取序号（codex 十九审 blocking 1）：每次 loadDraft(packageId) +1，
+   * 响应回头对不上 = 同包有更新的读取在途（含切走后又发起的那种），这份不碰
+   * 任何状态、由新读取落账。旧实现用「当前选中是不是本包」判定新旧：连续发起
+   * P 的 GET1/GET2 再切 Q，GET1 先返回也会合并并放行完整态，PUT 用 GET1 的
+   * 旧视图覆盖服务端、删掉只有 GET2 才带回的新条目。读取新旧只能由本包的读取
+   * 序号决定，与选中态无关（选中态只决定渲不渲染）。
+   */
+  loadSeq: number;
+  /**
+   * 完整视图门（codex 十六审 blocking）：该包 draftResults 是否**已知包含
+   * 服务端全部条目**。加载在途/加载失败/从未加载过 = false——此时客户端可能
+   * 没见过服务端已有结果（首开包时GET未落账），而 PUT 是整份覆盖，发出去就会
+   * 把没见过的条目永久删掉。GET 落账（合并回填，或被已落账保存作废）时置 true。
+   * 保存在此门下搁置（saveDeferred）而非丢弃，加载落账后自动重发。
+   */
+  draftComplete: boolean;
+  /** 同包是否有 PUT 在途。两个 body 竞态落账时先发后到的那份会删掉新条目，
+   *  因此在途期间同包新保存一律搁置到它落账（十六审根治）。 */
+  putInFlight: boolean;
+  /**
+   * 同包保存链（codex 二十四审 major）：这一包已发出/排队中的保存。ensureDraftPersisted
+   * await 它即等「保存真正落账」——旧实现用三次 25ms 短轮询猜在途保存，正常慢
+   * PUT（>75ms）被误判成「草稿还没保存成功」，业主点卡点/预演/提交白中止。
+   */
+  saveChain: Promise<void> | null;
+  /** 保存被完整视图门/在途 PUT 搁置过一次：加载落账或 PUT 落账后要重发。 */
+  saveDeferred: boolean;
+  /**
+   * 卡点/预演结论落账时的控制源指纹（codex 二十一审 blocking）：结论不只由草稿
+   * 决定——服务端按**当前**检查标准指纹（check_spec_sha256）与项目数据指纹
+   * （data_fingerprint）重新生成 audit 记录。切包期间控制源变化后返回，草稿内容
+   * 没变（lastServerDraft 比对不触发作废），但旧结论是按旧指纹算的：放行提交
+   * 等于让业主确认的预演与实际写入 commit 的指纹不同。null = 没有落账的结论。
+   */
+  controlFingerprint: string | null;
+  gates: {ok: boolean; gates: GateView[]} | null;
+  gatesLoading: boolean;
+  gatesError: string | null;
+  dryRun: {records: AuditRecordProjection[]; pr_body: string} | null;
+  dryRunLoading: boolean;
+  dryRunError: string | null;
+  submitArmed: boolean;
+  submitting: boolean;
+  submitResult: {branch: string; commit: string; pr_url: string} | null;
+  submitError: {error: string; detail?: unknown} | null;
+}
 
 interface GateView {
   name: string;
@@ -178,28 +284,85 @@ export class ScheduleDetailPanel {
   private draftResults = new Map<string, CheckDraftState>();
   /** 已（或正在）加载草稿的包；render 时对不上就重拉，防静默空态。 */
   private draftPackageId: string | null = null;
-  /** draftResults 实际所属的包：refresh 重拉时据此保留本地未保存的编辑。 */
-  private draftMergeKey: string | null = null;
   private draftLoading = false;
   private draftError: string | null = null;
   private draftSeq = 0;
-  private saveStatus: SaveStatus = {kind: 'idle'};
-  private saveDirty = false;
-  private packageIssues: DraftIssue[] = [];
-  private saveTimer: ReturnType<typeof setTimeout> | null = null;
-  private saveTargetPackage: string | null = null;
-  /** 卡点/预演/提交状态所属的包；换包即作废（不拿旧结论放行新包）。 */
+  /**
+   * 草稿保存状态**按包存**（2026-11-03 codex 五审 blocking）：原先是面板级共享
+   * 三字段，包 A 的 PUT 在途时切到包 B、B 保存失败，A 的成功晚到会把 B 标成
+   * 「已保存」并抹掉重试入口——B 未保存的编辑看起来已存、刷新即丢。改成每包一份
+   * 记录，跨包响应互不可见。saveSeq 是请求版本号（仿上方 draftSeq 范式）：
+   * 同包的旧响应也不许碰状态。
+   */
+  private saveByPkg = new Map<string, SaveRecord>();
+  /** 每包的保存请求版本号：响应回头时若不是该包最新一轮，结果作废（同包新旧排序）。 */
+  private saveSeqByPkg = new Map<string, number>();
+
+  private saveRecordFor(packageId: string): SaveRecord {
+    let record = this.saveByPkg.get(packageId);
+    if (!record) {
+      record = {status: {kind: 'idle'}, dirty: false, issues: []};
+      this.saveByPkg.set(packageId, record);
+    }
+    return record;
+  }
+  /**
+   * 每包的保存/提交运行态：字段释义见 PackageEditState。跨包响应在数据结构上
+   * 无处可漏；配合 saveByPkg/saveSeqByPkg（保存态）与 draftSeq（草稿加载），
+   * 异步写路径全部按包隔离或版本作废。
+   */
+  private pkgRuns = new Map<string, PackageEditState>();
+
+  private runFor(packageId: string): PackageEditState {
+    let run = this.pkgRuns.get(packageId);
+    if (!run) {
+      run = {
+        saveTimer: null, saveTarget: null, draftVersion: 0, lastServerDraft: null,
+        serverSeq: 0, loadSeq: 0, draftComplete: false, putInFlight: false, saveDeferred: false,
+        saveChain: null, controlFingerprint: null,
+        gates: null, gatesLoading: false, gatesError: null,
+        dryRun: null, dryRunLoading: false, dryRunError: null,
+        submitArmed: false, submitting: false, submitResult: null, submitError: null,
+      };
+      this.pkgRuns.set(packageId, run);
+    }
+    return run;
+  }
+
+  /** 该包草稿变了：作废在途/已有的卡点与预演结论，并 bump 版本号守迟到响应。 */
+  private invalidateRunForDraftChange(packageId: string): void {
+    const run = this.runFor(packageId);
+    run.draftVersion += 1;
+    run.controlFingerprint = null;
+    this.resetSubmitState(packageId);
+  }
+
+  /**
+   * 预演结论的控制源指纹（codex 二十一审 blocking）：项目数据指纹 + 该包每个检查
+   * 的标准指纹。服务端 submitAcceptance 按**当前**控制源重新生成 audit 记录——
+   * 这些指纹变了，旧卡点/预演就算不出将写入的内容。
+   */
+  private controlFingerprintOf(packageId: string): string {
+    const pkg = this.payload?.packages.find((item) => item.id === packageId);
+    const specHashes = (pkg?.checks ?? []).map((check) => `${check.id}:${check.check_spec_sha256}`).join(',');
+    return `${this.payload?.data_fingerprint ?? ''}|${specHashes}`;
+  }
+
+  /**
+   * 快照重拉后：控制源指纹变过的包，旧卡点/预演/确认态全部作废（二十一审 blocking）。
+   * 草稿内容没变时 lastServerDraft 比对不触发作废，但结论是按旧指纹算的——放行
+   * 提交等于让业主确认的预演与实际写入 commit 的指纹不同。
+   */
+  private invalidateRunsForControlChange(): void {
+    for (const [packageId, run] of this.pkgRuns) {
+      if (run.controlFingerprint === null) continue; // 没有落账的结论：无可作废
+      if (run.controlFingerprint === this.controlFingerprintOf(packageId)) continue;
+      this.invalidateRunForDraftChange(packageId);
+    }
+  }
+
+  /** 卡点/预演/提交渲染键（当前选中包）；运行态按包各一份，不再随换包作废。 */
   private actionPackageId: string | null = null;
-  private gates: {ok: boolean; gates: GateView[]} | null = null;
-  private gatesLoading = false;
-  private gatesError: string | null = null;
-  private dryRun: {records: AuditRecordProjection[]; pr_body: string} | null = null;
-  private dryRunLoading = false;
-  private dryRunError: string | null = null;
-  private submitArmed = false;
-  private submitting = false;
-  private submitResult: {branch: string; commit: string; pr_url: string} | null = null;
-  private submitError: {error: string; detail?: unknown} | null = null;
 
   constructor(
     private readonly selection: ScheduleSelectionStore,
@@ -244,6 +407,8 @@ export class ScheduleDetailPanel {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       this.payload = (await response.json()) as ScheduleSnapshot;
       this.errorMessage = null;
+      // 控制源指纹变过的包：旧卡点/预演是按旧指纹算的，全部作废（二十一审 blocking）
+      this.invalidateRunsForControlChange();
     } catch (err) {
       this.errorMessage = err instanceof Error ? err.message : String(err);
     }
@@ -266,6 +431,12 @@ export class ScheduleDetailPanel {
     }
 
     const packageId = this.selection.get().packageId;
+    // 离开某包即解除它的两步确认态——**必须在下面所有早退之前**：退出审批页会
+    // 清空选中走 !packageId 早退，若把解除放在早退后面就够不着（codex 十审
+    // major：A 武装→返回 3D→重选 A，确认态还在，下一次点击直接开 PR）。
+    if (this.actionPackageId !== null && this.actionPackageId !== packageId) {
+      this.runFor(this.actionPackageId).submitArmed = false;
+    }
     if (!packageId) {
       body.innerHTML = `${error}<div style="padding:10px;border:1px dashed rgba(255,255,255,.2);border-radius:6px;color:#9aa4b2;font-size:12px;">
         还没有选中工作包——在「自装进度」面板点某一行，或打开带 <code>#pkg=PKG-xxx</code> 的链接。
@@ -281,15 +452,13 @@ export class ScheduleDetailPanel {
       return;
     }
 
-    if (this.actionPackageId !== pkg.id) {
-      this.actionPackageId = pkg.id;
-      this.resetSubmitState();
-      this.saveStatus = {kind: 'idle'};
-      this.saveDirty = false;
-      this.packageIssues = [];
-    }
+    // 运行态按包各一份（pkgRuns）：换包不 reset——切回某包能看到它上次的卡点/
+    // 预演/提交结果与保存成败；旧结论放行新包的风险由「草稿变化即 reset 该包
+    // 运行态」把守（onDraftChanged / saveDraft 成功分支），比换包一刀切更准。
+    // 两步确认态（submitArmed）的解除已在上面早退前统一处理（离开即解除）。
+    this.actionPackageId = pkg.id;
 
-    body.innerHTML = `${error}${this.renderHeader(pkg)}${this.renderBlockers(pkg)}${this.renderBudget(pkg)}${this.renderChecks(pkg)}${this.renderProjectScope(pkg)}${this.renderAcceptanceActions()}${this.renderFoot(pkg)}`;
+    body.innerHTML = `${error}${this.renderHeader(pkg)}${this.renderBlockers(pkg)}${this.renderBudget(pkg)}${this.renderChecks(pkg)}${this.renderProjectScope(pkg)}${this.renderAcceptanceActions(pkg)}${this.renderFoot(pkg)}`;
     this.bind(body, pkg);
     this.ensureProjectScope(pkg.id);
     this.ensureDraft(pkg.id);
@@ -481,21 +650,24 @@ export class ScheduleDetailPanel {
 
   private saveStatusLine(packageId: string): string {
     const base = 'font-size:11px;';
-    if (this.saveStatus.kind === 'saving') {
+    const record = this.saveRecordFor(packageId);
+    if (record.status.kind === 'saving') {
       return `<span style="${base}color:#9aa4b2;">保存中…（写 tmp/ 草稿）</span>`;
     }
-    if (this.saveStatus.kind === 'saved') {
-      return `<span style="${base}color:#5cb85c;">已保存 ${escapeHtml(this.saveStatus.at)}（草稿只存 tmp/；进仓库走 PR）</span>`;
+    if (record.status.kind === 'saved') {
+      return `<span style="${base}color:#5cb85c;">已保存 ${escapeHtml(record.status.at)}（草稿只存 tmp/；进仓库走 PR）</span>`;
     }
-    if (this.saveStatus.kind === 'error') {
-      const extra = this.packageIssues.map((issue) => escapeHtml(issue.message)).join('；');
-      return `<span style="${base}color:#f0a9a5;">保存失败：${escapeHtml(this.saveStatus.message)}${extra ? `｜${extra}` : ''}</span>`;
+    if (record.status.kind === 'error') {
+      const extra = record.issues.map((issue) => escapeHtml(issue.message)).join('；');
+      // 2026-11-03 codex 四审：flush（退出前保存）失败后草稿还在内存（draftResults），
+      // 给一个显式重试——否则业主只能靠「再改一个字段」碰运气触发 debounce。
+      return `<span style="${base}color:#f0a9a5;">保存失败：${escapeHtml(record.status.message)}${extra ? `｜${extra}` : ''}</span> <button type="button" data-save-retry="${escapeHtml(packageId)}" style="cursor:pointer;margin-left:6px;padding:1px 8px;border-radius:5px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:11px;">重试保存</button>`;
     }
     const selected = this.selectedCount(packageId);
     if (selected === 0) {
       return `<span style="${base}color:#e9c46a;">没有可保存的结果：先选一个状态（没有已选状态时不会 PUT，避免空 results 覆盖 tmp/ 里已有草稿）</span>`;
     }
-    if (this.saveDirty) {
+    if (this.saveRecordFor(packageId).dirty) {
       return `<span style="${base}color:#9aa4b2;">${selected} 条已选状态：停手 300ms 自动存 tmp/</span>`;
     }
     return `<span style="${base}color:#9aa4b2;">草稿 ${selected} 条已存 tmp/（改动后自动保存）</span>`;
@@ -507,7 +679,10 @@ export class ScheduleDetailPanel {
       return `<span style="${base}color:#9aa4b2;">草稿加载中…（读 tmp/ 里该包的验收草稿）</span>`;
     }
     if (this.draftError) {
-      return `<span style="${base}color:#f0a9a5;">草稿读取失败：${escapeHtml(this.draftError)}（快照照常显示；保存成功后会重建草稿）</span>`;
+      // 保存在此期间被完整视图门搁置（codex 十六审）：不回填就不放行整份覆盖的
+      // PUT——宁可让「已保存」晚到，不冒删掉没见过条目的险。编辑不丢（内存 +
+      // dirty），重开本包 / refresh 重载成功后自动继续存。
+      return `<span style="${base}color:#f0a9a5;">草稿读取失败：${escapeHtml(this.draftError)}（快照照常显示；保存已暂停，重开本包重载成功后自动继续）</span>`;
     }
     const count = this.selectedCount(packageId);
     if (count === 0) {
@@ -573,17 +748,23 @@ export class ScheduleDetailPanel {
 
   // ─── 包级操作条（机械卡点 / PR 预演 / 两步确认提交） ─────────────────────
 
-  private renderAcceptanceActions(): string {
-    const gatesGreen = this.gates?.ok === true;
-    const gatesTotal = this.gates?.gates.length ?? 0;
-    const gatesPassed = this.gates?.gates.filter((gate) => gate.ok).length ?? 0;
-    const dryReady = this.dryRun !== null && !this.dryRunLoading;
+  private renderAcceptanceActions(pkg: SchedulePackageView): string {
+    const run = this.runFor(pkg.id);
+    const gatesGreen = run.gates?.ok === true;
+    const gatesTotal = run.gates?.gates.length ?? 0;
+    const gatesPassed = run.gates?.gates.filter((gate) => gate.ok).length ?? 0;
+    const dryReady = run.dryRun !== null && !run.dryRunLoading;
     // 提交成功后按钮永久禁用：服务端已清草稿+暂存，再点只会拿到空草稿 422（P1-4）
-    const submitDisabled = !dryReady || this.submitting || this.submitResult !== null;
-    const submitLabel = this.submitting ? '提交中…'
-      : this.submitResult ? '已开 PR（草稿已清，勿重复提交）'
-      : this.submitArmed ? '再点一次：确认开 PR' : '确认提交（开 PR）';
-    const submitStyle = this.submitArmed
+    // 草稿重载未确认（在途/读取失败）时禁止提交（codex 十四审 blocking）：服务端
+    // submitAcceptance 会重读服务端草稿——业主本地预演的可能与将写入的内容不
+    // 一致（切包回来重载未完成、或 GET 失败时旧预演还挂着）。draftPackageId 对得上
+    // 才认（单槽加载器，别包的在途不该堵本包的按钮）。
+    const draftPending = (this.draftLoading || this.draftError !== null) && this.draftPackageId === pkg.id;
+    const submitDisabled = !dryReady || run.submitting || run.submitResult !== null || draftPending;
+    const submitLabel = run.submitting ? '提交中…'
+      : run.submitResult ? '已开 PR（草稿已清，勿重复提交）'
+      : run.submitArmed ? '再点一次：确认开 PR' : '确认提交（开 PR）';
+    const submitStyle = run.submitArmed
       ? 'cursor:pointer;padding:4px 10px;border-radius:6px;font-size:12px;border:1px solid #d9534f;background:#5a2321;color:#ffd9d6;'
       : 'cursor:pointer;padding:4px 10px;border-radius:6px;font-size:12px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#c9cede;';
     const buttonStyle = 'cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:12px;';
@@ -592,27 +773,28 @@ export class ScheduleDetailPanel {
       <div style="font-size:13px;font-weight:600;margin-bottom:2px;">验收操作</div>
       <div style="color:#9aa4b2;font-size:11px;margin-bottom:6px;">草稿只存 tmp/；进仓库的唯一路径是分支 + commit + PR，合并由业主亲手点（铁律）。</div>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-        <button type="button" id="acceptance-run-gates"${this.gatesLoading ? ' disabled' : ''} style="${this.gatesLoading ? disabledStyle : buttonStyle}">${this.gatesLoading ? '卡点执行中…' : '跑机械卡点'}</button>
-        <button type="button" id="acceptance-dry-run"${gatesGreen && !this.dryRunLoading ? '' : ' disabled'} title="${gatesGreen ? '只算将写入的记录与 PR 正文，不碰 git' : '先跑机械卡点且五道全绿'}" style="${gatesGreen && !this.dryRunLoading ? buttonStyle : disabledStyle}">${this.dryRunLoading ? '预演生成中…' : '生成 PR 预演'}</button>
-        <button type="button" id="acceptance-submit"${submitDisabled ? ' disabled' : ''} title="${this.submitResult ? '已开 PR 且草稿已清，勿重复提交' : dryReady ? '两步确认：第一次只进确认态，第二次才真正开 PR' : '先生成 PR 预演'}" style="${submitDisabled ? disabledStyle : submitStyle}">${escapeHtml(submitLabel)}</button>
-        ${this.gates ? `<span style="font-size:11px;color:${this.gates.ok ? '#5cb85c' : '#d9534f'};">卡点 ${gatesPassed}/${gatesTotal}</span>` : ''}
+        <button type="button" id="acceptance-run-gates"${run.gatesLoading ? ' disabled' : ''} style="${run.gatesLoading ? disabledStyle : buttonStyle}">${run.gatesLoading ? '卡点执行中…' : '跑机械卡点'}</button>
+        <button type="button" id="acceptance-dry-run"${gatesGreen && !run.dryRunLoading ? '' : ' disabled'} title="${gatesGreen ? '只算将写入的记录与 PR 正文，不碰 git' : '先跑机械卡点且五道全绿'}" style="${gatesGreen && !run.dryRunLoading ? buttonStyle : disabledStyle}">${run.dryRunLoading ? '预演生成中…' : '生成 PR 预演'}</button>
+        <button type="button" id="acceptance-submit"${submitDisabled ? ' disabled' : ''} title="${run.submitResult ? '已开 PR 且草稿已清，勿重复提交' : dryReady ? '两步确认：第一次只进确认态，第二次才真正开 PR' : '先生成 PR 预演'}" style="${submitDisabled ? disabledStyle : submitStyle}">${escapeHtml(submitLabel)}</button>
+        ${run.gates ? `<span style="font-size:11px;color:${run.gates.ok ? '#5cb85c' : '#d9534f'};">卡点 ${gatesPassed}/${gatesTotal}</span>` : ''}
       </div>
-      ${this.renderGatesArea()}
-      ${this.renderDryRunArea()}
-      ${this.renderSubmitArea()}
+      ${this.renderGatesArea(pkg)}
+      ${this.renderDryRunArea(pkg)}
+      ${this.renderSubmitArea(pkg)}
     </div>`;
   }
 
-  private renderGatesArea(): string {
-    if (this.gatesError) {
-      return `<div style="margin-top:6px;color:#f0a9a5;font-size:11px;">卡点执行失败：${escapeHtml(this.gatesError)}</div>`;
+  private renderGatesArea(pkg: SchedulePackageView): string {
+    const run = this.runFor(pkg.id);
+    if (run.gatesError) {
+      return `<div style="margin-top:6px;color:#f0a9a5;font-size:11px;">卡点执行失败：${escapeHtml(run.gatesError)}</div>`;
     }
-    if (!this.gates) {
-      return this.gatesLoading
+    if (!run.gates) {
+      return run.gatesLoading
         ? `<div style="margin-top:6px;color:#9aa4b2;font-size:11px;">卡点执行中…（含 verify:schedule，可能数十秒）</div>`
         : `<div style="margin-top:6px;color:#9aa4b2;font-size:11px;">还没跑过机械卡点：五道卡点（控制源校验 / 草稿校验 / 证据在位 / 前置与阻塞 / verify:schedule）全绿后才能生成 PR 预演。</div>`;
     }
-    const rows = this.gates.gates.map((gate) => {
+    const rows = run.gates.gates.map((gate) => {
       const mark = gate.ok ? '✓' : '✗';
       const color = gate.ok ? '#5cb85c' : '#d9534f';
       // ✗ 的 detail 完整显示（失败逐条原因就在这）；✓ 的 detail 收起为小字
@@ -622,15 +804,16 @@ export class ScheduleDetailPanel {
     return `<div style="margin-top:6px;">${rows}</div>`;
   }
 
-  private renderDryRunArea(): string {
-    if (this.dryRunLoading) {
+  private renderDryRunArea(pkg: SchedulePackageView): string {
+    const run = this.runFor(pkg.id);
+    if (run.dryRunLoading) {
       return `<div style="margin-top:6px;color:#9aa4b2;font-size:11px;">预演生成中…（跑卡点并投影将写入的 audit 记录，不碰 git）</div>`;
     }
-    if (this.dryRunError) {
-      return `<div style="margin-top:6px;color:#f0a9a5;font-size:11px;">预演被挡下：${escapeHtml(this.dryRunError)}（卡点明细已回填到上面）</div>`;
+    if (run.dryRunError) {
+      return `<div style="margin-top:6px;color:#f0a9a5;font-size:11px;">预演被挡下：${escapeHtml(run.dryRunError)}（卡点明细已回填到上面）</div>`;
     }
-    if (!this.dryRun) return '';
-    const rows = this.dryRun.records.map((record) => `<tr>
+    if (!run.dryRun) return '';
+    const rows = run.dryRun.records.map((record) => `<tr>
       <td><code>${escapeHtml(record.id)}</code></td>
       <td>${escapeHtml(record.check_id)}</td>
       <td>${escapeHtml(record.status)}</td>
@@ -639,38 +822,39 @@ export class ScheduleDetailPanel {
       <td>${escapeHtml(record.supersedes ?? '—')}</td>
     </tr>`).join('');
     return `<div style="margin-top:6px;">
-      <div style="font-size:11px;font-weight:600;">PR 预演：将写入 ${this.dryRun.records.length} 条 audit 记录（未碰 git）</div>
+      <div style="font-size:11px;font-weight:600;">PR 预演：将写入 ${run.dryRun.records.length} 条 audit 记录（未碰 git）</div>
       <div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:11px;">
         <thead><tr><th style="text-align:left;">记录 id</th><th style="text-align:left;">检查</th><th style="text-align:left;">状态</th><th style="text-align:left;">check_spec 指纹</th><th style="text-align:left;">项目数据指纹</th><th style="text-align:left;">supersedes</th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
       <div style="font-size:11px;font-weight:600;margin-top:4px;">PR 正文预览</div>
-      <pre style="margin:2px 0 0;padding:6px 8px;border:1px solid rgba(255,255,255,.14);border-radius:5px;background:rgba(0,0,0,.25);white-space:pre-wrap;word-break:break-all;font-size:11px;max-height:220px;overflow:auto;">${escapeHtml(this.dryRun.pr_body)}</pre>
+      <pre style="margin:2px 0 0;padding:6px 8px;border:1px solid rgba(255,255,255,.14);border-radius:5px;background:rgba(0,0,0,.25);white-space:pre-wrap;word-break:break-all;font-size:11px;max-height:220px;overflow:auto;">${escapeHtml(run.dryRun.pr_body)}</pre>
     </div>`;
   }
 
-  private renderSubmitArea(): string {
-    if (this.submitting) {
+  private renderSubmitArea(pkg: SchedulePackageView): string {
+    const run = this.runFor(pkg.id);
+    if (run.submitting) {
       return `<div style="margin-top:6px;color:#9aa4b2;font-size:11px;">提交中…（建分支 → 写 audit_log → 重渲 → 复跑卡点 → commit → push → 开 PR；任一步失败自动回滚）</div>`;
     }
-    if (this.submitError) {
-      const detail = this.renderDetail(this.submitError.detail);
-      return `<div style="margin-top:6px;color:#f0a9a5;font-size:11px;">提交失败：${escapeHtml(this.submitError.error)}${detail ? `<div style="white-space:pre-wrap;">${detail}</div>` : ''}</div>`;
+    if (run.submitError) {
+      const detail = this.renderDetail(run.submitError.detail);
+      return `<div style="margin-top:6px;color:#f0a9a5;font-size:11px;">提交失败：${escapeHtml(run.submitError.error)}${detail ? `<div style="white-space:pre-wrap;">${detail}</div>` : ''}</div>`;
     }
-    if (this.submitResult) {
-      const url = this.submitResult.pr_url;
+    if (run.submitResult) {
+      const url = run.submitResult.pr_url;
       // 只把 http(s) 渲染成链接；其它（javascript: 等）纯文本 <code>，不当 a 渲染
       const link = /^https?:\/\//i.test(url)
         ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" style="color:#6fa8dc;">${escapeHtml(url)}</a>`
         : `<code>${escapeHtml(url)}</code>`;
       return `<div style="margin-top:6px;font-size:11px;line-height:1.8;">
         <div><span style="color:#5cb85c;">✓</span> 已开 PR：${link}；草稿已清，勿重复提交</div>
-        <div style="color:#9aa4b2;">分支 <code>${escapeHtml(this.submitResult.branch)}</code>｜commit <code>${escapeHtml(this.submitResult.commit)}</code></div>
+        <div style="color:#9aa4b2;">分支 <code>${escapeHtml(run.submitResult.branch)}</code>｜commit <code>${escapeHtml(run.submitResult.commit)}</code></div>
         <div style="color:#e9c46a;">tmp/ 里的草稿与暂存区已随提交清掉：再点提交只会拿到空草稿；如需再提交，先刷新面板重新收集验收结果。</div>
         <div style="color:#9aa4b2;">合并由业主在 GitHub 上亲手点；刷新面板查看最新验收状态。</div>
       </div>`;
     }
-    if (this.submitArmed) {
+    if (run.submitArmed) {
       return `<div style="margin-top:6px;color:#e9c46a;font-size:11px;">确认态：再点一次「确认提交（开 PR）」才会建分支、写 audit_log、push 并开 PR；切包或改动草稿会取消确认态。</div>`;
     }
     return '';
@@ -719,7 +903,7 @@ export class ScheduleDetailPanel {
       void this.loadProjectScope(pkg.id);
     });
     this.bindCheckOps(body, pkg);
-    this.bindAcceptanceActions(body);
+    this.bindAcceptanceActions(body, pkg);
   }
 
   private bindCheckOps(body: HTMLElement, pkg: SchedulePackageView): void {
@@ -728,7 +912,9 @@ export class ScheduleDetailPanel {
       const status = button.dataset.status as DraftCheckResult['status'] | undefined;
       if (!checkId || !status) continue;
       button.addEventListener('click', () => {
-        this.draftOf(checkId).status = status;
+        const state = this.draftOf(checkId);
+        state.status = status;
+        state.touched.add('status'); // 合并回填的裁定依据：动过的字段本地胜出
         this.onDraftChanged(pkg.id);
         this.updateSaveUi(pkg);
       });
@@ -744,7 +930,9 @@ export class ScheduleDetailPanel {
         const checkId = input.dataset[datasetKey] ?? '';
         if (!checkId) continue;
         input.addEventListener('input', () => {
-          this.draftOf(checkId)[key] = input.value;
+          const state = this.draftOf(checkId);
+          state[key] = input.value;
+          state.touched.add(key); // 含「清空」：空串也是用户意图，合并时 local 胜出
           this.onDraftChanged(pkg.id);
           this.updateSaveUi(pkg);
         });
@@ -774,8 +962,10 @@ export class ScheduleDetailPanel {
         void this.uploadEvidence(pkg.id, checkId, file.name, base64);
       };
       reader.onerror = () => {
-        state.uploading = false;
-        state.stagedError = '文件读取失败';
+        // 同 uploadEvidence：异步回调里重新取当前状态对象再写（二十五审 major）
+        const current = this.draftOf(checkId);
+        current.uploading = false;
+        current.stagedError = '文件读取失败';
         this.updateSaveUi(pkg);
       };
       reader.readAsDataURL(file);
@@ -788,15 +978,20 @@ export class ScheduleDetailPanel {
         const path = button.dataset.evidencePath ?? '';
         const state = this.draftOf(checkId);
         state.evidence = state.evidence.filter((item) => item !== path);
+        state.touched.add('evidence'); // 删证据也是意图：合并时不吃服务端旧列表
         this.onDraftChanged(pkg.id);
         this.updateSaveUi(pkg);
       });
     }
   }
 
-  private bindAcceptanceActions(scope: HTMLElement): void {
-    const packageId = this.actionPackageId;
-    if (!packageId) return;
+  private bindAcceptanceActions(scope: HTMLElement, pkg: SchedulePackageView): void {
+    const packageId = pkg.id;
+    // 保存失败重试（2026-11-03 codex 四审）：flush 失败后草稿在内存，显式重跑一次
+    scope.querySelector('[data-save-retry]')?.addEventListener('click', () => {
+      this.saveRecordFor(packageId).dirty = true;
+      void this.saveDraft(packageId);
+    });
     scope.querySelector('#acceptance-run-gates')?.addEventListener('click', () => {
       void this.runGates(packageId);
     });
@@ -804,14 +999,17 @@ export class ScheduleDetailPanel {
       void this.runDryRun(packageId);
     });
     scope.querySelector('#acceptance-submit')?.addEventListener('click', () => {
-      if (!this.dryRun || this.submitting) return;
+      const run = this.runFor(packageId);
+      if (!run.dryRun || run.submitting) return;
+      // 草稿重载未确认不提交（与渲染态同一守卫，双保险——codex 十四审 blocking）
+      if ((this.draftLoading || this.draftError !== null) && this.draftPackageId === packageId) return;
       // 两步确认：第一次只进确认态（按钮变红），第二次才 POST
-      if (!this.submitArmed) {
-        this.submitArmed = true;
-        this.updateAcceptanceBar();
+      if (!run.submitArmed) {
+        run.submitArmed = true;
+        this.updateAcceptanceBar(packageId);
         return;
       }
-      this.submitArmed = false;
+      run.submitArmed = false;
       void this.submit(packageId);
     });
   }
@@ -845,58 +1043,155 @@ export class ScheduleDetailPanel {
   }
 
   private async loadDraft(packageId: string): Promise<void> {
-    const previousPackage = this.draftMergeKey;
     // 先占位再 render：否则 render → ensureDraft 会重入本方法形成环
     this.draftPackageId = packageId;
     this.draftLoading = true;
     this.draftError = null;
     this.render();
     const seq = ++this.draftSeq;
+    const run = this.runFor(packageId);
+    // 完整视图门落下（codex 十六审 blocking）：加载在途期间不保证见过服务端全部
+    // 条目，而 PUT 是整份覆盖——此时发保存会把没见过的条目永久删掉。保存改走
+    // 搁置（saveDeferred），加载落账后由 maybeResumeSave 重发，不丢编辑。
+    run.draftComplete = false;
+    // 请求发出时的服务端序号：加载在途期间有保存成功落账（序号 +1），这份 GET
+    // 看到的就是旧服务端内容——**不能拿它当「服务端删除」的依据**（codex 十五审
+    // blocking：旧 GET 回填会把刚保存的结果删掉，下次全量 PUT 永久抹掉）。
+    // 序号没变只说明「没有保存落账」，**不**管加载期间用户编辑过没有——编辑过
+    // 也必须合并回填：丢弃整份 GET 会让客户端从没见过服务端已有条目，下次全量
+    // PUT 把它们永久删掉（codex 十六审 blocking）。十五审守卫误用 draftVersion
+    // （编辑/保存/合并都 bump）分不清这两种变化，正是误杀这里的根因；serverSeq
+    // 只有保存落账才 bump，两个序号各管一件事。
+    const serverSeqAtRequest = run.serverSeq;
+    // 本包读取序号：回头对不上 = 同包有更新的读取在途（codex 十九审 blocking 1）。
+    // 与面板级 draftSeq/draftPackageId 分工明确：那对管「加载中」显示槽归谁，
+    // 这个管「这份响应对本包是不是最新真相」——选中换走不影响前者判定后者。
+    const loadSeqAtRequest = (run.loadSeq += 1);
+    // 被更新请求取代只置标志、**不提前 return**——finally 清 loading、尾部重绘与
+    // maybeResumeSave 都要执行（提前 return 会跳过收尾：十审十一审在运行态上犯过
+    // 同一类错误，十五审的 staleRead 也是为这个，这里不重犯）。
+    let superseded = false;
     try {
       const response = await fetch(`/api/acceptance/draft?package_id=${encodeURIComponent(packageId)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = (await response.json()) as AcceptanceDraft;
-      if (seq !== this.draftSeq || this.draftPackageId !== packageId) return;
-      this.applyDraft(packageId, data.results ?? [], previousPackage);
-      this.draftError = null;
+      if (run.loadSeq !== loadSeqAtRequest) {
+        // 同包有更新的读取在途（切走后又发起的那种也算）：它落账，这份不碰状态。
+        // 旧实现在这里按「当前选中是谁」放行：GET1/GET2 交错时 GET1 先返回也会
+        // 合并并置 draftComplete，PUT 用 GET1 的旧视图覆盖、删掉 GET2 才能带回
+        // 的新条目（codex 十九审 blocking 1，内存复现）。
+        superseded = true;
+      } else {
+        // 是否早于一次已落账的保存（旧服务端内容，必须作废——十五审）
+        const staleBySave = run.serverSeq !== serverSeqAtRequest;
+        if (staleBySave) {
+          // 保存已在读取在途期间落账：那份 PUT 的整份内容即服务端真相，旧 GET 作废
+          // （不回填——干净态逐字采用会把刚保存的结果回退成旧值）。
+          run.draftComplete = true;
+        } else {
+          // 当前服务端真相：走合并回填（规则见 applyDraft）。**选中已换走也照常
+          // 合并**——没有更新的同包读取在途，这份就是该包最新真相；丢弃它会漏掉
+          // 别处/别标签页新增的结果，恢复完整态后 PUT 把旧缓存整份覆盖上去、永久
+          // 删掉它们（codex 十八审 blocking 2）。只是不渲染（选中守卫挡掉）。
+          this.applyDraft(packageId, data.results ?? []);
+          if (this.draftPackageId === packageId) this.draftError = null;
+          run.draftComplete = true;
+          // 合并落账时若有 PUT 在途：它的 body 缺这次新见的服务端条目，落账后必须
+          // 重发，否则在途 PUT 会把它们删掉（十六审复现路径的收尾）。
+          if (run.putInFlight) run.saveDeferred = true;
+        }
+      }
     } catch (err) {
-      if (seq !== this.draftSeq || this.draftPackageId !== packageId) return;
-      this.draftError = err instanceof Error ? err.message : String(err);
+      if (run.loadSeq !== loadSeqAtRequest) {
+        superseded = true; // 更新的读取在途：错误也归它报
+      } else if (this.draftPackageId === packageId) {
+        // 加载失败：视图仍不完整，保存继续搁置（draftError 有显式提示；重开本包 /
+        // refresh 会重发加载）。不回填、不置 draftComplete——PUT 会删没见过的条目。
+        this.draftError = err instanceof Error ? err.message : String(err);
+      } else {
+        // 失败且选中已换走：不设 draftError（那是别包加载的显示槽），视图同样
+        // 保持不完整——保存继续搁置，重开本包重载落账后恢复。
+        superseded = true;
+      }
     } finally {
+      // finally 清 loading，尾部重绘消掉「加载中」
       if (seq === this.draftSeq && this.draftPackageId === packageId) this.draftLoading = false;
     }
     if (this.selection.get().packageId === packageId) this.render();
+    this.maybeResumeSave(packageId);
   }
 
   /**
-   * 服务端草稿回填。同包重取（refresh / show）时**不丢本地未保存的编辑**：
-   * 服务端有值的字段以服务端为准（已保存即事实），服务端为空的字段保留本地值
-   * （刚敲的检查人/备注/证据不被一次重取静默抹掉）。换包则整体重来。
+   * 服务端草稿回填，**任何加载都走合并**（2026-11-03 codex 六审 blocking 后
+   * 无条件化）：服务端有值的字段以服务端为准（已保存即事实），为空的字段保留
+   * 本地值（刚敲的检查人/备注/证据不被重取抹掉）；其他包的条目原样保留。
    */
-  private applyDraft(packageId: string, results: DraftCheckResult[], previousPackage: string | null): void {
+  private applyDraft(packageId: string, results: DraftCheckResult[]): void {
     const byCheck = new Map(results.map((result) => [result.check_id, result]));
     const next = new Map<string, CheckDraftState>();
-    if (previousPackage === packageId) {
-      for (const [checkId, local] of this.draftResults) {
-        const fromServer = byCheck.get(checkId);
-        if (fromServer) {
-          next.set(checkId, {
-            status: fromServer.status,
-            checked_by: fromServer.checked_by?.trim() ? fromServer.checked_by : local.checked_by,
-            checked_at: fromServer.checked_at?.trim() ? fromServer.checked_at : local.checked_at,
-            note: fromServer.note?.trim() ? fromServer.note : local.note,
-            supersedes: fromServer.supersedes?.trim() ? fromServer.supersedes : local.supersedes,
-            evidence: (fromServer.evidence?.length ?? 0) > 0 ? [...fromServer.evidence] : local.evidence,
-            staged: local.staged,
-            stagedError: null,
-            uploading: false,
-            issues: [],
-          });
-        } else {
-          // 服务端没有这一条：本地选过状态/填过内容的都留着
-          next.set(checkId, {...local, issues: []});
-        }
+    // 2026-11-03 codex 六审 blocking：合并分支**无条件执行**（旧实现仅
+    // previousPackage === packageId 时走）。旧行为下换包会整体重建
+    // draftResults——A 未保存的编辑在切到 B 时被丢；回 A 加载到服务端旧草稿，
+    // 此时点「重试保存」PUT 的是旧内容，失败的编辑永久丢失（内存复现实测：
+    // 两次 PUT 的备注依次为新编辑、旧备注）。无条件合并后：
+    //  - 本包检查：服务端有值的字段以服务端为准（已保存即事实），为空的保留本地
+    //    （未保存编辑不被抹——重试因此拿到失败时的最新草稿）；
+    //  - 其他包的条目：原样带过来（换包不崩别包的未保存编辑）。
+    // dirty=true = 该包有未保存编辑（保存失败也保持）。**合并裁定不看包级 dirty，
+    // 只看行级 touched**（2026-11-03 codex 十七审 blocking，二十一审推广到全态）：
+    // 用户动过的字段（含「删空」这个意图）本地胜出，没动过的字段服务端逐字采用。
+    // 旧实现分「包脏→本地整条胜出 / 包干净→服务端逐字」两套，两头都漏：
+    //  - 包脏分支：首载前只改备注时本地记录其余字段还是默认空值，服务端已存的
+    //    status/验收人/证据被全部跳过，PUT 把该结果永久删掉（十七审内存复现）；
+    //  - 包干净分支：「没选状态的行」已填输入会被服务端静默覆盖——那行的 touched
+    //    在保存成功时按二十审的修法保留着，却只在包脏分支被消费，包一干净就成
+    //    死数据（二十一审 blocking：别处保存该行后返回，本地备注被服务端字段覆盖）。
+    // 一套规则：touched 是唯一仲裁；干净包的 touched 实际为空（保存成功即清），
+    // 行为与旧的干净分支完全一致，不存在第二套猜默认值的逻辑。
+    // 本包检查 id 全集（来自快照 payload，不是服务端草稿的子集）——用来区分
+    // 「别包缓存条目」与「本包条目」：前者永留，后者按 touched/服务端裁定。
+    const myCheckIds = new Set(
+      (this.payload?.packages.find((item) => item.id === packageId)?.checks ?? []).map((check) => check.id),
+    );
+    for (const [checkId, local] of this.draftResults) {
+      const fromServer = byCheck.get(checkId);
+      if (fromServer) {
+        // 字段级裁定：touched 的字段本地胜出（含清空），没动过的字段服务端逐字
+        // 采用——首载前只改备注也不会丢掉服务端已存的 status/验收人/证据，别处
+        // 保存过该行也不会覆盖本地未落盘的输入。staged/uploading 是本地上传中的
+        // 瞬态、不是服务端数据，保留 local。
+        next.set(checkId, {
+          status: local.touched.has('status') ? local.status : fromServer.status,
+          checked_by: local.touched.has('checked_by') ? local.checked_by : (fromServer.checked_by ?? ''),
+          checked_at: local.touched.has('checked_at') ? local.checked_at : (fromServer.checked_at || todayText()),
+          note: local.touched.has('note') ? local.note : (fromServer.note ?? ''),
+          supersedes: local.touched.has('supersedes') ? local.supersedes : (fromServer.supersedes ?? ''),
+          evidence: local.touched.has('evidence') ? [...local.evidence] : [...(fromServer.evidence ?? [])],
+          staged: local.staged,
+          stagedError: null,
+          uploading: false,
+          issues: [],
+          touched: new Set(local.touched), // 未落账的编辑意图接着带
+        });
+        continue;
       }
+      if (!myCheckIds.has(checkId)) {
+        // 别包的缓存条目：**原样保留（连对象身份一起）**——切包不崩别包的未保存
+        // 编辑，issues 也天然保留（那是别包自己 422 的行级错误，codex 二十一审
+        // major）。不克隆：在途上传/落定持有的是条目对象引用，克隆后它们的写回
+        // 会落进孤儿对象——上传成功了界面却永远「上传中」、暂存文件接不进草稿
+        // （codex 二十五审 major，内存复现）。
+        next.set(checkId, local);
+      } else if (local.touched.size > 0) {
+        // 本包、服务端没返回、**这一行有未落账编辑**：本地胜出（用户新建的结果，
+        // 或失败周期里改过的行——本地是用户当前真相，含删空）。
+        next.set(checkId, {...local, issues: []});
+      }
+      // 本包、服务端没返回、这一行也没动过（touched 为空）= 服务端删了这条结果
+      // ——**丢弃**。两条旧实现都错在这里：十二审前是无条件保留（干净态也复活）；
+      // 七审后改用包级 localWins（别行的编辑会把本行已删结果复活，下次 PUT 写回、
+      // 静默撤销服务端删除——codex 十九审 blocking 2）。裁定单位必须是**条目自己
+      // 的编辑意图**：这一行自上次服务端确认后没动过，服务端删了就是删了。
     }
     for (const [checkId, result] of byCheck) {
       if (next.has(checkId)) continue;
@@ -911,10 +1206,38 @@ export class ScheduleDetailPanel {
         stagedError: null,
         uploading: false,
         issues: [],
+        touched: new Set(), // 服务端原样采纳的条目：没有任何本地编辑意图
       });
     }
     this.draftResults = next;
-    this.draftMergeKey = packageId;
+    // 合并可能把「没选状态的行」变成**可保存结果**（服务端有状态 + 本地未落盘
+    // 字段），而保存成功时整包 dirty 已清零、也没有待存定时器——不重新武装的
+    // 话：ensureDraftPersisted 放行卡点/预演/提交去读服务端旧字段，界面却显示
+    // 本地新值并声称「已保存」，刷新即丢（codex 二十二审 blocking，内存复现）。
+    // 检出「本包有行带着未落盘字段且已有状态」时恢复待存状态并排保存。
+    const record = this.saveRecordFor(packageId);
+    if (!record.dirty) {
+      const pkg = this.payload?.packages.find((item) => item.id === packageId);
+      const unconfirmed = (pkg?.checks ?? []).some((check) => {
+        const state = next.get(check.id);
+        return state !== undefined && state.touched.size > 0 && state.status !== null;
+      });
+      if (unconfirmed) {
+        record.dirty = true;
+        this.scheduleSave(packageId);
+      }
+    }
+    // 服务端草稿回填：内容真变了才作废已落账的卡点/预演/确认态（codex 九审
+    // blocking——另一标签页改过草稿后切回来，旧结论必须让位）；内容没变（无变化
+    // 重载/刷新）只 bump 版本拦在途响应，不误伤业主刚跑出的结论。
+    const run = this.runFor(packageId);
+    const incoming = JSON.stringify(results);
+    if (run.lastServerDraft !== null && run.lastServerDraft !== incoming) {
+      this.invalidateRunForDraftChange(packageId);
+    } else {
+      run.draftVersion += 1;
+    }
+    run.lastServerDraft = incoming;
   }
 
   private defaultDraftState(): CheckDraftState {
@@ -929,6 +1252,7 @@ export class ScheduleDetailPanel {
       stagedError: null,
       uploading: false,
       issues: [],
+      touched: new Set(),
     };
   }
 
@@ -958,22 +1282,53 @@ export class ScheduleDetailPanel {
   }
 
   private onDraftChanged(packageId: string): void {
-    this.saveDirty = true;
-    this.saveStatus = {kind: 'idle'};
-    this.packageIssues = [];
+    const record = this.saveRecordFor(packageId);
+    record.dirty = true;
+    record.status = {kind: 'idle'};
+    record.issues = [];
+    // 本地编辑 = 草稿变化：在途/已有的卡点与预演结论作废（版本号 +1 守迟到响应）。
+    // 这个版本号同时是在途 PUT 的成功门（draftVersion 对不上即旧 body 成功不算
+    // 数，十六审）——编辑与合并落账都 bump 它，一套机制覆盖两种变化。
+    this.invalidateRunForDraftChange(packageId);
     this.scheduleSave(packageId);
   }
 
-  /** 输入事件改本地状态 + debounce；定时器记录目标包，选中已换包则跳过。 */
+  /**
+   * 输入事件改本地状态 + debounce。定时器**按包持有**（2026-11-03 codex 根治）：
+   * 旧实现是面板级单槽，切到别的包编辑会 clearTimeout 掉这个包待存的编辑——
+   * 保存被静默推迟到下次触碰该包。现在各包定时器互不干扰；回调也不再查选中
+   * （按包落账，saveDraft 内部有 seq 守卫），退出清选中同样不妨碍保存。
+   */
   private scheduleSave(packageId: string): void {
-    this.saveTargetPackage = packageId;
-    if (this.saveTimer !== null) clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => {
-      this.saveTimer = null;
-      const target = this.saveTargetPackage;
-      this.saveTargetPackage = null;
-      if (target && this.selection.get().packageId === target) void this.saveDraft(target);
+    const run = this.runFor(packageId);
+    if (run.saveTimer !== null) clearTimeout(run.saveTimer);
+    run.saveTarget = packageId;
+    run.saveTimer = setTimeout(() => {
+      run.saveTimer = null;
+      const target = run.saveTarget;
+      run.saveTarget = null;
+      if (target) void this.saveDraft(target);
     }, SAVE_DEBOUNCE_MS);
+  }
+
+  /**
+   * 立即执行待保存草稿（退出审批页前由 App 调用）。2026-11-03 codex 审查 blocking：
+   * debounce 定时器的回调查「当前选中仍是目标包」才保存，而退出审批页会清选中——
+   * 改完备注立刻点「返回 3D」/浏览器返回，PUT 被跳过、刷新即丢编辑。flush 不依赖
+   * 选中态（目标包在 saveTargetPackage 里已捕获，saveDraft 自带空 results 守卫），
+   * 无待保存时是 no-op。
+   */
+  flushSave(): void {
+    // 按包 flush：退出审批页前把**所有包**待存的编辑都落盘（切包留下待存定时器
+    // 不再被遗忘——根治前单槽定时器会被后一个包的编辑清掉）
+    for (const run of this.pkgRuns.values()) {
+      if (run.saveTimer === null) continue;
+      clearTimeout(run.saveTimer);
+      run.saveTimer = null;
+      const target = run.saveTarget;
+      run.saveTarget = null;
+      if (target) void this.saveDraft(target);
+    }
   }
 
   private collectResults(packageId: string): DraftCheckResult[] {
@@ -997,16 +1352,78 @@ export class ScheduleDetailPanel {
     return results;
   }
 
-  private async saveDraft(packageId: string): Promise<void> {
+  /**
+   * 搁置的保存重发（codex 十六审）：完整视图门/在途 PUT 放行后，把当时搁置的
+   * 保存意图重新排上 debounce——内容在 saveDraft 入口现取，合并新见的服务端
+   * 条目自然进下一份 body。条件不满足就继续搁置：不丢（dirty 与 saveDeferred
+   * 都在），下一个加载落账/PUT 落账事件会再来问一次。
+   */
+  private maybeResumeSave(packageId: string): void {
+    const run = this.runFor(packageId);
+    if (!run.saveDeferred || !run.draftComplete || run.putInFlight) return;
+    run.saveDeferred = false;
+    this.scheduleSave(packageId);
+  }
+
+  /**
+   * 保存入口（codex 二十四审 major）：同包的保存串成一条链——两个 body 竞态
+   * 落账会互删条目（十六审），链式排队让「在途期间的新保存」自然等前一份落账
+   * 后用最新内容重发；ensureDraftPersisted 也能 await 这条链等**真正落账**，
+   * 不再用短轮询猜（慢 PUT 被误判成保存失败，动作白中止）。
+   */
+  private saveDraft(packageId: string): Promise<void> {
+    const run = this.runFor(packageId);
+    const previous = run.saveChain ?? Promise.resolve();
+    const next = previous
+      .then(() => this.saveDraftOnce(packageId))
+      .catch(() => undefined); // saveDraftOnce 内部已兜住所有失败，这里只是链的保险
+    run.saveChain = next;
+    void next.finally(() => {
+      if (run.saveChain === next) run.saveChain = null;
+    });
+    return next;
+  }
+
+  private async saveDraftOnce(packageId: string): Promise<void> {
+    const record = this.saveRecordFor(packageId);
+    const run = this.runFor(packageId);
+    // 写路径两道门（2026-11-03 codex 十六审 blocking 根治，十八审判定顺序）。
+    // 都是**搁置不丢弃**：保存意图留在 dirty + saveDeferred 里，门开后
+    // maybeResumeSave 自动重发，业主看到的只是「已保存」晚几百毫秒。
+    // 门必须**先于**空结果判定（codex 十八审 blocking 1）：加载期间服务端
+    // status 还没合并进来，collectResults 暂时为空是**瞬态**——按「空 results」
+    // 早退会把保存意图丢掉（GET 合并后 status 出现，但定时器已消费、无人重发，
+    // 刷新即丢编辑）。
+    // ① 完整视图门：草稿未完整载入（加载在途/失败/从未加载）时，客户端可能
+    //    没见过服务端全部条目，而 PUT 是整份覆盖——发出去就把没见过的条目
+    //    （首开包时 GET 还没落账的那些）永久删掉。宁可搁置，不放行错删。
+    // ② 同包串行：已有 PUT 在途时再发一份，两份 body 竞态落账，先发后到的
+    //    那份会把新条目删掉；等它落账后用最新内容重发。
+    if (!run.draftComplete || run.putInFlight) {
+      run.saveDeferred = true;
+      return;
+    }
     const results = this.collectResults(packageId);
     if (results.length === 0) {
       // 没有任何已选状态时绝不 PUT：空 results 会覆盖 tmp/ 里已有草稿
-      this.saveStatus = {kind: 'idle'};
+      record.status = {kind: 'idle'};
       this.updateSaveUiFor(packageId);
       return;
     }
-    this.saveStatus = {kind: 'saving'};
+    // 请求版本号（仿 draftSeq，按包）：响应回头时若不是该包最新一轮，结果作废。
+    // 跨包污染由按包记录兜住；版本号只治同包的旧响应迟到（codex 五审 blocking）。
+    const seq = (this.saveSeqByPkg.get(packageId) ?? 0) + 1;
+    this.saveSeqByPkg.set(packageId, seq);
+    // 视图版本（替代原 editVersion，codex 十六审）：PUT 在途期间本地编辑过、
+    // 或加载落账合并进新见的服务端条目（draftVersion 两种变化都 bump），这份
+    // 响应对应的就是旧 body——**成功也不算数**：不清 dirty，后续保存重发。
+    // 旧实现只查 editVersion（仅编辑 bump），合并落账不 bump 它：在途 PUT 落账
+    // 后 dirty 被清，UI 显示「已保存」而服务端并没有合并新见的那条，下次别的
+    // 编辑才把它 PUT 上去——中间任何刷新都丢它。
+    const draftVersionAtStart = run.draftVersion;
+    record.status = {kind: 'saving'};
     this.updateSaveUiFor(packageId);
+    run.putInFlight = true;
     try {
       const response = await fetch('/api/acceptance/draft', {
         method: 'PUT',
@@ -1014,25 +1431,71 @@ export class ScheduleDetailPanel {
         body: JSON.stringify({package_id: packageId, results}),
       });
       const data = (await response.json().catch(() => ({}))) as {ok?: boolean; issues?: DraftIssue[]; error?: string};
-      if (this.selection.get().packageId !== packageId) return;
+      // 2026-11-03 codex 四审 blocking：这里原来有「选中已换包就 return」的守卫，
+      // 退出审批页会清选中——PUT 失败时静默 return，状态永远停在 saving、草稿只剩
+      // 内存，业主以为存了。现已双重保险：① 按包记录（跨包响应互不可见，五审）；
+      // ② seq 版本号（同包旧响应作废，五审）。渲染侧 updateSaveUiFor 仍有选中
+      // 守卫（人走开就不渲染），但状态侧一律落账。
+      if (seq !== this.saveSeqByPkg.get(packageId)) return; // 被更新请求取代：它落账时重发
       if (response.ok && data.ok) {
-        this.saveStatus = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
-        this.saveDirty = false;
-        this.packageIssues = [];
-        for (const state of this.draftResults.values()) state.issues = [];
-        // 草稿变了：旧卡点/预演/提交结论全部作废，不许拿旧结论放行新草稿
-        this.resetSubmitState();
+        // 服务端已推进到这份 body：此后早于它的 GET 响应都是旧内容（loadDraft
+        // 里十五审守卫的依据）。在途变过的旧 body 也推了服务端——序号照记，
+        // 漏掉的条目由重发补（serverSeq 只表达「保存落账过」，不表达内容新旧）。
+        run.serverSeq += 1;
+        // 服务端内容基准同步（codex 二十审 major）：PUT 成功即服务端持有这份
+        // body。不更新基准的话，下次重载拿到**与刚保存一致**的内容也会撞上旧的
+        // lastServerDraft 而误判「服务端变过」，把刚跑出的卡点/预演作废——正常
+        // 切页往返都要重跑耗时检查（九审的作废机制本该只在服务端真变时触发）。
+        run.lastServerDraft = JSON.stringify(results);
+        if (run.draftVersion === draftVersionAtStart) {
+          record.status = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
+          record.dirty = false;
+          record.issues = [];
+          // 成功分支的清理**按包隔离**（2026-11-03 codex 六审 major）：旧实现遍历全表
+          // draftResults 清 issues + 无条件 resetSubmitState——A 的迟到成功会把 B 行上
+          // 的错误、B 刚跑出的门禁/预演一起抹掉（内存复现：B 的 issues 变空、gates 与
+          // dryRun 均变 null）。只清该包各检查的行 issues；提交态只在当前操作包就是
+          // 该包时重置。
+          // **touched 只清本次 PUT 实际包含的行**（codex 二十审 blocking）：
+          // collectResults 跳过 status=null 的行——用户给某行填了备注/验收人但
+          // 还没选状态时，那行不在 body 里，清它的 touched 等于把「未提交的输入」
+          // 误标成已确认；下次重载时该行既不在服务端结果中又没有 touched，被当
+          // 成「服务端删了」直接删除，输入静默丢失。
+          const confirmedIds = new Set(results.map((item) => item.check_id));
+          const savedPkg = this.payload?.packages.find((item) => item.id === packageId);
+          for (const check of savedPkg?.checks ?? []) {
+            const state = this.draftResults.get(check.id);
+            if (!state) continue;
+            state.issues = [];
+            // 编辑周期闭环（仅限已落账的行）：此后 touched 只表示「自这次确认以来
+            // 动过的字段」，合并回填时没动过的字段让位给服务端（含别处/别标签页
+            // 改过的新值），动过的（含清空）本地胜出。
+            if (confirmedIds.has(check.id)) state.touched.clear();
+          }
+          // 草稿变了：该包旧卡点/预演/提交结论全部作废（版本号 +1 令在途响应落账时作废）
+          this.invalidateRunForDraftChange(packageId);
+        }
+        // 视图在途变过（编辑或合并）：dirty 留着——编辑等自己的定时器、合并落账
+        // 时已置 saveDeferred，都由尾部 maybeResumeSave / 定时器重发。
       } else if (response.status === 422 && Array.isArray(data.issues)) {
-        this.applyIssues(packageId, data.issues);
-        this.saveStatus = {kind: 'error', message: `草稿校验没过（${data.issues.length} 条，见各行红字）`};
+        this.applyIssues(packageId, data.issues); // 内部已写入该包记录的 issues
+        record.status = {kind: 'error', message: `草稿校验没过（${data.issues.length} 条，见各行红字）`};
       } else {
-        this.saveStatus = {kind: 'error', message: data.error ?? `HTTP ${response.status}`};
+        record.issues = [];
+        record.status = {kind: 'error', message: data.error ?? `HTTP ${response.status}`};
       }
     } catch (err) {
-      if (this.selection.get().packageId !== packageId) return;
-      this.saveStatus = {kind: 'error', message: err instanceof Error ? err.message : String(err)};
+      // 网络错同理：不管选中在不在都要留痕（seq 过期仍作废）
+      if (seq !== this.saveSeqByPkg.get(packageId)) return;
+      record.issues = [];
+      record.status = {kind: 'error', message: err instanceof Error ? err.message : String(err)};
+    } finally {
+      // 在途标志在所有出口都必须落（finally 包住）：漏清会把同包后续保存
+      // 永久搁置在串行门后（十六审根治的新不变量）。
+      run.putInFlight = false;
     }
     this.updateSaveUiFor(packageId);
+    this.maybeResumeSave(packageId);
   }
 
   /** 422 issues 按 check_id 挂回对应行；check_id 为 '*' 的进包级提示。 */
@@ -1049,19 +1512,29 @@ export class ScheduleDetailPanel {
       list.push(issue);
       byCheck.set(key, list);
     }
-    for (const state of this.draftResults.values()) state.issues = [];
+    // 只清**本包**各行的 issues（2026-11-03 codex 二十一审 major）：draftResults
+    // 按包混放，旧实现遍历全表清空——B 已经显示的行级校验原因会被迟到的 A 包 422
+    // 响应抹掉，而 B 的失败提示还叫业主「见各行红字」，红字已经没了。
+    const pkg = this.payload?.packages.find((item) => item.id === packageId);
+    for (const check of pkg?.checks ?? []) {
+      const state = this.draftResults.get(check.id);
+      if (state) state.issues = [];
+    }
     for (const [checkId, list] of byCheck) {
       const state = this.draftResults.get(checkId);
       if (state) state.issues = list;
       else this.draftResults.set(checkId, {...this.defaultDraftState(), issues: list});
     }
-    this.packageIssues = packageLevel;
+    this.saveRecordFor(packageId).issues = packageLevel;
   }
 
   // ─── 证据暂存 / 落定 ────────────────────────────────────────────────────
 
   private async uploadEvidence(packageId: string, checkId: string, filename: string, base64: string): Promise<void> {
     const state = this.draftOf(checkId);
+    state.uploading = true;
+    state.stagedError = null;
+    this.updateSaveUiFor(packageId);
     try {
       const response = await fetch('/api/acceptance/evidence', {
         method: 'POST',
@@ -1071,25 +1544,31 @@ export class ScheduleDetailPanel {
       const data = (await response.json().catch(() => ({}))) as {staging_path?: string; sha256?: string; size?: number; error?: string};
       if (this.selection.get().packageId !== packageId) return;
       if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
-      state.staged = {
+      // 落账时**重新取当前状态对象**（codex 二十五审 major）：等待期间草稿合并
+      // （本包重载 / 别包 GET 晚到）可能把条目替换成新对象，await 前捕获的引用会
+      // 写进孤儿——上传成功了界面却永远「上传中」、暂存文件接不进草稿。
+      const current = this.draftOf(checkId);
+      current.staged = {
         staging_path: String(data.staging_path ?? ''),
         sha256: String(data.sha256 ?? ''),
         size: Number(data.size ?? 0),
       };
-      state.stagedError = null;
+      current.stagedError = null;
+      current.uploading = false;
     } catch (err) {
       if (this.selection.get().packageId !== packageId) return;
-      state.stagedError = err instanceof Error ? err.message : String(err);
+      const current = this.draftOf(checkId);
+      current.stagedError = err instanceof Error ? err.message : String(err);
+      current.uploading = false;
     } finally {
-      state.uploading = false;
+      this.draftOf(checkId).uploading = false;
     }
     this.updateSaveUiFor(packageId);
   }
 
   private async finalizeEvidence(pkg: SchedulePackageView, checkId: string): Promise<void> {
-    const state = this.draftOf(checkId);
-    if (!state.staged) return;
-    const stagingPath = state.staged.staging_path;
+    const stagingPath = this.draftOf(checkId).staged?.staging_path;
+    if (!stagingPath) return;
     try {
       const response = await fetch('/api/acceptance/evidence/finalize', {
         method: 'POST',
@@ -1099,14 +1578,20 @@ export class ScheduleDetailPanel {
       const data = (await response.json().catch(() => ({}))) as {final_path?: string; sha256?: string; error?: string};
       if (this.selection.get().packageId !== pkg.id) return;
       if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
+      // 同 uploadEvidence：await 后重新取当前状态对象再写（二十五审 major）
+      const current = this.draftOf(checkId);
       const finalPath = String(data.final_path ?? '');
-      if (finalPath && !state.evidence.includes(finalPath)) state.evidence.push(finalPath);
-      state.staged = null;
-      state.stagedError = null;
+      if (finalPath && !current.evidence.includes(finalPath)) {
+        current.evidence.push(finalPath);
+        current.touched.add('evidence'); // 新证据是本地意图：合并时 local 列表胜出
+      }
+      current.staged = null;
+      current.stagedError = null;
       this.onDraftChanged(pkg.id);
     } catch (err) {
       if (this.selection.get().packageId !== pkg.id) return;
-      state.stagedError = err instanceof Error ? err.message : String(err);
+      const current = this.draftOf(checkId);
+      current.stagedError = err instanceof Error ? err.message : String(err);
     }
     this.updateSaveUi(pkg);
   }
@@ -1114,23 +1599,78 @@ export class ScheduleDetailPanel {
   // ─── 机械卡点 / PR 预演 / 提交 ──────────────────────────────────────────
 
   /** 卡点/预演/提交结论作废（换包、草稿变化时调）；不动保存状态行。 */
-  private resetSubmitState(): void {
-    this.gates = null;
-    this.gatesError = null;
-    this.gatesLoading = false;
-    this.dryRun = null;
-    this.dryRunError = null;
-    this.dryRunLoading = false;
-    this.submitArmed = false;
-    this.submitting = false;
-    this.submitResult = null;
-    this.submitError = null;
+  /** 作废某包的卡点/预演/提交结论（草稿变了不许拿旧结论放行新草稿）。 */
+  private resetSubmitState(packageId: string): void {
+    const run = this.runFor(packageId);
+    run.gates = null;
+    run.gatesError = null;
+    run.gatesLoading = false;
+    run.dryRun = null;
+    run.dryRunError = null;
+    run.dryRunLoading = false;
+    run.submitArmed = false;
+    run.submitting = false;
+    run.submitResult = null;
+    run.submitError = null;
+  }
+
+  /**
+   * 确保该包草稿已落账到服务端（2026-11-03 codex 审查同家族根治）：卡点/预演/
+   * 提交都只发 {package_id}，服务端**重读 tmp/ 草稿**算结论——自动保存有 300ms
+   * debounce，业主「改完就点」时服务端读到的还是旧草稿，预演出来的 records/pr_body
+   * 与界面上的当前草稿不符（八审的版本守卫只防「结论算旧了」，防不了「服务端还没
+   * 存上」）。存不上的（保存失败/完整视图门还关着）返回 false，调用方中止并留痕
+   * ——宁可动作没发出去，不拿着对不上的草稿开 PR。
+   */
+  private async ensureDraftPersisted(packageId: string): Promise<boolean> {
+    const run = this.runFor(packageId);
+    for (let pass = 0; pass < 3; pass += 1) {
+      // 待发的 debounce 立即执行（与退出 flush 同款）
+      if (run.saveTimer !== null) {
+        clearTimeout(run.saveTimer);
+        run.saveTimer = null;
+        const target = run.saveTarget;
+        run.saveTarget = null;
+        if (target) this.saveDraft(target);
+        continue;
+      }
+      // 在途/排队中的保存：等这一包的保存链**真正落账**（codex 二十四审 major：
+      // 旧实现三次 25ms 短轮询猜在途保存，正常慢 PUT >75ms 就被误判成「草稿
+      // 还没保存成功」，动作白中止、保存随后成功也不继续）
+      if (run.saveChain) {
+        await run.saveChain;
+        continue;
+      }
+      // 没有待发也没有在途却还 dirty = 上次保存失败：原地重试一次（仍失败则如实上报）
+      if (this.saveRecordFor(packageId).dirty) {
+        await this.saveDraft(packageId);
+        continue;
+      }
+      break;
+    }
+    return !run.putInFlight && run.saveTimer === null && !this.saveRecordFor(packageId).dirty && run.draftComplete;
   }
 
   private async runGates(packageId: string): Promise<void> {
-    this.gatesLoading = true;
-    this.gatesError = null;
-    this.updateAcceptanceBar();
+    const run = this.runFor(packageId);
+    run.gatesLoading = true;
+    run.gatesError = null;
+    this.updateAcceptanceBar(packageId);
+    // 草稿先落账再跑卡点：服务端读 tmp/ 草稿算结论，没存上就跑等于对旧草稿下结论
+    if (!(await this.ensureDraftPersisted(packageId))) {
+      run.gatesLoading = false;
+      run.gatesError = '草稿还没保存成功（见上方保存状态）：机械卡点读的是服务端 tmp/ 草稿，存上后再跑';
+      this.updateAcceptanceBar(packageId);
+      return;
+    }
+    const versionAtStart = run.draftVersion;
+    // 结论的控制源指纹（请求时点）：响应回头时指纹变过 = 结论是按旧控制源算的，
+    // 与版本号变过同等作废（codex 二十一审 blocking）
+    const controlFingerprintAtStart = this.controlFingerprintOf(packageId);
+    run.gatesLoading = true;
+    run.gatesError = null;
+    this.updateAcceptanceBar(packageId);
+    let stale = false;
     try {
       const response = await fetch('/api/acceptance/gates', {
         method: 'POST',
@@ -1138,29 +1678,63 @@ export class ScheduleDetailPanel {
         body: JSON.stringify({package_id: packageId}),
       });
       const data = (await response.json().catch(() => ({}))) as {ok?: boolean; gates?: GateView[]; error?: string};
-      if (this.selection.get().packageId !== packageId) return;
-      if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
-      this.gates = {ok: Boolean(data.ok), gates: Array.isArray(data.gates) ? data.gates : []};
-      if (!this.gates.ok) {
-        this.dryRun = null;
-        this.dryRunError = null;
-        this.submitArmed = false;
+      // 按包落账：响应晚于切包也只写该包的运行态（根治前这里写面板级共享字段，
+      // A 的卡点结果会显示在 B 的面板里——codex 五/六审同类型）。
+      // 同包旧响应作废：请求发出后草稿又变过（版本号对不上，含「内容没变的重载」
+      // 也 bump 版本）——结论基于旧草稿算的，提交读的却是新草稿（codex 八审）。
+      // 控制源指纹变过同理：服务端按当前指纹重新生成记录，旧结论代表不了将写入
+      // 的内容（codex 二十一审 blocking）。
+      // 作废只置 stale 不写结论；**重绘统一在 finally 之后**——在 try 里重绘会早于
+      // finally 清 loading，画面仍显示「执行中」，return 又跳过尾部重绘，按钮卡死
+      // （codex 十一审 major：十审修法的顺序错在这里）。
+      if (run.draftVersion !== versionAtStart || this.controlFingerprintOf(packageId) !== controlFingerprintAtStart) {
+        stale = true;
+      } else if (!response.ok) {
+        throw new Error(data.error ?? `HTTP ${response.status}`);
+      } else {
+        run.gates = {ok: Boolean(data.ok), gates: Array.isArray(data.gates) ? data.gates : []};
+        // 结论落账：记下它对应的控制源指纹，快照重拉后对不上即作废（二十一审 blocking）
+        run.controlFingerprint = controlFingerprintAtStart;
+        if (!run.gates.ok) {
+          run.dryRun = null;
+          run.dryRunError = null;
+          run.submitArmed = false;
+        }
       }
     } catch (err) {
-      if (this.selection.get().packageId !== packageId) return;
-      this.gatesError = err instanceof Error ? err.message : String(err);
+      if (run.draftVersion !== versionAtStart || this.controlFingerprintOf(packageId) !== controlFingerprintAtStart) stale = true;
+      else run.gatesError = err instanceof Error ? err.message : String(err);
     } finally {
-      this.gatesLoading = false;
+      run.gatesLoading = false;
     }
-    if (this.selection.get().packageId === packageId) this.updateAcceptanceBar();
+    void stale;
+    this.updateAcceptanceBar(packageId);
   }
 
   private async runDryRun(packageId: string): Promise<void> {
+    const run = this.runFor(packageId);
     // 预演要求卡点全绿（按钮可用性由 renderAcceptanceActions 把关，这里双保险）
-    if (this.gates?.ok !== true) return;
-    this.dryRunLoading = true;
-    this.dryRunError = null;
-    this.updateAcceptanceBar();
+    if (run.gates?.ok !== true) return;
+    run.dryRunLoading = true;
+    run.dryRunError = null;
+    this.updateAcceptanceBar(packageId);
+    // 草稿先落账再预演：服务端重读 tmp/ 草稿生成 records/pr_body，没存上就预演
+    // 等于对旧草稿开预览（业主看到的内容与将提交的不一致）
+    if (!(await this.ensureDraftPersisted(packageId))) {
+      run.dryRunLoading = false;
+      run.dryRunError = '草稿还没保存成功（见上方保存状态）：PR 预演读的是服务端 tmp/ 草稿，存上后再跑';
+      this.updateAcceptanceBar(packageId);
+      return;
+    }
+    const versionAtStart = run.draftVersion;
+    // 结论的控制源指纹（请求时点）：回头对不上 = 结论是按旧控制源算的，作废
+    // （codex 二十一审 blocking，同 runGates）
+    const controlFingerprintAtStart = this.controlFingerprintOf(packageId);
+    run.dryRunLoading = true;
+    run.dryRunError = null;
+    this.updateAcceptanceBar(packageId);
+    // 同 runGates：旧响应只置 stale，重绘统一在 finally 之后（codex 十一审 major）
+    let stale = false;
     try {
       const response = await fetch('/api/acceptance/submit', {
         method: 'POST',
@@ -1170,36 +1744,74 @@ export class ScheduleDetailPanel {
       const data = (await response.json().catch(() => ({}))) as {
         dry_run?: boolean; records?: AuditRecordProjection[]; pr_body?: string; error?: string; gates?: GateView[];
       };
-      if (this.selection.get().packageId !== packageId) return;
-      if (response.status === 422 && Array.isArray(data.gates)) {
+      // 按包落账（根治前写面板级共享字段，A 的预演结果会显示在 B 面板里）；
+      // 同包旧响应作废（版本号校验，理由同 runGates——codex 八审 blocking）；
+      // 控制源指纹变过同理（二十一审 blocking）
+      if (run.draftVersion !== versionAtStart || this.controlFingerprintOf(packageId) !== controlFingerprintAtStart) {
+        stale = true;
+      } else if (response.status === 422 && Array.isArray(data.gates)) {
         // 卡点不过：把返回的 gates 回填卡点区，不留在「预演失败」的迷雾里
-        this.gates = {ok: false, gates: data.gates};
-        this.dryRun = null;
-        this.submitArmed = false;
-        this.dryRunError = data.error ?? '机械卡点未通过';
+        run.gates = {ok: false, gates: data.gates};
+        run.controlFingerprint = controlFingerprintAtStart;
+        run.dryRun = null;
+        run.submitArmed = false;
+        run.dryRunError = data.error ?? '机械卡点未通过';
       } else if (!response.ok) {
-        this.dryRunError = data.error ?? `HTTP ${response.status}`;
+        run.dryRunError = data.error ?? `HTTP ${response.status}`;
       } else {
-        this.dryRun = {records: data.records ?? [], pr_body: String(data.pr_body ?? '')};
-        this.dryRunError = null;
-        this.submitArmed = false;
-        this.submitResult = null;
-        this.submitError = null;
+        run.dryRun = {records: data.records ?? [], pr_body: String(data.pr_body ?? '')};
+        run.dryRunError = null;
+        run.submitArmed = false;
+        run.submitResult = null;
+        run.submitError = null;
+        // 结论落账：记下控制源指纹，快照重拉后对不上即作废（二十一审 blocking）
+        run.controlFingerprint = controlFingerprintAtStart;
       }
     } catch (err) {
-      if (this.selection.get().packageId !== packageId) return;
-      this.dryRunError = err instanceof Error ? err.message : String(err);
+      if (run.draftVersion !== versionAtStart || this.controlFingerprintOf(packageId) !== controlFingerprintAtStart) stale = true;
+      else run.dryRunError = err instanceof Error ? err.message : String(err);
     } finally {
-      this.dryRunLoading = false;
+      run.dryRunLoading = false;
     }
-    if (this.selection.get().packageId === packageId) this.updateAcceptanceBar();
+    void stale;
+    this.updateAcceptanceBar(packageId);
   }
 
   private async submit(packageId: string): Promise<void> {
-    this.submitting = true;
-    this.submitError = null;
-    this.submitResult = null;
-    this.updateAcceptanceBar();
+    const run = this.runFor(packageId);
+    // submitting 先置位（双点守卫在 ensure 之前就生效），落账失败再复位
+    run.submitting = true;
+    run.submitError = null;
+    run.submitResult = null;
+    this.updateAcceptanceBar(packageId);
+    // 等待前捕获「这次确认」对应的预演与控制源指纹（codex 二十三审 blocking）：
+    // ensureDraftPersisted 会 await（可能触发保存——**保存成功即作废预演与确认
+    // 态**），等待窗口内任何使旧预演失效的变化（并发 refresh、控制源变化、在途
+    // 保存落账）都必须中止提交：业主确认过的预演已作废，不能拿着它开 PR。
+    // 只比预演对象与指纹、**不比草稿版本**——无变化重载也 bump 版本但不作废
+    // 预演（二十审 major 的同一基准问题），比版本会误中止。
+    const confirmedDryRun = run.dryRun;
+    const confirmedFingerprint = run.controlFingerprint;
+    // 草稿先落账再开 PR：submit 让服务端重读 tmp/ 草稿写入 commit，没存上就提交
+    // 等于把旧草稿开成 PR（预演对不上、业主以为存了的编辑不在 PR 里）
+    if (!(await this.ensureDraftPersisted(packageId))) {
+      run.submitting = false;
+      run.submitError = {error: '草稿还没保存成功（见上方保存状态）：提交读的是服务端 tmp/ 草稿，存上后再提交'};
+      this.updateAcceptanceBar(packageId);
+      return;
+    }
+    // 等待后复核（二十三审 blocking）：预演被作废（对象变了/被清空）或控制源
+    // 变过 → 中止，要求重新生成 PR 预演并再次确认
+    if (run.dryRun !== confirmedDryRun || run.controlFingerprint !== confirmedFingerprint) {
+      run.submitting = false;
+      run.submitArmed = false;
+      run.submitError = {error: '等待草稿落账期间预演已失效（草稿或控制源变过）：请重新生成 PR 预演并再次确认'};
+      this.updateAcceptanceBar(packageId);
+      return;
+    }
+    run.submitError = null;
+    run.submitResult = null;
+    this.updateAcceptanceBar(packageId);
     try {
       const response = await fetch('/api/acceptance/submit', {
         method: 'POST',
@@ -1209,23 +1821,22 @@ export class ScheduleDetailPanel {
       const data = (await response.json().catch(() => ({}))) as {
         branch?: string; commit?: string; pr_url?: string; error?: string; detail?: unknown;
       };
-      if (this.selection.get().packageId !== packageId) return;
+      // 按包落账：提交是重动作，结果只归属发起包（根治前写面板级共享字段）
       if (!response.ok) {
-        this.submitError = {error: data.error ?? `HTTP ${response.status}`, detail: data.detail};
+        run.submitError = {error: data.error ?? `HTTP ${response.status}`, detail: data.detail};
       } else {
-        this.submitResult = {
+        run.submitResult = {
           branch: String(data.branch ?? ''),
           commit: String(data.commit ?? ''),
           pr_url: String(data.pr_url ?? ''),
         };
       }
     } catch (err) {
-      if (this.selection.get().packageId !== packageId) return;
-      this.submitError = {error: err instanceof Error ? err.message : String(err)};
+      run.submitError = {error: err instanceof Error ? err.message : String(err)};
     } finally {
-      this.submitting = false;
+      run.submitting = false;
     }
-    if (this.selection.get().packageId === packageId) this.updateAcceptanceBar();
+    this.updateAcceptanceBar(packageId);
   }
 
   // ─── 局部重绘（保光标：只碰状态行/红字/按钮态，不重建文本输入框） ─────────
@@ -1238,7 +1849,14 @@ export class ScheduleDetailPanel {
     const body = this.bodyEl();
     if (!body) return;
     const saveLine = body.querySelector('[data-save-status]');
-    if (saveLine) saveLine.innerHTML = this.saveStatusLine(pkg.id);
+    if (saveLine) {
+      saveLine.innerHTML = this.saveStatusLine(pkg.id);
+      // 重试按钮是 innerHTML 换出来的新 DOM——换完就地绑（2026-11-03 codex 四审）
+      saveLine.querySelector('[data-save-retry]')?.addEventListener('click', () => {
+        this.saveRecordFor(pkg.id).dirty = true;
+        void this.saveDraft(pkg.id);
+      });
+    }
     const draftLine = body.querySelector('[data-draft-status]');
     if (draftLine) draftLine.innerHTML = this.draftStatusLine(pkg.id);
     for (const check of pkg.checks) {
@@ -1267,7 +1885,7 @@ export class ScheduleDetailPanel {
         this.bindEvidenceArea(host, pkg, check.id);
       }
     }
-    this.updateAcceptanceBar();
+    this.updateAcceptanceBar(pkg.id);
   }
 
   private updateSaveUiFor(packageId: string): void {
@@ -1276,12 +1894,16 @@ export class ScheduleDetailPanel {
     if (pkg) this.updateSaveUi(pkg);
   }
 
-  private updateAcceptanceBar(): void {
+  /** 重渲染验收操作条（按包：只渲染当前选中包的运行态；顺带重绑事件）。 */
+  private updateAcceptanceBar(packageId: string): void {
+    if (this.selection.get().packageId !== packageId) return; // 响应晚于切包：不重绘别人的条
+    const pkg = this.payload?.packages.find((item) => item.id === packageId);
+    if (!pkg) return;
     const body = this.bodyEl();
     const host = body?.querySelector('#acceptance-actions') as HTMLElement | null;
     if (!host) return;
-    host.innerHTML = this.renderAcceptanceActions();
-    this.bindAcceptanceActions(host);
+    host.innerHTML = this.renderAcceptanceActions(pkg);
+    this.bindAcceptanceActions(host, pkg);
   }
 
   private build(): void {
@@ -1291,7 +1913,7 @@ export class ScheduleDetailPanel {
     el.style.cssText = `
       background: #1a1a2e; color: #e0e0e0; border-radius: 10px; padding: 14px 16px;
       font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none; max-width: 560px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none;
     `;
     el.innerHTML = `
       <div class="dynamic-panel-heading">
@@ -1302,7 +1924,9 @@ export class ScheduleDetailPanel {
         <div id="schedule-detail-body"></div>
       </div>
     `;
-    const stack = document.getElementById('right-panel-stack');
+    // 2026-11-03 路由级独立页：挂到审批页容器（不再挤预演工作台右坞——那正是
+    // 「对象信息点开没东西」的挤压源）。测试只提供挂载点，见各测试 installDom。
+    const stack = document.getElementById('approval-page-panels');
     (stack ?? document.body).appendChild(el);
     const toggle = el.querySelector('#schedule-detail-panel-toggle') as HTMLButtonElement | null;
     const content = el.querySelector('#schedule-detail-panel-content') as HTMLElement | null;

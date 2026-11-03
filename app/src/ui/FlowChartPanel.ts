@@ -463,9 +463,11 @@ export class FlowChartPanel {
       node.addEventListener('click', () => {
         const packageId = String((node as HTMLElement).dataset.pkgId ?? '');
         if (!packageId) return;
+        // 2026-11-03 路由级：节点点击只选中+重渲。旧版（右坞同屏）会顺带触发
+        // onHighlight 让旁边 3D 亮——审批页是全屏的，onHighlight 现=跳 3D，
+        // 节点点击跳走会把用户踢出审批页、选中还被清（codex 审查实证）。
+        // 跳 3D 只走显式「在 3D 中高亮」按钮。
         this.selection.set({packageId, checkId: null});
-        // 有 3D 范围（房间/墙/叠加层区域级）或点位级都通知外部高亮；仅全项目范围不高亮
-        if (capabilityOf(packageId, this.links) !== 'project') this.options.onHighlight?.(packageId);
         this.render();
       });
     }
@@ -488,7 +490,7 @@ export class FlowChartPanel {
     el.style.cssText = `
       background: #1a1a2e; color: #e0e0e0; border-radius: 10px; padding: 14px 16px;
       font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none; max-width: 720px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none;
     `;
     el.innerHTML = `
       <div class="dynamic-panel-heading">
@@ -499,7 +501,9 @@ export class FlowChartPanel {
         <div id="flow-chart-body"></div>
       </div>
     `;
-    const stack = document.getElementById('right-panel-stack');
+    // 2026-11-03 路由级独立页：挂到审批页容器（不再挤预演工作台右坞——那正是
+    // 「对象信息点开没东西」的挤压源）。测试只提供挂载点，见各测试 installDom。
+    const stack = document.getElementById('approval-page-panels');
     (stack ?? document.body).appendChild(el);
     const toggle = el.querySelector('#flow-chart-panel-toggle') as HTMLButtonElement | null;
     const content = el.querySelector('#flow-chart-panel-content') as HTMLElement | null;

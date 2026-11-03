@@ -189,7 +189,7 @@ export class NextActionPanel {
     el.style.cssText = `
       background: #1a1a2e; color: #e0e0e0; border-radius: 10px; padding: 14px 16px;
       font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none; max-width: 460px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none;
     `;
     el.innerHTML = `
       <div class="dynamic-panel-heading">
@@ -200,7 +200,9 @@ export class NextActionPanel {
         <div id="next-action-body"></div>
       </div>
     `;
-    const stack = document.getElementById('right-panel-stack');
+    // 2026-11-03 路由级独立页：挂到审批页容器（不再挤预演工作台右坞——那正是
+    // 「对象信息点开没东西」的挤压源）。测试只提供挂载点，见各测试 installDom。
+    const stack = document.getElementById('approval-page-panels');
     (stack ?? document.body).appendChild(el);
     const toggle = el.querySelector('#next-action-panel-toggle') as HTMLButtonElement | null;
     const content = el.querySelector('#next-action-panel-content') as HTMLElement | null;

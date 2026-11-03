@@ -2163,7 +2163,12 @@ export class HouseScene implements SceneApi {
   private readonly highlightTokens = new WeakMap<THREE.Material, number>();
   private readonly highlightOriginals = new WeakMap<THREE.Material, THREE.Color>();
 
-  highlightObjects(ids: string[]) {
+  /**
+   * @param durationMs 高亮持续毫秒。默认 1200（审批页内点包的瞬时反馈）；
+   *   2026-11-03 起「去 3D 看这包」跳转后用 6000——跳转落地时 1.2s 早已错过，
+   *   延长到可观察。恢复请帧不随时长变化。
+   */
+  highlightObjects(ids: string[], durationMs = 1200) {
     const targetIds = new Set(ids);
     if (!targetIds.size) return;
     this.scene.traverse((obj) => {
@@ -2197,7 +2202,7 @@ export class HouseScene implements SceneApi {
           // 熄灭同样要请帧：数据变回原色后画布不重绘就会留橙色残影
           // （2026-11-02 浏览器实证：数据全白 2 分钟后截图仍有橙色像素）。
           this.requestRender();
-        }, 1200);
+        }, durationMs);
       }
     });
     // 高亮是 1200ms 瞬时态：应用侧的渲染是按需的（renderQueued 门控），触发高亮的
@@ -2230,7 +2235,7 @@ export class HouseScene implements SceneApi {
   private readonly pointHighlightTokens = new WeakMap<THREE.BatchedMesh, Map<number, number>>();
   private readonly pointHighlightOriginals = new WeakMap<THREE.BatchedMesh, Map<number, THREE.Color>>();
 
-  highlightPoints(ids: string[]) {
+  highlightPoints(ids: string[], durationMs = 1200) {
     const targetIds = new Set(ids);
     if (!targetIds.size) return;
     this.scene.traverse((obj) => {
@@ -2260,12 +2265,12 @@ export class HouseScene implements SceneApi {
             originals.delete(instanceId);
             // 熄灭请帧：实例色变回原色后不重绘会留橙色残影
             this.requestRender();
-          }, 1200);
+          }, durationMs);
         }
         return;
       }
       // 非批 mesh：单件点位兜底（组内不足 2 件不合批，留在原位）
-      this.highlightUnbatchedPoint(obj as THREE.Mesh, targetIds);
+      this.highlightUnbatchedPoint(obj as THREE.Mesh, targetIds, durationMs);
     });
     // 同 highlightObjects：着色完成后自请一帧，否则按需渲染门控下高亮不上屏
     this.requestRender();
@@ -2304,7 +2309,7 @@ export class HouseScene implements SceneApi {
    * highlightObjects 完全相同且**共用** highlightTokens/highlightOriginals（按材质
    * 实例键）——同一材质若同时被两条路径命中，令牌自洽，不会把第一次留下的橙当成原色。
    */
-  private highlightUnbatchedPoint(mesh: THREE.Mesh, targetIds: Set<string>): void {
+  private highlightUnbatchedPoint(mesh: THREE.Mesh, targetIds: Set<string>, durationMs = 1200): void {
     const mat = mesh.material as THREE.MeshStandardMaterial | undefined;
     // 只认带 emissive 的材质：真实 three 的 Group/Light/Sprite 没有 emissive，天然跳过
     if (!mat?.emissive || !mesh.userData) return;
@@ -2329,7 +2334,7 @@ export class HouseScene implements SceneApi {
       this.highlightTokens.delete(mat);
       this.highlightOriginals.delete(mat);
       this.requestRender();
-    }, 1200);
+    }, durationMs);
   }
 
   setCameraTarget(targetId: string) {

@@ -565,6 +565,80 @@ describe('App', () => {
     await expect(app.exportGlbDataUrl()).rejects.toThrow('GLB 导出已阻止：HVAC 缺失 hvac:A2:terminal:supply_living');
   });
 
+  // 2026-11-03 路由级独立页：boot 的路由应用。守两条——首访不再自动开审批页
+  // （旧行为还会强行拉预演工作台，挤出「对象信息点开没东西」）；#pkg= 深链仍落 detail。
+  it('boot：无 hash 首访 = 3D 页，不自动开审批页', async () => {
+    location.hash = '';
+    const app = new App(canvas);
+    await app.start();
+    expect(app['approvalView']).toBe(null);
+  });
+
+  it('boot：#pkg= 深链落审批页 detail', async () => {
+    location.hash = '#pkg=PKG-060';
+    try {
+      const app = new App(canvas);
+      await app.start();
+      expect(app['approvalView']).toBe('detail');
+    } finally {
+      location.hash = '';
+    }
+  });
+
+  // 2026-11-03 codex 四审 major：命令面板的「切换视角模式」是键盘屏蔽的漏网入口——
+  // 审批页里切第一人格会 requestLock 把指针锁给背后的画布。toggleMode 本体加守卫。
+  it('审批页打开期间 toggleMode 是 no-op（命令面板漏网入口）', async () => {
+    location.hash = '#approval=flow';
+    try {
+      const app = new App(canvas);
+      await app.start();
+      expect(app['approvalView']).toBe('flow');
+      const modeBefore = app['houseScene'].mode;
+      app['toggleMode']();
+      expect(app['houseScene'].mode).toBe(modeBefore);
+    } finally {
+      location.hash = '';
+    }
+  });
+
+  // 2026-11-03 浏览器复验挖出的死代码修复：退出时若把 approvalView 持久化成 null，
+  // 刷新后 lastApprovalPage 永远回落 next_action——「记忆上次所在审批页」死亡。
+  // 正确语义：退出保留最后看过的子页。
+  it('退出审批页后持久化仍保留上次子页（刷新后点审批回该子页）', async () => {
+    location.hash = '#approval=flow';
+    try {
+      const app = new App(canvas);
+      await app.start();
+      expect(app['approvalView']).toBe('flow');
+      app['toggleApprovalView'](); // 退出
+      expect(app['approvalView']).toBe(null);
+      const persisted = JSON.parse(localStorage.getItem('bontop-view-state/v1') ?? '{}');
+      expect(persisted.approvalView).toBe('flow'); // 退出不抹记忆
+      expect(app['lastApprovalPage']).toBe('flow');
+    } finally {
+      location.hash = '';
+      localStorage.removeItem('bontop-view-state/v1');
+    }
+  });
+
+  // 2026-11-03 浏览器复验缺陷 A 的回归：深链首 entry（没得可 pop）点「在 3D 中
+  // 高亮」——exitApproval 走 replace 兜底，此时必须自己应用路由，否则 hash 回了
+  // 3D 但审批页还开着，6s 高亮在全屏页背后燃尽。
+  it('viewPackageIn3d：replace 兜底路径下审批页必须真的关', async () => {
+    location.hash = '#pkg=PKG-060';
+    try {
+      const app = new App(canvas);
+      await app.start();
+      expect(app['approvalView']).toBe('detail');
+      // 路由镜像已是 detail 且不可 pop（未经 push 进入）——模拟深链首 entry
+      app['viewPackageIn3d']('PKG-060');
+      expect(app['approvalView']).toBe(null);
+      expect(location.hash).toBe('');
+    } finally {
+      location.hash = '';
+    }
+  });
+
   // 点包 3D 高亮的聚合路径（highlightApprovalPackage）：房间/对象走 highlightObjects、
   // 点位走 highlightPoints（第三步落地后点位不再被静默丢弃）。start() 已把 projectData
   // 拉到手，这里只覆写 links 响应，验证聚合口径与「失败不打断审批流」。
@@ -603,8 +677,8 @@ describe('App', () => {
     app['highlightApprovalPackage']('PKG-1');
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(objectsSpy).toHaveBeenCalledWith(['living_room']);
-    expect(pointsSpy).toHaveBeenCalledWith(['electrical:sock_kitchen_gas', 'plumbing:drain_kitchen', 'electrical:sock_living_ac']);
+    expect(objectsSpy).toHaveBeenCalledWith(['living_room'], 1200); // 第二参 2026-11-03 起为时长；页内点击默认 1200ms
+    expect(pointsSpy).toHaveBeenCalledWith(['electrical:sock_kitchen_gas', 'plumbing:drain_kitchen', 'electrical:sock_living_ac'], 1200);
   });
 
   it('点包高亮：links 拉取失败时不高亮也不抛（高亮失败不打断审批流）', async () => {

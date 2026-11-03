@@ -47,7 +47,7 @@ const actions: ScheduleSnapshot['next_actions'] = [
 
 describe('NextActionPanel', () => {
   beforeEach(() => {
-    document.body.innerHTML = '<div id="right-panel-stack"></div>';
+    document.body.innerHTML = '<div id="right-panel-stack"></div><div id="approval-page-panels"></div>';
   });
 
   it('phase 摘要条 + 四个 kind 分组人话标签 + 组内降序', async () => {
