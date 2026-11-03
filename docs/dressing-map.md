@@ -51,7 +51,7 @@
 | washer | washer_01 | 10kg 滚筒洗衣机 | 小天鹅 / 海尔 / 10kg 滚筒变频 | 标准 | 按实物选材替换 |
 | dryer | dryer_01 | 9kg 热泵烘干机 | 小天鹅 / 海尔 / 9kg 热泵式 | 标准 | 按实物选材替换 |
 | shower_enclosure | shower_enclosure_01 | 淋浴房玻璃隔断 | 本地卫浴 / 莱博顿 / 304不锈钢边框 + 钢化玻璃 | 标准 | 按实物选材替换 |
-| robot_vacuum | robot_vacuum_narwal_j6_01 | 云鲸 J6 上下水版 | 云鲸 / J6 上下水版 | 基站约410×433.5×198mm | 按实物选材替换 |
+| robot_vacuum | robot_vacuum_narwal_jx_01 | 云鲸 JX 超薄上下水版 | 云鲸 / JX 超薄上下水版 YJCC034 | 基站410×433×280mm | 按实物选材替换 |
 
 ## 2. 家具体块清单 → 库家具替换参照
 
@@ -132,7 +132,7 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | guest_bath | vanity | 1 | 0.7×0.5 | (6.79, 3.925) / 270° |
 | guest_bath | toilet | 1 | 0.4×0.6 | (6.75, 3.05) / 270° |
 | guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 2.45) |
-| guest_bath | robot_dock_gbath | 1 | 0.41×0.4335 | (6.823, 3.925) / 270° |
+| guest_bath | robot_dock_gbath | 1 | 0.41×0.433 | (6.823, 3.925) / 270° |
 | guest_bath | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
 | guest_bath | mirror_cabinet_gbath | 1 | — | count-only（不在 glb，按实物补摆） |

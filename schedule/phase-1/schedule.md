@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"1c5765cbb5f9c3d588a564d14c5f908920a0a8f31fdb2cfbdc8cc36d48a3eba9","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"df1df5770ff9b7d172d89c27e751cce65f966b8cd4269d27db5d82ae593b70ea","schedule/roadmap.yaml":"04c654d67cb27aa448f62211bd3be5cbb111d3fb5933b0077984be04a6188ad9"} -->
 # 一期施工计划
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:ffad2a99ef72cb6ac1a9a40676d25638129d2648335478dcbe7a3896863d3d06`（2 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:511ac87724bcba85a17baf9d6c0e616ffe4d41be61b1fd014fc0d6617672891c`（2 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -50,7 +50,7 @@
 | BLK-GAS-DOOR | site_pending | 燃气厨房门的现场验收要求未确认 | 燃气单位或物业书面确认厨房分隔要求 |
 | BLK-MASTER-WARDROBE | alignment_required | 主卧北墙通顶定制衣柜（藏空调冷凝水管槽，必须定制）随2026-09-12压缩决策整体后移至二期，一期用成品衣架和斗柜过渡；门扇、位置、高度及空调检修关系仍未关闭 | 二期启动前深化图经业主、设计和厂家共同确认 |
 | BLK-CURTAIN-SCOPE | alignment_required | 一期窗帘范围需要统一：本阻塞项写主卧/父母房/西北次卧，PKG-145写主卧/书房/西北次卧，schedule/phase-scope.yaml还包含两个卫生间；未统一前不冻结采购范围 | 业主确认一期窗帘房间与产品范围，并同步本阻塞项、PKG-145、phase-scope.yaml 和预算 |
-| BLK-PHASE1-APPLIANCES | alignment_required | 一期家电额度在原9,000元下探组合基础上追加云鲸J6上下水版3,000元，2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤按4,000元进入一期后现按16,000元控制；J6型号和金额已由业主确认，客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结 | 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金 |
+| BLK-PHASE1-APPLIANCES | alignment_required | 一期家电额度在原9,000元下探组合基础上追加云鲸JX超薄上下水版3,000元，2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤按4,000元进入一期后现按16,000元控制；JX为现行候选（2026-11-03业主拍板由J6改JX，非最终锁定，DEC-2026-11-03-R1）、金额3,000元业主确认，客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结 | 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金 |
 | BLK-WATER-HEATER-SITE | site_pending | 已确认一期采用燃气热水器；模型虽有厨房西侧实体墙的暂定协调点，但交房前仍未确认是否已有开发商设备、实际安装墙面、燃气表位置、排烟路径、冷凝水排放和物业审批条件 | 现场核对现有设备和燃气条件，形成最终安装位置、排烟、给排水、专用电路及物业审批记录 |
 | BLK-MEP-INTERFACE-FREEZE | alignment_required | 水电与中央空调的接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口均未会签 | 水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点；纪要明确 PKG-030 和 PKG-040 并行或先后施工，签认记录归档 |
 | BLK-CABINET-FREEZE-FOR-MEP | alignment_required | 橱柜深化图是水电点位的 owner（微蒸烤预留点位 sock_kitchen_oven、厨房台面电位、客卫扫地机基站柜格上下水）但尚未冻结，而橱柜安装包排在 seq 110、晚于水电 seq 40 | 橱柜深化图与水电点位表双向核对完成，微蒸烤预留点位、台面电位与基站柜格落实到图（设计冻结前置，不是安装前置） |

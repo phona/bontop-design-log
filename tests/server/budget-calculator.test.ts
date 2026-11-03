@@ -1131,7 +1131,7 @@ describe('BudgetCalculator', () => {
     assert.ok(furnitureSoft && furnitureSoft.autoActual >= 2200, 'dresser + pending wardrobe both flow into furniture_soft');
   });
 
-  it('phase 1 excludes deferred fixed appliances while retaining the declarative J6 count line', () => {
+  it('phase 1 excludes deferred fixed appliances while retaining the declarative robot count line', () => {
     const catalog = ProjectCatalog.load('.');
     const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
     const calc = new BudgetCalculator(catalog, realRules);

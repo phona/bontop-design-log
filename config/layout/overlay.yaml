@@ -603,7 +603,7 @@ elements:
     bottom: 0.00
     height: 0.30
     zone: visible
-    reason: 客卫东侧开放洗漱区，悬浮台盆柜后 0.30m 防溅带正砖（柜体包络待与 J6 实机同图会审；C18 废止杂砖）
+    reason: 客卫东侧开放洗漱区，悬浮台盆柜后 0.30m 防溅带正砖（柜体包络待与 JX YJCC034 实机同图会审，基站 410×433×280mm，柜体底缘 0.30 不动；C18 废止杂砖）
   - id: walltile_gbath_east_vanity_splash
     type: wall_region
     wall: w_gbath_east_open_vanity
