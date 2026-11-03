@@ -178,8 +178,6 @@ export class ScheduleDetailPanel {
   private draftResults = new Map<string, CheckDraftState>();
   /** 已（或正在）加载草稿的包；render 时对不上就重拉，防静默空态。 */
   private draftPackageId: string | null = null;
-  /** draftResults 实际所属的包：refresh 重拉时据此保留本地未保存的编辑。 */
-  private draftMergeKey: string | null = null;
   private draftLoading = false;
   private draftError: string | null = null;
   private draftSeq = 0;
@@ -870,7 +868,6 @@ export class ScheduleDetailPanel {
   }
 
   private async loadDraft(packageId: string): Promise<void> {
-    const previousPackage = this.draftMergeKey;
     // 先占位再 render：否则 render → ensureDraft 会重入本方法形成环
     this.draftPackageId = packageId;
     this.draftLoading = true;
@@ -882,7 +879,7 @@ export class ScheduleDetailPanel {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = (await response.json()) as AcceptanceDraft;
       if (seq !== this.draftSeq || this.draftPackageId !== packageId) return;
-      this.applyDraft(packageId, data.results ?? [], previousPackage);
+      this.applyDraft(packageId, data.results ?? []);
       this.draftError = null;
     } catch (err) {
       if (seq !== this.draftSeq || this.draftPackageId !== packageId) return;
@@ -894,33 +891,43 @@ export class ScheduleDetailPanel {
   }
 
   /**
-   * 服务端草稿回填。同包重取（refresh / show）时**不丢本地未保存的编辑**：
-   * 服务端有值的字段以服务端为准（已保存即事实），服务端为空的字段保留本地值
-   * （刚敲的检查人/备注/证据不被一次重取静默抹掉）。换包则整体重来。
+   * 服务端草稿回填，**任何加载都走合并**（2026-11-03 codex 六审 blocking 后
+   * 无条件化）：服务端有值的字段以服务端为准（已保存即事实），为空的字段保留
+   * 本地值（刚敲的检查人/备注/证据不被重取抹掉）；其他包的条目原样保留。
    */
-  private applyDraft(packageId: string, results: DraftCheckResult[], previousPackage: string | null): void {
+  private applyDraft(packageId: string, results: DraftCheckResult[]): void {
     const byCheck = new Map(results.map((result) => [result.check_id, result]));
     const next = new Map<string, CheckDraftState>();
-    if (previousPackage === packageId) {
-      for (const [checkId, local] of this.draftResults) {
-        const fromServer = byCheck.get(checkId);
-        if (fromServer) {
-          next.set(checkId, {
-            status: fromServer.status,
-            checked_by: fromServer.checked_by?.trim() ? fromServer.checked_by : local.checked_by,
-            checked_at: fromServer.checked_at?.trim() ? fromServer.checked_at : local.checked_at,
-            note: fromServer.note?.trim() ? fromServer.note : local.note,
-            supersedes: fromServer.supersedes?.trim() ? fromServer.supersedes : local.supersedes,
-            evidence: (fromServer.evidence?.length ?? 0) > 0 ? [...fromServer.evidence] : local.evidence,
-            staged: local.staged,
-            stagedError: null,
-            uploading: false,
-            issues: [],
-          });
-        } else {
-          // 服务端没有这一条：本地选过状态/填过内容的都留着
-          next.set(checkId, {...local, issues: []});
-        }
+    // 2026-11-03 codex 六审 blocking：合并分支**无条件执行**（旧实现仅
+    // previousPackage === packageId 时走）。旧行为下换包会整体重建
+    // draftResults——A 未保存的编辑在切到 B 时被丢；回 A 加载到服务端旧草稿，
+    // 此时点「重试保存」PUT 的是旧内容，失败的编辑永久丢失（内存复现实测：
+    // 两次 PUT 的备注依次为新编辑、旧备注）。无条件合并后：
+    //  - 本包检查：服务端有值的字段以服务端为准（已保存即事实），为空的保留本地
+    //    （未保存编辑不被抹——重试因此拿到失败时的最新草稿）；
+    //  - 其他包的条目：原样带过来（换包不崩别包的未保存编辑）。
+    // dirty=true = 该包有未保存编辑（保存失败也保持 dirty）。此时**本地胜出**——
+    // 否则服务端旧值会在回填时把未保存的新编辑吞掉，重试存的就是旧内容
+    // （codex 六审 blocking 的「重试丢失编辑」另一半）。
+    const localWins = this.saveRecordFor(packageId).dirty;
+    for (const [checkId, local] of this.draftResults) {
+      const fromServer = byCheck.get(checkId);
+      if (fromServer) {
+        next.set(checkId, {
+          status: localWins && local.status ? local.status : fromServer.status,
+          checked_by: localWins && local.checked_by.trim() ? local.checked_by : (fromServer.checked_by?.trim() ? fromServer.checked_by : local.checked_by),
+          checked_at: localWins && local.checked_at.trim() ? local.checked_at : (fromServer.checked_at?.trim() ? fromServer.checked_at : local.checked_at),
+          note: localWins && local.note.trim() ? local.note : (fromServer.note?.trim() ? fromServer.note : local.note),
+          supersedes: localWins && local.supersedes.trim() ? local.supersedes : (fromServer.supersedes?.trim() ? fromServer.supersedes : local.supersedes),
+          evidence: (fromServer.evidence?.length ?? 0) > 0 ? [...fromServer.evidence] : local.evidence,
+          staged: local.staged,
+          stagedError: null,
+          uploading: false,
+          issues: [],
+        });
+      } else {
+        // 服务端没有这一条（含其他包的条目）：本地选过状态/填过内容的都留着
+        next.set(checkId, {...local, issues: []});
       }
     }
     for (const [checkId, result] of byCheck) {
@@ -939,7 +946,6 @@ export class ScheduleDetailPanel {
       });
     }
     this.draftResults = next;
-    this.draftMergeKey = packageId;
   }
 
   private defaultDraftState(): CheckDraftState {
@@ -1071,9 +1077,20 @@ export class ScheduleDetailPanel {
         record.status = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
         record.dirty = false;
         record.issues = [];
-        for (const state of this.draftResults.values()) state.issues = [];
-        // 草稿变了：旧卡点/预演/提交结论全部作废，不许拿旧结论放行新草稿
-        this.resetSubmitState();
+        // 成功分支的清理**按包隔离**（2026-11-03 codex 六审 major）：旧实现遍历全表
+        // draftResults 清 issues + 无条件 resetSubmitState——A 的迟到成功会把 B 行上
+        // 的错误、B 刚跑出的门禁/预演一起抹掉（内存复现：B 的 issues 变空、gates 与
+        // dryRun 均变 null）。只清该包各检查的行 issues；提交态只在当前操作包就是
+        // 该包时重置。
+        const savedPkg = this.payload?.packages.find((item) => item.id === packageId);
+        for (const check of savedPkg?.checks ?? []) {
+          const state = this.draftResults.get(check.id);
+          if (state) state.issues = [];
+        }
+        if (this.actionPackageId === packageId) {
+          // 草稿变了：旧卡点/预演/提交结论全部作废，不许拿旧结论放行新草稿
+          this.resetSubmitState();
+        }
       } else if (response.status === 422 && Array.isArray(data.issues)) {
         this.applyIssues(packageId, data.issues); // 内部已写入该包记录的 issues
         record.status = {kind: 'error', message: `草稿校验没过（${data.issues.length} 条，见各行红字）`};

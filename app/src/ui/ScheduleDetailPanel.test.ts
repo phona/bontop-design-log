@@ -589,6 +589,74 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect(document.querySelector('[data-save-retry]')).toBeTruthy();
   });
 
+  it('旧包的迟到成功不许清空当前包的行错误与门禁/预演（codex 六审 major 回归）', async () => {
+    // A 保存在途 → 切 B → B 跑出门禁/预演 → A 的成功晚到。旧实现：成功分支遍历
+    // 全表清 issues + 无条件 resetSubmitState——B 的行错误/门禁/预演被 A 抹掉。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending', open_gates: []})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    const {selection, panel, calls} = await mountPanel({
+      snapshot: twoPkg,
+      handlers: {putDraft: () => ({status: 200, body: {ok: true}})},
+    });
+    // A：编辑 → flush（PUT 在途；响应会在切到 B 之后才落）
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    panel.flushSave();
+    // 切 B 并跑门禁（B 的操作态建立）
+    selection.set({packageId: 'PKG-020', checkId: null});
+    setInput('[data-checked-at="SCH-020-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-020-01"][data-status="passed"]');
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    // A 的迟到成功此时已落账（按包隔离）——B 的门禁结论必须还在
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'));
+    expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5');
+  });
+
+  it('跨包往返后重试保存的是失败时的编辑，不是服务端旧草稿（codex 六审 blocking 回归）', async () => {
+    // 复现路径（codex 内存执行同款）：A 编辑新备注 → 保存失败 → 切 B → B 保存成功
+    // → 回 A → 点重试。旧实现两处丢编辑：① applyDraft 换包整体重建 draftResults；
+    // ② 回填时服务端旧值吞掉未保存新值。修后重试的 PUT 必须带新备注。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    let aPutCount = 0;
+    const {selection, panel, calls} = await mountPanel({
+      snapshot: twoPkg,
+      handlers: {
+        // A 的服务端草稿里躺着一条旧备注（模拟上次保存的内容）
+        draft: () => ({package_id: 'PKG-010', results: [{check_id: 'SCH-010-01', status: 'failed', checked_by: '业主', checked_at: '2026-11-01', evidence: [], note: '旧备注-服务端'}]}),
+        putDraft: (body) => {
+          const pkgId = (body as {package_id: string}).package_id;
+          if (pkgId === 'PKG-010') {
+            aPutCount += 1;
+            return aPutCount === 1
+              ? {status: 422, body: {ok: false, issues: [{check_id: '*', field: 'x', message: 'A 包校验失败'}]}} // 第一次失败
+              : {status: 200, body: {ok: true}}; // 重试成功
+          }
+          return {status: 200, body: {ok: true}}; // B 成功
+        },
+      },
+    });
+    // A：把备注改成新值 → flush → 失败
+    setInput('[data-note="SCH-010-01"]', '新备注-未保存');
+    panel.flushSave();
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+    // 切 B 保存成功，再回 A
+    selection.set({packageId: 'PKG-020', checkId: null});
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('保存失败'));
+    // 关键：备注输入框里还是未保存的新值（没被服务端旧备注吞掉）
+    expect((document.querySelector('[data-note="SCH-010-01"]') as HTMLInputElement).value).toBe('新备注-未保存');
+    // 重试 → PUT 载荷必须带新备注
+    (document.querySelector('[data-save-retry]') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
+    const retryPut = calls.filter((call) => call.method === 'PUT')[1].body as {results: Array<{note?: string}>};
+    expect(retryPut.results[0].note).toBe('新备注-未保存');
+  });
+
   it('flushSave：debounce 未到点也立即落盘（退出审批页不丢编辑，codex 审查 blocking 回归）', async () => {
     // 退出审批页会清选中，而 debounce 定时器的回查询「当前选中仍是目标包」——
     // 不 flush 的话，改完备注立刻点返回，PUT 被跳过、刷新即丢。
