@@ -556,6 +556,43 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2));
   });
 
+  it('草稿重载未确认时提交按钮禁用：在途与读取失败都堵（codex 十四审 blocking 回归）', async () => {
+    // A 生成预演 → 切 B → 服务端草稿被别处改动 → 切回 A：重载在途或 GET 失败
+    // 期间旧预演还挂着，但服务端 submit 会重读草稿——业主预演的可能与将写入
+    // 的不一致。修：draftLoading/draftError 期间禁用提交。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    let draftFail = false;
+    const {selection, panel} = await mountPanel({
+      snapshot: twoPkg,
+      handlers: {
+        draft: () => {
+          if (draftFail) throw new Error('模拟 GET 失败');
+          return {package_id: 'PKG-010', results: []};
+        },
+      },
+    });
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    click('#acceptance-dry-run');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演：将写入'), {timeout: 3000});
+    // ① 重载在途：调用 loadDraft 后（mock 异步resolve前）draftLoading=true → 提交禁用
+    selection.set({packageId: 'PKG-020', checkId: null});
+    selection.set({packageId: 'PKG-010', checkId: null});
+    const reloadPromise = panel['loadDraft']('PKG-010');
+    expect((document.querySelector('#acceptance-submit') as HTMLButtonElement).disabled).toBe(true);
+    await reloadPromise;
+    // ② 重载失败：draftError 置位 → 继续禁用（旧预演也不放行）
+    draftFail = true;
+    selection.set({packageId: 'PKG-020', checkId: null});
+    selection.set({packageId: 'PKG-010', checkId: null});
+    const failPromise = panel['loadDraft']('PKG-010');
+    await failPromise.catch(() => undefined);
+    await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).toContain('草稿读取失败'));
+    expect((document.querySelector('#acceptance-submit') as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('服务端清空的备注/证据不许在干净态重载后复活（codex 十三审 blocking 回归）', async () => {
     // A 的结果带旧备注+旧证据 → 切 B → 服务端把该结果的 note/evidence 清空 →
     // 回 A。旧实现干净态有字段级回落（服务端空 note 跌回本地旧值），复活后下次
@@ -757,9 +794,11 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     // 第一次点提交 = 只进确认态（按钮变红字「再点一次」）
     click('#acceptance-submit');
     expect(document.querySelector('#acceptance-submit')!.textContent).toContain('再点一次');
-    // 切到 B 再回 A：确认态必须已解除
+    // 切到 B 再回 A：确认态必须已解除。切回会触发草稿重载——重载在途时提交
+    // 按钮本就禁用（codex 十四审守卫），要等重载完成再点
     selection.set({packageId: 'PKG-020', checkId: null});
     selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).not.toContain('草稿加载中'));
     await vi.waitFor(() => expect(document.querySelector('#acceptance-submit')!.textContent).toContain('确认提交'));
     // 此时点一次仍只进确认态，不直接 POST（两步确认没被掏空）。
     // 注意 dry-run 也走 /api/acceptance/submit（带 dry_run:true），要排除。

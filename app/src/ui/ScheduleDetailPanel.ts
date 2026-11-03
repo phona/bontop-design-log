@@ -662,7 +662,12 @@ export class ScheduleDetailPanel {
     const gatesPassed = run.gates?.gates.filter((gate) => gate.ok).length ?? 0;
     const dryReady = run.dryRun !== null && !run.dryRunLoading;
     // 提交成功后按钮永久禁用：服务端已清草稿+暂存，再点只会拿到空草稿 422（P1-4）
-    const submitDisabled = !dryReady || run.submitting || run.submitResult !== null;
+    // 草稿重载未确认（在途/读取失败）时禁止提交（codex 十四审 blocking）：服务端
+    // submitAcceptance 会重读服务端草稿——业主本地预演的可能与将写入的内容不
+    // 一致（切包回来重载未完成、或 GET 失败时旧预演还挂着）。draftPackageId 对得上
+    // 才认（单槽加载器，别包的在途不该堵本包的按钮）。
+    const draftPending = (this.draftLoading || this.draftError !== null) && this.draftPackageId === pkg.id;
+    const submitDisabled = !dryReady || run.submitting || run.submitResult !== null || draftPending;
     const submitLabel = run.submitting ? '提交中…'
       : run.submitResult ? '已开 PR（草稿已清，勿重复提交）'
       : run.submitArmed ? '再点一次：确认开 PR' : '确认提交（开 PR）';
@@ -896,6 +901,8 @@ export class ScheduleDetailPanel {
     scope.querySelector('#acceptance-submit')?.addEventListener('click', () => {
       const run = this.runFor(packageId);
       if (!run.dryRun || run.submitting) return;
+      // 草稿重载未确认不提交（与渲染态同一守卫，双保险——codex 十四审 blocking）
+      if ((this.draftLoading || this.draftError !== null) && this.draftPackageId === packageId) return;
       // 两步确认：第一次只进确认态（按钮变红），第二次才 POST
       if (!run.submitArmed) {
         run.submitArmed = true;
