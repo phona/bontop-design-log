@@ -529,6 +529,33 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect((document.querySelector('#acceptance-dry-run') as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('保存失败必须留痕且可重试（PUT 在途时退出清选也不许被吞，codex 四审 blocking 回归）', async () => {
+    // 旧缺陷复现路径：PUT 已发出、响应在途，此时退出审批页清了选中——saveDraft 在
+    // fetch 回头查「选中已换」就静默 return，saveStatus 永远停在 saving、草稿只剩
+    // 内存，业主以为存了。用 mock handler 的副作用在 PUT 在途期间清选中来精确复现。
+    let sel: ScheduleSelectionStore | null = null;
+    const {selection, panel, calls} = await mountPanel({
+      handlers: {
+        putDraft: () => {
+          sel?.set({packageId: null, checkId: null}); // 模拟退出清选中
+          return {status: 422, body: {ok: false, issues: [{check_id: 'SCH-010-01', field: 'checked_by', message: '必须填验收人'}]}};
+        },
+      },
+    });
+    sel = selection;
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+    // 重新选中回该包：失败态必须可见（旧实这里永远「保存中」），且带重试入口
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('保存失败'));
+    expect(document.querySelector('[data-save-status]')!.textContent).toContain('草稿校验没过');
+    const retry = document.querySelector('[data-save-retry]') as HTMLButtonElement;
+    expect(retry, '失败态必须有显式重试入口').toBeTruthy();
+    retry.click();
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2));
+  });
+
   it('flushSave：debounce 未到点也立即落盘（退出审批页不丢编辑，codex 审查 blocking 回归）', async () => {
     // 退出审批页会清选中，而 debounce 定时器的回查询「当前选中仍是目标包」——
     // 不 flush 的话，改完备注立刻点返回，PUT 被跳过、刷新即丢。

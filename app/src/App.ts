@@ -1466,6 +1466,8 @@ export class App {
         label: '切换视角模式',
         engineeringNote: '轨道 ↔ 第一人称；第一人称需 pointer lock（移动端为拖拽+摇杆）',
         category: '视角',
+        available: () => this.approvalView === null,
+        unavailableReason: '审批页（全屏）打开时不可切视角——先返回 3D',
         shortcut: { code: 'KeyV' },
         run: () => this.toggleMode(),
       },
@@ -2650,6 +2652,11 @@ export class App {
   }
 
   private toggleMode(): void {
+    // 2026-11-03 codex 四审 major：审批页（全屏）里切视角模式会 requestLock 把
+    // 指针锁给背后的画布——命令面板的「切换视角模式」是键盘屏蔽的漏网入口
+    // （V 已被 setupKeyboard 的审批页守卫挡住，命令不会）。视角模式是 3D 页的
+    // 动作，审批页里一律不执行；命令同时标 available:false 不在面板里出现。
+    if (this.approvalView !== null) return;
     if (this.houseScene.cameraAnimator.isAnimating()) {
       this.houseScene.cameraAnimator.interrupt();
       return;

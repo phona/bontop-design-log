@@ -489,7 +489,9 @@ export class ScheduleDetailPanel {
     }
     if (this.saveStatus.kind === 'error') {
       const extra = this.packageIssues.map((issue) => escapeHtml(issue.message)).join('；');
-      return `<span style="${base}color:#f0a9a5;">保存失败：${escapeHtml(this.saveStatus.message)}${extra ? `｜${extra}` : ''}</span>`;
+      // 2026-11-03 codex 四审：flush（退出前保存）失败后草稿还在内存（draftResults），
+      // 给一个显式重试——否则业主只能靠「再改一个字段」碰运气触发 debounce。
+      return `<span style="${base}color:#f0a9a5;">保存失败：${escapeHtml(this.saveStatus.message)}${extra ? `｜${extra}` : ''}</span> <button type="button" data-save-retry="${escapeHtml(packageId)}" style="cursor:pointer;margin-left:6px;padding:1px 8px;border-radius:5px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:11px;">重试保存</button>`;
     }
     const selected = this.selectedCount(packageId);
     if (selected === 0) {
@@ -797,6 +799,11 @@ export class ScheduleDetailPanel {
   private bindAcceptanceActions(scope: HTMLElement): void {
     const packageId = this.actionPackageId;
     if (!packageId) return;
+    // 保存失败重试（2026-11-03 codex 四审）：flush 失败后草稿在内存，显式重跑一次
+    scope.querySelector('[data-save-retry]')?.addEventListener('click', () => {
+      this.saveDirty = true;
+      void this.saveDraft(packageId);
+    });
     scope.querySelector('#acceptance-run-gates')?.addEventListener('click', () => {
       void this.runGates(packageId);
     });
@@ -1030,7 +1037,10 @@ export class ScheduleDetailPanel {
         body: JSON.stringify({package_id: packageId, results}),
       });
       const data = (await response.json().catch(() => ({}))) as {ok?: boolean; issues?: DraftIssue[]; error?: string};
-      if (this.selection.get().packageId !== packageId) return;
+      // 2026-11-03 codex 四审 blocking：这里原来有「选中已换包就 return」的守卫，
+      // 退出审批页会清选中——PUT 失败时静默 return，saveStatus 永远停在 saving、
+      // issues 为空、草稿只剩内存，业主以为存了（复现：退出时 PUT 422 后刷新即丢）。
+      // 渲染侧的 updateSaveUiFor 自带选中守卫（人走开就不渲染），状态侧一律记录。
       if (response.ok && data.ok) {
         this.saveStatus = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
         this.saveDirty = false;
@@ -1045,7 +1055,7 @@ export class ScheduleDetailPanel {
         this.saveStatus = {kind: 'error', message: data.error ?? `HTTP ${response.status}`};
       }
     } catch (err) {
-      if (this.selection.get().packageId !== packageId) return;
+      // 网络错同理：不管选中在不在都要留痕（删掉旧的选中守卫，见上方注释）
       this.saveStatus = {kind: 'error', message: err instanceof Error ? err.message : String(err)};
     }
     this.updateSaveUiFor(packageId);
@@ -1254,7 +1264,14 @@ export class ScheduleDetailPanel {
     const body = this.bodyEl();
     if (!body) return;
     const saveLine = body.querySelector('[data-save-status]');
-    if (saveLine) saveLine.innerHTML = this.saveStatusLine(pkg.id);
+    if (saveLine) {
+      saveLine.innerHTML = this.saveStatusLine(pkg.id);
+      // 重试按钮是 innerHTML 换出来的新 DOM——换完就地绑（2026-11-03 codex 四审）
+      saveLine.querySelector('[data-save-retry]')?.addEventListener('click', () => {
+        this.saveDirty = true;
+        void this.saveDraft(pkg.id);
+      });
+    }
     const draftLine = body.querySelector('[data-draft-status]');
     if (draftLine) draftLine.innerHTML = this.draftStatusLine(pkg.id);
     for (const check of pkg.checks) {

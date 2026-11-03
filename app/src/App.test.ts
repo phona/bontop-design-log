@@ -585,6 +585,22 @@ describe('App', () => {
     }
   });
 
+  // 2026-11-03 codex 四审 major：命令面板的「切换视角模式」是键盘屏蔽的漏网入口——
+  // 审批页里切第一人格会 requestLock 把指针锁给背后的画布。toggleMode 本体加守卫。
+  it('审批页打开期间 toggleMode 是 no-op（命令面板漏网入口）', async () => {
+    location.hash = '#approval=flow';
+    try {
+      const app = new App(canvas);
+      await app.start();
+      expect(app['approvalView']).toBe('flow');
+      const modeBefore = app['houseScene'].mode;
+      app['toggleMode']();
+      expect(app['houseScene'].mode).toBe(modeBefore);
+    } finally {
+      location.hash = '';
+    }
+  });
+
   // 2026-11-03 浏览器复验挖出的死代码修复：退出时若把 approvalView 持久化成 null，
   // 刷新后 lastApprovalPage 永远回落 next_action——「记忆上次所在审批页」死亡。
   // 正确语义：退出保留最后看过的子页。
