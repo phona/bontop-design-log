@@ -655,6 +655,124 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     }
   });
 
+  it('加载被别的包取代：搁置的保存不卡死（十六审根治自查回归）', async () => {
+    // 完整视图门落下期间切到别的包：P 的 GET 被取代、永不再有落账事件。若加载
+    // 处理在「被取代」时提前 return，尾部 maybeResumeSave 被跳过，P 搁置中的保存
+    // 永远发不出去——退出审批页 flush 后编辑只剩内存。修：取代只置标志，还原
+    // 加载前的完整态并照常走尾部收尾（十/十一/十五审的同族错误，不重犯）。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    let releaseGetP: () => void = () => {};
+    const gateP = new Promise<void>((resolve) => { releaseGetP = resolve; });
+    const {selection, panel, calls} = await mountPanel({snapshot: twoPkg});
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET'
+        && String(url).includes('PKG-010')) {
+        await gateP;
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results: []})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // ① P 重载在途（完整视图门落下）→ 编辑 + flush：保存被搁置，不发 PUT
+      const getP = panel['loadDraft']('PKG-010');
+      setInput('[data-checked-at="SCH-010-03"]', '2026-11-02');
+      click('[data-status-btn="SCH-010-03"][data-status="passed"]');
+      panel.flushSave();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(calls.filter((call) => call.method === 'PUT').length).toBe(0);
+      // ② 切到 Q：P 的 GET 被取代（draftPackageId 变了）
+      selection.set({packageId: 'PKG-020', checkId: null});
+      // ③ P 的 GET 落地（被取代分支）：还原完整态 + 尾部恢复搁置的保存
+      releaseGetP();
+      await getP;
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      const put = calls.find((call) => call.method === 'PUT')!.body as {package_id: string; results: Array<{check_id: string}>};
+      expect(put.package_id).toBe('PKG-010');
+      expect(put.results.map((r) => r.check_id)).toEqual(['SCH-010-03']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('脏态合并是字段级：只改备注不丢服务端已存的 status/验收人/证据（codex 十七审 blocking 回归）', async () => {
+    // 复现路径（codex 十七审 blocking）：首载前只改 C1 的备注，本地记录其余字段
+    // 还是默认空值（status=null）。旧实现包级 dirty 时本地**整条**胜出——服务端
+    // 已存的 status/验收人/证据被全部跳过，collectResults 再跳过 status=null 的
+    // 行，整份覆盖 PUT 把 C1 永久删掉。修：touched 集记录编辑意图——动过的字段
+    // （含清空）本地胜出，没动过的字段服务端逐字采用。
+    let releaseGet: () => void = () => {};
+    const getGate = new Promise<void>((resolve) => { releaseGet = resolve; });
+    const {panel, calls} = await mountPanel();
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET') {
+        await getGate;
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results: [
+          {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01', note: '旧备注', evidence: [FINAL_PATH]},
+        ]})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // ① 重载在途（服务端有 C1 完整结果）→ 只改 C1 备注，不碰状态/验收人/证据
+      const getPromise = panel['loadDraft']('PKG-010');
+      setInput('[data-note="SCH-010-01"]', '新备注');
+      // ② GET 落地：字段级合并。完整视图门把保存搁置到落账后，第一份 PUT 应含
+      //    C1 的**服务端字段 + 本地新备注**（旧实这里只会发出 status=null 的空壳）
+      releaseGet();
+      await getPromise;
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      const put1 = calls.filter((call) => call.method === 'PUT')[0].body as {
+        results: Array<{check_id: string; status: string; checked_by: string; checked_at: string; note?: string; evidence: string[]}>;
+      };
+      const c1 = put1.results.find((r) => r.check_id === 'SCH-010-01')!;
+      expect(c1, 'C1 不许被删').toBeTruthy();
+      expect(c1.status).toBe('passed'); // 没动过：服务端逐字采用
+      expect(c1.checked_by).toBe('业主');
+      expect(c1.checked_at).toBe('2026-11-01');
+      expect(c1.evidence).toEqual([FINAL_PATH]);
+      expect(c1.note).toBe('新备注'); // 动过：本地胜出
+      // ③ 合并结果进 UI（草稿值是服务端的 passed，不是未选择）
+      await vi.waitFor(() => expect(document.querySelector('[data-draft-value="SCH-010-01"]')!.textContent).toContain('passed'));
+      // ④ 再给 C3 选状态：第二份 PUT 两条都在，C1 字段仍完整
+      click('[data-status-btn="SCH-010-03"][data-status="passed"]');
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
+      const put2 = calls.filter((call) => call.method === 'PUT')[1].body as {results: Array<{check_id: string; status: string}>};
+      expect(put2.results.map((r) => r.check_id).sort()).toEqual(['SCH-010-01', 'SCH-010-03']);
+      expect(put2.results.find((r) => r.check_id === 'SCH-010-01')!.status).toBe('passed');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('脏态字段级合并不清空用户删空字段：清备注后重载不复活旧备注（codex 七审 blocking 回归）', async () => {
+    // 七审场景在新规则下的守卫：保存失败（dirty 未清）→ 重载带回服务端旧备注。
+    // 字段级裁定里「动过的字段本地胜出」必须覆盖**清空**这个意图——旧备注不许
+    // 复活，否则重试保存把它 PUT 回去（静默撤销用户的删除）。（保存成功时
+    // touched 清零、服务端也已确认清空，那是闭环后的另一条路径，不在此列。）
+    const {panel} = await mountPanel({
+      handlers: {
+        draft: () => ({package_id: 'PKG-010', results: [
+          {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01', note: '旧备注'},
+        ]}),
+        putDraft: () => ({status: 500, body: {ok: false, error: '模拟保存失败'}}),
+      },
+    });
+    // ① 清空备注（只动 note 一个字段）→ 保存失败，dirty 保持
+    setInput('[data-note="SCH-010-01"]', '');
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('保存失败'), {timeout: 3000});
+    // ② 重载（服务端仍返回旧备注）：合并后备注必须仍是空——旧值不许复活
+    await panel['loadDraft']('PKG-010');
+    await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).not.toContain('草稿加载中'));
+    expect((document.querySelector('[data-note="SCH-010-01"]') as HTMLInputElement).value).toBe('');
+    // ③ 状态/验收人这些没动过的字段仍在（不会被本地空壳顶掉）
+    expect(document.querySelector('[data-draft-value="SCH-010-01"]')!.textContent).toContain('passed');
+    expect((document.querySelector('[data-checked-by="SCH-010-01"]') as HTMLInputElement).value).toBe('业主');
+  });
+
   it('同包 PUT 串行：在途期间的新保存等它落账后用最新内容重发（codex 十六审根治回归）', async () => {
     // PUT 是整份覆盖：两份 body 竞态落账时，先发后到的那份会把后一份的新条目
     // 删掉。修：同包在途期间新保存搁置，落账后以最新内容重发（陈旧成功也不清

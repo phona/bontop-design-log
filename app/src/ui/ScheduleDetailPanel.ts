@@ -58,6 +58,16 @@ type ProjectState =
   | {status: 'ready'; payload: ProjectPayload}
   | {status: 'error'; message: string};
 
+/**
+ * 用户动过的草稿字段（2026-11-03 codex 十七审 blocking）。合并回填时**动过的
+ * 字段（含清空成空串）本地胜出，没动过的字段服务端逐字采用**——包级 dirty 只
+ * 说明「这个包有未保存编辑」，不说明「这一行每个字段都被编辑过」：首载前只改
+ * 备注时本地记录其余字段还是默认空值，整条胜出会把服务端已存的 status/验收人/
+ * 证据全部抹掉，collectResults 再跳过 status=null 的行，整份覆盖 PUT 把它永久
+ * 删掉（十七审复现路径）。没有这张表就分不清「用户清空了」与「用户还没填」。
+ */
+type DraftField = 'status' | 'checked_by' | 'checked_at' | 'note' | 'supersedes' | 'evidence';
+
 /** 一行检查的本地草稿态（未选状态时不进 PUT body）。 */
 interface CheckDraftState {
   /** null = 还没选状态；只有选过状态的行才会进 PUT。 */
@@ -74,6 +84,8 @@ interface CheckDraftState {
   uploading: boolean;
   /** 上次保存 422 挂回本行的 issues。 */
   issues: DraftIssue[];
+  /** 用户动过的字段：合并回填的裁定依据（见 DraftField）。 */
+  touched: Set<DraftField>;
 }
 
 type SaveStatus =
@@ -849,7 +861,9 @@ export class ScheduleDetailPanel {
       const status = button.dataset.status as DraftCheckResult['status'] | undefined;
       if (!checkId || !status) continue;
       button.addEventListener('click', () => {
-        this.draftOf(checkId).status = status;
+        const state = this.draftOf(checkId);
+        state.status = status;
+        state.touched.add('status'); // 合并回填的裁定依据：动过的字段本地胜出
         this.onDraftChanged(pkg.id);
         this.updateSaveUi(pkg);
       });
@@ -865,7 +879,9 @@ export class ScheduleDetailPanel {
         const checkId = input.dataset[datasetKey] ?? '';
         if (!checkId) continue;
         input.addEventListener('input', () => {
-          this.draftOf(checkId)[key] = input.value;
+          const state = this.draftOf(checkId);
+          state[key] = input.value;
+          state.touched.add(key); // 含「清空」：空串也是用户意图，合并时 local 胜出
           this.onDraftChanged(pkg.id);
           this.updateSaveUi(pkg);
         });
@@ -909,6 +925,7 @@ export class ScheduleDetailPanel {
         const path = button.dataset.evidencePath ?? '';
         const state = this.draftOf(checkId);
         state.evidence = state.evidence.filter((item) => item !== path);
+        state.touched.add('evidence'); // 删证据也是意图：合并时不吃服务端旧列表
         this.onDraftChanged(pkg.id);
         this.updateSaveUi(pkg);
       });
@@ -994,18 +1011,16 @@ export class ScheduleDetailPanel {
     // （编辑/保存/合并都 bump）分不清这两种变化，正是误杀这里的根因；serverSeq
     // 只有保存落账才 bump，两个序号各管一件事。
     const serverSeqAtRequest = run.serverSeq;
+    // 被更新请求取代只置标志、**不提前 return**——finally 清 loading、尾部重绘与
+    // maybeResumeSave 都要执行（提前 return 会跳过收尾：十审十一审在运行态上犯过
+    // 同一类错误，十五审的 staleRead 也是为这个，这里不重犯）。
+    let superseded = false;
     try {
       const response = await fetch(`/api/acceptance/draft?package_id=${encodeURIComponent(packageId)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = (await response.json()) as AcceptanceDraft;
-      if (seq !== this.draftSeq || this.draftPackageId !== packageId) {
-        // 被更新请求取代：它自带渲染与落账。但取代来自**别的包**时，本包视图并没
-        // 被这次加载改动过——还原加载前的完整态，别把本包搁置中的保存永久卡住
-        // （编辑 P→切 Q→退出审批页 flush：P 的 GET 已被取代，永不再有落账事件）。
-        if (this.draftPackageId !== packageId) run.draftComplete = completeBefore;
-        return;
-      }
-      if (run.serverSeq !== serverSeqAtRequest) {
+      if (seq !== this.draftSeq || this.draftPackageId !== packageId) superseded = true;
+      else if (run.serverSeq !== serverSeqAtRequest) {
         // 保存已在加载在途期间落账：那份 PUT 的整份内容即服务端真相，旧 GET 作废
         // （不回填——干净态逐字采用会把刚保存的结果回退成旧值，十五审的场景）。
         run.draftComplete = true;
@@ -1021,17 +1036,18 @@ export class ScheduleDetailPanel {
         if (run.putInFlight) run.saveDeferred = true;
       }
     } catch (err) {
-      if (seq !== this.draftSeq || this.draftPackageId !== packageId) {
-        if (this.draftPackageId !== packageId) run.draftComplete = completeBefore;
-        return;
-      }
+      if (seq !== this.draftSeq || this.draftPackageId !== packageId) superseded = true;
       // 加载失败：视图仍不完整，保存继续搁置（draftError 有显式提示；重开本包 /
       // refresh 会重发加载）。不回填、不置 draftComplete——PUT 会删没见过的条目。
-      this.draftError = err instanceof Error ? err.message : String(err);
+      else this.draftError = err instanceof Error ? err.message : String(err);
     } finally {
-      // finally 清 loading，尾部重绘消掉「加载中」（提前 return 会跳过重绘，
-      // 状态卡在执行中态；十审十一审在运行态上犯过同一类错误，这里不重犯）
+      // finally 清 loading，尾部重绘消掉「加载中」
       if (seq === this.draftSeq && this.draftPackageId === packageId) this.draftLoading = false;
+      // 被**别的包**的加载取代：本包视图并没被这次加载改动过——还原加载前的完整
+      // 态，别把本包搁置中的保存永久卡住（编辑 P→切 Q→退出审批页 flush：P 的 GET
+      // 已被取代，永不再有落账事件）。被同包更新请求取代时相反：新请求在途，
+      // 完整态必须继续关着，等它落账。
+      if (superseded && this.draftPackageId !== packageId) run.draftComplete = completeBefore;
     }
     if (this.selection.get().packageId === packageId) this.render();
     this.maybeResumeSave(packageId);
@@ -1053,12 +1069,14 @@ export class ScheduleDetailPanel {
     //  - 本包检查：服务端有值的字段以服务端为准（已保存即事实），为空的保留本地
     //    （未保存编辑不被抹——重试因此拿到失败时的最新草稿）；
     //  - 其他包的条目：原样带过来（换包不崩别包的未保存编辑）。
-    // dirty=true = 该包有未保存编辑（保存失败也保持 dirty）。此时**本地条目整条
-    // 胜出**，不做任何字段级回落——2026-11-03 codex 七审 blocking：六审的
-    // localWins 是逐字段 `trim() 为空就回落服务端`，用户**清空**备注/删掉证据后
-    // 旧值被复活（复现：清空 note 后切包往返，回填恢复旧备注，重试存回旧内容）；
-    // evidence 服务端非空必胜，用户替换证据列表同样被吞。正确规则只有一条：
-    // 这个包有未保存编辑时，本地就是用户当前真相（含「删空」这个意图）。
+    // dirty=true = 该包有未保存编辑（保存失败也保持 dirty）。此时合并规则是
+    // **字段级**的（2026-11-03 codex 十七审 blocking）：用户动过的字段（含
+    // 「删空」这个意图）本地胜出，没动过的字段服务端逐字采用。旧实现是本地
+    // 整条胜出——首载前只改备注时，本地记录其余字段还是默认空值（status=null），
+    // 服务端已存的 status/验收人/证据被全部跳过；随后 collectResults 跳过
+    // status=null 的行，整份覆盖 PUT 把该结果永久删掉（十七审内存复现）。
+    // 「用户清空了某字段」与「用户还没填某字段」靠 touched 集区分，没有第二套
+    // 猜默认值的逻辑（猜了就必然在某一侧静默丢数据）。
     const localWins = this.saveRecordFor(packageId).dirty;
     // 本包检查 id 全集（来自快照 payload，不是服务端草稿的子集）——用来区分
     // 「别包缓存条目」与「本包条目」：前者永留，后者按 dirty/服务端裁定。
@@ -1069,7 +1087,23 @@ export class ScheduleDetailPanel {
       const fromServer = byCheck.get(checkId);
       if (fromServer) {
         if (localWins) {
-          next.set(checkId, {...local, issues: []});
+          // 字段级裁定（codex 十七审 blocking）：touched 的字段本地胜出（含清空），
+          // 没动过的字段服务端逐字采用——首载前只改备注也不会丢掉服务端已存的
+          // status/验收人/证据。staged/uploading 是本地上传中的瞬态、不是服务端
+          // 数据，保留 local。
+          next.set(checkId, {
+            status: local.touched.has('status') ? local.status : fromServer.status,
+            checked_by: local.touched.has('checked_by') ? local.checked_by : (fromServer.checked_by ?? ''),
+            checked_at: local.touched.has('checked_at') ? local.checked_at : (fromServer.checked_at || todayText()),
+            note: local.touched.has('note') ? local.note : (fromServer.note ?? ''),
+            supersedes: local.touched.has('supersedes') ? local.supersedes : (fromServer.supersedes ?? ''),
+            evidence: local.touched.has('evidence') ? [...local.evidence] : [...(fromServer.evidence ?? [])],
+            staged: local.staged,
+            stagedError: null,
+            uploading: false,
+            issues: [],
+            touched: new Set(local.touched), // 未落账的编辑意图接着带
+          });
           continue;
         }
         // 干净态（dirty=false）：**服务端字段逐字采用，含空值**。旧实现有字段级
@@ -1089,6 +1123,7 @@ export class ScheduleDetailPanel {
           stagedError: null,
           uploading: false,
           issues: [],
+          touched: new Set(local.touched), // 干净态无未存编辑，touched 实际为空
         });
       } else if (!myCheckIds.has(checkId)) {
         // 别包的缓存条目：原样保留（切包不崩别包的未保存编辑）
@@ -1115,6 +1150,7 @@ export class ScheduleDetailPanel {
         stagedError: null,
         uploading: false,
         issues: [],
+        touched: new Set(), // 服务端原样采纳的条目：没有任何本地编辑意图
       });
     }
     this.draftResults = next;
@@ -1143,6 +1179,7 @@ export class ScheduleDetailPanel {
       stagedError: null,
       uploading: false,
       issues: [],
+      touched: new Set(),
     };
   }
 
@@ -1321,7 +1358,13 @@ export class ScheduleDetailPanel {
           const savedPkg = this.payload?.packages.find((item) => item.id === packageId);
           for (const check of savedPkg?.checks ?? []) {
             const state = this.draftResults.get(check.id);
-            if (state) state.issues = [];
+            if (state) {
+              state.issues = [];
+              // 编辑周期闭环：服务端已确认这份内容，touched 清零——此后它只表示
+              // 「自这次确认以来动过的字段」，合并回填时没动过的字段让位给服务端
+              // （含别处/别标签页改过的新值），动过的（含清空）本地胜出。
+              state.touched.clear();
+            }
           }
           // 草稿变了：该包旧卡点/预演/提交结论全部作废（版本号 +1 令在途响应落账时作废）
           this.invalidateRunForDraftChange(packageId);
@@ -1414,7 +1457,10 @@ export class ScheduleDetailPanel {
       if (this.selection.get().packageId !== pkg.id) return;
       if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
       const finalPath = String(data.final_path ?? '');
-      if (finalPath && !state.evidence.includes(finalPath)) state.evidence.push(finalPath);
+      if (finalPath && !state.evidence.includes(finalPath)) {
+        state.evidence.push(finalPath);
+        state.touched.add('evidence'); // 新证据是本地意图：合并时 local 列表胜出
+      }
       state.staged = null;
       state.stagedError = null;
       this.onDraftChanged(pkg.id);
