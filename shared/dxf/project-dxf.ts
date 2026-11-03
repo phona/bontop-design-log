@@ -12,6 +12,7 @@
 
 import { FURNITURE_DIMS, type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type PlumbingPoint, type RoomLayout, type SceneElement } from '../types.js';
 import { type MepCoordination, type MepEndpointSources, mepRoutePoints, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
+import { centerlineSamples } from '../arc-polyline.js';
 import { resolveFurniturePlacement } from '../furniture-placement.js';
 import { pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
 import { DxfWriter } from './dxf-writer.js';
@@ -100,10 +101,22 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('plumbing: 无输入，P-POINTS 图层为空（水路点位未导出）');
   } else {
     for (const point of plumbing) {
+      // 抽象服务点（codex 二审 blocking）：faucet/drain 的 H 是抽象服务高度，note 明确
+      // 「不得按此直接开槽」、待 SKU 冻结；字段态（inferred/pending）同理。标注限制 + 告警，
+      // 不删点位（几何是事实，标高不是施工依据）。
+      const notForConstruction = point.construction_status === 'pending'
+        || point.status === 'inferred' || point.status === 'pending'
+        || /抽象服务点|不得.{0,6}开槽|不作为施工依据/.test(point.note ?? '');
       const [x, y] = toDxf(point.x, point.z);
       writer.addCircle(DXF_LAYERS.P_POINTS[0], x, y, POINT_RADIUS_MM);
+      const heightText = point.height !== undefined ? ` H${point.height}` : '';
       writer.addText(DXF_LAYERS.P_POINTS[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-        label(`${point.id} ${point.type}${point.height !== undefined ? ` H${point.height}` : ''}`, point.id));
+        label(notForConstruction
+          ? `${point.id} ${point.type}${heightText} 抽象点-禁止开槽待SKU`
+          : `${point.id} ${point.type}${heightText}`, point.id));
+      if (notForConstruction) {
+        warnings.push(`plumbing ${point.id}: 抽象服务点/待核（H${point.height ?? '?'} 非施工标高，禁止直接开槽，待 SKU 冻结与量房）`);
+      }
     }
   }
   emitCeiling(writer, house.ceilingZones, warnings, label);
@@ -180,12 +193,32 @@ function emitWalls(writer: DxfWriter, elements: SceneElement[]): void {
 
 // --- 玻璃 / 门 ---
 
+/**
+ * 弧感知折线出图（codex 二审 blocking）：折线点带 radius/cx/cz 圆角声明时，经
+ * centerlineSamples（shared/arc-polyline.ts，与 3D 窗帘/栏杆同一弧口径）展开为密采样段，
+ * 不再把弧控制点当直线折点；圆角点补 R 标注。3D 侧 curtain_run 按 closed 声明、
+ * railing_run/shower_screen/frosted_privacy 是 addLineMeshes 系开放折线——DXF 同口径。
+ */
+function emitArcAwarePolyline(writer: DxfWriter, layer: string, points: ReadonlyArray<{ x: number; z: number; radius?: number }>, closed: boolean): void {
+  if (points.length < 2) return;
+  const samples = centerlineSamples(points as never, closed);
+  const dxfPts = samples.map((sample) => toDxf(sample.x, sample.z));
+  writer.addPolyline(layer, dxfPts, false);
+  for (const point of points) {
+    if ((point.radius ?? 0) > 0) {
+      const [x, y] = toDxf(point.x, point.z);
+      writer.addText(layer, x, y + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM, `R${Math.round(point.radius! * 1000)}`);
+    }
+  }
+}
+
 function emitGlazingAndDoors(writer: DxfWriter, elements: SceneElement[], warnings: string[]): void {
   for (const element of elements) {
     if (element.type === 'curtain_run' || element.type === 'railing_run' || element.type === 'shower_screen' || element.type === 'frosted_privacy') {
-      const pts = element.points.map((point) => toDxf(point.x, point.z));
-      writer.addPolyline(DXF_LAYERS.GLAZING[0], pts, element.type === 'curtain_run' ? element.closed === true : true);
-      writer.addText(DXF_LAYERS.GLAZING[0], pts[0][0], pts[0][1] + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM, element.id);
+      const closed = element.type === 'curtain_run' ? (element.closed ?? false) : false;
+      emitArcAwarePolyline(writer, DXF_LAYERS.GLAZING[0], element.points, closed);
+      const [x, y] = toDxf(element.points[0].x, element.points[0].z);
+      writer.addText(DXF_LAYERS.GLAZING[0], x, y + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM, element.id);
     } else if (element.type === 'glass_infill') {
       warnings.push(`glass_infill ${element.id}: 嵌在墙体内，无独立平面几何，未导出`);
     } else if (element.type === 'sliding_door_run') {
@@ -231,13 +264,19 @@ function emitGlazingAndDoors(writer: DxfWriter, elements: SceneElement[], warnin
 function emitRooms(writer: DxfWriter, rooms: RoomLayout[], label: (text: string, fallback?: string) => string): void {
   for (const room of rooms) {
     if (room.semantic_only) continue;
-    const west = room.x - room.width / 2;
-    const east = room.x + room.width / 2;
-    const north = room.z - room.depth / 2;
-    const south = room.z + room.depth / 2;
-    const [x1, y1] = toDxf(west, north);
-    const [x2, y2] = toDxf(east, south);
-    writer.addPolyline(DXF_LAYERS.ROOM[0], [[x1, y1], [x2, y1], [x2, y2], [x1, y2]], true);
+    // 非矩形房间优先声明轮廓（codex 二审 blocking）：layout-resolver 已为客餐厅/主卧/入户
+    // 花园输出真实折线边界，外接矩形会跨过真实边界、与面积文字（真实多边形面积）不一致。
+    if (room.points && room.points.length >= 3) {
+      emitArcAwarePolyline(writer, DXF_LAYERS.ROOM[0], room.points, true);
+    } else {
+      const west = room.x - room.width / 2;
+      const east = room.x + room.width / 2;
+      const north = room.z - room.depth / 2;
+      const south = room.z + room.depth / 2;
+      const [x1, y1] = toDxf(west, north);
+      const [x2, y2] = toDxf(east, south);
+      writer.addPolyline(DXF_LAYERS.ROOM[0], [[x1, y1], [x2, y1], [x2, y2], [x1, y2]], true);
+    }
     const area = room.area ?? room.width * room.depth;
     const [cx, cy] = toDxf(room.x, room.z);
     writer.addText(DXF_LAYERS.ROOM[0], cx - ROOM_TEXT_HEIGHT_MM * 2, cy, ROOM_TEXT_HEIGHT_MM,
@@ -379,6 +418,14 @@ function emitFloorAndWallFinishes(
 
 // --- MEP（与 3D 渲染同口径：resolveMepRoutes → mepRoutePoints）---
 
+/** 候选/需求示意/非物理/待复核路线不是施工放线依据（codex 审 2026-11-03 blocking）——隔离 M-CAND。 */
+function isCandidateRoute(resolved: ReturnType<typeof resolveMepRoutes>['routes'][number]): boolean {
+  return !resolved.metadata.physicalRoute
+    || resolved.metadata.pendingReview === true
+    || resolved.route.route_kind === 'candidate'
+    || resolved.route.route_kind === 'requirement';
+}
+
 function emitMep(
   writer: DxfWriter,
   coordination: MepCoordination,
@@ -394,12 +441,7 @@ function emitMep(
     }
     const points = mepRoutePoints(resolved.route, resolved.from, resolved.to);
     if (points.length < 2) continue;
-    // 候选/需求示意/非物理/待复核路线不是施工放线依据（codex 审 2026-11-03 blocking）：
-    // 隔离到 M-CAND 独立图层 + 告警，禁止混入 M-ROUTE 被当成施工事实交付。
-    const candidate = !resolved.metadata.physicalRoute
-      || resolved.metadata.pendingReview === true
-      || resolved.route.route_kind === 'candidate'
-      || resolved.route.route_kind === 'requirement';
+    const candidate = isCandidateRoute(resolved);
     const layer = candidate ? DXF_LAYERS.M_CAND : DXF_LAYERS.M_ROUTE;
     if (candidate) {
       warnings.push(`mep route ${resolved.route.id}: ${resolved.route.route_kind ?? 'nonphysical'}${resolved.metadata.pendingReview ? '/待复核' : ''}，已隔离至 M-CAND（非放线依据）`);
@@ -411,10 +453,19 @@ function emitMep(
     writer.addText(layer[0], first[0] + POINT_RADIUS_MM, first[1] + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
       label(candidate ? `${name} ${resolved.route.layer} 候选-非放线依据` : `${name} ${resolved.route.layer}`, resolved.route.id));
   }
+  // junction 随关联路线隔离（codex 二审 major）：汇流节点的 inlet/outlet 路线任一是候选，
+  // 节点就跟去 M-CAND——否则关掉候选层会留下看似可放线的孤立正式节点。
+  const candidateRoutes = new Set(report.routes.filter(isCandidateRoute).map((resolved) => resolved.route.id));
   for (const junction of coordination.junctions) {
     const [x, y] = toDxf(junction.position.x, junction.position.z);
-    writer.addCircle(DXF_LAYERS.M_ROUTE[0], x, y, POINT_RADIUS_MM);
-    writer.addText(DXF_LAYERS.M_ROUTE[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM, junction.id);
+    const linkedCandidate = [...junction.inlet_routes, junction.outlet_route].some((routeId) => candidateRoutes.has(routeId));
+    const layer = linkedCandidate ? DXF_LAYERS.M_CAND : DXF_LAYERS.M_ROUTE;
+    if (linkedCandidate) {
+      warnings.push(`mep junction ${junction.id}: 关联候选路线，已随迁 M-CAND（待现场核验）`);
+    }
+    writer.addCircle(layer[0], x, y, POINT_RADIUS_MM);
+    writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
+      label(linkedCandidate ? `${junction.id} 待核验` : junction.id, junction.id));
   }
   for (const anchor of sources.hvacAnchors) {
     // 内机普遍经 ref: {source: ceiling} 定位（无直接 position）——复用 resolveMepEndpoint 解析引用

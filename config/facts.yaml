@@ -1953,7 +1953,11 @@ coverage:
   # 纯声明式复用，没有代码 reader。
   - { file: config/facts.yaml, field: "x_decision_files", readers: [] }
   - { file: config/facts.yaml, field: "coverage", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
-  - { file: config/house.yaml, field: "project", readers: ["shared/render/CurtainGeometry.ts", "shared/render/FixtureFactory.ts"] }
+  # 2026-11-03 修正：原登记 CurtainGeometry.ts / FixtureFactory.ts 是字符串级巧合命中
+  # （arcDescriptor 局部函数名 project / 英文注释 projecting），从未真读 house.yaml 的
+  # project 字段；DXF 抽取 arc-polyline.ts 后巧合消失、verify-facts 报 declared_reader_does_not_read。
+  # 真实读者是 ProjectCatalog 的 data_precision 解析。
+  - { file: config/house.yaml, field: "project", readers: ["server/project-catalog.ts"] }
   - { file: config/house.yaml, field: "rooms", readers: ["shared/environment-schema.ts", "shared/glazing.ts"] }
   - { file: config/house.yaml, field: "gift_areas", readers: ["shared/types.ts", "scripts/verify/data/verify-data-consistency.ts"] }
   - { file: config/house.yaml, field: "mechanical_electrical_plumbing", readers: ["shared/types.ts"] }

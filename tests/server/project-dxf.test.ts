@@ -232,6 +232,85 @@ test('project-dxf: 内机 anchor 经 ref:ceiling 解析进 M-HVAC，解析不了
   assert.ok(result.warnings.some((w) => w.includes('indoor_lost')));
 });
 
+test('project-dxf: 圆角折线经 centerlineSamples 展开（弧不成直线折点）+ R 标注（codex 二审 blocking）', () => {
+  const input = baseInput();
+  // 直角三点 + 中点圆角 R0.3：直线走法 = 2 条线；弧感知采样 ≥ 6 段且带 R300 标注
+  input.house.sceneElements.push({
+    type: 'railing_run', id: 'railing_arc', height: 1,
+    points: [
+      { x: 0, z: 5 },
+      { x: 2, z: 5, radius: 0.3, cx: 2, cz: 4.7 },
+      { x: 2, z: 3 },
+    ],
+  });
+  const result = buildProjectDxf(input);
+  const entities = parseEntities(result.dxf);
+  const lines = linesOn(entities, DXF_LAYERS.GLAZING[0]);
+  // 原有 glazing（hinged door 不在 GLAZING；此 fixture GLAZING 只有本折线）——弧采样段数 ≥ 6
+  const railingLines = lines.filter(([x1, y1, x2, y2]) => Math.abs(y1 - y2) > 1 || x1 < 1900 || x2 > 2100);
+  assert.ok(railingLines.length >= 6, `expected sampled arc segments, got ${lines.length}`);
+  assert.ok(entities.some((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.GLAZING[0] && e['1'] === 'R300'));
+  // 开放折线：起点 (0,-5000) 到终点 (2,-3000)，不存在首尾闭合段
+  assert.ok(!lines.some(([x1, y1, x2, y2]) => (x1 === 0 && y1 === -5000 && x2 === 2000 && y2 === -3000)));
+});
+
+test('project-dxf: 非矩形房间优先 points 轮廓，不用外接矩形（codex 二审 blocking）', () => {
+  const input = baseInput();
+  input.house.rooms = [{
+    ...input.house.rooms[0],
+    x: 2, z: 1, width: 4, depth: 2, area: 6.5,
+    points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 1 }, { x: 2, z: 2 }, { x: 0, z: 2 }],
+  }];
+  const result = buildProjectDxf(input);
+  const roomLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.ROOM[0]);
+  // 五边形 5 边；外接矩形南边是 (0,-2000)→(4000,-2000) 完整长边——断言不存在该 4000mm 水平边
+  assert.equal(roomLines.length, 5);
+  assert.ok(!roomLines.some(([x1, y1, x2, y2]) => y1 === -2000 && y2 === -2000 && Math.abs(x2 - x1) === 4000));
+});
+
+test('project-dxf: 抽象服务点标注「禁止开槽待SKU」+ 告警（codex 二审 blocking）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    plumbing: [
+      { id: 'faucet_abs', room: 'living', type: 'faucet' as never, x: 1, z: 1, height: 0.8, note: 'h=0.8 为抽象服务点，不得按此直接开槽' },
+      { id: 'drain_confirmed', room: 'living', type: 'drain' as never, x: 2, z: 1, height: 0.35, construction_status: 'confirmed' },
+    ],
+  });
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.P_POINTS[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('faucet_abs') && (e['1'] ?? '').includes('禁止开槽')));
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('drain_confirmed') && !(e['1'] ?? '').includes('禁止开槽')));
+  assert.ok(result.warnings.some((w) => w.includes('faucet_abs') && w.includes('禁止直接开槽')));
+  assert.ok(!result.warnings.some((w) => w.includes('drain_confirmed')));
+});
+
+test('project-dxf: junction 随关联候选路线隔离 M-CAND（codex 二审 major）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: {
+        version: '1', status: 'ok',
+        layers: {},
+        routes: [
+          { id: 'in_a', layer: 'condensate' as never, status: 'confirmed' as never, route_kind: 'candidate', from: { x: 0, z: 0 }, to: { x: 1, z: 0 }, via: [] },
+          { id: 'out_phys', layer: 'condensate' as never, status: 'confirmed' as never, from: { x: 2, z: 0 }, to: { x: 3, z: 0 }, via: [] },
+        ],
+        junctions: [{
+          id: 'merge_1', layer: 'condensate' as never, kind: 'merge' as never,
+          position: { x: 1.5, z: 0, y: 2.5 }, inlet_routes: ['in_a'], outlet_route: 'out_phys',
+          fitting: 'wye' as never, fitting_overlap_m: 0.05, reason: 'test',
+        }] as never,
+      } as never,
+      sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
+    },
+  });
+  const entities = parseEntities(result.dxf);
+  // junction 圆和「待核验」标注在 M-CAND；M-ROUTE 只有 out_phys 折线+标注
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.M_CAND[0] && e.type === 'CIRCLE' && e['10'] === '1500.0000'));
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.M_CAND[0] && e.type === 'TEXT' && (e['1'] ?? '').includes('merge_1') && (e['1'] ?? '').includes('待核验')));
+  assert.ok(!entities.some((e) => e['8'] === DXF_LAYERS.M_ROUTE[0] && e.type === 'CIRCLE'));
+  assert.ok(result.warnings.some((w) => w.includes('merge_1')));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });
