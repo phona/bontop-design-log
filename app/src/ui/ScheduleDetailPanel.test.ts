@@ -255,6 +255,31 @@ describe('ScheduleDetailPanel', () => {
     expect(body.textContent).toContain('抹灰养护');
   });
 
+  it('3D 段取数失败后有重试按钮：点重试重新拉取，第二次成功即渲染（P2-6）', async () => {
+    let projectCalls = 0;
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes('/api/project')) {
+        projectCalls += 1;
+        if (projectCalls === 1) return {ok: false, status: 500, json: async () => ({error: 'boom'})};
+        return {ok: true, status: 200, json: async () => projectPayload()};
+      }
+      return {ok: true, status: 200, json: async () => snapshot(packageView())};
+    });
+    vi.stubGlobal('fetch', fetchMock as never);
+    const selection = new ScheduleSelectionStore();
+    const panel = new ScheduleDetailPanel(selection);
+    panel.subscribe();
+    selection.set({packageId: 'PKG-010'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('3D 作用域暂不可用'));
+    const retry = document.querySelector('#schedule-detail-scope-retry') as HTMLButtonElement;
+    expect(retry, '失败态必须有重试按钮（旧实现只能刷新整页）').toBeTruthy();
+    retry.click();
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('房间 2 个'));
+    expect(projectCalls).toBe(2);
+    expect(document.querySelector('#schedule-detail-scope-retry')).toBeNull();
+  });
+
   it('选中包不在快照里时提示「包不在当前快照」', async () => {
     vi.stubGlobal('fetch', stubFetch(snapshot(packageView()), projectPayload()));
     const selection = new ScheduleSelectionStore();

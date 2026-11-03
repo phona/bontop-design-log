@@ -141,4 +141,22 @@ describe('NextActionPanel', () => {
     panel.hide();
     expect(panel.isVisible()).toBe(false);
   });
+  it('服务端新增未知 kind：归入「其他」组原样呈现，不静默丢弃（P2 兜底）', async () => {
+    // 2026-11-03 修：旧实现只按 GROUP_ORDER 渲染，computeNextActions 将来看 kind
+    // 时新线索进了 map 却被 filter 掉——业主看不到、也没人发现前端没跟上。
+    const withUnknown = snapshot([
+      ...actions,
+      // 类型上断言成合法 kind，运行时就是「服务端加了新 kind」的模拟
+      {kind: 'weather_window' as never, ref: 'PKG-999', title: 'PKG-999｜等天气窗口', detail: '服务端新线索类型', unblocks: 9, package_id: 'PKG-999'},
+    ]);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, status: 200, json: async () => withUnknown})) as never);
+    const panel = new NextActionPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#next-action-body')!.textContent).toContain('等天气窗口'));
+    const body = document.querySelector('#next-action-body')!;
+    expect(body.textContent).toContain('其他（未识别 kind：weather_window）');
+    expect(body.textContent).toContain('不静默丢弃');
+    // 已知分组不受影响：四组照常
+    expect(body.textContent).toContain('可以开工/验收');
+  });
 });

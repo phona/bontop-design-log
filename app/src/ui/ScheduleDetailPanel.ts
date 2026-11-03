@@ -527,7 +527,7 @@ export class ScheduleDetailPanel {
     if (this.projectState.status === 'loading') {
       detail = `<div style="color:#9aa4b2;font-size:12px;">正在展开 3D 作用域…</div>`;
     } else if (this.projectState.status === 'error') {
-      detail = `<div style="color:#f0a9a5;font-size:12px;">3D 作用域暂不可用：${escapeHtml(this.projectState.message)}（不影响上面的包详情）</div>`;
+      detail = `<div style="color:#f0a9a5;font-size:12px;">3D 作用域暂不可用：${escapeHtml(this.projectState.message)}（不影响上面的包详情） <button type="button" id="schedule-detail-scope-retry" style="cursor:pointer;margin-left:6px;padding:2px 8px;border-radius:5px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:11px;">重试</button></div>`;
     } else if (this.projectState.status === 'ready') {
       detail = this.renderScopeResolution(pkg, this.projectState.payload);
     }
@@ -711,6 +711,12 @@ export class ScheduleDetailPanel {
     }
     body.querySelector('#schedule-detail-highlight')?.addEventListener('click', () => {
       this.options.onHighlight?.(pkg.id);
+    });
+    // 3D 作用域拉取失败的重试（2026-11-03 修设计稿 P2-6）：旧实现只显示「暂不可用」，
+    // 业主遇到瞬时失败只能刷新整个页面。重走 loadProjectScope（它自带 loading 态与
+    // 选中防串检查），失败可再次重试。
+    body.querySelector('#schedule-detail-scope-retry')?.addEventListener('click', () => {
+      void this.loadProjectScope(pkg.id);
     });
     this.bindCheckOps(body, pkg);
     this.bindAcceptanceActions(body);
