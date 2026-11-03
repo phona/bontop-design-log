@@ -1067,6 +1067,93 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect((document.querySelector('[data-note="SCH-010-01"]') as HTMLInputElement).value).toBe('新备注');
   });
 
+  it('干净包里未落盘的输入不被服务端覆盖：合并只看行级 touched（codex 二十一审 blocking 1 回归）', async () => {
+    // 复现路径（codex 二十一审 blocking 1）：C1 已有状态，给 C2 填备注但没选状态
+    // ——PUT 只含 C1，保存成功后整包 dirty 清零，C2 的 touched 按二十审修法保留；
+    // 但旧实现的合并只在**包脏**分支消费 touched，包一干净就走「服务端逐字」：别处
+    // 保存 C2 后返回，本地未落盘的备注被服务端字段静默覆盖。修：合并统一按行级
+    // touched 裁定，与包级 dirty 无关（干净包 touched 实际为空，行为不变）。
+    let serverDraft: Array<Record<string, unknown>> = [
+      {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01'},
+    ];
+    const {panel} = await mountPanel({
+      handlers: {
+        draft: () => ({package_id: 'PKG-010', results: serverDraft}),
+        putDraft: (body) => {
+          serverDraft = (body as {results: Array<Record<string, unknown>>}).results;
+          return {status: 200, body: {ok: true}};
+        },
+      },
+    });
+    // ① 给 C2（SCH-010-03）填备注，不选状态 → PUT 只含 C1 → 保存成功（整包 clean）
+    setInput('[data-note="SCH-010-03"]', '本地未落盘的备注');
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存'), {timeout: 3000});
+    // ② 另一标签页保存了 C2（服务端现有该行，备注是别处写的）
+    serverDraft = [
+      ...serverDraft,
+      {check_id: 'SCH-010-03', status: 'passed', checked_by: '别处', checked_at: '2026-11-02', note: '别处写的备注'},
+    ];
+    // ③ 重载合并：本地未落盘的备注必须胜出，不被服务端字段覆盖
+    await panel['loadDraft']('PKG-010');
+    await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).not.toContain('草稿加载中'));
+    expect((document.querySelector('[data-note="SCH-010-03"]') as HTMLInputElement).value).toBe('本地未落盘的备注');
+    // 没动过的字段仍取服务端（别处选的 passed / 别处填的检查人）
+    expect(document.querySelector('[data-draft-value="SCH-010-03"]')!.textContent).toContain('passed');
+    expect((document.querySelector('[data-checked-by="SCH-010-03"]') as HTMLInputElement).value).toBe('别处');
+  });
+
+  it('控制源指纹变化后旧预演作废：提交按钮回到不可用（codex 二十一审 blocking 2 回归）', async () => {
+    // 复现路径（codex 二十一审 blocking 2）：P 生成预演 → 切包期间检查标准/项目数据
+    // 变化 → 返回 P。草稿内容没变（lastServerDraft 比对不动作废），但旧结论是按旧
+    // 指纹算的——服务端 submit 按**当前**控制源重新生成记录，放行提交等于让业主
+    // 确认的预演与实际写入 commit 的指纹不同。修：结论落账记控制源指纹（项目数据
+    // 指纹 + 各检查标准指纹），快照重拉对不上即作废。
+    const {panel} = await mountPanel();
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    click('#acceptance-dry-run');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演：将写入'), {timeout: 3000});
+    // 控制源变化（PR 合并 / 量房修正后快照指纹变）→ refresh 重拉
+    (panel['payload'] as {data_fingerprint: string}).data_fingerprint = 'fp-changed';
+    await panel.refresh();
+    // 旧 gates/dryRun 必须作废：卡点区回到「还没跑过」，提交按钮不可用
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('还没跑过机械卡点'));
+    expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('PR 预演：将写入');
+    expect((document.querySelector('#acceptance-submit') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('别包的校验失败不清当前包行级错误（codex 二十一届 major 回归）', async () => {
+    // draftResults 按包混放后，旧实现两处遍历全表清 issues：applyIssues（A 的迟到
+    // 422 抹掉 B 已显示的红字，而 B 的失败提示还叫业主「见各行红字」）与 applyDraft
+    // 保留别包缓存的分支。修：清理范围限本包检查项；别包缓存连 issues 一起保留。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    const {selection, panel, calls} = await mountPanel({
+      snapshot: twoPkg,
+      handlers: {
+        putDraft: (body) => {
+          const pkgId = (body as {package_id: string}).package_id;
+          return pkgId === 'PKG-010'
+            ? {status: 422, body: {ok: false, issues: [{check_id: 'SCH-010-01', field: 'checked_by', message: 'A 行错误：必须填验收人'}]}}
+            : {status: 422, body: {ok: false, issues: [{check_id: 'SCH-020-01', field: 'checked_by', message: 'B 行错误：必须填验收人'}]}};
+        },
+      },
+    });
+    // ① A 保存 422：行级红字挂上
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    await vi.waitFor(() => expect(document.querySelector('[data-check-issues="SCH-010-01"]')!.textContent).toContain('A 行错误'), {timeout: 3000});
+    // ② 切 B 保存 422（迟到的 A 类响应）：A 行的红字不许被抹掉
+    selection.set({packageId: 'PKG-020', checkId: null});
+    setInput('[data-checked-at="SCH-020-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-020-01"][data-status="passed"]');
+    await vi.waitFor(() => expect(document.querySelector('[data-check-issues="SCH-020-01"]')!.textContent).toContain('B 行错误'), {timeout: 3000});
+    // A 行的红字在 draftResults 里完好（切走后不在 DOM，白盒断言状态；别包缓存
+    // 连 issues 一起保留是本条修复的数据面）
+    expect(panel['draftResults'].get('SCH-010-01')!.issues.map((issue) => issue.message)).toContain('A 行错误：必须填验收人');
+  });
+
   it('草稿重载未确认时提交按钮禁用：在途与读取失败都堵（codex 十四审 blocking 回归）', async () => {
     // A 生成预演 → 切 B → 服务端草稿被别处改动 → 切回 A：重载在途或 GET 失败
     // 期间旧预演还挂着，但服务端 submit 会重读草稿——业主预演的可能与将写入

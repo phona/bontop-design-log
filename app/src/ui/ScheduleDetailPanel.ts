@@ -162,6 +162,14 @@ interface PackageEditState {
   putInFlight: boolean;
   /** 保存被完整视图门/在途 PUT 搁置过一次：加载落账或 PUT 落账后要重发。 */
   saveDeferred: boolean;
+  /**
+   * 卡点/预演结论落账时的控制源指纹（codex 二十一审 blocking）：结论不只由草稿
+   * 决定——服务端按**当前**检查标准指纹（check_spec_sha256）与项目数据指纹
+   * （data_fingerprint）重新生成 audit 记录。切包期间控制源变化后返回，草稿内容
+   * 没变（lastServerDraft 比对不触发作废），但旧结论是按旧指纹算的：放行提交
+   * 等于让业主确认的预演与实际写入 commit 的指纹不同。null = 没有落账的结论。
+   */
+  controlFingerprint: string | null;
   gates: {ok: boolean; gates: GateView[]} | null;
   gatesLoading: boolean;
   gatesError: string | null;
@@ -305,6 +313,7 @@ export class ScheduleDetailPanel {
       run = {
         saveTimer: null, saveTarget: null, draftVersion: 0, lastServerDraft: null,
         serverSeq: 0, loadSeq: 0, draftComplete: false, putInFlight: false, saveDeferred: false,
+        controlFingerprint: null,
         gates: null, gatesLoading: false, gatesError: null,
         dryRun: null, dryRunLoading: false, dryRunError: null,
         submitArmed: false, submitting: false, submitResult: null, submitError: null,
@@ -318,7 +327,32 @@ export class ScheduleDetailPanel {
   private invalidateRunForDraftChange(packageId: string): void {
     const run = this.runFor(packageId);
     run.draftVersion += 1;
+    run.controlFingerprint = null;
     this.resetSubmitState(packageId);
+  }
+
+  /**
+   * 预演结论的控制源指纹（codex 二十一审 blocking）：项目数据指纹 + 该包每个检查
+   * 的标准指纹。服务端 submitAcceptance 按**当前**控制源重新生成 audit 记录——
+   * 这些指纹变了，旧卡点/预演就算不出将写入的内容。
+   */
+  private controlFingerprintOf(packageId: string): string {
+    const pkg = this.payload?.packages.find((item) => item.id === packageId);
+    const specHashes = (pkg?.checks ?? []).map((check) => `${check.id}:${check.check_spec_sha256}`).join(',');
+    return `${this.payload?.data_fingerprint ?? ''}|${specHashes}`;
+  }
+
+  /**
+   * 快照重拉后：控制源指纹变过的包，旧卡点/预演/确认态全部作废（二十一审 blocking）。
+   * 草稿内容没变时 lastServerDraft 比对不触发作废，但结论是按旧指纹算的——放行
+   * 提交等于让业主确认的预演与实际写入 commit 的指纹不同。
+   */
+  private invalidateRunsForControlChange(): void {
+    for (const [packageId, run] of this.pkgRuns) {
+      if (run.controlFingerprint === null) continue; // 没有落账的结论：无可作废
+      if (run.controlFingerprint === this.controlFingerprintOf(packageId)) continue;
+      this.invalidateRunForDraftChange(packageId);
+    }
   }
 
   /** 卡点/预演/提交渲染键（当前选中包）；运行态按包各一份，不再随换包作废。 */
@@ -367,6 +401,8 @@ export class ScheduleDetailPanel {
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       this.payload = (await response.json()) as ScheduleSnapshot;
       this.errorMessage = null;
+      // 控制源指纹变过的包：旧卡点/预演是按旧指纹算的，全部作废（二十一审 blocking）
+      this.invalidateRunsForControlChange();
     } catch (err) {
       this.errorMessage = err instanceof Error ? err.message : String(err);
     }
@@ -1093,65 +1129,49 @@ export class ScheduleDetailPanel {
     //  - 本包检查：服务端有值的字段以服务端为准（已保存即事实），为空的保留本地
     //    （未保存编辑不被抹——重试因此拿到失败时的最新草稿）；
     //  - 其他包的条目：原样带过来（换包不崩别包的未保存编辑）。
-    // dirty=true = 该包有未保存编辑（保存失败也保持 dirty）。此时合并规则是
-    // **字段级**的（2026-11-03 codex 十七审 blocking）：用户动过的字段（含
-    // 「删空」这个意图）本地胜出，没动过的字段服务端逐字采用。旧实现是本地
-    // 整条胜出——首载前只改备注时，本地记录其余字段还是默认空值（status=null），
-    // 服务端已存的 status/验收人/证据被全部跳过；随后 collectResults 跳过
-    // status=null 的行，整份覆盖 PUT 把该结果永久删掉（十七审内存复现）。
-    // 「用户清空了某字段」与「用户还没填某字段」靠 touched 集区分，没有第二套
-    // 猜默认值的逻辑（猜了就必然在某一侧静默丢数据）。
-    const localWins = this.saveRecordFor(packageId).dirty;
+    // dirty=true = 该包有未保存编辑（保存失败也保持）。**合并裁定不看包级 dirty，
+    // 只看行级 touched**（2026-11-03 codex 十七审 blocking，二十一审推广到全态）：
+    // 用户动过的字段（含「删空」这个意图）本地胜出，没动过的字段服务端逐字采用。
+    // 旧实现分「包脏→本地整条胜出 / 包干净→服务端逐字」两套，两头都漏：
+    //  - 包脏分支：首载前只改备注时本地记录其余字段还是默认空值，服务端已存的
+    //    status/验收人/证据被全部跳过，PUT 把该结果永久删掉（十七审内存复现）；
+    //  - 包干净分支：「没选状态的行」已填输入会被服务端静默覆盖——那行的 touched
+    //    在保存成功时按二十审的修法保留着，却只在包脏分支被消费，包一干净就成
+    //    死数据（二十一审 blocking：别处保存该行后返回，本地备注被服务端字段覆盖）。
+    // 一套规则：touched 是唯一仲裁；干净包的 touched 实际为空（保存成功即清），
+    // 行为与旧的干净分支完全一致，不存在第二套猜默认值的逻辑。
     // 本包检查 id 全集（来自快照 payload，不是服务端草稿的子集）——用来区分
-    // 「别包缓存条目」与「本包条目」：前者永留，后者按 dirty/服务端裁定。
+    // 「别包缓存条目」与「本包条目」：前者永留，后者按 touched/服务端裁定。
     const myCheckIds = new Set(
       (this.payload?.packages.find((item) => item.id === packageId)?.checks ?? []).map((check) => check.id),
     );
     for (const [checkId, local] of this.draftResults) {
       const fromServer = byCheck.get(checkId);
       if (fromServer) {
-        if (localWins) {
-          // 字段级裁定（codex 十七审 blocking）：touched 的字段本地胜出（含清空），
-          // 没动过的字段服务端逐字采用——首载前只改备注也不会丢掉服务端已存的
-          // status/验收人/证据。staged/uploading 是本地上传中的瞬态、不是服务端
-          // 数据，保留 local。
-          next.set(checkId, {
-            status: local.touched.has('status') ? local.status : fromServer.status,
-            checked_by: local.touched.has('checked_by') ? local.checked_by : (fromServer.checked_by ?? ''),
-            checked_at: local.touched.has('checked_at') ? local.checked_at : (fromServer.checked_at || todayText()),
-            note: local.touched.has('note') ? local.note : (fromServer.note ?? ''),
-            supersedes: local.touched.has('supersedes') ? local.supersedes : (fromServer.supersedes ?? ''),
-            evidence: local.touched.has('evidence') ? [...local.evidence] : [...(fromServer.evidence ?? [])],
-            staged: local.staged,
-            stagedError: null,
-            uploading: false,
-            issues: [],
-            touched: new Set(local.touched), // 未落账的编辑意图接着带
-          });
-          continue;
-        }
-        // 干净态（dirty=false）：**服务端字段逐字采用，含空值**。旧实现有字段级
-        // 回落（服务端 note 为空就用本地旧值）——那是 dirty 规则出现前的旧机制，
-        // 现在既有害又冗余：别处清空 note/evidence 后切包回来，旧值会复活并被
-        // 下次编辑 PUT 回去（codex 十三审 blocking）。未保存编辑的保护由上面
-        // localWins 分支负责，这里不需要第二套。
-        // staged/uploading 是本地上传中的瞬态、不是服务端数据，保留 local。
+        // 字段级裁定：touched 的字段本地胜出（含清空），没动过的字段服务端逐字
+        // 采用——首载前只改备注也不会丢掉服务端已存的 status/验收人/证据，别处
+        // 保存过该行也不会覆盖本地未落盘的输入。staged/uploading 是本地上传中的
+        // 瞬态、不是服务端数据，保留 local。
         next.set(checkId, {
-          status: fromServer.status,
-          checked_by: fromServer.checked_by ?? '',
-          checked_at: fromServer.checked_at || todayText(),
-          note: fromServer.note ?? '',
-          supersedes: fromServer.supersedes ?? '',
-          evidence: [...(fromServer.evidence ?? [])],
+          status: local.touched.has('status') ? local.status : fromServer.status,
+          checked_by: local.touched.has('checked_by') ? local.checked_by : (fromServer.checked_by ?? ''),
+          checked_at: local.touched.has('checked_at') ? local.checked_at : (fromServer.checked_at || todayText()),
+          note: local.touched.has('note') ? local.note : (fromServer.note ?? ''),
+          supersedes: local.touched.has('supersedes') ? local.supersedes : (fromServer.supersedes ?? ''),
+          evidence: local.touched.has('evidence') ? [...local.evidence] : [...(fromServer.evidence ?? [])],
           staged: local.staged,
           stagedError: null,
           uploading: false,
           issues: [],
-          touched: new Set(local.touched), // 干净态无未存编辑，touched 实际为空
+          touched: new Set(local.touched), // 未落账的编辑意图接着带
         });
-      } else if (!myCheckIds.has(checkId)) {
-        // 别包的缓存条目：原样保留（切包不崩别包的未保存编辑）
-        next.set(checkId, {...local, issues: []});
+        continue;
+      }
+      if (!myCheckIds.has(checkId)) {
+        // 别包的缓存条目：原样保留（切包不崩别包的未保存编辑）。**issues 也保留**
+        // ——那是别包自己 422 的行级错误，本包的重载不该抹掉（codex 二十一审
+        // major：旧实现连 applyIssues 都遍历全表清，B 的红字会被 A 的迟到 422 抹掉）。
+        next.set(checkId, {...local, issues: [...local.issues]});
       } else if (local.touched.size > 0) {
         // 本包、服务端没返回、**这一行有未落账编辑**：本地胜出（用户新建的结果，
         // 或失败周期里改过的行——本地是用户当前真相，含删空）。
@@ -1446,7 +1466,14 @@ export class ScheduleDetailPanel {
       list.push(issue);
       byCheck.set(key, list);
     }
-    for (const state of this.draftResults.values()) state.issues = [];
+    // 只清**本包**各行的 issues（2026-11-03 codex 二十一审 major）：draftResults
+    // 按包混放，旧实现遍历全表清空——B 已经显示的行级校验原因会被迟到的 A 包 422
+    // 响应抹掉，而 B 的失败提示还叫业主「见各行红字」，红字已经没了。
+    const pkg = this.payload?.packages.find((item) => item.id === packageId);
+    for (const check of pkg?.checks ?? []) {
+      const state = this.draftResults.get(check.id);
+      if (state) state.issues = [];
+    }
     for (const [checkId, list] of byCheck) {
       const state = this.draftResults.get(checkId);
       if (state) state.issues = list;
@@ -1577,6 +1604,9 @@ export class ScheduleDetailPanel {
       return;
     }
     const versionAtStart = run.draftVersion;
+    // 结论的控制源指纹（请求时点）：响应回头时指纹变过 = 结论是按旧控制源算的，
+    // 与版本号变过同等作废（codex 二十一审 blocking）
+    const controlFingerprintAtStart = this.controlFingerprintOf(packageId);
     run.gatesLoading = true;
     run.gatesError = null;
     this.updateAcceptanceBar(packageId);
@@ -1592,15 +1622,19 @@ export class ScheduleDetailPanel {
       // A 的卡点结果会显示在 B 的面板里——codex 五/六审同类型）。
       // 同包旧响应作废：请求发出后草稿又变过（版本号对不上，含「内容没变的重载」
       // 也 bump 版本）——结论基于旧草稿算的，提交读的却是新草稿（codex 八审）。
+      // 控制源指纹变过同理：服务端按当前指纹重新生成记录，旧结论代表不了将写入
+      // 的内容（codex 二十一审 blocking）。
       // 作废只置 stale 不写结论；**重绘统一在 finally 之后**——在 try 里重绘会早于
       // finally 清 loading，画面仍显示「执行中」，return 又跳过尾部重绘，按钮卡死
       // （codex 十一审 major：十审修法的顺序错在这里）。
-      if (run.draftVersion !== versionAtStart) {
+      if (run.draftVersion !== versionAtStart || this.controlFingerprintOf(packageId) !== controlFingerprintAtStart) {
         stale = true;
       } else if (!response.ok) {
         throw new Error(data.error ?? `HTTP ${response.status}`);
       } else {
         run.gates = {ok: Boolean(data.ok), gates: Array.isArray(data.gates) ? data.gates : []};
+        // 结论落账：记下它对应的控制源指纹，快照重拉后对不上即作废（二十一审 blocking）
+        run.controlFingerprint = controlFingerprintAtStart;
         if (!run.gates.ok) {
           run.dryRun = null;
           run.dryRunError = null;
@@ -1608,7 +1642,7 @@ export class ScheduleDetailPanel {
         }
       }
     } catch (err) {
-      if (run.draftVersion !== versionAtStart) stale = true;
+      if (run.draftVersion !== versionAtStart || this.controlFingerprintOf(packageId) !== controlFingerprintAtStart) stale = true;
       else run.gatesError = err instanceof Error ? err.message : String(err);
     } finally {
       run.gatesLoading = false;
@@ -1633,6 +1667,9 @@ export class ScheduleDetailPanel {
       return;
     }
     const versionAtStart = run.draftVersion;
+    // 结论的控制源指纹（请求时点）：回头对不上 = 结论是按旧控制源算的，作废
+    // （codex 二十一审 blocking，同 runGates）
+    const controlFingerprintAtStart = this.controlFingerprintOf(packageId);
     run.dryRunLoading = true;
     run.dryRunError = null;
     this.updateAcceptanceBar(packageId);
@@ -1648,12 +1685,14 @@ export class ScheduleDetailPanel {
         dry_run?: boolean; records?: AuditRecordProjection[]; pr_body?: string; error?: string; gates?: GateView[];
       };
       // 按包落账（根治前写面板级共享字段，A 的预演结果会显示在 B 面板里）；
-      // 同包旧响应作废（版本号校验，理由同 runGates——codex 八审 blocking）
-      if (run.draftVersion !== versionAtStart) {
+      // 同包旧响应作废（版本号校验，理由同 runGates——codex 八审 blocking）；
+      // 控制源指纹变过同理（二十一审 blocking）
+      if (run.draftVersion !== versionAtStart || this.controlFingerprintOf(packageId) !== controlFingerprintAtStart) {
         stale = true;
       } else if (response.status === 422 && Array.isArray(data.gates)) {
         // 卡点不过：把返回的 gates 回填卡点区，不留在「预演失败」的迷雾里
         run.gates = {ok: false, gates: data.gates};
+        run.controlFingerprint = controlFingerprintAtStart;
         run.dryRun = null;
         run.submitArmed = false;
         run.dryRunError = data.error ?? '机械卡点未通过';
@@ -1665,9 +1704,11 @@ export class ScheduleDetailPanel {
         run.submitArmed = false;
         run.submitResult = null;
         run.submitError = null;
+        // 结论落账：记下控制源指纹，快照重拉后对不上即作废（二十一审 blocking）
+        run.controlFingerprint = controlFingerprintAtStart;
       }
     } catch (err) {
-      if (run.draftVersion !== versionAtStart) stale = true;
+      if (run.draftVersion !== versionAtStart || this.controlFingerprintOf(packageId) !== controlFingerprintAtStart) stale = true;
       else run.dryRunError = err instanceof Error ? err.message : String(err);
     } finally {
       run.dryRunLoading = false;
