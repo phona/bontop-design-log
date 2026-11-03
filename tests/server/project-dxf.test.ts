@@ -99,6 +99,50 @@ test('project-dxf: wall_region 沿墙插值出子线段（along [0,2] → x 0~20
   assert.deepEqual(tileLines, [[0, 0, 2000, 0]]);
 });
 
+test('project-dxf: 饰面标注用声明的顶标高（height 是顶标高不是带高，codex 审 blocking）', () => {
+  const input = baseInput();
+  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).bottom = 0.77;
+  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).height = 1.10;
+  const result = buildProjectDxf(input);
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.WFIN_TILE[0]);
+  assert.ok(texts.some((e) => e['1'] === 'tile_n 0.77~1.10m'), JSON.stringify(texts.map((e) => e['1'])));
+});
+
+test('project-dxf: wall_run 实体墙进 A-WALL（开放折线 + 高度标注，codex 审 blocking）', () => {
+  const input = baseInput();
+  input.house.sceneElements.push({ type: 'wall_run', id: 'vanity_halfwall', points: [{ x: 1, z: 2 }, { x: 1, z: 3 }], height: 1.05 });
+  const result = buildProjectDxf(input);
+  const entities = parseEntities(result.dxf);
+  // 两点 wall_run = 1 条线（不闭合），另含原墙两条切分段
+  const wallLines = linesOn(entities, DXF_LAYERS.WALL[0]);
+  assert.deepEqual(wallLines[2], [1000, -2000, 1000, -3000]);
+  assert.ok(entities.some((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.WALL[0] && e['1'] === 'vanity_halfwall H1.05'));
+});
+
+test('project-dxf: wall_region along 超出墙长 → 显形告警不导出（与 3D unsupported 同口径）', () => {
+  const input = baseInput();
+  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).along = [0, 5];
+  const result = buildProjectDxf(input);
+  assert.ok(result.warnings.some((w) => w.includes('tile_n') && w.includes('超出墙')));
+  assert.equal(result.stats[DXF_LAYERS.WFIN_TILE[0]], undefined);
+});
+
+test('project-dxf: 带 segments 细分的墙，wall_region 沿折线链插值（不按主线直插）', () => {
+  const input = baseInput();
+  // 墙拆成两段细分：0→1m 与 1→4m（几何共线，插值结果应与主线一致）；把第二段整体平移 1m 南
+  // 制造折线差异：along [3,4] 应落在平移后的第二段上，而不是主线直插位置。
+  (input.house.sceneElements[0] as Extract<SceneElement, { type: 'wall' }>).segments = [
+    { x1: 0, z1: 0, x2: 1, z2: 0 },
+    { x1: 1, z1: 1, x2: 4, z2: 1 },
+  ];
+  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).along = [3, 4];
+  const result = buildProjectDxf(input);
+  const tileLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.WFIN_TILE[0]);
+  // 链：段1 (0,0)→(1,0) 长 1；段2 (1,1)→(4,1) 长 3。along 3 → 段2 上 (3,1)，along 4 → (4,1)。
+  // 主线直插会得 (3,0)/(4,0)（y=0），折线链插值得 (3,1)/(4,1)（y=-1000）——断言区分两者。
+  assert.deepEqual(tileLines, [[3000, -1000, 4000, -1000]]);
+});
+
 test('project-dxf: wall_region 引用不存在的墙 → warning 显形，不抛', () => {
   const input = baseInput();
   (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_missing';
@@ -142,6 +186,50 @@ test('project-dxf: plumbing / mep 缺失时图层为空 + warning；给足时落
   assert.equal(withAll.stats[DXF_LAYERS.P_POINTS[0]], 2);
   // 路由折线一段 + 标注文字一条 = 2 个实体
   assert.equal(withAll.stats[DXF_LAYERS.M_ROUTE[0]], 2);
+});
+
+test('project-dxf: 候选/需求示意管路隔离到 M-CAND 并告警，不进 M-ROUTE（codex 审 blocking）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: {
+        version: '1', status: 'ok',
+        layers: {},
+        routes: [
+          { id: 'r_phys', layer: 'condensate' as never, status: 'confirmed' as never, from: { x: 1, z: 1 }, to: { x: 3, z: 1 }, via: [] },
+          { id: 'r_cand', layer: 'condensate' as never, status: 'pending' as never, route_kind: 'candidate', from: { x: 0, z: 0 }, to: { x: 2, z: 0 }, via: [] },
+        ],
+        junctions: [],
+      } as never,
+      sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
+    },
+  });
+  assert.equal(result.stats[DXF_LAYERS.M_ROUTE[0]], 2); // 只有 r_phys
+  assert.equal(result.stats[DXF_LAYERS.M_CAND[0]], 2); // r_cand 折线 + 标注
+  assert.ok(result.warnings.some((w) => w.includes('r_cand') && w.includes('M-CAND')));
+  const candTexts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.M_CAND[0]);
+  assert.ok(candTexts.some((e) => (e['1'] ?? '').includes('非放线依据')));
+});
+
+test('project-dxf: 内机 anchor 经 ref:ceiling 解析进 M-HVAC，解析不了显式告警（codex 审 blocking）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: { version: '1', status: 'ok', layers: {}, routes: [], junctions: [] } as never,
+      sources: {
+        electrical: [], plumbing: [], outdoor: [],
+        ceiling: [{ id: 'ac_living', room: 'living', type: 'ac_indoor' as never, x: 10.3, z: 4.75 } as never],
+        hvacAnchors: [
+          { id: 'indoor_living', status: 'confirmed' as never, system: 'refrigerant' as never, ref: { source: 'ceiling', id: 'ac_living' } } as never,
+          { id: 'indoor_lost', status: 'confirmed' as never, system: 'refrigerant' as never, ref: { source: 'ceiling', id: 'ac_missing' } } as never,
+        ],
+        hvacTerminals: [],
+      } as never,
+    },
+  });
+  // indoor_living 解析成功：圆 + 标注；indoor_lost 显形告警
+  assert.equal(result.stats[DXF_LAYERS.M_HVAC[0]], 2);
+  assert.ok(result.warnings.some((w) => w.includes('indoor_lost')));
 });
 
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
