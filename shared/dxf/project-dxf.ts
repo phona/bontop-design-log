@@ -14,7 +14,7 @@ import { FURNITURE_DIMS, type CeilingZone, type ElectricalPoint, type Furnishing
 import { type MepCoordination, type MepEndpointSources, mepRoutePoints, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
 import { centerlineSamples } from '../arc-polyline.js';
 import { resolveFurniturePlacement } from '../furniture-placement.js';
-import { pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
+import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
 import { DxfWriter } from './dxf-writer.js';
 
 /** 图层清单（ASCII；CAD 侧按专业开关）。颜色为 ACI 色号。 */
@@ -369,8 +369,12 @@ function emitElectrical(
     const layer = electricalLayer(point.type);
     writer.addCircle(layer[0], x, y, POINT_RADIUS_MM);
     const suffix = notUsable ? ` ${restrict.blocked}` : pendingPos ? ` ${restrict.pending}` : '';
+    // count（多联插座底盒数）与 wall_side（安装面）必须随图交付（codex 四审 blocking/major）：
+    // 缺 count 施工方会漏配底盒；缺 wall_side 共墙两侧交底会装错面。
+    const countText = point.count && point.count > 1 ? ` x${point.count}` : '';
+    const sideText = point.wallSide ? ` ${point.wallSide}` : '';
     writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(`${point.id} ${point.type}${point.height !== undefined ? ` H${point.height}` : ''}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));
+      label(`${point.id} ${point.type}${point.height !== undefined ? ` H${point.height}` : ''}${countText}${sideText}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));
     if (notUsable) {
       warnings.push(`electrical ${point.id}: serviceability ${point.serviceability_status}（H${point.height ?? '?'} 落点不可用，不得按普通点施工）`);
     } else if (pendingPos) {
@@ -431,32 +435,32 @@ function emitFloorAndWallFinishes(
         warnings.push(`${element.type} ${element.id}: along [${from}, ${to}] 超出墙 ${element.wall} 长度 ${total.toFixed(3)}，未导出`);
         continue;
       }
-      const startPoint = pointAlongPolyline(chain, from);
-      const endPoint = pointAlongPolyline(chain, to);
-      if (!startPoint || !endPoint) {
-        warnings.push(`${element.type} ${element.id}: along 插值失败（墙 ${element.wall}），未导出`);
-        continue;
-      }
       const layer = element.type === 'wall_region'
         ? DXF_LAYERS.WFIN_TILE
         : element.type === 'paint_region' ? DXF_LAYERS.WFIN_PAINT : DXF_LAYERS.SKIRT;
+      // 沿折线链逐段裁剪（codex 四审 blocking，与 3D clipAlongSpan 同口径）：区间跨转角时
+      // 保留全部墙段，不连起终点弦；每段独立画线。
+      const clipped = clipAlongSpan(chain, from, to);
+      if (clipped.length === 0) {
+        warnings.push(`${element.type} ${element.id}: 区间 [${from}, ${to}] 裁剪后为空（墙 ${element.wall}），未导出`);
+        continue;
+      }
       // 踢脚线按墙洞切分（codex 三审 blocking，与 3D skirting 分支同口径）：skirting_region
       // 在门洞处实扣断开，不横穿门口；wall_region/paint_region 的 3D 分支不扣洞，DXF 同口径不扣。
-      const span = { x1: startPoint.x, z1: startPoint.z, x2: endPoint.x, z2: endPoint.z };
-      const pieces = element.type === 'skirting_region' && wall.openings?.length
-        ? splitSegmentByOpenings(span, wall.openings)
-        : [span];
-      if (pieces.length === 0) {
+      const spans = element.type === 'skirting_region' && wall.openings?.length
+        ? clipped.flatMap((piece) => splitSegmentByOpenings({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }, wall.openings!))
+        : clipped.map((piece) => ({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }));
+      if (spans.length === 0) {
         warnings.push(`${element.type} ${element.id}: 区间被洞口完全覆盖（墙 ${element.wall}），未导出`);
         continue;
       }
-      for (const piece of pieces) {
-        writer.addLine(layer[0], ...toDxf(piece.x1, piece.z1), ...toDxf(piece.x2, piece.z2));
+      for (const span of spans) {
+        writer.addLine(layer[0], ...toDxf(span.x1, span.z1), ...toDxf(span.x2, span.z2));
       }
       // height 是**顶标高**（SceneBuilder 按 height - bottom 建带高），不是带高——标注直接用声明顶标高。
       const bottom = element.bottom ?? 0;
       const topText = element.height !== undefined ? element.height.toFixed(2) : '?';
-      const [ax, ay] = toDxf(pieces[0].x1, pieces[0].z1);
+      const [ax, ay] = toDxf(spans[0].x1, spans[0].z1);
       writer.addText(layer[0], ax, ay + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
         label(`${element.id} ${bottom.toFixed(2)}~${topText}m`, element.id));
     }

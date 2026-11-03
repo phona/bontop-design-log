@@ -362,6 +362,43 @@ test('project-dxf: ascii 模式保留英文限制短语，关键施工限制不�
   assert.ok(!dxf.includes('禁止开槽'));
 });
 
+test('project-dxf: 电气标注带多联数量 xN 与安装墙侧（codex 四审 blocking/major）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    house: {
+      ...baseInput().house,
+      electrical: [
+        { id: 'sock_tv', room: 'living', type: 'socket', x: 1, z: 0, height: 0.3, count: 4, wallSide: 'east' },
+        { id: 'sock_one', room: 'living', type: 'socket', x: 2, z: 0 },
+      ] as never,
+    },
+  });
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.E_POWER[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('sock_tv') && (e['1'] ?? '').includes('x4') && (e['1'] ?? '').includes('east')));
+  // 单联无 count 后缀
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('sock_one') && !(e['1'] ?? '').includes(' x')));
+});
+
+test('project-dxf: 折线墙饰面逐段输出，不连起终点弦（codex 四审 blocking）', () => {
+  const input = baseInput();
+  // L 形墙：水平段 (0,0)→(2,0) 长 2 + 竖直段 (2,0)→(2,2) 长 2。区间 [1,3] 跨转角：
+  // 逐段 = 水平 (1,0)→(2,0) + 竖直 (2,0)→(2,1)；弦线 = (1,0)→(2,1) 斜线（错误）。
+  input.house.sceneElements[0] = { type: 'wall', id: 'w_l', x1: 0, z1: 0, x2: 2, z2: 0 };
+  (input.house.sceneElements[0] as Extract<SceneElement, { type: 'wall' }>).segments = [
+    { x1: 0, z1: 0, x2: 2, z2: 0 },
+    { x1: 2, z1: 0, x2: 2, z2: 2 },
+  ];
+  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_l';
+  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).along = [1, 3];
+  const result = buildProjectDxf(input);
+  const tileLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.WFIN_TILE[0]);
+  assert.equal(tileLines.length, 2);
+  assert.ok(tileLines.some(([x1, y1, x2, y2]) => x1 === 1000 && y1 === 0 && x2 === 2000 && y2 === 0), JSON.stringify(tileLines));
+  assert.ok(tileLines.some(([x1, y1, x2, y2]) => x1 === 2000 && y1 === 0 && x2 === 2000 && y2 === -1000), JSON.stringify(tileLines));
+  // 不存在斜弦 (1000,0)→(2000,-1000)
+  assert.ok(!tileLines.some(([x1, y1, x2, y2]) => x1 === 1000 && y1 === 0 && x2 === 2000 && y2 === -1000));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });

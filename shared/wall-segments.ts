@@ -75,3 +75,32 @@ export function pointAlongPolyline(segments: readonly SceneSegment[], distance: 
 export function polylineLength(segments: readonly SceneSegment[]): number {
   return segments.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
 }
+
+/**
+ * 沿折线链裁剪 [from, to] 区间，保留区间内的全部墙段（转角处逐段输出，不连弦）。
+ * 原实现自 render/SceneBuilder.ts 抽出（2026-11-03，DXF 出图共用同一裁剪口径）。
+ */
+export function clipAlongSpan(
+  segments: readonly SceneSegment[],
+  from: number,
+  to: number,
+): Array<{ a: { x: number; z: number }; b: { x: number; z: number } }> {
+  const clipped: Array<{ a: { x: number; z: number }; b: { x: number; z: number } }> = [];
+  const total = polylineLength(segments);
+  let cursor = 0;
+  const lo = Math.max(0, from), hi = Math.min(total, to);
+  for (const segment of segments) {
+    const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
+    if (length <= 1e-9) continue;
+    const s0 = cursor, s1 = cursor + length;
+    cursor = s1;
+    const a = Math.max(lo, s0), b = Math.min(hi, s1);
+    if (b - a <= 1e-9) continue;
+    const t0 = (a - s0) / length, t1 = (b - s0) / length;
+    clipped.push({
+      a: { x: segment.x1 + (segment.x2 - segment.x1) * t0, z: segment.z1 + (segment.z2 - segment.z1) * t0 },
+      b: { x: segment.x1 + (segment.x2 - segment.x1) * t1, z: segment.z1 + (segment.z2 - segment.z1) * t1 },
+    });
+  }
+  return clipped;
+}

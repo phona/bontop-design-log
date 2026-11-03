@@ -14,7 +14,7 @@ import {
   buildWardrobe180,
 } from './FixtureFactory.js';
 import { computeWallFaceSpans, createLineMesh, createPolygonGeometry, setSceneObjectMetadata, splitSegmentByOpenings, wallFaceSlots } from '../three-scene-geometry.js';
-import { pointAlongPolyline, polylineLength } from '../wall-segments.js';
+import { clipAlongSpan, pointAlongPolyline, polylineLength } from '../wall-segments.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { curtainRibbonShape, curtainShape, gatheredCurtainSegments, offsetCurtainPointsInterior, roundedShape } from './CurtainGeometry.js';
 import { buildBaySillGeometry } from './BaySillGeometry.js';
@@ -185,27 +185,6 @@ function applyPlanFootprint(mesh: THREE.Mesh): void {
  * 这里按折线逐段裁剪，返回的每段都是墙上真实的一段直线，调用方逐段出网即可。
  * 直墙只有一段（不拆）；只有沿墙区间跨越多个折线段时才拆。
  */
-function clipAlongSpan(polyline: WallSegment[], from: number, to: number): Array<{ a: Point; b: Point }> {
-  const clipped: Array<{ a: Point; b: Point }> = [];
-  const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
-  let cursor = 0;
-  const lo = Math.max(0, from), hi = Math.min(total, to);
-  for (const segment of polyline) {
-    const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
-    if (length <= 1e-9) continue;
-    const s0 = cursor, s1 = cursor + length;
-    cursor = s1;
-    const a = Math.max(lo, s0), b = Math.min(hi, s1);
-    if (b - a <= 1e-9) continue;
-    const t0 = (a - s0) / length, t1 = (b - s0) / length;
-    clipped.push({
-      a: { x: segment.x1 + (segment.x2 - segment.x1) * t0, z: segment.z1 + (segment.z2 - segment.z1) * t0 },
-      b: { x: segment.x1 + (segment.x2 - segment.x1) * t1, z: segment.z1 + (segment.z2 - segment.z1) * t1 },
-    });
-  }
-  return clipped;
-}
-
 function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'frostedPrivacy' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass' | 'hingedGlassDoorFrame' | 'hingedGlassDoorGlass'>> {
   return {
     wall: ({ shaft }) => new THREE.MeshStandardMaterial({ color: shaft ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
