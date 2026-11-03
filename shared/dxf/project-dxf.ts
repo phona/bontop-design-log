@@ -13,7 +13,8 @@
 import { FURNITURE_DIMS, type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type PlumbingPoint, type RoomLayout, type SceneElement } from '../types.js';
 import { type MepCoordination, type MepEndpointSources, mepRoutePoints, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
 import { centerlineSamples } from '../arc-polyline.js';
-import { resolveFurniturePlacement } from '../furniture-placement.js';
+
+import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, resolveFurniturePlacement } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
 import { DxfWriter } from './dxf-writer.js';
 
@@ -339,6 +340,12 @@ function emitFurniture(
     : []);
   for (const [roomId, items] of Object.entries(furnishings)) {
     for (const item of items) {
+      // 协调示意代理件不进家具图层（codex 十一审 blocking）：冷凝水几何已由 M-CAND 路线表达，
+      // 且此类条目的 x 是端点/路径锚不是矩形中心，居中外框会漂移（wardrobe_entry 实测 0.6m）。
+      if (COORDINATION_SCHEMATIC_FURNITURE_TYPES.has(item.type)) {
+        warnings.push(`furniture ${roomId}:${item.type}: 协调示意件（冷凝水走向代理），DXF 不画——几何以 M-CAND 候选路线为准`);
+        continue;
+      }
       const placement = resolveFurniturePlacement(item, wallSegments);
       if (!placement) continue; // count-only 条目，无平面几何（口径见 AGENTS.md furnishings 条目）
       const dims = FURNITURE_DIMS[item.type];
@@ -399,8 +406,10 @@ function emitElectrical(
     // 缺 count 施工方会漏配底盒；缺 wall_side 共墙两侧交底会装错面。
     const countText = point.count && point.count > 1 ? ` x${point.count}` : '';
     const sideText = point.wallSide ? ` ${point.wallSide}` : '';
+    // 柜面安装件（codex 十一审 major）：宿主柜体与安装面必须随图，否则无法判断固定在哪件柜、哪一面。
+    const mountText = point.mountAnchor ? ` M=${point.mountAnchor.furnitureId}/${point.mountAnchor.face}` : '';
     writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(`${point.id} ${point.type}${mountElev !== undefined ? ` H${mountElev}` : ''}${countText}${sideText}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));
+      label(`${point.id} ${point.type}${mountElev !== undefined ? ` H${mountElev}` : ''}${countText}${sideText}${mountText}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));
     if (notUsable) {
       warnings.push(`electrical ${point.id}: serviceability ${point.serviceability_status}（H${mountElev ?? '?'} 落点不可用，不得按普通点施工）`);
     } else if (pendingPos) {
