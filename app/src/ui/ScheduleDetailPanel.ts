@@ -82,6 +82,77 @@ type SaveStatus =
   | {kind: 'saved'; at: string}
   | {kind: 'error'; message: string};
 
+/** 一个包的草稿保存态（跨包响应互不可见的数据基础）。 */
+interface SaveRecord {
+  status: SaveStatus;
+  /** 有未保存编辑（保存失败也保持）。applyDraft 据此裁定本地/服务端谁胜出。 */
+  dirty: boolean;
+  /** 包级 422 issues（check_id='*'）；行级挂在 CheckDraftState.issues。 */
+  issues: DraftIssue[];
+}
+
+/**
+ * 一个包的保存/提交运行态（2026-11-03 codex 七审后结构性根治，十六审补全写路径门）。
+ * 根治前保存定时器与卡点/预演/提交四件套全是**面板级单槽**——包 A 的响应晚于
+ * 切包就写进包 B 的显示（五审跨包污染、六审清空门禁的同类）。现按包各一份，
+ * 跨包响应在数据结构上无处可漏；配合 saveByPkg/saveSeqByPkg（保存态）与
+ * draftSeq（草稿加载），异步写路径全部按包隔离或版本作废。
+ * 面板级单槽只剩 draftPackageId/draftLoading/draftError/draftSeq——它由
+ * draftSeq+draftPackageId 双重校验守旧响应（loadDraft 内 return），是既有
+ * 安全范式；且它只影响「加载中」显示，不落任何包的数据。
+ */
+interface PackageEditState {
+  saveTimer: ReturnType<typeof setTimeout> | null;
+  saveTarget: string | null;
+  /**
+   * 草稿版本号：本地编辑/保存成功/服务端草稿回填都 +1。卡点与预演请求发出时
+   * 记下当时版本，响应回头对不上即作废——**同包**的旧响应不许覆盖新草稿的
+   * 结论（按包隔离只解决跨包，这条解决同包；codex 八审 blocking：A 的预演
+   * 在途→草稿变化作废旧预演→旧响应晚到又把旧预演填回，提交按钮对着旧预览
+   * 重新可用，而真实提交读的是新草稿）。PUT 在途期间版本变过（编辑或合并
+   * 落账），成功回头也不算数——不清 dirty，由后续保存重发（十六审）。
+   */
+  draftVersion: number;
+  /** 上次回填的服务端草稿内容（序列化）：重载时内容没变不作废结论，变了才作废
+   *  （codex 九审 blocking：只 bump 版本拦不住「已落账的旧结论」——另一标签页
+   *  改过服务端草稿后切回来，新草稿加载了但旧预演和提交按钮还亮着）。 */
+  lastServerDraft: string | null;
+  /**
+   * 服务端推进序号（2026-11-03 codex 十六审根治）：**只有保存成功落账才 +1**。
+   * GET 请求发出时记下当时序号，回头对不上=这份响应早于一次已落账的保存，
+   * 看到的是旧服务端内容，必须整份作废（codex 十五审 blocking：旧 GET 回填
+   * 会把刚保存的结果删掉）。序号没变=响应就是当前服务端真相，**哪怕加载期间
+   * 用户编辑过**——编辑 bump 的是 draftVersion 不是 serverSeq，此时丢弃整份
+   * GET 会让客户端从没见过服务端已有条目，下次全量 PUT 把它们永久删掉
+   * （codex 十六审 blocking）。分不清「编辑过」与「保存成功过」正是十五审
+   * 守卫误杀十六审场景的根因，两个序号各管一件事。
+   */
+  serverSeq: number;
+  /**
+   * 完整视图门（codex 十六审 blocking）：该包 draftResults 是否**已知包含
+   * 服务端全部条目**。加载在途/加载失败/从未加载过 = false——此时客户端可能
+   * 没见过服务端已有结果（首开包时GET未落账），而 PUT 是整份覆盖，发出去就会
+   * 把没见过的条目永久删掉。GET 落账（合并回填，或被已落账保存作废）时置 true。
+   * 保存在此门下搁置（saveDeferred）而非丢弃，加载落账后自动重发。
+   */
+  draftComplete: boolean;
+  /** 同包是否有 PUT 在途。两个 body 竞态落账时先发后到的那份会删掉新条目，
+   *  因此在途期间同包新保存一律搁置到它落账（十六审根治）。 */
+  putInFlight: boolean;
+  /** 保存被完整视图门/在途 PUT 搁置过一次：加载落账或 PUT 落账后要重发。 */
+  saveDeferred: boolean;
+  gates: {ok: boolean; gates: GateView[]} | null;
+  gatesLoading: boolean;
+  gatesError: string | null;
+  dryRun: {records: AuditRecordProjection[]; pr_body: string} | null;
+  dryRunLoading: boolean;
+  dryRunError: string | null;
+  submitArmed: boolean;
+  submitting: boolean;
+  submitResult: {branch: string; commit: string; pr_url: string} | null;
+  submitError: {error: string; detail?: unknown} | null;
+}
+
 interface GateView {
   name: string;
   ok: boolean;
@@ -188,75 +259,31 @@ export class ScheduleDetailPanel {
    * 记录，跨包响应互不可见。saveSeq 是请求版本号（仿上方 draftSeq 范式）：
    * 同包的旧响应也不许碰状态。
    */
-  private saveByPkg = new Map<string, {status: SaveStatus; dirty: boolean; issues: DraftIssue[]; editVersion: number}>();
+  private saveByPkg = new Map<string, SaveRecord>();
   /** 每包的保存请求版本号：响应回头时若不是该包最新一轮，结果作废（同包新旧排序）。 */
   private saveSeqByPkg = new Map<string, number>();
 
-  private saveRecordFor(packageId: string): {status: SaveStatus; dirty: boolean; issues: DraftIssue[]; editVersion: number} {
+  private saveRecordFor(packageId: string): SaveRecord {
     let record = this.saveByPkg.get(packageId);
     if (!record) {
-      record = {status: {kind: 'idle'}, dirty: false, issues: [], editVersion: 0};
+      record = {status: {kind: 'idle'}, dirty: false, issues: []};
       this.saveByPkg.set(packageId, record);
     }
     return record;
   }
   /**
-   * 每包的保存/提交运行态（2026-11-03 codex 七审后结构性根治）。
-   * 根治前保存定时器与卡点/预演/提交四件套全是**面板级单槽**——包 A 的响应晚于
-   * 切包就写进包 B 的显示（五审跨包污染、六审清空门禁的同类）。现按包各一份，
-   * 跨包响应在数据结构上无处可漏；配合已有的 saveByPkg/saveSeqByPkg（保存态）
-   * 与 draftSeq（草稿加载），异步写路径全部按包隔离或版本作废。
-   * 唯一保留的单槽是 draftPackageId/draftLoading/draftError/draftSeq——它由
-   * draftSeq+draftPackageId 双重校验守旧响应（loadDraft 内 return），是既有
-   * 安全范式；且它只影响「加载中」显示，不落任何包的数据。
+   * 每包的保存/提交运行态：字段释义见 PackageEditState。跨包响应在数据结构上
+   * 无处可漏；配合 saveByPkg/saveSeqByPkg（保存态）与 draftSeq（草稿加载），
+   * 异步写路径全部按包隔离或版本作废。
    */
-  private pkgRuns = new Map<string, {
-    saveTimer: ReturnType<typeof setTimeout> | null;
-    saveTarget: string | null;
-    /**
-     * 草稿版本号：本地编辑/保存成功/服务端草稿回填都 +1。卡点与预演请求发出时
-     * 记下当时版本，响应回头对不上即作废——**同包**的旧响应不许覆盖新草稿的
-     * 结论（按包隔离只解决跨包，这条解决同包；codex 八审 blocking：A 的预演
-     * 在途→草稿变化作废旧预演→旧响应晚到又把旧预演填回，提交按钮对着旧预览
-     * 重新可用，而真实提交读的是新草稿）。
-     */
-    draftVersion: number;
-    /** 上次回填的服务端草稿内容（序列化）：重载时内容没变不作废结论，变了才作废
-     *  （codex 九审 blocking：只 bump 版本拦不住「已落账的旧结论」——另一标签页
-     *  改过服务端草稿后切回来，新草稿加载了但旧预演和提交按钮还亮着）。 */
-    lastServerDraft: string | null;
-    gates: {ok: boolean; gates: GateView[]} | null;
-    gatesLoading: boolean;
-    gatesError: string | null;
-    dryRun: {records: AuditRecordProjection[]; pr_body: string} | null;
-    dryRunLoading: boolean;
-    dryRunError: string | null;
-    submitArmed: boolean;
-    submitting: boolean;
-    submitResult: {branch: string; commit: string; pr_url: string} | null;
-    submitError: {error: string; detail?: unknown} | null;
-  }>();
+  private pkgRuns = new Map<string, PackageEditState>();
 
-  private runFor(packageId: string): {
-    saveTimer: ReturnType<typeof setTimeout> | null;
-    saveTarget: string | null;
-    draftVersion: number;
-    lastServerDraft: string | null;
-    gates: {ok: boolean; gates: GateView[]} | null;
-    gatesLoading: boolean;
-    gatesError: string | null;
-    dryRun: {records: AuditRecordProjection[]; pr_body: string} | null;
-    dryRunLoading: boolean;
-    dryRunError: string | null;
-    submitArmed: boolean;
-    submitting: boolean;
-    submitResult: {branch: string; commit: string; pr_url: string} | null;
-    submitError: {error: string; detail?: unknown} | null;
-  } {
+  private runFor(packageId: string): PackageEditState {
     let run = this.pkgRuns.get(packageId);
     if (!run) {
       run = {
         saveTimer: null, saveTarget: null, draftVersion: 0, lastServerDraft: null,
+        serverSeq: 0, draftComplete: false, putInFlight: false, saveDeferred: false,
         gates: null, gatesLoading: false, gatesError: null,
         dryRun: null, dryRunLoading: false, dryRunError: null,
         submitArmed: false, submitting: false, submitResult: null, submitError: null,
@@ -589,7 +616,10 @@ export class ScheduleDetailPanel {
       return `<span style="${base}color:#9aa4b2;">草稿加载中…（读 tmp/ 里该包的验收草稿）</span>`;
     }
     if (this.draftError) {
-      return `<span style="${base}color:#f0a9a5;">草稿读取失败：${escapeHtml(this.draftError)}（快照照常显示；保存成功后会重建草稿）</span>`;
+      // 保存在此期间被完整视图门搁置（codex 十六审）：不回填就不放行整份覆盖的
+      // PUT——宁可让「已保存」晚到，不冒删掉没见过条目的险。编辑不丢（内存 +
+      // dirty），重开本包 / refresh 重载成功后自动继续存。
+      return `<span style="${base}color:#f0a9a5;">草稿读取失败：${escapeHtml(this.draftError)}（快照照常显示；保存已暂停，重开本包重载成功后自动继续）</span>`;
     }
     const count = this.selectedCount(packageId);
     if (count === 0) {
@@ -949,33 +979,62 @@ export class ScheduleDetailPanel {
     this.draftError = null;
     this.render();
     const seq = ++this.draftSeq;
-    // 请求发出时的草稿版本：读取期间本地编辑过/保存成功过（版本变过），这份 GET
+    const run = this.runFor(packageId);
+    // 完整视图门落下（codex 十六审 blocking）：加载在途期间不保证见过服务端全部
+    // 条目，而 PUT 是整份覆盖——此时发保存会把没见过的条目永久删掉。保存改走
+    // 搁置（saveDeferred），加载落账后由 maybeResumeSave 重发，不丢编辑。
+    const completeBefore = run.draftComplete;
+    run.draftComplete = false;
+    // 请求发出时的服务端序号：加载在途期间有保存成功落账（序号 +1），这份 GET
     // 看到的就是旧服务端内容——**不能拿它当「服务端删除」的依据**（codex 十五审
-    // blocking：旧 GET 晚到会把刚保存的结果删掉，下次全量 PUT 永久抹掉）。
-    const versionAtRequest = this.runFor(packageId).draftVersion;
-    // 旧读取只置标志、不提前 return——finally 清 loading 后还要靠尾部重绘消掉
-    // 「加载中」（提前 return 会跳过重绘，状态卡在执行中态；十审十一审在运行态
-    // 上犯过同一类错误，这里不重犯）
-    let staleRead = false;
+    // blocking：旧 GET 回填会把刚保存的结果删掉，下次全量 PUT 永久抹掉）。
+    // 序号没变只说明「没有保存落账」，**不**管加载期间用户编辑过没有——编辑过
+    // 也必须合并回填：丢弃整份 GET 会让客户端从没见过服务端已有条目，下次全量
+    // PUT 把它们永久删掉（codex 十六审 blocking）。十五审守卫误用 draftVersion
+    // （编辑/保存/合并都 bump）分不清这两种变化，正是误杀这里的根因；serverSeq
+    // 只有保存落账才 bump，两个序号各管一件事。
+    const serverSeqAtRequest = run.serverSeq;
     try {
       const response = await fetch(`/api/acceptance/draft?package_id=${encodeURIComponent(packageId)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = (await response.json()) as AcceptanceDraft;
-      if (seq !== this.draftSeq || this.draftPackageId !== packageId) return; // 被更新请求取代：它自带渲染
-      if (this.runFor(packageId).draftVersion !== versionAtRequest) staleRead = true;
-      else {
+      if (seq !== this.draftSeq || this.draftPackageId !== packageId) {
+        // 被更新请求取代：它自带渲染与落账。但取代来自**别的包**时，本包视图并没
+        // 被这次加载改动过——还原加载前的完整态，别把本包搁置中的保存永久卡住
+        // （编辑 P→切 Q→退出审批页 flush：P 的 GET 已被取代，永不再有落账事件）。
+        if (this.draftPackageId !== packageId) run.draftComplete = completeBefore;
+        return;
+      }
+      if (run.serverSeq !== serverSeqAtRequest) {
+        // 保存已在加载在途期间落账：那份 PUT 的整份内容即服务端真相，旧 GET 作废
+        // （不回填——干净态逐字采用会把刚保存的结果回退成旧值，十五审的场景）。
+        run.draftComplete = true;
+      } else {
+        // 当前服务端真相：走合并回填（脏条目本地胜出、未见服务端条目原样采纳、
+        // 服务端删了的干净条目丢弃——规则见 applyDraft）。加载期间的编辑由合并
+        // 规则保护，不丢；「旧 GET 删除已有结果」由上面的序号分支守住。
         this.applyDraft(packageId, data.results ?? []);
         this.draftError = null;
+        run.draftComplete = true;
+        // 合并落账时若有 PUT 在途：它的 body 缺这次新见的服务端条目，落账后必须
+        // 重发，否则在途 PUT 会把它们删掉（十六审复现路径的收尾）。
+        if (run.putInFlight) run.saveDeferred = true;
       }
     } catch (err) {
-      if (seq !== this.draftSeq || this.draftPackageId !== packageId) return;
-      if (this.runFor(packageId).draftVersion !== versionAtRequest) staleRead = true;
-      else this.draftError = err instanceof Error ? err.message : String(err);
+      if (seq !== this.draftSeq || this.draftPackageId !== packageId) {
+        if (this.draftPackageId !== packageId) run.draftComplete = completeBefore;
+        return;
+      }
+      // 加载失败：视图仍不完整，保存继续搁置（draftError 有显式提示；重开本包 /
+      // refresh 会重发加载）。不回填、不置 draftComplete——PUT 会删没见过的条目。
+      this.draftError = err instanceof Error ? err.message : String(err);
     } finally {
+      // finally 清 loading，尾部重绘消掉「加载中」（提前 return 会跳过重绘，
+      // 状态卡在执行中态；十审十一审在运行态上犯过同一类错误，这里不重犯）
       if (seq === this.draftSeq && this.draftPackageId === packageId) this.draftLoading = false;
     }
-    void staleRead;
     if (this.selection.get().packageId === packageId) this.render();
+    this.maybeResumeSave(packageId);
   }
 
   /**
@@ -1115,10 +1174,11 @@ export class ScheduleDetailPanel {
   private onDraftChanged(packageId: string): void {
     const record = this.saveRecordFor(packageId);
     record.dirty = true;
-    record.editVersion += 1; // 编辑版本：在途 PUT 成功回头对不上即不许清 dirty
     record.status = {kind: 'idle'};
     record.issues = [];
-    // 本地编辑 = 草稿变化：在途/已有的卡点与预演结论作废（版本号 +1 守迟到响应）
+    // 本地编辑 = 草稿变化：在途/已有的卡点与预演结论作废（版本号 +1 守迟到响应）。
+    // 这个版本号同时是在途 PUT 的成功门（draftVersion 对不上即旧 body 成功不算
+    // 数，十六审）——编辑与合并落账都 bump 它，一套机制覆盖两种变化。
     this.invalidateRunForDraftChange(packageId);
     this.scheduleSave(packageId);
   }
@@ -1182,8 +1242,22 @@ export class ScheduleDetailPanel {
     return results;
   }
 
+  /**
+   * 搁置的保存重发（codex 十六审）：完整视图门/在途 PUT 放行后，把当时搁置的
+   * 保存意图重新排上 debounce——内容在 saveDraft 入口现取，合并新见的服务端
+   * 条目自然进下一份 body。条件不满足就继续搁置：不丢（dirty 与 saveDeferred
+   * 都在），下一个加载落账/PUT 落账事件会再来问一次。
+   */
+  private maybeResumeSave(packageId: string): void {
+    const run = this.runFor(packageId);
+    if (!run.saveDeferred || !run.draftComplete || run.putInFlight) return;
+    run.saveDeferred = false;
+    this.scheduleSave(packageId);
+  }
+
   private async saveDraft(packageId: string): Promise<void> {
     const record = this.saveRecordFor(packageId);
+    const run = this.runFor(packageId);
     const results = this.collectResults(packageId);
     if (results.length === 0) {
       // 没有任何已选状态时绝不 PUT：空 results 会覆盖 tmp/ 里已有草稿
@@ -1191,17 +1265,32 @@ export class ScheduleDetailPanel {
       this.updateSaveUiFor(packageId);
       return;
     }
+    // 写路径两道门（2026-11-03 codex 十六审 blocking 根治）。都是**搁置不丢弃**：
+    // 保存意图留在 dirty + saveDeferred 里，门开后 maybeResumeSave 自动重发，
+    // 业主看到的只是「已保存」晚几百毫秒，编辑不丢、不错删。
+    // ① 完整视图门：草稿未完整载入（加载在途/失败/从未加载）时，客户端可能
+    //    没见过服务端全部条目，而 PUT 是整份覆盖——发出去就把没见过的条目
+    //    （首开包时 GET 还没落账的那些）永久删掉。宁可搁置，不放行错删。
+    // ② 同包串行：已有 PUT 在途时再发一份，两份 body 竞态落账，先发后到的
+    //    那份会把新条目删掉；等它落账后用最新内容重发。
+    if (!run.draftComplete || run.putInFlight) {
+      run.saveDeferred = true;
+      return;
+    }
     // 请求版本号（仿 draftSeq，按包）：响应回头时若不是该包最新一轮，结果作废。
     // 跨包污染由按包记录兜住；版本号只治同包的旧响应迟到（codex 五审 blocking）。
     const seq = (this.saveSeqByPkg.get(packageId) ?? 0) + 1;
     this.saveSeqByPkg.set(packageId, seq);
-    // 编辑版本（codex 九审 blocking）：debounce 窗口内的二次编辑**不产生新请求**，
-    // 序号不变——旧 PUT 成功回头会把新编辑标成已保存并清 dirty，随后切包往返时
-    // applyDraft 因 dirty=false 拿服务端旧值覆盖新编辑。成功只有在「编辑版本没变」
-    // 时才许清 dirty；变了说明这份响应对的是旧内容，新编辑等它的定时器。
-    const editVersionAtStart = record.editVersion;
+    // 视图版本（替代原 editVersion，codex 十六审）：PUT 在途期间本地编辑过、
+    // 或加载落账合并进新见的服务端条目（draftVersion 两种变化都 bump），这份
+    // 响应对应的就是旧 body——**成功也不算数**：不清 dirty，后续保存重发。
+    // 旧实现只查 editVersion（仅编辑 bump），合并落账不 bump 它：在途 PUT 落账
+    // 后 dirty 被清，UI 显示「已保存」而服务端并没有合并新见的那条，下次别的
+    // 编辑才把它 PUT 上去——中间任何刷新都丢它。
+    const draftVersionAtStart = run.draftVersion;
     record.status = {kind: 'saving'};
     this.updateSaveUiFor(packageId);
+    run.putInFlight = true;
     try {
       const response = await fetch('/api/acceptance/draft', {
         method: 'PUT',
@@ -1214,24 +1303,31 @@ export class ScheduleDetailPanel {
       // 内存，业主以为存了。现已双重保险：① 按包记录（跨包响应互不可见，五审）；
       // ② seq 版本号（同包旧响应作废，五审）。渲染侧 updateSaveUiFor 仍有选中
       // 守卫（人走开就不渲染），但状态侧一律落账。
-      if (seq !== this.saveSeqByPkg.get(packageId)) return;
+      if (seq !== this.saveSeqByPkg.get(packageId)) return; // 被更新请求取代：它落账时重发
       if (response.ok && data.ok) {
-        if (record.editVersion !== editVersionAtStart) return; // 旧内容成功：不清新编辑的 dirty
-        record.status = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
-        record.dirty = false;
-        record.issues = [];
-        // 成功分支的清理**按包隔离**（2026-11-03 codex 六审 major）：旧实现遍历全表
-        // draftResults 清 issues + 无条件 resetSubmitState——A 的迟到成功会把 B 行上
-        // 的错误、B 刚跑出的门禁/预演一起抹掉（内存复现：B 的 issues 变空、gates 与
-        // dryRun 均变 null）。只清该包各检查的行 issues；提交态只在当前操作包就是
-        // 该包时重置。
-        const savedPkg = this.payload?.packages.find((item) => item.id === packageId);
-        for (const check of savedPkg?.checks ?? []) {
-          const state = this.draftResults.get(check.id);
-          if (state) state.issues = [];
+        // 服务端已推进到这份 body：此后早于它的 GET 响应都是旧内容（loadDraft
+        // 里十五审守卫的依据）。在途变过的旧 body 也推了服务端——序号照记，
+        // 漏掉的条目由重发补（serverSeq 只表达「保存落账过」，不表达内容新旧）。
+        run.serverSeq += 1;
+        if (run.draftVersion === draftVersionAtStart) {
+          record.status = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
+          record.dirty = false;
+          record.issues = [];
+          // 成功分支的清理**按包隔离**（2026-11-03 codex 六审 major）：旧实现遍历全表
+          // draftResults 清 issues + 无条件 resetSubmitState——A 的迟到成功会把 B 行上
+          // 的错误、B 刚跑出的门禁/预演一起抹掉（内存复现：B 的 issues 变空、gates 与
+          // dryRun 均变 null）。只清该包各检查的行 issues；提交态只在当前操作包就是
+          // 该包时重置。
+          const savedPkg = this.payload?.packages.find((item) => item.id === packageId);
+          for (const check of savedPkg?.checks ?? []) {
+            const state = this.draftResults.get(check.id);
+            if (state) state.issues = [];
+          }
+          // 草稿变了：该包旧卡点/预演/提交结论全部作废（版本号 +1 令在途响应落账时作废）
+          this.invalidateRunForDraftChange(packageId);
         }
-        // 草稿变了：该包旧卡点/预演/提交结论全部作废（版本号 +1 令在途响应落账时作废）
-        this.invalidateRunForDraftChange(packageId);
+        // 视图在途变过（编辑或合并）：dirty 留着——编辑等自己的定时器、合并落账
+        // 时已置 saveDeferred，都由尾部 maybeResumeSave / 定时器重发。
       } else if (response.status === 422 && Array.isArray(data.issues)) {
         this.applyIssues(packageId, data.issues); // 内部已写入该包记录的 issues
         record.status = {kind: 'error', message: `草稿校验没过（${data.issues.length} 条，见各行红字）`};
@@ -1244,8 +1340,13 @@ export class ScheduleDetailPanel {
       if (seq !== this.saveSeqByPkg.get(packageId)) return;
       record.issues = [];
       record.status = {kind: 'error', message: err instanceof Error ? err.message : String(err)};
+    } finally {
+      // 在途标志在所有出口都必须落（finally 包住）：漏清会把同包后续保存
+      // 永久搁置在串行门后（十六审根治的新不变量）。
+      run.putInFlight = false;
     }
     this.updateSaveUiFor(packageId);
+    this.maybeResumeSave(packageId);
   }
 
   /** 422 issues 按 check_id 挂回对应行；check_id 为 '*' 的进包级提示。 */

@@ -557,39 +557,136 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
   });
 
   it('旧 GET 晚到不删刚保存的结果（codex 十五审 blocking 回归）', async () => {
-    // 交错路径：GET 在途 → 编辑 + 保存成功（dirty 清零）→ 旧 GET 带着旧服务端
-    // 内容落地。旧实现让它通过序号检查并 applyDraft，按「服务端没返回=删了」把
-    // 刚保存的结果删掉，下次全量 PUT 永久抹掉。修：GET 回填校验请求期间的草稿
-    // 版本，变过即丢弃。
+    // 交错路径（十六审根治后的形态）：PUT 已发出（完整视图门只在加载在途时关）
+    // → 期间发起重载 → PUT 落账（serverSeq+1）→ 旧 GET 带着保存前的旧服务端内容
+    // 落地。旧实现让它通过序号检查并 applyDraft，按「服务端没返回=删了」把刚保存
+    // 的结果删掉，下次全量 PUT 永久抹掉。修：GET 回填校验请求期间的**服务端序号**
+    // （serverSeq，只有保存落账才 bump；draftVersion 编辑也 bump，分不清会误杀）。
+    let releasePut: () => void = () => {};
+    const putGate = new Promise<void>((resolve) => { releasePut = resolve; });
     let releaseGet: () => void = () => {};
     const getGate = new Promise<void>((resolve) => { releaseGet = resolve; });
     const {panel, calls} = await mountPanel();
-    // 换成手动控制时机的 fetch：GET /api/acceptance/draft 等 gate，其余照常
+    // 换成手动控制时机的 fetch：PUT 等 putGate、GET 等 getGate，其余照常
     const realFetch = globalThis.fetch;
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
       if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET') {
         await getGate;
-        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results: []})} as Response;
+        // 旧服务端内容：SCH-010-01 是 passed（本次保存把它改成了 failed）
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results: [
+          {check_id: 'SCH-010-01', status: 'passed', checked_by: '旧值', checked_at: '2026-11-01'},
+        ]})} as Response;
+      }
+      if (String(url).startsWith('/api/acceptance/draft') && init?.method === 'PUT') {
+        calls.push({url: String(url), method: 'PUT', body: init.body ? JSON.parse(init.body) : undefined});
+        await putGate;
+        return {ok: true, status: 200, json: async () => ({ok: true})} as Response;
       }
       return realFetch(url, init);
     }));
     try {
-      // ① GET 在途（不 resolve）
-      const getPromise = panel['loadDraft']('PKG-010');
-      // ② 在途期间编辑 + 立即保存成功（PUT 先于 GET 落地）
+      // ① 编辑 + flushSave：PUT #1 发出并在途（此时还没发起重载，完整视图门是开的）
       setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
       click('[data-status-btn="SCH-010-01"][data-status="failed"]');
       panel.flushSave();
       await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      // ② 重载加载在途（PUT 未落账）：serverSeqAtRequest=0
+      const getPromise = panel['loadDraft']('PKG-010');
+      // ③ PUT 落账（serverSeq 0→1）后再放旧 GET 落地——它带着保存前的旧内容
+      releasePut();
       await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存'));
-      // ③ 旧 GET 带着空 results 落地——不许删掉刚保存的结果
       releaseGet();
       await getPromise;
       await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).not.toContain('草稿加载中'));
-      expect(document.querySelector('[data-check-status="SCH-010-01"]')?.textContent ?? document.body.textContent).toContain('failed');
-      // ④ 再编辑另一行：PUT 必须仍包含刚保存的那条（没被旧 GET 删掉）
+      // ④ 旧 GET 被序号分支作废：草稿值仍是 failed（没被回填成 passed/旧检查人）
+      expect(document.querySelector('[data-draft-value="SCH-010-01"]')!.textContent).toContain('failed');
+      // ⑤ 再编辑另一行：PUT 必须仍包含刚保存的那条（没被旧 GET 删掉）
       setInput('[data-checked-at="SCH-010-03"]', '2026-11-02');
       click('[data-status-btn="SCH-010-03"][data-status="passed"]');
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
+      const put = calls.filter((call) => call.method === 'PUT')[1].body as {results: Array<{check_id: string}>};
+      expect(put.results.map((r) => r.check_id).sort()).toEqual(['SCH-010-01', 'SCH-010-03']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('加载期间编辑：晚到的 GET 必须合并回填，保存等加载落账（codex 十六审 blocking 回归）', async () => {
+    // 复现路径（codex 十六审 blocking）：首开包，服务端已有 SCH-010-01 的结果
+    // （C1），用户在 GET 返回前编辑 SCH-010-03（C2）。旧实现在「版本变化」后丢弃
+    // 整份 GET——客户端从没见过 C1，随后 collectResults 只收本地 C2，而 PUT 是
+    // 整份覆盖，C1 被永久删掉。修：GET 按 serverSeq 判陈旧（没保存落账就必须
+    // 合并，编辑不构成丢弃理由）；完整视图门把保存搁置到加载落账后重发。
+    let releaseGet: () => void = () => {};
+    const getGate = new Promise<void>((resolve) => { releaseGet = resolve; });
+    const {panel, calls} = await mountPanel();
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET') {
+        await getGate;
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results: [
+          {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01'},
+        ]})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // ① 重载加载在途（服务端有 C1，尚未返回）
+      const getPromise = panel['loadDraft']('PKG-010');
+      // ② GET 返回前编辑 C2：完整视图门落下——flushSave 也不许发 PUT（旧 bug 在这里
+      //    发出只含 C2 的 body，把 C1 永久删掉）
+      setInput('[data-checked-at="SCH-010-03"]', '2026-11-02');
+      click('[data-status-btn="SCH-010-03"][data-status="passed"]');
+      panel.flushSave();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(calls.filter((call) => call.method === 'PUT').length).toBe(0);
+      // ③ GET 落地：合并回填——C1 原样采纳（服务端真相）、C2 本地编辑胜出；
+      //    保存不丢，自动重发，body 两条都在
+      releaseGet();
+      await getPromise;
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      const put = calls.find((call) => call.method === 'PUT')!.body as {results: Array<{check_id: string; checked_by: string}>};
+      expect(put.results.map((r) => r.check_id).sort()).toEqual(['SCH-010-01', 'SCH-010-03']);
+      // C1 的服务端字段逐字进 UI（不是本地默认空值）
+      expect(put.results.find((r) => r.check_id === 'SCH-010-01')!.checked_by).toBe('业主');
+      await vi.waitFor(() => expect(document.querySelector('[data-draft-value="SCH-010-01"]')!.textContent).toContain('passed'));
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('同包 PUT 串行：在途期间的新保存等它落账后用最新内容重发（codex 十六审根治回归）', async () => {
+    // PUT 是整份覆盖：两份 body 竞态落账时，先发后到的那份会把后一份的新条目
+    // 删掉。修：同包在途期间新保存搁置，落账后以最新内容重发（陈旧成功也不清
+    // dirty——视图在途变过的 body 成功不算数）。
+    let releasePut: () => void = () => {};
+    const putGate = new Promise<void>((resolve) => { releasePut = resolve; });
+    let putCount = 0;
+    const {panel, calls} = await mountPanel();
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && init?.method === 'PUT') {
+        calls.push({url: String(url), method: 'PUT', body: init.body ? JSON.parse(init.body) : undefined});
+        putCount += 1;
+        if (putCount === 1) await putGate; // 第一份在途压住，制造竞态窗口
+        return {ok: true, status: 200, json: async () => ({ok: true})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // ① 编辑 A：PUT #1 发出并在途
+      setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+      click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+      panel.flushSave();
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      // ② 在途期间编辑 B 并 flush：不许发第二份（竞态会删条目）
+      setInput('[data-checked-at="SCH-010-03"]', '2026-11-02');
+      click('[data-status-btn="SCH-010-03"][data-status="failed"]');
+      panel.flushSave();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(calls.filter((call) => call.method === 'PUT').length).toBe(1);
+      // ③ 放行 #1：落账后自动重发，#2 的 body 含 A+B 两条（#1 是只含 A 的旧 body）
+      releasePut();
       await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
       const put = calls.filter((call) => call.method === 'PUT')[1].body as {results: Array<{check_id: string}>};
       expect(put.results.map((r) => r.check_id).sort()).toEqual(['SCH-010-01', 'SCH-010-03']);
