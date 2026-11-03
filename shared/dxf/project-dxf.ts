@@ -121,16 +121,18 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
       // 抽象服务点（codex 二审 blocking）：faucet/drain 的 H 是抽象服务高度，note 明确
       // 「不得按此直接开槽」、待 SKU 冻结；字段态（inferred/pending）同理。标注限制 + 告警，
       // 不删点位（几何是事实，标高不是施工依据）。
-      const notForConstruction = point.construction_status === 'pending'
+      const notForConstruction = point.not_for_construction === true
+        || point.construction_status === 'pending'
         || point.status === 'inferred' || point.status === 'pending'
         || /抽象服务点|不得.{0,6}开槽|不作为施工依据/.test(point.note ?? '');
       const [x, y] = toDxf(point.x, point.z);
       writer.addCircle(DXF_LAYERS.P_POINTS[0], x, y, POINT_RADIUS_MM);
       const heightText = point.height !== undefined ? ` H${point.height}` : '';
+      const sideText = point.wallSide ? ` ${point.wallSide}` : '';
       writer.addText(DXF_LAYERS.P_POINTS[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
         label(notForConstruction
-          ? `${point.id} ${point.type}${heightText} ${restrict.abstract}`
-          : `${point.id} ${point.type}${heightText}`, point.id));
+          ? `${point.id} ${point.type}${heightText}${sideText} ${restrict.abstract}`
+          : `${point.id} ${point.type}${heightText}${sideText}`, point.id));
       if (notForConstruction) {
         warnings.push(`plumbing ${point.id}: 抽象服务点/待核（H${point.height ?? '?'} 非施工标高，禁止直接开槽，待 SKU 冻结与量房）`);
       }
@@ -247,7 +249,7 @@ function emitGlazingAndDoors(writer: DxfWriter, elements: SceneElement[], warnin
       const [start, end] = element.points;
       const hingeIsStart = (element.hinge ?? 'start') === 'start';
       const [hx, hy] = hingeIsStart ? toDxf(start.x, start.z) : toDxf(end.x, end.z);
-      const [ox, oy] = hingeIsStart ? toDxf(end.x, end.z) : toDxf(start.x, end.z);
+      const [ox, oy] = hingeIsStart ? toDxf(end.x, end.z) : toDxf(start.x, start.z);
       writer.addLine(DXF_LAYERS.DOOR[0], hx, hy, ox, oy); // 关闭位门扇
       // 开启位：门扇绕铰链转 90°，方向取 swing 声明（north→-z 即 DXF +y）。
       const vx = ox - hx;
@@ -368,15 +370,17 @@ function emitElectrical(
     const [x, y] = toDxf(point.x, point.z);
     const layer = electricalLayer(point.type);
     writer.addCircle(layer[0], x, y, POINT_RADIUS_MM);
+    // mount_height 是箱底安装标高（强/弱电箱只有 mount_height 无 height），与 height 同席标注。
+    const mountElev = point.height ?? point.mount_height;
     const suffix = notUsable ? ` ${restrict.blocked}` : pendingPos ? ` ${restrict.pending}` : '';
     // count（多联插座底盒数）与 wall_side（安装面）必须随图交付（codex 四审 blocking/major）：
     // 缺 count 施工方会漏配底盒；缺 wall_side 共墙两侧交底会装错面。
     const countText = point.count && point.count > 1 ? ` x${point.count}` : '';
     const sideText = point.wallSide ? ` ${point.wallSide}` : '';
     writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(`${point.id} ${point.type}${point.height !== undefined ? ` H${point.height}` : ''}${countText}${sideText}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));
+      label(`${point.id} ${point.type}${mountElev !== undefined ? ` H${mountElev}` : ''}${countText}${sideText}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));
     if (notUsable) {
-      warnings.push(`electrical ${point.id}: serviceability ${point.serviceability_status}（H${point.height ?? '?'} 落点不可用，不得按普通点施工）`);
+      warnings.push(`electrical ${point.id}: serviceability ${point.serviceability_status}（H${mountElev ?? '?'} 落点不可用，不得按普通点施工）`);
     } else if (pendingPos) {
       warnings.push(`electrical ${point.id}: 位置待核（position_status ${point.position_status ?? point.status}），交底前须复尺`);
     }

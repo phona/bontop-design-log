@@ -399,6 +399,55 @@ test('project-dxf: 折线墙饰面逐段输出，不连起终点弦（codex 四�
   assert.ok(!tileLines.some(([x1, y1, x2, y2]) => x1 === 1000 && y1 === 0 && x2 === 2000 && y2 === -1000));
 });
 
+test('project-dxf: hinge=end 门扇关闭位端点正确（末端铰链回归，codex 五审 blocking）', () => {
+  const input = baseInput();
+  input.house.sceneElements.push({ type: 'hinged_glass_door', id: 'gd_end', points: [{ x: 0, z: 0.8 }, { x: 0, z: 1.6 }], height: 2, swing: 'north', hinge: 'end' });
+  const result = buildProjectDxf(input);
+  const entities = parseEntities(result.dxf);
+  const doorLines = linesOn(entities, DXF_LAYERS.DOOR[0]);
+  // hinge=end：铰链 (0,-1600)，自由端关闭位 (0,-800)——门扇长 800mm（typo 会画成 (0,-1600) 自环）
+  const leaf = doorLines.find(([x1, y1, x2, y2]) => x1 === 0 && y1 === -1600 && x2 === 0 && y2 === -800);
+  assert.ok(leaf, JSON.stringify(doorLines));
+  // 开启弧半径 = 门宽 800mm（typo 时半径 0，addArc 跳过 → gd_end 无弧）。
+  // baseInput 的 gd1（hinge=start）也有一条弧，共 2 条、半径同为 800。
+  const arcs = entities.filter((e) => e.type === 'ARC' && e['8'] === DXF_LAYERS.DOOR[0]);
+  assert.equal(arcs.length, 2);
+  assert.ok(arcs.every((arc) => arc['40'] === '800.0000'));
+});
+
+test('project-dxf: plumbing 显式 not_for_construction 命中禁施工判定（codex 五审 blocking）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    plumbing: [{ id: 'p_nfc', room: 'living', type: 'drain' as never, x: 1, z: 1, height: 0.35, not_for_construction: true }],
+  });
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.P_POINTS[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('p_nfc') && (e['1'] ?? '').includes('SKU')));
+  assert.ok(result.warnings.some((w) => w.includes('p_nfc')));
+});
+
+test('project-dxf: 电箱 mount_height 箱底标高随图交付（codex 五审 major）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    house: {
+      ...baseInput().house,
+      electrical: [
+        { id: 'panel_strong', room: 'living', type: 'strong_panel', x: 1, z: 0, mount_height: 1.65 },
+      ] as never,
+    },
+  });
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.E_POWER[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('panel_strong') && (e['1'] ?? '').includes('H1.65')));
+});
+
+test('project-dxf: plumbing 标注带安装墙侧（codex 五审 major）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    plumbing: [{ id: 'toilet_mb', room: 'living', type: 'toilet' as never, x: 1, z: 1, height: 0.35, wallSide: 'west' } as never],
+  });
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.P_POINTS[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('toilet_mb') && (e['1'] ?? '').includes('west')));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });
