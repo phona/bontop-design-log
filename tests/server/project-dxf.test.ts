@@ -537,6 +537,44 @@ test('project-dxf: ascii 模式吊顶近似说明用英文（codex 七审 major�
   assert.ok(!ascii.dxf.includes('矩形示意'));
 });
 
+test('project-dxf: 共墙双面饰面标注带房间归属且分侧错开（codex 八审 blocking）', () => {
+  const input = baseInput();
+  // 同一墙 w_north 两侧声明：living 侧 0~0.30m、kitchen 侧 0~2.65m（同 along）
+  input.house.rooms.push({ id: 'kitchen', name: '厨房', x: 2, z: -2, width: 3, depth: 2, height: 2.8, type: 'service' });
+  input.house.sceneElements.push(
+    { type: 'wall_region', id: 'tile_balc', wall: 'w_north', room: 'living', along: [0, 1.6], bottom: 0, height: 0.30 },
+    { type: 'wall_region', id: 'tile_gbath', wall: 'w_north', room: 'kitchen', along: [0, 1.6], bottom: 0, height: 2.65 },
+  );
+  const result = buildProjectDxf(input);
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.WFIN_TILE[0]);
+  const balc = texts.find((e) => (e['1'] ?? '').includes('tile_balc'));
+  const gbath = texts.find((e) => (e['1'] ?? '').includes('tile_gbath'));
+  assert.ok(balc && (balc['1'] ?? '').includes('[living]') && (balc['1'] ?? '').includes('0.00~0.30m'));
+  assert.ok(gbath && (gbath['1'] ?? '').includes('[kitchen]') && (gbath['1'] ?? '').includes('0.00~2.65m'));
+  // 分侧：两段文字位置不同（y 或 x 错开）
+  assert.ok(balc && gbath && (balc['20'] !== gbath['20'] || balc['10'] !== gbath['10']));
+});
+
+test('project-dxf: MEP 竖直管段画圆标记 + 标注起终标高（codex 八审 major）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: {
+        version: '1', status: 'ok', layers: {},
+        routes: [{ id: 'drop_bed', layer: 'refrigerant' as never, status: 'confirmed' as never, route_kind: 'physical', from: { x: 1, z: 1, y: 1.30 }, to: { x: 1, z: 1, y: 0.35 }, via: [] }],
+        junctions: [],
+      } as never,
+      sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
+    },
+  });
+  const entities = parseEntities(result.dxf);
+  // 平面零长 → 不出 LINE，出圆标记
+  assert.ok(!entities.some((e) => e.type === 'LINE' && e['8'] === DXF_LAYERS.M_ROUTE[0]));
+  assert.ok(entities.some((e) => e.type === 'CIRCLE' && e['8'] === DXF_LAYERS.M_ROUTE[0]));
+  const texts = entities.filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.M_ROUTE[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('drop_bed') && (e['1'] ?? '').includes('H1.30→0.35')));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });

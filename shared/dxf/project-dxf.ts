@@ -146,7 +146,8 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     }
   }
   emitCeiling(writer, house.ceilingZones, warnings, label, labels);
-  emitFloorAndWallFinishes(writer, house.sceneElements, wallsById, warnings, label);
+  const roomCenters = new Map(house.rooms.map((room) => [room.id, { x: room.x, z: room.z }]));
+  emitFloorAndWallFinishes(writer, house.sceneElements, wallsById, roomCenters, warnings, label);
   if (mep === undefined) {
     warnings.push('mep: 无输入，M-HVAC/M-ROUTE 图层为空（MEP 协调未导出）');
     notes.push('MEP NOT EXPORTED: coordination data unavailable at export time');
@@ -438,6 +439,7 @@ function emitFloorAndWallFinishes(
   writer: DxfWriter,
   elements: SceneElement[],
   wallsById: Map<string, Extract<SceneElement, { type: 'wall' }>>,
+  roomCenters: Map<string, { x: number; z: number }>,
   warnings: string[],
   label: (text: string, fallback?: string) => string,
 ): void {
@@ -496,9 +498,29 @@ function emitFloorAndWallFinishes(
       // height 是**顶标高**（SceneBuilder 按 height - bottom 建带高），不是带高——标注直接用声明顶标高。
       const bottom = element.bottom ?? 0;
       const topText = element.height !== undefined ? element.height.toFixed(2) : '?';
+      // 共墙双面声明（codex 八审 blocking）：线在同一中心线是出图惯例，但标注必须分侧——
+      // 文字沿墙法线朝声明房间侧偏移 300mm + 标注房间归属，两侧做法（如阳台 0.30m / 客卫 2.65m）不再叠印。
+      const side = element.type === 'wall_region' || element.type === 'paint_region' || element.type === 'skirting_region' ? element.room : undefined;
       const [ax, ay] = toDxf(spans[0].x1, spans[0].z1);
-      writer.addText(layer[0], ax, ay + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
-        label(`${element.id} ${bottom.toFixed(2)}~${topText}m`, element.id));
+      let [tx, ty] = [ax, ay + TEXT_HEIGHT_MM];
+      const center = side ? roomCenters.get(side) : undefined;
+      if (center) {
+        const wdx = wall.x2 - wall.x1;
+        const wdz = wall.z2 - wall.z1;
+        const wlen = Math.hypot(wdx, wdz);
+        if (wlen > 1e-9) {
+          const nx = -wdz / wlen;
+          const nz = wdx / wlen;
+          const midX = (wall.x1 + wall.x2) / 2;
+          const midZ = (wall.z1 + wall.z2) / 2;
+          const sideSign = (center.x - midX) * nx + (center.z - midZ) * nz >= 0 ? 1 : -1;
+          tx = ax + sideSign * nx * 300;
+          ty = ay + sideSign * nz * 300 + TEXT_HEIGHT_MM;
+        }
+      }
+      const roomText = side ? ` [${side}]` : '';
+      writer.addText(layer[0], tx, ty, TEXT_HEIGHT_MM,
+        label(`${element.id}${roomText} ${bottom.toFixed(2)}~${topText}m`, element.id));
     }
   }
 }
@@ -535,11 +557,27 @@ function emitMep(
       warnings.push(`mep route ${resolved.route.id}: ${resolved.route.route_kind ?? 'nonphysical'}${resolved.metadata.pendingReview ? '/待复核' : ''}，已隔离至 M-CAND（非放线依据）`);
     }
     const pts = points.map((point) => toDxf(point.x, point.z));
-    writer.addPolyline(layer[0], pts);
+    // 竖直管段（codex 八审 major）：同平面位置升降（如 1.30m 下引 0.35m）在平面投影上是
+    // 零长度线——画不出来。画圆标记替代 + 标注起终标高；有高差的路线一律带 H 起终。
+    const xs = pts.map(([x]) => x);
+    const ys = pts.map(([, y]) => y);
+    const planZero = Math.max(...xs) - Math.min(...xs) < 1e-6 && Math.max(...ys) - Math.min(...ys) < 1e-6;
+    if (planZero) {
+      writer.addCircle(layer[0], pts[0][0], pts[0][1], POINT_RADIUS_MM);
+    } else {
+      writer.addPolyline(layer[0], pts);
+    }
     const first = pts[0];
     const name = resolved.route.label ?? resolved.route.id;
+    const fromY = resolved.from?.y;
+    const toY = resolved.to?.y;
+    const elevText = fromY !== undefined && toY !== undefined && Math.abs(fromY - toY) > 1e-6
+      ? ` H${fromY.toFixed(2)}→${toY.toFixed(2)}`
+      : '';
     writer.addText(layer[0], first[0] + POINT_RADIUS_MM, first[1] + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(candidate ? `${name} ${resolved.route.layer} ${restrict.candidate}` : `${name} ${resolved.route.layer}`, resolved.route.id));
+      label(candidate
+        ? `${name} ${resolved.route.layer}${elevText} ${restrict.candidate}`
+        : `${name} ${resolved.route.layer}${elevText}`, resolved.route.id));
   }
   // junction 随关联路线隔离（codex 二审 major）：汇流节点的 inlet/outlet 路线任一是候选，
   // 节点就跟去 M-CAND——否则关掉候选层会留下看似可放线的孤立正式节点。
