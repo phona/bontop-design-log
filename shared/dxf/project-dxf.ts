@@ -514,8 +514,10 @@ function emitFloorAndWallFinishes(
           const midX = (wall.x1 + wall.x2) / 2;
           const midZ = (wall.z1 + wall.z2) / 2;
           const sideSign = (center.x - midX) * nx + (center.z - midZ) * nz >= 0 ? 1 : -1;
+          // 法线是 local 坐标（y-up，z 南北）；DXF y = -local z，z 分量必须取反（codex 九审 blocking），
+          // 否则横墙两侧标注互换落到对侧房间。
           tx = ax + sideSign * nx * 300;
-          ty = ay + sideSign * nz * 300 + TEXT_HEIGHT_MM;
+          ty = ay + sideSign * (-nz) * 300 + TEXT_HEIGHT_MM;
         }
       }
       const roomText = side ? ` [${side}]` : '';
@@ -569,8 +571,10 @@ function emitMep(
     }
     const first = pts[0];
     const name = resolved.route.label ?? resolved.route.id;
-    const fromY = resolved.from?.y;
-    const toY = resolved.to?.y;
+    // 标高读 mepRoutePoints 生成点首尾（codex 九审 blocking）：实际几何用了
+    // route.from_height/to_height 覆盖端点原始 y，读 resolved.from/to 会标错覆盖值。
+    const fromY = points[0]?.y;
+    const toY = points[points.length - 1]?.y;
     const elevText = fromY !== undefined && toY !== undefined && Math.abs(fromY - toY) > 1e-6
       ? ` H${fromY.toFixed(2)}→${toY.toFixed(2)}`
       : '';
