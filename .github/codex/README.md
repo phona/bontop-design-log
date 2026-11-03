@@ -6,6 +6,12 @@
 
 检查名是 `Codex PR review / codex-pr-review`。本仓库不在这里改分支保护。
 
+## 修复端政策
+
+上一节的行为保持不变：有 `blocking` 就 `REQUEST_CHANGES` 并把检查标红，没有 `blocking` 就 `COMMENT`，不自动 `APPROVE`。不要为了少刷审查去改触发器、concurrency、失败条件或 `render-review.mjs` 的严重级别映射。
+
+编码代理接到审查后怎么改，见 `AGENTS.md`「回应 Codex 审查的铁律」和 `.github/prompts/codex-fix.md`。只自动修 `blocking`（当作 P0/P1）。同一模块上的异步交错、竞态或过期响应不加版本计数器：要么把状态机重做一次，要么在 PR 上留言升级给人。同一主题的 `REQUEST_CHANGES` 计满 3 轮之后，该主题只由人处理。Codex 仍是探测器。
+
 ## 写入 secret
 
 在一台能打开浏览器的可信机器上：

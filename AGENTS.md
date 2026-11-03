@@ -181,3 +181,13 @@ npm run verify:all
 - **进仓的只有终稿与外部原件**：一轮关账时每个视角至多留 1 张终稿图，置于该轮 evidence 的 final 子目录；外部原件（合同、报价、厂家资料、业主提供图，不可再生）正常进仓，并在该轮 brief 登记来源。
 - **关账即瘦身**：review_state 转为 delivery_ready、superseded 或移入 archive 时，收尾动作必须包含把本轮 evidence 压缩到终稿集；删了什么逐条写进 commit message。
 - **一题一文档，退场不建归档目录**：新认知写入既有主题文档，禁止新开散稿；文档退场 = 直接删除 + 在索引留一行墓碑（名称 + 关账结论 + 删除 commit），git 历史即归档，不另建 legacy/archive 目录。新轮次的结构化文件只写单个 round.yaml 一件套（brief/datum/fact_table/objects/review/index 段），不得另加 work-record、evidence-notes 等附属散件；INDEX.yaml 由 `npm run docs:generate-index` 从各轮 round.yaml 的 index 段生成，禁止手改。豁免两轮保留原文件：hvac-resix 的 fact-table/design-datum（facts error 级读者）、mep-lint-governance 的 review-manifest.json（治理基线读者），其余段仍并入 round.yaml 并在 index.exempt_files 注明。
+
+## 回应 Codex 审查的铁律（2026-11-03 增补）
+
+> 由来：PR #60（`feat/approval-route-page`）在 2026-11-03 收到 16 次 Codex review，修复提交从一审跟到十六审。Codex 的 `blocking` 大多成立。失效在修复端：同一条草稿 load/save 状态机上的异步交错被逐洞补上，版本计数器从 `draftSeq` 加到 `saveSeqByPkg`、`draftVersion`、`editVersion`、`lastServerDraft`；中间一次「写路径状态结构性根治」（`pkgRuns`）之后，八审到十六审仍是同一主题的旧响应、脏标记和合并缺口。审查 workflow 继续跑。断环在修复代理。开工前读 `.github/prompts/codex-fix.md`。本段只增加修复端约束，不删除、不放宽上面任一铁律，也不改 `.github/workflows/codex-pr-review.yml`。
+
+1. **只修 `blocking`（P0/P1）。** 编码代理接到 Codex 审查后，只为 `severity: blocking` 提交修复。`major` / `minor` / `nit` 留在审查评论里，给人看或以后再做。`blocking` 在本仓就是修复端的 P0/P1。业主在对话里点名要修的非 blocking 项，按业主的要求做，不算自动跟审。
+
+2. **同一主题不打补丁。** 异步交错、竞态或过期响应类的 `blocking`，用重做或升级作答，不加版本计数器或局部补丁。只许二选一：（a）把状态机重做一次——写清 loading→ready，ready 之前阻塞或排队写，只留一条合并规则；（b）停止改代码，在 PR 上留短评：接受的已知风险、如何验证、升级给人。本 PR 上该模块已经为同一主题打过补丁时，同样不得再加计数器。同一主题的 Codex `REQUEST_CHANGES` 计满 3 轮之后，该主题只由人处理，代理不再为它提交。
+
+3. **Codex 审查保持原样。** `.github/workflows/codex-pr-review.yml` 继续在有 `blocking` 时发 `REQUEST_CHANGES` 并把检查标红；没有 `blocking` 时发 `COMMENT`，不自动 `APPROVE`。`render-review.mjs` 的 `decideEvent` 保持不动。Codex 是探测器。修复端政策见 `.github/codex/README.md` 的「修复端政策」。
