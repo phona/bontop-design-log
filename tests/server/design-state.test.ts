@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { DesignState } from '../../server/design-state.js';
 
@@ -114,5 +114,30 @@ describe('DesignState', () => {
     state.clearCompare();
     assert.equal(state.getCompareArchiveId(), null);
     assert.equal(state.getCompareScheme(), null);
+  });
+  it('updateCatalog 保留 catalog 不建模的 selections 键（skirting 不被热重载删掉并写回仓）', () => {
+    // 2026-11-03 回归（PR #56）：updateCatalog 曾把非 catalog 主题的键静默删除并
+    // persist 回 data/current-scheme.json——一次配置热重载就丢数据，skirting 测试
+    // 当场基线外红。catalog 管不着的键（skirting 由测试与人工维护）必须原样保留。
+    const catalog = ProjectCatalog.load('.');
+    assert.equal(catalog.isValidTopic('skirting'), false, '前提：catalog 确无 skirting 主题');
+    // 预置一份带 skirting 键的 scheme（模拟仓里 current-scheme.json 的现状）
+    const seeded = {
+      updatedAt: '2026-10-12',
+      selections: {
+        ...Object.fromEntries(catalog.getTopics().map((t) => [t.id, { default: t.options[0]?.id ?? null, roomOverrides: {} }])),
+        skirting: { default: 'wall_tile_01', roomOverrides: {} },
+      },
+    };
+    writeFileSync(`${TEST_DATA_DIR}/current-scheme.json`, JSON.stringify(seeded, null, 2));
+    const state = DesignState.load(catalog, TEST_DATA_DIR);
+    assert.deepEqual(state.getCurrentScheme().selections.skirting, { default: 'wall_tile_01', roomOverrides: {} });
+    // 热重载（config 改动都会触发）：skirting 必须活下来，且 persist 不删它
+    state.updateCatalog(catalog);
+    assert.deepEqual(state.getCurrentScheme().selections.skirting, { default: 'wall_tile_01', roomOverrides: {} });
+    const persisted = JSON.parse(readFileSync(`${TEST_DATA_DIR}/current-scheme.json`, 'utf8'));
+    assert.deepEqual(persisted.selections.skirting, { default: 'wall_tile_01', roomOverrides: {} });
+    // 已知主题仍被热重载校验接管（无效 default 回落到首个选项）
+    assert.ok(catalog.isValidOption('hvac', persisted.selections.hvac.default));
   });
 });
