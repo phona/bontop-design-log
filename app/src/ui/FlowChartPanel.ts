@@ -102,7 +102,7 @@ function statusLabelOf(value: string): string {
 
 type GeometryCapability = 'scene' | 'point' | 'project';
 
-/** 点位级选择器（第一步不高亮：点位走合批渲染，逐类核对挪到第三步）。 */
+/** 点位级选择器（已可高亮：点位默认合批渲染，HouseScene.highlightPoints 逐实例着色，未合批单件 emissive 兜底）。 */
 const POINT_SELECTOR_KEYS = new Set(['ids', 'layers', 'trade', 'plan_ids']);
 
 const CAPABILITY_BADGE: Record<GeometryCapability, {label: string; title: string}> = {
@@ -111,8 +111,8 @@ const CAPABILITY_BADGE: Record<GeometryCapability, {label: string; title: string
     title: '该包没有具体 3D 范围选择器（无 link / select all / 未建模）：不占 3D 反查，点节点不会调 3D 高亮',
   },
   point: {
-    label: '点位级·第三步高亮',
-    title: '该包只有 ids/layers/trade/plan_ids 类点位选择器：点位为合批渲染，本步只反查不高亮，点位级高亮在第三步',
+    label: '点位级（可高亮）',
+    title: '该包只有 ids/layers/trade/plan_ids 类点位选择器：点位为合批渲染，已支持逐实例高亮（BatchedMesh.setColorAt；未合批的单件点位走 emissive 兜底）',
   },
   scene: {
     label: '有 3D 范围',
@@ -427,11 +427,13 @@ export class FlowChartPanel {
     if (!this.options.onHighlight) {
       highlightButton = `<button type="button" id="flow-highlight" disabled title="未提供 onHighlight 回调（App 未接线 3D 高亮）" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#8a93a3;font-size:12px;">在 3D 中高亮</button>
          <span style="color:#9aa4b2;font-size:11px;">未接线：本面板没有拿到 3D 高亮回调</span>`;
-    } else if (capability !== 'scene') {
-      highlightButton = `<button type="button" id="flow-highlight" disabled title="${escapeHtml(CAPABILITY_BADGE[capability].title)}" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#8a93a3;font-size:12px;">在 3D 中高亮</button>
-         <span style="color:#9aa4b2;font-size:11px;">${escapeHtml(CAPABILITY_BADGE[capability].label)}：本步不高亮，点节点也不会调 3D 高亮</span>`;
+    } else if (capability === 'project') {
+      // 仅全项目范围禁用：点位级已可高亮（合批实例 setColorAt 逐实例 + 未合批单件 emissive 兜底）
+      highlightButton = `<button type="button" id="flow-highlight" disabled title="${escapeHtml(CAPABILITY_BADGE.project.title)}" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#8a93a3;font-size:12px;">在 3D 中高亮</button>
+         <span style="color:#9aa4b2;font-size:11px;">${escapeHtml(CAPABILITY_BADGE.project.label)}：没有具体 3D 范围，点节点不会调 3D 高亮</span>`;
     } else {
-      highlightButton = `<button type="button" id="flow-highlight" title="${escapeHtml(CAPABILITY_BADGE.scene.title)}" style="cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:12px;">在 3D 中高亮</button>`;
+      // 按钮 title 按能力取各自口径：点位级包的按钮说明逐实例着色，不再借 scene 通用文案
+      highlightButton = `<button type="button" id="flow-highlight" title="${escapeHtml(CAPABILITY_BADGE[capability].title)}" style="cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:12px;">在 3D 中高亮</button>`;
     }
 
     return `<div id="flow-selection-bar" style="margin-top:10px;padding:8px 10px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:rgba(255,255,255,.04);font-size:12px;line-height:1.7;">
@@ -454,8 +456,8 @@ export class FlowChartPanel {
         const packageId = String((node as HTMLElement).dataset.pkgId ?? '');
         if (!packageId) return;
         this.selection.set({packageId, checkId: null});
-        // 有 3D 范围（房间/墙/叠加层区域级）才通知外部高亮；全项目范围与点位级本步不高亮
-        if (capabilityOf(packageId, this.links) === 'scene') this.options.onHighlight?.(packageId);
+        // 有 3D 范围（房间/墙/叠加层区域级）或点位级都通知外部高亮；仅全项目范围不高亮
+        if (capabilityOf(packageId, this.links) !== 'project') this.options.onHighlight?.(packageId);
         this.render();
       });
     }

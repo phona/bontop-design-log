@@ -559,14 +559,15 @@ export class ScheduleDetailPanel {
       unresolved.push(...resolution.unresolved);
       projectScope = projectScope || resolution.projectScope;
     }
-    // 计数与高亮承诺必须同口径（2026-11-02 评审 P1）：点位是合批渲染，本步高亮
-    // 命中不了，单列一段并注明第三步，不混进「对象」充数。
+    // 计数与高亮承诺必须同口径（2026-11-02 评审 P1）：点位已可高亮（合批实例
+    // BatchedMesh.setColorAt 逐实例 + 未合批单件 emissive 兜底），单列一段注明
+    // 实现口径，不混进「对象」充数。
     return `<div style="font-size:12px;line-height:1.8;">
       <div>房间 ${roomIds.size} 个｜对象 ${objectIds.size} 个｜点位 ${pointIds.size} 个${projectScope ? '｜<span style="color:#9b8bd0;">全项目范围</span>' : ''}</div>
       <div style="color:#9aa4b2;font-size:11px;">房间：${escapeHtml([...roomIds].join('、') || '无')}</div>
       <div style="color:#9aa4b2;font-size:11px;">对象：${escapeHtml([...objectIds].join('、') || '无')}</div>
-      <div style="color:#9aa4b2;font-size:11px;">点位：${escapeHtml([...pointIds].join('、') || '无')}${pointIds.size ? '（电气/给排水点位为合批渲染，本步只反查不高亮；点位级高亮在第三步）' : ''}</div>
-      <div style="color:#9aa4b2;font-size:11px;">未展开选择器：${unresolved.length ? escapeHtml([...new Set(unresolved)].join('；')) : '无（本步可高亮房间/墙/叠加层区域级）'}</div>
+      <div style="color:#9aa4b2;font-size:11px;">点位：${escapeHtml([...pointIds].join('、') || '无')}${pointIds.size ? '（电气/给排水点位为合批渲染，已支持逐实例高亮：BatchedMesh.setColorAt）' : ''}</div>
+      <div style="color:#9aa4b2;font-size:11px;">未展开选择器：${unresolved.length ? escapeHtml([...new Set(unresolved)].join('；')) : '无（可高亮房间/墙/叠加层区域级/点位级）'}</div>
     </div>`;
   }
 

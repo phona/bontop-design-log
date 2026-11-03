@@ -1188,8 +1188,10 @@ export class App {
 
   /**
    * 点包 → 3D 高亮该包范围。作用域展开走 shared/package-scope.ts（房间/墙/叠加层
-   * 区域级；点位级选择器本步不展开，UI 在详情页明示）。数据用已在手的
-   * projectData（house.rooms/sceneElements）+ /api/model-package-links。
+   * 区域级 + 点位级：点位默认合批渲染，HouseScene.highlightPoints 按 batchUserData
+   * 逐实例着色、未合批单件走 emissive 兜底；layers/trade/plan_ids 等仍不展开，
+   * UI 在详情页明示）。数据用已在手的 projectData（house.rooms/sceneElements）
+   * + /api/model-package-links。
    */
   private highlightApprovalPackage(packageId: string): void {
     const project = this.projectData as ProjectScopeInput | null;
@@ -1200,17 +1202,22 @@ export class App {
         if (!response.ok) return;
         const links = (await response.json()) as {links?: PackageScopeLink[]};
         // 聚合该包的**全部** link（2026-11-02 评审 P1：曾用 find 只取第一个，
-        // 详情面板显示的范围与实际高亮的范围因此不一致）。点位 id 不进高亮
-        // （合批渲染命中不了，第三步按 batchUserData 桥接）——与详情面板的
+        // 详情面板显示的范围与实际高亮的范围因此不一致）。点位 id 进
+        // highlightPoints（第三步已落地：合批实例 setColorAt 逐实例着色，未合批
+        // 单件在 highlightPoints 内走 emissive 兜底）——与详情面板的
         // 「房间/对象/点位」三段计数同口径。
         const roomIds = new Set<string>();
         const objectIds = new Set<string>();
+        const pointIds = new Set<string>();
         for (const link of (links.links ?? []).filter((item) => (item as {budget_ref?: {id?: string}}).budget_ref?.id === packageId)) {
           const resolution = resolvePackageScope(link, project);
           for (const id of resolution.roomIds) roomIds.add(id);
           for (const id of resolution.objectIds) objectIds.add(id);
+          // 点位：合批渲染走 BatchedMesh.setColorAt 逐实例着色，未合批单件走 emissive 兜底
+          for (const id of resolution.pointIds) pointIds.add(id);
         }
         this.houseScene.highlightObjects([...roomIds, ...objectIds]);
+        if (pointIds.size) this.houseScene.highlightPoints([...pointIds]);
       } catch {
         // 高亮失败不打断审批流（清单与详情仍可读）
       }

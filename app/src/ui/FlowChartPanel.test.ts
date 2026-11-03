@@ -310,7 +310,7 @@ describe('FlowChartPanel', () => {
     expect(node080.textContent).not.toContain('已关闭阻塞');
   });
 
-  it('点节点写选中态并调 onHighlight（有 3D 范围）；全项目范围/点位级不调', async () => {
+  it('点节点写选中态并调 onHighlight（有 3D 范围与点位级）；全项目范围不调', async () => {
     stubFetch();
     const selection = new ScheduleSelectionStore();
     const onHighlight = vi.fn();
@@ -332,14 +332,16 @@ describe('FlowChartPanel', () => {
     expect(onHighlight).not.toHaveBeenCalled();
     expect((document.querySelector('.flow-node[data-pkg-id="PKG-010"]') as HTMLElement).textContent).toContain('全项目范围');
 
-    // 点位级 → 本步不高亮，选中条按钮禁用并注明原因
+    // 点位级（第三步起可高亮：BatchedMesh.setColorAt 逐实例）→ 也调 onHighlight
     onHighlight.mockClear();
     (document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement).click();
-    expect(onHighlight).not.toHaveBeenCalled();
-    expect((document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement).textContent).toContain('点位级·第三步高亮');
+    expect(onHighlight).toHaveBeenCalledWith('PKG-040');
+    expect((document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement).textContent).toContain('点位级（可高亮）');
     const bar = document.querySelector('#flow-selection-bar') as HTMLElement;
-    expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).disabled).toBe(true);
-    expect(bar.textContent).toContain('点位级');
+    expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).disabled).toBe(false);
+    // 按钮 title 取点位级口径（逐实例着色），不再借 scene 通用文案
+    expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).title).toContain('点位');
+    expect((bar.querySelector('#flow-highlight') as HTMLButtonElement).title).toContain('setColorAt');
   });
 
   it('highlightPackages 把传入的全部包都标出，并提示同属 N 个包', async () => {
