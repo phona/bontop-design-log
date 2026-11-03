@@ -652,6 +652,7 @@ describe('App', () => {
     } finally {
       location.hash = '';
     }
+  });
 
   it('exports DXF from toolbar button: blob download named house-YYYYMMDD.dxf', async () => {
     // render-facts / schedule-state 挡 503（start() 前装好）：面板后台刷新拿到 {} 会在 render 崩
