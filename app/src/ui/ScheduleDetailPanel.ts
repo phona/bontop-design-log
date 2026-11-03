@@ -906,19 +906,26 @@ export class ScheduleDetailPanel {
     //  - 本包检查：服务端有值的字段以服务端为准（已保存即事实），为空的保留本地
     //    （未保存编辑不被抹——重试因此拿到失败时的最新草稿）；
     //  - 其他包的条目：原样带过来（换包不崩别包的未保存编辑）。
-    // dirty=true = 该包有未保存编辑（保存失败也保持 dirty）。此时**本地胜出**——
-    // 否则服务端旧值会在回填时把未保存的新编辑吞掉，重试存的就是旧内容
-    // （codex 六审 blocking 的「重试丢失编辑」另一半）。
+    // dirty=true = 该包有未保存编辑（保存失败也保持 dirty）。此时**本地条目整条
+    // 胜出**，不做任何字段级回落——2026-11-03 codex 七审 blocking：六审的
+    // localWins 是逐字段 `trim() 为空就回落服务端`，用户**清空**备注/删掉证据后
+    // 旧值被复活（复现：清空 note 后切包往返，回填恢复旧备注，重试存回旧内容）；
+    // evidence 服务端非空必胜，用户替换证据列表同样被吞。正确规则只有一条：
+    // 这个包有未保存编辑时，本地就是用户当前真相（含「删空」这个意图）。
     const localWins = this.saveRecordFor(packageId).dirty;
     for (const [checkId, local] of this.draftResults) {
       const fromServer = byCheck.get(checkId);
       if (fromServer) {
+        if (localWins) {
+          next.set(checkId, {...local, issues: []});
+          continue;
+        }
         next.set(checkId, {
-          status: localWins && local.status ? local.status : fromServer.status,
-          checked_by: localWins && local.checked_by.trim() ? local.checked_by : (fromServer.checked_by?.trim() ? fromServer.checked_by : local.checked_by),
-          checked_at: localWins && local.checked_at.trim() ? local.checked_at : (fromServer.checked_at?.trim() ? fromServer.checked_at : local.checked_at),
-          note: localWins && local.note.trim() ? local.note : (fromServer.note?.trim() ? fromServer.note : local.note),
-          supersedes: localWins && local.supersedes.trim() ? local.supersedes : (fromServer.supersedes?.trim() ? fromServer.supersedes : local.supersedes),
+          status: fromServer.status,
+          checked_by: fromServer.checked_by?.trim() ? fromServer.checked_by : local.checked_by,
+          checked_at: fromServer.checked_at?.trim() ? fromServer.checked_at : local.checked_at,
+          note: fromServer.note?.trim() ? fromServer.note : local.note,
+          supersedes: fromServer.supersedes?.trim() ? fromServer.supersedes : local.supersedes,
           evidence: (fromServer.evidence?.length ?? 0) > 0 ? [...fromServer.evidence] : local.evidence,
           staged: local.staged,
           stagedError: null,
