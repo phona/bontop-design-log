@@ -2206,38 +2206,43 @@ export class App {
    */
   private async handleExportDxf(): Promise<void> {
     try {
-      const house = this.projectData?.house as
-        | { rooms?: unknown[]; furnishings?: Record<string, unknown[]>; electrical?: unknown[]; ceilingZones?: unknown[]; sceneElements?: unknown[] }
-        | undefined;
-      if (!house) throw new Error('项目数据未加载，无法导出 DXF');
-      const [factsResponse, mepResponse, furnishingsResponse] = await Promise.all([
+      // projectData 缓存不再作为导出输入（十五审）：全部四路拉取失败时仍可导出骨架 + D-NOTES。
+      // 全量新鲜拉取（codex 十二～十五审 blocking 系列）：projectData 是页面加载缓存，
+      // 点位/家具/吊顶/几何的编辑都不回写——导出前重新拉服务端当前状态，杜绝混用新旧数据。
+      const [factsResponse, mepResponse, furnishingsResponse, projectResponse] = await Promise.all([
         fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
-        // 家具直读服务端（codex 十四审 blocking）：projectData 缓存不随拖动保存回写，
-        // /api/furnishings 每次请求直读 house.yaml，是唯一新鲜源（与 CLI 同全案口径）。
+        // /api/furnishings 每次请求直读 house.yaml（与 CLI 同全案口径）。
         fetch('/api/furnishings').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        fetch('/api/project').then((response) => (response.ok ? response.json() : null)).catch(() => null),
       ]);
       const facts = factsResponse as ProjectRenderFacts | null;
       const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
       // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
       const mep = facts?.hvac?.plans && mepPayload ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts) } : undefined;
+      const projectHouse = (projectResponse?.house ?? undefined) as
+        | { rooms?: unknown[]; ceilingZones?: unknown[]; sceneElements?: unknown[] }
+        | undefined;
       // 降级说明随图交付（codex 七审 major）：施工方拿到的 DXF 必须能区分「没设计」和「导出时接口失败」。
-      // 阶段范围随图声明（codex 十一审 major）：web 按当前阶段过滤家具，与 CLI 全案口径不同，图内必须写明。
-      // 家具改全案口径后与 CLI 一致；PHASE 声明随之固定 full（3D 页面可能按阶段渲染，图内注明）。
+      // 家具全案口径后 PHASE 固定 full（3D 页面可能按阶段渲染，图内注明，codex 十一审 major）。
       const notes: string[] = ['PHASE: full (all furnishings; the 3D view may render a phase-filtered subset)'];
-      if (!furnishingsResponse) notes.push('FURNISHINGS NOT EXPORTED: furnishings API failed at export time');
+      // null 规范化为 undefined（codex 十五审 major）：null 会穿透 undefined 判空直接进
+      // Object.entries 抛错，整次导出中止、缺失说明也无法交付。
+      const furnishings = furnishingsResponse ?? undefined;
+      if (!furnishings) notes.push('FURNISHINGS NOT EXPORTED: furnishings API failed at export time');
+      if (!projectHouse) notes.push('GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: project API failed at export time');
       if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
       const result = buildProjectDxf({
         house: {
-          rooms: (house.rooms ?? []) as never,
-          furnishings: furnishingsResponse as never,
-          // 电气用本次拉取的 facts（codex 十二/十三审 blocking）：projectData.house.electrical
-          // 是页面加载缓存，点位编辑后不刷新且无法判断新旧——facts 失败时宁可 E-* 为空并
-          // 在 D-NOTES 声明，也不把过期缓存当施工点位导出。
+          rooms: (projectHouse?.rooms ?? undefined) as never,
+          furnishings: furnishings as never,
+          // 电气/水路/吊顶/MEP 全部来自本次拉取的 facts（codex 十二～十四审 blocking），
+          // 几何来自本次 /api/project（十五审）——任何一项不可得宁可缺图层并在 D-NOTES
+          // 声明，也不混用页面缓存。
           electrical: facts?.electrical as never,
-          ceilingZones: (house.ceilingZones ?? []) as never,
-          sceneElements: (house.sceneElements ?? []) as never,
+          ceilingZones: (facts?.ceiling ?? projectHouse?.ceilingZones ?? undefined) as never,
+          sceneElements: (projectHouse?.sceneElements ?? undefined) as never,
         },
         plumbing: facts?.plumbing,
         mep,

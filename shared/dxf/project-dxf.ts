@@ -44,13 +44,13 @@ export const DXF_LAYERS = {
 } as const satisfies Record<string, readonly [string, number]>;
 
 export interface ProjectDxfHouse {
-  rooms: RoomLayout[];
-  /** 缺省 = 家具数据本次不可得：A-FURN 图层为空 + D-NOTE 声明（禁止用页面缓存当施工摆位）。 */
+  /** 以下字段缺省 = 该数据本次不可得：对应图层为空 + D-NOTE 声明。禁止用页面缓存兜底——
+   * 缓存可能含已移动/已删除的旧数据，当施工数据交付比缺图层更危险（codex 十三/十四/十五审）。 */
+  rooms?: RoomLayout[];
   furnishings?: FurnishingsYaml;
-  /** 缺省 = 电气数据本次不可得：E-* 图层为空 + D-NOTE 声明（禁止用页面缓存当施工点位）。 */
   electrical?: ElectricalPoint[];
-  ceilingZones: CeilingZone[];
-  sceneElements: SceneElement[];
+  ceilingZones?: CeilingZone[];
+  sceneElements?: SceneElement[];
 }
 
 export interface ProjectDxfInput {
@@ -114,13 +114,12 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
 
   // 墙体索引：id → 主线段（供洞口切分与 wall_region/furniture 墙锚插值共用）。
   const wallsById = new Map<string, Extract<SceneElement, { type: 'wall' }>>();
-  for (const element of house.sceneElements) {
+  for (const element of house.sceneElements ?? []) {
     if (element.type === 'wall') wallsById.set(element.id, element);
   }
 
-  emitWalls(writer, house.sceneElements);
-  emitGlazingAndDoors(writer, house.sceneElements, warnings);
-  emitRooms(writer, house.rooms, labels);
+  if (house.sceneElements !== undefined) emitWalls(writer, house.sceneElements);
+
   if (house.furnishings === undefined) {
     warnings.push('furnishings: 无输入，A-FURN 图层为空（家具摆位未导出——数据不可得时禁止用页面缓存当施工摆位）');
     notes.push('FURNISHINGS NOT EXPORTED: furnishings data unavailable at export time');
@@ -158,9 +157,26 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
       }
     }
   }
-  emitCeiling(writer, house.ceilingZones, warnings, label, labels);
-  const roomCenters = new Map(house.rooms.map((room) => [room.id, { x: room.x, z: room.z }]));
-  emitFloorAndWallFinishes(writer, house.sceneElements, wallsById, roomCenters, warnings, label);
+  if (house.ceilingZones === undefined) {
+    warnings.push('ceiling: 无输入，C-CEIL 图层为空（吊顶分区未导出）');
+    notes.push('CEILINGS NOT EXPORTED: ceiling zones unavailable at export time');
+  } else {
+    emitCeiling(writer, house.ceilingZones, warnings, label, labels);
+  }
+  if (house.rooms === undefined) {
+    warnings.push('rooms: 无输入，A-ROOM 图层为空（房间几何未导出）');
+    notes.push('ROOMS NOT EXPORTED: project geometry unavailable at export time');
+  } else {
+    emitRooms(writer, house.rooms, labels);
+  }
+  if (house.sceneElements === undefined) {
+    warnings.push('sceneElements: 无输入，墙体/门窗/饰面/地面分区图层为空（几何未导出）');
+    notes.push('GEOMETRY NOT EXPORTED: walls/openings/finishes unavailable at export time');
+  } else {
+    emitGlazingAndDoors(writer, house.sceneElements, warnings);
+    const roomCenters = new Map((house.rooms ?? []).map((room) => [room.id, { x: room.x, z: room.z }]));
+    emitFloorAndWallFinishes(writer, house.sceneElements, wallsById, roomCenters, warnings, label);
+  }
   if (mep === undefined) {
     warnings.push('mep: 无输入，M-HVAC/M-ROUTE 图层为空（MEP 协调未导出）');
     notes.push('MEP NOT EXPORTED: coordination data unavailable at export time');
@@ -350,7 +366,7 @@ function emitFurniture(
   const wallSegments = new Map(wallsById.size > 0
     ? [...wallsById.entries()].map(([id, wall]) => [id, [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]])
     : []);
-  for (const [roomId, items] of Object.entries(furnishings)) {
+  for (const [roomId, items] of Object.entries(furnishings ?? {})) {
     for (const item of items) {
       // 协调示意代理件不进家具图层（codex 十一审 blocking）：冷凝水几何已由 M-CAND 路线表达，
       // 且此类条目的 x 是端点/路径锚不是矩形中心，居中外框会漂移（wardrobe_entry 实测 0.6m）。

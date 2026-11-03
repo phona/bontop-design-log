@@ -102,8 +102,8 @@ test('project-dxf: wall_region 沿墙插值出子线段（along [0,2] → x 0~20
 
 test('project-dxf: 饰面标注用声明的顶标高（height 是顶标高不是带高，codex 审 blocking）', () => {
   const input = baseInput();
-  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).bottom = 0.77;
-  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).height = 1.10;
+  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).bottom = 0.77;
+  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).height = 1.10;
   const result = buildProjectDxf(input);
   const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.WFIN_TILE[0]);
   assert.ok(texts.some((e) => e['1'] === 'tile_n 0.77~1.10m'), JSON.stringify(texts.map((e) => e['1'])));
@@ -111,7 +111,7 @@ test('project-dxf: 饰面标注用声明的顶标高（height 是顶标高不是
 
 test('project-dxf: wall_run 实体墙进 A-WALL（开放折线 + 高度标注，codex 审 blocking）', () => {
   const input = baseInput();
-  input.house.sceneElements.push({ type: 'wall_run', id: 'vanity_halfwall', points: [{ x: 1, z: 2 }, { x: 1, z: 3 }], height: 1.05 });
+  input.house.sceneElements!!.push({ type: 'wall_run', id: 'vanity_halfwall', points: [{ x: 1, z: 2 }, { x: 1, z: 3 }], height: 1.05 });
   const result = buildProjectDxf(input);
   const entities = parseEntities(result.dxf);
   // 两点 wall_run = 1 条线（不闭合），另含原墙两条切分段
@@ -122,7 +122,7 @@ test('project-dxf: wall_run 实体墙进 A-WALL（开放折线 + 高度标注，
 
 test('project-dxf: wall_region along 超出墙长 → 显形告警不导出（与 3D unsupported 同口径）', () => {
   const input = baseInput();
-  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).along = [0, 5];
+  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).along = [0, 5];
   const result = buildProjectDxf(input);
   assert.ok(result.warnings.some((w) => w.includes('tile_n') && w.includes('超出墙')));
   assert.equal(result.stats[DXF_LAYERS.WFIN_TILE[0]], undefined);
@@ -132,11 +132,11 @@ test('project-dxf: 带 segments 细分的墙，wall_region 沿折线链插值（
   const input = baseInput();
   // 墙拆成两段细分：0→1m 与 1→4m（几何共线，插值结果应与主线一致）；把第二段整体平移 1m 南
   // 制造折线差异：along [3,4] 应落在平移后的第二段上，而不是主线直插位置。
-  (input.house.sceneElements[0] as Extract<SceneElement, { type: 'wall' }>).segments = [
+  (input.house.sceneElements![0] as Extract<SceneElement, { type: 'wall' }>).segments = [
     { x1: 0, z1: 0, x2: 1, z2: 0 },
     { x1: 1, z1: 1, x2: 4, z2: 1 },
   ];
-  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).along = [3, 4];
+  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).along = [3, 4];
   const result = buildProjectDxf(input);
   const tileLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.WFIN_TILE[0]);
   // 链：段1 (0,0)→(1,0) 长 1；段2 (1,1)→(4,1) 长 3。along 3 → 段2 上 (3,1)，along 4 → (4,1)。
@@ -146,7 +146,7 @@ test('project-dxf: 带 segments 细分的墙，wall_region 沿折线链插值（
 
 test('project-dxf: wall_region 引用不存在的墙 → warning 显形，不抛', () => {
   const input = baseInput();
-  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_missing';
+  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_missing';
   const result = buildProjectDxf(input);
   assert.ok(result.warnings.some((w) => w.includes('w_missing')));
   assert.equal(result.stats[DXF_LAYERS.WFIN_TILE[0]], undefined);
@@ -236,7 +236,7 @@ test('project-dxf: 内机 anchor 经 ref:ceiling 解析进 M-HVAC，解析不了
 test('project-dxf: 圆角折线经 centerlineSamples 展开（弧不成直线折点）+ R 标注（codex 二审 blocking）', () => {
   const input = baseInput();
   // 直角三点 + 中点圆角 R0.3：直线走法 = 2 条线；弧感知采样 ≥ 6 段且带 R300 标注
-  input.house.sceneElements.push({
+  input.house.sceneElements!.push({
     type: 'railing_run', id: 'railing_arc', height: 1,
     points: [
       { x: 0, z: 5 },
@@ -258,7 +258,7 @@ test('project-dxf: 圆角折线经 centerlineSamples 展开（弧不成直线折
 test('project-dxf: 非矩形房间优先 points 轮廓，不用外接矩形（codex 二审 blocking）', () => {
   const input = baseInput();
   input.house.rooms = [{
-    ...input.house.rooms[0],
+    ...baseInput().house.rooms![0],
     x: 2, z: 1, width: 4, depth: 2, area: 6.5,
     points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 1 }, { x: 2, z: 2 }, { x: 0, z: 2 }],
   }];
@@ -334,7 +334,7 @@ test('project-dxf: 电气 blocked/pending 点位标注限制 + 告警（codex �
 test('project-dxf: 踢脚线按门洞切分，不横穿门口（codex 三审 blocking）', () => {
   const input = baseInput();
   // 沿墙 [0,4] 踢脚；墙中点 2.0 有 0.9m 门洞 → 踢脚切成 [0,1.55] 与 [2.45,4] 两段
-  input.house.sceneElements.push({ type: 'skirting_region', id: 'sk_main', wall: 'w_north', room: 'living', along: [0, 4], height: 0.1 });
+  input.house.sceneElements!.push({ type: 'skirting_region', id: 'sk_main', wall: 'w_north', room: 'living', along: [0, 4], height: 0.1 });
   const result = buildProjectDxf(input);
   const skirtLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.SKIRT[0]);
   assert.deepEqual(skirtLines, [[0, 0, 1550, 0], [2450, 0, 4000, 0]]);
@@ -342,7 +342,7 @@ test('project-dxf: 踢脚线按门洞切分，不横穿门口（codex 三审 blo
 
 test('project-dxf: ascii 模式保留英文限制短语，关键施工限制不丢失（codex 三审 blocking）', () => {
   const input = baseInput();
-  input.house.sceneElements.push({ type: 'skirting_region', id: 'sk_x', wall: 'w_north', room: 'living', along: [0, 1], height: 0.1 });
+  input.house.sceneElements!!.push({ type: 'skirting_region', id: 'sk_x', wall: 'w_north', room: 'living', along: [0, 1], height: 0.1 });
   const ascii = buildProjectDxf({
     ...input,
     labels: 'ascii',
@@ -383,13 +383,13 @@ test('project-dxf: 折线墙饰面逐段输出，不连起终点弦（codex 四�
   const input = baseInput();
   // L 形墙：水平段 (0,0)→(2,0) 长 2 + 竖直段 (2,0)→(2,2) 长 2。区间 [1,3] 跨转角：
   // 逐段 = 水平 (1,0)→(2,0) + 竖直 (2,0)→(2,1)；弦线 = (1,0)→(2,1) 斜线（错误）。
-  input.house.sceneElements[0] = { type: 'wall', id: 'w_l', x1: 0, z1: 0, x2: 2, z2: 0 };
-  (input.house.sceneElements[0] as Extract<SceneElement, { type: 'wall' }>).segments = [
+  input.house.sceneElements![0] = { type: 'wall', id: 'w_l', x1: 0, z1: 0, x2: 2, z2: 0 };
+  (input.house.sceneElements![0] as Extract<SceneElement, { type: 'wall' }>).segments = [
     { x1: 0, z1: 0, x2: 2, z2: 0 },
     { x1: 2, z1: 0, x2: 2, z2: 2 },
   ];
-  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_l';
-  (input.house.sceneElements[1] as Extract<SceneElement, { type: 'wall_region' }>).along = [1, 3];
+  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_l';
+  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).along = [1, 3];
   const result = buildProjectDxf(input);
   const tileLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.WFIN_TILE[0]);
   assert.equal(tileLines.length, 2);
@@ -401,7 +401,7 @@ test('project-dxf: 折线墙饰面逐段输出，不连起终点弦（codex 四�
 
 test('project-dxf: hinge=end 门扇关闭位端点正确（末端铰链回归，codex 五审 blocking）', () => {
   const input = baseInput();
-  input.house.sceneElements.push({ type: 'hinged_glass_door', id: 'gd_end', points: [{ x: 0, z: 0.8 }, { x: 0, z: 1.6 }], height: 2, swing: 'north', hinge: 'end' });
+  input.house.sceneElements!!.push({ type: 'hinged_glass_door', id: 'gd_end', points: [{ x: 0, z: 0.8 }, { x: 0, z: 1.6 }], height: 2, swing: 'north', hinge: 'end' });
   const result = buildProjectDxf(input);
   const entities = parseEntities(result.dxf);
   const doorLines = linesOn(entities, DXF_LAYERS.DOOR[0]);
@@ -472,7 +472,7 @@ test('project-dxf: 候选风口终端隔离 M-CAND，正式风口带 id（codex 
 test('project-dxf: floor_region 圆角随声明展开，不出外接矩形（codex 六审 blocking）', () => {
   const input = baseInput();
   // 直角三角形三点 + 第一点 R1.0 圆角：外接矩形闭合折线 = 3 边直角；弧感知 = 采样段 + R1000 标注
-  input.house.sceneElements.push({
+  input.house.sceneElements!.push({
     type: 'floor_region', id: 'floor_round',
     points: [
       { x: 0, z: 5, radius: 1.0, cx: 1, cz: 5 },
@@ -540,8 +540,8 @@ test('project-dxf: ascii 模式吊顶近似说明用英文（codex 七审 major�
 test('project-dxf: 共墙双面饰面标注带房间归属且分侧错开（codex 八审 blocking）', () => {
   const input = baseInput();
   // 同一墙 w_north 两侧声明：living 侧 0~0.30m、kitchen 侧 0~2.65m（同 along）
-  input.house.rooms.push({ id: 'kitchen', name: '厨房', x: 2, z: -2, width: 3, depth: 2, height: 2.8, type: 'service' });
-  input.house.sceneElements.push(
+  input.house.rooms!.push({ id: 'kitchen', name: '厨房', x: 2, z: -2, width: 3, depth: 2, height: 2.8, type: 'service' });
+  input.house.sceneElements!.push(
     { type: 'wall_region', id: 'tile_balc', wall: 'w_north', room: 'living', along: [0, 1.6], bottom: 0, height: 0.30 },
     { type: 'wall_region', id: 'tile_gbath', wall: 'w_north', room: 'kitchen', along: [0, 1.6], bottom: 0, height: 2.65 },
   );
@@ -738,7 +738,7 @@ test('project-dxf: 吊顶 area 四元组画矩形；无 area 的分区 warning �
   const result = buildProjectDxf({
     ...baseInput(),
     house: { ...baseInput().house, ceilingZones: [
-      baseInput().house.ceilingZones[0],
+      baseInput().house.ceilingZones![0],
       { id: 'ac_living', room: 'living', type: 'ac_indoor' as never },
     ] },
   });
