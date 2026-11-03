@@ -556,6 +556,43 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2));
   });
 
+  it('按包运行态：A 的卡点结果不出现在 B 的操作条（结构性隔离回归）', async () => {
+    // 根治前卡点/预演/提交是面板级单槽：A 跑出的卡点 5/5 会显示在 B 的面板里。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    const {selection} = await mountPanel({snapshot: twoPkg});
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    // 切到 B：B 从没跑过卡点——条上必须是「还没跑过」，不是 A 的 5/5
+    selection.set({packageId: 'PKG-020', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('还没跑过机械卡点'));
+    expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('卡点 5/5');
+    // 切回 A：A 的结论还在（按包保留，不因换包重置）
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'));
+  });
+
+  it('按包定时器：切到 B 编辑不清掉 A 的待存保存（结构性隔离回归）', async () => {
+    // 根治前保存定时器是面板级单槽：B 的 scheduleSave 会 clearTimeout 掉 A 待存的
+    // 编辑——A 的保存被静默推迟到下次触碰 A。现在各包定时器互不干扰。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    const {selection, calls} = await mountPanel({snapshot: twoPkg});
+    // A 编辑（debounce 挂起，不 flush）
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    // 切 B 编辑（旧实现此刻清掉 A 的定时器）
+    selection.set({packageId: 'PKG-020', checkId: null});
+    setInput('[data-checked-at="SCH-020-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-020-01"][data-status="passed"]');
+    // 两个包的保存都应各自到点落盘（300ms debounce，不碰 A）
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
+    const putPkgs = calls.filter((call) => call.method === 'PUT').map((call) => (call.body as {package_id: string}).package_id).sort();
+    expect(putPkgs).toEqual(['PKG-010', 'PKG-020']);
+  });
+
   it('跨包保存互不污染：B 保存成功不许把 A 的失败标成已保存（codex 五审 blocking 回归）', async () => {
     // 旧实现是面板级共享 saveStatus：A 失败后切到 B、B 保存成功，共享状态被写成
     // saved——切回 A 时失败态没了、重试入口没了，A 未保存的编辑看起来已存。
