@@ -993,13 +993,19 @@ export class ScheduleDetailPanel {
           next.set(checkId, {...local, issues: []});
           continue;
         }
+        // 干净态（dirty=false）：**服务端字段逐字采用，含空值**。旧实现有字段级
+        // 回落（服务端 note 为空就用本地旧值）——那是 dirty 规则出现前的旧机制，
+        // 现在既有害又冗余：别处清空 note/evidence 后切包回来，旧值会复活并被
+        // 下次编辑 PUT 回去（codex 十三审 blocking）。未保存编辑的保护由上面
+        // localWins 分支负责，这里不需要第二套。
+        // staged/uploading 是本地上传中的瞬态、不是服务端数据，保留 local。
         next.set(checkId, {
           status: fromServer.status,
-          checked_by: fromServer.checked_by?.trim() ? fromServer.checked_by : local.checked_by,
-          checked_at: fromServer.checked_at?.trim() ? fromServer.checked_at : local.checked_at,
-          note: fromServer.note?.trim() ? fromServer.note : local.note,
-          supersedes: fromServer.supersedes?.trim() ? fromServer.supersedes : local.supersedes,
-          evidence: (fromServer.evidence?.length ?? 0) > 0 ? [...fromServer.evidence] : local.evidence,
+          checked_by: fromServer.checked_by ?? '',
+          checked_at: fromServer.checked_at || todayText(),
+          note: fromServer.note ?? '',
+          supersedes: fromServer.supersedes ?? '',
+          evidence: [...(fromServer.evidence ?? [])],
           staged: local.staged,
           stagedError: null,
           uploading: false,

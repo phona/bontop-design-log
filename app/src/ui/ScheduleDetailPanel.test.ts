@@ -556,6 +556,43 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2));
   });
 
+  it('服务端清空的备注/证据不许在干净态重载后复活（codex 十三审 blocking 回归）', async () => {
+    // A 的结果带旧备注+旧证据 → 切 B → 服务端把该结果的 note/evidence 清空 →
+    // 回 A。旧实现干净态有字段级回落（服务端空 note 跌回本地旧值），复活后下次
+    // 编辑 PUT 回去。修：干净态服务端字段逐字采用（含空值）。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    let draftCalls = 0;
+    const {selection, calls} = await mountPanel({
+      snapshot: twoPkg,
+      handlers: {
+        draft: () => {
+          draftCalls += 1;
+          return draftCalls === 1
+            ? {package_id: 'PKG-010', results: [{check_id: 'SCH-010-01', status: 'failed', checked_by: '业主', checked_at: '2026-11-01', evidence: ['schedule/phase-1/evidence/PKG-010/SCH-010-01/old.jpg'], note: '旧备注'}]}
+            : {package_id: 'PKG-010', results: [{check_id: 'SCH-010-01', status: 'failed', checked_by: '业主', checked_at: '2026-11-01', evidence: [], note: ''}]}; // 字段被清空
+        },
+      },
+    });
+    await vi.waitFor(() => expect((document.querySelector('[data-note="SCH-010-01"]') as HTMLInputElement).value).toBe('旧备注'));
+    // 切 B 再回 A：服务端已清空——备注必须为空、证据列表必须空
+    selection.set({packageId: 'PKG-020', checkId: null});
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect((document.querySelector('[data-note="SCH-010-01"]') as HTMLInputElement).value).toBe(''));
+    expect(document.querySelector('[data-evidence-area="SCH-010-01"]')!.textContent).toContain('最终证据：无');
+    // 触发一次保存：PUT 里该条不得带旧备注/旧证据
+    setInput('[data-checked-at="SCH-010-03"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-03"][data-status="passed"]');
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+    const put = calls.find((call) => call.method === 'PUT')!.body as {results: Array<{note?: string; evidence: string[]; check_id: string}>};
+    const r01 = put.results.find((r) => r.check_id === 'SCH-010-01');
+    // 结果本身服务端还在（status failed），要 PUT 回去——但必须是**清空后**的字段
+    expect(r01).toBeDefined();
+    expect(r01!.note ?? '').toBe('');
+    expect(r01!.evidence).toEqual([]);
+  });
+
   it('服务端删了的结果不许被切包重载复活（codex 十二审 blocking 回归）', async () => {
     // A 有一条已保存结果 → 切到 B → 服务端清除了 A 的该条（另一标签页/提交后清
     // 草稿）→ 回 A：GET 返回空，本地条目必须丢弃。旧实现无条件保留，下次编辑
