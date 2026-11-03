@@ -73,7 +73,8 @@ import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-
 import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
 import type { CaptureOptions, RoomAuditCaptureOptions } from '@shared/types';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot, MaterialAppearance, MaterialPreviewAtlasConfig } from '@shared/types';
-import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
+import { endpointSourcesFromFacts, type MepCoordination } from '@shared/mep-hvac-coordination-schema';
+import { buildProjectDxf } from '@shared/dxf/project-dxf';
 import type { MepLintResult } from '@shared/mep-hvac-lint';
 
 const ORBIT_DISTANCE = 15;
@@ -271,6 +272,7 @@ export class App {
     this.setupFurniturePanel();
     this.setupPlacementPanel();
     this.setupExportButton();
+    this.setupExportDxfButton();
     this.setupTopDownButton();
     this.setupHvacCoordinationButton();
     this.setupMepCoordinationButton();
@@ -1498,6 +1500,13 @@ export class App {
         run: () => { void this.handleExportGlb(); },
       },
       {
+        id: 'scheme.export_dxf',
+        label: '导出 DXF',
+        engineeringNote: '施工图纸（单文件多图层、1:1 毫米、北朝上）；装配实现 shared/dxf/project-dxf.ts',
+        category: '方案',
+        run: () => { void this.handleExportDxf(); },
+      },
+      {
         // DEC-2026-10-19-R05「首屏显示地砖默认预演」的入口补全：铺向滑块在工作台
         // 「材质预演」页，画布优先默认收起工作台导致用户找不到；命令面板直达该页。
         id: 'material.floor_rotation',
@@ -2181,6 +2190,60 @@ export class App {
     btn?.addEventListener('click', () => {
       void this.handleExportGlb();
     });
+  }
+
+  private setupExportDxfButton(): void {
+    const btn = document.getElementById('export-dxf-btn');
+    btn?.addEventListener('click', () => {
+      void this.handleExportDxf();
+    });
+  }
+
+  /**
+   * 施工 DXF 导出（与 CLI npm run export:dxf 共用 shared/dxf/project-dxf.ts）。
+   * render-facts（水路点位 + MEP 端点解析）与 mep-coordination 容错拉取：
+   * 503/失败只降级对应图层（P-POINTS / M-* 为空 + warnings 显形），不阻断导出。
+   */
+  private async handleExportDxf(): Promise<void> {
+    try {
+      const house = this.projectData?.house as
+        | { rooms?: unknown[]; furnishings?: Record<string, unknown[]>; electrical?: unknown[]; ceilingZones?: unknown[]; sceneElements?: unknown[] }
+        | undefined;
+      if (!house) throw new Error('项目数据未加载，无法导出 DXF');
+      const [factsResponse, mepResponse] = await Promise.all([
+        fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+      ]);
+      const facts = factsResponse as ProjectRenderFacts | null;
+      const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
+      // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
+      const mep = facts?.hvac?.plans && mepPayload ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts) } : undefined;
+      const result = buildProjectDxf({
+        house: {
+          rooms: (house.rooms ?? []) as never,
+          furnishings: (house.furnishings ?? {}) as never,
+          electrical: (house.electrical ?? []) as never,
+          ceilingZones: (house.ceilingZones ?? []) as never,
+          sceneElements: (house.sceneElements ?? []) as never,
+        },
+        plumbing: facts?.plumbing,
+        mep,
+      });
+      const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+      const url = URL.createObjectURL(new Blob([result.dxf], { type: 'application/dxf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `house-${stamp}.dxf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      if (result.warnings.length > 0) console.warn('[dxf] warnings:', result.warnings);
+      const skipped = result.warnings.length > 0 ? `；${result.warnings.length} 条告警见控制台` : '';
+      this.showToast(`DXF 已导出：${result.entityCount} 个实体、${result.layers.length} 图层${skipped}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'DXF 导出失败';
+      console.error(message, error);
+      this.showToast(message);
+    }
   }
 
   private async handleExportGlb(): Promise<void> {

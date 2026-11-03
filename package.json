@@ -45,6 +45,7 @@
     "ci:baseline-delta": "node ci/check.mjs baseline-delta",
     "export:dressing-map": "tsx scripts/generate-dressing-map.ts",
     "export:glb": "tsx scripts/render/glb/export-glb.ts",
+    "export:dxf": "tsx scripts/render/dxf/export-dxf.ts",
     "compare:glb": "tsx scripts/render/glb/compare-glb.ts",
     "gate:visual": "tsx scripts/gate/visual-state-gate.ts",
     "docs:generate-index": "tsx scripts/docs/generate-iteration-index.ts"
@@ -68,5 +69,8 @@
     "supertest": "^7.0.0",
     "tsx": "^4.16.0",
     "typescript": "^5.5.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
   }
 }
