@@ -556,6 +556,39 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2));
   });
 
+  it('跨包保存互不污染：B 保存成功不许把 A 的失败标成已保存（codex 五审 blocking 回归）', async () => {
+    // 旧实现是面板级共享 saveStatus：A 失败后切到 B、B 保存成功，共享状态被写成
+    // saved——切回 A 时失败态没了、重试入口没了，A 未保存的编辑看起来已存。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    const {selection, panel, calls} = await mountPanel({
+      snapshot: twoPkg,
+      handlers: {
+        putDraft: (body) => ((body as {package_id: string}).package_id === 'PKG-010'
+          ? {status: 422, body: {ok: false, issues: [{check_id: '*', field: 'x', message: 'A 包校验失败'}]}} // A 失败
+          : {status: 200, body: {ok: true}}), // B 成功
+      },
+    });
+    // A：编辑 → flush（不等 debounce）→ A 失败落账
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    panel.flushSave();
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+    // 切到 B：编辑 → flush → B 成功
+    selection.set({packageId: 'PKG-020', checkId: null});
+    setInput('[data-checked-at="SCH-020-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-020-01"][data-status="passed"]');
+    panel.flushSave();
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存'));
+    // 关键：切回 A，A 的失败态与重试入口必须还在（按包记录，B 的成功污染不到）
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('保存失败'));
+    expect(document.querySelector('[data-save-status]')!.textContent).toContain('A 包校验失败');
+    expect(document.querySelector('[data-save-retry]')).toBeTruthy();
+  });
+
   it('flushSave：debounce 未到点也立即落盘（退出审批页不丢编辑，codex 审查 blocking 回归）', async () => {
     // 退出审批页会清选中，而 debounce 定时器的回查询「当前选中仍是目标包」——
     // 不 flush 的话，改完备注立刻点返回，PUT 被跳过、刷新即丢。

@@ -183,9 +183,25 @@ export class ScheduleDetailPanel {
   private draftLoading = false;
   private draftError: string | null = null;
   private draftSeq = 0;
-  private saveStatus: SaveStatus = {kind: 'idle'};
-  private saveDirty = false;
-  private packageIssues: DraftIssue[] = [];
+  /**
+   * 草稿保存状态**按包存**（2026-11-03 codex 五审 blocking）：原先是面板级共享
+   * 三字段，包 A 的 PUT 在途时切到包 B、B 保存失败，A 的成功晚到会把 B 标成
+   * 「已保存」并抹掉重试入口——B 未保存的编辑看起来已存、刷新即丢。改成每包一份
+   * 记录，跨包响应互不可见。saveSeq 是请求版本号（仿上方 draftSeq 范式）：
+   * 同包的旧响应也不许碰状态。
+   */
+  private saveByPkg = new Map<string, {status: SaveStatus; dirty: boolean; issues: DraftIssue[]}>();
+  /** 每包的保存请求版本号：响应回头时若不是该包最新一轮，结果作废（同包新旧排序）。 */
+  private saveSeqByPkg = new Map<string, number>();
+
+  private saveRecordFor(packageId: string): {status: SaveStatus; dirty: boolean; issues: DraftIssue[]} {
+    let record = this.saveByPkg.get(packageId);
+    if (!record) {
+      record = {status: {kind: 'idle'}, dirty: false, issues: []};
+      this.saveByPkg.set(packageId, record);
+    }
+    return record;
+  }
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
   private saveTargetPackage: string | null = null;
   /** 卡点/预演/提交状态所属的包；换包即作废（不拿旧结论放行新包）。 */
@@ -284,9 +300,10 @@ export class ScheduleDetailPanel {
     if (this.actionPackageId !== pkg.id) {
       this.actionPackageId = pkg.id;
       this.resetSubmitState();
-      this.saveStatus = {kind: 'idle'};
-      this.saveDirty = false;
-      this.packageIssues = [];
+      // 2026-11-03 codex 五审：**不重置保存记录**。旧实现（面板级共享状态）切包要
+      // 重置是因为那三个字段属于旧包；现在每包一份记录，包自己的成败状态要跨访问
+      // 保留——切回去能看到上次的「保存失败+重试」（reset 掉就等于把失败抹成
+      // 空态，业主以为没发生过）。在途的保存响应落地时自会更新该包记录。
     }
 
     body.innerHTML = `${error}${this.renderHeader(pkg)}${this.renderBlockers(pkg)}${this.renderBudget(pkg)}${this.renderChecks(pkg)}${this.renderProjectScope(pkg)}${this.renderAcceptanceActions()}${this.renderFoot(pkg)}`;
@@ -481,23 +498,24 @@ export class ScheduleDetailPanel {
 
   private saveStatusLine(packageId: string): string {
     const base = 'font-size:11px;';
-    if (this.saveStatus.kind === 'saving') {
+    const record = this.saveRecordFor(packageId);
+    if (record.status.kind === 'saving') {
       return `<span style="${base}color:#9aa4b2;">保存中…（写 tmp/ 草稿）</span>`;
     }
-    if (this.saveStatus.kind === 'saved') {
-      return `<span style="${base}color:#5cb85c;">已保存 ${escapeHtml(this.saveStatus.at)}（草稿只存 tmp/；进仓库走 PR）</span>`;
+    if (record.status.kind === 'saved') {
+      return `<span style="${base}color:#5cb85c;">已保存 ${escapeHtml(record.status.at)}（草稿只存 tmp/；进仓库走 PR）</span>`;
     }
-    if (this.saveStatus.kind === 'error') {
-      const extra = this.packageIssues.map((issue) => escapeHtml(issue.message)).join('；');
+    if (record.status.kind === 'error') {
+      const extra = record.issues.map((issue) => escapeHtml(issue.message)).join('；');
       // 2026-11-03 codex 四审：flush（退出前保存）失败后草稿还在内存（draftResults），
       // 给一个显式重试——否则业主只能靠「再改一个字段」碰运气触发 debounce。
-      return `<span style="${base}color:#f0a9a5;">保存失败：${escapeHtml(this.saveStatus.message)}${extra ? `｜${extra}` : ''}</span> <button type="button" data-save-retry="${escapeHtml(packageId)}" style="cursor:pointer;margin-left:6px;padding:1px 8px;border-radius:5px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:11px;">重试保存</button>`;
+      return `<span style="${base}color:#f0a9a5;">保存失败：${escapeHtml(record.status.message)}${extra ? `｜${extra}` : ''}</span> <button type="button" data-save-retry="${escapeHtml(packageId)}" style="cursor:pointer;margin-left:6px;padding:1px 8px;border-radius:5px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:11px;">重试保存</button>`;
     }
     const selected = this.selectedCount(packageId);
     if (selected === 0) {
       return `<span style="${base}color:#e9c46a;">没有可保存的结果：先选一个状态（没有已选状态时不会 PUT，避免空 results 覆盖 tmp/ 里已有草稿）</span>`;
     }
-    if (this.saveDirty) {
+    if (this.saveRecordFor(packageId).dirty) {
       return `<span style="${base}color:#9aa4b2;">${selected} 条已选状态：停手 300ms 自动存 tmp/</span>`;
     }
     return `<span style="${base}color:#9aa4b2;">草稿 ${selected} 条已存 tmp/（改动后自动保存）</span>`;
@@ -801,7 +819,7 @@ export class ScheduleDetailPanel {
     if (!packageId) return;
     // 保存失败重试（2026-11-03 codex 四审）：flush 失败后草稿在内存，显式重跑一次
     scope.querySelector('[data-save-retry]')?.addEventListener('click', () => {
-      this.saveDirty = true;
+      this.saveRecordFor(packageId).dirty = true;
       void this.saveDraft(packageId);
     });
     scope.querySelector('#acceptance-run-gates')?.addEventListener('click', () => {
@@ -965,9 +983,10 @@ export class ScheduleDetailPanel {
   }
 
   private onDraftChanged(packageId: string): void {
-    this.saveDirty = true;
-    this.saveStatus = {kind: 'idle'};
-    this.packageIssues = [];
+    const record = this.saveRecordFor(packageId);
+    record.dirty = true;
+    record.status = {kind: 'idle'};
+    record.issues = [];
     this.scheduleSave(packageId);
   }
 
@@ -1021,14 +1040,19 @@ export class ScheduleDetailPanel {
   }
 
   private async saveDraft(packageId: string): Promise<void> {
+    const record = this.saveRecordFor(packageId);
     const results = this.collectResults(packageId);
     if (results.length === 0) {
       // 没有任何已选状态时绝不 PUT：空 results 会覆盖 tmp/ 里已有草稿
-      this.saveStatus = {kind: 'idle'};
+      record.status = {kind: 'idle'};
       this.updateSaveUiFor(packageId);
       return;
     }
-    this.saveStatus = {kind: 'saving'};
+    // 请求版本号（仿 draftSeq，按包）：响应回头时若不是该包最新一轮，结果作废。
+    // 跨包污染由按包记录兜住；版本号只治同包的旧响应迟到（codex 五审 blocking）。
+    const seq = (this.saveSeqByPkg.get(packageId) ?? 0) + 1;
+    this.saveSeqByPkg.set(packageId, seq);
+    record.status = {kind: 'saving'};
     this.updateSaveUiFor(packageId);
     try {
       const response = await fetch('/api/acceptance/draft', {
@@ -1038,25 +1062,30 @@ export class ScheduleDetailPanel {
       });
       const data = (await response.json().catch(() => ({}))) as {ok?: boolean; issues?: DraftIssue[]; error?: string};
       // 2026-11-03 codex 四审 blocking：这里原来有「选中已换包就 return」的守卫，
-      // 退出审批页会清选中——PUT 失败时静默 return，saveStatus 永远停在 saving、
-      // issues 为空、草稿只剩内存，业主以为存了（复现：退出时 PUT 422 后刷新即丢）。
-      // 渲染侧的 updateSaveUiFor 自带选中守卫（人走开就不渲染），状态侧一律记录。
+      // 退出审批页会清选中——PUT 失败时静默 return，状态永远停在 saving、草稿只剩
+      // 内存，业主以为存了。现已双重保险：① 按包记录（跨包响应互不可见，五审）；
+      // ② seq 版本号（同包旧响应作废，五审）。渲染侧 updateSaveUiFor 仍有选中
+      // 守卫（人走开就不渲染），但状态侧一律落账。
+      if (seq !== this.saveSeqByPkg.get(packageId)) return;
       if (response.ok && data.ok) {
-        this.saveStatus = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
-        this.saveDirty = false;
-        this.packageIssues = [];
+        record.status = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
+        record.dirty = false;
+        record.issues = [];
         for (const state of this.draftResults.values()) state.issues = [];
         // 草稿变了：旧卡点/预演/提交结论全部作废，不许拿旧结论放行新草稿
         this.resetSubmitState();
       } else if (response.status === 422 && Array.isArray(data.issues)) {
-        this.applyIssues(packageId, data.issues);
-        this.saveStatus = {kind: 'error', message: `草稿校验没过（${data.issues.length} 条，见各行红字）`};
+        this.applyIssues(packageId, data.issues); // 内部已写入该包记录的 issues
+        record.status = {kind: 'error', message: `草稿校验没过（${data.issues.length} 条，见各行红字）`};
       } else {
-        this.saveStatus = {kind: 'error', message: data.error ?? `HTTP ${response.status}`};
+        record.issues = [];
+        record.status = {kind: 'error', message: data.error ?? `HTTP ${response.status}`};
       }
     } catch (err) {
-      // 网络错同理：不管选中在不在都要留痕（删掉旧的选中守卫，见上方注释）
-      this.saveStatus = {kind: 'error', message: err instanceof Error ? err.message : String(err)};
+      // 网络错同理：不管选中在不在都要留痕（seq 过期仍作废）
+      if (seq !== this.saveSeqByPkg.get(packageId)) return;
+      record.issues = [];
+      record.status = {kind: 'error', message: err instanceof Error ? err.message : String(err)};
     }
     this.updateSaveUiFor(packageId);
   }
@@ -1081,7 +1110,7 @@ export class ScheduleDetailPanel {
       if (state) state.issues = list;
       else this.draftResults.set(checkId, {...this.defaultDraftState(), issues: list});
     }
-    this.packageIssues = packageLevel;
+    this.saveRecordFor(packageId).issues = packageLevel;
   }
 
   // ─── 证据暂存 / 落定 ────────────────────────────────────────────────────
@@ -1268,7 +1297,7 @@ export class ScheduleDetailPanel {
       saveLine.innerHTML = this.saveStatusLine(pkg.id);
       // 重试按钮是 innerHTML 换出来的新 DOM——换完就地绑（2026-11-03 codex 四审）
       saveLine.querySelector('[data-save-retry]')?.addEventListener('click', () => {
-        this.saveDirty = true;
+        this.saveRecordFor(pkg.id).dirty = true;
         void this.saveDraft(pkg.id);
       });
     }
