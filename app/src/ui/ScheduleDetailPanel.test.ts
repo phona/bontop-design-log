@@ -529,6 +529,24 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect((document.querySelector('#acceptance-dry-run') as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('flushSave：debounce 未到点也立即落盘（退出审批页不丢编辑，codex 审查 blocking 回归）', async () => {
+    // 退出审批页会清选中，而 debounce 定时器的回查询「当前选中仍是目标包」——
+    // 不 flush 的话，改完备注立刻点返回，PUT 被跳过、刷新即丢。
+    const {panel, calls} = await mountPanel();
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    // 300ms debounce 还没到：没有任何 PUT
+    expect(calls.filter((call) => call.method === 'PUT').length).toBe(0);
+    panel.flushSave();
+    await vi.waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true));
+    const put = calls.find((call) => call.method === 'PUT')! as {url: string; body: {package_id: string}};
+    expect(put.url).toBe('/api/acceptance/draft');
+    expect(put.body.package_id).toBe('PKG-010');
+    // 再 flush 是 no-op（没有待保存）
+    panel.flushSave();
+    expect(calls.filter((call) => call.method === 'PUT').length).toBe(1);
+  });
+
   it('open_gates 非空的检查：passed 按钮 disabled 并注明阻塞原因', async () => {
     await mountPanel();
     const blockedPassed = document.querySelector('[data-status-btn="SCH-010-02"][data-status="passed"]') as HTMLButtonElement;

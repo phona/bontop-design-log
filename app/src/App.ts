@@ -429,7 +429,10 @@ export class App {
     // 2026-11-03 路由级：boot 不再无脑自动开审批页——地址栏说在才在
     // （#pkg=… 深链落 detail / #approval=… 落指定子页）。首访 = 3D 页
     // （画布优先，且不再 hijack 预演工作台——那正是「对象信息被挤没」的链源）。
+    // 但「记忆上次所在审批页」的承诺要守：lastApprovalPage 从持久化状态恢复，
+    // 点工具栏「审批」仍回上次那个子页（codex 审查 minor：曾随 boot 改造丢失）。
     // 必须放在面板就绪后：applyApprovalRoute 要 show/refresh 面板。
+    this.lastApprovalPage = readViewState().approvalView ?? 'next_action';
     this.applyApprovalRoute(parseApprovalRoute(location.hash));
     this.resolveReady();
     } catch (error) {
@@ -1156,6 +1159,9 @@ export class App {
   /** 把路由应用到 UI（boot / hashchange / 程序内导航共用，幂等）。 */
   private applyApprovalRoute(route: ApprovalRoute): void {
     setApprovalRoute(route);
+    // 退出/切换前先把详情面板里 debounce 中的草稿落盘——否则清选中会让待保存
+    // 定时器跳过 PUT，业主改完备注立刻返回即丢编辑（codex 审查 blocking）。
+    this.scheduleDetailPanel?.flushSave();
     this.showApprovalView(route.subPage);
     // 选中同步走 force：返回 3D 页时要把选中也清掉（不能因「没有 pkg」早退）；
     // restoreFromHash 不写 hash，不会回头触发 hashchange。
@@ -2360,8 +2366,15 @@ export class App {
         if (this.furniturePlaceMode) { this.exitFurniturePlaceMode(); return; }
         if (this.infrastructurePlaceMode) { this.exitInfrastructurePlaceMode(); return; }
         if (this.fpController.isDragMode()) { this.fpController.exitDragMode(); this.houseScene.hideGhost(); return; }
+        // 2026-11-03 codex 审查 major：审批页是全屏表面，Esc 给个键盘出口——返回 3D
+        if (this.approvalView !== null) { this.toggleApprovalView(); return; }
         return;
       }
+
+      // 2026-11-03 codex 审查 major：审批页打开期间屏蔽场景快捷键——否则页内按
+      // V 会切第一人称并请求指针锁定，鼠标被画布抓走、页内按钮全废。命令面板
+      // （Shift+/，z 250 在审批页之上）不屏蔽：业主在审批页里仍要能叫命令。
+      if (this.approvalView !== null && !(e.code === 'Slash' && e.shiftKey)) return;
 
       if (e.code === 'KeyV' && !e.repeat) {
         e.preventDefault();

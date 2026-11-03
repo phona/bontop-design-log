@@ -976,6 +976,22 @@ export class ScheduleDetailPanel {
     }, SAVE_DEBOUNCE_MS);
   }
 
+  /**
+   * 立即执行待保存草稿（退出审批页前由 App 调用）。2026-11-03 codex 审查 blocking：
+   * debounce 定时器的回调查「当前选中仍是目标包」才保存，而退出审批页会清选中——
+   * 改完备注立刻点「返回 3D」/浏览器返回，PUT 被跳过、刷新即丢编辑。flush 不依赖
+   * 选中态（目标包在 saveTargetPackage 里已捕获，saveDraft 自带空 results 守卫），
+   * 无待保存时是 no-op。
+   */
+  flushSave(): void {
+    if (this.saveTimer === null) return;
+    clearTimeout(this.saveTimer);
+    this.saveTimer = null;
+    const target = this.saveTargetPackage;
+    this.saveTargetPackage = null;
+    if (target) void this.saveDraft(target);
+  }
+
   private collectResults(packageId: string): DraftCheckResult[] {
     const pkg = this.payload?.packages.find((item) => item.id === packageId);
     if (!pkg) return [];
