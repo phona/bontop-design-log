@@ -621,6 +621,27 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect(document.querySelector('#acceptance-submit')!.textContent).toContain('再点一次');
   });
 
+  it('无变化草稿重载后卡点按钮不卡「执行中」（codex 十一审 major 回归）', async () => {
+    // 复现路径：卡点在途 → 未变化的草稿 GET 回填（applyDraft 仍 bump 版本）→ 旧响应
+    // 作废。十审的修法在 finally 前重绘，画面 loading 仍 true；finally 后又不重绘，
+    // 按钮卡死。修：重绘统一在 finally 之后。
+    const {panel} = await mountPanel();
+    const gatesPromise = panel['runGates']('PKG-010');
+    // 在途期间触发一次无变化重载（ensureDraft 同包不重拉——直接调 loadDraft 模拟）
+    void panel['loadDraft']('PKG-010');
+    await gatesPromise;
+    expect(document.querySelector('#acceptance-run-gates')!.textContent).toContain('跑机械卡点');
+    expect((document.querySelector('#acceptance-run-gates') as HTMLButtonElement).disabled).toBe(false);
+    // 再验预演路径同修
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    const dryPromise = panel['runDryRun']('PKG-010');
+    void panel['loadDraft']('PKG-010');
+    await dryPromise;
+    expect(document.querySelector('#acceptance-dry-run')!.textContent).toContain('生成 PR 预演');
+    expect((document.querySelector('#acceptance-dry-run') as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('版本作废后操作条不卡「执行中」（codex 十审 major 回归）', async () => {
     // 卡点在途 → 草稿变版（旧响应作废）→ 尾部的重绘不能漏——否则按钮永远禁用。
     const {panel} = await mountPanel();

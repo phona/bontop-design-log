@@ -1310,6 +1310,7 @@ export class ScheduleDetailPanel {
     run.gatesLoading = true;
     run.gatesError = null;
     this.updateAcceptanceBar(packageId);
+    let stale = false;
     try {
       const response = await fetch('/api/acceptance/gates', {
         method: 'POST',
@@ -1317,28 +1318,32 @@ export class ScheduleDetailPanel {
         body: JSON.stringify({package_id: packageId}),
       });
       const data = (await response.json().catch(() => ({}))) as {ok?: boolean; gates?: GateView[]; error?: string};
-      if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
       // 按包落账：响应晚于切包也只写该包的运行态（根治前这里写面板级共享字段，
       // A 的卡点结果会显示在 B 的面板里——codex 五/六审同类型）。
-      // 同包旧响应作废：请求发出后草稿又变过（版本号对不上）——结论是基于旧草稿
-      // 算的，提交读的却是新草稿，留着就是「按钮对着过期结论可用」（codex 八审）。
+      // 同包旧响应作废：请求发出后草稿又变过（版本号对不上，含「内容没变的重载」
+      // 也 bump 版本）——结论基于旧草稿算的，提交读的却是新草稿（codex 八审）。
+      // 作废只置 stale 不写结论；**重绘统一在 finally 之后**——在 try 里重绘会早于
+      // finally 清 loading，画面仍显示「执行中」，return 又跳过尾部重绘，按钮卡死
+      // （codex 十一审 major：十审修法的顺序错在这里）。
       if (run.draftVersion !== versionAtStart) {
-        // 旧响应作废：finally 已清 loading，但**必须重绘一次**——否则操作条停在
-        // 「卡点执行中…」禁用态（codex 十审 major：提前 return 跳过了尾部更新）
-        this.updateAcceptanceBar(packageId);
-        return;
-      }
-      run.gates = {ok: Boolean(data.ok), gates: Array.isArray(data.gates) ? data.gates : []};
-      if (!run.gates.ok) {
-        run.dryRun = null;
-        run.dryRunError = null;
-        run.submitArmed = false;
+        stale = true;
+      } else if (!response.ok) {
+        throw new Error(data.error ?? `HTTP ${response.status}`);
+      } else {
+        run.gates = {ok: Boolean(data.ok), gates: Array.isArray(data.gates) ? data.gates : []};
+        if (!run.gates.ok) {
+          run.dryRun = null;
+          run.dryRunError = null;
+          run.submitArmed = false;
+        }
       }
     } catch (err) {
-      run.gatesError = err instanceof Error ? err.message : String(err);
+      if (run.draftVersion !== versionAtStart) stale = true;
+      else run.gatesError = err instanceof Error ? err.message : String(err);
     } finally {
       run.gatesLoading = false;
     }
+    void stale;
     this.updateAcceptanceBar(packageId);
   }
 
@@ -1350,6 +1355,8 @@ export class ScheduleDetailPanel {
     run.dryRunLoading = true;
     run.dryRunError = null;
     this.updateAcceptanceBar(packageId);
+    // 同 runGates：旧响应只置 stale，重绘统一在 finally 之后（codex 十一审 major）
+    let stale = false;
     try {
       const response = await fetch('/api/acceptance/submit', {
         method: 'POST',
@@ -1362,10 +1369,8 @@ export class ScheduleDetailPanel {
       // 按包落账（根治前写面板级共享字段，A 的预演结果会显示在 B 面板里）；
       // 同包旧响应作废（版本号校验，理由同 runGates——codex 八审 blocking）
       if (run.draftVersion !== versionAtStart) {
-        this.updateAcceptanceBar(packageId); // 同 runGates：作废也要重绘，防卡「执行中」
-        return;
-      }
-      if (response.status === 422 && Array.isArray(data.gates)) {
+        stale = true;
+      } else if (response.status === 422 && Array.isArray(data.gates)) {
         // 卡点不过：把返回的 gates 回填卡点区，不留在「预演失败」的迷雾里
         run.gates = {ok: false, gates: data.gates};
         run.dryRun = null;
@@ -1381,10 +1386,12 @@ export class ScheduleDetailPanel {
         run.submitError = null;
       }
     } catch (err) {
-      run.dryRunError = err instanceof Error ? err.message : String(err);
+      if (run.draftVersion !== versionAtStart) stale = true;
+      else run.dryRunError = err instanceof Error ? err.message : String(err);
     } finally {
       run.dryRunLoading = false;
     }
+    void stale;
     this.updateAcceptanceBar(packageId);
   }
 
