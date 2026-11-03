@@ -213,6 +213,14 @@ export class ScheduleDetailPanel {
   private pkgRuns = new Map<string, {
     saveTimer: ReturnType<typeof setTimeout> | null;
     saveTarget: string | null;
+    /**
+     * 草稿版本号：本地编辑/保存成功/服务端草稿回填都 +1。卡点与预演请求发出时
+     * 记下当时版本，响应回头对不上即作废——**同包**的旧响应不许覆盖新草稿的
+     * 结论（按包隔离只解决跨包，这条解决同包；codex 八审 blocking：A 的预演
+     * 在途→草稿变化作废旧预演→旧响应晚到又把旧预演填回，提交按钮对着旧预览
+     * 重新可用，而真实提交读的是新草稿）。
+     */
+    draftVersion: number;
     gates: {ok: boolean; gates: GateView[]} | null;
     gatesLoading: boolean;
     gatesError: string | null;
@@ -228,6 +236,7 @@ export class ScheduleDetailPanel {
   private runFor(packageId: string): {
     saveTimer: ReturnType<typeof setTimeout> | null;
     saveTarget: string | null;
+    draftVersion: number;
     gates: {ok: boolean; gates: GateView[]} | null;
     gatesLoading: boolean;
     gatesError: string | null;
@@ -242,7 +251,7 @@ export class ScheduleDetailPanel {
     let run = this.pkgRuns.get(packageId);
     if (!run) {
       run = {
-        saveTimer: null, saveTarget: null,
+        saveTimer: null, saveTarget: null, draftVersion: 0,
         gates: null, gatesLoading: false, gatesError: null,
         dryRun: null, dryRunLoading: false, dryRunError: null,
         submitArmed: false, submitting: false, submitResult: null, submitError: null,
@@ -250,6 +259,13 @@ export class ScheduleDetailPanel {
       this.pkgRuns.set(packageId, run);
     }
     return run;
+  }
+
+  /** 该包草稿变了：作废在途/已有的卡点与预演结论，并 bump 版本号守迟到响应。 */
+  private invalidateRunForDraftChange(packageId: string): void {
+    const run = this.runFor(packageId);
+    run.draftVersion += 1;
+    this.resetSubmitState(packageId);
   }
 
   /** 卡点/预演/提交渲染键（当前选中包）；运行态按包各一份，不再随换包作废。 */
@@ -338,6 +354,13 @@ export class ScheduleDetailPanel {
     // 运行态按包各一份（pkgRuns）：换包不 reset——切回某包能看到它上次的卡点/
     // 预演/提交结果与保存成败；旧结论放行新包的风险由「草稿变化即 reset 该包
     // 运行态」把守（onDraftChanged / saveDraft 成功分支），比换包一刀切更准。
+    // 唯一例外是两步确认态（submitArmed）：它是「刚点过一次」的瞬态，离开该包
+    // 必须解除——否则切走再回来，下一次点击会直接开 PR，两步确认被掏空（codex
+    // 八审 major；页面文案承诺过「切包会取消确认态」）。
+    if (this.actionPackageId !== null && this.actionPackageId !== pkg.id) {
+      this.runFor(this.actionPackageId).submitArmed = false;
+    }
+    this.actionPackageId = pkg.id;
 
     body.innerHTML = `${error}${this.renderHeader(pkg)}${this.renderBlockers(pkg)}${this.renderBudget(pkg)}${this.renderChecks(pkg)}${this.renderProjectScope(pkg)}${this.renderAcceptanceActions(pkg)}${this.renderFoot(pkg)}`;
     this.bind(body, pkg);
@@ -992,6 +1015,8 @@ export class ScheduleDetailPanel {
       });
     }
     this.draftResults = next;
+    // 服务端草稿回填 = 该包草稿换版：在途的卡点/预演响应回头即作废
+    this.runFor(packageId).draftVersion += 1;
   }
 
   private defaultDraftState(): CheckDraftState {
@@ -1039,6 +1064,8 @@ export class ScheduleDetailPanel {
     record.dirty = true;
     record.status = {kind: 'idle'};
     record.issues = [];
+    // 本地编辑 = 草稿变化：在途/已有的卡点与预演结论作废（版本号 +1 守迟到响应）
+    this.invalidateRunForDraftChange(packageId);
     this.scheduleSave(packageId);
   }
 
@@ -1143,8 +1170,8 @@ export class ScheduleDetailPanel {
           const state = this.draftResults.get(check.id);
           if (state) state.issues = [];
         }
-        // 草稿变了：该包旧卡点/预演/提交结论全部作废，不许拿旧结论放行新草稿
-        this.resetSubmitState(packageId);
+        // 草稿变了：该包旧卡点/预演/提交结论全部作废（版本号 +1 令在途响应落账时作废）
+        this.invalidateRunForDraftChange(packageId);
       } else if (response.status === 422 && Array.isArray(data.issues)) {
         this.applyIssues(packageId, data.issues); // 内部已写入该包记录的 issues
         record.status = {kind: 'error', message: `草稿校验没过（${data.issues.length} 条，见各行红字）`};
@@ -1257,6 +1284,7 @@ export class ScheduleDetailPanel {
 
   private async runGates(packageId: string): Promise<void> {
     const run = this.runFor(packageId);
+    const versionAtStart = run.draftVersion;
     run.gatesLoading = true;
     run.gatesError = null;
     this.updateAcceptanceBar(packageId);
@@ -1269,7 +1297,10 @@ export class ScheduleDetailPanel {
       const data = (await response.json().catch(() => ({}))) as {ok?: boolean; gates?: GateView[]; error?: string};
       if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
       // 按包落账：响应晚于切包也只写该包的运行态（根治前这里写面板级共享字段，
-      // A 的卡点结果会显示在 B 的面板里——codex 五/六审同类型）
+      // A 的卡点结果会显示在 B 的面板里——codex 五/六审同类型）。
+      // 同包旧响应作废：请求发出后草稿又变过（版本号对不上）——结论是基于旧草稿
+      // 算的，提交读的却是新草稿，留着就是「按钮对着过期结论可用」（codex 八审）。
+      if (run.draftVersion !== versionAtStart) return;
       run.gates = {ok: Boolean(data.ok), gates: Array.isArray(data.gates) ? data.gates : []};
       if (!run.gates.ok) {
         run.dryRun = null;
@@ -1288,6 +1319,7 @@ export class ScheduleDetailPanel {
     const run = this.runFor(packageId);
     // 预演要求卡点全绿（按钮可用性由 renderAcceptanceActions 把关，这里双保险）
     if (run.gates?.ok !== true) return;
+    const versionAtStart = run.draftVersion;
     run.dryRunLoading = true;
     run.dryRunError = null;
     this.updateAcceptanceBar(packageId);
@@ -1300,7 +1332,9 @@ export class ScheduleDetailPanel {
       const data = (await response.json().catch(() => ({}))) as {
         dry_run?: boolean; records?: AuditRecordProjection[]; pr_body?: string; error?: string; gates?: GateView[];
       };
-      // 按包落账（根治前写面板级共享字段，A 的预演结果会显示在 B 面板里）
+      // 按包落账（根治前写面板级共享字段，A 的预演结果会显示在 B 面板里）；
+      // 同包旧响应作废（版本号校验，理由同 runGates——codex 八审 blocking）
+      if (run.draftVersion !== versionAtStart) return;
       if (response.status === 422 && Array.isArray(data.gates)) {
         // 卡点不过：把返回的 gates 回填卡点区，不留在「预演失败」的迷雾里
         run.gates = {ok: false, gates: data.gates};

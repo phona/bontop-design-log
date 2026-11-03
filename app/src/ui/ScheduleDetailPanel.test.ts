@@ -556,6 +556,48 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2));
   });
 
+  it('同包旧响应作废：预演在途时草稿变化，旧预演不许填回（codex 八审 blocking 回归）', async () => {
+    // A 的预演在途 → 本地编辑（草稿变版，旧结论作废）→ 旧预演响应晚到。旧实现
+    // 把旧草稿的预演填回 run.dryRun，提交按钮对着过期预览重新可用，而真实提交
+    // 读的是新草票——按钮结论与服务端读的不一致。
+    const {panel, calls} = await mountPanel();
+    // 先跑卡点拿绿（预演的前置）
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    // 发起预演（在途：mock 同步返回，但先篡改版本号模拟「请求发出后草稿又变了」）
+    const dryRunPromise = panel['runDryRun']('PKG-010');
+    // 在途期间本地编辑 → invalidateRunForDraftChange bump 版本
+    setInput('[data-note="SCH-010-01"]', '编辑于预演在途期间');
+    await dryRunPromise;
+    // 旧响应应被版本校验作废：预演区不留旧草稿的预览
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('PR 预演：将写入'));
+    expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('PR 预演：将写入');
+  });
+
+  it('切包解除两步确认态：A 武装后切走再回来，下一次点击不直接开 PR（codex 八审 major 回归）', async () => {
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    const {selection, calls} = await mountPanel({snapshot: twoPkg});
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    click('#acceptance-dry-run');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演：将写入'), {timeout: 3000});
+    // 第一次点提交 = 只进确认态（按钮变红字「再点一次」）
+    click('#acceptance-submit');
+    expect(document.querySelector('#acceptance-submit')!.textContent).toContain('再点一次');
+    // 切到 B 再回 A：确认态必须已解除
+    selection.set({packageId: 'PKG-020', checkId: null});
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-submit')!.textContent).toContain('确认提交'));
+    // 此时点一次仍只进确认态，不直接 POST（两步确认没被掏空）。
+    // 注意 dry-run 也走 /api/acceptance/submit（带 dry_run:true），要排除。
+    click('#acceptance-submit');
+    const realSubmits = calls.filter((call) => call.url === '/api/acceptance/submit' && call.method === 'POST' && !(call.body as {dry_run?: boolean})?.dry_run);
+    expect(realSubmits.length).toBe(0);
+    expect(document.querySelector('#acceptance-submit')!.textContent).toContain('再点一次');
+  });
+
   it('按包运行态：A 的卡点结果不出现在 B 的操作条（结构性隔离回归）', async () => {
     // 根治前卡点/预演/提交是面板级单槽：A 跑出的卡点 5/5 会显示在 B 的面板里。
     const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
