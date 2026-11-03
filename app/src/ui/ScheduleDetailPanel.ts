@@ -981,6 +981,11 @@ export class ScheduleDetailPanel {
     // evidence 服务端非空必胜，用户替换证据列表同样被吞。正确规则只有一条：
     // 这个包有未保存编辑时，本地就是用户当前真相（含「删空」这个意图）。
     const localWins = this.saveRecordFor(packageId).dirty;
+    // 本包检查 id 全集（来自快照 payload，不是服务端草稿的子集）——用来区分
+    // 「别包缓存条目」与「本包条目」：前者永留，后者按 dirty/服务端裁定。
+    const myCheckIds = new Set(
+      (this.payload?.packages.find((item) => item.id === packageId)?.checks ?? []).map((check) => check.id),
+    );
     for (const [checkId, local] of this.draftResults) {
       const fromServer = byCheck.get(checkId);
       if (fromServer) {
@@ -1000,10 +1005,17 @@ export class ScheduleDetailPanel {
           uploading: false,
           issues: [],
         });
-      } else {
-        // 服务端没有这一条（含其他包的条目）：本地选过状态/填过内容的都留着
+      } else if (!myCheckIds.has(checkId)) {
+        // 别包的缓存条目：原样保留（切包不崩别包的未保存编辑）
+        next.set(checkId, {...local, issues: []});
+      } else if (localWins) {
+        // 本包的未保存编辑：本地胜出（dirty 时本地是用户当前真相，含删空）
         next.set(checkId, {...local, issues: []});
       }
+      // 本包、无未保存编辑、服务端也没返回 = 服务端删了这条结果——**丢弃**。
+      // 旧实现无条件保留，会把服务端删除的结果复活：下次编辑别的行时
+      // collectResults 又把它 PUT 回去，静默撤销别处的删除（codex 十二审
+      // blocking：切包重载复活已删结果）。
     }
     for (const [checkId, result] of byCheck) {
       if (next.has(checkId)) continue;

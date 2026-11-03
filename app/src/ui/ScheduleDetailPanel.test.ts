@@ -556,6 +556,42 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2));
   });
 
+  it('服务端删了的结果不许被切包重载复活（codex 十二审 blocking 回归）', async () => {
+    // A 有一条已保存结果 → 切到 B → 服务端清除了 A 的该条（另一标签页/提交后清
+    // 草稿）→ 回 A：GET 返回空，本地条目必须丢弃。旧实现无条件保留，下次编辑
+    // 别的行会把已删结果 PUT 回去，静默撤销服务端删除。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    let draftCalls = 0;
+    const {selection, calls} = await mountPanel({
+      snapshot: twoPkg,
+      handlers: {
+        // mock 的 draft handler 无请求参数，用调用次序模拟：首次加载 A 有结果，
+        // 再次加载（切 B 后返回 A）时服务端已删
+        draft: () => {
+          draftCalls += 1;
+          return draftCalls === 1
+            ? {package_id: 'PKG-010', results: [{check_id: 'SCH-010-01', status: 'failed', checked_by: '业主', checked_at: '2026-11-01', evidence: []}]}
+            : {package_id: 'PKG-010', results: []};
+        },
+      },
+    });
+    // 第一次加载：A 有一条服务端结果（dirty=false）
+    await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).toContain('已载入 tmp/ 草稿 1 条'));
+    // 切到 B 再回 A：重载拿到空 results——旧实现会留住旧条目（复活已删结果）
+    selection.set({packageId: 'PKG-020', checkId: null});
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).toContain('暂无该包草稿'));
+    // 编辑另一行触发保存：PUT 里不得包含被服务端删掉的那条。
+    // 用 SCH-010-03（无 open_gates；SCH-010-02 的 passed 被 DEC-瓷砖 阻塞）
+    setInput('[data-checked-at="SCH-010-03"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-03"][data-status="passed"]');
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+    const put = calls.find((call) => call.method === 'PUT')!.body as {results: Array<{check_id: string}>};
+    expect(put.results.map((r) => r.check_id)).toEqual(['SCH-010-03']);
+  });
+
   it('debounce 窗口内二次编辑：旧 PUT 成功不清新编辑的 dirty（codex 九审 blocking 回归）', async () => {
     // 编辑 v1 → PUT(v1) 在途 → 编辑 v2（300ms 内，不起新请求）→ v1 成功回头。
     // 旧实现清 dirty → 切包往返时 applyDraft 拿服务端旧值覆盖 v2。修：编辑版本
