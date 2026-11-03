@@ -1194,6 +1194,59 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect((document.querySelector('[data-note="SCH-010-03"]') as HTMLInputElement).value).toBe('本地未落盘的备注');
   });
 
+  it('等待草稿落账期间预演失效：提交中止而不是拿着旧预演开 PR（codex 二十三审 blocking 回归）', async () => {
+    // 复现路径（codex 二十三审 blocking，与其只读提取验证同法）：submit 先
+    // await ensureDraftPersisted——等待窗口内旧预演可能被作废（并发 refresh/控制源
+    // 变化；保存成功自身也会作废预演与确认态）。旧实现 await 后直接发真实提交：
+    // 业主确认过的预演已作废，开 PR 的是没重新预演过的内容。修：等待前捕获预演
+    // 对象与控制源指纹，等待后复核，变过即中止。
+    let releasePut2: () => void = () => {};
+    const putGate = new Promise<void>((resolve) => { releasePut2 = resolve; });
+    let putCount = 0;
+    const {panel, calls} = await mountPanel();
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && init?.method === 'PUT') {
+        putCount += 1;
+        calls.push({url: String(url), method: 'PUT', body: init.body ? JSON.parse(init.body) : undefined});
+        if (putCount === 2) {
+          // 并发事件在 submit 等待落账的窗口内落地：旧预演被作废、版本推进
+          // （另一标签页改动 / refresh 重载）——随后 ensure 重试保存仍会成功
+          panel['invalidateRunForDraftChange']('PKG-010');
+          await putGate;
+        }
+        return {ok: true, status: 200, json: async () => ({ok: true})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // 选状态 → 立即落账（PUT #1 不被压）
+      click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+      panel.flushSave();
+      await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存'), {timeout: 3000});
+      // 卡点 + 预演（新鲜）
+      click('#acceptance-run-gates');
+      await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+      click('#acceptance-dry-run');
+      await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演：将写入'), {timeout: 3000});
+      // 造出「有未落账编辑」的状态（debounce 定时器已消费、保存未成功——正是
+      // ensureDraftPersisted 的存在理由；自然流里它与新鲜预演互斥，与 codex 一样
+      // 用状态注入复现等待窗口）
+      panel['saveRecordFor']('PKG-010').dirty = true;
+      // 两步确认：第一次武装，第二次发起提交（submit 在 ensure 上在途）
+      click('#acceptance-submit');
+      click('#acceptance-submit');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      releasePut2();
+      // 真实提交不许发出（此前只有 dry_run），并留痕要求重新预演
+      await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('预演已失效'), {timeout: 3000});
+      const realSubmits = calls.filter((call) => call.url.includes('/api/acceptance/submit') && !(call.body as {dry_run?: boolean})?.dry_run);
+      expect(realSubmits.length).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('草稿重载未确认时提交按钮禁用：在途与读取失败都堵（codex 十四审 blocking 回归）', async () => {
     // A 生成预演 → 切 B → 服务端草稿被别处改动 → 切回 A：重载在途或 GET 失败
     // 期间旧预演还挂着，但服务端 submit 会重读草稿——业主预演的可能与将写入

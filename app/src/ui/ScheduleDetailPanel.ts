@@ -1741,11 +1741,28 @@ export class ScheduleDetailPanel {
     run.submitError = null;
     run.submitResult = null;
     this.updateAcceptanceBar(packageId);
+    // 等待前捕获「这次确认」对应的预演与控制源指纹（codex 二十三审 blocking）：
+    // ensureDraftPersisted 会 await（可能触发保存——**保存成功即作废预演与确认
+    // 态**），等待窗口内任何使旧预演失效的变化（并发 refresh、控制源变化、在途
+    // 保存落账）都必须中止提交：业主确认过的预演已作废，不能拿着它开 PR。
+    // 只比预演对象与指纹、**不比草稿版本**——无变化重载也 bump 版本但不作废
+    // 预演（二十审 major 的同一基准问题），比版本会误中止。
+    const confirmedDryRun = run.dryRun;
+    const confirmedFingerprint = run.controlFingerprint;
     // 草稿先落账再开 PR：submit 让服务端重读 tmp/ 草稿写入 commit，没存上就提交
     // 等于把旧草稿开成 PR（预演对不上、业主以为存了的编辑不在 PR 里）
     if (!(await this.ensureDraftPersisted(packageId))) {
       run.submitting = false;
       run.submitError = {error: '草稿还没保存成功（见上方保存状态）：提交读的是服务端 tmp/ 草稿，存上后再提交'};
+      this.updateAcceptanceBar(packageId);
+      return;
+    }
+    // 等待后复核（二十三审 blocking）：预演被作废（对象变了/被清空）或控制源
+    // 变过 → 中止，要求重新生成 PR 预演并再次确认
+    if (run.dryRun !== confirmedDryRun || run.controlFingerprint !== confirmedFingerprint) {
+      run.submitting = false;
+      run.submitArmed = false;
+      run.submitError = {error: '等待草稿落账期间预演已失效（草稿或控制源变过）：请重新生成 PR 预演并再次确认'};
       this.updateAcceptanceBar(packageId);
       return;
     }
