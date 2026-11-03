@@ -1154,6 +1154,46 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect(panel['draftResults'].get('SCH-010-01')!.issues.map((issue) => issue.message)).toContain('A 行错误：必须填验收人');
   });
 
+  it('合并把未落盘字段变成可保存结果：必须重新落账（codex 二十二审 blocking 回归）', async () => {
+    // 复现路径（codex 二十二审 blocking）：C1 已有状态，给 C2 填备注（没选状态）
+    // ——PUT 只含 C1，保存成功后整包 dirty 清零；另一标签页保存 C2 后本页重载，
+    // 合并出「服务端状态 + 本地备注」的可保存结果，但 dirty 仍为 false、没有定时
+    // 器：ensureDraftPersisted 放行卡点/预演/提交去读服务端旧备注，界面却显示本地
+    // 新备注并声称已保存，刷新即丢。修：合并检出「本包有行带未落盘字段且已有
+    // 状态」时恢复待存状态并排保存。
+    let serverDraft: Array<Record<string, unknown>> = [
+      {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01'},
+    ];
+    const {panel, calls} = await mountPanel({
+      handlers: {
+        draft: () => ({package_id: 'PKG-010', results: serverDraft}),
+        putDraft: (body) => {
+          serverDraft = (body as {results: Array<Record<string, unknown>>}).results;
+          return {status: 200, body: {ok: true}};
+        },
+      },
+    });
+    // ① C2 填备注不选状态 → PUT 只含 C1 → 已保存（整包 clean）
+    setInput('[data-note="SCH-010-03"]', '本地未落盘的备注');
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存'), {timeout: 3000});
+    expect(calls.filter((call) => call.method === 'PUT').length).toBe(1);
+    // ② 另一标签页保存 C2（服务端现有该行）
+    serverDraft = [
+      ...serverDraft,
+      {check_id: 'SCH-010-03', status: 'passed', checked_by: '别处', checked_at: '2026-11-02', note: '别处写的备注'},
+    ];
+    // ③ 重载合并：本地备注 + 服务端状态 → 必须自动重新落账（PUT #2 带本地备注）
+    await panel['loadDraft']('PKG-010');
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
+    const put2 = calls.filter((call) => call.method === 'PUT')[1].body as {results: Array<{check_id: string; note?: string; status: string}>};
+    const c2 = put2.results.find((r) => r.check_id === 'SCH-010-03')!;
+    expect(c2.status).toBe('passed');
+    expect(c2.note).toBe('本地未落盘的备注');
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存'), {timeout: 3000});
+    // 界面显示与落账内容一致（本地备注胜出）
+    expect((document.querySelector('[data-note="SCH-010-03"]') as HTMLInputElement).value).toBe('本地未落盘的备注');
+  });
+
   it('草稿重载未确认时提交按钮禁用：在途与读取失败都堵（codex 十四审 blocking 回归）', async () => {
     // A 生成预演 → 切 B → 服务端草稿被别处改动 → 切回 A：重载在途或 GET 失败
     // 期间旧预演还挂着，但服务端 submit 会重读草稿——业主预演的可能与将写入

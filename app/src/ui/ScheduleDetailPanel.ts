@@ -1200,6 +1200,23 @@ export class ScheduleDetailPanel {
       });
     }
     this.draftResults = next;
+    // 合并可能把「没选状态的行」变成**可保存结果**（服务端有状态 + 本地未落盘
+    // 字段），而保存成功时整包 dirty 已清零、也没有待存定时器——不重新武装的
+    // 话：ensureDraftPersisted 放行卡点/预演/提交去读服务端旧字段，界面却显示
+    // 本地新值并声称「已保存」，刷新即丢（codex 二十二审 blocking，内存复现）。
+    // 检出「本包有行带着未落盘字段且已有状态」时恢复待存状态并排保存。
+    const record = this.saveRecordFor(packageId);
+    if (!record.dirty) {
+      const pkg = this.payload?.packages.find((item) => item.id === packageId);
+      const unconfirmed = (pkg?.checks ?? []).some((check) => {
+        const state = next.get(check.id);
+        return state !== undefined && state.touched.size > 0 && state.status !== null;
+      });
+      if (unconfirmed) {
+        record.dirty = true;
+        this.scheduleSave(packageId);
+      }
+    }
     // 服务端草稿回填：内容真变了才作废已落账的卡点/预演/确认态（codex 九审
     // blocking——另一标签页改过草稿后切回来，旧结论必须让位）；内容没变（无变化
     // 重载/刷新）只 bump 版本拦在途响应，不误伤业主刚跑出的结论。
