@@ -332,7 +332,12 @@ export class FlowChartPanel {
     const active = this.selection.get().packageId === pkg.id;
     const highlighted = this.highlighted.has(pkg.id);
     const total = pkg.checks.length;
-    const failed = pkg.checks.filter((check) => check.audit_status !== 'passed').length;
+    // 未通过与未验收分列（2026-11-03 修设计稿 P2-12）：audit_status !== 'passed' 会把
+    // 还没执行的 pending 也算成未通过——业主看到「未通过 3/7」以为三项不合格，实际可能
+    // 只是还没验。not_applicable（豁免）两栏都不计。
+    const failedCount = pkg.checks.filter((check) => check.audit_status === 'failed').length;
+    const pendingCount = pkg.checks.filter((check) => !check.audit_status || check.audit_status === 'pending').length;
+    const checkCountText = `未通过 ${failedCount}/${total}｜未验收 ${pendingCount}`;
     const openBlockers = pkg.blockers.filter((blocker) => !blocker.closed);
     const borderColor = active ? ACTIVE_BORDER : highlighted ? HIGHLIGHT_BORDER : 'rgba(255,255,255,.16)';
     const emphasis = active
@@ -344,7 +349,7 @@ export class FlowChartPanel {
     const title = [
       `${pkg.id} ${pkg.name}`,
       `状态：${statusLabelOf(pkg.effective_status)}`,
-      `未通过检查 ${failed}/${total}`,
+      `未通过检查 ${failedCount}/${total}｜未验收 ${pendingCount}`,
       `${pkg.gate_label} ${pkg.payment_gate}：${labelOf(GATE_LABEL, pkg.gate_status)}`,
       ...openBlockers.map((blocker) => `阻塞：${blocker.item ?? blocker.id}（解除：${blocker.clears_when ?? '—'}）`),
       badge.title,
@@ -364,7 +369,7 @@ export class FlowChartPanel {
       </div>
       <div style="margin-top:2px;font-size:12px;line-height:1.35;overflow:hidden;" title="${escapeHtml(pkg.name)}">${escapeHtml(pkg.name)}</div>
       <div style="margin-top:3px;font-size:11px;line-height:1.5;">${this.renderStatusDot(pkg.effective_status)}${escapeHtml(statusLabelOf(pkg.effective_status))}</div>
-      <div style="font-size:11px;color:#9aa4b2;line-height:1.5;">未通过 ${failed}/${total}｜${escapeHtml(pkg.gate_label)} ${escapeHtml(pkg.payment_gate)} ${escapeHtml(labelOf(GATE_LABEL, pkg.gate_status))}</div>
+      <div style="font-size:11px;color:#9aa4b2;line-height:1.5;">${checkCountText}｜${escapeHtml(pkg.gate_label)} ${escapeHtml(pkg.payment_gate)} ${escapeHtml(labelOf(GATE_LABEL, pkg.gate_status))}</div>
       ${blockers}
       ${highlighted ? `<div style="margin-top:2px;color:${HIGHLIGHT_BORDER};font-size:10px;">← 3D 选中</div>` : ''}
     </div>`;
@@ -404,9 +409,12 @@ export class FlowChartPanel {
 
     const capability = capabilityOf(pkg.id, this.links);
     const total = pkg.checks.length;
-    const failed = pkg.checks.filter((check) => check.audit_status !== 'passed');
+    // 同节点口径：未通过与未验收分列（P2-12）。下一个待办优先指 failed（更紧急），
+    // 没有 failed 才指未验收的 pending；not_applicable 不算待办。
+    const failedChecks = pkg.checks.filter((check) => check.audit_status === 'failed');
+    const pendingChecks = pkg.checks.filter((check) => !check.audit_status || check.audit_status === 'pending');
+    const nextCheck = failedChecks[0] ?? pendingChecks[0];
     const openBlockers = pkg.blockers.filter((blocker) => !blocker.closed);
-    const nextCheck = failed[0];
 
     const blockers = openBlockers.length
       ? `<div style="margin-top:2px;color:#f4dfa8;font-size:12px;line-height:1.6;">未关闭阻塞：${openBlockers
@@ -441,7 +449,7 @@ export class FlowChartPanel {
         <span style="margin-left:6px;">${this.renderStatusDot(pkg.effective_status)}${escapeHtml(statusLabelOf(pkg.effective_status))}</span>
         <span style="margin-left:6px;color:#9aa4b2;">就绪：${escapeHtml(labelOf(READINESS_LABEL, pkg.effective_readiness))}</span>
       </div>
-      <div style="color:#9aa4b2;">${escapeHtml(pkg.gate_label)} ${escapeHtml(pkg.payment_gate)}：${escapeHtml(labelOf(GATE_LABEL, pkg.gate_status))}｜未通过检查 ${failed.length}/${total}｜依赖：${escapeHtml(pkg.dependencies.join('、') || '无')}</div>
+      <div style="color:#9aa4b2;">${escapeHtml(pkg.gate_label)} ${escapeHtml(pkg.payment_gate)}：${escapeHtml(labelOf(GATE_LABEL, pkg.gate_status))}｜未通过检查 ${failedChecks.length}/${total}｜未验收 ${pendingChecks.length}｜依赖：${escapeHtml(pkg.dependencies.join('、') || '无')}</div>
       ${blockers}
       ${nextTodo}
       <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">${detailButton}${highlightButton}</div>

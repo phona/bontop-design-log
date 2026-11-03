@@ -113,44 +113,55 @@ export class NextActionPanel {
       return;
     }
 
-    const grouped = new Map<NextActionKind, NextActionItem[]>();
+    const grouped = new Map<string, NextActionItem[]>();
     for (const kind of GROUP_ORDER) grouped.set(kind, []);
     for (const item of items) {
       if (!grouped.has(item.kind)) grouped.set(item.kind, []);
       grouped.get(item.kind)!.push(item);
     }
 
-    const groups = GROUP_ORDER
-      .filter((kind) => (grouped.get(kind) ?? []).length > 0)
-      .map((kind) => {
-        const groupItems = grouped.get(kind)!
-          // 组内按 unblocks 降序。服务端 computeNextActions 已全局排过（unblocks 降序
-          // → kind → ref），这里再稳定排一次只为守住面板自己的不变量；对已排序输入是
-          // 恒等操作，不会打乱服务端给出的顺序。
-          .slice()
-          .sort((left, right) => right.unblocks - left.unblocks);
-        const color = GROUP_COLOR[kind];
-        const cards = groupItems.map((item) => {
-          const clickable = Boolean(item.package_id);
-          const badge = `<span style="padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.08);color:#9aa4b2;font-size:10px;white-space:nowrap;">解除下游 ${item.unblocks} 项</span>`;
-          return `<div data-action-ref="${escapeHtml(item.ref)}" data-action-kind="${escapeHtml(item.kind)}" data-action-pkg="${escapeHtml(item.package_id ?? '')}"
-            style="margin-bottom:6px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-left:3px solid ${color};border-radius:6px;background:rgba(255,255,255,.03);${clickable ? 'cursor:pointer;' : ''}">
-            <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;">
-              <strong>${escapeHtml(item.title)}</strong>${badge}
-            </div>
-            <div style="margin-top:4px;color:#9aa4b2;font-size:11px;">${escapeHtml(item.detail)}</div>
-            ${clickable ? `<div style="margin-top:4px;color:#6fa8dc;font-size:11px;">关联包 ${escapeHtml(item.package_id!)}（点这条选中该包）</div>` : ''}
-          </div>`;
-        }).join('');
-        return `<div style="margin-bottom:12px;">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:13px;font-weight:600;">
-            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${color};border:1px solid rgba(255,255,255,.25);"></span>
-            ${escapeHtml(GROUP_LABEL[kind])} ${groupItems.length}
+    // 组渲染 helper：label/hint/color 显式传入——未识别 kind 也能原样渲染（P2 兜底）
+    const renderGroup = (label: string, hint: string, color: string, groupItems: NextActionItem[]): string => {
+      // 组内按 unblocks 降序。服务端 computeNextActions 已全局排过（unblocks 降序
+      // → kind → ref），这里再稳定排一次只为守住面板自己的不变量；对已排序输入是
+      // 恒等操作，不会打乱服务端给出的顺序。
+      const sorted = groupItems.slice().sort((left, right) => right.unblocks - left.unblocks);
+      const cards = sorted.map((item) => {
+        const clickable = Boolean(item.package_id);
+        const badge = `<span style="padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.08);color:#9aa4b2;font-size:10px;white-space:nowrap;">解除下游 ${item.unblocks} 项</span>`;
+        return `<div data-action-ref="${escapeHtml(item.ref)}" data-action-kind="${escapeHtml(item.kind)}" data-action-pkg="${escapeHtml(item.package_id ?? '')}"
+          style="margin-bottom:6px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-left:3px solid ${color};border-radius:6px;background:rgba(255,255,255,.03);${clickable ? 'cursor:pointer;' : ''}">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;">
+            <strong>${escapeHtml(item.title)}</strong>${badge}
           </div>
-          <div style="margin:-2px 0 6px 16px;color:#9aa4b2;font-size:11px;">${escapeHtml(GROUP_HINT[kind])}</div>
-          ${cards}
+          <div style="margin-top:4px;color:#9aa4b2;font-size:11px;">${escapeHtml(item.detail)}</div>
+          ${clickable ? `<div style="margin-top:4px;color:#6fa8dc;font-size:11px;">关联包 ${escapeHtml(item.package_id!)}（点这条选中该包）</div>` : ''}
         </div>`;
       }).join('');
+      return `<div style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:13px;font-weight:600;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${color};border:1px solid rgba(255,255,255,.25);"></span>
+          ${escapeHtml(label)} ${sorted.length}
+        </div>
+        <div style="margin:-2px 0 6px 16px;color:#9aa4b2;font-size:11px;">${escapeHtml(hint)}</div>
+        ${cards}
+      </div>`;
+    };
+
+    // P2 兜底（2026-11-03 修）：GROUP_ORDER 之外的新 kind 曾被 filter 静默丢弃——
+    // 服务端 computeNextActions 将来新增线索类型时，业主在面板上看不到那条线索。
+    // 现在未识别 kind 归入「其他」组原样呈现，标题带出 kind 名，让人能发现前端没跟上。
+    const knownKinds = GROUP_ORDER.filter((kind) => (grouped.get(kind) ?? []).length > 0);
+    const extraKinds = [...grouped.keys()].filter((kind) => !(GROUP_ORDER as readonly string[]).includes(kind));
+    const groups = [
+      ...knownKinds.map((kind) => renderGroup(GROUP_LABEL[kind], GROUP_HINT[kind], GROUP_COLOR[kind], grouped.get(kind)!)),
+      ...extraKinds.map((kind) => renderGroup(
+        `其他（未识别 kind：${kind}）`,
+        '服务端 computeNextActions 新增了本面板不认识的线索类型——按原样呈现，不静默丢弃；前端分组应尽快补上。',
+        '#9aa4b2',
+        grouped.get(kind)!)),
+    ].join('');
+
 
     body.innerHTML = `${error}${summary}${groups}
       <div style="margin-top:4px;color:#9aa4b2;font-size:11px;">

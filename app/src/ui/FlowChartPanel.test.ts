@@ -283,7 +283,7 @@ describe('FlowChartPanel', () => {
     expect(document.querySelectorAll('path.flow-edge[data-from="PKG-070"][data-to="PKG-080"]')).toHaveLength(1);
   });
 
-  it('状态文字/未通过 N/M/门槛状态/阻塞原因文字进 DOM（颜色之外必须有文字）', async () => {
+  it('状态文字/未通过与未验收分列/门槛状态/阻塞原因文字进 DOM（颜色之外必须有文字）', async () => {
     stubFetch();
     const panel = new FlowChartPanel(new ScheduleSelectionStore());
     panel.show();
@@ -293,14 +293,14 @@ describe('FlowChartPanel', () => {
     expect(node010.textContent).toContain('PKG-010');
     expect(node010.textContent).toContain('拆改与砌筑');
     expect(node010.textContent).toContain('进行中');
-    expect(node010.textContent).toContain('未通过 2/3');
+    expect(node010.textContent).toContain('未通过 1/3｜未验收 1'); // SCH-010-03 failed + SCH-010-02 pending 分列
     expect(node010.textContent).toContain('付款门槛');
     expect(node010.textContent).toContain('GATE-010-A');
     expect(node010.textContent).toContain('待验');
 
     const node030 = document.querySelector('.flow-node[data-pkg-id="PKG-030"]') as HTMLElement;
     expect(node030.textContent).toContain('待验收');
-    expect(node030.textContent).toContain('未通过 1/2');
+    expect(node030.textContent).toContain('未通过 0/2｜未验收 1'); // 只有 pending，没有 failed——旧口径会误报「未通过 1/2」
 
     // blocked 包：阻塞原因文字（item + 解除条件）必须在 DOM；已关闭阻塞不显示
     const node080 = document.querySelector('.flow-node[data-pkg-id="PKG-080"]') as HTMLElement;
@@ -382,7 +382,7 @@ describe('FlowChartPanel', () => {
     expect(bar.textContent).toContain('未开始');
     expect(bar.textContent).toContain('未就绪');
     expect(bar.textContent).toContain('GATE-070-A');
-    expect(bar.textContent).toContain('未通过检查 1/1');
+    expect(bar.textContent).toContain('未通过检查 0/1｜未验收 1'); // PKG-070 唯一检查是 pending：没有未通过，只有未验收
     expect(bar.textContent).toContain('下一个待办');
     expect(bar.textContent).toContain('成品保护');
     expect(bar.textContent).toContain('完工面全覆盖保护');
