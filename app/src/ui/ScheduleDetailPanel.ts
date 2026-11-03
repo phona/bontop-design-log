@@ -1291,7 +1291,7 @@ export class ScheduleDetailPanel {
     el.style.cssText = `
       background: #1a1a2e; color: #e0e0e0; border-radius: 10px; padding: 14px 16px;
       font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none; max-width: 560px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none;
     `;
     el.innerHTML = `
       <div class="dynamic-panel-heading">

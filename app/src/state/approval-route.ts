@@ -81,9 +81,23 @@ export function getApprovalRoute(): ApprovalRoute {
   return currentRoute;
 }
 
-/** 只更新镜像（hash 已是该状态时用，如 hashchange 之后）。 */
+/**
+ * 只更新镜像（hash 已是该状态时用，如 hashchange 之后）。
+ * 不动 exitCanPop——程序内导航的 push 资格由 navigateApproval 自己管。
+ */
 export function setApprovalRoute(route: ApprovalRoute): void {
   currentRoute = route;
+}
+
+/**
+ * 作废「返回 3D」的 pop 资格。**hashchange 时必须调用**：程序内导航
+ * （push/replaceState）不触发 hashchange，所以任何 hashchange 都是用户驱动
+ * 的（返回键/前进键/手改地址栏）——当前历史条目不再是「我们 push 的、下面
+ * 垫着 3D 页」的那张票。不作的后果：手改 hash 到另一个审批态后点「返回 3D」，
+ * back() 退到的是手改前那页（可能还是审批页），用户退不出去（codex 审查实证）。
+ */
+export function invalidateExitPop(): void {
+  exitCanPop = false;
 }
 
 function canWriteHistory(): boolean {

@@ -265,8 +265,10 @@ export class SchedulePanel {
       row.addEventListener('click', () => {
         const packageId = String((row as HTMLElement).dataset.pkgId ?? '');
         if (!packageId) return;
+        // 同 FlowChartPanel（2026-11-03 路由级）：行点击只选中，不跳 3D——
+        // onHighlight 现=退出审批页，行点击跳走会踢用户出审批页。跳转只走
+        // 详情页里的「在 3D 中高亮」按钮。
         this.selection.set({packageId, checkId: null});
-        this.options.onHighlight?.(packageId);
         this.render();
       });
     }
@@ -295,7 +297,7 @@ export class SchedulePanel {
     el.style.cssText = `
       background: #1a1a2e; color: #e0e0e0; border-radius: 10px; padding: 14px 16px;
       font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none; max-width: 520px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none;
     `;
     const modes = (Object.keys(MODE_LABEL) as PanelMode[])
       .map((mode) => `<button type="button" data-mode="${mode}" data-active="false" aria-pressed="false">${MODE_LABEL[mode]}</button>`)

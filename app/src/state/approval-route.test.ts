@@ -10,6 +10,8 @@ import {
   setApprovalRoute,
   navigateApproval,
   writeSelectionRoute,
+  exitApproval,
+  invalidateExitPop,
 } from './approval-route.js';
 
 describe('parseApprovalRoute', () => {
@@ -88,6 +90,16 @@ describe('navigateApproval / writeSelectionRoute（镜像与 hash 写入）', ()
     writeSelectionRoute({packageId: null, checkId: null});
     expect(window.location.hash).toBe('#approval=detail');
     expect(getApprovalRoute()).toEqual({subPage: 'detail', packageId: null, checkId: null});
+  });
+
+  it('invalidateExitPop 后 exitApproval 走 replace 兜底（手改 hash 后「返回 3D」退不出去的解药）', () => {
+    // codex 审查 blocking 2：push 进审批页后用户手改 hash 到另一个审批态，
+    // 若不兑现资格就 back()，退到的是手改前那页（可能还是审批页）——用户出不去。
+    navigateApproval({subPage: 'flow', packageId: null, checkId: null}, 'push');
+    invalidateExitPop(); // 模拟 hashchange（用户返回/手改）后的资格作废
+    expect(exitApproval()).toBe(false); // 不 pop，走 replace
+    expect(window.location.hash).toBe('');
+    expect(getApprovalRoute().subPage).toBe(null);
   });
 
   it('3D 页清空选中回落空 hash', () => {

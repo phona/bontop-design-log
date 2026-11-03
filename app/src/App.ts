@@ -42,6 +42,7 @@ import { FlowChartPanel } from './ui/FlowChartPanel.js';
 import { ScheduleSelectionStore, type ScheduleSelection } from './state/schedule-selection.js';
 import {
   parseApprovalRoute, getApprovalRoute, setApprovalRoute, navigateApproval, exitApproval,
+  invalidateExitPop,
   type ApprovalRoute, type ApprovalSubPage,
 } from './state/approval-route.js';
 import { buildObjectPackageIndex, resolvePackageScope, type PackageScopeLink, type ProjectScopeInput } from '@shared/package-scope';
@@ -1259,6 +1260,9 @@ export class App {
    */
   private setupApprovalRoute(): void {
     window.addEventListener('hashchange', () => {
+      // 用户驱动的导航（返回/前进/手改）作废 pop 资格——否则「返回 3D」可能
+      // back() 退到手改前的审批页，退不出去（codex 审查实证，blocking 2）。
+      invalidateExitPop();
       this.applyApprovalRoute(parseApprovalRoute(location.hash));
     });
   }

@@ -112,7 +112,7 @@ describe('SchedulePanel', () => {
     expect(document.querySelector('#schedule-panel-body')!.textContent).toContain('过期验收记录 1 条');
   });
 
-  it('点行写共享选中态并触发 onHighlight', async () => {
+  it('点行只写共享选中态，不触发 onHighlight（2026-11-03 路由级：跳 3D 只走显式按钮）', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, status: 200, json: async () => snapshot()})) as never);
     const selection = new ScheduleSelectionStore();
     const onHighlight = vi.fn();
@@ -122,7 +122,8 @@ describe('SchedulePanel', () => {
 
     (document.querySelector('tr[data-pkg-id="PKG-040"]') as HTMLElement).click();
     expect(selection.get()).toEqual({packageId: 'PKG-040', checkId: null});
-    expect(onHighlight).toHaveBeenCalledWith('PKG-040');
+    // 路由级后 onHighlight = 退出审批页；行点击再调它会把用户踢出审批页
+    expect(onHighlight).not.toHaveBeenCalled();
     // 当前选中行 data-active
     await vi.waitFor(() => expect((document.querySelector('tr[data-pkg-id="PKG-040"]') as HTMLElement).dataset.active).toBe('true'));
   });
