@@ -152,7 +152,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('mep: 无输入，M-HVAC/M-ROUTE 图层为空（MEP 协调未导出）');
     notes.push('MEP NOT EXPORTED: coordination data unavailable at export time');
   } else {
-    emitMep(writer, mep.coordination, mep.sources, warnings, label, restrict);
+    emitMep(writer, mep.coordination, mep.sources, warnings, label, restrict, labels, notes);
   }
 
   // 图内说明（D-NOTES，左上图框外）：交付限制随图走（codex 七审 major）。
@@ -544,7 +544,10 @@ function emitMep(
   warnings: string[],
   label: (text: string, fallback?: string) => string,
   restrict: RestrictLabels,
+  labelsMode: 'utf8' | 'ascii',
+  notes: string[],
 ): void {
+  let viaElevationNoted = false;
   const report = resolveMepRoutes(coordination, sources);
   for (const resolved of report.routes) {
     if (resolved.unresolved.length > 0) {
@@ -575,9 +578,20 @@ function emitMep(
     // route.from_height/to_height 覆盖端点原始 y，读 resolved.from/to 会标错覆盖值。
     const fromY = points[0]?.y;
     const toY = points[points.length - 1]?.y;
-    const elevText = fromY !== undefined && toY !== undefined && Math.abs(fromY - toY) > 1e-6
-      ? ` H${fromY.toFixed(2)}→${toY.toFixed(2)}`
+    // 等高也标注（codex 十审 major）：DXF 全部投到零高度，不标 H 则敷设高度完全不可还原。
+    // 中间 via 的升降不在平面表达，由全局 D-NOTE 说明。
+    const arrow = labelsMode === 'ascii' ? '->' : '→';
+    const elevText = fromY !== undefined && toY !== undefined
+      ? Math.abs(fromY - toY) > 1e-6
+        ? ` H${fromY.toFixed(2)}${arrow}${toY.toFixed(2)}`
+        : ` H${fromY.toFixed(2)}`
       : '';
+    if (points.some((point, index) => index > 0 && index < points.length - 1 && point.y !== undefined && (fromY === undefined || Math.abs(point.y - fromY) > 1e-6))) {
+      if (!viaElevationNoted) {
+        viaElevationNoted = true;
+        notes.push('MEP ROUTE INTERMEDIATE ELEVATIONS NOT PLOTTED: route mid-point height changes are not expressed on plan');
+      }
+    }
     writer.addText(layer[0], first[0] + POINT_RADIUS_MM, first[1] + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
       label(candidate
         ? `${name} ${resolved.route.layer}${elevText} ${restrict.candidate}`
@@ -597,6 +611,22 @@ function emitMep(
     writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
       label(linkedCandidate ? `${junction.id} ${restrict.junctionPending}` : junction.id, junction.id));
   }
+  // 候选 anchor（codex 十审 blocking）：pending/inferred 状态、或与已隔离候选 junction 同 id
+  // 的节点（如 condensate_living_dining_merge），必须随候选机制隔离 M-CAND——否则关掉候选层
+  // 后正式设备层仍留候选点，破坏隔离约定。
+  const candidateJunctionIds = new Set(
+    report.routes
+      .filter(isCandidateRoute)
+      .flatMap((resolved) => {
+        const ids = new Set<string>();
+        for (const junction of coordination.junctions) {
+          if (junction.inlet_routes.includes(resolved.route.id) || junction.outlet_route === resolved.route.id) {
+            ids.add(junction.id);
+          }
+        }
+        return [...ids];
+      }),
+  );
   for (const anchor of sources.hvacAnchors) {
     // 内机普遍经 ref: {source: ceiling} 定位（无直接 position）——复用 resolveMepEndpoint 解析引用
     // （与管路端点同口径），解析不了显式告警，不再静默跳过（codex 审 2026-11-03 blocking）。
@@ -607,10 +637,15 @@ function emitMep(
       warnings.push(`mep anchor ${anchor.id}: 无 position 且引用无法解析，未导出`);
       continue;
     }
+    const candidate = anchor.status === 'pending' || anchor.status === 'inferred' || candidateJunctionIds.has(anchor.id);
+    const layer = candidate ? DXF_LAYERS.M_CAND : DXF_LAYERS.M_HVAC;
     const [x, y] = toDxf(position.x, position.z);
-    writer.addCircle(DXF_LAYERS.M_HVAC[0], x, y, POINT_RADIUS_MM * 2);
-    writer.addText(DXF_LAYERS.M_HVAC[0], x + POINT_RADIUS_MM * 2, y + POINT_RADIUS_MM * 2, TEXT_HEIGHT_MM,
-      label(anchor.status !== 'confirmed' ? `${anchor.id} ${anchor.status}` : anchor.id, anchor.id));
+    writer.addCircle(layer[0], x, y, POINT_RADIUS_MM * 2);
+    writer.addText(layer[0], x + POINT_RADIUS_MM * 2, y + POINT_RADIUS_MM * 2, TEXT_HEIGHT_MM,
+      label(candidate ? `${anchor.id} ${restrict.pending}` : anchor.status !== 'confirmed' ? `${anchor.id} ${anchor.status}` : anchor.id, anchor.id));
+    if (candidate) {
+      warnings.push(`mep anchor ${anchor.id}: ${anchor.status}${candidateJunctionIds.has(anchor.id) ? '/候选汇流节点' : ''}，已隔离 M-CAND`);
+    }
   }
   for (const terminal of sources.hvacTerminals) {
     // 候选风口（codex 六审 blocking）：condensate_drain_candidate / confirmed:false / pending
