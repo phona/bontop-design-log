@@ -1002,6 +1002,71 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     }
   });
 
+  it('未选状态的行：保存成功不清它的 touched，重载不删已填输入（codex 二十审 blocking 回归）', async () => {
+    // 复现路径（codex 二十审 blocking）：C1 已有状态，用户给另一行填了备注/检查人
+    // 但还没选状态——collectResults 跳过 status=null 的行，PUT 只含 C1。旧实现
+    // 保存成功时清空**全包**所有行的 touched：那行的输入被误标成已确认，下次重载
+    // 时它既不在服务端结果中又没有 touched，被当「服务端删了」直接删除。修：
+    // touched 只清本次 PUT 实际包含的行。
+    const {panel, calls} = await mountPanel({
+      handlers: {
+        draft: () => ({package_id: 'PKG-010', results: [
+          {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01'},
+        ]}),
+      },
+    });
+    // ① 给 SCH-010-03 填备注 + 检查人，不选状态 → PUT 只含 C1
+    setInput('[data-note="SCH-010-03"]', '还没选状态的备注');
+    setInput('[data-checked-by="SCH-010-03"]', '业主');
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+    const put = calls.find((call) => call.method === 'PUT')!.body as {results: Array<{check_id: string}>};
+    expect(put.results.map((r) => r.check_id)).toEqual(['SCH-010-01']); // 没选状态的行不进 body
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存'));
+    // ② 重载（服务端仍只有 C1）：那行已填的输入不许被删
+    await panel['loadDraft']('PKG-010');
+    await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).not.toContain('草稿加载中'));
+    expect((document.querySelector('[data-note="SCH-010-03"]') as HTMLInputElement).value).toBe('还没选状态的备注');
+    expect((document.querySelector('[data-checked-by="SCH-010-03"]') as HTMLInputElement).value).toBe('业主');
+  });
+
+  it('保存成功后切页往返：无变化重载不清刚跑的卡点/预演（codex 二十审 major 回归）', async () => {
+    // 复现路径（codex 二十审 major）：加载旧草稿→编辑→保存成功→跑卡点和预演→
+    // 切包再返回。重载的 GET 与刚保存的内容完全一致，但 lastServerDraft 还是保存
+    // 前的旧内容——九审「服务端变过才作废」误判为变过，刚跑出的卡点/预演被清，
+    // 正常切页往返都要重跑耗时检查。修：PUT 落账时同步服务端内容基准。
+    let serverDraft: Array<Record<string, unknown>> = [
+      {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01', note: '旧备注'},
+    ];
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    const {selection, panel} = await mountPanel({
+      snapshot: twoPkg,
+      handlers: {
+        draft: () => ({package_id: 'PKG-010', results: serverDraft}),
+        putDraft: (body) => {
+          serverDraft = (body as {results: Array<Record<string, unknown>>}).results;
+          return {status: 200, body: {ok: true}};
+        },
+      },
+    });
+    // 编辑 → 保存成功（服务端内容随之更新）
+    setInput('[data-note="SCH-010-01"]', '新备注');
+    await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存'), {timeout: 3000});
+    // 跑卡点 + 预演
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    click('#acceptance-dry-run');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演：将写入'), {timeout: 3000});
+    // 切包再返回：重载内容与刚保存的一致——卡点/预演不许被误作废
+    selection.set({packageId: 'PKG-020', checkId: null});
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).not.toContain('草稿加载中'));
+    expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5');
+    expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演：将写入');
+    expect((document.querySelector('[data-note="SCH-010-01"]') as HTMLInputElement).value).toBe('新备注');
+  });
+
   it('草稿重载未确认时提交按钮禁用：在途与读取失败都堵（codex 十四审 blocking 回归）', async () => {
     // A 生成预演 → 切 B → 服务端草稿被别处改动 → 切回 A：重载在途或 GET 失败
     // 期间旧预演还挂着，但服务端 submit 会重读草稿——业主预演的可能与将写入

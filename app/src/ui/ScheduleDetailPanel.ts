@@ -1376,6 +1376,11 @@ export class ScheduleDetailPanel {
         // 里十五审守卫的依据）。在途变过的旧 body 也推了服务端——序号照记，
         // 漏掉的条目由重发补（serverSeq 只表达「保存落账过」，不表达内容新旧）。
         run.serverSeq += 1;
+        // 服务端内容基准同步（codex 二十审 major）：PUT 成功即服务端持有这份
+        // body。不更新基准的话，下次重载拿到**与刚保存一致**的内容也会撞上旧的
+        // lastServerDraft 而误判「服务端变过」，把刚跑出的卡点/预演作废——正常
+        // 切页往返都要重跑耗时检查（九审的作废机制本该只在服务端真变时触发）。
+        run.lastServerDraft = JSON.stringify(results);
         if (run.draftVersion === draftVersionAtStart) {
           record.status = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
           record.dirty = false;
@@ -1385,16 +1390,21 @@ export class ScheduleDetailPanel {
           // 的错误、B 刚跑出的门禁/预演一起抹掉（内存复现：B 的 issues 变空、gates 与
           // dryRun 均变 null）。只清该包各检查的行 issues；提交态只在当前操作包就是
           // 该包时重置。
+          // **touched 只清本次 PUT 实际包含的行**（codex 二十审 blocking）：
+          // collectResults 跳过 status=null 的行——用户给某行填了备注/验收人但
+          // 还没选状态时，那行不在 body 里，清它的 touched 等于把「未提交的输入」
+          // 误标成已确认；下次重载时该行既不在服务端结果中又没有 touched，被当
+          // 成「服务端删了」直接删除，输入静默丢失。
+          const confirmedIds = new Set(results.map((item) => item.check_id));
           const savedPkg = this.payload?.packages.find((item) => item.id === packageId);
           for (const check of savedPkg?.checks ?? []) {
             const state = this.draftResults.get(check.id);
-            if (state) {
-              state.issues = [];
-              // 编辑周期闭环：服务端已确认这份内容，touched 清零——此后它只表示
-              // 「自这次确认以来动过的字段」，合并回填时没动过的字段让位给服务端
-              // （含别处/别标签页改过的新值），动过的（含清空）本地胜出。
-              state.touched.clear();
-            }
+            if (!state) continue;
+            state.issues = [];
+            // 编辑周期闭环（仅限已落账的行）：此后 touched 只表示「自这次确认以来
+            // 动过的字段」，合并回填时没动过的字段让位给服务端（含别处/别标签页
+            // 改过的新值），动过的（含清空）本地胜出。
+            if (confirmedIds.has(check.id)) state.touched.clear();
           }
           // 草稿变了：该包旧卡点/预演/提交结论全部作废（版本号 +1 令在途响应落账时作废）
           this.invalidateRunForDraftChange(packageId);
