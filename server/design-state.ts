@@ -75,9 +75,12 @@ export class DesignState {
       );
       selections[topic.id] = { default: selectedDefault, roomOverrides };
     }
-    for (const topicId of Object.keys(selections)) {
-      if (!catalog.isValidTopic(topicId)) delete selections[topicId];
-    }
+    // 未知主题的键**保留不删**（2026-11-03 修，PR #56）：skirting 这类 catalog
+    // 不建模、由测试与人工维护在 data/current-scheme.json 里的条目，曾被这段热重载
+    // 逻辑静默删除并 persist 回仓——一次配置热重载（改任何 config 都会触发）就丢
+    // 数据，skirting 测试当场基线外红。catalog 管不着的键不该由它判死刑：保留原样，
+    // 新的写入仍被 validatePatch 拦（未知 topic 拒绝 patch），它们成为只读遗留键。
+    // 若将来 catalog 增补该主题，下面的 getTopics 循环会自然接管校验。
     if (JSON.stringify(selections) !== before) {
       this.scheme = { ...this.scheme, selections, updatedAt: nowIso() };
       this.persist();
