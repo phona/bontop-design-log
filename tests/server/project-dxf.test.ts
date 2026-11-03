@@ -551,8 +551,10 @@ test('project-dxf: 共墙双面饰面标注带房间归属且分侧错开（code
   const gbath = texts.find((e) => (e['1'] ?? '').includes('tile_gbath'));
   assert.ok(balc && (balc['1'] ?? '').includes('[living]') && (balc['1'] ?? '').includes('0.00~0.30m'));
   assert.ok(gbath && (gbath['1'] ?? '').includes('[kitchen]') && (gbath['1'] ?? '').includes('0.00~2.65m'));
-  // 分侧：两段文字位置不同（y 或 x 错开）
-  assert.ok(balc && gbath && (balc['20'] !== gbath['20'] || balc['10'] !== gbath['10']));
+  // 分侧正确性（codex 九审 blocking）：living 在墙南侧（local z+ → DXF y−）、kitchen 北侧
+  // （local z− → DXF y+）。z 翻转漏取反时两侧互换：balc 会跑到 y>0、gbath 跑到 y<0。
+  assert.ok(balc && Number(balc['20']) < 0, `balc label should sit south (y<0), got ${balc?.['20']}`);
+  assert.ok(gbath && Number(gbath['20']) > 0, `gbath label should sit north (y>0), got ${gbath?.['20']}`);
 });
 
 test('project-dxf: MEP 竖直管段画圆标记 + 标注起终标高（codex 八审 major）', () => {
@@ -573,6 +575,28 @@ test('project-dxf: MEP 竖直管段画圆标记 + 标注起终标高（codex 八
   assert.ok(entities.some((e) => e.type === 'CIRCLE' && e['8'] === DXF_LAYERS.M_ROUTE[0]));
   const texts = entities.filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.M_ROUTE[0]);
   assert.ok(texts.some((e) => (e['1'] ?? '').includes('drop_bed') && (e['1'] ?? '').includes('H1.30→0.35')));
+});
+
+test('project-dxf: MEP 标高读 from_height/to_height 覆盖值而非端点原始 y（codex 九审 blocking）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: {
+        version: '1', status: 'ok', layers: {},
+        routes: [{
+          id: 'weak_ap_cov', layer: 'weak_current' as never, status: 'confirmed' as never, route_kind: 'physical',
+          from: { x: 1, z: 1, y: 0.50 }, to: { x: 3, z: 1, y: 0.90 }, via: [],
+          from_height: 1.30, to_height: 0.35, // 路线声明覆盖端点原始 y
+        }],
+        junctions: [],
+      } as never,
+      sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
+    },
+  });
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.M_ROUTE[0]);
+  // 读覆盖值 H1.30→0.35；读原始端点 y 会错标 H0.50→0.90
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('H1.30→0.35')), JSON.stringify(texts.map((e) => e['1'])));
+  assert.ok(!texts.some((e) => (e['1'] ?? '').includes('H0.50→0.90')));
 });
 
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
