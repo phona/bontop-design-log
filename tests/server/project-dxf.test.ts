@@ -318,7 +318,7 @@ test('project-dxf: 电气 blocked/pending 点位标注限制 + 告警（codex �
     house: {
       ...baseInput().house,
       electrical: [
-        ...baseInput().house.electrical,
+        ...(baseInput().house.electrical ?? []),
         { id: 'sock_blk', room: 'living', type: 'socket', x: 0.5, z: 0.5, height: 1.2, position_status: 'pending', serviceability_status: 'blocked' },
         { id: 'sock_pend', room: 'living', type: 'socket', x: 0.7, z: 0.5, position_status: 'inferred' },
       ] as never,
@@ -700,6 +700,16 @@ test('project-dxf: 柜面安装灯具标注宿主柜体与安装面（codex 十�
 test('project-dxf: 图内声明阶段范围（codex 十一审 major）', () => {
   const result = buildProjectDxf({ ...baseInput(), notes: ['PHASE: full (all furnishings)'] });
   assert.ok(parseEntities(result.dxf).some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('PHASE: full')));
+});
+
+test('project-dxf: electrical 缺省时 E-* 为空 + D-NOTE + 告警，不缓存兜底（codex 十三审 blocking）', () => {
+  const input = baseInput();
+  delete (input.house as { electrical?: unknown }).electrical;
+  const result = buildProjectDxf(input);
+  const entities = parseEntities(result.dxf);
+  assert.ok(!entities.some((e) => (e['8'] ?? '').startsWith('E-')));
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('ELECTRICAL NOT EXPORTED')));
+  assert.ok(result.warnings.some((w) => w.startsWith('electrical:')));
 });
 
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
