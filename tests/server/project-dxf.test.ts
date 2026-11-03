@@ -42,7 +42,7 @@ const wall: Extract<SceneElement, { type: 'wall' }> = {
   type: 'wall',
   id: 'w_north',
   x1: 0, z1: 0, x2: 4, z2: 0,
-  openings: [{ id: 'op_door', type: 'door', x: 2, z: 0, width: 0.9, height: 2.1 }],
+  openings: [{ id: 'op_door', type: 'door', x: 2, z: 0, width: 0.9, height: 2.1, swing: 'inward', hinge: 'start' }],
 };
 
 function baseInput(): ProjectDxfInput {
@@ -446,6 +446,58 @@ test('project-dxf: plumbing 标注带安装墙侧（codex 五审 major）', () =
   });
   const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.P_POINTS[0]);
   assert.ok(texts.some((e) => (e['1'] ?? '').includes('toilet_mb') && (e['1'] ?? '').includes('west')));
+});
+
+test('project-dxf: 候选风口终端隔离 M-CAND，正式风口带 id（codex 六审 blocking）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: { version: '1', status: 'ok', layers: {}, routes: [], junctions: [] } as never,
+      sources: {
+        electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], outdoor: [],
+        hvacTerminals: [
+          { id: 'condensate_living_candidate', status: 'pending', system: 'condensate', position: { x: 1, y: 2.5, z: 1 }, kind: 'condensate_drain_candidate', confirmed: false },
+          { id: 'supply_living', status: 'confirmed', system: 'refrigerant', position: { x: 2, y: 2.5, z: 2 } },
+        ] as never,
+      } as never,
+    },
+  });
+  const entities = parseEntities(result.dxf);
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.M_CAND[0] && e.type === 'TEXT' && (e['1'] ?? '').includes('condensate_living_candidate')));
+  assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.M_HVAC[0] && e.type === 'TEXT' && (e['1'] ?? '').includes('supply_living')));
+  assert.ok(!entities.some((e) => e['8'] === DXF_LAYERS.M_HVAC[0] && e.type === 'TEXT' && (e['1'] ?? '').includes('candidate')));
+  assert.ok(result.warnings.some((w) => w.includes('condensate_living_candidate')));
+});
+
+test('project-dxf: floor_region 圆角随声明展开，不出外接矩形（codex 六审 blocking）', () => {
+  const input = baseInput();
+  // 直角三角形三点 + 第一点 R1.0 圆角：外接矩形闭合折线 = 3 边直角；弧感知 = 采样段 + R1000 标注
+  input.house.sceneElements.push({
+    type: 'floor_region', id: 'floor_round',
+    points: [
+      { x: 0, z: 5, radius: 1.0, cx: 1, cz: 5 },
+      { x: 2, z: 5 },
+      { x: 2, z: 6 },
+    ],
+  });
+  const result = buildProjectDxf(input);
+  const entities = parseEntities(result.dxf);
+  const floorLines = linesOn(entities, DXF_LAYERS.F_FLOOR[0]);
+  // 弧采样段数应明显多于 3（直角连接只有 3 条边）
+  assert.ok(floorLines.length >= 6, `expected arc-sampled segments, got ${floorLines.length}`);
+  assert.ok(entities.some((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.F_FLOOR[0] && e['1'] === 'R1000'));
+});
+
+test('project-dxf: 普通门洞标注 swing/hinge（codex 六审 major）', () => {
+  const result = buildProjectDxf(baseInput());
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.OPENING[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('op_door') && (e['1'] ?? '').includes('swing=inward') && (e['1'] ?? '').includes('hinge=start')));
+});
+
+test('project-dxf: ascii 模式房间标注显式用 id+sqm（codex 六审 minor）', () => {
+  const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });
+  assert.ok(ascii.dxf.includes('living 8.0sqm'));
+  assert.ok(!ascii.dxf.includes('客厅'));
 });
 
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {

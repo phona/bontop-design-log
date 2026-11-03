@@ -111,7 +111,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
 
   emitWalls(writer, house.sceneElements);
   emitGlazingAndDoors(writer, house.sceneElements, warnings);
-  emitRooms(writer, house.rooms, label);
+  emitRooms(writer, house.rooms, labels);
   emitFurniture(writer, house.furnishings, wallsById, warnings, label);
   emitElectrical(writer, house.electrical, warnings, label, restrict);
   if (plumbing === undefined) {
@@ -204,8 +204,10 @@ function emitWalls(writer: DxfWriter, elements: SceneElement[]): void {
       writer.addLine(DXF_LAYERS.OPENING[0], ax, ay, ax - capX, ay - capY);
       writer.addLine(DXF_LAYERS.OPENING[0], bx, by, bx + capX, by + capY);
       writer.addLine(DXF_LAYERS.OPENING[0], bx, by, bx - capX, by - capY);
+      const swingText = opening.swing ? ` swing=${opening.swing}` : '';
+      const hingeText = opening.hinge ? ` hinge=${opening.hinge}` : '';
       writer.addText(DXF_LAYERS.OPENING[0], cx, cy + OPENING_CAP_MM * 2, TEXT_HEIGHT_MM,
-        `${opening.id} ${opening.type} W${Math.round(opening.width * 1000)}`);
+        `${opening.id} ${opening.type} W${Math.round(opening.width * 1000)}${swingText}${hingeText}`);
     }
   }
 }
@@ -280,7 +282,7 @@ function emitGlazingAndDoors(writer: DxfWriter, elements: SceneElement[], warnin
 
 // --- 房间 ---
 
-function emitRooms(writer: DxfWriter, rooms: RoomLayout[], label: (text: string, fallback?: string) => string): void {
+function emitRooms(writer: DxfWriter, rooms: RoomLayout[], inputLabels: 'utf8' | 'ascii'): void {
   for (const room of rooms) {
     if (room.semantic_only) continue;
     // 非矩形房间优先声明轮廓（codex 二审 blocking）：layout-resolver 已为客餐厅/主卧/入户
@@ -298,8 +300,12 @@ function emitRooms(writer: DxfWriter, rooms: RoomLayout[], label: (text: string,
     }
     const area = room.area ?? room.width * room.depth;
     const [cx, cy] = toDxf(room.x, room.z);
-    writer.addText(DXF_LAYERS.ROOM[0], cx - ROOM_TEXT_HEIGHT_MM * 2, cy, ROOM_TEXT_HEIGHT_MM,
-      label(`${room.name} ${(area ?? 0).toFixed(1)}㎡`, `${room.id} ${(area ?? 0).toFixed(1)}sqm`));
+    // ascii 模式显式用 id+sqm（codex 六审 minor）：label() 剥离中文后「客厅 8.0㎡」变「8.0」
+    // 非空、fallback 不生效，同面积房间无法区分。
+    const roomText = inputLabels === 'ascii'
+      ? `${room.id} ${(area ?? 0).toFixed(1)}sqm`
+      : `${room.name} ${(area ?? 0).toFixed(1)}㎡`;
+    writer.addText(DXF_LAYERS.ROOM[0], cx - ROOM_TEXT_HEIGHT_MM * 2, cy, ROOM_TEXT_HEIGHT_MM, roomText);
   }
 }
 
@@ -417,9 +423,14 @@ function emitFloorAndWallFinishes(
   for (const element of elements) {
     if (element.type === 'floor_region') {
       if (element.points.length < 3) continue;
-      const pts = element.points.map((point) => toDxf(point.x, point.z));
-      writer.addPolyline(DXF_LAYERS.F_FLOOR[0], pts, true);
-      const centroid = pts.reduce<[number, number]>(([sx, sy], [x, y]) => [sx + x / pts.length, sy + y / pts.length], [0, 0]);
+      // 圆角随声明走（codex 六审 blocking，与 3D roundedShape 同弧口径）：带 radius 的
+      // 控制点经 centerlineSamples 展开，不出外接矩形（会越过真实边界、与算量面积不一致）。
+      emitArcAwarePolyline(writer, DXF_LAYERS.F_FLOOR[0], element.points, true);
+      const sampled = centerlineSamples(element.points as never, true);
+      const centroid = sampled.reduce<[number, number]>(([sx, sy], point) => {
+        const [x, y] = toDxf(point.x, point.z);
+        return [sx + x / sampled.length, sy + y / sampled.length];
+      }, [0, 0]);
       writer.addText(DXF_LAYERS.F_FLOOR[0], centroid[0], centroid[1], TEXT_HEIGHT_MM, element.id);
     } else if (element.type === 'wall_region' || element.type === 'paint_region' || element.type === 'skirting_region') {
       const wall = wallsById.get(element.wall);
@@ -539,8 +550,19 @@ function emitMep(
       label(anchor.status !== 'confirmed' ? `${anchor.id} ${anchor.status}` : anchor.id, anchor.id));
   }
   for (const terminal of sources.hvacTerminals) {
+    // 候选风口（codex 六审 blocking）：condensate_drain_candidate / confirmed:false / pending
+    // 声明「不是施工点」，随候选机制隔离 M-CAND；正式风口也补 id（此前无名称）。
+    const candidate = terminal.kind === 'condensate_drain_candidate'
+      || terminal.confirmed === false
+      || terminal.status === 'pending' || terminal.status === 'inferred';
+    const layer = candidate ? DXF_LAYERS.M_CAND : DXF_LAYERS.M_HVAC;
     const [x, y] = toDxf(terminal.position.x, terminal.position.z);
-    writer.addCircle(DXF_LAYERS.M_HVAC[0], x, y, POINT_RADIUS_MM / 2);
+    writer.addCircle(layer[0], x, y, POINT_RADIUS_MM / 2);
+    writer.addText(layer[0], x + POINT_RADIUS_MM / 2, y + POINT_RADIUS_MM / 2, TEXT_HEIGHT_MM,
+      label(candidate ? `${terminal.id} ${restrict.pending}` : terminal.id, terminal.id));
+    if (candidate) {
+      warnings.push(`mep terminal ${terminal.id}: ${terminal.kind ?? terminal.status}，已隔离 M-CAND（非施工点）`);
+    }
   }
   for (const outdoor of sources.outdoor) {
     const [x, y] = toDxf(outdoor.x, outdoor.z);
