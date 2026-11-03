@@ -1000,7 +1000,6 @@ export class ScheduleDetailPanel {
     // 完整视图门落下（codex 十六审 blocking）：加载在途期间不保证见过服务端全部
     // 条目，而 PUT 是整份覆盖——此时发保存会把没见过的条目永久删掉。保存改走
     // 搁置（saveDeferred），加载落账后由 maybeResumeSave 重发，不丢编辑。
-    const completeBefore = run.draftComplete;
     run.draftComplete = false;
     // 请求发出时的服务端序号：加载在途期间有保存成功落账（序号 +1），这份 GET
     // 看到的就是旧服务端内容——**不能拿它当「服务端删除」的依据**（codex 十五审
@@ -1019,35 +1018,48 @@ export class ScheduleDetailPanel {
       const response = await fetch(`/api/acceptance/draft?package_id=${encodeURIComponent(packageId)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = (await response.json()) as AcceptanceDraft;
-      if (seq !== this.draftSeq || this.draftPackageId !== packageId) superseded = true;
-      else if (run.serverSeq !== serverSeqAtRequest) {
-        // 保存已在加载在途期间落账：那份 PUT 的整份内容即服务端真相，旧 GET 作废
-        // （不回填——干净态逐字采用会把刚保存的结果回退成旧值，十五审的场景）。
-        run.draftComplete = true;
+      // 是否早于一次已落账的保存（旧服务端内容，必须作废——十五审）
+      const staleBySave = run.serverSeq !== serverSeqAtRequest;
+      if (seq === this.draftSeq && this.draftPackageId === packageId) {
+        // 仍是对应包的最新读取：正常落账
+        if (staleBySave) run.draftComplete = true;
+        else {
+          this.applyDraft(packageId, data.results ?? []);
+          this.draftError = null;
+          run.draftComplete = true;
+          if (run.putInFlight) run.saveDeferred = true;
+        }
+      } else if (this.draftPackageId !== packageId) {
+        // 被**别的包**的加载取代（选中换走 / refresh）：没有更新的同包读取在途，
+        // 这份响应仍是该包最新的服务端真相——照常裁定，只是不渲染（选中守卫会
+        // 挡掉重绘）。旧实现在这里整份丢弃再恢复完整态：别处/别标签页新增的
+        // 结果因此永不觉察，恢复完整态后自动 PUT 只含旧缓存，整份覆盖把新结果
+        // 永久删掉（codex 十八审 blocking 2）。被同包更新读取取代时相反：新读取
+        // 在途，这份不碰任何状态，完整态继续关着等它落账。
+        superseded = true;
+        if (staleBySave) run.draftComplete = true;
+        else {
+          this.applyDraft(packageId, data.results ?? []);
+          run.draftComplete = true;
+          if (run.putInFlight) run.saveDeferred = true;
+        }
       } else {
-        // 当前服务端真相：走合并回填（脏条目本地胜出、未见服务端条目原样采纳、
-        // 服务端删了的干净条目丢弃——规则见 applyDraft）。加载期间的编辑由合并
-        // 规则保护，不丢；「旧 GET 删除已有结果」由上面的序号分支守住。
-        this.applyDraft(packageId, data.results ?? []);
-        this.draftError = null;
-        run.draftComplete = true;
-        // 合并落账时若有 PUT 在途：它的 body 缺这次新见的服务端条目，落账后必须
-        // 重发，否则在途 PUT 会把它们删掉（十六审复现路径的收尾）。
-        if (run.putInFlight) run.saveDeferred = true;
+        superseded = true; // 同包更新读取在途：它自带落账
       }
     } catch (err) {
-      if (seq !== this.draftSeq || this.draftPackageId !== packageId) superseded = true;
-      // 加载失败：视图仍不完整，保存继续搁置（draftError 有显式提示；重开本包 /
-      // refresh 会重发加载）。不回填、不置 draftComplete——PUT 会删没见过的条目。
-      else this.draftError = err instanceof Error ? err.message : String(err);
+      if (seq === this.draftSeq && this.draftPackageId === packageId) {
+        // 加载失败：视图仍不完整，保存继续搁置（draftError 有显式提示；重开本包 /
+        // refresh 会重发加载）。不回填、不置 draftComplete——PUT 会删没见过的条目。
+        this.draftError = err instanceof Error ? err.message : String(err);
+      } else {
+        // 失败且被取代：视图不可验证（可能漏掉别处新增），保持不完整——保存继续
+        // 搁置，重开本包重载落账后恢复（十八审 blocking 2 的失败侧：宁可晚存，
+        // 不拿着已知可能过期的视图放行覆盖 PUT）。
+        superseded = true;
+      }
     } finally {
       // finally 清 loading，尾部重绘消掉「加载中」
       if (seq === this.draftSeq && this.draftPackageId === packageId) this.draftLoading = false;
-      // 被**别的包**的加载取代：本包视图并没被这次加载改动过——还原加载前的完整
-      // 态，别把本包搁置中的保存永久卡住（编辑 P→切 Q→退出审批页 flush：P 的 GET
-      // 已被取代，永不再有落账事件）。被同包更新请求取代时相反：新请求在途，
-      // 完整态必须继续关着，等它落账。
-      if (superseded && this.draftPackageId !== packageId) run.draftComplete = completeBefore;
     }
     if (this.selection.get().packageId === packageId) this.render();
     this.maybeResumeSave(packageId);
@@ -1295,16 +1307,13 @@ export class ScheduleDetailPanel {
   private async saveDraft(packageId: string): Promise<void> {
     const record = this.saveRecordFor(packageId);
     const run = this.runFor(packageId);
-    const results = this.collectResults(packageId);
-    if (results.length === 0) {
-      // 没有任何已选状态时绝不 PUT：空 results 会覆盖 tmp/ 里已有草稿
-      record.status = {kind: 'idle'};
-      this.updateSaveUiFor(packageId);
-      return;
-    }
-    // 写路径两道门（2026-11-03 codex 十六审 blocking 根治）。都是**搁置不丢弃**：
-    // 保存意图留在 dirty + saveDeferred 里，门开后 maybeResumeSave 自动重发，
-    // 业主看到的只是「已保存」晚几百毫秒，编辑不丢、不错删。
+    // 写路径两道门（2026-11-03 codex 十六审 blocking 根治，十八审判定顺序）。
+    // 都是**搁置不丢弃**：保存意图留在 dirty + saveDeferred 里，门开后
+    // maybeResumeSave 自动重发，业主看到的只是「已保存」晚几百毫秒。
+    // 门必须**先于**空结果判定（codex 十八审 blocking 1）：加载期间服务端
+    // status 还没合并进来，collectResults 暂时为空是**瞬态**——按「空 results」
+    // 早退会把保存意图丢掉（GET 合并后 status 出现，但定时器已消费、无人重发，
+    // 刷新即丢编辑）。
     // ① 完整视图门：草稿未完整载入（加载在途/失败/从未加载）时，客户端可能
     //    没见过服务端全部条目，而 PUT 是整份覆盖——发出去就把没见过的条目
     //    （首开包时 GET 还没落账的那些）永久删掉。宁可搁置，不放行错删。
@@ -1312,6 +1321,13 @@ export class ScheduleDetailPanel {
     //    那份会把新条目删掉；等它落账后用最新内容重发。
     if (!run.draftComplete || run.putInFlight) {
       run.saveDeferred = true;
+      return;
+    }
+    const results = this.collectResults(packageId);
+    if (results.length === 0) {
+      // 没有任何已选状态时绝不 PUT：空 results 会覆盖 tmp/ 里已有草稿
+      record.status = {kind: 'idle'};
+      this.updateSaveUiFor(packageId);
       return;
     }
     // 请求版本号（仿 draftSeq，按包）：响应回头时若不是该包最新一轮，结果作废。
@@ -1489,8 +1505,53 @@ export class ScheduleDetailPanel {
     run.submitError = null;
   }
 
+  /**
+   * 确保该包草稿已落账到服务端（2026-11-03 codex 审查同家族根治）：卡点/预演/
+   * 提交都只发 {package_id}，服务端**重读 tmp/ 草稿**算结论——自动保存有 300ms
+   * debounce，业主「改完就点」时服务端读到的还是旧草稿，预演出来的 records/pr_body
+   * 与界面上的当前草稿不符（八审的版本守卫只防「结论算旧了」，防不了「服务端还没
+   * 存上」）。存不上的（保存失败/完整视图门还关着）返回 false，调用方中止并留痕
+   * ——宁可动作没发出去，不拿着对不上的草稿开 PR。
+   */
+  private async ensureDraftPersisted(packageId: string): Promise<boolean> {
+    const run = this.runFor(packageId);
+    for (let pass = 0; pass < 3; pass += 1) {
+      // 待发的 debounce 立即执行（与退出 flush 同款）
+      if (run.saveTimer !== null) {
+        clearTimeout(run.saveTimer);
+        run.saveTimer = null;
+        const target = run.saveTarget;
+        run.saveTarget = null;
+        if (target) await this.saveDraft(target);
+        continue;
+      }
+      // 在途 PUT 等它落账（saveDraft 的 finally 才清 putInFlight）
+      if (run.putInFlight) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+        continue;
+      }
+      // 没有待发也没有在途却还 dirty = 上次保存失败：原地重试一次（仍失败则如实上报）
+      if (this.saveRecordFor(packageId).dirty) {
+        await this.saveDraft(packageId);
+        continue;
+      }
+      break;
+    }
+    return !run.putInFlight && run.saveTimer === null && !this.saveRecordFor(packageId).dirty && run.draftComplete;
+  }
+
   private async runGates(packageId: string): Promise<void> {
     const run = this.runFor(packageId);
+    run.gatesLoading = true;
+    run.gatesError = null;
+    this.updateAcceptanceBar(packageId);
+    // 草稿先落账再跑卡点：服务端读 tmp/ 草稿算结论，没存上就跑等于对旧草稿下结论
+    if (!(await this.ensureDraftPersisted(packageId))) {
+      run.gatesLoading = false;
+      run.gatesError = '草稿还没保存成功（见上方保存状态）：机械卡点读的是服务端 tmp/ 草稿，存上后再跑';
+      this.updateAcceptanceBar(packageId);
+      return;
+    }
     const versionAtStart = run.draftVersion;
     run.gatesLoading = true;
     run.gatesError = null;
@@ -1536,6 +1597,17 @@ export class ScheduleDetailPanel {
     const run = this.runFor(packageId);
     // 预演要求卡点全绿（按钮可用性由 renderAcceptanceActions 把关，这里双保险）
     if (run.gates?.ok !== true) return;
+    run.dryRunLoading = true;
+    run.dryRunError = null;
+    this.updateAcceptanceBar(packageId);
+    // 草稿先落账再预演：服务端重读 tmp/ 草稿生成 records/pr_body，没存上就预演
+    // 等于对旧草稿开预览（业主看到的内容与将提交的不一致）
+    if (!(await this.ensureDraftPersisted(packageId))) {
+      run.dryRunLoading = false;
+      run.dryRunError = '草稿还没保存成功（见上方保存状态）：PR 预演读的是服务端 tmp/ 草稿，存上后再跑';
+      this.updateAcceptanceBar(packageId);
+      return;
+    }
     const versionAtStart = run.draftVersion;
     run.dryRunLoading = true;
     run.dryRunError = null;
@@ -1582,7 +1654,19 @@ export class ScheduleDetailPanel {
 
   private async submit(packageId: string): Promise<void> {
     const run = this.runFor(packageId);
+    // submitting 先置位（双点守卫在 ensure 之前就生效），落账失败再复位
     run.submitting = true;
+    run.submitError = null;
+    run.submitResult = null;
+    this.updateAcceptanceBar(packageId);
+    // 草稿先落账再开 PR：submit 让服务端重读 tmp/ 草稿写入 commit，没存上就提交
+    // 等于把旧草稿开成 PR（预演对不上、业主以为存了的编辑不在 PR 里）
+    if (!(await this.ensureDraftPersisted(packageId))) {
+      run.submitting = false;
+      run.submitError = {error: '草稿还没保存成功（见上方保存状态）：提交读的是服务端 tmp/ 草稿，存上后再提交'};
+      this.updateAcceptanceBar(packageId);
+      return;
+    }
     run.submitError = null;
     run.submitResult = null;
     this.updateAcceptanceBar(packageId);

@@ -395,7 +395,8 @@ function prBodyText(): string {
 function stubAcceptance(
   snapshotPayload: ScheduleSnapshot,
   handlers: {
-    draft?: () => unknown;
+    /** path 带 package_id：服务端按包返回草稿，mock 也必须按包（不按包会造假）。 */
+    draft?: (path: string) => unknown;
     putDraft?: (body: unknown) => {status?: number; body?: unknown};
     evidence?: (body: unknown) => {status?: number; body?: unknown};
     finalize?: (body: unknown) => {status?: number; body?: unknown};
@@ -426,7 +427,7 @@ function stubAcceptance(
         const out = (handlers.putDraft ?? (() => ({status: 200, body: {ok: true}})))(parsed);
         return respond(out.status ?? 200, out.body);
       }
-      return respond(200, (handlers.draft ?? (() => ({package_id: 'PKG-010', results: []})))());
+      return respond(200, (handlers.draft ?? (() => ({package_id: 'PKG-010', results: []})))(path));
     }
     if (path.includes('/api/acceptance/gates')) {
       const out = (handlers.gates ?? (() => ({status: 200, body: {ok: true, gates: greenGates()}})))();
@@ -692,6 +693,91 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
       const put = calls.find((call) => call.method === 'PUT')!.body as {package_id: string; results: Array<{check_id: string}>};
       expect(put.package_id).toBe('PKG-010');
       expect(put.results.map((r) => r.check_id)).toEqual(['SCH-010-03']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('加载期间只改备注：慢 GET 落账后保存不丢（codex 十八审 blocking 1 回归）', async () => {
+    // 复现路径（codex 十八审 blocking 1）：首开包 GET 超过 debounce（300ms），
+    // 用户只改备注——本地 status 还是 null，collectResults 暂时为空。旧实现按
+    // 「空 results」早退且不置 saveDeferred：GET 合并后 status 出现，但定时器已
+    // 消费、无人重发，刷新即丢新备注。修：完整视图门先于空结果判定——空是加载
+    // 期间的瞬态，保存意图搁置到落账后重发。
+    let releaseGet: () => void = () => {};
+    const getGate = new Promise<void>((resolve) => { releaseGet = resolve; });
+    const {panel, calls} = await mountPanel();
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET') {
+        await getGate;
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results: [
+          {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01', note: '旧备注'},
+        ]})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      const getPromise = panel['loadDraft']('PKG-010');
+      // 只改备注，不选状态（本地 status=null，collectResults 为空——瞬态）
+      setInput('[data-note="SCH-010-01"]', '新备注');
+      panel.flushSave();
+      await new Promise((resolve) => setTimeout(resolve, 400)); // 过完 debounce 窗口
+      expect(calls.filter((call) => call.method === 'PUT').length).toBe(0); // 旧 bug：静默早退
+      // GET 落地：合并出服务端 status + 本地新备注，搁置的保存自动重发
+      releaseGet();
+      await getPromise;
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      const put = calls.find((call) => call.method === 'PUT')!.body as {results: Array<{check_id: string; status: string; note?: string}>};
+      expect(put.results.map((r) => r.check_id)).toEqual(['SCH-010-01']);
+      expect(put.results[0].status).toBe('passed'); // 服务端合并来的
+      expect(put.results[0].note).toBe('新备注'); // 本地编辑
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('重载被别包取代也照常合并：别处新增的结果不许被覆盖删除（codex 十八审 blocking 2 回归）', async () => {
+    // 复现路径（codex 十八审 blocking 2）：P 的缓存只有 C1，另一标签页在服务端
+    // 新增了 C2；重载 P 期间编辑 C1 并切到 Q。P 的响应（含 C1+C2）被 Q 的加载
+    // 取代——旧实现整份丢弃再恢复完整态：C2 永不觉察，恢复后自动 PUT 只含旧缓存
+    // C1，整份覆盖把服务端的 C2 永久删掉。修：被别包取代时响应仍是该包最新真相，
+    // 照常裁定（合并），只是不渲染。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    let releaseGetP: () => void = () => {};
+    const gateP = new Promise<void>((resolve) => { releaseGetP = resolve; });
+    const {selection, panel, calls} = await mountPanel({snapshot: twoPkg});
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET'
+        && String(url).includes('PKG-010')) {
+        await gateP;
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results: [
+          {check_id: 'SCH-010-01', status: 'passed', checked_by: '业主', checked_at: '2026-11-01'},
+          {check_id: 'SCH-010-02', status: 'failed', checked_by: '别处', checked_at: '2026-11-02'},
+        ]})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // ① P 重载在途 → 编辑 C1 备注 → 保存被完整视图门搁置
+      const getP = panel['loadDraft']('PKG-010');
+      setInput('[data-note="SCH-010-01"]', '新备注');
+      panel.flushSave();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(calls.filter((call) => call.method === 'PUT').length).toBe(0);
+      // ② 切到 Q（P 的 GET 被取代）→ 放行 P 的响应：必须照常合并（C2 进缓存）
+      selection.set({packageId: 'PKG-020', checkId: null});
+      releaseGetP();
+      await getP;
+      // ③ 搁置的保存恢复：PUT 必须含 C1（带新备注）+ C2（别处新增，不许被删）
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      const put = calls.find((call) => call.method === 'PUT')!.body as {results: Array<{check_id: string; note?: string; checked_by: string}>};
+      expect(put.results.map((r) => r.check_id).sort()).toEqual(['SCH-010-01', 'SCH-010-02']);
+      expect(put.results.find((r) => r.check_id === 'SCH-010-01')!.note).toBe('新备注');
+      expect(put.results.find((r) => r.check_id === 'SCH-010-02')!.checked_by).toBe('别处');
     } finally {
       vi.unstubAllGlobals();
     }
@@ -1024,19 +1110,36 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
   it('同包旧响应作废：预演在途时草稿变化，旧预演不许填回（codex 八审 blocking 回归）', async () => {
     // A 的预演在途 → 本地编辑（草稿变版，旧结论作废）→ 旧预演响应晚到。旧实现
     // 把旧草稿的预演填回 run.dryRun，提交按钮对着过期预览重新可用，而真实提交
-    // 读的是新草票——按钮结论与服务端读的不一致。
-    const {panel, calls} = await mountPanel();
+    // 读的是新草稿——按钮结论与服务端读的不一致。
+    const {panel} = await mountPanel();
     // 先跑卡点拿绿（预演的前置）
     click('#acceptance-run-gates');
     await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
-    // 发起预演（在途：mock 同步返回，但先篡改版本号模拟「请求发出后草稿又变了」）
-    const dryRunPromise = panel['runDryRun']('PKG-010');
-    // 在途期间本地编辑 → invalidateRunForDraftChange bump 版本
-    setInput('[data-note="SCH-010-01"]', '编辑于预演在途期间');
-    await dryRunPromise;
-    // 旧响应应被版本校验作废：预演区不留旧草稿的预览
-    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('PR 预演：将写入'));
-    expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('PR 预演：将写入');
+    // 把 dry_run 响应压住在途：编辑必须发生在**真正的 fetch 在途期间**（十八审给
+    // 预演加了「发起前确保草稿落账」，编辑发生在 ensure 阶段会被落账吸收、不构成
+    // 在途变化——守卫本身没变，变的是编辑时点）
+    let releaseDryRun: () => void = () => {};
+    const dryRunGate = new Promise<void>((resolve) => { releaseDryRun = resolve; });
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).includes('/api/acceptance/submit') && (init?.body ?? '').includes('dry_run')) {
+        await dryRunGate;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      const dryRunPromise = panel['runDryRun']('PKG-010');
+      // ensure 落账完、fetch 真的发出后再编辑（在途期间）
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      setInput('[data-note="SCH-010-01"]', '编辑于预演在途期间');
+      releaseDryRun();
+      await dryRunPromise;
+      // 旧响应应被版本校验作废：预演区不留旧草稿的预览
+      await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('PR 预演：将写入'));
+      expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('PR 预演：将写入');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('切包解除两步确认态：A 武装后切走再回来，下一次点击不直接开 PR（codex 八审 major 回归）', async () => {
@@ -1172,8 +1275,12 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     const {selection, panel, calls} = await mountPanel({
       snapshot: twoPkg,
       handlers: {
-        // A 的服务端草稿里躺着一条旧备注（模拟上次保存的内容）
-        draft: () => ({package_id: 'PKG-010', results: [{check_id: 'SCH-010-01', status: 'failed', checked_by: '业主', checked_at: '2026-11-01', evidence: [], note: '旧备注-服务端'}]}),
+        // A 的服务端草稿里躺着一条旧备注（模拟上次保存的内容）。按包返回——
+        // 服务端只回请求包的草稿，B 的 GET 拿不到 A 的条目（mock 不按包返回会
+        // 让 B 的干净态合并把 A 未保存的备注洗成服务端旧值，那是假象不是缺陷）。
+        draft: (path) => (path.includes('PKG-020')
+          ? {package_id: 'PKG-020', results: []}
+          : {package_id: 'PKG-010', results: [{check_id: 'SCH-010-01', status: 'failed', checked_by: '业主', checked_at: '2026-11-01', evidence: [], note: '旧备注-服务端'}]}),
         putDraft: (body) => {
           const pkgId = (body as {package_id: string}).package_id;
           if (pkgId === 'PKG-010') {
