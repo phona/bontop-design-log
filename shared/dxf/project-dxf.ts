@@ -85,6 +85,23 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     const stripped = text.replace(/[^\x20-\x7E]/g, '').trim();
     return stripped || fallback;
   };
+  // 施工限制短语双语（codex 三审 blocking）：ascii 模式直接剥离非 ASCII 会把
+  // 「禁止开槽/非放线依据」吞成「-SKU」——限制性标注必须以英文交付，不许静默丢失。
+  const restrict = labels === 'ascii'
+    ? {
+      abstract: 'ABSTRACT-NO CUT UNTIL SKU',
+      candidate: 'CANDIDATE-NOT FOR CONSTRUCTION',
+      pending: 'PENDING VERIFY',
+      blocked: 'NOT USABLE',
+      junctionPending: 'PENDING VERIFY',
+    }
+    : {
+      abstract: '抽象点-禁止开槽待SKU',
+      candidate: '候选-非放线依据',
+      pending: '待核',
+      blocked: '不可用',
+      junctionPending: '待核验',
+    };
 
   // 墙体索引：id → 主线段（供洞口切分与 wall_region/furniture 墙锚插值共用）。
   const wallsById = new Map<string, Extract<SceneElement, { type: 'wall' }>>();
@@ -96,7 +113,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   emitGlazingAndDoors(writer, house.sceneElements, warnings);
   emitRooms(writer, house.rooms, label);
   emitFurniture(writer, house.furnishings, wallsById, warnings, label);
-  emitElectrical(writer, house.electrical, label);
+  emitElectrical(writer, house.electrical, warnings, label, restrict);
   if (plumbing === undefined) {
     warnings.push('plumbing: 无输入，P-POINTS 图层为空（水路点位未导出）');
   } else {
@@ -112,7 +129,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
       const heightText = point.height !== undefined ? ` H${point.height}` : '';
       writer.addText(DXF_LAYERS.P_POINTS[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
         label(notForConstruction
-          ? `${point.id} ${point.type}${heightText} 抽象点-禁止开槽待SKU`
+          ? `${point.id} ${point.type}${heightText} ${restrict.abstract}`
           : `${point.id} ${point.type}${heightText}`, point.id));
       if (notForConstruction) {
         warnings.push(`plumbing ${point.id}: 抽象服务点/待核（H${point.height ?? '?'} 非施工标高，禁止直接开槽，待 SKU 冻结与量房）`);
@@ -124,7 +141,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   if (mep === undefined) {
     warnings.push('mep: 无输入，M-HVAC/M-ROUTE 图层为空（MEP 协调未导出）');
   } else {
-    emitMep(writer, mep.coordination, mep.sources, warnings, label);
+    emitMep(writer, mep.coordination, mep.sources, warnings, label, restrict);
   }
 
   const stats = writer.layerStats();
@@ -333,13 +350,32 @@ function electricalLayer(type: string): readonly [string, number] {
   return DXF_LAYERS.E_POWER;
 }
 
-function emitElectrical(writer: DxfWriter, points: ElectricalPoint[], label: (text: string, fallback?: string) => string): void {
+type RestrictLabels = { abstract: string; candidate: string; pending: string; blocked: string; junctionPending: string };
+
+function emitElectrical(
+  writer: DxfWriter,
+  points: ElectricalPoint[],
+  warnings: string[],
+  label: (text: string, fallback?: string) => string,
+  restrict: RestrictLabels,
+): void {
   for (const point of points) {
+    // 已知不可用/待核点位（codex 三审 blocking）：sock_balcony_washer 这类 blocked 点
+    // 画成普通插座会让施工方按普通点施工。标注限制 + 告警，点位保留（位置是事实，可用性不是）。
+    const notUsable = point.serviceability_status === 'blocked' || point.serviceability_status === 'superseded';
+    const pendingPos = point.position_status === 'pending' || point.position_status === 'inferred'
+      || point.status === 'pending' || point.status === 'inferred';
     const [x, y] = toDxf(point.x, point.z);
     const layer = electricalLayer(point.type);
     writer.addCircle(layer[0], x, y, POINT_RADIUS_MM);
+    const suffix = notUsable ? ` ${restrict.blocked}` : pendingPos ? ` ${restrict.pending}` : '';
     writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(`${point.id} ${point.type}${point.height !== undefined ? ` H${point.height}` : ''}${point.circuit ? ` ${point.circuit}` : ''}`, point.id));
+      label(`${point.id} ${point.type}${point.height !== undefined ? ` H${point.height}` : ''}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));
+    if (notUsable) {
+      warnings.push(`electrical ${point.id}: serviceability ${point.serviceability_status}（H${point.height ?? '?'} 落点不可用，不得按普通点施工）`);
+    } else if (pendingPos) {
+      warnings.push(`electrical ${point.id}: 位置待核（position_status ${point.position_status ?? point.status}），交底前须复尺`);
+    }
   }
 }
 
@@ -401,16 +437,27 @@ function emitFloorAndWallFinishes(
         warnings.push(`${element.type} ${element.id}: along 插值失败（墙 ${element.wall}），未导出`);
         continue;
       }
-      const [ax, ay] = toDxf(startPoint.x, startPoint.z);
-      const [bx, by] = toDxf(endPoint.x, endPoint.z);
       const layer = element.type === 'wall_region'
         ? DXF_LAYERS.WFIN_TILE
         : element.type === 'paint_region' ? DXF_LAYERS.WFIN_PAINT : DXF_LAYERS.SKIRT;
-      writer.addLine(layer[0], ax, ay, bx, by);
+      // 踢脚线按墙洞切分（codex 三审 blocking，与 3D skirting 分支同口径）：skirting_region
+      // 在门洞处实扣断开，不横穿门口；wall_region/paint_region 的 3D 分支不扣洞，DXF 同口径不扣。
+      const span = { x1: startPoint.x, z1: startPoint.z, x2: endPoint.x, z2: endPoint.z };
+      const pieces = element.type === 'skirting_region' && wall.openings?.length
+        ? splitSegmentByOpenings(span, wall.openings)
+        : [span];
+      if (pieces.length === 0) {
+        warnings.push(`${element.type} ${element.id}: 区间被洞口完全覆盖（墙 ${element.wall}），未导出`);
+        continue;
+      }
+      for (const piece of pieces) {
+        writer.addLine(layer[0], ...toDxf(piece.x1, piece.z1), ...toDxf(piece.x2, piece.z2));
+      }
       // height 是**顶标高**（SceneBuilder 按 height - bottom 建带高），不是带高——标注直接用声明顶标高。
       const bottom = element.bottom ?? 0;
       const topText = element.height !== undefined ? element.height.toFixed(2) : '?';
-      writer.addText(layer[0], (ax + bx) / 2, (ay + by) / 2 + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
+      const [ax, ay] = toDxf(pieces[0].x1, pieces[0].z1);
+      writer.addText(layer[0], ax, ay + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
         label(`${element.id} ${bottom.toFixed(2)}~${topText}m`, element.id));
     }
   }
@@ -432,6 +479,7 @@ function emitMep(
   sources: MepEndpointSources,
   warnings: string[],
   label: (text: string, fallback?: string) => string,
+  restrict: RestrictLabels,
 ): void {
   const report = resolveMepRoutes(coordination, sources);
   for (const resolved of report.routes) {
@@ -451,7 +499,7 @@ function emitMep(
     const first = pts[0];
     const name = resolved.route.label ?? resolved.route.id;
     writer.addText(layer[0], first[0] + POINT_RADIUS_MM, first[1] + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(candidate ? `${name} ${resolved.route.layer} 候选-非放线依据` : `${name} ${resolved.route.layer}`, resolved.route.id));
+      label(candidate ? `${name} ${resolved.route.layer} ${restrict.candidate}` : `${name} ${resolved.route.layer}`, resolved.route.id));
   }
   // junction 随关联路线隔离（codex 二审 major）：汇流节点的 inlet/outlet 路线任一是候选，
   // 节点就跟去 M-CAND——否则关掉候选层会留下看似可放线的孤立正式节点。
@@ -465,7 +513,7 @@ function emitMep(
     }
     writer.addCircle(layer[0], x, y, POINT_RADIUS_MM);
     writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(linkedCandidate ? `${junction.id} 待核验` : junction.id, junction.id));
+      label(linkedCandidate ? `${junction.id} ${restrict.junctionPending}` : junction.id, junction.id));
   }
   for (const anchor of sources.hvacAnchors) {
     // 内机普遍经 ref: {source: ceiling} 定位（无直接 position）——复用 resolveMepEndpoint 解析引用

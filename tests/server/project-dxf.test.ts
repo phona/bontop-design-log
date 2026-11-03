@@ -57,7 +57,8 @@ function baseInput(): ProjectDxfInput {
       ],
       ceilingZones: [{ id: 'ceil_drop', room: 'living', type: 'drop', thickness: 0.08, area: [0, 0, 4, 2] }],
       sceneElements: [
-        wall,
+        // 拷贝模块级 wall：测试会就地改 segments/openings，共享对象会跨测试泄漏
+        { ...wall, openings: wall.openings?.map((opening) => ({ ...opening })) },
         { type: 'wall_region', id: 'tile_n', wall: 'w_north', along: [0, 2], bottom: 0, height: 2.4 },
         { type: 'floor_region', id: 'floor_living', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 2 }, { x: 0, z: 2 }] },
         { type: 'hinged_glass_door', id: 'gd1', points: [{ x: 0, z: 0.8 }, { x: 0, z: 1.6 }], height: 2, swing: 'north', hinge: 'start' },
@@ -309,6 +310,56 @@ test('project-dxf: junction 随关联候选路线隔离 M-CAND（codex 二审 ma
   assert.ok(entities.some((e) => e['8'] === DXF_LAYERS.M_CAND[0] && e.type === 'TEXT' && (e['1'] ?? '').includes('merge_1') && (e['1'] ?? '').includes('待核验')));
   assert.ok(!entities.some((e) => e['8'] === DXF_LAYERS.M_ROUTE[0] && e.type === 'CIRCLE'));
   assert.ok(result.warnings.some((w) => w.includes('merge_1')));
+});
+
+test('project-dxf: 电气 blocked/pending 点位标注限制 + 告警（codex 三审 blocking）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    house: {
+      ...baseInput().house,
+      electrical: [
+        ...baseInput().house.electrical,
+        { id: 'sock_blk', room: 'living', type: 'socket', x: 0.5, z: 0.5, height: 1.2, position_status: 'pending', serviceability_status: 'blocked' },
+        { id: 'sock_pend', room: 'living', type: 'socket', x: 0.7, z: 0.5, position_status: 'inferred' },
+      ] as never,
+    },
+  });
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.E_POWER[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('sock_blk') && (e['1'] ?? '').includes('不可用')));
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('sock_pend') && (e['1'] ?? '').includes('待核')));
+  assert.ok(result.warnings.some((w) => w.includes('sock_blk') && w.includes('不得按普通点施工')));
+  assert.ok(result.warnings.some((w) => w.includes('sock_pend') && w.includes('位置待核')));
+});
+
+test('project-dxf: 踢脚线按门洞切分，不横穿门口（codex 三审 blocking）', () => {
+  const input = baseInput();
+  // 沿墙 [0,4] 踢脚；墙中点 2.0 有 0.9m 门洞 → 踢脚切成 [0,1.55] 与 [2.45,4] 两段
+  input.house.sceneElements.push({ type: 'skirting_region', id: 'sk_main', wall: 'w_north', room: 'living', along: [0, 4], height: 0.1 });
+  const result = buildProjectDxf(input);
+  const skirtLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.SKIRT[0]);
+  assert.deepEqual(skirtLines, [[0, 0, 1550, 0], [2450, 0, 4000, 0]]);
+});
+
+test('project-dxf: ascii 模式保留英文限制短语，关键施工限制不丢失（codex 三审 blocking）', () => {
+  const input = baseInput();
+  input.house.sceneElements.push({ type: 'skirting_region', id: 'sk_x', wall: 'w_north', room: 'living', along: [0, 1], height: 0.1 });
+  const ascii = buildProjectDxf({
+    ...input,
+    labels: 'ascii',
+    plumbing: [{ id: 'faucet_abs', room: 'living', type: 'faucet' as never, x: 1, z: 1, height: 0.8, note: '抽象服务点，不得按此直接开槽' }],
+    mep: {
+      coordination: {
+        version: '1', status: 'ok', layers: {},
+        routes: [{ id: 'r_cand', layer: 'condensate' as never, status: 'pending' as never, route_kind: 'candidate', from: { x: 0, z: 0 }, to: { x: 2, z: 0 }, via: [] }],
+        junctions: [],
+      } as never,
+      sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
+    },
+  });
+  const dxf = ascii.dxf;
+  assert.ok(dxf.includes('ABSTRACT-NO CUT UNTIL SKU'), '抽象点限制须以英文交付');
+  assert.ok(dxf.includes('CANDIDATE-NOT FOR CONSTRUCTION'), '候选路线限制须以英文交付');
+  assert.ok(!dxf.includes('禁止开槽'));
 });
 
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
