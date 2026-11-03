@@ -556,6 +556,52 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2));
   });
 
+  it('debounce 窗口内二次编辑：旧 PUT 成功不清新编辑的 dirty（codex 九审 blocking 回归）', async () => {
+    // 编辑 v1 → PUT(v1) 在途 → 编辑 v2（300ms 内，不起新请求）→ v1 成功回头。
+    // 旧实现清 dirty → 切包往返时 applyDraft 拿服务端旧值覆盖 v2。修：编辑版本
+    // 对不上就不清 dirty（本地胜出），v2 等自己的定时器落盘。
+    let putCount = 0;
+    const {selection, panel, calls} = await mountPanel({
+      handlers: {putDraft: () => { putCount += 1; return putCount === 1 ? {status: 200, body: {ok: true}} : {status: 200, body: {ok: true}}; }},
+    });
+    // v1 编辑并立刻 flush（在途）。先选状态——collectResults 只收选过状态的行
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="failed"]');
+    setInput('[data-note="SCH-010-01"]', 'v1备注');
+    panel.flushSave();
+    await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+    // v1 成功已落账 → v2 编辑（不起新 PUT）
+    setInput('[data-note="SCH-010-01"]', 'v2备注-未保存');
+    // 切包往返：applyDraft 以 dirty=true 本地胜出，v2 不被服务端旧值覆盖
+    selection.set({packageId: null, checkId: null});
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect((document.querySelector('[data-note="SCH-010-01"]') as HTMLInputElement).value).toBe('v2备注-未保存'));
+  });
+
+  it('服务端草稿重载内容变了：已落账的旧预演必须作废（codex 九审 blocking 回归）', async () => {
+    // 生成预演 → 服务端草稿被另一标签页改动（重载内容不同）→ 旧预演和提交按钮
+    // 必须让位（真实提交读新草稿，业主确认的不能是旧内容）。
+    let draftVersion = 0;
+    const {panel} = await mountPanel({
+      handlers: {
+        draft: () => {
+          draftVersion += 1;
+          return draftVersion === 1
+            ? {package_id: 'PKG-010', results: [{check_id: 'SCH-010-01', status: 'failed', checked_by: '业主', checked_at: '2026-11-01', evidence: [], note: '初版'}]}
+            : {package_id: 'PKG-010', results: [{check_id: 'SCH-010-01', status: 'failed', checked_by: '业主', checked_at: '2026-11-02', evidence: [], note: '别处改过的新版'}]};
+        },
+      },
+    });
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    click('#acceptance-dry-run');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演：将写入'), {timeout: 3000});
+    // 刷新面板（重取快照+草稿）→ 服务端草稿内容变了 → 旧预演作废
+    await panel.refresh();
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).not.toContain('PR 预演：将写入'));
+    expect(document.querySelector('#acceptance-actions')!.textContent).toContain('还没跑过机械卡点');
+  });
+
   it('同包旧响应作废：预演在途时草稿变化，旧预演不许填回（codex 八审 blocking 回归）', async () => {
     // A 的预演在途 → 本地编辑（草稿变版，旧结论作废）→ 旧预演响应晚到。旧实现
     // 把旧草稿的预演填回 run.dryRun，提交按钮对着过期预览重新可用，而真实提交

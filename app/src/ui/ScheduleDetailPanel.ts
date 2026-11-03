@@ -188,14 +188,14 @@ export class ScheduleDetailPanel {
    * 记录，跨包响应互不可见。saveSeq 是请求版本号（仿上方 draftSeq 范式）：
    * 同包的旧响应也不许碰状态。
    */
-  private saveByPkg = new Map<string, {status: SaveStatus; dirty: boolean; issues: DraftIssue[]}>();
+  private saveByPkg = new Map<string, {status: SaveStatus; dirty: boolean; issues: DraftIssue[]; editVersion: number}>();
   /** 每包的保存请求版本号：响应回头时若不是该包最新一轮，结果作废（同包新旧排序）。 */
   private saveSeqByPkg = new Map<string, number>();
 
-  private saveRecordFor(packageId: string): {status: SaveStatus; dirty: boolean; issues: DraftIssue[]} {
+  private saveRecordFor(packageId: string): {status: SaveStatus; dirty: boolean; issues: DraftIssue[]; editVersion: number} {
     let record = this.saveByPkg.get(packageId);
     if (!record) {
-      record = {status: {kind: 'idle'}, dirty: false, issues: []};
+      record = {status: {kind: 'idle'}, dirty: false, issues: [], editVersion: 0};
       this.saveByPkg.set(packageId, record);
     }
     return record;
@@ -221,6 +221,10 @@ export class ScheduleDetailPanel {
      * 重新可用，而真实提交读的是新草稿）。
      */
     draftVersion: number;
+    /** 上次回填的服务端草稿内容（序列化）：重载时内容没变不作废结论，变了才作废
+     *  （codex 九审 blocking：只 bump 版本拦不住「已落账的旧结论」——另一标签页
+     *  改过服务端草稿后切回来，新草稿加载了但旧预演和提交按钮还亮着）。 */
+    lastServerDraft: string | null;
     gates: {ok: boolean; gates: GateView[]} | null;
     gatesLoading: boolean;
     gatesError: string | null;
@@ -237,6 +241,7 @@ export class ScheduleDetailPanel {
     saveTimer: ReturnType<typeof setTimeout> | null;
     saveTarget: string | null;
     draftVersion: number;
+    lastServerDraft: string | null;
     gates: {ok: boolean; gates: GateView[]} | null;
     gatesLoading: boolean;
     gatesError: string | null;
@@ -251,7 +256,7 @@ export class ScheduleDetailPanel {
     let run = this.pkgRuns.get(packageId);
     if (!run) {
       run = {
-        saveTimer: null, saveTarget: null, draftVersion: 0,
+        saveTimer: null, saveTarget: null, draftVersion: 0, lastServerDraft: null,
         gates: null, gatesLoading: false, gatesError: null,
         dryRun: null, dryRunLoading: false, dryRunError: null,
         submitArmed: false, submitting: false, submitResult: null, submitError: null,
@@ -1015,8 +1020,17 @@ export class ScheduleDetailPanel {
       });
     }
     this.draftResults = next;
-    // 服务端草稿回填 = 该包草稿换版：在途的卡点/预演响应回头即作废
-    this.runFor(packageId).draftVersion += 1;
+    // 服务端草稿回填：内容真变了才作废已落账的卡点/预演/确认态（codex 九审
+    // blocking——另一标签页改过草稿后切回来，旧结论必须让位）；内容没变（无变化
+    // 重载/刷新）只 bump 版本拦在途响应，不误伤业主刚跑出的结论。
+    const run = this.runFor(packageId);
+    const incoming = JSON.stringify(results);
+    if (run.lastServerDraft !== null && run.lastServerDraft !== incoming) {
+      this.invalidateRunForDraftChange(packageId);
+    } else {
+      run.draftVersion += 1;
+    }
+    run.lastServerDraft = incoming;
   }
 
   private defaultDraftState(): CheckDraftState {
@@ -1062,6 +1076,7 @@ export class ScheduleDetailPanel {
   private onDraftChanged(packageId: string): void {
     const record = this.saveRecordFor(packageId);
     record.dirty = true;
+    record.editVersion += 1; // 编辑版本：在途 PUT 成功回头对不上即不许清 dirty
     record.status = {kind: 'idle'};
     record.issues = [];
     // 本地编辑 = 草稿变化：在途/已有的卡点与预演结论作废（版本号 +1 守迟到响应）
@@ -1141,6 +1156,11 @@ export class ScheduleDetailPanel {
     // 跨包污染由按包记录兜住；版本号只治同包的旧响应迟到（codex 五审 blocking）。
     const seq = (this.saveSeqByPkg.get(packageId) ?? 0) + 1;
     this.saveSeqByPkg.set(packageId, seq);
+    // 编辑版本（codex 九审 blocking）：debounce 窗口内的二次编辑**不产生新请求**，
+    // 序号不变——旧 PUT 成功回头会把新编辑标成已保存并清 dirty，随后切包往返时
+    // applyDraft 因 dirty=false 拿服务端旧值覆盖新编辑。成功只有在「编辑版本没变」
+    // 时才许清 dirty；变了说明这份响应对的是旧内容，新编辑等它的定时器。
+    const editVersionAtStart = record.editVersion;
     record.status = {kind: 'saving'};
     this.updateSaveUiFor(packageId);
     try {
@@ -1157,6 +1177,7 @@ export class ScheduleDetailPanel {
       // 守卫（人走开就不渲染），但状态侧一律落账。
       if (seq !== this.saveSeqByPkg.get(packageId)) return;
       if (response.ok && data.ok) {
+        if (record.editVersion !== editVersionAtStart) return; // 旧内容成功：不清新编辑的 dirty
         record.status = {kind: 'saved', at: new Date().toLocaleTimeString('zh-CN', {hour12: false})};
         record.dirty = false;
         record.issues = [];
