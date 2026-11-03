@@ -1217,7 +1217,10 @@ export class App {
    * 才看得见——退出审批页 + 6s 时长应用（1.2s 瞬时在跳转落地时必错过）。
    */
   private viewPackageIn3d(packageId: string): void {
-    exitApproval();
+    // exitApproval 返回 false = replace 兜底（深链首 entry 没得可 pop）——此时没人
+    // 触发 hashchange，必须自己应用路由，否则 hash 回了 3D 但审批页还开着，
+    // 6s 高亮在全屏页背后燃尽（2026-11-03 浏览器复验实证的缺陷 A）。
+    if (!exitApproval()) this.applyApprovalRoute(getApprovalRoute());
     this.highlightApprovalPackage(packageId, 6000);
   }
 
@@ -1319,7 +1322,11 @@ export class App {
     //  - 单包且流程图正开着 → 留在流程图反查高亮（选中条即详情摘要，「完整详情」一键可达，
     //    切去详情页会让刚标亮的节点消失，双向联动就断了）；
     //  - 单包且流程图没开 → 维持 #49 行为：打开详情页。
-    this.scheduleSelection?.set({packageId: packageIds[0], checkId: null});
+    // 2026-11-03 浏览器复验缺陷 B：**先导航、后写选中**。旧顺序 set→navigate，
+    // set 的 replaceState 会把当前 3D 页历史条目改写成 #pkg=…，而深链规则
+    // （pkg 无 approval 参数 = 开审批 detail）会在返回时把它重新解释成审批页——
+    // 用户被弹回审批页、要退两次。先 push 审批条目、再在其上 replace 选中，
+    // 3D 条目永不被染指，返回键一步回 3D。
     if (packageIds.length > 1) {
       // 多包共用：进流程图全部标出 + 「同属 N 个包」提示，由业主点选（不静默取首个）
       this.navigateToApproval('flow');
@@ -1329,6 +1336,8 @@ export class App {
     } else {
       this.navigateToApproval('detail');
     }
+    // 选中与 hash 落在首个包（详情/分享链接需要一个确定目标）
+    this.scheduleSelection?.set({packageId: packageIds[0], checkId: null});
   }
 
   // ─── 顶栏收敛：图层抽屉 / 告警聚合 / 弹出面板 ───

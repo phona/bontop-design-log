@@ -585,6 +585,24 @@ describe('App', () => {
     }
   });
 
+  // 2026-11-03 浏览器复验缺陷 A 的回归：深链首 entry（没得可 pop）点「在 3D 中
+  // 高亮」——exitApproval 走 replace 兜底，此时必须自己应用路由，否则 hash 回了
+  // 3D 但审批页还开着，6s 高亮在全屏页背后燃尽。
+  it('viewPackageIn3d：replace 兜底路径下审批页必须真的关', async () => {
+    location.hash = '#pkg=PKG-060';
+    try {
+      const app = new App(canvas);
+      await app.start();
+      expect(app['approvalView']).toBe('detail');
+      // 路由镜像已是 detail 且不可 pop（未经 push 进入）——模拟深链首 entry
+      app['viewPackageIn3d']('PKG-060');
+      expect(app['approvalView']).toBe(null);
+      expect(location.hash).toBe('');
+    } finally {
+      location.hash = '';
+    }
+  });
+
   // 点包 3D 高亮的聚合路径（highlightApprovalPackage）：房间/对象走 highlightObjects、
   // 点位走 highlightPoints（第三步落地后点位不再被静默丢弃）。start() 已把 projectData
   // 拉到手，这里只覆写 links 响应，验证聚合口径与「失败不打断审批流」。
