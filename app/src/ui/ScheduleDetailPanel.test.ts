@@ -556,6 +556,48 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2));
   });
 
+  it('旧 GET 晚到不删刚保存的结果（codex 十五审 blocking 回归）', async () => {
+    // 交错路径：GET 在途 → 编辑 + 保存成功（dirty 清零）→ 旧 GET 带着旧服务端
+    // 内容落地。旧实现让它通过序号检查并 applyDraft，按「服务端没返回=删了」把
+    // 刚保存的结果删掉，下次全量 PUT 永久抹掉。修：GET 回填校验请求期间的草稿
+    // 版本，变过即丢弃。
+    let releaseGet: () => void = () => {};
+    const getGate = new Promise<void>((resolve) => { releaseGet = resolve; });
+    const {panel, calls} = await mountPanel();
+    // 换成手动控制时机的 fetch：GET /api/acceptance/draft 等 gate，其余照常
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET') {
+        await getGate;
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-010', results: []})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // ① GET 在途（不 resolve）
+      const getPromise = panel['loadDraft']('PKG-010');
+      // ② 在途期间编辑 + 立即保存成功（PUT 先于 GET 落地）
+      setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+      click('[data-status-btn="SCH-010-01"][data-status="failed"]');
+      panel.flushSave();
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(1), {timeout: 3000});
+      await vi.waitFor(() => expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存'));
+      // ③ 旧 GET 带着空 results 落地——不许删掉刚保存的结果
+      releaseGet();
+      await getPromise;
+      await vi.waitFor(() => expect(document.querySelector('[data-draft-status]')!.textContent).not.toContain('草稿加载中'));
+      expect(document.querySelector('[data-check-status="SCH-010-01"]')?.textContent ?? document.body.textContent).toContain('failed');
+      // ④ 再编辑另一行：PUT 必须仍包含刚保存的那条（没被旧 GET 删掉）
+      setInput('[data-checked-at="SCH-010-03"]', '2026-11-02');
+      click('[data-status-btn="SCH-010-03"][data-status="passed"]');
+      await vi.waitFor(() => expect(calls.filter((call) => call.method === 'PUT').length).toBe(2), {timeout: 3000});
+      const put = calls.filter((call) => call.method === 'PUT')[1].body as {results: Array<{check_id: string}>};
+      expect(put.results.map((r) => r.check_id).sort()).toEqual(['SCH-010-01', 'SCH-010-03']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('草稿重载未确认时提交按钮禁用：在途与读取失败都堵（codex 十四审 blocking 回归）', async () => {
     // A 生成预演 → 切 B → 服务端草稿被别处改动 → 切回 A：重载在途或 GET 失败
     // 期间旧预演还挂着，但服务端 submit 会重读草稿——业主预演的可能与将写入

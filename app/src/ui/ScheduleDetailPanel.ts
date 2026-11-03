@@ -949,19 +949,32 @@ export class ScheduleDetailPanel {
     this.draftError = null;
     this.render();
     const seq = ++this.draftSeq;
+    // 请求发出时的草稿版本：读取期间本地编辑过/保存成功过（版本变过），这份 GET
+    // 看到的就是旧服务端内容——**不能拿它当「服务端删除」的依据**（codex 十五审
+    // blocking：旧 GET 晚到会把刚保存的结果删掉，下次全量 PUT 永久抹掉）。
+    const versionAtRequest = this.runFor(packageId).draftVersion;
+    // 旧读取只置标志、不提前 return——finally 清 loading 后还要靠尾部重绘消掉
+    // 「加载中」（提前 return 会跳过重绘，状态卡在执行中态；十审十一审在运行态
+    // 上犯过同一类错误，这里不重犯）
+    let staleRead = false;
     try {
       const response = await fetch(`/api/acceptance/draft?package_id=${encodeURIComponent(packageId)}`);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = (await response.json()) as AcceptanceDraft;
-      if (seq !== this.draftSeq || this.draftPackageId !== packageId) return;
-      this.applyDraft(packageId, data.results ?? []);
-      this.draftError = null;
+      if (seq !== this.draftSeq || this.draftPackageId !== packageId) return; // 被更新请求取代：它自带渲染
+      if (this.runFor(packageId).draftVersion !== versionAtRequest) staleRead = true;
+      else {
+        this.applyDraft(packageId, data.results ?? []);
+        this.draftError = null;
+      }
     } catch (err) {
       if (seq !== this.draftSeq || this.draftPackageId !== packageId) return;
-      this.draftError = err instanceof Error ? err.message : String(err);
+      if (this.runFor(packageId).draftVersion !== versionAtRequest) staleRead = true;
+      else this.draftError = err instanceof Error ? err.message : String(err);
     } finally {
       if (seq === this.draftSeq && this.draftPackageId === packageId) this.draftLoading = false;
     }
+    void staleRead;
     if (this.selection.get().packageId === packageId) this.render();
   }
 
