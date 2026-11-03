@@ -962,8 +962,10 @@ export class ScheduleDetailPanel {
         void this.uploadEvidence(pkg.id, checkId, file.name, base64);
       };
       reader.onerror = () => {
-        state.uploading = false;
-        state.stagedError = '文件读取失败';
+        // 同 uploadEvidence：异步回调里重新取当前状态对象再写（二十五审 major）
+        const current = this.draftOf(checkId);
+        current.uploading = false;
+        current.stagedError = '文件读取失败';
         this.updateSaveUi(pkg);
       };
       reader.readAsDataURL(file);
@@ -1174,10 +1176,12 @@ export class ScheduleDetailPanel {
         continue;
       }
       if (!myCheckIds.has(checkId)) {
-        // 别包的缓存条目：原样保留（切包不崩别包的未保存编辑）。**issues 也保留**
-        // ——那是别包自己 422 的行级错误，本包的重载不该抹掉（codex 二十一审
-        // major：旧实现连 applyIssues 都遍历全表清，B 的红字会被 A 的迟到 422 抹掉）。
-        next.set(checkId, {...local, issues: [...local.issues]});
+        // 别包的缓存条目：**原样保留（连对象身份一起）**——切包不崩别包的未保存
+        // 编辑，issues 也天然保留（那是别包自己 422 的行级错误，codex 二十一审
+        // major）。不克隆：在途上传/落定持有的是条目对象引用，克隆后它们的写回
+        // 会落进孤儿对象——上传成功了界面却永远「上传中」、暂存文件接不进草稿
+        // （codex 二十五审 major，内存复现）。
+        next.set(checkId, local);
       } else if (local.touched.size > 0) {
         // 本包、服务端没返回、**这一行有未落账编辑**：本地胜出（用户新建的结果，
         // 或失败周期里改过的行——本地是用户当前真相，含删空）。
@@ -1528,6 +1532,9 @@ export class ScheduleDetailPanel {
 
   private async uploadEvidence(packageId: string, checkId: string, filename: string, base64: string): Promise<void> {
     const state = this.draftOf(checkId);
+    state.uploading = true;
+    state.stagedError = null;
+    this.updateSaveUiFor(packageId);
     try {
       const response = await fetch('/api/acceptance/evidence', {
         method: 'POST',
@@ -1537,25 +1544,31 @@ export class ScheduleDetailPanel {
       const data = (await response.json().catch(() => ({}))) as {staging_path?: string; sha256?: string; size?: number; error?: string};
       if (this.selection.get().packageId !== packageId) return;
       if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
-      state.staged = {
+      // 落账时**重新取当前状态对象**（codex 二十五审 major）：等待期间草稿合并
+      // （本包重载 / 别包 GET 晚到）可能把条目替换成新对象，await 前捕获的引用会
+      // 写进孤儿——上传成功了界面却永远「上传中」、暂存文件接不进草稿。
+      const current = this.draftOf(checkId);
+      current.staged = {
         staging_path: String(data.staging_path ?? ''),
         sha256: String(data.sha256 ?? ''),
         size: Number(data.size ?? 0),
       };
-      state.stagedError = null;
+      current.stagedError = null;
+      current.uploading = false;
     } catch (err) {
       if (this.selection.get().packageId !== packageId) return;
-      state.stagedError = err instanceof Error ? err.message : String(err);
+      const current = this.draftOf(checkId);
+      current.stagedError = err instanceof Error ? err.message : String(err);
+      current.uploading = false;
     } finally {
-      state.uploading = false;
+      this.draftOf(checkId).uploading = false;
     }
     this.updateSaveUiFor(packageId);
   }
 
   private async finalizeEvidence(pkg: SchedulePackageView, checkId: string): Promise<void> {
-    const state = this.draftOf(checkId);
-    if (!state.staged) return;
-    const stagingPath = state.staged.staging_path;
+    const stagingPath = this.draftOf(checkId).staged?.staging_path;
+    if (!stagingPath) return;
     try {
       const response = await fetch('/api/acceptance/evidence/finalize', {
         method: 'POST',
@@ -1565,17 +1578,20 @@ export class ScheduleDetailPanel {
       const data = (await response.json().catch(() => ({}))) as {final_path?: string; sha256?: string; error?: string};
       if (this.selection.get().packageId !== pkg.id) return;
       if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
+      // 同 uploadEvidence：await 后重新取当前状态对象再写（二十五审 major）
+      const current = this.draftOf(checkId);
       const finalPath = String(data.final_path ?? '');
-      if (finalPath && !state.evidence.includes(finalPath)) {
-        state.evidence.push(finalPath);
-        state.touched.add('evidence'); // 新证据是本地意图：合并时 local 列表胜出
+      if (finalPath && !current.evidence.includes(finalPath)) {
+        current.evidence.push(finalPath);
+        current.touched.add('evidence'); // 新证据是本地意图：合并时 local 列表胜出
       }
-      state.staged = null;
-      state.stagedError = null;
+      current.staged = null;
+      current.stagedError = null;
       this.onDraftChanged(pkg.id);
     } catch (err) {
       if (this.selection.get().packageId !== pkg.id) return;
-      state.stagedError = err instanceof Error ? err.message : String(err);
+      const current = this.draftOf(checkId);
+      current.stagedError = err instanceof Error ? err.message : String(err);
     }
     this.updateSaveUi(pkg);
   }

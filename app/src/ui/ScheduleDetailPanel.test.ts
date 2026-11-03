@@ -1275,6 +1275,55 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     }
   });
 
+  it('上传在途时别包草稿晚到：上传结果写进当前状态对象（codex 二十五审 major 回归）', async () => {
+    // 复现路径（codex 二十五审 major）：Q 的草稿 GET 在途→切回 P 开始上传→Q 的
+    // GET 晚到。合并把 P 的条目**克隆**进新表，而 uploadEvidence 在 await 前捕获了
+    // 原对象——上传成功后写回孤儿：界面永远「上传中」、「选为最终证据」不可用、
+    // 暂存文件接不进草稿（内存复现：旧对象已有 staging_path，状态表却仍
+    // staged=null、uploading=true）。修：合并对未改动的别包条目保留对象身份；
+    // 上传/落定/读文件失败等异步完成后重新取当前状态对象再写。
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const twoPkg = {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}};
+    let releaseQGet: () => void = () => {};
+    const qGetGate = new Promise<void>((resolve) => { releaseQGet = resolve; });
+    let releaseUpload: () => void = () => {};
+    const uploadGate = new Promise<void>((resolve) => { releaseUpload = resolve; });
+    const {selection, panel} = await mountPanel({snapshot: twoPkg});
+    const realFetch = globalThis.fetch;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: {method?: string; body?: string}) => {
+      if (String(url).startsWith('/api/acceptance/draft') && (init?.method ?? 'GET') === 'GET'
+        && String(url).includes('PKG-020')) {
+        await qGetGate; // Q 的草稿 GET 压住在途
+        return {ok: true, status: 200, json: async () => ({package_id: 'PKG-020', results: []})} as Response;
+      }
+      if (String(url).startsWith('/api/acceptance/evidence') && !String(url).includes('finalize') && init?.method === 'POST') {
+        await uploadGate; // 上传压住在途
+        return {ok: true, status: 201, json: async () => ({staging_path: STAGING_PATH, sha256: 'a'.repeat(64), size: 1234})} as Response;
+      }
+      return realFetch(url, init);
+    }));
+    try {
+      // ① Q 的草稿 GET 在途
+      selection.set({packageId: 'PKG-020', checkId: null});
+      // ② 切回 P（P 的加载立即落地）并发起上传（在途）
+      selection.set({packageId: 'PKG-010', checkId: null});
+      const uploading = panel['uploadEvidence']('PKG-010', 'SCH-010-01', 'a.jpg', 'ZmFrZQ==');
+      // ③ Q 的 GET 晚到（被 P 的加载取代，仍照常合并 Q 的内容）→ P 的条目走别包
+      //    缓存分支：旧实现克隆（写回孤儿），修后保留对象身份
+      releaseQGet();
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      // ④ 上传成功（业主在 P 上）：必须落进**当前**状态对象
+      releaseUpload();
+      await uploading;
+      const live = panel['draftResults'].get('SCH-010-01')!;
+      expect(live.staged?.staging_path).toBe(STAGING_PATH);
+      expect(live.uploading).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('草稿重载未确认时提交按钮禁用：在途与读取失败都堵（codex 十四审 blocking 回归）', async () => {
     // A 生成预演 → 切 B → 服务端草稿被别处改动 → 切回 A：重载在途或 GET 失败
     // 期间旧预演还挂着，但服务端 submit 会重读草稿——业主预演的可能与将写入
