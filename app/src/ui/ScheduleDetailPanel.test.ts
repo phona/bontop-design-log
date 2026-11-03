@@ -602,6 +602,37 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect(document.querySelector('#acceptance-actions')!.textContent).toContain('还没跑过机械卡点');
   });
 
+  it('退出审批页再重选：两步确认态不跨页面保留（codex 十审 major 回归）', async () => {
+    // A 武装 → 返回 3D（清空选中，render 早退）→ 重选 A。旧实现把解除放在早退
+    // 之后，够不着——确认态还在，下一次点击直接开 PR。
+    const {selection} = await mountPanel();
+    click('#acceptance-run-gates');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('卡点 5/5'), {timeout: 3000});
+    click('#acceptance-dry-run');
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-actions')!.textContent).toContain('PR 预演：将写入'), {timeout: 3000});
+    click('#acceptance-submit');
+    expect(document.querySelector('#acceptance-submit')!.textContent).toContain('再点一次');
+    // 退出审批页（清空选中）再重选 A
+    selection.set({packageId: null, checkId: null});
+    selection.set({packageId: 'PKG-010', checkId: null});
+    await vi.waitFor(() => expect(document.querySelector('#acceptance-submit')!.textContent).toContain('确认提交'));
+    // 第一次点击仍只进确认态（不直接 POST）
+    click('#acceptance-submit');
+    expect(document.querySelector('#acceptance-submit')!.textContent).toContain('再点一次');
+  });
+
+  it('版本作废后操作条不卡「执行中」（codex 十审 major 回归）', async () => {
+    // 卡点在途 → 草稿变版（旧响应作废）→ 尾部的重绘不能漏——否则按钮永远禁用。
+    const {panel} = await mountPanel();
+    const gatesPromise = panel['runGates']('PKG-010');
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02'); // 在途期间编辑 → bump 版本
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    await gatesPromise;
+    // 旧响应被作废，但界面必须回到可用态（不是「卡点执行中…」禁用）
+    expect(document.querySelector('#acceptance-run-gates')!.textContent).toContain('跑机械卡点');
+    expect((document.querySelector('#acceptance-run-gates') as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('同包旧响应作废：预演在途时草稿变化，旧预演不许填回（codex 八审 blocking 回归）', async () => {
     // A 的预演在途 → 本地编辑（草稿变版，旧结论作废）→ 旧预演响应晚到。旧实现
     // 把旧草稿的预演填回 run.dryRun，提交按钮对着过期预览重新可用，而真实提交

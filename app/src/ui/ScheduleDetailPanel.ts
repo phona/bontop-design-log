@@ -341,6 +341,12 @@ export class ScheduleDetailPanel {
     }
 
     const packageId = this.selection.get().packageId;
+    // 离开某包即解除它的两步确认态——**必须在下面所有早退之前**：退出审批页会
+    // 清空选中走 !packageId 早退，若把解除放在早退后面就够不着（codex 十审
+    // major：A 武装→返回 3D→重选 A，确认态还在，下一次点击直接开 PR）。
+    if (this.actionPackageId !== null && this.actionPackageId !== packageId) {
+      this.runFor(this.actionPackageId).submitArmed = false;
+    }
     if (!packageId) {
       body.innerHTML = `${error}<div style="padding:10px;border:1px dashed rgba(255,255,255,.2);border-radius:6px;color:#9aa4b2;font-size:12px;">
         还没有选中工作包——在「自装进度」面板点某一行，或打开带 <code>#pkg=PKG-xxx</code> 的链接。
@@ -359,12 +365,7 @@ export class ScheduleDetailPanel {
     // 运行态按包各一份（pkgRuns）：换包不 reset——切回某包能看到它上次的卡点/
     // 预演/提交结果与保存成败；旧结论放行新包的风险由「草稿变化即 reset 该包
     // 运行态」把守（onDraftChanged / saveDraft 成功分支），比换包一刀切更准。
-    // 唯一例外是两步确认态（submitArmed）：它是「刚点过一次」的瞬态，离开该包
-    // 必须解除——否则切走再回来，下一次点击会直接开 PR，两步确认被掏空（codex
-    // 八审 major；页面文案承诺过「切包会取消确认态」）。
-    if (this.actionPackageId !== null && this.actionPackageId !== pkg.id) {
-      this.runFor(this.actionPackageId).submitArmed = false;
-    }
+    // 两步确认态（submitArmed）的解除已在上面早退前统一处理（离开即解除）。
     this.actionPackageId = pkg.id;
 
     body.innerHTML = `${error}${this.renderHeader(pkg)}${this.renderBlockers(pkg)}${this.renderBudget(pkg)}${this.renderChecks(pkg)}${this.renderProjectScope(pkg)}${this.renderAcceptanceActions(pkg)}${this.renderFoot(pkg)}`;
@@ -1321,7 +1322,12 @@ export class ScheduleDetailPanel {
       // A 的卡点结果会显示在 B 的面板里——codex 五/六审同类型）。
       // 同包旧响应作废：请求发出后草稿又变过（版本号对不上）——结论是基于旧草稿
       // 算的，提交读的却是新草稿，留着就是「按钮对着过期结论可用」（codex 八审）。
-      if (run.draftVersion !== versionAtStart) return;
+      if (run.draftVersion !== versionAtStart) {
+        // 旧响应作废：finally 已清 loading，但**必须重绘一次**——否则操作条停在
+        // 「卡点执行中…」禁用态（codex 十审 major：提前 return 跳过了尾部更新）
+        this.updateAcceptanceBar(packageId);
+        return;
+      }
       run.gates = {ok: Boolean(data.ok), gates: Array.isArray(data.gates) ? data.gates : []};
       if (!run.gates.ok) {
         run.dryRun = null;
@@ -1355,7 +1361,10 @@ export class ScheduleDetailPanel {
       };
       // 按包落账（根治前写面板级共享字段，A 的预演结果会显示在 B 面板里）；
       // 同包旧响应作废（版本号校验，理由同 runGates——codex 八审 blocking）
-      if (run.draftVersion !== versionAtStart) return;
+      if (run.draftVersion !== versionAtStart) {
+        this.updateAcceptanceBar(packageId); // 同 runGates：作废也要重绘，防卡「执行中」
+        return;
+      }
       if (response.status === 422 && Array.isArray(data.gates)) {
         // 卡点不过：把返回的 gates 回填卡点区，不留在「预演失败」的迷雾里
         run.gates = {ok: false, gates: data.gates};
