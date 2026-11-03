@@ -585,6 +585,26 @@ describe('App', () => {
     }
   });
 
+  // 2026-11-03 浏览器复验挖出的死代码修复：退出时若把 approvalView 持久化成 null，
+  // 刷新后 lastApprovalPage 永远回落 next_action——「记忆上次所在审批页」死亡。
+  // 正确语义：退出保留最后看过的子页。
+  it('退出审批页后持久化仍保留上次子页（刷新后点审批回该子页）', async () => {
+    location.hash = '#approval=flow';
+    try {
+      const app = new App(canvas);
+      await app.start();
+      expect(app['approvalView']).toBe('flow');
+      app['toggleApprovalView'](); // 退出
+      expect(app['approvalView']).toBe(null);
+      const persisted = JSON.parse(localStorage.getItem('bontop-view-state/v1') ?? '{}');
+      expect(persisted.approvalView).toBe('flow'); // 退出不抹记忆
+      expect(app['lastApprovalPage']).toBe('flow');
+    } finally {
+      location.hash = '';
+      localStorage.removeItem('bontop-view-state/v1');
+    }
+  });
+
   // 2026-11-03 浏览器复验缺陷 A 的回归：深链首 entry（没得可 pop）点「在 3D 中
   // 高亮」——exitApproval 走 replace 兜底，此时必须自己应用路由，否则 hash 回了
   // 3D 但审批页还开着，6s 高亮在全屏页背后燃尽。

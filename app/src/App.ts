@@ -1189,7 +1189,17 @@ export class App {
       this.flowChartPanel?.show();
       void this.flowChartPanel?.refresh();
     }
-    writeViewState({approvalView: page});
+    // 持久化「上次所在子页」而非「当前是否开着」：退出时若写 null，刷新后
+    // lastApprovalPage 永远回落 next_action，「记忆上次所在审批页」的承诺就
+    // 死了（2026-11-03 浏览器复验挖出的死代码）。lastApprovalPage 在上面刚
+    // 更新过，关页时写它 = 记住最后看过的子页。view-state 里没有别的读者
+    // 把这个字段当「开合状态」用（restorePersistedViewState 不碰它）。
+    writeViewState({approvalView: page ?? this.lastApprovalPage});
+    // 2026-11-03 codex 三审 blocking：第一人称带着指针锁进审批页（第一人称里点
+    // 对象反查就会），鼠标还被锁定的画布绑着、审批按钮点不动。进入即释放——切回
+    // orbit（fpController.disable() 放锁 + 相机回 orbit 视图）。不自动恢复第一
+    // 人称：回来就重新锁指针是敌意体验，想回去按 V。
+    if (page !== null && this.houseScene.mode === 'first-person') this.switchToOrbit();
     document.body.classList.toggle('approval-page', page !== null);
     this.syncApprovalTabs();
     this.approvalToggleBtn?.setAttribute('aria-expanded', String(page !== null));
