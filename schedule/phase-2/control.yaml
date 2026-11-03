@@ -49,7 +49,7 @@ items:
   - {id: P2-160, name: 复杂灯光升级（筒射灯轨道灯，一期后移）, estimate_min_cny: 2000, estimate_max_cny: 4000, status: proposed}
 audit:
   status: not_started
-  note: 明细合计为¥42,100—¥67,200；云鲸J6上下水版已按业主确认的3,000元移入一期，不在二期重复计费；范围未冻结前不得采购
+  note: 明细合计为¥42,100—¥67,200；云鲸JX超薄上下水版（现行候选，2026-11-03业主拍板由J6改JX，非最终锁定）已按业主确认的3,000元移入一期，不在二期重复计费；范围未冻结前不得采购
   record_schema:
     required: [id, gate_id, status, checked_at, checked_by, evidence, gate_spec_sha256, project_data_sha256]
     status_values: [pending, passed, failed, not_applicable]

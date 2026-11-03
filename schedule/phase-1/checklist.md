@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"300191abf6b1ab5c69afde944aeaa94fce79ad01ed3e3b9b305bd4fa93abd39f","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"bb2db6362e93590d2011942ed42da5f338aa6a5d4bf0958b2c7b6c1e06e8bbbf","config/house.yaml":"8ea7218d703e2064720938a67a38da770c3fb3aaae98d779579934acadce244f","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/mep-hvac-coordination.yaml":"46fc84a896d7d1b236c8cf05c99a8ab4c29375471e09cb0e5d53484a693510b6","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"6a0bd04930f637b881a683add21d386dd315c7219c458e7909e99994b9ed5583","schedule/phase-1/control.yaml":"f5920ffe49d432482aef039942f0fc0408451c3c92662f817db65ac859921754","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"0a954474b7fd676d98db498973c560aa45fddb2c67fd7364b453e6d4dff9dc45"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"300191abf6b1ab5c69afde944aeaa94fce79ad01ed3e3b9b305bd4fa93abd39f","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"bb2db6362e93590d2011942ed42da5f338aa6a5d4bf0958b2c7b6c1e06e8bbbf","config/house.yaml":"8ea7218d703e2064720938a67a38da770c3fb3aaae98d779579934acadce244f","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/mep-hvac-coordination.yaml":"46fc84a896d7d1b236c8cf05c99a8ab4c29375471e09cb0e5d53484a693510b6","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"6a0bd04930f637b881a683add21d386dd315c7219c458e7909e99994b9ed5583","schedule/phase-1/control.yaml":"df1df5770ff9b7d172d89c27e751cce65f966b8cd4269d27db5d82ae593b70ea","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"04c654d67cb27aa448f62211bd3be5cbb111d3fb5933b0077984be04a6188ad9"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:7262f906cd5e61a7a4cda735dac7e938b3fdb81bc13113e8077a8ad9229a6683`（16 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:2c623419dbd03f4c8a6697a8fb1732ab7513bc66575eaa34d7bcff171f76045e`（16 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -725,7 +725,7 @@
 | 勾选 | 优先级 | 费用ID | 独立费用项 | 包含内容 | 数量或计价依据 | 当前金额 | 状态 |
 |---|---|---|---|---|---|---:|---|
 | [ ] | — | COST-100-01 | 马桶 | 分别记录主卫生间和客卫生间的型号坑距角阀软管安装及旧孔处理；2026-10-03 轮次登记九牧智能马桶ZQ6650两台封顶5,598元（cap），须核305/400坑距、低水压、送装与质保，并按shopping-research补取证后与九牧11383-2-1/31KB-1、箭牌AE1182U同口径比较；2026-10-05 业主侧出现具体型号方向 ZQ6650-SA-CJM305（2,799/台，后缀含坑距 305 承诺）——两卫坑距 305/400 未核（pending-site-data #31）前不得定死 | 2台，业主封顶5,598元（2026-10-03） | ¥5,598 | owner_selected_pending_verification |
-| [ ] | — | COST-100-02 | 浴室柜台盆和镜柜 | 分卫生间记录柜体材质尺寸龙头下水安装和墙体固定条件；2026-10-07（DEC-2026-10-07-R02）业主先入账 1,500 元/主卫，柜型/台盆形式/龙头形式均未定（BLK-MASTER-VANITY-SKU），客卫 2,000 元 定制/非标不变（悬浮+云鲸J6基站仓，约500mm仓宽为假设值，须与J6实机外廓/柜下净空同图会审）。三条路径及 MEP 后果：A 买柜体+岩板台面、台上盆与壁挂龙头按 DEC-2026-10-03-R1 单配 → faucet_mbath_vanity 盆心 x=0.575、drain_mbath_vanity 墙排中心、water-master-bath 穿 w_mbath_south 点 x=0.575 全不动、给排水参数与柜体 SKU 解耦（推荐，约1,800~2,400）；B 厂家一体盆成品柜 1,500 全包 → 台上盆意图放弃、上述三点随柜体重定、water-master-bath 退回 pending 重画；C 维持 R12 设计 3,000。**主卫 1,500 只是预算入账，不等于成品一体盆方案**。注意与 mb_vanity_base_cabinet（1.38m 定制底柜+悬浮板+PVC管井族，归 wardrobe、二期 P2-100）是两套东西，不得混同或双计 | 2套：主卫1,500（预算先入账，选型未定）+ 客卫2,000（J6非标定制），2026-10-07 目标3,500元 | ¥3,500 | candidate_pending_quote |
+| [ ] | — | COST-100-02 | 浴室柜台盆和镜柜 | 分卫生间记录柜体材质尺寸龙头下水安装和墙体固定条件；2026-10-07（DEC-2026-10-07-R02）业主先入账 1,500 元/主卫，柜型/台盆形式/龙头形式均未定（BLK-MASTER-VANITY-SKU），客卫 2,000 元 定制/非标不变（悬浮+云鲸JX基站仓，约500mm仓宽为假设值，须与JX实机外廓/柜下净空同图会审）。三条路径及 MEP 后果：A 买柜体+岩板台面、台上盆与壁挂龙头按 DEC-2026-10-03-R1 单配 → faucet_mbath_vanity 盆心 x=0.575、drain_mbath_vanity 墙排中心、water-master-bath 穿 w_mbath_south 点 x=0.575 全不动、给排水参数与柜体 SKU 解耦（推荐，约1,800~2,400）；B 厂家一体盆成品柜 1,500 全包 → 台上盆意图放弃、上述三点随柜体重定、water-master-bath 退回 pending 重画；C 维持 R12 设计 3,000。**主卫 1,500 只是预算入账，不等于成品一体盆方案**。注意与 mb_vanity_base_cabinet（1.38m 定制底柜+悬浮板+PVC管井族，归 wardrobe、二期 P2-100）是两套东西，不得混同或双计 | 2套：主卫1,500（预算先入账，选型未定）+ 客卫2,000（JX非标定制），2026-10-07 目标3,500元 | ¥3,500 | candidate_pending_quote |
 | [ ] | — | COST-100-03 | 花洒 | 分卫生间记录混水阀花洒组件安装辅材和水压适配；2026-10-07（DEC-2026-10-07-R02）由 R12 的千元级恒温档2,000下调至1,300：两套均普通明装、阀体与阀芯不降级；显式放弃花洒侧二级恒温，恒温改由海尔 KL7PRO 水伺服（DEC-2026-10-05-R5）在热水器侧承担一级；阀体/阀芯保持墙里件定位，不得按耗材采购；京造/九牧/恒洁同档待选型 | 2套，2026-10-07 目标1,300元 | ¥1,300 | candidate |
 | [ ] | — | COST-100-04 | 地漏角阀软管及卫生间小五金 | 按点位逐件列数量品牌型号和安装费用；2026-10-03 轮次的龙头下水角阀约1,200元与通用五金约1,500元同归本项，不得叠加；2026-10-05（DEC-2026-10-05-R12）龙头下水角阀按业主侧拆分口径1,100元（500~600/套×2） | 待点位表确认，2026-10-03 轮次合计约2,700元、2026-10-05 下调至2,600元 | 待报价/待算量 | quantity_pending |
 | [ ] | — | COST-100-05 | 淋浴区玻璃隔断 | 2026-10-07（DEC-2026-10-07-R02）归属定案归 PKG-100，ownership_pending 关闭：8mm 钢化+3C 固定玻璃约900/台×2=1,800（主客卫各一处，与 DEC-2026-09-07-054 客卫整面固定玻璃无门一致；不做昂贵推拉淋浴房，复杂轨道与门铰属可砍溢价）。家电池 PKG-160 need 16,496 已超计划额496，不接这笔。config/materials.yaml 的 shower_enclosure_01 notes 已同步为 PKG-100 / COST-100-05，家电池不计；本条为记账权威 | 2处（主卫/客卫各1处） | ¥1,800 | ownership_resolved |
@@ -1131,7 +1131,7 @@
 采购优先级规则：
 
 - **P0｜入住必需**：冰箱、洗衣机以及实际没有现成设备时的热水器，优先保证基本生活功能
-- **P0确认｜防尘与自动清洁**：云鲸J6上下水版按业主确认的3,000元纳入一期，使用客卫台盆下已规划的电源、进水和墙排接口
+- **P0确认｜防尘与自动清洁**：云鲸JX超薄上下水版（现行候选，2026-11-03业主拍板由J6改JX，非最终锁定）按业主确认的3,000元纳入一期，使用客卫台盆下已规划的电源、进水和墙排接口
 - **P0接口｜做饭和施工接口必需**：燃气灶和吸油烟机先确认型号和接口，再冻结橱柜开孔、燃气和电路
 - **P1｜业主定标生活电器**：微蒸烤一体机按业主 2026-10-05 定标（DEC-2026-10-05-R4）以 4,000 元纳入一期，嵌位与专用回路随橱柜方案冻结
 - **P2｜二期延后**：洗碗机、干衣机和净水设备继续留在二期，不从一期额度挤占
@@ -1152,7 +1152,7 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | SCH-160-01 | critical/completion/阻塞解除后 | 必需家电逐台安装和接口试运行 | 按设备说明检查电源、给排水、散热、水平和试运行状态 | 设备运行正常，无漏水、异常发热、跳闸或维护空间不足 | commissioning_record、serial_number_photos | `82eb4ba325678088bf0c065cddf2e6e8be46117c6c569470fd5e6edb389ce719` | pending |
+| [ ] | SCH-160-01 | critical/completion/阻塞解除后 | 必需家电逐台安装和接口试运行 | 按设备说明检查电源、给排水、散热、水平和试运行状态 | 设备运行正常，无漏水、异常发热、跳闸或维护空间不足 | commissioning_record、serial_number_photos | `b82736e9f725be89f1dd6b4d50b9d39fc71411fd57a7120cea48730bc25f741b` | pending |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。

@@ -333,7 +333,7 @@ describe('OverviewMenu', () => {
       totalBudget: 200000,
       totalActual: 145627,
       categories: [
-        // appliances：已取证 3,000（云鲸 J6，业主确认预算）+ 未取证 11,300
+        // appliances：已取证 3,000（云鲸 JX，业主确认预算）+ 未取证 11,300
         { key: 'appliances', budget: 14000, actual: 14300, manualActual: 0, autoActual: 14300, status: 'over', notes: '', verifiedActual: 3000, candidateActual: 11300 },
         // hvac：无 status 的合成选项 → 整笔未取证
         { key: 'hvac', budget: 29000, actual: 29000, manualActual: 0, autoActual: 29000, status: 'ok', notes: '', verifiedActual: 0, candidateActual: 29000 },

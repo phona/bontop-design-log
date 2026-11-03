@@ -721,6 +721,7 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   {
     // DEC-2026-09-09-R6：客卫台盆柜改悬空抽屉柜（底缘 y=0.30 以下留空），为台下扫地机基站（robot_dock_gbath）让出机位；
     // 底缘 0.55→0.30：按业主选定云鲸 J6 上下水版实尺寸（0.198 高）收紧，柜体加深至 0.49m。
+    // 2026-11-03 业主拍板改 JX 超薄上下水版（0.280 高，DEC-2026-11-03-R1，现行候选非最终锁定）：底缘 0.30 不变，基站顶余 20mm。
     type: 'vanity',
     parts: [
       { shape: 'box', size: [0.70, 0.49, 0.48], position: [0, 0.545, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-carcass', materialRole: 'cabinet_body' },
@@ -732,7 +733,7 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下）：按业主选定云鲸 J6 上下水版实尺寸 0.41宽×0.4335深×0.198高。
+    // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下）：原按业主选定云鲸 J6 上下水版实尺寸 0.41宽×0.4335深×0.198高；2026-11-03 拍板改 JX（0.41×0.433×0.280，顶余 20mm，DEC-2026-11-03-R1）。
     // 低矮底座+背沿（无水箱塔）；背沿在 local -z（rotation=270 后朝东贴墙）；机器人泊口朝西（房间侧）。
     // 电源 sock_gbath_robot（7.05,4.10,h0.3）在基站背沿上方墙面，低位可见可检修。
     type: 'robot_dock_gbath',
