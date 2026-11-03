@@ -666,6 +666,42 @@ test('project-dxf: ascii 模式标高分隔符用 ->（codex 十审 minor）', (
   assert.ok(!ascii.dxf.includes('→'));
 });
 
+test('project-dxf: 协调示意家具不进 A-FURN，告警显形（codex 十一审 blocking）', () => {
+  const input = baseInput();
+  input.house.furnishings = {
+    master_bedroom: [
+      { type: 'mb_vanity_pvc_wardrobe_entry', x: 4.10, z: 4.62 }, // 端点锚，居中会漂移
+      { type: 'bed_150', x: 1, z: 1 },
+    ],
+  };
+  const result = buildProjectDxf(input);
+  const entities = parseEntities(result.dxf);
+  // 示意件外框不存在；普通家具正常
+  const furnTexts = entities.filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.FURN[0]);
+  assert.ok(!furnTexts.some((e) => (e['1'] ?? '').includes('mb_vanity_pvc_wardrobe_entry')));
+  assert.ok(furnTexts.some((e) => (e['1'] ?? '').includes('bed_150')));
+  assert.ok(result.warnings.some((w) => w.includes('mb_vanity_pvc_wardrobe_entry') && w.includes('M-CAND')));
+});
+
+test('project-dxf: 柜面安装灯具标注宿主柜体与安装面（codex 十一审 major）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    house: {
+      ...baseInput().house,
+      electrical: [
+        { id: 'night_mid', room: 'living', type: 'night_light', x: 1, z: 1, height: 0.3, mountAnchor: { kind: 'furniture_face', furnitureId: 'mb_cabinet', face: 'east' } },
+      ] as never,
+    },
+  });
+  const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.E_LIGHT[0]);
+  assert.ok(texts.some((e) => (e['1'] ?? '').includes('night_mid') && (e['1'] ?? '').includes('M=mb_cabinet/east')));
+});
+
+test('project-dxf: 图内声明阶段范围（codex 十一审 major）', () => {
+  const result = buildProjectDxf({ ...baseInput(), notes: ['PHASE: full (all furnishings)'] });
+  assert.ok(parseEntities(result.dxf).some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('PHASE: full')));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });

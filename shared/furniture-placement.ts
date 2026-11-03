@@ -8,6 +8,19 @@ import { FURNITURE_DIMS, type WallSide } from './types.js';
 /** 墙体完成面基厚（渲染与摆位共用的单一声明）。 */
 export const WALL_THICKNESS = 0.12;
 
+/**
+ * 协调示意类家具（冷凝水 PVC 走向代理件，FixtureFactory 配方零件全部 materialRole:
+ * hvac_coordination_cover + pipe-chase 检视层）：不是施工家具，DXF 导出排除——冷凝水
+ * 几何以 M-CAND 候选路线为准，双重表达会产生位置漂移的第二个"事实"（codex 十一审
+ * blocking：wardrobe_entry 的 x=4.10 是线段端点锚，居中外框漂移 0.6m）。
+ */
+export const COORDINATION_SCHEMATIC_FURNITURE_TYPES: ReadonlySet<string> = new Set([
+  'condensate_pipe_ac_outlet',
+  'mb_vanity_pvc_box',
+  'mb_vanity_pvc_wardrobe_entry',
+  'mb_vanity_pvc_service_chase',
+]);
+
 export interface FurniturePlacement {
   x: number;
   z: number;

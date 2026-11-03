@@ -2219,7 +2219,8 @@ export class App {
       // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
       const mep = facts?.hvac?.plans && mepPayload ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts) } : undefined;
       // 降级说明随图交付（codex 七审 major）：施工方拿到的 DXF 必须能区分「没设计」和「导出时接口失败」。
-      const notes: string[] = [];
+      // 阶段范围随图声明（codex 十一审 major）：web 按当前阶段过滤家具，与 CLI 全案口径不同，图内必须写明。
+      const notes: string[] = [`PHASE: ${this.phase} (${this.phase === 'full' ? 'all furnishings' : 'phase-filtered furnishings; electrical/MEP remain full-scope'})`];
       if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
       const result = buildProjectDxf({

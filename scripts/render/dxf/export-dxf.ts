@@ -35,6 +35,7 @@ function main(): void {
     },
     plumbing: facts.plumbing,
     mep: { coordination: mepConfig, sources: mepSources },
+    notes: ['PHASE: full (all furnishings)'],
   });
 
   mkdirSync('tmp/capture', { recursive: true });
