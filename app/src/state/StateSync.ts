@@ -1,4 +1,5 @@
 import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, BudgetSnapshot, DesignCheckResult, ArchivedScheme, CurtainPresentationState, CurtainState } from '@shared/types';
+import { apiWrite } from '../api-write.js';
 
 type SchemeCallback = (scheme: CurrentScheme) => void;
 type PresentationStateCallback = (state: CurtainPresentationState) => void;
@@ -72,7 +73,7 @@ export class StateSync {
   }
 
   async updateScheme(selections: SelectionPatch[]): Promise<void> {
-    const response = await fetch('/api/scheme/current', {
+    const response = await apiWrite('/api/scheme/current', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ selections, source: 'user' }),
@@ -87,7 +88,7 @@ export class StateSync {
   }
 
   async updateCurtainState(state: CurtainState, roomId?: string, expectedUpdatedAt?: string): Promise<CurtainPresentationState> {
-    const response = await fetch('/api/presentation-state/curtains', {
+    const response = await apiWrite('/api/presentation-state/curtains', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...(roomId ? { roomId } : {}), state, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) }),
@@ -133,7 +134,7 @@ export class StateSync {
   }
 
   async archiveScheme(name: string, reason?: string): Promise<ArchivedScheme> {
-    const response = await fetch('/api/schemes', {
+    const response = await apiWrite('/api/schemes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, reason }),
@@ -143,12 +144,12 @@ export class StateSync {
   }
 
   async restoreScheme(id: string): Promise<void> {
-    const response = await fetch(`/api/schemes/${id}/restore`, { method: 'POST' });
+    const response = await apiWrite(`/api/schemes/${id}/restore`, { method: 'POST' });
     if (!response.ok) throw new Error('Failed to restore scheme');
   }
 
   async deleteArchivedScheme(id: string): Promise<void> {
-    const response = await fetch(`/api/schemes/${id}`, { method: 'DELETE' });
+    const response = await apiWrite(`/api/schemes/${id}`, { method: 'DELETE' });
     if (!response.ok) throw new Error('Failed to delete archived scheme');
   }
 
@@ -159,7 +160,7 @@ export class StateSync {
   }
 
   async ackVisualCommands(ids: string[]): Promise<void> {
-    const response = await fetch('/api/visual-commands/ack', {
+    const response = await apiWrite('/api/visual-commands/ack', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids }),
@@ -168,7 +169,7 @@ export class StateSync {
   }
 
   async postViewContext(objectId: string): Promise<void> {
-    const response = await fetch('/api/view-context', {
+    const response = await apiWrite('/api/view-context', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ objectId }),

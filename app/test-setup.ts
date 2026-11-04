@@ -12,3 +12,14 @@ if (typeof (globalThis as { ResizeObserver?: unknown }).ResizeObserver === 'unde
     disconnect() {}
   };
 }
+
+// 写操作 token 认证（issue #64）：app/src/api-write.ts 的写 fetch 一律带
+// x-bontop-token，本地无 token 时会弹页面内嵌输入框。给测试预置一个 token，
+// 让既有写路径用例（StateSync / ScheduleDetailPanel / CeilingQuotePanel 等）
+// 直接走 fetch mock、不弹框。api-write.test.ts 自行清理 localStorage，
+// 覆盖「无 token → 弹框输入 → 自动重发」与「401 → 清栈重输」流程。
+try {
+  localStorage.setItem('bontop.write-token', 'test-write-token');
+} catch {
+  // 无 localStorage 的环境（node environment）下写路径用例本就跑不到
+}

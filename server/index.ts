@@ -1,5 +1,4 @@
 import express from 'express';
-import { isIP } from 'node:net';
 import { load } from 'js-yaml';
 import { ProjectCatalog } from './project-catalog.js';
 import { DesignState } from './design-state.js';
@@ -22,6 +21,7 @@ import { createAnalysisRouter } from './analysis-routes.js';
 import { PresentationStateStore } from './presentation-state.js';
 import { getElementState } from './element-state-service.js';
 import { resolveLayout } from './layout-resolver.js';
+import { resolveWriteToken, createWriteTokenGuard } from './write-token.js';
 import type { MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml, VertexLayoutYaml } from '../shared/types.js';
 
@@ -29,15 +29,6 @@ const PORT = Number(process.env.PORT ?? 4000);
 const HOST = process.env.HOST ?? 'localhost';
 const DATA_DIR = process.env.DATA_DIR ?? './data';
 const CONFIG_PATH = process.env.CONFIG_PATH ?? 'config/design-rules.yaml';
-
-function isLoopbackHost(host: string): boolean {
-  const normalized = host.trim().toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
-  if (normalized === 'localhost') return true;
-  const family = isIP(normalized);
-  if (family === 4) return normalized.split('.')[0] === '127';
-  if (family === 6) return normalized === '::1' || normalized.startsWith('::ffff:127.');
-  return false;
-}
 
 const registry = new ConfigRegistry();
 const projectRenderFactsLoader = new ProjectRenderFactsLoader();
@@ -207,20 +198,18 @@ const apiDeps = {
 };
 
 const app = express();
-const writesEnabled = isLoopbackHost(HOST);
-if (!writesEnabled) {
-  console.warn(`[server] HOST=${HOST} is not loopback; HTTP write operations are disabled`);
+// 写操作 token 认证（issue #64，2026-11-04 业主拍板）：一律认证、不豁免——
+// 所有 POST/PUT/PATCH/DELETE 必须带 x-bontop-token（含跑卡点 / dry_run / 状态同步），
+// GET 一律不校验；本机回环同样不免 token（`--host 0.0.0.0` 手机联调不再静默 403）。
+// 守卫挂在 express.json() 之前：被拒的写不解析 body。
+const writeToken = resolveWriteToken();
+if (writeToken.source === 'generated') {
+  console.log(`[server] write token 首次生成：${writeToken.token}（已写入 .bontop-write-token，重启复用；轮换 = 手动删除该文件）`);
+} else {
+  const origin = writeToken.source === 'env' ? 'BONTOP_WRITE_TOKEN 环境变量' : '.bontop-write-token 文件';
+  console.log(`[server] write token（来源：${origin}）：${writeToken.token}`);
 }
-app.use((req, res, next) => {
-  if (!writesEnabled && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
-    res.status(403).json({
-      error: 'Remote write access is disabled',
-      detail: `Set HOST to localhost, 127.0.0.1, or ::1 to enable write operations. Current HOST is ${HOST}.`,
-    });
-    return;
-  }
-  next();
-});
+app.use(createWriteTokenGuard(writeToken.token));
 // All API requests use small structured payloads.  Keep malformed or
 // oversized JSON from consuming the server before route-level validation runs.
 app.use(express.json({ limit: '1mb', strict: true }));

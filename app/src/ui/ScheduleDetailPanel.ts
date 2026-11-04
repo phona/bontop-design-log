@@ -32,6 +32,7 @@ import type {
 } from '@shared/acceptance-draft';
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
 import { escapeHtml } from './escape-html.js';
+import { apiWrite } from '../api-write.js';
 import { resolvePackageScope } from '@shared/package-scope';
 import type { PackageScopeLink, ProjectScopeInput } from '@shared/package-scope';
 
@@ -1461,7 +1462,7 @@ export class ScheduleDetailPanel {
     this.updateSaveUiFor(packageId);
     run.putInFlight = true;
     try {
-      const response = await fetch('/api/acceptance/draft', {
+      const response = await apiWrite('/api/acceptance/draft', {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({package_id: packageId, results}),
@@ -1572,7 +1573,7 @@ export class ScheduleDetailPanel {
     state.stagedError = null;
     this.updateSaveUiFor(packageId);
     try {
-      const response = await fetch('/api/acceptance/evidence', {
+      const response = await apiWrite('/api/acceptance/evidence', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({package_id: packageId, check_id: checkId, filename, data_base64: base64}),
@@ -1606,7 +1607,7 @@ export class ScheduleDetailPanel {
     const stagingPath = this.draftOf(checkId).staged?.staging_path;
     if (!stagingPath) return;
     try {
-      const response = await fetch('/api/acceptance/evidence/finalize', {
+      const response = await apiWrite('/api/acceptance/evidence/finalize', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({package_id: pkg.id, check_id: checkId, staging_path: stagingPath}),
@@ -1708,7 +1709,7 @@ export class ScheduleDetailPanel {
     this.updateAcceptanceBar(packageId);
     let stale = false;
     try {
-      const response = await fetch('/api/acceptance/gates', {
+      const response = await apiWrite('/api/acceptance/gates', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({package_id: packageId}),
@@ -1772,7 +1773,7 @@ export class ScheduleDetailPanel {
     // 同 runGates：旧响应只置 stale，重绘统一在 finally 之后（codex 十一审 major）
     let stale = false;
     try {
-      const response = await fetch('/api/acceptance/submit', {
+      const response = await apiWrite('/api/acceptance/submit', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({package_id: packageId, dry_run: true}),
@@ -1849,7 +1850,7 @@ export class ScheduleDetailPanel {
     run.submitResult = null;
     this.updateAcceptanceBar(packageId);
     try {
-      const response = await fetch('/api/acceptance/submit', {
+      const response = await apiWrite('/api/acceptance/submit', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({package_id: packageId}),

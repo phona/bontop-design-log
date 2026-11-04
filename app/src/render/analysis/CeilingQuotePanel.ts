@@ -1,5 +1,6 @@
 import { setupCollapsiblePanel } from '../../ui/CollapsiblePanel.js';
 import { escapeHtml } from '../../ui/escape-html.js';
+import { apiWrite } from '../../api-write.js';
 
 /**
  * 吊顶报价面板（DEC-2026-10-08-C03）。
@@ -174,7 +175,7 @@ export class CeilingQuotePanel {
     this.switching = id;
     this.render();
     try {
-      const response = await fetch('/api/ceiling/quotes/active', {
+      const response = await apiWrite('/api/ceiling/quotes/active', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id }),
