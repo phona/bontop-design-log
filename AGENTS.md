@@ -17,6 +17,12 @@
 - **体验层呈现状态保留页面写**（`data/presentation-state.json`、`data/current-scheme.json`、材质/灯光预演）——它们不是施工配置，只是"上次看到的状态"。
 - 页面拖动/摆位一律本地预演（刷新即回原位），须向业主提示「落配置请通过 AI 会话」；不得新增任何直写模型配置的路由或 UI。
 
+## 写操作 token 认证（2026-11-04 起，issue #64）
+
+- **一律认证，不豁免**：服务端 `server/write-token.ts` 的守卫对全部 POST/PUT/PATCH/DELETE 校验 `x-bontop-token` 头（含跑卡点、dry_run 预演、view-context / visual-commands 状态同步），GET 一律不校验；本机回环同样不免 token（`--host 0.0.0.0` 手机联调不再静默 403）。守卫挂在 `express.json()` 之前，被拒的写不解析 body。
+- **token 固定**：加载优先级 `BONTOP_WRITE_TOKEN` 环境变量 > 仓库根 `.bontop-write-token`（不存在则生成 24 字节 hex、权限 600 落盘，重启复用；轮换 = 手动删文件）。启动日志打印一次 token 来源与值。
+- 浏览器侧写 fetch 一律走 `app/src/api-write.ts` 的 `apiWrite()`：token 存 `localStorage['bontop.write-token']`，无 token 弹页面内嵌对话框输入后自动重发，401 清栈重输。禁止在 `app/src` 新写绕过 helper 的写 fetch。
+
 ## CAD / 3D 渲染架构
 
 > Blender 主线已暂停并冷归档到 `scripts/archive/blender-pipeline/`；本文件中的 Blender-specific 约束仅在明确恢复冷归档时适用。几何、坐标、电气、家具、碰撞与数据一致性铁律始终有效。

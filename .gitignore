@@ -47,6 +47,7 @@ build/
 .env
 .env.local
 blender.env
+.bontop-write-token
 
 .env.*.local
 

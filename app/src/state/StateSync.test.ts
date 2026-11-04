@@ -178,11 +178,12 @@ describe('StateSync', () => {
     const persisted = { default: 'open', roomOverrides: { master_bedroom: 'blackout' }, updatedAt: '2' };
     const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue({ ok: true, json: async () => ({ state: persisted }) } as Response);
     await expect(stateSync.updateCurtainState('blackout', 'master_bedroom', '1')).resolves.toEqual(persisted);
-    expect(fetchMock).toHaveBeenCalledWith('/api/presentation-state/curtains', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roomId: 'master_bedroom', state: 'blackout', expectedUpdatedAt: '1' }),
-    });
+    // issue #64：写操作统一走 api-write，带 x-bontop-token（token 由 test-setup 预置）
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/presentation-state/curtains');
+    expect(init.method).toBe('PATCH');
+    expect(init.body).toBe(JSON.stringify({ roomId: 'master_bedroom', state: 'blackout', expectedUpdatedAt: '1' }));
+    expect(new Headers(init.headers).get('x-bontop-token')).toBe('test-write-token');
   });
 
   it('should call updateScheme with correct payload', async () => {
@@ -191,11 +192,11 @@ describe('StateSync', () => {
     const selections = [{ topic: 'wall', optionId: 'opt1' }];
     await stateSync.updateScheme(selections);
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/scheme/current', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ selections, source: 'user' }),
-    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/scheme/current');
+    expect(init.method).toBe('PATCH');
+    expect(init.body).toBe(JSON.stringify({ selections, source: 'user' }));
+    expect(new Headers(init.headers).get('x-bontop-token')).toBe('test-write-token');
   });
 
   it('should call ackVisualCommands with correct payload', async () => {
@@ -203,11 +204,11 @@ describe('StateSync', () => {
 
     await stateSync.ackVisualCommands(['cmd1', 'cmd2']);
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/visual-commands/ack', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: ['cmd1', 'cmd2'] }),
-    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/visual-commands/ack');
+    expect(init.method).toBe('POST');
+    expect(init.body).toBe(JSON.stringify({ ids: ['cmd1', 'cmd2'] }));
+    expect(new Headers(init.headers).get('x-bontop-token')).toBe('test-write-token');
   });
 
   it('should call postViewContext with correct payload', async () => {
@@ -215,11 +216,11 @@ describe('StateSync', () => {
 
     await stateSync.postViewContext('wall:master_bedroom:north');
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/view-context', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ objectId: 'wall:master_bedroom:north' }),
-    });
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe('/api/view-context');
+    expect(init.method).toBe('POST');
+    expect(init.body).toBe(JSON.stringify({ objectId: 'wall:master_bedroom:north' }));
+    expect(new Headers(init.headers).get('x-bontop-token')).toBe('test-write-token');
   });
 
   it('should cleanup processedCommandIds on dispose', async () => {
