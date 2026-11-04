@@ -188,9 +188,29 @@ describe('isAnimatedImageBytes（codex 复审 major：动图不压）', () => {
     expect(isAnimatedImageBytes('image/webp', lossy)).toBe(false);
   });
 
-  it('JPEG/PNG 等无多帧动画形态，恒 false', () => {
+  it('PNG：存在 acTL 动画块判 APNG 动图，普通 PNG 判静态', () => {
+    // codex 复审 blocking：PNG 支持 acTL 声明的多帧动画（W3C PNG 规范），且 MIME 通常
+    // 还是 image/png——不检测就会把动画 PNG 压成单帧，证据静默丢帧
+    const png = (withActl: boolean): Uint8Array => {
+      const bytes = new Uint8Array(64).fill(0);
+      bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0); // PNG 签名
+      if (withActl) bytes.set([0x61, 0x63, 0x54, 0x4c], 20); // acTL 块类型
+      return bytes;
+    };
+    expect(isAnimatedImageBytes('image/png', png(true))).toBe(true);
+    expect(isAnimatedImageBytes('image/apng', png(true))).toBe(true);
+    expect(isAnimatedImageBytes('image/png', png(false))).toBe(false);
+  });
+
+  it('JPEG 与静态 PNG/HEIC 无多帧动画形态，false', () => {
     expect(isAnimatedImageBytes('image/jpeg', new Uint8Array([0xff, 0xd8, 0xff]))).toBe(false);
     expect(isAnimatedImageBytes('image/png', new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe(false);
+    expect(isAnimatedImageBytes('image/heic', new Uint8Array([0x00, 0x00, 0x00, 0x18]))).toBe(false);
+  });
+
+  it('gif 在白名单内：原样回传的动图证据保留扩展名（codex 复审 minor）', () => {
+    expect(safeEvidenceFilename('fault.gif', 'n1')).toBe('fault-n1.gif');
+    expect(safeEvidenceFilename('clip.GIF')).toBe('clip.gif');
   });
 });
 

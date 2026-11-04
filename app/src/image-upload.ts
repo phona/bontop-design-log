@@ -51,7 +51,7 @@ const FILENAME_MAX_LENGTH = 64;
  * 会被剥成 report-<nonce>）。压缩结果只可能是 JPEG，forceExtension 恒为 jpg。
  */
 const EXTENSION_WHITELIST = new Set([
-  'jpg', 'jpeg', 'png', 'webp', 'heic',
+  'jpg', 'jpeg', 'png', 'webp', 'heic', 'gif',
   'pdf', 'doc', 'docx', 'xlsx', 'xls', 'txt', 'csv',
   'mp4', 'mov', 'mkv', 'avi', 'wmv',
 ]);
@@ -126,7 +126,9 @@ export function planCompression(file: {type: string; size: number}): {compress: 
  * 设备动作/故障过程时后续帧全丢（codex 复审 major）。判定：
  *   - GIF：Graphic Control Extension（21 F9 04）≥2 段即多帧；
  *   - WebP：RIFF/WEBP/VP8X 且 VP8X 标志字节 bit 0x02（ANIM）；
- *   - JPEG/PNG/HEIC 等无多帧动画形态（渐进式 JPEG 不是动画），false。
+ *   - PNG：存在 acTL 动画控制块即 APNG（W3C PNG 规范；codex 复审 blocking——
+ *     image/png 与 image/apng 的 MIME 都可能是 image/png，只能按块判定）；
+ *   - 其余（JPEG/HEIC 等）无多帧动画形态，false。
  * 读不到字节按动图处理（不压，保守）。
  */
 export function isAnimatedImageBytes(type: string, bytes: Uint8Array): boolean {
@@ -143,6 +145,15 @@ export function isAnimatedImageBytes(type: string, bytes: Uint8Array): boolean {
       const tag = (offset: number): string => String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
       if (tag(0) !== 'RIFF' || tag(8) !== 'WEBP' || tag(12) !== 'VP8X') return false;
       return (bytes[20] & 0x02) !== 0; // VP8X 首字节：bit1 = ANIMATION_FLAG
+    }
+    if (type === 'image/png' || type === 'image/apng') {
+      // acTL 动画控制块（在首个 IDAT 之前）。块类型是 ASCII，扫到即判动图；压缩数据里
+      // 恰好出现同四字节的概率可忽略，且误判的后果只是不压缩（保留原字节，保守方向）。
+      const actl = [0x61, 0x63, 0x54, 0x4c]; // 'acTL'
+      for (let i = 0; i + 3 < bytes.length; i += 1) {
+        if (bytes[i] === actl[0] && bytes[i + 1] === actl[1] && bytes[i + 2] === actl[2] && bytes[i + 3] === actl[3]) return true;
+      }
+      return false;
     }
     return false;
   } catch {
