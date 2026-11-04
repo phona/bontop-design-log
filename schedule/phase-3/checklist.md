@@ -1,9 +1,9 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"300191abf6b1ab5c69afde944aeaa94fce79ad01ed3e3b9b305bd4fa93abd39f","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical.yaml":"bb2db6362e93590d2011942ed42da5f338aa6a5d4bf0958b2c7b6c1e06e8bbbf","config/house.yaml":"8ea7218d703e2064720938a67a38da770c3fb3aaae98d779579934acadce244f","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","schedule/phase-1/control.yaml":"2a86ab18a239d76d84b0b1613f0e87b103811bdeeec7cfc2ff54b070560aeb06","schedule/phase-2/control.yaml":"2e61de30ff356611172a6c42220fb326783bd1603cb0d3497f40b28ce05eedfc","schedule/phase-3/control.yaml":"e784a1e8e5295f1322d8d346abaded152b2308d85de9cd0f8a4355d4fcec943e","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"892bb68ec7694c3660ea54584cd421abbb3a73832dc42de4fc24194898736bd1"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"300191abf6b1ab5c69afde944aeaa94fce79ad01ed3e3b9b305bd4fa93abd39f","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical.yaml":"bb2db6362e93590d2011942ed42da5f338aa6a5d4bf0958b2c7b6c1e06e8bbbf","config/house.yaml":"8ea7218d703e2064720938a67a38da770c3fb3aaae98d779579934acadce244f","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","schedule/phase-1/control.yaml":"a0f9e0f1f6d7c9ce5e5bce3197a7d7e71d123e2c8888aa54ba09c2133172aa0c","schedule/phase-2/control.yaml":"2e61de30ff356611172a6c42220fb326783bd1603cb0d3497f40b28ce05eedfc","schedule/phase-3/control.yaml":"e784a1e8e5295f1322d8d346abaded152b2308d85de9cd0f8a4355d4fcec943e","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"892bb68ec7694c3660ea54584cd421abbb3a73832dc42de4fc24194898736bd1"} -->
 # 三期入住后优化推进清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-3/control.yaml`  
-> 视图输入指纹：`sha256:e6d7098fbd17c53f5f088b2361d52fdfb166fde9e9eb61aba3e23655c8678a3a`（10 个输入文件）  
-> Gate记录用项目数据指纹：`sha256:912125c18dee23ecb8f53e9114dd07299651a27ebcf399719eabad47808005ea`  
+> 视图输入指纹：`sha256:040d255f9d8e20208196263ce252fd0c019551d22acae9a986bec491c785f7c7`（10 个输入文件）  
+> Gate记录用项目数据指纹：`sha256:18953a6f9478fc39548c4764c416c7fed6025acc57be6cd0c089ef7a487842a3`  
 > 阶段状态：`proposed`；决策状态：`alignment_required`
 
 ## 当前可执行范围
