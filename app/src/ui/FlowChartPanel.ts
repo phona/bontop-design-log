@@ -17,7 +17,8 @@
 //  - 所有动态字符串过 escapeHtml；颜色只来自下面的固定映射表，禁止把 payload
 //    字符串当颜色用；
 //  - 点节点只写共享选中态 + 通知外部高亮 3D，不产生任何配置写入（写路径走 PR）；
-//  - 3D 反查高亮把传入的全部包都标出来，不许静默只标首个。
+//  - 3D 反查高亮把传入的全部包都标出来，不许静默只标首个；多包命中时选中态
+//    **不预设首个包**（#67）：留空 + 提示由业主点节点选，或保留仍命中的上次选择。
 import type { ScheduleSnapshot, SchedulePackageView } from '@shared/schedule-state';
 import type { ScheduleSelectionStore } from '../state/schedule-selection.js';
 import { computeFlowLayout, type FlowLayout, type FlowLayoutNode } from '@shared/flow-layout';
@@ -98,6 +99,71 @@ function statusLabelOf(value: string): string {
   return DERIVED_STATUSES.has(value) ? `${value}（派生）` : value;
 }
 
+// ─── 包视图的共用取值（卡片 / 选中条 / 高度估算同一处，禁三处各写一份）────────
+
+/** 未关闭阻塞（已关闭的不进卡片、不进选中条）。 */
+function openBlockersOf(pkg: SchedulePackageView): SchedulePackageView['blockers'] {
+  return pkg.blockers.filter((blocker) => !blocker.closed);
+}
+
+/** 单条阻塞原因的卡片文案（item + 解除条件；缺 item 落 id）。 */
+function blockerLineTextOf(blocker: SchedulePackageView['blockers'][number]): string {
+  return `阻塞：${blocker.item ?? blocker.id}（解除：${blocker.clears_when ?? '—'}）`;
+}
+
+/**
+ * 检查汇总行文案。未通过与未验收分列（2026-11-03 修设计稿 P2-12）：
+ * audit_status !== 'passed' 会把还没执行的 pending 也算成未通过——业主看到
+ * 「未通过 3/7」以为三项不合格，实际可能只是还没验。not_applicable（豁免）
+ * 两栏都不计。
+ */
+function checkLineTextOf(pkg: SchedulePackageView): string {
+  const total = pkg.checks.length;
+  const failedCount = pkg.checks.filter((check) => check.audit_status === 'failed').length;
+  const pendingCount = pkg.checks.filter((check) => !check.audit_status || check.audit_status === 'pending').length;
+  return `未通过 ${failedCount}/${total}｜未验收 ${pendingCount}｜${pkg.gate_label} ${pkg.payment_gate} ${labelOf(GATE_LABEL, pkg.gate_status)}`;
+}
+
+/**
+ * 按字符估算文本在卡片里占几行。CJK/全角/通用标点（≥U+2010）按 1 em、ASCII
+ * 按 0.6 em（实际约 0.5em，刻意高估）——估算只许偏高：偏高 = 行间多留白，
+ * 偏低 = 卡片压住下一行。改卡片字号/内边距时必须同步这里。
+ */
+function textLinesOf(text: string, fontSize: number): number {
+  let em = 0;
+  for (const ch of text) {
+    const code = ch.codePointAt(0) ?? 0;
+    em += code >= 0x2010 ? 1 : 0.6;
+  }
+  return Math.max(1, Math.ceil((em * fontSize) / CARD_TEXT_WIDTH));
+}
+
+/**
+ * 节点卡片高度估算（px）。镜像 renderNodeCard 实际渲染的结构：id 行 + 包名 +
+ * 状态行 + 检查汇总行 + 最多 MAX_VISIBLE_BLOCKERS 条阻塞（每条最多
+ * BLOCKER_MAX_LINES 行）+ 「还有 N 条」行 + 「← 3D 选中」行。
+ *
+ * 为什么估算而不实测：jsdom 不做布局（offsetHeight 恒 0），而行坐标、画布高度
+ * 和边端点都要求确定性数值；估算同时是测试可断言的唯一口径。实测背景（#68）：
+ * 真实快照里阻塞最多的节点是 PKG-000（5 条未关闭阻塞，PKG-030/040 各 4 条），
+ * 旧固定 max-height:100px + overflow:hidden 会把它们整段静默截掉。
+ */
+export function estimateNodeCardHeight(pkg: SchedulePackageView, highlighted = false): number {
+  let px = CARD_CHROME_PX;
+  px += TITLE_LINE_PX; // id 行（white-space:nowrap）
+  px += textLinesOf(pkg.name, 12) * TITLE_LINE_PX + 2;
+  px += BODY_LINE_PX + 3; // 状态行
+  px += textLinesOf(checkLineTextOf(pkg), 11) * BODY_LINE_PX;
+  const openBlockers = openBlockersOf(pkg);
+  if (openBlockers.length) px += 2; // 阻塞容器 margin-top
+  for (const blocker of openBlockers.slice(0, MAX_VISIBLE_BLOCKERS)) {
+    px += Math.min(BLOCKER_MAX_LINES, textLinesOf(blockerLineTextOf(blocker), 11)) * BODY_LINE_PX;
+  }
+  if (openBlockers.length > MAX_VISIBLE_BLOCKERS) px += SMALL_LINE_PX + 2;
+  if (highlighted) px += SMALL_LINE_PX + 2;
+  return px;
+}
+
 // ─── 几何能力（按 links 判定，不拉 /api/project）──────────────────────────────
 
 type GeometryCapability = 'scene' | 'point' | 'project';
@@ -137,13 +203,28 @@ function capabilityOf(packageId: string, links: ModelPackageLink[]): GeometryCap
   return declared.every((scope) => isPointOnlySelector(scope.select ?? {})) ? 'point' : 'scene';
 }
 
-// ─── 画布几何（layer→列、row→行；节点约 200×84）─────────────────────────────
+// ─── 画布几何（layer→列、row→行；节点宽 200、最小高 84）───────────────────
 
 const NODE_WIDTH = 200;
+/** 卡片最小高度（自适应高度的下限；实际高度由内容决定，见 estimateNodeCardHeight）。 */
 const NODE_HEIGHT = 84;
 const COLUMN_PITCH = 240;
-const ROW_PITCH = 104;
+/** 行间距（行高不再固定——#68：固定 ROW_PITCH 配 max-height 会把阻塞文案静默截断）。 */
+const ROW_GAP = 8;
 const CANVAS_PAD = 16;
+
+/** 卡片内可用文本宽度（padding 8px×2；估算行数用）。 */
+const CARD_TEXT_WIDTH = NODE_WIDTH - 16;
+/** 行高估算（px）：12px×1.35≈16.2、11px×1.5≈16.5、10px×1.5=15，一律向上取整防低估。 */
+const TITLE_LINE_PX = 17;
+const BODY_LINE_PX = 17;
+const SMALL_LINE_PX = 15;
+/** padding 12 + border 2 + 各分段 margin 余量。 */
+const CARD_CHROME_PX = 20;
+/** 卡片里最多展开几条阻塞原因，其余折成「还有 N 条」（#68）。 */
+const MAX_VISIBLE_BLOCKERS = 2;
+/** 单条阻塞原因在卡片里最多占几行（多了 ellipsis 截断，全文进 title 悬浮提示）。 */
+const BLOCKER_MAX_LINES = 2;
 
 let panelSeq = 0;
 
@@ -262,7 +343,25 @@ export class FlowChartPanel {
     const sideNodes = layout.nodes.filter((node) => node.sideLane);
     const maxRows = Math.max(1, ...layout.layerSizes);
     const canvasWidth = CANVAS_PAD * 2 + Math.max(0, layout.layerCount - 1) * COLUMN_PITCH + NODE_WIDTH;
-    const canvasHeight = CANVAS_PAD * 2 + (maxRows - 1) * ROW_PITCH + NODE_HEIGHT;
+    // 自适应行高（#68）：每行高度 = 该行全部节点卡片估算高度的最大值（下限
+    // NODE_HEIGHT）。旧实现用固定 ROW_PITCH=104 配 max-height:100px + overflow
+    // :hidden，阻塞原因一多整段静默消失；改成「卡片 auto 高度 + 行按内容撑高」
+    // 后既不截断也不重叠（行距恒 ≥ 本行最高卡片）。高亮态多一行「← 3D 选中」，
+    // 估算时也要算进去，否则反查高亮瞬间相邻行会被压住。
+    const cardHeights = new Map(
+      snapshot.packages.map((pkg) => [pkg.id, estimateNodeCardHeight(pkg, this.highlighted.has(pkg.id))]),
+    );
+    const rowTops: number[] = [];
+    let cursor = CANVAS_PAD;
+    for (let row = 0; row < maxRows; row += 1) {
+      rowTops.push(cursor);
+      const rowHeight = Math.max(
+        NODE_HEIGHT,
+        ...mainNodes.filter((node) => node.row === row).map((node) => cardHeights.get(node.id) ?? NODE_HEIGHT),
+      );
+      cursor += rowHeight + ROW_GAP;
+    }
+    const canvasHeight = cursor - ROW_GAP + CANVAS_PAD;
 
     const head = `<div style="margin-bottom:8px;color:#9aa4b2;font-size:11px;line-height:1.7;">
       共 ${snapshot.packages.length} 个工作包（${mainNodes.length} 个工序包 + ${sideNodes.length} 个侧车道）｜依赖分层 ${layout.layerCount} 层｜最多一层 ${Math.max(0, ...layout.layerSizes)} 个节点。
@@ -275,9 +374,9 @@ export class FlowChartPanel {
       </div>${sideNodes.length ? this.renderSideLane(sideNodes, packageById) : ''}${this.renderReverseHint(layout)}${this.renderSelectionBar(snapshot)}`;
     }
 
-    const edges = layout.edges.map((edge) => this.renderEdge(edge, layout)).join('');
+    const edges = layout.edges.map((edge) => this.renderEdge(edge, layout, rowTops, cardHeights)).join('');
     const nodes = mainNodes
-      .map((node) => this.renderNodeCard(packageById.get(node.id), node))
+      .map((node) => this.renderNodeCard(packageById.get(node.id), node, rowTops))
       .join('');
 
     return `${head}
@@ -313,74 +412,84 @@ export class FlowChartPanel {
     return `<span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:${colorOf(STATUS_COLOR, value)};border:1px solid rgba(255,255,255,.25);${derived ? 'background-image:repeating-linear-gradient(45deg,rgba(0,0,0,.45) 0 2px,transparent 2px 5px);' : ''}"></span>`;
   }
 
-  private renderEdge(edge: {from: string; to: string}, layout: FlowLayout): string {
+  private renderEdge(
+    edge: {from: string; to: string},
+    layout: FlowLayout,
+    rowTops: number[],
+    cardHeights: Map<string, number>,
+  ): string {
     const from = layout.nodes.find((node) => node.id === edge.from);
     const to = layout.nodes.find((node) => node.id === edge.to);
     if (!from || !to || from.sideLane || to.sideLane) return '';
+    // 边端点挂在节点自身估算高度的中点（行高变量后不能再写死 NODE_HEIGHT/2）
+    const y1 = (rowTops[from.row] ?? CANVAS_PAD) + (cardHeights.get(from.id) ?? NODE_HEIGHT) / 2;
+    const y2 = (rowTops[to.row] ?? CANVAS_PAD) + (cardHeights.get(to.id) ?? NODE_HEIGHT) / 2;
     const x1 = CANVAS_PAD + from.layer * COLUMN_PITCH + NODE_WIDTH;
-    const y1 = CANVAS_PAD + from.row * ROW_PITCH + NODE_HEIGHT / 2;
     const x2 = CANVAS_PAD + to.layer * COLUMN_PITCH;
-    const y2 = CANVAS_PAD + to.row * ROW_PITCH + NODE_HEIGHT / 2;
     const dx = Math.max(24, (x2 - x1) / 2);
     return `<path class="flow-edge" data-from="${escapeHtml(edge.from)}" data-to="${escapeHtml(edge.to)}" d="M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}" fill="none" stroke="${NEUTRAL_COLOR}" stroke-width="1.5" marker-end="url(#${this.uid}-arrow)"></path>`;
   }
 
-  private renderNodeCard(pkg: SchedulePackageView | undefined, node: FlowLayoutNode | null): string {
+  private renderNodeCard(pkg: SchedulePackageView | undefined, node: FlowLayoutNode | null, rowTops: number[]): string {
     if (!pkg) return '';
     const capability = capabilityOf(pkg.id, this.links);
     const badge = CAPABILITY_BADGE[capability];
     const active = this.selection.get().packageId === pkg.id;
     const highlighted = this.highlighted.has(pkg.id);
-    const total = pkg.checks.length;
-    // 未通过与未验收分列（2026-11-03 修设计稿 P2-12）：audit_status !== 'passed' 会把
-    // 还没执行的 pending 也算成未通过——业主看到「未通过 3/7」以为三项不合格，实际可能
-    // 只是还没验。not_applicable（豁免）两栏都不计。
-    const failedCount = pkg.checks.filter((check) => check.audit_status === 'failed').length;
-    const pendingCount = pkg.checks.filter((check) => !check.audit_status || check.audit_status === 'pending').length;
-    const checkCountText = `未通过 ${failedCount}/${total}｜未验收 ${pendingCount}`;
-    const openBlockers = pkg.blockers.filter((blocker) => !blocker.closed);
+    // 未通过与未验收分列口径见 checkLineTextOf（P2-12）。
+    const openBlockers = openBlockersOf(pkg);
     const borderColor = active ? ACTIVE_BORDER : highlighted ? HIGHLIGHT_BORDER : 'rgba(255,255,255,.16)';
     const emphasis = active
       ? `box-shadow:0 0 0 2px ${ACTIVE_BORDER};`
       : highlighted ? `box-shadow:0 0 0 2px ${HIGHLIGHT_BORDER};` : '';
     const geometry = node
-      ? `position:absolute;left:${CANVAS_PAD + node.layer * COLUMN_PITCH}px;top:${CANVAS_PAD + node.row * ROW_PITCH}px;`
+      ? `position:absolute;left:${CANVAS_PAD + node.layer * COLUMN_PITCH}px;top:${rowTops[node.row] ?? CANVAS_PAD}px;`
       : 'position:relative;flex:0 0 auto;';
     const title = [
       `${pkg.id} ${pkg.name}`,
       `状态：${statusLabelOf(pkg.effective_status)}`,
-      `未通过检查 ${failedCount}/${total}｜未验收 ${pendingCount}`,
-      `${pkg.gate_label} ${pkg.payment_gate}：${labelOf(GATE_LABEL, pkg.gate_status)}`,
+      checkLineTextOf(pkg),
       ...openBlockers.map((blocker) => `阻塞：${blocker.item ?? blocker.id}（解除：${blocker.clears_when ?? '—'}）`),
       badge.title,
     ].join('\n');
 
-    const blockers = openBlockers.length
-      ? `<div style="margin-top:2px;color:#f4dfa8;font-size:11px;line-height:1.4;">${openBlockers
-          .map((blocker) => `阻塞：${escapeHtml(blocker.item ?? blocker.id)}<span style="color:#9aa4b2;">（解除：${escapeHtml(blocker.clears_when ?? '—')}）</span>`)
-          .join('<br>')}</div>`
+    // 阻塞原因折叠（#68）：最多展开 MAX_VISIBLE_BLOCKERS 条，每条最多
+    // BLOCKER_MAX_LINES 行（超出 ellipsis 截断，全文在 title 悬浮提示里），
+    // 其余折成「还有 N 条」——点节点即选中，完整列表进下方选中条与详情页。
+    // 实测依据：真实快照阻塞最多的 PKG-000 有 5 条未关闭阻塞（PKG-030/040 各 4
+    // 条），旧固定 100px 卡片装不下，整段被 overflow:hidden 静默吞掉。
+    const shownBlockers = openBlockers.slice(0, MAX_VISIBLE_BLOCKERS);
+    const hiddenBlockerCount = openBlockers.length - shownBlockers.length;
+    const blockers = shownBlockers.length
+      ? `<div style="margin-top:2px;color:#f4dfa8;font-size:11px;line-height:1.5;">${shownBlockers
+          .map((blocker) => `<div style="display:-webkit-box;-webkit-line-clamp:${BLOCKER_MAX_LINES};-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;">阻塞：${escapeHtml(blocker.item ?? blocker.id)}<span style="color:#9aa4b2;">（解除：${escapeHtml(blocker.clears_when ?? '—')}）</span></div>`)
+          .join('')}</div>`
+      : '';
+    const moreBlockers = hiddenBlockerCount > 0
+      ? `<div style="margin-top:2px;color:#f4dfa8;font-size:10px;line-height:1.5;">还有 ${hiddenBlockerCount} 条阻塞原因（点此节点，完整列表见下方选中条与详情）</div>`
       : '';
 
     return `<div class="flow-node" data-pkg-id="${escapeHtml(pkg.id)}" data-layer="${node ? node.layer : -1}" data-row="${node ? node.row : 0}" data-side-lane="${node ? node.sideLane : true}" data-active="${active}" data-highlight="${highlighted}" data-capability="${capability}" title="${escapeHtml(title)}"
-      style="${geometry}width:${NODE_WIDTH}px;min-height:${NODE_HEIGHT}px;max-height:100px;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1px solid ${borderColor};background:#232342;color:#e0e0e0;font-size:12px;cursor:pointer;overflow:hidden;z-index:1;${emphasis}">
+      style="${geometry}width:${NODE_WIDTH}px;min-height:${NODE_HEIGHT}px;box-sizing:border-box;padding:6px 8px;border-radius:8px;border:1px solid ${borderColor};background:#232342;color:#e0e0e0;font-size:12px;cursor:pointer;overflow-wrap:break-word;z-index:1;${emphasis}">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
         <strong style="font-size:12px;white-space:nowrap;">${escapeHtml(pkg.id)}</strong>
         <span style="padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.08);color:#aeb8c8;font-size:10px;white-space:nowrap;" title="${escapeHtml(badge.title)}">${escapeHtml(badge.label)}</span>
       </div>
-      <div style="margin-top:2px;font-size:12px;line-height:1.35;overflow:hidden;" title="${escapeHtml(pkg.name)}">${escapeHtml(pkg.name)}</div>
+      <div style="margin-top:2px;font-size:12px;line-height:1.35;" title="${escapeHtml(pkg.name)}">${escapeHtml(pkg.name)}</div>
       <div style="margin-top:3px;font-size:11px;line-height:1.5;">${this.renderStatusDot(pkg.effective_status)}${escapeHtml(statusLabelOf(pkg.effective_status))}</div>
-      <div style="font-size:11px;color:#9aa4b2;line-height:1.5;">${checkCountText}｜${escapeHtml(pkg.gate_label)} ${escapeHtml(pkg.payment_gate)} ${escapeHtml(labelOf(GATE_LABEL, pkg.gate_status))}</div>
+      <div style="font-size:11px;color:#9aa4b2;line-height:1.5;">${escapeHtml(checkLineTextOf(pkg))}</div>
       ${blockers}
+      ${moreBlockers}
       ${highlighted ? `<div style="margin-top:2px;color:${HIGHLIGHT_BORDER};font-size:10px;">← 3D 选中</div>` : ''}
     </div>`;
   }
 
   /** PKG-900 等侧车道：图表下方单独一条横带，不占工序、不参与依赖分层。 */
   private renderSideLane(sideNodes: FlowLayoutNode[], packageById: Map<string, SchedulePackageView>): string {
-    const cards = sideNodes.map((node) => this.renderNodeCard(packageById.get(node.id), null)).join('');
+    const cards = sideNodes.map((node) => this.renderNodeCard(packageById.get(node.id), null, [])).join('');
     return `<div id="flow-side-lane" style="margin-top:10px;padding:8px 10px;border:1px dashed rgba(155,139,208,.45);border-radius:6px;background:rgba(155,139,208,.08);">
       <div style="margin-bottom:6px;color:#c3b8ea;font-size:11px;">预备金·侧车道（不占工序、不参与依赖分层）</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">${cards}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;">${cards}</div>
     </div>`;
   }
 
@@ -390,14 +499,20 @@ export class FlowChartPanel {
     if (marked.length <= 1) return '';
     return `<div id="flow-reverse-hint" style="margin-top:8px;padding:6px 8px;border:1px solid rgba(233,196,106,.45);border-radius:6px;background:rgba(233,196,106,.1);color:#f4dfa8;font-size:12px;">
       该 3D 对象同属 ${marked.length} 个包，已全部标出（${escapeHtml(marked.map((node) => node.id).join('、'))}）。
+      请点选其中一个节点查看——未预设首个包，选中条即显示该包摘要（#67）。
     </div>`;
   }
 
   private renderSelectionBar(snapshot: ScheduleSnapshot): string {
     const packageId = this.selection.get().packageId;
     if (!packageId) {
+      // 多包反查后的空选中态要给明确指引（#67）：告诉业主点哪个、点完看什么，
+      // 不能只留一句通用的「还没有选中」让业主以为界面坏了。
+      const reverseHint = this.highlighted.size > 1
+        ? `<div style="margin-top:4px;color:#f4dfa8;">3D 反查命中 ${this.highlighted.size} 个包（节点已全部标出）：请点选其中一个节点查看详情——未预设首个包。</div>`
+        : '';
       return `<div id="flow-selection-bar" style="margin-top:10px;padding:8px 10px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:rgba(255,255,255,.04);color:#9aa4b2;font-size:12px;">
-        还没有选中工作包——点流程图里的节点，或打开带 <code>#pkg=PKG-xxx</code> 的链接。
+        还没有选中工作包——点流程图里的节点，或打开带 <code>#pkg=PKG-xxx</code> 的链接。${reverseHint}
       </div>`;
     }
     const pkg = snapshot.packages.find((item) => item.id === packageId);
@@ -409,12 +524,13 @@ export class FlowChartPanel {
 
     const capability = capabilityOf(pkg.id, this.links);
     const total = pkg.checks.length;
-    // 同节点口径：未通过与未验收分列（P2-12）。下一个待办优先指 failed（更紧急），
-    // 没有 failed 才指未验收的 pending；not_applicable 不算待办。
+    // 同节点口径：未通过与未验收分列（P2-12，见 checkLineTextOf）。下一个待办优先指
+    // failed（更紧急），没有 failed 才指未验收的 pending；not_applicable 不算待办。
     const failedChecks = pkg.checks.filter((check) => check.audit_status === 'failed');
     const pendingChecks = pkg.checks.filter((check) => !check.audit_status || check.audit_status === 'pending');
     const nextCheck = failedChecks[0] ?? pendingChecks[0];
-    const openBlockers = pkg.blockers.filter((blocker) => !blocker.closed);
+    // 选中条给完整列表（不折叠）——卡片里折掉的「还有 N 条」在这里全量展开。
+    const openBlockers = openBlockersOf(pkg);
 
     const blockers = openBlockers.length
       ? `<div style="margin-top:2px;color:#f4dfa8;font-size:12px;line-height:1.6;">未关闭阻塞：${openBlockers

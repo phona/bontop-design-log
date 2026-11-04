@@ -699,4 +699,76 @@ describe('App', () => {
     expect(objectsSpy).not.toHaveBeenCalled();
     expect(pointsSpy).not.toHaveBeenCalled();
   });
+
+  // #67：3D 反查命中多包时，选中态/详情目标不预设首个包（旧实现恒取
+  // packageIds[0]，业主想看的另一个包被静默替换）。两条允许的行为二选一落地：
+  // 当前选中仍命中本轮集合 → 保留（记住用户上次选择）；否则留空 + 流程图提示
+  // 由业主点节点选。单包行为不变（仍落该包，维持 #49 深链口径）。
+  it('3D 反查命中多包：选中态不预设首个包，保留仍命中的上次选择', async () => {
+    const app = new App(canvas);
+    await app.start();
+    // start() 已把 projectData 拉到到手；注入 links：living_room 同属 PKG-1/PKG-2
+    (app as any).projectData = {
+      ...(app as any).projectData,
+      modelPackageLinks: [
+        {budget_ref: {id: 'PKG-1'}, scope: [{source: 'model_geometry', select: {room_ids: ['living_room']}}]},
+        {budget_ref: {id: 'PKG-2'}, scope: [{source: 'model_geometry', select: {room_ids: ['living_room']}}]},
+      ],
+    };
+    const highlightSpy = vi.spyOn(app['flowChartPanel']!, 'highlightPackages');
+    // 流程图面板 refresh 需要 /api/schedule/state 的合法快照（默认 mock 返回 {}，
+    // packages 缺失会在渲染期抛未处理拒绝）；其余端点沿用 beforeEach 口径。
+    const baseFetch = (global.fetch as any).getMockImplementation();
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/schedule/state')) return {ok: true, json: async () => ({packages: []})} as Response;
+      return baseFetch(url, init);
+    });
+
+    try {
+      // 当前无选中 → 进流程图全部标出，但选中态留空（不取首个 PKG-1）
+      location.hash = '';
+      app['revealPackageForObject']('living_room');
+      expect(app['approvalView']).toBe('flow');
+      expect(highlightSpy).toHaveBeenCalledWith(['PKG-1', 'PKG-2']);
+      expect(app['scheduleSelection']!.get()).toEqual({packageId: null, checkId: null});
+
+      // 上次选择仍命中本轮集合 → 保留（记住用户上次选择，不用重新点）
+      app['scheduleSelection']!.set({packageId: 'PKG-2', checkId: null});
+      app['revealPackageForObject']('living_room');
+      expect(app['scheduleSelection']!.get().packageId).toBe('PKG-2');
+
+      // 上次选择不在集合里 → 清空，仍不预设首个包
+      app['scheduleSelection']!.set({packageId: 'PKG-9', checkId: null});
+      app['revealPackageForObject']('living_room');
+      expect(app['scheduleSelection']!.get().packageId).toBeNull();
+    } finally {
+      location.hash = '';
+    }
+  });
+
+  // #67 的单包口径守门：反查只命中一个包时维持旧行为——选中并落该包（详情/
+  // 分享链接需要一个确定目标），别被多包分支的「留空」误伤。
+  it('3D 反查命中单包：选中态仍落该包（#67 不误伤单包口径）', async () => {
+    const app = new App(canvas);
+    await app.start();
+    (app as any).projectData = {
+      ...(app as any).projectData,
+      modelPackageLinks: [
+        {budget_ref: {id: 'PKG-1'}, scope: [{source: 'model_geometry', select: {room_ids: ['living_room']}}]},
+      ],
+    };
+    // 详情页 refresh 读 /api/schedule/state：给合法空快照，避免渲染期抛未处理拒绝
+    const baseFetch = (global.fetch as any).getMockImplementation();
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request, init?: RequestInit) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/schedule/state')) return {ok: true, json: async () => ({packages: []})} as Response;
+      return baseFetch(url, init);
+    });
+
+    app['revealPackageForObject']('living_room');
+    expect(app['approvalView']).toBe('detail');
+    expect(app['scheduleSelection']!.get().packageId).toBe('PKG-1');
+    location.hash = '';
+  });
 });
