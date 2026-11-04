@@ -585,12 +585,27 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
   const log = options.log ?? ((line: string) => console.log(line));
   const stagingDir = join(root, STAGING_DIR);
   const result: StagingSweepResult = {
-    existed: existsSync(stagingDir), scanned: 0, removed: 0, kept: 0, nonEmptyDirsKept: 0, deleteLeftBehind: 0, failures: [],
+    existed: false, scanned: 0, removed: 0, kept: 0, nonEmptyDirsKept: 0, deleteLeftBehind: 0, failures: [],
   };
-  if (!result.existed) {
+  // 存在性判定必须区分 ENOENT 与权限错误（codex 复审 minor）：existsSync 在祖先目录
+  // 缺搜索权限时也返回 false——那会把权限故障伪装成「不存在，跳过」，暂存持续积累而
+  // 日志不报失败。改用受保护的 lstat 并按 errno 分流（异常同样不中断启动）。
+  let rootLstat;
+  try {
+    rootLstat = lstatSync(stagingDir, {throwIfNoEntry: false});
+  } catch (err) {
+    if ((err as {code?: string}).code !== 'ENOENT') {
+      const message = err instanceof Error ? err.message : String(err);
+      result.failures.push({path: STAGING_DIR, message: `lstat 失败：${message}`});
+      log(`[server] 暂存区清扫失败（不中断启动）：读 ${STAGING_DIR} 属性出错：${message}`);
+      return result;
+    }
+  }
+  if (!rootLstat) {
     log(`[server] 暂存区清扫：${STAGING_DIR} 不存在，跳过`);
     return result;
   }
+  result.existed = true;
   // 路径不变量（codex 复审 blocking，第三轮：不再枚举场景，上不变量）——**真实路径
   // 必须与逻辑路径逐字相等**。前缀校验（「还在仓库内」）不够：tmp/capture 链到仓内
   // evidence 目录时，realpath 仍在仓库内却落在别处，清扫会删掉证据文件。要求
@@ -599,16 +614,8 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
   // 重定向场景，不需要再逐个案分析。
   // lstat/realpath 的异常也必须接住（codex 复审 major）：index.ts 在 listen 前无保护
   // 调用本函数，EACCES/EIO 传出会直接杀死服务启动——与「失败不阻断启动」的约定相反。
-  let rootStat;
-  try {
-    rootStat = lstatSync(stagingDir, {throwIfNoEntry: false});
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    result.failures.push({path: STAGING_DIR, message: `lstat 失败：${message}`});
-    log(`[server] 暂存区清扫失败（不中断启动）：读 ${STAGING_DIR} 属性出错：${message}`);
-    return result;
-  }
-  if (rootStat?.isSymbolicLink()) {
+  // 暂存根本身是符号链接：拒绝（rootLstat 已在上面带异常保护地取到）
+  if (rootLstat.isSymbolicLink()) {
     log(`[server] 暂存区清扫：${STAGING_DIR} 是符号链接，拒绝清扫（只碰真实暂存目录）`);
     return result;
   }
