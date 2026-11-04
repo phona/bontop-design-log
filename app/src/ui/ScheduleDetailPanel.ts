@@ -6,16 +6,17 @@
 //
 // 三个数据来源：
 //  1. `GET /api/schedule/state`——包的结构化投影（与 verify:schedule 同一 loader）；
-//  2. `GET /api/project?phase=full`——房间与场景对象，供 resolvePackageScope
-//     （shared/package-scope.ts，值导入、浏览器安全）把 modelPackageLinks 的选择器
-//     展开成「房间 N 个 / 对象 M 个」。**面板不自己算 3D 范围**：选择器语义只有
-//     shared 那一份实现，浏览器里出现第二套必然漂移。
+//  2. `GET /api/project?phase=full`——房间、场景对象与电气/给排水点位全量清单，供
+//     resolvePackageScope（shared/package-scope.ts，值导入、浏览器安全）把
+//     modelPackageLinks 的选择器展开成「房间 N 个 / 对象 M 个 / 点位 K 个」。
+//     **面板不自己算 3D 范围**：选择器语义只有 shared 那一份实现，浏览器里出现
+//     第二套必然漂移。
 //  3. `GET/PUT /api/acceptance/draft`——第二步写路径的草稿（tmp/ 持久化）。
 //
 // 铁律落实：
 //  - 点检查行只写选中态（selection.set({checkId})），不产生任何配置写入；
-//  - 「在 3D 中高亮」按钮依赖外部接线（options.onHighlight）；没接线时按钮禁用
-//    并写明原因，不留一个点了没反应的按钮；
+//  - 「在 3D 中高亮」按钮依赖外部接线（options.onHighlight）；没接线、或展开后
+//    房间/对象/点位全为 0（点了也不会亮）时禁用并写明原因，不留一个点了没反应的按钮；
 //  - 3D 段取数失败只让该段显示「3D 作用域暂不可用」，不拖垮其余渲染；
 //  - 所有插值 escapeHtml，指纹只显示前 12 位（完整值在 config 与服务端）；
 //  - 浏览器永不直接写仓库：草稿只 PUT 进 tmp/，进仓库的唯一路径是分支 + commit
@@ -48,8 +49,45 @@ interface ProjectPayload {
   house: {
     rooms: Array<{id: string}>;
     sceneElements: Array<{id?: string; type?: string}>;
+    /** 点位全量清单：点位来源 select.all 的展开源（2026-11-04 issue #65）。 */
+    electrical?: Array<{id?: string}>;
+    plumbing?: Array<{id?: string}>;
   };
   modelPackageLinks: ModelPackageLink[];
+}
+
+/** 一个包的 3D 作用域展开结果（高亮侧 App.highlightApprovalPackage 与计数侧同一口径）。 */
+interface ScopeSummary {
+  roomIds: Set<string>;
+  objectIds: Set<string>;
+  pointIds: Set<string>;
+  unresolved: string[];
+  projectScope: boolean;
+  linkCount: number;
+}
+
+/**
+ * 聚合该包**全部** link 的展开结果。选择器语义只在 shared/package-scope.ts 一处
+ * （resolvePackageScope），本面板与 App.highlightApprovalPackage 都消费它——计数与
+ * 高亮承诺必须同口径（2026-11-02 评审 P1）。
+ */
+function resolveScopeFor(pkg: SchedulePackageView, payload: ProjectPayload): ScopeSummary {
+  const links = (payload.modelPackageLinks ?? []).filter((link) => link.budget_ref?.id === pkg.id);
+  const project: ProjectScopeInput = payload;
+  const roomIds = new Set<string>();
+  const objectIds = new Set<string>();
+  const pointIds = new Set<string>();
+  const unresolved: string[] = [];
+  let projectScope = false;
+  for (const link of links) {
+    const resolution = resolvePackageScope(link, project);
+    for (const id of resolution.roomIds) roomIds.add(id);
+    for (const id of resolution.objectIds) objectIds.add(id);
+    for (const id of resolution.pointIds) pointIds.add(id);
+    unresolved.push(...resolution.unresolved);
+    projectScope = projectScope || resolution.projectScope;
+  }
+  return {roomIds, objectIds, pointIds, unresolved, projectScope, linkCount: links.length};
 }
 
 type ProjectState =
@@ -693,10 +731,22 @@ export class ScheduleDetailPanel {
 
   /** 3D 作用域段：用 shared/package-scope 展开该包的 link，不自己写第二套选择器语义。 */
   private renderProjectScope(pkg: SchedulePackageView): string {
-    const highlightButton = this.options.onHighlight
-      ? `<button type="button" id="schedule-detail-highlight" style="cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:12px;">在 3D 中高亮</button>`
-      : `<button type="button" id="schedule-detail-highlight" disabled title="未提供 onHighlight 回调（App 未接线 3D 高亮）" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#8a93a3;font-size:12px;">在 3D 中高亮</button>
-         <span style="color:#9aa4b2;font-size:11px;">未接线：本面板没有拿到 3D 高亮回调，按钮禁用</span>`;
+    // 展开结果算一次，按钮与计数共用（2026-11-04 issue #65）：房间/对象/点位全为 0 时
+    // 点了也不会亮，按钮禁用并说明原因，别承诺一次空高亮。projectState 未就绪（loading/
+    // error）时不判定——那时还不知道有没有范围，禁用会把「取数失败」误显示成「没有范围」。
+    const summary = this.projectState.status === 'ready' ? resolveScopeFor(pkg, this.projectState.payload) : null;
+    const nothingToHighlight = summary !== null
+      && summary.roomIds.size + summary.objectIds.size + summary.pointIds.size === 0;
+    const emptyReason = summary?.linkCount === 0
+      ? '该包在 modelPackageLinks 里没有关联，3D 中没有可高亮范围'
+      : '全项目范围（房间/对象/点位均为 0）：3D 中没有可高亮范围，点了也不会亮';
+    const highlightButton = !this.options.onHighlight
+      ? `<button type="button" id="schedule-detail-highlight" disabled title="未提供 onHighlight 回调（App 未接线 3D 高亮）" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#8a93a3;font-size:12px;">在 3D 中高亮</button>
+         <span style="color:#9aa4b2;font-size:11px;">未接线：本面板没有拿到 3D 高亮回调，按钮禁用</span>`
+      : nothingToHighlight
+        ? `<button type="button" id="schedule-detail-highlight" disabled title="${escapeHtml(emptyReason)}" style="padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#8a93a3;font-size:12px;cursor:not-allowed;">在 3D 中高亮</button>
+           <span style="color:#9aa4b2;font-size:11px;">${escapeHtml(emptyReason)}</span>`
+        : `<button type="button" id="schedule-detail-highlight" style="cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:12px;">在 3D 中高亮</button>`;
 
     let detail = '';
     if (this.projectState.status === 'loading') {
@@ -716,23 +766,9 @@ export class ScheduleDetailPanel {
   }
 
   private renderScopeResolution(pkg: SchedulePackageView, payload: ProjectPayload): string {
-    const links = (payload.modelPackageLinks ?? []).filter((link) => link.budget_ref?.id === pkg.id);
-    if (links.length === 0) {
+    const {roomIds, objectIds, pointIds, unresolved, projectScope, linkCount} = resolveScopeFor(pkg, payload);
+    if (linkCount === 0) {
       return `<div style="color:#9aa4b2;font-size:12px;">该包在 modelPackageLinks 里没有关联（3D 中没有可高亮范围；全项目范围的包也不占反查）。</div>`;
-    }
-    const project: ProjectScopeInput = payload;
-    const roomIds = new Set<string>();
-    const objectIds = new Set<string>();
-    const pointIds = new Set<string>();
-    const unresolved: string[] = [];
-    let projectScope = false;
-    for (const link of links) {
-      const resolution = resolvePackageScope(link, project);
-      for (const id of resolution.roomIds) roomIds.add(id);
-      for (const id of resolution.objectIds) objectIds.add(id);
-      for (const id of resolution.pointIds) pointIds.add(id);
-      unresolved.push(...resolution.unresolved);
-      projectScope = projectScope || resolution.projectScope;
     }
     // 计数与高亮承诺必须同口径（2026-11-02 评审 P1）：点位已可高亮（合批实例
     // BatchedMesh.setColorAt 逐实例 + 未合批单件 emissive 兜底），单列一段注明

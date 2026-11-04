@@ -20,6 +20,7 @@
 //  - 3D 反查高亮把传入的全部包都标出来，不许静默只标首个；多包命中时选中态
 //    **不预设首个包**（#67）：留空 + 提示由业主点节点选，或保留仍命中的上次选择。
 import type { ScheduleSnapshot, SchedulePackageView } from '@shared/schedule-state';
+import { isPointSourceAllSelector } from '@shared/package-scope';
 import type { ScheduleSelectionStore } from '../state/schedule-selection.js';
 import { computeFlowLayout, type FlowLayout, type FlowLayoutNode } from '@shared/flow-layout';
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
@@ -190,14 +191,17 @@ type GeometryCapability = 'scene' | 'point' | 'project';
 /** 点位级选择器（已可高亮：点位默认合批渲染，HouseScene.highlightPoints 逐实例着色，未合批单件 emissive 兜底）。 */
 const POINT_SELECTOR_KEYS = new Set(['ids', 'layers', 'trade', 'plan_ids']);
 
+/** 场景级选择器（resolvePackageScope 能展开成房间/对象 id 集合的键）。 */
+const SCENE_SELECTOR_KEYS = new Set(['room_ids', 'types', 'collections']);
+
 const CAPABILITY_BADGE: Record<GeometryCapability, {label: string; title: string}> = {
   project: {
     label: '全项目范围',
-    title: '该包没有具体 3D 范围选择器（无 link / select all / 未建模）：不占 3D 反查，点节点不会调 3D 高亮',
+    title: '该包没有具体 3D 范围（无 link / select all / mapping_status: project_scope / 未建模）：不占 3D 反查，点节点不会调 3D 高亮',
   },
   point: {
     label: '点位级（可高亮）',
-    title: '该包只有 ids/layers/trade/plan_ids 类点位选择器：点位为合批渲染，已支持逐实例高亮（BatchedMesh.setColorAt；未合批的单件点位走 emissive 兜底）',
+    title: '该包只有 ids/layers/trade/plan_ids 类点位选择器（含 electrical/plumbing 的 select.all）：点位为合批渲染，已支持逐实例高亮（BatchedMesh.setColorAt；未合批的单件点位走 emissive 兜底）',
   },
   scene: {
     label: '有 3D 范围',
@@ -210,16 +214,37 @@ function isPointOnlySelector(select: Record<string, unknown>): boolean {
   return keys.length > 0 && keys.every((key) => POINT_SELECTOR_KEYS.has(key));
 }
 
+/**
+ * 2026-11-04 issue #65：`select.all` 按来源分流，与 shared/package-scope 的
+ * resolvePackageScope / isPointSourceAllSelector **同一口径**（徽标说「全项目范围」而 3D
+ * 又能高亮，或反过来，都来自两处各写一套判断）。electrical/plumbing 的 all = 该分类全部
+ * 点位（PKG-040 水电改造的本意），算点位级、可高亮；其他来源的 all = 全项目范围。
+ * `all` 永远不展开成具体房间/对象，故场景级恒 false。
+ */
+function isSceneSelector(scope: {source: string; select: Record<string, unknown>}): boolean {
+  const select = scope.select ?? {};
+  if (select.all === true) return false;
+  return Object.keys(select).some((key) => SCENE_SELECTOR_KEYS.has(key) && select[key] !== undefined);
+}
+
+function isPointSelector(scope: {source: string; select: Record<string, unknown>}): boolean {
+  const select = scope.select ?? {};
+  if (select.all === true) return isPointSourceAllSelector(scope);
+  return isPointOnlySelector(select);
+}
+
 function capabilityOf(packageId: string, links: ModelPackageLink[]): GeometryCapability {
   const packageLinks = links.filter((link) => link.budget_ref?.id === packageId);
   // 无 link（或 not_modelled 的无选择器 link）→ 没有具体 3D 范围，同「全项目范围」
   if (packageLinks.length === 0) return 'project';
-  const scopes = packageLinks.flatMap((link) => link.scope ?? []);
-  if (scopes.some((scope) => (scope.select ?? {}).all === true)) return 'project';
-  const declared = scopes.filter((scope) => Object.keys(scope.select ?? {}).some((key) => (scope.select as Record<string, unknown>)[key] !== undefined));
+  // 链接自己声明 project_scope（PKG-142 整屋放行等）→ 全项目范围，不按选择器猜
+  if (packageLinks.some((link) => link.mapping_status === 'project_scope')) return 'project';
+  const declared = packageLinks.flatMap((link) => link.scope ?? [])
+    .filter((scope) => Object.keys(scope.select ?? {}).some((key) => (scope.select as Record<string, unknown>)[key] !== undefined));
   if (declared.length === 0) return 'project';
-  // 只有点位级选择器 → 点位级；混合或含房间/墙/区域级 → 有 3D 范围
-  return declared.every((scope) => isPointOnlySelector(scope.select ?? {})) ? 'point' : 'scene';
+  // 房间/墙/叠加层区域级 → 有 3D 范围；否则看点位级（含点位来源的 all）；都不占 → 全项目范围
+  if (declared.some(isSceneSelector)) return 'scene';
+  return declared.some(isPointSelector) ? 'point' : 'project';
 }
 
 // ─── 画布几何（layer→列、row→行；节点宽 200、最小高 84）───────────────────

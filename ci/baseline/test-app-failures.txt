@@ -4,6 +4,10 @@
 # shim（jsdom 缺该 API，45 条用例此前抛在 HouseScene 构造期），45 条存量红转绿，
 # 基线删至实际失败的 3 条（与 polyfill 无关的真实红）。shim 是承重墙：删它 = 45 条
 # 回到基线外新失败。
+# 2026-11-04 issue #69：上述 shim 从 HouseScene.test.ts 文件级挪至 vitest 全局 setupFiles
+# （app/test-setup.ts，由 app/vitest.config.ts 的 test.setupFiles 挂载），与具体测试
+# 文件解绑；承重墙性质不变（删 app/test-setup.ts = 45 条回到基线外新失败）。本次只改
+# 说明、失败行零增减：实际失败仍 3 条，与挪动前逐条相同。
 app/src/scene/HouseScene.test.ts > HouseScene > projects wall-referenced infrastructure points onto the authored side of the nearest wall segment
 app/src/scene/HouseScene.test.ts > HouseScene > reattaches the HVAC root after it is removed by a scene rebuild and exports equipment but not routes
 app/src/scene/HouseScene.test.ts > HouseScene > should render without throwing

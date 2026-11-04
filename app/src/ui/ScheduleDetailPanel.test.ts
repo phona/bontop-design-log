@@ -222,6 +222,145 @@ describe('ScheduleDetailPanel', () => {
     expect(onHighlight).toHaveBeenCalledWith('PKG-010');
   });
 
+  // 2026-11-04 issue #65：点位来源的 select.all 展开成该分类全部点位。真实
+  // MODEL-PKG-040（水电改造）就是 electrical/plumbing select.all——旧实现一律短路成
+  // 「全项目范围」，三段计数是「房间 0｜对象 0｜点位 0」，点了「在 3D 中高亮」什么都不会亮。
+  it('3D 作用域段：点位来源的 select.all 展开全部点位，计数与按钮可用性随之修正', async () => {
+    const project = {
+      ...projectPayload(),
+      house: {
+        ...projectPayload().house,
+        electrical: [{id: 'sock_living_ac'}, {id: 'sock_kitchen_gas'}, {id: 'panel_strong_entry_left'}],
+        plumbing: [{id: 'drain_kitchen'}, {id: 'faucet_kitchen'}],
+      },
+      modelPackageLinks: [
+        {
+          budget_ref: {id: 'PKG-040'},
+          // 真实 config/model-package-links.yaml 的 MODEL-PKG-040 同形
+          scope: [
+            {source: 'electrical', select: {all: true}},
+            {source: 'plumbing', select: {all: true}},
+            {source: 'electrical_topology', select: {all: true}},
+            {source: 'mep_routes', select: {layers: ['strong_power', 'water_supply']}},
+          ],
+        },
+      ],
+    };
+    vi.stubGlobal('fetch', stubFetch(snapshot(packageView({id: 'PKG-040', name: '水电改造'})), project));
+    const selection = new ScheduleSelectionStore();
+    const onHighlight = vi.fn();
+    const panel = new ScheduleDetailPanel(selection, {onHighlight});
+    panel.subscribe();
+    selection.set({packageId: 'PKG-040'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('3D 作用域'));
+
+    const body = document.querySelector('#schedule-detail-body') as HTMLElement;
+    // 三段计数：点位段不再是 0（旧实现 select.all 一律短路全项目范围）
+    expect(body.textContent).toContain('房间 0 个');
+    expect(body.textContent).toContain('对象 0 个');
+    expect(body.textContent).toContain('点位 5 个');
+    expect(body.textContent).toContain('electrical:sock_living_ac');
+    expect(body.textContent).toContain('plumbing:drain_kitchen');
+    // electrical_topology 的 all 没有 3D 位置，徽标照旧；与点位高亮能力并存
+    expect(body.textContent).toContain('全项目范围');
+    // layers 仍不展开，明示而非静默丢弃
+    expect(body.textContent).toContain('mep_routes.layers: strong_power,water_supply');
+
+    // 有点位可高亮 → 按钮可用（旧实现这里被判「没有具体 3D 范围」）
+    const button = document.querySelector('#schedule-detail-highlight') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    button.click();
+    expect(onHighlight).toHaveBeenCalledWith('PKG-040');
+  });
+
+  // 2026-11-04 PR #76 codex major：显式 mapping_status: project_scope 的整屋包在
+  // 详情面板与流程图必须同口径。真实 MODEL-PKG-142（临时入住整屋放行）声明
+  // electrical/plumbing select.all + project_scope——#65 之后详情面板把分类 all
+  // 展成 137 个点位（104 电气 + 33 给排水）并启用「在 3D 中高亮」，而 FlowChartPanel
+  // 早就是按 project_scope 判全项目、禁用高亮（FlowChartPanel.test.ts:407 钉住），
+  // 两个入口相互矛盾。修复后本面板同样 0/0/0 + 全项目范围 + 按钮禁用。
+  // PKG-040（mapping_status: partial）的同形 select.all 仍展开全部点位，由上面
+  // 「点位来源的 select.all 展开全部点位」一条钉住，不因本修复回归。
+  it('3D 作用域段：显式 project_scope 的整屋包（PKG-142）分类 all 不展开点位，按钮禁用', async () => {
+    const project = {
+      ...projectPayload(),
+      house: {
+        ...projectPayload().house,
+        electrical: [{id: 'sock_living_ac'}, {id: 'sock_kitchen_gas'}, {id: 'panel_strong_entry_left'}],
+        plumbing: [{id: 'drain_kitchen'}, {id: 'faucet_kitchen'}],
+      },
+      modelPackageLinks: [
+        {
+          budget_ref: {id: 'PKG-142'},
+          // 真实 config/model-package-links.yaml 的 MODEL-PKG-142 同形
+          mapping_status: 'project_scope',
+          scope: [
+            {source: 'model_geometry', select: {all: true}},
+            {source: 'overlay', select: {all: true}},
+            {source: 'furnishings', select: {all: true}},
+            {source: 'electrical', select: {all: true}},
+            {source: 'plumbing', select: {all: true}},
+            {source: 'electrical_topology', select: {all: true}},
+            {source: 'mep_routes', select: {all: true}},
+            {source: 'hvac', select: {all: true}},
+            {source: 'ceiling', select: {all: true}},
+          ],
+        },
+      ],
+    };
+    vi.stubGlobal('fetch', stubFetch(snapshot(packageView({id: 'PKG-142', name: '临时入住整屋放行'})), project));
+    const selection = new ScheduleSelectionStore();
+    const onHighlight = vi.fn();
+    const panel = new ScheduleDetailPanel(selection, {onHighlight});
+    panel.subscribe();
+    selection.set({packageId: 'PKG-142'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('3D 作用域'));
+
+    const body = document.querySelector('#schedule-detail-body') as HTMLElement;
+    // 三段计数：整屋包的分类 select.all 不拆成点位（旧实现「点位 5 个」，真实配置 137 个）
+    expect(body.textContent).toContain('房间 0 个');
+    expect(body.textContent).toContain('对象 0 个');
+    expect(body.textContent).toContain('点位 0 个');
+    expect(body.textContent).toContain('全项目范围');
+    // 点位清单一个都不得列出来（展开了才会列 electrical:sock_living_ac 这类 id）
+    expect(body.textContent).not.toContain('electrical:sock_living_ac');
+    expect(body.textContent).not.toContain('plumbing:drain_kitchen');
+
+    // 没有可高亮范围 → 按钮禁用并注明，与流程图 capabilityOf 的 project_scope 一致
+    const button = document.querySelector('#schedule-detail-highlight') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.title).toContain('没有可高亮范围');
+    expect(onHighlight).not.toHaveBeenCalled();
+  });
+
+  it('3D 作用域段：房间/对象/点位全为 0（只有全项目范围选择器）时高亮按钮禁用并注明', async () => {
+    // 不留一个点了没反应的按钮：projectScope-only 的包（真实 PKG-000/170/900 就是
+    // model_geometry select.all）展开出 0/0/0，禁用它并写明原因。
+    const project = {
+      ...projectPayload(),
+      modelPackageLinks: [
+        {budget_ref: {id: 'PKG-000'}, scope: [{source: 'model_geometry', select: {all: true}}]},
+      ],
+    };
+    vi.stubGlobal('fetch', stubFetch(snapshot(packageView({id: 'PKG-000', name: '总预埋与定位'})), project));
+    const selection = new ScheduleSelectionStore();
+    const onHighlight = vi.fn();
+    const panel = new ScheduleDetailPanel(selection, {onHighlight});
+    panel.subscribe();
+    selection.set({packageId: 'PKG-000'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('3D 作用域'));
+
+    const body = document.querySelector('#schedule-detail-body') as HTMLElement;
+    expect(body.textContent).toContain('全项目范围');
+    const button = document.querySelector('#schedule-detail-highlight') as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.title).toContain('没有可高亮范围');
+    expect(onHighlight).not.toHaveBeenCalled();
+  });
+
   it('未接线 onHighlight 时高亮按钮禁用并注明', async () => {
     vi.stubGlobal('fetch', stubFetch(snapshot(packageView()), projectPayload()));
     const selection = new ScheduleSelectionStore();

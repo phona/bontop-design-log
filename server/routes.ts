@@ -525,6 +525,11 @@ export function createApiRouter(deps: ApiDeps): Router {
         platform: projectCatalog.getPlatform(),
         furnishings: projectCatalog.getFurnishingsForPhase(phase),
         electrical: deps.getProjectRenderFacts?.()?.electrical ?? loadElectricalConfig(),
+        // 给排水点位全量清单（2026-11-04 issue #65）：点位来源 select.all（PKG-040 的
+        // plumbing {all: true}）要在前端展开成「该分类全部点位」，清单必须在 /api/project
+        // 里——sceneElements 不含点位，前端没有第二条路拿到 plumbing 全量。与 electrical 同源
+        // （config/plumbing.yaml，经 getProjectRenderFacts 投影时同口径）。
+        plumbing: deps.getProjectRenderFacts?.()?.plumbing ?? loadPlumbingConfig(),
         ceilingZones: deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig(),
         sceneElements: filterCurtainElements(sceneElements, phase, phaseScopes),
         layoutSource: projectCatalog.getLayoutSource(),

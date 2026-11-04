@@ -14,14 +14,16 @@ import {
   buildWardrobe180,
 } from './FixtureFactory.js';
 import { computeWallFaceSpans, createLineMesh, createPolygonGeometry, setSceneObjectMetadata, splitSegmentByOpenings, wallFaceSlots } from '../three-scene-geometry.js';
+import { clipAlongSpan, pointAlongPolyline, polylineLength } from '../wall-segments.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { curtainRibbonShape, curtainShape, gatheredCurtainSegments, offsetCurtainPointsInterior, roundedShape } from './CurtainGeometry.js';
 import { buildBaySillGeometry } from './BaySillGeometry.js';
 import { computePaintSillScope } from '../paint-sill-scope.js';
 import { buildRailingGeometry } from './RailingGeometryBuilder.js';
 import { computePaintScope, type PaintWallInput, type PaintWindowInput } from '../paint-scope.js';
+import { resolveFurniturePlacement, WALL_THICKNESS } from '../furniture-placement.js';
 
-const WALL_THICKNESS = 0.12;
+export { resolveFurniturePlacement };
 /** Tile inspection overlay colors. Visible face (正砖) vs cabinet-covered face (杂砖). */
 const TILE_VISIBLE_COLOR = 0x3f7fbf;
 const TILE_COVERED_COLOR = 0xd98c2b;
@@ -183,27 +185,6 @@ function applyPlanFootprint(mesh: THREE.Mesh): void {
  * 这里按折线逐段裁剪，返回的每段都是墙上真实的一段直线，调用方逐段出网即可。
  * 直墙只有一段（不拆）；只有沿墙区间跨越多个折线段时才拆。
  */
-function clipAlongSpan(polyline: WallSegment[], from: number, to: number): Array<{ a: Point; b: Point }> {
-  const clipped: Array<{ a: Point; b: Point }> = [];
-  const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
-  let cursor = 0;
-  const lo = Math.max(0, from), hi = Math.min(total, to);
-  for (const segment of polyline) {
-    const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
-    if (length <= 1e-9) continue;
-    const s0 = cursor, s1 = cursor + length;
-    cursor = s1;
-    const a = Math.max(lo, s0), b = Math.min(hi, s1);
-    if (b - a <= 1e-9) continue;
-    const t0 = (a - s0) / length, t1 = (b - s0) / length;
-    clipped.push({
-      a: { x: segment.x1 + (segment.x2 - segment.x1) * t0, z: segment.z1 + (segment.z2 - segment.z1) * t0 },
-      b: { x: segment.x1 + (segment.x2 - segment.x1) * t1, z: segment.z1 + (segment.z2 - segment.z1) * t1 },
-    });
-  }
-  return clipped;
-}
-
 function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'frostedPrivacy' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass' | 'hingedGlassDoorFrame' | 'hingedGlassDoorGlass'>> {
   return {
     wall: ({ shaft }) => new THREE.MeshStandardMaterial({ color: shaft ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
@@ -628,20 +609,9 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       const polyline: WallSegment[] = wall.segments?.length
         ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
         : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-      const pointAt = (distance: number): Point | null => {
-        let remaining = distance;
-        for (const segment of polyline) {
-          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
-          if (length <= 1e-9) continue;
-          if (remaining <= length + 1e-9) {
-            const t = Math.min(1, Math.max(0, remaining / length));
-            return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
-          }
-          remaining -= length;
-        }
-        return null;
-      };
-      const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+      // along 插值与总长：与 DXF 导出共用 shared/wall-segments.ts 的单一实现。
+      const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
+      const total = polylineLength(polyline);
       const from = Math.min(element.along[0], element.along[1]);
       const to = Math.max(element.along[0], element.along[1]);
       const bottom = element.bottom ?? 0;
@@ -916,20 +886,9 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       const polyline: WallSegment[] = wall.segments?.length
         ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
         : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-      const pointAt = (distance: number): Point | null => {
-        let remaining = distance;
-        for (const segment of polyline) {
-          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
-          if (length <= 1e-9) continue;
-          if (remaining <= length + 1e-9) {
-            const t = Math.min(1, Math.max(0, remaining / length));
-            return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
-          }
-          remaining -= length;
-        }
-        return null;
-      };
-      const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+      // along 插值与总长：与 DXF 导出共用 shared/wall-segments.ts 的单一实现。
+      const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
+      const total = polylineLength(polyline);
       const from = Math.min(element.along[0], element.along[1]);
       const to = Math.max(element.along[0], element.along[1]);
       const bottom = element.bottom ?? 0;
@@ -1455,47 +1414,6 @@ function furnitureChildExportName(objectId: string, child: THREE.Object3D, child
   const compressedPrefix = `${scopePrefix}${hash}:part=`;
   const compressedBudget = MAX_EXPORT_NAME_LENGTH - compressedPrefix.length - roleSuffix.length;
   return `${compressedPrefix}${part.slice(0, Math.max(1, compressedBudget))}${roleSuffix}`;
-}
-
-type FurniturePlacement = { x: number; z: number; wallId?: string; wallSide?: WallSide; anchorAlong?: number };
-
-function resolveFurniturePlacement(item: FurnishingsYaml[string][number], wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>): FurniturePlacement | null {
-  if (item.wall !== undefined && item.wall_side !== undefined && item.along !== undefined) {
-    const wall = wallSegments.get(item.wall)?.[0];
-    const dims = FURNITURE_DIMS[item.type];
-    if (wall && dims) {
-      const dx = wall.x2 - wall.x1;
-      const dz = wall.z2 - wall.z1;
-      const length = Math.hypot(dx, dz);
-      const alongIsAbsoluteVertical = (item.wall === 'w_mbath_east' || item.wall === 'w_mb_east') && Math.abs(dx) < 1e-9;
-      if (length > 1e-9 && (alongIsAbsoluteVertical || (item.along >= -1e-6 && item.along <= length + 1e-6))) {
-        const tangent = { x: dx / length, z: dz / length };
-        const left = { x: -tangent.z, z: tangent.x };
-        const sideDirection: Record<WallSide, { x: number; z: number }> = {
-          north: { x: 0, z: -1 },
-          south: { x: 0, z: 1 },
-          east: { x: 1, z: 0 },
-          west: { x: -1, z: 0 },
-        };
-        const authored = sideDirection[item.wall_side];
-        const right = { x: -left.x, z: -left.z };
-        const normal = left.x * authored.x + left.z * authored.z >= right.x * authored.x + right.z * authored.z ? left : right;
-        const wallPoint = alongIsAbsoluteVertical
-          ? { x: wall.x1, z: item.along }
-          : { x: wall.x1 + tangent.x * item.along, z: wall.z1 + tangent.z * item.along };
-        const finishOffset = (item.type === 'mb_vanity_base_cabinet' || item.type === 'mb_vanity_lower_board' || item.type === 'mb_vanity_main_board' || item.type === 'mb_vanity_pvc_box') ? WALL_THICKNESS / 2 : 0;
-        // A wall anchor describes the finish face. Keep the body away from
-        // that face by the authored construction allowance so validation and
-        // preview share one placement datum instead of relying on exact
-        // contact with the wall box.
-        const wallClearance = item.wall_clearance ?? 0;
-        const centerOffset = finishOffset + wallClearance + dims.depth / 2;
-        return { x: wallPoint.x + normal.x * centerOffset, z: wallPoint.z + normal.z * centerOffset, wallId: item.wall, wallSide: item.wall_side, anchorAlong: item.along };
-      }
-    }
-  }
-  if (item.x === undefined || item.z === undefined) return null;
-  return { x: item.x, z: item.z };
 }
 
 function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: SceneBuildReport, wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>): void {

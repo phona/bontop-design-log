@@ -12,7 +12,18 @@
  * 选择器进 unresolved 由 UI 明示「本步高亮不到」，不静默丢弃、不硬凑。
  * **2026-11-02 更新**：点位级高亮已由 PR #54 落地（highlightPoints 逐实例着色），
  * select.ids 归一化为场景 objectId 约定（见 POINT_SOURCE_PREFIXES）；layers/trade/
- * plan_ids 仍不展开，`select {all: true}` 对点位来源仍只判全项目范围（P2-9）。
+ * plan_ids 仍不展开。**2026-11-04 更新（issue #65）**：`select {all: true}` 按来源
+ * 分流——electrical/plumbing 的 all 展开成该分类**全部点位 id**（PKG-040 水电改造
+ * 的本意「高亮全部水电点位」），不再短路成「全项目范围」；其他来源的 all 仍判
+ * 全项目范围徽标。点位全量清单来自 project.house.electrical / project.house.plumbing
+ * （config/electrical.yaml、config/plumbing.yaml 经 /api/project 下发），sceneElements
+ * 里没有点位，别去那儿找。
+ * **2026-11-04 更新（PR #76 codex major）**：链接显式声明 `mapping_status:
+ * project_scope` 的整屋包（PKG-142 临时入住整屋放行等）不按选择器展开——
+ * electrical/plumbing 的 select.all 也不拆成点位，一律 projectScope=true。
+ * 否则 PKG-142 会按 #65 的新规则展出 137 个点位：详情面板据此计数并启用
+ * 「在 3D 中高亮」，而 FlowChartPanel 按 project_scope 判全项目、禁用高亮，
+ * 两个入口行为矛盾。issue #65 的 PKG-040 口径不受影响（它没有该声明）。
  * 服务端 assertSelector（server/model-package-links.ts）已保证选择器引用的
  * id 在权威文档里真实存在；本模块只负责「场景里能高亮什么」。
  */
@@ -21,6 +32,13 @@ export interface ProjectScopeInput {
   house: {
     rooms: Array<{id: string}>;
     sceneElements: Array<{id?: string; type?: string}>;
+    /**
+     * 电气点位全量清单（/api/project 的 house.electrical，权威 = config/electrical.yaml）。
+     * 点位来源 `select {all: true}` 的展开源；缺了这个键就显形进 unresolved，不静默出 0 个点位。
+     */
+    electrical?: Array<{id?: string}>;
+    /** 给排水点位全量清单（/api/project 的 house.plumbing，权威 = config/plumbing.yaml）。 */
+    plumbing?: Array<{id?: string}>;
   };
 }
 
@@ -59,6 +77,14 @@ interface ScopeRef {
 
 export interface PackageScopeLink {
   scope?: ScopeRef[];
+  /**
+   * 显式全项目范围声明（config/model-package-links.yaml 的 `mapping_status:
+   * project_scope`，如 PKG-142 临时入住整屋放行）。带此声明的链接不按选择器
+   * 展开：electrical/plumbing 的 select.all 也不拆成点位（2026-11-04 PR #76
+   * codex major——曾展成 137 个点位，详情面板启用高亮而流程图禁用，两入口
+   * 矛盾），一律维持全项目范围语义（projectScope=true、不占反查）。
+   */
+  mapping_status?: 'mapped' | 'partial' | 'not_modelled' | 'project_scope';
 }
 
 /** collections → 场景元素类型。rooms 是伪集合（展开成全部房间 id）。 */
@@ -82,6 +108,32 @@ const POINT_SOURCE_PREFIXES: Record<string, string> = {
   hvac: 'hvac:',
 };
 
+/**
+ * 点位来源的 `select {all: true}` → 项目数据里该分类的全部点位（2026-11-04 issue #65）。
+ *
+ * 键 = links 的 `source`，值 = `ProjectScopeInput.house` 下承载该分类全量清单的字段。
+ * 只登记 electrical/plumbing：这两个来源在 /api/project 的 house 下有权威全量清单
+ * （config/electrical.yaml、config/plumbing.yaml），`all` 的语义就是「该分类下全部点位」。
+ * ceiling/hvac 等来源的 `all` 不在此表——house 下没有可比照的点位清单，继续判全项目范围。
+ *
+ * 用 Map 而非对象字面量：`source in obj` 会命中原型链（`toString` 之类当来源名时误判）。
+ */
+const POINT_SOURCE_ALL_FIELDS = new Map<string, 'electrical' | 'plumbing'>([
+  ['electrical', 'electrical'],
+  ['plumbing', 'plumbing'],
+]);
+
+/**
+ * 该 scope 是否是「点位来源的 select.all」（electrical/plumbing 的 all）。
+ * 供 UI 判几何能力用（FlowChartPanel 的 capabilityOf），与 resolvePackageScope 同一口径——
+ * 徽标说「全项目范围」而 3D 又能高亮，或反过来，都来自两处各写一套判断。
+ * 参数 select 收 `Record<string, unknown>`：调用方（FlowChartPanel 的 links、本文件的测试）
+ * 手里的选择器形状不同，收窄成 `{all?: boolean}` 会逼它们做断言转换。
+ */
+export function isPointSourceAllSelector(scope: {source: string; select?: Record<string, unknown>}): boolean {
+  return scope.select?.all === true && POINT_SOURCE_ALL_FIELDS.has(scope.source);
+}
+
 export function resolvePackageScope(link: PackageScopeLink, project: ProjectScopeInput): PackageScopeResolution {
   const roomIds = new Set<string>();
   const objectIds = new Set<string>();
@@ -92,10 +144,40 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
   const knownRoomIds = new Set(project.house.rooms.map((room) => room.id));
   const sceneElements = project.house.sceneElements ?? [];
 
+  // 显式 project_scope 的整屋包（PKG-142 临时入住整屋放行等）不按选择器展开
+  // （2026-11-04 PR #76 codex major）：electrical/plumbing 的 select.all 也不拆成
+  // 点位。「全项目范围」是 mapping_status 的显式声明，与 FlowChartPanel capabilityOf
+  // 的 project_scope 短路同口径——旧实现把 PKG-142 的水电 all 展成 137 个点位，
+  // 详情面板据此计数并启用「在 3D 中高亮」，流程图的按钮却按 project_scope 禁用，
+  // 两个入口相互矛盾。PKG-040（无该声明）的 #65 口径不受影响。
+  const explicitProjectScope = link.mapping_status === 'project_scope';
+  if (explicitProjectScope) projectScope = true;
+
   for (const scope of link.scope ?? []) {
+    if (explicitProjectScope) continue;
     const select = scope.select ?? {};
     if (select.all === true) {
-      projectScope = true;
+      // select.all 按来源分流（2026-11-04 issue #65）：点位来源（electrical/plumbing）的
+      // all = 该分类全部点位——PKG-040 水电改造声明 electrical/plumbing select.all，本意
+      // 「高亮全部水电点位」，旧实现一律短路成 projectScope，解析出 0 个点位、「在 3D 中
+      // 高亮」因此被判「没有具体 3D 范围」而禁用。其他来源的 all 仍维持全项目范围徽标。
+      const field = POINT_SOURCE_ALL_FIELDS.get(scope.source);
+      if (!field) {
+        projectScope = true;
+        continue;
+      }
+      const points = project.house[field];
+      if (!points) {
+        // 项目数据里没有该分类清单（旧 payload / 测试 mock）：显形，不静默出 0 个点位
+        unresolved.push(`${scope.source}.all: 项目数据里没有 house.${field}，展不开该分类全部点位（需 /api/project 下发）`);
+        continue;
+      }
+      // 与 select.ids 同一套前缀归一化（<来源>:<裸 id>）：高亮侧按 batchUserData.objectId
+      // 逐实例命中，反查索引也用这个键——两边同源，改一处两边同时对。
+      const prefix = POINT_SOURCE_PREFIXES[scope.source];
+      for (const point of points) {
+        if (point.id) pointIds.add(`${prefix}${point.id}`);
+      }
       continue;
     }
     for (const roomId of select.room_ids ?? []) {
@@ -148,7 +230,8 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
 /** 反查索引：场景对象 id → 包 id 列表（点 3D 对象回详情面板用）。 */
 export function buildObjectPackageIndex(
   // id 可选：ModelPackageLink.id 本身可选，且本函数只用 budget_ref/scope
-  links: Array<{id?: string; budget_ref?: {id?: string}; scope?: ScopeRef[]}>,
+  // mapping_status 透传给 resolvePackageScope：显式 project_scope 的整屋包不占反查
+  links: Array<{id?: string; budget_ref?: {id?: string}; scope?: ScopeRef[]; mapping_status?: PackageScopeLink['mapping_status']}>,
   project: ProjectScopeInput,
 ): Map<string, string[]> {
   const index = new Map<string, string[]>();

@@ -25,6 +25,7 @@
 
 | 末改 | 文件 | 本次改动性质 |
 |---|---|---|
+| 2026-11-04 | `docs/self-install-approval-design.md` | 登记 issue #65 落地：点位来源 select.all 展开（残留 P2-6 关闭），PKG-040 得 137 个水电点位 |
 | 2026-11-02 | `docs/self-install-approval-design.md` | 自装交互审批设计稿迁入 docs/（v1 口径定稿、v2 新增为提案待拍板） |
 | 2026-10-20 | `docs/README.md` | 新建（本索引） |
 | 2026-10-20 | `docs/pending-site-data.md` | #39 挂 hvac-ld 门禁指针 |
