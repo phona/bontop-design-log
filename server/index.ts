@@ -22,6 +22,7 @@ import { PresentationStateStore } from './presentation-state.js';
 import { getElementState } from './element-state-service.js';
 import { resolveLayout } from './layout-resolver.js';
 import { resolveWriteToken, createWriteTokenGuard } from './write-token.js';
+import { sweepAcceptanceStaging } from './acceptance-draft-store.js';
 import { jsonErrorHandler } from './json-error-handler.js';
 import type { MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml, VertexLayoutYaml } from '../shared/types.js';
@@ -230,6 +231,12 @@ app.use('/api/plumbing', createPlumbingRouter('config/plumbing.yaml'));
 // express 默认 HTML 错误页（前端只剩「HTTP 413」无重试引导）。放在所有路由之后、
 // listen 之前；其余错误原样 next。
 app.use(jsonErrorHandler);
+
+// 暂存区启动清扫（issue #84）：clearStaging 只在提交成功后调用，中途失败/放弃提交
+// 会把暂存文件留在 tmp/（.gitignore，业主不可见）无声堆积。启动时按年龄清一次——
+// 只删修改时间早于 7 天的条目，年轻的一律不碰（失败提交的暂存可能还要重试）。
+// 函数自身不抛（读不到/删不掉只记日志），放在 listen 前：清扫失败不影响起服务。
+sweepAcceptanceStaging();
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`Bontop design server listening on http://${HOST}:${PORT}`);
