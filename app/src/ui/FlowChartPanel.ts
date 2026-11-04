@@ -518,10 +518,25 @@ export class FlowChartPanel {
       数据只读自 <code>/api/schedule/state</code> 与 <code>/api/model-package-links</code>；点节点只写选中态与 3D 高亮，改配置一律走 PR。
     </div>${this.renderLegend()}`;
 
+    // 窄容器（#83 codex 复审 major）：单列堆叠的画布没有高度上限（style.css 的
+    // #flow-chart-canvas[data-flow-mobile] 放开 max-height，纵向滚动交给
+    // #approval-page-panels，避免嵌套竖滚盒），二十多张卡于是把选中条与「完整
+    // 详情」按钮冲到整张图之后——点靠前的节点后，要滚过全部后续卡才能读完整
+    // 阻塞原因/打开详情，返回还得反向滚（桌面多列限高 460px 时选中条就在画布
+    // 下沿，不存在这个问题）。修法选 A（DOM 前置）而非 B（position:sticky）：
+    // jsdom 对 sticky 计算样式支持有限、回归断言不了，而前置兄弟在 jsdom 里
+    // 可确定性断言，对读屏/键盘 Tab 顺序同样正确。桌面多列布局 DOM 顺序一行
+    // 不动（画布 → 侧车道 → 反查提示 → 选中条）。
+    const reverseHint = this.renderReverseHint(layout);
+    const selectionBar = this.renderSelectionBar(snapshot);
+    const sideLane = sideNodes.length ? this.renderSideLane(sideNodes, packageById) : '';
+    const selectionBlock = `${reverseHint}${selectionBar}`;
+    const [selectionBefore, selectionAfter] = narrow ? [selectionBlock, ''] : ['', selectionBlock];
+
     if (mainNodes.length === 0) {
-      return `${head}<div style="padding:10px;border:1px dashed rgba(255,255,255,.2);border-radius:6px;color:#9aa4b2;font-size:12px;">
+      return `${head}${selectionBefore}<div style="padding:10px;border:1px dashed rgba(255,255,255,.2);border-radius:6px;color:#9aa4b2;font-size:12px;">
         当前快照没有工序包（schedule/phase-1/control.yaml 的 work_packages 为空），流程图无内容可画。
-      </div>${sideNodes.length ? this.renderSideLane(sideNodes, packageById) : ''}${this.renderReverseHint(layout)}${this.renderSelectionBar(snapshot)}`;
+      </div>${sideLane}${selectionAfter}`;
     }
 
     const edges = layout.edges.map((edge) => this.renderEdge(edge, boxes)).join('');
@@ -529,7 +544,7 @@ export class FlowChartPanel {
       .map((node) => this.renderNodeCard(packageById.get(node.id), node, boxes.get(node.id) ?? null))
       .join('');
 
-    return `${head}
+    return `${head}${selectionBefore}
       <div id="flow-chart-canvas"${narrow ? ' data-flow-mobile="true"' : ''} style="position:relative;overflow:auto;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:rgba(255,255,255,.02);">
         <div style="position:relative;width:${canvasWidth}px;height:${canvasHeight}px;">
           <svg width="${canvasWidth}" height="${canvasHeight}" style="position:absolute;left:0;top:0;z-index:0;pointer-events:none;" aria-hidden="true">
@@ -543,9 +558,7 @@ export class FlowChartPanel {
           ${nodes}
         </div>
       </div>
-      ${sideNodes.length ? this.renderSideLane(sideNodes, packageById) : ''}
-      ${this.renderReverseHint(layout)}
-      ${this.renderSelectionBar(snapshot)}`;
+      ${sideLane}${selectionAfter}`;
   }
 
   /** 状态图例：颜色与文字成对出现（铁律：颜色不能单独作证据）。 */
@@ -757,6 +770,14 @@ export class FlowChartPanel {
         // 跳 3D 只走显式「在 3D 中高亮」按钮。
         this.selection.set({packageId, checkId: null});
         this.render();
+        // #83 codex 复审 major：窄容器选中条已前置到画布上方（见 renderChart），
+        // 但业主点节点时往往已滚到堆叠中段——把选中条滚回视野（block:'nearest'
+        // 最小滚动，不强行置顶）。桌面一行不动：多列画布限高 460px、选中条就在
+        // 画布下沿，无需滚。jsdom 不实现 scrollIntoView，可选调用兜底（测试用
+        // stub Element.prototype.scrollIntoView 断言）。
+        if (this.narrowLayout) {
+          (body.querySelector('#flow-selection-bar') as HTMLElement | null)?.scrollIntoView?.({block: 'nearest'});
+        }
       });
     }
     body.querySelector('#flow-open-detail')?.addEventListener('click', () => {

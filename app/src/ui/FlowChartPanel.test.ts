@@ -719,6 +719,20 @@ function edgePoints(d: string): Array<[number, number]> {
 const canvasInnerWidth = (): number =>
   parseFloat((document.querySelector('#flow-chart-canvas > div') as HTMLElement).style.width);
 
+/** stub Element.prototype.scrollIntoView（jsdom 不实现它，调用即 not a function）。 */
+function stubScrollIntoView(): {mock: ReturnType<typeof vi.fn>; restore: () => void} {
+  const mock = vi.fn();
+  const own = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView');
+  Object.defineProperty(Element.prototype, 'scrollIntoView', {configurable: true, writable: true, value: mock});
+  return {
+    mock,
+    restore: () => {
+      if (own) Object.defineProperty(Element.prototype, 'scrollIntoView', own);
+      else Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    },
+  };
+}
+
 describe('FlowChartPanel 窄容器（issue #83）', () => {
   beforeEach(() => {
     installDom();
@@ -879,6 +893,69 @@ describe('FlowChartPanel 窄容器（issue #83）', () => {
       }
     } finally {
       (globalThis as {ResizeObserver?: unknown}).ResizeObserver = original;
+    }
+  });
+
+  // #83 codex 复审 major：窄容器单列堆叠的画布没有高度上限（style.css 的
+  // #flow-chart-canvas[data-flow-mobile] 放开 max-height，纵向滚动交给
+  // #approval-page-panels），二十多张卡于是把选中条与「完整详情」按钮冲到整张图
+  // 之后——点靠前的节点后要滚过全部后续卡才能读完整阻塞原因/打开详情，返回还得
+  // 反向滚。修法 A（选中条前置成画布的前置兄弟 + 点节点 scrollIntoView 滚回视野；
+  // 不选 sticky：jsdom 对 position:sticky 计算样式支持有限，断言不了）。
+  it('窄容器：选中条是画布的前置兄弟，点节点后 scrollIntoView 被调用', async () => {
+    stubFetch();
+    const restoreWidth = stubClientWidth(334);
+    const scroll = stubScrollIntoView();
+    try {
+      const panel = new FlowChartPanel(new ScheduleSelectionStore());
+      panel.show();
+      await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-080"]')).toBeTruthy());
+
+      // 前置兄弟：选中条紧贴画布上方（本例无 3D 反查高亮，反查提示为空串，
+      // 故选中条就是画布的直接前驱）
+      const bar = document.querySelector('#flow-selection-bar') as HTMLElement;
+      expect(bar.nextElementSibling?.id).toBe('flow-chart-canvas');
+      expect(scroll.mock).not.toHaveBeenCalled();
+
+      // 点节点 → 选中 + scrollIntoView 把选中条滚回视野（最小滚动，不置顶）
+      (document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement).click();
+      expect(scroll.mock).toHaveBeenCalledTimes(1);
+      expect(scroll.mock).toHaveBeenCalledWith({block: 'nearest'});
+      // 选中条即该包摘要（卡片里折掉的阻塞原因在这里全量展开）——不再需要
+      // 滚过全部后续卡才读到
+      expect(document.querySelector('#flow-selection-bar')?.textContent).toContain('瓦工铺贴');
+      expect(document.querySelector('#flow-selection-bar')?.textContent).toContain('未关闭阻塞');
+      expect(document.querySelector('#flow-selection-bar')?.textContent).toContain('橱柜深化图是水电点位的 owner 但尚未冻结');
+    } finally {
+      restoreWidth();
+      scroll.restore();
+    }
+  });
+
+  // 对照（同一次修复的桌面侧回归）：宽容器 DOM 顺序一行不动——画布 → 侧车道 →
+  // 反查提示 → 选中条，点节点也不弹 scrollIntoView（画布限高 460px，选中条
+  // 就在画布下沿，没有「滚过整张图」的问题）。
+  it('宽容器（桌面）：选中条仍在画布之后（顺序一行不动），点节点不调 scrollIntoView', async () => {
+    stubFetch();
+    const restoreWidth = stubClientWidth(1440);
+    const scroll = stubScrollIntoView();
+    try {
+      const panel = new FlowChartPanel(new ScheduleSelectionStore());
+      panel.show();
+      await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-080"]')).toBeTruthy());
+
+      const canvas = document.querySelector('#flow-chart-canvas') as HTMLElement;
+      const sideLane = document.querySelector('#flow-side-lane') as HTMLElement;
+      const bar = document.querySelector('#flow-selection-bar') as HTMLElement;
+      expect(canvas.nextElementSibling).toBe(sideLane);
+      expect(sideLane.nextElementSibling).toBe(bar);
+
+      (document.querySelector('.flow-node[data-pkg-id="PKG-020"]') as HTMLElement).click();
+      expect(scroll.mock).not.toHaveBeenCalled();
+      expect(document.querySelector('#flow-selection-bar')?.textContent).toContain('水电改造');
+    } finally {
+      restoreWidth();
+      scroll.restore();
     }
   });
 });
