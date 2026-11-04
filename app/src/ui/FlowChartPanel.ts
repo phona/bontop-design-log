@@ -112,6 +112,15 @@ function blockerLineTextOf(blocker: SchedulePackageView['blockers'][number]): st
 }
 
 /**
+ * 「还有 N 条」折叠提示文案。卡片渲染与高度估算共用同一份（禁两份各写——
+ * 两边文案漂移等于估算又对不上渲染）。该长句在 ~184px 卡宽内必然换行（见
+ * estimateNodeCardHeight 里按 textLinesOf 算行数）。
+ */
+function moreBlockersLineTextOf(hiddenCount: number): string {
+  return `还有 ${hiddenCount} 条阻塞原因（点此节点，完整列表见下方选中条与详情）`;
+}
+
+/**
  * 检查汇总行文案。未通过与未验收分列（2026-11-03 修设计稿 P2-12）：
  * audit_status !== 'passed' 会把还没执行的 pending 也算成未通过——业主看到
  * 「未通过 3/7」以为三项不合格，实际可能只是还没验。not_applicable（豁免）
@@ -141,12 +150,18 @@ function textLinesOf(text: string, fontSize: number): number {
 /**
  * 节点卡片高度估算（px）。镜像 renderNodeCard 实际渲染的结构：id 行 + 包名 +
  * 状态行 + 检查汇总行 + 最多 MAX_VISIBLE_BLOCKERS 条阻塞（每条最多
- * BLOCKER_MAX_LINES 行）+ 「还有 N 条」行 + 「← 3D 选中」行。
+ * BLOCKER_MAX_LINES 行）+ 「还有 N 条」行（按实际文案与卡宽算换行行数）+
+ * 「← 3D 选中」行。
  *
  * 为什么估算而不实测：jsdom 不做布局（offsetHeight 恒 0），而行坐标、画布高度
  * 和边端点都要求确定性数值；估算同时是测试可断言的唯一口径。实测背景（#68）：
  * 真实快照里阻塞最多的节点是 PKG-000（5 条未关闭阻塞，PKG-030/040 各 4 条），
  * 旧固定 max-height:100px + overflow:hidden 会把它们整段静默截掉。
+ *
+ * 「还有 N 条」长句在 ~184px 卡宽内必然换行（两行起）：只按固定一行加会把
+ * 多阻塞节点的卡片高度算低，行坐标、画布高度与边端点整套跟着偏低，相邻行
+ * 的卡片会互相压住——故这里按 textLinesOf(实际文案, 10px) 算行数（与渲染
+ * 共用 moreBlockersLineTextOf，禁两份各写）。
  */
 export function estimateNodeCardHeight(pkg: SchedulePackageView, highlighted = false): number {
   let px = CARD_CHROME_PX;
@@ -159,7 +174,11 @@ export function estimateNodeCardHeight(pkg: SchedulePackageView, highlighted = f
   for (const blocker of openBlockers.slice(0, MAX_VISIBLE_BLOCKERS)) {
     px += Math.min(BLOCKER_MAX_LINES, textLinesOf(blockerLineTextOf(blocker), 11)) * BODY_LINE_PX;
   }
-  if (openBlockers.length > MAX_VISIBLE_BLOCKERS) px += SMALL_LINE_PX + 2;
+  if (openBlockers.length > MAX_VISIBLE_BLOCKERS) {
+    // 折叠提示按实际文案算换行行数（10px 字号、行高 1.5 = SMALL_LINE_PX）
+    const hiddenCount = openBlockers.length - MAX_VISIBLE_BLOCKERS;
+    px += textLinesOf(moreBlockersLineTextOf(hiddenCount), 10) * SMALL_LINE_PX + 2;
+  }
   if (highlighted) px += SMALL_LINE_PX + 2;
   return px;
 }
@@ -458,6 +477,9 @@ export class FlowChartPanel {
     // 其余折成「还有 N 条」——点节点即选中，完整列表进下方选中条与详情页。
     // 实测依据：真实快照阻塞最多的 PKG-000 有 5 条未关闭阻塞（PKG-030/040 各 4
     // 条），旧固定 100px 卡片装不下，整段被 overflow:hidden 静默吞掉。
+    // 折叠行文案与高度估算共用 moreBlockersLineTextOf：该长句在卡内会换行，
+    // estimateNodeCardHeight 必须按同一文案算行数，否则多阻塞卡片被算低、压住
+    // 下一行（codex major）。
     const shownBlockers = openBlockers.slice(0, MAX_VISIBLE_BLOCKERS);
     const hiddenBlockerCount = openBlockers.length - shownBlockers.length;
     const blockers = shownBlockers.length
@@ -466,7 +488,7 @@ export class FlowChartPanel {
           .join('')}</div>`
       : '';
     const moreBlockers = hiddenBlockerCount > 0
-      ? `<div style="margin-top:2px;color:#f4dfa8;font-size:10px;line-height:1.5;">还有 ${hiddenBlockerCount} 条阻塞原因（点此节点，完整列表见下方选中条与详情）</div>`
+      ? `<div style="margin-top:2px;color:#f4dfa8;font-size:10px;line-height:1.5;">${moreBlockersLineTextOf(hiddenBlockerCount)}</div>`
       : '';
 
     return `<div class="flow-node" data-pkg-id="${escapeHtml(pkg.id)}" data-layer="${node ? node.layer : -1}" data-row="${node ? node.row : 0}" data-side-lane="${node ? node.sideLane : true}" data-active="${active}" data-highlight="${highlighted}" data-capability="${capability}" title="${escapeHtml(title)}"

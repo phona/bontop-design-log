@@ -456,6 +456,55 @@ describe('FlowChartPanel', () => {
     expect(parseFloat(canvasInner.style.height)).toBeGreaterThanOrEqual(topOf('PKG-050') + estimateNodeCardHeight(fixturePkg('PKG-050')) + 16);
   });
 
+  // 「还有 N 条」折叠长句在 ~184px 卡宽内必然换行（10px 字号，仅 26 个全角字符
+  // 就 260px）：高度估算只按固定一行加会把多阻塞节点的卡片算低，行坐标、画布
+  // 高度与边端点整套跟着偏低，相邻行卡片互相压住（codex major）。修法：估算按
+  // 实际文案走同文件 textLinesOf 算行数（选它而非实测：jsdom 不做布局，
+  // offsetHeight 恒 0，行坐标/画布/边端点要确定性数值，估算同时是测试唯一口径）。
+  // 验收口径：镜像真实快照 PKG-000 的五条未关闭阻塞（全项目最多；item/解除条件
+  // 逐字取 schedule/phase-1/control.yaml 的 global_blockers）。
+  it('「还有 N 条」换行计入高度估算：PKG-000 五条阻塞形态下卡片不被算低、相邻行不重叠', async () => {
+    const pkg000Blockers = [
+      {id: 'BLK-HANDOVER', item: '尚未交房，无法完成现场量房及房屋查验', status: 'site_pending', clears_when: '交房查验完成并归档现场记录', closed: false},
+      {id: 'BLK-STRUCTURE', item: '墙体结构、梁底及允许打孔或穿墙条件未确认', status: 'site_pending', clears_when: '结构资料与现场复核结果完成会签', closed: false},
+      {id: 'BLK-HVAC-DEEPENING', item: '中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审', status: 'site_pending', clears_when: '空调、设计和施工三方签认深化图', closed: false},
+      {id: 'BLK-GAS-DOOR', item: '燃气厨房门的现场验收要求未确认', status: 'site_pending', clears_when: '燃气单位或物业书面确认厨房分隔要求', closed: false},
+      {id: 'BLK-SURVEY-DATA-FREEZE', item: '影响水电与中央空调施工的现场数据尚未全部实测、显式豁免或登记为阻塞；当前清单和数据状态见 docs/pending-site-data.md', status: 'site_pending', clears_when: '影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs/pending-site-data.md', closed: false},
+    ];
+    const snap = snapshot();
+    const byId = (id: string) => snap.packages.find((item) => item.id === id)!;
+    // PKG-000 的五条未关闭阻塞挂到 row0 的 PKG-010 上（不改共享 fixture）
+    byId('PKG-010').blockers = pkg000Blockers;
+    stubFetch(snap);
+    const panel = new FlowChartPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-010"]')).toBeTruthy());
+
+    // 折叠行整句进 DOM（渲染与估算共用同一份文案，禁两份各写）
+    const node010 = document.querySelector('.flow-node[data-pkg-id="PKG-010"]') as HTMLElement;
+    expect(node010.textContent).toContain('还有 3 条阻塞原因（点此节点，完整列表见下方选中条与详情）');
+
+    // 折叠行按换行计高：与「只留前两条、无折叠行」的同包相比，差值 ≥ 两行
+    // small 行高（15px）+ margin（2px）——旧实现只加固定一行（15+2），PKG-000
+    // 这类五条阻塞的节点会被算低 15px，压住下一行。
+    const pkg010NoFold = {...byId('PKG-010'), blockers: pkg000Blockers.slice(0, 2)};
+    expect(estimateNodeCardHeight(byId('PKG-010')) - estimateNodeCardHeight(pkg010NoFold)).toBeGreaterThanOrEqual(2 * 15 + 2);
+
+    // 行几何不重叠：PKG-010 在 row0（现为全行最高卡），下一行 top = 本行 top +
+    // 本行最高卡片估算高度 + 行距；画布高度装下最后一行。
+    const row0Height = Math.max(
+      estimateNodeCardHeight(byId('PKG-010')),
+      estimateNodeCardHeight(byId('PKG-020')),
+      estimateNodeCardHeight(byId('PKG-030')),
+      estimateNodeCardHeight(byId('PKG-070')),
+      estimateNodeCardHeight(byId('PKG-080')),
+    );
+    expect(topOf('PKG-040')).toBe(16 + row0Height + 8);
+    expect(topOf('PKG-050')).toBe(topOf('PKG-040') + estimateNodeCardHeight(byId('PKG-040')) + 8);
+    const canvasInner = document.querySelector('#flow-chart-canvas > div') as HTMLElement;
+    expect(parseFloat(canvasInner.style.height)).toBeGreaterThanOrEqual(topOf('PKG-050') + estimateNodeCardHeight(byId('PKG-050')) + 16);
+  });
+
   it('selection store 预设 packageId 后 show() 恢复 active 节点与选中条（#pkg= 深链）', async () => {
     stubFetch();
     const selection = new ScheduleSelectionStore();
