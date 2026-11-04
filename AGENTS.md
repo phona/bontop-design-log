@@ -7,6 +7,16 @@
 - 历史记录中的“已施工/拆改成本”判断仅作为历史背景，不自动作为当前方案约束。
 - 若后续状态变化（交房、量房、墙体/机电/窗帘施工、入住），由业主更新本节；更新前的状态是设计讨论和验证的唯一当前口径。
 
+## 页面只读铁律（2026-11-04 起）
+
+> 由来：审批流引入页面直写配置后，导出等多副本消费方把不同新鲜度的缓存副本拼进同一交付物（DXF 导出 PR #61/#63 的"新鲜性"主题审查了 7 轮）。2026-11-04 业主拍板架构收口。
+
+- **页面只用于取证与体验**（渲染、预演、导出、验收取证），**不是配置编辑器**。
+- **模型配置（model-geometry / overlay / house / electrical / plumbing / ceiling / hvac）的唯一写手是 AI 会话**：改配置 → 跑 lint/verify:all 过闸 → git 提交。
+- 服务端模型配置路由只读：`routes-furnishings/electrical/plumbing.ts` 仅保留 GET，mutation 端点已移除，不得恢复。
+- **体验层呈现状态保留页面写**（`data/presentation-state.json`、`data/current-scheme.json`、材质/灯光预演）——它们不是施工配置，只是"上次看到的状态"。
+- 页面拖动/摆位一律本地预演（刷新即回原位），须向业主提示「落配置请通过 AI 会话」；不得新增任何直写模型配置的路由或 UI。
+
 ## CAD / 3D 渲染架构
 
 > Blender 主线已暂停并冷归档到 `scripts/archive/blender-pipeline/`；本文件中的 Blender-specific 约束仅在明确恢复冷归档时适用。几何、坐标、电气、家具、碰撞与数据一致性铁律始终有效。
@@ -16,6 +26,8 @@
 > **视觉反馈类迭代**（业主看图说话 → 改模型 → 再看）开工前读 `docs/visual-change-playbook.md`，并跑 `npm run gate:visual` 确认客户端渲染的就是当前 config（config watch 曾因单文件监听挂 inode、原子替换写后静默断线而不可靠，2026-10-24 已改目录级监听修复；gate 对 schema 拒绝类 STALE 仍是保险丝）。
 >
 > `parse_cad.py` 仅用于从 CAD 初始化或参考导出，默认不覆盖 `model-geometry.yaml`。需要新行为 → 新增 element type + 声明式配置。
+>
+> **CAD 出图（2026-11-03 起）**：施工 DXF 导出双入口——web「导出 DXF」按钮与 `npm run export:dxf`（产物写 `tmp/capture/`，过程物不进 git），共用唯一装配实现 `shared/dxf/project-dxf.ts`。口径：独立新图、1:1 毫米、北朝上、原点归零（不对齐开发商原图坐标），坐标换算只许 `toDxf()` 一处（`dxf_x = local_x*1000, dxf_y = -local_z*1000`）；单文件多图层（A-WALL（含 wall_run 实体墙）/A-ROOM（非矩形房间优先 points 轮廓）/E-*/C-CEIL/F-FLOOR/M-HVAC/M-ROUTE/M-CAND 等，图层清单即 `DXF_LAYERS`）；墙洞切分与 along 插值复用 `shared/wall-segments.ts`、家具摆位复用 `shared/furniture-placement.ts`、圆角折线采样复用 `shared/arc-polyline.ts`（均自 SceneBuilder/CurtainGeometry 抽出，3D 与 DXF 同口径）；MEP 折线复用 `resolveMepRoutes/mepRoutePoints`，**候选/需求示意/待复核路线及其 junction 隔离 M-CAND 图层（非放线依据，禁止混入 M-ROUTE 交付）**，内机 anchor 经 `resolveMepEndpoint` 解析 ref 引用；P-POINTS 中抽象服务点（note「抽象服务点/不得开槽」或 inferred/pending 态）必须带「禁止开槽待SKU」标注 + 告警。饰面标注顶标高直接用声明 `height`（height 是顶标高不是带高）。中文 TEXT 走 UTF-8 + `$DWGCODEPAGE ANSI_936`，乱码时 `labels:'ascii'` 一行退路。改图层/口径必须同步本行与 `shared/dxf/project-dxf.ts` 头注。
 >
 > **检视态叠加层（inspection-only）现役清单**：`wall_region`（贴砖，层标签 `wall-tile`）、`paint_region`（涂漆，层标签 `wall-paint`）、`floor_region`/吊顶分区、`pipe-chase`（管井）、HVAC 协调态、MEP 总览、电气回路归属。它们必须**平级且互不引用**：每个 `set*InspectionVisible` 只遍历自己的层标签、按 `userData.inspectionInitial` 快照可逆恢复，禁止互相调用、禁止抽共享材质 helper（pipe-chase 的关闭分支硬编码默认值，会丢掉其他层的初始态）。`paint_region` 额外要求平面朝声明的 `room` 侧外偏移，否则同墙的贴砖面与另一侧涂漆面共面 z-fighting。
 
