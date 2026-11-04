@@ -26,7 +26,15 @@ vi.mock('three', async (importOriginal: any) => {
 
   class MockMaterial {
     color = { set() { return this; } };
-    emissive = { set() { return this; }, clone() { return { set() { return this; }, copy() { return this; } }; } };
+    // emissive 带 r/g/b + set/copy/clone，对齐真 three.Color（2026-11-04 issue #66：
+    // 高亮改走 emissive.copy(new Color(0xffaa00))，原桩缺 copy/r/g/b 会让默认材质的
+    // highlightObject 直接抛 TypeError、holdsPen 颜色比较恒 false）。
+    emissive = {
+      r: 0, g: 0, b: 0,
+      set(r: number, g?: number, b?: number) { this.r = r; this.g = g ?? 0; this.b = b ?? 0; return this; },
+      copy(c: { r: number; g: number; b: number }) { if (c) { this.r = c.r; this.g = c.g; this.b = c.b; } return this; },
+      clone() { return { r: this.r, g: this.g, b: this.b, set() { return this; }, copy() { return this; } }; },
+    };
     emissiveIntensity = 0;
     roughness = 0;
     metalness = 0;
@@ -2024,10 +2032,17 @@ describe('HouseScene 踢脚线审计面', () => {
   });
 });
 
+// 0xffaa00 经 THREE.Color 归一化后的 r/g/b（mock 与真 three 同口径：hex → 归一化色）。
+// 2026-11-04 issue #66 前 emissive 走 mat.emissive.set(0xffaa00)——mock 的 set 收裸值，
+// 断言因此写 0xffaa00，那是 mock 简化产物；分层栈统一 emissive.copy(new Color(0xffaa00))，
+// 与真 three 的线性工作色一致，材质侧断言随之改为归一化值（合批实例侧本来就是这个形态）。
+const HL_ORANGE = { r: 1, g: 0xaa / 255, b: 0 };
+
 // 自装交互审批（2026-11-02）：包级集合高亮的竞态防护。
 // 场景：快速连点两个包——旧实现把「当前 emissive」当原色克隆，第二次克隆到的
-// 是第一次留下的橙色，恢复后 mesh 永久卡橙。现制：每 mesh 递增令牌 + 首次
-// 高亮保存真实原色。这里用带颜色的 emissive mock（默认 three mock 无颜色状态）。
+// 是第一次留下的橙色，恢复后 mesh 永久卡橙。现制：分层栈首层捕获真实原色 +
+// 叠加回落（2026-11-04 issue #66 起替代递增令牌，跨系统不互相覆盖的回归在
+// 下面「高亮分层叠加」组）。这里用带颜色的 emissive mock（默认 three mock 无颜色状态）。
 describe('HouseScene highlightObjects 竞态防护', () => {
   const makeScene = () => new HouseScene({ addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement);
 
@@ -2054,7 +2069,7 @@ describe('HouseScene highlightObjects 竞态防护', () => {
       const mesh = meshWithId('wall_x');
       scene.getScene().add(mesh);
       scene.highlightObjects(['wall_x']);
-      expect(mesh.material.emissive.r).toBe(0xffaa00);
+      expect(mesh.material.emissive.r).toBe(HL_ORANGE.r);
       // 1200ms 内再点一次（竞态窗口）：旧实现会在此刻把橙色当原色
       scene.highlightObjects(['wall_x']);
       vi.runAllTimers();
@@ -2079,8 +2094,8 @@ describe('HouseScene highlightObjects 竞态防护', () => {
       ];
       scene.getScene().add(mesh);
       scene.highlightObjects(['wall_array']);
-      expect(mesh.material[0].emissive.r).toBe(0xffaa00);
-      expect(mesh.material[1].emissive.r).toBe(0xffaa00);
+      expect(mesh.material[0].emissive.r).toBe(HL_ORANGE.r);
+      expect(mesh.material[1].emissive.r).toBe(HL_ORANGE.r);
       vi.runAllTimers();
       expect(mesh.material[0].emissive.r).toBe(0.1);
       expect(mesh.material[1].emissive.r).toBe(0.1);
@@ -2124,7 +2139,7 @@ describe('HouseScene highlightObjects 竞态防护', () => {
       scene.getScene().add(meshA);
       scene.getScene().add(meshB);
       scene.highlightObjects(['floor_a', 'floor_b']);
-      expect(shared.emissive.r).toBe(0xffaa00);
+      expect(shared.emissive.r).toBe(HL_ORANGE.r);
       vi.runAllTimers();
       // 必须回到真实原色 0.1，绝不是第二次捕获到的橙
       expect(shared.emissive.r).toBe(0.1);
@@ -2346,7 +2361,7 @@ describe('HouseScene 点位级高亮覆盖（第三步）', () => {
       scene.getScene().add(other.group);
 
       scene.highlightPoints(['plumbing:drain_kitchen']);
-      expect(part.material.emissive.r).toBe(0xffaa00);
+      expect(part.material.emissive.r).toBe(HL_ORANGE.r);
       expect(other.part.material.emissive.r).toBe(0.1); // 未命中不动
       vi.runAllTimers();
       expect(part.material.emissive.r).toBe(0.1); // 恢复真实原色
@@ -2384,13 +2399,233 @@ describe('HouseScene 点位级高亮覆盖（第三步）', () => {
       // App.highlightApprovalPackage 的聚合口径：房间/对象走 highlightObjects，点位走 highlightPoints
       scene.highlightObjects(['wall_x']);
       scene.highlightPoints(['electrical:sock_kitchen_gas']);
-      expect(wall.material.emissive.r).toBe(0xffaa00);
+      expect(wall.material.emissive.r).toBe(HL_ORANGE.r);
       expect(batch.colorLog.get(0)).toEqual({ r: 1, g: 0xaa / 255, b: 0 });
       // 批次对象自身 userData 没有 objectId/roomId → highlightObjects 不会重复着色合批实例
       expect(batch.colorLog.size).toBe(1);
       vi.runAllTimers();
       expect(wall.material.emissive.r).toBe(0.1);
       expect(batch.colorLog.get(0)).toEqual({ r: 0.4, g: 0.5, b: 0.6 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+// issue #66（2026-11-04）：多个系统同窗口改 emissive / 合批实例色时不互相覆盖。
+// 「去 3D 看这包」用 6000ms 高亮（App.viewPackageIn3d），窗口面比 1200ms 大得多。
+// 窗口内另一系统再改同一个突变目标时，旧簿记（按材质/实例键的递增令牌，四条路径各一套、
+// 与外来写入互不相识）两种死法：
+//   ① 后到者把先到者留下的橙当原色捕获 → 到期写回橙 → 材质永久卡橙；且短窗口到期先把
+//      材质恢复成原色 → 长窗口被掐断（本组第 1、2 条，旧实现下必红）；
+//   ② 到期把捕获的原色写回 → 灯具（InteriorLightingSystem.applyAppearance）/ 家具碰撞
+//      检查（AnalysisTools.checkFurnitureCollisions）刚改进 emissive 的值被静默吞掉
+//      （第 3、4 条，旧实现下必红）。
+// 现制：highlight-layers.ts 分层栈——捕获一次 / 叠加不覆盖 / 外来写入让笔。
+describe('HouseScene 高亮分层叠加：6s 窗口内多系统 emissive 变更不互相覆盖（issue #66）', () => {
+  const makeScene = () => new HouseScene({ addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement);
+
+  const emissiveMock = () => ({
+    r: 0.1, g: 0.2, b: 0.3,
+    set(r: number) { this.r = r; return this; },
+    copy(c: { r: number; g: number; b: number }) { this.r = c.r; this.g = c.g; this.b = c.b; return this; },
+    clone() { return { r: this.r, g: this.g, b: this.b, set() { return this; }, copy() { return this; } }; },
+  });
+
+  const meshWithId = (objectId: string): any => {
+    const mesh = new THREE.Mesh() as any;
+    mesh.userData = { objectId, roomId: 'room_a' };
+    mesh.material = { emissive: emissiveMock() };
+    return mesh;
+  };
+
+  const makeBatch = (
+    entries: Array<[number, string]>,
+    precolored: Array<[number, { r: number; g: number; b: number }]> = [],
+  ): any => {
+    const batch = new (THREE.BatchedMesh as any)();
+    batch.userData.batchUserData = new Map<number, Record<string, unknown>>(
+      entries.map(([instanceId, objectId]) => [instanceId, { objectId }]),
+    );
+    for (const [instanceId, color] of precolored) batch.setColorAt(instanceId, color);
+    return batch;
+  };
+
+  it('复现旧实现的永久卡橙：1.2s 单点高亮窗口内起 6s 包高亮——短层到期不熄、6s 到期恢复真实原色', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const mesh = meshWithId('wall_x');
+      scene.getScene().add(mesh);
+      // t=0：MEP 协调路线（StateSync highlight_object，1200ms）先亮，捕获真实原色 0.1/0.2/0.3
+      scene.highlightObject('wall_x');
+      vi.advanceTimersByTime(500);
+      // t=500：「去 3D 看这包」的 6s 高亮落在同一材质上。旧实现在这里把**橙色**当原色捕获
+      scene.highlightObjects(['wall_x'], 6000);
+      vi.advanceTimersByTime(700); // t=1200：1.2s 层到期——必须回落到 6s 层（仍橙）；
+      expect(mesh.material.emissive.r).toBe(HL_ORANGE.r); // 旧实现此刻恢复成原色，6s 高亮被掐断
+      vi.advanceTimersByTime(5300); // t=6500：6s 层（t=500 起算）到期
+      // 旧实现写回 t=500 捕获到的橙 → 永久卡橙（本断言钉住）
+      expect(mesh.material.emissive.r).toBe(0.1);
+      expect(mesh.material.emissive.g).toBe(0.2);
+      expect(mesh.material.emissive.b).toBe(0.3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('6s 包高亮窗口内 1.2s 单点高亮到期：叠加回落到 6s 层，仍然亮着', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const mesh = meshWithId('wall_x');
+      scene.getScene().add(mesh);
+      scene.highlightObjects(['wall_x'], 6000); // t=0：6s 层
+      vi.advanceTimersByTime(1000);
+      scene.highlightObject('wall_x'); // t=1000：1.2s 层（StateSync/MEP 系统）
+      vi.advanceTimersByTime(1200); // t=2200：1.2s 层到期
+      expect(mesh.material.emissive.r).toBe(HL_ORANGE.r); // 6s 层仍在，不能熄
+      vi.advanceTimersByTime(3800); // t=6000：6s 层到期
+      expect(mesh.material.emissive.r).toBe(0.1);
+      expect(mesh.material.emissive.g).toBe(0.2);
+      expect(mesh.material.emissive.b).toBe(0.3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('6s 窗口内外来系统（灯具/碰撞检查）改 emissive：到期 leave-as-is，不写回捕获的原色', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const mesh = meshWithId('wall_x');
+      scene.getScene().add(mesh);
+      scene.highlightObjects(['wall_x'], 6000); // t=0：捕获原色 0.1/0.2/0.3，置橙
+      vi.advanceTimersByTime(1000);
+      // t=1000：不走高亮簿记的另一系统直接写 emissive——InteriorLightingSystem.applyAppearance
+      // 的 material.emissive.copy(color) / AnalysisTools.checkFurnitureCollisions 的
+      // setHex(0xff0000) 同款。HouseScene 拦不住这类写入，正确行为是不把它当自己的高亮态覆盖掉。
+      mesh.material.emissive.set(0xff0000);
+      vi.advanceTimersByTime(5000); // t=6000：6s 层到期
+      // 旧实现把捕获的 0.1 写回，外来系统的红色被静默吞掉（本断言钉住）
+      expect(mesh.material.emissive.r).toBe(0xff0000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('6s 窗口内外来系统改了又清成自己的值：笔已易手，到期不抢笔（dormant）', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const mesh = meshWithId('wall_x');
+      scene.getScene().add(mesh);
+      scene.highlightObjects(['wall_x'], 6000);
+      vi.advanceTimersByTime(1000);
+      mesh.material.emissive.set(0xff0000); // 外来系统持笔
+      vi.advanceTimersByTime(1000);
+      mesh.material.emissive.set(0x000000); // 外来系统清成它认定的原值
+      vi.advanceTimersByTime(4000); // t=6000：6s 层到期
+      // 留在笔的所有者（外来系统）最后写的值上，不是本方捕获的 0.1
+      expect(mesh.material.emissive.r).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('合批点位：6s 与 1.2s 两层同实例叠加，短层到期不掐断长窗口', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const batch = makeBatch([[0, 'electrical:sock_kitchen_gas']], [[0, { r: 0.1, g: 0.2, b: 0.3 }]]);
+      scene.getScene().add(batch);
+      scene.highlightPoints(['electrical:sock_kitchen_gas'], 6000); // t=0：长层
+      vi.advanceTimersByTime(1000);
+      scene.highlightPoints(['electrical:sock_kitchen_gas'], 1200); // t=1000：短层（页内再点一个包）
+      vi.advanceTimersByTime(1200); // t=2200：短层到期
+      // 旧实现按「最新令牌」在此刻把实例直接恢复成原色，6s 高亮被掐断（本断言钉住）
+      expect(batch.colorLog.get(0)).toEqual(HL_ORANGE);
+      vi.advanceTimersByTime(3800); // t=6000：长层到期
+      expect(batch.colorLog.get(0)).toEqual({ r: 0.1, g: 0.2, b: 0.3 });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('highlightObject（MEP/StateSync 路径）遇数组材质墙不抛：逐元素高亮并恢复', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const mesh = meshWithId('wall_array') as any;
+      // 旧实现 singular 路径对数组材质直接 mat.emissive.set → TypeError（App 的
+      // onVisualCommand 没有 catch，会打断 StateSync 命令处理）；第二个元素缺 emissive 必须跳过
+      mesh.material = [{ emissive: emissiveMock() }, { emissive: undefined }];
+      scene.getScene().add(mesh);
+      expect(() => scene.highlightObject('wall_array')).not.toThrow();
+      expect(mesh.material[0].emissive.r).toBe(HL_ORANGE.r);
+      vi.runAllTimers();
+      expect(mesh.material[0].emissive.r).toBe(0.1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('合批点位：实例色经 Float32Array 往返（真 three r166 存储精度）后到期仍恢复真实原色', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const batch = makeBatch([[0, 'electrical:sock_kitchen_gas']]);
+      // 真 three r166（app/node_modules/three/src/objects/BatchedMesh.js:759/786）：
+      // setColorAt 把颜色 color.toArray 写进 _colorsTexture 的 Float32Array
+      // （_initColorsTexture 以全 1 白色填充），getColorAt 再 color.fromArray 读回——
+      // 双精度值经此往返有 ~1e-7 精度损失（0.4019777798321958 → 0.4019777774810791）。
+      // 本文件 mock 的 colorLog 存普通对象（双精度原值），正好绕过这条真实路径；这里把
+      // setColorAt 换成 Float32 往返复现它。旧实现 colorsEqual 严格 === → 没有任何外来
+      // 写入时 holdsPen() 也返回 false → release 跳过恢复并清空原色 → 一次高亮到期后
+      // 合批实例仍为橙色；再次高亮还会把残留橙色当原色捕获（越污染越错）。两条断言在
+      // 严格比较下必红（codex 审查 blocking）。
+      const toF32 = (c: number) => new Float32Array([c])[0];
+      batch.setColorAt = (id: number, color: { r: number; g: number; b: number }) => {
+        // 与原 mock 同样复现懒初始化（颜色纹理首写才建），只是写进去的值先过 Float32
+        if (!batch.colorsTexture) batch.colorsTexture = { image: { data: new Float32Array(64).fill(1) } };
+        batch.colorLog.set(id, { r: toF32(color.r), g: toF32(color.g), b: toF32(color.b) });
+      };
+      batch.setColorAt(0, { r: 0.1, g: 0.2, b: 0.3 }); // 预置原色（同样经 Float32）
+      scene.getScene().add(batch);
+
+      scene.highlightPoints(['electrical:sock_kitchen_gas'], 6000);
+      // 读回的橙色 g 分量必须与双精度 0xaa/255 不同——证明确实走了 Float32 往返
+      expect(batch.colorLog.get(0)?.g).not.toBe(0xaa / 255);
+      expect(batch.colorLog.get(0)?.g).toBe(toF32(0xaa / 255));
+      vi.runAllTimers();
+      expect(batch.colorLog.get(0)).toEqual({ r: toF32(0.1), g: toF32(0.2), b: toF32(0.3) });
+      // 二次高亮：第一次若残留橙色，旧实现把橙当原色捕获，恢复后仍卡橙
+      scene.highlightPoints(['electrical:sock_kitchen_gas'], 6000);
+      vi.runAllTimers();
+      expect(batch.colorLog.get(0)).toEqual({ r: toF32(0.1), g: toF32(0.2), b: toF32(0.3) });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('同一目标二次高亮后立即 dispose：第二轮定时器必须被清掉（复用层栈时恢复 live 登记）', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const renderSpy = vi.fn();
+      scene.setOnRenderRequested(renderSpy);
+      const mesh = meshWithId('wall_reuse');
+      scene.getScene().add(mesh);
+      scene.highlightObjects(['wall_reuse'], 6000);
+      vi.runAllTimers(); // 第一轮到期：层栈空，onEmpty 把层栈移出 live（materialLayers 仍缓存它）
+      scene.highlightObjects(['wall_reuse'], 6000); // 复用缓存层栈压第二轮（旧实现此处不加回 live）
+      renderSpy.mockClear();
+      scene.dispose();
+      // dispose 必须清掉第二轮定时器：旧实现 live 只在创建时登记，复用时没加回 →
+      // dispose 遍历不到 → 到期仍写材质并触发已销毁场景的 requestRender（codex 审查 minor）
+      vi.runAllTimers();
+      expect(mesh.material.emissive.r).toBe(HL_ORANGE.r); // 停在 dispose 时的值，没被恢复写回
+      expect(renderSpy).not.toHaveBeenCalled(); // 已销毁场景不再被请求渲染
     } finally {
       vi.useRealTimers();
     }
