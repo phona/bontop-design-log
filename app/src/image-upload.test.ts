@@ -102,6 +102,21 @@ describe('safeEvidenceFilename（issue #70）', () => {
     expect(safeEvidenceFilename('客厅.jpg', first)).not.toBe(safeEvidenceFilename('厨房.jpg', second));
   });
 
+  it('nonce 在长名下不被截断削掉（codex 复审 blocking：先预留再截断）', () => {
+    // 60×x 的 stem 逼近 64 上限：若先拼 nonce 再从尾部截断，nonce 正好被削掉，
+    // 不同 nonce 的结果仍旧相同 → 暂存路径互撞、防碰撞静默失效
+    const first = safeEvidenceFilename(`${'x'.repeat(60)}-first.jpg`, 'nonce-a');
+    const second = safeEvidenceFilename(`${'x'.repeat(60)}-second.jpg`, 'nonce-b');
+    expect(first).not.toBe(second);
+    expect(first.length).toBeLessThanOrEqual(64);
+    expect(second.length).toBeLessThanOrEqual(64);
+    expect(first.endsWith('-nonce-a.jpg')).toBe(true);
+    expect(second.endsWith('-nonce-b.jpg')).toBe(true);
+    // 服务端落盘白名单
+    expect(/^[\w.-]+$/.test(first)).toBe(true);
+    expect(/^[\w.-]+$/.test(second)).toBe(true);
+  });
+
   it('forceExtension：压缩结果是 JPEG，.png 源也落 .jpg；未压缩回落保持原扩展名', () => {
     expect(safeEvidenceFilename('shot.png', undefined, 'jpg')).toBe('shot.jpg');
     expect(safeEvidenceFilename('shot.PNG', 'n1', 'JPG')).toBe('shot-n1.jpg');

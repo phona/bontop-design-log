@@ -77,11 +77,15 @@ export function safeEvidenceFilename(name: string, nonce?: string, forceExtensio
   // 前导 `.` 剥掉（`.gitignore` / `..jpg` 形不得以 . 开头）；剥空则走 photo- 兜底
   let stem = rawStem.replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '');
   if (stem === '') stem = `photo-${utcStamp()}`;
-  if (nonce) {
-    const tag = nonce.replace(/[^A-Za-z0-9._-]/g, '_');
-    if (tag) stem = `${stem}-${tag}`;
-  }
   const maxStem = FILENAME_MAX_LENGTH - suffix.length;
+  if (nonce) {
+    // nonce 本身也限长：先给完整 nonce 预留位置、再截断原始 stem——顺序反了会从尾部
+    // 把 nonce 削掉，长名下不同 nonce 的结果仍旧相同、防碰撞静默失效（codex 复审
+    // blocking：60×x 的 '-first'/'-second' 实测复现）
+    const tag = nonce.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, Math.max(1, maxStem - 3));
+    const keep = Math.max(1, maxStem - tag.length - 1);
+    stem = `${stem.length > keep ? stem.slice(0, keep) : stem}-${tag}`;
+  }
   return `${stem.length > maxStem ? stem.slice(0, maxStem) : stem}${suffix}`;
 }
 
