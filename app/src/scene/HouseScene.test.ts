@@ -2579,4 +2579,65 @@ describe('HouseScene 高亮分层叠加：6s 窗口内多系统 emissive 变更�
       vi.useRealTimers();
     }
   });
+
+  it('合批点位：实例色经 Float32Array 往返（真 three r166 存储精度）后到期仍恢复真实原色', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const batch = makeBatch([[0, 'electrical:sock_kitchen_gas']]);
+      // 真 three r166（app/node_modules/three/src/objects/BatchedMesh.js:759/786）：
+      // setColorAt 把颜色 color.toArray 写进 _colorsTexture 的 Float32Array
+      // （_initColorsTexture 以全 1 白色填充），getColorAt 再 color.fromArray 读回——
+      // 双精度值经此往返有 ~1e-7 精度损失（0.4019777798321958 → 0.4019777774810791）。
+      // 本文件 mock 的 colorLog 存普通对象（双精度原值），正好绕过这条真实路径；这里把
+      // setColorAt 换成 Float32 往返复现它。旧实现 colorsEqual 严格 === → 没有任何外来
+      // 写入时 holdsPen() 也返回 false → release 跳过恢复并清空原色 → 一次高亮到期后
+      // 合批实例仍为橙色；再次高亮还会把残留橙色当原色捕获（越污染越错）。两条断言在
+      // 严格比较下必红（codex 审查 blocking）。
+      const toF32 = (c: number) => new Float32Array([c])[0];
+      batch.setColorAt = (id: number, color: { r: number; g: number; b: number }) => {
+        // 与原 mock 同样复现懒初始化（颜色纹理首写才建），只是写进去的值先过 Float32
+        if (!batch.colorsTexture) batch.colorsTexture = { image: { data: new Float32Array(64).fill(1) } };
+        batch.colorLog.set(id, { r: toF32(color.r), g: toF32(color.g), b: toF32(color.b) });
+      };
+      batch.setColorAt(0, { r: 0.1, g: 0.2, b: 0.3 }); // 预置原色（同样经 Float32）
+      scene.getScene().add(batch);
+
+      scene.highlightPoints(['electrical:sock_kitchen_gas'], 6000);
+      // 读回的橙色 g 分量必须与双精度 0xaa/255 不同——证明确实走了 Float32 往返
+      expect(batch.colorLog.get(0)?.g).not.toBe(0xaa / 255);
+      expect(batch.colorLog.get(0)?.g).toBe(toF32(0xaa / 255));
+      vi.runAllTimers();
+      expect(batch.colorLog.get(0)).toEqual({ r: toF32(0.1), g: toF32(0.2), b: toF32(0.3) });
+      // 二次高亮：第一次若残留橙色，旧实现把橙当原色捕获，恢复后仍卡橙
+      scene.highlightPoints(['electrical:sock_kitchen_gas'], 6000);
+      vi.runAllTimers();
+      expect(batch.colorLog.get(0)).toEqual({ r: toF32(0.1), g: toF32(0.2), b: toF32(0.3) });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('同一目标二次高亮后立即 dispose：第二轮定时器必须被清掉（复用层栈时恢复 live 登记）', async () => {
+    vi.useFakeTimers();
+    try {
+      const scene = makeScene();
+      const renderSpy = vi.fn();
+      scene.setOnRenderRequested(renderSpy);
+      const mesh = meshWithId('wall_reuse');
+      scene.getScene().add(mesh);
+      scene.highlightObjects(['wall_reuse'], 6000);
+      vi.runAllTimers(); // 第一轮到期：层栈空，onEmpty 把层栈移出 live（materialLayers 仍缓存它）
+      scene.highlightObjects(['wall_reuse'], 6000); // 复用缓存层栈压第二轮（旧实现此处不加回 live）
+      renderSpy.mockClear();
+      scene.dispose();
+      // dispose 必须清掉第二轮定时器：旧实现 live 只在创建时登记，复用时没加回 →
+      // dispose 遍历不到 → 到期仍写材质并触发已销毁场景的 requestRender（codex 审查 minor）
+      vi.runAllTimers();
+      expect(mesh.material.emissive.r).toBe(HL_ORANGE.r); // 停在 dispose 时的值，没被恢复写回
+      expect(renderSpy).not.toHaveBeenCalled(); // 已销毁场景不再被请求渲染
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

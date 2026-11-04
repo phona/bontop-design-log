@@ -29,8 +29,9 @@
  *      留下的橙当原色；
  *   ② 叠加不覆盖：任一层到期只回落到下一个仍活跃的层；层栈空才谈恢复。短窗口到期
  *      不会掐断长窗口（6000ms 包高亮窗口内的 1200ms 系统高亮到期后仍然亮着）；
- *   ③ 外来写入让笔：恢复前校验当前值仍等于本方最后写入的颜色；被没走高亮簿记的
- *      系统改过就 leave-as-is——恢复动作不覆盖人家的当前值。
+ *   ③ 外来写入让笔：恢复前校验当前值仍等于本方最后写入的颜色（按槽的实际存储精度
+ *      比较——合批实例色经 three BatchedMesh 的 Float32Array 往返，容差 1e-6）；
+ *      被没走高亮簿记的系统改过就 leave-as-is——恢复动作不覆盖人家的当前值。
  */
 import * as THREE from 'three';
 
@@ -59,8 +60,23 @@ interface HighlightLayer {
   timer: ReturnType<typeof setTimeout>;
 }
 
+/**
+ * 颜色相等按 **Float32 容差**判定，不是严格 ===（2026-11-04 codex 审查 blocking 修）：
+ * 合批实例色的真实存储精度就是 Float32——three r166 的 BatchedMesh.setColorAt 把颜色
+ * `color.toArray` 写进 _colorsTexture 的 Float32Array（_initColorsTexture 以全 1 白色
+ * 填充），getColorAt 再 `color.fromArray` 读回：0.4019777798321958 → 0.4019777774810791。
+ * 严格比较下**没有任何外来写入时 holdsPen() 也返回 false** → release 跳过恢复并清空
+ * 原色 → 一次高亮到期后合批实例仍为橙色；且再次高亮会把残留的橙色当原色捕获（越污染
+ * 越错）。容差 1e-6：Float32 在 [0,1] 区间最大舍入误差约 6e-8，留两个数量级余量；
+ * 材质 emissive 侧是真双精度，容差对它无害（外来写入 0xff0000 vs 本方 0xffaa00 差异
+ * 远大于此，让笔判定不受影响）。
+ */
+const COLOR_EPSILON = 1e-6;
+
 const colorsEqual = (a: THREE.Color, b: THREE.Color): boolean =>
-  a.r === b.r && a.g === b.g && a.b === b.b;
+  Math.abs(a.r - b.r) <= COLOR_EPSILON
+  && Math.abs(a.g - b.g) <= COLOR_EPSILON
+  && Math.abs(a.b - b.b) <= COLOR_EPSILON;
 
 /**
  * 一个突变目标（一个材质实例 / 一个合批实例）上的高亮层栈。
@@ -166,7 +182,7 @@ export class HighlightStack {
       });
       this.materialLayers.set(material, layers);
     }
-    layers.acquire(color, durationMs);
+    this.activate(layers, color, durationMs);
   }
 
   /** 合批实例色高亮（highlightPoints 的 BatchedMesh 路径）。 */
@@ -186,12 +202,23 @@ export class HighlightStack {
       });
       perInstance.set(instanceId, layers);
     }
+    this.activate(layers, color, durationMs);
+  }
+
+  /**
+   * 激活一层栈（创建或复用都走这里）：**每次激活都恢复 live 登记**（2026-11-04 codex
+   * 审查 minor 修）。层栈首次到期后 onEmpty 会把它从 live 移除（live 只是 dispose 的
+   * 遍历清单，层栈空即移出不泄漏），但 materialLayers / instanceLayers 仍缓存该对象；
+   * 之后同一目标再次高亮复用它时若不加回 live，dispose() 就遍历不到 → 第二轮定时器在
+   * dispose 后残留，到期仍写材质/实例色并触发已销毁场景的 requestRender。
+   */
+  private activate(layers: HighlightLayers, color: THREE.Color, durationMs: number): void {
+    this.live.add(layers);
     layers.acquire(color, durationMs);
   }
 
   private create(slot: ColorSlot): HighlightLayers {
     const layers = new HighlightLayers(slot, this.onChange, () => this.live.delete(layers));
-    this.live.add(layers);
     return layers;
   }
 
