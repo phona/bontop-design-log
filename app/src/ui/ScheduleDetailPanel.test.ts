@@ -2197,6 +2197,11 @@ describe('ScheduleDetailPanel 移动端现场视图（字段布局，issue #70 P
       const area = body.querySelector(`[data-evidence-area="${checkId}"]`)!;
       expect(area, `[data-evidence-area=${checkId}]`).toBeTruthy();
       expect(area.querySelector('[data-evidence-file]')).toBeTruthy();
+      // 文件输入框限定图片（issue #70 PR A 的清单项，2026-11-04 浏览器实测抓回归：
+      // PR A 实施代理回报声称加过，git log -S 证实从未进过任何提交——验收证据以照片
+      // 为主，accept 让手机文件选择器直接出相机/相册）。不加 capture：相册里的既有
+      // 照片（微信保存等）也要能选。
+      expect((area.querySelector('[data-evidence-file]') as HTMLInputElement).getAttribute('accept')).toBe('image/*');
       expect(area.querySelector('[data-evidence-finalize]')).toBeTruthy();
     }
     // 已通过检查的复验钩子（同桌面条件）+ 已落定证据的 remove/path
