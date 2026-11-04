@@ -1,12 +1,11 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { safeEvidenceFilename, planCompression, compressImageFile } from './image-upload';
+import { safeEvidenceFilename, nextUploadNonce, planCompression, compressImageFile } from './image-upload';
 
 // canvas 真实压缩路径（createImageBitmap → canvas 缩放 → toBlob JPEG 重编码）jsdom 跑不了：
 // jsdom 不实现 createImageBitmap，HTMLCanvasElement.toBlob 也没有编码器实现。这里**不
-// mock 造假**，只覆盖纯函数与「没有 createImageBitmap 时回落原字节」的真实路径。真实
-// 浏览器里的大图缩放 + JPEG 重编码（以及「压缩后仍 >900KB 报错」分支）留给合入后人工
-// 实测：桌面 Chrome 与手机微信各选一张 2-5MB 照片，看暂存文件体积、界面反馈与 413 是否
-// 消失。
+// mock 造假**，只覆盖纯函数与「没有 createImageBitmap 时回落原字节 / 回落仍超限明确报错」
+// 的真实路径。真实浏览器里的大图缩放 + JPEG 重编码 + 压缩阶梯降档留给合入后人工实测：
+// 桌面 Chrome 与手机微信各选一张 2-5MB 照片，看暂存文件体积、界面反馈与 413 是否消失。
 
 const globalWithBitmap = globalThis as {createImageBitmap?: unknown};
 const savedCreateImageBitmap = globalWithBitmap.createImageBitmap;
@@ -86,6 +85,31 @@ describe('safeEvidenceFilename（issue #70）', () => {
       expect(/^[\w.-]+$/.test(safe), `whitelist: ${safe}`).toBe(true);
     }
   });
+
+  it('nonce：同一检查的多张照片不撞暂存路径（中文名净化后都成 __）', () => {
+    // codex 复审 major：「客厅.jpg」「厨房.jpg」不带 nonce 都会净化成 __.jpg——
+    // 服务端 stageEvidence 按名覆盖暂存、finalize 拒重名，第二张会顶掉/传不进第一张
+    expect(safeEvidenceFilename('客厅.jpg')).toBe('__.jpg');
+    expect(safeEvidenceFilename('厨房.jpg')).toBe('__.jpg');
+    // 带不同 nonce 即区分；nonce 里的白名单外字符同样被净化
+    expect(safeEvidenceFilename('客厅.jpg', 'aaa1')).toBe('__-aaa1.jpg');
+    expect(safeEvidenceFilename('厨房.jpg', 'bbb2')).toBe('__-bbb2.jpg');
+    expect(safeEvidenceFilename('客厅.jpg', 'x y')).toBe('__-x_y.jpg');
+    // nextUploadNonce 连续两次不同（同一次会话内唯一）
+    const first = nextUploadNonce();
+    const second = nextUploadNonce();
+    expect(first).not.toBe(second);
+    expect(safeEvidenceFilename('客厅.jpg', first)).not.toBe(safeEvidenceFilename('厨房.jpg', second));
+  });
+
+  it('forceExtension：压缩结果是 JPEG，.png 源也落 .jpg；未压缩回落保持原扩展名', () => {
+    expect(safeEvidenceFilename('shot.png', undefined, 'jpg')).toBe('shot.jpg');
+    expect(safeEvidenceFilename('shot.PNG', 'n1', 'JPG')).toBe('shot-n1.jpg');
+    // 非白名单的强制扩展名被忽略，回落原扩展名逻辑
+    expect(safeEvidenceFilename('shot.png', undefined, 'exe')).toBe('shot.png');
+    // 无扩展名 + 强制 jpg → 补 .jpg
+    expect(safeEvidenceFilename('photo', 'n1', 'jpg')).toBe('photo-n1.jpg');
+  });
 });
 
 describe('planCompression（issue #70）', () => {
@@ -126,5 +150,14 @@ describe('compressImageFile（issue #70，jsdom 回落路径）', () => {
     expect(decoded.charCodeAt(0)).toBe(0);
     expect(decoded.charCodeAt(250)).toBe(250);
     expect(decoded.charCodeAt(500_000)).toBe(500_000 % 251);
+  });
+
+  it('回落路径下编码后仍超限 → 明确报错（不白传一次 413）', async () => {
+    // codex 复审 major：服务端 1mb 限整个 JSON 请求体，base64 膨胀 4/3。二进制
+    // 700KB → base64 约 933k 字符 + JSON 开销 → 超 1,048,576。没有 createImageBitmap
+    // （老浏览器/jsdom）时压不了，必须在这里给出人能看懂的错，而不是让服务端 413 HTML。
+    delete globalWithBitmap.createImageBitmap;
+    const file = new File([new Uint8Array(700_000)], 'big.jpg', {type: 'image/jpeg'});
+    await expect(compressImageFile(file)).rejects.toThrow(/文件约 \d+KB 超过上传上限，且当前浏览器无法压缩/);
   });
 });

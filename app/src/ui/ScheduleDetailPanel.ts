@@ -33,7 +33,7 @@ import type {
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
 import { escapeHtml } from './escape-html.js';
 import { apiWrite } from '../api-write.js';
-import { compressImageFile, safeEvidenceFilename } from '../image-upload.js';
+import { compressImageFile, nextUploadNonce, safeEvidenceFilename } from '../image-upload.js';
 import { resolvePackageScope } from '@shared/package-scope';
 import type { PackageScopeLink, ProjectScopeInput } from '@shared/package-scope';
 
@@ -675,7 +675,7 @@ export class ScheduleDetailPanel {
       ? `<div style="font-size:11px;line-height:2;">最终证据：${state.evidence.map((path) => `<span style="display:inline-block;margin:0 6px 2px 0;padding:0 6px;border:1px solid rgba(92,184,92,.4);border-radius:4px;background:rgba(92,184,92,.08);"><code>${escapeHtml(path)}</code><button type="button" data-evidence-remove="${escapeHtml(check.id)}" data-evidence-path="${escapeHtml(path)}" title="从草稿证据列表移除" style="margin-left:6px;cursor:pointer;padding:0 5px;border:1px solid rgba(217,83,79,.5);border-radius:4px;background:#3a2326;color:#f0a9a5;font-size:10px;">删</button></span>`).join('')}</div>`
       : `<div style="font-size:11px;color:#9aa4b2;">最终证据：无（passed 必须至少一条落定证据）</div>`;
     return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-        <input type="file" accept="image/*" data-evidence-file="${escapeHtml(check.id)}" style="font-size:11px;max-width:230px;color:#9aa4b2;">
+        <input type="file" data-evidence-file="${escapeHtml(check.id)}" style="font-size:11px;max-width:230px;color:#9aa4b2;">
         ${uploading}
         <button type="button" data-evidence-finalize="${escapeHtml(check.id)}"${finalizeDisabled ? ' disabled' : ''} title="${finalizeDisabled ? '先选一个文件上传到暂存区' : '把暂存文件移入仓内最终路径，并加入本行草稿证据'}" style="cursor:${finalizeDisabled ? 'not-allowed' : 'pointer'};padding:3px 9px;border-radius:5px;font-size:11px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#c9cede;">选为最终证据</button>
       </div>${stagedInfo}${stagedError}${list}`;
@@ -994,10 +994,13 @@ export class ScheduleDetailPanel {
       // issue #70：手机拍照 2-5MB 直接 readAsDataURL 会被服务端 express.json 1mb
       // 上限 413（旧代码界面只剩「HTTP 413」）。先压缩 + 净化文件名再上传；压缩失败
       // 回落原图，任何错误信息进既有 stagedError 显示路径。
+      // nonce：同一检查传多张照片时中文名净化后都成 `__`，会撞暂存路径互相覆盖
+      // （codex 复审 major）；forceExtension：压缩结果是 JPEG，扩展名跟实际格式一致。
       void (async () => {
         try {
           const compressed = await compressImageFile(file);
-          await this.uploadEvidence(pkg.id, checkId, safeEvidenceFilename(file.name), compressed.base64);
+          const filename = safeEvidenceFilename(file.name, nextUploadNonce(), compressed.compressed ? 'jpg' : undefined);
+          await this.uploadEvidence(pkg.id, checkId, filename, compressed.base64);
         } catch (err) {
           // 同 uploadEvidence：异步回调里重新取当前状态对象再写（二十五审 major）
           const current = this.draftOf(checkId);
@@ -1578,9 +1581,13 @@ export class ScheduleDetailPanel {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({package_id: packageId, check_id: checkId, filename, data_base64: base64}),
       });
-      const data = (await response.json().catch(() => ({}))) as {staging_path?: string; sha256?: string; size?: number; error?: string};
+      const data = (await response.json().catch(() => ({}))) as {staging_path?: string; sha256?: string; size?: number; error?: string; detail?: string};
       if (this.selection.get().packageId !== packageId) return;
-      if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
+      // codex 复审 minor：服务端 413 的重试引导放在 detail 里，只显示 error 用户看不到
+      if (!response.ok) {
+        const detail = typeof data.detail === 'string' && data.detail ? `：${data.detail}` : '';
+        throw new Error(`${data.error ?? `HTTP ${response.status}`}${detail}`);
+      }
       // 落账时**重新取当前状态对象**（codex 二十五审 major）：等待期间草稿合并
       // （本包重载 / 别包 GET 晚到）可能把条目替换成新对象，await 前捕获的引用会
       // 写进孤儿——上传成功了界面却永远「上传中」、暂存文件接不进草稿。

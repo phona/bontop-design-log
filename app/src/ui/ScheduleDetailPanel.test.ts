@@ -628,10 +628,13 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     // 暂存：POST /api/acceptance/evidence，data_base64 只要逗号后段
     await vi.waitFor(() => expect(calls.some((call) => call.url === '/api/acceptance/evidence' && call.method === 'POST')).toBe(true));
     const staged = calls.find((call) => call.url === '/api/acceptance/evidence')!;
+    // issue #70 codex 复审：文件名带 nonce（同一检查多张照片不撞暂存路径）——这里是
+    // 'a.jpg' + '-' + nonce（时间戳36进制-计数）；源名安全部分保留在前
+    expect((staged.body as {filename: string}).filename).toMatch(/^a-[0-9a-z]+-\d+\.jpg$/);
     expect(staged.body).toEqual({
       package_id: 'PKG-010',
       check_id: 'SCH-010-01',
-      filename: 'a.jpg',
+      filename: (staged.body as {filename: string}).filename,
       data_base64: btoa('fake-image-bytes'),
     });
     await vi.waitFor(() => expect(document.querySelector('[data-evidence-area="SCH-010-01"]')!.textContent).toContain(STAGING_PATH));

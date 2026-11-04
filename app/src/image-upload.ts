@@ -6,11 +6,13 @@
 // server/acceptance-draft-store.ts:113 的文件名白名单 /^[\w.\-]+$/（400）。
 //
 // 本模块把上传前的三步 hardening 收在一处：
-//   1. safeEvidenceFilename——纯函数，把任意文件名净化成服务端白名单可接受的安全名；
+//   1. safeEvidenceFilename——纯函数，把任意文件名净化成服务端白名单可接受的安全名
+//      （nonce 保证同一检查多张照片不撞暂存路径，forceExtension 让扩展名跟实际格式一致）；
 //   2. planCompression——纯函数，按 MIME 与体积决定压不压；
-//   3. compressImageFile——需要压且浏览器有 createImageBitmap 时走 canvas 等比缩放 +
-//      JPEG 重编码；老浏览器 / jsdom / 任何压缩异常都回落 readAsDataURL 原字节
-//      （绝不为压缩失败抛错），只有「压缩后仍 >900KB」这一个显式失败会 throw。
+//   3. compressImageFile——需要压且浏览器有 createImageBitmap 时走压缩阶梯（标准档 →
+//      降档）按**编码后 base64 体积**判定（服务端 1mb 限整个 JSON 请求体）；老浏览器 /
+//      jsdom / 任何压缩异常都回落 readAsDataURL 原字节（绝不为压缩失败抛错，但编码后
+//      超限会明确报错，不白传一次 413）。
 //
 // canvas 真实执行路径（createImageBitmap → toBlob）jsdom 跑不了，留给合入后浏览器实测；
 // 单测只覆盖纯函数与回落路径（见 image-upload.test.ts 头注）。
@@ -21,12 +23,24 @@ const COMPRESS_THRESHOLD_BYTES = 400_000;
 const MAX_EDGE_PX = 1600;
 /** JPEG 重编码质量。 */
 const JPEG_QUALITY = 0.72;
-/** 压缩结果超过该体积直接报错（base64 膨胀后仍会 413，让用户重拍而不是白传）。 */
-const MAX_COMPRESSED_BYTES = 900_000;
+/**
+ * 编码后（base64 字符数）上限。服务端 express.json({limit:'1mb'}) 限的是**整个
+ * JSON 请求体**：base64 膨胀 4/3 + package_id/check_id/filename 开销，900,000
+ * 字符 ≈ 675KB 二进制 + 开销后稳在 1,048,576 字节内（codex 复审 major：早先按
+ * 二进制 900KB 设限，800KB 图编码后就有 1,066,758 字节，照样 413）。
+ */
+const MAX_ENCODED_BASE64_CHARS = 900_000;
+/** 压缩阶梯：标准档 → 降档；两档编码后都超限才让用户重拍。 */
+const COMPRESS_LADDER: Array<{maxEdge: number; quality: number}> = [
+  {maxEdge: MAX_EDGE_PX, quality: JPEG_QUALITY},
+  {maxEdge: 1200, quality: 0.5},
+];
 /** 净化后文件名总长上限（截断 stem、保扩展名）。 */
 const FILENAME_MAX_LENGTH = 64;
 /** 只认这几种照片扩展名；其余（.pdf/.heic/无扩展名）丢掉，靠内容而非名字判断类型。 */
 const EXTENSION_WHITELIST = new Set(['jpg', 'jpeg', 'png', 'webp']);
+/** 同一次会话内的上传计数（与时间戳拼成 nonce，保证净化后文件名不撞车）。 */
+let uploadCounter = 0;
 
 export interface CompressedImage {
   /** dataURL 逗号后段（服务端只要 base64 本体）。 */
@@ -35,25 +49,38 @@ export interface CompressedImage {
   compressed: boolean;
 }
 
+/** 下一次上传的唯一 nonce（时间戳 + 会话内计数；暂存区按包/检查隔离，会话内唯一即够）。 */
+export function nextUploadNonce(): string {
+  uploadCounter += 1;
+  return `${Date.now().toString(36)}-${uploadCounter}`;
+}
+
 /**
  * 把任意文件名净化成服务端白名单可接受的安全名。纯函数。
  *
  * 规则：只取 basename（`/` 与 `\` 都切）；stem 里非 [A-Za-z0-9._-] 的字符统一替换为
  * `_`；扩展名取最后一个 `.` 之后的部分、转小写，只在 {jpg,jpeg,png,webp} 白名单内
- * 保留，否则丢掉；stem 净化后为空（或以 `.` 开头被剥空）则用 photo-<UTC
- * yyyymmdd-hhmmss>；总长限 64（超长截断 stem、保扩展名）。不产出空串、不含路径
- * 分隔符、不以 `.` 开头。
+ * 保留，否则丢掉（forceExtension 可强制改写，用于压缩后实际格式是 JPEG 的场景）；
+ * stem 净化后为空（或以 `.` 开头被剥空）则用 photo-<UTC yyyymmdd-hhmmss>；
+ * 传了 nonce 时拼到 stem 末尾（同一检查传多张照片，中文名净化后都成 `__` 会撞
+ * 暂存路径并互相覆盖——codex 复审 major）；总长限 64（超长截断 stem、保扩展名）。
+ * 不产出空串、不含路径分隔符、不以 `.` 开头。
  */
-export function safeEvidenceFilename(name: string): string {
+export function safeEvidenceFilename(name: string, nonce?: string, forceExtension?: string): string {
   const basename = String(name ?? '').split(/[/\\]/).pop() ?? '';
   const dot = basename.lastIndexOf('.');
   const rawStem = dot >= 0 ? basename.slice(0, dot) : basename;
   const rawExt = dot >= 0 ? basename.slice(dot + 1).toLowerCase() : '';
-  const ext = EXTENSION_WHITELIST.has(rawExt) ? rawExt : '';
+  const forced = (forceExtension ?? '').toLowerCase().replace(/^\./, '');
+  const ext = EXTENSION_WHITELIST.has(forced) ? forced : (EXTENSION_WHITELIST.has(rawExt) ? rawExt : '');
   const suffix = ext ? `.${ext}` : '';
   // 前导 `.` 剥掉（`.gitignore` / `..jpg` 形不得以 . 开头）；剥空则走 photo- 兜底
-  const stem = rawStem.replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '');
-  if (stem === '') return `photo-${utcStamp()}${suffix}`;
+  let stem = rawStem.replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '');
+  if (stem === '') stem = `photo-${utcStamp()}`;
+  if (nonce) {
+    const tag = nonce.replace(/[^A-Za-z0-9._-]/g, '_');
+    if (tag) stem = `${stem}-${tag}`;
+  }
   const maxStem = FILENAME_MAX_LENGTH - suffix.length;
   return `${stem.length > maxStem ? stem.slice(0, maxStem) : stem}${suffix}`;
 }
@@ -93,12 +120,12 @@ function readAsBase64(source: Blob, compressed: boolean): Promise<CompressedImag
   });
 }
 
-/** canvas 按最长边 1600 等比缩放（不放大）后重编码为 JPEG。任何一步失败都抛给调用方回落。 */
-async function downscaleToJpegBlob(file: File): Promise<Blob> {
+/** canvas 按最长边 maxEdge 等比缩放（不放大）后以 quality 重编码为 JPEG。任何一步失败都抛给调用方回落。 */
+async function downscaleToJpegBlob(file: File, maxEdge: number, quality: number): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   try {
     const longestEdge = Math.max(bitmap.width, bitmap.height);
-    const scale = longestEdge > MAX_EDGE_PX ? MAX_EDGE_PX / longestEdge : 1;
+    const scale = longestEdge > maxEdge ? maxEdge / longestEdge : 1;
     const canvas = document.createElement('canvas');
     canvas.width = Math.max(1, Math.round(bitmap.width * scale));
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));
@@ -106,7 +133,7 @@ async function downscaleToJpegBlob(file: File): Promise<Blob> {
     if (!ctx) throw new Error('canvas 2d context unavailable');
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((result) => resolve(result), 'image/jpeg', JPEG_QUALITY);
+      canvas.toBlob((result) => resolve(result), 'image/jpeg', quality);
     });
     if (!blob) throw new Error('canvas.toBlob 返回空');
     return blob;
@@ -115,24 +142,36 @@ async function downscaleToJpegBlob(file: File): Promise<Blob> {
   }
 }
 
+/** 原样读取并校验编码后体积：超限且无法压缩时给用户明确错误，而不是白传一次 413。 */
+async function readOriginalWithinLimit(file: File): Promise<CompressedImage> {
+  const original = await readAsBase64(file, false);
+  if (original.base64.length > MAX_ENCODED_BASE64_CHARS) {
+    const approxKb = Math.round((original.base64.length * 3) / 4 / 1024);
+    throw new Error(`文件约 ${approxKb}KB 超过上传上限，且当前浏览器无法压缩——请换一台设备或先用图片工具缩小`);
+  }
+  return original;
+}
+
 /**
- * 证据图片上传前处理：按 planCompression 决定不压（或老浏览器 / jsdom 没有
- * createImageBitmap）时原样回传；需要压则走 canvas 缩放 + JPEG 重编码。压缩失败
- * （解码失败 / canvas 不可用等）一律回落原图，绝不为压缩失败抛错；只有压缩结果仍
- * >900KB 时 throw（这条错误会显示给用户，UI 据此提示重拍或换角度）。
+ * 证据文件上传前处理：按 planCompression 决定不压（或老浏览器 / jsdom 没有
+ * createImageBitmap）时原样回传（编码后超限会明确报错，不白传 413）；需要压则走
+ * 压缩阶梯（标准档 → 降档），**按编码后的 base64 体积判定**——服务端 1mb 限的是整个
+ * JSON 请求体（codex 复审 major：早先按二进制体积设限，编码膨胀后照样 413）。
+ * 压缩失败（解码失败 / canvas 不可用等）一律回落原图，绝不为压缩失败抛错。
  */
 export async function compressImageFile(file: File): Promise<CompressedImage> {
   const plan = planCompression(file);
   const canCompress = plan.compress && typeof globalThis.createImageBitmap === 'function';
-  if (!canCompress) return readAsBase64(file, false);
-  let blob: Blob;
-  try {
-    blob = await downscaleToJpegBlob(file);
-  } catch {
-    return readAsBase64(file, false);
+  if (!canCompress) return readOriginalWithinLimit(file);
+  for (const tier of COMPRESS_LADDER) {
+    let blob: Blob;
+    try {
+      blob = await downscaleToJpegBlob(file, tier.maxEdge, tier.quality);
+    } catch {
+      return readOriginalWithinLimit(file);
+    }
+    const encoded = await readAsBase64(blob, true);
+    if (encoded.base64.length <= MAX_ENCODED_BASE64_CHARS) return encoded;
   }
-  if (blob.size > MAX_COMPRESSED_BYTES) {
-    throw new Error('照片压缩后仍超过 900KB，请重拍或换角度');
-  }
-  return readAsBase64(blob, true);
+  throw new Error('照片压缩后仍超过上传上限，请重拍或换角度');
 }
