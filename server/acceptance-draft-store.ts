@@ -15,9 +15,9 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync,
+  existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { buildScheduleSnapshot, loadScheduleState } from '../shared/schedule-state.js';
 import {
@@ -453,4 +453,236 @@ export function submitAcceptance(packageId: string): SubmitResult {
 export function clearStaging(packageId: string): void {
   rmSync(join(repoRoot(), STAGING_DIR, packageId), {recursive: true, force: true});
   rmSync(draftPath(packageId), {force: true});
+}
+
+// ─── 启动清扫：暂存区按年龄清一次（issue #84，2026-11-04） ───────────────────
+//
+// clearStaging 只有一个触发点：submitAcceptance 成功开完 PR。提交中途失败或业主
+// 放弃提交时，暂存文件会一直躺在 tmp/capture/acceptance-staging 下——tmp/ 整目录
+// 被 .gitignore，业主不可见，无声堆积。这里在 server 启动时补一次按年龄的清扫。
+//
+// 口径（宁可不清）：只删**修改时间早于 7 天**的条目，等于阈值算年轻一律不碰——
+// 失败提交的暂存可能还要用来重试，「失败分可重试与不可重试」的判定不做。目录只在
+// 自身超龄且已空时才删：超龄目录里只要有年轻文件就整个留下（否则整树删除会带走
+// 年轻文件）。整个函数不抛：读不到/删不掉只记日志，绝不阻断启动。
+
+export const STAGING_SWEEP_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export interface StagingSweepEntry {
+  /** 相对暂存区根的路径（posix 风格，由调用方收集） */
+  path: string;
+  mtimeMs: number;
+}
+
+export interface StagingSweepPlan {
+  keep: string[];
+  remove: string[];
+}
+
+/** 纯：按年龄把暂存条目切成 keep/remove。年龄 = nowMs - mtimeMs，等于阈值算年轻。 */
+export function planStagingSweep(entries: readonly StagingSweepEntry[], nowMs: number, maxAgeMs: number): StagingSweepPlan {
+  const keep: string[] = [];
+  const remove: string[] = [];
+  for (const entry of entries) {
+    // 严格超龄才删：等于阈值（正好 7 天）留。时钟回拨/拷贝保留会让 age 为负，同样留。
+    if (nowMs - entry.mtimeMs > maxAgeMs) remove.push(entry.path);
+    else keep.push(entry.path);
+  }
+  return {keep, remove};
+}
+
+export interface StagingSweepFailure {
+  path: string;
+  message: string;
+}
+
+export interface StagingSweepResult {
+  /** 暂存区目录是否存在。不存在 = 跳过（不是错误） */
+  existed: boolean;
+  /** 扫到的条目数（含目录） */
+  scanned: number;
+  removed: number;
+  kept: number;
+  /** 自身超龄但因里面还有年轻条目而未删的目录数 */
+  nonEmptyDirsKept: number;
+  /** 超龄但删除失败（如 EACCES）仍留在盘上的条目数——计入 kept（codex 复审 minor） */
+  deleteLeftBehind: number;
+  failures: StagingSweepFailure[];
+}
+
+export interface StagingSweepOptions {
+  /** 仓库根，默认 repoRoot()（= process.cwd()）。测试注入临时目录用 */
+  root?: string;
+  /** 默认 Date.now()。测试造时钟用 */
+  nowMs?: number;
+  /** 默认 STAGING_SWEEP_MAX_AGE_MS */
+  maxAgeMs?: number;
+  /** 默认 console.log */
+  log?: (line: string) => void;
+}
+
+/**
+ * 递归收集暂存区全部条目（含子目录）的 mtime。根就是 STAGING_DIR：tmp/ 其他子目录不进清单。
+ *
+ * **符号链接安全（codex 复审 blocking）**：readdirSync({recursive:true}) + statSync 会跟随
+ * 目录符号链接——暂存区内一个指向仓内证据目录的 link 会让清单包含 link/old.jpg，随后
+ * 删除循环的 lstatSync 只查最终分量、认不出祖先是 link，rmSync 就会删掉暂存区外的真实
+ * 证据。改为手写遍历：一律 lstatSync（不跟随），**符号链接条目直接跳过**（不进清单、
+ * 不沿它读、更不沿它删），从根上守住「只碰 acceptance-staging」的删除边界。
+ */
+function collectStagingEntries(stagingDir: string): {entries: StagingSweepEntry[]; failures: Array<{path: string; message: string}>} {
+  const entries: StagingSweepEntry[] = [];
+  const failures: Array<{path: string; message: string}> = [];
+  const rootStat = lstatSync(stagingDir, {throwIfNoEntry: false});
+  // 链接根整体放弃：根都是链接时，「只碰暂存区」无从保证
+  if (!rootStat || rootStat.isSymbolicLink() || !rootStat.isDirectory()) return {entries, failures};
+  const readFail = (rel: string, err: unknown): void => {
+    // 读取失败必须进汇总（codex 复审 minor）：早先静默 skip，日志会显示
+    // 「扫到 0 项……失败 0 项」，把「没扫到」伪装成「没得扫」
+    failures.push({path: rel || STAGING_DIR, message: `读取失败：${err instanceof Error ? err.message : String(err)}`});
+  };
+  const walk = (absDir: string, relDir: string): void => {
+    let names: string[];
+    try {
+      names = readdirSync(absDir);
+    } catch (err) {
+      readFail(relDir, err);
+      return;
+    }
+    for (const name of names) {
+      const abs = join(absDir, name);
+      const rel = relDir ? `${relDir}/${name}` : name;
+      let entry;
+      try {
+        entry = lstatSync(abs); // lstat：不跟随符号链接
+      } catch (err) {
+        readFail(rel, err);
+        continue;
+      }
+      if (entry.isSymbolicLink()) continue; // 链接跳过：不沿它读、不沿它删
+      entries.push({path: rel, mtimeMs: entry.mtimeMs});
+      if (entry.isDirectory()) walk(abs, rel);
+    }
+  };
+  walk(stagingDir, "");
+  return {entries, failures};
+}
+
+function depthOf(relPath: string): number {
+  let depth = 1;
+  for (const char of relPath) if (char === '/' || char === '\\') depth++;
+  return depth;
+}
+
+/**
+ * 启动清扫入口：对暂存区做一次按年龄的清理并打一行日志。只碰 acceptance-staging
+ * 自己；暂存区目录不存在 → 跳过不报错；删除失败（权限等）→ 记日志继续，不中断启动。
+ */
+export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): StagingSweepResult {
+  const root = options.root ?? repoRoot();
+  const nowMs = options.nowMs ?? Date.now();
+  const maxAgeMs = options.maxAgeMs ?? STAGING_SWEEP_MAX_AGE_MS;
+  const log = options.log ?? ((line: string) => console.log(line));
+  const stagingDir = join(root, STAGING_DIR);
+  const result: StagingSweepResult = {
+    existed: false, scanned: 0, removed: 0, kept: 0, nonEmptyDirsKept: 0, deleteLeftBehind: 0, failures: [],
+  };
+  // 存在性判定必须区分 ENOENT 与权限错误（codex 复审 minor）：existsSync 在祖先目录
+  // 缺搜索权限时也返回 false——那会把权限故障伪装成「不存在，跳过」，暂存持续积累而
+  // 日志不报失败。改用受保护的 lstat 并按 errno 分流（异常同样不中断启动）。
+  let rootLstat;
+  try {
+    rootLstat = lstatSync(stagingDir, {throwIfNoEntry: false});
+  } catch (err) {
+    if ((err as {code?: string}).code !== 'ENOENT') {
+      const message = err instanceof Error ? err.message : String(err);
+      result.failures.push({path: STAGING_DIR, message: `lstat 失败：${message}`});
+      log(`[server] 暂存区清扫失败（不中断启动）：读 ${STAGING_DIR} 属性出错：${message}`);
+      return result;
+    }
+  }
+  if (!rootLstat) {
+    log(`[server] 暂存区清扫：${STAGING_DIR} 不存在，跳过`);
+    return result;
+  }
+  result.existed = true;
+  // 路径不变量（codex 复审 blocking，第三轮：不再枚举场景，上不变量）——**真实路径
+  // 必须与逻辑路径逐字相等**。前缀校验（「还在仓库内」）不够：tmp/capture 链到仓内
+  // evidence 目录时，realpath 仍在仓库内却落在别处，清扫会删掉证据文件。要求
+  // realpath(stagingDir) === stagingDir 本身，等价于「从仓库根到暂存区的每一级都不
+  // 是符号链接」——祖先有任何链接（无论指向仓内仓外）一律拒绝。这一条覆盖全部
+  // 重定向场景，不需要再逐个案分析。
+  // lstat/realpath 的异常也必须接住（codex 复审 major）：index.ts 在 listen 前无保护
+  // 调用本函数，EACCES/EIO 传出会直接杀死服务启动——与「失败不阻断启动」的约定相反。
+  // 暂存根本身是符号链接：拒绝（rootLstat 已在上面带异常保护地取到）
+  if (rootLstat.isSymbolicLink()) {
+    log(`[server] 暂存区清扫：${STAGING_DIR} 是符号链接，拒绝清扫（只碰真实暂存目录）`);
+    return result;
+  }
+  let stagingReal: string;
+  try {
+    stagingReal = realpathSync(stagingDir);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    result.failures.push({path: STAGING_DIR, message: `realpath 失败：${message}`});
+    log(`[server] 暂存区清扫失败（不中断启动）：解析 ${STAGING_DIR} 出错：${message}`);
+    return result;
+  }
+  if (stagingReal !== stagingDir) {
+    log(`[server] 暂存区清扫：${STAGING_DIR} 的真实路径（${stagingReal}）与逻辑路径不一致——路径上有符号链接，拒绝清扫（只删逻辑路径即真实路径的暂存区）`);
+    return result;
+  }
+
+  let entries: StagingSweepEntry[];
+  let readFailures: Array<{path: string; message: string}> = [];
+  try {
+    const collected = collectStagingEntries(stagingDir);
+    entries = collected.entries;
+    readFailures = collected.failures;
+  } catch (err) {
+    // 读不到（权限/竞态删除）时 fail-loud 到日志但不抛：启动不能被清扫挡住
+    const message = err instanceof Error ? err.message : String(err);
+    result.failures.push({path: STAGING_DIR, message});
+    log(`[server] 暂存区清扫失败（不中断启动）：读 ${STAGING_DIR} 出错：${message}`);
+    return result;
+  }
+  result.failures.push(...readFailures);
+
+  result.scanned = entries.length;
+  const plan = planStagingSweep(entries, nowMs, maxAgeMs);
+  // 先深后浅：子项删掉之后，空掉的超龄目录才能一起删（不留空壳 litter）
+  const ordered = [...plan.remove].sort((a, b) => depthOf(b) - depthOf(a) || a.localeCompare(b));
+  for (const rel of ordered) {
+    const absolute = join(stagingDir, rel);
+    try {
+      const entry = lstatSync(absolute, {throwIfNoEntry: false});
+      if (!entry) continue;
+      if (entry.isDirectory() && readdirSync(absolute).length > 0) {
+        // 超龄目录里还有年轻条目：不整树删，宁可留下这个目录
+        result.nonEmptyDirsKept++;
+        continue;
+      }
+      rmSync(absolute, {recursive: true, force: true});
+      result.removed++;
+    } catch (err) {
+      // 删除失败 = 文件还在：计入 kept（codex 复审 minor），否则日志「留 0 项」而
+      // 文件实际留在盘上，kept 声明的「实际保留项总数」不成立
+      result.deleteLeftBehind++;
+      result.failures.push({path: rel, message: err instanceof Error ? err.message : String(err)});
+    }
+  }
+
+  // kept = 实际保留项总数：年轻条目 + 因含年轻文件整树留下的超龄目录 + 删除失败仍留存的
+  // （codex 复审 minor：早先只计年轻条目，日志会输出「留 1 项（其中 2 个超龄目录…）」自相矛盾）
+  result.kept = plan.keep.length + result.nonEmptyDirsKept + result.deleteLeftBehind;
+  const ageDays = Math.round(maxAgeMs / 86_400_000);
+  log(
+    `[server] 暂存区清扫：${STAGING_DIR} 扫到 ${result.scanned} 项，删 ${result.removed} 项（修改时间早于 ${ageDays} 天），`
+    + `留 ${result.kept} 项${result.nonEmptyDirsKept ? `（其中 ${result.nonEmptyDirsKept} 个超龄目录因含年轻文件未删）` : ''}，`
+    + `失败 ${result.failures.length} 项`,
+  );
+  for (const failure of result.failures) {
+    log(`[server] 暂存区清扫：删除失败 ${failure.path}：${failure.message}`);
+  }
+  return result;
 }
