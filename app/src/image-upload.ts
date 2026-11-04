@@ -122,48 +122,51 @@ export function planCompression(file: {type: string; size: number}): {compress: 
 }
 
 /**
- * 动图/不可压格式的字节级判定（纯函数）。canvas 只画一帧再导 JPEG，会把动图压成单帧——
- * 证据要展示设备动作/故障过程时后续帧全丢（codex 复审 major）。判定：
- *   - GIF：**恒 true**。GIF89a 规范里 GCE（图形控制扩展）是**可选块**——多帧 GIF 可以
- *     只有一个甚至没有 GCE，单帧图也可能带多个，按 GCE 计数判多帧会漏（codex 复审
- *     blocking）；按块结构数 Image Descriptor 才是可靠的，但那等于在手写解析器里养 bug。
- *     取舍：>400KB 的 GIF 绝大多数本身就是动图（所以它才大），**一律不压**——静态大
- *     GIF 损失的只是压缩率，且仍受请求体上限保护（超限有明确报错），方向保守。
- *   - WebP：RIFF/WEBP/VP8X 且 VP8X 标志字节 bit 0x02（ANIM）——规范字段，可靠；
- *   - PNG：存在 acTL 动画控制块即 APNG（W3C PNG 规范；codex 复审 blocking——
- *     image/png 与 image/apng 的 MIME 都可能是 image/png，只能按块判定）；
- *   - 其余（JPEG/HEIC 等）无多帧动画形态，false。
- * 读不到字节按动图处理（不压，保守）。
+ * 该格式是否「确认可安全单帧化」（纯函数）——压缩白名单，**默认拒绝**。
+ *
+ * 背景：canvas 只画一帧再导 JPEG，任何多帧格式都会被压成单帧——证据要展示设备动作/
+ * 故障过程时后续帧全丢。按黑名单追动画格式（GIF→WebP→APNG→AVIF…）是打地鼠：AVIF
+ * 官方规范支持动画、HEIC 可含连拍序列、JPEG XL 也能动，而 createImageBitmap 对动画
+ * 只取默认帧/首帧（HTML 标准）。codex 复审 blocking 的结论：**只对确认可安全单帧的
+ * 格式启用压缩，其他保留原字节**——未识别 ≠ 静态。
+ *
+ * 白名单（逐格式论证）：
+ *   - image/jpeg：JPEG 没有多帧形态（baseline/progressive 都是单图）——安全；
+ *   - image/png：仅当无 acTL 动画块（W3C PNG 规范；image/png 与 image/apng 的 MIME
+ *     相同，只能按块判）；
+ *   - image/webp：仅当无 VP8X ANIM 标志（规范字段，可靠）；
+ *   - 其余（GIF/HEIC/HEIF/AVIF/JPEG XL/TIFF/BMP…）：不确认 → 不压，保留原字节
+ *     （超请求体上限时有明确报错，不静默）。
  */
-export function isAnimatedImageBytes(type: string, bytes: Uint8Array): boolean {
+export function isSingleFrameSafe(type: string, bytes: Uint8Array): boolean {
   try {
-    if (type === 'image/gif') return true; // 见上：GCE 计数不可靠，GIF 一律不压
+    if (type === 'image/jpeg') return true;
+    if (type === 'image/png') {
+      // acTL 动画控制块（在首个 IDAT 之前）。块类型是 ASCII，扫到即判动图；压缩数据里
+      // 恰好出现同四字节的概率可忽略，且误判方向是「不压」（保守）。
+      const actl = [0x61, 0x63, 0x54, 0x4c]; // 'acTL'
+      for (let i = 0; i + 3 < bytes.length; i += 1) {
+        if (bytes[i] === actl[0] && bytes[i + 1] === actl[1] && bytes[i + 2] === actl[2] && bytes[i + 3] === actl[3]) return false;
+      }
+      return true;
+    }
     if (type === 'image/webp') {
       if (bytes.length < 21) return false;
       const tag = (offset: number): string => String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
-      if (tag(0) !== 'RIFF' || tag(8) !== 'WEBP' || tag(12) !== 'VP8X') return false;
-      return (bytes[20] & 0x02) !== 0; // VP8X 首字节：bit1 = ANIMATION_FLAG
+      if (tag(0) !== 'RIFF' || tag(8) !== 'WEBP' || tag(12) !== 'VP8X') return false; // 非 VP8X（损失式 VP8 等）无法则判，保守不压
+      return (bytes[20] & 0x02) === 0; // VP8X 首字节：bit1 = ANIMATION_FLAG，置了则不安全
     }
-    if (type === 'image/png' || type === 'image/apng') {
-      // acTL 动画控制块（在首个 IDAT 之前）。块类型是 ASCII，扫到即判动图；压缩数据里
-      // 恰好出现同四字节的概率可忽略，且误判的后果只是不压缩（保留原字节，保守方向）。
-      const actl = [0x61, 0x63, 0x54, 0x4c]; // 'acTL'
-      for (let i = 0; i + 3 < bytes.length; i += 1) {
-        if (bytes[i] === actl[0] && bytes[i + 1] === actl[1] && bytes[i + 2] === actl[2] && bytes[i + 3] === actl[3]) return true;
-      }
-      return false;
-    }
-    return false;
+    return false; // GIF/HEIC/HEIF/AVIF/JXL… 未确认单帧 → 不压
   } catch {
-    return true; // 解析异常按动图处理：不压，保留原字节
+    return false; // 解析异常：保守不压
   }
 }
 
-/** 读文件头做动图检测；读取失败按动图处理（保守：不压）。 */
-async function detectAnimation(file: File): Promise<boolean> {
+/** 读全文件做单帧安全性判定；读取失败按不安全处理（保守：不压，保留原字节）。 */
+async function detectSingleFrameUnsafe(file: File): Promise<boolean> {
   try {
     const buffer = await file.arrayBuffer();
-    return isAnimatedImageBytes(file.type, new Uint8Array(buffer));
+    return !isSingleFrameSafe(file.type, new Uint8Array(buffer));
   } catch {
     return true;
   }
@@ -225,16 +228,17 @@ async function readOriginalWithinLimit(file: File, why: string): Promise<Compres
 }
 
 /**
- * 证据文件上传前处理：按 planCompression 决定不压（非图片/已够小）或动图（GIF 一律 /
- * WebP ANIM / APNG）时原样回传（按完整请求体上限校验，超限明确报错不白传 413）；
- * 老浏览器 / jsdom 没有 createImageBitmap 同样回落。需要压则走压缩阶梯（标准档 →
- * 降档），**按编码后的 base64 体积判定**——服务端 1mb 限整个 JSON 请求体。压缩失败
- * （解码失败 / canvas 不可用等）一律回落原图，绝不为压缩失败抛错。
+ * 证据文件上传前处理：按 planCompression 决定不压（非图片/已够小）或格式未经确认可
+ * 安全单帧化（GIF/HEIC/AVIF/带动块的 PNG/带动画标志的 WebP…）时原样回传（按完整
+ * 请求体上限校验，超限明确报错不白传 413）；老浏览器 / jsdom 没有 createImageBitmap
+ * 同样回落。需要压则走压缩阶梯（标准档 → 降档），**按编码后的 base64 体积判定**——
+ * 服务端 1mb 限整个 JSON 请求体。压缩失败（解码失败 / canvas 不可用等）一律回落原图，
+ * 绝不为压缩失败抛错。
  */
 export async function compressImageFile(file: File): Promise<CompressedImage> {
   const plan = planCompression(file);
   if (!plan.compress) return readOriginalWithinLimit(file, '，且当前文件类型不压缩');
-  if (await detectAnimation(file)) return readOriginalWithinLimit(file, '，且动图不压缩（保留全部帧）');
+  if (await detectSingleFrameUnsafe(file)) return readOriginalWithinLimit(file, '，且该格式未经确认可安全单帧化（保留原文件，避免丢帧）');
   const canCompress = typeof globalThis.createImageBitmap === 'function';
   if (!canCompress) return readOriginalWithinLimit(file, '，且当前浏览器无法压缩');
   for (const tier of COMPRESS_LADDER) {

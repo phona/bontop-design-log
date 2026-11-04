@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { safeEvidenceFilename, nextUploadNonce, planCompression, compressImageFile, isAnimatedImageBytes } from './image-upload';
+import { safeEvidenceFilename, nextUploadNonce, planCompression, compressImageFile, isSingleFrameSafe } from './image-upload';
 
 // canvas 真实压缩路径（createImageBitmap → canvas 缩放 → toBlob JPEG 重编码）jsdom 跑不了：
 // jsdom 不实现 createImageBitmap，HTMLCanvasElement.toBlob 也没有编码器实现。这里**不
@@ -155,7 +155,7 @@ describe('planCompression（issue #70）', () => {
   });
 });
 
-describe('isAnimatedImageBytes（codex 复审 major：动图不压）', () => {
+describe('isSingleFrameSafe（codex 复审 blocking：压缩白名单，默认拒绝）', () => {
   const webp = (animFlag: boolean): Uint8Array => {
     const bytes = new Uint8Array(32).fill(0);
     bytes.set([0x52, 0x49, 0x46, 0x46], 0); // RIFF
@@ -164,50 +164,47 @@ describe('isAnimatedImageBytes（codex 复审 major：动图不压）', () => {
     bytes[20] = animFlag ? 0x02 : 0x00; // VP8X 标志字节 bit1 = ANIM
     return bytes;
   };
+  const png = (withActl: boolean): Uint8Array => {
+    const bytes = new Uint8Array(64).fill(0);
+    bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0); // PNG 签名
+    if (withActl) bytes.set([0x61, 0x63, 0x54, 0x4c], 20); // acTL 块类型
+    return bytes;
+  };
 
-  it('GIF 恒判动图（GCE 计数不可靠：GCE 是可选块，多帧也可只有 0/1 个）', () => {
-    // codex 复审 blocking：GIF89a 规范 §23——GCE 每帧可选。按 GCE 计数判多帧会把
-    // 「只有一个 GCE 的多帧 GIF」误判静态而压成单帧。取舍：GIF 一律不压（大 GIF
-    // 基本都是动图；静态大 GIF 只损失压缩率，仍受请求体上限保护）。
-    const gif = (gceCount: number): Uint8Array => {
-      const bytes = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61];
-      const gce = [0x21, 0xf9, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00];
-      for (let i = 0; i < gceCount; i += 1) bytes.push(...gce);
-      return new Uint8Array(bytes);
-    };
-    expect(isAnimatedImageBytes('image/gif', gif(0))).toBe(true);
-    expect(isAnimatedImageBytes('image/gif', gif(1))).toBe(true); // 单 GCE 多帧：旧实现的漏判场景
-    expect(isAnimatedImageBytes('image/gif', gif(5))).toBe(true);
-    // 空字节/坏字节同样不压（保守方向）
-    expect(isAnimatedImageBytes('image/gif', new Uint8Array(0))).toBe(true);
+  it('JPEG 恒定安全：JPEG 没有多帧形态', () => {
+    expect(isSingleFrameSafe('image/jpeg', new Uint8Array([0xff, 0xd8, 0xff, 0xe0]))).toBe(true);
+    expect(isSingleFrameSafe('image/jpeg', new Uint8Array(0))).toBe(true);
   });
 
-  it('WebP：VP8X 动画标志位判定，非 VP8X（损失式 VP8 ）判静态', () => {
-    expect(isAnimatedImageBytes('image/webp', webp(true))).toBe(true);
-    expect(isAnimatedImageBytes('image/webp', webp(false))).toBe(false);
+  it('GIF 恒不安全（GCE 计数不可靠 + GIF 天生多帧格式）', () => {
+    // codex 复审 blocking 链：GCE 是可选块（规范 §23），计数判多帧会漏；最终结论是
+    // GIF 直接进「不确认」集合——大 GIF 基本都是动图，静态的只损失压缩率。
+    expect(isSingleFrameSafe('image/gif', new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61]))).toBe(false);
+    expect(isSingleFrameSafe('image/gif', new Uint8Array(0))).toBe(false);
+  });
+
+  it('WebP：无 VP8X ANIM 标志才安全；非 VP8X 保守不压', () => {
+    expect(isSingleFrameSafe('image/webp', webp(false))).toBe(true);
+    expect(isSingleFrameSafe('image/webp', webp(true))).toBe(false);
     const lossy = webp(false);
-    lossy.set([0x56, 0x50, 0x38, 0x20], 12); // VP8 损失式，非 VP8X
-    expect(isAnimatedImageBytes('image/webp', lossy)).toBe(false);
+    lossy.set([0x56, 0x50, 0x38, 0x20], 12); // VP8 损失式，非 VP8X——无法则判，保守
+    expect(isSingleFrameSafe('image/webp', lossy)).toBe(false);
   });
 
-  it('PNG：存在 acTL 动画块判 APNG 动图，普通 PNG 判静态', () => {
-    // codex 复审 blocking：PNG 支持 acTL 声明的多帧动画（W3C PNG 规范），且 MIME 通常
-    // 还是 image/png——不检测就会把动画 PNG 压成单帧，证据静默丢帧
-    const png = (withActl: boolean): Uint8Array => {
-      const bytes = new Uint8Array(64).fill(0);
-      bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0); // PNG 签名
-      if (withActl) bytes.set([0x61, 0x63, 0x54, 0x4c], 20); // acTL 块类型
-      return bytes;
-    };
-    expect(isAnimatedImageBytes('image/png', png(true))).toBe(true);
-    expect(isAnimatedImageBytes('image/apng', png(true))).toBe(true);
-    expect(isAnimatedImageBytes('image/png', png(false))).toBe(false);
+  it('PNG：无 acTL 才安全（APNG 的 MIME 也是 image/png，只能按块判）', () => {
+    expect(isSingleFrameSafe('image/png', png(false))).toBe(true);
+    expect(isSingleFrameSafe('image/png', png(true))).toBe(false);
+    expect(isSingleFrameSafe('image/apng', png(true))).toBe(false);
   });
 
-  it('JPEG 与静态 PNG/HEIC 无多帧动画形态，false', () => {
-    expect(isAnimatedImageBytes('image/jpeg', new Uint8Array([0xff, 0xd8, 0xff]))).toBe(false);
-    expect(isAnimatedImageBytes('image/png', new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe(false);
-    expect(isAnimatedImageBytes('image/heic', new Uint8Array([0x00, 0x00, 0x00, 0x18]))).toBe(false);
+  it('AVIF/HEIC/HEIF/JPEG XL 等未确认格式恒不压（codex 复审 blocking：AVIF 官方支持动画）', () => {
+    // 黑名单追格式是打地鼠（GIF→WebP→APNG→AVIF…），白名单默认拒绝终结这个循环：
+    // 任何今天没想到、明天出现的动画格式，默认就是「不压、保留原字节」。
+    expect(isSingleFrameSafe('image/avif', new Uint8Array([0x00, 0x00, 0x00, 0x18]))).toBe(false);
+    expect(isSingleFrameSafe('image/heic', new Uint8Array([0x00, 0x00, 0x00, 0x18]))).toBe(false);
+    expect(isSingleFrameSafe('image/heif', new Uint8Array([0x00, 0x00, 0x00, 0x18]))).toBe(false);
+    expect(isSingleFrameSafe('image/jxl', new Uint8Array([0xff, 0x0a]))).toBe(false);
+    expect(isSingleFrameSafe('application/pdf', new Uint8Array([0x25, 0x50, 0x44, 0x46]))).toBe(false);
   });
 
   it('gif 在白名单内：原样回传的动图证据保留扩展名（codex 复审 minor）', () => {
