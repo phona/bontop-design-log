@@ -25,6 +25,26 @@ async function fillTokenDialog(token: string): Promise<void> {
   (document.getElementById('write-token-confirm') as HTMLButtonElement).click();
 }
 
+/** 统计 #write-token-dialog 被插入 document.body 的次数（并发重复弹框会 >1）。 */
+function watchDialogAdditions(): { count: number; stop: () => void } {
+  const watcher = { count: 0, stop: () => {} };
+  const observer = new MutationObserver((records) => {
+    for (const record of records) {
+      for (const node of Array.from(record.addedNodes)) {
+        if (node instanceof HTMLElement && node.id === 'write-token-dialog') watcher.count += 1;
+      }
+    }
+  });
+  observer.observe(document.body, { childList: true });
+  watcher.stop = () => observer.disconnect();
+  return watcher;
+}
+
+/** 冲刷微任务/计时器，确保 MutationObserver 回调已交付。 */
+async function flushObservers(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
+
 describe('api-write（issue #64 写操作 token 认证）', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -131,5 +151,65 @@ describe('api-write（issue #64 写操作 token 认证）', () => {
     const res = await apiWrite('/api/acceptance/submit', { method: 'POST' });
     expect(res.status).toBe(422);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('并发两个写请求且本地无 token → 只弹一个对话框，输入一次两个请求都带同一 token 发出', async () => {
+    expect(getStoredWriteToken()).toBeNull();
+    const dialogs = watchDialogAdditions();
+    const fetchMock = mockFetch(() => okResponse());
+
+    // 对象点击的 postViewContext 与后台 visual-commands ack 并发
+    const pendingA = apiWrite('/api/view-context', { method: 'POST', body: '{}' });
+    const pendingB = apiWrite('/api/visual-commands/ack', { method: 'POST', body: '{}' });
+    await fillTokenDialog('shared-token');
+
+    const [resA, resB] = await Promise.all([pendingA, pendingB]);
+    expect(resA.status).toBe(200);
+    expect(resB.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const urls = (fetchMock.mock.calls as Array<[string, RequestInit]>).map(([url]) => url).sort();
+    expect(urls).toEqual(['/api/view-context', '/api/visual-commands/ack']);
+    for (const [, init] of fetchMock.mock.calls as Array<[string, RequestInit]>) {
+      expect(new Headers(init.headers).get('x-bontop-token')).toBe('shared-token');
+    }
+    expect(getStoredWriteToken()).toBe('shared-token');
+    await flushObservers();
+    expect(dialogs.count).toBe(1);
+    dialogs.stop();
+  });
+
+  it('交错 401：旧 token 请求迟到时不清掉并发请求刚存入的新 token，也不重复弹框', async () => {
+    localStorage.setItem(TOKEN_KEY, 'old-token');
+    const dialogs = watchDialogAdditions();
+    let releaseFirst!: (response: Response) => void;
+    const firstHeld = new Promise<Response>((resolve) => { releaseFirst = resolve; });
+    let call = 0;
+    const fetchMock = mockFetch(() => {
+      call += 1;
+      if (call === 1) return firstHeld;              // 请求 1：旧 token，401 迟回
+      if (call === 2) return unauthorizedResponse(); // 请求 2：旧 token，401 先回
+      return okResponse();                           // 之后的重发一律放行
+    });
+
+    const pending1 = apiWrite('/api/a', { method: 'POST' });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const pending2 = apiWrite('/api/b', { method: 'POST' });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+
+    // 请求 2 先拿到 401 → 弹框 → 输入新 token → 存入 → 重发成功
+    await fillTokenDialog('new-token');
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    expect(localStorage.getItem(TOKEN_KEY)).toBe('new-token');
+
+    // 请求 1 的 401 此刻才返回：不得清掉新 token，也不得再弹框，直接用新 token 重发
+    releaseFirst(unauthorizedResponse());
+    await expect(pending1).resolves.toMatchObject({ status: 200 });
+    await expect(pending2).resolves.toMatchObject({ status: 200 });
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(new Headers((fetchMock.mock.calls[3] as [string, RequestInit])[1].headers).get('x-bontop-token')).toBe('new-token');
+    expect(localStorage.getItem(TOKEN_KEY)).toBe('new-token');
+    await flushObservers();
+    expect(dialogs.count).toBe(1);
+    dialogs.stop();
   });
 });
