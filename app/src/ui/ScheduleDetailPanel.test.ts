@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ScheduleDetailPanel } from './ScheduleDetailPanel.js';
 import { ScheduleSelectionStore } from '../state/schedule-selection.js';
 import type { ScheduleSnapshot, SchedulePackageView, ScheduleCheckView } from '@shared/schedule-state';
@@ -2129,5 +2129,285 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect(body.textContent).toContain('onerror=alert(1)');
     expect(body.textContent).toContain('<script>alert(2)</script>');
     expect(body.textContent).toContain('正文含 <img src=x onerror=alert(1)>');
+  });
+});
+
+// ─── 移动端现场视图（issue #70 PR B）：字段采集布局 ───
+// 同一面板实例、同一写路径状态机（pkgRuns/draftResults/touched），render() 按
+// isMobileChrome 分支。这里只钉布局分支、钩子契约与能力订阅；上面既有用例
+// （桌面默认 matchMedia 不命中）一行未动，即桌面回归的证明。
+
+/** 可中途改判的 matchMedia mock：matches 现读现算，fire 触发已注册的 change 监听。 */
+function installMatchMedia(initial: (query: string) => boolean) {
+  let matcher = initial;
+  const listeners = new Map<string, Set<() => void>>();
+  vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+    get matches() { return matcher(query); },
+    media: query,
+    addEventListener: (_: string, cb: () => void) => {
+      const set = listeners.get(query) ?? new Set();
+      set.add(cb);
+      listeners.set(query, set);
+    },
+    removeEventListener: (_: string, cb: () => void) => {
+      listeners.get(query)?.delete(cb);
+    },
+  })));
+  return {
+    setMatches: (next: (query: string) => boolean) => { matcher = next; },
+    fire: (query: string) => { listeners.get(query)?.forEach((cb) => cb()); },
+  };
+}
+
+describe('ScheduleDetailPanel 移动端现场视图（字段布局，issue #70 PR B）', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="right-panel-stack"></div><div id="approval-page-panels"></div>';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('窄视口（≤700px）：字段布局出现、桌面宽表退场，data-* 钩子契约全套在场', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    // 草稿带回一条已落定证据：证据区的 remove/path 钩子随 renderEvidenceArea 出场
+    const {panel} = await mountPanel({handlers: {draft: () => ({package_id: 'PKG-010', results: [
+      {check_id: 'SCH-010-01', status: 'passed', checked_by: '老张', checked_at: '2026-11-01', evidence: [FINAL_PATH]},
+    ]})}});
+    const body = document.querySelector('#schedule-detail-body') as HTMLElement;
+    // 字段布局标记 + 桌面宽表退场
+    expect(body.querySelector('[data-field-layout]')).toBeTruthy();
+    expect(body.querySelectorAll('[data-field-card]').length).toBe(3);
+    expect(body.querySelector('tr[data-check-op]')).toBeNull();
+    expect(document.querySelector('#schedule-detail-panel')!.hasAttribute('data-field-mode')).toBe(true);
+    // 包级状态行钩子（缺一个保存状态行就静默停更）
+    expect(body.querySelector('[data-save-status]')!.textContent).toContain('已存 tmp/');
+    expect(body.querySelector('[data-draft-status]')!.textContent).toContain('已载入 tmp/ 草稿 1 条');
+    // 逐检查钩子契约：一个都不能少
+    for (const checkId of ['SCH-010-01', 'SCH-010-02', 'SCH-010-03']) {
+      expect(body.querySelector(`[data-check-id="${checkId}"]`), `[data-check-id=${checkId}]`).toBeTruthy();
+      expect(body.querySelector(`[data-draft-value="${checkId}"]`)).toBeTruthy();
+      for (const status of ['passed', 'failed', 'not_applicable']) {
+        expect(body.querySelector(`[data-status-btn="${checkId}"][data-status="${status}"]`), `[data-status-btn=${checkId}][data-status=${status}]`).toBeTruthy();
+      }
+      expect(body.querySelector(`[data-checked-by="${checkId}"]`)).toBeTruthy();
+      expect(body.querySelector(`[data-checked-at="${checkId}"]`)).toBeTruthy();
+      expect(body.querySelector(`[data-note="${checkId}"]`)).toBeTruthy();
+      expect(body.querySelector(`[data-check-issues="${checkId}"]`)).toBeTruthy();
+      const area = body.querySelector(`[data-evidence-area="${checkId}"]`)!;
+      expect(area, `[data-evidence-area=${checkId}]`).toBeTruthy();
+      expect(area.querySelector('[data-evidence-file]')).toBeTruthy();
+      expect(area.querySelector('[data-evidence-finalize]')).toBeTruthy();
+    }
+    // 已通过检查的复验钩子（同桌面条件）+ 已落定证据的 remove/path
+    expect(body.querySelector('[data-supersedes="SCH-010-03"]')).toBeTruthy();
+    expect(body.querySelector('[data-evidence-remove="SCH-010-01"]')).toBeTruthy();
+    expect(body.querySelector('[data-evidence-path]')!.getAttribute('data-evidence-path')).toBe(FINAL_PATH);
+    // 现场大按钮（min-height 56px）与全宽输入
+    const passedBtn = body.querySelector('[data-status-btn="SCH-010-01"][data-status="passed"]') as HTMLElement;
+    expect(passedBtn.getAttribute('style')).toContain('min-height:56px');
+    expect((body.querySelector('[data-checked-by="SCH-010-01"]') as HTMLElement).getAttribute('style')).toContain('width:100%');
+    // 现场采集卡带上桌面宽表不丢的字段（方法/通过标准/指纹前 12 位）
+    expect(body.textContent).toContain('现场核对');
+    expect(body.textContent).toContain('与施工图一致，无遗留墙体');
+    expect(body.textContent).toContain('abc123def456');
+    panel.hide();
+  });
+
+  it('字段 DOM 走同一写路径：拍照→暂存→落定→passed 的 PUT body 与桌面路径逐字一致', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    const {panel, calls} = await mountPanel();
+    // 与桌面证据流（上面「证据：选文件→暂存→选为最终证据…」一条）同一串操作，只换布局
+    const fileInput = document.querySelector('[data-evidence-file="SCH-010-01"]') as HTMLInputElement;
+    const file = new File(['fake-image-bytes'], 'a.jpg', {type: 'image/jpeg'});
+    Object.defineProperty(fileInput, 'files', {value: [file], configurable: true});
+    fileInput.dispatchEvent(new Event('change', {bubbles: true}));
+    await vi.waitFor(() => expect(calls.some((call) => call.url === '/api/acceptance/evidence' && call.method === 'POST')).toBe(true));
+    click('[data-evidence-finalize="SCH-010-01"]');
+    await vi.waitFor(() => expect(calls.some((call) => call.url === '/api/acceptance/evidence/finalize')).toBe(true));
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    await vi.waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true), {timeout: 3000});
+    const put = calls.find((call) => call.method === 'PUT')!;
+    expect(put.url).toBe('/api/acceptance/draft');
+    expect(put.body).toEqual({
+      package_id: 'PKG-010',
+      results: [{check_id: 'SCH-010-01', status: 'passed', checked_by: '', checked_at: '2026-11-02', evidence: [FINAL_PATH]}],
+    });
+    expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存');
+    panel.hide();
+  });
+
+  it('能力从窄变宽：重渲染回桌面布局，同一实例的草稿状态不丢', async () => {
+    const media = installMatchMedia((query) => query === '(max-width: 700px)');
+    const {panel} = await mountPanel({handlers: {draft: () => ({package_id: 'PKG-010', results: [
+      {check_id: 'SCH-010-01', status: 'failed', checked_by: '老张', checked_at: '2026-11-01', evidence: []},
+    ]})}});
+    expect(document.querySelector('[data-field-layout]')).toBeTruthy();
+    // 视口变宽（改判 + 触发 change）：重渲染回桌面宽表
+    media.setMatches(() => false);
+    media.fire('(max-width: 700px)');
+    await vi.waitFor(() => expect(document.querySelector('tr[data-check-op="SCH-010-01"]')).toBeTruthy());
+    expect(document.querySelector('[data-field-layout]')).toBeNull();
+    expect(document.querySelector('#schedule-detail-panel')!.hasAttribute('data-field-mode')).toBe(false);
+    // 同一状态机：字段布局里载入的草稿值在桌面布局照常并排显示
+    expect(document.querySelector('tr[data-check-op="SCH-010-01"]')!.textContent).toContain('草稿值：failed（未通过）');
+    expect((document.querySelector('[data-checked-by="SCH-010-01"]') as HTMLInputElement).value).toBe('老张');
+    panel.hide();
+  });
+
+  it('桌面默认（matchMedia 不命中）：现有布局一行不变（宽表 + 无 data-field-mode 属性）', async () => {
+    // 不装 matchMedia stub：无命中 → readCapabilities 全 false → 桌面布局
+    const {panel} = await mountPanel();
+    const body = document.querySelector('#schedule-detail-body') as HTMLElement;
+    expect(body.querySelector('[data-field-layout]')).toBeNull();
+    expect(body.querySelectorAll('tr[data-check-id]').length).toBe(3);
+    expect(body.querySelector('tr[data-check-op="SCH-010-01"]')).toBeTruthy();
+    expect(document.querySelector('#schedule-detail-panel')!.hasAttribute('data-field-mode')).toBe(false);
+    // 写路径钩子不受布局影响
+    expect(body.querySelector('[data-save-status]')).toBeTruthy();
+    expect(body.querySelector('[data-status-btn="SCH-010-01"][data-status="passed"]')).toBeTruthy();
+    panel.hide();
+  });
+
+  it('字段布局保留 3D 高亮入口：scope 就绪时按钮可用、点了走 onHighlight（codex 复审 major）', async () => {
+    // codex 复审 major：renderProjectScope 不是纯展示——它含着唯一的「在 3D 中高亮」
+    // 入口。窄屏/触摸主输入会自动进字段布局且没有退回桌面的控件，省略它手机就从包
+    // 详情跳不到 3D 高亮。这里钉字段布局里的精简入口（按钮 + 计数）真的在场可用。
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    vi.stubGlobal('fetch', stubFetch(snapshot(packageView()), projectPayload()));
+    const selection = new ScheduleSelectionStore();
+    const onHighlight = vi.fn();
+    const panel = new ScheduleDetailPanel(selection, {onHighlight});
+    panel.subscribe();
+    selection.set({packageId: 'PKG-010'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('[data-field-scope]')).toBeTruthy());
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('全项目范围'));
+
+    const button = document.querySelector('#schedule-detail-highlight') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.textContent).toContain('去 3D 看这包');
+    // 计数与桌面同源（resolveScopeFor 一处实现）
+    const scope = document.querySelector('[data-field-scope]') as HTMLElement;
+    expect(scope.textContent).toContain('房间 2 个');
+    button.click();
+    expect(onHighlight).toHaveBeenCalledWith('PKG-010');
+    panel.hide();
+  });
+
+  it('字段布局的 3D 作用域取数失败时有重试入口（codex 复审 major 同条）', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    // /api/project 失败 → projectState error；重试按钮必须在场（id 与桌面一致，
+    // bind() 的既有绑定直接复用，点了走 loadProjectScope）
+    let projectCalls = 0;
+    vi.stubGlobal('fetch', vi.fn(async (path: string) => {
+      if (path.includes('/api/project')) {
+        projectCalls += 1;
+        return {ok: false, status: 500, json: async () => ({error: 'boom'})} as Response;
+      }
+      return {ok: true, status: 200, json: async () => snapshot(packageView())} as Response;
+    }));
+    const panel = new ScheduleDetailPanel(new ScheduleSelectionStore());
+    panel.subscribe();
+    (panel as unknown as {selection: ScheduleSelectionStore}).selection.set({packageId: 'PKG-010'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-scope-retry')).toBeTruthy());
+    expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('3D 作用域暂不可用');
+    // 重试：再打一次 /api/project（仍失败但证明按钮接着 loadProjectScope）
+    (document.querySelector('#schedule-detail-scope-retry') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(projectCalls).toBeGreaterThan(1));
+    panel.hide();
+  });
+
+  it('面板根内联 padding-bottom 含底部安全区（codex 复审 minor）', () => {
+    // 样式表的 padding-bottom 盖不住内联 padding——安全区必须走内联；且不能塞
+    // cssText 的 padding 简写（jsdom 解析器会丢掉含 env() 的整条声明），属性
+    // 赋值两者都满足。桌面 env()=0 无感。
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    const panel = new ScheduleDetailPanel(new ScheduleSelectionStore());
+    panel.show();
+    const el = document.querySelector('#schedule-detail-panel') as HTMLElement;
+    expect(el.style.paddingBottom).toBe('calc(14px + env(safe-area-inset-bottom))');
+    // 其余声明没被连带丢掉（jsdom 对 cssText 是逐条解析）
+    expect(el.style.background).toBe('rgb(26, 26, 46)');
+    panel.hide();
+  });
+
+  it('包切换条 + 禁用逻辑同源：点 chip 换包；open_gates 非空时 passed 保持禁用', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const {selection, panel} = await mountPanel({snapshot: {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}}});
+    // 禁用逻辑与桌面同一方法（renderStatusButtons 加尺寸参数，不重抄判断）
+    const blocked = document.querySelector('[data-status-btn="SCH-010-02"][data-status="passed"]') as HTMLButtonElement;
+    expect(blocked.disabled).toBe(true);
+    expect(blocked.title).toContain('DEC-瓷砖');
+    expect((document.querySelector('[data-status-btn="SCH-010-02"][data-status="failed"]') as HTMLButtonElement).disabled).toBe(false);
+    expect((document.querySelector('[data-status-btn="SCH-010-01"][data-status="passed"]') as HTMLButtonElement).disabled).toBe(false);
+    // 包切换 chips：点 B → 选中态与渲染都跟到 B
+    expect(document.querySelectorAll('[data-package-chip]').length).toBe(2);
+    (document.querySelector('[data-package-chip="PKG-020"]') as HTMLButtonElement).click();
+    expect(selection.get().packageId).toBe('PKG-020');
+    await vi.waitFor(() => expect(document.querySelector('[data-field-layout]')!.textContent).toContain('第二个包'));
+    expect(document.querySelector('[data-field-card="SCH-020-01"]')).toBeTruthy();
+    expect(document.querySelector('[data-field-card="SCH-010-01"]')).toBeNull();
+    panel.hide();
+  });
+
+  // 结构完备性守卫（2026-11-04 codex 复审 2 major 的根因：字段布局逐段省略桌面
+  // 信息——未展开选择器摘要、整段预算、指纹脚注都这么丢的）。本条把桌面 render()
+  // 各段的标志性内容列成清单，逐项断言字段布局里有对应落点。以后任何人再从
+  // 字段布局删一段，先过这一关——它就是防「又丢了什么」的那条测试。
+  // 口径：只收录**影响现场采集决策**的信息（状态/阻塞/钱/检查标准/高亮范围/
+  // 指纹）；桌面纯参考项（作用域 id 明细清单、合批渲染实现注）不收录，理由见
+  // renderFieldScope 注释里的「刻意省略」。
+  it('结构完备性守卫：桌面各段标志性内容在字段布局里都有落点', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    vi.stubGlobal('fetch', stubFetch(snapshot(packageView()), projectPayload()));
+    const selection = new ScheduleSelectionStore();
+    const panel = new ScheduleDetailPanel(selection);
+    panel.subscribe();
+    selection.set({packageId: 'PKG-010'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('[data-field-layout]')).toBeTruthy());
+    // 等 3D 作用域展开完（未展开选择器行要 projectState ready 后才在场）
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('未展开选择器'));
+
+    const text = document.querySelector('[data-field-layout]')!.textContent ?? '';
+    const signatures: Array<[string, string]> = [
+      // ── 桌面 renderHeader：包名/id、状态与就绪的声明值并列、门槛、依赖、责任角色、描述 ──
+      ['头部', '拆改与砌筑'], ['头部', 'PKG-010'],
+      ['头部', '进行中'], ['头部', '（声明 in_progress）'],
+      ['头部', '就绪'], ['头部', '（声明 ready）'],
+      ['头部', '付款门槛：GATE-010-A'],
+      ['头部', '依赖：PKG-000'], ['头部', '责任角色：施工方、业主'],
+      ['头部', '拆改、砌筑、抹灰'],
+      // ── 桌面 renderBlockers（字段布局复用同一方法，含已关闭项）──
+      ['阻塞', 'BLK-量房'], ['阻塞', '未关闭'], ['阻塞', '解除条件：量房报告归档'],
+      ['阻塞', 'BLK-旧图'], ['阻塞', '已关闭'],
+      // ── 桌面 renderBudget（codex major：曾整段缺失——看不见钱仍能提交）──
+      ['预算', '批准 ¥12,000'], ['预算', '已成交 ¥11,000'], ['预算', '已付 ¥0'], ['预算', '预测 ¥12,500'],
+      ['预算', '费用项 3 个'], ['预算', '未报价 1/3'],
+      ['预算', '资金状态：partial'], ['预算', '分配状态：allocated'], ['预算', '估算需求 ¥13,000'],
+      // ── 桌面 renderChecks 宽表八列 → 现场采集卡逐列保留（文案可紧凑，信息不丢）──
+      ['检查', '拆改完成度确认'], ['检查', '抹灰养护'], ['检查', '贴砖复验'],
+      ['检查', 'critical'], ['检查', '现场核对'],
+      ['检查', '与施工图一致，无遗留墙体'],
+      ['检查', '照片'], ['检查', '量房记录'],
+      ['检查', '未执行'], ['检查', '已过期'], ['检查', 'DEC-瓷砖'], ['检查', '阻塞期可先做'],
+      ['检查', 'abc123def456'], ['检查', '0f1e2d3c4b5a'],
+      // ── 桌面 renderProjectScope（codex major：未展开选择器曾缺失——部分高亮被当完整范围）──
+      ['作用域', '3D 作用域'], ['作用域', '房间 2 个'],
+      ['作用域', '未展开选择器'], ['作用域', 'ceiling-quotes.layers: ceiling_tile'],
+      // ── 桌面 renderAcceptanceActions（两条布局共用同一方法）──
+      ['验收', '跑机械卡点'], ['验收', '生成 PR 预演'], ['验收', '确认提交（开 PR）'],
+      // ── 桌面 renderFoot（曾整段缺失——看不见控制源指纹无法判断快照新鲜度）──
+      ['脚注', 'ffffffffffff'], ['脚注', 'dddddddddddd'],
+    ];
+    for (const [section, signature] of signatures) {
+      expect(text, `字段布局缺少桌面${section}的标志性内容：${signature}`).toContain(signature);
+    }
+    panel.hide();
   });
 });

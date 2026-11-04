@@ -1663,6 +1663,29 @@ body.mobile-chrome .panel-collapse-toggle {
   height: 36px;
 }
 
+/* ============ 移动端现场视图（issue #70 PR B）：字段采集布局 ============
+   只作用于面板根落了 data-field-mode 属性的包详情面板（桌面布局不设该属性，
+   本节规则对桌面零影响）。触控尺寸主声明在内联 style（状态按钮 min-height
+   56px、输入 min-height 44px + 16px 字防 iOS 聚焦缩放），这里只做容器级：
+   底部安全区避让、滚动不带动整页、输入与按钮的触控兜底。 */
+/* 底部安全区避让走面板 build() 的 style.paddingBottom 属性赋值（calc(14px + env(safe-area-inset-bottom))）：
+   样式表的 padding-bottom 盖不住内联 padding（codex 复审 minor），这里只留容器级行为。 */
+body.mobile-chrome #schedule-detail-panel[data-field-mode] {
+  overscroll-behavior: contain;
+}
+
+body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-status-btn],
+body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-package-chip],
+body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-evidence-file],
+body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-evidence-finalize],
+body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-evidence-remove],
+body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-checked-by],
+body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-checked-at],
+body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-note],
+body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-supersedes] {
+  min-height: 44px;
+}
+
 /* 窄视口几何：浮层改底部 sheet、总览全屏、工作台 dock 避让 tab bar */
 @media (max-width: 700px) {
   .toolbar-popover {
