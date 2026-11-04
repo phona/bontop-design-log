@@ -73,7 +73,8 @@ import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-
 import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
 import type { CaptureOptions, RoomAuditCaptureOptions } from '@shared/types';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot, MaterialAppearance, MaterialPreviewAtlasConfig } from '@shared/types';
-import type { MepCoordination } from '@shared/mep-hvac-coordination-schema';
+import { endpointSourcesFromFacts, type MepCoordination } from '@shared/mep-hvac-coordination-schema';
+import { buildProjectDxf } from '@shared/dxf/project-dxf';
 import type { MepLintResult } from '@shared/mep-hvac-lint';
 
 const ORBIT_DISTANCE = 15;
@@ -271,6 +272,7 @@ export class App {
     this.setupFurniturePanel();
     this.setupPlacementPanel();
     this.setupExportButton();
+    this.setupExportDxfButton();
     this.setupTopDownButton();
     this.setupHvacCoordinationButton();
     this.setupMepCoordinationButton();
@@ -1498,6 +1500,13 @@ export class App {
         run: () => { void this.handleExportGlb(); },
       },
       {
+        id: 'scheme.export_dxf',
+        label: '导出 DXF',
+        engineeringNote: '施工图纸（单文件多图层、1:1 毫米、北朝上）；装配实现 shared/dxf/project-dxf.ts',
+        category: '方案',
+        run: () => { void this.handleExportDxf(); },
+      },
+      {
         // DEC-2026-10-19-R05「首屏显示地砖默认预演」的入口补全：铺向滑块在工作台
         // 「材质预演」页，画布优先默认收起工作台导致用户找不到；命令面板直达该页。
         id: 'material.floor_rotation',
@@ -2181,6 +2190,104 @@ export class App {
     btn?.addEventListener('click', () => {
       void this.handleExportGlb();
     });
+  }
+
+  private setupExportDxfButton(): void {
+    const btn = document.getElementById('export-dxf-btn');
+    btn?.addEventListener('click', () => {
+      void this.handleExportDxf();
+    });
+  }
+
+  /**
+   * 施工 DXF 导出（与 CLI npm run export:dxf 共用 shared/dxf/project-dxf.ts）。
+   * render-facts（水路点位 + MEP 端点解析）与 mep-coordination 容错拉取：
+   * 503/失败只降级对应图层（P-POINTS / M-* 为空 + warnings 显形），不阻断导出。
+   */
+  private async handleExportDxf(): Promise<void> {
+    try {
+      // projectData 缓存不再作为导出输入（十五审）：全部四路拉取失败时仍可导出骨架 + D-NOTES。
+      // 全量新鲜拉取（codex 十二～十五审 blocking 系列）：projectData 是页面加载缓存，
+      // 点位/家具/吊顶/几何的编辑都不回写——导出前重新拉服务端当前状态，杜绝混用新旧数据。
+      const [factsResponse, mepResponse, furnishingsResponse, projectResponse, configStatusResponse] = await Promise.all([
+        fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        // /api/furnishings 每次请求直读 house.yaml（与 CLI 同全案口径）。
+        fetch('/api/furnishings').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        fetch('/api/project').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        // 配置加载状态核验（codex 十六审 blocking）：loader 重载失败会保留上次成功数据且
+        // render-facts 仍 200——HTTP 成功不等于数据新鲜，必须查 status。
+        fetch('/api/config-status').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+      ]);
+      const configStatuses = (configStatusResponse?.configs ?? []) as Array<{ path?: string; status?: string }>;
+      // 保守规则（codex 十六/十七/十八审 blocking 收口）：任何配置重载失败都不能假装数据
+      // 新鲜——facts loader 是整包缓存（electrical/plumbing/ceiling/hvac/overrides/lighting
+      // 任一失败整份 stale），geometry/overlay loader 同理。失败即隔离：facts 与几何全弃，
+      // 只保留直读磁盘的 furnishings + 完整 D-NOTES。config-status 本身失败同样不视为已核验。
+      const configStatusTrusted = configStatusResponse !== null;
+      const failedPaths = configStatuses.filter((item) => item.status === 'failed').map((item) => String(item.path ?? 'unknown'));
+      const configReloadDegraded = !configStatusTrusted || failedPaths.length > 0;
+      const factsStale = configReloadDegraded;
+      const facts = !factsStale && factsResponse ? (factsResponse as ProjectRenderFacts) : null;
+      const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
+      // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
+      const mep = facts?.hvac?.plans && mepPayload ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts) } : undefined;
+      // 几何/overlay loader 重载失败同规则（codex 十八审 blocking）：隔离 projectHouse，
+      // 不让旧墙体/旧洞口与新家具混装。
+      const projectHouse = (!configReloadDegraded && projectResponse !== null
+        ? (projectResponse.house ?? undefined)
+        : undefined) as
+        | { rooms?: unknown[]; ceilingZones?: unknown[]; sceneElements?: unknown[] }
+        | undefined;
+      // 降级说明随图交付（codex 七审 major）：施工方拿到的 DXF 必须能区分「没设计」和「导出时接口失败」。
+      // 家具全案口径后 PHASE 固定 full（3D 页面可能按阶段渲染，图内注明，codex 十一审 major）。
+      const notes: string[] = ['PHASE: full (all furnishings; the 3D view may render a phase-filtered subset)'];
+      // null 规范化为 undefined（codex 十五审 major）：null 会穿透 undefined 判空直接进
+      // Object.entries 抛错，整次导出中止、缺失说明也无法交付。
+      const furnishings = furnishingsResponse ?? undefined;
+      if (!furnishings) notes.push('FURNISHINGS NOT EXPORTED: furnishings API failed at export time');
+      if (!projectHouse) {
+        notes.push(configReloadDegraded
+          ? 'GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: config reload failed — last-good server cache not trusted'
+          : 'GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: project API failed at export time');
+      }
+      if (factsStale) notes.push('RENDER FACTS STALE: config reload failed — electrical/plumbing/ceilings/MEP NOT EXPORTED (server last-good cache not trusted)');
+      if (!configStatusTrusted) notes.push('CONFIG STATUS UNVERIFIED: config-status API failed at export time');
+      if (failedPaths.length > 0) notes.push(`CONFIG RELOAD FAILED: ${failedPaths.join(', ')} — affected layers excluded`);
+      if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
+      if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
+      const result = buildProjectDxf({
+        house: {
+          rooms: (projectHouse?.rooms ?? undefined) as never,
+          furnishings: furnishings as never,
+          // 电气/水路/吊顶/MEP 全部来自本次拉取的 facts（codex 十二～十四审 blocking），
+          // 几何来自本次 /api/project（十五审）——任何一项不可得宁可缺图层并在 D-NOTES
+          // 声明，也不混用页面缓存。
+          electrical: facts?.electrical as never,
+          // factsStale 时 projectHouse.ceilingZones 同样来自 stale facts 缓存（/api/project
+          // 的 ceilingZones 优先取 render-facts），不可兜底（codex 十六审 blocking）。
+          ceilingZones: (factsStale ? undefined : (facts?.ceiling ?? projectHouse?.ceilingZones) ?? undefined) as never,
+          sceneElements: (projectHouse?.sceneElements ?? undefined) as never,
+        },
+        plumbing: facts?.plumbing,
+        mep,
+        notes,
+      });
+      const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+      const url = URL.createObjectURL(new Blob([result.dxf], { type: 'application/dxf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `house-${stamp}.dxf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      if (result.warnings.length > 0) console.warn('[dxf] warnings:', result.warnings);
+      const skipped = result.warnings.length > 0 ? `；${result.warnings.length} 条告警见控制台` : '';
+      this.showToast(`DXF 已导出：${result.entityCount} 个实体、${result.layers.length} 图层${skipped}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'DXF 导出失败';
+      console.error(message, error);
+      this.showToast(message);
+    }
   }
 
   private async handleExportGlb(): Promise<void> {

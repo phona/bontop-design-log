@@ -165,6 +165,13 @@ const mockWindow = {
 };
 vi.stubGlobal('window', mockWindow);
 
+// jsdom 没有 URL.createObjectURL（DXF/GLB 导出下载用）
+const createdBlobs: Blob[] = [];
+vi.stubGlobal('URL', class extends URL {
+  static createObjectURL = vi.fn((blob: Blob) => { createdBlobs.push(blob); return 'blob:mock'; });
+  static revokeObjectURL = vi.fn();
+});
+
 const documentEventListeners: Record<string, Array<(e: any) => void>> = {};
 function createMockElement(id?: string) {
   return {
@@ -191,10 +198,12 @@ function createMockElement(id?: string) {
 }
 
 const exportGlbButton = createMockElement('export-glb-btn');
+const exportDxfButton = createMockElement('export-dxf-btn');
 const hvacCoordinationButton = createMockElement('hvac-coordination-btn');
 const mockDocument = {
   getElementById: vi.fn((id: string) => {
     if (id === 'export-glb-btn') return exportGlbButton;
+    if (id === 'export-dxf-btn') return exportDxfButton;
     if (id === 'hvac-coordination-btn') return hvacCoordinationButton;
     return createMockElement(id);
   }),
@@ -204,6 +213,7 @@ const mockDocument = {
     dataset: {},
     classList: { toggle: vi.fn(), add: vi.fn(), remove: vi.fn() },
     style: {},
+    click: vi.fn(),
     innerHTML: '',
     textContent: '',
     appendChild: vi.fn(),
@@ -245,8 +255,55 @@ describe('App', () => {
     budgetCategories: [],
   };
 
+  const mockRenderFactsProjection = {
+    version: '2.0', lightingFixtures: [], plumbing: [], ceiling: [], hvac: { status: 'unimplemented', planId: null },
+    materials: { floor: { default: null, roomOverrides: {} } },
+    presentation: { curtains: {
+      source: { default: 'open', roomOverrides: {}, updatedAt: '' }, effectiveByRoom: {}, curtains: [],
+      snapshotSha256: '0000000000000000000000000000000000000000000000000000000000000000',
+    } },
+  };
+
+  // 默认 fetch mock（beforeEach 与 DXF 导出用例的窄覆写共用：未命中用例规则时委托回这里）
+  const defaultFetchMock = async (url: string | URL | Request): Promise<Response> => {
+    const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+    if (urlStr.includes('/api/project')) {
+      return { ok: true, json: async () => mockProjectData } as Response;
+    }
+    if (urlStr.includes('/api/render-facts/projection')) {
+      return { ok: true, json: async () => mockRenderFactsProjection } as Response;
+    }
+    if (urlStr.includes('/api/scheme/current')) {
+      return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
+    }
+    if (urlStr.includes('/api/presentation-state')) {
+      return { ok: true, json: async () => ({ default: 'open', roomOverrides: {}, updatedAt: '1' }) } as Response;
+    }
+    if (urlStr.includes('/api/visual-commands')) {
+      return { ok: true, json: async () => [] } as Response;
+    }
+    if (urlStr.includes('/api/topics')) {
+      return { ok: true, json: async () => [{ id: 'hvac', name: 'HVAC', options: [{ id: 'A1', name: 'A1' }] }] } as Response;
+    }
+    if (urlStr.includes('/api/decisions')) {
+      return { ok: true, json: async () => [] } as Response;
+    }
+    if (urlStr.includes('/api/budget')) {
+      return { ok: true, json: async () => ({ totalBudget: 0, totalActual: 0, categories: [], lineItems: [] }) } as Response;
+    }
+    if (urlStr.includes('/api/risks')) {
+      return { ok: true, json: async () => ({ risks: [], constraintViolations: [] }) } as Response;
+    }
+    if (urlStr.includes('/api/schemes')) {
+      return { ok: true, json: async () => [] } as Response;
+    }
+    return { ok: true, json: async () => ({}) } as Response;
+  };
+
   beforeEach(() => {
+    createdBlobs.length = 0;
     exportGlbButton.addEventListener.mockClear();
+    exportDxfButton.addEventListener.mockClear();
     hvacCoordinationButton.addEventListener.mockClear();
     hvacCoordinationButton.textContent = '';
     hvacCoordinationButton.disabled = false;
@@ -257,47 +314,7 @@ describe('App', () => {
       getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
     };
 
-    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
-      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
-      if (urlStr.includes('/api/project')) {
-        return { ok: true, json: async () => mockProjectData } as Response;
-      }
-      if (urlStr.includes('/api/render-facts/projection')) {
-        return { ok: true, json: async () => ({
-          version: '2.0', lightingFixtures: [], plumbing: [], ceiling: [], hvac: { status: 'unimplemented', planId: null },
-          materials: { floor: { default: null, roomOverrides: {} } },
-          presentation: { curtains: {
-            source: { default: 'open', roomOverrides: {}, updatedAt: '' }, effectiveByRoom: {}, curtains: [],
-            snapshotSha256: '0000000000000000000000000000000000000000000000000000000000000000',
-          } },
-        }) } as Response;
-      }
-      if (urlStr.includes('/api/scheme/current')) {
-        return { ok: true, json: async () => ({ updatedAt: '', selections: {} }) } as Response;
-      }
-      if (urlStr.includes('/api/presentation-state')) {
-        return { ok: true, json: async () => ({ default: 'open', roomOverrides: {}, updatedAt: '1' }) } as Response;
-      }
-      if (urlStr.includes('/api/visual-commands')) {
-        return { ok: true, json: async () => [] } as Response;
-      }
-      if (urlStr.includes('/api/topics')) {
-        return { ok: true, json: async () => [{ id: 'hvac', name: 'HVAC', options: [{ id: 'A1', name: 'A1' }] }] } as Response;
-      }
-      if (urlStr.includes('/api/decisions')) {
-        return { ok: true, json: async () => [] } as Response;
-      }
-      if (urlStr.includes('/api/budget')) {
-        return { ok: true, json: async () => ({ totalBudget: 0, totalActual: 0, categories: [], lineItems: [] }) } as Response;
-      }
-      if (urlStr.includes('/api/risks')) {
-        return { ok: true, json: async () => ({ risks: [], constraintViolations: [] }) } as Response;
-      }
-      if (urlStr.includes('/api/schemes')) {
-        return { ok: true, json: async () => [] } as Response;
-      }
-      return { ok: true, json: async () => ({}) } as Response;
-    });
+    vi.spyOn(global, 'fetch').mockImplementation(defaultFetchMock);
   });
 
   afterEach(() => {
@@ -637,6 +654,191 @@ describe('App', () => {
     } finally {
       location.hash = '';
     }
+  });
+
+  it('exports DXF from toolbar button: blob download named house-YYYYMMDD.dxf', async () => {
+    // render-facts / schedule-state 挡 503（start() 前装好）：面板后台刷新拿到 {} 会在 render 崩
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    // handler 以 void 触发 detached async 链（含两次 fetch mock），flush 宏任务等它走完
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const anchor = mockDocument.createElement.mock.results.map((result: any) => result.value).find((el: any) => el.tagName === 'a');
+    expect(anchor).toBeDefined();
+    expect(anchor.download).toMatch(/^house-\d{8}\.dxf$/);
+    expect(anchor.click).toHaveBeenCalledOnce();
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('DXF 已导出'));
+    // 默认 fetch mock 的 render-facts 回 {}：plumbing/mep 降级为告警而不是失败
+    expect(consoleWarn).toHaveBeenCalledWith('[dxf] warnings:', expect.arrayContaining([expect.stringContaining('plumbing:')]));
+    toast.mockRestore();
+    consoleWarn.mockRestore();
+  });
+
+  it('still exports DXF when render-facts and mep-coordination both fail (503 → layer downgrade)', async () => {
+    // 在 start() 之前装好：render-facts/mep 503 是本用例主题；schedule/state 同挡避免面板 render 崩
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      if (urlStr.includes('/api/mep-coordination') || urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const anchor = mockDocument.createElement.mock.results.map((result: any) => result.value).find((el: any) => el.tagName === 'a');
+    expect(anchor).toBeDefined();
+    expect(anchor.download).toMatch(/^house-\d{8}\.dxf$/);
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('DXF 已导出'));
+    toast.mockRestore();
+  });
+
+  it('export uses fresh facts.electrical, not cached projectData house.electrical (codex 十二审 blocking)', async () => {
+    // projectData 里是旧点位缓存；render-facts 返回新点位——导出必须用 facts
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => ({
+          electrical: [{ id: 'e_fresh', room: 'living_room', type: 'socket', x: 1.2, z: 0.8 }],
+          plumbing: [], ceiling: [],
+          hvac: { plans: [{ outdoor: { id: 'outdoor_main', x: 5, z: 5 }, diagram: { anchors: [], terminals: [] } }] },
+        }) } as Response;
+      }
+      if (urlStr.includes('/api/mep-coordination')) {
+        return { ok: true, json: async () => ({ version: '1', status: 'ok', layers: {}, routes: [], junctions: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(createdBlobs.length).toBe(1);
+    const text = await createdBlobs[0].text();
+    expect(text).toContain('e_fresh');
+    expect(consoleWarn).not.toHaveBeenCalledWith('[dxf] warnings:', expect.arrayContaining([expect.stringContaining('plumbing:')]));
+    consoleWarn.mockRestore();
+  });
+
+  it('config-status failed facts path → facts isolated, no E-* entities, D-NOTE declares stale (codex 十六审 blocking)', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/config-status')) {
+        // 电气配置重载失败：render-facts 会返回上次成功缓存，导出必须隔离不用
+        return { ok: true, json: async () => ({ configs: [{ path: 'config/electrical.yaml', status: 'failed' }] }) } as Response;
+      }
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => ({
+          electrical: [{ id: 'e_stale', room: 'living_room', type: 'socket', x: 9, z: 9 }],
+          plumbing: [], ceiling: [],
+          hvac: { plans: [{ outdoor: { id: 'outdoor_main', x: 5, z: 5 }, diagram: { anchors: [], terminals: [] } }] },
+        }) } as Response;
+      }
+      if (urlStr.includes('/api/mep-coordination')) {
+        return { ok: true, json: async () => ({ version: '1', status: 'ok', layers: {}, routes: [], junctions: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(createdBlobs.length).toBe(1);
+    const text = await createdBlobs[0].text();
+    expect(text).toContain('RENDER FACTS STALE');
+    expect(text).toContain('CONFIG RELOAD FAILED');
+    // e_stale 来自重载失败的缓存——绝不可出现在导出里
+    expect(text).not.toContain('e_stale');
+  });
+
+  it('any config reload failure → conservative isolation (overrides failed kills facts; model-geometry failed kills geometry) (codex 十八审 blocking)', async () => {
+    const makeFetch = (failedPath: string) => async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/config-status')) {
+        return { ok: true, json: async () => ({ configs: [{ path: failedPath, status: 'failed' }] }) } as Response;
+      }
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => ({
+          electrical: [{ id: 'e_cached', room: 'living_room', type: 'socket', x: 9, z: 9 }],
+          plumbing: [], ceiling: [{ id: 'ceil_cached', room: 'living_room', type: 'drop' }],
+          hvac: { plans: [{ outdoor: { id: 'outdoor_main', x: 5, z: 5 }, diagram: { anchors: [], terminals: [] } }] },
+        }) } as Response;
+      }
+      if (urlStr.includes('/api/project')) {
+        return { ok: true, json: async () => ({ topics: [], house: {
+          rooms: [{ id: 'r', name: 'R', x: 0, z: 0, width: 1, depth: 1, height: 2.8 }],
+          sceneElements: [{ type: 'wall', id: 'w_cached', x1: 0, z1: 0, x2: 1, z2: 0 }],
+        } }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    };
+    // overrides.yaml 失败 → facts loader 整包 stale：缓存点位与吊顶都不出现
+    vi.spyOn(global, 'fetch').mockImplementation(makeFetch('config/render/overrides.yaml'));
+    let app = new App(canvas);
+    await app.start();
+    mockDocument.createElement.mockClear();
+    await (exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>)();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    let text = await createdBlobs[createdBlobs.length - 1].text();
+    expect(text).toContain('RENDER FACTS STALE');
+    expect(text).not.toContain('e_cached');
+    expect(text).not.toContain('ceil_cached');
+
+    // model-geometry.yaml 失败 → 几何隔离：缓存墙体不出现，但直读磁盘的说明在
+    vi.spyOn(global, 'fetch').mockImplementation(makeFetch('config/layout/model-geometry.yaml'));
+    app = new App(canvas);
+    await app.start();
+    mockDocument.createElement.mockClear();
+    await (exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>)();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    text = await createdBlobs[createdBlobs.length - 1].text();
+    expect(text).toContain('GEOMETRY/ROOMS/CEILINGS NOT EXPORTED');
+    expect(text).not.toContain('w_cached');
   });
 
   // 点包 3D 高亮的聚合路径（highlightApprovalPackage）：房间/对象走 highlightObjects、

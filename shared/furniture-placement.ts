@@ -1,0 +1,95 @@
+/**
+ * 家具摆位解算（纯几何，无 THREE）。原实现自 render/SceneBuilder.ts 抽出（2026-11-03，
+ * DXF 导出需要同一口径但不引入 three.js），SceneBuilder 改为 re-export，全仓仍只有这一份实现。
+ */
+
+import { FURNITURE_DIMS, type WallSide } from './types.js';
+
+/** 墙体完成面基厚（渲染与摆位共用的单一声明）。 */
+export const WALL_THICKNESS = 0.12;
+
+/**
+ * 协调示意类家具（冷凝水 PVC 走向代理件，FixtureFactory 配方零件全部 materialRole:
+ * hvac_coordination_cover + pipe-chase 检视层）：不是施工家具，DXF 导出排除——冷凝水
+ * 几何以 M-CAND 候选路线为准，双重表达会产生位置漂移的第二个"事实"（codex 十一审
+ * blocking：wardrobe_entry 的 x=4.10 是线段端点锚，居中外框漂移 0.6m）。
+ */
+export const COORDINATION_SCHEMATIC_FURNITURE_TYPES: ReadonlySet<string> = new Set([
+  'condensate_pipe_ac_outlet',
+  'mb_vanity_pvc_box',
+  'mb_vanity_pvc_wardrobe_entry',
+  'mb_vanity_pvc_service_chase',
+]);
+
+export interface FurniturePlacement {
+  x: number;
+  z: number;
+  wallId?: string;
+  wallSide?: WallSide;
+  anchorAlong?: number;
+}
+
+type WallLike = { x1: number; z1: number; x2: number; z2: number };
+
+export function resolveFurniturePlacement(
+  item: { type: string; wall?: string; wall_side?: WallSide; along?: number; x?: number; z?: number; wall_clearance?: number },
+  wallSegments: Map<string, WallLike[]>,
+): FurniturePlacement | null {
+  if (item.wall !== undefined && item.wall_side !== undefined && item.along !== undefined) {
+    const wall = wallSegments.get(item.wall)?.[0];
+    const dims = FURNITURE_DIMS[item.type];
+    if (wall && dims) {
+      const dx = wall.x2 - wall.x1;
+      const dz = wall.z2 - wall.z1;
+      const length = Math.hypot(dx, dz);
+      const alongIsAbsoluteVertical = (item.wall === 'w_mbath_east' || item.wall === 'w_mb_east') && Math.abs(dx) < 1e-9;
+      if (length > 1e-9 && (alongIsAbsoluteVertical || (item.along >= -1e-6 && item.along <= length + 1e-6))) {
+        const tangent = { x: dx / length, z: dz / length };
+        const left = { x: -tangent.z, z: tangent.x };
+        const sideDirection: Record<WallSide, { x: number; z: number }> = {
+          north: { x: 0, z: -1 },
+          south: { x: 0, z: 1 },
+          east: { x: 1, z: 0 },
+          west: { x: -1, z: 0 },
+        };
+        const authored = sideDirection[item.wall_side];
+        const right = { x: -left.x, z: -left.z };
+        const normal = left.x * authored.x + left.z * authored.z >= right.x * authored.x + right.z * authored.z ? left : right;
+        const wallPoint = alongIsAbsoluteVertical
+          ? { x: wall.x1, z: item.along }
+          : { x: wall.x1 + tangent.x * item.along, z: wall.z1 + tangent.z * item.along };
+        const finishOffset = (item.type === 'mb_vanity_base_cabinet' || item.type === 'mb_vanity_lower_board' || item.type === 'mb_vanity_main_board' || item.type === 'mb_vanity_pvc_box') ? WALL_THICKNESS / 2 : 0;
+        // A wall anchor describes the finish face. Keep the body away from
+        // that face by the authored construction allowance so validation and
+        // preview share one placement datum instead of relying on exact
+        // contact with the wall box.
+        const wallClearance = item.wall_clearance ?? 0;
+        const centerOffset = finishOffset + wallClearance + dims.depth / 2;
+        return { x: wallPoint.x + normal.x * centerOffset, z: wallPoint.z + normal.z * centerOffset, wallId: item.wall, wallSide: item.wall_side, anchorAlong: item.along };
+      }
+    }
+  }
+  if (item.x === undefined || item.z === undefined) return null;
+  return { x: item.x, z: item.z };
+}
+
+/** length 型家具：3D buildFurniture 对这三类按 item.length 建模（连续柜/桥接台面/洁柜侧柜），不咨询目录宽度。 */
+const LENGTH_BASED_FURNITURE_TYPES: ReadonlySet<string> = new Set([
+  'kitchen_cabinet_run',
+  'kitchen_countertop_bridge',
+  'bath_side_cabinet',
+]);
+
+/**
+ * 家具平面外包络尺寸（3D buildFurniture 同优先级，codex 十六审 major）：
+ * length 型声明了 length 时外框 = length（显式声明优先于目录宽，否则与 3D 实际建模不一致）；
+ * 其余类型 item.width 优先于目录宽。
+ */
+export function furnitureFootprint(item: { type: string; length?: number; width?: number; depth?: number }): { width: number | undefined; depth: number | undefined } {
+  const dims = FURNITURE_DIMS[item.type];
+  if (LENGTH_BASED_FURNITURE_TYPES.has(item.type) && item.length !== undefined) {
+    return { width: item.length, depth: item.depth ?? dims?.depth };
+  }
+  return { width: item.width ?? dims?.width, depth: item.depth ?? dims?.depth };
+}
+
