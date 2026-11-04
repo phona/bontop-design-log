@@ -51,7 +51,7 @@ const FILENAME_MAX_LENGTH = 64;
  * 会被剥成 report-<nonce>）。压缩结果只可能是 JPEG，forceExtension 恒为 jpg。
  */
 const EXTENSION_WHITELIST = new Set([
-  'jpg', 'jpeg', 'png', 'webp', 'heic', 'gif',
+  'jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'avif', 'gif', 'jxl', 'tiff', 'tif', 'bmp',
   'pdf', 'doc', 'docx', 'xlsx', 'xls', 'txt', 'csv',
   'mp4', 'mov', 'mkv', 'avi', 'wmv',
 ]);

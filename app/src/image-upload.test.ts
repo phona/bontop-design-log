@@ -40,10 +40,17 @@ describe('safeEvidenceFilename（issue #70）', () => {
     expect(safeEvidenceFilename('A.JPG')).toBe('A.jpg');
     expect(safeEvidenceFilename('B.JPEG')).toBe('B.jpeg');
     // codex 复审 minor：原样回传的附件保留扩展名——服务端只校验字符集不判断内容，
-    // 落定后业主要靠扩展名认格式（report.pdf 早先会被剥成 report-<nonce>）
+    // 落定后业主要靠扩展名认格式（report.pdf 早先会被剥成 report-<nonce>）。
+    // 白名单覆盖全部「不压缩所以原样回传」的格式（avif/heif/jxl/tiff/bmp 等）——
+    // 白名单反转后这些格式走原样回传，扩展名丢了就没法认格式（codex 复审 minor）。
     expect(safeEvidenceFilename('report.pdf')).toBe('report.pdf');
     expect(safeEvidenceFilename('scan.heic')).toBe('scan.heic');
     expect(safeEvidenceFilename('clip.MP4')).toBe('clip.mp4');
+    expect(safeEvidenceFilename('anim.avif')).toBe('anim.avif');
+    expect(safeEvidenceFilename('burst.heif')).toBe('burst.heif');
+    expect(safeEvidenceFilename('next.jxl')).toBe('next.jxl');
+    expect(safeEvidenceFilename('page.tiff')).toBe('page.tiff');
+    expect(safeEvidenceFilename('old.BMP')).toBe('old.bmp');
     // 白名单外（可执行档等）仍整段丢掉
     expect(safeEvidenceFilename('evil.exe')).toBe('evil');
     expect(safeEvidenceFilename('photo.')).toBe('photo');
