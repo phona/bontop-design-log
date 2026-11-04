@@ -33,6 +33,7 @@ import type {
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
 import { escapeHtml } from './escape-html.js';
 import { apiWrite } from '../api-write.js';
+import { compressImageFile, nextUploadNonce, safeEvidenceFilename } from '../image-upload.js';
 import { resolvePackageScope } from '@shared/package-scope';
 import type { PackageScopeLink, ProjectScopeInput } from '@shared/package-scope';
 
@@ -990,22 +991,24 @@ export class ScheduleDetailPanel {
       state.uploading = true;
       state.stagedError = null;
       this.updateSaveUi(pkg);
-      const reader = new FileReader();
-      reader.onload = () => {
-        const text = String(reader.result ?? '');
-        const comma = text.indexOf(',');
-        // dataURL 取逗号后段（服务端只要 base64 本体）
-        const base64 = comma >= 0 ? text.slice(comma + 1) : text;
-        void this.uploadEvidence(pkg.id, checkId, file.name, base64);
-      };
-      reader.onerror = () => {
-        // 同 uploadEvidence：异步回调里重新取当前状态对象再写（二十五审 major）
-        const current = this.draftOf(checkId);
-        current.uploading = false;
-        current.stagedError = '文件读取失败';
-        this.updateSaveUi(pkg);
-      };
-      reader.readAsDataURL(file);
+      // issue #70：手机拍照 2-5MB 直接 readAsDataURL 会被服务端 express.json 1mb
+      // 上限 413（旧代码界面只剩「HTTP 413」）。先压缩 + 净化文件名再上传；压缩失败
+      // 回落原图，任何错误信息进既有 stagedError 显示路径。
+      // nonce：同一检查传多张照片时中文名净化后都成 `__`，会撞暂存路径互相覆盖
+      // （codex 复审 major）；forceExtension：压缩结果是 JPEG，扩展名跟实际格式一致。
+      void (async () => {
+        try {
+          const compressed = await compressImageFile(file);
+          const filename = safeEvidenceFilename(file.name, nextUploadNonce(), compressed.compressed ? 'jpg' : undefined);
+          await this.uploadEvidence(pkg.id, checkId, filename, compressed.base64);
+        } catch (err) {
+          // 同 uploadEvidence：异步回调里重新取当前状态对象再写（二十五审 major）
+          const current = this.draftOf(checkId);
+          current.uploading = false;
+          current.stagedError = err instanceof Error ? err.message : String(err);
+          this.updateSaveUi(pkg);
+        }
+      })();
     });
     host.querySelector('[data-evidence-finalize]')?.addEventListener('click', () => {
       void this.finalizeEvidence(pkg, checkId);
@@ -1578,9 +1581,13 @@ export class ScheduleDetailPanel {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({package_id: packageId, check_id: checkId, filename, data_base64: base64}),
       });
-      const data = (await response.json().catch(() => ({}))) as {staging_path?: string; sha256?: string; size?: number; error?: string};
+      const data = (await response.json().catch(() => ({}))) as {staging_path?: string; sha256?: string; size?: number; error?: string; detail?: string};
       if (this.selection.get().packageId !== packageId) return;
-      if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
+      // codex 复审 minor：服务端 413 的重试引导放在 detail 里，只显示 error 用户看不到
+      if (!response.ok) {
+        const detail = typeof data.detail === 'string' && data.detail ? `：${data.detail}` : '';
+        throw new Error(`${data.error ?? `HTTP ${response.status}`}${detail}`);
+      }
       // 落账时**重新取当前状态对象**（codex 二十五审 major）：等待期间草稿合并
       // （本包重载 / 别包 GET 晚到）可能把条目替换成新对象，await 前捕获的引用会
       // 写进孤儿——上传成功了界面却永远「上传中」、暂存文件接不进草稿。
