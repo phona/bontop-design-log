@@ -106,18 +106,20 @@ export class DxfWriter {
   }
 
   addText(layer: string, x: number, y: number, height: number, text: string): void {
-    if (text === '') return;
-    this.touchLayer(layer);
+    // 换行/控制符规范化（codex 二十审 blocking，已复现）：组码值必须单行——原样写入
+    // 'first\nsecond' 会把后续组码错位成正文，整个文件损坏且导出仍报成功。
+    const normalized = text.replace(/[\r\n\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (normalized === '') return;
     // 文字包围盒按保守上界计（每字符占宽 = 字高，覆盖 CJK 全角）：EXTMIN/EXTMAX 含全部
     // TEXT（codex 十二审 minor）——D-NOTES 等图外说明不致被初始视图裁掉。
-    const approxWidth = Math.max(text.length, 1) * height;
+    const approxWidth = Math.max(normalized.length, 1) * height;
     this.track(x, y, x + approxWidth, y + height);
     this.entities.push([
       [0, 'TEXT'],
       [8, layer],
       [10, fmt(x)], [20, fmt(y)], [30, '0.0'],
       [40, fmt(height)],
-      [1, text],
+      [1, normalized],
       [7, 'STANDARD'],
     ]);
   }

@@ -777,6 +777,36 @@ test('project-dxf: ascii 模式路线标注显式带 id，同 label 路线可区
   assert.ok(ascii.dxf.includes('route_b'));
 });
 
+test('project-dxf: 换行标注规范化为单行，DXF 组码结构不损坏（codex 二十审 blocking）', () => {
+  const result = buildProjectDxf({
+    house: { rooms: [{ id: 'r', name: '第一行\n第二行', x: 1, z: 1, width: 2, depth: 2, height: 2.8, type: 'public' }], furnishings: {}, electrical: [], ceilingZones: [], sceneElements: [] },
+  });
+  // 实体总数应为 2（房间框折线 4 边 + 名称 1 条 TEXT——换行不得拆出多余实体或错位组码）
+  assert.ok(result.dxf.split('\n').filter((line) => line === 'TEXT').length >= 1);
+  // 原始双行串不得出现（规范化为单行 '第一行 第二行'）
+  assert.ok(!result.dxf.includes('第一行\n第二行'));
+  assert.ok(result.dxf.includes('第一行 第二行'));
+  // 仅剩 plumbing/mep 缺省两条预期告警，无换行相关告警
+  assert.deepEqual(result.warnings.filter((w) => !w.startsWith('plumbing:') && !w.startsWith('mep:')), []);
+});
+
+test('project-dxf: 墙锚家具按细分段参照（与 3D 同口径，codex 二十审 major）', () => {
+  const input = baseInput();
+  // 墙带细分段 [0→1] 与 [1→4]（共线）；锚定 along 2.0——主线口径合法（画在 (2,0)），
+  // 3D 细分段口径下首段长 1、along 2 越界 → 跳过。DXF 必须与 3D 一致跳过。
+  (input.house.sceneElements![0] as Extract<SceneElement, { type: 'wall' }>).segments = [
+    { x1: 0, z1: 0, x2: 1, z2: 0 },
+    { x1: 1, z1: 0, x2: 4, z2: 0 },
+  ];
+  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 2.0 }] };
+  const result = buildProjectDxf(input);
+  assert.equal(result.stats[DXF_LAYERS.FURN[0]], undefined);
+  // 对照：along 0.5 在首段内 → 正常画出
+  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 0.5 }] };
+  const result2 = buildProjectDxf(input);
+  assert.ok((result2.stats[DXF_LAYERS.FURN[0]] ?? 0) > 0);
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });

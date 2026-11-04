@@ -371,8 +371,13 @@ function emitFurniture(
   warnings: string[],
   label: (text: string, fallback?: string) => string,
 ): void {
+  // 墙锚参照线与 3D 同口径（codex 二十审 major，SceneBuilder.wallSegments）：带 segments
+  // 细分的墙优先传细分段——resolveFurniturePlacement 以数组首段算方向/along 合法域，
+  // 主线直传会把 3D 中合法（或被跳过）的锚定家具画错位置或错误保留。
   const wallSegments = new Map(wallsById.size > 0
-    ? [...wallsById.entries()].map(([id, wall]) => [id, [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]])
+    ? [...wallsById.entries()].map(([id, wall]) => [id, wall.segments?.length
+      ? wall.segments
+      : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]])
     : []);
   for (const [roomId, items] of Object.entries(furnishings ?? {})) {
     for (const item of items) {
