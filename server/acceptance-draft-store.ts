@@ -505,6 +505,8 @@ export interface StagingSweepResult {
   kept: number;
   /** 自身超龄但因里面还有年轻条目而未删的目录数 */
   nonEmptyDirsKept: number;
+  /** 超龄但删除失败（如 EACCES）仍留在盘上的条目数——计入 kept（codex 复审 minor） */
+  deleteLeftBehind: number;
   failures: StagingSweepFailure[];
 }
 
@@ -583,22 +585,33 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
   const log = options.log ?? ((line: string) => console.log(line));
   const stagingDir = join(root, STAGING_DIR);
   const result: StagingSweepResult = {
-    existed: existsSync(stagingDir), scanned: 0, removed: 0, kept: 0, nonEmptyDirsKept: 0, failures: [],
+    existed: existsSync(stagingDir), scanned: 0, removed: 0, kept: 0, nonEmptyDirsKept: 0, deleteLeftBehind: 0, failures: [],
   };
   if (!result.existed) {
     log(`[server] 暂存区清扫：${STAGING_DIR} 不存在，跳过`);
     return result;
   }
-  // 暂存根本身是符号链接：拒绝（collectStagingEntries 对链接根返回空，这里显式记一笔）
-  const rootStat = lstatSync(stagingDir, {throwIfNoEntry: false});
+  // 路径不变量（codex 复审 blocking，第三轮：不再枚举场景，上不变量）——**真实路径
+  // 必须与逻辑路径逐字相等**。前缀校验（「还在仓库内」）不够：tmp/capture 链到仓内
+  // evidence 目录时，realpath 仍在仓库内却落在别处，清扫会删掉证据文件。要求
+  // realpath(stagingDir) === stagingDir 本身，等价于「从仓库根到暂存区的每一级都不
+  // 是符号链接」——祖先有任何链接（无论指向仓内仓外）一律拒绝。这一条覆盖全部
+  // 重定向场景，不需要再逐个案分析。
+  // lstat/realpath 的异常也必须接住（codex 复审 major）：index.ts 在 listen 前无保护
+  // 调用本函数，EACCES/EIO 传出会直接杀死服务启动——与「失败不阻断启动」的约定相反。
+  let rootStat;
+  try {
+    rootStat = lstatSync(stagingDir, {throwIfNoEntry: false});
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    result.failures.push({path: STAGING_DIR, message: `lstat 失败：${message}`});
+    log(`[server] 暂存区清扫失败（不中断启动）：读 ${STAGING_DIR} 属性出错：${message}`);
+    return result;
+  }
   if (rootStat?.isSymbolicLink()) {
     log(`[server] 暂存区清扫：${STAGING_DIR} 是符号链接，拒绝清扫（只碰真实暂存目录）`);
     return result;
   }
-  // 真实路径边界（codex 复审 blocking）：光查根组件不够——tmp 或 tmp/capture 是指向
-  // 仓外的链接时，lstat 根组件仍是普通目录，遍历与 rmSync 会删到仓外。按 realpath
-  // 校验：暂存区解析后必须仍在仓库根内，否则拒绝。
-  const rootReal = (() => { try { return realpathSync(root); } catch { return root; } })();
   let stagingReal: string;
   try {
     stagingReal = realpathSync(stagingDir);
@@ -608,8 +621,8 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
     log(`[server] 暂存区清扫失败（不中断启动）：解析 ${STAGING_DIR} 出错：${message}`);
     return result;
   }
-  if (stagingReal !== rootReal && !stagingReal.startsWith(rootReal + sep)) {
-    log(`[server] 暂存区清扫：${STAGING_DIR} 解析到仓库外（${stagingReal}），拒绝清扫（只删仓库内暂存区）`);
+  if (stagingReal !== stagingDir) {
+    log(`[server] 暂存区清扫：${STAGING_DIR} 的真实路径（${stagingReal}）与逻辑路径不一致——路径上有符号链接，拒绝清扫（只删逻辑路径即真实路径的暂存区）`);
     return result;
   }
 
@@ -645,13 +658,16 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
       rmSync(absolute, {recursive: true, force: true});
       result.removed++;
     } catch (err) {
+      // 删除失败 = 文件还在：计入 kept（codex 复审 minor），否则日志「留 0 项」而
+      // 文件实际留在盘上，kept 声明的「实际保留项总数」不成立
+      result.deleteLeftBehind++;
       result.failures.push({path: rel, message: err instanceof Error ? err.message : String(err)});
     }
   }
 
-  // kept = 实际保留项总数：年轻条目 + 因含年轻文件而整树留下的超龄目录
+  // kept = 实际保留项总数：年轻条目 + 因含年轻文件整树留下的超龄目录 + 删除失败仍留存的
   // （codex 复审 minor：早先只计年轻条目，日志会输出「留 1 项（其中 2 个超龄目录…）」自相矛盾）
-  result.kept = plan.keep.length + result.nonEmptyDirsKept;
+  result.kept = plan.keep.length + result.nonEmptyDirsKept + result.deleteLeftBehind;
   const ageDays = Math.round(maxAgeMs / 86_400_000);
   log(
     `[server] 暂存区清扫：${STAGING_DIR} 扫到 ${result.scanned} 项，删 ${result.removed} 项（修改时间早于 ${ageDays} 天），`

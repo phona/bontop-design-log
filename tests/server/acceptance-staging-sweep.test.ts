@@ -321,7 +321,8 @@ describe('sweepAcceptanceStaging：启动清扫入口', () => {
 
     assert.equal(result.removed, 0, '解析到仓库外：一项都不删');
     assert.ok(existsSync(victim), '仓外链接目标里的文件必须原样');
-    assert.match(lines[0], /解析到仓库外/);
+    // 仓外/仓内重定向现在走同一条不变量（真实路径 ≠ 逻辑路径），文案统一
+    assert.match(lines[0], /真实路径.*与逻辑路径不一致/);
   });
 
   it('读取失败进汇总：不把「没扫到」伪装成「没得扫」（codex 复审 minor）', () => {
@@ -344,6 +345,49 @@ describe('sweepAcceptanceStaging：启动清扫入口', () => {
       assert.ok(!existsSync(join(stagingOf(root), 'PKG-060/check_tile_gap/a.jpg')));
     } finally {
       chmodSync(locked, 0o755); // 还原，tempRoots 清理才删得掉
+    }
+  });
+
+  it('路径不变量：祖先链接重定向到仓内其他目录也拒绝（codex 复审 blocking 第三轮）', () => {
+    // 场景：root/tmp/capture → root/evidence（仓内重定向）。前缀校验（「还在仓库内」）
+    // 拦不住——realpath 仍在仓库内却落在 evidence 下；若 evidence/acceptance-staging
+    // 有超龄文件会被删。不变量：realpath(stagingDir) 必须与逻辑路径逐字相等。
+    const root = makeRoot();
+    const evidence = join(root, 'evidence');
+    mkdirSync(join(evidence, 'acceptance-staging', 'PKG-060'), {recursive: true});
+    const victim = join(evidence, 'acceptance-staging', 'PKG-060', 'old.jpg');
+    writeFileSync(victim, 'precious');
+    const when = new Date(NOW - 30 * DAY_MS);
+    utimesSync(victim, when, when);
+    rmSync(join(root, 'tmp', 'capture'), {recursive: true, force: true});
+    symlinkSync(evidence, join(root, 'tmp', 'capture')); // 仓内重定向
+
+    const {lines, log} = collectLog();
+    const result = sweepAcceptanceStaging({root, nowMs: NOW, log});
+
+    assert.equal(result.removed, 0, '路径上有链接：一项都不删');
+    assert.ok(existsSync(victim), '仓内重定向目标里的文件必须原样');
+    assert.match(lines[0], /真实路径.*不一致|符号链接/);
+  });
+
+  it('删除失败的条目计入 kept：不把「没删掉」报成「没留下」（codex 复审 minor）', () => {
+    // 唯一的超龄文件删除失败（父目录只读 → EACCES）：文件还在盘上，kept 必须算它。
+    const root = makeRoot();
+    writeEntry(root, 'PKG-060/check_tile_gap/a.jpg');
+    ageEntry(root, 'PKG-060/check_tile_gap/a.jpg', 30);
+    const dir = join(stagingOf(root), 'PKG-060', 'check_tile_gap');
+    chmodSync(dir, 0o500); // 只读：删不掉里面的文件
+    try {
+      const {log} = collectLog();
+      const result = sweepAcceptanceStaging({root, nowMs: NOW, log});
+      assert.equal(result.removed, 0, '删不掉');
+      assert.equal(result.deleteLeftBehind, 1, '删除失败的条目要计数');
+      // kept = 2 个年轻目录 + 1 个删除失败仍留存的文件（早先会报 2，把没删掉的漏算）
+      assert.equal(result.kept, 3, 'kept = 实际保留项总数：年轻目录 + 删除失败的文件');
+      assert.ok(existsSync(join(dir, 'a.jpg')), '文件必须原样留在盘上');
+      assert.ok(result.failures.length >= 1);
+    } finally {
+      chmodSync(dir, 0o755);
     }
   });
 
