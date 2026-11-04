@@ -313,6 +313,22 @@ body.mobile-chrome.approval-page #mobile-tabbar {
   max-width: none;
 }
 
+/* ============ 工序流程图画布（2026-11-04 issue #83） ============
+   高度上限从面板内联样式挪到这里（FlowChartPanel.renderChart）：窄容器时 JS 落
+   data-flow-mobile（容器实测宽 ≤700px，单列堆叠、画布宽吃容器宽），此时放开
+   max-height，让 #approval-page-panels 自己的 overflow-y 接管纵向滚动——单列堆叠
+   是 20+ 张卡的纵向序列，460px 内嵌滚动盒会逼业主在嵌套竖滚里翻屏。桌面多列布局
+   仍限 460px，横滚纵滚都走画布自身的 overflow:auto（容器窄于「内边距×2+导轨+卡宽」
+   下限时横滚是唯一兜底，保留）。
+   独立小节：只碰流程图画布，不动本批并行轨道同改的 body.mobile-chrome 规则。 */
+#flow-chart-canvas {
+  max-height: 460px;
+}
+
+#flow-chart-canvas[data-flow-mobile] {
+  max-height: none;
+}
+
 #right-panel-stack {
   position: fixed;
   inset: 0 0 0 auto;
