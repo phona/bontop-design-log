@@ -122,10 +122,14 @@ export function planCompression(file: {type: string; size: number}): {compress: 
 }
 
 /**
- * 动图字节级检测（纯函数）。canvas 只画一帧再导 JPEG，会把动图压成单帧——证据要展示
- * 设备动作/故障过程时后续帧全丢（codex 复审 major）。判定：
- *   - GIF：Graphic Control Extension（21 F9 04）≥2 段即多帧；
- *   - WebP：RIFF/WEBP/VP8X 且 VP8X 标志字节 bit 0x02（ANIM）；
+ * 动图/不可压格式的字节级判定（纯函数）。canvas 只画一帧再导 JPEG，会把动图压成单帧——
+ * 证据要展示设备动作/故障过程时后续帧全丢（codex 复审 major）。判定：
+ *   - GIF：**恒 true**。GIF89a 规范里 GCE（图形控制扩展）是**可选块**——多帧 GIF 可以
+ *     只有一个甚至没有 GCE，单帧图也可能带多个，按 GCE 计数判多帧会漏（codex 复审
+ *     blocking）；按块结构数 Image Descriptor 才是可靠的，但那等于在手写解析器里养 bug。
+ *     取舍：>400KB 的 GIF 绝大多数本身就是动图（所以它才大），**一律不压**——静态大
+ *     GIF 损失的只是压缩率，且仍受请求体上限保护（超限有明确报错），方向保守。
+ *   - WebP：RIFF/WEBP/VP8X 且 VP8X 标志字节 bit 0x02（ANIM）——规范字段，可靠；
  *   - PNG：存在 acTL 动画控制块即 APNG（W3C PNG 规范；codex 复审 blocking——
  *     image/png 与 image/apng 的 MIME 都可能是 image/png，只能按块判定）；
  *   - 其余（JPEG/HEIC 等）无多帧动画形态，false。
@@ -133,13 +137,7 @@ export function planCompression(file: {type: string; size: number}): {compress: 
  */
 export function isAnimatedImageBytes(type: string, bytes: Uint8Array): boolean {
   try {
-    if (type === 'image/gif') {
-      let gce = 0;
-      for (let i = 0; i + 2 < bytes.length; i += 1) {
-        if (bytes[i] === 0x21 && bytes[i + 1] === 0xf9 && bytes[i + 2] === 0x04) gce += 1;
-      }
-      return gce >= 2;
-    }
+    if (type === 'image/gif') return true; // 见上：GCE 计数不可靠，GIF 一律不压
     if (type === 'image/webp') {
       if (bytes.length < 21) return false;
       const tag = (offset: number): string => String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
@@ -217,35 +215,34 @@ async function downscaleToJpegBlob(file: File, maxEdge: number, quality: number)
 }
 
 /** 原样读取并按**完整请求体**上限校验：超限且无法压缩时给用户明确错误，而不是白传一次 413。 */
-async function readOriginalWithinLimit(file: File): Promise<CompressedImage> {
+async function readOriginalWithinLimit(file: File, why: string): Promise<CompressedImage> {
   const original = await readAsBase64(file, false);
   if (original.base64.length > MAX_REQUEST_BASE64_CHARS) {
     const approxKb = Math.round((original.base64.length * 3) / 4 / 1024);
-    throw new Error(`文件约 ${approxKb}KB 超过上传上限，且当前浏览器无法压缩——请换一台设备或先用图片工具缩小`);
+    throw new Error(`文件约 ${approxKb}KB 超过上传上限${why}——请换一台设备、先用图片工具缩小，或改传其他格式`);
   }
   return original;
 }
 
 /**
- * 证据文件上传前处理：按 planCompression 决定不压（或老浏览器 / jsdom 没有
- * createImageBitmap）时原样回传（按完整请求体上限校验，超限明确报错不白传 413）；
- * 动图（GIF 多帧 / WebP ANIM）不压——canvas 单帧重编码会丢后续帧，证据要展示的
- * 设备动作/故障过程会静默丢失（codex 复审 major）；需要压则走压缩阶梯（标准档 →
+ * 证据文件上传前处理：按 planCompression 决定不压（非图片/已够小）或动图（GIF 一律 /
+ * WebP ANIM / APNG）时原样回传（按完整请求体上限校验，超限明确报错不白传 413）；
+ * 老浏览器 / jsdom 没有 createImageBitmap 同样回落。需要压则走压缩阶梯（标准档 →
  * 降档），**按编码后的 base64 体积判定**——服务端 1mb 限整个 JSON 请求体。压缩失败
  * （解码失败 / canvas 不可用等）一律回落原图，绝不为压缩失败抛错。
  */
 export async function compressImageFile(file: File): Promise<CompressedImage> {
   const plan = planCompression(file);
-  if (!plan.compress) return readOriginalWithinLimit(file);
-  if (await detectAnimation(file)) return readOriginalWithinLimit(file);
+  if (!plan.compress) return readOriginalWithinLimit(file, '，且当前文件类型不压缩');
+  if (await detectAnimation(file)) return readOriginalWithinLimit(file, '，且动图不压缩（保留全部帧）');
   const canCompress = typeof globalThis.createImageBitmap === 'function';
-  if (!canCompress) return readOriginalWithinLimit(file);
+  if (!canCompress) return readOriginalWithinLimit(file, '，且当前浏览器无法压缩');
   for (const tier of COMPRESS_LADDER) {
     let blob: Blob;
     try {
       blob = await downscaleToJpegBlob(file, tier.maxEdge, tier.quality);
     } catch {
-      return readOriginalWithinLimit(file);
+      return readOriginalWithinLimit(file, '，且照片解码失败');
     }
     const encoded = await readAsBase64(blob, true);
     if (encoded.base64.length <= MAX_ENCODED_BASE64_CHARS) return encoded;

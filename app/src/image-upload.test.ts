@@ -156,14 +156,6 @@ describe('planCompression（issue #70）', () => {
 });
 
 describe('isAnimatedImageBytes（codex 复审 major：动图不压）', () => {
-  const gif = (gceCount: number, pad = 0): Uint8Array => {
-    const head = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]; // GIF89a
-    const gce = [0x21, 0xf9, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00];
-    const bytes = [...head];
-    for (let i = 0; i < gceCount; i += 1) bytes.push(...gce);
-    for (let i = 0; i < pad; i += 1) bytes.push(0);
-    return new Uint8Array(bytes);
-  };
   const webp = (animFlag: boolean): Uint8Array => {
     const bytes = new Uint8Array(32).fill(0);
     bytes.set([0x52, 0x49, 0x46, 0x46], 0); // RIFF
@@ -173,11 +165,21 @@ describe('isAnimatedImageBytes（codex 复审 major：动图不压）', () => {
     return bytes;
   };
 
-  it('GIF：多个 GCE 扩展判动图，0/1 个判静态', () => {
-    expect(isAnimatedImageBytes('image/gif', gif(0))).toBe(false);
-    expect(isAnimatedImageBytes('image/gif', gif(1))).toBe(false);
-    expect(isAnimatedImageBytes('image/gif', gif(2))).toBe(true);
-    expect(isAnimatedImageBytes('image/gif', gif(5, 500_000))).toBe(true);
+  it('GIF 恒判动图（GCE 计数不可靠：GCE 是可选块，多帧也可只有 0/1 个）', () => {
+    // codex 复审 blocking：GIF89a 规范 §23——GCE 每帧可选。按 GCE 计数判多帧会把
+    // 「只有一个 GCE 的多帧 GIF」误判静态而压成单帧。取舍：GIF 一律不压（大 GIF
+    // 基本都是动图；静态大 GIF 只损失压缩率，仍受请求体上限保护）。
+    const gif = (gceCount: number): Uint8Array => {
+      const bytes = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61];
+      const gce = [0x21, 0xf9, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00];
+      for (let i = 0; i < gceCount; i += 1) bytes.push(...gce);
+      return new Uint8Array(bytes);
+    };
+    expect(isAnimatedImageBytes('image/gif', gif(0))).toBe(true);
+    expect(isAnimatedImageBytes('image/gif', gif(1))).toBe(true); // 单 GCE 多帧：旧实现的漏判场景
+    expect(isAnimatedImageBytes('image/gif', gif(5))).toBe(true);
+    // 空字节/坏字节同样不压（保守方向）
+    expect(isAnimatedImageBytes('image/gif', new Uint8Array(0))).toBe(true);
   });
 
   it('WebP：VP8X 动画标志位判定，非 VP8X（损失式 VP8 ）判静态', () => {
