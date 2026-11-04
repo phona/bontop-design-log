@@ -71,7 +71,7 @@ elements:
   it('GET /api/project phase=phase_1 filters deferred furnishings and curtains', async () => {
     const res = await request(app).get('/api/project?phase=phase_1_basic_occupancy').expect(200);
     assert.equal(res.body.phase, 'phase_1_basic_occupancy');
-    assert.equal(res.body.phaseMeta.budget.ceilingCny, 210000); // DEC-2026-10-05-R4：GC5 微蒸烤 +4,000 抬池，20.6万→21万
+    assert.equal(res.body.phaseMeta.budget.ceilingCny, 210099); // DEC-2026-10-05-R4：GC5 微蒸烤 +4,000 抬池至 21 万；DEC-2026-11-04-R2：JX ¥99 追加批复，追加即抬上限至 210,099
     assert.equal(res.body.phaseMeta.budget.authority, 'schedule/phase-1/control.yaml');
     assert.ok(res.body.house.furnishings.master_bedroom.some((i: { type: string }) => i.type === 'bed_180'));
     assert.ok(!res.body.house.furnishings.master_bedroom.some((i: { type: string }) => i.type === 'master_north_wall_wardrobe_950'));
@@ -285,7 +285,7 @@ elements:
     const res = await request(app).get('/api/schedule/state').expect(200);
     assert.equal(res.body.counts.packages, 25);
     assert.equal(res.body.counts.ready_packages, 0);
-    assert.equal(res.body.phase.ceiling_cny, 210000);
+    assert.equal(res.body.phase.ceiling_cny, 210099);
     assert.ok(res.body.data_fingerprint.length === 64);
     assert.ok(Array.isArray(res.body.next_actions) && res.body.next_actions.length > 0);
     assert.ok(res.body.decision_gates.open.length > 0);

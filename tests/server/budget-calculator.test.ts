@@ -347,9 +347,10 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     // 2026-10-04 之前本测试断言 `totalBudget == Σcategories.budget`（208,000，base.json
     // 四池快照）。base.json 交出活字段身份后，totalBudget / projectCeiling 一律等于
-    // schedule/phase-1/control.yaml 的 phase_ceiling_cny（210,000，DEC-2026-10-05-R4 抬池后）。
-    assert.equal(snapshot.totalBudget, 210000);
-    assert.equal(snapshot.projectCeiling, 210000);
+    // schedule/phase-1/control.yaml 的 phase_ceiling_cny（210,099：DEC-2026-10-05-R4 抬池至
+    // 21 万，DEC-2026-11-04-R2 批准 JX ¥99 追加后追加即抬上限至 210,099）。
+    assert.equal(snapshot.totalBudget, 210099);
+    assert.equal(snapshot.projectCeiling, 210099);
     // 分科目明细仍可读（base.json 是唯一可用的分科预算拆分），历史合计走 historicalBaseline 露出
     const archivedTotal = snapshot.categories.reduce((s, c) => s + c.budget, 0);
     assert.equal(archivedTotal, 208000);
@@ -717,10 +718,11 @@ describe('BudgetCalculator', () => {
       selections: { hvac: { default: 'A2', roomOverrides: {} } },
     };
     const snapshot = calc.calculate(scheme);
-    // 现行一期执行上限与已分配额一律来自 schedule/phase-1/control.yaml（210,000），
+    // 现行一期执行上限与已分配额一律来自 schedule/phase-1/control.yaml（210,099：
+    // DEC-2026-10-05-R4 抬池至 21 万，DEC-2026-11-04-R2 批准 JX ¥99 追加后追加即抬上限），
     // 不再读 config/budget/base.json 的 total_budget 208,000 / project_ceiling 190,000。
-    assert.equal(snapshot.totalBudget, 210000);
-    assert.equal(snapshot.projectCeiling, 210000);
+    assert.equal(snapshot.totalBudget, 210099);
+    assert.equal(snapshot.projectCeiling, 210099);
     assert.deepEqual(snapshot.historicalBaseline, {
       source: 'config/budget/base.json',
       totalBudgetCny: 208000,
@@ -930,10 +932,11 @@ describe('BudgetCalculator', () => {
       selections: { hvac: { default: 'A2', roomOverrides: {} } },
     };
     const snapshot = calc.calculate(scheme);
-    // 上限来自 schedule/phase-1/control.yaml control.phase_ceiling_cny，
-    // 而不是 config/budget/base.json 的作废值 project_ceiling=190,000。
-    assert.equal(snapshot.projectCeiling, 210000);
-    assert.equal(snapshot.overCeilingBy, snapshot.totalActual - 210000);
+    // 上限来自 schedule/phase-1/control.yaml control.phase_ceiling_cny（210,099，
+    // DEC-2026-11-04-R2 批准 JX ¥99 追加后），而不是 config/budget/base.json 的作废值
+    // project_ceiling=190,000。
+    assert.equal(snapshot.projectCeiling, 210099);
+    assert.equal(snapshot.overCeilingBy, snapshot.totalActual - 210099);
     // 作废口径仍可读，但只作为 historicalBaseline 留档露出，不参与计算。
     assert.equal(snapshot.historicalBaseline?.projectCeilingCny, 190000);
     assert.equal(snapshot.historicalBaseline?.status, 'historical_reference_only');
@@ -1148,7 +1151,7 @@ describe('BudgetCalculator', () => {
       ['gas_stove', 'robot_vacuum', 'shower_enclosure', 'washer'],
       '一期家电动态估算只保留已纳入一期的家电主题',
     );
-    assert.equal(snapshot.lineItems.find((item) => item.topic === 'robot_vacuum')?.cost, 3000);
+    assert.equal(snapshot.lineItems.find((item) => item.topic === 'robot_vacuum')?.cost, 3099);
     for (const deferred of ['dishwasher', 'water_purifier', 'dryer']) {
       assert.equal(snapshot.lineItems.some((item) => item.topic === deferred), false, `${deferred} must stay in phase 2`);
     }
@@ -1205,7 +1208,7 @@ describe('BudgetCalculator', () => {
     // 实测 157870.46361048135，差额 +11,662 = 瓦工人工 +4,662 + hvac +7,000。
     // **当前实测 66,310**：65,922 + R01 重算净 +388（客餐厅 +1.725、东南房 +2.19 与门厅吊顶区 1.0584→2.561 传导至漆工/木工/瓦工人工与材料）；
     // actual 不含candidateActual材料款，只保留已取证款、人工/人工录入与其他明确来源。
-    assert.equal(snapshot.totalActual, 66337, '现行 totalActual 锚点（已含 R01 重算；DEC-2026-10-28-R05 窗帘盒归位后涂装计价面积 +1.100㎡、人工 +¥27.50，66310→66337）');
+    assert.equal(snapshot.totalActual, 66436, '现行 totalActual 锚点（已含 R01 重算；DEC-2026-10-28-R05 窗帘盒归位后 66310→66337；DEC-2026-11-04-R2 批准 JX ¥99 追加后 price_per_unit 3000→3099，+99 至 66436）');
     assert.ok(candidateTotal > 90000, `候选价应仍在 92,696 量级（当前 ${candidateTotal}），不得被静默清零`);
   });
 

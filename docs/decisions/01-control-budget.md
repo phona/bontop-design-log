@@ -372,3 +372,16 @@
 - **连带口径修正**：原 materials pros 的「AI 双目避障」在已见京东参数与 diff 内均无来源，本条登记删除，待商品页或手册载明再补。
 - **落地痕迹**：`config/materials.yaml`（id 改名 jx_01、notes 落拍板）、`schedule/phase-1/control.yaml`（COST-160-06 与 priority_policy/blocker/floor_note 等当前口径同步 JX）、`schedule/procurement.md`（J6 段转历史）、`schedule/roadmap.yaml`、`schedule/phase-2/control.yaml` 注记；生成视图由 `schedule:render` 重渲。
 - **回滚**：全部改动收敛在 PR #53 的两个提交，`git revert` 即恢复；回滚后现行候选回到 J6 口径。
+
+---
+
+### DEC-2026-11-04-R2 批准云鲸 JX ¥99 追加批复（家电池与一期上限同步 +99）
+
+- **日期**：2026-11-04
+- **决策人**：业主
+- **决策事项**：批准云鲸 JX 超薄上下水版 YJCC034 的 ¥99 追加批复——京东自营旗舰店 2026-11-02 截图价 ¥3,099 对原 ¥3,000 子预算的差额。**关闭 DEC-2026-11-03-R1 未闭环条件③**（该条件原文：「不批则按预算继续，不锁截图价」——业主选择批，不走「守 ¥3,000 换渠道/等促销/换型号」路径）。
+- **推翻的旧结论**：DEC-2026-11-03-R1 未闭环条件③的「待批」状态。推翻理由：业主 2026-11-04 拍板接受截图价；¥99 差额在一期预备金缓冲内，且 JX 为现行候选中唯一在售超薄基站上下水款，换渠道/等促销的时间成本高于 ¥99。
+- **不变的部分**：JX 现行候选地位与非最终锁定性质；客卫悬空台盆柜下主位、柜体底缘 0.30、台下净空 0.30 与全部机电接口；DEC-2026-11-03-R1 其余三项未闭环条件（① 安装手册终核、② 20mm 顶余下尘袋更换/基站移出/排水可达/sock_gbath_robot 常插拔、④ 订单 SKU 与上下水配件安装复核）仍开放，完成前不得下单。
+- **连带口径**：沿用「追加即抬上限」先例——`config/materials.yaml` 的 robot_vacuum_narwal_jx_01 `price_per_unit` 3,000→3,099；家电池 `planned_cny` 16,000→16,099；一期 `phase_ceiling_cny`/`allocated_cny` 210,000→210,099；PKG-160 `estimated_need_cny` 16,496→16,595（need 与池同幅 +99，超池仍为 496，`funding_status: owner_review_pending_20261005` 不变）。
+- **落地痕迹**：`config/materials.yaml`（price_per_unit + notes）、`schedule/phase-1/control.yaml`（control/budget_pools/budget_reconciliation/PKG-160 budget/blocker item/explanation）、`tests/server/{budget-api,api,budget-calculator}.test.ts` 断言、`schedule/procurement.md` 与 `schedule/roadmap.yaml` 等现行口径；生成视图由 `schedule:render` 重渲。
+- **回滚**：全部改动收敛在一个 PR，`git revert` 即恢复；回滚后回到 ¥3,000 口径与条件③待批状态。

@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"300191abf6b1ab5c69afde944aeaa94fce79ad01ed3e3b9b305bd4fa93abd39f","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"bb2db6362e93590d2011942ed42da5f338aa6a5d4bf0958b2c7b6c1e06e8bbbf","config/house.yaml":"8ea7218d703e2064720938a67a38da770c3fb3aaae98d779579934acadce244f","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/mep-hvac-coordination.yaml":"46fc84a896d7d1b236c8cf05c99a8ab4c29375471e09cb0e5d53484a693510b6","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"6a0bd04930f637b881a683add21d386dd315c7219c458e7909e99994b9ed5583","schedule/phase-1/control.yaml":"df1df5770ff9b7d172d89c27e751cce65f966b8cd4269d27db5d82ae593b70ea","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"04c654d67cb27aa448f62211bd3be5cbb111d3fb5933b0077984be04a6188ad9"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"300191abf6b1ab5c69afde944aeaa94fce79ad01ed3e3b9b305bd4fa93abd39f","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"bb2db6362e93590d2011942ed42da5f338aa6a5d4bf0958b2c7b6c1e06e8bbbf","config/house.yaml":"8ea7218d703e2064720938a67a38da770c3fb3aaae98d779579934acadce244f","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/mep-hvac-coordination.yaml":"46fc84a896d7d1b236c8cf05c99a8ab4c29375471e09cb0e5d53484a693510b6","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"6a0bd04930f637b881a683add21d386dd315c7219c458e7909e99994b9ed5583","schedule/phase-1/control.yaml":"2c5d6c4557113db502815a6fc3373cace01982d072fdbe5c17505d090fc37cf8","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"892bb68ec7694c3660ea54584cd421abbb3a73832dc42de4fc24194898736bd1"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:2c623419dbd03f4c8a6697a8fb1732ab7513bc66575eaa34d7bcff171f76045e`（16 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:76cd5b0bbbd01c5f0f0ff2bfacd8e0122df03bc079a782c37a8c410b3ffd7817`（16 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -61,7 +61,7 @@
 
 ## 项目总控
 
-- [ ] 一期已分配金额为 ¥210,000，未分配 ¥0，总上限 ¥210,000。
+- [ ] 一期已分配金额为 ¥210,099，未分配 ¥0，总上限 ¥210,099。
 - [ ] 基础硬装与中央空调合计 ¥162,000，均属于一期固定工程。
 - [ ] 已量化但尚未分配的预算缺口为 ¥36,385；未取得业主批准前保持待处理。
 - [ ] 89个待报价/待算量费用项已经逐项取得金额，并与父工作包控制额完成对账。
@@ -89,7 +89,7 @@
 | [ ] | COST-160-05 | 燃气热水器 | 海尔 KL7PRO（静音王） | 天然气12T、16升，水伺服恒温+增压+静音；京东活动页观察区间约 2,444–2,612（业主侧检索转述，下单前须一手复核南宁到手价与安装边界）；业主价格线：≤2,500 直接买 / 2,500–2,800 正常 / >3,000 换 JM6S/JM6C | ¥2,600 | owner_selected_site_pending_price_recheck | [品牌页面](https://pro.m.jd.com/mall/active/3ZbAE5pGUJmYNgfwdtDfspEfdLqR/index.html) |
 | [ ] | COST-160-08 | 微蒸烤一体机 | 美的 GC5（TR850E-TSBC00） | 55L 嵌入式，微波+蒸+烤+空气炸四合一；变频微波、双孔直喷蒸汽、上下管+热风；额定功率 3200W；机身 595×565×454mm（嵌位须 600 宽高柜段并预留散热缝，电气 16A 专用回路） | ¥4,199 | owner_selected_niche_circuit_and_competitive_quote_pending | [品牌页面](https://www.midea.cn/22/1000000000400742548405.html) |
 
-- [ ] 按目标规格筛选的家电候选公开参考价下限 ¥10,825 已与一期家电预算 ¥16,000 对账，安装和辅材缺口未被隐藏。
+- [ ] 按目标规格筛选的家电候选公开参考价下限 ¥10,825 已与一期家电预算 ¥16,099 对账，安装和辅材缺口未被隐藏。
 
 
 ## 硬装询价轮次核对
@@ -1109,7 +1109,7 @@
 ## PKG-160｜必需家电安装与接口测试
 
 - 通俗说明：安装一期实际需要使用的家电，逐台核对电源、给水、排水、散热和维护空间并试运行；二期设备不在本项重复计费。
-- 预算：¥16,000；合同：—；已付：¥0；预测：—
+- 预算：¥16,099；合同：—；已付：¥0；预测：—
 - 依赖：PKG-110、PKG-120、PKG-125、PKG-135；就绪：`blocked`；执行：`not_started`
 - 责任角色：家电供应商、水电施工、业主；付款门槛：`GATE-160-COMPLETE`
 - 当前付款门槛状态：`pending`
@@ -1144,7 +1144,7 @@
 | [ ] | P0接口｜做饭和橱柜接口必需 | COST-160-04 | 吸油烟机 | 记录型号、尺寸、烟管、止回阀、插座与橱柜安装边界；必须在吊柜和烟管施工前冻结 | 1台候选，待确认 | 待报价/待算量 | interface_pending |
 | [ ] | P0条件｜无现成设备时入住必需 | COST-160-05 | 燃气热水器（一期类别已确认） | 业主已确认一期按燃气热水器推进；设计模型暂记厨房西侧靠生活阳台玻璃幕墙的实体墙（墙体编号w_vrv_east，插座协调点sock_balcony_waterheater），这只是设计协调点，不是现场安装确认；仍需核对开发商或现有设备是否可用、天然气条件、实际安装墙面、容量、尺寸、排烟、冷凝水、给排水、专用电路和物业要求，现场条件未闭合前不得下单；2026-10-05（DEC-2026-10-05-R5）业主换选型号方向为海尔 KL7PRO（16L 水伺服增压静音，预算 2,600，价格线 ≤2,500 直接买 / >3,000 转 JM6S/JM6C），MK6/HWF Pro 转价值/下探备选，BLK-WATER-HEATER-SITE 未解除前不下单 | 1台候选，类别与型号方向已定、现场待核 | ¥2,600 | selection_confirmed_site_pending |
 | [ ] | P0确认｜防尘与自动清洁 | COST-160-06 | 云鲸JX超薄上下水版扫地机器人 | 2026-11-02本PR由J6改JX超薄上下水版YJCC034（京东商品编号100237988935）；2026-11-03业主拍板JX取代J6为现行候选（非最终锁定）：JX安装手册终核、20mm顶余下尘袋更换/基站移出/排水可达/sock_gbath_robot常插拔、99元追加批复、订单SKU与上下水配件安装复核完成前不得下单；按既有客卫悬空台盆柜下主位安装，使用sock_gbath_robot电源、台盆进水三通和墙排方案，柜体底缘0.30不动、台下净空0.30、基站顶余20mm；设备预算3,000元业主确认不变，京东截图价3,099元差99元未批、不锁成本；采购前复核实机版本、柜下净空、穿墙排水、尘袋更换可达性和检修条件 | 1台，现行候选=JX（业主2026-11-03拍板由J6改JX，非最终锁定）；预算3000元业主确认、京东截图3099差99未批；现场接口待核 | ¥3,000 | budget_confirmed_site_pending |
-| [ ] | P2｜明确留到二期 | COST-160-07 | 二期家电排除项 | 洗碗机、干衣机和净水设备不从一期16,000元家电额度重复扣款，除非业主书面调整阶段 | 排除清单 | ¥0 | excluded_to_phase_2 |
+| [ ] | P2｜明确留到二期 | COST-160-07 | 二期家电排除项 | 洗碗机、干衣机和净水设备不从一期16,099元家电额度重复扣款，除非业主书面调整阶段 | 排除清单 | ¥0 | excluded_to_phase_2 |
 | [ ] | P1｜业主定标生活电器 | COST-160-08 | 嵌入式微蒸烤一体机 | 业主定标方向（DEC-2026-10-05-R4）：美的 GC5（TR850E-TSBC00，55L，微/蒸/烤/空气炸四合一，变频微波+双孔直喷+上下管热风，额定 3200W，机身 595×565×454mm）；官方现价 4,199（2026-10-05 页面观察，非成交价），目标 ≤3,800、封顶 4,200；同档竞品比价未做；电气需 16A/2.5mm² 专用回路（GB 55038 7.4.4），嵌位（600 宽高柜段）与点位随橱柜方案冻结后落，台面/高柜开孔前必须定型号 | 1台，业主定标方向、嵌位待设计 | ¥4,000 | candidate |
 
 - [ ] 每个费用项均有数量、单价、品牌型号或服务边界；“待报价/待算量”没有被当作0元。
@@ -1152,7 +1152,7 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | SCH-160-01 | critical/completion/阻塞解除后 | 必需家电逐台安装和接口试运行 | 按设备说明检查电源、给排水、散热、水平和试运行状态 | 设备运行正常，无漏水、异常发热、跳闸或维护空间不足 | commissioning_record、serial_number_photos | `b82736e9f725be89f1dd6b4d50b9d39fc71411fd57a7120cea48730bc25f741b` | pending |
+| [ ] | SCH-160-01 | critical/completion/阻塞解除后 | 必需家电逐台安装和接口试运行 | 按设备说明检查电源、给排水、散热、水平和试运行状态 | 设备运行正常，无漏水、异常发热、跳闸或维护空间不足 | commissioning_record、serial_number_photos | `ca7387b00c9b3bc9406ccb1bedad48eb667b63b208c6f8725054019317b87c06` | pending |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -1181,7 +1181,7 @@
 | [ ] | check_occ_formaldehyde | critical/引用 | 甲醛检测 | 建议找 CMA 资质机构上门检测。<br>检测前封闭门窗 12 小时（关闭新风）。<br>每个房间设一个检测点（中央位置，离地 1m）。<br> | 甲醛 < 0.08mg/m³（国标 GB/T 18883） | 照片或检测记录 | `167e5b84e2f90d4601c16825ce299505a1d93642a3ba9442cdfbd5c1cc827c17` | pending |
 | [ ] | SCH-170-01 | critical/completion/阻塞解除后 | 所有失败项完成整改和复验 | 汇总各施工包缺陷清单，逐项核对整改证据和复验记录 | 无未关闭的critical或major问题 | closed_defect_register、reinspection_records | `77078b08e8c2675119c7492a70527e30a9ffb85757d8c32d29d8ac32df6e960a` | pending |
 | [ ] | SCH-170-02 | critical/payment/阻塞解除后 | 竣工资料和保修资料完整移交 | 核对竣工图、隐蔽照片、设备清单、合同发票、保修卡、说明书和联系人 | 移交目录逐项签收，资料路径可访问 | signed_handover_index | `f171864897c59f2ce2f202c4171663e1f79952ac43a0f038affbacd68c402686` | pending |
-| [ ] | SCH-170-03 | critical/payment/阻塞解除后 | 最终结算不超过批准额度 | 汇总合同、变更、已付、待付和退款，核对各预算池及总上限 | 最终预测不超过¥210,000，或已有业主书面追加批准 | final_account_statement、owner_approval_if_overrun | `59136dc47128624960a7418abe5f849790c483674796b4803cb7ead01841b97b` | pending |
+| [ ] | SCH-170-03 | critical/payment/阻塞解除后 | 最终结算不超过批准额度 | 汇总合同、变更、已付、待付和退款，核对各预算池及总上限 | 最终预测不超过¥210,099，或已有业主书面追加批准 | final_account_statement、owner_approval_if_overrun | `24b52f308c2c1bef769449bc54ac111e62cf7f142d650d98c1d6ce9a5d71cbe5` | pending |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。

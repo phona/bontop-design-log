@@ -183,7 +183,7 @@ const SECTIONS: Section[] = [
           return `${pools.length} 池：${pools.map((p) => `${p.name} ${p.planned_cny}`).join(' / ')}`;
         },
         source: 'schedule/phase-1/control.yaml:34-52',
-        note: '六池合计 = 执行上限；家电 16000 含 GC5 追加 4000',
+        note: '六池合计 = 执行上限；家电 16099 含 GC5 追加 4000 与 JX ¥99 追加（2026-11-04 DEC-2026-11-04-R2）',
       },
       {
         label: '暖通执行池',
