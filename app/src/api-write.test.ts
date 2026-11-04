@@ -263,3 +263,178 @@ describe('api-write（issue #64 写操作 token 认证）', () => {
     expect(document.getElementById('write-token-dialog')).toBeNull();
   });
 });
+
+describe('api-write token 对话框焦点陷阱（issue #82）', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.getElementById('write-token-dialog')?.remove();
+  });
+
+  /** 在 body 里放一个背景按钮，作为「焦点逃逸到背景控件」的断言靶。 */
+  function appendBackgroundButton(): HTMLButtonElement {
+    const bgButton = document.createElement('button');
+    bgButton.id = 'bg-button';
+    document.body.appendChild(bgButton);
+    return bgButton;
+  }
+
+  /**
+   * 打开对话框（本地无 token 路径）并返回这次写请求的 promise。
+   * 注意：本函数刻意不是 async 且不 await——返回的 promise 要等对话框确认后才
+   * settle，调用方必须直接把它交给 expect(...).rejects/resolves，不能先 await；
+   * 对话框在 apiWrite 的同步前缀里就已创建，waitFor 只作保险。
+   */
+  function openDialog(): Promise<Response> {
+    mockFetch(() => okResponse());
+    return apiWrite('/api/view-context', { method: 'POST' });
+  }
+
+  /** 等到对话框输入框挂载（与既有 #64 用例同一等法）。 */
+  async function awaitDialog(): Promise<void> {
+    await vi.waitFor(() => expect(document.getElementById('write-token-input')).not.toBeNull());
+  }
+
+  it('弹框打开即聚焦 input，Tab / Shift+Tab 在「输入框 ↔ 取消 ↔ 确定」之间循环，焦点不逃逸到背景控件', async () => {
+    const pending = openDialog();
+    await awaitDialog();
+    const bgButton = appendBackgroundButton();
+
+    const input = document.getElementById('write-token-input') as HTMLInputElement;
+    const cancelBtn = document.getElementById('write-token-cancel') as HTMLButtonElement;
+    const confirmBtn = document.getElementById('write-token-confirm') as HTMLButtonElement;
+    const pressTab = (shift: boolean): void => {
+      (document.activeElement ?? document.body).dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Tab', shiftKey: shift, bubbles: true, cancelable: true }),
+      );
+    };
+
+    // 开框即聚焦 input（issue #82 要求 4 保留的既有行为）
+    expect(document.activeElement).toBe(input);
+    pressTab(false);
+    expect(document.activeElement).toBe(cancelBtn);
+    pressTab(false);
+    expect(document.activeElement).toBe(confirmBtn);
+    pressTab(false);
+    expect(document.activeElement).toBe(input); // 链尾循环回 input，不逃逸到背景
+    pressTab(true);
+    expect(document.activeElement).toBe(confirmBtn); // Shift+Tab 反向循环
+    pressTab(true);
+    expect(document.activeElement).toBe(cancelBtn);
+    pressTab(true);
+    expect(document.activeElement).toBe(input);
+
+    // issue #82 触发路径：焦点已逃逸到背景控件时按 Tab，也被拉回对话框
+    bgButton.focus();
+    expect(document.activeElement).toBe(bgButton);
+    pressTab(false);
+    expect(document.activeElement).toBe(input);
+    expect(document.activeElement).not.toBe(bgButton);
+
+    bgButton.remove();
+    (document.getElementById('write-token-cancel') as HTMLButtonElement).click();
+    await expect(pending).rejects.toThrow('write token required');
+  });
+
+  it('弹框期间 document 级 keydown spy 收不到 Tab / 背景快捷键（焦点在浮层内与逃逸到背景两种情形）', async () => {
+    const pending = openDialog();
+    await awaitDialog();
+    const bgButton = appendBackgroundButton();
+    const input = document.getElementById('write-token-input') as HTMLInputElement;
+    const docKeyDown = vi.fn();
+    document.addEventListener('keydown', docKeyDown);
+    try {
+      // 情形一：焦点在 input 上按 Tab——原生行为会走到 overlay 之后的背景可聚焦
+      // 元素（逃逸），必须被就地截停并循环
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+      // 情形二：焦点已逃逸到背景控件——按键目标不在浮层内，overlay 冒泡截停
+      // 覆盖不到（这正是 issue #82 的洞），由 document 捕获段兜底；App.ts
+      // setupKeyboard 的 KeyV（请求第一人称指针锁定）在此情形下原本会开火，
+      // 把鼠标抢回画布、弹框再次点不动
+      bgButton.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }));
+      bgButton.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', code: 'KeyV', bubbles: true, cancelable: true }));
+      expect(docKeyDown).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener('keydown', docKeyDown);
+      bgButton.remove();
+    }
+    (document.getElementById('write-token-cancel') as HTMLButtonElement).click();
+    await expect(pending).rejects.toThrow('write token required');
+  });
+
+  it('关框后焦点陷阱与 document 拦截一并解除（Tab / 背景键恢复到达 document，不永久拦截）', async () => {
+    const pending = openDialog();
+    await awaitDialog();
+    (document.getElementById('write-token-cancel') as HTMLButtonElement).click();
+    await expect(pending).rejects.toThrow('write token required');
+    expect(document.getElementById('write-token-dialog')).toBeNull();
+
+    const docKeyDown = vi.fn();
+    document.addEventListener('keydown', docKeyDown);
+    try {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', code: 'KeyV', bubbles: true, cancelable: true }));
+      expect(docKeyDown).toHaveBeenCalledTimes(1);
+    } finally {
+      document.removeEventListener('keydown', docKeyDown);
+    }
+  });
+
+  it('input 上的 Escape 仍走取消、Enter 仍走确认（焦点陷阱不改既有键位）', async () => {
+    // Escape → 取消
+    const pendingCancel = openDialog();
+    await awaitDialog();
+    const input = document.getElementById('write-token-input') as HTMLInputElement;
+    input.value = 'tok';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+    await expect(pendingCancel).rejects.toThrow('write token required');
+    expect(document.getElementById('write-token-dialog')).toBeNull();
+
+    // Enter → 确认（与既有 #64 用例同一路径，此处确认焦点陷阱接入后仍走通）
+    const pendingConfirm = openDialog();
+    await awaitDialog();
+    (document.getElementById('write-token-input') as HTMLInputElement).value = 'tok';
+    (document.getElementById('write-token-input') as HTMLInputElement)
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    await expect(pendingConfirm).resolves.toMatchObject({ status: 200 });
+    expect(document.getElementById('write-token-dialog')).toBeNull();
+  });
+
+  it('弹框期间背景顶层节点挂 inert、关框移除；浮层自身与已预设 inert 的节点不被误伤', async () => {
+    // jsdom 29.1.1 实测（本仓 node_modules）：'inert' in HTMLElement.prototype ===
+    // false，el.inert = true 不反射到属性——inert 的真实行为（挡焦点/挡点击）
+    // 只能浏览器实测；这里只验证「挂载时设、卸载时逐个移除」的属性记账不漂移。
+    const bgRoot = document.createElement('div');
+    bgRoot.id = 'bg-root';
+    document.body.appendChild(bgRoot);
+    const approvalPage = document.createElement('div');
+    approvalPage.id = 'approval-page';
+    document.body.appendChild(approvalPage);
+    const alreadyInert = document.createElement('div');
+    alreadyInert.id = 'already-inert';
+    alreadyInert.setAttribute('inert', '');
+    document.body.appendChild(alreadyInert);
+
+    const pending = openDialog();
+    await awaitDialog();
+    const overlay = document.getElementById('write-token-dialog') as HTMLElement;
+
+    expect(overlay.hasAttribute('inert')).toBe(false); // 浮层自身不禁用
+    expect(bgRoot.hasAttribute('inert')).toBe(true);
+    expect(approvalPage.hasAttribute('inert')).toBe(true);
+
+    (document.getElementById('write-token-cancel') as HTMLButtonElement).click();
+    await expect(pending).rejects.toThrow('write token required');
+
+    expect(bgRoot.hasAttribute('inert')).toBe(false);
+    expect(approvalPage.hasAttribute('inert')).toBe(false);
+    // 开框前就 inert 的节点：属性仍在（不是我们挂的，不误删）
+    expect(alreadyInert.hasAttribute('inert')).toBe(true);
+
+    bgRoot.remove();
+    approvalPage.remove();
+    alreadyInert.remove();
+  });
+});

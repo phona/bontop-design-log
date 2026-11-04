@@ -13,6 +13,11 @@
  *     不会误清并发请求刚存入的新 token。
  *   - 开框即释放第一人称鼠标锁定（document.exitPointerLock，存在性守卫），
  *     并在 overlay 上截停 keydown 不冒泡；关框不重新锁定（重新点画布再进）。
+ *   - 焦点陷阱（issue #82）：Tab/Shift+Tab 在「输入框 ↔ 取消 ↔ 确定」之间循环，
+ *     不逃逸到背景；背景顶层节点（#approval-page 与 body 直接子节点）挂 inert
+ *     禁交互；document 捕获段兜底截停「焦点已逃逸到背景控件」时的按键——
+ *     该情形下 overlay 冒泡截停不触发（按键目标不在浮层内），App 的 V 请求
+ *     第一人称指针锁定等 document 级快捷键会把鼠标抢回画布、弹框再次点不动。
  *
  * 对话框全宽（max-width 420px、width 100%），≤700px 手机窄屏可用。
  */
@@ -110,7 +115,68 @@ function promptForWriteToken(reason: 'missing' | 'rejected'): Promise<string> {
     const confirmBtn = box.querySelector('#write-token-confirm') as HTMLButtonElement;
     const cancelBtn = box.querySelector('#write-token-cancel') as HTMLButtonElement;
 
+    // ── issue #82 焦点陷阱 / 背景禁交互 ────────────────────────────────
+    // 背景顶层节点挂 inert：#approval-page（审批独立页，body 内层节点，循环
+    // 覆盖不到）与 body 的直接子节点（#app 等全部顶层背景；overlay 自身也是
+    // body 子节点，排除）。jsdom 29 不实现 inert（实测 'inert' in
+    // HTMLElement.prototype === false、el.inert = true 不反射属性），其真实
+    // 遮挡行为只能浏览器实测；jsdom 下 keydown 不逃逸由下方 document 捕获段
+    // 保证。只记自己挂上去的节点，关框时逐个移除，不误删他人预设的 inert。
+    const inertedBackground: HTMLElement[] = [];
+    const setBackgroundInert = (): void => {
+      const targets: HTMLElement[] = [];
+      const approvalPage = document.getElementById('approval-page');
+      if (approvalPage instanceof HTMLElement) targets.push(approvalPage);
+      for (const child of Array.from(document.body.children)) {
+        if (child instanceof HTMLElement && child !== overlay && !targets.includes(child)) {
+          targets.push(child);
+        }
+      }
+      for (const el of targets) {
+        if (!el.hasAttribute('inert')) {
+          el.setAttribute('inert', '');
+          inertedBackground.push(el);
+        }
+      }
+    };
+    const restoreBackgroundInert = (): void => {
+      for (const el of inertedBackground) el.removeAttribute('inert');
+      inertedBackground.length = 0;
+    };
+
+    // document 捕获段兜底：overlay 冒泡截停管的是「按键目标在浮层内」；焦点一旦
+    // 逃逸到背景控件（Tab 原生行为走到 overlay 之后的背景可聚焦元素），按键目标
+    // 就在背景、overlay 监听根本不触发。Tab 一律就地循环（preventDefault 掉原生
+    // 焦点移动）；其余键若目标在浮层内放行（input 的 Enter/Escape 目标阶段先
+    // 执行），在背景则就地截停。stopImmediatePropagation 而非 stopPropagation：
+    // 挡的是挂在同一个 document 上的监听（App.ts setupKeyboard 的 V 等快捷键、
+    // FirstPersonController 的 WASD），同对象监听只有前者挡得住。
+    const trapItems: HTMLElement[] = [input, cancelBtn, confirmBtn];
+    const onDocKeydownCapture = (event: KeyboardEvent): void => {
+      // 兜底：浮层被非 close 路径摘掉后，不再永久拦截 Tab / 背景键
+      if (!overlay.isConnected) {
+        document.removeEventListener('keydown', onDocKeydownCapture, true);
+        restoreBackgroundInert();
+        return;
+      }
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        const index = trapItems.indexOf(document.activeElement as HTMLElement);
+        const dir = event.shiftKey ? -1 : 1;
+        // 焦点不在对话框内（已逃逸或落在 body）：拉回输入框
+        const next = index === -1 ? trapItems[0] : trapItems[(index + dir + trapItems.length) % trapItems.length];
+        next.focus();
+        return;
+      }
+      if (overlay.contains(event.target as Node)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+
     const close = (): void => {
+      document.removeEventListener('keydown', onDocKeydownCapture, true);
+      restoreBackgroundInert();
       overlay.remove();
     };
     const confirm = (): void => {
@@ -138,9 +204,14 @@ function promptForWriteToken(reason: 'missing' | 'rejected'): Promise<string> {
       // 弹框期间阻断场景键盘输入：第一人称的 WASD/视角快捷键挂在 document 上，
       // overlay 是全屏浮层（fixed inset-0），在这里截停不冒泡；input 上的
       // Enter/Escape 在目标阶段先执行，不受影响。鼠标点击已被浮层本身接住。
+      // 注意：这只覆盖「按键目标在浮层内」；焦点逃逸到背景控件时目标不在浮层，
+      // 靠 document 捕获段 onDocKeydownCapture 兜底（issue #82）。
       event.stopPropagation();
       if (event.key === 'Escape') cancel();
     });
+    // issue #82：背景顶层节点禁交互 + 焦点不逃逸（两处实现见上方注释）
+    setBackgroundInert();
+    document.addEventListener('keydown', onDocKeydownCapture, true);
     input.focus();
   });
 }
