@@ -887,15 +887,6 @@ export class App {
     });
   }
 
-  /** Resolve the authored house.yaml index, even when the phase view has
-   * removed count-only or deferred entries before rendering. */
-  private getFurnitureWriteIndex(objectId: string): number | null {
-    const position = this.houseScene.getFurniturePosition(objectId);
-    // A render index is only an object-id/display detail.  It is not safe to
-    // use it as a write index after phase filtering has removed earlier items.
-    return position?.sourceIndex ?? null;
-  }
-
   private setupTopDownButton(): void {
     this.topDownButton = new TopDownButton({
       onToggle: () => {
@@ -2363,37 +2354,10 @@ export class App {
       onEnd: async (x, z, rotation) => {
         const objectId = this.fpController.getDraggedObjectId();
         if (!objectId) return;
-        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:')) {
-          const isElectrical = objectId.startsWith('electrical:');
-          const id = objectId.split(':').slice(1).join(':');
-          const apiUrl = isElectrical ? '/api/electrical' : '/api/plumbing';
-          try {
-            await fetch(`${apiUrl}/${id}`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ x, z }),
-            });
-            await this.refreshInfrastructure();
-          } catch (err) {
-            console.error('Failed to update annotation', err);
-          }
-        } else if (objectId.startsWith('furniture:')) {
-          const parts = objectId.split(':');
-          if (parts.length >= 4) {
-            const room = parts[1];
-            const index = this.getFurnitureWriteIndex(objectId);
-            if (index !== null) {
-              try {
-                await fetch(`/api/furnishings/${room}/${index}`, {
-                  method: 'PUT',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ x, z, rotation }),
-                });
-              } catch (err) {
-                console.error('Failed to update furnishing', err);
-              }
-            }
-          }
+        // 页面只读化（2026-11-04）：拖动只做本地预演，不回写配置——
+        // 模型配置唯一写手是 AI 会话（AGENTS.md「页面只取证与体验」）。
+        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:') || objectId.startsWith('furniture:')) {
+          this.showToast('拖动为本地预演，刷新即回原位；要调整配置请通过 AI 会话');
         }
         this.houseScene.hideGhost();
       },
@@ -2731,17 +2695,9 @@ export class App {
   private async deleteHoveredPoint(): Promise<void> {
     const hovered = this.hoverTooltip.getCurrent();
     if (!hovered) return;
-    const isElectrical = hovered.objectId.startsWith('electrical:');
-    const isPlumbing = hovered.objectId.startsWith('plumbing:');
-    if (!isElectrical && !isPlumbing) return;
-    const id = hovered.objectId.split(':').slice(1).join(':');
-    const apiUrl = isElectrical ? '/api/electrical' : '/api/plumbing';
-    try {
-      await fetch(`${apiUrl}/${id}`, { method: 'DELETE' });
-      await this.refreshInfrastructure();
-    } catch (err) {
-      console.error('Failed to delete annotation', err);
-    }
+    if (!hovered.objectId.startsWith('electrical:') && !hovered.objectId.startsWith('plumbing:')) return;
+    // 页面只读化（2026-11-04）：删除点位是配置修改，指引到 AI 会话。
+    this.showToast('删除点位请通过 AI 会话修改配置（页面只读）');
   }
 
   private setupPointerLockEvents(): void {
@@ -2835,31 +2791,9 @@ export class App {
       if (objectId && pos) {
         const x = pos.x;
         const z = pos.z;
-        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:')) {
-          const isElectrical = objectId.startsWith('electrical:');
-          const id = objectId.split(':').slice(1).join(':');
-          const apiUrl = isElectrical ? '/api/electrical' : '/api/plumbing';
-          fetch(`${apiUrl}/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ x, z }),
-          }).then(async () => {
-            await this.refreshInfrastructure();
-          }).catch((err) => console.error('Failed to update annotation', err));
-        } else if (objectId.startsWith('furniture:')) {
-          const rotation = this.fpController.getDragRotation();
-          const parts = objectId.split(':');
-          if (parts.length >= 4) {
-            const room = parts[1];
-            const index = this.getFurnitureWriteIndex(objectId);
-            if (index !== null) {
-              fetch(`/api/furnishings/${room}/${index}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ x, z, rotation }),
-              }).catch((err) => console.error('Failed to update furnishing', err));
-            }
-          }
+        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:') || objectId.startsWith('furniture:')) {
+          // 页面只读化（2026-11-04）：本地预演，不回写配置
+          this.showToast('拖动为本地预演，刷新即回原位；要调整配置请通过 AI 会话');
         }
       }
       this.fpController.exitDragMode();
@@ -2880,16 +2814,8 @@ export class App {
           this.exitInfrastructurePlaceMode();
           return;
         }
-        const height = category === 'electrical'
-          ? (type === 'switch' ? 1.3 : type === 'floor_socket' ? 0.05 : 0.3)
-          : 0;
-        fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, room, type, x: pos.x, z: pos.z, height }),
-        }).then(async () => {
-          await this.refreshInfrastructure();
-        }).catch((err) => console.error('Failed to place annotation', err));
+        // 页面只读化（2026-11-04）：新增点位是配置修改，指引到 AI 会话
+        this.showToast('新增点位请通过 AI 会话修改配置（页面只读）');
       }
       this.exitInfrastructurePlaceMode();
       return;
@@ -2899,20 +2825,8 @@ export class App {
       const { x: centerX, y: centerY } = this.getCanvasCenter();
       const pos = this.houseScene.getGroundPosition(centerX, centerY);
       if (pos) {
-        const type = this.furniturePlaceMode.type;
-        fetch('/api/furnishings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ room: 'living_dining', type, x: pos.x, z: pos.z, rotation: 0 }),
-        }).then(async () => {
-          const data = await this.stateSync.fetchProject();
-          this.projectData = data;
-          this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
-          await this.houseScene.buildFromCatalog(data);
-          this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
-          this.analysisTools.setRooms(data?.house?.rooms ?? []);
-          this.analysisTools.checkFurnitureCollisions();
-        }).catch((err) => console.error('Failed to place furnishing', err));
+        // 页面只读化（2026-11-04）：新增家具是配置修改，指引到 AI 会话
+        this.showToast('新增家具请通过 AI 会话修改配置（页面只读）');
       }
       this.exitFurniturePlaceMode();
       return;

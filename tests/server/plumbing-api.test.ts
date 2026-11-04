@@ -1,55 +1,21 @@
-import { describe, it, before, after } from 'node:test';
+// 只读断言（2026-11-04 页面只读化）：模型配置路由仅允许 GET；mutation 请求必须 404
+// 且配置文件零改动（AGENTS.md「页面只读铁律」——模型配置唯一写手是 AI 会话）。
 import assert from 'node:assert/strict';
-import { writeFileSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import express from 'express';
 import request from 'supertest';
-import { createPlumbingRouter } from '../../server/routes-plumbing.js';
+import { before, after, describe, it } from 'node:test';
 
-describe('Plumbing API', () => {
+describe('plumbing routes are read-only', () => {
   let tmpDir: string;
   let app: express.Express;
   const yamlPath = () => join(tmpDir, 'plumbing.yaml');
 
-  function writeGeometryContext(): void {
-    mkdirSync(join(tmpDir, 'layout'), { recursive: true });
-    writeFileSync(join(tmpDir, 'layout/model-geometry.yaml'), `vertices:
-  - {id: v_kitchen_1, x: 0, z: 0}
-  - {id: v_kitchen_2, x: 10, z: 0}
-  - {id: v_kitchen_3, x: 10, z: 10}
-  - {id: v_master_bath_1, x: 20, z: 0}
-  - {id: v_master_bath_2, x: 30, z: 0}
-  - {id: v_master_bath_3, x: 30, z: 10}
-  - {id: v_guest_bath_1, x: 40, z: 0}
-  - {id: v_guest_bath_2, x: 50, z: 0}
-  - {id: v_guest_bath_3, x: 50, z: 10}
-walls: []
-rooms:
-  - {id: kitchen, boundary: [v_kitchen_1, v_kitchen_2, v_kitchen_3]}
-  - {id: master_bath, boundary: [v_master_bath_1, v_master_bath_2, v_master_bath_3]}
-  - {id: guest_bath, boundary: [v_guest_bath_1, v_guest_bath_2, v_guest_bath_3]}
-`, 'utf8');
-    writeFileSync(join(tmpDir, 'layout/overlay.yaml'), 'suppress: []\n', 'utf8');
-  }
-
   before(() => {
-    tmpDir = mkdtempSync(join(tmpdir(), 'plumbing-test-'));
-    writeGeometryContext();
-    writeFileSync(yamlPath(), `- id: faucet_kitchen
-  room: kitchen
-  type: faucet
-  x: 7.2
-  z: 3.0
-  height: 0.8
-  note: "厨房洗菜盆"
-- id: toilet_mbath
-  room: master_bath
-  type: toilet
-  x: 2.6
-  z: 1.5
-`, 'utf8');
-
+    tmpDir = mkdtempSync(join(tmpdir(), 'plumbing-readonly-test-'));
+    writeFileSync(yamlPath(), '- { id: p1, room: living_dining, type: drain, x: 1, z: 1 }', 'utf8');
     app = express();
     app.use(express.json());
     app.use('/api/plumbing', createPlumbingRouter(yamlPath()));
@@ -59,54 +25,21 @@ rooms:
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('GET lists all plumbing points', async () => {
+  it('GET serves the config', async () => {
     const res = await request(app).get('/api/plumbing');
     assert.equal(res.status, 200);
-    assert.equal(Array.isArray(res.body), true);
-    assert.equal(res.body.length, 2);
   });
 
-  it('PUT updates position', async () => {
-    const res = await request(app)
-      .put('/api/plumbing/faucet_kitchen')
-      .send({ x: 7.5, z: 3.2 });
-    assert.equal(res.status, 200);
-    assert.equal(res.body.item.x, 7.5);
-    assert.equal(res.body.item.z, 3.2);
-  });
-
-  it('POST adds new point', async () => {
-    const res = await request(app)
-      .post('/api/plumbing')
-      .send({ id: 'shower_gbath', room: 'guest_bath', type: 'shower', x: 5.6, z: 3.0, height: 1.0 });
-    assert.equal(res.status, 201);
-    assert.equal(res.body.item.type, 'shower');
-  });
-
-  it('DELETE removes a point', async () => {
-    const res = await request(app).delete('/api/plumbing/toilet_mbath');
-    assert.equal(res.status, 200);
-    const getRes = await request(app).get('/api/plumbing');
-    assert.equal(getRes.body.length, 2);
-  });
-
-  it('PUT returns 404 for non-existent point', async () => {
-    const res = await request(app)
-      .put('/api/plumbing/nonexistent')
-      .send({ x: 1, z: 1 });
-    assert.equal(res.status, 404);
-  });
-
-  it('DELETE returns 404 for non-existent point', async () => {
-    const res = await request(app).delete('/api/plumbing/nonexistent');
-    assert.equal(res.status, 404);
-  });
-
-  it('POST returns 400 when missing id or room', async () => {
-    const res1 = await request(app).post('/api/plumbing').send({ room: 'kitchen' });
-    assert.equal(res1.status, 400);
-
-    const res2 = await request(app).post('/api/plumbing').send({ id: 'test' });
-    assert.equal(res2.status, 400);
-  });
+  for (const verb of ['put', 'post', 'delete'] as const) {
+    it(`${verb.toUpperCase()} is not available (read-only)`, async () => {
+      const before = readFileSync(yamlPath(), 'utf8');
+      const req = request(app)[verb]('/api/plumbing/anywhere');
+      if (verb !== 'delete') req.send({ x: 1, z: 2 });
+      const res = await req;
+      assert.equal(res.status, 404);
+      assert.equal(readFileSync(yamlPath(), 'utf8'), before, 'config file must be untouched');
+    });
+  }
 });
+
+import { createPlumbingRouter } from '../../server/routes-plumbing.js';
