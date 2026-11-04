@@ -28,6 +28,7 @@ describe('plumbing routes are read-only', () => {
   it('GET serves the config', async () => {
     const res = await request(app).get('/api/plumbing');
     assert.equal(res.status, 200);
+    assert.deepEqual(res.body, [{ id: 'p1', room: 'living_dining', type: 'drain', x: 1, z: 1 }]);
   });
 
   // 用原写入端点的真实路径/条目验证拒绝（codex PR 77 major）：恢复 mutation 路由会让这些请求非 404，测试立刻变红。

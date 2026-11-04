@@ -28,6 +28,9 @@ describe('furnishings routes are read-only', () => {
   it('GET serves the config', async () => {
     const res = await request(app).get('/api/furnishings');
     assert.equal(res.status, 200);
+    assert.deepEqual(res.body, {
+      living_dining: [{ type: 'sofa_3seat', x: 11, z: 7 }],
+    });
   });
 
   // 用原写入端点的真实路径/条目/有效载荷验证拒绝（codex PR 77 major）：
