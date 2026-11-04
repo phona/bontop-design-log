@@ -24,12 +24,19 @@ const MAX_EDGE_PX = 1600;
 /** JPEG 重编码质量。 */
 const JPEG_QUALITY = 0.72;
 /**
- * 编码后（base64 字符数）上限。服务端 express.json({limit:'1mb'}) 限的是**整个
- * JSON 请求体**：base64 膨胀 4/3 + package_id/check_id/filename 开销，900,000
- * 字符 ≈ 675KB 二进制 + 开销后稳在 1,048,576 字节内（codex 复审 major：早先按
- * 二进制 900KB 设限，800KB 图编码后就有 1,066,758 字节，照样 413）。
+ * 压缩目标：编码后（base64 字符数）压到这个数以下。服务端 express.json({limit:'1mb'})
+ * 限的是**整个 JSON 请求体**：base64 膨胀 4/3 + package_id/check_id/filename 开销，900,000
+ * 字符 ≈ 675KB 二进制 + 开销后稳在 1,048,576 字节内（codex 复审 major：早先按二进制
+ * 900KB 设限，800KB 图编码后就有 1,066,758 字节，照样 413）。
  */
 const MAX_ENCODED_BASE64_CHARS = 900_000;
+/**
+ * 原样上传（未压缩附件/无压缩能力回落）的硬上限：按**完整 JSON 请求体**算，留出
+ * package_id/check_id/filename 与 JSON 结构的开销余量。700,000 字节 PDF 编码后
+ * 933,336 字符 + 开销 ≈933,436 < 1,048,576，服务端收得下——codex 复审 minor：早先
+ * 把压缩目标 900k 错当成原样上传的硬限，误拒了服务端可接收的附件。
+ */
+const MAX_REQUEST_BASE64_CHARS = 1_040_000;
 /** 压缩阶梯：标准档 → 降档；两档编码后都超限才让用户重拍。 */
 const COMPRESS_LADDER: Array<{maxEdge: number; quality: number}> = [
   {maxEdge: MAX_EDGE_PX, quality: JPEG_QUALITY},
@@ -115,6 +122,45 @@ export function planCompression(file: {type: string; size: number}): {compress: 
 }
 
 /**
+ * 动图字节级检测（纯函数）。canvas 只画一帧再导 JPEG，会把动图压成单帧——证据要展示
+ * 设备动作/故障过程时后续帧全丢（codex 复审 major）。判定：
+ *   - GIF：Graphic Control Extension（21 F9 04）≥2 段即多帧；
+ *   - WebP：RIFF/WEBP/VP8X 且 VP8X 标志字节 bit 0x02（ANIM）；
+ *   - JPEG/PNG/HEIC 等无多帧动画形态（渐进式 JPEG 不是动画），false。
+ * 读不到字节按动图处理（不压，保守）。
+ */
+export function isAnimatedImageBytes(type: string, bytes: Uint8Array): boolean {
+  try {
+    if (type === 'image/gif') {
+      let gce = 0;
+      for (let i = 0; i + 2 < bytes.length; i += 1) {
+        if (bytes[i] === 0x21 && bytes[i + 1] === 0xf9 && bytes[i + 2] === 0x04) gce += 1;
+      }
+      return gce >= 2;
+    }
+    if (type === 'image/webp') {
+      if (bytes.length < 21) return false;
+      const tag = (offset: number): string => String.fromCharCode(bytes[offset], bytes[offset + 1], bytes[offset + 2], bytes[offset + 3]);
+      if (tag(0) !== 'RIFF' || tag(8) !== 'WEBP' || tag(12) !== 'VP8X') return false;
+      return (bytes[20] & 0x02) !== 0; // VP8X 首字节：bit1 = ANIMATION_FLAG
+    }
+    return false;
+  } catch {
+    return true; // 解析异常按动图处理：不压，保留原字节
+  }
+}
+
+/** 读文件头做动图检测；读取失败按动图处理（保守：不压）。 */
+async function detectAnimation(file: File): Promise<boolean> {
+  try {
+    const buffer = await file.arrayBuffer();
+    return isAnimatedImageBytes(file.type, new Uint8Array(buffer));
+  } catch {
+    return true;
+  }
+}
+
+/**
  * 读成「服务端要的 base64 本体」：FileReader.readAsDataURL 取逗号后段，字节数取
  * 源体积（Blob.size 精确，无需按 base64 长度反推）。读取失败 reject（界面显示错误，
  * 与旧代码 reader.onerror 的行为一致）。
@@ -159,10 +205,10 @@ async function downscaleToJpegBlob(file: File, maxEdge: number, quality: number)
   }
 }
 
-/** 原样读取并校验编码后体积：超限且无法压缩时给用户明确错误，而不是白传一次 413。 */
+/** 原样读取并按**完整请求体**上限校验：超限且无法压缩时给用户明确错误，而不是白传一次 413。 */
 async function readOriginalWithinLimit(file: File): Promise<CompressedImage> {
   const original = await readAsBase64(file, false);
-  if (original.base64.length > MAX_ENCODED_BASE64_CHARS) {
+  if (original.base64.length > MAX_REQUEST_BASE64_CHARS) {
     const approxKb = Math.round((original.base64.length * 3) / 4 / 1024);
     throw new Error(`文件约 ${approxKb}KB 超过上传上限，且当前浏览器无法压缩——请换一台设备或先用图片工具缩小`);
   }
@@ -171,14 +217,17 @@ async function readOriginalWithinLimit(file: File): Promise<CompressedImage> {
 
 /**
  * 证据文件上传前处理：按 planCompression 决定不压（或老浏览器 / jsdom 没有
- * createImageBitmap）时原样回传（编码后超限会明确报错，不白传 413）；需要压则走
- * 压缩阶梯（标准档 → 降档），**按编码后的 base64 体积判定**——服务端 1mb 限的是整个
- * JSON 请求体（codex 复审 major：早先按二进制体积设限，编码膨胀后照样 413）。
- * 压缩失败（解码失败 / canvas 不可用等）一律回落原图，绝不为压缩失败抛错。
+ * createImageBitmap）时原样回传（按完整请求体上限校验，超限明确报错不白传 413）；
+ * 动图（GIF 多帧 / WebP ANIM）不压——canvas 单帧重编码会丢后续帧，证据要展示的
+ * 设备动作/故障过程会静默丢失（codex 复审 major）；需要压则走压缩阶梯（标准档 →
+ * 降档），**按编码后的 base64 体积判定**——服务端 1mb 限整个 JSON 请求体。压缩失败
+ * （解码失败 / canvas 不可用等）一律回落原图，绝不为压缩失败抛错。
  */
 export async function compressImageFile(file: File): Promise<CompressedImage> {
   const plan = planCompression(file);
-  const canCompress = plan.compress && typeof globalThis.createImageBitmap === 'function';
+  if (!plan.compress) return readOriginalWithinLimit(file);
+  if (await detectAnimation(file)) return readOriginalWithinLimit(file);
+  const canCompress = typeof globalThis.createImageBitmap === 'function';
   if (!canCompress) return readOriginalWithinLimit(file);
   for (const tier of COMPRESS_LADDER) {
     let blob: Blob;

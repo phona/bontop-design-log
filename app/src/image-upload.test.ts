@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { safeEvidenceFilename, nextUploadNonce, planCompression, compressImageFile } from './image-upload';
+import { safeEvidenceFilename, nextUploadNonce, planCompression, compressImageFile, isAnimatedImageBytes } from './image-upload';
 
 // canvas 真实压缩路径（createImageBitmap → canvas 缩放 → toBlob JPEG 重编码）jsdom 跑不了：
 // jsdom 不实现 createImageBitmap，HTMLCanvasElement.toBlob 也没有编码器实现。这里**不
@@ -155,6 +155,45 @@ describe('planCompression（issue #70）', () => {
   });
 });
 
+describe('isAnimatedImageBytes（codex 复审 major：动图不压）', () => {
+  const gif = (gceCount: number, pad = 0): Uint8Array => {
+    const head = [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]; // GIF89a
+    const gce = [0x21, 0xf9, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00];
+    const bytes = [...head];
+    for (let i = 0; i < gceCount; i += 1) bytes.push(...gce);
+    for (let i = 0; i < pad; i += 1) bytes.push(0);
+    return new Uint8Array(bytes);
+  };
+  const webp = (animFlag: boolean): Uint8Array => {
+    const bytes = new Uint8Array(32).fill(0);
+    bytes.set([0x52, 0x49, 0x46, 0x46], 0); // RIFF
+    bytes.set([0x57, 0x45, 0x42, 0x50], 8); // WEBP
+    bytes.set([0x56, 0x50, 0x38, 0x58], 12); // VP8X
+    bytes[20] = animFlag ? 0x02 : 0x00; // VP8X 标志字节 bit1 = ANIM
+    return bytes;
+  };
+
+  it('GIF：多个 GCE 扩展判动图，0/1 个判静态', () => {
+    expect(isAnimatedImageBytes('image/gif', gif(0))).toBe(false);
+    expect(isAnimatedImageBytes('image/gif', gif(1))).toBe(false);
+    expect(isAnimatedImageBytes('image/gif', gif(2))).toBe(true);
+    expect(isAnimatedImageBytes('image/gif', gif(5, 500_000))).toBe(true);
+  });
+
+  it('WebP：VP8X 动画标志位判定，非 VP8X（损失式 VP8 ）判静态', () => {
+    expect(isAnimatedImageBytes('image/webp', webp(true))).toBe(true);
+    expect(isAnimatedImageBytes('image/webp', webp(false))).toBe(false);
+    const lossy = webp(false);
+    lossy.set([0x56, 0x50, 0x38, 0x20], 12); // VP8 损失式，非 VP8X
+    expect(isAnimatedImageBytes('image/webp', lossy)).toBe(false);
+  });
+
+  it('JPEG/PNG 等无多帧动画形态，恒 false', () => {
+    expect(isAnimatedImageBytes('image/jpeg', new Uint8Array([0xff, 0xd8, 0xff]))).toBe(false);
+    expect(isAnimatedImageBytes('image/png', new Uint8Array([0x89, 0x50, 0x4e, 0x47]))).toBe(false);
+  });
+});
+
 describe('compressImageFile（issue #70，jsdom 回落路径）', () => {
   it('小图跳过压缩，原样回传 dataURL 逗号后段', async () => {
     const file = new File(['fake-image-bytes'], 'a.jpg', {type: 'image/jpeg'});
@@ -178,12 +217,33 @@ describe('compressImageFile（issue #70，jsdom 回落路径）', () => {
     expect(decoded.charCodeAt(500_000)).toBe(500_000 % 251);
   });
 
-  it('回落路径下编码后仍超限 → 明确报错（不白传一次 413）', async () => {
-    // codex 复审 major：服务端 1mb 限整个 JSON 请求体，base64 膨胀 4/3。二进制
-    // 700KB → base64 约 933k 字符 + JSON 开销 → 超 1,048,576。没有 createImageBitmap
-    // （老浏览器/jsdom）时压不了，必须在这里给出人能看懂的错，而不是让服务端 413 HTML。
+  it('回落路径下按完整请求体判定：700KB 传得上去，800KB 明确报错', async () => {
+    // codex 复审 minor：700,000 字节 base64 = 933,336 字符 + JSON 开销 ≈933,436 <
+    // 1,048,576，服务端收得下——早先把压缩目标 900k 错当成原样上传硬限误拒了它。
+    // 没有 createImageBitmap（老浏览器/jsdom）时压不了，700KB 必须放行。
     delete globalWithBitmap.createImageBitmap;
-    const file = new File([new Uint8Array(700_000)], 'big.jpg', {type: 'image/jpeg'});
-    await expect(compressImageFile(file)).rejects.toThrow(/文件约 \d+KB 超过上传上限，且当前浏览器无法压缩/);
+    const ok = new File([new Uint8Array(700_000)], 'report.pdf', {type: 'application/pdf'});
+    const okResult = await compressImageFile(ok);
+    expect(okResult.compressed).toBe(false);
+    expect(okResult.base64.length).toBe(933_336);
+
+    // 800,000 字节 → base64 1,066,672 字符 + JSON 开销 > 1,048,576：服务端必 413，
+    // 必须在客户端就给出人能看懂的错，而不是白传一次 413 HTML。
+    const tooBig = new File([new Uint8Array(800_000)], 'big.pdf', {type: 'application/pdf'});
+    await expect(compressImageFile(tooBig)).rejects.toThrow(/文件约 \d+KB 超过上传上限/);
+  });
+
+  it('动图（GIF 多帧）不压缩：原字节回传，后续帧不丢', async () => {
+    // codex 复审 major：canvas 单帧重编码会把动图压成静帧——证据要展示设备动作/故障
+    // 过程时后续帧全丢。>400KB 的多帧 GIF 必须原样回传。
+    const gce = [0x21, 0xf9, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00];
+    const bytes = new Uint8Array(500_000);
+    bytes.set([0x47, 0x49, 0x46, 0x38, 0x39, 0x61], 0);
+    for (let frame = 0; frame < 3; frame += 1) bytes.set(gce, 100 + frame * 1000);
+    const file = new File([bytes], 'fault.gif', {type: 'image/gif'});
+    const result = await compressImageFile(file);
+    expect(result.compressed).toBe(false);
+    expect(result.byteLength).toBe(500_000);
+    expect(result.base64.length).toBe(666_668); // 原字节：没被重编码
   });
 });
