@@ -2354,4 +2354,60 @@ describe('ScheduleDetailPanel 移动端现场视图（字段布局，issue #70 P
     expect(document.querySelector('[data-field-card="SCH-010-01"]')).toBeNull();
     panel.hide();
   });
+
+  // 结构完备性守卫（2026-11-04 codex 复审 2 major 的根因：字段布局逐段省略桌面
+  // 信息——未展开选择器摘要、整段预算、指纹脚注都这么丢的）。本条把桌面 render()
+  // 各段的标志性内容列成清单，逐项断言字段布局里有对应落点。以后任何人再从
+  // 字段布局删一段，先过这一关——它就是防「又丢了什么」的那条测试。
+  // 口径：只收录**影响现场采集决策**的信息（状态/阻塞/钱/检查标准/高亮范围/
+  // 指纹）；桌面纯参考项（作用域 id 明细清单、合批渲染实现注）不收录，理由见
+  // renderFieldScope 注释里的「刻意省略」。
+  it('结构完备性守卫：桌面各段标志性内容在字段布局里都有落点', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    vi.stubGlobal('fetch', stubFetch(snapshot(packageView()), projectPayload()));
+    const selection = new ScheduleSelectionStore();
+    const panel = new ScheduleDetailPanel(selection);
+    panel.subscribe();
+    selection.set({packageId: 'PKG-010'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('[data-field-layout]')).toBeTruthy());
+    // 等 3D 作用域展开完（未展开选择器行要 projectState ready 后才在场）
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('未展开选择器'));
+
+    const text = document.querySelector('[data-field-layout]')!.textContent ?? '';
+    const signatures: Array<[string, string]> = [
+      // ── 桌面 renderHeader：包名/id、状态与就绪的声明值并列、门槛、依赖、责任角色、描述 ──
+      ['头部', '拆改与砌筑'], ['头部', 'PKG-010'],
+      ['头部', '进行中'], ['头部', '（声明 in_progress）'],
+      ['头部', '就绪'], ['头部', '（声明 ready）'],
+      ['头部', '付款门槛：GATE-010-A'],
+      ['头部', '依赖：PKG-000'], ['头部', '责任角色：施工方、业主'],
+      ['头部', '拆改、砌筑、抹灰'],
+      // ── 桌面 renderBlockers（字段布局复用同一方法，含已关闭项）──
+      ['阻塞', 'BLK-量房'], ['阻塞', '未关闭'], ['阻塞', '解除条件：量房报告归档'],
+      ['阻塞', 'BLK-旧图'], ['阻塞', '已关闭'],
+      // ── 桌面 renderBudget（codex major：曾整段缺失——看不见钱仍能提交）──
+      ['预算', '批准 ¥12,000'], ['预算', '已成交 ¥11,000'], ['预算', '已付 ¥0'], ['预算', '预测 ¥12,500'],
+      ['预算', '费用项 3 个'], ['预算', '未报价 1/3'],
+      ['预算', '资金状态：partial'], ['预算', '分配状态：allocated'], ['预算', '估算需求 ¥13,000'],
+      // ── 桌面 renderChecks 宽表八列 → 现场采集卡逐列保留（文案可紧凑，信息不丢）──
+      ['检查', '拆改完成度确认'], ['检查', '抹灰养护'], ['检查', '贴砖复验'],
+      ['检查', 'critical'], ['检查', '现场核对'],
+      ['检查', '与施工图一致，无遗留墙体'],
+      ['检查', '照片'], ['检查', '量房记录'],
+      ['检查', '未执行'], ['检查', '已过期'], ['检查', 'DEC-瓷砖'], ['检查', '阻塞期可先做'],
+      ['检查', 'abc123def456'], ['检查', '0f1e2d3c4b5a'],
+      // ── 桌面 renderProjectScope（codex major：未展开选择器曾缺失——部分高亮被当完整范围）──
+      ['作用域', '3D 作用域'], ['作用域', '房间 2 个'],
+      ['作用域', '未展开选择器'], ['作用域', 'ceiling-quotes.layers: ceiling_tile'],
+      // ── 桌面 renderAcceptanceActions（两条布局共用同一方法）──
+      ['验收', '跑机械卡点'], ['验收', '生成 PR 预演'], ['验收', '确认提交（开 PR）'],
+      // ── 桌面 renderFoot（曾整段缺失——看不见控制源指纹无法判断快照新鲜度）──
+      ['脚注', 'ffffffffffff'], ['脚注', 'dddddddddddd'],
+    ];
+    for (const [section, signature] of signatures) {
+      expect(text, `字段布局缺少桌面${section}的标志性内容：${signature}`).toContain(signature);
+    }
+    panel.hide();
+  });
 });

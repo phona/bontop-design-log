@@ -747,8 +747,18 @@ export class ScheduleDetailPanel {
   // ─── 移动端现场视图（issue #70 PR B）：字段采集布局 ───────────────────────
   // 与桌面布局的差别只在**呈现**：紧凑包头、包切换条、逐检查大卡（大状态按钮、
   // 全宽输入、证据区）。data-* 钩子与桌面逐字同族——bindCheckOps /
-  // updateSaveUi / updateAcceptanceBar 直接复用，写路径状态机零差别。预算 /
-  // 3D 作用域 / 指纹脚注是纯展示，字段布局里不渲染（无状态影响）。
+  // updateSaveUi / updateAcceptanceBar 直接复用，写路径状态机零差别。
+  //
+  // 信息完备性（2026-11-04 codex 复审 2 major 的结构收口）：桌面 render() 的
+  // 每一段都必须在字段布局有落点。预算（renderBudget）与指纹脚注（renderFoot）
+  // 原以「纯展示」为由整段省略——但看不见批准额/已付款/预测额/资金状态/未报价
+  // 数量就继续验收与提交、看不见控制源指纹就无法判断快照新鲜度，都是现场采集
+  // 决策信息，不是参考列；改为直接复用桌面同一方法（单一实现，禁两份各写），
+  // 位置与桌面一致（阻塞后、检查前 / 收尾）。renderFieldScope 的未展开选择器
+  // 摘要同理（按钮可用却不说哪些范围高亮不到，业主会把部分高亮当完整范围）。
+  // 唯一刻意省略的桌面内容：作用域的房间/对象/点位 id 明细清单与合批渲染实现注
+  // （纯参考，理由写在 renderFieldScope 注释）；守卫测试见
+  // ScheduleDetailPanel.test.ts 的「结构完备性守卫」一条。
   //
   // 现场输入样式：16px 字（iOS 聚焦不缩放）、min-height 44px、全宽。
   private static readonly FIELD_INPUT_STYLE = 'width:100%;box-sizing:border-box;min-height:44px;padding:6px 8px;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:#20203a;color:#e0e0e0;font-size:16px;';
@@ -760,15 +770,20 @@ export class ScheduleDetailPanel {
       : '';
     // 保存/草稿状态行位置与桌面一致（检查清单之前）：[data-save-status] /
     // [data-draft-status] 钩子原样发出，updateSaveUi 的局部重绘才有落点。
+    // 预算段与指纹脚注直接复用桌面同一方法（codex 复审 major：曾整段省略，
+    // 「看不见钱与指纹仍能验收提交」是信息不对称；单一实现禁两份各写），
+    // 位置与桌面一致——预算在阻塞后、检查前，脚注收尾。
     return `<div data-field-layout>
       ${this.renderFieldHeader(pkg)}
       ${this.renderPackageSwitchBar(pkg)}
       ${this.renderBlockers(pkg)}
+      ${this.renderBudget(pkg)}
       <div data-save-status style="margin-bottom:2px;">${this.saveStatusLine(pkg.id)}</div>
       <div data-draft-status style="margin-bottom:6px;">${this.draftStatusLine(pkg.id)}</div>
       ${cards}${empty}
       ${this.renderFieldScope(pkg)}
       ${this.renderAcceptanceActions(pkg)}
+      ${this.renderFoot(pkg)}
     </div>`;
   }
 
@@ -777,8 +792,18 @@ export class ScheduleDetailPanel {
    * 它含着**唯一的「在 3D 中高亮」入口**与作用域失败重试，省略它手机/平板就从包详情
    * 跳不到 3D 高亮，而窄屏/触摸主输入会自动进字段布局且没有退回桌面的控件）。
    * 与桌面 renderProjectScope 的差别只在体积：按钮全宽 + 44px 触控目标、只显计数
-   * 不列房间/对象明细。按钮与重试的 id 与桌面一致——bind() 的既有绑定直接复用。
+   * 不列房间/对象/点位 id 明细。按钮与重试的 id 与桌面一致——bind() 的既有绑定直接复用。
    * 禁用语义逐字同桌面（未接线 / 没有可高亮范围 / 可用），别承诺空高亮。
+   *
+   * 未展开选择器摘要是**采集决策信息**不是参考列（2026-11-04 codex 复审 major）：
+   * PKG-030/040 等包含暂不支持展开的 plan_ids/layers 选择器——手机上按钮可用却
+   * 不再告知哪些范围高亮不到，业主会把部分高亮当完整范围。文案与桌面
+   * renderScopeResolution 逐字一致（同一口径，禁两份各写）；linkCount === 0 时
+   * 桌面同样不走这段（按钮下方的原因行已说明没有关联）。
+   *
+   * 刻意省略（纯参考，非采集决策）：桌面 renderScopeResolution 里的房间/对象/
+   * 点位 id 明细清单，与点位段「合批渲染 setColorAt 逐实例高亮」的实现注——
+   * 前者在 390px 屏上是不可读的长串 id，后者是实现口径不是现场事实。
    */
   private renderFieldScope(pkg: SchedulePackageView): string {
     const summary = this.projectState.status === 'ready' ? resolveScopeFor(pkg, this.projectState.payload) : null;
@@ -803,7 +828,10 @@ export class ScheduleDetailPanel {
     } else if (this.projectState.status === 'error') {
       detail = `<div style="color:#f0a9a5;font-size:12px;">3D 作用域暂不可用：${escapeHtml(this.projectState.message)} <button type="button" id="schedule-detail-scope-retry" style="cursor:pointer;margin-top:6px;padding:8px 14px;border-radius:8px;font-size:12px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;">重试</button></div>`;
     } else if (summary) {
-      detail = `<div style="font-size:12px;line-height:1.8;">房间 ${summary.roomIds.size} 个｜对象 ${summary.objectIds.size} 个｜点位 ${summary.pointIds.size} 个${summary.projectScope ? '｜<span style="color:#9b8bd0;">全项目范围</span>' : ''}</div>`;
+      detail = `<div style="font-size:12px;line-height:1.8;">房间 ${summary.roomIds.size} 个｜对象 ${summary.objectIds.size} 个｜点位 ${summary.pointIds.size} 个${summary.projectScope ? '｜<span style="color:#9b8bd0;">全项目范围</span>' : ''}</div>`
+        + (summary.linkCount > 0
+          ? `<div style="color:#9aa4b2;font-size:11px;">未展开选择器：${summary.unresolved.length ? escapeHtml([...new Set(summary.unresolved)].join('；')) : '无（可高亮房间/墙/叠加层区域级/点位级）'}</div>`
+          : '');
     }
 
     return `<div data-field-scope style="margin:10px 0;padding:8px 10px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:rgba(255,255,255,.04);">
@@ -813,7 +841,13 @@ export class ScheduleDetailPanel {
     </div>`;
   }
 
-  /** 紧凑包头：包名 + 仓库审计态一行（桌面头部四行的现场压缩版）。 */
+  /**
+   * 紧凑包头：包名 + 仓库审计态一行（桌面头部四行的现场压缩版）。
+   * 与桌面 renderHeader 的信息差只允许出现在**纯参考**项上（2026-11-04 codex
+   * 复审结构收口）：状态/就绪的声明值与有效值并列（同桌面「声明 X」口径，派生
+   * 或降级态要看声明值才知道控制源怎么写的）、责任角色与包描述都在场——现场
+   * 采集时要判断「这包到底谁负责、覆盖什么」，不是参考列。
+   */
   private renderFieldHeader(pkg: SchedulePackageView): string {
     const statusColor = colorOf(STATUS_COLOR, pkg.effective_status);
     const counts = new Map<string, number>();
@@ -826,9 +860,10 @@ export class ScheduleDetailPanel {
     return `<div style="margin-bottom:10px;">
       <div style="font-size:15px;"><strong>${escapeHtml(pkg.name)}</strong> <span style="color:#9aa4b2;">${escapeHtml(pkg.id)}</span></div>
       <div style="margin-top:4px;font-size:12px;line-height:1.8;">
-        <span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:${statusColor};border:1px solid rgba(255,255,255,.25);"></span>${escapeHtml(labelOf(STATUS_LABEL, pkg.effective_status))}（声明 ${escapeHtml(pkg.status)}）｜就绪：${escapeHtml(labelOf(READINESS_LABEL, pkg.effective_readiness))}｜${escapeHtml(pkg.gate_label)}：${escapeHtml(pkg.payment_gate)}（${escapeHtml(labelOf(GATE_LABEL, pkg.gate_status))}）
+        <span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:${statusColor};border:1px solid rgba(255,255,255,.25);"></span>${escapeHtml(labelOf(STATUS_LABEL, pkg.effective_status))}（声明 ${escapeHtml(pkg.status)}）｜就绪：${escapeHtml(labelOf(READINESS_LABEL, pkg.effective_readiness))}（声明 ${escapeHtml(pkg.readiness)}）｜${escapeHtml(pkg.gate_label)}：${escapeHtml(pkg.payment_gate)}（${escapeHtml(labelOf(GATE_LABEL, pkg.gate_status))}）
       </div>
-      <div style="color:#9aa4b2;font-size:11px;line-height:1.7;">仓库审计：${auditLine}｜依赖：${escapeHtml(listOrNone(pkg.dependencies))}</div>
+      <div style="color:#9aa4b2;font-size:11px;line-height:1.7;">仓库审计：${auditLine}｜依赖：${escapeHtml(listOrNone(pkg.dependencies))}｜责任角色：${escapeHtml(listOrNone(pkg.owner_roles))}</div>
+      <div style="margin-top:2px;color:#9aa4b2;font-size:11px;">${escapeHtml(pkg.description)}</div>
     </div>`;
   }
 
