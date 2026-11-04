@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"300191abf6b1ab5c69afde944aeaa94fce79ad01ed3e3b9b305bd4fa93abd39f","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"bb2db6362e93590d2011942ed42da5f338aa6a5d4bf0958b2c7b6c1e06e8bbbf","config/house.yaml":"8ea7218d703e2064720938a67a38da770c3fb3aaae98d779579934acadce244f","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/mep-hvac-coordination.yaml":"46fc84a896d7d1b236c8cf05c99a8ab4c29375471e09cb0e5d53484a693510b6","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"6a0bd04930f637b881a683add21d386dd315c7219c458e7909e99994b9ed5583","schedule/phase-1/control.yaml":"6073cf9ab4152cde6b4e0e18b54771f23c0e8caaf6e6e0b5cc94928f8bec7047","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"300191abf6b1ab5c69afde944aeaa94fce79ad01ed3e3b9b305bd4fa93abd39f","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"0f1345b93c07012333eaeab4828061eed42dc5075aa952da32b4bed254753d5d","config/house.yaml":"5b46fe402dc458a9f6a278d40e6615c80d33c944ecb35091cb89b659d26a3053","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"c06d12c5d5dfa46d446535f2ed046ecebe354ff2acde1492145f2a591ce385c9","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/mep-hvac-coordination.yaml":"46fc84a896d7d1b236c8cf05c99a8ab4c29375471e09cb0e5d53484a693510b6","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","config/plumbing.yaml":"27711aa1198f7121ce494efe052fbe8d2efae94ca0900a9094324e65f382685c","docs/pending-site-data.md":"6a0bd04930f637b881a683add21d386dd315c7219c458e7909e99994b9ed5583","schedule/phase-1/control.yaml":"c70c2b8fb3b451582429533dc0947b22e297df92eebd464e555f48610f493408","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:7e46c9af4d3bd3841cb918a8d8794bea542e8b67567b404ba4f71bb1f4e96bf3`（16 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:c0b96b1822d5d373e45bd3cf2bc9b8d521282253677759d6b87f2b79b334e929`（16 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -310,7 +310,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_ac,sock_dining_ac,sock_master_ac,sock_parent_ac,sock_child_ac,sock_study_ac,sock_vrf_outdoor_a2,ac_panel_living,ac_panel_dining,ac_panel_master,ac_panel_parent,ac_panel_child,ac_panel_study | partial |
 | [docs/pending-site-data.md](../../docs/pending-site-data.md) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:5aa385c1d18dec2dff7fce66309b16be6d38eb32c39c5f263065ef7949ca92a2`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:e0ae50affb62a1fe8820c7fd6421c22f543c91ab11b80fd9bdda7900d6651681`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -365,7 +365,7 @@
 | [config/mep-hvac-coordination.yaml](../../config/mep-hvac-coordination.yaml) | layers=strong_power,weak_power,water_supply,drainage | partial |
 | [docs/pending-site-data.md](../../docs/pending-site-data.md) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:8036918736c68464b70a7f8f77c157e408ccae828b503c6c0afbd307d2d5eefc`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:275398cb51e4f27fa999d33d2ed20f3e014dbed2302e5d786c7132bfadb75007`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -717,7 +717,7 @@
 | [config/plumbing.yaml](../../config/plumbing.yaml) | room_ids=master_bath,guest_bath,master_bedroom | partial |
 | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) | types=shower_screen | partial |
 
-当前项目数据指纹：`sha256:9c1bd86587202e5202d31c27534f16f84e3ac2710b5eeae00acdd37130a7219a`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:21ab152bf716ab7522efcc2920c023ec5fd6d13ed8ac75a8b879e72fdf70fe10`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -761,7 +761,7 @@
 |---|---|---|
 | [config/house.yaml](../../config/house.yaml) | room_ids=kitchen; types=kitchen_cabinet_run,kitchen_countertop_bridge,cabinet_base,cabinet_wall,countertop_quartz,sink | mapped |
 
-当前项目数据指纹：`sha256:c4e5913b4b0cd6726d2c139c1d253f70af08d498123755eb967cbb060a78a658`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:c976e6d7065f9f250902f11a12fc84166e0deda7b8d6189a350f4e9db6addf48`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -803,7 +803,7 @@
 |---|---|---|
 | [config/electrical.yaml](../../config/electrical.yaml) | types=ceiling_light,dome,downlight,night_light | mapped |
 
-当前项目数据指纹：`sha256:d97b1279e30ca86674e95ec6b976243f5a119e988734ed2206c2dd64885d7fa0`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:ad2ea2f911f72f2a28aaae807fb3193d965011b0a8531134b05ddb85d13b85c7`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -842,7 +842,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | types=socket,switch,switch_2way,network,floor_socket | mapped |
 | [config/electrical-topology.yaml](../../config/electrical-topology.yaml) | all=true | mapped |
 
-当前项目数据指纹：`sha256:30b5487e39379dc9c6f432ef85eb51ac1e2516becd77b31a2d60be9f6afefe75`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:d2af6a7f2e784f21bd219f2abbcdf1f8f1ba77e202bd143988ea45a1e9f9f330`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -965,7 +965,7 @@
 | [config/mep-hvac-coordination.yaml](../../config/mep-hvac-coordination.yaml) | layers=refrigerant,condensate,supply_air,return_air | partial |
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_ac,sock_dining_ac,sock_master_ac,sock_parent_ac,sock_child_ac,sock_study_ac,sock_vrf_outdoor_a2,ac_panel_living,ac_panel_dining,ac_panel_master,ac_panel_parent,ac_panel_child,ac_panel_study | partial |
 
-当前项目数据指纹：`sha256:07ac0adde6192d93c68d41b36f016ca95f92c4b99c99f823a86e7c70b76a9d77`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:3ac3c3eff95e86bd2db04f6d818af3373fbaca349e6556994736c315892d6ac9`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1004,7 +1004,7 @@
 | [config/ceiling.yaml](../../config/ceiling.yaml) | all=true | project_scope |
 | [docs/pending-site-data.md](../../docs/pending-site-data.md) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:43425f4814d9b57e9b8ad09f6c46a980d2a17218f08438987a649d3f3bc0cde4`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:7bef3004d3a03d9754f8e96d3613ad9d317d0475425c38412ae3d2d9b46b6f4d`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1035,7 +1035,7 @@
 | [config/ceiling.yaml](../../config/ceiling.yaml) | trade=curtain_box | partial |
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_curtain,sock_master_curtain,sock_parent_curtain,sock_study_curtain | partial |
 
-当前项目数据指纹：`sha256:753397856aa4227a339312b8b7b2a962df5919b97295c6ecfa1528547f5782ce`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:8b38c76ebcf7cebf9a3d07fba3ec519f8067a3e34e0987e545d94bb1f0f0cf25`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1072,7 +1072,7 @@
 |---|---|---|
 | [config/house.yaml](../../config/house.yaml) | all=true | partial |
 
-当前项目数据指纹：`sha256:c4e5913b4b0cd6726d2c139c1d253f70af08d498123755eb967cbb060a78a658`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:c976e6d7065f9f250902f11a12fc84166e0deda7b8d6189a350f4e9db6addf48`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1123,7 +1123,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_fridge_living,sock_kitchen_hood,sock_kitchen_gas,sock_kitchen_oven,sock_balcony_washer,sock_balcony_dryer,sock_balcony_waterheater,sock_gbath_robot | partial |
 | [config/plumbing.yaml](../../config/plumbing.yaml) | ids=faucet_balcony_washer,drain_balcony_washer,faucet_gbath_vanity,drain_gbath_vanity | partial |
 
-当前项目数据指纹：`sha256:18f0c00b3ca3eb181178ef66757170403d5291eeebe24d9db340e646bd6f065a`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:8de396feb1c540bf18121a345b249d7e1a507d54f9f244bac7ead91cd3f86e2f`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1143,7 +1143,7 @@
 | [ ] | P0接口｜做饭和橱柜接口必需 | COST-160-03 | 燃气灶 | 记录型号、开孔尺寸、燃气接口、电源和安装验收责任；必须在橱柜台面开孔前冻结 | 1台候选，待燃气条件确认 | 待报价/待算量 | interface_pending |
 | [ ] | P0接口｜做饭和橱柜接口必需 | COST-160-04 | 吸油烟机 | 记录型号、尺寸、烟管、止回阀、插座与橱柜安装边界；必须在吊柜和烟管施工前冻结 | 1台候选，待确认 | 待报价/待算量 | interface_pending |
 | [ ] | P0条件｜无现成设备时入住必需 | COST-160-05 | 燃气热水器（一期类别已确认） | 业主已确认一期按燃气热水器推进；设计模型暂记厨房西侧靠生活阳台玻璃幕墙的实体墙（墙体编号w_vrv_east，插座协调点sock_balcony_waterheater），这只是设计协调点，不是现场安装确认；仍需核对开发商或现有设备是否可用、天然气条件、实际安装墙面、容量、尺寸、排烟、冷凝水、给排水、专用电路和物业要求，现场条件未闭合前不得下单；2026-10-05（DEC-2026-10-05-R5）业主换选型号方向为海尔 KL7PRO（16L 水伺服增压静音，预算 2,600，价格线 ≤2,500 直接买 / >3,000 转 JM6S/JM6C），MK6/HWF Pro 转价值/下探备选，BLK-WATER-HEATER-SITE 未解除前不下单 | 1台候选，类别与型号方向已定、现场待核 | ¥2,600 | selection_confirmed_site_pending |
-| [ ] | P0确认｜防尘与自动清洁 | COST-160-06 | 云鲸JX超薄上下水版扫地机器人 | 2026-11-02本PR由J6改JX超薄上下水版YJCC034（京东商品编号100237988935）；2026-11-03业主拍板JX取代J6为现行候选（非最终锁定）：JX安装手册终核、20mm顶余下尘袋更换/基站移出/排水可达/sock_gbath_robot常插拔、订单SKU与上下水配件安装复核完成前不得下单（99元追加批复已于2026-11-04完成，DEC-2026-11-04-R2，关闭DEC-2026-11-03-R1未闭环条件③）；按既有客卫悬空台盆柜下主位安装，使用sock_gbath_robot电源、台盆进水三通和墙排方案，柜体底缘0.30不动、台下净空0.30、基站顶余20mm；2026-11-04业主批准¥99追加批复（京东自营2026-11-02截图价¥3,099对原¥3,000子预算），设备预算按3,099元业主确认、price_per_unit同步（materials.yaml），家电池与一期执行上限同步+99；采购前复核实机版本、柜下净空、穿墙排水、尘袋更换可达性和检修条件 | 1台，现行候选=JX（业主2026-11-03拍板由J6改JX，非最终锁定）；预算3,099元业主2026-11-04确认（含¥99追加批复DEC-2026-11-04-R2）；现场接口待核 | ¥3,099 | budget_confirmed_site_pending |
+| [ ] | P0确认｜防尘与自动清洁 | COST-160-06 | 云鲸JX超薄上下水版扫地机器人 | 2026-11-02本PR由J6改JX超薄上下水版YJCC034（京东商品编号100237988935）；2026-11-03业主拍板JX取代J6为现行候选（非最终锁定）；2026-11-04业主拍板改专用机器人仓安装（DEC-2026-11-04-R3，推翻塞柜底+20mm顶余方案，DEC-2026-11-03-R1未闭环条件①②转化为新仓验收条件而非消解——封闭柜底无法开盖换尘袋，新仓须核：开盖可达/移出可断管拆接/清堵可达，对着仓位图与安装手册逐条核过才能关）：仓高按基站280+顶部开盖约250+余量≈55cm+、仓顶开放格、离地15cm底缝进出、基站不凸出柜门投影（溅水烧主板）、水电走侧边、10A带开关插座放柜体侧面；2026-11-04业主官方核实基站尺寸410×433×280mm（与模型一致）；下单前仍未闭环：仓位图（位置/开敞方向/净尺寸，出来后才动 robot_dock_gbath 位置与 sock_gbath_robot 坐标——后者现居基站正后方应迁侧边）、开盖最小顶部高度官方口径（现仅笔记约25cm）、新仓检修三项核验（开盖可达/移出断管拆接/清堵可达）、订单SKU与上下水配件安装复核（DEC-2026-11-03-R1条件④，含排水接口选型——产品地漏方案 vs 项目墙排方案，机电既有方案不变：进水台盆三通、排水DEC-2026-09-09-R6墙排沉箱，调研报告地漏方案是产品选项、采纳前须核产品支持并登记推翻范围）；99元追加批复已于2026-11-04完成（DEC-2026-11-04-R2，关闭条件③），设备预算按3,099元业主确认、price_per_unit同步（materials.yaml），家电池与一期执行上限同步+99 | 1台，现行候选=JX（业主2026-11-03拍板由J6改JX，非最终锁定）；预算3,099元业主2026-11-04确认（含¥99追加批复DEC-2026-11-04-R2）；专用机器人仓（DEC-2026-11-04-R3）几何、电位与检修三项待仓位图落位核验 | ¥3,099 | budget_confirmed_site_pending |
 | [ ] | P2｜明确留到二期 | COST-160-07 | 二期家电排除项 | 洗碗机、干衣机和净水设备不从一期16,099元家电额度重复扣款，除非业主书面调整阶段 | 排除清单 | ¥0 | excluded_to_phase_2 |
 | [ ] | P1｜业主定标生活电器 | COST-160-08 | 嵌入式微蒸烤一体机 | 业主定标方向（DEC-2026-10-05-R4）：美的 GC5（TR850E-TSBC00，55L，微/蒸/烤/空气炸四合一，变频微波+双孔直喷+上下管热风，额定 3200W，机身 595×565×454mm）；官方现价 4,199（2026-10-05 页面观察，非成交价），目标 ≤3,800、封顶 4,200；同档竞品比价未做；电气需 16A/2.5mm² 专用回路（GB 55038 7.4.4），嵌位（600 宽高柜段）与点位随橱柜方案冻结后落，台面/高柜开孔前必须定型号 | 1台，业主定标方向、嵌位待设计 | ¥4,000 | candidate |
 
