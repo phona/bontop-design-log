@@ -136,39 +136,71 @@ function checkLineTextOf(pkg: SchedulePackageView): string {
 
 /**
  * 按字符估算文本在卡片里占几行。CJK/全角/通用标点（≥U+2010）按 1 em、ASCII
- * 按 0.6 em（实际约 0.5em，刻意高估）——估算只许偏高：偏高 = 行间多留白，
- * 偏低 = 卡片压住下一行。改卡片字号/内边距时必须同步这里。
+ * 按 0.65 em——估算只许偏高：偏高 = 行间多留白，偏低 = 卡片压住下一行。改卡片
+ * 字号/内边距时必须同步这里。
+ *
+ * 0.65 的由来（issue #78 真浏览器实测，'Segoe UI', system-ui, sans-serif）：
+ * ASCII 实测 0.627–0.633 em/字符——`stale_or_unverified`（18 字符）11px 下实测
+ * 125.41px = 0.633 em，`blocked_by_precondition`（22 字符）151.81px = 0.627 em。
+ * 旧值 0.6 **低于实测**，长 ASCII 串（派生状态 token 等）会被少算一行；旧注释
+ * 「实际约 0.5em，刻意高估」与实测不符，已按实测更正。CJK 实测恰为 1 em
+ * （（派生）4 字符 = 44px、未通过需整改 6 字符 = 66px，11px 字号）。
+ *
+ * @param width 可用文本宽度（px）。默认 CARD_TEXT_WIDTH；状态行要先扣掉色点
+ *   占宽（见 estimateNodeCardHeight 的 STATUS_DOT_PX）。
  */
-function textLinesOf(text: string, fontSize: number): number {
+function textLinesOf(text: string, fontSize: number, width: number = CARD_TEXT_WIDTH): number {
   let em = 0;
   for (const ch of text) {
     const code = ch.codePointAt(0) ?? 0;
-    em += code >= 0x2010 ? 1 : 0.6;
+    em += code >= 0x2010 ? 1 : 0.65;
   }
-  return Math.max(1, Math.ceil((em * fontSize) / CARD_TEXT_WIDTH));
+  return Math.max(1, Math.ceil((em * fontSize) / width));
 }
 
 /**
  * 节点卡片高度估算（px）。镜像 renderNodeCard 实际渲染的结构：id 行 + 包名 +
- * 状态行 + 检查汇总行 + 最多 MAX_VISIBLE_BLOCKERS 条阻塞（每条最多
- * BLOCKER_MAX_LINES 行）+ 「还有 N 条」行（按实际文案与卡宽算换行行数）+
- * 「← 3D 选中」行。
+ * 状态行（按实际文案与「卡宽 − 色点占宽」算换行行数）+ 检查汇总行 + 最多
+ * MAX_VISIBLE_BLOCKERS 条阻塞（每条最多 BLOCKER_MAX_LINES 行）+ 「还有 N 条」
+ * 行（按实际文案与卡宽算换行行数）+「← 3D 选中」行。
  *
  * 为什么估算而不实测：jsdom 不做布局（offsetHeight 恒 0），而行坐标、画布高度
  * 和边端点都要求确定性数值；估算同时是测试可断言的唯一口径。实测背景（#68）：
  * 真实快照里阻塞最多的节点是 PKG-000（5 条未关闭阻塞，PKG-030/040 各 4 条），
  * 旧固定 max-height:100px + overflow:hidden 会把它们整段静默截掉。
  *
- * 「还有 N 条」长句在 ~184px 卡宽内必然换行（两行起）：只按固定一行加会把
+ * 「还有 N 条」长句在 182px 卡宽内必然换行（两行起）：只按固定一行加会把
  * 多阻塞节点的卡片高度算低，行坐标、画布高度与边端点整套跟着偏低，相邻行
  * 的卡片会互相压住——故这里按 textLinesOf(实际文案, 10px) 算行数（与渲染
  * 共用 moreBlockersLineTextOf，禁两份各写）。
+ *
+ * 估算与实测的偏差上界（issue #78 真浏览器实测：Chromium + 本项目字体
+ * 'Segoe UI', system-ui；全部 24 个工序节点、三种场景——实时快照 / 3D 反查
+ * 高亮 5 包（walltile_kitchen_ent_west → PKG-050/060/065/130/135）/ fetch 层
+ * 注入派生状态（PKG-120=stale_or_unverified、PKG-130=blocked_by_precondition，
+ * 因实时快照 25/25 包均 not_started、无派生态可量）+ 高亮与派生叠加）：
+ *  - estimateNodeCardHeight − 实测卡高 = **+8.3 … +27.3px**，恒偏高（方向安全：
+ *    偏高只多留白，偏低才压行）。最大偏差来自检查汇总行的长 ASCII gate id：
+ *    PKG-040 的 GATE-040-HIDDEN-WORK 实测 2 行、估算 3 行，多算一行换不压行；
+ *  - 行分配（行内最高估算）− 行内最高实测卡 = **+8.3 … +27.3px**；相邻行同列
+ *    卡片最小间隙 **+16.3px**（修复前派生状态场景为 **−0.2px 压行**）；末行卡底
+ *    距画布内边 **24.3–24.8px**，不出界；
+ *  - 边端点与卡片实测中心的漂移 **≤ 13.6px**（= (估算−实测)/2，端点仍落在卡片
+ *    高度范围内，不脱节）。
+ * 改卡片字号/内边距/字体后这些数字会变，必须重量（跑法见 issue #78：真浏览器
+ * getBoundingClientRect，jsdom 无布局、量不到）。
  */
 export function estimateNodeCardHeight(pkg: SchedulePackageView, highlighted = false): number {
   let px = CARD_CHROME_PX;
   px += TITLE_LINE_PX; // id 行（white-space:nowrap）
   px += textLinesOf(pkg.name, 12) * TITLE_LINE_PX + 2;
-  px += BODY_LINE_PX + 3; // 状态行
+  // 状态行按实际文案参与换行估算（#78 真浏览器实测）：旧实现固定算一行，但派生
+  // 状态 token 实测换两行——`stale_or_unverified（派生）` 单行实测宽 169.41px，
+  // 而色点后可用宽只有 CARD_TEXT_WIDTH−STATUS_DOT_PX = 182−15 = 167px，实测
+  // 状态行高 33px（2×16.5）而非 16.5px；PKG-120 因此实测卡底 794.2px 压过下一
+  // 行顶 794px（jsdom 无布局、量不到，单测层无解）。色点是 inline-block，文案
+  // 可用宽必须先扣掉它再算行数。
+  px += textLinesOf(statusLabelOf(pkg.effective_status), 11, CARD_TEXT_WIDTH - STATUS_DOT_PX) * BODY_LINE_PX + 3;
   px += textLinesOf(checkLineTextOf(pkg), 11) * BODY_LINE_PX;
   const openBlockers = openBlockersOf(pkg);
   if (openBlockers.length) px += 2; // 阻塞容器 margin-top
@@ -257,14 +289,19 @@ const COLUMN_PITCH = 240;
 const ROW_GAP = 8;
 const CANVAS_PAD = 16;
 
-/** 卡片内可用文本宽度（padding 8px×2；估算行数用）。 */
-const CARD_TEXT_WIDTH = NODE_WIDTH - 16;
+/** 卡片内可用文本宽度（px；估算行数用）。issue #78 实测：卡片 width:200、
+ * padding 8px×2、border 1px×2、box-sizing:border-box → getComputedStyle 内容宽
+ * **182px**。旧值 184 = 只减了 padding 没减 border，每行少算 2px，边界宽度的
+ * 文本会少估一行（少估 = 卡片压住下一行，铁律不允许的方向）。 */
+const CARD_TEXT_WIDTH = NODE_WIDTH - 18;
 /** 行高估算（px）：12px×1.35≈16.2、11px×1.5≈16.5、10px×1.5=15，一律向上取整防低估。 */
 const TITLE_LINE_PX = 17;
 const BODY_LINE_PX = 17;
 const SMALL_LINE_PX = 15;
 /** padding 12 + border 2 + 各分段 margin 余量。 */
 const CARD_CHROME_PX = 20;
+/** 状态行色点占宽（renderStatusDot：width 9 + border 1px×2 + margin-right 4）。 */
+const STATUS_DOT_PX = 15;
 /** 卡片里最多展开几条阻塞原因，其余折成「还有 N 条」（#68）。 */
 const MAX_VISIBLE_BLOCKERS = 2;
 /** 单条阻塞原因在卡片里最多占几行（多了 ellipsis 截断，全文进 title 悬浮提示）。 */
