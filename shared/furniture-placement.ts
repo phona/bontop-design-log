@@ -72,3 +72,24 @@ export function resolveFurniturePlacement(
   if (item.x === undefined || item.z === undefined) return null;
   return { x: item.x, z: item.z };
 }
+
+/** length 型家具：3D buildFurniture 对这三类按 item.length 建模（连续柜/桥接台面/洁柜侧柜），不咨询目录宽度。 */
+const LENGTH_BASED_FURNITURE_TYPES: ReadonlySet<string> = new Set([
+  'kitchen_cabinet_run',
+  'kitchen_countertop_bridge',
+  'bath_side_cabinet',
+]);
+
+/**
+ * 家具平面外包络尺寸（3D buildFurniture 同优先级，codex 十六审 major）：
+ * length 型声明了 length 时外框 = length（显式声明优先于目录宽，否则与 3D 实际建模不一致）；
+ * 其余类型 item.width 优先于目录宽。
+ */
+export function furnitureFootprint(item: { type: string; length?: number; width?: number; depth?: number }): { width: number | undefined; depth: number | undefined } {
+  const dims = FURNITURE_DIMS[item.type];
+  if (LENGTH_BASED_FURNITURE_TYPES.has(item.type) && item.length !== undefined) {
+    return { width: item.length, depth: item.depth ?? dims?.depth };
+  }
+  return { width: item.width ?? dims?.width, depth: item.depth ?? dims?.depth };
+}
+

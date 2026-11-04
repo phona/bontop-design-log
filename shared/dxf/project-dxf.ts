@@ -10,11 +10,11 @@
  * resolveMepRoutes / mepRoutePoints / resolveMepEndpoint（MEP 折线与 3D 渲染同口径）。
  */
 
-import { FURNITURE_DIMS, type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type PlumbingPoint, type RoomLayout, type SceneElement } from '../types.js';
+import { type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type PlumbingPoint, type RoomLayout, type SceneElement } from '../types.js';
 import { type MepCoordination, type MepEndpointSources, mepRoutePoints, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
 import { centerlineSamples } from '../arc-polyline.js';
 
-import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, resolveFurniturePlacement } from '../furniture-placement.js';
+import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, resolveFurniturePlacement } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
 import { DxfWriter } from './dxf-writer.js';
 
@@ -376,9 +376,9 @@ function emitFurniture(
       }
       const placement = resolveFurniturePlacement(item, wallSegments);
       if (!placement) continue; // count-only 条目，无平面几何（口径见 AGENTS.md furnishings 条目）
-      const dims = FURNITURE_DIMS[item.type];
-      const width = item.width ?? dims?.width ?? item.length;
-      const depth = item.depth ?? dims?.depth;
+      // 外框尺寸与 3D buildFurniture 同优先级（codex 十六审 major）：length 型的显式
+      // length 优先于目录宽，否则外框比实际建模窄（bath_side_cabinet 0.45 vs 0.90）。
+      const { width, depth } = furnitureFootprint(item);
       if (width === undefined || depth === undefined) {
         warnings.push(`furniture ${roomId}:${item.type}: 无 width/depth/length 声明，未导出外框`);
         continue;

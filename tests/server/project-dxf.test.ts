@@ -726,6 +726,20 @@ test('project-dxf: furnishings 缺省时 A-FURN 为空 + D-NOTE + 告警（codex
   assert.ok(result.warnings.some((w) => w.startsWith('furnishings:')));
 });
 
+test('project-dxf: length 型家具外框用显式 length，不吃目录宽（codex 十六审 major）', () => {
+  const input = baseInput();
+  // bath_side_cabinet 目录宽 0.45；显式 length 0.90 / depth 0.50 → 外框应为 900×500mm
+  input.house.furnishings = { master_bedroom: [{ type: 'bath_side_cabinet', x: 1, z: 1, length: 0.90, depth: 0.50 }] };
+  const result = buildProjectDxf(input);
+  const furnLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.FURN[0]);
+  // 旋转 0：矩形四边中应存在跨越 900mm 的水平边与 500mm 的竖直边
+  const horizontal = furnLines.filter(([x1, y1, x2, y2]) => y1 === y2 && Math.abs(x2 - x1) > 100);
+  const vertical = furnLines.filter(([x1, y1, x2, y2]) => x1 === x2 && Math.abs(y2 - y1) > 100);
+  assert.ok(horizontal.some(([x1, , x2]) => Math.abs(x2 - x1) === 900), JSON.stringify(furnLines));
+  assert.ok(vertical.some(([, y1, , y2]) => Math.abs(y2 - y1) === 500), JSON.stringify(furnLines));
+  assert.ok(!horizontal.some(([x1, , x2]) => Math.abs(x2 - x1) === 450));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });
