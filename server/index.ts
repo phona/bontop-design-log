@@ -22,6 +22,7 @@ import { PresentationStateStore } from './presentation-state.js';
 import { getElementState } from './element-state-service.js';
 import { resolveLayout } from './layout-resolver.js';
 import { resolveWriteToken, createWriteTokenGuard } from './write-token.js';
+import { jsonErrorHandler } from './json-error-handler.js';
 import type { MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml, VertexLayoutYaml } from '../shared/types.js';
 
@@ -225,6 +226,10 @@ app.use(
 app.use('/api/furnishings', createFurnishingsRouter('config/house.yaml'));
 app.use('/api/electrical', createElectricalRouter('config/electrical.yaml'));
 app.use('/api/plumbing', createPlumbingRouter('config/plumbing.yaml'));
+// JSON 错误出口（issue #70）：body-parser 超限（entity.too.large）转 413 JSON，替代
+// express 默认 HTML 错误页（前端只剩「HTTP 413」无重试引导）。放在所有路由之后、
+// listen 之前；其余错误原样 next。
+app.use(jsonErrorHandler);
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`Bontop design server listening on http://${HOST}:${PORT}`);
