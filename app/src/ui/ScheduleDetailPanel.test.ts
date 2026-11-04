@@ -2270,6 +2270,70 @@ describe('ScheduleDetailPanel 移动端现场视图（字段布局，issue #70 P
     panel.hide();
   });
 
+  it('字段布局保留 3D 高亮入口：scope 就绪时按钮可用、点了走 onHighlight（codex 复审 major）', async () => {
+    // codex 复审 major：renderProjectScope 不是纯展示——它含着唯一的「在 3D 中高亮」
+    // 入口。窄屏/触摸主输入会自动进字段布局且没有退回桌面的控件，省略它手机就从包
+    // 详情跳不到 3D 高亮。这里钉字段布局里的精简入口（按钮 + 计数）真的在场可用。
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    vi.stubGlobal('fetch', stubFetch(snapshot(packageView()), projectPayload()));
+    const selection = new ScheduleSelectionStore();
+    const onHighlight = vi.fn();
+    const panel = new ScheduleDetailPanel(selection, {onHighlight});
+    panel.subscribe();
+    selection.set({packageId: 'PKG-010'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('[data-field-scope]')).toBeTruthy());
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('全项目范围'));
+
+    const button = document.querySelector('#schedule-detail-highlight') as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    expect(button.textContent).toContain('去 3D 看这包');
+    // 计数与桌面同源（resolveScopeFor 一处实现）
+    const scope = document.querySelector('[data-field-scope]') as HTMLElement;
+    expect(scope.textContent).toContain('房间 2 个');
+    button.click();
+    expect(onHighlight).toHaveBeenCalledWith('PKG-010');
+    panel.hide();
+  });
+
+  it('字段布局的 3D 作用域取数失败时有重试入口（codex 复审 major 同条）', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    // /api/project 失败 → projectState error；重试按钮必须在场（id 与桌面一致，
+    // bind() 的既有绑定直接复用，点了走 loadProjectScope）
+    let projectCalls = 0;
+    vi.stubGlobal('fetch', vi.fn(async (path: string) => {
+      if (path.includes('/api/project')) {
+        projectCalls += 1;
+        return {ok: false, status: 500, json: async () => ({error: 'boom'})} as Response;
+      }
+      return {ok: true, status: 200, json: async () => snapshot(packageView())} as Response;
+    }));
+    const panel = new ScheduleDetailPanel(new ScheduleSelectionStore());
+    panel.subscribe();
+    (panel as unknown as {selection: ScheduleSelectionStore}).selection.set({packageId: 'PKG-010'});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#schedule-detail-scope-retry')).toBeTruthy());
+    expect(document.querySelector('#schedule-detail-body')!.textContent).toContain('3D 作用域暂不可用');
+    // 重试：再打一次 /api/project（仍失败但证明按钮接着 loadProjectScope）
+    (document.querySelector('#schedule-detail-scope-retry') as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(projectCalls).toBeGreaterThan(1));
+    panel.hide();
+  });
+
+  it('面板根内联 padding-bottom 含底部安全区（codex 复审 minor）', () => {
+    // 样式表的 padding-bottom 盖不住内联 padding——安全区必须走内联；且不能塞
+    // cssText 的 padding 简写（jsdom 解析器会丢掉含 env() 的整条声明），属性
+    // 赋值两者都满足。桌面 env()=0 无感。
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    const panel = new ScheduleDetailPanel(new ScheduleSelectionStore());
+    panel.show();
+    const el = document.querySelector('#schedule-detail-panel') as HTMLElement;
+    expect(el.style.paddingBottom).toBe('calc(14px + env(safe-area-inset-bottom))');
+    // 其余声明没被连带丢掉（jsdom 对 cssText 是逐条解析）
+    expect(el.style.background).toBe('rgb(26, 26, 46)');
+    panel.hide();
+  });
+
   it('包切换条 + 禁用逻辑同源：点 chip 换包；open_gates 非空时 passed 保持禁用', async () => {
     installMatchMedia((query) => query === '(max-width: 700px)');
     const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};

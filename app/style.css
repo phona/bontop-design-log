@@ -1668,9 +1668,10 @@ body.mobile-chrome .panel-collapse-toggle {
    本节规则对桌面零影响）。触控尺寸主声明在内联 style（状态按钮 min-height
    56px、输入 min-height 44px + 16px 字防 iOS 聚焦缩放），这里只做容器级：
    底部安全区避让、滚动不带动整页、输入与按钮的触控兜底。 */
+/* 底部安全区避让走面板 build() 的 style.paddingBottom 属性赋值（calc(14px + env(safe-area-inset-bottom))）：
+   样式表的 padding-bottom 盖不住内联 padding（codex 复审 minor），这里只留容器级行为。 */
 body.mobile-chrome #schedule-detail-panel[data-field-mode] {
   overscroll-behavior: contain;
-  padding-bottom: calc(14px + env(safe-area-inset-bottom));
 }
 
 body.mobile-chrome #schedule-detail-panel[data-field-mode] [data-status-btn],

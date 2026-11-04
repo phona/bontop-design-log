@@ -767,7 +767,49 @@ export class ScheduleDetailPanel {
       <div data-save-status style="margin-bottom:2px;">${this.saveStatusLine(pkg.id)}</div>
       <div data-draft-status style="margin-bottom:6px;">${this.draftStatusLine(pkg.id)}</div>
       ${cards}${empty}
+      ${this.renderFieldScope(pkg)}
       ${this.renderAcceptanceActions(pkg)}
+    </div>`;
+  }
+
+  /**
+   * 字段布局的 3D 作用域精简段（codex 复审 major：renderProjectScope 不是纯展示——
+   * 它含着**唯一的「在 3D 中高亮」入口**与作用域失败重试，省略它手机/平板就从包详情
+   * 跳不到 3D 高亮，而窄屏/触摸主输入会自动进字段布局且没有退回桌面的控件）。
+   * 与桌面 renderProjectScope 的差别只在体积：按钮全宽 + 44px 触控目标、只显计数
+   * 不列房间/对象明细。按钮与重试的 id 与桌面一致——bind() 的既有绑定直接复用。
+   * 禁用语义逐字同桌面（未接线 / 没有可高亮范围 / 可用），别承诺空高亮。
+   */
+  private renderFieldScope(pkg: SchedulePackageView): string {
+    const summary = this.projectState.status === 'ready' ? resolveScopeFor(pkg, this.projectState.payload) : null;
+    const nothingToHighlight = summary !== null
+      && summary.roomIds.size + summary.objectIds.size + summary.pointIds.size === 0;
+    const wired = Boolean(this.options.onHighlight);
+    const disabled = !wired || nothingToHighlight;
+    const reason = !wired
+      ? '未接线：本面板没有拿到 3D 高亮回调'
+      : nothingToHighlight
+        ? (summary?.linkCount === 0
+          ? '该包在 modelPackageLinks 里没有关联，3D 中没有可高亮范围'
+          : '全项目范围（房间/对象/点位均为 0）：3D 中没有可高亮范围')
+        : '';
+    const buttonStyle = `width:100%;min-height:44px;padding:8px 14px;border-radius:8px;font-size:13px;cursor:${disabled ? 'not-allowed' : 'pointer'};border:1px solid ${disabled ? 'rgba(255,255,255,.18)' : '#6fa8dc'};background:${disabled ? '#2a2a3e' : '#2f4a63'};color:${disabled ? '#8a93a3' : '#e8f2ff'};`;
+    const button = `<button type="button" id="schedule-detail-highlight"${disabled ? ' disabled' : ''} title="${escapeHtml(reason || '跳到 3D 页并高亮这个包的施工范围')}" style="${buttonStyle}">去 3D 看这包</button>`
+      + (reason ? `<div style="margin-top:4px;color:#9aa4b2;font-size:11px;">${escapeHtml(reason)}</div>` : '');
+
+    let detail = '';
+    if (this.projectState.status === 'loading') {
+      detail = `<div style="color:#9aa4b2;font-size:12px;">正在展开 3D 作用域…</div>`;
+    } else if (this.projectState.status === 'error') {
+      detail = `<div style="color:#f0a9a5;font-size:12px;">3D 作用域暂不可用：${escapeHtml(this.projectState.message)} <button type="button" id="schedule-detail-scope-retry" style="cursor:pointer;margin-top:6px;padding:8px 14px;border-radius:8px;font-size:12px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;">重试</button></div>`;
+    } else if (summary) {
+      detail = `<div style="font-size:12px;line-height:1.8;">房间 ${summary.roomIds.size} 个｜对象 ${summary.objectIds.size} 个｜点位 ${summary.pointIds.size} 个${summary.projectScope ? '｜<span style="color:#9b8bd0;">全项目范围</span>' : ''}</div>`;
+    }
+
+    return `<div data-field-scope style="margin:10px 0;padding:8px 10px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:rgba(255,255,255,.04);">
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px;">3D 作用域</div>
+      ${button}
+      ${detail}
     </div>`;
   }
 
@@ -2148,6 +2190,11 @@ export class ScheduleDetailPanel {
       font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px;
       box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: none;
     `;
+    // 底部安全区避让（codex 复审 minor）：两个坑都避开——① 样式表的 padding-bottom
+    // 盖不住内联 padding，所以必须在内联里；② 不能塞进 cssText 的 padding 简写，
+    // jsdom 的解析器会把含 env() 的整条声明丢掉（属性赋值则原样保留，测试可断言）。
+    // 桌面浏览器 env()=0，无感。
+    el.style.paddingBottom = 'calc(14px + env(safe-area-inset-bottom))';
     el.innerHTML = `
       <div class="dynamic-panel-heading">
         <strong>包详情</strong>
