@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ScheduleDetailPanel } from './ScheduleDetailPanel.js';
 import { ScheduleSelectionStore } from '../state/schedule-selection.js';
 import type { ScheduleSnapshot, SchedulePackageView, ScheduleCheckView } from '@shared/schedule-state';
@@ -2129,5 +2129,165 @@ describe('ScheduleDetailPanel 验收操作（写路径）', () => {
     expect(body.textContent).toContain('onerror=alert(1)');
     expect(body.textContent).toContain('<script>alert(2)</script>');
     expect(body.textContent).toContain('正文含 <img src=x onerror=alert(1)>');
+  });
+});
+
+// ─── 移动端现场视图（issue #70 PR B）：字段采集布局 ───
+// 同一面板实例、同一写路径状态机（pkgRuns/draftResults/touched），render() 按
+// isMobileChrome 分支。这里只钉布局分支、钩子契约与能力订阅；上面既有用例
+// （桌面默认 matchMedia 不命中）一行未动，即桌面回归的证明。
+
+/** 可中途改判的 matchMedia mock：matches 现读现算，fire 触发已注册的 change 监听。 */
+function installMatchMedia(initial: (query: string) => boolean) {
+  let matcher = initial;
+  const listeners = new Map<string, Set<() => void>>();
+  vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+    get matches() { return matcher(query); },
+    media: query,
+    addEventListener: (_: string, cb: () => void) => {
+      const set = listeners.get(query) ?? new Set();
+      set.add(cb);
+      listeners.set(query, set);
+    },
+    removeEventListener: (_: string, cb: () => void) => {
+      listeners.get(query)?.delete(cb);
+    },
+  })));
+  return {
+    setMatches: (next: (query: string) => boolean) => { matcher = next; },
+    fire: (query: string) => { listeners.get(query)?.forEach((cb) => cb()); },
+  };
+}
+
+describe('ScheduleDetailPanel 移动端现场视图（字段布局，issue #70 PR B）', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="right-panel-stack"></div><div id="approval-page-panels"></div>';
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('窄视口（≤700px）：字段布局出现、桌面宽表退场，data-* 钩子契约全套在场', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    // 草稿带回一条已落定证据：证据区的 remove/path 钩子随 renderEvidenceArea 出场
+    const {panel} = await mountPanel({handlers: {draft: () => ({package_id: 'PKG-010', results: [
+      {check_id: 'SCH-010-01', status: 'passed', checked_by: '老张', checked_at: '2026-11-01', evidence: [FINAL_PATH]},
+    ]})}});
+    const body = document.querySelector('#schedule-detail-body') as HTMLElement;
+    // 字段布局标记 + 桌面宽表退场
+    expect(body.querySelector('[data-field-layout]')).toBeTruthy();
+    expect(body.querySelectorAll('[data-field-card]').length).toBe(3);
+    expect(body.querySelector('tr[data-check-op]')).toBeNull();
+    expect(document.querySelector('#schedule-detail-panel')!.hasAttribute('data-field-mode')).toBe(true);
+    // 包级状态行钩子（缺一个保存状态行就静默停更）
+    expect(body.querySelector('[data-save-status]')!.textContent).toContain('已存 tmp/');
+    expect(body.querySelector('[data-draft-status]')!.textContent).toContain('已载入 tmp/ 草稿 1 条');
+    // 逐检查钩子契约：一个都不能少
+    for (const checkId of ['SCH-010-01', 'SCH-010-02', 'SCH-010-03']) {
+      expect(body.querySelector(`[data-check-id="${checkId}"]`), `[data-check-id=${checkId}]`).toBeTruthy();
+      expect(body.querySelector(`[data-draft-value="${checkId}"]`)).toBeTruthy();
+      for (const status of ['passed', 'failed', 'not_applicable']) {
+        expect(body.querySelector(`[data-status-btn="${checkId}"][data-status="${status}"]`), `[data-status-btn=${checkId}][data-status=${status}]`).toBeTruthy();
+      }
+      expect(body.querySelector(`[data-checked-by="${checkId}"]`)).toBeTruthy();
+      expect(body.querySelector(`[data-checked-at="${checkId}"]`)).toBeTruthy();
+      expect(body.querySelector(`[data-note="${checkId}"]`)).toBeTruthy();
+      expect(body.querySelector(`[data-check-issues="${checkId}"]`)).toBeTruthy();
+      const area = body.querySelector(`[data-evidence-area="${checkId}"]`)!;
+      expect(area, `[data-evidence-area=${checkId}]`).toBeTruthy();
+      expect(area.querySelector('[data-evidence-file]')).toBeTruthy();
+      expect(area.querySelector('[data-evidence-finalize]')).toBeTruthy();
+    }
+    // 已通过检查的复验钩子（同桌面条件）+ 已落定证据的 remove/path
+    expect(body.querySelector('[data-supersedes="SCH-010-03"]')).toBeTruthy();
+    expect(body.querySelector('[data-evidence-remove="SCH-010-01"]')).toBeTruthy();
+    expect(body.querySelector('[data-evidence-path]')!.getAttribute('data-evidence-path')).toBe(FINAL_PATH);
+    // 现场大按钮（min-height 56px）与全宽输入
+    const passedBtn = body.querySelector('[data-status-btn="SCH-010-01"][data-status="passed"]') as HTMLElement;
+    expect(passedBtn.getAttribute('style')).toContain('min-height:56px');
+    expect((body.querySelector('[data-checked-by="SCH-010-01"]') as HTMLElement).getAttribute('style')).toContain('width:100%');
+    // 现场采集卡带上桌面宽表不丢的字段（方法/通过标准/指纹前 12 位）
+    expect(body.textContent).toContain('现场核对');
+    expect(body.textContent).toContain('与施工图一致，无遗留墙体');
+    expect(body.textContent).toContain('abc123def456');
+    panel.hide();
+  });
+
+  it('字段 DOM 走同一写路径：拍照→暂存→落定→passed 的 PUT body 与桌面路径逐字一致', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    const {panel, calls} = await mountPanel();
+    // 与桌面证据流（上面「证据：选文件→暂存→选为最终证据…」一条）同一串操作，只换布局
+    const fileInput = document.querySelector('[data-evidence-file="SCH-010-01"]') as HTMLInputElement;
+    const file = new File(['fake-image-bytes'], 'a.jpg', {type: 'image/jpeg'});
+    Object.defineProperty(fileInput, 'files', {value: [file], configurable: true});
+    fileInput.dispatchEvent(new Event('change', {bubbles: true}));
+    await vi.waitFor(() => expect(calls.some((call) => call.url === '/api/acceptance/evidence' && call.method === 'POST')).toBe(true));
+    click('[data-evidence-finalize="SCH-010-01"]');
+    await vi.waitFor(() => expect(calls.some((call) => call.url === '/api/acceptance/evidence/finalize')).toBe(true));
+    setInput('[data-checked-at="SCH-010-01"]', '2026-11-02');
+    click('[data-status-btn="SCH-010-01"][data-status="passed"]');
+    await vi.waitFor(() => expect(calls.some((call) => call.method === 'PUT')).toBe(true), {timeout: 3000});
+    const put = calls.find((call) => call.method === 'PUT')!;
+    expect(put.url).toBe('/api/acceptance/draft');
+    expect(put.body).toEqual({
+      package_id: 'PKG-010',
+      results: [{check_id: 'SCH-010-01', status: 'passed', checked_by: '', checked_at: '2026-11-02', evidence: [FINAL_PATH]}],
+    });
+    expect(document.querySelector('[data-save-status]')!.textContent).toContain('已保存');
+    panel.hide();
+  });
+
+  it('能力从窄变宽：重渲染回桌面布局，同一实例的草稿状态不丢', async () => {
+    const media = installMatchMedia((query) => query === '(max-width: 700px)');
+    const {panel} = await mountPanel({handlers: {draft: () => ({package_id: 'PKG-010', results: [
+      {check_id: 'SCH-010-01', status: 'failed', checked_by: '老张', checked_at: '2026-11-01', evidence: []},
+    ]})}});
+    expect(document.querySelector('[data-field-layout]')).toBeTruthy();
+    // 视口变宽（改判 + 触发 change）：重渲染回桌面宽表
+    media.setMatches(() => false);
+    media.fire('(max-width: 700px)');
+    await vi.waitFor(() => expect(document.querySelector('tr[data-check-op="SCH-010-01"]')).toBeTruthy());
+    expect(document.querySelector('[data-field-layout]')).toBeNull();
+    expect(document.querySelector('#schedule-detail-panel')!.hasAttribute('data-field-mode')).toBe(false);
+    // 同一状态机：字段布局里载入的草稿值在桌面布局照常并排显示
+    expect(document.querySelector('tr[data-check-op="SCH-010-01"]')!.textContent).toContain('草稿值：failed（未通过）');
+    expect((document.querySelector('[data-checked-by="SCH-010-01"]') as HTMLInputElement).value).toBe('老张');
+    panel.hide();
+  });
+
+  it('桌面默认（matchMedia 不命中）：现有布局一行不变（宽表 + 无 data-field-mode 属性）', async () => {
+    // 不装 matchMedia stub：无命中 → readCapabilities 全 false → 桌面布局
+    const {panel} = await mountPanel();
+    const body = document.querySelector('#schedule-detail-body') as HTMLElement;
+    expect(body.querySelector('[data-field-layout]')).toBeNull();
+    expect(body.querySelectorAll('tr[data-check-id]').length).toBe(3);
+    expect(body.querySelector('tr[data-check-op="SCH-010-01"]')).toBeTruthy();
+    expect(document.querySelector('#schedule-detail-panel')!.hasAttribute('data-field-mode')).toBe(false);
+    // 写路径钩子不受布局影响
+    expect(body.querySelector('[data-save-status]')).toBeTruthy();
+    expect(body.querySelector('[data-status-btn="SCH-010-01"][data-status="passed"]')).toBeTruthy();
+    panel.hide();
+  });
+
+  it('包切换条 + 禁用逻辑同源：点 chip 换包；open_gates 非空时 passed 保持禁用', async () => {
+    installMatchMedia((query) => query === '(max-width: 700px)');
+    const pkgB = {...packageView(), id: 'PKG-020', name: '第二个包', checks: [check({id: 'SCH-020-01', item: 'B 包检查项', audit_status: 'pending'})]};
+    const base = snapshot(packageView());
+    const {selection, panel} = await mountPanel({snapshot: {...base, packages: [packageView(), pkgB], counts: {...base.counts, packages: 2}}});
+    // 禁用逻辑与桌面同一方法（renderStatusButtons 加尺寸参数，不重抄判断）
+    const blocked = document.querySelector('[data-status-btn="SCH-010-02"][data-status="passed"]') as HTMLButtonElement;
+    expect(blocked.disabled).toBe(true);
+    expect(blocked.title).toContain('DEC-瓷砖');
+    expect((document.querySelector('[data-status-btn="SCH-010-02"][data-status="failed"]') as HTMLButtonElement).disabled).toBe(false);
+    expect((document.querySelector('[data-status-btn="SCH-010-01"][data-status="passed"]') as HTMLButtonElement).disabled).toBe(false);
+    // 包切换 chips：点 B → 选中态与渲染都跟到 B
+    expect(document.querySelectorAll('[data-package-chip]').length).toBe(2);
+    (document.querySelector('[data-package-chip="PKG-020"]') as HTMLButtonElement).click();
+    expect(selection.get().packageId).toBe('PKG-020');
+    await vi.waitFor(() => expect(document.querySelector('[data-field-layout]')!.textContent).toContain('第二个包'));
+    expect(document.querySelector('[data-field-card="SCH-020-01"]')).toBeTruthy();
+    expect(document.querySelector('[data-field-card="SCH-010-01"]')).toBeNull();
+    panel.hide();
   });
 });

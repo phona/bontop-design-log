@@ -4,6 +4,13 @@
 // 阻塞项、预算行、逐项检查表（含第二步的验收操作区），再加一段「这个包在 3D 里
 // 覆盖什么」。
 //
+// 布局：桌面维持原宽表一行；移动端现场视图（issue #70 PR B）在 render() 里按
+// isMobileChrome(readCapabilities()) 分支到 renderFieldLayout——**同一个面板实例、
+// 同一套写路径状态机**（pkgRuns/draftResults/touched/…），字段 markup 原样发出
+// 桌面布局全部的 data-* 钩子，bind()/updateSaveUi()/updateAcceptanceBar() 一行
+// 不改地复用。不做第二个面板、第二个写入口：PUT 是整份覆盖，两个 writer 各持
+// 一份状态必然互删条目。
+//
 // 三个数据来源：
 //  1. `GET /api/schedule/state`——包的结构化投影（与 verify:schedule 同一 loader）；
 //  2. `GET /api/project?phase=full`——房间、场景对象与电气/给排水点位全量清单，供
@@ -34,6 +41,7 @@ import { setupCollapsiblePanel } from './CollapsiblePanel.js';
 import { escapeHtml } from './escape-html.js';
 import { apiWrite } from '../api-write.js';
 import { compressImageFile, nextUploadNonce, safeEvidenceFilename } from '../image-upload.js';
+import { isMobileChrome, readCapabilities, subscribeCapabilities } from './input-capability.js';
 import { resolvePackageScope } from '@shared/package-scope';
 import type { PackageScopeLink, ProjectScopeInput } from '@shared/package-scope';
 
@@ -316,6 +324,13 @@ export class ScheduleDetailPanel {
   private el: HTMLDivElement | null = null;
   private visible = false;
   private unsubscribe: (() => void) | null = null;
+  /**
+   * 移动端现场视图（issue #70 PR B）：true = render() 走 renderFieldLayout 字段
+   * 采集布局。值只由 show() 初始化、能力订阅在**实际变化时**更新（resize 抖动
+   * 不碰 DOM）；面板根同步 data-field-mode 属性给 CSS 的容器级小节（桌面不设）。
+   */
+  private fieldMode = false;
+  private unsubscribeCapabilities: (() => void) | null = null;
   private payload: ScheduleSnapshot | null = null;
   private errorMessage: string | null = null;
   private projectState: ProjectState = {status: 'idle'};
@@ -410,15 +425,43 @@ export class ScheduleDetailPanel {
   ) {}
 
   show(): void {
+    // 字段形态先落定再 build：build 要按它给面板根落 data-field-mode 属性
+    this.fieldMode = isMobileChrome(readCapabilities());
     if (!this.el) this.build();
     this.el!.style.display = 'block';
     this.visible = true;
+    this.syncFieldModeAttr();
+    // 输入能力订阅（issue #70 PR B）：只在 show 期间持有，hide 退订。仅当字段
+    // 形态的**实际值**变化才重渲染——resize 抖动（窄→窄）不变更值即不碰 DOM，
+    // 不会与本地输入形成「重渲染丢光标」环。
+    this.unsubscribeCapabilities?.();
+    this.unsubscribeCapabilities = subscribeCapabilities((caps) => {
+      const field = isMobileChrome(caps);
+      if (field === this.fieldMode) return;
+      this.fieldMode = field;
+      this.syncFieldModeAttr();
+      this.render();
+    });
     void this.refresh();
   }
 
   hide(): void {
     if (this.el) this.el.style.display = 'none';
     this.visible = false;
+    this.unsubscribeCapabilities?.();
+    this.unsubscribeCapabilities = null;
+  }
+
+  /**
+   * 字段形态 → 面板根属性（CSS 的 [data-field-mode] 小节只在这个属性在场时生效）。
+   * 走 dataset：真实 DOM 落的就是 data-field-mode 属性（选择器照旧），删除即
+   * 桌面布局不设。
+   */
+  private syncFieldModeAttr(): void {
+    const el = this.el;
+    if (!el) return;
+    if (this.fieldMode) el.dataset.fieldMode = '';
+    else delete el.dataset.fieldMode;
   }
 
   isVisible(): boolean {
@@ -498,7 +541,12 @@ export class ScheduleDetailPanel {
     // 两步确认态（submitArmed）的解除已在上面早退前统一处理（离开即解除）。
     this.actionPackageId = pkg.id;
 
-    body.innerHTML = `${error}${this.renderHeader(pkg)}${this.renderBlockers(pkg)}${this.renderBudget(pkg)}${this.renderChecks(pkg)}${this.renderProjectScope(pkg)}${this.renderAcceptanceActions(pkg)}${this.renderFoot(pkg)}`;
+    // 布局分支（issue #70 PR B）：移动端现场采集视图 vs 桌面宽表。两条布局共用
+    // 同一个 body 挂载点、同一批 data-* 钩子与同一套 bind/updateSaveUi——
+    // 写路径状态机不因布局不同而有任何差别。
+    body.innerHTML = this.fieldMode
+      ? `${error}${this.renderFieldLayout(pkg)}`
+      : `${error}${this.renderHeader(pkg)}${this.renderBlockers(pkg)}${this.renderBudget(pkg)}${this.renderChecks(pkg)}${this.renderProjectScope(pkg)}${this.renderAcceptanceActions(pkg)}${this.renderFoot(pkg)}`;
     this.bind(body, pkg);
     this.ensureProjectScope(pkg.id);
     this.ensureDraft(pkg.id);
@@ -646,8 +694,15 @@ export class ScheduleDetailPanel {
     </tr>`;
   }
 
-  private renderStatusButtons(check: ScheduleCheckView, state: CheckDraftState): string {
+  /**
+   * 三选一状态按钮。禁用逻辑**只有这一份**（open_gates 非空时 passed 禁用）——
+   * 桌面与移动端字段布局共用本方法，只差尺寸样式；现场版 min-height 56px、
+   * 三枚等分。激活/禁用的配色与桌面逐字一致：updateSaveUi 的局部改色
+   * （background/border/color）两条布局同口径，不会把现场按钮改回桌面观感。
+   */
+  private renderStatusButtons(check: ScheduleCheckView, state: CheckDraftState, size: 'desktop' | 'field' = 'desktop'): string {
     const openGates = check.open_gates ?? [];
+    const field = size === 'field';
     return DRAFT_STATUS_ORDER.map((value) => {
       const active = state.status === value;
       const disabled = value === 'passed' && openGates.length > 0;
@@ -655,8 +710,11 @@ export class ScheduleDetailPanel {
       const title = disabled
         ? `被 ${openGates.join('、')} 未拍板决策阻塞：拍板前不得判 passed`
         : `把该检查标记为 ${value}`;
+      const style = field
+        ? `flex:1;min-height:56px;padding:10px 4px;border-radius:8px;font-size:13px;font-weight:600;line-height:1.3;cursor:${disabled ? 'not-allowed' : 'pointer'};border:1px solid ${active ? color : 'rgba(255,255,255,.18)'};background:${active ? color : '#2a2a3e'};color:${active ? '#10101c' : '#c9cede'};`
+        : `cursor:${disabled ? 'not-allowed' : 'pointer'};padding:3px 9px;border-radius:5px;font-size:11px;border:1px solid ${active ? color : 'rgba(255,255,255,.18)'};background:${active ? color : '#2a2a3e'};color:${active ? '#10101c' : '#c9cede'};`;
       return `<button type="button" data-status-btn="${escapeHtml(check.id)}" data-status="${value}" aria-pressed="${active}"${disabled ? ' disabled' : ''} title="${escapeHtml(title)}"
-        style="cursor:${disabled ? 'not-allowed' : 'pointer'};padding:3px 9px;border-radius:5px;font-size:11px;border:1px solid ${active ? color : 'rgba(255,255,255,.18)'};background:${active ? color : '#2a2a3e'};color:${active ? '#10101c' : '#c9cede'};">${escapeHtml(DRAFT_STATUS_LABEL[value])}</button>`;
+        style="${style}">${escapeHtml(DRAFT_STATUS_LABEL[value])}</button>`;
     }).join('');
   }
 
@@ -684,6 +742,127 @@ export class ScheduleDetailPanel {
   private renderIssues(state: CheckDraftState): string {
     if (state.issues.length === 0) return '';
     return state.issues.map((issue) => `<div style="color:#f0a9a5;font-size:11px;">${escapeHtml(issue.field ? `[${issue.field}] ` : '')}${escapeHtml(issue.message)}</div>`).join('');
+  }
+
+  // ─── 移动端现场视图（issue #70 PR B）：字段采集布局 ───────────────────────
+  // 与桌面布局的差别只在**呈现**：紧凑包头、包切换条、逐检查大卡（大状态按钮、
+  // 全宽输入、证据区）。data-* 钩子与桌面逐字同族——bindCheckOps /
+  // updateSaveUi / updateAcceptanceBar 直接复用，写路径状态机零差别。预算 /
+  // 3D 作用域 / 指纹脚注是纯展示，字段布局里不渲染（无状态影响）。
+  //
+  // 现场输入样式：16px 字（iOS 聚焦不缩放）、min-height 44px、全宽。
+  private static readonly FIELD_INPUT_STYLE = 'width:100%;box-sizing:border-box;min-height:44px;padding:6px 8px;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:#20203a;color:#e0e0e0;font-size:16px;';
+
+  private renderFieldLayout(pkg: SchedulePackageView): string {
+    const cards = pkg.checks.map((check) => this.renderFieldCheckCard(check)).join('');
+    const empty = pkg.checks.length === 0
+      ? `<div style="padding:10px;border:1px dashed rgba(255,255,255,.2);border-radius:6px;color:#9aa4b2;font-size:12px;">该包没有检查项（control.yaml 校验要求至少一条验收）。</div>`
+      : '';
+    // 保存/草稿状态行位置与桌面一致（检查清单之前）：[data-save-status] /
+    // [data-draft-status] 钩子原样发出，updateSaveUi 的局部重绘才有落点。
+    return `<div data-field-layout>
+      ${this.renderFieldHeader(pkg)}
+      ${this.renderPackageSwitchBar(pkg)}
+      ${this.renderBlockers(pkg)}
+      <div data-save-status style="margin-bottom:2px;">${this.saveStatusLine(pkg.id)}</div>
+      <div data-draft-status style="margin-bottom:6px;">${this.draftStatusLine(pkg.id)}</div>
+      ${cards}${empty}
+      ${this.renderAcceptanceActions(pkg)}
+    </div>`;
+  }
+
+  /** 紧凑包头：包名 + 仓库审计态一行（桌面头部四行的现场压缩版）。 */
+  private renderFieldHeader(pkg: SchedulePackageView): string {
+    const statusColor = colorOf(STATUS_COLOR, pkg.effective_status);
+    const counts = new Map<string, number>();
+    for (const check of pkg.checks) {
+      // audit_status 可选：缺失按 '' 计，labelOf 对空值显 '—'（不发明状态）
+      const status = check.audit_status ?? '';
+      counts.set(status, (counts.get(status) ?? 0) + 1);
+    }
+    const auditLine = [...counts.entries()].map(([status, n]) => `${escapeHtml(labelOf(AUDIT_LABEL, status))} ${n}`).join('｜') || '无检查项';
+    return `<div style="margin-bottom:10px;">
+      <div style="font-size:15px;"><strong>${escapeHtml(pkg.name)}</strong> <span style="color:#9aa4b2;">${escapeHtml(pkg.id)}</span></div>
+      <div style="margin-top:4px;font-size:12px;line-height:1.8;">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;background:${statusColor};border:1px solid rgba(255,255,255,.25);"></span>${escapeHtml(labelOf(STATUS_LABEL, pkg.effective_status))}（声明 ${escapeHtml(pkg.status)}）｜就绪：${escapeHtml(labelOf(READINESS_LABEL, pkg.effective_readiness))}｜${escapeHtml(pkg.gate_label)}：${escapeHtml(pkg.payment_gate)}（${escapeHtml(labelOf(GATE_LABEL, pkg.gate_status))}）
+      </div>
+      <div style="color:#9aa4b2;font-size:11px;line-height:1.7;">仓库审计：${auditLine}｜依赖：${escapeHtml(listOrNone(pkg.dependencies))}</div>
+    </div>`;
+  }
+
+  /** 包切换条：快照全部包出 chips，点chip 换选中包（同 SchedulePanel 行点击口径）。 */
+  private renderPackageSwitchBar(pkg: SchedulePackageView): string {
+    const packages = this.payload?.packages ?? [];
+    if (packages.length <= 1) return '';
+    return `<div style="margin-bottom:10px;">
+      <div style="font-size:11px;color:#9aa4b2;margin-bottom:4px;">切换包（共 ${packages.length} 个）</div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;">
+        ${packages.map((item) => {
+          const active = item.id === pkg.id;
+          const short = item.name.length > 8 ? `${item.name.slice(0, 8)}…` : item.name;
+          return `<button type="button" data-package-chip="${escapeHtml(item.id)}" aria-pressed="${active}" title="${escapeHtml(`${item.name}（${item.id}）`)}"
+            style="flex:0 0 auto;min-height:44px;padding:6px 12px;border-radius:8px;font-size:12px;white-space:nowrap;cursor:pointer;border:1px solid ${active ? '#6fa8dc' : 'rgba(255,255,255,.18)'};background:${active ? '#2f4a63' : '#2a2a3e'};color:${active ? '#e8f2ff' : '#c9cede'};">${escapeHtml(item.id)}　${escapeHtml(short)}</button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  /**
+   * 一张检查的现场采集卡。钩子契约（与桌面 renderCheckOpRow 逐字同族，缺一个
+   * 保存状态行就静默停更）：[data-check-id]（头部条点选）/ [data-draft-value] /
+   * [data-status-btn][data-status] / [data-checked-by] / [data-checked-at] /
+   * [data-note] / [data-supersedes]（仅已通过检查，同桌面条件）/
+   * [data-evidence-area]（内含 file/finalize/remove+path）/ [data-check-issues]。
+   * 头部条是按钮/输入的**兄弟**而非祖先：点操作区不冒泡成选中（同桌面把操作区
+   * 拆成兄弟行的理由），否则每次点状态都整卡重渲染、丢正在输入的焦点。
+   */
+  private renderFieldCheckCard(check: ScheduleCheckView): string {
+    const state = this.peekDraft(check.id);
+    const active = this.selection.get().checkId === check.id;
+    const openGates = check.open_gates ?? [];
+    const blocked = openGates.length > 0;
+    const blockedNote = blocked
+      ? `<div style="margin-top:4px;color:#e9c46a;font-size:11px;">被 ${escapeHtml(openGates.join('、'))} 未拍板决策阻塞：拍板前 passed 禁用</div>`
+      : '';
+    const staleNote = (check.stale_reasons ?? []).length > 0
+      ? `<div style="color:#e9c46a;font-size:11px;">过期：${escapeHtml((check.stale_reasons ?? []).join('；'))}</div>`
+      : '';
+    // 复验 supersedes 联动与桌面同条件同契约（服务端要求等于当前记录 id）
+    const currentRecordId = check.audit?.id ?? '';
+    const supersedesRow = check.audit_status === 'passed'
+      ? `<label style="display:block;font-size:12px;color:#9aa4b2;">复验 supersedes（旧记录 id）
+          <input type="text" data-supersedes="${escapeHtml(check.id)}" value="${escapeHtml(state.supersedes)}" placeholder="${escapeHtml(currentRecordId || 'AUD-…')}" title="${escapeHtml(currentRecordId ? `复验必须填当前记录 id：${currentRecordId}` : '复验请填旧记录 id（AUD-…）')}" style="${ScheduleDetailPanel.FIELD_INPUT_STYLE}">
+        </label>
+        ${currentRecordId ? `<div style="color:#9aa4b2;font-size:11px;">当前记录：<code>${escapeHtml(currentRecordId)}</code></div>` : ''}`
+      : '';
+    return `<div data-field-card="${escapeHtml(check.id)}" style="margin-bottom:10px;padding:10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(255,255,255,.03);">
+      <div data-check-id="${escapeHtml(check.id)}" data-active="${active}" title="点这：选中检查 ${escapeHtml(check.id)}"
+        style="cursor:pointer;margin:-4px -4px 6px;padding:4px;border-radius:6px;${active ? 'background:rgba(111,168,220,.18);' : ''}">
+        <div style="font-size:14px;"><strong>${escapeHtml(check.item)}</strong></div>
+        <div style="color:#9aa4b2;font-size:11px;line-height:1.7;">${escapeHtml(check.id)}｜${check.source === 'acceptance' ? '引用验收' : '包内检查'}｜级别 ${escapeHtml(check.severity ?? '—')}｜时机 ${escapeHtml(check.checkpoint ?? '—')}｜方法 ${escapeHtml(check.method ?? '—')}${check.can_run_while_blocked ? '｜<span style="color:#6fa8dc;">阻塞期可先做</span>' : ''}</div>
+        <div style="font-size:12px;line-height:1.6;">通过标准：${escapeHtml(check.pass_condition ?? '—')}</div>
+        ${staleNote}
+      </div>
+      <div style="font-size:11px;color:#9aa4b2;line-height:1.7;margin-bottom:6px;">
+        仓库现值：<strong>${escapeHtml(labelOf(AUDIT_LABEL, check.audit_status))}</strong>
+        （${escapeHtml(check.audit?.checked_by ?? '—')} / ${escapeHtml(check.audit?.checked_at ?? '—')}${check.audit?.id ? ` / ${escapeHtml(check.audit.id)}` : ''}）
+        ｜草稿值：<strong data-draft-value="${escapeHtml(check.id)}" style="color:${state.status ? DRAFT_STATUS_COLOR[state.status] : NEUTRAL};">${escapeHtml(state.status ? DRAFT_STATUS_LABEL[state.status] : '未选择')}</strong>
+        ｜证据要求：${check.evidence_required.map((evidence) => escapeHtml(evidence)).join('、') || '—'}
+        ｜指纹 <code>${escapeHtml(shortHash(check.check_spec_sha256))}</code>
+      </div>
+      <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:6px;">
+        ${this.renderStatusButtons(check, state, 'field')}
+      </div>
+      ${blockedNote}
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;">
+        <label style="font-size:12px;color:#9aa4b2;">检查人<input type="text" data-checked-by="${escapeHtml(check.id)}" value="${escapeHtml(state.checked_by)}" placeholder="谁验的（必填）" style="${ScheduleDetailPanel.FIELD_INPUT_STYLE}"></label>
+        <label style="font-size:12px;color:#9aa4b2;">检查日期<input type="date" data-checked-at="${escapeHtml(check.id)}" value="${escapeHtml(state.checked_at)}" style="${ScheduleDetailPanel.FIELD_INPUT_STYLE}"></label>
+        <label style="font-size:12px;color:#9aa4b2;">备注<input type="text" data-note="${escapeHtml(check.id)}" value="${escapeHtml(state.note)}" placeholder="not_applicable 必填理由" style="${ScheduleDetailPanel.FIELD_INPUT_STYLE}"></label>
+        ${supersedesRow}
+      </div>
+      <div data-evidence-area="${escapeHtml(check.id)}">${this.renderEvidenceArea(check, state)}</div>
+      <div data-check-issues="${escapeHtml(check.id)}">${this.renderIssues(state)}</div>
+    </div>`;
   }
 
   // ─── 保存状态行（包级，防静默丢数据） ───────────────────────────────────
@@ -924,11 +1103,21 @@ export class ScheduleDetailPanel {
   // ─── 事件 ────────────────────────────────────────────────────────────────
 
   private bind(body: HTMLElement, pkg: SchedulePackageView): void {
-    for (const row of Array.from(body.querySelectorAll('tr[data-check-id]'))) {
+    // 选中钩子 [data-check-id]：桌面是检查表行、移动端字段布局是卡的头部条
+    // （issue #70 PR B）——同一个 dataset 钩子，两条布局共用本绑定。
+    for (const row of Array.from(body.querySelectorAll('[data-check-id]'))) {
       row.addEventListener('click', () => {
         const checkId = String((row as HTMLElement).dataset.checkId ?? '');
         if (!checkId) return;
         this.selection.set({checkId});
+      });
+    }
+    // 包切换 chips（字段布局）：换包清 checkId（同 SchedulePanel 行点击口径），
+    // 选中态订阅会触发重渲染。
+    for (const chip of Array.from(body.querySelectorAll<HTMLButtonElement>('[data-package-chip]'))) {
+      chip.addEventListener('click', () => {
+        const packageId = chip.dataset.packageChip ?? '';
+        if (packageId) this.selection.set({packageId, checkId: null});
       });
     }
     body.querySelector('#schedule-detail-highlight')?.addEventListener('click', () => {
@@ -1976,5 +2165,8 @@ export class ScheduleDetailPanel {
     const content = el.querySelector('#schedule-detail-panel-content') as HTMLElement | null;
     if (toggle && content) setupCollapsiblePanel(toggle, content);
     this.el = el;
+    // 字段形态属性在 build 时就落定（show() 已按当前能力设好 fieldMode）：
+    // CSS 的 [data-field-mode] 小节只在这个属性在场时生效，桌面布局不设。
+    this.syncFieldModeAttr();
   }
 }
