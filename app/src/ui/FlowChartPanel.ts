@@ -117,8 +117,11 @@ function blockerLineTextOf(blocker: SchedulePackageView['blockers'][number]): st
  * 两边文案漂移等于估算又对不上渲染）。该长句在 ~184px 卡宽内必然换行（见
  * estimateNodeCardHeight 里按 textLinesOf 算行数）。
  */
-function moreBlockersLineTextOf(hiddenCount: number): string {
-  return `还有 ${hiddenCount} 条阻塞原因（点此节点，完整列表见下方选中条与详情）`;
+function moreBlockersLineTextOf(hiddenCount: number, narrow: boolean): string {
+  // 「下方/上方」随布局（codex 复审 minor）：窄屏选中条已前置到画布上方，还写「下方」
+  // 会把用户引去翻完整张图。两词等长——textLinesOf 的行数估算不受影响（估算处传
+  // false 亦可，这里显式传入只为文案正确）。
+  return `还有 ${hiddenCount} 条阻塞原因（点此节点，完整列表见${narrow ? '上方' : '下方'}选中条与详情）`;
 }
 
 /**
@@ -210,7 +213,8 @@ export function estimateNodeCardHeight(pkg: SchedulePackageView, highlighted = f
   if (openBlockers.length > MAX_VISIBLE_BLOCKERS) {
     // 折叠提示按实际文案算换行行数（10px 字号、行高 1.5 = SMALL_LINE_PX）
     const hiddenCount = openBlockers.length - MAX_VISIBLE_BLOCKERS;
-    px += textLinesOf(moreBlockersLineTextOf(hiddenCount), 10) * SMALL_LINE_PX + 2;
+    // 「上方/下方」等长，估算与布局无关（窄屏文案由 renderNodeCard 按 narrowLayout 出）
+    px += textLinesOf(moreBlockersLineTextOf(hiddenCount, false), 10) * SMALL_LINE_PX + 2;
   }
   if (highlighted) px += SMALL_LINE_PX + 2;
   return px;
@@ -651,7 +655,7 @@ export class FlowChartPanel {
           .join('')}</div>`
       : '';
     const moreBlockers = hiddenBlockerCount > 0
-      ? `<div style="margin-top:2px;color:#f4dfa8;font-size:10px;line-height:1.5;">${moreBlockersLineTextOf(hiddenBlockerCount)}</div>`
+      ? `<div style="margin-top:2px;color:#f4dfa8;font-size:10px;line-height:1.5;">${moreBlockersLineTextOf(hiddenBlockerCount, this.narrowLayout)}</div>`
       : '';
 
     return `<div class="flow-node" data-pkg-id="${escapeHtml(pkg.id)}" data-layer="${node ? node.layer : -1}" data-row="${node ? node.row : 0}" data-side-lane="${node ? node.sideLane : true}" data-active="${active}" data-highlight="${highlighted}" data-capability="${capability}" title="${escapeHtml(title)}"

@@ -594,6 +594,33 @@ describe('FlowChartPanel', () => {
     expect(parseFloat(canvasInner.style.height)).toBeGreaterThanOrEqual(topOf('PKG-050') + estimateNodeCardHeight(byId('PKG-050')) + 16);
   });
 
+  it('窄屏下折叠阻塞文案指「上方」：选中条前置后方向指引不能还写「下方」（codex 复审 minor）', async () => {
+    // 同 fixture（PKG-010 挂五条阻塞 → 折叠行出现），窄容器下选中条已前置到画布
+    // 上方，文案必须跟着指「上方」——否则用户被引去翻完整张图。「上方/下方」等长，
+    // 高度估算不受影响（估算处传 false）。
+    const pkg000Blockers = [
+      {id: 'BLK-HANDOVER', item: '尚未交房，无法完成现场量房及房屋查验', status: 'site_pending', clears_when: '交房查验完成并归档现场记录', closed: false},
+      {id: 'BLK-STRUCTURE', item: '墙体结构、梁底及允许打孔或穿墙条件未确认', status: 'site_pending', clears_when: '结构资料与现场复核结果完成会签', closed: false},
+      {id: 'BLK-HVAC-DEEPENING', item: '中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审', status: 'site_pending', clears_when: '空调、设计和施工三方签认深化图', closed: false},
+      {id: 'BLK-GAS-DOOR', item: '燃气厨房门的现场验收要求未确认', status: 'site_pending', clears_when: '燃气单位或物业书面确认厨房分隔要求', closed: false},
+      {id: 'BLK-SURVEY-DATA-FREEZE', item: '影响水电与中央空调施工的现场数据尚未全部实测、显式豁免或登记为阻塞；当前清单和数据状态见 docs/pending-site-data.md', status: 'site_pending', clears_when: '影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs', closed: false},
+    ];
+    const snap = snapshot();
+    snap.packages.find((item) => item.id === 'PKG-010')!.blockers = pkg000Blockers;
+    stubFetch(snap);
+    const restore = stubClientWidth(334);
+    try {
+      const panel = new FlowChartPanel(new ScheduleSelectionStore());
+      panel.show();
+      await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-010"]')).toBeTruthy());
+      const node010 = document.querySelector('.flow-node[data-pkg-id="PKG-010"]') as HTMLElement;
+      expect(node010.textContent).toContain('完整列表见上方选中条与详情');
+      expect(node010.textContent).not.toContain('见下方选中条');
+    } finally {
+      restore();
+    }
+  });
+
   it('selection store 预设 packageId 后 show() 恢复 active 节点与选中条（#pkg= 深链）', async () => {
     stubFetch();
     const selection = new ScheduleSelectionStore();
@@ -832,6 +859,7 @@ describe('FlowChartPanel 窄容器（issue #83）', () => {
       const points = edgePoints(edge.getAttribute('d') ?? '');
       expect(points[0]).toEqual([16 + 200, 16 + estimateNodeCardHeight(fixturePkg('PKG-010')) / 2]);
       expect(points[points.length - 1]).toEqual([16 + 240, 16 + estimateNodeCardHeight(fixturePkg('PKG-020')) / 2]);
+
     } finally {
       restore();
     }
