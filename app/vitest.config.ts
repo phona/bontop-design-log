@@ -16,5 +16,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // 全局环境 shim（ResizeObserver 等 jsdom 缺失 API），与具体测试文件解绑（issue #69）
+    setupFiles: ['./test-setup.ts'],
   },
 });

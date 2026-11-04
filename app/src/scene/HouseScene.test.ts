@@ -1,17 +1,7 @@
 import { describe, it, expect, vi, afterAll } from 'vitest';
 
-// 文件级环境 shim（2026-11-02）：jsdom 不提供 ResizeObserver，而 HouseScene 构造
-// 时会 new ResizeObserver——本文件所有用例（不止高亮组）都因此抛在构造期，长期
-// 基线红 45 条。补最小 stub 后这些用例真正跑起来并通过；基线行已随本次提交删到
-// 实际失败的 3 条。**这个 shim 是承重墙**：删它 = 45 条用例回到基线外新失败。
-// 若将来换 vitest setupFiles 全局方案，记得同步这里与 ci/baseline。
-if (typeof (globalThis as { ResizeObserver?: unknown }).ResizeObserver === 'undefined') {
-  (globalThis as { ResizeObserver?: unknown }).ResizeObserver = class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-}
+// ResizeObserver shim 已挪至 vitest 全局 setupFiles（app/test-setup.ts，issue #69）：
+// jsdom 不提供该 API，HouseScene 构造时会 new ResizeObserver，本文件全部用例都依赖它。
 
 vi.mock('three', async (importOriginal: any) => {
   const __three = await importOriginal();
