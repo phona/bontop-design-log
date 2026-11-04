@@ -7,7 +7,7 @@
 
 import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -261,10 +261,62 @@ describe('sweepAcceptanceStaging：启动清扫入口', () => {
     assert.equal(result!.existed, true);
     // 超龄文件删掉；同段的年轻文件让两层超龄目录都留下（宁可不清）
     assert.equal(result!.removed, 1);
-    assert.equal(result!.kept, 1);
     assert.equal(result!.nonEmptyDirsKept, 2);
+    // kept = 实际保留总数：1 个年轻文件 + 2 个因含年轻文件留下的超龄目录（codex 复审 minor）
+    assert.equal(result!.kept, 3);
     assert.ok(!existsSync(join(stagingOf(root), 'PKG-060/check_tile_gap/a.jpg')), '默认时钟下 10 天前的条目照删');
     assert.ok(existsSync(join(stagingOf(root), 'PKG-060/check_tile_gap/fresh.jpg')), '1 天前的条目默认时钟下也留');
     assert.match(lines[0], /删 1 项（修改时间早于 7 天）/);
+  });
+
+  it('符号链接安全：暂存区内的链接不被沿读、更不被沿删（codex 复审 blocking）', () => {
+    // 场景：暂存区内 PKG-060/link -> 暂存区外的「证据目录」（仓内 schedule/... 的替身）。
+    // 旧实现 readdirSync({recursive:true})+statSync 会跟随链接，把 link/old.jpg 列进清单，
+    // 删除循环认不出祖先是 link，rmSync 会删掉暂存区外的真实文件——删除边界失守。
+    const root = makeRoot();
+    const outside = mkdtempSync(join(tmpdir(), 'sweep-outside-'));
+    tempRoots.push(outside);
+    const evidenceDir = join(outside, 'evidence');
+    mkdirSync(evidenceDir, {recursive: true});
+    const outsideFile = join(evidenceDir, 'old.jpg');
+    writeFileSync(outsideFile, 'precious');
+    const when = new Date(NOW - 30 * DAY_MS);
+    utimesSync(outsideFile, when, when); // 链接目标也是超龄的：旧实现会删它
+
+    writeEntry(root, 'PKG-060/check_tile_gap/a.jpg');
+    ageEntry(root, 'PKG-060/check_tile_gap/a.jpg', 30); // 真超龄文件：照删
+    symlinkSync(evidenceDir, join(stagingOf(root), 'PKG-060/check_tile_gap/link'));
+
+    const {log} = collectLog();
+    const result = sweepAcceptanceStaging({root, nowMs: NOW, log});
+
+    // 链接目标（暂存区外）必须原样存在；暂存区内的真超龄文件照删
+    assert.ok(existsSync(outsideFile), '暂存区外的链接目标必须原样——删除边界不许沿链接失守');
+    assert.equal(readFileSync(outsideFile, 'utf8'), 'precious');
+    assert.ok(!existsSync(join(stagingOf(root), 'PKG-060/check_tile_gap/a.jpg')), '真超龄文件照删');
+    // 链接条目不进清单（不沿它读），删除数为 0（a.jpg 之外没有可删的真条目）
+    assert.equal(result.scanned, 3, '清单只含真实条目：两层目录 + a.jpg，不含 link 及其内容');
+    assert.equal(result.removed, 1, '只删真超龄文件 a.jpg；link 不沿读也不沿删');
+    assert.ok(existsSync(join(stagingOf(root), 'PKG-060/check_tile_gap/link')), '链接条目本身不删（不碰暂存区外的任何东西）');
+  });
+
+  it('符号链接安全：暂存根本身是链接时拒绝清扫', () => {
+    const root = makeRoot();
+    const realStaging = mkdtempSync(join(tmpdir(), 'sweep-real-'));
+    tempRoots.push(realStaging);
+    const victim = join(realStaging, 'old.jpg');
+    writeFileSync(victim, 'x');
+    const when = new Date(NOW - 30 * DAY_MS);
+    utimesSync(victim, when, when);
+    // 把暂存区根换成指向 realStaging 的链接
+    rmSync(stagingOf(root), {recursive: true, force: true});
+    symlinkSync(realStaging, stagingOf(root));
+
+    const {lines, log} = collectLog();
+    const result = sweepAcceptanceStaging({root, nowMs: NOW, log});
+
+    assert.equal(result.removed, 0, '链接根拒绝清扫：一项都不删');
+    assert.ok(existsSync(victim), '链接目标必须原样');
+    assert.match(lines[0], /是符号链接，拒绝清扫/);
   });
 });

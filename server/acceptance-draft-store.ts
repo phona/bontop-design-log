@@ -519,14 +519,43 @@ export interface StagingSweepOptions {
   log?: (line: string) => void;
 }
 
-/** 递归收集暂存区全部条目（含子目录）的 mtime。根就是 STAGING_DIR：tmp/ 其他子目录不进清单。 */
+/**
+ * 递归收集暂存区全部条目（含子目录）的 mtime。根就是 STAGING_DIR：tmp/ 其他子目录不进清单。
+ *
+ * **符号链接安全（codex 复审 blocking）**：readdirSync({recursive:true}) + statSync 会跟随
+ * 目录符号链接——暂存区内一个指向仓内证据目录的 link 会让清单包含 link/old.jpg，随后
+ * 删除循环的 lstatSync 只查最终分量、认不出祖先是 link，rmSync 就会删掉暂存区外的真实
+ * 证据。改为手写遍历：一律 lstatSync（不跟随），**符号链接条目直接跳过**（不进清单、
+ * 不沿它读、更不沿它删），从根上守住「只碰 acceptance-staging」的删除边界。
+ */
 function collectStagingEntries(stagingDir: string): StagingSweepEntry[] {
-  // @types/node 的 recursive 重载返回 string | NonSharedBuffer 联合，仓内路径均为
-  // ASCII 字符串（与提交路径 readdirSync 同一处 cast，见 submitAcceptance）
-  return (readdirSync(stagingDir, {recursive: true}) as string[]).map((rel) => ({
-    path: rel,
-    mtimeMs: statSync(join(stagingDir, rel)).mtimeMs,
-  }));
+  const out: StagingSweepEntry[] = [];
+  const rootStat = lstatSync(stagingDir, {throwIfNoEntry: false});
+  // 链接根整体放弃：根都是链接时，「只碰暂存区」无从保证
+  if (!rootStat || rootStat.isSymbolicLink() || !rootStat.isDirectory()) return out;
+  const walk = (absDir: string, relDir: string): void => {
+    let names: string[];
+    try {
+      names = readdirSync(absDir);
+    } catch {
+      return; // 读不到的目录跳过（外层删除循环会记 failure 或根本看不到它）
+    }
+    for (const name of names) {
+      const abs = join(absDir, name);
+      const rel = relDir ? `${relDir}/${name}` : name;
+      let entry;
+      try {
+        entry = lstatSync(abs); // lstat：不跟随符号链接
+      } catch {
+        continue;
+      }
+      if (entry.isSymbolicLink()) continue; // 链接跳过：不沿它读、不沿它删
+      out.push({path: rel, mtimeMs: entry.mtimeMs});
+      if (entry.isDirectory()) walk(abs, rel);
+    }
+  };
+  walk(stagingDir, "");
+  return out;
 }
 
 function depthOf(relPath: string): number {
@@ -552,6 +581,12 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
     log(`[server] 暂存区清扫：${STAGING_DIR} 不存在，跳过`);
     return result;
   }
+  // 暂存根本身是符号链接：拒绝（collectStagingEntries 对链接根返回空，这里显式记一笔）
+  const rootStat = lstatSync(stagingDir, {throwIfNoEntry: false});
+  if (rootStat?.isSymbolicLink()) {
+    log(`[server] 暂存区清扫：${STAGING_DIR} 是符号链接，拒绝清扫（只碰真实暂存目录）`);
+    return result;
+  }
 
   let entries: StagingSweepEntry[];
   try {
@@ -566,7 +601,6 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
 
   result.scanned = entries.length;
   const plan = planStagingSweep(entries, nowMs, maxAgeMs);
-  result.kept = plan.keep.length;
   // 先深后浅：子项删掉之后，空掉的超龄目录才能一起删（不留空壳 litter）
   const ordered = [...plan.remove].sort((a, b) => depthOf(b) - depthOf(a) || a.localeCompare(b));
   for (const rel of ordered) {
@@ -586,6 +620,9 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
     }
   }
 
+  // kept = 实际保留项总数：年轻条目 + 因含年轻文件而整树留下的超龄目录
+  // （codex 复审 minor：早先只计年轻条目，日志会输出「留 1 项（其中 2 个超龄目录…）」自相矛盾）
+  result.kept = plan.keep.length + result.nonEmptyDirsKept;
   const ageDays = Math.round(maxAgeMs / 86_400_000);
   log(
     `[server] 暂存区清扫：${STAGING_DIR} 扫到 ${result.scanned} 项，删 ${result.removed} 项（修改时间早于 ${ageDays} 天），`
