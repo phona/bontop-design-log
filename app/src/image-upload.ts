@@ -37,8 +37,17 @@ const COMPRESS_LADDER: Array<{maxEdge: number; quality: number}> = [
 ];
 /** 净化后文件名总长上限（截断 stem、保扩展名）。 */
 const FILENAME_MAX_LENGTH = 64;
-/** 只认这几种照片扩展名；其余（.pdf/.heic/无扩展名）丢掉，靠内容而非名字判断类型。 */
-const EXTENSION_WHITELIST = new Set(['jpg', 'jpeg', 'png', 'webp']);
+/**
+ * 证据附件扩展名白名单。原样回传的附件（PDF 合同 / 视频 / HEIC 等）保留扩展名——
+ * 服务端只校验字符集 `/^[\w.\-]+$/`（acceptance-draft-store.ts:113），不判断内容，
+ * 落定后业主要靠扩展名认格式（codex 复审 minor：早先只放行图片扩展名，report.pdf
+ * 会被剥成 report-<nonce>）。压缩结果只可能是 JPEG，forceExtension 恒为 jpg。
+ */
+const EXTENSION_WHITELIST = new Set([
+  'jpg', 'jpeg', 'png', 'webp', 'heic',
+  'pdf', 'doc', 'docx', 'xlsx', 'xls', 'txt', 'csv',
+  'mp4', 'mov', 'mkv', 'avi', 'wmv',
+]);
 /** 同一次会话内的上传计数（与时间戳拼成 nonce，保证净化后文件名不撞车）。 */
 let uploadCounter = 0;
 
@@ -59,8 +68,8 @@ export function nextUploadNonce(): string {
  * 把任意文件名净化成服务端白名单可接受的安全名。纯函数。
  *
  * 规则：只取 basename（`/` 与 `\` 都切）；stem 里非 [A-Za-z0-9._-] 的字符统一替换为
- * `_`；扩展名取最后一个 `.` 之后的部分、转小写，只在 {jpg,jpeg,png,webp} 白名单内
- * 保留，否则丢掉（forceExtension 可强制改写，用于压缩后实际格式是 JPEG 的场景）；
+ * `_`；扩展名取最后一个 `.` 之后的部分、转小写，在白名单内保留（图片 + PDF/视频等
+ * 常见证据类型；forceExtension 可强制改写，用于压缩后实际格式是 JPEG 的场景）；
  * stem 净化后为空（或以 `.` 开头被剥空）则用 photo-<UTC yyyymmdd-hhmmss>；
  * 传了 nonce 时拼到 stem 末尾（同一检查传多张照片，中文名净化后都成 `__` 会撞
  * 暂存路径并互相覆盖——codex 复审 major）；总长限 64（超长截断 stem、保扩展名）。
@@ -135,6 +144,10 @@ async function downscaleToJpegBlob(file: File, maxEdge: number, quality: number)
     canvas.height = Math.max(1, Math.round(bitmap.height * scale));
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('canvas 2d context unavailable');
+    // 先铺白底再绘图：canvas 默认透明，直接导 JPEG 会把透明区域合成成**黑色**
+    // （codex 复审 major：透明底黑字/黑线图的截图类证据会变得不可辨认）
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     const blob = await new Promise<Blob | null>((resolve) => {
       canvas.toBlob((result) => resolve(result), 'image/jpeg', quality);

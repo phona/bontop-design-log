@@ -4,8 +4,14 @@ import { safeEvidenceFilename, nextUploadNonce, planCompression, compressImageFi
 // canvas 真实压缩路径（createImageBitmap → canvas 缩放 → toBlob JPEG 重编码）jsdom 跑不了：
 // jsdom 不实现 createImageBitmap，HTMLCanvasElement.toBlob 也没有编码器实现。这里**不
 // mock 造假**，只覆盖纯函数与「没有 createImageBitmap 时回落原字节 / 回落仍超限明确报错」
-// 的真实路径。真实浏览器里的大图缩放 + JPEG 重编码 + 压缩阶梯降档留给合入后人工实测：
-// 桌面 Chrome 与手机微信各选一张 2-5MB 照片，看暂存文件体积、界面反馈与 413 是否消失。
+// 的真实路径。
+//
+// 合并前真实浏览器验证（codex 复审 major 要求，2026-11-04 由验收代理在 PR #85 worktree
+// 上实测通过，agent-browser session bontop-issue85-verify，自有端口 4104/5177）：
+//   3.96MB 手机大图 → 201，请求体 174,833 字节，暂存 131,048 字节 1600×1200（第一档）；
+//   29.4MB 噪声图 → 201，暂存 384,800 字节 1200×1200（第二档降档被触发，文件尺寸实证）；
+//   420KB PDF → 201 原样字节一致；同一检查 4 个文件共存 nonce 全存活。全程无 413。
+// 截图与请求/响应记录在 tmp/capture/（过程物，不进 git）。
 
 const globalWithBitmap = globalThis as {createImageBitmap?: unknown};
 const savedCreateImageBitmap = globalWithBitmap.createImageBitmap;
@@ -29,13 +35,17 @@ describe('safeEvidenceFilename（issue #70）', () => {
     expect(safeEvidenceFilename('my photo (1).png')).toBe('my_photo__1_.png');
   });
 
-  it('无扩展名 / 大写扩展名 / 非白名单扩展名', () => {
+  it('无扩展名 / 大写扩展名 / 证据类扩展名保留 / 可执行档丢弃', () => {
     expect(safeEvidenceFilename('photo')).toBe('photo');
     expect(safeEvidenceFilename('A.JPG')).toBe('A.jpg');
     expect(safeEvidenceFilename('B.JPEG')).toBe('B.jpeg');
-    // 非白名单扩展名整段丢掉（靠内容判断类型，不靠名字）
-    expect(safeEvidenceFilename('report.pdf')).toBe('report');
-    expect(safeEvidenceFilename('scan.heic')).toBe('scan');
+    // codex 复审 minor：原样回传的附件保留扩展名——服务端只校验字符集不判断内容，
+    // 落定后业主要靠扩展名认格式（report.pdf 早先会被剥成 report-<nonce>）
+    expect(safeEvidenceFilename('report.pdf')).toBe('report.pdf');
+    expect(safeEvidenceFilename('scan.heic')).toBe('scan.heic');
+    expect(safeEvidenceFilename('clip.MP4')).toBe('clip.mp4');
+    // 白名单外（可执行档等）仍整段丢掉
+    expect(safeEvidenceFilename('evil.exe')).toBe('evil');
     expect(safeEvidenceFilename('photo.')).toBe('photo');
   });
 
@@ -62,7 +72,8 @@ describe('safeEvidenceFilename（issue #70）', () => {
   });
 
   it('结果不以 . 开头', () => {
-    expect(safeEvidenceFilename('.hidden.txt')).toBe('hidden');
+    // .hidden.txt：前导 . 剥掉、.txt 在白名单内保留（证据类扩展名）
+    expect(safeEvidenceFilename('.hidden.txt')).toBe('hidden.txt');
     expect(safeEvidenceFilename('..jpg')).toMatch(/^photo-\d{8}-\d{6}\.jpg$/);
     expect(safeEvidenceFilename('..')).toMatch(/^photo-\d{8}-\d{6}$/);
   });
