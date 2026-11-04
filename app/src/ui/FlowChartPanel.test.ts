@@ -259,6 +259,9 @@ function installDom(): void {
 const layerOf = (packageId: string): string | null =>
   document.querySelector(`.flow-node[data-pkg-id="${packageId}"]`)?.getAttribute('data-layer') ?? null;
 
+const leftOf = (packageId: string): number =>
+  parseFloat((document.querySelector(`.flow-node[data-pkg-id="${packageId}"]`) as HTMLElement).style.left);
+
 const topOf = (packageId: string): number =>
   parseFloat((document.querySelector(`.flow-node[data-pkg-id="${packageId}"]`) as HTMLElement).style.top);
 
@@ -684,5 +687,188 @@ describe('FlowChartPanel', () => {
     panel.hide();
     expect(panel.isVisible()).toBe(false);
     expect((document.querySelector('#flow-chart-panel') as HTMLElement).style.display).toBe('none');
+  });
+});
+
+// ─── issue #83：窄容器（375-390px 手机）画布宽吃容器宽 ─────────────────────
+//
+// 背景：布局原是纯常量函数（NODE_WIDTH=200 / COLUMN_PITCH=240 / CANVAS_PAD=16），
+// 12 层依赖图的画布宽就是 2872px；390px 手机上 #approval-page-panels 只剩约 334px
+// 给画布，第 2 列起被裁、只能在嵌套横滚盒里平移 8 屏多（真浏览器实测：viewport
+// 390×667 下 canvas clientWidth 332 / scrollWidth 2888，overflow-x:auto 能滚但无提示）。
+// 修法：容器实测宽 ≤700px → 单列堆叠，**卡宽仍 200**（estimateNodeCardHeight 的换行/
+// 行高口径全建立在 200px 卡宽上，#78 实测边界不动），画布宽 = 容器内容盒宽。
+//
+// jsdom 不做布局（clientWidth 恒 0，生产按 0 走宽容器布局），所以这里显式 stub
+// 容器宽。334 = 390 视口 − #approval-page-panels 内边距 12px×2 − 面板内边距 16px×2。
+function stubClientWidth(width: number): () => void {
+  const own = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+  Object.defineProperty(HTMLElement.prototype, 'clientWidth', {configurable: true, get: () => width});
+  return () => {
+    if (own) Object.defineProperty(HTMLElement.prototype, 'clientWidth', own);
+    else Reflect.deleteProperty(HTMLElement.prototype, 'clientWidth');
+  };
+}
+
+/** 解析 path 的 d 属性成坐标点序列（d 里只有数字、空格与逗号）。 */
+function edgePoints(d: string): Array<[number, number]> {
+  return [...d.matchAll(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g)]
+    .map((match) => [parseFloat(match[1]), parseFloat(match[2])] as [number, number]);
+}
+
+const canvasInnerWidth = (): number =>
+  parseFloat((document.querySelector('#flow-chart-canvas > div') as HTMLElement).style.width);
+
+describe('FlowChartPanel 窄容器（issue #83）', () => {
+  beforeEach(() => {
+    installDom();
+  });
+
+  it('334px 容器（390px 手机）：单列堆叠，所有节点在容器内、不重叠、连线端点跟着堆叠坐标走', async () => {
+    stubFetch();
+    const restore = stubClientWidth(334);
+    try {
+      const panel = new FlowChartPanel(new ScheduleSelectionStore());
+      panel.show();
+      await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-080"]')).toBeTruthy());
+
+      // 画布宽吃容器宽：334 实测 − 画布边框 1px×2 = 内容盒 332（不触发横向滚动条）
+      expect(document.querySelector('#flow-chart-canvas')?.getAttribute('data-flow-mobile')).toBe('true');
+      expect(canvasInnerWidth()).toBe(332);
+      expect((document.querySelector('#flow-chart-canvas svg') as SVGElement).getAttribute('width')).toBe('332');
+
+      // 逐节点：全部同一列（CANVAS_PAD 16 + 导轨 24），right ≤ 容器宽
+      const cards = Array.from(document.querySelectorAll('.flow-node[data-side-lane="false"]')) as HTMLElement[];
+      expect(cards).toHaveLength(7);
+      expect(new Set(cards.map((card) => parseFloat(card.style.left)))).toEqual(new Set([40]));
+      for (const card of cards) {
+        expect(parseFloat(card.style.left) + 200).toBeLessThanOrEqual(334);
+      }
+
+      // 堆叠顺序 = (layer, row) = 依赖顺序；相邻卡片不重叠（间距恒 ≥ 本卡高度 + ROW_GAP）
+      const stacked = cards
+        .map((card) => ({id: card.dataset.pkgId!, top: parseFloat(card.style.top)}))
+        .sort((left, right) => left.top - right.top);
+      expect(stacked.map((node) => node.id)).toEqual(['PKG-010', 'PKG-020', 'PKG-030', 'PKG-040', 'PKG-050', 'PKG-070', 'PKG-080']);
+      for (let index = 1; index < stacked.length; index += 1) {
+        const previousHeight = Math.max(84, estimateNodeCardHeight(fixturePkg(stacked[index - 1].id)));
+        expect(stacked[index].top).toBeGreaterThanOrEqual(stacked[index - 1].top + previousHeight + 8);
+      }
+
+      // 连线：数量不变，全部坐标落在容器内；端点跟着堆叠坐标走（源卡底中 → 目标卡顶中）
+      const edges = document.querySelectorAll('path.flow-edge');
+      expect(edges).toHaveLength(8);
+      for (const edge of Array.from(edges)) {
+        const points = edgePoints(edge.getAttribute('d') ?? '');
+        expect(points.length).toBeGreaterThan(0);
+        expect(Math.min(...points.map(([x]) => x))).toBeGreaterThanOrEqual(0);
+        expect(Math.max(...points.map(([x]) => x))).toBeLessThanOrEqual(332);
+      }
+      const edge010020 = document.querySelector('path.flow-edge[data-from="PKG-010"][data-to="PKG-020"]') as SVGElement;
+      const points = edgePoints(edge010020.getAttribute('d') ?? '');
+      expect(points[0]).toEqual([140, topOf('PKG-010') + Math.max(84, estimateNodeCardHeight(fixturePkg('PKG-010')))]);
+      expect(points[points.length - 1]).toEqual([140, topOf('PKG-020')]);
+
+      // 侧车道仍在图表下方单独一条（不占堆叠）
+      expect(document.querySelector('.flow-node[data-side-lane="true"]')?.getAttribute('style')).toContain('position:relative');
+
+      // 选中 / 点击 / 详情按钮行为不变
+      (document.querySelector('.flow-node[data-pkg-id="PKG-020"]') as HTMLElement).click();
+      expect(document.querySelector('#flow-selection-bar')?.textContent).toContain('水电改造');
+      expect(document.querySelector('.flow-node[data-pkg-id="PKG-020"]')?.getAttribute('data-active')).toBe('true');
+    } finally {
+      restore();
+    }
+  });
+
+  it('宽容器（桌面）：布局与常量算式逐字一致，不落 data-flow-mobile', async () => {
+    stubFetch();
+    const restore = stubClientWidth(1440);
+    try {
+      const panel = new FlowChartPanel(new ScheduleSelectionStore());
+      panel.show();
+      await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-080"]')).toBeTruthy());
+
+      // 画布宽 = CANVAS_PAD×2 + (层数−1)×COLUMN_PITCH + NODE_WIDTH = 32 + 4×240 + 200
+      expect(canvasInnerWidth()).toBe(1192);
+      expect(document.querySelector('#flow-chart-canvas')?.hasAttribute('data-flow-mobile')).toBe(false);
+      // 节点坐标仍是 layer→列、row→行
+      expect(leftOf('PKG-020')).toBe(16 + 240);
+      expect(leftOf('PKG-050')).toBe(16 + 2 * 240);
+      const row0Height = Math.max(
+        estimateNodeCardHeight(fixturePkg('PKG-010')),
+        estimateNodeCardHeight(fixturePkg('PKG-020')),
+        estimateNodeCardHeight(fixturePkg('PKG-030')),
+        estimateNodeCardHeight(fixturePkg('PKG-070')),
+        estimateNodeCardHeight(fixturePkg('PKG-080')),
+      );
+      expect(topOf('PKG-040')).toBe(16 + row0Height + 8);
+      // 边仍是原 bezier：端点挂源卡右缘中点 → 目标卡左缘中点
+      const edge = document.querySelector('path.flow-edge[data-from="PKG-010"][data-to="PKG-020"]') as SVGElement;
+      const points = edgePoints(edge.getAttribute('d') ?? '');
+      expect(points[0]).toEqual([16 + 200, 16 + estimateNodeCardHeight(fixturePkg('PKG-010')) / 2]);
+      expect(points[points.length - 1]).toEqual([16 + 240, 16 + estimateNodeCardHeight(fixturePkg('PKG-020')) / 2]);
+    } finally {
+      restore();
+    }
+  });
+
+  it('容器窄于单列下限（<256px）：画布保留下限并经自身 overflow:auto 横滚兜底', async () => {
+    stubFetch();
+    const restore = stubClientWidth(200);
+    try {
+      const panel = new FlowChartPanel(new ScheduleSelectionStore());
+      panel.show();
+      await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-080"]')).toBeTruthy());
+
+      // 下限 = CANVAS_PAD×2 + 导轨 24 + 卡宽 200 = 256 > 容器 200 → 内容宽 > 容器宽，
+      // 由画布自身的横向滚动容器保证可达（issue 认可的第二条验收口径）
+      expect(canvasInnerWidth()).toBe(256);
+      expect((document.querySelector('#flow-chart-canvas') as HTMLElement).style.overflow).toBe('auto');
+      for (const card of Array.from(document.querySelectorAll('.flow-node[data-side-lane="false"]'))) {
+        expect(parseFloat((card as HTMLElement).style.left) + 200).toBeLessThanOrEqual(256);
+      }
+    } finally {
+      restore();
+    }
+  });
+
+  it('容器由宽变窄（旋转/分屏）：多列 → 单列堆叠重算，节点仍全部在容器内', async () => {
+    stubFetch();
+    // 捕获 ResizeObserver 回调（jsdom 的 shim 不触发），模拟容器尺寸变化
+    let fire: (() => void) | undefined;
+    class CapturingResizeObserver {
+      constructor(callback: () => void) {
+        fire = callback;
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    const original = (globalThis as {ResizeObserver?: unknown}).ResizeObserver;
+    (globalThis as {ResizeObserver?: unknown}).ResizeObserver = CapturingResizeObserver;
+    try {
+      const panel = new FlowChartPanel(new ScheduleSelectionStore());
+      panel.show();
+      await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-010"]')).toBeTruthy());
+      // 宽容器：多列布局
+      expect(leftOf('PKG-020')).toBe(16 + 240);
+
+      const restore = stubClientWidth(334);
+      try {
+        fire?.();
+      } finally {
+        restore();
+      }
+      // 翻转后单列堆叠，节点全部落在容器内
+      expect(document.querySelector('#flow-chart-canvas')?.getAttribute('data-flow-mobile')).toBe('true');
+      expect(canvasInnerWidth()).toBe(332);
+      expect(leftOf('PKG-020')).toBe(40);
+      for (const card of Array.from(document.querySelectorAll('.flow-node[data-side-lane="false"]'))) {
+        expect(parseFloat((card as HTMLElement).style.left) + 200).toBeLessThanOrEqual(334);
+      }
+    } finally {
+      (globalThis as {ResizeObserver?: unknown}).ResizeObserver = original;
+    }
   });
 });
