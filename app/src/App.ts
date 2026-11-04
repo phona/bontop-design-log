@@ -2220,16 +2220,23 @@ export class App {
         fetch('/api/config-status').then((response) => (response.ok ? response.json() : null)).catch(() => null),
       ]);
       const configStatuses = (configStatusResponse?.configs ?? []) as Array<{ path?: string; status?: string }>;
+      // 保守规则（codex 十六/十七/十八审 blocking 收口）：任何配置重载失败都不能假装数据
+      // 新鲜——facts loader 是整包缓存（electrical/plumbing/ceiling/hvac/overrides/lighting
+      // 任一失败整份 stale），geometry/overlay loader 同理。失败即隔离：facts 与几何全弃，
+      // 只保留直读磁盘的 furnishings + 完整 D-NOTES。config-status 本身失败同样不视为已核验。
+      const configStatusTrusted = configStatusResponse !== null;
       const failedPaths = configStatuses.filter((item) => item.status === 'failed').map((item) => String(item.path ?? 'unknown'));
-      // facts 四源（electrical/plumbing/ceiling/hvac）任一重载失败 → 服务端缓存的是上次
-      // 成功数据（codex 十六/十七审 blocking）：整体隔离不用，宁可缺图层 + D-NOTE。
-      const FACTS_PATHS = ['config/electrical.yaml', 'config/plumbing.yaml', 'config/ceiling.yaml', 'config/hvac.yaml'];
-      const factsStale = failedPaths.some((path) => FACTS_PATHS.includes(path));
+      const configReloadDegraded = !configStatusTrusted || failedPaths.length > 0;
+      const factsStale = configReloadDegraded;
       const facts = !factsStale && factsResponse ? (factsResponse as ProjectRenderFacts) : null;
       const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
       // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
       const mep = facts?.hvac?.plans && mepPayload ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts) } : undefined;
-      const projectHouse = (projectResponse?.house ?? undefined) as
+      // 几何/overlay loader 重载失败同规则（codex 十八审 blocking）：隔离 projectHouse，
+      // 不让旧墙体/旧洞口与新家具混装。
+      const projectHouse = (!configReloadDegraded && projectResponse !== null
+        ? (projectResponse.house ?? undefined)
+        : undefined) as
         | { rooms?: unknown[]; ceilingZones?: unknown[]; sceneElements?: unknown[] }
         | undefined;
       // 降级说明随图交付（codex 七审 major）：施工方拿到的 DXF 必须能区分「没设计」和「导出时接口失败」。
@@ -2239,9 +2246,14 @@ export class App {
       // Object.entries 抛错，整次导出中止、缺失说明也无法交付。
       const furnishings = furnishingsResponse ?? undefined;
       if (!furnishings) notes.push('FURNISHINGS NOT EXPORTED: furnishings API failed at export time');
-      if (!projectHouse) notes.push('GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: project API failed at export time');
+      if (!projectHouse) {
+        notes.push(configReloadDegraded
+          ? 'GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: config reload failed — last-good server cache not trusted'
+          : 'GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: project API failed at export time');
+      }
       if (factsStale) notes.push('RENDER FACTS STALE: config reload failed — electrical/plumbing/ceilings/MEP NOT EXPORTED (server last-good cache not trusted)');
-      if (failedPaths.length > 0) notes.push(`CONFIG RELOAD FAILED: ${failedPaths.join(', ')} — affected layers excluded where identifiable`);
+      if (!configStatusTrusted) notes.push('CONFIG STATUS UNVERIFIED: config-status API failed at export time');
+      if (failedPaths.length > 0) notes.push(`CONFIG RELOAD FAILED: ${failedPaths.join(', ')} — affected layers excluded`);
       if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
       const result = buildProjectDxf({

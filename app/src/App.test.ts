@@ -793,6 +793,54 @@ describe('App', () => {
     expect(text).not.toContain('e_stale');
   });
 
+  it('any config reload failure → conservative isolation (overrides failed kills facts; model-geometry failed kills geometry) (codex 十八审 blocking)', async () => {
+    const makeFetch = (failedPath: string) => async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/config-status')) {
+        return { ok: true, json: async () => ({ configs: [{ path: failedPath, status: 'failed' }] }) } as Response;
+      }
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => ({
+          electrical: [{ id: 'e_cached', room: 'living_room', type: 'socket', x: 9, z: 9 }],
+          plumbing: [], ceiling: [{ id: 'ceil_cached', room: 'living_room', type: 'drop' }],
+          hvac: { plans: [{ outdoor: { id: 'outdoor_main', x: 5, z: 5 }, diagram: { anchors: [], terminals: [] } }] },
+        }) } as Response;
+      }
+      if (urlStr.includes('/api/project')) {
+        return { ok: true, json: async () => ({ topics: [], house: {
+          rooms: [{ id: 'r', name: 'R', x: 0, z: 0, width: 1, depth: 1, height: 2.8 }],
+          sceneElements: [{ type: 'wall', id: 'w_cached', x1: 0, z1: 0, x2: 1, z2: 0 }],
+        } }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    };
+    // overrides.yaml 失败 → facts loader 整包 stale：缓存点位与吊顶都不出现
+    vi.spyOn(global, 'fetch').mockImplementation(makeFetch('config/render/overrides.yaml'));
+    let app = new App(canvas);
+    await app.start();
+    mockDocument.createElement.mockClear();
+    await (exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>)();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    let text = await createdBlobs[createdBlobs.length - 1].text();
+    expect(text).toContain('RENDER FACTS STALE');
+    expect(text).not.toContain('e_cached');
+    expect(text).not.toContain('ceil_cached');
+
+    // model-geometry.yaml 失败 → 几何隔离：缓存墙体不出现，但直读磁盘的说明在
+    vi.spyOn(global, 'fetch').mockImplementation(makeFetch('config/layout/model-geometry.yaml'));
+    app = new App(canvas);
+    await app.start();
+    mockDocument.createElement.mockClear();
+    await (exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>)();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    text = await createdBlobs[createdBlobs.length - 1].text();
+    expect(text).toContain('GEOMETRY/ROOMS/CEILINGS NOT EXPORTED');
+    expect(text).not.toContain('w_cached');
+  });
+
   // 点包 3D 高亮的聚合路径（highlightApprovalPackage）：房间/对象走 highlightObjects、
   // 点位走 highlightPoints（第三步落地后点位不再被静默丢弃）。start() 已把 projectData
   // 拉到手，这里只覆写 links 响应，验证聚合口径与「失败不打断审批流」。
