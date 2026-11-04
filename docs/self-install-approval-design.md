@@ -33,7 +33,7 @@ v1 的全部举例经核实为真并保留，无具体候选、证据口径、�
 ## 落地偏差登记（2026-11-02 实施第一步时定，业主知悉）
 
 1. **默认视图**：定稿为「记忆上次所在审批页；带 `#pkg=…` 的分享链接直接落详情页」。**2026-11-03 二次修正（业主拍板，路由级独立页）**：审批视图从「右侧面板叠加」升级为**全屏独立页**（`#approval-page`，body.approval-page 控制显隐），路由在地址栏（`#approval=<子页>&pkg=&check=`，进/出用 pushState，返回键=退出审批页）；不再改变站点整体首屏的含义反转——**首访统一落 3D 页**（画布优先；旧「首次默认 next_action」随面板形态一并作废，业主拍板移动端也不做首访特例）。动因：面板寄生预演工作台右坞，挤出「对象信息点开没东西」/开合状态单向泄漏/flow-wide 宽度互抢三个耦合病（详见当日 PR 正文）。3D 联动从同屏改为跳转：「在 3D 中高亮」= 退出审批页 + 6s 高亮；点 3D 对象 = 反查跳回审批页对应包。
-2. **3D 高亮范围**：第一步只做房间/墙/叠加层区域级（`room_ids`、`collections:[rooms/walls]`、`types` 三类选择器）。**2026-11-02 评审后修正**：`ids` 选择器（电气/给排水点位）拆出独立 `pointIds` 桶——反查索引用（点点位的拾取链路通），高亮不用（合批渲染命中不了）；详情页「房间/对象/点位」三段计数与高亮承诺同口径，不把点位混进对象数充数。§6「点 PKG-040 高亮全部水电范围」示例**后移到第三步**——PKG-040 的选择器是点位/层级（layers/ids），要逐类核对 BatchedMesh 的 batchUserData 桥接（合批铁律区），风险后置。展不开的选择器在详情页明示「本步高亮不到」，不静默丢弃。PKG-060（试点包）的 `collections:[rooms] + types:[floor_region,wall_region,sill_region]` 在第一步即可完整高亮。**2026-11-02 补充**：点位级高亮已由 PR #54 落地（合批渲染经 batchUserData 反查逐实例着色，推翻本条「合批渲染命中不了」的理由）。**2026-11-02 浏览器实测后再修正两处**：① 本条原写「PKG-040 的选择器是点位/层级（layers/ids）」与数据不符——PKG-040 实际声明 electrical/plumbing `select {all: true}` + mep_routes `layers`，按现行实现判**全项目范围**、不高亮；ids 级点位包是 **PKG-030**（电气 13 个点位）。② links 的 `select.ids` 是裸 id、场景 objectId 带 `<来源>:` 前缀，不归一化则 ids 级高亮与点位反查全部静默失效（mock 用裸 id 照不到）——已在 `resolvePackageScope` 单一归一化；点位来源 `select.all` 的展开仍是残留 P2-6。
+2. **3D 高亮范围**：第一步只做房间/墙/叠加层区域级（`room_ids`、`collections:[rooms/walls]`、`types` 三类选择器）。**2026-11-02 评审后修正**：`ids` 选择器（电气/给排水点位）拆出独立 `pointIds` 桶——反查索引用（点点位的拾取链路通），高亮不用（合批渲染命中不了）；详情页「房间/对象/点位」三段计数与高亮承诺同口径，不把点位混进对象数充数。§6「点 PKG-040 高亮全部水电范围」示例**后移到第三步**——PKG-040 的选择器是点位/层级（layers/ids），要逐类核对 BatchedMesh 的 batchUserData 桥接（合批铁律区），风险后置。展不开的选择器在详情页明示「本步高亮不到」，不静默丢弃。PKG-060（试点包）的 `collections:[rooms] + types:[floor_region,wall_region,sill_region]` 在第一步即可完整高亮。**2026-11-02 补充**：点位级高亮已由 PR #54 落地（合批渲染经 batchUserData 反查逐实例着色，推翻本条「合批渲染命中不了」的理由）。**2026-11-02 浏览器实测后再修正两处**：① 本条原写「PKG-040 的选择器是点位/层级（layers/ids）」与数据不符——PKG-040 实际声明 electrical/plumbing `select {all: true}` + mep_routes `layers`，按现行实现判**全项目范围**、不高亮；ids 级点位包是 **PKG-030**（电气 13 个点位）。② links 的 `select.ids` 是裸 id、场景 objectId 带 `<来源>:` 前缀，不归一化则 ids 级高亮与点位反查全部静默失效（mock 用裸 id 照不到）——已在 `resolvePackageScope` 单一归一化。**2026-11-04（issue #65）③ 点位来源 `select.all` 的展开已落地，残留 P2-6 关闭**：`select {all: true}` 改为按来源分流——electrical/plumbing 的 all 展开成该分类**全部点位 id**（清单来自 `/api/project` 的 `house.electrical`/`house.plumbing`，随本次一并补齐下发；sceneElements 不含点位），PKG-040 因此解析出 137 个点位（电气 104 + 给排水 33）、详情页「点位」段不再是 0、流程图徽标回到「点位级（可高亮）」且「在 3D 中高亮」可用；其他来源的 all 仍判全项目范围徽标。缺清单时显形进 `unresolved`，不静默出 0。
 
 3. **snapshot 含 PKG-900**：`orderedPackages` 的 `sequence<900` 过滤只服务「当前推进位置」的施工顺序语义；可视图投影全量 25 个包，PKG-900 作为预备金侧车道可见（§9 要求常驻）。
 ## 残留 P2 清单（2026-11-03 路由级复核：余 6 条未解决 + 1 条已解决留痕）
@@ -48,7 +48,7 @@ v1 的全部举例经核实为真并保留，无具体候选、证据口径、�
 
 4. **反向点击选中条先预设首个包**：多包共用对象时流程图已全部标出+提示，但选中条/详情目标仍取首个包。
 5. **节点卡片 100px 可能裁掉多阻塞原因**：阻塞原因多于两条时节点内文案可能溢出（待实测后定卡片高度或折叠）。
-6. **`select.all` 即判全项目范围**：not_modelled 无选择器的 link 也归入「全项目范围」徽标，语义上与 select.all 混同。**2026-11-02 浏览器实测补充**：点位来源的 `select {all: true}` 同样只判全项目范围——PKG-040（水电）声明 electrical/plumbing select.all，本意「高亮全部水电点位」，实际解析出 0 个点位、按钮禁用。要做需把各来源的全部点位 id 喂进 resolvePackageScope（house.electrical/plumbing 等，sceneElements 不含点位）。
+6. **`select.all` 即判全项目范围**：not_modelled 无选择器的 link 也归入「全项目范围」徽标，语义上与 select.all 混同。**2026-11-02 浏览器实测补充**：点位来源的 `select {all: true}` 同样只判全项目范围——PKG-040（水电）声明 electrical/plumbing select.all，本意「高亮全部水电点位」，实际解析出 0 个点位、按钮禁用。要做需把各来源的全部点位 id 喂进 resolvePackageScope（house.electrical/plumbing 等，sceneElements 不含点位）。**2026-11-04（issue #65）本条后半已解决**：点位来源（electrical/plumbing）的 all 展开成该分类全部点位，`house.electrical`/`house.plumbing` 随 `/api/project` 下发，PKG-040 得 137 个点位、按钮可用；其余来源的 all 维持全项目范围徽标。**仍未解决的前半**：not_modelled 无选择器的 link 与 select.all 在徽标上混同（`mapping_status: project_scope` 的链接也不按选择器猜，见 FlowChartPanel.capabilityOf）。
 7. **#49 正文测试数过时**：#49 合入时正文写「新增 31 条」，实算 38 条（7+6+10+8+7）；已合入的 PR 正文不再追溯修改，此处登记为过时记录。
 
 **2026-11-03 已修移出本清单的记录**（按「文档改写必须 diff 出删了什么」登记）：
@@ -177,7 +177,7 @@ v1 的全部举例经核实为真并保留，无具体候选、证据口径、�
 
 ## 6. 3D 联动：双向，能跳，也要知道跳不到哪
 
-- 包级联动先做：用现有的 model-package-links.yaml，点 PKG-060 高亮全部铺贴房间，点 3D 对象反向高亮它归属的包。点位级 ids 包的示例是 **PKG-030**（电气 13 个点位，逐实例高亮随 PR #54 落地）；**PKG-040 实际声明 electrical/plumbing `select {all: true}` + mep_routes `layers`，判全项目范围、不硬找 3D 位置**——点位来源的 select.all 展开是残留 P2-6（2026-11-02 浏览器实测后改写，原示例名 PKG-040 与数据不符）。
+- 包级联动先做：用现有的 model-package-links.yaml，点 PKG-060 高亮全部铺贴房间，点 3D 对象反向高亮它归属的包。点位级 ids 包的示例是 **PKG-030**（电气 13 个点位，逐实例高亮随 PR #54 落地）；**PKG-040 实际声明 electrical/plumbing `select {all: true}` + mep_routes `layers`，判全项目范围、不硬找 3D 位置**——点位来源的 select.all 展开是残留 P2-6（2026-11-02 浏览器实测后改写，原示例名 PKG-040 与数据不符）。**2026-11-04（issue #65）PKG-040 的 select.all 已能展开**：electrical/plumbing 的 all → 该分类全部点位（137 个：电气 104 + 给排水 33，清单随 `/api/project` 的 `house.electrical`/`house.plumbing` 下发），点它高亮全部水电点位；mep_routes `layers` 仍不展开（详情页明示）。
 - **2026-11-03 路由级独立页起，联动从「同屏」改「跳转」**：审批页是全屏表面，与 3D 页互斥——「在 3D 中高亮」= 退出审批页回 3D 并以 6s 时长高亮该包（1.2s 瞬时在跳转落地时必错过，故延长）；点 3D 对象 = 反查跳回审批页落在归属包（多包仍进流程图全标+提示）。代价：不能同屏对照，看空间要来回跳；业主 2026-11-03 拍板接受（原同屏形态正是三个耦合病的根）。
 - 检查级联动只做有真实映射的地方：防水落到两卫和厨房阳台，防水台面砖落到 sill_region，空鼓落到铺贴房间（check_tile_slope 自带 rooms 字段）；排版确认、样板确认这类程序性检查没有单一几何，留在清单里看，不硬贴 3D。
 - CI 空间门禁联动是第二步：穿梁、穿剪力墙、点位错位这类能落到墙和梁的，才跳 3D；非空间门禁跳文件和 diff。
