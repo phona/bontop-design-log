@@ -2357,7 +2357,7 @@ export class App {
         // 页面只读化（2026-11-04）：拖动只做本地预演，不回写配置——
         // 模型配置唯一写手是 AI 会话（AGENTS.md「页面只取证与体验」）。
         if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:') || objectId.startsWith('furniture:')) {
-          this.showToast('拖动为本地预演，刷新即回原位；要调整配置请通过 AI 会话');
+          this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
         }
         this.houseScene.hideGhost();
       },
@@ -2793,7 +2793,7 @@ export class App {
         const z = pos.z;
         if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:') || objectId.startsWith('furniture:')) {
           // 页面只读化（2026-11-04）：本地预演，不回写配置
-          this.showToast('拖动为本地预演，刷新即回原位；要调整配置请通过 AI 会话');
+          this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
         }
       }
       this.fpController.exitDragMode();

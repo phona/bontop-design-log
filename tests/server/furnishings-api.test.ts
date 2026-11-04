@@ -30,16 +30,28 @@ describe('furnishings routes are read-only', () => {
     assert.equal(res.status, 200);
   });
 
-  for (const verb of ['put', 'post', 'delete'] as const) {
-    it(`${verb.toUpperCase()} is not available (read-only)`, async () => {
-      const before = readFileSync(yamlPath(), 'utf8');
-      const req = request(app)[verb]('/api/furnishings/anywhere');
-      if (verb !== 'delete') req.send({ x: 1, z: 2 });
-      const res = await req;
-      assert.equal(res.status, 404);
-      assert.equal(readFileSync(yamlPath(), 'utf8'), before, 'config file must be untouched');
-    });
-  }
+  // 用原写入端点的真实路径/条目/有效载荷验证拒绝（codex PR 77 major）：
+  // 若有人恢复 mutation 路由，这些请求必须不再是 404，从而测试立刻变红。
+  it('PUT to the original endpoint is rejected and file untouched', async () => {
+    const before = readFileSync(yamlPath(), 'utf8');
+    const res = await request(app).put('/api/furnishings/living_dining/0').send({ x: 99, z: 99, rotation: 0 });
+    assert.equal(res.status, 404);
+    assert.equal(readFileSync(yamlPath(), 'utf8'), before);
+  });
+
+  it('DELETE on the original endpoint is rejected and file untouched', async () => {
+    const before = readFileSync(yamlPath(), 'utf8');
+    const res = await request(app).delete('/api/furnishings/living_dining/0');
+    assert.equal(res.status, 404);
+    assert.equal(readFileSync(yamlPath(), 'utf8'), before);
+  });
+
+  it('POST to the original endpoint is rejected and file untouched', async () => {
+    const before = readFileSync(yamlPath(), 'utf8');
+    const res = await request(app).post('/api/furnishings').send({ room: 'living_dining', type: 'sofa_3seat', x: 1, z: 1 });
+    assert.equal(res.status, 404);
+    assert.equal(readFileSync(yamlPath(), 'utf8'), before);
+  });
 });
 
 import { createFurnishingsRouter } from '../../server/routes-furnishings.js';

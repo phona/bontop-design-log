@@ -30,16 +30,27 @@ describe('electrical routes are read-only', () => {
     assert.equal(res.status, 200);
   });
 
-  for (const verb of ['put', 'post', 'delete'] as const) {
-    it(`${verb.toUpperCase()} is not available (read-only)`, async () => {
-      const before = readFileSync(yamlPath(), 'utf8');
-      const req = request(app)[verb]('/api/electrical/anywhere');
-      if (verb !== 'delete') req.send({ x: 1, z: 2 });
-      const res = await req;
-      assert.equal(res.status, 404);
-      assert.equal(readFileSync(yamlPath(), 'utf8'), before, 'config file must be untouched');
-    });
-  }
+  // 用原写入端点的真实路径/条目验证拒绝（codex PR 77 major）：恢复 mutation 路由会让这些请求非 404，测试立刻变红。
+  it('PUT to the original endpoint is rejected and file untouched', async () => {
+    const before = readFileSync(yamlPath(), 'utf8');
+    const res = await request(app).put('/api/electrical/e1').send({ x: 99, z: 99 });
+    assert.equal(res.status, 404);
+    assert.equal(readFileSync(yamlPath(), 'utf8'), before);
+  });
+
+  it('DELETE on the original endpoint is rejected and file untouched', async () => {
+    const before = readFileSync(yamlPath(), 'utf8');
+    const res = await request(app).delete('/api/electrical/e1');
+    assert.equal(res.status, 404);
+    assert.equal(readFileSync(yamlPath(), 'utf8'), before);
+  });
+
+  it('POST to the original endpoint is rejected and file untouched', async () => {
+    const before = readFileSync(yamlPath(), 'utf8');
+    const res = await request(app).post('/api/electrical').send({ id: 'probe_new', room: 'living_dining', type: 'probe', x: 1, z: 1 });
+    assert.equal(res.status, 404);
+    assert.equal(readFileSync(yamlPath(), 'utf8'), before);
+  });
 });
 
 import { createElectricalRouter } from '../../server/routes-electrical.js';
