@@ -86,6 +86,18 @@ test('DxfWriter: 非 ASCII 图层名拒绝（R12 编码安全）', () => {
   assert.throws(() => writer.addLine('图层', 0, 0, 1, 1), /ASCII/);
 });
 
+test('DxfWriter: TEXT/ARC 计入 EXTMIN/EXTMAX 包围盒（codex 十二审 minor）', () => {
+  const writer = new DxfWriter();
+  writer.addText('X', 0, 2500, 100, 'NOTE'); // 图外说明
+  writer.addArc('X', 500, -500, 300, 0, 90);
+  const dxf = writer.toString();
+  // EXTMAX.y 至少覆盖文字上沿 2600 与弧上沿 -200；EXTMIN 覆盖弧下沿 -800
+  const maxY = Number(dxf.match(/\$EXTMAX\n10\n[-\d.]+\n20\n(-?[\d.]+)/)?.[1]);
+  const minY = Number(dxf.match(/\$EXTMIN\n10\n[-\d.]+\n20\n(-?[\d.]+)/)?.[1]);
+  assert.ok(maxY >= 2600, `EXTMAX.y=${maxY} should cover text top 2600`);
+  assert.ok(minY <= -800, `EXTMIN.y=${minY} should cover arc bottom -800`);
+});
+
 test('DxfWriter: 实体引用未注册图层时自动补图层表；layerStats 计数正确', () => {
   const writer = new DxfWriter();
   writer.addLine('AUTO', 0, 0, 1, 1);

@@ -186,10 +186,18 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
 
   // 图内说明（D-NOTES，左上图框外）：交付限制随图走（codex 七审 major）。
   let noteY = 500;
-  for (const note of notes) {
+  const emitNote = (note: string): void => {
     writer.addText(DXF_LAYERS.D_NOTES[0], 0, noteY, TEXT_HEIGHT_MM * 2, label(note, note));
     noteY += TEXT_HEIGHT_MM * 4;
-  }
+  };
+  for (const note of notes) emitNote(note);
+
+  // 实体级跳过原因随图交付（codex 十七审 major）：收图方必须能区分「本来没设计」和
+  // 「导出时遗漏」——未导出/未解析类告警逐条进 D-NOTES；已隔离类（M-CAND 迁移）在
+  // 图层内自带标注，不重复。超出 50 条只记前 50 + 汇总数，避免病态刷屏。
+  const skipped = warnings.filter((w) => w.includes('未导出') || w.includes('未解析'));
+  for (const item of skipped.slice(0, 50)) emitNote(item);
+  if (skipped.length > 50) emitNote(`... and ${skipped.length - 50} more skipped items (see export console)`);
 
   const stats = writer.layerStats();
   return {
@@ -610,7 +618,9 @@ function emitMep(
       writer.addPolyline(layer[0], pts);
     }
     const first = pts[0];
-    const name = resolved.route.label ?? resolved.route.id;
+    // ascii 模式显式用 id（codex 十三审 minor）：中文 label 剥离后多条同专业路线文字相同，
+    // 无法对应回配置核验；utf8 保持 label 优先。
+    const name = labelsMode === 'ascii' ? resolved.route.id : (resolved.route.label ?? resolved.route.id);
     // 标高读 mepRoutePoints 生成点首尾（codex 九审 blocking）：实际几何用了
     // route.from_height/to_height 覆盖端点原始 y，读 resolved.from/to 会标错覆盖值。
     const fromY = points[0]?.y;
@@ -700,8 +710,10 @@ function emitMep(
     }
   }
   for (const outdoor of sources.outdoor) {
+    // 无 id/坐标的外机条目跳过（防御：坏 fixture/半声明数据不崩整次导出）
+    if (typeof outdoor.x !== 'number' || typeof outdoor.z !== 'number') continue;
     const [x, y] = toDxf(outdoor.x, outdoor.z);
     writer.addCircle(DXF_LAYERS.M_HVAC[0], x, y, POINT_RADIUS_MM * 3);
-    writer.addText(DXF_LAYERS.M_HVAC[0], x + POINT_RADIUS_MM * 3, y + POINT_RADIUS_MM * 3, TEXT_HEIGHT_MM, label(outdoor.id, outdoor.id));
+    writer.addText(DXF_LAYERS.M_HVAC[0], x + POINT_RADIUS_MM * 3, y + POINT_RADIUS_MM * 3, TEXT_HEIGHT_MM, label(outdoor.id ?? 'outdoor', outdoor.id ?? 'outdoor'));
   }
 }

@@ -740,6 +740,43 @@ test('project-dxf: length 型家具外框用显式 length，不吃目录宽（co
   assert.ok(!horizontal.some(([x1, , x2]) => Math.abs(x2 - x1) === 450));
 });
 
+test('project-dxf: 跳过实体逐条写 D-NOTES（codex 十七审 major）', () => {
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: {
+        version: '1', status: 'ok', layers: {},
+        routes: [{ id: 'r_lost', layer: 'condensate' as never, status: 'confirmed' as never, from: 'ghost_a', to: 'ghost_b', via: [] }],
+        junctions: [],
+      } as never,
+      sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
+    },
+  });
+  // 端点未解析 → 路线跳过，原因 + id 进 D-NOTES 随图交付
+  assert.ok(parseEntities(result.dxf).some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('r_lost')));
+  assert.ok(result.warnings.some((w) => w.includes('r_lost')));
+});
+
+test('project-dxf: ascii 模式路线标注显式带 id，同 label 路线可区分（codex 十三审 minor）', () => {
+  const ascii = buildProjectDxf({
+    ...baseInput(),
+    labels: 'ascii',
+    mep: {
+      coordination: {
+        version: '1', status: 'ok', layers: {},
+        routes: [
+          { id: 'route_a', layer: 'condensate' as never, status: 'confirmed' as never, label: '客厅冷凝', from: { x: 0, z: 0 }, to: { x: 1, z: 0 }, via: [] },
+          { id: 'route_b', layer: 'condensate' as never, status: 'confirmed' as never, label: '客厅冷凝', from: { x: 2, z: 2 }, to: { x: 3, z: 2 }, via: [] },
+        ],
+        junctions: [],
+      } as never,
+      sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
+    },
+  });
+  assert.ok(ascii.dxf.includes('route_a'));
+  assert.ok(ascii.dxf.includes('route_b'));
+});
+
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {
   const utf8 = buildProjectDxf(baseInput());
   const ascii = buildProjectDxf({ ...baseInput(), labels: 'ascii' });

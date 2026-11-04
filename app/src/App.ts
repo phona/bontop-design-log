@@ -2209,14 +2209,23 @@ export class App {
       // projectData 缓存不再作为导出输入（十五审）：全部四路拉取失败时仍可导出骨架 + D-NOTES。
       // 全量新鲜拉取（codex 十二～十五审 blocking 系列）：projectData 是页面加载缓存，
       // 点位/家具/吊顶/几何的编辑都不回写——导出前重新拉服务端当前状态，杜绝混用新旧数据。
-      const [factsResponse, mepResponse, furnishingsResponse, projectResponse] = await Promise.all([
+      const [factsResponse, mepResponse, furnishingsResponse, projectResponse, configStatusResponse] = await Promise.all([
         fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         // /api/furnishings 每次请求直读 house.yaml（与 CLI 同全案口径）。
         fetch('/api/furnishings').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/project').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        // 配置加载状态核验（codex 十六审 blocking）：loader 重载失败会保留上次成功数据且
+        // render-facts 仍 200——HTTP 成功不等于数据新鲜，必须查 status。
+        fetch('/api/config-status').then((response) => (response.ok ? response.json() : null)).catch(() => null),
       ]);
-      const facts = factsResponse as ProjectRenderFacts | null;
+      const configStatuses = (configStatusResponse?.configs ?? []) as Array<{ path?: string; status?: string }>;
+      const failedPaths = configStatuses.filter((item) => item.status === 'failed').map((item) => String(item.path ?? 'unknown'));
+      // facts 四源（electrical/plumbing/ceiling/hvac）任一重载失败 → 服务端缓存的是上次
+      // 成功数据（codex 十六/十七审 blocking）：整体隔离不用，宁可缺图层 + D-NOTE。
+      const FACTS_PATHS = ['config/electrical.yaml', 'config/plumbing.yaml', 'config/ceiling.yaml', 'config/hvac.yaml'];
+      const factsStale = failedPaths.some((path) => FACTS_PATHS.includes(path));
+      const facts = !factsStale && factsResponse ? (factsResponse as ProjectRenderFacts) : null;
       const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
       // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
       const mep = facts?.hvac?.plans && mepPayload ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts) } : undefined;
@@ -2231,6 +2240,8 @@ export class App {
       const furnishings = furnishingsResponse ?? undefined;
       if (!furnishings) notes.push('FURNISHINGS NOT EXPORTED: furnishings API failed at export time');
       if (!projectHouse) notes.push('GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: project API failed at export time');
+      if (factsStale) notes.push('RENDER FACTS STALE: config reload failed — electrical/plumbing/ceilings/MEP NOT EXPORTED (server last-good cache not trusted)');
+      if (failedPaths.length > 0) notes.push(`CONFIG RELOAD FAILED: ${failedPaths.join(', ')} — affected layers excluded where identifiable`);
       if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
       const result = buildProjectDxf({
@@ -2241,7 +2252,9 @@ export class App {
           // 几何来自本次 /api/project（十五审）——任何一项不可得宁可缺图层并在 D-NOTES
           // 声明，也不混用页面缓存。
           electrical: facts?.electrical as never,
-          ceilingZones: (facts?.ceiling ?? projectHouse?.ceilingZones ?? undefined) as never,
+          // factsStale 时 projectHouse.ceilingZones 同样来自 stale facts 缓存（/api/project
+          // 的 ceilingZones 优先取 render-facts），不可兜底（codex 十六审 blocking）。
+          ceilingZones: (factsStale ? undefined : (facts?.ceiling ?? projectHouse?.ceilingZones) ?? undefined) as never,
           sceneElements: (projectHouse?.sceneElements ?? undefined) as never,
         },
         plumbing: facts?.plumbing,

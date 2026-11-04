@@ -94,6 +94,8 @@ export class DxfWriter {
   addArc(layer: string, x: number, y: number, radius: number, startDeg: number, endDeg: number): void {
     if (!(radius > 0)) return;
     this.touchLayer(layer);
+    // 包围盒按整圆计（弧是其子集）：EXTMIN/EXTMAX 覆盖所有实体（codex 十二审 minor）。
+    this.track(x - radius, y - radius, x + radius, y + radius);
     this.entities.push([
       [0, 'ARC'],
       [8, layer],
@@ -106,6 +108,10 @@ export class DxfWriter {
   addText(layer: string, x: number, y: number, height: number, text: string): void {
     if (text === '') return;
     this.touchLayer(layer);
+    // 文字包围盒按保守上界计（每字符占宽 = 字高，覆盖 CJK 全角）：EXTMIN/EXTMAX 含全部
+    // TEXT（codex 十二审 minor）——D-NOTES 等图外说明不致被初始视图裁掉。
+    const approxWidth = Math.max(text.length, 1) * height;
+    this.track(x, y, x + approxWidth, y + height);
     this.entities.push([
       [0, 'TEXT'],
       [8, layer],

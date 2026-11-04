@@ -726,7 +726,7 @@ describe('App', () => {
         return { ok: true, json: async () => ({
           electrical: [{ id: 'e_fresh', room: 'living_room', type: 'socket', x: 1.2, z: 0.8 }],
           plumbing: [], ceiling: [],
-          hvac: { plans: [{ outdoor: {}, diagram: { anchors: [], terminals: [] } }] },
+          hvac: { plans: [{ outdoor: { id: 'outdoor_main', x: 5, z: 5 }, diagram: { anchors: [], terminals: [] } }] },
         }) } as Response;
       }
       if (urlStr.includes('/api/mep-coordination')) {
@@ -752,6 +752,45 @@ describe('App', () => {
     expect(text).toContain('e_fresh');
     expect(consoleWarn).not.toHaveBeenCalledWith('[dxf] warnings:', expect.arrayContaining([expect.stringContaining('plumbing:')]));
     consoleWarn.mockRestore();
+  });
+
+  it('config-status failed facts path → facts isolated, no E-* entities, D-NOTE declares stale (codex 十六审 blocking)', async () => {
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/config-status')) {
+        // 电气配置重载失败：render-facts 会返回上次成功缓存，导出必须隔离不用
+        return { ok: true, json: async () => ({ configs: [{ path: 'config/electrical.yaml', status: 'failed' }] }) } as Response;
+      }
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => ({
+          electrical: [{ id: 'e_stale', room: 'living_room', type: 'socket', x: 9, z: 9 }],
+          plumbing: [], ceiling: [],
+          hvac: { plans: [{ outdoor: { id: 'outdoor_main', x: 5, z: 5 }, diagram: { anchors: [], terminals: [] } }] },
+        }) } as Response;
+      }
+      if (urlStr.includes('/api/mep-coordination')) {
+        return { ok: true, json: async () => ({ version: '1', status: 'ok', layers: {}, routes: [], junctions: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(createdBlobs.length).toBe(1);
+    const text = await createdBlobs[0].text();
+    expect(text).toContain('RENDER FACTS STALE');
+    expect(text).toContain('CONFIG RELOAD FAILED');
+    // e_stale 来自重载失败的缓存——绝不可出现在导出里
+    expect(text).not.toContain('e_stale');
   });
 
   // 点包 3D 高亮的聚合路径（highlightApprovalPackage）：房间/对象走 highlightObjects、
