@@ -733,7 +733,7 @@ export class ScheduleDetailPanel {
       ? `<div style="font-size:11px;line-height:2;">最终证据：${state.evidence.map((path) => `<span style="display:inline-block;margin:0 6px 2px 0;padding:0 6px;border:1px solid rgba(92,184,92,.4);border-radius:4px;background:rgba(92,184,92,.08);"><code>${escapeHtml(path)}</code><button type="button" data-evidence-remove="${escapeHtml(check.id)}" data-evidence-path="${escapeHtml(path)}" title="从草稿证据列表移除" style="margin-left:6px;cursor:pointer;padding:0 5px;border:1px solid rgba(217,83,79,.5);border-radius:4px;background:#3a2326;color:#f0a9a5;font-size:10px;">删</button></span>`).join('')}</div>`
       : `<div style="font-size:11px;color:#9aa4b2;">最终证据：无（passed 必须至少一条落定证据）</div>`;
     return `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-        <input type="file" data-evidence-file="${escapeHtml(check.id)}" style="font-size:11px;max-width:230px;color:#9aa4b2;">
+        <input type="file" accept="image/*" data-evidence-file="${escapeHtml(check.id)}" style="font-size:11px;max-width:230px;color:#9aa4b2;">
         ${uploading}
         <button type="button" data-evidence-finalize="${escapeHtml(check.id)}"${finalizeDisabled ? ' disabled' : ''} title="${finalizeDisabled ? '先选一个文件上传到暂存区' : '把暂存文件移入仓内最终路径，并加入本行草稿证据'}" style="cursor:${finalizeDisabled ? 'not-allowed' : 'pointer'};padding:3px 9px;border-radius:5px;font-size:11px;border:1px solid rgba(255,255,255,.18);background:#2a2a3e;color:#c9cede;">选为最终证据</button>
       </div>${stagedInfo}${stagedError}${list}`;
