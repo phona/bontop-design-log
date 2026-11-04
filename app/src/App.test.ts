@@ -19,7 +19,16 @@ vi.mock('three', async (importOriginal: any) => {
   }
   class MockMaterial {
     color = { set() { return this; } };
-    emissive = { set() { return this; }, clone() { return { set() { return this; }, copy() { return this; } }; } };
+    // emissive 带 r/g/b + set/copy/clone，对齐真 three.Color（2026-11-04 issue #66：
+    // HouseScene 高亮改走 emissive.copy(new Color(0xffaa00))，原桩缺 copy 会让
+    // highlightObjects 抛 TypeError，被 App「高亮失败不打断审批流」catch 吞掉后
+    // 后续 highlightPoints 不再执行）。
+    emissive = {
+      r: 0, g: 0, b: 0,
+      set(r: number, g?: number, b?: number) { this.r = r; this.g = g ?? 0; this.b = b ?? 0; return this; },
+      copy(c: { r: number; g: number; b: number }) { if (c) { this.r = c.r; this.g = c.g; this.b = c.b; } return this; },
+      clone() { return { r: this.r, g: this.g, b: this.b, set() { return this; }, copy() { return this; } }; },
+    };
     emissiveIntensity = 0;
     roughness = 0;
     metalness = 0;
