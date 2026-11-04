@@ -300,6 +300,53 @@ describe('sweepAcceptanceStaging：启动清扫入口', () => {
     assert.ok(existsSync(join(stagingOf(root), 'PKG-060/check_tile_gap/link')), '链接条目本身不删（不碰暂存区外的任何东西）');
   });
 
+  it('符号链接安全：祖先目录（tmp/capture）是链接、解析到仓库外时拒绝清扫（codex 复审 blocking）', () => {
+    // 场景：root/tmp/capture 是指向仓外目录的链接，目标里真的有 acceptance-staging
+    // 与超龄文件。lstat 根组件是普通目录（查不出异常），但 realpath 解析后整个暂存区
+    // 在仓库外——rmSync 会删掉仓外文件。按真实路径边界拒绝。
+    const root = makeRoot();
+    const outside = mkdtempSync(join(tmpdir(), 'sweep-ancestor-'));
+    tempRoots.push(outside);
+    mkdirSync(join(outside, 'acceptance-staging', 'PKG-060'), {recursive: true});
+    const victim = join(outside, 'acceptance-staging', 'PKG-060', 'old.jpg');
+    writeFileSync(victim, 'precious');
+    const when = new Date(NOW - 30 * DAY_MS);
+    utimesSync(victim, when, when);
+    // root/tmp/capture → outside（祖先链接；暂存根本身 lstat 是普通目录）
+    rmSync(join(root, 'tmp', 'capture'), {recursive: true, force: true});
+    symlinkSync(outside, join(root, 'tmp', 'capture'));
+
+    const {lines, log} = collectLog();
+    const result = sweepAcceptanceStaging({root, nowMs: NOW, log});
+
+    assert.equal(result.removed, 0, '解析到仓库外：一项都不删');
+    assert.ok(existsSync(victim), '仓外链接目标里的文件必须原样');
+    assert.match(lines[0], /解析到仓库外/);
+  });
+
+  it('读取失败进汇总：不把「没扫到」伪装成「没得扫」（codex 复审 minor）', () => {
+    // 年轻子目录不可读时，早先静默 skip → 日志「扫到 N 项……失败 0 项」。现在读取
+    // 失败必须进 result.failures 与汇总日志。
+    const root = makeRoot();
+    writeEntry(root, 'PKG-060/check_tile_gap/a.jpg');
+    ageEntry(root, 'PKG-060/check_tile_gap/a.jpg', 30);
+    const locked = join(stagingOf(root), 'PKG-060', 'locked');
+    mkdirSync(locked, {recursive: true});
+    writeFileSync(join(locked, 'x.jpg'), 'x');
+    chmodSync(locked, 0o000); // 非 root 下 readdir 抛 EACCES
+    try {
+      const {lines, log} = collectLog();
+      const result = sweepAcceptanceStaging({root, nowMs: NOW, log});
+      assert.ok(result.failures.length >= 1, '读取失败必须进汇总');
+      assert.match(result.failures[0].message, /读取失败/);
+      assert.match(lines[0], /失败 [1-9]/); // 汇总行不许报 0 失败
+      // 超龄的那条照删（读取失败不影响其他条目）
+      assert.ok(!existsSync(join(stagingOf(root), 'PKG-060/check_tile_gap/a.jpg')));
+    } finally {
+      chmodSync(locked, 0o755); // 还原，tempRoots 清理才删得掉
+    }
+  });
+
   it('符号链接安全：暂存根本身是链接时拒绝清扫', () => {
     const root = makeRoot();
     const realStaging = mkdtempSync(join(tmpdir(), 'sweep-real-'));

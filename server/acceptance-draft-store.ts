@@ -15,9 +15,9 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
-  existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync,
+  existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, renameSync, rmSync, statSync, writeFileSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import { tmpdir } from 'node:os';
 import { buildScheduleSnapshot, loadScheduleState } from '../shared/schedule-state.js';
 import {
@@ -528,17 +528,24 @@ export interface StagingSweepOptions {
  * 证据。改为手写遍历：一律 lstatSync（不跟随），**符号链接条目直接跳过**（不进清单、
  * 不沿它读、更不沿它删），从根上守住「只碰 acceptance-staging」的删除边界。
  */
-function collectStagingEntries(stagingDir: string): StagingSweepEntry[] {
-  const out: StagingSweepEntry[] = [];
+function collectStagingEntries(stagingDir: string): {entries: StagingSweepEntry[]; failures: Array<{path: string; message: string}>} {
+  const entries: StagingSweepEntry[] = [];
+  const failures: Array<{path: string; message: string}> = [];
   const rootStat = lstatSync(stagingDir, {throwIfNoEntry: false});
   // 链接根整体放弃：根都是链接时，「只碰暂存区」无从保证
-  if (!rootStat || rootStat.isSymbolicLink() || !rootStat.isDirectory()) return out;
+  if (!rootStat || rootStat.isSymbolicLink() || !rootStat.isDirectory()) return {entries, failures};
+  const readFail = (rel: string, err: unknown): void => {
+    // 读取失败必须进汇总（codex 复审 minor）：早先静默 skip，日志会显示
+    // 「扫到 0 项……失败 0 项」，把「没扫到」伪装成「没得扫」
+    failures.push({path: rel || STAGING_DIR, message: `读取失败：${err instanceof Error ? err.message : String(err)}`});
+  };
   const walk = (absDir: string, relDir: string): void => {
     let names: string[];
     try {
       names = readdirSync(absDir);
-    } catch {
-      return; // 读不到的目录跳过（外层删除循环会记 failure 或根本看不到它）
+    } catch (err) {
+      readFail(relDir, err);
+      return;
     }
     for (const name of names) {
       const abs = join(absDir, name);
@@ -546,16 +553,17 @@ function collectStagingEntries(stagingDir: string): StagingSweepEntry[] {
       let entry;
       try {
         entry = lstatSync(abs); // lstat：不跟随符号链接
-      } catch {
+      } catch (err) {
+        readFail(rel, err);
         continue;
       }
       if (entry.isSymbolicLink()) continue; // 链接跳过：不沿它读、不沿它删
-      out.push({path: rel, mtimeMs: entry.mtimeMs});
+      entries.push({path: rel, mtimeMs: entry.mtimeMs});
       if (entry.isDirectory()) walk(abs, rel);
     }
   };
   walk(stagingDir, "");
-  return out;
+  return {entries, failures};
 }
 
 function depthOf(relPath: string): number {
@@ -587,10 +595,30 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
     log(`[server] 暂存区清扫：${STAGING_DIR} 是符号链接，拒绝清扫（只碰真实暂存目录）`);
     return result;
   }
+  // 真实路径边界（codex 复审 blocking）：光查根组件不够——tmp 或 tmp/capture 是指向
+  // 仓外的链接时，lstat 根组件仍是普通目录，遍历与 rmSync 会删到仓外。按 realpath
+  // 校验：暂存区解析后必须仍在仓库根内，否则拒绝。
+  const rootReal = (() => { try { return realpathSync(root); } catch { return root; } })();
+  let stagingReal: string;
+  try {
+    stagingReal = realpathSync(stagingDir);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    result.failures.push({path: STAGING_DIR, message: `realpath 失败：${message}`});
+    log(`[server] 暂存区清扫失败（不中断启动）：解析 ${STAGING_DIR} 出错：${message}`);
+    return result;
+  }
+  if (stagingReal !== rootReal && !stagingReal.startsWith(rootReal + sep)) {
+    log(`[server] 暂存区清扫：${STAGING_DIR} 解析到仓库外（${stagingReal}），拒绝清扫（只删仓库内暂存区）`);
+    return result;
+  }
 
   let entries: StagingSweepEntry[];
+  let readFailures: Array<{path: string; message: string}> = [];
   try {
-    entries = collectStagingEntries(stagingDir);
+    const collected = collectStagingEntries(stagingDir);
+    entries = collected.entries;
+    readFailures = collected.failures;
   } catch (err) {
     // 读不到（权限/竞态删除）时 fail-loud 到日志但不抛：启动不能被清扫挡住
     const message = err instanceof Error ? err.message : String(err);
@@ -598,6 +626,7 @@ export function sweepAcceptanceStaging(options: StagingSweepOptions = {}): Stagi
     log(`[server] 暂存区清扫失败（不中断启动）：读 ${STAGING_DIR} 出错：${message}`);
     return result;
   }
+  result.failures.push(...readFailures);
 
   result.scanned = entries.length;
   const plan = planStagingSweep(entries, nowMs, maxAgeMs);
