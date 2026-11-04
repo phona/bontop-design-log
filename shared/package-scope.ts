@@ -18,6 +18,12 @@
  * 全项目范围徽标。点位全量清单来自 project.house.electrical / project.house.plumbing
  * （config/electrical.yaml、config/plumbing.yaml 经 /api/project 下发），sceneElements
  * 里没有点位，别去那儿找。
+ * **2026-11-04 更新（PR #76 codex major）**：链接显式声明 `mapping_status:
+ * project_scope` 的整屋包（PKG-142 临时入住整屋放行等）不按选择器展开——
+ * electrical/plumbing 的 select.all 也不拆成点位，一律 projectScope=true。
+ * 否则 PKG-142 会按 #65 的新规则展出 137 个点位：详情面板据此计数并启用
+ * 「在 3D 中高亮」，而 FlowChartPanel 按 project_scope 判全项目、禁用高亮，
+ * 两个入口行为矛盾。issue #65 的 PKG-040 口径不受影响（它没有该声明）。
  * 服务端 assertSelector（server/model-package-links.ts）已保证选择器引用的
  * id 在权威文档里真实存在；本模块只负责「场景里能高亮什么」。
  */
@@ -71,6 +77,14 @@ interface ScopeRef {
 
 export interface PackageScopeLink {
   scope?: ScopeRef[];
+  /**
+   * 显式全项目范围声明（config/model-package-links.yaml 的 `mapping_status:
+   * project_scope`，如 PKG-142 临时入住整屋放行）。带此声明的链接不按选择器
+   * 展开：electrical/plumbing 的 select.all 也不拆成点位（2026-11-04 PR #76
+   * codex major——曾展成 137 个点位，详情面板启用高亮而流程图禁用，两入口
+   * 矛盾），一律维持全项目范围语义（projectScope=true、不占反查）。
+   */
+  mapping_status?: 'mapped' | 'partial' | 'not_modelled' | 'project_scope';
 }
 
 /** collections → 场景元素类型。rooms 是伪集合（展开成全部房间 id）。 */
@@ -130,7 +144,17 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
   const knownRoomIds = new Set(project.house.rooms.map((room) => room.id));
   const sceneElements = project.house.sceneElements ?? [];
 
+  // 显式 project_scope 的整屋包（PKG-142 临时入住整屋放行等）不按选择器展开
+  // （2026-11-04 PR #76 codex major）：electrical/plumbing 的 select.all 也不拆成
+  // 点位。「全项目范围」是 mapping_status 的显式声明，与 FlowChartPanel capabilityOf
+  // 的 project_scope 短路同口径——旧实现把 PKG-142 的水电 all 展成 137 个点位，
+  // 详情面板据此计数并启用「在 3D 中高亮」，流程图的按钮却按 project_scope 禁用，
+  // 两个入口相互矛盾。PKG-040（无该声明）的 #65 口径不受影响。
+  const explicitProjectScope = link.mapping_status === 'project_scope';
+  if (explicitProjectScope) projectScope = true;
+
   for (const scope of link.scope ?? []) {
+    if (explicitProjectScope) continue;
     const select = scope.select ?? {};
     if (select.all === true) {
       // select.all 按来源分流（2026-11-04 issue #65）：点位来源（electrical/plumbing）的
@@ -206,7 +230,8 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
 /** 反查索引：场景对象 id → 包 id 列表（点 3D 对象回详情面板用）。 */
 export function buildObjectPackageIndex(
   // id 可选：ModelPackageLink.id 本身可选，且本函数只用 budget_ref/scope
-  links: Array<{id?: string; budget_ref?: {id?: string}; scope?: ScopeRef[]}>,
+  // mapping_status 透传给 resolvePackageScope：显式 project_scope 的整屋包不占反查
+  links: Array<{id?: string; budget_ref?: {id?: string}; scope?: ScopeRef[]; mapping_status?: PackageScopeLink['mapping_status']}>,
   project: ProjectScopeInput,
 ): Map<string, string[]> {
   const index = new Map<string, string[]>();

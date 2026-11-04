@@ -171,6 +171,55 @@ describe('resolvePackageScope', () => {
     assert.ok(result.unresolved[0].includes('house.electrical'));
   });
 
+  // 2026-11-04 PR #76 codex major：显式 mapping_status: project_scope 的整屋包不按
+  // 选择器展开。真实 MODEL-PKG-142（临时入住整屋放行）就是 electrical/plumbing
+  // select.all + project_scope——#65 之后它会被展成 137 个点位（104 电气 + 33 给排水），
+  // 详情面板据此计数并启用「在 3D 中高亮」，而 FlowChartPanel 按 project_scope 判
+  // 全项目、禁用高亮，两个入口行为矛盾。与上面 PKG-040 两条测试并排钉住：同形
+  // select.all，由 mapping_status 定分流——#65 的口径不得被本修复改回归。
+  it('显式 project_scope 的整屋包（PKG-142）分类 select.all 不展开成点位，维持全项目范围', () => {
+    const result = resolvePackageScope({
+      // config/model-package-links.yaml 的 MODEL-PKG-142 同形（mapping_status: project_scope）
+      mapping_status: 'project_scope',
+      scope: [
+        {source: 'model_geometry', select: {all: true}},
+        {source: 'overlay', select: {all: true}},
+        {source: 'furnishings', select: {all: true}},
+        {source: 'electrical', select: {all: true}},
+        {source: 'plumbing', select: {all: true}},
+        {source: 'electrical_topology', select: {all: true}},
+        {source: 'mep_routes', select: {all: true}},
+        {source: 'hvac', select: {all: true}},
+        {source: 'ceiling', select: {all: true}},
+      ],
+    }, project);
+    assert.equal(result.projectScope, true);
+    // 整屋包的分类 all 不拆成点位（旧实现这里会是 5 个 mock 点位、真实配置 137 个）
+    assert.deepEqual(result.pointIds, []);
+    assert.deepEqual(result.roomIds, []);
+    assert.deepEqual(result.objectIds, []);
+    assert.deepEqual(result.unresolved, []);
+  });
+
+  it('对照：同一组 select.all 去掉 mapping_status 仍按 #65 展开全部点位（PKG-040 不回归）', () => {
+    // 与上一条只差 mapping_status：证明分流判据是显式声明，不是 select.all 本身
+    const result = resolvePackageScope({
+      mapping_status: 'partial',
+      scope: [
+        {source: 'electrical', select: {all: true}},
+        {source: 'plumbing', select: {all: true}},
+      ],
+    }, project);
+    assert.equal(result.projectScope, false);
+    assert.deepEqual(result.pointIds, [
+      'electrical:sock_living_ac',
+      'electrical:sock_kitchen_gas',
+      'electrical:panel_strong_entry_left',
+      'plumbing:faucet_kitchen',
+      'plumbing:drain_kitchen',
+    ]);
+  });
+
   it('ceiling/hvac 的 all 仍判全项目范围（house 下没有可比照的点位清单）', () => {
     const result = resolvePackageScope({
       scope: [
@@ -245,5 +294,21 @@ describe('buildObjectPackageIndex', () => {
       ]},
     ], project);
     assert.equal(index.get('electrical:sock_living_ac'), undefined);
+  });
+
+  // 2026-11-04 PR #76 codex major：显式 project_scope 的整屋包（MODEL-PKG-142）
+  // 不占反查——它的 electrical/plumbing all 不再展成点位（resolvePackageScope 的
+  // project_scope 短路），反查侧同样不得把整屋范围摊到具体对象上。
+  it('显式 project_scope 的整屋包（PKG-142）不占反查索引', () => {
+    const index = buildObjectPackageIndex([
+      {id: 'MODEL-PKG-142', budget_ref: {id: 'PKG-142'}, mapping_status: 'project_scope', scope: [
+        {source: 'model_geometry', select: {all: true}},
+        {source: 'electrical', select: {all: true}},
+        {source: 'plumbing', select: {all: true}},
+      ]},
+    ], project);
+    assert.equal(index.get('electrical:sock_living_ac'), undefined);
+    assert.equal(index.get('plumbing:drain_kitchen'), undefined);
+    assert.equal(index.size, 0);
   });
 });
