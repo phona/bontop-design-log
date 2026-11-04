@@ -569,7 +569,8 @@ export class FlowChartPanel {
     if (!from || !to) return '';
     let d: string;
     if (this.narrowLayout) {
-      // 单列堆叠的连线：源卡片底中 → 左导轨 → 目标卡片顶中。导轨 x 严格小于卡片
+      // 单列堆叠的连线：源卡片底中 → 左导轨 → 目标卡片顶中。窄屏下卡片实际高度已钉在
+      // 布局盒高度（renderNodeCard），from.top + from.height 即真实卡底；导轨 x 严格小于卡片
       // 左缘，竖段不穿过中间卡片；拐角半径按源/目标间距收窄，紧邻时整条线落在
       // 8px 卡间隙里。多条边共用同一条导轨会重合（箭头方向仍表明指向），完整
       // 依赖关系见下方选中条与详情面板。
@@ -604,8 +605,14 @@ export class FlowChartPanel {
     const emphasis = active
       ? `box-shadow:0 0 0 2px ${ACTIVE_BORDER};`
       : highlighted ? `box-shadow:0 0 0 2px ${HIGHLIGHT_BORDER};` : '';
+    // 窄屏单列堆叠把卡片实际高度钉在布局盒高度上（codex 复审 minor）：卡片原按内容
+    // auto 撑高，而 #78 实测 estimateNodeCardHeight 恒比实际高 8.3–10.3px，连线端点
+    // （from.top + from.height，见 renderEdge 窄分支）会悬在卡片下方接不住源节点。
+    // 「布局即渲染」后端点与卡底严格重合；估算值本身是 #78 量过的上界（恒 ≥ 实测），
+    // 内容放得下——万一超出也是可见溢出，不是 #68 那种 max-height+overflow:hidden 的
+    // 静默截断。桌面布局不动（中点端点对高度差不敏感，且行定位同样建立在估算上）。
     const geometry = box
-      ? `position:absolute;left:${box.x}px;top:${box.top}px;`
+      ? `position:absolute;left:${box.x}px;top:${box.top}px;${this.narrowLayout ? `height:${box.height}px;` : ''}`
       : 'position:relative;flex:0 0 auto;';
     const title = [
       `${pkg.id} ${pkg.name}`,

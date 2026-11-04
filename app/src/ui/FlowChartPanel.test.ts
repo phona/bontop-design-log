@@ -769,6 +769,16 @@ describe('FlowChartPanel 窄容器（issue #83）', () => {
       expect(points[0]).toEqual([140, topOf('PKG-010') + Math.max(84, estimateNodeCardHeight(fixturePkg('PKG-010')))]);
       expect(points[points.length - 1]).toEqual([140, topOf('PKG-020')]);
 
+      // 卡片实际高度钉在布局盒高度（codex 复审 minor）：窄屏端点 = 真实卡底。
+      // 没有这条，卡片按内容 auto 撑高、#78 实测估算恒高 8.3–10.3px，端点悬在卡下方。
+      for (const card of cards) {
+        const expected = Math.max(84, estimateNodeCardHeight(fixturePkg(card.dataset.pkgId!)));
+        expect(card.style.height, `${card.dataset.pkgId} 的显式高度`).toBe(`${expected}px`);
+      }
+      // PKG-010 的边起点严格等于它的真实卡底（top + 显式高度）
+      const card010 = cards.find((card) => card.dataset.pkgId === 'PKG-010') as HTMLElement;
+      expect(points[0][1]).toBe(parseFloat(card010.style.top) + parseFloat(card010.style.height));
+
       // 侧车道仍在图表下方单独一条（不占堆叠）
       expect(document.querySelector('.flow-node[data-side-lane="true"]')?.getAttribute('style')).toContain('position:relative');
 
