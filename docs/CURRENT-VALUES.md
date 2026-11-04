@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:ddef775650594d7fdf6285c54da4ab1126225c444684d91886039b2ccc0e6980 -->
+     inputs-fingerprint: sha256:5637100e317c3f3d885bb7f21aa78364526fda0ce8847ce4613b89dea01ac436 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -19,8 +19,8 @@
 
 | 口径 | 现行值 | 权威源（file:line） | 备注 |
 |---|---|---|---|
-| 一期执行上限 | 210000 元 | schedule/phase-1/control.yaml:17,56 | 已分配额同值、未分配 0；历史基线 208000/190000 已作废 ※ |
-| 一期预算池 | 6 池：基础硬装 126000 / 中央空调 36000 / 一期家具 19000 / 必需家电 16000 / 设计与开工准备 8000 / 一期窗帘 5000 | schedule/phase-1/control.yaml:34-52 | 六池合计 = 执行上限；家电 16000 含 GC5 追加 4000 |
+| 一期执行上限 | 210099 元 | schedule/phase-1/control.yaml:17,56 | 已分配额同值、未分配 0；历史基线 208000/190000 已作废 ※ |
+| 一期预算池 | 6 池：基础硬装 126000 / 中央空调 36000 / 一期家具 19000 / 必需家电 16099 / 设计与开工准备 8000 / 一期窗帘 5000 | schedule/phase-1/control.yaml:34-52 | 六池合计 = 执行上限；家电 16099 含 GC5 追加 4000 与 JX ¥99 追加（2026-11-04 DEC-2026-11-04-R2） |
 | 暖通执行池 | 36000 元 | schedule/phase-1/control.yaml:40 | 与合同成交价同额；原 33000 询价口径作废 |
 | 全硬装询价轮次目标 | all_in 205098 元（核心 187098 + 柜体 18000） | schedule/phase-1/control.yaml:203-207 | 业主提供的预算池/封顶/候选价，**不是合同承诺** |
 | 墙砖面积（wall_region 实算） | 21.5505 ㎡ | config/layout/overlay.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168 | 窗台/防水台 sill_region 另计 15.468 ㎡；合计 37.0186 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※ |

@@ -15,8 +15,8 @@ authority:
     - schedule/phase-1/checklist.md
 
 control:
-  phase_ceiling_cny: 210000
-  allocated_cny: 210000
+  phase_ceiling_cny: 210099
+  allocated_cny: 210099
   unallocated_cny: 0
   fixed_works_cny: 162000
   status: planning
@@ -48,7 +48,7 @@ budget_pools:
     planned_cny: 19000
   - id: appliances
     name: 必需家电
-    planned_cny: 16000
+    planned_cny: 16099
   - id: design_preparation
     name: 设计与开工准备
     planned_cny: 8000
@@ -58,13 +58,13 @@ budget_pools:
 
 budget_reconciliation:
   execution_authority: schedule/phase-1/control.yaml
-  phase_1_ceiling_cny: 210000
+  phase_1_ceiling_cny: 210099
   historical_baseline:
     source: config/budget/base.json
     total_budget_cny: 208000
     project_ceiling_cny: 190000
     status: historical_reference_only
-  explanation: 原20.8万元/19万元基线和24万元上限均为历史口径。2026-09-12先将一期压缩至20万元上限；随后业主确认云鲸J6上下水版按3,000元追加进入一期，故一期执行上限及已分配额同步调整为20.3万元，必需家电预算由9,000元增至12,000元，未分配仍为0。2026-10-03业主定标中央空调为美的领航者四代一拖六200外机，**2026-10-04 定标成交 36,000 元**（原 33,000 元询价口径），沿用2026-09-12-R3"追加即抬上限"的先例，一期执行上限及已分配额由20.3万元调整为20.6万元，中央空调由33,000元增至36,000元，未分配仍为0。同日登记业主提供的全硬装询价轮次（hard_finish_quote_rounds），PKG-060/070/100/110的轮次目标已超过父包计划额，缺口按funding_status：owner_review_pending_20261003显形，未取得业主批准前不得视为已解决，也不得自动挪用硬装预备金。主卧定制衣柜、壁床柜、客厅大收纳柜、展示柜、复杂灯光、客厅/书房窗帘、书房次卧家具以及洗碗机、干衣机、净水设备仍后移二期。旧文件仅用于追溯，不再决定一期可承诺金额。2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤一体机（目标 4,000 元）进入一期，沿用"追加即抬上限"先例，必需家电预算由 12,000 元增至 16,000 元，一期执行上限及已分配额由 20.6 万元调整为 21 万元，未分配仍为 0。
+  explanation: 原20.8万元/19万元基线和24万元上限均为历史口径。2026-09-12先将一期压缩至20万元上限；随后业主确认云鲸J6上下水版按3,000元追加进入一期，故一期执行上限及已分配额同步调整为20.3万元，必需家电预算由9,000元增至12,000元，未分配仍为0。2026-10-03业主定标中央空调为美的领航者四代一拖六200外机，**2026-10-04 定标成交 36,000 元**（原 33,000 元询价口径），沿用2026-09-12-R3"追加即抬上限"的先例，一期执行上限及已分配额由20.3万元调整为20.6万元，中央空调由33,000元增至36,000元，未分配仍为0。同日登记业主提供的全硬装询价轮次（hard_finish_quote_rounds），PKG-060/070/100/110的轮次目标已超过父包计划额，缺口按funding_status：owner_review_pending_20261003显形，未取得业主批准前不得视为已解决，也不得自动挪用硬装预备金。主卧定制衣柜、壁床柜、客厅大收纳柜、展示柜、复杂灯光、客厅/书房窗帘、书房次卧家具以及洗碗机、干衣机、净水设备仍后移二期。旧文件仅用于追溯，不再决定一期可承诺金额。2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤一体机（目标 4,000 元）进入一期，沿用"追加即抬上限"先例，必需家电预算由 12,000 元增至 16,000 元，一期执行上限及已分配额由 20.6 万元调整为 21 万元，未分配仍为 0。2026-11-04（DEC-2026-11-04-R2）业主批准云鲸 JX 超薄上下水版 ¥99 追加批复（京东自营 2026-11-02 截图价 ¥3,099 对原 ¥3,000 子预算，关闭 DEC-2026-11-03-R1 未闭环条件③），沿用"追加即抬上限"先例：config/materials.yaml 的 robot_vacuum_narwal_jx_01 price_per_unit 由 3,000 改为 3,099，必需家电预算由 16,000 元增至 16,099 元，一期执行上限及已分配额由 21 万元调整为 210,099 元，未分配仍为 0；PKG-160 need 同步由 16,496 增至 16,595，超池仍为 496（need 与池同幅 +99），funding_status 维持不变。
 
 appliance_quote_register:
   collected_at: 2026-09-11
@@ -644,10 +644,10 @@ global_blockers:
     trigger: 逐房遮光要求、布纱组合与轨道形式必须在窗帘下单和轨道安装前冻结；范围冲突未闭环时，一期窗帘 5,000 元额度无法形成有效报价，卧室先住后改还要二次上门拆装轨道
   - id: BLK-PHASE1-APPLIANCES
     status: alignment_required
-    item: 一期家电额度在原9,000元下探组合基础上追加云鲸JX超薄上下水版3,000元，2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤按4,000元进入一期后现按16,000元控制；JX为现行候选（2026-11-03业主拍板由J6改JX，非最终锁定，DEC-2026-11-03-R1）、金额3,000元业主确认，客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
+    item: 一期家电额度在原9,000元下探组合基础上追加云鲸JX超薄上下水版3,000元，2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤按4,000元进入一期后现按16,099元控制；JX为现行候选（2026-11-03业主拍板由J6改JX，非最终锁定，DEC-2026-11-03-R1）、金额3,099元业主2026-11-04确认（含¥99追加批复，DEC-2026-11-04-R2，家电池与一期上限同步调整为16,099/210,099），客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
     clears_when: 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金
     owner_roles: [业主, 设计师, 家电供应商, 水电施工]
-    trigger: 逐台型号尺寸与含安装报价必须在家电下单前冻结，电位与上下水接口须在水电隐蔽验收前锁定；未闭环则 16,000 元额度仍按候选价记账，到货尺寸可能对不上已留电位和柜格，退换要二次上门并动已封板吊顶
+    trigger: 逐台型号尺寸与含安装报价必须在家电下单前冻结，电位与上下水接口须在水电隐蔽验收前锁定；未闭环则 16,099 元额度仍按候选价记账，到货尺寸可能对不上已留电位和柜格，退换要二次上门并动已封板吊顶
   - id: BLK-WATER-HEATER-SITE
     status: site_pending
     item: 已确认一期采用燃气热水器；模型虽有厨房西侧实体墙的暂定协调点，但交房前仍未确认是否已有开发商设备、实际安装墙面、燃气表位置、排烟路径、冷凝水排放和物业审批条件
@@ -1703,12 +1703,12 @@ work_packages:
     description: 安装一期实际需要使用的家电，逐台核对电源、给水、排水、散热和维护空间并试运行；二期设备不在本项重复计费。
     budget_pool: appliances
     budget:
-      planned_cny: 16000
-      estimated_need_cny: 16496
-      estimated_need_note: 原下探家电组合按9,000元控制；2026-09-12业主另确认云鲸J6上下水版按3,000元追加进入一期，必需家电预算同步增至12,000元；2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤一体机按4,000元进入一期，必需家电预算增至16,000元；同日（DEC-2026-10-05-R5）热水器型号方向换选海尔 KL7PRO（2,600），need=7,825−929+2,600+3,000+4,000=16,496，超池496——冰箱/洗衣机/热水器均为"现有设备不可用"条件件，任一不成立即回落，全部成立需业主追加。原组合具体型号和安装辅材仍待确认，J6客卫台盆下接口与检修净空待现场复核。
+      planned_cny: 16099
+      estimated_need_cny: 16595
+      estimated_need_note: 原下探家电组合按9,000元控制；2026-09-12业主另确认云鲸J6上下水版按3,000元追加进入一期，必需家电预算同步增至12,000元；2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤一体机按4,000元进入一期，必需家电预算增至16,000元；同日（DEC-2026-10-05-R5）热水器型号方向换选海尔 KL7PRO（2,600），need=7,825−929+2,600+3,000+4,000=16,496，超池496——冰箱/洗衣机/热水器均为"现有设备不可用"条件件，任一不成立即回落，全部成立需业主追加。2026-11-04（DEC-2026-11-04-R2）业主批准JX ¥99追加（price_per_unit 3,000→3,099），need=7,825−929+2,600+3,099+4,000=16,595、池同步16,099，超池仍为496，funding_status 不变。原组合具体型号和安装辅材仍待确认，JX客卫台盆下接口与检修净空待现场复核。
       funding_status: owner_review_pending_20261005
-      public_reference_floor_cny: 10825
-      public_reference_floor_note: 原公开候选下限7,825元加业主确认的云鲸JX预算3,000元；原组合仍含公开页面标示下架或库存待确认的型号，只作预算警戒线，不是可直接下单组合；冰箱位和JX台盆下安装条件均须现场复核。
+      public_reference_floor_cny: 10924
+      public_reference_floor_note: 原公开候选下限7,825元加业主确认的云鲸JX预算3,099元（2026-11-04 DEC-2026-11-04-R2 批准¥99追加后）；原组合仍含公开页面标示下架或库存待确认的型号，只作预算警戒线，不是可直接下单组合；冰箱位和JX台盆下安装条件均须现场复核。
       contracted_cny: null
       paid_cny: 0
       forecast_cny: null
@@ -1716,7 +1716,7 @@ work_packages:
       allocation_status: pending_appliance_schedule
       priority_policy:
         - {level: P0, name: 入住必需, rule: 冰箱、洗衣机以及实际没有现成设备时的热水器，优先保证基本生活功能}
-        - {level: P0确认, name: 防尘与自动清洁, rule: "云鲸JX超薄上下水版（现行候选，2026-11-03业主拍板由J6改JX，非最终锁定）按业主确认的3,000元纳入一期，使用客卫台盆下已规划的电源、进水和墙排接口"}
+        - {level: P0确认, name: 防尘与自动清洁, rule: "云鲸JX超薄上下水版（现行候选，2026-11-03业主拍板由J6改JX，非最终锁定）按业主确认的3,099元纳入一期（2026-11-04 DEC-2026-11-04-R2 批准¥99追加批复，家电池与一期上限同步+99），使用客卫台盆下已规划的电源、进水和墙排接口"}
         - {level: P0接口, name: 做饭和施工接口必需, rule: 燃气灶和吸油烟机先确认型号和接口，再冻结橱柜开孔、燃气和电路}
         - {level: P1, name: 业主定标生活电器, rule: "微蒸烤一体机按业主 2026-10-05 定标（DEC-2026-10-05-R4）以 4,000 元纳入一期，嵌位与专用回路随橱柜方案冻结"}
         - {level: P2, name: 二期延后, rule: 洗碗机、干衣机和净水设备继续留在二期，不从一期额度挤占}
@@ -1726,8 +1726,8 @@ work_packages:
         - {id: COST-160-03, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 3, name: 燃气灶, description: 记录型号、开孔尺寸、燃气接口、电源和安装验收责任；必须在橱柜台面开孔前冻结, quantity_basis: 1台候选，待燃气条件确认, planned_cny: null, status: interface_pending}
         - {id: COST-160-04, priority: P0接口, priority_name: 做饭和橱柜接口必需, priority_order: 4, name: 吸油烟机, description: 记录型号、尺寸、烟管、止回阀、插座与橱柜安装边界；必须在吊柜和烟管施工前冻结, quantity_basis: 1台候选，待确认, planned_cny: null, status: interface_pending}
         - {id: COST-160-05, priority: P0条件, priority_name: 无现成设备时入住必需, priority_order: 5, name: 燃气热水器（一期类别已确认）, description: "业主已确认一期按燃气热水器推进；设计模型暂记厨房西侧靠生活阳台玻璃幕墙的实体墙（墙体编号w_vrv_east，插座协调点sock_balcony_waterheater），这只是设计协调点，不是现场安装确认；仍需核对开发商或现有设备是否可用、天然气条件、实际安装墙面、容量、尺寸、排烟、冷凝水、给排水、专用电路和物业要求，现场条件未闭合前不得下单；2026-10-05（DEC-2026-10-05-R5）业主换选型号方向为海尔 KL7PRO（16L 水伺服增压静音，预算 2,600，价格线 ≤2,500 直接买 / >3,000 转 JM6S/JM6C），MK6/HWF Pro 转价值/下探备选，BLK-WATER-HEATER-SITE 未解除前不下单", quantity_basis: 1台候选，类别与型号方向已定、现场待核, planned_cny: 2600, status: selection_confirmed_site_pending}
-        - {id: COST-160-06, priority: P0确认, priority_name: 防尘与自动清洁, priority_order: 6, name: 云鲸JX超薄上下水版扫地机器人, description: "2026-11-02本PR由J6改JX超薄上下水版YJCC034（京东商品编号100237988935）；2026-11-03业主拍板JX取代J6为现行候选（非最终锁定）：JX安装手册终核、20mm顶余下尘袋更换/基站移出/排水可达/sock_gbath_robot常插拔、99元追加批复、订单SKU与上下水配件安装复核完成前不得下单；按既有客卫悬空台盆柜下主位安装，使用sock_gbath_robot电源、台盆进水三通和墙排方案，柜体底缘0.30不动、台下净空0.30、基站顶余20mm；设备预算3,000元业主确认不变，京东截图价3,099元差99元未批、不锁成本；采购前复核实机版本、柜下净空、穿墙排水、尘袋更换可达性和检修条件", quantity_basis: "1台，现行候选=JX（业主2026-11-03拍板由J6改JX，非最终锁定）；预算3000元业主确认、京东截图3099差99未批；现场接口待核", planned_cny: 3000, status: budget_confirmed_site_pending}
-        - {id: COST-160-07, priority: P2, priority_name: 明确留到二期, priority_order: 99, name: 二期家电排除项, description: "洗碗机、干衣机和净水设备不从一期16,000元家电额度重复扣款，除非业主书面调整阶段", quantity_basis: 排除清单, planned_cny: 0, status: excluded_to_phase_2}
+        - {id: COST-160-06, priority: P0确认, priority_name: 防尘与自动清洁, priority_order: 6, name: 云鲸JX超薄上下水版扫地机器人, description: "2026-11-02本PR由J6改JX超薄上下水版YJCC034（京东商品编号100237988935）；2026-11-03业主拍板JX取代J6为现行候选（非最终锁定）：JX安装手册终核、20mm顶余下尘袋更换/基站移出/排水可达/sock_gbath_robot常插拔、订单SKU与上下水配件安装复核完成前不得下单（99元追加批复已于2026-11-04完成，DEC-2026-11-04-R2，关闭DEC-2026-11-03-R1未闭环条件③）；按既有客卫悬空台盆柜下主位安装，使用sock_gbath_robot电源、台盆进水三通和墙排方案，柜体底缘0.30不动、台下净空0.30、基站顶余20mm；2026-11-04业主批准¥99追加批复（京东自营2026-11-02截图价¥3,099对原¥3,000子预算），设备预算按3,099元业主确认、price_per_unit同步（materials.yaml），家电池与一期执行上限同步+99；采购前复核实机版本、柜下净空、穿墙排水、尘袋更换可达性和检修条件", quantity_basis: "1台，现行候选=JX（业主2026-11-03拍板由J6改JX，非最终锁定）；预算3,099元业主2026-11-04确认（含¥99追加批复DEC-2026-11-04-R2）；现场接口待核", planned_cny: 3099, status: budget_confirmed_site_pending}
+        - {id: COST-160-07, priority: P2, priority_name: 明确留到二期, priority_order: 99, name: 二期家电排除项, description: "洗碗机、干衣机和净水设备不从一期16,099元家电额度重复扣款，除非业主书面调整阶段", quantity_basis: 排除清单, planned_cny: 0, status: excluded_to_phase_2}
         - {id: COST-160-08, priority: P1, priority_name: 业主定标生活电器, priority_order: 7, name: 嵌入式微蒸烤一体机, description: "业主定标方向（DEC-2026-10-05-R4）：美的 GC5（TR850E-TSBC00，55L，微/蒸/烤/空气炸四合一，变频微波+双孔直喷+上下管热风，额定 3200W，机身 595×565×454mm）；官方现价 4,199（2026-10-05 页面观察，非成交价），目标 ≤3,800、封顶 4,200；同档竞品比价未做；电气需 16A/2.5mm² 专用回路（GB 55038 7.4.4），嵌位（600 宽高柜段）与点位随橱柜方案冻结后落，台面/高柜开孔前必须定型号", quantity_basis: 1台，业主定标方向、嵌位待设计, planned_cny: 4000, status: candidate}
     duration_workdays: {min: 2, max: 4}
     dependencies: [PKG-110, PKG-120, PKG-125, PKG-135]
@@ -1779,7 +1779,7 @@ work_packages:
         checkpoint: payment
         item: 最终结算不超过批准额度
         method: 汇总合同、变更、已付、待付和退款，核对各预算池及总上限
-        pass_condition: 最终预测不超过¥210,000，或已有业主书面追加批准
+        pass_condition: 最终预测不超过¥210,099，或已有业主书面追加批准
         evidence_required: [final_account_statement, owner_approval_if_overrun]
 
   - id: PKG-900

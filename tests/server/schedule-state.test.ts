@@ -48,7 +48,7 @@ describe('shared/schedule-state: 真实仓集成', () => {
     // 全量 25 个包（含 PKG-900 预备金侧车道）
     assert.equal(snapshot.packages.length, 25);
     assert.equal(snapshot.counts.packages, 25);
-    assert.equal(snapshot.phase.ceiling_cny, 210000);
+    assert.equal(snapshot.phase.ceiling_cny, 210099);
     assert.equal(snapshot.counts.ready_packages, 0);
     assert.ok(snapshot.data_fingerprint.length === 64);
     const pkg900 = snapshot.packages.find((pkg) => pkg.id === 'PKG-900');
@@ -145,7 +145,7 @@ describe('shared/schedule-state: 沙箱负例（symlink 农场，锚点文本手
   });
 
   it('allocated_cny 登记值改坏：loader 原样吐出校验错误文案', () => {
-    const anchor = 'allocated_cny: 210000';
+    const anchor = 'allocated_cny: 210099';
     const occurrences = pristineControlText.split(anchor).length - 1;
     assert.equal(occurrences, 1, `锚点 ${anchor} 必须恰出现一次（实际 ${occurrences}）——锚点漂移时本测试当场点名`);
     writeFileSync(
@@ -155,7 +155,7 @@ describe('shared/schedule-state: 沙箱负例（symlink 农场，锚点文本手
     try {
       const state = loadScheduleState(sandbox, {modelPackageLinks: loadModelPackageLinks(join(sandbox, 'config/model-package-links.yaml'))});
       assert.ok(
-        state.errors.includes('allocated mismatch: computed=210000, declared=210001'),
+        state.errors.includes('allocated mismatch: computed=210099, declared=210001'),
         `必须原样报告 allocated mismatch，实际 errors：${state.errors.join(' | ')}`,
       );
       // 同一处漂移必须同时打到 roadmap 镜像校验（两处对账不是一处）

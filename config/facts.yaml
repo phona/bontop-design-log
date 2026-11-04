@@ -608,9 +608,9 @@ facts:
 
   - id: fact.phase1_ceiling_cny
     kind: narrative
-    value: "@schedule/phase-1/control.yaml:phase_ceiling_cny: 210000"
+    value: "@schedule/phase-1/control.yaml:phase_ceiling_cny: 210099"
     unit: 元
-    as_of: DEC-2026-10-05-R4
+    as_of: DEC-2026-11-04-R2
     mirrors:
       # C1（2026-10-04 消解，不是豁免）——base.json 的 project_ceiling=190,000 与现行权威
       # schedule/phase-1/control.yaml:phase_ceiling_cny=206,000（2026-10-04 当期值，后于 2026-10-05 调整为 210,000）长期不一致。前两轮只能挂
@@ -651,7 +651,7 @@ facts:
       - path: docs/designer_brief.md
         pattern: 'ceiling\s*\d+k'
         reason: "designer_brief 是对外交付件，预算口径更新需业主裁决（是否已外发、改哪一版）；待决跟踪 docs/designer_brief.md 第 7 条 + config/budget/base.json notes"
-        pending: "业主裁决 designer_brief 第 7/12 条是否更新为现行 control.yaml 210,000（涉及对外文件版本，未裁决前不改对外交付件；206,000 为 2026-10-04 历史值）"
+        pending: "业主裁决 designer_brief 第 7/12 条是否更新为现行 control.yaml 210,099（涉及对外文件版本，未裁决前不改对外交付件；206,000 为 2026-10-04 历史值）"
 
   - id: fact.usable_area
     kind: derived

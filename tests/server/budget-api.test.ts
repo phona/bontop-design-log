@@ -128,23 +128,23 @@ describe('Budget + Risks + Schemes API', () => {
   it('GET /api/budget phase=phase_1 returns phase metadata and filtered calculation', async () => {
     const res = await request(app).get('/api/budget?phase=phase_1_basic_occupancy').expect(200);
     assert.equal(res.body.phase, 'phase_1_basic_occupancy');
-    assert.equal(res.body.phaseCeiling, 210000);
-    assert.equal(res.body.phaseAllocated, 210000);
+    assert.equal(res.body.phaseCeiling, 210099);
+    assert.equal(res.body.phaseAllocated, 210099);
     assert.equal(res.body.phaseUnallocated, 0);
-    assert.equal(res.body.phaseMeta.budget.ceilingCny, 210000);
-    assert.equal(res.body.phaseMeta.budget.allocatedCny, 210000);
+    assert.equal(res.body.phaseMeta.budget.ceilingCny, 210099);
+    assert.equal(res.body.phaseMeta.budget.allocatedCny, 210099);
     assert.equal(res.body.phaseMeta.budget.unallocatedCny, 0);
     assert.equal(res.body.phaseMeta.budget.authority, 'schedule/phase-1/control.yaml');
-    // 现行口径来自 control.yaml（DEC-2026-10-05-R4 抬池后 210,000）；作废的 190,000 / 208,000 只作 historicalBaseline 留档露出
-    assert.equal(res.body.totalBudget, 210000);
-    assert.equal(res.body.projectCeiling, 210000);
+    // 现行口径来自 control.yaml（DEC-2026-10-05-R4 抬池后 210,000；2026-11-04 DEC-2026-11-04-R2 批准 JX ¥99 追加，追加即抬上限至 210,099）；作废的 190,000 / 208,000 只作 historicalBaseline 留档露出
+    assert.equal(res.body.totalBudget, 210099);
+    assert.equal(res.body.projectCeiling, 210099);
     assert.equal(res.body.historicalBaseline.projectCeilingCny, 190000);
     assert.equal(res.body.historicalBaseline.totalBudgetCny, 208000);
     assert.equal(res.body.historicalBaseline.status, 'historical_reference_only');
     const robot = res.body.lineItems.find((item: { topic: string }) => item.topic === 'robot_vacuum');
-    assert.equal(robot?.optionId, 'robot_vacuum_narwal_jx_01'); // 2026-11-02 本 PR：J6 改 JX，id 随型号改名，数量与 3000 元预算不变
+    assert.equal(robot?.optionId, 'robot_vacuum_narwal_jx_01'); // 2026-11-02 本 PR：J6 改 JX，id 随型号改名；2026-11-04 DEC-2026-11-04-R2 业主批准 ¥99 追加后按 3,099 计
     assert.equal(robot?.quantity, 1);
-    assert.equal(robot?.cost, 3000);
+    assert.equal(robot?.cost, 3099);
   });
 
   it('GET /api/budget default keeps full-project baseline semantics', async () => {
@@ -153,7 +153,7 @@ describe('Budget + Risks + Schemes API', () => {
     assert.equal(res.body.phaseCeiling, undefined);
     assert.equal(res.body.phaseAllocated, undefined);
     assert.equal(res.body.phaseUnallocated, undefined);
-    assert.equal(res.body.totalBudget, 210000);
+    assert.equal(res.body.totalBudget, 210099);
   });
 
   it('GET /api/risks returns risks', async () => {
