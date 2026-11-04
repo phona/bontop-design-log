@@ -385,3 +385,18 @@
 - **连带口径**：沿用「追加即抬上限」先例——`config/materials.yaml` 的 robot_vacuum_narwal_jx_01 `price_per_unit` 3,000→3,099；家电池 `planned_cny` 16,000→16,099；一期 `phase_ceiling_cny`/`allocated_cny` 210,000→210,099；PKG-160 `estimated_need_cny` 16,496→16,595（need 与池同幅 +99，超池仍为 496，`funding_status: owner_review_pending_20261005` 不变）。
 - **落地痕迹**：`config/materials.yaml`（price_per_unit + notes）、`schedule/phase-1/control.yaml`（control/budget_pools/budget_reconciliation/PKG-160 budget/blocker item/explanation）、`tests/server/{budget-api,api,budget-calculator}.test.ts` 断言、`schedule/procurement.md` 与 `schedule/roadmap.yaml` 等现行口径；生成视图由 `schedule:render` 重渲。
 - **回滚**：全部改动收敛在一个 PR，`git revert` 即恢复；回滚后回到 ¥3,000 口径与条件③待批状态。
+
+---
+
+### DEC-2026-11-04-R3 扫地机改「专用机器人仓」安装——推翻塞柜底 + 20mm 顶余方案
+
+- **日期**：2026-11-04
+- **决策人**：业主
+- **决策事项**：客卫云鲸 JX 超薄上下水版由「塞悬空台盆柜底（顶余 20mm）」改为**专用机器人仓**安装。设计要点：仓高按基站 280mm + 顶部开盖约 250mm + 余量 ≈ 55cm+；仓顶开放或开敞格（开盖换袋从上方伸手，敞格放备用尘袋/清洁液）；机器人从离地 ≥15cm 底缝自由进出；底部不装底板；**基站主体不凸出柜门投影**（浴室溅水顺传感器渗入主板会烧机——调研实例维修 ¥500）；进水 4 分带开关角阀（可与台盆共用三通）、排水 3 分污水管接洗衣机圆孔地漏（高差 ≤80cm）、10A 三孔带开关插座放柜体侧面（基站 1.5m 内，**不放正后方**）。
+- **推翻的旧结论**：「基站泊入悬空台盆柜下、顶余 20mm」的安装方式。推翻理由：JX 换尘袋需打开基站上盖、顶部约需 25cm 开盖空间（调研笔记口径，仍待官方），20mm 顶余在封闭空间无法开盖——DEC-2026-11-03-R1 未闭环条件①②（安装手册终核 / 20mm 顶余下尘袋更换、基站移出、排水可达、常插拔插座）由此**消解**，答案即本决策：封闭柜底方案不可行。
+- **基站尺寸已官方核实**（业主 2026-11-04）：410（长）× 433（宽）× 280（高）mm，与仓库模型（config/house.yaml robot_dock_gbath，0.41×0.433×0.280）一致——柜体几何与水电点位不因尺寸返工；调研报告中 431×402×461mm 的数字作废（疑为其他变体/笔记错误）。
+- **四问结论（调研笔记源，非官方手册，证据等级见 issue #72）**：① 尘袋更换需顶部开盖约 25cm，封闭柜内不够；② 基站可整台移出但需断水断电、拔进出水口，且挪后旧地图失效需重新建图；③ 底盘排水孔最易被毛发灰尘堵塞，可断水断电后棉签/冲牙器自救，前提是够得着；④ 插座放柜体侧面带开关即不用挪机。
+- **不变的部分**：JX 现行候选地位与非最终锁定性质；¥3,099 批准预算（DEC-2026-11-04-R2）；客卫台盆下主位的大区位（专用仓是该区位的实现方式，不是换房间）。
+- **仍未闭环（下单前必须）**：① 设计师仓位图（仓相对台盆柜的位置/开敞方向/净尺寸）——出来后才能动 robot_dock_gbath 模型位置与 sock_gbath_robot 坐标（后者现位于基站正后方东墙，按本决策应迁柜体侧面）；② 开盖最小顶部高度的官方口径（定仓高用）；③ 订单 SKU 与上下水配件安装复核（DEC-2026-11-03-R1 条件④）。
+- **落地痕迹**：本条 DEC + `config/materials.yaml`（notes/cons）+ `schedule/phase-1/control.yaml`（COST-160-06 条件更新）+ `schedule/procurement.md`（JX 段）+ `config/house.yaml` / `config/electrical.yaml` 设计意图注释；模型几何移动待仓位图另开 PR。
+- **回滚**：全部改动收敛在一个 PR，`git revert` 即恢复；回滚后回到塞柜底口径（其未闭环条件重新挂起）。
