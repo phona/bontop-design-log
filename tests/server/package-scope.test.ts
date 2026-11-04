@@ -4,7 +4,7 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildObjectPackageIndex, resolvePackageScope, type ProjectScopeInput } from '../../shared/package-scope.js';
+import { buildObjectPackageIndex, isPointSourceAllSelector, resolvePackageScope, type ProjectScopeInput } from '../../shared/package-scope.js';
 
 const project: ProjectScopeInput = {
   house: {
@@ -22,6 +22,17 @@ const project: ProjectScopeInput = {
       {id: 'w_kit_north', type: 'wall'},
       {id: 'w_liv_south', type: 'wall'},
       {id: 'sock_kitchen_gas', type: 'socket'},
+    ],
+    // 点位全量清单（/api/project 的 house.electrical / house.plumbing）：点位来源
+    // select.all 的唯一展开源。sceneElements 里没有点位，别去那儿找。
+    electrical: [
+      {id: 'sock_living_ac'},
+      {id: 'sock_kitchen_gas'},
+      {id: 'panel_strong_entry_left'},
+    ],
+    plumbing: [
+      {id: 'faucet_kitchen'},
+      {id: 'drain_kitchen'},
     ],
   },
 };
@@ -97,7 +108,7 @@ describe('resolvePackageScope', () => {
     assert.ok(result.unresolved[0].includes('mystery_source.ids'));
   });
 
-  it('select all → projectScope，不给 3D 位置', () => {
+  it('非点位来源的 select all → projectScope，不给 3D 位置', () => {
     const result = resolvePackageScope({
       scope: [{source: 'model_geometry', select: {all: true}}],
     }, project);
@@ -105,6 +116,81 @@ describe('resolvePackageScope', () => {
     assert.deepEqual(result.roomIds, []);
     assert.deepEqual(result.objectIds, []);
     assert.deepEqual(result.pointIds, []);
+  });
+
+  // 2026-11-04 issue #65：select.all 按来源分流。PKG-040（水电改造）声明
+  // electrical/plumbing select.all，本意「高亮全部水电点位」；旧实现一律短路成
+  // projectScope，解析出 0 个点位、「在 3D 中高亮」因此被判「没有具体 3D 范围」而禁用。
+  it('点位来源的 select all → 该分类全部点位 id（带场景 objectId 前缀）', () => {
+    const result = resolvePackageScope({
+      scope: [
+        {source: 'electrical', select: {all: true}},
+        {source: 'plumbing', select: {all: true}},
+      ],
+    }, project);
+    assert.equal(result.projectScope, false, '点位来源的 all 不全项目范围短路');
+    assert.deepEqual(result.pointIds, [
+      'electrical:sock_living_ac',
+      'electrical:sock_kitchen_gas',
+      'electrical:panel_strong_entry_left',
+      'plumbing:faucet_kitchen',
+      'plumbing:drain_kitchen',
+    ]);
+    // 点位不许混进 objectIds 充数（合批渲染按 batchUserData.objectId 逐实例命中）
+    assert.deepEqual(result.objectIds, []);
+    assert.deepEqual(result.roomIds, []);
+    assert.deepEqual(result.unresolved, []);
+  });
+
+  it('点位来源的 all 与真实 PKG-040 同形：electrical_topology 的 all 仍判全项目范围徽标，点位照展', () => {
+    // config/model-package-links.yaml 的 MODEL-PKG-040 原文：electrical/plumbing all +
+    // electrical_topology all + mep_routes layers。回路级（electrical_topology）没有
+    // 3D 位置，维持全项目范围徽标；但水电点位必须展得开——徽标与高亮能力并存。
+    const result = resolvePackageScope({
+      scope: [
+        {source: 'electrical', select: {all: true}},
+        {source: 'plumbing', select: {all: true}},
+        {source: 'electrical_topology', select: {all: true}},
+        {source: 'mep_routes', select: {layers: ['strong_power', 'weak_power', 'water_supply', 'drainage']}},
+      ],
+    }, project);
+    assert.equal(result.projectScope, true);
+    assert.equal(result.pointIds.length, 5);
+    assert.ok(result.pointIds.includes('plumbing:drain_kitchen'));
+    // layers 仍不展开（人读说明），不静默丢弃
+    assert.ok(result.unresolved.some((entry) => entry.includes('mep_routes.layers: strong_power')));
+  });
+
+  it('点位来源的 all 但项目数据没有该分类清单 → 显形 unresolved，不静默出 0 个点位', () => {
+    const result = resolvePackageScope({
+      scope: [{source: 'electrical', select: {all: true}}],
+    }, {house: {rooms: project.house.rooms, sceneElements: []}});
+    assert.deepEqual(result.pointIds, []);
+    assert.equal(result.unresolved.length, 1);
+    assert.ok(result.unresolved[0].includes('electrical.all'));
+    assert.ok(result.unresolved[0].includes('house.electrical'));
+  });
+
+  it('ceiling/hvac 的 all 仍判全项目范围（house 下没有可比照的点位清单）', () => {
+    const result = resolvePackageScope({
+      scope: [
+        {source: 'ceiling', select: {all: true}},
+        {source: 'hvac', select: {all: true}},
+      ],
+    }, project);
+    assert.equal(result.projectScope, true);
+    assert.deepEqual(result.pointIds, []);
+    assert.deepEqual(result.unresolved, []);
+  });
+
+  it('isPointSourceAllSelector：只认 electrical/plumbing 的 all', () => {
+    assert.equal(isPointSourceAllSelector({source: 'electrical', select: {all: true}}), true);
+    assert.equal(isPointSourceAllSelector({source: 'plumbing', select: {all: true}}), true);
+    assert.equal(isPointSourceAllSelector({source: 'model_geometry', select: {all: true}}), false);
+    assert.equal(isPointSourceAllSelector({source: 'electrical_topology', select: {all: true}}), false);
+    assert.equal(isPointSourceAllSelector({source: 'ceiling', select: {all: true}}), false);
+    // all 之外的形态都不是（ids 走 select.ids 归一化，不在此列）
+    assert.equal(isPointSourceAllSelector({source: 'electrical', select: {ids: ['sock_x']}}), false);
   });
 
   it('不存在的 room_id 被收掉（不与场景对不上）', () => {
@@ -134,5 +220,30 @@ describe('buildObjectPackageIndex', () => {
     // 索引键必须是同一形式，裸 id 键会让点点位的反查静默落空（浏览器实证）。
     assert.deepEqual(index.get('electrical:sock_kitchen_gas'), ['PKG-145']);
     assert.equal(index.get('sock_kitchen_gas'), undefined, '裸 id 键是坏口径，不得回退');
+  });
+
+  // 2026-11-04 issue #65：点位来源的 select.all 不再是全项目范围，于是它展开出的
+  // 全部点位也照常占反查——点任一水电点位能反查到 PKG-040 这类包。
+  it('点位来源的 select.all 展开出的点位占反查索引（不再被全项目范围规则跳过）', () => {
+    const index = buildObjectPackageIndex([
+      {id: 'MODEL-PKG-040', budget_ref: {id: 'PKG-040'}, scope: [
+        {source: 'electrical', select: {all: true}},
+        {source: 'plumbing', select: {all: true}},
+      ]},
+    ], project);
+    assert.deepEqual(index.get('electrical:sock_living_ac'), ['PKG-040']);
+    assert.deepEqual(index.get('plumbing:drain_kitchen'), ['PKG-040']);
+  });
+
+  it('真实 PKG-040 形态（含 electrical_topology all）仍不占反查：全项目范围规则不变', () => {
+    // 边界登记：electrical_topology {all: true} 让 projectScope 保持 true，按既有
+    // 不变量「全项目范围的包不占反查」整条 link 跳过——高亮侧不受影响（点位照展）。
+    const index = buildObjectPackageIndex([
+      {id: 'MODEL-PKG-040', budget_ref: {id: 'PKG-040'}, scope: [
+        {source: 'electrical', select: {all: true}},
+        {source: 'electrical_topology', select: {all: true}},
+      ]},
+    ], project);
+    assert.equal(index.get('electrical:sock_living_ac'), undefined);
   });
 });

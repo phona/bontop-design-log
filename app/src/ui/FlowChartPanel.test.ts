@@ -347,6 +347,92 @@ describe('FlowChartPanel', () => {
     expect(onHighlight).toHaveBeenCalledWith('PKG-040');
   });
 
+  // 2026-11-04 issue #65：点位来源的 select.all 算点位级能力。真实
+  // config/model-package-links.yaml 的 MODEL-PKG-040（水电改造）就是 electrical/plumbing
+  // select.all——旧实现 `scopes.some(select.all === true) → project` 一律判「全项目范围」，
+  // 徽标错、按钮禁用，而它的本意正是「高亮全部水电点位」。
+  it('点位来源的 select.all → 点位级徽标 + 按钮可用；非点位来源的 all 仍全项目范围', async () => {
+    const links = {
+      schema: 'project.model-package-links/v1',
+      authorities: {},
+      links: [
+        {
+          id: 'LNK-040',
+          phase_id: 'phase_1_basic_occupancy',
+          budget_ref: {source: 'schedule', id: 'PKG-040'},
+          mapping_status: 'partial',
+          scope: [
+            {source: 'electrical', select: {all: true}},
+            {source: 'plumbing', select: {all: true}},
+            {source: 'electrical_topology', select: {all: true}},
+            {source: 'mep_routes', select: {layers: ['strong_power']}},
+          ],
+        },
+        // 对照：非点位来源（ceiling）的 all 没有 3D 位置 → 全项目范围、按钮禁用
+        {
+          id: 'LNK-070',
+          phase_id: 'phase_1_basic_occupancy',
+          budget_ref: {source: 'schedule', id: 'PKG-070'},
+          mapping_status: 'mapped',
+          scope: [{source: 'ceiling', select: {all: true}}],
+        },
+      ],
+    };
+    stubFetch(snapshot(), links);
+    const selection = new ScheduleSelectionStore();
+    const onHighlight = vi.fn();
+    const panel = new FlowChartPanel(selection, {onHighlight});
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-040"]')).toBeTruthy());
+
+    const node040 = document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement;
+    expect(node040.textContent).toContain('点位级（可高亮）');
+    expect(node040.dataset.capability).toBe('point');
+    node040.click();
+    const bar = document.querySelector('#flow-selection-bar') as HTMLElement;
+    const highlight = bar.querySelector('#flow-highlight') as HTMLButtonElement;
+    // 点位来源的 all 有全部点位可高亮，按钮不得禁用（vitest 的 toBe 只收一个参数，
+    // 说明写在这里）
+    expect(highlight.disabled).toBe(false);
+    highlight.click();
+    expect(onHighlight).toHaveBeenCalledWith('PKG-040');
+
+    // 对照包：ceiling 的 all 不展开成 3D 位置 → 全项目范围、按钮禁用
+    const node070 = document.querySelector('.flow-node[data-pkg-id="PKG-070"]') as HTMLElement;
+    expect(node070.textContent).toContain('全项目范围');
+    node070.click();
+    expect((document.querySelector('#flow-selection-bar #flow-highlight') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('mapping_status: project_scope 的链接一律全项目范围，不按选择器猜（PKG-142 整屋放行）', async () => {
+    const links = {
+      schema: 'project.model-package-links/v1',
+      authorities: {},
+      links: [
+        {
+          id: 'LNK-142',
+          phase_id: 'phase_1_basic_occupancy',
+          budget_ref: {source: 'schedule', id: 'PKG-040'},
+          mapping_status: 'project_scope',
+          scope: [
+            {source: 'model_geometry', select: {all: true}},
+            {source: 'electrical', select: {all: true}},
+            {source: 'plumbing', select: {all: true}},
+          ],
+        },
+      ],
+    };
+    stubFetch(snapshot(), links);
+    const panel = new FlowChartPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-040"]')).toBeTruthy());
+
+    const node = document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement;
+    expect(node.textContent).toContain('全项目范围');
+    node.click();
+    expect((document.querySelector('#flow-selection-bar #flow-highlight') as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('highlightPackages 把传入的全部包都标出，并提示同属 N 个包', async () => {
     stubFetch();
     const panel = new FlowChartPanel(new ScheduleSelectionStore());

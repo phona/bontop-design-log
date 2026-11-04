@@ -681,6 +681,60 @@ describe('App', () => {
     expect(pointsSpy).toHaveBeenCalledWith(['electrical:sock_kitchen_gas', 'plumbing:drain_kitchen', 'electrical:sock_living_ac'], 1200);
   });
 
+  // 2026-11-04 issue #65：点位来源的 select.all 不再短路成「全项目范围」。真实
+  // MODEL-PKG-040（水电改造）就是 electrical/plumbing select.all——旧实现解析出 0 个
+  // 点位，highlightPoints 收空数组，详情面板「点位 0 个」、流程图按钮还被判「没有具体
+  // 3D 范围」而禁用。这条断言钉住新口径：all → 该分类全部点位 id（带场景前缀）。
+  it('点包高亮：点位来源的 select.all 展开成该分类全部点位（PKG-040 水电改造）', async () => {
+    const app = new App(canvas);
+    await app.start();
+    // projectData 补上点位全量清单（/api/project 的 house.electrical/house.plumbing；
+    // sceneElements 里没有点位，resolvePackageScope 只认这两个字段）。其余字段保留，
+    // 避免动到后台轮询面板读的 budgetCategories 等。
+    app['projectData'] = {
+      ...app['projectData'],
+      house: {
+        ...app['projectData'].house,
+        electrical: [{id: 'sock_living_ac'}, {id: 'sock_kitchen_gas'}],
+        plumbing: [{id: 'drain_kitchen'}, {id: 'faucet_kitchen'}],
+      },
+    };
+    const objectsSpy = vi.spyOn(app['houseScene'], 'highlightObjects');
+    const pointsSpy = vi.spyOn(app['houseScene'], 'highlightPoints');
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/model-package-links')) {
+        return {
+          ok: true,
+          json: async () => ({
+            links: [
+              // 真实 config/model-package-links.yaml 的 MODEL-PKG-040 同形
+              {budget_ref: {id: 'PKG-040'}, scope: [
+                {source: 'electrical', select: {all: true}},
+                {source: 'plumbing', select: {all: true}},
+                {source: 'electrical_topology', select: {all: true}},
+              ]},
+            ],
+          }),
+        } as Response;
+      }
+      return { ok: true, json: async () => ({}) } as Response;
+    });
+
+    app['highlightApprovalPackage']('PKG-040');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // 全部水电点位（带 electrical:/plumbing: 前缀——与 batchUserData.objectId 对齐）
+    expect(pointsSpy).toHaveBeenCalledWith([
+      'electrical:sock_living_ac',
+      'electrical:sock_kitchen_gas',
+      'plumbing:drain_kitchen',
+      'plumbing:faucet_kitchen',
+    ], 1200);
+    // 房间/对象为空照旧走 highlightObjects（空数组 = 无区域级范围），不因点位可用而造假
+    expect(objectsSpy).toHaveBeenCalledWith([], 1200);
+  });
+
   it('点包高亮：links 拉取失败时不高亮也不抛（高亮失败不打断审批流）', async () => {
     const app = new App(canvas);
     await app.start();

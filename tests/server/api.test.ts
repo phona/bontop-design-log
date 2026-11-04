@@ -102,6 +102,19 @@ elements:
     assert.match(res.body.error, /unsupported phase/);
   });
 
+  // 2026-11-04 issue #65：点位来源 select.all（PKG-040 的 plumbing {all: true}）要在前端
+  // 展开成「该分类全部点位」，清单必须随 /api/project 下发——sceneElements 不含点位，
+  // 浏览器没有第二条路拿到给排水全量。与 house.electrical 同源（config/plumbing.yaml）。
+  it('GET /api/project exposes house.electrical and house.plumbing point inventories', async () => {
+    const res = await request(app).get('/api/project').expect(200);
+    assert.ok(Array.isArray(res.body.house.electrical), 'electrical 全量清单必须在 payload 里');
+    assert.ok(Array.isArray(res.body.house.plumbing), 'plumbing 全量清单必须在 payload 里（点位来源 select.all 的展开源）');
+    assert.ok(res.body.house.electrical.some((p: {id: string}) => p.id === 'sock_kitchen_gas'));
+    assert.ok(res.body.house.plumbing.some((p: {id: string}) => p.id === 'drain_mbath_vanity'));
+    // 点位不得混进 sceneElements（合批渲染的 electrical:/plumbing: 前缀 id 走点位链路）
+    assert.ok(!res.body.house.sceneElements.some((el: {id?: string}) => String(el.id).startsWith('plumbing:')));
+  });
+
   // 吊顶主材参考成本区间（DEC-2026-10-08-C09）：只读、无 POST，三态判定 + owner_provided 告警。
   it('GET /api/ceiling/material-cost returns range verdict without market judgement', async () => {
     const res = await request(app).get('/api/ceiling/material-cost').expect(200);
