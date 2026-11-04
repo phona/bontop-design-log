@@ -212,4 +212,54 @@ describe('api-write（issue #64 写操作 token 认证）', () => {
     expect(dialogs.count).toBe(1);
     dialogs.stop();
   });
+
+  it('弹框打开即释放第一人称鼠标锁定（缺 token 与 401 重输两条路径都调 exitPointerLock）', async () => {
+    const exitPointerLock = vi.fn();
+    // jsdom 没有 document.exitPointerLock；生产代码有存在性守卫，这里补上再断言被调
+    (document as unknown as { exitPointerLock: () => void }).exitPointerLock = exitPointerLock;
+    try {
+      // 路径一：本地无 token（missing）——第一人称点对象触发 postViewContext 的场景
+      mockFetch(() => okResponse());
+      const pending = apiWrite('/api/view-context', { method: 'POST' });
+      await fillTokenDialog('tok-1');
+      await expect(pending).resolves.toMatchObject({ status: 200 });
+      expect(exitPointerLock).toHaveBeenCalledTimes(1);
+
+      // 路径二：token 失效重输（rejected）
+      localStorage.setItem(TOKEN_KEY, 'stale');
+      let call = 0;
+      mockFetch(() => {
+        call += 1;
+        return call === 1 ? unauthorizedResponse() : okResponse();
+      });
+      const pending2 = apiWrite('/api/acceptance/gates', { method: 'POST' });
+      await fillTokenDialog('tok-2');
+      await expect(pending2).resolves.toMatchObject({ status: 200 });
+      expect(exitPointerLock).toHaveBeenCalledTimes(2);
+    } finally {
+      delete (document as unknown as { exitPointerLock?: unknown }).exitPointerLock;
+    }
+  });
+
+  it('弹框期间 overlay 上的 keydown 不冒泡到 document（第一人称 WASD 不作用于场景）', async () => {
+    mockFetch(() => okResponse());
+    const pending = apiWrite('/api/view-context', { method: 'POST' });
+    await vi.waitFor(() => expect(document.getElementById('write-token-input')).not.toBeNull());
+    const overlay = document.getElementById('write-token-dialog') as HTMLElement;
+    const input = document.getElementById('write-token-input') as HTMLInputElement;
+    const docKeyDown = vi.fn();
+    document.addEventListener('keydown', docKeyDown);
+    try {
+      // 落在浮层上的按键（焦点不在 input，如点了遮罩）不得冒泡到 document
+      overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'w', bubbles: true, cancelable: true }));
+      // input 上的 Enter 在目标阶段先执行（确认并关框），同样不得冒泡
+      input.value = 'tok';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+      expect(docKeyDown).not.toHaveBeenCalled();
+    } finally {
+      document.removeEventListener('keydown', docKeyDown);
+    }
+    await expect(pending).resolves.toMatchObject({ status: 200 });
+    expect(document.getElementById('write-token-dialog')).toBeNull();
+  });
 });

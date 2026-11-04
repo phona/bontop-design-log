@@ -11,6 +11,8 @@
  *   - 并发写共享一次认证（模块级 in-flight）：一个对话框、输入一次全体复用；
  *     取消 = 所有等待中的写一起 reject。清 localStorage 前先比对，迟到 401
  *     不会误清并发请求刚存入的新 token。
+ *   - 开框即释放第一人称鼠标锁定（document.exitPointerLock，存在性守卫），
+ *     并在 overlay 上截停 keydown 不冒泡；关框不重新锁定（重新点画布再进）。
  *
  * 对话框全宽（max-width 420px、width 100%），≤700px 手机窄屏可用。
  */
@@ -39,6 +41,20 @@ function clearStoredWriteToken(): void {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
   } catch {
     // ignore
+  }
+}
+
+/**
+ * 释放第一人称鼠标锁定。three.js 的 PointerLockControls.unlock() 本质就是
+ * `document.exitPointerLock()`，而仓库没有「只解锁、不退出第一人称」的现成 API
+ * （FirstPersonController 只暴露 requestLock；disable()/switchToOrbit 会连视角
+ * 模式一起退，语义更重），api-write 与那些实例也没有依赖通路，故直接调 document
+ * API。jsdom 等环境没有该方法，存在性守卫防止测试环境崩；未锁定时调用是无害 no-op。
+ * 本函数不负责重新锁定——关框后业主重新点画布再进第一人称（标准行为）。
+ */
+function releasePointerLock(): void {
+  if (typeof document.exitPointerLock === 'function') {
+    document.exitPointerLock();
   }
 }
 
@@ -85,6 +101,10 @@ function promptForWriteToken(reason: 'missing' | 'rejected'): Promise<string> {
     `;
     overlay.appendChild(box);
     document.body.appendChild(overlay);
+    // 第一人称下点击对象触发的写（App.handleCenterClick → postViewContext）会开这个
+    // 框：指针若还锁在画布上，业主点不到输入框/确定/取消，鼠标点击还会继续场景中心
+    // 拾取。开框即解锁（missing 与 401 重输两条路径都经这里）。关框不重新锁定。
+    releasePointerLock();
 
     const input = box.querySelector('#write-token-input') as HTMLInputElement;
     const confirmBtn = box.querySelector('#write-token-confirm') as HTMLButtonElement;
@@ -115,6 +135,10 @@ function promptForWriteToken(reason: 'missing' | 'rejected'): Promise<string> {
       if (event.key === 'Escape') cancel();
     });
     overlay.addEventListener('keydown', (event) => {
+      // 弹框期间阻断场景键盘输入：第一人称的 WASD/视角快捷键挂在 document 上，
+      // overlay 是全屏浮层（fixed inset-0），在这里截停不冒泡；input 上的
+      // Enter/Escape 在目标阶段先执行，不受影响。鼠标点击已被浮层本身接住。
+      event.stopPropagation();
       if (event.key === 'Escape') cancel();
     });
     input.focus();
