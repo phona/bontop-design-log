@@ -44,10 +44,10 @@ v1 的全部举例经核实为真并保留，无具体候选、证据口径、�
 2. **~~ResizeObserver shim 长期归属~~（2026-11-04 已解决，#69）**：shim 已从 `HouseScene.test.ts` 文件级挪至 vitest 全局 setupFiles（`app/test-setup.ts`，经 `app/vitest.config.ts` 的 `test.setupFiles` 挂载），与具体测试文件解绑；承重墙性质不变——删 `app/test-setup.ts` = 45 条用例回到基线外新失败。基线失败行零增减（3 条真实红与挪动前逐条相同），基线文件说明已同步。
 3. **~~3D 点击多包只取首个~~（2026-11-03 已解决，#50）**：`revealPackageForObject` 对反查到多包的对象（如 floor_region 同属 PKG-060 铺贴与 PKG-130 美缝）现已打开流程图并全部标出 + 「同属 N 个包」提示由业主点选——原「只开首个包详情」的行为已按此替换。
 
-## 流程图任务残留 P2（2026-11-03 复核：余 3 条）
+## 流程图任务残留 P2（2026-11-04 复核：#67/#68 已修，余 1 条）
 
-4. **反向点击选中条先预设首个包**：多包共用对象时流程图已全部标出+提示，但选中条/详情目标仍取首个包。
-5. **节点卡片 100px 可能裁掉多阻塞原因**：阻塞原因多于两条时节点内文案可能溢出（待实测后定卡片高度或折叠）。
+4. **~~反向点击选中条先预设首个包~~（2026-11-04 已解决，#67）**：`revealPackageForObject` 反查到多包时选中态不再恒取 `packageIds[0]`——当前选中（深链/业主上次选择，经 `navigateToApproval` 的 `restoreFromHash` 恢复）仍命中本轮反查集合则保留（= 记住用户上次选择），否则清空：流程图全部标出 + 「同属 N 个包」提示 + 空选中条明示「请点选其中一个节点」，由业主点节点选。单包口径不变（仍落该包，`#pkg=` 深链不误伤）。回归测试：`App.test.ts` 三条（多包留空/保留命中/单包守门）+ `FlowChartPanel.test.ts` 空选中条指引。
+5. **~~节点卡片 100px 可能裁掉多阻塞原因~~（2026-11-04 已解决，#68）**：实测（`loadScheduleState` + `buildScheduleSnapshot` 全量包）阻塞最多的节点是 **PKG-000（5 条未关闭阻塞）**，PKG-030/040 各 4 条，PKG-160 三条；旧固定 `max-height:100px + overflow:hidden` 把它们整段静默吞掉。改为**卡片自适应高度 + 阻塞折叠**：卡片去掉 max-height/overflow（`min-height:84px` 保留），阻塞最多展开 2 条、每条最多 2 行（`-webkit-line-clamp` + ellipsis，全文进 title 悬浮提示），其余折成「还有 N 条」；行距不再固定（`ROW_PITCH=104` → 按行最高卡片估算高度 `estimateNodeCardHeight` 撑开，边端点随节点自身估算高度中点走），既不截断也不重叠。折叠掉的完整列表在选中条与详情页全量展开。回归测试：`FlowChartPanel.test.ts` 折叠文案 + 行几何断言。
 6. **`select.all` 即判全项目范围**：not_modelled 无选择器的 link 也归入「全项目范围」徽标，语义上与 select.all 混同。**2026-11-02 浏览器实测补充**：点位来源的 `select {all: true}` 同样只判全项目范围——PKG-040（水电）声明 electrical/plumbing select.all，本意「高亮全部水电点位」，实际解析出 0 个点位、按钮禁用。要做需把各来源的全部点位 id 喂进 resolvePackageScope（house.electrical/plumbing 等，sceneElements 不含点位）。**2026-11-04（issue #65）本条后半已解决**：点位来源（electrical/plumbing）的 all 展开成该分类全部点位，`house.electrical`/`house.plumbing` 随 `/api/project` 下发，PKG-040 得 137 个点位、按钮可用；其余来源的 all 维持全项目范围徽标。**仍未解决的前半**：not_modelled 无选择器的 link 与 select.all 在徽标上混同（`mapping_status: project_scope` 的链接也不按选择器猜，见 FlowChartPanel.capabilityOf）。
 7. **#49 正文测试数过时**：#49 合入时正文写「新增 31 条」，实算 38 条（7+6+10+8+7）；已合入的 PR 正文不再追溯修改，此处登记为过时记录。
 

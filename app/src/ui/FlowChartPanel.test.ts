@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { FlowChartPanel } from './FlowChartPanel.js';
+import { FlowChartPanel, estimateNodeCardHeight } from './FlowChartPanel.js';
 import { ScheduleSelectionStore } from '../state/schedule-selection.js';
 import type { ScheduleSnapshot, SchedulePackageView, ScheduleCheckView } from '@shared/schedule-state';
 
@@ -115,6 +115,15 @@ function snapshot(): ScheduleSnapshot {
         sequence: 40,
         dependencies: ['PKG-020'],
         payment_gate: 'GATE-040-A',
+        // #68 回归：4 条未关闭阻塞，镜像真实 control.yaml 里 PKG-040 的
+        // BLK-HVAC-DEEPENING / MEP-INTERFACE-FREEZE / CABINET-FREEZE-FOR-MEP /
+        // SURVEY-DATA-FREEZE（实测阻塞最多的是 PKG-000 共 5 条，PKG-030/040 各 4 条）。
+        blockers: [
+          {id: 'BLK-HVAC-DEEPENING', item: '中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审', status: 'site_pending', clears_when: '空调、设计和施工三方签认深化图', closed: false},
+          {id: 'BLK-MEP-INTERFACE-FREEZE', item: '水电与中央空调的接口未联合冻结', status: 'alignment_required', clears_when: '四方联合交底并签认', closed: false},
+          {id: 'BLK-CABINET-FREEZE-FOR-MEP', item: '橱柜深化图是水电点位的 owner 但尚未冻结', status: 'alignment_required', clears_when: '橱柜深化图与水电点位表双向核对完成', closed: false},
+          {id: 'BLK-SURVEY-DATA-FREEZE', item: '影响水电与中央空调施工的现场数据尚未全部实测', status: 'site_pending', clears_when: '逐项转为实测值或显式豁免', closed: false},
+        ],
         checks: [check({id: 'SCH-040-01', item: '空鼓率', audit_status: 'pending'})],
       }),
       pkg({
@@ -249,6 +258,12 @@ function installDom(): void {
 
 const layerOf = (packageId: string): string | null =>
   document.querySelector(`.flow-node[data-pkg-id="${packageId}"]`)?.getAttribute('data-layer') ?? null;
+
+const topOf = (packageId: string): number =>
+  parseFloat((document.querySelector(`.flow-node[data-pkg-id="${packageId}"]`) as HTMLElement).style.top);
+
+const fixturePkg = (packageId: string): SchedulePackageView =>
+  snapshot().packages.find((item) => item.id === packageId)!;
 
 describe('FlowChartPanel', () => {
   beforeEach(() => {
@@ -453,6 +468,127 @@ describe('FlowChartPanel', () => {
     panel.highlightPackages(['PKG-020']);
     expect(document.querySelector('#flow-reverse-hint')).toBeNull();
     expect((document.querySelector('.flow-node[data-pkg-id="PKG-020"]') as HTMLElement).dataset.highlight).toBe('true');
+  });
+
+  // #67：多包 3D 反查时选中态不预设首个包（App 侧不再 set 首个包 id）。面板侧
+  // 的契约：空选中条必须给「点哪个、点完看什么」的明确指引，点节点后选中条
+  // 即该包摘要（卡片里折掉的阻塞原因在这里全量展开）。
+  it('多包反查后选中态留空：空选中条给点选指引，点节点后选中条即详情摘要', async () => {
+    stubFetch();
+    const selection = new ScheduleSelectionStore();
+    const panel = new FlowChartPanel(selection);
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-030"]')).toBeTruthy());
+
+    panel.highlightPackages(['PKG-030', 'PKG-040']);
+
+    const hint = document.querySelector('#flow-reverse-hint') as HTMLElement;
+    expect(hint.textContent).toContain('该 3D 对象同属 2 个包，已全部标出（PKG-030、PKG-040）');
+    expect(hint.textContent).toContain('请点选其中一个节点');
+    expect(hint.textContent).toContain('未预设首个包');
+
+    // 选中态留空（没有预设 PKG-030）：空选中条带多包反查指引，且不渲染详情按钮
+    const emptyBar = document.querySelector('#flow-selection-bar') as HTMLElement;
+    expect(emptyBar.textContent).toContain('还没有选中工作包');
+    expect(emptyBar.textContent).toContain('3D 反查命中 2 个包');
+    expect(emptyBar.textContent).toContain('请点选其中一个节点查看详情');
+    expect(document.querySelector('#flow-open-detail')).toBeNull();
+
+    // 业主点节点 → 选中条显示该包摘要，卡片里折掉的阻塞原因在这里全量展开
+    (document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement).click();
+    const bar = document.querySelector('#flow-selection-bar') as HTMLElement;
+    expect(bar.textContent).toContain('瓦工铺贴');
+    expect(bar.textContent).toContain('未关闭阻塞');
+    expect(bar.textContent).toContain('橱柜深化图是水电点位的 owner 但尚未冻结');
+  });
+
+  // #68：卡片不再固定 100px + overflow:hidden 静默截断；阻塞多于两条时折叠为
+  // 「还有 N 条」（全文进 title 悬浮提示与选中条），行距按本行最高卡片撑开，
+  // 相邻行永不重叠。实测依据：真实快照阻塞最多的节点是 PKG-000（5 条未关闭
+  // 阻塞），PKG-030/040 各 4 条——fixture 的 PKG-040 即按 4 条构造。
+  it('阻塞折叠 + 自适应行高：多于两条只展开前两条，行距按卡片高度撑开不重叠', async () => {
+    stubFetch();
+    const panel = new FlowChartPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-040"]')).toBeTruthy());
+
+    const node040 = document.querySelector('.flow-node[data-pkg-id="PKG-040"]') as HTMLElement;
+    // 前两条展开、后两条折叠；被折掉的全文仍在 title 悬浮提示里（不静默丢失）
+    expect(node040.textContent).toContain('中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审');
+    expect(node040.textContent).toContain('水电与中央空调的接口未联合冻结');
+    expect(node040.textContent).not.toContain('橱柜深化图是水电点位的 owner');
+    expect(node040.textContent).not.toContain('影响水电与中央空调施工的现场数据尚未全部实测');
+    expect(node040.textContent).toContain('还有 2 条阻塞原因');
+    expect(node040.title).toContain('橱柜深化图是水电点位的 owner 但尚未冻结');
+    expect(node040.title).toContain('影响水电与中央空调施工的现场数据尚未全部实测');
+    // 旧病锚点：固定 max-height:100px + overflow:hidden 已移除，min-height 保留
+    expect(node040.style.maxHeight).toBe('');
+    expect(node040.getAttribute('style')).not.toContain('overflow:hidden');
+    expect(node040.style.minHeight).toBe('84px');
+
+    // 行几何：row0 = {PKG-010/020/030/070/080}，row1 = {PKG-040}，row2 = {PKG-050}
+    // （layer→列、层内序号→行）。下一行 top = 本行 top + 本行最高卡片估算高度 + 行距。
+    const row0Height = Math.max(
+      estimateNodeCardHeight(fixturePkg('PKG-010')),
+      estimateNodeCardHeight(fixturePkg('PKG-020')),
+      estimateNodeCardHeight(fixturePkg('PKG-030')),
+      estimateNodeCardHeight(fixturePkg('PKG-070')),
+      estimateNodeCardHeight(fixturePkg('PKG-080')),
+    );
+    expect(topOf('PKG-040')).toBe(16 + row0Height + 8);
+    expect(topOf('PKG-050')).toBe(topOf('PKG-040') + estimateNodeCardHeight(fixturePkg('PKG-040')) + 8);
+    // 画布高度装得下最后一行（含底部内边距）
+    const canvasInner = document.querySelector('#flow-chart-canvas > div') as HTMLElement;
+    expect(parseFloat(canvasInner.style.height)).toBeGreaterThanOrEqual(topOf('PKG-050') + estimateNodeCardHeight(fixturePkg('PKG-050')) + 16);
+  });
+
+  // 「还有 N 条」折叠长句在 ~184px 卡宽内必然换行（10px 字号，仅 26 个全角字符
+  // 就 260px）：高度估算只按固定一行加会把多阻塞节点的卡片算低，行坐标、画布
+  // 高度与边端点整套跟着偏低，相邻行卡片互相压住（codex major）。修法：估算按
+  // 实际文案走同文件 textLinesOf 算行数（选它而非实测：jsdom 不做布局，
+  // offsetHeight 恒 0，行坐标/画布/边端点要确定性数值，估算同时是测试唯一口径）。
+  // 验收口径：镜像真实快照 PKG-000 的五条未关闭阻塞（全项目最多；item/解除条件
+  // 逐字取 schedule/phase-1/control.yaml 的 global_blockers）。
+  it('「还有 N 条」换行计入高度估算：PKG-000 五条阻塞形态下卡片不被算低、相邻行不重叠', async () => {
+    const pkg000Blockers = [
+      {id: 'BLK-HANDOVER', item: '尚未交房，无法完成现场量房及房屋查验', status: 'site_pending', clears_when: '交房查验完成并归档现场记录', closed: false},
+      {id: 'BLK-STRUCTURE', item: '墙体结构、梁底及允许打孔或穿墙条件未确认', status: 'site_pending', clears_when: '结构资料与现场复核结果完成会签', closed: false},
+      {id: 'BLK-HVAC-DEEPENING', item: '中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审', status: 'site_pending', clears_when: '空调、设计和施工三方签认深化图', closed: false},
+      {id: 'BLK-GAS-DOOR', item: '燃气厨房门的现场验收要求未确认', status: 'site_pending', clears_when: '燃气单位或物业书面确认厨房分隔要求', closed: false},
+      {id: 'BLK-SURVEY-DATA-FREEZE', item: '影响水电与中央空调施工的现场数据尚未全部实测、显式豁免或登记为阻塞；当前清单和数据状态见 docs/pending-site-data.md', status: 'site_pending', clears_when: '影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 docs/pending-site-data.md', closed: false},
+    ];
+    const snap = snapshot();
+    const byId = (id: string) => snap.packages.find((item) => item.id === id)!;
+    // PKG-000 的五条未关闭阻塞挂到 row0 的 PKG-010 上（不改共享 fixture）
+    byId('PKG-010').blockers = pkg000Blockers;
+    stubFetch(snap);
+    const panel = new FlowChartPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.flow-node[data-pkg-id="PKG-010"]')).toBeTruthy());
+
+    // 折叠行整句进 DOM（渲染与估算共用同一份文案，禁两份各写）
+    const node010 = document.querySelector('.flow-node[data-pkg-id="PKG-010"]') as HTMLElement;
+    expect(node010.textContent).toContain('还有 3 条阻塞原因（点此节点，完整列表见下方选中条与详情）');
+
+    // 折叠行按换行计高：与「只留前两条、无折叠行」的同包相比，差值 ≥ 两行
+    // small 行高（15px）+ margin（2px）——旧实现只加固定一行（15+2），PKG-000
+    // 这类五条阻塞的节点会被算低 15px，压住下一行。
+    const pkg010NoFold = {...byId('PKG-010'), blockers: pkg000Blockers.slice(0, 2)};
+    expect(estimateNodeCardHeight(byId('PKG-010')) - estimateNodeCardHeight(pkg010NoFold)).toBeGreaterThanOrEqual(2 * 15 + 2);
+
+    // 行几何不重叠：PKG-010 在 row0（现为全行最高卡），下一行 top = 本行 top +
+    // 本行最高卡片估算高度 + 行距；画布高度装下最后一行。
+    const row0Height = Math.max(
+      estimateNodeCardHeight(byId('PKG-010')),
+      estimateNodeCardHeight(byId('PKG-020')),
+      estimateNodeCardHeight(byId('PKG-030')),
+      estimateNodeCardHeight(byId('PKG-070')),
+      estimateNodeCardHeight(byId('PKG-080')),
+    );
+    expect(topOf('PKG-040')).toBe(16 + row0Height + 8);
+    expect(topOf('PKG-050')).toBe(topOf('PKG-040') + estimateNodeCardHeight(byId('PKG-040')) + 8);
+    const canvasInner = document.querySelector('#flow-chart-canvas > div') as HTMLElement;
+    expect(parseFloat(canvasInner.style.height)).toBeGreaterThanOrEqual(topOf('PKG-050') + estimateNodeCardHeight(byId('PKG-050')) + 16);
   });
 
   it('selection store 预设 packageId 后 show() 恢复 active 节点与选中条（#pkg= 深链）', async () => {

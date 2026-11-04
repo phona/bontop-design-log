@@ -1329,9 +1329,10 @@ export class App {
     }
     const packageIds = this.objectPackageIndex.get(objectId);
     if (!packageIds?.length) return;
-    // 选中与 hash 落在首个包（详情/分享链接需要一个确定目标），但多包共用对象
-    // 时绝不静默取首个（2026-11-02 流程图任务验收标准）：
-    //  - 多包 → 打开流程图，全部节点标出 + 「同属 N 个包」提示，由业主点选；
+    // 选中与 hash：单包落在该包（详情/分享链接需要一个确定目标）；**多包不预设
+    // 首个包**（#67：旧实现反查到多包时选中条/详情目标恒取 packageIds[0]，业主
+    // 想看的另一个包被静默替换）——
+    //  - 多包 → 打开流程图，全部节点标出 + 「同属 N 个包」提示，由业主点节点选；
     //  - 单包且流程图正开着 → 留在流程图反查高亮（选中条即详情摘要，「完整详情」一键可达，
     //    切去详情页会让刚标亮的节点消失，双向联动就断了）；
     //  - 单包且流程图没开 → 维持 #49 行为：打开详情页。
@@ -1349,8 +1350,19 @@ export class App {
     } else {
       this.navigateToApproval('detail');
     }
-    // 选中与 hash 落在首个包（详情/分享链接需要一个确定目标）
-    this.scheduleSelection?.set({packageId: packageIds[0], checkId: null});
+    if (packageIds.length > 1) {
+      // #67：选中态不预设首个包。navigateToApproval 已把地址栏里的选中（深链或
+      // 业主上次选择）经 restoreFromHash 恢复进 store——它若仍命中本轮反查集合
+      // 就保留（= 记住用户上次选择，不用重新点）；否则清空，选中条显示「还没有
+      // 选中 + 反查提示」，由业主点节点选。清空也顺带把 hash 里无关的旧 pkg 抹掉。
+      const currentPackageId = this.scheduleSelection?.get().packageId ?? null;
+      if (!currentPackageId || !packageIds.includes(currentPackageId)) {
+        this.scheduleSelection?.set({packageId: null, checkId: null});
+      }
+    } else {
+      // 选中与 hash 落在首个包（详情/分享链接需要一个确定目标）
+      this.scheduleSelection?.set({packageId: packageIds[0], checkId: null});
+    }
   }
 
   // ─── 顶栏收敛：图层抽屉 / 告警聚合 / 弹出面板 ───
