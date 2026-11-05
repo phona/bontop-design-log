@@ -205,6 +205,14 @@ waivers:
     owner: 业主
     expires: 2027-06-30
 
+  - id: robot_dock_in_gbath_vanity_bay
+    rule: pen.furniture.furniture
+    pair: [furniture:guest_bath:vanity:0, furniture:guest_bath:robot_dock_gbath:4]
+    kind: contained
+    reason: "客卫台盆下开放格（DEC-2026-11-04-R4，2026-11-05 几何落地）：基站 410×433×280mm 泊入格内，格净宽 0.51m（两侧各 0.05m）、深 0.50m、顶余 0.45m，零件层面不相交；vanity 包络是含空腔的并集，AABB 重叠属内含关系而非互撞"
+    owner: 业主
+    expires: 2027-06-30
+
   - id: dressing_stool_storage
     rule: pen.furniture.furniture
     pair: [furniture:master_bedroom:dressing_stool:7, furniture:master_bedroom:master_dressing_table:6]

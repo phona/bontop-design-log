@@ -719,12 +719,17 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // DEC-2026-09-09-R6：客卫台盆柜改悬空抽屉柜（底缘 y=0.30 以下留空），为台下扫地机基站（robot_dock_gbath）让出机位；
-    // 底缘 0.55→0.30：按业主选定云鲸 J6 上下水版实尺寸（0.198 高）收紧，柜体加深至 0.49m。
-    // 2026-11-03 业主拍板改 JX 超薄上下水版（0.280 高，DEC-2026-11-03-R1，现行候选非最终锁定）：底缘 0.30 不变，基站顶余 20mm。
+    // DEC-2026-11-04-R4（2026-11-05 几何落地）：客卫台盆下开放格，取代塞柜底方案。
+    // 不做整块柜身：中央机器人格净宽 0.51m（基站 0.41m + 两侧各 0.05m），深 0.50m，顶部空到盆底 0.75m；
+    // 两侧板厚 0.02m 立到台面下，格旁各 0.075m 宽旁柜（y[0.30,0.75]，只放卫浴用品与机器人备用件）；
+    // 正面门板位置与底缝已建模（遮上半 y[0.15,0.75]，底缝 0.15m 供机器人高 0.095m 关门进出）；门板为静态建模，铰接/按压开启态与水平拉出路径待预演，拉出整台断管为设计目标、未经模型验证。
     type: 'vanity',
     parts: [
-      { shape: 'box', size: [0.70, 0.49, 0.48], position: [0, 0.545, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.02, 0.75, 0.50], position: [-0.265, 0.375, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-robot-bay-side-panel-south', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.02, 0.75, 0.50], position: [0.265, 0.375, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-robot-bay-side-panel-north', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.075, 0.45, 0.48], position: [-0.3125, 0.525, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-side-cabinet-south', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.075, 0.45, 0.48], position: [0.3125, 0.525, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-side-cabinet-north', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.51, 0.60, 0.02], position: [0, 0.45, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-robot-bay-door', materialRole: 'cabinet_body' },
       { shape: 'box', size: [0.42, 0.12, 0.28], position: [0, 0.81, -0.05], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
       // 台面 + 标准墙面龙头；龙头由 guest_bath plumbing 点位统一生成。
       // DEC-2026-09-09-R2：内置平镜移出，镜面由 mirror_cabinet_gbath 镜柜承担（避免双镜）。
@@ -733,15 +738,15 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下）：原按业主选定云鲸 J6 上下水版实尺寸 0.41宽×0.4335深×0.198高；2026-11-03 拍板改 JX（0.41×0.433×0.280，顶余 20mm，DEC-2026-11-03-R1）。
-    // 低矮底座+背沿（无水箱塔）；背沿在 local -z（rotation=270 后朝东贴墙）；机器人泊口朝西（房间侧）。
-    // 电源 sock_gbath_robot（7.05,4.10,h0.3）在基站背沿上方墙面，低位可见可检修。
+    // DEC-2026-11-04-R4（2026-11-05 几何落地）：云鲸 JX 超薄上下水版 YJCC034，410×433×280mm。
+    // 塔形基站立于 0.01m 防漏托盘上，顶（含盖板）0.30m，距盆底 0.75m 余 0.45m（开盖约 0.25m 笔记口径在内）；
+    // 机器人泊口朝西（房间侧），正面门板底缝 0.15m 高于机器人 0.095m。
+    // 电源 sock_gbath_robot 迁仓侧面后定新坐标，旧坐标（7.05,4.10）不得用于下单。
     type: 'robot_dock_gbath',
     parts: [
-      { shape: 'box', size: [0.41, 0.05, 0.4335], position: [0, 0.025, 0], color: '#3a3f45', roughness: 0.5, part: 'dock-base', materialRole: 'fixture_body' },
-      { shape: 'box', size: [0.41, 0.15, 0.08], position: [0, 0.124, -0.177], color: '#e8e9eb', roughness: 0.4, part: 'dock-back-lip', materialRole: 'cabinet_body' },
-      { shape: 'cylinder', size: [0.17, 0.10, 0.17], position: [0, 0.05, 0.06], color: '#f4f5f6', roughness: 0.35, part: 'dock-robot', materialRole: 'fixture_body' },
-      { shape: 'cylinder', size: [0.05, 0.105, 0.05], position: [0, 0.052, 0.06], color: '#3a3f45', roughness: 0.5, part: 'dock-robot-lidar', materialRole: 'fixture_body' },
+      { shape: 'box', size: [0.41, 0.01, 0.433], position: [0, 0.005, 0], color: '#9a9a9a', roughness: 0.5, part: 'dock-leak-tray', materialRole: 'fixture_body' },
+      { shape: 'box', size: [0.41, 0.28, 0.433], position: [0, 0.15, 0], color: '#3a3f45', roughness: 0.5, part: 'dock-base', materialRole: 'fixture_body' },
+      { shape: 'box', size: [0.39, 0.01, 0.41], position: [0, 0.295, 0], color: '#e8e9eb', roughness: 0.4, part: 'dock-lid', materialRole: 'cabinet_body' },
     ],
   },
   {
