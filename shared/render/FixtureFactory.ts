@@ -722,7 +722,7 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     // DEC-2026-11-04-R4（2026-11-05 几何落地）：客卫台盆下开放格，取代塞柜底方案。
     // 不做整块柜身：中央机器人格净宽 0.51m（基站 0.41m + 两侧各 0.05m），深 0.50m，顶部空到盆底 0.75m；
     // 两侧板厚 0.02m 立到台面下，格旁各 0.075m 宽旁柜（y[0.30,0.75]，只放卫浴用品与机器人备用件）；
-    // 正面可开启门板遮上半 y[0.15,0.75]，底缝 0.15m 供机器人（高 0.095m）关门进出；门开启后可水平拉出整台基站断管。
+    // 正面门板位置与底缝已建模（遮上半 y[0.15,0.75]，底缝 0.15m 供机器人高 0.095m 关门进出）；门板为静态建模，铰接/按压开启态与水平拉出路径待预演，拉出整台断管为设计目标、未经模型验证。
     type: 'vanity',
     parts: [
       { shape: 'box', size: [0.02, 0.75, 0.50], position: [-0.265, 0.375, 0], color: '#f0f0f0', roughness: 0.4, part: 'vanity-robot-bay-side-panel-south', materialRole: 'cabinet_body' },
@@ -744,7 +744,7 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     // 电源 sock_gbath_robot 迁仓侧面后定新坐标，旧坐标（7.05,4.10）不得用于下单。
     type: 'robot_dock_gbath',
     parts: [
-      { shape: 'box', size: [0.43, 0.01, 0.45], position: [0, 0.005, 0], color: '#9a9a9a', roughness: 0.5, part: 'dock-leak-tray', materialRole: 'fixture_body' },
+      { shape: 'box', size: [0.41, 0.01, 0.433], position: [0, 0.005, 0], color: '#9a9a9a', roughness: 0.5, part: 'dock-leak-tray', materialRole: 'fixture_body' },
       { shape: 'box', size: [0.41, 0.28, 0.433], position: [0, 0.15, 0], color: '#3a3f45', roughness: 0.5, part: 'dock-base', materialRole: 'fixture_body' },
       { shape: 'box', size: [0.39, 0.01, 0.41], position: [0, 0.295, 0], color: '#e8e9eb', roughness: 0.4, part: 'dock-lid', materialRole: 'cabinet_body' },
     ],
