@@ -6,9 +6,9 @@ meta:
   schema: design-iterations-index/v2
   generated: true
   established: '2026-10-20'
-  dir_count: 65
+  dir_count: 66
   stray_file_count: 1
-  external_refs_total: 153
+  external_refs_total: 154
   field_provenance:
     topic: round.yaml index.topic 原文（原按目录名前缀归类，命名事实）
     review_state: round.yaml index.review_state 原文（来自原 review-manifest 的 state/status 字段；无 manifest 记 none）
@@ -421,6 +421,11 @@ entries:
     supersedes: none
     external_refs: 1
     note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 archive/master-bedroom-bedside-electrical fact-table 1 处引用）
+  - dir: robot-bay-layout-decision-20261105
+    topic: general
+    review_state: delivery_ready
+    supersedes: robot-dock-reservation-20260909
+    external_refs: 1
   - dir: archive/visual-calibration-floor-angle-20261015
     topic: general
     review_state: delivery_ready

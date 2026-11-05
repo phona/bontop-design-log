@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:e9cec094622f2d17208589b008972ee35189787d3d75b1eb8cf98bda3dd5cfc9 -->
+     inputs-fingerprint: sha256:931fac34bc4c857d54bccbbd3301112dfebbfacca95445607793d30af1bbdc18 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -71,7 +71,7 @@
 
 | 口径 | 现行值 | 权威源（file:line） | 备注 |
 |---|---|---|---|
-| 待决台账条数 | 74 条编号 | docs/pending-site-data.md:3 | #1–#74 + #3a 子项 = 75 行；fact.pending_site_data_count 锚在表头，新增/关闭必须同步编号数 ※ |
+| 待决台账条数 | 77 条编号 | docs/pending-site-data.md:3 | #1–#77 + #3a 子项 = 78 行；fact.pending_site_data_count 锚在表头，新增/关闭必须同步编号数 ※ |
 | #30 强电箱规格 | pending（单/双排、回路数、进线截面） | docs/pending-site-data.md:105 | 20 路 + 2P + 浪涌需双排；1.65m 底边仅在双排时合规 |
 | #39 暖通待验证项 | pending（外机实测尺寸/平台散热/厂家配电图/风口加长计价/冷负荷计算书） | docs/pending-site-data.md:115 | 已成交 36000，但上述项闭环前不冻结施工 |
 

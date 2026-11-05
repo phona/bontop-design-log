@@ -1,0 +1,194 @@
+# 本轮的全部结构化记录（brief/datum/fact_table/objects/review 一件套）。
+# INDEX.yaml 由 scripts/docs/generate-iteration-index.ts 从本文件的 index 段生成，勿手改 INDEX。
+schema: design-iteration-round/v1
+iteration_id: robot-bay-layout-decision-20261105
+index:
+  order: 65
+  topic: general
+  review_state: delivery_ready
+  supersedes: robot-dock-reservation-20260909
+brief:
+  iteration_id: robot-bay-layout-decision-20261105
+  state: delivery_ready
+  frozen: true
+  alignment:
+    id: robot-bay-layout-20261105
+    original_request: "业主对 PR #96 落地几何的两轮质疑——「怎么感觉一整个柜子都用来放基站了」「还有 0.25m 左右可以用来做收纳呀」「机器人不居中，align left 呢」「丙也太丑也没有收纳」；并要求并行预研后判断「我们的设计足够通用吗」"
+    normalized_decision: 定案「仓+抽屉」布局（DEC-2026-11-05-R5）：柜宽 0.70→0.72 = 北端机器人仓区 0.50（净宽 0.46 = 基站 410+两侧各 30）+ 南端抽屉区 0.22（通顶双抽落地，约 70L 封闭储物）；仓贴北端（排水穿墙端），dock z 3.925→3.815；头顶 0.45m 改为排水过管走廊、禁固定层板。甲案（头顶层板 51L）与乙案（align-left 合并立柱）否决，丙案（居中格+旁柜）作废
+    timestamp: '2026-11-05'
+    history: 工作流三方案并行设计+独立审案（甲=需修改/乙=需修改/丙=需修改）→ J65/J64 官方手册取证（前面板取袋证伪 R3 上盖理由）→ 科沃斯/石头官方口径预研（通用性：宽/高/前/路径通用，深度 0.50 与水压为硬约束）→ 业主画图对比后选定仓+抽屉并否决丙案
+  priority:
+    - 立面是正常浴室柜语言（业主审美一票）
+    - 跨品牌通用包络（宽≤41/深≤45/高≤30cm 基站 + 前面板/顶盖双取袋路径）
+    - 封闭储物（卫浴环境防溅防尘）
+    - 既有 DEC 口径最小翻转（水电三件不变：台盆三通/墙排沉箱/侧面插座）
+  allowed_scope:
+    - shared/render/FixtureFactory.ts（type:'vanity' 几何）
+    - config/house.yaml（dock 坐标与登记注释）
+    - config/acceptance.yaml（开盖未闭环项改写）
+    - docs/decisions/04-bathrooms.md（DEC-2026-11-05-R5）
+    - docs/decisions/01-control-budget.md（R3 证伪标注）
+    - schedule/procurement.md（手册+三方通用性登记）
+    - docs/pending-site-data.md（#75-77）
+    - docs/design-iterations/robot-bay-layout-decision-20261105/*
+  forbidden:
+    - 改动水电位（faucet_gbath_vanity / drain-gbath-vanity-to-riser / sock_gbath_robot 现状坐标）
+    - 头顶加固定层板（过管走廊+通用性）
+    - git 操作
+  open_questions:
+    - id: cabinet_drawing_basis
+      status: site_pending
+      question: "柜体出图基准——2026-11-06 柜/dock 背沿已按渲染口径贴墙面西脸 7.14（SceneBuilder 将 0.12 墙板居中于墙线 7.20，shared/three-scene-geometry.ts:166 同口径）；但 DEC-2026-10-23-R04 的结构读法为「墙带西脸 7.20」，7.14/7.20 两值仍待量房 #76 裁定（偏差 >0.03m 级联回改柜/dock x）；0.72 柜落 0.75 墙段每端容差仅 15mm，0.69m 完成面净跨内现行几何已压墙带 3.5-4.5cm"
+      handling: "量尺复尺（pending #76）；净跨 <0.73m 或墙面不平 >5mm 时柜宽退回 0.70 并重算抽屉区宽度"
+    - id: water_pressure
+      status: site_pending
+      question: 台盆三通处进水压实测（JX 窗口 0.08-0.8MPa；石头 0.1-0.4 且官方不带减压阀）
+      handling: "水电交底实测（pending #75）；>0.4MPa 必须预留减压阀位"
+    - id: official_survey
+      status: site_pending
+      question: 柜内安装三家官方均无章节（科沃斯除外）；背贴死+背面水口软管走向、前面板取袋空间、整台前拉路径需官方勘测放行
+      handling: "柜体下单后预约云鲸官方（pending #77）；三项操作空间任何一项不过即回 acceptance 未闭环"
+    - id: door_open_state
+      status: pending
+      question: 仓门开启态与整台前拉路径未经模型预演（门为静态建模）；门开度≥110° 或设止位
+      handling: 本轮 follow-up；安装现场预演并拍照回填 acceptance 证据
+  acceptance:
+    commands:
+      - npm run verify:furniture
+      - npm run verify:all
+      - npm run typecheck
+      - npm run test:server
+    evidence: verify:furniture OK（2 warnings 与基线同）；verify:all 22/23（唯一红 verify-mep 与基线同数）；typecheck 干净；test:server 1264 pass / 0 fail；verify-current-values 0 error（重生成）；verify-schedule 通过（render 重生成三份 checklist）
+datum:
+  iteration_id: robot-bay-layout-decision-20261105
+  anchor: wall_anchor
+  datum:
+    - id: vanity_body
+      anchor:
+        wall: w_gbath_east_open_vanity
+        wall_side: west
+      geometry: 柜体 0.72（沿墙 z）× 0.50（进深 x），背贴墙面西脸 7.14（墙线 7.20−半墙厚 0.06）；台面 0.72×0.04 @ y0.77；盆底=仓顶=台面下沿 0.75
+    - id: robot_bay
+      anchor:
+        wall: w_gbath_east_open_vanity
+        wall_side: west
+      geometry: 仓区世界 z[3.565,4.065]（贴北端=排水穿墙端），净宽 0.46、深 0.50、无底板、通高 0.75；仓门 0.46×0.60 @ y[0.15,0.75] 铰北侧外开；底缝 0.15
+    - id: drawer_zone
+      anchor:
+        wall: w_gbath_east_open_vanity
+        wall_side: west
+      geometry: 抽屉区世界 z[4.065,4.285]，通顶双抽落地 y[0.03,0.75]，carcass 0.18×0.72×0.46，前面板 0.20×0.36×2；封闭储物约 70L
+    - id: robot_dock_gbath
+      anchor:
+        wall: w_gbath_east_open_vanity
+        wall_side: west
+      geometry: x=6.9235（背沿贴 7.14）、z=3.815（仓区中点，自 3.925 北移 0.11）、rotation=270；JX 塔形 410×433×280 立 0.01 托盘，顶 0.30，头顶余 0.45=排水过管走廊
+fact_table:
+  - id: j65_manual_front_panel_bag
+    claim: 云鲸 JX 超薄上下水版（YJCC034+YJCB034S）尘袋与清洁液均在基站前面板后取放，全册无顶部开盖机构
+    source: J65 官方说明书 p7 步骤 7/8（tmp/capture/jx-manual-2.pdf，2026-05-14 版，渲染原图逐页读取）
+    evidence: official
+    status: verified
+  - id: j65_manual_specs
+    claim: J65 参数页——基站 410×433×280mm/8.71kg/进水压力 0.08-0.8MPa；机器人 351.2×363.5×95mm/4.97kg/14.4V≥4900mAh；摆放前方≥0.45m+后≥0.3m（水平）
+    source: J65 官方说明书 p6/p9（tmp/capture/jx-manual-2.pdf）
+    evidence: official
+    status: verified
+  - id: r3_top_lid_premise_falsified
+    claim: DEC-2026-11-04-R3 的推翻理由「换尘袋需打开基站上盖、顶部约需 25cm」对超薄版被官方手册证伪；R3 其余理由与专用仓方案不受影响
+    source: J65 p5（部件图无顶盖）/p7（前面板步骤）；docs/decisions/01-control-budget.md R3 证伪标注
+    evidence: official
+    status: verified
+  - id: splash_500_case_unfounded
+    claim: 「浴室溅水渗入主板烧机、维修约 ¥500」未找到任何独立案例来源；可查进水损坏均为基站渗水/上下水模块漏水/进水管脆断泡地板，主板维修实际口径 700-1800 元
+    source: 工作流独立调研（smzdm 案例汇总全文检索：主板/烧机/浴室/溅水零命中）
+    evidence: community
+    status: verified
+  - id: cross_brand_fit
+    claim: 现仓包络（净宽 0.46×深 0.50×高 0.75、前 0.88、底缝 0.15、双取袋路径）对科沃斯 T80S PLUS（410×449×247，装得下但深度贴上限：官方预留 480 vs 仓深 500 仅余 20mm）与石头 Vida（手册不载脚印，条件性可装）通用；硬约束=深度 0.50 与水压未实测
+    source: 科沃斯官方说明书（2026-08-31 版，官网下载，p8/p25）；石头 Vida 上下水版说明书（p8/p15，tmp/capture/roborock-doc.pdf）
+    evidence: official
+    status: verified
+  - id: shelf_blocked_by_drain_corridor
+    claim: 头顶 0.45m 为台盆排水过管走廊（下水器仓内转 90° 向北穿 w_gbath_south），固定层板不可行；甲案另因堵石头顶盖取袋路径与 JX 无顶部操作需求而否决
+    source: DEC-2026-11-05-R5 + 审案人·甲/乙/丙三条独立审案意见
+    evidence: official
+    status: verified
+objects:
+  schema: interior-design-object-manifest/v3
+  project: bontop-design-log
+  iteration_id: robot-bay-layout-decision-20261105
+  subject: 客卫台盆柜「仓+抽屉」几何落地（FixtureFactory type:'vanity' 重写）
+  object_policy:
+    fixed_count_required: true
+    split_by:
+      - function
+      - owner
+      - material
+  deleted:
+    - part: vanity-robot-bay-side-panel-south
+      reason: 居中格两侧板随 R4 几何作废（DEC-2026-11-05-R5 推翻项 1）
+    - part: vanity-robot-bay-side-panel-north
+      reason: 同上
+    - part: vanity-side-cabinet-south
+      reason: 0.075m 浮动旁柜（32L 开放格）被抽屉区取代
+    - part: vanity-side-cabinet-north
+      reason: 同上
+    - part: vanity-robot-bay-door
+      reason: 0.51m 中门改为 0.46m 仓门（铰北侧）
+  added:
+    - part: vanity-bay-north-end-panel
+      spec: 0.02×0.75×0.50 @ local x=-0.35（世界 z[3.565,3.585]，柜体北端板）
+    - part: vanity-bay-drawer-divider
+      spec: 0.02×0.75×0.50 @ local x=+0.13（仓/抽屉隔板，world z[4.045,4.065]）
+    - part: vanity-drawer-south-end-panel
+      spec: 0.02×0.75×0.50 @ local x=+0.35（柜体南端板）
+    - part: vanity-robot-bay-door
+      spec: 0.46×0.60×0.02 @ y[0.15,0.75]，铰北侧外开（静态建模）
+    - part: vanity-drawer-carcass
+      spec: 0.18×0.72×0.46 @ y[0.03,0.75]（抽屉区 carcass）
+    - part: vanity-drawer-front-upper
+      spec: 0.20×0.36×0.02 @ y[0.39,0.75]
+    - part: vanity-drawer-front-lower
+      spec: 0.20×0.36×0.02 @ y[0.03,0.39]
+  unchanged:
+    - part: countertop
+      spec: 0.72×0.04×0.50（柜宽随墙段 0.75 加到 0.72，台面同宽）
+    - part: basin
+      spec: 0.42×0.12×0.28 台上盆居中（z=3.925，仓/抽屉分界上方）
+review:
+  schema: interior-design-review-manifest/v3
+  project: bontop-design-log
+  iteration_id: robot-bay-layout-decision-20261105
+  subject: 三方案并行设计 + 独立审案 + 关键事实独立核实（工作流 dwfrun-94221cb2）
+  state: delivery_ready
+  state_note: 三套方案均经未参与设计的审案人审过（甲/乙/丙=需修改）；16 条 tier-1 关键事实经独立核实员复核（11 成立、5 未取得）；乙案因排水路由硬伤+四假陈述否决、甲案因过管走廊+通用性收窄否决、丙案因业主审美否决；DEC-2026-11-05-R5 定案仓+抽屉。独立读者已审方案文档。
+  source_version:
+    config_refs:
+      - config/house.yaml
+      - shared/render/FixtureFactory.ts
+      - config/acceptance.yaml
+      - schedule/procurement.md
+    asset_refs:
+      - tmp/capture/jx-manual-2.pdf
+      - tmp/capture/jx-manual-attachment.pdf
+      - tmp/capture/roborock-doc.pdf
+    render_facts_ref: verify:furniture / verify:all / typecheck / test:server 四连（见 brief.acceptance）
+    source_digest: robot-bay-layout-decision-20261105-r5
+    generated_at: '2026-11-05T19:55:00+08:00'
+  validation:
+    commands:
+      - npm run verify:furniture
+      - npm run verify:all
+      - npm run typecheck
+      - npm run test:server
+      - npm run docs:generate-current-values
+      - npm run schedule:render
+  deleted_in_rewrite:
+    - R4 居中格+两条旁柜几何（32L 开放格）
+    - 甲案头顶层板（51L）与乙案合并立柱（41-86L）两条候选
+  silent_failure_conditions:
+    - 头顶层板若被后续会话「好心」加回 → 堵排水过管走廊 + 石头顶盖取袋路径（acceptance standard 已钉死表述）
+    - dock z 坐标若被「保持不动」惯性保留 3.925 → dock 掉出仓区北板外（仓区 z[3.565,4.065]，dock 需居中 3.815）
+    - "柜宽 0.72 若未过 #76 量房即下单 → 墙段净跨不足时柜体端头吃墙"
+    - "墙线迁移未随迁柜/dock 坐标 → 背板脱墙（7.04 残留已于 2026-11-05 修，坐标随墙线 7.20 联动）"
