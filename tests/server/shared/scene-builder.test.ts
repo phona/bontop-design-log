@@ -218,7 +218,10 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     assert.ok(fixture.children.every((child) => child.userData.part), type);
   }
 
-  const along = 3.61;
+  // along 一律是「自墙段起点顶点 v_bath_ne(2.60,1.10) 沿墙向北的距离」（2026-11-07 issue #98
+  // 删除 w_mbath_east「along = 绝对 z」历史特例）；锚点世界 z = 1.10 + along = 3.61。
+  const along = 2.51;
+  const anchorZ = 3.61;
   const result = buildScene({
     rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
     walls: [{ id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 }],
@@ -229,7 +232,7 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
   assert.equal(groups.length, types.length);
   assert.deepEqual(groups.map((group) => group.userData.objectId), types.map((type, index) => `furniture:master_bedroom:${type}:${index}`));
   assert.equal(new Set(groups.map((group) => group.userData.objectId)).size, types.length);
-  assert.deepEqual(groups.map((group) => group.position.z), types.map(() => along));
+  assert.deepEqual(groups.map((group) => group.position.z), types.map(() => anchorZ));
   assert.deepEqual(groups.map((group) => group.position.x).map((x) => Number(x.toFixed(4))), [2.2575, 2.2575, 2.2575]);
   assert.deepEqual(groups.map((group) => ({ wallId: group.userData.wallId, wallSide: group.userData.wallSide, anchorAlong: group.userData.anchorAlong })), types.map(() => ({ wallId: 'w_mbath_east', wallSide: 'west', anchorAlong: along })));
 
@@ -246,8 +249,8 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     assert.ok(Math.abs(boxes[index].max.x - 2.54) < 1e-6, `${types[index]} must terminate at the w_mbath_east west finish`);
     assert.ok(Math.abs(boxes[index].min.x - 1.975) < 1e-6, `${types[index]} must start at x=1.975`);
     assert.ok(Math.abs((boxes[index].max.x - boxes[index].min.x) - expectedDepths[index]) < 1e-6);
-    assert.ok(Math.abs(boxes[index].max.z - (along + expectedWidths[index] / 2)) < 1e-6);
-    assert.ok(Math.abs(boxes[index].min.z - (along - expectedWidths[index] / 2)) < 1e-6);
+    assert.ok(Math.abs(boxes[index].max.z - (anchorZ + expectedWidths[index] / 2)) < 1e-6);
+    assert.ok(Math.abs(boxes[index].min.z - (anchorZ - expectedWidths[index] / 2)) < 1e-6);
   }
   assert.ok(boxes[0].max.y < boxes[1].min.y);
   assert.ok(boxes[1].max.y < boxes[2].min.y);
@@ -286,7 +289,8 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
       master_bedroom: [
         { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 },
         { type: 'condensate_pipe_ac_outlet', id: 'mb.condensate_pipe', anchor: { source: 'hvac' as const, id: 'indoor_master' }, rotation: 0 },
-        { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west', along: 3.70, rotation: 270 },
+        // along 2.60 = 沿墙距离（自 v_bath_ne z=1.10 起算）→ 世界 z=3.70（管行 z[3.10,4.30] 中点）。
+        { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west', along: 2.60, rotation: 270 },
         { type: 'mb_vanity_pvc_wardrobe_entry', id: 'mb.vanity_pvc_wardrobe_entry', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
         { type: 'mb_vanity_pvc_service_chase', id: 'mb.vanity_pvc_service_chase', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
       ],

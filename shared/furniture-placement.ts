@@ -75,11 +75,10 @@ export type WallLike = { x1: number; z1: number; x2: number; z2: number };
 
 const WALL_SIDES: readonly WallSide[] = ['north', 'south', 'east', 'west'];
 
-/** along 绝对 z 特例（w_mbath_east/w_mb_east）：沿墙坐标的历史约定，与墙线基准语义无关；
- * 2026-11-06 口径 A PR 不改（决定只覆盖 w_mbath_east，不含 w_mb_east，见 PR 说明）。 */
-const ABSOLUTE_ALONG_WALLS: ReadonlySet<string> = new Set(['w_mbath_east', 'w_mb_east']);
-
-/** 主卫柜组端部收口特例：两端贴死的柜组允许 20mm 丈量余量（与原 verify 本地复算同值）。 */
+/**
+ * 主卫柜组端部收口特例：两端贴死的柜组允许 20mm 丈量余量（与原 verify 本地复算同值）。
+ * 注意这是「丈量余量」，不是 along 语义特例——along 本身一律沿墙距离，见 resolveItem。
+ */
 const MB_VANITY_ENDPOINT_TOLERANCE_TYPES: ReadonlySet<string> = new Set([
   'mb_vanity_base_cabinet',
   'mb_vanity_lower_board',
@@ -246,21 +245,26 @@ function resolveItem(
     if (dims.width === undefined || dims.depth === undefined) {
       return { placement: null, diagnostic: `no width/depth for type "${item.type}"（行内声明与 FURNITURE_DIMS 目录均缺，无法定位）` };
     }
-    // along 合法域 = 墙段（绝对 z 特例墙取 z 跨度）内缩家具半宽——整件必须落在墙段上。
+    // along 合法域 = 墙段内缩家具半宽——整件必须落在墙段上。
     // 该校验原为 verify-furniture-placement 的本地复算，PR-3 迁到共享解算：3D/DXF 与
     // verify 从此同一口径，越界返回诊断而非静默跳过。
-    const alongIsAbsoluteVertical = ABSOLUTE_ALONG_WALLS.has(item.wall) && Math.abs(dx) < 1e-9;
-    const alongHalf = item.type === 'mb_vanity_pvc_box' ? 0 : dims.width / 2;
-    let alongStart = alongIsAbsoluteVertical ? Math.min(wall.z1, wall.z2) : 0;
-    let alongEnd = alongIsAbsoluteVertical ? Math.max(wall.z1, wall.z2) : length;
-    if (item.type === 'mb_vanity_pvc_box' && item.wall === 'w_mbath_east') alongStart = 3.10;
+    //
+    // along 语义唯一：从墙段起点顶点（x1,z1）沿墙向到锚点的距离，与 overlay.yaml
+    // wall_region/paint_region 的 along 区间同一口径。2026-11-07（issue #98）删除了
+    // w_mbath_east / w_mb_east 上「along = 绝对 z」的历史分支（原 ABSOLUTE_ALONG_WALLS）
+    // 及其配套的 mb_vanity_pvc_box 半宽豁免与 alongStart=3.10 域收窄——那套只在绝对 z
+    // 域里自洽，换成沿墙距离后会把这批墙的合法域算错。受影响条目（mb_vanity_base_cabinet /
+    // mb_vanity_lower_board / mb_vanity_main_board along 3.61→2.51、mb_vanity_pvc_box
+    // 3.70→2.60）已按同一世界位置改写为沿墙距离，几何零漂移（export:dxf 产物逐字节一致）；
+    // 此后这些墙上 along 越界一律走本条诊断，由页面报告 / DXF 失败 / verify:furniture 显形。
+    const alongHalf = dims.width / 2;
     const endpointTolerance = MB_VANITY_ENDPOINT_TOLERANCE_TYPES.has(item.type)
       && (item.wall === 'w_mbath_east' || item.wall === 'w_mb_east') ? 0.02 : 0;
-    if (item.along < alongStart + alongHalf - endpointTolerance - ALONG_FIT_EPS
-      || item.along > alongEnd - alongHalf + endpointTolerance + ALONG_FIT_EPS) {
+    if (item.along < alongHalf - endpointTolerance - ALONG_FIT_EPS
+      || item.along > length - alongHalf + endpointTolerance + ALONG_FIT_EPS) {
       return {
         placement: null,
-        diagnostic: `wall anchor along=${item.along} places furniture outside wall span [${(alongStart + alongHalf).toFixed(3)}, ${(alongEnd - alongHalf).toFixed(3)}] on "${item.wall}"`,
+        diagnostic: `wall anchor along=${item.along} places furniture outside wall span [${alongHalf.toFixed(3)}, ${(length - alongHalf).toFixed(3)}] on "${item.wall}"`,
       };
     }
     const tangent = { x: dx / length, z: dz / length };
@@ -274,9 +278,7 @@ function resolveItem(
     const authored = sideDirection[item.wall_side];
     const right = { x: -left.x, z: -left.z };
     const normal = left.x * authored.x + left.z * authored.z >= right.x * authored.x + right.z * authored.z ? left : right;
-    const wallPoint = alongIsAbsoluteVertical
-      ? { x: wall.x1, z: item.along }
-      : { x: wall.x1 + tangent.x * item.along, z: wall.z1 + tangent.z * item.along };
+    const wallPoint = { x: wall.x1 + tangent.x * item.along, z: wall.z1 + tangent.z * item.along };
     // 墙线基准（2026-11-06 业主口径 A）：所有 wall/wall_side/along 家具一律从完成面
     // （线 ± WALL_THICKNESS/2）起算，不再按家具类型区分——原「仅 4 个 mb_vanity 类型
     // 加半墙厚」的类型清单已删（同墙镜柜曾按线=完成面贴线、穿渲染墙盒 0.06）。

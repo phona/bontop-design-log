@@ -22,6 +22,8 @@ import { contractArchivePathProblem, isValidCalendarDateText } from './contract-
 import { DECISION_GATES_PATH, loadDecisionGates, openGatesByCheck, type Decision, type DecisionGates } from './decision-gates.js';
 import { MODEL_PACKAGE_LINKS_PATH } from './model-package-links.js';
 import type { ModelPackageLinks } from './model-package-links.js';
+import { collectDeclaredFurnitureIds, type DeclaredFurnitureIdEntry } from './furniture-object-id.js';
+import type { FurnishingsYaml } from './types.js';
 
 type AnyRecord = Record<string, any>;
 
@@ -119,6 +121,12 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
   const control = yaml.load(fs.readFileSync(controlPath, 'utf8')) as AnyRecord;
   const acceptance = yaml.load(fs.readFileSync(acceptancePath, 'utf8')) as AnyRecord;
   const roadmap = yaml.load(fs.readFileSync(roadmapPath, 'utf8')) as AnyRecord;
+  // 成本项 targets（issue #98 PR-8，按对象算账）的合法取值域 = house.yaml furnishings
+  // 已声明的稳定对象 id。对象 id 的唯一实现在 furniture-object-id.ts，这里只取清单，
+  // 不另写第二套 id 公式。
+  const house = yaml.load(fs.readFileSync(path.join(root, 'config/house.yaml'), 'utf8')) as { furnishings?: FurnishingsYaml };
+  const furnitureObjects: DeclaredFurnitureIdEntry[] = collectDeclaredFurnitureIds(house.furnishings ?? {});
+  const furnitureObjectById = new Map(furnitureObjects.map((entry) => [entry.id, entry]));
   const modelPackageLinks = options.modelPackageLinks;
   const decisionGates = loadDecisionGates(root);
   const openDecisionGates = decisionGates.decisions.filter((decision) => decision.scope === 'acceptance' && decision.status === 'open');
@@ -312,6 +320,27 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
       }
       if (component.planned_cny != null && (typeof component.planned_cny !== 'number' || component.planned_cny < 0)) {
         errors.push(`${component.id}: planned_cny must be null or a non-negative number`);
+      }
+      // 成本项对象归属（issue #98 PR-8）：可选 `targets: [对象稳定 id]`。只收非空字符串
+      // 数组、全屋唯一且指向 placed 对象——count-only 条目无 runtime 对象可归属；
+      // 归属未定（如 COST-150-01，开放项 D19）就不写 targets，不许用占位对象假装归属。
+      if (component.targets !== undefined) {
+        const targets = component.targets;
+        if (!Array.isArray(targets) || targets.length === 0 || targets.some((target: unknown) => typeof target !== 'string' || !target.trim())) {
+          errors.push(`${component.id}: targets 必须是非空的对象稳定 id 字符串数组`);
+        } else {
+          const seenTargets = new Set<string>();
+          for (const target of targets) {
+            const objectEntry = furnitureObjectById.get(target);
+            if (!objectEntry) {
+              errors.push(`${component.id}: cost target "${target}" 不是 config/house.yaml furnishings 已声明的对象稳定 id`);
+            } else if (objectEntry.placement === 'count_only') {
+              errors.push(`${component.id}: cost target "${target}" 是 count-only 条目，无 runtime 对象可归属`);
+            }
+            if (seenTargets.has(target)) errors.push(`${component.id}: duplicate cost target "${target}"`);
+            seenTargets.add(target);
+          }
+        }
       }
     }
     const components = pkg.budget?.components ?? [];

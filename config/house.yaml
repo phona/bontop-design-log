@@ -455,9 +455,11 @@ furnishings:
     - { type: dressing_stool, id: mb.dressing_stool, x: 0.42, z: 6.05, rotation: 90 } # 2026-09-04 R1 候选未冻结：随桌贴窗，收纳态完整收入桌下（AABB x[0.22,0.62] z[5.84,6.26] ⊂ 桌 footprint），使用时向东拉出
     - { type: master_hot_season_low_dresser, id: mb.low_dresser, x: 1.05, z: 9.20, rotation: 180 } # 2026-09-08：北移避开西南圆弧玻璃幕；1400W×480D×850H（h<2.07 不挡窗带），抽屉朝北；西端距西帘堆叠侧留余量，南帘堆叠端 site_pending
     # DEC-045：底柜保留原位；上下双层悬浮板共用 wall=w_mbath_east、wall_side=west、rotation=270，贴墙西侧完成面，不再从衣柜回退。
-    - { type: mb_vanity_base_cabinet, id: mb.vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, wall_clearance: 0.015 } # 2026-09-07：1.38m×0.565m×0.62m；主体从东墙完成面退让15mm，北端与主卫南墙完成面保持 site_trim 收口
-    - { type: mb_vanity_lower_board, id: mb.vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 下悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
-    - { type: mb_vanity_main_board, id: mb.vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 上悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
+    # 2026-11-07 issue #98：w_mbath_east 的 along 由「绝对 z」历史约定改为沿墙距离（自起点顶点
+    # v_bath_ne z=1.10 向北量），世界位置不变——along 2.51 = 3.61 − 1.10。
+    - { type: mb_vanity_base_cabinet, id: mb.vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, wall_clearance: 0.015 } # 2026-09-07：1.38m×0.565m×0.62m；主体从东墙完成面退让15mm，北端与主卫南墙完成面保持 site_trim 收口
+    - { type: mb_vanity_lower_board, id: mb.vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 下悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
+    - { type: mb_vanity_main_board, id: mb.vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 上悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
     # 2026-11-07 issue #98 PR-10 冷凝链改锚点派生：三件的 x/z 曾各自手写（outlet 3.70,5.10；
     # entry 4.10,4.62；chase 2.925,4.62），同一接口坐标在注释、FixtureFactory 配方长度与 MEP via
     # 点里各写一份，改一段不跟随。现整条链由 shared/condensate-chain.ts 从共同锚点单一解算，
@@ -465,7 +467,7 @@ furnishings:
     - { type: condensate_pipe_ac_outlet, id: mb.condensate_pipe, anchor: { source: hvac, id: indoor_master }, rotation: 0 } # 挂 ac_master 内机锚点（config/hvac.yaml anchors indoor_master → ceiling ac_master，机身中心轴 x=3.70 即来源）：出口段自内机锚点向东至空调盒东转点、再向南落入衣柜顶服务带，接主卧东墙贴墙 run，不接 return/supply 格栅。厂家出口在机身上的具体位置仍 pending（本件是协调示意，非施工件）。
     - { type: mb_vanity_pvc_wardrobe_entry, id: mb.vanity_pvc_wardrobe_entry, anchor: { source: chain, id: wardrobe_east_band }, rotation: 0 } # 服务带西行段：东端=空调盒东转点（由 w_mb_east 卧室侧完成面 −40mm 解出），西端=通顶衣柜东缘 × 服务带（衣柜 mb.wardrobe_950 派生）——即本锚点。仅检视态显示，柜体主体保留。
     - { type: mb_vanity_pvc_service_chase, id: mb.vanity_pvc_service_chase, anchor: { source: chain, id: wardrobe_east_band }, rotation: 0 } # 柜顶内转至墙行（w_mbath_east 西完成面 −40mm），沿墙行南落至折点，折点 x 由 MEP condensate-master 穿墙点派生、z 由衣柜南缘 − 墙行长度解出，再穿 w_mbath_south 进主卫吊顶到候选点并下引；两段白色 L 形包边收至南墙 bedroom-side finish。pending，非施工依据。
-    - { type: mb_vanity_pvc_box, id: mb.vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.70 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。遗留（2026-11-07 PR-10 登记）：along=3.70 是手写值，其北端 z=4.30 与衣柜南缘重合系当年取值巧合；衣柜若在 z 向移动，本包管不会跟随——届时链的接口诊断会显形，须同步改 along 或把它也改锚点派生（owner 设计侧；触发=衣柜 z 向移位或柜体深化会审）。
+    - { type: mb_vanity_pvc_box, id: mb.vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.60 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。2026-11-07 issue #98：along 由绝对 z 3.70 改沿墙距离 2.60（= 3.70 − 1.10），世界位置不变，trim 包络仍 z[3.10,4.30]。遗留（PR-10 登记）：along=2.60 仍是手写值，其北端 z=4.30 与衣柜南缘重合系当年取值巧合；衣柜若在 z 向移动，本包管不会跟随——届时链的接口诊断会显形，须同步改 along 或把它也改锚点派生（owner 设计侧；触发=衣柜 z 向移位或柜体深化会审）。
     # mattress/curtain/ceiling count-only entries remain after placed furniture
     - { type: mattress_180 }
     - { type: curtain_set }
@@ -579,7 +581,7 @@ furnishings:
   guest_bath:
     # 南侧开放洗漱区纳入 guest_bath 语义边界；vanity 以 w_gbath_east_open_vanity 西侧完成面定位
     # （wall/wall_side/along 机制：along 自墙段北端量到柜中心，柜体在墙段上两端贴死），背面朝东、
-    # 正面朝西，rotation=270，台盆与台上龙头共用中心线。柜体分割数值只在条目 vanity_layout 声明
+    # 正面朝西，rotation=270，台盆与墙面龙头共用中心线（龙头挂墙不挂柜——宿主判定与口径 A 完成面坐标见 config/plumbing.yaml faucet_gbath_vanity，2026-11-06 issue #98 PR-6；原「台上龙头」表述与 FixtureFactory 墙面龙头建模不符，已更正）。柜体分割数值只在条目 vanity_layout 声明
     # （3D FixtureFactory.buildVanity、robot_dock 挂位解算、DXF 外框共用同一份；FURNITURE_DIMS 不再存副本）。
     # DEC-2026-11-05-R5 + 2026-11-06 Codex blocking 修正：柜宽取定案值——可用跨度=南墙南脸至东墙段南端、
     # 两端贴死 0 容差（原 0.72 柜北端板整个在实体墙内、仓净宽被压到 0.435<官方预留 0.45；量房复核见 pending #76）；

@@ -263,3 +263,18 @@ decisions:
       - 维持现行点位口径
     status: open
     tracking_note: 全盒零线已由 DEC-2026-10-06-R2 定并落成 check_elec_zero_line_all_switches，报告 D18 该子项看起来已被仓内回答——与仓内 DEC 的关系需业主确认（并列旗标，不静默合并）；其余为对照表合并与高度表，无直接验收项。
+
+  # 2026-11-06（issue #98 PR-8，按对象算账）：迁移把「对象 → 成本项」targets 通道建起来时
+  # 撞到这条悬而未决的预算边界——主卫条带柜组（master_bedroom 条带，7 个对象）的费用此前
+  # 只活在 COST-150-01 / P2-100 的 description 散文里，无 owner 无触发条件（决策铁律 2 的
+  # 失效形态）。按业主裁定「按开放项显形，不裁定」登记于此；拍板前 COST-150-01 不得登记
+  # 对象级 targets，npm run cost:by-object 把本决策挂在条带柜组各对象上显形。
+  - id: D19
+    topic: COST-150-01 与主卫条带柜组的预算边界
+    scope: tracked
+    question: 主卫条带柜组（mb.vanity_base_cabinet / mb.vanity_lower_board / mb.vanity_main_board / mb.vanity_pvc_box / mb.vanity_pvc_wardrobe_entry / mb.vanity_pvc_service_chase / mb.condensate_pipe，均声明在 house.yaml master_bedroom）的费用是否含在二期 P2-100 的 3000-5000 区间内；若不含，是否按 P2-100 note 新增 P2-101 单列
+    options:
+      - 含在 P2-100 的 3000-5000 内（P2-100 现名扩为通顶衣柜+条带柜组）
+      - 不含，P2-100 现名仅对应 master_wardrobe_tall_240，条带柜组新增 P2-101 单列
+    status: open
+    tracking_note: "owner=业主；触发=二期启动（P2-100 深化）前。2026-11-06 issue #98 PR-8 迁移登记：边界事实见 schedule/phase-1/control.yaml COST-150-01 与 schedule/phase-2/control.yaml P2-100 的 description（DEC-2026-10-07-R02 边界补注）；按项目单价反算条带柜组约 1500-2300，为推断非报价。本 PR 只显形不裁定：拍板前 COST-150-01 的对象级 targets 保持未登记，条带柜组对象在按对象算账视图中显示为「成本归属未定（D19）」。"
