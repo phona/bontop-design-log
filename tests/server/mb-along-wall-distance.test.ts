@@ -16,7 +16,7 @@ import { resolveFurniturePlacement, WALL_THICKNESS, type FurniturePlacement, typ
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { buildProjectDxf } from '../../shared/dxf/project-dxf.js';
-import type { FurnishingItem, FurnishingsYaml, ResolvedRoom, SceneElement, VertexLayoutYaml } from '../../shared/types.js';
+import type { FurnishingItem, FurnishingsYaml, HvacDiagram, ResolvedRoom, SceneElement, VertexLayoutYaml } from '../../shared/types.js';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 
@@ -290,12 +290,37 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
 
   it('页面（SceneBuilder）：越界 along 进 report.placementDiagnostics，坏件不进场景', () => {
     const items = masterBedroomItems();
-    const wall = { id: 'w_mbath_east', ...WALLS.w_mbath_east, height: 2.8 };
+    // 链解算的三面宿主墙（shared/condensate-chain.ts 从 w_mb_east / w_mbath_east /
+    // w_mbath_south 派生段端点）+ hvac 锚点/候选点与 MEP 穿墙点：PR-10 起 master_bedroom
+    // 实配含三件 anchor 声明的链条家具（condensate_pipe_ac_outlet 等），场景不喂这些输入
+    // 时链条解不出、会带与 along 无关的根因诊断打穿「无诊断」健康态——口径见
+    // tests/server/shared/scene-builder.test.ts 同族用例（场景侧喂合成 diagram + 穿墙点）。
+    const chainWalls = [
+      { id: 'w_mbath_east', ...WALLS.w_mbath_east, height: 2.8 },
+      { id: 'w_mb_east', ...WALLS.w_mb_east, height: 2.8 },
+      { id: 'w_mbath_south', x1: 0.40, z1: 2.86, x2: 2.60, z2: 2.86, height: 2.8 },
+    ];
+    const chainOptions = {
+      hvac: {
+        diagram: {
+          anchors: [{ id: 'indoor_master', status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: 'ac_master' } }],
+          terminals: [{
+            id: 'condensate_master_candidate', kind: 'condensate_drain_candidate', status: 'pending', confirmed: false,
+            render_interior: false, render_coordination: true, system: 'condensate', position: { x: 2.0, y: 0.1, z: 2.5 },
+          }],
+          routes: [],
+          reference_constraints: [],
+        } as unknown as HvacDiagram,
+        sources: { ceiling: [{ id: 'ac_master', x: 3.70, z: 5.10, height: 2.85 }] as never },
+      },
+      condensatePenetration: { x: 2.30, z: 2.86 },
+    };
     const build = (furnishings: FurnishingItem[]) => buildScene({
       rooms: [masterBedroomRoom()],
-      walls: [wall],
-      elements: [{ type: 'wall', id: 'w_mbath_east', ...WALLS.w_mbath_east, height: 2.8 } as SceneElement],
+      walls: chainWalls,
+      elements: chainWalls.map((wall) => ({ type: 'wall', ...wall }) as SceneElement),
       furnishings: { master_bedroom: furnishings } as FurnishingsYaml,
+      options: chainOptions,
     });
 
     const healthy = build(items);
@@ -311,10 +336,21 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     }
     byId(broken, 'mb.vanity_pvc_box').along = 3.70;
     const brokenResult = build(broken);
-    assert.equal(brokenResult.report.placementDiagnostics.length, 4);
-    for (const diagnostic of brokenResult.report.placementDiagnostics) {
+    // 5 条 = 4 件越界 along（底柜/两块板/墙行包管）+ 1 条链级根因：pvc_box 同时是链的墙行
+    // 宿主（resolveCondensateChain 的 wallRun），它的 along 越界使整条链作废，三件链条锚点
+    // 件按件跳过、不在件级重复根因（addFurniture 口径）。链诊断点名同一越界值，不新增第二
+    // 套坐标事实；越界件本身仍一件都不进场景。
+    assert.equal(brokenResult.report.placementDiagnostics.length, 5);
+    const alongDiagnostics = brokenResult.report.placementDiagnostics.filter((line) => line.startsWith('master_bedroom:mb_vanity_'));
+    assert.equal(alongDiagnostics.length, 4);
+    for (const diagnostic of alongDiagnostics) {
       assert.match(diagnostic, /master_bedroom:mb_vanity_\w+: wall anchor along=3\.\d+ places furniture outside wall span/);
     }
+    assert.ok(
+      brokenResult.report.placementDiagnostics.some((line) =>
+        line.startsWith('condensate chain:') && line.includes('mb.vanity_pvc_box') && line.includes('along=3.7')),
+      '链级根因须显形（墙行宿主越界 → 链作废），且不带双前缀',
+    );
     assert.ok(!brokenResult.index.furnitureMeshes.some((group) => group.userData.objectId === 'mb.vanity_base_cabinet'), '坏件不得静默进场景');
   });
 

@@ -11,7 +11,8 @@ import type { HvacDiagram } from '../../shared/types.js';
 // 主卫冷凝链锚点派生的回归（issue #98 PR-10）。设计值口径：ac_master (3.70,5.10)；
 // 衣柜 mb.wardrobe_950 (2.45,4.59) 0.95×0.58 → 东缘 2.925、南缘 4.30；w_mb_east 线 4.20 →
 // 卧室侧完成面 4.14 − 40mm = 4.10；w_mbath_east 线 2.60 → 西完成面 2.54 − 40mm = 2.50；
-// 服务带 = 衣柜中心 4.59 + 0.03 = 4.62；墙行包管 along 3.70、宽 1.20 → z[3.10,4.30]；
+// 服务带 = 衣柜中心 4.59 + 0.03 = 4.62；墙行包管 along 2.60（沿墙距离，自起点顶点
+// v_bath_ne z=1.10 起算 → 世界锚点 z=3.70，与 house.yaml 实配一致）、宽 1.20 → z[3.10,4.30]；
 // MEP 穿墙点 (2.30,2.86)；候选点 (2.00,2.50,y0.10)。
 const anchors: Pick<BuildCondensateChainInput, 'hvacAnchors' | 'hvacTerminals' | 'mepRoute'> = {
   hvacAnchors: new Map([['indoor_master', { x: 3.70, z: 5.10 }]]),
@@ -19,7 +20,7 @@ const anchors: Pick<BuildCondensateChainInput, 'hvacAnchors' | 'hvacTerminals' |
   mepRoute: { penetration: [{ wall: 'w_mbath_south', at: { x: 2.30, z: 2.86 } }] },
 };
 const wardrobe = { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 };
-const wallRun = { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 3.70, rotation: 270 };
+const wallRun = { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270 };
 const wallSegments = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>([
   ['w_mb_east', [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }]],
   ['w_mbath_east', [{ x1: 2.60, z1: 1.10, x2: 2.60, z2: 4.30 }]],
@@ -221,7 +222,7 @@ test('buildScene 侧锚点接线：合成 diagram + 穿墙点解出三件，缺�
     master_bedroom: [
       { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 },
       { type: 'condensate_pipe_ac_outlet', id: 'mb.condensate_pipe', anchor: { source: 'hvac' as const, id: 'indoor_master' }, rotation: 0 },
-      { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 3.70, rotation: 270 },
+      { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270 },
       { type: 'mb_vanity_pvc_wardrobe_entry', id: 'mb.vanity_pvc_wardrobe_entry', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
       { type: 'mb_vanity_pvc_service_chase', id: 'mb.vanity_pvc_service_chase', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
     ],

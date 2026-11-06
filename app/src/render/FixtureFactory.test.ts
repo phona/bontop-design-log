@@ -391,7 +391,9 @@ describe('condensate coordination fixtures', () => {
     hvacTerminals: [{ id: 'condensate_master_candidate', position: { x: 2.0, y: 0.1, z: 2.5 } }],
     mepRoute: { penetration: [{ wall: 'w_mbath_south', at: { x: 2.30, z: 2.86 } }] },
     wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 },
-    wallRun: { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 3.70, rotation: 270 },
+    // along 2.60 = 沿墙距离（自起点顶点 v_bath_ne z=1.10 起算）→ 世界锚点 z=3.70，
+    // 即管行 z[3.10,4.30] 中点（issue #98 PR-9 删除「along = 绝对 z」特例后的口径）。
+    wallRun: { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270 },
     wallSegments: new Map([
       ['w_mb_east', [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }]],
       ['w_mbath_east', [{ x1: 2.60, z1: 1.10, x2: 2.60, z2: 4.30 }]],

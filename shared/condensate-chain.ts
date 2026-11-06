@@ -144,7 +144,7 @@ function wallOrDiagnostic(
   diagnostics: string[],
 ): ChainWallLike | undefined {
   const wall = wallSegments.get(wallId)?.[0];
-  if (!wall) diagnostics.push(`condensate chain: wall "${wallId}" not found（链派生需要该墙几何）`);
+  if (!wall) diagnostics.push(`wall "${wallId}" not found（链派生需要该墙几何）`);
   return wall;
 }
 
@@ -161,21 +161,21 @@ export function resolveCondensateChain(
 
   const wardrobe = input.wardrobe;
   if (wardrobe === undefined) {
-    diagnostics.push('condensate chain: 通顶衣柜条目缺失（链的服务带/东缘/南缘无宿主）');
+    diagnostics.push('通顶衣柜条目缺失（链的服务带/东缘/南缘无宿主）');
     return { geometry: null, diagnostics };
   }
   const wardrobeResolved = resolveFurniturePlacement(wardrobe, wallSegments, input.hosts);
   if (wardrobeResolved.diagnostic !== undefined) {
-    diagnostics.push(`condensate chain: 宿主衣柜 "${String(wardrobe.id)}": ${wardrobeResolved.diagnostic}`);
+    diagnostics.push(`宿主衣柜 "${String(wardrobe.id)}": ${wardrobeResolved.diagnostic}`);
     return { geometry: null, diagnostics };
   }
   if (!wardrobeResolved.placement) {
-    diagnostics.push(`condensate chain: 宿主衣柜 "${String(wardrobe.id)}" 无平面摆位（count-only 条目不能当宿主）`);
+    diagnostics.push(`宿主衣柜 "${String(wardrobe.id)}" 无平面摆位（count-only 条目不能当宿主）`);
     return { geometry: null, diagnostics };
   }
   const wardrobeDims = declaredFurnitureDims(wardrobe);
   if (wardrobeDims.width === undefined || wardrobeDims.depth === undefined) {
-    diagnostics.push(`condensate chain: 宿主衣柜 "${String(wardrobe.id)}" 缺 width/depth（行内与目录均无，东缘/南缘算不出）`);
+    diagnostics.push(`宿主衣柜 "${String(wardrobe.id)}" 缺 width/depth（行内与目录均无，东缘/南缘算不出）`);
     return { geometry: null, diagnostics };
   }
 
@@ -186,25 +186,25 @@ export function resolveCondensateChain(
 
   const wallRunBox = input.wallRun;
   if (wallRunBox === undefined) {
-    diagnostics.push('condensate chain: 墙行包管条目缺失（mb.vanity_pvc_box：墙行侧向与折点 z 的宿主）');
+    diagnostics.push('墙行包管条目缺失（mb.vanity_pvc_box：墙行侧向与折点 z 的宿主）');
     return { geometry: null, diagnostics };
   }
   if (wallRunBox.wall !== 'w_mbath_east' || wallRunBox.wall_side !== 'west') {
-    diagnostics.push(`condensate chain: 墙行包管 "${String(wallRunBox.id)}" 必须声明 wall=w_mbath_east / wall_side=west（管行在西完成面内侧 40mm，不穿墙）`);
+    diagnostics.push(`墙行包管 "${String(wallRunBox.id)}" 必须声明 wall=w_mbath_east / wall_side=west（管行在西完成面内侧 40mm，不穿墙）`);
     return { geometry: null, diagnostics };
   }
   const wallRunResolved = resolveFurniturePlacement(wallRunBox, wallSegments, input.hosts);
   if (wallRunResolved.diagnostic !== undefined) {
-    diagnostics.push(`condensate chain: 墙行包管 "${String(wallRunBox.id)}": ${wallRunResolved.diagnostic}`);
+    diagnostics.push(`墙行包管 "${String(wallRunBox.id)}": ${wallRunResolved.diagnostic}`);
     return { geometry: null, diagnostics };
   }
   if (!wallRunResolved.placement) {
-    diagnostics.push(`condensate chain: 墙行包管 "${String(wallRunBox.id)}" 无平面摆位`);
+    diagnostics.push(`墙行包管 "${String(wallRunBox.id)}" 无平面摆位`);
     return { geometry: null, diagnostics };
   }
   const wallRunSpan = alongWallZSpan(wallRunBox, wallRunResolved.placement.z);
   if (!wallRunSpan) {
-    diagnostics.push(`condensate chain: 墙行包管 "${String(wallRunBox.id)}" 缺 width/depth（沿墙跨度算不出）`);
+    diagnostics.push(`墙行包管 "${String(wallRunBox.id)}" 缺 width/depth（沿墙跨度算不出）`);
     return { geometry: null, diagnostics };
   }
 
@@ -270,13 +270,13 @@ export function resolveCondensateChain(
     const dz = segment.to.z - segment.from.z;
     const expected = directions[segment.id];
     if (expected === 'east' && dx <= INTERFACE_EPS) {
-      diagnostics.push(`condensate chain 段 ${segment.id} 非东行或零长：(${segment.from.x.toFixed(3)},${segment.from.z.toFixed(3)})→(${segment.to.x.toFixed(3)},${segment.to.z.toFixed(3)})（接口不重合：锚点相对位置失效）`);
+      diagnostics.push(`段 ${segment.id} 非东行或零长：(${segment.from.x.toFixed(3)},${segment.from.z.toFixed(3)})→(${segment.to.x.toFixed(3)},${segment.to.z.toFixed(3)})（接口不重合：锚点相对位置失效）`);
     }
     if (expected === 'west' && dx >= -INTERFACE_EPS) {
-      diagnostics.push(`condensate chain 段 ${segment.id} 非西行或零长：(${segment.from.x.toFixed(3)},${segment.from.z.toFixed(3)})→(${segment.to.x.toFixed(3)},${segment.to.z.toFixed(3)})（接口不重合：锚点相对位置失效）`);
+      diagnostics.push(`段 ${segment.id} 非西行或零长：(${segment.from.x.toFixed(3)},${segment.from.z.toFixed(3)})→(${segment.to.x.toFixed(3)},${segment.to.z.toFixed(3)})（接口不重合：锚点相对位置失效）`);
     }
     if (expected === 'south' && dz >= -INTERFACE_EPS) {
-      diagnostics.push(`condensate chain 段 ${segment.id} 非南行或零长：(${segment.from.x.toFixed(3)},${segment.from.z.toFixed(3)})→(${segment.to.x.toFixed(3)},${segment.to.z.toFixed(3)})（接口不重合：锚点相对位置失效）`);
+      diagnostics.push(`段 ${segment.id} 非南行或零长：(${segment.from.x.toFixed(3)},${segment.from.z.toFixed(3)})→(${segment.to.x.toFixed(3)},${segment.to.z.toFixed(3)})（接口不重合：锚点相对位置失效）`);
     }
   }
   // 接口重合：相邻段必须共享端点。单一解算下恒等，这条断言防的是将来把三段拆成
@@ -285,7 +285,7 @@ export function resolveCondensateChain(
     const end = segments[index].to;
     const start = segments[index + 1].from;
     if (Math.abs(end.x - start.x) > INTERFACE_EPS || Math.abs(end.z - start.z) > INTERFACE_EPS) {
-      diagnostics.push(`condensate chain 接口不重合：段 ${segments[index].id} 终点 (${end.x.toFixed(3)},${end.z.toFixed(3)}) ≠ 段 ${segments[index + 1].id} 起点 (${start.x.toFixed(3)},${start.z.toFixed(3)})`);
+      diagnostics.push(`接口不重合：段 ${segments[index].id} 终点 (${end.x.toFixed(3)},${end.z.toFixed(3)}) ≠ 段 ${segments[index + 1].id} 起点 (${start.x.toFixed(3)},${start.z.toFixed(3)})`);
     }
   }
   // 段不合法（反向/零长/接口不重合）时整条链作废：几何不给出去，三件链条家具随即可解出
@@ -414,21 +414,21 @@ export function buildCondensateChain(
   if (!unit) {
     return {
       geometry: null,
-      diagnostics: ['condensate chain: hvac 锚点 indoor_master 缺失（config/hvac.yaml anchors → ceiling ac_master），outlet 无锚可挂'],
+      diagnostics: ['hvac 锚点 indoor_master 缺失（config/hvac.yaml anchors → ceiling ac_master），outlet 无锚可挂'],
     };
   }
   const candidate = input.hvacTerminals?.find((terminal) => terminal.id === 'condensate_master_candidate');
   if (!candidate?.position) {
     return {
       geometry: null,
-      diagnostics: ['condensate chain: hvac terminal condensate_master_candidate 缺失，链的候选接入点无锚'],
+      diagnostics: ['hvac terminal condensate_master_candidate 缺失，链的候选接入点无锚'],
     };
   }
   const penetration = mepPenetrationAt(input.mepRoute, 'w_mbath_south');
   if (!penetration) {
     return {
       geometry: null,
-      diagnostics: ['condensate chain: MEP condensate-master 未声明 w_mbath_south 穿墙点，service_chase 的折点无锚'],
+      diagnostics: ['MEP condensate-master 未声明 w_mbath_south 穿墙点，service_chase 的折点无锚'],
     };
   }
   return resolveCondensateChain({
@@ -451,6 +451,12 @@ export function buildCondensateChain(
  *
  * 解算失败时 anchors 里**不给** condensateChain（三件链条家具随即可解出失败并显形），
  * diagnostics 由调用方入列。
+ *
+ * 诊断文本**不带** `condensate chain:` 前缀：报告命名空间归消费方（SceneBuilder 与
+ * verify:furniture 都统一加 `condensate chain: `），与 furniture-placement 的诊断口径
+ * 一致（那条链路由消费方加 `room:type:`）。模块自带前缀 + 消费方再加一遍 = 双前缀
+ * （`condensate chain: condensate chain: …`），2026-11-07 修掉；新增消费方只加自己的前缀。
+ * 例外：`diffCondensateChainPlanAgainstMep` 的发现由 verify 原样入列，前缀留在文本里。
  */
 export function resolveCondensatePlacementAnchors(input: {
   hvacDiagram?: HvacDiagram;
