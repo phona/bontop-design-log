@@ -56,7 +56,7 @@ function overlaps(a: Aabb, b: Aabb): boolean {
 
 test('guest room wardrobe sits in the north-wall drop and clears the d_bese door sweep', () => {
   const wardrobe = placed(guest, 'wardrobe_180');
-  assert.deepEqual(wardrobe, { type: 'wardrobe_180', x: 15.25, z: 5.85, rotation: 180 });
+  assert.deepEqual(wardrobe, { type: 'wardrobe_180', id: 'bese.wardrobe_180', x: 15.25, z: 5.85, rotation: 180 });
   const box = worldAabb(wardrobe); // x[14.35,16.15] z[5.55,6.15]
   assert.ok(Math.abs(box.minX - 14.35) < GAP_EPS && Math.abs(box.maxX - 16.15) < GAP_EPS);
   assert.ok(Math.abs(box.minZ - 5.55) < GAP_EPS && Math.abs(box.maxZ - 6.15) < GAP_EPS);
@@ -67,7 +67,7 @@ test('guest room wardrobe sits in the north-wall drop and clears the d_bese door
 
 test('guest room bed keeps its headboard on the east exterior wall and clears the door sweep and south glass', () => {
   const bed = placed(guest, 'bed_150');
-  assert.deepEqual(bed, { type: 'bed_150', x: 15.35, z: 7.60, rotation: 270 });
+  assert.deepEqual(bed, { type: 'bed_150', id: 'bese.bed_150', x: 15.35, z: 7.60, rotation: 270 });
   const box = worldAabb(bed); // rotation=270：床头在局部 -z → 世界 +x；AABB x[14.35,16.35] z[6.85,8.35]
   assert.ok(Math.abs(box.minX - 14.35) < GAP_EPS && Math.abs(box.maxX - 16.35) < GAP_EPS);
   assert.ok(Math.abs(box.minZ - 6.85) < GAP_EPS && Math.abs(box.maxZ - 8.35) < GAP_EPS);
@@ -93,10 +93,10 @@ test('guest room keeps only sleeping furniture (no desk, chair, seasonal cabinet
 
 test('study keeps its desk and chair in place and takes over the seasonal backstage cabinet', () => {
   // R02（2026-10-26）：书桌椅东移（墙垛 x[4.20,4.63]×z[8.31,8.71] 建模后原桌位撞垛；插座/网口随移东墙）；旧坐标 (4.50,9.20)/(5.10,9.20) 作废。
-  assert.deepEqual(placed(study, 'desk'), { type: 'desk', x: 6.90, z: 7.80, rotation: 90 });
-  assert.deepEqual(placed(study, 'chair'), { type: 'chair', x: 6.30, z: 7.80, rotation: 90 });
+  assert.deepEqual(placed(study, 'desk'), { type: 'desk', id: 'study.desk', x: 6.90, z: 7.80, rotation: 90 });
+  assert.deepEqual(placed(study, 'chair'), { type: 'chair', id: 'study.chair', x: 6.30, z: 7.80, rotation: 90 });
   const cabinet = placed(study, 'study_seasonal_wardrobe_wall');
-  assert.deepEqual(cabinet, { type: 'study_seasonal_wardrobe_wall', x: 5.10, z: 5.825, rotation: 0, width: 1.80, depth: 0.55 });
+  assert.deepEqual(cabinet, { type: 'study_seasonal_wardrobe_wall', id: 'study.seasonal_wardrobe_wall', x: 5.10, z: 5.825, rotation: 0, width: 1.80, depth: 0.55 });
   const box = worldAabb(cabinet); // x[4.20,6.00] z[5.55,6.10]（2026-10-27 齐平：北段西延顶墙）
   assert.ok(Math.abs(box.minX - 4.20) < GAP_EPS && Math.abs(box.maxX - 6.00) < GAP_EPS);
   assert.ok(Math.abs(box.minZ - 5.55) < GAP_EPS && Math.abs(box.maxZ - 6.10) < GAP_EPS);
@@ -108,8 +108,8 @@ test('study keeps its desk and chair in place and takes over the seasonal backst
   assert.equal(legs.length, 2, '通顶腿应为 stub + 高腿两件');
   const stub = legs.find((item) => item.z === 6.289);
   const tall = legs.find((item) => item.z === 7.38);
-  assert.deepEqual(stub, { type: 'study_seasonal_wardrobe_wall', x: 4.475, z: 6.289, rotation: 90, width: 0.322, depth: 0.55 });
-  assert.deepEqual(tall, { type: 'study_seasonal_wardrobe_wall', x: 4.475, z: 7.38, rotation: 90, width: 1.86, depth: 0.55, cabinetHeight: 2.8 });
+  assert.deepEqual(stub, { type: 'study_seasonal_wardrobe_wall', id: 'study.seasonal_wardrobe_step_north', x: 4.475, z: 6.289, rotation: 90, width: 0.322, depth: 0.55 });
+  assert.deepEqual(tall, { type: 'study_seasonal_wardrobe_wall', id: 'study.seasonal_wardrobe_step_south', x: 4.475, z: 7.38, rotation: 90, width: 1.86, depth: 0.55, cabinetHeight: 2.8 });
   const stubBox = worldAabb(stub!); // x[4.20,4.75] z[6.128,6.45]（北端贴北段门面 6.128，南端贴边吊南缘）
   assert.ok(Math.abs(stubBox.minX - 4.20) < GAP_EPS && Math.abs(stubBox.maxX - 4.75) < GAP_EPS);
   assert.ok(Math.abs(stubBox.minZ - 6.128) < GAP_EPS && Math.abs(stubBox.maxZ - 6.45) < GAP_EPS);

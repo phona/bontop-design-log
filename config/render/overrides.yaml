@@ -91,7 +91,7 @@
 - id: night_corridor
   anchorY_offset: 0
   basis: "吸附到 wall_cabinet_tall 北端板，低位灯体与柜面完成面保留 3mm 渲染缝；安装高度 0.30m"
-  reason: "起夜路径 NP-5：锚定 furniture:living_dining:wall_cabinet_tall:0 的 north 面，点位 (7.45,5.55)，灯体朝走廊；不在通行线上立落地柱。柜端板固定与暗藏供电待柜体/水电深化。"
+  reason: "起夜路径 NP-5：锚定 ld.wall_cabinet_tall 的 north 面，点位 (7.45,5.55)，灯体朝走廊；不在通行线上立落地柱。柜端板固定与暗藏供电待柜体/水电深化。"
   applies_to: [web, blender]
 - id: light_balcony_dome
   anchorY_offset: 0

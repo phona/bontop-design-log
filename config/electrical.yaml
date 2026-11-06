@@ -1204,14 +1204,14 @@
   type: night_light
   mount_anchor:
     kind: furniture_face
-    furniture_id: "furniture:living_dining:entry_half_height_cabinet:7"
+    furniture_id: "ld.entry_half_height_cabinet"
     face: east
     surface_gap: 0.003
   x: 11.42
   z: 4.80
   height: 0.30
   circuit: entry_base
-  note: "起夜链中位补点（DEC-2026-10-17-R20）：night_living_north (13.40,5.10)→night_corridor (7.45,5.55) 之间约 6m 无低位引导，起夜主路径（客房门→走廊口）断链；吸附 entry_half_height_cabinet 东脸北端（面朝东侧主通道），仿 night_corridor (NP-5) 口径；固定方式/暗藏供电/感应朝向待柜体深化，site_pending。furniture_id 序号须与 SceneBuilder placed 顺序一致（该房 placed 顺序：wall_cabinet_tall:0/tv_wall_low:1/tv_65:2/floor_lamp:3/plant_fiddle:4/sofa_3seat:5/coffee_table:6/entry_half_height_cabinet:7，未放置对象不占序号）——已按 config/house.yaml（living_dining furnishings 第 8 个 placed 条目）与 shared/render/SceneBuilder.ts addFurniture 的 per-room placed 序号逻辑复核为 7；2026-10-25 DEC-2026-10-25-R01：随半高柜西移至东脸 11.415+0.005=11.42，z 不变。"
+  note: "起夜链中位补点（DEC-2026-10-17-R20）：night_living_north (13.40,5.10)→night_corridor (7.45,5.55) 之间约 6m 无低位引导，起夜主路径（客房门→走廊口）断链；吸附 entry_half_height_cabinet 东脸北端（面朝东侧主通道），仿 night_corridor (NP-5) 口径；固定方式/暗藏供电/感应朝向待柜体深化，site_pending。furniture_id 按稳定对象 id 绑定（issue #98 全屋 placed 家具已带 id，房间内重排不改 id，不再依赖 placed 序号）：宿主为 config/house.yaml living_dining 的 entry_half_height_cabinet，id ld.entry_half_height_cabinet；2026-10-25 DEC-2026-10-25-R01：随半高柜西移至东脸 11.415+0.005=11.42，z 不变。"
 
 # 起夜路径 NP-5（主走廊）
 - id: night_corridor
@@ -1219,13 +1219,13 @@
   type: night_light
   mount_anchor:
     kind: furniture_face
-    furniture_id: "furniture:living_dining:wall_cabinet_tall:0"
+    furniture_id: "ld.wall_cabinet_tall"
     face: north
     surface_gap: 0.003
   x: 7.45
   z: 5.55
   height: 0.30
   circuit: entry_base
-  note: "起夜 NP-5 走廊口低位灯：吸附到 wall_cabinet_tall 北端板（furniture:living_dining:wall_cabinet_tall:0），面向走廊北侧，完成面缝隙 3mm；不设通道落地柱。柜体端板固定方式、暗藏供电和感应朝向待柜体/水电深化，site_pending；light_corridor_1 日常下照仅作兜底。；状态依据：status 归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-5 走廊口低位灯→inferred；position_status 吸附柜体端板，固定/暗藏供电/感应朝向待柜体与水电深化（note 原文 site_pending）→pending"
+  note: "起夜 NP-5 走廊口低位灯：吸附到 wall_cabinet_tall 北端板（ld.wall_cabinet_tall），面向走廊北侧，完成面缝隙 3mm；不设通道落地柱。柜体端板固定方式、暗藏供电和感应朝向待柜体/水电深化，site_pending；light_corridor_1 日常下照仅作兜底。；状态依据：status 归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-5 走廊口低位灯→inferred；position_status 吸附柜体端板，固定/暗藏供电/感应朝向待柜体与水电深化（note 原文 site_pending）→pending"
   status: inferred
   position_status: pending
