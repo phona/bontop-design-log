@@ -99,6 +99,32 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.ok(pending.some((entry) => entry.id === '#76'), JSON.stringify(pending));
   });
 
+  it('词边界评审回归（2026-11-07 blocking）：gbath.vanity 不再吃子串——pending 只剩真点名行、D19 不误挂', () => {
+    const ledger = ledgerOf('gbath.vanity');
+    // 修复前：裸 includes 把 `vanity` 吃进 `mb.vanity_base_cabinet` / `faucet_gbath_vanity` 等，
+    // 误挂 #42/#44/#55/#59/#75 与决策 D19（评审实测 8 行中 6 行假阳性）。
+    assert.deepEqual(ledger.pendingEntries.map((entry) => entry.id).sort(), ['#41', '#76'], JSON.stringify(ledger.pendingEntries));
+    // #41 是词边界真命中：行内「…吊架净空，并确认vanity现有服务/检修空间…」独立点名
+    // 全屋唯一类型 vanity（docs/pending-site-data.md:129），语义即客卫台盆柜。
+    assert.deepEqual(ledger.openDecisions, [], `D19 的 question 只点名条带 7 件，不得经子串挂到 gbath.vanity：${JSON.stringify(ledger.openDecisions)}`);
+    assert.deepEqual(ledgerOf('mb.washbasin_cabinet').openDecisions, []);
+    // 全局：挂 D19 的对象必须恰好是条带 7 件（决策通道与对象两两核对，防同类子串误挂；
+    // 按 ref 去重——3 件条带对象同时有 anti-penetration 引用，同一 ledger 实例会出现在
+    // objects 与 undecided 两个清单里）
+    const d19Refs = [...new Map([...report.objects, ...report.undecided].map((candidate) => [candidate.ref, candidate])).values()]
+      .filter((candidate) => candidate.openDecisions.some((decision) => decision.id === 'D19'))
+      .map((candidate) => candidate.ref).sort();
+    assert.deepEqual(d19Refs, [
+      'mb.condensate_pipe',
+      'mb.vanity_base_cabinet',
+      'mb.vanity_lower_board',
+      'mb.vanity_main_board',
+      'mb.vanity_pvc_box',
+      'mb.vanity_pvc_service_chase',
+      'mb.vanity_pvc_wardrobe_entry',
+    ]);
+  });
+
   it('D19 挂在条带 7 件全部对象上（含 4 件无机器引用的对象），全部无成本归属', () => {
     const stripIds = [
       'mb.vanity_base_cabinet',
@@ -238,10 +264,11 @@ describe('cost:by-object 沙箱负例（legacy 引用 / 悬挂引用 / count-onl
   it('词边界：唯一类型 vanity 不得吃进 mb_vanity_base_cabinet / vanity_layout，真裸词要能命中', () => {
     const furnishings = {guest_bath: [{type: 'vanity', id: 'gbath.vanity', wall: 'w'}]} as unknown as FurnishingsYaml;
     const base = () => sandboxCtx(furnishings, {waivers: []}, []);
-    // 陷阱文本：只有子串形态（mb_vanity_base_cabinet / vanity_layout），无独立裸词
+    // 陷阱文本：只有子串形态（mb_vanity_base_cabinet / vanity_layout / 带点 id 片段），无独立裸词。
+    // 点号必须在边界排除类里，否则裸 vanity 会吃进 mb.vanity_base_cabinet（评审 2026-11-07 blocking）。
     const trap = base();
-    trap.overridesText = '提到 mb_vanity_base_cabinet 与 vanity_layout 的行';
-    assert.equal(buildObjectLedgerReport(trap).objects.length, 0, '词边界必须挡住子串误匹配');
+    trap.overridesText = '提到 mb_vanity_base_cabinet、mb.vanity_base_cabinet 与 vanity_layout 的行';
+    assert.equal(buildObjectLedgerReport(trap).objects.length, 0, '词边界必须挡住下划线与点号两种子串误匹配');
     // 对照：真正的裸词提及要能建立 render_override 引用（否则唯一裸类型名通道失效）
     const hit = base();
     hit.overridesText = '某行提到裸词 vanity 本身';

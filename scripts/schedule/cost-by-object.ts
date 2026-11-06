@@ -32,13 +32,16 @@
  *   model_package_link      MODEL-PKG-* 的 furnishings select.ids（业务链接本身也是机器绑定）
  *   （前五通道为 PR-8 ask 点名；后两通道是同类机器绑定，一并显形。）
  *
- * 文本通道匹配规则：对每个对象匹配三种**全等**拼写，均取自
- * collectDeclaredFurnitureIds 的声明条目，不做模糊匹配——
+ * 文本通道匹配规则（pending 台账、render/overrides、acceptance、开放决策四处共用
+ * 同一个匹配器 mentionsObject/textMentions，任何通道不得各写一套——评审
+ * 2026-11-07 blocking：pending/决策通道曾用裸 includes 子串，把 `vanity` 吃进
+ * `mb.vanity_base_cabinet`，给 gbath.vanity 误挂 D19 与 6 条不相关台账行）：对每个
+ * 对象匹配三种**全等**拼写，均取自 collectDeclaredFurnitureIds 的声明条目，一律
+ * 词边界匹配（两侧排除类 `[A-Za-z0-9_.]` 含点号）——
  *   ① 稳定 id（gbath.vanity）；
  *   ② 「房间.类型」别名（guest_bath.vanity，台账/验收散文的在册写法）；
  *   ③ 裸类型名（mb_washbasin_cabinet），**仅当该类型全屋唯一**时（多房同型
- *      不匹配，避免把别房同型对象的提及错挂）；裸类型用词边界正则匹配，
- *      防止 `vanity` 吃进 `mb_vanity_base_cabinet`、`vanity_layout` 这类包含。
+ *      不匹配，避免把别房同型对象的提及错挂）。
  * 台账/验收散文里既无 id 也无别名也无唯一类型名的提及不关联——由本清单显形，不靠猜补齐。
  */
 
@@ -250,14 +253,31 @@ function escapeRegExp(text: string): string {
 }
 
 /**
- * 散文是否点名了该对象：稳定 id / 房间.类型 用包含匹配（两种拼写都带点号、
- * 互不为前缀）；全屋唯一裸类型名用词边界正则（防 `vanity` 吃进
- * `mb_vanity_base_cabinet` / `vanity_layout`）。
+ * 全等词边界（三种别名形态共用一个匹配器；评审 2026-11-07 blocking 修正）：
+ * 两侧不得紧邻字母/数字/下划线/**点号/连字符/无空格斜杠**。点号必须在排除类里——否则
+ * 裸类型名 `vanity` 会吃进 `mb.vanity_base_cabinet`（点号前缀的带点 id 片段）；`_` 挡住
+ * `mb_vanity_base_cabinet` / `vanity_layout` / `faucet_gbath_vanity` 等下划线片段；
+ * `-` 挡住 `strong-ded-fridge` 这类连字符点位 id 片段；`/` 挡住
+ * `strong-ded-fridge/dishwasher/…` 这类省略式点位 id 列表里的片段（本仓点位 id 用
+ * 连字符/下划线/点号分节，类型名只会以整词出现在散文里；排除类实测对现存全部
+ * 真命中零损失——真命中的相邻字符均为汉字、空格、反引号或全角标点）。
+ */
+function aliasPattern(alias: string): RegExp {
+  return new RegExp(`(?<![A-Za-z0-9_./-])${escapeRegExp(alias)}(?![A-Za-z0-9_./-])`);
+}
+
+/** 文本是否按全等词边界点名了任一别名。 */
+function textMentions(text: string, aliases: readonly string[]): boolean {
+  return aliases.some((alias) => aliasPattern(alias).test(text));
+}
+
+/**
+ * 散文是否点名了该对象：三种全等拼写——稳定 id / 房间.类型 / 全屋唯一裸类型名
+ * （多房同型的裸类型名不匹配），全部走同一词边界匹配。
  */
 function mentionsObject(text: string, entry: DeclaredFurnitureIdEntry, uniqueBareTypes: ReadonlySet<string>): boolean {
-  if (text.includes(entry.id) || text.includes(`${entry.roomId}.${entry.type}`)) return true;
-  if (!uniqueBareTypes.has(entry.type)) return false;
-  return new RegExp(`(?<![A-Za-z0-9_])${escapeRegExp(entry.type)}(?![A-Za-z0-9_])`).test(text);
+  const aliases = [entry.id, `${entry.roomId}.${entry.type}`, ...(uniqueBareTypes.has(entry.type) ? [entry.type] : [])];
+  return textMentions(text, aliases);
 }
 
 /**
@@ -404,6 +424,25 @@ export function buildObjectLedgerReport(ctx: CostByObjectContext): ObjectLedgerR
     }
   }
 
+  // 开放决策点名（ledger 视图与「成本归属未定」全屋扫描共用同一 helper 与同一匹配器，
+  // 两处不得各写一套——评审 2026-11-07 blocking 的根因之一就是两处各写）。
+  const openDecisionsMentioning = (ledger: ObjectLedger): ObjectDecisionRef[] => {
+    const hits: ObjectDecisionRef[] = [];
+    for (const decision of state.decisionGates.decisions) {
+      if (decision.status !== 'open') continue;
+      const haystacks = [decision.topic, decision.question, ...(decision.options ?? []), decision.tracking_note ?? ''];
+      if (!haystacks.some((text) => textMentions(String(text), ledger.aliases))) continue;
+      hits.push({
+        id: decision.id,
+        topic: decision.topic,
+        note: decision.scope === 'tracked'
+          ? String(decision.tracking_note ?? '')
+          : `scope=acceptance，阻塞 ${(decision.blocks ?? []).join('、') || '（未登记）'}`,
+      });
+    }
+    return hits;
+  };
+
   // 包级验收项（acceptance_refs + 内置 checks）+ 直接点名 → 结构化验收项视图
   const pkgById = new Map<string, AnyRecord>((state.control.work_packages ?? []).map((pkg: AnyRecord) => [pkg.id, pkg]));
   for (const ledger of ledgerById.values()) {
@@ -426,27 +465,16 @@ export function buildObjectLedgerReport(ctx: CostByObjectContext): ObjectLedgerR
         ledger.acceptanceChecks.push({checkId, item: String(item?.item ?? ''), via: 'acceptance.yaml 点名'});
       }
     }
-    // 关联 pending（台账按对象 id / 别名点名的表格行）
+    // 关联 pending（台账按对象 id / 别名点名的表格行；同一词边界匹配器）
     for (const line of pendingText.split('\n')) {
       const rowMatch = /^\|\s*(\d+)\s*\|/.exec(line);
       if (!rowMatch) continue;
-      if (!ledger.aliases.some((alias) => line.includes(alias))) continue;
+      if (!textMentions(line, ledger.aliases)) continue;
       const cells = line.split('|');
       ledger.pendingEntries.push({id: `#${rowMatch[1]}`, title: (cells[2] ?? '').trim()});
     }
-    // 关联开放决策（topic/question/options/tracking_note 点名）
-    for (const decision of state.decisionGates.decisions) {
-      if (decision.status !== 'open') continue;
-      const haystacks = [decision.topic, decision.question, ...(decision.options ?? []), decision.tracking_note ?? ''];
-      if (!haystacks.some((text) => ledger.aliases.some((alias) => String(text).includes(alias)))) continue;
-      ledger.openDecisions.push({
-        id: decision.id,
-        topic: decision.topic,
-        note: decision.scope === 'tracked'
-          ? String(decision.tracking_note ?? '')
-          : `scope=acceptance，阻塞 ${(decision.blocks ?? []).join('、') || '（未登记）'}`,
-      });
-    }
+    // 关联开放决策（topic/question/options/tracking_note 点名；同一词边界匹配器）
+    for (const hit of openDecisionsMentioning(ledger)) ledger.openDecisions.push(hit);
   }
 
   // 成本归属未定：对全屋 placed 对象（含未进 ledger 的无引用对象）扫开放决策点名。
@@ -455,19 +483,7 @@ export function buildObjectLedgerReport(ctx: CostByObjectContext): ObjectLedgerR
   for (const entry of placedById.values()) {
     const ledger = ledgerById.get(entry.id) ?? newLedger(entry.id, entry, uniqueBareTypes);
     if (ledger.openDecisions.length === 0) {
-      for (const decision of state.decisionGates.decisions) {
-        if (decision.status !== 'open') continue;
-        const haystacks = [decision.topic, decision.question, ...(decision.options ?? []), decision.tracking_note ?? ''];
-        if (haystacks.some((text) => ledger.aliases.some((alias) => String(text).includes(alias)))) {
-          ledger.openDecisions.push({
-            id: decision.id,
-            topic: decision.topic,
-            note: decision.scope === 'tracked'
-              ? String(decision.tracking_note ?? '')
-              : `scope=acceptance，阻塞 ${(decision.blocks ?? []).join('、') || '（未登记）'}`,
-          });
-        }
-      }
+      for (const hit of openDecisionsMentioning(ledger)) ledger.openDecisions.push(hit);
     }
     if (!hasBusinessLink(ledger) && ledger.openDecisions.length) undecided.push(ledger);
   }
@@ -579,7 +595,7 @@ export function renderObjectLedger(ledger: ObjectLedger): string {
   if (ledger.pendingEntries.length) {
     for (const entry of ledger.pendingEntries) lines.push(`- ${entry.id} ${entry.title}`);
   } else {
-    lines.push('- （无——台账未按本对象的 id 或「房间.类型」别名点名；台账以裸类型名/点位 id 引用的不在此列）');
+    lines.push('- （无——台账未按本对象的 id、「房间.类型」别名或全屋唯一裸类型名词边界点名；台账以多房同型裸类型名/点位 id 引用的不在此列）');
   }
   lines.push('');
   lines.push('## 关联决策门禁（open）');
