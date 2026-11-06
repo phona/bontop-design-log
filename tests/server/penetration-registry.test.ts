@@ -147,7 +147,7 @@ describe('relationship waiver migration (2026-10-09)', () => {
     { id: 'kitchen_cooktop_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:4', 'furniture:kitchen:gas_stove:5'] },
     { id: 'wardrobe_top_pelmet', type: 'attached', pair: ['furniture:master_bedroom:master_north_wall_wardrobe_950:1', 'furniture:master_bedroom:master_wardrobe_top_pelmet:2'] },
     { id: 'kitchen_ro_purifier_inside_sink_base', type: 'contained', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9'] },
-    { id: 'robot_dock_in_gbath_vanity_bay', type: 'contained', pair: ['furniture:guest_bath:vanity:0', 'furniture:guest_bath:robot_dock_gbath:4'] },
+    { id: 'robot_dock_in_gbath_vanity_bay', type: 'contained', pair: ['gbath.vanity', 'gbath.robot_dock'] },
   ];
 
   it('keeps the 14 current migrated relationships as complete waivers carrying the original kind', () => {

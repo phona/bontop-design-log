@@ -725,9 +725,12 @@ export function validateRelationshipSpecs(
       continue;
     }
     for (const objectId of objects) {
+      // 已知 runtime 实例（含声明的稳定 id，如 gbath.vanity，不带 ':'）直接通过；
+      // 不带 ':' 又不在实例集里的才是类型名/全局名式的整类豁免。
+      if (known.has(objectId)) continue;
       if (!objectId.includes(':')) {
         issues.push({ level: 'error', code: 'relationship_instance_unstable', entity: `${relationship.id}:${objectId}`, source, message: `relationship ${relationship.id} uses a type/global name instead of a stable runtime instance id`, evidence: { relationship: relationship.id, object: objectId } });
-      } else if (known.size > 0 && !known.has(objectId)) {
+      } else if (known.size > 0) {
         issues.push({ level: 'error', code: 'relationship_object_unknown', entity: `${relationship.id}:${objectId}`, source, message: `relationship ${relationship.id} references an unknown runtime instance`, evidence: { relationship: relationship.id, object: objectId } });
       }
     }

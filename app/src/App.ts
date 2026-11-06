@@ -2368,9 +2368,9 @@ export class App {
         if (!objectId) return;
         // 页面只读化（2026-11-04）：拖动只做本地预演，不回写配置——
         // 模型配置唯一写手是 AI 会话（AGENTS.md「页面只取证与体验」）。
-        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:') || objectId.startsWith('furniture:')) {
-          this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
-        }
+        // 拖动只能经 enterDragForHovered 对家具/点位进入，故不再按 objectId 前缀二次判定
+        // （稳定 id 如 gbath.vanity 无 furniture: 前缀，按前缀判会漏提示）。
+        this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
         this.houseScene.hideGhost();
       },
     });
@@ -2687,12 +2687,12 @@ export class App {
     if (hovered) {
       const isInfrastructure = hovered.objectId.startsWith('electrical:') || hovered.objectId.startsWith('plumbing:');
       if (hovered.type === 'furniture') {
-        const parts = hovered.objectId.split(':');
-        const type = parts[2] ?? parts[1];
         this.fpController.enterDragMode(hovered.objectId, 0);
         const pos = this.houseScene.getFurniturePosition(hovered.objectId);
-        if (pos) {
-          this.houseScene.showGhost(pos.x, pos.z, pos.rotation, type);
+        // 幽灵尺寸按家具类型取：读 SceneBuilder 写的 userData.furnishingType，不再解析 objectId
+        // （稳定 id 如 gbath.vanity 不编码类型）。
+        if (pos?.furnishingType) {
+          this.houseScene.showGhost(pos.x, pos.z, pos.rotation, pos.furnishingType);
         }
       } else if (isInfrastructure) {
         this.fpController.enterDragMode(hovered.objectId, 0);
@@ -2801,12 +2801,8 @@ export class App {
       const objectId = this.fpController.getDraggedObjectId();
       const pos = this.houseScene.getGhostPosition();
       if (objectId && pos) {
-        const x = pos.x;
-        const z = pos.z;
-        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:') || objectId.startsWith('furniture:')) {
-          // 页面只读化（2026-11-04）：本地预演，不回写配置
-          this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
-        }
+        // 页面只读化（2026-11-04）：本地预演，不回写配置（拖动入口已限家具/点位，不按前缀判）
+        this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
       }
       this.fpController.exitDragMode();
       this.houseScene.hideGhost();

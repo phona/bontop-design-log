@@ -43,6 +43,7 @@ import {
 import { buildRenderLightingFixtureHeights, CEILING_MOUNTED_LIGHT_TYPES, ceilingMountGapTolerance, isLightingFixtureType, selectCeilingHost } from '../../../shared/lighting-fixtures.js';
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
 import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
+import { furnitureObjectId } from '../../../shared/furniture-object-id.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 
@@ -64,7 +65,7 @@ function placedFurnitureRuntimeIds(furnishings: FurnishingsYaml): string[] {
       const raw = item as unknown as Record<string, unknown>;
       const placed = raw.x !== undefined || raw.z !== undefined || raw.wall !== undefined || raw.along !== undefined;
       if (!placed) continue;
-      ids.push(`furniture:${roomId}:${item.type}:${runtimeIndex}`);
+      ids.push(furnitureObjectId(roomId, item, runtimeIndex));
       runtimeIndex++;
     }
   }
@@ -192,7 +193,7 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
     for (const item of items) {
       const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
       if (!isPlaced) continue;
-      const id = `furniture:${room}:${item.type}:${runtimeIndex}`;
+      const id = furnitureObjectId(room, item, runtimeIndex);
       runtimeIndex++;
       if (item.x === undefined || item.z === undefined) continue;
       const dimensions = FURNITURE_DIMS[item.type];
@@ -271,7 +272,7 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
       const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
       if (!isPlaced) continue;
       const type = String(item.type ?? '');
-      const runtimeId = `furniture:${roomId}:${type}:${runtimeIndex}`;
+      const runtimeId = furnitureObjectId(roomId, raw, runtimeIndex);
       runtimeIndex++;
       const dims = declaredDims(item, type);
       if (!dims || dims.width <= 0 || dims.depth <= 0) {

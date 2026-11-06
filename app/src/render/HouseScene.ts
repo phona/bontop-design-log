@@ -14,7 +14,8 @@ const MERGE_STATIC_UNITS = true;
 
 function isMergeableUnit(obj: THREE.Object3D): boolean {
   if (obj.userData?.type === 'railing_run') return true;
-  return obj.name.startsWith('furniture:')
+  // 家具按 userData.type 判：稳定 id（如 gbath.vanity）不带 furniture: 前缀。
+  return obj.userData?.type === 'furniture'
     || obj.name.startsWith('electrical:')
     || obj.name.startsWith('plumbing:');
 }
@@ -564,7 +565,7 @@ export class HouseScene implements SceneApi {
       return { minX: Math.min(...segment.map((p) => p.x)), maxX: Math.max(...segment.map((p) => p.x)), minZ: Math.min(...segment.map((p) => p.z)), maxZ: Math.max(...segment.map((p) => p.z)) };
     };
     const configuredFurnishing = this.auditFurnishings.guest_bath?.find((item) => item.type === 'vanity' && item.x !== undefined && item.z !== undefined);
-    const vanityBox = configuredFurnishing ? { minX: configuredFurnishing.x! - 0.20, maxX: configuredFurnishing.x! + 0.20, minZ: configuredFurnishing.z! - 0.40, maxZ: configuredFurnishing.z! + 0.40 } : aabb(this.findAuditObject('furniture:guest_bath:vanity:0'));
+    const vanityBox = configuredFurnishing ? { minX: configuredFurnishing.x! - 0.20, maxX: configuredFurnishing.x! + 0.20, minZ: configuredFurnishing.z! - 0.40, maxZ: configuredFurnishing.z! + 0.40 } : aabb(this.findAuditObject('gbath.vanity'));
     const configuredToilet = this.auditFurnishings.guest_bath?.find((item) => item.type === 'toilet' && item.x !== undefined && item.z !== undefined);
     const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('furniture:guest_bath:toilet:1'));
     const screenBox = segmentBox(points('shower_screen_gbath'));
@@ -1995,13 +1996,14 @@ export class HouseScene implements SceneApi {
     return this.floorMeshes;
   }
 
-  getFurniturePosition(objectId: string): { x: number; z: number; rotation: number; sourceIndex?: number } | null {
+  getFurniturePosition(objectId: string): { x: number; z: number; rotation: number; furnishingType?: string; sourceIndex?: number } | null {
     for (const mesh of this.furnitureMeshes) {
       if (mesh.userData.objectId === objectId) {
         return {
           x: mesh.position.x,
           z: mesh.position.z,
           rotation: mesh.rotation.y * 180 / Math.PI,
+          ...(typeof mesh.userData.furnishingType === 'string' ? { furnishingType: mesh.userData.furnishingType } : {}),
           ...(typeof mesh.userData.sourceIndex === 'number' ? { sourceIndex: mesh.userData.sourceIndex } : {}),
         };
       }
@@ -2943,9 +2945,9 @@ export class HouseScene implements SceneApi {
       }
     }
 
-    if (type === 'furniture' && objectId.startsWith('furniture:')) {
-      const parts = objectId.split(':');
-      const furnitureType = parts[2] ?? '';
+    if (type === 'furniture') {
+      // 下标 ID 取类型段；稳定 ID（如 gbath.vanity）本身即对象名，直接显示。
+      const furnitureType = objectId.startsWith('furniture:') ? (objectId.split(':')[2] ?? '') : objectId;
       return roomName ? `${roomName} · 家具 · ${furnitureType}` : `家具 · ${furnitureType}`;
     }
     const label = typeLabel[type] ?? type;

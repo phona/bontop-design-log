@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { load as loadYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { FURNITURE_DIMS, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE } from '../../../shared/types.js';
+import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
 
 const EPS = 0.01;
 const WALL_THICKNESS = 0.12;
@@ -162,6 +163,11 @@ function main(): void {
 
   // placed 实例索引（key = `${roomId}/${type}`），供房间级专项校验复用通用解析结果。
   const placedIndex = new Map<string, { label: string; item: PlacedItem; box: Aabb }>();
+
+  // 稳定对象 id（issue #98）全屋唯一：被 anti-penetration waivers 等跨文件按 id 引用，重复即绑错对象。
+  for (const duplicate of findDuplicateFurnitureIds(furnishings)) {
+    errors.push(`duplicate furniture id "${duplicate.id}": ${duplicate.entries.join(', ')}`);
+  }
 
   for (const [roomId, items] of Object.entries(furnishings)) {
     const room = rooms.get(roomId);
