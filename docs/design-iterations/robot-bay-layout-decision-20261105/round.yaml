@@ -90,7 +90,7 @@ datum:
       anchor:
         wall: w_gbath_east_open_vanity
         wall_side: west
-      geometry: 柜体 0.69（沿墙 z[3.61,4.30]，南墙南脸至墙段南端，两端贴死 0 容差）× 0.50（进深 x），背贴墙面西脸 7.14（墙线 7.20−半墙厚 0.06）；台面 0.72×0.04 @ y0.77；盆底=仓顶=台面下沿 0.75
+      geometry: 柜体 0.69（沿墙 z[3.61,4.30]，南墙南脸至墙段南端，两端贴死 0 容差）× 0.50（进深 x），背贴墙面西脸 7.14（墙线 7.20−半墙厚 0.06）；台面 0.69×0.04 @ y0.77；盆底=仓顶=台面下沿 0.75
     - id: robot_bay
       anchor:
         wall: w_gbath_east_open_vanity
@@ -161,11 +161,11 @@ objects:
       reason: 0.51m 中门改为 0.46m 仓门（铰北侧）
   added:
     - part: vanity-bay-north-end-panel
-      spec: 0.02×0.75×0.50 @ local x=-0.35（世界 z[3.565,3.585]，柜体北端板）
+      spec: 0.02×0.75×0.50 @ local x=-0.335（世界 z[3.61,3.63]，柜体北端板；2026-11-06 Codex blocking 修正，原 -0.35/z[3.565,3.585] 在实体墙内）
     - part: vanity-bay-drawer-divider
       spec: 0.02×0.75×0.50 @ local x=+0.145（仓/抽屉隔板，world z[4.09,4.11]）
     - part: vanity-drawer-south-end-panel
-      spec: 0.02×0.75×0.50 @ local x=+0.35（柜体南端板）
+      spec: 0.02×0.75×0.50 @ local x=+0.335（世界 z[4.28,4.30]，柜体南端板）
     - part: vanity-robot-bay-door
       spec: 0.46×0.60×0.02 @ y[0.15,0.75]，铰北侧外开（静态建模）
     - part: vanity-drawer-carcass
@@ -176,9 +176,9 @@ objects:
       spec: 0.17×0.36×0.02 @ y[0.03,0.39]
   unchanged:
     - part: countertop
-      spec: 0.72×0.04×0.50（柜宽随墙段 0.75 加到 0.72，台面同宽）
+      spec: 0.69×0.04×0.50（柜宽 0.69 贴死 [3.61,4.30]，台面同宽；2026-11-06 Codex blocking 修正，原 0.72）
     - part: basin
-      spec: 0.42×0.12×0.28 台上盆居中（z=3.925，仓/抽屉分界上方）
+      spec: 0.42×0.12×0.28 台上盆居中（z=3.955，随柜体北移；仓/抽屉分界上方）
 review:
   schema: interior-design-review-manifest/v3
   project: bontop-design-log
