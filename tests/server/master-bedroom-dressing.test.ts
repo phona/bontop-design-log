@@ -186,11 +186,13 @@ test('R9 master-bedroom furniture set places the 950 three-door wardrobe and rem
   assert.deepEqual(FURNITURE_DIMS.master_wardrobe_top_pelmet, { width: 0.95, depth: 0.58 });
   const baseCabinet = buildFixture('mb_vanity_base_cabinet');
   assert.ok(baseCabinet);
-  baseCabinet!.position.set(2.2575, 0, 3.61);
+  // 摆位中心 = 墙线 2.60 − 半墙厚 0.06 − wall_clearance 0.015 − 深 0.565/2 = 2.2425
+  //（2026-11-06 口径 A 校验共享化后按真实摆位取值；旧 2.2575 系忽略 clearance 的幻影中心）。
+  baseCabinet!.position.set(2.2425, 0, 3.61);
   baseCabinet!.rotation.y = THREE.MathUtils.degToRad(270);
   baseCabinet!.updateMatrixWorld(true);
   const baseBox = new THREE.Box3().setFromObject(baseCabinet!);
-  assert.ok(Math.abs(baseBox.min.x - 1.975) < 1e-6 && Math.abs(baseBox.max.x - 2.54) < 1e-6);
+  assert.ok(Math.abs(baseBox.min.x - 1.96) < 1e-6 && Math.abs(baseBox.max.x - 2.525) < 1e-6);
   assert.ok(Math.abs(baseBox.min.z - 2.92) < 1e-6 && Math.abs(baseBox.max.z - 4.30) < 1e-6);
   assert.equal(buildFixture('mb_vanity_continuous_closure_cabinet'), null);
 });
@@ -199,12 +201,13 @@ test('R9 vanity boards anchor to the wall west finish without bridge geometry', 
   for (const [type, yBand] of [['mb_vanity_lower_board', [0.965, 1.035]], ['mb_vanity_main_board', [1.515, 1.585]]] as const) {
     const board = buildFixture(type);
     assert.ok(board, `missing fixture ${type}`);
-    board!.position.set(2.2575, 0, 3.61);
+    // 摆位中心 2.2425（口径 A 真实摆位，见上方 baseCabinet 注释）。
+    board!.position.set(2.2425, 0, 3.61);
     board!.rotation.y = THREE.MathUtils.degToRad(270);
     board!.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(board!);
     assert.ok(Math.abs(box.min.z - 2.92) < 1e-6 && Math.abs(box.max.z - 4.30) < 1e-6, `${type} z[${box.min.z},${box.max.z}]`);
-    assert.ok(Math.abs(box.min.x - 1.975) < 1e-6 && Math.abs(box.max.x - 2.54) < 1e-6, `${type} AABB must be x[1.975,2.54]`);
+    assert.ok(Math.abs(box.min.x - 1.96) < 1e-6 && Math.abs(box.max.x - 2.525) < 1e-6, `${type} AABB must be x[1.96,2.525]`);
     assert.ok(box.min.y >= yBand[0] - 1e-6 && box.max.y <= yBand[1] + 1e-6, `${type} y band ${box.min.y}..${box.max.y}`);
     const endFinish = board!.children.find((child) => child.userData.part === 'wardrobe-side-board-end');
     assert.equal(endFinish, undefined, `${type} must remain a plain floating board without a wardrobe-colored end panel`);

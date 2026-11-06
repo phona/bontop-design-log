@@ -5,7 +5,12 @@
 
 import { FURNITURE_DIMS, type WallSide } from './types.js';
 
-/** 墙体完成面基厚（渲染与摆位共用的单一声明）。 */
+/**
+ * 墙体完成面基厚（渲染与摆位共用的单一声明）。
+ * 墙线基准语义（2026-11-06 业主口径 A，落实 pending #76「渲染口径先行」）：模型线=渲染墙盒
+ * 中心线，完成面=线±本值之半。宿主墙必须在 config/layout/model-geometry.yaml 声明
+ * `line_datum: centerline`（verify-furniture-placement 对挂墙家具宿主墙强制）。
+ */
 export const WALL_THICKNESS = 0.12;
 
 /**
@@ -32,7 +37,7 @@ export interface FurniturePlacement {
 type WallLike = { x1: number; z1: number; x2: number; z2: number };
 
 export function resolveFurniturePlacement(
-  item: { type: string; wall?: string; wall_side?: WallSide; along?: number; x?: number; z?: number; wall_clearance?: number },
+  item: { type: string; wall?: string; wall_side?: WallSide; along?: number; x?: number; z?: number; wall_clearance?: number; rotation?: number },
   wallSegments: Map<string, WallLike[]>,
 ): FurniturePlacement | null {
   if (item.wall !== undefined && item.wall_side !== undefined && item.along !== undefined) {
@@ -42,6 +47,8 @@ export function resolveFurniturePlacement(
       const dx = wall.x2 - wall.x1;
       const dz = wall.z2 - wall.z1;
       const length = Math.hypot(dx, dz);
+      // along 绝对 z 特例（w_mbath_east/w_mb_east）：沿墙坐标的历史约定，与墙线基准语义无关；
+      // 2026-11-06 口径 A PR 不改（决定只覆盖 w_mbath_east，不含 w_mb_east，见 PR 说明）。
       const alongIsAbsoluteVertical = (item.wall === 'w_mbath_east' || item.wall === 'w_mb_east') && Math.abs(dx) < 1e-9;
       if (length > 1e-9 && (alongIsAbsoluteVertical || (item.along >= -1e-6 && item.along <= length + 1e-6))) {
         const tangent = { x: dx / length, z: dz / length };
@@ -58,11 +65,11 @@ export function resolveFurniturePlacement(
         const wallPoint = alongIsAbsoluteVertical
           ? { x: wall.x1, z: item.along }
           : { x: wall.x1 + tangent.x * item.along, z: wall.z1 + tangent.z * item.along };
-        const finishOffset = (item.type === 'mb_vanity_base_cabinet' || item.type === 'mb_vanity_lower_board' || item.type === 'mb_vanity_main_board' || item.type === 'mb_vanity_pvc_box') ? WALL_THICKNESS / 2 : 0;
-        // A wall anchor describes the finish face. Keep the body away from
-        // that face by the authored construction allowance so validation and
-        // preview share one placement datum instead of relying on exact
-        // contact with the wall box.
+        // 墙线基准（2026-11-06 业主口径 A）：所有 wall/wall_side/along 家具一律从完成面
+        // （线 ± WALL_THICKNESS/2）起算，不再按家具类型区分——原「仅 4 个 mb_vanity 类型
+        // 加半墙厚」的类型清单已删（同墙镜柜曾按线=完成面贴线、穿渲染墙盒 0.06）。
+        // 主体再按 authored 施工余量离开完成面，校验与预演共用同一摆位基准。
+        const finishOffset = WALL_THICKNESS / 2;
         const wallClearance = item.wall_clearance ?? 0;
         const centerOffset = finishOffset + wallClearance + dims.depth / 2;
         return { x: wallPoint.x + normal.x * centerOffset, z: wallPoint.z + normal.z * centerOffset, wallId: item.wall, wallSide: item.wall_side, anchorAlong: item.along };

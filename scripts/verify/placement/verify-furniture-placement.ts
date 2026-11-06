@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import { load as loadYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { FURNITURE_DIMS, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE } from '../../../shared/types.js';
+import { resolveFurniturePlacement } from '../../../shared/furniture-placement.js';
 import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
 
 const EPS = 0.01;
-const WALL_THICKNESS = 0.12;
 
 interface Aabb {
   minX: number;
@@ -15,7 +15,7 @@ interface Aabb {
 }
 
 type WallSide = 'north' | 'south' | 'east' | 'west';
-type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number };
+type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number; wall_clearance?: number };
 
 const MB_VANITY_TYPES = new Set([
   'mb_vanity_base_cabinet',
@@ -47,7 +47,13 @@ function rotatedDims(item: PlacedItem, rotation: number): { width: number; depth
   return quarterTurns ? { width: dims.depth, depth: dims.width } : dims;
 }
 
-function resolvePlacement(item: PlacedItem, walls: Array<{ id?: string; x1: number; z1: number; x2: number; z2: number }>, label: string, errors: string[]): { x?: number; z?: number } {
+function resolvePlacement(
+  item: PlacedItem,
+  walls: Array<{ id?: string; x1: number; z1: number; x2: number; z2: number }>,
+  wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>,
+  label: string,
+  errors: string[],
+): { x?: number; z?: number } {
   if (item.wall !== undefined || item.wall_side !== undefined || item.along !== undefined) {
     if (item.wall === undefined || item.wall_side === undefined || item.along === undefined) {
       errors.push(`${label}: wall anchor requires wall, wall_side, and along`);
@@ -87,14 +93,15 @@ function resolvePlacement(item: PlacedItem, walls: Array<{ id?: string; x1: numb
       errors.push(`${label}: wall anchor along=${item.along} places furniture outside wall length ${wallLength.toFixed(2)}m`);
       return {};
     }
-    if ((wall.id === 'w_mbath_east' || wall.id === 'w_mb_east') && item.wall_side === 'west') {
-      const wallFinishOffset = item.type === 'mb_vanity_base_cabinet' || item.type === 'mb_vanity_lower_board' || item.type === 'mb_vanity_main_board' || item.type === 'mb_vanity_pvc_box' ? WALL_THICKNESS / 2 : 0;
-      return { x: wall.x1 - wallFinishOffset - dims.depth / 2, z: item.along };
+    // 坐标统一交给共享摆位解算（2026-11-06 口径 A：完成面 = 线 ± 半墙厚，含 authored
+    // wall_clearance）。旧本地复算是共享函数的漂移副本：按类型区分半墙厚且忽略
+    // wall_clearance（主卫柜组曾因此校验了一条比真实摆位东偏 15mm 的幻影包络），已删。
+    const placement = resolveFurniturePlacement(item, wallSegments);
+    if (!placement) {
+      errors.push(`${label}: shared placement could not resolve anchor on "${item.wall}"`);
+      return {};
     }
-    const ux = dx / wallLength;
-    const uz = dz / wallLength;
-    const normal = item.wall_side === 'west' ? { x: -1, z: 0 } : item.wall_side === 'east' ? { x: 1, z: 0 } : item.wall_side === 'north' ? { x: 0, z: -1 } : { x: 0, z: 1 };
-    return { x: wall.x1 + ux * item.along + normal.x * dims.depth / 2, z: wall.z1 + uz * item.along + normal.z * dims.depth / 2 };
+    return { x: placement.x, z: placement.z };
   }
   return { x: item.x, z: item.z };
 }
@@ -169,6 +176,33 @@ function main(): void {
     errors.push(`duplicate furniture id "${duplicate.id}": ${duplicate.entries.join(', ')}`);
   }
 
+  // 墙线基准语义门禁（2026-11-06 业主口径 A）：挂墙家具的宿主墙必须在 model-geometry.yaml
+  // 显式声明 line_datum，且当前唯一受支持口径是 centerline（渲染墙盒中心线、完成面=线±半墙厚，
+  // shared/furniture-placement.ts 单一实现）。声明缺失=语义隐式漂移回类型清单时代；声明了
+  // 未实现的其他值=声明与消费方脱节，都拦 error。与 SceneBuilder/InfrastructureBuilder 的
+  // 同口径由 WALL_THICKNESS 单一声明保证。
+  const wallSegments = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>(
+    walls
+      .filter((wall) => wall.id !== undefined)
+      .map((wall) => [wall.id as string, wall.segments?.length
+        ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]]),
+  );
+  const anchoredWallIds = new Set<string>();
+  for (const items of Object.values(furnishings)) {
+    for (const item of items) {
+      if (item.wall !== undefined && item.wall_side !== undefined && item.along !== undefined) anchoredWallIds.add(item.wall);
+    }
+  }
+  for (const wallId of anchoredWallIds) {
+    const wall = walls.find((candidate) => candidate.id === wallId);
+    if (!wall?.line_datum) {
+      errors.push(`wall "${wallId}" hosts wall-anchored furniture but declares no line_datum (基准语义必须显式声明，2026-11-06 口径 A)`);
+    } else if (wall.line_datum !== 'centerline') {
+      errors.push(`wall "${wallId}" declares line_datum "${String(wall.line_datum)}" but no placement consumer supports it (当前仅支持 centerline)`);
+    }
+  }
+
   for (const [roomId, items] of Object.entries(furnishings)) {
     const room = rooms.get(roomId);
     if (!room) {
@@ -204,7 +238,7 @@ function main(): void {
 
     items.forEach((item, index) => {
       const label = `${roomId}/${item.type}[${index}]`;
-      const placed = resolvePlacement({ ...item, roomId }, walls, label, errors);
+      const placed = resolvePlacement({ ...item, roomId }, walls, wallSegments, label, errors);
       if (placed.x === undefined || placed.z === undefined) return;
       const rotation = item.rotation ?? 0;
 
@@ -243,8 +277,10 @@ function main(): void {
   // ---- 2026-09-03 专项：主卧家具化前台 + 书房季节后台（迭代 master-flexible-frontstage-20260903，候选未冻结判据）----
   const GAP_EPS = 1e-9;
 
-  // 主卫隔墙外柜组必须同时退出两道 120mm 墙体：东墙西完成面 x=2.54，
-  // 主卫南墙卧室侧完成面 z=2.92；南端仍与衣柜侧 z=4.30 对齐。
+  // 主卫隔墙外柜组包络（2026-11-06 口径 A 校验共享化后按真实摆位钉死）：
+  // 背面 = 东墙线 2.60 − 半墙厚 0.06 − wall_clearance 0.015 = 2.525（完成面 2.54 前退让 15mm），
+  // 西缘 = 2.525 − 0.565 = 1.96；z[2.92,4.30] 不变（主卫南墙卧室侧完成面 / 衣柜侧对齐）。
+  // 旧目标 x[1.975,2.540] 是本地复算忽略 wall_clearance 的幻影包络，随共享化删除。
   for (const type of MB_VANITY_CASEWORK_TYPES) {
     const entry = placedIndex.get(`master_bedroom/${type}`);
     if (!entry) {
@@ -252,8 +288,8 @@ function main(): void {
       continue;
     }
     const { box } = entry;
-    if (box.minX < 1.975 - GAP_EPS || box.maxX > 2.54 + GAP_EPS || box.minZ < 2.92 - GAP_EPS || box.maxZ > 4.30 + GAP_EPS) {
-      errors.push(`${entry.label}: 柜组包络 x[${box.minX.toFixed(3)},${box.maxX.toFixed(3)}] z[${box.minZ.toFixed(3)},${box.maxZ.toFixed(3)}] 越出双墙完成面目标 x[1.975,2.540] z[2.920,4.300]`);
+    if (box.minX < 1.96 - GAP_EPS || box.maxX > 2.525 + GAP_EPS || box.minZ < 2.92 - GAP_EPS || box.maxZ > 4.30 + GAP_EPS) {
+      errors.push(`${entry.label}: 柜组包络 x[${box.minX.toFixed(3)},${box.maxX.toFixed(3)}] z[${box.minZ.toFixed(3)},${box.maxZ.toFixed(3)}] 越出真实摆位目标 x[1.960,2.525] z[2.920,4.300]`);
     }
   }
 

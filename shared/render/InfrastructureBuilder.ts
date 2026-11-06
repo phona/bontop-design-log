@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { ElectricalPoint, PlumbingPoint, WallSide } from '../types.js';
+import { WALL_THICKNESS } from '../furniture-placement.js';
 import { buildFixture } from './FixtureFactory.js';
 
 export interface InfrastructureWallSegment {
@@ -46,7 +47,6 @@ const PANEL_DIMENSIONS: Record<string, { width: number; depth: number; height: n
   weak_panel: { width: 0.45, depth: 0.14, height: 0.75, frontProjection: 0.13 },
 };
 
-const WALL_THICKNESS = 0.12;
 const WALL_GAP = 0.005;
 const FIXTURE_HALF_THICKNESS = 0.01;
 
