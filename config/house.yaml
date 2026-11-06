@@ -572,7 +572,7 @@ furnishings:
   guest_bath:
     # 南侧开放洗漱区纳入 guest_bath 语义边界；vanity 以 w_gbath_east_open_vanity 西侧完成面定位
     # （wall/wall_side/along 机制：along 自墙段北端量到柜中心，柜体在墙段上两端贴死），背面朝东、
-    # 正面朝西，rotation=270，台盆与台上龙头共用中心线。柜体分割数值只在条目 vanity_layout 声明
+    # 正面朝西，rotation=270，台盆与墙面龙头共用中心线（龙头挂墙不挂柜——宿主判定与口径 A 完成面坐标见 config/plumbing.yaml faucet_gbath_vanity，2026-11-06 issue #98 PR-6；原「台上龙头」表述与 FixtureFactory 墙面龙头建模不符，已更正）。柜体分割数值只在条目 vanity_layout 声明
     # （3D FixtureFactory.buildVanity、robot_dock 挂位解算、DXF 外框共用同一份；FURNITURE_DIMS 不再存副本）。
     # DEC-2026-11-05-R5 + 2026-11-06 Codex blocking 修正：柜宽取定案值——可用跨度=南墙南脸至东墙段南端、
     # 两端贴死 0 容差（原 0.72 柜北端板整个在实体墙内、仓净宽被压到 0.435<官方预留 0.45；量房复核见 pending #76）；

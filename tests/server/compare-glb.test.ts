@@ -42,6 +42,22 @@ test('semantic normalization collapses implementation children and legacy furnit
   assert.ok(inventory.explainableDuplicates.some((entry) => entry.startsWith('furniture:furniture:master_bedroom:bed_180:0')));
 });
 
+test('semantic normalization recognizes issue #98 stable furniture ids alongside the legacy form', () => {
+  // issue #98 稳定 id（house.yaml 条目 `id:`）不带 `furniture:` 前缀：组节点与 part 子节点
+  // 都必须归为 furniture 并归并到同一 id，否则基线 diff 会静默漏掉这批对象。
+  assert.deepEqual(normalizeSemanticId('gbath.vanity'), { category: 'furniture', id: 'gbath.vanity' });
+  assert.deepEqual(normalizeSemanticId('gbath.vanity:vanity:part=vanity-bay-north-end-panel:role=cabinet_body'), { category: 'furniture', id: 'gbath.vanity' });
+  assert.deepEqual(normalizeSemanticId('gbath.robot_dock'), { category: 'furniture', id: 'gbath.robot_dock' });
+  const inventory = inventoryFromSummary(makeSummary([
+    'gbath.vanity',
+    'gbath.vanity:vanity:part=countertop:role=countertop',
+    'gbath.robot_dock',
+  ]));
+  assert.deepEqual(inventory.ids.furniture, ['gbath.robot_dock', 'gbath.vanity']);
+  assert.deepEqual(inventory.ignoredNames, []);
+  assert.ok(inventory.explainableDuplicates.some((entry) => entry.startsWith('furniture:gbath.vanity (2 raw nodes)')));
+});
+
 test('real baseline and facts-enabled CLI candidate classify expected and error differences', () => {
   const baseline = 'tmp/baselines/house-20260826.glb';
   const candidate = 'tmp/compare-current-facts.glb';
