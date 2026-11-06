@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as THREE from 'three';
 import type { resolveLayout } from '../../../server/layout-resolver.js';
@@ -43,7 +43,9 @@ import {
 import { buildRenderLightingFixtureHeights, CEILING_MOUNTED_LIGHT_TYPES, ceilingMountGapTolerance, isLightingFixtureType, selectCeilingHost } from '../../../shared/lighting-fixtures.js';
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
 import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
-import { furnitureHostIndex, resolveFurniturePlacement } from '../../../shared/furniture-placement.js';
+import { furnitureHostIndex, resolveFurniturePlacement, type PlacementAnchors } from '../../../shared/furniture-placement.js';
+import { mepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
+import { parseMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 import { furnitureObjectId } from '../../../shared/furniture-object-id.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
@@ -61,16 +63,18 @@ function resolvedWallSegments(layout: ReturnType<typeof resolveLayout>): PlanSeg
 function placedFurnitureRuntimeIds(
   furnishings: FurnishingsYaml,
   wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>,
+  anchors: PlacementAnchors,
 ): string[] {
   const ids: string[] = [];
-  // 「已放置」与 SceneBuilder.addFurniture 共用同一解算（issue #98 PR-3）：挂墙/挂载/绝对坐标
-  // 三种定位声明都在 shared/furniture-placement.ts，手写谓词会把 mount 挂载件（无 x/z/wall/along）
-  // 漏判成 count-only，令期望 runtime id 整体错位。
+  // 「已放置」与 SceneBuilder.addFurniture 共用同一解算（issue #98 PR-3）：挂墙/挂载/绝对
+  // 坐标/锚点派生四种定位声明都在 shared/furniture-placement.ts，手写谓词会把 mount 挂载件
+  // （无 x/z/wall/along）或锚点派生件（无 x/z/wall/along/mount）漏判成 count-only，令期望
+  // runtime id 整体错位。
   const hosts = furnitureHostIndex(Object.values(furnishings).flat());
   for (const [roomId, items] of Object.entries(furnishings)) {
     let runtimeIndex = 0;
     for (const item of items) {
-      const { placement } = resolveFurniturePlacement(item, wallSegments, hosts);
+      const { placement } = resolveFurniturePlacement(item, wallSegments, hosts, anchors);
       if (!placement) continue;
       ids.push(furnitureObjectId(roomId, item, runtimeIndex));
       runtimeIndex++;
@@ -256,6 +260,21 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
   const source = 'config/house.yaml + shared/render/SceneBuilder.ts + shared/render/FixtureFactory.ts';
   const { layout, config, house } = inputs;
   const structuralPaths = inputs.structuralPaths;
+  const hosts = furnitureHostIndex(Object.values(house.furnishings ?? {}).flat());
+  // 主卫冷凝链锚点（issue #98 PR-10）：与 SceneBuilder 同一函数解算，声明层与 runtime 层
+  // 对三件链条家具的「已放置」判定必须同源，否则期望 id 与 runtime id 错位。
+  const { anchors: placementAnchors } = resolveCondensatePlacementAnchors({
+    hvacDiagram: inputs.hvacDiagram,
+    hvacSources: { ceiling: inputs.ceiling, electrical: inputs.electrical },
+    penetration: inputs.condensatePenetration ?? mepPenetrationAt(
+      parseMepCoordination(readFileSync(path.join(ROOT, 'config/mep-hvac-coordination.yaml'), 'utf8')).routes.find((route) => route.id === 'condensate-master'),
+      'w_mbath_south',
+    ),
+    wardrobe: hosts.get('mb.wardrobe_950'),
+    wallRun: hosts.get('mb.vanity_pvc_box'),
+    wallSegments: scene.index.wallSegments,
+    hosts,
+  });
   const collected = collectPenetrationObjects(scene, structuralPaths);
   const furnitureById = new Map(collected.furnitureEntries.map((entry) => [entry.entity, entry]));
   // 「合法重叠」白名单 2026-10-09 从本文件的 relationships 迁入
@@ -266,7 +285,7 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
   // 运行时权威性（声明 ↔ runtime 是否一一对应）留在本层。
   issues.push(...validateRuntimeAuthority({
     furniture: collected.furniture,
-    expectedFurnitureIds: placedFurnitureRuntimeIds(house.furnishings ?? {}, scene.index.wallSegments),
+    expectedFurnitureIds: placedFurnitureRuntimeIds(house.furnishings ?? {}, scene.index.wallSegments, placementAnchors),
     expectedGlassElementIds: [...new Set(structuralPaths.map((path) => path.elementId))],
     glass: collected.glass,
     source,
@@ -274,11 +293,10 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
 
   // 「已放置」判定与 SceneBuilder 同一解算（issue #98 PR-3，详见 placedFurnitureRuntimeIds）。
   const wallSegments = scene.index.wallSegments;
-  const hosts = furnitureHostIndex(Object.values(house.furnishings ?? {}).flat());
   for (const [roomId, items] of Object.entries(house.furnishings ?? {})) {
     let runtimeIndex = 0;
     for (const [index, raw] of items.entries()) {
-      const { placement } = resolveFurniturePlacement(raw, wallSegments, hosts);
+      const { placement } = resolveFurniturePlacement(raw, wallSegments, hosts, placementAnchors);
       if (!placement) continue;
       const type = String((raw as { type?: unknown }).type ?? '');
       const runtimeId = furnitureObjectId(roomId, raw, runtimeIndex);

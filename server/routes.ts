@@ -10,6 +10,7 @@ import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig,
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
+import { mepPenetrationAt } from '../shared/condensate-chain.js';
 import { mergeSceneElements } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import type { CurrentScheme, CurtainState, ProjectRenderFacts, ProjectRenderFactsProjection } from '../shared/types.js';
@@ -77,6 +78,11 @@ export function createApiRouter(deps: ApiDeps): Router {
   const { state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
   const router = Router();
   const phaseScopes = loadPhaseScopes();
+  /** 主卫冷凝链穿墙锚点（issue #98 PR-10）：MEP condensate-master @w_mbath_south，只读不改线。 */
+  const condensateMasterPenetration = (): { x: number; z: number } | undefined => mepPenetrationAt(
+    loadMepCoordinationConfig().routes.find((route) => route.id === 'condensate-master'),
+    'w_mbath_south',
+  );
 
   router.get('/config-status', (_req, res) => {
     res.json({ configs: deps.getConfigRegistry().getStatuses() });
@@ -533,6 +539,11 @@ export function createApiRouter(deps: ApiDeps): Router {
         ceilingZones: deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig(),
         sceneElements: filterCurtainElements(sceneElements, phase, phaseScopes),
         layoutSource: projectCatalog.getLayoutSource(),
+        // 主卫冷凝链的 MEP 侧锚点（2026-11-07 issue #98 PR-10）：三件遮蔽家具的摆位改锚点
+        // 派生（house.yaml anchor 声明），穿墙段从 MEP condensate-master 穿墙点解出。
+        // /api/mep-coordination 也返回同一份路线，但页面在建场之后才拉它；建场要用的这个
+        // 点随 /api/project 先到，避免链条家具因拉取顺序从场景里消失（同源：MEP 配置）。
+        condensatePenetration: condensateMasterPenetration(),
       },
       topics: projectCatalog.getTopics().map((t) => ({
         id: t.id, name: t.name, perRoom: t.perRoom, optionCount: t.options.length,

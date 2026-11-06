@@ -69,6 +69,22 @@ function resolveAnchor(anchor: HvacAnchor, sources: HvacBuilderSources): Vec3 | 
   return item ? { x: item.x, y: item.height / 2, z: item.z } : undefined;
 }
 
+/**
+ * hvac.yaml anchors（id → 平面位置），含 ref 链解析（issue #98 PR-10）。
+ *
+ * 家具锚点派生（house.yaml `anchor: {source: 'hvac', id: 'indoor_master'}`）要按 id 引用
+ * 内机锚点，与 MEP `resolveMepEndpoint` 的 ref 解析同源；渲染只画 confirmed/带 position
+ * 的实体（buildHvacEntityDescriptors），这里不套那层过滤——协调链要能引用 pending 态锚点。
+ */
+export function hvacAnchorPositions(diagram: HvacDiagram, sources: HvacBuilderSources = {}): Map<string, { x: number; z: number }> {
+  const positions = new Map<string, { x: number; z: number }>();
+  for (const anchor of diagram.anchors) {
+    const position = resolveAnchor(anchor, sources);
+    if (position) positions.set(anchor.id, { x: position.x, z: position.z });
+  }
+  return positions;
+}
+
 /** Shared Web/CLI contract for exportable HVAC entities. */
 export function buildHvacEntityDescriptors(planId: string, diagram: HvacDiagram, sources: HvacBuilderSources = { ceiling: [], electrical: [], outdoor: [] }): HvacEntityDescriptor[] {
   const entities: HvacEntityDescriptor[] = [];

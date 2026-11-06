@@ -458,10 +458,14 @@ furnishings:
     - { type: mb_vanity_base_cabinet, id: mb.vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, wall_clearance: 0.015 } # 2026-09-07：1.38m×0.565m×0.62m；主体从东墙完成面退让15mm，北端与主卫南墙完成面保持 site_trim 收口
     - { type: mb_vanity_lower_board, id: mb.vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 下悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
     - { type: mb_vanity_main_board, id: mb.vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 上悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
-    - { type: condensate_pipe_ac_outlet, id: mb.condensate_pipe, x: 3.70, z: 5.10, rotation: 0 } # coordination schematic/pending：ac_master 内厂家冷凝水出口未现场确认；此处取业主 2026-10-05 选定的机身中心轴 x=3.70，出口在机身上的具体横向位置仍待厂家图；独立圆管段接至主卧东墙贴墙 run，不接 return/supply 格栅。
-    - { type: mb_vanity_pvc_box, id: mb.vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.70 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。
-    - { type: mb_vanity_pvc_wardrobe_entry, id: mb.vanity_pvc_wardrobe_entry, x: 4.10, z: 4.62, rotation: 0 } # 延伸空调盒/通顶衣柜顶部服务带西行至衣柜东缘 (2.925,4.62)；仅检视态显示，柜体主体保留。
-    - { type: mb_vanity_pvc_service_chase, id: mb.vanity_pvc_service_chase, x: 2.925, z: 4.62, rotation: 0 } # 柜顶内转至墙行 x=2.50，再于 z=3.10 向 x=2.30 短折穿 w_mbath_south；两段白色 L 形包边覆盖横折并收至南墙 bedroom-side finish z=2.92；主卫吊顶内到候选点(2.00,0.1,2.5)并下引；pending，非施工依据。
+    # 2026-11-07 issue #98 PR-10 冷凝链改锚点派生：三件的 x/z 曾各自手写（outlet 3.70,5.10；
+    # entry 4.10,4.62；chase 2.925,4.62），同一接口坐标在注释、FixtureFactory 配方长度与 MEP via
+    # 点里各写一份，改一段不跟随。现整条链由 shared/condensate-chain.ts 从共同锚点单一解算，
+    # 这里只声明锚点引用（定位来源唯一，禁写第二份坐标）；接口坐标由锚点算出，改一段另一段自动跟随。
+    - { type: condensate_pipe_ac_outlet, id: mb.condensate_pipe, anchor: { source: hvac, id: indoor_master }, rotation: 0 } # 挂 ac_master 内机锚点（config/hvac.yaml anchors indoor_master → ceiling ac_master，机身中心轴 x=3.70 即来源）：出口段自内机锚点向东至空调盒东转点、再向南落入衣柜顶服务带，接主卧东墙贴墙 run，不接 return/supply 格栅。厂家出口在机身上的具体位置仍 pending（本件是协调示意，非施工件）。
+    - { type: mb_vanity_pvc_wardrobe_entry, id: mb.vanity_pvc_wardrobe_entry, anchor: { source: chain, id: wardrobe_east_band }, rotation: 0 } # 服务带西行段：东端=空调盒东转点（由 w_mb_east 卧室侧完成面 −40mm 解出），西端=通顶衣柜东缘 × 服务带（衣柜 mb.wardrobe_950 派生）——即本锚点。仅检视态显示，柜体主体保留。
+    - { type: mb_vanity_pvc_service_chase, id: mb.vanity_pvc_service_chase, anchor: { source: chain, id: wardrobe_east_band }, rotation: 0 } # 柜顶内转至墙行（w_mbath_east 西完成面 −40mm），沿墙行南落至折点，折点 x 由 MEP condensate-master 穿墙点派生、z 由衣柜南缘 − 墙行长度解出，再穿 w_mbath_south 进主卫吊顶到候选点并下引；两段白色 L 形包边收至南墙 bedroom-side finish。pending，非施工依据。
+    - { type: mb_vanity_pvc_box, id: mb.vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.70 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。遗留（2026-11-07 PR-10 登记）：along=3.70 是手写值，其北端 z=4.30 与衣柜南缘重合系当年取值巧合；衣柜若在 z 向移动，本包管不会跟随——届时链的接口诊断会显形，须同步改 along 或把它也改锚点派生（owner 设计侧；触发=衣柜 z 向移位或柜体深化会审）。
     # mattress/curtain/ceiling count-only entries remain after placed furniture
     - { type: mattress_180 }
     - { type: curtain_set }

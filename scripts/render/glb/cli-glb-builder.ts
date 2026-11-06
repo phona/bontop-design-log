@@ -9,6 +9,8 @@ import { buildHvacBuilderSources } from '../../../shared/render/HvacBuilder.js';
 import { parseSceneInput } from '../../../shared/render/scene-input.js';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { mergeSceneElements, parseOverlay } from '../../../server/overlay-merge.js';
+import { mepPenetrationAt } from '../../../shared/condensate-chain.js';
+import { parseMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 
 interface HouseYamlSubset {
   furnishings?: FurnishingsYaml;
@@ -44,12 +46,16 @@ export function buildCliHouseScene(
   const projection = renderFactsPath
     ? parseProjectRenderFactsProjection(JSON.parse(readFileSync(renderFactsPath, 'utf8')))
     : undefined;
-  const hvacFacts = projection ? parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')) : undefined;
-  const hvacSources = projection ? buildHvacBuilderSources({
-    projection,
-    electrical: parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8')),
-    hvac: hvacFacts,
-  }) : undefined;
+  // 主卫冷凝链锚点（issue #98 PR-10）：内机锚点/候选接入点来自 config/hvac.yaml diagram，
+  // 穿墙点来自 MEP condensate-master。有没有 --render-facts 都读——CLI 有文件系统访问权，
+  // 链条家具不该因为少传一个参数就从导出里静默消失。
+  const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
+  const hvacDiagram = hvacFacts.plans[0]?.diagram;
+  const hvacSources = buildHvacBuilderSources({ projection, electrical, hvac: hvacFacts });
+  const condensatePenetration = mepPenetrationAt(
+    parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8')).routes.find((route) => route.id === 'condensate-master'),
+    'w_mbath_south',
+  );
   const rawWalls = resolved.walls;
   const elements = mergeSceneElements(rawWalls, parseOverlay(readFileSync(overlayPath, 'utf8')));
   const input = parseSceneInput({
@@ -65,7 +71,11 @@ export function buildCliHouseScene(
   const result = buildScene({
     ...input,
     ...(projection ? { lightingFixtures: projection.lightingFixtures } : {}),
-    options: projection ? { hvac: { projection, sources: hvacSources }, ...(projection.lighting ? { lighting: projection.lighting } : {}) } : undefined,
+    options: {
+      hvac: { projection, diagram: hvacDiagram, sources: hvacSources },
+      ...(condensatePenetration ? { condensatePenetration } : {}),
+      ...(projection?.lighting ? { lighting: projection.lighting } : {}),
+    },
   });
   if (projection) filterCliCurtains(result.exportRoot, new Set(expectedCurtainNodeIds(projection.presentation.curtains)));
   return result;
