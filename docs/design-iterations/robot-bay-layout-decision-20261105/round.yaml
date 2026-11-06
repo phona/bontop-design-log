@@ -47,7 +47,7 @@ brief:
     - id: official_survey
       status: site_pending
       question: 柜内安装三家官方均无章节（科沃斯除外）；背贴死+背面水口软管走向、前面板取袋空间、整台前拉路径需官方勘测放行
-      handling: "柜体下单后预约云鲸官方（pending #77）；三项操作空间任何一项不过即回 acceptance 未闭环"
+      handling: "柜体下单前预约云鲸官方（勘测前置，2026-11-06 Codex major 修正：勘测结论直接改变定制柜体尺寸结构，不适配不得先下单）；三项操作空间任何一项不过即回 acceptance 未闭环"
     - id: door_open_state
       status: pending
       question: 仓门开启态与整台前拉路径未经模型预演（门为静态建模）；门开度≥110° 或设止位
@@ -113,7 +113,7 @@ fact_table:
     evidence: official
     status: verified
   - id: j65_manual_specs
-    claim: J65 参数页——基站 410×433×280mm/8.71kg/进水压力 0.08-0.8MPa；机器人 351.2×363.5×95mm/4.97kg/14.4V≥4900mAh；摆放前方≥0.45m+后≥0.3m（水平）
+    claim: J65 参数页——基站 410×433×280mm/8.71kg/进水压力 0.08-0.8MPa；机器人 351.2×363.5×95mm/4.97kg/14.4V≥4900mAh；摆放口径=前方≥0.45m 空旷且无悬崖（手册正文唯一净空要求；2026-11-06 Codex blocking 纠正：原「后≥0.3m」系误读——图中 0.3m 为临空边缘安全距离，非背向退墙要求，故「背沿贴墙」与官方口径并不冲突）
     source: J65 官方说明书 p6/p9（tmp/capture/jx-manual-2.pdf）
     evidence: official
     status: verified
