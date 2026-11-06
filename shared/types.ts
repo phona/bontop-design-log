@@ -870,6 +870,8 @@ export interface WallSegment {
   openings?: ResolvedOpening[];
   /** 墙段两侧的房间 id（model-geometry 拓扑：boundary 同时含 from/to 顶点的房间），供渲染端按房间挂材质 */
   rooms?: string[];
+  /** 墙线基准语义（WallDef.line_datum 透传，口径见其注释）。 */
+  line_datum?: 'centerline';
 }
 
 export interface OverlayPoint {
@@ -980,6 +982,13 @@ export interface WallDef {
   structure?: 'shear' | 'fill' | 'curtain' | 'new_partition';
   /** 结构类型来源：confirmed=交房实测/图纸确认, inferred=邻户同户型图推断 */
   structure_status?: 'confirmed' | 'inferred';
+  /**
+   * 墙线基准语义（2026-11-06 业主口径 A，落实 pending #76）：centerline = 模型线即渲染墙盒
+   * 中心线，完成面 = 线 ± WALL_THICKNESS/2。挂墙家具的宿主墙必须声明（verify-furniture-placement
+   * 强制）；当前唯一合法值 centerline——脸/心翻转待 #76 量房裁定后扩枚举并同步全部消费方
+   * （furniture-placement / InfrastructureBuilder / DXF），不得只改声明。
+   */
+  line_datum?: 'centerline';
 }
 
 export interface RoomDef {
@@ -1034,6 +1043,8 @@ export interface ResolvedWall {
   bayRooms?: string[];
   structure?: 'shear' | 'fill' | 'curtain' | 'new_partition';
   structure_status?: 'confirmed' | 'inferred';
+  /** 墙线基准语义（WallDef.line_datum 透传，口径见其注释）。 */
+  line_datum?: 'centerline';
 }
 
 export interface ResolvedLayout {
@@ -1823,7 +1834,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   bath_side_cabinet: { width: 0.45, depth: 0.5 }, // 2026-08-21 主卫干区封闭侧柜 h2.0
   // DEC-045 主卫东墙独立对象：rotation=270 后 width 沿墙 z、depth 朝 west；
   // wall anchor 是自身中心，local y 才是高度层次；柜体与悬浮板沿墙同轴组成一套墙面家具。
-  mb_vanity_base_cabinet: { width: 1.38, depth: 0.565 }, // 2026-09-07：1.38m×0.565m×0.62m；AABB x[1.975,2.54] z[2.92,4.30]，同时避开东墙与主卫南墙
+  mb_vanity_base_cabinet: { width: 1.38, depth: 0.565 }, // 2026-09-07：1.38m×0.565m×0.62m；摆位 AABB x[1.96,2.525] z[2.92,4.30]（背面=墙线 2.60−半墙厚 0.06−wall_clearance 0.015=2.525；2026-11-06 口径 A 校验共享化后按真实摆位更正，旧 x[1.975,2.54] 系忽略 clearance 的幻影包络），同时避开东墙与主卫南墙
   mirror_cabinet_gbath: { width: 0.66, depth: 0.14 }, // DEC-2026-09-09-R2 客卫镜柜（y[1.10,2.00] 挂墙，沿墙 0.66m——2026-11-06 随 DEC-2026-11-05-R5 柜体北移由 0.70 收窄，北缘避南墙南脸 3.61）
   heated_towel_rack: { width: 0.55, depth: 0.10 }, // DEC-2026-10-17-R20 客卫电热毛巾架：梯式 0.55W(沿墙)×0.10D(凸出)×0.75H，挂墙 y[1.05,1.80]；SKU 未选型，图示代理尺寸
   robot_dock_gbath: { width: 0.41, depth: 0.433 }, // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下；2026-11-02 本 PR 改为云鲸 JX 超薄上下水版 YJCC034 实尺寸 410×433×280mm，柜体底缘 0.30 不动）
