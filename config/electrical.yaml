@@ -601,22 +601,26 @@
   wall: w_gbath_east_open_vanity
   wall_side: west
   type: socket
-  x: 7.05
+  x: 7.14
   z: 4.115
   height: 1.0
   count: 1
-  note: "客卫开放洗漱区 vanity 插座·双联北位（DEC-2026-09-08-R1：由 z=3.55 墙角端点移至 z=3.882，与 sock_gbath_vanity_2 组双联、并集中心对齐 vanity 轴线 3.955；h=1.2→1.0 避镜面下缘 y=1.10（镜面 z[3.625,4.285]×y[1.10,2.00]（2026-11-06 随柜体北移由 0.70 收窄为 0.66）占满墙段），距台面 0.21m，带防溅盒；墙体挂载与给电按现场复核）；DEC-2026-10-17-R20 双联北移——与 faucet_gbath_vanity (3.955) 横向拉开至 0.16/0.246m（≥0.15 达标，原 0.018/0.068 未达自有口径；2026-11-06 双联随柜体北移 +0.055，z 4.06→4.115 / 4.146→4.201，与龙头间距不变）；北板距段端 0.154m 贴角无 warning"
+  status: inferred
+  position_status: pending
+  note: "客卫开放洗漱区 vanity 插座·双联北位（DEC-2026-09-08-R1：由 z=3.55 墙角端点移至 z=3.882，与 sock_gbath_vanity_2 组双联、并集中心对齐 vanity 轴线 3.955；h=1.2→1.0 避镜面下缘 y=1.10（镜面 z[3.625,4.285]×y[1.10,2.00]（2026-11-06 随柜体北移由 0.70 收窄为 0.66）占满墙段），距台面 0.21m，带防溅盒；墙体挂载与给电按现场复核）；DEC-2026-10-17-R20 双联北移——与 faucet_gbath_vanity (3.955) 横向拉开至 0.16/0.246m（≥0.15 达标，原 0.018/0.068 未达自有口径；2026-11-06 双联随柜体北移 +0.055，z 4.06→4.115 / 4.146→4.201，与龙头间距不变）；北板距段端 0.154m 贴角无 warning；2026-11-06 issue #98 PR-6 宿主核实=墙挂（不挂柜）：gbath.vanity carcass 通高只到盆底 0.75m、台面 0.79m，本点 h=1.0 落在台面与镜柜下缘 y=1.10 之间的露墙带，且柜体模型无背板（shared/render/FixtureFactory.ts buildVanity），物理上只能上墙，故维持 wall 挂载；按 2026-11-06 口径 A（墙线=渲染墙盒中心线、完成面=线±WALL_THICKNESS/2，shared/furniture-placement.ts 单一口径）迁到西完成面 x 7.05→7.14（= 墙线 7.20 − 半墙厚 0.06，与 vanity / mirror_cabinet_gbath 背沿同一完成面）；同步精度三件套 status: inferred（ordinary_power_service 回路成员的设计位）+ position_status: pending（x 依口径 A 渲染基准先行，7.14/7.20 结构真值待 pending #76 量房，偏差 >0.03m 时随柜/dock 级联回改）；迁移后离墙线 0.06m ≤0.15m，pending 态不再被 verify-point-placement 从 warning 升 error"
 
 - id: sock_gbath_vanity_2
   room: guest_bath
   wall: w_gbath_east_open_vanity
   wall_side: west
   type: socket
-  x: 7.05
+  x: 7.14
   z: 4.201
   height: 1.0
   count: 1
-  note: "客卫开放洗漱区 vanity 插座·双联南位（DEC-2026-09-08-R1 业主拍板+1 位：吹风机/电动牙刷/剃须刀同用）；h=1.0 镜面下缘以下，带防溅盒；ordinary_power_service 回路成员；墙体挂载与给电按现场复核；DEC-2026-10-17-R20 双联北移——与 faucet_gbath_vanity (3.955) 横向拉开至 0.16/0.246m（≥0.15 达标，原 0.018/0.068 未达自有口径；2026-11-06 双联随柜体北移 +0.055，z 4.06→4.115 / 4.146→4.201，与龙头间距不变）；北板距段端 0.154m 贴角无 warning"
+  status: inferred
+  position_status: pending
+  note: "客卫开放洗漱区 vanity 插座·双联南位（DEC-2026-09-08-R1 业主拍板+1 位：吹风机/电动牙刷/剃须刀同用）；h=1.0 镜面下缘以下，带防溅盒；ordinary_power_service 回路成员；墙体挂载与给电按现场复核；DEC-2026-10-17-R20 双联北移——与 faucet_gbath_vanity (3.955) 横向拉开至 0.16/0.246m（≥0.15 达标，原 0.018/0.068 未达自有口径；2026-11-06 双联随柜体北移 +0.055，z 4.06→4.115 / 4.146→4.201，与龙头间距不变）；北板距段端 0.154m 贴角无 warning；2026-11-06 issue #98 PR-6 宿主核实=墙挂（不挂柜，判定依据同 sock_gbath_vanity：h=1.0 在台面 0.79m 与镜柜下缘 y=1.10 之间的露墙带、柜体无背板）：按口径 A 迁到西完成面 x 7.05→7.14，同步精度三件套 status: inferred + position_status: pending（同 sock_gbath_vanity 口径，待 pending #76 量房）；另更正上文旧值：+0.055 北移后北板距墙段端（4.30）实为 0.099m <0.15m，verify-data-consistency 现登记 1 条「距墙段端点」贴角 warning（86mm 面板北缘距墙角 0.056m）——迁前该 warning 被「离墙超差即整体跳过后续几何检查」掩住（scripts/verify/placement/verify-point-placement.ts 2026-10-04 A4-b 注释所述的静默跳过），贴角安装属预期、不是新缺陷"
 
 - id: sock_gbath_batheheater
   room: guest_bath
