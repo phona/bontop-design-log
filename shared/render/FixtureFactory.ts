@@ -720,35 +720,39 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
   },
   {
     // DEC-2026-11-05-R5（2026-11-05 业主定案，取代 DEC-2026-11-04-R4 的居中格+两条旁柜）：
-    // 柜体 0.72m（墙段 0.75m，每端容差 15mm）= 北端机器人仓区 0.50m + 南端抽屉区 0.22m。
-    // 仓：净宽 0.46m（基站 410mm + 两侧各 30mm，京东官方预留口径「总宽>45cm」内）、深 0.50m、
-    // 无底板、通高到盆底 0.75m；仓门 0.46×0.60 遮 y[0.15,0.75]（铰北侧外开），底缝 0.15m 供
-    // 机器人（高 0.095m）关门进出；头顶 0.45m 兼作台盆排水过管走廊（下水器仓内转 90° 向北穿
-    // w_gbath_south 排内卫沉箱，DEC-2026-09-09-R6），不得在头顶加固定层板。
-    // 抽屉区：通顶双抽（落地 y[0.03,0.75]），封闭储物约 70L（0.19×0.46×0.34×2）。
-    // local +x = 世界 +z（南）：仓占 local x[-0.36,+0.14]（世界 z[3.565,4.065]，贴北端=排水穿墙端），
-    // 抽屉占 local x[+0.14,+0.36]（世界 z[4.065,4.285]）；从走廊看=左仓右抽。
-    // 2026-11-06 视觉验收收尾：全柜统一暖米 #e8e1d6（原抽屉区 #f0f0f0 与仓门双色，找茬员实测业主会第一眼问）；
+    // 柜体 0.69m——可用跨度 = 南墙 w_gbath_south 南脸 3.61（墙线 3.55+0.12 居中半厚）至东墙段南端 4.30，
+    // 两端贴死 0 容差（2026-11-06 Codex blocking：原 0.72 柜北端板 z[3.565,3.585] 整个在实体墙内，
+    // 且仓净宽被压到 0.435<官方预留 0.45；量房复核见 pending #76）= 北端机器人仓区 0.50 + 南端抽屉区 0.19。
+    // 仓：净宽 0.46m（基站 410mm + 两侧各 25mm）、深 0.50m、无底板、通高到盆底 0.75m；
+    // 仓门 0.46×0.60 遮 y[0.15,0.75]（铰北侧外开），底缝 0.15m 供机器人（高 0.095m）关门进出；
+    // 头顶 0.45m 兼作台盆排水过管走廊（下水器仓内转 90° 向北穿 w_gbath_south 排内卫沉箱，
+    // DEC-2026-09-09-R6），不得在头顶加固定层板。
+    // 抽屉区：通顶双抽（落地 y[0.03,0.75]），carcass 0.17×0.72×0.46 毛容约 56L，
+    // 扣除面板/滑轨后可用约 40L（旧开放旁柜 32L；2026-11-06 Codex blocking：原「70L」算术错，
+    // 0.19×0.46×0.34×2 实为 59.4L 且未扣占用，已按模型零件重算）。
+    // local +x = 世界 +z（南），vanity 中心 z=3.955：仓占 local x[-0.345,+0.155]（世界 z[3.61,4.11]，
+    // 贴北端=排水穿墙端），抽屉占 local x[+0.155,+0.345]（世界 z[4.11,4.30]）；从走廊看=左仓右抽。
+    // 2026-11-06 视觉验收收尾：全柜统一暖米 #e8e1d6（原抽屉区 #f0f0f0 与仓门双色）；
     // 抽屉 3cm 拼缝后加深色阴影筋（否则 carcass 同色只渲染成发丝线）。
     type: 'vanity',
     parts: [
-      { shape: 'box', size: [0.02, 0.75, 0.50], position: [-0.35, 0.375, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-bay-north-end-panel', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.02, 0.75, 0.50], position: [0.13, 0.375, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-bay-drawer-divider', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.02, 0.75, 0.50], position: [0.35, 0.375, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-south-end-panel', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.46, 0.60, 0.02], position: [-0.11, 0.45, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-robot-bay-door', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.02, 0.18, 0.02], position: [0.085, 0.45, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-robot-bay-door-handle', materialRole: 'hardware' },
-      { shape: 'box', size: [0.18, 0.72, 0.46], position: [0.24, 0.39, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-carcass', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.20, 0.33, 0.02], position: [0.24, 0.585, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-front-upper', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.14, 0.02, 0.02], position: [0.24, 0.70, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-upper-handle', materialRole: 'hardware' },
-      { shape: 'box', size: [0.20, 0.36, 0.02], position: [0.24, 0.21, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-front-lower', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.14, 0.02, 0.02], position: [0.24, 0.34, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-lower-handle', materialRole: 'hardware' },
+      { shape: 'box', size: [0.02, 0.75, 0.50], position: [-0.335, 0.375, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-bay-north-end-panel', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.02, 0.75, 0.50], position: [0.145, 0.375, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-bay-drawer-divider', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.02, 0.75, 0.50], position: [0.335, 0.375, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-south-end-panel', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.46, 0.60, 0.02], position: [-0.095, 0.45, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-robot-bay-door', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.02, 0.18, 0.02], position: [0.10, 0.45, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-robot-bay-door-handle', materialRole: 'hardware' },
+      { shape: 'box', size: [0.17, 0.72, 0.46], position: [0.24, 0.39, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.17, 0.33, 0.02], position: [0.24, 0.585, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-front-upper', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.12, 0.02, 0.02], position: [0.24, 0.70, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-upper-handle', materialRole: 'hardware' },
+      { shape: 'box', size: [0.17, 0.36, 0.02], position: [0.24, 0.21, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-front-lower', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.12, 0.02, 0.02], position: [0.24, 0.34, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-lower-handle', materialRole: 'hardware' },
       // 抽屉拼缝阴影筋：3cm 拼缝（y[0.39,0.42]）后露 carcass 会同色只成发丝线，深色筋让它读成阴影缝（2026-11-06 视觉验收找茬员实测）
-      { shape: 'box', size: [0.20, 0.03, 0.02], position: [0.24, 0.405, 0.23], color: '#4a4a4a', roughness: 0.8, part: 'vanity-drawer-seam-shadow', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.17, 0.03, 0.02], position: [0.24, 0.405, 0.23], color: '#4a4a4a', roughness: 0.8, part: 'vanity-drawer-seam-shadow', materialRole: 'cabinet_body' },
       { shape: 'box', size: [0.42, 0.12, 0.28], position: [0, 0.81, -0.05], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
       // 台面 + 标准墙面龙头；龙头由 guest_bath plumbing 点位统一生成。
       // DEC-2026-09-09-R2：内置平镜移出，镜面由 mirror_cabinet_gbath 镜柜承担（避免双镜）。
       // DEC-2026-09-09-R7：柜深 0.40→0.50（标准成品柜深，基站+机器人全藏柜下；back 贴墙面西脸 7.14）。
-      { shape: 'box', size: [0.72, 0.04, 0.50], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
+      { shape: 'box', size: [0.69, 0.04, 0.50], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
     ],
   },
   {
@@ -765,12 +769,12 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
-    // DEC-2026-09-09-R2 客卫镜柜（候选未冻结）：0.70宽×0.90高×0.14深，底缘 y=1.10、顶缘 y=2.00，
+    // DEC-2026-09-09-R2 客卫镜柜（候选未冻结）：0.66宽×0.90高×0.14深（2026-11-06 随 DEC-2026-11-05-R5 柜体北移由 0.70 收窄——北缘避南墙南脸 3.61），底缘 y=1.10、顶缘 y=2.00，
     // 贴 w_gbath_east_open_vanity 西完成面，下沿避台盆双联插座（h=1.0）；rotation=270 后 width 沿墙 z、depth 朝 west（房间侧）。
     type: 'mirror_cabinet_gbath',
     parts: [
-      { shape: 'box', size: [0.70, 0.90, 0.14], position: [0, 1.55, 0], color: '#f0ede6', roughness: 0.4, part: 'carcass', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.66, 0.84, 0.012], position: [0, 1.55, 0.076], color: '#bcd2d8', roughness: 0.08, metalness: 0.45, part: 'mirror-door', materialRole: 'mirror' },
+      { shape: 'box', size: [0.66, 0.90, 0.14], position: [0, 1.55, 0], color: '#f0ede6', roughness: 0.4, part: 'carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [0.62, 0.84, 0.012], position: [0, 1.55, 0.076], color: '#bcd2d8', roughness: 0.08, metalness: 0.45, part: 'mirror-door', materialRole: 'mirror' },
     ],
   },
   {
