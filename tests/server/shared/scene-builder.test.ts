@@ -220,13 +220,16 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
 
   // along 一律是「自墙段起点顶点 v_bath_ne(2.60,1.10) 沿墙向北的距离」（2026-11-07 issue #98
   // 删除 w_mbath_east「along = 绝对 z」历史特例）；锚点世界 z = 1.10 + along = 3.61。
+  // 2026-11-07（issue #98 PR-11）：两块悬浮板的尺寸声明已随条目迁进 house.yaml 行内
+  // width/depth（FURNITURE_DIMS 目录条目删，同一数字只留一处），本夹具按 house.yaml
+  // 实况补行内声明——底柜行内仍不写（其尺寸只在目录，PR-9 口径）。
   const along = 2.51;
   const anchorZ = 3.61;
   const result = buildScene({
     rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
     walls: [{ id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 }],
     elements: [],
-    furnishings: { master_bedroom: types.map((type) => ({ type, wall: 'w_mbath_east', wall_side: 'west' as const, along, rotation: 270 })) },
+    furnishings: { master_bedroom: types.map((type) => ({ type, ...(type === 'mb_vanity_base_cabinet' ? {} : { width: 1.38, depth: 0.565 }), wall: 'w_mbath_east', wall_side: 'west' as const, along, rotation: 270 })) },
   });
   const groups = result.index.furnitureMeshes.filter((group) => types.includes(String(group.userData.objectId).split(':')[2]));
   assert.equal(groups.length, types.length);

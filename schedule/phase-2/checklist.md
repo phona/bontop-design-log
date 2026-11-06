@@ -1,9 +1,9 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"2a83eea2cd6f19d26ba430781a8194d8870dca4110151777fd797d8d47cd5fcd","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"d4e4347fc2d2f38294eaa21c2aea51ff3606104de2438a421a5de0664e41b842","config/electrical.yaml":"b0764c9e9cb668ca05b7c1b0704f17e098c99b4d1b7ba946028945e4ca3dae2f","config/house.yaml":"f8ee41d138b0062e02629137d5dad0a369bd83ebfa75825f0903ec3c28093971","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/model-package-links.yaml":"59887799220488d934a500316e5ac99aafb54dde91848c37148699aa3d26b2b3","config/plumbing.yaml":"a4aed2ff8009571baf8def2169486c3e0e353b5920f6590c032f45e7184fc7a7","schedule/phase-1/control.yaml":"ffb332e57b1c97162b686950e82eda20079ead69afd625b07c2fa2acf5c0006f","schedule/phase-2/control.yaml":"70521a51535156014c71252d93be3e6dc5ac675a2f3f8fb998d85d86cb1d1777","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"1d739b2c35e38c0fba27b38dd0314b81c5f79700ab939cde605872e6c177267f","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"4496e9cdb3deb14ba3aa3404f3484162bd5c39c69dcf24b0dd32c7b1c578e41e","config/electrical.yaml":"b0764c9e9cb668ca05b7c1b0704f17e098c99b4d1b7ba946028945e4ca3dae2f","config/house.yaml":"f8ee41d138b0062e02629137d5dad0a369bd83ebfa75825f0903ec3c28093971","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/model-package-links.yaml":"51658cde2fb6c8a63a927e85b532a8df6de675a964ace129826f074c8140166d","config/plumbing.yaml":"a4aed2ff8009571baf8def2169486c3e0e353b5920f6590c032f45e7184fc7a7","schedule/phase-1/control.yaml":"642eda377bc77c34340d76159279d84b2ddf13ee9f3919eaef771fffc29f80d5","schedule/phase-2/control.yaml":"0b2494f2fd7a2621462dc77eeee08b27f383c1ee0271cf144eb7ff38d63cca64","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
 # 二期功能升级推进清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-2/control.yaml`  
-> 视图输入指纹：`sha256:805e2862f56a13812e8358e2a414fa221ee49017a5cd2cc20f2e2968dad24940`（12 个输入文件）  
-> Gate记录用项目数据指纹：`sha256:aeeb852396c381eaa4511e097355be3047c65b0c6af069c8ac795fa7ed629352`  
+> 视图输入指纹：`sha256:530f12bc1b1f83d65cd33a95eec170971b5d4206d97e72f924408ea3ec69124f`（12 个输入文件）  
+> Gate记录用项目数据指纹：`sha256:64e9cb58f19a691f4de8457b3ef87762a86f63b5dd7ccf2c0c45244f0f6e5921`  
 > 阶段状态：`proposed`；决策状态：`alignment_required`
 
 ## 当前可执行范围
@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|---|
 | P2-GATE-01 | blocked | 一期竣工结算和资料移交完成 | PKG-170 通过；最终结算、缺陷清单和一期竣工资料已签收 | 业主、施工方 | final_account_statement、closed_defect_register、signed_handover_index | `8fdf720a8b538c89b4919947ad285e1f9f93a9017cc308667aceef63b931608c`<br>尚无检查记录 |
 | P2-GATE-02 | blocked | 根据一期实际结余重新确定二期总上限 | 一期实际支出、未付承诺和预备金结余已对账，业主书面批准二期预算上限 | 业主 | phase_1_final_budget、owner_budget_approval | `5163923f8787aa994805caeb20db7e2fd10c39c3263666dfed48a8ab9b9266cd`<br>尚无检查记录 |
-| P2-GATE-03 | blocked | 逐项确认采购必要性、尺寸、接口、保修和当前方案是否仍有效 | 每个候选均明确保留/延期/取消；保留项有现场复尺、接口与书面报价，P2-100柜组边界和P2-160灯光范围已对齐当前项目数据，并已拆成可验收工作包 | 业主、设计师、设备供应商、定制供应商 | approved_phase_scope、site_fit_records、written_quotes、approved_work_package_plan | `9cb1812f097fcb2d06ddb70f5463e67beee21bc4cc6865d7d96e2e69f68cd80b`<br>尚无检查记录 |
+| P2-GATE-03 | blocked | 逐项确认采购必要性、尺寸、接口、保修和当前方案是否仍有效 | 每个候选均明确保留/延期/取消；保留项有现场复尺、接口与书面报价，P2-100柜组边界和P2-160灯光范围已对齐当前项目数据，并已拆成可验收工作包 | 业主、设计师、设备供应商、定制供应商 | approved_phase_scope、site_fit_records、written_quotes、approved_work_package_plan | `bf1759172c7381f0384467554991fabe556cff9f37b725f167752b27e0f47c31`<br>尚无检查记录 |
 
 ## 候选范围
 
@@ -31,7 +31,7 @@
 | P2-070 | 窗帘电机 | ¥3,000—¥4,000 | proposed | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) — types=curtain<br>[config/electrical.yaml](../../config/electrical.yaml) — ids=sock_living_curtain,sock_master_curtain,sock_parent_curtain,sock_study_curtain |
 | P2-080 | 家庭健身设备 | ¥1,000—¥1,500 | proposed | 待补数据映射 |
 | P2-090 | 晾衣架 | ¥600—¥700 | proposed | [config/ceiling.yaml](../../config/ceiling.yaml) — trade=drying_rack |
-| P2-100 | 主卧通顶定制衣柜（一期后移，藏空调冷凝水管槽，必须定制） | ¥3,000—¥5,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=master_bedroom; types=master_north_wall_wardrobe_950,mb_vanity_base_cabinet,mb_vanity_lower_board,mb_vanity_main_board,mb_vanity_pvc_box,mb_vanity_pvc_wardrobe_entry,mb_vanity_pvc_service_chase |
+| P2-100 | 主卧通顶定制衣柜（一期后移，藏空调冷凝水管槽，必须定制） | ¥3,000—¥5,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=master_bedroom; ids=mb.wardrobe_950,mb.wardrobe_pelmet,mb.vanity_base_cabinet,mb.vanity_lower_board,mb.vanity_main_board,mb.vanity_pvc_box,mb.vanity_pvc_wardrobe_entry,mb.vanity_pvc_service_chase,mb.condensate_pipe |
 | P2-110 | 客厅与书房窗帘（一期后移） | ¥4,000—¥6,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=living_dining,study; types=curtain_set |
 | P2-120 | 书房与西北次卧家具（一期后移） | ¥3,000—¥5,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=study,bedroom_nw |
 | P2-130 | 壁床柜（一期后移） | ¥3,000—¥5,000 | proposed | 待补数据映射 |

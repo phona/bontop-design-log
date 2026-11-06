@@ -1923,8 +1923,18 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   mirror_cabinet_gbath: { width: 0.66, depth: 0.14 }, // DEC-2026-09-09-R2 客卫镜柜（y[1.10,2.00] 挂墙，沿墙 0.66m——2026-11-06 随 DEC-2026-11-05-R5 柜体北移由 0.70 收窄，北缘避南墙南脸 3.61）
   heated_towel_rack: { width: 0.55, depth: 0.10 }, // DEC-2026-10-17-R20 客卫电热毛巾架：梯式 0.55W(沿墙)×0.10D(凸出)×0.75H，挂墙 y[1.05,1.80]；SKU 未选型，图示代理尺寸
   robot_dock_gbath: { width: 0.41, depth: 0.433 }, // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下；2026-11-02 本 PR 改为云鲸 JX 超薄上下水版 YJCC034 实尺寸 410×433×280mm，柜体底缘 0.30 不动）
-  mb_vanity_lower_board: { width: 1.38, depth: 0.565 }, // 下部悬浮板与底柜同包络，北端贴主卫南墙卧室侧完成面 z=2.92
-  mb_vanity_main_board: { width: 1.38, depth: 0.565 }, // 主板与下板同宽同深，同轴止于 z[2.92,4.30]
+  // 2026-11-07（issue #98 PR-11）条带柜组 FURNITURE_DIMS 清理：两块悬浮板
+  // （mb_vanity_lower_board / mb_vanity_main_board）的尺寸声明已在 PR-9「条带柜组摆位统一」
+  // 随条目迁进 house.yaml 行内 width/depth（同一数字只留一处），目录条目删。
+  // 其余 mb_* 条目**保留**——全仓 grep 确认仍有真实读者，删了会破门禁：
+  //   mb_vanity_base_cabinet：house.yaml 行内不写尺寸（PR-9 测试明令「行内不写第二套」），
+  //     挂墙解算的 along 合法域/退让与 verify-furniture 的柜组包络专项都读目录；
+  //   mb_vanity_pvc_box：同上（挂墙解算 + 冷凝链 alongWallZSpan/wallRunSpan 派生读它）；
+  //   condensate_pipe_ac_outlet：verify-furniture 的居中方框（itemAabb）用它算 AABB，
+  //     且该型不在 MB_CONDENSATE_TYPES 豁免集里，方框要参与房间边界/门扫/重叠检查；
+  //   mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase：verify-furniture 仍按
+  //     目录算它们的（豁免）方框，目录值是「零件长度须与相邻段接口坐标一致」的声明参照
+  //     （FixtureFactory 链构建器不持长度常量），删了只多两条 no-dims 警告、无迁移去处。
   condensate_pipe_ac_outlet: { width: 0.40, depth: 0.46 }, // ac_master 内冷凝水出口→延伸空调盒/衣柜顶部服务带；厂家出口位置 pending，横向取机身中心轴 x=3.70
   mb_vanity_pvc_box: { width: 1.20, depth: 0.08 }, // w_mbath_east 西侧冷凝水墙行 (2.50,4.30)->(2.50,3.10)；中心离墙完成面约40mm，wall anchor 使用 w_mbath_east west，管径/坡度待深化
   mb_vanity_pvc_wardrobe_entry: { width: 1.175, depth: 0.03 }, // 延伸空调盒/衣柜顶部服务带内的西行段

@@ -323,7 +323,12 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
       }
       // 成本项对象归属（issue #98 PR-8）：可选 `targets: [对象稳定 id]`。只收非空字符串
       // 数组、全屋唯一且指向 placed 对象——count-only 条目无 runtime 对象可归属；
-      // 归属未定（如 COST-150-01，开放项 D19）就不写 targets，不许用占位对象假装归属。
+      // 没有 DEC/台账映射的归属未定对象就不写 targets，不许用占位对象假装归属。
+      // 2026-11-07（issue #98 PR-11）口径修正：targets 登记的是「对象→成本项」关联，
+      // 不是金额裁定——COST-150-01 按 DEC-2026-10-07-R02 裁定④登记条带柜组 7 件，
+      // 金额边界（含不含 P2-100 的 3000-5000）仍是开放决策 D19，由
+      // cost:by-object 单对象视图的「关联决策门禁」节显形。PR-8 曾把 COST-150-01
+      // 当作「归属未定就不写 targets」的例子，随 PR-11 取代。
       if (component.targets !== undefined) {
         const targets = component.targets;
         if (!Array.isArray(targets) || targets.length === 0 || targets.some((target: unknown) => typeof target !== 'string' || !target.trim())) {
