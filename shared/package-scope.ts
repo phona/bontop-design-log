@@ -109,6 +109,24 @@ const POINT_SOURCE_PREFIXES: Record<string, string> = {
 };
 
 /**
+ * 家具来源（furnishings）的 `select.ids` → 场景 objectId **裸 id**（2026-11-06 issue #98 PR-4）。
+ *
+ * 家具 objectId 的唯一实现在 `shared/furniture-object-id.ts`：条目声明了 `id`
+ * （如 `gbath.vanity`）就直接用它，未声明才退化成 `furniture:<room>:<type>:<index>`。
+ * 它**不带来源前缀**（与 electrical:/plumbing: 点位约定相反），所以不能套
+ * POINT_SOURCE_PREFIXES——套了会造出永远对不上的键，高亮与反查两边静默不命中。
+ *
+ * 取代的旧行为：furnishings 的 `types` 选择器（如 `types: [vanity]`）按 sceneElements 的
+ * type 匹配，而 sceneElements 只有墙与叠加层区域（server/overlay-merge.ts 的
+ * mergeSceneElements，walls + overlay.elements）、**不含家具**，所以这类选择器从来
+ * 解析不出任何对象——silent no-op。ids 走本条分支后，按稳定 id 选家具的链接
+ * （MODEL-PKG-100 选 gbath.vanity、MODEL-PKG-160 选 gbath.robot_dock）正查高亮
+ * （App.highlightApprovalPackage）与反查归属（buildObjectPackageIndex →
+ * revealPackageForObject）同时生效。
+ */
+const OBJECT_ID_SOURCES = new Set(['furnishings']);
+
+/**
  * 点位来源的 `select {all: true}` → 项目数据里该分类的全部点位（2026-11-04 issue #65）。
  *
  * 键 = links 的 `source`，值 = `ProjectScopeInput.house` 下承载该分类全量清单的字段。
@@ -190,6 +208,12 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
     // （拾取侧 targetFromIntersects 解析出的就是带前缀 id）。裸 id 直接进集合会
     // 两边都静默不命中——2026-11-02 浏览器实证，勿回退。
     for (const id of select.ids ?? []) {
+      // 家具来源的 ids 是场景 objectId 裸值（OBJECT_ID_SOURCES）：家具 objectId 不带
+      // 来源前缀，走点位前缀归一化会造出对不上的键。
+      if (OBJECT_ID_SOURCES.has(scope.source)) {
+        objectIds.add(id);
+        continue;
+      }
       const prefix = POINT_SOURCE_PREFIXES[scope.source];
       if (prefix) {
         pointIds.add(`${prefix}${id}`);

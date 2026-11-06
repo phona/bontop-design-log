@@ -103,7 +103,11 @@ links:
     budget_ref: {source: phase_1_budget, id: PKG-100}
     mapping_status: partial
     scope:
-      - {source: furnishings, select: {room_ids: [master_bath, guest_bath, master_bedroom], types: [toilet, shower_set, vanity, faucet, mb_washbasin_cabinet, mirror_cabinet_gbath, exhaust_fan]}}
+      # 2026-11-06（issue #98 PR-4）：vanity 改按稳定 id 选（gbath.vanity，house.yaml 已声明）——
+      # types 里已无 vanity（全仓仅此一条 type: vanity 记录，核实无误删），type 选择器随
+      # 「删类型不同步本文件」失效模式（见 MODEL-PKG-120 注释）一并退场。
+      - {source: furnishings, select: {room_ids: [master_bath, guest_bath, master_bedroom], types: [toilet, shower_set, faucet, mb_washbasin_cabinet, mirror_cabinet_gbath, exhaust_fan]}}
+      - {source: furnishings, select: {ids: [gbath.vanity]}}
       - {source: plumbing, select: {room_ids: [master_bath, guest_bath, master_bedroom]}}
       - {source: overlay, select: {types: [shower_screen]}}
   - id: MODEL-PKG-110
@@ -196,7 +200,12 @@ links:
     budget_ref: {source: phase_1_budget, id: PKG-160}
     mapping_status: partial
     scope:
-      - {source: furnishings, select: {types: [fridge, washer, gas_stove, range_hood, water_heater, dishwasher, robot_dock_gbath]}}
+      # 2026-11-06（issue #98 PR-4）：robot_dock_gbath 改按稳定 id 选（gbath.robot_dock，
+      # house.yaml 已声明并经 gbath.vanity 的 robot_bay 槽位挂载）——全仓仅此一条
+      # type: robot_dock_gbath 记录，核实无误删；type 选择器随「删类型不同步本文件」
+      # 失效模式（见 MODEL-PKG-120 注释）一并退场。
+      - {source: furnishings, select: {types: [fridge, washer, gas_stove, range_hood, water_heater, dishwasher]}}
+      - {source: furnishings, select: {ids: [gbath.robot_dock]}}
       - {source: electrical, select: {ids: [sock_fridge_living, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}} # sock_kitchen_fridge → sock_fridge_living（DEC-2026-10-17-R20 冰箱点位迁客餐厅西侧重绑）
       - {source: plumbing, select: {ids: [faucet_balcony_washer, drain_balcony_washer, faucet_gbath_vanity, drain_gbath_vanity]}}
   - id: MODEL-PKG-170
