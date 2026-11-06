@@ -180,7 +180,9 @@ test('R9 master-bedroom furniture set places the 950 three-door wardrobe and rem
   }
   for (const type of ['mb_vanity_lower_board', 'mb_vanity_main_board']) {
     const board = master.find((item) => item.type === type);
-    assert.deepEqual(board, { type, id: { mb_vanity_base_cabinet: 'mb.vanity_base_cabinet', mb_vanity_lower_board: 'mb.vanity_lower_board', mb_vanity_main_board: 'mb.vanity_main_board' }[type], wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 });
+    // along 2.51 = 沿墙距离（自墙段起点顶点 v_bath_ne z=1.10 向北量，2026-11-07 issue #98
+    // 删除本墙「along = 绝对 z」历史特例）→ 世界 z = 1.10 + 2.51 = 3.61。
+    assert.deepEqual(board, { type, id: { mb_vanity_base_cabinet: 'mb.vanity_base_cabinet', mb_vanity_lower_board: 'mb.vanity_lower_board', mb_vanity_main_board: 'mb.vanity_main_board' }[type], wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 });
   }
   assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', id: 'mb.wardrobe_pelmet', x: 2.45, z: 4.59, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.master_wardrobe_top_pelmet, { width: 0.95, depth: 0.58 });
