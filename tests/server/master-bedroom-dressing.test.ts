@@ -147,11 +147,11 @@ test('950 left shift clears d_mb while preserving the north-wall room envelope',
 });
 
 test('R9 master-bedroom furniture set places the 950 three-door wardrobe and removes R5/R6 objects', () => {
-  assert.deepEqual(placed('bed_180'), { type: 'bed_180', x: 3.20, z: 7.40, rotation: 270 });
-  assert.deepEqual(placed('master_north_wall_wardrobe_950'), { type: 'master_north_wall_wardrobe_950', x: 2.45, z: 4.59, rotation: 0 });
-  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', x: 2.45, z: 4.59, rotation: 0 });
-  assert.deepEqual(placed('master_bedside_cabinet_350_north'), { type: 'master_bedside_cabinet_350_north', x: 4.01, z: 6.245, rotation: 0 });
-  assert.deepEqual(placed('master_bedside_cabinet_350_south'), { type: 'master_bedside_cabinet_350_south', x: 4.01, z: 8.555, rotation: 0 });
+  assert.deepEqual(placed('bed_180'), { type: 'bed_180', id: 'mb.bed_180', x: 3.20, z: 7.40, rotation: 270 });
+  assert.deepEqual(placed('master_north_wall_wardrobe_950'), { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 });
+  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', id: 'mb.wardrobe_pelmet', x: 2.45, z: 4.59, rotation: 0 });
+  assert.deepEqual(placed('master_bedside_cabinet_350_north'), { type: 'master_bedside_cabinet_350_north', id: 'mb.bedside_cabinet_north', x: 4.01, z: 6.245, rotation: 0 });
+  assert.deepEqual(placed('master_bedside_cabinet_350_south'), { type: 'master_bedside_cabinet_350_south', id: 'mb.bedside_cabinet_south', x: 4.01, z: 8.555, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.master_north_wall_wardrobe_950, { width: 0.95, depth: 0.58 });
   assert.deepEqual(FURNITURE_DIMS.master_bedside_cabinet_350_north, { width: 0.38, depth: 0.35 });
   assert.deepEqual(FURNITURE_DIMS.master_bedside_cabinet_350_south, { width: 0.38, depth: 0.35 });
@@ -180,9 +180,9 @@ test('R9 master-bedroom furniture set places the 950 three-door wardrobe and rem
   }
   for (const type of ['mb_vanity_lower_board', 'mb_vanity_main_board']) {
     const board = master.find((item) => item.type === type);
-    assert.deepEqual(board, { type, wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 });
+    assert.deepEqual(board, { type, id: { mb_vanity_base_cabinet: 'mb.vanity_base_cabinet', mb_vanity_lower_board: 'mb.vanity_lower_board', mb_vanity_main_board: 'mb.vanity_main_board' }[type], wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 });
   }
-  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', x: 2.45, z: 4.59, rotation: 0 });
+  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', id: 'mb.wardrobe_pelmet', x: 2.45, z: 4.59, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.master_wardrobe_top_pelmet, { width: 0.95, depth: 0.58 });
   const baseCabinet = buildFixture('mb_vanity_base_cabinet');
   assert.ok(baseCabinet);
@@ -249,8 +249,8 @@ test('R9 wardrobe top pelmet closes the left-shifted 950 wardrobe-to-head-box se
 test('dressing table and stool use the 2026-09-04 R1 window-adjacent candidate transforms', () => {
   const table = placed('master_dressing_table');
   const stool = placed('dressing_stool');
-  assert.deepEqual(table, { type: 'master_dressing_table', x: 0.425, z: 6.05, rotation: 90 });
-  assert.deepEqual(stool, { type: 'dressing_stool', x: 0.42, z: 6.05, rotation: 90 });
+  assert.deepEqual(table, { type: 'master_dressing_table', id: 'mb.dressing_table', x: 0.425, z: 6.05, rotation: 90 });
+  assert.deepEqual(stool, { type: 'dressing_stool', id: 'mb.dressing_stool', x: 0.42, z: 6.05, rotation: 90 });
   assert.deepEqual(FURNITURE_DIMS.master_dressing_table, { width: 0.90, depth: 0.45 });
   assert.deepEqual(FURNITURE_DIMS.dressing_stool, { width: 0.42, depth: 0.40 });
   // rotation=90 后桌 footprint：x[0.20,0.65] z[5.60,6.50]，桌背与西玻璃 x=0 留约 0.20m 通风/冷凝缝
@@ -267,7 +267,7 @@ test('dressing table and stool use the 2026-09-04 R1 window-adjacent candidate t
 test('washbasin-only cabinet preserves envelope and plumbing center without a dressing chair', () => {
   // 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：
   // 柜体东移 5cm 收宽 1.05，盆/龙头居中至 x=0.575
-  assert.deepEqual(placed('mb_washbasin_cabinet'), { type: 'mb_washbasin_cabinet', x: 0.575, z: 3.16, rotation: 0 });
+  assert.deepEqual(placed('mb_washbasin_cabinet'), { type: 'mb_washbasin_cabinet', id: 'mb.washbasin_cabinet', x: 0.575, z: 3.16, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.mb_washbasin_cabinet, { width: 1.05, depth: 0.50 });
   const faucet = plumbing.find((candidate) => candidate.id === 'faucet_mbath_vanity');
   assert.ok(faucet);
@@ -410,7 +410,7 @@ test('removed master-bedroom items stay removed; living room plant survives', ()
   assert.equal(master.some((item) => item.type === 'master_wardrobe_tall_240'), false, 'master_wardrobe_tall_240 must not appear in master_bedroom furnishings');
   assert.equal(master.some((item) => item.type === 'plant_fiddle'), false, '主卧 plant_fiddle 已删除');
   const living = house.furnishings.living_dining;
-  assert.deepEqual(placed('plant_fiddle', living), { type: 'plant_fiddle', x: 7.93, z: 9.18, rotation: 270 });
+  assert.deepEqual(placed('plant_fiddle', living), { type: 'plant_fiddle', id: 'ld.plant_fiddle', x: 7.93, z: 9.18, rotation: 270 });
 });
 
 test('R8 north wardrobe 950 door configurations use real mesh pivots without door interpenetration', () => {
@@ -436,7 +436,7 @@ test('R8 north wardrobe 950 door configurations use real mesh pivots without doo
 
 test('south-window-band low dresser uses the 2026-09-06 east-shifted transform and stays clear of constraints', () => {
   const dresser = placed('master_hot_season_low_dresser');
-  assert.deepEqual(dresser, { type: 'master_hot_season_low_dresser', x: 1.05, z: 9.20, rotation: 180 });
+  assert.deepEqual(dresser, { type: 'master_hot_season_low_dresser', id: 'mb.low_dresser', x: 1.05, z: 9.20, rotation: 180 });
   assert.deepEqual(FURNITURE_DIMS.master_hot_season_low_dresser, { width: 1.40, depth: 0.48 });
   // rotation=180 为偶数 quarter-turn：AABB x[0.35,1.75]，北移后 z 约[8.96,9.44]，正面（局部 +z）转朝北对房间
   const box = worldAabb(dresser);

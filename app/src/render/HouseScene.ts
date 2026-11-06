@@ -570,7 +570,7 @@ export class HouseScene implements SceneApi {
     // 不再按手写半宽拼框（旧 ±0.20/±0.40 是柜深 0.40 时代的口径，已随声明源删除）。
     const vanityBox = aabb(this.findAuditObject('gbath.vanity'));
     const configuredToilet = this.auditFurnishings.guest_bath?.find((item) => item.type === 'toilet' && item.x !== undefined && item.z !== undefined);
-    const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('furniture:guest_bath:toilet:1'));
+    const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('gbath.toilet'));
     const screenBox = segmentBox(points('shower_screen_gbath'));
     const shower = this.auditPlumbing.find((candidate) => candidate.room === 'guest_bath' && candidate.type === 'shower');
     const showerPoint = shower ? { x: shower.x, z: shower.z } : { x: 7.10, z: 2.45 };
