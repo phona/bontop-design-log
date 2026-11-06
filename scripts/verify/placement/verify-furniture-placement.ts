@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { load as loadYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
-import { FURNITURE_DIMS, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type FurnitureMount, type VanityLayoutDecl } from '../../../shared/types.js';
-import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement } from '../../../shared/furniture-placement.js';
+import { loadCeilingConfig, loadElectricalConfig } from '../../../server/config-loader.js';
+import { FURNITURE_DIMS, CONDENSATE_CHAIN_FURNITURE_TYPES, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type FurnitureAnchor, type FurnitureMount, type VanityLayoutDecl } from '../../../shared/types.js';
+import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, type PlacementAnchors } from '../../../shared/furniture-placement.js';
+import { diffCondensateChainPlanAgainstMep, mepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
+import { parseMepCoordination, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
+import { parseProjectHvacFacts } from '../../../shared/project-render-facts-schema.js';
 import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
 
 const EPS = 0.01;
@@ -15,7 +19,7 @@ interface Aabb {
 }
 
 type WallSide = 'north' | 'south' | 'east' | 'west';
-type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number; wall_clearance?: number; vanity_layout?: VanityLayoutDecl; mount?: FurnitureMount };
+type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number; wall_clearance?: number; vanity_layout?: VanityLayoutDecl; mount?: FurnitureMount; anchor?: FurnitureAnchor };
 
 const MB_VANITY_TYPES = new Set([
   'mb_vanity_base_cabinet',
@@ -54,6 +58,7 @@ function resolvePlacement(
   hosts: ReadonlyMap<string, PlacedItem>,
   label: string,
   errors: string[],
+  anchors?: PlacementAnchors,
 ): { x?: number; z?: number } {
   if (item.wall !== undefined || item.wall_side !== undefined || item.along !== undefined) {
     if (item.wall === undefined || item.wall_side === undefined || item.along === undefined) {
@@ -78,7 +83,7 @@ function resolvePlacement(
   // （墙查找 / dims 优先级 / 绝对 z 特例 / 端部容差）已随 issue #98 PR-3 删除——它曾是共享
   // 函数的漂移副本，曾校验出一条比真实摆位东偏 15mm 的幻影包络；解不出来时返回诊断并落 error，
   // 不再静默跳过。
-  const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts);
+  const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts, anchors);
   if (diagnostic !== undefined) {
     errors.push(`${label}: ${diagnostic}`);
     return {};
@@ -178,6 +183,24 @@ function main(): void {
   // mount 宿主索引（稳定 id → 条目）：挂载家具（如 gbath.robot_dock）的世界坐标由宿主摆位
   // 与宿主 vanity_layout 推出，与 3D/DXF 共用同一份解算与索引。
   const hosts = furnitureHostIndex(Object.values(furnishings).flat());
+  // 主卫冷凝链锚点派生（issue #98 PR-10）：整条链一份解算（shared/condensate-chain.ts，
+  // 与 SceneBuilder 同一函数），摆位与 3D/DXF 同口径。hvac 锚点（内机/候选接入点）读
+  // config/hvac.yaml，穿墙点读 MEP condensate-master（只读引用，不改线）。解算失败 →
+  // error：三件链条家具的定位声明解不出来，不出缺件校验。
+  const hvacDiagram = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')).plans[0]?.diagram;
+  const mepCoordination = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
+  const mepRoute = mepCoordination.routes.find((route) => route.id === 'condensate-master');
+  const { anchors, diagnostics: chainDiagnostics } = resolveCondensatePlacementAnchors({
+    hvacDiagram,
+    hvacSources: { ceiling: loadCeilingConfig(), electrical: loadElectricalConfig() },
+    penetration: mepPenetrationAt(mepRoute, 'w_mbath_south'),
+    wardrobe: hosts.get('mb.wardrobe_950'),
+    wallRun: hosts.get('mb.vanity_pvc_box'),
+    wallSegments,
+    hosts,
+  });
+  const condensateChain = anchors.condensateChain;
+  for (const diagnostic of chainDiagnostics) errors.push(`condensate chain: ${diagnostic}`);
   for (const wallId of anchoredWallIds) {
     const wall = walls.find((candidate) => candidate.id === wallId);
     if (!wall?.line_datum) {
@@ -222,7 +245,10 @@ function main(): void {
 
     items.forEach((item, index) => {
       const label = `${roomId}/${item.type}[${index}]`;
-      const placed = resolvePlacement({ ...item, roomId }, wallSegments, hosts, label, errors);
+      // 链解算失败时三件链条家具一并解不出来：根因已在链级诊断里逐条入列，这里不按件重复。
+      if (condensateChain === undefined
+        && (CONDENSATE_CHAIN_FURNITURE_TYPES as readonly string[]).includes(item.type)) return;
+      const placed = resolvePlacement({ ...item, roomId }, wallSegments, hosts, label, errors, anchors);
       if (placed.x === undefined || placed.z === undefined) return;
       const rotation = item.rotation ?? 0;
 
@@ -485,6 +511,35 @@ function main(): void {
     }
     if (studyCabinet.box.minZ < 5.55 - GAP_EPS) {
       errors.push(`${studyCabinet.label}: 北缘 z=${studyCabinet.box.minZ.toFixed(3)} < 5.55（越出房间北界）`);
+    }
+  }
+
+  // ── 主卫冷凝链 ↔ MEP condensate-master 逐段对照（issue #98 PR-10）────────────
+  // 家具链是遮蔽构造、MEP 是管：平面折线必须一一对应。不一致**不自动改线**（改线是设计
+  // 决定）——这里拦 error 逼那个决定显式发生，处置口径沿用 condensate-living-dining-trunk
+  // 与机器人仓冲突那条：带 owner 与触发条件登记后再裁。标高（y）不在本对照内：链条按
+  // mep layers 表 condensate 层高 2.65 画示意，MEP 路线按 DEC-2026-10-06-R5 抬入降板空腔
+  // （2.70–2.75），该差异已作为遗留登记在 condensate-master 的 reason 里。
+  if (condensateChain && mepRoute) {
+    const mepSources = {
+      electrical: loadElectricalConfig(),
+      plumbing: [],
+      ceiling: loadCeilingConfig(),
+      hvacAnchors: hvacDiagram?.anchors ?? [],
+      hvacTerminals: hvacDiagram?.terminals ?? [],
+      outdoor: [],
+    };
+    const from = resolveMepEndpoint(mepRoute.from, mepSources, mepCoordination.junctions);
+    const to = resolveMepEndpoint(mepRoute.to, mepSources, mepCoordination.junctions);
+    if (from && to) {
+      const rawPlan = [from, ...mepRoute.via, to].map((point) => ({ x: point.x, z: point.z }));
+      const mepPlan = rawPlan.filter((point, index) =>
+        index === 0 || Math.hypot(point.x - rawPlan[index - 1].x, point.z - rawPlan[index - 1].z) > 1e-9);
+      for (const finding of diffCondensateChainPlanAgainstMep(condensateChain.plan, mepPlan)) {
+        errors.push(finding);
+      }
+    } else {
+      errors.push('condensate chain: MEP condensate-master 端点解析失败（from/to 缺位置或 ref 断链），对照做不了');
     }
   }
 

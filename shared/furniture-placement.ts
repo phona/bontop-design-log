@@ -3,12 +3,13 @@
  * DXF 导出需要同一口径但不引入 three.js），SceneBuilder 改为 re-export，全仓仍只有这一份实现。
  *
  * issue #98 PR-3 起兼作「定位声明解算器」：挂墙（wall/wall_side/along）、挂载宿主
- * （mount: {furniture_id, slot}）、绝对 x/z 三种定位声明都在这里解算，解析失败返回
- * **诊断文本**而不是 null——null 只保留给 count-only 条目（无平面几何，预期跳过），
- * 「声明了却解不出来」必须让页面/DXF/verify:furniture 显形并失败。
+ * （mount: {furniture_id, slot}）、锚点引用（anchor: {source, id}，PR-10）、
+ * 绝对 x/z 四种定位声明都在这里解算，解析失败返回 **诊断文本**而不是 null——null 只保留给
+ * count-only 条目（无平面几何，预期跳过），「声明了却解不出来」必须让页面/DXF/verify:furniture 显形并失败。
  */
 
-import { FURNITURE_DIMS, type FurnishingItem, type VanityLayout, type VanityLayoutDecl, type WallSide } from './types.js';
+import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS, type FurnishingItem, type VanityLayout, type VanityLayoutDecl, type WallSide } from './types.js';
+import type { CondensateChainGeometry } from './condensate-chain.js';
 
 /**
  * 墙体完成面基厚（渲染与摆位共用的单一声明）。
@@ -49,9 +50,28 @@ export interface FurniturePlacementResolution {
 /** 摆位解算可见的最小条目形态（house.yaml FurnishingItem 的定位相关子集）。 */
 export type PlacementItem = Pick<FurnishingItem,
   | 'type' | 'id' | 'rotation' | 'wall' | 'wall_side' | 'along' | 'x' | 'z'
-  | 'wall_clearance' | 'width' | 'depth' | 'length' | 'vanity_layout' | 'mount'>;
+  | 'wall_clearance' | 'width' | 'depth' | 'length' | 'vanity_layout' | 'mount' | 'anchor'>;
 
-type WallLike = { x1: number; z1: number; x2: number; z2: number };
+/**
+ * 锚点派生摆位的上下文（issue #98 PR-10）：`anchor: {source, id}` 声明按来源解析。
+ * 缺失即诊断失败——取不到值时禁止静默发明坐标（与预算三层架构「不许 ?? default」同口径）。
+ */
+export interface PlacementAnchors {
+  /** config/hvac.yaml `diagram.anchors`（id → 平面位置），供 `anchor: {source: 'hvac'}` 引用。 */
+  hvacAnchors?: ReadonlyMap<string, { x: number; z: number }>;
+  /** 主卫冷凝链派生几何（shared/condensate-chain.ts 解出），供 `anchor: {source: 'chain'}` 引用。 */
+  condensateChain?: CondensateChainGeometry;
+}
+
+/** 链上可引用的锚点名 → geometry.points 键（house.yaml 写名字，不写坐标）。 */
+const CHAIN_ANCHOR_POINT_IDS: Record<string, keyof CondensateChainGeometry['points']> = {
+  unit: 'unit',
+  box_turn: 'boxTurn',
+  wardrobe_east_band: 'wardrobeEastBand',
+};
+
+/** 墙段最小形态（ ChainWallLike 与之同构，供链模块共用）。 */
+export type WallLike = { x1: number; z1: number; x2: number; z2: number };
 
 const WALL_SIDES: readonly WallSide[] = ['north', 'south', 'east', 'west'];
 
@@ -160,14 +180,16 @@ export function resolveFurniturePlacement(
   item: PlacementItem,
   wallSegments: Map<string, WallLike[]>,
   hosts?: ReadonlyMap<string, PlacementItem>,
+  anchors?: PlacementAnchors,
 ): FurniturePlacementResolution {
-  return resolveItem(item, wallSegments, hosts, new Set<string>());
+  return resolveItem(item, wallSegments, hosts, anchors, new Set<string>());
 }
 
 function resolveItem(
   item: PlacementItem,
   wallSegments: Map<string, WallLike[]>,
   hosts: ReadonlyMap<string, PlacementItem> | undefined,
+  anchors: PlacementAnchors | undefined,
   visited: ReadonlySet<string>,
 ): FurniturePlacementResolution {
   // 柜体分割声明先行校验：vanity 自身与挂它的家具都靠这份解果，缺声明/负净宽在此显形。
@@ -180,13 +202,26 @@ function resolveItem(
   const hasAbsolute = item.x !== undefined || item.z !== undefined;
 
   if (item.mount !== undefined) {
+    if (item.anchor !== undefined) {
+      return { placement: null, diagnostic: 'mount 与 anchor 不得同时声明（定位来源必须唯一）' };
+    }
     if (hasAbsolute) {
       return { placement: null, diagnostic: 'mount 与绝对 x/z 不得同时声明（世界坐标由宿主槽位推出，禁写第二来源）' };
     }
     if (hasWallAnchor) {
       return { placement: null, diagnostic: 'mount 与 wall/wall_side/along 不得同时声明（定位来源必须唯一）' };
     }
-    return resolveMounted(item, wallSegments, hosts, visited);
+    return resolveMounted(item, wallSegments, hosts, anchors, visited);
+  }
+
+  if (item.anchor !== undefined) {
+    if (hasAbsolute) {
+      return { placement: null, diagnostic: 'anchor 与绝对 x/z 不得同时声明（世界坐标由锚点推出，禁写第二来源）' };
+    }
+    if (hasWallAnchor) {
+      return { placement: null, diagnostic: 'anchor 与 wall/wall_side/along 不得同时声明（定位来源必须唯一）' };
+    }
+    return resolveAnchored(item, anchors);
   }
 
   if (hasWallAnchor) {
@@ -263,6 +298,14 @@ function resolveItem(
   }
 
   if (hasAbsolute) {
+    if (CONDENSATE_CHAIN_FURNITURE_TYPES.includes(item.type as (typeof CONDENSATE_CHAIN_FURNITURE_TYPES)[number])) {
+      // 被替代的旧机制（issue #98 PR-10）：三件冷凝链家具的绝对 x/z 已废，接口坐标改由
+      // 共同锚点单一解算。这里见一份手写坐标即失败，防止第二份坐标源静默回来。
+      return {
+        placement: null,
+        diagnostic: `${item.type} 摆位改锚点派生：绝对 x/z 已废，改声明 anchor（outlet → {source: hvac, id: indoor_master}；wardrobe_entry / service_chase → {source: chain, id: wardrobe_east_band}）`,
+      };
+    }
     if (item.x === undefined || item.z === undefined) {
       return { placement: null, diagnostic: 'absolute placement requires both x and z' };
     }
@@ -277,6 +320,7 @@ function resolveMounted(
   item: PlacementItem,
   wallSegments: Map<string, WallLike[]>,
   hosts: ReadonlyMap<string, PlacementItem> | undefined,
+  anchors: PlacementAnchors | undefined,
   visited: ReadonlySet<string>,
 ): FurniturePlacementResolution {
   const mount = item.mount!;
@@ -291,7 +335,7 @@ function resolveMounted(
   if (!host) {
     return { placement: null, diagnostic: `mount host "${hostId}" not found in furnishings（断引用：宿主条目缺失或未声明稳定 id）` };
   }
-  const hostResolved = resolveItem(host, wallSegments, hosts, new Set([...visited, hostId]));
+  const hostResolved = resolveItem(host, wallSegments, hosts, anchors, new Set([...visited, hostId]));
   if (hostResolved.diagnostic !== undefined) {
     return { placement: null, diagnostic: `mount host "${hostId}": ${hostResolved.diagnostic}` };
   }
@@ -323,4 +367,39 @@ function resolveMounted(
       z: hostResolved.placement.z - localX * sin + localZ * cos,
     },
   };
+}
+
+/**
+ * 锚点派生解算（issue #98 PR-10）：位置来自另一份配置的锚点对象，不写绝对坐标。
+ * hvac 锚点（indoor_master 等）与链上点（unit / box_turn / wardrobe_east_band）
+ * 都由调用方预解后随上下文传入——resolver 自己不读配置文件，保持纯函数。
+ */
+function resolveAnchored(item: PlacementItem, anchors: PlacementAnchors | undefined): FurniturePlacementResolution {
+  const anchor = item.anchor!;
+  if (anchor.source === 'hvac') {
+    const position = anchors?.hvacAnchors?.get(anchor.id);
+    if (!position) {
+      return {
+        placement: null,
+        diagnostic: `anchor "${anchor.id}" 解析失败：hvacAnchors 上下文缺失，或 config/hvac.yaml anchors 里没有该 id（断引用）`,
+      };
+    }
+    return { placement: { x: position.x, z: position.z } };
+  }
+  const chain = anchors?.condensateChain;
+  if (!chain) {
+    return {
+      placement: null,
+      diagnostic: `anchor chain:${anchor.id} 解析失败：condensateChain 上下文缺失（链几何未随解算提供，见 shared/condensate-chain.ts）`,
+    };
+  }
+  const pointKey = CHAIN_ANCHOR_POINT_IDS[anchor.id];
+  if (!pointKey) {
+    return {
+      placement: null,
+      diagnostic: `unknown chain anchor point "${anchor.id}"（当前支持 ${Object.keys(CHAIN_ANCHOR_POINT_IDS).join(' / ')}）`,
+    };
+  }
+  const point = chain.points[pointKey];
+  return { placement: { x: point.x, z: point.z } };
 }

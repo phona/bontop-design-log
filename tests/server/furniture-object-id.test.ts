@@ -31,9 +31,12 @@ function allRuntimeFurnitureIds(furnishings: FurnishingsYaml, roomId?: string): 
     .sort();
 }
 
-/** 与 shared/furniture-placement.ts 同口径的「已放置」判定（x/z / wall / along / mount）。 */
+/**
+ * 与 shared/furniture-placement.ts 同口径的「已放置」判定（x/z / wall / along / mount /
+ * anchor——2026-11-07 PR-10 起锚点派生也是一种定位声明，见 resolveItem）。
+ */
 function isPlaced(item: FurnishingItem): boolean {
-  return item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined;
+  return item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined;
 }
 
 describe('furnitureObjectId', () => {

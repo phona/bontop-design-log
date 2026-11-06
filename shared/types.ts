@@ -1733,6 +1733,25 @@ export interface FurnitureMount {
 }
 
 /**
+ * 锚点派生摆位（issue #98 PR-10）：家具位置改从**另一份配置里的锚点对象**推出，
+ * 不再手写绝对坐标。与 wall/wall_side/along、mount 并列且互斥。
+ *
+ * 首个用户是主卫冷凝水遮蔽链三件（condensate_pipe_ac_outlet 等）：它们的接口坐标
+ * 原先在 house.yaml、FixtureFactory 配方、MEP via 点里各写一份，改一段不跟随另一段。
+ * 现在整条链由 shared/condensate-chain.ts 从锚点单一解算。
+ */
+export interface FurnitureAnchor {
+  /**
+   * 锚点来源：
+   * - `hvac`：config/hvac.yaml `diagram.anchors` 的 id（如 `indoor_master`，ref ceiling `ac_master`）；
+   * - `chain`：shared/condensate-chain.ts 解出的链上点（`unit` / `box_turn` / `wardrobe_east_band`）。
+   */
+  source: 'hvac' | 'chain';
+  /** 锚点 id（hvac 锚点 id 或链上点名）。 */
+  id: string;
+}
+
+/**
  * 客卫台盆柜（type:'vanity'）布局参数（DEC-2026-11-05-R5 定案「仓+抽屉」）。
  * 柜体分割的唯一声明源：3D FixtureFactory.buildVanity、摆位解算（robot_dock 挂载）、
  * DXF/校验外框全部读这里，FURNITURE_DIMS 不再存 vanity 尺寸（同一数字只留一处）。
@@ -1794,6 +1813,8 @@ export interface FurnishingItem {
   cutouts?: FurnishingCutout[];
   /** 挂载派生摆位：挂到 `furniture_id` 的 `slot` 上，世界坐标由解算推出，禁写 x/z。 */
   mount?: FurnitureMount;
+  /** 锚点派生摆位：挂到另一份配置的锚点对象上（见 FurnitureAnchor），禁写 x/z。 */
+  anchor?: FurnitureAnchor;
   /** type:'vanity' 的柜体分割参数；缺失或非法即定位诊断失败（不静默按默认值建模）。 */
   vanity_layout?: VanityLayoutDecl;
 }
@@ -1872,6 +1893,20 @@ export function getPartitionWardrobeDoorAabbs(state: 'closed' | 'open' = 'closed
   });
   return doors;
 }
+
+/**
+ * 主卫冷凝水遮蔽链三件（issue #98 PR-10）：协调示意家具，摆位改锚点派生
+ * （shared/condensate-chain.ts 单一解算），绝对 x/z 对这三件已废——
+ * resolver 见到绝对坐标即诊断失败，防止第二份坐标源静默回来。
+ * 清单放 types.ts 而非 condensate-chain.ts：resolver 与链模块都要读，
+ * 放中间模块会成循环依赖。
+ */
+export const CONDENSATE_CHAIN_FURNITURE_TYPES = [
+  'condensate_pipe_ac_outlet',
+  'mb_vanity_pvc_wardrobe_entry',
+  'mb_vanity_pvc_service_chase',
+] as const;
+export type CondensateChainFurnitureType = (typeof CONDENSATE_CHAIN_FURNITURE_TYPES)[number];
 
 export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = {
   bed_180: { width: 1.8, depth: 2.0 },

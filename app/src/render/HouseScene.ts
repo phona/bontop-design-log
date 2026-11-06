@@ -154,6 +154,8 @@ interface ProjectData {
     furnishings?: FurnishingsYaml;
     electrical?: ElectricalPoint[];
     sceneElements?: SceneElement[];
+    /** 主卫冷凝链的 MEP 侧穿墙锚点（issue #98 PR-10）：三件遮蔽家具的锚点派生要用。 */
+    condensatePenetration?: { x: number; z: number };
   };
   renderFactsProjection?: ProjectRenderFactsProjection;
   renderFactsSources?: HvacBuilderSources;
@@ -735,6 +737,8 @@ export class HouseScene implements SceneApi {
         materialProvider,
         curtainRooms: input.rooms,
         hvac: projectData.renderFactsProjection ? { projection: projectData.renderFactsProjection, sources: projectData.renderFactsSources ?? buildHvacBuilderSources({ projection: projectData.renderFactsProjection }) } : undefined,
+        // 主卫冷凝链穿墙锚点（issue #98 PR-10）：缺它三件链条家具解不出锚点、会带诊断跳过。
+        condensatePenetration: projectData.house.condensatePenetration,
       },
     });
     for (const child of [...result.exportRoot.children]) this.exportRoot.add(child);

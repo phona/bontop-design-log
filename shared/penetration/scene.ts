@@ -4,10 +4,12 @@ import { load as parseYaml } from 'js-yaml';
 import * as THREE from 'three';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { mergeSceneElements, parseOverlay } from '../../server/overlay-merge.js';
-import { parseCeilingZones, parseElectricalPoints, parseLightingRenderConfig, parsePlumbingPoints, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
+import { parseCeilingZones, parseElectricalPoints, parseLightingRenderConfig, parsePlumbingPoints, parseProjectHvacFacts, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
+import { parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
+import { mepPenetrationAt } from '../../shared/condensate-chain.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { buildRenderLightingFixtures } from '../../shared/lighting-fixtures.js';
-import { type FurnishingsYaml, type ElectricalPoint, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedWall, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
+import { type FurnishingsYaml, type ElectricalPoint, type HvacDiagram, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedWall, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
 
 /**
  * 场景采集层：把「权威配置 → runtime 场景 → 可判定实体」这一路收敛成**唯一实现**。
@@ -278,6 +280,10 @@ export interface SceneInputs {
   structuralPaths: GlassPathSegment[];
   /** 房间绕向自动纠正等 layout 期 warning，原样透传给 CLI 报告。 */
   layoutWarnings: string[];
+  /** config/hvac.yaml 首个 plan 的 diagram（主卫冷凝链锚点派生用，issue #98 PR-10）。 */
+  hvacDiagram?: HvacDiagram;
+  /** MEP condensate-master 在 w_mbath_south 的穿墙点（service_chase 折点派生用）。 */
+  condensatePenetration?: { x: number; z: number };
 }
 
 export interface LoadSceneOptions {
@@ -309,10 +315,19 @@ export function loadSceneInputs(options: LoadSceneOptions = {}): SceneInputs {
   const renderOverrides = parseRenderLightingOverrides(readFileSync(path.join(ROOT, 'config/render/overrides.yaml'), 'utf8'));
   const plumbing = parsePlumbingPoints(readFileSync(path.join(ROOT, 'config/plumbing.yaml'), 'utf8'));
   const lighting = parseLightingRenderConfig(readFileSync(path.join(ROOT, 'config/render/lighting.yaml'), 'utf8'));
+  // 主卫冷凝链锚点派生（issue #98 PR-10）：三件遮蔽家具的摆位从 hvac 锚点 + MEP 穿墙点
+  // 解出，缺任一项链就解不出来（显形失败，不回退绝对坐标）。这里读的是同一份权威配置，
+  // 与 app / GLB / verify:furniture 同口径。
+  const hvacDiagram = parseProjectHvacFacts(readFileSync(path.join(ROOT, 'config/hvac.yaml'), 'utf8')).plans[0]?.diagram;
+  const mepCoordination = parseMepCoordination(readFileSync(path.join(ROOT, 'config/mep-hvac-coordination.yaml'), 'utf8'));
+  const condensatePenetration = mepPenetrationAt(
+    mepCoordination.routes.find((route) => route.id === 'condensate-master'),
+    'w_mbath_south',
+  );
   const elements = mergeSceneElements(layout.walls, overlay);
   const suppressIds = suppressionWallIds(overlay, layout.walls);
   const structuralPaths = pathSegmentsFromOverlay(elements, layout);
-  return { layout, overlay, elements, config, house, ceiling, electrical, renderOverrides, plumbing, lighting, suppressIds, structuralPaths, layoutWarnings };
+  return { layout, overlay, elements, config, house, ceiling, electrical, renderOverrides, plumbing, lighting, suppressIds, structuralPaths, layoutWarnings, hvacDiagram, condensatePenetration };
 }
 
 /** 构建 runtime 场景。抛错即调用方出口，这里不吞。 */
@@ -330,7 +345,13 @@ export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildS
     // offset 平移、anchorY_offset 锚点、宿主墙透传、fail-closed 全部只有一份口径，
     // linter 校验的灯因此与 app/GLB 渲染的灯是同一个点位。
     lightingFixtures: buildRenderLightingFixtures(inputs.electrical, inputs.renderOverrides),
-    options: { lighting: inputs.lighting },
+    options: {
+      lighting: inputs.lighting,
+      // 冷凝链锚点（issue #98 PR-10）：只给 diagram/sources 与穿墙点，不建 HVAC 实体
+      // （本路径的 HVAC 覆盖由 hvac-export-check 另行断言）。
+      ...(inputs.hvacDiagram ? { hvac: { diagram: inputs.hvacDiagram, sources: { ceiling: inputs.ceiling, electrical: inputs.electrical } } } : {}),
+      ...(inputs.condensatePenetration ? { condensatePenetration: inputs.condensatePenetration } : {}),
+    },
   });
 }
 

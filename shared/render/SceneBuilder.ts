@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import type { CurtainPoint, ElectricalPoint, FurnishingsYaml, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, WallSegment, RoomObject, WallSide } from '../types.js';
-import { FURNITURE_DIMS } from '../types.js';
+import type { CurtainPoint, ElectricalPoint, FurnishingsYaml, HvacDiagram, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, WallSegment, RoomObject, WallSide } from '../types.js';
+import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS } from '../types.js';
 import { buildInfrastructure } from './InfrastructureBuilder.js';
 import { buildLightingFixtures } from './LightingFixtureBuilder.js';
 import { type HvacBuilderSources } from './HvacBuilder.js';
@@ -8,6 +8,9 @@ import { buildHvacGeometry, type HvacEntityIndex } from './HvacGeometryBuilder.j
 import { buildCeilingZone, type CeilingZoneSpec } from './CeilingZoneBuilder.js';
 import {
   buildBathSideCabinetRun,
+  buildCondensateAcOutlet,
+  buildCondensateServiceChase,
+  buildCondensateWardrobeEntry,
   buildFixture,
   buildKitchenCabinetRun,
   buildKitchenCountertopBridge,
@@ -22,7 +25,8 @@ import { buildBaySillGeometry } from './BaySillGeometry.js';
 import { computePaintSillScope } from '../paint-sill-scope.js';
 import { buildRailingGeometry } from './RailingGeometryBuilder.js';
 import { computePaintScope, type PaintWallInput, type PaintWindowInput } from '../paint-scope.js';
-import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, resolveVanityLayout, WALL_THICKNESS } from '../furniture-placement.js';
+import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, resolveVanityLayout, type PlacementAnchors, type PlacementItem, WALL_THICKNESS } from '../furniture-placement.js';
+import { resolveCondensatePlacementAnchors, type CondensateChainGeometry } from '../condensate-chain.js';
 import { furnitureObjectId } from '../furniture-object-id.js';
 
 export { resolveFurniturePlacement };
@@ -91,8 +95,21 @@ export interface SceneBuilderOptions {
   materialProvider?: SceneMaterialProvider;
   curtainRooms?: ResolvedRoom[];
   curtainOffset?: number;
-  hvac?: { projection: ProjectRenderFactsProjection; sources?: HvacBuilderSources };
+  hvac?: {
+    /** 权威投影（页面 / GLB 路径）：带 projection 时 HVAC 实体照常构建。 */
+    projection?: ProjectRenderFactsProjection;
+    /** 无投影的 CLI/校验路径可直接给 diagram：只供锚点派生用，不建 HVAC 实体。 */
+    diagram?: HvacDiagram;
+    sources?: HvacBuilderSources;
+  };
   lighting?: LightingRenderConfig;
+  /**
+   * 主卫冷凝链的 MEP 侧锚点（issue #98 PR-10）：家具链（遮蔽构造）的穿墙段从 MEP
+   * `condensate-master` 在 w_mbath_south 的穿墙点派生；hvac 侧锚点（内机 / 候选接入点）
+   * 走 options.hvac 投影。缺失时三件链条家具解析失败并显形（禁回退绝对坐标）——
+   * 与「取不到值时禁止静默发明」同一口径。
+   */
+  condensatePenetration?: { x: number; z: number };
 }
 
 export interface ScenePlatform {
@@ -1265,7 +1282,12 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
   }
 }
 
-function buildFurniture(item: FurnishingsYaml[string][number]): THREE.Group | null {
+function buildFurniture(item: FurnishingsYaml[string][number], condensateChain?: CondensateChainGeometry): THREE.Group | null {
+  // 主卫冷凝链三件（issue #98 PR-10）：零件位置由锚点派生的链几何算出，禁走静态配方。
+  // 几何缺失时返回 null（上游 resolveFurniturePlacement 已记诊断并跳过该件）。
+  if (item.type === 'condensate_pipe_ac_outlet') return condensateChain ? buildCondensateAcOutlet(condensateChain) : null;
+  if (item.type === 'mb_vanity_pvc_wardrobe_entry') return condensateChain ? buildCondensateWardrobeEntry(condensateChain) : null;
+  if (item.type === 'mb_vanity_pvc_service_chase') return condensateChain ? buildCondensateServiceChase(condensateChain) : null;
   if (item.type === 'kitchen_cabinet_run' && item.length !== undefined && item.depth !== undefined) {
     return buildKitchenCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight, countertopThickness: item.countertopThickness, cutouts: item.cutouts });
   }
@@ -1432,20 +1454,70 @@ function furnitureChildExportName(objectId: string, child: THREE.Object3D, child
   return `${compressedPrefix}${part.slice(0, Math.max(1, compressedBudget))}${roleSuffix}`;
 }
 
-function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: SceneBuildReport, wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>): void {
+/**
+ * 场景级摆位锚点（issue #98 PR-10）：hvac 锚点表 + 主卫冷凝链派生几何，一份解算供
+ * 摆位（resolveFurniturePlacement）与配方布件（buildCondensate*）共用。
+ *
+ * 解算本体在 shared/condensate-chain.ts（verify:spatial / verify:furniture 同调）；
+ * 这里只做「有没有链条家具」的门禁——没有链条家具的场景直接返回空 anchors，不给无关
+ * 场景塞链诊断（合成测试/面层采集）。
+ */
+function resolveScenePlacementAnchors(
+  furnishings: FurnishingsYaml,
+  wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>,
+  hosts: ReadonlyMap<string, PlacementItem>,
+  options: SceneBuilderOptions | undefined,
+  report: SceneBuildReport,
+): PlacementAnchors {
+  const hasChainItems = Object.values(furnishings).some((items) =>
+    items.some((item) => (CONDENSATE_CHAIN_FURNITURE_TYPES as readonly string[]).includes(item.type)));
+  if (!hasChainItems) return {};
+  const hvac = options?.hvac;
+  const diagram = hvac?.projection?.hvac.status === 'implemented' ? hvac.projection.hvac.diagram : hvac?.diagram;
+  const { anchors, diagnostics } = resolveCondensatePlacementAnchors({
+    hvacDiagram: diagram,
+    hvacSources: hvac?.sources,
+    penetration: options?.condensatePenetration,
+    wardrobe: hosts.get('mb.wardrobe_950'),
+    wallRun: hosts.get('mb.vanity_pvc_box'),
+    wallSegments,
+    hosts,
+  });
+  // 链解算失败：根因诊断入列并**不给** condensateChain——三件链条家具随即可解出失败并
+  // 跳过（addFurniture 里不按件重复根因），断链显形，不 invent 坐标。
+  for (const diagnostic of diagnostics) report.placementDiagnostics.push(`condensate chain: ${diagnostic}`);
+  return anchors;
+}
+
+function addFurniture(
+  root: THREE.Group,
+  furnishings: FurnishingsYaml,
+  report: SceneBuildReport,
+  wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>,
+  options?: SceneBuilderOptions,
+): void {
   // mount 宿主索引（稳定 id → 条目）：挂载家具的世界坐标由宿主摆位 + 宿主布局推出。
   const hosts = furnitureHostIndex(Object.values(furnishings).flat());
+  // 主卫冷凝链（issue #98 PR-10）：整条链的锚点派生几何在此解出一次，摆位解算与配方
+  // 布件共用同一份。解算失败（缺 hvac 投影 / 缺 MEP 穿墙点 / 衣柜断引用 / 段反向）时
+  // 根因诊断记在链级，三件链条家具按件跳过——不按件重复三遍同一条根因。
+  const anchors = resolveScenePlacementAnchors(furnishings, wallSegments, hosts, options, report);
   for (const [roomId, items] of Object.entries(furnishings)) {
     let index = 0;
     for (const item of items) {
-      const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts);
+      if (anchors.condensateChain === undefined
+        && (CONDENSATE_CHAIN_FURNITURE_TYPES as readonly string[]).includes(item.type)) {
+        // 链解算失败的件：根因已由 resolveScenePlacementAnchors 入列，这里不重复。
+        continue;
+      }
+      const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts, anchors);
       if (diagnostic !== undefined) {
         // 定位声明解不出来：显形并跳过该件，禁止按 null 静默消失（issue #98 PR-3）。
         report.placementDiagnostics.push(`${roomId}:${item.type}: ${diagnostic}`);
         continue;
       }
       if (!placement) continue;
-      const model = buildFurniture(item);
+      const model = buildFurniture(item, anchors.condensateChain);
       if (!model) {
         report.skippedFurniture.push(`${roomId}:${item.type}`);
         continue;
@@ -1565,7 +1637,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   }
   report.plumbing = infrastructure.plumbing.length;
   addCeilingZones(exportRoot, input.ceilingZones ?? [], input.rooms, report);
-  addFurniture(exportRoot, furnishings, report, index.wallSegments);
+  addFurniture(exportRoot, furnishings, report, index.wallSegments, input.options);
   if (input.lightingFixtures?.length) {
     const lighting = buildLightingFixtures(input.lightingFixtures, input.options?.lighting);
     exportRoot.add(lighting.group);

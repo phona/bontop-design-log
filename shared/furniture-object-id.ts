@@ -16,8 +16,8 @@ export function furnitureObjectId(roomId: string, item: Pick<FurnishingItem, 'id
   return item.id ?? `furniture:${roomId}:${item.type}:${index}`;
 }
 
-/** 条目摆位方式（与 shared/furniture-placement.ts 的三种定位声明 + count-only 一一对应）。 */
-export type FurniturePlacementKind = 'mount' | 'wall' | 'absolute' | 'count_only';
+/** 条目摆位方式（与 shared/furniture-placement.ts 的四种定位声明 + count-only 一一对应）。 */
+export type FurniturePlacementKind = 'mount' | 'wall' | 'anchor' | 'absolute' | 'count_only';
 
 export interface DeclaredFurnitureIdEntry {
   id: string;
@@ -34,9 +34,13 @@ export interface DeclaredFurnitureIdEntry {
  * 全屋已声明稳定 id 的家具条目清单（issue #98 PR-8 按对象算账的统一入口）。
  *
  * 消费方：shared/schedule-state.ts 校验成本项 `targets`、scripts/schedule/cost-by-object.ts
- * 建「对象 → 工作包/成本项」链。placed 判定与 resolveFurniturePlacement 的三种定位
- * 声明（mount / wall / 绝对 x+z）同口径；count-only 条目无 runtime 对象，即使误声明
+ * 建「对象 → 工作包/成本项」链。placed 判定与 resolveFurniturePlacement 的四种定位
+ * 声明（mount / wall / anchor / 绝对 x+z）同口径；count-only 条目无 runtime 对象，即使误声明
  * id 也不得被成本归属引用（schedule-state 校验按 placed 拦截）。
+ *
+ * `anchor`（issue #98 PR-10，锚点派生摆位）算 placed：它有稳定 id、摆位由另一份配置的锚点
+ * 解出（shared/condensate-chain.ts），与绝对 x/z 一样有 runtime 对象——漏判会把主卫链条
+ * 三件错归类成 count-only，按对象算账视图随之少件（D19 条带 7 件只剩 4 件）。
  */
 export function collectDeclaredFurnitureIds(furnishings: FurnishingsYaml): DeclaredFurnitureIdEntry[] {
   const entries: DeclaredFurnitureIdEntry[] = [];
@@ -47,9 +51,11 @@ export function collectDeclaredFurnitureIds(furnishings: FurnishingsYaml): Decla
         ? 'mount'
         : item.wall
           ? 'wall'
-          : (item.x !== undefined || item.z !== undefined)
-            ? 'absolute'
-            : 'count_only';
+          : item.anchor
+            ? 'anchor'
+            : (item.x !== undefined || item.z !== undefined)
+              ? 'absolute'
+              : 'count_only';
       entries.push({
         id: item.id,
         roomId,
