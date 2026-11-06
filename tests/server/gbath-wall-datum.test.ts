@@ -110,9 +110,11 @@ describe('gbath wall datum (2026-11-06 口径 A)', () => {
 
   it('master mb_vanity_base_cabinet placement is unchanged by the datum refactor', () => {
     // 手算：中心 x = 2.60 − 0.06(半墙厚) − 0.015(clearance) − 0.565/2 = 2.2425；
-    // along 3.61 为绝对 z（w_mbath_east 特例，与基准语义无关）；宽 1.38 → z[2.92,4.30]。
+    // along 2.51 为沿墙距离（自墙段起点顶点 v_bath_ne z=1.10 向北量；2026-11-07 issue #98
+    // 删除了本墙「along = 绝对 z」的历史特例，世界位置不变）→ z = 1.10 + 2.51 = 3.61；
+    // 宽 1.38 → z[2.92,4.30]。
     const placement = resolve(
-      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.61, wall_clearance: 0.015 },
+      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, wall_clearance: 0.015 },
     );
     closeTo(placement.x, 2.2425);
     closeTo(placement.z, 3.61);

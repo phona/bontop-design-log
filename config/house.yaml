@@ -455,11 +455,13 @@ furnishings:
     - { type: dressing_stool, id: mb.dressing_stool, x: 0.42, z: 6.05, rotation: 90 } # 2026-09-04 R1 候选未冻结：随桌贴窗，收纳态完整收入桌下（AABB x[0.22,0.62] z[5.84,6.26] ⊂ 桌 footprint），使用时向东拉出
     - { type: master_hot_season_low_dresser, id: mb.low_dresser, x: 1.05, z: 9.20, rotation: 180 } # 2026-09-08：北移避开西南圆弧玻璃幕；1400W×480D×850H（h<2.07 不挡窗带），抽屉朝北；西端距西帘堆叠侧留余量，南帘堆叠端 site_pending
     # DEC-045：底柜保留原位；上下双层悬浮板共用 wall=w_mbath_east、wall_side=west、rotation=270，贴墙西侧完成面，不再从衣柜回退。
-    - { type: mb_vanity_base_cabinet, id: mb.vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, wall_clearance: 0.015 } # 2026-09-07：1.38m×0.565m×0.62m；主体从东墙完成面退让15mm，北端与主卫南墙完成面保持 site_trim 收口
-    - { type: mb_vanity_lower_board, id: mb.vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 下悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
-    - { type: mb_vanity_main_board, id: mb.vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 上悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
+    # 2026-11-07 issue #98：w_mbath_east 的 along 由「绝对 z」历史约定改为沿墙距离（自起点顶点
+    # v_bath_ne z=1.10 向北量），世界位置不变——along 2.51 = 3.61 − 1.10。
+    - { type: mb_vanity_base_cabinet, id: mb.vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, wall_clearance: 0.015 } # 2026-09-07：1.38m×0.565m×0.62m；主体从东墙完成面退让15mm，北端与主卫南墙完成面保持 site_trim 收口
+    - { type: mb_vanity_lower_board, id: mb.vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 下悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
+    - { type: mb_vanity_main_board, id: mb.vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 上悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
     - { type: condensate_pipe_ac_outlet, id: mb.condensate_pipe, x: 3.70, z: 5.10, rotation: 0 } # coordination schematic/pending：ac_master 内厂家冷凝水出口未现场确认；此处取业主 2026-10-05 选定的机身中心轴 x=3.70，出口在机身上的具体横向位置仍待厂家图；独立圆管段接至主卧东墙贴墙 run，不接 return/supply 格栅。
-    - { type: mb_vanity_pvc_box, id: mb.vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.70 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。
+    - { type: mb_vanity_pvc_box, id: mb.vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.60 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。2026-11-07 issue #98：along 由绝对 z 3.70 改沿墙距离 2.60（= 3.70 − 1.10），世界位置不变，trim 包络仍 z[3.10,4.30]
     - { type: mb_vanity_pvc_wardrobe_entry, id: mb.vanity_pvc_wardrobe_entry, x: 4.10, z: 4.62, rotation: 0 } # 延伸空调盒/通顶衣柜顶部服务带西行至衣柜东缘 (2.925,4.62)；仅检视态显示，柜体主体保留。
     - { type: mb_vanity_pvc_service_chase, id: mb.vanity_pvc_service_chase, x: 2.925, z: 4.62, rotation: 0 } # 柜顶内转至墙行 x=2.50，再于 z=3.10 向 x=2.30 短折穿 w_mbath_south；两段白色 L 形包边覆盖横折并收至南墙 bedroom-side finish z=2.92；主卫吊顶内到候选点(2.00,0.1,2.5)并下引；pending，非施工依据。
     # mattress/curtain/ceiling count-only entries remain after placed furniture
