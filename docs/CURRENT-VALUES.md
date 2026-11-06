@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:e6036efddf35977d62392596d087b32ef6cdd5cf18a2bc0d4091b367422fcb35 -->
+     inputs-fingerprint: sha256:a1398f0c6db4471f7f5a38059e3f28f502f025def194e810618e2cba60a6ba9a -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
