@@ -746,6 +746,7 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.12, 0.02, 0.02], position: [0.24, 0.70, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-upper-handle', materialRole: 'hardware' },
       { shape: 'box', size: [0.17, 0.36, 0.02], position: [0.24, 0.21, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-front-lower', materialRole: 'cabinet_body' },
       { shape: 'box', size: [0.12, 0.02, 0.02], position: [0.24, 0.34, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-lower-handle', materialRole: 'hardware' },
+      // 三只把手 local z 前沿 0.27（突出柜面 0.25 达 20mm）——装饰件突出量为声明值：校验/DXF 按 carcass depth 0.50 出口径（shared/types.ts FURNITURE_DIMS.vanity 注释已注明，2026-11-06 Codex minor）。
       // 抽屉拼缝阴影筋：3cm 拼缝（y[0.39,0.42]）后露 carcass 会同色只成发丝线，深色筋让它读成阴影缝（2026-11-06 视觉验收找茬员实测）
       { shape: 'box', size: [0.17, 0.03, 0.02], position: [0.24, 0.405, 0.23], color: '#4a4a4a', roughness: 0.8, part: 'vanity-drawer-seam-shadow', materialRole: 'cabinet_body' },
       { shape: 'box', size: [0.42, 0.12, 0.28], position: [0, 0.81, -0.05], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },

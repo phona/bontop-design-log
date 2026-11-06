@@ -1882,7 +1882,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },
-  vanity: { width: 0.69, depth: 0.5 }, // DEC-2026-11-05-R5：可用跨度=南墙 w_gbath_south 南脸 3.61 至东墙段南端 4.30（0.69m，两端贴死 0 容差，量房 #76 复核）——2026-11-06 Codex blocking 修正：原 0.70/0.72 柜北端侵入实体墙；DEC-2026-09-09-R7 柜深 0.40→0.50（标准成品柜深，全藏台下基站）
+  vanity: { width: 0.69, depth: 0.5 }, // DEC-2026-11-05-R5：depth=0.50 为 carcass 包络；三只把手为正面装饰件、突出柜面 20mm（局部外深 0.52），校验与 DXF 按 carcass 0.50 出口径、把手突出量为已知声明值（2026-11-06 Codex minor 明确）：可用跨度=南墙 w_gbath_south 南脸 3.61 至东墙段南端 4.30（0.69m，两端贴死 0 容差，量房 #76 复核）——2026-11-06 Codex blocking 修正：原 0.70/0.72 柜北端侵入实体墙；DEC-2026-09-09-R7 柜深 0.40→0.50（标准成品柜深，全藏台下基站）
   toilet: { width: 0.4, depth: 0.6 }, // 2026-08-21 马桶落位（对齐 FixtureFactory 模型 footprint）
   exhaust_fan: { width: 0.3, depth: 0.3 },
   washer: { width: 0.6, depth: 0.6 }, // 2026-08-23 阳台洗烘叠放（贴 w_balc_west，与 dryer 同 footprint）

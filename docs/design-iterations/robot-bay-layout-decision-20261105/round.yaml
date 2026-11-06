@@ -133,7 +133,7 @@ fact_table:
     evidence: community
     status: unconfirmed
   - id: cross_brand_fit
-    claim: 现仓包络（净宽 0.46×深 0.50×高 0.75、前 0.88、底缝 0.15、双取袋路径）对科沃斯 T80S PLUS（410×449×247，装得下但深度贴上限：官方预留 480 vs 仓深 500 仅余 20mm）与石头 Vida（手册不载脚印，条件性可装）通用；硬约束=深度 0.50 与水压未实测
+    claim: 现仓包络（净宽 0.46×净深 0.48（毛深 0.50 扣仓门 0.02）×高 0.75、前 0.88、底缝 0.15、双取袋路径）对科沃斯 T80S PLUS（410×449×247，装得下但深度零余量：净深 480 正好等于官方预留 480，dock 449 装进门内剩 31mm 走管；2026-11-06 Codex blocking 修正：原按毛深 500 称余 20mm 有误）与石头 Vida（手册不载脚印，条件性可装）通用；硬约束=净深 0.48 与水压未实测
     source: 科沃斯官方说明书（2026-08-31 版，官网下载，p8/p25）；石头 Vida 上下水版说明书（p8/p15，tmp/capture/roborock-doc.pdf）
     evidence: official
     status: verified
