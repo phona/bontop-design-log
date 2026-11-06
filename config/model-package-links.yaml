@@ -265,7 +265,22 @@ links:
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-100}
     mapping_status: partial
-    scope: [{source: furnishings, select: {room_ids: [master_bedroom], types: [master_north_wall_wardrobe_950, mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board, mb_vanity_pvc_box, mb_vanity_pvc_wardrobe_entry, mb_vanity_pvc_service_chase]}}]
+    scope:
+      # 2026-11-07（issue #98 PR-11）：master_bedroom 家具由 types 选择器改按稳定对象 id 选。
+      # types 对 furnishings 从来解析不出对象（sceneElements 只含墙与叠加层区域、不含家具，
+      # 见 shared/package-scope.ts OBJECT_ID_SOURCES 注释）——本链接的 3D 高亮与
+      # buildObjectPackageIndex 反查此前双双静默 no-op；改 ids 后与 PR-4 的
+      # gbath.vanity / gbath.robot_dock 同一条通道，高亮、反查、cost:by-object 三处同源生效。
+      # 覆盖口径 = P2-100 / COST-150-01 的 DEC-2026-10-07-R02 裁定④：通顶衣柜
+      # mb.wardrobe_950 + 顶部收口 mb.wardrobe_pelmet + 条带柜组 7 件。两件此前不在
+      # types 里、随本条显形：condensate_pipe_ac_outlet（裁定④明文的链件之一）与
+      # master_wardrobe_top_pelmet（通顶柜组成部分，spatial/design-rules 已按 wardrobe 登记）。
+      # 核实记录：master_wardrobe_tall_240（2.4m 隔断柜）与 mb.wardrobe_950 不是同一件——
+      # 前者 2026-09-07（commit 2283c9f5）已退出 placed（通用 recipe 保留），现行通顶衣柜即
+      # master_north_wall_wardrobe_950（mb.wardrobe_950）；D19 选项与旧 description 的旧名
+      # 随本 PR 一并改对象引用，历史 DEC 文本不改。
+      - {source: furnishings, select: {room_ids: [master_bedroom]}}
+      - {source: furnishings, select: {ids: [mb.wardrobe_950, mb.wardrobe_pelmet, mb.vanity_base_cabinet, mb.vanity_lower_board, mb.vanity_main_board, mb.vanity_pvc_box, mb.vanity_pvc_wardrobe_entry, mb.vanity_pvc_service_chase, mb.condensate_pipe]}}
   - id: MODEL-P2-110
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-110}

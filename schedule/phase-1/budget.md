@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"ffb332e57b1c97162b686950e82eda20079ead69afd625b07c2fa2acf5c0006f"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"642eda377bc77c34340d76159279d84b2ddf13ee9f3919eaef771fffc29f80d5"} -->
 # 一期预算控制表
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:d5c23f93bf3cf84e9a66686ac1a9735dd6baa5bea853f2932845cdf2a29df7d5`（1 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:245ff3659a1108fb075b92cc8e61d1068905c8736940fd276a04c3aa7bef1b97`（1 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -386,7 +386,7 @@
 
 | 优先级 | 费用ID | 可单独询价的项目 | 包含内容 | 数量或计价依据 | 当前金额 | 状态 |
 |---|---|---|---|---|---:|---|
-| — | COST-150-01 | 主卧通顶定制衣柜（后移二期） | 藏空调冷凝水管槽，成品柜无法替代，维持定制但推至二期；逐柜记录位置、宽高深、材质、内部格局、五金、运输安装和墙体固定条件。2026-10-07（DEC-2026-10-07-R02）边界补注：本项现名仅对应 master_wardrobe_tall_240（2.4m 通顶隔断柜），而空调冷凝水管墙行段（管心 x=2.50、z=3.10..4.30，经 mb_vanity_pvc_service_chase 穿 w_mbath_south 入主卫吊顶）实际由主卫条带柜组收纳——mb_vanity_base_cabinet（1.38m×0.565m×0.62m，AABB x[1.975,2.54]，design-rules 归 wardrobe，在 w_mbath_east 西侧完成面退让15mm）+ mb_vanity_lower_board + mb_vanity_main_board（均与底柜同包络）+ mb_vanity_pvc_box/wardrobe_entry/service_chase 三件 + condensate_pipe_ac_outlet。条带柜组是否含在本项及 P2-100 的 3000-5000 内，此前无任何 DEC 或台账说明，二期启动前必须写清；按项目单价反算该组约1500-2300（柜体800/㎡投影+石英石400/延米+PVC井），为推断非报价。一期过渡态：条带为1.05m洗手柜可用、无底柜收纳、冷凝水管裸露于主卧墙面，属已知可接受过渡，不得按缺陷整改。与 mb_washbasin_cabinet（1.05m，design-rules 归 vanity，预算在 COST-100-02）是两套东西，不得混同或双计。2026-11-06（issue #98 PR-8）开放项显形：本覆盖边界问题登记为决策门禁 D19（owner=业主，触发=二期启动前），拍板前本项不登记对象级 targets——条带柜组各对象的成本归属按未定处理，由 npm run cost:by-object 把 D19 挂在对象上显形，不得由迁移擅自认定 | 二期启动前深化（含条带柜组边界待写清） | ¥0 | deferred_to_phase_2 |
+| — | COST-150-01 | 主卧通顶定制衣柜（后移二期） | 藏空调冷凝水管槽，成品柜无法替代，维持定制但推至二期；逐柜记录位置、宽高深、材质、内部格局、五金、运输安装和墙体固定条件。2026-10-07（DEC-2026-10-07-R02）边界补注：本项现名仅对应主卧通顶定制衣柜——现行对象为 mb.wardrobe_950（master_north_wall_wardrobe_950，0.95m×0.58m、完成高2.80m，上部固定门头内隐藏冷凝水管槽）与 mb.wardrobe_pelmet（master_wardrobe_top_pelmet，通顶柜顶部薄收口，不承担HVAC责任）；本段旧文本写作 master_wardrobe_tall_240（2.4m 通顶隔断柜），该对象 2026-09-07 已退出 placed（通用 recipe 与 FURNITURE_DIMS 尺寸保留），2026-11-07（issue #98 PR-11）随本条改对象引用。空调冷凝水管墙行段（管心 x=2.50、z=3.10..4.30，经 mb.vanity_pvc_service_chase 穿 w_mbath_south 入主卫吊顶）实际由主卫条带柜组收纳——mb.vanity_base_cabinet（1.38m×0.565m×0.62m，AABB x[1.975,2.54]，design-rules 归 wardrobe，在 w_mbath_east 西侧完成面退让15mm）+ mb.vanity_lower_board + mb.vanity_main_board（均与底柜同包络）+ mb.vanity_pvc_box / mb.vanity_pvc_wardrobe_entry / mb.vanity_pvc_service_chase 三件 + mb.condensate_pipe（condensate_pipe_ac_outlet，2026-11-07 issue #98 PR-10 起改锚点派生）。条带柜组是否含在本项及 P2-100 的 3000-5000 内，此前无任何 DEC 或台账说明，二期启动前必须写清；按项目单价反算该组约1500-2300（柜体800/㎡投影+石英石400/延米+PVC井），为推断非报价。一期过渡态：条带为1.05m洗手柜可用、无底柜收纳、冷凝水管裸露于主卧墙面，属已知可接受过渡，不得按缺陷整改。与 mb.washbasin_cabinet（mb_washbasin_cabinet，1.05m，design-rules 归 vanity，预算在 COST-100-02）是两套东西，不得混同或双计。2026-11-07（issue #98 PR-11）成本对象归属：targets 登记条带柜组 7 件（mb.vanity_base_cabinet / mb.vanity_lower_board / mb.vanity_main_board / mb.vanity_pvc_box / mb.vanity_pvc_wardrobe_entry / mb.vanity_pvc_service_chase / mb.condensate_pipe），依据是 DEC-2026-10-07-R02 裁定④「整组划归二期，对应 P2-100 / COST-150-01」——对象→成本项关联就此机器可读（MODEL-P2-100 同 PR 改按对象 id 选该组与衣柜共 9 件，3D 高亮/反查/按对象算账同源）。开放项显形（不裁定）：条带柜组费用是否含在本项及 P2-100 的 3000-5000 区间内、不含是否新增 P2-101，仍为决策门禁 D19（owner=业主，触发=二期启动前；机器侧 config/decision-gates.yaml，叙事侧 docs/pending-site-data.md 决策点登记），各对象在 npm run cost:by-object 单对象视图的「关联决策门禁」节继续显形；PR-8「拍板前本项不登记对象级 targets」的口径由本段取代——裁定④已定的对象关联可机器化，金额归属未定即不写任何金额结论、不改 3000-5000 区间、planned_cny 维持 0 | 二期启动前深化（含条带柜组边界待写清） | ¥0 | deferred_to_phase_2 |
 | — | COST-150-02 | 一期床架 | 分房间记录尺寸、材质、结构、送货安装和保修；仅保留主卧与客房，书房和西北次卧床具后移二期 | 2张（主卧+客房） | 待报价/待算量 | quantity_pending |
 | — | COST-150-03 | 一期床垫 | 与床架分开报价，分房间记录尺寸、软硬度、材料和试睡退换条件；仅保留主卧与客房 | 2张（主卧+客房） | 待报价/待算量 | selection_pending |
 | — | COST-150-04 | 书房与西北次卧家具（后移二期） | 书桌、书椅、书架/置物架、床具及柜体均不列入一期采购；西北次卧仅保留一期窗帘 | 二期范围 | ¥0 | deferred_to_phase_2 |

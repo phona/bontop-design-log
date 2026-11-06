@@ -61,9 +61,30 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.ok(ledgerOf('gbath.vanity').mountedChildren.includes('gbath.robot_dock'));
   });
 
-  it('COST-150-01 不登记 targets——D19（owner=业主，触发=二期启动前）拍板前不得擅自认定归属', () => {
-    const {component} = componentOf('COST-150-01');
-    assert.equal(component.targets, undefined);
+  it('COST-150-01 targets = 条带柜组 7 件（DEC-2026-10-07-R02 裁定④的对象关联）；金额边界仍 D19 未拍板', () => {
+    // 2026-11-07（issue #98 PR-11）口径修正：PR-8 曾断言「COST-150-01 不登记 targets」
+    // （把业主「按开放项显形，不裁定」的裁定落实为「拍板前不挂对象」）。PR-11 改为按
+    // 裁定④已定的对象→成本项关联机器化：targets 登记的是「哪些对象归本项跟踪」，
+    // 不是金额裁定——D19 问的是含不含 P2-100 的 3000-5000、要不要 P2-101，仍开放。
+    const {pkg, component} = componentOf('COST-150-01');
+    assert.deepEqual(component.targets, [
+      'mb.vanity_base_cabinet',
+      'mb.vanity_lower_board',
+      'mb.vanity_main_board',
+      'mb.vanity_pvc_box',
+      'mb.vanity_pvc_wardrobe_entry',
+      'mb.vanity_pvc_service_chase',
+      'mb.condensate_pipe',
+    ]);
+    // 不裁定：金额侧零结论——planned 维持 0、不新增 P2 行、推断区间不进 targets
+    assert.equal(component.planned_cny, 0);
+    assert.equal(component.status, 'deferred_to_phase_2');
+    // 衣柜名件不进 targets（本项现名的对象引用在 description；其归属不在 D19 问价范围）
+    assert.ok(!(component.targets as string[]).includes('mb.wardrobe_950'));
+    assert.ok(!(component.targets as string[]).includes('mb.wardrobe_pelmet'));
+    // 与 COST-100-02 不双计：mb.washbasin_cabinet 归 COST-100-02，不进本项
+    assert.ok(!(component.targets as string[]).includes('mb.washbasin_cabinet'));
+    assert.equal(pkg.id, 'PKG-150');
     // 登记侧：D19 是 open 的 tracked 决策，带 owner/触发条件（决策铁律 2）
     const d19 = ctx.state.decisionGates.decisions.find((decision) => decision.id === 'D19');
     assert.ok(d19, 'D19 必须已登记在 config/decision-gates.yaml');
@@ -109,8 +130,7 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.deepEqual(ledger.openDecisions, [], `D19 的 question 只点名条带 7 件，不得经子串挂到 gbath.vanity：${JSON.stringify(ledger.openDecisions)}`);
     assert.deepEqual(ledgerOf('mb.washbasin_cabinet').openDecisions, []);
     // 全局：挂 D19 的对象必须恰好是条带 7 件（决策通道与对象两两核对，防同类子串误挂；
-    // 按 ref 去重——3 件条带对象同时有 anti-penetration 引用，同一 ledger 实例会出现在
-    // objects 与 undecided 两个清单里）
+    // 衣柜对象不得挂 D19——其归属不在本决策问价范围，D19 options 只以非 id 写法提衣柜名件）
     const d19Refs = [...new Map([...report.objects, ...report.undecided].map((candidate) => [candidate.ref, candidate])).values()]
       .filter((candidate) => candidate.openDecisions.some((decision) => decision.id === 'D19'))
       .map((candidate) => candidate.ref).sort();
@@ -125,7 +145,11 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     ]);
   });
 
-  it('D19 挂在条带 7 件全部对象上（含 4 件无机器引用的对象），全部无成本归属', () => {
+  it('D19 挂在条带 7 件全部对象上；PR-11 起 7 件同时有 P2-100 包链接与 COST-150-01 成本项', () => {
+    // 2026-11-07（issue #98 PR-11）：条带柜组业务关联落地——MODEL-P2-100 改按对象 id
+    // 选（原 types 选择器对 furnishings 是 silent no-op）+ COST-150-01 targets 登记。
+    // 7 件自此有业务链接，「成本归属未定」汇总表不再收它们（该表现在为空）；D19 的
+    // 显形口改为各对象单对象视图的「关联决策门禁」节 + 决策登记表 + description 散文。
     const stripIds = [
       'mb.vanity_base_cabinet',
       'mb.vanity_lower_board',
@@ -135,25 +159,41 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
       'mb.vanity_pvc_service_chase',
       'mb.condensate_pipe',
     ];
-    assert.equal(report.undecided.length, stripIds.length, JSON.stringify(report.undecided.map((ledger) => ledger.ref)));
+    assert.equal(report.undecided.length, 0, `「被开放决策点名且无业务链接」应无对象：${JSON.stringify(report.undecided.map((ledger) => ledger.ref))}`);
     for (const ref of stripIds) {
-      const ledger = report.undecided.find((candidate) => candidate.ref === ref);
-      assert.ok(ledger, `${ref} 必须出现在「成本归属未定」里`);
+      const ledger = ledgerOf(ref);
+      assert.ok(ledger, `${ref} 必须出现在视图里`);
       assert.ok(ledger.openDecisions.some((decision) => decision.id === 'D19'), `${ref} 必须挂 D19`);
-      assert.equal(hasBusinessLink(ledger), false, `${ref} 不得有业务链接（归属未定）`);
-      assert.deepEqual(ledger.costItems, []);
+      assert.equal(hasBusinessLink(ledger), true, `${ref} 应有业务链接（P2-100 包 + COST-150-01 成本项）`);
+      assert.deepEqual(ledger.costItems.map((item) => item.costId), ['COST-150-01'], `${ref} 的成本项应恰为 COST-150-01`);
+      assert.deepEqual(ledger.packageLinks.map((link) => link.pkgId), ['P2-100'], `${ref} 的包链接应恰为 P2-100`);
     }
     // 反向：有归属对象不进「成本归属未定」
     assert.ok(!report.undecided.some((ledger) => ledger.ref === 'gbath.vanity'));
   });
 
-  it('无参数汇总：有归属 3 件、共担成本项去重合计 ¥6,599', () => {
+  it('无参数汇总：有归属 12 件（PR-11 起含条带 7 件 + 衣柜 2 件）、共担成本项去重合计 ¥6,599', () => {
     const owned = report.objects.filter(hasBusinessLink);
-    assert.deepEqual(owned.map((ledger) => ledger.ref).sort(), ['gbath.robot_dock', 'gbath.vanity', 'mb.washbasin_cabinet']);
+    assert.deepEqual(owned.map((ledger) => ledger.ref).sort(), [
+      'gbath.robot_dock',
+      'gbath.vanity',
+      'mb.condensate_pipe',
+      'mb.vanity_base_cabinet',
+      'mb.vanity_lower_board',
+      'mb.vanity_main_board',
+      'mb.vanity_pvc_box',
+      'mb.vanity_pvc_service_chase',
+      'mb.vanity_pvc_wardrobe_entry',
+      'mb.wardrobe_950',
+      'mb.wardrobe_pelmet',
+      'mb.washbasin_cabinet',
+    ]);
     const summary = renderOwnershipSummary(report);
     assert.match(summary, /¥6,599/);
     assert.match(summary, /2 对象共担/);
-    // 未定归属不进金额：D19 行不得带 planned 金额
+    // COST-150-01 planned=0（二期 deferred）进合计但不加钱；7 件条带共担该项、
+    // 与衣柜 9 件共担 P2-100 包链接，金额仍只有 COST-100-02/160-06 两项有数
+    assert.match(summary, /COST-150-01/);
     assert.match(summary, /成本归属未定（开放决策点名，非归属认定）/);
   });
 
@@ -187,7 +227,10 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     const inventory = renderInventoryReport(report);
     assert.match(inventory, /legacy `furniture:\*` 引用：\*\*0\*\* 条/);
     assert.match(inventory, /悬挂引用（对象匹配不到）：\*\*0\*\* 条/);
-    assert.match(inventory, /被机器绑定引用的对象：\*\*22\*\* 件/);
+    // 2026-11-07（issue #98 PR-11）：条带 7 件 + 衣柜 2 件经 MODEL-P2-100 的 select.ids
+    // 进反查（pvc_box/wardrobe_entry/service_chase/condensate_pipe 4 件此前零机器引用），
+    // 22 → 26 件。
+    assert.match(inventory, /被机器绑定引用的对象：\*\*26\*\* 件/);
   });
 });
 
