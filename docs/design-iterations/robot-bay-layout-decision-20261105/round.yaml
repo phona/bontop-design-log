@@ -123,10 +123,15 @@ fact_table:
     evidence: official
     status: verified
   - id: splash_500_case_unfounded
-    claim: 「浴室溅水渗入主板烧机、维修约 ¥500」未找到任何独立案例来源；可查进水损坏均为基站渗水/上下水模块漏水/进水管脆断泡地板，主板维修实际口径 700-1800 元
-    source: 工作流独立调研（smzdm 案例汇总全文检索：主板/烧机/浴室/溅水零命中）
+    claim: 「浴室溅水渗入主板烧机、维修约 ¥500」未找到任何独立案例来源；可查进水损坏均为基站渗水/上下水模块漏水/进水管脆断泡地板（全文检索关键词零命中）
+    source: 工作流独立调研（smzdm 案例汇总 https://post.smzdm.com/p/ak8xzwl8/ 全文检索：主板/烧机/浴室/溅水/台盆 零命中；案例均为追觅 S10/S20/X20、云鲸 2026-05 进水管脆断、石头 P10，后果为地板泡坏）
     evidence: community
     status: verified
+  - id: mainboard_repair_price_unverified
+    claim: 主板进水维修报价区间「700-1800 元」未验证——仅追觅官方 700-772 元有新浪原文可查（https://www.sina.cn/news/article/comos_niufnpr3884281.html）；石头 1800/科沃斯 1600 均只有搜索摘要、原页面不可达，不得作为事实引用
+    source: 工作流独立调研（新浪原文 + 抖音/B 站原页不可达的记录）
+    evidence: community
+    status: unconfirmed
   - id: cross_brand_fit
     claim: 现仓包络（净宽 0.46×深 0.50×高 0.75、前 0.88、底缝 0.15、双取袋路径）对科沃斯 T80S PLUS（410×449×247，装得下但深度贴上限：官方预留 480 vs 仓深 500 仅余 20mm）与石头 Vida（手册不载脚印，条件性可装）通用；硬约束=深度 0.50 与水压未实测
     source: 科沃斯官方说明书（2026-08-31 版，官网下载，p8/p25）；石头 Vida 上下水版说明书（p8/p15，tmp/capture/roborock-doc.pdf）
