@@ -207,6 +207,12 @@ describe('spatial validation primitives', () => {
       ['furniture:balcony:washer:0', 'furniture:balcony:dryer:1'],
       'config/anti-penetration.yaml',
     ).some((issue) => issue.code === 'relationship_instance_unstable'));
+    // 声明的稳定对象 id（issue #98，如 gbath.vanity）不带 ':'，但属已知 runtime 实例，不算类型名。
+    assert.deepEqual(validateRelationshipSpecs(
+      [{ id: 'stable-pair', type: 'contained', objects: ['gbath.vanity', 'gbath.robot_dock'] }],
+      ['gbath.vanity', 'gbath.robot_dock', 'furniture:guest_bath:toilet:1'],
+      'config/anti-penetration.yaml',
+    ), []);
   });
 });
 

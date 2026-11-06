@@ -11,6 +11,7 @@ import { validateRuntimePenetration } from './rules.js';
 import { validateFurnitureClearance, profileFor, declaredDims } from './clearance.js';
 import { validateFurnitureOpenings } from './openings.js';
 import { buildRuntimeScene, collectPenetrationObjects, objectHasMesh, type SceneInputs } from './scene.js';
+import { furnitureObjectId } from '../furniture-object-id.js';
 import {
   severityFloor,
   samePair,
@@ -276,7 +277,7 @@ function placedClearanceIssues(inputs: SceneInputs, collected: ReturnType<typeof
       const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
       if (!isPlaced) continue;
       const type = String(item.type ?? '');
-      const runtimeId = `furniture:${roomId}:${type}:${runtimeIndex}`;
+      const runtimeId = furnitureObjectId(roomId, raw, runtimeIndex);
       runtimeIndex++;
       const dims = declaredDims(item, type);
       if (!dims || dims.width <= 0 || dims.depth <= 0) continue;

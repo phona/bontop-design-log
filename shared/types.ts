@@ -1711,6 +1711,11 @@ export interface FurnishingCutout {
 
 export interface FurnishingItem {
   type: string;
+  /**
+   * 可选稳定工程对象 ID（如 `gbath.vanity`）。声明后即为 runtime objectId，房间内重排不变；
+   * 未声明沿用 `furniture:${room}:${type}:${index}`（见 shared/furniture-object-id.ts）。全屋唯一。
+   */
+  id?: string;
   /** Original house.yaml array index, attached to phase API responses for edits. */
   sourceIndex?: number;
   count?: number;

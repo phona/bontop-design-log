@@ -90,7 +90,7 @@ describe('HouseScene room audit capture', () => {
     expect(source).toContain('this.auditFurnishings.guest_bath');
     expect(source).toContain("points('shower_screen_gbath')");
     expect(source).not.toContain("points('gbath_west_glass_door')");
-    expect(source).toContain("findAuditObject('furniture:guest_bath:vanity:0')");
+    expect(source).toContain("findAuditObject('gbath.vanity')");
     expect(source).toContain("findAuditObject('furniture:guest_bath:toilet:1')");
     expect(source).toContain('this.auditPlumbing');
     expect(source).toContain('toiletBox?.minX.toFixed(3)');

@@ -22,6 +22,7 @@ import { computePaintSillScope } from '../paint-sill-scope.js';
 import { buildRailingGeometry } from './RailingGeometryBuilder.js';
 import { computePaintScope, type PaintWallInput, type PaintWindowInput } from '../paint-scope.js';
 import { resolveFurniturePlacement, WALL_THICKNESS } from '../furniture-placement.js';
+import { furnitureObjectId } from '../furniture-object-id.js';
 
 export { resolveFurniturePlacement };
 /** Tile inspection overlay colors. Visible face (正砖) vs cabinet-covered face (杂砖). */
@@ -1427,11 +1428,13 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
         report.skippedFurniture.push(`${roomId}:${item.type}`);
         continue;
       }
-      const objectId = `furniture:${roomId}:${item.type}:${index}`;
+      const objectId = furnitureObjectId(roomId, item, index);
       model.position.set(placement.x, 0, placement.z);
       model.rotation.y = THREE.MathUtils.degToRad(item.rotation ?? 0);
       setSceneObjectMetadata(model, 'furniture', objectId);
       model.userData.furnishingType = item.type;
+      // 稳定 id（如 gbath.vanity）不再编码房间/类型，消费方按 userData 取，不解析 objectId。
+      model.userData.roomId = roomId;
       if (item.sourceIndex !== undefined) model.userData.sourceIndex = item.sourceIndex;
       const declaredDimensions = FURNITURE_DIMS[item.type];
       if (declaredDimensions) {
