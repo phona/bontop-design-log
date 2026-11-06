@@ -122,9 +122,11 @@ const POINT_SOURCE_PREFIXES: Record<string, string> = {
  * 解析不出任何对象——silent no-op。ids 走本条分支后，按稳定 id 选家具的链接
  * （MODEL-PKG-100 选 gbath.vanity、MODEL-PKG-160 选 gbath.robot_dock）正查高亮
  * （App.highlightApprovalPackage）与反查归属（buildObjectPackageIndex →
- * revealPackageForObject）同时生效。
+ * revealPackageForObject）同时生效。**2026-11-06 更新（issue #98 PR-8）**：本集合
+ * 导出后另被 scripts/schedule/cost-by-object.ts 复用——按对象算账的「对象 → 工作包」
+ * 通道与 3D 高亮同源，新增对象 id 来源时两处自动跟随，不得在脚本里另立一套来源表。
  */
-const OBJECT_ID_SOURCES = new Set(['furnishings']);
+export const OBJECT_ID_SOURCES = new Set(['furnishings']);
 
 /**
  * 点位来源的 `select {all: true}` → 项目数据里该分类的全部点位（2026-11-04 issue #65）。

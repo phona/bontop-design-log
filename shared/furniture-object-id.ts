@@ -16,6 +16,53 @@ export function furnitureObjectId(roomId: string, item: Pick<FurnishingItem, 'id
   return item.id ?? `furniture:${roomId}:${item.type}:${index}`;
 }
 
+/** 条目摆位方式（与 shared/furniture-placement.ts 的三种定位声明 + count-only 一一对应）。 */
+export type FurniturePlacementKind = 'mount' | 'wall' | 'absolute' | 'count_only';
+
+export interface DeclaredFurnitureIdEntry {
+  id: string;
+  roomId: string;
+  type: string;
+  /** 该房条目数组下标（house.yaml 原始序，与 placed 序号无关——只作溯源）。 */
+  sourceIndex: number;
+  placement: FurniturePlacementKind;
+  /** placement === 'mount' 时的宿主稳定 id（FurnitureMount.furniture_id）。 */
+  mountHost?: string;
+}
+
+/**
+ * 全屋已声明稳定 id 的家具条目清单（issue #98 PR-8 按对象算账的统一入口）。
+ *
+ * 消费方：shared/schedule-state.ts 校验成本项 `targets`、scripts/schedule/cost-by-object.ts
+ * 建「对象 → 工作包/成本项」链。placed 判定与 resolveFurniturePlacement 的三种定位
+ * 声明（mount / wall / 绝对 x+z）同口径；count-only 条目无 runtime 对象，即使误声明
+ * id 也不得被成本归属引用（schedule-state 校验按 placed 拦截）。
+ */
+export function collectDeclaredFurnitureIds(furnishings: FurnishingsYaml): DeclaredFurnitureIdEntry[] {
+  const entries: DeclaredFurnitureIdEntry[] = [];
+  for (const [roomId, items] of Object.entries(furnishings)) {
+    items.forEach((item, sourceIndex) => {
+      if (item.id === undefined) return;
+      const placement: FurniturePlacementKind = item.mount
+        ? 'mount'
+        : item.wall
+          ? 'wall'
+          : (item.x !== undefined || item.z !== undefined)
+            ? 'absolute'
+            : 'count_only';
+      entries.push({
+        id: item.id,
+        roomId,
+        type: item.type,
+        sourceIndex,
+        placement,
+        ...(item.mount ? {mountHost: item.mount.furniture_id} : {}),
+      });
+    });
+  }
+  return entries;
+}
+
 export interface DuplicateFurnitureId {
   id: string;
   /** 声明同一 id 的全部条目，形如 `guest_bath/vanity[0]`（房间内源数组下标）。 */
