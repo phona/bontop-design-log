@@ -1819,7 +1819,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   // DEC-045 主卫东墙独立对象：rotation=270 后 width 沿墙 z、depth 朝 west；
   // wall anchor 是自身中心，local y 才是高度层次；柜体与悬浮板沿墙同轴组成一套墙面家具。
   mb_vanity_base_cabinet: { width: 1.38, depth: 0.565 }, // 2026-09-07：1.38m×0.565m×0.62m；AABB x[1.975,2.54] z[2.92,4.30]，同时避开东墙与主卫南墙
-  mirror_cabinet_gbath: { width: 0.70, depth: 0.14 }, // DEC-2026-09-09-R2 客卫镜柜（y[1.10,2.00] 挂墙，沿墙 0.70m）
+  mirror_cabinet_gbath: { width: 0.66, depth: 0.14 }, // DEC-2026-09-09-R2 客卫镜柜（y[1.10,2.00] 挂墙，沿墙 0.66m——2026-11-06 随 DEC-2026-11-05-R5 柜体北移由 0.70 收窄，北缘避南墙南脸 3.61）
   heated_towel_rack: { width: 0.55, depth: 0.10 }, // DEC-2026-10-17-R20 客卫电热毛巾架：梯式 0.55W(沿墙)×0.10D(凸出)×0.75H，挂墙 y[1.05,1.80]；SKU 未选型，图示代理尺寸
   robot_dock_gbath: { width: 0.41, depth: 0.433 }, // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下；2026-11-02 本 PR 改为云鲸 JX 超薄上下水版 YJCC034 实尺寸 410×433×280mm，柜体底缘 0.30 不动）
   mb_vanity_lower_board: { width: 1.38, depth: 0.565 }, // 下部悬浮板与底柜同包络，北端贴主卫南墙卧室侧完成面 z=2.92
@@ -1882,7 +1882,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },
-  vanity: { width: 0.7, depth: 0.5 }, // 客卫开放洗漱墙段收窄至 0.75m 内，确保居中后不越界；DEC-2026-09-09-R7 柜深 0.40→0.50（标准成品柜深，全藏台下基站）
+  vanity: { width: 0.69, depth: 0.5 }, // DEC-2026-11-05-R5：depth=0.50 为 carcass 包络；三只把手为正面装饰件、突出柜面 20mm（局部外深 0.52），校验与 DXF 按 carcass 0.50 出口径、把手突出量为已知声明值（2026-11-06 Codex minor 明确）：可用跨度=南墙 w_gbath_south 南脸 3.61 至东墙段南端 4.30（0.69m，两端贴死 0 容差，量房 #76 复核）——2026-11-06 Codex blocking 修正：原 0.70/0.72 柜北端侵入实体墙；DEC-2026-09-09-R7 柜深 0.40→0.50（标准成品柜深，全藏台下基站）
   toilet: { width: 0.4, depth: 0.6 }, // 2026-08-21 马桶落位（对齐 FixtureFactory 模型 footprint）
   exhaust_fan: { width: 0.3, depth: 0.3 },
   washer: { width: 0.6, depth: 0.6 }, // 2026-08-23 阳台洗烘叠放（贴 w_balc_west，与 dryer 同 footprint）
