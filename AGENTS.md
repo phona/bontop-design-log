@@ -7,6 +7,25 @@
 - 历史记录中的“已施工/拆改成本”判断仅作为历史背景，不自动作为当前方案约束。
 - 若后续状态变化（交房、量房、墙体/机电/窗帘施工、入住），由业主更新本节；更新前的状态是设计讨论和验证的唯一当前口径。
 
+### 迁移冻结区（issue #98）
+
+> 由来：issue #98（统一工程对象模型）迁移期间，冻结对象的几何与对象事实改在集成分支上用新格式演进，避免 master 与集成分支对同一对象双头写、合入时互相覆盖。
+
+本次登记**客卫东墙组**（guest_bath 东墙洗漱带及其电气/上下水点位）：
+
+| 冻结对象 | 范围 | 冻结起点 | 解冻条件 |
+| --- | --- | --- | --- |
+| guest_bath vanity（台盆柜，`config/house.yaml` guest_bath furnishings） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| robot_dock_gbath（机器人基站，`config/house.yaml` guest_bath furnishings） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| mirror_cabinet_gbath（镜柜，`config/house.yaml` guest_bath furnishings） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| sock_gbath_robot（电气点位，`config/electrical.yaml`） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| faucet_gbath_vanity（给水点位，`config/plumbing.yaml`） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| drain_gbath_vanity（排水点位，`config/plumbing.yaml`） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+
+- **冻结含义**：上表对象的几何与对象事实只在集成分支 `arch/object-first` 上用新格式改，master 上不改。
+- **冻结不覆盖商业与验收记录**：价格、状态、audit 追加仍可在 master 改。
+- **解冻**：`arch/object-first` 总 PR 合入 master 时整组自动解冻，本小节随之撤销或改写。
+
 ## 页面只读铁律（2026-11-04 起）
 
 > 由来：审批流引入页面直写配置后，导出等多副本消费方把不同新鲜度的缓存副本拼进同一交付物（DXF 导出 PR #61/#63 的"新鲜性"主题审查了 7 轮）。2026-11-04 业主拍板架构收口。
