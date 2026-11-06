@@ -50,11 +50,13 @@ describe('furnitureObjectId', () => {
     assert.equal(after.get('mirror_cabinet_gbath'), 'furniture:guest_bath:mirror_cabinet_gbath:3');
     assert.equal(after.get('heated_towel_rack'), 'furniture:guest_bath:heated_towel_rack:5');
 
-    // 对照：去掉 id 后同样的重排会改掉两件的下标 ID——证明上面的不变是 id 带来的。
+    // 对照：去掉 id 后同样的重排会改掉下标 ID——证明上面的不变是 id 带来的。
+    // 2026-11-06 issue #98 PR-3 起 robot_dock 改 mount 派生：宿主 id 一并剥掉后它解析不出宿主
+    // （断引用诊断、不进场景），这正是稳定 id 承重的直接证据；其余家具下标同样漂移。
     const strip = (items: FurnishingItem[]) => items.map(({ id: _id, ...rest }) => rest);
     const indexedAfter = guestBathRuntimeIds({ ...furnishings, guest_bath: strip(reordered) });
-    assert.equal(indexedAfter.get('vanity'), 'furniture:guest_bath:vanity:4');
-    assert.equal(indexedAfter.get('robot_dock_gbath'), 'furniture:guest_bath:robot_dock_gbath:0');
+    assert.equal(indexedAfter.get('robot_dock_gbath'), undefined, '剥掉宿主稳定 id 后 mount 断引用，dock 不进场景');
+    assert.equal(indexedAfter.get('vanity'), 'furniture:guest_bath:vanity:3');
   });
 });
 

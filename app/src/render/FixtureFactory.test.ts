@@ -10,6 +10,7 @@ import {
   buildBathSideCabinetRun,
   buildFixture,
   buildKitchenCabinetRun,
+  buildVanity,
   buildWardrobe180,
   getRecipeTypes,
 } from './FixtureFactory.js';
@@ -259,7 +260,15 @@ describe('wardrobe fixtures', () => {
 
 describe('bathroom fixtures', () => {
   it('moves the guest-bath mirror from the vanity into the mirror cabinet (DEC-2026-09-09-R2)', () => {
-    const vanity = buildFixture('vanity')!;
+    // 客卫台盆柜自 issue #98 PR-3 起由参数化 buildVanity 生成（house.yaml vanity_layout 驱动，
+    // 不再有写死配方；本测试用手写布局验证零件构成，声明与几何的对应由
+    // tests/server/gbath-vanity-layout.test.ts 对实读配置断言）。
+    const vanity = buildVanity({
+      width: 0.69, depth: 0.5, height: 0.75,
+      robot_bay_width: 0.5, robot_bay_clear_width: 0.46, panel_thickness: 0.02,
+      drawer_width: 0.19,
+    });
+    expect(vanity.children.length).toBe(13);
     expect(vanity.children.some((child) => child.userData.part === 'mirror')).toBe(false);
     expect(vanity.children.some((child) => String(child.userData.part).startsWith('vanity-faucet'))).toBe(false);
 

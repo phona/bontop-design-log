@@ -1,9 +1,14 @@
 /**
  * 家具摆位解算（纯几何，无 THREE）。原实现自 render/SceneBuilder.ts 抽出（2026-11-03，
  * DXF 导出需要同一口径但不引入 three.js），SceneBuilder 改为 re-export，全仓仍只有这一份实现。
+ *
+ * issue #98 PR-3 起兼作「定位声明解算器」：挂墙（wall/wall_side/along）、挂载宿主
+ * （mount: {furniture_id, slot}）、绝对 x/z 三种定位声明都在这里解算，解析失败返回
+ * **诊断文本**而不是 null——null 只保留给 count-only 条目（无平面几何，预期跳过），
+ * 「声明了却解不出来」必须让页面/DXF/verify:furniture 显形并失败。
  */
 
-import { FURNITURE_DIMS, type WallSide } from './types.js';
+import { FURNITURE_DIMS, type FurnishingItem, type VanityLayout, type VanityLayoutDecl, type WallSide } from './types.js';
 
 /**
  * 墙体完成面基厚（渲染与摆位共用的单一声明）。
@@ -34,50 +39,54 @@ export interface FurniturePlacement {
   anchorAlong?: number;
 }
 
+export interface FurniturePlacementResolution {
+  /** 解析出的平面位置。count-only 条目（无任何定位声明）为 null——预期跳过，非失败。 */
+  placement: FurniturePlacement | null;
+  /** 定位声明存在但解析失败时的诊断文本（断引用/越界/负净宽/声明互斥等）。 */
+  diagnostic?: string;
+}
+
+/** 摆位解算可见的最小条目形态（house.yaml FurnishingItem 的定位相关子集）。 */
+export type PlacementItem = Pick<FurnishingItem,
+  | 'type' | 'id' | 'rotation' | 'wall' | 'wall_side' | 'along' | 'x' | 'z'
+  | 'wall_clearance' | 'width' | 'depth' | 'length' | 'vanity_layout' | 'mount'>;
+
 type WallLike = { x1: number; z1: number; x2: number; z2: number };
 
-export function resolveFurniturePlacement(
-  item: { type: string; wall?: string; wall_side?: WallSide; along?: number; x?: number; z?: number; wall_clearance?: number; rotation?: number },
-  wallSegments: Map<string, WallLike[]>,
-): FurniturePlacement | null {
-  if (item.wall !== undefined && item.wall_side !== undefined && item.along !== undefined) {
-    const wall = wallSegments.get(item.wall)?.[0];
-    const dims = FURNITURE_DIMS[item.type];
-    if (wall && dims) {
-      const dx = wall.x2 - wall.x1;
-      const dz = wall.z2 - wall.z1;
-      const length = Math.hypot(dx, dz);
-      // along 绝对 z 特例（w_mbath_east/w_mb_east）：沿墙坐标的历史约定，与墙线基准语义无关；
-      // 2026-11-06 口径 A PR 不改（决定只覆盖 w_mbath_east，不含 w_mb_east，见 PR 说明）。
-      const alongIsAbsoluteVertical = (item.wall === 'w_mbath_east' || item.wall === 'w_mb_east') && Math.abs(dx) < 1e-9;
-      if (length > 1e-9 && (alongIsAbsoluteVertical || (item.along >= -1e-6 && item.along <= length + 1e-6))) {
-        const tangent = { x: dx / length, z: dz / length };
-        const left = { x: -tangent.z, z: tangent.x };
-        const sideDirection: Record<WallSide, { x: number; z: number }> = {
-          north: { x: 0, z: -1 },
-          south: { x: 0, z: 1 },
-          east: { x: 1, z: 0 },
-          west: { x: -1, z: 0 },
-        };
-        const authored = sideDirection[item.wall_side];
-        const right = { x: -left.x, z: -left.z };
-        const normal = left.x * authored.x + left.z * authored.z >= right.x * authored.x + right.z * authored.z ? left : right;
-        const wallPoint = alongIsAbsoluteVertical
-          ? { x: wall.x1, z: item.along }
-          : { x: wall.x1 + tangent.x * item.along, z: wall.z1 + tangent.z * item.along };
-        // 墙线基准（2026-11-06 业主口径 A）：所有 wall/wall_side/along 家具一律从完成面
-        // （线 ± WALL_THICKNESS/2）起算，不再按家具类型区分——原「仅 4 个 mb_vanity 类型
-        // 加半墙厚」的类型清单已删（同墙镜柜曾按线=完成面贴线、穿渲染墙盒 0.06）。
-        // 主体再按 authored 施工余量离开完成面，校验与预演共用同一摆位基准。
-        const finishOffset = WALL_THICKNESS / 2;
-        const wallClearance = item.wall_clearance ?? 0;
-        const centerOffset = finishOffset + wallClearance + dims.depth / 2;
-        return { x: wallPoint.x + normal.x * centerOffset, z: wallPoint.z + normal.z * centerOffset, wallId: item.wall, wallSide: item.wall_side, anchorAlong: item.along };
-      }
-    }
+const WALL_SIDES: readonly WallSide[] = ['north', 'south', 'east', 'west'];
+
+/** along 绝对 z 特例（w_mbath_east/w_mb_east）：沿墙坐标的历史约定，与墙线基准语义无关；
+ * 2026-11-06 口径 A PR 不改（决定只覆盖 w_mbath_east，不含 w_mb_east，见 PR 说明）。 */
+const ABSOLUTE_ALONG_WALLS: ReadonlySet<string> = new Set(['w_mbath_east', 'w_mb_east']);
+
+/** 主卫柜组端部收口特例：两端贴死的柜组允许 20mm 丈量余量（与原 verify 本地复算同值）。 */
+const MB_VANITY_ENDPOINT_TOLERANCE_TYPES: ReadonlySet<string> = new Set([
+  'mb_vanity_base_cabinet',
+  'mb_vanity_lower_board',
+  'mb_vanity_main_board',
+]);
+
+/**
+ * along 合法域的数值容差：客卫台盆柜「两端贴死 0 容差」的设计值恰好落在墙段边界上
+ * （along 0.405 = 墙长 0.75 − 柜半宽 0.345），二进制下 0.75−0.345 与字面 0.405 差 1e-17，
+ * 无容差会误判越界。1µm 对施工无意义，仅消浮点噪声。
+ */
+const ALONG_FIT_EPS = 1e-6;
+
+/** 当前唯一受支持的挂载槽位：机器人仓（贴柜体北端，见 resolveVanityLayout）。 */
+const MOUNT_SLOTS: readonly string[] = ['robot_bay'];
+
+/**
+ * 行内声明 / vanity_layout / 目录三源合一的平面外框（不含 kitchen run 的台面外伸 0.04，
+ * 那是 verify AABB 的包络口径，DXF 按 carcass 出口径，两者刻意保持差异）。
+ * 优先级：vanity_layout（柜体分割唯一声明源）> 行内 width/depth > FURNITURE_DIMS 目录。
+ */
+export function declaredFurnitureDims(item: PlacementItem): { width: number | undefined; depth: number | undefined } {
+  if (item.type === 'vanity' && item.vanity_layout !== undefined) {
+    return { width: item.vanity_layout.width, depth: item.vanity_layout.depth };
   }
-  if (item.x === undefined || item.z === undefined) return null;
-  return { x: item.x, z: item.z };
+  const dims = FURNITURE_DIMS[item.type];
+  return { width: item.width ?? dims?.width, depth: item.depth ?? dims?.depth };
 }
 
 /** length 型家具：3D buildFurniture 对这三类按 item.length 建模（连续柜/桥接台面/洁柜侧柜），不咨询目录宽度。 */
@@ -90,13 +99,226 @@ const LENGTH_BASED_FURNITURE_TYPES: ReadonlySet<string> = new Set([
 /**
  * 家具平面外包络尺寸（3D buildFurniture 同优先级，codex 十六审 major）：
  * length 型声明了 length 时外框 = length（显式声明优先于目录宽，否则与 3D 实际建模不一致）；
- * 其余类型 item.width 优先于目录宽。
+ * 其余类型走 declaredFurnitureDims（行内 > 目录；vanity 走 vanity_layout）。
  */
-export function furnitureFootprint(item: { type: string; length?: number; width?: number; depth?: number }): { width: number | undefined; depth: number | undefined } {
-  const dims = FURNITURE_DIMS[item.type];
+export function furnitureFootprint(item: PlacementItem): { width: number | undefined; depth: number | undefined } {
   if (LENGTH_BASED_FURNITURE_TYPES.has(item.type) && item.length !== undefined) {
-    return { width: item.length, depth: item.depth ?? dims?.depth };
+    return { width: item.length, depth: item.depth ?? FURNITURE_DIMS[item.type]?.depth };
   }
-  return { width: item.width ?? dims?.width, depth: item.depth ?? dims?.depth };
+  return declaredFurnitureDims(item);
 }
 
+/** 按稳定对象 id 索引全部条目，供 mount 宿主查找；id 缺失的条目不进索引。 */
+export function furnitureHostIndex(items: Iterable<PlacementItem>): Map<string, PlacementItem> {
+  const index = new Map<string, PlacementItem>();
+  for (const item of items) {
+    if (item.id !== undefined && !index.has(item.id)) index.set(item.id, item);
+  }
+  return index;
+}
+
+/**
+ * 解出客卫台盆柜（type:'vanity'）布局：声明缺失或尺寸非法即失败——取不到值时禁止静默
+ * 发明默认值（预算三层架构铁律），调用方（3D 建模 / 挂位解算 / DXF 外框）共用这一份。
+ */
+export function resolveVanityLayout(
+  decl: VanityLayoutDecl | undefined,
+): { ok: true; layout: VanityLayout } | { ok: false; diagnostic: string } {
+  if (decl === undefined) {
+    return { ok: false, diagnostic: 'vanity 缺少 vanity_layout 声明（width/depth/height/robot_bay_width/robot_bay_clear_width/panel_thickness）' };
+  }
+  const fields: Array<[string, number]> = [
+    ['width', decl.width],
+    ['depth', decl.depth],
+    ['height', decl.height],
+    ['robot_bay_width', decl.robot_bay_width],
+    ['robot_bay_clear_width', decl.robot_bay_clear_width],
+    ['panel_thickness', decl.panel_thickness],
+  ];
+  for (const [name, value] of fields) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+      return { ok: false, diagnostic: `vanity_layout.${name} 必须为正数（现为 ${String(value)}）` };
+    }
+  }
+  const drawerWidth = decl.width - decl.robot_bay_width;
+  if (drawerWidth <= 0) {
+    return {
+      ok: false,
+      diagnostic: `vanity_layout 剩余尺寸为负：width ${decl.width} − robot_bay_width ${decl.robot_bay_width} = ${drawerWidth.toFixed(3)}m（抽屉区宽度必须 > 0）`,
+    };
+  }
+  const bayInterior = decl.robot_bay_width - 2 * decl.panel_thickness;
+  if (decl.robot_bay_clear_width > bayInterior + 1e-9) {
+    return {
+      ok: false,
+      diagnostic: `vanity_layout.robot_bay_clear_width ${decl.robot_bay_clear_width} 超过仓区内腔 ${bayInterior.toFixed(3)}m（= robot_bay_width − 2×panel_thickness）`,
+    };
+  }
+  return { ok: true, layout: { ...decl, drawer_width: drawerWidth } };
+}
+
+export function resolveFurniturePlacement(
+  item: PlacementItem,
+  wallSegments: Map<string, WallLike[]>,
+  hosts?: ReadonlyMap<string, PlacementItem>,
+): FurniturePlacementResolution {
+  return resolveItem(item, wallSegments, hosts, new Set<string>());
+}
+
+function resolveItem(
+  item: PlacementItem,
+  wallSegments: Map<string, WallLike[]>,
+  hosts: ReadonlyMap<string, PlacementItem> | undefined,
+  visited: ReadonlySet<string>,
+): FurniturePlacementResolution {
+  // 柜体分割声明先行校验：vanity 自身与挂它的家具都靠这份解果，缺声明/负净宽在此显形。
+  if (item.type === 'vanity') {
+    const layout = resolveVanityLayout(item.vanity_layout);
+    if (!layout.ok) return { placement: null, diagnostic: layout.diagnostic };
+  }
+
+  const hasWallAnchor = item.wall !== undefined || item.wall_side !== undefined || item.along !== undefined;
+  const hasAbsolute = item.x !== undefined || item.z !== undefined;
+
+  if (item.mount !== undefined) {
+    if (hasAbsolute) {
+      return { placement: null, diagnostic: 'mount 与绝对 x/z 不得同时声明（世界坐标由宿主槽位推出，禁写第二来源）' };
+    }
+    if (hasWallAnchor) {
+      return { placement: null, diagnostic: 'mount 与 wall/wall_side/along 不得同时声明（定位来源必须唯一）' };
+    }
+    return resolveMounted(item, wallSegments, hosts, visited);
+  }
+
+  if (hasWallAnchor) {
+    if (item.wall === undefined || item.wall_side === undefined || item.along === undefined) {
+      return { placement: null, diagnostic: 'wall anchor requires wall, wall_side, and along' };
+    }
+    const wall = wallSegments.get(item.wall)?.[0];
+    if (!wall) {
+      return { placement: null, diagnostic: `wall "${item.wall}" not found` };
+    }
+    if (!WALL_SIDES.includes(item.wall_side)) {
+      return { placement: null, diagnostic: `invalid wall_side "${String(item.wall_side)}"` };
+    }
+    const dx = wall.x2 - wall.x1;
+    const dz = wall.z2 - wall.z1;
+    const length = Math.hypot(dx, dz);
+    if (length <= 1e-9) {
+      return { placement: null, diagnostic: `wall "${item.wall}" has zero length` };
+    }
+    const dims = declaredFurnitureDims(item);
+    if (dims.width === undefined || dims.depth === undefined) {
+      return { placement: null, diagnostic: `no width/depth for type "${item.type}"（行内声明与 FURNITURE_DIMS 目录均缺，无法定位）` };
+    }
+    // along 合法域 = 墙段（绝对 z 特例墙取 z 跨度）内缩家具半宽——整件必须落在墙段上。
+    // 该校验原为 verify-furniture-placement 的本地复算，PR-3 迁到共享解算：3D/DXF 与
+    // verify 从此同一口径，越界返回诊断而非静默跳过。
+    const alongIsAbsoluteVertical = ABSOLUTE_ALONG_WALLS.has(item.wall) && Math.abs(dx) < 1e-9;
+    const alongHalf = item.type === 'mb_vanity_pvc_box' ? 0 : dims.width / 2;
+    let alongStart = alongIsAbsoluteVertical ? Math.min(wall.z1, wall.z2) : 0;
+    let alongEnd = alongIsAbsoluteVertical ? Math.max(wall.z1, wall.z2) : length;
+    if (item.type === 'mb_vanity_pvc_box' && item.wall === 'w_mbath_east') alongStart = 3.10;
+    const endpointTolerance = MB_VANITY_ENDPOINT_TOLERANCE_TYPES.has(item.type)
+      && (item.wall === 'w_mbath_east' || item.wall === 'w_mb_east') ? 0.02 : 0;
+    if (item.along < alongStart + alongHalf - endpointTolerance - ALONG_FIT_EPS
+      || item.along > alongEnd - alongHalf + endpointTolerance + ALONG_FIT_EPS) {
+      return {
+        placement: null,
+        diagnostic: `wall anchor along=${item.along} places furniture outside wall span [${(alongStart + alongHalf).toFixed(3)}, ${(alongEnd - alongHalf).toFixed(3)}] on "${item.wall}"`,
+      };
+    }
+    const tangent = { x: dx / length, z: dz / length };
+    const left = { x: -tangent.z, z: tangent.x };
+    const sideDirection: Record<WallSide, { x: number; z: number }> = {
+      north: { x: 0, z: -1 },
+      south: { x: 0, z: 1 },
+      east: { x: 1, z: 0 },
+      west: { x: -1, z: 0 },
+    };
+    const authored = sideDirection[item.wall_side];
+    const right = { x: -left.x, z: -left.z };
+    const normal = left.x * authored.x + left.z * authored.z >= right.x * authored.x + right.z * authored.z ? left : right;
+    const wallPoint = alongIsAbsoluteVertical
+      ? { x: wall.x1, z: item.along }
+      : { x: wall.x1 + tangent.x * item.along, z: wall.z1 + tangent.z * item.along };
+    // 墙线基准（2026-11-06 业主口径 A）：所有 wall/wall_side/along 家具一律从完成面
+    // （线 ± WALL_THICKNESS/2）起算，不再按家具类型区分——原「仅 4 个 mb_vanity 类型
+    // 加半墙厚」的类型清单已删（同墙镜柜曾按线=完成面贴线、穿渲染墙盒 0.06）。
+    // 主体再按 authored 施工余量离开完成面，校验与预演共用同一摆位基准。
+    const finishOffset = WALL_THICKNESS / 2;
+    const wallClearance = item.wall_clearance ?? 0;
+    const centerOffset = finishOffset + wallClearance + dims.depth / 2;
+    return {
+      placement: {
+        x: wallPoint.x + normal.x * centerOffset,
+        z: wallPoint.z + normal.z * centerOffset,
+        wallId: item.wall,
+        wallSide: item.wall_side,
+        anchorAlong: item.along,
+      },
+    };
+  }
+
+  if (hasAbsolute) {
+    if (item.x === undefined || item.z === undefined) {
+      return { placement: null, diagnostic: 'absolute placement requires both x and z' };
+    }
+    return { placement: { x: item.x, z: item.z } };
+  }
+
+  // count-only 条目：只喂预算/库存，无平面几何（AGENTS.md furnishings 口径）。
+  return { placement: null };
+}
+
+function resolveMounted(
+  item: PlacementItem,
+  wallSegments: Map<string, WallLike[]>,
+  hosts: ReadonlyMap<string, PlacementItem> | undefined,
+  visited: ReadonlySet<string>,
+): FurniturePlacementResolution {
+  const mount = item.mount!;
+  if (!MOUNT_SLOTS.includes(mount.slot)) {
+    return { placement: null, diagnostic: `unknown mount slot "${mount.slot}"（当前仅支持 ${MOUNT_SLOTS.join('/')}）` };
+  }
+  const hostId = mount.furniture_id;
+  if (visited.has(hostId)) {
+    return { placement: null, diagnostic: `mount 循环依赖：${[...visited, hostId].join(' -> ')}` };
+  }
+  const host = hosts?.get(hostId);
+  if (!host) {
+    return { placement: null, diagnostic: `mount host "${hostId}" not found in furnishings（断引用：宿主条目缺失或未声明稳定 id）` };
+  }
+  const hostResolved = resolveItem(host, wallSegments, hosts, new Set([...visited, hostId]));
+  if (hostResolved.diagnostic !== undefined) {
+    return { placement: null, diagnostic: `mount host "${hostId}": ${hostResolved.diagnostic}` };
+  }
+  if (!hostResolved.placement) {
+    return { placement: null, diagnostic: `mount host "${hostId}" has no planar placement（count-only 条目不能当宿主）` };
+  }
+  if (host.type !== 'vanity') {
+    return { placement: null, diagnostic: `mount slot "${mount.slot}" 只在 vanity 宿主上有定义，宿主 "${hostId}" 是 "${host.type}"` };
+  }
+  const hostLayout = resolveVanityLayout(host.vanity_layout);
+  if (!hostLayout.ok) {
+    return { placement: null, diagnostic: `mount host "${hostId}": ${hostLayout.diagnostic}` };
+  }
+  const mountedDepth = item.depth ?? FURNITURE_DIMS[item.type]?.depth;
+  if (mountedDepth === undefined) {
+    return { placement: null, diagnostic: `mounted furniture "${item.type}" has no depth（行内或目录均缺，无法贴背摆放）` };
+  }
+  // 槽位在宿主局部系中声明（local +x = 沿墙、local +z = 柜前），再按宿主 rotation 转世界。
+  // robot_bay：沿墙方向取仓区中心（贴北端），进深方向背沿贴柜体背板 + 自身半深。
+  const layout = hostLayout.layout;
+  const localX = -layout.width / 2 + layout.robot_bay_width / 2;
+  const localZ = -layout.depth / 2 + mountedDepth / 2;
+  const theta = ((host.rotation ?? 0) * Math.PI) / 180;
+  const cos = Math.cos(theta);
+  const sin = Math.sin(theta);
+  return {
+    placement: {
+      x: hostResolved.placement.x + localX * cos + localZ * sin,
+      z: hostResolved.placement.z - localX * sin + localZ * cos,
+    },
+  };
+}

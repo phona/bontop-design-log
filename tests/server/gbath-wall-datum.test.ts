@@ -1,15 +1,16 @@
 // 墙线基准语义（2026-11-06 业主口径 A，落实 pending #76）几何基准测试。
 // 期望值全部手算写死（算式见各断言旁注释），不经被测代码推导；墙线声明与几何从
-// config/layout/model-geometry.yaml 实读比对，防止本文件的字面输入随配置漂移。
+// config/layout/model-geometry.yaml 实读比对，家具条目从 config/house.yaml 实读，
+// 防止本文件的字面输入随配置漂移。
 // 口径：墙线 = 渲染墙盒中心线，完成面 = 线 ± WALL_THICKNESS/2；所有 wall/wall_side/along
 // 家具一律从完成面起算（shared/furniture-placement.ts 单一实现）。
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { load as loadYaml } from 'js-yaml';
-import { resolveFurniturePlacement, WALL_THICKNESS } from '../../shared/furniture-placement.js';
+import { resolveFurniturePlacement, WALL_THICKNESS, type FurniturePlacement, type PlacementItem } from '../../shared/furniture-placement.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import type { VertexLayoutYaml } from '../../shared/types.js';
+import type { FurnishingItem, VertexLayoutYaml } from '../../shared/types.js';
 
 interface WallLike { x1: number; z1: number; x2: number; z2: number }
 
@@ -23,6 +24,22 @@ const SEGMENTS = new Map(Object.entries(WALLS).map(([id, wall]) => [id, [wall]])
 
 function closeTo(actual: number, expected: number, tol = 1e-9): void {
   assert.ok(Math.abs(actual - expected) <= tol, `expected ${actual} ≈ ${expected} (±${tol})`);
+}
+
+/** 解析并断言「无诊断 + 有摆位」：诊断路径由 gbath-vanity-layout.test.ts 专测。 */
+function resolve(item: PlacementItem): FurniturePlacement {
+  const resolution = resolveFurniturePlacement(item, SEGMENTS);
+  assert.equal(resolution.diagnostic, undefined, `unexpected diagnostic: ${resolution.diagnostic ?? ''}`);
+  assert.ok(resolution.placement, 'placement must resolve');
+  return resolution.placement;
+}
+
+/** 实读 house.yaml 的 guest_bath 条目（按稳定 id 取），防止测试输入随配置漂移。 */
+function guestBathItem(id: string): FurnishingItem {
+  const house = loadYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings: { guest_bath: FurnishingItem[] } };
+  const item = house.furnishings.guest_bath.find((candidate) => candidate.id === id);
+  assert.ok(item, `${id} must be declared in config/house.yaml`);
+  return item;
 }
 
 describe('gbath wall datum (2026-11-06 口径 A)', () => {
@@ -44,11 +61,17 @@ describe('gbath wall datum (2026-11-06 口径 A)', () => {
     }
   });
 
-  it('vanity envelope stays x[6.64,7.14] z[3.61,4.30] (explicit x/z, back face on the datum finish face)', () => {
-    // 手算：背面 7.14 = 墙线 7.20 − 半墙厚 0.06；中心 x 6.89 = 7.14 − 0.50/2；
-    // z 中心 3.955 = (南墙南脸 3.61 + 墙段南端 4.30)/2，宽 0.69 → z[3.61,4.30]。
-    const placement = resolveFurniturePlacement({ type: 'vanity', x: 6.89, z: 3.955, rotation: 270 }, SEGMENTS);
-    assert.ok(placement);
+  it('vanity is anchored to the datum finish face: center (6.89, 3.955), envelope x[6.64,7.14] z[3.61,4.30]', () => {
+    // 2026-11-06 issue #98 PR-3：vanity 不再写绝对 x/z，改 wall/wall_side/along 挂墙 +
+    // vanity_layout 声明分割。手算：中心 x = 7.20 − 0.06(半墙厚) − 0.0(clearance) − 0.50/2 = 6.89；
+    // 中心 z = 3.55(墙段北端) + 0.405(along) = 3.955，声明宽 0.69 → z[3.61,4.30]（两端贴死）。
+    const vanity = guestBathItem('gbath.vanity');
+    assert.equal(vanity.x, undefined, 'vanity must not declare absolute x (issue #98 PR-3)');
+    assert.equal(vanity.z, undefined, 'vanity must not declare absolute z (issue #98 PR-3)');
+    assert.equal(vanity.wall, 'w_gbath_east_open_vanity');
+    assert.equal(vanity.wall_side, 'west');
+    closeTo(vanity.along as number, 0.405);
+    const placement = resolve(vanity);
     closeTo(placement.x, 6.89);
     closeTo(placement.z, 3.955);
     closeTo(placement.x + 0.50 / 2, 7.14); // 背面（rotation=270，depth 沿世界 x）
@@ -60,11 +83,9 @@ describe('gbath wall datum (2026-11-06 口径 A)', () => {
   it('mirror_cabinet_gbath back face lands on the finish face 7.14 (was on the wall line 7.20)', () => {
     // 手算：中心 x = 7.20 − 0.06(半墙厚) − 0.0(clearance) − 0.14/2 = 7.07；
     // 背面 = 7.07 + 0.07 = 7.14；along 0.405 → z = 3.55 + 0.405 = 3.955，宽 0.66 → z[3.625,4.285]。
-    const placement = resolveFurniturePlacement(
+    const placement = resolve(
       { type: 'mirror_cabinet_gbath', wall: 'w_gbath_east_open_vanity', wall_side: 'west', rotation: 270, along: 0.405, wall_clearance: 0.0 },
-      SEGMENTS,
     );
-    assert.ok(placement);
     closeTo(placement.x, 7.07);
     closeTo(placement.z, 3.955);
     closeTo(placement.x + 0.14 / 2, 7.14); // 背面贴完成面，不再穿渲染墙盒
@@ -76,11 +97,9 @@ describe('gbath wall datum (2026-11-06 口径 A)', () => {
   it('heated_towel_rack back face lands on the west wall finish face 5.66 (was on the wall line 5.60)', () => {
     // 手算：中心 x = 5.60 + 0.06(半墙厚) + 0.0(clearance) + 0.10/2 = 5.71；
     // 背面 = 5.71 − 0.05 = 5.66；along 0.405 → z = 3.955，宽 0.55 → z[3.68,4.23]。
-    const placement = resolveFurniturePlacement(
+    const placement = resolve(
       { type: 'heated_towel_rack', wall: 'w_gbath_west_open_vanity', wall_side: 'east', along: 0.405, wall_clearance: 0.0, rotation: 90 },
-      SEGMENTS,
     );
-    assert.ok(placement);
     closeTo(placement.x, 5.71);
     closeTo(placement.z, 3.955);
     closeTo(placement.x - 0.10 / 2, 5.66); // 背面贴完成面，不再穿渲染墙盒
@@ -92,11 +111,9 @@ describe('gbath wall datum (2026-11-06 口径 A)', () => {
   it('master mb_vanity_base_cabinet placement is unchanged by the datum refactor', () => {
     // 手算：中心 x = 2.60 − 0.06(半墙厚) − 0.015(clearance) − 0.565/2 = 2.2425；
     // along 3.61 为绝对 z（w_mbath_east 特例，与基准语义无关）；宽 1.38 → z[2.92,4.30]。
-    const placement = resolveFurniturePlacement(
+    const placement = resolve(
       { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.61, wall_clearance: 0.015 },
-      SEGMENTS,
     );
-    assert.ok(placement);
     closeTo(placement.x, 2.2425);
     closeTo(placement.z, 3.61);
     closeTo(placement.x + 0.565 / 2, 2.525); // 背面（完成面 2.54 前 15mm 退让）

@@ -792,8 +792,9 @@ test('project-dxf: 换行标注规范化为单行，DXF 组码结构不损坏（
 
 test('project-dxf: 墙锚家具按细分段参照（与 3D 同口径，codex 二十审 major）', () => {
   const input = baseInput();
-  // 墙带细分段 [0→1] 与 [1→4]（共线）；锚定 along 2.0——主线口径合法（画在 (2,0)），
-  // 3D 细分段口径下首段长 1、along 2 越界 → 跳过。DXF 必须与 3D 一致跳过。
+  // 墙带细分段 [0→1] 与 [1→4]（共线）；床 along 2.0——主线口径合法（全长 4 的合法域
+  // [0.75,3.25] 含 2.0，会画在 (2,0)），细分段口径首段长 1、合法域 [0.75,0.25] 为空 → 跳过。
+  // DXF 必须与 3D 一致跳过（issue #98 PR-3 起 along 合法域含家具半宽内缩，三处同一解算）。
   (input.house.sceneElements![0] as Extract<SceneElement, { type: 'wall' }>).segments = [
     { x1: 0, z1: 0, x2: 1, z2: 0 },
     { x1: 1, z1: 0, x2: 4, z2: 0 },
@@ -801,10 +802,18 @@ test('project-dxf: 墙锚家具按细分段参照（与 3D 同口径，codex 二
   input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 2.0 }] };
   const result = buildProjectDxf(input);
   assert.equal(result.stats[DXF_LAYERS.FURN[0]], undefined);
-  // 对照：along 0.5 在首段内 → 正常画出
-  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 0.5 }] };
+  // 越界锚定必须显形为摆位诊断（导出失败），不是静默跳过。
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /places furniture outside wall span/);
+  // 对照：细分段 [0→2] 与 [2→4]，along 1.0 落在首段合法域 [0.75,1.25] 内 → 正常画出。
+  (input.house.sceneElements![0] as Extract<SceneElement, { type: 'wall' }>).segments = [
+    { x1: 0, z1: 0, x2: 2, z2: 0 },
+    { x1: 2, z1: 0, x2: 4, z2: 0 },
+  ];
+  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 1.0 }] };
   const result2 = buildProjectDxf(input);
   assert.ok((result2.stats[DXF_LAYERS.FURN[0]] ?? 0) > 0);
+  assert.deepEqual(result2.errors, []);
 });
 
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {

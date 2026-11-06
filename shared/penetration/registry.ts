@@ -12,6 +12,7 @@ import { validateFurnitureClearance, profileFor, declaredDims } from './clearanc
 import { validateFurnitureOpenings } from './openings.js';
 import { buildRuntimeScene, collectPenetrationObjects, objectHasMesh, type SceneInputs } from './scene.js';
 import { furnitureObjectId } from '../furniture-object-id.js';
+import { furnitureHostIndex, resolveFurniturePlacement } from '../furniture-placement.js';
 import {
   severityFloor,
   samePair,
@@ -270,12 +271,18 @@ function placedClearanceIssues(inputs: SceneInputs, collected: ReturnType<typeof
   const config = inputs.config;
   const wallMap = new Map(inputs.layout.walls.map((wall) => [wall.id, wall]));
   const furnitureById = new Map(collected.furnitureEntries.map((entry) => [entry.entity, entry]));
+  // 「已放置」与 SceneBuilder.addFurniture 共用同一解算（issue #98 PR-3）：mount 挂载件没有
+  // x/z/wall/along，手写谓词会把它漏判成 count-only，净距校验随之漏掉这件。
+  const wallSegments = new Map(inputs.layout.walls
+    .filter((wall) => wall.id !== undefined)
+    .map((wall) => [wall.id as string, wall.segments?.length ? wall.segments : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]]));
+  const hosts = furnitureHostIndex(Object.values(inputs.house.furnishings ?? {}).flat());
   for (const [roomId, items] of Object.entries(inputs.house.furnishings ?? {})) {
     let runtimeIndex = 0;
     for (const raw of items) {
       const item = raw as unknown as Record<string, unknown>;
-      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
-      if (!isPlaced) continue;
+      const { placement } = resolveFurniturePlacement(raw, wallSegments, hosts);
+      if (!placement) continue;
       const type = String(item.type ?? '');
       const runtimeId = furnitureObjectId(roomId, raw, runtimeIndex);
       runtimeIndex++;

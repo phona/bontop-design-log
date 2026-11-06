@@ -11,6 +11,7 @@ import {
   buildFixture,
   buildKitchenCabinetRun,
   buildKitchenCountertopBridge,
+  buildVanity,
   buildWardrobe180,
 } from './FixtureFactory.js';
 import { computeWallFaceSpans, createLineMesh, createPolygonGeometry, setSceneObjectMetadata, splitSegmentByOpenings, wallFaceSlots } from '../three-scene-geometry.js';
@@ -21,7 +22,7 @@ import { buildBaySillGeometry } from './BaySillGeometry.js';
 import { computePaintSillScope } from '../paint-sill-scope.js';
 import { buildRailingGeometry } from './RailingGeometryBuilder.js';
 import { computePaintScope, type PaintWallInput, type PaintWindowInput } from '../paint-scope.js';
-import { resolveFurniturePlacement, WALL_THICKNESS } from '../furniture-placement.js';
+import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, resolveVanityLayout, WALL_THICKNESS } from '../furniture-placement.js';
 import { furnitureObjectId } from '../furniture-object-id.js';
 
 export { resolveFurniturePlacement };
@@ -60,6 +61,12 @@ export interface SceneBuildReport {
   hvacTerminals: number;
   hvacStatus: 'implemented' | 'unimplemented';
   skippedFurniture: string[];
+  /**
+   * 家具摆位诊断（issue #98 PR-3）：定位声明解析失败（断引用 / along 越界 / 负净宽 /
+   * mount 宿主缺失等）逐条入列——页面显形、DXF 导出与 verify:furniture 据此判失败。
+   * count-only 条目无平面几何属预期跳过，不进这里（那是 skippedFurniture 之外的静默项）。
+   */
+  placementDiagnostics: string[];
   skippedPlumbing: string[];
   unsupported: string[];
 }
@@ -1269,6 +1276,14 @@ function buildFurniture(item: FurnishingsYaml[string][number]): THREE.Group | nu
     return buildBathSideCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight });
   }
   if (item.type === 'wardrobe_180') return buildWardrobe180(item.cabinetHeight);
+  // 客卫台盆柜（DEC-2026-11-05-R5）：柜体分割由 house.yaml vanity_layout 声明驱动，
+  // 不再有写死尺寸的 recipe（issue #98 PR-3）。布局非法时 resolveFurniturePlacement 已记
+  // 诊断并跳过该件，这里返回 null 只是兜底，不会再建第二个"默认柜"。
+  if (item.type === 'vanity') {
+    const layout = resolveVanityLayout(item.vanity_layout);
+    if (!layout.ok) return null;
+    return buildVanity(layout.layout);
+  }
   const model = buildFixture(item.type);
   if (model && item.width !== undefined && item.depth !== undefined) {
     // 行内尺寸优先于目录尺寸：verify-furniture 已按行内宽/深算 AABB，渲染必须同口径，
@@ -1418,10 +1433,17 @@ function furnitureChildExportName(objectId: string, child: THREE.Object3D, child
 }
 
 function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: SceneBuildReport, wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>): void {
+  // mount 宿主索引（稳定 id → 条目）：挂载家具的世界坐标由宿主摆位 + 宿主布局推出。
+  const hosts = furnitureHostIndex(Object.values(furnishings).flat());
   for (const [roomId, items] of Object.entries(furnishings)) {
     let index = 0;
     for (const item of items) {
-      const placement = resolveFurniturePlacement(item, wallSegments);
+      const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts);
+      if (diagnostic !== undefined) {
+        // 定位声明解不出来：显形并跳过该件，禁止按 null 静默消失（issue #98 PR-3）。
+        report.placementDiagnostics.push(`${roomId}:${item.type}: ${diagnostic}`);
+        continue;
+      }
       if (!placement) continue;
       const model = buildFurniture(item);
       if (!model) {
@@ -1436,11 +1458,11 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
       // 稳定 id（如 gbath.vanity）不再编码房间/类型，消费方按 userData 取，不解析 objectId。
       model.userData.roomId = roomId;
       if (item.sourceIndex !== undefined) model.userData.sourceIndex = item.sourceIndex;
-      const declaredDimensions = FURNITURE_DIMS[item.type];
-      if (declaredDimensions) {
+      const declaredDimensions = declaredFurnitureDims(item);
+      if (declaredDimensions.width !== undefined && declaredDimensions.depth !== undefined) {
         model.userData.declaredDimensions = {
-          width: item.width ?? declaredDimensions.width,
-          depth: item.depth ?? declaredDimensions.depth,
+          width: declaredDimensions.width,
+          depth: declaredDimensions.depth,
           // 高度只在行内 cabinetHeight 存在时登记，不给其他件编造目录高度（目录无 height 字段）。
           ...(item.cabinetHeight !== undefined ? { height: item.cabinetHeight } : {}),
         };
@@ -1472,7 +1494,7 @@ function addFurniture(root: THREE.Group, furnishings: FurnishingsYaml, report: S
 }
 
 export function buildScene(input: SceneBuilderInput): SceneBuildResult {
-  const report: SceneBuildReport = { rooms: 0, walls: 0, ceilings: 0, ceilingZones: 0, furniture: 0, electrical: 0, plumbing: 0, lightingFixtures: 0, hvacEquipment: 0, hvacTerminals: 0, hvacStatus: input.options?.hvac?.projection?.hvac.status ?? 'unimplemented', skippedFurniture: [], skippedPlumbing: [], unsupported: [] };
+  const report: SceneBuildReport = { rooms: 0, walls: 0, ceilings: 0, ceilingZones: 0, furniture: 0, electrical: 0, plumbing: 0, lightingFixtures: 0, hvacEquipment: 0, hvacTerminals: 0, hvacStatus: input.options?.hvac?.projection?.hvac.status ?? 'unimplemented', skippedFurniture: [], placementDiagnostics: [], skippedPlumbing: [], unsupported: [] };
   const provider = input.options?.materialProvider ?? {};
   const index = {
     rooms: Object.fromEntries(input.rooms.map((room) => [room.id, { ...room }])),

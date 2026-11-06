@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { load as loadYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
-import { FURNITURE_DIMS, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE } from '../../../shared/types.js';
-import { resolveFurniturePlacement } from '../../../shared/furniture-placement.js';
+import { FURNITURE_DIMS, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type FurnitureMount, type VanityLayoutDecl } from '../../../shared/types.js';
+import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement } from '../../../shared/furniture-placement.js';
 import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
 
 const EPS = 0.01;
@@ -15,7 +15,7 @@ interface Aabb {
 }
 
 type WallSide = 'north' | 'south' | 'east' | 'west';
-type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number; wall_clearance?: number };
+type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number; wall_clearance?: number; vanity_layout?: VanityLayoutDecl; mount?: FurnitureMount };
 
 const MB_VANITY_TYPES = new Set([
   'mb_vanity_base_cabinet',
@@ -37,20 +37,21 @@ const MB_CONDENSATE_TYPES = new Set([
 ]);
 
 function rotatedDims(item: PlacedItem, rotation: number): { width: number; depth: number } | null {
+  // 尺寸来源与 3D/DXF 共用 declaredFurnitureDims（vanity 走 house.yaml vanity_layout，
+  // 行内宽深优先于 FURNITURE_DIMS 目录）；kitchen/bath run 另记台面外伸 0.04 的 AABB
+  // 包络（本校验器口径，DXF 仍按 carcass 出，差异既原有意保持）。
   const dims = (item.type === 'kitchen_cabinet_run' || item.type === 'bath_side_cabinet') && item.length !== undefined && item.depth !== undefined
     ? { width: item.length + (item.type === 'kitchen_cabinet_run' ? 0.04 : 0), depth: item.depth + (item.type === 'kitchen_cabinet_run' ? 0.04 : 0) }
-    : item.width !== undefined && item.depth !== undefined
-      ? { width: item.width, depth: item.depth }
-      : FURNITURE_DIMS[item.type];
-  if (!dims) return null;
+    : declaredFurnitureDims(item);
+  if (dims.width === undefined || dims.depth === undefined) return null;
   const quarterTurns = Math.round(rotation / 90) % 2 !== 0;
-  return quarterTurns ? { width: dims.depth, depth: dims.width } : dims;
+  return quarterTurns ? { width: dims.depth, depth: dims.width } : { width: dims.width, depth: dims.depth };
 }
 
 function resolvePlacement(
   item: PlacedItem,
-  walls: Array<{ id?: string; x1: number; z1: number; x2: number; z2: number }>,
   wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>,
+  hosts: ReadonlyMap<string, PlacedItem>,
   label: string,
   errors: string[],
 ): { x?: number; z?: number } {
@@ -59,15 +60,7 @@ function resolvePlacement(
       errors.push(`${label}: wall anchor requires wall, wall_side, and along`);
       return {};
     }
-    const wall = walls.find((candidate) => candidate.id === item.wall);
-    if (!wall) {
-      errors.push(`${label}: wall "${item.wall}" not found`);
-      return {};
-    }
-    if (!['north', 'south', 'east', 'west'].includes(item.wall_side)) {
-      errors.push(`${label}: invalid wall_side "${item.wall_side}"`);
-      return {};
-    }
+    // 策略性锚点约定（非几何复算）：主卫柜组与冷凝水管行必须钉在 w_mbath_east 西侧、朝西、rotation 270。
     if (item.type === 'mb_vanity_pvc_box') {
       if (item.roomId !== 'master_bedroom' || item.wall !== 'w_mbath_east' || item.wall_side !== 'west' || item.rotation !== 270) {
         errors.push(`${label}: condensate wall run must use w_mbath_east west side at rotation 270`);
@@ -79,31 +72,19 @@ function resolvePlacement(
         return {};
       }
     }
-    const dx = wall.x2 - wall.x1;
-    const dz = wall.z2 - wall.z1;
-    const wallLength = Math.hypot(dx, dz);
-    const dims = item.width !== undefined && item.depth !== undefined ? { width: item.width, depth: item.depth } : FURNITURE_DIMS[item.type];
-    const alongHalf = dims ? (item.type === 'mb_vanity_pvc_box' ? 0 : dims.width / 2) : Infinity;
-    const isMasterBedroomCondensateWall = item.type === 'mb_vanity_pvc_box' && wall.id === 'w_mbath_east';
-    let alongStart = wall.id === 'w_mbath_east' || wall.id === 'w_mb_east' ? Math.min(wall.z1, wall.z2) : 0;
-    let alongEnd = wall.id === 'w_mbath_east' || wall.id === 'w_mb_east' ? Math.max(wall.z1, wall.z2) : wallLength;
-    if (isMasterBedroomCondensateWall) alongStart = 3.10;
-    const vanityEndpointTolerance = MB_VANITY_TYPES.has(item.type) && (wall.id === 'w_mbath_east' || wall.id === 'w_mb_east') ? 0.02 : 0;
-    if (!dims || wallLength < EPS || item.along < alongStart + alongHalf - vanityEndpointTolerance || item.along > alongEnd - alongHalf + vanityEndpointTolerance) {
-      errors.push(`${label}: wall anchor along=${item.along} places furniture outside wall length ${wallLength.toFixed(2)}m`);
-      return {};
-    }
-    // 坐标统一交给共享摆位解算（2026-11-06 口径 A：完成面 = 线 ± 半墙厚，含 authored
-    // wall_clearance）。旧本地复算是共享函数的漂移副本：按类型区分半墙厚且忽略
-    // wall_clearance（主卫柜组曾因此校验了一条比真实摆位东偏 15mm 的幻影包络），已删。
-    const placement = resolveFurniturePlacement(item, wallSegments);
-    if (!placement) {
-      errors.push(`${label}: shared placement could not resolve anchor on "${item.wall}"`);
-      return {};
-    }
-    return { x: placement.x, z: placement.z };
   }
-  return { x: item.x, z: item.z };
+  // 几何解算一律走共享实现（shared/furniture-placement.ts）：完成面起算（2026-11-06 口径 A）、
+  // along 合法域与半宽内缩、mount 挂载派生、vanity_layout 校验都在那一处。旧本地复算
+  // （墙查找 / dims 优先级 / 绝对 z 特例 / 端部容差）已随 issue #98 PR-3 删除——它曾是共享
+  // 函数的漂移副本，曾校验出一条比真实摆位东偏 15mm 的幻影包络；解不出来时返回诊断并落 error，
+  // 不再静默跳过。
+  const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts);
+  if (diagnostic !== undefined) {
+    errors.push(`${label}: ${diagnostic}`);
+    return {};
+  }
+  if (!placement) return {}; // count-only 条目：无平面几何，预期跳过（AGENTS.md furnishings 口径）
+  return { x: placement.x, z: placement.z };
 }
 
 function itemAabb(item: PlacedItem, x: number, z: number, rotation: number): Aabb | null {
@@ -194,6 +175,9 @@ function main(): void {
       if (item.wall !== undefined && item.wall_side !== undefined && item.along !== undefined) anchoredWallIds.add(item.wall);
     }
   }
+  // mount 宿主索引（稳定 id → 条目）：挂载家具（如 gbath.robot_dock）的世界坐标由宿主摆位
+  // 与宿主 vanity_layout 推出，与 3D/DXF 共用同一份解算与索引。
+  const hosts = furnitureHostIndex(Object.values(furnishings).flat());
   for (const wallId of anchoredWallIds) {
     const wall = walls.find((candidate) => candidate.id === wallId);
     if (!wall?.line_datum) {
@@ -238,7 +222,7 @@ function main(): void {
 
     items.forEach((item, index) => {
       const label = `${roomId}/${item.type}[${index}]`;
-      const placed = resolvePlacement({ ...item, roomId }, walls, wallSegments, label, errors);
+      const placed = resolvePlacement({ ...item, roomId }, wallSegments, hosts, label, errors);
       if (placed.x === undefined || placed.z === undefined) return;
       const rotation = item.rotation ?? 0;
 

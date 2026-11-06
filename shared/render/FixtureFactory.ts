@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import type { FurnishingCutout } from '../types.js';
+import type { FurnishingCutout, VanityLayout } from '../types.js';
 
 interface FixturePart {
   shape: 'box' | 'rounded_box' | 'capsule' | 'cylinder';
@@ -716,44 +716,6 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [0.035, 0.14, 0.29], position: [-0.2325, 0.83, 0], color: '#e4e6e7', roughness: 0.35, part: 'basin-body-west', materialRole: 'ceramic' },
       { shape: 'box', size: [0.035, 0.14, 0.29], position: [0.2325, 0.83, 0], color: '#e4e6e7', roughness: 0.35, part: 'basin-body-east', materialRole: 'ceramic' },
       { shape: 'box', size: [0.43, 0.02, 0.29], position: [0, 0.77, 0], color: '#c7ced0', roughness: 0.45, part: 'basin-interior', materialRole: 'ceramic' },
-    ],
-  },
-  {
-    // DEC-2026-11-05-R5（2026-11-05 业主定案，取代 DEC-2026-11-04-R4 的居中格+两条旁柜）：
-    // 柜体 0.69m——可用跨度 = 南墙 w_gbath_south 南脸 3.61（墙线 3.55+0.12 居中半厚）至东墙段南端 4.30，
-    // 两端贴死 0 容差（2026-11-06 Codex blocking：原 0.72 柜北端板 z[3.565,3.585] 整个在实体墙内，
-    // 且仓净宽被压到 0.435<官方预留 0.45；量房复核见 pending #76）= 北端机器人仓区 0.50 + 南端抽屉区 0.19。
-    // 仓：净宽 0.46m（基站 410mm + 两侧各 25mm）、深 0.50m、无底板、通高到盆底 0.75m；
-    // 仓门 0.46×0.60 遮 y[0.15,0.75]（铰北侧外开），底缝 0.15m 供机器人（高 0.095m）关门进出；
-    // 头顶 0.45m 兼作台盆排水过管走廊（下水器仓内转 90° 向北穿 w_gbath_south 排内卫沉箱，
-    // DEC-2026-09-09-R6），不得在头顶加固定层板。
-    // 抽屉区：通顶双抽（落地 y[0.03,0.75]），carcass 0.17×0.72×0.46 毛容约 56L，
-    // 扣除面板/滑轨后可用约 40L（旧开放旁柜 32L；2026-11-06 Codex blocking：原「70L」算术错，
-    // 0.19×0.46×0.34×2 实为 59.4L 且未扣占用，已按模型零件重算）。
-    // local +x = 世界 +z（南），vanity 中心 z=3.955：仓占 local x[-0.345,+0.155]（世界 z[3.61,4.11]，
-    // 贴北端=排水穿墙端），抽屉占 local x[+0.155,+0.345]（世界 z[4.11,4.30]）；从走廊看=左仓右抽。
-    // 2026-11-06 视觉验收收尾：全柜统一暖米 #e8e1d6（原抽屉区 #f0f0f0 与仓门双色）；
-    // 抽屉 3cm 拼缝后加深色阴影筋（否则 carcass 同色只渲染成发丝线）。
-    type: 'vanity',
-    parts: [
-      { shape: 'box', size: [0.02, 0.75, 0.50], position: [-0.335, 0.375, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-bay-north-end-panel', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.02, 0.75, 0.50], position: [0.145, 0.375, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-bay-drawer-divider', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.02, 0.75, 0.50], position: [0.335, 0.375, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-south-end-panel', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.46, 0.60, 0.02], position: [-0.095, 0.45, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-robot-bay-door', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.02, 0.18, 0.02], position: [0.10, 0.45, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-robot-bay-door-handle', materialRole: 'hardware' },
-      { shape: 'box', size: [0.17, 0.72, 0.46], position: [0.24, 0.39, 0], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-carcass', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.17, 0.33, 0.02], position: [0.24, 0.585, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-front-upper', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.12, 0.02, 0.02], position: [0.24, 0.70, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-upper-handle', materialRole: 'hardware' },
-      { shape: 'box', size: [0.17, 0.36, 0.02], position: [0.24, 0.21, 0.24], color: '#e8e1d6', roughness: 0.4, part: 'vanity-drawer-front-lower', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.12, 0.02, 0.02], position: [0.24, 0.34, 0.26], color: '#b8b8b8', metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-lower-handle', materialRole: 'hardware' },
-      // 三只把手 local z 前沿 0.27（突出柜面 0.25 达 20mm）——装饰件突出量为声明值：校验/DXF 按 carcass depth 0.50 出口径（shared/types.ts FURNITURE_DIMS.vanity 注释已注明，2026-11-06 Codex minor）。
-      // 抽屉拼缝阴影筋：3cm 拼缝（y[0.39,0.42]）后露 carcass 会同色只成发丝线，深色筋让它读成阴影缝（2026-11-06 视觉验收找茬员实测）
-      { shape: 'box', size: [0.17, 0.03, 0.02], position: [0.24, 0.405, 0.23], color: '#4a4a4a', roughness: 0.8, part: 'vanity-drawer-seam-shadow', materialRole: 'cabinet_body' },
-      { shape: 'box', size: [0.42, 0.12, 0.28], position: [0, 0.81, -0.05], color: '#ffffff', roughness: 0.3, part: 'basin', materialRole: 'ceramic' },
-      // 台面 + 标准墙面龙头；龙头由 guest_bath plumbing 点位统一生成。
-      // DEC-2026-09-09-R2：内置平镜移出，镜面由 mirror_cabinet_gbath 镜柜承担（避免双镜）。
-      // DEC-2026-09-09-R7：柜深 0.40→0.50（标准成品柜深，基站+机器人全藏柜下；back 贴墙面西脸 7.14）。
-      { shape: 'box', size: [0.69, 0.04, 0.50], position: [0, 0.77, 0], color: '#d8d2c6', roughness: 0.3, part: 'countertop', materialRole: 'countertop' },
     ],
   },
   {
@@ -1664,6 +1626,83 @@ export function buildBathSideCabinetRun(spec: BathSideCabinetRunSpec): THREE.Gro
   return group;
 }
 
+/**
+ * 客卫台盆柜（DEC-2026-11-05-R5 定案「仓+抽屉」，取代 DEC-2026-11-04-R4 的居中格+两条旁柜）
+ * 参数化建模：全部柜体尺寸来自 resolveVanityLayout 解出的声明布局（config/house.yaml
+ * `gbath.vanity`.vanity_layout），本函数不持有第二套数字——原 FIXTURE_RECIPES 里写死尺寸的
+ * vanity 配方已删（issue #98 PR-3），buildFixture('vanity') 返回 null，误走通用路径会立刻显形。
+ *
+ * 语义：柜宽 = 南墙南脸至东墙段南端（两端贴死）= 北端机器人仓区 + 南端抽屉区；
+ * 仓净宽（声明值）= 基站 410mm + 两侧各 25mm，是机器人的占用要求——resolveVanityLayout
+ * 门禁保证仓区内腔 ≥ 净宽；仓门按内腔宽度生成（一个开口一个宽度，不第二遍折算）；
+ * 仓无底板、通高到盆底，仓门遮 y[0.15,0.75]（铰北侧外开）、底缝 0.15m 供机器人（高 0.095m）
+ * 关门进出；头顶余量兼作台盆排水过管走廊（下水器仓内转 90° 向北穿 w_gbath_south 排内卫沉箱，
+ * DEC-2026-09-09-R6），不得加固定层板；
+ * 抽屉区通顶双抽（落地 y[0.03,0.75]），3cm 拼缝后加深色阴影筋；全柜统一暖米 #e8e1d6。
+ * local +x = 沿墙（rotation=270 后即世界 +z 南）、local +z = 柜前（世界 −x 西，朝房间）；
+ * 仓区贴北端（排水穿墙端）、抽屉区在南端，从走廊看 = 左仓右抽。
+ *
+ * 调用方（SceneBuilder.buildFurniture）只在该布局解算成功后进来。
+ */
+export function buildVanity(layout: VanityLayout): THREE.Group {
+  const W = layout.width;
+  const D = layout.depth;
+  const H = layout.height;
+  const BAY = layout.robot_bay_width;
+  const T = layout.panel_thickness;
+  const DRAWER = layout.drawer_width;
+
+  // 固定设计值（非声明参数，均见 DEC-2026-11-05-R5 与视觉验收记录）：
+  const BAY_DOOR_HEIGHT = 0.60;        // 仓门高：遮 y[0.15,0.75]（铰北侧外开）
+  const BAY_DOOR_BOTTOM = 0.15;        // 底缝供机器人（高 0.095m）关门进出
+  const BAY_DOOR_HANDLE_GAP = 0.035;   // 仓门竖把手距仓门东缘
+  const DRAWER_CARCASS_BOTTOM = 0.03;  // 通顶双抽落地槛 y=0.03
+  const DRAWER_FRONT_LOWER_HEIGHT = 0.36; // 下抽面板高
+  const DRAWER_SEAM = 0.03;            // 上下抽之间 3cm 拼缝（露 carcass 同色只成发丝线，加深色阴影筋）
+  const COUNTERTOP_THICKNESS = 0.04;
+  const HANDLE_INSET = 0.05;           // 抽屉横把手距各抽面板上沿 5cm
+  const BASIN_WIDTH = 0.42;            // 标准台上盆，居中于柜体
+
+  // 沿墙坐标：仓区 [xMin, xMin+BAY] 贴北端；抽屉 carcass 收在南端板内侧（区宽 − 板厚）。
+  const xMin = -W / 2;
+  const xMax = W / 2;
+  const bayCenterX = xMin + BAY / 2;
+  // 仓门盖住仓区开口（内腔 = 区宽 − 两侧板厚）；声明的仓净宽是机器人的占用要求，
+  // 由 resolveVanityLayout 门禁保证内腔 ≥ 净宽，这里不第二遍折算。
+  const bayInterior = BAY - 2 * T;
+  const drawerCenterX = (xMin + BAY + xMax - T) / 2;
+  const drawerPanelWidth = DRAWER - T;
+  // 竖向分割：落地槛 → 下抽面板 → 3cm 拼缝 → 上抽面板 → 柜顶（通顶到盆底）。
+  const lowerFrontTop = DRAWER_CARCASS_BOTTOM + DRAWER_FRONT_LOWER_HEIGHT;
+  const seamBottom = lowerFrontTop;
+  const seamTop = seamBottom + DRAWER_SEAM;
+  const upperFrontHeight = H - seamTop;
+  const lowerFrontCenterY = DRAWER_CARCASS_BOTTOM + DRAWER_FRONT_LOWER_HEIGHT / 2;
+  const seamCenterY = (seamBottom + seamTop) / 2;
+  const upperFrontCenterY = seamTop + upperFrontHeight / 2;
+  const doorCenterY = BAY_DOOR_BOTTOM + BAY_DOOR_HEIGHT / 2;
+  const handleZ = D / 2 + T / 2; // 三只把手前沿 = 柜面 + 板厚（突出柜面 20mm，装饰件突出量为声明值：校验/DXF 按 carcass depth 出口径）
+
+  const group = new THREE.Group();
+  let i = 0;
+  addBox(group, 'vanity', i++, [T, H, D], [xMin + T / 2, H / 2, 0], '#e8e1d6', { roughness: 0.4, part: 'vanity-bay-north-end-panel', materialRole: 'cabinet_body' });
+  addBox(group, 'vanity', i++, [T, H, D], [xMin + BAY - T / 2, H / 2, 0], '#e8e1d6', { roughness: 0.4, part: 'vanity-bay-drawer-divider', materialRole: 'cabinet_body' });
+  addBox(group, 'vanity', i++, [T, H, D], [xMax - T / 2, H / 2, 0], '#e8e1d6', { roughness: 0.4, part: 'vanity-drawer-south-end-panel', materialRole: 'cabinet_body' });
+  addBox(group, 'vanity', i++, [bayInterior, BAY_DOOR_HEIGHT, T], [bayCenterX, doorCenterY, D / 2 - T / 2], '#e8e1d6', { roughness: 0.4, part: 'vanity-robot-bay-door', materialRole: 'cabinet_body' });
+  addBox(group, 'vanity', i++, [T, 0.18, T], [bayCenterX + bayInterior / 2 - BAY_DOOR_HANDLE_GAP, doorCenterY, handleZ], '#b8b8b8', { metalness: 0.6, roughness: 0.3, part: 'vanity-robot-bay-door-handle', materialRole: 'hardware' });
+  addBox(group, 'vanity', i++, [drawerPanelWidth, H - DRAWER_CARCASS_BOTTOM, D - 2 * T], [drawerCenterX, DRAWER_CARCASS_BOTTOM + (H - DRAWER_CARCASS_BOTTOM) / 2, 0], '#e8e1d6', { roughness: 0.4, part: 'vanity-drawer-carcass', materialRole: 'cabinet_body' });
+  addBox(group, 'vanity', i++, [drawerPanelWidth, upperFrontHeight, T], [drawerCenterX, upperFrontCenterY, D / 2 - T / 2], '#e8e1d6', { roughness: 0.4, part: 'vanity-drawer-front-upper', materialRole: 'cabinet_body' });
+  addBox(group, 'vanity', i++, [0.12, T, T], [drawerCenterX, upperFrontCenterY + upperFrontHeight / 2 - HANDLE_INSET, handleZ], '#b8b8b8', { metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-upper-handle', materialRole: 'hardware' });
+  addBox(group, 'vanity', i++, [drawerPanelWidth, DRAWER_FRONT_LOWER_HEIGHT, T], [drawerCenterX, lowerFrontCenterY, D / 2 - T / 2], '#e8e1d6', { roughness: 0.4, part: 'vanity-drawer-front-lower', materialRole: 'cabinet_body' });
+  addBox(group, 'vanity', i++, [0.12, T, T], [drawerCenterX, lowerFrontCenterY + DRAWER_FRONT_LOWER_HEIGHT / 2 - HANDLE_INSET, handleZ], '#b8b8b8', { metalness: 0.6, roughness: 0.3, part: 'vanity-drawer-front-lower-handle', materialRole: 'hardware' });
+  addBox(group, 'vanity', i++, [drawerPanelWidth, DRAWER_SEAM, T], [drawerCenterX, seamCenterY, D / 2 - T], '#4a4a4a', { roughness: 0.8, part: 'vanity-drawer-seam-shadow', materialRole: 'cabinet_body' });
+  addBox(group, 'vanity', i++, [BASIN_WIDTH, 0.12, 0.28], [0, H + 0.06, -0.05], '#ffffff', { roughness: 0.3, part: 'basin', materialRole: 'ceramic' });
+  // 台面 + 标准墙面龙头；龙头由 guest_bath plumbing 点位统一生成。
+  // DEC-2026-09-09-R2：内置平镜移出，镜面由 mirror_cabinet_gbath 镜柜承担（避免双镜）。
+  addBox(group, 'vanity', i++, [W, COUNTERTOP_THICKNESS, D], [0, H + COUNTERTOP_THICKNESS / 2, 0], '#d8d2c6', { roughness: 0.3, part: 'countertop', materialRole: 'countertop' });
+  return group;
+}
+
 /** Builds an explicit countertop-only bridge; it never creates cabinet geometry. */
 export function buildKitchenCountertopBridge(spec: { length: number; depth: number; countertopThickness: number }): THREE.Group {
   const group = new THREE.Group();
@@ -1673,7 +1712,6 @@ export function buildKitchenCountertopBridge(spec: { length: number; depth: numb
   }, 'countertop');
   return group;
 }
-
 /** Builds a configurable straight run; L-shaped kitchens declare one run per wall. */
 export function buildKitchenCabinetRun(spec: KitchenCabinetRunSpec): THREE.Group {
   const cabinetHeight = spec.cabinetHeight ?? 0.86;
