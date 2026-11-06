@@ -44,6 +44,19 @@ describe('HouseScene scene elements', () => {
     expect(source).not.toContain('private renderCurtain');
   });
 
+  it('surfaces furniture placement diagnostics from the build report (issue #98 PR-3)', () => {
+    // 摆位声明解析失败的家具不会进场景：页面必须显形（DXF 导出与 verify:furniture 同口径失败）。
+    // 行为断言在 tests/server/gbath-vanity-layout.test.ts（SceneBuildReport.placementDiagnostics）；
+    // 这里锁页面接线：HouseScene 收报告 → getPlacementDiagnostics 暴露 → App 每次重建都报。
+    const fs = require('node:fs') as typeof import('node:fs');
+    const houseScene = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    const app = fs.readFileSync('./src/App.ts', 'utf8');
+    expect(houseScene).toContain('result.report.placementDiagnostics');
+    expect(houseScene).toContain('getPlacementDiagnostics(): string[]');
+    expect(app).toContain('this.houseScene.getPlacementDiagnostics()');
+    expect(app).toContain('private reportPlacementDiagnostics(): void');
+  });
+
   it('rect rooms (PlaneGeometry branch) rescale UV to meters — wood_plank worldSize assumption holds for all rooms', async () => {
     const fs = await import('node:fs');
     const source = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');

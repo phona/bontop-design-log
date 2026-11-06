@@ -14,7 +14,7 @@ import { type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type Plum
 import { type MepCoordination, type MepEndpointSources, mepRoutePoints, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
 import { centerlineSamples } from '../arc-polyline.js';
 
-import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, resolveFurniturePlacement } from '../furniture-placement.js';
+import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
 import { DxfWriter } from './dxf-writer.js';
 
@@ -70,6 +70,12 @@ export interface ProjectDxfResult {
   stats: Record<string, number>;
   entityCount: number;
   warnings: string[];
+  /**
+   * 硬失败（issue #98 PR-3）：家具摆位声明解析失败（断引用/越界/负净宽/mount 宿主缺失）。
+   * 非空即本次导出不成立——两个入口（web 按钮与 npm run export:dxf）都必须失败，
+   * 不允许带着缺件/错位的家具图层交付。
+   */
+  errors: string[];
 }
 
 /** 点位圈半径（mm）：1:100 出图下直径 2mm，可辨识。 */
@@ -86,6 +92,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   const notes = [...(input.notes ?? [])];
   const labels = input.labels ?? 'utf8';
   const warnings: string[] = [];
+  const errors: string[] = [];
   const writer = new DxfWriter();
   for (const [name, color] of Object.values(DXF_LAYERS)) writer.addLayer(name, color);
 
@@ -124,7 +131,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('furnishings: 无输入，A-FURN 图层为空（家具摆位未导出——数据不可得时禁止用页面缓存当施工摆位）');
     notes.push('FURNISHINGS NOT EXPORTED: furnishings data unavailable at export time');
   } else {
-    emitFurniture(writer, house.furnishings, wallsById, warnings, label);
+    emitFurniture(writer, house.furnishings, wallsById, warnings, label, errors);
   }
   if (house.electrical === undefined) {
     warnings.push('electrical: 无输入，E-* 图层为空（电气点位未导出——数据不可得时禁止用页面缓存当施工点位）');
@@ -206,6 +213,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     stats,
     entityCount: Object.values(stats).reduce((sum, count) => sum + count, 0),
     warnings,
+    errors,
   };
 }
 
@@ -370,6 +378,7 @@ function emitFurniture(
   wallsById: Map<string, Extract<SceneElement, { type: 'wall' }>>,
   warnings: string[],
   label: (text: string, fallback?: string) => string,
+  errors: string[],
 ): void {
   // 墙锚参照线与 3D 同口径（codex 二十审 major，SceneBuilder.wallSegments）：带 segments
   // 细分的墙优先传细分段——resolveFurniturePlacement 以数组首段算方向/along 合法域，
@@ -379,6 +388,8 @@ function emitFurniture(
       ? wall.segments
       : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]])
     : []);
+  // mount 宿主索引与 3D 同一份实现：挂载家具的世界坐标由宿主摆位推出（issue #98 PR-3）。
+  const hosts = furnitureHostIndex(Object.values(furnishings ?? {}).flat());
   for (const [roomId, items] of Object.entries(furnishings ?? {})) {
     for (const item of items) {
       // 协调示意代理件不进家具图层（codex 十一审 blocking）：冷凝水几何已由 M-CAND 路线表达，
@@ -387,10 +398,16 @@ function emitFurniture(
         warnings.push(`furniture ${roomId}:${item.type}: 协调示意件（冷凝水走向代理），DXF 不画——几何以 M-CAND 候选路线为准`);
         continue;
       }
-      const placement = resolveFurniturePlacement(item, wallSegments);
+      const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts);
+      if (diagnostic !== undefined) {
+        // 定位声明解不出来 = 施工摆位不可得：整次导出失败，不出缺件图纸（issue #98 PR-3）。
+        errors.push(`furniture ${roomId}:${item.type}: ${diagnostic}`);
+        continue;
+      }
       if (!placement) continue; // count-only 条目，无平面几何（口径见 AGENTS.md furnishings 条目）
       // 外框尺寸与 3D buildFurniture 同优先级（codex 十六审 major）：length 型的显式
-      // length 优先于目录宽，否则外框比实际建模窄（bath_side_cabinet 0.45 vs 0.90）。
+      // length 优先于目录宽，否则外框比实际建模窄（bath_side_cabinet 0.45 vs 0.90）；
+      // vanity 走 house.yaml vanity_layout 声明宽深（目录不再存第二套）。
       const { width, depth } = furnitureFootprint(item);
       if (width === undefined || depth === undefined) {
         warnings.push(`furniture ${roomId}:${item.type}: 无 width/depth/length 声明，未导出外框`);

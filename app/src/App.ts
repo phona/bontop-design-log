@@ -331,6 +331,7 @@ export class App {
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
     await this.houseScene.buildFromCatalog(this.projectData);
+    this.reportPlacementDiagnostics();
     this.annotationRenderer = new AnnotationRenderer(
       this.houseScene.scene,
       this.houseScene.camera,
@@ -2276,6 +2277,11 @@ export class App {
         mep,
         notes,
       });
+      // 家具摆位诊断 = 施工摆位不可得（issue #98 PR-3）：与 CLI 同一口径，不交付缺件/错位图纸。
+      if (result.errors.length > 0) {
+        for (const error of result.errors) console.error('[dxf] placement error:', error);
+        throw new Error(`DXF 导出失败：${result.errors.length} 条家具摆位诊断（${result.errors[0]}${result.errors.length > 1 ? ' 等' : ''}）`);
+      }
       const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
       const url = URL.createObjectURL(new Blob([result.dxf], { type: 'application/dxf' }));
       const a = document.createElement('a');
@@ -2291,6 +2297,19 @@ export class App {
       console.error(message, error);
       this.showToast(message);
     }
+  }
+
+  /**
+   * 家具摆位诊断显形（issue #98 PR-3）：定位声明解析失败（断引用/越界/负净宽/mount 宿主缺失）
+   * 的家具不会进场景。页面与 DXF 导出 / verify:furniture 同一口径——显形并指引 AI 会话修复，
+   * 不静默少件；修复后重建即恢复。
+   */
+  private reportPlacementDiagnostics(): void {
+    const diagnostics = this.houseScene.getPlacementDiagnostics();
+    if (diagnostics.length === 0) return;
+    console.error('[scene] furniture placement diagnostics:', diagnostics);
+    const suffix = diagnostics.length > 1 ? ` 等 ${diagnostics.length} 条` : '';
+    this.showToast(`家具摆位异常：${diagnostics[0]}${suffix}（请通过 AI 会话修复配置）`);
   }
 
   private async handleExportGlb(): Promise<void> {
@@ -2944,6 +2963,7 @@ export class App {
     }
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
     await this.houseScene.buildFromCatalog(this.projectData);
+    this.reportPlacementDiagnostics();
     this.annotationRenderer?.clear();
     this.annotationRenderer = new AnnotationRenderer(
       this.houseScene.scene,
@@ -2975,6 +2995,7 @@ export class App {
       const data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
       this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
       await this.houseScene.buildFromCatalog(data);
+      this.reportPlacementDiagnostics();
       this.annotationRenderer?.clear();
       this.annotationRenderer = new AnnotationRenderer(
         this.houseScene.scene,
@@ -3015,6 +3036,7 @@ export class App {
       try {
         this.collision.setWalls(this.extractWalls(previousProjectData?.house?.sceneElements));
         await this.houseScene.buildFromCatalog(previousProjectData);
+        this.reportPlacementDiagnostics();
         this.annotationRenderer?.clear();
         this.annotationRenderer = new AnnotationRenderer(
           this.houseScene.scene,

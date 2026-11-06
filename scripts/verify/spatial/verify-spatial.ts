@@ -43,6 +43,7 @@ import {
 import { buildRenderLightingFixtureHeights, CEILING_MOUNTED_LIGHT_TYPES, ceilingMountGapTolerance, isLightingFixtureType, selectCeilingHost } from '../../../shared/lighting-fixtures.js';
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
 import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
+import { furnitureHostIndex, resolveFurniturePlacement } from '../../../shared/furniture-placement.js';
 import { furnitureObjectId } from '../../../shared/furniture-object-id.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
@@ -57,14 +58,20 @@ function resolvedWallSegments(layout: ReturnType<typeof resolveLayout>): PlanSeg
 }
 
 /** Runtime collision authority for curtain/glass/railing geometry. */
-function placedFurnitureRuntimeIds(furnishings: FurnishingsYaml): string[] {
+function placedFurnitureRuntimeIds(
+  furnishings: FurnishingsYaml,
+  wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>,
+): string[] {
   const ids: string[] = [];
+  // 「已放置」与 SceneBuilder.addFurniture 共用同一解算（issue #98 PR-3）：挂墙/挂载/绝对坐标
+  // 三种定位声明都在 shared/furniture-placement.ts，手写谓词会把 mount 挂载件（无 x/z/wall/along）
+  // 漏判成 count-only，令期望 runtime id 整体错位。
+  const hosts = furnitureHostIndex(Object.values(furnishings).flat());
   for (const [roomId, items] of Object.entries(furnishings)) {
     let runtimeIndex = 0;
     for (const item of items) {
-      const raw = item as unknown as Record<string, unknown>;
-      const placed = raw.x !== undefined || raw.z !== undefined || raw.wall !== undefined || raw.along !== undefined;
-      if (!placed) continue;
+      const { placement } = resolveFurniturePlacement(item, wallSegments, hosts);
+      if (!placement) continue;
       ids.push(furnitureObjectId(roomId, item, runtimeIndex));
       runtimeIndex++;
     }
@@ -259,24 +266,26 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
   // 运行时权威性（声明 ↔ runtime 是否一一对应）留在本层。
   issues.push(...validateRuntimeAuthority({
     furniture: collected.furniture,
-    expectedFurnitureIds: placedFurnitureRuntimeIds(house.furnishings ?? {}),
+    expectedFurnitureIds: placedFurnitureRuntimeIds(house.furnishings ?? {}, scene.index.wallSegments),
     expectedGlassElementIds: [...new Set(structuralPaths.map((path) => path.elementId))],
     glass: collected.glass,
     source,
   }));
 
+  // 「已放置」判定与 SceneBuilder 同一解算（issue #98 PR-3，详见 placedFurnitureRuntimeIds）。
+  const wallSegments = scene.index.wallSegments;
+  const hosts = furnitureHostIndex(Object.values(house.furnishings ?? {}).flat());
   for (const [roomId, items] of Object.entries(house.furnishings ?? {})) {
     let runtimeIndex = 0;
     for (const [index, raw] of items.entries()) {
-      const item = raw as unknown as Record<string, unknown>;
-      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
-      if (!isPlaced) continue;
-      const type = String(item.type ?? '');
+      const { placement } = resolveFurniturePlacement(raw, wallSegments, hosts);
+      if (!placement) continue;
+      const type = String((raw as { type?: unknown }).type ?? '');
       const runtimeId = furnitureObjectId(roomId, raw, runtimeIndex);
       runtimeIndex++;
-      const dims = declaredDims(item, type);
+      const dims = declaredDims(raw as unknown as Record<string, unknown>, type);
       if (!dims || dims.width <= 0 || dims.depth <= 0) {
-        issues.push({ level: 'error', code: 'furniture_dimensions_missing', entity: `${roomId}/${type}[${index}]`, source, message: `placed furniture ${type} has no positive declared dimensions`, evidence: { room: roomId, type, item } });
+        issues.push({ level: 'error', code: 'furniture_dimensions_missing', entity: `${roomId}/${type}[${index}]`, source, message: `placed furniture ${type} has no positive declared dimensions`, evidence: { room: roomId, type, item: raw } });
         continue;
       }
       const entry = furnitureById.get(runtimeId);
@@ -302,6 +311,13 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
   }
 
   if (scene.report.skippedFurniture.length > 0) for (const item of scene.report.skippedFurniture) issues.push({ level: 'error', code: 'furniture_runtime_skipped', entity: item, source, message: `SceneBuilder skipped a placed furniture fixture`, evidence: { item } });
+  // 摆位诊断（issue #98 PR-3）：定位声明解析失败的件不在场景里——与页面/DXF/verify:furniture
+  // 同一口径在此显形，verify:all 因此也能拦住断引用/负净宽。
+  if (scene.report.placementDiagnostics.length > 0) {
+    for (const diagnostic of scene.report.placementDiagnostics) {
+      issues.push({ level: 'error', code: 'furniture_placement_diagnostic', entity: diagnostic, source, message: `SceneBuilder could not resolve a furniture placement declaration`, evidence: { diagnostic } });
+    }
+  }
   if (scene.report.unsupported.length > 0) for (const item of scene.report.unsupported) issues.push({ level: 'error', code: 'scene_runtime_unsupported', entity: item, source, message: `SceneBuilder reported unsupported runtime geometry`, evidence: { item } });
   return issues;
 }

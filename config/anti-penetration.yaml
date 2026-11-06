@@ -209,7 +209,7 @@ waivers:
     rule: pen.furniture.furniture
     pair: [gbath.vanity, gbath.robot_dock]
     kind: contained
-    reason: "客卫台盆下开放格（DEC-2026-11-04-R4，2026-11-05 几何落地）：基站 410×433×280mm 泊入格内，格净宽 0.51m（两侧各 0.05m）、深 0.50m、顶余 0.45m，零件层面不相交；vanity 包络是含空腔的并集，AABB 重叠属内含关系而非互撞"
+    reason: "客卫台盆下开放格（DEC-2026-11-04-R4，2026-11-05 几何落地）：基站 410×433×280mm 泊入格内——格净宽/仓深/顶余等现行数值以对象 gbath.robot_dock 的 mount 声明与 gbath.vanity 的 vanity_layout 为准（DEC-2026-11-04-R4 的「格净宽 0.51 居中 + 两侧各 0.05」几何已被 DEC-2026-11-05-R5 取代，不再复录），零件层面不相交；vanity 包络是含空腔的并集，AABB 重叠属内含关系而非互撞"
     owner: 业主
     expires: 2027-06-30
 

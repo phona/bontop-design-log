@@ -223,6 +223,8 @@ export class HouseScene implements SceneApi {
   private auditFurnishings: FurnishingsYaml = {};
   private auditSceneElements: SceneElement[] = [];
   private auditPlumbing: PlumbingPoint[] = [];
+  /** 最近一次 buildFromCatalog 的家具摆位诊断（issue #98 PR-3）；空 = 全部定位声明解析成功。 */
+  private placementDiagnostics: string[] = [];
   private textureManager = new TextureManager();
   private envManager: EnvironmentManager;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
@@ -564,8 +566,9 @@ export class HouseScene implements SceneApi {
       if (!segment || segment.length < 2) return undefined;
       return { minX: Math.min(...segment.map((p) => p.x)), maxX: Math.max(...segment.map((p) => p.x)), minZ: Math.min(...segment.map((p) => p.z)), maxZ: Math.max(...segment.map((p) => p.z)) };
     };
-    const configuredFurnishing = this.auditFurnishings.guest_bath?.find((item) => item.type === 'vanity' && item.x !== undefined && item.z !== undefined);
-    const vanityBox = configuredFurnishing ? { minX: configuredFurnishing.x! - 0.20, maxX: configuredFurnishing.x! + 0.20, minZ: configuredFurnishing.z! - 0.40, maxZ: configuredFurnishing.z! + 0.40 } : aabb(this.findAuditObject('gbath.vanity'));
+    // vanity 自 issue #98 PR-3 起挂墙定位（无绝对 x/z）：审计框直接取 runtime mesh AABB，
+    // 不再按手写半宽拼框（旧 ±0.20/±0.40 是柜深 0.40 时代的口径，已随声明源删除）。
+    const vanityBox = aabb(this.findAuditObject('gbath.vanity'));
     const configuredToilet = this.auditFurnishings.guest_bath?.find((item) => item.type === 'toilet' && item.x !== undefined && item.z !== undefined);
     const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('furniture:guest_bath:toilet:1'));
     const screenBox = segmentBox(points('shower_screen_gbath'));
@@ -672,6 +675,7 @@ export class HouseScene implements SceneApi {
 
   async buildFromCatalog(projectData: ProjectData): Promise<void> {
     this.readyState = 'loading';
+    this.placementDiagnostics = [];
     this.readyPromise = new Promise<void>((resolve, reject) => {
       this.resolveReady = resolve;
       this.rejectReady = reject;
@@ -734,6 +738,10 @@ export class HouseScene implements SceneApi {
       },
     });
     for (const child of [...result.exportRoot.children]) this.exportRoot.add(child);
+    // 家具摆位诊断（issue #98 PR-3）：定位声明解不出来的件不会进场景，逐条留在这里由
+    // App 显形（DXF 导出与 verify:furniture 同口径判失败）——页面同样不许静默少件。
+    this.placementDiagnostics = result.report.placementDiagnostics ?? [];
+    for (const diagnostic of this.placementDiagnostics) console.error('[scene] furniture placement:', diagnostic);
     for (const child of [...result.viewOnlyRoot.children]) {
       if (child.userData.type === 'platform') this.viewOnlyRoot.add(child);
       else this.builderViewRoot.add(child);
@@ -1986,6 +1994,11 @@ export class HouseScene implements SceneApi {
 
   getFurnitureMeshes(): THREE.Group[] {
     return this.furnitureMeshes;
+  }
+
+  /** 家具摆位诊断（issue #98 PR-3）：非空即场景里有家具因定位声明解析失败而缺席。 */
+  getPlacementDiagnostics(): string[] {
+    return [...this.placementDiagnostics];
   }
 
   getEnvironmentManager(): EnvironmentManager {

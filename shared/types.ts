@@ -1720,6 +1720,52 @@ export interface FurnishingCutout {
   size: [number, number];
 }
 
+/**
+ * 挂载派生摆位（issue #98 PR-3）：家具不再写绝对 x/z，改挂到另一件已定位家具的槽位上，
+ * 由 shared/furniture-placement.ts 从宿主位置与宿主布局参数推出世界坐标。
+ * 与 wall/wall_side/along 并列的一种定位声明，三者互斥（同时声明即诊断失败）。
+ */
+export interface FurnitureMount {
+  /** 宿主家具的稳定对象 id（house.yaml 条目上的 `id`，如 `gbath.vanity`）。 */
+  furniture_id: string;
+  /** 宿主家具上的槽位名（当前唯一受支持值：`robot_bay`）。 */
+  slot: string;
+}
+
+/**
+ * 客卫台盆柜（type:'vanity'）布局参数（DEC-2026-11-05-R5 定案「仓+抽屉」）。
+ * 柜体分割的唯一声明源：3D FixtureFactory.buildVanity、摆位解算（robot_dock 挂载）、
+ * DXF/校验外框全部读这里，FURNITURE_DIMS 不再存 vanity 尺寸（同一数字只留一处）。
+ * 抽屉区宽度不声明，由 `width − robot_bay_width` 算出。
+ */
+export interface VanityLayoutDecl {
+  /** 柜宽（沿墙，m）：可用跨度 = 南墙南脸至东墙段南端，两端贴死。 */
+  width: number;
+  /**
+   * 柜深（carcass 包络，m）：背沿贴宿主墙完成面。校验与 DXF 外框按本值出口径；
+   * 三只把手是正面装饰件、突出柜面 20mm（局部外深 0.52，不进外框——2026-11-06 Codex minor 口径）。
+   */
+  depth: number;
+  /** 柜高（m）：通高到盆底；头顶余量兼作台盆排水过管走廊，不得加固定层板。 */
+  height: number;
+  /** 机器人仓区宽（沿墙，m）：贴北端（排水穿墙端）。 */
+  robot_bay_width: number;
+  /**
+   * 仓净宽（m）= 基站宽 + 两侧间隙：机器人的占用要求。resolveVanityLayout 门禁保证
+   * 仓区内腔（= robot_bay_width − 2×panel_thickness）≥ 本值；几何上门按内腔宽度生成，
+   * 本值不直接进几何，避免同一个开口出现两个宽度。
+   */
+  robot_bay_clear_width: number;
+  /** 板厚（m）：端板/隔板/门板厚度。 */
+  panel_thickness: number;
+}
+
+/** resolveVanityLayout 解出的布局（含派生量），供 FixtureFactory 与挂位解算共用。 */
+export interface VanityLayout extends VanityLayoutDecl {
+  /** 抽屉区宽（m）= width − robot_bay_width（剩余尺寸算出，不声明）。 */
+  drawer_width: number;
+}
+
 export interface FurnishingItem {
   type: string;
   /**
@@ -1746,6 +1792,10 @@ export interface FurnishingItem {
   cabinetHeight?: number;
   countertopThickness?: number;
   cutouts?: FurnishingCutout[];
+  /** 挂载派生摆位：挂到 `furniture_id` 的 `slot` 上，世界坐标由解算推出，禁写 x/z。 */
+  mount?: FurnitureMount;
+  /** type:'vanity' 的柜体分割参数；缺失或非法即定位诊断失败（不静默按默认值建模）。 */
+  vanity_layout?: VanityLayoutDecl;
 }
 
 /** Explicit countertop-only bridge; it creates no cabinet body. */
@@ -1898,7 +1948,8 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },
-  vanity: { width: 0.69, depth: 0.5 }, // DEC-2026-11-05-R5：depth=0.50 为 carcass 包络；三只把手为正面装饰件、突出柜面 20mm（局部外深 0.52），校验与 DXF 按 carcass 0.50 出口径、把手突出量为已知声明值（2026-11-06 Codex minor 明确）：可用跨度=南墙 w_gbath_south 南脸 3.61 至东墙段南端 4.30（0.69m，两端贴死 0 容差，量房 #76 复核）——2026-11-06 Codex blocking 修正：原 0.70/0.72 柜北端侵入实体墙；DEC-2026-09-09-R7 柜深 0.40→0.50（标准成品柜深，全藏台下基站）
+  // vanity 尺寸已随 issue #98 PR-3 迁到 config/house.yaml `gbath.vanity` 的 vanity_layout 声明
+  // （FURNITURE_DIMS 与条目声明不得重复存同一数字）；目录不再存 vanity 宽深。
   toilet: { width: 0.4, depth: 0.6 }, // 2026-08-21 马桶落位（对齐 FixtureFactory 模型 footprint）
   exhaust_fan: { width: 0.3, depth: 0.3 },
   washer: { width: 0.6, depth: 0.6 }, // 2026-08-23 阳台洗烘叠放（贴 w_balc_west，与 dryer 同 footprint）
