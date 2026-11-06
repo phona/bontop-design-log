@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"6c856d148a3df467bef4e047c3a981ec01e98f86d329aa77c13c39757b5bb71b","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"41522cfb7987a7124a78e1436d99c0e140aaccc7bb4229ac5aa9de60684ed128","config/house.yaml":"bf7f36f76afc836b711f354f6aea61145714e60f902ee3f0bdb0a14f2e3671fc","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"23fc39e72b73353e8d3e1c47ad48e25cf227ff905067a990b3bcbac8140b7300","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/mep-hvac-coordination.yaml":"dc64740ecb6f4ccbaae581ce6f6a1efead6ee939b114a19112d1466983d0fc0f","config/model-package-links.yaml":"443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8","config/plumbing.yaml":"4dc8b3734d42a15896989d2366de7de98cd326e54925f3f42f971941e24bae53","docs/pending-site-data.md":"725a29cd896f7fef9fc28c78c22d84b44fc8c1e61e91c232dd43f7a3ec745a1f","schedule/phase-1/control.yaml":"c53130b379c1e89353b208801f432606ba56559dccba1e91f4c438103bf9e0e8","schedule/phase-2/control.yaml":"2e61de30ff356611172a6c42220fb326783bd1603cb0d3497f40b28ce05eedfc","schedule/phase-3/control.yaml":"e784a1e8e5295f1322d8d346abaded152b2308d85de9cd0f8a4355d4fcec943e","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"2a83eea2cd6f19d26ba430781a8194d8870dca4110151777fd797d8d47cd5fcd","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42","config/electrical-topology.yaml":"901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51","config/electrical.yaml":"cdb72bd84ce78195613f22b68f085ffe6687474599e469cc85bd65cf3c2f36d7","config/house.yaml":"bf7f36f76afc836b711f354f6aea61145714e60f902ee3f0bdb0a14f2e3671fc","config/hvac.yaml":"2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342","config/layout/model-geometry.yaml":"23fc39e72b73353e8d3e1c47ad48e25cf227ff905067a990b3bcbac8140b7300","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/mep-hvac-coordination.yaml":"dc64740ecb6f4ccbaae581ce6f6a1efead6ee939b114a19112d1466983d0fc0f","config/model-package-links.yaml":"59887799220488d934a500316e5ac99aafb54dde91848c37148699aa3d26b2b3","config/plumbing.yaml":"918e597dd2b7bb3787d92b61132e933489a78275c45fe1ec5c5a1a0cbd95408c","docs/pending-site-data.md":"725a29cd896f7fef9fc28c78c22d84b44fc8c1e61e91c232dd43f7a3ec745a1f","schedule/phase-1/control.yaml":"a0070e62c83d65c6fa1e824deb478e0a400089624c905a480b97b2ddbac0c551","schedule/phase-2/control.yaml":"2e61de30ff356611172a6c42220fb326783bd1603cb0d3497f40b28ce05eedfc","schedule/phase-3/control.yaml":"e784a1e8e5295f1322d8d346abaded152b2308d85de9cd0f8a4355d4fcec943e","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
 # 项目进度与阶段 Checkpoint
 
 > 自动生成：请勿直接编辑。维护源为各阶段 control.yaml、roadmap.yaml、phase-scope.yaml、model-package-links.yaml、验收标准和已关联项目配置。  
-> 项目数据指纹：`sha256:8f86335e9b11bd51eadb88ab64e3884b1d5aad21754770ebf03999540e55988b`（18 个输入文件）  
+> 项目数据指纹：`sha256:4c6c8519898eed2cccc058483508d3b970431268320dc5e782c8effafb5576a7`（18 个输入文件）  
 > 当前量房待确认台账：77 个编号，详情见 [量房待填清单](../docs/pending-site-data.md)。
 
 ## 怎么用这份清单
@@ -32,20 +32,20 @@
 
 | 数据源 | 当前 SHA-256 |
 |---|---|
-| [config/acceptance.yaml](../config/acceptance.yaml) | `6c856d148a3df467bef4e047c3a981ec01e98f86d329aa77c13c39757b5bb71b` |
+| [config/acceptance.yaml](../config/acceptance.yaml) | `2a83eea2cd6f19d26ba430781a8194d8870dca4110151777fd797d8d47cd5fcd` |
 | [config/ceiling.yaml](../config/ceiling.yaml) | `69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719` |
 | [config/decision-gates.yaml](../config/decision-gates.yaml) | `dd31b1cd312d00b33e3761b218d86c6a4e301a5a32f2aa0d25b70765cb6f3c42` |
 | [config/electrical-topology.yaml](../config/electrical-topology.yaml) | `901e950952da0eeee5234c860bdddc6a67ff984360f0d36645eac2676cf22c51` |
-| [config/electrical.yaml](../config/electrical.yaml) | `41522cfb7987a7124a78e1436d99c0e140aaccc7bb4229ac5aa9de60684ed128` |
+| [config/electrical.yaml](../config/electrical.yaml) | `cdb72bd84ce78195613f22b68f085ffe6687474599e469cc85bd65cf3c2f36d7` |
 | [config/house.yaml](../config/house.yaml) | `bf7f36f76afc836b711f354f6aea61145714e60f902ee3f0bdb0a14f2e3671fc` |
 | [config/hvac.yaml](../config/hvac.yaml) | `2f5486fa46d6a322a69da9c9a53f072011ecb5a65d8ea3b6e67af6f839102342` |
 | [config/layout/model-geometry.yaml](../config/layout/model-geometry.yaml) | `23fc39e72b73353e8d3e1c47ad48e25cf227ff905067a990b3bcbac8140b7300` |
 | [config/layout/overlay.yaml](../config/layout/overlay.yaml) | `b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909` |
 | [config/mep-hvac-coordination.yaml](../config/mep-hvac-coordination.yaml) | `dc64740ecb6f4ccbaae581ce6f6a1efead6ee939b114a19112d1466983d0fc0f` |
-| [config/model-package-links.yaml](../config/model-package-links.yaml) | `443df176174fe6aadc19343894f0de876827d318df2f279cefd565a98ec8b3a8` |
-| [config/plumbing.yaml](../config/plumbing.yaml) | `4dc8b3734d42a15896989d2366de7de98cd326e54925f3f42f971941e24bae53` |
+| [config/model-package-links.yaml](../config/model-package-links.yaml) | `59887799220488d934a500316e5ac99aafb54dde91848c37148699aa3d26b2b3` |
+| [config/plumbing.yaml](../config/plumbing.yaml) | `918e597dd2b7bb3787d92b61132e933489a78275c45fe1ec5c5a1a0cbd95408c` |
 | [docs/pending-site-data.md](../docs/pending-site-data.md) | `725a29cd896f7fef9fc28c78c22d84b44fc8c1e61e91c232dd43f7a3ec745a1f` |
-| [schedule/phase-1/control.yaml](../schedule/phase-1/control.yaml) | `c53130b379c1e89353b208801f432606ba56559dccba1e91f4c438103bf9e0e8` |
+| [schedule/phase-1/control.yaml](../schedule/phase-1/control.yaml) | `a0070e62c83d65c6fa1e824deb478e0a400089624c905a480b97b2ddbac0c551` |
 | [schedule/phase-2/control.yaml](../schedule/phase-2/control.yaml) | `2e61de30ff356611172a6c42220fb326783bd1603cb0d3497f40b28ce05eedfc` |
 | [schedule/phase-3/control.yaml](../schedule/phase-3/control.yaml) | `e784a1e8e5295f1322d8d346abaded152b2308d85de9cd0f8a4355d4fcec943e` |
 | [schedule/phase-scope.yaml](../schedule/phase-scope.yaml) | `4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4` |

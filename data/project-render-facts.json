@@ -423,8 +423,10 @@
       "x": 7.05,
       "z": 3.955,
       "wall": "w_gbath_east_open_vanity",
-      "note": "客卫洗手池龙头：复用标准 faucet 模型，东侧延伸实体墙西侧（wall_side=west），中心线 z=3.955（与台盆共用中心线，2026-11-06 随 DEC-2026-11-05-R5 柜体北移 3cm 由 3.90 调整），底座标高约0.84m，贴近0.77m台面并避开台盆；墙体挂载与给排水按现场复核（DEC-2026-09-09-R1：给水预留三通，兼扫地机基站进水；排水接台盆下水——该下水路由本身待现场确认；DEC-2026-09-09-R6：悬浮柜+台下基站后下水定案墙排——穿南墙回内卫沉箱，地面无管，见 drain_gbath_vanity）",
+      "note": "客卫洗手池龙头：复用标准 faucet 模型，东侧延伸实体墙西侧（wall_side=west），中心线 z=3.955（与台盆共用中心线，2026-11-06 随 DEC-2026-11-05-R5 柜体北移 3cm 由 3.90 调整），底座标高约0.84m，贴近0.77m台面并避开台盆；墙体挂载与给排水按现场复核（DEC-2026-09-09-R1：给水预留三通，兼扫地机基站进水；排水接台盆下水——该下水路由本身待现场确认；DEC-2026-09-09-R6：悬浮柜+台下基站后下水定案墙排——穿南墙回内卫沉箱，地面无管，见 drain_gbath_vanity）。status: inferred + construction_status: pending（2026-11-06 issue #98 PR-4 显式申报）——本点为设计推断位、未实测，挂载与给排水按现场复核、pending-site-data #75（基站进水水压实测+减压阀位）绑本点，实测前不冻结；同 faucet_kitchen_dishwasher 口径（给水未画路线前不标 confirmed）",
       "height": 0.84,
+      "status": "inferred",
+      "construction_status": "pending",
       "water_temp": "mixed",
       "water_dn": 20,
       "wallSide": "west"
@@ -436,8 +438,10 @@
       "x": 6.9,
       "z": 3.55,
       "wall": "w_gbath_south",
-      "note": "客卫洗漱区台盆墙排穿墙点（DEC-2026-09-09-R6：悬浮台盆柜+台下扫地机基站，下水不得走地面——下水器柜内转 90° 穿 w_gbath_south 回内卫沉箱/排水系统；穿点 x=6.90 对齐台盆轴线，避 d_gbath 门洞 x[5.70,6.40]；穿墙套管/坡度/沉箱与立管关系待现场及水电交底终核）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-gbath-vanity-to-riser`（穿 w_gbath_south 回内卫，接推断立管 drain_riser_guest_bath (5.8,2.4)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；台盆 SKU 仍未冻结，柜内转 90° 的存水弯/净高待 SKU 冻结后终核",
+      "note": "客卫洗漱区台盆墙排穿墙点（DEC-2026-09-09-R6：悬浮台盆柜+台下扫地机基站，下水不得走地面——下水器柜内转 90° 穿 w_gbath_south 回内卫沉箱/排水系统；穿点 x=6.90 对齐台盆轴线，避 d_gbath 门洞 x[5.70,6.40]；穿墙套管/坡度/沉箱与立管关系待现场及水电交底终核）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-gbath-vanity-to-riser`（穿 w_gbath_south 回内卫，接推断立管 drain_riser_guest_bath (5.8,2.4)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；台盆 SKU 仍未冻结，柜内转 90° 的存水弯/净高待 SKU 冻结后终核。status/construction_status 与同族 drain_mbath_vanity、所连路线精度三件套同口径：本点为设计推断位、非实测，量房日升级 measured 后回写",
       "height": 0.3,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 50,
       "wallSide": "north"
     },

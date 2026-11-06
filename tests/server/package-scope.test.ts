@@ -4,7 +4,10 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { load as parseYaml } from 'js-yaml';
 import { buildObjectPackageIndex, isPointSourceAllSelector, resolvePackageScope, type ProjectScopeInput } from '../../shared/package-scope.js';
+import { loadModelPackageLinks } from '../../server/model-package-links.js';
 
 const project: ProjectScopeInput = {
   house: {
@@ -310,5 +313,72 @@ describe('buildObjectPackageIndex', () => {
     assert.equal(index.get('electrical:sock_living_ac'), undefined);
     assert.equal(index.get('plumbing:drain_kitchen'), undefined);
     assert.equal(index.size, 0);
+  });
+});
+
+// 2026-11-06（issue #98 PR-4）：真实 links 配置按**稳定 id** 选家具对象。
+// MODEL-PKG-100 / MODEL-PKG-160 原按 type 选 vanity / robot_dock_gbath——治的失效模式
+// 与 tests/server/model-package-links.test.ts 同源：删/改类型后忘了同步选择器，
+// assertSelector 抛错、/api/project 500；且 furnishings 的 types 选择器按 sceneElements
+// 匹配，而 sceneElements 只有墙与叠加层（mergeSceneElements）、不含家具，从来解析不出
+// 对象——silent no-op。改成 ids 后，正查高亮与反查归属同时生效。
+describe('issue #98 PR-4： furnishings ids 选择器 ↔ 包/验收项（真实 links）', () => {
+  const links = loadModelPackageLinks();
+  const gbathProject: ProjectScopeInput = {
+    house: {
+      rooms: [{id: 'master_bath'}, {id: 'guest_bath'}, {id: 'master_bedroom'}],
+      sceneElements: [
+        {id: 'gbath.vanity', type: 'vanity'},
+        {id: 'gbath.robot_dock', type: 'robot_dock_gbath'},
+      ],
+    },
+  };
+
+  it('反查：gbath.vanity → PKG-100，gbath.robot_dock → PKG-160', () => {
+    const index = buildObjectPackageIndex(links.links, gbathProject);
+    assert.ok(
+      index.get('gbath.vanity')?.includes('PKG-100'),
+      `点客卫台盆柜应反查到 PKG-100，实际 ${JSON.stringify(index.get('gbath.vanity'))}`,
+    );
+    assert.ok(
+      index.get('gbath.robot_dock')?.includes('PKG-160'),
+      `点基站泊位应反查到 PKG-160，实际 ${JSON.stringify(index.get('gbath.robot_dock'))}`,
+    );
+  });
+
+  it('正查 PKG-100：gbath.vanity 进 objectIds，furnishings ids 不再落 unresolved', () => {
+    const link = links.links.find((item) => item.id === 'MODEL-PKG-100');
+    assert.ok(link, 'MODEL-PKG-100 必须存在');
+    const result = resolvePackageScope(link, gbathProject);
+    assert.ok(result.objectIds.includes('gbath.vanity'));
+    assert.ok(
+      !result.unresolved.some((entry) => entry.includes('furnishings.ids')),
+      `furnishings ids 是场景 objectId 裸值，不该进 unresolved：${JSON.stringify(result.unresolved)}`,
+    );
+  });
+
+  it('正查 PKG-160：gbath.robot_dock 进 objectIds，水电点位仍走点位前缀', () => {
+    const link = links.links.find((item) => item.id === 'MODEL-PKG-160');
+    assert.ok(link, 'MODEL-PKG-160 必须存在');
+    const result = resolvePackageScope(link, gbathProject);
+    assert.ok(result.objectIds.includes('gbath.robot_dock'));
+    assert.ok(result.pointIds.includes('plumbing:faucet_gbath_vanity'));
+    assert.ok(result.pointIds.includes('electrical:sock_gbath_robot'));
+  });
+
+  it('验收项按对象 id 可追溯：check_plumb_external_vanity_waterproof 点名 gbath.vanity 且挂 PKG-050', () => {
+    const acceptance = parseYaml(readFileSync('config/acceptance.yaml', 'utf8')) as {
+      phases: Array<{ items: Array<{ id: string; item: string; standard: string }> }>;
+    };
+    const check = acceptance.phases.flatMap((phase) => phase.items).find((item) => item.id === 'check_plumb_external_vanity_waterproof');
+    assert.ok(check, 'check_plumb_external_vanity_waterproof 必须存在');
+    assert.ok(check.item.includes('gbath.vanity'), `验收项应点名对象 id：${check.item}`);
+    assert.ok(check.standard.includes('gbath.vanity'), `判定标准应引用对象 id：${check.standard}`);
+
+    const control = parseYaml(readFileSync('schedule/phase-1/control.yaml', 'utf8')) as {
+      work_packages: Array<{ id: string; acceptance_refs?: string[] }>;
+    };
+    const pkg050 = control.work_packages.find((pkg) => pkg.id === 'PKG-050');
+    assert.ok(pkg050?.acceptance_refs?.includes('check_plumb_external_vanity_waterproof'), 'PKG-050 应挂接该验收项');
   });
 });
