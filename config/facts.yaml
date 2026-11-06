@@ -1175,6 +1175,205 @@ facts:
         severity: error
         expect_matches: 1
 
+  # JX 选型 ↔ 客卫机器人仓（issue #98 第 1 层）。模式同 fact.pending_site_data_count：
+  # 权威值来自机器源或现行锚句，mirrors 写 extract + expect_matches。
+  # 命中数不符 → mirror_unresolvable；抽出的数与权威值不符 → fact_mismatch。都是 error。
+  # 同一句出现多次时，正则写死该数字：引擎只对第一处做数值比较，命中数才能抓住其余副本被改掉。
+  #
+  # 正则镜只抓「同一串数字不见了或对不上」。换一种说法重写结论，或把 0.48 写成 480
+  # （procurement.md 现行段里「净深 480 / 毛深 500」与「净深 0.48 / 毛深 0.50」并存），门禁不报。
+  # 那一步见 AGENTS.md「改事实先列消费者」。
+  #
+  # 数字以 PR #97 合入后的 master 为准，不用 issue #98 起草时的旧定位：
+  #   锚：house.yaml guest_bath.robot_dock_gbath 的 x/z（现 6.9235 / 3.86）
+  #   镜 1：materials.yaml robot_vacuum_narwal_jx_01。spec 是紧凑串「基站410×433×280mm」；
+  #         notes 写的是「410（长）×433（宽）×280（高）」，没有不带标注的紧凑串。两处都锁。
+  #   镜 2：issue 起草时写 pending #76 当前基准须含净深 0.48 / 净宽 0.46。
+  #         现稿 #76 当前基准是柜宽 0.69、背沿贴墙面西脸 7.14，不含 0.48/0.46。
+  #         净宽 0.46 与净深 0.48 在 #77（「宽 0.46>0.45、深 0.48>0.45」）和 procurement 现行段。
+  #         本族按现稿锁 #76 的柜宽/西脸和 #77 的净宽/净深，不把旧数写回 #76。
+  #   镜 3：FixtureFactory.ts type:'vanity' 注释。净宽 0.46m、深 0.50m（毛深）。
+  #         净深 0.48 = 毛深 0.50 扣仓门 0.02，与毛深分属两条 fact，不许合成一个数。
+  # 历史 DEC 与 design-iterations 不进镜像。docs/dressing-map.md 仍是生成物旧坐标
+  # (6.823, 3.925)，重生成有独立风险，本族不把它算进镜像。
+
+  - id: fact.robot_dock_gbath_x
+    kind: derived
+    value: "@config/house.yaml:furnishings.guest_bath#find:type=robot_dock_gbath.x"
+    unit: m
+    mirrors:
+      - path: config/house.yaml
+        extract: 'x=(6\.9235) 背沿贴东墙完成面'
+        severity: error
+        expect_matches: 1
+      - path: config/mep-hvac-coordination.yaml
+        extract: 'robot_dock_gbath(?: 落位)? \((6\.9235),'
+        severity: error
+        expect_matches: 2
+
+  - id: fact.robot_dock_gbath_z
+    kind: derived
+    value: "@config/house.yaml:furnishings.guest_bath#find:type=robot_dock_gbath.z"
+    unit: m
+    mirrors:
+      - path: config/house.yaml
+        extract: 'type: robot_dock_gbath, x: [\d.]+, z: ([\d.]+)'
+        severity: error
+        expect_matches: 1
+      - path: config/house.yaml
+        extract: 'dock 中心 z 3\.925→([\d.]+)'
+        severity: error
+        expect_matches: 1
+      - path: config/mep-hvac-coordination.yaml
+        extract: 'robot_dock_gbath(?: 落位)? \([\d.]+,(3\.86)\)'
+        severity: error
+        expect_matches: 2
+      - path: schedule/procurement.md
+        extract: 'dock z 3\.925→\*\*([\d.]+)\*\*'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.robot_jx_station_footprint
+    kind: narrative
+    value: "@config/house.yaml:参数页 410×433×280mm"
+    unit: mm
+    mirrors:
+      - path: config/house.yaml
+        extract: '参数页 410×433×280mm'
+        severity: error
+        expect_matches: 1
+      - path: config/materials.yaml
+        extract: '基站410×433×280mm'
+        severity: error
+        expect_matches: 1
+      - path: config/materials.yaml
+        extract: '410（长）×433（宽）×280（高）'
+        severity: error
+        expect_matches: 1
+      - path: shared/render/FixtureFactory.ts
+        extract: '410×433×280mm'
+        severity: error
+        expect_matches: 1
+      - path: shared/types.ts
+        extract: '410×433×280mm'
+        severity: error
+        expect_matches: 1
+      - path: schedule/procurement.md
+        extract: '参数页基站 410×433×280'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.robot_bay_clear_width
+    kind: narrative
+    value: "@config/house.yaml:仓门/净宽 0.46"
+    unit: m
+    mirrors:
+      - path: config/house.yaml
+        extract: '仓门/净宽 (0\.46)'
+        severity: error
+        expect_matches: 2
+      - path: config/materials.yaml
+        extract: '仓净宽 (0\.46)'
+        severity: error
+        expect_matches: 1
+      - path: shared/render/FixtureFactory.ts
+        extract: '净宽 ([\d.]+)m'
+        severity: error
+        expect_matches: 1
+      - path: docs/pending-site-data.md
+        extract: '宽 ([\d.]+)>0\.45'
+        severity: error
+        expect_matches: 1
+      - path: schedule/procurement.md
+        extract: '净宽 0\.46'
+        severity: error
+        expect_matches: 2
+
+  - id: fact.robot_bay_net_depth
+    kind: narrative
+    value: "@schedule/procurement.md:净深 0.48（毛深 0.50 扣仓门 0.02）"
+    unit: m
+    mirrors:
+      - path: schedule/procurement.md
+        extract: '净深 0\.48（毛深 0\.50 扣仓门 0\.02）'
+        severity: error
+        expect_matches: 1
+      - path: docs/pending-site-data.md
+        extract: '深 ([\d.]+)>0\.45'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.robot_bay_gross_depth
+    kind: narrative
+    value: "@config/house.yaml:北端机器人仓区 0.50"
+    unit: m
+    mirrors:
+      - path: config/house.yaml
+        extract: '北端机器人仓区 (0\.50)'
+        severity: error
+        expect_matches: 2
+      - path: shared/render/FixtureFactory.ts
+        extract: '北端机器人仓区 (0\.50)'
+        severity: error
+        expect_matches: 1
+      - path: shared/render/FixtureFactory.ts
+        extract: '、深 ([\d.]+)m'
+        severity: error
+        expect_matches: 1
+      - path: schedule/procurement.md
+        extract: '北端机器人仓区 0\.50'
+        severity: error
+        expect_matches: 1
+      - path: schedule/procurement.md
+        extract: '毛深 0\.50'
+        severity: error
+        expect_matches: 1
+
+  # #76 当前基准（现稿）：柜宽与背沿西脸。不是净深/净宽。
+  - id: fact.guest_bath_cabinet_width
+    kind: narrative
+    value: "@docs/pending-site-data.md:柜宽 0.69 贴死"
+    unit: m
+    mirrors:
+      - path: docs/pending-site-data.md
+        extract: '柜宽 ([\d.]+) 贴死'
+        severity: error
+        expect_matches: 1
+      - path: config/house.yaml
+        extract: '柜宽 (0\.69)'
+        severity: error
+        expect_matches: 1
+      - path: config/materials.yaml
+        extract: '柜宽 (0\.69)'
+        severity: error
+        expect_matches: 1
+      - path: schedule/procurement.md
+        extract: '柜宽 0\.70→\*\*([\d.]+)\*\*'
+        severity: error
+        expect_matches: 1
+
+  - id: fact.guest_bath_back_face_x
+    kind: narrative
+    value: "@docs/pending-site-data.md:墙面西脸 7.14"
+    unit: m
+    mirrors:
+      - path: docs/pending-site-data.md
+        extract: '墙面西脸 (7\.14)'
+        severity: error
+        expect_matches: 1
+      - path: config/house.yaml
+        extract: '墙面西脸 (7\.14)'
+        severity: error
+        expect_matches: 1
+      - path: shared/render/FixtureFactory.ts
+        extract: '墙面西脸 (7\.14)'
+        severity: error
+        expect_matches: 1
+      - path: schedule/procurement.md
+        extract: '墙面西脸 \*\*(7\.14)\*\*'
+        severity: error
+        expect_matches: 1
+
   # MEP 协同分层数：8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风），决定走线表的层口径。
   - id: fact.mep_layers_count
     kind: derived
