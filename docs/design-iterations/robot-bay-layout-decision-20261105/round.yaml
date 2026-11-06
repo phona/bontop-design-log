@@ -39,7 +39,7 @@ brief:
     - id: cabinet_drawing_basis
       status: site_pending
       question: "柜体出图基准——2026-11-06 柜/dock 背沿已按渲染口径贴墙面西脸 7.14（SceneBuilder 将 0.12 墙板居中于墙线 7.20，shared/three-scene-geometry.ts:166 同口径）；但 DEC-2026-10-23-R04 的结构读法为「墙带西脸 7.20」，7.14/7.20 两值仍待量房 #76 裁定（偏差 >0.03m 级联回改柜/dock x）；0.69 柜贴死两端（南墙南脸 3.61 + 墙段南端 4.30）0 容差，0.69m 完成面净跨内现行几何已压墙带 3.5-4.5cm（2026-11-06 Codex blocking 后由 0.72 居中改 0.69 贴死）"
-      handling: "量尺复尺（pending #76）；净跨 <0.73m 或墙面不平 >5mm 时柜宽退回 0.70 并重算抽屉区宽度"
+      handling: "量尺复尺（pending #76）；**业主 2026-11-06 裁定：以渲染口径 7.14 先行（台面与背墙贴合即可，家具/穿透 linter 兜底），不作为当前阻塞；量房拿到实测后按新数据回改，偏差 >0.03m 级联回改柜/dock x**；净跨不足或墙面不平时柜宽与分割随实测重算"
     - id: water_pressure
       status: site_pending
       question: 台盆三通处进水压实测（JX 窗口 0.08-0.8MPa；石头 0.1-0.4 且官方不带减压阀）
@@ -52,6 +52,29 @@ brief:
       status: pending
       question: 仓门开启态与整台前拉路径未经模型预演（门为静态建模）；门开度≥110° 或设止位
       handling: 本轮 follow-up；安装现场预演并拍照回填 acceptance 证据
+  evidence:
+    - id: j65_manual
+      file: evidence/manual-keypages.zip（j65-p1/p5/p6/p7/p9）
+      register: evidence/evidence-register.md §1
+      source: 业主 2026-11-05 提供；原件 tmp/capture/jx-manual-2.pdf（md5 5275bbcc664fb1fe1d9a870e12817a84，不入仓）
+      proves: JX 超薄版官方型号 YJCC034+YJCB034S、尘袋/清洁液前面板取放（无顶部开盖）、参数 410×433×280/8.71kg/0.08-0.8MPa、摆放前方≥0.45m
+    - id: j64_manual
+      file: evidence/manual-keypages.zip（j64-p9）
+      register: evidence/evidence-register.md §2
+      source: 业主 2026-11-05 提供；原件 tmp/capture/jx-manual-attachment.pdf（md5 6298736d305a4e317042a85851ce97c0，不入仓）
+      proves: 水箱版参数 431×402×461/9.55kg（版本对照；调研旧数字来源）
+    - id: roborock_manual
+      file: evidence/manual-keypages.zip（roborock-p8/p15）
+      register: evidence/evidence-register.md §3
+      source: 业主 2026-11-05 提供；原件 tmp/capture/roborock-doc.pdf（md5 78d54a20ebe208ca46b742cf067260af，不入仓）
+      proves: 石头 Vida 摆放 30.5/40/120cm、水压 0.1-0.4MPa、无柜内安装章节、顶盖取袋
+    - id: ecovacs_manual
+      file: evidence/manual-keypages.zip（ecovacs-p8/p25）
+      register: evidence/evidence-register.md §4
+      source: 官网下载 https://static.ecovacs.cn/upload/oms/2026/08/31/20260831161153934.pdf（2026-11-05 观察）；原件 tmp/capture/pdfrender/t80splus_manual.pdf（md5 579cfae6c0793f0dde9e4e64d3863780，不入仓）
+      proves: 科沃斯 T80S PLUS 预留 415/252/480mm、前方 0.6m、参数 410×449×247/0.7MPa
+    - id: evidence_policy
+      note: 业主 2026-11-06 裁定：官方手册登记但不直接上原库（四份 PDF 共约 18.5MB 太大）——采「关键页渲染图打包（619KB）+ 登记簿逐条原文摘录 + 来源/md5/观察日」轻量法；需要全文时按 md5 核对后取原件
   acceptance:
     commands:
       - npm run verify:furniture
@@ -170,9 +193,11 @@ review:
       - config/acceptance.yaml
       - schedule/procurement.md
     asset_refs:
-      - tmp/capture/jx-manual-2.pdf
-      - tmp/capture/jx-manual-attachment.pdf
-      - tmp/capture/roborock-doc.pdf
+      - evidence/manual-keypages.zip
+      - evidence/evidence-register.md
+      - tmp/capture/jx-manual-2.pdf（业主提供原件，md5 见登记簿）
+      - tmp/capture/jx-manual-attachment.pdf（业主提供原件，md5 见登记簿）
+      - tmp/capture/roborock-doc.pdf（业主提供原件，md5 见登记簿）
     render_facts_ref: verify:furniture / verify:all / typecheck / test:server 四连（见 brief.acceptance）
     source_digest: robot-bay-layout-decision-20261105-r5
     generated_at: '2026-11-05T19:55:00+08:00'
