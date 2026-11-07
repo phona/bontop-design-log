@@ -11,14 +11,33 @@
 # parseOverlay(text) 仍供测试喂 fixture 文本）。
 #
 # ── DEC 引用登记（issue #98 第三阶段 S6，只登记不改）─────────────────────────
-# 本文件 reason/note 含 **29 处 DEC 引用**（6 个唯一编号），与原 config/layout/overlay.yaml
-# 的 87 处同源——overlay 拆除后它们分散到：openings 29 + floor-zones 4 + finish-defaults 3
-# + ceiling 44 = **80 处**仍住 envelope 四文件；面层配方的 reason 随 S4 下沉进
-# config/layout/model-geometry.yaml 的墙 finish 带（12 行），派生踢脚的 reason 在
-# shared/skirting-derivation.ts（4 处）。合计即勘察口径「overlay 95 + ceiling 17」的现状落点。
-# 这是 issue #98 **阶段 C（DEC 退役 → intent/evidence）的输入清单**：S1–S6 一律原样保留、
+# 计数口径（全片唯一，可 grep 复现；2026-11-07 评审 blocking 后按此口径重数）：
+#   出现次数  rg -o 'DEC-[A-Za-z0-9._-]+' <file> | wc -l
+#   唯一编号  rg -o 'DEC-[A-Za-z0-9._-]+' <file> | sort -u | wc -l
+# 该口径覆盖 full-form 日期号、带后缀的家族号（TILE-01 一类）与旧短号（三位数字编号），
+# 全文件计（reason/note 与注释都算——阶段 C 要迁的是散文里的裁定溯源，注释同属散文）。
+# 注意：本登记段自身不得写出任何 DEC-<编号> 字面量，否则口径会把注释数进去、数字即刻失真。
+# 本段数字全部按该口径实测（2026-11-07，HEAD 993eae97）：
+#   config/model/envelope/openings.yaml        32 处 /  8 个唯一编号
+#   config/model/envelope/floor-zones.yaml      9 处 /  4
+#   config/model/envelope/finish-defaults.yaml  3 处 /  2
+#   config/model/envelope/ceiling.yaml         45 处 / 24
+#   ── envelope 四文件小计 89 处（唯一编号并集 38 个）
+#   config/layout/model-geometry.yaml          61 处 / 14（其中墙 finish.tile_bands /
+#       paint_bands 的 reason 12 处，来自原 overlay 的 wall_region/paint_region 声明；
+#       其余 49 处住几何/顶点/墙/房间注释，不属面层配方）
+#   shared/skirting-derivation.ts               4 处 /  2（派生踢脚 reason）
+#   ── 本片现状合计 154 处
+# 溯源（同口径实测 master 两份原文件）：config/layout/overlay.yaml 96 处（95 行、22 个唯一
+# 编号）、config/ceiling.yaml 45 处（17 行、24 个唯一编号）。ceiling 侧 45 处一字未改地住在
+# ceiling.yaml；overlay 侧 96 处中 60 处可直指现文件（32+9+3+12+4），其余 36 处随 S3/S4/S5
+# 的结构改写（suppress 镜像表退场、面层配方下沉时的注释合并）不再以原形式存在——那是 S1–S5
+# 的既有事实，不是本表的增删。S6 本身对 DEC 引用零增删：同口径实测 parent 5558d493 与
+# HEAD 993eae97 的 config/+shared/ 出现总数均为 1322，且逐文件相同。
+# 这些引用是 issue #98 **阶段 C（DEC 退役 → intent/evidence）的输入清单**：S1–S6 一律原样保留、
 # 不改写不删除；阶段 C 才逐条迁往对象 intent 字段并让 c.dec_unique / c.dec_ref_resolvable
-# 等契约退场。迁移中新增注释若引用 DEC，登记数以本段为准重新计数，不得静默增长。
+# 等契约退场。**权威是上面的口径与命令，不是本段的数字**：声明演进后数字会变，按同一命令
+# 重数并更新本段；只改数字不改口径、或口径变了不重数，都算登记腐烂。
 version: 1
 
 elements:

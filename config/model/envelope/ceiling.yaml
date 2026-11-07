@@ -2,11 +2,12 @@
 # drop 16（含 5 窗帘盒 + 1 晾衣架的 trade 显式声明）+ aluminum_buckle 3 + ac_indoor 6 = 25 条目，id 零重编号。
 # ac_indoor 被 hvac.yaml 以 ref:{source:ceiling,id:ac_*} 结构化引用 6 处、electrical sock_*_ac 供电；
 # 「吊顶里的设备位」归属裁决不在本切片。唯一 loader：server/config-loader.ts loadCeilingConfig()。
-# DEC 引用登记（issue #98 第三阶段 S6，只登记不改）：本文件 reason/note 含 **44 处 DEC 引用**
-# （23 个唯一编号，集中在 ceiling_living 一条数千字符 note 的 R4/R18/R03/C02/R01/R02 全过程），
-# 与原 config/ceiling.yaml 的 17 处同源（17 = 唯一编号口径，44 = 出现次数口径）。与 openings
-# 29 + floor-zones 4 + finish-defaults 3 同属阶段 C「DEC 退役 → intent/evidence」的输入清单，
-# S1–S6 原样保留、不改写不删除（详见 config/model/envelope/openings.yaml 头注的落点登记）。
+# DEC 引用登记（issue #98 第三阶段 S6，只登记不改）：本文件含 **45 处 DEC 引用 / 24 个唯一
+# 编号**（口径：rg -o 'DEC-[A-Za-z0-9._-]+' 本文件 | wc -l / | sort -u | wc -l；集中在
+# ceiling_living 一条数千字符 note 的 R4/R18/R03/C02/R01/R02 全过程）。同口径实测 master 的
+# config/ceiling.yaml 也是 45 处 / 17 行含 DEC / 24 个唯一编号——搬迁前后一字未改，本段登记
+# 注释自身贡献 0 处。与 openings 32 + floor-zones 9 + finish-defaults 3 同属阶段 C
+# 「DEC 退役 → intent/evidence」的输入清单（逐文件表与汇总算式见 openings.yaml 头注）。
 - id: ceiling_living
   room: living_dining
   type: drop

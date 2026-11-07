@@ -2,9 +2,10 @@
 # floor_region 6：绝对 points 是它们与挂墙元素的本质区别；follow / excluded 是独立管理语义
 # （DEC-041 过渡地面、DEC-2026-10-09-P16 显式排除），c.layout_region_room_overlap 契约盯着。
 # id 零重编号。合并读取入口：server/overlay-merge.ts parseOverlayFiles()。
-# DEC 引用登记（S6，只登记不改）：本文件 reason/note 含 **4 处 DEC 引用**，与 openings 29 +
-# finish-defaults 3 + ceiling 44 同属 issue #98 阶段 C「DEC 退役」的输入清单（详见
-# config/model/envelope/openings.yaml 头注的落点登记）。
+# DEC 引用登记（S6，只登记不改）：本文件含 **9 处 DEC 引用 / 4 个唯一编号**（口径：
+# rg -o 'DEC-[A-Za-z0-9._-]+' 本文件 | wc -l），与 openings 32 + finish-defaults 3 +
+# ceiling 45 同属 issue #98 阶段 C「DEC 退役 → intent/evidence」的输入清单——逐文件表、
+# 汇总算式与 master 溯源见 config/model/envelope/openings.yaml 头注的主登记段。
 elements:
   # 地板补区
   - id: entry_garden_floor
