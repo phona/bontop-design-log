@@ -1,8 +1,10 @@
-# ── 定位声明（2026-11-07 issue #98 第四阶段 S1/S2，设计文档 §4.3/§4.4）────────────────
+# ── 定位声明（2026-11-07 issue #98 第四阶段 S1/S2/S3，设计文档 §4.3/§4.4）────────────────
 # 四种互斥定位来源之一：wall + along（沿墙）/ mount（家具挂载，S2 起为真定位来源）/ anchor
-# （锚点引用，S4 启用）/ absolute（绝对坐标）。x/z 是**迁移期断言字段**：shared/point-placement.ts
-# 的解析结果与声明值差 >0.005m 即 fail（tests/server/point-placement.test.ts 固化），全量转
-# along 且断言全绿后（S3）删除。
+# （锚点引用，S4 启用）/ absolute（绝对坐标）。S3（2026-11-07）起沿墙/挂载点位的 x/z 声明已删
+# （S1/S2 断言期逐点证明解析结果 == 声明值后移除），平面位置只有 shared/point-placement.ts
+# 一个来源；x/z 现在只属于 absolute 点位（C/D/E/F 组：顶面灯位/建筑服务基准/地面排水口/
+# 器具邻接点）。回路归属同理单一源：点位侧 circuit 字段已废，成员关系只住
+# config/electrical-topology.yaml 的 member_point_ids（派生见 shared/point-circuits.ts）。
 # along 起算 = 墙段起点顶点 (x1,z1) 沿折线累计（与家具摆位、洞口投影同一口径）。
 # face_offset = 离开完成面的附加量（默认 0 = 完成面；完成面 = 墙线 ± WALL_THICKNESS/2 = ±0.06，
 # 2026-11-06 业主口径 A，声明唯一在 shared/furniture-placement.ts）。S2 重标定：S1 迁移期的
@@ -23,8 +25,6 @@
   type: faucet
   water_temp: "mixed"
   water_dn: 20
-  x: 0.575
-  z: 2.96
   height: 0.8
   note: "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；DEC-2026-10-03-R1：当前 faucet_kitchen_sink 同款 h=0.8 是抽象服务点，不足施工——台上盆+壁挂龙头需单独定义冷热水预埋、暗装阀体/出水嘴高度与墙排中心，等台盆/龙头 SKU 冻结后才能埋设，水电工不得按 0.8m 抽象点直接开槽（site_pending）"
 
@@ -36,8 +36,6 @@
   face_offset: 0.04
   type: drain
   drain_dn: 50
-  x: 0.575
-  z: 2.96
   height: 0.35
   note: "2026-08-25 台盆墙排下水（h0.35），穿墙回主卫沉箱接原立管；2026-09-02 初版随盆居中移至 x=0.575（假定情形，待量房核立管位置与下沉:300 分界线后终核）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-vanity-to-riser`（穿 w_mbath_south 回主卫沉箱，接推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级。原「立管位置未定 → 无法成线」的阻塞由 docs/pending-site-data.md #19 推断值 (0.3,1.3) ±0.3m 落模型解除（推断 ≠ 实测）；台盆/龙头 SKU 仍未冻结（DEC-2026-10-03-R1：台上盆+壁挂龙头的冷热水预埋、暗装阀体/出水嘴高度与墙排中心待 SKU），h=0.35 为抽象服务点，水电工不得按此直接开槽"
 
@@ -50,8 +48,6 @@
   type: shower
   water_temp: "mixed"
   water_dn: 20
-  x: 0.50
-  z: 2.76
   height: 1.0
   note: "主卫淋浴花洒（2026-08-25 隔墙北移2.86随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）；**本轮不画 MEP route**：冷/热给水管路由既无 DEC 定案也无 prose 路径（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 热水器/龙头 SKU 后单独深化（pending #44）；状态依据：花洒本体与挂位为 2026-08-25 随隔墙北移确定的设计值（docs/decisions/12-plumbing.md 登记该两点给水路线端点内联问题），故 status=inferred；pending 的是给水管路而非本点位位置，路由缺口由 #44 跟踪"
   status: inferred
@@ -65,8 +61,6 @@
   type: toilet
   water_temp: "cold"
   water_dn: 20
-  x: 2.60
-  z: 1.5
   note: "主卫马桶给水（DEC-2026-09-08-R1 补声明 wall_side west；DEC-2026-10-03-R1：坐便器形式（落地/壁挂）与坑距未定——壁挂则给水、电、排污全部进假墙，现有墙挂模型整体作废。与同柱电点 sock_mbath_toilet (2.60,1.50) h=0.3 撞线，交底前横向错开 ≥0.15m 或竖向分层；SKU 见 pending-site-data #31）"
 
 # DEC-2026-10-03-R1 补齐主卫马桶排污口：原 plumbing.yaml 无主卫坐便器排污点，
@@ -115,8 +109,6 @@
   type: faucet
   water_temp: "mixed"
   water_dn: 20
-  x: 7.14
-  z: 3.955
   height: 0.84
   status: inferred
   construction_status: pending
@@ -130,8 +122,6 @@
   face_offset: -0.06
   type: drain
   drain_dn: 50
-  x: 6.90
-  z: 3.55
   height: 0.3
   status: inferred
   construction_status: pending
@@ -146,8 +136,6 @@
   type: shower
   water_temp: "mixed"
   water_dn: 20
-  x: 7.20
-  z: 2.45
   height: 1.0
   note: "2026-08-29 客卫北端淋浴花洒；东墙实体墙西侧挂载，坐东朝西，淋浴区 z≈2.30~2.75；**本轮不画 MEP route**：给水管路由无定案（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 花洒 SKU 后单独深化（pending #44）；状态依据：花洒本体与挂位为 2026-08-29 确定的设计值（docs/decisions/12-plumbing.md 登记该两点给水路线端点内联问题），故 status=inferred；pending 的是给水管路而非本点位位置"
   status: inferred
@@ -161,8 +149,6 @@
   type: toilet
   water_temp: "cold"
   water_dn: 20
-  x: 7.20
-  z: 3.05
   height: 0.3
   note: "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.75,3.05)，真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.20,3.05) h=0.3（2026-10-23 DEC-2026-10-23-R04 随东墙线 7.10→7.20 同步）、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31"
 
@@ -244,8 +230,6 @@
   type: faucet
   water_temp: "mixed"
   water_dn: 20
-  x: 5.60
-  z: 1.5
   height: 0.8
   note: "生活阳台洗衣机给水（DEC-2026-10-08-W02：上游 from 由内联 (7.3,1.08) 改绑 water_heater 锚点，与热水器平面差 0.08m 属原候选偏移，量房后以热水器实测位为准）"
 
@@ -268,8 +252,6 @@
   type: faucet
   water_temp: "cold"
   water_dn: 20
-  x: 10.80
-  z: 1.5
   height: 0.8
   status: inferred
   construction_status: pending

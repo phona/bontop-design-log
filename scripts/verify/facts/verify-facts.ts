@@ -136,6 +136,24 @@ if (mepSources) {
     if (at) mepEndpoints[id] = at;
   }
 }
+// ── 点位解析后坐标（issue #98 S3：fact.gas_alarm_x/z 的锚点机器源）────────────
+// 沿墙/挂载点位删 x/z 后（S3），坐标权威值不再住在 config/electrical.yaml 里，改由
+// shared/point-placement.ts 单一解算给出。这里与上面 mep.endpoints **同一构造**
+// （同一份 mepSources、同一个 resolveMepEndpoint），不另写一套几何——否则 facts 契约
+// 盯的坐标会和 DXF/3D/lint 盯的不是同一个点。
+const pointPositions: Record<string, { x: number; z: number }> = {};
+if (mepSources) {
+  for (const doc of mepDocs) {
+    for (const point of (Array.isArray(doc.doc) ? doc.doc : []) as Array<{ id?: unknown }>) {
+      const id = typeof point?.id === 'string' ? point.id : undefined;
+      if (!id || pointPositions[id]) continue;
+      const at = resolveMepEndpoint(id, mepSources);
+      // 取到 6 位小数（µm）再入 dataset：解析是浮点运算，docs 镜像写的是 2 位小数 prose，
+      // 不 round 会让 0.20000000000000018 ≠ 0.20 这种纯噪声判红。真实漂移（≥1µm）仍会红。
+      if (at) pointPositions[id] = { x: Number(at.x.toFixed(6)), z: Number(at.z.toFixed(6)) };
+    }
+  }
+}
 const mepRoomHeights: Record<string, number> = {};
 for (const room of (geometry?.rooms ?? []) as any[]) {
   if (room?.id && typeof room.height === 'number') mepRoomHeights[room.id] = room.height;
@@ -260,6 +278,7 @@ const workspace: FactsWorkspace = {
     ...budgetParityDatasets,
     // MEP 契约（c.mep_layer_below_drop_bottom）的端点坐标与房间净高。
     'mep.endpoints': mepEndpoints,
+    'points.resolved': pointPositions,
     'mep.room_heights': mepRoomHeights,
   },
 };

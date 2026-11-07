@@ -26,6 +26,7 @@ import {
   type MepRoute,
   type MepRouteResolutionReport,
 } from './mep-hvac-coordination-schema.js';
+import { derivePointCircuits } from './point-circuits.js';
 import type { ElectricalPoint, PlumbingPoint } from './types.js';
 
 type ResolvedMepRoute = MepRouteResolutionReport['routes'][number];
@@ -509,22 +510,11 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const pointHeights = new Map<string, { height?: number }>();
   for (const point of [...electrical, ...plumbing]) if (point.height !== undefined) pointHeights.set(point.id, { height: point.height });
 
-  // ---------- 点位 → 回路 的三条声明通道（都不猜）----------
-  // ① topology.member_point_ids：回路成员（79/100 个点位）
-  const pointCircuit = new Map<string, string>();
-  for (const circuit of circuits) {
-    for (const member of circuit.member_point_ids ?? []) {
-      if (!pointCircuit.has(member)) pointCircuit.set(member, circuit.id);
-    }
-  }
-  // ② controls.switch_point_ids → target_point_ids：开关受控灯具所属回路（双控/三控的开关本身不是成员）
-  const pointByIdCircuit = new Map(electrical.map((point) => [point.id, point.circuit]));
-  for (const control of controls) {
-    const targets = (control.target_point_ids ?? []).map((id) => pointCircuit.get(id) ?? pointByIdCircuit.get(id)).filter((value): value is string => Boolean(value));
-    for (const switchId of control.switch_point_ids ?? []) {
-      if (targets.length > 0 && !pointCircuit.has(switchId)) pointCircuit.set(switchId, targets[0]);
-    }
-  }
+  // ---------- 点位 → 回路 单一派生（issue #98 S3，shared/point-circuits.ts）----------
+  // 原三条声明通道：① topology.member_point_ids、② controls 反推、③ point.circuit 字段。
+  // ③ 已退役（成员关系只住回路侧），①② 收拢成 derivePointCircuits 一处实现——
+  // lint（covered/point_uncovered）、DXF 标注、派生文档与这里同源，不各写一遍。
+  const { pointCircuits: pointCircuit } = derivePointCircuits({ circuits, controls });
   const resolvedById = new Map(resolution.routes.map((item) => [item.route.id, item]));
   const drawnPlanPaths: Array<Array<{ x: number; z: number }>> = [];
   /** 每条回路的画线路由平面路径（同回路 union：同一回路内共享段只铺一次管、只穿一次线）。 */

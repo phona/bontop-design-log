@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { parseElectricalTopology, ElectricalPointSchema } from '../../shared/project-render-facts-schema.js';
 import { lintElectricalTopology } from '../../shared/electrical-lint.js';
+import { derivePointCircuits } from '../../shared/point-circuits.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { parseOverlay } from '../../server/overlay-merge.js';
 import type { ElectricalPoint, ElectricalTopology, FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
@@ -103,10 +104,67 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   const result = lintElectricalTopology(topology, points);
   assert.equal(result.errors.filter((i) => i.code === 'circuit_fact_mismatch').length, 0);
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
+  // issue #98 S3：点位侧 circuit 字段退役，控制目标必须在某条回路上（否则开关的回路归属
+  // 无从派生——旧 point.circuit 在控制目标点上意外承担的那半份校验，由这条接住）。
+  assert.equal(result.warnings.filter((i) => i.code === 'control_target_circuit_unresolved').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
   assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 28); // DEC-2026-10-27-R01 删 switch_parent_bed（未覆盖点）29→28； // 2026-10-05 R15：+switch_guest_bed（床头双控开关非负载点，28→29）// DEC-2026-10-06-R2：+sock_kitchen_oven（29→30）；DEC-2026-10-12-R1 删两盏壁灯（30→28）；R2 删 switch_mbath/switch_gbath 两个非负载开关点（28→26）→ 当前 26 // 外机点位已入回路，不增未覆盖；DEC-2026-10-17-R20：+net_master_ap 未入回路（28→29）
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
+});
+
+// ── issue #98 第四阶段 S3：点位侧 circuit 字段退役，成员关系钉断 ────────────────
+// 原 13 个点位在 config/electrical.yaml 手写 `circuit: <source 名>`，与 topology 的
+// member_point_ids 双写，由 lint 的 circuit_fact_mismatch（error）交叉校验。S3 起声明只住
+// member_point_ids 一处，「两份声明漂移」按构造不可能；这里把当年的成员关系钉成显式断言——
+// 删错/加错一个成员即红（与旧 error 同一道 CI 门禁），防止单一源化被当成「校验没了」。
+const RETIRED_CIRCUIT_DECLARATIONS: Record<string, string> = {
+  light_dining_pendant: 'lighting_dining',
+  light_living_dome: 'lighting_living_base',
+  light_corridor_1: 'lighting_entry_base',
+  light_entry_down: 'lighting_entry_base',
+  light_entry_foyer: 'lighting_entry_base',
+  night_guest_door: 'lighting_entry_base',
+  night_living_north: 'lighting_entry_base',
+  night_living_mid: 'lighting_entry_base',
+  night_corridor: 'lighting_entry_base',
+  sock_guest_bed_l: 'ordinary_power_parent_child',
+  sock_guest_bed_r: 'ordinary_power_parent_child',
+  night_guest_bed_side: 'lighting_bedrooms_bath',
+  night_guest_head: 'lighting_bedrooms_bath',
+};
+
+test('retired point-side circuit declarations stay locked as member_point_ids assertions (S3)', () => {
+  const topology = parseElectricalTopology(raw, points);
+  const byId = new Map(points.map((point) => [point.id, point]));
+  for (const [pointId, circuitId] of Object.entries(RETIRED_CIRCUIT_DECLARATIONS)) {
+    assert.ok(byId.has(pointId), `${pointId} 不存在（退役声明表过期了？同步更新本断言）`);
+    // 单源化后点位侧不得再出现 circuit 声明（schema 已删字段，这里是双保险）
+    assert.equal((byId.get(pointId) as { circuit?: string }).circuit, undefined, `${pointId} 不得再声明 circuit 字段`);
+    const circuit = topology.circuits.find((item) => item.id === circuitId);
+    assert.ok(circuit, `回路 ${circuitId} 不存在（退役声明表过期了？同步更新本断言）`);
+    assert.ok(circuit.member_point_ids.includes(pointId), `${pointId} 必须仍是 ${circuitId} 的成员（member_point_ids 是唯一事实源；删除成员须同步改本断言并说明理由）`);
+  }
+  // 派生一致性：single-source 派生把这些点位放回同一批回路
+  const derived = derivePointCircuits(topology);
+  for (const [pointId, circuitId] of Object.entries(RETIRED_CIRCUIT_DECLARATIONS)) {
+    assert.equal(derived.memberCircuits.get(pointId), circuitId, `${pointId} 派生回路不符`);
+  }
+  // source_circuit_id 间接层已废：拓扑文件里不许再出现
+  assert.ok(!JSON.stringify(topology).includes('source_circuit_id'), 'source_circuit_id 间接层应随点位侧 circuit 字段一并废除');
+});
+
+test('a control whose target is on no circuit is surfaced (S3 cross-check)', () => {
+  const topology = parseElectricalTopology(raw, points);
+  const stripped = {
+    ...topology,
+    circuits: topology.circuits.map((circuit) => (
+      circuit.id === 'lighting_dining' ? { ...circuit, member_point_ids: circuit.member_point_ids.filter((id) => id !== 'light_dining_pendant') } : circuit
+    )),
+  };
+  const result = lintElectricalTopology(stripped, points);
+  assert.ok(result.warnings.some((i) => i.code === 'control_target_circuit_unresolved' && /light_dining_pendant/.test(i.message)), JSON.stringify(result.warnings.filter((i) => i.code === 'control_target_circuit_unresolved')));
+  assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'light_dining_pendant'), '掉出回路的受控灯必须同时显形 point_uncovered');
 });
 
 // ── 2026-10 新增三条规范规则（全部 warning 起步）──────────────────────────────

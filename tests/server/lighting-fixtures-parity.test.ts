@@ -26,10 +26,11 @@ import {
 import { parseElectricalPoints, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsFromFiles } from '../../scripts/project/project-render-facts-projection.js';
 import { buildRuntimeScene, loadSceneInputs } from '../../shared/penetration/scene.js';
-import { pointMountHostIndex } from '../../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
 import type { PlacementItem } from '../../shared/furniture-placement.js';
 import { load as parseYaml } from 'js-yaml';
-import type { ElectricalPoint, RenderLightingFixture, RenderLightingOverride } from '../../shared/types.js';
+import type { ElectricalPoint, RenderLightingFixture, RenderLightingOverride, VertexLayoutYaml } from '../../shared/types.js';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const read = (relative: string) => readFileSync(new URL(`../../${relative}`, import.meta.url), 'utf8');
@@ -45,6 +46,14 @@ const houseMountHosts = () => {
   const house = parseYaml(read('config/house.yaml')) as { furnishings?: Record<string, PlacementItem[]> };
   return pointMountHostIndex(Object.values(house.furnishings ?? {}).flat());
 };
+
+/**
+ * 挂墙灯具的宿主墙索引（issue #98 S3）：与投影脚本/服务端/3D 同一构造
+ * （resolveLayout(model-geometry) → pointWallIndexFromElements）。
+ */
+const housePointWalls = () => pointWallIndexFromElements(
+  resolveLayout(parseYaml(read('config/layout/model-geometry.yaml')) as VertexLayoutYaml).walls,
+);
 
 const override = (id: string, extra: Partial<RenderLightingOverride> = {}): RenderLightingOverride => ({
   id,
@@ -66,7 +75,7 @@ const point = (extra: Partial<ElectricalPoint> & Pick<ElectricalPoint, 'id' | 't
 describe('lighting fixture derivation parity', () => {
   it('derives the same fixtures in the linter as in the authoritative projection', () => {
     const projection = buildProjectRenderFactsFromFiles(ROOT);
-    const derived = buildRenderLightingFixtures(houseElectrical(), houseOverrides(), houseMountHosts());
+    const derived = buildRenderLightingFixtures(houseElectrical(), houseOverrides(), houseMountHosts(), housePointWalls());
     assert.deepEqual(derived, projection.lightingFixtures);
     // 键序也要一致：project-render-facts 的 schema 对产出键序敏感（见 project-render-facts-schema.ts）。
     assert.equal(JSON.stringify(derived), JSON.stringify(projection.lightingFixtures));
@@ -74,7 +83,7 @@ describe('lighting fixture derivation parity', () => {
 
   it('computes the same position for every fixture id, offset included', () => {
     const projection = buildProjectRenderFactsFromFiles(ROOT);
-    const derived = new Map(buildRenderLightingFixtures(houseElectrical(), houseOverrides(), houseMountHosts()).map((fixture) => [fixture.id, fixture]));
+    const derived = new Map(buildRenderLightingFixtures(houseElectrical(), houseOverrides(), houseMountHosts(), housePointWalls()).map((fixture) => [fixture.id, fixture]));
     assert.equal(derived.size, projection.lightingFixtures.length);
     for (const expected of projection.lightingFixtures) {
       const actual = derived.get(expected.id);
@@ -137,12 +146,16 @@ describe('lighting fixture derivation parity', () => {
 
 describe('lighting fixture derivation fail-closed', () => {
   it('applies offsetX/offsetZ and keeps host wall metadata', () => {
+    // issue #98 S3：挂墙灯具平面位置走解析器——合成墙 x=2、along 1 → datum (2,1)，
+    // 完成面 = 2 − 半墙厚 0.06 = 1.94，再加 offsetX 0.15 → 2.09；z = 1 − 0.25 = 0.75。
     const derived = buildRenderLightingFixtures(
-      [point({ id: 'lamp', type: 'wall_lamp', wall: 'w_liv_east', wallSide: 'west' })],
+      [point({ id: 'lamp', type: 'wall_lamp', wall: 'w_liv_east', wallSide: 'west', along: 1 })],
       [override('lamp', { offsetX: 0.15, offsetZ: -0.25, anchorY_offset: -0.25 })],
+      undefined,
+      new Map([['w_liv_east', { segments: [{ x1: 2, z1: 0, x2: 2, z2: 10 }], line_datum: 'centerline' }]]),
     );
     assert.equal(derived.length, 1);
-    assert.deepEqual(derived[0].position, { x: 1.15, y: 2.55, z: 1.75 });
+    assert.deepEqual(derived[0].position, { x: 2.09, y: 2.55, z: 0.75 });
     assert.equal(derived[0].wallId, 'w_liv_east');
     assert.equal(derived[0].wallSide, 'west');
     assert.equal(derived[0].temperatureK, 3000);

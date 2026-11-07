@@ -1247,9 +1247,10 @@ export interface ElectricalPoint {
   room: string;
   type: ElectricalPointType;
   /**
-   * 迁移期断言字段（issue #98 第四阶段 S1）：沿墙点位的解析结果与声明值差 >0.005m 即 fail
-   * （tests/server/point-placement.test.ts 固化为测试）。定位来源是 wall + along / mount /
-   * anchor / absolute 四者之一，x/z 不再是定位来源；S3 全量转 along 且断言全绿后删除。
+   * 绝对坐标（issue #98 第四阶段 S3 起只属于绝对定位来源）：C/D/E/F 组点位（顶面灯位/
+   * 建筑服务基准/地面排水口/器具邻接点）以声明 x/z 为唯一事实源。沿墙与挂载点位不再
+   * 声明 x/z——平面位置由 wall + along / mount 解算（shared/point-placement.ts），
+   * S1/S2 的迁移期断言（解析结果 == 声明值，容差 0.005m）已全绿并随字段一并删除。
    */
   x?: number;
   z?: number;
@@ -1269,7 +1270,6 @@ export interface ElectricalPoint {
   host_intent?: string;
   mountAnchor?: FurnitureFaceMountAnchor;
   temp?: number;
-  circuit?: string;
   count?: number;
   heads?: number;
   recessed?: boolean;
@@ -1312,7 +1312,8 @@ export interface ElectricalTopologyCircuit {
   status: ElectricalTopologyStatus;
   member_point_ids: string[];
   dedicated_load?: boolean;
-  source_circuit_id?: string;
+  // 2026-11-07 issue #98 S3：source_circuit_id（点位侧 circuit 词汇 → 回路 id 的间接层）已废——
+  // 点位侧 circuit 字段退役后没有读者，留着就是一份会对不上的死映射。
   capacity?: string;
   wire_size?: string;
   breaker?: string;
@@ -1372,7 +1373,7 @@ export interface PlumbingPoint {
   id: string;
   room: string;
   type: PlumbingPointType;
-  /** 迁移期断言字段（issue #98 S1）：解析结果与声明值差 >0.005m 即 fail；S3 删除。 */
+  /** 绝对坐标（S3 起只属于绝对定位来源）：建筑服务基准/地面排水口等 C/D/E 组点位的事实源。 */
   x?: number;
   z?: number;
   wall?: string;
@@ -1829,7 +1830,9 @@ export interface RenderLightingFixture {
   position: Vec3;
   temperatureK: number;
   enabled: boolean;
-  circuit?: string;
+  // 2026-11-07 issue #98 S3：circuit 直传已删——它唯一的来源是退役的点位侧 circuit 字段，
+  // 渲染链没有任何消费者；回路归属改由 shared/point-circuits.ts 按 topology 单一派生，
+  // 在真正消费它的地方（DXF 标注 / dressing-map / mep-takeoff 覆盖报告）显形。
   heads?: number;
   recessed?: boolean;
   /** Wall centerline host for wall-mounted fixtures. */

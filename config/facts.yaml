@@ -26,6 +26,8 @@
 #        `#field_sum:<f>`     数组里每个对象的 <f> 求和
 #        `#find:<k>=<v>`      在数组里找 <k> 等于 <v> 的元素，后续路径段继续深入
 #      最小示例：`value: "@config/electrical-topology.yaml:circuits.length"`
+#      点位坐标字段改 along（issue #98 S3）后，坐标权威值改锚入口脚本预算的解析结果：
+#      `value: "dataset:points.resolved.<点位id>.x"`（机器源见 scripts/verify/facts/verify-facts.ts）。
 #    - kind: narrative 权威值是一句人写的话，value 写 `@<file>:<字面定位串>`。
 #      引擎用后半段**逐字**在文件里定位，取其中第一个数字作为权威值。
 #      定位不到 → `authoritative_unresolvable`（error）。
@@ -902,7 +904,9 @@ facts:
 
   - id: fact.gas_alarm_z
     kind: derived
-    value: "@config/electrical.yaml:#find:id=sock_kitchen_gas.z"
+    # 2026-11-07 issue #98 S3：sock_kitchen_gas 是沿墙点位，x/z 声明已删——坐标权威值改锚
+    # 解析后坐标（shared/point-placement.ts 单一解算，与 DXF/3D/MEP 同源），不再直读配置字段。
+    value: "dataset:points.resolved.sock_kitchen_gas.z"
     unit: m
     mirrors:
       - path: docs/mep-construction-guidance.md
@@ -1035,7 +1039,8 @@ facts:
   # 三处（electrical.yaml / mep-guidance / pending #32）必须同值，否则合规结论失据。
   - id: fact.gas_alarm_x
     kind: derived
-    value: "@config/electrical.yaml:#find:id=sock_kitchen_gas.x"
+    # 2026-11-07 issue #98 S3：同 fact.gas_alarm_z——沿墙点位坐标改锚解析后坐标。
+    value: "dataset:points.resolved.sock_kitchen_gas.x"
     unit: m
     as_of: DEC-2026-10-04-R2
     mirrors:
@@ -1548,6 +1553,12 @@ contracts:
   # 因此本契约登记为「已武装、0 命中」的前置契约：词汇一旦有人启用就开始强制
   # 「每个 leb 点位必须带坐标/高度 + note（note 里写联结金属构件清单与规范关系）」，
   # 而 0 命中这件事通过 pending 在报告 INFO 里露面，不会悄悄腐烂。
+  #
+  # 2026-11-07 issue #98 S3 显式登记（设计文档 §6.1-3，**本 PR 不改契约语义**）：
+  # `then: [x, z, ...]` 与「沿墙点位只声明 wall+along」存在**潜在**冲突——端子箱落点
+  # 若在卫浴墙面上， leb 点位会走 along 定位而不带 x/z，届时本契约会误报。属 facts 层
+  # 手术（改 then 为 along 或显式允许绝对例外），须单独论证、单独门禁，不混在定位迁移里
+  # 静默改。跟踪 docs/pending-site-data.md #43（该行「待测量项」已同步登记）。
   - id: c.leb_point_requires_bond_schedule
     kind: requires_when
     path: config/plumbing.yaml

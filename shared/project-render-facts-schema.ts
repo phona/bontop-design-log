@@ -40,15 +40,22 @@ const ElectricalFixtureAppearanceSchema = z.object({
 }).strict();
 
 /**
- * 点位定位声明（issue #98 第四阶段 S1/S2，设计文档 §4.3）：四种互斥定位来源之一——
+ * 点位定位声明（issue #98 第四阶段 S1/S2/S3，设计文档 §4.3）：四种互斥定位来源之一——
  * `wall + along`（沿墙）/ `mount`（家具挂载，S2 起为真定位来源）/ `anchor`（锚点引用）/
- * `absolute`（绝对坐标）。x/z 从必填改为**迁移期断言字段**：解析结果与声明值差 >0.005m 即
- * fail（tests/server/point-placement.test.ts 固化为测试），全量转 along 且断言全绿后才删
- * （S3）。解算实现见 shared/point-placement.ts。
+ * `absolute`（绝对坐标）。x/z 从必填改为**条件必填**：S1/S2 迁移期它俩是断言字段
+ * （解析结果与声明值差 >0.005m 即 fail，tests/server/point-placement.test.ts），
+ * S3（2026-11-07）79 个沿墙点位 + 2 个柜面挂载点位的 x/z 已删——沿墙/挂载点位的平面
+ * 位置只由 wall+along / mount 解算（shared/point-placement.ts），绝对点位（C/D/E/F 组：
+ * 顶面灯位/建筑服务基准/地面排水/器具邻接点）保留声明 x/z。解算实现见
+ * shared/point-placement.ts。
  *
  * S2 变更：mount_anchor（身份注记 + 手写 x/z 人工同步的旧机制）已废，由 mount
  * （furniture_id + face + along + surface_gap + face_offset）承担定位——宿主移动时点位
  * 自动跟随。原 mount_anchor 的 kind 字段（唯一合法值 furniture_face）由解析投影自动补上。
+ *
+ * S3 变更：点位侧 `circuit` 字段退役——回路成员关系只住 electrical-topology.yaml 的
+ * member_point_ids，点位 → 回路的读一律走 shared/point-circuits.ts 的单一派生
+ * （lint / mep-takeoff / DXF 标注 / 派生文档同源）。
  */
 const PointWallAnchorSchema = z.object({
   wall: nonEmpty,
@@ -73,8 +80,7 @@ const PointAnchorSchema = z.object({ source: nonEmpty, id: nonEmpty }).strict();
  * 定位来源唯一性 + x/z 条件必填。沿墙点位必须 wall+wall_side+along 齐备（x/z 删除后
  * wall_side 无从从坐标反推）；绝对点位必须 x/z 齐备；mount 点位必须 along（沿脸位置）。
  * 违反即拒绝加载——定位声明不允许同时住两个事实源。
- */
-function refinePointPlacement<T extends { x?: number; z?: number; wall?: string; wall_side?: unknown; along?: number; face_offset?: number; mount?: unknown; anchor?: unknown; absolute?: boolean }>(
+ */function refinePointPlacement<T extends { x?: number; z?: number; wall?: string; wall_side?: unknown; along?: number; face_offset?: number; mount?: unknown; anchor?: unknown; absolute?: boolean }>(
   value: T,
   ctx: z.RefinementCtx,
 ): void {
@@ -114,7 +120,9 @@ export const ElectricalPointSchema = z.object({
   mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
   /** 宿主意图标注（F 组器具邻接点）：只作文档与校验输入，不参与解算。 */
   host_intent: nonEmpty.optional(),
-  temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
+  // 2026-11-07 issue #98 S3：点位侧 circuit 字段退役（成员关系只住 electrical-topology.yaml 的
+  // member_point_ids，读一律走 shared/point-circuits.ts 单一派生）。
+  temp: finiteNumber.optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
 }).strict().superRefine(refinePointPlacement);
 export const PlumbingPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor', 'leb', 'drain_riser', 'gas_meter', 'duct', 'water_supply', 'water_heater']),
@@ -298,7 +306,9 @@ export const ElectricalTopologyPanelSchema = z.object({
 }).strict();
 export const ElectricalTopologyCircuitSchema = z.object({
   id: nonEmpty, panel_id: nonEmpty, purpose: z.enum(['lighting', 'hvac_power', 'dedicated_load', 'ordinary_power']), status: ElectricalTopologyStatusSchema,
-  member_point_ids: z.array(nonEmpty), dedicated_load: z.boolean().optional(), source_circuit_id: nonEmpty.optional(),
+  // 2026-11-07 issue #98 S3：source_circuit_id（点位侧 circuit 词汇 → 回路 id 的间接层）随
+  // 点位侧 circuit 字段一并废除——成员关系只住 member_point_ids，不再有两套词汇要对账。
+  member_point_ids: z.array(nonEmpty), dedicated_load: z.boolean().optional(),
   capacity: nonEmpty.optional(), wire_size: nonEmpty.optional(), breaker: nonEmpty.optional(), note: z.string().optional(),
 }).strict();
 export const ElectricalTopologyControlSchema = z.object({
@@ -348,7 +358,9 @@ export const PlumbingPointsSchema = z.array(PlumbingPointSchema);
 // 产出键序不同，verify:project-render-facts 的字符串比对会误报 stale。
 export const PlumbingPointProjectionSchema = z.object({
   id: z.string(), room: z.string(), type: PlumbingPointSchema.shape.type,
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(),
+  // 2026-11-07 issue #98 S3：x/z 从必填改为可选——10 个沿墙给排水点位转 along 后不再声明
+  // 绝对坐标（平面位置由 shared/point-placement.ts 解算）；C/D/E 组绝对点位仍带声明值。
+  x: finiteNumber.optional(), z: finiteNumber.optional(), wall: z.string().optional(),
   // 定位声明（issue #98 S1）：浏览器标注层与 ProblemDetector 经 shared/point-placement.ts
   // 用同一解算器取解析后坐标，故投影必须带齐这四个字段（键序与 parsePlumbingPoints 产出一致）。
   along: finiteNumber.nonnegative().optional(), face_offset: finiteNumber.optional(),
@@ -766,7 +778,7 @@ const HvacProjectionSchema = z.discriminatedUnion('status', [
   z.object({ status: z.literal('unimplemented'), planId: z.string().nullable() }).strict(),
 ]);
 export const ProjectRenderFactsProjectionSchema = z.object({
-  version: z.literal('2.0'), lighting: LightingRenderConfigSchema.optional(), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean(), circuit: z.string().optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), wallId: z.string().optional(), wallSide: WallSideSchema.optional(), mountAnchor: FurnitureFaceMountAnchorProjectionSchema.optional() }).strict()),
+  version: z.literal('2.0'), lighting: LightingRenderConfigSchema.optional(), lightingFixtures: z.array(z.object({ id: z.string(), room: z.string(), type: ElectricalPointSchema.shape.type, position: Vec3Schema, temperatureK: finiteNumber, enabled: z.boolean(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), wallId: z.string().optional(), wallSide: WallSideSchema.optional(), mountAnchor: FurnitureFaceMountAnchorProjectionSchema.optional() }).strict()),
   plumbing: z.array(PlumbingPointProjectionSchema), ceiling: CeilingZonesSchema, hvac: HvacProjectionSchema,
   materials: z.object({ floor: z.object({ default: z.string().nullable(), roomOverrides: z.record(z.string(), z.string()) }).strict() }).strict(),
   presentation: z.object({ curtains: CurtainRenderProjectionSchema }).strict(),

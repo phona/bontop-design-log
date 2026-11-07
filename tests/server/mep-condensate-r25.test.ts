@@ -13,7 +13,9 @@ import {
   type MepJunction,
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { lintMepCoordination } from '../../shared/mep-hvac-lint.js';
-import type { ProjectRenderFacts } from '../../shared/types.js';
+import type { ProjectRenderFacts, VertexLayoutYaml } from '../../shared/types.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
 
 const layerNames = ['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'] as const;
 const layers = Object.fromEntries(layerNames.map((id) => [id, { label: id, color: '#fff', height: 2.5 }])) as MepCoordination['layers'];
@@ -123,7 +125,13 @@ test('R25 project branches meet one declared wye and meet their declared minimum
   const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
   const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
   const project = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
-  const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac });
+  // 宿主墙/家具索引（issue #98 S1/S3）：与 scripts/verify/mep/verify-mep-lint.ts 同一构造；
+  // S3 起沿墙点位不再声明绝对 x/z，端点解析必须带索引。
+  const sources = endpointSourcesFromFacts(
+    { electrical, plumbing, ceiling, hvac },
+    pointWallIndexFromElements(resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls),
+    pointMountHostIndex(Object.values((parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never),
+  );
   validateMepCoordination(project, sources);
   const misalignedAnchor = {
     ...sources,

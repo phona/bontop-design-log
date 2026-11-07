@@ -74,7 +74,9 @@ import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
 import type { CaptureOptions, RoomAuditCaptureOptions } from '@shared/types';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot, MaterialAppearance, MaterialPreviewAtlasConfig } from '@shared/types';
 import { endpointSourcesFromFacts, type MepCoordination } from '@shared/mep-hvac-coordination-schema';
+import { pointMountHostIndex, pointWallIndexFromElements } from '@shared/point-placement';
 import { buildProjectDxf } from '@shared/dxf/project-dxf';
+import type { PointCircuitTopologyLike } from '@shared/point-circuits';
 import type { MepLintResult } from '@shared/mep-hvac-lint';
 
 const ORBIT_DISTANCE = 15;
@@ -2132,7 +2134,13 @@ export class App {
     }
     const summary = document.getElementById('electrical-topology-render-summary');
     const counts = this.houseScene.getElectricalTopologySummary();
-    if (summary) summary.textContent = `面板 ${counts.panels} · 回路 ${counts.circuits} · 负载归属 ${counts.edges}${counts.skippedEdges ? ` · 跳过 ${counts.skippedEdges}` : ''}`;
+    const skipped = counts.skippedEdges + counts.skippedPanels;
+    if (summary) summary.textContent = `面板 ${counts.panels} · 回路 ${counts.circuits} · 负载归属 ${counts.edges}${skipped ? ` · 跳过 ${skipped}（面板 ${counts.skippedPanels}/成员 ${counts.skippedEdges}，原因见控制台）` : ''}`;
+    // 跳过原因显形（issue #98 S3）：定位解算失败的点位不进回路图，但绝不静默——
+    // 每个跳过都带诊断文本，修复配置（along/宿主墙/家具摆位）后重建即恢复。
+    for (const diagnostic of this.houseScene.getElectricalTopologyDiagnostics()) {
+      console.warn(`[electrical-topology] ${diagnostic}`);
+    }
     const legend = document.getElementById('electrical-topology-legend');
     if (legend) legend.textContent = '颜色：照明/空调电源/专用负载/普通功能电源；状态：已确认关系/提议关系/待确认关系';
     controls.hidden = true;
@@ -2221,7 +2229,7 @@ export class App {
       // projectData 缓存不再作为导出输入（十五审）：全部四路拉取失败时仍可导出骨架 + D-NOTES。
       // 全量新鲜拉取（codex 十二～十五审 blocking 系列）：projectData 是页面加载缓存，
       // 点位/家具/吊顶/几何的编辑都不回写——导出前重新拉服务端当前状态，杜绝混用新旧数据。
-      const [factsResponse, mepResponse, furnishingsResponse, projectResponse, configStatusResponse] = await Promise.all([
+      const [factsResponse, mepResponse, furnishingsResponse, projectResponse, configStatusResponse, topologyResponse] = await Promise.all([
         fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         // /api/furnishings 每次请求直读 house.yaml（与 CLI 同全案口径）。
@@ -2230,6 +2238,9 @@ export class App {
         // 配置加载状态核验（codex 十六审 blocking）：loader 重载失败会保留上次成功数据且
         // render-facts 仍 200——HTTP 成功不等于数据新鲜，必须查 status。
         fetch('/api/config-status').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        // 回路拓扑（issue #98 S3）：DXF 图上「点位属于哪条回路」的标注源（点位侧 circuit
+        // 字段已退役，只认 topology 的 member_point_ids + controls）。缺它只丢回路标注。
+        fetch('/api/electrical-topology').then((response) => (response.ok ? response.json() : null)).catch(() => null),
       ]);
       const configStatuses = (configStatusResponse?.configs ?? []) as Array<{ path?: string; status?: string }>;
       // 保守规则（codex 十六/十七/十八审 blocking 收口）：任何配置重载失败都不能假装数据
@@ -2242,8 +2253,6 @@ export class App {
       const factsStale = configReloadDegraded;
       const facts = !factsStale && factsResponse ? (factsResponse as ProjectRenderFacts) : null;
       const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
-      // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
-      const mep = facts?.hvac?.plans && mepPayload ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts) } : undefined;
       // 几何/overlay loader 重载失败同规则（codex 十八审 blocking）：隔离 projectHouse，
       // 不让旧墙体/旧洞口与新家具混装。
       const projectHouse = (!configReloadDegraded && projectResponse !== null
@@ -2251,6 +2260,18 @@ export class App {
         : undefined) as
         | { rooms?: unknown[]; ceilingZones?: unknown[]; sceneElements?: unknown[] }
         | undefined;
+      // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
+      // 端点解析的宿主索引（issue #98 S1/S3）：沿墙/挂载点位不再声明绝对 x/z，MEP 端点与
+      // 3D/DXF/lint 共用 shared/point-placement.ts 单一解算——墙几何取自本次 /api/project 的
+      // sceneElements（带 line_datum），家具宿主取自 /api/furnishings。几何不可得则 M-* 图层
+      // 整体不导出（端点解不出比缺图更危险：路线会静默错位），由 D-NOTES 声明。
+      const dxfPointWalls = pointWallIndexFromElements(
+        ((projectHouse?.sceneElements ?? []) as unknown[]).filter((element) => (element as { type?: string }).type === 'wall') as never,
+      );
+      const dxfMountHosts = pointMountHostIndex(Object.values((furnishingsResponse ?? {}) as Record<string, Array<Record<string, unknown>>>).flat() as never);
+      const mep = facts?.hvac?.plans && mepPayload && projectHouse?.sceneElements
+        ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts, dxfPointWalls, dxfMountHosts) }
+        : undefined;
       // 降级说明随图交付（codex 七审 major）：施工方拿到的 DXF 必须能区分「没设计」和「导出时接口失败」。
       // 家具全案口径后 PHASE 固定 full（3D 页面可能按阶段渲染，图内注明，codex 十一审 major）。
       const notes: string[] = ['PHASE: full (all furnishings; the 3D view may render a phase-filtered subset)'];
@@ -2268,6 +2289,12 @@ export class App {
       if (failedPaths.length > 0) notes.push(`CONFIG RELOAD FAILED: ${failedPaths.join(', ')} — affected layers excluded`);
       if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
+      // 拉到的拓扑必须真的是拓扑（ circuits 数组）：接口降级/空响应时按缺失处理并随图声明，
+      // 不把 `{}` 当电路表喂给装配器（那会让整次导出抛在解算器里）。
+      const pointCircuitSources = (topologyResponse !== null && Array.isArray((topologyResponse as { circuits?: unknown }).circuits)
+        ? (topologyResponse as PointCircuitTopologyLike)
+        : undefined);
+      if (!pointCircuitSources) notes.push('CIRCUIT LABELS NOT EXPORTED: electrical-topology API failed or returned no circuits at export time');
       const result = buildProjectDxf({
         house: {
           rooms: (projectHouse?.rooms ?? undefined) as never,
@@ -2283,6 +2310,7 @@ export class App {
         },
         plumbing: facts?.plumbing,
         mep,
+        pointCircuitSources,
         notes,
       });
       // 家具摆位诊断 = 施工摆位不可得（issue #98 PR-3）：与 CLI 同一口径，不交付缺件/错位图纸。
@@ -3162,6 +3190,8 @@ export class App {
           projection,
           electrical: this.renderFacts?.electrical ?? this.annotationRenderer.getElectricalData(),
           hvac: this.renderFacts?.hvac,
+          // 点位宿主墙索引（issue #98 S3）：暖通 ref → 电气点位的坐标走单一解算器。
+          pointWalls: this.houseScene.getPointWalls(),
         });
         this.houseScene.rebuildHvacProjection(projection, sources);
         this.houseScene.loadHvacProjection(projection, sources);

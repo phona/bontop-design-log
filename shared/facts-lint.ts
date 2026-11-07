@@ -107,7 +107,7 @@ export type Exemption =
 export interface Fact {
   id: string;
   kind: 'derived' | 'narrative';
-  /** `@<path>:<点分路径|字面定位串>`；derived 支持 `#length`/`#shoelace`/`#bbox_area`/`#field_sum:f`/`#find:k=v`。 */
+  /** `@<path>:<点分路径|字面定位串|dataset:<点分键>>`；derived 支持 `#length`/`#shoelace`/`#bbox_area`/`#field_sum:f`/`#find:k=v`，以及入口脚本预算的 dataset 源。 */
   value: string;
   unit?: string;
   as_of?: string;
@@ -438,6 +438,15 @@ function resolveNarrative(text: string, anchor: string): Resolved {
 }
 
 function resolveAuthority(spec: string, ws: FactsWorkspace): Resolved & { path: string; body: string } {
+  // dataset:<点分键>（2026-11-07 issue #98 S3）：权威值是入口脚本预算的机器源，不落文件。
+  if (spec.startsWith('dataset:')) {
+    const key = spec.slice('dataset:'.length);
+    const value = datasetValue(ws, key);
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return { ok: false, detail: `dataset ${key} 解析不出有限数值（${String(value)}；入口脚本未预算该键或解算失败）`, path: spec, body: key };
+    }
+    return { ok: true, value, detail: spec, path: spec, body: key };
+  }
   const body = spec.startsWith('@') ? spec.slice(1) : spec;
   const colon = body.indexOf(':');
   const path = colon < 0 ? body : body.slice(0, colon);

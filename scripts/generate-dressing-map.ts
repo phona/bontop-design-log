@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import { FURNITURE_DIMS } from '../shared/types.js';
 import { loadOverlayDoc } from '../server/overlay-merge.js';
+import { derivePointCircuits } from '../shared/point-circuits.js';
 
 interface MaterialEntry {
   id: string;
@@ -23,8 +24,13 @@ interface ElectricalPoint {
   z?: number;
   height?: number;
   temp?: number;
-  circuit?: string;
   note?: string;
+}
+
+/** 回路拓扑的最小视图（issue #98 S3：点位侧 circuit 字段退役，回路归属改单一派生）。 */
+interface TopologyLike {
+  circuits: Array<{ id: string; member_point_ids?: string[] }>;
+  controls?: Array<{ switch_point_ids?: string[]; target_point_ids?: string[] }>;
 }
 
 interface FurnishingItem {
@@ -74,12 +80,16 @@ function appearanceToTwinmotion(a?: Record<string, unknown>): string {
 function main(): void {
   const materials = loadYaml<{ materials: MaterialEntry[] }>('config/materials.yaml').materials;
   const electrical = loadYaml<ElectricalPoint[]>('config/electrical.yaml');
+  const topology = loadYaml<TopologyLike>('config/electrical-topology.yaml');
   const house = loadYaml<{ furnishings?: Record<string, FurnishingItem[]> }>('config/house.yaml');
   const overlay = loadOverlayDoc() as unknown as { elements: OverlayElement[] };
   const env = loadYaml<{ location: { latitude: number; longitude: number; timezone: number } }>('config/environment.yaml');
   const scheme = JSON.parse(fs.readFileSync('data/current-scheme.json', 'utf8')) as {
     selections: Record<string, { default?: string; roomOverrides?: Record<string, string> }>;
   };
+
+  // 点位 → 回路 单一派生（issue #98 S3）：本表「回路」列不再读点位侧 circuit 字段（已退役）。
+  const pointCircuits = derivePointCircuits(topology).pointCircuits;
 
   const byId = new Map(materials.map((m) => [m.id, m]));
   const lines: string[] = [];
@@ -89,7 +99,7 @@ function main(): void {
 
   lines.push('# 装扮映射表（材质/家具/灯光的外观替换映射）');
   lines.push('');
-  lines.push(`生成：${today}，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / config/model/envelope/（openings+floor-zones+ceiling+finish-defaults）/ environment.yaml / data/current-scheme.json`);
+  lines.push(`生成：${today}，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / electrical-topology.yaml（回路列，S3 起单一派生）/ config/model/envelope/（openings+floor-zones+ceiling+finish-defaults）/ environment.yaml / data/current-scheme.json`);
   lines.push('');
   lines.push(`数据规模：house.yaml furnishings 共 ${furnishingCount} 件（与 \`fact.furnishings_count\` 对账）。`);
   lines.push('');
@@ -151,7 +161,7 @@ function main(): void {
   lines.push('| id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |');
   lines.push('|---|---|---|---|---|---|---|---|');
   for (const p of lights) {
-    lines.push(`| ${p.id} | ${p.room} | ${LIGHT_TYPE_LABEL[p.type] ?? p.type} | (${p.x ?? '—'}, ${p.z ?? '—'}) | ${p.height ?? '—'} | ${p.temp ?? '—'} | ${p.circuit ?? '—'} | ${p.note ?? ''} |`);
+    lines.push(`| ${p.id} | ${p.room} | ${LIGHT_TYPE_LABEL[p.type] ?? p.type} | (${p.x ?? '—'}, ${p.z ?? '—'}) | ${p.height ?? '—'} | ${p.temp ?? '—'} | ${pointCircuits.get(p.id) ?? '—'} | ${p.note ?? ''} |`);
   }
   lines.push('');
   lines.push('### 后续深化预留（当前未实施点位）');

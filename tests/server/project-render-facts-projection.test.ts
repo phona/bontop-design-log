@@ -7,8 +7,8 @@ import type { CurtainOverlayLike } from '../../shared/curtain-projection.js';
 
 const facts: ProjectRenderFacts = {
   electrical: [
-    { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000, circuit: 'living_base', recessed: true },
-    { id: 'track_1', room: 'living', type: 'track_light', x: 2, z: 3, height: 2.8, temp: 3000, circuit: 'living_base', heads: 5 },
+    { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000, recessed: true },
+    { id: 'track_1', room: 'living', type: 'track_light', x: 2, z: 3, height: 2.8, temp: 3000, heads: 5 },
     { id: 'socket_1', room: 'living', type: 'socket', x: 3, z: 4 },
   ],
   plumbing: [{ id: 'faucet_1', room: 'kitchen', type: 'faucet', x: 3, z: 4 }],
@@ -56,12 +56,14 @@ describe('buildProjectRenderFactsProjection', () => {
   it('projects only lighting fixtures without mutating construction facts', () => {
     const projection = project(facts, overrides('light_1', 'track_1'), scheme);
 
+    // 2026-11-07 issue #98 S3：lightingFixtures 不再带 circuit——该字段唯一来源（点位侧
+    // circuit 声明）已退役，渲染链无消费者；回路归属见 shared/point-circuits.ts 单一派生。
     assert.deepEqual(projection.lightingFixtures, [{
       id: 'light_1', room: 'living', type: 'dome',
-      position: { x: 1.15, y: 2.55, z: 2 }, temperatureK: 4000, enabled: true, circuit: 'living_base', recessed: true,
+      position: { x: 1.15, y: 2.55, z: 2 }, temperatureK: 4000, enabled: true, recessed: true,
     }, {
       id: 'track_1', room: 'living', type: 'track_light',
-      position: { x: 2.15, y: 2.55, z: 3 }, temperatureK: 3000, enabled: true, circuit: 'living_base', heads: 5,
+      position: { x: 2.15, y: 2.55, z: 3 }, temperatureK: 3000, enabled: true, heads: 5,
     }]);
     assert.deepEqual(projection.plumbing, facts.plumbing);
     assert.deepEqual(projection.ceiling, facts.ceiling);
@@ -69,10 +71,10 @@ describe('buildProjectRenderFactsProjection', () => {
     assert.deepEqual(projection.materials.floor, scheme.selections.floor);
     assert.equal(projection.version, '2.0');
     assert.equal(projection.lightingFixtures.find((fixture) => fixture.id === 'track_1')?.heads, 5);
-    assert.equal(projection.lightingFixtures.find((fixture) => fixture.id === 'track_1')?.circuit, 'living_base');
+    assert.equal(projection.lightingFixtures.find((fixture) => fixture.id === 'track_1')?.heads, 5);
     assert.deepEqual(projection.presentation.curtains.curtains.map((c) => c.id), ['curtain_living_south']);
     assert.equal(projection.presentation.curtains.effectiveByRoom.living, 'open');
-    assert.deepEqual(facts.electrical[0], { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000, circuit: 'living_base', recessed: true });
+    assert.deepEqual(facts.electrical[0], { id: 'light_1', room: 'living', type: 'dome', x: 1, z: 2, height: 2.8, temp: 4000, recessed: true });
   });
 
   it('preserves wall host and room-side normal inputs for wall lamps', () => {
@@ -80,15 +82,18 @@ describe('buildProjectRenderFactsProjection', () => {
       ...facts,
       electrical: [
         ...facts.electrical,
-        { id: 'wall_1', room: 'living', type: 'wall_lamp', x: 4, z: 5, height: 1.35, wall: 'wall-east', wallSide: 'west' },
+        // parseElectricalPoints 的产出形态：wall_side 已投影为 wallSide（本测试不走 parser）
+        { id: 'wall_1', room: 'living', type: 'wall_lamp', height: 1.35, wall: 'wall-east', wallSide: 'west', along: 0.5 },
       ],
     };
-    const projection = project(wallFacts, overrides('light_1', 'track_1', 'wall_1'), scheme);
+    const projection = buildProjectRenderFactsProjection(wallFacts, overrides('light_1', 'track_1', 'wall_1'), scheme, overlay, presentation, { fixtures: [] }, undefined, new Map([['wall-east', { segments: [{ x1: 5, z1: 0, x2: 5, z2: 10 }], line_datum: 'centerline' }]]));
     const wallLamp = projection.lightingFixtures.find((fixture) => fixture.id === 'wall_1');
+    // issue #98 S3：挂墙灯具平面位置走解析器（along 0.5 自墙段起点 z=0 → datum (5,0.5)，
+    // 完成面 = 5 − 半墙厚 0.06 = 4.94，再加 overrides.offsetX 0.15 → 5.09），不再读声明 x/z。
     assert.deepEqual(wallLamp, {
       id: 'wall_1', room: 'living', type: 'wall_lamp',
       // 派生锚点 = electrical.height(1.35) + anchorY_offset(-0.25)
-      position: { x: 4.15, y: 1.1, z: 5 }, temperatureK: 3000, enabled: true,
+      position: { x: 5.09, y: 1.1, z: 0.5 }, temperatureK: 3000, enabled: true,
       wallId: 'wall-east', wallSide: 'west',
     });
   });

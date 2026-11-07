@@ -1,13 +1,18 @@
 /**
- * 点位定位单一解算（issue #98 第四阶段 S1/S2，设计文档 §4.3/§4.4/§4.8）。
+ * 点位定位单一解算（issue #98 第四阶段 S1/S2/S3，设计文档 §4.3/§4.4/§4.8）。
  *
- * 本文件是把「x/z 暂留为断言字段」固化成门禁的那一条：迁移期每个点位的解析结果与声明 x/z
- * 差 >0.005m 即 fail。它同时锁死四件事：
- *   ① 沿墙点位（79 个）的 along 反算值与 face_offset 抵偿正确——写错一个数就红；
- *   ② mount 挂载点位（S2 起夜灯 2 个）由宿主脸 + along + face_offset 解出的位置与声明 x/z
- *      一致——宿主移动才会变，手滑不会静默漂移；
- *   ③ 3D/DXF/MEP 三方共用同一解算结果（DXF 圈心 == 3D mesh 位置，按构造相等）；
- *   ④ 越界返回诊断而不是 clamp（sock_weakbox 242mm 静默偏差的机制根源）。
+ * S1/S2 迁移期本文件把「x/z 暂留为断言字段」固化成门禁（解析结果与声明值差 >0.005m 即
+ * fail），79 个沿墙点位 + 2 个柜面挂载点位逐点全绿；**S3（2026-11-07）已删这 81 个点位
+ * 的 x/z 声明与断言字段本身**——along/face_offset/mount 是唯一解算输入，解析结果不再有
+ * 第二份坐标可比对。删除的具体内容（决策铁律第 5 条逐条列）：
+ *   - `keeps the migrated along/face_offset in agreement with the declared x/z`（沿墙/挂载
+ *     点位 ↔ 声明 x/z 的逐点断言，含 ASSERT_TOLERANCE 与 checked=79 / mounted=2 计数）——
+ *     其防的「写错 along 手滑漂移」改由 verify-point-placement（投影/洞口/越界 error）、
+ *     verify-rules（bounds/proximity 用解析后坐标）与 mep/电气 lint 的端点校验承接；
+ *   - `keeps MEP endpoints on the resolver basis` 里对声明 x/z 的逐点比对（MEP 端点漂移断言）。
+ *
+ * 保留并继续锁死的：along 起算口径、face_offset 基准、越界 fail-closed、四来源互斥、
+ * 绝对点位取声明值、3D/DXF 薄板惯例同源、mount 宿主脸解算。
  */
 
 import { describe, it } from 'node:test';
@@ -15,7 +20,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import { parseElectricalPoints, parsePlumbingPoints } from '../../shared/project-render-facts-schema.js';
+import { parseElectricalPoints, parseElectricalTopology, parsePlumbingPoints } from '../../shared/project-render-facts-schema.js';
 import {
   pointMountHostIndex,
   pointWallIndexFromElements,
@@ -26,11 +31,9 @@ import {
   type PointWall,
   type PointWallSegment,
 } from '../../shared/point-placement.js';
+import { WALL_THICKNESS } from '../../shared/furniture-placement.js';
 import type { PlacementItem } from '../../shared/furniture-placement.js';
 import type { ElectricalPoint, PlumbingPoint, VertexLayoutYaml } from '../../shared/types.js';
-
-/** 断言容差（米）：解析结果与声明值差超过它即 fail。 */
-const ASSERT_TOLERANCE = 0.005;
 
 const layout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as VertexLayoutYaml);
 const electrical = parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf-8'));
@@ -39,36 +42,10 @@ const pointWalls = pointWallIndexFromElements(layout.walls);
 // mount 宿主索引（issue #98 S2）：与生产入口（DXF/MEP/lighting-fixtures/server loader）同一构造。
 const house = parseYaml(readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: Record<string, PlacementItem[]> };
 const mountHosts = pointMountHostIndex(Object.values(house.furnishings ?? {}).flat());
+// 电气拓扑（issue #98 S3）：回路图/归属层的输入——成员、面板源点位、控制开关三类点位。
+const topology = parseElectricalTopology(readFileSync('config/electrical-topology.yaml', 'utf-8'), electrical);
 
-describe('point placement resolver (issue #98 S1/S2)', () => {
-  it('keeps the migrated along/face_offset in agreement with the declared x/z', () => {
-    // 断言字段：全量点位（137 个）逐一解算，沿墙/挂载点位的解析结果必须复现声明 x/z。
-    let checked = 0;
-    let mounted = 0;
-    for (const point of [...electrical, ...plumbing]) {
-      const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
-      assert.equal(diagnostic, undefined, `${point.id}: ${diagnostic ?? ''}`);
-      assert.ok(placement, `${point.id}: 解算器未返回位置`);
-      if (placement.kind === 'absolute') {
-        assert.equal(placement.x, point.x, `${point.id}: 绝对点位必须取声明 x/z`);
-        assert.equal(placement.z, point.z, `${point.id}: 绝对点位必须取声明 z/z`);
-        continue;
-      }
-      assert.ok(typeof point.x === 'number' && typeof point.z === 'number', `${point.id}: 沿墙/挂载点位的断言字段 x/z 缺失`);
-      const distance = Math.hypot(placement.x - point.x, placement.z - point.z);
-      assert.ok(
-        distance <= ASSERT_TOLERANCE,
-        `${point.id}: 解析结果 (${placement.x.toFixed(4)},${placement.z.toFixed(4)}) 与声明 (${point.x},${point.z}) 差 ${(distance * 1000).toFixed(2)}mm > ${ASSERT_TOLERANCE * 1000}mm`,
-      );
-      if (placement.kind === 'wall') checked++;
-      else mounted++;
-    }
-    // 79 个沿墙点位（69 电 + 10 水）全部走到沿墙断言分支
-    assert.equal(checked, 79);
-    // S2：2 个柜面起夜灯（night_living_mid / night_corridor）升级为真挂载，解析结果同样必须复现声明 x/z
-    assert.equal(mounted, 2);
-  });
-
+describe('point placement resolver (issue #98 S1/S2/S3)', () => {
   it('resolves along from the wall start vertex along the polyline (same origin as furniture placement)', () => {
     const wall: PointWall = { segments: [{ x1: 2, z1: -1, x2: 2, z2: 3 }], line_datum: 'centerline' };
     const walls = new Map<string, PointWall>([['wall', wall]]);
@@ -215,17 +192,47 @@ describe('point placement consumers share one resolution (3D / DXF / MEP)', () =
     assert.equal(checked, 79);
   });
 
+  it('resolves every point the electrical topology view needs (S3 regression: B1 class)', () => {
+    // 浏览器「电路归属」叠加层（ElectricalTopologyRenderer）画三类点位：回路成员、面板源点位、
+    // controls 的开关。S3 删 x/z 后该层曾因直读声明坐标静默跳掉 45/74 个成员与 2 块面板
+    // （review B1）。根因是消费方忘传宿主索引——这里把不变量钉在数据层：生产索引下这三类
+    // 点位必须全部解算成功，任何一个失败即红（而不是让某个叠加层静默少画）。
+    const needed = new Set<string>([
+      ...topology.circuits.flatMap((circuit) => circuit.member_point_ids),
+      ...topology.panels.map((panel) => panel.source_point_id),
+      ...topology.controls.flatMap((control) => control.switch_point_ids),
+    ]);
+    const byId = new Map(electrical.map((point) => [point.id, point]));
+    let checked = 0;
+    for (const id of [...needed].sort()) {
+      const point = byId.get(id);
+      assert.ok(point, `拓扑引用 ${id} 但 config/electrical.yaml 没有该点位`);
+      const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+      assert.equal(diagnostic, undefined, `${id}: ${diagnostic ?? ''}`);
+      assert.ok(placement, `${id}: 解算失败`);
+      checked++;
+    }
+    // 74 成员 + 2 面板源 + 14 开关（去重后）
+    assert.equal(checked, needed.size);
+    assert.ok(needed.size >= 74, `拓扑视图依赖的点位数异常偏小（${needed.size}）——疑似拓扑配置被改坏`);
+  });
+
   it('keeps MEP endpoints on the resolver basis (wall: finished face; mount: host face)', () => {
-    // MEP 路线端点：沿墙点位 = 解算器完成面基点（管线接在底盒上，不在面盘上）；mount 挂载点位
-    // = 宿主脸解果。断言期内两者 == 声明 x/z，故本期 MEP 路线几何零变化（167 个端点、107 条
-    // 路线机械跟随，无需人工重判）。
+    // MEP 路线端点：沿墙点位 = 解算器完成面基点（管线接在底盒上，不在面盘上，取 datum +
+    // WALL_THICKNESS/2 + face_offset 而不是 3D/DXF 的 datum + 0.075 薄板位置）；mount 挂载
+    // 点位 = 宿主脸解果。S3 起这些点位不再声明 x/z，端点坐标按构造只有解算器一个来源。
     let checked = 0;
     for (const point of [...electrical, ...plumbing]) {
       if (!point.wall && !point.mount) continue;
-      const { placement } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+      const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+      assert.equal(diagnostic, undefined, `${point.id}: ${diagnostic ?? ''}`);
       assert.ok(placement && (placement.kind === 'wall' || placement.kind === 'mount'), `${point.id}: 解算失败`);
-      assert.ok(Math.abs(placement.x - point.x!) < 1e-9, `${point.id}: MEP 端点 x 漂移`);
-      assert.ok(Math.abs(placement.z - point.z!) < 1e-9, `${point.id}: MEP 端点 z 漂移`);
+      // 完成面基点必须离开墙中心线恰好一个「半墙厚 + face_offset」——端点既不在墙身里，
+      // 也不悄悄落在面盘偏移（0.075）上。
+      const expectedOffset = placement.kind === 'wall' ? WALL_THICKNESS / 2 + (point.face_offset ?? 0) : undefined;
+      if (placement.kind === 'wall') {
+        assert.ok(Math.abs(placement.offsetFromCenterline - expectedOffset!) < 1e-12, `${point.id}: 完成面基点偏移量错误`);
+      }
       checked++;
     }
     // 79 沿墙 + 2 挂载（night_living_mid / night_corridor 都是 MEP 路线端点）

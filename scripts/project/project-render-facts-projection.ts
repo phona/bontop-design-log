@@ -10,10 +10,11 @@ import {
   validateProjectHvacFacts,
 } from '../../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../../shared/project-render-facts-projection.js';
-import { pointMountHostIndex } from '../../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { load as parseYaml } from 'js-yaml';
 import { parseOverlayFiles } from '../../server/overlay-merge.js';
-import type { CurrentScheme, ProjectRenderFactsProjection } from '../../shared/types.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { CurrentScheme, ProjectRenderFactsProjection, VertexLayoutYaml } from '../../shared/types.js';
 
 export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFactsProjection {
   const path = (relative: string) => `${rootDir}/${relative}`;
@@ -24,6 +25,11 @@ export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFa
     hvac: parseProjectHvacFacts(readFileSync(path('config/hvac.yaml'), 'utf8')),
   };
   validateProjectHvacFacts(facts.hvac, facts);
+  // 挂墙起夜灯（issue #98 S3）的宿主墙索引：与 3D/DXF/MEP/penetration 同一构造
+  // （resolveLayout(model-geometry) → pointWallIndexFromElements）。
+  const pointWalls = pointWallIndexFromElements(
+    resolveLayout(parseYaml(readFileSync(path('config/layout/model-geometry.yaml'), 'utf-8')) as VertexLayoutYaml).walls,
+  );
   return buildProjectRenderFactsProjection(
     facts,
     parseRenderLightingOverrides(readFileSync(path('config/render/overrides.yaml'), 'utf8')),
@@ -36,6 +42,8 @@ export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFa
       : { fixtures: [] },
     // mount 挂载灯（issue #98 S2 起夜灯）的宿主索引：house.yaml 第五份输入。
     pointMountHostIndex(Object.values((parseYaml(readFileSync(path('config/house.yaml'), 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never),
+    // 挂墙起夜灯（issue #98 S3）的宿主墙索引：model-geometry 第六份输入。
+    pointWalls,
   );
 }
 

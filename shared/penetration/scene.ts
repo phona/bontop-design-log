@@ -9,7 +9,7 @@ import { parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.
 import { mepPenetrationAt } from '../../shared/condensate-chain.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { buildRenderLightingFixtures } from '../../shared/lighting-fixtures.js';
-import { pointMountHostIndex } from '../../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { glassJoinSpecs, joinDeclarationsOf, suppressedWallIds } from '../suppression.js';
 import { type FurnishingsYaml, type ElectricalPoint, type HvacDiagram, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, OverlayReplacement, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
 
@@ -340,6 +340,8 @@ export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildS
       inputs.electrical,
       inputs.renderOverrides,
       pointMountHostIndex(Object.values(inputs.house.furnishings ?? {}).flat()),
+      // 挂墙起夜灯（issue #98 S3）：平面位置与 3D/DXF/MEP 同一墙线解算，不读声明 x/z。
+      pointWallIndexFromElements(inputs.layout.walls),
     ),
     options: {
       lighting: inputs.lighting,

@@ -106,15 +106,29 @@ describe('ConfigLoader', () => {
 });
 
 describe('Domain config loaders', () => {
+  // issue #98 第四阶段 S3：沿墙点位只声明 wall + wall_side + along（x/z 已删，平面位置
+  // 由 shared/point-placement.ts 单一解算）；绝对点位（absolute: true，C/D/E/F 组）仍带
+  // 声明 x/z。两条路径都锁，防止定位声明退化成「两者都没声明」。
+  // 注意：loadElectricalConfig/loadPlumbingConfig 回的是**配置原文**（snake_case wall_side），
+  // 不是 parseElectricalPoints 的投影（驼峰 wallSide）——这里锁的是声明形态本身。
+  const rawPoint = (point: unknown): { wall?: string; wall_side?: string; along?: number; x?: number; z?: number; absolute?: boolean } =>
+    point as { wall?: string; wall_side?: string; along?: number; x?: number; z?: number; absolute?: boolean };
+
   it('loads electrical config with expected fields', () => {
     const cfg = loadElectricalConfig();
     assert.ok(Array.isArray(cfg));
     if (cfg.length > 0) {
+      const first = rawPoint(cfg[0]);
       assert.ok(cfg[0].id);
       assert.ok(cfg[0].room);
-      assert.ok(cfg[0].wall);
-      assert.ok(typeof cfg[0].x === 'number');
-      assert.ok(typeof cfg[0].z === 'number');
+      // cfg[0] = sock_living_tv（沿墙点位）
+      assert.ok(first.wall);
+      assert.ok(first.wall_side);
+      assert.ok(typeof first.along === 'number');
+      assert.ok(first.x === undefined && first.z === undefined, '沿墙点位不得再声明绝对 x/z');
+      const absolute = cfg.map(rawPoint).find((point) => point.absolute === true);
+      assert.ok(absolute, '绝对点位（absolute: true）必须存在');
+      assert.ok(typeof absolute.x === 'number' && typeof absolute.z === 'number', '绝对点位必须带声明 x/z');
     }
   });
 
@@ -122,10 +136,16 @@ describe('Domain config loaders', () => {
     const cfg = loadPlumbingConfig();
     assert.ok(Array.isArray(cfg));
     if (cfg.length > 0) {
+      const first = rawPoint(cfg[0]);
       assert.ok(cfg[0].id);
       assert.ok(cfg[0].room);
-      assert.ok(typeof cfg[0].x === 'number');
-      assert.ok(typeof cfg[0].z === 'number');
+      // cfg[0] = faucet_mbath_vanity（沿墙点位）
+      assert.ok(first.wall);
+      assert.ok(first.wall_side);
+      assert.ok(typeof first.along === 'number');
+      assert.ok(first.x === undefined && first.z === undefined, '沿墙点位不得再声明绝对 x/z');
+      const absolute = cfg.map(rawPoint).find((point) => point.absolute === true) ?? cfg.map(rawPoint).find((point) => point.x !== undefined);
+      assert.ok(absolute && typeof absolute.x === 'number' && typeof absolute.z === 'number', '绝对点位必须带声明 x/z');
     }
   });
 
