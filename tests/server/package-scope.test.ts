@@ -6,8 +6,12 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
-import { buildObjectPackageIndex, isPointSourceAllSelector, resolvePackageScope, type ProjectScopeInput } from '../../shared/package-scope.js';
+import { buildObjectPackageIndex, isPointSourceAllSelector, resolvePackageScope, sourceWallIdOf, type ProjectScopeInput } from '../../shared/package-scope.js';
 import { loadModelPackageLinks } from '../../server/model-package-links.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import { mergeSceneElements, parseOverlayFiles } from '../../server/overlay-merge.js';
+import { buildScene } from '../../shared/render/SceneBuilder.js';
+import { loadCeilingConfig } from '../../server/config-loader.js';
 
 const project: ProjectScopeInput = {
   house: {
@@ -380,5 +384,101 @@ describe('issue #98 PR-4： furnishings ids 选择器 ↔ 包/验收项（真实
     };
     const pkg050 = control.work_packages.find((pkg) => pkg.id === 'PKG-050');
     assert.ok(pkg050?.acceptance_refs?.includes('check_plumb_external_vanity_waterproof'), 'PKG-050 应挂接该验收项');
+  });
+});
+
+// ── 生产 links × 生产场景：选择器 id 必须真的能在 3D 里命中 ────────────────────
+// 2026-11-07 issue #98 第三阶段 S4 评审 blocking：面层配方下沉后 MODEL-PKG-050/060/
+// 065/080/130/135 的 scope 从「配方 id」改为「宿主对象稳定 id」（墙 / bay_sill）。
+// 但墙 mesh 的 objectId 在开门洞拆段/共墙拆面后是 `墙id:N`/`墙id:N.M`（SceneBuilder
+// addWallElement 的 baseId/objectId 两行），裸墙 id 只属于无洞且单面跨度的墙——实测
+// 52 面墙里 15 面命中不了，正查高亮与反查归属都会静默 no-op（本文件头注记载的
+// 2026-11-02「ids 选择器静默 no-op、mock 测试照不到」同一失效类）。
+// 消费侧（HouseScene.applyEmissiveHighlight / App.revealPackageForObject）已按
+// sourceWallIdOf 做二级命中；本门禁钉的是**另一侧**：每个 link 的 objectIds 都必须
+// 能在 buildScene 的真实产出里命中（直接命中或经源墙 id 桥接命中），
+// 且反过来桥接不能把不是墙的对象错配过来。
+describe('生产 links 的 objectIds 必须能在 buildScene 产出里命中（S4 宿主对象选择器）', () => {
+  function productionScene() {
+    const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
+    const layout = resolveLayout(mg);
+    const merged = mergeSceneElements(layout.walls as never, parseOverlayFiles());
+    const scene = buildScene({
+      walls: layout.walls,
+      rooms: layout.rooms,
+      elements: merged,
+      ceilingZones: loadCeilingConfig(),
+      furnishings: {},
+    } as never) as unknown as {exportRoot: {traverse: (fn: (o: never) => void) => void}};
+    const objectIds = new Set<string>();
+    scene.exportRoot.traverse((object: never) => {
+      const userData = (object as {userData?: {objectId?: string}}).userData;
+      if (userData?.objectId) objectIds.add(userData.objectId);
+    });
+    // 源墙 id 集合：桥接的兜底域（`墙id:N`/`墙id:N.M` → 墙id）
+    const sourceWallIds = new Set([...objectIds].map(sourceWallIdOf));
+    return {objectIds, sourceWallIds};
+  }
+
+  it('每条带宿主对象 id 的 link：objectIds 全部可在场景里命中（直接或经源墙 id 桥接）', () => {
+    const links = loadModelPackageLinks();
+    const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
+    const layout = resolveLayout(mg);
+    const project: ProjectScopeInput = {
+      house: {
+        rooms: layout.rooms.map((room) => ({id: room.id})),
+        sceneElements: mergeSceneElements(layout.walls as never, parseOverlayFiles()).map((element) => ({id: element.id, type: element.type})),
+      },
+    };
+    const {objectIds, sourceWallIds} = productionScene();
+    const checked: string[] = [];
+    for (const link of links.links) {
+      const {objectIds: scopeIds, projectScope} = resolvePackageScope(link, project);
+      if (projectScope) continue;
+      // 只查墙/围护构件宿主 id（点位与家具各有自己的前缀/裸值约定，由其他用例守）
+      const hostIds = scopeIds.filter((id) => /^w_/.test(id) || /_(bay|waterproof_ledge)$/.test(id));
+      for (const id of hostIds) {
+        const hit = objectIds.has(id) || sourceWallIds.has(id);
+        assert.ok(hit, `${link.id} 的宿主对象 id ${id} 在 buildScene 产出里命中不了（objectId 直接命中与 sourceWallIdOf 桥接都失败）——选择器又会静默 no-op`);
+      }
+      if (hostIds.length) checked.push(`${link.id}:${hostIds.length}`);
+    }
+    // S4 改写的 6 条必须真的被检查到（否则本门禁空转）
+    for (const id of ['MODEL-PKG-050', 'MODEL-PKG-060', 'MODEL-PKG-065', 'MODEL-PKG-080', 'MODEL-PKG-130', 'MODEL-PKG-135']) {
+      assert.ok(checked.some((entry) => entry.startsWith(id)), `${id} 应带宿主对象 id 并接受命中检查`);
+    }
+  });
+
+  it('桥接方向正确：只有墙 mesh 的后缀 id 才桥回墙 id，构件 id 不被桥接篡改', () => {
+    assert.equal(sourceWallIdOf('w_mbath_east'), 'w_mbath_east');
+    assert.equal(sourceWallIdOf('w_mbath_east:0'), 'w_mbath_east');
+    assert.equal(sourceWallIdOf('w_mbath_east:0.1'), 'w_mbath_east');
+    // 墙 id 不含 ':'，截第一个 ':' 即得源墙；构件/点位的冒号属另一套前缀约定，
+    // 不经本函数（点位的 electrical:/plumbing: 由 POINT_SOURCE_PREFIXES 归一化）
+    assert.equal(sourceWallIdOf('master_bath_west_bay'), 'master_bath_west_bay');
+  });
+
+  it('反查索引按桥接后可命中：buildObjectPackageIndex 的墙键与场景 objectId 对得上', () => {
+    const links = loadModelPackageLinks();
+    const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
+    const layout = resolveLayout(mg);
+    const project: ProjectScopeInput = {
+      house: {
+        rooms: layout.rooms.map((room) => ({id: room.id})),
+        sceneElements: mergeSceneElements(layout.walls as never, parseOverlayFiles()).map((element) => ({id: element.id, type: element.type})),
+      },
+    };
+    const index = buildObjectPackageIndex(links.links, project);
+    const {objectIds} = productionScene();
+    // 索引里的每个墙键，必须至少有一个场景 objectId 直接等于它或桥回它
+    const wallKeys = [...index.keys()].filter((key) => /^w_/.test(key));
+    assert.ok(wallKeys.length > 0, '索引里应有墙键');
+    const sceneWallIds = new Set([...objectIds].map(sourceWallIdOf));
+    for (const key of wallKeys) {
+      assert.ok(
+        objectIds.has(key) || sceneWallIds.has(key),
+        `索引墙键 ${key} 在场景里没有对应 objectId（点这面墙反查不到包）`,
+      );
+    }
   });
 });

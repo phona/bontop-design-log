@@ -45,7 +45,7 @@ import {
   invalidateExitPop,
   type ApprovalRoute, type ApprovalSubPage,
 } from './state/approval-route.js';
-import { buildObjectPackageIndex, resolvePackageScope, type PackageScopeLink, type ProjectScopeInput } from '@shared/package-scope';
+import { buildObjectPackageIndex, resolvePackageScope, sourceWallIdOf, type PackageScopeLink, type ProjectScopeInput } from '@shared/package-scope';
 import { TRADE_LABEL } from './render/analysis/ceiling-zone-colors.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
@@ -1328,7 +1328,11 @@ export class App {
       const links = (this.projectData?.modelPackageLinks ?? []) as PackageScopeLink[];
       this.objectPackageIndex = buildObjectPackageIndex(links, project);
     }
-    const packageIds = this.objectPackageIndex.get(objectId);
+    // 二级命中（2026-11-07 issue #98 S4 评审 blocking）：索引键是 links 的稳定对象 id，
+    // 而墙 mesh 的 objectId 带拆段/拆面后缀（`墙id:N`/`墙id:N.M`，见 sourceWallIdOf）。
+    // 面层配方下沉后工作包按宿主对象 id 选墙，不桥接则点那 15 面墙反查不到归属包。
+    const packageIds = this.objectPackageIndex.get(objectId)
+      ?? this.objectPackageIndex.get(sourceWallIdOf(objectId));
     if (!packageIds?.length) return;
     // 选中与 hash：单包落在该包（详情/分享链接需要一个确定目标）；**多包不预设
     // 首个包**（#67：旧实现反查到多包时选中条/详情目标恒取 packageIds[0]，业主
