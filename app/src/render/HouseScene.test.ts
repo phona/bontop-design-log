@@ -17,7 +17,6 @@ describe('HouseScene scene elements', () => {
     expect(houseScene).not.toContain('userData.curtain');
     expect(houseScene).not.toContain('curtain?:');
     expect(sceneBuilder).toContain("case 'curtain_run'");
-    expect(sceneBuilder).toContain("case 'glass_infill'");
     expect(sceneBuilder).toContain("case 'shower_screen'");
     expect(sceneBuilder).toContain("case 'wall_run'");
     expect(sceneBuilder).toContain("element.type === 'wall'");

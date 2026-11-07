@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -20,7 +21,7 @@ const readYaml = (file: string): any => parseYaml(readFileSync(path.join(ROOT, f
 
 function buildInput(tolerance = 0.01): FinishScopeInput {
   const MG = readYaml('config/layout/model-geometry.yaml');
-  const OV = readYaml('config/layout/overlay.yaml');
+  const OV = parseOverlayFiles();
   const layout = resolveLayout(MG);
   const elements: any[] = OV.elements ?? [];
   const vertexById = new Map((MG.vertices ?? []).map((v: any) => [v.id, v]));

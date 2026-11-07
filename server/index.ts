@@ -12,7 +12,7 @@ import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { ProjectRenderFactsLoader } from './project-render-facts-loader.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
-import { parseOverlay } from './overlay-merge.js';
+import { parseOverlayFiles, OVERLAY_SOURCE_FILES } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes, invalidateMepFurnitureCollisionVolumes } from './mep-lint-context.js';
 import { parseEnvironment } from '../shared/environment-schema.js';
@@ -114,11 +114,11 @@ materialsLoader.load();
 budgetBaseLoader.load();
 layoutLoader.load();
 const overlayLoader = new ConfigLoader<OverlayConfig>(
-  'config/layout/overlay.yaml',
-  (raw) => parseOverlay(raw),
+  Object.values(OVERLAY_SOURCE_FILES),
+  () => parseOverlayFiles(),
   () => {
     invalidateMepFurnitureCollisionVolumes();
-    console.log('[server] config/layout/overlay.yaml reloaded');
+    console.log('[server] config/model/envelope/{openings,floor-zones,finish-surfaces}.yaml reloaded');
   }
 );
 registry.register(overlayLoader);

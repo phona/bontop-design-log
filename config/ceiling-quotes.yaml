@@ -2,7 +2,7 @@ version: 1
 # 吊顶报价卡片（DEC-2026-10-08-C03）。
 #
 # 铁律：
-#  1. **量不在这里**。工程量一律由 shared/ceiling-takeoff.ts 从 config/ceiling.yaml 实算
+#  1. **量不在这里**。工程量一律由 shared/ceiling-takeoff.ts 从 config/model/envelope/ceiling.yaml 实算
 #     （板面 ㎡、窗帘盒 延长米、铝扣板块数）。报价方只报单价 + 含项范围，
 #     不允许自带面积——否则 A 家按毛面积、B 家按展开面积，两边永远对不上。
 #  2. `active:` 指向生效卡片；切换只改这一行（API / 手改都一样），

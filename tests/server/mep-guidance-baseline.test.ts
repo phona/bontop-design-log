@@ -170,7 +170,7 @@ test('§0 规模表：路由/层/电点/给排水点/吊顶分区与机器条目
   };
   const electricalPoints = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as unknown[];
   const plumbingPoints = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as unknown[];
-  const ceilingZones = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as unknown[];
+  const ceilingZones = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as unknown[];
 
   // 与 facts.yaml 的 mirror 正则同族：改写量必须同步改 facts.yaml 的 extract，否则本测试先炸
   const claims: Array<[string, RegExp, number]> = [

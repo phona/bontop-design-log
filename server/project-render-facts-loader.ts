@@ -25,7 +25,7 @@ export interface ProjectRenderFactsPaths {
 const DEFAULT_PATHS: ProjectRenderFactsPaths = {
   electrical: 'config/electrical.yaml',
   plumbing: 'config/plumbing.yaml',
-  ceiling: 'config/ceiling.yaml',
+  ceiling: 'config/model/envelope/ceiling.yaml',
   hvac: 'config/hvac.yaml',
   overrides: 'config/render/overrides.yaml',
   lighting: 'config/render/lighting.yaml',

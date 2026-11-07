@@ -27,7 +27,7 @@ import {
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 export const CONFIG_PATH = 'config/finish-lint.yaml';
-const SOURCE = 'config/layout/overlay.yaml + config/ceiling.yaml + shared/finish/';
+const SOURCE = 'config/model/envelope/{openings,floor-zones,finish-surfaces,ceiling}.yaml + shared/finish/';
 
 /** 代码里真实实现了的规则。配置申报与此清单互为镜像，缺一方即报错。 */
 export const IMPLEMENTED_RULES: FinishRuleSpec[] = [

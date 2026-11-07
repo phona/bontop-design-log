@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"642eda377bc77c34340d76159279d84b2ddf13ee9f3919eaef771fffc29f80d5"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"e237153767b55ddf3bbff7e87d87bb6a827389a1b4a3ddac1ff09643444c0adb"} -->
 # 一期预算控制表
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:245ff3659a1108fb075b92cc8e61d1068905c8736940fd276a04c3aa7bef1b97`（1 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:ea0e126af57cbf57c3e75da8aca0d19dbc9a9d847df86e0db1f9b00b0c981ece`（1 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -280,7 +280,7 @@
 
 | 优先级 | 费用ID | 可单独询价的项目 | 包含内容 | 数量或计价依据 | 当前金额 | 状态 |
 |---|---|---|---|---|---:|---|
-| — | COST-070-01 | 轻钢龙骨和固定材料 | 吊顶内部金属支撑骨架、吊杆和连接件 | 按吊顶展开面积和造型统计；数量拟由 2026-10-08-C01 吊顶算量子系统派生（npm run takeoff:ceiling / GET /api/ceiling/takeoff，读 config/ceiling.yaml 逐分区声明），不手抄数字；截至 2026-10-07 尚未发生 | 待报价/待算量 | quantity_pending |
+| — | COST-070-01 | 轻钢龙骨和固定材料 | 吊顶内部金属支撑骨架、吊杆和连接件 | 按吊顶展开面积和造型统计；数量拟由 2026-10-08-C01 吊顶算量子系统派生（npm run takeoff:ceiling / GET /api/ceiling/takeoff，读 config/model/envelope/ceiling.yaml 逐分区声明），不手抄数字；截至 2026-10-07 尚未发生 | 待报价/待算量 | quantity_pending |
 | — | COST-070-02 | 石膏板吊顶面层 | 写明板材类型、层数、防潮要求、接缝材料和安装人工 | 按展开面积报价；数量拟由吊顶算量子系统按 trade=gypsum_board 派生（窗帘盒人工拟于 2026-10-08-C02 拆成延长米单列，rate 待报价，数量显形在预算快照 pendingLabor）；截至 2026-10-07 尚未发生 | 待报价/待算量 | quote_pending |
 | — | COST-070-03 | 厨房卫生间集成吊顶 | 铝制扣板、边条、安装及设备开孔，不含取暖换气设备（DEC-2026-10-05-R3：浴霸划出自购定入 COST-100-06，凉霸不做）；2026-10-03 捆绑手写报价单 9,537 元（含收边、2浴霸、凉霸、灯）保留为设备拆分证据，2026-10-12 原件已归档、分项已可读，裸价重报仍待取得 | 剩余范围已由原件分项直接读出 = 4,540 元（板面 16.37㎡×198=3,241 + 灯 12块×90=1,080 + 未辨识项 219；9,537 − 凉霸 999 − 浴霸 2×1,999），非成交价；面积/板块数按 trade=aluminum_buckle 由算量子系统派生（厨房+两卫，300×300 分格） | ¥4,500 | quoted_pending_optimization |
 | — | COST-070-04 | 风口检修口灯孔和窗帘盒边缘处理 | 按确认图纸逐个计数，明确开孔和加固是否另收费 | 待空调灯具和窗帘图确认；窗帘盒本体人工拟按 2026-10-08-C02 延长米口径（17.85m，rate 待报价），本条只含边缘收口与开孔；截至 2026-10-07 尚未发生 | 待报价/待算量 | interface_pending |

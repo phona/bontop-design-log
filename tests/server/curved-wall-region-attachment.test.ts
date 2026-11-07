@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -161,7 +162,7 @@ test('paint_region on the arc wall is split per rect along the polyline and ever
 });
 
 test('every wall_region / paint_region mesh in the production scene hugs a real wall', () => {
-  const merged = mergeSceneElements(walls as any, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  const merged = mergeSceneElements(walls as any, parseOverlayFiles());
   const scene: any = buildScene({
     walls,
     rooms: layout.rooms,

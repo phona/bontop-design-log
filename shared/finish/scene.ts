@@ -13,18 +13,14 @@
  * 与 `shared/penetration/scene.ts` 同构：verifier 与测试共用同一份采集，结论不会漂移。
  */
 
-import { readFileSync } from 'node:fs';
-import * as path from 'node:path';
 import { Box3 } from 'three';
 import { loadCeilingConfig } from '../../server/config-loader.js';
-import { parseOverlay, mergeSceneElements } from '../../server/overlay-merge.js';
+import { parseOverlayFiles, mergeSceneElements } from '../../server/overlay-merge.js';
 import { buildScene } from '../render/SceneBuilder.js';
 import { buildBaySillGeometry } from '../render/BaySillGeometry.js';
 import type { FinishSceneMesh } from './rules.js';
 
 export type { FinishSceneMesh, FinishMeshAnchor } from './rules.js';
-
-const ROOT = path.resolve(import.meta.dirname, '../..');
 
 /** 面层核查关心的网格类型（userData.type）。其余（墙/门/家具/吊顶…）与 F09 无关。 */
 const FINISH_MESH_TYPES = ['wall_region', 'paint_region', 'sill_region', 'paint_sill_region'] as const;
@@ -51,7 +47,7 @@ export interface FinishSceneMeshes {
 }
 
 export function collectFinishSceneMeshes(layout: { walls: unknown[]; rooms: unknown[] }): FinishSceneMeshes {
-  const overlay = parseOverlay(readFileSync(path.join(ROOT, 'config/layout/overlay.yaml'), 'utf8'));
+  const overlay = parseOverlayFiles();
   const elements = mergeSceneElements(layout.walls as any, overlay);
   const scene = buildScene({
     walls: layout.walls,

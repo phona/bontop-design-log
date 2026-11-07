@@ -8,7 +8,7 @@ import type { CeilingZone } from '../../../shared/types.js';
 import { buildHvacBuilderSources } from '../../../shared/render/HvacBuilder.js';
 import { parseSceneInput } from '../../../shared/render/scene-input.js';
 import { resolveLayout } from '../../../server/layout-resolver.js';
-import { mergeSceneElements, parseOverlay } from '../../../server/overlay-merge.js';
+import { mergeSceneElements, parseOverlayFiles } from '../../../server/overlay-merge.js';
 import { mepPenetrationAt } from '../../../shared/condensate-chain.js';
 import { parseMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 
@@ -34,8 +34,7 @@ function filterCliCurtains(exportRoot: SceneBuildResult['exportRoot'], expectedN
 export function buildCliHouseScene(
   layoutPath = 'config/layout/model-geometry.yaml',
   housePath = 'config/house.yaml',
-  overlayPath = 'config/layout/overlay.yaml',
-  ceilingPath = 'config/ceiling.yaml',
+  ceilingPath = 'config/model/envelope/ceiling.yaml',
   renderFactsPath?: string,
 ): SceneBuildResult {
   const resolved = resolveLayout(readYaml<VertexLayoutYaml>(layoutPath));
@@ -57,7 +56,7 @@ export function buildCliHouseScene(
     'w_mbath_south',
   );
   const rawWalls = resolved.walls;
-  const elements = mergeSceneElements(rawWalls, parseOverlay(readFileSync(overlayPath, 'utf8')));
+  const elements = mergeSceneElements(rawWalls, parseOverlayFiles());
   const input = parseSceneInput({
     rooms: resolved.rooms,
     platform: resolved.platform,

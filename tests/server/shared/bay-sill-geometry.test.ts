@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { baySillBbox, buildBaySillGeometry } from '../../../shared/render/BaySillGeometry.js';
@@ -73,7 +74,7 @@ test('bay sill accepts a reversed contiguous segment without a diagonal gap', ()
 
 test('real bay footprints stay within their declared wall spans', () => {
   const layout = resolveLayout(yaml.load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0]);
-  const elements = mergeSceneElements(layout.walls, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  const elements = mergeSceneElements(layout.walls, parseOverlayFiles());
   const bays = elements.filter((element): element is Extract<typeof element, { type: 'bay_sill' }> => element.type === 'bay_sill');
   for (const bay of bays) {
     const geometry = buildBaySillGeometry(bay.wallRefs!, layout.rooms, bay.depth);

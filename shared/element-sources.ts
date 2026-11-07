@@ -28,7 +28,7 @@ function extractDecision(note: string | undefined): string | undefined {
 export const ELEMENT_SOURCES = {
   electrical: 'config/electrical.yaml',
   plumbing: 'config/plumbing.yaml',
-  ceiling: 'config/ceiling.yaml',
+  ceiling: 'config/model/envelope/ceiling.yaml',
   hvac: 'config/hvac.yaml',
 } as const;
 

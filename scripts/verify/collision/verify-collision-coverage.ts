@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { loadOverlayDoc } from '../../../server/overlay-merge.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 
@@ -25,10 +26,10 @@ interface SuppressEntry {
 }
 
 function main() {
-  const overlayPath = path.join(ROOT, 'config/layout/overlay.yaml');
   const geomPath = path.join(ROOT, 'config/layout/model-geometry.yaml');
 
-  const overlay = yaml.load(fs.readFileSync(overlayPath, 'utf8')) as {
+  // S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 三文件，合并读
+  const overlay = loadOverlayDoc() as {
     suppress?: SuppressEntry[];
     elements?: OverlayElement[];
   };
@@ -65,8 +66,8 @@ function main() {
   // 涂装叠加层三类（paint_region / paint_ceiling_region / paint_sill_region）都是「要刷漆的声明面」，
   // 不是场景实体：不产碰撞体、不进 first-person 碰撞。漏登记会让本脚本 fail-closed 报
   // unknown element type——2026-10-09 新增后两类时正是这么发现的。
-  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'glass_infill', 'frosted_privacy', 'shower_screen', 'curtain', 'wall_region', 'sill_region', 'paint_region', 'paint_ceiling_region', 'paint_sill_region', 'skirting_region']); // 踢脚线墙脚薄片饰面，与 floor_region 同款不需要碰撞（DEC-2026-10-28-R02）
-  const conditionalCollidableTypes = new Set(['sliding_door_run', 'hinged_glass_door']);
+  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'frosted_privacy', 'shower_screen', 'curtain', 'wall_region', 'sill_region', 'paint_region', 'paint_ceiling_region', 'paint_sill_region', 'skirting_region']); // 踢脚线墙脚薄片饰面，与 floor_region 同款不需要碰撞（DEC-2026-10-28-R02）
+  const conditionalCollidableTypes = new Set(['sliding_door_run']);
 
   for (const el of overlay.elements ?? []) {
     if (!collidableTypes.has(el.type) && !nonCollidableTypes.has(el.type) && !conditionalCollidableTypes.has(el.type)) {
@@ -82,13 +83,7 @@ function main() {
     }
   }
 
-  const hingedGlassDoors = (overlay.elements ?? []).filter(el => el.type === 'hinged_glass_door') as Array<OverlayElement & { open?: boolean }>;
-  console.log(`  hinged_glass_door elements (collision only when closed): ${hingedGlassDoors.length}`);
-  for (const door of hingedGlassDoors) {
-    if (door.open === false && !(door.points && door.points.length === 2)) {
-      errors.push(`hinged_glass_door "${door.id}" is closed but does not have exactly two points — cannot generate collision`);
-    }
-  }
+  // hinged_glass_door / glass_infill 检查已删（issue #98 第三阶段 S1：overlay 0 元素，类型退场）。
 
   if (errors.length > 0) {
     console.error('\nFAIL:');

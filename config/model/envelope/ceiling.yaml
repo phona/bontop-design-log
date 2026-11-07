@@ -1,3 +1,7 @@
+# envelope/ceiling.yaml：吊顶分区与设备位（issue #98 第三阶段 S1 自 config/ceiling.yaml 原样搬迁）。
+# drop 16（含 5 窗帘盒 + 1 晾衣架的 trade 显式声明）+ aluminum_buckle 3 + ac_indoor 6 = 25 条目，id 零重编号。
+# ac_indoor 被 hvac.yaml 以 ref:{source:ceiling,id:ac_*} 结构化引用 6 处、electrical sock_*_ac 供电；
+# 「吊顶里的设备位」归属裁决不在本切片。唯一 loader：server/config-loader.ts loadCeilingConfig()。
 - id: ceiling_living
   room: living_dining
   type: drop

@@ -55,7 +55,7 @@ export interface PaintWallInput {
   }>;
 }
 
-/** 窗洞声明（overlay 的 bay_sill / glass_infill），沿墙位置缺省时无法定位。 */
+/** 窗洞声明（envelope/openings.yaml 的 bay_sill），沿墙位置缺省时无法定位。 */
 export interface PaintWindowInput {
   id: string;
   wall: string;
@@ -325,7 +325,7 @@ export function computePaintScope(
     // 有 height）与预算侧会因此给出不同答案。错误信息直接指去哪补。
     if (region.height === undefined) {
       throw new Error(
-        `paint_region ${region.id} 缺 height（涂装带顶标高，不是带高）：请到 config/layout/overlay.yaml 补 height（本案层高 2.8m，窗台/防水台带另有 0.77m 一档）。缺失时不许回落默认层高——那会让涂装面积静默偏离声明`,
+        `paint_region ${region.id} 缺 height（涂装带顶标高，不是带高）：请到 config/model/envelope/finish-surfaces.yaml 补 height（本案层高 2.8m，窗台/防水台带另有 0.77m 一档）。缺失时不许回落默认层高——那会让涂装面积静默偏离声明`,
       );
     }
     const top = region.height;
@@ -345,7 +345,7 @@ export function computePaintScope(
       gaps.push({ ...gap, from: clippedFrom, to: clippedTo, bottom: clippedBottom, top: clippedTop, areaSqm });
     }
 
-    // 窗洞：overlay 的 bay_sill / glass_infill，只有写了 along 才能定位
+    // 窗洞：envelope/openings.yaml 的 bay_sill，只有写了 along 才能定位
     for (const window of windowsByWall.get(region.wall) ?? []) {
       if (!window.along) {
         if (!options.suppressedWallIds?.has(region.wall)) {

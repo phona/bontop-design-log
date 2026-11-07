@@ -7,7 +7,6 @@ import { installNodeFileReader } from './node-gltf-runtime.js';
 export interface CliGlbOptions {
   layout?: string;
   house?: string;
-  overlay?: string;
   ceiling?: string;
   renderFacts?: string;
 }
@@ -25,7 +24,7 @@ export function assertOutputPathAvailable(output: string): void {
   if (existsSync(output)) throw new Error(`Refusing to overwrite existing output file: ${output}`);
 }
 
-const USAGE = 'usage: npm run export:glb -- --output <file.glb> [--layout <file>] [--house <file>] [--overlay <file>] [--ceiling <file>] [--render-facts <file.json>]';
+const USAGE = 'usage: npm run export:glb -- --output <file.glb> [--layout <file>] [--house <file>] [--ceiling <file>] [--render-facts <file.json>]';
 
 export function parseArgs(argv: string[]): Options {
   const options: Partial<Options> = {};
@@ -35,18 +34,17 @@ export function parseArgs(argv: string[]): Options {
     else if (arg === '--output') options.output = argv[++i];
     else if (arg === '--layout') options.layout = argv[++i];
     else if (arg === '--house') options.house = argv[++i];
-    else if (arg === '--overlay') options.overlay = argv[++i];
     else if (arg === '--ceiling') options.ceiling = argv[++i];
     else if (arg === '--render-facts') options.renderFacts = argv[++i];
     else throw new Error(`unknown argument: ${arg}`);
   }
-  if (!options.output) throw new Error('usage: npm run export:glb -- --output <file.glb> [--layout <file>] [--house <file>] [--overlay <file>] [--ceiling <file>] [--render-facts <file.json>]');
+  if (!options.output) throw new Error('usage: npm run export:glb -- --output <file.glb> [--layout <file>] [--house <file>] [--ceiling <file>] [--render-facts <file.json>]');
   return options as Options;
 }
 
 export async function exportCliGlb(options: CliGlbOptions = {}): Promise<CliGlbExport> {
   installNodeFileReader();
-  const { exportRoot, report } = buildCliHouseScene(options.layout, options.house, options.overlay, options.ceiling, options.renderFacts);
+  const { exportRoot, report } = buildCliHouseScene(options.layout, options.house, options.ceiling, options.renderFacts);
   const result = await exportObjectTreeToGlbData(exportRoot);
   return { bytes: result instanceof ArrayBuffer ? new Uint8Array(result) : result, report };
 }

@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import { FURNITURE_DIMS } from '../shared/types.js';
+import { loadOverlayDoc } from '../server/overlay-merge.js';
 
 interface MaterialEntry {
   id: string;
@@ -74,7 +75,7 @@ function main(): void {
   const materials = loadYaml<{ materials: MaterialEntry[] }>('config/materials.yaml').materials;
   const electrical = loadYaml<ElectricalPoint[]>('config/electrical.yaml');
   const house = loadYaml<{ furnishings?: Record<string, FurnishingItem[]> }>('config/house.yaml');
-  const overlay = loadYaml<{ elements: OverlayElement[] }>('config/layout/overlay.yaml');
+  const overlay = loadOverlayDoc() as unknown as { elements: OverlayElement[] };
   const env = loadYaml<{ location: { latitude: number; longitude: number; timezone: number } }>('config/environment.yaml');
   const scheme = JSON.parse(fs.readFileSync('data/current-scheme.json', 'utf8')) as {
     selections: Record<string, { default?: string; roomOverrides?: Record<string, string> }>;
@@ -88,7 +89,7 @@ function main(): void {
 
   lines.push('# 装扮映射表（材质/家具/灯光的外观替换映射）');
   lines.push('');
-  lines.push(`生成：${today}，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json`);
+  lines.push(`生成：${today}，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / config/model/envelope/（openings+floor-zones+ceiling+finish-surfaces）/ environment.yaml / data/current-scheme.json`);
   lines.push('');
   lines.push(`数据规模：house.yaml furnishings 共 ${furnishingCount} 件（与 \`fact.furnishings_count\` 对账）。`);
   lines.push('');
@@ -159,7 +160,7 @@ function main(): void {
   lines.push('**已取消、不再纳入装扮**：电视墙灯带（DEC-2026-10-13-R5，业主裁定「不搞了」）。点位与整条照明回路已从 config 删除，**不要**在渲染里摆这条灯带。取电插座 `sock_living_tv_led` 保留在电视墙，后期想要氛围光走插电式灯带挂该插座即可，零预埋零开槽。');
   lines.push('');
 
-  const glass = overlay.elements.filter((e) => e.type === 'curtain_run' || e.type === 'glass_infill');
+  const glass = overlay.elements.filter((e) => e.type === 'curtain_run');
   const bays = overlay.elements.filter((e) => e.type === 'bay_sill');
   lines.push('## 4. 玻璃幕/飘窗清单 → 玻璃材质（Low-E 微反）');
   lines.push('');

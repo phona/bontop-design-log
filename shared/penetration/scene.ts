@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { load as parseYaml } from 'js-yaml';
 import * as THREE from 'three';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import { mergeSceneElements, parseOverlay } from '../../server/overlay-merge.js';
+import { mergeSceneElements, parseOverlay, parseOverlayFiles } from '../../server/overlay-merge.js';
 import { parseCeilingZones, parseElectricalPoints, parseLightingRenderConfig, parsePlumbingPoints, parseProjectHvacFacts, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
 import { parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
 import { mepPenetrationAt } from '../../shared/condensate-chain.js';
@@ -106,7 +106,7 @@ export function pathSegmentsFromOverlay(elements: SceneElement[], layout: Return
   const result: GlassPathSegment[] = [];
   const wallMap = new Map(layout.walls.map((wall) => [wall.id, wall]));
   for (const element of elements) {
-    if (element.type !== 'curtain_run' && element.type !== 'glass_infill' && element.type !== 'railing_run') continue;
+    if (element.type !== 'curtain_run' && element.type !== 'railing_run') continue;
     const value = element as SceneElement & { wall?: string; walls?: string[]; parts?: Array<{ id: string; wall?: string; walls?: string[]; wallRefs?: string[] }> };
     const parts = value.parts ?? [];
     const refs = parts.length > 0
@@ -202,7 +202,7 @@ function runtimeGlassBoxes(result: ReturnType<typeof buildScene>, structuralPath
   const entries: BoxEntry[] = [];
   result.exportRoot.traverse((object) => {
     const type = String(object.userData.type ?? '');
-    if (!(object as THREE.Mesh).isMesh || (type !== 'curtain_run' && type !== 'glass_infill' && type !== 'railing_run')) return;
+    if (!(object as THREE.Mesh).isMesh || (type !== 'curtain_run' && type !== 'railing_run')) return;
     const box = objectBox(object);
     if (!box) return;
     const rawObjectId = String(object.userData.objectId ?? object.name);
@@ -307,10 +307,10 @@ export function loadSceneInputs(options: LoadSceneOptions = {}): SceneInputs {
   } finally {
     console.warn = warn;
   }
-  const overlay = parseOverlay(readFileSync(path.join(ROOT, 'config/layout/overlay.yaml'), 'utf8'));
+  const overlay = parseOverlayFiles();
   const config = readYaml<SpatialConfig>('config/spatial-validation.yaml');
   const house = readYaml<RawHouse>('config/house.yaml');
-  const ceiling = parseCeilingZones(readFileSync(path.join(ROOT, 'config/ceiling.yaml'), 'utf8'));
+  const ceiling = parseCeilingZones(readFileSync(path.join(ROOT, 'config/model/envelope/ceiling.yaml'), 'utf8'));
   const electrical = parseElectricalPoints(readFileSync(path.join(ROOT, 'config/electrical.yaml'), 'utf8'));
   const renderOverrides = parseRenderLightingOverrides(readFileSync(path.join(ROOT, 'config/render/overrides.yaml'), 'utf8'));
   const plumbing = parsePlumbingPoints(readFileSync(path.join(ROOT, 'config/plumbing.yaml'), 'utf8'));

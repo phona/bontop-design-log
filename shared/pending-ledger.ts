@@ -44,7 +44,7 @@ export interface PendingLedger {
 export const ELEMENT_BEARING_FILES: Record<string, string> = {
   'config/electrical.yaml': 'electrical',
   'config/plumbing.yaml': 'plumbing',
-  'config/ceiling.yaml': 'ceiling',
+  'config/model/envelope/ceiling.yaml': 'ceiling',
 };
 
 const ROW_RE = /^\|\s*(\d+[a-z]?)\s*\|/;
@@ -133,7 +133,7 @@ export type TargetBinding = 'bound' | 'type_reference' | 'unresolved';
 
 /**
  * 判断台账 target 绑定到什么。台账用反引号同时标 **元素 id** 和 **类型/字段名**
- * （如 `config/ceiling.yaml \`ac_indoor\`` 指「所有 ac_indoor 条目」，不是某个 id），
+ * （如 `config/model/envelope/ceiling.yaml \`ac_indoor\`` 指「所有 ac_indoor 条目」，不是某个 id），
  * 不区分就会把类型引用误报成「构件已不存在」。
  *   bound          = 配置里真有这个元素 id
  *   type_reference = 是该配置里的 type 取值，或含 `:`/空格的字段描述 → 不参与存在性核对

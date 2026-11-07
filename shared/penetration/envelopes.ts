@@ -454,7 +454,7 @@ export function computeEnvelopeShadow(input: EnvelopeInput): EnvelopeReport {
         owner: `sliding_door:${element.id}`,
         kind: 'sliding_open',
         enabled_by: element.id,
-        declared_basis: `config/layout/overlay.yaml ${element.id}（sliding_door_run open:true panels=${value.panels ?? 3}）；开启态面板位置复刻 SceneBuilder 叠收公式`,
+        declared_basis: `config/model/envelope/openings.yaml ${element.id}（sliding_door_run open:true panels=${value.panels ?? 3}）；开启态面板位置复刻 SceneBuilder 叠收公式`,
         boxes: slidingOpenObbs(value),
       });
     }

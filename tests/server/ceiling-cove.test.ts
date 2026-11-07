@@ -5,7 +5,7 @@ import { Box3 } from 'three';
 import { buildCeilingZone, buildMixedRectangleOutline } from '../../shared/render/CeilingZoneBuilder.js';
 import { parseCeilingZones } from '../../shared/project-render-facts-schema.js';
 
-const zones = parseCeilingZones(readFileSync('config/ceiling.yaml', 'utf8'));
+const zones = parseCeilingZones(readFileSync('config/model/envelope/ceiling.yaml', 'utf8'));
 const northBand = zones.find((zone) => zone.id === 'ceiling_dining_north_band');
 const westBand = zones.find((zone) => zone.id === 'ceiling_dining_west_band');
 const foyer = zones.find((zone) => zone.id === 'ceiling_entry_foyer');

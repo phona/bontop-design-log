@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -26,12 +27,12 @@ import { loadCeilingConfig } from '../../server/config-loader.js';
  */
 
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
-const OVERLAY: any = load(readFileSync('config/layout/overlay.yaml', 'utf8'));
+const OVERLAY: any = parseOverlayFiles();
 const layout = resolveLayout(MG);
 const ceilingZones = loadCeilingConfig();
 
 function mergedElements() {
-  return mergeSceneElements(layout.walls as any, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  return mergeSceneElements(layout.walls as any, parseOverlayFiles());
 }
 
 /** 与 app 同路径：真实墙（带 openings）+ resolved 房间 + 真实吊顶分区 + 涂装/贴砖声明。 */

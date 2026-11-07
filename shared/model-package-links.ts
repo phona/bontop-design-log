@@ -35,7 +35,9 @@ const ModelPackageLinkSchema = z.object({
 
 export const ModelPackageLinksSchema = z.object({
   schema: z.literal('project.model-package-links/v1'),
-  authorities: z.record(z.string().min(1), z.string().min(1)),
+  // issue #98 第三阶段 S1：authority 可指多个文件（overlay 拆为 envelope 三文件后，
+  // 指纹与选择器校验都必须覆盖全部成员，漏一个就是新鲜性缺口）。
+  authorities: z.record(z.string().min(1), z.union([z.string().min(1), z.array(z.string().min(1)).min(1)])),
   links: z.array(ModelPackageLinkSchema),
 }).strict();
 
@@ -50,3 +52,8 @@ export type ModelPackageLink = z.infer<typeof ModelPackageLinkSchema>;
 export type ModelPackageLinks = z.infer<typeof ModelPackageLinksSchema>;
 /** 单条 scope 引用（source + select）：服务端 assertSelector 用它取 selector 类型。 */
 export type ModelPackageScopeRef = z.infer<typeof ScopeRefSchema>;
+
+/** authority 值的文件清单：单 key 可指多文件（overlay = envelope 三文件，issue #98 S1）。 */
+export function authorityFilePaths(value: string | string[]): string[] {
+  return Array.isArray(value) ? value : [value];
+}

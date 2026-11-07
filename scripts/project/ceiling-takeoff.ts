@@ -15,7 +15,7 @@ import { computeCeilingTakeoff, type CeilingTakeoffZone } from '../../shared/cei
 import { parseCeilingZones } from '../../shared/project-render-facts-schema.js';
 
 const asJson = process.argv.includes('--json');
-const zones = parseCeilingZones(readFileSync('config/ceiling.yaml', 'utf8'));
+const zones = parseCeilingZones(readFileSync('config/model/envelope/ceiling.yaml', 'utf8'));
 const rooms = ProjectCatalog.load('.').getRooms().map((room) => ({ id: room.id, name: room.name, height: room.height }));
 const roomNames = new Map(rooms.map((room) => [room.id, room.name]));
 const takeoff = computeCeilingTakeoff(zones, rooms);
@@ -25,7 +25,7 @@ if (asJson) {
 } else {
   const pad = (value: string | number, width: number): string => String(value).padEnd(width);
   const num = (value: number, digits = 3): string => value.toFixed(digits).padStart(9);
-  console.log(`吊顶算量（config/ceiling.yaml，共 ${takeoff.zones.length} 个实心分区）\n`);
+  console.log(`吊顶算量（config/model/envelope/ceiling.yaml，共 ${takeoff.zones.length} 个实心分区）\n`);
   console.log(`${pad('分区', 26)}${pad('房间', 10)}${pad('工艺', 16)}${pad('类型', 17)}${pad('厚', 6)}${'净㎡'.padStart(9)}${'展开㎡'.padStart(9)}${'周长m'.padStart(8)}${'长边m'.padStart(8)}${'板块'.padStart(6)}  完成面`);
   for (const zone of takeoff.zones) {
     console.log(

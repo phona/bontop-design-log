@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -13,7 +14,7 @@ import { resolveLayout } from '../../server/layout-resolver.js';
 //  ③ 与 pipe-chase 检视态互不干扰（层标签隔离 + HVAC/管道重建不摧毁本层）
 
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
-const OV: any = load(readFileSync('config/layout/overlay.yaml', 'utf8'));
+const OV: any = parseOverlayFiles();
 const RESOLVED_LAYOUT: any = resolveLayout(MG);
 function sillWallLength(wallId: string): number {
   // 与 shared/masonry-takeoff.ts / SceneBuilder 的墙长口径一致：弧墙按 resolved
@@ -36,7 +37,7 @@ function resolvedWalls(): Array<{ id: string; x1: number; z1: number; x2: number
 function sceneWithWallTile() {
   // 走 mergeSceneElements（与 App 同路径）：bay_sill 的 wall 引用在此解析成 points/wallRefs，
   // sill_region 靠它找到防水台构件几何；直接喂原始 YAML 的 bay_sill 没有 points 会炸。
-  const merged = mergeSceneElements(resolvedWalls(), parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  const merged = mergeSceneElements(resolvedWalls(), parseOverlayFiles());
   return buildScene({
     walls: resolvedWalls(),
     rooms: resolveLayout(MG).rooms,
@@ -52,7 +53,7 @@ function wallTileMeshes(root: THREE.Object3D): THREE.Mesh[] {
 }
 
 test('overlay wall_region declarations pass the Zod discriminated union', () => {
-  const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const parsed = parseOverlayFiles();
   const regions: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'wall_region');
   assert.equal(regions.length, 18, '2026-10-09 P07 删 C18 后 stale 的 walltile_kitchen_ent_hood_wall 后 16 段墙；P11 厨房生活阳台门段拆东西两段 → 17；2026-10-23 DEC-2026-10-23-R04 客卫东墙淋浴砖段拆二（kitseg）→ 18');
   // schema 会填入默认值：bottom 默认 0、zone 默认 visible
@@ -85,7 +86,7 @@ test('overlay wall_region declarations pass the Zod discriminated union', () => 
 });
 
 test('mergeSceneElements preserves wall_region elements alongside overlay types', () => {
-  const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const parsed = parseOverlayFiles();
   const merged = mergeSceneElements(resolvedWalls(), parsed);
   const regions: any[] = merged.filter((e: any) => e.type === 'wall_region');
   assert.equal(regions.length, 18, "2026-10-09 P07 删 walltile_kitchen_ent_hood_wall 后 16 段墙；P11 厨房门段拆分 → 17；DEC-2026-10-23-R04 客卫东墙砖段拆二 → 18");
@@ -235,7 +236,7 @@ test('inspectWallTileRegions returns per-segment detail with the same rules as t
 test('wall-tile status surface mirrors HVAC: required/ready/missing + byRoom + byHeightTier', () => {
   // 用 overlay 声明直接复算，验证摘要口径与 App 播报一致。
   // tier 口径 = **贴砖带高**（与 HouseScene.inspectWallTileRegions 从网格几何读的 height 一致，非顶标高）。
-  const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const parsed = parseOverlayFiles();
   const elements: any[] = parsed.elements ?? [];
   const regions: any[] = elements.filter((e: any) => e.type === 'wall_region' || e.type === 'sill_region');
   const CN: Record<string, string> = {

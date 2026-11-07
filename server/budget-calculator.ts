@@ -21,7 +21,7 @@ import {
   type MasonryTakeoffResult,
 } from '../shared/masonry-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
-import { parseOverlay } from './overlay-merge.js';
+import { parseOverlay, parseOverlayFiles } from './overlay-merge.js';
 import { loadCeilingQuotes, baseJsonCeilingRatesFromBase, type CeilingQuotesFile } from './ceiling-quotes.js';
 import { resolveActiveCeilingRates, compareCeilingQuotes, type CeilingQuoteRateKey } from './ceiling-quotes.js';
 import {
@@ -131,14 +131,15 @@ function loadFloorRoomSplit(): { dryRoomIds: string[]; wetRoomIds: string[] } {
  * shared/types.ts 的 floor_region 注释：那个手工布尔量重复了几何已知的信息，改一处忘另一处
  * 就是双计/漏计，且从任何单处都看不出来。
  *
- * `elements` 是测试缝：缺省读 `config/layout/overlay.yaml`（生产唯一入口），
+ * `elements` 是测试缝：缺省读 envelope 三文件（`parseOverlayFiles()` 生产唯一入口，
+ * 原 config/layout/overlay.yaml 已于 issue #98 第三阶段 S1 拆迁），
  * 显式传入则可对同一套分派规则做合成复算（改标志/加区域），避免为跑负例去改配置文件。
  */
 export function loadMasonryTakeoff(
   catalog: ProjectCatalog,
   elements?: unknown[]
 ): MasonryTakeoffResult {
-  const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const overlay = parseOverlayFiles();
   const overlayElements = (elements ?? overlay.elements ?? []) as Array<Record<string, any>>;
 
   // overlay.suppress 压制的墙（玻璃幕墙 / 实体已删除）：wall_region 引用即抛错，
@@ -267,7 +268,7 @@ export function loadMasonryTakeoff(
     dryRoomIds: floorRoomSplit.dryRoomIds,
     wetRoomIds: floorRoomSplit.wetRoomIds,
     floorRegions,
-    // 厨卫铝扣板完成面（config/ceiling.yaml 的 ceiling_kitchen / ceiling_master_bath /
+    // 厨卫铝扣板完成面（config/model/envelope/ceiling.yaml 的 ceiling_kitchen / ceiling_master_bath /
     // ceiling_guest_bath，均「完成面 2.65m」）= 贴砖带顶标高上限。必填、不设默认值。
     clearHeight: 2.65,
   });
@@ -379,7 +380,7 @@ export function loadPaintScopeAreaByRoom(
 }
 
 /**
- * 吊顶工程量：按 `config/ceiling.yaml` 的逐分区声明实算，不再按房间面积近似。
+ * 吊顶工程量：按 `config/model/envelope/ceiling.yaml` 的逐分区声明实算，不再按房间面积近似。
  * 工艺/计价类别（trade）拆分见 shared/ceiling-takeoff.ts；返回值为原始浮点，不取整。
  */
 function ceilingTakeoff(catalog: ProjectCatalog): CeilingTakeoff {

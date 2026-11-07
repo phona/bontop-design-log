@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -15,9 +16,9 @@ import { resolveLayout } from '../../server/layout-resolver.js';
 //  ④ SCH-135-01 是 GATE-135-COMPLETE 的放行卡点，且 pass 条件含 3D 审计面 ready。
 
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
-const OV: any = load(readFileSync('config/layout/overlay.yaml', 'utf8'));
+const OV: any = parseOverlayFiles();
 const RESOLVED: any = resolveLayout(MG);
-const parsed: any = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+const parsed: any = parseOverlayFiles();
 const skirt: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'skirting_region');
 
 function wallLength(wallId: string): number {

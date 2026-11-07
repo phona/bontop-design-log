@@ -18,7 +18,7 @@ import { ProjectCatalog } from '../../server/project-catalog.js';
  *  ③ 口径一致：解析化面积 == 渲染侧 `buildMixedRectangleOutline` + shoelace（3D 与算量同源）。
  */
 
-const zones = parseCeilingZones(readFileSync('config/ceiling.yaml', 'utf8'));
+const zones = parseCeilingZones(readFileSync('config/model/envelope/ceiling.yaml', 'utf8'));
 const rooms = ProjectCatalog.load('.').getRooms().map((room) => ({ id: room.id, height: room.height }));
 const takeoff = computeCeilingTakeoff(zones, rooms);
 const byId = new Map(takeoff.zones.map((zone) => [zone.id, zone]));

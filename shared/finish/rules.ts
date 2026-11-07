@@ -120,7 +120,7 @@ export interface FinishScopeInput {
   sills: FinishSillClaim[];
   rooms: FinishRoomPolygon[];
   wallGeometry: Record<string, FinishWallGeometry>;
-  /** 吊顶 zone（config/ceiling.yaml）。 */
+  /** 吊顶 zone（config/model/envelope/ceiling.yaml）。 */
   ceilings?: FinishCeilingZone[];
   /** 房间外接矩形（resolved layout），用于校验铝扣板 zone 是否越界。 */
   roomRects?: FinishRoomRect[];

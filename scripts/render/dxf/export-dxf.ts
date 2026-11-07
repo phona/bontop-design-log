@@ -6,9 +6,9 @@
  * （过程物不进 git，铁律「过程物不进 git」）。也是 ezdxf 回读验证的输入通道。
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
-import { mergeSceneElements, parseOverlay } from '../../../server/overlay-merge.js';
+import { mergeSceneElements, parseOverlayFiles } from '../../../server/overlay-merge.js';
 import { loadMepCoordinationConfig } from '../../../server/config-loader.js';
 import { ProjectRenderFactsLoader } from '../../../server/project-render-facts-loader.js';
 import { endpointSourcesFromFacts } from '../../../shared/mep-hvac-coordination-schema.js';
@@ -16,7 +16,7 @@ import { buildProjectDxf } from '../../../shared/dxf/project-dxf.js';
 
 function main(): void {
   const catalog = ProjectCatalog.load('.');
-  const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const overlay = parseOverlayFiles();
   const factsLoader = new ProjectRenderFactsLoader();
   factsLoader.load();
   const facts = factsLoader.getFacts();

@@ -20,7 +20,7 @@ sources:
   circuits: config/electrical-topology.yaml
   routes: config/mep-hvac-coordination.yaml
   hvac: config/hvac.yaml
-  ceiling: config/ceiling.yaml
+  ceiling: config/model/envelope/ceiling.yaml
 
 # 参与水电算量的层；其余层显式排除并记 reason（空调包 PKG-030，见 control.yaml COST-030-02）
 covered_layers: [strong_power, weak_power, water_supply, drainage]

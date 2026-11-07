@@ -11,7 +11,7 @@
 | `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
 | `config/electrical.yaml` | 共 104 个点位 | `fact.electrical_points_count` |
 | `config/plumbing.yaml` | 共 33 个点位 | `fact.plumbing_points_count` |
-| `config/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
+| `config/model/envelope/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
 | `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 89 处 | 契约 `c.mep_layer_below_drop_bottom`（`registered_conflicts: 89`） |
 
 > 上表数字必须与 yaml 实际条目数一致，否则 `verify:facts` 的 count/fact 对账直接失败。
@@ -35,7 +35,7 @@
 - **水走地**：给水垫层内 0.18m，排水贴地 0.02–0.10m；重力管（排水/冷凝水）全程 1% 坡（阳台 2%），禁止上弯。
 - **全部正交折线**，穿墙段与墙正交；穿墙点逐条声明在 `docs/design-iterations/mep-routing-20260901/round.yaml` 的 datum 段（v1 留档，penetrations 15 条），每条含墙 id、坐标、标高、门洞避让关系。
   > 口径：现行 route 级穿墙声明写在 `config/mep-hvac-coordination.yaml` 每条 route 的 `penetration` 数组里，合计 40 条声明、落在 21 个不同孔位（同一墙同一坐标由多条路线共用一孔，如 w_strip_east(4.2,4.6) 三管同孔）；`design-datum.yaml` 是 2026-09-01 v1 留档（15 条），**不是现行清点工具**，两套都以量房实测终核。
-- 权威几何：`config/layout/model-geometry.yaml`；吊顶通道：`config/ceiling.yaml`；走线：`config/mep-hvac-coordination.yaml`（每条 route 的 reason 字段含逐条说明）。
+- 权威几何：`config/layout/model-geometry.yaml`；吊顶通道：`config/model/envelope/ceiling.yaml`；走线：`config/mep-hvac-coordination.yaml`（每条 route 的 reason 字段含逐条说明）。
 
 ## 2. 墙体类型参考图 v1（邻户图比例映射）
 
@@ -149,7 +149,7 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 
 #### 3.3.1 吊顶内分层标高（2026-10-06 DEC-2026-10-06-R5 分区重设，#41 已裁定）
 
-`config/mep-hvac-coordination.yaml` 的 `layers.height` 是 **A 区默认层高**；B 区由各 route 的 via/from/to y 单独体现。完成面权威 = `config/ceiling.yaml`（0.30m 降板 2.50m、0.15m 降板/铝扣板/窗帘盒 2.65m，空腔即完成面至 2.80m 结构板底）。
+`config/mep-hvac-coordination.yaml` 的 `layers.height` 是 **A 区默认层高**；B 区由各 route 的 via/from/to y 单独体现。完成面权威 = `config/model/envelope/ceiling.yaml`（0.30m 降板 2.50m、0.15m 降板/铝扣板/窗帘盒 2.65m，空腔即完成面至 2.80m 结构板底）。
 
 | 分层 | A 区标高（完成面 2.50） | B 区标高（完成面 2.65，铝扣板） | 说明 |
 |---|---:|---:|---|

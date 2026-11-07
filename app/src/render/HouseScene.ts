@@ -73,10 +73,10 @@ import {
   type ElementStatus,
 } from './analysis/element-state-colors.js';
 import type { WallSegment, ResolvedRoom, ResolvedOpening } from '@shared/types';
+import { WALL_THICKNESS } from '@shared/furniture-placement';
 
 export const GLASS_THICKNESS = 0.024;
 const DEFAULT_FLOOR = '#e8e0d5';
-const WALL_THICKNESS = 0.12;
 
 /**
  * 墙 mesh 的 objectId → 源墙 id。SceneBuilder.addWallElement 在开门洞拆段后写
@@ -728,8 +728,6 @@ export class HouseScene implements SceneApi {
       frostedPrivacy: () => this.materials.makeFrostedPrivacyMaterial(),
       showerScreen: () => this.materials.makeShowerScreenMaterial(),
       slidingDoorGlass: ({ paneWidth }) => this.materials.makeFlutedGlassMaterial(paneWidth),
-      hingedGlassDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x202328, metalness: 0.7, roughness: 0.3 }),
-      hingedGlassDoorGlass: () => this.materials.makeShowerScreenMaterial(),
     };
     const result = buildScene({
       ...input,
@@ -2519,7 +2517,7 @@ export class HouseScene implements SceneApi {
 
   /**
    * 吊顶分区·逐区明细 + 算量（与 shared/ceiling-takeoff.ts 同口径，数据源是场景里的
-   * `userData.ceiling` 声明 blob——浏览器不直读 config/ceiling.yaml）。
+   * `userData.ceiling` 声明 blob——浏览器不直读 config/model/envelope/ceiling.yaml）。
    */
   inspectCeilingZones(): {
     takeoff: CeilingTakeoff;

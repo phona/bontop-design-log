@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
-import { MODEL_PACKAGE_LINKS_PATH, ModelPackageLinksSchema, type ModelPackageLinks, type ModelPackageScopeRef } from '../shared/model-package-links.js';
+import { MODEL_PACKAGE_LINKS_PATH, ModelPackageLinksSchema, authorityFilePaths, type ModelPackageLinks, type ModelPackageScopeRef } from '../shared/model-package-links.js';
+import { loadOverlayDoc } from './overlay-merge.js';
 
 // 2026-11-02（自装交互审批第一步）：常量迁至 shared/model-package-links.ts——
 // shared/schedule-state.ts 的指纹计算要用它，shared/ 不得反向依赖 server/。此处转发导出。
@@ -44,13 +45,16 @@ export function loadModelPackageLinks(path = MODEL_PACKAGE_LINKS_PATH): ModelPac
 
   const authorityDocs = new Map<string, unknown>();
   const getAuthority = (key: string): unknown => {
-    const authorityPath = parsed.authorities[key];
-    if (!authorityPath) throw new Error(`${path}: unknown authority "${key}"`);
+    const authorityValue = parsed.authorities[key];
+    if (!authorityValue) throw new Error(`${path}: unknown authority "${key}"`);
     if (!authorityDocs.has(key)) {
       try {
-        authorityDocs.set(key, parseYaml(readFileSync(authorityPath, 'utf8')));
+        // issue #98 第三阶段 S1：overlay 拆为 envelope 三文件（原 config/layout/overlay.yaml 已删），
+        // 其选择器（types 分布在 floor-zones/finish-surfaces/openings 之间）必须按合并文档核对，
+        // 走 server/overlay-merge.ts 的唯一合并点 loadOverlayDoc()；其余 authority 仍是单文件。
+        authorityDocs.set(key, key === 'overlay' ? loadOverlayDoc() : parseYaml(readFileSync(authorityFilePaths(authorityValue)[0], 'utf8')));
       } catch (err) {
-        throw new Error(`${path}: cannot read authority ${key} (${authorityPath}): ${err instanceof Error ? err.message : String(err)}`);
+        throw new Error(`${path}: cannot read authority ${key} (${authorityFilePaths(authorityValue).join(' + ')}): ${err instanceof Error ? err.message : String(err)}`);
       }
     }
     return authorityDocs.get(key);

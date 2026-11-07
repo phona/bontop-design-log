@@ -50,7 +50,7 @@
 
 > Blender 主线已暂停并冷归档到 `scripts/archive/blender-pipeline/`；本文件中的 Blender-specific 约束仅在明确恢复冷归档时适用。几何、坐标、电气、家具、碰撞与数据一致性铁律始终有效。
 >
-> `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/layout/overlay.yaml` 出一切意图。代码只读、只执行，禁止推断。
+> `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/model/envelope/{openings,floor-zones,finish-surfaces}.yaml`（S1 起替代原 `config/layout/overlay.yaml`，合并入口 `server/overlay-merge.ts` 的 `parseOverlayFiles()`）出一切意图。代码只读、只执行，禁止推断。
 >
 > **视觉反馈类迭代**（业主看图说话 → 改模型 → 再看）开工前读 `docs/visual-change-playbook.md`，并跑 `npm run gate:visual` 确认客户端渲染的就是当前 config（config watch 曾因单文件监听挂 inode、原子替换写后静默断线而不可靠，2026-10-24 已改目录级监听修复；gate 对 schema 拒绝类 STALE 仍是保险丝）。
 >
@@ -69,7 +69,7 @@
   - `+z` = 南，`-z` = 北
 - 俯视图约定：北朝上（`-z` 方向），南朝下（`+z` 方向）。
 - `model-geometry.yaml` 使用 DXF 原值（局部坐标），允许 `z < 0`（如入户花园向北凸出）。
-- `overlay.yaml` 必须与 `model-geometry.yaml` 使用同一坐标系，不得保留独立偏移。
+- envelope 意图文件（openings/floor-zones/finish-surfaces，原 `overlay.yaml`）必须与 `model-geometry.yaml` 使用同一坐标系，不得保留独立偏移。
 - 全局坐标与局部坐标换算：
   - `DXF_mm = (local_m + origin) / scale`
   - `local_m = DXF_mm * scale - origin`
@@ -136,7 +136,7 @@
 
 ## 电气/家具修改铁律
 
-- 移动任何电气点位或家具前，必须确认目标墙面是**实体墙**（不在 `overlay.yaml` 的 `suppress` 列表中）。
+- 移动任何电气点位或家具前，必须确认目标墙面是**实体墙**（不在 envelope/openings.yaml 的 `suppress` 列表中）。
 - 玻璃幕墙（`curtain_run` / 被 suppress 的墙）**不能挂载**：电视、插座、挂件、柜体。
 - 家具布局与电气点位必须**交叉验证**：插座位置 ≈ 电器实际位置（偏差 > 1.5m 需报警）。
 - 修改前先问："这面墙是什么材质？能打孔/挂重物吗？"
@@ -151,7 +151,8 @@
 
 - 新增任何 `SceneElement` 类型时，必须评估是否需要碰撞：
   - 需要碰撞：`wall`, `curtain_run`
-  - 不需要碰撞：`floor_region`, `bay_sill`, `railing_run`, `glass_infill`, `shower_screen`
+  - 不需要碰撞：`floor_region`, `bay_sill`, `railing_run`, `shower_screen`
+  - （`glass_infill` 已随 issue #98 第三阶段 S1 删除：0 元素死类型，schema 与消费分支同步退场）
 - 碰撞数据提取逻辑在 `app/src/scene/collision-utils.ts`（`extractCollisionWalls`）。
 - 修改 `FirstPersonController` 旋转逻辑后，必须跑 `npm run test:app`。
 - 修改 `CollisionDetector`、`extractCollisionWalls` 或 `CameraAnimator` 后，必须跑：

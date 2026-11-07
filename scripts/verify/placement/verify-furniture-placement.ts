@@ -500,7 +500,7 @@ function main(): void {
   const studyCabinet = placedIndex.get('study/study_seasonal_wardrobe_wall');
   const STUDY_DOOR_SWEEP: Aabb = { minX: 6.15, maxX: 7.05, minZ: 5.55, maxZ: 6.45 }; // d_study 北门扇扫掠域
   // 2026-10-26 DEC-2026-10-26-R02 修正：删“南缘 ≤6.45”硬约束。原规则把“柜顶抵边吊底”（北段在边吊段 z[5.55,6.45] 内、底 2.50m 的设计意图）误作全柜硬约束；
-  // 事实是边吊段以南 z>6.45 恢复 2.80m 原顶（config/ceiling.yaml ceiling_corridor 注记：“走廊地面 z[6.45,7.8] 段恢复 2.80m 原顶”），
+  // 事实是边吊段以南 z>6.45 恢复 2.80m 原顶（config/model/envelope/ceiling.yaml ceiling_corridor 注记：“走廊地面 z[6.45,7.8] 段恢复 2.80m 原顶”），
   // 柜顶 2.50m（柜体 2.40m + 顶封板 0.10m）在原顶下留 0.30m 空隙，不撞吊底；南缘越出 6.45 本身不是碰撞，属非通顶柜正常形态。
   // 本校验器为 2D（Aabb 无 Y），无法按柜顶标高 vs 实际吊底做高度判定，故不以南缘坐标代行高度检查；高度判定留待 3D 校验（见 DEC R02 遗留）。
   if (!studyCabinet) {

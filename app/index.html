@@ -222,7 +222,7 @@
       <div class="layers-section">装修饰面</div>
       <button id="wall-tile-btn" title="贴砖检视态：高亮厨卫已声明的贴砖区（可见面蓝 / 遮蔽面橙，透视显示）；显示层，不作出料依据" disabled>贴砖</button>
       <button id="paint-btn" title="涂漆检视态：高亮已声明的涂漆墙面（按房间外偏移避免与贴砖面共面，透视显示）；顶面涂装只在成本口径中单列，不在本层显示" disabled>涂漆</button>
-      <button id="ceiling-zone-btn" title="吊顶分区高亮：按 config/ceiling.yaml 的逐分区声明上色（同工艺同色族、每区一色），并给出面积/延长米/板块数；显示层，报价以 GET /api/ceiling/takeoff 为准" disabled>吊顶</button>
+      <button id="ceiling-zone-btn" title="吊顶分区高亮：按 config/model/envelope/ceiling.yaml 的逐分区声明上色（同工艺同色族、每区一色），并给出面积/延长米/板块数；显示层，报价以 GET /api/ceiling/takeoff 为准" disabled>吊顶</button>
       <div class="layers-section">数据与报价</div>
       <button id="ceiling-quote-btn" title="吊顶报价：多家报价并排对比（工程量不变，只换单价），点卡内按钮切换生效报价（改写 config/ceiling-quotes.yaml 的 active，需进 Git）">吊顶报价</button>
       <div class="layers-note">各检视层平级独立、可叠加显示；组合随刷新自动恢复。点画布或 Esc 收起本面板，「钉」可钉住不被画布点击收走。</div>

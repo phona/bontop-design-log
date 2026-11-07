@@ -891,7 +891,7 @@
   height: 2.8
   temp: 4000
   status: inferred
-  note: "生活阳台感应吸顶灯（DEC-2026-10-17-R20 补齐：阳台此前无任何灯具/开关，furnishings 预算行无对应点位）：光控+人体感应双模、带常亮档，无墙面开关——东墙门洞 d_kit_balc 占 z[1.20,2.00]，剩余墙垛 0.30/0.10m 容不下 86 底盒；点位避晾衣架主机 (6.40,1.60) 吊顶占用；归 lighting_bedrooms_bath。height=2.8 判定依据：config/ceiling.yaml 与 config/layout/overlay.yaml 均未声明 balcony 吊顶分区（2026-10-17 复核），按原顶完成面落点。若后续阳台做铝扣板吊顶，height 随完成面同步下调"
+  note: "生活阳台感应吸顶灯（DEC-2026-10-17-R20 补齐：阳台此前无任何灯具/开关，furnishings 预算行无对应点位）：光控+人体感应双模、带常亮档，无墙面开关——东墙门洞 d_kit_balc 占 z[1.20,2.00]，剩余墙垛 0.30/0.10m 容不下 86 底盒；点位避晾衣架主机 (6.40,1.60) 吊顶占用；归 lighting_bedrooms_bath。height=2.8 判定依据：config/ceiling.yaml（现 config/model/envelope/ceiling.yaml，issue #98 S1 搬迁）与 config/layout/overlay.yaml（现 config/model/envelope/*）均未声明 balcony 吊顶分区（2026-10-17 复核，paths 为搬迁前原文件），按原顶完成面落点。若后续阳台做铝扣板吊顶，height 随完成面同步下调"
 
 # 客厅隐藏式晾衣架
 - id: sock_living_drying

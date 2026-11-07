@@ -10,14 +10,19 @@ authorities:
   phase_2_scope: schedule/phase-2/control.yaml
   phase_3_scope: schedule/phase-3/control.yaml
   model_geometry: config/layout/model-geometry.yaml
-  overlay: config/layout/overlay.yaml
+  # issue #98 第三阶段 S1：overlay = envelope 三文件合并——选择器校验走 server/model-package-links.ts
+  # 的 loadOverlayDoc()（唯一合并点），指纹按三文件全部计入；source: overlay 的选择器不变
+  overlay:
+    - config/model/envelope/openings.yaml
+    - config/model/envelope/floor-zones.yaml
+    - config/model/envelope/finish-surfaces.yaml
   furnishings: config/house.yaml
   electrical: config/electrical.yaml
   plumbing: config/plumbing.yaml
   electrical_topology: config/electrical-topology.yaml
   mep_routes: config/mep-hvac-coordination.yaml
   hvac: config/hvac.yaml
-  ceiling: config/ceiling.yaml
+  ceiling: config/model/envelope/ceiling.yaml
 
 # source selectors use the declared source's existing IDs/fields. No amount, quantity, product detail or phase decision is authored here.
 # mapping_status distinguishes full links from partial/unmodelled scopes; never invent a 3D type solely to satisfy a link.

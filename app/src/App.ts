@@ -1527,7 +1527,7 @@ export class App {
       layerCommand('electrical_topology', '电路归属', '电气回路归属：面板—回路—点位归属，非电缆/线管/施工路径', '4'),
       layerCommand('wall_tile', '贴砖', '贴砖检视态：厨卫已声明贴砖区（可见面蓝 / 遮蔽面橙）', '5'),
       layerCommand('paint', '涂漆', '涂漆检视态：已声明涂漆墙面（按房间外偏移避免共面）', '6'),
-      layerCommand('ceiling_zone', '吊顶', '吊顶分区高亮：按 config/ceiling.yaml 逐分区声明上色', '7'),
+      layerCommand('ceiling_zone', '吊顶', '吊顶分区高亮：按 config/model/envelope/ceiling.yaml 逐分区声明上色', '7'),
       {
         id: 'layer.clear_all',
         label: '关闭全部检视层',

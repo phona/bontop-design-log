@@ -1,6 +1,6 @@
 # 统一空间校验（声明 · 拓扑 · 权威性）
 
-入口是 `npm run verify:spatial`，并已纳入 `npm run verify:all`。校验器只读取权威几何和声明：`config/layout/model-geometry.yaml` 提供墙、房间和开口，`config/layout/overlay.yaml` 提供 suppress 与玻璃/栏杆替代意图，`config/house.yaml` 提供 placed 家具，`config/ceiling.yaml` 与 `config/electrical.yaml` 提供吊顶和灯具点位。代码不会从房间名、家具名或截图推断墙体关系。
+入口是 `npm run verify:spatial`，并已纳入 `npm run verify:all`。校验器只读取权威几何和声明：`config/layout/model-geometry.yaml` 提供墙、房间和开口，`config/layout/overlay.yaml` 提供 suppress 与玻璃/栏杆替代意图，`config/house.yaml` 提供 placed 家具，`config/model/envelope/ceiling.yaml` 与 `config/electrical.yaml` 提供吊顶和灯具点位。代码不会从房间名、家具名或截图推断墙体关系。
 
 **与防穿模 linter 的分工**：本 CLI 判「这个场景说得通吗」——声明是否自洽、拓扑是否连续、运行时是否建了配置里声明的东西、设备装的位置对不对；「两块实体是否占了同一块空间」由 `npm run verify:penetration` 负责，见 [`docs/penetration-lint.md`](./penetration-lint.md)。两者共用 `shared/penetration/scene.ts` 的场景采集，但互不重复判同一件事；`tests/server/penetration-boundary.test.ts` 一票否定：本 CLI 的报告不得含任何穿透族 code。
 

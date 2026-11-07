@@ -1,5 +1,6 @@
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { VALID_CEILING_TYPES } from '../../../server/config-loader.js';
+import { loadOverlayDoc } from '../../../server/overlay-merge.js';
 import { FURNITURE_DIMS } from '../../../shared/types.js';
 import { CEILING_TRADE_CLASSES } from '../../../shared/ceiling-takeoff.js';
 import * as fs from 'fs';
@@ -67,8 +68,9 @@ function main(): void {
 
   const electrical = yaml.load(fs.readFileSync('config/electrical.yaml', 'utf-8')) as Positioned[];
   const plumbing = yaml.load(fs.readFileSync('config/plumbing.yaml', 'utf-8')) as Positioned[];
-  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; thickness?: number; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; cove_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number; trade?: string }>;
-  const overlay = yaml.load(fs.readFileSync('config/layout/overlay.yaml', 'utf-8')) as { suppress: OverlaySuppress[] };
+  const ceiling = yaml.load(fs.readFileSync('config/model/envelope/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; thickness?: number; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; cove_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number; trade?: string }>;
+  // S1 搬迁（issue #98）：suppress 随 envelope/openings.yaml；elements 合并读 envelope 三文件
+  const overlay = loadOverlayDoc() as { suppress: OverlaySuppress[] };
   const houseYaml = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }>; gift_areas: Array<{ id: string; name: string }> };
   const modelGeom = yaml.load(fs.readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }> };
 

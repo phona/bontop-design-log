@@ -1,0 +1,71 @@
+# envelope/floor-zones.yaml：地面材质分区（issue #98 第三阶段 S1 自 config/layout/overlay.yaml 原样搬迁）。
+# floor_region 6：绝对 points 是它们与挂墙元素的本质区别；follow / excluded 是独立管理语义
+# （DEC-041 过渡地面、DEC-2026-10-09-P16 显式排除），c.layout_region_room_overlap 契约盯着。
+# id 零重编号。合并读取入口：server/overlay-merge.ts parseOverlayFiles()。
+elements:
+  # 地板补区
+  - id: entry_garden_floor
+    type: floor_region
+    points:
+      - { x: 10.8, z: 0.00 }
+      - { x: 15.25, z: 0.00 }
+      - { x: 15.25, z: 2.90 }
+      - { x: 13.40, z: 2.90 }
+      - { x: 13.40, z: 3.00 }
+      - { x: 10.8, z: 3.00 }
+    follow: entry_garden
+    excluded: true
+    reason: "入户花园地板（跟随入户花园房间地材，避免与房间地面重叠时材质分裂）。excluded: true —— DEC-041 开发商已铺，业主已裁定移出算量（该房间也不在 floor applyRooms 内，几何判定同样不会计入，这里显式排除是为了让「为什么不算」在声明处可读，而非靠读者推断）；渲染仍可视化但不计费"
+
+  - id: entry_foyer_floor
+    type: floor_region
+    points:
+      - { x: 10.80, z: 3.00 }
+      - { x: 12.77, z: 3.00 }
+      - { x: 12.77, z: 4.30 }
+      - { x: 10.80, z: 4.30 }
+    follow: living_dining
+    reason: "入户到客厅的过渡地面（DEC-041：跟随客厅有效地材，避免分房换材时断层）"
+
+  - id: corridor_floor
+    type: floor_region
+    points:
+      - { x: 4.2, z: 5.55 }
+      - { x: 7.2, z: 5.55 }
+      - { x: 7.2, z: 7.8 }
+      - { x: 4.2, z: 7.8 }
+    follow: study
+    reason: "书房（study，x[4.20,7.20] z[5.55,9.80]） footprint 南侧的通道性地面条带 z[5.55,7.8]（3.0m×2.25m），整块落在 study 多边形内，故声明 follow: study 跟随书房地材（DEC-041 过渡地面约定的同一机制）。2026-10-04 更正：原 reason「主卧与父母房之间的走廊」不成立——主卧 master_bedroom 占 x[0,4.20]、与该房在 x=4.20 直接相邻，两者之间不存在独立走廊；本条带实为该房内部的过道区。2026-10-05 功能互换：该房由父母房改为书房，注释随功能改写，几何与地材归属不变。几何与地材归属维持不变（删该 element 会破坏 GLB 导出的既有断言 tests/server/cli-glb-export.test.ts），仅更正描述并显式声明子区域归属"
+
+  - id: main_corridor_floor
+    type: floor_region
+    points:
+      - { x: 4.2, z: 4.30 }
+      - { x: 7.2, z: 4.30 }
+      - { x: 7.2, z: 5.55 }
+      - { x: 4.2, z: 5.55 }
+    follow: living_dining
+    reason: "主走廊连接左翼和右翼（x[0,4.2] 段已并入主卫套间）。2026-10-09 业主裁定「走廊需要铺砖」：补 follow: living_dining（DEC-040 走廊与客餐厅通铺同材，600×1200 木纹砖 75 元/㎡）。DEC-2026-10-09-P16 起不再需要任何手工标志——本区域 3.75㎡ 不在任何 applyRooms 房间内，新口径（默认计入、整块落在已计费房间内才跳过）自动把它算进 floor 算量，原 costed: true 已删"
+
+  - id: guest_bath_open_vanity_floor
+    type: floor_region
+    points:
+      - { x: 5.60, z: 3.55 }
+      - { x: 7.10, z: 3.55 }
+      - { x: 7.10, z: 4.30 }
+      - { x: 5.60, z: 4.30 }
+    room: guest_bath
+    follow: living_dining
+    reason: "客卫南侧门外开放洗漱区，1.125㎡；地面跟随客餐厅当前有效木纹砖。该内部分区从 guest_bath 小花砖范围中扣出，门内余区继续小花砖（DEC-2026-10-18-TILE-02）。门洞线z=3.55为材质转换边界；交房后按完成面复尺。"
+
+  - id: north_platform_floor
+    type: floor_region
+    points:
+      # 西北角随平台边界圆角（v_vrv_n r=1.0，弧心 (6.6,1.0)），与 vrv_nw_railing 弧线一致，不再凸出直角
+      - { x: 5.6, z: 0.0, radius: 1.0, cx: 6.6, cz: 1.0 }
+      - { x: 7.2, z: 0.0 }
+      - { x: 7.2, z: 1.0 }
+      - { x: 5.6, z: 1.0 }
+    follow: balcony
+    excluded: true
+    reason: "VRV 设备平台地板（跟随生活阳台地材）。2026-10-09 业主裁定「设备平台不需要铺砖」→ excluded: true，约 1.385㎡（NW 角 r=1.0 圆角后的真实面积，非 1.60㎡ 外接矩形）不进预算 floor 算量（DEC-2026-10-09-P16 取代 P12 的「不设 costed」隐式排除：显式排除才能让例外在声明处显形）；渲染仍跟随阳台地材以保持室外灰砖面的视觉连贯，如需改为裸混凝土面请另议"
