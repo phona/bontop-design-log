@@ -1,7 +1,7 @@
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { VALID_CEILING_TYPES } from '../../../server/config-loader.js';
-import { loadOverlayDoc } from '../../../server/overlay-merge.js';
 import { FURNITURE_DIMS } from '../../../shared/types.js';
+import { suppressedWallIdSet } from '../../../shared/suppression.js';
 import { CEILING_TRADE_CLASSES } from '../../../shared/ceiling-takeoff.js';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
@@ -42,12 +42,6 @@ interface Positioned {
 const VALID_CEILING_CORNERS = ['nw', 'ne', 'se', 'sw'] as const;
 const VALID_CEILING_EDGES = ['north', 'east', 'south', 'west'] as const;
 
-interface OverlaySuppress {
-  id: string;
-  wall?: string;
-  walls?: string[];
-}
-
 function dist(ax: number, az: number, bx: number, bz: number): number {
   return Math.hypot(ax - bx, az - bz);
 }
@@ -69,8 +63,6 @@ function main(): void {
   const electrical = yaml.load(fs.readFileSync('config/electrical.yaml', 'utf-8')) as Positioned[];
   const plumbing = yaml.load(fs.readFileSync('config/plumbing.yaml', 'utf-8')) as Positioned[];
   const ceiling = yaml.load(fs.readFileSync('config/model/envelope/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; thickness?: number; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; cove_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number; trade?: string }>;
-  // S1 搬迁（issue #98）：suppress 随 envelope/openings.yaml；elements 合并读 envelope 三文件
-  const overlay = loadOverlayDoc() as { suppress: OverlaySuppress[] };
   const houseYaml = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }>; gift_areas: Array<{ id: string; name: string }> };
   const modelGeom = yaml.load(fs.readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }> };
 
@@ -81,11 +73,9 @@ function main(): void {
     else warnings.push(msg);
   };
 
-  const suppressedWalls = new Set<string>();
-  for (const s of overlay.suppress) {
-    if (s.wall) suppressedWalls.add(s.wall);
-    if (s.walls) for (const w of s.walls) suppressedWalls.add(w);
-  }
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性
+  // （ProjectCatalog 经 layout-resolver 透传），唯一权威实现 shared/suppression.ts。
+  const suppressedWalls = suppressedWallIdSet(walls);
 
   const wallIds = new Set(walls.map((w) => w.id).filter(Boolean) as string[]);
   const roomMap = new Map(rooms.map((r) => [r.id, r]));

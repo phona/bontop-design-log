@@ -9,7 +9,8 @@ import { parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.
 import { mepPenetrationAt } from '../../shared/condensate-chain.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { buildRenderLightingFixtures } from '../../shared/lighting-fixtures.js';
-import { type FurnishingsYaml, type ElectricalPoint, type HvacDiagram, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedWall, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
+import { glassJoinSpecs, joinDeclarationsOf, suppressedWallIds } from '../suppression.js';
+import { type FurnishingsYaml, type ElectricalPoint, type HvacDiagram, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, OverlayReplacement, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
 
 /**
  * 场景采集层：把「权威配置 → runtime 场景 → 可判定实体」这一路收敛成**唯一实现**。
@@ -44,7 +45,9 @@ export interface SpatialConfig {
   junctions?: import('../spatial-validation.js').JunctionSpec[];
   allowed_collinear_overlaps?: Array<{ walls: string[]; max_overlap: number; reason?: string }>;
   allowed_overlay_wall_junctions?: import('../spatial-validation.js').OverlayWallJunctionSpec[];
-  overlay_replacements?: import('../spatial-validation.js').OverlayReplacement[];
+  // overlay_replacements 镜像表已删（2026-11-07 issue #98 第三阶段 S3）：suppress 改判为
+  // model-geometry 墙属性，join 接缝语义上移为 envelope 对象声明，由
+  // shared/suppression.ts 的 glassJoinSpecs 从对象声明机械派生（SceneInputs.replacementJoins）。
   lighting_host_overrides?: Array<{ id: string; wall: string; wall_side: string }>;
 }
 
@@ -95,12 +98,9 @@ export function overlayRefs(element: SceneElement): OverlayElementRef {
   return { id: value.id, type: value.type, wall: value.wall, walls: value.walls, parts: value.parts };
 }
 
-function elementWallRefs(element: SceneElement): string[] {
-  const value = overlayRefs(element);
-  const parts = value.parts ?? [];
-  if (parts.length > 0) return parts.flatMap((part) => [...(part.wall ? [part.wall] : []), ...(part.walls ?? []), ...(part.wallRefs ?? [])]);
-  return [...(value.wall ? [value.wall] : []), ...(value.walls ?? [])];
-}
+// 本文件原有的私有 elementWallRefs 副本（定义后无人调用）与 spatial-validation.ts 的
+// refsForElement 是同一算法的重复；S3 起"围护对象引用了哪些墙"只有 shared/suppression.ts
+// 一份实现（elementWallRefs），此处不再留私有副本。
 
 export function pathSegmentsFromOverlay(elements: SceneElement[], layout: ReturnType<typeof resolveLayout>): GlassPathSegment[] {
   const result: GlassPathSegment[] = [];
@@ -124,26 +124,6 @@ export function pathSegmentsFromOverlay(elements: SceneElement[], layout: Return
     }
   }
   return result;
-}
-
-export function suppressionWallIds(overlay: ReturnType<typeof parseOverlay>, walls: ResolvedWall[] = []): string[] {
-  const ids = overlay.suppress.flatMap((entry) => {
-    if (entry.wall) return [entry.wall];
-    if (entry.walls) return entry.walls;
-    if (entry.region) {
-      const minX = Math.min(entry.region.x1, entry.region.x2);
-      const maxX = Math.max(entry.region.x1, entry.region.x2);
-      const minZ = Math.min(entry.region.z1, entry.region.z2);
-      const maxZ = Math.max(entry.region.z1, entry.region.z2);
-      return walls.filter((wall) => {
-        const mx = (wall.x1 + wall.x2) / 2;
-        const mz = (wall.z1 + wall.z2) / 2;
-        return mx >= minX && mx <= maxX && mz >= minZ && mz <= maxZ;
-      }).map((wall) => wall.id);
-    }
-    return [];
-  });
-  return ids;
 }
 
 function segmentFromRuntimeMesh(object: THREE.Object3D, entity: string): { segment: PlanSegment; thickness: number } | undefined {
@@ -278,6 +258,12 @@ export interface SceneInputs {
   lighting: ReturnType<typeof parseLightingRenderConfig>;
   suppressIds: string[];
   structuralPaths: GlassPathSegment[];
+  /**
+   * 玻璃接缝声明（墙↔替换对象↔part↔join）：由 shared/suppression.ts 的 glassJoinSpecs
+   * 从 envelope 对象声明机械派生（2026-11-07 S3 前住在 spatial-validation.yaml 的
+   * overlay_replacements 镜像表，手工维护的第二份关联）。
+   */
+  replacementJoins: OverlayReplacement[];
   /** 房间绕向自动纠正等 layout 期 warning，原样透传给 CLI 报告。 */
   layoutWarnings: string[];
   /** config/hvac.yaml 首个 plan 的 diagram（主卫冷凝链锚点派生用，issue #98 PR-10）。 */
@@ -325,9 +311,13 @@ export function loadSceneInputs(options: LoadSceneOptions = {}): SceneInputs {
     'w_mbath_south',
   );
   const elements = mergeSceneElements(layout.walls, overlay);
-  const suppressIds = suppressionWallIds(overlay, layout.walls);
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：判定读墙条目自身的 suppressed 属性
+  // （layout.walls 经 resolveLayout 透传），唯一权威实现 shared/suppression.ts；
+  // join 接缝语义从 envelope 对象声明机械派生（原 overlay_replacements 镜像表已删）。
+  const suppressIds = suppressedWallIds(layout.walls);
   const structuralPaths = pathSegmentsFromOverlay(elements, layout);
-  return { layout, overlay, elements, config, house, ceiling, electrical, renderOverrides, plumbing, lighting, suppressIds, structuralPaths, layoutWarnings, hvacDiagram, condensatePenetration };
+  const replacementJoins = glassJoinSpecs(joinDeclarationsOf(overlay.elements));
+  return { layout, overlay, elements, config, house, ceiling, electrical, renderOverrides, plumbing, lighting, suppressIds, structuralPaths, replacementJoins, layoutWarnings, hvacDiagram, condensatePenetration };
 }
 
 /** 构建 runtime 场景。抛错即调用方出口，这里不吞。 */

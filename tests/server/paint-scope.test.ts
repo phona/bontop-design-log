@@ -10,6 +10,7 @@ import { buildPaintCostComparison, computePaintScopeForLayout, loadPaintComparis
 import { computePaintScope, type PaintRegionInput, type PaintWallInput, type PaintWindowInput } from '../../shared/paint-scope.js';
 import { openingsAlongWall } from '../../shared/wall-segments.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
+import { suppressedWallIds } from '../../shared/suppression.js';
 import { loadCeilingConfig } from '../../server/config-loader.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
@@ -31,8 +32,9 @@ const V: Record<string, [number, number]> = {};
 for (const v of MG.vertices) V[v.id] = [v.x, v.z];
 const WALLS: Array<{ id: string; a: [number, number]; b: [number, number]; height: number }> =
   MG.walls.map((w: any) => ({ id: w.id as string, a: V[w.from] as [number, number], b: V[w.to] as [number, number], height: (w.height ?? 2.8) as number }));
-const SUP = new Set<string>();
-for (const s of OV.suppress ?? []) for (const k of ['wall', 'walls']) if (s[k]) (Array.isArray(s[k]) ? s[k] : [s[k]]).forEach((w: string) => SUP.add(w));
+// suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性，
+// 唯一权威实现 shared/suppression.ts（原 OV.suppress 顶层清单已删）。
+const SUP = new Set<string>(suppressedWallIds(resolveLayout(MG).walls));
 
 function resolvedWalls(): Array<{ id: string; x1: number; z1: number; x2: number; z2: number; height: number }> {
   return WALLS.map((w) => ({ id: w.id, x1: w.a[0], z1: w.a[1], x2: w.b[0], z2: w.b[1], height: w.height }));

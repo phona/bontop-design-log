@@ -14,19 +14,17 @@ const WALLS: WallSegment[] = [
 
 describe('parseOverlay', () => {
   it('parses a valid overlay', () => {
+    // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：suppress 不再是 overlay 顶层清单，
+    // 改为 model-geometry 墙条目的 suppressed 属性（语义与校验在 shared/suppression.ts），
+    // 故 overlay schema 不再有 suppress 键；原 region 包围盒选择器随镜像表一并退场。
     const cfg = parseOverlay(`
 version: 1
-suppress:
-  - id: s1
-    region: {x1: -6.2, z1: -3.5, x2: -5.6, z2: 5.0}
-    reason: "幕墙位置残线"
 elements:
   - id: west_curtain
     type: curtain_run
     points: [{x: -5.88, z: 4.87}, {x: -5.37, z: -3.36}]
     height: 3.0
 `);
-    assert.equal(cfg.suppress.length, 1);
     assert.equal(cfg.elements.length, 1);
   });
 
@@ -85,17 +83,6 @@ elements:
   - id: x
     type: curtain_run
     points: [{x: 0, z: 0, radius: 0.8, foo: 1}]
-`)
-    );
-  });
-
-  it('rejects suppress without reason', () => {
-    assert.throws(() =>
-      parseOverlay(`
-version: 1
-suppress:
-  - id: s1
-    region: {x1: 0, z1: 0, x2: 1, z2: 1}
 `)
     );
   });
@@ -264,28 +251,51 @@ describe('mergeSceneElements', () => {
     assert.deepEqual(out[1], { type: 'wall', id: 'w_east', x1: 5, z1: 0, x2: 8, z2: 0 });
   });
 
-  it('suppress removes segments whose midpoint is inside region', () => {
-    const cfg = parseOverlay(`
-version: 1
-suppress:
-  - id: s1
-    region: {x1: -6.2, z1: -3.5, x2: -5.6, z2: 5.0}
-    reason: "测试"
-`);
-    const out = mergeSceneElements(WALLS, cfg);
+  it('suppress 改判（S3）：墙条目自带 suppressed 属性，实体盒不进场景', () => {
+    const walls: WallSegment[] = [
+      { id: 'w_west', x1: -5.88, z1: -3.0, x2: -5.88, z2: 5.0, suppressed: { reason: '西墙实体删除，改玻璃幕墙', replacement: 'west_curtain' } },
+      { id: 'w_east', x1: 0, z1: 0, x2: 3, z2: 0 },
+    ];
+    const out = mergeSceneElements(walls, parseOverlay('version: 1'));
     assert.equal(out.length, 1);
     assert.deepEqual(out[0], { type: 'wall', id: 'w_east', x1: 0, z1: 0, x2: 3, z2: 0 });
+    // 被 suppress 的墙连 curtain_run 的 wall ref 都还能解析（玻璃仍要几何），只是不产实体盒
+    const withGlass = mergeSceneElements(walls, parseOverlay(`
+version: 1
+elements:
+  - id: west_curtain
+    type: curtain_run
+    wall: w_west
+`));
+    assert.ok(withGlass.some((el) => el.id === 'west_curtain'));
+    assert.ok(!withGlass.some((el) => el.type === 'wall' && el.id === 'w_west'));
   });
 
-  it('suppress region coordinate order independent (x1 > x2 works)', () => {
+  it('rejects join 值 outside the declared glass join semantics', () => {
+    assert.throws(() =>
+      parseOverlay(`
+version: 1
+elements:
+  - id: x
+    type: curtain_run
+    wall: w_west
+    join: mystery
+`),
+      /join/,
+    );
     const cfg = parseOverlay(`
 version: 1
-suppress:
-  - id: s1
-    region: {x1: -5.6, z1: 5.0, x2: -6.2, z2: -3.5}
-    reason: "测试"
+elements:
+  - id: x
+    type: curtain_run
+    wall: w_west
+    join: continuous
+  - id: y
+    type: railing_run
+    walls: [w_west, w_east]
+    join: butt
 `);
-    assert.equal(mergeSceneElements(WALLS, cfg).length, 1);
+    assert.equal(cfg.elements[0].type === 'curtain_run' && cfg.elements[0].join, 'continuous');
   });
 
   it('elements appended to output after validation', () => {

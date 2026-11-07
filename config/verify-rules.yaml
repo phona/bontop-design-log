@@ -7,7 +7,9 @@ bounds:
 
 wall_ref:
   apply_to: [electrical, plumbing]
-  suppress_source: config/model/envelope/openings.yaml
+  # suppress 改判（2026-11-07 issue #98 第三阶段 S3）：判定源从 envelope/openings.yaml 的
+  # 顶层 suppress 清单改为 model-geometry.yaml 墙条目的 suppressed 属性。
+  suppress_source: config/layout/model-geometry.yaml
   severity: error
 
 existence:

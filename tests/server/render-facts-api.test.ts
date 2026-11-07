@@ -5,7 +5,7 @@ import express from 'express';
 import request from 'supertest';
 import { load as parseYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import { parseOverlay } from '../../server/overlay-merge.js';
+import { suppressedWallIds } from '../../shared/suppression.js';
 import { endpointSourcesFromFacts, MepCoordinationSchema, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../../shared/mep-hvac-lint.js';
 import type { VertexLayoutYaml } from '../../shared/types.js';
@@ -84,9 +84,11 @@ describe('render facts API', () => {
       ceiling: parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'],
       hvac: parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'],
     };
-    const overlay = parseOverlay('version: 1\nsuppress: []\nelements: []');
     const layout = resolveLayout(parseYaml(`version: '2.0'\nvertices:\n  - { id: a, x: 10, z: 0 }\n  - { id: b, x: 10, z: 10 }\nrooms: []\nwalls:\n  - { id: wall_test, from: a, to: b, kind: entity }` ) as VertexLayoutYaml);
-    const context: MepLintLayoutContext = { layout, ceiling: testFacts.ceiling, suppressedWallIds: overlay.suppress.flatMap((item) => item.wall ? [item.wall] : item.walls ?? []), referenceConstraints: testFacts.hvac.plans[0].diagram.reference_constraints };
+    // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：suppressedWallIds 由墙条目的
+    // suppressed 属性经 shared/suppression.ts 得出（原 overlay.suppress 顶层清单已删）；
+    // 本 fixture 无 suppress 墙，故为空数组。
+    const context: MepLintLayoutContext = { layout, ceiling: testFacts.ceiling, suppressedWallIds: suppressedWallIds(layout.walls), referenceConstraints: testFacts.hvac.plans[0].diagram.reference_constraints };
     const direct = lintMepCoordination(mepConfig, endpointSourcesFromFacts(testFacts), context);
     const app = createApp(() => testFacts, undefined, () => context);
     const response = await request(app).get('/api/mep-coordination').expect(200);

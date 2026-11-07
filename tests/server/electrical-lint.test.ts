@@ -1,4 +1,4 @@
-import { parseOverlayFiles } from '../../server/overlay-merge.js';
+import { suppressedWallIds } from '../../shared/suppression.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -19,11 +19,16 @@ const raw = readFileSync('config/electrical-topology.yaml', 'utf8');
 // 本测试此前漏传 context（多 5 条 curtain_power_near_curtain_wall 噪声：53→58），
 // 因此这里照抄 verifier 的取法：model-geometry.yaml + overlay.yaml → resolveLayout/parseOverlay，
 // 几何一律由项目现有 resolver 解析，不在测试里手抄。
-const layoutContext = () => ({
-  layout: resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml),
-  suppressedWallIds: parseOverlayFiles().suppress.flatMap((item) => (item.wall ? [item.wall] : item.walls ?? [])),
-  furnishings: (parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml }).furnishings ?? {},
-});
+const layoutContext = () => {
+  const layout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+  return {
+    layout,
+    // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性，
+    // 唯一权威实现 shared/suppression.ts（原 parseOverlayFiles().suppress 顶层清单已删）。
+    suppressedWallIds: suppressedWallIds(layout.walls),
+    furnishings: (parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml }).furnishings ?? {},
+  };
+};
 
 const byCode = (result: ReturnType<typeof lintElectricalTopology>, code: string) => result.warnings.filter((issue) => issue.code === code);
 const idsOf = (result: ReturnType<typeof lintElectricalTopology>, code: string) => byCode(result, code).map((issue) => issue.id).sort();

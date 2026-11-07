@@ -18,6 +18,7 @@ import { load as loadYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { loadOverlayDoc } from '../../server/overlay-merge.js';
 import { computeMasonryTakeoff, type MasonryTakeoffInput } from '../../shared/masonry-takeoff.js';
+import { isWallSuppressed } from '../../shared/suppression.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 
@@ -66,19 +67,13 @@ function masonryAreas(): { wall: number; sill: number } {
   const ov = loadOverlayDoc(); // S1 搬迁（issue #98）：envelope 三文件合并
   const tile = yaml('config/tile-comparison.yaml');
   const layout = resolveLayout(mg) as any;
-  const suppressed = new Set<string>();
-  for (const entry of ov.suppress ?? []) {
-    for (const key of ['wall', 'walls'] as const) {
-      const v = (entry as any)[key];
-      if (!v) continue;
-      for (const w of Array.isArray(v) ? v : [v]) suppressed.add(String(w));
-    }
-  }
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性
+  // （resolveLayout 透传），唯一权威实现 shared/suppression.ts。
   const walls = (layout.walls as any[]).map((wall) => ({
     id: wall.id, x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2,
     ...(wall.segments?.length ? { segments: wall.segments.map((sg: any) => ({ x1: sg.x1, z1: sg.z1, x2: sg.x2, z2: sg.z2 })) } : {}),
     ...(wall.openings?.length ? { openings: wall.openings } : {}),
-    suppressed: suppressed.has(wall.id),
+    suppressed: isWallSuppressed(wall),
   }));
   const wallById = new Map(walls.map((w) => [w.id, w]));
   if (!Array.isArray(ov.elements) || ov.elements.length === 0) {

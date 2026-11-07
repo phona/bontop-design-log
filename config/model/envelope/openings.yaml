@@ -1,54 +1,32 @@
 # envelope/openings.yaml：围护构件对象（issue #98 第三阶段 S1 自 config/layout/overlay.yaml 原样搬迁）。
 # bay_sill 18 + curtain_run 5 + curtain 9 + railing_run 2 + shower_screen 3 + wall_run 1
 # + sliding_door_run 1 + frosted_privacy 1 = 40 个对象，id 零重编号。
-# suppress（8 条 → 压制 14 面墙）与 version 随迁本文件：suppress 的 replacement 就是本文件的
-# curtain_run / railing_run；改判为墙属性 + replacement 对象引用是 S3（独立 PR），语义当前不变。
+# suppress 改判（2026-11-07 issue #98 第三阶段 S3）：原随本文件迁入的 suppress 8 条已迁往
+# config/layout/model-geometry.yaml 墙条目的 suppressed:{reason,replacement}（14 面墙，
+# replacement 直引本文件的 curtain_run/railing_run id）；语义唯一权威实现 shared/suppression.ts。
+# join（玻璃接缝语义）同轮从 config/spatial-validation.yaml 的 overlay_replacements 镜像表
+# 上移为本对象声明（根级或 part 级）——它描述同一对象相邻玻璃路径的交接，本是对象属性。
 # 合并读取入口：server/overlay-merge.ts parseOverlayFiles()（openings + floor-zones + finish-surfaces
 # 三个文件拼成原 OverlayConfig；parseOverlay(text) 仍供测试喂 fixture 文本）。
 version: 1
-
-suppress:
-  - id: suppress_west_wall
-    walls: [w_west_ap, w_west_lower, w_west_mid, w_west_upper]
-    reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
-  - id: suppress_south_west
-    walls: [w_mb_south, w_st_south]
-    reason: "主卧+书房南墙实体删除，为飘窗让路（2026-10-05 功能互换后功能名，墙体不变）"
-  - id: suppress_living_south
-    wall: w_liv_south
-    reason: "客厅南墙落地玻璃幕"
-  - id: suppress_south_east
-    wall: w_be_south
-    reason: "东南次卧凸窗+东南圆角实体墙删除"
-  - id: suppress_kitchen_north
-    wall: w_kit_north
-    reason: "厨房北墙实体删除，改玻璃幕墙"
-  - id: suppress_vrv_railing
-    walls: [w_vrv_nw_gap, w_vrv_north]
-    reason: "VRV西北角实墙删除，改栏杆"
-  - id: suppress_north_recess
-    walls: [w_bath_north, w_nw_north]
-    reason: "主卫/西北次卧北墙实体删除，改玻璃幕墙"
-  - id: suppress_entry_north_railing
-    wall: w_ent_north_railing
-    reason: "入户花园北边实墙删除，改栏杆"
 
 elements:
   # 西墙 + 西南圆角 + 南墙西段 (w_mb_south + w_st_south)。
   # 2026-09-17：西北角即圆角（w_west_top 已从 model-geometry 删除，外轮廓不存在），
   # 本 run 从弧切点 (0,2.10) 起无缝接 north_recess_curtain 的圆角弧；
-  # w_west_ap 解析后为零长度退化段，仅保留占位以维持 spatial-validation 的替代绑定。
+  # w_west_ap 解析后为零长度退化段，仅保留占位——其 suppressed.replacement 仍指本对象，
+  # 由 shared/suppression.ts 的 validateWallSuppressions 校验引用自洽（原镜像表同责）。
   - id: west_curtain
     type: curtain_run
     closed: false
     walls: [w_west_ap, w_west_lower, w_west_mid, w_west_upper, w_mb_south, w_st_south]
     parts:
-      - { id: w_west_ap, wall: w_west_ap }
-      - { id: w_west_lower, wall: w_west_lower }
-      - { id: w_west_mid, wall: w_west_mid }
-      - { id: w_west_upper, wall: w_west_upper }
-      - { id: w_mb_south, wall: w_mb_south }
-      - { id: w_st_south, wall: w_st_south }
+      - { id: w_west_ap, wall: w_west_ap, join: continuous }
+      - { id: w_west_lower, wall: w_west_lower, join: continuous }
+      - { id: w_west_mid, wall: w_west_mid, join: continuous }
+      - { id: w_west_upper, wall: w_west_upper, join: continuous }
+      - { id: w_mb_south, wall: w_mb_south, join: continuous }
+      - { id: w_st_south, wall: w_st_south, join: continuous }
     height: 2.8
 
   # VRV 西北角 + 西墙栏杆 (弧 r=1.0)
@@ -56,12 +34,14 @@ elements:
     type: railing_run
     walls: [w_vrv_nw_gap, w_vrv_north]
     height: 1.0
+    join: continuous
 
   # 入户花园北边栏杆（z=0 开放边）
   - id: entry_garden_north_railing
     type: railing_run
     wall: w_ent_north_railing
     height: 1.0
+    join: butt
 
   # 厨房北墙玻璃幕墙
   - id: kitchen_north_curtain
@@ -69,6 +49,7 @@ elements:
     closed: false
     wall: w_kit_north
     height: 2.8
+    join: butt
 
   # 西北连续玻璃幕墙：主卫圆角弧（w_bath_north 弧段）+ 西北次卧北墙凹进段。
   # 2026-09-17：西北角即圆角（w_west_top 已删），弧起点 (0,2.10) 即外轮廓最西北点，
@@ -78,6 +59,7 @@ elements:
     closed: false
     walls: [w_bath_north, w_nw_north]
     height: 2.8
+    join: continuous
 
   # 客厅南墙落地玻璃幕 (z=9.80)
   - id: living_south_curtain
@@ -85,6 +67,7 @@ elements:
     closed: false
     wall: w_liv_south
     height: 2.8
+    join: butt
 
   # 南墙东段（东南次卧南侧幕墙）
   - id: south_east_curtain
@@ -92,6 +75,7 @@ elements:
     closed: false
     wall: w_be_south
     height: 2.8
+    join: butt
 
   # 飘窗
   # sill 口径 2026-08-21 修正：旧全屋 2.55 系客厅值误推广（2.55+0.45=3.0 穿楼板，无效）。
