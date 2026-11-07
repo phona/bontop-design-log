@@ -12,7 +12,7 @@ import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { ProjectRenderFactsLoader } from './project-render-facts-loader.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
-import { parseOverlayFiles, OVERLAY_SOURCE_FILES } from './overlay-merge.js';
+import { parseOverlayFiles, OVERLAY_SOURCE_FILES, SKIRTING_DERIVATION_SOURCE_FILES } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes, invalidateMepFurnitureCollisionVolumes } from './mep-lint-context.js';
 import { parseEnvironment } from '../shared/environment-schema.js';
@@ -115,11 +115,14 @@ materialsLoader.load();
 budgetBaseLoader.load();
 layoutLoader.load();
 const overlayLoader = new ConfigLoader<OverlayConfig>(
-  Object.values(OVERLAY_SOURCE_FILES),
+  // S5：skirting 由 model-geometry 墙特征 paint_bands 派生、湿区判定读 tile-comparison，
+  // 这两个文件必须进监听，否则改漆面带/湿区表不刷新派生结果（理由见 overlay-merge.ts 的
+  // SKIRTING_DERIVATION_SOURCE_FILES 注释）。
+  [...Object.values(OVERLAY_SOURCE_FILES), ...SKIRTING_DERIVATION_SOURCE_FILES],
   () => parseOverlayFiles(),
   () => {
     invalidateMepFurnitureCollisionVolumes();
-    console.log('[server] config/model/envelope/{openings,floor-zones,finish-surfaces}.yaml reloaded');
+    console.log('[server] config/model/envelope/{openings,floor-zones,finish-defaults}.yaml + skirting 派生依赖 reloaded');
   }
 );
 registry.register(overlayLoader);

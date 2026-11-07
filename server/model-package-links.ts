@@ -50,7 +50,7 @@ export function loadModelPackageLinks(path = MODEL_PACKAGE_LINKS_PATH): ModelPac
     if (!authorityDocs.has(key)) {
       try {
         // issue #98 第三阶段 S1：overlay 拆为 envelope 三文件（原 config/layout/overlay.yaml 已删），
-        // 其选择器（types 分布在 floor-zones/finish-surfaces/openings 之间）必须按合并文档核对，
+        // 其选择器（types 分布在 floor-zones/openings 之间）必须按合并文档核对，
         // 走 server/overlay-merge.ts 的唯一合并点 loadOverlayDoc()；其余 authority 仍是单文件。
         authorityDocs.set(key, key === 'overlay' ? loadOverlayDoc() : parseYaml(readFileSync(authorityFilePaths(authorityValue)[0], 'utf8')));
       } catch (err) {

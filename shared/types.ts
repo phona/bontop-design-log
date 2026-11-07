@@ -1012,8 +1012,10 @@ export type SceneElement =
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
   // 踢脚线常显条带（DEC-2026-10-28-R01/R02）：与墙特征面层的检视态不同，
   // 本类型在正常视图里就可见、不透明、贴房间侧墙面。height 必填且代码里不得给默认值——
-  // 高度是可调数据，只由 overlay 声明（锚点统一）给出，改高度改声明不改代码。
-  // S5 起它由 paint_bands 派生（24/24 配对已证实），届时本类型与 finish-surfaces.yaml 一并退场。
+  // 高度是可调数据。S5（2026-11-07）：24 段平级声明已删（finish-surfaces.yaml 退场），
+  // 本类型保留为**派生产物**——由墙特征 finish.paint_bands[] 派生（非湿区房间逐段生成，
+  // shared/skirting-derivation.ts），height/color 取 finish-defaults.yaml 的 skirting 锚点；
+  // 消费方（SceneBuilder/DXF A-SKIRT/HouseScene 审计/碰撞豁免）零改动。
   | { type: 'skirting_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height: number; color?: string; reason?: string }
   // glass_infill / hinged_glass_door 已于 issue #98 第三阶段 S1 删除：overlay 0 元素
   // （hinged 自 DEC-2026-09-07-054 客卫玻璃门取消后无声明；glass_infill 从未启用），

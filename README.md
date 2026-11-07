@@ -130,12 +130,12 @@ npm run takeoff:ceiling -- --json  # 机器可读
 
 ### 涂漆（墙顶面独立选择）一键高亮与成本核算（DEC-2026-10-08-C05、DEC-2026-10-15-P17）
 
-机电组点「涂漆区」按钮：按 `config/model/envelope/finish-surfaces.yaml`（issue #98 S1 起承接原 overlay 声明文件）的 **32 段 `paint_region` 声明**透视高亮已选墙面——绿色单色、初始 opacity 0.38、检视态 0.55、`renderOrder` 100、`depthTest=false`；平面沿墙法线**朝声明房间侧外偏移 0.068m**，因此同一段墙上的贴砖面与双面涂漆的另一面不会共面。顶面由独立的 8 条 `paint_ceiling_region` 声明选择并单独计量；缺少顶面声明就表示该房间顶面不纳入涂装，不从墙面选择推导。两类声明可分别增删，涂漆检视态仍只高亮墙面和已选窗台，不显示顶面。
+机电组点「涂漆区」按钮：按 `config/layout/model-geometry.yaml` 墙条目 `finish.paint_bands`（issue #98 S4 起面层配方下沉为墙特征，承接原 overlay 声明文件的 **31 段 `paint_region` 声明**）透视高亮已选墙面——绿色单色、初始 opacity 0.38、检视态 0.55、`renderOrder` 100、`depthTest=false`；平面沿墙法线**朝声明房间侧外偏移 0.068m**（半墙厚 + 8mm，`wallFaceOffset` 解析器按墙 `line_datum` 解算），因此同一段墙上的贴砖面与双面涂漆的另一面不会共面。顶面涂装是房间特征 `ceiling_finish`（8 间）并单独计量；房间没有该特征就表示其顶面不纳入涂装，不从墙面选择推导。两类声明可分别增删，涂漆检视态仍只高亮墙面和已选窗台，不显示顶面。
 
 墙面、顶面与窗台各自有明确选择声明；成本核算和预算统一读取这些声明，墙面和顶面的计算不要求房间集合相同。`house.yaml#rooms[].wall_finish` 只校验墙面选择。
 
 ```bash
-npx tsx --test tests/server/paint-scope.test.ts   # 32 段墙面声明 + 逐房间独立复算面积 + 成本四情景
+npx tsx --test tests/server/paint-scope.test.ts   # 31 段墙面涂装带 + 逐房间独立复算面积 + 成本四情景
 npx tsx --test tests/server/paint-sill-scope.test.ts  # 上飘窗外露面几何（遮挡扣除/端面/守恒）
 ```
 

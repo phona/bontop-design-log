@@ -15,8 +15,8 @@ import requests
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-WATCHED_FILES = {'model-geometry.yaml', 'openings.yaml', 'floor-zones.yaml', 'ceiling.yaml', 'finish-surfaces.yaml'}
-# issue #98 S1：饰面/吊顶声明从 config/layout/{overlay,ceiling}.yaml 搬到 config/model/envelope/（四个文件），
+WATCHED_FILES = {'model-geometry.yaml', 'openings.yaml', 'floor-zones.yaml', 'ceiling.yaml', 'finish-defaults.yaml'}
+# issue #98 S1：饰面/吊顶声明从 config/layout/{overlay,ceiling}.yaml 搬到 config/model/envelope/（四个文件；S5 起 finish-surfaces→finish-defaults），
 # 楼层几何仍住 config/layout——两个目录都要 watch，按 basename 匹配。
 WATCH_DIRS = ('config/layout', 'config/model/envelope')
 LOG_DIR = Path('scripts/logs')
@@ -188,7 +188,7 @@ class FloorPlanWatcher:
             'baseline': str(baseline.resolve()),
             'screenshot': str(output.resolve()),
             'model_geometry': 'config/layout/model-geometry.yaml',
-            'envelope': 'config/model/envelope/（openings/floor-zones/ceiling/finish-surfaces）',
+            'envelope': 'config/model/envelope/（openings/floor-zones/ceiling/finish-defaults）',
         }
         with open(EVENT_LOG, 'a', encoding='utf-8') as f:
             f.write(json.dumps(event, ensure_ascii=False) + '\n')

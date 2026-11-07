@@ -29,7 +29,7 @@ import type { ResolvedRoom, WallSegment } from '../../shared/types.js';
  *   ③ 与声明墙完全重合的端面被排除，并 push 指名道姓的 warning；
  *   ④ faces 没声明的面一律不算（不许多算一张脸）；
  *   ⑤ finish 分流：ordinary 与 anti_mold 互斥，面积只落到声明的那一格；
- *   ⑥ 真实声明端到端（config/model/envelope/finish-surfaces.yaml 的 paint_master_bath_west_bay）数字可对账；
+ *   ⑥ 真实声明端到端（config/model/envelope/openings.yaml 的 bay_sill master_bath_west_bay finish.paint）数字可对账；
  *   ⑦ fail-closed：bay_sill element / room 不存在时调用方 computePaintScopeForLayout 必须抛错。
  *
  * 纪律：期望值一律用基本几何自己算（自有鞋带公式 / 数值积分 / 从 config 独立推导），

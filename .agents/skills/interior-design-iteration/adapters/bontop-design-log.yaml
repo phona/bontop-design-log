@@ -12,7 +12,7 @@ authorities:
     role: only authoritative source for house geometry; v2.0 vertex format
     update_rule: change geometry only here and preserve room/wall topology
   intent:
-    paths: [config/model/envelope/openings.yaml, config/model/envelope/floor-zones.yaml, config/model/envelope/finish-surfaces.yaml]
+    paths: [config/model/envelope/openings.yaml, config/model/envelope/floor-zones.yaml, config/model/envelope/finish-defaults.yaml]
     role: authoritative source for all design/render intent (merged by server/overlay-merge.ts parseOverlayFiles; issue #98 phase-3 S1 moved the former config/layout/overlay.yaml here)
     coordinate_rule: same coordinate system as geometry; no independent offset
   furnishing:

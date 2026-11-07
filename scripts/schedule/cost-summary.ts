@@ -168,7 +168,7 @@ export const COST_INPUT_PATHS: string[] = [
   'config/model/envelope/ceiling.yaml',
   'config/model/envelope/openings.yaml',
   'config/model/envelope/floor-zones.yaml',
-  'config/model/envelope/finish-surfaces.yaml',
+  'config/model/envelope/finish-defaults.yaml',
   'config/design-rules.yaml',
   'config/electrical-topology.yaml',
   'config/electrical.yaml',

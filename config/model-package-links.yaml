@@ -10,12 +10,14 @@ authorities:
   phase_2_scope: schedule/phase-2/control.yaml
   phase_3_scope: schedule/phase-3/control.yaml
   model_geometry: config/layout/model-geometry.yaml
-  # issue #98 第三阶段 S1：overlay = envelope 三文件合并——选择器校验走 server/model-package-links.ts
-  # 的 loadOverlayDoc()（唯一合并点），指纹按三文件全部计入；source: overlay 的选择器不变
+  # issue #98 第三阶段 S1：overlay = envelope 文件合并——选择器校验走 server/model-package-links.ts
+  # 的 loadOverlayDoc()（唯一合并点），指纹按下列文件全部计入；source: overlay 的选择器不变。
+  # S5：finish-surfaces.yaml（skirting_region 24 段声明）已删，skirting 改由 paint_bands 派生，
+  # 锚点进 finish-defaults.yaml——它仍是「overlay 文档」的组成部分（派生在此装配），故列入。
   overlay:
     - config/model/envelope/openings.yaml
     - config/model/envelope/floor-zones.yaml
-    - config/model/envelope/finish-surfaces.yaml
+    - config/model/envelope/finish-defaults.yaml
   furnishings: config/house.yaml
   electrical: config/electrical.yaml
   plumbing: config/plumbing.yaml
@@ -187,8 +189,10 @@ links:
     mapping_status: partial
     scope:
       - {source: model_geometry, select: {collections: [rooms, walls, openings]}}
-      # S4：floor_region 与 skirting_region 仍是元素类型；贴砖/涂装范围改按宿主对象 id
-      # （12 面贴砖墙 + 18 面涂漆墙 + 10 个防水台/上飘窗 + 8 个飘窗涂装构件）。
+      # S4：贴砖/涂装范围改按宿主对象 id（12 面贴砖墙 + 18 面涂漆墙 + 10 个防水台/上飘窗
+      # + 8 个飘窗涂装构件）。S5：skirting_region 24 段声明已删、改由 paint_bands 派生，
+      # 但合并文档（loadOverlayDoc）仍产出这 24 个 skirt_* 元素，types 选择器照旧命中
+      # （PKG-135 的 3D 高亮范围不缩）；声明文件与锚点迁到 finish-defaults.yaml。
       - {source: overlay, select: {types: [floor_region, skirting_region]}}
       - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_be_north, w_be_west, w_cent_south, w_east_upper, w_ent_south_w, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mb_east, w_mbath_east, w_mbath_south, w_nw_south, w_st_east, w_st_north, w_strip_east, w_vrv_east]}}
       - {source: overlay, select: {ids: [bedroom_nw_north_bay, bedroom_nw_north_waterproof_ledge, bedroom_se_south_bay, bedroom_se_south_waterproof_ledge, kitchen_north_bay, living_south_waterproof_ledge, master_bath_west_bay, master_bath_west_lower_bay, master_bedroom_south_bay, master_bedroom_south_waterproof_ledge, master_bedroom_west_bay, master_bedroom_west_mid_bay, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, study_south_bay, study_south_waterproof_ledge]}}
