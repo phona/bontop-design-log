@@ -28,6 +28,8 @@
  * id 在权威文档里真实存在；本模块只负责「场景里能高亮什么」。
  */
 
+import { SOURCE_PREFIXES } from './envelope-sources.js';
+
 export interface ProjectScopeInput {
   house: {
     rooms: Array<{id: string}>;
@@ -104,7 +106,10 @@ const COLLECTION_ELEMENT_TYPES: Record<string, string[]> = {
 const POINT_SOURCE_PREFIXES: Record<string, string> = {
   electrical: 'electrical:',
   plumbing: 'plumbing:',
-  ceiling: 'ceiling:',
+  // 2026-11-07（issue #98 第三阶段 S6）：吊顶的 objectId 前缀取自 shared/envelope-sources.ts
+  // 的来源注册表（源名 → 前缀），不再在本文件手抄 'ceiling:'。overlay 不在此表：它的 ids 走
+  // OBJECT_ID_SOURCES（裸 id），见该常量的注释。
+  ceiling: SOURCE_PREFIXES.ceiling,
   hvac: 'hvac:',
 };
 
@@ -132,8 +137,19 @@ const POINT_SOURCE_PREFIXES: Record<string, string> = {
  * 表达。设计文档 §5.7 预裁的这一步随 S4 落地：面层配方不再是 overlay 平级元素后，
  * `types: [wall_region/sill_region/paint_region]` 选择器无处可选，工作包范围改按宿主对象
  * id 选（与家具片 PR-4 同一方向）。
- * 注意 `ceiling` 不在此表：它的 ids 走 POINT_SOURCE_PREFIXES 的 `ceiling:` 前缀
- * （ac_* 设备位在场景里带前缀），两条归一化路径不能混。
+ *
+ * **2026-11-07 S6 补充（对设计文档 §5.7「overlay/ceiling 都登记为 ids=裸 objectId」的
+ * 按事实修正）**：`ceiling` **不**在本表，这不是疏漏——吊顶分区/设备位在场景里的 objectId
+ * 一律带 `ceiling:` 前缀（shared/render/SceneBuilder.ts:1323
+ * `objectId = \`ceiling:${zone.id}\``，房间平顶另在 :283 `ceiling:${room.id}`；
+ * app/src/scene/HouseScene.test.ts:1492 等用例钉的就是这个形式）。把 ceiling 登记成
+ * 「ids = 裸 objectId」会让 `{source: ceiling, select: {ids: [ceiling_living]}}` 产出裸键
+ * `ceiling_living`，与场景里的 `ceiling:ceiling_living` 永远对不上——正是本文件头注记载的
+ * 2026-11-02「ids 选择器静默 no-op、mock 测试照不到」同一失效类。故 ceiling 的 ids 走
+ * POINT_SOURCE_PREFIXES 的 `ceiling:` 前缀（前缀值本身来自来源注册表），两条归一化路径
+ * 不混；tests/server/package-scope.test.ts 有对应用例钉住这个分流。设计文档写这条时
+ * （S1 之前）假设「overlay/ceiling 的 id 已是 objectId」——对 overlay 成立（构件 id 即
+ * objectId），对 ceiling 不成立，此处按代码事实修正并留证。
  *
  * **墙 id ≠ 墙 mesh 的 objectId（2026-11-07 评审 blocking 修正）**：一度在本注释里断言
  * 「墙的 select.ids 就是场景 objectId 裸值（mergeSceneElements 原样透传）」——**对开洞墙 /

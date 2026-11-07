@@ -4,6 +4,7 @@ import { load as parseYaml } from 'js-yaml';
 import { spawnSync } from 'node:child_process';
 import { classifyTarget, parsePendingLedger } from '../../shared/pending-ledger.js';
 import { collectElements, collectKnownTypes } from '../../shared/element-sources.js';
+import { isElementBearingFile } from '../../shared/envelope-sources.js';
 import {
   deriveElementStates,
   DEFAULT_STATE_MODEL,
@@ -27,10 +28,6 @@ const SOURCE = 'config/*.yaml + docs/pending-site-data.md + docs/decisions/ + ve
 
 interface StateModelConfig extends StateModel {
   issue_sources?: string[];
-}
-
-interface LedgerConfig {
-  element_bearing_files?: Record<string, string>;
 }
 
 function readYaml<T>(file: string): T {
@@ -92,10 +89,10 @@ function main(): void {
   const args = new Set(process.argv.slice(2));
   const json = args.has('--json');
 
-  // 同一份配置读两次：priority / status_vocabulary 喂派生模型，
-  // element_bearing_files / issue_sources 喂台账核对与 issue 采集。
+  // 同一份配置读一次：priority / status_vocabulary 喂派生模型，issue_sources 喂 issue 采集。
+  // （2026-11-07 S6：原第二次读 ledgerConfig.element_bearing_files 已删——「哪些文件承载
+  // 场景构件」的唯一真相在 shared/envelope-sources.ts 注册表，见该文件头注。）
   const modelConfig = readYaml<StateModelConfig>('config/state-model.yaml');
-  const ledgerConfig = readYaml<LedgerConfig>('config/state-model.yaml');
   const model: StateModel = {
     priority: modelConfig.priority ?? DEFAULT_STATE_MODEL.priority,
     statusVocabulary: modelConfig.statusVocabulary ?? DEFAULT_STATE_MODEL.statusVocabulary,
@@ -112,11 +109,12 @@ function main(): void {
   const result = deriveElementStates({ elements, ledger, issues, model, ...(schedule ? { schedule } : {}) });
 
   // 台账腐烂核对：指向承载构件的文件、但配置里已不存在的引用。
-  const elementBearing = ledgerConfig.element_bearing_files ?? {};
+  // 承载文件的判定读来源注册表的 isElementBearingFile（electrical/plumbing/ceiling 三源，
+  // 与改造前 state-model.yaml 的三行同集合），不再读 state-model.yaml 的副本（S6 已删）。
   const dangling: Array<{ ref: string; file: string; id: string }> = [];
   for (const entry of ledger.entries) {
     for (const target of entry.targets) {
-      if (!elementBearing[target.file] || !target.id) continue;
+      if (!isElementBearingFile(target.file) || !target.id) continue;
       if (classifyTarget(target, knownElementIds, knownTypes) === 'unresolved') {
         dangling.push({ ref: entry.ref, file: target.file, id: target.id });
       }

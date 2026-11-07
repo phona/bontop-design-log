@@ -1,3 +1,4 @@
+import { CEILING_SOURCE } from './envelope-sources.js';
 import { load as parseYaml } from 'js-yaml';
 import { z } from 'zod';
 import {
@@ -113,7 +114,10 @@ const reasonForUnconfirmed = <T extends z.ZodType<{ status: string; reason?: str
 });
 export const HvacAnchorSchema = reasonForUnconfirmed(z.object({
   id: nonEmpty, status: HvacStatusSchema, system: HvacSystemSchema,
-  ref: z.object({ source: z.enum(['outdoor', 'ceiling', 'electrical']), id: nonEmpty }).strict().optional(),
+  // ref.source 的合法值 = 源名（issue #98 第三阶段 S6：不再手抄 'ceiling' 字面量——
+  // S1 搬迁后 `config/ceiling.yaml` 这个路径从全仓消失，源名不变，单一真相在
+  // shared/envelope-sources.ts 的来源注册表；outdoor/electrical 是非 envelope 源）。
+  ref: z.object({ source: z.enum(['outdoor', CEILING_SOURCE, 'electrical']), id: nonEmpty }).strict().optional(),
   position: Vec3Schema.optional(), reason: z.string().optional(),
 }).strict().superRefine((value, ctx) => {
   if (Boolean(value.ref) === Boolean(value.position)) ctx.addIssue({ code: 'custom', message: 'HVAC anchor requires exactly one of ref or position' });

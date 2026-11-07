@@ -2046,7 +2046,14 @@ coverage:
   - { file: config/anti-penetration.yaml, field: "envelopes", readers: ["shared/penetration/types.ts", "shared/penetration/envelopes.ts", "shared/penetration/shadow.ts", "scripts/verify/penetration/verify-penetration.ts"] }
   - { file: config/state-model.yaml, field: "priority", readers: ["scripts/project/state-projection.ts", "shared/element-state.ts"] }
   - { file: config/state-model.yaml, field: "status_vocabulary", readers: ["scripts/project/state-projection.ts", "shared/element-state.ts"] }
-  - { file: config/state-model.yaml, field: "element_bearing_files", readers: ["scripts/project/state-projection.ts", "shared/pending-ledger.ts"] }
+  # 2026-11-07 issue #98 第三阶段 S6 删除的 coverage 行：config/state-model.yaml 的
+  # `element_bearing_files`（file → objectId 前缀表，登记 readers 为 state-projection.ts 与
+  # shared/pending-ledger.ts）。删除理由：该字段与 shared/pending-ledger.ts 的
+  # ELEMENT_BEARING_FILES 是同一张表的两份登记，S1 把 config/ceiling.yaml 搬进
+  # config/model/envelope/ 后两边都要改路径——「文件路径构成身份」。现单一真相在
+  # shared/envelope-sources.ts 的来源注册表（源名 → 权威文件 → objectId 前缀），
+  # state-projection.ts / element-state-service.ts / pending-ledger.ts / element-state.ts
+  # 全部改读注册表，故本行无对应字段可登记。
   - { file: config/state-model.yaml, field: "issue_sources", readers: ["scripts/project/state-projection.ts"] }
   - { file: config/tradeoffs.yaml, field: "tradeoffs", readers: [] }
   - { file: config/verify-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }

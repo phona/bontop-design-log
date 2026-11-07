@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { parseCeilingZones, parseElectricalPoints, parsePlumbingPoints, parseProjectHvacFacts } from './project-render-facts-schema.js';
+import { sourceFile } from './envelope-sources.js';
 import type { ElementInput, ElementKind } from './element-state.js';
 
 /**
@@ -24,12 +25,19 @@ function extractDecision(note: string | undefined): string | undefined {
   return match ? match[0] : undefined;
 }
 
-/** 承载场景构件的配置 → objectId 前缀。 */
+/**
+ * 承载场景构件的配置 → objectId 前缀（源名 → 文件路径）。
+ *
+ * 2026-11-07（issue #98 第三阶段 S6）：路径不再在本表手抄——全部取自
+ * `shared/envelope-sources.ts` 的来源注册表（S1 搬迁后 `config/ceiling.yaml` →
+ * `config/model/envelope/ceiling.yaml`，源名不变）。本表只保留「哪些源要采构件」这个
+ * 消费侧视图；漏同步路径的失效模式（台账腐烂核对静默漏判）随注册表单一真相消失。
+ */
 export const ELEMENT_SOURCES = {
-  electrical: 'config/electrical.yaml',
-  plumbing: 'config/plumbing.yaml',
-  ceiling: 'config/model/envelope/ceiling.yaml',
-  hvac: 'config/hvac.yaml',
+  electrical: sourceFile('electrical'),
+  plumbing: sourceFile('plumbing'),
+  ceiling: sourceFile('ceiling'),
+  hvac: sourceFile('hvac'),
 } as const;
 
 /**

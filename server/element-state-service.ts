@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { load as parseYaml } from 'js-yaml';
 import { collectElements, collectKnownTypes } from '../shared/element-sources.js';
 import { classifyTarget, parsePendingLedger } from '../shared/pending-ledger.js';
+import { isElementBearingFile } from '../shared/envelope-sources.js';
 import {
   DEFAULT_STATE_MODEL,
   deriveElementStates,
@@ -57,7 +58,6 @@ export interface GetElementStateOptions {
 
 interface StateModelConfig extends StateModel {
   issue_sources?: string[];
-  element_bearing_files?: Record<string, string>;
 }
 
 function readYaml<T>(file: string): T {
@@ -114,17 +114,21 @@ function collectIssues(sources: string[]): IssueLike[] {
   return issues;
 }
 
-/** 台账腐烂核对：指向承载构件的文件、但配置里已不存在的引用（与 CLI 同口径）。 */
+/** 台账腐烂核对：指向承载构件的文件、但配置里已不存在的引用（与 CLI 同口径）。
+ *
+ * 2026-11-07（issue #98 第三阶段 S6）：`elementBearing` 形参取消——「哪些文件承载场景构件」
+ * 不再由 config/state-model.yaml 的 element_bearing_files 提供（该字段已删），改读
+ * shared/envelope-sources.ts 的 isElementBearingFile（electrical/plumbing/ceiling 三源，
+ * 与改造前同集合）；两份登记合成一份，S1 搬迁后「忘改一边」的失效模式随之消失。 */
 function collectDanglingLedgerRefs(
   ledger: ReturnType<typeof parsePendingLedger>,
-  elementBearing: Record<string, string>,
   knownElementIds: Set<string>,
 ): Array<{ ref: string; file: string; id: string }> {
   const knownTypes = collectKnownTypes();
   const dangling: Array<{ ref: string; file: string; id: string }> = [];
   for (const entry of ledger.entries) {
     for (const target of entry.targets) {
-      if (!elementBearing[target.file] || !target.id) continue;
+      if (!isElementBearingFile(target.file) || !target.id) continue;
       if (classifyTarget(target, knownElementIds, knownTypes) === 'unresolved') {
         dangling.push({ ref: entry.ref, file: target.file, id: target.id });
       }
@@ -136,8 +140,8 @@ function collectDanglingLedgerRefs(
 /**
  * 现算一次投影。`issues` 为空数组 = 不带 conflicts 的路径（只读配置 + 台账，不跑 verifier）。
  *
- * `modelConfig` 一份两用：priority / status_vocabulary 喂派生模型，
- * element_bearing_files 喂台账腐烂核对（与 CLI 同口径）。
+ * `modelConfig` 只提供 priority / status_vocabulary / issue_sources；台账腐烂核对的
+ * 承载文件表在 shared/envelope-sources.ts（S6，见 collectDanglingLedgerRefs 注释）。
  */
 function projectElementStates(
   issues: IssueLike[],
@@ -152,11 +156,7 @@ function projectElementStates(
   const elements = collectElements();
   const result = deriveElementStates({ elements, ledger, issues, model });
 
-  const dangling = collectDanglingLedgerRefs(
-    ledger,
-    modelConfig.element_bearing_files ?? {},
-    new Set(elements.map((element) => element.id)),
-  );
+  const dangling = collectDanglingLedgerRefs(ledger, new Set(elements.map((element) => element.id)));
 
   return {
     version: 1,

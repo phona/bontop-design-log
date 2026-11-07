@@ -21,6 +21,7 @@ import {
   validateMepCoordination,
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { computeMepTakeoff, type MepTakeoffRules, type TakeoffCircuit, type TakeoffControl } from '../../shared/mep-takeoff.js';
+import { sourceFile } from '../../shared/envelope-sources.js';
 import { compareMepQuotes, loadMepQuotes, mepQuoteFallback } from '../../server/mep-quotes.js';
 import type { ElectricalPoint, PlumbingPoint } from '../../shared/types.js';
 
@@ -29,7 +30,8 @@ const asJson = process.argv.includes('--json');
 const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepTakeoffRules;
 const electrical = parseYaml(readFileSync(rules.sources.electrical_points, 'utf8')) as ElectricalPoint[];
 const plumbing = parseYaml(readFileSync(rules.sources.plumbing_points, 'utf8')) as PlumbingPoint[];
-const ceiling = parseYaml(readFileSync(rules.sources.ceiling, 'utf8')) as unknown[];
+// 2026-11-07（issue #98 S6）：吊顶声明文件的路径取自来源注册表，不再读 rules.sources.ceiling
+const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknown[];
 const hvac = parseYaml(readFileSync(rules.sources.hvac, 'utf8')) as { plans: unknown[] };
 const coordination = parseMepCoordination(readFileSync(rules.sources.routes, 'utf8'));
 const topology = parseYaml(readFileSync(rules.sources.circuits, 'utf8')) as { circuits: TakeoffCircuit[]; controls?: TakeoffControl[] };

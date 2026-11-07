@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { MODEL_PACKAGE_LINKS_PATH, ModelPackageLinksSchema, authorityFilePaths, type ModelPackageLinks, type ModelPackageScopeRef } from '../shared/model-package-links.js';
 import { loadOverlayDoc } from './overlay-merge.js';
+import { SOURCES, SOURCE_NAMES } from '../shared/envelope-sources.js';
 
 // 2026-11-02（自装交互审批第一步）：常量迁至 shared/model-package-links.ts——
 // shared/schedule-state.ts 的指纹计算要用它，shared/ 不得反向依赖 server/。此处转发导出。
@@ -31,6 +32,32 @@ function containsKey(value: unknown, expected: string): boolean {
 }
 
 /**
+ * 装载时断言：`authorities` 里登记的路径必须与 shared/envelope-sources.ts 注册表逐字相同。
+ *
+ * 为什么 YAML 还要保留这份路径（S6）：`authorities` 同时是 schedule-state 指纹的输入清单
+ * （packageProjectPaths / phaseInputPaths 按它收集文件），删字段要动 schema 与指纹口径；
+ * 而「文件路径构成身份」的根治方式是**只留一个真相**——注册表。故本断言把 YAML 值钉成
+ * 注册表的镜像：漂移即抛错，且报错信息直接说清该改哪一边。漏一个源名进不了这条断言，
+ * 但没登记的源不会被任何 selector 引用（getAuthority 会对未知 source 抛错）。
+ */
+function assertAuthorityMatchesRegistry(authorities: Record<string, unknown>, path: string): void {
+  for (const name of SOURCE_NAMES) {
+    const declared = authorities[name];
+    if (declared === undefined) continue;
+    const declaredFiles = authorityFilePaths(declared as string | string[]);
+    const expected = [...SOURCES[name].files];
+    const drift = declaredFiles.length !== expected.length || declaredFiles.some((file, index) => file !== expected[index]);
+    if (drift) {
+      throw new Error(
+        `${path}: authorities.${name} 与 shared/envelope-sources.ts 注册表不一致`
+        + `（登记表 ${declaredFiles.join(' + ')}，注册表 ${expected.join(' + ')}）`
+        + '——文件路径的唯一真相在注册表：改路径请改注册表并同步本文件，不许只改一边',
+      );
+    }
+  }
+}
+
+/**
  * Load the internal package-to-model crosswalk and verify each budget reference.
  * Amounts and component descriptions stay in the referenced phase control files.
  */
@@ -42,6 +69,8 @@ export function loadModelPackageLinks(path = MODEL_PACKAGE_LINKS_PATH): ModelPac
   } catch (err) {
     throw new Error(`invalid model-package links ${path}: ${err instanceof Error ? err.message : String(err)}`);
   }
+
+  assertAuthorityMatchesRegistry(parsed.authorities, path);
 
   const authorityDocs = new Map<string, unknown>();
   const getAuthority = (key: string): unknown => {

@@ -124,3 +124,34 @@ export function buildFinishScopeInput(tolerance = 0.01): FinishScopeInput {
     tolerance: config.tolerance ?? tolerance, source: SOURCE,
   };
 }
+
+/**
+ * 全部**面层配方** id（墙贴砖带/涂装带 + 防水台与飘窗的贴砖/涂装面 + S5 起派生的踢脚带）。
+ *
+ * 为什么单独导出一个集合：各 phase 的 control.yaml 成本项 `targets` 只收**对象** id
+ * （issue #98 PR-8 的按对象算账），而面层配方是「宿主对象身上的派生量」——109 个配方
+ * （18 砖带 + 31 漆带 + 28 窗台面 + 24 派生踢脚，S4 前还是 overlay 平级元素）一旦进 targets，
+ * 按对象算账视图就被配方稀释（迁移设计 §5.7）。配方 id 与对象 id 都是稳定字符串，
+ * **没有任何 schema 能区分**，只能由知道配方住在哪儿的本模块给出全集去拦。
+ *
+ * 与上面 buildFinishScopeInput 同一批读取、同一套枚举（不另写第二份配方清单）；
+ * 派生踢脚直接取合并文档里的 skirting_region 元素 id（湿区不生成的不会出现）。
+ */
+export function collectFinishRecipeIds(): Set<string> {
+  const ids = new Set<string>();
+  const MG = readYaml('config/layout/model-geometry.yaml');
+  for (const wall of MG.walls ?? []) {
+    for (const band of wall.finish?.tile_bands ?? []) ids.add(String(band.id));
+    for (const band of wall.finish?.paint_bands ?? []) ids.add(String(band.id));
+  }
+  for (const element of (loadOverlayDoc().elements ?? []) as any[]) {
+    if (element.type === 'skirting_region') {
+      ids.add(String(element.id));
+      continue;
+    }
+    if (element.type !== 'bay_sill') continue;
+    for (const band of element.finish?.tile ?? []) ids.add(String(band.id));
+    for (const band of element.finish?.paint ?? []) ids.add(String(band.id));
+  }
+  return ids;
+}

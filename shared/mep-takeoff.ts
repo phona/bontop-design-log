@@ -46,14 +46,19 @@ export interface TakeoffControl {
 }
 
 export interface MepTakeoffRules {
-  /** 唯一事实源路径清单（CLI/verify 按它读文件，配置与代码不双写路径）。 */
+  /**
+   * 唯一事实源路径清单（CLI/verify 按它读文件，配置与代码不双写路径）。
+   *
+   * 2026-11-07（issue #98 第三阶段 S6）：原 `ceiling` 键已删——吊顶声明文件的路径在
+   * shared/envelope-sources.ts 的来源注册表（源名 ceiling），消费方用 `sourceFile('ceiling')`
+   * 取。留在本表就是第六张各抄一份的「文件路径当身份」表（S1 搬迁后全都要改）。
+   */
   sources: {
     electrical_points: string;
     plumbing_points: string;
     circuits: string;
     routes: string;
     hvac: string;
-    ceiling: string;
   };
   covered_layers: string[];
   excluded_layers: Array<{ layer: string; reason: string }>;

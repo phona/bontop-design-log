@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { buildScheduleSnapshot, computeNextActions, loadScheduleState } from '../../shared/schedule-state.js';
 import { loadModelPackageLinks } from '../../server/model-package-links.js';
+import { collectFinishRecipeIds } from '../../shared/finish/input.js';
 
 type AnyRecord = Record<string, any>;
 
@@ -165,6 +166,51 @@ describe('shared/schedule-state: 沙箱负例（symlink 农场，锚点文本手
       );
     } finally {
       writeFileSync(join(sandbox, 'schedule/phase-1/control.yaml'), pristineControlText);
+    }
+  });
+
+  // 2026-11-07（issue #98 第三阶段 S6）：成本项 targets 只收**对象** id，不收面层配方 id。
+  // S4 起墙贴砖带/涂装带、防水台与飘窗的贴砖/涂装面、S5 起派生的踢脚带都是宿主对象身上的
+  // 派生量；它们与对象 id 同为稳定字符串，任何 schema 都区分不了——只能按配方住处
+  // （shared/finish/input.ts 的 collectFinishRecipeIds）枚举后拦截（迁移设计 §5.7：
+  // 否则按对象算账视图被 109 个配方稀释）。
+  it('成本项 targets 写面层配方 id：loader 显式拦截并点名配方住处', () => {
+    const anchor = 'targets: [mb.washbasin_cabinet, gbath.vanity]';
+    const occurrences = pristineControlText.split(anchor).length - 1;
+    assert.equal(occurrences, 1, `锚点 ${anchor} 必须恰出现一次（实际 ${occurrences}）——锚点漂移时本测试当场点名`);
+    writeFileSync(
+      join(sandbox, 'schedule/phase-1/control.yaml'),
+      pristineControlText.replace(anchor, 'targets: [walltile_kitchen_ent_west, skirt_master_bedroom_w_mb_east]'),
+    );
+    try {
+      const state = loadScheduleState(sandbox, {modelPackageLinks: loadModelPackageLinks(join(sandbox, 'config/model-package-links.yaml'))});
+      for (const target of ['walltile_kitchen_ent_west', 'skirt_master_bedroom_w_mb_east']) {
+        assert.ok(
+          state.errors.some((error) => error.includes(`cost target "${target}" 是面层配方 id`)),
+          `配方 id ${target} 必须被显式拦截，实际 errors：${state.errors.join(' | ')}`,
+        );
+      }
+      // 拦截文案要说清「只收对象 id」，否则写错的人不知道该改成什么
+      assert.ok(
+        state.errors.some((error) => error.includes('targets 只收对象 id')),
+        `拦截文案必须写明口径，实际 errors：${state.errors.join(' | ')}`,
+      );
+    } finally {
+      writeFileSync(join(sandbox, 'schedule/phase-1/control.yaml'), pristineControlText);
+    }
+  });
+
+  it('配方 id 全集覆盖四类配方且不含任何对象 id', () => {
+    const recipes = collectFinishRecipeIds();
+    // 四类配方都在册：墙贴砖带 / 墙涂装带 / 防水台与飘窗的贴砖涂装面 / 派生踢脚带
+    assert.ok(recipes.has('walltile_kitchen_ent_west'), '墙贴砖带 id 应在册');
+    assert.ok(recipes.has('paint_living_dining_w_cent_south'), '墙涂装带 id 应在册');
+    assert.ok(recipes.has('silltile_kitchen_north_bay_front'), '防水台贴砖面 id 应在册');
+    assert.ok(recipes.has('skirt_master_bedroom_w_mb_east'), '派生踢脚带 id 应在册');
+    assert.ok(recipes.size >= 100, `配方 id 应 ≥100（18 砖带 + 31 漆带 + 28 窗台面 + 24 派生踢脚），实际 ${recipes.size}`);
+    // 宿主对象 id 不在册——否则拦截会误伤合法 targets
+    for (const objectId of ['kitchen_north_bay', 'mb.washbasin_cabinet', 'gbath.vanity', 'w_kit_west', 'ceiling_living']) {
+      assert.ok(!recipes.has(objectId), `对象 id ${objectId} 不得进配方集合`);
     }
   });
 });

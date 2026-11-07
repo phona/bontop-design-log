@@ -11,7 +11,14 @@ authorities:
   phase_3_scope: schedule/phase-3/control.yaml
   model_geometry: config/layout/model-geometry.yaml
   # issue #98 第三阶段 S1：overlay = envelope 文件合并——选择器校验走 server/model-package-links.ts
-  # 的 loadOverlayDoc()（唯一合并点），指纹按下列文件全部计入；source: overlay 的选择器不变。
+  # 的 loadOverlayDoc()（唯一合并点），指纹按下列文件全部计入。
+  # S6（2026-11-07）：overlay / ceiling 两个 source 的 types 选择器全部改为 ids（对象 id 直选，
+  # 迁移设计 §5.7）。types 靠 sceneElements 的 type 字段匹配，而 S4 起面层配方下沉为宿主对象
+  # 特征、S5 起 skirting 改派生——「按 type 选」既选不到配方，也不再自说明选到了谁；换成
+  # 宿主/构件 id 后与家具片 PR-4/PR-11 同一通道（正查高亮、反查归属、cost:by-object 三处同源）。
+  # 两条 trade 选择器（curtain_box / drying_rack）**保留**：trade 是计价工艺类别、不是对象
+  # 身份，用 id 清单表达会把「以后新增一个窗帘盒」静默漏在范围外；它们已收窄在 ceiling
+  # source 上（PKG-145 / P2-090），不跨源。
   # S5：finish-surfaces.yaml（skirting_region 24 段声明）已删，skirting 改由 paint_bands 派生，
   # 锚点进 finish-defaults.yaml——它仍是「overlay 文档」的组成部分（派生在此装配），故列入。
   overlay:
@@ -79,7 +86,9 @@ links:
       # 「厨/卫/阳台四间房里带贴砖带的墙」+「同范围的防水台构件」，逐条对应原 wall_region 的
       # (wall, room) 声明；房间维度由上面的 model_geometry room_ids 承担（原 overlay room_ids
       # 随元素一起退场——overlay 文档里已没有 room 字段可对）。
-      - {source: overlay, select: {types: [floor_region]}}
+      # S6：地面 part 由 types:[floor_region] 改按 6 个 floor zone 对象 id 直选（等价——
+      # 合并文档里 floor_region 元素恰好这 6 个，ids 与 type 匹配结果逐一相同）。
+      - {source: overlay, select: {ids: [entry_garden_floor, entry_foyer_floor, corridor_floor, main_corridor_floor, guest_bath_open_vanity_floor, north_platform_floor]}}
       - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]}}
       - {source: overlay, select: {ids: [kitchen_north_bay, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge]}}
   - id: MODEL-PKG-060
@@ -88,10 +97,10 @@ links:
     mapping_status: mapped
     scope:
       - {source: model_geometry, select: {collections: [rooms]}}
-      # S4：floor_region 仍是元素；贴砖范围改按宿主对象 id（12 面带 tile_bands 的墙 +
-      # 10 个带 finish.tile 的防水台/上飘窗构件）——与原 types:[floor_region, wall_region,
-      # sill_region] 覆盖同一批面层，只是从「配方 id」换成「宿主对象 id」。
-      - {source: overlay, select: {types: [floor_region]}}
+      # S4：贴砖范围改按宿主对象 id（12 面带 tile_bands 的墙 + 10 个带 finish.tile 的
+      # 防水台/上飘窗构件）——与原 types:[floor_region, wall_region, sill_region] 覆盖同一批
+      # 面层，只是从「配方 id」换成「宿主对象 id」。S6：地面 part 也改 ids（6 个 floor zone）。
+      - {source: overlay, select: {ids: [entry_garden_floor, entry_foyer_floor, corridor_floor, main_corridor_floor, guest_bath_open_vanity_floor, north_platform_floor]}}
       - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]}}
       - {source: overlay, select: {ids: [bedroom_nw_north_waterproof_ledge, bedroom_se_south_waterproof_ledge, kitchen_north_bay, living_south_waterproof_ledge, master_bedroom_south_waterproof_ledge, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, study_south_waterproof_ledge]}}
   - id: MODEL-PKG-065
@@ -100,8 +109,8 @@ links:
     mapping_status: mapped
     scope:
       # S4：湿区两间房的贴砖范围 = 8 面墙 + 2 个防水台构件（原 types + room_ids 的并集，
-      # 房间过滤由 id 清单逐条承担）。floor_region 仍是元素。
-      - {source: overlay, select: {types: [floor_region]}}
+      # 房间过滤由 id 清单逐条承担）。S6：地面 part 改 ids（6 个 floor zone）。
+      - {source: overlay, select: {ids: [entry_garden_floor, entry_foyer_floor, corridor_floor, main_corridor_floor, guest_bath_open_vanity_floor, north_platform_floor]}}
       - {source: model_geometry, select: {ids: [w_balc_south, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south]}}
       - {source: overlay, select: {ids: [mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge]}}
   - id: MODEL-PKG-070
@@ -124,7 +133,9 @@ links:
     mapping_status: partial
     scope:
       - {source: model_geometry, select: {collections: [openings]}}
-      - {source: overlay, select: {types: [sliding_door_run]}}
+      # S6：types:[sliding_door_run] → ids（全册仅此一件推拉门对象，等价；它带开合态与
+      # MEP 包络语义，是对象而不是面层配方）。
+      - {source: overlay, select: {ids: [kitchen_dining_sliding_door]}}
   - id: MODEL-PKG-100
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-100}
@@ -136,7 +147,10 @@ links:
       - {source: furnishings, select: {room_ids: [master_bath, guest_bath, master_bedroom], types: [toilet, shower_set, faucet, mb_washbasin_cabinet, mirror_cabinet_gbath, exhaust_fan]}}
       - {source: furnishings, select: {ids: [gbath.vanity]}}
       - {source: plumbing, select: {room_ids: [master_bath, guest_bath, master_bedroom]}}
-      - {source: overlay, select: {types: [shower_screen]}}
+      # S6：types:[shower_screen] → ids（3 件玻璃隔断对象，等价；按 AGENTS.md 新类型评估
+      # 不需碰撞。mesh objectId 是 `id:N` 分段形式，与改 ids 前 type 选择器产出的裸 id 同形，
+      # 高亮命中面不改。）
+      - {source: overlay, select: {ids: [shower_screen_mbath, shower_screen_gbath, vanity_screen_glass]}}
   - id: MODEL-PKG-110
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-110}
@@ -179,8 +193,9 @@ links:
     budget_ref: {source: phase_1_budget, id: PKG-130}
     mapping_status: mapped
     # S4：与 MODEL-PKG-060 同源（贴砖范围的地面+墙面+防水台三 part），改按宿主对象 id。
+    # S6：地面 part 由 types:[floor_region] 改 ids（6 个 floor zone），本链接不再有 types 选择器。
     scope:
-      - {source: overlay, select: {types: [floor_region]}}
+      - {source: overlay, select: {ids: [entry_garden_floor, entry_foyer_floor, corridor_floor, main_corridor_floor, guest_bath_open_vanity_floor, north_platform_floor]}}
       - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]}}
       - {source: overlay, select: {ids: [bedroom_nw_north_waterproof_ledge, bedroom_se_south_waterproof_ledge, kitchen_north_bay, living_south_waterproof_ledge, master_bedroom_south_waterproof_ledge, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, study_south_waterproof_ledge]}}
   - id: MODEL-PKG-135
@@ -191,9 +206,11 @@ links:
       - {source: model_geometry, select: {collections: [rooms, walls, openings]}}
       # S4：贴砖/涂装范围改按宿主对象 id（12 面贴砖墙 + 18 面涂漆墙 + 10 个防水台/上飘窗
       # + 8 个飘窗涂装构件）。S5：skirting_region 24 段声明已删、改由 paint_bands 派生，
-      # 但合并文档（loadOverlayDoc）仍产出这 24 个 skirt_* 元素，types 选择器照旧命中
-      # （PKG-135 的 3D 高亮范围不缩）；声明文件与锚点迁到 finish-defaults.yaml。
-      - {source: overlay, select: {types: [floor_region, skirting_region]}}
+      # 但合并文档（loadOverlayDoc）仍产出这 24 个 skirt_* 元素。S6：地面与踢脚由
+      # types:[floor_region, skirting_region] 改 ids（6 floor zone + 24 条派生踢脚，等价——
+      # 3D 高亮范围不缩；派生 id 由 shared/skirting-derivation.ts 的 skirtingIdFor 产出，
+      # tests/server/skirting.test.ts 冻结这 24 个 id 的基线）。
+      - {source: overlay, select: {ids: [entry_garden_floor, entry_foyer_floor, corridor_floor, main_corridor_floor, guest_bath_open_vanity_floor, north_platform_floor, skirt_bedroom_se_w_east_upper, skirt_living_dining_w_ent_south_w, skirt_living_dining_w_cent_south, skirt_living_dining_w_ent_west, skirt_bedroom_nw_w_mbath_east, skirt_master_bedroom_w_mbath_east, skirt_master_bedroom_w_mbath_south, skirt_bedroom_nw_w_nw_south, skirt_main_corridor_w_nw_south, skirt_master_bedroom_w_nw_south, skirt_main_corridor_w_strip_east, skirt_master_bedroom_w_strip_east, skirt_main_corridor_w_st_north, skirt_study_w_st_north, skirt_living_dining_w_st_east, skirt_study_w_st_east, skirt_master_bedroom_w_mb_east, skirt_study_w_mb_east, skirt_bedroom_nw_w_balc_west, skirt_bedroom_nw_w_gbath_west, skirt_bedroom_nw_w_gbath_west_open_vanity, skirt_bedroom_se_w_be_west, skirt_living_dining_w_be_west, skirt_bedroom_se_w_be_north]}}
       - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_be_north, w_be_west, w_cent_south, w_east_upper, w_ent_south_w, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mb_east, w_mbath_east, w_mbath_south, w_nw_south, w_st_east, w_st_north, w_strip_east, w_vrv_east]}}
       - {source: overlay, select: {ids: [bedroom_nw_north_bay, bedroom_nw_north_waterproof_ledge, bedroom_se_south_bay, bedroom_se_south_waterproof_ledge, kitchen_north_bay, living_south_waterproof_ledge, master_bath_west_bay, master_bath_west_lower_bay, master_bedroom_south_bay, master_bedroom_south_waterproof_ledge, master_bedroom_west_bay, master_bedroom_west_mid_bay, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, study_south_bay, study_south_waterproof_ledge]}}
   - id: MODEL-PKG-140
@@ -224,7 +241,15 @@ links:
     budget_ref: {source: phase_1_budget, id: PKG-145}
     mapping_status: partial
     scope:
-      - {source: overlay, select: {types: [curtain]}}
+      # S6：types:[curtain] → ids（合并文档里 curtain 元素恰好这 9 个，等价）。
+      # 帘布 mesh 的场景 objectId 是 `curtain_*:<layer>:<variant>`（SceneBuilder.addCurtain），
+      # 裸 id 不直接命中，但消费两侧都走 sourceWallIdOf 二级桥接（HouseScene
+      # .applyEmissiveHighlight 与 App.revealPackageForObject），高亮与反查都通——
+      # tests/server/package-scope.test.ts 的 buildScene 命中门禁已把这 9 个 id 纳入检查。
+      - {source: overlay, select: {ids: [curtain_living_south, curtain_master_west, curtain_master_south, curtain_master_strip_fabric, curtain_mb_washbasin_blinds, curtain_parent_south, curtain_study_south, curtain_nw_north, curtain_mbath_corner]}}
+      # trade 选择器保留（迁移设计 §5.7）：curtain_box 是**计价工艺类别**不是对象身份，
+      # 用 id 清单（当前 5 个 curtain_box_*）表达会把以后新增的窗帘盒静默漏在范围外；
+      # 已收窄在 ceiling source 上，不跨源。
       - {source: ceiling, select: {trade: [curtain_box]}}
       - {source: electrical, select: {ids: [sock_living_curtain, sock_master_curtain, sock_parent_curtain, sock_study_curtain]}}
   - id: MODEL-PKG-150
@@ -286,7 +311,8 @@ links:
     budget_ref: {source: phase_2_scope, id: P2-070}
     mapping_status: partial
     scope:
-      - {source: overlay, select: {types: [curtain]}}
+      # S6：types:[curtain] → ids（9 个 curtain 对象，与 PKG-145 同源同口径）。
+      - {source: overlay, select: {ids: [curtain_living_south, curtain_master_west, curtain_master_south, curtain_master_strip_fabric, curtain_mb_washbasin_blinds, curtain_parent_south, curtain_study_south, curtain_nw_north, curtain_mbath_corner]}}
       - {source: electrical, select: {ids: [sock_living_curtain, sock_master_curtain, sock_parent_curtain, sock_study_curtain]}}
   - id: MODEL-P2-080
     phase_id: phase_2_function_upgrade
@@ -297,6 +323,8 @@ links:
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-090}
     mapping_status: partial
+    # S6：trade 选择器保留（迁移设计 §5.7）——drying_rack 是计价工艺类别，不是对象身份；
+    # 收窄在 ceiling source 上（当前全册仅 drying_rack_living 一件）。
     scope: [{source: ceiling, select: {trade: [drying_rack]}}]
   - id: MODEL-P2-100
     phase_id: phase_2_function_upgrade

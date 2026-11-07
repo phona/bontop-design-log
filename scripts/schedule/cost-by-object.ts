@@ -22,6 +22,14 @@
  * 不落盘、无指纹、无 render/check 双口径——「后续切片的工作清单」靠查询保证不过期，
  * 不新增需要防漂移的镜像文件（对比 schedule:render 的视图族）。
  *
+ * **targets 只收对象 id，不收面层配方 id**（2026-11-07 issue #98 第三阶段 S6，迁移设计
+ * §5.7）：S4 起墙贴砖带/涂装带、防水台与飘窗的贴砖/涂装面是宿主对象身上的派生量，S5 起
+ * 踢脚带由漆面带派生——它们与对象 id 同为稳定字符串、任何 schema 都区分不了。若允许配方
+ * id 进 targets，按对象算账视图会被 100+ 个配方稀释（一间房摊出几十条成本行，业主读不出
+ * 「这个对象花了多少钱」）。拦截在 shared/schedule-state.ts 的 targets 校验第一道
+ * （配方 id 全集由 shared/finish/input.ts 的 collectFinishRecipeIds 从声明住处枚举），
+ * 本脚本不另立一套判据；配方量写进 control.yaml 的 quantity_basis，是派生量不是归属。
+ *
  * 引用通道（--inventory 枚举被机器绑定引用的对象）：
  *   anti_penetration_pair   config/anti-penetration.yaml waivers[].pair（结构化）
  *   electrical_mount_anchor config/electrical.yaml mount_anchor.furniture_id（结构化）

@@ -145,6 +145,7 @@ import {
   type MepTakeoff,
   type MepTakeoffRules,
 } from '../../shared/mep-takeoff.js';
+import { SOURCES, sourceFile } from '../../shared/envelope-sources.js';
 import {
   endpointSourcesFromFacts,
   parseMepCoordination,
@@ -165,10 +166,10 @@ export const COST_SUMMARY_PATH = 'schedule/phase-1/cost.md';
 export const COST_INPUT_PATHS: string[] = [
   'config/budget/base.json',
   'config/ceiling-quotes.yaml',
-  'config/model/envelope/ceiling.yaml',
-  'config/model/envelope/openings.yaml',
-  'config/model/envelope/floor-zones.yaml',
-  'config/model/envelope/finish-defaults.yaml',
+  // 2026-11-07（issue #98 S6）：吊顶与围护构件的文件清单取自来源注册表（S1 搬迁的落点），
+  // 不再在本表手抄路径——这是第七张会随搬迁漂移的 file 表。
+  ...SOURCES.ceiling.files,
+  ...SOURCES.overlay.files,
   'config/design-rules.yaml',
   'config/electrical-topology.yaml',
   'config/electrical.yaml',
@@ -829,7 +830,8 @@ export function computeActiveMepQuote(): { comparison: MepQuoteComparison; takeo
   const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepTakeoffRules & { sources: Record<string, string> };
   const electrical = parseYaml(readFileSync(rules.sources.electrical_points, 'utf8')) as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'];
   const plumbing = parseYaml(readFileSync(rules.sources.plumbing_points, 'utf8')) as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'];
-  const ceiling = parseYaml(readFileSync(rules.sources.ceiling, 'utf8')) as unknown[];
+  // 2026-11-07（issue #98 S6）：吊顶声明文件的路径取自来源注册表，不再读 rules.sources.ceiling
+const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknown[];
   const hvac = parseYaml(readFileSync(rules.sources.hvac, 'utf8')) as { plans: unknown[] };
   const coordination = parseMepCoordination(readFileSync(rules.sources.routes, 'utf8'));
   const topology = parseYaml(readFileSync(rules.sources.circuits, 'utf8')) as {

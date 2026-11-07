@@ -9,6 +9,16 @@
 # 合并读取入口：server/overlay-merge.ts parseOverlayFiles()（openings + floor-zones 两个文件
 # 拼成原 OverlayConfig；skirting 24 段自 S5 起由 paint_bands 派生、锚点住 finish-defaults.yaml；
 # parseOverlay(text) 仍供测试喂 fixture 文本）。
+#
+# ── DEC 引用登记（issue #98 第三阶段 S6，只登记不改）─────────────────────────
+# 本文件 reason/note 含 **29 处 DEC 引用**（6 个唯一编号），与原 config/layout/overlay.yaml
+# 的 87 处同源——overlay 拆除后它们分散到：openings 29 + floor-zones 4 + finish-defaults 3
+# + ceiling 44 = **80 处**仍住 envelope 四文件；面层配方的 reason 随 S4 下沉进
+# config/layout/model-geometry.yaml 的墙 finish 带（12 行），派生踢脚的 reason 在
+# shared/skirting-derivation.ts（4 处）。合计即勘察口径「overlay 95 + ceiling 17」的现状落点。
+# 这是 issue #98 **阶段 C（DEC 退役 → intent/evidence）的输入清单**：S1–S6 一律原样保留、
+# 不改写不删除；阶段 C 才逐条迁往对象 intent 字段并让 c.dec_unique / c.dec_ref_resolvable
+# 等契约退场。迁移中新增注释若引用 DEC，登记数以本段为准重新计数，不得静默增长。
 version: 1
 
 elements:
