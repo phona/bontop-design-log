@@ -2,7 +2,7 @@
 """DEC-2026-10-07-R03 客餐厅双出风风口三层线交付图：
 D1 两台内机平面布置 / 风口对应关系（顶视）
 D2 天花剖面节点（A-A x=10.30 穿 71T2 / B-B x=7.90 穿 42T2）
-数据源：config/hvac.yaml（A2 diagram.terminals）、config/ceiling.yaml（ceiling_living / ac_living / ac_dining）。
+数据源：config/hvac.yaml（A2 diagram.terminals）、config/model/envelope/ceiling.yaml（ceiling_living / ac_living / ac_dining）。
 只读配置；装饰段（LD-deco-*）以封闭背板表达，不接风道。
 """
 from pathlib import Path

@@ -15,7 +15,10 @@ import requests
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-WATCHED_FILES = {'model-geometry.yaml', 'overlay.yaml'}
+WATCHED_FILES = {'model-geometry.yaml', 'openings.yaml', 'floor-zones.yaml', 'ceiling.yaml', 'finish-surfaces.yaml'}
+# issue #98 S1：饰面/吊顶声明从 config/layout/{overlay,ceiling}.yaml 搬到 config/model/envelope/（四个文件），
+# 楼层几何仍住 config/layout——两个目录都要 watch，按 basename 匹配。
+WATCH_DIRS = ('config/layout', 'config/model/envelope')
 LOG_DIR = Path('scripts/logs')
 EVENT_LOG = LOG_DIR / 'floor-plan-compare-events.jsonl'
 PID_FILE = LOG_DIR / 'floor-plan-watcher.pid'
@@ -103,12 +106,12 @@ class FloorPlanWatcher:
 
         self.acquire_pid()
         try:
-            watch_dir = Path(self.args.watch_dir).resolve()
             handler = WatcherHandler(self.on_file_changed)
             observer = Observer()
-            observer.schedule(handler, str(watch_dir), recursive=False)
+            for watch_dir in WATCH_DIRS:
+                observer.schedule(handler, str(Path(watch_dir).resolve()), recursive=False)
             observer.start()
-            print(f'Watching {watch_dir} for changes...')
+            print(f'Watching {", ".join(WATCH_DIRS)} for changes...')
             try:
                 while not self.stop_event.is_set():
                     self.process_pending()
@@ -185,7 +188,7 @@ class FloorPlanWatcher:
             'baseline': str(baseline.resolve()),
             'screenshot': str(output.resolve()),
             'model_geometry': 'config/layout/model-geometry.yaml',
-            'overlay': 'config/layout/overlay.yaml',
+            'envelope': 'config/model/envelope/（openings/floor-zones/ceiling/finish-surfaces）',
         }
         with open(EVENT_LOG, 'a', encoding='utf-8') as f:
             f.write(json.dumps(event, ensure_ascii=False) + '\n')

@@ -89,7 +89,7 @@ function main(): void {
 
   lines.push('# 装扮映射表（材质/家具/灯光的外观替换映射）');
   lines.push('');
-  lines.push(`生成：${today}，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json`);
+  lines.push(`生成：${today}，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / config/model/envelope/（openings+floor-zones+ceiling+finish-surfaces）/ environment.yaml / data/current-scheme.json`);
   lines.push('');
   lines.push(`数据规模：house.yaml furnishings 共 ${furnishingCount} 件（与 \`fact.furnishings_count\` 对账）。`);
   lines.push('');
