@@ -14,6 +14,7 @@ import type {
   DesignOption,
 } from '../shared/types.js';
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
+import { tangentArc } from '../shared/arc.js';
 import {
   computeMasonryTakeoff,
   type MasonryFloorRegionInput,
@@ -286,6 +287,10 @@ const GEO_EPS = 1e-6;
  * 「渲染端折线段数不同导致面积对不上」的第二套口径。切点落在邻边线段之外、圆心与半径
  * 不自洽、扫角退化时直接抛错（fail-closed）：一条坏弧声明应该让预算算不出来，
  * 而不是悄悄少算 0.21㎡。
+ *
+ * 切点与弧心统一走 `shared/arc.ts` 的 `tangentArc`（原 `tangentPointOnEdge` 本地副本，
+ * 2026-11-07 issue #98 第三阶段 S2 删除）：floor_region 圆角点带声明式 cx/cz，
+ * 走 descriptor 的「垂足 = 切点」形态，其越界/不自洽校验即本函数的 fail-closed 守卫。
  */
 function roundedPolygonArea(points: CurtainPoint[]): number {
   const signed = points.reduce((sum, p, i) => {
@@ -306,8 +311,16 @@ function roundedPolygonArea(points: CurtainPoint[]): number {
     const center = { x: corner.cx, z: corner.cz };
     const prev = points[(i - 1 + points.length) % points.length];
     const next = points[(i + 1) % points.length];
-    const t1 = tangentPointOnEdge(corner, prev, center, corner.radius);
-    const t2 = tangentPointOnEdge(corner, next, center, corner.radius);
+    // 切点/弧心解算唯一入口（shared/arc.ts）。返回 null = 切点落在邻边线段之外、
+    // 半径与弧心不自洽或夹角退化——预算算不出来，不悄悄少算一块地。
+    const arc = tangentArc(corner, prev, next, corner.radius, center);
+    if (!arc) {
+      throw new Error(
+        `floor_region 圆角点（第 ${i} 点）无法由 tangentArc 解出切点：切点落在邻边线段之外、半径与弧心不自洽或夹角退化`,
+      );
+    }
+    const t1 = arc.start;
+    const t2 = arc.end;
     // 被圆角替掉的锐角三角形面积
     const cornerArea = Math.abs(
       (t1.x - corner.x) * (t2.z - corner.z) - (t2.x - corner.x) * (t1.z - corner.z)
@@ -325,30 +338,6 @@ function roundedPolygonArea(points: CurtainPoint[]): number {
     area += orient * turn > 0 ? -cut : cut;
   }
   return Math.abs(area);
-}
-
-/** 圆心在「角点 → 邻点」这条边上的垂足（即圆角切点）；不在边线段内或半径不自洽即抛错。 */
-function tangentPointOnEdge(
-  corner: CurtainPoint,
-  along: CurtainPoint,
-  center: { x: number; z: number },
-  radius: number
-): { x: number; z: number } {
-  const dx = along.x - corner.x;
-  const dz = along.z - corner.z;
-  const len = Math.hypot(dx, dz);
-  if (len <= GEO_EPS) throw new Error('floor_region 圆角点的邻边长度为 0');
-  const ux = dx / len;
-  const uz = dz / len;
-  const t = (center.x - corner.x) * ux + (center.z - corner.z) * uz;
-  if (t < -GEO_EPS || t > len + GEO_EPS) {
-    throw new Error(`floor_region 圆角切点落在邻边线段之外（t=${t.toFixed(4)}，边长=${len.toFixed(4)}）`);
-  }
-  const point = { x: corner.x + ux * t, z: corner.z + uz * t };
-  if (Math.abs(Math.hypot(point.x - center.x, point.z - center.z) - radius) > 1e-3) {
-    throw new Error('floor_region 圆角半径与弧心不自洽（切点到弧心距离 ≠ radius）');
-  }
-  return point;
 }
 
 export function loadPaintScopeAreaByRoom(

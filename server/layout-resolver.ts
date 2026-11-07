@@ -9,6 +9,7 @@ import type {
   ResolvedWallSegment,
   CurtainPoint,
 } from '../shared/types.js';
+import { tangentArc } from '../shared/arc.js';
 
 interface VMap {
   id: string;
@@ -151,8 +152,11 @@ function resolveRoom(
     if (v.radius) {
       const prev = vmap.get(def.boundary[(def.boundary.indexOf(vid) - 1 + def.boundary.length) % def.boundary.length]);
       const next = vmap.get(def.boundary[(def.boundary.indexOf(vid) + 1) % def.boundary.length]);
-      const center = prev && next ? tangentPoints(v, prev, next).center : undefined;
-      pts.push({ x: v.x, z: v.z, radius: v.radius, ...(center ? { cx: center.x, cz: center.z } : {}) });
+      // 弧心统一走 shared/arc.ts 的 tangentArc（原 tangentPoints 本地副本，2026-11-07
+      // issue #98 第三阶段 S2 删除）。解不出（夹角退化/切点超出邻边）时不给 cx/cz——
+      // 房间轮廓退化成尖角，与该顶点墙弧的 fail-closed 抛错同向（那边先红）。
+      const cornerArc = prev && next ? tangentArc(v, prev, next, v.radius) : null;
+      pts.push({ x: v.x, z: v.z, radius: v.radius, ...(cornerArc ? { cx: cornerArc.center.x, cz: cornerArc.center.z } : {}) });
     } else {
       pts.push({ x: v.x, z: v.z });
     }
@@ -203,36 +207,6 @@ function normalize(v: Pt): Pt {
   return len > 0 ? { x: v.x / len, z: v.z / len } : { x: 0, z: 0 };
 }
 
-function tangentPoints(
-  corner: VMap,
-  prev: VMap,
-  next: VMap
-): { t1: Pt; t2: Pt; center: Pt } {
-  const r = corner.radius!;
-  const dPrev = normalize({ x: prev.x - corner.x, z: prev.z - corner.z });
-  const dNext = normalize({ x: next.x - corner.x, z: next.z - corner.z });
-
-  // 弧心位于内角平分线上，方向 = 两条邻边单位向量之和（与顶点遍历方向/绕向无关），
-  // 距离 = r / sin(θ/2)；切点沿两邻边各退 r / tan(θ/2)。
-  // 旧实现用 sign 启发式，在 v_sw（prev 在东、next 在北）这类取向下会把弧心算到房间外侧。
-  const dot = Math.max(-1, Math.min(1, dPrev.x * dNext.x + dPrev.z * dNext.z));
-  const theta = Math.acos(dot);
-  const bisector = { x: dPrev.x + dNext.x, z: dPrev.z + dNext.z };
-  const bLen = Math.hypot(bisector.x, bisector.z);
-  if (theta < 0.001 || bLen < 1e-9) {
-    return { t1: { x: corner.x, z: corner.z }, t2: { x: corner.x, z: corner.z }, center: { x: corner.x, z: corner.z } };
-  }
-  const tangent = r / Math.tan(theta / 2);
-  const centerDist = r / Math.sin(theta / 2);
-  // 吸附浮点噪声：1.1 + 1.0000000000000002 这类误差会破坏下游的精确相等断言
-  const snap = (v: number): number => Math.round(v * 1e12) / 1e12;
-  const center = { x: snap(corner.x + (bisector.x / bLen) * centerDist), z: snap(corner.z + (bisector.z / bLen) * centerDist) };
-
-  const t1 = { x: snap(corner.x + dPrev.x * tangent), z: snap(corner.z + dPrev.z * tangent) };
-  const t2 = { x: snap(corner.x + dNext.x * tangent), z: snap(corner.z + dNext.z * tangent) };
-  return { t1, t2, center };
-}
-
 function arcSegments(
   center: Pt, r: number,
   startAngle: number, endAngle: number, n: number,
@@ -278,7 +252,16 @@ function resolveWall(
       if (Math.abs(dot) > 0.99) {
         segments = [{ x1, z1, x2, z2, kind: 'line' }];
       } else {
-        const { t1, t2, center } = tangentPoints(from, prevFrom, to);
+        // 切点/弧心统一走 shared/arc.ts 的 tangentArc（原 tangentPoints 本地副本，
+        // 2026-11-07 issue #98 第三阶段 S2 删除）：切点沿两邻边各退 r/tan(θ/2)，
+        // 弧心在内角平分线上距角点 r/sin(θ/2)（方向 = 两邻边单位向量之和，与绕向无关）。
+        const cornerArc = tangentArc(from, prevFrom, to, from.radius);
+        // fail-closed：半径声明解不出切点（夹角退化 / 切点超出邻边）时必须红——
+        // 静默回落直线会让墙段刺出弧外，与弧段成两套几何。
+        if (!cornerArc) {
+          throw new Error(`Wall ${def.id}: 顶点 ${def.from} 声明 radius=${from.radius} 但解不出切点（夹角退化或切点超出邻边）`);
+        }
+        const { start: t1, end: t2, center } = cornerArc;
         arcCenterX = center.x; arcCenterZ = center.z;
         x1 = t1.x; z1 = t1.z;
         const startAngle = Math.atan2(t1.z - center.z, t1.x - center.x);
@@ -300,17 +283,23 @@ function resolveWall(
     const nextWall = allWalls.find(w => w.from === def.to);
     if (nextWall) {
       const nextTo = vmap.get(nextWall.to)!;
-      const { t1 } = tangentPoints(to, from, nextTo);
+      // 切点/弧心统一走 shared/arc.ts 的 tangentArc（原 tangentPoints 本地副本，
+      // 2026-11-07 issue #98 第三阶段 S2 删除）。解不出（夹角退化/切点超出邻边）时
+      // 保持整面墙不修剪——弧归下一面墙，修墙线是它的责任，这里硬剪才会剪坏几何。
+      const cornerArc = tangentArc(to, from, nextTo, to.radius);
       // Only trim if tangent is on the wall segment (within dot range + on the line)
-      const dx = t1.x - x1, dz = t1.z - z1;
-      const origDx = x2 - x1, origDz = z2 - z1;
-      const lenSq = origDx * origDx + origDz * origDz;
-      if (lenSq > 0.001) {
-        const dot = (dx * origDx + dz * origDz) / lenSq;
-        const perpDist = Math.abs(dx * origDz - dz * origDx) / Math.sqrt(lenSq);
-        // dot 用 epsilon 容差：tangent 点恰好在墙端点上时浮点误差会产生 ±5e-16 的偏移
-        if (dot >= -1e-6 && dot <= 1 + 1e-6 && perpDist < 0.01) {
-          x2 = t1.x; z2 = t1.z;
+      if (cornerArc) {
+        const t1 = cornerArc.start;
+        const dx = t1.x - x1, dz = t1.z - z1;
+        const origDx = x2 - x1, origDz = z2 - z1;
+        const lenSq = origDx * origDx + origDz * origDz;
+        if (lenSq > 0.001) {
+          const dot = (dx * origDx + dz * origDz) / lenSq;
+          const perpDist = Math.abs(dx * origDz - dz * origDx) / Math.sqrt(lenSq);
+          // dot 用 epsilon 容差：tangent 点恰好在墙端点上时浮点误差会产生 ±5e-16 的偏移
+          if (dot >= -1e-6 && dot <= 1 + 1e-6 && perpDist < 0.01) {
+            x2 = t1.x; z2 = t1.z;
+          }
         }
       }
     }
