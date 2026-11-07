@@ -88,6 +88,8 @@ export function collectFinishSceneMeshes(layout: { walls: unknown[]; rooms: unkn
       ...(typeof object.userData.face === 'string' ? { face: object.userData.face } : {}),
       ...(typeof object.userData.wallId === 'string' ? { wallId: object.userData.wallId } : {}),
       ...(typeof object.userData.elementId === 'string' ? { elementId: object.userData.elementId } : {}),
+      // S4：涂漆面容差按 (墙, 房间) 解算完成面偏移，房间 id 一并采回。
+      ...(typeof object.userData.roomId === 'string' ? { roomId: object.userData.roomId } : {}),
     });
   });
 

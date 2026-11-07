@@ -174,10 +174,12 @@ const layout = resolveLayout(MODEL_GEOMETRY);
 const mergedElements = mergeSceneElements(layout.walls as any, parseOverlayFiles());
 const ceilingZones = loadCeilingConfig();
 
-/** 从 overlay.yaml 直接读真实声明（不经过 server 的 loader，保证输入侧也是独立的）。 */
-const REAL_DECLARATION = (OVERLAY.elements ?? []).find(
-  (element) => element?.type === 'paint_sill_region' && element?.id === 'paint_master_bath_west_bay',
-) as unknown as PaintSillFaceInput | undefined;
+/** 从 config 直接读真实声明（不经过 server 的 loader，保证输入侧也是独立的）。
+ *  面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：paint_sill_region 不再是 overlay
+ *  平级元素，而是 bay_sill 构件的 finish.paint[]（envelope/openings.yaml）。 */
+const REAL_DECLARATION = (OVERLAY.elements ?? [])
+  .flatMap((element) => ((element?.finish as { paint?: unknown[] } | undefined)?.paint ?? []).map((band) => ({ ...(band as object), element: element?.id })))
+  .find((band) => (band as { id?: string }).id === 'paint_master_bath_west_bay') as unknown as PaintSillFaceInput | undefined;
 
 function realBaySill(): { wallRefs: NonNullable<Extract<typeof mergedElements[number], { type: 'bay_sill' }>['wallRefs']>; depth: number; sill: number; height: number } {
   const bay = mergedElements.find((element) => element.type === 'bay_sill' && element.id === 'master_bath_west_bay');
@@ -186,7 +188,7 @@ function realBaySill(): { wallRefs: NonNullable<Extract<typeof mergedElements[nu
 }
 
 function realScope(): PaintSillScopeResult {
-  if (!REAL_DECLARATION) throw new Error('overlay.yaml has no paint_sill_region paint_master_bath_west_bay');
+  if (!REAL_DECLARATION) throw new Error('openings.yaml has no bay_sill finish.paint paint_master_bath_west_bay');
   const room = layout.rooms.find((candidate) => candidate.id === REAL_DECLARATION!.room);
   if (!room) throw new Error(`resolved layout has no room ${REAL_DECLARATION.room}`);
   const bay = realBaySill();
@@ -430,7 +432,7 @@ test('fail-closed：paint_sill_region 引用不存在的 bay_sill 或房间时 c
   const catalog = ProjectCatalog.load('.');
   const inputs = loadPaintScopeInputs();
   const real = inputs.sillRegions[0];
-  assert.ok(real, 'overlay.yaml 至少声明一条 paint_sill_region');
+  assert.ok(real, 'envelope/openings.yaml 至少声明一条 bay_sill finish.paint');
 
   assert.throws(
     () => computePaintScopeForLayout(layout, catalog, { ...inputs, sillRegions: [{ ...real, element: 'no_such_bay_sill' }] }),

@@ -22,7 +22,7 @@ import {
   type MasonryTakeoffResult,
 } from '../shared/masonry-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
-import { parseOverlay, parseOverlayFiles } from './overlay-merge.js';
+import { parseOverlay, parseOverlayFiles, validateWallFinish } from './overlay-merge.js';
 import { suppressedWallIdSet } from '../shared/suppression.js';
 import { loadCeilingQuotes, baseJsonCeilingRatesFromBase, type CeilingQuotesFile } from './ceiling-quotes.js';
 import { resolveActiveCeilingRates, compareCeilingQuotes, type CeilingQuoteRateKey } from './ceiling-quotes.js';
@@ -143,6 +143,9 @@ export function loadMasonryTakeoff(
 ): MasonryTakeoffResult {
   const overlay = parseOverlayFiles();
   const overlayElements = (elements ?? overlay.elements ?? []) as Array<Record<string, any>>;
+  // 砖漆互斥机器规则（S4）：同一墙脸的贴砖带与涂装带二维不重叠。预算侧也算钱，
+  // 重叠 = 双计，所以在装载点一并校验（唯一实现见 server/overlay-merge.ts）。
+  validateWallFinish(catalog.getWalls());
 
   // 被 suppress 的墙（玻璃幕墙 / 实体已删除）：wall_region 引用即抛错，
   // sill_region 允许（防水台本就落在幕墙根）但要留名。
@@ -163,16 +166,37 @@ export function loadMasonryTakeoff(
   }));
   const wallById = new Map(walls.map((wall) => [wall.id, wall]));
 
-  const sillRegions = overlayElements
-    .filter((element) => element.type === 'sill_region')
-    .map((element) => ({
-      id: String(element.id),
-      element: String(element.element),
-      room: String(element.room),
-      face: element.face as MasonryTakeoffInput['sillRegions'][number]['face'],
-      along: element.along as [number, number] | undefined,
-      zone: element.zone as string | undefined,
-    }));
+  // 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：贴砖带不再是 overlay 平级元素
+  // wall_region，而是墙对象自己的 finish.tile_bands[]（model-geometry.yaml，经 ProjectCatalog
+  // 透传）；防水台/上飘窗贴砖不再是 sill_region，而是 bay_sill 构件的 finish.tile[]
+  // （envelope/openings.yaml）。算量口径逐条未改：along × 带高、fail-closed 守卫
+  // （height 必填、along 不越界、顶标高不超净高）都在 shared/masonry-takeoff.ts 里。
+  const wallRegions: MasonryTakeoffInput['wallRegions'] = catalog.getWalls().flatMap((wall) =>
+    (wall.finish?.tile_bands ?? []).map((band) => ({
+      id: band.id,
+      wall: wall.id ?? '',
+      room: band.room,
+      along: band.along,
+      bottom: band.bottom ?? 0,
+      height: band.height,
+      zone: band.zone,
+    })),
+  );
+
+  const sillRegions: MasonryTakeoffInput['sillRegions'] = overlayElements
+    .filter((element) => element.type === 'bay_sill')
+    .flatMap((element) => {
+      const bands = (element.finish as { tile?: Array<Record<string, unknown>> } | undefined)?.tile ?? [];
+      // element 由宿主构件给出（S4 前是声明的 element: 引用）。
+      return bands.map((band) => ({
+        id: String(band.id),
+        element: String(element.id),
+        room: String(band.room),
+        face: band.face as MasonryTakeoffInput['sillRegions'][number]['face'],
+        along: band.along as [number, number] | undefined,
+        zone: band.zone as string | undefined,
+      }));
+    });
 
   const baySills = overlayElements
     .filter((element) => element.type === 'bay_sill')
@@ -183,10 +207,10 @@ export function loadMasonryTakeoff(
       }
       const referencedBySill = sillRegions.some((region) => region.element === String(element.id));
       if (wallIds.length > 1 && referencedBySill) {
-        // 模块契约是「一个构件一条 run」。跨墙构件若被 sill_region 引用，只取第一条墙会
+        // 模块契约是「一个构件一条 run」。跨墙构件若被构件内嵌贴砖声明引用，只取第一条墙会
         // 静默漏算其余墙上的贴砖面——fail-closed，逼着把声明拆成逐墙构件。
         throw new Error(
-          `bay_sill ${element.id} 横跨 ${wallIds.length} 面墙（${wallIds.join(', ')}），却被 sill_region 引用；`
+          `bay_sill ${element.id} 横跨 ${wallIds.length} 面墙（${wallIds.join(', ')}），却被其 finish.tile 引用；`
           + 'shared/masonry-takeoff.ts 只接受单墙构件，请把该构件拆成逐墙声明',
         );
       }
@@ -236,17 +260,7 @@ export function loadMasonryTakeoff(
 
   return computeMasonryTakeoff({
     walls,
-    wallRegions: overlayElements
-      .filter((element) => element.type === 'wall_region')
-      .map((element) => ({
-        id: String(element.id),
-        wall: String(element.wall),
-        room: String(element.room),
-        along: element.along as [number, number],
-        bottom: Number(element.bottom ?? 0),
-        height: Number(element.height),
-        zone: element.zone as string | undefined,
-      })),
+    wallRegions,
     sillRegions,
     baySills,
     rooms,

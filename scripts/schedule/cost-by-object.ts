@@ -387,8 +387,13 @@ export function buildObjectLedgerReport(ctx: CostByObjectContext): ObjectLedgerR
     }
   }
   // ⑦ 工作包链接（OBJECT_ID_SOURCES 通道反查，与 3D 同一条实现）
+  // 本通道只跟踪**家具对象**的机器绑定（MODEL-PKG-* 的 furnishings select.ids）。
+  // 2026-11-07 issue #98 第三阶段 S4：overlay / model_geometry 的 select.ids 也进了
+  // OBJECT_ID_SOURCES（3D 高亮要按宿主对象 id 选墙与围护构件，面层配方下沉后
+  // types:[wall_region/sill_region/paint_region] 选择器无处可选），但那些 id 不是家具——
+  // 不过滤就会在这里变成上百条「悬挂引用」。故按来源过滤，只收 furnishings。
   for (const link of state.modelPackageLinks.links) {
-    const {objectIds, projectScope} = resolvePackageScope({scope: link.scope, mapping_status: link.mapping_status} as unknown as PackageScopeLink, EMPTY_PROJECT);
+    const {objectIds, projectScope} = resolvePackageScope({scope: (link.scope ?? []).filter((ref) => ref.source === 'furnishings'), mapping_status: link.mapping_status} as unknown as PackageScopeLink, EMPTY_PROJECT);
     if (projectScope) continue; // 显式/派生全项目范围包不占反查（与 buildObjectPackageIndex 同口径）
     for (const ref of objectIds) {
       const ledger = ledgerForStable(ref);

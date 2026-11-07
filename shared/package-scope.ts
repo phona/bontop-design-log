@@ -125,8 +125,45 @@ const POINT_SOURCE_PREFIXES: Record<string, string> = {
  * revealPackageForObject）同时生效。**2026-11-06 更新（issue #98 PR-8）**：本集合
  * 导出后另被 scripts/schedule/cost-by-object.ts 复用——按对象算账的「对象 → 工作包」
  * 通道与 3D 高亮同源，新增对象 id 来源时两处自动跟随，不得在脚本里另立一套来源表。
+ *
+ * **2026-11-07 更新（issue #98 第三阶段 S4 面层配方下沉）**：登记 `overlay` 与
+ * `model_geometry`——墙（model-geometry.yaml 的墙条目，含 finish 面层配方）与围护构件
+ * （envelope/openings.yaml 的 bay_sill，含 finish）的 `select.ids` 按**宿主对象稳定 id**
+ * 表达。设计文档 §5.7 预裁的这一步随 S4 落地：面层配方不再是 overlay 平级元素后，
+ * `types: [wall_region/sill_region/paint_region]` 选择器无处可选，工作包范围改按宿主对象
+ * id 选（与家具片 PR-4 同一方向）。
+ * 注意 `ceiling` 不在此表：它的 ids 走 POINT_SOURCE_PREFIXES 的 `ceiling:` 前缀
+ * （ac_* 设备位在场景里带前缀），两条归一化路径不能混。
+ *
+ * **墙 id ≠ 墙 mesh 的 objectId（2026-11-07 评审 blocking 修正）**：一度在本注释里断言
+ * 「墙的 select.ids 就是场景 objectId 裸值（mergeSceneElements 原样透传）」——**对开洞墙 /
+ * 共墙拆面墙是假不变量**。SceneBuilder.addWallElement 对拆段/拆面的墙写
+ * `墙id:N`（开门洞拆段）与 `墙id:N.M`（共墙按房间拆面），裸 id 只属于无洞且单面跨度的墙
+ * （实测 52 面墙里 15 面命中不了）。因此**消费侧必须经 sourceWallIdOf 桥接**：
+ * HouseScene.applyEmissiveHighlight 正查高亮、App.revealPackageForObject 反查归属各做一次
+ * 二级命中；tests/server/package-scope.test.ts 有门禁钉「生产 links 的每个 objectId 都能在
+ * buildScene 产出里命中（含桥接后）」——否则就是本文件头注记载的 2026-11-02「ids 选择器
+ * 静默 no-op、mock 测试照不到」同一失效类复发。
  */
-export const OBJECT_ID_SOURCES = new Set(['furnishings']);
+export const OBJECT_ID_SOURCES = new Set(['furnishings', 'overlay', 'model_geometry']);
+
+/**
+ * 场景 objectId → 源墙 id（2026-11-07 issue #98 S4 评审 blocking 后新增的唯一实现）。
+ *
+ * SceneBuilder.addWallElement 的墙 mesh objectId 有三种形态（shared/render/SceneBuilder.ts
+ * `baseId`/`objectId` 两行）：无洞且单面跨度 = 裸 `墙id`；开门洞拆段 = `墙id:N`；
+ * 共墙按房间拆面 = `墙id:N.M`。墙 id 本身不含 ':'，故截第一个 ':' 即得源墙 id。
+ *
+ * 为什么需要它：links 的墙 select.ids 是**稳定墙 id**（model-geometry 的墙条目 id），
+ * 而 sceneElements 只有一份墙元素、mesh objectId 带拆段/拆面后缀——高亮与反查两侧都按
+ * objectId 精确命中，于是「选了墙却高亮不到」会静默发生（业主点包没反应）。
+ * 桥接只此一处：app/src/render/HouseScene.ts 原有一份同名本地实现（审计面 suppress 判定
+ * 用它）已改为 import 本函数，App.ts 的反查同样用它。
+ */
+export function sourceWallIdOf(objectId: string): string {
+  const colon = objectId.indexOf(':');
+  return colon === -1 ? objectId : objectId.slice(0, colon);
+}
 
 /**
  * 点位来源的 `select {all: true}` → 项目数据里该分类的全部点位（2026-11-04 issue #65）。

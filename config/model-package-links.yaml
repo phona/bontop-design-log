@@ -72,20 +72,36 @@ links:
     scope:
       - {source: model_geometry, select: {room_ids: [master_bath, guest_bath, kitchen, balcony]}}
       - {source: plumbing, select: {room_ids: [master_bath, guest_bath, kitchen, balcony]}}
-      - {source: overlay, select: {types: [floor_region, wall_region], room_ids: [master_bath, guest_bath, kitchen, balcony]}}
+      # 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：wall_region 不再是 overlay 平级元素，
+      # 工作包范围改按宿主对象稳定 id 表达（设计文档 §5.7「选择器 → ids」）。下面两组 id =
+      # 「厨/卫/阳台四间房里带贴砖带的墙」+「同范围的防水台构件」，逐条对应原 wall_region 的
+      # (wall, room) 声明；房间维度由上面的 model_geometry room_ids 承担（原 overlay room_ids
+      # 随元素一起退场——overlay 文档里已没有 room 字段可对）。
+      - {source: overlay, select: {types: [floor_region]}}
+      - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]}}
+      - {source: overlay, select: {ids: [kitchen_north_bay, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge]}}
   - id: MODEL-PKG-060
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-060}
     mapping_status: mapped
     scope:
       - {source: model_geometry, select: {collections: [rooms]}}
-      - {source: overlay, select: {types: [floor_region, wall_region, sill_region]}}
+      # S4：floor_region 仍是元素；贴砖范围改按宿主对象 id（12 面带 tile_bands 的墙 +
+      # 10 个带 finish.tile 的防水台/上飘窗构件）——与原 types:[floor_region, wall_region,
+      # sill_region] 覆盖同一批面层，只是从「配方 id」换成「宿主对象 id」。
+      - {source: overlay, select: {types: [floor_region]}}
+      - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]}}
+      - {source: overlay, select: {ids: [bedroom_nw_north_waterproof_ledge, bedroom_se_south_waterproof_ledge, kitchen_north_bay, living_south_waterproof_ledge, master_bedroom_south_waterproof_ledge, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, study_south_waterproof_ledge]}}
   - id: MODEL-PKG-065
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-065}
     mapping_status: mapped
     scope:
-      - {source: overlay, select: {types: [floor_region, wall_region, sill_region], room_ids: [master_bath, guest_bath]}}
+      # S4：湿区两间房的贴砖范围 = 8 面墙 + 2 个防水台构件（原 types + room_ids 的并集，
+      # 房间过滤由 id 清单逐条承担）。floor_region 仍是元素。
+      - {source: overlay, select: {types: [floor_region]}}
+      - {source: model_geometry, select: {ids: [w_balc_south, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south]}}
+      - {source: overlay, select: {ids: [mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge]}}
   - id: MODEL-PKG-070
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-070}
@@ -95,7 +111,11 @@ links:
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-080}
     mapping_status: mapped
-    scope: [{source: overlay, select: {types: [paint_region]}}]
+    # S4：paint_region(31) 下沉为墙特征、paint_sill_region(8) 下沉为构件特征，范围改按
+    # 宿主对象 id 表达：18 面带 paint_bands 的墙 + 8 个带 finish.paint 的飘窗构件。
+    scope:
+      - {source: model_geometry, select: {ids: [w_balc_west, w_be_north, w_be_west, w_cent_south, w_east_upper, w_ent_south_w, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_mb_east, w_mbath_east, w_mbath_south, w_nw_south, w_st_east, w_st_north, w_strip_east]}}
+      - {source: overlay, select: {ids: [bedroom_nw_north_bay, bedroom_se_south_bay, master_bath_west_bay, master_bath_west_lower_bay, master_bedroom_south_bay, master_bedroom_west_bay, master_bedroom_west_mid_bay, study_south_bay]}}
   - id: MODEL-PKG-090
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-090}
@@ -156,14 +176,22 @@ links:
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-130}
     mapping_status: mapped
-    scope: [{source: overlay, select: {types: [floor_region, wall_region, sill_region]}}]
+    # S4：与 MODEL-PKG-060 同源（贴砖范围的地面+墙面+防水台三 part），改按宿主对象 id。
+    scope:
+      - {source: overlay, select: {types: [floor_region]}}
+      - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]}}
+      - {source: overlay, select: {ids: [bedroom_nw_north_waterproof_ledge, bedroom_se_south_waterproof_ledge, kitchen_north_bay, living_south_waterproof_ledge, master_bedroom_south_waterproof_ledge, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, study_south_waterproof_ledge]}}
   - id: MODEL-PKG-135
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-135}
     mapping_status: partial
     scope:
       - {source: model_geometry, select: {collections: [rooms, walls, openings]}}
-      - {source: overlay, select: {types: [floor_region, wall_region, paint_region, sill_region, skirting_region]}}
+      # S4：floor_region 与 skirting_region 仍是元素类型；贴砖/涂装范围改按宿主对象 id
+      # （12 面贴砖墙 + 18 面涂漆墙 + 10 个防水台/上飘窗 + 8 个飘窗涂装构件）。
+      - {source: overlay, select: {types: [floor_region, skirting_region]}}
+      - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_be_north, w_be_west, w_cent_south, w_east_upper, w_ent_south_w, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mb_east, w_mbath_east, w_mbath_south, w_nw_south, w_st_east, w_st_north, w_strip_east, w_vrv_east]}}
+      - {source: overlay, select: {ids: [bedroom_nw_north_bay, bedroom_nw_north_waterproof_ledge, bedroom_se_south_bay, bedroom_se_south_waterproof_ledge, kitchen_north_bay, living_south_waterproof_ledge, master_bath_west_bay, master_bath_west_lower_bay, master_bedroom_south_bay, master_bedroom_south_waterproof_ledge, master_bedroom_west_bay, master_bedroom_west_mid_bay, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, study_south_bay, study_south_waterproof_ledge]}}
   - id: MODEL-PKG-140
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-140}

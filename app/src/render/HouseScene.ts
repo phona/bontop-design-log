@@ -74,19 +74,13 @@ import {
 } from './analysis/element-state-colors.js';
 import type { WallSegment, ResolvedRoom, ResolvedOpening } from '@shared/types';
 import { WALL_THICKNESS } from '@shared/furniture-placement';
+// 墙 mesh objectId → 源墙 id 的唯一实现（shared/package-scope.ts）：审计面判 suppress、
+// 以及 applyEmissiveHighlight 的二级命中都靠它把 `墙id:N`/`墙id:N.M` 桥回稳定墙 id——
+// links 的墙 select.ids 是稳定 id，不桥接就会「选了墙却高亮不到」。
+import { sourceWallIdOf } from '@shared/package-scope';
 
 export const GLASS_THICKNESS = 0.024;
 const DEFAULT_FLOOR = '#e8e0d5';
-
-/**
- * 墙 mesh 的 objectId → 源墙 id。SceneBuilder.addWallElement 在开门洞拆段后写
- * `墙:N`，共墙按房间拆面后再追加 `.M`。墙 id 本身不含 ':'，故截第一个 ':' 即得源墙。
- * 审计必须按源墙 id 判 suppress，否则拆过的实体墙会被误判成玻璃幕墙。
- */
-function sourceWallIdOf(objectId: string): string {
-  const colon = objectId.indexOf(':');
-  return colon === -1 ? objectId : objectId.slice(0, colon);
-}
 
 /**
  * Area of a flat inspection mesh, including ShapeGeometry (which has no
@@ -2206,7 +2200,13 @@ export class HouseScene implements SceneApi {
       if (!mesh.userData) return;
       const objectId = mesh.userData.objectId as string | undefined;
       const roomId = mesh.userData.roomId as string | undefined;
-      if (!((objectId && targetIds.has(objectId)) || (roomId && targetIds.has(roomId)))) return;
+      // 二级命中（2026-11-07 issue #98 S4 评审 blocking）：墙 mesh 的 objectId 在开门洞
+      // 拆段/共墙拆面后是 `墙id:N`/`墙id:N.M`，而 links 的墙 select.ids 是稳定墙 id
+      // （面层配方下沉后工作包按宿主对象 id 选墙）——只按 objectId 精确匹配会让这 15 面
+      // 墙静默不高亮（业主点包没反应，与 2026-11-02 那次 ids no-op 同一失效类）。
+      // sourceWallIdOf 把拆段/拆面后缀桥回源墙 id再比一次。
+      const wallId = objectId ? sourceWallIdOf(objectId) : undefined;
+      if (!((objectId && targetIds.has(objectId)) || (wallId && targetIds.has(wallId)) || (roomId && targetIds.has(roomId)))) return;
       // 数组材质（GLB 墙按 group 分材质）必须逐元素处理：旧守卫只挡 !mat，mat.emissive
       // 对数组是 undefined，.set 直接抛 TypeError——被 App 的「高亮失败不打断审批流」
       // 静默吞掉，traverse 在第一个数组材质墙处中断：后续范围全部不高亮、末尾的

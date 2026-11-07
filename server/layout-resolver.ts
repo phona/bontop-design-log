@@ -311,6 +311,8 @@ function resolveWall(
   return { id: def.id, x1, z1, x2, z2, height: def.height, segments,
     ...(from.radius ? { fromX: from.x, fromZ: from.z, fromRadius: from.radius, arcCenterX, arcCenterZ } : {}),
     ...(def.structure ? { structure: def.structure, structure_status: def.structure_status } : {}),
+    // 面层配方透传（issue #98 第三阶段 S4 下沉）：墙脸贴砖/涂装带随墙对象走
+    ...(def.finish ? { finish: def.finish } : {}),
     ...(def.line_datum ? { line_datum: def.line_datum } : {}),
     // suppress 改判（issue #98 第三阶段 S3）：墙属性原样透传，消费方经 shared/suppression.ts
     ...(def.suppressed ? { suppressed: def.suppressed } : {}) };

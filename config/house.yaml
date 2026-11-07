@@ -259,7 +259,7 @@ rooms:
     id: "guest_bath"
     type: "private"
     # 2026-10-07 业主终裁：客卫饰面改"带+漆"——湿区（淋浴）砖到顶 2.65、马桶区/开放洗漱区 0.30m 砖带 +
-    # 上部乳胶漆，台盆后 0.77→1.10 防溅带（见 overlay wall_region）；前置北墙外窗已定，暗卫漆面风险解除。
+    # 上部乳胶漆，台盆后 0.77→1.10 防溅带（见 model-geometry 墙条目 finish.tile_bands / paint_bands）；前置北墙外窗已定，暗卫漆面风险解除。
     wall_finish: "paint"
     needs_waterproof: true
     width: 1.60

@@ -55,10 +55,12 @@ function main() {
   console.log(`  railing_run elements (no collision, by design): ${railings.length}`);
 
   const collidableTypes = new Set(['wall', 'curtain_run', 'wall_run']);
-  // 涂装叠加层三类（paint_region / paint_ceiling_region / paint_sill_region）都是「要刷漆的声明面」，
-  // 不是场景实体：不产碰撞体、不进 first-person 碰撞。漏登记会让本脚本 fail-closed 报
-  // unknown element type——2026-10-09 新增后两类时正是这么发现的。
-  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'frosted_privacy', 'shower_screen', 'curtain', 'wall_region', 'sill_region', 'paint_region', 'paint_ceiling_region', 'paint_sill_region', 'skirting_region']); // 踢脚线墙脚薄片饰面，与 floor_region 同款不需要碰撞（DEC-2026-10-28-R02）
+  // 面层配方（2026-11-07 issue #98 第三阶段 S4 下沉）不再是元素类型，天然不进本清单：
+  // 贴砖/涂装带住在 wall.finish、防水台贴砖与飘窗涂装住在 bay_sill.finish、顶面涂装住在
+  // 房间特征——它们都是「要刷漆/贴砖的声明面」，不产碰撞体、不进 first-person 碰撞
+  // （与下沉前 wall_region/sill_region/paint_region/paint_sill_region/paint_ceiling_region
+  // 被登记为 non-collidable 是同一结论）。漏登记新元素类型仍会 fail-closed 报 unknown。
+  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'frosted_privacy', 'shower_screen', 'curtain', 'skirting_region']); // 踢脚线墙脚薄片饰面，与 floor_region 同款不需要碰撞（DEC-2026-10-28-R02）
   const conditionalCollidableTypes = new Set(['sliding_door_run']);
 
   for (const el of overlay.elements ?? []) {

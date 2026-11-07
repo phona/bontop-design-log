@@ -116,17 +116,23 @@ budget:
       calcMode: area
       applyRooms: [master_bath, guest_bath, kitchen, balcony, living_dining, master_bedroom, study, bedroom_nw, bedroom_se]
     - topic: wall
-      # 数量唯一来源：overlay.yaml 的 wall_region + sill_region 声明（shared/masonry-takeoff.ts 实算）。
-      # DEC-2026-10-13 阶段 2 第二半：废除 `wetWallArea = (宽+深)×2×高×0.7`——那个 0.7 全库无依据，
-      # 算出 65.699㎡，而 overlay 声明实算只有它的一半不到（按 wall_tile_01 单价多算两千余元）。
-      # **不再有 applyRooms**：贴砖范围由声明自身决定（DEC-2026-10-07-R11 起 wall_region 就带 room
+      # 数量唯一来源：墙对象 finish.tile_bands[]（config/layout/model-geometry.yaml）+
+      # bay_sill 构件 finish.tile[]（config/model/envelope/openings.yaml），shared/masonry-takeoff.ts 实算。
+      # 2026-11-07 issue #98 第三阶段 S4：面层配方下沉为宿主对象特征，原 overlay 平级元素
+      # wall_region(18)/sill_region(20) 退场；装载唯一入口 server/budget-calculator.ts 的
+      # loadMasonryTakeoff。DEC-2026-10-13 阶段 2 第二半：废除 `wetWallArea = (宽+深)×2×高×0.7`——
+      # 那个 0.7 全库无依据，算出 65.699㎡，而声明实算只有它的一半不到（按 wall_tile_01 单价多算两千余元）。
+      # **不再有 applyRooms**：贴砖范围由声明自身决定（DEC-2026-10-07-R11 起贴砖带就带 room
       # 字段，「预算与审计按 (wall, room) 去重」）。再列一份房间表就是同一个事实存两处——
       # 新增一个贴砖房却忘了改表，那间房的墙砖会静默消失。
       quantityField: masonryTileArea
       calcMode: area
     - topic: paint
-      # 数量唯一来源：overlay.yaml 的 paint_region 声明（见 server/budget-calculator.ts 的
-      # loadPaintScopeAreaByRoom）。墙+顶，不扣门窗洞口，只对 wall_finish=paint 的房间算量。
+      # 数量唯一来源：墙对象 finish.paint_bands[]（model-geometry.yaml）+ bay_sill 构件
+      # finish.paint[]（openings.yaml）+ 房间特征 ceiling_finish（顶面）；装载入口
+      # server/paint-cost-comparison.ts 的 loadPaintScopeInputs。2026-11-07 issue #98 S4：
+      # 原 overlay 平级元素 paint_region(31)/paint_sill_region(8)/paint_ceiling_region(8) 退场。
+      # 墙+顶，不扣门窗洞口，只对 wall_finish=paint 的房间算量。
       quantityField: paintScopeArea
       calcMode: area
     - topic: hvac

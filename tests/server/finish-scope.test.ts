@@ -1,10 +1,7 @@
-import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
-import { resolveLayout } from '../../server/layout-resolver.js';
-import { loadCeilingConfig } from '../../server/config-loader.js';
 import {
   runFinishScopeChecks,
   loadFinishLintConfig,
@@ -13,57 +10,34 @@ import {
   FINISH_RULE_CODES,
 } from '../../shared/finish/registry.js';
 import { validateFinishScope, type FinishScopeInput, type FinishSceneMesh } from '../../shared/finish/rules.js';
-import { collectFinishSceneMeshes } from '../../shared/finish/scene.js';
 import * as path from 'node:path';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import { collectFinishSceneMeshes } from '../../shared/finish/scene.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const readYaml = (file: string): any => parseYaml(readFileSync(path.join(ROOT, file), 'utf8'));
+// 输入装配与 verifier 共用同一实现（shared/finish/input.ts）：此前本文件抄了一份
+// 连 `/^walltile/` 前缀判定都复制的装配逻辑，S4 面层下沉后一并收敛。
+import { buildFinishScopeInput } from '../../shared/finish/input.js';
 
-function buildInput(tolerance = 0.01): FinishScopeInput {
-  const MG = readYaml('config/layout/model-geometry.yaml');
-  const OV = parseOverlayFiles();
-  const layout = resolveLayout(MG);
-  const elements: any[] = OV.elements ?? [];
-  const vertexById = new Map((MG.vertices ?? []).map((v: any) => [v.id, v]));
-  const walls: FinishScopeInput['walls'] = [];
-  for (const element of elements) {
-    if (element.type === 'paint_region') {
-      walls.push({ id: element.id, wall: element.wall, room: element.room, along: [Math.min(...element.along), Math.max(...element.along)], bottom: element.bottom ?? 0, top: element.height ?? 2.8, finish: 'paint', type: element.type });
-    } else if (element.type === 'wall_region' && /^walltile/.test(String(element.id))) {
-      walls.push({ id: element.id, wall: element.wall, room: element.room, along: [Math.min(...element.along), Math.max(...element.along)], bottom: element.bottom ?? 0, top: element.height ?? 2.65, finish: 'tile', type: element.type });
-    }
-  }
-  const sills: FinishScopeInput['sills'] = [];
-  for (const element of elements) {
-    if (element.type === 'paint_sill_region') sills.push({ id: element.id, element: element.element, room: element.room, faces: element.faces ?? [], finish: 'paint', type: element.type });
-    else if (element.type === 'sill_region') sills.push({ id: element.id, element: element.element, room: element.room, faces: element.face ? [element.face] : [], finish: 'tile', type: element.type });
-  }
-  const rooms: FinishScopeInput['rooms'] = [];
-  for (const raw of MG.rooms ?? []) {
-    const points = (raw.boundary ?? []).map((id: string) => vertexById.get(id)).filter(Boolean) as Array<{ x: number; z: number }>;
-    if (points.length >= 3) rooms.push({ id: raw.id, points });
-  }
-  const wallGeometry: FinishScopeInput['wallGeometry'] = {};
-  for (const wall of layout.walls as any[]) {
-    const polyline = wall.segments?.length ? wall.segments.map((s: any) => ({ x1: s.x1, z1: s.z1, x2: s.x2, z2: s.z2 })) : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-    wallGeometry[wall.id] = { id: wall.id, polyline, length: polyline.reduce((sum: number, s: any) => sum + Math.hypot(s.x2 - s.x1, s.z2 - s.z1), 0), suppressed: Boolean(wall.suppressed) };
-  }
-  const ceilings: FinishScopeInput['ceilings'] = [];
-  const roomRects: FinishScopeInput['roomRects'] = [];
-  const ceilingPaintRooms = new Set<string>();
-  const openings: FinishScopeInput['openings'] = [];
-  for (const element of elements) {
-    if (element.type === 'paint_ceiling_region') ceilingPaintRooms.add(element.room);
-  }
-  const scene = collectFinishSceneMeshes(layout);
-  return { walls, sills, rooms, wallGeometry, ceilings, roomRects, ceilingPaintRooms, openings, sceneMeshIds: scene.meshIds, sceneCeilingRooms: scene.ceilingRooms, sceneMeshes: scene.meshes, sceneBayOutlines: scene.bayOutlines, tolerance };
+function buildInput(tolerance = 0.01) {
+  return buildFinishScopeInput(tolerance);
+}
+
+/** error/warning 级 issue（info 是登记项：漆声明跨洞由 splitRectByGaps 实扣，F07 只登记不判错）。 */
+function blockingIssues(issues: Array<{ level: string }>) {
+  return issues.filter((issue) => issue.level !== 'info');
 }
 
 const TODAY = '2026-10-09';
 
 test('finish-scope：砖漆互斥裁定后真实配置必须全干净（0 error / 0 warning）', () => {
   const result = runFinishScopeChecks(buildInput(), TODAY, loadFinishLintConfig());
-  assert.deepEqual(result.issues, [], `砖漆互斥 + 不能悬空两条裁定落地后不应再有任何 issue，实际 ${JSON.stringify(result.issues)}`);
+  // 装配与 verifier 共用 shared/finish/input.ts 后，F07 的 openings 也喂进了测试
+  // （旧测试里那份手抄装配把 openings 留成空数组，F07 从未在测试里跑过）——
+  // 于是 11 条 finish.paint_over_opening info 现形：漆声明跨门洞正是声明机制，
+  // 面积由 splitRectByGaps 实扣，这里只登记。判错口径是「0 error / 0 warning」。
+  assert.deepEqual(blockingIssues(result.issues), [], `砖漆互斥 + 不能悬空两条裁定落地后不应再有 error/warning，实际 ${JSON.stringify(blockingIssues(result.issues))}`);
   assert.deepEqual(result.registryIssues, [], '覆盖矩阵必须干净');
 });
 
@@ -73,7 +47,7 @@ test('finish-scope：C18 后的 stale 挡水条已删除，厨房东墙只剩整
   assert.equal(kitchenTiles.length, 1, `厨房东墙应只剩 walltile_kitchen_ent_west 一条，实际 ${kitchenTiles.map((t) => t.id).join(',')}`);
   assert.equal(kitchenTiles[0].id, 'walltile_kitchen_ent_west');
   const result = runFinishScopeChecks(input, TODAY, loadFinishLintConfig());
-  assert.deepEqual(result.issues, [], '删掉 stale 挡水条后厨房东墙不应再有重叠');
+  assert.deepEqual(blockingIssues(result.issues), [], '删掉 stale 挡水条后厨房东墙不应再有重叠');
 });
 
 test('finish-scope：height 字段是顶面标高不是高度（回归测试）', () => {
@@ -230,7 +204,7 @@ test('finish-scope：厨房上飘窗已由漆改砖，sill_region 的 face 枚�
   assert.ok(kitchen.every((k) => k.finish === 'tile'), '必须全是瓷砖，不是漆');
   // 同一 element 的 front 被漆和砖同时声明才会被 F02 抓；现在只剩砖，必须干净
   const result = runFinishScopeChecks(input, TODAY, loadFinishLintConfig());
-  assert.deepEqual(result.issues, [], '厨房上飘窗改贴砖后不应有任何 issue');
+  assert.deepEqual(blockingIssues(result.issues), [], '厨房上飘窗改贴砖后不应有任何 issue');
 });
 
 // F08：声明必须附着在 3D 实体

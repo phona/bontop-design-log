@@ -476,6 +476,85 @@ function emitCeiling(writer: DxfWriter, zones: CeilingZone[], warnings: string[]
 
 // --- 地面分区 + 墙面做法 ---
 
+/**
+ * 一段墙面做法出图（贴砖带 / 涂装带 / 踢脚线共用）。
+ *
+ * 2026-11-07 issue #98 第三阶段 S4：调用方的数据源从「overlay 平级元素 wall_region /
+ * paint_region」改为「墙对象特征 wall.finish.tile_bands / paint_bands」——元素类型没了，
+ * 但出图口径逐条未改（along 沿折线累计、越界显形、跨转角逐段、共墙双面标注分侧）。
+ * `declaredType` 只用于告警文案里指名声明的来源类型，保持历史可读。
+ */
+function emitWallFinishBand(
+  writer: DxfWriter,
+  wall: Extract<SceneElement, { type: 'wall' }>,
+  band: { id: string; room: string; along: [number, number]; bottom?: number; height?: number },
+  layer: readonly [string, number],
+  declaredType: string,
+  splitByOpenings: boolean,
+  roomCenters: Map<string, { x: number; z: number }>,
+  warnings: string[],
+  label: (text: string, fallback?: string) => string,
+): void {
+  // along 沿折线链逐段累计（与 3D SceneBuilder.pointAt 同口径）：带 segments 细分的墙
+  // 不能按主线直插，否则子线段错位。区间越界按 3D 同款显形跳过。
+  const chain: Array<{ x1: number; z1: number; x2: number; z2: number }> = wall.segments?.length
+    ? wall.segments
+    : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+  const total = polylineLength(chain);
+  const from = Math.min(band.along[0], band.along[1]);
+  const to = Math.max(band.along[0], band.along[1]);
+  if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+    warnings.push(`${declaredType} ${band.id}: along [${from}, ${to}] 超出墙 ${wall.id} 长度 ${total.toFixed(3)}，未导出`);
+    return;
+  }
+  // 沿折线链逐段裁剪（codex 四审 blocking，与 3D clipAlongSpan 同口径）：区间跨转角时
+  // 保留全部墙段，不连起终点弦；每段独立画线。
+  const clipped = clipAlongSpan(chain, from, to);
+  if (clipped.length === 0) {
+    warnings.push(`${declaredType} ${band.id}: 区间 [${from}, ${to}] 裁剪后为空（墙 ${wall.id}），未导出`);
+    return;
+  }
+  // 踢脚线按墙洞切分（codex 三审 blocking，与 3D skirting 分支同口径）：skirting_region
+  // 在门洞处实扣断开，不横穿门口；贴砖/涂漆的 3D 分支不扣洞（砖不扣、漆由 splitRectByGaps
+  // 在算量侧扣），DXF 同口径不扣。
+  const spans = splitByOpenings && wall.openings?.length
+    ? clipped.flatMap((piece) => splitSegmentByOpenings({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }, wall.openings!))
+    : clipped.map((piece) => ({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }));
+  if (spans.length === 0) {
+    warnings.push(`${declaredType} ${band.id}: 区间被洞口完全覆盖（墙 ${wall.id}），未导出`);
+    return;
+  }
+  for (const span of spans) {
+    writer.addLine(layer[0], ...toDxf(span.x1, span.z1), ...toDxf(span.x2, span.z2));
+  }
+  // height 是**顶标高**（SceneBuilder 按 height - bottom 建带高），不是带高——标注直接用声明顶标高。
+  const bottom = band.bottom ?? 0;
+  const topText = band.height !== undefined ? band.height.toFixed(2) : '?';
+  // 共墙双面声明（codex 八审 blocking）：线在同一中心线是出图惯例，但标注必须分侧——
+  // 文字沿墙法线朝声明房间侧偏移 300mm + 标注房间归属，两侧做法（如阳台 0.30m / 客卫 2.65m）不再叠印。
+  const [ax, ay] = toDxf(spans[0].x1, spans[0].z1);
+  let [tx, ty] = [ax, ay + TEXT_HEIGHT_MM];
+  const center = roomCenters.get(band.room);
+  if (center) {
+    const wdx = wall.x2 - wall.x1;
+    const wdz = wall.z2 - wall.z1;
+    const wlen = Math.hypot(wdx, wdz);
+    if (wlen > 1e-9) {
+      const nx = -wdz / wlen;
+      const nz = wdx / wlen;
+      const midX = (wall.x1 + wall.x2) / 2;
+      const midZ = (wall.z1 + wall.z2) / 2;
+      const sideSign = (center.x - midX) * nx + (center.z - midZ) * nz >= 0 ? 1 : -1;
+      // 法线是 local 坐标（y-up，z 南北）；DXF y = -local z，z 分量必须取反（codex 九审 blocking），
+      // 否则横墙两侧标注互换落到对侧房间。
+      tx = ax + sideSign * nx * 300;
+      ty = ay + sideSign * (-nz) * 300 + TEXT_HEIGHT_MM;
+    }
+  }
+  writer.addText(layer[0], tx, ty, TEXT_HEIGHT_MM,
+    label(`${band.id} [${band.room}] ${bottom.toFixed(2)}~${topText}m`, band.id));
+}
+
 function emitFloorAndWallFinishes(
   writer: DxfWriter,
   elements: SceneElement[],
@@ -496,74 +575,23 @@ function emitFloorAndWallFinishes(
         return [sx + x / sampled.length, sy + y / sampled.length];
       }, [0, 0]);
       writer.addText(DXF_LAYERS.F_FLOOR[0], centroid[0], centroid[1], TEXT_HEIGHT_MM, element.id);
-    } else if (element.type === 'wall_region' || element.type === 'paint_region' || element.type === 'skirting_region') {
+    } else if (element.type === 'wall') {
+      // 面层配方（S4 下沉）：贴砖带/涂装带是墙对象自己的特征，按墙出图。
+      // 实体集合与逐条几何口径同下沉前（A-WFIN-TILE 18 条 / A-WFIN-PAINT 31 条），
+      // 只是遍历顺序从「历史声明序」变为「按墙归组」。
+      for (const band of element.finish?.tile_bands ?? []) {
+        emitWallFinishBand(writer, element, band, DXF_LAYERS.WFIN_TILE, 'wall_region', false, roomCenters, warnings, label);
+      }
+      for (const band of element.finish?.paint_bands ?? []) {
+        emitWallFinishBand(writer, element, band, DXF_LAYERS.WFIN_PAINT, 'paint_region', false, roomCenters, warnings, label);
+      }
+    } else if (element.type === 'skirting_region') {
       const wall = wallsById.get(element.wall);
       if (!wall) {
         warnings.push(`${element.type} ${element.id}: 引用的墙 ${element.wall} 不在 sceneElements，未导出`);
         continue;
       }
-      // along 沿折线链逐段累计（与 3D SceneBuilder.pointAt 同口径）：带 segments 细分的墙
-      // 不能按主线直插，否则子线段错位。区间越界按 3D 同款显形跳过。
-      const chain: Array<{ x1: number; z1: number; x2: number; z2: number }> = wall.segments?.length
-        ? wall.segments
-        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-      const total = polylineLength(chain);
-      const from = Math.min(element.along[0], element.along[1]);
-      const to = Math.max(element.along[0], element.along[1]);
-      if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
-        warnings.push(`${element.type} ${element.id}: along [${from}, ${to}] 超出墙 ${element.wall} 长度 ${total.toFixed(3)}，未导出`);
-        continue;
-      }
-      const layer = element.type === 'wall_region'
-        ? DXF_LAYERS.WFIN_TILE
-        : element.type === 'paint_region' ? DXF_LAYERS.WFIN_PAINT : DXF_LAYERS.SKIRT;
-      // 沿折线链逐段裁剪（codex 四审 blocking，与 3D clipAlongSpan 同口径）：区间跨转角时
-      // 保留全部墙段，不连起终点弦；每段独立画线。
-      const clipped = clipAlongSpan(chain, from, to);
-      if (clipped.length === 0) {
-        warnings.push(`${element.type} ${element.id}: 区间 [${from}, ${to}] 裁剪后为空（墙 ${element.wall}），未导出`);
-        continue;
-      }
-      // 踢脚线按墙洞切分（codex 三审 blocking，与 3D skirting 分支同口径）：skirting_region
-      // 在门洞处实扣断开，不横穿门口；wall_region/paint_region 的 3D 分支不扣洞，DXF 同口径不扣。
-      const spans = element.type === 'skirting_region' && wall.openings?.length
-        ? clipped.flatMap((piece) => splitSegmentByOpenings({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }, wall.openings!))
-        : clipped.map((piece) => ({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }));
-      if (spans.length === 0) {
-        warnings.push(`${element.type} ${element.id}: 区间被洞口完全覆盖（墙 ${element.wall}），未导出`);
-        continue;
-      }
-      for (const span of spans) {
-        writer.addLine(layer[0], ...toDxf(span.x1, span.z1), ...toDxf(span.x2, span.z2));
-      }
-      // height 是**顶标高**（SceneBuilder 按 height - bottom 建带高），不是带高——标注直接用声明顶标高。
-      const bottom = element.bottom ?? 0;
-      const topText = element.height !== undefined ? element.height.toFixed(2) : '?';
-      // 共墙双面声明（codex 八审 blocking）：线在同一中心线是出图惯例，但标注必须分侧——
-      // 文字沿墙法线朝声明房间侧偏移 300mm + 标注房间归属，两侧做法（如阳台 0.30m / 客卫 2.65m）不再叠印。
-      const side = element.type === 'wall_region' || element.type === 'paint_region' || element.type === 'skirting_region' ? element.room : undefined;
-      const [ax, ay] = toDxf(spans[0].x1, spans[0].z1);
-      let [tx, ty] = [ax, ay + TEXT_HEIGHT_MM];
-      const center = side ? roomCenters.get(side) : undefined;
-      if (center) {
-        const wdx = wall.x2 - wall.x1;
-        const wdz = wall.z2 - wall.z1;
-        const wlen = Math.hypot(wdx, wdz);
-        if (wlen > 1e-9) {
-          const nx = -wdz / wlen;
-          const nz = wdx / wlen;
-          const midX = (wall.x1 + wall.x2) / 2;
-          const midZ = (wall.z1 + wall.z2) / 2;
-          const sideSign = (center.x - midX) * nx + (center.z - midZ) * nz >= 0 ? 1 : -1;
-          // 法线是 local 坐标（y-up，z 南北）；DXF y = -local z，z 分量必须取反（codex 九审 blocking），
-          // 否则横墙两侧标注互换落到对侧房间。
-          tx = ax + sideSign * nx * 300;
-          ty = ay + sideSign * (-nz) * 300 + TEXT_HEIGHT_MM;
-        }
-      }
-      const roomText = side ? ` [${side}]` : '';
-      writer.addText(layer[0], tx, ty, TEXT_HEIGHT_MM,
-        label(`${element.id}${roomText} ${bottom.toFixed(2)}~${topText}m`, element.id));
+      emitWallFinishBand(writer, wall, element, DXF_LAYERS.SKIRT, element.type, true, roomCenters, warnings, label);
     }
   }
 }

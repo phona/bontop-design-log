@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { CurtainPoint, ElectricalPoint, FurnishingsYaml, HvacDiagram, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, WallSegment, RoomObject, WallSide } from '../types.js';
+import type { CurtainPoint, ElectricalPoint, FurnishingsYaml, HvacDiagram, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, SillPaintBand, SillTileBand, WallPaintBand, WallSegment, WallTileBand, RoomObject, WallSide } from '../types.js';
 import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS } from '../types.js';
 import { buildInfrastructure } from './InfrastructureBuilder.js';
 import { buildLightingFixtures } from './LightingFixtureBuilder.js';
@@ -18,7 +18,7 @@ import {
   buildWardrobe180,
 } from './FixtureFactory.js';
 import { computeWallFaceSpans, createLineMesh, createPolygonGeometry, setSceneObjectMetadata, splitSegmentByOpenings, wallFaceSlots } from '../three-scene-geometry.js';
-import { clipAlongSpan, pointAlongPolyline, polylineLength } from '../wall-segments.js';
+import { clipAlongSpan, pointAlongPolyline, polylineLength, wallFaceOffset } from '../wall-segments.js';
 import { scalePlaneUvToMeters } from './uv-utils.js';
 import { curtainRibbonShape, curtainShape, gatheredCurtainSegments, offsetCurtainPointsInterior, roundedShape } from './CurtainGeometry.js';
 import { buildBaySillGeometry } from './BaySillGeometry.js';
@@ -40,11 +40,11 @@ const PAINT_INSPECTION_COLOR = 0x5c9e52;
 /** Paint inspection overlay opacity in its own (inspection) state. */
 const PAINT_INSPECTION_OPACITY = 0.55;
 /**
- * 涂漆平面沿墙法线朝房间侧外偏移的距离（半墙厚 + 间隙）。
- * 同一段墙可能同时存在贴砖面（wall_region，位于墙中心线）与本房间/另一侧房间的涂漆面，
- * 不偏移会共面 z-fighting；偏移方向由声明的 room 与该房间中心点判定，与 doorInwardNormal 同款。
+ * 完成面外偏移量（半墙厚 + 间隙）不再由本文件私有常量持有：2026-11-07 issue #98
+ * 第三阶段 S4 起收编进 shared/wall-segments.ts 的 wallFaceOffset(wall, room) 解析器——
+ * 按 line_datum 统一算「房间侧完成面」，SceneBuilder（paint/skirting）、DXF 标注与
+ * finish/rules 的 F09 容差全部消费它。原私有常量 PAINT_FACE_OFFSET 随之删除。
  */
-const PAINT_FACE_OFFSET = WALL_THICKNESS / 2 + 0.008;
 /** Room floors and declared floor regions intentionally share one elevation. */
 export const FLOOR_Y = 0.005;
 const DEFAULT_FLOOR = 0xe8e0d5;
@@ -184,6 +184,7 @@ type Point = { x: number; z: number };
 type WallElement = Extract<SceneElement, { type: 'wall' }>;
 type CurtainElement = Extract<SceneElement, { type: 'curtain' }>;
 type SlidingDoorElement = Extract<SceneElement, { type: 'sliding_door_run' }>;
+type BaySillElement = Extract<SceneElement, { type: 'bay_sill' }>;
 
 /**
  * 平面 Shape(x,z) → 世界 (x,z) 的唯一映射：绕 X 轴 −90° 立起来，再用 y 轴负向缩放把
@@ -314,7 +315,7 @@ function doorInwardNormal(
   return { x: -left.x, z: -left.z };
 }
 
-function addWallElement(root: THREE.Group, wall: WallElement, height: number, report: SceneBuildReport, index: SceneBuildIndex, provider: SceneMaterialProvider, rooms: ResolvedRoom[]): void {
+function addWallElement(root: THREE.Group, wall: WallElement, height: number, report: SceneBuildReport, index: SceneBuildIndex, provider: SceneMaterialProvider, rooms: ResolvedRoom[], paintWindows: PaintWindowInput[] = []): void {
   const sourceSegments = wall.segments?.length ? wall.segments : [wall];
   const materials = { ...defaultMaterials(), ...provider };
   const shaft = wall.id.includes('elev') || wall.id.includes('foyer_outer_east') || wall.id.includes('foyer_north_east');
@@ -371,6 +372,14 @@ function addWallElement(root: THREE.Group, wall: WallElement, height: number, re
       }
       segmentIndex++;
     }
+  }
+  // 面层配方（S4 下沉）：贴砖带 / 涂装带是墙对象自己的特征，随墙体一起出网——
+  // 原 `case 'wall_region'` / `case 'paint_region'` 两个平级元素分支已删。
+  for (const band of wall.finish?.tile_bands ?? []) {
+    addWallTileBand(root, band, wall, rooms, report);
+  }
+  for (const band of wall.finish?.paint_bands ?? []) {
+    addWallPaintBand(root, band, wall, rooms, report, paintWindows);
   }
   for (const opening of wall.openings ?? []) {
     const source = sourceSegments.find((candidate) => {
@@ -522,7 +531,525 @@ function addCurtain(root: THREE.Group, element: CurtainElement, rooms: ResolvedR
   index.curtains.set(element.id, entry);
 }
 
-function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex, walls: Array<WallSegment & { height?: number }> = [], paintWindows: PaintWindowInput[] = [], allElements: readonly Exclude<SceneElement, { type: 'wall' }>[] = [], ceilingZones: CeilingZoneSpec[] = []): void {
+/**
+ * 墙脸贴砖带出网（2026-11-07 issue #98 第三阶段 S4：原 `case 'wall_region'`）。
+ *
+ * mesh 产出方从「SceneBuilder case 分支 + overlay 平级元素」改为「墙对象属性驱动」：
+ * 声明住在 config/layout/model-geometry.yaml 的 `wall.finish.tile_bands[]`，这里按带出网。
+ * 检视态契约原样保留：userData.inspectionLayer === 'wall-tile'、inspectionInitial 快照、
+ * 关闭态按快照恢复（三层隔离铁律——wall-tile / wall-paint / pipe-chase 互不遍历）。
+ * userData.type 仍写 'wall_region'：那是**网格语义标签**（面层核查 F08/F09 与审计按它
+ * 分类锚点），不是元素类型；元素类型已在 S4 随 schema 退场。
+ *
+ * 口径未改：along 沿墙折线自 from 端累计；height 是带顶标高；渲染走墙中心线
+ * （检视态 depthTest=false 真透视），不加侧向偏移。
+ */
+function addWallTileBand(
+  root: THREE.Group,
+  band: WallTileBand,
+  wall: WallSegment & { height?: number },
+  rooms: ResolvedRoom[],
+  report: SceneBuildReport,
+): void {
+  const id = band.id;
+  const polyline: WallSegment[] = wall.segments?.length
+    ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+    : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+  // along 插值与总长：与 DXF 导出共用 shared/wall-segments.ts 的单一实现。
+  const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
+  const total = polylineLength(polyline);
+  const from = Math.min(band.along[0], band.along[1]);
+  const to = Math.max(band.along[0], band.along[1]);
+  const bottom = band.bottom ?? 0;
+  if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+    report.unsupported.push(`${id}: wall_region along [${from}, ${to}] is outside wall ${wall.id} (length ${total.toFixed(3)})`);
+    return;
+  }
+  if (!(band.height > bottom)) {
+    report.unsupported.push(`${id}: wall_region height ${band.height} must exceed bottom ${bottom}`);
+    return;
+  }
+  const start = pointAt(Math.max(0, from));
+  const end = pointAt(Math.min(total, to));
+  if (!start || !end) {
+    report.unsupported.push(`${id}: wall_region could not resolve along interval on wall ${wall.id}`);
+    return;
+  }
+  // R11 room 语义：贴砖面归属房间（共墙两侧各贴各的脸，预算/审计按 (wall, room) 去重）。
+  // 只校验房间存在，不要求中心点（wall_region 不做侧向偏移：渲染仍走墙中心线，
+  // 检视态 depthTest=false 真透视，从两侧都能看到砖面带）。
+  if (!rooms.some((candidate) => candidate.id === band.room)) {
+    report.unsupported.push(`${id}: wall_region references unknown room ${band.room}`);
+    return;
+  }
+  const color = band.color ?? (band.zone === 'covered' ? TILE_COVERED_COLOR : TILE_VISIBLE_COLOR);
+  const material = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(color),
+    roughness: 0.9,
+    transparent: true,
+    opacity: 0.38,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+    depthWrite: false,
+  });
+  // DEC-2026-10-09-P14：沿折线把 [from,to] 裁成一段段直线。
+  // 旧算法直接用「起终点弦」当整块面——直墙上成立，**弧墙（圆角）上不成立**：
+  // 圆角墙 w_bath_north（r=1.0 圆角弧 + 直线，沿墙 3.170m）上一条全跨度声明，
+  // 弦中点被算成 (1.30,1.60)，离真实墙面 0.50m，整块砖面悬在空中。逐段出网后每块都贴在墙上。
+  const clipped = clipAlongSpan(polyline, from, to);
+  if (!clipped.length) {
+    report.unsupported.push(`${id}: wall_region resolved to a zero-length span on wall ${wall.id}`);
+    return;
+  }
+  const writeMeta = (mesh: THREE.Mesh, part = 0, parts = 1) => {
+    // 弧墙上沿折线逐段出网，objectId 必须唯一（parts>1 时加 :sN 后缀），
+    // 否则多块共用一个 id，导出与检视都去重不出。
+    setSceneObjectMetadata(mesh, 'wall_region', parts > 1 ? `${id}:s${part}` : id);
+    mesh.userData = {
+      ...mesh.userData,
+      wallId: wall.id,
+      roomId: band.room,
+      along: [from, to],
+      bottom,
+      zone: band.zone ?? 'visible',
+      inspectionLayer: 'wall-tile',
+      inspectionVisibleOnly: true,
+      inspectionOpacity: TILE_INSPECTION_OPACITY,
+      // 关闭态恢复快照：刻意保存初始值而不是硬编码，避免重写 pipe-chase 那套丢初始态的写法。
+      inspectionInitial: {
+        visible: false,
+        opacity: 0.38,
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+        renderOrder: 0,
+        bottom,
+      },
+    };
+    mesh.visible = false;
+    root.add(mesh);
+  };
+  // 逐段出网（DEC-2026-10-09-P14）：每段用自己的中点与旋转角，弧墙上才不会整块飘出去。
+  clipped.forEach(({ a, b }, index) => {
+    const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
+    if (segSpan <= 1e-9) return;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, band.height - bottom), material);
+    mesh.position.set((a.x + b.x) / 2, bottom + (band.height - bottom) / 2, (a.z + b.z) / 2);
+    // PlaneGeometry 法线为局部 +Z；绕 Y 旋转使其立起并垂直于墙段走向。
+    mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+    writeMeta(mesh, index, clipped.length);
+  });
+}
+
+/**
+ * 墙脸涂装带出网（S4：原 `case 'paint_region'`）。口径与检视态契约同 addWallTileBand；
+ * 完成面外偏移由 wallFace 解析器按 line_datum 统一算（原 SceneBuilder 私有常量
+ * PAINT_FACE_OFFSET 已收编进 shared/wall-segments.ts 的 wallFaceOffset）。
+ */
+function addWallPaintBand(
+  root: THREE.Group,
+  band: WallPaintBand,
+  wall: WallSegment & { height?: number },
+  rooms: ResolvedRoom[],
+  report: SceneBuildReport,
+  paintWindows: PaintWindowInput[],
+): void {
+  const id = band.id;
+  const polyline: WallSegment[] = wall.segments?.length
+    ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+    : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+  // along 插值与总长：与 DXF 导出共用 shared/wall-segments.ts 的单一实现。
+  const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
+  const total = polylineLength(polyline);
+  const from = Math.min(band.along[0], band.along[1]);
+  const to = Math.max(band.along[0], band.along[1]);
+  const bottom = band.bottom ?? 0;
+  const height = band.height ?? wall.height ?? 2.8;
+  if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+    report.unsupported.push(`${id}: paint_region along [${from}, ${to}] is outside wall ${wall.id} (length ${total.toFixed(3)})`);
+    return;
+  }
+  if (!(height > bottom)) {
+    report.unsupported.push(`${id}: paint_region height ${height} must exceed bottom ${bottom}`);
+    return;
+  }
+  const start = pointAt(Math.max(0, from));
+  const end = pointAt(Math.min(total, to));
+  if (!start || !end) {
+    report.unsupported.push(`${id}: paint_region could not resolve along interval on wall ${wall.id}`);
+    return;
+  }
+  const span = Math.hypot(end.x - start.x, end.z - start.z);
+  if (span <= 1e-9) {
+    report.unsupported.push(`${id}: paint_region resolved to a zero-length span on wall ${wall.id}`);
+    return;
+  }
+  // 朝声明房间侧外偏移：用房间中心点与墙面中点判定墙向量的左右侧（同 doorInwardNormal）。
+  const room = rooms.find((candidate) => candidate.id === band.room);
+  if (!room) {
+    report.unsupported.push(`${id}: paint_region references unknown room ${band.room}`);
+    return;
+  }
+  if (!Number.isFinite(room.x) || !Number.isFinite(room.z)) {
+    // 拿不到房间中心点就无法定向偏移；此时若默认某一侧，双面涂漆的两个平面会共面 z-fighting。
+    // 宁可让它在这里现形，也不静默产出一层错几何。
+    report.unsupported.push(`${id}: paint_region room ${band.room} has no resolved centre (x/z)`);
+    return;
+  }
+  const material = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(band.color ?? PAINT_INSPECTION_COLOR),
+    roughness: 0.9,
+    transparent: true,
+    opacity: 0.38,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+    depthWrite: false,
+  });
+
+  // 门窗洞按实扣除（DEC-2026-10-08-C06）：一段声明拆成多块实刷矩形
+  // （门洞 → 左条 + 右条 + 门楣条；窗洞同理）。面积自动变净，3D 与成本从此同源。
+  // openings 必填：与 server/paint-cost-comparison.ts 的 toPaintWalls 同为
+  // 「model-geometry 不写 openings 键 = 无洞」这一声明约定的落地处（两处适配器，
+  // 不含第三处）。少了它，3D 里不扣洞而预算里扣，两侧面积分叉。
+  const wallInput: PaintWallInput = {
+    id: wall.id ?? id,
+    x1: wall.x1,
+    z1: wall.z1,
+    x2: wall.x2,
+    z2: wall.z2,
+    ...(wall.segments ? { segments: wall.segments } : {}),
+    ...(wall.height !== undefined ? { height: wall.height } : {}),
+    openings: wall.openings ?? [],
+  };
+  const scope = computePaintScope([wallInput], [{ id, wall: wall.id ?? id, room: band.room, along: [from, to], bottom, height }], paintWindows);
+  const rects = scope.regions[0]?.rects ?? [];
+
+  // DEC-2026-10-09-P14：拆洞得到的每个矩形还要**沿折线再裁成一段段直线**。
+  // 旧算法在每个矩形内直接取「起终点弦」当整块面——直墙上成立，弧墙（圆角）上不成立：
+  // 圆角墙 w_bath_north（r=1.0 圆角弧 + 直线）上一条全跨度声明，弦中点离真实墙面 0.50m，
+  // 整块漆面悬在空中。逐段出网后每块都贴在墙上，且每段各自算法线方向（朝房间侧外偏移）。
+  const pieces = rects.flatMap((rect) =>
+    clipAlongSpan(polyline, rect.from, rect.to).map(({ a, b }) => ({ rect, a, b })),
+  );
+  if (!pieces.length) {
+    report.unsupported.push(`${id}: paint_region resolved to a zero-length span on wall ${wall.id}`);
+    return;
+  }
+
+  // 完成面偏移：解析器按 line_datum 统一算（centerline = 半墙厚 + 8mm 避 z-fighting）。
+  // 宿主墙没声明 line_datum 时**不猜基准**（#76 量房未裁前不设默认值）：与「拿不到房间
+  // 中心点」同一处理——进 report.unsupported 显形，不静默产出一层错几何（也不抛异常炸掉
+  // 整个场景）。生产配置里 18 面涂漆/踢脚宿主墙已全部显式声明。
+  if (wall.line_datum !== 'centerline') {
+    report.unsupported.push(`${id}: paint_band 宿主墙 ${wall.id} 未声明 line_datum（完成面偏移无法解算；pending #76 量房裁定前不设默认值），本段不出网`);
+    return;
+  }
+  const faceOffset = wallFaceOffset(wall, band.room);
+  pieces.forEach(({ rect, a, b }, index) => {
+    const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
+    if (segSpan <= 1e-9) return;
+    const segDx = b.x - a.x;
+    const segDz = b.z - a.z;
+    const segDir = Math.hypot(segDx, segDz) || 1;
+    const segLeft = { x: -segDz / segDir, z: segDx / segDir };
+    const segMid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
+    const segSide = (room.x - segMid.x) * segLeft.x + (room.z - segMid.z) * segLeft.z;
+    const segNormal = Math.abs(segSide) > 1e-6 ? (segSide > 0 ? segLeft : { x: -segLeft.x, z: -segLeft.z }) : segLeft;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, rect.top - rect.bottom), material);
+    mesh.position.set(
+      segMid.x + segNormal.x * faceOffset,
+      (rect.bottom + rect.top) / 2,
+      segMid.z + segNormal.z * faceOffset,
+    );
+    mesh.rotation.y = Math.atan2(-segDz, segDx);
+    // 拆洞 + 弧墙逐段后一段声明对应多个网格，objectId 必须唯一；regionId 仍指向声明本身，
+    // 供 inspectPaintRegions 按声明去重（26 段声明的语义不变）。
+    const meshId = pieces.length > 1 ? `${id}:s${index}` : id;
+    setSceneObjectMetadata(mesh, 'paint_region', meshId);
+    mesh.userData = {
+      ...mesh.userData,
+      wallId: wall.id,
+      roomId: band.room,
+      regionId: id,
+      regionAlong: [from, to],
+      along: [rect.from, rect.to],
+      // 拆洞后每块矩形有自己的竖向带；审计面据此还原整段声明的竖向范围算毛面积
+      rectBottom: rect.bottom,
+      inspectionLayer: 'wall-paint',
+      inspectionVisibleOnly: true,
+      inspectionOpacity: PAINT_INSPECTION_OPACITY,
+      // 关闭态恢复快照：保存初始值而不是硬编码，避免重写 pipe-chase 那套丢初始态的写法。
+      inspectionInitial: {
+        visible: false,
+        opacity: 0.38,
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+        renderOrder: 0,
+      },
+    };
+    mesh.visible = false;
+    root.add(mesh);
+  });
+}
+
+/**
+ * bay_sill 构件的贴砖面出网（S4：原 `case 'sill_region'` + `allElements.find` 查找）。
+ * 声明住在 openings.yaml 的 `bay_sill.finish.tile[]`，元素间引用（28 处）随之归零。
+ */
+function addSillTileBand(
+  root: THREE.Group,
+  band: SillTileBand,
+  bay: BaySillElement,
+  rooms: ResolvedRoom[],
+  walls: Array<WallSegment & { height?: number }>,
+  report: SceneBuildReport,
+): void {
+  const id = band.id;
+  const targetWallIds = bay.wallRefs?.length
+    ? bay.wallRefs.map((ref) => ref.wallId)
+    : ((bay as { walls?: string[] }).walls ?? ((bay as { wall?: string }).wall ? [(bay as { wall?: string }).wall!] : []));
+  if (targetWallIds.length === 0) {
+    report.unsupported.push(`${id}: sill_region 暂不支持 points-only bay_sill（${bay.id}）`);
+    return;
+  }
+  // bay_sill 的 wallRefs 段自带坐标（服务端 mergeSceneElements 已解析，含被 suppress 的玻璃幕墙），
+  // 优先直用；仅裸 walls/wall 引用（未走 merge 的路径）才回退到墙表查找。
+  const polyline: WallSegment[] = bay.wallRefs?.length
+    ? bay.wallRefs.flatMap((ref) => ref.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 })))
+    : targetWallIds.flatMap((wallId) => {
+        const wall = walls.find((candidate) => candidate.id === wallId);
+        if (!wall) {
+          report.unsupported.push(`${id}: sill_region target references unknown wall ${wallId}`);
+          return [];
+        }
+        return wall.segments?.length
+          ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+          : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+      });
+  // along 插值与总长：与 wall_region / paint_region 分支及 DXF 导出共用
+  // shared/wall-segments.ts 的单一实现（原 inline 第五份 pointAt 副本，
+  // 2026-11-07 issue #98 第三阶段 S2 删除）。
+  const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
+  const total = polylineLength(polyline);
+  if (!(total > 0)) {
+    report.unsupported.push(`${id}: sill_region target ${bay.id} resolved to zero-length run`);
+    return;
+  }
+  const from = Math.min(band.along?.[0] ?? 0, band.along?.[1] ?? total);
+  const to = Math.max(band.along?.[0] ?? 0, band.along?.[1] ?? total);
+  if (from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+    report.unsupported.push(`${id}: sill_region along [${from},${to}] outside target run (length ${total.toFixed(3)})`);
+    return;
+  }
+  const start = pointAt(Math.max(0, from));
+  const end = pointAt(Math.min(total, to));
+  if (!start || !end) {
+    report.unsupported.push(`${id}: sill_region could not resolve along interval on target ${bay.id}`);
+    return;
+  }
+  const span = Math.hypot(end.x - start.x, end.z - start.z);
+  if (span <= 1e-9) {
+    report.unsupported.push(`${id}: sill_region resolved to a zero-length span`);
+    return;
+  }
+  const color = band.color ?? (band.zone === 'covered' ? TILE_COVERED_COLOR : TILE_VISIBLE_COLOR);
+  const material = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(color),
+    roughness: 0.9,
+    transparent: true,
+    opacity: 0.38,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+    depthWrite: false,
+  });
+  // DEC-2026-10-09-P14：沿折线把 [from,to] 裁成一段段直线。
+  // 旧算法直接用「起终点弦」当整块面——直墙上成立，**弧墙（圆角）上不成立**：
+  // 真实案例 mbath_north_waterproof_ledge 挂在 w_bath_north（r=1.0 圆角弧 + 直线），
+  // 弦中点被算成 (1.30,1.60)，离真实墙面 0.50m，整块砖面悬在空中。逐段出网后每块都贴在墙上。
+  const clipped = clipAlongSpan(polyline, from, to);
+  if (!clipped.length) {
+    report.unsupported.push(`${id}: sill_region resolved to a zero-length span`);
+    return;
+  }
+  const writeMeta = (mesh: THREE.Mesh, kind: 'sill-front' | 'sill-top' | 'sill-underside', bottom: number, part = 0, parts = 1) => {
+    // DEC-2026-10-09-P14：弧墙上沿折线逐段出网，objectId 必须唯一（parts>1 时加 :sN 后缀），
+    // 否则多块共用一个 id，导出与检视都去重不出。
+    setSceneObjectMetadata(mesh, 'sill_region', parts > 1 ? `${id}:s${part}` : id);
+    mesh.userData = {
+      ...mesh.userData,
+      wallId: targetWallIds[0],
+      elementId: bay.id,
+      roomId: band.room,
+      kind,
+      along: [from, to],
+      bottom,
+      zone: band.zone ?? 'visible',
+      inspectionLayer: 'wall-tile',
+      inspectionVisibleOnly: true,
+      inspectionOpacity: TILE_INSPECTION_OPACITY,
+      inspectionInitial: {
+        visible: false,
+        opacity: 0.38,
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+        renderOrder: 0,
+        bottom,
+      },
+    };
+    mesh.visible = false;
+    root.add(mesh);
+  };
+  if (band.face === 'front') {
+    // 竖面：在玻璃/墙线处的竖直面，band = target.sill → target.sill+target.height。
+    // 逐段出网（DEC-2026-10-09-P14）：弧墙上单块平面只能贴弦，会离墙 0.5m。
+    clipped.forEach(({ a, b }, index) => {
+      const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
+      if (segSpan <= 1e-9) return;
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, bay.height), material);
+      mesh.position.set((a.x + b.x) / 2, bay.sill + bay.height / 2, (a.z + b.z) / 2);
+      mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+      writeMeta(mesh, 'sill-front', bay.sill, index, clipped.length);
+    });
+    return;
+  }
+  if (band.face === 'underside') {
+    // DEC-2026-10-09-P09：飘窗盒**底面**（朝下、标高 = target.sill）。业主 2026-10-09
+    // 裁定厨房上飘窗整体贴砖，「底面肯定要的，以现实使用的合理度为准」——高飘窗
+    // （sill 2.12m）的底面是抬头可见的实体面，只贴竖面会留一片没人管的面。
+    // 几何必须与 paint_sill_region 的 underside 同源：buildBaySillGeometry 的
+    // footprint + applyPlanFootprint 映射，否则「预算算的面积」与「模型里的面」不重合
+    // （真实飘窗脚印 z=[1.10,2.20] 曾因只写 rotation.x 被打到 z=[-2.20,-1.10]）。
+    if (!bay.wallRefs?.length) {
+      report.unsupported.push(`${id}: sill_region face=underside 需要 target 带 resolved wallRefs`);
+      return;
+    }
+    const geometry = buildBaySillGeometry(bay.wallRefs, rooms, bay.depth);
+    const shape = new THREE.Shape();
+    shape.moveTo(geometry.outline[0].x, geometry.outline[0].z);
+    for (const point of geometry.outline.slice(1)) shape.lineTo(point.x, point.z);
+    shape.closePath();
+    const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), material);
+    applyPlanFootprint(mesh);
+    mesh.position.y = bay.sill;
+    writeMeta(mesh, 'sill-underside', bay.sill);
+    return;
+  }
+  // 水平台面：自墙线向房间侧延伸 target.depth，顶面标高 = target.sill + target.height
+  const room = rooms.find((candidate) => candidate.id === band.room);
+  if (!room) {
+    report.unsupported.push(`${id}: sill_region face=top references unknown room ${band.room}`);
+    return;
+  }
+  if (!Number.isFinite(room.x) || !Number.isFinite(room.z)) {
+    report.unsupported.push(`${id}: sill_region face=top room ${band.room} has no resolved centre (x/z)`);
+    return;
+  }
+  // 逐段出网（DEC-2026-10-09-P14）：每段各自算法线方向，弧墙上才不会整块飘出去。
+  clipped.forEach(({ a, b }, index) => {
+    const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
+    if (segSpan <= 1e-9) return;
+    const segMid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
+    const left = { x: -(b.z - a.z) / segSpan, z: (b.x - a.x) / segSpan };
+    const side = (room.x - segMid.x) * left.x + (room.z - segMid.z) * left.z;
+    const normal = Math.abs(side) > 1e-6 ? (side > 0 ? left : { x: -left.x, z: -left.z }) : left;
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, bay.depth), material);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(segMid.x + normal.x * (bay.depth / 2), bay.sill + bay.height, segMid.z + normal.z * (bay.depth / 2));
+    writeMeta(mesh, 'sill-top', bay.sill + bay.height, index, clipped.length);
+  });
+}
+
+/**
+ * bay_sill 构件的涂装面出网（S4：原 `case 'paint_sill_region'`）。
+ * 几何与算量共用 computePaintSillScope（shared/paint-sill-scope.ts 唯一算法源）。
+ */
+function addSillPaintBand(
+  root: THREE.Group,
+  band: SillPaintBand,
+  bay: BaySillElement,
+  rooms: ResolvedRoom[],
+  walls: Array<WallSegment & { height?: number }>,
+  ceilingZones: CeilingZoneSpec[],
+  report: SceneBuildReport,
+): void {
+  const id = band.id;
+  const room = rooms.find((candidate) => candidate.id === band.room);
+  if (!bay.wallRefs?.length || !room) {
+    report.unsupported.push(`${id}: paint_sill_region requires bay_sill ${bay.id} with resolved wallRefs and room ${band.room}`);
+    return;
+  }
+  const geometry = buildBaySillGeometry(bay.wallRefs, rooms, bay.depth);
+  // element 由宿主构件给出（S4 前是声明的 element: 引用，现在声明就住在构件里）——
+  // dedupeAdjacentBayCaps 靠它把「自己」从相邻构件表里排除。
+  const scope = computePaintSillScope({ ...band, element: bay.id }, geometry, bay, room, ceilingZones, walls);
+  report.unsupported.push(...scope.warnings);
+  const material = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(band.color ?? PAINT_INSPECTION_COLOR),
+    roughness: 0.9,
+    transparent: true,
+    opacity: 0.38,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+    depthWrite: false,
+  });
+  scope.surfaces.forEach((surface) => {
+    let mesh: THREE.Mesh;
+    if (surface.kind === 'underside') {
+      const shape = new THREE.Shape();
+      shape.moveTo(surface.points[0].x, surface.points[0].z);
+      for (const point of surface.points.slice(1)) shape.lineTo(point.x, point.z);
+      shape.closePath();
+      mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), material);
+      // 底面必须与 bay_sill 本体同位同形：本体用 rotation.x=-PI/2 + scale.y=-1 把
+      // 平面 Shape(x,z) 原样升到世界 (x,z)。只写 rotation.x 会把 z 翻成负值——
+      // 真实飘窗脚印 z=[1.10,2.20] 曾被打到 z=[-2.20,-1.10]，预算里算了 2.536㎡
+      // 却盖不到目标实体。故两处共用同一个映射函数。
+      applyPlanFootprint(mesh);
+      mesh.position.y = surface.bottom;
+    } else {
+      const [a, b] = surface.points;
+      const span = Math.hypot(b.x - a.x, b.z - a.z);
+      mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, surface.top - surface.bottom), material);
+      mesh.position.set((a.x + b.x) / 2, (surface.top + surface.bottom) / 2, (a.z + b.z) / 2);
+      mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+    }
+    setSceneObjectMetadata(mesh, 'paint_sill_region', surface.id);
+    mesh.userData = {
+      ...mesh.userData,
+      regionId: id,
+      elementId: bay.id,
+      roomId: band.room,
+      face: surface.kind,
+      // 供审计区分「墙平面 / 构件水平面 / 构件垂直面」：水平面只有面积有意义，
+      // 不能套墙的面积÷高公式去反推一段墙长（曾把 4.198㎡ 变成 4,198,000,003.81m）。
+      surfaceOrientation: surface.kind === 'underside' ? 'horizontal' : 'vertical',
+      // 立面给真实标高（bottom/top），审计据此算带高与长度；水平面 bottom===top。
+      bottom: surface.bottom,
+      top: surface.top,
+      finish: band.finish,
+      areaSqm: surface.areaSqm,
+      occludedAreaSqm: surface.occludedAreaSqm,
+      inspectionLayer: 'wall-paint',
+      inspectionVisibleOnly: true,
+      inspectionOpacity: PAINT_INSPECTION_OPACITY,
+      inspectionInitial: { visible: false, opacity: 0.38, transparent: true, depthTest: true, depthWrite: false, renderOrder: 0 },
+    };
+    mesh.visible = false;
+    root.add(mesh);
+  });
+}
+
+function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { type: 'wall' }>, report: SceneBuildReport, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex, walls: Array<WallSegment & { height?: number }> = [], paintWindows: PaintWindowInput[] = [], ceilingZones: CeilingZoneSpec[] = []): void {
   const id = element.id;
   switch (element.type) {
     case 'floor_region': {
@@ -560,424 +1087,23 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       root.add(mesh);
+      // 面层配方（S4 下沉）：sill_region(20)/paint_sill_region(8) 不再是平级元素，而是构件
+      // 自己的 finish.tile[] / finish.paint[]——出网方从 case 分支改为对象属性驱动，
+      // 元素间引用 28 → 0（原 allElements.find 查找整段删除）。
+      for (const band of element.finish?.tile ?? []) {
+        addSillTileBand(root, band, element, rooms, walls, report);
+      }
+      for (const band of element.finish?.paint ?? []) {
+        addSillPaintBand(root, band, element, rooms, walls, ceilingZones, report);
+      }
       return;
     }
     case 'wall_run':
       addLineMeshes(root, element.points, element.height, WALL_THICKNESS, new THREE.MeshStandardMaterial({ color: DEFAULT_PAINT, roughness: 0.85 }), element.type, id);
       return;
-    case 'wall_region': {
-      // 贴砖检视态（DEC-2026-10-07-R05/R06）。inspection-only 叠加层：
-      // 正常视图完全不可见；仅在独立开关 setWallTileInspectionVisible(true) 时显示，
-      // 且 depthTest=false 做真透视，故无需理会与墙体的共面 z-fighting。
-      // 刻意不复用 setPipeChaseInspectionVisible 的材质策略（会把关闭态硬编码成默认值、
-      // 丢掉本层初始态）——关闭时按 userData.inspectionInitial 快照恢复。
-      const wall = walls.find((candidate) => candidate.id === element.wall);
-      if (!wall) {
-        report.unsupported.push(`${id}: wall_region references unknown wall ${element.wall}`);
-        return;
-      }
-      const polyline: WallSegment[] = wall.segments?.length
-        ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
-        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-      // along 插值与总长：与 DXF 导出共用 shared/wall-segments.ts 的单一实现。
-      const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
-      const total = polylineLength(polyline);
-      const from = Math.min(element.along[0], element.along[1]);
-      const to = Math.max(element.along[0], element.along[1]);
-      const bottom = element.bottom ?? 0;
-      if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
-        report.unsupported.push(`${id}: wall_region along [${from}, ${to}] is outside wall ${element.wall} (length ${total.toFixed(3)})`);
-        return;
-      }
-      if (!(element.height > bottom)) {
-        report.unsupported.push(`${id}: wall_region height ${element.height} must exceed bottom ${bottom}`);
-        return;
-      }
-      const start = pointAt(Math.max(0, from));
-      const end = pointAt(Math.min(total, to));
-      if (!start || !end) {
-        report.unsupported.push(`${id}: wall_region could not resolve along interval on wall ${element.wall}`);
-        return;
-      }
-      // R11 room 语义：贴砖面归属房间（共墙两侧各贴各的脸，预算/审计按 (wall, room) 去重）。
-      // 只校验房间存在，不要求中心点（wall_region 不做侧向偏移：渲染仍走墙中心线，
-      // 检视态 depthTest=false 真透视，从两侧都能看到砖面带）。
-      if (element.room && !rooms.some((candidate) => candidate.id === element.room)) {
-        report.unsupported.push(`${id}: wall_region references unknown room ${element.room}`);
-        return;
-      }
-      const color = element.color ?? (element.zone === 'covered' ? TILE_COVERED_COLOR : TILE_VISIBLE_COLOR);
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(color),
-        roughness: 0.9,
-        transparent: true,
-        opacity: 0.38,
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2,
-        depthWrite: false,
-      });
-      // DEC-2026-10-09-P14（sill_region 同款）：沿折线把 [from,to] 裁成一段段直线。
-      // 旧算法直接用「起终点弦」当整块面——直墙上成立，**弧墙（圆角）上不成立**：
-      // 圆角墙 w_bath_north（r=1.0 圆角弧 + 直线，沿墙 3.170m）上一条全跨度声明，
-      // 弦中点被算成 (1.30,1.60)，离真实墙面 0.50m，整块砖面悬在空中。逐段出网后每块都贴在墙上。
-      const clipped = clipAlongSpan(polyline, from, to);
-      if (!clipped.length) {
-        report.unsupported.push(`${id}: wall_region resolved to a zero-length span on wall ${element.wall}`);
-        return;
-      }
-      const writeMeta = (mesh: THREE.Mesh, part = 0, parts = 1) => {
-        // 弧墙上沿折线逐段出网，objectId 必须唯一（parts>1 时加 :sN 后缀），
-        // 否则多块共用一个 id，导出与检视都去重不出。
-        setSceneObjectMetadata(mesh, element.type, parts > 1 ? `${id}:s${part}` : id);
-        mesh.userData = {
-          ...mesh.userData,
-          wallId: element.wall,
-          roomId: element.room,
-          along: [from, to],
-          bottom,
-          zone: element.zone ?? 'visible',
-          inspectionLayer: 'wall-tile',
-          inspectionVisibleOnly: true,
-          inspectionOpacity: TILE_INSPECTION_OPACITY,
-          // 关闭态恢复快照：刻意保存初始值而不是硬编码，避免重写 pipe-chase 那套丢初始态的写法。
-          inspectionInitial: {
-            visible: false,
-            opacity: 0.38,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
-            renderOrder: 0,
-            bottom,
-          },
-        };
-        mesh.visible = false;
-        root.add(mesh);
-      };
-      // 逐段出网（DEC-2026-10-09-P14）：每段用自己的中点与旋转角，弧墙上才不会整块飘出去。
-      clipped.forEach(({ a, b }, index) => {
-        const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
-        if (segSpan <= 1e-9) return;
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, element.height - bottom), material);
-        mesh.position.set((a.x + b.x) / 2, bottom + (element.height - bottom) / 2, (a.z + b.z) / 2);
-        // PlaneGeometry 法线为局部 +Z；绕 Y 旋转使其立起并垂直于墙段走向。
-        mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
-        writeMeta(mesh, index, clipped.length);
-      });
-      return;
-    }
-    case 'sill_region': {
-      // 防水台/窗台贴砖带（DEC-2026-10-07-R11，业主 D4=L 型终裁：竖面+台面都贴、做收口）。
-      // inspection-only，与 wall_region 平级、共用 'wall-tile' 层标签（同一个贴砖开关）。
-      // 引用一个 bay_sill 构件（防水台几何）：face=front 贴其朝向房间的竖面、
-      // face=top 贴水平台面（台面要房间侧法线，故 top 必须声明 room）、
-      // face=underside 贴飘窗盒朝下的底面（标高 = target.sill，DEC-2026-10-09-P09）。
-      const target = allElements.find((candidate) => candidate.id === element.element);
-      if (!target || target.type !== 'bay_sill') {
-        report.unsupported.push(`${id}: sill_region references unknown or non-bay_sill element ${element.element}`);
-        return;
-      }
-      const targetWallIds = 'wallRefs' in target && target.wallRefs?.length
-        ? target.wallRefs.map((ref) => ref.wallId)
-        : ((target as { walls?: string[] }).walls ?? ((target as { wall?: string }).wall ? [(target as { wall?: string }).wall!] : []));
-      if (targetWallIds.length === 0) {
-        report.unsupported.push(`${id}: sill_region 暂不支持 points-only bay_sill（${element.element}）`);
-        return;
-      }
-      // bay_sill 的 wallRefs 段自带坐标（服务端 mergeSceneElements 已解析，含被 suppress 的玻璃幕墙），
-      // 优先直用；仅裸 walls/wall 引用（未走 merge 的路径）才回退到墙表查找。
-      const polyline: WallSegment[] = 'wallRefs' in target && target.wallRefs?.length
-        ? target.wallRefs.flatMap((ref) => ref.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 })))
-        : targetWallIds.flatMap((wallId) => {
-            const wall = walls.find((candidate) => candidate.id === wallId);
-            if (!wall) {
-              report.unsupported.push(`${id}: sill_region target references unknown wall ${wallId}`);
-              return [];
-            }
-            return wall.segments?.length
-              ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
-              : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-          });
-      // along 插值与总长：与 wall_region / paint_region 分支及 DXF 导出共用
-      // shared/wall-segments.ts 的单一实现（原 inline 第五份 pointAt 副本，
-      // 2026-11-07 issue #98 第三阶段 S2 删除）。
-      const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
-      const total = polylineLength(polyline);
-      if (!(total > 0)) {
-        report.unsupported.push(`${id}: sill_region target ${element.element} resolved to zero-length run`);
-        return;
-      }
-      const from = Math.min(element.along?.[0] ?? 0, element.along?.[1] ?? total);
-      const to = Math.max(element.along?.[0] ?? 0, element.along?.[1] ?? total);
-      if (from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
-        report.unsupported.push(`${id}: sill_region along [${from},${to}] outside target run (length ${total.toFixed(3)})`);
-        return;
-      }
-      const start = pointAt(Math.max(0, from));
-      const end = pointAt(Math.min(total, to));
-      if (!start || !end) {
-        report.unsupported.push(`${id}: sill_region could not resolve along interval on target ${element.element}`);
-        return;
-      }
-      const span = Math.hypot(end.x - start.x, end.z - start.z);
-      if (span <= 1e-9) {
-        report.unsupported.push(`${id}: sill_region resolved to a zero-length span`);
-        return;
-      }
-      const color = element.color ?? (element.zone === 'covered' ? TILE_COVERED_COLOR : TILE_VISIBLE_COLOR);
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(color),
-        roughness: 0.9,
-        transparent: true,
-        opacity: 0.38,
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2,
-        depthWrite: false,
-      });
-      // DEC-2026-10-09-P14：沿折线把 [from,to] 裁成一段段直线。
-      // 旧算法直接用「起终点弦」当整块面——直墙上成立，**弧墙（圆角）上不成立**：
-      // 真实案例 mbath_north_waterproof_ledge 挂在 w_bath_north（r=1.0 圆角弧 + 直线），
-      // 弦中点被算成 (1.30,1.60)，离真实墙面 0.50m，整块砖面悬在空中。逐段出网后每块都贴在墙上。
-      const clipped = clipAlongSpan(polyline, from, to);
-      if (!clipped.length) {
-        report.unsupported.push(`${id}: sill_region resolved to a zero-length span`);
-        return;
-      }
-      const writeMeta = (mesh: THREE.Mesh, kind: 'sill-front' | 'sill-top' | 'sill-underside', bottom: number, part = 0, parts = 1) => {
-        // DEC-2026-10-09-P14：弧墙上沿折线逐段出网，objectId 必须唯一（parts>1 时加 :sN 后缀），
-        // 否则多块共用一个 id，导出与检视都去重不出。
-        setSceneObjectMetadata(mesh, element.type, parts > 1 ? `${id}:s${part}` : id);
-        mesh.userData = {
-          ...mesh.userData,
-          wallId: targetWallIds[0],
-          elementId: element.element,
-          roomId: element.room,
-          kind,
-          along: [from, to],
-          bottom,
-          zone: element.zone ?? 'visible',
-          inspectionLayer: 'wall-tile',
-          inspectionVisibleOnly: true,
-          inspectionOpacity: TILE_INSPECTION_OPACITY,
-          inspectionInitial: {
-            visible: false,
-            opacity: 0.38,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
-            renderOrder: 0,
-            bottom,
-          },
-        };
-        mesh.visible = false;
-        root.add(mesh);
-      };
-      if (element.face === 'front') {
-        // 竖面：在玻璃/墙线处的竖直面，band = target.sill → target.sill+target.height。
-        // 逐段出网（DEC-2026-10-09-P14）：弧墙上单块平面只能贴弦，会离墙 0.5m。
-        clipped.forEach(({ a, b }, index) => {
-          const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
-          if (segSpan <= 1e-9) return;
-          const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, target.height), material);
-          mesh.position.set((a.x + b.x) / 2, target.sill + target.height / 2, (a.z + b.z) / 2);
-          mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
-          writeMeta(mesh, 'sill-front', target.sill, index, clipped.length);
-        });
-        return;
-      }
-      if (element.face === 'underside') {
-        // DEC-2026-10-09-P09：飘窗盒**底面**（朝下、标高 = target.sill）。业主 2026-10-09
-        // 裁定厨房上飘窗整体贴砖，「底面肯定要的，以现实使用的合理度为准」——高飘窗
-        // （sill 2.12m）的底面是抬头可见的实体面，只贴竖面会留一片没人管的面。
-        // 几何必须与 paint_sill_region 的 underside 同源：buildBaySillGeometry 的
-        // footprint + applyPlanFootprint 映射，否则「预算算的面积」与「模型里的面」不重合
-        // （真实飘窗脚印 z=[1.10,2.20] 曾因只写 rotation.x 被打到 z=[-2.20,-1.10]）。
-        if (!target.wallRefs?.length) {
-          report.unsupported.push(`${id}: sill_region face=underside 需要 target 带 resolved wallRefs`);
-          return;
-        }
-        const geometry = buildBaySillGeometry(target.wallRefs, rooms, target.depth);
-        const shape = new THREE.Shape();
-        shape.moveTo(geometry.outline[0].x, geometry.outline[0].z);
-        for (const point of geometry.outline.slice(1)) shape.lineTo(point.x, point.z);
-        shape.closePath();
-        const mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), material);
-        applyPlanFootprint(mesh);
-        mesh.position.y = target.sill;
-        writeMeta(mesh, 'sill-underside', target.sill);
-        return;
-      }
-      // 水平台面：自墙线向房间侧延伸 target.depth，顶面标高 = target.sill + target.height
-      const room = rooms.find((candidate) => candidate.id === element.room);
-      if (!room) {
-        report.unsupported.push(`${id}: sill_region face=top references unknown room ${element.room}`);
-        return;
-      }
-      if (!Number.isFinite(room.x) || !Number.isFinite(room.z)) {
-        report.unsupported.push(`${id}: sill_region face=top room ${element.room} has no resolved centre (x/z)`);
-        return;
-      }
-      // 逐段出网（DEC-2026-10-09-P14）：每段各自算法线方向，弧墙上才不会整块飘出去。
-      clipped.forEach(({ a, b }, index) => {
-        const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
-        if (segSpan <= 1e-9) return;
-        const segMid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
-        const left = { x: -(b.z - a.z) / segSpan, z: (b.x - a.x) / segSpan };
-        const side = (room.x - segMid.x) * left.x + (room.z - segMid.z) * left.z;
-        const normal = Math.abs(side) > 1e-6 ? (side > 0 ? left : { x: -left.x, z: -left.z }) : left;
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, target.depth), material);
-        mesh.rotation.x = -Math.PI / 2;
-        mesh.position.set(segMid.x + normal.x * (target.depth / 2), target.sill + target.height, segMid.z + normal.z * (target.depth / 2));
-        writeMeta(mesh, 'sill-top', target.sill + target.height, index, clipped.length);
-      });
-      return;
-    }
-    case 'paint_region': {
-      // 涂漆检视态（墙顶面涂装 PKG-080）。inspection-only 叠加层，与 wall_region 平级且互不引用：
-      // 正常视图完全不可见；仅在独立开关 setPaintInspectionVisible(true) 时显示，depthTest=false 真透视。
-      // 关闭时按 userData.inspectionInitial 快照恢复（刻意不复用 pipe-chase 的硬编码恢复）。
-      const wall = walls.find((candidate) => candidate.id === element.wall);
-      if (!wall) {
-        report.unsupported.push(`${id}: paint_region references unknown wall ${element.wall}`);
-        return;
-      }
-      const polyline: WallSegment[] = wall.segments?.length
-        ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
-        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-      // along 插值与总长：与 DXF 导出共用 shared/wall-segments.ts 的单一实现。
-      const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
-      const total = polylineLength(polyline);
-      const from = Math.min(element.along[0], element.along[1]);
-      const to = Math.max(element.along[0], element.along[1]);
-      const bottom = element.bottom ?? 0;
-      const height = element.height ?? wall.height ?? 2.8;
-      if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
-        report.unsupported.push(`${id}: paint_region along [${from}, ${to}] is outside wall ${element.wall} (length ${total.toFixed(3)})`);
-        return;
-      }
-      if (!(height > bottom)) {
-        report.unsupported.push(`${id}: paint_region height ${height} must exceed bottom ${bottom}`);
-        return;
-      }
-      const start = pointAt(Math.max(0, from));
-      const end = pointAt(Math.min(total, to));
-      if (!start || !end) {
-        report.unsupported.push(`${id}: paint_region could not resolve along interval on wall ${element.wall}`);
-        return;
-      }
-      const span = Math.hypot(end.x - start.x, end.z - start.z);
-      if (span <= 1e-9) {
-        report.unsupported.push(`${id}: paint_region resolved to a zero-length span on wall ${element.wall}`);
-        return;
-      }
-      // 朝声明房间侧外偏移：用房间中心点与墙面中点判定墙向量的左右侧（同 doorInwardNormal）。
-      const room = rooms.find((candidate) => candidate.id === element.room);
-      if (!room) {
-        report.unsupported.push(`${id}: paint_region references unknown room ${element.room}`);
-        return;
-      }
-      if (!Number.isFinite(room.x) || !Number.isFinite(room.z)) {
-        // 拿不到房间中心点就无法定向偏移；此时若默认某一侧，双面涂漆的两个平面会共面 z-fighting。
-        // 宁可让它在这里现形，也不静默产出一层错几何。
-        report.unsupported.push(`${id}: paint_region room ${element.room} has no resolved centre (x/z)`);
-        return;
-      }
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(element.color ?? PAINT_INSPECTION_COLOR),
-        roughness: 0.9,
-        transparent: true,
-        opacity: 0.38,
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2,
-        depthWrite: false,
-      });
-
-      // 门窗洞按实扣除（DEC-2026-10-08-C06）：一段声明拆成多块实刷矩形
-      // （门洞 → 左条 + 右条 + 门楣条；窗洞同理）。面积自动变净，3D 与成本从此同源。
-      // openings 必填：与 server/paint-cost-comparison.ts 的 toPaintWalls 同为
-      // 「model-geometry 不写 openings 键 = 无洞」这一声明约定的落地处（两处适配器，
-      // 不含第三处）。少了它，3D 里不扣洞而预算里扣，两侧面积分叉。
-      const wallInput: PaintWallInput = {
-        id: wall.id ?? element.wall,
-        x1: wall.x1,
-        z1: wall.z1,
-        x2: wall.x2,
-        z2: wall.z2,
-        ...(wall.segments ? { segments: wall.segments } : {}),
-        ...(wall.height !== undefined ? { height: wall.height } : {}),
-        openings: wall.openings ?? [],
-      };
-      const scope = computePaintScope([wallInput], [{ id, wall: element.wall, room: element.room, along: [from, to], bottom, height }], paintWindows);
-      const rects = scope.regions[0]?.rects ?? [];
-
-      // DEC-2026-10-09-P14：拆洞得到的每个矩形还要**沿折线再裁成一段段直线**。
-      // 旧算法在每个矩形内直接取「起终点弦」当整块面——直墙上成立，弧墙（圆角）上不成立：
-      // 圆角墙 w_bath_north（r=1.0 圆角弧 + 直线）上一条全跨度声明，弦中点离真实墙面 0.50m，
-      // 整块漆面悬在空中。逐段出网后每块都贴在墙上，且每段各自算法线方向（朝房间侧外偏移）。
-      const pieces = rects.flatMap((rect) =>
-        clipAlongSpan(polyline, rect.from, rect.to).map(({ a, b }) => ({ rect, a, b })),
-      );
-      if (!pieces.length) {
-        report.unsupported.push(`${id}: paint_region resolved to a zero-length span on wall ${element.wall}`);
-        return;
-      }
-
-      pieces.forEach(({ rect, a, b }, index) => {
-        const segSpan = Math.hypot(b.x - a.x, b.z - a.z);
-        if (segSpan <= 1e-9) return;
-        const segDx = b.x - a.x;
-        const segDz = b.z - a.z;
-        const segDir = Math.hypot(segDx, segDz) || 1;
-        const segLeft = { x: -segDz / segDir, z: segDx / segDir };
-        const segMid = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
-        const segSide = (room.x - segMid.x) * segLeft.x + (room.z - segMid.z) * segLeft.z;
-        const segNormal = Math.abs(segSide) > 1e-6 ? (segSide > 0 ? segLeft : { x: -segLeft.x, z: -segLeft.z }) : segLeft;
-        const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, rect.top - rect.bottom), material);
-        mesh.position.set(
-          segMid.x + segNormal.x * PAINT_FACE_OFFSET,
-          (rect.bottom + rect.top) / 2,
-          segMid.z + segNormal.z * PAINT_FACE_OFFSET,
-        );
-        mesh.rotation.y = Math.atan2(-segDz, segDx);
-        // 拆洞 + 弧墙逐段后一段声明对应多个网格，objectId 必须唯一；regionId 仍指向声明本身，
-        // 供 inspectPaintRegions 按声明去重（26 段声明的语义不变）。
-        const meshId = pieces.length > 1 ? `${id}:s${index}` : id;
-        setSceneObjectMetadata(mesh, element.type, meshId);
-        mesh.userData = {
-          ...mesh.userData,
-          wallId: element.wall,
-          roomId: element.room,
-          regionId: id,
-          regionAlong: [from, to],
-          along: [rect.from, rect.to],
-          // 拆洞后每块矩形有自己的竖向带；审计面据此还原整段声明的竖向范围算毛面积
-          rectBottom: rect.bottom,
-          inspectionLayer: 'wall-paint',
-          inspectionVisibleOnly: true,
-          inspectionOpacity: PAINT_INSPECTION_OPACITY,
-          // 关闭态恢复快照：保存初始值而不是硬编码，避免重写 pipe-chase 那套丢初始态的写法。
-          inspectionInitial: {
-            visible: false,
-            opacity: 0.38,
-            transparent: true,
-            depthTest: true,
-            depthWrite: false,
-            renderOrder: 0,
-          },
-        };
-        mesh.visible = false;
-        root.add(mesh);
-      });
-      return;
-    }
     case 'skirting_region': {
-      // 踢脚线常显条带（DEC-2026-10-28-R02）：与 wall_region/paint_region 的检视态不同，
-      // 本类型在正常视图里就可见：不透明、贴房间侧墙面（PAINT_FACE_OFFSET，半墙厚 + 8mm，
+      // 踢脚线常显条带（DEC-2026-10-28-R02）：与墙特征面层（wall.finish.*）的检视态不同，
+      // 本类型在正常视图里就可见：不透明、贴房间侧墙面（wallFaceOffset 解析器输出，半墙厚 + 8mm，
       // 约等于瓷砖条带出墙面厚度）、门洞处由 splitSegmentByOpenings 实扣断开。
       // 高度不得在代码里写死：element.height 必填（类型与 overlay schema 均无默认值），
       // 读不到合法高度时 fail-closed 报 unsupported，不静默用一个数顶上。
@@ -1018,6 +1144,13 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
         report.unsupported.push(`${id}: skirting_region resolved to a zero-length span on wall ${element.wall}`);
         return;
       }
+      // 完成面偏移同样走 wallFaceOffset 解析器（S4 收编私有常量）：宿主墙未声明
+      // line_datum 时显形不出网，不猜基准（#76 未裁前不设默认值）。
+      if (wall.line_datum !== 'centerline') {
+        report.unsupported.push(`${id}: skirting_region 宿主墙 ${element.wall} 未声明 line_datum（完成面偏移无法解算），本段不出网`);
+        return;
+      }
+      const skirtFaceOffset = wallFaceOffset(wall, element.room);
       const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(element.color ?? DEFAULT_PAINT),
         roughness: 0.9,
@@ -1040,9 +1173,9 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
           const segNormal = Math.abs(segSide) > 1e-6 ? (segSide > 0 ? segLeft : { x: -segLeft.x, z: -segLeft.z }) : segLeft;
           const mesh = new THREE.Mesh(new THREE.PlaneGeometry(segSpan, height - bottom), material);
           mesh.position.set(
-            segMid.x + segNormal.x * PAINT_FACE_OFFSET,
+            segMid.x + segNormal.x * skirtFaceOffset,
             bottom + (height - bottom) / 2,
-            segMid.z + segNormal.z * PAINT_FACE_OFFSET,
+            segMid.z + segNormal.z * skirtFaceOffset,
           );
           mesh.rotation.y = Math.atan2(-segDz, segDx);
           mesh.receiveShadow = true;
@@ -1066,74 +1199,6 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
       if (pieceIndex === 0) {
         report.unsupported.push(`${id}: skirting_region resolved to no visible piece on wall ${element.wall} (fully blocked by openings)`);
       }
-      return;
-    }
-    case 'paint_sill_region': {
-      const bay = allElements.find((candidate): candidate is Extract<SceneElement, { type: 'bay_sill' }> => candidate.id === element.element && candidate.type === 'bay_sill');
-      const room = rooms.find((candidate) => candidate.id === element.room);
-      if (!bay || !room || !bay.wallRefs?.length) {
-        report.unsupported.push(`${id}: paint_sill_region requires bay_sill ${element.element} with resolved wallRefs and room ${element.room}`);
-        return;
-      }
-      const geometry = buildBaySillGeometry(bay.wallRefs, rooms, bay.depth);
-      const scope = computePaintSillScope(element, geometry, bay, room, ceilingZones, walls);
-      report.unsupported.push(...scope.warnings);
-      const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color(element.color ?? PAINT_INSPECTION_COLOR),
-        roughness: 0.9,
-        transparent: true,
-        opacity: 0.38,
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2,
-        depthWrite: false,
-      });
-      scope.surfaces.forEach((surface) => {
-        let mesh: THREE.Mesh;
-        if (surface.kind === 'underside') {
-          const shape = new THREE.Shape();
-          shape.moveTo(surface.points[0].x, surface.points[0].z);
-          for (const point of surface.points.slice(1)) shape.lineTo(point.x, point.z);
-          shape.closePath();
-          mesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), material);
-          // 底面必须与 bay_sill 本体同位同形：本体用 rotation.x=-PI/2 + scale.y=-1 把
-          // 平面 Shape(x,z) 原样升到世界 (x,z)。只写 rotation.x 会把 z 翻成负值——
-          // 真实飘窗脚印 z=[1.10,2.20] 曾被打到 z=[-2.20,-1.10]，预算里算了 2.536㎡
-          // 却盖不到目标实体。故两处共用同一个映射函数。
-          applyPlanFootprint(mesh);
-          mesh.position.y = surface.bottom;
-        } else {
-          const [a, b] = surface.points;
-          const span = Math.hypot(b.x - a.x, b.z - a.z);
-          mesh = new THREE.Mesh(new THREE.PlaneGeometry(span, surface.top - surface.bottom), material);
-          mesh.position.set((a.x + b.x) / 2, (surface.top + surface.bottom) / 2, (a.z + b.z) / 2);
-          mesh.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
-        }
-        setSceneObjectMetadata(mesh, element.type, surface.id);
-        mesh.userData = {
-          ...mesh.userData,
-          regionId: id,
-          elementId: element.element,
-          roomId: element.room,
-          face: surface.kind,
-          // 供审计区分「墙平面 / 构件水平面 / 构件垂直面」：水平面只有面积有意义，
-          // 不能套墙的面积÷高公式去反推一段墙长（曾把 4.198㎡ 变成 4,198,000,003.81m）。
-          surfaceOrientation: surface.kind === 'underside' ? 'horizontal' : 'vertical',
-          // 立面给真实标高（bottom/top），审计据此算带高与长度；水平面 bottom===top。
-          bottom: surface.bottom,
-          top: surface.top,
-          finish: element.finish,
-          areaSqm: surface.areaSqm,
-          occludedAreaSqm: surface.occludedAreaSqm,
-          inspectionLayer: 'wall-paint',
-          inspectionVisibleOnly: true,
-          inspectionOpacity: PAINT_INSPECTION_OPACITY,
-          inspectionInitial: { visible: false, opacity: 0.38, transparent: true, depthTest: true, depthWrite: false, renderOrder: 0 },
-        };
-        mesh.visible = false;
-        root.add(mesh);
-      });
       return;
     }
     case 'curtain_run': {
@@ -1193,11 +1258,6 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
     }
     case 'curtain':
       addCurtain(root, element, rooms, provider, index);
-      return;
-    case 'paint_ceiling_region':
-      // Ceiling finish quantities are declared here and costed from the same room/zone geometry.
-      // The 3D paint layer currently highlights declared walls and sill faces; room ceiling meshes
-      // remain the ceiling inspection layer's responsibility.
       return;
     default: {
       const exhaustive: never = element;
@@ -1527,8 +1587,8 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
         }));
     });
   for (const element of input.elements) {
-    if (element.type === 'wall') addWallElement(exportRoot, element, wallHeights.get(element.id) ?? 3.0, report, index, provider, input.rooms);
-    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index, input.walls, paintWindows, input.elements.filter((e) => e.type !== 'wall'), input.ceilingZones);
+    if (element.type === 'wall') addWallElement(exportRoot, element, wallHeights.get(element.id) ?? 3.0, report, index, provider, input.rooms, paintWindows);
+    else addOverlayElement(exportRoot, element, report, input.options?.curtainRooms ?? input.rooms, provider, index, input.walls, paintWindows, input.ceilingZones);
   }
   for (const wall of input.walls) {
     if (!wall.id) continue;

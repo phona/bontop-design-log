@@ -12,7 +12,7 @@ import { load } from 'js-yaml';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { isWallSuppressed } from '../shared/suppression.js';
-import type { BaySillSegment, BaySillWallReference, SceneElement, WallSegment, CurtainPoint } from '../shared/types.js';
+import type { BaySillSegment, BaySillWallReference, SceneElement, WallSegment, CurtainPoint, WallPaintBand, WallTileBand } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
 
@@ -78,12 +78,21 @@ const WallRunSchema = z
 // zone: covered=橱柜后遮蔽面（走杂砖）/ visible=可见面（正砖）。
 // room（R11 补）：贴砖面归属房间。共墙两侧各贴各的脸，预算/审计按 (wall, room) 去重；
 // height 为贴砖带顶标高（非带高），同一墙可上下堆叠多段、二维不重叠即可。
-const WallRegionSchema = z
+//
+// 2026-11-07 issue #98 第三阶段 S4：wall_region / paint_region / sill_region /
+// paint_sill_region / paint_ceiling_region 五个**面层配方**类型已从 overlay schema 删除——
+// 它们没有独立身份/状态/生命周期（issue #98 判据），下沉为宿主对象特征：
+//   wall_region(18)  → model-geometry.yaml 墙条目 finish.tile_bands[]
+//   paint_region(31) → 同上 finish.paint_bands[]
+//   sill_region(20)  → openings.yaml bay_sill 条目 finish.tile[]
+//   paint_sill_region(8) → 同上 finish.paint[]
+//   paint_ceiling_region(8) → model-geometry.yaml 房间条目 ceiling_finish
+// schema 15 → 10 类；SceneElement 同步删这五个联合成员，mesh 产出方从 case 分支改为
+// 对象属性驱动（检视态 userData.inspectionLayer 与开关原样保留）。schema 如下。
+const WallTileBandSchema = z
   .object({
     id: z.string().min(1),
-    type: z.literal('wall_region'),
-    wall: z.string().min(1),
-    room: z.string().optional(),
+    room: z.string().min(1),
     along: z.tuple([z.number().nonnegative(), z.number().positive()]),
     bottom: z.number().nonnegative().default(0),
     height: z.number().positive(),
@@ -93,15 +102,28 @@ const WallRegionSchema = z
   })
   .strict();
 
-// 防水台/窗台贴砖带（DEC-2026-10-07-R11 D4=L 型终裁）：inspection-only，与 wall_region 平级、
-// 共用同一 'wall-tile' 层标签与开关（贴砖区显示中），互不引用各自循环。
-// 引用一个 bay_sill 构件（防水台几何），face=front 贴其朝向房间的竖面、face=top 贴水平台面；
-// along 缺省取该构件整条墙跑。zone/room 口径与 wall_region 相同。
-const SillRegionSchema = z
+const WallPaintBandSchema = z
   .object({
     id: z.string().min(1),
-    type: z.literal('sill_region'),
-    element: z.string().min(1),
+    room: z.string().min(1),
+    along: z.tuple([z.number().nonnegative(), z.number().positive()]),
+    bottom: z.number().nonnegative().default(0),
+    height: z.number().positive().optional(),
+    color: z.string().optional(),
+    reason: z.string().optional(),
+  })
+  .strict();
+
+const WallFinishSchema = z
+  .object({
+    tile_bands: z.array(WallTileBandSchema).default([]),
+    paint_bands: z.array(WallPaintBandSchema).default([]),
+  })
+  .strict();
+
+const SillTileBandSchema = z
+  .object({
+    id: z.string().min(1),
     face: z.enum(['front', 'top', 'underside']),
     along: z.tuple([z.number().nonnegative(), z.number().positive()]).optional(),
     zone: z.enum(['visible', 'covered']).default('visible'),
@@ -111,9 +133,28 @@ const SillRegionSchema = z
   })
   .strict();
 
-// 踢脚线常显条带（DEC-2026-10-28-R02）：与 wall_region/paint_region 的检视态不同，
+const SillPaintBandSchema = z
+  .object({
+    id: z.string().min(1),
+    room: z.string().min(1),
+    faces: z.array(z.enum(['underside', 'front', 'start_end', 'end_end'])).min(1),
+    finish: z.enum(['ordinary', 'anti_mold']),
+    color: z.string().optional(),
+    reason: z.string().optional(),
+  })
+  .strict();
+
+const BaySillFinishSchema = z
+  .object({
+    tile: z.array(SillTileBandSchema).default([]),
+    paint: z.array(SillPaintBandSchema).default([]),
+  })
+  .strict();
+
+// 踢脚线常显条带（DEC-2026-10-28-R02）：与墙特征面层的检视态不同，
 // 本类型在正常视图里就可见。height 必填、代码与 schema 均不得给默认值——高度是可调数据，
 // 只由 overlay 声明（本文件外 YAML 锚点统一）给出；改高度改声明，不改代码。
+// S5 起由 paint_bands 派生（24/24 配对已证实），届时本类型退场。
 const SkirtingRegionSchema = z
   .object({
     id: z.string().min(1),
@@ -127,46 +168,6 @@ const SkirtingRegionSchema = z
     reason: z.string().optional(),
   })
   .strict();
-
-// 涂漆检视态叠加层（墙顶面涂装 PKG-080）：inspection-only，与 wall_region 平级且互不引用。
-// wall 必须在 model-geometry 的墙声明中存在且未被 suppress；along 自该墙 from 端累计。
-// room 声明漆面归属房间——渲染端据此把平面朝该房间侧外偏移，避免与同墙贴砖面/另一侧涂漆面共面。
-// height 缺省取该墙声明高度；面积 = (along[1]-along[0]) × (height-bottom)。
-const PaintRegionSchema = z
-  .object({
-    id: z.string().min(1),
-    type: z.literal('paint_region'),
-    wall: z.string().min(1),
-    room: z.string().min(1),
-    along: z.tuple([z.number().nonnegative(), z.number().positive()]),
-    bottom: z.number().nonnegative().default(0),
-    height: z.number().positive().optional(),
-    color: z.string().optional(),
-    reason: z.string().optional(),
-  })
-  .strict();
-
-// 飘窗涂装面（inspection-only；几何完全复用 bay_sill 的真实轮廓）。
-// only explicitly exposed faces may be included. `finish` separates wet-area system quantities.
-const PaintSillRegionSchema = z
-  .object({
-    id: z.string().min(1),
-    type: z.literal('paint_sill_region'),
-    element: z.string().min(1),
-    room: z.string().min(1),
-    faces: z.array(z.enum(['underside', 'front', 'start_end', 'end_end'])).min(1),
-    finish: z.enum(['ordinary', 'anti_mold']),
-    color: z.string().optional(),
-    reason: z.string().optional(),
-  })
-  .strict();
-
-const PaintCeilingRegionSchema = z.object({
-  id: z.string().min(1),
-  type: z.literal('paint_ceiling_region'),
-  room: z.string().min(1),
-  reason: z.string().optional(),
-}).strict();
 
 // 淋浴玻璃隔断（独立玻璃，points-only，无碰撞；2026-08-21）
 const ShowerScreenSchema = z
@@ -243,6 +244,9 @@ const BaySillSchema = z
     // 沿墙区间（自 from 端累计）。仅当飘窗/窗带落在**有涂装声明的实体墙**上时才必须写：
     // 涂装范围按实扣窗洞需要它定位；缺了会被 shared/paint-scope.ts 记 warning 而不是静默少扣。
     along: z.tuple([z.number().nonnegative(), z.number().positive()]).optional(),
+    // 面层配方（S4 下沉）：sill_region(20)/paint_sill_region(8) 不再是平级元素，
+    // 而是构件自己的 finish.tile[] / finish.paint[]——元素间引用 28 → 0。
+    finish: BaySillFinishSchema.optional(),
     reason: z.string().min(1).optional(),
   })
   .strict()
@@ -291,12 +295,7 @@ const OverlaySchema = z
         z.discriminatedUnion('type', [
           CurtainRunSchema,
           WallRunSchema,
-          WallRegionSchema,
-          SillRegionSchema,
           SkirtingRegionSchema,
-  PaintRegionSchema,
-  PaintSillRegionSchema,
-  PaintCeilingRegionSchema,
           ShowerScreenSchema,
           SlidingDoorRunSchema,
           FrostedPrivacySchema,
@@ -319,17 +318,22 @@ export function parseOverlay(raw: string): OverlayConfig {
 // ── S1 搬迁（issue #98 第三阶段）：overlay 声明拆为 envelope 三文件后的唯一合并点 ──
 // 原 config/layout/overlay.yaml 已删，声明现住三个文件：
 //   openings.yaml       围护构件 40（curtain_run/railing_run 的 join 接缝语义也住这里；
-//                       version 随迁此文件）
+//                       version 随迁此文件；bay_sill 的 finish.tile[]/paint[] 面层配方
+//                       也住这里——S4 把 sill_region/paint_sill_region 下沉为构件特征）
 //   floor-zones.yaml    floor_region 6（绝对 points 的唯一聚居地）
-//   finish-surfaces.yaml 面层配方 109（过渡文件，S4 下沉为墙/构件/房间特征后解散）
+//   finish-surfaces.yaml 面层配方【仅剩 skirting_region 24】（S4 已把 wall_region 18 /
+//                       paint_region 31 / sill_region 20 / paint_sill_region 8 /
+//                       paint_ceiling_region 8 下沉到 model-geometry 的墙/房间与 openings
+//                       的 bay_sill；S5 把 skirting 也改派生后本文件退场）
 // suppress 自 2026-11-07 S3 起不住本处：改判为 config/layout/model-geometry.yaml 墙条目的
 // suppressed:{reason,replacement} 属性（原 overlay 顶层 8 条 wall/walls/region 选择器 +
 // spatial-validation.yaml 的 overlay_replacements 镜像表随之退场），语义唯一权威实现
 // shared/suppression.ts。合并必须恢复原 overlay.yaml 的元素物理顺序：GLB/DXF 产物按 elements
 // 顺序生成，实测乱序即字节变化（2026-11-07 实验把 floor 6 条移位重导出，GLB SHA 由
 // eba3dbda… 变 47087a67…）。原序是「bay_sill 组(25) → floor 6 → curtain/shower 等围护(15)
-// → 面层配方(109)」，因此 floor 6 条插在 openings 内 bay_sill 组末尾锚点之后；锚点找不到即抛错，
-// 不许静默串序。
+// → 面层配方(109，其中 skirting 24 是唯一产可见网格的一类)」，S4 后只剩 skirting 24 还走
+// 元素表（可见网格顺序不变 → GLB 字节不变），因此 floor 6 条仍插在 openings 内 bay_sill 组
+// 末尾锚点之后；锚点找不到即抛错，不许静默串序。
 export const OVERLAY_SOURCE_FILES = {
   openings: 'config/model/envelope/openings.yaml',
   floorZones: 'config/model/envelope/floor-zones.yaml',
@@ -373,6 +377,65 @@ export function parseOverlayFiles(): OverlayConfig {
   return OverlaySchema.parse(loadOverlayDoc());
 }
 
+/**
+ * 砖漆互斥机器规则（2026-11-07 issue #98 第三阶段 S4）。
+ *
+ * 面层配方下沉前，同一墙脸的「漆面让出砖带」靠 7 处人工手抄 bottom（DEC-2026-10-09-P07：
+ * 客卫 5 处 + 主卫 2 处，0.30/0.77/1.10 三档）。下沉后 tile_bands 与 paint_bands 同住一个
+ * 墙对象，这条规则可以机器判：**同一 (墙, 房间) 脸上，贴砖带与涂装带沿墙区间相交时，
+ * 竖向区间必须不相交**（允许贴面交接：paint.bottom === tile.top）。
+ *
+ * 为什么是「二维不重叠」而不是单句「paint.bottom ≥ tile 带顶」：客卫开放洗漱区东墙有
+ * 「0.30 墙裙砖 / 0.30→0.77 漆 / 0.77→1.10 防溅砖 / 1.10→2.80 漆」四层交替，
+ * 单向不等式会被上层砖带判违例——只有二维不重叠才是「一片面只属一种面层」的完整表述。
+ *
+ * 违反即抛错（fail-closed）：重叠意味着同一片墙既算砖又算漆，预算双计、3D 两层叠加。
+ * 调用方是全部装配点（mergeSceneElements / 瓦工算量 / 涂装载入），不是某一处渲染细节。
+ */
+export function validateWallFinish(
+  walls: Array<{ id?: string; finish?: { tile_bands?: WallTileBand[]; paint_bands?: WallPaintBand[] } }>,
+): void {
+  const EPS = 1e-9;
+  for (const wall of walls) {
+    const finish = wall.finish;
+    if (!finish?.tile_bands?.length || !finish.paint_bands?.length) continue;
+    const byFace = new Map<string, { tiles: WallTileBand[]; paints: WallPaintBand[] }>();
+    const faceOf = (room: string) => {
+      const existing = byFace.get(room);
+      if (existing) return existing;
+      const created = { tiles: [] as WallTileBand[], paints: [] as WallPaintBand[] };
+      byFace.set(room, created);
+      return created;
+    };
+    for (const band of finish.tile_bands) faceOf(band.room).tiles.push(band);
+    for (const band of finish.paint_bands) faceOf(band.room).paints.push(band);
+    for (const [room, { tiles, paints }] of byFace) {
+      for (const tile of tiles) {
+        const tileFrom = Math.min(tile.along[0], tile.along[1]);
+        const tileTo = Math.max(tile.along[0], tile.along[1]);
+        const tileBottom = tile.bottom ?? 0;
+        for (const paint of paints) {
+          const paintFrom = Math.min(paint.along[0], paint.along[1]);
+          const paintTo = Math.max(paint.along[0], paint.along[1]);
+          const hOverlap = Math.min(tileTo, paintTo) - Math.max(tileFrom, paintFrom);
+          if (hOverlap <= EPS) continue;
+          const paintBottom = paint.bottom ?? 0;
+          const paintTop = paint.height ?? Number.POSITIVE_INFINITY;
+          const paintAbove = paintBottom >= tile.height - EPS;
+          const tileAbove = tileBottom >= paintTop - EPS;
+          if (paintAbove || tileAbove) continue;
+          throw new Error(
+            `墙 ${wall.id} 房间 ${room}：贴砖带 ${tile.id}（along [${tileFrom}, ${tileTo}] × [${tileBottom}, ${tile.height}]）`
+            + ` 与涂装带 ${paint.id}（along [${paintFrom}, ${paintTo}] × [${paintBottom}, ${paintTop}]）沿墙重叠 ${hOverlap.toFixed(3)}m 且竖向重叠`
+            + ` → 同一片墙既贴砖又涂漆（双计）。DEC-2026-10-09-P07 起砖漆互斥改为机器校验：`
+            + `让漆带 bottom ≥ 砖带顶，或把砖带移到漆带之上。`,
+          );
+        }
+      }
+    }
+  }
+}
+
 export function mergeSceneElements(
   walls: WallSegment[],
   overlay: OverlayConfig | undefined
@@ -386,12 +449,15 @@ export function mergeSceneElements(
       : {}),
   }));
 
+  // 砖漆互斥机器规则（S4）：墙特征面层装载时即校验，违例抛错（见 validateWallFinish）。
+  validateWallFinish(walls);
+
   // suppress 改判（issue #98 S3）：墙条目自带 suppressed 属性，实体盒不渲染；
   // 属性口径与 replacement 校验见 shared/suppression.ts（禁止在这里重写选择器逻辑）。
   const kept: SceneElement[] = [];
   walls.forEach((w, i) => {
     if (!isWallSuppressed(w)) {
-      kept.push({ type: 'wall', id: w.id ?? `wall:seg:${i}`, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, ...(w.segments ? { segments: w.segments } : {}), ...(w.openings ? { openings: w.openings } : {}), ...(w.rooms?.length ? { rooms: w.rooms } : {}) });
+      kept.push({ type: 'wall', id: w.id ?? `wall:seg:${i}`, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, ...(w.segments ? { segments: w.segments } : {}), ...(w.openings ? { openings: w.openings } : {}), ...(w.finish ? { finish: w.finish } : {}), ...(w.line_datum ? { line_datum: w.line_datum } : {}), ...(w.rooms?.length ? { rooms: w.rooms } : {}) });
     }
   });
 
