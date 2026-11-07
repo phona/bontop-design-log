@@ -13,6 +13,8 @@
  *    配置申报了代码没有的规则 → warning（覆盖矩阵不许说谎）。
  */
 
+import { ELEMENT_BEARING_SOURCES, SOURCE_PREFIXES, SOURCES } from './envelope-sources.js';
+
 export type ElementStatus = 'measured' | 'confirmed' | 'inferred' | 'pending' | 'conflicted' | 'undeclared';
 
 export type ElementKind =
@@ -136,12 +138,14 @@ function ledgerIndex(input: ElementStateInput): Map<string, { ref: string; summa
   for (const entry of input.ledger.entries) {
     for (const target of entry.targets) {
       if (!target.id) continue;
-      // 台账写的是 `config/electrical.yaml sock_child_ac`；按文件推断前缀再拼成 objectId。
-      const prefix = target.file.endsWith('electrical.yaml') ? 'electrical'
-        : target.file.endsWith('plumbing.yaml') ? 'plumbing'
-          : target.file.endsWith('ceiling.yaml') ? 'ceiling'
-            : undefined;
-      if (prefix) index.set(`${prefix}:${target.id}`, { ref: entry.ref, summary: entry.summary, blockedBy: entry.blockedBy });
+      // 台账写的是 `config/electrical.yaml sock_child_ac`；源名（→ objectId 前缀）由
+      // shared/envelope-sources.ts 注册表按**完整路径**反查。原实现按
+      // `endsWith('ceiling.yaml')` 猜——S1 搬迁（config/ceiling.yaml →
+      // config/model/envelope/ceiling.yaml）这类改名会猜错，且任何同后缀文件都会误命中。
+      // 只认 ELEMENT_BEARING_SOURCES 三个源（collectElements 真的采它们的构件）：
+      // hvac 的行（#3a `reference_constraints`）是字段描述不是元素 id，纳入会产生假悬挂键。
+      const source = ELEMENT_BEARING_SOURCES.find((name) => (SOURCES[name].files as readonly string[]).includes(target.file));
+      if (source) index.set(`${SOURCE_PREFIXES[source]}${target.id}`, { ref: entry.ref, summary: entry.summary, blockedBy: entry.blockedBy });
     }
   }
   return index;

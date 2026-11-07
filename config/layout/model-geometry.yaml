@@ -3,6 +3,13 @@ unit: m
 scale: 0.001
 origin: { x: 31.64204, z: -12.48434 }
 export_date: '2026-07-17'
+# 面层配方 DEC 引用登记（issue #98 第三阶段 S6，只登记不改）：墙条目 finish.tile_bands /
+# paint_bands 的 reason 共 **12 处** DEC 引用（同口径实测全文件 61 处 / 14 个唯一编号，其余
+# 49 处住几何/顶点/墙/房间注释，不属面层配方）——它们是原 config/layout/overlay.yaml 的
+# wall_region / paint_region 声明，S4 下沉为墙特征时连 reason 一起迁来（构件侧的 finish 在
+# config/model/envelope/openings.yaml）。与 envelope 四文件的 89 处、skirting-derivation.ts 的
+# 4 处同属 issue #98 阶段 C「DEC 退役 → intent/evidence」的输入清单（口径与汇总算式见
+# config/model/envelope/openings.yaml 头注的主登记段），本阶段不改写。
 
 vertices:
   # 2026-09-17 业主确认：西北角即圆角本身，v_nw→v_bath_ap（西墙 z∈[0,2.10]）外轮廓不存在，v_nw/w_west_top 已删除

@@ -23,6 +23,7 @@ import { DECISION_GATES_PATH, loadDecisionGates, openGatesByCheck, type Decision
 import { MODEL_PACKAGE_LINKS_PATH, authorityFilePaths } from './model-package-links.js';
 import type { ModelPackageLinks } from './model-package-links.js';
 import { collectDeclaredFurnitureIds, type DeclaredFurnitureIdEntry } from './furniture-object-id.js';
+import { collectFinishRecipeIds } from './finish/input.js';
 import type { FurnishingsYaml } from './types.js';
 
 type AnyRecord = Record<string, any>;
@@ -124,9 +125,12 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
   // 成本项 targets（issue #98 PR-8，按对象算账）的合法取值域 = house.yaml furnishings
   // 已声明的稳定对象 id。对象 id 的唯一实现在 furniture-object-id.ts，这里只取清单，
   // 不另写第二套 id 公式。
+  // 2026-11-07（issue #98 第三阶段 S6）另取面层配方 id 全集：targets **不收**配方——
+  // 它们与对象 id 同为稳定字符串，只能按配方住处（shared/finish/input.ts）枚举后拦截。
   const house = yaml.load(fs.readFileSync(path.join(root, 'config/house.yaml'), 'utf8')) as { furnishings?: FurnishingsYaml };
   const furnitureObjects: DeclaredFurnitureIdEntry[] = collectDeclaredFurnitureIds(house.furnishings ?? {});
   const furnitureObjectById = new Map(furnitureObjects.map((entry) => [entry.id, entry]));
+  const finishRecipeIds = collectFinishRecipeIds();
   const modelPackageLinks = options.modelPackageLinks;
   const decisionGates = loadDecisionGates(root);
   const openDecisionGates = decisionGates.decisions.filter((decision) => decision.scope === 'acceptance' && decision.status === 'open');
@@ -332,6 +336,12 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
       // 金额边界（含不含 P2-100 的 3000-5000）仍是开放决策 D19，由
       // cost:by-object 单对象视图的「关联决策门禁」节显形。PR-8 曾把 COST-150-01
       // 当作「归属未定就不写 targets」的例子，随 PR-11 取代。
+      // 2026-11-07（issue #98 第三阶段 S6）新增一道显式拦截：**面层配方 id 不得进 targets**。
+      // S4 起墙贴砖带/涂装带、防水台与飘窗的贴砖/涂装面、S5 起派生的踢脚带都是宿主对象
+      // 身上的派生量（109 个配方），不是对象。配方 id 与对象 id 同为稳定字符串、任何 schema
+      // 都区分不了，故按 shared/finish/input.ts 的配方 id 全集拦在第一道（迁移设计 §5.7：
+      // 否则按对象算账视图被 109 个配方稀释，业主看到的是「一间房 40 条成本行」）。
+      // 拦截文案点名配方住在哪，写错的人知道该改成什么。
       if (component.targets !== undefined) {
         const targets = component.targets;
         if (!Array.isArray(targets) || targets.length === 0 || targets.some((target: unknown) => typeof target !== 'string' || !target.trim())) {
@@ -339,6 +349,10 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
         } else {
           const seenTargets = new Set<string>();
           for (const target of targets) {
+            if (finishRecipeIds.has(target)) {
+              errors.push(`${component.id}: cost target "${target}" 是面层配方 id（墙 finish.tile_bands/paint_bands、防水台/飘窗 finish.tile/paint，或由其派生的踢脚带），不是对象——targets 只收对象 id，配方量是派生量、写进 quantity_basis，不进 targets`);
+              continue;
+            }
             const objectEntry = furnitureObjectById.get(target);
             if (!objectEntry) {
               errors.push(`${component.id}: cost target "${target}" 不是 config/house.yaml furnishings 已声明的对象稳定 id`);

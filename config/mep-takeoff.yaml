@@ -13,6 +13,14 @@ version: 1
 #  2. 不靠 id 命名推断线径/管径/冷热——全部读显式字段（plumbing.water_temp/water_dn/drain_dn、
 #     electrical.circuit + topology.wire_size）。
 #  3. 量房日只改 L1（点位/路由/拓扑）：补画路由、点位升 measured。不改本文件的 sources。
+#
+# 2026-11-07（issue #98 第三阶段 S6）从 sources 删除的一项：
+# `ceiling: config/model/envelope/ceiling.yaml`。删除理由：它是「文件路径当身份」的第六张表——
+# S1 把 config/ceiling.yaml 搬进 config/model/envelope/ 后，本项与
+# shared/envelope-sources.ts 注册表、element-sources/pending-ledger/element-state 的
+# file→前缀表、model-package-links 的 authorities 各记一份路径。现吊顶声明文件的唯一真相
+# 在 shared/envelope-sources.ts（源名 ceiling → 文件 → objectId 前缀），CLI/verify/
+# cost-summary 改从注册表取该路径；本文件只保留其余五个源（均非本次搬迁对象）。
 
 sources:
   electrical_points: config/electrical.yaml
@@ -20,7 +28,6 @@ sources:
   circuits: config/electrical-topology.yaml
   routes: config/mep-hvac-coordination.yaml
   hvac: config/hvac.yaml
-  ceiling: config/model/envelope/ceiling.yaml
 
 # 参与水电算量的层；其余层显式排除并记 reason（空调包 PKG-030，见 control.yaml COST-030-02）
 covered_layers: [strong_power, weak_power, water_supply, drainage]

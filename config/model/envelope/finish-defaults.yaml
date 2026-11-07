@@ -7,6 +7,10 @@
 #      （派生器 shared/skirting-derivation.ts，装配点 server/overlay-merge.ts 的
 #      loadOverlayDoc），锚点值落到本文件；原 finish-surfaces.yaml 随之退场（其 85 条
 #      其余面层配方已于 S4 下沉为墙/构件/房间特征）。
+# DEC 引用登记（issue #98 第三阶段 S6，只登记不改）：本文件含 **3 处 DEC 引用 / 2 个唯一
+# 编号**（口径：rg -o 'DEC-[A-Za-z0-9._-]+' 本文件 | wc / | sort -u | wc -l）——湿区不生成、
+# 80mm 高度、颜色占位三条裁决。与 openings 32 + floor-zones 9 + ceiling 45 同属阶段 C
+# 「DEC 退役 → intent/evidence」的输入清单（逐文件表与汇总算式见 openings.yaml 头注）。
 skirting:
   # 踢脚带高度（米）。业主 2026-10-28 定 80mm（DEC-2026-10-28-R01）。可调数据只在此改：
   # 渲染代码与 schema 均无默认值，读不到合法高度即 fail-closed（旧声明时代码同款）。

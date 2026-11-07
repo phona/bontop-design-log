@@ -255,6 +255,26 @@ describe('resolvePackageScope', () => {
     }, project);
     assert.deepEqual(result.roomIds, []);
   });
+
+  // 2026-11-07（issue #98 第三阶段 S6）：迁移设计 §5.7 曾要求「overlay/ceiling 都登记为
+  // ids = 场景 objectId 裸值」。overlay 成立（构件 id 即 objectId，S4 已登记）；ceiling 不
+  // 成立——吊顶分区的 objectId 带 `ceiling:` 前缀（SceneBuilder.ts:1323），登记成裸值会
+  // 让高亮与反查双双静默 no-op（2026-11-02 同一失效类）。本用例钉住这个分流，防以后
+  // 「按文档把 ceiling 加进 OBJECT_ID_SOURCES」。
+  it('ceiling 的 ids 走 ceiling: 前缀（不进 OBJECT_ID_SOURCES 裸值通道）', () => {
+    const result = resolvePackageScope({
+      scope: [{source: 'ceiling', select: {ids: ['ceiling_living', 'ac_master']}}],
+    }, project);
+    assert.deepEqual(result.objectIds, [], 'ceiling ids 不得进裸 objectIds（场景里没有这个键）');
+    assert.deepEqual(result.pointIds, ['ceiling:ceiling_living', 'ceiling:ac_master']);
+    assert.deepEqual(result.unresolved, []);
+    // overlay 的同一形态必须走裸值（OBJECT_ID_SOURCES）——两条通道不能混
+    const overlay = resolvePackageScope({
+      scope: [{source: 'overlay', select: {ids: ['kitchen_north_bay']}}],
+    }, project);
+    assert.deepEqual(overlay.objectIds, ['kitchen_north_bay']);
+    assert.deepEqual(overlay.pointIds, []);
+  });
 });
 
 describe('buildObjectPackageIndex', () => {
@@ -398,7 +418,16 @@ describe('issue #98 PR-4： furnishings ids 选择器 ↔ 包/验收项（真实
 // sourceWallIdOf 做二级命中；本门禁钉的是**另一侧**：每个 link 的 objectIds 都必须
 // 能在 buildScene 的真实产出里命中（直接命中或经源墙 id 桥接命中），
 // 且反过来桥接不能把不是墙的对象错配过来。
-describe('生产 links 的 objectIds 必须能在 buildScene 产出里命中（S4 宿主对象选择器）', () => {
+//
+// 2026-11-07 S6 扩展：选择器从 types 全量改 ids（floor_region ×4、floor+skirting、
+// sliding_door_run、shower_screen、curtain ×2——见 config/model-package-links.yaml 头注），
+// 命中检查随之从「墙 / bay_sill」扩到**全部非家具 objectId**：判据是 id 不含 '.'——
+// 墙/围护/吊顶/派生踢脚 id 都不含点号，家具稳定 id 一律 `房间.类型`（furnishings 的
+// 裸值约定由上面 PR-4 的用例守，点位带前缀也另有用例）。这样 S6 新写进 links 的
+// 6 floor zone、24 skirt_*、kitchen_dining_sliding_door、3 shower_screen、9 curtain
+// 全部进命中门禁——其中 curtain mesh 的 objectId 是 `id:layer:variant`、shower_screen
+// 是 `id:N`，靠的正是 sourceWallIdOf 的一级桥接，门禁照过即证明高亮/反查真的通。
+describe('生产 links 的 objectIds 必须能在 buildScene 产出里命中（S4 宿主对象选择器 → S6 全量 ids）', () => {
   function productionScene() {
     const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
     const layout = resolveLayout(mg);
@@ -420,7 +449,7 @@ describe('生产 links 的 objectIds 必须能在 buildScene 产出里命中（S
     return {objectIds, sourceWallIds};
   }
 
-  it('每条带宿主对象 id 的 link：objectIds 全部可在场景里命中（直接或经源墙 id 桥接）', () => {
+  it('每条 link 的非家具 objectId 全部可在场景里命中（直接或经源墙 id 桥接）', () => {
     const links = loadModelPackageLinks();
     const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
     const layout = resolveLayout(mg);
@@ -432,20 +461,26 @@ describe('生产 links 的 objectIds 必须能在 buildScene 产出里命中（S
     };
     const {objectIds, sourceWallIds} = productionScene();
     const checked: string[] = [];
+    const checkedIds = new Set<string>();
     for (const link of links.links) {
       const {objectIds: scopeIds, projectScope} = resolvePackageScope(link, project);
       if (projectScope) continue;
-      // 只查墙/围护构件宿主 id（点位与家具各有自己的前缀/裸值约定，由其他用例守）
-      const hostIds = scopeIds.filter((id) => /^w_/.test(id) || /_(bay|waterproof_ledge)$/.test(id));
+      // 非家具对象 id（不含点号）：墙 / 围护构件 / floor zone / 派生踢脚 / 帘布 / 隔断。
+      const hostIds = scopeIds.filter((id) => !id.includes('.'));
       for (const id of hostIds) {
         const hit = objectIds.has(id) || sourceWallIds.has(id);
-        assert.ok(hit, `${link.id} 的宿主对象 id ${id} 在 buildScene 产出里命中不了（objectId 直接命中与 sourceWallIdOf 桥接都失败）——选择器又会静默 no-op`);
+        assert.ok(hit, `${link.id} 的对象 id ${id} 在 buildScene 产出里命中不了（objectId 直接命中与 sourceWallIdOf 桥接都失败）——选择器又会静默 no-op`);
+        checkedIds.add(id);
       }
       if (hostIds.length) checked.push(`${link.id}:${hostIds.length}`);
     }
-    // S4 改写的 6 条必须真的被检查到（否则本门禁空转）
-    for (const id of ['MODEL-PKG-050', 'MODEL-PKG-060', 'MODEL-PKG-065', 'MODEL-PKG-080', 'MODEL-PKG-130', 'MODEL-PKG-135']) {
-      assert.ok(checked.some((entry) => entry.startsWith(id)), `${id} 应带宿主对象 id 并接受命中检查`);
+    // S4 改写的 6 条 + S6 新纳入门禁的 4 条都必须真的被检查到（否则本门禁空转）
+    for (const id of ['MODEL-PKG-050', 'MODEL-PKG-060', 'MODEL-PKG-065', 'MODEL-PKG-080', 'MODEL-PKG-130', 'MODEL-PKG-135', 'MODEL-PKG-090', 'MODEL-PKG-100', 'MODEL-PKG-145', 'MODEL-P2-070']) {
+      assert.ok(checked.some((entry) => entry.startsWith(id)), `${id} 应带非家具对象 id 并接受命中检查`);
+    }
+    // S6 新写进 links 的 id 家族逐个点名：都真的过了命中检查（不是只写在 YAML 里）
+    for (const id of ['north_platform_floor', 'skirt_master_bedroom_w_mb_east', 'curtain_master_west', 'kitchen_dining_sliding_door', 'shower_screen_mbath']) {
+      assert.ok(checkedIds.has(id), `${id} 应进入命中检查集合（S6 的 ids 直选）`);
     }
   });
 

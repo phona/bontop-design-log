@@ -17,6 +17,13 @@
  * design-rules.yaml:111 亦指向该表）——本模块不另列房间表，由调用方把表传进来。
  *
  * 纯函数、无 I/O：装配（读 defaults / wet 表 / 墙特征）在 server/overlay-merge.ts。
+ *
+ * DEC 引用登记（issue #98 第三阶段 S6，只登记不改）：本文件含 **4 处 DEC 引用 / 2 个唯一
+ * 编号**（口径：rg -o 'DEC-[A-Za-z0-9._-]+' 本文件 | wc -l / | sort -u | wc -l）——派生踢脚
+ * reason 里的两条 2026-10-28 裁定（80mm 高度与颜色占位，编号见本文件既有注释，本段不重抄）。
+ * 与 envelope 四文件 89 处、model-geometry 61 处同属
+ * 阶段 C「DEC 退役 → intent/evidence」的输入清单（口径与汇总算式见
+ * config/model/envelope/openings.yaml 头注的主登记段），本阶段不改写。
  */
 
 import type { WallPaintBand } from './types.js';
