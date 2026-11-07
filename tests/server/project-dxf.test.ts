@@ -225,12 +225,15 @@ test('project-dxf: 内机 anchor 经 ref:ceiling 解析进 M-HVAC，解析不了
 
 test('project-dxf: 圆角折线经 centerlineSamples 展开（弧不成直线折点）+ R 标注（codex 二审 blocking）', () => {
   const input = baseInput();
-  // 直角三点 + 中点圆角 R0.3：直线走法 = 2 条线；弧感知采样 ≥ 6 段且带 R300 标注
+  // 直角三点 + 中点圆角 R0.3：直线走法 = 2 条线；弧感知采样 ≥ 6 段且带 R300 标注。
+  // 声明弧心必须是**切线弧**的弧心：90° 角两邻边各退 r 的垂足之交 = 角点 − r·(dirIn+dirOut)，
+  // 即 (2−0.3, 5−0.3)=(1.7, 4.7)。只沿一个轴移（如 (2, 4.7)）与邻边不相切，
+  // shared/arc.ts 的 tangentArc 按 fail-closed 返回 null（不出半根弧），DXF 走直折线。
   input.house.sceneElements!.push({
     type: 'railing_run', id: 'railing_arc', height: 1,
     points: [
       { x: 0, z: 5 },
-      { x: 2, z: 5, radius: 0.3, cx: 2, cz: 4.7 },
+      { x: 2, z: 5, radius: 0.3, cx: 1.7, cz: 4.7 },
       { x: 2, z: 3 },
     ],
   });
@@ -445,19 +448,25 @@ test('project-dxf: 候选风口终端隔离 M-CAND，正式风口带 id（codex 
 
 test('project-dxf: floor_region 圆角随声明展开，不出外接矩形（codex 六审 blocking）', () => {
   const input = baseInput();
-  // 直角三角形三点 + 第一点 R1.0 圆角：外接矩形闭合折线 = 3 边直角；弧感知 = 采样段 + R1000 标注
+  // 直角三角形三点 + 第一点 R1.0 圆角：外接矩形闭合折线 = 3 边直角；弧感知 = 采样段 + R1000 标注。
+  // 声明弧心取切线弧弧心（两邻边各退 r 的垂足之交 = (0+1, 5+1)=(1, 6)）——与邻边相切，
+  // shared/arc.ts 的 tangentArc 才解得出切点；邻边太短（切点 r/tan(θ/2) 超出边长）时
+  // fail-closed 不出弧，只走直折线。
   input.house.sceneElements!.push({
     type: 'floor_region', id: 'floor_round',
     points: [
-      { x: 0, z: 5, radius: 1.0, cx: 1, cz: 5 },
-      { x: 2, z: 5 },
-      { x: 2, z: 6 },
+      { x: 0, z: 5, radius: 1.0, cx: 1, cz: 6 },
+      { x: 9, z: 5 },
+      { x: 0, z: 9 },
     ],
   });
   const result = buildProjectDxf(input);
   const entities = parseEntities(result.dxf);
-  const floorLines = linesOn(entities, DXF_LAYERS.F_FLOOR[0]);
-  // 弧采样段数应明显多于 3（直角连接只有 3 条边）
+  // 只取 floor_round 自己的线（z≥5 → DXF y≤−5000；同层还有 floor_living 矩形 z[0,2]，
+  // 不过滤会让「≥6 段」被矩形线空转撑过）。
+  const floorLines = linesOn(entities, DXF_LAYERS.F_FLOOR[0])
+    .filter(([, y1, , y2]) => y1 <= -5000 || y2 <= -5000);
+  // 弧采样段数应明显多于 3（直角连接只有 3 条边；若退化成外接矩形则只有 4 条）
   assert.ok(floorLines.length >= 6, `expected arc-sampled segments, got ${floorLines.length}`);
   assert.ok(entities.some((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.F_FLOOR[0] && e['1'] === 'R1000'));
 });

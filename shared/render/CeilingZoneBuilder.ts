@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { scaleBoxUvToMeters, scalePlaneUvToMeters } from './uv-utils.js';
 import type { CeilingTradeClass } from '../ceiling-takeoff.js';
+import { tangentArc } from '../arc.js';
 
 /** Plan corners of a ceiling zone footprint, in the area `[x1, z1, x2, z2]` order. */
 export type CeilingCorner = 'nw' | 'ne' | 'se' | 'sw';
@@ -252,15 +253,25 @@ export function buildMixedRectangleOutline(
     if (fillet > 0) {
       // 声明了开口象限 → 镜像凹弧：沿两邻边往回跑 R，弧心在 corner − R·(dirIn+dirOut)，
       // 填补声明象限的开口（跨分区拐肘；默认方向会扎进邻区体量）。
+      // 切点/弧心走 shared/arc.ts 的 tangentArc（2026-11-07 issue #98 第三阶段 S2）：
+      // 把两邻边方向合成邻点传进去即得同一组切点与弧心——正交角下 r/tan(θ/2)=r、
+      // r/sin(θ/2)=r√2，弧心正是 corner ± R·(dirIn+dirOut)，不再本地推第二套弧心公式。
       const sign = openQuadrants?.[event.key] ? -1 : 1;
-      entry = { x: point.x + sign * dirIn.x * fillet, z: point.z + sign * dirIn.z * fillet };
-      exit = { x: point.x + sign * dirOut.x * fillet, z: point.z + sign * dirOut.z * fillet };
-      arc = {
-        center: { x: point.x + sign * (dirIn.x + dirOut.x) * fillet, z: point.z + sign * (dirIn.z + dirOut.z) * fillet },
-        start: entry,
-        end: exit,
-      };
+      const tangent = tangentArc(
+        point,
+        { x: point.x + sign * dirIn.x * fillet, z: point.z + sign * dirIn.z * fillet },
+        { x: point.x + sign * dirOut.x * fillet, z: point.z + sign * dirOut.z * fillet },
+        fillet,
+      );
+      if (!tangent) return null;
+      entry = tangent.start;
+      exit = tangent.end;
+      arc = { center: tangent.center, start: tangent.start, end: tangent.end };
     } else if (round > 0) {
+      // 凸圆角是**角心弧**（弧心 = 角点、切点距角点 r），不是切线弧——descriptor 解出的
+      // 弧心在角点外 r√2 处，两种几何故意不同（切掉的材料 = r²(1−π/4)，见
+      // shared/ceiling-takeoff.ts 的 CORNER_AREA_K）。此处无 r/tan、r/sin 公式可统一，
+      // 保留直写；要改成切线fillet 会同时改渲染与算量面积，不属于几何统一切片。
       entry = { x: point.x - dirIn.x * round, z: point.z - dirIn.z * round };
       exit = { x: point.x + dirOut.x * round, z: point.z + dirOut.z * round };
       arc = { center: { x: point.x, z: point.z }, start: entry, end: exit };
@@ -372,14 +383,27 @@ function buildCoveSegments(
     const { key, point, dirIn, dirOut } = event;
     const r = fillets[key] > 0 ? fillets[key] : radii[key];
     if (fillets[key] > 0) {
-      const entry = { x: point.x + dirIn.x * r, z: point.z + dirIn.z * r };
-      const exit = { x: point.x + dirOut.x * r, z: point.z + dirOut.z * r };
-      const center = { x: point.x + (dirIn.x + dirOut.x) * r, z: point.z + (dirIn.z + dirOut.z) * r };
-      const both = edgeDeclared(event.edgeIn) && edgeDeclared(event.edgeOut);
-      // 统一规则：拐肘/凸圆角都只在两邻边都声明弧面时包裹——
-      // 包裹让弧线转过角去（扎进墙或连续到邻带）；单边声明时在切点干净截断，
-      // 不做悬空的 flare 收尾（DEC-2026-10-08-R01 业主评审判丑后统一）。
-      segments.push({ kind: 'corner', included: both, points: both ? [entry, ...arcSamples(center, entry, exit), exit] : [entry, exit], center, radial: 'inward' });
+      // 切点/弧心走 shared/arc.ts 的 tangentArc（2026-11-07 issue #98 第三阶段 S2，
+      // 与 buildMixedRectangleOutline 同一口径：正交角下弧心 = corner + R·(dirIn+dirOut)）。
+      // 解不出时按方角直连——正交邻边 + r>0 时 descriptor 必解得出，此分支只为类型完备。
+      const tangent = tangentArc(
+        point,
+        { x: point.x + dirIn.x * r, z: point.z + dirIn.z * r },
+        { x: point.x + dirOut.x * r, z: point.z + dirOut.z * r },
+        r,
+      );
+      if (!tangent) {
+        segments.push({ kind: 'corner', included: false, points: [point], radial: 'inward' });
+      } else {
+        const entry = tangent.start;
+        const exit = tangent.end;
+        const center = tangent.center;
+        const both = edgeDeclared(event.edgeIn) && edgeDeclared(event.edgeOut);
+        // 统一规则：拐肘/凸圆角都只在两邻边都声明弧面时包裹——
+        // 包裹让弧线转过角去（扎进墙或连续到邻带）；单边声明时在切点干净截断，
+        // 不做悬空的 flare 收尾（DEC-2026-10-08-R01 业主评审判丑后统一）。
+        segments.push({ kind: 'corner', included: both, points: both ? [entry, ...arcSamples(center, entry, exit), exit] : [entry, exit], center, radial: 'inward' });
+      }
     } else if (r > 0) {
       const entry = { x: point.x - dirIn.x * r, z: point.z - dirIn.z * r };
       const exit = { x: point.x + dirOut.x * r, z: point.z + dirOut.z * r };

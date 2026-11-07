@@ -461,11 +461,14 @@ function emitCeiling(writer: DxfWriter, zones: CeilingZone[], warnings: string[]
     const [bx, by] = toDxf(Math.max(x1, x2), Math.max(z1, z2));
     writer.addPolyline(DXF_LAYERS.C_CEIL[0], [[ax, ay], [bx, ay], [bx, by], [ax, by]], true);
     // 声明了圆角/阴角弧的分区（codex 七审 major）：DXF 出的是矩形包络，不可直接按线放样。
+    // 这是**有意分歧**不算重复事实：3D 与算量的弧口径走 shared/arc.ts 的 tangentArc
+    // （切点/弧心 descriptor）+ CeilingZoneBuilder 采样，DXF 施工图只给矩形外包络，
+    // 放线以 3D/算量口径为准——warning 点名 descriptor，避免读者去找第三套弧词汇。
     const rounded = (zone.corner_radius ?? 0) > 0 || Object.keys(zone.corner_radii ?? {}).length > 0 || Object.keys(zone.concave_fillets ?? {}).length > 0;
     const approxSuffix = rounded
       ? (inputLabels === 'ascii' ? ' RECT-ENVELOPE ONLY-NO FILLET' : ' 矩形示意-圆角未表达')
       : '';
-    if (rounded) warnings.push(`ceiling ${zone.id}: 声明了圆角/阴角弧，DXF 为矩形包络示意，不可直接放线`);
+    if (rounded) warnings.push(`ceiling ${zone.id}: 声明了圆角/阴角弧（切点/弧心见 shared/arc.ts 的 tangentArc），DXF 为矩形包络示意，不可直接放线`);
     writer.addText(DXF_LAYERS.C_CEIL[0], ax, by + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
       label(`${zone.id} ${zone.type}${zone.thickness !== undefined ? ` T${zone.thickness}` : ''}${approxSuffix}`, `${zone.id} ${zone.type}`));
   }

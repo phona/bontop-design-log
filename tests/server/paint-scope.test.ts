@@ -7,8 +7,8 @@ import { load } from 'js-yaml';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { parseOverlay, mergeSceneElements } from '../../server/overlay-merge.js';
 import { buildPaintCostComparison, computePaintScopeForLayout, loadPaintComparisonConfig, loadPaintScopeInputs } from '../../server/paint-cost-comparison.js';
-import { doorGapsOnWall } from '../../shared/paint-scope.js';
 import { computePaintScope, type PaintRegionInput, type PaintWallInput, type PaintWindowInput } from '../../shared/paint-scope.js';
+import { openingsAlongWall } from '../../shared/wall-segments.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { loadCeilingConfig } from '../../server/config-loader.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
@@ -344,7 +344,7 @@ test('paint wall segments and ceiling footprints are independently selected and 
   const inputs = loadPaintScopeInputs();
   const openingGapsByWall = new Map<string, Array<{ from: number; to: number; bottom: number; top: number }>>();
   for (const wall of resolveLayout(MG).walls as any[]) {
-    const gaps = doorGapsOnWall({
+    const gaps = openingsAlongWall({
       id: wall.id, x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2,
       ...(wall.segments ? { segments: wall.segments } : {}),
       ...(wall.height !== undefined ? { height: wall.height } : {}),

@@ -699,20 +699,11 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
               ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
               : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
           });
-      const pointAt = (distance: number): Point | null => {
-        let remaining = distance;
-        for (const segment of polyline) {
-          const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
-          if (length <= 1e-9) continue;
-          if (remaining <= length + 1e-9) {
-            const t = Math.min(1, Math.max(0, remaining / length));
-            return { x: segment.x1 + (segment.x2 - segment.x1) * t, z: segment.z1 + (segment.z2 - segment.z1) * t };
-          }
-          remaining -= length;
-        }
-        return null;
-      };
-      const total = polyline.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
+      // along 插值与总长：与 wall_region / paint_region 分支及 DXF 导出共用
+      // shared/wall-segments.ts 的单一实现（原 inline 第五份 pointAt 副本，
+      // 2026-11-07 issue #98 第三阶段 S2 删除）。
+      const pointAt = (distance: number): Point | null => pointAlongPolyline(polyline, distance);
+      const total = polylineLength(polyline);
       if (!(total > 0)) {
         report.unsupported.push(`${id}: sill_region target ${element.element} resolved to zero-length run`);
         return;

@@ -6,7 +6,6 @@ import { load } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import {
   computeMasonryTakeoff,
-  masonryOpeningSpans,
   masonryPointAt,
   masonryTileableWallLength,
   masonryUnionLength,
@@ -14,6 +13,7 @@ import {
   type MasonryTakeoffInput,
   type MasonryWallInput,
 } from '../../shared/masonry-takeoff.js';
+import { openingsAlongWall } from '../../shared/wall-segments.js';
 
 // 瓦工算量子系统（shared/masonry-takeoff.ts）。DEC-2026-10-13「预算计算架构根治」阶段 2 第一半。
 // 四道防线：
@@ -485,7 +485,7 @@ test('纯函数：墙长 / 沿线取点 / 洞口投影 / union', () => {
     z2: 2.86,
     openings: [{ id: 'd_mbath', type: 'door', x: 1.55, z: 2.86, width: 0.8, height: 2.1 }],
   };
-  const spans = masonryOpeningSpans(withOpening);
+  const spans = openingsAlongWall(withOpening);
   assert.equal(spans.length, 1);
   close(spans[0].from, 1.15, 'offset 语义是「锚点到洞口中心」，与 layout-resolver 同口径');
   close(spans[0].to, 1.95);

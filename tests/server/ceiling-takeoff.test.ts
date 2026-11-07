@@ -87,6 +87,10 @@ test('逐分区净面积与声明一致（含圆角/阴角修正）', () => {
 });
 
 test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）一致', () => {
+  // 2026-11-07（issue #98 第三阶段 S2）：buildMixedRectangleOutline 的凹角切点/弧心已改走
+  // shared/arc.ts 的 tangentArc，所以本断言现在就是「闭式 vs descriptor 采样」的分区级实例；
+  // 与具体分区无关的通用属性版本（budget 圆弓 r²(θ−sinθ)/2、ceiling K = 1−π/4 对同一
+  // descriptor 采样，跨半径/夹角网格）见 tests/server/shared/arc.test.ts。
   for (const id of ['ceiling_living', 'ceiling_master_ac', 'ceiling_dining_west_band', 'ceiling_dining_north_band']) {
     const measured = byId.get(id)!;
     const rendered = outlineArea(id);
