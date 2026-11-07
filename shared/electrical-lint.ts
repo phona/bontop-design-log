@@ -5,7 +5,7 @@ import type {
   FurnishingsYaml,
   ResolvedLayout,
 } from './types.js';
-import { pointWallIndexFromElements, resolvePointPlacementInWalls } from './point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls } from './point-placement.js';
 
 const LIGHT_TYPES = new Set(['ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'night_light']);
 const PANEL_TYPES = new Set(['strong_panel', 'weak_panel']);
@@ -167,10 +167,11 @@ export function lintElectricalTopology(
   }
   const curtainWalls = (context.layout?.walls ?? []).filter((wall) => context.suppressedWallIds?.includes(wall.id));
   // 平面坐标走点位解算器（issue #98 S1）：与 3D/DXF/MEP 同源；无墙上下文的调用方回落声明 x/z
-  // （迁移期断言保证两者相等，容差 0.005m）。
+  // （迁移期断言保证两者相等，容差 0.005m）。mount 挂载点（S2）从同一份 furnishings 建宿主索引。
   const pointWalls = context.layout ? pointWallIndexFromElements(context.layout.walls) : undefined;
+  const mountHosts = context.furnishings ? pointMountHostIndex(Object.values(context.furnishings).flat()) : undefined;
   const planOf = (point: ElectricalPoint): { x: number; z: number } | undefined => {
-    const { placement } = resolvePointPlacementInWalls(point, pointWalls);
+    const { placement } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
     if (placement) return { x: placement.x, z: placement.z };
     return typeof point.x === 'number' && typeof point.z === 'number' ? { x: point.x, z: point.z } : undefined;
   };

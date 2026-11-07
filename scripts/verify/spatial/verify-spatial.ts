@@ -42,6 +42,7 @@ import { buildRenderLightingFixtureHeights, CEILING_MOUNTED_LIGHT_TYPES, ceiling
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
 import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
 import { furnitureHostIndex, resolveFurniturePlacement, type PlacementAnchors } from '../../../shared/furniture-placement.js';
+import { pointMountHostIndex, resolvePointPlacementInWalls } from '../../../shared/point-placement.js';
 import { mepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
 import { parseMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 import { furnitureObjectId } from '../../../shared/furniture-object-id.js';
@@ -230,40 +231,34 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
     }
   }
 
+  // mount 真挂载（issue #98 S2）：点位位置由宿主脸 + along + face_offset 经
+  // shared/point-placement.ts 单一解算器解出，手写 x/z 与 0.01m 贴脸容差校验随之退役。
+  // 声明层校验剩下的三件事：宿主可解（断引用/count-only/越脸在解算器诊断里显形）、
+  // 安装缝合法、房间一致；迁移期另断言「解析结果 == 声明 x/z」（容差 0.005m，S3 删 x/z 后撤销）。
+  const mountHosts = pointMountHostIndex(Object.values(furnishings).flat());
   for (const point of electrical) {
     const anchor = point.mountAnchor;
     if (!anchor) continue;
     if (point.type !== 'night_light') {
-      issues.push({ level: 'error', code: 'furniture_face_mount_wrong_type', entity: point.id, source, message: `furniture-face mount anchor is only supported for night_light, got ${point.type}`, evidence: { anchor } });
+      issues.push({ level: 'error', code: 'furniture_face_mount_wrong_type', entity: point.id, source, message: `furniture-face mount is only supported for night_light, got ${point.type}`, evidence: { anchor } });
       continue;
     }
-    // 挂载点位本期仍是「mount_anchor + 手写 x/z」（升级为真挂载是 S2）：校验的就是手写坐标
-    // 是否落在宿主脸上，缺 x/z 即失败，不猜。
-    if (point.x === undefined || point.z === undefined) {
-      issues.push({ level: 'error', code: 'furniture_face_mount_coordinate_missing', entity: point.id, source, message: `furniture-face mount point ${point.id} has no x/z：挂载升级为真定位前手写坐标是唯一校验输入`, evidence: { anchor } });
+    const { placement, diagnostic } = resolvePointPlacementInWalls(point, undefined, mountHosts);
+    if (!placement || placement.kind !== 'mount') {
+      issues.push({ level: 'error', code: 'furniture_face_mount_unresolvable', entity: point.id, source, message: `night light ${point.id} mount resolution failed: ${diagnostic ?? 'resolver returned nothing'}`, evidence: { furniture_id: anchor.furnitureId, face: anchor.face } });
       continue;
     }
-    const host = placed.get(anchor.furnitureId);
-    if (!host) {
-      issues.push({ level: 'error', code: 'furniture_face_mount_host_missing', entity: point.id, source, message: `night light ${point.id} references missing placed furniture ${anchor.furnitureId}`, evidence: { furniture_id: anchor.furnitureId } });
-      continue;
-    }
-    const { minX, maxX, minZ, maxZ } = host.bounds;
-    const axisClearance = 0.055;
-    const faceDistance = anchor.face === 'north' ? Math.abs(point.z - minZ)
-      : anchor.face === 'south' ? Math.abs(point.z - maxZ)
-        : anchor.face === 'west' ? Math.abs(point.x - minX)
-          : Math.abs(point.x - maxX);
-    const withinFace = anchor.face === 'north' || anchor.face === 'south'
-      ? point.x >= minX + axisClearance && point.x <= maxX - axisClearance
-      : point.z >= minZ + axisClearance && point.z <= maxZ - axisClearance;
-    if (faceDistance > 0.01 || !withinFace) {
-      issues.push({ level: 'error', code: 'furniture_face_mount_outside_face', entity: point.id, source, message: `night light ${point.id} does not fit on ${anchor.face} face of ${anchor.furnitureId}`, evidence: { point: { x: point.x, z: point.z }, host_bounds: host.bounds, face: anchor.face, face_distance: faceDistance, axis_clearance: axisClearance } });
+    if (point.x !== undefined && point.z !== undefined) {
+      const drift = Math.hypot(placement.x - point.x, placement.z - point.z);
+      if (drift > 0.005) {
+        issues.push({ level: 'error', code: 'furniture_face_mount_outside_face', entity: point.id, source, message: `night light ${point.id} resolved mount position (${placement.x.toFixed(4)}, ${placement.z.toFixed(4)}) diverges from declared x/z (${point.x}, ${point.z}) by ${(drift * 1000).toFixed(1)}mm (>5mm migration assertion)`, evidence: { resolved: { x: placement.x, z: placement.z }, declared: { x: point.x, z: point.z }, furniture_id: anchor.furnitureId, face: anchor.face } });
+      }
     }
     if (anchor.surfaceGap !== undefined && (anchor.surfaceGap < 0 || anchor.surfaceGap > 0.02)) {
       issues.push({ level: 'error', code: 'furniture_face_mount_gap_invalid', entity: point.id, source, message: `night light ${point.id} surface_gap must be between 0 and 0.02m`, evidence: { surface_gap: anchor.surfaceGap, furniture_id: anchor.furnitureId } });
     }
-    if (host.room !== point.room) {
+    const host = placed.get(anchor.furnitureId);
+    if (host && host.room !== point.room) {
       issues.push({ level: 'warning', code: 'furniture_face_mount_room_mismatch', entity: point.id, source, message: `night light ${point.id} is assigned to ${point.room} but its furniture host is in ${host.room}`, evidence: { furniture_id: anchor.furnitureId, point_room: point.room, host_room: host.room } });
     }
   }

@@ -1,13 +1,17 @@
-# ── 定位声明（2026-11-07 issue #98 第四阶段 S1，设计文档 §4.3/§4.4）──────────────────
-# 四种互斥定位来源之一：wall + along（沿墙）/ mount（家具挂载，S2 启用）/ anchor（锚点引用，
-# S4 启用）/ absolute（绝对坐标）。x/z 是**迁移期断言字段**：shared/point-placement.ts 的
-# 解析结果与声明值差 >0.005m 即 fail（tests/server/point-placement.test.ts 固化），全量转
+# ── 定位声明（2026-11-07 issue #98 第四阶段 S1/S2，设计文档 §4.3/§4.4）────────────────
+# 四种互斥定位来源之一：wall + along（沿墙）/ mount（家具挂载，S2 起为真定位来源）/ anchor
+# （锚点引用，S4 启用）/ absolute（绝对坐标）。x/z 是**迁移期断言字段**：shared/point-placement.ts
+# 的解析结果与声明值差 >0.005m 即 fail（tests/server/point-placement.test.ts 固化），全量转
 # along 且断言全绿后（S3）删除。
 # along 起算 = 墙段起点顶点 (x1,z1) 沿折线累计（与家具摆位、洞口投影同一口径）。
-# face_offset = 离开完成面的附加量（默认 0 = 完成面，wallFaceOffset 口径 A = 0.068m）；
-# 本期沿墙点位的 face_offset 一律取「声明垂直分量 − 0.068」——绝大多数点位的历史 x/z 压在
-# 120mm 墙身中心线上（旧口径），面偏移抵掉后解析结果才等于声明值；S2/S3 连同 x/z 一并裁成
-# 显式意图值。沿墙点位的 3D/DXF 落位 = 墙线 datum + 薄板惯例 0.075m（业主 2026-11-07 裁定
+# face_offset = 离开完成面的附加量（默认 0 = 完成面；完成面 = 墙线 ± WALL_THICKNESS/2 = ±0.06，
+# 2026-11-06 业主口径 A，声明唯一在 shared/furniture-placement.ts）。S2 重标定：S1 迁移期的
+# face_offset（声明垂直分量 − 0.068，把漆面/踢脚防 z-fighting 缝隙 0.008 折进了坐标语义）全部
+# 改回「声明垂直分量 − 0.06」的意图值——中心线组 65 个 −0.068→−0.06、东脸 0.10m 惯用偏移组
+# 10 个 0.032→0.04（显式声明「完成面 + 0.04 惯用偏移」）、完成面组 3 个 −0.008→删（=默认 0）、
+# sock_gbath_robot 0.082→0.09（0.09 是旧口径遗留的数据错误，note 已判「旧坐标不得用于下单」，
+# 本期只登记不修投影，迁机器人仓侧面属阶段五）。解析结果与声明 x/z 逐点不变（断言口径）。
+# 沿墙点位的 3D/DXF 落位 = 墙线 datum + 薄板惯例 0.075m（业主 2026-11-07 裁定
 # 「DXF 迁就 3D 投影」），与 face_offset 无关。
 # ─────────────────────────────────────────────────────────────────────────────
 - id: sock_living_tv
@@ -15,7 +19,7 @@
   wall: w_st_east
   wall_side: east
   along: 2.15
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 7.20
   z: 7.7
@@ -30,7 +34,7 @@
   wall: w_st_east
   wall_side: east
   along: 2.15
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 7.20
   z: 7.70
@@ -44,7 +48,7 @@
   wall: w_st_east
   wall_side: east
   along: 2.15
-  face_offset: -0.068
+  face_offset: -0.06
   type: network
   x: 7.20
   z: 7.7
@@ -80,7 +84,7 @@
   wall: w_be_west
   wall_side: west
   along: 3.58
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 13.40
   z: 8.40
@@ -106,7 +110,7 @@
   wall: w_gbath_east
   wall_side: east
   along: 0.9
-  face_offset: 0.032
+  face_offset: 0.04
   type: socket
   x: 7.30
   z: 3.30
@@ -120,7 +124,7 @@
   wall: w_gbath_east_open_vanity
   wall_side: east
   along: 0.35
-  face_offset: 0.032
+  face_offset: 0.04
   type: socket
   x: 7.30
   z: 3.90
@@ -169,7 +173,7 @@
   wall: w_ent_south_w_east
   wall_side: south
   along: 0.33
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 13.10
   z: 3.00
@@ -182,7 +186,7 @@
   wall: w_ent_south_w_east
   wall_side: south
   along: 0.45
-  face_offset: -0.068
+  face_offset: -0.06
   type: ac_controller
   x: 13.22
   z: 3.00
@@ -194,7 +198,7 @@
   wall: w_gbath_east_open_vanity
   wall_side: east
   along: 0.55
-  face_offset: 0.032
+  face_offset: 0.04
   type: ac_controller
   x: 7.30
   z: 4.10
@@ -206,7 +210,7 @@
   wall: w_cent_south
   wall_side: west
   along: 1.62
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 12.77
   z: 4.62
@@ -220,7 +224,7 @@
   wall: w_mb_east
   wall_side: west
   along: 0.652
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 4.20
   z: 6.202
@@ -234,7 +238,7 @@
   wall: w_mb_east
   wall_side: west
   along: 0.738
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 4.20
   z: 6.288
@@ -248,7 +252,7 @@
   wall: w_mb_east
   wall_side: west
   along: 3.6
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 4.20
   z: 9.15
@@ -261,7 +265,7 @@
   wall: w_mb_east
   wall_side: west
   along: 3.048
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 4.20
   z: 8.598
@@ -275,7 +279,7 @@
   wall: w_strip_east
   wall_side: west
   along: 0.15
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 4.20
   z: 4.45
@@ -288,7 +292,7 @@
   wall: w_mb_east
   wall_side: west
   along: 2.962
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 4.20
   z: 8.512
@@ -304,7 +308,7 @@
   wall: w_mb_east
   wall_side: west
   along: 3.134
-  face_offset: -0.068
+  face_offset: -0.06
   type: ac_controller
   x: 4.20
   z: 8.684
@@ -342,7 +346,7 @@
   wall: w_mb_east
   wall_side: east
   along: 3.35
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 4.20
   z: 8.90
@@ -356,7 +360,7 @@
   wall: w_st_north
   wall_side: south
   along: 1.875
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 6.075
   z: 5.55
@@ -369,7 +373,7 @@
   wall: w_mb_east
   wall_side: east
   along: 3.6
-  face_offset: -0.068
+  face_offset: -0.06
   type: ac_controller
   x: 4.20
   z: 9.15
@@ -381,7 +385,7 @@
   wall: w_st_east
   wall_side: west
   along: 2.05
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 7.20
   z: 7.60
@@ -394,7 +398,7 @@
   wall: w_st_east
   wall_side: west
   along: 2.05
-  face_offset: -0.068
+  face_offset: -0.06
   type: network
   x: 7.20
   z: 7.60
@@ -408,7 +412,7 @@
   wall: w_be_west
   wall_side: east
   along: 3.08
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 13.40
   z: 7.90
@@ -422,7 +426,7 @@
   wall: w_be_west
   wall_side: east
   along: 3.08
-  face_offset: -0.068
+  face_offset: -0.06
   type: network
   x: 13.40
   z: 7.90
@@ -435,7 +439,7 @@
   wall: w_be_north
   wall_side: south
   along: 1.1
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 14.5
   z: 4.82
@@ -448,7 +452,7 @@
   wall: w_be_west
   wall_side: east
   along: 2.18
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 13.40
   z: 7.0
@@ -461,7 +465,7 @@
   wall: w_be_west
   wall_side: east
   along: 2.3
-  face_offset: -0.068
+  face_offset: -0.06
   type: ac_controller
   x: 13.40
   z: 7.12
@@ -474,7 +478,7 @@
   wall: w_gbath_west
   wall_side: west
   along: 1.1
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 5.60
   z: 3.30
@@ -487,7 +491,7 @@
   wall: w_gbath_west
   wall_side: west
   along: 1.014
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 5.60
   z: 3.214
@@ -523,7 +527,7 @@
   wall: w_nw_south
   wall_side: north
   along: 1.875
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 4.475
   z: 4.30
@@ -536,7 +540,7 @@
   wall: w_nw_south
   wall_side: north
   along: 2.925
-  face_offset: -0.068
+  face_offset: -0.06
   type: ac_controller
   x: 5.525
   z: 4.30
@@ -548,7 +552,7 @@
   wall: w_gbath_west_open_vanity
   wall_side: west
   along: 0.45
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 5.60
   z: 4.00
@@ -580,7 +584,7 @@
   wall: w_ent_west
   wall_side: west
   along: 1.3
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 10.80
   z: 1.70
@@ -594,7 +598,7 @@
   wall: w_ent_west
   wall_side: west
   along: 2.35
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 10.80
   z: 0.65
@@ -608,7 +612,7 @@
   wall: w_ent_west
   wall_side: west
   along: 1.5
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 10.80
   z: 1.5
@@ -634,7 +638,7 @@
   wall: w_ent_west
   wall_side: west
   along: 2.8
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 10.80
   z: 0.20
@@ -665,7 +669,7 @@
   wall: w_ent_west
   wall_side: west
   along: 2
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch
   x: 10.80
   z: 1.0
@@ -679,7 +683,7 @@
   wall: w_mbath_south
   wall_side: south
   along: 0.78
-  face_offset: 0.032
+  face_offset: 0.04
   type: socket
   x: 0.78
   z: 2.96
@@ -694,7 +698,7 @@
   wall: w_mbath_east
   wall_side: west
   along: 0.4
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 2.60
   z: 1.5
@@ -719,7 +723,6 @@
   wall: w_gbath_east_open_vanity
   wall_side: west
   along: 0.565
-  face_offset: -0.008
   type: socket
   x: 7.14
   z: 4.115
@@ -734,7 +737,6 @@
   wall: w_gbath_east_open_vanity
   wall_side: west
   along: 0.651
-  face_offset: -0.008
   type: socket
   x: 7.14
   z: 4.201
@@ -762,7 +764,7 @@
   wall: w_balc_west
   wall_side: east
   along: 0.5
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 5.60
   z: 1.5
@@ -777,7 +779,7 @@
   wall: w_balc_west
   wall_side: east
   along: 0.8
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 5.60
   z: 1.8
@@ -791,7 +793,7 @@
   wall: w_vrv_east
   wall_side: east
   along: 1
-  face_offset: 0.032
+  face_offset: 0.04
   type: socket
   x: 7.30
   z: 1.00
@@ -806,7 +808,7 @@
   wall: w_vrv_east
   wall_side: east
   along: 0.5
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 7.20
   z: 0.50
@@ -822,7 +824,7 @@
   wall: w_ent_west
   wall_side: west
   along: 0.02
-  face_offset: -0.068
+  face_offset: -0.06
   type: strong_panel
   x: 10.80
   z: 2.98
@@ -839,7 +841,7 @@
   wall: w_ent_west
   wall_side: west
   along: 0.02
-  face_offset: -0.068
+  face_offset: -0.06
   type: weak_panel
   x: 10.80
   z: 2.98
@@ -856,7 +858,7 @@
   wall: w_blk_west
   wall_side: west
   along: 0.23
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 10.80
   z: 3.23
@@ -870,7 +872,7 @@
   wall: w_ent_west
   wall_side: east
   along: 0.8
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 10.80
   z: 2.20
@@ -884,7 +886,7 @@
   wall: w_ent_west
   wall_side: east
   along: 2.5
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch
   x: 10.80
   z: 0.5
@@ -898,7 +900,7 @@
   wall: w_gbath_east_open_vanity
   wall_side: east
   along: 0.67
-  face_offset: 0.032
+  face_offset: 0.04
   type: switch
   x: 7.30
   z: 4.22
@@ -911,7 +913,7 @@
   wall: w_gbath_east_open_vanity
   wall_side: east
   along: 0.43
-  face_offset: 0.032
+  face_offset: 0.04
   type: switch
   x: 7.30
   z: 3.98
@@ -944,7 +946,7 @@
   wall: w_mb_east
   wall_side: west
   along: 4.125
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 4.20
   z: 9.675
@@ -963,7 +965,7 @@
   wall: w_st_east
   wall_side: west
   along: 4.125
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 7.20
   z: 9.675
@@ -983,7 +985,7 @@
   wall: w_be_west
   wall_side: east
   along: 4.935
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 13.40
   z: 9.755
@@ -1023,7 +1025,7 @@
   wall: w_gbath_east
   wall_side: west
   along: 0.65
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 7.20
   z: 3.05
@@ -1075,7 +1077,7 @@
   wall: w_st_east
   wall_side: east
   along: 0.15
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 7.20
   z: 5.70
@@ -1092,7 +1094,7 @@
   wall: w_st_east
   wall_side: east
   along: 0.15
-  face_offset: -0.068
+  face_offset: -0.06
   type: network
   x: 7.20
   z: 5.70
@@ -1118,7 +1120,7 @@
   wall: w_st_east
   wall_side: east
   along: 2.15
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 7.20
   z: 7.7
@@ -1256,7 +1258,7 @@
   wall: w_gbath_west_open_vanity
   wall_side: east
   along: 0.405
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 5.60
   z: 3.955
@@ -1275,14 +1277,14 @@
   wall: w_gbath_east_open_vanity
   wall_side: west
   along: 0.55
-  face_offset: 0.082
+  face_offset: 0.09
   type: socket
   x: 7.05
   z: 4.10
   height: 0.3
   count: 1
   status: inferred
-  note: "扫地机基站电源（DEC-2026-09-09-R1：主位客卫台盆下，东墙低位常插，带防溅盒；进水由 faucet_gbath_vanity 三通、排水接入台盆下水；台盆柜须改悬空/无底开放格藏基站（≥0.5m 净高），家具深化落实；客卫洗漱区南缘开放无门，机器人自由进出；基站尺寸待机型定标+量房核实——2026-11-04 业主官方核实 410×433×280mm 已完成）；DEC-2026-10-17-R20 补登记：本点 z=4.10 与基站包络 z[3.71,4.14] 存在重叠，常插可接受，可检修性（拔插需移出基站）随台盆柜深化确认；DEC-2026-11-04-R3：改专用机器人仓后本点迁柜体侧面、带开关，坐标待仓位图；2026-11-04晚主选：专用仓落客卫台盆下开放格（正面门板遮上半、底缝150mm、两侧各5cm、顶部空到盆底），本点仍迁仓侧面、带开关、基站1.5m内，旧坐标不得用于下单，侧板深化后定新坐标；格净宽≥0.51m、深≥0.45m、前方约0.88m保守值、水电走侧边（此四项为本轮补入插座 note 的上下文，PR 内未删过，见 house.yaml / DEC R4 / procurement.md）；2026-11-04 救回待核（源自作废半嵌入草稿 d9c9603，未经 Codex 审查，不得当事实写）：上下水接口走后方或侧面、不压基站正下方；进水角阀高度核 0.12–0.18m；排水口须低于基站排水口（重力排水）。三项与 bay 几何无关，开放格同样适用，待 JX 安装手册与现场核实后方可判通过，不得据此下单。status: inferred（2026-11-06 issue #98 PR-4 显式申报）——现坐标 (7.05,4.10) 是塞柜底方案旧位（仓+抽屉定案几何见 gbath.vanity / gbath.robot_dock，DEC-2026-11-05-R5），属设计推断占位、迁仓侧面带开关后的新坐标待侧板深化，不得凭本条下单；安装项本身（仓侧面 10A 带开关、基站 1.5m 内）是确定项，故底盒量照计；note 内 DEC 引用是决策沿革，不构成点位已确认"
+  note: "扫地机基站电源（DEC-2026-09-09-R1：主位客卫台盆下，东墙低位常插，带防溅盒；进水由 faucet_gbath_vanity 三通、排水接入台盆下水；台盆柜须改悬空/无底开放格藏基站（≥0.5m 净高），家具深化落实；客卫洗漱区南缘开放无门，机器人自由进出；基站尺寸待机型定标+量房核实——2026-11-04 业主官方核实 410×433×280mm 已完成）；DEC-2026-10-17-R20 补登记：本点 z=4.10 与基站包络 z[3.71,4.14] 存在重叠，常插可接受，可检修性（拔插需移出基站）随台盆柜深化确认；DEC-2026-11-04-R3：改专用机器人仓后本点迁柜体侧面、带开关，坐标待仓位图；2026-11-04晚主选：专用仓落客卫台盆下开放格（正面门板遮上半、底缝150mm、两侧各5cm、顶部空到盆底），本点仍迁仓侧面、带开关、基站1.5m内，旧坐标不得用于下单，侧板深化后定新坐标；格净宽≥0.51m、深≥0.45m、前方约0.88m保守值、水电走侧边（此四项为本轮补入插座 note 的上下文，PR 内未删过，见 house.yaml / DEC R4 / procurement.md）；2026-11-04 救回待核（源自作废半嵌入草稿 d9c9603，未经 Codex 审查，不得当事实写）：上下水接口走后方或侧面、不压基站正下方；进水角阀高度核 0.12–0.18m；排水口须低于基站排水口（重力排水）。三项与 bay 几何无关，开放格同样适用，待 JX 安装手册与现场核实后方可判通过，不得据此下单。status: inferred（2026-11-06 issue #98 PR-4 显式申报）——现坐标 (7.05,4.10) 是塞柜底方案旧位（仓+抽屉定案几何见 gbath.vanity / gbath.robot_dock，DEC-2026-11-05-R5），属设计推断占位、迁仓侧面带开关后的新坐标待侧板深化，不得凭本条下单；安装项本身（仓侧面 10A 带开关、基站 1.5m 内）是确定项，故底盒量照计；note 内 DEC 引用是决策沿革，不构成点位已确认；2026-11-07 issue #98 S2 登记：face_offset=0.09（声明 x/z 站在离完成面 +0.09m 处，即离墙线 0.15m）是塞柜底方案旧口径遗留的数据错误，note 上文已判「旧坐标不得用于下单」——本期只登记不修投影（解析结果仍等于声明 x/z，verify-point-placement 的 0.15m 离墙 warning 保持显形），迁机器人仓侧面后的新 face_offset（预期归 0/贴脸）属阶段五家具深化，随侧板深化一并落。"
 
 # 客厅电视柜北段高柜底格（备用手动换水版路线：美观隐藏位，只用电）
 - id: sock_living_robot
@@ -1290,7 +1292,7 @@
   wall: w_st_east
   wall_side: east
   along: 0.85
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 7.20
   z: 6.40
@@ -1313,7 +1315,7 @@
   wall: w_east_upper
   wall_side: west
   along: 2.58
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 16.40
   z: 7.30
@@ -1328,7 +1330,7 @@
   wall: w_east_upper
   wall_side: west
   along: 1.98
-  face_offset: -0.068
+  face_offset: -0.06
   type: socket
   x: 16.40
   z: 7.90
@@ -1343,7 +1345,7 @@
   wall: w_east_upper
   wall_side: west
   along: 1.33
-  face_offset: -0.068
+  face_offset: -0.06
   type: switch_2way
   x: 16.40
   z: 8.55
@@ -1357,7 +1359,7 @@
   wall: w_be_west
   wall_side: east
   along: 2.78
-  face_offset: -0.068
+  face_offset: -0.06
   type: night_light
   x: 13.40
   z: 7.60
@@ -1370,7 +1372,7 @@
   wall: w_east_upper
   wall_side: west
   along: 1.33
-  face_offset: -0.068
+  face_offset: -0.06
   type: night_light
   x: 16.40
   z: 8.55
@@ -1386,7 +1388,7 @@
   wall: w_be_west
   wall_side: west
   along: 2.08
-  face_offset: -0.068
+  face_offset: -0.06
   type: night_light
   x: 13.40
   z: 6.90
@@ -1399,7 +1401,7 @@
   wall: w_cent_south
   wall_side: west
   along: 1.37
-  face_offset: -0.068
+  face_offset: -0.06
   type: night_light
   x: 12.77
   z: 4.37
@@ -1408,37 +1410,38 @@
   note: "起夜 NP-4a 客厅北段灯（R15）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-4a 客厅北段灯为设计声明→inferred；挂 w_liv_east 客厅侧，位置为设计值未实测；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随中竖墙西移至（12.77,4.37），挂 w_cent_south 西脸，距北厚墙角 4.82 南退 0.45m（原 5.55 角南退 0.45m 口径不变）。"
   status: inferred
 
-# 柜面挂载起夜灯（A 组）：mount_anchor 是宿主绑定（身份与校验），平面位置本期仍是手写 x/z，
-# 故按 absolute 声明；升级为 mount 定位来源（宿主脸 + surface_gap 解析）是 S2，见文件头。
+# 柜面挂载起夜灯（A 组，issue #98 S2 升级为真挂载）：定位来源 = mount（宿主脸 + along + face_offset
+# + surface_gap），平面位置由宿主家具几何解出（shared/point-placement.ts resolveMountedPoint），
+# 宿主移动灯自动跟随——原 mount_anchor（身份注记 + 手写 x/z 人工同步）已废。along 起算 = 宿主
+# 脸轴负端（东西脸自 minZ 向北、南北脸自 minX 向东）；face_offset = 离脸平面的附加量。
 - id: night_living_mid
   room: living_dining
   type: night_light
-  mount_anchor:
-    kind: furniture_face
+  mount:
     furniture_id: "ld.entry_half_height_cabinet"
     face: east
+    along: 1.45
+    face_offset: 0.005
     surface_gap: 0.003
-  absolute: true
   x: 11.42
   z: 4.80
   height: 0.30
   circuit: entry_base
-  note: "起夜链中位补点（DEC-2026-10-17-R20）：night_living_north (13.40,5.10)→night_corridor (7.45,5.55) 之间约 6m 无低位引导，起夜主路径（客房门→走廊口）断链；吸附 entry_half_height_cabinet 东脸北端（面朝东侧主通道），仿 night_corridor (NP-5) 口径；固定方式/暗藏供电/感应朝向待柜体深化，site_pending。furniture_id 按稳定对象 id 绑定（issue #98 全屋 placed 家具已带 id，房间内重排不改 id，不再依赖 placed 序号）：宿主为 config/house.yaml living_dining 的 entry_half_height_cabinet，id ld.entry_half_height_cabinet；2026-10-25 DEC-2026-10-25-R01：随半高柜西移至东脸 11.415+0.005=11.42，z 不变。"
+  note: "起夜链中位补点（DEC-2026-10-17-R20）：night_living_north (13.40,5.10)→night_corridor (7.45,5.55) 之间约 6m 无低位引导，起夜主路径（客房门→走廊口）断链；吸附 entry_half_height_cabinet 东脸北端（面朝东侧主通道），仿 night_corridor (NP-5) 口径；固定方式/暗藏供电/感应朝向待柜体深化，site_pending。furniture_id 按稳定对象 id 绑定（issue #98 全屋 placed 家具已带 id，房间内重排不改 id，不再依赖 placed 序号）：宿主为 config/house.yaml living_dining 的 entry_half_height_cabinet，id ld.entry_half_height_cabinet；2026-10-25 DEC-2026-10-25-R01：随半高柜西移至东脸 11.415+0.005=11.42，z 不变。2026-11-07 issue #98 S2：mount_anchor（身份注记 + 手写 x/z 人工同步）升级为真挂载定位声明 mount——along=1.45 自东脸轴南端（z=3.35）向北累计、face_offset=0.005 系 R01 手工同步遗留（东脸 11.415+0.005=11.42，S2 显式化登记，柜体深化时可归零），surface_gap 0.003 缝隙由 NightLightGeometry 灯体偏移沿用；宿主移动灯自动跟随，x/z 降级为迁移期断言字段（解析结果必须等于声明值，S3 删）。"
 
 # 起夜路径 NP-5（主走廊）
 - id: night_corridor
   room: living_dining
   type: night_light
-  mount_anchor:
-    kind: furniture_face
+  mount:
     furniture_id: "ld.wall_cabinet_tall"
     face: north
+    along: 0.25
     surface_gap: 0.003
-  absolute: true
   x: 7.45
   z: 5.55
   height: 0.30
   circuit: entry_base
-  note: "起夜 NP-5 走廊口低位灯：吸附到 wall_cabinet_tall 北端板（ld.wall_cabinet_tall），面向走廊北侧，完成面缝隙 3mm；不设通道落地柱。柜体端板固定方式、暗藏供电和感应朝向待柜体/水电深化，site_pending；light_corridor_1 日常下照仅作兜底。；状态依据：status 归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-5 走廊口低位灯→inferred；position_status 吸附柜体端板，固定/暗藏供电/感应朝向待柜体与水电深化（note 原文 site_pending）→pending"
+  note: "起夜 NP-5 走廊口低位灯：吸附到 wall_cabinet_tall 北端板（ld.wall_cabinet_tall），面向走廊北侧，完成面缝隙 3mm；不设通道落地柱。柜体端板固定方式、暗藏供电和感应朝向待柜体/水电深化，site_pending；light_corridor_1 日常下照仅作兜底。；状态依据：status 归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-5 走廊口低位灯→inferred；position_status 吸附柜体端板，固定/暗藏供电/感应朝向待柜体与水电深化（note 原文 site_pending）→pending。2026-11-07 issue #98 S2：mount_anchor（身份注记 + 手写 x/z）升级为真挂载定位声明 mount——along=0.25 自北脸轴西端（x=7.20）向东累计、face_offset 缺省 0（贴脸，北脸平面 z=5.55 即原声明值）、surface_gap 0.003 缝隙由 NightLightGeometry 灯体偏移沿用；宿主移动灯自动跟随，x/z 降级为迁移期断言字段（解析结果必须等于声明值，S3 删）。"
   status: inferred
   position_status: pending

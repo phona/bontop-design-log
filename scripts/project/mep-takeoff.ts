@@ -22,7 +22,7 @@ import {
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { computeMepTakeoff, type MepTakeoffRules, type TakeoffCircuit, type TakeoffControl } from '../../shared/mep-takeoff.js';
 import { sourceFile } from '../../shared/envelope-sources.js';
-import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { compareMepQuotes, loadMepQuotes, mepQuoteFallback } from '../../server/mep-quotes.js';
 import type { ElectricalPoint, PlumbingPoint } from '../../shared/types.js';
 
@@ -53,7 +53,7 @@ const rooms = catalog.getRooms();
  * 登记为唯一权威源（口径：合同净面积；与 rooms 多边形毛口径、gift_areas bbox 毛口径、
  * building_area 预测建面**不可直接相加**，见 facts.yaml 的口径分歧登记），此处只读不推。
  */
-const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { project?: { usable_area?: number } };
+const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { project?: { usable_area?: number }; furnishings?: Record<string, Array<Record<string, unknown>>> };
 const AREA_SQM = house.project?.usable_area;
 if (typeof AREA_SQM !== 'number' || !(AREA_SQM > 0)) {
   throw new Error(`config/house.yaml 的 project.usable_area 必须是正数（实际 ${String(AREA_SQM)}）：水电清包人工按㎡计价，面积缺失时不猜`);
@@ -65,7 +65,7 @@ const sources = endpointSourcesFromFacts({
   plumbing,
   ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
   hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
-}, pointWallIndexFromElements(catalog.getWalls()));
+}, pointWallIndexFromElements(catalog.getWalls()), pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never));
 validateMepCoordination(coordination, sources);
 const resolution = resolveMepRoutes(coordination, sources);
 

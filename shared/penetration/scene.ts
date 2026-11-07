@@ -9,6 +9,7 @@ import { parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.
 import { mepPenetrationAt } from '../../shared/condensate-chain.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { buildRenderLightingFixtures } from '../../shared/lighting-fixtures.js';
+import { pointMountHostIndex } from '../../shared/point-placement.js';
 import { glassJoinSpecs, joinDeclarationsOf, suppressedWallIds } from '../suppression.js';
 import { type FurnishingsYaml, type ElectricalPoint, type HvacDiagram, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, OverlayReplacement, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
 
@@ -334,7 +335,12 @@ export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildS
     // 灯具派生只走共享实现 shared/lighting-fixtures.ts（权威投影调用同一个函数）：
     // offset 平移、anchorY_offset 锚点、宿主墙透传、fail-closed 全部只有一份口径，
     // linter 校验的灯因此与 app/GLB 渲染的灯是同一个点位。
-    lightingFixtures: buildRenderLightingFixtures(inputs.electrical, inputs.renderOverrides),
+    // mount 挂载灯（issue #98 S2）的宿主索引从同一份 house.furnishings 建。
+    lightingFixtures: buildRenderLightingFixtures(
+      inputs.electrical,
+      inputs.renderOverrides,
+      pointMountHostIndex(Object.values(inputs.house.furnishings ?? {}).flat()),
+    ),
     options: {
       lighting: inputs.lighting,
       // 冷凝链锚点（issue #98 PR-10）：只给 diagram/sources 与穿墙点，不建 HVAC 实体

@@ -6,6 +6,7 @@ import type {
   ResolvedRoom,
 } from './types.js';
 import { ceilingFootprint, ceilingSurfaceY, isSolidCeilingZone, pointInFootprint } from './mep-hvac-lint.js';
+import { resolvePointPlacement, type PointMountHost } from './point-placement.js';
 
 /**
  * 灯具渲染派生：**唯一实现**。
@@ -18,8 +19,10 @@ import { ceilingFootprint, ceilingSurfaceY, isSolidCeilingZone, pointInFootprint
  *
  * 派生规则（改这里等于同时改渲染与校验，必须连带更新测试）：
  * - 平面位置 = electrical.x/z + overrides.offsetX/offsetZ（缺省 0，`renderCoordinate` 取 6 位小数）；
+ *   mount 定位来源（issue #98 S2 真挂载起夜灯）例外：平面位置 = 解析器宿主脸解果
+ *   （宿主脸 + along + face_offset）+ overrides 偏移——宿主柜移动时灯自动跟随，不再手写 x/z；
  * - 渲染锚点 y = electrical.height（施工安装完成面，唯一事实源）+ overrides.anchorY_offset；
- * - 缺 override、缺 electrical.height、非 night_light 挂 furniture-face mount_anchor → throw（fail-closed）；
+ * - 缺 override、缺 electrical.height、mount 解析失败（宿主断引用/未放置/越脸）→ throw（fail-closed）；
  * - wall/wallSide/mountAnchor 原样透传，漏传会让靠墙/靠家具的灯在建场期抛错。
  */
 
@@ -55,10 +58,13 @@ function deriveAnchorY(height: number, override: RenderLightingOverride): number
 /**
  * 由权威配置派生全部灯具的渲染实体。行为与权威投影内的实现逐字节等价
  * （同一份代码被投影调用），fail-closed：配置缺一项就抛，不猜位置、不兜底高度。
+ * mount 定位来源要求调用方提供家具宿主索引（pointMountHostIndex），缺失即抛——
+ * 不回落声明 x/z（那是被 S2 废掉的旧机制，回落就是再造一个事实源）。
  */
 export function buildRenderLightingFixtures(
   electrical: ElectricalPoint[],
   overrides: RenderLightingOverride[],
+  mountHosts?: ReadonlyMap<string, PointMountHost>,
 ): RenderLightingFixture[] {
   const fixtures = electrical.filter((point) => LIGHT_TYPES.has(point.type));
   const fixtureIds = new Set(fixtures.map((fixture) => fixture.id));
@@ -83,25 +89,40 @@ export function buildRenderLightingFixtures(
     if (fixture.height === undefined) {
       throw new Error(`Lighting fixture ${fixture.id} has no electrical.height: render anchor must derive from the single source of truth`);
     }
-    // x/z 是迁移期断言字段（issue #98 S1）：灯具平面仍是「x/z + overrides 偏移」这套独立口径
-    // （第三套位置口径，灯具渲染不过墙投影），本期不迁；缺 x/z 即 fail-closed，不猜坐标。
-    if (fixture.x === undefined || fixture.z === undefined) {
-      throw new Error(`Lighting fixture ${fixture.id} has no electrical x/z: 灯具平面口径（x/z + overrides）尚未迁 along，缺坐标即失败`);
+    // 平面位置：mount 走解析器宿主脸解果（issue #98 S2 真挂载，宿主移动灯自动跟随）；
+    // 其余灯具仍是「声明 x/z + overrides 偏移」（C 组顶面灯位/绝对基准，与定位迁移无关）。
+    let planeX: number;
+    let planeZ: number;
+    if (fixture.mount !== undefined) {
+      const { placement, diagnostic } = resolvePointPlacement(fixture, undefined, undefined, mountHosts);
+      if (!placement || placement.kind !== 'mount') {
+        throw new Error(`Lighting fixture ${fixture.id}: mount 定位解析失败（${diagnostic ?? '解算器未返回结果'}）`);
+      }
+      planeX = placement.x;
+      planeZ = placement.z;
+    } else {
+      // x/z 是迁移期断言字段（issue #98 S1）：非挂载灯具平面仍是「x/z + overrides 偏移」
+      // 口径（C 组绝对灯位不过墙投影）；缺 x/z 即 fail-closed，不猜坐标。
+      if (fixture.x === undefined || fixture.z === undefined) {
+        throw new Error(`Lighting fixture ${fixture.id} has no electrical x/z: 绝对灯位必须声明坐标`);
+      }
+      planeX = fixture.x;
+      planeZ = fixture.z;
     }
     if (fixture.mountAnchor && fixture.type !== 'night_light') {
-      throw new Error(`Furniture-face mount_anchor is only supported for night_light fixtures: ${fixture.id}`);
+      throw new Error(`Furniture-face mount is only supported for night_light fixtures: ${fixture.id}`);
     }
     return {
       id: fixture.id,
       room: fixture.room,
       type: fixture.type,
       position: {
-        x: renderCoordinate(fixture.x + (override.offsetX ?? 0)),
+        x: renderCoordinate(planeX + (override.offsetX ?? 0)),
         // 渲染锚点在**此处**派生：electrical.height（施工安装完成面，唯一事实源）
         // + overrides.anchorY_offset（渲染侧相对偏移）。overrides.yaml 不再重复
         // 书写高度绝对值，从结构上消灭双写。
         y: renderCoordinate(deriveAnchorY(fixture.height, override)),
-        z: renderCoordinate(fixture.z + (override.offsetZ ?? 0)),
+        z: renderCoordinate(planeZ + (override.offsetZ ?? 0)),
       },
       temperatureK: fixture.temp ?? 3000,
       enabled: true,

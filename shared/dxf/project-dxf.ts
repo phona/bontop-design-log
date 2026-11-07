@@ -16,7 +16,7 @@ import { centerlineSamples } from '../arc-polyline.js';
 
 import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
-import { pointWallIndexFromElements, resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointPlacementInput, type PointWall } from '../point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall } from '../point-placement.js';
 import { DxfWriter } from './dxf-writer.js';
 
 /** 图层清单（ASCII；CAD 侧按专业开关）。颜色为 ACI 色号。 */
@@ -126,8 +126,12 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     if (element.type === 'wall') wallsById.set(element.id, element);
   }
   // 点位宿主墙索引（issue #98 S1）：电气/给排水点位与 MEP 端点共用 shared/point-placement.ts
-  // 单一解算（along 沿折线累计 + wallFaceOffset + 侧别法线），不再直读声明 x/z。
+  // 单一解算（along 沿折线累计 + 口径 A 完成面 + 侧别法线），不再直读声明 x/z。
   const pointWalls: ReadonlyMap<string, PointWall> = pointWallIndexFromElements(wallsById.values());
+  // mount 挂载点位宿主索引（issue #98 S2）：与家具摆位同一份 furnishings 来源。
+  const pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined = house.furnishings === undefined
+    ? undefined
+    : pointMountHostIndex(Object.values(house.furnishings).flat());
 
   if (house.sceneElements !== undefined) emitWalls(writer, house.sceneElements);
 
@@ -141,7 +145,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('electrical: 无输入，E-* 图层为空（电气点位未导出——数据不可得时禁止用页面缓存当施工点位）');
     notes.push('ELECTRICAL NOT EXPORTED: electrical data unavailable at export time');
   } else {
-    emitElectrical(writer, house.electrical, pointWalls, warnings, label, restrict);
+    emitElectrical(writer, house.electrical, pointWalls, pointMountHosts, warnings, label, restrict);
   }
   if (plumbing === undefined) {
     warnings.push('plumbing: 无输入，P-POINTS 图层为空（水路点位未导出）');
@@ -156,7 +160,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
         || point.status === 'inferred' || point.status === 'pending'
         || /抽象服务点|不得.{0,6}开槽|不作为施工依据/.test(point.note ?? '');
       // 与电气同一解算（见 emitElectrical）：解析后坐标 = 墙线 datum + 薄板惯例 0.075m。
-      const position = resolvedPointPosition(point, pointWalls, warnings);
+      const position = resolvedPointPosition(point, pointWalls, pointMountHosts, warnings);
       if (!position) continue;
       const [x, y] = toDxf(position.x, position.z);
       writer.addCircle(DXF_LAYERS.P_POINTS[0], x, y, POINT_RADIUS_MM);
@@ -415,21 +419,24 @@ function emitFurniture(
  * 点位平面坐标（issue #98 S1 单一解算）：沿墙点位 = 解算器墙线 datum + 薄板惯例偏移
  * （THIN_PLATE_FACE_OFFSET = 0.075m，与 3D 渲染 InfrastructureBuilder.placeModel 同一解算
  * 同一偏移——业主 2026-11-07 裁定「DXF 迁就 3D 投影」，施工图底盒整体移动 15~75mm 是该
- * 裁定的预期交付物变更）；绝对点位（C/D/E/F 组）取声明 x/z。解算失败（along 越界/断引用/
- * 缺声明）返回 null 并把诊断写进 warnings（含「未解析」，随 D-NOTES 图层交付）——
+ * 裁定的预期交付物变更）；绝对点位（C/D/E/F 组）取声明 x/z；mount 挂载点（issue #98 S2，
+ * 起夜灯）取解析器宿主脸解果（宿主移动自动跟随，灯体半厚+surface_gap 由渲染管线追加，
+ * 图上圈心 = 灯位锚点，与 3D 灯组 position 同点）。解算失败（along 越界/断引用/缺声明）
+ * 返回 null 并把诊断写进 warnings（含「未解析」，随 D-NOTES 图层交付）——
  * **不钳位、不回落声明坐标**：回落就是再造一个事实源。
  */
 function resolvedPointPosition(
   point: PointPlacementInput,
   pointWalls: ReadonlyMap<string, PointWall>,
+  pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined,
   warnings: string[],
 ): { x: number; z: number } | null {
-  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls);
+  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, pointMountHosts);
   if (diagnostic !== undefined || !placement) {
     warnings.push(`点位 ${point.id}: 未解析定位（${diagnostic ?? '解算器未返回结果'}）——不出圈，修复声明后重导`);
     return null;
   }
-  if (placement.kind === 'absolute') return { x: placement.x, z: placement.z };
+  if (placement.kind === 'absolute' || placement.kind === 'mount') return { x: placement.x, z: placement.z };
   return {
     x: placement.datum.x + placement.normal.x * THIN_PLATE_FACE_OFFSET,
     z: placement.datum.z + placement.normal.z * THIN_PLATE_FACE_OFFSET,
@@ -448,6 +455,7 @@ function emitElectrical(
   writer: DxfWriter,
   points: ElectricalPoint[],
   pointWalls: ReadonlyMap<string, PointWall>,
+  pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined,
   warnings: string[],
   label: (text: string, fallback?: string) => string,
   restrict: RestrictLabels,
@@ -459,8 +467,9 @@ function emitElectrical(
     const pendingPos = point.position_status === 'pending' || point.position_status === 'inferred'
       || point.status === 'pending' || point.status === 'inferred';
     // 解析后坐标（2026-11-07 业主裁定「DXF 迁就 3D 投影」）：沿墙点位取解算器墙线 datum 再按
-    // 薄板惯例偏移 0.075m（与 3D 渲染同一解算、同一偏移）；解算失败不出圈、只显形告警。
-    const position = resolvedPointPosition(point, pointWalls, warnings);
+    // 薄板惯例偏移 0.075m（与 3D 渲染同一解算、同一偏移）；mount 挂载点取宿主脸解果（S2）；
+    // 解算失败不出圈、只显形告警。
+    const position = resolvedPointPosition(point, pointWalls, pointMountHosts, warnings);
     if (!position) continue;
     const [x, y] = toDxf(position.x, position.z);
     const layer = electricalLayer(point.type);
@@ -472,7 +481,8 @@ function emitElectrical(
     // 缺 count 施工方会漏配底盒；缺 wall_side 共墙两侧交底会装错面。
     const countText = point.count && point.count > 1 ? ` x${point.count}` : '';
     const sideText = point.wallSide ? ` ${point.wallSide}` : '';
-    // 柜面安装件（codex 十一审 major）：宿主柜体与安装面必须随图，否则无法判断固定在哪件柜、哪一面。
+    // 柜面安装件（codex 十一审 major；S2 起宿主由 mount 定位声明解析，标注格式不变）：
+    // 宿主柜体与安装面必须随图，否则无法判断固定在哪件柜、哪一面。
     const mountText = point.mountAnchor ? ` M=${point.mountAnchor.furnitureId}/${point.mountAnchor.face}` : '';
     writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
       label(`${point.id} ${point.type}${mountElev !== undefined ? ` H${mountElev}` : ''}${countText}${sideText}${mountText}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));

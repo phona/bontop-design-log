@@ -155,7 +155,7 @@ function endpointBindPool(route: MepRoute, sources: MepEndpointSources): Array<{
 
 /** 点位平面坐标（单一解算入口，见 endpointBindPool 注释）。 */
 function pointPlan(point: ElectricalPoint | PlumbingPoint, sources: MepEndpointSources): { x: number; z: number } | undefined {
-  const { placement } = resolvePointPlacementInWalls(point, sources.pointWalls);
+  const { placement } = resolvePointPlacementInWalls(point, sources.pointWalls, sources.mountHosts);
   if (placement) return { x: placement.x, z: placement.z };
   return typeof point.x === 'number' && typeof point.z === 'number' ? { x: point.x, z: point.z } : undefined;
 }

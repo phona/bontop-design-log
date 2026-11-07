@@ -12,6 +12,7 @@ import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { ProjectRenderFactsLoader } from './project-render-facts-loader.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
+import { pointMountHostIndex } from '../shared/point-placement.js';
 import { parseOverlayFiles, OVERLAY_SOURCE_FILES, SKIRTING_DERIVATION_SOURCE_FILES } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes, invalidateMepFurnitureCollisionVolumes } from './mep-lint-context.js';
@@ -200,6 +201,7 @@ const apiDeps = {
       overlay,
       presentationState.get(),
       projectRenderFactsLoader.getLighting(),
+      pointMountHostIndex(Object.values(catalog.getFurnishings()).flat()),
     );
   },
   // 构件级工程状态投影：现算（conflicts 路径在服务内缓存），输入异常时抛错 → 路由 503。

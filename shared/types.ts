@@ -1259,8 +1259,8 @@ export interface ElectricalPoint {
   along?: number;
   /** 离开完成面的附加量（米，带符号；默认 0 = 完成面）。 */
   face_offset?: number;
-  /** 家具挂载定位来源（S2 把 mount_anchor 升级为真挂载后启用）。 */
-  mount?: { furniture_id: string; face: WallSide; surface_gap?: number };
+  /** 家具挂载定位来源（issue #98 S2 真挂载：位置 = 宿主脸 + along + face_offset，解析见 shared/point-placement.ts）。 */
+  mount?: { furniture_id: string; face: WallSide; surface_gap?: number; along: number; face_offset?: number };
   /** 锚点引用定位来源（S4：F 组转家具挂载 / 暖通 ref 通道）。 */
   anchor?: { source: string; id: string };
   /** 显式绝对坐标意图（C/D/E/F 组：顶面灯位/建筑服务基准/地面排水/器具邻接点）。 */

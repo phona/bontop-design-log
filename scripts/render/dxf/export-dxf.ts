@@ -12,7 +12,7 @@ import { mergeSceneElements, parseOverlayFiles } from '../../../server/overlay-m
 import { loadMepCoordinationConfig } from '../../../server/config-loader.js';
 import { ProjectRenderFactsLoader } from '../../../server/project-render-facts-loader.js';
 import { endpointSourcesFromFacts } from '../../../shared/mep-hvac-coordination-schema.js';
-import { pointWallIndexFromElements } from '../../../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
 import { buildProjectDxf } from '../../../shared/dxf/project-dxf.js';
 
 function main(): void {
@@ -25,7 +25,7 @@ function main(): void {
 
   const mepConfig = loadMepCoordinationConfig();
   // 点位宿主墙索引：MEP 路线端点与 E-*/P-POINTS 出图共用 shared/point-placement.ts 单一解算。
-  const mepSources = endpointSourcesFromFacts(facts, pointWallIndexFromElements(catalog.getWalls()));
+  const mepSources = endpointSourcesFromFacts(facts, pointWallIndexFromElements(catalog.getWalls()), pointMountHostIndex(Object.values(catalog.getFurnishings()).flat()));
 
   const result = buildProjectDxf({
     house: {
