@@ -42,7 +42,13 @@ test('skirting_region declarations: 24 segments, uniform adjustable height, pain
     assert.ok(s.along[1] <= wallLength(s.wall) + 1e-6, `${s.id} along 越界：墙 ${s.wall} 长 ${wallLength(s.wall)}`);
   }
   // 段清单与漆面声明逐段对应（墙+房间+沿墙区间一致），不允许手抄漂移。
-  const paint: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'paint_region' && !['guest_bath', 'master_bath'].includes(e.room));
+  // 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：paint_region 不再是 overlay 平级元素，
+  // 而是墙对象的 finish.paint_bands[]（model-geometry.yaml）——24/24 配对改从墙特征读。
+  const paint: any[] = (MG.walls ?? []).flatMap((w: any) =>
+    (w.finish?.paint_bands ?? [])
+      .filter((b: any) => !['guest_bath', 'master_bath'].includes(b.room))
+      .map((b: any) => ({ ...b, wall: w.id })),
+  );
   assert.equal(paint.length, 24, '非卫浴漆面段也应为 24 段，与踢脚线一一对应');
   for (const s of skirt) {
     const match = paint.find((p: any) => p.wall === s.wall && p.room === s.room && p.along[0] === s.along[0] && p.along[1] === s.along[1]);
@@ -73,6 +79,10 @@ test('buildScene renders skirting as visible opaque strips, door-split', () => {
     id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, height: w.height ?? 2.8,
     ...(w.segments ? { segments: w.segments } : {}),
     ...(w.openings ? { openings: w.openings } : {}),
+    // line_datum 必须随墙透传：完成面偏移由 wallFaceOffset 解析器按它解算（S4 起
+    // SceneBuilder 不再有私有偏移常量），缺声明即显形不出网。
+    ...(w.line_datum ? { line_datum: w.line_datum } : {}),
+    ...(w.finish ? { finish: w.finish } : {}),
   }));
   const merged: any[] = mergeSceneElements(walls, parsed);
   const result: any = buildScene({

@@ -870,6 +870,8 @@ export interface WallSegment {
   openings?: ResolvedOpening[];
   /** 墙段两侧的房间 id（model-geometry 拓扑：boundary 同时含 from/to 顶点的房间），供渲染端按房间挂材质 */
   rooms?: string[];
+  /** 面层配方（WallDef.finish 透传，2026-11-07 issue #98 S4 下沉）：贴砖带 + 涂装带。 */
+  finish?: WallFinish;
   /** 墙线基准语义（WallDef.line_datum 透传，口径见其注释）。 */
   line_datum?: 'centerline';
   /** suppress 改判透传（WallDef.suppressed，2026-11-07 issue #98 S3）：消费方经 shared/suppression.ts。 */
@@ -909,6 +911,89 @@ export interface BaySillWallReference {
   segments: BaySillSegment[];
 }
 
+/**
+ * 墙脸贴砖带（2026-11-07 issue #98 第三阶段 S4：wall_region 下沉为墙对象特征）。
+ *
+ * 判据（issue #98 架构决议）：贴砖带没有独立身份/状态/生命周期——它的「墙 + 房间侧 +
+ * along」就是定位，采购与状态都挂在墙与房间上。故不再是 overlay 平级元素，而是
+ * `WallDef.finish.tile_bands[]` 的一项。
+ *
+ * 口径与原 wall_region 声明逐字一致（未改语义）：
+ * - `along` 沿墙折线距离，自该墙 from 端累计；
+ * - `height` 是带【顶标高】（不是带高）；`bottom` 缺省 0；
+ * - `room` 声明该面归属房间（共墙两侧各贴各的脸，预算/审计按 (wall, room) 去重）；
+ * - 渲染仍走墙中心线（检视态 depthTest=false 真透视），不加侧向偏移。
+ */
+export interface WallTileBand {
+  id: string;
+  room: string;
+  along: [number, number];
+  bottom?: number;
+  height: number;
+  zone?: 'visible' | 'covered';
+  color?: string;
+  reason?: string;
+}
+
+/** 墙脸涂漆带（S4：paint_region 下沉）。口径同 WallTileBand；height 缺省取墙高。 */
+export interface WallPaintBand {
+  id: string;
+  room: string;
+  along: [number, number];
+  bottom?: number;
+  height?: number;
+  color?: string;
+  reason?: string;
+}
+
+/**
+ * 墙对象的面层配方（S4 下沉成果）。tile_bands 与 paint_bands 同住一个对象后，
+ * 「砖漆互斥」（paint.bottom ≥ 同脸 tile 带顶）由 loader 一条机器规则校验——
+ * 取代原 DEC-2026-10-09-P07 的 7 处人工对齐（parseOverlayFiles 内实现）。
+ */
+export interface WallFinish {
+  tile_bands?: WallTileBand[];
+  paint_bands?: WallPaintBand[];
+}
+
+/** bay_sill 构件的贴砖面（S4：sill_region 下沉为构件特征）。 */
+export interface SillTileBand {
+  id: string;
+  face: 'front' | 'top' | 'underside';
+  along?: [number, number];
+  zone?: 'visible' | 'covered';
+  color?: string;
+  room?: string;
+  reason?: string;
+}
+
+/** bay_sill 构件的涂装面（S4：paint_sill_region 下沉）。 */
+export interface SillPaintBand {
+  id: string;
+  room: string;
+  faces: Array<'underside' | 'front' | 'start_end' | 'end_end'>;
+  finish: 'ordinary' | 'anti_mold';
+  color?: string;
+  reason?: string;
+}
+
+export interface BaySillFinish {
+  tile?: SillTileBand[];
+  paint?: SillPaintBand[];
+}
+
+/**
+ * 房间顶面涂装特征（S4：paint_ceiling_region 下沉为房间特征）。
+ *
+ * 8 段原声明只写 room——其范围本就是几何推导（房间 footprint 减铝扣板投影，
+ * shared/paint-scope.ts 的 ceilingAreaByRoom），所以声明只剩「这间房的顶面刷漆」这个意图，
+ * 铝扣板扣减继续走几何，不写 exclude_aluminum 之类的镜像布尔。
+ */
+export interface RoomCeilingFinish {
+  paint: boolean;
+  reason?: string;
+}
+
 export interface CurtainRunPart {
   id: string;
   points: CurtainPoint[];
@@ -916,18 +1001,20 @@ export interface CurtainRunPart {
 }
 
 export type SceneElement =
-  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[]; rooms?: string[] }
+  // 面层配方自 2026-11-07 issue #98 第三阶段 S4 起不再是平级元素：wall_region /
+  // paint_region 下沉为 wall.finish（tile_bands / paint_bands），sill_region /
+  // paint_sill_region 下沉为 bay_sill.finish（tile / paint），paint_ceiling_region
+  // 下沉为房间特征 ceiling_finish。overlay schema 15 → 10 类，SceneBuilder 的
+  // case 分支改为对象属性驱动；检视态三层隔离（wall-tile / wall-paint / pipe-chase）
+  // 的 userData.inspectionLayer 与开关原样保留。
+  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[]; rooms?: string[]; finish?: WallFinish; line_datum?: 'centerline' }
   | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean; parts?: CurtainRunPart[] }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
-  | { type: 'wall_region'; id: string; wall: string; room?: string; along: [number, number]; bottom?: number; height: number; zone?: 'visible' | 'covered'; color?: string; reason?: string }
-  // 踢脚线常显条带（DEC-2026-10-28-R01/R02）：与 wall_region/paint_region 的检视态不同，
+  // 踢脚线常显条带（DEC-2026-10-28-R01/R02）：与墙特征面层的检视态不同，
   // 本类型在正常视图里就可见、不透明、贴房间侧墙面。height 必填且代码里不得给默认值——
   // 高度是可调数据，只由 overlay 声明（锚点统一）给出，改高度改声明不改代码。
+  // S5 起它由 paint_bands 派生（24/24 配对已证实），届时本类型与 finish-surfaces.yaml 一并退场。
   | { type: 'skirting_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height: number; color?: string; reason?: string }
-  | { type: 'sill_region'; id: string; element: string; face: 'front' | 'top' | 'underside'; along?: [number, number]; zone?: 'visible' | 'covered'; color?: string; room?: string; reason?: string }
-  | { type: 'paint_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height?: number; color?: string; reason?: string }
-  | { type: 'paint_sill_region'; id: string; element: string; room: string; faces: Array<'underside' | 'front' | 'start_end' | 'end_end'>; finish: 'ordinary' | 'anti_mold'; color?: string; reason?: string }
-  | { type: 'paint_ceiling_region'; id: string; room: string; reason?: string }
   // glass_infill / hinged_glass_door 已于 issue #98 第三阶段 S1 删除：overlay 0 元素
   // （hinged 自 DEC-2026-09-07-054 客卫玻璃门取消后无声明；glass_infill 从未启用），
   // schema 与全部消费分支同步退场，不保留墓碑。
@@ -941,7 +1028,7 @@ export type SceneElement =
   // 再按 follow 房间的有效材质和干/湿费率计量；单独的 follow 仍表示外部过渡区。
   // `excluded` 只保留给几何说不清的例外（开发商已铺 / 业主裁定不铺），且必须带 reason。
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string; excluded?: boolean }
-  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number] }
+  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number]; finish?: BaySillFinish }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
   | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }
@@ -1008,6 +1095,13 @@ export interface WallDef {
    * （furniture-placement / InfrastructureBuilder / DXF），不得只改声明。
    */
   line_datum?: 'centerline';
+  /**
+   * 面层配方（2026-11-07 issue #98 第三阶段 S4 下沉）：该墙脸上的贴砖带与涂装带。
+   * 原 overlay.yaml 的 wall_region(18)/paint_region(31) 平级元素，按 issue #98 判据
+   * （无独立身份/状态/生命周期）下沉为墙对象特征。along/height/bottom/room 口径见
+   * WallTileBand；砖漆互斥由 parseOverlayFiles() 机器校验。
+   */
+  finish?: WallFinish;
 }
 
 export interface RoomDef {
@@ -1018,6 +1112,11 @@ export interface RoomDef {
   type?: string;
   /** Semantic boundary only; visible surfaces and quantities must come from explicit overlay/config declarations. */
   semantic_only?: boolean;
+  /**
+   * 顶面涂装特征（S4：paint_ceiling_region 下沉）。只表达「这间房顶面刷漆」的意图；
+   * 范围由几何推导（房间 footprint − 铝扣板投影），不在此声明扣减明细。
+   */
+  ceiling_finish?: RoomCeilingFinish;
 }
 
 export interface PlatformDef {
@@ -1062,6 +1161,8 @@ export interface ResolvedWall {
   bayRooms?: string[];
   structure?: 'shear' | 'fill' | 'curtain' | 'new_partition';
   structure_status?: 'confirmed' | 'inferred';
+  /** 面层配方（WallDef.finish 透传，2026-11-07 issue #98 S4 下沉）。 */
+  finish?: WallFinish;
   /** 墙线基准语义（WallDef.line_datum 透传，口径见其注释）。 */
   line_datum?: 'centerline';
   /** suppress 改判透传（WallDef.suppressed，2026-11-07 issue #98 S3）：消费方经 shared/suppression.ts。 */

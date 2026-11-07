@@ -88,6 +88,24 @@ elements:
     sill: 2.07
     height: 0.76
     reason: "主卧西墙飘窗（z=5.55~8.80 直墙段）"
+    finish:
+      paint:
+        # ── 其余上飘窗涂装（2026-10-09 业主裁定「都算上」，仅主卫那处刷防霉漆）──
+        # faces 按**实测外露情况精确声明**，不一律写全 4 面：与实体墙重合的端面写了会产生
+        # 「已排除为隐蔽面」warning 并流入 /api/paint/comparison 的 warnings 与 UI 警告列表，
+        # 而 warning 本该意味着「需要关注」。wallCoversCap 安全网仍保留——将来几何变化导致
+        # 某个声明面被墙盖住时照常 warning，提示声明过期。
+        # room 按「outline 落在哪个房间矩形」几何归属；与 id 命名不一致的两处已在各自 reason 标注。
+        # 已知遗留：master_bath_west_bay 与 master_bath_west_lower_bay 的 outline 重叠 0.110㎡，
+        # 约 0.186㎡ 涂装面（底面 0.110 + 前缘 0.076）被双计，占全部涂装面 0.060%。
+        # 根因是西北角圆角（v_bath_nw radius 1.00）：弧划归 w_bath_north、w_west_ap 被修剪为
+        # 零长段（resolver 正确行为），角部飘窗包住该弧，其投影与西墙飘窗投影在
+        # x[0,1.1]×z[2.10,2.20] 相撞。详见 docs/pending-site-data.md #57，待复尺定弧端收口。
+        - id: paint_master_bedroom_west_bay
+          room: master_bedroom
+          faces: [underside, front, start_end, end_end]
+          finish: ordinary
+          reason: "主卧西墙飘窗外露面（西/东两端面均外露），普通乳胶漆"
 
   - id: master_bedroom_south_bay
     type: bay_sill
@@ -96,6 +114,13 @@ elements:
     sill: 2.07
     height: 0.76
     reason: "主卧南墙环幕飘窗（南缘 z=10.90）"
+    finish:
+      paint:
+        - id: paint_master_bedroom_south_bay
+          room: master_bedroom
+          faces: [underside, front, start_end]
+          finish: ordinary
+          reason: "主卧南墙飘窗外露面，东端面与实体墙重合不声明；普通乳胶漆"
 
   - id: study_south_bay
     type: bay_sill
@@ -104,6 +129,13 @@ elements:
     sill: 2.07
     height: 0.76
     reason: "书房南墙飘窗（南缘 z=10.90，与主卧齐平）"
+    finish:
+      paint:
+        - id: paint_study_south_bay
+          room: study
+          faces: [underside, front]
+          finish: ordinary
+          reason: "书房南墙飘窗外露面，两端面均与实体墙重合不声明；普通乳胶漆"
 
   - id: bedroom_se_south_bay
     type: bay_sill
@@ -112,6 +144,13 @@ elements:
     sill: 2.07
     height: 0.76
     reason: "客房南向凸窗（南缘 z=11.05）"
+    finish:
+      paint:
+        - id: paint_bedroom_se_south_bay
+          room: bedroom_se
+          faces: [underside, front]
+          finish: ordinary
+          reason: "东南卧南墙飘窗外露面，两端面均与实体墙重合不声明；普通乳胶漆"
 
   - id: master_bath_west_lower_bay
     type: bay_sill
@@ -120,6 +159,13 @@ elements:
     sill: 2.07
     height: 0.76
     reason: "主卫西墙南段飘窗（2026-10-09 由 bedroom_nw_west_bay 改名，DEC-2026-10-09-P10：原名「西北次卧西墙」与几何不符——outline x[0,1.1]×z[2.10,2.86] 整块在 master_bath 矩形内，bedroom_nw 西界是 x=2.6。只改 id 不动几何/面积/room）"
+    finish:
+      paint:
+        - id: paint_master_bath_west_lower_bay
+          room: master_bath
+          faces: [underside, front, start_end]
+          finish: ordinary
+          reason: "主卫西墙南段飘窗外露面；room 按几何归属取 master_bath（决定吊顶遮挡用哪间房的 zone：主卫铝扣板完成面 2.65 会遮住约 0.5㎡）。2026-10-09 由 paint_bedroom_nw_west_bay 改名（DEC-2026-10-09-P10），原名「西北次卧西墙」是引入者误判。东端面与实体墙重合不声明；尺寸待复尺"
 
   - id: master_bedroom_west_mid_bay
     type: bay_sill
@@ -128,6 +174,13 @@ elements:
     sill: 2.07
     height: 0.76
     reason: "主卧西墙中段飘窗（2026-10-09 由 corridor_west_bay 改名，DEC-2026-10-09-P10：原名「走廊西墙」与几何不符——outline x[0,1.1]×z[2.86,5.55] 整块在 master_bedroom 矩形内，且模型里根本没有 corridor 这个 room，走廊本体在 x[4.2,7.2]×z[4.3,6.45]，离这扇窗 4 米。只改 id 不动几何/面积/room）"
+    finish:
+      paint:
+        - id: paint_master_bedroom_west_mid_bay
+          room: master_bedroom
+          faces: [underside, front, end_end]
+          finish: ordinary
+          reason: "主卧西墙中段飘窗外露面；room 按几何归属取 master_bedroom（该区域无主卧吊顶分区覆盖，故 room 取哪间都不改变遮挡结果，只影响算量归房）。2026-10-09 由 paint_corridor_west_bay 改名（DEC-2026-10-09-P10），原名「走廊西墙」是引入者误判——模型里没有 corridor 这个 room。西端面与实体墙重合不声明；尺寸待复尺"
 
   - id: master_bath_west_bay
     type: bay_sill
@@ -136,6 +189,18 @@ elements:
     sill: 2.07
     height: 0.76
     reason: "主卫西北角飘窗"
+    finish:
+      paint:
+        # 主卫上飘窗涂装意图：只声明模型可证的外露底面、前缘与未被实体墙遮挡的起始端面。
+        # 2.07/0.76m 沿用现有 bay_sill 待复尺；顶面铝扣板以 ceilingFinishY 几何平面裁垂面。
+        # 根部玻璃、窗框、玻璃根部防水反坎均不刷；直接淋水范围与基层现场确认。
+        # 2026-10-09 业主裁定：主卫上飘窗刷**防霉漆**（非普通乳胶漆）——漆种/遍数/基层防霉处理
+        # 自成一格，finish 由 wet_area 改名 anti_mold 以对齐材料体系；费率待现场核验与分项报价。
+        - id: paint_master_bath_west_bay
+          room: master_bath
+          faces: [underside, front, start_end]
+          finish: anti_mold
+          reason: "上飘窗外露底面、朝室内前缘及西端面；玻璃根部与隐藏东端排除；尺寸待复尺；刷防霉漆"
 
   - id: bedroom_nw_north_bay
     type: bay_sill
@@ -144,6 +209,13 @@ elements:
     sill: 2.07
     height: 0.76
     reason: "西北次卧北墙飘窗（z=1.10 凹进段）"
+    finish:
+      paint:
+        - id: paint_bedroom_nw_north_bay
+          room: bedroom_nw
+          faces: [underside, front]
+          finish: ordinary
+          reason: "西北次卧北墙飘窗外露面，两端面均与实体墙重合不声明；普通乳胶漆"
 
   - id: kitchen_north_bay
     type: bay_sill
@@ -152,6 +224,27 @@ elements:
     sill: 2.12
     height: 0.71
     reason: "厨房北墙飘窗（z=0 北缘）"
+    finish:
+      tile:
+        # ── 厨房上飘窗贴砖（2026-10-09 业主终裁：先刷漆 → 改贴砖，DEC-2026-10-09-P09）──
+        # 依据与「按现实使用的合理度为准」：厨房三面可贴墙已贴砖（walltile_kitchen_*）、
+        # 北墙 w_kit_north 是 suppress_kitchen_north 玻璃幕墙（不可贴）、全厨房无 paint_region，
+        # 这处上飘窗是全厨房唯一需要定面层的面。给一间接了墙砖工艺的房间单独开一套刷漆
+        # 工序（找平+阳角条+厨卫漆）不经济；贴砖只是瓦工顺手带一段，且与墙砖连续、收口最简、
+        # 耐油污。竖面与底面都贴——底面朝下、标高 2.12m 抬头可见，只贴竖面会留一片没人管的面。
+        # 标准侧依据：GB/T 11228-2008《住宅厨房》管厨房墙砖高度（溅水区覆盖），
+        # 但**没有国标条文直接规定厨房窗台必须贴砖**——本条是工序经济性+现状一致性判断，
+        # 不是规范强制，已如实登记。
+        - id: silltile_kitchen_north_bay_front
+          face: front
+          zone: visible
+          room: kitchen
+          reason: "厨房上飘窗竖面贴砖（业主 2026-10-09 终裁，DEC-2026-10-09-P09）；与厨房墙砖连续、海棠角收口；北墙玻璃幕墙不可贴，故这是厨房唯一可定面层的飘窗面"
+        - id: silltile_kitchen_north_bay_underside
+          face: underside
+          zone: visible
+          room: kitchen
+          reason: "厨房上飘窗底面贴砖（业主 2026-10-09：「底面肯定要的，以现实使用的合理度为准」）；标高 2.12m 朝下、抬头可见，只贴竖面会留 3.96㎡ 没人管的面"
 
   # 客厅南墙落地幕墙根部防水台（R11/D4=L 型终裁的构件；本模型此前按"玻璃齐地"建，缺此构件）。
   # 尺寸为业界常规口径的估算（业主 2026-10-07 指示"开发商已做、按标准估"）：搜索口径——
@@ -168,6 +261,22 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "客厅落地幕墙根部防水台（150 高 × 150 出檐常规口径，量级待量房核实）；竖面与水平台面由 sill_region 挂贴砖"
+    finish:
+      tile:
+        # ── 客厅落地幕墙根部防水台（R11 D4=L 型终裁：竖面 + 水平台面都贴、做出檐收口）──
+        # 几何 = living_south_waterproof_ledge（bay_sill，150 高 × 150 出檐，业界常规口径待量房）。
+        # front = 竖面（玻璃线处竖直面，沿墙 6.20m × 0.15m）；top = 水平台面（墙线向室内伸 0.15m）。
+        # 两段复用 'wall-tile' 层标签与开关（贴砖区显示中时与墙砖同屏），与 wall_region 平级互不引用。
+        - id: silltile_living_south_front
+          face: front
+          zone: visible
+          room: living_dining
+          reason: 客厅落地幕墙防水台竖面，L 型贴砖的竖直面（D4 终裁）
+        - id: silltile_living_south_top
+          face: top
+          zone: visible
+          room: living_dining
+          reason: 客厅落地幕墙防水台水平台面，L 型贴砖的出檐收口面（D4 终裁）
 
   # ── 主卫湿区防水台（2026-10-07 C17：业主断言幕墙玻璃均为落地窗、根部都有防水台；
   #    主卫为淋浴湿区，按 D4=L 同款建模+贴砖，存在性/尺寸量房 #54 终核）。
@@ -180,6 +289,19 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "主卫西墙淋浴段（z[2.10,2.86] 直段）根部防水台，D4=L 同款 150×150"
+    finish:
+      tile:
+        # ── 主卫湿区防水台贴砖（C17）：两座 bay_sill 的 front+top 共 4 段，3.36m × 0.30 = 1.008㎡ 正砖 ──
+        - id: silltile_mbath_west_lower_front
+          face: front
+          zone: visible
+          room: master_bath
+          reason: 主卫西墙淋浴段防水台竖面贴砖
+        - id: silltile_mbath_west_lower_top
+          face: top
+          zone: visible
+          room: master_bath
+          reason: 主卫西墙淋浴段防水台台面贴砖
   - id: mbath_north_waterproof_ledge
     type: bay_sill
     wall: w_bath_north
@@ -187,6 +309,18 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "主卫北墙（x[0,2.60]，西段在淋浴湿区内）根部防水台，D4=L 同款"
+    finish:
+      tile:
+        - id: silltile_mbath_north_front
+          face: front
+          zone: visible
+          room: master_bath
+          reason: 主卫北墙防水台竖面贴砖（西段在淋浴湿区内）
+        - id: silltile_mbath_north_top
+          face: top
+          zone: visible
+          room: master_bath
+          reason: 主卫北墙防水台台面贴砖
 
   # ── 卧室/书房落地窗根部低反坎（DEC-2026-10-16-TILE-01）──
   # 用户裁定统一按150高×150出檐先建模；量房后按实际完成尺寸更新。
@@ -197,6 +331,19 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "主卧西墙上段落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+    finish:
+      tile:
+        # ── 卧室/书房低反坎 L 型贴砖：与客厅/主卫使用同一wall-tile层、同一材料选择 ──
+        - id: silltile_master_bedroom_west_upper_front
+          face: front
+          zone: visible
+          room: master_bedroom
+          reason: "主卧西墙上段低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+        - id: silltile_master_bedroom_west_upper_top
+          face: top
+          zone: visible
+          room: master_bedroom
+          reason: "主卧西墙上段低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
   - id: master_bedroom_west_mid_waterproof_ledge
     type: bay_sill
     wall: w_west_mid
@@ -204,6 +351,18 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "主卧西墙中段落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+    finish:
+      tile:
+        - id: silltile_master_bedroom_west_mid_front
+          face: front
+          zone: visible
+          room: master_bedroom
+          reason: "主卧西墙中段低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+        - id: silltile_master_bedroom_west_mid_top
+          face: top
+          zone: visible
+          room: master_bedroom
+          reason: "主卧西墙中段低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
   - id: master_bedroom_south_waterproof_ledge
     type: bay_sill
     wall: w_mb_south
@@ -211,6 +370,18 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "主卧南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+    finish:
+      tile:
+        - id: silltile_master_bedroom_south_front
+          face: front
+          zone: visible
+          room: master_bedroom
+          reason: "主卧南墙低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+        - id: silltile_master_bedroom_south_top
+          face: top
+          zone: visible
+          room: master_bedroom
+          reason: "主卧南墙低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
   - id: study_south_waterproof_ledge
     type: bay_sill
     wall: w_st_south
@@ -218,6 +389,18 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "书房南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+    finish:
+      tile:
+        - id: silltile_study_south_front
+          face: front
+          zone: visible
+          room: study
+          reason: "书房南墙低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+        - id: silltile_study_south_top
+          face: top
+          zone: visible
+          room: study
+          reason: "书房南墙低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
   - id: bedroom_nw_north_waterproof_ledge
     type: bay_sill
     wall: w_nw_north
@@ -225,6 +408,18 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "西北次卧北墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+    finish:
+      tile:
+        - id: silltile_bedroom_nw_north_front
+          face: front
+          zone: visible
+          room: bedroom_nw
+          reason: "西北次卧北墙低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+        - id: silltile_bedroom_nw_north_top
+          face: top
+          zone: visible
+          room: bedroom_nw
+          reason: "西北次卧北墙低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
   - id: bedroom_se_south_waterproof_ledge
     type: bay_sill
     wall: w_be_south
@@ -232,6 +427,18 @@ elements:
     sill: 0.00
     height: 0.15
     reason: "东南客房南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+    finish:
+      tile:
+        - id: silltile_bedroom_se_south_front
+          face: front
+          zone: visible
+          room: bedroom_se
+          reason: "东南客房南墙低反坎竖直前脸，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
+        - id: silltile_bedroom_se_south_top
+          face: top
+          zone: visible
+          room: bedroom_se
+          reason: "东南客房南墙低反坎水平台面，DEC-2026-10-16-TILE-01；150×150mm估算待量房"
 
 
   # === 窗帘（2026-08-02）：引用墙 id 保持 vertices 联动；kind 显式指定（湿区百叶，其余纱帘+遮光） ===
@@ -301,4 +508,3 @@ elements:
     height: 2.55
     panels: 4
     open: true
-

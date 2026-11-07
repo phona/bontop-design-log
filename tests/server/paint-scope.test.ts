@@ -36,26 +36,48 @@ const WALLS: Array<{ id: string; a: [number, number]; b: [number, number]; heigh
 // 唯一权威实现 shared/suppression.ts（原 OV.suppress 顶层清单已删）。
 const SUP = new Set<string>(suppressedWallIds(resolveLayout(MG).walls));
 
-function resolvedWalls(): Array<{ id: string; x1: number; z1: number; x2: number; z2: number; height: number }> {
-  return WALLS.map((w) => ({ id: w.id, x1: w.a[0], z1: w.a[1], x2: w.b[0], z2: w.b[1], height: w.height }));
+function resolvedWalls(): any[] {
+  // finish / line_datum / suppressed 必须随墙透传（S4 起涂漆带住在墙对象上，
+  // 完成面偏移由 wallFaceOffset 按 line_datum 解算；suppress 墙不进场景）。
+  return MG.walls.map((w: any) => ({
+    id: w.id, x1: V[w.from][0], z1: V[w.from][1], x2: V[w.to][0], z2: V[w.to][1], height: (w.height ?? 2.8),
+    ...(w.finish ? { finish: w.finish } : {}),
+    ...(w.line_datum ? { line_datum: w.line_datum } : {}),
+    ...(w.suppressed ? { suppressed: w.suppressed } : {}),
+  }));
+}
+
+/** 全部涂漆带（面层配方下沉 S4：paint_region → 墙对象 finish.paint_bands）。 */
+function paintBands(): Array<any & { wall: string }> {
+  return (MG.walls ?? []).flatMap((w: any) => (w.finish?.paint_bands ?? []).map((b: any) => ({ ...b, wall: w.id })));
+}
+
+/** 全部顶面涂装房间（S4：paint_ceiling_region → 房间特征 ceiling_finish）。 */
+function ceilingPaintRooms(): string[] {
+  return (MG.rooms ?? []).filter((r: any) => r.ceiling_finish?.paint === true).map((r: any) => String(r.id));
 }
 
 function sceneWithPaintRegions() {
   // 与 app 实际路径一致：rooms 用 resolved 房间（带 x/z/width/depth/area，涂漆平面靠房间
-  // 中心点决定朝哪一侧外偏移）；walls 用 resolved 墙（带 segments/openings，门洞在这里）。
+  // 中心点决定朝哪一侧外偏移）；walls 用 resolved 墙（带 segments/openings/finish/line_datum）。
+  // 面层配方下沉（S4）后涂漆带住在墙对象上，走 mergeSceneElements 一次拿全（与 App 同路径）。
+  const layout = resolveLayout(MG);
+  const merged = mergeSceneElements(layout.walls as any, parseOverlayFiles());
   return buildScene({
-    walls: resolveLayout(MG).walls,
-    rooms: resolveLayout(MG).rooms,
-    // 只喂能直接消费的类型：paint_region（被测）+ bay_sill/glass_infill（窗洞声明源）+ wall。
-    // 其余 element 类型需要 overlay-merge 补默认值，直接喂原始声明会炸。
-    elements: (OV.elements ?? []).filter((e: any) => ['paint_region', 'wall'].includes(e.type)),
+    walls: layout.walls,
+    rooms: layout.rooms,
+    elements: merged,
     furnishings: {},
   } as any);
 }
 
+// 只收**墙面**涂漆网格：S4 起飘窗涂装（paint_sill_region）与墙涂装共用 'wall-paint'
+// 检视层标签，但住在 bay_sill.finish.paint 里，userData.type 仍是各自的语义标签。
 function paintMeshes(root: THREE.Object3D): THREE.Mesh[] {
   const out: THREE.Mesh[] = [];
-  root.traverse((o: any) => { if (o.userData?.inspectionLayer === 'wall-paint') out.push(o as THREE.Mesh); });
+  root.traverse((o: any) => {
+    if (o.userData?.inspectionLayer === 'wall-paint' && o.userData?.type === 'paint_region') out.push(o as THREE.Mesh);
+  });
   return out;
 }
 
@@ -106,10 +128,10 @@ function ceilingPaintAreaFromConfig(): { byRoom: Record<string, number>; total: 
   const roomById = new Map(layout.rooms.map((room) => [room.id, room]));
   const ceilingZones = loadCeilingConfig();
   const byRoom: Record<string, number> = {};
-  for (const element of (OV.elements ?? [])) {
-    if (element.type !== 'paint_ceiling_region') continue;
-    const room = roomById.get(element.room);
-    if (!room) throw new Error(`paint_ceiling_region references unknown room ${element.room}`);
+  // S4：顶面涂装是房间特征 ceiling_finish（原 paint_ceiling_region 平级元素已下沉）
+  for (const roomId of ceilingPaintRooms()) {
+    const room = roomById.get(roomId);
+    if (!room) throw new Error(`ceiling_finish references unknown room ${roomId}`);
     const footprint = room.area ?? room.width * room.depth;
     const bounds: [number, number, number, number] = [
       room.x - room.width / 2, room.z - room.depth / 2,
@@ -130,9 +152,11 @@ function ceilingPaintAreaFromConfig(): { byRoom: Record<string, number>; total: 
   return { byRoom, total: Object.values(byRoom).reduce((sum, value) => sum + value, 0) };
 }
 
-test('overlay paint_region declarations pass the Zod discriminated union', () => {
-  const parsed = parseOverlayFiles();
-  const regions: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'paint_region');
+// 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：涂漆带不再是 overlay 平级元素，
+// 而是墙对象的 finish.paint_bands——schema（WallPaintBandSchema）仍在 overlay-merge，
+// 「声明自洽」的断言改从墙特征读（计数与字段口径逐条未变）。
+test('paint band declarations are well formed: 31 segments with explicit height/room', () => {
+  const regions: any[] = paintBands();
   // DEC-2026-10-08-C06：入户花园出范围（开发商已做好，收房后再定），4 段声明已删
   assert.equal(regions.length, 31, '当前显式涂装墙段包含既有28段与主走廊3段独立选择（R01：w_foyer_east/w_liv_east 两段删、w_cent_south 一段增，净 −1）');
   for (const r of regions) {
@@ -141,15 +165,15 @@ test('overlay paint_region declarations pass the Zod discriminated union', () =>
     if (r.bottom !== undefined && r.bottom > 0) assert.ok(r.height > r.bottom, `${r.id} height(顶面) 必须大于 bottom`);
     assert.ok(r.height > 0, `${r.id} height 必须为正`);
     assert.ok(r.along[1] > r.along[0], `${r.id} along 区间必须为正`);
-    assert.ok(r.wall.length > 0, `${r.id} 必须引用一面墙`);
+    assert.ok(r.wall.length > 0, `${r.id} 必须挂在墙对象上`);
     assert.ok(r.room.length > 0, `${r.id} 必须声明归属房间`);
   }
 });
 
-test('mergeSceneElements preserves paint_region elements alongside overlay types', () => {
+test('mergeSceneElements 把墙的涂漆带透传成 wall 元素特征（S4 下沉后无平级元素）', () => {
   const parsed = parseOverlayFiles();
   const merged = mergeSceneElements(resolvedWalls(), parsed);
-  const regions: any[] = merged.filter((e: any) => e.type === 'paint_region');
+  const regions: any[] = merged.flatMap((e: any) => (e.type === 'wall' ? e.finish?.paint_bands ?? [] : []));
   assert.equal(regions.length, 31); // R01：净 −1，见上
 });
 
@@ -192,8 +216,7 @@ test('every door opening on a declared wall is split out of the paint planes', (
     const g = mesh.geometry.parameters;
     return sum + g.width * g.height;
   }, 0);
-  const gross = (OV.elements ?? [])
-    .filter((e: any) => e.type === 'paint_region')
+  const gross = paintBands()
     .reduce((sum: number, e: any) => sum + (e.along[1] - e.along[0]) * (e.height - (e.bottom ?? 0)), 0);
   assert.ok(Math.abs(gross - 184.567) <= 0.02, `毛墙面 ${gross.toFixed(3)}`); // R01 重算：沿墙段 −0.92m×2.8，毛墙面 −2.576
   assert.ok(Math.abs(net - 163.786) <= 0.02, `净墙面 ${net.toFixed(3)}`); // R01 重算：毛墙面 −2.576，门洞扣减不变，净 −2.576
@@ -570,10 +593,11 @@ test('paint cost comparison reconciles declared scope with materials/base/contro
   const catalog = ProjectCatalog.load('.');
   const config = loadPaintComparisonConfig();
   const comparison = buildPaintCostComparison(layout, config, catalog);
-  // 溯源标注必须与配置一致：面积来自 overlay 声明，房间涂装意图来自 house.yaml
+  // 溯源标注必须与配置一致：面积来自墙对象声明（S4 下沉后是 finish.paint_bands），
+  // 房间涂装意图来自 house.yaml
   assert.equal(comparison.areaSource, config.area_source);
   assert.equal(comparison.roomFinishSource, config.room_finish_source);
-  assert.match(comparison.areaSource, /paint_region/);
+  assert.match(comparison.areaSource, /finish\.paint_bands/);
   assert.equal(comparison.scope.paintRoomCount, 8);
   assert.equal(comparison.scope.wallRegionEntryCount, 31); // R01：净 −1
   assert.equal(comparison.material.id, 'latex_paint_01');

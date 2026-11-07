@@ -22,6 +22,8 @@
  * 两条都要——只查前者，弧墙上用弦中点定位的整块悬空砖面会一声不响地过去。
  */
 
+import { wallFaceOffset } from '../wall-segments.js';
+
 export interface FinishWallSpan {
   id: string;
   wall: string;
@@ -52,9 +54,13 @@ export interface FinishRoomPolygon {
 /**
  * F09 用：一块面层网格的附着锚点（= buildScene 写进 userData 的东西）。
  * 采集方 `shared/finish/scene.ts` 与判据方本文件共用这一份契约，避免两边各写一套字段名。
+ *
+ * 2026-11-07 issue #98 第三阶段 S4：面层配方下沉为对象属性后，`type` 是**网格语义标签**
+ * （wall_region / paint_region / sill_region / paint_sill_region 四类锚不变），
+ * 新增 `roomId`——涂漆面的完成面外偏移由 wallFaceOffset(墙, 房间) 解算，判据要按房间取。
  */
 export interface FinishMeshAnchor {
-  /** userData.type：wall_region / paint_region / sill_region / paint_sill_region。 */
+  /** userData.type：wall_region / paint_region / sill_region / paint_sill_region（网格语义标签）。 */
   type: string;
   /** userData.kind（sill_region）：sill-front / sill-top / sill-underside。 */
   kind?: string;
@@ -64,6 +70,8 @@ export interface FinishMeshAnchor {
   wallId?: string;
   /** userData.elementId：bay_sill 构件 id，sill 类锚。 */
   elementId?: string;
+  /** userData.roomId：涂漆面归属房间（F09 按它取完成面偏移）。 */
+  roomId?: string;
 }
 
 /**
@@ -85,6 +93,8 @@ export interface FinishWallGeometry {
   polyline: Array<{ x1: number; z1: number; x2: number; z2: number }>;
   length: number;
   suppressed?: boolean;
+  /** 墙线基准（WallDef.line_datum 透传）：F09 的涂漆面容差按它解算完成面偏移。 */
+  line_datum?: 'centerline';
 }
 
 export interface FinishCeilingZone {
@@ -551,19 +561,28 @@ export function checkDeclarationAttached(input: FinishScopeInput): FinishIssue[]
  *
  * ## 容差为什么不是 config 里的 tolerance
  * `config/finish-lint.yaml` 的 `tolerance: 0.01` 是 F01/F03 的**重叠**容差。面层网格
- * 天生不贴在墙中心线上：paint_region 外偏移 `PAINT_FACE_OFFSET = 0.12/2 + 0.008 = 0.068m`
- * （墙厚半 + 8mm，避开 z-fighting），sill-top 在 depth/2 处。用 0.01 会把每一块漆面都判成
- * 飘空。故取 0.12m——与弧墙悬空实测值 0.50m 差 4 倍，与合法偏移 0.068m 差 2 倍，两头都够。
+ * 天生不贴在墙中心线上：涂漆面按完成面外偏移（2026-11-07 S4 起由
+ * `shared/wall-segments.ts` 的 `wallFaceOffset(wall, room)` 按 line_datum 解算——
+ * centerline 口径 = 半墙厚 0.06 + 8mm = 0.068m），sill-top 在 depth/2 处。用 0.01 会把
+ * 每一块漆面都判成飘空。
+ *
+ * 容差分两类，**都从同一解析器取数，不各写魔法数**：
+ * - 涂漆网格（paint_region）：`wallFaceOffset(墙, 房间) + MESH_ATTACH_MARGIN`——
+ *   偏移量是多少就放宽多少，与弧墙悬空实测值 0.50m 仍差 4 倍以上；
+ * - 其余墙类锚（贴砖 / sill-front，就在中心线上）与 bay 类锚（top/underside 在
+ *   footprint 内）：`MESH_ATTACH_TOLERANCE = 0.12`——覆盖 sill-top 的 depth/2（0.55m
+ *   走「在 footprint 内」支）与历史一次性探针的同款余量。
  * 这是「已有的一次性探针用的那个 tolerance」，不是本条新造的数字。
  */
 const MESH_ATTACH_TOLERANCE = 0.12;
+/** 完成面偏移之外的判据余量（米）：偏移是声明量，余量留给浮点与逐段出网的舍入。 */
+const MESH_ATTACH_MARGIN = 0.05;
 
 export function checkMeshAttachedToGeometry(input: FinishScopeInput): FinishIssue[] {
   const issues: FinishIssue[] = [];
   const meshes = input.sceneMeshes;
   if (!meshes) return issues;
   const outlines = input.sceneBayOutlines ?? new Map<string, Array<{ x: number; z: number }>>();
-  const tol = MESH_ATTACH_TOLERANCE;
   for (const mesh of meshes) {
     const { objectId, centre, ...anchor } = mesh;
     const kind = anchor.kind ?? anchor.face ?? '';
@@ -572,6 +591,8 @@ export function checkMeshAttachedToGeometry(input: FinishScopeInput): FinishIssu
       || (anchor.type === 'sill_region' && kind === 'sill-front');
     const isBayAnchored = (anchor.type === 'sill_region' && (kind === 'sill-top' || kind === 'sill-underside'))
       || anchor.type === 'paint_sill_region';
+    // 容差按锚类取：涂漆面吃掉完成面外偏移（wallFaceOffset 解析器输出），其余走历史余量。
+    let tol = MESH_ATTACH_TOLERANCE;
     if (!isWallAnchored && !isBayAnchored) {
       issues.push({
         level: 'error',
@@ -603,6 +624,22 @@ export function checkMeshAttachedToGeometry(input: FinishScopeInput): FinishIssu
           evidence: { mesh: objectId, type: anchor.type, wallId: anchor.wallId, kind: kind || null },
         });
         continue;
+      }
+      // 涂漆面按完成面外偏移出网：容差 = 解析器输出 + 余量（不再引用私有常量名的散文副本）。
+      // 宿主墙没声明 line_datum 时解不出偏移量——fail-closed 报 unknown_anchor，
+      // 不悄悄回落到历史 0.12（那正是「绕过解析器的消费者静默留旧基准」的失效模式）。
+      if (anchor.type === 'paint_region') {
+        if (geometry.line_datum !== 'centerline') {
+          issues.push({
+            level: 'error',
+            code: 'finish.mesh_unattached_unknown_anchor',
+            entity: objectId,
+            message: `面层网格 ${objectId}（paint_region）的宿主墙 ${anchor.wallId} 未声明 line_datum → 完成面偏移解不出，判据写不出来，按飘空处理`,
+            evidence: { mesh: objectId, type: anchor.type, wallId: anchor.wallId, roomId: anchor.roomId ?? null },
+          });
+          continue;
+        }
+        tol = wallFaceOffset(geometry, anchor.roomId) + MESH_ATTACH_MARGIN;
       }
       const distance = distanceToPolyline(centre, geometry.polyline);
       if (distance > tol) {

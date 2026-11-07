@@ -45,6 +45,14 @@ const wall: Extract<SceneElement, { type: 'wall' }> = {
   openings: [{ id: 'op_door', type: 'door', x: 2, z: 0, width: 0.9, height: 2.1, swing: 'inward', hinge: 'start' }],
 };
 
+/** baseInput 的贴砖带（S4 起住在墙对象 finish.tile_bands[0]）。 */
+function tileBand(input: ProjectDxfInput): { id: string; room: string; along: [number, number]; bottom?: number; height?: number } {
+  const wall = input.house.sceneElements!.find((element) => element.type === 'wall') as Extract<SceneElement, { type: 'wall' }>;
+  const band = wall.finish?.tile_bands?.[0];
+  if (!band) throw new Error('fixture 丢了 finish.tile_bands[0]');
+  return band;
+}
+
 function baseInput(): ProjectDxfInput {
   return {
     house: {
@@ -57,9 +65,10 @@ function baseInput(): ProjectDxfInput {
       ],
       ceilingZones: [{ id: 'ceil_drop', room: 'living', type: 'drop', thickness: 0.08, area: [0, 0, 4, 2] }],
       sceneElements: [
-        // 拷贝模块级 wall：测试会就地改 segments/openings，共享对象会跨测试泄漏
-        { ...wall, openings: wall.openings?.map((opening) => ({ ...opening })) },
-        { type: 'wall_region', id: 'tile_n', wall: 'w_north', along: [0, 2], bottom: 0, height: 2.4 },
+        // 拷贝模块级 wall：测试会就地改 segments/openings/finish，共享对象会跨测试泄漏
+        // 面层配方（issue #98 第三阶段 S4）：贴砖带是墙对象自己的 finish.tile_bands，
+        // 不再是平级 wall_region 元素——DXF 出图改按墙归组（实体集合与几何口径不变）。
+        { ...wall, openings: wall.openings?.map((opening) => ({ ...opening })), finish: { tile_bands: [{ id: 'tile_n', room: 'living', along: [0, 2], bottom: 0, height: 2.4 }] } },
         { type: 'floor_region', id: 'floor_living', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 2 }, { x: 0, z: 2 }] },
       ] as SceneElement[],
     },
@@ -101,11 +110,11 @@ test('project-dxf: wall_region 沿墙插值出子线段（along [0,2] → x 0~20
 
 test('project-dxf: 饰面标注用声明的顶标高（height 是顶标高不是带高，codex 审 blocking）', () => {
   const input = baseInput();
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).bottom = 0.77;
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).height = 1.10;
+  tileBand(input).bottom = 0.77;
+  tileBand(input).height = 1.10;
   const result = buildProjectDxf(input);
   const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.WFIN_TILE[0]);
-  assert.ok(texts.some((e) => e['1'] === 'tile_n 0.77~1.10m'), JSON.stringify(texts.map((e) => e['1'])));
+  assert.ok(texts.some((e) => e['1'] === 'tile_n [living] 0.77~1.10m'), JSON.stringify(texts.map((e) => e['1'])));
 });
 
 test('project-dxf: wall_run 实体墙进 A-WALL（开放折线 + 高度标注，codex 审 blocking）', () => {
@@ -121,7 +130,7 @@ test('project-dxf: wall_run 实体墙进 A-WALL（开放折线 + 高度标注，
 
 test('project-dxf: wall_region along 超出墙长 → 显形告警不导出（与 3D unsupported 同口径）', () => {
   const input = baseInput();
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).along = [0, 5];
+  tileBand(input).along = [0, 5];
   const result = buildProjectDxf(input);
   assert.ok(result.warnings.some((w) => w.includes('tile_n') && w.includes('超出墙')));
   assert.equal(result.stats[DXF_LAYERS.WFIN_TILE[0]], undefined);
@@ -135,7 +144,7 @@ test('project-dxf: 带 segments 细分的墙，wall_region 沿折线链插值（
     { x1: 0, z1: 0, x2: 1, z2: 0 },
     { x1: 1, z1: 1, x2: 4, z2: 1 },
   ];
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).along = [3, 4];
+  tileBand(input).along = [3, 4];
   const result = buildProjectDxf(input);
   const tileLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.WFIN_TILE[0]);
   // 链：段1 (0,0)→(1,0) 长 1；段2 (1,1)→(4,1) 长 3。along 3 → 段2 上 (3,1)，along 4 → (4,1)。
@@ -143,12 +152,15 @@ test('project-dxf: 带 segments 细分的墙，wall_region 沿折线链插值（
   assert.deepEqual(tileLines, [[3000, -1000, 4000, -1000]]);
 });
 
-test('project-dxf: wall_region 引用不存在的墙 → warning 显形，不抛', () => {
+// 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）后，「贴砖带引用不存在的墙」这个失效模式
+// **结构上不存在了**——带就住在墙对象里，宿主即墙，没有第二处墙 id 可写错（原 wall_region
+// 的 wall: 字段随类型一起退场）。仍按墙 id 引用的只剩 skirting_region，用例改为守它。
+test('project-dxf: skirting_region 引用不存在的墙 → warning 显形，不抛', () => {
   const input = baseInput();
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_missing';
+  input.house.sceneElements!.push({ type: 'skirting_region', id: 'sk_bad', wall: 'w_missing', room: 'living', along: [0, 1], height: 0.1 });
   const result = buildProjectDxf(input);
   assert.ok(result.warnings.some((w) => w.includes('w_missing')));
-  assert.equal(result.stats[DXF_LAYERS.WFIN_TILE[0]], undefined);
+  assert.equal(result.stats[DXF_LAYERS.SKIRT[0]], undefined);
 });
 
 // hinged_glass_door 两个导出用例已随 issue #98 第三阶段 S1 删除（overlay 0 元素死类型，
@@ -376,13 +388,11 @@ test('project-dxf: 折线墙饰面逐段输出，不连起终点弦（codex 四�
   const input = baseInput();
   // L 形墙：水平段 (0,0)→(2,0) 长 2 + 竖直段 (2,0)→(2,2) 长 2。区间 [1,3] 跨转角：
   // 逐段 = 水平 (1,0)→(2,0) + 竖直 (2,0)→(2,1)；弦线 = (1,0)→(2,1) 斜线（错误）。
-  input.house.sceneElements![0] = { type: 'wall', id: 'w_l', x1: 0, z1: 0, x2: 2, z2: 0 };
+  input.house.sceneElements![0] = { type: 'wall', id: 'w_l', x1: 0, z1: 0, x2: 2, z2: 0, finish: { tile_bands: [{ id: 'tile_n', room: 'living', along: [1, 3], bottom: 0, height: 2.4 }] } };
   (input.house.sceneElements![0] as Extract<SceneElement, { type: 'wall' }>).segments = [
     { x1: 0, z1: 0, x2: 2, z2: 0 },
     { x1: 2, z1: 0, x2: 2, z2: 2 },
   ];
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_l';
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).along = [1, 3];
   const result = buildProjectDxf(input);
   const tileLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.WFIN_TILE[0]);
   assert.equal(tileLines.length, 2);
@@ -524,10 +534,10 @@ test('project-dxf: 共墙双面饰面标注带房间归属且分侧错开（code
   const input = baseInput();
   // 同一墙 w_north 两侧声明：living 侧 0~0.30m、kitchen 侧 0~2.65m（同 along）
   input.house.rooms!.push({ id: 'kitchen', name: '厨房', x: 2, z: -2, width: 3, depth: 2, height: 2.8, type: 'service' });
-  input.house.sceneElements!.push(
-    { type: 'wall_region', id: 'tile_balc', wall: 'w_north', room: 'living', along: [0, 1.6], bottom: 0, height: 0.30 },
-    { type: 'wall_region', id: 'tile_gbath', wall: 'w_north', room: 'kitchen', along: [0, 1.6], bottom: 0, height: 2.65 },
-  );
+  input.house.sceneElements![0] = { type: 'wall', id: 'w_north', x1: 0, z1: 0, x2: 4, z2: 0, finish: { tile_bands: [
+    { id: 'tile_balc', room: 'living', along: [0, 1.6], bottom: 0, height: 0.30 },
+    { id: 'tile_gbath', room: 'kitchen', along: [0, 1.6], bottom: 0, height: 2.65 },
+  ] } };
   const result = buildProjectDxf(input);
   const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.WFIN_TILE[0]);
   const balc = texts.find((e) => (e['1'] ?? '').includes('tile_balc'));

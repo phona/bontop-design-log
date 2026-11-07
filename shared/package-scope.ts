@@ -125,8 +125,17 @@ const POINT_SOURCE_PREFIXES: Record<string, string> = {
  * revealPackageForObject）同时生效。**2026-11-06 更新（issue #98 PR-8）**：本集合
  * 导出后另被 scripts/schedule/cost-by-object.ts 复用——按对象算账的「对象 → 工作包」
  * 通道与 3D 高亮同源，新增对象 id 来源时两处自动跟随，不得在脚本里另立一套来源表。
+ *
+ * **2026-11-07 更新（issue #98 第三阶段 S4 面层配方下沉）**：登记 `overlay` 与
+ * `model_geometry`——墙（model-geometry.yaml 的墙条目，含 finish 面层配方）与围护构件
+ * （envelope/openings.yaml 的 bay_sill，含 finish）的 `select.ids` 就是场景 objectId 裸值
+ * （mergeSceneElements 原样透传）。设计文档 §5.7 预裁的这一步随 S4 落地：面层配方不再是
+ * overlay 平级元素后，`types: [wall_region/sill_region/paint_region]` 选择器无处可选，
+ * 工作包范围改按**宿主对象稳定 id** 表达（选择器 → ids，与家具片 PR-4 同一方向）。
+ * 注意 `ceiling` 不在此表：它的 ids 走 POINT_SOURCE_PREFIXES 的 `ceiling:` 前缀
+ * （ac_* 设备位在场景里带前缀），两条归一化路径不能混。
  */
-export const OBJECT_ID_SOURCES = new Set(['furnishings']);
+export const OBJECT_ID_SOURCES = new Set(['furnishings', 'overlay', 'model_geometry']);
 
 /**
  * 点位来源的 `select {all: true}` → 项目数据里该分类的全部点位（2026-11-04 issue #65）。

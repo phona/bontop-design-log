@@ -80,27 +80,33 @@ function buildInput(): MasonryTakeoffInput {
 
   return {
     walls,
-    wallRegions: elements
-      .filter((element) => element.type === 'wall_region')
-      .map((element) => ({
-        id: element.id,
-        wall: element.wall,
-        room: element.room,
-        along: element.along,
-        bottom: element.bottom ?? 0,
-        height: element.height,
-        zone: element.zone,
+    // 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：贴砖带不再是 overlay 平级元素
+    // wall_region，而是墙对象自己的 finish.tile_bands[]（model-geometry.yaml）；
+    // 防水台/上飘窗贴砖不再是 sill_region，而是 bay_sill 构件的 finish.tile[]
+    // （envelope/openings.yaml）。装载口径与 server/budget-calculator.ts 同源。
+    wallRegions: (MG.walls ?? []).flatMap((wall: any) =>
+      (wall.finish?.tile_bands ?? []).map((band: any) => ({
+        id: band.id,
+        wall: wall.id,
+        room: band.room,
+        along: band.along,
+        bottom: band.bottom ?? 0,
+        height: band.height,
+        zone: band.zone,
       })),
+    ),
     sillRegions: elements
-      .filter((element) => element.type === 'sill_region')
-      .map((element) => ({
-        id: element.id,
-        element: element.element,
-        room: element.room,
-        face: element.face,
-        along: element.along,
-        zone: element.zone,
-      })),
+      .filter((element) => element.type === 'bay_sill')
+      .flatMap((element) =>
+        (element.finish?.tile ?? []).map((band: any) => ({
+          id: band.id,
+          element: element.id,
+          room: band.room,
+          face: band.face,
+          along: band.along,
+          zone: band.zone,
+        })),
+      ),
     baySills,
     rooms,
     // config/tile-comparison.yaml 的 dry_room_ids（六个干区主地面）；湿区 = 两间卫生间。

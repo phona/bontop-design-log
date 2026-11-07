@@ -234,6 +234,42 @@ export function polylineLength(segments: readonly SceneSegment[]): number {
   return segments.reduce((sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1), 0);
 }
 
+/** 墙厚（米）。唯一声明在 shared/furniture-placement.ts，其余一律 import——禁止再写字面量。 */
+import { WALL_THICKNESS } from './furniture-placement.js';
+
+/**
+ * 完成面偏移解析器（2026-11-07 issue #98 第三阶段 S4，设计文档 §5.4）。
+ *
+ * 「房间侧完成面」离墙模型线多远，原先每个消费者各自写：SceneBuilder 私有常量
+ * `PAINT_FACE_OFFSET = WALL_THICKNESS/2 + 0.008 = 0.068`（paint/skirting 用），
+ * wall_region/sill_region 不偏移（走中心线 + depthTest=false），DXF 标注另偏移 300mm，
+ * shared/finish/rules.ts 的 F09 容差 0.12m 只是散文复述这个数。同一堵墙两种基准。
+ *
+ * 现在按 `line_datum` 统一解算：
+ * - `centerline`（当前唯一合法值，2026-11-06 业主口径 A）：模型线即渲染墙盒中心线，
+ *   完成面 = 线 ± WALL_THICKNESS/2，再留 8mm 间隙避开 z-fighting；
+ * - **未声明 line_datum 时不设默认值**（pending #76 量房未裁，object-first
+ *   types.ts:1046-1047 明令）：抛错让调用方显形，而不是静默按 centerline 工作——
+ *   否则 #76 裁定「脸/心翻转」时，绕过解析器的消费者会静默留旧基准。
+ *
+ * 消费方：SceneBuilder 的 paint/skirting 分支、DXF 标注偏移、finish/rules 的 F09 容差。
+ * #76 翻转时只改这里与墙声明，155 个面层声明（along）一个都不用动——这正是
+ * 「面层是特征不是对象」的红利。
+ */
+export function wallFaceOffset(
+  wall: { line_datum?: 'centerline'; id?: string },
+  _room?: string,
+): number {
+  if (wall.line_datum !== 'centerline') {
+    throw new Error(
+      `墙 ${wall.id ?? '(无 id)'} 未声明 line_datum（或取值不受支持）：完成面偏移无法解算。`
+      + ' 2026-11-06 业主口径 A 起 line_datum 必须显式声明（当前唯一合法值 centerline）；'
+      + 'pending #76 量房裁定前不得设默认值，否则脸/心翻转会静默留下旧基准。',
+    );
+  }
+  return WALL_THICKNESS / 2 + 0.008;
+}
+
 /**
  * 沿折线链裁剪 [from, to] 区间，保留区间内的全部墙段（转角处逐段输出，不连弦）。
  * 原实现自 render/SceneBuilder.ts 抽出（2026-11-03，DXF 出图共用同一裁剪口径）。

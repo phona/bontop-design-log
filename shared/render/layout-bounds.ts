@@ -63,19 +63,11 @@ export function computeLayoutBounds(input: LayoutBoundsInput): LayoutBounds {
       case 'wall_run':
         for (let i = 0; i < element.points.length - 1; i++) expandSegment(element.points[i].x, element.points[i].z, element.points[i + 1].x, element.points[i + 1].z, wallThickness / 2);
         break;
-      case 'wall_region':
-        // 贴砖检视态叠加层：几何落在所引用墙的 along 区间内，bounds 由该墙线段承担。
-        break;
+      // 面层配方（S4 下沉后不再是元素类型）：贴砖带/涂装带住在 wall.finish、防水台贴砖与
+      // 飘窗涂装住在 bay_sill.finish、顶面涂装住在房间特征——它们的几何全部落在宿主
+      // 墙段/构件轮廓内，bounds 由宿主承担，无需（也无法）按元素类型展开。
       case 'skirting_region':
-        // 踢脚线常显条带：几何落在所引用墙的 along 区间内，bounds 同理由该墙线段承担。
-        break;
-      case 'sill_region':
-        // 防水台贴砖带（R11 D4）：几何落在所引用 bay_sill 的墙跑上，bounds 由该构件承担。
-        break;
-      case 'paint_region':
-      case 'paint_sill_region':
-      case 'paint_ceiling_region':
-        // 涂漆检视态叠加层：同上，bounds 由所引用墙线段承担。
+        // 踢脚线常显条带（S5 起也下沉）：几何落在所引用墙的 along 区间内，bounds 同理由该墙线段承担。
         break;
       case 'curtain_run':
       case 'shower_screen':
