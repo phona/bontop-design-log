@@ -119,8 +119,7 @@
         "z": 3.65
       },
       "temperatureK": 3000,
-      "enabled": true,
-      "circuit": "dining"
+      "enabled": true
     },
     {
       "id": "light_living_dome",
@@ -132,8 +131,7 @@
         "z": 7.15
       },
       "temperatureK": 3000,
-      "enabled": true,
-      "circuit": "living_base"
+      "enabled": true
     },
     {
       "id": "light_master_dome",
@@ -194,7 +192,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "recessed": true
     },
     {
@@ -207,8 +204,7 @@
         "z": 1.45
       },
       "temperatureK": 3000,
-      "enabled": true,
-      "circuit": "entry_base"
+      "enabled": true
     },
     {
       "id": "light_entry_foyer",
@@ -221,7 +217,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "recessed": true
     },
     {
@@ -247,7 +242,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "lighting_bedrooms_bath",
       "wallId": "w_be_west",
       "wallSide": "east"
     },
@@ -262,7 +256,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "lighting_bedrooms_bath",
       "wallId": "w_east_upper",
       "wallSide": "west"
     },
@@ -277,7 +270,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "wallId": "w_be_west",
       "wallSide": "west"
     },
@@ -292,7 +284,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "wallId": "w_cent_south",
       "wallSide": "west"
     },
@@ -307,7 +298,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "mountAnchor": {
         "kind": "furniture_face",
         "furnitureId": "ld.entry_half_height_cabinet",
@@ -326,7 +316,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "mountAnchor": {
         "kind": "furniture_face",
         "furnitureId": "ld.wall_cabinet_tall",
@@ -340,8 +329,6 @@
       "id": "faucet_mbath_vanity",
       "room": "master_bedroom",
       "type": "faucet",
-      "x": 0.575,
-      "z": 2.96,
       "wall": "w_mbath_south",
       "along": 0.575,
       "face_offset": 0.04,
@@ -355,8 +342,6 @@
       "id": "drain_mbath_vanity",
       "room": "master_bedroom",
       "type": "drain",
-      "x": 0.575,
-      "z": 2.96,
       "wall": "w_mbath_south",
       "along": 0.575,
       "face_offset": 0.04,
@@ -369,8 +354,6 @@
       "id": "shower_mbath",
       "room": "master_bath",
       "type": "shower",
-      "x": 0.5,
-      "z": 2.76,
       "wall": "w_mbath_south",
       "along": 0.5,
       "face_offset": 0.04,
@@ -385,8 +368,6 @@
       "id": "toilet_mbath",
       "room": "master_bath",
       "type": "toilet",
-      "x": 2.6,
-      "z": 1.5,
       "wall": "w_mbath_east",
       "along": 0.4,
       "face_offset": -0.06,
@@ -432,8 +413,6 @@
       "id": "faucet_gbath_vanity",
       "room": "guest_bath",
       "type": "faucet",
-      "x": 7.14,
-      "z": 3.955,
       "wall": "w_gbath_east_open_vanity",
       "along": 0.405,
       "note": "客卫洗手池龙头：复用标准 faucet 模型，东侧延伸实体墙西侧（wall_side=west），中心线 z=3.955（与台盆共用中心线，2026-11-06 随 DEC-2026-11-05-R5 柜体北移 3cm 由 3.90 调整），底座标高约0.84m，贴近0.77m台面并避开台盆；墙体挂载与给排水按现场复核（DEC-2026-09-09-R1：给水预留三通，兼扫地机基站进水；排水接台盆下水——该下水路由本身待现场确认；DEC-2026-09-09-R6：悬浮柜+台下基站后下水定案墙排——穿南墙回内卫沉箱，地面无管，见 drain_gbath_vanity）。status: inferred + construction_status: pending（2026-11-06 issue #98 PR-4 显式申报）——本点为设计推断位、未实测，挂载与给排水按现场复核、pending-site-data #75（基站进水水压实测+减压阀位）绑本点，实测前不冻结；同 faucet_kitchen_dishwasher 口径（给水未画路线前不标 confirmed）；2026-11-06 issue #98 PR-6 宿主核实=墙挂（不挂柜）：本点按墙面龙头贴 w_gbath_east_open_vanity 西脸（note 既有「墙体挂载」口径；shared/render/FixtureFactory.ts buildVanity 亦按标准墙面龙头建模、龙头由本 plumbing 点位统一生成），台上盆占台面 x[6.70,6.98]、龙头在盆后墙面上方，与柜体无挂载关系；按 2026-11-06 口径 A（墙线=渲染墙盒中心线、完成面=线±WALL_THICKNESS/2，shared/furniture-placement.ts 单一口径）迁到西完成面 x 7.05→7.14（= 墙线 7.20 − 半墙厚 0.06，与 vanity / mirror_cabinet_gbath 背沿同一完成面）；精度三件套维持 status: inferred + construction_status: pending（设计推断位、未实测，pending-site-data #75 绑本点），迁移后离墙线 0.06m ≤0.15m 无 verify-point-placement 告警；所连 MEP 路线（water-guest-bath / water-hot-water-gbath-requirement）按点位 id 绑定自动跟随，route_not_orthogonal 既有告警条数与分桶不变（该线为 candidate 估算口径、量房日重画），穿墙 penetration 声明点 (7.05,3.55) 与实际交点偏差 0.066m ≤0.25m 仍合规",
@@ -448,8 +427,6 @@
       "id": "drain_gbath_vanity",
       "room": "guest_bath",
       "type": "drain",
-      "x": 6.9,
-      "z": 3.55,
       "wall": "w_gbath_south",
       "along": 1.3,
       "face_offset": -0.06,
@@ -464,8 +441,6 @@
       "id": "shower_gbath",
       "room": "guest_bath",
       "type": "shower",
-      "x": 7.2,
-      "z": 2.45,
       "wall": "w_gbath_east",
       "along": 0.05,
       "face_offset": -0.06,
@@ -480,8 +455,6 @@
       "id": "toilet_gbath",
       "room": "guest_bath",
       "type": "toilet",
-      "x": 7.2,
-      "z": 3.05,
       "wall": "w_gbath_east",
       "along": 0.65,
       "face_offset": -0.06,
@@ -570,8 +543,6 @@
       "id": "faucet_balcony_washer",
       "room": "balcony",
       "type": "faucet",
-      "x": 5.6,
-      "z": 1.5,
       "wall": "w_balc_west",
       "along": 0.5,
       "face_offset": -0.06,
@@ -596,8 +567,6 @@
       "id": "faucet_garden",
       "room": "entry_garden",
       "type": "faucet",
-      "x": 10.8,
-      "z": 1.5,
       "wall": "w_ent_west",
       "along": 1.5,
       "face_offset": -0.06,

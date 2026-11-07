@@ -17,6 +17,7 @@ import { centerlineSamples } from '../arc-polyline.js';
 import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
 import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall } from '../point-placement.js';
+import { derivePointCircuits, type PointCircuitTopologyLike } from '../point-circuits.js';
 import { DxfWriter } from './dxf-writer.js';
 
 /** 图层清单（ASCII；CAD 侧按专业开关）。颜色为 ACI 色号。 */
@@ -58,6 +59,13 @@ export interface ProjectDxfInput {
   house: ProjectDxfHouse;
   plumbing?: PlumbingPoint[];
   mep?: { coordination: MepCoordination; sources: MepEndpointSources };
+  /**
+   * 回路归属来源（issue #98 S3）：点位侧 circuit 字段退役后，图上「点位属于哪条回路」的
+   * 标注改走 shared/point-circuits.ts 单一派生。两个入口（web 按钮与 CLI）各自把
+   * config/electrical-topology.yaml 的 circuits+controls 传进来；缺省则不标回路
+   * （而非回落已删除的点位侧声明）。
+   */
+  pointCircuitSources?: PointCircuitTopologyLike;
   /** utf8（默认，中望/浩辰兼容）或 ascii（业主 CAD 乱码时的一行退路，只影响 TEXT 标注，不影响几何）。 */
   labels?: 'utf8' | 'ascii';
   /** 图内说明（codex 七审 major）：接口降级、专业缺失等交付限制写进 D-NOTES 图层随图走，
@@ -132,6 +140,10 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   const pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined = house.furnishings === undefined
     ? undefined
     : pointMountHostIndex(Object.values(house.furnishings).flat());
+  // 点位 → 回路 单一派生（issue #98 S3）：标注用，含 controls 反推出的开关归属。
+  const pointCircuits = input.pointCircuitSources === undefined
+    ? undefined
+    : derivePointCircuits(input.pointCircuitSources).pointCircuits;
 
   if (house.sceneElements !== undefined) emitWalls(writer, house.sceneElements);
 
@@ -145,7 +157,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('electrical: 无输入，E-* 图层为空（电气点位未导出——数据不可得时禁止用页面缓存当施工点位）');
     notes.push('ELECTRICAL NOT EXPORTED: electrical data unavailable at export time');
   } else {
-    emitElectrical(writer, house.electrical, pointWalls, pointMountHosts, warnings, label, restrict);
+    emitElectrical(writer, house.electrical, pointWalls, pointMountHosts, warnings, label, restrict, pointCircuits);
   }
   if (plumbing === undefined) {
     warnings.push('plumbing: 无输入，P-POINTS 图层为空（水路点位未导出）');
@@ -459,6 +471,8 @@ function emitElectrical(
   warnings: string[],
   label: (text: string, fallback?: string) => string,
   restrict: RestrictLabels,
+  /** 点位 → 回路 单一派生（issue #98 S3）；undefined = 调用方未提供 topology，不标回路。 */
+  pointCircuits?: ReadonlyMap<string, string>,
 ): void {
   for (const point of points) {
     // 已知不可用/待核点位（codex 三审 blocking）：sock_balcony_washer 这类 blocked 点
@@ -485,7 +499,7 @@ function emitElectrical(
     // 宿主柜体与安装面必须随图，否则无法判断固定在哪件柜、哪一面。
     const mountText = point.mountAnchor ? ` M=${point.mountAnchor.furnitureId}/${point.mountAnchor.face}` : '';
     writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(`${point.id} ${point.type}${mountElev !== undefined ? ` H${mountElev}` : ''}${countText}${sideText}${mountText}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));
+      label(`${point.id} ${point.type}${mountElev !== undefined ? ` H${mountElev}` : ''}${countText}${sideText}${mountText}${pointCircuits?.get(point.id) ? ` ${pointCircuits.get(point.id)}` : ''}${suffix}`, point.id));
     if (notUsable) {
       warnings.push(`electrical ${point.id}: serviceability ${point.serviceability_status}（H${mountElev ?? '?'} 落点不可用，不得按普通点施工）`);
     } else if (pendingPos) {

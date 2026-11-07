@@ -10,6 +10,7 @@ import { endpointSourcesFromFacts, MepCoordinationSchema, parseMepCoordination }
 import { lintMepCoordination, type MepLintLayoutContext } from '../../shared/mep-hvac-lint.js';
 import type { VertexLayoutYaml } from '../../shared/types.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
@@ -89,7 +90,16 @@ describe('render facts API', () => {
     // suppressed 属性经 shared/suppression.ts 得出（原 overlay.suppress 顶层清单已删）；
     // 本 fixture 无 suppress 墙，故为空数组。
     const context: MepLintLayoutContext = { layout, ceiling: testFacts.ceiling, suppressedWallIds: suppressedWallIds(layout.walls), referenceConstraints: testFacts.hvac.plans[0].diagram.reference_constraints };
-    const direct = lintMepCoordination(mepConfig, endpointSourcesFromFacts(testFacts), context);
+    // 端点解析的宿主索引（issue #98 S1/S3）：与服务端 /api/mep-coordination 路由同一构造
+    // （server/routes.ts：catalog.getWalls() + getFurnishings()）。S3 起沿墙点位不再声明
+    // 绝对 x/z，两边都必须带索引，否则直调与 API 的解析输入不同、计数对不上。
+    const catalog = ProjectCatalog.load('.');
+    const directSources = endpointSourcesFromFacts(
+      testFacts,
+      pointWallIndexFromElements(catalog.getWalls()),
+      pointMountHostIndex(Object.values(catalog.getFurnishings()).flat()),
+    );
+    const direct = lintMepCoordination(mepConfig, directSources, context);
     const app = createApp(() => testFacts, undefined, () => context);
     const response = await request(app).get('/api/mep-coordination').expect(200);
     assert.deepEqual(response.body.lint.counts, direct.counts);

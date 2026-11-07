@@ -7,6 +7,10 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { load as parseYaml } from 'js-yaml';
 import { lintFacts, type FactsRegistry, type FactsWorkspace } from '../../shared/facts-lint.js';
+import { endpointSourcesFromFacts, resolveMepEndpoint } from '../../shared/mep-hvac-coordination-schema.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { VertexLayoutYaml } from '../../shared/types.js';
 
 // ─── 内存 workspace ─────────────────────────────────────────────────────────
 
@@ -544,9 +548,35 @@ const realWorkspace = (): FactsWorkspace => {
       'coverage.files': [],
       'layout.rooms': [],
       'layout.floor_regions': [],
+      // issue #98 S3：点位解析后坐标（fact.gas_alarm_x/z 的 dataset 权威源）——与入口脚本
+      // scripts/verify/facts/verify-facts.ts 同一构造，否则本测试会假红（dataset 缺键）。
+      'points.resolved': resolvedPointPositions(),
     },
   };
-};
+}
+
+/** 点位解析后坐标（单一解算，µm 取整）：与 verify-facts 入口同构造。 */
+const resolvedPointPositions = (): Record<string, { x: number; z: number }> => {
+  const load = (rel: string): unknown => parseYaml(readFileSync(rel, 'utf8'));
+  const electrical = load('config/electrical.yaml');
+  const plumbing = load('config/plumbing.yaml');
+  const sources = endpointSourcesFromFacts({
+    electrical: electrical as never,
+    plumbing: plumbing as never,
+    ceiling: load('config/model/envelope/ceiling.yaml') as never,
+    hvac: load('config/hvac.yaml') as never,
+  }, pointWallIndexFromElements(resolveLayout(load('config/layout/model-geometry.yaml') as VertexLayoutYaml).walls),
+     pointMountHostIndex(Object.values((load('config/house.yaml') as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never));
+  const positions: Record<string, { x: number; z: number }> = {};
+  for (const points of [electrical, plumbing] as Array<Array<{ id?: string }>>) {
+    for (const point of points) {
+      if (!point?.id || positions[point.id]) continue;
+      const at = resolveMepEndpoint(point.id, sources);
+      if (at) positions[point.id] = { x: Number(at.x.toFixed(6)), z: Number(at.z.toFixed(6)) };
+    }
+  }
+  return positions;
+};;
 
 test('真实登记表：fact.circuit_count 的六个镜像在真实文件上全部解析且与权威值 21 路一致', () => {
   // 2026-10-04 数据修正（A1/A2）后，acceptance.yaml:283 与 pending-site-data.md:90 的

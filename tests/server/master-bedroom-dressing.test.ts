@@ -5,6 +5,9 @@ import { load } from 'js-yaml';
 import { FURNITURE_DIMS, isCurtainSoftEnvelopePreview, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type RenderLightingFixture } from '../../shared/types.js';
 import { buildFixture, setNorthWallWardrobe950DoorConfiguration, type NorthWallWardrobe950DoorConfiguration, setNorthWallWardrobe950DoorState } from '../../shared/render/FixtureFactory.js';
 import { buildInfrastructure } from '../../shared/render/InfrastructureBuilder.js';
+import { pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { VertexLayoutYaml } from '../../shared/types.js';
 import { buildLightingFixtures } from '../../shared/render/LightingFixtureBuilder.js';
 import * as THREE from 'three';
 
@@ -27,7 +30,7 @@ type ElectricalPoint = {
     panel_group?: { id: string; role: string; center_spacing: number; union_width: number };
   };
 };
-type PlumbingPoint = { id: string; x?: number; z?: number };
+type PlumbingPoint = { id: string; x?: number; z?: number; wall?: string; wall_side?: string; along?: number; face_offset?: number };
 type RuntimeAabb = { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
 
 const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: Record<string, Furnishing[]> };
@@ -71,10 +74,31 @@ function placed(type: string, room: Furnishing[] = master): Furnishing {
   return item;
 }
 
+// 主卧宿主墙索引（issue #98 S1/S3）：点位定位走 shared/point-placement.ts 单一解算，
+// 沿墙点位不再声明绝对 x/z，测试里的「坐标」一律取解析结果（与 3D/DXF/MEP 同源）。
+// 索引直接取 model-geometry（经 resolveLayout），不手抄墙段——手抄就会出现第二份几何。
+const MB_POINT_WALLS = pointWallIndexFromElements(
+  resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls,
+);
+
+function plumbPoint(id: string): PlumbingPoint {
+  const found = plumbing.find((candidate) => candidate.id === id);
+  assert.ok(found, `missing plumbing point ${id}`);
+  if (found.wall === undefined) return found;
+  const { placement, diagnostic } = resolvePointPlacementInWalls(found as never, MB_POINT_WALLS);
+  assert.equal(diagnostic, undefined, `${id}: ${diagnostic ?? ''}`);
+  assert.ok(placement, `${id}: 解算失败`);
+  return { ...found, x: placement!.x, z: placement!.z };
+}
+
 function point(id: string): ElectricalPoint {
   const found = electrical.find((candidate) => candidate.id === id);
   assert.ok(found, `missing electrical point ${id}`);
-  return found;
+  if (found.wall === undefined) return found;
+  const { placement, diagnostic } = resolvePointPlacementInWalls(found as never, MB_POINT_WALLS);
+  assert.equal(diagnostic, undefined, `${id}: ${diagnostic ?? ''}`);
+  assert.ok(placement, `${id}: 解算失败`);
+  return { ...found, x: placement!.x, z: placement!.z };
 }
 
 // 世界 AABB：奇数 quarter-turn 旋转交换 width/depth（与 verify-furniture-placement 同口径）
@@ -123,7 +147,7 @@ function runtimeElectricalAabb(id: string): RuntimeAabb {
   const built = buildInfrastructure({
     electrical: [normalized as any],
     plumbing: [],
-    pointWalls: new Map([['w_mb_east', { segments: [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }], line_datum: 'centerline' }]]),
+    pointWalls: MB_POINT_WALLS,
   });
   const fixture = built.electrical[0];
   assert.ok(fixture, `missing runtime electrical fixture ${id}`);
@@ -271,7 +295,7 @@ test('washbasin-only cabinet preserves envelope and plumbing center without a dr
   // 柜体东移 5cm 收宽 1.05，盆/龙头居中至 x=0.575
   assert.deepEqual(placed('mb_washbasin_cabinet'), { type: 'mb_washbasin_cabinet', id: 'mb.washbasin_cabinet', x: 0.575, z: 3.16, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.mb_washbasin_cabinet, { width: 1.05, depth: 0.50 });
-  const faucet = plumbing.find((candidate) => candidate.id === 'faucet_mbath_vanity');
+  const faucet = plumbPoint('faucet_mbath_vanity');
   assert.ok(faucet);
   assert.equal(faucet.x, 0.575);
   assert.equal(faucet.z, 2.96);
@@ -347,10 +371,11 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
     assert.equal(p.wall_side, 'west', `${p.id} must keep wall_side west`);
     assert.equal(p.x, 4.20);
   }
-  assert.equal(left.z, 6.202);
-  assert.equal(switchN.z, 6.288);
-  assert.equal(right.z, 8.512);
-  assert.equal(switchL.z, 8.598);
+  // 沿墙解算的浮点尾差（along + 墙段起点的加减）用 GAP_EPS 容差收口；4.20 是墙线本身故严格相等
+  assert.ok(Math.abs(left.z! - 6.202) < GAP_EPS, `left z=${left.z}`);
+  assert.ok(Math.abs(switchN.z! - 6.288) < GAP_EPS, `switchN z=${switchN.z}`);
+  assert.ok(Math.abs(right.z! - 8.512) < GAP_EPS, `right z=${right.z}`);
+  assert.ok(Math.abs(switchL.z! - 8.598) < GAP_EPS, `switchL z=${switchL.z}`);
   // 两侧统一 380×350×500 候选柜分别服务北/南床头点位；两侧均为 172×86 暖白哑光一体双联框（北侧 DEC-2026-09-08-R1 补齐）。
   assert.equal(left.height, 0.75);
   assert.equal(right.height, 0.75);

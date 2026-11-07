@@ -6,6 +6,7 @@ import type {
   ResolvedLayout,
 } from './types.js';
 import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls } from './point-placement.js';
+import { derivePointCircuits } from './point-circuits.js';
 
 const LIGHT_TYPES = new Set(['ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'night_light']);
 const PANEL_TYPES = new Set(['strong_panel', 'weak_panel']);
@@ -79,7 +80,13 @@ export function lintElectricalTopology(
   const warnings: ElectricalLintIssue[] = [];
   const pointMap = new Map(points.map((point) => [point.id, point]));
   const issue = (level: 'error' | 'warning', code: string, message: string, id?: string) => (level === 'error' ? errors : warnings).push({ level, code, message, ...(id ? { id } : {}) });
-  const covered = new Set<string>();
+  // 点位 → 回路 单一派生（issue #98 S3，shared/point-circuits.ts）：成员关系只住
+  // member_point_ids，point_uncovered / coveredPoints / 控制目标校验全部读它。
+  const derived = derivePointCircuits(topology);
+  const covered = derived.memberCircuits;
+  // 重复成员（同一点位进两条回路）用累加集合查：derived 的 map 已预填全部成员，
+  // 直接 has() 会把每个合法成员都判成重复。
+  const seenMembers = new Set<string>();
 
   const panelIds = new Set<string>();
   for (const panel of topology.panels) {
@@ -101,8 +108,8 @@ export function lintElectricalTopology(
       if (circuitMembers.has(id)) issue('error', 'duplicate_member', `Point ${id} is listed more than once in circuit ${circuit.id}`, id);
       circuitMembers.add(id);
       if (!pointMap.has(id)) issue('error', 'unknown_point', `Circuit ${circuit.id} references unknown point ${id}`, id);
-      if (covered.has(id)) issue('error', 'duplicate_member', `Point ${id} is a member of multiple circuits`, id);
-      covered.add(id);
+      if (seenMembers.has(id)) issue('error', 'duplicate_member', `Point ${id} is a member of multiple circuits`, id);
+      seenMembers.add(id);
       const point = pointMap.get(id);
       if (point && !POWERABLE_TYPES.has(point.type)) issue('error', 'member_not_powerable', `Circuit ${circuit.id} member ${id} (${point.type}) is not a powerable load point`, id);
       if (circuit.purpose === 'lighting' && point && !LIGHT_TYPES.has(point.type)) issue('error', 'lighting_member_not_light', `Lighting circuit ${circuit.id} includes non-light point ${id}`, id);
@@ -125,22 +132,17 @@ export function lintElectricalTopology(
       issue('warning', 'rcd_missing_on_socket_circuit', `Circuit ${circuit.id} feeds ${socketMembers.length} socket point(s) (${socketMembers.join(', ')}) but breaker "${circuit.breaker ?? '未声明'}" declares no ≤30mA RCD/漏保/RCBO/RCD (GB 55038-2025 7.4.3-1)`, circuit.id);
     }
   }
-  const circuitsBySource = new Map<string, string>();
-  for (const circuit of topology.circuits) {
-    const sourceId = circuit.source_circuit_id ?? circuit.id;
-    circuitsBySource.set(sourceId, circuit.id);
-  }
+  // ── 点位 → 回路（issue #98 S3，shared/point-circuits.ts）──────────────────
+  // 点位侧 `circuit` 字段已退役（成员关系只住 member_point_ids）：原
+  // `declared_circuit_uncovered` / `circuit_fact_mismatch` 两份声明间的交叉校验随双写
+  // 一并删除，`source_circuit_id` 间接层同批废除。检测能力接续三点（见 point-circuits.ts
+  // 头注与 tests/server/electrical-lint.test.ts 的成员关系钉断）：
+  //   ① 成员完整性检查（unknown_point / duplicate_member / 类型不符 / dangling）仍在本函数，error 级；
+  //   ② point_uncovered 去掉「点位声明了 circuit 就不报」的抑制——任何不进回路的 powerable 点位都显形；
+  //   ③ 派生 diagnostics：受控灯具不在任何回路上 → 开关回路归属无从派生（旧 point.circuit 在控制目标点上意外承担的那半份校验）。
+  for (const diagnostic of derived.diagnostics) issue('warning', 'control_target_circuit_unresolved', diagnostic);
   for (const point of points) {
-    if (!point.circuit) continue;
-    const topologyCircuitId = circuitsBySource.get(point.circuit);
-    if (!topologyCircuitId) {
-      issue('warning', 'declared_circuit_uncovered', `Point ${point.id} declares circuit ${point.circuit}, but no topology circuit covers it`, point.id);
-    } else if (!topology.circuits.find((circuit) => circuit.id === topologyCircuitId)?.member_point_ids.includes(point.id)) {
-      issue('error', 'circuit_fact_mismatch', `Point ${point.id} declares circuit ${point.circuit}, but is not a member of topology circuit ${topologyCircuitId}`, point.id);
-    }
-  }
-  for (const point of points) {
-    if (!covered.has(point.id) && !point.circuit && !PANEL_TYPES.has(point.type)) issue('warning', 'point_uncovered', `Electrical point ${point.id} is not covered by Phase 1 topology`, point.id);
+    if (!derived.memberCircuits.has(point.id) && !PANEL_TYPES.has(point.type)) issue('warning', 'point_uncovered', `Electrical point ${point.id} is not covered by Phase 1 topology`, point.id);
     if (point.wall && context.suppressedWallIds?.includes(point.wall)) issue('error', 'suppressed_wall_mount', `Point ${point.id} references suppressed/glass wall ${point.wall}`, point.id);
     if (point.wall && context.layout && !context.layout.walls.some((wall) => wall.id === point.wall)) issue('warning', 'unknown_wall', `Point ${point.id} references unknown wall ${point.wall}`, point.id);
   }
@@ -148,12 +150,6 @@ export function lintElectricalTopology(
   const tvCabinet = Object.values(context.furnishings ?? {})
     .flat()
     .find((item) => item.type === 'tv_wall_low' && typeof item.x === 'number' && typeof item.z === 'number');
-  if (tvSocket && tvCabinet && typeof tvSocket.x === 'number' && typeof tvSocket.z === 'number') {
-    const separation = Math.hypot(tvSocket.x - tvCabinet.x!, tvSocket.z - tvCabinet.z!);
-    if (separation > 1.5) {
-      issue('warning', 'tv_socket_near_tv_stand', `TV socket ${tvSocket.id} is ${separation.toFixed(2)}m from tv_wall_low; expected <= 1.50m`, tvSocket.id);
-    }
-  }
   // (e) 防生活阳台式复发：ceiling_light 预算行（count>0，缺省=1）所在房间必须有至少一个照明类点位。
   const roomsWithCeilingLightBudget = new Set<string>();
   for (const [roomId, items] of Object.entries(context.furnishings ?? {})) {
@@ -166,8 +162,9 @@ export function lintElectricalTopology(
     }
   }
   const curtainWalls = (context.layout?.walls ?? []).filter((wall) => context.suppressedWallIds?.includes(wall.id));
-  // 平面坐标走点位解算器（issue #98 S1）：与 3D/DXF/MEP 同源；无墙上下文的调用方回落声明 x/z
-  // （迁移期断言保证两者相等，容差 0.005m）。mount 挂载点（S2）从同一份 furnishings 建宿主索引。
+  // 平面坐标走点位解算器（issue #98 S1/S3）：与 3D/DXF/MEP 同源。S3 起沿墙/挂载点位不再
+  // 声明绝对 x/z，回落分支只剩绝对点位（C/D/E/F 组）——它们本就以声明坐标为唯一事实源。
+  // mount 挂载点（S2）从同一份 furnishings 建宿主索引。
   const pointWalls = context.layout ? pointWallIndexFromElements(context.layout.walls) : undefined;
   const mountHosts = context.furnishings ? pointMountHostIndex(Object.values(context.furnishings).flat()) : undefined;
   const planOf = (point: ElectricalPoint): { x: number; z: number } | undefined => {
@@ -175,6 +172,17 @@ export function lintElectricalTopology(
     if (placement) return { x: placement.x, z: placement.z };
     return typeof point.x === 'number' && typeof point.z === 'number' ? { x: point.x, z: point.z } : undefined;
   };
+  // tv 插座 ↔ tv_wall_low 低柜 ≤1.5m（与 config/verify-rules.yaml 的 tv_socket_to_stand 同口径，
+  // 两条门禁各自显形）。平面坐标走单一解算（issue #98 S3：tv 插座是沿墙点位，不再声明绝对 x/z）。
+  if (tvSocket && tvCabinet && typeof tvCabinet.x === 'number' && typeof tvCabinet.z === 'number') {
+    const plan = planOf(tvSocket);
+    if (plan) {
+      const separation = Math.hypot(plan.x - tvCabinet.x, plan.z - tvCabinet.z);
+      if (separation > 1.5) {
+        issue('warning', 'tv_socket_near_tv_stand', `TV socket ${tvSocket.id} is ${separation.toFixed(2)}m from tv_wall_low; expected <= 1.50m`, tvSocket.id);
+      }
+    }
+  }
   for (const point of points) {
     if (!/窗帘/.test(point.note ?? '')) continue;
     const plan = planOf(point);
