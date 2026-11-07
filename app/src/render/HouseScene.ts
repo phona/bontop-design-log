@@ -61,7 +61,7 @@ import { buildScene, refreshSlidingDoorGroup, type CurtainBuildEntry, type Scene
 import { buildHvacGeometry, type HvacEntityIndex } from '@shared/render/HvacGeometryBuilder';
 import { buildHvacBuilderSources, type HvacBuilderSources } from '@shared/render/HvacBuilder';
 import { buildInfrastructure } from '@shared/render/InfrastructureBuilder';
-import type { PointWall } from '@shared/point-placement';
+import type { PointMountHost, PointWall } from '@shared/point-placement';
 import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@shared/render/layout-bounds';
 import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
 import type { CeilingZone } from '@shared/types';
@@ -249,6 +249,8 @@ export class HouseScene implements SceneApi {
   private wallSegmentIndex = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>();
   /** 点位宿主墙索引（id → 折线段 + line_datum）：电气/给排水点位与 MEP 端点的单一解算输入。 */
   private pointWallIndex = new Map<string, PointWall>();
+  /** mount 挂载点位的家具宿主索引（issue #98 S2）：标注层与浏览器 MEP 端点解算用。 */
+  private mountHostIndex: ReadonlyMap<string, PointMountHost> = new Map();
   private readyState: 'loading' | 'ready' | 'failed' = 'loading';
   private readyPromise: Promise<void>;
   private resolveReady!: () => void;
@@ -759,6 +761,7 @@ export class HouseScene implements SceneApi {
     this.slidingDoorGroups = index.slidingDoorGroups;
     this.wallSegmentIndex = index.wallSegments;
     this.pointWallIndex = index.pointWalls;
+    this.mountHostIndex = index.mountHosts;
     this.hvacEntityIndex = index.hvac;
     this.hvacProjection = projectData.renderFactsProjection;
     this.hvacExpectedExportIds = [...this.hvacEntityIndex.all.keys()];
@@ -1913,6 +1916,11 @@ export class HouseScene implements SceneApi {
   /** 点位宿主墙索引（issue #98 S1）：标注层解析坐标与 MEP 端点解算共用。 */
   getPointWalls(): ReadonlyMap<string, PointWall> {
     return this.pointWallIndex;
+  }
+
+  /** mount 挂载点位的家具宿主索引（issue #98 S2）：标注层与浏览器 MEP 端点解算共用。 */
+  getMountHosts(): ReadonlyMap<string, PointMountHost> {
+    return this.mountHostIndex;
   }
 
   placeInfrastructureFixtures(electrical: ElectricalPoint[], plumbing: PlumbingPoint[]): void {

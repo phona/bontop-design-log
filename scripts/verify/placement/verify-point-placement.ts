@@ -12,7 +12,8 @@
  * 直接给出，不是 clamp 的必然复读。
  */
 
-import { openingsAlongWall, pointAlongPolyline, polylineLength, wallFaceOffset, type WallOpeningSpan } from '../../../shared/wall-segments.js';
+import { WALL_THICKNESS } from '../../../shared/furniture-placement.js';
+import { openingsAlongWall, pointAlongPolyline, polylineLength, type WallOpeningSpan } from '../../../shared/wall-segments.js';
 
 export type Point = { x: number; z: number };
 
@@ -176,8 +177,10 @@ export function checkWallPointPlacements(
         const expected = SIDE_VECTORS[item.wall_side as keyof typeof SIDE_VECTORS];
         normalSign = Math.sign(expected.x * left.x + expected.z * left.z) || 1;
       } else {
-        // 缺 wall_side：按 face_offset 的符号推侧别（完成面在墙线正侧，负偏移穿到另一侧）
-        const offset = (wallFaceOffset(wall) + (item.face_offset ?? 0));
+        // 缺 wall_side：按 face_offset 的符号推侧别（完成面在墙线正侧，负偏移穿到另一侧）。
+        // 基准 = 口径 A 纯完成面 WALL_THICKNESS/2（2026-11-07 S2，与点位解算器同口径）——
+        // 不再用 wallFaceOffset()（内含 0.008 漆面/踢脚渲染缝）。
+        const offset = WALL_THICKNESS / 2 + (item.face_offset ?? 0);
         normalSign = offset < -EPS ? -1 : 1;
       }
       const roomSign = Math.sign((roomCentroid.x - datum.x) * left.x + (roomCentroid.z - datum.z) * left.z);
@@ -191,28 +194,30 @@ export function checkWallPointPlacements(
       }
     }
 
-    // 离墙线距离：完成面 + face_offset 是显式声明，异常值（如 0.15m）仍要显形——
-    // 它不再是「x/z 与墙线的偏差」，而是点位离开完成面的意图量。
-    try {
-      const offset = wallFaceOffset(wall) + (item.face_offset ?? 0);
-      // 边界含等于（sock_gbath_robot 的 0.15m 是真实异常值：点站在离完成面 82mm 处，
-      // 迁机器人仓侧面后坐标待定）——显形比容差浮点更重要。
+    // 离墙线距离：口径 A 完成面（WALL_THICKNESS/2）+ face_offset 是显式声明，异常值
+    // （如 sock_gbath_robot 的 0.15m）仍要显形——它不是「x/z 与墙线的偏差」，而是点位
+    // 离开完成面的意图量。宿主墙缺 line_datum 由点位解算器 fail-closed 显形（同一口径），
+    // 这里只复核声明本身可解。
+    if (wall.line_datum !== 'centerline') {
+      issues.push({
+        level: 'error',
+        id: item.id,
+        wall: item.wall,
+        message: '宿主墙未声明 line_datum：完成面偏移无法解算（2026-11-06 业主口径 A 起必须显式声明，pending #76 裁定前不设默认值）',
+      });
+    } else {
+      const offset = WALL_THICKNESS / 2 + (item.face_offset ?? 0);
+      // 边界含等于（sock_gbath_robot 的 0.15m 是真实异常值：点站在离完成面 90mm 处，
+      // 迁机器人仓侧面后坐标待定，S2 已按「旧坐标不得用于下单」登记）——显形比容差浮点更重要。
       if (Math.abs(offset) >= tolerance - EPS) {
         issues.push({
           level: 'warning',
           id: item.id,
           wall: item.wall,
           distance: Math.abs(offset),
-          message: `点位离墙线垂直距离 ${Math.abs(offset).toFixed(2)}m（完成面 ${wallFaceOffset(wall).toFixed(3)}m + face_offset ${(item.face_offset ?? 0).toFixed(3)}m）`,
+          message: `点位离墙线垂直距离 ${Math.abs(offset).toFixed(2)}m（完成面 ${(WALL_THICKNESS / 2).toFixed(3)}m + face_offset ${(item.face_offset ?? 0).toFixed(3)}m）`,
         });
       }
-    } catch (error) {
-      issues.push({
-        level: 'error',
-        id: item.id,
-        wall: item.wall,
-        message: `完成面偏移无法解算：${error instanceof Error ? error.message : String(error)}`,
-      });
     }
 
     // 越界时不再报「距墙段端点」：那只是同一次失败的复读（2026-10-04 A4-b 的防刷屏口径），

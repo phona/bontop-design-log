@@ -10,6 +10,8 @@ import {
   validateProjectHvacFacts,
 } from '../../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../../shared/project-render-facts-projection.js';
+import { pointMountHostIndex } from '../../shared/point-placement.js';
+import { load as parseYaml } from 'js-yaml';
 import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import type { CurrentScheme, ProjectRenderFactsProjection } from '../../shared/types.js';
 
@@ -32,6 +34,8 @@ export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFa
     existsSync(path('config/render/lighting.yaml'))
       ? parseLightingRenderConfig(readFileSync(path('config/render/lighting.yaml'), 'utf8'))
       : { fixtures: [] },
+    // mount 挂载灯（issue #98 S2 起夜灯）的宿主索引：house.yaml 第五份输入。
+    pointMountHostIndex(Object.values((parseYaml(readFileSync(path('config/house.yaml'), 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never),
   );
 }
 

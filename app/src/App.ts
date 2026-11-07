@@ -337,8 +337,10 @@ export class App {
       this.houseScene.camera,
       this.houseScene.getViewOnlyRoot(),
     );
-    // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）
+    // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）；
+    // mount 挂载点位的宿主索引同源注入（issue #98 S2）。
     this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
+    this.annotationRenderer.setMountHosts(this.houseScene.getMountHosts());
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
@@ -2976,8 +2978,10 @@ export class App {
       this.houseScene.camera,
       this.houseScene.getViewOnlyRoot(),
     );
-    // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）
+    // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）；
+    // mount 挂载点位的宿主索引同源注入（issue #98 S2）。
     this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
+    this.annotationRenderer.setMountHosts(this.houseScene.getMountHosts());
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
@@ -3176,6 +3180,9 @@ export class App {
               outdoor: plan ? [plan.outdoor] : [],
               // 点位宿主墙索引（issue #98 S1）：浏览器 MEP 路线与服务端/DXF/3D 同一解算。
               pointWalls: this.houseScene.getPointWalls(),
+              // mount 挂载点位的家具宿主索引（issue #98 S2）：起夜灯是 MEP 端点，
+              // 浏览器渲染与服务端/DXF 同一宿主脸解算。
+              mountHosts: this.houseScene.getMountHosts(),
             };
             this.mepLintResult = mepPayload.lint ?? null;
             this.houseScene.loadMepCoordination(mep, mepSources, mepPayload.lint);

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createSocketIcon, createSwitchIcon, createFloorSocketIcon, createNetworkIcon, createFaucetIcon, createShowerIcon, createToiletIcon, createDrainIcon, createWasherIcon, createCeilingZoneIndicator, createACIndoorIcon } from './icons.js';
 import { ProblemDetector, type ElectricalPoint as ProblemElectricalPoint, type PlumbingPoint as ProblemPlumbingPoint } from './ProblemDetector.js';
 import type { Problem, FurnitureItem, WallInfo } from './ProblemDetector.js';
-import { resolvePointPlacementInWalls, type PointWall } from '@shared/point-placement';
+import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
 
 /** 点位声明（/api/annotations/* 原始数组）：x/z 是迁移期断言字段，图标落位走解析器。 */
 interface ElectricalPoint extends ProblemElectricalPoint {
@@ -13,7 +13,7 @@ interface ElectricalPoint extends ProblemElectricalPoint {
   along?: number;
   face_offset?: number;
   absolute?: boolean;
-  mount?: { furniture_id: string; face: 'north' | 'south' | 'east' | 'west'; surface_gap?: number };
+  mount?: { furniture_id: string; face: 'north' | 'south' | 'east' | 'west'; surface_gap?: number; along: number; face_offset?: number };
   anchor?: { source: string; id: string };
   height: number;
 }
@@ -26,7 +26,7 @@ interface PlumbingPoint extends ProblemPlumbingPoint {
   along?: number;
   face_offset?: number;
   absolute?: boolean;
-  mount?: { furniture_id: string; face: 'north' | 'south' | 'east' | 'west'; surface_gap?: number };
+  mount?: { furniture_id: string; face: 'north' | 'south' | 'east' | 'west'; surface_gap?: number; along: number; face_offset?: number };
   anchor?: { source: string; id: string };
   height?: number;
 }
@@ -61,6 +61,8 @@ export class AnnotationRenderer {
   private ceilingData: CeilingZone[] = [];
   /** 点位宿主墙索引（issue #98 S1）：标注层与 ProblemDetector 的坐标一律经 shared/point-placement.ts 解算。 */
   private pointWalls: ReadonlyMap<string, PointWall> = new Map();
+  /** mount 挂载点位的家具宿主索引（issue #98 S2）。 */
+  private mountHosts: ReadonlyMap<string, PointMountHost> = new Map();
 
   constructor(
     private scene: THREE.Scene,
@@ -78,13 +80,18 @@ export class AnnotationRenderer {
     this.pointWalls = pointWalls;
   }
 
+  /** mount 宿主索引由 App 从 HouseScene（buildScene 的 index.mountHosts）注入（issue #98 S2）。 */
+  setMountHosts(mountHosts: ReadonlyMap<string, PointMountHost>): void {
+    this.mountHosts = mountHosts;
+  }
+
   /**
    * 解析后平面坐标（issue #98 S1 单一解算）：沿墙点位 = 完成面基点（与 MEP 端点同源）；
    * 解算失败（缺 along/越界/断引用）回落声明 x/z 并 console 告警——标注层不是施工依据，
    * 权威判定在 mep-hvac-lint 与 verify:consistency，那里同样的情况是 fail-closed。
    */
   private planOf(point: ElectricalPoint | PlumbingPoint): { x: number; z: number } {
-    const { placement } = resolvePointPlacementInWalls(point, this.pointWalls);
+    const { placement } = resolvePointPlacementInWalls(point, this.pointWalls, this.mountHosts);
     if (placement) return { x: placement.x, z: placement.z };
     if (typeof point.x === 'number' && typeof point.z === 'number') {
       console.warn(`[annotations] ${point.id}: 定位解析失败，回落声明坐标（详见 verify:consistency）`);

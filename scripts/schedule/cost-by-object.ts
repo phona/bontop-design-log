@@ -32,7 +32,7 @@
  *
  * 引用通道（--inventory 枚举被机器绑定引用的对象）：
  *   anti_penetration_pair   config/anti-penetration.yaml waivers[].pair（结构化）
- *   electrical_mount_anchor config/electrical.yaml mount_anchor.furniture_id（结构化）
+ *   electrical_mount_anchor config/electrical.yaml mount.furniture_id（结构化；S2 起挂载声明由 mount_anchor 改 mount）
  *   render_override         config/render/overrides.yaml 文本点名（basis/reason 散文，按行定位）
  *   cost_target             control.yaml 成本项 targets（结构化）
  *   acceptance_text         config/acceptance.yaml 验收项 item/standard/method 点名
@@ -356,9 +356,10 @@ export function buildObjectLedgerReport(ctx: CostByObjectContext): ObjectLedgerR
   for (const waiver of antiPenetration.waivers ?? []) {
     for (const pairRef of waiver.pair ?? []) recordRef('anti_penetration_pair', `anti-penetration.yaml#${waiver.id}`, pairRef);
   }
-  // ② electrical mount_anchor.furniture_id（结构化）
+  // ② electrical mount.furniture_id（结构化；issue #98 S2 起挂载声明由 mount_anchor 改 mount，
+  // 定位来源升级后宿主绑定字段名同步——通道名 electrical_mount_anchor 保持稳定）
   for (const point of electricalPoints) {
-    const furnitureId = point?.mount_anchor?.furniture_id;
+    const furnitureId = point?.mount?.furniture_id;
     if (furnitureId) recordRef('electrical_mount_anchor', `electrical.yaml#${point.id}`, furnitureId);
   }
   // ③ render/overrides.yaml 文本点名（basis/reason 散文，按行定位）
@@ -517,7 +518,7 @@ export function renderInventoryReport(report: ObjectLedgerReport): string {
   const lines: string[] = [];
   lines.push('# 对象绑定引用清单（cost:by-object --inventory）');
   lines.push('');
-  lines.push('> 查询生成：每次运行从 config/ 与 schedule/ 现算，不是手写清单。通道：anti_penetration_pair（anti-penetration.yaml waivers.pair）、electrical_mount_anchor（electrical.yaml mount_anchor.furniture_id）、render_override（render/overrides.yaml 文本点名）、cost_target（control.yaml 成本项 targets）、acceptance_text（acceptance.yaml 验收项点名）、house_mount_host（house.yaml mount.furniture_id 绑定宿主）、model_package_link（MODEL-PKG-* furnishings select.ids）。文本通道按「稳定 id / 房间.类型 / 全屋唯一裸类型名」全等匹配（多房同型的裸类型名不匹配）。');
+  lines.push('> 查询生成：每次运行从 config/ 与 schedule/ 现算，不是手写清单。通道：anti_penetration_pair（anti-penetration.yaml waivers.pair）、electrical_mount_anchor（electrical.yaml mount.furniture_id，issue #98 S2 起由 mount_anchor 改 mount）、render_override（render/overrides.yaml 文本点名）、cost_target（control.yaml 成本项 targets）、acceptance_text（acceptance.yaml 验收项点名）、house_mount_host（house.yaml mount.furniture_id 绑定宿主）、model_package_link（MODEL-PKG-* furnishings select.ids）。文本通道按「稳定 id / 房间.类型 / 全屋唯一裸类型名」全等匹配（多房同型的裸类型名不匹配）。');
   lines.push('');
   lines.push(`- 全屋声明稳定 id 的 placed 对象：**${report.declaredPlacedCount}** 件（另有声明 id 的 count-only 条目 ${report.declaredCountOnlyCount} 件——无 runtime 对象，不可归属）`);
   lines.push(`- 被机器绑定引用的对象：**${report.objects.length}** 件；其中已挂业务链接（工作包/成本项）：**${report.objects.filter(hasBusinessLink).length}** 件`);

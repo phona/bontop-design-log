@@ -1,7 +1,7 @@
 import { load as parseYaml } from 'js-yaml';
 import { z } from 'zod';
 import type { CeilingZone, ElectricalPoint, HvacAnchor, HvacTerminal, PlumbingPoint, VrfOutdoorUnit } from './types.js';
-import { resolvePointPlacementInWalls, type PointWall } from './point-placement.js';
+import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from './point-placement.js';
 
 export const MepLayerSchema = z.enum([
   'strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant',
@@ -81,6 +81,12 @@ export interface MepEndpointSources {
    * （解析结果 == x/z，容差 0.005m），但墙上下文的调用方必须传，否则 3D/DXF/MEP 会分叉。
    */
   pointWalls?: ReadonlyMap<string, PointWall>;
+  /**
+   * mount 挂载点位的家具宿主索引（issue #98 第四阶段 S2）：mount 点位（起夜灯）的路线端点
+   * 由宿主脸解出（宿主移动自动跟随）。缺省 = 调用方没有家具上下文，此时与 pointWalls 同规
+   * 回落声明坐标（断言模式下相等）；有家具上下文的调用方必须传。
+   */
+  mountHosts?: ReadonlyMap<string, PointMountHost>;
 }
 
 export interface MepRouteSemanticMetadata {
@@ -284,12 +290,13 @@ function resolvedPointEndpoint(
   point: ElectricalPoint | PlumbingPoint,
   pointWalls: ReadonlyMap<string, PointWall> | undefined,
   y: number | undefined,
+  mountHosts: ReadonlyMap<string, PointMountHost> | undefined,
 ): { x: number; z: number; y?: number } | undefined {
-  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls);
+  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
   if (!placement) {
     if (diagnostic === undefined) return undefined;
-    // 无墙上下文时（pointWalls 缺失）退回声明坐标：断言模式下相等，且少数 takeoff 脚本
-    // 不装布局；有墙上下文却解失败则是真错误，交回 undefined 让上层显形。
+    // 无墙/家具上下文时（pointWalls 与 mountHosts 均缺失）退回声明坐标：断言模式下相等，
+    // 且少数 takeoff 脚本不装布局；有上下文却解失败则是真错误，交回 undefined 让上层显形。
     if (pointWalls === undefined && typeof point.x === 'number' && typeof point.z === 'number') {
       return { x: point.x, z: point.z, y };
     }
@@ -303,9 +310,9 @@ export function resolveMepEndpoint(endpoint: string | { x: number; z: number; y?
   const junction = junctions.find((item) => item.id === endpoint);
   if (junction) return junction.position;
   const electrical = sources.electrical.find((item) => item.id === endpoint);
-  if (electrical) return resolvedPointEndpoint(electrical, sources.pointWalls, electrical.height ?? electrical.mount_height);
+  if (electrical) return resolvedPointEndpoint(electrical, sources.pointWalls, electrical.height ?? electrical.mount_height, sources.mountHosts);
   const plumbing = sources.plumbing.find((item) => item.id === endpoint);
-  if (plumbing) return resolvedPointEndpoint(plumbing, sources.pointWalls, plumbing.height);
+  if (plumbing) return resolvedPointEndpoint(plumbing, sources.pointWalls, plumbing.height, sources.mountHosts);
   const anchor = sources.hvacAnchors.find((item) => item.id === endpoint);
   if (anchor) {
     if (anchor.position) return { x: anchor.position.x, z: anchor.position.z };
@@ -330,7 +337,7 @@ export function resolveMepEndpoint(endpoint: string | { x: number; z: number; y?
 export function endpointSourcesFromFacts(facts: {
   electrical: ElectricalPoint[]; plumbing: PlumbingPoint[]; ceiling: CeilingZone[];
   hvac: { plans: Array<{ outdoor: VrfOutdoorUnit; diagram: { anchors: HvacAnchor[]; terminals: HvacTerminal[] } }> };
-}, pointWalls?: ReadonlyMap<string, PointWall>): MepEndpointSources {
+}, pointWalls?: ReadonlyMap<string, PointWall>, mountHosts?: ReadonlyMap<string, PointMountHost>): MepEndpointSources {
   const plan = facts.hvac.plans[0];
   return {
     electrical: facts.electrical,
@@ -340,5 +347,6 @@ export function endpointSourcesFromFacts(facts: {
     hvacTerminals: plan?.diagram.terminals ?? [],
     outdoor: plan ? [plan.outdoor] : [],
     ...(pointWalls ? { pointWalls } : {}),
+    ...(mountHosts ? { mountHosts } : {}),
   };
 }

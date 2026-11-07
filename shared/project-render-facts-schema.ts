@@ -19,12 +19,6 @@ const finiteNumber = z.number().refine(Number.isFinite, 'must be finite');
 const nonEmpty = z.string().trim().min(1);
 const WallSideSchema = z.enum(['north', 'south', 'east', 'west']);
 const Vec3Schema = z.object({ x: finiteNumber, y: finiteNumber, z: finiteNumber }).strict();
-const FurnitureFaceMountAnchorConfigSchema = z.object({
-  kind: z.literal('furniture_face'),
-  furniture_id: nonEmpty,
-  face: WallSideSchema,
-  surface_gap: finiteNumber.nonnegative().optional(),
-}).strict();
 const FurnitureFaceMountAnchorProjectionSchema = z.object({
   kind: z.literal('furniture_face'),
   furnitureId: nonEmpty,
@@ -46,30 +40,39 @@ const ElectricalFixtureAppearanceSchema = z.object({
 }).strict();
 
 /**
- * 点位定位声明（issue #98 第四阶段 S1，设计文档 §4.3）：四种互斥定位来源之一——
- * `wall + along`（沿墙）/ `mount`（家具挂载）/ `anchor`（锚点引用）/ `absolute`（绝对坐标）。
- * x/z 从必填改为**迁移期断言字段**：沿墙点位的解析结果与声明值差 >0.005m 即 fail
- * （tests/server/point-placement.test.ts 固化为测试），全量转 along 且断言全绿后才删（S3）。
- * 解算实现见 shared/point-placement.ts。
+ * 点位定位声明（issue #98 第四阶段 S1/S2，设计文档 §4.3）：四种互斥定位来源之一——
+ * `wall + along`（沿墙）/ `mount`（家具挂载，S2 起为真定位来源）/ `anchor`（锚点引用）/
+ * `absolute`（绝对坐标）。x/z 从必填改为**迁移期断言字段**：解析结果与声明值差 >0.005m 即
+ * fail（tests/server/point-placement.test.ts 固化为测试），全量转 along 且断言全绿后才删
+ * （S3）。解算实现见 shared/point-placement.ts。
+ *
+ * S2 变更：mount_anchor（身份注记 + 手写 x/z 人工同步的旧机制）已废，由 mount
+ * （furniture_id + face + along + surface_gap + face_offset）承担定位——宿主移动时点位
+ * 自动跟随。原 mount_anchor 的 kind 字段（唯一合法值 furniture_face）由解析投影自动补上。
  */
 const PointWallAnchorSchema = z.object({
   wall: nonEmpty,
   wall_side: WallSideSchema,
   along: finiteNumber.nonnegative(),
-  /** 离开完成面的附加量（米，带符号；默认 0 = 完成面，wallFaceOffset 口径 A 解算）。 */
+  /** 离开完成面的附加量（米，带符号；默认 0 = 完成面，口径 A WALL_THICKNESS/2 解算）。 */
   face_offset: finiteNumber.optional(),
 }).strict();
 const PointMountSchema = z.object({
   furniture_id: nonEmpty,
   face: WallSideSchema,
+  /** 沿宿主脸的位置（米）：东西脸自 minZ 向北累计、南北脸自 minX 向东累计。 */
+  along: finiteNumber.nonnegative(),
+  /** 离宿主脸平面的附加量（米，带符号；默认 0 = 贴脸）。灯体半厚 + surface_gap 由渲染管线追加。 */
+  face_offset: finiteNumber.optional(),
+  /** 安装缝（米）；缺声明取渲染管线同款默认 0.003。 */
   surface_gap: finiteNumber.nonnegative().optional(),
 }).strict();
 const PointAnchorSchema = z.object({ source: nonEmpty, id: nonEmpty }).strict();
 
 /**
  * 定位来源唯一性 + x/z 条件必填。沿墙点位必须 wall+wall_side+along 齐备（x/z 删除后
- * wall_side 无从从坐标反推）；绝对点位必须 x/z 齐备。违反即拒绝加载——定位声明不允许
- * 同时住两个事实源。
+ * wall_side 无从从坐标反推）；绝对点位必须 x/z 齐备；mount 点位必须 along（沿脸位置）。
+ * 违反即拒绝加载——定位声明不允许同时住两个事实源。
  */
 function refinePointPlacement<T extends { x?: number; z?: number; wall?: string; wall_side?: unknown; along?: number; face_offset?: number; mount?: unknown; anchor?: unknown; absolute?: boolean }>(
   value: T,
@@ -93,6 +96,12 @@ function refinePointPlacement<T extends { x?: number; z?: number; wall?: string;
   if (sources[0] === 'wall' && (value.wall === undefined || value.wall_side === undefined || value.along === undefined)) {
     ctx.addIssue({ code: 'custom', message: '沿墙定位要求 wall + wall_side + along 齐备' });
   }
+  if (sources[0] === 'mount') {
+    const mount = value.mount as { along?: number } | undefined;
+    if (mount?.along === undefined) {
+      ctx.addIssue({ code: 'custom', message: 'mount 定位要求 along（沿宿主脸的位置）' });
+    }
+  }
   if (sources[0] === 'absolute' && (value.x === undefined || value.z === undefined)) {
     ctx.addIssue({ code: 'custom', message: '绝对定位（absolute）要求 x 与 z 齐备' });
   }
@@ -105,7 +114,7 @@ export const ElectricalPointSchema = z.object({
   mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
   /** 宿主意图标注（F 组器具邻接点）：只作文档与校验输入，不参与解算。 */
   host_intent: nonEmpty.optional(),
-  mount_anchor: FurnitureFaceMountAnchorConfigSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
+  temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
 }).strict().superRefine(refinePointPlacement);
 export const PlumbingPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor', 'leb', 'drain_riser', 'gas_meter', 'duct', 'water_supply', 'water_heater']),
@@ -818,14 +827,17 @@ export function validateProjectHvacFacts(hvac: ProjectHvacFacts, facts: Pick<Pro
   return hvac;
 }
 export function parseElectricalPoints(raw: string): ElectricalPoint[] {
-  return ElectricalPointsSchema.parse(parseYaml(raw)).map(({ wall_side, mount_anchor, ...point }) => ({
+  // mount（S2 真挂载定位来源）保留在产出里（解算器输入），同时投影出 mountAnchor——
+  // 渲染管线 NightLightGeometry / DXF 标注 / verify-spatial 的既有消费形态，kind 唯一
+  // 合法值 furniture_face 由这里自动补上。wall_side 仍按旧约定解构后以 wallSide 追加末尾。
+  return ElectricalPointsSchema.parse(parseYaml(raw)).map(({ wall_side, ...point }) => ({
     ...point,
     ...(wall_side ? { wallSide: wall_side } : {}),
-    ...(mount_anchor ? { mountAnchor: {
-      kind: mount_anchor.kind,
-      furnitureId: mount_anchor.furniture_id,
-      face: mount_anchor.face,
-      ...(mount_anchor.surface_gap !== undefined ? { surfaceGap: mount_anchor.surface_gap } : {}),
+    ...(point.mount ? { mountAnchor: {
+      kind: 'furniture_face' as const,
+      furnitureId: point.mount.furniture_id,
+      face: point.mount.face,
+      ...(point.mount.surface_gap !== undefined ? { surfaceGap: point.mount.surface_gap } : {}),
     } } : {}),
   }));
 }

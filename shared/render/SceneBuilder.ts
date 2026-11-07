@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { CurtainPoint, ElectricalPoint, FurnishingsYaml, HvacDiagram, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, SillPaintBand, SillTileBand, WallPaintBand, WallSegment, WallTileBand, RoomObject, WallSide } from '../types.js';
 import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS } from '../types.js';
 import { buildInfrastructure } from './InfrastructureBuilder.js';
-import type { PointWall } from '../point-placement.js';
+import { pointMountHostIndex, type PointMountHost, type PointWall } from '../point-placement.js';
 import { buildLightingFixtures } from './LightingFixtureBuilder.js';
 import { type HvacBuilderSources } from './HvacBuilder.js';
 import { buildHvacGeometry, type HvacEntityIndex } from './HvacGeometryBuilder.js';
@@ -167,6 +167,8 @@ export interface SceneBuildIndex {
   wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>;
   /** 点位宿主墙索引（id → 折线段 + line_datum）：电气/给排水点位与浏览器 MEP 端点的单一解算输入。 */
   pointWalls: Map<string, PointWall>;
+  /** mount 挂载点位的家具宿主索引（issue #98 S2）：浏览器 MEP 端点与标注层解算 mount 点位用。 */
+  mountHosts: Map<string, PointMountHost>;
   openingWallSegments: Map<string, THREE.Mesh[]>;
   lintels: Map<string, THREE.Mesh[]>;
   hvac: HvacEntityIndex;
@@ -1558,7 +1560,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   const index = {
     rooms: Object.fromEntries(input.rooms.map((room) => [room.id, { ...room }])),
     floorMeshes: [], wallMeshes: [], ceilingMeshes: [], furnitureMeshes: [],
-    countertopMeshes: [], glassMeshes: [], doorMeshes: [], curtainRuns: new Map(), curtains: new Map(), slidingDoorGroups: new Map(), electrical: new Map(), plumbing: new Map(), lightingFixtures: new Map(), wallSegments: new Map(), pointWalls: new Map(), openingWallSegments: new Map(), lintels: new Map(), hvac: { equipment: new Map(), terminals: new Map(), all: new Map() },
+    countertopMeshes: [], glassMeshes: [], doorMeshes: [], curtainRuns: new Map(), curtains: new Map(), slidingDoorGroups: new Map(), electrical: new Map(), plumbing: new Map(), lightingFixtures: new Map(), wallSegments: new Map(), pointWalls: new Map(), mountHosts: new Map(), openingWallSegments: new Map(), lintels: new Map(), hvac: { equipment: new Map(), terminals: new Map(), all: new Map() },
   } as SceneBuildIndex;
   const exportRoot = new THREE.Group();
   exportRoot.name = 'HOUSE_EXPORT';
@@ -1600,6 +1602,8 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     index.pointWalls.set(wall.id, { segments, ...(wall.line_datum ? { line_datum: wall.line_datum } : {}) });
   }
   const furnishings = input.furnishings ?? {};
+  // mount 挂载点位的家具宿主索引（issue #98 S2）：与 DXF/MEP/verify 同一份 furnishings 来源。
+  index.mountHosts = pointMountHostIndex(Object.values(furnishings).flat());
   const placedFurnitureKeys = new Set(
     Object.entries(furnishings).flatMap(([roomId, items]) => items
       .filter((item) => item.x !== undefined && item.z !== undefined)
