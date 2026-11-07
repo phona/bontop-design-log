@@ -126,7 +126,7 @@ import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { load as parseYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../server/project-catalog.js';
-import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import {
   BudgetCalculator,
@@ -844,8 +844,11 @@ const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknow
     plumbing,
     ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
     hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
-    // 点位宿主墙索引（issue #98 S1）：与 takeoff:mep 同一解算路径（本函数注释即此承诺）。
-  }, pointWallIndexFromElements(ProjectCatalog.load('.').getWalls()));
+    // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：与 takeoff:mep
+    // （scripts/project/mep-takeoff.ts 同式）完全同一条装配路径——mount 挂载点位（两条起夜灯
+    // 路线端点）由宿主脸解出，漏传会让 resolveMepRoutes 少解析 2 条路线、计价管长/导线量
+    // 静默缩水（2026-11-07 独立评审 blocking：¥16,035→¥15,986 即此错）。
+  }, pointWallIndexFromElements(ProjectCatalog.load('.').getWalls()), pointMountHostIndex(Object.values(ProjectCatalog.load('.').getFurnishings()).flat()));
   const takeoff = computeMepTakeoff({
     electrical: electrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
     plumbing: plumbing as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'],
