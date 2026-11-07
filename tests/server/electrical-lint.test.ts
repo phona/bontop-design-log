@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -20,7 +21,7 @@ const raw = readFileSync('config/electrical-topology.yaml', 'utf8');
 // 几何一律由项目现有 resolver 解析，不在测试里手抄。
 const layoutContext = () => ({
   layout: resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml),
-  suppressedWallIds: parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).suppress.flatMap((item) => (item.wall ? [item.wall] : item.walls ?? [])),
+  suppressedWallIds: parseOverlayFiles().suppress.flatMap((item) => (item.wall ? [item.wall] : item.walls ?? [])),
   furnishings: (parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml }).furnishings ?? {},
 });
 

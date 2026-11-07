@@ -81,7 +81,7 @@ describe('render facts API', () => {
     const testFacts: ProjectRenderFacts = {
       electrical: parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ProjectRenderFacts['electrical'],
       plumbing: parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as ProjectRenderFacts['plumbing'],
-      ceiling: parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'],
+      ceiling: parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'],
       hvac: parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'],
     };
     const overlay = parseOverlay('version: 1\nsuppress: []\nelements: []');

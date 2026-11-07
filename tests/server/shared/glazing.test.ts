@@ -44,27 +44,8 @@ describe('extractApertures', () => {
     assert.ok(Math.abs(aps[0].azimuthDeg - 0) < 0.1, `az ${aps[0].azimuthDeg}`);
   });
 
-  it('glass_infill 经 walls 解析', () => {
-    const el: SceneElement = {
-      type: 'glass_infill',
-      id: 'win1',
-      wall: 'w_east',
-      width: 1.5,
-      height: 1.5,
-      sill: 0.9,
-    };
-    const walls = [{ id: 'w_east', x1: 10, z1: 0, x2: 10, z2: 5 }];
-    const rooms = [{ id: 'study', x: 6, z: 2.5 }];
-    const aps = extractApertures([el], rooms, walls);
-    assert.equal(aps.length, 1);
-    assert.ok(Math.abs(aps[0].azimuthDeg - 90) < 0.1, `az ${aps[0].azimuthDeg}`);
-    assert.equal(aps[0].roomId, 'study');
-  });
-
-  it('glass_infill 找不到墙引用时跳过', () => {
-    const el: SceneElement = { type: 'glass_infill', id: 'w2', wall: 'missing', width: 1, height: 1, sill: 0.9 };
-    assert.equal(extractApertures([el], []).length, 0);
-  });
+  // glass_infill 两个用例已随 issue #98 第三阶段 S1 删除（overlay 0 元素死类型，
+  // extractApertures 的 wall 解析分支与 walls 参数同步退场）。
 
   it('多段折线产生多条采光面', () => {
     const el: SceneElement = {

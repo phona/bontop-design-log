@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -28,7 +29,7 @@ import type { ResolvedRoom, WallSegment } from '../../shared/types.js';
  *   ③ 与声明墙完全重合的端面被排除，并 push 指名道姓的 warning；
  *   ④ faces 没声明的面一律不算（不许多算一张脸）；
  *   ⑤ finish 分流：ordinary 与 anti_mold 互斥，面积只落到声明的那一格；
- *   ⑥ 真实声明端到端（config/layout/overlay.yaml 的 paint_master_bath_west_bay）数字可对账；
+ *   ⑥ 真实声明端到端（config/model/envelope/finish-surfaces.yaml 的 paint_master_bath_west_bay）数字可对账；
  *   ⑦ fail-closed：bay_sill element / room 不存在时调用方 computePaintScopeForLayout 必须抛错。
  *
  * 纪律：期望值一律用基本几何自己算（自有鞋带公式 / 数值积分 / 从 config 独立推导），
@@ -165,12 +166,12 @@ function declaration(faces: PaintSillFaceInput['faces'], finish: PaintSillFaceIn
 // ───────────────────────── 真实链路（config 驱动，与 server 同源） ─────────────────────────
 
 const MODEL_GEOMETRY = load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
-const OVERLAY = load(readFileSync('config/layout/overlay.yaml', 'utf8')) as {
+const OVERLAY = parseOverlayFiles() as {
   elements?: Array<Record<string, unknown>>;
 };
 
 const layout = resolveLayout(MODEL_GEOMETRY);
-const mergedElements = mergeSceneElements(layout.walls as any, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+const mergedElements = mergeSceneElements(layout.walls as any, parseOverlayFiles());
 const ceilingZones = loadCeilingConfig();
 
 /** 从 overlay.yaml 直接读真实声明（不经过 server 的 loader，保证输入侧也是独立的）。 */
@@ -341,7 +342,7 @@ test('finish 分流：面积只落到声明的那一格，ordinary 与 anti_mold
 
 test('真实声明端到端：paint_master_bath_west_bay 的面积/种类/告警可逐项对账', () => {
   // 守的不变量：从 overlay.yaml 声明 → buildBaySillGeometry → 真实 master_bath 房间
-  // → 真实 config/ceiling.yaml 跑通，且每个数字都能从 config 独立推出来（给业主看的账）。
+  // → 真实 config/model/envelope/ceiling.yaml 跑通，且每个数字都能从 config 独立推出来（给业主看的账）。
   // 实测来源：npx tsx --test tests/server/paint-sill-scope.test.ts（本文件 ⑥）
   // 于 HEAD=3bdff54 + 未提交的 paint-sill-scope.ts / overlay.yaml / ceiling.yaml 下测得；
   // 各期望值的推导见下方注释。

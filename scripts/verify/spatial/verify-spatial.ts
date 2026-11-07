@@ -349,14 +349,14 @@ function main(): void {
   const { layout, overlay, elements, config, house, suppressIds, structuralPaths, layoutWarnings } = inputs;
   const issues: SpatialIssue[] = [];
   if (overlay.suppress.some((entry) => entry.region && suppressionWallIds({ ...overlay, suppress: [entry] }, layout.walls).length === 0)) {
-    issues.push({ level: 'error', code: 'overlay_suppress_region_unmatched', entity: 'overlay.suppress', source: 'config/layout/overlay.yaml', message: 'a suppress region matches no authoritative wall', evidence: {} });
+    issues.push({ level: 'error', code: 'overlay_suppress_region_unmatched', entity: 'overlay.suppress', source: 'config/model/envelope/openings.yaml', message: 'a suppress region matches no authoritative wall', evidence: {} });
   }
 
   issues.push(...validateWallTopology(resolvedWallSegments(layout), { junctions: config.junctions, allowedCollinearOverlaps: config.allowed_collinear_overlaps, source: 'config/layout/model-geometry.yaml' }));
-  issues.push(...validateOverlayReplacements(suppressIds, elements.map(overlayRefs), config.overlay_replacements ?? [], 'config/layout/overlay.yaml', layout.walls.map((wall) => wall.id)));
+  issues.push(...validateOverlayReplacements(suppressIds, elements.map(overlayRefs), config.overlay_replacements ?? [], 'config/model/envelope/openings.yaml', layout.walls.map((wall) => wall.id)));
   issues.push(...validateGlassSegments(structuralPaths));
   issues.push(...validateOverlayJunctionSpecs(config.allowed_overlay_wall_junctions ?? [], structuralPaths, resolvedWallSegments(layout)));
-  issues.push(...validateGlassAgainstWalls(structuralPaths, resolvedWallSegments(layout), suppressIds, 'config/layout/model-geometry.yaml + config/layout/overlay.yaml', config.allowed_overlay_wall_junctions));
+  issues.push(...validateGlassAgainstWalls(structuralPaths, resolvedWallSegments(layout), suppressIds, 'config/layout/model-geometry.yaml + config/model/envelope/{openings,floor-zones,finish-surfaces}.yaml', config.allowed_overlay_wall_junctions));
 
   let scene: ReturnType<typeof buildRuntimeScene>;
   try {

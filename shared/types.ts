@@ -926,14 +926,9 @@ export type SceneElement =
   | { type: 'paint_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height?: number; color?: string; reason?: string }
   | { type: 'paint_sill_region'; id: string; element: string; room: string; faces: Array<'underside' | 'front' | 'start_end' | 'end_end'>; finish: 'ordinary' | 'anti_mold'; color?: string; reason?: string }
   | { type: 'paint_ceiling_region'; id: string; room: string; reason?: string }
-  | {
-      type: 'glass_infill';
-      id: string;
-      wall: string;
-      width: number;
-      height: number;
-      sill: number;
-    }
+  // glass_infill / hinged_glass_door 已于 issue #98 第三阶段 S1 删除：overlay 0 元素
+  // （hinged 自 DEC-2026-09-07-054 客卫玻璃门取消后无声明；glass_infill 从未启用），
+  // schema 与全部消费分支同步退场，不保留墓碑。
   | { type: 'frosted_privacy'; id: string; points: CurtainPoint[]; height: number; sill?: number; offset?: number; finish: 'frosted_privacy' }
   // floor_region 的算量口径（DEC-2026-10-09-P16）：**默认计入**，标了 `excluded: true` 才排除。
   // 与旧 `costed` 相反——旧标志要求每条都手工 opt-in，等于把「这块地是不是已被某个 applyRooms
@@ -947,7 +942,6 @@ export type SceneElement =
   | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number] }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
-  | { type: 'hinged_glass_door'; id: string; points: [OverlayPoint, OverlayPoint]; height: number; open?: boolean; swing?: 'north' | 'south'; hinge?: 'start' | 'end' }
   | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }
   | { type: 'curtain'; id: string; points: CurtainPoint[]; height: number; room?: string; kind?: 'sheer_blackout' | 'blinds'; offset?: number };
 

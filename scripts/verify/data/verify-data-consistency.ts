@@ -189,7 +189,8 @@ const placementWalls: PlacementWall[] = resolved.walls.map((w) => ({
   openings: w.openings,
 }));
 const suppressedWalls = new Set<string>();
-for (const entry of (load('config/layout/overlay.yaml')?.suppress ?? []) as any[]) {
+// S1 搬迁（issue #98）：suppress 现住 envelope/openings.yaml（原 config/layout/overlay.yaml 已拆）
+for (const entry of (load('config/model/envelope/openings.yaml')?.suppress ?? []) as any[]) {
   if (typeof entry.wall === 'string') suppressedWalls.add(entry.wall);
   for (const wall of entry.walls ?? []) if (typeof wall === 'string') suppressedWalls.add(wall);
 }

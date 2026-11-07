@@ -1,4 +1,5 @@
 import type { WallSegment, ResolvedOpening, Vec3 } from '@shared/types';
+import { WALL_THICKNESS } from '@shared/furniture-placement';
 
 export interface AABB {
   minX: number;
@@ -8,7 +9,6 @@ export interface AABB {
 }
 
 const PLAYER_RADIUS = 0.3;
-const WALL_THICKNESS = 0.12;
 
 export class CollisionDetector {
   private walls: AABB[] = [];

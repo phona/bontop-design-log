@@ -86,10 +86,7 @@ export function computeLayoutBounds(input: LayoutBoundsInput): LayoutBounds {
       case 'railing_run':
       case 'curtain':
       case 'sliding_door_run':
-      case 'hinged_glass_door':
         includePoints(element.points);
-        break;
-      case 'glass_infill':
         break;
       case 'frosted_privacy':
         includePoints(element.points);

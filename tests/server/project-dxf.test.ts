@@ -61,7 +61,6 @@ function baseInput(): ProjectDxfInput {
         { ...wall, openings: wall.openings?.map((opening) => ({ ...opening })) },
         { type: 'wall_region', id: 'tile_n', wall: 'w_north', along: [0, 2], bottom: 0, height: 2.4 },
         { type: 'floor_region', id: 'floor_living', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 2 }, { x: 0, z: 2 }] },
-        { type: 'hinged_glass_door', id: 'gd1', points: [{ x: 0, z: 0.8 }, { x: 0, z: 1.6 }], height: 2, swing: 'north', hinge: 'start' },
       ] as SceneElement[],
     },
   };
@@ -152,17 +151,8 @@ test('project-dxf: wall_region 引用不存在的墙 → warning 显形，不抛
   assert.equal(result.stats[DXF_LAYERS.WFIN_TILE[0]], undefined);
 });
 
-test('project-dxf: hinged_glass_door 画关闭位 + 开启位门扇与开启弧', () => {
-  const result = buildProjectDxf(baseInput());
-  const entities = parseEntities(result.dxf);
-  const doorLines = linesOn(entities, DXF_LAYERS.DOOR[0]);
-  // 关闭位 (0,800)→(0,-800)（z 0.8→1.6 映射 y -800→-1600，翻转后按 hinge start）
-  // points[start=(0,0.8), end=(0,1.6)] → DXF (0,-800),(0,-1600)；hinge=start → 铰链 (0,-800)
-  assert.deepEqual(doorLines[0], [0, -800, 0, -1600]);
-  const arcs = entities.filter((e) => e.type === 'ARC' && e['8'] === DXF_LAYERS.DOOR[0]);
-  assert.equal(arcs.length, 1);
-  assert.equal(arcs[0]['40'], '800.0000'); // 半径 = 门宽 0.8m
-});
+// hinged_glass_door 两个导出用例已随 issue #98 第三阶段 S1 删除（overlay 0 元素死类型，
+// project-dxf 的绘制分支同步退场）。
 
 test('project-dxf: plumbing / mep 缺失时图层为空 + warning；给足时落到 P-POINTS / M-ROUTE', () => {
   const without = buildProjectDxf(baseInput());
@@ -397,22 +387,6 @@ test('project-dxf: 折线墙饰面逐段输出，不连起终点弦（codex 四�
   assert.ok(tileLines.some(([x1, y1, x2, y2]) => x1 === 2000 && y1 === 0 && x2 === 2000 && y2 === -1000), JSON.stringify(tileLines));
   // 不存在斜弦 (1000,0)→(2000,-1000)
   assert.ok(!tileLines.some(([x1, y1, x2, y2]) => x1 === 1000 && y1 === 0 && x2 === 2000 && y2 === -1000));
-});
-
-test('project-dxf: hinge=end 门扇关闭位端点正确（末端铰链回归，codex 五审 blocking）', () => {
-  const input = baseInput();
-  input.house.sceneElements!!.push({ type: 'hinged_glass_door', id: 'gd_end', points: [{ x: 0, z: 0.8 }, { x: 0, z: 1.6 }], height: 2, swing: 'north', hinge: 'end' });
-  const result = buildProjectDxf(input);
-  const entities = parseEntities(result.dxf);
-  const doorLines = linesOn(entities, DXF_LAYERS.DOOR[0]);
-  // hinge=end：铰链 (0,-1600)，自由端关闭位 (0,-800)——门扇长 800mm（typo 会画成 (0,-1600) 自环）
-  const leaf = doorLines.find(([x1, y1, x2, y2]) => x1 === 0 && y1 === -1600 && x2 === 0 && y2 === -800);
-  assert.ok(leaf, JSON.stringify(doorLines));
-  // 开启弧半径 = 门宽 800mm（typo 时半径 0，addArc 跳过 → gd_end 无弧）。
-  // baseInput 的 gd1（hinge=start）也有一条弧，共 2 条、半径同为 800。
-  const arcs = entities.filter((e) => e.type === 'ARC' && e['8'] === DXF_LAYERS.DOOR[0]);
-  assert.equal(arcs.length, 2);
-  assert.ok(arcs.every((arc) => arc['40'] === '800.0000'));
 });
 
 test('project-dxf: plumbing 显式 not_for_construction 命中禁施工判定（codex 五审 blocking）', () => {

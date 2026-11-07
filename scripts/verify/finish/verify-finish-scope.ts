@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { loadCeilingConfig } from '../../../server/config-loader.js';
+import { loadOverlayDoc } from '../../../server/overlay-merge.js';
 import { collectFinishSceneMeshes } from '../../../shared/finish/scene.js';
 import {
   runFinishScopeChecks,
@@ -33,7 +34,8 @@ function readYaml(file: string): any {
 
 function buildInput(): FinishScopeInput {
   const MG = readYaml('config/layout/model-geometry.yaml');
-  const OV = readYaml('config/layout/overlay.yaml');
+  // S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 三文件，读 RAW 合并文档
+  const OV = loadOverlayDoc();
   const layout = resolveLayout(MG);
   const elements: any[] = OV.elements ?? [];
   const vertexById = new Map((MG.vertices ?? []).map((v: any) => [v.id, v]));

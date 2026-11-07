@@ -87,8 +87,6 @@ export interface SceneMaterialProvider {
   slidingDoorRail?: (element: Extract<SceneElement, { type: 'sliding_door_run' }>) => THREE.Material;
   slidingDoorFrame?: (element: Extract<SceneElement, { type: 'sliding_door_run' }>) => THREE.Material;
   slidingDoorGlass?: (context: { element: Extract<SceneElement, { type: 'sliding_door_run' }>; paneWidth: number }) => THREE.Material;
-  hingedGlassDoorFrame?: (element: Extract<SceneElement, { type: 'hinged_glass_door' }>) => THREE.Material;
-  hingedGlassDoorGlass?: (element: Extract<SceneElement, { type: 'hinged_glass_door' }>) => THREE.Material;
 }
 
 export interface SceneBuilderOptions {
@@ -186,7 +184,6 @@ type Point = { x: number; z: number };
 type WallElement = Extract<SceneElement, { type: 'wall' }>;
 type CurtainElement = Extract<SceneElement, { type: 'curtain' }>;
 type SlidingDoorElement = Extract<SceneElement, { type: 'sliding_door_run' }>;
-type HingedGlassDoorElement = Extract<SceneElement, { type: 'hinged_glass_door' }>;
 
 /**
  * 平面 Shape(x,z) → 世界 (x,z) 的唯一映射：绕 X 轴 −90° 立起来，再用 y 轴负向缩放把
@@ -210,7 +207,7 @@ function applyPlanFootprint(mesh: THREE.Mesh): void {
  * 这里按折线逐段裁剪，返回的每段都是墙上真实的一段直线，调用方逐段出网即可。
  * 直墙只有一段（不拆）；只有沿墙区间跨越多个折线段时才拆。
  */
-function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'frostedPrivacy' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass' | 'hingedGlassDoorFrame' | 'hingedGlassDoorGlass'>> {
+function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door' | 'doorFrame' | 'lintel' | 'curtain' | 'curtainRun' | 'frostedPrivacy' | 'showerScreen' | 'slidingDoorRail' | 'slidingDoorFrame' | 'slidingDoorGlass'>> {
   return {
     wall: ({ shaft }) => new THREE.MeshStandardMaterial({ color: shaft ? SHAFT_WALL : DEFAULT_PAINT, roughness: 0.85 }),
     door: ({ elevator }) => new THREE.MeshStandardMaterial({ color: elevator ? 0x888899 : 0x8b4513, roughness: elevator ? 0.25 : 0.6, metalness: elevator ? 0.85 : 0 }),
@@ -223,8 +220,6 @@ function defaultMaterials(): Required<Pick<SceneMaterialProvider, 'wall' | 'door
     slidingDoorRail: () => new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.6, roughness: 0.4 }),
     slidingDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x141414, metalness: 0.5, roughness: 0.45 }),
     slidingDoorGlass: () => glassMaterial(),
-    hingedGlassDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x202328, metalness: 0.7, roughness: 0.3 }),
-    hingedGlassDoorGlass: () => glassMaterial(),
   };
 }
 
@@ -502,59 +497,9 @@ function addSlidingDoorRun(root: THREE.Group, element: SlidingDoorElement, provi
   return group;
 }
 
-function addHingedGlassDoor(root: THREE.Group, element: HingedGlassDoorElement, provider: SceneMaterialProvider): THREE.Group | null {
-  const [a, b] = element.points;
-  const dx = b.x - a.x;
-  const dz = b.z - a.z;
-  const width = Math.hypot(dx, dz);
-  if (width < 1e-9) return null;
-  const angle = Math.atan2(dz, dx);
-  const group = new THREE.Group();
-  setSceneObjectMetadata(group, 'hinged_glass_door', element.id);
-  group.name = `hinged_glass_door:${element.id}`;
-  const frameMaterial = (provider.hingedGlassDoorFrame ?? (() => new THREE.MeshStandardMaterial({ color: 0x202328, metalness: 0.7, roughness: 0.3 })))(element);
-  const glass = (provider.hingedGlassDoorGlass ?? (() => glassMaterial()))(element);
-  const frame = 0.025;
-  const depth = 0.035;
-  const panel = new THREE.Group();
-  setSceneObjectMetadata(panel, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:panel`);
-  const pane = new THREE.Mesh(new THREE.BoxGeometry(width - 2 * frame, element.height - 2 * frame, 0.008), glass);
-  setSceneObjectMetadata(pane, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:pane`);
-  pane.userData.materialRole = 'glass';
-  panel.add(pane);
-  for (const [ySign, position] of [[1, 'top'], [-1, 'bottom']] as const) {
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(width, frame, depth), frameMaterial);
-    bar.position.y = ySign * (element.height / 2 - frame / 2);
-    setSceneObjectMetadata(bar, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:frame:${position}`);
-    bar.userData.materialRole = 'frame';
-    panel.add(bar);
-  }
-  for (const [xSign, position] of [[1, 'end'], [-1, 'start']] as const) {
-    const stile = new THREE.Mesh(new THREE.BoxGeometry(frame, element.height - 2 * frame, depth), frameMaterial);
-    stile.position.x = xSign * (width / 2 - frame / 2);
-    setSceneObjectMetadata(stile, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:frame:${position}`);
-    stile.userData.materialRole = 'frame';
-    panel.add(stile);
-  }
-  const hingeAtEnd = element.hinge === 'end';
-  const hinge = hingeAtEnd ? b : a;
-  const closedAngle = angle;
-  const openAngle = angle + (element.swing === 'south' ? -Math.PI / 2 : Math.PI / 2);
-  panel.position.set(hinge.x, element.height / 2, hinge.z);
-  panel.rotation.y = element.open === false ? closedAngle : openAngle;
-  panel.position.x += Math.cos(panel.rotation.y) * (hingeAtEnd ? -width / 2 : width / 2);
-  panel.position.z -= Math.sin(panel.rotation.y) * (hingeAtEnd ? -width / 2 : width / 2);
-  panel.userData = { ...panel.userData, hoverable: true, open: element.open !== false };
-  group.add(panel);
-  const hingePost = new THREE.Mesh(new THREE.BoxGeometry(frame, element.height, depth), frameMaterial);
-  hingePost.position.set(hinge.x, element.height / 2, hinge.z);
-  hingePost.rotation.y = angle;
-  setSceneObjectMetadata(hingePost, 'hinged_glass_door', element.id, `hinged_glass_door:${element.id}:hinge`);
-  hingePost.userData.materialRole = 'hinge';
-  group.add(hingePost);
-  root.add(group);
-  return group;
-}
+// hinged_glass_door / glass_infill 的构建分支已于 issue #98 第三阶段 S1 删除：
+// overlay.yaml 0 元素（DEC-2026-09-07-054 客卫玻璃门取消后 hinged 无声明；glass_infill 从未启用），
+// schema 联合类型与各消费点同步退场，见 shared/types.ts SceneElement。
 
 function addCurtain(root: THREE.Group, element: CurtainElement, rooms: ResolvedRoom[], provider: SceneMaterialProvider, index: SceneBuildIndex): void {
   if (element.points.length < 2) return;
@@ -1245,18 +1190,6 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
     case 'sliding_door_run':
       addSlidingDoorRun(root, element, provider, undefined);
       return;
-    case 'hinged_glass_door':
-      addHingedGlassDoor(root, element, provider);
-      return;
-    case 'glass_infill': {
-      const points = (element as Extract<SceneElement, { type: 'glass_infill' }> & { points?: Point[] }).points;
-      if (!points || points.length < 2) {
-        report.unsupported.push(`${id}: glass_infill has no resolved wall points`);
-        return;
-      }
-      addLineMeshes(root, points, element.height, 0.025, glassMaterial(), element.type, id);
-      return;
-    }
     case 'frosted_privacy': {
       if (element.points.length < 2) return;
       const materials = { ...defaultMaterials(), ...provider };
@@ -1583,16 +1516,15 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     index.rooms[input.platform.id] = { ...input.platform };
   }
   const wallHeights = new Map(input.walls.map((wall) => [wall.id, wall.height ?? 3.0]));
-  // 涂装按实扣窗洞的声明源：overlay 的 bay_sill / glass_infill（sill=洞底，height=窗带高）。
+  // 涂装按实扣窗洞的声明源：envelope/openings.yaml 的 bay_sill（sill=洞底，height=窗带高）。
   // 只有写了 along 的才能定位；没写的会在 computePaintScope 里记 warning（显形而非静默少扣）。
   const paintWindows: PaintWindowInput[] = (input.elements ?? [])
-    .filter((element) => element.type === 'bay_sill' || element.type === 'glass_infill')
+    .filter((element) => element.type === 'bay_sill')
     .flatMap((element) => {
       const sill = element.sill ?? 0;
       const along = (element as { along?: [number, number] }).along;
-      const wallIds = element.type === 'bay_sill'
-        ? ((element as { walls?: string[] }).walls ?? ((element as { wall?: string }).wall ? [(element as { wall?: string }).wall!] : []))
-        : [element.wall];
+      const wallIds = (element as { walls?: string[] }).walls
+        ?? ((element as { wall?: string }).wall ? [(element as { wall?: string }).wall!] : []);
       return wallIds
         .filter((wallId): wallId is string => Boolean(wallId))
         .map((wallId) => ({
@@ -1659,7 +1591,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
         if (descendant !== object && descendant.userData.surface === 'countertop') index.countertopMeshes.push(descendant as THREE.Mesh);
       });
     }
-    if (type === 'curtain_run' || type === 'glass_infill' || type === 'shower_screen' || type === 'hinged_glass_door') {
+    if (type === 'curtain_run' || type === 'shower_screen') {
       if ((object as THREE.Mesh).isMesh) index.glassMeshes.push(object as THREE.Mesh);
       if (type === 'curtain_run' && (object as THREE.Mesh).isMesh) {
         const id = String(object.userData.objectId);

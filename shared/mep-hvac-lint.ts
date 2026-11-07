@@ -236,10 +236,10 @@ function isFixtureConnectionSegment(route: MepRoute, points: Point[], index: num
 /**
  * 吊顶「完成面」标高——即从房间内看到的吊顶表面高度。
  *
- * 2026-10-04 A1：原实现直接读 `zone.height`，而 `config/ceiling.yaml` 的 23 条里
+ * 2026-10-04 A1：原实现直接读 `zone.height`，而 `config/model/envelope/ceiling.yaml` 的 23 条里
  * 6 条有 height 无 area（ac_indoor）、17 条有 area 无 height（drop/aluminum），
  * **交集为 0 → 那条吊顶净空规则对本项目永远不触发**（`if (!zone.area || zone.height === undefined) continue`）。
- * 本轮不动 config/ceiling.yaml（另有并行迭代在写该文件），改为按 CeilingZoneBuilder 的
+ * 本轮不动 config/model/envelope/ceiling.yaml（另有并行迭代在写该文件），改为按 CeilingZoneBuilder 的
  * 同一口径**反算**：`完成面 = 房间净高 − thickness`，其中房间净高取
  * `rooms.find(r => r.id === zone.room)?.height ?? 2.8`，与 SceneBuilder.addCeilingZones
  * 调 buildCeilingZone(zone, roomHeight) 完全一致（CeilingZoneBuilder 里

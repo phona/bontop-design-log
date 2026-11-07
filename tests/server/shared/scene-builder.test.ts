@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -729,7 +730,6 @@ test('shared SceneBuilder builds rooms, split walls, overlays, ceiling zones, an
     { type: 'wall', id: 'wall:test', x1: 0, z1: 0, x2: 4, z2: 0, openings: [{ id: 'door', type: 'door', x: 2, z: 0, width: 1, height: 2 }] },
     { type: 'floor_region', id: 'floor:overlay', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }, { x: 1, z: 1 }] },
     { type: 'wall_run', id: 'run', points: [{ x: 0, z: 1 }, { x: 2, z: 1 }], height: 2.4 },
-    { type: 'glass_infill', id: 'bad-glass', wall: 'missing', width: 1, height: 2, sill: 0.9 },
   ];
   const result = buildScene({
     rooms: [{ id: 'room', name: 'Room', x: 2, z: 2, width: 4, depth: 4, height: 2.8, type: 'public', boundary_count: 4 }],
@@ -750,7 +750,6 @@ test('shared SceneBuilder builds rooms, split walls, overlays, ceiling zones, an
   assert.equal(result.report.ceilingZones, 1);
   assert.equal(result.report.furniture, 1);
   assert.deepEqual(result.report.skippedFurniture, ['room:not-a-fixture']);
-  assert.ok(result.report.unsupported.some((entry) => entry.includes('bad-glass')));
   assert.equal(result.index.curtains.size, 0);
   assert.equal(result.index.curtainRuns.size, 0);
   assert.equal(result.index.lintels.get('wall:test')?.length, 1);
@@ -1060,7 +1059,7 @@ test('R11 SceneBuilder vanity base cabinet and every child part stay inside the 
 });
 
 test('R7 wardrobe four-state real-mesh collision matrix clears declared room obstacles and HVAC geometry', () => {
-  const result = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
+  const result = buildCliHouseScene(undefined, undefined, undefined, 'data/project-render-facts.json');
   const wardrobe = furnitureByType(result, 'master_north_wall_wardrobe_950');
   const obstacles = new Map<string, THREE.Object3D>();
   const door = result.exportRoot.getObjectByName('d_mb');
@@ -1120,22 +1119,8 @@ test('R7 wardrobe four-state real-mesh collision matrix clears declared room obs
   }
 });
 
-test('shared SceneBuilder renders hinged glass door at the declared west hinge', () => {
-  const result = buildScene({
-    rooms: [], walls: [],
-    elements: [{ type: 'hinged_glass_door', id: 'west-door', points: [{ x: 5.6, z: 2.8 }, { x: 6.3, z: 2.8 }], height: 1.95, open: true, swing: 'north', hinge: 'start' }],
-  });
-  const door = result.exportRoot.getObjectByName('hinged_glass_door:west-door');
-  assert.ok(door);
-  assert.equal(door?.userData.type, 'hinged_glass_door');
-  const pane = result.exportRoot.getObjectByName('hinged_glass_door:west-door:pane') as THREE.Mesh;
-  assert.ok(pane);
-  result.exportRoot.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(pane);
-  assert.ok(box.min.x > 5.55 && box.max.x < 5.95, `open leaf must stay on the west hinge side: ${box.min.x}..${box.max.x}`);
-  assert.ok(box.max.z < 2.85, `north swing must open toward -z: ${box.max.z}`);
-  assert.ok(result.index.glassMeshes.some((mesh) => mesh.userData.objectId === 'west-door'));
-});
+// hinged glass door 渲染用例已随 issue #98 第三阶段 S1 删除（overlay 0 元素死类型，
+// SceneBuilder 的构建分支同步退场）。
 
 test('shared SceneBuilder splits curtain_run parts under a metadata-only parent', () => {
   const result = buildScene({
@@ -1325,7 +1310,7 @@ test('floor regions are coplanar with room floors and railings use shared transp
 test('real overlay/model geometry keeps VRV arc and west platform rounded and view-only', () => {
   const model = load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
   const layout = resolveLayout(model);
-  const overlay = parseOverlay(readTextFile('config/layout/overlay.yaml', 'utf8'));
+  const overlay = parseOverlayFiles();
   const elements = mergeSceneElements(layout.walls, overlay);
   const railing = elements.find((element) => element.id === 'vrv_nw_railing');
   assert.equal(railing?.type, 'railing_run');

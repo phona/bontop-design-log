@@ -20,7 +20,7 @@ import * as yaml from 'js-yaml';
 import { computeGateStatus } from './gate-status.js';
 import { contractArchivePathProblem, isValidCalendarDateText } from './contract-archive.js';
 import { DECISION_GATES_PATH, loadDecisionGates, openGatesByCheck, type Decision, type DecisionGates } from './decision-gates.js';
-import { MODEL_PACKAGE_LINKS_PATH } from './model-package-links.js';
+import { MODEL_PACKAGE_LINKS_PATH, authorityFilePaths } from './model-package-links.js';
 import type { ModelPackageLinks } from './model-package-links.js';
 import { collectDeclaredFurnitureIds, type DeclaredFurnitureIdEntry } from './furniture-object-id.js';
 import type { FurnishingsYaml } from './types.js';
@@ -172,7 +172,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     for (const link of links) {
       for (const scope of link.scope ?? []) {
         const authorityPath = modelPackageLinks.authorities[scope.source];
-        if (authorityPath) paths.push(authorityPath);
+        if (authorityPath) paths.push(...authorityFilePaths(authorityPath));
       }
     }
     if (pkg.include_site_data_ledger === true || (pkg.blockers ?? []).some((id: string) => ['BLK-HANDOVER', 'BLK-SURVEY-DATA-FREEZE'].includes(id))) {
@@ -198,7 +198,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     for (const link of links) {
       for (const scope of link.scope ?? []) {
         const authorityPath = modelPackageLinks.authorities[scope.source];
-        if (authorityPath) paths.push(authorityPath);
+        if (authorityPath) paths.push(...authorityFilePaths(authorityPath));
       }
     }
     return unique(paths).sort();
@@ -212,7 +212,10 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     for (const link of links) {
       for (const scope of link.scope ?? []) {
         const authorityPath = modelPackageLinks.authorities[scope.source];
-        if (authorityPath && !authorityPath.startsWith('schedule/phase-')) paths.push(authorityPath);
+        if (!authorityPath) continue;
+        for (const file of authorityFilePaths(authorityPath)) {
+          if (!file.startsWith('schedule/phase-')) paths.push(file);
+        }
       }
     }
     if (phaseId === control.phase_id) paths.push('docs/pending-site-data.md');
@@ -229,7 +232,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     DECISION_GATES_PATH,
     MODEL_PACKAGE_LINKS_PATH,
     'docs/pending-site-data.md',
-    ...Object.values(modelPackageLinks.authorities),
+    ...Object.values(modelPackageLinks.authorities).flatMap(authorityFilePaths),
   ]).sort();
 
   const errors: string[] = [];

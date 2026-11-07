@@ -5,6 +5,8 @@
  */
 import { z } from 'zod';
 import { load } from 'js-yaml';
+import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import type { BaySillSegment, BaySillWallReference, SceneElement, WallSegment, CurtainPoint } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
@@ -188,31 +190,6 @@ const SlidingDoorRunSchema = z
   })
   .strict();
 
-const HingedGlassDoorSchema = z
-  .object({
-    id: z.string().min(1),
-    type: z.literal('hinged_glass_door'),
-    points: z.array(PointSchema).length(2),
-    height: z.number().positive().default(2.1),
-    open: z.boolean().default(true),
-    swing: z.enum(['north', 'south']).default('north'),
-    hinge: z.enum(['start', 'end']).default('start'),
-  })
-  .strict();
-
-const GlassInfillSchema = z
-  .object({
-    id: z.string().min(1),
-    type: z.literal('glass_infill'),
-    wall: z.string().min(1),
-    width: z.number().positive(),
-    height: z.number().positive(),
-    sill: z.number().min(0).default(0.9),
-    // 同 BaySillSchema.along：窗洞落在涂装实体墙上时必须写，否则涂装面积无法扣它。
-    along: z.tuple([z.number().nonnegative(), z.number().positive()]).optional(),
-  })
-  .strict();
-
 const FrostedPrivacySchema = z
   .object({
     id: z.string().min(1),
@@ -322,8 +299,6 @@ const OverlaySchema = z
   PaintCeilingRegionSchema,
           ShowerScreenSchema,
           SlidingDoorRunSchema,
-          HingedGlassDoorSchema,
-          GlassInfillSchema,
           FrostedPrivacySchema,
           FloorRegionSchema,
           BaySillSchema,
@@ -339,6 +314,61 @@ export type OverlayConfig = z.infer<typeof OverlaySchema>;
 
 export function parseOverlay(raw: string): OverlayConfig {
   return OverlaySchema.parse(load(raw) ?? {});
+}
+
+// ── S1 搬迁（issue #98 第三阶段）：overlay 声明拆为 envelope 三文件后的唯一合并点 ──
+// 原 config/layout/overlay.yaml 已删，声明现住三个文件：
+//   openings.yaml       围护构件 40（suppress 与 version 随迁此文件——suppress 的 replacement
+//                       就是本文件的 curtain_run/railing_run；改判为墙属性是 S3，语义当前不变）
+//   floor-zones.yaml    floor_region 6（绝对 points 的唯一聚居地）
+//   finish-surfaces.yaml 面层配方 109（过渡文件，S4 下沉为墙/构件/房间特征后解散）
+// 合并必须恢复原 overlay.yaml 的元素物理顺序：GLB/DXF 产物按 elements 顺序生成，
+// 实测乱序即字节变化（2026-11-07 实验把 floor 6 条移位重导出，GLB SHA 由 eba3dbda… 变 47087a67…）。
+// 原序是「bay_sill 组(25) → floor 6 → curtain/shower 等围护(15) → 面层配方(109)」，因此
+// floor 6 条插在 openings 内 bay_sill 组末尾锚点之后；锚点找不到即抛错，不许静默串序。
+export const OVERLAY_SOURCE_FILES = {
+  openings: 'config/model/envelope/openings.yaml',
+  floorZones: 'config/model/envelope/floor-zones.yaml',
+  finishSurfaces: 'config/model/envelope/finish-surfaces.yaml',
+} as const;
+
+const OVERLAY_ROOT = path.resolve(import.meta.dirname, '..');
+const FLOOR_ZONE_INSERT_AFTER = 'bedroom_se_south_waterproof_ledge';
+
+export function loadOverlayDoc(): { version: unknown; suppress: unknown[]; elements: unknown[] } {
+  const readDoc = (file: string) =>
+    (load(readFileSync(path.join(OVERLAY_ROOT, file), 'utf8')) ?? {}) as {
+      version?: unknown;
+      suppress?: unknown[];
+      elements?: unknown[];
+    };
+  const openings = readDoc(OVERLAY_SOURCE_FILES.openings);
+  const floorZones = readDoc(OVERLAY_SOURCE_FILES.floorZones);
+  const finishSurfaces = readDoc(OVERLAY_SOURCE_FILES.finishSurfaces);
+  const openingElements = openings.elements ?? [];
+  const anchor = openingElements.findIndex(
+    (element) => (element as { id?: string })?.id === FLOOR_ZONE_INSERT_AFTER,
+  );
+  if (anchor < 0) {
+    throw new Error(
+      `envelope/openings.yaml 找不到锚点元素 ${FLOOR_ZONE_INSERT_AFTER}：floor-zones 的插入位失效，` +
+        '合并顺序无法恢复原 overlay.yaml 的元素序（GLB/DXF 产物会变）。请同步更新 FLOOR_ZONE_INSERT_AFTER。',
+    );
+  }
+  return {
+    version: openings.version,
+    suppress: openings.suppress ?? [],
+    elements: [
+      ...openingElements.slice(0, anchor + 1),
+      ...(floorZones.elements ?? []),
+      ...openingElements.slice(anchor + 1),
+      ...(finishSurfaces.elements ?? []),
+    ],
+  };
+}
+
+export function parseOverlayFiles(): OverlayConfig {
+  return OverlaySchema.parse(loadOverlayDoc());
 }
 
 export function mergeSceneElements(
@@ -384,7 +414,7 @@ export function mergeSceneElements(
     .map(w => ({ id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ, rooms: w.rooms, bayRooms: w.bayRooms }));
 
   for (const el of elements) {
-    if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'glass_infill' || el.type === 'frosted_privacy' || el.type === 'railing_run' || el.type === 'curtain') {
+    if (el.type === 'curtain_run' || el.type === 'bay_sill' || el.type === 'frosted_privacy' || el.type === 'railing_run' || el.type === 'curtain') {
       const elAny = el as Record<string, unknown>;
       const wallRef = elAny.wall ?? elAny.walls;
       if (wallRef) {

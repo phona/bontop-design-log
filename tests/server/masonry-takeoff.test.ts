@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -25,7 +26,7 @@ import {
 // 且它的 DEC 对账锚点停在 R11（15.33㎡ / 1.86㎡ / 4.80m）。本测试钉的是 overlay 当前声明的实算值。
 
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
-const OV: any = load(readFileSync('config/layout/overlay.yaml', 'utf8'));
+const OV: any = parseOverlayFiles();
 
 /** overlay.suppress 压制的墙 id（玻璃幕墙 / 实体已删除）。 */
 function suppressedWallIds(): Set<string> {

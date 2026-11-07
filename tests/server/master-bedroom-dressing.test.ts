@@ -461,7 +461,7 @@ test('south-window-band low dresser uses the 2026-09-06 east-shifted transform a
 
 test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven and 950-adapted', () => {
   type CeilingEntry = { id: string; room?: string; type: string; x?: number; z?: number; height?: number; thickness?: number; area?: [number, number, number, number]; power_point?: string };
-  const ceiling = load(readFileSync('config/ceiling.yaml', 'utf8')) as CeilingEntry[];
+  const ceiling = load(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as CeilingEntry[];
   const hvac = load(readFileSync('config/hvac.yaml', 'utf8')) as { plans: Array<{ diagram: { terminals: Array<{ id: string; system: string; position: { x: number; y: number; z: number }; mount_face: string; length?: number }> } }> };
   const box = ceiling.find((entry) => entry.id === 'ceiling_master_ac');
   assert.ok(box, 'missing ceiling_master_ac');

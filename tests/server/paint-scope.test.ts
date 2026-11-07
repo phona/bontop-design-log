@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -24,7 +25,7 @@ import { BudgetCalculator } from '../../server/budget-calculator.js';
 //     湿区窗台是单独计价的特殊系统面，只进 netAreaSqm，不进普通墙漆的 ordinaryAreaSqm
 
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
-const OV: any = load(readFileSync('config/layout/overlay.yaml', 'utf8'));
+const OV: any = parseOverlayFiles();
 
 const V: Record<string, [number, number]> = {};
 for (const v of MG.vertices) V[v.id] = [v.x, v.z];
@@ -128,7 +129,7 @@ function ceilingPaintAreaFromConfig(): { byRoom: Record<string, number>; total: 
 }
 
 test('overlay paint_region declarations pass the Zod discriminated union', () => {
-  const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const parsed = parseOverlayFiles();
   const regions: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'paint_region');
   // DEC-2026-10-08-C06：入户花园出范围（开发商已做好，收房后再定），4 段声明已删
   assert.equal(regions.length, 31, '当前显式涂装墙段包含既有28段与主走廊3段独立选择（R01：w_foyer_east/w_liv_east 两段删、w_cent_south 一段增，净 −1）');
@@ -144,7 +145,7 @@ test('overlay paint_region declarations pass the Zod discriminated union', () =>
 });
 
 test('mergeSceneElements preserves paint_region elements alongside overlay types', () => {
-  const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const parsed = parseOverlayFiles();
   const merged = mergeSceneElements(resolvedWalls(), parsed);
   const regions: any[] = merged.filter((e: any) => e.type === 'paint_region');
   assert.equal(regions.length, 31); // R01：净 −1，见上

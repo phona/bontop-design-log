@@ -13,7 +13,7 @@ interface CeilingEntry {
   area?: [number, number, number, number];
 }
 
-const entries = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as CeilingEntry[];
+const entries = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as CeilingEntry[];
 
 test('ceiling.yaml: every entry type is in VALID_CEILING_TYPES', () => {
   for (const e of entries) {

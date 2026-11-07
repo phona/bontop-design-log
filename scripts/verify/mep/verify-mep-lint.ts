@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import * as yaml from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes } from '../../../server/mep-lint-context.js';
-import type { OverlayConfig } from '../../../server/overlay-merge.js';
+import { parseOverlayFiles } from '../../../server/overlay-merge.js';
 import { endpointSourcesFromFacts, parseMepCoordination, validateMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 import { lintLevel, lintMepCoordination, MEP_LINT_CATEGORIES, type MepLintResult } from '../../../shared/mep-hvac-lint.js';
 import { appendUnadjudicatedWarningFindings, parseMepWarningAdjudication } from '../../../shared/mep-warning-adjudication.js';
@@ -14,11 +14,11 @@ function load<T>(path: string): T { return yaml.load(readFileSync(path, 'utf8'))
 export function runMepLint(): MepLintResult {
   const electrical = parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8'));
   const plumbing = parsePlumbingPoints(readFileSync('config/plumbing.yaml', 'utf8'));
-  const ceiling = load<ProjectRenderFacts['ceiling']>('config/ceiling.yaml');
+  const ceiling = load<ProjectRenderFacts['ceiling']>('config/model/envelope/ceiling.yaml');
   const hvac = load<ProjectRenderFacts['hvac']>('config/hvac.yaml');
   const config = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
   const geometry = load('config/layout/model-geometry.yaml');
-  const overlay = load<OverlayConfig>('config/layout/overlay.yaml');
+  const overlay = parseOverlayFiles();
   const plan = hvac.plans[0];
   const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac });
   // Keep the cross-file coordination contract on the same verify:mep gate as

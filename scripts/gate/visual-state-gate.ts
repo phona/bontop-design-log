@@ -23,7 +23,7 @@ const digest = (value: unknown): string => createHash('sha256').update(JSON.stri
 
 /** 三个标注域都走 loader 缓存 facts（/api/annotations/*），用同一 parser 本地重算即可对账。 */
 const DOMAINS: Array<{ name: string; file: string; parse: (text: string) => unknown }> = [
-  { name: 'ceiling', file: 'config/ceiling.yaml', parse: parseCeilingZones as (text: string) => unknown },
+  { name: 'ceiling', file: 'config/model/envelope/ceiling.yaml', parse: parseCeilingZones as (text: string) => unknown },
   { name: 'electrical', file: 'config/electrical.yaml', parse: parseElectricalPoints as (text: string) => unknown },
   { name: 'plumbing', file: 'config/plumbing.yaml', parse: parsePlumbingPoints as (text: string) => unknown },
 ];

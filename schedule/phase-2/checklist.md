@@ -1,9 +1,9 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"1d739b2c35e38c0fba27b38dd0314b81c5f79700ab939cde605872e6c177267f","config/ceiling.yaml":"69101633aba091cc59f3db2666b43572a57f3de9b407348ce6d602268604f719","config/decision-gates.yaml":"4496e9cdb3deb14ba3aa3404f3484162bd5c39c69dcf24b0dd32c7b1c578e41e","config/electrical.yaml":"b0764c9e9cb668ca05b7c1b0704f17e098c99b4d1b7ba946028945e4ca3dae2f","config/house.yaml":"f8ee41d138b0062e02629137d5dad0a369bd83ebfa75825f0903ec3c28093971","config/layout/overlay.yaml":"b20a89b47e5c0ec8a7e4e408ad2b010d2d39da215bb0ab58801b73123a853909","config/model-package-links.yaml":"51658cde2fb6c8a63a927e85b532a8df6de675a964ace129826f074c8140166d","config/plumbing.yaml":"a4aed2ff8009571baf8def2169486c3e0e353b5920f6590c032f45e7184fc7a7","schedule/phase-1/control.yaml":"642eda377bc77c34340d76159279d84b2ddf13ee9f3919eaef771fffc29f80d5","schedule/phase-2/control.yaml":"0b2494f2fd7a2621462dc77eeee08b27f383c1ee0271cf144eb7ff38d63cca64","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"1d739b2c35e38c0fba27b38dd0314b81c5f79700ab939cde605872e6c177267f","config/decision-gates.yaml":"4496e9cdb3deb14ba3aa3404f3484162bd5c39c69dcf24b0dd32c7b1c578e41e","config/electrical.yaml":"4d16434c89d115c3a7d22adb8f5de636d8a3fe96a24b0f1fd6aae300b833504a","config/house.yaml":"f8ee41d138b0062e02629137d5dad0a369bd83ebfa75825f0903ec3c28093971","config/model-package-links.yaml":"099e76c76e375f613d90378be908297ed6ba2caef42e1d88ed444993427c6aa8","config/model/envelope/ceiling.yaml":"f4d6dd3900c3469560d249694472301432f3efc9bacdb86432a8d8fb7f5fa947","config/model/envelope/finish-surfaces.yaml":"535083412a798bf944e3e5fbca3bc3892bf7646310d2fcc1e179639ead0f0976","config/model/envelope/floor-zones.yaml":"b917925a6e2d4efbf25b903910a909b06dd84294329fa932daae55306d04caac","config/model/envelope/openings.yaml":"ba984654a955870d07375141a10452cae476d06dfca7b235df172b08c1b3d220","config/plumbing.yaml":"a4aed2ff8009571baf8def2169486c3e0e353b5920f6590c032f45e7184fc7a7","schedule/phase-1/control.yaml":"e237153767b55ddf3bbff7e87d87bb6a827389a1b4a3ddac1ff09643444c0adb","schedule/phase-2/control.yaml":"0b2494f2fd7a2621462dc77eeee08b27f383c1ee0271cf144eb7ff38d63cca64","schedule/phase-scope.yaml":"4928a254129241b0762e6cda2831be995df30802b979bd2cf8da6eaba66f87a4","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
 # 二期功能升级推进清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-2/control.yaml`  
-> 视图输入指纹：`sha256:530f12bc1b1f83d65cd33a95eec170971b5d4206d97e72f924408ea3ec69124f`（12 个输入文件）  
-> Gate记录用项目数据指纹：`sha256:64e9cb58f19a691f4de8457b3ef87762a86f63b5dd7ccf2c0c45244f0f6e5921`  
+> 视图输入指纹：`sha256:a1eca029567ea4c529a073967c8058c953368cf852b4081a31c61254b61d8d2e`（14 个输入文件）  
+> Gate记录用项目数据指纹：`sha256:6b5976d388e899acb4aa9609da39f24209c185026dd355f01fe7883edd9e90bf`  
 > 阶段状态：`proposed`；决策状态：`alignment_required`
 
 ## 当前可执行范围
@@ -23,21 +23,21 @@
 
 | ID | 项目 | 预算区间 | 状态 | 关联项目数据 |
 |---|---|---:|---|---|
-| P2-010 | 电视及电视墙系统（含客厅低柜） | ¥11,000—¥14,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=living_dining; types=tv_wall_low,tv_65,wall_cabinet_tall |
-| P2-020 | 烘干机 | ¥2,500—¥4,500 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=balcony; types=dryer |
-| P2-030 | 洗碗机 | ¥2,500—¥4,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=kitchen; types=dishwasher |
-| P2-040 | 净水器 | ¥1,500—¥2,500 | proposed | [config/plumbing.yaml](../../config/plumbing.yaml) — ids=faucet_kitchen_purifier |
-| P2-060 | 客厅咖啡桌、地灯、绿植等小件家具 | ¥2,000—¥4,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=living_dining; types=coffee_table,floor_lamp,plant_fiddle |
-| P2-070 | 窗帘电机 | ¥3,000—¥4,000 | proposed | [config/layout/overlay.yaml](../../config/layout/overlay.yaml) — types=curtain<br>[config/electrical.yaml](../../config/electrical.yaml) — ids=sock_living_curtain,sock_master_curtain,sock_parent_curtain,sock_study_curtain |
+| P2-010 | 电视及电视墙系统（含客厅低柜） | ¥11,000—¥14,000 | proposed | [config/house.yaml](house.yaml) — room_ids=living_dining; types=tv_wall_low,tv_65,wall_cabinet_tall |
+| P2-020 | 烘干机 | ¥2,500—¥4,500 | proposed | [config/house.yaml](house.yaml) — room_ids=balcony; types=dryer |
+| P2-030 | 洗碗机 | ¥2,500—¥4,000 | proposed | [config/house.yaml](house.yaml) — room_ids=kitchen; types=dishwasher |
+| P2-040 | 净水器 | ¥1,500—¥2,500 | proposed | [config/plumbing.yaml](plumbing.yaml) — ids=faucet_kitchen_purifier |
+| P2-060 | 客厅咖啡桌、地灯、绿植等小件家具 | ¥2,000—¥4,000 | proposed | [config/house.yaml](house.yaml) — room_ids=living_dining; types=coffee_table,floor_lamp,plant_fiddle |
+| P2-070 | 窗帘电机 | ¥3,000—¥4,000 | proposed | [config/model/envelope/openings.yaml](openings.yaml) — types=curtain<br>[config/model/envelope/floor-zones.yaml](floor-zones.yaml) — types=curtain<br>[config/model/envelope/finish-surfaces.yaml](finish-surfaces.yaml) — types=curtain<br>[config/electrical.yaml](electrical.yaml) — ids=sock_living_curtain,sock_master_curtain,sock_parent_curtain,sock_study_curtain |
 | P2-080 | 家庭健身设备 | ¥1,000—¥1,500 | proposed | 待补数据映射 |
-| P2-090 | 晾衣架 | ¥600—¥700 | proposed | [config/ceiling.yaml](../../config/ceiling.yaml) — trade=drying_rack |
-| P2-100 | 主卧通顶定制衣柜（一期后移，藏空调冷凝水管槽，必须定制） | ¥3,000—¥5,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=master_bedroom; ids=mb.wardrobe_950,mb.wardrobe_pelmet,mb.vanity_base_cabinet,mb.vanity_lower_board,mb.vanity_main_board,mb.vanity_pvc_box,mb.vanity_pvc_wardrobe_entry,mb.vanity_pvc_service_chase,mb.condensate_pipe |
-| P2-110 | 客厅与书房窗帘（一期后移） | ¥4,000—¥6,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=living_dining,study; types=curtain_set |
-| P2-120 | 书房与西北次卧家具（一期后移） | ¥3,000—¥5,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=study,bedroom_nw |
+| P2-090 | 晾衣架 | ¥600—¥700 | proposed | [config/model/envelope/ceiling.yaml](ceiling.yaml) — trade=drying_rack |
+| P2-100 | 主卧通顶定制衣柜（一期后移，藏空调冷凝水管槽，必须定制） | ¥3,000—¥5,000 | proposed | [config/house.yaml](house.yaml) — room_ids=master_bedroom; ids=mb.wardrobe_950,mb.wardrobe_pelmet,mb.vanity_base_cabinet,mb.vanity_lower_board,mb.vanity_main_board,mb.vanity_pvc_box,mb.vanity_pvc_wardrobe_entry,mb.vanity_pvc_service_chase,mb.condensate_pipe |
+| P2-110 | 客厅与书房窗帘（一期后移） | ¥4,000—¥6,000 | proposed | [config/house.yaml](house.yaml) — room_ids=living_dining,study; types=curtain_set |
+| P2-120 | 书房与西北次卧家具（一期后移） | ¥3,000—¥5,000 | proposed | [config/house.yaml](house.yaml) — room_ids=study,bedroom_nw |
 | P2-130 | 壁床柜（一期后移） | ¥3,000—¥5,000 | proposed | 待补数据映射 |
-| P2-140 | 客厅大收纳柜（一期后移） | ¥2,000—¥4,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=living_dining; types=wall_cabinet_tall |
+| P2-140 | 客厅大收纳柜（一期后移） | ¥2,000—¥4,000 | proposed | [config/house.yaml](house.yaml) — room_ids=living_dining; types=wall_cabinet_tall |
 | P2-150 | 展示柜（一期后移） | ¥1,000—¥3,000 | proposed | 待补数据映射 |
-| P2-160 | 复杂灯光升级（筒射灯轨道灯，一期后移） | ¥2,000—¥4,000 | proposed | [config/electrical.yaml](../../config/electrical.yaml) — types=downlight,ceiling_light |
+| P2-160 | 复杂灯光升级（筒射灯轨道灯，一期后移） | ¥2,000—¥4,000 | proposed | [config/electrical.yaml](electrical.yaml) — types=downlight,ceiling_light |
 ## 验收与记录
 
 - 每个启动 Checkpoint 核对后，在阶段控制源的 `audit.records` 追加 `gate_id`、结果、检查人、日期、证据、`gate_spec_sha256` 和 `project_data_sha256`。复验追加记录，不覆盖历史。

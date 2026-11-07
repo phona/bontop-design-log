@@ -111,7 +111,7 @@ test('design requirement plumbing routes cannot reference authoritative plumbing
 
 test('real render facts resolve all configured MEP routes through HVAC ceiling and electrical refs', () => {
   const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
-  const ceiling = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
+  const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
   const facts = { electrical, plumbing, ceiling, hvac };
   const factSources = endpointSourcesFromFacts(facts);
   const report = resolveMepRoutes(config, factSources);
@@ -143,7 +143,7 @@ test('degenerate candidate routes are never physical or confirmed', () => {
 
 test('gravity condensate resolution carries pending warning metadata', () => {
   const route = config.routes.find((item) => item.id === 'condensate-study')!;
-  const report = resolveMepRoutes({ ...config, routes: [route] }, endpointSourcesFromFacts({ electrical, plumbing, ceiling: parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'], hvac: parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'] }));
+  const report = resolveMepRoutes({ ...config, routes: [route] }, endpointSourcesFromFacts({ electrical, plumbing, ceiling: parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'], hvac: parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'] }));
   assert.equal(report.routes[0].metadata.pendingReview, true);
   assert.match(report.routes[0].metadata.warning ?? '', /重力冷凝水候选路线/);
   assert.equal(route.status, 'pending');

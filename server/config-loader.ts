@@ -58,30 +58,45 @@ export class ConfigLoader<T> {
   private status: ConfigStatus;
   private watcher: FSWatcher | null = null;
 
+  /**
+   * `path` 可传单文件或多文件。多文件用于一份逻辑配置拆成多个 YAML 的场景
+   * （issue #98 第三阶段 S1：envelope 三文件合一个 OverlayConfig）——此时 parse 闭包
+   * 自行读盘合并（忽略传入的 raw），status.path 以「 + 」连接全部文件，任一文件变更
+   * 都触发重载；任一文件读失败/解析失败都让整体进入 failed。
+   */
   constructor(
-    private path: string,
+    private path: string | string[],
     private parse: (raw: string) => T,
     private onChange: (config: T) => void
   ) {
-    this.status = { path, status: 'failed' };
+    this.status = { path: this.pathLabel, status: 'failed' };
+  }
+
+  private get pathList(): string[] {
+    return Array.isArray(this.path) ? this.path : [this.path];
+  }
+
+  private get pathLabel(): string {
+    return this.pathList.join(' + ');
   }
 
   load(): void {
     try {
-      const raw = readFileSync(this.path, 'utf8');
+      const paths = this.pathList;
+      const raw = paths.length === 1 ? readFileSync(paths[0], 'utf8') : '';
       const config = this.parse(raw);
       this.config = config;
-      this.status = { path: this.path, status: 'ok' };
+      this.status = { path: this.pathLabel, status: 'ok' };
       this.onChange(config);
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      console.error(`[config-loader] Failed to load ${this.path}:`, err);
-      this.status = { path: this.path, status: 'failed', error };
+      console.error(`[config-loader] Failed to load ${this.pathLabel}:`, err);
+      this.status = { path: this.pathLabel, status: 'failed', error };
     }
   }
 
   startWatching(): void {
-    this.watcher = watchConfigFiles([this.path], () => this.load())[0] ?? null;
+    this.watcher = watchConfigFiles(this.pathList, () => this.load())[0] ?? null;
   }
 
   async stopWatching(): Promise<void> {
@@ -146,7 +161,7 @@ export function loadPlumbingConfig(): PlumbingPoint[] {
 }
 
 export function loadCeilingConfig(): CeilingZone[] {
-  return loadConfig<CeilingZone[]>('config/ceiling.yaml');
+  return loadConfig<CeilingZone[]>('config/model/envelope/ceiling.yaml');
 }
 
 export function loadMepCoordinationConfig(): MepCoordination {

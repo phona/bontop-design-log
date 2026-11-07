@@ -5,7 +5,7 @@ import { buildBaySillGeometry } from '../shared/render/BaySillGeometry.js';
 import { computePaintSillScope, dedupeAdjacentBayCaps, type PaintSillFaceInput } from '../shared/paint-sill-scope.js';
 import type { BaySillPoint } from '../shared/render/BaySillGeometry.js';
 import type { ProjectCatalog } from './project-catalog.js';
-import { mergeSceneElements, parseOverlay } from './overlay-merge.js';
+import { mergeSceneElements, parseOverlay, parseOverlayFiles, loadOverlayDoc } from './overlay-merge.js';
 import { loadCeilingConfig } from './config-loader.js';
 import {
   computePaintScope,
@@ -214,11 +214,12 @@ export interface PaintScopeInputs {
 }
 
 /**
- * 读 overlay.yaml：paint_region 声明 + suppress 墙 + 窗洞声明（bay_sill / glass_infill）。
+ * 读 envelope 三文件（原 config/layout/overlay.yaml，issue #98 第三阶段 S1 拆迁）：
+ * paint_region 声明 + suppress 墙 + 窗洞声明（bay_sill）。
  * 预算侧与成本侧都走这里，保证读到的永远是同一份声明。
  */
-export function loadPaintScopeInputs(path = 'config/layout/overlay.yaml'): PaintScopeInputs {
-  const overlay = load(readFileSync(path, 'utf8')) as {
+export function loadPaintScopeInputs(): PaintScopeInputs {
+  const overlay = loadOverlayDoc() as {
     suppress?: Array<{ wall?: string; walls?: string[] }>;
     elements?: Array<Record<string, unknown>>;
   };
@@ -236,18 +237,16 @@ export function loadPaintScopeInputs(path = 'config/layout/overlay.yaml'): Paint
   const sillRegions = (overlay.elements ?? []).filter((element) => element?.type === 'paint_sill_region') as unknown as PaintSillRegionDeclaration[];
   const ceilingRooms = (overlay.elements ?? []).filter((element) => element?.type === 'paint_ceiling_region') as unknown as PaintScopeInputs['ceilingRooms'];
   const windows: PaintWindowInput[] = (overlay.elements ?? [])
-    .filter((element) => element?.type === 'bay_sill' || element?.type === 'glass_infill')
+    .filter((element) => element?.type === 'bay_sill')
     .flatMap((element) => {
       // 窗台高**原样透传，不补 0**（2026-10-14 阶段 4）：这里若写 `sill ?? 0`，
       // 缺声明的窗洞会被静默当成"落地窗"扣掉整段墙面，而 shared/paint-scope.ts 的
       // fail-closed 守卫永远等不到那个 undefined——兜底发生在更上游，比没有守卫更糟。
-      // 本案 12 条 bay_sill / glass_infill 全部显式写了 sill，所以生产路径不受影响。
+      // 本案 12 条 bay_sill 全部显式写了 sill，所以生产路径不受影响。
       const sill = element.sill as number | undefined;
       const height = element.height as number;
       const along = element.along as [number, number] | undefined;
-      const wallIds = element.type === 'bay_sill'
-        ? ((element.walls as string[] | undefined) ?? (element.wall ? [element.wall as string] : []))
-        : [element.wall as string];
+      const wallIds = (element.walls as string[] | undefined) ?? (element.wall ? [element.wall as string] : []);
       return wallIds
         .filter((wallId): wallId is string => Boolean(wallId))
         .map((wallId) => ({ id: element.id as string, wall: wallId, sill, height, ...(along ? { along } : {}) }));
@@ -335,7 +334,7 @@ export function computePaintScopeForLayout(
     ceilingAreaByRoom[roomId] = round3(Math.max(0, areaSqm - rectangleUnionArea(nonPaintRects)));
   }
 
-  const mergedElements = mergeSceneElements(layout.walls as any, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  const mergedElements = mergeSceneElements(layout.walls as any, parseOverlayFiles());
   const bayById = new Map(mergedElements.filter((element) => element.type === 'bay_sill').map((element) => [element.id, element]));
   // 全部 bay_sill 的轮廓（不只是已声明涂装的）：端面是否外露由**物理相邻关系**决定，
   // 与隔壁那间飘窗有没有声明涂装无关。
@@ -478,7 +477,7 @@ export function buildPaintCostComparison(
       key: 'net_wall_area_sqm',
       value: scope.netWallAreaSqm,
       status: 'from_overlay_declaration',
-      source: 'config/layout/overlay.yaml paint_region',
+      source: 'config/model/envelope/finish-surfaces.yaml paint_region',
       note: `毛 ${scope.grossWallAreaSqm}㎡ − 门洞 ${scope.doorGapAreaSqm}㎡ − 窗洞 ${scope.windowGapAreaSqm}㎡；与 3D 高亮的是同一批声明、同一个拆洞算法`,
     },
     {
@@ -499,7 +498,7 @@ export function buildPaintCostComparison(
       key: 'window_gap_area_sqm',
       value: scope.windowGapAreaSqm,
       status: 'from_overlay_declaration',
-      source: 'config/layout/overlay.yaml bay_sill / glass_infill',
+      source: 'config/model/envelope/openings.yaml bay_sill',
       note: '当前为 0：全部 8 樘窗都在 suppress 的玻璃幕墙/飘窗让路墙上，非涂装面。将来窗声明落到实体墙上必须写 along，否则记 warning',
     },
     {

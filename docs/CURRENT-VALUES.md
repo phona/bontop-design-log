@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:b65b03161f7b014a7d2a05d73c154ac1d76d3911cf55938019a97c39c2391416 -->
+     inputs-fingerprint: sha256:2694239e3de8338112ed641e03eb0e0a8e35d98c2a8b2ed23d07d44a01fad8f0 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -23,7 +23,7 @@
 | 一期预算池 | 6 池：基础硬装 126000 / 中央空调 36000 / 一期家具 19000 / 必需家电 16099 / 设计与开工准备 8000 / 一期窗帘 5000 | schedule/phase-1/control.yaml:34-52 | 六池合计 = 执行上限；家电 16099 含 GC5 追加 4000 与 JX ¥99 追加（2026-11-04 DEC-2026-11-04-R2） |
 | 暖通执行池 | 36000 元 | schedule/phase-1/control.yaml:40 | 与合同成交价同额；原 33000 询价口径作废 |
 | 全硬装询价轮次目标 | all_in 205098 元（核心 187098 + 柜体 18000） | schedule/phase-1/control.yaml:203-207 | 业主提供的预算池/封顶/候选价，**不是合同承诺** |
-| 墙砖面积（wall_region 实算） | 21.5505 ㎡ | config/layout/overlay.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168 | 窗台/防水台 sill_region 另计 15.468 ㎡；合计 37.0186 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※ |
+| 墙砖面积（wall_region 实算） | 21.5505 ㎡ | config/model/envelope/finish-surfaces.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/model/envelope/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168 | 窗台/防水台 sill_region 另计 15.468 ㎡；合计 37.0186 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※ |
 
 ## 暖通
 
@@ -52,7 +52,7 @@
 | 口径 | 现行值 | 权威源（file:line） | 备注 |
 |---|---|---|---|
 | 结构层高/室内净高 | 2.80 m | config/house.yaml:7；docs/mep-construction-guidance.md:76 | 邻户结构板 +2830 佐证；fact.floor_height_net 由 house.yaml 派生 ※ |
-| A 区吊顶完成面 | 2.50 m | config/mep-hvac-coordination.yaml:7 | 0.30m 降板（2.80−0.30）；完成面权威为 config/ceiling.yaml（guidance:141 明文） |
+| A 区吊顶完成面 | 2.50 m | config/mep-hvac-coordination.yaml:7 | 0.30m 降板（2.80−0.30）；完成面权威为 config/model/envelope/ceiling.yaml（guidance:141 明文） |
 | B 区铝扣板完成面 | 2.65 m | config/mep-hvac-coordination.yaml:12 | 0.15m 板厚；厨房/主卫/客卫三区，空腔仅 150mm |
 | 客餐厅面积 | 43.17 ㎡ | config/house.yaml:178；config/hvac.yaml:36 | polygon 实测；bbox 45.88 ㎡含 2.71㎡ 凹口 ※（2026-10-25 DEC-2026-10-25-R01 本体标定重算后客餐厅 44.58→43.1734㎡，凹口 1.30→2.71㎡） |
 | 套内面积 | 94.76 ㎡ | config/house.yaml:6 | 合同净口径；与毛口径/赠送/建面三口径未闭合见 pending-site-data.md #40 ※ |

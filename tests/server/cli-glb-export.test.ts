@@ -116,7 +116,7 @@ function coveCount(entry: CeilingEntry): number {
 }
 
 function readCeilingEntries(): CeilingEntry[] {
-  return parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as CeilingEntry[];
+  return parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as CeilingEntry[];
 }
 
 test('CLI builder creates core geometry with export metadata', () => {
@@ -261,7 +261,7 @@ test('CLI facts projection exports lighting fixture geometry and no-facts CLI do
   const withoutFacts = buildCliHouseScene();
   assert.equal(withoutFacts.report.lightingFixtures, 0);
   assert.equal(withoutFacts.exportRoot.getObjectByName('LIGHTING_FIXTURES'), undefined);
-  const withFacts = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
+  const withFacts = buildCliHouseScene(undefined, undefined, undefined, 'data/project-render-facts.json');
   const fixtures = [...withFacts.index.lightingFixtures.values()];
   assert.equal(fixtures.length, 17); // R15 起夜灯 - R12 客卫 3 灯 - R15 NP-4b（24→20）；DEC-2026-10-12-R1 删主卧两盏明装床头壁灯（20→18）；DEC-2026-10-12-R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）；DEC-2026-10-17-R20 +light_balcony_dome/+night_living_mid（15→17）
   assert.equal(withFacts.report.lightingFixtures, fixtures.length);
@@ -318,14 +318,14 @@ test('CLI track fixture heads are configuration-driven', () => {
   const directory = mkdtempSync(join(tmpdir(), 'lighting-facts-'));
   const factsPath = join(directory, 'facts.json');
   writeFileSync(factsPath, JSON.stringify(facts));
-  const result = buildCliHouseScene(undefined, undefined, undefined, undefined, factsPath);
+  const result = buildCliHouseScene(undefined, undefined, undefined, factsPath);
   const track = [...result.index.lightingFixtures.values()].find((fixture) => fixture.userData.fixtureType === 'track_light');
   assert.ok(track);
   assert.equal(track.children.filter((object) => String(object.userData.part).endsWith(':lens')).length, 3);
 });
 
 test('CLI with real render facts exports every renderable A2 HVAC anchor and terminal exactly once', () => {
-  const { exportRoot, report, index } = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
+  const { exportRoot, report, index } = buildCliHouseScene(undefined, undefined, undefined, 'data/project-render-facts.json');
   const ids = [...index.hvac.all.keys()];
   assert.equal(report.hvacStatus, 'implemented');
   assert.equal(new Set(ids).size, ids.length);
@@ -644,9 +644,9 @@ test('shared export data produces an inspectable GLB', async () => {
   assert.ok(summary.worldBbox);
 });
 
-test('CLI parses reproducible overlay and ceiling inputs', () => {
-  assert.deepEqual(parseExportArgs(['--output', 'tmp/out.glb', '--overlay', 'overlay.yaml', '--ceiling', 'ceiling.yaml', '--render-facts', 'facts.json']), {
-    output: 'tmp/out.glb', overlay: 'overlay.yaml', ceiling: 'ceiling.yaml', renderFacts: 'facts.json',
+test('CLI parses reproducible ceiling inputs（overlay 已并仓，issue #98 S1 起无 --overlay 旗标）', () => {
+  assert.deepEqual(parseExportArgs(['--output', 'tmp/out.glb', '--ceiling', 'ceiling.yaml', '--render-facts', 'facts.json']), {
+    output: 'tmp/out.glb', ceiling: 'ceiling.yaml', renderFacts: 'facts.json',
   });
 });
 

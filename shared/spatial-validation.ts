@@ -465,13 +465,13 @@ export function validateOverlayReplacements(
   suppressedWalls: string[],
   elements: OverlayElementRef[],
   replacements: OverlayReplacement[],
-  source = 'config/layout/overlay.yaml',
+  source = 'config/model/envelope/openings.yaml',
   allWallIds?: string[],
 ): SpatialIssue[] {
   const issues: SpatialIssue[] = [];
   const suppressed = new Set(suppressedWalls);
   const knownWalls = allWallIds ? new Set(allWallIds) : undefined;
-  const allowedKinds = new Set(['curtain_run', 'glass_infill', 'railing_run']);
+  const allowedKinds = new Set(['curtain_run', 'railing_run']);
   const allowedJoins = new Set(['continuous', 'butt', 'endpoint', 't', 'overlap']);
   const byWall = new Map<string, OverlayReplacement[]>();
   for (const replacement of replacements) {
@@ -489,7 +489,7 @@ export function validateOverlayReplacements(
     byWall.set(replacement.wall, list);
   }
   const elementById = new Map(elements.map((element) => [element.id, element]));
-  const collidable = new Set(['curtain_run', 'glass_infill', 'railing_run']);
+  const collidable = new Set(['curtain_run', 'railing_run']);
   const structuralOwners = new Map<string, string[]>();
 
   for (const [wall, count] of [...new Set(suppressedWalls)].map((wall) => [wall, suppressedWalls.filter((candidate) => candidate === wall).length] as const)) {
@@ -856,7 +856,7 @@ export function validateOverlayJunctionSpecs(
   return issues;
 }
 
-export function validateGlassSegments(segments: GlassPathSegment[], source = 'config/layout/overlay.yaml'): SpatialIssue[] {
+export function validateGlassSegments(segments: GlassPathSegment[], source = 'config/model/envelope/openings.yaml'): SpatialIssue[] {
   const issues: SpatialIssue[] = [];
   for (let i = 0; i < segments.length; i++) {
     const a = segments[i];
@@ -896,7 +896,7 @@ export function validateGlassAgainstWalls(
   paths: GlassPathSegment[],
   walls: PlanSegment[],
   suppressedWalls: string[] = [],
-  source = 'config/layout/model-geometry.yaml + config/layout/overlay.yaml',
+  source = 'config/layout/model-geometry.yaml + config/model/envelope/{openings,floor-zones,finish-surfaces}.yaml',
   allowedJunctions: OverlayWallJunctionSpec[] = [],
 ): SpatialIssue[] {
   const suppressed = new Set(suppressedWalls);

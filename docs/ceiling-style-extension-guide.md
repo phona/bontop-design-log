@@ -1,7 +1,7 @@
 # 吊顶造型扩展指南 — 新增 style 渲染分支的标准步骤
 
-> 适用范围：为 `config/ceiling.yaml` 新增吊顶造型种类（如 `cove` 灯槽、双眼皮、弧形顶）。
-> 前置阅读：2026-08-05 吊顶分区设计 spec（外部 skill 产出，未随本仓库提交，故仓库内无对应路径；设计结论已并入 `config/layout/overlay.yaml` 与 `config/ceiling.yaml`）。
+> 适用范围：为 `config/model/envelope/ceiling.yaml` 新增吊顶造型种类（如 `cove` 灯槽、双眼皮、弧形顶）。
+> 前置阅读：2026-08-05 吊顶分区设计 spec（外部 skill 产出，未随本仓库提交，故仓库内无对应路径；设计结论已并入 `config/layout/overlay.yaml` 与 `config/model/envelope/ceiling.yaml`）。
 > 铁律：新行为 = 新类型 + 声明式配置；代码只读配置、只执行，禁止推断。
 
 ---
@@ -12,7 +12,7 @@
 |---|------|------|
 | 1 | `server/config-loader.ts` | `CeilingZone.type` 联合类型加新值 |
 | 2 | `app/src/render/annotations/ProblemDetector.ts`、`AnnotationRenderer.ts` | 同步镜像类型定义 |
-| 3 | `config/ceiling.yaml` | 加新造型条目（声明意图） |
+| 3 | `config/model/envelope/ceiling.yaml` | 加新造型条目（声明意图） |
 | 4 | `app/src/render/HouseScene.ts` | `renderCeilingZones` 加渲染分支 |
 | 5 | 碰撞评估 | 新几何是否进 `extractCollisionWalls`（吊顶一律：否） |
 | 6 | `scripts/verify/rules/verify-rules.ts` | 新 type 的字段校验（必填字段、取值范围） |
@@ -41,7 +41,7 @@ export interface CeilingZone {
 
 > 若嫌三处重复，可在本次顺手收敛到 `shared/types.ts` 单一来源——属可选重构，不做也能完成扩展。
 
-## 3. 配置声明（config/ceiling.yaml）
+## 3. 配置声明（config/model/envelope/ceiling.yaml）
 
 ```yaml
 - id: ceiling_living_cove

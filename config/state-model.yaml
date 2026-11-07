@@ -29,7 +29,7 @@ status_vocabulary:
 element_bearing_files:
   config/electrical.yaml: electrical
   config/plumbing.yaml: plumbing
-  config/ceiling.yaml: ceiling
+  config/model/envelope/ceiling.yaml: ceiling
 
 # 派生时读取的 issue 来源（verifier 名，对应 scripts/verify/ 下的入口）。
 # 只取**与构件绑定相关**的 verifier；全量门禁结论看 `npm run verify:all -- --json`。

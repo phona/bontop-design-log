@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -294,55 +295,24 @@ elements:
   - id: west_curtain
     type: curtain_run
     points: [{x: -5.88, z: 4.87}, {x: -5.37, z: -3.36}]
-  - id: living_glass
-    type: glass_infill
-    wall: w_east
-    width: 3.5
-    height: 1.6
+  - id: living_frosted
+    type: frosted_privacy
+    points: [{x: 0, z: 2.86}, {x: 0, z: 4.00}]
+    height: 2.8
 `);
     const out = mergeSceneElements(WALLS, cfg);
     assert.equal(out.length, 4);
     const curtain = out.find((e) => e.id === 'west_curtain');
     assert.equal(curtain?.type, 'curtain_run');
     if (curtain?.type === 'curtain_run') assert.equal(curtain.height, 3.0);
-    const glass = out.find((e) => e.id === 'living_glass');
-    if (glass?.type === 'glass_infill') {
-      assert.equal(glass.sill, 0.9);
-      assert.equal(glass.wall, 'w_east');
+    const frosted = out.find((e) => e.id === 'living_frosted');
+    if (frosted?.type === 'frosted_privacy') {
+      assert.equal(frosted.height, 2.8);
     }
   });
 
-  it('accepts hinged glass door with explicit west-end opening semantics', () => {
-    const cfg = parseOverlay(`
-version: 1
-elements:
-  - id: west_door
-    type: hinged_glass_door
-    points: [{x: 5.6, z: 2.8}, {x: 6.3, z: 2.8}]
-    height: 1.95
-    open: true
-    swing: north
-    hinge: start
-`);
-    const door = cfg.elements[0];
-    assert.equal(door.type, 'hinged_glass_door');
-    if (door.type === 'hinged_glass_door') {
-      assert.deepEqual(door.points, [{ x: 5.6, z: 2.8 }, { x: 6.3, z: 2.8 }]);
-      assert.equal(door.swing, 'north');
-      assert.equal(door.hinge, 'start');
-    }
-  });
-
-  it('rejects hinged glass door with extra undeclared fields', () => {
-    assert.throws(() => parseOverlay(`
-version: 1
-elements:
-  - id: west_door
-    type: hinged_glass_door
-    points: [{x: 5.6, z: 2.8}, {x: 6.3, z: 2.8}]
-    material: bathroom_door_01
-`));
-  });
+  // hinged_glass_door 三个用例（accept/reject/未声明字段）已随 issue #98 第三阶段 S1 删除：
+  // overlay 0 元素死类型，schema 分支退场（DEC-2026-09-07-054 客卫玻璃门取消后无声明）。
 
   it('accepts shower_screen and passes points through untouched (2026-08-21)', () => {
     const cfg = parseOverlay(`
@@ -366,14 +336,14 @@ elements:
   });
 
   it('guest bath glass door is removed (DEC-2026-09-07-054: fixed screen, open entry)', () => {
-    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const overlay = parseOverlayFiles();
     // DEC-2026-09-07-054：客卫取消铰接玻璃门，改整面固定玻璃 + 西端 0.70m 开敞入口
     const door = overlay.elements.find((element) => element.id === 'gbath_west_glass_door');
     assert.equal(door, undefined);
   });
 
   it('loads the guest bath shower screen declaration from the real overlay', () => {
-    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const overlay = parseOverlayFiles();
     const screen = overlay.elements.find((element) => element.id === 'shower_screen_gbath');
     assert.equal(screen?.type, 'shower_screen');
     if (screen?.type === 'shower_screen') {
@@ -446,7 +416,7 @@ describe('resolveWallRef', () => {
 
   it('keeps the northwest round corner curtain on the arc and recess walls only', () => {
     const layout = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
-    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const overlay = parseOverlayFiles();
     const elements = mergeSceneElements(layout.walls, overlay);
     const westCurtain = elements.find((element) => element.id === 'west_curtain');
     assert.equal(westCurtain?.type, 'curtain_run');
@@ -470,7 +440,7 @@ describe('resolveWallRef', () => {
 
   it('preserves the v_vrv_n arc and ownership across the real railing refs', () => {
     const layout = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
-    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const overlay = parseOverlayFiles();
     const elements = mergeSceneElements(layout.walls, overlay);
     const railing = elements.find((element) => element.id === 'vrv_nw_railing');
     assert.equal(railing?.type, 'railing_run');
@@ -491,7 +461,7 @@ describe('resolveWallRef', () => {
 
   it('keeps the entry garden railing as a plain two-point line', () => {
     const layout = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
-    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const overlay = parseOverlayFiles();
     const elements = mergeSceneElements(layout.walls, overlay);
     const railing = elements.find((element) => element.id === 'entry_garden_north_railing');
     assert.deepEqual(railing && railing.type === 'railing_run' ? railing.points : undefined, [{ x: 15.25, z: 0 }, { x: 10.8, z: 0 }]);

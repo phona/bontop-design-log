@@ -21,7 +21,7 @@ export function computeSunlightAnalysis(
   const elements = mergeSceneElements(catalog.getWalls(), overlay);
   const rooms = catalog.getRooms();
   const centers = rooms.map((r) => ({ id: r.id, x: r.x, z: r.z }));
-  const apertures = extractApertures(elements, centers, catalog.getWalls());
+  const apertures = extractApertures(elements, centers);
   const location = {
     latitude: env.location.latitude,
     longitude: env.location.longitude,
@@ -61,7 +61,7 @@ export function computeHumidityAnalysis(
   const elements = mergeSceneElements(catalog.getWalls(), overlay);
   const rooms = catalog.getRooms();
   const centers = rooms.map((r) => ({ id: r.id, x: r.x, z: r.z }));
-  const apertures = extractApertures(elements, centers, catalog.getWalls());
+  const apertures = extractApertures(elements, centers);
 
   const result = analyzeHumidity({
     roomIds: rooms.map((r) => r.id),

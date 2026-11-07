@@ -10,7 +10,7 @@ import {
   validateProjectHvacFacts,
 } from '../../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../../shared/project-render-facts-projection.js';
-import { parseOverlay } from '../../server/overlay-merge.js';
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import type { CurrentScheme, ProjectRenderFactsProjection } from '../../shared/types.js';
 
 export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFactsProjection {
@@ -18,7 +18,7 @@ export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFa
   const facts = {
     electrical: parseElectricalPoints(readFileSync(path('config/electrical.yaml'), 'utf8')),
     plumbing: parsePlumbingPoints(readFileSync(path('config/plumbing.yaml'), 'utf8')),
-    ceiling: parseCeilingZones(readFileSync(path('config/ceiling.yaml'), 'utf8')),
+    ceiling: parseCeilingZones(readFileSync(path('config/model/envelope/ceiling.yaml'), 'utf8')),
     hvac: parseProjectHvacFacts(readFileSync(path('config/hvac.yaml'), 'utf8')),
   };
   validateProjectHvacFacts(facts.hvac, facts);
@@ -26,7 +26,8 @@ export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFa
     facts,
     parseRenderLightingOverrides(readFileSync(path('config/render/overrides.yaml'), 'utf8')),
     JSON.parse(readFileSync(path('data/current-scheme.json'), 'utf8')) as CurrentScheme,
-    parseOverlay(readFileSync(path('config/layout/overlay.yaml'), 'utf8')),
+    // overlay 固定走仓库根的唯一合并点（envelope 三文件，issue #98 S1），不随 rootDir 参数走
+    parseOverlayFiles(),
     parseCurtainPresentationState(JSON.parse(readFileSync(path('data/presentation-state.json'), 'utf8'))),
     existsSync(path('config/render/lighting.yaml'))
       ? parseLightingRenderConfig(readFileSync(path('config/render/lighting.yaml'), 'utf8'))

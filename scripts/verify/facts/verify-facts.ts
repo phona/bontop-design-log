@@ -23,6 +23,7 @@ import { lintFacts, type FactsRegistry, type FactsWorkspace } from '../../../sha
 import { endpointSourcesFromFacts, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { BudgetCalculator, loadMasonryTakeoff } from '../../../server/budget-calculator.js';
+import { loadOverlayDoc } from '../../../server/overlay-merge.js';
 import type { CurrentScheme } from '../../../shared/types.js';
 
 const REGISTRY = 'config/facts.yaml';
@@ -78,7 +79,8 @@ function walk(roots: string[], skip: RegExp): string[] {
 
 // ── datasets：入口预计算的派生数据 ──────────────────────────────────────────
 const geometry = loadDoc('config/layout/model-geometry.yaml') as any;
-const overlay = loadDoc('config/layout/overlay.yaml') as any;
+// S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 三文件，合并取 elements
+const overlay = loadOverlayDoc() as any;
 
 const vertices = new Map<string, { x: number; z: number }>(
   ((geometry?.vertices ?? []) as any[]).map((v) => [v.id, { x: v.x, z: v.z }]),
@@ -107,7 +109,7 @@ const layoutFloorRegions = ((overlay?.elements ?? []) as any[])
 // 走**同一套**解析逻辑，保证 facts 契约与 verify:mep 的吊顶净空告警对同一批点位给出同一结论。
 // 房间净高复刻 SceneBuilder.addCeilingZones：`rooms.find(r => r.id === zone.room)?.height ?? 2.8`，
 // 与 CeilingZoneBuilder 的 topY = ceilingHeight − thickness + SLAB_EPS 同口径。
-const mepDocs = ['config/electrical.yaml', 'config/plumbing.yaml', 'config/ceiling.yaml', 'config/hvac.yaml']
+const mepDocs = ['config/electrical.yaml', 'config/plumbing.yaml', 'config/model/envelope/ceiling.yaml', 'config/hvac.yaml']
   .map((p) => ({ p, doc: loadDoc(p) as any }));
 
 const mepEndpoints: Record<string, { x: number; z: number; y?: number }> = {};
@@ -143,6 +145,7 @@ if (geometry?.platform?.id && typeof geometry.platform.height === 'number') {
 const coverageFiles = [
   ...fs.readdirSync(rel('config')).filter((f) => f.endsWith('.yaml')).map((f) => `config/${f}`),
   ...fs.readdirSync(rel('config/layout')).filter((f) => f.endsWith('.yaml')).map((f) => `config/layout/${f}`),
+  ...fs.readdirSync(rel('config/model/envelope')).filter((f) => f.endsWith('.yaml')).map((f) => `config/model/envelope/${f}`),
   ...fs.readdirSync(rel('config/render')).filter((f) => f.endsWith('.yaml')).map((f) => `config/render/${f}`),
   ...fs.readdirSync(rel('data')).filter((f) => f.endsWith('.json')).map((f) => `data/${f}`),
 ].sort();

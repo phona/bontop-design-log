@@ -7,7 +7,7 @@ bounds:
 
 wall_ref:
   apply_to: [electrical, plumbing]
-  suppress_source: config/layout/overlay.yaml
+  suppress_source: config/model/envelope/openings.yaml
   severity: error
 
 existence:

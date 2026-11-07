@@ -3,6 +3,7 @@ import path from 'node:path';
 import process from 'node:process';
 import { buildCostSummary, renderCostSummary, COST_INPUT_PATHS, COST_SUMMARY_PATH } from './cost-summary.js';
 import { loadModelPackageLinks, MODEL_PACKAGE_LINKS_PATH } from '../../server/model-package-links.js';
+import { authorityFilePaths } from '../../shared/model-package-links.js';
 import { loadScheduleState, CONTROL_REL_PATH, ACCEPTANCE_REL_PATH, ROADMAP_REL_PATH } from '../../shared/schedule-state.js';
 
 // 2026-11-02（自装交互审批第一步）：本文件从 1105 行零 export 纯脚本退化为
@@ -51,9 +52,11 @@ function selectorLinkTable(packageId: string, outputPath: string): string {
   if (!links.length) markdown += '| — | 未登记项目模型映射 | 未映射 |\n';
   for (const link of links) {
     for (const scope of link.scope ?? []) {
-      const sourcePath = modelPackageLinks.authorities[scope.source] ?? scope.source;
-      const relativePath = path.posix.relative(path.posix.dirname(outputPath), sourcePath);
-      markdown += `| [${sourcePath}](${relativePath}) | ${escapeCell(scopeSummary(scope.select))} | ${link.mapping_status} |\n`;
+      // authority 可指多文件（overlay = envelope 三文件，issue #98 S1）：逐文件一行，scope 同。
+      for (const sourcePath of modelPackageLinks.authorities[scope.source] ? authorityFilePaths(modelPackageLinks.authorities[scope.source]!) : [scope.source]) {
+        const relativePath = path.posix.relative(path.posix.dirname(outputPath), sourcePath);
+        markdown += `| [${sourcePath}](${relativePath}) | ${escapeCell(scopeSummary(scope.select))} | ${link.mapping_status} |\n`;
+      }
     }
     if (!link.scope?.length && link.note) markdown += `| — | ${escapeCell(link.note)} | ${link.mapping_status} |\n`;
   }
@@ -150,10 +153,11 @@ function phaseChecklist(phaseId: string, phaseControl: AnyRecord, phaseName: str
   markdown += '\n## 候选范围\n\n| ID | 项目 | 预算区间 | 状态 | 关联项目数据 |\n|---|---|---:|---|---|\n';
   for (const item of items) {
     const link = modelPackageLinks.links.find((candidate) => candidate.budget_ref.id === item.id);
-    const sourcePaths = link?.scope?.map((scope) => modelPackageLinks.authorities[scope.source]).filter(Boolean) ?? [];
-    const sourceText = unique(sourcePaths).map((itemPath) => {
-      const rel = path.posix.relative(path.posix.dirname(`${sourcePath.slice(0, sourcePath.lastIndexOf('/'))}/checklist.md`), itemPath);
-      const scopes = (link?.scope ?? []).filter((scope) => modelPackageLinks.authorities[scope.source] === itemPath).map((scope) => scopeSummary(scope.select));
+    // authority 可指多文件（overlay = envelope 三文件，issue #98 S1）：展开后逐文件聚合 scope。
+    const sourcePaths = unique((link?.scope ?? []).flatMap((scope) => modelPackageLinks.authorities[scope.source] ? authorityFilePaths(modelPackageLinks.authorities[scope.source]!) : []));
+    const sourceText = sourcePaths.map((itemPath) => {
+      const rel = path.posix.relative(path.posix.dirname(`${itemPath.slice(0, itemPath.lastIndexOf('/'))}/checklist.md`), itemPath);
+      const scopes = (link?.scope ?? []).filter((scope) => authorityFilePaths(modelPackageLinks.authorities[scope.source] ?? []).includes(itemPath)).map((scope) => scopeSummary(scope.select));
       return `[${itemPath}](${rel})${scopes.length ? ` — ${escapeCell(scopes.join('; '))}` : ''}`;
     }).join('<br>');
     const budget = item.estimate_min_cny == null ? '不预分配' : `¥${item.estimate_min_cny.toLocaleString('zh-CN')}—¥${item.estimate_max_cny.toLocaleString('zh-CN')}`;

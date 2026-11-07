@@ -16,18 +16,21 @@ import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { load as loadYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
+import { loadOverlayDoc } from '../../server/overlay-merge.js';
 import { computeMasonryTakeoff, type MasonryTakeoffInput } from '../../shared/masonry-takeoff.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 
 export const CV_INPUTS = [
-  'config/ceiling.yaml',
+  'config/model/envelope/ceiling.yaml',
   'config/electrical-topology.yaml',
   'config/electrical.yaml',
   'config/house.yaml',
   'config/hvac.yaml',
   'config/layout/model-geometry.yaml',
-  'config/layout/overlay.yaml',
+  'config/model/envelope/openings.yaml',
+  'config/model/envelope/floor-zones.yaml',
+  'config/model/envelope/finish-surfaces.yaml',
   'config/materials.yaml',
   'config/mep-hvac-coordination.yaml',
   'config/tile-comparison.yaml',
@@ -60,7 +63,7 @@ function masonryAreas(): { wall: number; sill: number } {
   // 与 tests/server/masonry-takeoff.test.ts 的 buildInput 同口径装配（config → 模块输入），
   // 面积一律由 shared/masonry-takeoff 从 overlay 声明实算，禁止硬编码（批 4 审阅修复）。
   const mg = yaml('config/layout/model-geometry.yaml');
-  const ov = yaml('config/layout/overlay.yaml');
+  const ov = loadOverlayDoc(); // S1 搬迁（issue #98）：envelope 三文件合并
   const tile = yaml('config/tile-comparison.yaml');
   const layout = resolveLayout(mg) as any;
   const suppressed = new Set<string>();
@@ -110,7 +113,7 @@ function masonryAreas(): { wall: number; sill: number } {
       // 与 server/budget-calculator.ts 同口径：厨卫铝扣板完成面（floor_height − thickness），
       // 取三区最大值；配置派生，禁止硬编码（二审修复：原误写 2.8 > takeoff 上限 2.65 而不自知）。
       const floorH = yaml('config/house.yaml').project.floor_height as number;
-      const zones = yaml('config/ceiling.yaml') as any[];
+      const zones = yaml('config/model/envelope/ceiling.yaml') as any[];
       const finishes = ['ceiling_kitchen', 'ceiling_master_bath', 'ceiling_guest_bath'].map((id) => {
         const z = zones.find((x) => x.id === id);
         if (!z) throw new Error(`ceiling.yaml 缺少 ${id} 区，无法派生贴砖净高上限`);
@@ -142,7 +145,7 @@ function loadCtx(): Ctx {
     topology: yaml('config/electrical-topology.yaml'),
     electrical: yaml('config/electrical.yaml'),
     house: yaml('config/house.yaml'),
-    ceiling: yaml('config/ceiling.yaml'),
+    ceiling: yaml('config/model/envelope/ceiling.yaml'),
     mep: yaml('config/mep-hvac-coordination.yaml'),
     geometry: yaml('config/layout/model-geometry.yaml'),
     pendingText: fs.readFileSync(path.join(ROOT, 'docs/pending-site-data.md'), 'utf8'),
@@ -207,7 +210,7 @@ const SECTIONS: Section[] = [
       {
         label: '墙砖面积（wall_region 实算）',
         value: () => `${round4(masonryAreas().wall)} ㎡`,
-        source: 'config/layout/overlay.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168',
+        source: 'config/model/envelope/finish-surfaces.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/model/envelope/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168',
         note: () => {
           const a = masonryAreas();
           return `窗台/防水台 sill_region 另计 ${round3(a.sill)} ㎡；合计 ${round4(a.wall + a.sill)} ㎡由契约 c.masonry_tile_area_parity 三方对账 ※`;
@@ -398,7 +401,7 @@ const SECTIONS: Section[] = [
           return `${fmt2(c.house.project.floor_height - z.thickness)} m`;
         },
         source: 'config/mep-hvac-coordination.yaml:7',
-        note: '0.30m 降板（2.80−0.30）；完成面权威为 config/ceiling.yaml（guidance:141 明文）',
+        note: '0.30m 降板（2.80−0.30）；完成面权威为 config/model/envelope/ceiling.yaml（guidance:141 明文）',
       },
       {
         label: 'B 区铝扣板完成面',

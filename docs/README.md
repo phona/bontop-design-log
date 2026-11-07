@@ -110,7 +110,7 @@
 | 文档 | 现行路径 | 判定 | 说明 |
 |---|---|---|---|
 | `hvac-ld-condensate-receiver-predesign-20261019.md` | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | **活的、等拍板** | 曾全仓零引用。已在 `docs/pending-site-data.md` #39 挂指针，说明其 §10 红→绿门禁与 #39 ①–⑤ 项的对应关系（①–⑤ 即该门禁的关闭清单） |
-| `ceiling-style-extension-guide.md` | 根目录 | **活的开发指南** | 曾零入链。不是过期分析报告——内容是「为 `config/ceiling.yaml` 新增吊顶造型种类的标准步骤」，列明要改 `server/config-loader.ts`、`ProblemDetector.ts`、`AnnotationRenderer.ts` 等 4 处。这是**可复用的操作指引**，零入链意味着下次要加造型时没人知道它存在 |
+| `ceiling-style-extension-guide.md` | 根目录 | **活的开发指南** | 曾零入链。不是过期分析报告——内容是「为 `config/model/envelope/ceiling.yaml` 新增吊顶造型种类的标准步骤」，列明要改 `server/config-loader.ts`、`ProblemDetector.ts`、`AnnotationRenderer.ts` 等 4 处。这是**可复用的操作指引**，零入链意味着下次要加造型时没人知道它存在 |
 
 ---
 

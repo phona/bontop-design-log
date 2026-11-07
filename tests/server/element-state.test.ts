@@ -52,7 +52,7 @@ describe('pending ledger parsing', () => {
     const knownIds = new Set(['electrical:sock_child_ac', 'ceiling:ac_child']);
     const knownTypes = new Set(['ac_indoor', 'strong_panel', 'leb']);
     assert.equal(classifyTarget({ file: 'config/electrical.yaml', id: 'sock_child_ac' }, knownIds, knownTypes), 'bound');
-    assert.equal(classifyTarget({ file: 'config/ceiling.yaml', id: 'ac_indoor' }, knownIds, knownTypes), 'type_reference', 'ac_indoor 是 type 取值，不是元素 id');
+    assert.equal(classifyTarget({ file: 'config/model/envelope/ceiling.yaml', id: 'ac_indoor' }, knownIds, knownTypes), 'type_reference', 'ac_indoor 是 type 取值，不是元素 id');
     assert.equal(classifyTarget({ file: 'config/electrical.yaml', id: 'type: strong_panel' }, knownIds, knownTypes), 'type_reference', '含冒号的字段描述');
     assert.equal(classifyTarget({ file: 'config/plumbing.yaml', id: 'type: leb' }, knownIds, knownTypes), 'type_reference');
     assert.equal(classifyTarget({ file: 'config/electrical.yaml', id: 'sock_deleted_thing' }, knownIds, knownTypes), 'unresolved', '既不是已知 id 也不是已知 type → 台账腐烂的真信号');

@@ -75,7 +75,7 @@ describe('DEC-2026-10-17-R12 吸顶灯锚点迁移', () => {
 
   it('kitchen 平板灯安装面 2.65 与 ceiling_kitchen 宿主面一致（宿主选择取最低实心面）', () => {
     const electrical = parseElectricalPoints(read('config/electrical.yaml'));
-    const zones = parseCeilingZones(read('config/ceiling.yaml'));
+    const zones = parseCeilingZones(read('config/model/envelope/ceiling.yaml'));
     const rooms = [room('kitchen')];
     const point = electrical.find((candidate) => candidate.id === 'light_kitchen_panel');
     assert.ok(point);
@@ -88,7 +88,7 @@ describe('DEC-2026-10-17-R12 吸顶灯锚点迁移', () => {
 
   it('4 间卧室 dome 点位均不在任何吊顶分区内（宿主回退原顶 2.80）', () => {
     const electrical = parseElectricalPoints(read('config/electrical.yaml'));
-    const zones = parseCeilingZones(read('config/ceiling.yaml'));
+    const zones = parseCeilingZones(read('config/model/envelope/ceiling.yaml'));
     const rooms = ['master_bedroom', 'study', 'bedroom_nw', 'bedroom_se'].map((id) => room(id));
     for (const id of ['light_master_dome', 'light_parent_dome', 'light_child_dome', 'light_study_dome'] as const) {
       const point = electrical.find((candidate) => candidate.id === id);

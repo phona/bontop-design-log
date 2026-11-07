@@ -301,43 +301,14 @@ function emitGlazingAndDoors(writer: DxfWriter, elements: SceneElement[], warnin
       emitArcAwarePolyline(writer, DXF_LAYERS.GLAZING[0], element.points, closed);
       const [x, y] = toDxf(element.points[0].x, element.points[0].z);
       writer.addText(DXF_LAYERS.GLAZING[0], x, y + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM, element.id);
-    } else if (element.type === 'glass_infill') {
-      warnings.push(`glass_infill ${element.id}: 嵌在墙体内，无独立平面几何，未导出`);
     } else if (element.type === 'sliding_door_run') {
       const pts = element.points.map((point) => toDxf(point.x, point.z));
       writer.addPolyline(DXF_LAYERS.DOOR[0], pts, true);
       writer.addText(DXF_LAYERS.DOOR[0], pts[0][0], pts[0][1] + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
         `${element.id}${element.panels ? ` x${element.panels}` : ''}`);
-    } else if (element.type === 'hinged_glass_door') {
-      const [start, end] = element.points;
-      const hingeIsStart = (element.hinge ?? 'start') === 'start';
-      const [hx, hy] = hingeIsStart ? toDxf(start.x, start.z) : toDxf(end.x, end.z);
-      const [ox, oy] = hingeIsStart ? toDxf(end.x, end.z) : toDxf(start.x, start.z);
-      writer.addLine(DXF_LAYERS.DOOR[0], hx, hy, ox, oy); // 关闭位门扇
-      // 开启位：门扇绕铰链转 90°，方向取 swing 声明（north→-z 即 DXF +y）。
-      const vx = ox - hx;
-      const vy = oy - hy;
-      let px = -vy;
-      let py = vx;
-      if (element.swing === 'north' ? py < 0 : py > 0) {
-        px = -px;
-        py = -py;
-      }
-      const openX = hx + px;
-      const openY = hy + py;
-      writer.addLine(DXF_LAYERS.DOOR[0], hx, hy, openX, openY);
-      const radius = Math.hypot(vx, vy);
-      const angleClosed = (Math.atan2(vy, vx) * 180) / Math.PI;
-      const angleOpen = (Math.atan2(py, px) * 180) / Math.PI;
-      // DXF ARC 只能逆时针：叉积判断从关闭位到开启位的转向，必要时交换起止角。
-      const cross = vx * py - vy * px;
-      const [startDeg, endDeg] = cross >= 0
-        ? [angleClosed, angleOpen < angleClosed ? angleOpen + 360 : angleOpen]
-        : [angleOpen, angleClosed < angleOpen ? angleClosed + 360 : angleClosed];
-      writer.addArc(DXF_LAYERS.DOOR[0], hx, hy, radius, startDeg, endDeg);
-      writer.addText(DXF_LAYERS.DOOR[0], hx, hy + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
-        `${element.id} ${element.swing ?? ''}`.trim());
     }
+    // glass_infill / hinged_glass_door 分支已于 issue #98 第三阶段 S1 删除（overlay 0 元素，
+    // DEC-2026-09-07-054 客卫玻璃门取消后 hinged 无声明；glass_infill 从未启用）。
   }
 }
 
