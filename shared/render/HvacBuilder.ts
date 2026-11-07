@@ -62,8 +62,11 @@ function resolveAnchor(anchor: HvacAnchor, sources: HvacBuilderSources): Vec3 | 
     return item?.x === undefined || item.z === undefined ? undefined : { x: item.x, y: item.height ?? 2.85, z: item.z };
   }
   if (anchor.ref.source === 'electrical') {
+    // 暖通 ref 通道本期不改走点位解算器（阶段五暖通的前置，见设计文档 §6.3）：x/z 是断言字段，
+    // 全量点位在迁移期内恒有值；缺值即解析失败显形，不拿 undefined 当坐标。
     const item = sources.electrical?.find((point) => point.id === anchor.ref!.id);
-    return item ? { x: item.x, y: item.height ?? 0, z: item.z } : undefined;
+    if (!item || item.x === undefined || item.z === undefined) return undefined;
+    return { x: item.x, y: item.height ?? 0, z: item.z };
   }
   const item = sources.outdoor?.find((unit) => unit.id === anchor.ref!.id);
   return item ? { x: item.x, y: item.height / 2, z: item.z } : undefined;

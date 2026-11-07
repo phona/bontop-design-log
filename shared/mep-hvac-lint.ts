@@ -1,4 +1,5 @@
-import type { CeilingZone, HvacAnchor, HvacTerminal, ResolvedLayout, ResolvedWall, ResolvedWallSegment, Vertex } from './types.js';
+import type { CeilingZone, ElectricalPoint, HvacAnchor, HvacTerminal, PlumbingPoint, ResolvedLayout, ResolvedWall, ResolvedWallSegment, Vertex } from './types.js';
+import { resolvePointPlacementInWalls } from './point-placement.js';
 import {
   isMepPhysicalRoute,
   mepRoutePoints,
@@ -139,9 +140,24 @@ const FURNITURE_ENDPOINT_ACCESS_TYPES = new Set(['wall_cabinet_tall', 'washer', 
 
 /** 端点绑定兜底用的"同专业点位池"：给水只对给水类点位比、排水只对 drain/drain_riser 比，避免把龙头算成排水锚点。 */
 function endpointBindPool(route: MepRoute, sources: MepEndpointSources): Array<{ id: string; x: number; z: number }> {
-  if (route.layer === 'water_supply') return sources.plumbing.filter((point) => PLUMBING_SUPPLY_TYPES.has(point.type));
-  if (route.layer === 'drainage') return sources.plumbing.filter((point) => PLUMBING_DRAIN_TYPES.has(point.type));
-  return sources.electrical;
+  const pool = route.layer === 'water_supply'
+    ? sources.plumbing.filter((point) => PLUMBING_SUPPLY_TYPES.has(point.type))
+    : route.layer === 'drainage'
+      ? sources.plumbing.filter((point) => PLUMBING_DRAIN_TYPES.has(point.type))
+      : sources.electrical;
+  // 平面坐标走 shared/point-placement.ts 单一解算（issue #98 S1）：lint 与 DXF/3D/MEP 端点
+  // 必须同源，不许直读声明 x/z 这个第二事实源。无墙上下文的调用方回落声明坐标（断言模式下相等）。
+  return pool.flatMap((point) => {
+    const plan = pointPlan(point, sources);
+    return plan ? [{ id: point.id, ...plan }] : [];
+  });
+}
+
+/** 点位平面坐标（单一解算入口，见 endpointBindPool 注释）。 */
+function pointPlan(point: ElectricalPoint | PlumbingPoint, sources: MepEndpointSources): { x: number; z: number } | undefined {
+  const { placement } = resolvePointPlacementInWalls(point, sources.pointWalls);
+  if (placement) return { x: placement.x, z: placement.z };
+  return typeof point.x === 'number' && typeof point.z === 'number' ? { x: point.x, z: point.z } : undefined;
 }
 function categoryOf(code: string): MepLintCategory { return ISSUE_CATEGORY[code] ?? DEFAULT_CATEGORY; }
 function emptyCategoryBuckets(): MepLintCategorySummary {
@@ -1056,12 +1072,13 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         add(result, issue('warning', 'route_endpoint_unusable', `Route ${route.id} terminates at electrical point ${endpoint}, marked ${electrical.serviceability_status}; this endpoint is not a serviceable connection`, route.id));
       }
       const endpointHeight = (side === 'from' ? route.from_height : route.to_height) ?? electrical?.height ?? electrical?.mount_height;
-      if (electrical && endpointHeight !== undefined && !electrical.serviceability_status && context.furnitureVolumes?.length) {
+      const electricalPlan = electrical ? pointPlan(electrical, sources) : undefined;
+      if (electrical && electricalPlan && endpointHeight !== undefined && !electrical.serviceability_status && context.furnitureVolumes?.length) {
         const blockingFurniture = context.furnitureVolumes.find((volume) => FURNITURE_ENDPOINT_ACCESS_TYPES.has(volume.type)
           && (!volume.room || volume.room === electrical.room)
           && electrical.mountAnchor?.furnitureId !== volume.id
-          && electrical.x >= volume.bounds.minX && electrical.x <= volume.bounds.maxX
-          && electrical.z >= volume.bounds.minZ && electrical.z <= volume.bounds.maxZ
+          && electricalPlan.x >= volume.bounds.minX && electricalPlan.x <= volume.bounds.maxX
+          && electricalPlan.z >= volume.bounds.minZ && electricalPlan.z <= volume.bounds.maxZ
           && endpointHeight >= volume.bounds.minY && endpointHeight <= volume.bounds.maxY);
         if (blockingFurniture) add(result, issue('warning', 'endpoint_inaccessible', `Electrical endpoint ${endpoint} of ${route.id} lies inside furnishing ${blockingFurniture.id}; confirm an exposed face, service niche or access opening`, route.id));
       }
@@ -1075,8 +1092,10 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         for (const plumbing of sources.plumbing) {
           const plumbingHeight = plumbing.height;
           const electricalHeight = declaredHeight ?? pointHeight;
-          if (plumbingHeight === undefined || electricalHeight === undefined) continue;
-          const planDistance = Math.hypot(electrical.x - plumbing.x, electrical.z - plumbing.z);
+          if (plumbingHeight === undefined || electricalHeight === undefined || !electricalPlan) continue;
+          const plumbingPlan = pointPlan(plumbing, sources);
+          if (!plumbingPlan) continue;
+          const planDistance = Math.hypot(electricalPlan.x - plumbingPlan.x, electricalPlan.z - plumbingPlan.z);
           if (planDistance <= 0.02 && Math.abs(electricalHeight - plumbingHeight) < 0.15) {
             add(result, issue('warning', 'mep_endpoint_service_conflict', `Electrical endpoint ${endpoint} of ${route.id} coincides with plumbing point ${plumbing.id} at the same service height; separate the electrical and plumbing connections`, route.id));
           }
@@ -1447,8 +1466,10 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
             if (typeof endpoint !== 'string') return false;
             const point = sources.plumbing.find((candidate) => candidate.id === endpoint);
             if (!point || (volume.room && point.room !== volume.room)) return false;
+            const plan = pointPlan(point, sources);
+            if (!plan) return false;
             const y = (endpointIndex === 0 ? route.from_height : route.to_height) ?? point.height ?? layer?.height ?? 0;
-            return pointBoxDistance({ x: point.x, z: point.z, y }, volume.bounds) <= 0.45;
+            return pointBoxDistance({ x: plan.x, z: plan.z, y }, volume.bounds) <= 0.45;
           }).length;
           insideRun = Math.max(0, insideRun - 0.45 * terminalInside);
         }

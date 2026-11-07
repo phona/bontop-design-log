@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { CurtainPoint, ElectricalPoint, FurnishingsYaml, HvacDiagram, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, SillPaintBand, SillTileBand, WallPaintBand, WallSegment, WallTileBand, RoomObject, WallSide } from '../types.js';
 import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS } from '../types.js';
 import { buildInfrastructure } from './InfrastructureBuilder.js';
+import type { PointWall } from '../point-placement.js';
 import { buildLightingFixtures } from './LightingFixtureBuilder.js';
 import { type HvacBuilderSources } from './HvacBuilder.js';
 import { buildHvacGeometry, type HvacEntityIndex } from './HvacGeometryBuilder.js';
@@ -164,6 +165,8 @@ export interface SceneBuildIndex {
   plumbing: Map<string, THREE.Group>;
   lightingFixtures: Map<string, THREE.Group>;
   wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>;
+  /** 点位宿主墙索引（id → 折线段 + line_datum）：电气/给排水点位与浏览器 MEP 端点的单一解算输入。 */
+  pointWalls: Map<string, PointWall>;
   openingWallSegments: Map<string, THREE.Mesh[]>;
   lintels: Map<string, THREE.Mesh[]>;
   hvac: HvacEntityIndex;
@@ -1555,7 +1558,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   const index = {
     rooms: Object.fromEntries(input.rooms.map((room) => [room.id, { ...room }])),
     floorMeshes: [], wallMeshes: [], ceilingMeshes: [], furnitureMeshes: [],
-    countertopMeshes: [], glassMeshes: [], doorMeshes: [], curtainRuns: new Map(), curtains: new Map(), slidingDoorGroups: new Map(), electrical: new Map(), plumbing: new Map(), lightingFixtures: new Map(), wallSegments: new Map(), openingWallSegments: new Map(), lintels: new Map(), hvac: { equipment: new Map(), terminals: new Map(), all: new Map() },
+    countertopMeshes: [], glassMeshes: [], doorMeshes: [], curtainRuns: new Map(), curtains: new Map(), slidingDoorGroups: new Map(), electrical: new Map(), plumbing: new Map(), lightingFixtures: new Map(), wallSegments: new Map(), pointWalls: new Map(), openingWallSegments: new Map(), lintels: new Map(), hvac: { equipment: new Map(), terminals: new Map(), all: new Map() },
   } as SceneBuildIndex;
   const exportRoot = new THREE.Group();
   exportRoot.name = 'HOUSE_EXPORT';
@@ -1592,7 +1595,9 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   }
   for (const wall of input.walls) {
     if (!wall.id) continue;
-    index.wallSegments.set(wall.id, wall.segments?.length ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 })) : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]);
+    const segments = wall.segments?.length ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 })) : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+    index.wallSegments.set(wall.id, segments);
+    index.pointWalls.set(wall.id, { segments, ...(wall.line_datum ? { line_datum: wall.line_datum } : {}) });
   }
   const furnishings = input.furnishings ?? {};
   const placedFurnitureKeys = new Set(
@@ -1608,7 +1613,10 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     if (duplicate) report.skippedPlumbing.push(`${point.id}:furnishing:${point.room}:${point.type}`);
     return !duplicate;
   });
-  const infrastructure = buildInfrastructure({ electrical: input.electrical ?? [], plumbing, wallSegments: index.wallSegments });
+  const infrastructure = buildInfrastructure({ electrical: input.electrical ?? [], plumbing, pointWalls: index.pointWalls });
+  for (const diagnostic of infrastructure.placementDiagnostics) {
+    report.placementDiagnostics.push(diagnostic);
+  }
   for (const model of infrastructure.electrical) {
     exportRoot.add(model);
     index.electrical.set(String(model.userData.objectId), model);

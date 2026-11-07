@@ -1,7 +1,21 @@
+# ── 定位声明（2026-11-07 issue #98 第四阶段 S1，设计文档 §4.3/§4.4）──────────────────
+# 四种互斥定位来源之一：wall + along（沿墙）/ mount（家具挂载，S2 启用）/ anchor（锚点引用，
+# S4 启用）/ absolute（绝对坐标）。x/z 是**迁移期断言字段**：shared/point-placement.ts 的
+# 解析结果与声明值差 >0.005m 即 fail（tests/server/point-placement.test.ts 固化），全量转
+# along 且断言全绿后（S3）删除。
+# along 起算 = 墙段起点顶点 (x1,z1) 沿折线累计（与家具摆位、洞口投影同一口径）。
+# face_offset = 离开完成面的附加量（默认 0 = 完成面，wallFaceOffset 口径 A = 0.068m）；
+# 本期沿墙点位的 face_offset 一律取「声明垂直分量 − 0.068」——绝大多数点位的历史 x/z 压在
+# 120mm 墙身中心线上（旧口径），面偏移抵掉后解析结果才等于声明值；S2/S3 连同 x/z 一并裁成
+# 显式意图值。沿墙点位的 3D/DXF 落位 = 墙线 datum + 薄板惯例 0.075m（业主 2026-11-07 裁定
+# 「DXF 迁就 3D 投影」），与 face_offset 无关。
+# ─────────────────────────────────────────────────────────────────────────────
 - id: sock_living_tv
   room: living_dining
   wall: w_st_east
   wall_side: east
+  along: 2.15
+  face_offset: -0.068
   type: socket
   x: 7.20
   z: 7.7
@@ -15,6 +29,8 @@
   room: living_dining
   wall: w_st_east
   wall_side: east
+  along: 2.15
+  face_offset: -0.068
   type: socket
   x: 7.20
   z: 7.70
@@ -27,6 +43,8 @@
   room: living_dining
   wall: w_st_east
   wall_side: east
+  along: 2.15
+  face_offset: -0.068
   type: network
   x: 7.20
   z: 7.7
@@ -36,6 +54,8 @@
 - id: sock_living_sofa_l
   room: living_dining
   type: floor_socket
+  absolute: true
+  host_intent: "ld.sofa_3seat 北臂外侧地插（宿主未 frozen，S4 候选转 mount）"
   x: 11.0
   z: 6.05
   height: 0.02
@@ -46,6 +66,8 @@
 - id: sock_living_sofa_r
   room: living_dining
   type: floor_socket
+  absolute: true
+  host_intent: "ld.sofa_3seat 南臂外侧地插（随沙发南移，S4 候选）"
   x: 11.0
   z: 9.35
   height: 0.02
@@ -57,6 +79,8 @@
   room: living_dining
   wall: w_be_west
   wall_side: west
+  along: 3.58
+  face_offset: -0.068
   type: socket
   x: 13.40
   z: 8.40
@@ -68,6 +92,8 @@
 - id: sock_living_table
   room: living_dining
   type: floor_socket
+  absolute: true
+  host_intent: "ld.dining_table 桌旁地插（随业主确认的四人餐桌，S4 候选）"
   x: 9.80
   z: 3.45
   height: 0.02
@@ -79,6 +105,8 @@
   room: living_dining
   wall: w_gbath_east
   wall_side: east
+  along: 0.9
+  face_offset: 0.032
   type: socket
   x: 7.30
   z: 3.30
@@ -91,6 +119,8 @@
   room: living_dining
   wall: w_gbath_east_open_vanity
   wall_side: east
+  along: 0.35
+  face_offset: 0.032
   type: socket
   x: 7.30
   z: 3.90
@@ -101,6 +131,8 @@
 - id: sock_living_curtain
   room: living_dining
   type: socket
+  absolute: true
+  host_intent: "南墙窗帘盒东端（电动窗帘电机，非家具对象）"
   x: 13.30
   z: 9.65
   height: 2.5
@@ -111,6 +143,8 @@
 - id: sock_living_ac
   room: living_dining
   type: socket
+  absolute: true
+  host_intent: "ac_living 内机贴机取电（北缘边吊内，与内机中心 0.30m 固有偏移已登记）"
   x: 10.0
   z: 4.75
   height: 2.5
@@ -121,6 +155,8 @@
 - id: sock_dining_ac
   room: living_dining
   type: socket
+  absolute: true
+  host_intent: "ac_dining 内机贴机取电（客餐厅北缘边吊西端，配电图待厂家）"
   x: 8.00
   z: 4.75
   height: 2.5
@@ -132,6 +168,8 @@
   room: living_dining
   wall: w_ent_south_w_east
   wall_side: south
+  along: 0.33
+  face_offset: -0.068
   type: switch_2way
   x: 13.10
   z: 3.00
@@ -143,6 +181,8 @@
   room: living_dining
   wall: w_ent_south_w_east
   wall_side: south
+  along: 0.45
+  face_offset: -0.068
   type: ac_controller
   x: 13.22
   z: 3.00
@@ -153,6 +193,8 @@
   room: living_dining
   wall: w_gbath_east_open_vanity
   wall_side: east
+  along: 0.55
+  face_offset: 0.032
   type: ac_controller
   x: 7.30
   z: 4.10
@@ -163,6 +205,8 @@
   room: living_dining
   wall: w_cent_south
   wall_side: west
+  along: 1.62
+  face_offset: -0.068
   type: switch_2way
   x: 12.77
   z: 4.62
@@ -175,6 +219,8 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
+  along: 0.652
+  face_offset: -0.068
   type: socket
   x: 4.20
   z: 6.202
@@ -187,6 +233,8 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
+  along: 0.738
+  face_offset: -0.068
   type: switch_2way
   x: 4.20
   z: 6.288
@@ -199,6 +247,8 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
+  along: 3.6
+  face_offset: -0.068
   type: socket
   x: 4.20
   z: 9.15
@@ -210,6 +260,8 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
+  along: 3.048
+  face_offset: -0.068
   type: switch_2way
   x: 4.20
   z: 8.598
@@ -222,6 +274,8 @@
   room: master_bedroom
   wall: w_strip_east
   wall_side: west
+  along: 0.15
+  face_offset: -0.068
   type: switch_2way
   x: 4.20
   z: 4.45
@@ -233,6 +287,8 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
+  along: 2.962
+  face_offset: -0.068
   type: socket
   x: 4.20
   z: 8.512
@@ -247,6 +303,8 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
+  along: 3.134
+  face_offset: -0.068
   type: ac_controller
   x: 4.20
   z: 8.684
@@ -258,6 +316,8 @@
 - id: sock_master_ac
   room: master_bedroom
   type: socket
+  absolute: true
+  host_intent: "ac_master 内机门头盒东端空腔（随冷媒管进盒）"
   x: 4.05
   z: 4.60
   height: 2.6
@@ -268,6 +328,8 @@
 - id: net_master_ap
   room: master_bedroom
   type: network
+  absolute: true
+  host_intent: "主卧平顶 PoE AP 预留（顶面位，无宿主器具）"
   x: 2.80
   z: 6.00
   height: 2.8
@@ -279,6 +341,8 @@
   room: study
   wall: w_mb_east
   wall_side: east
+  along: 3.35
+  face_offset: -0.068
   type: socket
   x: 4.20
   z: 8.90
@@ -291,6 +355,8 @@
   room: study
   wall: w_st_north
   wall_side: south
+  along: 1.875
+  face_offset: -0.068
   type: switch_2way
   x: 6.075
   z: 5.55
@@ -302,6 +368,8 @@
   room: study
   wall: w_mb_east
   wall_side: east
+  along: 3.6
+  face_offset: -0.068
   type: ac_controller
   x: 4.20
   z: 9.15
@@ -312,6 +380,8 @@
   room: study
   wall: w_st_east
   wall_side: west
+  along: 2.05
+  face_offset: -0.068
   type: socket
   x: 7.20
   z: 7.60
@@ -323,6 +393,8 @@
   room: study
   wall: w_st_east
   wall_side: west
+  along: 2.05
+  face_offset: -0.068
   type: network
   x: 7.20
   z: 7.60
@@ -335,6 +407,8 @@
   room: bedroom_se
   wall: w_be_west
   wall_side: east
+  along: 3.08
+  face_offset: -0.068
   type: socket
   x: 13.40
   z: 7.90
@@ -347,6 +421,8 @@
   room: bedroom_se
   wall: w_be_west
   wall_side: east
+  along: 3.08
+  face_offset: -0.068
   type: network
   x: 13.40
   z: 7.90
@@ -358,6 +434,8 @@
   room: bedroom_se
   wall: w_be_north
   wall_side: south
+  along: 1.1
+  face_offset: -0.068
   type: socket
   x: 14.5
   z: 4.82
@@ -369,6 +447,8 @@
   room: bedroom_se
   wall: w_be_west
   wall_side: east
+  along: 2.18
+  face_offset: -0.068
   type: switch_2way
   x: 13.40
   z: 7.0
@@ -380,6 +460,8 @@
   room: bedroom_se
   wall: w_be_west
   wall_side: east
+  along: 2.3
+  face_offset: -0.068
   type: ac_controller
   x: 13.40
   z: 7.12
@@ -391,6 +473,8 @@
   room: bedroom_nw
   wall: w_gbath_west
   wall_side: west
+  along: 1.1
+  face_offset: -0.068
   type: socket
   x: 5.60
   z: 3.30
@@ -402,6 +486,8 @@
   room: bedroom_nw
   wall: w_gbath_west
   wall_side: west
+  along: 1.014
+  face_offset: -0.068
   type: switch_2way
   x: 5.60
   z: 3.214
@@ -412,6 +498,8 @@
 - id: sock_child_desk
   room: bedroom_nw
   type: floor_socket
+  absolute: true
+  host_intent: "儿童房书桌位地插（西/北玻璃幕不可挂载，落地走线）"
   x: 2.90
   z: 3.00
   height: 0.02
@@ -422,6 +510,8 @@
 - id: net_child
   room: bedroom_nw
   type: network
+  absolute: true
+  host_intent: "儿童房书桌网口（与 sock_child_desk 同位）"
   x: 2.90
   z: 3.00
   height: 0.02
@@ -432,6 +522,8 @@
   room: bedroom_nw
   wall: w_nw_south
   wall_side: north
+  along: 1.875
+  face_offset: -0.068
   type: switch_2way
   x: 4.475
   z: 4.30
@@ -443,6 +535,8 @@
   room: bedroom_nw
   wall: w_nw_south
   wall_side: north
+  along: 2.925
+  face_offset: -0.068
   type: ac_controller
   x: 5.525
   z: 4.30
@@ -453,6 +547,8 @@
   room: bedroom_nw
   wall: w_gbath_west_open_vanity
   wall_side: west
+  along: 0.45
+  face_offset: -0.068
   type: socket
   x: 5.60
   z: 4.00
@@ -466,6 +562,8 @@
 - id: sock_kitchen_counter
   room: kitchen
   type: socket
+  absolute: true
+  host_intent: "厨房北墙切配区柜内预留（玻璃幕 suppress 不可挂载，取电形式待橱柜深化）"
   x: 8.60
   z: 0.3
   height: 0.3
@@ -481,6 +579,8 @@
   room: kitchen
   wall: w_ent_west
   wall_side: west
+  along: 1.3
+  face_offset: -0.068
   type: socket
   x: 10.80
   z: 1.70
@@ -493,6 +593,8 @@
   room: kitchen
   wall: w_ent_west
   wall_side: west
+  along: 2.35
+  face_offset: -0.068
   type: socket
   x: 10.80
   z: 0.65
@@ -505,6 +607,8 @@
   room: kitchen
   wall: w_ent_west
   wall_side: west
+  along: 1.5
+  face_offset: -0.068
   type: socket
   x: 10.80
   z: 1.5
@@ -516,6 +620,8 @@
 - id: sock_kitchen_purifier
   room: kitchen
   type: socket
+  absolute: true
+  host_intent: "kitchen.ro_purifier 净水器同柜（随 RO 机身预演位）"
   x: 10.05
   z: 0.30
   height: 0.4
@@ -527,6 +633,8 @@
   room: kitchen
   wall: w_ent_west
   wall_side: west
+  along: 2.8
+  face_offset: -0.068
   type: socket
   x: 10.80
   z: 0.20
@@ -542,6 +650,8 @@
 - id: sock_kitchen_oven
   room: kitchen
   type: socket
+  absolute: true
+  host_intent: "微蒸烤高位柜预留（嵌位随橱柜 600 宽高柜冻结后落）"
   x: 10.80
   z: 1.95
   height: 1.2
@@ -554,6 +664,8 @@
   room: kitchen
   wall: w_ent_west
   wall_side: west
+  along: 2
+  face_offset: -0.068
   type: switch
   x: 10.80
   z: 1.0
@@ -566,6 +678,8 @@
   room: master_bedroom  # 位于套间条带（2026-08-25 台盆外移）
   wall: w_mbath_south
   wall_side: south
+  along: 0.78
+  face_offset: 0.032
   type: socket
   x: 0.78
   z: 2.96
@@ -579,6 +693,8 @@
   room: master_bath
   wall: w_mbath_east
   wall_side: west
+  along: 0.4
+  face_offset: -0.068
   type: socket
   x: 2.60
   z: 1.5
@@ -589,6 +705,8 @@
 - id: sock_mbath_batheheater
   room: master_bath
   type: socket
+  absolute: true
+  host_intent: "主卫浴霸三合一（吊顶内干区，奥普 S2-Air 候选）"
   x: 1.30
   z: 2.70
   height: 2.5
@@ -600,6 +718,8 @@
   room: guest_bath
   wall: w_gbath_east_open_vanity
   wall_side: west
+  along: 0.565
+  face_offset: -0.008
   type: socket
   x: 7.14
   z: 4.115
@@ -613,6 +733,8 @@
   room: guest_bath
   wall: w_gbath_east_open_vanity
   wall_side: west
+  along: 0.651
+  face_offset: -0.008
   type: socket
   x: 7.14
   z: 4.201
@@ -625,6 +747,8 @@
 - id: sock_gbath_batheheater
   room: guest_bath
   type: socket
+  absolute: true
+  host_intent: "客卫浴霸三合一（吊顶内南干区，奥普 S2-Air 候选）"
   x: 6.30
   z: 2.95
   height: 2.5
@@ -637,6 +761,8 @@
   room: balcony
   wall: w_balc_west
   wall_side: east
+  along: 0.5
+  face_offset: -0.068
   type: socket
   x: 5.60
   z: 1.5
@@ -650,6 +776,8 @@
   room: balcony
   wall: w_balc_west
   wall_side: east
+  along: 0.8
+  face_offset: -0.068
   type: socket
   x: 5.60
   z: 1.8
@@ -662,6 +790,8 @@
   room: kitchen
   wall: w_vrv_east
   wall_side: east
+  along: 1
+  face_offset: 0.032
   type: socket
   x: 7.30
   z: 1.00
@@ -675,6 +805,8 @@
   room: kitchen
   wall: w_vrv_east
   wall_side: east
+  along: 0.5
+  face_offset: -0.068
   type: socket
   x: 7.20
   z: 0.50
@@ -689,6 +821,8 @@
   room: living_dining
   wall: w_ent_west
   wall_side: west
+  along: 0.02
+  face_offset: -0.068
   type: strong_panel
   x: 10.80
   z: 2.98
@@ -704,6 +838,8 @@
   room: living_dining
   wall: w_ent_west
   wall_side: west
+  along: 0.02
+  face_offset: -0.068
   type: weak_panel
   x: 10.80
   z: 2.98
@@ -717,20 +853,24 @@
 
 - id: sock_weakbox
   room: living_dining
-  wall: w_ent_west
+  wall: w_blk_west
   wall_side: west
+  along: 0.23
+  face_offset: -0.068
   type: socket
   x: 10.80
   z: 3.23
   height: 0.4
   count: 1
-  note: "弱电箱供电/服务位（DEC-2026-10-17-R20 补齐；2026-10-24 随 panel_weak_entry_left 迁至 w_ent_south_w 南脸）：本点在弱电箱南缘沿墙南移 0.05m（箱本体 z[2.78,3.18]，本点 z=3.23——嵌墙箱与插座同平面坐标会触发 coincident-endpoints 检查，沿墙错位为既有口径）——光猫/交换机若按运营商定案放弱电箱则必需（现方案放客厅高柜走 sock_gateway，该分工仍待定，两侧都要有电位才不返工）；横向偏移随弱电箱量房实测同步；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随箱至 w_ent_west 西脸，沿墙南移 0.25m 至（10.80,3.23），箱本体 z[2.78,3.18]、本点在其南缘 +0.05m。"
+  note: "弱电箱供电/服务位（DEC-2026-10-17-R20 补齐；2026-10-24 随 panel_weak_entry_left 迁至 w_ent_south_w 南脸）：本点在弱电箱南缘沿墙南移 0.05m（箱本体 z[2.78,3.18]，本点 z=3.23——嵌墙箱与插座同平面坐标会触发 coincident-endpoints 检查，沿墙错位为既有口径）——光猫/交换机若按运营商定案放弱电箱则必需（现方案放客厅高柜走 sock_gateway，该分工仍待定，两侧都要有电位才不返工）；横向偏移随弱电箱量房实测同步；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随箱至 w_ent_west 西脸，沿墙南移 0.25m 至（10.80,3.23），箱本体 z[2.78,3.18]、本点在其南缘 +0.05m。；2026-11-07 issue #98 S1：宿主墙由 w_ent_west 改挂 w_blk_west（黑块西脸，本点 z=3.23 越出 w_ent_west 南端 0.23m），along=0.23 自 v_ent_sw 起算，世界位置不变）"
 
 # 入户花园
 - id: sock_garden
   room: entry_garden
   wall: w_ent_west
   wall_side: east
+  along: 0.8
+  face_offset: -0.068
   type: socket
   x: 10.80
   z: 2.20
@@ -743,6 +883,8 @@
   room: entry_garden
   wall: w_ent_west
   wall_side: east
+  along: 2.5
+  face_offset: -0.068
   type: switch
   x: 10.80
   z: 0.5
@@ -755,6 +897,8 @@
   room: living_dining
   wall: w_gbath_east_open_vanity
   wall_side: east
+  along: 0.67
+  face_offset: 0.032
   type: switch
   x: 7.30
   z: 4.22
@@ -766,6 +910,8 @@
   room: living_dining
   wall: w_gbath_east_open_vanity
   wall_side: east
+  along: 0.43
+  face_offset: 0.032
   type: switch
   x: 7.30
   z: 3.98
@@ -779,6 +925,8 @@
 - id: sock_kitchen_dishwasher
   room: kitchen
   type: socket
+  absolute: true
+  host_intent: "kitchen.dishwasher 洗碗机舱位旁（可徒手插拔口径）"
   x: 9.30
   z: 0.30
   height: 0.3
@@ -795,6 +943,8 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
+  along: 4.125
+  face_offset: -0.068
   type: socket
   x: 4.20
   z: 9.675
@@ -812,6 +962,8 @@
   room: study
   wall: w_st_east
   wall_side: west
+  along: 4.125
+  face_offset: -0.068
   type: socket
   x: 7.20
   z: 9.675
@@ -830,6 +982,8 @@
   room: bedroom_se
   wall: w_be_west
   wall_side: east
+  along: 4.935
+  face_offset: -0.068
   type: socket
   x: 13.40
   z: 9.755
@@ -841,6 +995,8 @@
 - id: sock_study_ac
   room: bedroom_se
   type: socket
+  absolute: true
+  host_intent: "ac_study 内机贴机取电（北墙边吊内）"
   x: 14.80
   z: 6.00
   height: 2.5
@@ -852,6 +1008,8 @@
 - id: sock_parent_ac
   room: study
   type: socket
+  absolute: true
+  host_intent: "ac_parent 内机贴机取电（北缘边吊内）"
   x: 6.50
   z: 6.20
   height: 2.5
@@ -864,6 +1022,8 @@
   room: guest_bath
   wall: w_gbath_east
   wall_side: west
+  along: 0.65
+  face_offset: -0.068
   type: socket
   x: 7.20
   z: 3.05
@@ -876,6 +1036,8 @@
 - id: sock_balcony_drying
   room: balcony
   type: socket
+  absolute: true
+  host_intent: "电动晾衣架电源（吊顶内）"
   x: 6.40
   z: 1.60
   height: 2.5
@@ -886,6 +1048,7 @@
 - id: light_balcony_dome
   room: balcony
   type: dome
+  absolute: true
   x: 6.60
   z: 1.15
   height: 2.8
@@ -897,6 +1060,8 @@
 - id: sock_living_drying
   room: living_dining
   type: socket
+  absolute: true
+  host_intent: "drying_rack_living 隐藏式电动晾衣架（吊顶内预埋加固板处）"
   x: 8.10
   z: 9.50
   height: 2.5
@@ -909,6 +1074,8 @@
   room: living_dining
   wall: w_st_east
   wall_side: east
+  along: 0.15
+  face_offset: -0.068
   type: socket
   x: 7.20
   z: 5.70
@@ -924,6 +1091,8 @@
   room: living_dining
   wall: w_st_east
   wall_side: east
+  along: 0.15
+  face_offset: -0.068
   type: network
   x: 7.20
   z: 5.70
@@ -934,6 +1103,8 @@
 - id: net_ap_corridor
   room: living_dining
   type: network
+  absolute: true
+  host_intent: "客厅/走廊吊顶 PoE AP 预留（落 ceiling_living 北缘边吊空腔）"
   x: 8.60
   z: 4.75
   height: 2.50
@@ -946,6 +1117,8 @@
   room: living_dining
   wall: w_st_east
   wall_side: east
+  along: 2.15
+  face_offset: -0.068
   type: socket
   x: 7.20
   z: 7.7
@@ -958,6 +1131,7 @@
 - id: light_dining_pendant
   room: living_dining
   type: ceiling_light
+  absolute: true
   x: 9.25
   z: 3.65
   height: 2.8
@@ -970,6 +1144,7 @@
 - id: light_living_dome
   room: living_dining
   type: dome
+  absolute: true
   x: 10.8
   z: 7.15
   height: 2.8
@@ -980,6 +1155,7 @@
 - id: light_master_dome
   room: master_bedroom
   type: dome
+  absolute: true
   x: 1.70
   z: 6.00
   height: 2.8
@@ -989,6 +1165,7 @@
 - id: light_parent_dome
   room: study
   type: dome
+  absolute: true
   x: 5.7
   z: 7.675
   height: 2.8
@@ -998,6 +1175,7 @@
 - id: light_child_dome
   room: bedroom_nw
   type: dome
+  absolute: true
   x: 4.1
   z: 2.7
   height: 2.8
@@ -1007,6 +1185,7 @@
 - id: light_study_dome
   room: bedroom_se
   type: dome
+  absolute: true
   x: 14.9
   z: 7.125
   height: 2.8
@@ -1016,6 +1195,7 @@
 - id: light_corridor_1
   room: main_corridor
   type: downlight
+  absolute: true
   x: 5.70
   z: 4.90
   height: 2.50
@@ -1027,6 +1207,7 @@
 - id: light_entry_down
   room: entry_garden
   type: downlight
+  absolute: true
   x: 13.0
   z: 1.45
   height: 2.8
@@ -1037,6 +1218,7 @@
 - id: light_entry_foyer
   room: living_dining
   type: downlight
+  absolute: true
   x: 12.4
   z: 4.05
   height: 2.5
@@ -1048,6 +1230,7 @@
 - id: light_kitchen_panel
   room: kitchen
   type: dome
+  absolute: true
   x: 9.0
   z: 1.2
   height: 2.65
@@ -1057,6 +1240,8 @@
 - id: sock_master_projector
   room: master_bedroom
   type: floor_socket
+  absolute: true
+  host_intent: "mb.dressing_table 贴窗梳妆位（候选未冻结：镜灯/桌灯/吹风机/便携投影）"
   x: 0.42
   z: 5.78
   height: 0.02
@@ -1070,6 +1255,8 @@
   room: guest_bath
   wall: w_gbath_west_open_vanity
   wall_side: east
+  along: 0.405
+  face_offset: -0.068
   type: socket
   x: 5.60
   z: 3.955
@@ -1087,6 +1274,8 @@
   room: guest_bath
   wall: w_gbath_east_open_vanity
   wall_side: west
+  along: 0.55
+  face_offset: 0.082
   type: socket
   x: 7.05
   z: 4.10
@@ -1100,6 +1289,8 @@
   room: living_dining
   wall: w_st_east
   wall_side: east
+  along: 0.85
+  face_offset: -0.068
   type: socket
   x: 7.20
   z: 6.40
@@ -1121,6 +1312,8 @@
   room: bedroom_se
   wall: w_east_upper
   wall_side: west
+  along: 2.58
+  face_offset: -0.068
   type: socket
   x: 16.40
   z: 7.30
@@ -1134,6 +1327,8 @@
   room: bedroom_se
   wall: w_east_upper
   wall_side: west
+  along: 1.98
+  face_offset: -0.068
   type: socket
   x: 16.40
   z: 7.90
@@ -1147,6 +1342,8 @@
   room: bedroom_se
   wall: w_east_upper
   wall_side: west
+  along: 1.33
+  face_offset: -0.068
   type: switch_2way
   x: 16.40
   z: 8.55
@@ -1159,6 +1356,8 @@
   room: bedroom_se
   wall: w_be_west
   wall_side: east
+  along: 2.78
+  face_offset: -0.068
   type: night_light
   x: 13.40
   z: 7.60
@@ -1170,6 +1369,8 @@
   room: bedroom_se
   wall: w_east_upper
   wall_side: west
+  along: 1.33
+  face_offset: -0.068
   type: night_light
   x: 16.40
   z: 8.55
@@ -1184,6 +1385,8 @@
   room: living_dining
   wall: w_be_west
   wall_side: west
+  along: 2.08
+  face_offset: -0.068
   type: night_light
   x: 13.40
   z: 6.90
@@ -1195,6 +1398,8 @@
   room: living_dining
   wall: w_cent_south
   wall_side: west
+  along: 1.37
+  face_offset: -0.068
   type: night_light
   x: 12.77
   z: 4.37
@@ -1203,6 +1408,8 @@
   note: "起夜 NP-4a 客厅北段灯（R15）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-4a 客厅北段灯为设计声明→inferred；挂 w_liv_east 客厅侧，位置为设计值未实测；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随中竖墙西移至（12.77,4.37），挂 w_cent_south 西脸，距北厚墙角 4.82 南退 0.45m（原 5.55 角南退 0.45m 口径不变）。"
   status: inferred
 
+# 柜面挂载起夜灯（A 组）：mount_anchor 是宿主绑定（身份与校验），平面位置本期仍是手写 x/z，
+# 故按 absolute 声明；升级为 mount 定位来源（宿主脸 + surface_gap 解析）是 S2，见文件头。
 - id: night_living_mid
   room: living_dining
   type: night_light
@@ -1211,6 +1418,7 @@
     furniture_id: "ld.entry_half_height_cabinet"
     face: east
     surface_gap: 0.003
+  absolute: true
   x: 11.42
   z: 4.80
   height: 0.30
@@ -1226,6 +1434,7 @@
     furniture_id: "ld.wall_cabinet_tall"
     face: north
     surface_gap: 0.003
+  absolute: true
   x: 7.45
   z: 5.55
   height: 0.30

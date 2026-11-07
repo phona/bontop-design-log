@@ -129,6 +129,12 @@ function validateLighting(
       if (expectedSide && expectedSide !== hostSide) {
         issues.push({ level: 'error', code: 'lighting_mount_wall_side_mismatch', entity: point.id, source, message: `wall lamp ${point.id} declares ${hostSide} but room ${point.room} is on the ${expectedSide} side of ${hostWall}`, evidence: { wall: hostWall, declared_wall_side: hostSide, expected_wall_side: expectedSide, room: point.room } });
       }
+      // wall_lamp 平面口径（x/z + overrides）尚未迁 along（issue #98 S1 只迁电气/给排水点位解算）：
+      // 缺 x/z 即显形失败，不猜坐标。现行 config 已无 wall_lamp 在役点位。
+      if (point.x === undefined || point.z === undefined) {
+        issues.push({ level: 'error', code: 'lighting_mount_coordinate_missing', entity: point.id, source, message: `wall lamp ${point.id} has no x/z：灯具平面口径未迁 along，缺坐标即失败`, evidence: { type: point.type } });
+        continue;
+      }
       issues.push(...validateWallLampMount({
         id: point.id,
         x: point.x,
@@ -139,7 +145,8 @@ function validateLighting(
         suppressed: suppressed.has(wall.id) || wall.structure === 'curtain',
       }, source));
       const dx = wall.x2 - wall.x1; const dz = wall.z2 - wall.z1; const lenSq = dx * dx + dz * dz;
-      const t = lenSq > 0 ? Math.max(0, Math.min(1, ((point.x - wall.x1) * dx + (point.z - wall.z1) * dz) / lenSq)) : 0;
+      const px = point.x; const pz = point.z;
+      const t = lenSq > 0 ? Math.max(0, Math.min(1, ((px - wall.x1) * dx + (pz - wall.z1) * dz) / lenSq)) : 0;
       for (const opening of wall.openings ?? []) {
         const ot = lenSq > 0 ? ((opening.x - wall.x1) * dx + (opening.z - wall.z1) * dz) / lenSq : -Infinity;
         const along = Math.sqrt(lenSq) * ot;
@@ -153,7 +160,11 @@ function validateLighting(
         issues.push({ level: 'error', code: 'lighting_room_unknown', entity: point.id, source, message: `lighting point ${point.id} references unknown room ${point.room}`, evidence: { room: point.room } });
         continue;
       }
-      const ceilingHost = selectCeilingHost(point, ceilingZones, rooms);
+      // 顶装灯的宿主判定用平面坐标（x/z）：灯具平面口径本期不迁 along（issue #98 S1 只迁
+      // 电气/给排水点位解算），缺坐标即显形跳过宿主判定，由 runtime/高度检查继续说话。
+      const ceilingHost = point.x !== undefined && point.z !== undefined
+        ? selectCeilingHost({ x: point.x, z: point.z }, ceilingZones, rooms)
+        : undefined;
       const anchorY = heights.get(point.id) ?? point.height ?? room.height;
       const hostSurfaceY = ceilingHost?.surfaceY ?? room.height;
       if (runtime) {
@@ -224,6 +235,12 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
     if (!anchor) continue;
     if (point.type !== 'night_light') {
       issues.push({ level: 'error', code: 'furniture_face_mount_wrong_type', entity: point.id, source, message: `furniture-face mount anchor is only supported for night_light, got ${point.type}`, evidence: { anchor } });
+      continue;
+    }
+    // 挂载点位本期仍是「mount_anchor + 手写 x/z」（升级为真挂载是 S2）：校验的就是手写坐标
+    // 是否落在宿主脸上，缺 x/z 即失败，不猜。
+    if (point.x === undefined || point.z === undefined) {
+      issues.push({ level: 'error', code: 'furniture_face_mount_coordinate_missing', entity: point.id, source, message: `furniture-face mount point ${point.id} has no x/z：挂载升级为真定位前手写坐标是唯一校验输入`, evidence: { anchor } });
       continue;
     }
     const host = placed.get(anchor.furnitureId);

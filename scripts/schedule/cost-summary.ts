@@ -126,6 +126,7 @@ import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { load as parseYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../server/project-catalog.js';
+import { pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import {
   BudgetCalculator,
@@ -843,7 +844,8 @@ const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknow
     plumbing,
     ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
     hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
-  });
+    // 点位宿主墙索引（issue #98 S1）：与 takeoff:mep 同一解算路径（本函数注释即此承诺）。
+  }, pointWallIndexFromElements(ProjectCatalog.load('.').getWalls()));
   const takeoff = computeMepTakeoff({
     electrical: electrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
     plumbing: plumbing as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'],

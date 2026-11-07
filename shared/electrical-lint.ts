@@ -5,6 +5,7 @@ import type {
   FurnishingsYaml,
   ResolvedLayout,
 } from './types.js';
+import { pointWallIndexFromElements, resolvePointPlacementInWalls } from './point-placement.js';
 
 const LIGHT_TYPES = new Set(['ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'night_light']);
 const PANEL_TYPES = new Set(['strong_panel', 'weak_panel']);
@@ -165,14 +166,24 @@ export function lintElectricalTopology(
     }
   }
   const curtainWalls = (context.layout?.walls ?? []).filter((wall) => context.suppressedWallIds?.includes(wall.id));
+  // 平面坐标走点位解算器（issue #98 S1）：与 3D/DXF/MEP 同源；无墙上下文的调用方回落声明 x/z
+  // （迁移期断言保证两者相等，容差 0.005m）。
+  const pointWalls = context.layout ? pointWallIndexFromElements(context.layout.walls) : undefined;
+  const planOf = (point: ElectricalPoint): { x: number; z: number } | undefined => {
+    const { placement } = resolvePointPlacementInWalls(point, pointWalls);
+    if (placement) return { x: placement.x, z: placement.z };
+    return typeof point.x === 'number' && typeof point.z === 'number' ? { x: point.x, z: point.z } : undefined;
+  };
   for (const point of points) {
-    if (!/窗帘/.test(point.note ?? '') || typeof point.x !== 'number' || typeof point.z !== 'number') continue;
+    if (!/窗帘/.test(point.note ?? '')) continue;
+    const plan = planOf(point);
+    if (!plan) continue;
     if (curtainWalls.length === 0) {
       issue('warning', 'curtain_power_near_curtain_wall', `Curtain power point ${point.id} cannot be checked because suppressed wall geometry is unavailable`, point.id);
       continue;
     }
     const distance = Math.min(...curtainWalls.flatMap((wall) =>
-      (wall.segments?.length ? wall.segments : [wall]).map((segment) => distanceToSegment(point, segment)),
+      (wall.segments?.length ? wall.segments : [wall]).map((segment) => distanceToSegment(plan, segment)),
     ));
     if (distance > 2.0) {
       issue('warning', 'curtain_power_near_curtain_wall', `Curtain power point ${point.id} is ${distance.toFixed(2)}m from the nearest curtain wall; expected <= 2.00m`, point.id);
@@ -189,20 +200,25 @@ export function lintElectricalTopology(
   }
   // (d) 同坐标强电重叠：两个强电点位同 room、平面 <0.05m、高差 <0.15m 即视为同一底盒被两处声明。
   //     只对双方都在 STRONG_POWER_TYPES 的组合报错；弱电同位与已声明的 panel_group 双联均豁免。
-  const collisionCandidates = points.filter((point) => STRONG_POWER_TYPES.has(point.type) && typeof point.x === 'number' && typeof point.z === 'number');
+  const collisionCandidates = points
+    .flatMap((point) => {
+      if (!STRONG_POWER_TYPES.has(point.type)) return [];
+      const plan = planOf(point);
+      return plan ? [{ point, plan }] : [];
+    });
   for (let i = 0; i < collisionCandidates.length; i++) {
     for (let j = i + 1; j < collisionCandidates.length; j++) {
       const a = collisionCandidates[i]!;
       const b = collisionCandidates[j]!;
-      if (a.room !== b.room) continue;
-      if (WEAK_COLOCATION_TYPES.has(a.type) || WEAK_COLOCATION_TYPES.has(b.type)) continue;
-      const panelGroupA = a.appearance?.panel_group?.id;
-      if (panelGroupA !== undefined && panelGroupA === b.appearance?.panel_group?.id) continue;
-      const planar = Math.hypot(a.x - b.x, a.z - b.z);
+      if (a.point.room !== b.point.room) continue;
+      if (WEAK_COLOCATION_TYPES.has(a.point.type) || WEAK_COLOCATION_TYPES.has(b.point.type)) continue;
+      const panelGroupA = a.point.appearance?.panel_group?.id;
+      if (panelGroupA !== undefined && panelGroupA === b.point.appearance?.panel_group?.id) continue;
+      const planar = Math.hypot(a.plan.x - b.plan.x, a.plan.z - b.plan.z);
       if (planar >= POINT_COLLISION_PLANAR_M) continue;
-      const heightDiff = Math.abs((a.height ?? 0) - (b.height ?? 0));
+      const heightDiff = Math.abs((a.point.height ?? 0) - (b.point.height ?? 0));
       if (heightDiff >= POINT_COLLISION_HEIGHT_M) continue;
-      issue('error', 'point_coordinate_collision', `Strong-power points ${a.id} (${a.type}) and ${b.id} (${b.type}) overlap in room ${a.room} at (${a.x.toFixed(2)}, ${a.z.toFixed(2)}): planar ${planar.toFixed(3)}m < ${POINT_COLLISION_PLANAR_M.toFixed(2)}m and |height diff| ${heightDiff.toFixed(2)}m < ${POINT_COLLISION_HEIGHT_M.toFixed(2)}m — one back box cannot host both declarations`, a.id);
+      issue('error', 'point_coordinate_collision', `Strong-power points ${a.point.id} (${a.point.type}) and ${b.point.id} (${b.point.type}) overlap in room ${a.point.room} at (${a.plan.x.toFixed(2)}, ${a.plan.z.toFixed(2)}): planar ${planar.toFixed(3)}m < ${POINT_COLLISION_PLANAR_M.toFixed(2)}m and |height diff| ${heightDiff.toFixed(2)}m < ${POINT_COLLISION_HEIGHT_M.toFixed(2)}m — one back box cannot host both declarations`, a.point.id);
     }
   }
   const controlIds = new Set<string>();

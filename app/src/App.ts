@@ -337,6 +337,8 @@ export class App {
       this.houseScene.camera,
       this.houseScene.getViewOnlyRoot(),
     );
+    // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）
+    this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
@@ -2974,6 +2976,8 @@ export class App {
       this.houseScene.camera,
       this.houseScene.getViewOnlyRoot(),
     );
+    // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）
+    this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
@@ -3170,6 +3174,8 @@ export class App {
               hvacAnchors: plan?.diagram.anchors ?? [],
               hvacTerminals: plan?.diagram.terminals ?? [],
               outdoor: plan ? [plan.outdoor] : [],
+              // 点位宿主墙索引（issue #98 S1）：浏览器 MEP 路线与服务端/DXF/3D 同一解算。
+              pointWalls: this.houseScene.getPointWalls(),
             };
             this.mepLintResult = mepPayload.lint ?? null;
             this.houseScene.loadMepCoordination(mep, mepSources, mepPayload.lint);

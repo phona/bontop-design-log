@@ -83,6 +83,11 @@ export function buildRenderLightingFixtures(
     if (fixture.height === undefined) {
       throw new Error(`Lighting fixture ${fixture.id} has no electrical.height: render anchor must derive from the single source of truth`);
     }
+    // x/z 是迁移期断言字段（issue #98 S1）：灯具平面仍是「x/z + overrides 偏移」这套独立口径
+    // （第三套位置口径，灯具渲染不过墙投影），本期不迁；缺 x/z 即 fail-closed，不猜坐标。
+    if (fixture.x === undefined || fixture.z === undefined) {
+      throw new Error(`Lighting fixture ${fixture.id} has no electrical x/z: 灯具平面口径（x/z + overrides）尚未迁 along，缺坐标即失败`);
+    }
     if (fixture.mountAnchor && fixture.type !== 'night_light') {
       throw new Error(`Furniture-face mount_anchor is only supported for night_light fixtures: ${fixture.id}`);
     }

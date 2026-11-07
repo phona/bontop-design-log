@@ -22,6 +22,7 @@ import {
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { computeMepTakeoff, type MepTakeoffRules, type TakeoffCircuit, type TakeoffControl } from '../../shared/mep-takeoff.js';
 import { sourceFile } from '../../shared/envelope-sources.js';
+import { pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { compareMepQuotes, loadMepQuotes, mepQuoteFallback } from '../../server/mep-quotes.js';
 import type { ElectricalPoint, PlumbingPoint } from '../../shared/types.js';
 
@@ -39,7 +40,8 @@ const quotes = loadMepQuotes();
 const labor = parseYaml(readFileSync('config/mep-labor.yaml', 'utf8')) as Parameters<typeof mepQuoteFallback>[0];
 const control = parseYaml(readFileSync('schedule/phase-1/control.yaml', 'utf8')) as { work_packages: Array<{ id: string; budget: { planned_cny: number | null; estimated_need_cny?: number | null; components?: Array<{ id: string; planned_cny: number | null }> } }> };
 const pkg040 = control.work_packages.find((pkg) => pkg.id === 'PKG-040');
-const rooms = ProjectCatalog.load('.').getRooms();
+const catalog = ProjectCatalog.load('.');
+const rooms = catalog.getRooms();
 
 /**
  * 清包人工的计价面积（㎡）：读 `config/house.yaml` 的 `project.usable_area`。
@@ -57,12 +59,13 @@ if (typeof AREA_SQM !== 'number' || !(AREA_SQM > 0)) {
   throw new Error(`config/house.yaml 的 project.usable_area 必须是正数（实际 ${String(AREA_SQM)}）：水电清包人工按㎡计价，面积缺失时不猜`);
 }
 
+// 点位宿主墙索引（issue #98 S1）：路线端点与 DXF/3D 共用 shared/point-placement.ts 单一解算。
 const sources = endpointSourcesFromFacts({
   electrical,
   plumbing,
   ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
   hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
-});
+}, pointWallIndexFromElements(catalog.getWalls()));
 validateMepCoordination(coordination, sources);
 const resolution = resolveMepRoutes(coordination, sources);
 

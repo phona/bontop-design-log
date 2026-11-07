@@ -45,13 +45,75 @@ const ElectricalFixtureAppearanceSchema = z.object({
   }).strict().optional(),
 }).strict();
 
+/**
+ * 点位定位声明（issue #98 第四阶段 S1，设计文档 §4.3）：四种互斥定位来源之一——
+ * `wall + along`（沿墙）/ `mount`（家具挂载）/ `anchor`（锚点引用）/ `absolute`（绝对坐标）。
+ * x/z 从必填改为**迁移期断言字段**：沿墙点位的解析结果与声明值差 >0.005m 即 fail
+ * （tests/server/point-placement.test.ts 固化为测试），全量转 along 且断言全绿后才删（S3）。
+ * 解算实现见 shared/point-placement.ts。
+ */
+const PointWallAnchorSchema = z.object({
+  wall: nonEmpty,
+  wall_side: WallSideSchema,
+  along: finiteNumber.nonnegative(),
+  /** 离开完成面的附加量（米，带符号；默认 0 = 完成面，wallFaceOffset 口径 A 解算）。 */
+  face_offset: finiteNumber.optional(),
+}).strict();
+const PointMountSchema = z.object({
+  furniture_id: nonEmpty,
+  face: WallSideSchema,
+  surface_gap: finiteNumber.nonnegative().optional(),
+}).strict();
+const PointAnchorSchema = z.object({ source: nonEmpty, id: nonEmpty }).strict();
+
+/**
+ * 定位来源唯一性 + x/z 条件必填。沿墙点位必须 wall+wall_side+along 齐备（x/z 删除后
+ * wall_side 无从从坐标反推）；绝对点位必须 x/z 齐备。违反即拒绝加载——定位声明不允许
+ * 同时住两个事实源。
+ */
+function refinePointPlacement<T extends { x?: number; z?: number; wall?: string; wall_side?: unknown; along?: number; face_offset?: number; mount?: unknown; anchor?: unknown; absolute?: boolean }>(
+  value: T,
+  ctx: z.RefinementCtx,
+): void {
+  const sources = [
+    // wall_side 单独出现不算定位来源（无宿主墙定不了位）：只有 wall / along 触发沿墙分支
+    value.wall !== undefined || value.along !== undefined ? 'wall' : undefined,
+    value.mount !== undefined ? 'mount' : undefined,
+    value.anchor !== undefined ? 'anchor' : undefined,
+    value.absolute === true ? 'absolute' : undefined,
+  ].filter((source): source is string => source !== undefined);
+  if (sources.length > 1) {
+    ctx.addIssue({ code: 'custom', message: `点位定位来源必须唯一，不得同时声明：${sources.join(' + ')}（wall+along / mount / anchor / absolute 四者之一）` });
+    return;
+  }
+  if (sources.length === 0) {
+    ctx.addIssue({ code: 'custom', message: '点位必须声明定位来源之一：wall+along / mount / anchor / absolute（x/z 是迁移期断言字段，不是定位来源）' });
+    return;
+  }
+  if (sources[0] === 'wall' && (value.wall === undefined || value.wall_side === undefined || value.along === undefined)) {
+    ctx.addIssue({ code: 'custom', message: '沿墙定位要求 wall + wall_side + along 齐备' });
+  }
+  if (sources[0] === 'absolute' && (value.x === undefined || value.z === undefined)) {
+    ctx.addIssue({ code: 'custom', message: '绝对定位（absolute）要求 x 与 z 齐备' });
+  }
+}
+
 export const ElectricalPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['socket', 'switch', 'switch_2way', 'network', 'usb', 'floor_socket', 'strong_panel', 'weak_panel', 'ac_controller', 'ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'night_light']),
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), mount_anchor: FurnitureFaceMountAnchorConfigSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
-}).strict();
+  x: finiteNumber.optional(), z: finiteNumber.optional(), wall: z.string().optional(), wall_side: WallSideSchema.optional(),
+  along: finiteNumber.nonnegative().optional(), face_offset: finiteNumber.optional(),
+  mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
+  /** 宿主意图标注（F 组器具邻接点）：只作文档与校验输入，不参与解算。 */
+  host_intent: nonEmpty.optional(),
+  mount_anchor: FurnitureFaceMountAnchorConfigSchema.optional(), temp: finiteNumber.optional(), circuit: z.string().optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
+}).strict().superRefine(refinePointPlacement);
 export const PlumbingPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor', 'leb', 'drain_riser', 'gas_meter', 'duct', 'water_supply', 'water_heater']),
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), wall_side: WallSideSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(),
+  x: finiteNumber.optional(), z: finiteNumber.optional(), wall: z.string().optional(), wall_side: WallSideSchema.optional(),
+  along: finiteNumber.nonnegative().optional(), face_offset: finiteNumber.optional(),
+  mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
+  host_intent: nonEmpty.optional(),
+  note: z.string().optional(), height: finiteNumber.optional(),
   status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
   construction_status: z.enum(['confirmed', 'inferred', 'pending']).optional(),
   uncertainty_m: finiteNumber.positive().optional(),
@@ -62,7 +124,7 @@ export const PlumbingPointSchema = z.object({
   water_temp: z.enum(['hot', 'cold', 'mixed']).optional(),
   water_dn: z.union([z.literal(20), z.literal(25), z.literal(32)]).optional(),
   drain_dn: z.union([z.literal(50), z.literal(75), z.literal(110)]).optional(),
-}).strict();
+}).strict().superRefine(refinePointPlacement);
 export const CeilingZoneSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(VALID_CEILING_TYPES), thickness: finiteNumber.optional(),
   area: z.tuple([finiteNumber, finiteNumber, finiteNumber, finiteNumber]).optional(), corner_radius: finiteNumber.nonnegative().optional(),
@@ -277,7 +339,13 @@ export const PlumbingPointsSchema = z.array(PlumbingPointSchema);
 // 产出键序不同，verify:project-render-facts 的字符串比对会误报 stale。
 export const PlumbingPointProjectionSchema = z.object({
   id: z.string(), room: z.string(), type: PlumbingPointSchema.shape.type,
-  x: finiteNumber, z: finiteNumber, wall: z.string().optional(), note: z.string().optional(), height: finiteNumber.optional(),
+  x: finiteNumber, z: finiteNumber, wall: z.string().optional(),
+  // 定位声明（issue #98 S1）：浏览器标注层与 ProblemDetector 经 shared/point-placement.ts
+  // 用同一解算器取解析后坐标，故投影必须带齐这四个字段（键序与 parsePlumbingPoints 产出一致）。
+  along: finiteNumber.nonnegative().optional(), face_offset: finiteNumber.optional(),
+  mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
+  host_intent: nonEmpty.optional(),
+  note: z.string().optional(), height: finiteNumber.optional(),
   status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
   construction_status: z.enum(['confirmed', 'inferred', 'pending']).optional(),
   uncertainty_m: finiteNumber.positive().optional(),
