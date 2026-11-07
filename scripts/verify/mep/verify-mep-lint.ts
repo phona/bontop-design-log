@@ -8,6 +8,7 @@ import { endpointSourcesFromFacts, parseMepCoordination, validateMepCoordination
 import { lintLevel, lintMepCoordination, MEP_LINT_CATEGORIES, type MepLintResult } from '../../../shared/mep-hvac-lint.js';
 import { appendUnadjudicatedWarningFindings, parseMepWarningAdjudication } from '../../../shared/mep-warning-adjudication.js';
 import { parseElectricalPoints, parsePlumbingPoints } from '../../../shared/project-render-facts-schema.js';
+import { pointWallIndexFromElements } from '../../../shared/point-placement.js';
 import type { ProjectRenderFacts } from '../../../shared/types.js';
 
 function load<T>(path: string): T { return yaml.load(readFileSync(path, 'utf8')) as T; }
@@ -21,13 +22,14 @@ export function runMepLint(): MepLintResult {
   const geometry = load('config/layout/model-geometry.yaml');
   const overlay = parseOverlayFiles();
   const plan = hvac.plans[0];
-  const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac });
+  const layout = resolveLayout(geometry as Parameters<typeof resolveLayout>[0]);
+  // 点位宿主墙索引（issue #98 S1）：路线端点与 DXF/3D 共用 shared/point-placement.ts 单一解算。
+  const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac }, pointWallIndexFromElements(layout.walls));
   // Keep the cross-file coordination contract on the same verify:mep gate as
   // geometry lint.  Lint is intentionally permissive for inferred/pending
   // routes, while this validator rejects broken references and contradictory
   // source/status declarations before any findings are emitted.
   validateMepCoordination(config, sources);
-  const layout = resolveLayout(geometry as Parameters<typeof resolveLayout>[0]);
   // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性，
   // 唯一权威实现 shared/suppression.ts（原 overlay.suppress 顶层清单已删）。
   const suppressedWallIdList = suppressedWallIds(layout.walls);

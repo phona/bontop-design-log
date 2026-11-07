@@ -113,6 +113,9 @@ export function parseSceneInput(source: SceneInputSource): SceneInput {
         ...(element.segments ? { segments: element.segments.map((segment) => ({ ...segment })) } : {}),
         ...(element.openings ? { openings: element.openings.map((opening) => ({ ...opening })) } : {}),
         ...(element.rooms ? { rooms: [...element.rooms] } : {}),
+        // 墙线基准（口径 A）：场景元素 → 墙对象的映射不许丢 line_datum，否则点位解算的
+        // 完成面偏移（shared/point-placement.ts → wallFaceOffset）会 fail-closed 抛错。
+        ...(element.line_datum ? { line_datum: element.line_datum } : {}),
       }));
   }
   if (walls.length === 0 && suppliedElements.length === 0) {

@@ -512,14 +512,15 @@ test('FixtureFactory models the sink as a raised rim, basin body, and recessed i
 });
 
 test('shared SceneBuilder exports readable master-bedroom sockets as formal wall-projected objects', () => {
+  // along 自墙段起点 (4.2,5.0) 沿墙累计（issue #98 S1 唯一定位来源；x/z 是断言字段）
   const electrical = [
-    { id: 'sock_master_bed_l', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, type: 'socket' as const, x: 4.2, z: 6.2, height: 0.7 },
-    { id: 'sock_master_bed_r_head', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, type: 'socket' as const, x: 4.2, z: 7.5, height: 0.7 },
-    { id: 'sock_master_bed_r', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, type: 'socket' as const, x: 4.2, z: 9.15, height: 0.7 },
+    { id: 'sock_master_bed_l', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, along: 1.2, type: 'socket' as const, x: 4.2, z: 6.2, height: 0.7 },
+    { id: 'sock_master_bed_r_head', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, along: 2.5, type: 'socket' as const, x: 4.2, z: 7.5, height: 0.7 },
+    { id: 'sock_master_bed_r', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, along: 4.15, type: 'socket' as const, x: 4.2, z: 9.15, height: 0.7 },
   ];
   const result = buildScene({
     rooms: [],
-    walls: [{ id: 'w_mb_east', x1: 4.2, z1: 5.0, x2: 4.2, z2: 10.0, height: 2.8 }],
+    walls: [{ id: 'w_mb_east', x1: 4.2, z1: 5.0, x2: 4.2, z2: 10.0, height: 2.8, line_datum: 'centerline' }],
     elements: [],
     electrical,
   });

@@ -129,6 +129,8 @@ vi.mock('./render/annotations/AnnotationRenderer.js', () => ({
     setVisible() {}
     updateLabels() {}
     clear() {}
+    // issue #98 S1：标注层坐标经 shared/point-placement.ts 解算，宿主墙索引由 App 注入
+    setPointWalls() {}
     getElectricalData() { return []; }
     getPlumbingData() { return []; }
   },

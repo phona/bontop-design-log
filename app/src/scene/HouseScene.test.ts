@@ -1712,23 +1712,25 @@ describe('HouseScene', () => {
       house: {
         rooms: [],
         sceneElements: [
-          { type: 'wall' as const, id: 'wall:vertical', x1: 2, z1: -1, x2: 2, z2: 3 },
-          { type: 'wall' as const, id: 'w_mbath_south', x1: 0, z1: 3.26, x2: 2.6, z2: 3.26 },
+          { type: 'wall' as const, id: 'wall:vertical', x1: 2, z1: -1, x2: 2, z2: 3, line_datum: 'centerline' as const },
+          { type: 'wall' as const, id: 'w_mbath_south', x1: 0, z1: 3.26, x2: 2.6, z2: 3.26, line_datum: 'centerline' as const },
         ],
       },
       topics: [],
       budgetCategories: [],
     });
 
+    // along 起算 = 墙段起点顶点沿折线累计（issue #98 S1 唯一定位来源；x/z 只是断言字段）。
+    // wall:vertical 自 (2,-1) 到 (2,3)；w_mbath_south 自 (0,3.26) 到 (2.6,3.26)。
     scene.placeInfrastructureFixtures(
       [
-        { id: 'switch-1', room: 'room', type: 'switch', x: 0, z: 1.5, height: 1.2, wall: 'wall:vertical' },
-        { id: 'switch-west', room: 'room', type: 'switch', x: 2, z: 0.5, height: 1.2, wall: 'wall:vertical', wallSide: 'west' },
-        { id: 'switch-east', room: 'room', type: 'switch', x: 2, z: 2.5, height: 1.2, wall: 'wall:vertical', wallSide: 'east' },
-        { id: 'switch-mbath-north', room: 'room', type: 'switch', x: 1, z: 3.21, height: 1.2, wall: 'w_mbath_south' },
-        { id: 'switch-mbath-south', room: 'room', type: 'switch', x: 2, z: 3.31, height: 1.2, wall: 'w_mbath_south' },
+        { id: 'switch-1', room: 'room', type: 'switch', x: 0, z: 1.5, along: 2.5, height: 1.2, wall: 'wall:vertical', wallSide: 'west' },
+        { id: 'switch-west', room: 'room', type: 'switch', x: 2, z: 0.5, along: 1.5, height: 1.2, wall: 'wall:vertical', wallSide: 'west' },
+        { id: 'switch-east', room: 'room', type: 'switch', x: 2, z: 2.5, along: 3.5, height: 1.2, wall: 'wall:vertical', wallSide: 'east' },
+        { id: 'switch-mbath-north', room: 'room', type: 'switch', x: 1, z: 3.21, along: 1, height: 1.2, wall: 'w_mbath_south' },
+        { id: 'switch-mbath-south', room: 'room', type: 'switch', x: 2, z: 3.31, along: 2, height: 1.2, wall: 'w_mbath_south' },
       ],
-      [{ id: 'faucet-1', room: 'room', type: 'faucet', x: 0, z: 9, height: 1.0, wall: 'wall:vertical' }],
+      [{ id: 'faucet-1', room: 'room', type: 'faucet', x: 2, z: 2, along: 3, height: 1.0, wall: 'wall:vertical' }],
     );
 
     const getModel = (objectId: string) => scene.getViewOnlyRoot().children.find((object: any) => object.userData?.objectId === objectId) as any;
@@ -1747,7 +1749,7 @@ describe('HouseScene', () => {
     expect(switchWest.userData).toMatchObject({ fixtureType: 'switch', wallSide: 'west' });
     expect(switchEast.userData).toMatchObject({ fixtureType: 'switch', wallSide: 'east' });
     expect(faucetModel.position.x).toBeCloseTo(2 - 0.06 - 0.005 - 0.01);
-    expect(faucetModel.position.z).toBeCloseTo(3);
+    expect(faucetModel.position.z).toBeCloseTo(2);
     expect(mbathNorth.position.z).toBeLessThan(3.26);
     expect(mbathNorth.position.z).toBeCloseTo(3.26 - wallOffset);
     expect(mbathSouth.position.z).toBeGreaterThan(3.26);
@@ -1763,8 +1765,8 @@ describe('HouseScene', () => {
       budgetCategories: [],
     });
     scene.placeInfrastructureFixtures(
-      [{ id: 'socket-main', room: 'kitchen', type: 'socket', x: 0, z: 0, height: 0.4, wallSide: 'west' }],
-      [{ id: 'drain-main', room: 'kitchen', type: 'drain', x: 1, z: 1, height: 0.1 }],
+      [{ id: 'socket-main', room: 'kitchen', type: 'socket', x: 0, z: 0, height: 0.4, absolute: true, wallSide: 'west' }],
+      [{ id: 'drain-main', room: 'kitchen', type: 'drain', x: 1, z: 1, height: 0.1, absolute: true }],
     );
 
     const roots = scene.getViewOnlyRoot().children.filter((child: any) => child.userData?.objectId?.startsWith('electrical:') || child.userData?.objectId?.startsWith('plumbing:')) as any[];
@@ -1802,25 +1804,24 @@ describe('HouseScene', () => {
     }
   });
 
-  it('keeps infrastructure coordinates when wall is absent or unknown', () => {
+  it('keeps authored coordinates for absolute points and fails closed on an unknown wall', () => {
+    // issue #98 S1：墙引用解不出来不再静默按声明坐标落位（sock_weakbox 242mm 的机制根源）——
+    // 绝对点位照旧取声明坐标，未知宿主墙的点位不出场景、诊断显形。
     const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
     scene.placeInfrastructureFixtures(
       [
-        { id: 'socket-1', room: 'room', type: 'socket', x: 1, z: 2, height: 0.4 },
-        { id: 'socket-2', room: 'room', type: 'socket', x: 3, z: 4, height: 0.5, wall: 'missing-wall' },
+        { id: 'socket-1', room: 'room', type: 'socket', x: 1, z: 2, height: 0.4, absolute: true },
+        { id: 'socket-2', room: 'room', type: 'socket', x: 3, z: 4, height: 0.5, wall: 'missing-wall', wallSide: 'west', along: 1 },
       ],
       [],
     );
 
-    const positions = ['electrical:socket-1', 'electrical:socket-2'].map((objectId) => {
-      const object = scene.getViewOnlyRoot().children.find((child: any) => child.userData?.objectId === objectId) as any;
-      return { x: object.position.x, y: object.position.y, z: object.position.z, rotation: object.rotation.y };
-    });
-    expect(positions).toEqual([
-      { x: 1, y: 0.4, z: 2, rotation: 0 },
-      { x: 3, y: 0.5, z: 4, rotation: 0 },
-    ]);
+    const object = scene.getViewOnlyRoot().children.find((child: any) => child.userData?.objectId === 'electrical:socket-1') as any;
+    expect({ x: object.position.x, y: object.position.y, z: object.position.z, rotation: object.rotation.y })
+      .toEqual({ x: 1, y: 0.4, z: 2, rotation: 0 });
+    expect(scene.getViewOnlyRoot().children.find((child: any) => child.userData?.objectId === 'electrical:socket-2')).toBeUndefined();
+    expect(scene.getPlacementDiagnostics().some((diagnostic: string) => diagnostic.includes('socket-2'))).toBe(true);
   });
 
   it('renders strong and weak electrical panels with authored dimensions and metadata', () => {
@@ -1828,8 +1829,8 @@ describe('HouseScene', () => {
     const scene = new HouseScene(canvas);
 
     scene.placeInfrastructureFixtures([
-      { id: 'panel-strong', room: 'living_dining', type: 'strong_panel', x: 13.4, z: 3.6, mount_height: 1.65, body_height: 0.39, width: 0.39, depth: 0.21, status: 'measured', position_status: 'inferred', wall: 'w_foyer_east', wallSide: 'west' },
-      { id: 'panel-weak', room: 'living_dining', type: 'weak_panel', x: 13.4, z: 3.6, mount_height: 0.5, body_height: 0.4, width: 0.4, depth: 0.3, status: 'likely', position_status: 'inferred', wall: 'w_foyer_east', wallSide: 'west' },
+      { id: 'panel-strong', room: 'living_dining', type: 'strong_panel', x: 13.4, z: 3.6, mount_height: 1.65, body_height: 0.39, width: 0.39, depth: 0.21, status: 'measured', position_status: 'inferred', absolute: true },
+      { id: 'panel-weak', room: 'living_dining', type: 'weak_panel', x: 13.4, z: 3.6, mount_height: 0.5, body_height: 0.4, width: 0.4, depth: 0.3, status: 'likely', position_status: 'inferred', absolute: true },
     ], []);
 
     const roots = scene.getViewOnlyRoot().children.filter((child: any) => child.userData?.type === 'electrical') as any[];

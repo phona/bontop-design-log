@@ -2,15 +2,17 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
 import { buildInfrastructure } from '../../../shared/render/InfrastructureBuilder.js';
+import type { PointWall } from '../../../shared/point-placement.js';
 
 test('shared infrastructure builder preserves metadata and projects wall-side fixtures', () => {
   const result = buildInfrastructure({
     electrical: [
-      { id: 'switch-west', room: 'room', type: 'switch', x: 2, z: 0.5, height: 1.2, wall: 'wall', wallSide: 'west' },
-      { id: 'panel', room: 'room', type: 'strong_panel', x: 2, z: 1, wall: 'wall', wallSide: 'west', mount_height: 1.5, body_height: 0.4, width: 0.4, depth: 0.2, status: 'measured', position_status: 'inferred' },
+      // along 自墙段起点 (2,-1) 沿墙累计：z=0.5 → along=1.5、z=1 → along=2（issue #98 S1 起唯一定位来源）
+      { id: 'switch-west', room: 'room', type: 'switch', x: 2, z: 0.5, along: 1.5, height: 1.2, wall: 'wall', wallSide: 'west' },
+      { id: 'panel', room: 'room', type: 'strong_panel', x: 2, z: 1, along: 2, wall: 'wall', wallSide: 'west', mount_height: 1.5, body_height: 0.4, width: 0.4, depth: 0.2, status: 'measured', position_status: 'inferred' },
     ],
-    plumbing: [{ id: 'drain', room: 'room', type: 'drain', x: 1, z: 1, height: 0.1 }],
-    wallSegments: new Map([['wall', [{ x1: 2, z1: -1, x2: 2, z2: 3 }]]]),
+    plumbing: [{ id: 'drain', room: 'room', type: 'drain', x: 1, z: 1, height: 0.1, absolute: true }],
+    pointWalls: new Map<string, PointWall>([['wall', { segments: [{ x1: 2, z1: -1, x2: 2, z2: 3 }], line_datum: 'centerline' }]]),
   });
 
   assert.equal(result.objects.length, 3);
@@ -23,13 +25,41 @@ test('shared infrastructure builder preserves metadata and projects wall-side fi
   assert.equal(result.plumbing[0].userData.objectId, 'plumbing:drain');
 });
 
-test('shared infrastructure builder keeps authored coordinates when wall projection is unavailable', () => {
+test('shared infrastructure builder keeps authored coordinates for absolute points', () => {
   const [fixture] = buildInfrastructure({
-    electrical: [{ id: 'socket', room: 'room', type: 'socket', x: 1, z: 2, height: 0.4, wall: 'missing' }],
+    electrical: [{ id: 'socket', room: 'room', type: 'socket', x: 1, z: 2, height: 0.4, absolute: true }],
     plumbing: [],
   }).electrical;
   assert.deepEqual(fixture.position.toArray(), [1, 0.4, 2]);
   assert.equal(fixture.rotation.y, 0);
+});
+
+// issue #98 S1：墙引用解不出来（宿主墙缺失/缺 along）不再静默按声明坐标落位——
+// 那是 sock_weakbox 242mm 偏差的机制根源。点位不出场景，诊断显形。
+test('shared infrastructure builder fails closed on unresolvable wall points', () => {
+  const built = buildInfrastructure({
+    electrical: [
+      { id: 'dangling', room: 'room', type: 'socket', x: 1, z: 2, height: 0.4, wall: 'missing' },
+      { id: 'no-along', room: 'room', type: 'socket', x: 2, z: 1, height: 0.4, wall: 'wall', wallSide: 'west' },
+      { id: 'beyond', room: 'room', type: 'socket', x: 2, z: 1, along: 9, height: 0.4, wall: 'wall', wallSide: 'west' },
+    ],
+    plumbing: [],
+    pointWalls: new Map<string, PointWall>([['wall', { segments: [{ x1: 2, z1: -1, x2: 2, z2: 3 }], line_datum: 'centerline' }]]),
+  });
+  assert.equal(built.electrical.length, 0);
+  assert.equal(built.placementDiagnostics.length, 3);
+  // 缺 along 先于宿主墙查找报出（along 是唯一定位来源，缺它连墙都不用查）
+  assert.match(built.placementDiagnostics[0], /dangling.*wall \+ along 齐备/);
+  assert.match(built.placementDiagnostics[1], /no-along.*wall \+ along 齐备/);
+  assert.match(built.placementDiagnostics[2], /beyond.*越出墙段/);
+  // 宿主墙断引用单独一条：有 along 但墙不在索引里
+  const dangling = buildInfrastructure({
+    electrical: [{ id: 'dangling-wall', room: 'room', type: 'socket', x: 1, z: 2, along: 1, height: 0.4, wall: 'missing', wallSide: 'west' }],
+    plumbing: [],
+    pointWalls: new Map<string, PointWall>([['wall', { segments: [{ x1: 2, z1: -1, x2: 2, z2: 3 }], line_datum: 'centerline' }]]),
+  });
+  assert.equal(dangling.electrical.length, 0);
+  assert.match(dangling.placementDiagnostics[0], /dangling-wall.*宿主墙 "missing" 不在墙段索引里/);
 });
 
 test('shared plumbing shower uses the declared height as the finished-floor-to-head anchor', () => {

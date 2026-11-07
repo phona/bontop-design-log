@@ -165,8 +165,8 @@ test('switch points must declare an explicit neutral policy (config/house.yaml �
   assert.equal(switchPoints.filter((point) => /零线/.test(point.note ?? '')).length, 14); // DEC-2026-10-27-R01 删 switch_parent_bed（含零线 note）15→14；R2 删 switch_mbath/switch_gbath 后 17→15
 
   // schema 同步：neutral 为 optional boolean；strict 仍然拒绝未知键
-  assert.equal(ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', x: 1, z: 2, neutral: false }).neutral, false);
-  assert.throws(() => ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', x: 1, z: 2, neutral_required: true }));
+  assert.equal(ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', absolute: true, x: 1, z: 2, neutral: false }).neutral, false);
+  assert.throws(() => ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', absolute: true, x: 1, z: 2, neutral_required: true }));
 
   // 违反方向 1：剥掉 neutral 字段且 note 不写零线 → 该点告警复现（判据在字段/note，不在点位 id）
   const strippedSwitchNote = (note: string) => note.replace(/；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）/, '');

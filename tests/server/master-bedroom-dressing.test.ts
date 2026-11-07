@@ -123,7 +123,7 @@ function runtimeElectricalAabb(id: string): RuntimeAabb {
   const built = buildInfrastructure({
     electrical: [normalized as any],
     plumbing: [],
-    wallSegments: new Map([['w_mb_east', [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }]]]),
+    pointWalls: new Map([['w_mb_east', { segments: [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }], line_datum: 'centerline' }]]),
   });
   const fixture = built.electrical[0];
   assert.ok(fixture, `missing runtime electrical fixture ${id}`);

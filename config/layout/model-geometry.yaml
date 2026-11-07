@@ -347,6 +347,7 @@ walls:
     from: v_cent_j
     to: v_ent_step
     height: 2.8
+    line_datum: centerline   # 2026-11-07 issue #98 S1 补：switch_living_entrance/ac_panel_living 挂此段南脸，wallFaceOffset 要显式基准（口径 A）
   # 2026-10-25 DEC-2026-10-25-R01 新增（重算）：门厅东墙折线段（新南墙 3.00 与旧南墙东段 2.90 之间的折线墙）
   - id: w_foyer_east_step
     from: v_ent_step
@@ -411,6 +412,7 @@ walls:
     from: v_ent_sw
     to: v_blk_sw
     height: 2.8
+    line_datum: centerline   # 2026-11-07 issue #98 S1 补：sock_weakbox 由 w_ent_west 改挂本段（其声明 z=3.23 越出 w_ent_west 南端 0.23m，落在黑块西脸 z[3.00,3.25] 上；本段即 w_ent_west 注释所载「南段由 w_blk_west 续接」）
   - id: w_blk_south
     from: v_blk_sw
     to: v_blk_se
@@ -793,6 +795,7 @@ walls:
     from: v_nw_s
     to: v_gbath_se
     height: 2.8
+    line_datum: centerline   # 2026-11-07 issue #98 S1 补：drain_gbath_vanity 挂此段北脸，wallFaceOffset 要显式基准（口径 A）
     openings:
       # 2026-08-29：门洞西移至 x[5.60,6.30]，保持南墙外门内开并为马桶真实 AABB 让出扫掠净空
       # DEC-2026-09-09-R3：铰链由东缘（end）改西缘（start）——东铰链 90° 开门叶立于 x=6.30 挡住马桶动线（叶尖距玻璃隔断仅 0.05m），且扫掠半径 0.70m 撞上西墙毛巾架（最近点 0.62m）；西铰链后叶贴西墙 z[2.85,3.55]，马桶/淋浴隔断/毛巾架（已迁马桶上方）全部让开
@@ -874,6 +877,7 @@ walls:
     from: v_kit_w
     to: v_vrv_se
     height: 2.8
+    line_datum: centerline   # 2026-11-07 issue #98 S1 补：sock_balcony_waterheater/sock_vrf_outdoor_a2 挂此段东脸，wallFaceOffset 要显式基准（口径 A）
     finish:
       tile_bands:
         # R11 补（业主 2026-10-07 裁定 D2=补贴）：灶台/烟机后挡水墙。0.90m 杂砖带止于台面完成面 0.89m，

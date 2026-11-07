@@ -1246,10 +1246,27 @@ export interface ElectricalPoint {
   id: string;
   room: string;
   type: ElectricalPointType;
-  x: number;
-  z: number;
+  /**
+   * 迁移期断言字段（issue #98 第四阶段 S1）：沿墙点位的解析结果与声明值差 >0.005m 即 fail
+   * （tests/server/point-placement.test.ts 固化为测试）。定位来源是 wall + along / mount /
+   * anchor / absolute 四者之一，x/z 不再是定位来源；S3 全量转 along 且断言全绿后删除。
+   */
+  x?: number;
+  z?: number;
   wall?: string;
   wallSide?: WallSide;
+  /** 沿墙距离（米），起算 = 墙段起点顶点沿折线累计（shared/point-placement.ts）。 */
+  along?: number;
+  /** 离开完成面的附加量（米，带符号；默认 0 = 完成面）。 */
+  face_offset?: number;
+  /** 家具挂载定位来源（S2 把 mount_anchor 升级为真挂载后启用）。 */
+  mount?: { furniture_id: string; face: WallSide; surface_gap?: number };
+  /** 锚点引用定位来源（S4：F 组转家具挂载 / 暖通 ref 通道）。 */
+  anchor?: { source: string; id: string };
+  /** 显式绝对坐标意图（C/D/E/F 组：顶面灯位/建筑服务基准/地面排水/器具邻接点）。 */
+  absolute?: boolean;
+  /** 宿主意图标注（只作文档与校验输入，不参与解算）。 */
+  host_intent?: string;
   mountAnchor?: FurnitureFaceMountAnchor;
   temp?: number;
   circuit?: string;
@@ -1355,10 +1372,23 @@ export interface PlumbingPoint {
   id: string;
   room: string;
   type: PlumbingPointType;
-  x: number;
-  z: number;
+  /** 迁移期断言字段（issue #98 S1）：解析结果与声明值差 >0.005m 即 fail；S3 删除。 */
+  x?: number;
+  z?: number;
   wall?: string;
   wallSide?: WallSide;
+  /** 沿墙距离（米），起算 = 墙段起点顶点沿折线累计（shared/point-placement.ts）。 */
+  along?: number;
+  /** 离开完成面的附加量（米，带符号；默认 0 = 完成面）。 */
+  face_offset?: number;
+  /** 家具挂载定位来源（S4 启用）。 */
+  mount?: { furniture_id: string; face: WallSide; surface_gap?: number };
+  /** 锚点引用定位来源（S4 启用）。 */
+  anchor?: { source: string; id: string };
+  /** 显式绝对坐标意图（C/D/E/F 组）。 */
+  absolute?: boolean;
+  /** 宿主意图标注（只作文本与校验输入，不参与解算）。 */
+  host_intent?: string;
   note?: string;
   height?: number;
   /** 精度等级（推断/实测口径）。推断点位必须与 docs/pending-site-data.md 的登记值一致。 */

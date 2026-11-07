@@ -7,6 +7,7 @@ import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, t
 import { diffCondensateChainPlanAgainstMep, mepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
 import { parseMepCoordination, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
 import { parseProjectHvacFacts } from '../../../shared/project-render-facts-schema.js';
+import { pointWallIndexFromElements } from '../../../shared/point-placement.js';
 import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
 
 const EPS = 0.01;
@@ -528,6 +529,8 @@ function main(): void {
       hvacAnchors: hvacDiagram?.anchors ?? [],
       hvacTerminals: hvacDiagram?.terminals ?? [],
       outdoor: [],
+      // 点位宿主墙索引（issue #98 S1）：冷凝链 ↔ MEP 对照的端点与 DXF/3D 同一解算。
+      pointWalls: pointWallIndexFromElements(walls),
     };
     const from = resolveMepEndpoint(mepRoute.from, mepSources, mepCoordination.junctions);
     const to = resolveMepEndpoint(mepRoute.to, mepSources, mepCoordination.junctions);

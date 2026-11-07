@@ -8,6 +8,7 @@ import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
+import { pointWallIndexFromElements } from '../shared/point-placement.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import { mepPenetrationAt } from '../shared/condensate-chain.js';
@@ -208,7 +209,8 @@ export function createApiRouter(deps: ApiDeps): Router {
         return;
       }
       const config = loadMepCoordinationConfig();
-      const sources = endpointSourcesFromFacts(facts);
+      // 点位宿主墙索引（issue #98 S1）：浏览器 MEP 路线与 DXF/3D 共用同一解算。
+      const sources = endpointSourcesFromFacts(facts, pointWallIndexFromElements(deps.catalog.getWalls()));
       validateMepCoordination(config, sources);
       res.json({ ...config, lint: lintMepCoordination(config, sources, deps.getMepLintContext?.()) });
     } catch (err) {

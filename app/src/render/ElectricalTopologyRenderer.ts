@@ -73,6 +73,8 @@ export class ElectricalTopologyRenderer {
         new THREE.SphereGeometry(0.12, 12, 8),
         new THREE.MeshBasicMaterial({ color: panel.kind === 'strong' ? 0xef4444 : 0x8b5cf6, transparent: true, opacity: 0.9 }),
       );
+      // x/z 是迁移期断言字段（issue #98 S1）：回路图节点只画有平面坐标的点位，缺坐标即跳过
+      if (point.x === undefined || point.z === undefined) continue;
       node.position.set(point.x, pointHeight(point, 1.5), point.z);
       node.userData = {
         objectId: `electrical-topology:panel:${panel.id}`,
@@ -113,6 +115,7 @@ export class ElectricalTopologyRenderer {
         const edge = new THREE.Mesh(new THREE.RingGeometry(0.10, 0.14, 16), material);
         edge.name = `electrical-topology:member-marker:${circuit.id}:${memberId}`;
         edge.rotation.x = -Math.PI / 2;
+        if (member.x === undefined || member.z === undefined) { this.summary.skippedEdges++; continue; }
         edge.position.set(member.x, pointHeight(member, 1.25), member.z);
         edge.userData = {
           objectId: `electrical-topology:edge:${circuit.id}:${memberId}`,

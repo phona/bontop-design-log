@@ -1,33 +1,34 @@
 import * as THREE from 'three';
 import { createSocketIcon, createSwitchIcon, createFloorSocketIcon, createNetworkIcon, createFaucetIcon, createShowerIcon, createToiletIcon, createDrainIcon, createWasherIcon, createCeilingZoneIndicator, createACIndoorIcon } from './icons.js';
-import { ProblemDetector } from './ProblemDetector.js';
+import { ProblemDetector, type ElectricalPoint as ProblemElectricalPoint, type PlumbingPoint as ProblemPlumbingPoint } from './ProblemDetector.js';
 import type { Problem, FurnitureItem, WallInfo } from './ProblemDetector.js';
+import { resolvePointPlacementInWalls, type PointWall } from '@shared/point-placement';
 
-interface ElectricalPoint {
-  id: string;
-  room: string;
-  wall: string;
-  wallSide?: 'north' | 'south' | 'east' | 'west';
-  type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket' | 'ac_controller'
-    | 'ceiling_light' | 'pendant' | 'dome' | 'wall_lamp' | 'downlight' | 'led_strip';
-  x: number;
-  z: number;
-  height: number;
-  count?: number;
-  note?: string;
-  temp?: number; // 色温（3000/4000），灯光点位用
-}
-
-interface PlumbingPoint {
+/** 点位声明（/api/annotations/* 原始数组）：x/z 是迁移期断言字段，图标落位走解析器。 */
+interface ElectricalPoint extends ProblemElectricalPoint {
   id: string;
   room: string;
   wall?: string;
   wallSide?: 'north' | 'south' | 'east' | 'west';
-  type: 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor';
-  x: number;
-  z: number;
+  along?: number;
+  face_offset?: number;
+  absolute?: boolean;
+  mount?: { furniture_id: string; face: 'north' | 'south' | 'east' | 'west'; surface_gap?: number };
+  anchor?: { source: string; id: string };
+  height: number;
+}
+
+interface PlumbingPoint extends ProblemPlumbingPoint {
+  id: string;
+  room: string;
+  wall?: string;
+  wallSide?: 'north' | 'south' | 'east' | 'west';
+  along?: number;
+  face_offset?: number;
+  absolute?: boolean;
+  mount?: { furniture_id: string; face: 'north' | 'south' | 'east' | 'west'; surface_gap?: number };
+  anchor?: { source: string; id: string };
   height?: number;
-  note?: string;
 }
 
 interface CeilingZone {
@@ -58,6 +59,8 @@ export class AnnotationRenderer {
   private electricalData: ElectricalPoint[] = [];
   private plumbingData: PlumbingPoint[] = [];
   private ceilingData: CeilingZone[] = [];
+  /** 点位宿主墙索引（issue #98 S1）：标注层与 ProblemDetector 的坐标一律经 shared/point-placement.ts 解算。 */
+  private pointWalls: ReadonlyMap<string, PointWall> = new Map();
 
   constructor(
     private scene: THREE.Scene,
@@ -68,6 +71,26 @@ export class AnnotationRenderer {
     this.group.add(this.problemGroup);
     this.group.visible = false;
     this.viewOnlyRoot.add(this.group);
+  }
+
+  /** 宿主墙索引由 App 从 HouseScene（buildScene 的 index.pointWalls）注入。 */
+  setPointWalls(pointWalls: ReadonlyMap<string, PointWall>): void {
+    this.pointWalls = pointWalls;
+  }
+
+  /**
+   * 解析后平面坐标（issue #98 S1 单一解算）：沿墙点位 = 完成面基点（与 MEP 端点同源）；
+   * 解算失败（缺 along/越界/断引用）回落声明 x/z 并 console 告警——标注层不是施工依据，
+   * 权威判定在 mep-hvac-lint 与 verify:consistency，那里同样的情况是 fail-closed。
+   */
+  private planOf(point: ElectricalPoint | PlumbingPoint): { x: number; z: number } {
+    const { placement } = resolvePointPlacementInWalls(point, this.pointWalls);
+    if (placement) return { x: placement.x, z: placement.z };
+    if (typeof point.x === 'number' && typeof point.z === 'number') {
+      console.warn(`[annotations] ${point.id}: 定位解析失败，回落声明坐标（详见 verify:consistency）`);
+      return { x: point.x, z: point.z };
+    }
+    return { x: 0, z: 0 };
   }
 
   async load(): Promise<void> {
@@ -95,9 +118,11 @@ export class AnnotationRenderer {
   }
 
   detectProblems(furniture: FurnitureItem[], walls: WallInfo[]): Problem[] {
+    // ProblemDetector 的契约是「x/z = 解析后坐标」（见其文件头）：这里先把声明解算再喂进去，
+    // 检测器自己不读声明 x/z 这个第二事实源。
     const problems = this.detector.detectAll(
-      this.electricalData,
-      this.plumbingData,
+      this.electricalData.map((point) => ({ ...point, ...this.planOf(point) })),
+      this.plumbingData.map((point) => ({ ...point, ...this.planOf(point) })),
       this.ceilingData,
       furniture,
       walls,
@@ -152,7 +177,8 @@ export class AnnotationRenderer {
         : p.type === 'network'
         ? createNetworkIcon()
         : createSocketIcon(p.count ?? 1);
-      icon.position.set(p.x, p.type === 'floor_socket' ? 0.05 : p.height, p.z);
+      const plan = this.planOf(p);
+      icon.position.set(plan.x, p.type === 'floor_socket' ? 0.05 : p.height, plan.z);
       icon.userData = { type: 'annotation', category: 'electrical', pointId: p.id, note: p.note, objectId: 'electrical:' + p.id, wallSide: p.wallSide };
       const label = this.createLabel(p.note ?? '');
       label.position.set(0, 0.3, 0);
@@ -175,7 +201,8 @@ export class AnnotationRenderer {
         faucet_outdoor: createFaucetIcon,
       };
       const icon = (iconMap[p.type] ?? createFaucetIcon)();
-      icon.position.set(p.x, p.height ?? 0.5, p.z);
+      const plan = this.planOf(p);
+      icon.position.set(plan.x, p.height ?? 0.5, plan.z);
       icon.userData = { type: 'annotation', category: 'plumbing', pointId: p.id, note: p.note, objectId: 'plumbing:' + p.id, wallSide: p.wallSide };
       const label = this.createLabel(p.note ?? '');
       label.position.set(0, 0.3, 0);

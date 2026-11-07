@@ -60,7 +60,8 @@ import { BrowserSceneMaterials } from './BrowserSceneMaterials.js';
 import { buildScene, refreshSlidingDoorGroup, type CurtainBuildEntry, type SceneMaterialProvider } from '@shared/render/SceneBuilder';
 import { buildHvacGeometry, type HvacEntityIndex } from '@shared/render/HvacGeometryBuilder';
 import { buildHvacBuilderSources, type HvacBuilderSources } from '@shared/render/HvacBuilder';
-import { buildInfrastructure, type InfrastructureWallSegment } from '@shared/render/InfrastructureBuilder';
+import { buildInfrastructure } from '@shared/render/InfrastructureBuilder';
+import type { PointWall } from '@shared/point-placement';
 import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@shared/render/layout-bounds';
 import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
 import type { CeilingZone } from '@shared/types';
@@ -246,6 +247,8 @@ export class HouseScene implements SceneApi {
   /** 已打开（隐藏面板）的检修口 objectId 集合。DEC-2026-10-27-R03。 */
   private readonly accessPanelOpen = new Set<string>();
   private wallSegmentIndex = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>();
+  /** 点位宿主墙索引（id → 折线段 + line_datum）：电气/给排水点位与 MEP 端点的单一解算输入。 */
+  private pointWallIndex = new Map<string, PointWall>();
   private readyState: 'loading' | 'ready' | 'failed' = 'loading';
   private readyPromise: Promise<void>;
   private resolveReady!: () => void;
@@ -569,7 +572,8 @@ export class HouseScene implements SceneApi {
     const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('gbath.toilet'));
     const screenBox = segmentBox(points('shower_screen_gbath'));
     const shower = this.auditPlumbing.find((candidate) => candidate.room === 'guest_bath' && candidate.type === 'shower');
-    const showerPoint = shower ? { x: shower.x, z: shower.z } : { x: 7.10, z: 2.45 };
+    // x/z 是迁移期断言字段（issue #98 S1）：此示意图只画 plumbing 点位的平面位置，缺坐标即回退默认值
+    const showerPoint = shower && shower.x !== undefined && shower.z !== undefined ? { x: shower.x, z: shower.z } : { x: 7.10, z: 2.45 };
     const dividerZ = screenBox ? (screenBox.minZ + screenBox.maxZ) / 2 : 2.80;
     const vanitySouth = vanityBox?.minZ ?? dividerZ;
     rect(bounds.minX, bounds.maxX, dividerZ, bounds.maxZ, 'rgba(245, 158, 11, 0.18)', '#d97706', 4);
@@ -700,6 +704,7 @@ export class HouseScene implements SceneApi {
     this.doorMeshes = [];
     this.slidingDoorGroups.clear();
     this.wallSegmentIndex.clear();
+    this.pointWallIndex.clear();
     this.roomMeta.clear();
     this.auditFurnishings = projectData.house.furnishings ?? {};
     this.auditSceneElements = projectData.house.sceneElements ?? [];
@@ -753,6 +758,7 @@ export class HouseScene implements SceneApi {
     this.doorMeshes = index.doorMeshes;
     this.slidingDoorGroups = index.slidingDoorGroups;
     this.wallSegmentIndex = index.wallSegments;
+    this.pointWallIndex = index.pointWalls;
     this.hvacEntityIndex = index.hvac;
     this.hvacProjection = projectData.renderFactsProjection;
     this.hvacExpectedExportIds = [...this.hvacEntityIndex.all.keys()];
@@ -1904,6 +1910,11 @@ export class HouseScene implements SceneApi {
     this.requestRender();
   }
 
+  /** 点位宿主墙索引（issue #98 S1）：标注层解析坐标与 MEP 端点解算共用。 */
+  getPointWalls(): ReadonlyMap<string, PointWall> {
+    return this.pointWallIndex;
+  }
+
   placeInfrastructureFixtures(electrical: ElectricalPoint[], plumbing: PlumbingPoint[]): void {
     this.auditPlumbing = plumbing;
     this.batcher.clearScope('plumbing');
@@ -1911,10 +1922,17 @@ export class HouseScene implements SceneApi {
     const result = buildInfrastructure({
       electrical,
       plumbing,
-      wallSegments: this.wallSegmentIndex as ReadonlyMap<string, InfrastructureWallSegment[]>,
+      // 点位宿主墙索引（issue #98 S1）：与 buildScene 首帧、DXF、MEP 共用同一解算。
+      pointWalls: this.pointWallIndex,
     });
     this.electricalMeshes = result.electrical;
     this.infrastructureMeshes = result.objects;
+    // 点位定位诊断（issue #98 S1）：沿墙点位解算失败（缺 along/越界/断引用）不出场景，
+    // 逐条显形——与家具摆位诊断同一通道，页面同样不许静默少件。
+    for (const diagnostic of result.placementDiagnostics) {
+      this.placementDiagnostics.push(diagnostic);
+      console.error('[scene] point placement:', diagnostic);
+    }
     for (const model of result.objects) {
       this.decorations.addMarker(model);
       if (MERGE_STATIC_UNITS && isMergeableUnit(model)) mergeUnitMaterials(model);
