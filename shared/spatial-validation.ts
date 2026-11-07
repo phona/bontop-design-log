@@ -780,7 +780,7 @@ export function validateGlassAgainstWalls(
   paths: GlassPathSegment[],
   walls: PlanSegment[],
   suppressedWalls: string[] = [],
-  source = 'config/layout/model-geometry.yaml + config/model/envelope/{openings,floor-zones,finish-surfaces}.yaml',
+  source = 'config/layout/model-geometry.yaml + config/model/envelope/{openings,floor-zones,finish-defaults}.yaml',
   allowedJunctions: OverlayWallJunctionSpec[] = [],
 ): SpatialIssue[] {
   const suppressed = new Set(suppressedWalls);

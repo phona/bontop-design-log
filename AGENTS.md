@@ -50,7 +50,7 @@
 
 > Blender 主线已暂停并冷归档到 `scripts/archive/blender-pipeline/`；本文件中的 Blender-specific 约束仅在明确恢复冷归档时适用。几何、坐标、电气、家具、碰撞与数据一致性铁律始终有效。
 >
-> `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/model/envelope/{openings,floor-zones,finish-surfaces}.yaml`（S1 起替代原 `config/layout/overlay.yaml`，合并入口 `server/overlay-merge.ts` 的 `parseOverlayFiles()`）出一切意图。代码只读、只执行，禁止推断。
+> `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/model/envelope/{openings,floor-zones,finish-defaults}.yaml`（S1 起替代原 `config/layout/overlay.yaml`，合并入口 `server/overlay-merge.ts` 的 `parseOverlayFiles()`）出一切意图。代码只读、只执行，禁止推断。
 >
 > **视觉反馈类迭代**（业主看图说话 → 改模型 → 再看）开工前读 `docs/visual-change-playbook.md`，并跑 `npm run gate:visual` 确认客户端渲染的就是当前 config（config watch 曾因单文件监听挂 inode、原子替换写后静默断线而不可靠，2026-10-24 已改目录级监听修复；gate 对 schema 拒绝类 STALE 仍是保险丝）。
 >
@@ -69,7 +69,7 @@
   - `+z` = 南，`-z` = 北
 - 俯视图约定：北朝上（`-z` 方向），南朝下（`+z` 方向）。
 - `model-geometry.yaml` 使用 DXF 原值（局部坐标），允许 `z < 0`（如入户花园向北凸出）。
-- envelope 意图文件（openings/floor-zones/finish-surfaces，原 `overlay.yaml`）必须与 `model-geometry.yaml` 使用同一坐标系，不得保留独立偏移。
+- envelope 意图文件（openings/floor-zones/finish-defaults，原 `overlay.yaml`）必须与 `model-geometry.yaml` 使用同一坐标系，不得保留独立偏移。
 - 全局坐标与局部坐标换算：
   - `DXF_mm = (local_m + origin) / scale`
   - `local_m = DXF_mm * scale - origin`

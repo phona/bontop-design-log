@@ -6,8 +6,9 @@
 # replacement 直引本文件的 curtain_run/railing_run id）；语义唯一权威实现 shared/suppression.ts。
 # join（玻璃接缝语义）同轮从 config/spatial-validation.yaml 的 overlay_replacements 镜像表
 # 上移为本对象声明（根级或 part 级）——它描述同一对象相邻玻璃路径的交接，本是对象属性。
-# 合并读取入口：server/overlay-merge.ts parseOverlayFiles()（openings + floor-zones + finish-surfaces
-# 三个文件拼成原 OverlayConfig；parseOverlay(text) 仍供测试喂 fixture 文本）。
+# 合并读取入口：server/overlay-merge.ts parseOverlayFiles()（openings + floor-zones 两个文件
+# 拼成原 OverlayConfig；skirting 24 段自 S5 起由 paint_bands 派生、锚点住 finish-defaults.yaml；
+# parseOverlay(text) 仍供测试喂 fixture 文本）。
 version: 1
 
 elements:

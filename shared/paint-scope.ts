@@ -261,7 +261,7 @@ export function computePaintScope(
     // 有 height）与预算侧会因此给出不同答案。错误信息直接指去哪补。
     if (region.height === undefined) {
       throw new Error(
-        `paint_region ${region.id} 缺 height（涂装带顶标高，不是带高）：请到 config/model/envelope/finish-surfaces.yaml 补 height（本案层高 2.8m，窗台/防水台带另有 0.77m 一档）。缺失时不许回落默认层高——那会让涂装面积静默偏离声明`,
+        `paint_region ${region.id} 缺 height（涂装带顶标高，不是带高）：请到 config/layout/model-geometry.yaml 墙条目 finish.paint_bands 补 height（本案层高 2.8m，窗台/防水台带另有 0.77m 一档）。缺失时不许回落默认层高——那会让涂装面积静默偏离声明`,
       );
     }
     const top = region.height;

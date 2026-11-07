@@ -12,6 +12,7 @@ import { load } from 'js-yaml';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { isWallSuppressed } from '../shared/suppression.js';
+import { deriveSkirtingRegions } from '../shared/skirting-derivation.js';
 import type { BaySillSegment, BaySillWallReference, SceneElement, WallSegment, CurtainPoint, WallPaintBand, WallTileBand } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
@@ -152,9 +153,12 @@ const BaySillFinishSchema = z
   .strict();
 
 // 踢脚线常显条带（DEC-2026-10-28-R02）：与墙特征面层的检视态不同，
-// 本类型在正常视图里就可见。height 必填、代码与 schema 均不得给默认值——高度是可调数据，
-// 只由 overlay 声明（本文件外 YAML 锚点统一）给出；改高度改声明，不改代码。
-// S5 起由 paint_bands 派生（24/24 配对已证实），届时本类型退场。
+// 本类型在正常视图里就可见。height 必填、代码与 schema 均不得给默认值——高度是可调数据。
+// S5（2026-11-07）：24 段平级声明已删（finish-surfaces.yaml 随之退场），改由墙特征
+// finish.paint_bands[] 派生（shared/skirting-derivation.ts），height/color 取
+// config/model/envelope/finish-defaults.yaml 的 skirting 锚点；本 schema 留作**派生产物
+// 的校验闸**（派生结果仍过它，height 缺失/非法即显形），SceneElement 联合成员与全部
+// 消费方（SceneBuilder/DXF A-SKIRT/HouseScene 审计/碰撞豁免）零改动。
 const SkirtingRegionSchema = z
   .object({
     id: z.string().min(1),
@@ -315,33 +319,84 @@ export function parseOverlay(raw: string): OverlayConfig {
   return OverlaySchema.parse(load(raw) ?? {});
 }
 
-// ── S1 搬迁（issue #98 第三阶段）：overlay 声明拆为 envelope 三文件后的唯一合并点 ──
-// 原 config/layout/overlay.yaml 已删，声明现住三个文件：
+// ── S1 搬迁（issue #98 第三阶段）：overlay 声明拆为 envelope 文件后的唯一合并点 ──
+// 原 config/layout/overlay.yaml 已删，声明现住：
 //   openings.yaml       围护构件 40（curtain_run/railing_run 的 join 接缝语义也住这里；
 //                       version 随迁此文件；bay_sill 的 finish.tile[]/paint[] 面层配方
 //                       也住这里——S4 把 sill_region/paint_sill_region 下沉为构件特征）
 //   floor-zones.yaml    floor_region 6（绝对 points 的唯一聚居地）
-//   finish-surfaces.yaml 面层配方【仅剩 skirting_region 24】（S4 已把 wall_region 18 /
-//                       paint_region 31 / sill_region 20 / paint_sill_region 8 /
-//                       paint_ceiling_region 8 下沉到 model-geometry 的墙/房间与 openings
-//                       的 bay_sill；S5 把 skirting 也改派生后本文件退场）
+//   finish-defaults.yaml 面层派生默认值（S5：skirting 的 height/color 锚点；declaration 已无）
+// S4 把 wall_region 18 / paint_region 31 / sill_region 20 / paint_sill_region 8 /
+// paint_ceiling_region 8 下沉到 model-geometry 的墙/房间与 openings 的 bay_sill；
+// S5 删除 finish-surfaces.yaml 最后的 skirting_region 24 段声明，改由墙特征
+// finish.paint_bands[] 派生（shared/skirting-derivation.ts），该文件退场。
 // suppress 自 2026-11-07 S3 起不住本处：改判为 config/layout/model-geometry.yaml 墙条目的
 // suppressed:{reason,replacement} 属性（原 overlay 顶层 8 条 wall/walls/region 选择器 +
 // spatial-validation.yaml 的 overlay_replacements 镜像表随之退场），语义唯一权威实现
 // shared/suppression.ts。合并必须恢复原 overlay.yaml 的元素物理顺序：GLB/DXF 产物按 elements
 // 顺序生成，实测乱序即字节变化（2026-11-07 实验把 floor 6 条移位重导出，GLB SHA 由
 // eba3dbda… 变 47087a67…）。原序是「bay_sill 组(25) → floor 6 → curtain/shower 等围护(15)
-// → 面层配方(109，其中 skirting 24 是唯一产可见网格的一类)」，S4 后只剩 skirting 24 还走
-// 元素表（可见网格顺序不变 → GLB 字节不变），因此 floor 6 条仍插在 openings 内 bay_sill 组
-// 末尾锚点之后；锚点找不到即抛错，不许静默串序。
+// → 面层配方(109，其中 skirting 24 是唯一产可见网格的一类)」，S4/S5 后只剩派生的 skirting 24
+// 还走元素表，接在原面层配方组的末尾位置（可见网格集合不变：24 段逐一对应原声明，
+// tests/server/skirting.test.ts 冻结原声明逐字段断言），因此 floor 6 条仍插在 openings 内
+// bay_sill 组末尾锚点之后；锚点找不到即抛错，不许静默串序。
 export const OVERLAY_SOURCE_FILES = {
   openings: 'config/model/envelope/openings.yaml',
   floorZones: 'config/model/envelope/floor-zones.yaml',
-  finishSurfaces: 'config/model/envelope/finish-surfaces.yaml',
+  finishDefaults: 'config/model/envelope/finish-defaults.yaml',
 } as const;
+
+/** 墙特征（finish.paint_bands）的住入：skirting 的派生基数。 */
+const SKIRTING_PAINT_BANDS_SOURCE = 'config/layout/model-geometry.yaml';
+/** 湿区房间表的住入（房间干湿分类唯一源，design-rules.yaml:111 亦指向它）。 */
+const WET_ROOM_IDS_SOURCE = 'config/tile-comparison.yaml';
+
+/**
+ * skirting 派生的额外依赖（S5）：踢脚带由 model-geometry.yaml 墙特征 finish.paint_bands[]
+ * 派生，湿区判定读 config/tile-comparison.yaml 的 wet_room_ids。加载器必须把这两个文件
+ * 纳入监听（server/index.ts 的 overlayLoader）——否则改漆面带/湿区表不会刷新派生结果，
+ * 服务端继续吐旧踢脚线（config watch 静默失效的老问题，见 config-loader.ts 头注）。
+ */
+export const SKIRTING_DERIVATION_SOURCE_FILES = [SKIRTING_PAINT_BANDS_SOURCE, WET_ROOM_IDS_SOURCE] as const;
 
 const OVERLAY_ROOT = path.resolve(import.meta.dirname, '..');
 const FLOOR_ZONE_INSERT_AFTER = 'bedroom_se_south_waterproof_ledge';
+
+/**
+ * 装配 skirting 派生输入并派生（S5）。fail-closed：finish-defaults 的锚点、湿区房间表、
+ * 墙特征任一读不动/不合法都抛错——不静默少生成踢脚线，也不 invent 默认高度。
+ */
+function loadDerivedSkirtingRegions(): unknown[] {
+  const defaultsDoc = load(readFileSync(path.join(OVERLAY_ROOT, OVERLAY_SOURCE_FILES.finishDefaults), 'utf8')) as {
+    skirting?: { height?: unknown; color?: unknown };
+  } | null;
+  const wetDoc = load(readFileSync(path.join(OVERLAY_ROOT, WET_ROOM_IDS_SOURCE), 'utf8')) as {
+    wet_room_ids?: unknown;
+  } | null;
+  const geometryDoc = load(readFileSync(path.join(OVERLAY_ROOT, SKIRTING_PAINT_BANDS_SOURCE), 'utf8')) as {
+    walls?: Array<{ id?: string; finish?: { paint_bands?: unknown[] } }>;
+  } | null;
+
+  const rawWet = wetDoc?.wet_room_ids;
+  if (!Array.isArray(rawWet)) {
+    throw new Error(
+      'skirting 派生失败：config/tile-comparison.yaml 的 wet_room_ids 缺失或不是数组——'
+      + '湿区判定取不到值（房间干湿分类唯一源），不按「全非湿区」放行',
+    );
+  }
+  const wetRoomIds = new Set<string>(rawWet.filter((room): room is string => typeof room === 'string'));
+
+  return deriveSkirtingRegions(
+    // 原始 YAML 无类型：收窄由派生器自己的 fail-closed 检查 + 随后 SkirtingRegionSchema
+    // 的校验闸共同保证（along 必须是两个有限数且成正区间，否则抛错）。
+    (geometryDoc?.walls ?? []) as Parameters<typeof deriveSkirtingRegions>[0],
+    {
+      height: defaultsDoc?.skirting?.height as number,
+      color: defaultsDoc?.skirting?.color as string,
+    },
+    wetRoomIds,
+  );
+}
 
 export function loadOverlayDoc(): { version: unknown; elements: unknown[] } {
   const readDoc = (file: string) =>
@@ -351,7 +406,6 @@ export function loadOverlayDoc(): { version: unknown; elements: unknown[] } {
     };
   const openings = readDoc(OVERLAY_SOURCE_FILES.openings);
   const floorZones = readDoc(OVERLAY_SOURCE_FILES.floorZones);
-  const finishSurfaces = readDoc(OVERLAY_SOURCE_FILES.finishSurfaces);
   const openingElements = openings.elements ?? [];
   const anchor = openingElements.findIndex(
     (element) => (element as { id?: string })?.id === FLOOR_ZONE_INSERT_AFTER,
@@ -368,7 +422,8 @@ export function loadOverlayDoc(): { version: unknown; elements: unknown[] } {
       ...openingElements.slice(0, anchor + 1),
       ...(floorZones.elements ?? []),
       ...openingElements.slice(anchor + 1),
-      ...(finishSurfaces.elements ?? []),
+      // S5：skirting 24 段由 paint_bands 派生，接在原 finish-surfaces 面层配方组的末尾。
+      ...loadDerivedSkirtingRegions(),
     ],
   };
 }

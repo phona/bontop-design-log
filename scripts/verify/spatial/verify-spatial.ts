@@ -354,7 +354,7 @@ function main(): void {
   issues.push(...validateWallSuppressions(layout.walls, elements.map(overlayRefs)));
   issues.push(...validateGlassSegments(structuralPaths));
   issues.push(...validateOverlayJunctionSpecs(config.allowed_overlay_wall_junctions ?? [], structuralPaths, resolvedWallSegments(layout)));
-  issues.push(...validateGlassAgainstWalls(structuralPaths, resolvedWallSegments(layout), suppressIds, 'config/layout/model-geometry.yaml + config/model/envelope/{openings,floor-zones,finish-surfaces}.yaml', config.allowed_overlay_wall_junctions));
+  issues.push(...validateGlassAgainstWalls(structuralPaths, resolvedWallSegments(layout), suppressIds, 'config/layout/model-geometry.yaml + config/model/envelope/{openings,floor-zones,finish-defaults}.yaml', config.allowed_overlay_wall_junctions));
 
   let scene: ReturnType<typeof buildRuntimeScene>;
   try {

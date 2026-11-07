@@ -501,7 +501,7 @@ export function buildPaintCostComparison(
       key: 'net_wall_area_sqm',
       value: scope.netWallAreaSqm,
       status: 'from_overlay_declaration',
-      source: 'config/model/envelope/finish-surfaces.yaml paint_region',
+      source: 'config/layout/model-geometry.yaml 墙条目 finish.paint_bands',
       note: `毛 ${scope.grossWallAreaSqm}㎡ − 门洞 ${scope.doorGapAreaSqm}㎡ − 窗洞 ${scope.windowGapAreaSqm}㎡；与 3D 高亮的是同一批声明、同一个拆洞算法`,
     },
     {

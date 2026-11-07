@@ -31,7 +31,7 @@ export const CV_INPUTS = [
   'config/layout/model-geometry.yaml',
   'config/model/envelope/openings.yaml',
   'config/model/envelope/floor-zones.yaml',
-  'config/model/envelope/finish-surfaces.yaml',
+  'config/model/envelope/finish-defaults.yaml',
   'config/materials.yaml',
   'config/mep-hvac-coordination.yaml',
   'config/tile-comparison.yaml',

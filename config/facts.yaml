@@ -300,10 +300,6 @@ scan:
       scalars: [area_sqm]
       pattern: '㎡'
       reason: 旧四池口径的估算基数，面积权威在 config/house.yaml
-    - path: config/model/envelope/finish-surfaces.yaml
-      scalars: [area_sqm]
-      pattern: '㎡'
-      reason: 检视态叠加层注释里的面积是人工汇总口径（贴砖 12.21㎡、涂漆墙 184.35㎡/顶 116.13㎡/合计 300.48㎡ 等）；机器口径由 geometry 与声明实算，tests/server/wall-tile-inspection.test.ts 与 tests/server/paint-scope.test.ts 逐房间独立复算对账
     - path: config/model/envelope/floor-zones.yaml
       scalars: [area_sqm]
       pattern: '㎡'
@@ -481,7 +477,7 @@ scan:
     - path: config/finish-lint.yaml
       scalars: [area_sqm]
       pattern: '1\.05'
-      reason: 面层核查层上线时 F07 抓到的门洞多算量（厨房 0.72 + 主卫干区 0.225 + 主卫淋浴 0.105），权威在 config/model/envelope/finish-surfaces.yaml 的声明 reason 与 DEC-2026-10-09-P11；此处为规则说明里的汇总数，不新建口径
+      reason: "面层核查层上线时 F07 抓到的门洞多算量（厨房 0.72 + 主卫干区 0.225 + 主卫淋浴 0.105），权威在 config/layout/model-geometry.yaml 墙条目 finish.paint_bands 的声明 reason 与 DEC-2026-10-09-P11（2026-11-07 issue #98 S4 面层配方下沉，原 finish-surfaces.yaml 已于 S5 退场）；此处为规则说明里的汇总数，不新建口径"
     - path: config/finish-lint.yaml
       scalars: [area_sqm]
       pattern: '0\.3'
@@ -1902,7 +1898,7 @@ coverage:
   # shared/masonry-takeoff.ts 的 dryRoomIds / wetRoomIds 唯一源，server/budget-calculator.ts 的
   # floor 材料量与 base.json masonry.labor 的 floor 人工行都读它——「地面面积」从此只有一处口径。
   - { file: config/tile-comparison.yaml, field: "dry_room_ids", readers: ["server/budget-calculator.ts", "server/tile-cost-comparison.ts"] }
-  - { file: config/tile-comparison.yaml, field: "wet_room_ids", readers: ["server/budget-calculator.ts"] }
+  - { file: config/tile-comparison.yaml, field: "wet_room_ids", readers: ["server/budget-calculator.ts", "server/overlay-merge.ts"] }
   # grout_model 只剩 pkg130_reconciliation 对账最小集，cost-summary.ts 与 QR-2026-10-03-07 fail-closed 对账
   - { file: config/tile-comparison.yaml, field: "grout_model", readers: ["scripts/schedule/cost-summary.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts"] }
@@ -1991,15 +1987,17 @@ coverage:
   - { file: config/layout/model-geometry.yaml, field: "rooms", readers: ["shared/environment-schema.ts", "shared/glazing.ts"] }
   - { file: config/layout/model-geometry.yaml, field: "platform", readers: ["shared/project-render-facts-schema.ts"] }
   - { file: config/layout/model-geometry.yaml, field: "walls", readers: ["shared/electrical-lint.ts", "shared/suppression.ts", "shared/spatial-validation.ts", "scripts/verify/collision/verify-collision-coverage.ts", "scripts/verify/data/verify-data-consistency.ts", "server/index.ts"] }
-  # S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 三文件；version 随
-  # openings.yaml，elements 分布在三个文件——合并读取入口 server/overlay-merge.ts
-  # parseOverlayFiles()。S3（2026-11-07）起 suppress 不再是本文件的顶层字段：改判为
-  # config/layout/model-geometry.yaml 墙条目的 suppressed:{reason,replacement}（reader
-  # 已并入上面 walls 行），原 suppress coverage 行随之删除。
+  # S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 文件；version 随
+  # openings.yaml，elements 分布在 openings/floor-zones——合并读取入口
+  # server/overlay-merge.ts parseOverlayFiles()。S3（2026-11-07）起 suppress 不再是本文件的
+  # 顶层字段：改判为 config/layout/model-geometry.yaml 墙条目的 suppressed:{reason,replacement}
+  # （reader 已并入上面 walls 行），原 suppress coverage 行随之删除。S5（2026-11-07）起
+  # finish-surfaces.yaml（面层配方最后 24 段 skirting 声明）退场：声明删、改派生，锚点进
+  # finish-defaults.yaml，故其 coverage 行替换为 finish-defaults 的 version/skirting 两行。
   - { file: config/model/envelope/openings.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
   - { file: config/model/envelope/openings.yaml, field: "elements", readers: ["shared/curtain-projection.ts", "shared/glazing.ts"] }
   - { file: config/model/envelope/floor-zones.yaml, field: "elements", readers: ["shared/curtain-projection.ts", "shared/glazing.ts"] }
-  - { file: config/model/envelope/finish-surfaces.yaml, field: "elements", readers: ["shared/curtain-projection.ts", "shared/glazing.ts"] }
+  - { file: config/model/envelope/finish-defaults.yaml, field: "skirting", readers: ["server/overlay-merge.ts"] }
   - { file: config/materials.yaml, field: "notes", readers: ["shared/types.ts"] }
   - { file: config/materials.yaml, field: "preview_assets", readers: ["server/project-catalog.ts", "shared/types.ts"] }
   - { file: config/materials.yaml, field: "render_roles", readers: [] }
