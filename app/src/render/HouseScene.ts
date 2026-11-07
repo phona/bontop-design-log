@@ -1730,12 +1730,22 @@ export class HouseScene implements SceneApi {
   }
 
   loadElectricalTopology(topology: import('@shared/types').ElectricalTopology, points: ElectricalPoint[]): void {
-    this.electricalTopologyRenderer.render(topology, points);
+    // 点位宿主墙/家具索引随场景重建刷新，这里取当前值注入（issue #98 S3：回路图坐标走单一解算，
+    // 沿墙/挂载点位不再声明绝对 x/z——与标注层、3D 基础设施、DXF、MEP 同一解算器）。
+    this.electricalTopologyRenderer.render(topology, points, {
+      pointWalls: this.pointWallIndex,
+      mountHosts: this.mountHostIndex,
+    });
     this.electricalTopologyRenderer.setVisible(false);
   }
 
   getElectricalTopologySummary(): import('./ElectricalTopologyRenderer.js').ElectricalTopologyRenderSummary {
     return this.electricalTopologyRenderer.getSummary();
+  }
+
+  /** 回路图跳过原因（issue #98 S3 诊断显形通道）。 */
+  getElectricalTopologyDiagnostics(): readonly string[] {
+    return this.electricalTopologyRenderer.getDiagnostics();
   }
 
   clearElectricalTopology(): void {

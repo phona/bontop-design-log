@@ -20,7 +20,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import { parseElectricalPoints, parsePlumbingPoints } from '../../shared/project-render-facts-schema.js';
+import { parseElectricalPoints, parseElectricalTopology, parsePlumbingPoints } from '../../shared/project-render-facts-schema.js';
 import {
   pointMountHostIndex,
   pointWallIndexFromElements,
@@ -42,6 +42,8 @@ const pointWalls = pointWallIndexFromElements(layout.walls);
 // mount 宿主索引（issue #98 S2）：与生产入口（DXF/MEP/lighting-fixtures/server loader）同一构造。
 const house = parseYaml(readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: Record<string, PlacementItem[]> };
 const mountHosts = pointMountHostIndex(Object.values(house.furnishings ?? {}).flat());
+// 电气拓扑（issue #98 S3）：回路图/归属层的输入——成员、面板源点位、控制开关三类点位。
+const topology = parseElectricalTopology(readFileSync('config/electrical-topology.yaml', 'utf-8'), electrical);
 
 describe('point placement resolver (issue #98 S1/S2/S3)', () => {
   it('resolves along from the wall start vertex along the polyline (same origin as furniture placement)', () => {
@@ -188,6 +190,31 @@ describe('point placement consumers share one resolution (3D / DXF / MEP)', () =
       checked++;
     }
     assert.equal(checked, 79);
+  });
+
+  it('resolves every point the electrical topology view needs (S3 regression: B1 class)', () => {
+    // 浏览器「电路归属」叠加层（ElectricalTopologyRenderer）画三类点位：回路成员、面板源点位、
+    // controls 的开关。S3 删 x/z 后该层曾因直读声明坐标静默跳掉 45/74 个成员与 2 块面板
+    // （review B1）。根因是消费方忘传宿主索引——这里把不变量钉在数据层：生产索引下这三类
+    // 点位必须全部解算成功，任何一个失败即红（而不是让某个叠加层静默少画）。
+    const needed = new Set<string>([
+      ...topology.circuits.flatMap((circuit) => circuit.member_point_ids),
+      ...topology.panels.map((panel) => panel.source_point_id),
+      ...topology.controls.flatMap((control) => control.switch_point_ids),
+    ]);
+    const byId = new Map(electrical.map((point) => [point.id, point]));
+    let checked = 0;
+    for (const id of [...needed].sort()) {
+      const point = byId.get(id);
+      assert.ok(point, `拓扑引用 ${id} 但 config/electrical.yaml 没有该点位`);
+      const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+      assert.equal(diagnostic, undefined, `${id}: ${diagnostic ?? ''}`);
+      assert.ok(placement, `${id}: 解算失败`);
+      checked++;
+    }
+    // 74 成员 + 2 面板源 + 14 开关（去重后）
+    assert.equal(checked, needed.size);
+    assert.ok(needed.size >= 74, `拓扑视图依赖的点位数异常偏小（${needed.size}）——疑似拓扑配置被改坏`);
   });
 
   it('keeps MEP endpoints on the resolver basis (wall: finished face; mount: host face)', () => {

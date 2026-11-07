@@ -6,12 +6,26 @@ import type {
   ElectricalTopologyStatus,
   ElectricalCircuitPurpose,
 } from '@shared/types';
+import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
 
 export interface ElectricalTopologyRenderSummary {
   panels: number;
   circuits: number;
   edges: number;
   skippedEdges: number;
+  /** 源点位解析不出平面坐标而跳过的面板节点数（issue #98 S3）。 */
+  skippedPanels: number;
+}
+
+/**
+ * 点位定位上下文（issue #98 S3）：沿墙/挂载点位不再声明绝对 x/z，回路图节点与成员 marker
+ * 的坐标一律走 shared/point-placement.ts 单一解算（与标注层 AnnotationRenderer.planOf、
+ * 3D 基础设施、DXF、MEP 同一解算器）。调用方（HouseScene）注入墙段/家具宿主索引；
+ * 缺索引而点位又是沿墙/挂载声明时解算失败 → 诊断显形，不静默 continue。
+ */
+export interface ElectricalTopologyPlacementContext {
+  pointWalls?: ReadonlyMap<string, PointWall>;
+  mountHosts?: ReadonlyMap<string, PointMountHost>;
 }
 
 export type ElectricalTopologyTargetKind = 'electrical_topology_panel' | 'electrical_topology_circuit' | 'electrical_topology_edge';
@@ -37,7 +51,9 @@ export class ElectricalTopologyRenderer {
   readonly group = new THREE.Group();
   private readonly circuitGroups = new Map<string, THREE.Group>();
   private readonly purposeVisibility = new Map<ElectricalCircuitPurpose, boolean>();
-  private summary: ElectricalTopologyRenderSummary = { panels: 0, circuits: 0, edges: 0, skippedEdges: 0 };
+  private summary: ElectricalTopologyRenderSummary = { panels: 0, circuits: 0, edges: 0, skippedEdges: 0, skippedPanels: 0 };
+  /** 跳过原因（诊断文本）：静默 continue 是这条路径此前的失效模式，现在每个跳过都带解释。 */
+  private diagnostics: string[] = [];
   private opacityMultiplier = 1;
 
   constructor(private readonly viewOnlyRoot: THREE.Object3D) {
@@ -46,9 +62,18 @@ export class ElectricalTopologyRenderer {
     (Object.keys(PURPOSE_COLORS) as ElectricalCircuitPurpose[]).forEach((purpose) => this.purposeVisibility.set(purpose, true));
   }
 
-  render(topology: ElectricalTopology, points: ElectricalPoint[]): void {
+  render(topology: ElectricalTopology, points: ElectricalPoint[], placement: ElectricalTopologyPlacementContext = {}): void {
     this.clear();
+    this.diagnostics = [];
     const pointMap = new Map(points.map((point) => [point.id, point]));
+    // 平面坐标单一解算（issue #98 S1/S3）：沿墙点位 = 完成面基点（与 MEP 端点/标注层同源），
+    // mount 挂载点位 = 宿主脸解果，绝对点位 = 声明值。解算失败记诊断并跳过——不拿 0/NaN 画节点。
+    const planOf = (point: ElectricalPoint): { x: number; z: number } | undefined => {
+      const { placement: resolved, diagnostic } = resolvePointPlacementInWalls(point, placement.pointWalls, placement.mountHosts);
+      if (resolved) return { x: resolved.x, z: resolved.z };
+      this.diagnostics.push(`electrical-topology: ${point.id}: ${diagnostic ?? '解算器未返回位置'}`);
+      return undefined;
+    };
     const panels = new Map(topology.panels.map((panel) => [panel.id, panel]));
     const controlsForCircuit = (circuit: ElectricalTopologyCircuit): ElectricalTopology['controls'] => topology.controls.filter((control) => {
       const memberIds = new Set(circuit.member_point_ids);
@@ -73,9 +98,9 @@ export class ElectricalTopologyRenderer {
         new THREE.SphereGeometry(0.12, 12, 8),
         new THREE.MeshBasicMaterial({ color: panel.kind === 'strong' ? 0xef4444 : 0x8b5cf6, transparent: true, opacity: 0.9 }),
       );
-      // x/z 是迁移期断言字段（issue #98 S1）：回路图节点只画有平面坐标的点位，缺坐标即跳过
-      if (point.x === undefined || point.z === undefined) continue;
-      node.position.set(point.x, pointHeight(point, 1.5), point.z);
+      const panelPlan = planOf(point);
+      if (!panelPlan) { this.summary.skippedPanels += 1; continue; }
+      node.position.set(panelPlan.x, pointHeight(point, 1.5), panelPlan.z);
       node.userData = {
         objectId: `electrical-topology:panel:${panel.id}`,
         type: 'electrical_topology_panel' satisfies ElectricalTopologyTargetKind,
@@ -104,6 +129,7 @@ export class ElectricalTopologyRenderer {
         const member = pointMap.get(memberId);
         if (!member) {
           this.summary.skippedEdges += 1;
+          this.diagnostics.push(`electrical-topology: 回路 ${circuit.id} 的成员 ${memberId} 不在点位清单里（悬空成员引用），未画 marker`);
           continue;
         }
         const material = new THREE.MeshBasicMaterial({
@@ -115,8 +141,9 @@ export class ElectricalTopologyRenderer {
         const edge = new THREE.Mesh(new THREE.RingGeometry(0.10, 0.14, 16), material);
         edge.name = `electrical-topology:member-marker:${circuit.id}:${memberId}`;
         edge.rotation.x = -Math.PI / 2;
-        if (member.x === undefined || member.z === undefined) { this.summary.skippedEdges++; continue; }
-        edge.position.set(member.x, pointHeight(member, 1.25), member.z);
+        const memberPlan = planOf(member);
+        if (!memberPlan) { this.summary.skippedEdges++; continue; }
+        edge.position.set(memberPlan.x, pointHeight(member, 1.25), memberPlan.z);
         edge.userData = {
           objectId: `electrical-topology:edge:${circuit.id}:${memberId}`,
           type: 'electrical_topology_edge' satisfies ElectricalTopologyTargetKind,
@@ -145,6 +172,8 @@ export class ElectricalTopologyRenderer {
   }
 
   getSummary(): ElectricalTopologyRenderSummary { return { ...this.summary }; }
+  /** 本次 render 的跳过原因（诊断文本）。调用方必须显形——静默降级是这条路径被 review 抓到的失效模式。 */
+  getDiagnostics(): readonly string[] { return [...this.diagnostics]; }
   getCircuitObject(circuitId: string): THREE.Object3D | undefined { return this.circuitGroups.get(circuitId); }
   setVisible(visible: boolean): void { this.group.visible = visible; }
   setPurposeVisible(purpose: ElectricalCircuitPurpose, visible: boolean): void { this.purposeVisibility.set(purpose, visible); this.syncVisibility(); }
@@ -192,7 +221,8 @@ export class ElectricalTopologyRenderer {
       });
     }
     this.circuitGroups.clear();
-    this.summary = { panels: 0, circuits: 0, edges: 0, skippedEdges: 0 };
+    this.summary = { panels: 0, circuits: 0, edges: 0, skippedEdges: 0, skippedPanels: 0 };
+    this.diagnostics = [];
   }
   dispose(): void { this.clear(); if (this.group.parent) this.group.parent.remove(this.group); }
 

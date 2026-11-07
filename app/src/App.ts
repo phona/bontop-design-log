@@ -2134,7 +2134,13 @@ export class App {
     }
     const summary = document.getElementById('electrical-topology-render-summary');
     const counts = this.houseScene.getElectricalTopologySummary();
-    if (summary) summary.textContent = `面板 ${counts.panels} · 回路 ${counts.circuits} · 负载归属 ${counts.edges}${counts.skippedEdges ? ` · 跳过 ${counts.skippedEdges}` : ''}`;
+    const skipped = counts.skippedEdges + counts.skippedPanels;
+    if (summary) summary.textContent = `面板 ${counts.panels} · 回路 ${counts.circuits} · 负载归属 ${counts.edges}${skipped ? ` · 跳过 ${skipped}（面板 ${counts.skippedPanels}/成员 ${counts.skippedEdges}，原因见控制台）` : ''}`;
+    // 跳过原因显形（issue #98 S3）：定位解算失败的点位不进回路图，但绝不静默——
+    // 每个跳过都带诊断文本，修复配置（along/宿主墙/家具摆位）后重建即恢复。
+    for (const diagnostic of this.houseScene.getElectricalTopologyDiagnostics()) {
+      console.warn(`[electrical-topology] ${diagnostic}`);
+    }
     const legend = document.getElementById('electrical-topology-legend');
     if (legend) legend.textContent = '颜色：照明/空调电源/专用负载/普通功能电源；状态：已确认关系/提议关系/待确认关系';
     controls.hidden = true;
