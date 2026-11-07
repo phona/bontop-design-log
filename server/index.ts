@@ -25,6 +25,7 @@ import { resolveWriteToken, createWriteTokenGuard } from './write-token.js';
 import { sweepAcceptanceStaging } from './acceptance-draft-store.js';
 import { jsonErrorHandler } from './json-error-handler.js';
 import type { MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
+import { suppressedWallIds } from '../shared/suppression.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml, VertexLayoutYaml } from '../shared/types.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -173,7 +174,10 @@ const apiDeps = {
         furnitureVolumes: buildMepFurnitureCollisionVolumes(),
       } : {}),
       ...(facts ? { ceiling: facts.ceiling, referenceConstraints: facts.hvac.plans[0]?.diagram.reference_constraints } : {}),
-      suppressedWallIds: (overlay?.suppress ?? []).flatMap((item) => item.walls ?? (item.wall ? [item.wall] : [])),
+      // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：view-context 的 suppressedWallIds
+      // 改读墙条目自身的 suppressed 属性（layout 经 resolveLayout 透传），权威实现
+      // shared/suppression.ts；原 overlay.suppress 顶层清单已删。
+      suppressedWallIds: suppressedWallIds(resolvedLayout?.walls ?? []),
     };
   },
   getResolvedLayout: () => {

@@ -219,7 +219,7 @@ export class ProjectCatalog {
       this.walls = resolved.walls.map((w, i) => {
         // 墙→房间归属：复用 findRoomsForWall 拓扑（boundary 同时含 from/to 顶点），渲染端据此给厨卫墙挂砖
         const wallRooms = findRoomsForWall(vlayout.walls[i], vlayout.rooms);
-        return { id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ, openings: w.openings, line_datum: w.line_datum, ...(wallRooms.length ? { rooms: wallRooms } : {}) };
+        return { id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ, openings: w.openings, line_datum: w.line_datum, ...(w.suppressed ? { suppressed: w.suppressed } : {}), ...(wallRooms.length ? { rooms: wallRooms } : {}) };
       });
     } else {
       for (const r of layout.rooms) {

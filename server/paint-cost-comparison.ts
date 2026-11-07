@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
-import type { ResolvedLayout } from '../shared/types.js';
+import type { ResolvedLayout, WallSuppression } from '../shared/types.js';
+import { isWallSuppressed } from '../shared/suppression.js';
 import { buildBaySillGeometry } from '../shared/render/BaySillGeometry.js';
 import { computePaintSillScope, dedupeAdjacentBayCaps, type PaintSillFaceInput } from '../shared/paint-sill-scope.js';
 import type { BaySillPoint } from '../shared/render/BaySillGeometry.js';
@@ -215,21 +216,20 @@ export interface PaintScopeInputs {
 
 /**
  * 读 envelope 三文件（原 config/layout/overlay.yaml，issue #98 第三阶段 S1 拆迁）：
- * paint_region 声明 + suppress 墙 + 窗洞声明（bay_sill）。
+ * paint_region 声明 + 窗洞声明（bay_sill）；suppress 墙读 model-geometry.yaml 的墙属性
+ * （2026-11-07 issue #98 第三阶段 S3 改判，权威实现 shared/suppression.ts）。
  * 预算侧与成本侧都走这里，保证读到的永远是同一份声明。
  */
 export function loadPaintScopeInputs(): PaintScopeInputs {
   const overlay = loadOverlayDoc() as {
-    suppress?: Array<{ wall?: string; walls?: string[] }>;
     elements?: Array<Record<string, unknown>>;
   };
+  // suppress 改判（S3）：墙条目自带 suppressed 属性。这里不过 ProjectCatalog——
+  // 与本函数其余部分一致读原始 yaml，判定仍走唯一权威实现（isWallSuppressed）。
+  const geometry = load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as { walls?: Array<{ id?: string; suppressed?: unknown }> };
   const suppressedWallIds = new Set<string>();
-  for (const entry of overlay.suppress ?? []) {
-    for (const key of ['wall', 'walls'] as const) {
-      const value = (entry as Record<string, unknown>)[key];
-      if (!value) continue;
-      for (const wall of Array.isArray(value) ? value : [value]) suppressedWallIds.add(String(wall));
-    }
+  for (const wall of geometry.walls ?? []) {
+    if (wall.id && isWallSuppressed(wall as { id?: string; suppressed?: WallSuppression })) suppressedWallIds.add(wall.id);
   }
   const regions = (overlay.elements ?? []).filter(
     (element) => element?.type === 'paint_region',

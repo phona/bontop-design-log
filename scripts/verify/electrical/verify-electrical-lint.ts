@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import * as yaml from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
-import { parseOverlayFiles } from '../../../server/overlay-merge.js';
 import { parseElectricalTopology } from '../../../shared/project-render-facts-schema.js';
+import { suppressedWallIds } from '../../../shared/suppression.js';
 import { lintElectricalTopology } from '../../../shared/electrical-lint.js';
 import type { ElectricalPoint, FurnishingsYaml, VertexLayoutYaml } from '../../../shared/types.js';
 
@@ -10,11 +10,13 @@ export function runElectricalLint() {
   const points = yaml.load(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
   const topology = parseElectricalTopology(readFileSync('config/electrical-topology.yaml', 'utf8'), points);
   const geometry = yaml.load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml;
-  const overlay = parseOverlayFiles();
   const house = yaml.load(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
+  const layout = resolveLayout(geometry);
   return lintElectricalTopology(topology, points, {
-    layout: resolveLayout(geometry),
-    suppressedWallIds: overlay.suppress.flatMap((item) => item.wall ? [item.wall] : item.walls ?? []),
+    layout,
+    // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性，
+    // 唯一权威实现 shared/suppression.ts（原 overlay.suppress 顶层清单已删）。
+    suppressedWallIds: suppressedWallIds(layout.walls),
     furnishings: house.furnishings ?? {},
   });
 }

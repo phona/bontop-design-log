@@ -2,7 +2,6 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as THREE from 'three';
 import type { resolveLayout } from '../../../server/layout-resolver.js';
-import { parseOverlay } from '../../../server/overlay-merge.js';
 import type { parseCeilingZones } from '../../../shared/project-render-facts-schema.js';
 import { FURNITURE_DIMS, type FurnishingsYaml, type ElectricalPoint, type RenderLightingOverride, type SceneElement, type ResolvedWall, type ResolvedRoom } from '../../../shared/types.js';
 import {
@@ -12,7 +11,6 @@ import {
   validateGlassAgainstWalls,
   validateGlassSegments,
   validateOverlayJunctionSpecs,
-  validateOverlayReplacements,
   validateRelationshipSpecs,
   validateRuntimeAuthority,
   validateWallLampMount,
@@ -36,10 +34,10 @@ import {
   objectHasMesh,
   overlayRefs,
   pathSegmentsFromOverlay,
-  suppressionWallIds,
   type SceneInputs,
   type SpatialConfig,
 } from '../../../shared/penetration/scene.js';
+import { validateWallSuppressions } from '../../../shared/suppression.js';
 import { buildRenderLightingFixtureHeights, CEILING_MOUNTED_LIGHT_TYPES, ceilingMountGapTolerance, isLightingFixtureType, selectCeilingHost } from '../../../shared/lighting-fixtures.js';
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
 import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
@@ -346,14 +344,14 @@ function main(): void {
   // 关系声明已迁入 anti-penetration 的 waivers；读不动必须红，不能因为拿不到白名单
   // 就假装没有合法重叠（那会把 13 处叠放/咬合全数误报成穿模）。
   const antiConfig = loadAntiPenetrationConfig();
-  const { layout, overlay, elements, config, house, suppressIds, structuralPaths, layoutWarnings } = inputs;
+  const { layout, elements, config, house, suppressIds, structuralPaths, layoutWarnings } = inputs;
   const issues: SpatialIssue[] = [];
-  if (overlay.suppress.some((entry) => entry.region && suppressionWallIds({ ...overlay, suppress: [entry] }, layout.walls).length === 0)) {
-    issues.push({ level: 'error', code: 'overlay_suppress_region_unmatched', entity: 'overlay.suppress', source: 'config/model/envelope/openings.yaml', message: 'a suppress region matches no authoritative wall', evidence: {} });
-  }
 
   issues.push(...validateWallTopology(resolvedWallSegments(layout), { junctions: config.junctions, allowedCollinearOverlaps: config.allowed_collinear_overlaps, source: 'config/layout/model-geometry.yaml' }));
-  issues.push(...validateOverlayReplacements(suppressIds, elements.map(overlayRefs), config.overlay_replacements ?? [], 'config/model/envelope/openings.yaml', layout.walls.map((wall) => wall.id)));
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：原 overlay_replacements 镜像表 +
+  // validateOverlayReplacements（~100 行）+ overlay_suppress_region_unmatched（region 包围盒
+  // 选择器随镜像表退场，迁移前 0 使用）删除，改为墙属性自带 replacement 对象 id 直引用的校验。
+  issues.push(...validateWallSuppressions(layout.walls, elements.map(overlayRefs)));
   issues.push(...validateGlassSegments(structuralPaths));
   issues.push(...validateOverlayJunctionSpecs(config.allowed_overlay_wall_junctions ?? [], structuralPaths, resolvedWallSegments(layout)));
   issues.push(...validateGlassAgainstWalls(structuralPaths, resolvedWallSegments(layout), suppressIds, 'config/layout/model-geometry.yaml + config/model/envelope/{openings,floor-zones,finish-surfaces}.yaml', config.allowed_overlay_wall_junctions));

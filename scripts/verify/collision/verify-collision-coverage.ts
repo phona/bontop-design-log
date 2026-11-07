@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { loadOverlayDoc } from '../../../server/overlay-merge.js';
+import { isWallSuppressed } from '../../../shared/suppression.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 
@@ -17,12 +18,8 @@ interface WallDef {
   id: string;
   from: string;
   to: string;
-}
-
-interface SuppressEntry {
-  id: string;
-  wall?: string;
-  walls?: string[];
+  /** suppress 改判（issue #98 S3）后的墙属性：实体盒不进碰撞。 */
+  suppressed?: { reason: string; replacement: string };
 }
 
 function main() {
@@ -30,22 +27,17 @@ function main() {
 
   // S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 三文件，合并读
   const overlay = loadOverlayDoc() as {
-    suppress?: SuppressEntry[];
     elements?: OverlayElement[];
   };
   const geom = yaml.load(fs.readFileSync(geomPath, 'utf8')) as {
     walls?: WallDef[];
   };
 
-  const suppressedIds = new Set<string>();
-  for (const s of overlay.suppress ?? []) {
-    if (s.wall) suppressedIds.add(s.wall);
-    if (s.walls) for (const w of s.walls) suppressedIds.add(w);
-  }
-
   const errors: string[] = [];
 
-  const solidWalls = (geom.walls ?? []).filter(w => !suppressedIds.has(w.id));
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：被 suppress 的墙（玻璃幕墙/实体已删除）
+  // 不产生实体盒、不进碰撞，判定读墙条目自身的 suppressed 属性，权威实现 shared/suppression.ts。
+  const solidWalls = (geom.walls ?? []).filter(w => !isWallSuppressed(w));
   console.log(`  solid walls (collision expected): ${solidWalls.length}`);
 
   const curtainRuns = (overlay.elements ?? []).filter(el => el.type === 'curtain_run');

@@ -148,18 +148,75 @@ walls:
   # openings.offset 语义：锚点(anchor)到洞口【中心】的距离（server/layout-resolver.ts 权威解算），
   # 禁止按"到洞口起边"理解；门洞实际位置待量房终核（pending-site-data.md #24）
   # 外框 — 西墙（v_bath_ap→v_bath_nw 弧进路，v_bath_nw→v_mb_sw 主卫西墙；西北角即圆角，玻璃从弧切点无缝接往西墙幕墙）
-  - { id: w_west_ap,   from: v_bath_ap, to: v_bath_nw, height: 2.8 }
-  - { id: w_west_lower, from: v_bath_ap,  to: v_mb_sw,  height: 2.8 }
-  - { id: w_west_mid,   from: v_mb_sw,   to: v_mb_nw,  height: 2.8 }
-  - { id: w_west_upper, from: v_mb_nw,   to: v_sw,     height: 2.8 }
+  # suppressed 改判（2026-11-07 issue #98 第三阶段 S3）：原 config/layout/overlay.yaml 顶层
+  # suppress 8 条（wall/walls/region 选择器）+ spatial-validation.yaml 的 overlay_replacements
+  # 镜像表退场，改为墙条目属性 + replacement 对象 id 直引用。reason 保留原 suppress 条目原文，
+  # 组别见每组首条上方注记；语义唯一权威实现 shared/suppression.ts。
+  # 组①原 suppress_west_wall（4 墙）：实体删除改玻璃幕墙，由 curtain_run west_curtain 接管。
+  - id: w_west_ap
+    from: v_bath_ap
+    to: v_bath_nw
+    height: 2.8
+    suppressed:
+      reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
+      replacement: west_curtain
+  - id: w_west_lower
+    from: v_bath_ap
+    to: v_mb_sw
+    height: 2.8
+    suppressed:
+      reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
+      replacement: west_curtain
+  - id: w_west_mid
+    from: v_mb_sw
+    to: v_mb_nw
+    height: 2.8
+    suppressed:
+      reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
+      replacement: west_curtain
+  - id: w_west_upper
+    from: v_mb_nw
+    to: v_sw
+    height: 2.8
+    suppressed:
+      reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
+      replacement: west_curtain
   # 外框 — 南墙（在 v_mb_se, v_step_b, v_step_t, v_liv_se_s 处切开；东南房段 2026-10-23 改玻璃线 z=9.88，DEC-2026-10-23-R04）
-  - { id: w_mb_south,   from: v_sw,      to: v_mb_se,  height: 2.8 }
-  - { id: w_st_south,   from: v_mb_se,   to: v_step_b, height: 2.8 }
-  - { id: w_liv_south,  from: v_step_t,  to: v_liv_se_s,height: 2.8 }
-  - { id: w_be_south,   from: v_be_s_w,  to: v_be_s_e, height: 2.8 }
+  # 组②原 suppress_south_west（2 墙）：主卧+书房南墙实体删除为飘窗让路，由 west_curtain 接管。
+  - id: w_mb_south
+    from: v_sw
+    to: v_mb_se
+    height: 2.8
+    suppressed:
+      reason: "主卧+书房南墙实体删除，为飘窗让路（2026-10-05 功能互换后功能名，墙体不变）"
+      replacement: west_curtain
+  - id: w_st_south
+    from: v_mb_se
+    to: v_step_b
+    height: 2.8
+    suppressed:
+      reason: "主卧+书房南墙实体删除，为飘窗让路（2026-10-05 功能互换后功能名，墙体不变）"
+      replacement: west_curtain
+  - id: w_liv_south
+    from: v_step_t
+    to: v_liv_se_s
+    height: 2.8
+    suppressed:
+      reason: "客厅南墙落地玻璃幕"
+      replacement: living_south_curtain
+  - id: w_be_south
+    from: v_be_s_w
+    to: v_be_s_e
+    height: 2.8
+    suppressed:
+      reason: "东南次卧凸窗+东南圆角实体墙删除"
+      replacement: south_east_curtain
   # 外框 — 东墙（在 v_be_ne 处切开；东南角随书房凹口截止于 v_be_s_e）
   # structure 标注约定（2026-09-01，v1 初版）：来源为邻户同户型原始结构图（survey/neighbor_ys01_original_structure_2025-06.png），
-  # 全部 structure_status: inferred，交房量房拿到确切结构图后转 confirmed；仅标注剪力墙/新建隔墙，幕墙由 overlay suppress 覆盖不重复标注。
+  # 全部 structure_status: inferred，交房量房拿到确切结构图后转 confirmed；仅标注剪力墙/新建隔墙。
+  # 幕墙（实体被 suppress 的墙）自 2026-11-07 issue #98 第三阶段 S3 起在本文件以 suppressed 属性标注
+  # （原约定"由 overlay suppress 覆盖不重复标注"随 suppress 改判为墙属性而废止——那时幕墙声明住在
+  # overlay.yaml 顶层，本文件确实看不到；现在 suppressed 就在墙条目上，与 structure 同级的墙属性）。
   - { id: w_east_upper, from: v_be_s_e,  to: v_be_ne,  height: 2.8, structure: shear, structure_status: inferred }
   - { id: w_foyer_outer_east, from: v_ent_se, to: v_foyer_ne, height: 2.8 }
   # w_foyer_north_east / w_elev_south 已删除（2026-08-23）：与 w_be_north 是同一堵物理墙
@@ -195,13 +252,45 @@ walls:
   - { id: w_blk_east_south, from: v_blk_e,  to: v_blk_se, height: 2.8 }
   - { id: w_blk_east_north, from: v_blk_ne, to: v_blk_e,  height: 2.8 }
   - { id: w_blk_north,      from: v_blk_nw, to: v_blk_ne, height: 2.8 }
-  - { id: w_ent_north_railing, from: v_ent_ne, to: v_ent_nw, height: 1.0 }
+  # 组⑧原 suppress_entry_north_railing（1 墙）：入户花园北边实墙删除改栏杆，由 railing_run entry_garden_north_railing 接管。
+  - id: w_ent_north_railing
+    from: v_ent_ne
+    to: v_ent_nw
+    height: 1.0
+    suppressed:
+      reason: "入户花园北边实墙删除，改栏杆"
+      replacement: entry_garden_north_railing
   # 入户过渡区东墙（承重墙）——2026-10-25 DEC-2026-10-25-R01：旧 w_foyer_east（v_foyer_se→v_liv_se）与 w_liv_east（v_liv_se→v_be_sw）已删除，由中竖墙 w_cent_north / w_cent_south 替代；v_liv_se 随之删除（原为旧两墙交接点）
   # 外框 — 北墙（左翼凹进 z=1.10，西北角即圆角〔2026-09-17 业主确认，v_nw/w_west_top 已删〕，圆角→v_bath_ne 为幕墙；VRV/厨房北墙 z=0）
-  - { id: w_bath_north, from: v_bath_nw,  to: v_bath_ne, height: 2.8 }
-  - { id: w_nw_north,   from: v_bath_ne,  to: v_nw_ne,  height: 2.8 }
-  - { id: w_vrv_north,  from: v_vrv_n,   to: v_kit_w,  height: 2.8 }
-  - { id: w_kit_north,  from: v_kit_w,   to: v_ent_nw, height: 2.8 }
+  # 组⑦原 suppress_north_recess（2 墙）：主卫/西北次卧北墙实体删除改玻璃幕墙，由 north_recess_curtain 接管。
+  - id: w_bath_north
+    from: v_bath_nw
+    to: v_bath_ne
+    height: 2.8
+    suppressed:
+      reason: "主卫/西北次卧北墙实体删除，改玻璃幕墙"
+      replacement: north_recess_curtain
+  - id: w_nw_north
+    from: v_bath_ne
+    to: v_nw_ne
+    height: 2.8
+    suppressed:
+      reason: "主卫/西北次卧北墙实体删除，改玻璃幕墙"
+      replacement: north_recess_curtain
+  - id: w_vrv_north
+    from: v_vrv_n
+    to: v_kit_w
+    height: 2.8
+    suppressed:
+      reason: "VRV西北角实墙删除，改栏杆"
+      replacement: vrv_nw_railing
+  - id: w_kit_north
+    from: v_kit_w
+    to: v_ent_nw
+    height: 2.8
+    suppressed:
+      reason: "厨房北墙实体删除，改玻璃幕墙"
+      replacement: kitchen_north_curtain
   # 内墙 — 左侧卧室区（2026-08-25 台盆外移条带：隔墙再北移 z=2.86；条带 x[0,4.2] z[2.86/4.30,5.55] 归主卧；
   # w_mbath_south 为主卫南隔墙，d_mbath 平开门内开进干区，门洞[1.15,1.95]（墙平行北移，沿墙 offset 不变；门扇扫掠 z∈[2.06,2.86] 与马桶 z=1.5 不冲突，待量房复核），西[0,1.2]淋浴湿区左右分离）
   # 挂墙家具宿主墙线基准（2026-11-06 业主口径 A，落实 pending #76「渲染口径先行」）：模型线=渲染
@@ -250,7 +339,14 @@ walls:
   - { id: w_pier_east,  from: v_pier_ne, to: v_pier_se, height: 2.8, structure: shear, structure_status: inferred }
   - { id: w_pier_south, from: v_pier_se, to: v_pier_sw, height: 2.8, structure: shear, structure_status: inferred }
   # 内墙 — VRV 平台 / 生活阳台 / 客卫
-  - { id: w_vrv_nw_gap, from: v_nw_ne,   to: v_vrv_n,  height: 2.8 }
+  # 组⑥原 suppress_vrv_railing（2 墙）：VRV西北角实墙删除改栏杆，由 railing_run vrv_nw_railing 接管。
+  - id: w_vrv_nw_gap
+    from: v_nw_ne
+    to: v_vrv_n
+    height: 2.8
+    suppressed:
+      reason: "VRV西北角实墙删除，改栏杆"
+      replacement: vrv_nw_railing
   - { id: w_balc_west,  from: v_vrv_sw,  to: v_balc_sw,height: 2.8 }
   # 客卫东西墙保持南北走向；内卫段至 z=3.55，开放洗漱区侧边界再向南延伸至 z=4.30。
   # 延伸段纳入 guest_bath 语义房间的侧边界；南缘无墙，仍为开放边，不新增横隔墙或内部门。

@@ -185,26 +185,14 @@ allowed_overlay_wall_junctions:
 # 没有 reason/owner/expires，失效了不会显形；迁入后统一走带保质期的豁免机制，语义类型
 # 随迁到 waiver.kind，豁免判定（规则 + 稳定 runtime id 对）逐条不变。
 
-# 被 suppress 的实体墙必须由恰好一个围护替代物接管。
-# curtain_run/railing_run 的 wall refs 来自 overlay，禁止在这里复制路径坐标。
-# part 绑定到具体 overlay part（无 parts 的 element 使用 root）；join 只会
-# 生成具体 path-pair closure，runtime 几何不满足时仍报 collision。
-overlay_replacements:
-  # w_west_top 2026-09-17 业主确认外轮廓不存在，已从 model-geometry 删除（无墙、无替代物）
-  - { wall: w_west_ap, replacement: west_curtain, kind: curtain_run, part: w_west_ap, join: continuous }
-  - { wall: w_west_lower, replacement: west_curtain, kind: curtain_run, part: w_west_lower, join: continuous }
-  - { wall: w_west_mid, replacement: west_curtain, kind: curtain_run, part: w_west_mid, join: continuous }
-  - { wall: w_west_upper, replacement: west_curtain, kind: curtain_run, part: w_west_upper, join: continuous }
-  - { wall: w_mb_south, replacement: west_curtain, kind: curtain_run, part: w_mb_south, join: continuous }
-  - { wall: w_st_south, replacement: west_curtain, kind: curtain_run, part: w_st_south, join: continuous }
-  - { wall: w_liv_south, replacement: living_south_curtain, kind: curtain_run, part: root, join: butt }
-  - { wall: w_be_south, replacement: south_east_curtain, kind: curtain_run, part: root, join: butt }
-  - { wall: w_kit_north, replacement: kitchen_north_curtain, kind: curtain_run, part: root, join: butt }
-  - { wall: w_bath_north, replacement: north_recess_curtain, kind: curtain_run, part: root, join: continuous }
-  - { wall: w_nw_north, replacement: north_recess_curtain, kind: curtain_run, part: root, join: continuous }
-  - { wall: w_vrv_nw_gap, replacement: vrv_nw_railing, kind: railing_run, part: root, join: continuous }
-  - { wall: w_vrv_north, replacement: vrv_nw_railing, kind: railing_run, part: root, join: continuous }
-  - { wall: w_ent_north_railing, replacement: entry_garden_north_railing, kind: railing_run, part: root, join: butt }
+# 被 suppress 的实体墙由哪个围护对象接管，2026-11-07 issue #98 第三阶段 S3 起不住本文件：
+# suppress 改判为 config/layout/model-geometry.yaml 墙条目的
+# suppressed:{reason,replacement:<envelope 对象 id>}（16 面墙的关联从本镜像表变成对象 id
+# 直引用，校验移至 shared/suppression.ts 的 validateWallSuppressions）；join 接缝语义
+# 上移为 config/model/envelope/openings.yaml 里 curtain_run/railing_run 的根级/part 级
+# join 声明，由 shared/suppression.ts 的 glassJoinSpecs 机械派生后喂给
+# shared/spatial-validation.ts 的 deriveRuntimeGlassJoins（runtime 仍逐对几何判定）。
+# 原 overlay_replacements 14 行镜像表（一行一墙）与其 ~100 行校验器（validateOverlayReplacements）已删。
 
 # electrical.yaml 的 wall_lamp 点位已显式声明 wall/wall_side；这里保留同值
 # host override 作为校验侧兼容镜像，检查实体墙、房间侧向和开口，禁止落到玻璃幕墙。

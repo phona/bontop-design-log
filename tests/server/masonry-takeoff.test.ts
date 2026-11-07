@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { load } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
+import { suppressedWallIds } from '../../shared/suppression.js';
 import {
   computeMasonryTakeoff,
   masonryPointAt,
@@ -28,20 +29,12 @@ import { openingsAlongWall } from '../../shared/wall-segments.js';
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
 const OV: any = parseOverlayFiles();
 
-/** overlay.suppress 压制的墙 id（玻璃幕墙 / 实体已删除）。 */
-function suppressedWallIds(): Set<string> {
-  const ids = new Set<string>();
-  for (const entry of OV.suppress ?? []) {
-    for (const key of ['wall', 'walls'] as const) {
-      const value = (entry as Record<string, unknown>)[key];
-      if (!value) continue;
-      for (const wall of Array.isArray(value) ? value : [value]) ids.add(String(wall));
-    }
-  }
-  return ids;
-}
-
-const SUPPRESSED = suppressedWallIds();
+/**
+ * 被 suppress 的墙 id（玻璃幕墙 / 实体已删除）。suppress 改判（2026-11-07 issue #98
+ * 第三阶段 S3）：读墙条目自身的 suppressed 属性，唯一权威实现 shared/suppression.ts
+ * （原 OV.suppress 顶层清单已删）。
+ */
+const SUPPRESSED = new Set<string>(suppressedWallIds(resolveLayout(MG).walls));
 
 /** config → 模块输入。与 tmp/verify-wall-tile.ts 的解析口径一致（js-yaml，不用正则）。 */
 function buildInput(): MasonryTakeoffInput {

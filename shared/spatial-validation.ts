@@ -431,6 +431,12 @@ export interface OverlayElementRef {
   parts?: Array<{ id?: string; wall?: string; walls?: string[]; wallRefs?: string[] }>;
 }
 
+/**
+ * 玻璃接缝声明的运行时形状。2026-11-07 issue #98 第三阶段 S3 起它不再是手写配置
+ * （原 config/spatial-validation.yaml 的 overlay_replacements 镜像表已删），而是由
+ * shared/suppression.ts 的 glassJoinSpecs 从 envelope 对象声明（curtain_run/railing_run
+ * 根级或 part 级的 join）机械派生；字段口径不变，deriveRuntimeGlassJoins 照旧消费。
+ */
 export interface OverlayReplacement {
   wall: string;
   replacement: string;
@@ -441,128 +447,6 @@ export interface OverlayReplacement {
   /** Optional concrete structural path id when a part contains multiple paths. */
   path?: string;
   max_overlap?: number;
-}
-
-function refsForElement(element: OverlayElementRef): string[] {
-  const refs: string[] = [];
-  const parts = element.parts ?? [];
-  // Overlay parts are canonical when present; a top-level walls summary is
-  // metadata and must not count as a second structural owner.
-  if (parts.length > 0) {
-    for (const part of parts) {
-      if (part.wall) refs.push(part.wall);
-      if (part.walls) refs.push(...part.walls);
-      if (part.wallRefs) refs.push(...part.wallRefs);
-    }
-    return refs;
-  }
-  if (element.wall) refs.push(element.wall);
-  if (element.walls) refs.push(...element.walls);
-  return refs;
-}
-
-export function validateOverlayReplacements(
-  suppressedWalls: string[],
-  elements: OverlayElementRef[],
-  replacements: OverlayReplacement[],
-  source = 'config/model/envelope/openings.yaml',
-  allWallIds?: string[],
-): SpatialIssue[] {
-  const issues: SpatialIssue[] = [];
-  const suppressed = new Set(suppressedWalls);
-  const knownWalls = allWallIds ? new Set(allWallIds) : undefined;
-  const allowedKinds = new Set(['curtain_run', 'railing_run']);
-  const allowedJoins = new Set(['continuous', 'butt', 'endpoint', 't', 'overlap']);
-  const byWall = new Map<string, OverlayReplacement[]>();
-  for (const replacement of replacements) {
-    if (knownWalls && !knownWalls.has(replacement.wall)) {
-      issues.push({ level: 'error', code: 'overlay_replacement_wall_unknown', entity: replacement.wall, source, message: `replacement mapping targets unknown wall ${replacement.wall}`, evidence: { wall: replacement.wall, replacement: replacement.replacement } });
-    }
-    if (!allowedKinds.has(replacement.kind)) {
-      issues.push({ level: 'error', code: 'overlay_replacement_kind_invalid', entity: `${replacement.wall}↔${replacement.replacement}`, source, message: `replacement kind ${replacement.kind} is not a structural overlay kind`, evidence: { wall: replacement.wall, replacement: replacement.replacement, kind: replacement.kind, allowed: [...allowedKinds] } });
-    }
-    if (replacement.join !== undefined && !allowedJoins.has(replacement.join)) {
-      issues.push({ level: 'error', code: 'overlay_replacement_join_invalid', entity: `${replacement.wall}↔${replacement.replacement}`, source, message: `replacement join ${replacement.join} is not a declared join semantic`, evidence: { wall: replacement.wall, replacement: replacement.replacement, join: replacement.join, allowed: [...allowedJoins] } });
-    }
-    const list = byWall.get(replacement.wall) ?? [];
-    list.push(replacement);
-    byWall.set(replacement.wall, list);
-  }
-  const elementById = new Map(elements.map((element) => [element.id, element]));
-  const collidable = new Set(['curtain_run', 'railing_run']);
-  const structuralOwners = new Map<string, string[]>();
-
-  for (const [wall, count] of [...new Set(suppressedWalls)].map((wall) => [wall, suppressedWalls.filter((candidate) => candidate === wall).length] as const)) {
-    if (count > 1) {
-      issues.push({ level: 'error', code: 'overlay_suppress_duplicate', entity: wall, source, message: `wall ${wall} is suppressed by ${count} declarations`, evidence: { wall, count } });
-    }
-  }
-
-  for (const wall of suppressed) {
-    const mappings = byWall.get(wall) ?? [];
-    if (mappings.length === 0) {
-      issues.push({ level: 'error', code: 'overlay_replacement_missing', entity: wall, source, message: `suppressed wall ${wall} has no declared replacement`, evidence: { wall } });
-      continue;
-    }
-    if (mappings.length > 1) {
-      issues.push({ level: 'error', code: 'overlay_replacement_duplicate', entity: wall, source, message: `suppressed wall ${wall} has ${mappings.length} replacement declarations`, evidence: { wall, replacements: mappings.map((item) => item.replacement) } });
-    }
-    for (const mapping of mappings) {
-      const element = elementById.get(mapping.replacement);
-      if (!element) {
-        issues.push({ level: 'error', code: 'overlay_replacement_unknown', entity: mapping.replacement, source, message: `replacement element does not exist for suppressed wall ${wall}`, evidence: { wall, replacement: mapping.replacement } });
-        continue;
-      }
-      if (element.type !== mapping.kind) {
-        issues.push({ level: 'error', code: 'overlay_replacement_type_mismatch', entity: element.id, source, message: `replacement ${element.id} is ${element.type}, expected ${mapping.kind}`, evidence: { wall, replacement: element.id, actual: element.type, expected: mapping.kind } });
-      }
-      if (mapping.part !== undefined) {
-        const knownParts = element.parts?.map((part) => part.id) ?? [];
-        const validPart = knownParts.length > 0
-          ? knownParts.includes(mapping.part)
-          : mapping.part === 'root';
-        if (!validPart) {
-          issues.push({ level: 'error', code: 'overlay_replacement_part_unknown', entity: `${element.id}↔${wall}`, source, message: `replacement ${element.id} does not contain declared concrete part ${mapping.part}`, evidence: { wall, replacement: element.id, part: mapping.part, known_parts: knownParts.length > 0 ? knownParts : ['root'] } });
-        }
-      }
-      const refs = refsForElement(element);
-      const count = refs.filter((ref) => ref === wall).length;
-      if (count === 0) {
-        issues.push({ level: 'error', code: 'overlay_replacement_not_covering', entity: element.id, source, message: `replacement ${element.id} does not reference suppressed wall ${wall}`, evidence: { wall, replacement: element.id, refs } });
-      } else if (count > 1) {
-        issues.push({ level: 'error', code: 'overlay_replacement_duplicate', entity: `${element.id}↔${wall}`, source, message: `replacement references wall ${wall} ${count} times`, evidence: { wall, replacement: element.id, count } });
-      }
-    }
-  }
-
-  for (const element of elements) {
-    if (!collidable.has(element.type)) continue;
-    for (const wall of refsForElement(element)) {
-      if (knownWalls && !knownWalls.has(wall)) {
-        issues.push({ level: 'error', code: 'overlay_wall_unknown', entity: `${element.id}↔${wall}`, source, message: `structural overlay ${element.id} references unknown wall ${wall}`, evidence: { element: element.id, wall } });
-        continue;
-      }
-      if (!suppressed.has(wall)) {
-        issues.push({ level: 'error', code: 'overlay_on_unsuppressed_wall', entity: `${element.id}↔${wall}`, source, message: `structural overlay ${element.id} references wall ${wall} without suppressing it`, evidence: { element: element.id, wall } });
-      }
-      if (!suppressed.has(wall)) continue;
-      const owners = structuralOwners.get(wall) ?? [];
-      owners.push(element.id);
-      structuralOwners.set(wall, owners);
-    }
-  }
-  for (const [wall, owners] of structuralOwners) {
-    const unique = [...new Set(owners)];
-    if (unique.length > 1) {
-      issues.push({ level: 'error', code: 'overlay_replacement_duplicate', entity: wall, source, message: `suppressed wall ${wall} is covered by multiple structural overlay elements`, evidence: { wall, owners: unique } });
-    }
-  }
-  for (const mapping of replacements) {
-    if (!suppressed.has(mapping.wall)) {
-      issues.push({ level: 'error', code: 'overlay_replacement_orphan', entity: mapping.wall, source, message: `replacement mapping targets a wall that is not suppressed`, evidence: { wall: mapping.wall, replacement: mapping.replacement } });
-    }
-  }
-  return issues;
 }
 
 export interface GlassPathSegment extends PlanSegment {

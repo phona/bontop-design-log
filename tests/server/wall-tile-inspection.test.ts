@@ -7,6 +7,7 @@ import { load } from 'js-yaml';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { parseOverlay, mergeSceneElements } from '../../server/overlay-merge.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
+import { suppressedWallIds } from '../../shared/suppression.js';
 
 // 贴砖检视态子系统（DEC-2026-10-07-R08）。三道防线：
 //  ① overlay 声明能过 schema 校验（overlay-merge 的 Zod 判别联合）
@@ -184,8 +185,9 @@ test('wall-tile geometry matches the declared wall span and height', () => {
 });
 
 test('wall_region references only existing, non-suppressed walls', () => {
-  const suppressed = new Set<string>();
-  for (const s of OV.suppress ?? []) for (const k of ['wall', 'walls']) if (s[k]) (Array.isArray(s[k]) ? s[k] : [s[k]]).forEach((w: string) => suppressed.add(w));
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性
+  // （resolveLayout 透传），唯一权威实现 shared/suppression.ts。
+  const suppressed = new Set<string>(suppressedWallIds(RESOLVED_LAYOUT.walls));
   const wallIds = new Set(MG.walls.map((w: any) => w.id));
   for (const e of (OV.elements ?? []).filter((x: any) => x.type === 'wall_region')) {
     assert.ok(wallIds.has(e.wall), `${e.id} 引用了不存在的墙 ${e.wall}`);

@@ -872,6 +872,8 @@ export interface WallSegment {
   rooms?: string[];
   /** 墙线基准语义（WallDef.line_datum 透传，口径见其注释）。 */
   line_datum?: 'centerline';
+  /** suppress 改判透传（WallDef.suppressed，2026-11-07 issue #98 S3）：消费方经 shared/suppression.ts。 */
+  suppressed?: WallSuppression;
 }
 
 export interface OverlayPoint {
@@ -966,6 +968,23 @@ export interface Vertex {
   radius?: number;
 }
 
+/**
+ * 墙的 suppress 属性（2026-11-07 issue #98 第三阶段 S3）：该墙的实体盒不渲染、不碰撞、
+ * 不可贴砖/涂漆/挂载，由 replacement 指定的围护对象（envelope curtain_run / railing_run）
+ * 接管其实体表现。它不是"删除墙"——墙仍留在 model-geometry（topology / 家具宿主 /
+ * MEP 穿墙判定都还在）。
+ *
+ * 改判来历：原 overlay.yaml 顶层 `suppress:`（8 条 wall/walls/region 选择器）有 10 处独立
+ * 实现 + config/spatial-validation.yaml 的 overlay_replacements 镜像表，S3 把它们收敛成
+ * 墙条目上的这一条属性 + replacement 对象 id 直引用。语义唯一权威实现在
+ * shared/suppression.ts；region 包围盒选择器随镜像表一并退场（迁移前 0 使用）。
+ */
+export interface WallSuppression {
+  reason: string;
+  /** 接管该墙实体表现的围护对象 id（config/model/envelope/openings.yaml 的 curtain_run / railing_run）。 */
+  replacement: string;
+}
+
 export interface WallDef {
   id: string;
   from: string;
@@ -976,6 +995,12 @@ export interface WallDef {
   structure?: 'shear' | 'fill' | 'curtain' | 'new_partition';
   /** 结构类型来源：confirmed=交房实测/图纸确认, inferred=邻户同户型图推断 */
   structure_status?: 'confirmed' | 'inferred';
+  /**
+   * suppress 改判（2026-11-07 issue #98 第三阶段 S3）：实体表现被围护对象接管。
+   * 声明侧语义与字段口径见 WallSuppression；消费方一律经 shared/suppression.ts，
+   * 禁止各自 flatMap overlay.suppress（那 10 处副本已删）。
+   */
+  suppressed?: WallSuppression;
   /**
    * 墙线基准语义（2026-11-06 业主口径 A，落实 pending #76）：centerline = 模型线即渲染墙盒
    * 中心线，完成面 = 线 ± WALL_THICKNESS/2。挂墙家具的宿主墙必须声明（verify-furniture-placement
@@ -1039,6 +1064,8 @@ export interface ResolvedWall {
   structure_status?: 'confirmed' | 'inferred';
   /** 墙线基准语义（WallDef.line_datum 透传，口径见其注释）。 */
   line_datum?: 'centerline';
+  /** suppress 改判透传（WallDef.suppressed，2026-11-07 issue #98 S3）：消费方经 shared/suppression.ts。 */
+  suppressed?: WallSuppression;
 }
 
 export interface ResolvedLayout {

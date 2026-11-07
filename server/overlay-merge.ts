@@ -2,11 +2,16 @@
  * 合并 CAD 几何与声明式覆盖配置。
  * 铁律：只执行 suppress 和 add 两条机械规则；禁止自动分类启发式。
  * 本文件禁止添加任何基于几何位置/边界/邻接关系的自动分类逻辑。
+ *
+ * suppress 改判（2026-11-07 issue #98 第三阶段 S3）：suppress 不再是 overlay 顶层清单，
+ * 而是墙条目自身的 suppressed 属性（model-geometry.yaml）——这里只按属性过滤，
+ * 语义权威实现与 replacement 校验都在 shared/suppression.ts。
  */
 import { z } from 'zod';
 import { load } from 'js-yaml';
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { isWallSuppressed } from '../shared/suppression.js';
 import type { BaySillSegment, BaySillWallReference, SceneElement, WallSegment, CurtainPoint } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
@@ -21,27 +26,21 @@ const CurtainPointSchema = z
   })
   .strict();
 
-const SuppressSchema = z
-  .object({
-    id: z.string().min(1),
-    region: z
-      .object({ x1: z.number(), z1: z.number(), x2: z.number(), z2: z.number() })
-      .strict()
-      .optional(),
-    wall: z.string().min(1).optional(),
-    walls: z.array(z.string().min(1)).min(1).optional(),
-    reason: z.string().min(1),
-  })
-  .strict()
-  .refine(d => d.region || d.wall || (d.walls && d.walls.length > 0), {
-    message: 'Must specify region, wall, or walls',
-  });
+/**
+ * 玻璃接缝语义（join）：同一围护对象相邻玻璃路径的交接方式——continuous=无缝延续、
+ * butt=对接。2026-11-07 issue #98 第三阶段 S3 从 spatial-validation.yaml 的
+ * overlay_replacements 镜像表上移为本对象声明（根级或 part 级），由
+ * shared/suppression.ts 的 glassJoinSpecs 机械派生 join 规格，
+ * shared/spatial-validation.ts 的 deriveRuntimeGlassJoins 消费（几何仍逐对实判）。
+ */
+const JoinSchema = z.enum(['continuous', 'butt', 'endpoint', 't', 'overlap']);
 
 const CurtainRunPartSchema = z
   .object({
     id: z.string().min(1),
     wall: z.string().min(1).optional(),
     walls: z.array(z.string().min(1)).min(1).optional(),
+    join: JoinSchema.optional(),
   })
   .strict()
   .refine(d => d.wall || (d.walls && d.walls.length > 0), {
@@ -58,6 +57,7 @@ const CurtainRunSchema = z
     parts: z.array(CurtainRunPartSchema).min(1).optional(),
     height: z.number().positive().default(3.0),
     closed: z.boolean().optional(),
+    join: JoinSchema.optional(),
   })
   .strict()
   .refine(d => d.points || d.wall || (d.walls && d.walls.length > 0), {
@@ -257,6 +257,7 @@ const RailingRunSchema = z
     wall: z.string().min(1).optional(),
     walls: z.array(z.string().min(1)).min(1).optional(),
     height: z.number().positive().default(1.0),
+    join: JoinSchema.optional(),
   })
   .strict()
   .refine(d => d.wall || (d.walls && d.walls.length > 0), {
@@ -285,7 +286,6 @@ const CurtainSchema = z
 const OverlaySchema = z
   .object({
     version: z.literal(1),
-    suppress: z.array(SuppressSchema).default([]),
     elements: z
       .array(
         z.discriminatedUnion('type', [
@@ -318,14 +318,18 @@ export function parseOverlay(raw: string): OverlayConfig {
 
 // ── S1 搬迁（issue #98 第三阶段）：overlay 声明拆为 envelope 三文件后的唯一合并点 ──
 // 原 config/layout/overlay.yaml 已删，声明现住三个文件：
-//   openings.yaml       围护构件 40（suppress 与 version 随迁此文件——suppress 的 replacement
-//                       就是本文件的 curtain_run/railing_run；改判为墙属性是 S3，语义当前不变）
+//   openings.yaml       围护构件 40（curtain_run/railing_run 的 join 接缝语义也住这里；
+//                       version 随迁此文件）
 //   floor-zones.yaml    floor_region 6（绝对 points 的唯一聚居地）
 //   finish-surfaces.yaml 面层配方 109（过渡文件，S4 下沉为墙/构件/房间特征后解散）
-// 合并必须恢复原 overlay.yaml 的元素物理顺序：GLB/DXF 产物按 elements 顺序生成，
-// 实测乱序即字节变化（2026-11-07 实验把 floor 6 条移位重导出，GLB SHA 由 eba3dbda… 变 47087a67…）。
-// 原序是「bay_sill 组(25) → floor 6 → curtain/shower 等围护(15) → 面层配方(109)」，因此
-// floor 6 条插在 openings 内 bay_sill 组末尾锚点之后；锚点找不到即抛错，不许静默串序。
+// suppress 自 2026-11-07 S3 起不住本处：改判为 config/layout/model-geometry.yaml 墙条目的
+// suppressed:{reason,replacement} 属性（原 overlay 顶层 8 条 wall/walls/region 选择器 +
+// spatial-validation.yaml 的 overlay_replacements 镜像表随之退场），语义唯一权威实现
+// shared/suppression.ts。合并必须恢复原 overlay.yaml 的元素物理顺序：GLB/DXF 产物按 elements
+// 顺序生成，实测乱序即字节变化（2026-11-07 实验把 floor 6 条移位重导出，GLB SHA 由
+// eba3dbda… 变 47087a67…）。原序是「bay_sill 组(25) → floor 6 → curtain/shower 等围护(15)
+// → 面层配方(109)」，因此 floor 6 条插在 openings 内 bay_sill 组末尾锚点之后；锚点找不到即抛错，
+// 不许静默串序。
 export const OVERLAY_SOURCE_FILES = {
   openings: 'config/model/envelope/openings.yaml',
   floorZones: 'config/model/envelope/floor-zones.yaml',
@@ -335,11 +339,10 @@ export const OVERLAY_SOURCE_FILES = {
 const OVERLAY_ROOT = path.resolve(import.meta.dirname, '..');
 const FLOOR_ZONE_INSERT_AFTER = 'bedroom_se_south_waterproof_ledge';
 
-export function loadOverlayDoc(): { version: unknown; suppress: unknown[]; elements: unknown[] } {
+export function loadOverlayDoc(): { version: unknown; elements: unknown[] } {
   const readDoc = (file: string) =>
     (load(readFileSync(path.join(OVERLAY_ROOT, file), 'utf8')) ?? {}) as {
       version?: unknown;
-      suppress?: unknown[];
       elements?: unknown[];
     };
   const openings = readDoc(OVERLAY_SOURCE_FILES.openings);
@@ -357,7 +360,6 @@ export function loadOverlayDoc(): { version: unknown; suppress: unknown[]; eleme
   }
   return {
     version: openings.version,
-    suppress: openings.suppress ?? [],
     elements: [
       ...openingElements.slice(0, anchor + 1),
       ...(floorZones.elements ?? []),
@@ -375,7 +377,6 @@ export function mergeSceneElements(
   walls: WallSegment[],
   overlay: OverlayConfig | undefined
 ): SceneElement[] {
-  const suppress = overlay?.suppress ?? [];
   // Work on copied elements/parts: resolving wall refs adds derived fields and
   // must not mutate the cached parsed overlay between API requests.
   const elements = (overlay?.elements ?? []).map((element) => ({
@@ -385,25 +386,11 @@ export function mergeSceneElements(
       : {}),
   }));
 
+  // suppress 改判（issue #98 S3）：墙条目自带 suppressed 属性，实体盒不渲染；
+  // 属性口径与 replacement 校验见 shared/suppression.ts（禁止在这里重写选择器逻辑）。
   const kept: SceneElement[] = [];
   walls.forEach((w, i) => {
-    const suppressed = suppress.some(s => {
-      if (s.wall) {
-        return w.id === s.wall;
-      }
-      if (s.walls) {
-        return s.walls.includes(w.id ?? '');
-      }
-      if (s.region) {
-        const mx = (w.x1 + w.x2) / 2;
-        const mz = (w.z1 + w.z2) / 2;
-        const [minX, maxX] = [Math.min(s.region.x1, s.region.x2), Math.max(s.region.x1, s.region.x2)];
-        const [minZ, maxZ] = [Math.min(s.region.z1, s.region.z2), Math.max(s.region.z1, s.region.z2)];
-        return mx >= minX && mx <= maxX && mz >= minZ && mz <= maxZ;
-      }
-      return false;
-    });
-    if (!suppressed) {
+    if (!isWallSuppressed(w)) {
       kept.push({ type: 'wall', id: w.id ?? `wall:seg:${i}`, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, ...(w.segments ? { segments: w.segments } : {}), ...(w.openings ? { openings: w.openings } : {}), ...(w.rooms?.length ? { rooms: w.rooms } : {}) });
     }
   });

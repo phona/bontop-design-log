@@ -23,6 +23,7 @@ import {
 } from '../shared/masonry-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
 import { parseOverlay, parseOverlayFiles } from './overlay-merge.js';
+import { suppressedWallIdSet } from '../shared/suppression.js';
 import { loadCeilingQuotes, baseJsonCeilingRatesFromBase, type CeilingQuotesFile } from './ceiling-quotes.js';
 import { resolveActiveCeilingRates, compareCeilingQuotes, type CeilingQuoteRateKey } from './ceiling-quotes.js';
 import {
@@ -143,29 +144,12 @@ export function loadMasonryTakeoff(
   const overlay = parseOverlayFiles();
   const overlayElements = (elements ?? overlay.elements ?? []) as Array<Record<string, any>>;
 
-  // overlay.suppress 压制的墙（玻璃幕墙 / 实体已删除）：wall_region 引用即抛错，
+  // 被 suppress 的墙（玻璃幕墙 / 实体已删除）：wall_region 引用即抛错，
   // sill_region 允许（防水台本就落在幕墙根）但要留名。
-  // 三种声明形式都要认（与 server/overlay-merge.ts 的 mergeSceneElements 同口径）：
-  // `wall` 单墙 / `walls` 多墙 / `region` 按墙段中心点的包围盒。漏认任何一种，
-  // 被压制墙上的贴砖声明就不会被拦住。
-  const suppressedWallIds = new Set<string>();
-  for (const entry of overlay.suppress ?? []) {
-    if (entry.wall) suppressedWallIds.add(String(entry.wall));
-    for (const wallId of entry.walls ?? []) suppressedWallIds.add(String(wallId));
-    if (entry.region) {
-      const minX = Math.min(entry.region.x1, entry.region.x2);
-      const maxX = Math.max(entry.region.x1, entry.region.x2);
-      const minZ = Math.min(entry.region.z1, entry.region.z2);
-      const maxZ = Math.max(entry.region.z1, entry.region.z2);
-      for (const wall of catalog.getWalls()) {
-        const mx = (wall.x1 + wall.x2) / 2;
-        const mz = (wall.z1 + wall.z2) / 2;
-        if (mx >= minX && mx <= maxX && mz >= minZ && mz <= maxZ && wall.id) {
-          suppressedWallIds.add(wall.id);
-        }
-      }
-    }
-  }
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：判定读墙条目自身的 suppressed 属性
+  // （model-geometry.yaml，经 ProjectCatalog 透传），权威实现在 shared/suppression.ts——
+  // 原 overlay.suppress 三形式（wall/walls/region）的本地副本随镜像表一并删除。
+  const suppressedWallIds = suppressedWallIdSet(catalog.getWalls());
 
   const walls: MasonryTakeoffInput['walls'] = catalog.getWalls().map((wall) => ({
     id: wall.id ?? '',

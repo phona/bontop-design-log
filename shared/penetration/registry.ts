@@ -243,7 +243,11 @@ export function runPenetrationChecks(inputs: SceneInputs, scene: ReturnType<type
     // rules.ts 传 relationships：豁免执行点收敛到下面的 applyPenetrationPolicy →
     // applyWaivers（唯一一处），只有它同时绑定理句与 expires 到期复活。把 waivers
     // 还原成关系白名单再喂进来，等于给同一批豁免开第二个静默出口，到期复活会失效。
-    glassJoins: deriveRuntimeGlassJoins(inputs.structuralPaths, inputs.config.overlay_replacements ?? []),
+    // 玻璃接缝授权来自 envelope 对象声明的 join（2026-11-07 issue #98 S3 起由
+    // shared/suppression.ts 的 glassJoinSpecs 从对象声明机械派生，取代原
+    // spatial-validation.yaml 的 overlay_replacements 镜像表；生成规格仍在 runtime
+    // 逐对做几何判定，本声明只授权"确有此接缝"）。
+    glassJoins: deriveRuntimeGlassJoins(inputs.structuralPaths, inputs.replacementJoins),
     mepTypes: inputs.config.mep_coordination_types,
     collisionMargin: inputs.config.tolerance_profiles?.default?.collision_margin ?? 0.005,
     glassRequiredClearance: requiredClearance(inputs.config.tolerance_profiles?.curtain_wall ?? {}),

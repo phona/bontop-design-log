@@ -1,4 +1,4 @@
-import { parseOverlayFiles } from '../../server/overlay-merge.js';
+import { suppressedWallIds as suppressedWallIdsOf } from '../../shared/suppression.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -18,9 +18,10 @@ const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac }
 const layers = Object.fromEntries(['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'].map((id) => [id, { label: id, color: '#fff', height: 2 }])) as ProjectRenderFacts extends never ? never : typeof config.layers;
 
 /** 真实 layout 上下文（与 scripts/verify/mep/verify-mep-lint.ts 同一套输入），用于 (c)(d) 墙相关规则。 */
-const overlay = parseOverlayFiles() as { suppress?: Array<{ wall?: string; walls?: string[] }> };
-const suppressedWallIds = (overlay.suppress ?? []).flatMap((item) => item.walls ?? (item.wall ? [item.wall] : []));
 const realLayout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+// suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性，
+// 唯一权威实现 shared/suppression.ts（原 parseOverlayFiles().suppress 顶层清单已删）。
+const suppressedWallIds = suppressedWallIdsOf(realLayout.walls);
 function realContext(): MepLintLayoutContext {
   return { layout: realLayout, ceiling, suppressedWallIds, referenceConstraints: hvac.plans[0].diagram.reference_constraints };
 }
