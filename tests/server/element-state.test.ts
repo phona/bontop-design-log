@@ -52,7 +52,7 @@ describe('pending ledger parsing', () => {
     const knownIds = new Set(['electrical:sock_child_ac', 'ceiling:ac_child']);
     const knownTypes = new Set(['ac_indoor', 'strong_panel', 'leb']);
     assert.equal(classifyTarget({ file: 'config/electrical.yaml', id: 'sock_child_ac' }, knownIds, knownTypes), 'bound');
-    assert.equal(classifyTarget({ file: 'config/ceiling.yaml', id: 'ac_indoor' }, knownIds, knownTypes), 'type_reference', 'ac_indoor 是 type 取值，不是元素 id');
+    assert.equal(classifyTarget({ file: 'config/model/envelope/ceiling.yaml', id: 'ac_indoor' }, knownIds, knownTypes), 'type_reference', 'ac_indoor 是 type 取值，不是元素 id');
     assert.equal(classifyTarget({ file: 'config/electrical.yaml', id: 'type: strong_panel' }, knownIds, knownTypes), 'type_reference', '含冒号的字段描述');
     assert.equal(classifyTarget({ file: 'config/plumbing.yaml', id: 'type: leb' }, knownIds, knownTypes), 'type_reference');
     assert.equal(classifyTarget({ file: 'config/electrical.yaml', id: 'sock_deleted_thing' }, knownIds, knownTypes), 'unresolved', '既不是已知 id 也不是已知 type → 台账腐烂的真信号');
@@ -242,7 +242,7 @@ describe('element census snapshot', () => {
     // 其台账条目留存历史、不再绑元素；新端点 sock_fridge_living 由 config position_status 标 pending。
     // 吊顶两个分区仍无出处，不因其他 pending 项而静默归类。
     assert.equal(result.summary.undeclared, 2, '真实台账下只剩 2 个无出处的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 34); // DEC-2026-11-05-R5 新增 #75 水压实测绑 faucet_gbath_vanity（33→34）；包括 #61/#64 与本轮 position_status: pending 的 sock_kitchen_hood 试位；DEC-2026-10-17-R20 净 +4（sock_fridge_living / sock_kitchen_east_counter / sock_weakbox 新增未路由点位与 sock_gbath_towel 换墙迁移复核均落 pending，28→32，实测 derive 值）；DEC-2026-10-23-R03 +1：#74 改写显名 drain_gbath_floor 落 pending（32→33，实测 derive 值）
+    assert.equal(result.summary.pending, 35); // DEC-2026-11-05-R5 新增 #75 水压实测绑 faucet_gbath_vanity（33→34）；2026-11-06 issue #98 PR-4 三点位显式申报后 faucet_gbath_vanity 由 ledger 规则改走 config_status 规则（status: inferred，#75 仍作 openQuestion 挂带、不丢「卡在谁」），pending 34→33；sock_gbath_robot（status: inferred——现坐标是塞柜底旧位、迁仓侧面后坐标待定，设计推断占位）与 drain_gbath_vanity（status: inferred + construction_status: pending，同族 drain_mbath_vanity 与所连路线精度三件套口径）原凭 note 内 DEC 引用落 confirmed，现按 config_status 落 inferred，confirmed 77→75、inferred 49→52；包括 #61/#64 与本轮 position_status: pending 的 sock_kitchen_hood 试位；DEC-2026-10-17-R20 净 +4（sock_fridge_living / sock_kitchen_east_counter / sock_weakbox 新增未路由点位与 sock_gbath_towel 换墙迁移复核均落 pending，28→32，实测 derive 值）；DEC-2026-10-23-R03 +1：#74 改写显名 drain_gbath_floor 落 pending（32→33，实测 derive 值）；2026-11-06 issue #98 PR-6 +2：sock_gbath_vanity / sock_gbath_vanity_2 宿主核实=墙挂（不挂柜）并按口径 A 迁到西完成面 x 7.14，同步精度三件套 status: inferred + position_status: pending（x 依渲染基准先行、7.14/7.20 结构真值待 pending #76 量房）——原凭 note 内 DEC 引用落 confirmed，现按 config_status 落 pending，confirmed 75→73、pending 33→35
     assert.ok((result.summary.byStatus.confirmed ?? 0) > 0, 'DEC 引用必须把构件绑成 confirmed');
   });
 });

@@ -19,7 +19,6 @@ test('dining cloud-orb fixture keeps the declared body size and image-proportion
     position: { x: 9.25, y: 2.8, z: 3.65 },
     temperatureK: 3000,
     enabled: true,
-    circuit: 'dining',
   };
   const built = buildLightingFixtures([fixture], lighting);
   const object = built.fixtures.get('electrical:light_dining_pendant');

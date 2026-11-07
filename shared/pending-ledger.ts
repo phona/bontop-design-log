@@ -8,6 +8,8 @@
  * 表格列：`| # | 数据项 | 填入文件 | 格式 | 当前值 | 精度 | 影响 |`，按主题分多张表。
  */
 
+import { ELEMENT_BEARING_SOURCES, sourceFile } from './envelope-sources.js';
+
 export interface PendingLedgerTarget {
   /** 台账指向的文件，如 `config/electrical.yaml`。 */
   file: string;
@@ -37,15 +39,17 @@ export interface PendingLedger {
 }
 
 /**
- * 承载场景构件的配置文件 → 3D userData.objectId 前缀。台账指向这些文件时要做存在性核对。
- * 与 `config/state-model.yaml` 的 `element_bearing_files` 是同一张表：那里是配置入口，
- * 这里是代码默认值；CLI 以配置为准读入后交由 `classifyTarget` 使用。
+ * 承载场景构件的配置文件 → 3D userData.objectId 前缀（不带冒号的那个源名）。
+ * 台账指向这些文件时要做存在性核对。
+ *
+ * 2026-11-07（issue #98 第三阶段 S6）：本表曾是「与 `config/state-model.yaml` 的
+ * `element_bearing_files` 同一张表：那里是配置入口，这里是代码默认值」——即同一件事
+ * 两处登记，S1 搬迁后两边都要改。现在单一真相在 `shared/envelope-sources.ts` 的来源
+ * 注册表（源名 → 文件 → objectId 前缀），state-model.yaml 的副本已删，本表由注册表派生。
  */
-export const ELEMENT_BEARING_FILES: Record<string, string> = {
-  'config/electrical.yaml': 'electrical',
-  'config/plumbing.yaml': 'plumbing',
-  'config/ceiling.yaml': 'ceiling',
-};
+export const ELEMENT_BEARING_FILES: Record<string, string> = Object.freeze(
+  Object.fromEntries(ELEMENT_BEARING_SOURCES.map((name) => [sourceFile(name), name])),
+);
 
 const ROW_RE = /^\|\s*(\d+[a-z]?)\s*\|/;
 const HEADER_RE = /^\|\s*#\s*\|/;
@@ -133,11 +137,13 @@ export type TargetBinding = 'bound' | 'type_reference' | 'unresolved';
 
 /**
  * 判断台账 target 绑定到什么。台账用反引号同时标 **元素 id** 和 **类型/字段名**
- * （如 `config/ceiling.yaml \`ac_indoor\`` 指「所有 ac_indoor 条目」，不是某个 id），
+ * （如 `config/model/envelope/ceiling.yaml \`ac_indoor\`` 指「所有 ac_indoor 条目」，不是某个 id），
  * 不区分就会把类型引用误报成「构件已不存在」。
  *   bound          = 配置里真有这个元素 id
  *   type_reference = 是该配置里的 type 取值，或含 `:`/空格的字段描述 → 不参与存在性核对
  *   unresolved     = 既不是已知 id 也不是已知 type → 台账腐烂或构件已删（真信号）
+ *
+ * 前缀取自 `shared/envelope-sources.ts` 注册表（file → 源名），不再本地维护 file→prefix 表。
  */
 export function classifyTarget(
   target: PendingLedgerTarget,

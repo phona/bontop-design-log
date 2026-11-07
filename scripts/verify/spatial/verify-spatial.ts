@@ -1,8 +1,7 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as THREE from 'three';
 import type { resolveLayout } from '../../../server/layout-resolver.js';
-import { parseOverlay } from '../../../server/overlay-merge.js';
 import type { parseCeilingZones } from '../../../shared/project-render-facts-schema.js';
 import { FURNITURE_DIMS, type FurnishingsYaml, type ElectricalPoint, type RenderLightingOverride, type SceneElement, type ResolvedWall, type ResolvedRoom } from '../../../shared/types.js';
 import {
@@ -12,7 +11,6 @@ import {
   validateGlassAgainstWalls,
   validateGlassSegments,
   validateOverlayJunctionSpecs,
-  validateOverlayReplacements,
   validateRelationshipSpecs,
   validateRuntimeAuthority,
   validateWallLampMount,
@@ -36,13 +34,18 @@ import {
   objectHasMesh,
   overlayRefs,
   pathSegmentsFromOverlay,
-  suppressionWallIds,
   type SceneInputs,
   type SpatialConfig,
 } from '../../../shared/penetration/scene.js';
+import { validateWallSuppressions } from '../../../shared/suppression.js';
 import { buildRenderLightingFixtureHeights, CEILING_MOUNTED_LIGHT_TYPES, ceilingMountGapTolerance, isLightingFixtureType, selectCeilingHost } from '../../../shared/lighting-fixtures.js';
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
 import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
+import { furnitureHostIndex, resolveFurniturePlacement, type PlacementAnchors } from '../../../shared/furniture-placement.js';
+import { pointMountHostIndex, resolvePointPlacementInWalls } from '../../../shared/point-placement.js';
+import { mepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
+import { parseMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
+import { furnitureObjectId } from '../../../shared/furniture-object-id.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 
@@ -56,15 +59,23 @@ function resolvedWallSegments(layout: ReturnType<typeof resolveLayout>): PlanSeg
 }
 
 /** Runtime collision authority for curtain/glass/railing geometry. */
-function placedFurnitureRuntimeIds(furnishings: FurnishingsYaml): string[] {
+function placedFurnitureRuntimeIds(
+  furnishings: FurnishingsYaml,
+  wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>,
+  anchors: PlacementAnchors,
+): string[] {
   const ids: string[] = [];
+  // 「已放置」与 SceneBuilder.addFurniture 共用同一解算（issue #98 PR-3）：挂墙/挂载/绝对
+  // 坐标/锚点派生四种定位声明都在 shared/furniture-placement.ts，手写谓词会把 mount 挂载件
+  // （无 x/z/wall/along）或锚点派生件（无 x/z/wall/along/mount）漏判成 count-only，令期望
+  // runtime id 整体错位。
+  const hosts = furnitureHostIndex(Object.values(furnishings).flat());
   for (const [roomId, items] of Object.entries(furnishings)) {
     let runtimeIndex = 0;
     for (const item of items) {
-      const raw = item as unknown as Record<string, unknown>;
-      const placed = raw.x !== undefined || raw.z !== undefined || raw.wall !== undefined || raw.along !== undefined;
-      if (!placed) continue;
-      ids.push(`furniture:${roomId}:${item.type}:${runtimeIndex}`);
+      const { placement } = resolveFurniturePlacement(item, wallSegments, hosts, anchors);
+      if (!placement) continue;
+      ids.push(furnitureObjectId(roomId, item, runtimeIndex));
       runtimeIndex++;
     }
   }
@@ -119,6 +130,12 @@ function validateLighting(
       if (expectedSide && expectedSide !== hostSide) {
         issues.push({ level: 'error', code: 'lighting_mount_wall_side_mismatch', entity: point.id, source, message: `wall lamp ${point.id} declares ${hostSide} but room ${point.room} is on the ${expectedSide} side of ${hostWall}`, evidence: { wall: hostWall, declared_wall_side: hostSide, expected_wall_side: expectedSide, room: point.room } });
       }
+      // wall_lamp 平面口径（x/z + overrides）尚未迁 along（issue #98 S1 只迁电气/给排水点位解算）：
+      // 缺 x/z 即显形失败，不猜坐标。现行 config 已无 wall_lamp 在役点位。
+      if (point.x === undefined || point.z === undefined) {
+        issues.push({ level: 'error', code: 'lighting_mount_coordinate_missing', entity: point.id, source, message: `wall lamp ${point.id} has no x/z：灯具平面口径未迁 along，缺坐标即失败`, evidence: { type: point.type } });
+        continue;
+      }
       issues.push(...validateWallLampMount({
         id: point.id,
         x: point.x,
@@ -129,7 +146,8 @@ function validateLighting(
         suppressed: suppressed.has(wall.id) || wall.structure === 'curtain',
       }, source));
       const dx = wall.x2 - wall.x1; const dz = wall.z2 - wall.z1; const lenSq = dx * dx + dz * dz;
-      const t = lenSq > 0 ? Math.max(0, Math.min(1, ((point.x - wall.x1) * dx + (point.z - wall.z1) * dz) / lenSq)) : 0;
+      const px = point.x; const pz = point.z;
+      const t = lenSq > 0 ? Math.max(0, Math.min(1, ((px - wall.x1) * dx + (pz - wall.z1) * dz) / lenSq)) : 0;
       for (const opening of wall.openings ?? []) {
         const ot = lenSq > 0 ? ((opening.x - wall.x1) * dx + (opening.z - wall.z1) * dz) / lenSq : -Infinity;
         const along = Math.sqrt(lenSq) * ot;
@@ -143,7 +161,11 @@ function validateLighting(
         issues.push({ level: 'error', code: 'lighting_room_unknown', entity: point.id, source, message: `lighting point ${point.id} references unknown room ${point.room}`, evidence: { room: point.room } });
         continue;
       }
-      const ceilingHost = selectCeilingHost(point, ceilingZones, rooms);
+      // 顶装灯的宿主判定用平面坐标（x/z）：灯具平面口径本期不迁 along（issue #98 S1 只迁
+      // 电气/给排水点位解算），缺坐标即显形跳过宿主判定，由 runtime/高度检查继续说话。
+      const ceilingHost = point.x !== undefined && point.z !== undefined
+        ? selectCeilingHost({ x: point.x, z: point.z }, ceilingZones, rooms)
+        : undefined;
       const anchorY = heights.get(point.id) ?? point.height ?? room.height;
       const hostSurfaceY = ceilingHost?.surfaceY ?? room.height;
       if (runtime) {
@@ -192,7 +214,7 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
     for (const item of items) {
       const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
       if (!isPlaced) continue;
-      const id = `furniture:${room}:${item.type}:${runtimeIndex}`;
+      const id = furnitureObjectId(room, item, runtimeIndex);
       runtimeIndex++;
       if (item.x === undefined || item.z === undefined) continue;
       const dimensions = FURNITURE_DIMS[item.type];
@@ -209,34 +231,34 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
     }
   }
 
+  // mount 真挂载（issue #98 S2）：点位位置由宿主脸 + along + face_offset 经
+  // shared/point-placement.ts 单一解算器解出，手写 x/z 与 0.01m 贴脸容差校验随之退役。
+  // 声明层校验剩下的三件事：宿主可解（断引用/count-only/越脸在解算器诊断里显形）、
+  // 安装缝合法、房间一致；迁移期另断言「解析结果 == 声明 x/z」（容差 0.005m，S3 删 x/z 后撤销）。
+  const mountHosts = pointMountHostIndex(Object.values(furnishings).flat());
   for (const point of electrical) {
     const anchor = point.mountAnchor;
     if (!anchor) continue;
     if (point.type !== 'night_light') {
-      issues.push({ level: 'error', code: 'furniture_face_mount_wrong_type', entity: point.id, source, message: `furniture-face mount anchor is only supported for night_light, got ${point.type}`, evidence: { anchor } });
+      issues.push({ level: 'error', code: 'furniture_face_mount_wrong_type', entity: point.id, source, message: `furniture-face mount is only supported for night_light, got ${point.type}`, evidence: { anchor } });
       continue;
     }
-    const host = placed.get(anchor.furnitureId);
-    if (!host) {
-      issues.push({ level: 'error', code: 'furniture_face_mount_host_missing', entity: point.id, source, message: `night light ${point.id} references missing placed furniture ${anchor.furnitureId}`, evidence: { furniture_id: anchor.furnitureId } });
+    const { placement, diagnostic } = resolvePointPlacementInWalls(point, undefined, mountHosts);
+    if (!placement || placement.kind !== 'mount') {
+      issues.push({ level: 'error', code: 'furniture_face_mount_unresolvable', entity: point.id, source, message: `night light ${point.id} mount resolution failed: ${diagnostic ?? 'resolver returned nothing'}`, evidence: { furniture_id: anchor.furnitureId, face: anchor.face } });
       continue;
     }
-    const { minX, maxX, minZ, maxZ } = host.bounds;
-    const axisClearance = 0.055;
-    const faceDistance = anchor.face === 'north' ? Math.abs(point.z - minZ)
-      : anchor.face === 'south' ? Math.abs(point.z - maxZ)
-        : anchor.face === 'west' ? Math.abs(point.x - minX)
-          : Math.abs(point.x - maxX);
-    const withinFace = anchor.face === 'north' || anchor.face === 'south'
-      ? point.x >= minX + axisClearance && point.x <= maxX - axisClearance
-      : point.z >= minZ + axisClearance && point.z <= maxZ - axisClearance;
-    if (faceDistance > 0.01 || !withinFace) {
-      issues.push({ level: 'error', code: 'furniture_face_mount_outside_face', entity: point.id, source, message: `night light ${point.id} does not fit on ${anchor.face} face of ${anchor.furnitureId}`, evidence: { point: { x: point.x, z: point.z }, host_bounds: host.bounds, face: anchor.face, face_distance: faceDistance, axis_clearance: axisClearance } });
+    if (point.x !== undefined && point.z !== undefined) {
+      const drift = Math.hypot(placement.x - point.x, placement.z - point.z);
+      if (drift > 0.005) {
+        issues.push({ level: 'error', code: 'furniture_face_mount_outside_face', entity: point.id, source, message: `night light ${point.id} resolved mount position (${placement.x.toFixed(4)}, ${placement.z.toFixed(4)}) diverges from declared x/z (${point.x}, ${point.z}) by ${(drift * 1000).toFixed(1)}mm (>5mm migration assertion)`, evidence: { resolved: { x: placement.x, z: placement.z }, declared: { x: point.x, z: point.z }, furniture_id: anchor.furnitureId, face: anchor.face } });
+      }
     }
     if (anchor.surfaceGap !== undefined && (anchor.surfaceGap < 0 || anchor.surfaceGap > 0.02)) {
       issues.push({ level: 'error', code: 'furniture_face_mount_gap_invalid', entity: point.id, source, message: `night light ${point.id} surface_gap must be between 0 and 0.02m`, evidence: { surface_gap: anchor.surfaceGap, furniture_id: anchor.furnitureId } });
     }
-    if (host.room !== point.room) {
+    const host = placed.get(anchor.furnitureId);
+    if (host && host.room !== point.room) {
       issues.push({ level: 'warning', code: 'furniture_face_mount_room_mismatch', entity: point.id, source, message: `night light ${point.id} is assigned to ${point.room} but its furniture host is in ${host.room}`, evidence: { furniture_id: anchor.furnitureId, point_room: point.room, host_room: host.room } });
     }
   }
@@ -248,6 +270,21 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
   const source = 'config/house.yaml + shared/render/SceneBuilder.ts + shared/render/FixtureFactory.ts';
   const { layout, config, house } = inputs;
   const structuralPaths = inputs.structuralPaths;
+  const hosts = furnitureHostIndex(Object.values(house.furnishings ?? {}).flat());
+  // 主卫冷凝链锚点（issue #98 PR-10）：与 SceneBuilder 同一函数解算，声明层与 runtime 层
+  // 对三件链条家具的「已放置」判定必须同源，否则期望 id 与 runtime id 错位。
+  const { anchors: placementAnchors } = resolveCondensatePlacementAnchors({
+    hvacDiagram: inputs.hvacDiagram,
+    hvacSources: { ceiling: inputs.ceiling, electrical: inputs.electrical },
+    penetration: inputs.condensatePenetration ?? mepPenetrationAt(
+      parseMepCoordination(readFileSync(path.join(ROOT, 'config/mep-hvac-coordination.yaml'), 'utf8')).routes.find((route) => route.id === 'condensate-master'),
+      'w_mbath_south',
+    ),
+    wardrobe: hosts.get('mb.wardrobe_950'),
+    wallRun: hosts.get('mb.vanity_pvc_box'),
+    wallSegments: scene.index.wallSegments,
+    hosts,
+  });
   const collected = collectPenetrationObjects(scene, structuralPaths);
   const furnitureById = new Map(collected.furnitureEntries.map((entry) => [entry.entity, entry]));
   // 「合法重叠」白名单 2026-10-09 从本文件的 relationships 迁入
@@ -258,24 +295,25 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
   // 运行时权威性（声明 ↔ runtime 是否一一对应）留在本层。
   issues.push(...validateRuntimeAuthority({
     furniture: collected.furniture,
-    expectedFurnitureIds: placedFurnitureRuntimeIds(house.furnishings ?? {}),
+    expectedFurnitureIds: placedFurnitureRuntimeIds(house.furnishings ?? {}, scene.index.wallSegments, placementAnchors),
     expectedGlassElementIds: [...new Set(structuralPaths.map((path) => path.elementId))],
     glass: collected.glass,
     source,
   }));
 
+  // 「已放置」判定与 SceneBuilder 同一解算（issue #98 PR-3，详见 placedFurnitureRuntimeIds）。
+  const wallSegments = scene.index.wallSegments;
   for (const [roomId, items] of Object.entries(house.furnishings ?? {})) {
     let runtimeIndex = 0;
     for (const [index, raw] of items.entries()) {
-      const item = raw as unknown as Record<string, unknown>;
-      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
-      if (!isPlaced) continue;
-      const type = String(item.type ?? '');
-      const runtimeId = `furniture:${roomId}:${type}:${runtimeIndex}`;
+      const { placement } = resolveFurniturePlacement(raw, wallSegments, hosts, placementAnchors);
+      if (!placement) continue;
+      const type = String((raw as { type?: unknown }).type ?? '');
+      const runtimeId = furnitureObjectId(roomId, raw, runtimeIndex);
       runtimeIndex++;
-      const dims = declaredDims(item, type);
+      const dims = declaredDims(raw as unknown as Record<string, unknown>, type);
       if (!dims || dims.width <= 0 || dims.depth <= 0) {
-        issues.push({ level: 'error', code: 'furniture_dimensions_missing', entity: `${roomId}/${type}[${index}]`, source, message: `placed furniture ${type} has no positive declared dimensions`, evidence: { room: roomId, type, item } });
+        issues.push({ level: 'error', code: 'furniture_dimensions_missing', entity: `${roomId}/${type}[${index}]`, source, message: `placed furniture ${type} has no positive declared dimensions`, evidence: { room: roomId, type, item: raw } });
         continue;
       }
       const entry = furnitureById.get(runtimeId);
@@ -301,6 +339,13 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
   }
 
   if (scene.report.skippedFurniture.length > 0) for (const item of scene.report.skippedFurniture) issues.push({ level: 'error', code: 'furniture_runtime_skipped', entity: item, source, message: `SceneBuilder skipped a placed furniture fixture`, evidence: { item } });
+  // 摆位诊断（issue #98 PR-3）：定位声明解析失败的件不在场景里——与页面/DXF/verify:furniture
+  // 同一口径在此显形，verify:all 因此也能拦住断引用/负净宽。
+  if (scene.report.placementDiagnostics.length > 0) {
+    for (const diagnostic of scene.report.placementDiagnostics) {
+      issues.push({ level: 'error', code: 'furniture_placement_diagnostic', entity: diagnostic, source, message: `SceneBuilder could not resolve a furniture placement declaration`, evidence: { diagnostic } });
+    }
+  }
   if (scene.report.unsupported.length > 0) for (const item of scene.report.unsupported) issues.push({ level: 'error', code: 'scene_runtime_unsupported', entity: item, source, message: `SceneBuilder reported unsupported runtime geometry`, evidence: { item } });
   return issues;
 }
@@ -311,17 +356,17 @@ function main(): void {
   // 关系声明已迁入 anti-penetration 的 waivers；读不动必须红，不能因为拿不到白名单
   // 就假装没有合法重叠（那会把 13 处叠放/咬合全数误报成穿模）。
   const antiConfig = loadAntiPenetrationConfig();
-  const { layout, overlay, elements, config, house, suppressIds, structuralPaths, layoutWarnings } = inputs;
+  const { layout, elements, config, house, suppressIds, structuralPaths, layoutWarnings } = inputs;
   const issues: SpatialIssue[] = [];
-  if (overlay.suppress.some((entry) => entry.region && suppressionWallIds({ ...overlay, suppress: [entry] }, layout.walls).length === 0)) {
-    issues.push({ level: 'error', code: 'overlay_suppress_region_unmatched', entity: 'overlay.suppress', source: 'config/layout/overlay.yaml', message: 'a suppress region matches no authoritative wall', evidence: {} });
-  }
 
   issues.push(...validateWallTopology(resolvedWallSegments(layout), { junctions: config.junctions, allowedCollinearOverlaps: config.allowed_collinear_overlaps, source: 'config/layout/model-geometry.yaml' }));
-  issues.push(...validateOverlayReplacements(suppressIds, elements.map(overlayRefs), config.overlay_replacements ?? [], 'config/layout/overlay.yaml', layout.walls.map((wall) => wall.id)));
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：原 overlay_replacements 镜像表 +
+  // validateOverlayReplacements（~100 行）+ overlay_suppress_region_unmatched（region 包围盒
+  // 选择器随镜像表退场，迁移前 0 使用）删除，改为墙属性自带 replacement 对象 id 直引用的校验。
+  issues.push(...validateWallSuppressions(layout.walls, elements.map(overlayRefs)));
   issues.push(...validateGlassSegments(structuralPaths));
   issues.push(...validateOverlayJunctionSpecs(config.allowed_overlay_wall_junctions ?? [], structuralPaths, resolvedWallSegments(layout)));
-  issues.push(...validateGlassAgainstWalls(structuralPaths, resolvedWallSegments(layout), suppressIds, 'config/layout/model-geometry.yaml + config/layout/overlay.yaml', config.allowed_overlay_wall_junctions));
+  issues.push(...validateGlassAgainstWalls(structuralPaths, resolvedWallSegments(layout), suppressIds, 'config/layout/model-geometry.yaml + config/model/envelope/{openings,floor-zones,finish-defaults}.yaml', config.allowed_overlay_wall_junctions));
 
   let scene: ReturnType<typeof buildRuntimeScene>;
   try {

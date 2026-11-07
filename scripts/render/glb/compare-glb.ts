@@ -44,6 +44,14 @@ export interface CompareReport {
   strictFailure: boolean;
 }
 
+/**
+ * issue #98 稳定工程对象 ID 的节点名形态：house.yaml 条目声明 `id`（如 `gbath.vanity`）后，
+ * GLB 节点名直接用它，不带 `furniture:` 前缀（shared/furniture-object-id.ts 是唯一实现）。
+ * 与旧口径 `furniture:<room>:<type>:<index>` 并列存在，分类时两种形态都认——
+ * 少认一种，稳定 id 家具会静默掉进 ignoredNames，基线 diff 既看不到新增也看不到缺失。
+ */
+const STABLE_FURNITURE_ID = /^[a-z0-9_]+(?:\.[a-z0-9_]+)+(?::|$)/u;
+
 const categoryOf = (name: string): SemanticCategory | undefined => {
   if (/^floor(?::|$)/u.test(name) || /_floor(?::|$)/u.test(name)) return 'floor';
   if (/^ceiling(?::|$)/u.test(name) || /^ceiling_/u.test(name)) return 'ceiling';
@@ -51,7 +59,7 @@ const categoryOf = (name: string): SemanticCategory | undefined => {
   if (/^sliding_door(?::|$)/u.test(name) || /sliding_door/u.test(name)) return 'sliding_door';
   if (/^(?:door(?::|$)|d_[^:]+)/u.test(name)) return 'door';
   if (/curtain/u.test(name) && !/^ceiling/u.test(name)) return 'curtain';
-  if (/^furniture(?::|$)/u.test(name)) return 'furniture';
+  if (/^furniture(?::|$)/u.test(name) || STABLE_FURNITURE_ID.test(name)) return 'furniture';
   if (/^hvac(?::|$)/u.test(name)) return 'hvac';
   return undefined;
 };
@@ -81,6 +89,9 @@ export function normalizeSemanticId(name: string): { category: SemanticCategory;
     return { category, id };
   }
   if (category === 'furniture') {
+    // 稳定 id（issue #98，如 gbath.vanity）本身即规范 id：不套 `furniture:` 前缀，
+    // 其 part 子节点（`gbath.vanity:<type>:part=…:role=…`）也归并到同一 id。
+    if (STABLE_FURNITURE_ID.test(name)) return { category, id: name.split(':')[0] };
     const parts = name.split(':');
     return { category, id: parts.length >= 4 ? parts.slice(0, 4).join(':') : `furniture:${parts[0].replace(/:part.*$/u, '')}` };
   }

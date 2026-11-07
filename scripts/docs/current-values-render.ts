@@ -16,18 +16,22 @@ import * as path from 'node:path';
 import * as crypto from 'node:crypto';
 import { load as loadYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import { computeMasonryTakeoff, type MasonryTakeoffInput } from '../../shared/masonry-takeoff.js';
+import { loadOverlayDoc } from '../../server/overlay-merge.js';
+import { loadMasonryTakeoff } from '../../server/budget-calculator.js';
+import { ProjectCatalog } from '../../server/project-catalog.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 
 export const CV_INPUTS = [
-  'config/ceiling.yaml',
+  'config/model/envelope/ceiling.yaml',
   'config/electrical-topology.yaml',
   'config/electrical.yaml',
   'config/house.yaml',
   'config/hvac.yaml',
   'config/layout/model-geometry.yaml',
-  'config/layout/overlay.yaml',
+  'config/model/envelope/openings.yaml',
+  'config/model/envelope/floor-zones.yaml',
+  'config/model/envelope/finish-defaults.yaml',
   'config/materials.yaml',
   'config/mep-hvac-coordination.yaml',
   'config/tile-comparison.yaml',
@@ -57,69 +61,11 @@ const round4 = (n: number): string => String(parseFloat(n.toFixed(4)));
 const round3 = (n: number): string => String(parseFloat(n.toFixed(3)));
 
 function masonryAreas(): { wall: number; sill: number } {
-  // 与 tests/server/masonry-takeoff.test.ts 的 buildInput 同口径装配（config → 模块输入），
-  // 面积一律由 shared/masonry-takeoff 从 overlay 声明实算，禁止硬编码（批 4 审阅修复）。
-  const mg = yaml('config/layout/model-geometry.yaml');
-  const ov = yaml('config/layout/overlay.yaml');
-  const tile = yaml('config/tile-comparison.yaml');
-  const layout = resolveLayout(mg) as any;
-  const suppressed = new Set<string>();
-  for (const entry of ov.suppress ?? []) {
-    for (const key of ['wall', 'walls'] as const) {
-      const v = (entry as any)[key];
-      if (!v) continue;
-      for (const w of Array.isArray(v) ? v : [v]) suppressed.add(String(w));
-    }
-  }
-  const walls = (layout.walls as any[]).map((wall) => ({
-    id: wall.id, x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2,
-    ...(wall.segments?.length ? { segments: wall.segments.map((sg: any) => ({ x1: sg.x1, z1: sg.z1, x2: sg.x2, z2: sg.z2 })) } : {}),
-    ...(wall.openings?.length ? { openings: wall.openings } : {}),
-    suppressed: suppressed.has(wall.id),
-  }));
-  const wallById = new Map(walls.map((w) => [w.id, w]));
-  if (!Array.isArray(ov.elements) || ov.elements.length === 0) {
-    throw new Error('overlay.yaml 缺少 elements 声明：拒绝静默生成 0 ㎡（字段改名/缺失必须报红）');
-  }
-  const elements: any[] = ov.elements;
-  const baySills = elements.filter((e) => e.type === 'bay_sill').map((e) => {
-    const wallIds: string[] = e.walls ?? (e.wall ? [e.wall] : []);
-    const wall: any = wallById.get(wallIds[0]);
-    return { id: e.id, wall: wallIds[0], height: e.height, depth: e.depth, sill: e.sill ?? 0,
-      ...(wall?.segments ? { segments: wall.segments } : {}) };
-  });
-  const rooms = (layout.rooms as any[]).filter((r) => !r.semantic_only).map((r) => ({
-    id: r.id, areaSqm: r.area ?? r.width * r.depth,
-    ...((r.points ?? []).length ? { points: r.points.map((p: any) => ({ x: p.x, z: p.z })) }
-      : { rect: { x: r.x, z: r.z, width: r.width, depth: r.depth } }),
-  }));
-  const input: MasonryTakeoffInput = {
-    walls, baySills, rooms,
-    wallRegions: elements.filter((e) => e.type === 'wall_region').map((e) => ({
-      id: e.id, wall: e.wall, room: e.room, along: e.along, bottom: e.bottom ?? 0, height: e.height, zone: e.zone })),
-    sillRegions: elements.filter((e) => e.type === 'sill_region').map((e) => ({
-      id: e.id, element: e.element, room: e.room, face: e.face, along: e.along, zone: e.zone })),
-    dryRoomIds: tile.dry_room_ids, wetRoomIds: tile.wet_room_ids,
-    floorRegions: elements.filter((e) => e.type === 'floor_region').map((e) => ({
-      id: e.id,
-      areaSqm: Math.abs((e.points ?? []).reduce((sum: number, p: any, i: number, all: any[]) => {
-        const n = all[(i + 1) % all.length]; return sum + p.x * n.z - n.x * p.z; }, 0) / 2),
-      points: (e.points ?? []).map((p: any) => ({ x: p.x, z: p.z })),
-      excluded: e.excluded === true, follow: e.follow, room: e.room, zone: e.zone })),
-    clearHeight: (() => {
-      // 与 server/budget-calculator.ts 同口径：厨卫铝扣板完成面（floor_height − thickness），
-      // 取三区最大值；配置派生，禁止硬编码（二审修复：原误写 2.8 > takeoff 上限 2.65 而不自知）。
-      const floorH = yaml('config/house.yaml').project.floor_height as number;
-      const zones = yaml('config/ceiling.yaml') as any[];
-      const finishes = ['ceiling_kitchen', 'ceiling_master_bath', 'ceiling_guest_bath'].map((id) => {
-        const z = zones.find((x) => x.id === id);
-        if (!z) throw new Error(`ceiling.yaml 缺少 ${id} 区，无法派生贴砖净高上限`);
-        return floorH - (z.thickness as number);
-      });
-      return Math.max(...finishes);
-    })(),
-  } as MasonryTakeoffInput;
-  const result = computeMasonryTakeoff(input);
+  // 2026-11-07 issue #98 第三阶段 S4：贴砖带下沉为墙/构件特征后，装配改走**生产唯一入口**
+  // server/budget-calculator.ts 的 loadMasonryTakeoff（此前本脚本手抄了第三份
+  // config→模块输入装配，连 wall_region/sill_region 的过滤都抄了一份——面层配方一改类型名
+  // 就会静默算出 0 ㎡）。面积数学仍只有 shared/masonry-takeoff.ts 一处。
+  const result = loadMasonryTakeoff(ProjectCatalog.load('.'));
   return { wall: result.wallTileSqm, sill: result.sillTileSqm };
 }
 
@@ -142,7 +88,7 @@ function loadCtx(): Ctx {
     topology: yaml('config/electrical-topology.yaml'),
     electrical: yaml('config/electrical.yaml'),
     house: yaml('config/house.yaml'),
-    ceiling: yaml('config/ceiling.yaml'),
+    ceiling: yaml('config/model/envelope/ceiling.yaml'),
     mep: yaml('config/mep-hvac-coordination.yaml'),
     geometry: yaml('config/layout/model-geometry.yaml'),
     pendingText: fs.readFileSync(path.join(ROOT, 'docs/pending-site-data.md'), 'utf8'),
@@ -205,12 +151,12 @@ const SECTIONS: Section[] = [
         note: '业主提供的预算池/封顶/候选价，**不是合同承诺**',
       },
       {
-        label: '墙砖面积（wall_region 实算）',
+        label: '墙砖面积（墙 finish.tile_bands 实算）',
         value: () => `${round4(masonryAreas().wall)} ㎡`,
-        source: 'config/layout/overlay.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168',
+        source: 'config/layout/model-geometry.yaml（墙 finish.tile_bands 声明 + 几何）+ config/model/envelope/openings.yaml（bay_sill finish.tile）+ config/tile-comparison.yaml（干湿分区）+ config/model/envelope/ceiling.yaml（净高上限）→ server/budget-calculator.ts loadMasonryTakeoff → shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts',
         note: () => {
           const a = masonryAreas();
-          return `窗台/防水台 sill_region 另计 ${round3(a.sill)} ㎡；合计 ${round4(a.wall + a.sill)} ㎡由契约 c.masonry_tile_area_parity 三方对账 ※`;
+          return `窗台/防水台 bay_sill finish.tile 另计 ${round3(a.sill)} ㎡；合计 ${round4(a.wall + a.sill)} ㎡由契约 c.masonry_tile_area_parity 三方对账 ※`;
         },
       },
     ],
@@ -398,7 +344,7 @@ const SECTIONS: Section[] = [
           return `${fmt2(c.house.project.floor_height - z.thickness)} m`;
         },
         source: 'config/mep-hvac-coordination.yaml:7',
-        note: '0.30m 降板（2.80−0.30）；完成面权威为 config/ceiling.yaml（guidance:141 明文）',
+        note: '0.30m 降板（2.80−0.30）；完成面权威为 config/model/envelope/ceiling.yaml（guidance:141 明文）',
       },
       {
         label: 'B 区铝扣板完成面',

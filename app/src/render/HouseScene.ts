@@ -14,7 +14,8 @@ const MERGE_STATIC_UNITS = true;
 
 function isMergeableUnit(obj: THREE.Object3D): boolean {
   if (obj.userData?.type === 'railing_run') return true;
-  return obj.name.startsWith('furniture:')
+  // 家具按 userData.type 判：稳定 id（如 gbath.vanity）不带 furniture: 前缀。
+  return obj.userData?.type === 'furniture'
     || obj.name.startsWith('electrical:')
     || obj.name.startsWith('plumbing:');
 }
@@ -59,7 +60,8 @@ import { BrowserSceneMaterials } from './BrowserSceneMaterials.js';
 import { buildScene, refreshSlidingDoorGroup, type CurtainBuildEntry, type SceneMaterialProvider } from '@shared/render/SceneBuilder';
 import { buildHvacGeometry, type HvacEntityIndex } from '@shared/render/HvacGeometryBuilder';
 import { buildHvacBuilderSources, type HvacBuilderSources } from '@shared/render/HvacBuilder';
-import { buildInfrastructure, type InfrastructureWallSegment } from '@shared/render/InfrastructureBuilder';
+import { buildInfrastructure } from '@shared/render/InfrastructureBuilder';
+import type { PointMountHost, PointWall } from '@shared/point-placement';
 import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@shared/render/layout-bounds';
 import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
 import type { CeilingZone } from '@shared/types';
@@ -72,20 +74,14 @@ import {
   type ElementStatus,
 } from './analysis/element-state-colors.js';
 import type { WallSegment, ResolvedRoom, ResolvedOpening } from '@shared/types';
+import { WALL_THICKNESS } from '@shared/furniture-placement';
+// 墙 mesh objectId → 源墙 id 的唯一实现（shared/package-scope.ts）：审计面判 suppress、
+// 以及 applyEmissiveHighlight 的二级命中都靠它把 `墙id:N`/`墙id:N.M` 桥回稳定墙 id——
+// links 的墙 select.ids 是稳定 id，不桥接就会「选了墙却高亮不到」。
+import { sourceWallIdOf } from '@shared/package-scope';
 
 export const GLASS_THICKNESS = 0.024;
 const DEFAULT_FLOOR = '#e8e0d5';
-const WALL_THICKNESS = 0.12;
-
-/**
- * 墙 mesh 的 objectId → 源墙 id。SceneBuilder.addWallElement 在开门洞拆段后写
- * `墙:N`，共墙按房间拆面后再追加 `.M`。墙 id 本身不含 ':'，故截第一个 ':' 即得源墙。
- * 审计必须按源墙 id 判 suppress，否则拆过的实体墙会被误判成玻璃幕墙。
- */
-function sourceWallIdOf(objectId: string): string {
-  const colon = objectId.indexOf(':');
-  return colon === -1 ? objectId : objectId.slice(0, colon);
-}
 
 /**
  * Area of a flat inspection mesh, including ShapeGeometry (which has no
@@ -153,6 +149,8 @@ interface ProjectData {
     furnishings?: FurnishingsYaml;
     electrical?: ElectricalPoint[];
     sceneElements?: SceneElement[];
+    /** 主卫冷凝链的 MEP 侧穿墙锚点（issue #98 PR-10）：三件遮蔽家具的锚点派生要用。 */
+    condensatePenetration?: { x: number; z: number };
   };
   renderFactsProjection?: ProjectRenderFactsProjection;
   renderFactsSources?: HvacBuilderSources;
@@ -222,6 +220,8 @@ export class HouseScene implements SceneApi {
   private auditFurnishings: FurnishingsYaml = {};
   private auditSceneElements: SceneElement[] = [];
   private auditPlumbing: PlumbingPoint[] = [];
+  /** 最近一次 buildFromCatalog 的家具摆位诊断（issue #98 PR-3）；空 = 全部定位声明解析成功。 */
+  private placementDiagnostics: string[] = [];
   private textureManager = new TextureManager();
   private envManager: EnvironmentManager;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
@@ -247,6 +247,10 @@ export class HouseScene implements SceneApi {
   /** 已打开（隐藏面板）的检修口 objectId 集合。DEC-2026-10-27-R03。 */
   private readonly accessPanelOpen = new Set<string>();
   private wallSegmentIndex = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>();
+  /** 点位宿主墙索引（id → 折线段 + line_datum）：电气/给排水点位与 MEP 端点的单一解算输入。 */
+  private pointWallIndex = new Map<string, PointWall>();
+  /** mount 挂载点位的家具宿主索引（issue #98 S2）：标注层与浏览器 MEP 端点解算用。 */
+  private mountHostIndex: ReadonlyMap<string, PointMountHost> = new Map();
   private readyState: 'loading' | 'ready' | 'failed' = 'loading';
   private readyPromise: Promise<void>;
   private resolveReady!: () => void;
@@ -563,13 +567,15 @@ export class HouseScene implements SceneApi {
       if (!segment || segment.length < 2) return undefined;
       return { minX: Math.min(...segment.map((p) => p.x)), maxX: Math.max(...segment.map((p) => p.x)), minZ: Math.min(...segment.map((p) => p.z)), maxZ: Math.max(...segment.map((p) => p.z)) };
     };
-    const configuredFurnishing = this.auditFurnishings.guest_bath?.find((item) => item.type === 'vanity' && item.x !== undefined && item.z !== undefined);
-    const vanityBox = configuredFurnishing ? { minX: configuredFurnishing.x! - 0.20, maxX: configuredFurnishing.x! + 0.20, minZ: configuredFurnishing.z! - 0.40, maxZ: configuredFurnishing.z! + 0.40 } : aabb(this.findAuditObject('furniture:guest_bath:vanity:0'));
+    // vanity 自 issue #98 PR-3 起挂墙定位（无绝对 x/z）：审计框直接取 runtime mesh AABB，
+    // 不再按手写半宽拼框（旧 ±0.20/±0.40 是柜深 0.40 时代的口径，已随声明源删除）。
+    const vanityBox = aabb(this.findAuditObject('gbath.vanity'));
     const configuredToilet = this.auditFurnishings.guest_bath?.find((item) => item.type === 'toilet' && item.x !== undefined && item.z !== undefined);
-    const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('furniture:guest_bath:toilet:1'));
+    const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('gbath.toilet'));
     const screenBox = segmentBox(points('shower_screen_gbath'));
     const shower = this.auditPlumbing.find((candidate) => candidate.room === 'guest_bath' && candidate.type === 'shower');
-    const showerPoint = shower ? { x: shower.x, z: shower.z } : { x: 7.10, z: 2.45 };
+    // x/z 是迁移期断言字段（issue #98 S1）：此示意图只画 plumbing 点位的平面位置，缺坐标即回退默认值
+    const showerPoint = shower && shower.x !== undefined && shower.z !== undefined ? { x: shower.x, z: shower.z } : { x: 7.10, z: 2.45 };
     const dividerZ = screenBox ? (screenBox.minZ + screenBox.maxZ) / 2 : 2.80;
     const vanitySouth = vanityBox?.minZ ?? dividerZ;
     rect(bounds.minX, bounds.maxX, dividerZ, bounds.maxZ, 'rgba(245, 158, 11, 0.18)', '#d97706', 4);
@@ -671,6 +677,7 @@ export class HouseScene implements SceneApi {
 
   async buildFromCatalog(projectData: ProjectData): Promise<void> {
     this.readyState = 'loading';
+    this.placementDiagnostics = [];
     this.readyPromise = new Promise<void>((resolve, reject) => {
       this.resolveReady = resolve;
       this.rejectReady = reject;
@@ -699,6 +706,7 @@ export class HouseScene implements SceneApi {
     this.doorMeshes = [];
     this.slidingDoorGroups.clear();
     this.wallSegmentIndex.clear();
+    this.pointWallIndex.clear();
     this.roomMeta.clear();
     this.auditFurnishings = projectData.house.furnishings ?? {};
     this.auditSceneElements = projectData.house.sceneElements ?? [];
@@ -721,8 +729,6 @@ export class HouseScene implements SceneApi {
       frostedPrivacy: () => this.materials.makeFrostedPrivacyMaterial(),
       showerScreen: () => this.materials.makeShowerScreenMaterial(),
       slidingDoorGlass: ({ paneWidth }) => this.materials.makeFlutedGlassMaterial(paneWidth),
-      hingedGlassDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x202328, metalness: 0.7, roughness: 0.3 }),
-      hingedGlassDoorGlass: () => this.materials.makeShowerScreenMaterial(),
     };
     const result = buildScene({
       ...input,
@@ -730,9 +736,15 @@ export class HouseScene implements SceneApi {
         materialProvider,
         curtainRooms: input.rooms,
         hvac: projectData.renderFactsProjection ? { projection: projectData.renderFactsProjection, sources: projectData.renderFactsSources ?? buildHvacBuilderSources({ projection: projectData.renderFactsProjection }) } : undefined,
+        // 主卫冷凝链穿墙锚点（issue #98 PR-10）：缺它三件链条家具解不出锚点、会带诊断跳过。
+        condensatePenetration: projectData.house.condensatePenetration,
       },
     });
     for (const child of [...result.exportRoot.children]) this.exportRoot.add(child);
+    // 家具摆位诊断（issue #98 PR-3）：定位声明解不出来的件不会进场景，逐条留在这里由
+    // App 显形（DXF 导出与 verify:furniture 同口径判失败）——页面同样不许静默少件。
+    this.placementDiagnostics = result.report.placementDiagnostics ?? [];
+    for (const diagnostic of this.placementDiagnostics) console.error('[scene] furniture placement:', diagnostic);
     for (const child of [...result.viewOnlyRoot.children]) {
       if (child.userData.type === 'platform') this.viewOnlyRoot.add(child);
       else this.builderViewRoot.add(child);
@@ -748,6 +760,8 @@ export class HouseScene implements SceneApi {
     this.doorMeshes = index.doorMeshes;
     this.slidingDoorGroups = index.slidingDoorGroups;
     this.wallSegmentIndex = index.wallSegments;
+    this.pointWallIndex = index.pointWalls;
+    this.mountHostIndex = index.mountHosts;
     this.hvacEntityIndex = index.hvac;
     this.hvacProjection = projectData.renderFactsProjection;
     this.hvacExpectedExportIds = [...this.hvacEntityIndex.all.keys()];
@@ -1716,12 +1730,22 @@ export class HouseScene implements SceneApi {
   }
 
   loadElectricalTopology(topology: import('@shared/types').ElectricalTopology, points: ElectricalPoint[]): void {
-    this.electricalTopologyRenderer.render(topology, points);
+    // 点位宿主墙/家具索引随场景重建刷新，这里取当前值注入（issue #98 S3：回路图坐标走单一解算，
+    // 沿墙/挂载点位不再声明绝对 x/z——与标注层、3D 基础设施、DXF、MEP 同一解算器）。
+    this.electricalTopologyRenderer.render(topology, points, {
+      pointWalls: this.pointWallIndex,
+      mountHosts: this.mountHostIndex,
+    });
     this.electricalTopologyRenderer.setVisible(false);
   }
 
   getElectricalTopologySummary(): import('./ElectricalTopologyRenderer.js').ElectricalTopologyRenderSummary {
     return this.electricalTopologyRenderer.getSummary();
+  }
+
+  /** 回路图跳过原因（issue #98 S3 诊断显形通道）。 */
+  getElectricalTopologyDiagnostics(): readonly string[] {
+    return this.electricalTopologyRenderer.getDiagnostics();
   }
 
   clearElectricalTopology(): void {
@@ -1899,6 +1923,16 @@ export class HouseScene implements SceneApi {
     this.requestRender();
   }
 
+  /** 点位宿主墙索引（issue #98 S1）：标注层解析坐标与 MEP 端点解算共用。 */
+  getPointWalls(): ReadonlyMap<string, PointWall> {
+    return this.pointWallIndex;
+  }
+
+  /** mount 挂载点位的家具宿主索引（issue #98 S2）：标注层与浏览器 MEP 端点解算共用。 */
+  getMountHosts(): ReadonlyMap<string, PointMountHost> {
+    return this.mountHostIndex;
+  }
+
   placeInfrastructureFixtures(electrical: ElectricalPoint[], plumbing: PlumbingPoint[]): void {
     this.auditPlumbing = plumbing;
     this.batcher.clearScope('plumbing');
@@ -1906,10 +1940,17 @@ export class HouseScene implements SceneApi {
     const result = buildInfrastructure({
       electrical,
       plumbing,
-      wallSegments: this.wallSegmentIndex as ReadonlyMap<string, InfrastructureWallSegment[]>,
+      // 点位宿主墙索引（issue #98 S1）：与 buildScene 首帧、DXF、MEP 共用同一解算。
+      pointWalls: this.pointWallIndex,
     });
     this.electricalMeshes = result.electrical;
     this.infrastructureMeshes = result.objects;
+    // 点位定位诊断（issue #98 S1）：沿墙点位解算失败（缺 along/越界/断引用）不出场景，
+    // 逐条显形——与家具摆位诊断同一通道，页面同样不许静默少件。
+    for (const diagnostic of result.placementDiagnostics) {
+      this.placementDiagnostics.push(diagnostic);
+      console.error('[scene] point placement:', diagnostic);
+    }
     for (const model of result.objects) {
       this.decorations.addMarker(model);
       if (MERGE_STATIC_UNITS && isMergeableUnit(model)) mergeUnitMaterials(model);
@@ -1987,6 +2028,11 @@ export class HouseScene implements SceneApi {
     return this.furnitureMeshes;
   }
 
+  /** 家具摆位诊断（issue #98 PR-3）：非空即场景里有家具因定位声明解析失败而缺席。 */
+  getPlacementDiagnostics(): string[] {
+    return [...this.placementDiagnostics];
+  }
+
   getEnvironmentManager(): EnvironmentManager {
     return this.envManager;
   }
@@ -1995,13 +2041,14 @@ export class HouseScene implements SceneApi {
     return this.floorMeshes;
   }
 
-  getFurniturePosition(objectId: string): { x: number; z: number; rotation: number; sourceIndex?: number } | null {
+  getFurniturePosition(objectId: string): { x: number; z: number; rotation: number; furnishingType?: string; sourceIndex?: number } | null {
     for (const mesh of this.furnitureMeshes) {
       if (mesh.userData.objectId === objectId) {
         return {
           x: mesh.position.x,
           z: mesh.position.z,
           rotation: mesh.rotation.y * 180 / Math.PI,
+          ...(typeof mesh.userData.furnishingType === 'string' ? { furnishingType: mesh.userData.furnishingType } : {}),
           ...(typeof mesh.userData.sourceIndex === 'number' ? { sourceIndex: mesh.userData.sourceIndex } : {}),
         };
       }
@@ -2189,7 +2236,13 @@ export class HouseScene implements SceneApi {
       if (!mesh.userData) return;
       const objectId = mesh.userData.objectId as string | undefined;
       const roomId = mesh.userData.roomId as string | undefined;
-      if (!((objectId && targetIds.has(objectId)) || (roomId && targetIds.has(roomId)))) return;
+      // 二级命中（2026-11-07 issue #98 S4 评审 blocking）：墙 mesh 的 objectId 在开门洞
+      // 拆段/共墙拆面后是 `墙id:N`/`墙id:N.M`，而 links 的墙 select.ids 是稳定墙 id
+      // （面层配方下沉后工作包按宿主对象 id 选墙）——只按 objectId 精确匹配会让这 15 面
+      // 墙静默不高亮（业主点包没反应，与 2026-11-02 那次 ids no-op 同一失效类）。
+      // sourceWallIdOf 把拆段/拆面后缀桥回源墙 id再比一次。
+      const wallId = objectId ? sourceWallIdOf(objectId) : undefined;
+      if (!((objectId && targetIds.has(objectId)) || (wallId && targetIds.has(wallId)) || (roomId && targetIds.has(roomId)))) return;
       // 数组材质（GLB 墙按 group 分材质）必须逐元素处理：旧守卫只挡 !mat，mat.emissive
       // 对数组是 undefined，.set 直接抛 TypeError——被 App 的「高亮失败不打断审批流」
       // 静默吞掉，traverse 在第一个数组材质墙处中断：后续范围全部不高亮、末尾的
@@ -2500,7 +2553,7 @@ export class HouseScene implements SceneApi {
 
   /**
    * 吊顶分区·逐区明细 + 算量（与 shared/ceiling-takeoff.ts 同口径，数据源是场景里的
-   * `userData.ceiling` 声明 blob——浏览器不直读 config/ceiling.yaml）。
+   * `userData.ceiling` 声明 blob——浏览器不直读 config/model/envelope/ceiling.yaml）。
    */
   inspectCeilingZones(): {
     takeoff: CeilingTakeoff;
@@ -2943,9 +2996,9 @@ export class HouseScene implements SceneApi {
       }
     }
 
-    if (type === 'furniture' && objectId.startsWith('furniture:')) {
-      const parts = objectId.split(':');
-      const furnitureType = parts[2] ?? '';
+    if (type === 'furniture') {
+      // 下标 ID 取类型段；稳定 ID（如 gbath.vanity）本身即对象名，直接显示。
+      const furnitureType = objectId.startsWith('furniture:') ? (objectId.split(':')[2] ?? '') : objectId;
       return roomName ? `${roomName} · 家具 · ${furnitureType}` : `家具 · ${furnitureType}`;
     }
     const label = typeLabel[type] ?? type;

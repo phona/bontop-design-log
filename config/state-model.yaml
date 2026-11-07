@@ -4,6 +4,13 @@
 # 那些权威仍在 config/*.yaml、docs/pending-site-data.md、docs/decisions/ 与各 verifier。
 # 派生不出来的状态是 `undeclared`：一种要显形的状态，不是「默认已确认」。
 
+# 2026-11-07（issue #98 第三阶段 S6）删除的字段：原 `element_bearing_files`
+# （`config/electrical.yaml: electrical` 等三行，file → objectId 前缀表）。它与
+# shared/pending-ledger.ts 的 ELEMENT_BEARING_FILES 是同一张表的两份登记，S1 把
+# config/ceiling.yaml 搬进 config/model/envelope/ 后两边都要改——「文件路径构成身份」
+# 的典型形态。现单一真相在 shared/envelope-sources.ts 的来源注册表（源名 → 权威文件 →
+# objectId 前缀），台账腐烂核对改读注册表；本文件不再登记任何配置路径。
+
 version: 1
 
 # 优先级：从高到低，第一条命中的规则决定该构件的 status。
@@ -23,13 +30,6 @@ status_vocabulary:
   inferred: inferred
   pending: pending
   confirmed: confirmed
-
-# 台账「填入文件」列里，哪些文件承载场景构件（要按 objectId 前缀拼起来做存在性核对）。
-# 指向 procurement/materials/schedule/budget 的条目本来就不绑定场景构件，不做核对。
-element_bearing_files:
-  config/electrical.yaml: electrical
-  config/plumbing.yaml: plumbing
-  config/ceiling.yaml: ceiling
 
 # 派生时读取的 issue 来源（verifier 名，对应 scripts/verify/ 下的入口）。
 # 只取**与构件绑定相关**的 verifier；全量门禁结论看 `npm run verify:all -- --json`。

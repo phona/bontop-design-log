@@ -14,7 +14,8 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { buildInfrastructure, type InfrastructureWallSegment } from '../../shared/render/InfrastructureBuilder.js';
+import { buildInfrastructure } from '../../shared/render/InfrastructureBuilder.js';
+import type { PointWall } from '../../shared/point-placement.js';
 import { buildRuntimeScene, loadSceneInputs } from '../../shared/penetration/scene.js';
 import type { ElectricalPoint, PlumbingPoint } from '../../shared/types.js';
 
@@ -121,8 +122,8 @@ function realSceneMarkers(): { walls: WallEntry[]; markers: MarkerEntry[] } {
     const built = buildInfrastructure({
       electrical: inputs.electrical,
       plumbing: inputs.plumbing,
-      // 与 SceneBuilder 同一份 wallSegments（index.wallSegments 即其构造源）。
-      wallSegments: scene.index.wallSegments,
+      // 与 SceneBuilder 同一份 pointWalls（index.pointWalls 即其构造源：折线段 + line_datum）。
+      pointWalls: scene.index.pointWalls,
     });
     realScene = { walls: wallEntries(scene.index.wallMeshes), markers: markerEntries(built.objects) };
   }
@@ -186,16 +187,17 @@ describe('infrastructure marker placement (real scene)', () => {
 
 describe('placeModel anchoring rules (synthetic points)', () => {
   // w_mbath_east 中心线段（与 model-geometry 一致）：slab x[2.540,2.660]，儿童房在 x>2.66。
-  const wallSegments = new Map<string, InfrastructureWallSegment[]>([
-    ['w_mbath_east', [{ x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3 }]],
+  const wallSegments = new Map<string, PointWall>([
+    ['w_mbath_east', { segments: [{ x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3 }], line_datum: 'centerline' }],
   ]);
-  const anchor = { x: 2.6, z: 1.5, wall: 'w_mbath_east', wallSide: 'west' } as const;
+  // along 自墙段起点 (2.6,1.1) 累计：z=1.5 → along=0.4（与 x/z 声明等价，见 point-placement.ts）
+  const anchor = { x: 2.6, z: 1.5, along: 0.4, wall: 'w_mbath_east', wallSide: 'west' } as const;
 
   it('anchors a fixture thicker than the wall by its wall-facing extreme', () => {
     // washer recipe 进深 0.60（local z[-0.30,0.30]）> 墙厚 0.12，与马桶同类；
     // 当前 config 无洗衣机点位，用合成点锁死规则本身，不依赖 config。
     const washer: PlumbingPoint = { id: 'synthetic_washer', room: 'master_bath', type: 'washer', height: 0.5, ...anchor };
-    const box = worldBox(buildInfrastructure({ electrical: [], plumbing: [washer], wallSegments }).plumbing[0]);
+    const box = worldBox(buildInfrastructure({ electrical: [], plumbing: [washer], pointWalls: wallSegments }).plumbing[0]);
     // offset = 0.12/2 + 0.005 + 0.30 = 0.365 -> origin x=2.235，盒体 x[1.935,2.535]
     assert.ok(Math.abs(box.max.x - 2.535) < 1e-6, `washer wall-facing extreme should stop at 2.535 (got ${box.max.x})`);
     assert.ok(Math.abs(box.min.x - 1.935) < 1e-6, `washer room-facing extreme should reach 1.935 (got ${box.min.x})`);
@@ -204,7 +206,7 @@ describe('placeModel anchoring rules (synthetic points)', () => {
 
   it('keeps thin fixtures on the unchanged thin-panel offset', () => {
     const socket: ElectricalPoint = { id: 'synthetic_socket', room: 'master_bath', type: 'socket', height: 1.0, ...anchor };
-    const box = worldBox(buildInfrastructure({ electrical: [socket], plumbing: [], wallSegments }).electrical[0]);
+    const box = worldBox(buildInfrastructure({ electrical: [socket], plumbing: [], pointWalls: wallSegments }).electrical[0]);
     // 薄面板约定不变：origin 偏移 0.12/2 + 0.005 + 0.01 = 0.075 -> origin x=2.525；
     // socket recipe local z[-0.014,0.016]（local +z 朝房间）-> x[2.509,2.539]。
     assert.ok(Math.abs(box.max.x - 2.539) < 1e-6, `socket wall-facing extreme should stay at 2.539 (got ${box.max.x})`);
@@ -216,13 +218,13 @@ describe('placeModel anchoring rules (synthetic points)', () => {
     // 薄面板公式，门位置由 frontProjection(0.13) 调校，不得被深 fixture 规则顶出墙面。
     const panel: ElectricalPoint = {
       id: 'synthetic_weak_panel', room: 'living_dining', type: 'weak_panel',
-      x: 10.8, z: 2.98, wall: 'w_ent_west', wallSide: 'west',
+      x: 10.8, z: 2.98, along: 0.58, wall: 'w_ent_west', wallSide: 'west',
       mount_height: 0.5, body_height: 0.4, width: 0.4, depth: 0.3,
     };
-    const segments = new Map<string, InfrastructureWallSegment[]>([
-      ['w_ent_west', [{ x1: 10.8, z1: 2.4, x2: 10.8, z2: 3.0 }]],
+    const segments = new Map<string, PointWall>([
+      ['w_ent_west', { segments: [{ x1: 10.8, z1: 2.4, x2: 10.8, z2: 3.0 }], line_datum: 'centerline' }],
     ]);
-    const box = worldBox(buildInfrastructure({ electrical: [panel], plumbing: [], wallSegments: segments }).electrical[0]);
+    const box = worldBox(buildInfrastructure({ electrical: [panel], plumbing: [], pointWalls: segments }).electrical[0]);
     // 薄面板公式：offset = 0.075 - 0.13 = -0.055，沿朝房法线（west）作用于中心线
     // -> origin x=10.855；缩放后 recipe local z[-0.15,0.195]（local +z 朝房间/西）
     // -> x[10.66,11.005]，盒体按设计跨立墙板 x[10.740,10.860]。

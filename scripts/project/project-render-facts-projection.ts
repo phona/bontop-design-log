@@ -10,27 +10,40 @@ import {
   validateProjectHvacFacts,
 } from '../../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../../shared/project-render-facts-projection.js';
-import { parseOverlay } from '../../server/overlay-merge.js';
-import type { CurrentScheme, ProjectRenderFactsProjection } from '../../shared/types.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { load as parseYaml } from 'js-yaml';
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { CurrentScheme, ProjectRenderFactsProjection, VertexLayoutYaml } from '../../shared/types.js';
 
 export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFactsProjection {
   const path = (relative: string) => `${rootDir}/${relative}`;
   const facts = {
     electrical: parseElectricalPoints(readFileSync(path('config/electrical.yaml'), 'utf8')),
     plumbing: parsePlumbingPoints(readFileSync(path('config/plumbing.yaml'), 'utf8')),
-    ceiling: parseCeilingZones(readFileSync(path('config/ceiling.yaml'), 'utf8')),
+    ceiling: parseCeilingZones(readFileSync(path('config/model/envelope/ceiling.yaml'), 'utf8')),
     hvac: parseProjectHvacFacts(readFileSync(path('config/hvac.yaml'), 'utf8')),
   };
   validateProjectHvacFacts(facts.hvac, facts);
+  // 挂墙起夜灯（issue #98 S3）的宿主墙索引：与 3D/DXF/MEP/penetration 同一构造
+  // （resolveLayout(model-geometry) → pointWallIndexFromElements）。
+  const pointWalls = pointWallIndexFromElements(
+    resolveLayout(parseYaml(readFileSync(path('config/layout/model-geometry.yaml'), 'utf-8')) as VertexLayoutYaml).walls,
+  );
   return buildProjectRenderFactsProjection(
     facts,
     parseRenderLightingOverrides(readFileSync(path('config/render/overrides.yaml'), 'utf8')),
     JSON.parse(readFileSync(path('data/current-scheme.json'), 'utf8')) as CurrentScheme,
-    parseOverlay(readFileSync(path('config/layout/overlay.yaml'), 'utf8')),
+    // overlay 固定走仓库根的唯一合并点（envelope 三文件，issue #98 S1），不随 rootDir 参数走
+    parseOverlayFiles(),
     parseCurtainPresentationState(JSON.parse(readFileSync(path('data/presentation-state.json'), 'utf8'))),
     existsSync(path('config/render/lighting.yaml'))
       ? parseLightingRenderConfig(readFileSync(path('config/render/lighting.yaml'), 'utf8'))
       : { fixtures: [] },
+    // mount 挂载灯（issue #98 S2 起夜灯）的宿主索引：house.yaml 第五份输入。
+    pointMountHostIndex(Object.values((parseYaml(readFileSync(path('config/house.yaml'), 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never),
+    // 挂墙起夜灯（issue #98 S3）的宿主墙索引：model-geometry 第六份输入。
+    pointWalls,
   );
 }
 

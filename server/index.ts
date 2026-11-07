@@ -12,7 +12,8 @@ import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { ProjectRenderFactsLoader } from './project-render-facts-loader.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
-import { parseOverlay } from './overlay-merge.js';
+import { pointMountHostIndex } from '../shared/point-placement.js';
+import { parseOverlayFiles, OVERLAY_SOURCE_FILES, SKIRTING_DERIVATION_SOURCE_FILES } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes, invalidateMepFurnitureCollisionVolumes } from './mep-lint-context.js';
 import { parseEnvironment } from '../shared/environment-schema.js';
@@ -25,6 +26,7 @@ import { resolveWriteToken, createWriteTokenGuard } from './write-token.js';
 import { sweepAcceptanceStaging } from './acceptance-draft-store.js';
 import { jsonErrorHandler } from './json-error-handler.js';
 import type { MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
+import { suppressedWallIds } from '../shared/suppression.js';
 import type { DesignRulesConfig, MaterialsYaml, CadLayoutYaml, HouseYaml, VertexLayoutYaml } from '../shared/types.js';
 
 const PORT = Number(process.env.PORT ?? 4000);
@@ -114,11 +116,14 @@ materialsLoader.load();
 budgetBaseLoader.load();
 layoutLoader.load();
 const overlayLoader = new ConfigLoader<OverlayConfig>(
-  'config/layout/overlay.yaml',
-  (raw) => parseOverlay(raw),
+  // S5：skirting 由 model-geometry 墙特征 paint_bands 派生、湿区判定读 tile-comparison，
+  // 这两个文件必须进监听，否则改漆面带/湿区表不刷新派生结果（理由见 overlay-merge.ts 的
+  // SKIRTING_DERIVATION_SOURCE_FILES 注释）。
+  [...Object.values(OVERLAY_SOURCE_FILES), ...SKIRTING_DERIVATION_SOURCE_FILES],
+  () => parseOverlayFiles(),
   () => {
     invalidateMepFurnitureCollisionVolumes();
-    console.log('[server] config/layout/overlay.yaml reloaded');
+    console.log('[server] config/model/envelope/{openings,floor-zones,finish-defaults}.yaml + skirting 派生依赖 reloaded');
   }
 );
 registry.register(overlayLoader);
@@ -173,7 +178,10 @@ const apiDeps = {
         furnitureVolumes: buildMepFurnitureCollisionVolumes(),
       } : {}),
       ...(facts ? { ceiling: facts.ceiling, referenceConstraints: facts.hvac.plans[0]?.diagram.reference_constraints } : {}),
-      suppressedWallIds: (overlay?.suppress ?? []).flatMap((item) => item.walls ?? (item.wall ? [item.wall] : [])),
+      // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：view-context 的 suppressedWallIds
+      // 改读墙条目自身的 suppressed 属性（layout 经 resolveLayout 透传），权威实现
+      // shared/suppression.ts；原 overlay.suppress 顶层清单已删。
+      suppressedWallIds: suppressedWallIds(resolvedLayout?.walls ?? []),
     };
   },
   getResolvedLayout: () => {
@@ -193,6 +201,7 @@ const apiDeps = {
       overlay,
       presentationState.get(),
       projectRenderFactsLoader.getLighting(),
+      pointMountHostIndex(Object.values(catalog.getFurnishings()).flat()),
     );
   },
   // 构件级工程状态投影：现算（conflicts 路径在服务内缓存），输入异常时抛错 → 路由 503。

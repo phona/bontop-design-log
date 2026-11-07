@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -73,7 +74,7 @@ describe('BudgetCalculator', () => {
     // DEC-2026-10-09-P16：非房间地面**默认**进算量，只有两种例外退出——① 整块落在某个
     // applyRooms 房间内（几何判定，双计路径从根上消失）；② 显式 `excluded: true`。
     // 这里独立复算同一口径（不调生产函数 loadMasonryTakeoff），两边各自算才算交叉验证。
-    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const overlay = parseOverlayFiles();
     const shoelace = (pts: Array<{ x: number; z: number }>) => {
       let acc = 0;
       for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) acc += pts[j].x * pts[i].z - pts[i].x * pts[j].z;
@@ -202,7 +203,7 @@ describe('BudgetCalculator', () => {
   // （shared/masonry-takeoff.ts 是地面算量唯一实现），缝仍是「注入 elements」。
   it('DEC-2026-10-09-P16 负例①：excluded:false 救不回落在已计费房间内的双计', () => {
     const catalog = ProjectCatalog.load('.');
-    const elements = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
+    const elements = parseOverlayFiles().elements ?? [];
     const base = loadMasonryTakeoff(catalog);
     const forced = loadMasonryTakeoff(catalog, elements.map((element: any) =>
       element.id === 'corridor_floor' ? { ...element, excluded: false } : element));
@@ -227,7 +228,7 @@ describe('BudgetCalculator', () => {
   // 这是新口径唯一允许的例外口子，且必须留档到 excludedSqm——「有意不算」和「漏算」要能区分。
   it('DEC-2026-10-09-P16 负例②：不在任何房间内的 region 标 excluded:true 即退出', () => {
     const catalog = ProjectCatalog.load('.');
-    const elements = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
+    const elements = parseOverlayFiles().elements ?? [];
     const base = loadMasonryTakeoff(catalog);
     const marked = loadMasonryTakeoff(catalog, elements.map((element: any) =>
       element.id === 'main_corridor_floor' ? { ...element, excluded: true } : element));

@@ -783,7 +783,7 @@ export function buildTileCostComparison(
       materialCostYuan: wetBaselineMaterialYuan,
     },
     currentInternalFloorRegions: {
-      source: 'config/layout/overlay.yaml internal floor_region geometry + data/current-scheme.json effective floor selection',
+      source: 'config/model/envelope/floor-zones.yaml internal floor_region geometry + data/current-scheme.json effective floor selection',
       items: currentInternalFloorRegions,
       netAreaSqm: currentInternalFloorRegionsAreaSqm,
       materialCostYuan: currentInternalFloorRegionsMaterialYuan,

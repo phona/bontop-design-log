@@ -17,7 +17,6 @@ describe('HouseScene scene elements', () => {
     expect(houseScene).not.toContain('userData.curtain');
     expect(houseScene).not.toContain('curtain?:');
     expect(sceneBuilder).toContain("case 'curtain_run'");
-    expect(sceneBuilder).toContain("case 'glass_infill'");
     expect(sceneBuilder).toContain("case 'shower_screen'");
     expect(sceneBuilder).toContain("case 'wall_run'");
     expect(sceneBuilder).toContain("element.type === 'wall'");
@@ -42,6 +41,19 @@ describe('HouseScene scene elements', () => {
     expect(source).toContain("@shared/render/SceneBuilder");
     expect(source).not.toContain('private buildCurtainShape');
     expect(source).not.toContain('private renderCurtain');
+  });
+
+  it('surfaces furniture placement diagnostics from the build report (issue #98 PR-3)', () => {
+    // 摆位声明解析失败的家具不会进场景：页面必须显形（DXF 导出与 verify:furniture 同口径失败）。
+    // 行为断言在 tests/server/gbath-vanity-layout.test.ts（SceneBuildReport.placementDiagnostics）；
+    // 这里锁页面接线：HouseScene 收报告 → getPlacementDiagnostics 暴露 → App 每次重建都报。
+    const fs = require('node:fs') as typeof import('node:fs');
+    const houseScene = fs.readFileSync('./src/render/HouseScene.ts', 'utf8');
+    const app = fs.readFileSync('./src/App.ts', 'utf8');
+    expect(houseScene).toContain('result.report.placementDiagnostics');
+    expect(houseScene).toContain('getPlacementDiagnostics(): string[]');
+    expect(app).toContain('this.houseScene.getPlacementDiagnostics()');
+    expect(app).toContain('private reportPlacementDiagnostics(): void');
   });
 
   it('rect rooms (PlaneGeometry branch) rescale UV to meters — wood_plank worldSize assumption holds for all rooms', async () => {
@@ -90,8 +102,8 @@ describe('HouseScene room audit capture', () => {
     expect(source).toContain('this.auditFurnishings.guest_bath');
     expect(source).toContain("points('shower_screen_gbath')");
     expect(source).not.toContain("points('gbath_west_glass_door')");
-    expect(source).toContain("findAuditObject('furniture:guest_bath:vanity:0')");
-    expect(source).toContain("findAuditObject('furniture:guest_bath:toilet:1')");
+    expect(source).toContain("findAuditObject('gbath.vanity')");
+    expect(source).toContain("findAuditObject('gbath.toilet')");
     expect(source).toContain('this.auditPlumbing');
     expect(source).toContain('toiletBox?.minX.toFixed(3)');
     expect(source).toContain('台盆正面←西');

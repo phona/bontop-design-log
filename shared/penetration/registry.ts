@@ -11,6 +11,8 @@ import { validateRuntimePenetration } from './rules.js';
 import { validateFurnitureClearance, profileFor, declaredDims } from './clearance.js';
 import { validateFurnitureOpenings } from './openings.js';
 import { buildRuntimeScene, collectPenetrationObjects, objectHasMesh, type SceneInputs } from './scene.js';
+import { furnitureObjectId } from '../furniture-object-id.js';
+import { furnitureHostIndex, resolveFurniturePlacement } from '../furniture-placement.js';
 import {
   severityFloor,
   samePair,
@@ -241,7 +243,11 @@ export function runPenetrationChecks(inputs: SceneInputs, scene: ReturnType<type
     // rules.ts 传 relationships：豁免执行点收敛到下面的 applyPenetrationPolicy →
     // applyWaivers（唯一一处），只有它同时绑定理句与 expires 到期复活。把 waivers
     // 还原成关系白名单再喂进来，等于给同一批豁免开第二个静默出口，到期复活会失效。
-    glassJoins: deriveRuntimeGlassJoins(inputs.structuralPaths, inputs.config.overlay_replacements ?? []),
+    // 玻璃接缝授权来自 envelope 对象声明的 join（2026-11-07 issue #98 S3 起由
+    // shared/suppression.ts 的 glassJoinSpecs 从对象声明机械派生，取代原
+    // spatial-validation.yaml 的 overlay_replacements 镜像表；生成规格仍在 runtime
+    // 逐对做几何判定，本声明只授权"确有此接缝"）。
+    glassJoins: deriveRuntimeGlassJoins(inputs.structuralPaths, inputs.replacementJoins),
     mepTypes: inputs.config.mep_coordination_types,
     collisionMargin: inputs.config.tolerance_profiles?.default?.collision_margin ?? 0.005,
     glassRequiredClearance: requiredClearance(inputs.config.tolerance_profiles?.curtain_wall ?? {}),
@@ -269,14 +275,20 @@ function placedClearanceIssues(inputs: SceneInputs, collected: ReturnType<typeof
   const config = inputs.config;
   const wallMap = new Map(inputs.layout.walls.map((wall) => [wall.id, wall]));
   const furnitureById = new Map(collected.furnitureEntries.map((entry) => [entry.entity, entry]));
+  // 「已放置」与 SceneBuilder.addFurniture 共用同一解算（issue #98 PR-3）：mount 挂载件没有
+  // x/z/wall/along，手写谓词会把它漏判成 count-only，净距校验随之漏掉这件。
+  const wallSegments = new Map(inputs.layout.walls
+    .filter((wall) => wall.id !== undefined)
+    .map((wall) => [wall.id as string, wall.segments?.length ? wall.segments : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]]));
+  const hosts = furnitureHostIndex(Object.values(inputs.house.furnishings ?? {}).flat());
   for (const [roomId, items] of Object.entries(inputs.house.furnishings ?? {})) {
     let runtimeIndex = 0;
     for (const raw of items) {
       const item = raw as unknown as Record<string, unknown>;
-      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
-      if (!isPlaced) continue;
+      const { placement } = resolveFurniturePlacement(raw, wallSegments, hosts);
+      if (!placement) continue;
       const type = String(item.type ?? '');
-      const runtimeId = `furniture:${roomId}:${type}:${runtimeIndex}`;
+      const runtimeId = furnitureObjectId(roomId, raw, runtimeIndex);
       runtimeIndex++;
       const dims = declaredDims(item, type);
       if (!dims || dims.width <= 0 || dims.depth <= 0) continue;

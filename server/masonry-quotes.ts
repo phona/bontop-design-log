@@ -6,7 +6,9 @@
  * 新增域请复用 shared/quote-cards.ts，不要另写一套。
  *
  * 定位不变：**只管单价，不管量**。工程量一律由 `shared/masonry-takeoff.ts` 从
- * config/layout/overlay.yaml 的 wall_region / sill_region / floor_region 声明实算，
+ * config/layout/model-geometry.yaml 墙条目 finish.tile_bands（原 wall_region）与
+ * config/model/envelope/openings.yaml 的 bay_sill 条目 finish.tile（原 sill_region）、
+ * floor-zones.yaml 的 floor_region 声明实算，
  * 报价方只报「单价 + 含项范围」，不允许自带面积。
  *
  * 计价行（一个 surface 一个 key）：

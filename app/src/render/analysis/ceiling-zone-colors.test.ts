@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { ceilingZoneColor, TRADE_COLOR, UNCLASSIFIED_COLOR } from './ceiling-zone-colors.js';
 import type { CeilingTradeClass } from '@shared/ceiling-takeoff';
 
-/** config/ceiling.yaml 的 19 个实心分区 id，按工艺分类（DEC-2026-10-08-C01）。 */
+/** config/model/envelope/ceiling.yaml 的 19 个实心分区 id，按工艺分类（DEC-2026-10-08-C01）。 */
 const GYPSUM = [
   'ceiling_living', 'ceiling_dining_west_band', 'ceiling_dining_north_band', 'ceiling_main_corridor',
   'ceiling_corridor', 'ceiling_entry_foyer', 'ceiling_master_ac', 'ceiling_study_ac',

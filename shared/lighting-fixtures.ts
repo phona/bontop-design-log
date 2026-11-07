@@ -6,6 +6,7 @@ import type {
   ResolvedRoom,
 } from './types.js';
 import { ceilingFootprint, ceilingSurfaceY, isSolidCeilingZone, pointInFootprint } from './mep-hvac-lint.js';
+import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from './point-placement.js';
 
 /**
  * 灯具渲染派生：**唯一实现**。
@@ -18,9 +19,14 @@ import { ceilingFootprint, ceilingSurfaceY, isSolidCeilingZone, pointInFootprint
  *
  * 派生规则（改这里等于同时改渲染与校验，必须连带更新测试）：
  * - 平面位置 = electrical.x/z + overrides.offsetX/offsetZ（缺省 0，`renderCoordinate` 取 6 位小数）；
+ *   mount 定位来源（issue #98 S2 真挂载起夜灯）例外：平面位置 = 解析器宿主脸解果
+ *   （宿主脸 + along + face_offset）+ overrides 偏移——宿主柜移动时灯自动跟随，不再手写 x/z；
+ *   issue #98 S3 起挂墙灯具同理走解析器墙线解果（调用方传 pointWalls），不再读声明 x/z；
  * - 渲染锚点 y = electrical.height（施工安装完成面，唯一事实源）+ overrides.anchorY_offset；
- * - 缺 override、缺 electrical.height、非 night_light 挂 furniture-face mount_anchor → throw（fail-closed）；
+ * - 缺 override、缺 electrical.height、mount 解析失败（宿主断引用/未放置/越脸）→ throw（fail-closed）；
  * - wall/wallSide/mountAnchor 原样透传，漏传会让靠墙/靠家具的灯在建场期抛错。
+ * - 2026-11-07 issue #98 S3：不再透传点位侧 circuit（字段已退役，渲染链无消费者）；
+ *   回路归属见 shared/point-circuits.ts 单一派生。
  */
 
 /** 参与渲染/校验的电气灯具类型。与 ElectricalPointSchema 的灯具枚举保持一致。 */
@@ -55,10 +61,16 @@ function deriveAnchorY(height: number, override: RenderLightingOverride): number
 /**
  * 由权威配置派生全部灯具的渲染实体。行为与权威投影内的实现逐字节等价
  * （同一份代码被投影调用），fail-closed：配置缺一项就抛，不猜位置、不兜底高度。
+ * mount / 挂墙定位来源要求调用方提供家具宿主索引（pointMountHostIndex）与宿主墙索引
+ * （pointWallIndexFromElements），缺失即抛——不回落声明 x/z（那是被 S3 删掉的旧机制，
+ * 回落就是再造一个事实源）。
  */
 export function buildRenderLightingFixtures(
   electrical: ElectricalPoint[],
   overrides: RenderLightingOverride[],
+  mountHosts?: ReadonlyMap<string, PointMountHost>,
+  /** 沿墙灯具的宿主墙索引（issue #98 S3）：挂墙起夜灯不再声明绝对 x/z，平面位置走单一解算。 */
+  pointWalls?: ReadonlyMap<string, PointWall>,
 ): RenderLightingFixture[] {
   const fixtures = electrical.filter((point) => LIGHT_TYPES.has(point.type));
   const fixtureIds = new Set(fixtures.map((fixture) => fixture.id));
@@ -83,24 +95,51 @@ export function buildRenderLightingFixtures(
     if (fixture.height === undefined) {
       throw new Error(`Lighting fixture ${fixture.id} has no electrical.height: render anchor must derive from the single source of truth`);
     }
+    // 平面位置（issue #98 S1/S2/S3）：mount 走解析器宿主脸解果（宿主移动灯自动跟随）；
+    // 挂墙灯具走解析器墙线解果（与 3D 基础设施/DXF/MEP 同一解算——这 4 盏挂墙起夜灯的
+    // face_offset 都是 -0.06，解果恰在墙中心线上，NightLightGeometry 再叠加半墙厚+灯体
+    // 半厚+缝，与 S3 前「声明 x/z + 渲染偏移」逐位相同）；其余灯具（C 组顶面灯位/绝对
+    // 基准）仍是「声明 x/z + overrides 偏移」口径，缺 x/z 即 fail-closed，不猜坐标。
+    let planeX: number;
+    let planeZ: number;
+    if (fixture.mount !== undefined) {
+      const { placement, diagnostic } = resolvePointPlacementInWalls(fixture, undefined, mountHosts);
+      if (!placement || placement.kind !== 'mount') {
+        throw new Error(`Lighting fixture ${fixture.id}: mount 定位解析失败（${diagnostic ?? '解算器未返回结果'}）`);
+      }
+      planeX = placement.x;
+      planeZ = placement.z;
+    } else if (fixture.wall !== undefined) {
+      const { placement, diagnostic } = resolvePointPlacementInWalls(fixture, pointWalls, mountHosts);
+      if (!placement || placement.kind !== 'wall') {
+        throw new Error(`Lighting fixture ${fixture.id}: 挂墙灯具定位解析失败（${diagnostic ?? '解算器未返回结果'}；调用方须提供 pointWalls）`);
+      }
+      planeX = placement.x;
+      planeZ = placement.z;
+    } else {
+      if (fixture.x === undefined || fixture.z === undefined) {
+        throw new Error(`Lighting fixture ${fixture.id} has no electrical x/z: 绝对灯位必须声明坐标`);
+      }
+      planeX = fixture.x;
+      planeZ = fixture.z;
+    }
     if (fixture.mountAnchor && fixture.type !== 'night_light') {
-      throw new Error(`Furniture-face mount_anchor is only supported for night_light fixtures: ${fixture.id}`);
+      throw new Error(`Furniture-face mount is only supported for night_light fixtures: ${fixture.id}`);
     }
     return {
       id: fixture.id,
       room: fixture.room,
       type: fixture.type,
       position: {
-        x: renderCoordinate(fixture.x + (override.offsetX ?? 0)),
+        x: renderCoordinate(planeX + (override.offsetX ?? 0)),
         // 渲染锚点在**此处**派生：electrical.height（施工安装完成面，唯一事实源）
         // + overrides.anchorY_offset（渲染侧相对偏移）。overrides.yaml 不再重复
         // 书写高度绝对值，从结构上消灭双写。
         y: renderCoordinate(deriveAnchorY(fixture.height, override)),
-        z: renderCoordinate(fixture.z + (override.offsetZ ?? 0)),
+        z: renderCoordinate(planeZ + (override.offsetZ ?? 0)),
       },
       temperatureK: fixture.temp ?? 3000,
       enabled: true,
-      ...(fixture.circuit !== undefined ? { circuit: fixture.circuit } : {}),
       ...(fixture.heads !== undefined ? { heads: fixture.heads } : {}),
       ...(fixture.recessed !== undefined ? { recessed: fixture.recessed } : {}),
       ...(fixture.wall !== undefined ? { wallId: fixture.wall } : {}),

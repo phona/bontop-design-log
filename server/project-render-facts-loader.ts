@@ -10,6 +10,9 @@ import {
   validateProjectHvacFacts,
 } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
+import { pointMountHostIndex, pointWallIndexFromElements, type PointMountHost, type PointWall } from '../shared/point-placement.js';
+import { resolveLayout } from './layout-resolver.js';
+import { load as parseYaml } from 'js-yaml';
 import type { CurrentScheme, ProjectRenderFacts, RenderLightingOverride } from '../shared/types.js';
 import { watchConfigFiles, type ConfigStatus, type StatusLoader } from './config-loader.js';
 
@@ -25,7 +28,7 @@ export interface ProjectRenderFactsPaths {
 const DEFAULT_PATHS: ProjectRenderFactsPaths = {
   electrical: 'config/electrical.yaml',
   plumbing: 'config/plumbing.yaml',
-  ceiling: 'config/ceiling.yaml',
+  ceiling: 'config/model/envelope/ceiling.yaml',
   hvac: 'config/hvac.yaml',
   overrides: 'config/render/overrides.yaml',
   lighting: 'config/render/lighting.yaml',
@@ -35,6 +38,8 @@ export class ProjectRenderFactsLoader implements StatusLoader {
   private facts: ProjectRenderFacts | undefined;
   private overrides: RenderLightingOverride[] | undefined;
   private lighting: import('../shared/types.js').LightingRenderConfig | undefined;
+  /** mount 挂载点位的家具宿主索引（issue #98 S2）：与 house.yaml 同步加载。 */
+  private mountHosts: ReadonlyMap<string, PointMountHost> = new Map();
   private readonly paths: ProjectRenderFactsPaths;
   private statuses: Partial<Record<keyof ProjectRenderFactsPaths, ConfigStatus>>;
   private watchers: FSWatcher[] = [];
@@ -55,6 +60,24 @@ export class ProjectRenderFactsLoader implements StatusLoader {
     const results: Partial<ProjectRenderFacts> = {};
     let loadedOverrides: RenderLightingOverride[] | undefined;
     let loadedLighting: import('../shared/types.js').LightingRenderConfig | undefined;
+    // mount 挂载灯（issue #98 S2 起夜灯）的位置由宿主家具解出：house.yaml 是第五份输入，
+    // 读不到时 mountHosts 置空、由 buildRenderLightingFixtures 的 fail-closed 抛错显形。
+    try {
+      const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
+      this.mountHosts = pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never);
+    } catch (err) {
+      this.mountHosts = new Map();
+      console.error('[project-render-facts-loader] Failed to load config/house.yaml for mount hosts:', err);
+    }
+    // 挂墙起夜灯（issue #98 S3）的宿主墙索引：model-geometry 第六份输入，与 3D/DXF/MEP 同一构造。
+    let pointWalls: ReadonlyMap<string, PointWall> | undefined;
+    try {
+      const geometry = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as Parameters<typeof resolveLayout>[0];
+      pointWalls = pointWallIndexFromElements(resolveLayout(geometry).walls);
+    } catch (err) {
+      pointWalls = undefined;
+      console.error('[project-render-facts-loader] Failed to load config/layout/model-geometry.yaml for point walls:', err);
+    }
     let valid = true;
     const readers = {
       electrical: parseElectricalPoints,
@@ -93,6 +116,8 @@ export class ProjectRenderFactsLoader implements StatusLoader {
           { elements: [] },
           { default: 'open', roomOverrides: {}, updatedAt: '' },
           loadedLighting,
+          this.mountHosts,
+          pointWalls,
         );
         this.facts = loadedFacts;
         this.overrides = loadedOverrides;

@@ -263,3 +263,25 @@ decisions:
       - 维持现行点位口径
     status: open
     tracking_note: 全盒零线已由 DEC-2026-10-06-R2 定并落成 check_elec_zero_line_all_switches，报告 D18 该子项看起来已被仓内回答——与仓内 DEC 的关系需业主确认（并列旗标，不静默合并）；其余为对照表合并与高度表，无直接验收项。
+
+  # 2026-11-06（issue #98 PR-8，按对象算账）：迁移把「对象 → 成本项」targets 通道建起来时
+  # 撞到这条悬而未决的预算边界——主卫条带柜组（master_bedroom 条带，7 个对象）的费用此前
+  # 只活在 COST-150-01 / P2-100 的 description 散文里，无 owner 无触发条件（决策铁律 2 的
+  # 失效形态）。按业主裁定「按开放项显形，不裁定」登记于此。
+  # 2026-11-07（issue #98 PR-11，条带柜组业务关联）修正 PR-8 的落实口径：PR-8 把「不裁定」
+  # 落实为「拍板前 COST-150-01 不得登记对象级 targets」；本条改按裁定④已定的对象关联机器化——
+  # DEC-2026-10-07-R02 裁定④明言条带柜组「整组划归二期，对应 P2-100 / COST-150-01」，该
+  # 对象→成本项关联不是本决策要拍的内容（本决策只问金额边界：含不含 3000-5000、要不要
+  # P2-101），故 targets 登记与「不裁定」并行成立；真正无 DEC 映射的归属未定对象仍不得挂
+  # targets。显形口相应改变：条带 7 件自 PR-11 起有 MODEL-P2-100 包链接与 COST-150-01
+  # 成本项，不再进「成本归属未定」汇总表；本决策改由各对象单对象视图（cost:by-object
+  # <id>）的「关联决策门禁」节 + 本登记表 + COST-150-01/P2-100 description 显形。
+  - id: D19
+    topic: COST-150-01 与主卫条带柜组的预算边界
+    scope: tracked
+    question: 主卫条带柜组（mb.vanity_base_cabinet / mb.vanity_lower_board / mb.vanity_main_board / mb.vanity_pvc_box / mb.vanity_pvc_wardrobe_entry / mb.vanity_pvc_service_chase / mb.condensate_pipe，均声明在 house.yaml master_bedroom）的费用是否含在二期 P2-100 的 3000-5000 区间内；若不含，是否按 P2-100 note 新增 P2-101 单列
+    options:
+      - 含在 P2-100 的 3000-5000 内（P2-100 现名扩为通顶衣柜+条带柜组）
+      - 不含，P2-100 现名仅对应主卧通顶定制衣柜（现行对象的对象引用见 P2-100 / COST-150-01 description），条带柜组新增 P2-101 单列
+    status: open
+    tracking_note: "owner=业主；触发=二期启动（P2-100 深化）前。2026-11-06 issue #98 PR-8 迁移登记：边界事实见 schedule/phase-1/control.yaml COST-150-01 与 schedule/phase-2/control.yaml P2-100 的 description（DEC-2026-10-07-R02 边界补注）；按项目单价反算条带柜组约 1500-2300，为推断非报价。2026-11-07（issue #98 PR-11）更新：COST-150-01 targets 已按裁定④登记条带柜组 7 件、MODEL-P2-100 改按对象 id 选该组与衣柜共 9 件——对象→成本项关联机器化不构成金额裁定；本决策仍开放，金额边界（含 3000-5000 或新增 P2-101）拍板前不写任何金额结论、planned_cny 维持 0，各对象在 cost:by-object 单对象视图的「关联决策门禁」节显形本决策。PR-8「拍板前 COST-150-01 的对象级 targets 保持未登记」的口径由 PR-11 取代（裁定④已定的对象关联可机器化；无 DEC 映射的归属未定对象仍不得挂 targets）。"

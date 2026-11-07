@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -6,7 +7,7 @@ import { buildFixture, getNorthWallWardrobe950DoorAabb, getRecipeTypes, setNorth
 import { buildScene } from '../../../shared/render/SceneBuilder.js';
 import { buildCliHouseScene } from '../../../scripts/render/glb/cli-glb-builder.js';
 import { FURNITURE_DIMS, getPartitionWardrobeDoorAabbs } from '../../../shared/types.js';
-import type { LightingRenderConfig, RenderLightingFixture, SceneElement } from '../../../shared/types.js';
+import type { HvacDiagram, LightingRenderConfig, RenderLightingFixture, SceneElement } from '../../../shared/types.js';
 import { readFileSync as readTextFile } from 'node:fs';
 import { load } from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
@@ -203,9 +204,14 @@ test('FixtureFactory builds the south-band low dresser with six drawers below th
 
 test('FixtureFactory builds the master-bedroom vanity types as independent scene objects', () => {
   const types = ['mb_vanity_base_cabinet', 'mb_vanity_lower_board', 'mb_vanity_main_board'];
-  const pvcTypes = ['mb_vanity_pvc_box', 'mb_vanity_pvc_wardrobe_entry', 'mb_vanity_pvc_service_chase'];
+  // 2026-11-07 issue #98 PR-10：冷凝链三件不再有静态配方（零件按锚点派生的链几何布件），
+  // buildFixture 对它们返回 null——误走通用路径会建出空/错位件，这里钉死这个口径。
+  const chainTypes = ['mb_vanity_pvc_wardrobe_entry', 'mb_vanity_pvc_service_chase', 'condensate_pipe_ac_outlet'];
   assert.deepEqual(types.every((type) => getRecipeTypes().includes(type)), true);
   assert.equal(getRecipeTypes().includes('mb_vanity_continuous_closure_cabinet'), false);
+  for (const type of chainTypes) {
+    assert.equal(buildFixture(type), null, `${type} must not build from the static recipe path`);
+  }
   for (const type of types) {
     const fixture = buildFixture(type);
     assert.ok(fixture, type);
@@ -213,18 +219,24 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     assert.ok(fixture.children.every((child) => child.userData.part), type);
   }
 
-  const along = 3.61;
+  // along 一律是「自墙段起点顶点 v_bath_ne(2.60,1.10) 沿墙向北的距离」（2026-11-07 issue #98
+  // 删除 w_mbath_east「along = 绝对 z」历史特例）；锚点世界 z = 1.10 + along = 3.61。
+  // 2026-11-07（issue #98 PR-11）：两块悬浮板的尺寸声明已随条目迁进 house.yaml 行内
+  // width/depth（FURNITURE_DIMS 目录条目删，同一数字只留一处），本夹具按 house.yaml
+  // 实况补行内声明——底柜行内仍不写（其尺寸只在目录，PR-9 口径）。
+  const along = 2.51;
+  const anchorZ = 3.61;
   const result = buildScene({
     rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
     walls: [{ id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 }],
     elements: [],
-    furnishings: { master_bedroom: types.map((type) => ({ type, wall: 'w_mbath_east', wall_side: 'west' as const, along, rotation: 270 })) },
+    furnishings: { master_bedroom: types.map((type) => ({ type, ...(type === 'mb_vanity_base_cabinet' ? {} : { width: 1.38, depth: 0.565 }), wall: 'w_mbath_east', wall_side: 'west' as const, along, rotation: 270 })) },
   });
   const groups = result.index.furnitureMeshes.filter((group) => types.includes(String(group.userData.objectId).split(':')[2]));
   assert.equal(groups.length, types.length);
   assert.deepEqual(groups.map((group) => group.userData.objectId), types.map((type, index) => `furniture:master_bedroom:${type}:${index}`));
   assert.equal(new Set(groups.map((group) => group.userData.objectId)).size, types.length);
-  assert.deepEqual(groups.map((group) => group.position.z), types.map(() => along));
+  assert.deepEqual(groups.map((group) => group.position.z), types.map(() => anchorZ));
   assert.deepEqual(groups.map((group) => group.position.x).map((x) => Number(x.toFixed(4))), [2.2575, 2.2575, 2.2575]);
   assert.deepEqual(groups.map((group) => ({ wallId: group.userData.wallId, wallSide: group.userData.wallSide, anchorAlong: group.userData.anchorAlong })), types.map(() => ({ wallId: 'w_mbath_east', wallSide: 'west', anchorAlong: along })));
 
@@ -241,8 +253,8 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     assert.ok(Math.abs(boxes[index].max.x - 2.54) < 1e-6, `${types[index]} must terminate at the w_mbath_east west finish`);
     assert.ok(Math.abs(boxes[index].min.x - 1.975) < 1e-6, `${types[index]} must start at x=1.975`);
     assert.ok(Math.abs((boxes[index].max.x - boxes[index].min.x) - expectedDepths[index]) < 1e-6);
-    assert.ok(Math.abs(boxes[index].max.z - (along + expectedWidths[index] / 2)) < 1e-6);
-    assert.ok(Math.abs(boxes[index].min.z - (along - expectedWidths[index] / 2)) < 1e-6);
+    assert.ok(Math.abs(boxes[index].max.z - (anchorZ + expectedWidths[index] / 2)) < 1e-6);
+    assert.ok(Math.abs(boxes[index].min.z - (anchorZ - expectedWidths[index] / 2)) < 1e-6);
   }
   assert.ok(boxes[0].max.y < boxes[1].min.y);
   assert.ok(boxes[1].max.y < boxes[2].min.y);
@@ -258,31 +270,54 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     assert.ok(partBox.max.z <= 4.30 + 1e-6, `${part.userData.part} must remain aligned with the wardrobe end: ${partBox.max.z}`);
   }
 
+  // 2026-11-07 issue #98 PR-10：链条三件改锚点派生（house.yaml anchor 声明），场景侧要把
+  // hvac 锚点/候选点与 MEP 穿墙点一并喂给 buildScene；这里用合成 diagram + 合成穿墙点。
+  const hvacDiagram = {
+    anchors: [{ id: 'indoor_master', status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: 'ac_master' } }],
+    terminals: [{
+      id: 'condensate_master_candidate', kind: 'condensate_drain_candidate', status: 'pending', confirmed: false,
+      render_interior: false, render_coordination: true, system: 'condensate', position: { x: 2.0, y: 0.1, z: 2.5 },
+    }],
+    routes: [],
+    reference_constraints: [],
+  } as unknown as HvacDiagram;
   const routeResult = buildScene({
     rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
-    walls: [{ id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 }],
+    walls: [
+      { id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 },
+      { id: 'w_mb_east', x1: 4.2, z1: 5.55, x2: 4.2, z2: 9.8, height: 2.8 },
+      { id: 'w_mbath_south', x1: 0.4, z1: 2.86, x2: 2.6, z2: 2.86, height: 2.8 },
+    ],
     elements: [],
     furnishings: {
       master_bedroom: [
-        { type: 'condensate_pipe_ac_outlet', x: 3.70, z: 5.10, rotation: 0 },
-        { type: 'mb_vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west', along: 3.70, rotation: 270 },
-        { type: 'mb_vanity_pvc_wardrobe_entry', x: 4.10, z: 4.62, rotation: 0 },
-        { type: 'mb_vanity_pvc_service_chase', x: 2.925, z: 4.62, rotation: 0 },
+        { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 },
+        { type: 'condensate_pipe_ac_outlet', id: 'mb.condensate_pipe', anchor: { source: 'hvac' as const, id: 'indoor_master' }, rotation: 0 },
+        // along 2.60 = 沿墙距离（自 v_bath_ne z=1.10 起算）→ 世界 z=3.70（管行 z[3.10,4.30] 中点）。
+        { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west', along: 2.60, rotation: 270 },
+        { type: 'mb_vanity_pvc_wardrobe_entry', id: 'mb.vanity_pvc_wardrobe_entry', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
+        { type: 'mb_vanity_pvc_service_chase', id: 'mb.vanity_pvc_service_chase', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
       ],
+    },
+    options: {
+      hvac: { diagram: hvacDiagram, sources: { ceiling: [{ id: 'ac_master', x: 3.70, z: 5.10, height: 2.85 }] as never } },
+      condensatePenetration: { x: 2.30, z: 2.86 },
     },
   });
   routeResult.exportRoot.updateMatrixWorld(true);
   const routeGroups = routeResult.index.furnitureMeshes;
-  assert.equal(routeGroups.length, 4);
+  assert.deepEqual(routeResult.report.placementDiagnostics, []);
+  assert.equal(routeGroups.length, 5);
   const routeAabbs = routeGroups.map((group) => new THREE.Box3().setFromObject(group));
-  const wallRun = routeAabbs[1];
+  // 组序：衣柜、outlet、pvc_box、wardrobe_entry、service_chase。
+  const wallRun = routeAabbs[2];
   let wallPipe: THREE.Object3D | undefined;
-  routeGroups[1].traverse((object) => { if (object.userData.part === 'condensate-pipe-wall-run') wallPipe = object; });
+  routeGroups[2].traverse((object) => { if (object.userData.part === 'condensate-pipe-wall-run') wallPipe = object; });
   assert.ok(wallPipe, 'wall route pipe must be present under the visible trim fixture');
   wallPipe!.updateMatrixWorld(true);
   const wallPipeAabb = new THREE.Box3().setFromObject(wallPipe!);
-  const entry = routeAabbs[2];
-  const service = routeAabbs[3];
+  const entry = routeAabbs[3];
+  const service = routeAabbs[4];
   assert.ok(wallPipeAabb.min.x > 2.48 && wallPipeAabb.max.x < 2.52, `wall route pipe must stay clear of w_mbath_east west finish: ${wallPipeAabb.min.x}..${wallPipeAabb.max.x}`);
   assert.ok(wallPipeAabb.min.z >= 3.10 - 0.02 && wallPipeAabb.max.z <= 4.30 + 0.02, 'wall route pipe must occupy the resolved w_mbath_east west-side band');
   assert.ok(wallRun.min.x >= 2.46 - 0.01 && wallRun.max.x <= 2.54 + 0.01, 'visible wall trim must stay within the west-finish band');
@@ -296,9 +331,9 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     root.traverse((object) => { if (!found && object.userData.part === part) found = object; });
     return found;
   };
-  const wallTrim = findPart(routeGroups[1], 'condensate-wall-trim');
-  const shortFoldTrim = findPart(routeGroups[3], 'condensate-wall-trim-short-fold');
-  const southWallTrim = findPart(routeGroups[3], 'condensate-wall-trim-to-south-wall');
+  const wallTrim = findPart(routeGroups[2], 'condensate-wall-trim');
+  const shortFoldTrim = findPart(routeGroups[4], 'condensate-wall-trim-short-fold');
+  const southWallTrim = findPart(routeGroups[4], 'condensate-wall-trim-to-south-wall');
   assert.ok(wallTrim && shortFoldTrim && southWallTrim, 'white wall trim must include the continuous south-wall closure');
   const wallTrimBox = new THREE.Box3().setFromObject(wallTrim!);
   const shortFoldTrimBox = new THREE.Box3().setFromObject(shortFoldTrim!);
@@ -313,7 +348,7 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
   assert.ok(boxGap(wallTrimBox, shortFoldTrimBox) < 1e-6, 'main wall trim and short-fold trim must meet');
   assert.ok(boxGap(shortFoldTrimBox, southWallTrimBox) < 1e-6, 'short-fold trim and south-wall trim must meet');
   assert.ok([wallTrim, shortFoldTrim, southWallTrim].every((object) => object!.userData.inspectionLayer === 'pipe-chase' && object!.userData.inspectionOpacity === 0.18), 'all closure trim must follow the declared inspection layer');
-  assert.ok(routeGroups[1].userData.wallId === 'w_mbath_east' && routeGroups[1].userData.wallSide === 'west');
+  assert.ok(routeGroups[2].userData.wallId === 'w_mbath_east' && routeGroups[2].userData.wallSide === 'west');
   assert.ok(routeAabbs.every((box) => box.max.y <= 2.80 + 1e-6));
   const routeParts: THREE.Object3D[] = [];
   routeResult.exportRoot.traverse((object) => { if (String(object.userData.part ?? '').startsWith('condensate-pipe-')) routeParts.push(object); });
@@ -477,14 +512,15 @@ test('FixtureFactory models the sink as a raised rim, basin body, and recessed i
 });
 
 test('shared SceneBuilder exports readable master-bedroom sockets as formal wall-projected objects', () => {
+  // along 自墙段起点 (4.2,5.0) 沿墙累计（issue #98 S1 唯一定位来源；x/z 是断言字段）
   const electrical = [
-    { id: 'sock_master_bed_l', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, type: 'socket' as const, x: 4.2, z: 6.2, height: 0.7 },
-    { id: 'sock_master_bed_r_head', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, type: 'socket' as const, x: 4.2, z: 7.5, height: 0.7 },
-    { id: 'sock_master_bed_r', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, type: 'socket' as const, x: 4.2, z: 9.15, height: 0.7 },
+    { id: 'sock_master_bed_l', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, along: 1.2, type: 'socket' as const, x: 4.2, z: 6.2, height: 0.7 },
+    { id: 'sock_master_bed_r_head', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, along: 2.5, type: 'socket' as const, x: 4.2, z: 7.5, height: 0.7 },
+    { id: 'sock_master_bed_r', room: 'master_bedroom', wall: 'w_mb_east', wallSide: 'west' as const, along: 4.15, type: 'socket' as const, x: 4.2, z: 9.15, height: 0.7 },
   ];
   const result = buildScene({
     rooms: [],
-    walls: [{ id: 'w_mb_east', x1: 4.2, z1: 5.0, x2: 4.2, z2: 10.0, height: 2.8 }],
+    walls: [{ id: 'w_mb_east', x1: 4.2, z1: 5.0, x2: 4.2, z2: 10.0, height: 2.8, line_datum: 'centerline' }],
     elements: [],
     electrical,
   });
@@ -695,7 +731,6 @@ test('shared SceneBuilder builds rooms, split walls, overlays, ceiling zones, an
     { type: 'wall', id: 'wall:test', x1: 0, z1: 0, x2: 4, z2: 0, openings: [{ id: 'door', type: 'door', x: 2, z: 0, width: 1, height: 2 }] },
     { type: 'floor_region', id: 'floor:overlay', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }, { x: 1, z: 1 }] },
     { type: 'wall_run', id: 'run', points: [{ x: 0, z: 1 }, { x: 2, z: 1 }], height: 2.4 },
-    { type: 'glass_infill', id: 'bad-glass', wall: 'missing', width: 1, height: 2, sill: 0.9 },
   ];
   const result = buildScene({
     rooms: [{ id: 'room', name: 'Room', x: 2, z: 2, width: 4, depth: 4, height: 2.8, type: 'public', boundary_count: 4 }],
@@ -716,7 +751,6 @@ test('shared SceneBuilder builds rooms, split walls, overlays, ceiling zones, an
   assert.equal(result.report.ceilingZones, 1);
   assert.equal(result.report.furniture, 1);
   assert.deepEqual(result.report.skippedFurniture, ['room:not-a-fixture']);
-  assert.ok(result.report.unsupported.some((entry) => entry.includes('bad-glass')));
   assert.equal(result.index.curtains.size, 0);
   assert.equal(result.index.curtainRuns.size, 0);
   assert.equal(result.index.lintels.get('wall:test')?.length, 1);
@@ -1026,7 +1060,7 @@ test('R11 SceneBuilder vanity base cabinet and every child part stay inside the 
 });
 
 test('R7 wardrobe four-state real-mesh collision matrix clears declared room obstacles and HVAC geometry', () => {
-  const result = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
+  const result = buildCliHouseScene(undefined, undefined, undefined, 'data/project-render-facts.json');
   const wardrobe = furnitureByType(result, 'master_north_wall_wardrobe_950');
   const obstacles = new Map<string, THREE.Object3D>();
   const door = result.exportRoot.getObjectByName('d_mb');
@@ -1086,22 +1120,8 @@ test('R7 wardrobe four-state real-mesh collision matrix clears declared room obs
   }
 });
 
-test('shared SceneBuilder renders hinged glass door at the declared west hinge', () => {
-  const result = buildScene({
-    rooms: [], walls: [],
-    elements: [{ type: 'hinged_glass_door', id: 'west-door', points: [{ x: 5.6, z: 2.8 }, { x: 6.3, z: 2.8 }], height: 1.95, open: true, swing: 'north', hinge: 'start' }],
-  });
-  const door = result.exportRoot.getObjectByName('hinged_glass_door:west-door');
-  assert.ok(door);
-  assert.equal(door?.userData.type, 'hinged_glass_door');
-  const pane = result.exportRoot.getObjectByName('hinged_glass_door:west-door:pane') as THREE.Mesh;
-  assert.ok(pane);
-  result.exportRoot.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(pane);
-  assert.ok(box.min.x > 5.55 && box.max.x < 5.95, `open leaf must stay on the west hinge side: ${box.min.x}..${box.max.x}`);
-  assert.ok(box.max.z < 2.85, `north swing must open toward -z: ${box.max.z}`);
-  assert.ok(result.index.glassMeshes.some((mesh) => mesh.userData.objectId === 'west-door'));
-});
+// hinged glass door 渲染用例已随 issue #98 第三阶段 S1 删除（overlay 0 元素死类型，
+// SceneBuilder 的构建分支同步退场）。
 
 test('shared SceneBuilder splits curtain_run parts under a metadata-only parent', () => {
   const result = buildScene({
@@ -1291,7 +1311,7 @@ test('floor regions are coplanar with room floors and railings use shared transp
 test('real overlay/model geometry keeps VRV arc and west platform rounded and view-only', () => {
   const model = load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
   const layout = resolveLayout(model);
-  const overlay = parseOverlay(readTextFile('config/layout/overlay.yaml', 'utf8'));
+  const overlay = parseOverlayFiles();
   const elements = mergeSceneElements(layout.walls, overlay);
   const railing = elements.find((element) => element.id === 'vrv_nw_railing');
   assert.equal(railing?.type, 'railing_run');

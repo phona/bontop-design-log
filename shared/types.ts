@@ -870,6 +870,12 @@ export interface WallSegment {
   openings?: ResolvedOpening[];
   /** 墙段两侧的房间 id（model-geometry 拓扑：boundary 同时含 from/to 顶点的房间），供渲染端按房间挂材质 */
   rooms?: string[];
+  /** 面层配方（WallDef.finish 透传，2026-11-07 issue #98 S4 下沉）：贴砖带 + 涂装带。 */
+  finish?: WallFinish;
+  /** 墙线基准语义（WallDef.line_datum 透传，口径见其注释）。 */
+  line_datum?: 'centerline';
+  /** suppress 改判透传（WallDef.suppressed，2026-11-07 issue #98 S3）：消费方经 shared/suppression.ts。 */
+  suppressed?: WallSuppression;
 }
 
 export interface OverlayPoint {
@@ -905,6 +911,89 @@ export interface BaySillWallReference {
   segments: BaySillSegment[];
 }
 
+/**
+ * 墙脸贴砖带（2026-11-07 issue #98 第三阶段 S4：wall_region 下沉为墙对象特征）。
+ *
+ * 判据（issue #98 架构决议）：贴砖带没有独立身份/状态/生命周期——它的「墙 + 房间侧 +
+ * along」就是定位，采购与状态都挂在墙与房间上。故不再是 overlay 平级元素，而是
+ * `WallDef.finish.tile_bands[]` 的一项。
+ *
+ * 口径与原 wall_region 声明逐字一致（未改语义）：
+ * - `along` 沿墙折线距离，自该墙 from 端累计；
+ * - `height` 是带【顶标高】（不是带高）；`bottom` 缺省 0；
+ * - `room` 声明该面归属房间（共墙两侧各贴各的脸，预算/审计按 (wall, room) 去重）；
+ * - 渲染仍走墙中心线（检视态 depthTest=false 真透视），不加侧向偏移。
+ */
+export interface WallTileBand {
+  id: string;
+  room: string;
+  along: [number, number];
+  bottom?: number;
+  height: number;
+  zone?: 'visible' | 'covered';
+  color?: string;
+  reason?: string;
+}
+
+/** 墙脸涂漆带（S4：paint_region 下沉）。口径同 WallTileBand；height 缺省取墙高。 */
+export interface WallPaintBand {
+  id: string;
+  room: string;
+  along: [number, number];
+  bottom?: number;
+  height?: number;
+  color?: string;
+  reason?: string;
+}
+
+/**
+ * 墙对象的面层配方（S4 下沉成果）。tile_bands 与 paint_bands 同住一个对象后，
+ * 「砖漆互斥」（paint.bottom ≥ 同脸 tile 带顶）由 loader 一条机器规则校验——
+ * 取代原 DEC-2026-10-09-P07 的 7 处人工对齐（parseOverlayFiles 内实现）。
+ */
+export interface WallFinish {
+  tile_bands?: WallTileBand[];
+  paint_bands?: WallPaintBand[];
+}
+
+/** bay_sill 构件的贴砖面（S4：sill_region 下沉为构件特征）。 */
+export interface SillTileBand {
+  id: string;
+  face: 'front' | 'top' | 'underside';
+  along?: [number, number];
+  zone?: 'visible' | 'covered';
+  color?: string;
+  room?: string;
+  reason?: string;
+}
+
+/** bay_sill 构件的涂装面（S4：paint_sill_region 下沉）。 */
+export interface SillPaintBand {
+  id: string;
+  room: string;
+  faces: Array<'underside' | 'front' | 'start_end' | 'end_end'>;
+  finish: 'ordinary' | 'anti_mold';
+  color?: string;
+  reason?: string;
+}
+
+export interface BaySillFinish {
+  tile?: SillTileBand[];
+  paint?: SillPaintBand[];
+}
+
+/**
+ * 房间顶面涂装特征（S4：paint_ceiling_region 下沉为房间特征）。
+ *
+ * 8 段原声明只写 room——其范围本就是几何推导（房间 footprint 减铝扣板投影，
+ * shared/paint-scope.ts 的 ceilingAreaByRoom），所以声明只剩「这间房的顶面刷漆」这个意图，
+ * 铝扣板扣减继续走几何，不写 exclude_aluminum 之类的镜像布尔。
+ */
+export interface RoomCeilingFinish {
+  paint: boolean;
+  reason?: string;
+}
+
 export interface CurtainRunPart {
   id: string;
   points: CurtainPoint[];
@@ -912,26 +1001,25 @@ export interface CurtainRunPart {
 }
 
 export type SceneElement =
-  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[]; rooms?: string[] }
+  // 面层配方自 2026-11-07 issue #98 第三阶段 S4 起不再是平级元素：wall_region /
+  // paint_region 下沉为 wall.finish（tile_bands / paint_bands），sill_region /
+  // paint_sill_region 下沉为 bay_sill.finish（tile / paint），paint_ceiling_region
+  // 下沉为房间特征 ceiling_finish。overlay schema 15 → 10 类，SceneBuilder 的
+  // case 分支改为对象属性驱动；检视态三层隔离（wall-tile / wall-paint / pipe-chase）
+  // 的 userData.inspectionLayer 与开关原样保留。
+  | { type: 'wall'; id: string; x1: number; z1: number; x2: number; z2: number; segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>; openings?: ResolvedOpening[]; rooms?: string[]; finish?: WallFinish; line_datum?: 'centerline' }
   | { type: 'curtain_run'; id: string; points: CurtainPoint[]; height: number; closed?: boolean; parts?: CurtainRunPart[] }
   | { type: 'wall_run'; id: string; points: OverlayPoint[]; height: number }
-  | { type: 'wall_region'; id: string; wall: string; room?: string; along: [number, number]; bottom?: number; height: number; zone?: 'visible' | 'covered'; color?: string; reason?: string }
-  // 踢脚线常显条带（DEC-2026-10-28-R01/R02）：与 wall_region/paint_region 的检视态不同，
+  // 踢脚线常显条带（DEC-2026-10-28-R01/R02）：与墙特征面层的检视态不同，
   // 本类型在正常视图里就可见、不透明、贴房间侧墙面。height 必填且代码里不得给默认值——
-  // 高度是可调数据，只由 overlay 声明（锚点统一）给出，改高度改声明不改代码。
+  // 高度是可调数据。S5（2026-11-07）：24 段平级声明已删（finish-surfaces.yaml 退场），
+  // 本类型保留为**派生产物**——由墙特征 finish.paint_bands[] 派生（非湿区房间逐段生成，
+  // shared/skirting-derivation.ts），height/color 取 finish-defaults.yaml 的 skirting 锚点；
+  // 消费方（SceneBuilder/DXF A-SKIRT/HouseScene 审计/碰撞豁免）零改动。
   | { type: 'skirting_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height: number; color?: string; reason?: string }
-  | { type: 'sill_region'; id: string; element: string; face: 'front' | 'top' | 'underside'; along?: [number, number]; zone?: 'visible' | 'covered'; color?: string; room?: string; reason?: string }
-  | { type: 'paint_region'; id: string; wall: string; room: string; along: [number, number]; bottom?: number; height?: number; color?: string; reason?: string }
-  | { type: 'paint_sill_region'; id: string; element: string; room: string; faces: Array<'underside' | 'front' | 'start_end' | 'end_end'>; finish: 'ordinary' | 'anti_mold'; color?: string; reason?: string }
-  | { type: 'paint_ceiling_region'; id: string; room: string; reason?: string }
-  | {
-      type: 'glass_infill';
-      id: string;
-      wall: string;
-      width: number;
-      height: number;
-      sill: number;
-    }
+  // glass_infill / hinged_glass_door 已于 issue #98 第三阶段 S1 删除：overlay 0 元素
+  // （hinged 自 DEC-2026-09-07-054 客卫玻璃门取消后无声明；glass_infill 从未启用），
+  // schema 与全部消费分支同步退场，不保留墓碑。
   | { type: 'frosted_privacy'; id: string; points: CurtainPoint[]; height: number; sill?: number; offset?: number; finish: 'frosted_privacy' }
   // floor_region 的算量口径（DEC-2026-10-09-P16）：**默认计入**，标了 `excluded: true` 才排除。
   // 与旧 `costed` 相反——旧标志要求每条都手工 opt-in，等于把「这块地是不是已被某个 applyRooms
@@ -942,10 +1030,9 @@ export type SceneElement =
   // 再按 follow 房间的有效材质和干/湿费率计量；单独的 follow 仍表示外部过渡区。
   // `excluded` 只保留给几何说不清的例外（开发商已铺 / 业主裁定不铺），且必须带 reason。
   | { type: 'floor_region'; id: string; points: CurtainPoint[]; room?: string; reason?: string; follow?: string; excluded?: boolean }
-  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number] }
+  | { type: 'bay_sill'; id: string; points: OverlayPoint[]; depth: number; sill: number; height: number; reason?: string; wallRefs?: BaySillWallReference[]; along?: [number, number]; finish?: BaySillFinish }
   | { type: 'railing_run'; id: string; points: CurtainPoint[]; height: number }
   | { type: 'sliding_door_run'; id: string; points: OverlayPoint[]; height: number; panels?: number; open?: boolean }
-  | { type: 'hinged_glass_door'; id: string; points: [OverlayPoint, OverlayPoint]; height: number; open?: boolean; swing?: 'north' | 'south'; hinge?: 'start' | 'end' }
   | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }
   | { type: 'curtain'; id: string; points: CurtainPoint[]; height: number; room?: string; kind?: 'sheer_blackout' | 'blinds'; offset?: number };
 
@@ -970,6 +1057,23 @@ export interface Vertex {
   radius?: number;
 }
 
+/**
+ * 墙的 suppress 属性（2026-11-07 issue #98 第三阶段 S3）：该墙的实体盒不渲染、不碰撞、
+ * 不可贴砖/涂漆/挂载，由 replacement 指定的围护对象（envelope curtain_run / railing_run）
+ * 接管其实体表现。它不是"删除墙"——墙仍留在 model-geometry（topology / 家具宿主 /
+ * MEP 穿墙判定都还在）。
+ *
+ * 改判来历：原 overlay.yaml 顶层 `suppress:`（8 条 wall/walls/region 选择器）有 10 处独立
+ * 实现 + config/spatial-validation.yaml 的 overlay_replacements 镜像表，S3 把它们收敛成
+ * 墙条目上的这一条属性 + replacement 对象 id 直引用。语义唯一权威实现在
+ * shared/suppression.ts；region 包围盒选择器随镜像表一并退场（迁移前 0 使用）。
+ */
+export interface WallSuppression {
+  reason: string;
+  /** 接管该墙实体表现的围护对象 id（config/model/envelope/openings.yaml 的 curtain_run / railing_run）。 */
+  replacement: string;
+}
+
 export interface WallDef {
   id: string;
   from: string;
@@ -980,6 +1084,26 @@ export interface WallDef {
   structure?: 'shear' | 'fill' | 'curtain' | 'new_partition';
   /** 结构类型来源：confirmed=交房实测/图纸确认, inferred=邻户同户型图推断 */
   structure_status?: 'confirmed' | 'inferred';
+  /**
+   * suppress 改判（2026-11-07 issue #98 第三阶段 S3）：实体表现被围护对象接管。
+   * 声明侧语义与字段口径见 WallSuppression；消费方一律经 shared/suppression.ts，
+   * 禁止各自 flatMap overlay.suppress（那 10 处副本已删）。
+   */
+  suppressed?: WallSuppression;
+  /**
+   * 墙线基准语义（2026-11-06 业主口径 A，落实 pending #76）：centerline = 模型线即渲染墙盒
+   * 中心线，完成面 = 线 ± WALL_THICKNESS/2。挂墙家具的宿主墙必须声明（verify-furniture-placement
+   * 强制）；当前唯一合法值 centerline——脸/心翻转待 #76 量房裁定后扩枚举并同步全部消费方
+   * （furniture-placement / InfrastructureBuilder / DXF），不得只改声明。
+   */
+  line_datum?: 'centerline';
+  /**
+   * 面层配方（2026-11-07 issue #98 第三阶段 S4 下沉）：该墙脸上的贴砖带与涂装带。
+   * 原 overlay.yaml 的 wall_region(18)/paint_region(31) 平级元素，按 issue #98 判据
+   * （无独立身份/状态/生命周期）下沉为墙对象特征。along/height/bottom/room 口径见
+   * WallTileBand；砖漆互斥由 parseOverlayFiles() 机器校验。
+   */
+  finish?: WallFinish;
 }
 
 export interface RoomDef {
@@ -990,6 +1114,11 @@ export interface RoomDef {
   type?: string;
   /** Semantic boundary only; visible surfaces and quantities must come from explicit overlay/config declarations. */
   semantic_only?: boolean;
+  /**
+   * 顶面涂装特征（S4：paint_ceiling_region 下沉）。只表达「这间房顶面刷漆」的意图；
+   * 范围由几何推导（房间 footprint − 铝扣板投影），不在此声明扣减明细。
+   */
+  ceiling_finish?: RoomCeilingFinish;
 }
 
 export interface PlatformDef {
@@ -1034,6 +1163,12 @@ export interface ResolvedWall {
   bayRooms?: string[];
   structure?: 'shear' | 'fill' | 'curtain' | 'new_partition';
   structure_status?: 'confirmed' | 'inferred';
+  /** 面层配方（WallDef.finish 透传，2026-11-07 issue #98 S4 下沉）。 */
+  finish?: WallFinish;
+  /** 墙线基准语义（WallDef.line_datum 透传，口径见其注释）。 */
+  line_datum?: 'centerline';
+  /** suppress 改判透传（WallDef.suppressed，2026-11-07 issue #98 S3）：消费方经 shared/suppression.ts。 */
+  suppressed?: WallSuppression;
 }
 
 export interface ResolvedLayout {
@@ -1111,13 +1246,30 @@ export interface ElectricalPoint {
   id: string;
   room: string;
   type: ElectricalPointType;
-  x: number;
-  z: number;
+  /**
+   * 绝对坐标（issue #98 第四阶段 S3 起只属于绝对定位来源）：C/D/E/F 组点位（顶面灯位/
+   * 建筑服务基准/地面排水口/器具邻接点）以声明 x/z 为唯一事实源。沿墙与挂载点位不再
+   * 声明 x/z——平面位置由 wall + along / mount 解算（shared/point-placement.ts），
+   * S1/S2 的迁移期断言（解析结果 == 声明值，容差 0.005m）已全绿并随字段一并删除。
+   */
+  x?: number;
+  z?: number;
   wall?: string;
   wallSide?: WallSide;
+  /** 沿墙距离（米），起算 = 墙段起点顶点沿折线累计（shared/point-placement.ts）。 */
+  along?: number;
+  /** 离开完成面的附加量（米，带符号；默认 0 = 完成面）。 */
+  face_offset?: number;
+  /** 家具挂载定位来源（issue #98 S2 真挂载：位置 = 宿主脸 + along + face_offset，解析见 shared/point-placement.ts）。 */
+  mount?: { furniture_id: string; face: WallSide; surface_gap?: number; along: number; face_offset?: number };
+  /** 锚点引用定位来源（S4：F 组转家具挂载 / 暖通 ref 通道）。 */
+  anchor?: { source: string; id: string };
+  /** 显式绝对坐标意图（C/D/E/F 组：顶面灯位/建筑服务基准/地面排水/器具邻接点）。 */
+  absolute?: boolean;
+  /** 宿主意图标注（只作文档与校验输入，不参与解算）。 */
+  host_intent?: string;
   mountAnchor?: FurnitureFaceMountAnchor;
   temp?: number;
-  circuit?: string;
   count?: number;
   heads?: number;
   recessed?: boolean;
@@ -1160,7 +1312,8 @@ export interface ElectricalTopologyCircuit {
   status: ElectricalTopologyStatus;
   member_point_ids: string[];
   dedicated_load?: boolean;
-  source_circuit_id?: string;
+  // 2026-11-07 issue #98 S3：source_circuit_id（点位侧 circuit 词汇 → 回路 id 的间接层）已废——
+  // 点位侧 circuit 字段退役后没有读者，留着就是一份会对不上的死映射。
   capacity?: string;
   wire_size?: string;
   breaker?: string;
@@ -1220,10 +1373,23 @@ export interface PlumbingPoint {
   id: string;
   room: string;
   type: PlumbingPointType;
-  x: number;
-  z: number;
+  /** 绝对坐标（S3 起只属于绝对定位来源）：建筑服务基准/地面排水口等 C/D/E 组点位的事实源。 */
+  x?: number;
+  z?: number;
   wall?: string;
   wallSide?: WallSide;
+  /** 沿墙距离（米），起算 = 墙段起点顶点沿折线累计（shared/point-placement.ts）。 */
+  along?: number;
+  /** 离开完成面的附加量（米，带符号；默认 0 = 完成面）。 */
+  face_offset?: number;
+  /** 家具挂载定位来源（S4 启用）。 */
+  mount?: { furniture_id: string; face: WallSide; surface_gap?: number };
+  /** 锚点引用定位来源（S4 启用）。 */
+  anchor?: { source: string; id: string };
+  /** 显式绝对坐标意图（C/D/E/F 组）。 */
+  absolute?: boolean;
+  /** 宿主意图标注（只作文本与校验输入，不参与解算）。 */
+  host_intent?: string;
   note?: string;
   height?: number;
   /** 精度等级（推断/实测口径）。推断点位必须与 docs/pending-site-data.md 的登记值一致。 */
@@ -1664,7 +1830,9 @@ export interface RenderLightingFixture {
   position: Vec3;
   temperatureK: number;
   enabled: boolean;
-  circuit?: string;
+  // 2026-11-07 issue #98 S3：circuit 直传已删——它唯一的来源是退役的点位侧 circuit 字段，
+  // 渲染链没有任何消费者；回路归属改由 shared/point-circuits.ts 按 topology 单一派生，
+  // 在真正消费它的地方（DXF 标注 / dressing-map / mep-takeoff 覆盖报告）显形。
   heads?: number;
   recessed?: boolean;
   /** Wall centerline host for wall-mounted fixtures. */
@@ -1709,8 +1877,78 @@ export interface FurnishingCutout {
   size: [number, number];
 }
 
+/**
+ * 挂载派生摆位（issue #98 PR-3）：家具不再写绝对 x/z，改挂到另一件已定位家具的槽位上，
+ * 由 shared/furniture-placement.ts 从宿主位置与宿主布局参数推出世界坐标。
+ * 与 wall/wall_side/along 并列的一种定位声明，三者互斥（同时声明即诊断失败）。
+ */
+export interface FurnitureMount {
+  /** 宿主家具的稳定对象 id（house.yaml 条目上的 `id`，如 `gbath.vanity`）。 */
+  furniture_id: string;
+  /** 宿主家具上的槽位名（当前唯一受支持值：`robot_bay`）。 */
+  slot: string;
+}
+
+/**
+ * 锚点派生摆位（issue #98 PR-10）：家具位置改从**另一份配置里的锚点对象**推出，
+ * 不再手写绝对坐标。与 wall/wall_side/along、mount 并列且互斥。
+ *
+ * 首个用户是主卫冷凝水遮蔽链三件（condensate_pipe_ac_outlet 等）：它们的接口坐标
+ * 原先在 house.yaml、FixtureFactory 配方、MEP via 点里各写一份，改一段不跟随另一段。
+ * 现在整条链由 shared/condensate-chain.ts 从锚点单一解算。
+ */
+export interface FurnitureAnchor {
+  /**
+   * 锚点来源：
+   * - `hvac`：config/hvac.yaml `diagram.anchors` 的 id（如 `indoor_master`，ref ceiling `ac_master`）；
+   * - `chain`：shared/condensate-chain.ts 解出的链上点（`unit` / `box_turn` / `wardrobe_east_band`）。
+   */
+  source: 'hvac' | 'chain';
+  /** 锚点 id（hvac 锚点 id 或链上点名）。 */
+  id: string;
+}
+
+/**
+ * 客卫台盆柜（type:'vanity'）布局参数（DEC-2026-11-05-R5 定案「仓+抽屉」）。
+ * 柜体分割的唯一声明源：3D FixtureFactory.buildVanity、摆位解算（robot_dock 挂载）、
+ * DXF/校验外框全部读这里，FURNITURE_DIMS 不再存 vanity 尺寸（同一数字只留一处）。
+ * 抽屉区宽度不声明，由 `width − robot_bay_width` 算出。
+ */
+export interface VanityLayoutDecl {
+  /** 柜宽（沿墙，m）：可用跨度 = 南墙南脸至东墙段南端，两端贴死。 */
+  width: number;
+  /**
+   * 柜深（carcass 包络，m）：背沿贴宿主墙完成面。校验与 DXF 外框按本值出口径；
+   * 三只把手是正面装饰件、突出柜面 20mm（局部外深 0.52，不进外框——2026-11-06 Codex minor 口径）。
+   */
+  depth: number;
+  /** 柜高（m）：通高到盆底；头顶余量兼作台盆排水过管走廊，不得加固定层板。 */
+  height: number;
+  /** 机器人仓区宽（沿墙，m）：贴北端（排水穿墙端）。 */
+  robot_bay_width: number;
+  /**
+   * 仓净宽（m）= 基站宽 + 两侧间隙：机器人的占用要求。resolveVanityLayout 门禁保证
+   * 仓区内腔（= robot_bay_width − 2×panel_thickness）≥ 本值；几何上门按内腔宽度生成，
+   * 本值不直接进几何，避免同一个开口出现两个宽度。
+   */
+  robot_bay_clear_width: number;
+  /** 板厚（m）：端板/隔板/门板厚度。 */
+  panel_thickness: number;
+}
+
+/** resolveVanityLayout 解出的布局（含派生量），供 FixtureFactory 与挂位解算共用。 */
+export interface VanityLayout extends VanityLayoutDecl {
+  /** 抽屉区宽（m）= width − robot_bay_width（剩余尺寸算出，不声明）。 */
+  drawer_width: number;
+}
+
 export interface FurnishingItem {
   type: string;
+  /**
+   * 可选稳定工程对象 ID（如 `gbath.vanity`）。声明后即为 runtime objectId，房间内重排不变；
+   * 未声明沿用 `furniture:${room}:${type}:${index}`（见 shared/furniture-object-id.ts）。全屋唯一。
+   */
+  id?: string;
   /** Original house.yaml array index, attached to phase API responses for edits. */
   sourceIndex?: number;
   count?: number;
@@ -1730,6 +1968,12 @@ export interface FurnishingItem {
   cabinetHeight?: number;
   countertopThickness?: number;
   cutouts?: FurnishingCutout[];
+  /** 挂载派生摆位：挂到 `furniture_id` 的 `slot` 上，世界坐标由解算推出，禁写 x/z。 */
+  mount?: FurnitureMount;
+  /** 锚点派生摆位：挂到另一份配置的锚点对象上（见 FurnitureAnchor），禁写 x/z。 */
+  anchor?: FurnitureAnchor;
+  /** type:'vanity' 的柜体分割参数；缺失或非法即定位诊断失败（不静默按默认值建模）。 */
+  vanity_layout?: VanityLayoutDecl;
 }
 
 /** Explicit countertop-only bridge; it creates no cabinet body. */
@@ -1807,6 +2051,20 @@ export function getPartitionWardrobeDoorAabbs(state: 'closed' | 'open' = 'closed
   return doors;
 }
 
+/**
+ * 主卫冷凝水遮蔽链三件（issue #98 PR-10）：协调示意家具，摆位改锚点派生
+ * （shared/condensate-chain.ts 单一解算），绝对 x/z 对这三件已废——
+ * resolver 见到绝对坐标即诊断失败，防止第二份坐标源静默回来。
+ * 清单放 types.ts 而非 condensate-chain.ts：resolver 与链模块都要读，
+ * 放中间模块会成循环依赖。
+ */
+export const CONDENSATE_CHAIN_FURNITURE_TYPES = [
+  'condensate_pipe_ac_outlet',
+  'mb_vanity_pvc_wardrobe_entry',
+  'mb_vanity_pvc_service_chase',
+] as const;
+export type CondensateChainFurnitureType = (typeof CONDENSATE_CHAIN_FURNITURE_TYPES)[number];
+
 export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = {
   bed_180: { width: 1.8, depth: 2.0 },
   bed_150: { width: 1.5, depth: 2.0 },
@@ -1818,12 +2076,22 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   bath_side_cabinet: { width: 0.45, depth: 0.5 }, // 2026-08-21 主卫干区封闭侧柜 h2.0
   // DEC-045 主卫东墙独立对象：rotation=270 后 width 沿墙 z、depth 朝 west；
   // wall anchor 是自身中心，local y 才是高度层次；柜体与悬浮板沿墙同轴组成一套墙面家具。
-  mb_vanity_base_cabinet: { width: 1.38, depth: 0.565 }, // 2026-09-07：1.38m×0.565m×0.62m；AABB x[1.975,2.54] z[2.92,4.30]，同时避开东墙与主卫南墙
+  mb_vanity_base_cabinet: { width: 1.38, depth: 0.565 }, // 2026-09-07：1.38m×0.565m×0.62m；摆位 AABB x[1.96,2.525] z[2.92,4.30]（背面=墙线 2.60−半墙厚 0.06−wall_clearance 0.015=2.525；2026-11-06 口径 A 校验共享化后按真实摆位更正，旧 x[1.975,2.54] 系忽略 clearance 的幻影包络），同时避开东墙与主卫南墙
   mirror_cabinet_gbath: { width: 0.66, depth: 0.14 }, // DEC-2026-09-09-R2 客卫镜柜（y[1.10,2.00] 挂墙，沿墙 0.66m——2026-11-06 随 DEC-2026-11-05-R5 柜体北移由 0.70 收窄，北缘避南墙南脸 3.61）
   heated_towel_rack: { width: 0.55, depth: 0.10 }, // DEC-2026-10-17-R20 客卫电热毛巾架：梯式 0.55W(沿墙)×0.10D(凸出)×0.75H，挂墙 y[1.05,1.80]；SKU 未选型，图示代理尺寸
   robot_dock_gbath: { width: 0.41, depth: 0.433 }, // DEC-2026-09-09-R6 客卫扫地机基站（藏悬空台盆柜下；2026-11-02 本 PR 改为云鲸 JX 超薄上下水版 YJCC034 实尺寸 410×433×280mm，柜体底缘 0.30 不动）
-  mb_vanity_lower_board: { width: 1.38, depth: 0.565 }, // 下部悬浮板与底柜同包络，北端贴主卫南墙卧室侧完成面 z=2.92
-  mb_vanity_main_board: { width: 1.38, depth: 0.565 }, // 主板与下板同宽同深，同轴止于 z[2.92,4.30]
+  // 2026-11-07（issue #98 PR-11）条带柜组 FURNITURE_DIMS 清理：两块悬浮板
+  // （mb_vanity_lower_board / mb_vanity_main_board）的尺寸声明已在 PR-9「条带柜组摆位统一」
+  // 随条目迁进 house.yaml 行内 width/depth（同一数字只留一处），目录条目删。
+  // 其余 mb_* 条目**保留**——全仓 grep 确认仍有真实读者，删了会破门禁：
+  //   mb_vanity_base_cabinet：house.yaml 行内不写尺寸（PR-9 测试明令「行内不写第二套」），
+  //     挂墙解算的 along 合法域/退让与 verify-furniture 的柜组包络专项都读目录；
+  //   mb_vanity_pvc_box：同上（挂墙解算 + 冷凝链 alongWallZSpan/wallRunSpan 派生读它）；
+  //   condensate_pipe_ac_outlet：verify-furniture 的居中方框（itemAabb）用它算 AABB，
+  //     且该型不在 MB_CONDENSATE_TYPES 豁免集里，方框要参与房间边界/门扫/重叠检查；
+  //   mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase：verify-furniture 仍按
+  //     目录算它们的（豁免）方框，目录值是「零件长度须与相邻段接口坐标一致」的声明参照
+  //     （FixtureFactory 链构建器不持长度常量），删了只多两条 no-dims 警告、无迁移去处。
   condensate_pipe_ac_outlet: { width: 0.40, depth: 0.46 }, // ac_master 内冷凝水出口→延伸空调盒/衣柜顶部服务带；厂家出口位置 pending，横向取机身中心轴 x=3.70
   mb_vanity_pvc_box: { width: 1.20, depth: 0.08 }, // w_mbath_east 西侧冷凝水墙行 (2.50,4.30)->(2.50,3.10)；中心离墙完成面约40mm，wall anchor 使用 w_mbath_east west，管径/坡度待深化
   mb_vanity_pvc_wardrobe_entry: { width: 1.175, depth: 0.03 }, // 延伸空调盒/衣柜顶部服务带内的西行段
@@ -1882,7 +2150,8 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   gas_stove: { width: 0.75, depth: 0.6 },
   range_hood: { width: 0.9, depth: 0.5 },
   sink: { width: 0.8, depth: 0.6 },
-  vanity: { width: 0.69, depth: 0.5 }, // DEC-2026-11-05-R5：depth=0.50 为 carcass 包络；三只把手为正面装饰件、突出柜面 20mm（局部外深 0.52），校验与 DXF 按 carcass 0.50 出口径、把手突出量为已知声明值（2026-11-06 Codex minor 明确）：可用跨度=南墙 w_gbath_south 南脸 3.61 至东墙段南端 4.30（0.69m，两端贴死 0 容差，量房 #76 复核）——2026-11-06 Codex blocking 修正：原 0.70/0.72 柜北端侵入实体墙；DEC-2026-09-09-R7 柜深 0.40→0.50（标准成品柜深，全藏台下基站）
+  // vanity 尺寸已随 issue #98 PR-3 迁到 config/house.yaml `gbath.vanity` 的 vanity_layout 声明
+  // （FURNITURE_DIMS 与条目声明不得重复存同一数字）；目录不再存 vanity 宽深。
   toilet: { width: 0.4, depth: 0.6 }, // 2026-08-21 马桶落位（对齐 FixtureFactory 模型 footprint）
   exhaust_fan: { width: 0.3, depth: 0.3 },
   washer: { width: 0.6, depth: 0.6 }, // 2026-08-23 阳台洗烘叠放（贴 w_balc_west，与 dryer 同 footprint）

@@ -107,7 +107,7 @@ export type Exemption =
 export interface Fact {
   id: string;
   kind: 'derived' | 'narrative';
-  /** `@<path>:<点分路径|字面定位串>`；derived 支持 `#length`/`#shoelace`/`#bbox_area`/`#field_sum:f`/`#find:k=v`。 */
+  /** `@<path>:<点分路径|字面定位串|dataset:<点分键>>`；derived 支持 `#length`/`#shoelace`/`#bbox_area`/`#field_sum:f`/`#find:k=v`，以及入口脚本预算的 dataset 源。 */
   value: string;
   unit?: string;
   as_of?: string;
@@ -438,6 +438,15 @@ function resolveNarrative(text: string, anchor: string): Resolved {
 }
 
 function resolveAuthority(spec: string, ws: FactsWorkspace): Resolved & { path: string; body: string } {
+  // dataset:<点分键>（2026-11-07 issue #98 S3）：权威值是入口脚本预算的机器源，不落文件。
+  if (spec.startsWith('dataset:')) {
+    const key = spec.slice('dataset:'.length);
+    const value = datasetValue(ws, key);
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return { ok: false, detail: `dataset ${key} 解析不出有限数值（${String(value)}；入口脚本未预算该键或解算失败）`, path: spec, body: key };
+    }
+    return { ok: true, value, detail: spec, path: spec, body: key };
+  }
   const body = spec.startsWith('@') ? spec.slice(1) : spec;
   const colon = body.indexOf(':');
   const path = colon < 0 ? body : body.slice(0, colon);
@@ -1536,13 +1545,13 @@ function collectExemptions(registry: FactsRegistry): Exemption[] {
 // ─── T3.11 ceiling_clearance：MEP 路线标高不得低于所经吊顶完成面 ─────────────
 //
 // 治一个「静默缺失」：config/mep-hvac-coordination.yaml 的分层标高（强电 2.45 / 弱电 2.50 /
-// 冷媒 2.55 / 冷凝水 2.35 …）与 config/ceiling.yaml 的降板完成面（2.80 − thickness）是两套
+// 冷媒 2.55 / 冷凝水 2.35 …）与 config/model/envelope/ceiling.yaml 的降板完成面（2.80 − thickness）是两套
 // 从未对齐的口径。修之前没有任何门禁看这件事——73 条路线照跑，谁也不说它穿出了吊顶。
 //
 // 完成面口径必须与 shared/render/CeilingZoneBuilder.ts 一致：
 //   `topY = ceilingHeight − zone.thickness + SLAB_EPS`，板下表面即完成面；
 //   ceilingHeight 取 `rooms.find(r => r.id === zone.room)?.height ?? 2.8`。
-// 这里不读 config/ceiling.yaml 的 `height` 字段（本项目 drop/aluminum 条目没有该字段，
+// 这里不读 config/model/envelope/ceiling.yaml 的 `height` 字段（本项目 drop/aluminum 条目没有该字段，
 // 读了就永远 0 命中），一律按 thickness 反算。
 //
 // 处置原则（2026-10-04 A1）：

@@ -8,7 +8,7 @@ import { ceilingSurfaceY, isSolidCeilingZone, lintMepCoordination } from '../../
 import { endpointSourcesFromFacts, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';import type { CeilingZone } from '../../shared/types.js';
 
 const load = <T,>(path: string): T => yaml.load(readFileSync(path, 'utf8')) as T;
-const ceiling = load<CeilingZone[]>('config/ceiling.yaml');
+const ceiling = load<CeilingZone[]>('config/model/envelope/ceiling.yaml');
 const geometry = load<{ rooms: Array<{ id: string; height: number }>; platform: { id: string; height: number } }>('config/layout/model-geometry.yaml');
 const roomHeights = new Map<string, number>([
   ...geometry.rooms.map((room) => [room.id, room.height] as const),
@@ -16,7 +16,7 @@ const roomHeights = new Map<string, number>([
 ]);
 
 // 2026-10-04 A1：吊顶净空探测器此前是死代码——它要求 zone.area 与 zone.height 同时存在，
-// 而 config/ceiling.yaml 23 条里 17 条有 area 无 height（drop/aluminum）、6 条有 height
+// 而 config/model/envelope/ceiling.yaml 23 条里 17 条有 area 无 height（drop/aluminum）、6 条有 height
 // 无 area（ac_indoor），交集为 0，规则永远不触发。现在按 thickness 反算完成面。
 describe('ceiling surface derivation (A1)', () => {
   it('no solid ceiling zone relies on an undeclared height field', () => {
@@ -111,7 +111,7 @@ describe('mep ceiling clearance lint (A1)', () => {
           // (8.0,4.6)y=2.55 在 ceiling_living 的 footprint 内且高于完成面 2.50；
           // 起点也显式写 from_height=2.55，否则退回 strong_power 分层 2.45 制造假冲突。
           // (4.5,7.0)y=0.30 远低于任何完成面，但该坐标在主卧中部、不在任何吊顶分区里
-          // （已逐区核对 config/ceiling.yaml 的 area，无任何 footprint 含 (4.5,7.0)）。
+          // （已逐区核对 config/model/envelope/ceiling.yaml 的 area，无任何 footprint 含 (4.5,7.0)）。
           // 2026-10-07 夹具修正（旧）：低点取 (4.5,7.0) 避开窗帘盒 footprint——但旧几何用两条长对角
           // 斜降段连接高低点，是按「只看段两端点」的旧判定写的；bf29283（DEC-2026-10-19-R25）起
           // 净空检查改为中心线 5cm 步长采样 + 管道包络，斜降段在 footprint 内的采样点确实破面，

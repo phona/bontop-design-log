@@ -230,6 +230,13 @@ const POINT_SELECTOR_KEYS = new Set(['ids', 'layers', 'trade', 'plan_ids']);
 /** 场景级选择器（resolvePackageScope 能展开成房间/对象 id 集合的键）。 */
 const SCENE_SELECTOR_KEYS = new Set(['room_ids', 'types', 'collections']);
 
+/**
+ * 家具来源（furnishings）的 ids 是**场景对象 id**（裸 id，shared/furniture-object-id.ts），
+ * 不是点位——与 shared/package-scope 的 OBJECT_ID_SOURCES 同口径（2026-11-06 issue #98 PR-4）。
+ * 少了这条，只有 furnishings ids 的链接会被误判成「点位级」徽标，而实际高亮走对象路径。
+ */
+const OBJECT_ID_SELECTOR_SOURCES = new Set(['furnishings']);
+
 const CAPABILITY_BADGE: Record<GeometryCapability, {label: string; title: string}> = {
   project: {
     label: '全项目范围',
@@ -260,6 +267,8 @@ function isPointOnlySelector(select: Record<string, unknown>): boolean {
 function isSceneSelector(scope: {source: string; select: Record<string, unknown>}): boolean {
   const select = scope.select ?? {};
   if (select.all === true) return false;
+  // furnishings 的 ids = 场景对象 id（OBJECT_ID_SELECTOR_SOURCES），算场景级不算点位级
+  if (OBJECT_ID_SELECTOR_SOURCES.has(scope.source) && select.ids !== undefined) return true;
   return Object.keys(select).some((key) => SCENE_SELECTOR_KEYS.has(key) && select[key] !== undefined);
 }
 

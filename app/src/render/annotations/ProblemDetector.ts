@@ -1,7 +1,16 @@
+/**
+ * 点位数据契约（2026-11-07 issue #98 S1）：**x/z 必须是解析后坐标**。
+ *
+ * 定位声明走 shared/point-placement.ts 单一解算（along/wall_side/face_offset/absolute），
+ * 由调用方（AnnotationRenderer）解算后喂进来——本检测器不再自己读声明 x/z 这个第二事实源。
+ * 权威判定在 shared/mep-hvac-lint.ts（endpoint_inaccessible / mep_endpoint_service_conflict，
+ * 同一解算器、真实家具几何）；本类是页面侧的粗筛（AABB + 0.2m 容差），且 detectAll 当前没有
+ * 页面调用方，只被 tests/app/render/problem-detector.test.ts 覆盖。
+ */
 export interface ElectricalPoint {
   id: string;
   room: string;
-  wall: string;
+  wall?: string;
   type: 'socket' | 'switch' | 'switch_2way' | 'network' | 'usb' | 'floor_socket' | 'ac_controller'
     | 'ceiling_light' | 'pendant' | 'dome' | 'wall_lamp' | 'downlight' | 'led_strip';
   x: number;
@@ -106,8 +115,10 @@ export class ProblemDetector {
   checkPointOverlap(electrical: ElectricalPoint[], plumbing: PlumbingPoint[]): Problem[] {
     const problems: Problem[] = [];
 
+    // 无墙引用的点位（absolute/mount）不参与「同墙重叠」分组——它们的位置与墙无关
     const byWall = new Map<string, ElectricalPoint[]>();
     for (const p of electrical) {
+      if (!p.wall) continue;
       const list = byWall.get(p.wall);
       if (list) {
         list.push(p);

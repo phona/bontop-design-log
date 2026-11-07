@@ -50,11 +50,12 @@ function collectObjects(scene: THREE.Scene): THREE.Object3D[] {
   return objects;
 }
 
-// 按房间+类型前缀匹配场景对象，避免与 furniture 列表序号耦合（序号随房间条目增删漂移）。
+// 按 userData 的房间+类型匹配场景对象（issue #98 起 objectId 是稳定 id，如 mb.bed_180，
+// 不再编码房间/类型；解析 id 会把新声明的稳定 id 全部判为 not found）。
 function findByType(root: THREE.Object3D, room: string, type: string): THREE.Object3D | undefined {
   let found: THREE.Object3D | undefined;
   root.traverse((object) => {
-    if (!found && String(object.userData.objectId).startsWith(`furniture:${room}:${type}:`)) found = object;
+    if (!found && object.userData.type === 'furniture' && object.userData.roomId === room && object.userData.furnishingType === type) found = object;
   });
   return found;
 }
@@ -115,7 +116,7 @@ function coveCount(entry: CeilingEntry): number {
 }
 
 function readCeilingEntries(): CeilingEntry[] {
-  return parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as CeilingEntry[];
+  return parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as CeilingEntry[];
 }
 
 test('CLI builder creates core geometry with export metadata', () => {
@@ -153,10 +154,10 @@ test('CLI builder creates core geometry with export metadata', () => {
   assert.equal(floor.userData.objectId, 'floor:master_bedroom');
   assert.equal(floor.userData.exportName, 'floor:master_bedroom');
 
-  const furniture = scene.getObjectByName('furniture:master_bedroom:bed_180:0');
+  const furniture = scene.getObjectByName('mb.bed_180');
   assert.ok(furniture);
   assert.equal(furniture.userData.type, 'furniture');
-  assert.equal(furniture.userData.objectId, 'furniture:master_bedroom:bed_180:0');
+  assert.equal(furniture.userData.objectId, 'mb.bed_180');
   assert.deepEqual(furniture.position.toArray(), [3.2, 0, 7.4]);
   for (const type of ['master_north_wall_wardrobe_950', 'master_bedside_cabinet_350_north', 'master_bedside_cabinet_350_south']) {
     const object = findByType(exportRoot, 'master_bedroom', type);
@@ -186,7 +187,7 @@ test('CLI builder creates core geometry with export metadata', () => {
   assert.deepEqual(southBox.min.toArray().map((value) => Number(value.toFixed(3))), [3.82, 0, 8.38]);
   assert.deepEqual(southBox.max.toArray().map((value) => Number(value.toFixed(3))), [4.2, 0.505, 8.73]);
 
-  const masterTowelSet = scene.getObjectByName('furniture:master_bath:towel_set:1');
+  const masterTowelSet = scene.getObjectByName('mbath.towel_set');
   assert.ok(masterTowelSet, 'missing master_bath towel_set');
   assert.deepEqual(masterTowelSet.position.toArray(), [0.24, 0, 2.23]);
 });
@@ -244,7 +245,7 @@ test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing s
   assert.ok(Math.abs(showers[1].position.y) < 1e-6);
   assert.ok(Math.abs(showers[1].position.z - 2.45) < 1e-6);
   assert.equal(showers[1].userData.wallSide, 'west');
-  const guestToilet = exportRoot.getObjectByName('furniture:guest_bath:toilet:1');
+  const guestToilet = exportRoot.getObjectByName('gbath.toilet');
   assert.ok(guestToilet, 'missing guest_bath toilet');
   assert.deepEqual(guestToilet.position.toArray(), [6.75, 0, 3.05]);
   guestToilet.updateMatrixWorld(true);
@@ -252,15 +253,15 @@ test('CLI builds shower plumbing fixtures from plumbing.yaml without replacing s
   assert.deepEqual(guestToiletAabb.min.toArray().map((value) => Math.abs(value) < 1e-9 ? 0 : Number(value.toFixed(3))), [6.525, 0, 2.85]);
   assert.deepEqual(guestToiletAabb.max.toArray().map((value) => Math.abs(value) < 1e-9 ? 0 : Number(value.toFixed(3))), [7.075, 0.6, 3.25]);
   assert.ok(Math.abs(guestToilet.rotation.y - (270 * Math.PI / 180)) < 1e-6);
-  assert.equal(exportRoot.getObjectByName('furniture:master_bath:toilet:0')?.userData.type, 'furniture');
-  assert.equal(exportRoot.getObjectByName('furniture:master_bath:shower_set:1'), undefined, 'shower_set has no FixtureFactory recipe; shower geometry comes from plumbing points');
+  assert.equal(exportRoot.getObjectByName('mbath.toilet')?.userData.type, 'furniture');
+  assert.equal(exportRoot.getObjectByName('mbath.shower_set'), undefined, 'shower_set has no FixtureFactory recipe; shower geometry comes from plumbing points');
 });
 
 test('CLI facts projection exports lighting fixture geometry and no-facts CLI does not', async () => {
   const withoutFacts = buildCliHouseScene();
   assert.equal(withoutFacts.report.lightingFixtures, 0);
   assert.equal(withoutFacts.exportRoot.getObjectByName('LIGHTING_FIXTURES'), undefined);
-  const withFacts = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
+  const withFacts = buildCliHouseScene(undefined, undefined, undefined, 'data/project-render-facts.json');
   const fixtures = [...withFacts.index.lightingFixtures.values()];
   assert.equal(fixtures.length, 17); // R15 起夜灯 - R12 客卫 3 灯 - R15 NP-4b（24→20）；DEC-2026-10-12-R1 删主卧两盏明装床头壁灯（20→18）；DEC-2026-10-12-R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）；DEC-2026-10-17-R20 +light_balcony_dome/+night_living_mid（15→17）
   assert.equal(withFacts.report.lightingFixtures, fixtures.length);
@@ -317,14 +318,14 @@ test('CLI track fixture heads are configuration-driven', () => {
   const directory = mkdtempSync(join(tmpdir(), 'lighting-facts-'));
   const factsPath = join(directory, 'facts.json');
   writeFileSync(factsPath, JSON.stringify(facts));
-  const result = buildCliHouseScene(undefined, undefined, undefined, undefined, factsPath);
+  const result = buildCliHouseScene(undefined, undefined, undefined, factsPath);
   const track = [...result.index.lightingFixtures.values()].find((fixture) => fixture.userData.fixtureType === 'track_light');
   assert.ok(track);
   assert.equal(track.children.filter((object) => String(object.userData.part).endsWith(':lens')).length, 3);
 });
 
 test('CLI with real render facts exports every renderable A2 HVAC anchor and terminal exactly once', () => {
-  const { exportRoot, report, index } = buildCliHouseScene(undefined, undefined, undefined, undefined, 'data/project-render-facts.json');
+  const { exportRoot, report, index } = buildCliHouseScene(undefined, undefined, undefined, 'data/project-render-facts.json');
   const ids = [...index.hvac.all.keys()];
   assert.equal(report.hvacStatus, 'implemented');
   assert.equal(new Set(ids).size, ids.length);
@@ -584,7 +585,8 @@ test('shared export data produces an inspectable GLB', async () => {
   assert.equal(summary.duplicateNodeIds.length, 0);
   assert.ok(summary.prefixCounts.floor > 0);
   assert.ok(summary.prefixCounts.ceiling > 0);
-  assert.ok(summary.prefixCounts.furniture > 0);
+  // 家具走稳定 id（如 mb.bed_180，不带 ':'）后不再进 furniture 前缀桶；按稳定 id 直接验存在。
+  assert.ok(summary.nodeIds.includes('mb.bed_180'), 'furniture must export under stable ids');
   assert.ok(summary.prefixCounts.plumbing > 0);
   for (const nodeId of [
     'plumbing:shower_mbath',
@@ -595,53 +597,56 @@ test('shared export data produces an inspectable GLB', async () => {
     'plumbing:drain_mbath_floor',
     'plumbing:drain_gbath_shower',
     'plumbing:drain_gbath_floor',
-    'furniture:master_bath:toilet:0',
-    'furniture:guest_bath:toilet:1',
-    'furniture:master_bath:towel_set:1',
+    'mbath.toilet',
+    'gbath.toilet',
+    'mbath.towel_set',
     'shower_screen_mbath:0',
     'shower_screen_gbath:0',
-    'furniture:kitchen:kitchen_cabinet_run:0',
-    'furniture:kitchen:kitchen_countertop_bridge:1',
-    'furniture:kitchen:kitchen_cabinet_run:2',
-    'furniture:kitchen:kitchen_cabinet_run:4',
+    'kitchen.cabinet_run_north_west',
+    'kitchen.countertop_bridge',
+    'kitchen.cabinet_run_north_east',
+    'kitchen.cabinet_run_east',
   ]) assert.ok(summary.nodeIds.includes(nodeId), `missing GLB node ${nodeId}`);
-  // 2026-09-03：主卧/书房家具按 房间+类型 前缀匹配导出节点，不与 furniture 列表序号耦合
-  for (const [room, type] of [
-    ['master_bedroom', 'bed_180'],
-    ['master_bedroom', 'master_north_wall_wardrobe_950'],
-    ['master_bedroom', 'master_bedside_cabinet_350_north'],
-    ['master_bedroom', 'master_bedside_cabinet_350_south'],
-    ['master_bedroom', 'mb_washbasin_cabinet'],
-    ['master_bedroom', 'master_dressing_table'],
-    ['master_bedroom', 'dressing_stool'],
-    ['master_bedroom', 'master_hot_season_low_dresser'],
-    ['study', 'study_seasonal_wardrobe_wall'],
-    ['study', 'desk'],
-    ['study', 'chair'],
-    ['bedroom_se', 'wardrobe_180'],
-    ['bedroom_se', 'bed_150'],
-  ] as const) {
-    assert.ok(summary.nodeIds.some((id) => id.startsWith(`furniture:${room}:${type}:`)), `missing GLB node furniture:${room}:${type}:*`);
+  // 2026-09-03：家具按类型对导出节点，不与 furniture 列表序号耦合；2026-11-06 issue #98
+  // 全屋 placed 家具改稳定 id 后直接按 id 断言（objectId 不再编码房间/类型）。
+  for (const id of [
+    'mb.bed_180',
+    'mb.wardrobe_950',
+    'mb.bedside_cabinet_north',
+    'mb.bedside_cabinet_south',
+    'mb.washbasin_cabinet',
+    'mb.dressing_table',
+    'mb.dressing_stool',
+    'mb.low_dresser',
+    'study.seasonal_wardrobe_wall',
+    'study.seasonal_wardrobe_step_north',
+    'study.seasonal_wardrobe_step_south',
+    'study.desk',
+    'study.chair',
+    'bese.wardrobe_180',
+    'bese.bed_150',
+  ]) {
+    assert.ok(summary.nodeIds.includes(id), `missing GLB node ${id}`);
   }
   for (const removed of ['master_wardrobe_tall_240', 'squat_rack', 'barbell_olympic', 'weight_plate_set', 'rubber_training_mat', 'low_room_cabinet', 'bench_adjustable', 'adjustable_dumbbell_pair', 'rollable_training_mat']) {
     for (const room of ['master_bedroom', 'bedroom_se', 'study']) {
-      assert.equal(summary.nodeIds.some((id) => id.startsWith(`furniture:${room}:${removed}:`)), false, `removed furniture ${removed} must not export (${room})`);
+      assert.equal(summary.nodeIds.some((id) => id.includes(removed)), false, `removed furniture ${removed} must not export (${room})`);
     }
   }
-  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:') && entry.part.startsWith('basin-') && entry.role === 'ceramic'), 'kitchen sink ceramic role missing');
-  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:') && entry.role === 'fixture_metal'), 'kitchen gas stove fixture_metal base role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('kitchen.') && entry.part.startsWith('basin-') && entry.role === 'ceramic'), 'kitchen sink ceramic role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('kitchen.') && entry.role === 'fixture_metal'), 'kitchen gas stove fixture_metal base role missing');
   assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.includes(':role=cooktop_surface') && entry.role === 'cooktop_surface'), 'kitchen gas stove cooktop_surface role missing');
-  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:gas_stove:') && entry.part.startsWith('b-') && entry.role === 'cooktop_burner'), 'kitchen gas stove burner role missing');
-  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:gas_stove:') && entry.part.startsWith('knob-') && entry.role === 'hardware'), 'kitchen gas stove knob hardware role missing');
-  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('furniture:kitchen:dishwasher:') && entry.part.includes('p-') && entry.role === 'fixture_metal'), 'kitchen dishwasher front fixture_metal role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('kitchen.gas_stove:') && entry.part.startsWith('burner-') && entry.role === 'cooktop_burner'), 'kitchen gas stove burner role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('kitchen.gas_stove:') && entry.part.startsWith('knob-') && entry.role === 'hardware'), 'kitchen gas stove knob hardware role missing');
+  assert.ok(summary.fixtureRoles?.some((entry) => entry.nodeName.startsWith('kitchen.dishwasher:') && entry.part.startsWith('part-1') && entry.role === 'fixture_metal'), 'kitchen dishwasher front fixture_metal role missing');
   assert.equal(summary.duplicateFixtureRoleTags?.length ?? 0, 0, 'GLB must not duplicate fixture role tags');
   assert.equal(summary.duplicateNodeIds.length, 0, 'bath GLB must not duplicate exported object ids');
   assert.ok(summary.worldBbox);
 });
 
-test('CLI parses reproducible overlay and ceiling inputs', () => {
-  assert.deepEqual(parseExportArgs(['--output', 'tmp/out.glb', '--overlay', 'overlay.yaml', '--ceiling', 'ceiling.yaml', '--render-facts', 'facts.json']), {
-    output: 'tmp/out.glb', overlay: 'overlay.yaml', ceiling: 'ceiling.yaml', renderFacts: 'facts.json',
+test('CLI parses reproducible ceiling inputs（overlay 已并仓，issue #98 S1 起无 --overlay 旗标）', () => {
+  assert.deepEqual(parseExportArgs(['--output', 'tmp/out.glb', '--ceiling', 'ceiling.yaml', '--render-facts', 'facts.json']), {
+    output: 'tmp/out.glb', ceiling: 'ceiling.yaml', renderFacts: 'facts.json',
   });
 });
 

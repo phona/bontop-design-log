@@ -134,20 +134,20 @@ describe('relationship waiver migration (2026-10-09)', () => {
   // 历史：迁移前 `config/spatial-validation.yaml` 有13条 relationships 白名单（HEAD f6be0ab）；迁入 waivers[] 后，2026-10-14 冰箱移位使 `kitchen_fridge_corner` 成为死关系并移除（12条）；2026-10-17 提交 99c5b20 给净水器建模时新增 `kitchen_ro_purifier_inside_sink_base`（contained，水槽柜内嵌），现锁13条仍适用的关系；2026-11-05 客卫机器人仓几何落地新增 `robot_dock_in_gbath_vanity_bay`（contained，基站泊入台盆下开放格），现锁14条。
   // 少一条 = 合法叠放被误报成穿模；多一条 = 悄悄放行一次真互撞；保留本历史说明供差异追溯。
   const CURRENT_WAIVER_RELATIONSHIPS = [
-    { id: 'laundry_stack', type: 'stacked', pair: ['furniture:balcony:washer:0', 'furniture:balcony:dryer:1'] },
-    { id: 'countertop_run', type: 'stacked', pair: ['furniture:kitchen:kitchen_cabinet_run:0', 'furniture:kitchen:kitchen_countertop_bridge:1'] },
-    { id: 'countertop_run_corner', type: 'stacked', pair: ['furniture:kitchen:kitchen_countertop_bridge:1', 'furniture:kitchen:kitchen_cabinet_run:2'] },
-    { id: 'vanity_layers', type: 'attached', pair: ['furniture:master_bedroom:mb_vanity_base_cabinet:9', 'furniture:master_bedroom:mb_vanity_lower_board:10'] },
-    { id: 'vanity_layers_upper', type: 'attached', pair: ['furniture:master_bedroom:mb_vanity_lower_board:10', 'furniture:master_bedroom:mb_vanity_main_board:11'] },
-    { id: 'dressing_stool_storage', type: 'contained', pair: ['furniture:master_bedroom:dressing_stool:7', 'furniture:master_bedroom:master_dressing_table:6'] },
-    { id: 'kitchen_cabinet_corner_join', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:kitchen_cabinet_run:4'] },
-    { id: 'kitchen_dishwasher_under_counter', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:0', 'furniture:kitchen:dishwasher:3'] },
-    { id: 'kitchen_dishwasher_under_counter_corner', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:dishwasher:3'] },
-    { id: 'kitchen_sink_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:sink:7'] },
-    { id: 'kitchen_cooktop_cutout', type: 'attached', pair: ['furniture:kitchen:kitchen_cabinet_run:4', 'furniture:kitchen:gas_stove:5'] },
-    { id: 'wardrobe_top_pelmet', type: 'attached', pair: ['furniture:master_bedroom:master_north_wall_wardrobe_950:1', 'furniture:master_bedroom:master_wardrobe_top_pelmet:2'] },
-    { id: 'kitchen_ro_purifier_inside_sink_base', type: 'contained', pair: ['furniture:kitchen:kitchen_cabinet_run:2', 'furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9'] },
-    { id: 'robot_dock_in_gbath_vanity_bay', type: 'contained', pair: ['furniture:guest_bath:vanity:0', 'furniture:guest_bath:robot_dock_gbath:4'] },
+    { id: 'laundry_stack', type: 'stacked', pair: ['balcony.washer', 'balcony.dryer'] },
+    { id: 'countertop_run', type: 'stacked', pair: ['kitchen.cabinet_run_north_west', 'kitchen.countertop_bridge'] },
+    { id: 'countertop_run_corner', type: 'stacked', pair: ['kitchen.countertop_bridge', 'kitchen.cabinet_run_north_east'] },
+    { id: 'vanity_layers', type: 'attached', pair: ['mb.vanity_base_cabinet', 'mb.vanity_lower_board'] },
+    { id: 'vanity_layers_upper', type: 'attached', pair: ['mb.vanity_lower_board', 'mb.vanity_main_board'] },
+    { id: 'dressing_stool_storage', type: 'contained', pair: ['mb.dressing_stool', 'mb.dressing_table'] },
+    { id: 'kitchen_cabinet_corner_join', type: 'attached', pair: ['kitchen.cabinet_run_north_east', 'kitchen.cabinet_run_east'] },
+    { id: 'kitchen_dishwasher_under_counter', type: 'attached', pair: ['kitchen.cabinet_run_north_west', 'kitchen.dishwasher'] },
+    { id: 'kitchen_dishwasher_under_counter_corner', type: 'attached', pair: ['kitchen.cabinet_run_north_east', 'kitchen.dishwasher'] },
+    { id: 'kitchen_sink_cutout', type: 'attached', pair: ['kitchen.cabinet_run_north_east', 'kitchen.sink'] },
+    { id: 'kitchen_cooktop_cutout', type: 'attached', pair: ['kitchen.cabinet_run_east', 'kitchen.gas_stove'] },
+    { id: 'wardrobe_top_pelmet', type: 'attached', pair: ['mb.wardrobe_950', 'mb.wardrobe_pelmet'] },
+    { id: 'kitchen_ro_purifier_inside_sink_base', type: 'contained', pair: ['kitchen.cabinet_run_north_east', 'kitchen.ro_purifier'] },
+    { id: 'robot_dock_in_gbath_vanity_bay', type: 'contained', pair: ['gbath.vanity', 'gbath.robot_dock'] },
   ];
 
   it('keeps the 14 current migrated relationships as complete waivers carrying the original kind', () => {

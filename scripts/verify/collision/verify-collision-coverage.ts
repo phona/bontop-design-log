@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
+import { loadOverlayDoc } from '../../../server/overlay-merge.js';
+import { isWallSuppressed } from '../../../shared/suppression.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../../..');
 
@@ -16,35 +18,26 @@ interface WallDef {
   id: string;
   from: string;
   to: string;
-}
-
-interface SuppressEntry {
-  id: string;
-  wall?: string;
-  walls?: string[];
+  /** suppress 改判（issue #98 S3）后的墙属性：实体盒不进碰撞。 */
+  suppressed?: { reason: string; replacement: string };
 }
 
 function main() {
-  const overlayPath = path.join(ROOT, 'config/layout/overlay.yaml');
   const geomPath = path.join(ROOT, 'config/layout/model-geometry.yaml');
 
-  const overlay = yaml.load(fs.readFileSync(overlayPath, 'utf8')) as {
-    suppress?: SuppressEntry[];
+  // S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 三文件，合并读
+  const overlay = loadOverlayDoc() as {
     elements?: OverlayElement[];
   };
   const geom = yaml.load(fs.readFileSync(geomPath, 'utf8')) as {
     walls?: WallDef[];
   };
 
-  const suppressedIds = new Set<string>();
-  for (const s of overlay.suppress ?? []) {
-    if (s.wall) suppressedIds.add(s.wall);
-    if (s.walls) for (const w of s.walls) suppressedIds.add(w);
-  }
-
   const errors: string[] = [];
 
-  const solidWalls = (geom.walls ?? []).filter(w => !suppressedIds.has(w.id));
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：被 suppress 的墙（玻璃幕墙/实体已删除）
+  // 不产生实体盒、不进碰撞，判定读墙条目自身的 suppressed 属性，权威实现 shared/suppression.ts。
+  const solidWalls = (geom.walls ?? []).filter(w => !isWallSuppressed(w));
   console.log(`  solid walls (collision expected): ${solidWalls.length}`);
 
   const curtainRuns = (overlay.elements ?? []).filter(el => el.type === 'curtain_run');
@@ -62,11 +55,13 @@ function main() {
   console.log(`  railing_run elements (no collision, by design): ${railings.length}`);
 
   const collidableTypes = new Set(['wall', 'curtain_run', 'wall_run']);
-  // 涂装叠加层三类（paint_region / paint_ceiling_region / paint_sill_region）都是「要刷漆的声明面」，
-  // 不是场景实体：不产碰撞体、不进 first-person 碰撞。漏登记会让本脚本 fail-closed 报
-  // unknown element type——2026-10-09 新增后两类时正是这么发现的。
-  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'glass_infill', 'frosted_privacy', 'shower_screen', 'curtain', 'wall_region', 'sill_region', 'paint_region', 'paint_ceiling_region', 'paint_sill_region', 'skirting_region']); // 踢脚线墙脚薄片饰面，与 floor_region 同款不需要碰撞（DEC-2026-10-28-R02）
-  const conditionalCollidableTypes = new Set(['sliding_door_run', 'hinged_glass_door']);
+  // 面层配方（2026-11-07 issue #98 第三阶段 S4 下沉）不再是元素类型，天然不进本清单：
+  // 贴砖/涂装带住在 wall.finish、防水台贴砖与飘窗涂装住在 bay_sill.finish、顶面涂装住在
+  // 房间特征——它们都是「要刷漆/贴砖的声明面」，不产碰撞体、不进 first-person 碰撞
+  // （与下沉前 wall_region/sill_region/paint_region/paint_sill_region/paint_ceiling_region
+  // 被登记为 non-collidable 是同一结论）。漏登记新元素类型仍会 fail-closed 报 unknown。
+  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'frosted_privacy', 'shower_screen', 'curtain', 'skirting_region']); // 踢脚线墙脚薄片饰面，与 floor_region 同款不需要碰撞（DEC-2026-10-28-R02）
+  const conditionalCollidableTypes = new Set(['sliding_door_run']);
 
   for (const el of overlay.elements ?? []) {
     if (!collidableTypes.has(el.type) && !nonCollidableTypes.has(el.type) && !conditionalCollidableTypes.has(el.type)) {
@@ -82,13 +77,7 @@ function main() {
     }
   }
 
-  const hingedGlassDoors = (overlay.elements ?? []).filter(el => el.type === 'hinged_glass_door') as Array<OverlayElement & { open?: boolean }>;
-  console.log(`  hinged_glass_door elements (collision only when closed): ${hingedGlassDoors.length}`);
-  for (const door of hingedGlassDoors) {
-    if (door.open === false && !(door.points && door.points.length === 2)) {
-      errors.push(`hinged_glass_door "${door.id}" is closed but does not have exactly two points — cannot generate collision`);
-    }
-  }
+  // hinged_glass_door / glass_infill 检查已删（issue #98 第三阶段 S1：overlay 0 元素，类型退场）。
 
   if (errors.length > 0) {
     console.error('\nFAIL:');

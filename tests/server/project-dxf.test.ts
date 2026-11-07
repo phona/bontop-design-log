@@ -45,6 +45,14 @@ const wall: Extract<SceneElement, { type: 'wall' }> = {
   openings: [{ id: 'op_door', type: 'door', x: 2, z: 0, width: 0.9, height: 2.1, swing: 'inward', hinge: 'start' }],
 };
 
+/** baseInput 的贴砖带（S4 起住在墙对象 finish.tile_bands[0]）。 */
+function tileBand(input: ProjectDxfInput): { id: string; room: string; along: [number, number]; bottom?: number; height?: number } {
+  const wall = input.house.sceneElements!.find((element) => element.type === 'wall') as Extract<SceneElement, { type: 'wall' }>;
+  const band = wall.finish?.tile_bands?.[0];
+  if (!band) throw new Error('fixture 丢了 finish.tile_bands[0]');
+  return band;
+}
+
 function baseInput(): ProjectDxfInput {
   return {
     house: {
@@ -57,11 +65,11 @@ function baseInput(): ProjectDxfInput {
       ],
       ceilingZones: [{ id: 'ceil_drop', room: 'living', type: 'drop', thickness: 0.08, area: [0, 0, 4, 2] }],
       sceneElements: [
-        // 拷贝模块级 wall：测试会就地改 segments/openings，共享对象会跨测试泄漏
-        { ...wall, openings: wall.openings?.map((opening) => ({ ...opening })) },
-        { type: 'wall_region', id: 'tile_n', wall: 'w_north', along: [0, 2], bottom: 0, height: 2.4 },
+        // 拷贝模块级 wall：测试会就地改 segments/openings/finish，共享对象会跨测试泄漏
+        // 面层配方（issue #98 第三阶段 S4）：贴砖带是墙对象自己的 finish.tile_bands，
+        // 不再是平级 wall_region 元素——DXF 出图改按墙归组（实体集合与几何口径不变）。
+        { ...wall, openings: wall.openings?.map((opening) => ({ ...opening })), finish: { tile_bands: [{ id: 'tile_n', room: 'living', along: [0, 2], bottom: 0, height: 2.4 }] } },
         { type: 'floor_region', id: 'floor_living', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 2 }, { x: 0, z: 2 }] },
-        { type: 'hinged_glass_door', id: 'gd1', points: [{ x: 0, z: 0.8 }, { x: 0, z: 1.6 }], height: 2, swing: 'north', hinge: 'start' },
       ] as SceneElement[],
     },
   };
@@ -102,11 +110,11 @@ test('project-dxf: wall_region 沿墙插值出子线段（along [0,2] → x 0~20
 
 test('project-dxf: 饰面标注用声明的顶标高（height 是顶标高不是带高，codex 审 blocking）', () => {
   const input = baseInput();
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).bottom = 0.77;
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).height = 1.10;
+  tileBand(input).bottom = 0.77;
+  tileBand(input).height = 1.10;
   const result = buildProjectDxf(input);
   const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.WFIN_TILE[0]);
-  assert.ok(texts.some((e) => e['1'] === 'tile_n 0.77~1.10m'), JSON.stringify(texts.map((e) => e['1'])));
+  assert.ok(texts.some((e) => e['1'] === 'tile_n [living] 0.77~1.10m'), JSON.stringify(texts.map((e) => e['1'])));
 });
 
 test('project-dxf: wall_run 实体墙进 A-WALL（开放折线 + 高度标注，codex 审 blocking）', () => {
@@ -122,7 +130,7 @@ test('project-dxf: wall_run 实体墙进 A-WALL（开放折线 + 高度标注，
 
 test('project-dxf: wall_region along 超出墙长 → 显形告警不导出（与 3D unsupported 同口径）', () => {
   const input = baseInput();
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).along = [0, 5];
+  tileBand(input).along = [0, 5];
   const result = buildProjectDxf(input);
   assert.ok(result.warnings.some((w) => w.includes('tile_n') && w.includes('超出墙')));
   assert.equal(result.stats[DXF_LAYERS.WFIN_TILE[0]], undefined);
@@ -136,7 +144,7 @@ test('project-dxf: 带 segments 细分的墙，wall_region 沿折线链插值（
     { x1: 0, z1: 0, x2: 1, z2: 0 },
     { x1: 1, z1: 1, x2: 4, z2: 1 },
   ];
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).along = [3, 4];
+  tileBand(input).along = [3, 4];
   const result = buildProjectDxf(input);
   const tileLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.WFIN_TILE[0]);
   // 链：段1 (0,0)→(1,0) 长 1；段2 (1,1)→(4,1) 长 3。along 3 → 段2 上 (3,1)，along 4 → (4,1)。
@@ -144,25 +152,19 @@ test('project-dxf: 带 segments 细分的墙，wall_region 沿折线链插值（
   assert.deepEqual(tileLines, [[3000, -1000, 4000, -1000]]);
 });
 
-test('project-dxf: wall_region 引用不存在的墙 → warning 显形，不抛', () => {
+// 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）后，「贴砖带引用不存在的墙」这个失效模式
+// **结构上不存在了**——带就住在墙对象里，宿主即墙，没有第二处墙 id 可写错（原 wall_region
+// 的 wall: 字段随类型一起退场）。仍按墙 id 引用的只剩 skirting_region，用例改为守它。
+test('project-dxf: skirting_region 引用不存在的墙 → warning 显形，不抛', () => {
   const input = baseInput();
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_missing';
+  input.house.sceneElements!.push({ type: 'skirting_region', id: 'sk_bad', wall: 'w_missing', room: 'living', along: [0, 1], height: 0.1 });
   const result = buildProjectDxf(input);
   assert.ok(result.warnings.some((w) => w.includes('w_missing')));
-  assert.equal(result.stats[DXF_LAYERS.WFIN_TILE[0]], undefined);
+  assert.equal(result.stats[DXF_LAYERS.SKIRT[0]], undefined);
 });
 
-test('project-dxf: hinged_glass_door 画关闭位 + 开启位门扇与开启弧', () => {
-  const result = buildProjectDxf(baseInput());
-  const entities = parseEntities(result.dxf);
-  const doorLines = linesOn(entities, DXF_LAYERS.DOOR[0]);
-  // 关闭位 (0,800)→(0,-800)（z 0.8→1.6 映射 y -800→-1600，翻转后按 hinge start）
-  // points[start=(0,0.8), end=(0,1.6)] → DXF (0,-800),(0,-1600)；hinge=start → 铰链 (0,-800)
-  assert.deepEqual(doorLines[0], [0, -800, 0, -1600]);
-  const arcs = entities.filter((e) => e.type === 'ARC' && e['8'] === DXF_LAYERS.DOOR[0]);
-  assert.equal(arcs.length, 1);
-  assert.equal(arcs[0]['40'], '800.0000'); // 半径 = 门宽 0.8m
-});
+// hinged_glass_door 两个导出用例已随 issue #98 第三阶段 S1 删除（overlay 0 元素死类型，
+// project-dxf 的绘制分支同步退场）。
 
 test('project-dxf: plumbing / mep 缺失时图层为空 + warning；给足时落到 P-POINTS / M-ROUTE', () => {
   const without = buildProjectDxf(baseInput());
@@ -235,12 +237,15 @@ test('project-dxf: 内机 anchor 经 ref:ceiling 解析进 M-HVAC，解析不了
 
 test('project-dxf: 圆角折线经 centerlineSamples 展开（弧不成直线折点）+ R 标注（codex 二审 blocking）', () => {
   const input = baseInput();
-  // 直角三点 + 中点圆角 R0.3：直线走法 = 2 条线；弧感知采样 ≥ 6 段且带 R300 标注
+  // 直角三点 + 中点圆角 R0.3：直线走法 = 2 条线；弧感知采样 ≥ 6 段且带 R300 标注。
+  // 声明弧心必须是**切线弧**的弧心：90° 角两邻边各退 r 的垂足之交 = 角点 − r·(dirIn+dirOut)，
+  // 即 (2−0.3, 5−0.3)=(1.7, 4.7)。只沿一个轴移（如 (2, 4.7)）与邻边不相切，
+  // shared/arc.ts 的 tangentArc 按 fail-closed 返回 null（不出半根弧），DXF 走直折线。
   input.house.sceneElements!.push({
     type: 'railing_run', id: 'railing_arc', height: 1,
     points: [
       { x: 0, z: 5 },
-      { x: 2, z: 5, radius: 0.3, cx: 2, cz: 4.7 },
+      { x: 2, z: 5, radius: 0.3, cx: 1.7, cz: 4.7 },
       { x: 2, z: 3 },
     ],
   });
@@ -383,13 +388,11 @@ test('project-dxf: 折线墙饰面逐段输出，不连起终点弦（codex 四�
   const input = baseInput();
   // L 形墙：水平段 (0,0)→(2,0) 长 2 + 竖直段 (2,0)→(2,2) 长 2。区间 [1,3] 跨转角：
   // 逐段 = 水平 (1,0)→(2,0) + 竖直 (2,0)→(2,1)；弦线 = (1,0)→(2,1) 斜线（错误）。
-  input.house.sceneElements![0] = { type: 'wall', id: 'w_l', x1: 0, z1: 0, x2: 2, z2: 0 };
+  input.house.sceneElements![0] = { type: 'wall', id: 'w_l', x1: 0, z1: 0, x2: 2, z2: 0, finish: { tile_bands: [{ id: 'tile_n', room: 'living', along: [1, 3], bottom: 0, height: 2.4 }] } };
   (input.house.sceneElements![0] as Extract<SceneElement, { type: 'wall' }>).segments = [
     { x1: 0, z1: 0, x2: 2, z2: 0 },
     { x1: 2, z1: 0, x2: 2, z2: 2 },
   ];
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).wall = 'w_l';
-  (input.house.sceneElements![1] as Extract<SceneElement, { type: 'wall_region' }>).along = [1, 3];
   const result = buildProjectDxf(input);
   const tileLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.WFIN_TILE[0]);
   assert.equal(tileLines.length, 2);
@@ -397,22 +400,6 @@ test('project-dxf: 折线墙饰面逐段输出，不连起终点弦（codex 四�
   assert.ok(tileLines.some(([x1, y1, x2, y2]) => x1 === 2000 && y1 === 0 && x2 === 2000 && y2 === -1000), JSON.stringify(tileLines));
   // 不存在斜弦 (1000,0)→(2000,-1000)
   assert.ok(!tileLines.some(([x1, y1, x2, y2]) => x1 === 1000 && y1 === 0 && x2 === 2000 && y2 === -1000));
-});
-
-test('project-dxf: hinge=end 门扇关闭位端点正确（末端铰链回归，codex 五审 blocking）', () => {
-  const input = baseInput();
-  input.house.sceneElements!!.push({ type: 'hinged_glass_door', id: 'gd_end', points: [{ x: 0, z: 0.8 }, { x: 0, z: 1.6 }], height: 2, swing: 'north', hinge: 'end' });
-  const result = buildProjectDxf(input);
-  const entities = parseEntities(result.dxf);
-  const doorLines = linesOn(entities, DXF_LAYERS.DOOR[0]);
-  // hinge=end：铰链 (0,-1600)，自由端关闭位 (0,-800)——门扇长 800mm（typo 会画成 (0,-1600) 自环）
-  const leaf = doorLines.find(([x1, y1, x2, y2]) => x1 === 0 && y1 === -1600 && x2 === 0 && y2 === -800);
-  assert.ok(leaf, JSON.stringify(doorLines));
-  // 开启弧半径 = 门宽 800mm（typo 时半径 0，addArc 跳过 → gd_end 无弧）。
-  // baseInput 的 gd1（hinge=start）也有一条弧，共 2 条、半径同为 800。
-  const arcs = entities.filter((e) => e.type === 'ARC' && e['8'] === DXF_LAYERS.DOOR[0]);
-  assert.equal(arcs.length, 2);
-  assert.ok(arcs.every((arc) => arc['40'] === '800.0000'));
 });
 
 test('project-dxf: plumbing 显式 not_for_construction 命中禁施工判定（codex 五审 blocking）', () => {
@@ -471,19 +458,25 @@ test('project-dxf: 候选风口终端隔离 M-CAND，正式风口带 id（codex 
 
 test('project-dxf: floor_region 圆角随声明展开，不出外接矩形（codex 六审 blocking）', () => {
   const input = baseInput();
-  // 直角三角形三点 + 第一点 R1.0 圆角：外接矩形闭合折线 = 3 边直角；弧感知 = 采样段 + R1000 标注
+  // 直角三角形三点 + 第一点 R1.0 圆角：外接矩形闭合折线 = 3 边直角；弧感知 = 采样段 + R1000 标注。
+  // 声明弧心取切线弧弧心（两邻边各退 r 的垂足之交 = (0+1, 5+1)=(1, 6)）——与邻边相切，
+  // shared/arc.ts 的 tangentArc 才解得出切点；邻边太短（切点 r/tan(θ/2) 超出边长）时
+  // fail-closed 不出弧，只走直折线。
   input.house.sceneElements!.push({
     type: 'floor_region', id: 'floor_round',
     points: [
-      { x: 0, z: 5, radius: 1.0, cx: 1, cz: 5 },
-      { x: 2, z: 5 },
-      { x: 2, z: 6 },
+      { x: 0, z: 5, radius: 1.0, cx: 1, cz: 6 },
+      { x: 9, z: 5 },
+      { x: 0, z: 9 },
     ],
   });
   const result = buildProjectDxf(input);
   const entities = parseEntities(result.dxf);
-  const floorLines = linesOn(entities, DXF_LAYERS.F_FLOOR[0]);
-  // 弧采样段数应明显多于 3（直角连接只有 3 条边）
+  // 只取 floor_round 自己的线（z≥5 → DXF y≤−5000；同层还有 floor_living 矩形 z[0,2]，
+  // 不过滤会让「≥6 段」被矩形线空转撑过）。
+  const floorLines = linesOn(entities, DXF_LAYERS.F_FLOOR[0])
+    .filter(([, y1, , y2]) => y1 <= -5000 || y2 <= -5000);
+  // 弧采样段数应明显多于 3（直角连接只有 3 条边；若退化成外接矩形则只有 4 条）
   assert.ok(floorLines.length >= 6, `expected arc-sampled segments, got ${floorLines.length}`);
   assert.ok(entities.some((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.F_FLOOR[0] && e['1'] === 'R1000'));
 });
@@ -541,10 +534,10 @@ test('project-dxf: 共墙双面饰面标注带房间归属且分侧错开（code
   const input = baseInput();
   // 同一墙 w_north 两侧声明：living 侧 0~0.30m、kitchen 侧 0~2.65m（同 along）
   input.house.rooms!.push({ id: 'kitchen', name: '厨房', x: 2, z: -2, width: 3, depth: 2, height: 2.8, type: 'service' });
-  input.house.sceneElements!.push(
-    { type: 'wall_region', id: 'tile_balc', wall: 'w_north', room: 'living', along: [0, 1.6], bottom: 0, height: 0.30 },
-    { type: 'wall_region', id: 'tile_gbath', wall: 'w_north', room: 'kitchen', along: [0, 1.6], bottom: 0, height: 2.65 },
-  );
+  input.house.sceneElements![0] = { type: 'wall', id: 'w_north', x1: 0, z1: 0, x2: 4, z2: 0, finish: { tile_bands: [
+    { id: 'tile_balc', room: 'living', along: [0, 1.6], bottom: 0, height: 0.30 },
+    { id: 'tile_gbath', room: 'kitchen', along: [0, 1.6], bottom: 0, height: 2.65 },
+  ] } };
   const result = buildProjectDxf(input);
   const texts = parseEntities(result.dxf).filter((e) => e.type === 'TEXT' && e['8'] === DXF_LAYERS.WFIN_TILE[0]);
   const balc = texts.find((e) => (e['1'] ?? '').includes('tile_balc'));
@@ -792,8 +785,9 @@ test('project-dxf: 换行标注规范化为单行，DXF 组码结构不损坏（
 
 test('project-dxf: 墙锚家具按细分段参照（与 3D 同口径，codex 二十审 major）', () => {
   const input = baseInput();
-  // 墙带细分段 [0→1] 与 [1→4]（共线）；锚定 along 2.0——主线口径合法（画在 (2,0)），
-  // 3D 细分段口径下首段长 1、along 2 越界 → 跳过。DXF 必须与 3D 一致跳过。
+  // 墙带细分段 [0→1] 与 [1→4]（共线）；床 along 2.0——主线口径合法（全长 4 的合法域
+  // [0.75,3.25] 含 2.0，会画在 (2,0)），细分段口径首段长 1、合法域 [0.75,0.25] 为空 → 跳过。
+  // DXF 必须与 3D 一致跳过（issue #98 PR-3 起 along 合法域含家具半宽内缩，三处同一解算）。
   (input.house.sceneElements![0] as Extract<SceneElement, { type: 'wall' }>).segments = [
     { x1: 0, z1: 0, x2: 1, z2: 0 },
     { x1: 1, z1: 0, x2: 4, z2: 0 },
@@ -801,10 +795,18 @@ test('project-dxf: 墙锚家具按细分段参照（与 3D 同口径，codex 二
   input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 2.0 }] };
   const result = buildProjectDxf(input);
   assert.equal(result.stats[DXF_LAYERS.FURN[0]], undefined);
-  // 对照：along 0.5 在首段内 → 正常画出
-  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 0.5 }] };
+  // 越界锚定必须显形为摆位诊断（导出失败），不是静默跳过。
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /places furniture outside wall span/);
+  // 对照：细分段 [0→2] 与 [2→4]，along 1.0 落在首段合法域 [0.75,1.25] 内 → 正常画出。
+  (input.house.sceneElements![0] as Extract<SceneElement, { type: 'wall' }>).segments = [
+    { x1: 0, z1: 0, x2: 2, z2: 0 },
+    { x1: 2, z1: 0, x2: 4, z2: 0 },
+  ];
+  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 1.0 }] };
   const result2 = buildProjectDxf(input);
   assert.ok((result2.stats[DXF_LAYERS.FURN[0]] ?? 0) > 0);
+  assert.deepEqual(result2.errors, []);
 });
 
 test('project-dxf: ascii 标注模式剥离中文，几何不变', () => {

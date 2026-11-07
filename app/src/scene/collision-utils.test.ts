@@ -48,7 +48,6 @@ describe('extractCollisionWalls', () => {
       { type: 'floor_region', id: 'f1', points: [{ x: 0, z: 0 }] },
       { type: 'railing_run', id: 'r1', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }] },
       { type: 'bay_sill', id: 'bs1', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }] },
-      { type: 'glass_infill', id: 'gi1', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }] },
       { type: 'shower_screen', id: 'ss1', points: [{ x: 0, z: 0 }, { x: 1, z: 0 }] },
     ];
     const walls = extractCollisionWalls(elements);
@@ -79,19 +78,8 @@ describe('extractCollisionWalls', () => {
   });
 });
 
-describe('extractCollisionWalls hinged_glass_door', () => {
-  it('collides only when the explicit glass door is closed', () => {
-    const closed = extractCollisionWalls([
-      { type: 'hinged_glass_door', id: 'west-door', open: false, points: [{ x: 5.6, z: 2.8 }, { x: 6.3, z: 2.8 }] },
-    ] as any);
-    expect(closed).toHaveLength(1);
-    expect(closed[0].id).toBe('west-door:col:0');
-    const open = extractCollisionWalls([
-      { type: 'hinged_glass_door', id: 'west-door', open: true, points: [{ x: 5.6, z: 2.8 }, { x: 6.3, z: 2.8 }] },
-    ] as any);
-    expect(open).toHaveLength(0);
-  });
-});
+// extractCollisionWalls hinged_glass_door 用例已随 issue #98 第三阶段 S1 删除
+// （overlay 0 元素死类型，碰撞提取分支同步退场）。
 
 describe('extractCollisionWalls sliding_door_run (DEC-022)', () => {
   it('collides only when closed', () => {

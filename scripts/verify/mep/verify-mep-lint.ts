@@ -2,11 +2,13 @@ import { readFileSync } from 'node:fs';
 import * as yaml from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes } from '../../../server/mep-lint-context.js';
-import type { OverlayConfig } from '../../../server/overlay-merge.js';
+import { parseOverlayFiles } from '../../../server/overlay-merge.js';
+import { suppressedWallIds } from '../../../shared/suppression.js';
 import { endpointSourcesFromFacts, parseMepCoordination, validateMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 import { lintLevel, lintMepCoordination, MEP_LINT_CATEGORIES, type MepLintResult } from '../../../shared/mep-hvac-lint.js';
 import { appendUnadjudicatedWarningFindings, parseMepWarningAdjudication } from '../../../shared/mep-warning-adjudication.js';
 import { parseElectricalPoints, parsePlumbingPoints } from '../../../shared/project-render-facts-schema.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
 import type { ProjectRenderFacts } from '../../../shared/types.js';
 
 function load<T>(path: string): T { return yaml.load(readFileSync(path, 'utf8')) as T; }
@@ -14,26 +16,35 @@ function load<T>(path: string): T { return yaml.load(readFileSync(path, 'utf8'))
 export function runMepLint(): MepLintResult {
   const electrical = parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8'));
   const plumbing = parsePlumbingPoints(readFileSync('config/plumbing.yaml', 'utf8'));
-  const ceiling = load<ProjectRenderFacts['ceiling']>('config/ceiling.yaml');
+  const ceiling = load<ProjectRenderFacts['ceiling']>('config/model/envelope/ceiling.yaml');
   const hvac = load<ProjectRenderFacts['hvac']>('config/hvac.yaml');
   const config = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
   const geometry = load('config/layout/model-geometry.yaml');
-  const overlay = load<OverlayConfig>('config/layout/overlay.yaml');
+  const overlay = parseOverlayFiles();
   const plan = hvac.plans[0];
-  const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac });
+  const layout = resolveLayout(geometry as Parameters<typeof resolveLayout>[0]);
+  const house = load<{ furnishings?: Record<string, Array<Record<string, unknown>>> }>('config/house.yaml');
+  // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：路线端点与 DXF/3D
+  // 共用 shared/point-placement.ts 单一解算。
+  const sources = endpointSourcesFromFacts(
+    { electrical, plumbing, ceiling, hvac },
+    pointWallIndexFromElements(layout.walls),
+    pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never),
+  );
   // Keep the cross-file coordination contract on the same verify:mep gate as
   // geometry lint.  Lint is intentionally permissive for inferred/pending
   // routes, while this validator rejects broken references and contradictory
   // source/status declarations before any findings are emitted.
   validateMepCoordination(config, sources);
-  const suppressedWallIds = (overlay.suppress ?? []).flatMap((item) => item.walls ?? (item.wall ? [item.wall] : []));
-  const layout = resolveLayout(geometry as Parameters<typeof resolveLayout>[0]);
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性，
+  // 唯一权威实现 shared/suppression.ts（原 overlay.suppress 顶层清单已删）。
+  const suppressedWallIdList = suppressedWallIds(layout.walls);
   return lintMepCoordination(config, sources, {
     layout,
     ceiling,
     baySills: buildMepBaySillCollisionVolumes(layout, overlay),
     furnitureVolumes: buildMepFurnitureCollisionVolumes(),
-    suppressedWallIds,
+    suppressedWallIds: suppressedWallIdList,
     referenceConstraints: plan?.diagram.reference_constraints,
   });
 }

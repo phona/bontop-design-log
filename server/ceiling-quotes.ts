@@ -6,7 +6,7 @@
  * 本文件只保留吊顶的计价行 key 与文案。**新增域请复用 shared/quote-cards.ts，不要另写一套。**
  *
  * 定位不变：**只管单价，不管量**。工程量由 `shared/ceiling-takeoff.ts` 从
- * `config/ceiling.yaml` 实算，报价方只报单价 + 含项范围，不允许自带面积。
+ * `config/model/envelope/ceiling.yaml` 实算，报价方只报单价 + 含项范围，不允许自带面积。
  */
 import type {
   QuoteCard,

@@ -31,7 +31,7 @@ const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepT
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'];
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'];
 const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as { plans: unknown[] };
-const ceiling = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as unknown[];
+const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as unknown[];
 const topology = parseYaml(readFileSync('config/electrical-topology.yaml', 'utf8')) as {
   circuits: Parameters<typeof computeMepTakeoff>[0]['circuits'];
   controls?: Parameters<typeof computeMepTakeoff>[0]['controls'];

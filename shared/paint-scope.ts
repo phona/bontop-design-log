@@ -11,7 +11,14 @@
  *   ② 门窗洞口一律按实扣除，且扣除量必须由声明/openings 实算，禁止手写常量。
  *      窗洞当前为 0——全部 8 樘窗都在 suppress 的玻璃幕墙/飘窗让路墙上（非涂装面），
  *      但机制必须留着：将来只要有窗声明落在实体墙上，就必须扣。
+ *
+ * 洞口投影不在这里：`doorGapsOnWall`（连同 `openingSill` / `DOOR_SILL_M` 的
+ * fail-closed 语义）已于 2026-11-07（issue #98 第三阶段 S2）搬到
+ * `shared/wall-segments.ts` 的 `openingsAlongWall`——开洞投影全仓唯一入口，
+ * 瓦工算量 / 面层核查 / DXF 切分共用它。
  */
+
+import { openingsAlongWall } from './wall-segments.js';
 
 /** 墙面几何最小契约：model-geometry 墙 / catalog 墙 / buildScene 输入墙都满足。 */
 export interface PaintWallInput {
@@ -55,7 +62,7 @@ export interface PaintWallInput {
   }>;
 }
 
-/** 窗洞声明（overlay 的 bay_sill / glass_infill），沿墙位置缺省时无法定位。 */
+/** 窗洞声明（envelope/openings.yaml 的 bay_sill），沿墙位置缺省时无法定位。 */
 export interface PaintWindowInput {
   id: string;
   wall: string;
@@ -153,27 +160,6 @@ export interface PaintScopeResult {
 const EPS = 1e-9;
 const r3 = (n: number): number => Math.round((n + Number.EPSILON) * 1000) / 1000;
 
-/**
- * 门洞的洞底标高 = 完成面（0m）。
- *
- * 这是**唯一被保留的默认值**，且它有物理依据而不是"猜一个数"：门从完成面起算，
- * model-geometry.yaml 的 9 条 openings 全部是 door 且全部不写 sill（写了反而冗余）。
- * 非门的洞口（窗/垭口）**不享受这个默认**——窗台高是算量输入，缺了就必须抛错，
- * 否则会按"落地窗"扣掉一整面墙的涂装面积。
- */
-const DOOR_SILL_M = 0;
-
-/** 洞口洞底标高：门取完成面，其余缺声明即抛错（不能按落地算，那会多扣面积）。 */
-function openingSill(opening: { id: string; type: string; sill?: number }): number {
-  if (opening.type === 'door') return DOOR_SILL_M;
-  if (opening.sill === undefined) {
-    throw new Error(
-      `洞口 ${opening.id}（type=${opening.type}）缺 sill：非门洞口的洞底标高无法推断，按 0 算会把整段墙面当落地洞口扣掉（涂装面积凭空变小）`,
-    );
-  }
-  return opening.sill;
-}
-
 /** 墙的折线总长（segments 优先，否则单段）。 */
 export function paintWallLength(wall: PaintWallInput): number {
   const segments = wall.segments?.length
@@ -183,56 +169,6 @@ export function paintWallLength(wall: PaintWallInput): number {
     (sum, segment) => sum + Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1),
     0,
   );
-}
-
-/**
- * 把墙上的 openings（model-geometry）投影成沿墙区间。
- * 与 layout-resolver 的解算一致：openings 的 x/z 是洞口**中心**绝对值，
- * 这里把它投影到墙 from→to 方向，得到 along 区间。
- */
-export function doorGapsOnWall(wall: PaintWallInput): PaintGap[] {
-  const segments = wall.segments?.length
-    ? wall.segments
-    : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-  const gaps: PaintGap[] = [];
-  // openings 必填（见 PaintWallInput.openings）：这里不再做 `?? []` 兜底——
-  // 「调用方忘了传洞口」与「墙上真的没有洞」曾被混成同一个值，后果是涂装面积静默多算。
-  for (const opening of wall.openings) {
-    // 在折线上找到离洞口中心最近的投影点（墙在当前模型里均为单段，保留折线通用性）。
-    const total = paintWallLength(wall);
-    let remaining = total;
-    let along = -1;
-    let segLength = 0;
-    for (const segment of segments) {
-      const dx = segment.x2 - segment.x1;
-      const dz = segment.z2 - segment.z1;
-      const length = Math.hypot(dx, dz);
-      if (length <= EPS) continue;
-      const t = ((opening.x - segment.x1) * dx + (opening.z - segment.z1) * dz) / (length * length);
-      if (t < -1e-6 || t > 1 + 1e-6) {
-        remaining -= length;
-        continue;
-      }
-      const clamped = Math.min(1, Math.max(0, t));
-      along = total - remaining + length * clamped;
-      segLength = length;
-      break;
-    }
-    if (along < 0 || segLength <= EPS) continue;
-    const half = opening.width / 2;
-    const bottom = openingSill(opening);
-    const top = bottom + opening.height;
-    gaps.push({
-      id: opening.id,
-      kind: opening.type === 'door' ? 'door' : 'window',
-      from: along - half,
-      to: along + half,
-      bottom,
-      top,
-      areaSqm: 0,
-    });
-  }
-  return gaps;
 }
 
 /** 把一个矩形按洞口切掉，返回实刷矩形集合（可能多个）。 */
@@ -325,7 +261,7 @@ export function computePaintScope(
     // 有 height）与预算侧会因此给出不同答案。错误信息直接指去哪补。
     if (region.height === undefined) {
       throw new Error(
-        `paint_region ${region.id} 缺 height（涂装带顶标高，不是带高）：请到 config/layout/overlay.yaml 补 height（本案层高 2.8m，窗台/防水台带另有 0.77m 一档）。缺失时不许回落默认层高——那会让涂装面积静默偏离声明`,
+        `paint_region ${region.id} 缺 height（涂装带顶标高，不是带高）：请到 config/layout/model-geometry.yaml 墙条目 finish.paint_bands 补 height（本案层高 2.8m，窗台/防水台带另有 0.77m 一档）。缺失时不许回落默认层高——那会让涂装面积静默偏离声明`,
       );
     }
     const top = region.height;
@@ -335,7 +271,8 @@ export function computePaintScope(
     const gaps: PaintGap[] = [];
 
     // 门洞：model-geometry 的 openings，按几何投影裁剪进本段声明
-    for (const gap of doorGapsOnWall(wall)) {
+    // （投影唯一入口：shared/wall-segments.ts 的 openingsAlongWall，洞底标高 fail-closed）
+    for (const gap of openingsAlongWall(wall)) {
       const clippedFrom = Math.max(gap.from, from);
       const clippedTo = Math.min(gap.to, to);
       const clippedBottom = Math.max(gap.bottom, bottom);
@@ -345,7 +282,7 @@ export function computePaintScope(
       gaps.push({ ...gap, from: clippedFrom, to: clippedTo, bottom: clippedBottom, top: clippedTop, areaSqm });
     }
 
-    // 窗洞：overlay 的 bay_sill / glass_infill，只有写了 along 才能定位
+    // 窗洞：envelope/openings.yaml 的 bay_sill，只有写了 along 才能定位
     for (const window of windowsByWall.get(region.wall) ?? []) {
       if (!window.along) {
         if (!options.suppressedWallIds?.has(region.wall)) {
@@ -358,7 +295,8 @@ export function computePaintScope(
       const wFrom = Math.min(window.along[0], window.along[1]);
       const wTo = Math.max(window.along[0], window.along[1]);
       // 窗台高同样是算量输入：缺了它就只能按"落地"扣洞，把涂装面积凭空扣小。
-      // 与门洞不同，窗**不享受** DOOR_SILL_M 那个有物理依据的默认。
+      // 与门洞不同，窗**不享受**门洞那个「完成面 = 0」的有物理依据的默认
+      // （DOOR_SILL_M 的裁决见 shared/wall-segments.ts 的 openingSill）。
       if (window.sill === undefined) {
         throw new Error(
           `${window.id}（挂在墙 ${region.wall} 上）缺 sill：窗台高无法推断，按 0 算会把整段墙面当落地窗洞扣掉（涂装面积凭空变小）`,

@@ -8,11 +8,16 @@ import * as sharedFixtures from '@shared/render/FixtureFactory';
 import * as sharedUv from '@shared/render/uv-utils';
 import {
   buildBathSideCabinetRun,
+  buildCondensateAcOutlet,
+  buildCondensateServiceChase,
+  buildCondensateWardrobeEntry,
   buildFixture,
   buildKitchenCabinetRun,
+  buildVanity,
   buildWardrobe180,
   getRecipeTypes,
 } from './FixtureFactory.js';
+import { buildCondensateChain } from '@shared/condensate-chain';
 
 describe('shared render compatibility entries', () => {
   it('resolve App compatibility exports to the shared implementations', () => {
@@ -259,7 +264,15 @@ describe('wardrobe fixtures', () => {
 
 describe('bathroom fixtures', () => {
   it('moves the guest-bath mirror from the vanity into the mirror cabinet (DEC-2026-09-09-R2)', () => {
-    const vanity = buildFixture('vanity')!;
+    // 客卫台盆柜自 issue #98 PR-3 起由参数化 buildVanity 生成（house.yaml vanity_layout 驱动，
+    // 不再有写死配方；本测试用手写布局验证零件构成，声明与几何的对应由
+    // tests/server/gbath-vanity-layout.test.ts 对实读配置断言）。
+    const vanity = buildVanity({
+      width: 0.69, depth: 0.5, height: 0.75,
+      robot_bay_width: 0.5, robot_bay_clear_width: 0.46, panel_thickness: 0.02,
+      drawer_width: 0.19,
+    });
+    expect(vanity.children.length).toBe(13);
     expect(vanity.children.some((child) => child.userData.part === 'mirror')).toBe(false);
     expect(vanity.children.some((child) => String(child.userData.part).startsWith('vanity-faucet'))).toBe(false);
 
@@ -370,16 +383,56 @@ describe('living room TV proposal fixtures', () => {
 });
 
 describe('condensate coordination fixtures', () => {
+  // 2026-11-07 issue #98 PR-10：三件的零件位置改由锚点派生的链几何算出（FixtureFactory
+  // 不再持有链段长度常量）。这里用真实锚点值解出链，再断言派生几何下各段仍首尾相接、
+  // 坐标仍落在原设计值上——「派生」不等于「漂移」。
+  const chainAnchors = {
+    hvacAnchors: new Map([['indoor_master', { x: 3.70, z: 5.10 }]]),
+    hvacTerminals: [{ id: 'condensate_master_candidate', position: { x: 2.0, y: 0.1, z: 2.5 } }],
+    mepRoute: { penetration: [{ wall: 'w_mbath_south', at: { x: 2.30, z: 2.86 } }] },
+    wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 },
+    // along 2.60 = 沿墙距离（自起点顶点 v_bath_ne z=1.10 起算）→ 世界锚点 z=3.70，
+    // 即管行 z[3.10,4.30] 中点（issue #98 PR-9 删除「along = 绝对 z」特例后的口径）。
+    wallRun: { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270 },
+    wallSegments: new Map([
+      ['w_mb_east', [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }]],
+      ['w_mbath_east', [{ x1: 2.60, z1: 1.10, x2: 2.60, z2: 4.30 }]],
+      ['w_mbath_south', [{ x1: 0.40, z1: 2.86, x2: 2.60, z2: 2.86 }]],
+    ]),
+  };
+  const chain = buildCondensateChain(chainAnchors);
+  const geometry = chain.geometry!;
+
+  it('resolves the chain geometry from anchors at the declared design values', () => {
+    expect(chain.diagnostics).toEqual([]);
+    expect(geometry.placements.condensate_pipe_ac_outlet.x).toBeCloseTo(3.70, 9);
+    expect(geometry.placements.condensate_pipe_ac_outlet.z).toBeCloseTo(5.10, 9);
+    expect(geometry.placements.mb_vanity_pvc_wardrobe_entry.x).toBeCloseTo(2.925, 9);
+    expect(geometry.placements.mb_vanity_pvc_wardrobe_entry.z).toBeCloseTo(4.62, 9);
+    expect(geometry.placements.mb_vanity_pvc_service_chase.x).toBeCloseTo(2.925, 9);
+    expect(geometry.placements.mb_vanity_pvc_service_chase.z).toBeCloseTo(4.62, 9);
+    expect(geometry.derived.boxTurnX).toBeCloseTo(4.10, 6);
+    expect(geometry.derived.wallRunX).toBeCloseTo(2.50, 6);
+    expect(geometry.points.fold).toEqual({ x: 2.30, z: 3.10 });
+    expect(geometry.points.candidate).toEqual({ x: 2.00, z: 2.50 });
+  });
+
   it('connects the ac_master outlet through the wardrobe to the wall-side master-bath candidate route', () => {
-    const outlet = buildFixture('condensate_pipe_ac_outlet')!;
     const wallRun = buildFixture('mb_vanity_pvc_box')!;
-    const entry = buildFixture('mb_vanity_pvc_wardrobe_entry')!;
-    const chase = buildFixture('mb_vanity_pvc_service_chase')!;
     const world = new THREE.Group();
-    const outletRoot = new THREE.Group(); outletRoot.position.set(3.70, 0, 5.10); outletRoot.add(outlet);
-    const wallRoot = new THREE.Group(); wallRoot.position.set(2.50, 0, 3.70); wallRoot.rotation.y = THREE.MathUtils.degToRad(270); wallRoot.add(wallRun);
-    const entryRoot = new THREE.Group(); entryRoot.position.set(4.10, 0, 4.62); entryRoot.add(entry);
-    const chaseRoot = new THREE.Group(); chaseRoot.position.set(2.925, 0, 4.62); chaseRoot.add(chase);
+    const outletRoot = new THREE.Group();
+    outletRoot.position.set(geometry.placements.condensate_pipe_ac_outlet.x, 0, geometry.placements.condensate_pipe_ac_outlet.z);
+    outletRoot.add(buildCondensateAcOutlet(geometry));
+    const wallRoot = new THREE.Group();
+    wallRoot.position.set(2.50, 0, 3.70);
+    wallRoot.rotation.y = THREE.MathUtils.degToRad(270);
+    wallRoot.add(wallRun);
+    const entryRoot = new THREE.Group();
+    entryRoot.position.set(geometry.placements.mb_vanity_pvc_wardrobe_entry.x, 0, geometry.placements.mb_vanity_pvc_wardrobe_entry.z);
+    entryRoot.add(buildCondensateWardrobeEntry(geometry));
+    const chaseRoot = new THREE.Group();
+    chaseRoot.position.set(geometry.placements.mb_vanity_pvc_service_chase.x, 0, geometry.placements.mb_vanity_pvc_service_chase.z);
+    chaseRoot.add(buildCondensateServiceChase(geometry));
     world.add(outletRoot, wallRoot, entryRoot, chaseRoot);
     world.updateMatrixWorld(true);
     const parts = new Map<string, THREE.Object3D>();
@@ -430,6 +483,39 @@ describe('condensate coordination fixtures', () => {
     expect(candidateDrop.min.y).toBeCloseTo(0.1, 3);
     expect(candidateDrop.max.y).toBeCloseTo(2.65, 3);
     expect([...parts.values()].filter((part) => String(part.userData.part).startsWith('condensate-pipe-')).every((part) => part.visible === false)).toBe(true);
+  });
+
+  it('follows the anchors when the wardrobe or the penetration moves', () => {
+    const movedWardrobe = buildCondensateChain({
+      ...chainAnchors,
+      wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.55, z: 4.59, rotation: 0 },
+    });
+    expect(movedWardrobe.diagnostics).toEqual([]);
+    // 衣柜东移 0.10m：服务带锚点与两段（entry/chase）一起东移，接口仍重合。
+    expect(movedWardrobe.geometry!.placements.mb_vanity_pvc_wardrobe_entry.x).toBeCloseTo(3.025, 9);
+    expect(movedWardrobe.geometry!.placements.mb_vanity_pvc_service_chase.x).toBeCloseTo(3.025, 9);
+    expect(movedWardrobe.geometry!.plan).toHaveLength(geometry.plan.length);
+
+    const movedPenetration = buildCondensateChain({
+      ...chainAnchors,
+      mepRoute: { penetration: [{ wall: 'w_mbath_south', at: { x: 2.40, z: 2.86 } }] },
+    });
+    expect(movedPenetration.diagnostics).toEqual([]);
+    // 穿墙点西移 0.10m：折点与折后各段跟着走，服务带锚点不动。
+    expect(movedPenetration.geometry!.points.fold.x).toBeCloseTo(2.40, 9);
+    expect(movedPenetration.geometry!.points.fold.z).toBeCloseTo(3.10, 9);
+    expect(movedPenetration.geometry!.placements.mb_vanity_pvc_service_chase.x).toBeCloseTo(2.925, 9);
+  });
+
+  it('alarms through the diagnostics when a segment interface stops coinciding', () => {
+    const broken = buildCondensateChain({
+      ...chainAnchors,
+      // 衣柜北移 0.10m（南缘 4.30→4.40）：柜顶下落段止于新南缘，墙行包管 along 没跟着改
+      // → 接口不重合，整条链作废并显形，而不是画一条对不上包管的管。
+      wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.69, rotation: 0 },
+    });
+    expect(broken.geometry).toBeNull();
+    expect(broken.diagnostics.some((line) => line.includes('接口不重合'))).toBe(true);
   });
 });
 

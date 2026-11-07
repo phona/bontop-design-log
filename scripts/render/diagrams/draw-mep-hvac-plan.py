@@ -29,7 +29,7 @@ def load_sources():
     electrical = load('config/electrical.yaml')
     plumbing = load('config/plumbing.yaml')
     hvac = load('config/hvac.yaml')['plans'][0]
-    ceiling = load('config/ceiling.yaml')
+    ceiling = load('config/model/envelope/ceiling.yaml')
     coordination = load('config/mep-hvac-coordination.yaml')
     vertices = {item['id']: (item['x'], item['z']) for item in geometry['vertices']}
     points = {}

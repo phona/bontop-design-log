@@ -15,7 +15,6 @@ import {
   validateGlassSegments,
   validateGlassAgainstWalls,
   validateOverlayJunctionSpecs,
-  validateOverlayReplacements,
   deriveRuntimeGlassJoins,
   validateRelationshipSpecs,
   validateRuntimeAuthority,
@@ -77,30 +76,20 @@ describe('spatial validation primitives', () => {
   });
 
   it('enforces one suppress replacement and catches duplicate glass paths', () => {
+    // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：replacement 是墙属性上的对象 id
+    // 直引用（原 overlay_replacements 镜像表已删），校验在 shared/suppression.ts 的
+    // validateWallSuppressions；本用例只保留 deriveRuntimeGlassJoins 对 join 规格的消费。
     const elements = [{
       id: 'glass',
       type: 'curtain_run',
       walls: ['w1'],
       parts: [{ wallRefs: ['w1'] }],
     }];
-    assert.equal(validateOverlayReplacements(
-      ['w1'], elements, [{ wall: 'w1', replacement: 'glass', kind: 'curtain_run' }],
-    ).length, 0);
-    assert.ok(validateOverlayReplacements(
-      ['w1'], elements, [
-        { wall: 'w1', replacement: 'glass', kind: 'curtain_run' },
-        { wall: 'w1', replacement: 'glass', kind: 'curtain_run' },
-      ],
-    ).some((issue) => issue.code === 'overlay_replacement_duplicate'));
-
     const duplicateGlass = validateGlassSegments([
       { ...wall('w1', 0, 0, 2, 0), elementId: 'glass_a' },
       { ...wall('w2', 1, 0, 3, 0), elementId: 'glass_b' },
     ]);
     assert.ok(duplicateGlass.some((issue) => issue.code === 'glass_duplicate_overlap'));
-    assert.ok(validateOverlayReplacements(
-      ['w1', 'w1'], elements, [{ wall: 'w1', replacement: 'glass', kind: 'curtain_run' }], 'overlay', ['w1'],
-    ).some((issue) => issue.code === 'overlay_suppress_duplicate'));
     assert.ok(validateGlassAgainstWalls(
       [{ ...wall('w1', 0, 0, 2, 0), elementId: 'glass' }],
       [wall('solid', 1, 0, 3, 0)],
@@ -148,9 +137,6 @@ describe('spatial validation primitives', () => {
     assert.ok(invalidJunctions.some((issue) => issue.code === 'overlay_junction_wall_unknown'));
     assert.ok(invalidJunctions.some((issue) => issue.code === 'overlay_junction_coordinate_missing'));
     assert.ok(invalidJunctions.some((issue) => issue.code === 'overlay_junction_overlap_range_invalid'));
-    assert.ok(validateOverlayReplacements(
-      ['w1'], elements, [{ wall: 'unknown', replacement: 'glass', kind: 'not_structural' }], 'overlay', ['w1'],
-    ).some((issue) => issue.code === 'overlay_replacement_kind_invalid' && issue.level === 'error'));
   });
 
   it('distinguishes furniture contact from a wall/glass crossing and checks ceiling overlap', () => {
@@ -207,6 +193,12 @@ describe('spatial validation primitives', () => {
       ['furniture:balcony:washer:0', 'furniture:balcony:dryer:1'],
       'config/anti-penetration.yaml',
     ).some((issue) => issue.code === 'relationship_instance_unstable'));
+    // 声明的稳定对象 id（issue #98，如 gbath.vanity）不带 ':'，但属已知 runtime 实例，不算类型名。
+    assert.deepEqual(validateRelationshipSpecs(
+      [{ id: 'stable-pair', type: 'contained', objects: ['gbath.vanity', 'gbath.robot_dock'] }],
+      ['gbath.vanity', 'gbath.robot_dock', 'furniture:guest_bath:toilet:1'],
+      'config/anti-penetration.yaml',
+    ), []);
   });
 });
 

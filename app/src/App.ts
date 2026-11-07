@@ -45,7 +45,7 @@ import {
   invalidateExitPop,
   type ApprovalRoute, type ApprovalSubPage,
 } from './state/approval-route.js';
-import { buildObjectPackageIndex, resolvePackageScope, type PackageScopeLink, type ProjectScopeInput } from '@shared/package-scope';
+import { buildObjectPackageIndex, resolvePackageScope, sourceWallIdOf, type PackageScopeLink, type ProjectScopeInput } from '@shared/package-scope';
 import { TRADE_LABEL } from './render/analysis/ceiling-zone-colors.js';
 import { FurniturePanel } from './ui/FurniturePanel.js';
 import { PlacementPanel } from './ui/PlacementPanel.js';
@@ -74,7 +74,9 @@ import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
 import type { CaptureOptions, RoomAuditCaptureOptions } from '@shared/types';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot, MaterialAppearance, MaterialPreviewAtlasConfig } from '@shared/types';
 import { endpointSourcesFromFacts, type MepCoordination } from '@shared/mep-hvac-coordination-schema';
+import { pointMountHostIndex, pointWallIndexFromElements } from '@shared/point-placement';
 import { buildProjectDxf } from '@shared/dxf/project-dxf';
+import type { PointCircuitTopologyLike } from '@shared/point-circuits';
 import type { MepLintResult } from '@shared/mep-hvac-lint';
 
 const ORBIT_DISTANCE = 15;
@@ -331,11 +333,16 @@ export class App {
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
     await this.houseScene.buildFromCatalog(this.projectData);
+    this.reportPlacementDiagnostics();
     this.annotationRenderer = new AnnotationRenderer(
       this.houseScene.scene,
       this.houseScene.camera,
       this.houseScene.getViewOnlyRoot(),
     );
+    // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）；
+    // mount 挂载点位的宿主索引同源注入（issue #98 S2）。
+    this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
+    this.annotationRenderer.setMountHosts(this.houseScene.getMountHosts());
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
@@ -1327,7 +1334,11 @@ export class App {
       const links = (this.projectData?.modelPackageLinks ?? []) as PackageScopeLink[];
       this.objectPackageIndex = buildObjectPackageIndex(links, project);
     }
-    const packageIds = this.objectPackageIndex.get(objectId);
+    // 二级命中（2026-11-07 issue #98 S4 评审 blocking）：索引键是 links 的稳定对象 id，
+    // 而墙 mesh 的 objectId 带拆段/拆面后缀（`墙id:N`/`墙id:N.M`，见 sourceWallIdOf）。
+    // 面层配方下沉后工作包按宿主对象 id 选墙，不桥接则点那 15 面墙反查不到归属包。
+    const packageIds = this.objectPackageIndex.get(objectId)
+      ?? this.objectPackageIndex.get(sourceWallIdOf(objectId));
     if (!packageIds?.length) return;
     // 选中与 hash：单包落在该包（详情/分享链接需要一个确定目标）；**多包不预设
     // 首个包**（#67：旧实现反查到多包时选中条/详情目标恒取 packageIds[0]，业主
@@ -1526,7 +1537,7 @@ export class App {
       layerCommand('electrical_topology', '电路归属', '电气回路归属：面板—回路—点位归属，非电缆/线管/施工路径', '4'),
       layerCommand('wall_tile', '贴砖', '贴砖检视态：厨卫已声明贴砖区（可见面蓝 / 遮蔽面橙）', '5'),
       layerCommand('paint', '涂漆', '涂漆检视态：已声明涂漆墙面（按房间外偏移避免共面）', '6'),
-      layerCommand('ceiling_zone', '吊顶', '吊顶分区高亮：按 config/ceiling.yaml 逐分区声明上色', '7'),
+      layerCommand('ceiling_zone', '吊顶', '吊顶分区高亮：按 config/model/envelope/ceiling.yaml 逐分区声明上色', '7'),
       {
         id: 'layer.clear_all',
         label: '关闭全部检视层',
@@ -2123,7 +2134,13 @@ export class App {
     }
     const summary = document.getElementById('electrical-topology-render-summary');
     const counts = this.houseScene.getElectricalTopologySummary();
-    if (summary) summary.textContent = `面板 ${counts.panels} · 回路 ${counts.circuits} · 负载归属 ${counts.edges}${counts.skippedEdges ? ` · 跳过 ${counts.skippedEdges}` : ''}`;
+    const skipped = counts.skippedEdges + counts.skippedPanels;
+    if (summary) summary.textContent = `面板 ${counts.panels} · 回路 ${counts.circuits} · 负载归属 ${counts.edges}${skipped ? ` · 跳过 ${skipped}（面板 ${counts.skippedPanels}/成员 ${counts.skippedEdges}，原因见控制台）` : ''}`;
+    // 跳过原因显形（issue #98 S3）：定位解算失败的点位不进回路图，但绝不静默——
+    // 每个跳过都带诊断文本，修复配置（along/宿主墙/家具摆位）后重建即恢复。
+    for (const diagnostic of this.houseScene.getElectricalTopologyDiagnostics()) {
+      console.warn(`[electrical-topology] ${diagnostic}`);
+    }
     const legend = document.getElementById('electrical-topology-legend');
     if (legend) legend.textContent = '颜色：照明/空调电源/专用负载/普通功能电源；状态：已确认关系/提议关系/待确认关系';
     controls.hidden = true;
@@ -2212,7 +2229,7 @@ export class App {
       // projectData 缓存不再作为导出输入（十五审）：全部四路拉取失败时仍可导出骨架 + D-NOTES。
       // 全量新鲜拉取（codex 十二～十五审 blocking 系列）：projectData 是页面加载缓存，
       // 点位/家具/吊顶/几何的编辑都不回写——导出前重新拉服务端当前状态，杜绝混用新旧数据。
-      const [factsResponse, mepResponse, furnishingsResponse, projectResponse, configStatusResponse] = await Promise.all([
+      const [factsResponse, mepResponse, furnishingsResponse, projectResponse, configStatusResponse, topologyResponse] = await Promise.all([
         fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         // /api/furnishings 每次请求直读 house.yaml（与 CLI 同全案口径）。
@@ -2221,6 +2238,9 @@ export class App {
         // 配置加载状态核验（codex 十六审 blocking）：loader 重载失败会保留上次成功数据且
         // render-facts 仍 200——HTTP 成功不等于数据新鲜，必须查 status。
         fetch('/api/config-status').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        // 回路拓扑（issue #98 S3）：DXF 图上「点位属于哪条回路」的标注源（点位侧 circuit
+        // 字段已退役，只认 topology 的 member_point_ids + controls）。缺它只丢回路标注。
+        fetch('/api/electrical-topology').then((response) => (response.ok ? response.json() : null)).catch(() => null),
       ]);
       const configStatuses = (configStatusResponse?.configs ?? []) as Array<{ path?: string; status?: string }>;
       // 保守规则（codex 十六/十七/十八审 blocking 收口）：任何配置重载失败都不能假装数据
@@ -2233,8 +2253,6 @@ export class App {
       const factsStale = configReloadDegraded;
       const facts = !factsStale && factsResponse ? (factsResponse as ProjectRenderFacts) : null;
       const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
-      // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
-      const mep = facts?.hvac?.plans && mepPayload ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts) } : undefined;
       // 几何/overlay loader 重载失败同规则（codex 十八审 blocking）：隔离 projectHouse，
       // 不让旧墙体/旧洞口与新家具混装。
       const projectHouse = (!configReloadDegraded && projectResponse !== null
@@ -2242,6 +2260,18 @@ export class App {
         : undefined) as
         | { rooms?: unknown[]; ceilingZones?: unknown[]; sceneElements?: unknown[] }
         | undefined;
+      // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
+      // 端点解析的宿主索引（issue #98 S1/S3）：沿墙/挂载点位不再声明绝对 x/z，MEP 端点与
+      // 3D/DXF/lint 共用 shared/point-placement.ts 单一解算——墙几何取自本次 /api/project 的
+      // sceneElements（带 line_datum），家具宿主取自 /api/furnishings。几何不可得则 M-* 图层
+      // 整体不导出（端点解不出比缺图更危险：路线会静默错位），由 D-NOTES 声明。
+      const dxfPointWalls = pointWallIndexFromElements(
+        ((projectHouse?.sceneElements ?? []) as unknown[]).filter((element) => (element as { type?: string }).type === 'wall') as never,
+      );
+      const dxfMountHosts = pointMountHostIndex(Object.values((furnishingsResponse ?? {}) as Record<string, Array<Record<string, unknown>>>).flat() as never);
+      const mep = facts?.hvac?.plans && mepPayload && projectHouse?.sceneElements
+        ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts, dxfPointWalls, dxfMountHosts) }
+        : undefined;
       // 降级说明随图交付（codex 七审 major）：施工方拿到的 DXF 必须能区分「没设计」和「导出时接口失败」。
       // 家具全案口径后 PHASE 固定 full（3D 页面可能按阶段渲染，图内注明，codex 十一审 major）。
       const notes: string[] = ['PHASE: full (all furnishings; the 3D view may render a phase-filtered subset)'];
@@ -2259,6 +2289,12 @@ export class App {
       if (failedPaths.length > 0) notes.push(`CONFIG RELOAD FAILED: ${failedPaths.join(', ')} — affected layers excluded`);
       if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
+      // 拉到的拓扑必须真的是拓扑（ circuits 数组）：接口降级/空响应时按缺失处理并随图声明，
+      // 不把 `{}` 当电路表喂给装配器（那会让整次导出抛在解算器里）。
+      const pointCircuitSources = (topologyResponse !== null && Array.isArray((topologyResponse as { circuits?: unknown }).circuits)
+        ? (topologyResponse as PointCircuitTopologyLike)
+        : undefined);
+      if (!pointCircuitSources) notes.push('CIRCUIT LABELS NOT EXPORTED: electrical-topology API failed or returned no circuits at export time');
       const result = buildProjectDxf({
         house: {
           rooms: (projectHouse?.rooms ?? undefined) as never,
@@ -2274,8 +2310,14 @@ export class App {
         },
         plumbing: facts?.plumbing,
         mep,
+        pointCircuitSources,
         notes,
       });
+      // 家具摆位诊断 = 施工摆位不可得（issue #98 PR-3）：与 CLI 同一口径，不交付缺件/错位图纸。
+      if (result.errors.length > 0) {
+        for (const error of result.errors) console.error('[dxf] placement error:', error);
+        throw new Error(`DXF 导出失败：${result.errors.length} 条家具摆位诊断（${result.errors[0]}${result.errors.length > 1 ? ' 等' : ''}）`);
+      }
       const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
       const url = URL.createObjectURL(new Blob([result.dxf], { type: 'application/dxf' }));
       const a = document.createElement('a');
@@ -2291,6 +2333,19 @@ export class App {
       console.error(message, error);
       this.showToast(message);
     }
+  }
+
+  /**
+   * 家具摆位诊断显形（issue #98 PR-3）：定位声明解析失败（断引用/越界/负净宽/mount 宿主缺失）
+   * 的家具不会进场景。页面与 DXF 导出 / verify:furniture 同一口径——显形并指引 AI 会话修复，
+   * 不静默少件；修复后重建即恢复。
+   */
+  private reportPlacementDiagnostics(): void {
+    const diagnostics = this.houseScene.getPlacementDiagnostics();
+    if (diagnostics.length === 0) return;
+    console.error('[scene] furniture placement diagnostics:', diagnostics);
+    const suffix = diagnostics.length > 1 ? ` 等 ${diagnostics.length} 条` : '';
+    this.showToast(`家具摆位异常：${diagnostics[0]}${suffix}（请通过 AI 会话修复配置）`);
   }
 
   private async handleExportGlb(): Promise<void> {
@@ -2368,9 +2423,9 @@ export class App {
         if (!objectId) return;
         // 页面只读化（2026-11-04）：拖动只做本地预演，不回写配置——
         // 模型配置唯一写手是 AI 会话（AGENTS.md「页面只取证与体验」）。
-        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:') || objectId.startsWith('furniture:')) {
-          this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
-        }
+        // 拖动只能经 enterDragForHovered 对家具/点位进入，故不再按 objectId 前缀二次判定
+        // （稳定 id 如 gbath.vanity 无 furniture: 前缀，按前缀判会漏提示）。
+        this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
         this.houseScene.hideGhost();
       },
     });
@@ -2687,12 +2742,12 @@ export class App {
     if (hovered) {
       const isInfrastructure = hovered.objectId.startsWith('electrical:') || hovered.objectId.startsWith('plumbing:');
       if (hovered.type === 'furniture') {
-        const parts = hovered.objectId.split(':');
-        const type = parts[2] ?? parts[1];
         this.fpController.enterDragMode(hovered.objectId, 0);
         const pos = this.houseScene.getFurniturePosition(hovered.objectId);
-        if (pos) {
-          this.houseScene.showGhost(pos.x, pos.z, pos.rotation, type);
+        // 幽灵尺寸按家具类型取：读 SceneBuilder 写的 userData.furnishingType，不再解析 objectId
+        // （稳定 id 如 gbath.vanity 不编码类型）。
+        if (pos?.furnishingType) {
+          this.houseScene.showGhost(pos.x, pos.z, pos.rotation, pos.furnishingType);
         }
       } else if (isInfrastructure) {
         this.fpController.enterDragMode(hovered.objectId, 0);
@@ -2801,12 +2856,8 @@ export class App {
       const objectId = this.fpController.getDraggedObjectId();
       const pos = this.houseScene.getGhostPosition();
       if (objectId && pos) {
-        const x = pos.x;
-        const z = pos.z;
-        if (objectId.startsWith('electrical:') || objectId.startsWith('plumbing:') || objectId.startsWith('furniture:')) {
-          // 页面只读化（2026-11-04）：本地预演，不回写配置
-          this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
-        }
+        // 页面只读化（2026-11-04）：本地预演，不回写配置（拖动入口已限家具/点位，不按前缀判）
+        this.showToast('拖动为临时示意，松手即取消；要调整配置请通过 AI 会话');
       }
       this.fpController.exitDragMode();
       this.houseScene.hideGhost();
@@ -2948,12 +2999,17 @@ export class App {
     }
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
     await this.houseScene.buildFromCatalog(this.projectData);
+    this.reportPlacementDiagnostics();
     this.annotationRenderer?.clear();
     this.annotationRenderer = new AnnotationRenderer(
       this.houseScene.scene,
       this.houseScene.camera,
       this.houseScene.getViewOnlyRoot(),
     );
+    // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）；
+    // mount 挂载点位的宿主索引同源注入（issue #98 S2）。
+    this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
+    this.annotationRenderer.setMountHosts(this.houseScene.getMountHosts());
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
@@ -2979,6 +3035,7 @@ export class App {
       const data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
       this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
       await this.houseScene.buildFromCatalog(data);
+      this.reportPlacementDiagnostics();
       this.annotationRenderer?.clear();
       this.annotationRenderer = new AnnotationRenderer(
         this.houseScene.scene,
@@ -3019,6 +3076,7 @@ export class App {
       try {
         this.collision.setWalls(this.extractWalls(previousProjectData?.house?.sceneElements));
         await this.houseScene.buildFromCatalog(previousProjectData);
+        this.reportPlacementDiagnostics();
         this.annotationRenderer?.clear();
         this.annotationRenderer = new AnnotationRenderer(
           this.houseScene.scene,
@@ -3132,6 +3190,8 @@ export class App {
           projection,
           electrical: this.renderFacts?.electrical ?? this.annotationRenderer.getElectricalData(),
           hvac: this.renderFacts?.hvac,
+          // 点位宿主墙索引（issue #98 S3）：暖通 ref → 电气点位的坐标走单一解算器。
+          pointWalls: this.houseScene.getPointWalls(),
         });
         this.houseScene.rebuildHvacProjection(projection, sources);
         this.houseScene.loadHvacProjection(projection, sources);
@@ -3148,6 +3208,11 @@ export class App {
               hvacAnchors: plan?.diagram.anchors ?? [],
               hvacTerminals: plan?.diagram.terminals ?? [],
               outdoor: plan ? [plan.outdoor] : [],
+              // 点位宿主墙索引（issue #98 S1）：浏览器 MEP 路线与服务端/DXF/3D 同一解算。
+              pointWalls: this.houseScene.getPointWalls(),
+              // mount 挂载点位的家具宿主索引（issue #98 S2）：起夜灯是 MEP 端点，
+              // 浏览器渲染与服务端/DXF 同一宿主脸解算。
+              mountHosts: this.houseScene.getMountHosts(),
             };
             this.mepLintResult = mepPayload.lint ?? null;
             this.houseScene.loadMepCoordination(mep, mepSources, mepPayload.lint);

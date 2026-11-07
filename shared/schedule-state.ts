@@ -20,8 +20,11 @@ import * as yaml from 'js-yaml';
 import { computeGateStatus } from './gate-status.js';
 import { contractArchivePathProblem, isValidCalendarDateText } from './contract-archive.js';
 import { DECISION_GATES_PATH, loadDecisionGates, openGatesByCheck, type Decision, type DecisionGates } from './decision-gates.js';
-import { MODEL_PACKAGE_LINKS_PATH } from './model-package-links.js';
+import { MODEL_PACKAGE_LINKS_PATH, authorityFilePaths } from './model-package-links.js';
 import type { ModelPackageLinks } from './model-package-links.js';
+import { collectDeclaredFurnitureIds, type DeclaredFurnitureIdEntry } from './furniture-object-id.js';
+import { collectFinishRecipeIds } from './finish/input.js';
+import type { FurnishingsYaml } from './types.js';
 
 type AnyRecord = Record<string, any>;
 
@@ -119,6 +122,15 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
   const control = yaml.load(fs.readFileSync(controlPath, 'utf8')) as AnyRecord;
   const acceptance = yaml.load(fs.readFileSync(acceptancePath, 'utf8')) as AnyRecord;
   const roadmap = yaml.load(fs.readFileSync(roadmapPath, 'utf8')) as AnyRecord;
+  // 成本项 targets（issue #98 PR-8，按对象算账）的合法取值域 = house.yaml furnishings
+  // 已声明的稳定对象 id。对象 id 的唯一实现在 furniture-object-id.ts，这里只取清单，
+  // 不另写第二套 id 公式。
+  // 2026-11-07（issue #98 第三阶段 S6）另取面层配方 id 全集：targets **不收**配方——
+  // 它们与对象 id 同为稳定字符串，只能按配方住处（shared/finish/input.ts）枚举后拦截。
+  const house = yaml.load(fs.readFileSync(path.join(root, 'config/house.yaml'), 'utf8')) as { furnishings?: FurnishingsYaml };
+  const furnitureObjects: DeclaredFurnitureIdEntry[] = collectDeclaredFurnitureIds(house.furnishings ?? {});
+  const furnitureObjectById = new Map(furnitureObjects.map((entry) => [entry.id, entry]));
+  const finishRecipeIds = collectFinishRecipeIds();
   const modelPackageLinks = options.modelPackageLinks;
   const decisionGates = loadDecisionGates(root);
   const openDecisionGates = decisionGates.decisions.filter((decision) => decision.scope === 'acceptance' && decision.status === 'open');
@@ -164,7 +176,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     for (const link of links) {
       for (const scope of link.scope ?? []) {
         const authorityPath = modelPackageLinks.authorities[scope.source];
-        if (authorityPath) paths.push(authorityPath);
+        if (authorityPath) paths.push(...authorityFilePaths(authorityPath));
       }
     }
     if (pkg.include_site_data_ledger === true || (pkg.blockers ?? []).some((id: string) => ['BLK-HANDOVER', 'BLK-SURVEY-DATA-FREEZE'].includes(id))) {
@@ -190,7 +202,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     for (const link of links) {
       for (const scope of link.scope ?? []) {
         const authorityPath = modelPackageLinks.authorities[scope.source];
-        if (authorityPath) paths.push(authorityPath);
+        if (authorityPath) paths.push(...authorityFilePaths(authorityPath));
       }
     }
     return unique(paths).sort();
@@ -204,7 +216,10 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     for (const link of links) {
       for (const scope of link.scope ?? []) {
         const authorityPath = modelPackageLinks.authorities[scope.source];
-        if (authorityPath && !authorityPath.startsWith('schedule/phase-')) paths.push(authorityPath);
+        if (!authorityPath) continue;
+        for (const file of authorityFilePaths(authorityPath)) {
+          if (!file.startsWith('schedule/phase-')) paths.push(file);
+        }
       }
     }
     if (phaseId === control.phase_id) paths.push('docs/pending-site-data.md');
@@ -221,7 +236,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     DECISION_GATES_PATH,
     MODEL_PACKAGE_LINKS_PATH,
     'docs/pending-site-data.md',
-    ...Object.values(modelPackageLinks.authorities),
+    ...Object.values(modelPackageLinks.authorities).flatMap(authorityFilePaths),
   ]).sort();
 
   const errors: string[] = [];
@@ -312,6 +327,42 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
       }
       if (component.planned_cny != null && (typeof component.planned_cny !== 'number' || component.planned_cny < 0)) {
         errors.push(`${component.id}: planned_cny must be null or a non-negative number`);
+      }
+      // 成本项对象归属（issue #98 PR-8）：可选 `targets: [对象稳定 id]`。只收非空字符串
+      // 数组、全屋唯一且指向 placed 对象——count-only 条目无 runtime 对象可归属；
+      // 没有 DEC/台账映射的归属未定对象就不写 targets，不许用占位对象假装归属。
+      // 2026-11-07（issue #98 PR-11）口径修正：targets 登记的是「对象→成本项」关联，
+      // 不是金额裁定——COST-150-01 按 DEC-2026-10-07-R02 裁定④登记条带柜组 7 件，
+      // 金额边界（含不含 P2-100 的 3000-5000）仍是开放决策 D19，由
+      // cost:by-object 单对象视图的「关联决策门禁」节显形。PR-8 曾把 COST-150-01
+      // 当作「归属未定就不写 targets」的例子，随 PR-11 取代。
+      // 2026-11-07（issue #98 第三阶段 S6）新增一道显式拦截：**面层配方 id 不得进 targets**。
+      // S4 起墙贴砖带/涂装带、防水台与飘窗的贴砖/涂装面、S5 起派生的踢脚带都是宿主对象
+      // 身上的派生量（109 个配方），不是对象。配方 id 与对象 id 同为稳定字符串、任何 schema
+      // 都区分不了，故按 shared/finish/input.ts 的配方 id 全集拦在第一道（迁移设计 §5.7：
+      // 否则按对象算账视图被 109 个配方稀释，业主看到的是「一间房 40 条成本行」）。
+      // 拦截文案点名配方住在哪，写错的人知道该改成什么。
+      if (component.targets !== undefined) {
+        const targets = component.targets;
+        if (!Array.isArray(targets) || targets.length === 0 || targets.some((target: unknown) => typeof target !== 'string' || !target.trim())) {
+          errors.push(`${component.id}: targets 必须是非空的对象稳定 id 字符串数组`);
+        } else {
+          const seenTargets = new Set<string>();
+          for (const target of targets) {
+            if (finishRecipeIds.has(target)) {
+              errors.push(`${component.id}: cost target "${target}" 是面层配方 id（墙 finish.tile_bands/paint_bands、防水台/飘窗 finish.tile/paint，或由其派生的踢脚带），不是对象——targets 只收对象 id，配方量是派生量、写进 quantity_basis，不进 targets`);
+              continue;
+            }
+            const objectEntry = furnitureObjectById.get(target);
+            if (!objectEntry) {
+              errors.push(`${component.id}: cost target "${target}" 不是 config/house.yaml furnishings 已声明的对象稳定 id`);
+            } else if (objectEntry.placement === 'count_only') {
+              errors.push(`${component.id}: cost target "${target}" 是 count-only 条目，无 runtime 对象可归属`);
+            }
+            if (seenTargets.has(target)) errors.push(`${component.id}: duplicate cost target "${target}"`);
+            seenTargets.add(target);
+          }
+        }
       }
     }
     const components = pkg.budget?.components ?? [];

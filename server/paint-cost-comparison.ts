@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
-import type { ResolvedLayout } from '../shared/types.js';
+import type { ResolvedLayout, WallSuppression } from '../shared/types.js';
+import { isWallSuppressed } from '../shared/suppression.js';
 import { buildBaySillGeometry } from '../shared/render/BaySillGeometry.js';
 import { computePaintSillScope, dedupeAdjacentBayCaps, type PaintSillFaceInput } from '../shared/paint-sill-scope.js';
 import type { BaySillPoint } from '../shared/render/BaySillGeometry.js';
 import type { ProjectCatalog } from './project-catalog.js';
-import { mergeSceneElements, parseOverlay } from './overlay-merge.js';
+import { mergeSceneElements, parseOverlay, parseOverlayFiles, loadOverlayDoc, validateWallFinish } from './overlay-merge.js';
 import { loadCeilingConfig } from './config-loader.js';
 import {
   computePaintScope,
@@ -214,40 +215,62 @@ export interface PaintScopeInputs {
 }
 
 /**
- * 读 overlay.yaml：paint_region 声明 + suppress 墙 + 窗洞声明（bay_sill / glass_infill）。
+ * 读涂装声明（issue #98 第三阶段 S4 起面层配方下沉，读取点随之改宿主对象）：
+ *   paint_region(31)  → config/layout/model-geometry.yaml 墙条目 finish.paint_bands[]
+ *   paint_sill_region(8) → config/model/envelope/openings.yaml bay_sill 条目 finish.paint[]
+ *   paint_ceiling_region(8) → model-geometry.yaml 房间条目 ceiling_finish
+ *   bay_sill（窗洞扣除） → envelope/openings.yaml（经 loadOverlayDoc 合并）
+ * suppress 墙读 model-geometry.yaml 的墙属性（2026-11-07 issue #98 第三阶段 S3 改判，
+ * 权威实现 shared/suppression.ts）。
  * 预算侧与成本侧都走这里，保证读到的永远是同一份声明。
  */
-export function loadPaintScopeInputs(path = 'config/layout/overlay.yaml'): PaintScopeInputs {
-  const overlay = load(readFileSync(path, 'utf8')) as {
-    suppress?: Array<{ wall?: string; walls?: string[] }>;
+export function loadPaintScopeInputs(): PaintScopeInputs {
+  const overlay = loadOverlayDoc() as {
     elements?: Array<Record<string, unknown>>;
   };
+  // 砖漆互斥机器规则（S4）：同一墙脸的贴砖带与涂装带二维不重叠（唯一实现见
+  // server/overlay-merge.ts 的 validateWallFinish）。涂装侧也算钱，重叠即双计。
+  const geometryForCheck = load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as { walls?: Parameters<typeof validateWallFinish>[0] };
+  validateWallFinish(geometryForCheck.walls ?? []);
+  // suppress 改判（S3）：墙条目自带 suppressed 属性。这里不过 ProjectCatalog——
+  // 与本函数其余部分一致读原始 yaml，判定仍走唯一权威实现（isWallSuppressed）。
+  // 面层配方下沉（S4）：paint_bands / ceiling_finish 也读同一份 model-geometry.yaml。
+  const geometry = load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as {
+    walls?: Array<{ id?: string; suppressed?: unknown; finish?: { paint_bands?: PaintRegionDeclaration[] } }>;
+    rooms?: Array<{ id?: string; ceiling_finish?: { paint?: boolean; reason?: string } }>;
+  };
   const suppressedWallIds = new Set<string>();
-  for (const entry of overlay.suppress ?? []) {
-    for (const key of ['wall', 'walls'] as const) {
-      const value = (entry as Record<string, unknown>)[key];
-      if (!value) continue;
-      for (const wall of Array.isArray(value) ? value : [value]) suppressedWallIds.add(String(wall));
+  const regions: PaintRegionDeclaration[] = [];
+  const ceilingRooms: PaintScopeInputs['ceilingRooms'] = [];
+  for (const wall of geometry.walls ?? []) {
+    if (wall.id && isWallSuppressed(wall as { id?: string; suppressed?: WallSuppression })) suppressedWallIds.add(wall.id);
+    for (const band of wall.finish?.paint_bands ?? []) {
+      // 墙 id 由宿主给出：S4 前声明自己写 wall:，现在声明住在墙对象里，宿主即墙。
+      regions.push({ ...band, type: 'paint_region', wall: wall.id ?? '' });
     }
   }
-  const regions = (overlay.elements ?? []).filter(
-    (element) => element?.type === 'paint_region',
-  ) as unknown as PaintRegionDeclaration[];
-  const sillRegions = (overlay.elements ?? []).filter((element) => element?.type === 'paint_sill_region') as unknown as PaintSillRegionDeclaration[];
-  const ceilingRooms = (overlay.elements ?? []).filter((element) => element?.type === 'paint_ceiling_region') as unknown as PaintScopeInputs['ceilingRooms'];
+  for (const room of geometry.rooms ?? []) {
+    if (!room.id || room.ceiling_finish?.paint !== true) continue;
+    ceilingRooms.push({ id: `paint_ceiling_${room.id}`, type: 'paint_ceiling_region', room: room.id, ...(room.ceiling_finish.reason ? { reason: room.ceiling_finish.reason } : {}) });
+  }
+  const sillRegions: PaintSillRegionDeclaration[] = (overlay.elements ?? [])
+    .flatMap((element) => (element?.type === 'bay_sill' ? [element] : []))
+    .flatMap((element) => {
+      const bands = (element.finish as { paint?: PaintSillRegionDeclaration[] } | undefined)?.paint ?? [];
+      // element / type 由宿主构件与装载层给出（S4 前是声明的 element: 引用与 type: 字面量）。
+      return bands.map((band) => ({ ...band, type: 'paint_sill_region' as const, element: String(element.id) }));
+    });
   const windows: PaintWindowInput[] = (overlay.elements ?? [])
-    .filter((element) => element?.type === 'bay_sill' || element?.type === 'glass_infill')
+    .filter((element) => element?.type === 'bay_sill')
     .flatMap((element) => {
       // 窗台高**原样透传，不补 0**（2026-10-14 阶段 4）：这里若写 `sill ?? 0`，
       // 缺声明的窗洞会被静默当成"落地窗"扣掉整段墙面，而 shared/paint-scope.ts 的
       // fail-closed 守卫永远等不到那个 undefined——兜底发生在更上游，比没有守卫更糟。
-      // 本案 12 条 bay_sill / glass_infill 全部显式写了 sill，所以生产路径不受影响。
+      // 本案 12 条 bay_sill 全部显式写了 sill，所以生产路径不受影响。
       const sill = element.sill as number | undefined;
       const height = element.height as number;
       const along = element.along as [number, number] | undefined;
-      const wallIds = element.type === 'bay_sill'
-        ? ((element.walls as string[] | undefined) ?? (element.wall ? [element.wall as string] : []))
-        : [element.wall as string];
+      const wallIds = (element.walls as string[] | undefined) ?? (element.wall ? [element.wall as string] : []);
       return wallIds
         .filter((wallId): wallId is string => Boolean(wallId))
         .map((wallId) => ({ id: element.id as string, wall: wallId, sill, height, ...(along ? { along } : {}) }));
@@ -335,7 +358,7 @@ export function computePaintScopeForLayout(
     ceilingAreaByRoom[roomId] = round3(Math.max(0, areaSqm - rectangleUnionArea(nonPaintRects)));
   }
 
-  const mergedElements = mergeSceneElements(layout.walls as any, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  const mergedElements = mergeSceneElements(layout.walls as any, parseOverlayFiles());
   const bayById = new Map(mergedElements.filter((element) => element.type === 'bay_sill').map((element) => [element.id, element]));
   // 全部 bay_sill 的轮廓（不只是已声明涂装的）：端面是否外露由**物理相邻关系**决定，
   // 与隔壁那间飘窗有没有声明涂装无关。
@@ -478,7 +501,7 @@ export function buildPaintCostComparison(
       key: 'net_wall_area_sqm',
       value: scope.netWallAreaSqm,
       status: 'from_overlay_declaration',
-      source: 'config/layout/overlay.yaml paint_region',
+      source: 'config/layout/model-geometry.yaml 墙条目 finish.paint_bands',
       note: `毛 ${scope.grossWallAreaSqm}㎡ − 门洞 ${scope.doorGapAreaSqm}㎡ − 窗洞 ${scope.windowGapAreaSqm}㎡；与 3D 高亮的是同一批声明、同一个拆洞算法`,
     },
     {
@@ -499,7 +522,7 @@ export function buildPaintCostComparison(
       key: 'window_gap_area_sqm',
       value: scope.windowGapAreaSqm,
       status: 'from_overlay_declaration',
-      source: 'config/layout/overlay.yaml bay_sill / glass_infill',
+      source: 'config/model/envelope/openings.yaml bay_sill',
       note: '当前为 0：全部 8 樘窗都在 suppress 的玻璃幕墙/飘窗让路墙上，非涂装面。将来窗声明落到实体墙上必须写 along，否则记 warning',
     },
     {

@@ -5,14 +5,17 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { ProjectRenderFactsLoader } from '../../server/project-render-facts-loader.js';
 
+// 定位声明（issue #98 S1）：x/z 必须配 wall+along / mount / anchor / absolute 之一
 const electrical = `- id: socket_1
   room: living
   type: socket
+  absolute: true
   x: 1
   z: 2
 - id: light_1
   room: living
   type: dome
+  absolute: true
   x: 1.5
   z: 2.5
   height: 2.8
@@ -20,6 +23,7 @@ const electrical = `- id: socket_1
 const plumbing = `- id: faucet_1
   room: kitchen
   type: faucet
+  absolute: true
   x: 3
   z: 4
 `;
@@ -72,10 +76,10 @@ describe('ProjectRenderFactsLoader', () => {
 
     assert.deepEqual(loader.getFacts(), {
       electrical: [
-        { id: 'socket_1', room: 'living', type: 'socket', x: 1, z: 2 },
-        { id: 'light_1', room: 'living', type: 'dome', x: 1.5, z: 2.5, height: 2.8 },
+        { id: 'socket_1', room: 'living', type: 'socket', absolute: true, x: 1, z: 2 },
+        { id: 'light_1', room: 'living', type: 'dome', absolute: true, x: 1.5, z: 2.5, height: 2.8 },
       ],
-      plumbing: [{ id: 'faucet_1', room: 'kitchen', type: 'faucet', x: 3, z: 4 }],
+      plumbing: [{ id: 'faucet_1', room: 'kitchen', type: 'faucet', absolute: true, x: 3, z: 4 }],
       ceiling: [{ id: 'ceiling_1', room: 'living', type: 'drop', thickness: 0.2, area: [0, 0, 1, 1] }],
       hvac: { plans: [{ id: 'A2', kind: 'vrf_ducted', outdoor: { id: 'outdoor_1', platform: 'platform', x: 1, z: 2, direction: 'south', width: 1, depth: 1, height: 1, model: 'VRF' }, diagram: { anchors: [], terminals: [], routes: [], reference_constraints: [] } }] },
     });
@@ -88,7 +92,7 @@ describe('ProjectRenderFactsLoader', () => {
     loader.load();
     const previous = loader.getFacts();
 
-    writeFileSync(paths.plumbing, `- id: invalid\n  room: kitchen\n  type: unknown\n  x: 3\n  z: 4\n`);
+    writeFileSync(paths.plumbing, `- id: invalid\n  room: kitchen\n  type: unknown\n  absolute: true\n  x: 3\n  z: 4\n`);
     loader.load();
 
     assert.equal(loader.getFacts(), previous);

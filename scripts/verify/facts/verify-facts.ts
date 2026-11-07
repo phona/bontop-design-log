@@ -22,7 +22,9 @@ import * as yaml from 'js-yaml';
 import { lintFacts, type FactsRegistry, type FactsWorkspace } from '../../../shared/facts-lint.js';
 import { endpointSourcesFromFacts, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
 import { BudgetCalculator, loadMasonryTakeoff } from '../../../server/budget-calculator.js';
+import { loadOverlayDoc } from '../../../server/overlay-merge.js';
 import type { CurrentScheme } from '../../../shared/types.js';
 
 const REGISTRY = 'config/facts.yaml';
@@ -78,7 +80,8 @@ function walk(roots: string[], skip: RegExp): string[] {
 
 // ── datasets：入口预计算的派生数据 ──────────────────────────────────────────
 const geometry = loadDoc('config/layout/model-geometry.yaml') as any;
-const overlay = loadDoc('config/layout/overlay.yaml') as any;
+// S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 三文件，合并取 elements
+const overlay = loadOverlayDoc() as any;
 
 const vertices = new Map<string, { x: number; z: number }>(
   ((geometry?.vertices ?? []) as any[]).map((v) => [v.id, { x: v.x, z: v.z }]),
@@ -107,7 +110,7 @@ const layoutFloorRegions = ((overlay?.elements ?? []) as any[])
 // 走**同一套**解析逻辑，保证 facts 契约与 verify:mep 的吊顶净空告警对同一批点位给出同一结论。
 // 房间净高复刻 SceneBuilder.addCeilingZones：`rooms.find(r => r.id === zone.room)?.height ?? 2.8`，
 // 与 CeilingZoneBuilder 的 topY = ceilingHeight − thickness + SLAB_EPS 同口径。
-const mepDocs = ['config/electrical.yaml', 'config/plumbing.yaml', 'config/ceiling.yaml', 'config/hvac.yaml']
+const mepDocs = ['config/electrical.yaml', 'config/plumbing.yaml', 'config/model/envelope/ceiling.yaml', 'config/hvac.yaml']
   .map((p) => ({ p, doc: loadDoc(p) as any }));
 
 const mepEndpoints: Record<string, { x: number; z: number; y?: number }> = {};
@@ -116,7 +119,8 @@ const mepSources = mepDocs.length ? endpointSourcesFromFacts({
   plumbing: mepDocs[1].doc,
   ceiling: mepDocs[2].doc,
   hvac: mepDocs[3].doc,
-}) : undefined;
+  // 点位宿主墙索引（issue #98 S1）：与 verify:mep 同一解算，facts 契约与 lint 对同一批点位同结论。
+}, pointWallIndexFromElements(ProjectCatalog.load('.').getWalls()), pointMountHostIndex(Object.values(ProjectCatalog.load('.').getFurnishings()).flat())) : undefined;
 if (mepSources) {
   const mepConfig = loadDoc('config/mep-hvac-coordination.yaml') as { routes?: unknown[] } | null;
   const wanted = new Set<string>();
@@ -132,6 +136,24 @@ if (mepSources) {
     if (at) mepEndpoints[id] = at;
   }
 }
+// ── 点位解析后坐标（issue #98 S3：fact.gas_alarm_x/z 的锚点机器源）────────────
+// 沿墙/挂载点位删 x/z 后（S3），坐标权威值不再住在 config/electrical.yaml 里，改由
+// shared/point-placement.ts 单一解算给出。这里与上面 mep.endpoints **同一构造**
+// （同一份 mepSources、同一个 resolveMepEndpoint），不另写一套几何——否则 facts 契约
+// 盯的坐标会和 DXF/3D/lint 盯的不是同一个点。
+const pointPositions: Record<string, { x: number; z: number }> = {};
+if (mepSources) {
+  for (const doc of mepDocs) {
+    for (const point of (Array.isArray(doc.doc) ? doc.doc : []) as Array<{ id?: unknown }>) {
+      const id = typeof point?.id === 'string' ? point.id : undefined;
+      if (!id || pointPositions[id]) continue;
+      const at = resolveMepEndpoint(id, mepSources);
+      // 取到 6 位小数（µm）再入 dataset：解析是浮点运算，docs 镜像写的是 2 位小数 prose，
+      // 不 round 会让 0.20000000000000018 ≠ 0.20 这种纯噪声判红。真实漂移（≥1µm）仍会红。
+      if (at) pointPositions[id] = { x: Number(at.x.toFixed(6)), z: Number(at.z.toFixed(6)) };
+    }
+  }
+}
 const mepRoomHeights: Record<string, number> = {};
 for (const room of (geometry?.rooms ?? []) as any[]) {
   if (room?.id && typeof room.height === 'number') mepRoomHeights[room.id] = room.height;
@@ -143,6 +165,7 @@ if (geometry?.platform?.id && typeof geometry.platform.height === 'number') {
 const coverageFiles = [
   ...fs.readdirSync(rel('config')).filter((f) => f.endsWith('.yaml')).map((f) => `config/${f}`),
   ...fs.readdirSync(rel('config/layout')).filter((f) => f.endsWith('.yaml')).map((f) => `config/layout/${f}`),
+  ...fs.readdirSync(rel('config/model/envelope')).filter((f) => f.endsWith('.yaml')).map((f) => `config/model/envelope/${f}`),
   ...fs.readdirSync(rel('config/render')).filter((f) => f.endsWith('.yaml')).map((f) => `config/render/${f}`),
   ...fs.readdirSync(rel('data')).filter((f) => f.endsWith('.json')).map((f) => `data/${f}`),
 ].sort();
@@ -255,6 +278,7 @@ const workspace: FactsWorkspace = {
     ...budgetParityDatasets,
     // MEP 契约（c.mep_layer_below_drop_bottom）的端点坐标与房间净高。
     'mep.endpoints': mepEndpoints,
+    'points.resolved': pointPositions,
     'mep.room_heights': mepRoomHeights,
   },
 };

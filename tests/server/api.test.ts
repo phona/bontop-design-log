@@ -66,6 +66,9 @@ elements:
       assert.equal(res.body.house.platform?.name, 'VRV设备平台');
     }
     assert.ok(Array.isArray(res.body.house.sceneElements));
+    // 主卫冷凝链的 MEP 侧穿墙锚点（issue #98 PR-10）：三件遮蔽家具在建场时就要它，
+    // 页面在 /api/mep-coordination 之前只拿得到这一份——缺它链条家具会带诊断从场景消失。
+    assert.deepEqual(res.body.house.condensatePenetration, { x: 2.3, z: 2.86 });
   });
 
   it('GET /api/project phase=phase_1 filters deferred furnishings and curtains', async () => {

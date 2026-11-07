@@ -3,7 +3,7 @@
  *
  * 背景：`server/budget-calculator.ts` 的 `area: 'ceiling'` 一直按**房间面积**汇总木工人工
  * （11 个房间 bbox ≈ 142.92 ㎡），把没有吊顶的平顶、电梯井、入户花园都计了费。本模块改为
- * 按 `config/ceiling.yaml` 的**逐分区声明**实算，几何口径与
+ * 按 `config/model/envelope/ceiling.yaml` 的**逐分区声明**实算，几何口径与
  * `shared/render/CeilingZoneBuilder.ts` 严格一致（同一个圆角/阴角规则），所以
  * 「3D 看到的吊顶」和「算出来的量」永远是同一份数据。
  *
@@ -219,7 +219,7 @@ function emptyClassRollup(unit: 'sqm' | 'linear_m' | 'panel'): CeilingTakeoffCla
 }
 
 /**
- * 按 `config/ceiling.yaml`（或任何同 shape 的 CeilingZone[]）实算吊顶工程量。
+ * 按 `config/model/envelope/ceiling.yaml`（或任何同 shape 的 CeilingZone[]）实算吊顶工程量。
  * `rooms` 只用于完成面标高与「哪些房间没有吊顶」的对照，可省略（默认净高 2.8m）。
  */
 export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeoffRoom[]): CeilingTakeoff {
@@ -333,7 +333,7 @@ export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeo
       // 石膏板 / 窗帘盒 / 晾衣架没有板块计价行，0 对它们是正确值，所以只对铝扣板 fail-closed。
       if (trade === 'aluminum_buckle' && entry.panelCount === undefined) {
         throw new Error(
-          `吊顶分区 ${zone.id} 的 trade 是 aluminum_buckle，但缺 buckle_panel.module（或 module 不是正数）：铝扣板按板块数计价，不能按 0 块算。请到 config/ceiling.yaml 补 buckle_panel.module（本案厨卫均为 300×300 → 0.3）`,
+          `吊顶分区 ${zone.id} 的 trade 是 aluminum_buckle，但缺 buckle_panel.module（或 module 不是正数）：铝扣板按板块数计价，不能按 0 块算。请到 config/model/envelope/ceiling.yaml 补 buckle_panel.module（本案厨卫均为 300×300 → 0.3）`,
         );
       }
       rollup.panelCount += entry.panelCount ?? 0;

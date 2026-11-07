@@ -253,10 +253,10 @@ describe('决策门禁：叙事登记表双向对照', () => {
     );
   });
 
-  it('readNarrativeDecisionIds 从真实 docs 读到 D1–D18（节标题里的区间字样不误收）', () => {
+  it('readNarrativeDecisionIds 从真实 docs 读到 D1–D19（节标题里的区间字样不误收；D19 为 2026-11-06 PR-8 增补）', () => {
     const ids = readNarrativeDecisionIds(process.cwd());
-    assert.equal(ids.size, 18, `实际：${[...ids].sort().join(',')}`);
-    assert.ok(ids.has('D1') && ids.has('D18'));
+    assert.equal(ids.size, 19, `实际：${[...ids].sort().join(',')}`);
+    assert.ok(ids.has('D1') && ids.has('D18') && ids.has('D19'));
   });
 });
 

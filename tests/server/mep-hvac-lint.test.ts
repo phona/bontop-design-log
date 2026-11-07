@@ -1,3 +1,4 @@
+import { suppressedWallIds as suppressedWallIdsOf } from '../../shared/suppression.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -7,19 +8,28 @@ import { endpointSourcesFromFacts, MepCoordinationSchema, parseMepCoordination }
 import { lintMepCoordination, type MepLintLayoutContext } from '../../shared/mep-hvac-lint.js';
 import type { ProjectRenderFacts, ResolvedLayout, VertexLayoutYaml } from '../../shared/types.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
 
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ProjectRenderFacts['electrical'];
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as ProjectRenderFacts['plumbing'];
-const ceiling = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
+const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
 const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
+/** 真实 layout 上下文（与 scripts/verify/mep/verify-mep-lint.ts 同一套输入），用于 (c)(d) 墙相关规则。 */
+const realLayout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
 const config = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
-const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac });
+// 点位宿主墙/家具索引（issue #98 S1/S3）：与 scripts/verify/mep/verify-mep-lint.ts 同一构造。
+// S3 起沿墙/挂载点位不再声明绝对 x/z，不传索引则路线端点解析不出。
+const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
+const sources = endpointSourcesFromFacts(
+  { electrical, plumbing, ceiling, hvac },
+  pointWallIndexFromElements(realLayout.walls),
+  pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never),
+);
 const layers = Object.fromEntries(['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'].map((id) => [id, { label: id, color: '#fff', height: 2 }])) as ProjectRenderFacts extends never ? never : typeof config.layers;
 
-/** 真实 layout 上下文（与 scripts/verify/mep/verify-mep-lint.ts 同一套输入），用于 (c)(d) 墙相关规则。 */
-const overlay = parseYaml(readFileSync('config/layout/overlay.yaml', 'utf8')) as { suppress?: Array<{ wall?: string; walls?: string[] }> };
-const suppressedWallIds = (overlay.suppress ?? []).flatMap((item) => item.walls ?? (item.wall ? [item.wall] : []));
-const realLayout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+// suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性，
+// 唯一权威实现 shared/suppression.ts（原 parseOverlayFiles().suppress 顶层清单已删）。
+const suppressedWallIds = suppressedWallIdsOf(realLayout.walls);
 function realContext(): MepLintLayoutContext {
   return { layout: realLayout, ceiling, suppressedWallIds, referenceConstraints: hvac.plans[0].diagram.reference_constraints };
 }

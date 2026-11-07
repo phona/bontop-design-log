@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -9,7 +10,7 @@ function refs(element: { wall?: string; walls?: string[] }): string[] {
 
 describe('curtain overlay coverage', () => {
   it('keeps required rooms and locks corrected wall ownership', () => {
-    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const overlay = parseOverlayFiles();
     const curtains = overlay.elements.filter((element) => element.type === 'curtain');
     const rooms = new Set(curtains.map((element) => element.room));
     for (const room of ['living_dining', 'master_bedroom', 'study', 'bedroom_se', 'bedroom_nw']) {

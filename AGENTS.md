@@ -7,6 +7,29 @@
 - 历史记录中的“已施工/拆改成本”判断仅作为历史背景，不自动作为当前方案约束。
 - 若后续状态变化（交房、量房、墙体/机电/窗帘施工、入住），由业主更新本节；更新前的状态是设计讨论和验证的唯一当前口径。
 
+### 迁移冻结区（issue #98）
+
+> 由来：issue #98（统一工程对象模型）迁移期间，冻结对象的几何与对象事实改在集成分支上用新格式演进，避免 master 与集成分支对同一对象双头写、合入时互相覆盖。
+
+本次登记**客卫东墙组**（guest_bath 东墙洗漱带及其电气/上下水点位）：
+
+| 冻结对象 | 范围 | 冻结起点 | 解冻条件 |
+| --- | --- | --- | --- |
+| guest_bath vanity（台盆柜，`config/house.yaml` guest_bath furnishings） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| robot_dock_gbath（机器人基站，`config/house.yaml` guest_bath furnishings） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| mirror_cabinet_gbath（镜柜，`config/house.yaml` guest_bath furnishings） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| sock_gbath_robot（电气点位，`config/electrical.yaml`） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| faucet_gbath_vanity（给水点位，`config/plumbing.yaml`） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| drain_gbath_vanity（排水点位，`config/plumbing.yaml`） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| 主卫条带柜组 7 件（`config/house.yaml` master_bedroom furnishings：mb_vanity_base_cabinet / mb_vanity_lower_board / mb_vanity_main_board / mb_vanity_pvc_box / mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase / condensate_pipe_ac_outlet） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+
+- **主卫条带柜组归属说明**：该组 7 件声明在 `config/house.yaml` 的 master_bedroom 段下，物理位置却在主卫（master_bath 隔墙西侧的套间条带）；表中按声明位置登记，迁移时按物理归属解析，不得因声明房间把条带柜误判为卧室对象。
+- **锚点引用不迁**：master_wardrobe_tall_240 / master_north_wall_wardrobe_950 / master_wardrobe_top_pelmet 仅作为锚点被引用（anti-penetration waivers 与 clearance 基准），本阶段不迁、不单独登记。
+
+- **冻结含义**：上表对象的几何与对象事实只在集成分支 `arch/object-first` 上用新格式改，master 上不改。
+- **冻结不覆盖商业与验收记录**：价格、状态、audit 追加仍可在 master 改。
+- **解冻**：`arch/object-first` 总 PR 合入 master 时整组自动解冻，本小节随之撤销或改写。
+
 ## 页面只读铁律（2026-11-04 起）
 
 > 由来：审批流引入页面直写配置后，导出等多副本消费方把不同新鲜度的缓存副本拼进同一交付物（DXF 导出 PR #61/#63 的"新鲜性"主题审查了 7 轮）。2026-11-04 业主拍板架构收口。
@@ -27,7 +50,7 @@
 
 > Blender 主线已暂停并冷归档到 `scripts/archive/blender-pipeline/`；本文件中的 Blender-specific 约束仅在明确恢复冷归档时适用。几何、坐标、电气、家具、碰撞与数据一致性铁律始终有效。
 >
-> `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/layout/overlay.yaml` 出一切意图。代码只读、只执行，禁止推断。
+> `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/model/envelope/{openings,floor-zones,finish-defaults}.yaml`（S1 起替代原 `config/layout/overlay.yaml`，合并入口 `server/overlay-merge.ts` 的 `parseOverlayFiles()`）出一切意图。代码只读、只执行，禁止推断。
 >
 > **视觉反馈类迭代**（业主看图说话 → 改模型 → 再看）开工前读 `docs/visual-change-playbook.md`，并跑 `npm run gate:visual` 确认客户端渲染的就是当前 config（config watch 曾因单文件监听挂 inode、原子替换写后静默断线而不可靠，2026-10-24 已改目录级监听修复；gate 对 schema 拒绝类 STALE 仍是保险丝）。
 >
@@ -35,7 +58,7 @@
 >
 > **CAD 出图（2026-11-03 起）**：施工 DXF 导出双入口——web「导出 DXF」按钮与 `npm run export:dxf`（产物写 `tmp/capture/`，过程物不进 git），共用唯一装配实现 `shared/dxf/project-dxf.ts`。口径：独立新图、1:1 毫米、北朝上、原点归零（不对齐开发商原图坐标），坐标换算只许 `toDxf()` 一处（`dxf_x = local_x*1000, dxf_y = -local_z*1000`）；单文件多图层（A-WALL（含 wall_run 实体墙）/A-ROOM（非矩形房间优先 points 轮廓）/E-*/C-CEIL/F-FLOOR/M-HVAC/M-ROUTE/M-CAND 等，图层清单即 `DXF_LAYERS`）；墙洞切分与 along 插值复用 `shared/wall-segments.ts`、家具摆位复用 `shared/furniture-placement.ts`、圆角折线采样复用 `shared/arc-polyline.ts`（均自 SceneBuilder/CurtainGeometry 抽出，3D 与 DXF 同口径）；MEP 折线复用 `resolveMepRoutes/mepRoutePoints`，**候选/需求示意/待复核路线及其 junction 隔离 M-CAND 图层（非放线依据，禁止混入 M-ROUTE 交付）**，内机 anchor 经 `resolveMepEndpoint` 解析 ref 引用；P-POINTS 中抽象服务点（note「抽象服务点/不得开槽」或 inferred/pending 态）必须带「禁止开槽待SKU」标注 + 告警。饰面标注顶标高直接用声明 `height`（height 是顶标高不是带高）。中文 TEXT 走 UTF-8 + `$DWGCODEPAGE ANSI_936`，乱码时 `labels:'ascii'` 一行退路。改图层/口径必须同步本行与 `shared/dxf/project-dxf.ts` 头注。
 >
-> **检视态叠加层（inspection-only）现役清单**：`wall_region`（贴砖，层标签 `wall-tile`）、`paint_region`（涂漆，层标签 `wall-paint`）、`floor_region`/吊顶分区、`pipe-chase`（管井）、HVAC 协调态、MEP 总览、电气回路归属。它们必须**平级且互不引用**：每个 `set*InspectionVisible` 只遍历自己的层标签、按 `userData.inspectionInitial` 快照可逆恢复，禁止互相调用、禁止抽共享材质 helper（pipe-chase 的关闭分支硬编码默认值，会丢掉其他层的初始态）。`paint_region` 额外要求平面朝声明的 `room` 侧外偏移，否则同墙的贴砖面与另一侧涂漆面共面 z-fighting。
+> **检视态叠加层（inspection-only）现役清单**：`wall_region`（贴砖，层标签 `wall-tile`）、`paint_region`（涂漆，层标签 `wall-paint`）、`floor_region`/吊顶分区、`pipe-chase`（管井）、HVAC 协调态、MEP 总览、电气回路归属。它们必须**平级且互不引用**：每个 `set*InspectionVisible` 只遍历自己的层标签、按 `userData.inspectionInitial` 快照可逆恢复，禁止互相调用、禁止抽共享材质 helper（pipe-chase 的关闭分支硬编码默认值，会丢掉其他层的初始态）。`paint_region` 额外要求平面朝声明的 `room` 侧外偏移，否则同墙的贴砖面与另一侧涂漆面共面 z-fighting。叠加层的点位坐标同样只认单一解算（2026-11-07 issue #98 S3，含「电气回路归属」层）：`ElectricalTopologyRenderer` 的节点/marker 坐标走 `resolvePointPlacementInWalls`（HouseScene 注入墙段/家具宿主索引），解算失败记诊断显形并计入 summary 的 skipped 计数——**不许直读点位声明 x/z 后静默 continue**（S3 删 x/z 时该层曾因此静默跳掉 45/74 个成员 marker 与 2 块面板节点，review B1）。
 
 ## 坐标系约定
 
@@ -46,7 +69,7 @@
   - `+z` = 南，`-z` = 北
 - 俯视图约定：北朝上（`-z` 方向），南朝下（`+z` 方向）。
 - `model-geometry.yaml` 使用 DXF 原值（局部坐标），允许 `z < 0`（如入户花园向北凸出）。
-- `overlay.yaml` 必须与 `model-geometry.yaml` 使用同一坐标系，不得保留独立偏移。
+- envelope 意图文件（openings/floor-zones/finish-defaults，原 `overlay.yaml`）必须与 `model-geometry.yaml` 使用同一坐标系，不得保留独立偏移。
 - 全局坐标与局部坐标换算：
   - `DXF_mm = (local_m + origin) / scale`
   - `local_m = DXF_mm * scale - origin`
@@ -113,7 +136,7 @@
 
 ## 电气/家具修改铁律
 
-- 移动任何电气点位或家具前，必须确认目标墙面是**实体墙**（不在 `overlay.yaml` 的 `suppress` 列表中）。
+- 移动任何电气点位或家具前，必须确认目标墙面是**实体墙**（不在 envelope/openings.yaml 的 `suppress` 列表中）。
 - 玻璃幕墙（`curtain_run` / 被 suppress 的墙）**不能挂载**：电视、插座、挂件、柜体。
 - 家具布局与电气点位必须**交叉验证**：插座位置 ≈ 电器实际位置（偏差 > 1.5m 需报警）。
 - 修改前先问："这面墙是什么材质？能打孔/挂重物吗？"
@@ -121,14 +144,15 @@
   ```bash
   npm run verify:all
   ```
-- 挂墙点位（electrical/plumbing）坐标压在墙线上时必须显式声明 `wall_side`，否则渲染默认取墙段左侧，可能渲到房间背面。`verify-data-consistency` 的点位专项会以 error 拦截"渲染面与所属房间异侧"（检查逻辑在 `scripts/verify/placement/verify-point-placement.ts`，与 `HouseScene.projectInfrastructurePoint` 同口径）。
+- 挂墙点位（electrical/plumbing）的定位来源是 `wall + wall_side + along`（`shared/point-placement.ts` 单一解算，2026-11-07 issue #98 S1）：**S3（2026-11-07）起沿墙/挂载点位的 `x/z` 声明已删**（79 沿墙 + 2 柜面挂载；S1/S2 断言期证明解析结果 == 声明值后移除），平面位置只有解算器一个来源；`x/z` 现在只属于绝对点位（`absolute: true`，C/D/E/F 组：顶面灯位/建筑服务基准/地面排水口/器具邻接点）。`wall_side` 必填——安装面决定侧别法线，缺它渲染默认取墙段左侧，可能渲到房间背面；`verify-data-consistency` 的点位专项会以 error 拦截"渲染面与所属房间异侧"（along 直接对 `openingsAlongWall` 的洞口 span 判定，不再靠投影反推）。`face_offset` 基准 = 口径 A 纯完成面（墙线 ± `WALL_THICKNESS`/2 = ±0.06，2026-11-07 S2 起；不再叠加 `wallFaceOffset` 里 0.008 的漆面渲染缝——那是渲染概念，折进坐标会让意图值全错 8mm）。柜面挂载点位（起夜灯）的定位来源是 `mount: {furniture_id, face, along, surface_gap, face_offset?}`（2026-11-07 S2 真挂载，原 `mount_anchor` 注记 + 手写 x/z 机制已废）：位置由宿主家具脸 + along（沿脸位置，东西脸自 minZ 向北、南北脸自 minX 向东）解出，宿主移动灯自动跟随，调用方必须传 `pointMountHostIndex`（house.yaml furnishings 构造）；沿墙/挂载点位越界（超出墙段/宿主脸）一律诊断显形，禁止钳位。3D/DXF 落位 = 墙线 datum + 薄板惯例 0.075m（业主口径：DXF 迁就 3D 投影），MEP 端点取完成面基点。**回路成员关系单一源（2026-11-07 S3）**：点位侧 `circuit` 字段与 topology 的 `source_circuit_id` 间接层已废，成员关系只住 `config/electrical-topology.yaml` 的 `member_point_ids`；「点位 → 回路」的唯一解算是 `shared/point-circuits.ts` 的 `derivePointCircuits`（member_point_ids + controls 反推开关回路，lint/mep-takeoff/DXF 标注/派生文档同源），交叉校验由成员完整性 error（悬空/重复/类型不符）、无条件 `point_uncovered` 与 `control_target_circuit_unresolved`（受控灯不在任何回路即报）接续，退役点位的成员关系在 `tests/server/electrical-lint.test.ts` 钉断。
 - `model-geometry.yaml` 的 wall 条目可带 `structure`（`shear`/`fill`/`curtain`/`new_partition`）+ `structure_status`（`confirmed`/`inferred`），由 `resolveWall` 透传给 lint。`verify:mep` 据此检查非法凿墙/穿梁：穿剪力墙报 `shear_wall_penetration`（双 confirmed 升 error）；`hvac.yaml` 的 `reference_constraints` 转 `confirmed` 且带 `reference_beam_bottom_y` 后，高于梁底的走线报 `beam_collision` error；穿越实体墙必须逐墙声明 `penetration` 且穿点与实际交点偏差 ≤0.25m。墙体结构分类依据与施工口径见 `docs/mep-construction-guidance.md`。
 
 ## 碰撞/相机修改铁律
 
 - 新增任何 `SceneElement` 类型时，必须评估是否需要碰撞：
   - 需要碰撞：`wall`, `curtain_run`
-  - 不需要碰撞：`floor_region`, `bay_sill`, `railing_run`, `glass_infill`, `shower_screen`
+  - 不需要碰撞：`floor_region`, `bay_sill`, `railing_run`, `shower_screen`
+  - （`glass_infill` 已随 issue #98 第三阶段 S1 删除：0 元素死类型，schema 与消费分支同步退场）
 - 碰撞数据提取逻辑在 `app/src/scene/collision-utils.ts`（`extractCollisionWalls`）。
 - 修改 `FirstPersonController` 旋转逻辑后，必须跑 `npm run test:app`。
 - 修改 `CollisionDetector`、`extractCollisionWalls` 或 `CameraAnimator` 后，必须跑：

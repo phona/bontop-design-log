@@ -11,7 +11,7 @@
 | `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
 | `config/electrical.yaml` | 共 104 个点位 | `fact.electrical_points_count` |
 | `config/plumbing.yaml` | 共 33 个点位 | `fact.plumbing_points_count` |
-| `config/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
+| `config/model/envelope/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
 | `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 89 处 | 契约 `c.mep_layer_below_drop_bottom`（`registered_conflicts: 89`） |
 
 > 上表数字必须与 yaml 实际条目数一致，否则 `verify:facts` 的 count/fact 对账直接失败。
@@ -35,7 +35,7 @@
 - **水走地**：给水垫层内 0.18m，排水贴地 0.02–0.10m；重力管（排水/冷凝水）全程 1% 坡（阳台 2%），禁止上弯。
 - **全部正交折线**，穿墙段与墙正交；穿墙点逐条声明在 `docs/design-iterations/mep-routing-20260901/round.yaml` 的 datum 段（v1 留档，penetrations 15 条），每条含墙 id、坐标、标高、门洞避让关系。
   > 口径：现行 route 级穿墙声明写在 `config/mep-hvac-coordination.yaml` 每条 route 的 `penetration` 数组里，合计 40 条声明、落在 21 个不同孔位（同一墙同一坐标由多条路线共用一孔，如 w_strip_east(4.2,4.6) 三管同孔）；`design-datum.yaml` 是 2026-09-01 v1 留档（15 条），**不是现行清点工具**，两套都以量房实测终核。
-- 权威几何：`config/layout/model-geometry.yaml`；吊顶通道：`config/ceiling.yaml`；走线：`config/mep-hvac-coordination.yaml`（每条 route 的 reason 字段含逐条说明）。
+- 权威几何：`config/layout/model-geometry.yaml`；吊顶通道：`config/model/envelope/ceiling.yaml`；走线：`config/mep-hvac-coordination.yaml`（每条 route 的 reason 字段含逐条说明）。
 
 ## 2. 墙体类型参考图 v1（邻户图比例映射）
 
@@ -65,7 +65,7 @@
 
 ### 2.3 幕墙/窗带（禁挂、禁穿孔、禁开槽）
 
-w_mb_south / w_st_south / w_liv_south / w_be_south（南面全链）、w_west_*（西外框含弧段）、w_bath_north / w_nw_north（北面幕墙段）、w_ent_north_railing（栏杆）。与 `config/layout/overlay.yaml` suppress 清单一致。
+w_mb_south / w_st_south / w_liv_south / w_be_south（南面全链）、w_west_*（西外框含弧段）、w_bath_north / w_nw_north（北面幕墙段）、w_ent_north_railing（栏杆）。与 `config/layout/model-geometry.yaml` 墙条目的 `suppressed` 属性一致（2026-11-07 issue #98 第三阶段 S3 起 suppress 住在这里，replacement 指向 `config/model/envelope/openings.yaml` 的 curtain_run/railing_run；原 overlay.yaml 顶层 suppress 清单与 spatial-validation.yaml 的 overlay_replacements 镜像表已删）。
 
 ### 2.4 新建隔墙（图上不存在，由施工做法决定）
 
@@ -149,7 +149,7 @@ w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 
 
 #### 3.3.1 吊顶内分层标高（2026-10-06 DEC-2026-10-06-R5 分区重设，#41 已裁定）
 
-`config/mep-hvac-coordination.yaml` 的 `layers.height` 是 **A 区默认层高**；B 区由各 route 的 via/from/to y 单独体现。完成面权威 = `config/ceiling.yaml`（0.30m 降板 2.50m、0.15m 降板/铝扣板/窗帘盒 2.65m，空腔即完成面至 2.80m 结构板底）。
+`config/mep-hvac-coordination.yaml` 的 `layers.height` 是 **A 区默认层高**；B 区由各 route 的 via/from/to y 单独体现。完成面权威 = `config/model/envelope/ceiling.yaml`（0.30m 降板 2.50m、0.15m 降板/铝扣板/窗帘盒 2.65m，空腔即完成面至 2.80m 结构板底）。
 
 | 分层 | A 区标高（完成面 2.50） | B 区标高（完成面 2.65，铝扣板） | 说明 |
 |---|---:|---:|---|
@@ -253,7 +253,7 @@ npm run typecheck
 - `ceiling_clearance_unverified`：管线外包络（管径与已声明保温）穿出所经实心吊顶（`drop` / `aluminum_buckle` / `integrated`）完成面 → warning。与 §0 的契约登记数同源不同级：契约 `c.mep_layer_below_drop_bottom` 用 error 锁「登记数 = 实算数」，本规则用 warning 逐条点名是哪条 route / 哪个分区。**DEC-2026-10-06-R5 明文授权的比较范围**：只含吊顶承载层（strong_power / weak_power / refrigerant / condensate / supply_air / return_air）；走地给排水（water_supply / drainage）与吊顶面无可比性，退出比较。DEC-2026-10-17-R4 又排除承载层中方法为 `floor_branch` / `floor_branch_candidate` 且至少一个 route point 落入 `y≤0.35m` 地面支持带的走地候选；缺少地面点的高位误标继续参与比较，并由 `floor_branch_missing_floor_band` 提醒。其开放起降仍由 3D `unsupported_span` 检查依托。facts lint 与 MEP lint 共享渲染用 rounded footprint、管线外包络（直径+已声明保温）及50mm中心线采样；R25两引擎当前均为 **62 条 route-zone warnings / 50 条路线 / 15 个吊顶分区**；历史变化链（R22-v0.5-3 纯重力迭代 −3：condensate 走廊段抬入腔；上一态 52/44 为 DEC-2026-10-17-R20 口径）strong-power-kitchen / strong-ded-dishwasher 尾段改 (10.8,2.35) 竖井落地，ceiling_kitchen hit 合法消失，登记数已同步；上一态 54/44/15 为 DEC-2026-10-17-R20 走线专项后口径）。相较原 facts 52 处，R4 退出 floor-branch 完成面误报，并把先前只在两 route points 之间穿过 `curtain_box_master_south` 的 `strong-power-master` 段纳入；旧的双引擎差异现已消除。历史 24 处残留类型见 §0 与 DEC-2026-10-06-R5 原裁定。
 - `reference_constraint_uncertain`：非 confirmed 的 `reference_constraints` 只提醒、不当硬碰撞；量房转 confirmed 后由 `beam_collision` 接手。
 - `supply_return_overlap`：送/回风包络相邻重叠。风路线没有 `height`，`depth` 只是竖向代理，`shared/mep-hvac-lint.ts` 的 `airRouteBox` 注释明确它 "can produce a warning, but never supports a confirmed error"——本代码结构上不可能升 error。
-- `suppressed_wall_crossing`：路线穿越或贴触 `config/layout/overlay.yaml` suppress 的玻璃幕墙/窗帘墙，均为 must_fix error，不因路线状态未 confirmed 降级；“到墙面结束”及沿墙敷设也纳入触碰检测。
+- `suppressed_wall_crossing`：路线穿越或贴触 `config/layout/model-geometry.yaml` 墙条目 `suppressed` 属性声明的玻璃幕墙/窗帘墙（2026-11-07 issue #98 第三阶段 S3 起声明住这里，原 overlay.yaml 顶层 suppress 清单已删），均为 must_fix error，不因路线状态未 confirmed 降级；“到墙面结束”及沿墙敷设也纳入触碰检测。
 - `nonphysical_route`：起终点重合（`design_requirement` 口径另走 `degenerate_requirement`）→ warning；confirmed 升 error。
 - `route_overlap` / `route_clearance_unverified`：逐段做 3D 净距检查。圆管按管径，矩形风管按 x/y/z 轴向尺寸；缺风管高度或线段非正交时，不把代理包络直接定成实体碰撞，而转成 envelope 桶的净距待核。实体包络相交属于 must_fix，直接 error；候选路线或近似净距仍是 warning。只对同一明确端点附近 0.20m 接头段豁免；同层电气/冷媒/风管可共用走廊，重力给排水仍互相检查。当前 113 条 `route_overlap` 中 70 条为 error、43 条为近似包络 warning，另有 32 条 `route_clearance_unverified`（DEC-2026-10-18-R21 验收实测）。
 - `route_furniture_collision` / `endpoint_inaccessible`：用 SceneBuilder runtime 家具包络扫描固定柜体与主要家电；路线在包络内累计超过 0.25m、或电气端点落在高柜/家电内部时，物理路线属于 must_fix，报 error。地面暗敷给排水水平段、接到相邻设备点的末端服务段按工艺豁免；声明挂载到家具端板的点位不报被家具包住。需求路线归 envelope 桶，仍是 warning。柜内服务路线须补明检修口、开放格或穿柜做法。

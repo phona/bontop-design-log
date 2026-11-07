@@ -10,16 +10,30 @@ import {
   validateMepCoordination,
   type MepEndpointSources,
 } from '../../shared/mep-hvac-coordination-schema.js';
-import type { ElectricalPoint, PlumbingPoint, ProjectRenderFacts } from '../../shared/types.js';
+import type { ElectricalPoint, PlumbingPoint, ProjectRenderFacts, VertexLayoutYaml } from '../../shared/types.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
 
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as PlumbingPoint[];
 const config = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
 const sources: MepEndpointSources = { electrical, plumbing, ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] };
 
+/** 真实宿主墙/家具索引（与 scripts/verify/mep/verify-mep-lint.ts 同一构造）。 */
+const realPointWalls = pointWallIndexFromElements(
+  resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls,
+);
+const realMountHosts = pointMountHostIndex(
+  Object.values((parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never,
+);
+
 function sourceIds(): MepEndpointSources {
   return {
     ...sources,
+    // 宿主墙/家具索引（issue #98 S3）：沿墙点位不再声明绝对 x/z，本夹具跑的是真实点位表，
+    // 端点解析必须带索引（否则 validate 第一轮就抛 "endpoint is unresolved" 挡住后面全部断言）。
+    pointWalls: realPointWalls,
+    mountHosts: realMountHosts,
     // 注：'outdoor_a2' 不能出现在 hvacAnchors 里——shared/mep-hvac-coordination-schema.ts:137-144 的
     // registerSources 禁止同一 id 跨 kind 重复注册（hvac anchor vs VRF outdoor），否则 validateMepCoordination
     // 第一句就抛 "Duplicate MEP endpoint id outdoor_a2"，把本文件所有测试挡在断言之前。
@@ -111,9 +125,10 @@ test('design requirement plumbing routes cannot reference authoritative plumbing
 
 test('real render facts resolve all configured MEP routes through HVAC ceiling and electrical refs', () => {
   const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
-  const ceiling = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
+  const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
   const facts = { electrical, plumbing, ceiling, hvac };
-  const factSources = endpointSourcesFromFacts(facts);
+  // 宿主墙/家具索引（issue #98 S1/S3）：沿墙点位不再声明绝对 x/z，端点解析与生产同一构造。
+  const factSources = endpointSourcesFromFacts(facts, realPointWalls, realMountHosts);
   const report = resolveMepRoutes(config, factSources);
   assert.equal(report.total, 137); // DEC-2026-10-27-R01 删床头路线 strong-light-bedrooms-parent-bed 后 138→137； // 80→87（DEC-2026-10-06-R1 给排水兜底）→92（2026-10-07 v1 水路估算：6 条要求提升 + 5 条干管）→102（2026-10-07 DEC-2026-10-07-M04 声明式补客客厅 ordinary_power_living 十条路由）→137（2026-10-07 之后 config/mep-hvac-coordination.yaml 继续补路由）→135（DEC-2026-10-12-R1 删 strong-light-bedrooms-master-wall-l/-r 两条路由）→131（DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带，删 strong-light-gbath / -mbath-panel / -mbath-switch / -gbath-switch 四条卫浴照明路由）→130（DEC-2026-10-13-R5 删 strong-light-tv）→128（DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l，冰箱改由 sock_fridge_living 就近取电）→135（DEC-2026-10-17-R20 走线专项为 7 个新点位补 7 条路线）→136（DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条）→137（DEC-2026-10-19-R25 新增客餐厅DN32共用主管）→138（DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线 drain-gbath-secondary-requirement）
   // 路线数随 config/mep-hvac-coordination.yaml 增长；改这个数之前先跑 `npm run verify:mep` 确认 resolved/unresolved 结构没变（resolved=136/unresolved=0 才算健康）
@@ -143,7 +158,7 @@ test('degenerate candidate routes are never physical or confirmed', () => {
 
 test('gravity condensate resolution carries pending warning metadata', () => {
   const route = config.routes.find((item) => item.id === 'condensate-study')!;
-  const report = resolveMepRoutes({ ...config, routes: [route] }, endpointSourcesFromFacts({ electrical, plumbing, ceiling: parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'], hvac: parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'] }));
+  const report = resolveMepRoutes({ ...config, routes: [route] }, endpointSourcesFromFacts({ electrical, plumbing, ceiling: parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'], hvac: parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'] }));
   assert.equal(report.routes[0].metadata.pendingReview, true);
   assert.match(report.routes[0].metadata.warning ?? '', /重力冷凝水候选路线/);
   assert.equal(route.status, 'pending');

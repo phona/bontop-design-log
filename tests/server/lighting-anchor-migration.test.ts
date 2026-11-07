@@ -75,12 +75,14 @@ describe('DEC-2026-10-17-R12 吸顶灯锚点迁移', () => {
 
   it('kitchen 平板灯安装面 2.65 与 ceiling_kitchen 宿主面一致（宿主选择取最低实心面）', () => {
     const electrical = parseElectricalPoints(read('config/electrical.yaml'));
-    const zones = parseCeilingZones(read('config/ceiling.yaml'));
+    const zones = parseCeilingZones(read('config/model/envelope/ceiling.yaml'));
     const rooms = [room('kitchen')];
     const point = electrical.find((candidate) => candidate.id === 'light_kitchen_panel');
     assert.ok(point);
     assert.equal(point.height, 2.65);
-    const host = selectCeilingHost(point, zones, rooms);
+    // 顶装灯平面坐标（x/z）本期仍是灯具自身口径（issue #98 S1 不迁灯具平面）
+    assert.ok(point.x !== undefined && point.z !== undefined, 'light_kitchen_panel 必须带 x/z');
+    const host = selectCeilingHost({ x: point.x, z: point.z }, zones, rooms);
     assert.ok(host, 'kitchen 点位必须落在某个实心吊顶分区内');
     assert.equal(host.zone.id, 'ceiling_kitchen');
     assert.ok(Math.abs(host.surfaceY - 2.65) < 1e-9);
@@ -88,12 +90,13 @@ describe('DEC-2026-10-17-R12 吸顶灯锚点迁移', () => {
 
   it('4 间卧室 dome 点位均不在任何吊顶分区内（宿主回退原顶 2.80）', () => {
     const electrical = parseElectricalPoints(read('config/electrical.yaml'));
-    const zones = parseCeilingZones(read('config/ceiling.yaml'));
+    const zones = parseCeilingZones(read('config/model/envelope/ceiling.yaml'));
     const rooms = ['master_bedroom', 'study', 'bedroom_nw', 'bedroom_se'].map((id) => room(id));
     for (const id of ['light_master_dome', 'light_parent_dome', 'light_child_dome', 'light_study_dome'] as const) {
       const point = electrical.find((candidate) => candidate.id === id);
       assert.ok(point);
-      assert.equal(selectCeilingHost(point, zones, rooms), undefined, `${id} 应落在原顶平顶区`);
+      assert.ok(point.x !== undefined && point.z !== undefined, `${id} 必须带 x/z`);
+      assert.equal(selectCeilingHost({ x: point.x, z: point.z }, zones, rooms), undefined, `${id} 应落在原顶平顶区`);
       assert.equal(point.height, 2.8);
     }
   });

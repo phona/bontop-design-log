@@ -7,6 +7,9 @@ import {
   validateMepCoordination,
 } from '../../../shared/mep-hvac-coordination-schema.js';
 import { computeMepTakeoff, type MepTakeoffRules, type TakeoffCircuit } from '../../../shared/mep-takeoff.js';
+import { sourceFile } from '../../../shared/envelope-sources.js';
+import { ProjectCatalog } from '../../../server/project-catalog.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
 
 /**
  * verify:mep-takeoff —— 水电子系统算量的 count/覆盖度/显形项契约。
@@ -35,7 +38,8 @@ const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepT
 const electrical = parseYaml(readFileSync(rules.sources.electrical_points, 'utf8')) as Array<Record<string, unknown>>;
 const plumbing = parseYaml(readFileSync(rules.sources.plumbing_points, 'utf8')) as Array<Record<string, unknown>>;
 const hvac = parseYaml(readFileSync(rules.sources.hvac, 'utf8')) as { plans: unknown[] };
-const ceiling = parseYaml(readFileSync(rules.sources.ceiling, 'utf8')) as unknown[];
+// 2026-11-07（issue #98 S6）：吊顶声明文件的路径取自来源注册表，不再读 rules.sources.ceiling
+const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknown[];
 const topology = parseYaml(readFileSync(rules.sources.circuits, 'utf8')) as {
   circuits: TakeoffCircuit[];
   controls?: Array<{ switch_point_ids?: string[]; target_point_ids?: string[] }>;
@@ -65,7 +69,9 @@ const sources = endpointSourcesFromFacts({
   plumbing: plumbing as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'],
   ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
   hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
-});
+  // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：与 verify:mep /
+  // takeoff:mep / DXF 同一解算，量只有一份。
+}, pointWallIndexFromElements(ProjectCatalog.load('.').getWalls()), pointMountHostIndex(Object.values(ProjectCatalog.load('.').getFurnishings()).flat()));
 // Keep the takeoff gate on the same cross-file contract as verify:mep.  The
 // resolver can report a count, but it cannot detect duplicate source IDs or a
 // plumbing route with contradictory evidence/status declarations.

@@ -14,6 +14,7 @@ import type {
   DesignOption,
 } from '../shared/types.js';
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
+import { tangentArc } from '../shared/arc.js';
 import {
   computeMasonryTakeoff,
   type MasonryFloorRegionInput,
@@ -21,7 +22,8 @@ import {
   type MasonryTakeoffResult,
 } from '../shared/masonry-takeoff.js';
 import { loadCeilingConfig } from './config-loader.js';
-import { parseOverlay } from './overlay-merge.js';
+import { parseOverlay, parseOverlayFiles, validateWallFinish } from './overlay-merge.js';
+import { suppressedWallIdSet } from '../shared/suppression.js';
 import { loadCeilingQuotes, baseJsonCeilingRatesFromBase, type CeilingQuotesFile } from './ceiling-quotes.js';
 import { resolveActiveCeilingRates, compareCeilingQuotes, type CeilingQuoteRateKey } from './ceiling-quotes.js';
 import {
@@ -131,39 +133,26 @@ function loadFloorRoomSplit(): { dryRoomIds: string[]; wetRoomIds: string[] } {
  * shared/types.ts 的 floor_region 注释：那个手工布尔量重复了几何已知的信息，改一处忘另一处
  * 就是双计/漏计，且从任何单处都看不出来。
  *
- * `elements` 是测试缝：缺省读 `config/layout/overlay.yaml`（生产唯一入口），
+ * `elements` 是测试缝：缺省读 envelope 三文件（`parseOverlayFiles()` 生产唯一入口，
+ * 原 config/layout/overlay.yaml 已于 issue #98 第三阶段 S1 拆迁），
  * 显式传入则可对同一套分派规则做合成复算（改标志/加区域），避免为跑负例去改配置文件。
  */
 export function loadMasonryTakeoff(
   catalog: ProjectCatalog,
   elements?: unknown[]
 ): MasonryTakeoffResult {
-  const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const overlay = parseOverlayFiles();
   const overlayElements = (elements ?? overlay.elements ?? []) as Array<Record<string, any>>;
+  // 砖漆互斥机器规则（S4）：同一墙脸的贴砖带与涂装带二维不重叠。预算侧也算钱，
+  // 重叠 = 双计，所以在装载点一并校验（唯一实现见 server/overlay-merge.ts）。
+  validateWallFinish(catalog.getWalls());
 
-  // overlay.suppress 压制的墙（玻璃幕墙 / 实体已删除）：wall_region 引用即抛错，
+  // 被 suppress 的墙（玻璃幕墙 / 实体已删除）：wall_region 引用即抛错，
   // sill_region 允许（防水台本就落在幕墙根）但要留名。
-  // 三种声明形式都要认（与 server/overlay-merge.ts 的 mergeSceneElements 同口径）：
-  // `wall` 单墙 / `walls` 多墙 / `region` 按墙段中心点的包围盒。漏认任何一种，
-  // 被压制墙上的贴砖声明就不会被拦住。
-  const suppressedWallIds = new Set<string>();
-  for (const entry of overlay.suppress ?? []) {
-    if (entry.wall) suppressedWallIds.add(String(entry.wall));
-    for (const wallId of entry.walls ?? []) suppressedWallIds.add(String(wallId));
-    if (entry.region) {
-      const minX = Math.min(entry.region.x1, entry.region.x2);
-      const maxX = Math.max(entry.region.x1, entry.region.x2);
-      const minZ = Math.min(entry.region.z1, entry.region.z2);
-      const maxZ = Math.max(entry.region.z1, entry.region.z2);
-      for (const wall of catalog.getWalls()) {
-        const mx = (wall.x1 + wall.x2) / 2;
-        const mz = (wall.z1 + wall.z2) / 2;
-        if (mx >= minX && mx <= maxX && mz >= minZ && mz <= maxZ && wall.id) {
-          suppressedWallIds.add(wall.id);
-        }
-      }
-    }
-  }
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：判定读墙条目自身的 suppressed 属性
+  // （model-geometry.yaml，经 ProjectCatalog 透传），权威实现在 shared/suppression.ts——
+  // 原 overlay.suppress 三形式（wall/walls/region）的本地副本随镜像表一并删除。
+  const suppressedWallIds = suppressedWallIdSet(catalog.getWalls());
 
   const walls: MasonryTakeoffInput['walls'] = catalog.getWalls().map((wall) => ({
     id: wall.id ?? '',
@@ -177,16 +166,37 @@ export function loadMasonryTakeoff(
   }));
   const wallById = new Map(walls.map((wall) => [wall.id, wall]));
 
-  const sillRegions = overlayElements
-    .filter((element) => element.type === 'sill_region')
-    .map((element) => ({
-      id: String(element.id),
-      element: String(element.element),
-      room: String(element.room),
-      face: element.face as MasonryTakeoffInput['sillRegions'][number]['face'],
-      along: element.along as [number, number] | undefined,
-      zone: element.zone as string | undefined,
-    }));
+  // 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：贴砖带不再是 overlay 平级元素
+  // wall_region，而是墙对象自己的 finish.tile_bands[]（model-geometry.yaml，经 ProjectCatalog
+  // 透传）；防水台/上飘窗贴砖不再是 sill_region，而是 bay_sill 构件的 finish.tile[]
+  // （envelope/openings.yaml）。算量口径逐条未改：along × 带高、fail-closed 守卫
+  // （height 必填、along 不越界、顶标高不超净高）都在 shared/masonry-takeoff.ts 里。
+  const wallRegions: MasonryTakeoffInput['wallRegions'] = catalog.getWalls().flatMap((wall) =>
+    (wall.finish?.tile_bands ?? []).map((band) => ({
+      id: band.id,
+      wall: wall.id ?? '',
+      room: band.room,
+      along: band.along,
+      bottom: band.bottom ?? 0,
+      height: band.height,
+      zone: band.zone,
+    })),
+  );
+
+  const sillRegions: MasonryTakeoffInput['sillRegions'] = overlayElements
+    .filter((element) => element.type === 'bay_sill')
+    .flatMap((element) => {
+      const bands = (element.finish as { tile?: Array<Record<string, unknown>> } | undefined)?.tile ?? [];
+      // element 由宿主构件给出（S4 前是声明的 element: 引用）。
+      return bands.map((band) => ({
+        id: String(band.id),
+        element: String(element.id),
+        room: String(band.room),
+        face: band.face as MasonryTakeoffInput['sillRegions'][number]['face'],
+        along: band.along as [number, number] | undefined,
+        zone: band.zone as string | undefined,
+      }));
+    });
 
   const baySills = overlayElements
     .filter((element) => element.type === 'bay_sill')
@@ -197,10 +207,10 @@ export function loadMasonryTakeoff(
       }
       const referencedBySill = sillRegions.some((region) => region.element === String(element.id));
       if (wallIds.length > 1 && referencedBySill) {
-        // 模块契约是「一个构件一条 run」。跨墙构件若被 sill_region 引用，只取第一条墙会
+        // 模块契约是「一个构件一条 run」。跨墙构件若被构件内嵌贴砖声明引用，只取第一条墙会
         // 静默漏算其余墙上的贴砖面——fail-closed，逼着把声明拆成逐墙构件。
         throw new Error(
-          `bay_sill ${element.id} 横跨 ${wallIds.length} 面墙（${wallIds.join(', ')}），却被 sill_region 引用；`
+          `bay_sill ${element.id} 横跨 ${wallIds.length} 面墙（${wallIds.join(', ')}），却被其 finish.tile 引用；`
           + 'shared/masonry-takeoff.ts 只接受单墙构件，请把该构件拆成逐墙声明',
         );
       }
@@ -250,24 +260,14 @@ export function loadMasonryTakeoff(
 
   return computeMasonryTakeoff({
     walls,
-    wallRegions: overlayElements
-      .filter((element) => element.type === 'wall_region')
-      .map((element) => ({
-        id: String(element.id),
-        wall: String(element.wall),
-        room: String(element.room),
-        along: element.along as [number, number],
-        bottom: Number(element.bottom ?? 0),
-        height: Number(element.height),
-        zone: element.zone as string | undefined,
-      })),
+    wallRegions,
     sillRegions,
     baySills,
     rooms,
     dryRoomIds: floorRoomSplit.dryRoomIds,
     wetRoomIds: floorRoomSplit.wetRoomIds,
     floorRegions,
-    // 厨卫铝扣板完成面（config/ceiling.yaml 的 ceiling_kitchen / ceiling_master_bath /
+    // 厨卫铝扣板完成面（config/model/envelope/ceiling.yaml 的 ceiling_kitchen / ceiling_master_bath /
     // ceiling_guest_bath，均「完成面 2.65m」）= 贴砖带顶标高上限。必填、不设默认值。
     clearHeight: 2.65,
   });
@@ -285,6 +285,10 @@ const GEO_EPS = 1e-6;
  * 「渲染端折线段数不同导致面积对不上」的第二套口径。切点落在邻边线段之外、圆心与半径
  * 不自洽、扫角退化时直接抛错（fail-closed）：一条坏弧声明应该让预算算不出来，
  * 而不是悄悄少算 0.21㎡。
+ *
+ * 切点与弧心统一走 `shared/arc.ts` 的 `tangentArc`（原 `tangentPointOnEdge` 本地副本，
+ * 2026-11-07 issue #98 第三阶段 S2 删除）：floor_region 圆角点带声明式 cx/cz，
+ * 走 descriptor 的「垂足 = 切点」形态，其越界/不自洽校验即本函数的 fail-closed 守卫。
  */
 function roundedPolygonArea(points: CurtainPoint[]): number {
   const signed = points.reduce((sum, p, i) => {
@@ -305,8 +309,16 @@ function roundedPolygonArea(points: CurtainPoint[]): number {
     const center = { x: corner.cx, z: corner.cz };
     const prev = points[(i - 1 + points.length) % points.length];
     const next = points[(i + 1) % points.length];
-    const t1 = tangentPointOnEdge(corner, prev, center, corner.radius);
-    const t2 = tangentPointOnEdge(corner, next, center, corner.radius);
+    // 切点/弧心解算唯一入口（shared/arc.ts）。返回 null = 切点落在邻边线段之外、
+    // 半径与弧心不自洽或夹角退化——预算算不出来，不悄悄少算一块地。
+    const arc = tangentArc(corner, prev, next, corner.radius, center);
+    if (!arc) {
+      throw new Error(
+        `floor_region 圆角点（第 ${i} 点）无法由 tangentArc 解出切点：切点落在邻边线段之外、半径与弧心不自洽或夹角退化`,
+      );
+    }
+    const t1 = arc.start;
+    const t2 = arc.end;
     // 被圆角替掉的锐角三角形面积
     const cornerArea = Math.abs(
       (t1.x - corner.x) * (t2.z - corner.z) - (t2.x - corner.x) * (t1.z - corner.z)
@@ -324,30 +336,6 @@ function roundedPolygonArea(points: CurtainPoint[]): number {
     area += orient * turn > 0 ? -cut : cut;
   }
   return Math.abs(area);
-}
-
-/** 圆心在「角点 → 邻点」这条边上的垂足（即圆角切点）；不在边线段内或半径不自洽即抛错。 */
-function tangentPointOnEdge(
-  corner: CurtainPoint,
-  along: CurtainPoint,
-  center: { x: number; z: number },
-  radius: number
-): { x: number; z: number } {
-  const dx = along.x - corner.x;
-  const dz = along.z - corner.z;
-  const len = Math.hypot(dx, dz);
-  if (len <= GEO_EPS) throw new Error('floor_region 圆角点的邻边长度为 0');
-  const ux = dx / len;
-  const uz = dz / len;
-  const t = (center.x - corner.x) * ux + (center.z - corner.z) * uz;
-  if (t < -GEO_EPS || t > len + GEO_EPS) {
-    throw new Error(`floor_region 圆角切点落在邻边线段之外（t=${t.toFixed(4)}，边长=${len.toFixed(4)}）`);
-  }
-  const point = { x: corner.x + ux * t, z: corner.z + uz * t };
-  if (Math.abs(Math.hypot(point.x - center.x, point.z - center.z) - radius) > 1e-3) {
-    throw new Error('floor_region 圆角半径与弧心不自洽（切点到弧心距离 ≠ radius）');
-  }
-  return point;
 }
 
 export function loadPaintScopeAreaByRoom(
@@ -379,7 +367,7 @@ export function loadPaintScopeAreaByRoom(
 }
 
 /**
- * 吊顶工程量：按 `config/ceiling.yaml` 的逐分区声明实算，不再按房间面积近似。
+ * 吊顶工程量：按 `config/model/envelope/ceiling.yaml` 的逐分区声明实算，不再按房间面积近似。
  * 工艺/计价类别（trade）拆分见 shared/ceiling-takeoff.ts；返回值为原始浮点，不取整。
  */
 function ceilingTakeoff(catalog: ProjectCatalog): CeilingTakeoff {
