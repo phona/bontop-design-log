@@ -735,6 +735,13 @@ facts:
     value: "@config/layout/model-geometry.yaml:vertices#find:id=v_kit_s2.z"
     unit: m
     mirrors:
+      # 2026-11-09 S2-B：原唯一镜像指向量房手账里手写的「3.6×2.4」乘积，该文件已整份退场。
+      # 同一句算术在 config/house.yaml 的 kitchen room notes 里也有（DEC-014 z=2.9 经
+      # DEC-021 缩至 z=2.4），接回那里——活文件，改南界会同时改这里。
+      - path: config/house.yaml
+        extract: '3\.6×(\d\.\d+)=[\d.]+'
+        severity: error
+        expect_matches: 1
   - id: fact.west_platform_area
     kind: derived
     value: "@config/layout/model-geometry.yaml:platform.boundary#bbox_area"
