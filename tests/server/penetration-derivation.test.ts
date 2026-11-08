@@ -371,3 +371,35 @@ test('冷凝链锚点 deriveMepPenetrationAt：派生值 == 被删声明 (2.3, 2
   const hugDerived = deriveMepPenetrationPoint([{ x: 1, z: 4 }, { x: 1, z: 5 }, { x: 9, z: 5 }, { x: 9, z: 6 }], { id: 'w_x', x1: 0, z1: 5, x2: 10, z2: 5 });
   assert.ok(!('point' in hugDerived) && typeof hugDerived.diagnostic === 'string', 'C 形无唯一交点必须 fail-closed 给诊断');
 });
+
+test('穿墙计数契约：60 条声明 / 33 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
+  // config/facts.yaml 的 fact.mep_penetration_declarations 只锚定文档清点句的文本（facts-lint 的
+  // derived 选择器表达不了「跨路线嵌套数组求和 + 去重」）；本断言从配置机器计算两数并要求文档
+  // 同值——guidance:37 的「40 条 / 21 孔位」正是这样 stale 的。孔位 = 同墙同坐标去重（多条路线共用一孔）。
+  // **覆盖边界（评审员变异实测，勿过度声称）**：本测试只钉「孔位计数 + 声明条目数」两个数。
+  // ① 孔位**坐标移动**（路线改道但孔数不变）它抓不到——由同文件 PIN_45 逐点钉值测试负责；
+  // ② 文档里另一处历史旧值句它抓不到（只查规范句，verify:facts 的 mirror 同口径）；
+  // ③ 有手写 at 的声明改指向不存在的墙它抓不到（孔 key 照算），由 KEPT_15 + takeoff + lint 抓。
+  // 三条边界都有既有守卫兜底，但不要以为这一条是全能的。
+  const declarations = declarationsOf(config);
+  const holes = new Set<string>();
+  for (const { route, wall, entry } of declarations) {
+    const at = entry.at as { x?: unknown; z?: unknown } | undefined;
+    let point: { x: number; z: number };
+    if (at && typeof at.x === 'number' && typeof at.z === 'number') {
+      point = { x: at.x, z: at.z };
+    } else {
+      const wallGeometry = wallsById.get(wall);
+      assert.ok(wallGeometry, `wall ${wall} 存在`);
+      const derived = deriveMepPenetrationPoint(routePoints(route), wallGeometry);
+      assert.ok('point' in derived, `${route.id}@${wall} 无手写 at 时必须可派生唯一交点`);
+      point = derived.point;
+    }
+    holes.add(`${wall}@${point.x.toFixed(3)},${point.z.toFixed(3)}`);
+  }
+  assert.equal(declarations.length, 60, '穿墙声明条目数变了：同步施工指导文档清点句与 facts 契约');
+  assert.equal(holes.size, 33, '孔位数变了：同步施工指导文档清点句与 facts 契约');
+  const guidance = readFileSync('docs/mep-construction-guidance.md', 'utf8');
+  assert.ok(guidance.includes(`合计 **${declarations.length} 条声明、落在 ${holes.size} 个不同孔位**`),
+    'docs/mep-construction-guidance.md 的穿墙清点句必须与配置机器计数同值');
+});

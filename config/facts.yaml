@@ -1238,6 +1238,18 @@ x_decision_files: &decision_files
   - docs/decisions/17-paint-scope-extension.md
   - docs/decisions/18-engineering-state.md
 
+# 2026-11-08 issue #98 第六阶段 S1：repair_channel.decision_ref 的存在性校验以此清单为准
+# （shared/facts-lint.ts:1900-1913 只认「登记表顶层 decision_log_files 列出的文件里有同名
+#   `### DEC-` 标题」）。此前未登记本字段，该校验被跳过、只在 INFO 露面——等于「指引人去查
+#   一条可能不存在的 DEC」无人把关。S1 补登记即让校验真正跑起来（本轮 verify:facts 实跑 0 error）。
+# 取值与 x_decision_files 同源（YAML 锚点复用，不手抄第二份）：DEC 条目正文今天仍住在
+# docs/decisions/，故存在性校验的靶也仍是 md 标题形态。S2 把 target 切到登记簿
+# config/decision-registry.yaml 时（审读轮 M1：decisionRefResolves 只认 `^#{2,6}\s*DEC-…`），
+# 本字段随之改指登记簿，或由新 FK 契约承担存在性——不在 S1 改，避免契约先于载体切换。
+# 注：x_decision_files 里 17-paint-scope-extension.md 重复两次是既有登记冗余（设计文档 §6.2 B16），
+# 属 S2 死配置清理范围，本行只复用不改写它；decisionRefResolves 用 `.some()` 判存在，重复无害。
+decision_log_files: *decision_files
+
 contracts:
 
   - id: c.dec_unique
@@ -1986,6 +1998,19 @@ coverage:
   - { file: config/facts.yaml, field: "scan", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   - { file: config/facts.yaml, field: "facts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   - { file: config/facts.yaml, field: "contracts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
+  # decision_log_files（2026-11-08 issue #98 S1 补）：repair_channel.decision_ref 存在性校验的靶清单。
+  # 读者 = 引擎本身（读该字段并据它搜 `### DEC-` 标题）+ facts-lint 单测（断言「未登记则跳过且 INFO 露面」）。
+  - { file: config/facts.yaml, field: "decision_log_files", readers: ["shared/facts-lint.ts", "tests/server/facts-lint.test.ts"] }
+  # ─── DEC 决策登记簿（issue #98 第六阶段 S1 新建；docs/decisions/ 零删除前的替代载体）───
+  # entries = 292 条 DEC 的最小行（id/subject/status/superseded_by/intent/evidence/pending/retired_commit）。
+  # S1 的真实读者只登记这两处（自检测试 + T4 覆盖层），逐个写实、不虚报：
+  #   ① tests/server/decision-registry.test.ts —— 内容级读者（id 覆盖对账/唯一性/status 合法性/
+  #      intent 最低内容/值内 # 已加引号），钩住设计文档 §2.5 钩子 1；
+  #   ② shared/facts-lint.ts + scripts/verify/facts/verify-facts.ts —— T4 覆盖层：coverage.files 收录
+  #      config/*.yaml，引擎 load 本文件并读它的顶层字段名（漏登记 entries 即 field_uncovered warning）。
+  # cost-summary / element-state 的**内容级**读取属 S2 范围（设计文档 §5-S2），彼时按实际接线改写本行
+  # readers；在此之前不把尚未读它的模块写成读者（覆盖矩阵不许说谎）。
+  - { file: config/decision-registry.yaml, field: "entries", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts", "tests/server/decision-registry.test.ts"] }
   # x_decision_files 是 2026-10-09 DEC-2026-10-09-S01 引入的 YAML 锚点：DEC 日志拆成
   # docs/decisions/ 14 个文件后，三条契约（查重 + 两道外键）共用同一份文件清单，避免手抄漂移。
   # 纯声明式复用，没有代码 reader。
