@@ -34,7 +34,7 @@
 - **电与空调走顶**：主干藏走廊满吊（z=4.6 轴线）/门厅满吊/客厅北缘边吊，分支进各房间边吊；到点位上方后**沿墙竖直下引**（开关 1.3m、低位插座 0.3m、床头 0.6–0.7m）。空调插座贴边吊下沿，不下引。分层标高按 **A/B 分区口径**（DEC-2026-10-06-R5，见 §3.3.1）：A 区（完成面 2.50）强电 2.55 / 弱电 2.60 / 冷凝水 2.65 / 冷媒 2.60，B 区铝扣板（完成面 2.65）进入段 2.70–2.76；参考梁约束带内 ≤ 梁底−0.05。
 - **水走地**：给水垫层内 0.18m，排水贴地 0.02–0.10m；重力管（排水/冷凝水）全程 1% 坡（阳台 2%），禁止上弯。
 - **全部正交折线**，穿墙段与墙正交；穿墙点逐条声明在 `docs/design-iterations/mep-routing-20260901/round.yaml` 的 datum 段（v1 留档，penetrations 15 条），每条含墙 id、坐标、标高、门洞避让关系。
-  > 口径：现行 route 级穿墙声明写在 `config/mep-hvac-coordination.yaml` 每条 route 的 `penetration` 数组里，合计 40 条声明、落在 21 个不同孔位（同一墙同一坐标由多条路线共用一孔，如 w_strip_east(4.2,4.6) 三管同孔）；`design-datum.yaml` 是 2026-09-01 v1 留档（15 条），**不是现行清点工具**，两套都以量房实测终核。
+  > 口径：现行 route 级穿墙声明写在 `config/mep-hvac-coordination.yaml` 每条 route 的 `penetration` 数组里，合计 **60 条声明、落在 33 个不同孔位**（同一墙同一坐标由多条路线共用一孔，如 w_strip_east(4.2,4.6) 多管同孔；2026-11-08 issue #98 第五阶段 S3 按实测修订——本行旧数「40 条声明 / 21 个孔位」为 stale 旧值，机器计数契约在 `tests/server/penetration-derivation.test.ts`）。其中 45 条 at 可由「路线折线 ∩ 墙段」唯一交点派生（≤1e-9 恒等实证），S3 起已删字面 at、由 `shared/mep-hvac-lint.ts` 派生；12 条几何上无唯一交点（7 条贴墙段穿越 + 1 条端点压墙线 + 4 条未触墙意图点）与 3 条偏差待量房（0.05–0.125m，strong-light-child / weak-master / water-hot-water-gbath-requirement）保留手写 at；60 条 height（套管标高设计值）与 note（现场依赖语义）全部保留。`design-datum.yaml` 是 2026-09-01 v1 留档（15 条），**不是现行清点工具**，两套都以量房实测终核。
 - 权威几何：`config/layout/model-geometry.yaml`；吊顶通道：`config/model/envelope/ceiling.yaml`；走线：`config/mep-hvac-coordination.yaml`（每条 route 的 reason 字段含逐条说明）。
 
 ## 2. 墙体类型参考图 v1（邻户图比例映射）
@@ -69,7 +69,7 @@ w_mb_south / w_st_south / w_liv_south / w_be_south（南面全链）、w_west_*�
 
 ### 2.4 新建隔墙（图上不存在，由施工做法决定）
 
-w_mbath_south（2026-08-25 台盆外移条带新建墙，给水/冷凝水穿点 x=0.26 / x=2.0 在此墙）——新建轻体墙开槽最自由，但要在砌筑时预埋线管/套管，不要砌完再剔。
+w_mbath_south（2026-08-25 台盆外移条带新建墙，给水穿点 x=0.575、冷凝水穿点 x=2.3 在此墙；2026-11-08 按实测修订——原文 x=0.26 / x=2.0 已 stale，给水穿点经 2026-10-06-R1 修正至 0.575（water-master-bath note 在案），冷凝水现值 2.30（condensate-master note 在案））——新建轻体墙开槽最自由，但要在砌筑时预埋线管/套管，不要砌完再剔。
 
 ## 2.5 梁位参考图 v1（邻户图比例映射）
 

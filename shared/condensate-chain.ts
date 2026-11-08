@@ -29,6 +29,8 @@ import { declaredFurnitureDims, resolveFurniturePlacement, WALL_THICKNESS, type 
 import { CONDENSATE_CHAIN_FURNITURE_TYPES, type CondensateChainFurnitureType } from './types.js';
 import type { HvacDiagram } from './types.js';
 import { hvacAnchorPositions, type HvacBuilderSources } from './render/HvacBuilder.js';
+import { mepRoutePoints, resolveMepEndpoint, type MepEndpointSources, type MepJunction, type MepRoute } from './mep-hvac-coordination-schema.js';
+import { deriveMepPenetrationPoint, type PenetrationWallShape } from './mep-hvac-lint.js';
 
 export { CONDENSATE_CHAIN_FURNITURE_TYPES };
 export type { CondensateChainFurnitureType };
@@ -368,9 +370,13 @@ export interface MepRoutePenetrationLike {
 }
 
 /**
- * 从 MEP 路线取出指定墙的穿墙点（x/z）。
+ * 从 MEP 路线取出指定墙的**手写**穿墙点（x/z）。
  * `penetration` 在 schema 里是 `z.unknown()`（穿墙声明由 lint 另行校验），这里做运行时
  * 形状检查：取不到就返回 undefined，由调用方显形，不猜坐标。
+ *
+ * issue #98 第五阶段 S3 起：可派生的 45 条 at 已删除（含冷凝链锚点 condensate-master@
+ * w_mbath_south），冷凝链消费方改调 `deriveMepPenetrationAt`。本函数只读仍保留手写的
+ * 不可派生条目（贴墙段/端点压墙线/意图点/偏差待量房），以及测试里的声明对照。
  */
 export function mepPenetrationAt(route: MepRoutePenetrationLike | undefined, wallId: string): ChainPoint | undefined {
   if (!Array.isArray(route?.penetration)) return undefined;
@@ -380,6 +386,42 @@ export function mepPenetrationAt(route: MepRoutePenetrationLike | undefined, wal
     if (at && typeof at.x === 'number' && typeof at.z === 'number') return { x: at.x, z: at.z };
   }
   return undefined;
+}
+
+/** 穿墙点派生上下文：路线端点解算源 + 墙几何（与 lint / takeoff 同一算法同一输入口径）。 */
+export interface MepPenetrationDerivationContext {
+  sources: MepEndpointSources;
+  walls: readonly PenetrationWallShape[];
+  junctions?: MepJunction[];
+}
+
+/**
+ * 从路线几何派生指定墙的穿墙点（issue #98 第五阶段 S3 消费方②迁移）。
+ *
+ * 冷凝链锚点原读 condensate-master@w_mbath_south 的手写 at（`mepPenetrationAt`）；该 at 是
+ * D 轨实测「折线 ∩ 墙段唯一交点浮点恒等」的 45 条之一，S3 删除后改读派生值——算法即 lint 的
+ * `deriveMepPenetrationPoint`（唯一 strict/vertex 交点），不另写第二套几何。
+ * 路线缺失 / 端点解不出 / 墙缺失 / 无唯一交点 → diagnostic 且不给 point（fail-closed：下游
+ * buildCondensateChain 随即显形「无锚」，不回落手写值、不钳位）。
+ */
+export function deriveMepPenetrationAt(
+  route: MepRoute | undefined,
+  wallId: string,
+  context: MepPenetrationDerivationContext,
+): { point?: ChainPoint; diagnostic?: string } {
+  if (!route) return { diagnostic: `MEP 路线缺失：${wallId} 穿墙点无从派生` };
+  const junctions = context.junctions ?? [];
+  const from = resolveMepEndpoint(route.from, context.sources, junctions);
+  const to = resolveMepEndpoint(route.to, context.sources, junctions);
+  if (!from || !to) {
+    const missing = [from ? undefined : 'from', to ? undefined : 'to'].filter((side): side is string => side !== undefined).join('/');
+    return { diagnostic: `MEP ${route.id} 端点解不出（${missing}）：${wallId} 穿墙点无从派生` };
+  }
+  const wall = context.walls.find((candidate) => candidate.id === wallId);
+  if (!wall) return { diagnostic: `墙 ${wallId} 不在墙几何里：MEP ${route.id} 穿墙点无从派生` };
+  const derived = deriveMepPenetrationPoint(mepRoutePoints(route, from, to), wall);
+  if ('point' in derived) return { point: { x: derived.point.x, z: derived.point.z } };
+  return { diagnostic: `MEP ${route.id} @ ${wallId}：${derived.diagnostic}` };
 }
 
 /** hvac terminal 的最小形态（结构同 HvacTerminal）。 */
@@ -428,7 +470,7 @@ export function buildCondensateChain(
   if (!penetration) {
     return {
       geometry: null,
-      diagnostics: ['MEP condensate-master 未声明 w_mbath_south 穿墙点，service_chase 的折点无锚'],
+      diagnostics: ['MEP condensate-master 的 w_mbath_south 穿墙点不可得：S3 起可派生 at 已删、锚点由调用方经 deriveMepPenetrationAt 解出后传入，service_chase 的折点无锚'],
     };
   }
   return resolveCondensateChain({

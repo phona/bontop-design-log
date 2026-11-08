@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { readFileSync } from 'node:fs';
 import { ProjectCatalog } from './project-catalog.js';
 import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
@@ -11,7 +12,8 @@ import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep
 import { pointMountHostIndex, pointWallIndexFromElements } from '../shared/point-placement.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
-import { mepPenetrationAt } from '../shared/condensate-chain.js';
+import { deriveMepPenetrationAt } from '../shared/condensate-chain.js';
+import { parseProjectHvacFacts } from '../shared/project-render-facts-schema.js';
 import { mergeSceneElements } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import type { CurrentScheme, CurtainState, ProjectRenderFacts, ProjectRenderFactsProjection } from '../shared/types.js';
@@ -79,11 +81,23 @@ export function createApiRouter(deps: ApiDeps): Router {
   const { state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
   const router = Router();
   const phaseScopes = loadPhaseScopes();
-  /** 主卫冷凝链穿墙锚点（issue #98 PR-10）：MEP condensate-master @w_mbath_south，只读不改线。 */
-  const condensateMasterPenetration = (): { x: number; z: number } | undefined => mepPenetrationAt(
+  /** 主卫冷凝链穿墙锚点（issue #98 PR-10；第五阶段 S3 改派生）：MEP condensate-master
+   * @w_mbath_south。S3 起该 at 已删（可派生 45 条之一），锚点由路线几何派生——与
+   * lint/takeoff 同一算法（deriveMepPenetrationPoint）、同一端点解算源；派生失败 → 无锚，
+   * 下游链条显形（fail-closed）。 */
+  const condensateMasterPenetration = (): { x: number; z: number } | undefined => deriveMepPenetrationAt(
     loadMepCoordinationConfig().routes.find((route) => route.id === 'condensate-master'),
     'w_mbath_south',
-  );
+    {
+      sources: endpointSourcesFromFacts({
+        electrical: loadElectricalConfig(),
+        plumbing: loadPlumbingConfig(),
+        ceiling: loadCeilingConfig(),
+        hvac: parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')),
+      }),
+      walls: deps.catalog.getWalls(),
+    },
+  ).point;
 
   router.get('/config-status', (_req, res) => {
     res.json({ configs: deps.getConfigRegistry().getStatuses() });

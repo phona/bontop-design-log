@@ -85,6 +85,8 @@ const takeoff = computeMepTakeoff({
   routes: coordination.routes,
   resolution,
   rules,
+  // 穿墙孔数按派生交点计（issue #98 第五阶段 S3），墙几何与端点解算同一份 catalog。
+  penetrationWalls: ProjectCatalog.load('.').getWalls(),
 });
 
 const activeElectricalIds = new Set(
