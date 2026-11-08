@@ -11,8 +11,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
-import { parseProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
-import type { BeamDef } from '../../shared/types.js';
+import { parseProjectHvacFacts, parseElectricalPoints, parsePlumbingPoints, parseCeilingZones } from '../../shared/project-render-facts-schema.js';
+import type { BeamDef, ComponentBlocker } from '../../shared/types.js';
 import {
   classifyTarget,
   extractBlockedBy,
@@ -85,18 +85,20 @@ describe('pending ledger parsing', () => {
     assert.equal(extractBlockedBy('point_uncovered'), 'point_uncovered', '提不出「卡在谁」时原样返回，不猜');
   });
 
-  it('is no longer a status source: the ledger cannot change an element status (S2-A)', () => {
-    // 台账仍在仓里（删除属切片 B），但 deriveElementStates 已不再读它——
-    // 同一条 ledger 条目喂进去，状态必须由 config 的 status 决定。
-    const ledger = { entries: [{ ref: '42', summary: '儿童房空调电源', blockedBy: '卡在空调厂家深化图', targets: [{ file: 'config/electrical.yaml', id: 'ledgered' }] }] };
+  it('has no ledger input at all: deriveElementStates cannot be fed a pending-site-data entry (S2-A)', () => {
+    // 2026-11-08 S2-A 评审 blocking 2 的防线：台账不是降级为「可选输入」，而是从签名里消失。
+    // `ElementStateInput` 没有 `ledger` 字段——把台账喂进去是**类型错误**，编译期就拦，
+    // 不靠运行期「读了但不用」。状态与「卡在谁」只能来自对象自己的 status / blocker。
     const result = deriveElementStates({
       elements: [{ id: 'electrical:ledgered', kind: 'electrical', label: 'socket ledgered', configStatus: 'inferred' }],
-      ledger,
       issues: [],
     });
-    assert.equal(result.states[0].status, 'inferred', '台账条目不得把 config 声明 inferred 的点位改判成 pending');
+    assert.equal(result.states[0].status, 'inferred');
     assert.equal(result.states[0].statusSource, 'config:inferred');
-    assert.equal(result.states[0].blocker, undefined, '「卡在谁」来自对象自己的 blocker，不来自台账');
+    assert.equal(result.states[0].blocker, undefined, '「卡在谁」来自对象自己的 blocker，不来自任何账本');
+    // 反向锚：签名里确实没有 ledger（下面这行若去掉 @ts-expect-error 就会编译失败）。
+    // @ts-expect-error —— ledger 已从 ElementStateInput 移除，喂进来必须是类型错误
+    deriveElementStates({ elements: [], issues: [], ledger: { entries: [] } });
   });
 });
 
@@ -521,5 +523,51 @@ describe('structural beams declared on the geometry object (S2-A)', () => {
       }
       assert.ok(!beam.inferred.height && !beam.inferred.width, `${beam.id} 是指针式登记，不得复制 hvac 约束的数字（第二份真相）`);
     }
+  });
+});
+
+describe('note 与 blocker 不许并存两份（S2-A 评审 blocking 1 的防线）', () => {
+  // 同一句「为什么卡 / 什么条件下反转」写在 note 里又抄进 blocker，就是第二份真相——
+  // note 改一句、blocker 不会跟着改，而 blocker 门禁只查非空，查不出漂移。
+  // 纪律：未决口径只住 blocker；note 里要么没有那句，要么末尾有统一标注指向 blocker。
+  const TAIL = '本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。';
+  const all = [
+    ...parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8')),
+    ...parsePlumbingPoints(readFileSync('config/plumbing.yaml', 'utf8')),
+    ...parseCeilingZones(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')),
+  ] as Array<{ id: string; note?: string; blocker?: ComponentBlocker }>;
+  const withBlocker = all.filter((item) => item.blocker);
+
+  it('covers every blocker-carrying object', () => {
+    assert.equal(withBlocker.length, 39, `带 blocker 的构件数：${withBlocker.length}`);
+  });
+
+  it('never repeats a blocker field verbatim inside the note', () => {
+    for (const item of withBlocker) {
+      const note = item.note ?? '';
+      for (const [field, value] of Object.entries({ trigger: item.blocker!.trigger, reverses_if: item.blocker!.reverses_if, rationale: item.blocker!.rationale })) {
+        assert.ok(!note.includes(value), `${item.id} 的 note 逐字包含 blocker.${field}——删掉 note 里那句或改为指向 blocker`);
+      }
+    }
+  });
+
+  it('never mentions the retired position_status field in a blocker-carrying note', () => {
+    for (const item of withBlocker) {
+      assert.ok(!/position_status/.test(item.note ?? ''), `${item.id} 的 note 仍提及已删除的 position_status 字段（悬空引用）`);
+    }
+  });
+
+  it('marks every blocker-carrying note as结构化到 blocker', () => {
+    for (const item of withBlocker) {
+      if (!item.note) continue;
+      assert.ok((item.note ?? '').includes(TAIL), `${item.id} 的 note 末尾必须有统一标注，说明未决口径已结构化到 blocker`);
+    }
+  });
+
+  it('is not vacuous: injecting a verbatim copy must fail (reverse anchor)', () => {
+    // 反向锚：把某条 blocker 的 trigger 原样塞进它的 note，上面的断言必须能红。
+    const victim = withBlocker[0];
+    const tampered = { ...victim, note: `${victim.note ?? ''}${victim.blocker!.trigger}` };
+    assert.ok((tampered.note ?? '').includes(victim.blocker!.trigger), '注入的重复必须能被检测到（证明断言不是恒真式）');
   });
 });

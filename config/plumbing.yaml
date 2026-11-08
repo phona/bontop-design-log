@@ -1,21 +1,3 @@
-# ── 定位声明（2026-11-07 issue #98 第四阶段 S1/S2/S3，设计文档 §4.3/§4.4）────────────────
-# 四种互斥定位来源之一：wall + along（沿墙）/ mount（家具挂载，S2 起为真定位来源）/ anchor
-# （锚点引用，S4 启用）/ absolute（绝对坐标）。S3（2026-11-07）起沿墙/挂载点位的 x/z 声明已删
-# （S1/S2 断言期逐点证明解析结果 == 声明值后移除），平面位置只有 shared/point-placement.ts
-# 一个来源；x/z 现在只属于 absolute 点位（C/D/E/F 组：顶面灯位/建筑服务基准/地面排水口/
-# 器具邻接点）。回路归属同理单一源：点位侧 circuit 字段已废，成员关系只住
-# config/electrical-topology.yaml 的 member_point_ids（派生见 shared/point-circuits.ts）。
-# along 起算 = 墙段起点顶点 (x1,z1) 沿折线累计（与家具摆位、洞口投影同一口径）。
-# face_offset = 离开完成面的附加量（默认 0 = 完成面；完成面 = 墙线 ± WALL_THICKNESS/2 = ±0.06，
-# 2026-11-06 业主口径 A，声明唯一在 shared/furniture-placement.ts）。S2 重标定：S1 迁移期的
-# face_offset（声明垂直分量 − 0.068，把漆面/踢脚防 z-fighting 缝隙 0.008 折进了坐标语义）全部
-# 改回「声明垂直分量 − 0.06」的意图值——中心线组 65 个 −0.068→−0.06、东脸 0.10m 惯用偏移组
-# 10 个 0.032→0.04（显式声明「完成面 + 0.04 惯用偏移」）、完成面组 3 个 −0.008→删（=默认 0）、
-# sock_gbath_robot 0.082→0.09（0.09 是旧口径遗留的数据错误，note 已判「旧坐标不得用于下单」，
-# 本期只登记不修投影，迁机器人仓侧面属阶段五）。解析结果与声明 x/z 逐点不变（断言口径）。
-# 沿墙点位的 3D/DXF 落位 = 墙线 datum + 薄板惯例 0.075m（业主 2026-11-07 裁定
-# 「DXF 迁就 3D 投影」），与 face_offset 无关。
-# ─────────────────────────────────────────────────────────────────────────────
 - id: faucet_mbath_vanity
   room: master_bedroom  # 位于套间条带（主卫南隔墙南侧，2026-08-25 台盆外移）
   wall: w_mbath_south
@@ -26,7 +8,7 @@
   water_temp: "mixed"
   water_dn: 20
   height: 0.8
-  note: "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；DEC-2026-10-03-R1：当前 faucet_kitchen_sink 同款 h=0.8 是抽象服务点，不足施工——台上盆+壁挂龙头需单独定义冷热水预埋、暗装阀体/出水嘴高度与墙排中心，等台盆/龙头 SKU 冻结后才能埋设，水电工不得按 0.8m 抽象点直接开槽（site_pending）"
+  note: "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；DEC-2026-10-03-R1：当前 faucet_kitchen_sink 同款 h=0.8 是抽象服务点，不足施工——台上盆+壁挂龙头需单独定义冷热水预埋、暗装阀体/出水嘴高度与墙排中心，等后才能埋设，水电工不得按 0.8m 抽象点直接开槽（site_pending）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   status: pending
   blocker:
@@ -198,7 +180,7 @@
   x: 6.45
   z: 3.05
   height: 0.02
-  note: "2026-08-29 客卫南段马桶/干区地漏（地面，随马桶中心调整至 z=3.05）；DEC-2026-10-08-W03 已画推断路线 drain-gbath-floor-to-riser（1% 坡接客卫推断立管，construction_status: pending、不作为施工依据），立管实测位待量房；外置洗漱区地漏若需要另行深化；DEC-2026-10-23-R03：本点兼作客卫沉箱二次排水口候选锚点（沉箱最低处候选，与 pending #74 客卫二次排水同位登记），二次排水需求路线 drain-gbath-secondary-requirement 以本点为最低处候选锚点、以 design_requirement 表达需求（示意段自锚点东侧 0.15m 起画，全程避开 drain-guest-bath 串联支路中线、独立接立管）——注意地面泄水与防水层下二次排水是两回事，不得并入同一接点（与主卫 drain_mbath_floor / #50 同口径），最低点与二次口位待量房"
+  note: "2026-08-29 客卫南段马桶/干区地漏（地面，随马桶中心调整至 z=3.05）；DEC-2026-10-08-W03 已画推断路线 drain-gbath-floor-to-riser（1% 坡接客卫推断立管，construction_status: pending、不作为施工依据），立管实测位待量房；外置洗漱区地漏若需要另行深化；DEC-2026-10-23-R03：本点兼作客卫沉箱二次排水口候选锚点（沉箱最低处候选，与 pending #74 客卫二次排水同位登记），二次排水需求路线 drain-gbath-secondary-requirement 以本点为最低处候选锚点、以 design_requirement 表达需求（示意段自锚点东侧 0.15m 起画，全程避开 drain-guest-bath 串联支路中线、独立接立管）——注意地面泄水与防水层下二次排水是两回事，不得并入同一接点（与主卫 drain_mbath_floor / #50 同口径），最低点与二次口位待量房。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   status: pending
   blocker:
@@ -232,7 +214,7 @@
   x: 9.50
   z: 0.30
   height: 0.3
-  note: "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）；DEC-2026-10-06-R1 RO 浓水排放：净水器浓水不得直插密封下水，须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），接管方式随 RO 净水器 SKU 冻结后定（pending-site-data #52）。DEC-2026-10-08-W01：给水侧已画 MEP 路线 `water-purifier-branch`（自 faucet_kitchen_sink 共支路、同平面纯竖向 0.50m，status inferred / construction_status pending / not_for_construction，route_kind physical 不计 candidate）；上游给水入户点 pending #8 已于 W01 落推断点位 water_entry。**仍待定**：RO 净水器 SKU（是否带泵/压力桶决定管径与走向）与量房，故本点管径走向未冻结（pending #44）"
+  note: "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）；DEC-2026-10-06-R1 RO 浓水排放：净水器浓水不得直插密封下水，须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），接管方式随 后定（pending-site-data #52）。DEC-2026-10-08-W01：给水侧已画 MEP 路线 `water-purifier-branch`（自 faucet_kitchen_sink 共支路、同平面纯竖向 0.50m，status inferred / construction_status pending / not_for_construction，route_kind physical 不计 candidate）；上游给水入户点 pending #8 已于 W01 落推断点位 water_entry。**仍待定**：RO 净水器 SKU（是否带泵/压力桶决定管径与走向）与量房，故本点管径走向未冻结（pending #44）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   status: pending
   blocker:
@@ -348,7 +330,7 @@
   x: 5.80
   z: 1.50
   height: 0.60
-  note: "洗衣机墙排排水（不走地漏，防反水）"
+  note: "洗衣机墙排排水（不走地漏，防反水）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
 # === 给排水 v1 落地（2026-10-05）：pending #6/#7/#16/#17/#18/#19 的推断锚点入模型 ===
 #

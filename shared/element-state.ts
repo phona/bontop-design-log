@@ -19,7 +19,6 @@
  */
 
 import type { ComponentBlocker } from './types.js';
-import { ELEMENT_BEARING_SOURCES, SOURCE_PREFIXES, SOURCES } from './envelope-sources.js';
 
 export type ElementStatus = 'measured' | 'confirmed' | 'inferred' | 'pending' | 'conflicted' | 'undeclared';
 
@@ -67,25 +66,9 @@ export interface ElementState {
   statusSource: string;
   /** 构件自己声明的未决项（issue #98 S2-A：pending/undeclared 时的「卡在谁 / 何时解锁 / 何时反转」）。 */
   blocker?: ComponentBlocker;
-  /**
-   * **遗留显示字段**（2026-11-08 S2-A 起不再是状态的任何来源，也不再是「卡在谁」的权威）。
-   *
-   * 它只由调用方注入的 `ledger` 参数产生，而 `scripts/project/state-projection.ts`
-   * （`npm run state:project`）已不再注入台账——CLI 输出里它恒为 undefined。
-   * 保留它仅为 `server/element-state-service.ts`（`GET /api/element-state`）及其存量测试
-   * 的调用兼容；`docs/pending-site-data.md` 整份删除时（issue #98 S2-B）一并移除。
-   * 权威的「卡在谁」是上面的 `blocker`。
-   */
-  openQuestion?: OpenQuestion;
   decision?: string;
   /** 触及该构件的 verifier issue code 列表（去重排序）。 */
   conflicts: string[];
-}
-
-export interface OpenQuestion {
-  ref: string;
-  summary: string;
-  blockedBy: string;
 }
 
 export interface StateWarning {
@@ -121,14 +104,6 @@ export interface ElementStateInput {
   issues: IssueLike[];
   model?: StateModel;
   schedule?: { gate: string; status: string };
-  /**
-   * 待决台账解析结果（`shared/pending-ledger.ts`）。**S2-A 起只用于产出遗留显示字段
-   * `openQuestion`，不再是任何状态的来源**（ledger 优先级规则已删）。`npm run state:project`
-   * 已不注入它（CLI 输出里 openQuestion 恒为 undefined）；保留该参数与 openQuestion 仅为
-   * `server/element-state-service.ts`（GET /api/element-state）及其存量测试的调用兼容，
-   * `docs/pending-site-data.md` 整份删除时（issue #98 S2-B）一并移除。
-   */
-  ledger?: { entries: Array<{ ref: string; summary: string; blockedBy: string; targets: Array<{ file: string; id?: string }> }> };
 }
 
 export interface ElementStateResult {
@@ -159,28 +134,6 @@ export function issueTouches(issue: IssueLike, elementId: string): boolean {
   return issueRefs(issue).some((ref) => ref === elementId || ref === bare);
 }
 
-/**
- * 遗留：把台账条目按构件 id 建索引，仅供 `openQuestion` 显示字段使用（见该字段注）。
- * 不参与任何状态判定——S2-A 起 ledger 不再是状态来源。
- */
-function ledgerIndex(input: ElementStateInput): Map<string, OpenQuestion> {
-  const index = new Map<string, OpenQuestion>();
-  for (const entry of input.ledger?.entries ?? []) {
-    for (const target of entry.targets) {
-      if (!target.id) continue;
-      // 台账写的是 `config/electrical.yaml sock_child_ac`；源名（→ objectId 前缀）由
-      // shared/envelope-sources.ts 注册表按**完整路径**反查。原实现按
-      // `endsWith('ceiling.yaml')` 猜——S1 搬迁（config/ceiling.yaml →
-      // config/model/envelope/ceiling.yaml）这类改名会猜错，且任何同后缀文件都会误命中。
-      // 只认 ELEMENT_BEARING_SOURCES 三个源（collectElements 真的采它们的构件）：
-      // hvac 的行（#3a `reference_constraints`）是字段描述不是元素 id，纳入会产生假悬挂键。
-      const source = ELEMENT_BEARING_SOURCES.find((name) => (SOURCES[name].files as readonly string[]).includes(target.file));
-      if (source) index.set(`${SOURCE_PREFIXES[source]}${target.id}`, { ref: entry.ref, summary: entry.summary, blockedBy: entry.blockedBy });
-    }
-  }
-  return index;
-}
-
 export function deriveElementStates(input: ElementStateInput): ElementStateResult {
   const model = input.model ?? DEFAULT_STATE_MODEL;
   const warnings: StateWarning[] = [];
@@ -201,14 +154,9 @@ export function deriveElementStates(input: ElementStateInput): ElementStateResul
     const touched = input.issues.filter((issue) => issueTouches(issue, element.id));
     if (touched.length > 0) issuesByElement.set(element.id, touched);
   }
-  // 遗留显示面：只有调用方显式注入台账时才建索引。CLI（state-projection.ts）不注入，
-  // 因此 `npm run state:project` 完全不读 docs/pending-site-data.md。
-  const legacyLedger = input.ledger ? ledgerIndex(input) : new Map<string, OpenQuestion>();
-
   const states: ElementState[] = input.elements.map((element) => {
     const conflicts = [...new Set((issuesByElement.get(element.id) ?? []).map((issue) => issue.code))].sort();
     const errorIssues = (issuesByElement.get(element.id) ?? []).filter((issue) => issue.level === 'error');
-    // 「卡在谁」的权威是对象自己的 blocker；legacyLedger 只是还没退休的显示兼容层。
     const base = {
       id: element.id,
       kind: element.kind,
@@ -217,7 +165,6 @@ export function deriveElementStates(input: ElementStateInput): ElementStateResul
       ...(element.decision ? { decision: element.decision } : {}),
       ...(element.blocker ? { blocker: element.blocker } : {}),
       conflicts,
-      ...(legacyLedger.get(element.id) ? { openQuestion: legacyLedger.get(element.id)! } : {}),
     };
 
     for (const rule of model.priority) {
