@@ -45,7 +45,10 @@ function sourceIds(): MepEndpointSources {
       // DEC-2026-10-19-R25 汇流拓扑新增的两个出水口候选锚点（与 hvac.yaml/facts 口径一致：pending / condensate）——bf29283 当时漏同步本夹具，validate 在此抛 unknown endpoint
       { id: 'condensate_living_outlet_candidate', status: 'pending' as const, system: 'condensate' as const, position: { x: 0, y: 0, z: 0 } },
       { id: 'condensate_dining_outlet_candidate', status: 'pending' as const, system: 'condensate' as const, position: { x: 0, y: 0, z: 0 } }],
-    hvacTerminals: ['supply_living', 'return_living', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child', 'condensate_living_candidate', 'condensate_master_candidate', 'condensate_study_candidate', 'condensate_parent_candidate', 'condensate_child_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
+    // issue #98 S2 改绑：return-air-living 等 5 条送/回风路线的 to 由 inline 坐标改为 terminal id，
+    // 夹具须提供 supply_dining / return_dining / supply_living_bottom / supply_dining_bottom 的存在性
+    // （否则 validateMepCoordination 以 "references unknown endpoint" 挡住——那是夹具缺口，不是配置错）。
+    hvacTerminals: ['supply_living', 'return_living', 'supply_dining', 'return_dining', 'supply_living_bottom', 'supply_dining_bottom', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child', 'condensate_living_candidate', 'condensate_master_candidate', 'condensate_study_candidate', 'condensate_parent_candidate', 'condensate_child_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
     outdoor: [{ id: 'outdoor_a2', platform: 'west_platform', x: 6.4, z: 0.5, direction: 'south', width: 0.9, depth: 0.335, height: 0.7, model: 'test' }],
   };
 }
