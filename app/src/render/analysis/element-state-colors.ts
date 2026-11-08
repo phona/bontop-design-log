@@ -58,10 +58,14 @@ export function elementStatusColor(status: string): number {
 // GET /api/element-state 的 states[] 元素。与 shared/element-state.ts 的 ElementState 同构，
 // 但在 app 内**本地声明**：服务端可能先于/异于 shared 出字段，app 只依赖这份已定死的契约形状，
 // 不追随 shared 派生模块的内部演进。status 仍复用 shared 的 ElementStatus 联合类型（6 值不变）。
-export interface OpenQuestionLike {
-  ref: string;
-  summary: string;
-  blockedBy: string;
+// issue #98 S2-A（2026-11-09）：`openQuestion` 随台账/DEC 查表通道一起退役，改为消费构件自己
+// 声明的 `blocker`（卡在谁 / 什么解锁 / 什么反转 / 为什么卡）。
+export interface BlockerLike {
+  kind: string;
+  owner: string[];
+  trigger: string;
+  reverses_if: string;
+  rationale: string;
 }
 
 export interface ElementStateLike {
@@ -70,9 +74,10 @@ export interface ElementStateLike {
   label: string;
   room?: string;
   status: ElementStatus;
-  /** 给出该状态的权威出处（文件:字段 / 台账 #N / DEC / verifier code）。 */
+  /** 给出该状态的权威出处（config 文件:字段 / verifier code）。S2-A 起只可能是这两类。 */
   statusSource: string;
-  openQuestion?: OpenQuestionLike;
+  /** 构件自己声明的未决项（pending/undeclared 时的「卡在谁 / 何时解锁 / 何时反转」）。 */
+  blocker?: BlockerLike;
   decision?: string;
   /** 触及该构件的 verifier issue code 列表（去重排序）。 */
   conflicts: string[];

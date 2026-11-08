@@ -19,6 +19,41 @@ import { CEILING_PRICING_FORMS, CEILING_TRADE_CLASSES } from './ceiling-takeoff.
 const finiteNumber = z.number().refine(Number.isFinite, 'must be finite');
 const nonEmpty = z.string().trim().min(1);
 const WallSideSchema = z.enum(['north', 'south', 'east', 'west']);
+
+/**
+ * 构件工程状态词（issue #98 S2-A「状态上对象」）：三类构件**只有一个**状态字段 `status`。
+ * 词汇与 `config/state-model.yaml` 的 `status_vocabulary` 逐键对齐——在既有
+ * measured/likely/inferred/pending 之上补 confirmed（有成交/裁定依据的确认）与
+ * undeclared（显形申报未申报）。electrical 曾经的第二个状态字段 `position_status` 已退场
+ * （仅保留给 mep-takeoff 的算量延期判定，见 ElectricalPointSchema 内注）。
+ */
+const ComponentStatusSchema = z.enum(['measured', 'likely', 'inferred', 'pending', 'confirmed', 'undeclared']);
+
+/**
+ * 构件自带的未决声明（blocker，issue #98 S2-A）：`status ∈ {pending, undeclared}` 时必填。
+ *
+ * 四个字段回答决策铁律第 2 条的三问（谁负责 / 什么事件解锁 / 为何卡 + 什么条件下反转）。
+ * 完整性规则（pending/undeclared 必须带 blocker、blocker 四字段非空、kind/owner 落枚举）
+ * 不住 schema 而住 `shared/element-blockers.ts` 的门禁与测试——schema 只管结构与枚举，
+ * 跨对象的存在性断言要有配置全集才能判（与 HVAC serves_unit 校验同分层）。
+ */
+export const BlockerKindSchema = z.enum([
+  'site_measurement',
+  'pending_selection',
+  'pending_vendor_drawing',
+  'pending_adjudication',
+  'unclosed_conflict',
+]);
+export const BlockerOwnerSchema = z.enum([
+  '业主', '设计', '量房', '厂家', '商家', '电工', '柜商', '运营商', '物业', '燃气公司',
+]);
+export const ComponentBlockerSchema = z.object({
+  kind: BlockerKindSchema,
+  owner: z.array(BlockerOwnerSchema).min(1),
+  trigger: nonEmpty,
+  reverses_if: nonEmpty,
+  rationale: nonEmpty,
+}).strict();
 const Vec3Schema = z.object({ x: finiteNumber, y: finiteNumber, z: finiteNumber }).strict();
 const FurnitureFaceMountAnchorProjectionSchema = z.object({
   kind: z.literal('furniture_face'),
@@ -135,7 +170,14 @@ export const ElectricalPointSchema = z.object({
   host_intent: nonEmpty.optional(),
   // 2026-11-07 issue #98 S3：点位侧 circuit 字段退役（成员关系只住 electrical-topology.yaml 的
   // member_point_ids，读一律走 shared/point-circuits.ts 单一派生）。
-  temp: finiteNumber.optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(), serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
+  temp: finiteNumber.optional(), count: finiteNumber.optional(), heads: z.number().int().positive().optional(), recessed: z.boolean().optional(), width: finiteNumber.optional(), depth: finiteNumber.optional(), mount_height: finiteNumber.optional(), body_height: finiteNumber.optional(), appearance: ElectricalFixtureAppearanceSchema.optional(), note: z.string().optional(), height: finiteNumber.optional(), status: ComponentStatusSchema.optional(),
+  // 位置精度（2026-11-08 S2-A 起**不是**构件状态字段，构件状态唯一来源是上面的 `status`）。
+  // 只剩一个消费者：shared/mep-takeoff.ts 的算量延期判定（status 与 position_status 均 pending
+  // = 点位尚未具备可报价/施工的稳定归属）。当前仅 sock_child_ac / sock_kitchen_oven 两个预留
+  // 占位点声明它；其余点位的「位置待核」已由 status: pending + blocker.kind: site_measurement 承载。
+  position_status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
+  blocker: ComponentBlockerSchema.optional(),
+  serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
 }).strict().superRefine(refinePointPlacement);
 export const PlumbingPointSchema = z.object({
   id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor', 'leb', 'drain_riser', 'gas_meter', 'duct', 'water_supply', 'water_heater']),
@@ -144,7 +186,9 @@ export const PlumbingPointSchema = z.object({
   mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
   host_intent: nonEmpty.optional(),
   note: z.string().optional(), height: finiteNumber.optional(),
-  status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
+  // 构件状态唯一字段（issue #98 S2-A）：给排水从来没有第二个状态字段，词汇与电气对齐。
+  status: ComponentStatusSchema.optional(),
+  blocker: ComponentBlockerSchema.optional(),
   construction_status: z.enum(['confirmed', 'inferred', 'pending']).optional(),
   uncertainty_m: finiteNumber.positive().optional(),
   not_for_construction: z.boolean().optional(),
@@ -194,9 +238,11 @@ export const CeilingZoneSchema = z.object({
   trade: z.enum(CEILING_TRADE_CLASSES).optional(),
   pricing_form: z.enum(CEILING_PRICING_FORMS).optional(),
   inspection_layer: z.string().trim().min(1).optional(), inspection_opacity: finiteNumber.min(0).max(1).optional(), x: finiteNumber.optional(), z: finiteNumber.optional(), height: finiteNumber.optional(), model: z.string().optional(), power_point: z.string().optional(), note: z.string().optional(),
-  // 分区显式工程状态（issue #98 S1-B 补录通道）：与电气/给排水 status 同词汇表、同为可选。
+  // 分区显式工程状态（issue #98 S1-B 补录通道；S2-A 起词汇与电气/给排水同源 ComponentStatus，
+  // 新增 confirmed / undeclared 两词）。与电气/给排水 status 同词汇表、同为可选。
   // 加法式——不写即未申报，既有分区零变化；被 hvac anchor 引用的分区（ac_*）不读本字段。
-  status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
+  status: ComponentStatusSchema.optional(),
+  blocker: ComponentBlockerSchema.optional(),
 }).strict();
 
 export const VrfOutdoorUnitSchema = z.object({
@@ -204,8 +250,22 @@ export const VrfOutdoorUnitSchema = z.object({
 }).strict();
 const HvacStatusSchema = z.enum(['confirmed', 'inferred', 'pending']);
 const HvacSystemSchema = z.enum(['refrigerant', 'power', 'condensate', 'supply_air', 'return_air', 'access', 'decorative']);
-const reasonForUnconfirmed = <T extends z.ZodType<{ status: string; reason?: string }>>(schema: T) => schema.superRefine((value, ctx) => {
-  if (value.status !== 'confirmed' && !value.reason?.trim()) ctx.addIssue({ code: 'custom', message: `${value.status} HVAC facts require reason`, path: ['reason'] });
+/**
+ * HVAC 图节点的未决依据：`reason`（散文）与 `blocker`（结构化）**二选一**，不许并存——
+ * 同一节点的「为什么卡」住两处就是第二份真相。S2-A 前只有 reason；blocker 是给需要
+ * owner/trigger/反转条件的节点准备的结构化载体（kind/owner 枚举与三类构件同源）。
+ *
+ * 错误文案保持 `require reason`：存量测试（tests/server/vrf-config.test.ts）钉的是这条，
+ * 且「两个都没有」确实是 reason 缺失——blocker 是替代载体，不是并列的第三个选项。
+ */
+const reasonForUnconfirmed = <T extends z.ZodType<{ status: string; reason?: string; blocker?: unknown }>>(schema: T) => schema.superRefine((value, ctx) => {
+  if (value.status === 'confirmed') return;
+  if (!value.reason?.trim() && !value.blocker) {
+    ctx.addIssue({ code: 'custom', message: `${value.status} HVAC facts require reason`, path: ['reason'] });
+  }
+  if (value.reason?.trim() && value.blocker) {
+    ctx.addIssue({ code: 'custom', message: `HVAC facts require exactly one of reason or blocker（${value.status} 节点不得同时声明两者）`, path: ['blocker'] });
+  }
 });
 export const HvacAnchorSchema = reasonForUnconfirmed(z.object({
   id: nonEmpty, status: HvacStatusSchema, system: HvacSystemSchema,
@@ -214,6 +274,8 @@ export const HvacAnchorSchema = reasonForUnconfirmed(z.object({
   // shared/envelope-sources.ts 的来源注册表；outdoor/electrical 是非 envelope 源）。
   ref: z.object({ source: z.enum(['outdoor', CEILING_SOURCE, 'electrical']), id: nonEmpty }).strict().optional(),
   position: Vec3Schema.optional(), reason: z.string().optional(),
+  // 未决的结构化声明（issue #98 S2-A，与 reason 二选一）：kind/owner/trigger/reverses_if/rationale。
+  blocker: ComponentBlockerSchema.optional(),
   // 示意图层标注（issue #98 S2，业主裁定四 2026-11-08）：branch_master/study/parent/child 是
   // 与 MEP 冷媒折线并行表达的示意锚点（离 MEP 折线 0.000–0.364m，MEP 不引用它们，phase5-survey
   // §1.4-C2 按 A 轨细分）——true = 「示意、不参与几何/不放线」，消费方与读者不得把它们当
@@ -247,6 +309,8 @@ export const HvacTerminalSchema = z.object({
   system: HvacSystemSchema,
   position: Vec3Schema,
   reason: z.string().optional(),
+  // 未决的结构化声明（issue #98 S2-A，与 reason 二选一）：kind/owner/trigger/reverses_if/rationale。
+  blocker: ComponentBlockerSchema.optional(),
   kind: z.enum(['terminal', 'condensate_drain_candidate', 'decorative_louver']).optional(),
   confirmed: z.boolean().optional(),
   render_interior: z.boolean().optional(),
@@ -424,7 +488,9 @@ export const PlumbingPointProjectionSchema = z.object({
   mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
   host_intent: nonEmpty.optional(),
   note: z.string().optional(), height: finiteNumber.optional(),
-  status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
+  // 构件状态唯一字段（issue #98 S2-A）。声明位置必须与 parsePlumbingPoints 的产出键序一致。
+  status: ComponentStatusSchema.optional(),
+  blocker: ComponentBlockerSchema.optional(),
   construction_status: z.enum(['confirmed', 'inferred', 'pending']).optional(),
   uncertainty_m: finiteNumber.positive().optional(),
   not_for_construction: z.boolean().optional(),

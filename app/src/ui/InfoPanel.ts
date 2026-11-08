@@ -243,7 +243,7 @@ export class InfoPanel {
 
   /**
    * 构件工程状态·**通用渲染器**：遍历一条 ElementState 记录的固定字段集，产出 [标签, 值] 行。
-   * 为什么不按类别分支：状态记录对所有构件是同一套字段（status/statusSource/openQuestion/
+   * 为什么不按类别分支：状态记录对所有构件是同一套字段（status/statusSource/blocker/
    * decision/conflicts），与 kind/type 无关——对比 renderMepContext 的
    * `if(mep)/else if(electricalTopology)/else if(ceiling)` 按类分支，那种写法每加一种构件
    * 就要加一个分支。这里字段集一致，天然扁平；将来服务端加字段也只改这一处。
@@ -261,9 +261,11 @@ export class InfoPanel {
       ['状态出处', state.statusSource],
     ];
     if (state.decision) rows.push(['裁定', state.decision]);
-    if (state.openQuestion) {
-      rows.push(['未决问题', `#${state.openQuestion.ref} ${state.openQuestion.summary}`]);
-      rows.push(['卡在', state.openQuestion.blockedBy]);
+    if (state.blocker) {
+      rows.push(['卡在', state.blocker.owner.join('、')]);
+      rows.push(['什么能解锁', state.blocker.trigger]);
+      rows.push(['什么条件下反转', state.blocker.reverses_if]);
+      rows.push(['为什么卡', state.blocker.rationale]);
     }
     if (state.conflicts.length > 0) rows.push(['冲突', state.conflicts.join('，')]);
 

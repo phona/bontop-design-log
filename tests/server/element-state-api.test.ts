@@ -20,11 +20,14 @@ import { createApiRouter } from '../../server/routes.js';
 import { getElementState, type ElementStatePayload } from '../../server/element-state-service.js';
 import { projectElementStates } from '../../server/element-state-service.js';
 import { readFileSync } from 'node:fs';
+import { BLOCKER_KINDS, BLOCKER_OWNERS } from '../../shared/element-blockers.js';
 const TEST_DATA_DIR = './tmp/test-data-element-state-api';
 
 const ELEMENT_STATUSES = new Set(['measured', 'confirmed', 'inferred', 'pending', 'conflicted', 'undeclared']);
-const STATE_KEYS = ['conflicts', 'decision', 'id', 'kind', 'label', 'openQuestion', 'room', 'status', 'statusSource'];
-const OPEN_QUESTION_KEYS = ['blockedBy', 'ref', 'summary'];
+const STATE_KEYS = ['blocker', 'conflicts', 'decision', 'id', 'kind', 'label', 'room', 'status', 'statusSource'];
+const BLOCKER_KEYS = ['kind', 'owner', 'rationale', 'reverses_if', 'trigger'];
+const BLOCKER_KIND_SET = new Set<string>(BLOCKER_KINDS);
+const BLOCKER_OWNER_SET = new Set<string>(BLOCKER_OWNERS);
 
 function createApp(
   dep?: (options: { withConflicts?: boolean; refresh?: boolean }) => ElementStatePayload | undefined,
@@ -94,7 +97,7 @@ describe('element state API', () => {
     }
     for (const state of res.body.states) {
       for (const key of STATE_KEYS) {
-        if (key === 'room' || key === 'decision' || key === 'openQuestion') continue;
+        if (key === 'room' || key === 'decision' || key === 'blocker') continue;
         assert.ok(key in state, `state ${state.id} 缺字段 ${key}`);
       }
       assert.equal(typeof state.id, 'string');
@@ -105,11 +108,15 @@ describe('element state API', () => {
       assert.ok(ELEMENT_STATUSES.has(state.status), `未知 status: ${state.status}`);
       if (state.room !== undefined) assert.equal(typeof state.room, 'string');
       if (state.decision !== undefined) assert.equal(typeof state.decision, 'string');
-      if (state.openQuestion !== undefined) {
-        assert.deepEqual(Object.keys(state.openQuestion).sort(), OPEN_QUESTION_KEYS);
-        assert.equal(typeof state.openQuestion.ref, 'string');
-        assert.equal(typeof state.openQuestion.summary, 'string');
-        assert.equal(typeof state.openQuestion.blockedBy, 'string');
+      // 2026-11-08 issue #98 S2-A：API 不再输出 openQuestion（台账通道已退场）——
+      // 「卡在谁、何时解锁、何时反转」由对象自己的 blocker 承载。
+      assert.equal(state.openQuestion, undefined, 'openQuestion 已随台账退役，API 不得再输出它');
+      if (state.blocker !== undefined) {
+        assert.deepEqual(Object.keys(state.blocker).sort(), BLOCKER_KEYS);
+        assert.ok(BLOCKER_KIND_SET.has(state.blocker.kind), `未知 blocker.kind: ${state.blocker.kind}`);
+        assert.ok(Array.isArray(state.blocker.owner) && state.blocker.owner.length > 0);
+        for (const owner of state.blocker.owner) assert.ok(BLOCKER_OWNER_SET.has(owner), `未知 blocker.owner: ${owner}`);
+        for (const field of ['trigger', 'reverses_if', 'rationale']) assert.equal(typeof state.blocker[field], 'string');
       }
     }
     for (const warning of res.body.warnings) {
@@ -119,16 +126,19 @@ describe('element state API', () => {
     }
   });
 
-  it('binds sock_child_ac to pending-site-data #42 and the vendor drawing', async () => {
+  it('binds sock_child_ac to its own blocker (no ledger, no pending-site-data ref)', async () => {
     const res = await request(createApp(getElementState)).get('/api/element-state').expect(200);
     const sock = res.body.states.find((state: { id: string }) => state.id === 'electrical:sock_child_ac');
     assert.ok(sock, 'electrical:sock_child_ac 必须被采集到');
     assert.equal(sock.status, 'pending');
-    assert.equal(sock.openQuestion.ref, '42');
-    assert.ok(sock.openQuestion.blockedBy.includes('空调厂家深化图'), `卡在谁必须点名空调厂家深化图，实际：${sock.openQuestion.blockedBy}`);
-    // config 自己就声明了 pending，config_status 规则优先于台账——statusSource 指向 config，
-    // 但「卡在谁」仍然挂在 openQuestion 上（与 shared/element-state.ts 的解耦设计一致）。
     assert.equal(sock.statusSource, 'config:pending');
+    // 「卡在谁」来自对象自己的 blocker，不来自台账 #N（2026-11-08 issue #98 S2-A）。
+    assert.ok(sock.blocker, '必须带 blocker');
+    assert.equal(sock.blocker.kind, 'pending_vendor_drawing');
+    assert.deepEqual(sock.blocker.owner, ['厂家']);
+    assert.match(sock.blocker.trigger, /28T2.*厂家深化图到手/);
+    assert.match(sock.blocker.reverses_if, /接线盒在西\/北侧/);
+    assert.equal(sock.openQuestion, undefined, 'API 不得再输出台账派生的 openQuestion');
   });
 
   it('caches the conflicts projection and honours refresh=1', async () => {
@@ -211,5 +221,43 @@ describe('state-model 词汇表读者键名', () => {
     const yaml = readFileSync('config/state-model.yaml', 'utf8');
     assert.match(yaml, new RegExp(`^${YAML_KEY}:`, 'm'), 'config/state-model.yaml 必须声明蛇形 status_vocabulary');
     assert.doesNotMatch(yaml, new RegExp(`^\\s*${CAMEL_KEY}:`, 'm'), '不许出现驼峰 statusVocabulary 键');
+  });
+});
+
+// ── app 侧契约与真实 payload 绑定（S2-A 第 4 轮 blocking B1）─────────────────
+// 失效形态：服务端改了 ElementState 形状，app 侧 ElementStateLike 不跟着改，
+// 而 app 测试全部自造 fixture → 21/21 假绿，产品已坏。openQuestion → blocker
+// 这次迁移就踩中了（web 3D 的「卡在谁」全 blank，没有任何测试红）。
+// 这条锚把两侧字段集钉成相等，任一侧加/删/改字段都会红。
+describe('app 侧 ElementStateLike 契约与真实 payload 绑定', () => {
+  const APP_CONTRACT = 'app/src/render/analysis/element-state-colors.ts';
+  const SERVER_TYPE = 'shared/element-state.ts';
+
+  function fieldsOf(source: string, iface: string): string[] {
+    const start = source.indexOf(`interface ${iface} {`);
+    assert.ok(start >= 0, `找不到 interface ${iface}`);
+    const body = source.slice(start, source.indexOf('\n}', start));
+    return [...body.matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]).sort();
+  }
+
+  it('两侧字段集相等（app 不许留服务端已删的字段，也不许缺服务端已加的）', () => {
+    const app = readFileSync(APP_CONTRACT, 'utf8');
+    const server = readFileSync(SERVER_TYPE, 'utf8');
+    const appFields = fieldsOf(app, 'ElementStateLike');
+    const serverFields = fieldsOf(server, 'ElementState');
+    assert.deepEqual(appFields, serverFields,
+      `app ElementStateLike 与 server ElementState 字段集不一致：\n  app:   ${appFields.join(', ')}\n  server: ${serverFields.join(', ')}`);
+    assert.ok(appFields.includes('blocker'), 'app 契约必须消费 blocker（卡在谁的新载体）');
+    assert.ok(!appFields.includes('openQuestion'), 'app 契约不得再留 openQuestion（已随台账/DEC 通道退役）');
+  });
+
+  it('真实 payload 上：pending 构件必带 blocker，且不再有 openQuestion 键', () => {
+    const payload = getElementState({ withConflicts: false });
+    const pending = payload.states.filter((s) => s.status === 'pending' || s.status === 'undeclared');
+    assert.ok(pending.length > 0, '应有 pending/undeclared 构件');
+    for (const state of pending) {
+      assert.ok(state.blocker, `${state.id} 必须带 blocker`);
+      assert.ok(!('openQuestion' in state), `${state.id} 不得再有 openQuestion 键`);
+    }
   });
 });
