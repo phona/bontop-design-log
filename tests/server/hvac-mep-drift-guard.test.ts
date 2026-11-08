@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import {
   endpointSourcesFromFacts,
+  mepRoutePoints,
   parseMepCoordination,
   resolveMepEndpoint,
   resolveMepRoutes,
@@ -18,11 +19,13 @@ import { resolveLayout } from '../../server/layout-resolver.js';
 import type { CeilingZone, ElectricalPoint, HvacDiagram, HvacTerminal, ProjectRenderFacts } from '../../shared/types.js';
 
 /**
- * issue #98 第五阶段 S1（暖通机制层）探针固化 + E8 校验。
+ * issue #98 第五阶段 S1（暖通机制层）探针固化 + E8 校验；P2 段已按 S2 改写（M4 语义反转）。
  *
  * 设计文档 tmp/capture/migration/phase5-survey.md §4.5-S1 验收铁律 ②：「探针 P1/P2/D 类漂移
- * 固化为测试（改 terminal/anchor 坐标 → 门禁必须红）」；P2 类须注明「迁移期断言」（M4）。
- * 本文件只加断言、不改任何配置数据；配置数据改动属 S2/S3。
+ * 固化为测试（改 terminal/anchor 坐标 → 门禁必须红）」；P2 类原注明「迁移期断言」（M4）。
+ * S2 已把 5 条送/回风路线的 inline `to:` 改绑 terminal id——P2 的「terminal 移位 → MEP 端点
+ * 留原地、门禁红」断言随之语义反转为「端点跟随 + to_height 一致性」（§4.5-S2 范围明文），
+ * 改写后的断言见下方三个「S2 改绑后」测试；本文件其余探针（P1/D/E8/E2/E7）不变。
  */
 
 const electrical = parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8'));
@@ -42,65 +45,88 @@ function sourcesOf(hvac: ProjectRenderFacts['hvac'] = hvacFacts, points: Electri
   return endpointSourcesFromFacts({ electrical: points, plumbing, ceiling, hvac }, pointWalls, mountHosts);
 }
 
-/** 5 条 inline `to:` 抄 terminal xyz 的真双写点名（A §3.4 / B F1 两轨一致）。 */
-const INLINE_TO_ROUTES = [
-  { route: 'return-air-living', terminal: 'return_living' },
-  { route: 'supply-air-dining', terminal: 'supply_dining' },
-  { route: 'return-air-dining', terminal: 'return_dining' },
-  { route: 'supply-air-living-bottom', terminal: 'supply_living_bottom' },
-  { route: 'supply-air-dining-bottom', terminal: 'supply_dining_bottom' },
+/**
+ * 5 条送/回风路线的改绑点名（A §3.4 / B F1 两轨一致；issue #98 S2 已改绑 to: <terminal id>）。
+ * `inline` 是改绑前的原内联值（与 hvac.yaml terminal.position 逐位相等，S1 迁移期断言已核实）——
+ * S2 验收铁律：resolveMepEndpoint 解出的端点必须与它逐位相等（≤1e-9），to_height 必须保持原 y。
+ */
+const REBOUND_AIR_ROUTES = [
+  { route: 'return-air-living', terminal: 'return_living', inline: { x: 10.95, z: 4.725, y: 2.49 } },
+  { route: 'supply-air-dining', terminal: 'supply_dining', inline: { x: 8.70, z: 4.30, y: 2.65 } },
+  { route: 'return-air-dining', terminal: 'return_dining', inline: { x: 9.65, z: 4.725, y: 2.49 } },
+  { route: 'supply-air-living-bottom', terminal: 'supply_living_bottom', inline: { x: 12.00, z: 5.125, y: 2.50 } },
+  { route: 'supply-air-dining-bottom', terminal: 'supply_dining_bottom', inline: { x: 8.60, z: 5.125, y: 2.50 } },
 ] as const;
 
-test('探针 P2 固化（迁移期断言）：inline `to:` 与 terminal 的逐位副本关系被钉住', () => {
-  // **迁移期断言**：S2 把这 5 条改绑 `to: <terminal id>` + `to_height` 后，语义反转为
-  // 「端点跟随 terminal」——届时本测试改写为端点跟随 + to_height 一致性断言（设计文档 M4/S2 范围）。
-  // S1 只做机制层：先证明「今天它们是逐位副本」这个事实，改任何一侧坐标本断言即红。
-  for (const { route: routeId, terminal: terminalId } of INLINE_TO_ROUTES) {
+test('S2 改绑后：5 条送/回风路线 to 按 id 绑定 terminal，解出端点与原内联值逐位相等', () => {
+  // S2 新语义（设计文档 §4.5-S2 / M4 改写，替代 S1 的「inline to 逐位副本」迁移期断言）：
+  // ① to 必须是 terminal id（内联坐标副本已消灭，净减指标 1：5→0）；
+  // ② resolveMepEndpoint(terminal id) 解出的 x/z 与原内联值逐位相等（≤1e-9）——resolver 的
+  //    terminal 分支回 {x,z}（schema.ts:349-350），y 由 to_height 承担（mepRoutePoints 的
+  //    y = to_height ?? to.y，schema.ts:127）：改绑按构造零几何变化，坐标变了即停止条件 -3；
+  // ③ to_height 两侧一致：等于原内联 y（协调标高不随改绑漂移）且等于 terminal.position.y
+  //    （当前两口径重合；此后 terminal.position.y 漂移不再自动拖动路线 y，见下一测试）。
+  for (const { route: routeId, terminal: terminalId, inline } of REBOUND_AIR_ROUTES) {
     const route = mepConfig.routes.find((item) => item.id === routeId)!;
     const terminal = diagram.terminals.find((item) => item.id === terminalId)!;
-    const to = route.to;
-    assert.ok(typeof to === 'object', `${routeId} 的 to 应是内联坐标（真双写），实际 ${JSON.stringify(to)}`);
-    assert.ok(Math.abs(to.x - terminal.position.x) < 1e-6 && Math.abs(to.z - terminal.position.z) < 1e-6,
-      `${routeId} 的 inline to (${to.x},${to.z}) 必须逐位等于 ${terminalId} (${terminal.position.x},${terminal.position.z})——副本关系断了就是漂移`);
-    // y 侧：route.to_height 必须已等于 terminal.position.y，S2 改绑后几何才按构造不变。
-    assert.equal(route.to_height, terminal.position.y,
-      `${routeId} 的 to_height ${route.to_height} 必须等于 ${terminalId} 的 y ${terminal.position.y}（否则改绑即几何变化）`);
+    assert.equal(route.to, terminalId, `${routeId} 的 to 必须绑定 terminal id ${terminalId}，实际 ${JSON.stringify(route.to)}`);
+    const resolved = resolveMepEndpoint(route.to, sourcesOf())!;
+    assert.ok(resolved, `${routeId} 的 to=${terminalId} 必须经 resolveMepEndpoint 解出`);
+    assert.ok(Math.abs(resolved.x - inline.x) < 1e-9 && Math.abs(resolved.z - inline.z) < 1e-9,
+      `${routeId} 解出端点 (${resolved.x},${resolved.z}) 必须与原内联值 (${inline.x},${inline.z}) 逐位相等（≤1e-9，S2 验收铁律 ①）`);
+    assert.notEqual(route.to_height, undefined, `${routeId} 必须显式声明 to_height（terminal 分支丢 y，缺了就是几何变化）`);
+    assert.equal(route.to_height, inline.y, `${routeId} 的 to_height ${route.to_height} 必须保持原内联 y ${inline.y}（协调标高口径）`);
+    assert.equal(route.to_height, terminal.position.y, `${routeId} 的 to_height 必须等于 ${terminalId}.position.y ${terminal.position.y}`);
   }
 });
 
-test('探针 P2 固化（迁移期断言）：terminal 移位后 MEP 端点留原地，且 lint 的重合告警同步消失', () => {
-  // A §3.4 探针 P2 实证：return_living.x +0.30 后两个 validator 不抛、lint 109/241 不变、
-  // MEP 端点停 (10.95,4.725)。S1 起 lint 兜底（E4）会先就「逐位副本」点名；而副本一旦漂开，
-  // 重合告警消失——这正是 S2 必须改绑、且改绑后「端点跟随」的原因。
-  const base = resolveMepRoutes({ ...mepConfig, routes: mepConfig.routes.filter((route) => route.id === 'return-air-living') }, sourcesOf());
-  assert.ok(Math.abs(base.routes[0].to!.x - 10.95) < 1e-9);
+test('S2 改绑后新语义（M4 反转）：terminal 移位 → MEP 端点跟随，路线 y 仍由 to_height 把守', () => {
+  // 旧断言（S1 迁移期）「terminal 移 0.30 → MEP 端点留原地、门禁红」在 S2 改绑后语义反转：
+  // inline 副本已删，端点按 id 跟随 terminal——这正是改绑的目的（单一源生效，正确行为）。
+  // 新正确行为三段：① x/z 跟随；② to_height 是协调标高口径，mepRoutePoints 的 y =
+  // to_height ?? to.y 静默胜出——terminal.position.y 漂移不得拖动路线 y（丢了 to_height
+  // 才会静默改几何，设计文档 §4.3 目标形态「to_height 必填」的原因）；③ id 引用不再进
+  // endpoint_not_bound_to_point 兜底（mep-hvac-lint.ts 的 typeof endpoint !== 'object' 跳过）。
+  const routeId = 'return-air-living';
+  const singleRoute = { ...mepConfig, routes: mepConfig.routes.filter((route) => route.id === routeId) };
+  const base = resolveMepRoutes(singleRoute, sourcesOf());
+  assert.ok(Math.abs(base.routes[0].to!.x - 10.95) < 1e-9 && Math.abs(base.routes[0].to!.z - 4.725) < 1e-9);
   const shiftedDiagram: HvacDiagram = {
     ...diagram,
     terminals: diagram.terminals.map((terminal) => terminal.id === 'return_living'
-      ? { ...terminal, position: { ...terminal.position, x: terminal.position.x + 0.30 } }
+      ? { ...terminal, position: { ...terminal.position, x: terminal.position.x + 0.30, y: terminal.position.y + 0.10 } }
       : terminal),
   };
-  const shifted = resolveMepRoutes(
-    { ...mepConfig, routes: mepConfig.routes.filter((route) => route.id === 'return-air-living') },
-    sourcesOf({ ...hvacFacts, plans: [{ ...plan, diagram: shiftedDiagram }] }),
-  );
-  assert.ok(Math.abs(shifted.routes[0].to!.x - 10.95) < 1e-9,
-    '迁移期语义：inline to 是字面副本，terminal 移位不拖动 MEP 端点（S2 改绑后改写为端点跟随）');
-  // lint 侧：副本在位时点名（E4 上线后的 5 条命中之一），漂开后该条不再重合 → 不再点名。
+  const shifted = resolveMepRoutes(singleRoute, sourcesOf({ ...hvacFacts, plans: [{ ...plan, diagram: shiftedDiagram }] }));
+  assert.ok(Math.abs(shifted.routes[0].to!.x - 11.25) < 1e-9,
+    'S2 新语义：MEP 端点必须跟随 terminal（端点跟随 + to_height 一致性）');
+  assert.ok(Math.abs(shifted.routes[0].to!.z - 4.725) < 1e-9);
+  const route = mepConfig.routes.find((item) => item.id === routeId)!;
+  const points = mepRoutePoints(shifted.routes[0].route, shifted.routes[0].from, shifted.routes[0].to);
+  assert.equal(points[points.length - 1].y, route.to_height,
+    '路线末点 y 必须仍取 to_height（terminal y +0.10 不得拖动路线 y——to_height 静默胜出口径）');
+  // lint 侧：改绑后归零（verify:mep errors 130→125 的那一格），terminal 移位后同样为 0——
+  // 「跟随」是正确行为，不再是 S1 时代的静默失效。
   const flagRoute = (hvac: ProjectRenderFacts['hvac']): number => {
     const result = lintMepCoordination(mepConfig, sourcesOf(hvac));
-    return [...result.errors, ...result.warnings].filter((issue) => issue.code === 'endpoint_not_bound_to_point' && issue.routeId === 'return-air-living').length;
+    return [...result.errors, ...result.warnings].filter((issue) => issue.code === 'endpoint_not_bound_to_point' && issue.routeId === routeId).length;
   };
-  assert.equal(flagRoute(hvacFacts), 1, '副本在位：lint 必须点名 return-air-living');
+  assert.equal(flagRoute(hvacFacts), 0, 'S2 改绑后：id 绑定不再被端点绑定兜底点名');
   assert.equal(flagRoute({ ...hvacFacts, plans: [{ ...plan, diagram: shiftedDiagram }] }), 0,
-    '副本漂开：重合告警消失——证明这类双写只能靠「改绑」根治，不能靠距离告警兜底');
+    '端点跟随 terminal 后同样无该条告警——副本类失效模式随改绑消失');
 });
 
-test('E4 lint 扩层：5 条送/回风 inline `to:` 全部被端点绑定兜底点名', () => {
+test('E4 lint 扩层（S2 改绑后）：5 条送/回风路线按 id 绑定，端点绑定兜底全配置归零', () => {
+  // S1 时本断言是「5 条 inline `to:` 被 endpoint_not_bound_to_point 点名」（verify:mep errors
+  // 130 里的 5 条 must_fix）；S2 改绑 to: <terminal id> 后 id 引用不进兜底，5 条归零——
+  // verify:mep errors 130→125。绑定态本身（解出坐标逐位相等 + to_height 一致）由上一测试把守。
   const result = lintMepCoordination(mepConfig, sourcesOf());
   const flagged = [...result.errors, ...result.warnings].filter((issue) => issue.code === 'endpoint_not_bound_to_point');
-  assert.deepEqual(flagged.map((issue) => issue.routeId).sort(), INLINE_TO_ROUTES.map((entry) => entry.route).sort());
-  for (const issue of flagged) assert.equal(issue.level, 'error', 'must_fix 桶：交底前必须改绑');
+  assert.equal(flagged.length, 0, `S2 改绑后 endpoint_not_bound_to_point 必须全配置归零，实际 ${flagged.length} 条：${flagged.map((issue) => issue.routeId).join(',')}`);
+  for (const { route: routeId } of REBOUND_AIR_ROUTES) {
+    const route = mepConfig.routes.find((item) => item.id === routeId)!;
+    assert.equal(typeof route.to, 'string', `${routeId} 的 to 必须是 id 引用（不得回退内联坐标）`);
+  }
 });
 
 test('探针 D 固化：客餐厅设备带（ceiling_living）与 15 个 band terminal 的几何关系被钉住', () => {
