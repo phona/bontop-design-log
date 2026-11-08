@@ -80,6 +80,13 @@ const PointAnchorSchema = z.object({ source: nonEmpty, id: nonEmpty }).strict();
  * 定位来源唯一性 + x/z 条件必填。沿墙点位必须 wall+wall_side+along 齐备（x/z 删除后
  * wall_side 无从从坐标反推）；绝对点位必须 x/z 齐备；mount 点位必须 along（沿脸位置）。
  * 违反即拒绝加载——定位声明不允许同时住两个事实源。
+ *
+ * issue #98 第五阶段 S1（E2）：wall / mount 来源**禁止同时声明 x/z**。 resolver 对这两个
+ * 分支本就忽略 x/z（`resolvePointPlacement` 只读 wall+along / mount.along），带着 x/z 的
+ * 沿墙点位是一颗哑弹：任何「直读声明坐标」的消费者（探针 P1：sock_child_ac 加过期
+ * x/z=(5.0,4.3) 后 MEP 端点与解算器分叉）都会读到 stale 值，而 schema 与 resolver 都不报。
+ * 现 config 0 条违规（B §② 实跑 locatedPointsWithXz=[]）；禁它是为了「禁止回填 x/z」
+ * （设计文档 §4.2 电气/给排水点位行）有机器执法，而不是只靠人口头纪律。
  */function refinePointPlacement<T extends { x?: number; z?: number; wall?: string; wall_side?: unknown; along?: number; face_offset?: number; mount?: unknown; anchor?: unknown; absolute?: boolean }>(
   value: T,
   ctx: z.RefinementCtx,
@@ -110,6 +117,11 @@ const PointAnchorSchema = z.object({ source: nonEmpty, id: nonEmpty }).strict();
   }
   if (sources[0] === 'absolute' && (value.x === undefined || value.z === undefined)) {
     ctx.addIssue({ code: 'custom', message: '绝对定位（absolute）要求 x 与 z 齐备' });
+  }
+  // wall / mount 来源禁带 x/z（issue #98 S1，E2）：resolver 忽略它们，直读消费者会读到 stale
+  // 值（探针 P1 的失效模式）。x/z 只对 absolute 来源是定位字段，对 wall/mount 是哑弹。
+  if ((sources[0] === 'wall' || sources[0] === 'mount') && (value.x !== undefined || value.z !== undefined)) {
+    ctx.addIssue({ code: 'custom', message: `${sources[0]} 定位来源禁止同时声明 x/z（解算器只读 wall+along / mount.along；声明 x/z 会成为 stale 第二事实源，探针 P1）` });
   }
 }
 
@@ -834,6 +846,15 @@ export function validateProjectHvacFacts(hvac: ProjectHvacFacts, facts: Pick<Pro
     for (const anchor of plan.diagram.anchors) if (anchor.ref) {
       const target = anchor.ref.source === 'outdoor' ? plan.outdoor.id === anchor.ref.id : anchor.ref.source === 'ceiling' ? facts.ceiling.some((point) => point.id === anchor.ref!.id) : facts.electrical.some((point) => point.id === anchor.ref!.id);
       if (!target) throw new Error(`HVAC anchor ${anchor.id} references unknown ${anchor.ref.source} id: ${anchor.ref.id}`);
+    }
+    // serves_unit 存在性校验（issue #98 S1，E8）：检修口服务的内机 ceiling id 必须是真实存在的
+    // ceiling 对象——原先写错 id 不抛，而消费方（HvacDiagramRenderer.highlightUnit）查不到即
+    // 静默 return false，点检修口不高亮内机（A §3.3(5) 探针：serves_unit 写错 NO THROW）。
+    for (const terminal of plan.diagram.terminals) {
+      if (terminal.serves_unit === undefined) continue;
+      if (!facts.ceiling.some((zone) => zone.id === terminal.serves_unit)) {
+        throw new Error(`HVAC terminal ${terminal.id} serves unknown ceiling unit: ${terminal.serves_unit}`);
+      }
     }
   }
   return hvac;

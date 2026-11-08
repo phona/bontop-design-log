@@ -59,9 +59,9 @@ import { BrowserSceneDecorations } from './BrowserSceneDecorations.js';
 import { BrowserSceneMaterials } from './BrowserSceneMaterials.js';
 import { buildScene, refreshSlidingDoorGroup, type CurtainBuildEntry, type SceneMaterialProvider } from '@shared/render/SceneBuilder';
 import { buildHvacGeometry, type HvacEntityIndex } from '@shared/render/HvacGeometryBuilder';
-import { buildHvacBuilderSources, type HvacBuilderSources } from '@shared/render/HvacBuilder';
+import { buildHvacBuilderSources, expectedHvacExportIds, type HvacBuilderSources } from '@shared/render/HvacBuilder';
 import { buildInfrastructure } from '@shared/render/InfrastructureBuilder';
-import type { PointMountHost, PointWall } from '@shared/point-placement';
+import { pointMountHostIndex, pointWallIndexFromElements, type PointMountHost, type PointWall } from '@shared/point-placement';
 import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@shared/render/layout-bounds';
 import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
 import type { CeilingZone } from '@shared/types';
@@ -153,7 +153,9 @@ interface ProjectData {
     condensatePenetration?: { x: number; z: number };
   };
   renderFactsProjection?: ProjectRenderFactsProjection;
-  renderFactsSources?: HvacBuilderSources;
+  // issue #98 S1（E7）：原 `renderFactsSources?: HvacBuilderSources` 注入位全仓无赋值，唯一实际
+  // 路径是它后面的 projection-only 回退（缺 electrical → 6 个 power anchor 静默丢）。已删字段与
+  // 回退，装配源改由 buildFromCatalog 内按同一构造现算（见下方 hvacSources）。
   topics: Array<{ id: string; name: string; perRoom: boolean; options: unknown[] }>;
   budgetCategories: unknown[];
 }
@@ -730,12 +732,25 @@ export class HouseScene implements SceneApi {
       showerScreen: () => this.materials.makeShowerScreenMaterial(),
       slidingDoorGlass: ({ paneWidth }) => this.materials.makeFlutedGlassMaterial(paneWidth),
     };
+    // 暖通实体装配源（issue #98 S1，E7）：原 `projectData.renderFactsSources ?? buildHvacBuilderSources({projection})`
+    // 回退产出 **projection-only 源**——projection 没有 electrical，6 个 power anchor 解析失败被
+    // HvacBuilder 静默 continue 丢掉（A §2c 实测丢 6/47），且 renderFactsSources 全仓无赋值、
+    // 回退是唯一实际路径。现删回退与死字段，首建即按 SceneBuilder/DXF/verify 同一构造补
+    // electrical + pointWalls/mountHosts（App 随后 rebuildHvacProjection 传的同源完整集）。
+    const hvacSources: HvacBuilderSources | undefined = projectData.renderFactsProjection
+      ? buildHvacBuilderSources({
+        projection: projectData.renderFactsProjection,
+        electrical: projectData.house.electrical ?? [],
+        pointWalls: pointWallIndexFromElements(input.walls),
+        mountHosts: pointMountHostIndex(Object.values(input.furnishings ?? {}).flat()),
+      })
+      : undefined;
     const result = buildScene({
       ...input,
       options: {
         materialProvider,
         curtainRooms: input.rooms,
-        hvac: projectData.renderFactsProjection ? { projection: projectData.renderFactsProjection, sources: projectData.renderFactsSources ?? buildHvacBuilderSources({ projection: projectData.renderFactsProjection }) } : undefined,
+        hvac: hvacSources ? { projection: projectData.renderFactsProjection, sources: hvacSources } : undefined,
         // 主卫冷凝链穿墙锚点（issue #98 PR-10）：缺它三件链条家具解不出锚点、会带诊断跳过。
         condensatePenetration: projectData.house.condensatePenetration,
       },
@@ -764,7 +779,12 @@ export class HouseScene implements SceneApi {
     this.mountHostIndex = index.mountHosts;
     this.hvacEntityIndex = index.hvac;
     this.hvacProjection = projectData.renderFactsProjection;
-    this.hvacExpectedExportIds = [...this.hvacEntityIndex.all.keys()];
+    // 导出期望集独立化（issue #98 S1，E7）：由 config + 同源 sources 经 expectedHvacExportIds
+    // 算出，不再取「已建索引的键」——后者让「场景丢了实体」与「期望里也没有」同时成立，
+    // getHvacExportStatus 恒报 ready=true（A §4.1）。
+    this.hvacExpectedExportIds = projectData.renderFactsProjection?.hvac.status === 'implemented'
+      ? expectedHvacExportIds(projectData.renderFactsProjection.hvac.planId, projectData.renderFactsProjection.hvac.diagram, hvacSources)
+      : [];
     for (const [id, curtain] of index.curtains) this.registerSharedCurtain(curtain);
     for (const room of projectData.house.rooms) {
       this.roomMeta.set(room.id, { wall_finish: room.wall_finish, wallOpenings: room.wallOpenings });
@@ -853,9 +873,18 @@ export class HouseScene implements SceneApi {
   rebuildHvacProjection(projection: ProjectRenderFactsProjection | undefined, sources: HvacBuilderSources = buildHvacBuilderSources({ projection })): void {
     this.batcher.clearScope('hvac');
     this.clearRoot(this.exportRoot, (object) => object.name === 'HVAC_CONFIRMED_ENTITIES');
-    this.hvacEntityIndex = buildHvacGeometry(this.exportRoot, projection, sources).index;
+    const built = buildHvacGeometry(this.exportRoot, projection, sources);
+    this.hvacEntityIndex = built.index;
     this.hvacProjection = projection;
-    this.hvacExpectedExportIds = [...this.hvacEntityIndex.all.keys()];
+    // anchor 解析失败诊断（issue #98 S1，E7）上浮到页面同一通道，不静默少件。
+    for (const diagnostic of built.diagnostics) {
+      this.placementDiagnostics.push(diagnostic);
+      console.error('[scene] hvac placement:', diagnostic);
+    }
+    // 期望集独立化（issue #98 S1，E7）：取 config + 同源 sources 的解算结果，不取已建索引的键。
+    this.hvacExpectedExportIds = projection?.hvac.status === 'implemented'
+      ? expectedHvacExportIds(projection.hvac.planId, projection.hvac.diagram, sources)
+      : [];
     this.batchHvacEntities();
   }
 

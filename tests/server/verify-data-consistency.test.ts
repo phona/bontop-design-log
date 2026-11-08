@@ -44,7 +44,9 @@ describe('wall point placement consistency', () => {
   });
 
   it('maps wall_side YAML to wallSide for render facts', () => {
-    const [point] = parseElectricalPoints('- id: p\n  room: r\n  type: socket\n  x: 1\n  z: 2\n  wall: w_test\n  wall_side: west\n  along: 1\n  height: 0.3\n');
+    // 不声明 x/z：issue #98 S1（E2）起 wall 来源禁带 x/z（resolver 忽略它们，直读消费者会读到
+    // stale 值——探针 P1），fixture 按同一纪律写。
+    const [point] = parseElectricalPoints('- id: p\n  room: r\n  type: socket\n  wall: w_test\n  wall_side: west\n  along: 1\n  height: 0.3\n');
     assert.equal(point.wallSide, 'west');
   });
 
@@ -60,7 +62,7 @@ describe('wall point placement consistency', () => {
   });
 
   it('rejects a wall point without along', () => {
-    assert.throws(() => parseElectricalPoints('- id: p\n  room: r\n  type: socket\n  x: 1\n  z: 2\n  wall: w_test\n  wall_side: west\n  height: 0.3\n'), /along 齐备/);
+    assert.throws(() => parseElectricalPoints('- id: p\n  room: r\n  type: socket\n  wall: w_test\n  wall_side: west\n  height: 0.3\n'), /along 齐备/);
   });
 
   it('warns when a wall point has no wall side', () => {

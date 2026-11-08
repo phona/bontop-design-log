@@ -1,5 +1,6 @@
 import type { CeilingZone, ElectricalPoint, HvacAnchor, HvacDiagram, HvacTerminal, ProjectHvacFacts, ProjectRenderFactsProjection, Vec3, VrfOutdoorUnit } from '../types.js';
-import { resolvePointPlacementInWalls, type PointWall } from '../point-placement.js';
+import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '../point-placement.js';
+import { normalizeCeilingZone } from '../ceiling-zone.js';
 
 export interface HvacBuilderSources {
   ceiling?: CeilingZone[];
@@ -10,6 +11,12 @@ export interface HvacBuilderSources {
    * 解算——沿墙点位（sock_child_ac 等）不再声明绝对 x/z，直读声明值会丢锚点。
    */
   pointWalls?: ReadonlyMap<string, PointWall>;
+  /**
+   * mount 挂载点位的家具宿主索引（issue #98 S2，第五阶段 S1 补字段）：与 pointWalls 同批
+   * 透传给解算器。暖通 anchor 今天不引用 mount 点位，故补它不改变解果；缺字段则将来一旦
+   * 引用即静默解不出（B F6 潜伏缺口：10 个 endpointSourcesFromFacts 装配点必须带全两份索引）。
+   */
+  mountHosts?: ReadonlyMap<string, PointMountHost>;
 }
 
 export interface HvacBuilderSourceInput {
@@ -20,15 +27,8 @@ export interface HvacBuilderSourceInput {
   outdoor?: VrfOutdoorUnit[];
   /** 点位宿主墙索引（issue #98 S3）：透传给 HvacBuilderSources.pointWalls。 */
   pointWalls?: ReadonlyMap<string, PointWall>;
-}
-
-function normalizeCeilingZone(zone: CeilingZone): CeilingZone {
-  if (zone.x !== undefined && zone.z !== undefined) return { ...zone };
-  if (zone.area) {
-    const [x1, z1, x2, z2] = zone.area;
-    return { ...zone, x: (x1 + x2) / 2, z: (z1 + z2) / 2 };
-  }
-  return { ...zone };
+  /** 家具宿主索引（issue #98 S2 / 第五阶段 S1）：透传给 HvacBuilderSources.mountHosts。 */
+  mountHosts?: ReadonlyMap<string, PointMountHost>;
 }
 
 function uniqueById<T extends { id: string }>(items: T[] | undefined): T[] {
@@ -51,6 +51,7 @@ export function buildHvacBuilderSources(input: HvacBuilderSourceInput = {}): Hva
     electrical: uniqueById(electrical),
     outdoor: uniqueById(outdoor),
     ...(input.pointWalls ? { pointWalls: input.pointWalls } : {}),
+    ...(input.mountHosts ? { mountHosts: input.mountHosts } : {}),
   };
 }
 
@@ -63,12 +64,21 @@ export interface HvacEntityDescriptor {
   source: HvacAnchor | HvacTerminal;
 }
 
-function resolveAnchor(anchor: HvacAnchor, sources: HvacBuilderSources): Vec3 | undefined {
-  if (anchor.position) return anchor.position;
-  if (!anchor.ref) return undefined;
+/**
+ * anchor 定位解析。返回 `{ position }` 或 `{ diagnostic }`——**不返回 undefined 让调用方
+ * 猜**（issue #98 S1，E7：原 `if (!position) continue` 让 projection-only 源静默丢掉
+ * 6/47 个 power anchor，导出检查还自产期望集报 ready=true，A §2c/§4.1）。
+ */
+function resolveAnchor(anchor: HvacAnchor, sources: HvacBuilderSources): { position: Vec3; diagnostic?: undefined } | { position?: undefined; diagnostic: string } {
+  if (anchor.position) return { position: anchor.position };
+  if (!anchor.ref) return { diagnostic: `hvac anchor ${anchor.id}: 既无 position 也无 ref，无法定位（禁止静默跳过）` };
   if (anchor.ref.source === 'ceiling') {
     const item = sources.ceiling?.find((zone) => zone.id === anchor.ref!.id);
-    return item?.x === undefined || item.z === undefined ? undefined : { x: item.x, y: item.height ?? 2.85, z: item.z };
+    if (!item) return { diagnostic: `hvac anchor ${anchor.id}: ref ceiling 宿主 "${anchor.ref.id}" 不在来源里（断引用）` };
+    // area-only 分区经 shared/ceiling-zone.ts 归一（与 MEP resolveMepEndpoint 同一实现，E F-2）。
+    const zone = normalizeCeilingZone(item);
+    if (zone.x === undefined || zone.z === undefined) return { diagnostic: `hvac anchor ${anchor.id}: ceiling 宿主 "${anchor.ref.id}" 无 x/z 且无 area，平面中心解不出` };
+    return { position: { x: zone.x, y: zone.height ?? 2.85, z: zone.z } };
   }
   if (anchor.ref.source === 'electrical') {
     // issue #98 S3：坐标走 shared/point-placement.ts 单一解算（与 MEP resolveMepEndpoint 的
@@ -76,13 +86,14 @@ function resolveAnchor(anchor: HvacAnchor, sources: HvacBuilderSources): Vec3 | 
     // 必须由调用方经 sources.pointWalls 提供宿主墙索引——缺索引即解析失败显形，不拿
     // undefined 当坐标。（暖通对象化仍属阶段五，本段只保证坐标单一解算。）
     const item = sources.electrical?.find((point) => point.id === anchor.ref!.id);
-    if (!item) return undefined;
-    const { placement } = resolvePointPlacementInWalls(item, sources.pointWalls);
-    if (!placement) return undefined;
-    return { x: placement.x, y: item.height ?? 0, z: placement.z };
+    if (!item) return { diagnostic: `hvac anchor ${anchor.id}: ref electrical 宿主 "${anchor.ref.id}" 不在来源里（断引用，或调用方未传 electrical）` };
+    const { placement, diagnostic } = resolvePointPlacementInWalls(item, sources.pointWalls, sources.mountHosts);
+    if (!placement) return { diagnostic: `hvac anchor ${anchor.id}: ${diagnostic ?? '点位定位解算失败'}` };
+    return { position: { x: placement.x, y: item.height ?? 0, z: placement.z } };
   }
   const item = sources.outdoor?.find((unit) => unit.id === anchor.ref!.id);
-  return item ? { x: item.x, y: item.height / 2, z: item.z } : undefined;
+  if (!item) return { diagnostic: `hvac anchor ${anchor.id}: ref outdoor 宿主 "${anchor.ref.id}" 不在来源里（断引用）` };
+  return { position: { x: item.x, y: item.height / 2, z: item.z } };
 }
 
 /**
@@ -95,14 +106,14 @@ function resolveAnchor(anchor: HvacAnchor, sources: HvacBuilderSources): Vec3 | 
 export function hvacAnchorPositions(diagram: HvacDiagram, sources: HvacBuilderSources = {}): Map<string, { x: number; z: number }> {
   const positions = new Map<string, { x: number; z: number }>();
   for (const anchor of diagram.anchors) {
-    const position = resolveAnchor(anchor, sources);
-    if (position) positions.set(anchor.id, { x: position.x, z: position.z });
+    const resolved = resolveAnchor(anchor, sources);
+    if (resolved.position) positions.set(anchor.id, { x: resolved.position.x, z: resolved.position.z });
   }
   return positions;
 }
 
 /** Shared Web/CLI contract for exportable HVAC entities. */
-export function buildHvacEntityDescriptors(planId: string, diagram: HvacDiagram, sources: HvacBuilderSources = { ceiling: [], electrical: [], outdoor: [] }): HvacEntityDescriptor[] {
+export function buildHvacEntityDescriptors(planId: string, diagram: HvacDiagram, sources: HvacBuilderSources = { ceiling: [], electrical: [], outdoor: [] }, diagnostics?: string[]): HvacEntityDescriptor[] {
   const entities: HvacEntityDescriptor[] = [];
   const seen = new Set<string>();
   for (const anchor of diagram.anchors) {
@@ -111,9 +122,14 @@ export function buildHvacEntityDescriptors(planId: string, diagram: HvacDiagram,
     const objectId = `hvac:${planId}:anchor:${anchor.id}`;
     if (seen.has(objectId)) continue;
     seen.add(objectId);
-    const position = resolveAnchor(anchor, sources);
-    if (!position) continue;
-    entities.push({ objectId, kind: 'anchor', position, status: anchor.status, system: anchor.system, source: anchor });
+    const resolved = resolveAnchor(anchor, sources);
+    // issue #98 S1（E7）：解析失败记诊断后跳过，禁止静默 continue。诊断经 SceneBuilder 的
+    // placementDiagnostics 通道上浮（3D 控制台 + verify-spatial + DXF/GLB 装配日志）。
+    if (!resolved.position) {
+      diagnostics?.push(resolved.diagnostic);
+      continue;
+    }
+    entities.push({ objectId, kind: 'anchor', position: resolved.position, status: anchor.status, system: anchor.system, source: anchor });
   }
   for (const terminal of diagram.terminals) {
     if (terminal.kind === 'condensate_drain_candidate') continue;
@@ -125,6 +141,13 @@ export function buildHvacEntityDescriptors(planId: string, diagram: HvacDiagram,
   return entities;
 }
 
-export function expectedHvacExportIds(planId: string, diagram: HvacDiagram): string[] {
-  return buildHvacEntityDescriptors(planId, diagram).map((entity) => entity.objectId);
+/**
+ * 导出期望集（issue #98 S1，E7 接线）：与 buildHvacEntityDescriptors 同一解算、同一来源。
+ *
+ * 必须显式传 sources——**默认空源只产出 34 个 id**（13 个 ref anchor 一个不含），拿它当期望集
+ * 会让「场景里没有」变成「期望里也没有」（自产期望集，ready 恒真，A §4.1）。调用方传与装配
+ * 同源的完整 sources（ceiling/electrical/outdoor + pointWalls/mountHosts）才是有意义的期望。
+ */
+export function expectedHvacExportIds(planId: string, diagram: HvacDiagram, sources: HvacBuilderSources = { ceiling: [], electrical: [], outdoor: [] }): string[] {
+  return buildHvacEntityDescriptors(planId, diagram, sources).map((entity) => entity.objectId);
 }

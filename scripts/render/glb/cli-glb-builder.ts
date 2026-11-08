@@ -6,7 +6,7 @@ import { expectedCurtainNodeIds } from '../bundle/render-bundle-utils.js';
 import { buildScene, type SceneBuildResult } from '../../../shared/render/SceneBuilder.js';
 import type { CeilingZone } from '../../../shared/types.js';
 import { buildHvacBuilderSources } from '../../../shared/render/HvacBuilder.js';
-import { pointWallIndexFromElements } from '../../../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
 import { parseSceneInput } from '../../../shared/render/scene-input.js';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { mergeSceneElements, parseOverlayFiles } from '../../../server/overlay-merge.js';
@@ -51,8 +51,15 @@ export function buildCliHouseScene(
   // 链条家具不该因为少传一个参数就从导出里静默消失。
   const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
   const hvacDiagram = hvacFacts.plans[0]?.diagram;
-  // 点位宿主墙索引（issue #98 S3）：暖通 ref → 电气点位的坐标走单一解算器。
-  const hvacSources = buildHvacBuilderSources({ projection, electrical, hvac: hvacFacts, pointWalls: pointWallIndexFromElements(resolved.walls) });
+  // 点位宿主墙索引（issue #98 S3）+ 家具宿主索引（issue #98 S2 / 第五阶段 S1）：
+  // 暖通 ref → 电气点位的坐标走单一解算器，两份索引与 MEP/DXF/verify 同一构造。
+  const hvacSources = buildHvacBuilderSources({
+    projection,
+    electrical,
+    hvac: hvacFacts,
+    pointWalls: pointWallIndexFromElements(resolved.walls),
+    mountHosts: pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never),
+  });
   const condensatePenetration = mepPenetrationAt(
     parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8')).routes.find((route) => route.id === 'condensate-master'),
     'w_mbath_south',

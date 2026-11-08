@@ -3192,6 +3192,9 @@ export class App {
           hvac: this.renderFacts?.hvac,
           // 点位宿主墙索引（issue #98 S3）：暖通 ref → 电气点位的坐标走单一解算器。
           pointWalls: this.houseScene.getPointWalls(),
+          // 家具宿主索引（issue #98 S2 / 第五阶段 S1）：与 MEP 视图同一份索引，补潜伏缺口
+          // （暖通 anchor 今天不引用 mount 点位，但缺字段即将来静默解不出）。
+          mountHosts: this.houseScene.getMountHosts(),
         });
         this.houseScene.rebuildHvacProjection(projection, sources);
         this.houseScene.loadHvacProjection(projection, sources);
