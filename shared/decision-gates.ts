@@ -15,7 +15,9 @@ import * as yaml from 'js-yaml';
 
 export const DECISION_GATES_PATH = 'config/decision-gates.yaml';
 /** 叙事侧登记表：决策点 D1–D18 的人读版（待拍板内容与缺的证据）。 */
-export const NARRATIVE_DECISION_REGISTRY_PATH = 'docs/pending-site-data.md';
+// 2026-11-08 S2-B：原叙事登记表（量房手账「决策点登记 D1–D18」节）随该文件退场，
+// 其内容已逐条迁入 config/decision-gates.yaml 各条的 missing_evidence。双登记对照退役。
+export const NARRATIVE_DECISION_REGISTRY_PATH = '';
 const NARRATIVE_SECTION_MARKER = '## 决策点登记';
 
 /** 决策编号形如 D5；report 的 D1–D18 与仓内既有引用都走这个形态。 */
@@ -49,6 +51,9 @@ export interface Decision {
   blocked_effect?: string;
   /** scope=tracked 必填：为什么不阻塞、缺口由谁跟踪。 */
   tracking_note?: string;
+  /** 2026-11-08 S2-B：原量房手账「决策点登记」节「缺的证据」一列迁入此处——
+   *  待拍板内容在 question，缺什么证据在这里。手账退场后本表是唯一登记侧。 */
+  missing_evidence?: string;
   /** status=decided 必填四件套。 */
   decided_value?: string;
   decided_by?: string;
@@ -85,7 +90,7 @@ export interface ValidateInput {
   /** 验收配置与工作包检查文本里的决策引用。 */
   proseMentions: ProseMention[];
   /**
-   * 叙事侧登记的决策编号（docs/pending-site-data.md「决策点登记」节的表格行）。
+   * 叙事侧登记的决策编号（原量房台账（已于 S2-B 退场）「决策点登记」节的表格行）。
    * 机器门禁与叙事登记必须同步移动：只登记一侧等于另一侧静默失效。
    * 不传则跳过该项对照。
    */
@@ -109,11 +114,14 @@ export function loadDecisionGates(root: string): DecisionGates {
 }
 
 /**
- * 读叙事登记表（docs/pending-site-data.md「决策点登记」节）里的决策编号集合。
+ * 读叙事登记表（原量房台账（已于 S2-B 退场）「决策点登记」节）里的决策编号集合。
  * 只取表格行首的 `| D<n> ` 形态；节标题里的「D1–D18」字样不是行首，不会误收。
  * 文件或节缺失时返回空集——由调用方决定是否当作漂移（verifier 传空集即跳过对照）。
  */
 export function readNarrativeDecisionIds(root: string): Set<string> {
+  // 单一登记后叙事侧已并入 config/decision-gates.yaml，无独立文件可读——返回空集，
+  // 由调用方（verify:decision-gates）跳过双向对照。
+  if (!NARRATIVE_DECISION_REGISTRY_PATH) return new Set();
   const absolute = path.join(root, NARRATIVE_DECISION_REGISTRY_PATH);
   if (!fs.existsSync(absolute)) return new Set();
   const text = fs.readFileSync(absolute, 'utf8');
@@ -294,16 +302,18 @@ export function validateDecisionGates(input: ValidateInput): GateIssue[] {
     }
   }
 
-  // 双登记对照：docs/pending-site-data.md 的叙事登记表与本表必须同时移动。
+  // 双登记对照：原量房台账（已于 S2-B 退场） 的叙事登记表与本表必须同时移动。
   // 只登记一侧，另一侧就静默失效——叙事说待拍板而机器侧没有门禁，或反过来。
-  if (narrativeDecisionIds) {
+  // 2026-11-08 S2-B：叙事登记表已并入本表（missing_evidence 字段），单一登记后
+  // 不再有「两侧编号集合双向对照」——原逻辑整段退役，narrativeDecisionIds 现恒为空集。
+  if (narrativeDecisionIds && narrativeDecisionIds.size > 0) {
     for (const decisionId of narrativeDecisionIds) {
       if (!byId.has(decisionId)) {
         fail({
           code: 'decision_missing_from_gates',
           severity: 'error',
           decision: decisionId,
-          message: '叙事登记表（docs/pending-site-data.md 决策点登记节）列了这个决策，但本表没有：机器门禁覆盖不到它',
+          message: '叙事登记表（原量房台账（已于 S2-B 退场） 决策点登记节）列了这个决策，但本表没有：机器门禁覆盖不到它',
         });
       }
     }
@@ -313,7 +323,7 @@ export function validateDecisionGates(input: ValidateInput): GateIssue[] {
           code: 'decision_missing_from_docs',
           severity: 'error',
           decision: decision.id,
-          message: '本表登记了这个决策，但叙事登记表（docs/pending-site-data.md 决策点登记节）没有：两侧必须同步移动',
+          message: '本表登记了这个决策，但叙事登记表（原量房台账（已于 S2-B 退场） 决策点登记节）没有：两侧必须同步移动',
         });
       }
       if (decision.status === 'decided' && narrativeDecisionIds.has(decision.id)) {
@@ -321,7 +331,7 @@ export function validateDecisionGates(input: ValidateInput): GateIssue[] {
           code: 'decided_but_narrative_pending',
           severity: 'warning',
           decision: decision.id,
-          message: '本表已拍板，叙事登记表仍列为待拍板：同步更新 docs/pending-site-data.md 的决策点登记节',
+          message: '本表已拍板，但缺 missing_evidence 的拍板依据：补 decided_value / decided_by / decided_at / decision_evidence',
         });
       }
     }

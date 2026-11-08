@@ -85,19 +85,19 @@ sibling_policy:
 #
 # 2026-10-09 实测：4 个 placed 机电件中，mb_vanity_pvc_service_chase 的包络是
 # 一个**预留区**（按设计穿越 4 段墙、与 6 件家具重叠），不是实体管；包络尺寸与逐处重叠深度见
-# docs/pending-site-data.md #55（权威记录，此处不手抄尺寸——禁双写）。
+# 原量房台账 #55（已退场，未决项现由对象 blocker 承载）（权威记录，此处不手抄尺寸——禁双写）。
 # 把它当实体判穿透会得到 10 处「穿模」，但那不是缺陷而是建模口径未裁定。
 #
 # 因此这里要求**逐类型显式申报**，未申报 → fail-closed（pen.mep_participation_undeclared）：
 #   excluded  不作为实体参与互撞（当前口径）
 #   solid     按实体参与墙穿透检查（需要业主/厂家确认该构件是实体后再改）
-# 预留区与实体管的口径裁定、以及那 10 处重叠的定性，跟踪 docs/pending-site-data.md，
+# 预留区与实体管的口径裁定、以及那 10 处重叠的定性，跟踪 原量房台账（已于 S2-B 退场），
 # 未裁定前不得为了绿灯改坐标或改口径。
 mep_parts:
   participation:
     - types: [mb_vanity_pvc_box, mb_vanity_pvc_service_chase, mb_vanity_pvc_wardrobe_entry, condensate_pipe_ac_outlet]
       policy: excluded
-      note: "预埋管/检视构件按预留区口径，穿墙由 verify:mep 专项负责；其中 mb_vanity_pvc_service_chase 的 4 处墙穿越 + 6 处家具重叠待口径裁定（见 docs/pending-site-data.md）"
+      note: "预埋管/检视构件按预留区口径，穿墙由 verify:mep 专项负责；其中 mb_vanity_pvc_service_chase 的 4 处墙穿越 + 6 处家具重叠待口径裁定（见 原量房台账（已于 S2-B 退场））"
 
 # ── 豁免（waiver）────────────────────────────────────────────────────────
 # 每条豁免必须带 reason / owner / expires。到期自动复活为 error 并带上豁免编号，
@@ -119,7 +119,7 @@ waivers:
     rule: pen.furniture.furniture
     pair: [balcony.washer, balcony.dryer]
     kind: stacked
-    reason: "10kg 滚筒洗衣机与 9kg 热泵烘干机按厂家叠放支架垂直堆叠（支架承重 ≥120kg，见 config/budget-pitfalls.yaml「叠放未确认承重」）；两者共用阳台西墙给水 faucet_balcony_washer / 墙排 drain_balcony_washer 与两条专用回路插座（DEC-2026-10-03-R1 按 GB 55038 7.4.4 拆分），且生活阳台面积极小、东墙又有门洞，无并排条件。SKU 冻结后须复核叠放支架承重、开门侧与检修带（docs/pending-site-data.md #33）"
+    reason: "10kg 滚筒洗衣机与 9kg 热泵烘干机按厂家叠放支架垂直堆叠（支架承重 ≥120kg，见 config/budget-pitfalls.yaml「叠放未确认承重」）；两者共用阳台西墙给水 faucet_balcony_washer / 墙排 drain_balcony_washer 与两条专用回路插座（DEC-2026-10-03-R1 按 GB 55038 7.4.4 拆分），且生活阳台面积极小、东墙又有门洞，无并排条件。SKU 冻结后须复核叠放支架承重、开门侧与检修带（原量房台账 #33（已退场，未决项现由对象 blocker 承载））"
     owner: 业主
     expires: 2027-06-30
 

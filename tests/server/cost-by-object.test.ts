@@ -108,25 +108,42 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.equal(direct.via, 'acceptance.yaml 点名');
   });
 
-  it('mb.washbasin_cabinet 无包链接，但验收点名与 pending 经全屋唯一裸类型名可达', () => {
+  it('mb.washbasin_cabinet 无包链接，但验收点名与自带 blocker 可达', () => {
     const ledger = ledgerOf('mb.washbasin_cabinet');
     assert.ok(ledger.aliases.includes('mb_washbasin_cabinet'), 'mb_washbasin_cabinet 全屋唯一，裸类型名是全等别名');
     assert.ok(ledger.acceptanceChecks.some((check) => check.checkId === 'check_plumb_external_vanity_waterproof'));
-    assert.ok(ledger.pendingEntries.some((entry) => entry.id === '#61'), JSON.stringify(ledger.pendingEntries));
+    // 注意：mb.washbasin_cabinet 是**家具对象**，本身没有 status/blocker 字段（那四个实体
+    // 类型才有）。它的未决性经同区的电气/给排水构件显形——sock_mbath_vanity 与
+    // faucet_mbath_vanity 都带 blocker（#61 主卫镜柜/台盆柜型式）。原手账 #61 行的语义
+    // 由这两个构件承接，故此处不断言本对象自带 pending。
+    assert.ok(ledger.acceptanceChecks.length > 0, '验收点名通道仍可达');
   });
 
-  it('台账别名通道：gbath.vanity 关联 pending #76（guest_bath.vanity 写法）', () => {
-    const pending = ledgerOf('gbath.vanity').pendingEntries;
-    assert.ok(pending.some((entry) => entry.id === '#76'), JSON.stringify(pending));
+  // 2026-11-08 S2-B：原「台账别名通道」随量房手账退场——未决项的单一源已是对象自己的
+  // blocker 字段，不再有跨对象的散文别名匹配。等价断言改为：对象自己的 blocker 就是它的
+  // pending 条目，且带齐四字段。
+  // 2026-11-08 S2-B：原「台账别名通道」与「词边界评审回归」两条测试随量房手账整份退役。
+  // 它们测的是「扫描手账表格行 → 词边界匹配 → 挂到对象别名」这条通道，文件没了机制就没了。
+  // 新单一源下，未决性住在电气/给排水/吊顶/HVAC 构件自己的 blocker 字段上
+  // （由 tests/server/element-state.test.ts 的 blocker 门禁与 decision-knowledge 的 landing 词表守），
+  // 而 cost-by-object 的视图以**家具对象**为行——家具对象本身没有 status/blocker 字段，
+  // 故本视图不再有「pending 可达」这一列。
+  // ⚠ 移交缺口（owner=AI 会话，触发=S3 之后）：家具对象不再显形其同区构件的 blocker，
+  // 读成本视图的人看不到「这个台盆柜还卡着」。若要补，应在 cost-by-object 里加一条
+  // 「同区构件 blocker 汇总」通道，按 room + 服务关系关联，而不是恢复散文别名匹配。
+  it('S2-B 后家具对象的 pending 通道已退役（缺口已登记移交）', () => {
+    assert.equal(ledgerOf('gbath.vanity').pendingEntries.length, 0,
+      '家具对象无 blocker 字段，pendingEntries 恒空——这是设计结果不是缺陷');
   });
 
   it('词边界评审回归（2026-11-07 blocking）：gbath.vanity 不再吃子串——pending 只剩真点名行、D19 不误挂', () => {
     const ledger = ledgerOf('gbath.vanity');
     // 修复前：裸 includes 把 `vanity` 吃进 `mb.vanity_base_cabinet` / `faucet_gbath_vanity` 等，
     // 误挂 #42/#44/#55/#59/#75 与决策 D19（评审实测 8 行中 6 行假阳性）。
-    assert.deepEqual(ledger.pendingEntries.map((entry) => entry.id).sort(), ['#41', '#76'], JSON.stringify(ledger.pendingEntries));
-    // #41 是词边界真命中：行内「…吊架净空，并确认vanity现有服务/检修空间…」独立点名
-    // 全屋唯一类型 vanity（docs/pending-site-data.md:129），语义即客卫台盆柜。
+    // 单一源后没有「子串吃错行」这一失效模式——对象只可能关联自己的 blocker。
+    // 原子串误挂（vanity 吃进 mb.vanity_base_cabinet / faucet_gbath_vanity 等 6 行假阳性）
+    // 在单一源下不可能再发生：没有跨对象散文可被吃。家具对象恒空即证。
+    assert.deepEqual(ledger.pendingEntries, [], JSON.stringify(ledger.pendingEntries));
     assert.deepEqual(ledger.openDecisions, [], `D19 的 question 只点名条带 7 件，不得经子串挂到 gbath.vanity：${JSON.stringify(ledger.openDecisions)}`);
     assert.deepEqual(ledgerOf('mb.washbasin_cabinet').openDecisions, []);
     // 全局：挂 D19 的对象必须恰好是条带 7 件（决策通道与对象两两核对，防同类子串误挂；
@@ -251,7 +268,7 @@ describe('cost:by-object 沙箱负例（legacy 引用 / 悬挂引用 / count-onl
       antiPenetration,
       electricalPoints: [],
       overridesText: '',
-      pendingText: '',
+      pendingCount: 39,
     };
   }
 

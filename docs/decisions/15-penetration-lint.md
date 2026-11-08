@@ -27,7 +27,7 @@
   - **补洞（按量化结论，不凭猜测加规则）**：
     - **兄弟 mesh**：实测 60 个 placed 家具 → 60 条采集记录、**零重复**，即不存在复合家具子 mesh 互撞的假阳来源。因此**不加**「同实体豁免」这类推测性规则，改为 `sibling_policy` 显式声明 + 不变式测试兜底（将来若有 fixture 开始产出多条记录，测试先红再决定豁免还是修几何）。
     - **洞口堵门** `pen.furniture.opening_blocked`：新增规则，按通行净高 2.0m 过滤（吊顶上的冷凝管/灯具不算堵门）。当前 house 零命中。
-    - **机电协调构件**：实测 `mb_vanity_pvc_service_chase` 包络是 0.94×2.59×2.15m 的**预留区**（穿越 4 段墙、与 6 件家具重叠），不是实体管。口径未裁定，因此把「整体排除互撞」改为**逐类型显式申报** `excluded`/`solid`，未申报 → `pen.mep_participation_undeclared` fail-closed；10 处重叠登记为 `docs/pending-site-data.md` #55 显形债务，**不为了绿灯改坐标**。
+    - **机电协调构件**：实测 `mb_vanity_pvc_service_chase` 包络是 0.94×2.59×2.15m 的**预留区**（穿越 4 段墙、与 6 件家具重叠），不是实体管。口径未裁定，因此把「整体排除互撞」改为**逐类型显式申报** `excluded`/`solid`，未申报 → `pen.mep_participation_undeclared` fail-closed；10 处重叠登记为 `原量房台账（已于 S2-B 退场）` #55 显形债务，**不为了绿灯改坐标**。
     - **测试补洞**：补上此前零覆盖的 4 个 code（`furniture_glass_collision`、`furniture_ceiling_collision`、`furniture_clearance_insufficient`、`furniture_endpoint_clearance_insufficient`）。
   - **OBB/SAT 以 shadow 并联**：`shared/penetration/obb.ts` 由 `matrixWorld` + `geometry.boundingBox` 推导 OBB，15 轴 SAT 求深度与 MTV；`--shadow` 输出「规则判定 vs OBB 判定」与 `relationships` 白名单审计，**不计入 errors/warnings、不影响退出码**。OBB 恒包含于 AABB，只能消假阳、不可能放过真阳。适用范围按实测收窄到家具↔家具：家具↔墙的 OBB 深度实测一律是半墙厚 0.06m，因为渲染 datum 是**墙中心线**、家具包络按中心线 authoring（representation contact），OBB 直接比墙 slab 等于换口径重判；家具↔玻璃走 concrete overlay path 判定而非 AABB。
 - **决策依据**：
@@ -38,8 +38,8 @@
 - **预算影响**：无。纯工具链改动，不动任何单价、面积与采购范围。
 - **关联文件**：
   - 新增：`shared/penetration/{types,scene,rules,clearance,openings,obb,shadow,registry}.ts`、`scripts/verify/penetration/verify-penetration.ts`、`config/anti-penetration.yaml`、`tests/server/{penetration,penetration-registry,penetration-obb,penetration-boundary}.test.ts`、`docs/penetration-lint.md`、本文件。
-  - 修改：`shared/spatial-validation.ts`（分解 + 导出穿透层复用的几何原语）、`scripts/verify/spatial/verify-spatial.ts`（拆除穿透规则）、`shared/furniture-profile.ts`（自 `scripts/verify/spatial/` 迁入 shared，两个 CLI 共用）、`tests/server/{spatial-validation,furniture-profile,mep-guidance-baseline}.test.ts`、`config/facts.yaml`（reader 登记 + 新配置文件 coverage + decision_files 增列本文件）、`package.json`（`verify:penetration` 接入 `verify:all`）、`scripts/README.md`、`README.md`、`docs/spatial-validation.md`、`docs/decisions/README.md`、`docs/pending-site-data.md`（#55）。
+  - 修改：`shared/spatial-validation.ts`（分解 + 导出穿透层复用的几何原语）、`scripts/verify/spatial/verify-spatial.ts`（拆除穿透规则）、`shared/furniture-profile.ts`（自 `scripts/verify/spatial/` 迁入 shared，两个 CLI 共用）、`tests/server/{spatial-validation,furniture-profile,mep-guidance-baseline}.test.ts`、`config/facts.yaml`（reader 登记 + 新配置文件 coverage + decision_files 增列本文件）、`package.json`（`verify:penetration` 接入 `verify:all`）、`scripts/README.md`、`README.md`、`docs/spatial-validation.md`、`docs/decisions/README.md`、`原量房台账（已于 S2-B 退场）`（#55）。
   - 删除：`scripts/verify/spatial/furniture-profile.ts`（迁移）、`tests/server/penetration-parity.test.ts`（翻转为 `penetration-boundary.test.ts`）。
 - **决策人**：业主（定向四问）+ AI 执行。
 - **验证**：`npm run verify:spatial` 0 error/0 warning；`npm run verify:penetration` 0 error/8 warning（8 处 `furniture_glass_clearance_insufficient` 为既有净距不足，非本轮回归）；`npm run verify:all` 仍在既有的 `verify-data-consistency` 点位专项（`sock_child_ac` 距墙 0.45m，待现场裁定）处红——stash 对照 HEAD 输出完全相同，先于本次改动存在；`npm run test:server` 失败集与 HEAD 对照零新增；`npm run typecheck`、`npm run verify:facts` 全绿；穿透相关测试 45 项全绿。
-- **后续议题（未做，不假装覆盖）**：活动包络（门扇开启弧、推拉门开启态、冰箱/洗碗机/洗衣机门、抽屉/拉篮、椅子拉出、衣柜平开门 vs 床）；`relationships` 白名单整体迁入 `config/anti-penetration.yaml` 的 waivers 并补 `reason`/`owner`/`expires`；OBB 切 authoritative 的前置条件（shadow 差异清单人工过目 + 家具↔墙的中心线口径先解决）；机电预留区口径裁定（`docs/pending-site-data.md` #55）。
+- **后续议题（未做，不假装覆盖）**：活动包络（门扇开启弧、推拉门开启态、冰箱/洗碗机/洗衣机门、抽屉/拉篮、椅子拉出、衣柜平开门 vs 床）；`relationships` 白名单整体迁入 `config/anti-penetration.yaml` 的 waivers 并补 `reason`/`owner`/`expires`；OBB 切 authoritative 的前置条件（shadow 差异清单人工过目 + 家具↔墙的中心线口径先解决）；机电预留区口径裁定（`原量房台账（已于 S2-B 退场）` #55）。

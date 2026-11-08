@@ -57,7 +57,7 @@ test('real MEP configuration lints without false errors and reports warnings str
     'a floor-branch candidate is not compared against ceiling finish heights; its supports remain checked in 3D');
   // 历史基线：2026-10-04 A1 吊顶净空规则从「要求 zone.area 与 zone.height 同时存在」（本项目交集为 0、
   // 永不触发）改为按 thickness 反算完成面，因此本用例从 9 条变成 9 + 144 条。
-  // 149 与 facts 契约 c.mep_layer_below_drop_bottom 的登记基数同源（docs/pending-site-data.md #41）：
+  // 149 与 facts 契约 c.mep_layer_below_drop_bottom 的登记基数同源（原量房台账 #41（已退场，未决项现由对象 blocker 承载））：
   // 2026-10-05 给排水 v1 新增 5 条排水路线，每条在所属厨卫铝扣板吊顶范围内新增 1 处（144→149）。
   // 2026-10-05 登记基数 149 → 154（docs/mep-construction-guidance.md 与 config/facts.yaml 已同步）：
   //   · DEC-2026-10-05-R11 客餐厅冷凝水改线（condensate-living/dining 移入走廊/客卫吊顶网络）；

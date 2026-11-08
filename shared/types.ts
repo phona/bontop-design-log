@@ -1129,7 +1129,7 @@ export interface PlatformDef {
 }
 
 /**
- * 结构梁（issue #98 第六阶段 S2-A：把 `docs/pending-site-data.md` 的「梁体推断」表
+ * 结构梁（issue #98 第六阶段 S2-A：把 `原量房台账（已于 S2-B 退场）` 的「梁体推断」表
  * 与「邻户实测参考」里的梁体读数上到几何对象本体）。
  *
  * 全部条目都是**量房待填目标**：`structure_status: inferred` + `not_for_construction: true`，
@@ -1452,15 +1452,15 @@ export interface ElectricalLintResult {
 // 2026-10-04 A6：新增 `leb`（局部等电位端子箱）。GB 55038-2025 7.4.7 要求设局部等电位
 // 联结的场所应做 LEB，本项目主卫/客卫均在列。**枚举值补齐不等于可以造点位**——
 // 端子箱位置未知，config/plumbing.yaml 里一个 leb 点都没建，登记见
-// docs/pending-site-data.md #43；位置/联结清单回来后再落点。
+// 原量房台账 #43（已退场，未决项现由对象 blocker 承载）；位置/联结清单回来后再落点。
 // 2026-10-05 给排水 v1 落地：新增 `drain_riser` / `gas_meter` / `duct` —— 分别对应
 // pending-site-data #6/#7/#16/#19（排水立管）、#9/#18（燃气表）、#10/#17（厨房排烟道，
 // 业主 2026-10-05 批准并入 plumbing.yaml，不新建 ductwork.yaml）。三个值都只承载
-// **已登记的推断锚点**：坐标必须能在 docs/pending-site-data.md 找到出处，一个数都不新造。
+// **已登记的推断锚点**：坐标必须能在 原量房台账（已于 S2-B 退场） 找到出处，一个数都不新造。
 export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor' | 'leb' | 'drain_riser' | 'gas_meter' | 'duct' | 'water_supply' | 'water_heater';
 
 /**
- * 给排水点位精度等级。取值口径与 docs/pending-site-data.md 的三级精度一致
+ * 给排水点位精度等级。取值口径与 原量房台账（已于 S2-B 退场） 的三级精度一致
  * （`inferred` 图纸/规范推断 → `measured` 现场量房确认），并沿用电气点位的
  * `status` 字段先例（shared/types.ts ElectricalPointStatus）：「先推断、后实测」。
  */

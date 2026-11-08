@@ -1,5 +1,5 @@
 /**
- * `docs/pending-site-data.md` 待决台账的结构化解析器。
+ * `原量房台账（已于 S2-B 退场）` 待决台账的结构化解析器。
  *
  * 设计约束：**markdown 表格仍是唯一人工编辑处**。本模块只读不改，产出结构化视图供
  * 状态派生与 agent 查询使用——不产生第二份真相（与 `config/facts.yaml` 的 mirror

@@ -1732,7 +1732,7 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
     add(result, issue(
       contractLevel(contract),
       'ceiling_clearance_baseline_drift',
-      `${contract.id}：登记的既有冲突基数 ${registered} ≠ 机器实算 ${actual}。只有两种合法解释：①设计侧真的裁定了（分层标高升入降板空腔 or 调整降板厚度，需同步更新 prose 与 registered_conflicts 并关闭 docs/pending-site-data.md #41）；②有人改数据消音。二者都必须是有意识的改动，git diff 里看得见${hint ? `。${hint}` : ''}`,
+      `${contract.id}：登记的既有冲突基数 ${registered} ≠ 机器实算 ${actual}。只有两种合法解释：①设计侧真的裁定了（分层标高升入降板空腔 or 调整降板厚度，需同步更新 prose 与 registered_conflicts 并关闭 原量房台账 #41（已退场，未决项现由对象 blocker 承载））；②有人改数据消音。二者都必须是有意识的改动，git diff 里看得见${hint ? `。${hint}` : ''}`,
       source,
     ));
     tally(result, 'ceiling_clearance_baseline_drift');

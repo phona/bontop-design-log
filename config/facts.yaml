@@ -214,7 +214,7 @@ scan:
     - path: schedule/procurement-archive.md
       scalars: [kw]
       pattern: 'kW'
-      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由 docs/pending-site-data.md #39 跟踪收敛"
+      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由原量房台账 #39 跟踪收敛（该台账已退场，未决项现由对象 blocker 承载）"
     - path: schedule/procurement-archive.md
       scalars: [area_sqm]
       pattern: '㎡'
@@ -230,7 +230,7 @@ scan:
     - path: schedule/procurement.md
       scalars: [kw]
       pattern: 'kW'
-      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由 docs/pending-site-data.md #39 跟踪收敛"
+      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由原量房台账 #39 跟踪收敛（该台账已退场，未决项现由对象 blocker 承载）"
     - path: schedule/procurement.md
       scalars: [area_sqm]
       pattern: '㎡'
@@ -320,18 +320,9 @@ scan:
       scalars: [area_sqm]
       pattern: '㎡'
       reason: 几何模型注释里的面积为人工标注口径，机器口径以多边形求值为准
-    - path: docs/pending-site-data.md
-      scalars: [kw]
-      pattern: 'kW'
-      reason: "量房清单 #39 复述成交判读容量（25.3kW）与厂家待核项；#39 已于 2026-10-05 重写，不再含设计口径 21.6kW，本豁免随该重写一并收窄"
     # 2026-10-05 DEC-2026-10-05-R2 新增 #47：#47 引用 CAD 标注的次卧面积值作为
     # 「标签数/面积口径未裁决」这一冲突本身的证据。这些值是待裁决对象，不是现行面积口径，
     # 权威面积由 model-geometry 多边形实测与 fact.rooms_area_caliber / #40 承载。
-    - path: docs/pending-site-data.md
-      scalars: [area_sqm]
-      pattern: '㎡'
-      reason: "量房清单 #47 引用 CAD 标注面积（8.39㎡/8.35㎡）作为未裁决冲突的证据，不是现行面积口径；权威以 model-geometry 多边形与 fact.rooms_area_caliber 为准，收敛由 #47 与 #40 跟踪"
-
     # ─── 2026-10-04 新增标量的登记（T1 发现层的噪声归属） ─────────────────────
     # 原则：**不是把新标量一律关掉**，而是把每一处出现归到「谁是这个数的权威」。
     # 型号串的跨文件一致性由契约 c.hvac_model_refs_resolvable 强制（见 contracts），
@@ -423,10 +414,6 @@ scan:
       scalars: [model_string]
       pattern: 'MJV-|JSQ|领航者|理想家'
       reason: 采购决议书同时收录现行成交型号（MJV-200W-E01-LHIV）与历史轮次参照型号（三代 180W MJV-180W-E01-LX/LH，文档自述「不是本项目已选系列」）；现行型号权威在 config/hvac.yaml，历史型号属时间序留档，故不做 fk 对账
-    - path: docs/pending-site-data.md
-      scalars: [model_string]
-      pattern: 'MJV-|JSQ|领航者|理想家'
-      reason: 量房清单复述定标型号与热水器候选，权威值在 config/hvac.yaml 与 schedule/phase-1/control.yaml
     - path: docs/mep-construction-guidance.md
       scalars: [model_string]
       pattern: '领航者|理想家'
@@ -454,10 +441,6 @@ scan:
       scalars: [dimension]
       pattern: '[×x]'
       reason: 点位 note 里的设备机身尺寸用于说明避让关系，权威在对应设备记录；点位坐标本身由 model-geometry 与 verify-rules 门禁承接
-    - path: docs/pending-site-data.md
-      scalars: [dimension]
-      pattern: '[×x]'
-      reason: 量房清单的尺寸是设计图标注口径，权威面积/坐标以 config/house.yaml 与 model-geometry 多边形为准
     - path: schedule/phase-1/control.yaml
       scalars: [dimension]
       pattern: '[×x]'
@@ -486,7 +469,7 @@ scan:
       reason: 材料清单 hvac_01 的 price_per_unit/notes 复述 DEC-2026-10-04-R1 定标成交 36,000 元（2026-10-05 由预研估价 29,000 改写）；权威金额由 fact.hvac_contract_cny 的三方镜像对账
 
     # 主卫 PVC 服务井包络 0.94×2.59×2.15m：runtime 实测包络的**叙述引用**，权威记录是
-    # docs/pending-site-data.md #55（同文件已按「量房清单口径」豁免，且该条含完整坐标
+    # 原量房台账 #55（已退场，该条含完整坐标
     # x[1.99,2.93] y[0.10,2.69] z[2.49,4.63]）。属「双口径未收敛」：该包络是预留区还是
     # 实体管尚未裁定（#55 跟踪），裁定前 prose 只引用不新建数字；config/anti-penetration.yaml
     # 的注释已改为指向 #55，不再手抄尺寸（禁双写）。
@@ -501,7 +484,7 @@ scan:
     - path: docs/penetration-lint.md
       scalars: [dimension]
       pattern: '0\.94'
-      reason: "引用 pending-site-data #55 的 runtime 实测包络尺寸，权威在 #55（含完整坐标）；口径未裁定，不新建数字"
+      reason: "引用原量房台账 #55 的 runtime 实测包络尺寸，权威在 #55（含完整坐标）；口径未裁定，不新建数字"
     # 2026-11-09 issue #98 S2 删：`docs/decisions/15-penetration-lint.md` 的 0.94 dimension 豁免。
     # 删除理由（决策铁律第 5 条）：该行被上一级 `docs/decisions/` 目录级豁免（pattern '.'）完全
     # 覆盖，属重复登记；且权威在 #55（已由 docs/penetration-lint.md 的同值豁免承接）。
@@ -510,7 +493,7 @@ scan:
     # 空调厂家确认单是**汇总视图（rendered view）**：单子上的每个数字/型号都是从已登记的权威源
     # 抄来做面对面核对用的——价格与型号口径在 config/hvac.yaml + docs/decisions/05-hvac.md
     # （DEC-2026-10-04-R1）、现场几何在 config/model/envelope/ceiling.yaml / house.yaml / model-geometry.yaml、
-    # 待决项在 docs/pending-site-data.md #39/#42。本文件不得成为第二份数字真相：单子开头已写明
+    # 待决项在原量房台账 #39/#42（已退场）。本文件不得成为第二份数字真相：单子开头已写明
     # 「如与本单不符，以权威源与合同附件为准」。若某数字在权威源里没有对应，应删单子上的它，
     # 而不是给它登记 fact。
     - path: docs/hvac/hvac-vendor-confirmation-sheet.md
@@ -531,10 +514,6 @@ facts:
     mirrors:
       - path: config/acceptance.yaml
         extract: '本户\s*(\d+)\s*条回路'
-        severity: error
-        expect_matches: 1
-      - path: docs/pending-site-data.md
-        extract: '(\d+)\s*路\s*\+\s*2P'
         severity: error
         expect_matches: 1
       - path: docs/mep-construction-guidance.md
@@ -568,9 +547,6 @@ facts:
       - path: config/house.yaml
         pattern: '第\s*\d+\s*路'
         reason: house.yaml mep_strategy 复述 R2 结论（外机供电第 20 路），权威在 topology circuits
-      - path: docs/pending-site-data.md
-        pattern: '第\s*\d+\s*路'
-        reason: "量房清单 #39 复述 R2 结论；#30 的「20 路 + 2P」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21）"
       - path: docs/mep-construction-guidance.md
         pattern: '合并至'
         reason: 施工指导表格复述历史合并口径（25 路合并至 20 路），权威在 topology
@@ -746,15 +722,8 @@ facts:
       # 原 extract 把乘积 3.6×2.9=10.44 写死在正则里，改数据后只能二选一（写假算术 or 放宽正则）。
       # 正确做法是把「面积」单列一条 fact：权威值由 kitchen 多边形实测导出，
       # 镜像校验量房清单里手写的乘积，z 与面积两条互补，各自都能独立抓漂移。
-      - path: docs/pending-site-data.md
-        # 注意：该行手写乘积后不带单位（「3.6×2.4=8.64（开发商标注 6.09 为净口径）」），
-        # 因此只捕获数字；6.09㎡ 是开发商标注的净口径、与本 fact 的多边形毛口径不同量纲，
-        # 已由该行文字自证，不纳入对账。
-        extract: '3\.6×\d\.\d+=([\d.]+)'
-        severity: error
-        expect_matches: 1
       # 2026-10-04 A3：house.yaml 撤掉 area_sqm 文件级豁免后，kitchen room note 里的
-      # 「3.6×2.4=8.64㎡」必须被认领。与 pending-site-data 那条是同一事实的两处复述，
+      # 「3.6×2.4=8.64㎡」必须被认领。与原量房台账那条是同一事实的两处复述，
       # 各自 expect_matches: 1，任一被删 → mirror_unresolvable（禁止静默跳过）。
       - path: config/house.yaml
         extract: '3\.6×\d\.\d+=([\d.]+)㎡'
@@ -766,17 +735,13 @@ facts:
     value: "@config/layout/model-geometry.yaml:vertices#find:id=v_kit_s2.z"
     unit: m
     mirrors:
-      - path: docs/pending-site-data.md
-        # 2026-10-04 数据修正（DEC-021 现行口径）：厨房南界 z 由 2.90 改为 2.40，
-        # 毛口径面积随之由 3.6×2.9=10.44㎡ 改为 3.6×2.4=8.64㎡（= model-geometry
-        # rooms#find:id=kitchen 多边形实测 8.64㎡）。原 extract 把乘积 10.44 写死在
-        # 正则里，数据修正后永不命中 → mirror_unresolvable，属登记表缺陷而非数据问题。
-        # 改为捕获任意乘积：句子形状、expect_matches、severity 均不变，
-        # z 与 v_kit_s2.z 的对账仍是 error 级，门禁强度不降。
+      # 2026-11-09 S2-B：原唯一镜像指向量房手账里手写的「3.6×2.4」乘积，该文件已整份退场。
+      # 同一句算术在 config/house.yaml 的 kitchen room notes 里也有（DEC-014 z=2.9 经
+      # DEC-021 缩至 z=2.4），接回那里——活文件，改南界会同时改这里。
+      - path: config/house.yaml
         extract: '3\.6×(\d\.\d+)=[\d.]+'
         severity: error
         expect_matches: 1
-
   - id: fact.west_platform_area
     kind: derived
     value: "@config/layout/model-geometry.yaml:platform.boundary#bbox_area"
@@ -815,9 +780,6 @@ facts:
       # （1.60 − (1² − π·1²/4) = 1.60 − 0.2146 ≈ 1.385，文中取 1.39），不是独立事实。
       # 权威值仍是本 fact 的 bbox 1.60㎡；圆角扣除量未做机读对账（引擎暂缺
       # #rounded_area 算子），人工可依上式复核。若后续要给引擎补该算子，再把本条转 mirror。
-      - path: docs/pending-site-data.md
-        pattern: '1\.39'
-        reason: 'bbox 1.60㎡ 扣除 r=1.0 圆角楔形后的估算可用面积，非独立事实；权威值见 fact.west_platform_area'
       # 2026-10-04 A2/A3：同一个 1.39㎡ 在 house.yaml 也有两处（hvac notes 与 572 行
       # notes 汇总）。措辞锁定为「可用约 1.39㎡」，改成别的写法立刻 unregistered。
       - path: config/house.yaml
@@ -902,7 +864,7 @@ facts:
   # 客餐厅 polygon 实测面积：43.1734㎡（bbox 45.88㎡ 含 2.71㎡ 凹口，见
   # fact.living_dining_bbox_area）。两者是**不同口径**，不可互相对账。
   # 2026-10-20 措施 1 新建：此前 44.58（2026-10-25 DEC-2026-10-25-R01 本体标定重算后为 43.1734）只在 config/hvac.yaml load_design.basis 与
-  # docs/pending-site-data.md #39 以 prose 出现，无机器对账；建本条让
+  # 原量房台账 #39 以 prose 出现，无机器对账；建本条让
   # hvac.yaml 的叙述与速查表都不会静默漂移。
   - id: fact.living_dining_area
     kind: derived
@@ -945,12 +907,6 @@ facts:
         severity: error
         expect_matches: 1
         group: 2
-      - path: docs/pending-site-data.md
-        extract: '暂定报警位\s*\(([\d.]+),([\d.]+)\)'
-        severity: error
-        expect_matches: 1
-        group: 2
-
   - id: fact.rooms_area_caliber
     kind: derived
     value: "@config/house.yaml:rooms#field_sum:area"
@@ -961,21 +917,18 @@ facts:
     #（入户花园 11.06→12.90、西设备平台 2.48→1.60），并删掉「≈ 预测建面 119.38㎡」
     # 这个伪等式（94.76 + 28.45 = 123.21 ≠ 119.38）。**剩余的是口径闭合性问题，不是
     # 算术问题**：净口径 / 毛口径 / 赠送计入规则三者的对齐需合同分户图裁定，
-    # 见 docs/pending-site-data.md #40。因此本处豁免是为「四套口径并存」留的显式登记，
+    # 见原量房台账 #40（已退场）。因此本处豁免是为「四套口径并存」留的显式登记，
     # 不是为某个错值开脱。
     exempt:
       - path: config/house.yaml
         pattern: 'usable_area'
-        reason: "rooms=多边形毛口径 / usable=合同净口径 / gift_areas=bbox 毛口径 / building_area=预测建面，四套口径并存；已修正汇总行错加数，剩余口径闭合性由 docs/pending-site-data.md #40 跟踪（需合同分户图裁定后才可对账）"
-        pending: "套内 94.76㎡（合同净）+ 赠送 28.45㎡（模型 bbox 毛）= 123.21㎡ ≠ 预测建面 119.38㎡；需合同分户图裁定净/毛/赠送计入规则三者关系，跟踪 docs/pending-site-data.md #40"
+        reason: "rooms=多边形毛口径 / usable=合同净口径 / gift_areas=bbox 毛口径 / building_area=预测建面，四套口径并存；已修正汇总行错加数，剩余口径闭合性由原量房台账 #40 跟踪（已退场）（需合同分户图裁定后才可对账）"
+        pending: "套内 94.76㎡（合同净）+ 赠送 28.45㎡（模型 bbox 毛）= 123.21㎡ ≠ 预测建面 119.38㎡；需合同分户图裁定净/毛/赠送计入规则三者关系，跟踪原量房台账 #40（已退场）"
       # #40 把三个口径的数值原样复述在量房清单里（94.76 合同净 / 123.21 模型毛+赠送 /
       # 119.38 预测建面）。它们不是新的独立事实，权威值分别在上面的
       # project.usable_area / rooms#field_sum:area + gift_areas bbox / project.building_area；
       # 等式不闭合是口径问题，由 #40 的待决跟踪。用「94.76㎡（合同净）」这个具名措辞锁定，
       # 哪一天该行被改写成本措辞不再命中，立刻 unregistered_fact_occurrence 提醒回来补登记。
-      - path: docs/pending-site-data.md
-        pattern: '94\.76㎡（合同净）'
-        reason: "docs/pending-site-data.md #40 复述三个面积口径（94.76㎡ 合同净 / 123.21㎡ 模型 bbox 毛+赠送 / 119.38㎡ 预测建面）；权威值分别在 config/house.yaml 的 project.usable_area / rooms 多边形+gift_areas bbox / project.building_area，三者不可直接相加这一结论由 #40 跟踪"
       # ─── 2026-10-04 A3：house.yaml notes 的面积行级登记 ────────────────────
       # 文件级豁免撤掉后，notes 里每个面积数字都要单独表态。分类原则：
       #   ① 模型可导出 → 建 mirror（fact.usable_area / fact.building_area /
@@ -993,7 +946,7 @@ facts:
         reason: "厨房 6.09㎡ 是开发商标注的净面积口径，与本 fact 的多边形毛口径（fact.kitchen_area，3.6×2.4=8.64㎡）不同量纲；同 note 已自证「净尺寸待量房」，净/毛关系随 #40 一并裁定"
       - path: config/house.yaml
         pattern: '南向大阳台\s*[\d.]+\s*㎡'
-        reason: "south_balcony status: not_modeled——模型未按室内地面建模、无几何权威源，13.95㎡ 是合同图标注口径；待量房/合同图确认地面通铺与计入规则后再建 mirror（docs/pending-site-data.md #40）"
+        reason: "south_balcony status: not_modeled——模型未按室内地面建模、无几何权威源，13.95㎡ 是合同图标注口径；待量房/合同图确认地面通铺与计入规则后再建 mirror（原量房台账 #40，已退场）"
       - path: config/house.yaml
         pattern: '赠送约\s*28\.90㎡'
         reason: "28.90㎡ = 13.35（entry_garden bbox）+ 13.95（south_balcony 合同标注）+ 1.60（platform bbox），是 #40 口径裁定用的推导和，不是独立事实；两个 bbox 加数分别由 fact.entry_garden_area / fact.west_platform_area 对账，第三个无几何权威源"
@@ -1058,13 +1011,6 @@ facts:
         extract: 'mount_height:\s*([\d.]+)'
         severity: error
         expect_matches: 1
-      - path: docs/pending-site-data.md
-        # #4（强电箱，1.65m）、#5（弱电箱，0.50m）、#30（强电箱规格，1.65m）三处都写
-        # 「底部离地 N m」，其中两处是强电箱；首处即强电箱，与权威值对账。
-        extract: '底部离地\s*([\d.]+)m'
-        severity: error
-        expect_matches: 3
-
   # 燃气报警器插座 x 坐标：CJJ/T 146-2011 要求探测器距灶具及排风口 >0.5m。
   # x=10.80 与 z=0.20 是 2026-10-04 按机体最近缘重算后的值（R1 的 z=0.55 不达标），
   # 三处（electrical.yaml / mep-guidance / pending #32）必须同值，否则合规结论失据。
@@ -1080,12 +1026,6 @@ facts:
         severity: error
         expect_matches: 1
         group: 1
-      - path: docs/pending-site-data.md
-        extract: '暂定报警位\s*\(([\d.]+),([\d.]+)\)'
-        severity: error
-        expect_matches: 1
-        group: 1
-
   # 几何房间数：model-geometry rooms=12（含 entry_garden / elevator_shaft 两个纯几何房间及 main_corridor 开放语义区域），
   # house.yaml rooms=10（设计房间口径）。README/designer_brief 的「四房两厅两卫」是**卧室数**
   # 口径（4）。三个口径都真实，但必须显式登记，否则「改了几个房间」这类问题无人对账。
@@ -1158,11 +1098,6 @@ facts:
       # 2026-10-05 给排水 v1：点位 22→27（新增 drain_riser×3 / gas_meter / duct），
       # 其中 6 处补了 v1 路线（5 条排水 + water-kitchen-requirement 的 to 改指点位），
       # 显式 deferred 标记 11→7（gas_meter / duct 是非管路锚点，按契约登记 deferred）。
-      - path: docs/pending-site-data.md
-        extract: '(\d+)\s*个点位中\s*(\d+)\s*处既不是任何 route'
-        severity: error
-        expect_matches: 1
-
   - id: fact.ceiling_zones_count
     kind: derived
     value: "@config/model/envelope/ceiling.yaml:#length"
@@ -1196,22 +1131,7 @@ facts:
         reason: 权威源自身字段声明；3 处赠送面积的逐项叙述在北开敞外廊/南大阳台/西设备平台三行 notes，面积口径另由 fact.west_platform_area 对账
 
   # 量房待确认项条数：文档编号数是「还有什么没量」的账面。新增/关闭条目必须同步。
-  - id: fact.pending_site_data_count
-    kind: derived
-    value: "@docs/pending-site-data.md:量表共 98 条"
-    unit: 条
-    mirrors:
-      - path: docs/pending-site-data.md
-        extract: '量表共\s*(\d+)\s*条'
-        severity: error
-        expect_matches: 1
-      # 2026-10-20 措施 1：现行值速查表 mirror。
-      - path: docs/CURRENT-VALUES.md
-        extract: '^\| 待决台账条数 \| (\d+) 条编号 \|'
-        severity: error
-        expect_matches: 1
 
-  # MEP 协同分层数：8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风），决定走线表的层口径。
   - id: fact.mep_layers_count
     kind: derived
     value: "@config/mep-hvac-coordination.yaml:layers#keys"
@@ -1273,7 +1193,7 @@ contracts:
     ref_scope: [config/, shared/, docs/, server/]
     target: config/decision-knowledge.yaml
     target_pattern: '^\s*-\s*id:\s*["'']?(DEC-(?:\d{4}-\d{2}-\d{2}-)?(?:\d{3}|[A-Z]{1,4}-?\d{1,3})(?:[.\-](?:\d+|补记[一二三四五六]|补\d*))?)'
-    # 2026-11-09 S2：DEC-045 错配悬案已由 S1 迁进 docs/pending-site-data.md #78（含随迁的两个
+    # 2026-11-09 S2：DEC-045 错配悬案已由 S1 迁进原量房台账 #78（含随迁的两个
     # 裁决选项），专用 warning 级哨兵契约 c.dec045_subject_pending_adjudication 随之删除——
     # 悬案有台账承接后，哨兵只是第二处登记（一题一文档）。
     subject_assertions: []
@@ -1283,7 +1203,7 @@ contracts:
   #   · 删了什么：一条 fk 契约（ref_pattern `(DEC-045)\b` / ref_scope 四目录 /
   #     target=docs/decisions/ / target_pattern md 标题形态 / 一条 subject_assertion，
   #     期望匹配 /主卫|悬浮板|vanity|PVC|四件|台盆/ + 66→71 处错配注记）。
-  #   · 为什么可删：悬案本体已由 S1 迁进 docs/pending-site-data.md #78（含随迁的两个裁决选项
+  #   · 为什么可删：悬案本体已由 S1 迁进原量房台账 #78（含随迁的两个裁决选项
   #     「补录并重编号 / 引用改指」与 71 处引用计数），哨兵只是同一待决项的第二处登记；
   #     一题一文档铁律下应只有一处跟踪入口。
   #   · 不丢什么：dangling_reference 仍由 c.dec_ref_resolvable 以 error 级覆盖（DEC-045 反查到
@@ -1569,14 +1489,14 @@ contracts:
   # `then: [x, z, ...]` 与「沿墙点位只声明 wall+along」存在**潜在**冲突——端子箱落点
   # 若在卫浴墙面上， leb 点位会走 along 定位而不带 x/z，届时本契约会误报。属 facts 层
   # 手术（改 then 为 along 或显式允许绝对例外），须单独论证、单独门禁，不混在定位迁移里
-  # 静默改。跟踪 docs/pending-site-data.md #43（该行「待测量项」已同步登记）。
+  # 静默改。跟踪原量房台账 #43（已退场）（该行「待测量项」已同步登记）。
   - id: c.leb_point_requires_bond_schedule
     kind: requires_when
     path: config/plumbing.yaml
     when: { field: type, equals: leb }
     then: [x, z, height, note]
     min_matches: 0
-    pending: "LEB 局部等电位端子箱：GB 55038-2025 7.4.7 要求设局部等电位联结的场所（本项目主卫/客卫）应做 LEB；端子箱位置、需联结金属构件清单（花洒/龙头/毛巾架/排水口/采暖管）与联结截面均未知，位置未知前不得在 config/plumbing.yaml 造点位。枚举值已在 shared/types.ts 与 shared/project-render-facts-schema.ts 补齐；待位置与构件清单回来后落点，本契约立即强制 note 写明联结清单与规范关系。跟踪 docs/pending-site-data.md #43"
+    pending: "LEB 局部等电位端子箱：GB 55038-2025 7.4.7 要求设局部等电位联结的场所（本项目主卫/客卫）应做 LEB；端子箱位置、需联结金属构件清单（花洒/龙头/毛巾架/排水口/采暖管）与联结截面均未知，位置未知前不得在 config/plumbing.yaml 造点位。枚举值已在 shared/types.ts 与 shared/project-render-facts-schema.ts 补齐；待位置与构件清单回来后落点，本契约立即强制 note 写明联结清单与规范关系。跟踪原量房台账 #43（已退场）"
 
   # ⑧ 给排水点位要么被 route 引用，要么显式登记 deferred。2026-10-04 A7。
   # ──────────────────────────────────────────────────────────────────────────
@@ -1705,7 +1625,7 @@ contracts:
     # 「不许静默消音」，没告诉人「正当修正长什么样」——于是任何一次几何改动都像消音。
     # 本字段把修正出口显式登记，让合规修改变成可审计动作而不是游击改动：
     #   decision_ref —— 修正必须附的 DEC 编号（全引，编号族见 c.dec_ref_resolvable）。
-    #     裁定落地前（docs/pending-site-data.md #41 未关）登记为 `pending:` 占位，
+    #     裁定落地前（原量房台账 #41，已退场）登记为 `pending:` 占位，
     #     引擎按 exempt.pending 同纪律在 INFO 里露面；一旦设计侧出修正 DEC，必须换成该全引。
     #   sync_files   —— 该修正必须同步的四个文件：改几何/降板（ceiling.yaml）→ 同步
     #     施工指导 §0 prose → 同步待决台账 #41 → 同步本登记表的 registered_conflicts。
@@ -1715,8 +1635,8 @@ contracts:
     # 通道只回答「要改的话必须怎么改」，不提供任何免检。
     repair_channel:
       decision_ref: 'DEC-2026-10-06-R5'
-      sync_files: [config/model/envelope/ceiling.yaml, docs/mep-construction-guidance.md, docs/pending-site-data.md, config/facts.yaml]
-    pending: "**2026-10-06 DEC-2026-10-06-R5 已裁定并执行**（#41 分层标高升入降板空腔，保走廊净高 2.50m；废止「降板加厚」方案②）。分层标高改为**分区口径**：A 区（走廊满吊/门厅满吊/客厅北缘边吊/餐厅两条服务带/各房边吊，完成面 2.50）强电 2.55 / 弱电 2.60 / 冷凝水 2.65 / 冷媒 2.60、上限 2.75；B 区（厨房铝扣板/主卫铝扣板/客卫铝扣板，完成面 2.65，空腔仅 150mm）进入该区的管路段 2.70–2.76；送风 2.68 / 回风 2.72 原位不变（已在空腔内，回风格栅面板贴完成面 2.49）。参考梁约束带内 ≤ 梁底−0.05（南窗带 2.73→2.68、厨房北窗带 2.65→2.60、厨房局部梁头 2.56→2.51、主卫梁头 2.41→2.36、走廊服务带 2.65→2.60）。**登记数 160 → 24**：其中 −20 为走地给排水（water_supply/drainage）按 DEC 配套口径修正退出比较、−136−20=−116 为吊顶承载层抬入空腔；verify:mep 与 verify:facts 双引擎实算一致 = 24。残留 24 处全部显式登记：① 竖直下引至设备点位的末点（to_height 0.02–1.60m，点位坐标在 config/electrical.yaml / config/plumbing.yaml，本轮禁改，竖直下引段本身合法）；② 贴在完成面上的设备开口（回风格栅 2.49，见 config/model/envelope/ceiling.yaml 回风口坐标 2.49）；③ 窗帘盒内电动窗帘电源（0.7m）；④ condensate-living / condensate-dining 两条绕不开走廊服务带梁带的候选路线（末端立管接点 (6.70,3.70) 固定、客卫吊顶区四面有墙，重力管不得上弯，无法同时满足「梁带内 ≤2.60」与「客卫段 ≥2.70」，按 DEC「确实绕不开的保留原标高」处理，量房实测梁底后复判）。**分解链条**：144→149→154→153→160（历史，见下）→ 160→24（DEC-2026-10-06-R5：分层标高升入降板空腔，−136 为承载层抬入空腔、−20 为走地给排水按 DEC 配套口径修正退出比较）。#41 已裁定，decision_ref 由 pending 占位改为 DEC-2026-10-06-R5 全引；跟踪 docs/pending-site-data.md #41（已改写为「已裁定 + 残留」）。"
+      sync_files: [config/model/envelope/ceiling.yaml, docs/mep-construction-guidance.md, config/facts.yaml]
+    pending: "**2026-10-06 DEC-2026-10-06-R5 已裁定并执行**（#41 分层标高升入降板空腔，保走廊净高 2.50m；废止「降板加厚」方案②）。分层标高改为**分区口径**：A 区（走廊满吊/门厅满吊/客厅北缘边吊/餐厅两条服务带/各房边吊，完成面 2.50）强电 2.55 / 弱电 2.60 / 冷凝水 2.65 / 冷媒 2.60、上限 2.75；B 区（厨房铝扣板/主卫铝扣板/客卫铝扣板，完成面 2.65，空腔仅 150mm）进入该区的管路段 2.70–2.76；送风 2.68 / 回风 2.72 原位不变（已在空腔内，回风格栅面板贴完成面 2.49）。参考梁约束带内 ≤ 梁底−0.05（南窗带 2.73→2.68、厨房北窗带 2.65→2.60、厨房局部梁头 2.56→2.51、主卫梁头 2.41→2.36、走廊服务带 2.65→2.60）。**登记数 160 → 24**：其中 −20 为走地给排水（water_supply/drainage）按 DEC 配套口径修正退出比较、−136−20=−116 为吊顶承载层抬入空腔；verify:mep 与 verify:facts 双引擎实算一致 = 24。残留 24 处全部显式登记：① 竖直下引至设备点位的末点（to_height 0.02–1.60m，点位坐标在 config/electrical.yaml / config/plumbing.yaml，本轮禁改，竖直下引段本身合法）；② 贴在完成面上的设备开口（回风格栅 2.49，见 config/model/envelope/ceiling.yaml 回风口坐标 2.49）；③ 窗帘盒内电动窗帘电源（0.7m）；④ condensate-living / condensate-dining 两条绕不开走廊服务带梁带的候选路线（末端立管接点 (6.70,3.70) 固定、客卫吊顶区四面有墙，重力管不得上弯，无法同时满足「梁带内 ≤2.60」与「客卫段 ≥2.70」，按 DEC「确实绕不开的保留原标高」处理，量房实测梁底后复判）。**分解链条**：144→149→154→153→160（历史，见下）→ 160→24（DEC-2026-10-06-R5：分层标高升入降板空腔，−136 为承载层抬入空腔、−20 为走地给排水按 DEC 配套口径修正退出比较）。#41 已裁定，decision_ref 由 pending 占位改为 DEC-2026-10-06-R5 全引；跟踪 原量房台账 #41（已退场，未决项现由对象 blocker 承载）（已改写为「已裁定 + 残留」）。"
     # 历史分解链条（保留备查）：144→149（2026-10-05 给排水 v1 新增 5 条排水路线）；149→154（DEC-2026-10-05-R11 客餐厅冷凝水改线）；154→153（DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4，refrigerant-trunk 该 hit 合法消失）；153→160（DEC-2026-10-06-R1 给排水缺项兜底新增 7 条 floor-branch 路线，每条在所经厨卫/套间吊顶 footprint 内新增 1 处 hit——给排水走地 0.02–0.45m 本就低于完成面，与既有给排水 floor-branch 路线同源、非 #41 分层标高问题）。
 
   - id: c.layout_region_room_overlap

@@ -742,7 +742,7 @@ materials:
     price_source: "业主提供（owner-provided，非检索证据；登记为 QR-2026-10-03-04）"
     price_type: "cap"
     owner_cap_cny: 20000
-    notes: "业主侧新增瓷砖候选方向（2026-10-03）：业主封顶价与价格类型 cap 见 owner_cap_cny / QR-2026-10-03-04（权威叙述在 schedule/procurement.md §09 与 docs/material_selection_log.md，本条目不重复抄录金额）；status 未取证/待现场核价，量房清单见 docs/pending-site-data.md #35。封顶价须与 floor_tile_01/02/03 同口径（含损耗、配送上楼、退补规则）比较后才可定标，且不得替代 floor_pbr_tile_612 / floor_tile_antislip_400 / floor_tile_deco_small 三个既有分区方向。"
+    notes: "业主侧新增瓷砖候选方向（2026-10-03）：业主封顶价与价格类型 cap 见 owner_cap_cny / QR-2026-10-03-04（权威叙述在 schedule/procurement.md §09 与 docs/material_selection_log.md，本条目不重复抄录金额）；status 未取证/待现场核价，量房清单见 原量房台账 #35（已退场，未决项现由对象 blocker 承载）。封顶价须与 floor_tile_01/02/03 同口径（含损耗、配送上楼、退补规则）比较后才可定标，且不得替代 floor_pbr_tile_612 / floor_tile_antislip_400 / floor_tile_deco_small 三个既有分区方向。"
     appearance: { type: "ceramic_tile_v2", color: "#cfc7bb", pattern: "straight" }
 
   - id: "floor_tile_kt_200x1200_01"

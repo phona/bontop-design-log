@@ -18,6 +18,7 @@ import { load as loadYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { loadOverlayDoc } from '../../server/overlay-merge.js';
 import { loadMasonryTakeoff } from '../../server/budget-calculator.js';
+import { countPendingComponents } from '../../shared/pending-count.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
@@ -36,7 +37,6 @@ export const CV_INPUTS = [
   'config/mep-hvac-coordination.yaml',
   'config/tile-comparison.yaml',
   'docs/mep-construction-guidance.md',
-  'docs/pending-site-data.md',
   'schedule/phase-1/control.yaml',
   'shared/masonry-takeoff.ts',
 ];
@@ -78,7 +78,8 @@ interface Ctx {
   ceiling: any[];
   mep: any;
   geometry: any;
-  pendingText: string;
+  /** 卡着的构件数（pending / undeclared）——原量房手账的编号数，S2-B 起改由对象派生。 */
+  pendingCount: number;
 }
 
 function loadCtx(): Ctx {
@@ -91,7 +92,7 @@ function loadCtx(): Ctx {
     ceiling: yaml('config/model/envelope/ceiling.yaml'),
     mep: yaml('config/mep-hvac-coordination.yaml'),
     geometry: yaml('config/layout/model-geometry.yaml'),
-    pendingText: fs.readFileSync(path.join(ROOT, 'docs/pending-site-data.md'), 'utf8'),
+    pendingCount: countPendingComponents(),
   };
 }
 
@@ -411,32 +412,24 @@ const SECTIONS: Section[] = [
     title: '待决',
     rows: [
       {
-        label: '待决台账条数',
+        label: '未决断构件数',
         value: (c) => {
-          const numbered = (c.pendingText.match(/^\| \d+ \|/gm) ?? []).length;
-          if (numbered === 0) throw new Error('pending 台账编号行匹配为 0：表格格式已变，拒绝静默输出 0 条');
-          const sub = (c.pendingText.match(/^\| \d+[a-z] \|/gm) ?? []).length;
-          return `${numbered} 条编号`;
+          if (c.pendingCount === 0) throw new Error('未决断构件数为 0：与 blocker 门禁的 checked 不符，拒绝静默输出');
+          return `${c.pendingCount} 个构件`;
         },
-        source: 'docs/pending-site-data.md:3',
-        note: (c) => {
-          const numbered = (c.pendingText.match(/^\| \d+ \|/gm) ?? []).length;
-          if (numbered === 0) throw new Error('pending 台账编号行匹配为 0：表格格式已变，拒绝静默输出 0 条');
-          const sub = (c.pendingText.match(/^\| (\d+[a-z]) \|/gm) ?? []).length;
-          const subNames = [...c.pendingText.matchAll(/^\| (\d+[a-z]) \|/gm)].map((m) => `#${m[1]}`);
-          return `#1–#${numbered}${sub ? ` + ${subNames.join('、')} 子项` : ''} = ${numbered + sub} 行；fact.pending_site_data_count 锚在表头，新增/关闭必须同步编号数 ※`;
-        },
+        source: 'config 各对象 status/blocker 字段（shared/pending-count.ts 派生）',
+        note: (c) => `每个都带 blocker（kind/owner/trigger/reverses_if/rationale）；可读视图跑 npm run docs:generate-pending-view（输出 tmp/capture/）。原量房手账已于 S2-B 退场`,
       },
       {
         label: '#30 强电箱规格',
         value: () => 'pending（单/双排、回路数、进线截面）',
-        source: 'docs/pending-site-data.md:105',
+        source: 'config/electrical.yaml panel_strong_entry_left 的 blocker',
         note: '20 路 + 2P + 浪涌需双排；1.65m 底边仅在双排时合规',
       },
       {
         label: '#39 暖通待验证项',
         value: () => 'pending（外机实测尺寸/平台散热/厂家配电图/风口加长计价/冷负荷计算书）',
-        source: 'docs/pending-site-data.md:115',
+        source: 'config/hvac.yaml commercial 块 + plans 的 blocker',
         note: '已成交 36000，但上述项闭环前不冻结施工',
       },
     ],

@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:2c24e787f0d5d0e0d48c9b396772b7d5d2f8903a04c7ffe96cc7071d90657369 -->
+     inputs-fingerprint: sha256:936741093d3d852545a7e88931f4733e4e1e0eb7c2ad8b73451005e250e0fb51 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -71,9 +71,9 @@
 
 | 口径 | 现行值 | 权威源（file:line） | 备注 |
 |---|---|---|---|
-| 待决台账条数 | 98 条编号 | docs/pending-site-data.md:3 | #1–#98 + #3a 子项 = 99 行；fact.pending_site_data_count 锚在表头，新增/关闭必须同步编号数 ※ |
-| #30 强电箱规格 | pending（单/双排、回路数、进线截面） | docs/pending-site-data.md:105 | 20 路 + 2P + 浪涌需双排；1.65m 底边仅在双排时合规 |
-| #39 暖通待验证项 | pending（外机实测尺寸/平台散热/厂家配电图/风口加长计价/冷负荷计算书） | docs/pending-site-data.md:115 | 已成交 36000，但上述项闭环前不冻结施工 |
+| 未决断构件数 | 39 个构件 | config 各对象 status/blocker 字段（shared/pending-count.ts 派生） | 每个都带 blocker（kind/owner/trigger/reverses_if/rationale）；可读视图跑 npm run docs:generate-pending-view（输出 tmp/capture/）。原量房手账已于 S2-B 退场 |
+| #30 强电箱规格 | pending（单/双排、回路数、进线截面） | config/electrical.yaml panel_strong_entry_left 的 blocker | 20 路 + 2P + 浪涌需双排；1.65m 底边仅在双排时合规 |
+| #39 暖通待验证项 | pending（外机实测尺寸/平台散热/厂家配电图/风口加长计价/冷负荷计算书） | config/hvac.yaml commercial 块 + plans 的 blocker | 已成交 36000，但上述项闭环前不冻结施工 |
 
 ---
 

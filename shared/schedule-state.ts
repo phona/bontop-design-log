@@ -179,9 +179,8 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
         if (authorityPath) paths.push(...authorityFilePaths(authorityPath));
       }
     }
-    if (pkg.include_site_data_ledger === true || (pkg.blockers ?? []).some((id: string) => ['BLK-HANDOVER', 'BLK-SURVEY-DATA-FREEZE'].includes(id))) {
-      paths.push('docs/pending-site-data.md');
-    }
+    // 2026-11-08 S2-B：原量房手账退场。include_site_data_ledger / BLK-SURVEY-DATA-FREEZE
+    // 的「量房数据未冻结」语义改由对象 blocker 承接——见 shared/pending-count.ts。
     return unique(paths).sort();
   }
 
@@ -196,7 +195,6 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
   function phaseInputPaths(phaseId: string, phaseControlPath: string): string[] {
     const links = modelPackageLinks.links.filter((link) => link.phase_id === phaseId);
     const paths = [phaseControlPath, roadmapRelPath, 'schedule/phase-scope.yaml', MODEL_PACKAGE_LINKS_PATH, acceptanceRelPath, DECISION_GATES_PATH];
-    if (phaseId === control.phase_id) paths.push('docs/pending-site-data.md');
     if (phaseId === 'phase_2_function_upgrade' || phaseId === 'phase_3_styling') paths.push('schedule/phase-1/control.yaml');
     if (phaseId === 'phase_3_styling') paths.push('schedule/phase-2/control.yaml');
     for (const link of links) {
@@ -222,7 +220,6 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
         }
       }
     }
-    if (phaseId === control.phase_id) paths.push('docs/pending-site-data.md');
     return unique(paths).sort();
   }
 
@@ -235,7 +232,6 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     'config/acceptance.yaml',
     DECISION_GATES_PATH,
     MODEL_PACKAGE_LINKS_PATH,
-    'docs/pending-site-data.md',
     ...Object.values(modelPackageLinks.authorities).flatMap(authorityFilePaths),
   ]).sort();
 

@@ -54,6 +54,9 @@
  */
 
 import fs from 'node:fs';
+import { countPendingComponents } from '../../shared/pending-count.js';
+import { collectElements } from '../../shared/element-sources.js';
+import { deriveElementStates, type ElementState } from '../../shared/element-state.js';
 import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
@@ -179,7 +182,14 @@ export interface CostByObjectContext {
   antiPenetration: AnyRecord;
   electricalPoints: AnyRecord[];
   overridesText: string;
-  pendingText: string;
+  /** 卡着的构件数——原手账编号数，S2-B 起改由对象派生。 */
+  pendingCount: number;
+}
+
+/** 派生状态为 pending / undeclared 的构件（含其 blocker）——S2-B 后「关联 pending」的唯一来源。 */
+function collectPendingStates(): ElementState[] {
+  const derived = deriveElementStates({ elements: collectElements(), issues: [] });
+  return derived.states.filter((s) => s.status === 'pending' || s.status === 'undeclared');
 }
 
 const LEGACY_REF_PATTERN = /^furniture:([A-Za-z0-9_]+):([A-Za-z0-9_]+):(\d+)$/;
@@ -217,7 +227,7 @@ export function loadCostByObjectContext(root: string): CostByObjectContext {
     antiPenetration: yaml.load(fs.readFileSync(path.join(root, 'config/anti-penetration.yaml'), 'utf8')) as AnyRecord,
     electricalPoints: yaml.load(fs.readFileSync(path.join(root, 'config/electrical.yaml'), 'utf8')) as AnyRecord[],
     overridesText: fs.readFileSync(path.join(root, 'config/render/overrides.yaml'), 'utf8'),
-    pendingText: fs.readFileSync(path.join(root, 'docs/pending-site-data.md'), 'utf8'),
+    pendingCount: countPendingComponents(),
   };
 }
 
@@ -295,7 +305,7 @@ function mentionsObject(text: string, entry: DeclaredFurnitureIdEntry, uniqueBar
  * 纯函数：不读 fs，全部输入来自 CostByObjectContext。
  */
 export function buildObjectLedgerReport(ctx: CostByObjectContext): ObjectLedgerReport {
-  const {state, furnishings, declared, antiPenetration, electricalPoints, overridesText, pendingText} = ctx;
+  const {state, furnishings, declared, antiPenetration, electricalPoints, overridesText} = ctx;
   const placedById = new Map<string, DeclaredFurnitureIdEntry>();
   let countOnly = 0;
   for (const entry of declared) {
@@ -481,13 +491,16 @@ export function buildObjectLedgerReport(ctx: CostByObjectContext): ObjectLedgerR
         ledger.acceptanceChecks.push({checkId, item: String(item?.item ?? ''), via: 'acceptance.yaml 点名'});
       }
     }
-    // 关联 pending（台账按对象 id / 别名点名的表格行；同一词边界匹配器）
-    for (const line of pendingText.split('\n')) {
-      const rowMatch = /^\|\s*(\d+)\s*\|/.exec(line);
-      if (!rowMatch) continue;
-      if (!textMentions(line, ledger.aliases)) continue;
-      const cells = line.split('|');
-      ledger.pendingEntries.push({id: `#${rowMatch[1]}`, title: (cells[2] ?? '').trim()});
+    // 关联 pending（2026-11-08 S2-B）：原手账按对象 id/别名点名的表格行扫描，改为扫
+    // 对象自己的 blocker——未决项的单一源已经是 config 字段，不再有任何文档可扫。
+    // 语义对齐：旧口径是「台账里点名了本对象的行」，新口径是「本对象自己声明的卡点」。
+    for (const state of collectPendingStates()) {
+      if (!textMentions(`${state.id} ${state.label}`, ledger.aliases)) continue;
+      const b = state.blocker;
+      ledger.pendingEntries.push({
+        id: state.id,
+        title: b ? `[${b.kind}] 卡在 ${b.owner.join('、')}｜${b.trigger}` : '（未申报 blocker）',
+      });
     }
     // 关联开放决策（topic/question/options/tracking_note 点名；同一词边界匹配器）
     for (const hit of openDecisionsMentioning(ledger)) ledger.openDecisions.push(hit);
@@ -672,7 +685,7 @@ export function renderOwnershipSummary(report: ObjectLedgerReport): string {
     lines.push('（无——当前没有「被开放决策点名且无成本归属」的对象）');
   }
   lines.push('');
-  lines.push('> 注：关联 pending 只按「对象 id / 房间.类型 / 全屋唯一裸类型名」全等点名；台账（docs/pending-site-data.md）里以多房同型裸类型名或点位 id 引用对象的行不会被关联——那是台账未按对象 id 登记的现状，由本视图显形，不靠猜补齐。');
+  lines.push('> 注：关联 pending 只按「对象 id / 房间.类型 / 全屋唯一裸类型名」全等点名；台账（原量房台账（已于 S2-B 退场））里以多房同型裸类型名或点位 id 引用对象的行不会被关联——那是台账未按对象 id 登记的现状，由本视图显形，不靠猜补齐。');
   lines.push('');
   return lines.join('\n');
 }

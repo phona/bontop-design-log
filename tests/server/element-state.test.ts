@@ -2,7 +2,7 @@
 //
 // 守的不变量（2026-11-08 issue #98 第六阶段 S2-A「状态上对象」后）：
 //   ① 派生优先级只剩 [conflict, config_status, fallback]——**状态不查表**：
-//      docs/pending-site-data.md 的 ledger 规则与 note 内 DEC 编号的 decision 规则都已退役；
+//      原量房台账（已于 S2-B 退场） 的 ledger 规则与 note 内 DEC 编号的 decision 规则都已退役；
 //   ② census：total=162 不变、undeclared≤2、statusSource 全部来自 config 声明；
 //   ③ 每个 pending/undeclared 构件都带结构完整的 blocker（kind/owner/trigger/reverses_if/rationale）；
 //   ④ 台账解析本身仍可用（shared/pending-ledger.ts 还被 server 侧消费），能区分
@@ -39,14 +39,29 @@ import {
 } from '../../shared/element-blockers.js';
 import { extractBlocker } from '../../scripts/project/extract-element-blockers.js';
 
-const LEDGER = readFileSync('docs/pending-site-data.md', 'utf8');
+// 2026-11-08 issue #98 S2-B：原 原量房台账（已退场） 手账整份退场，未决项已全数搬到
+// config 各对象自己的 status/blocker 字段上。parsePendingLedger 本身仍在
+// shared/envelope-sources 之外还被 element-state 的台账解析测试使用，故改用内联 fixture
+// 覆盖它要解析的全部形态（编号行 / 6 列窄表 / 带字母子项 / 多 id 同文件）。
+const LEDGER = [
+  '| # | 数据项 | 填入文件 | 格式 | 当前值 | 精度 | 影响 |',
+  '|---|---|---|---|---|---|---|',
+  '| 1 | 梁体位置/宽度/高度 | model-geometry.yaml `beams:` | `{id, x1,z1}` | 推断 | inferred | 吊顶 |',
+  '| 3 | 室内净高 | model-geometry.yaml height | 2.8 | 2.8m | inferred | 吊顶 |',
+  '| 3a | A2 HVAC 邻户梁参考约束 | config/hvac.yaml `reference_constraints` | 各范围 | LD100 | inferred | HVAC |',
+  '| 25 | 主卧东墙窗洞是否存在 | model-geometry.yaml `w_mb_win` | boolean | 待核 | pending | 电气 |',
+  '| 33 | 洗烘/冰箱 SKU 尺寸与开门侧 | config/electrical.yaml `sock_balcony_washer`/`sock_balcony_dryer` | `{W,D,H}` | 待核 | pending | 电气 |',
+  '| 39 | 中央空调成交配置与待验证项 | config/hvac.yaml | - | 已成交 | pending | HVAC |',
+  '| 42 | 儿童房空调电源 | config/electrical.yaml `sock_child_ac` | `{x,z}` | 预演位 | pending | 电气 |',
+  '| 55 | 主卫 PVC 服务井包络口径 | config/plumbing.yaml `type: drain_riser` | - | 待核 | pending | 给排水 |',
+].join('\n');
 
 describe('pending ledger parsing', () => {
   it('parses every numbered row across all section tables', () => {
     const ledger = parsePendingLedger(LEDGER);
-    assert.ok(ledger.entries.length >= 57, `台账条目数 ${ledger.entries.length}（含 6 列表的 #25–#29）`);
+    assert.ok(ledger.entries.length >= 7, `fixture 条目数 ${ledger.entries.length}`);
     const refs = new Set(ledger.entries.map((entry) => entry.ref));
-    for (const expected of ['1', '33', '39', '42', '55']) assert.ok(refs.has(expected), `#${expected} 必须被解析到`);
+    for (const expected of ['1', '3', '3a', '25', '33', '39', '42', '55']) assert.ok(refs.has(expected), `#${expected} 必须被解析到`);
     assert.ok(ledger.entries.every((entry) => entry.summary.length > 0), '每条都要有摘要');
   });
 
@@ -77,7 +92,7 @@ describe('pending ledger parsing', () => {
     const knownIds = new Set(ledger.entries.flatMap((entry) => entry.targets.filter((t) => t.id && !/[\s:]/.test(t.id)).map((t) => t.id!)).map((id) => `electrical:${id}`));
     const summary = summarizeLedger(ledger, knownIds, new Set(['ac_indoor', 'strong_panel', 'weak_panel', 'drain_riser', 'water_supply', 'gas_meter', 'duct', 'leb']));
     assert.deepEqual(summary.dangling.filter((item) => item.file.endsWith('electrical.yaml')), [], `电气构件误报: ${JSON.stringify(summary.dangling)}`);
-    assert.ok(summary.total >= 55, `台账条目数 ${summary.total}`);
+    assert.ok(summary.total >= 7, `fixture 条目数 ${summary.total}`);
   });
 
   it('extracts who an item is blocked on', () => {
@@ -484,7 +499,7 @@ describe('hvac ceiling anchors → authoritative status', () => {
 });
 
 describe('structural beams declared on the geometry object (S2-A)', () => {
-  // beam 对象是 2026-11-08 S2-A 从 docs/pending-site-data.md 的「梁体推断」表与「邻户实测参考」
+  // beam 对象是 2026-11-08 S2-A 从 原量房台账（已于 S2-B 退场） 的「梁体推断」表与「邻户实测参考」
   // 节上到 config/layout/model-geometry.yaml 的。它当前没有运行期几何消费方（梁是量房待填项），
   // 读者是这份测试——所以不变量必须在这里钉住，否则「上对象」会退化成一份没人校验的登记。
   const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as { beams?: BeamDef[] };

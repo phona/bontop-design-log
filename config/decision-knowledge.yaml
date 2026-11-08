@@ -10,7 +10,7 @@
 #
 # ① entries —— **真·不可再生的知识**（竞品为何淘汰、合同成交语义、业主原话/口头规格/
 #    实地断言、静默失效分析、证据等级限定）。每条带 `landing` 指向它同时落到的机读位置。
-#    这段不承载状态、不承载未决项本体（未决项住 docs/pending-site-data.md）、不承载几何。
+#    这段不承载状态、不承载未决项本体（未决项住 原量房台账（已于 S2-B 退场））、不承载几何。
 #
 # ② retired —— **墓碑一行 + git commit**。只登记 id / subject / status / superseded_by /
 #    record（DEC 原文在 git 历史里的文件+行定位）/ landing（内容去了哪）。
@@ -37,7 +37,7 @@
 #   quote-card:<path>  预算/采购/合同语义落在报价卡或 control.yaml 合同块（L2 价层）
 #   gate:<path>        失效条件已变成门禁断言（最好的归档形式：不需要任何人维护）
 #   agents             纪律/流程落在 AGENTS.md
-#   ledger:#N          未决项本体落在 docs/pending-site-data.md 第 N 条
+#   ledger:#N          未决项本体落在 原量房台账（已于 S2-B 退场） 第 N 条
 #   knowledge:<id>      知识保留在本文件 entries 段
 # ============================================================================
 
@@ -60,7 +60,6 @@ entries:
     landing:
       - "quote-card:config/hvac.yaml"
       - "quote-card:schedule/phase-1/control.yaml"
-      - "ledger:#39"
     owner: 业主
     fails_if: "补归档的备注页与转录不一致 → 含否口径（风口加长/税）重判，36,000 的成交语义可能变"
 
@@ -75,7 +74,6 @@ entries:
     landing:
       - "quote-card:config/hvac.yaml"
       - "quote-card:schedule/phase-1/control.yaml"
-      - "ledger:#39"
 
   # ── 采购/竞品淘汰理由（为什么是它、为什么不是竞品）──────────────────────────────
   - id: "DEC-2026-10-05-R5"
@@ -213,8 +211,7 @@ entries:
     landing:
       - "quote-card:schedule/phase-1/control.yaml"
       - "agents"
-      - "ledger:#34"
-      - "ledger:#39"
+
 
   # ── 业主原话 / 口头规格 / 实地断言（V4：非文件类外部输入，删了不可再生）──────────────
   - id: "DEC-2026-11-04-R4"
@@ -234,7 +231,6 @@ entries:
     landing:
       - "object:config/house.yaml"
       - "object:config/electrical.yaml"
-      - "ledger:#80"
     owner: 业主
     fails_if: "业主书面规格/勘测结论与口头规格不一致 → 开放格几何与 dock 坐标重判"
 
@@ -254,7 +250,6 @@ entries:
     landing:
       - "object:config/house.yaml"
       - "object:config/electrical.yaml"
-      - "ledger:#80"
 
   - id: "DEC-2026-11-05-R5"
     kind: design_caliber
@@ -271,7 +266,6 @@ entries:
     landing:
       - "object:config/house.yaml"
       - "object:config/anti-penetration.yaml"
-      - "ledger:#81"
 
   - id: "DEC-2026-10-07-C17"
     kind: owner_verbal
@@ -284,7 +278,6 @@ entries:
       处理，玻璃根防水台按业主规则全宅存在；主卫湿区补 3 座防水台贴砖（湿区优先）。
     landing:
       - "object:config/layout/model-geometry.yaml"
-      - "ledger:#54"
     owner: 业主
     fails_if: "量房/开发商立面图证实某处幕墙窗带高于齐地 → 该处防水台与贴砖范围局部回退"
 
@@ -320,7 +313,6 @@ entries:
       「预留」会变成随意多布一根线。
     landing:
       - "object:config/electrical.yaml"
-      - "ledger:#58"
     owner: 业主
 
   # ── 静默失效分析（AGENTS.md 决策铁律第 1/6 条的机器化素材）──────────────────────
@@ -402,7 +394,6 @@ entries:
     landing:
       - "gate:config/facts.yaml"
       - "gate:config/mep-warning-adjudication.yaml"
-      - "ledger:#41"
     owner: 业主
 
   - id: "DEC-2026-10-27-R03"
@@ -432,7 +423,7 @@ entries:
       已核实 POST /api/visual-commands 覆盖高亮与相机）。
       派生优先级**原文**为 conflict > config_status > ledger > decision > fallback；
       2026-11-08 业主裁定①后，decision（note 里有 DEC 编号 → confirmed）与 ledger（查
-      docs/pending-site-data.md）两条查表规则已删，只剩 [conflict, config_status, fallback]
+      原量房台账（已于 S2-B 退场））两条查表规则已删，只剩 [conflict, config_status, fallback]
       ——状态是对象的声明，不是查表查出来的结果。
     landing:
       - "gate:config/state-model.yaml"
@@ -500,7 +491,6 @@ entries:
       ——未留痕的错误口径会被后续轮次当成已核事实引用（本例中「零电位」会影响面光取电方案）。
     landing:
       - "object:config/electrical.yaml"
-      - "ledger:#61"
 
   - id: "DEC-2026-10-23-R03"
     kind: design_caliber
@@ -511,7 +501,6 @@ entries:
     landing:
       - "object:config/plumbing.yaml"
       - "gate:config/acceptance.yaml"
-      - "ledger:#74"
 
   # ── 门禁机制（已变成断言；这里是「为什么要有这道门禁」）────────────────────────
   - id: "DEC-2026-10-09-P01"
@@ -673,7 +662,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/01-control-budget.md#L364"
-    landing: ["git", "ledger:#77"]
+    landing: ["git"]
   - id: "DEC-2026-11-04-R2"
     subject: "批准云鲸 JX ¥99 追加批复（家电池与一期上限同步 +99）"
     status: active
@@ -847,7 +836,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/02-layout-public.md#L444"
-    landing: ["git", "ledger:#64"]
+    landing: ["git"]
   - id: "DEC-2026-10-15-R02"
     subject: "玄关双面半高柜冻结为700mm北端落物区并进入结构深化"
     status: active
@@ -859,7 +848,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/02-layout-public.md#L470"
-    landing: ["git", "ledger:#64"]
+    landing: ["git"]
   - id: "DEC-2026-10-16-R02"
     subject: "厨房北侧800mm咖啡工作段与EM450真实尺寸程序化预演"
     status: active
@@ -1201,7 +1190,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/05-hvac.md#L117"
-    landing: ["git", "quote-card:config/hvac.yaml", "ledger:#39"]
+    landing: ["git", "quote-card:config/hvac.yaml"]
   - id: "DEC-2026-10-05-R2"
     subject: "HVAC 口径收口：x=3.70 四层落地与旧口径清除"
     status: active
@@ -1243,7 +1232,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/05-hvac.md#L191"
-    landing: ["git", "ledger:#39"]
+    landing: ["git"]
   - id: "DEC-2026-10-18-R02"
     subject: "客餐厅底面四口整体居中：功能口组中心对齐边吊中心"
     status: superseded
@@ -1267,7 +1256,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/05-hvac.md#L260"
-    landing: ["git", "ledger:#39"]
+    landing: ["git"]
   - id: "DEC-2026-08-26-043"
     subject: "客厅无主灯整改收敛"
     status: archived
@@ -1423,7 +1412,7 @@ retired:
     status: superseded
     superseded_by: "DEC-2026-10-16-R1"
     record: "docs/decisions/06-electrical.md#L343"
-    landing: ["git", "ledger:#62"]
+    landing: ["git"]
   - id: "DEC-2026-10-13-R3"
     subject: "主卧吸顶灯移位 (2.60,7.60) → (1.70,6.00)"
     status: active
@@ -1567,7 +1556,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/06-electrical.md#L694"
-    landing: ["git", "ledger:#67", "ledger:#68"]
+    landing: ["git"]
   - id: "DEC-2026-10-23-R01"
     subject: "回路计价基数补计竖直段：平面 union 保留、竖直下引/立管计入"
     status: active
@@ -1579,7 +1568,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/07-lighting.md#L22"
-    landing: ["git", "ledger:#59"]
+    landing: ["git"]
   - id: "DEC-2026-10-05-R17"
     subject: "客房不做嵌入式床头灯与阅读灯"
     status: active
@@ -1855,13 +1844,13 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/12-plumbing.md#L78"
-    landing: ["git", "ledger:#56"]
+    landing: ["git"]
   - id: "DEC-2026-10-17-W05"
     subject: "洗碗机给水补建模：faucet_kitchen_dishwasher 落库（deferred 标记）"
     status: active
     superseded_by: null
     record: "docs/decisions/12-plumbing.md#L92"
-    landing: ["git", "ledger:#52"]
+    landing: ["git"]
   - id: "DEC-2026-10-06-R1"
     subject: "水电工程口径兜底轮：几何自洽 + 给排水缺项建模"
     status: active
@@ -2035,7 +2024,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/17-paint-scope-extension.md#L138"
-    landing: ["git", "ledger:#55"]
+    landing: ["git"]
   - id: "DEC-2026-10-09-P08"
     subject: "吊顶纳入面层核查：新增 F05（顶面归属未登记）/ F06（铝扣板越界），确认铝扣板不刷漆"
     status: active

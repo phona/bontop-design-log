@@ -7,6 +7,7 @@
 // 判定函数是纯函数，直接喂数据；真实仓状态用 CLI spawn 做集成冒烟。
 
 import assert from 'node:assert/strict';
+import * as fs from 'node:fs';
 import { describe, it } from 'node:test';
 import { spawnSync } from 'node:child_process';
 import {
@@ -253,10 +254,16 @@ describe('决策门禁：叙事登记表双向对照', () => {
     );
   });
 
-  it('readNarrativeDecisionIds 从真实 docs 读到 D1–D19（节标题里的区间字样不误收；D19 为 2026-11-06 PR-8 增补）', () => {
-    const ids = readNarrativeDecisionIds(process.cwd());
-    assert.equal(ids.size, 19, `实际：${[...ids].sort().join(',')}`);
-    assert.ok(ids.has('D1') && ids.has('D18') && ids.has('D19'));
+  // 2026-11-08 S2-B：原叙事登记表（量房手账「决策点登记 D1–D18」节）随该文件退场，
+  // 其「缺的证据」一列已逐条迁入 config/decision-gates.yaml 各条的 missing_evidence。
+  // 双登记对照退役，readNarrativeDecisionIds 恒返回空集。
+  it('readNarrativeDecisionIds 单一登记后恒为空集（不再有第二侧可读）', () => {
+    assert.equal(readNarrativeDecisionIds(process.cwd()).size, 0);
+    // 迁入的证明：19 个 D 条个儿都带 missing_evidence。
+    const gates = parseDecisionGates(fs.readFileSync('config/decision-gates.yaml', 'utf8'));
+    assert.equal(gates.decisions.length, 19);
+    assert.ok(gates.decisions.every((d) => typeof d.missing_evidence === 'string' && d.missing_evidence.length > 0),
+      `缺 missing_evidence 的条目：${gates.decisions.filter((d) => !d.missing_evidence).map((d) => d.id).join(',')}`);
   });
 });
 

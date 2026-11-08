@@ -15,7 +15,7 @@
 - R6 是历史设计基线，不是当前成交方案。它按当时房间命名配置：客厅 71、餐厅 28、主卧 45、父母房 28、儿童房 22、书房 22，总计 21.6kW / 1.08。功能互换后，父母房对应现书房，R6 的 22 级书房对应现客房；因此 R6 的书房应为 28，儿童房和客房为 22。10-04 R1 记录了容量差异的业主处置，10-05 R1 明确现行逐房映射取代 R6。R6 的静音、窗帘和容量估算可作为复核线索，不能据此把换机写成已决定或“零成本”。
 - R6、成交配置和本稿比选容量表分别计算、分别标状态；任何连接率都只是设备铭牌比值，不能当成本户现场冷负荷结论。
 
-**可追溯依据**：`docs/decisions/05-hvac.md` 中 DEC-2026-10-03-R6、DEC-2026-10-04-R1、DEC-2026-10-05-R1/R2、DEC-2026-10-05-R11、DEC-2026-10-06-R4；`docs/pending-site-data.md` #39、#41、#50、#51、#55；`config/hvac.yaml`、`config/plumbing.yaml`、`config/mep-hvac-coordination.yaml`；`schedule/procurement.md` 中中央空调采购项。
+**可追溯依据**：`docs/decisions/05-hvac.md` 中 DEC-2026-10-03-R6、DEC-2026-10-04-R1、DEC-2026-10-05-R1/R2、DEC-2026-10-05-R11、DEC-2026-10-06-R4；`原量房台账（已于 S2-B 退场）` #39、#41、#50、#51、#55；`config/hvac.yaml`、`config/plumbing.yaml`、`config/mep-hvac-coordination.yaml`；`schedule/procurement.md` 中中央空调采购项。
 
 ### 历史研究证据保留（不自动成为当前选型）
 

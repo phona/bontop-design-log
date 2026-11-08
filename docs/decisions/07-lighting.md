@@ -49,7 +49,7 @@
 - **配置影响**：`config/electrical.yaml` 点位数 111 → 108；`lighting_bedrooms_bath` 成员 14 → 11（9 个日常灯 + 2 个客房起夜灯），照明回路成员总数 24 → 21；删除三个对应的 `config/render/overrides.yaml` 渲染覆盖。客卫普通照明回路与 `control_gbath_light` 保留。
 - **实例文档**：更新 `night-path-lighting-instance.md` 的有效点位、控制和入口手动开灯说明；2026-10-05 的 `electrical-recommendation-20261005.md` 保留原建议作为历史记录，并标记本条为后续裁定。
 - **边界**：本裁定只删除客卫内置夜灯，不代表卫生间照明防水/湿区设计已验收；现有客卫平板灯方案不变。若后续使用插电感应夜灯，按实际安装位置和产品要求核对防溅/湿区条件。
-- **验证**：`data/project-render-facts.json` 已由投影生成器重生成（21 灯具）。`npm run verify:all` 在沙箱内被 tsx IPC 管道 `listen EPERM /tmp/tsx-1000/*.pipe` 阻断；将 verifier 编译到 `/tmp` 后分别运行，layout/topology、家具、rules、collision、spatial、MEP、电气、render-facts、lighting-config、facts、MEP takeoff、schedule 共 13 项通过。`verify-data-consistency` 仍报既有 `sock_child_ac` 墙段越界错误（tracked `docs/pending-site-data.md #42`，与本条无关）。本轮未运行测试。
+- **验证**：`data/project-render-facts.json` 已由投影生成器重生成（21 灯具）。`npm run verify:all` 在沙箱内被 tsx IPC 管道 `listen EPERM /tmp/tsx-1000/*.pipe` 阻断；将 verifier 编译到 `/tmp` 后分别运行，layout/topology、家具、rules、collision、spatial、MEP、电气、render-facts、lighting-config、facts、MEP takeoff、schedule 共 13 项通过。`verify-data-consistency` 仍报既有 `sock_child_ac` 墙段越界错误（tracked `原量房台账 #42（已退场，未决项现由对象 blocker 承载）`，与本条无关）。本轮未运行测试。
 - **决策人**：业主。
 
 
