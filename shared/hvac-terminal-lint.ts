@@ -1,0 +1,342 @@
+/**
+ * hvac terminal 三项几何对账 lint（issue #98 第五阶段 S2 hvac 侧，业主 2026-11-08 裁定①②④）。
+ *
+ * 由来（phase5-survey.md §1.4 审计小结）：暖通侧「引用卫生干净 + 几何对账空缺」——
+ * `scripts/verify/` 无一直读 terminal.position，校验器不校验任何位置关系。本文件补三个
+ * 纯函数检查（无 I/O，输入是已解析对象），消费方：
+ *   - tests/server/hvac-terminal-placement-guard.test.ts（test:server 门禁 + 绿/红变异固化）；
+ *   - validateProjectHvacFacts（shared/project-render-facts-schema.ts）把 access offset 断言
+ *     升为加载期硬门禁。
+ *
+ * 三项检查与裁定的对应：
+ *   ① lintHvacTerminalCeilingBands —— 裁定一「风口必须落在吊顶带内」：terminal.position
+ *      （单一源，不动）必须落在宿主房间某个吊顶分区的 area 边界内。这是物理必需
+ *      （百叶装不进吊顶带就是废口），不是人造检查；**不是** zone 派生断言（§6.3-1 父对象
+ *      口径未裁，停止条件 -1 禁止写解算分支——本检查只判「在带内/不在带内」，不计算派生值）。
+ *   ② lintHvacAccessOffsets —— 裁定一落地：access 检修口 = 宿主 + 显式结构化 offset，
+ *      断言 offset == position − serves_unit 宿主 position（容差 0.005m，验收铁律①）。
+ *      坐标真值仍只有 position 一份，offset 是可校验的关系声明。
+ *   ③ lintHvacLdDecoBandFill —— LD-deco 铺满 lint（§4.2 LD-deco 行 / §5.3 指标 7）：
+ *      同一行上装饰段与功能段必须精确铺满带边界（ceiling_living area x 向），不留缝隙也不
+ *      重叠；R18 附则的有意空白作为显式例外登记（例外本身受反向执法：不许为铺满把空白堵上）。
+ */
+import type { CeilingZone, HvacAnchor, HvacRoute, HvacTerminal } from './types.js';
+import { normalizeCeilingZone } from './ceiling-zone.js';
+
+export type HvacTerminalLintLevel = 'error' | 'warning';
+export interface HvacTerminalLintIssue {
+  level: HvacTerminalLintLevel;
+  code: string;
+  message: string;
+  terminalId?: string;
+}
+
+/**
+ * S2 新增字段的局部交叉类型。`shared/types.ts` 不在本切片文件清单内，故这里以交叉类型
+ * 承载 `offset`（access 检修口）——zod schema（project-render-facts-schema.ts）已把字段
+ * 纳入 strict 解析，运行期形状由 superRefine + lintHvacAccessOffsets 保证一致。
+ */
+export type HvacTerminalWithOffset = HvacTerminal & { offset?: { x: number; z: number } };
+
+/** 同上：schematic_only（裁定四的示意标注）的局部交叉类型，types.ts 不在本切片清单内。 */
+export type HvacAnchorWithSchematicOnly = HvacAnchor & { schematic_only?: boolean };
+
+/**
+ * 侧装口（mount_face ∈ north/south/east/west）的面容差（米）。
+ *
+ * 依据：既有声明惯例里侧装百叶中心线与分区面线差 0.010m——supply_living z=5.56 对
+ * ceiling_living 南界 5.55（DEC-2026-10-15-C02「随新南边界 z=5.55 外移至中心 z=5.56」）、
+ * supply_study z=6.16 对 ceiling_study_ac 南界 6.15、supply_child z=3.69 对 ceiling_child_ac
+ * 北界 3.70（DEC-2026-10-28-R03 同款）。百叶面板骑在吊顶带立面上，中心线越出面线半板厚
+ * 是装配语言不是漂移；0.02 > 0.010 惯例差、远小于有意义的位移，底装口不享受容差。
+ */
+export const TERMINAL_FACE_PLANE_TOLERANCE_M = 0.02;
+
+/** 转写/对账断言容差（米）：验收铁律①的 0.005m，同第四阶段 S1/S2 节奏。 */
+export const HVAC_ASSERT_TOLERANCE_M = 0.005;
+
+/** LD-deco 行分组与铺满判定的精确容差（米）：段端 = 相邻段边或带边，是字面同一数值。 */
+export const LD_DECO_EXACT_EPSILON_M = 1e-6;
+
+/** LD-deco 行 z 分组容差（米）：同一行各段 z 是同一字面值，0.005 只吸收手改抖动。 */
+export const LD_DECO_ROW_EPSILON_M = 0.005;
+
+/**
+ * R18 附则有意空白登记（显式例外，不许为铺满把空白堵上）。
+ *
+ * 证据：phase5-survey.md §3-7「两条底面行恰好铺满 [7.20,13.40]（A survey2 §C 实跑 tiles
+ * band exactly），侧面南行缺口 [13.2,13.4]、北行缺口 [7.2,7.7]（R18 附则写明的有意空白）」；
+ * 北行空白的 config 内声明见 hvac.yaml supply_dining / LD-deco-side-north reason
+ * 「西端 x[7.20,7.70] 保持与餐厅西服务带 ceiling_dining_west_band 的正交交接、不贴百叶
+ * （R18 附则）」。blank x1/x2 必须与带边界或相邻段端字面相等（ld_deco_row_gap 联合执法）。
+ */
+export interface LdDecoIntentionalBlank {
+  mount_face: 'north' | 'south' | 'east' | 'west' | 'bottom';
+  z: number;
+  x1: number;
+  x2: number;
+  basis: string;
+}
+export const LD_DECO_INTENTIONAL_BLANKS: readonly LdDecoIntentionalBlank[] = [
+  {
+    mount_face: 'north', z: 4.30, x1: 7.20, x2: 7.70,
+    basis: 'R18 附则：与 ceiling_dining_west_band 正交交接、不贴百叶（hvac.yaml supply_dining reason；phase5-survey.md §3-7 北行缺口）',
+  },
+  {
+    mount_face: 'south', z: 5.56, x1: 13.20, x2: 13.40,
+    basis: 'R18 附则：南侧立面东端有意空白（phase5-survey.md §3-7 南行缺口，A survey2 §C 实测）',
+  },
+];
+
+export interface HvacTerminalLintInput {
+  terminals: readonly HvacTerminalWithOffset[];
+  ceiling: readonly CeilingZone[];
+  /** 宿主房间经 route 链（indoor_* anchor → terminal）解析时需要；access 走 serves_unit。 */
+  anchors?: readonly HvacAnchor[];
+  routes?: readonly HvacRoute[];
+}
+
+function issue(level: HvacTerminalLintLevel, code: string, message: string, terminalId?: string): HvacTerminalLintIssue {
+  return { level, code, message, terminalId };
+}
+
+function bandZones(ceiling: readonly CeilingZone[]): CeilingZone[] {
+  return ceiling.filter((zone) => zone.area !== undefined);
+}
+
+/** 侧装口享面容差（见 TERMINAL_FACE_PLANE_TOLERANCE_M），底装/检修口必须严格在界内。 */
+function zoneContainsPoint(zone: CeilingZone, x: number, z: number, sideTolerance: number): boolean {
+  const [x1, z1, x2, z2] = zone.area as [number, number, number, number];
+  return x >= x1 - sideTolerance && x <= x2 + sideTolerance && z >= z1 - sideTolerance && z <= z2 + sideTolerance;
+}
+
+function terminalFaceTolerance(terminal: HvacTerminal): number {
+  return terminal.mount_face !== undefined && terminal.mount_face !== 'bottom' ? TERMINAL_FACE_PLANE_TOLERANCE_M : 0;
+}
+
+/**
+ * terminal 的宿主房间（若可解析）：access 走 serves_unit → ac_*.room；supply/return 走
+ * route 链（from = ref ceiling ac_* 的 indoor anchor，to = 本 terminal）→ ac_*.room。
+ * LD-deco 无宿主声明 → 返回 undefined（退化为「任意吊顶分区」的粗检查）。
+ * 只读既有声明（route/ref/serves_unit），**不发明 placement:{ref} 类新声明**（裁定一）。
+ */
+function resolveHostRoomId(terminal: HvacTerminal, anchors: readonly HvacAnchor[], routes: readonly HvacRoute[], zoneById: Map<string, CeilingZone>): string | undefined {
+  if (terminal.serves_unit !== undefined) return zoneById.get(terminal.serves_unit)?.room;
+  if (terminal.system === 'supply_air' || terminal.system === 'return_air') {
+    for (const route of routes) {
+      if (route.to !== terminal.id) continue;
+      const from = anchors.find((anchor) => anchor.id === route.from);
+      if (from?.ref?.source === 'ceiling') {
+        const room = zoneById.get(from.ref.id)?.room;
+        if (room !== undefined) return room;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
+ * 裁定一：「风口必须落在吊顶带内」。对每个非冷凝候选 terminal（25 个吊顶口），其
+ * position 必须落在宿主房间（可解析时）某个带 area 的吊顶分区边界内；落在所有分区之外
+ * 即 error。冷凝候选是 y=0.10 地面独立物理量（§4.2「合法单源」行），不是风口，不参与。
+ */
+export function lintHvacTerminalCeilingBands(input: HvacTerminalLintInput): HvacTerminalLintIssue[] {
+  const issues: HvacTerminalLintIssue[] = [];
+  const { terminals, ceiling, anchors = [], routes = [] } = input;
+  const bands = bandZones(ceiling);
+  const zoneById = new Map(ceiling.map((zone) => [zone.id, zone]));
+  for (const terminal of terminals) {
+    if (terminal.kind === 'condensate_drain_candidate') continue;
+    const hostRoom = resolveHostRoomId(terminal, anchors, routes, zoneById);
+    const candidates = hostRoom === undefined ? bands : bands.filter((zone) => zone.room === hostRoom);
+    if (hostRoom !== undefined && candidates.length === 0) {
+      issues.push(issue('error', 'terminal_host_room_without_band',
+        `宿主房间 ${hostRoom} 没有任何带 area 的吊顶分区，${terminal.id} 无法核对落位（分区数据缺失或 room 字段漂移）`, terminal.id));
+      continue;
+    }
+    const tolerance = terminalFaceTolerance(terminal);
+    const hit = candidates.find((zone) => zoneContainsPoint(zone, terminal.position.x, terminal.position.z, tolerance));
+    if (!hit) {
+      const detail = candidates.map((zone) => {
+        const [x1, z1, x2, z2] = zone.area as [number, number, number, number];
+        const dx = Math.max(x1 - terminal.position.x, terminal.position.x - x2, 0);
+        const dz = Math.max(z1 - terminal.position.z, terminal.position.z - z2, 0);
+        return `${zone.id}(越出 x=${dx.toFixed(3)}/z=${dz.toFixed(3)})`;
+      }).join(', ');
+      issues.push(issue('error', 'terminal_outside_ceiling_band',
+        `风口 ${terminal.id} (${terminal.position.x},${terminal.position.z}) 不在${hostRoom ? `宿主房间 ${hostRoom} 的` : '任何'}吊顶分区带内`
+        + `（百叶装不进吊顶带就是废口；侧装面容差 ${TERMINAL_FACE_PLANE_TOLERANCE_M}m）。候选：${detail || '无'}`, terminal.id));
+    }
+  }
+  return issues;
+}
+
+/**
+ * 裁定一落地：access 检修口 = 宿主 + 结构化 offset，断言
+ *   offset == position − serves_unit 宿主 position（容差 0.005m）。
+ * 坐标真值仍只有 position 一份；offset 是机器可校验的关系声明，取代 reason 散文。
+ */
+export function lintHvacAccessOffsets(input: Pick<HvacTerminalLintInput, 'terminals' | 'ceiling'>): HvacTerminalLintIssue[] {
+  const issues: HvacTerminalLintIssue[] = [];
+  const zoneById = new Map(input.ceiling.map((zone) => [zone.id, zone]));
+  for (const terminal of input.terminals) {
+    if (terminal.offset !== undefined && terminal.system !== 'access') {
+      issues.push(issue('error', 'terminal_offset_outside_access',
+        `${terminal.id} 声明了 offset 但 system=${terminal.system}——offset 仅限 access 检修口（宿主+偏移关系声明）`, terminal.id));
+    }
+    if (terminal.system !== 'access') continue;
+    if (terminal.serves_unit === undefined) {
+      issues.push(issue('error', 'access_serves_unit_missing', `access 检修口 ${terminal.id} 未声明 serves_unit（宿主内机 ceiling id）`, terminal.id));
+      continue;
+    }
+    if (terminal.offset === undefined) {
+      issues.push(issue('error', 'access_offset_missing', `access 检修口 ${terminal.id} 未声明结构化 offset（= position − 宿主 position；裁定一 2026-11-08）`, terminal.id));
+      continue;
+    }
+    const host = zoneById.get(terminal.serves_unit);
+    if (!host) {
+      issues.push(issue('error', 'access_offset_host_missing', `access 检修口 ${terminal.id} 的宿主 ${terminal.serves_unit} 不存在`, terminal.id));
+      continue;
+    }
+    const hostPos = normalizeCeilingZone(host);
+    if (hostPos.x === undefined || hostPos.z === undefined) {
+      issues.push(issue('error', 'access_offset_host_position_missing', `宿主 ${host.id} 无 x/z 且无 area，${terminal.id} 的 offset 无法对账`, terminal.id));
+      continue;
+    }
+    const expectedX = terminal.position.x - hostPos.x;
+    const expectedZ = terminal.position.z - hostPos.z;
+    if (Math.abs(terminal.offset.x - expectedX) > HVAC_ASSERT_TOLERANCE_M || Math.abs(terminal.offset.z - expectedZ) > HVAC_ASSERT_TOLERANCE_M) {
+      issues.push(issue('error', 'access_offset_mismatch',
+        `${terminal.id} 的 offset (${terminal.offset.x},${terminal.offset.z}) ≠ position − 宿主 ${host.id} position `
+        + `= (${expectedX.toFixed(3)},${expectedZ.toFixed(3)})（容差 ${HVAC_ASSERT_TOLERANCE_M}m）——真值只有 position 一份，两处必须恒等`, terminal.id));
+    }
+  }
+  return issues;
+}
+
+interface LdDecoSegment { terminal: HvacTerminalWithOffset; start: number; end: number; }
+
+function segmentOf(terminal: HvacTerminalWithOffset): LdDecoSegment | undefined {
+  if (terminal.length === undefined) return undefined;
+  return { terminal, start: terminal.position.x - terminal.length / 2, end: terminal.position.x + terminal.length / 2 };
+}
+
+/**
+ * LD-deco 铺满 lint（§5.3 指标 7「8 + 铺满 lint」结局）：带 = 吊顶带边界（宿主分区的
+ * area x 向）；同一行（mount_face + z）上装饰段与功能段必须精确铺满带边界，不留缝隙
+ * 也不重叠；登记的 R18 有意空白是唯一合法缺口，且任何段压进空白即 error（不许堵上）。
+ * 只检查「含装饰段的行」：检修口/纯功能行不属 LD 三层线语言。
+ */
+export function lintHvacLdDecoBandFill(input: Pick<HvacTerminalLintInput, 'terminals' | 'ceiling'>): HvacTerminalLintIssue[] {
+  const issues: HvacTerminalLintIssue[] = [];
+  const { terminals, ceiling } = input;
+  const deco = terminals.filter((terminal) => terminal.kind === 'decorative_louver');
+  if (deco.length === 0) return issues;
+  const bands = bandZones(ceiling);
+  // 带分区 = 含最多装饰段的分区：相邻分区共享边线（ceiling_living 北缘 z=4.30 与
+  // ceiling_entry_foyer 南缘同线），边界段会同时命中两个 bbox——按多数决解出宿主带，
+  // 真并列（无法唯一）才报歧义。
+  const ranked = bands
+    .map((zone) => ({
+      zone,
+      hits: deco.filter((segment) => {
+        const tolerance = terminalFaceTolerance(segment);
+        return zoneContainsPoint(zone, segment.position.x, segment.position.z, tolerance);
+      }).length,
+    }))
+    .filter((entry) => entry.hits > 0)
+    .sort((a, b) => b.hits - a.hits);
+  if (ranked.length === 0 || (ranked.length > 1 && ranked[0]!.hits === ranked[1]!.hits)) {
+    const tied = ranked.filter((entry) => entry.hits === (ranked[0]?.hits ?? 0)).map((entry) => entry.zone.id);
+    issues.push(issue('error', 'ld_deco_band_zone_ambiguous',
+      `装饰段的宿主带无法唯一解析（并列：${tied.join(', ') || '无任何分区命中'}）——LD-deco 带边界检查挂起`, deco[0]!.id));
+    return issues;
+  }
+  const band = ranked[0]!.zone;
+  const bandX1 = (band.area as [number, number, number, number])[0];
+  const bandX2 = (band.area as [number, number, number, number])[2];
+
+  // 行分组：带内、声明了长度的 terminal，按 (mount_face, z) 聚合（z 用 0.005 容差吸手改抖动）。
+  interface Row { mountFace: string; z: number; segments: LdDecoSegment[]; }
+  const rows: Row[] = [];
+  for (const terminal of terminals) {
+    if (terminal.kind === 'condensate_drain_candidate') continue;
+    const tolerance = terminalFaceTolerance(terminal);
+    if (!zoneContainsPoint(band, terminal.position.x, terminal.position.z, tolerance)) continue;
+    if (terminal.mount_face === undefined) continue;
+    const segment = segmentOf(terminal);
+    if (!segment) continue;
+    const row = rows.find((candidate) => candidate.mountFace === terminal.mount_face && Math.abs(candidate.z - terminal.position.z) <= LD_DECO_ROW_EPSILON_M);
+    if (row) row.segments.push(segment);
+    else rows.push({ mountFace: terminal.mount_face, z: terminal.position.z, segments: [segment] });
+  }
+
+  const blanksFor = (row: Row): LdDecoIntentionalBlank[] => LD_DECO_INTENTIONAL_BLANKS.filter((blank) =>
+    blank.mount_face === row.mountFace && Math.abs(blank.z - row.z) <= LD_DECO_ROW_EPSILON_M);
+
+  for (const row of rows) {
+    const hasDeco = row.segments.some((segment) => segment.terminal.kind === 'decorative_louver');
+    const blanks = blanksFor(row);
+    if (!hasDeco) {
+      if (blanks.length > 0) {
+        issues.push(issue('warning', 'ld_deco_blank_row_missing',
+          `登记的有意空白所在行 (${row.mountFace}, z=${row.z}) 已没有任何段——空白登记失去宿主行，请复核登记或行位`, row.segments[0]?.terminal.id));
+      }
+      continue;
+    }
+    const rowId = `行 (${row.mountFace}, z=${row.z})`;
+    for (const segment of row.segments) {
+      if (segment.terminal.length === undefined) {
+        issues.push(issue('error', 'ld_deco_row_segment_without_length', `${rowId} 的 ${segment.terminal.id} 未声明 length，无法参与铺满判定`, segment.terminal.id));
+      }
+      if (segment.start < bandX1 - LD_DECO_EXACT_EPSILON_M || segment.end > bandX2 + LD_DECO_EXACT_EPSILON_M) {
+        issues.push(issue('error', 'ld_deco_row_out_of_band',
+          `${rowId} 的 ${segment.terminal.id} 段 [${segment.start.toFixed(3)},${segment.end.toFixed(3)}] 越出带边界 [${bandX1},${bandX2}]`, segment.terminal.id));
+      }
+      for (const blank of blanks) {
+        if (segment.start < blank.x2 - LD_DECO_EXACT_EPSILON_M && segment.end > blank.x1 + LD_DECO_EXACT_EPSILON_M) {
+          issues.push(issue('error', 'ld_deco_row_fills_intentional_blank',
+            `${rowId} 的 ${segment.terminal.id} 段 [${segment.start.toFixed(3)},${segment.end.toFixed(3)}] 压进 R18 有意空白 [${blank.x1},${blank.x2}]`
+            + `——不许为了铺满把有意空白堵上（${blank.basis}）`, segment.terminal.id));
+        }
+      }
+    }
+    const sorted = [...row.segments].sort((a, b) => a.start - b.start);
+    let cursor = bandX1;
+    let blankIndex = 0;
+    for (const segment of sorted) {
+      if (blankIndex < blanks.length && Math.abs(cursor - blanks[blankIndex].x1) <= LD_DECO_EXACT_EPSILON_M
+        && Math.abs(segment.start - blanks[blankIndex].x1) > LD_DECO_EXACT_EPSILON_M
+        && segment.start >= blanks[blankIndex].x2 - LD_DECO_EXACT_EPSILON_M) {
+        cursor = blanks[blankIndex].x2;
+        blankIndex += 1;
+      }
+      if (segment.start > cursor + LD_DECO_EXACT_EPSILON_M) {
+        issues.push(issue('error', 'ld_deco_row_gap',
+          `${rowId} 在 [${cursor.toFixed(3)},${segment.start.toFixed(3)}] 有缝隙——同一行上装饰段与功能段必须精确铺满带边界`, segment.terminal.id));
+      } else if (segment.start < cursor - LD_DECO_EXACT_EPSILON_M) {
+        issues.push(issue('error', 'ld_deco_row_overlap',
+          `${rowId} 的 ${segment.terminal.id} 段起点 ${segment.start.toFixed(3)} 与前段末端 ${cursor.toFixed(3)} 重叠——不许重叠`, segment.terminal.id));
+      }
+      cursor = Math.max(cursor, segment.end);
+    }
+    if (blankIndex < blanks.length && Math.abs(cursor - blanks[blankIndex].x1) <= LD_DECO_EXACT_EPSILON_M) {
+      cursor = blanks[blankIndex].x2;
+      blankIndex += 1;
+    }
+    if (cursor < bandX2 - LD_DECO_EXACT_EPSILON_M) {
+      issues.push(issue('error', 'ld_deco_row_gap',
+        `${rowId} 在 [${cursor.toFixed(3)},${bandX2.toFixed(3)}] 未铺满带边界（若为有意空白须先登记 LD_DECO_INTENTIONAL_BLANKS）`, row.segments[0]?.terminal.id));
+    }
+  }
+  return issues;
+}
+
+/** 三项检查合并入口（test:server 与后续 verify:all 接线共用）。 */
+export function lintHvacTerminals(input: HvacTerminalLintInput): HvacTerminalLintIssue[] {
+  return [
+    ...lintHvacTerminalCeilingBands(input),
+    ...lintHvacAccessOffsets(input),
+    ...lintHvacLdDecoBandFill(input),
+  ];
+}

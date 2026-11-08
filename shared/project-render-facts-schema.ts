@@ -1,6 +1,7 @@
 import { CEILING_SOURCE } from './envelope-sources.js';
 import { load as parseYaml } from 'js-yaml';
 import { z } from 'zod';
+import { lintHvacAccessOffsets, HvacTerminalWithOffset, HvacAnchorWithSchematicOnly } from './hvac-terminal-lint.js';
 import {
   VALID_CEILING_TYPES,
   type CeilingZone,
@@ -210,8 +211,18 @@ export const HvacAnchorSchema = reasonForUnconfirmed(z.object({
   // shared/envelope-sources.ts 的来源注册表；outdoor/electrical 是非 envelope 源）。
   ref: z.object({ source: z.enum(['outdoor', CEILING_SOURCE, 'electrical']), id: nonEmpty }).strict().optional(),
   position: Vec3Schema.optional(), reason: z.string().optional(),
+  // 示意图层标注（issue #98 S2，业主裁定四 2026-11-08）：branch_master/study/parent/child 是
+  // 与 MEP 冷媒折线并行表达的示意锚点（离 MEP 折线 0.000–0.364m，MEP 不引用它们，phase5-survey
+  // §1.4-C2 按 A 轨细分）——true = 「示意、不参与几何/不放线」，消费方与读者不得把它们当
+  // MEP 节点的真副本对账（§6.3-6 的完整定性未裁，位置一个不动）。branch_dining 不打此标
+  // （它自称沿用 MEP 节点，走裁定三的对齐路径）。
+  schematic_only: z.boolean().optional(),
 }).strict().superRefine((value, ctx) => {
   if (Boolean(value.ref) === Boolean(value.position)) ctx.addIssue({ code: 'custom', message: 'HVAC anchor requires exactly one of ref or position' });
+  if (value.schematic_only === true) {
+    if (value.status !== 'inferred') ctx.addIssue({ code: 'custom', message: `schematic_only 锚点只能是 inferred 态（示意锚点不是已确认事实），${value.id} 是 ${value.status}`, path: ['status'] });
+    if (!value.reason?.trim()) ctx.addIssue({ code: 'custom', message: `schematic_only 锚点必须带 reason（示意依据），${value.id}`, path: ['reason'] });
+  }
 }));
 export const HvacTerminalSchema = z.object({
   id: nonEmpty,
@@ -230,9 +241,26 @@ export const HvacTerminalSchema = z.object({
   grille_height: z.number().positive().optional(),
   /** 检修口服务的内机 ceiling id（如 ac_dining）；仅 system=access 的终端使用，DEC-2026-10-27-R03。 */
   serves_unit: z.string().optional(),
+  /**
+   * 检修口相对宿主机位的结构化偏移（米，带符号；= position − serves_unit 宿主 x/z）。
+   * issue #98 S2，业主裁定一（2026-11-08）：「宿主+偏移」关系从 reason 散文提为机器可校验
+   * 声明，但**坐标真值仍只有 position 一份**（风口位 = 内机的事实不动）；恒等断言由
+   * validateProjectHvacFacts + shared/hvac-terminal-lint.ts lintHvacAccessOffsets 执法
+   * （容差 0.005m）。schema 层只管结构（offset ⟹ access 且与 serves_unit 成对）；
+   * 「access 必须声明 offset」的完整性规则与 serves_unit 存在性校验同住 validate 层
+   * （断言需要 ceiling 宿主坐标，schema 只有 id 字符串，两层各管半边）。
+   */
+  offset: z.object({ x: finiteNumber, z: finiteNumber }).strict().optional(),
 }).strict().superRefine((value, ctx) => {
   if (value.status !== 'confirmed' && !value.reason?.trim()) {
     ctx.addIssue({ code: 'custom', message: `${value.status} HVAC facts require reason`, path: ['reason'] });
+  }
+  if (value.system === 'access' && value.serves_unit === undefined) {
+    ctx.addIssue({ code: 'custom', message: `access 检修口 ${value.id} 必须声明 serves_unit（宿主内机 ceiling id）`, path: ['serves_unit'] });
+  }
+  if (value.offset !== undefined) {
+    if (value.system !== 'access') ctx.addIssue({ code: 'custom', message: `offset 仅限 system=access 的检修口使用，${value.id} 是 ${value.system}`, path: ['system'] });
+    if (value.serves_unit === undefined) ctx.addIssue({ code: 'custom', message: `offset 必须与 serves_unit（宿主内机 ceiling id）成对声明，${value.id}`, path: ['serves_unit'] });
   }
   if (value.kind === 'decorative_louver') {
     if (value.system !== 'decorative') ctx.addIssue({ code: 'custom', message: 'decorative louver must use decorative system', path: ['system'] });
@@ -854,6 +882,27 @@ export function validateProjectHvacFacts(hvac: ProjectHvacFacts, facts: Pick<Pro
       if (terminal.serves_unit === undefined) continue;
       if (!facts.ceiling.some((zone) => zone.id === terminal.serves_unit)) {
         throw new Error(`HVAC terminal ${terminal.id} serves unknown ceiling unit: ${terminal.serves_unit}`);
+      }
+    }
+    // access offset 恒等断言（issue #98 S2，业主裁定一 2026-11-08）：offset == position −
+    // serves_unit 宿主 position（容差 0.005m）。真值只有 position 一份，offset 是关系声明，
+    // 两处漂移即加载期失败——单一实现住在 shared/hvac-terminal-lint.ts（test:server 的
+    // 绿/红变异共用同一函数，不造第二套算法）。
+    const offsetIssues = lintHvacAccessOffsets({
+      terminals: plan.diagram.terminals as HvacTerminalWithOffset[],
+      ceiling: facts.ceiling,
+    });
+    if (offsetIssues.length > 0) {
+      throw new Error(`HVAC access offset 对账失败（${offsetIssues.length} 条）：${offsetIssues.map((entry) => entry.message).join('；')}`);
+    }
+    // schematic_only 锚点（裁定四）是示意图层，不得当 route 终点消费——route.to 指向示意锚点
+    // 就是把它当真节点放线；via（拓扑经过示意）仍允许（refrigerant_*_branch 的既有形态）。
+    const schematicIds = new Set(plan.diagram.anchors.filter((anchor) => (anchor as HvacAnchorWithSchematicOnly).schematic_only === true).map((anchor) => anchor.id));
+    if (schematicIds.size > 0) {
+      for (const route of plan.diagram.routes) {
+        if (schematicIds.has(route.to)) {
+          throw new Error(`HVAC route ${route.id} 的 to 指向 schematic_only 示意锚点 ${route.to}（示意锚点不参与几何/不放线，不能当 route 终点）`);
+        }
       }
     }
   }
