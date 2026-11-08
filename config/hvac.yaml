@@ -239,26 +239,38 @@ plans:
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_living_ac }
+          serves_unit: ac_living
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_dining
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_dining_ac }
+          serves_unit: ac_dining
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_master
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_master_ac }
+          serves_unit: ac_master
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_study
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_study_ac }
+          serves_unit: ac_study
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_parent
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_parent_ac }
+          serves_unit: ac_parent
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_child
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_child_ac }
+          serves_unit: ac_child
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: bend_corridor
           status: inferred
           system: refrigerant

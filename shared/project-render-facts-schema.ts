@@ -1,7 +1,7 @@
 import { CEILING_SOURCE } from './envelope-sources.js';
 import { load as parseYaml } from 'js-yaml';
 import { z } from 'zod';
-import { lintHvacAccessOffsets, HvacTerminalWithOffset, HvacAnchorWithSchematicOnly } from './hvac-terminal-lint.js';
+import { lintHvacAccessOffsets, HvacTerminalWithOffset, HvacAnchorWithSchematicOnly, HvacAnchorWithServesUnit } from './hvac-terminal-lint.js';
 import {
   VALID_CEILING_TYPES,
   type CeilingZone,
@@ -217,11 +217,25 @@ export const HvacAnchorSchema = reasonForUnconfirmed(z.object({
   // MEP 节点的真副本对账（§6.3-6 的完整定性未裁，位置一个不动）。branch_dining 不打此标
   // （它自称沿用 MEP 节点，走裁定三的对齐路径）。
   schematic_only: z.boolean().optional(),
+  /**
+   * 取电锚点服务的内机 ceiling id（如 ac_living）。issue #98 第五阶段 S3：取代
+   * 「power_living ↔ ac_living」按 id 房间名的隐式映射（phase5-survey §3-2），成为
+   * 「哪个插座供哪台内机」的显式声明腿。schema 层只管结构（仅限 system=power）；
+   * 存在性校验（ceiling 里须有该 ac_indoor）住 validateProjectHvacFacts，三方配对断言
+   * （ref ↔ serves_unit ↔ host_intent ↔ route 终点）住 shared/hvac-terminal-lint.ts 的
+   * lintHvacPowerPairing（测试级，同 S2 E8 节奏）。与 terminal 侧 serves_unit（access
+   * 检修口宿主）同名不同物：那是 terminal → ceiling 的宿主声明，这是 power anchor →
+   * ceiling 的服务对象声明。
+   */
+  serves_unit: z.string().optional(),
 }).strict().superRefine((value, ctx) => {
   if (Boolean(value.ref) === Boolean(value.position)) ctx.addIssue({ code: 'custom', message: 'HVAC anchor requires exactly one of ref or position' });
   if (value.schematic_only === true) {
     if (value.status !== 'inferred') ctx.addIssue({ code: 'custom', message: `schematic_only 锚点只能是 inferred 态（示意锚点不是已确认事实），${value.id} 是 ${value.status}`, path: ['status'] });
     if (!value.reason?.trim()) ctx.addIssue({ code: 'custom', message: `schematic_only 锚点必须带 reason（示意依据），${value.id}`, path: ['reason'] });
+  }
+  if (value.serves_unit !== undefined && value.system !== 'power') {
+    ctx.addIssue({ code: 'custom', message: `serves_unit 仅限 system=power 的取电锚点使用，${value.id} 是 ${value.system}`, path: ['system'] });
   }
 }));
 export const HvacTerminalSchema = z.object({
@@ -894,6 +908,20 @@ export function validateProjectHvacFacts(hvac: ProjectHvacFacts, facts: Pick<Pro
     });
     if (offsetIssues.length > 0) {
       throw new Error(`HVAC access offset 对账失败（${offsetIssues.length} 条）：${offsetIssues.map((entry) => entry.message).join('；')}`);
+    }
+    // power anchor serves_unit 存在性校验（issue #98 第五阶段 S3）：取电锚点服务的内机
+    // ceiling id 必须是真实存在的 ac_indoor 对象——serves_unit 从「id 房间名的隐式映射」
+    // 提为显式声明后，写错 id 加载期即抛（与上方 terminal serves_unit 校验同款 fail-closed）；
+    // 「合法 id 的错配」（如 power_child serves ac_master）由 lintHvacPowerPairing 的
+    // route/ref/host_intent 三腿对账抓，两层各管半边，分工同 access offset。
+    for (const anchor of plan.diagram.anchors) {
+      const servesUnit = (anchor as HvacAnchorWithServesUnit).serves_unit;
+      if (servesUnit === undefined) continue;
+      const unit = facts.ceiling.find((zone) => zone.id === servesUnit);
+      if (!unit) throw new Error(`HVAC anchor ${anchor.id} serves unknown ceiling unit: ${servesUnit}`);
+      if (unit.type !== 'ac_indoor') {
+        throw new Error(`HVAC anchor ${anchor.id} 的 serves_unit ${servesUnit} 不是 ac_indoor 内机对象（type=${unit.type}）`);
+      }
     }
     // schematic_only 锚点（裁定四）是示意图层，不得当 route 终点消费——route.to 指向示意锚点
     // 就是把它当真节点放线；via（拓扑经过示意）仍允许（refrigerant_*_branch 的既有形态）。
