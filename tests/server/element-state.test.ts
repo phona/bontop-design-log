@@ -223,13 +223,16 @@ describe('element census snapshot', () => {
   it('pins the element census so undeclared elements cannot slip in silently', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, ledger: { entries: [] }, issues: [] });
-    assert.equal(result.summary.total, 162, '构件总数（电气 104 + 给排水 33 + 吊顶/HVAC 25；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104）');
+    assert.equal(result.summary.total, 162, '构件总数（电气 104 + 给排水 33 + 吊顶/HVAC 25；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104；2026-11-08 issue #98 S1-B 状态申报只补字段不增删构件）');
     // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
     // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
     // 本轮将烟机插座试位 (z=1.50) 显式标为 pending，故空台账快照仍留下 5 个未知：
     // 两个吊顶分区 + 阳台洗衣机排水 + 主卧两窗帘盒。
-    // DEC-2026-10-28-R05：主卧南窗帘盒归位时 note 补了 DEC 全引 → 该盒不再是申报缺口，5→4
-    //（剩余：两个吊顶分区 + 阳台洗衣机排水 + 主卧西窗帘盒；后者不在本轮范围，留作后续）。
+    // DEC-2026-10-28-R05：主卧南窗帘盒归位时 note 补了 DEC 全引 → 该盒不再是申报缺口，5→4。
+    // 2026-11-08 issue #98 S1-B：原 67 个「DEC 引用 confirmed」构件补显式 status/position_status
+    // （issue #98 要求 DEC 引用不再直接产生状态），decision 引用通道归零——申报缺口不因此变化，
+    // 仍是既有 4 个：两个吊顶分区（ceiling_child_ac / ceiling_main_corridor）+ 主卧西窗帘盒
+    // （curtain_box_master_west，#53 追踪）+ 阳台洗衣机排水（drain_balcony_washer，#51 追踪）。
     assert.equal(result.summary.undeclared, 4, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
     assert.ok(result.summary.undeclared / result.summary.total < 0.15, '申报缺口应维持在低位；重新升高说明有新构件没申报');
   });
@@ -238,12 +241,19 @@ describe('element census snapshot', () => {
     const elements = collectElements();
     const ledger = parsePendingLedger(LEDGER);
     const result = deriveElementStates({ elements, ledger, issues: [] });
+    // issue #98 S1-B（2026-11-08）：DEC 引用不再直接产生状态——原 67 个 statusSource=decision:
+    // 的构件已按语义 triage 补显式 status/position_status（每处依据见各 config 条目的
+    // 「S1-B 状态申报」注释：DEC 条目 id + config 现状事实），decision 通道归零是本断言的锚。
+    const byDecision = result.states.filter((state) => state.statusSource.startsWith('decision:'));
+    assert.deepEqual(byDecision.map((state) => state.id), [], 'DEC 引用通道必须为 0——67 个构件已补显式申报，不允许 note 内编号再隐式产生 confirmed');
     // 接上真实台账后，#64 原绑定的冰箱旧端点 sock_kitchen_fridge 已删除（DEC-2026-10-17-R20），
     // 其台账条目留存历史、不再绑元素；新端点 sock_fridge_living 由 config position_status 标 pending。
     // 吊顶两个分区仍无出处，不因其他 pending 项而静默归类。
     assert.equal(result.summary.undeclared, 2, '真实台账下只剩 2 个无出处的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 35); // DEC-2026-11-05-R5 新增 #75 水压实测绑 faucet_gbath_vanity（33→34）；2026-11-06 issue #98 PR-4 三点位显式申报后 faucet_gbath_vanity 由 ledger 规则改走 config_status 规则（status: inferred，#75 仍作 openQuestion 挂带、不丢「卡在谁」），pending 34→33；sock_gbath_robot（status: inferred——现坐标是塞柜底旧位、迁仓侧面后坐标待定，设计推断占位）与 drain_gbath_vanity（status: inferred + construction_status: pending，同族 drain_mbath_vanity 与所连路线精度三件套口径）原凭 note 内 DEC 引用落 confirmed，现按 config_status 落 inferred，confirmed 77→75、inferred 49→52；包括 #61/#64 与本轮 position_status: pending 的 sock_kitchen_hood 试位；DEC-2026-10-17-R20 净 +4（sock_fridge_living / sock_kitchen_east_counter / sock_weakbox 新增未路由点位与 sock_gbath_towel 换墙迁移复核均落 pending，28→32，实测 derive 值）；DEC-2026-10-23-R03 +1：#74 改写显名 drain_gbath_floor 落 pending（32→33，实测 derive 值）；2026-11-06 issue #98 PR-6 +2：sock_gbath_vanity / sock_gbath_vanity_2 宿主核实=墙挂（不挂柜）并按口径 A 迁到西完成面 x 7.14，同步精度三件套 status: inferred + position_status: pending（x 依渲染基准先行、7.14/7.20 结构真值待 pending #76 量房）——原凭 note 内 DEC 引用落 confirmed，现按 config_status 落 pending，confirmed 75→73、pending 33→35
-    assert.ok((result.summary.byStatus.confirmed ?? 0) > 0, 'DEC 引用必须把构件绑成 confirmed');
+    assert.equal(result.summary.pending, 37); // 2026-11-08 issue #98 S1-B +2：sock_kitchen_dishwasher（note 明文坐标待量房）与 net_ap_corridor（note 明文边吊位/走廊位待网络方案定标）由 DEC 引用 confirmed 降为 position_status: pending 显形——诚实降级，不是丢失；confirmed 73→6（全部为 config/hvac.yaml ac_* anchor 权威状态，65 个设计裁定值落 inferred）。前史：DEC-2026-11-05-R5 新增 #75 水压实测绑 faucet_gbath_vanity（33→34）；2026-11-06 issue #98 PR-4 三点位显式申报后 faucet_gbath_vanity 由 ledger 规则改走 config_status 规则（status: inferred，#75 仍作 openQuestion 挂带、不丢「卡在谁」），pending 34→33；sock_gbath_robot（status: inferred——现坐标是塞柜底旧位、迁仓侧面后坐标待定，设计推断占位）与 drain_gbath_vanity（status: inferred + construction_status: pending，同族 drain_mbath_vanity 与所连路线精度三件套口径）原凭 note 内 DEC 引用落 confirmed，现按 config_status 落 inferred，confirmed 77→75、inferred 49→52；DEC-2026-10-17-R20 净 +4（sock_fridge_living / sock_kitchen_east_counter / sock_weakbox 新增未路由点位与 sock_gbath_towel 换墙迁移复核均落 pending，28→32，实测 derive 值）；DEC-2026-10-23-R03 +1：#74 改写显名 drain_gbath_floor 落 pending（32→33，实测 derive 值）；2026-11-06 issue #98 PR-6 +2：sock_gbath_vanity / sock_gbath_vanity_2 宿主核实=墙挂（不挂柜）并按口径 A 迁到西完成面 x 7.14，同步精度三件套 status: inferred + position_status: pending——原凭 note 内 DEC 引用落 confirmed，现按 config_status 落 pending，confirmed 75→73、pending 33→35
+    const confirmed = result.states.filter((state) => state.status === 'confirmed');
+    assert.equal(confirmed.length, 6, 'confirmed 剩 6 个且全部来自 hvac anchor（ac_* 成交映射），不再有 DEC 引用产生的 confirmed');
+    for (const state of confirmed) assert.match(state.statusSource, /config\/hvac\.yaml/, `confirmed 的权威必须是 config/hvac.yaml：${state.id} → ${state.statusSource}`);
   });
 });
 

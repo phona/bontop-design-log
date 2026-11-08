@@ -29,6 +29,9 @@
   note: "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；DEC-2026-10-03-R1：当前 faucet_kitchen_sink 同款 h=0.8 是抽象服务点，不足施工——台上盆+壁挂龙头需单独定义冷热水预埋、暗装阀体/出水嘴高度与墙排中心，等台盆/龙头 SKU 冻结后才能埋设，水电工不得按 0.8m 抽象点直接开槽（site_pending）"
 
 - id: drain_mbath_vanity
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-03-R1（台盆/龙头 SKU 未冻结、h=0.35 为抽象服务点）与 2026-10-05 给排水 v1 推断落库（立管 #19 推断值）
+  status: inferred
+  construction_status: pending
   room: master_bedroom  # 位于套间条带（2026-08-25 台盆外移）
   wall: w_mbath_south
   wall_side: south
@@ -53,6 +56,9 @@
   status: inferred
 
 - id: toilet_mbath
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-03-R1（坐便器形式/坑距未定 #31；壁挂则现有给水位随假墙方案作废）
+  status: inferred
+  construction_status: pending
   room: master_bath
   wall: w_mbath_east
   wall_side: west
@@ -72,6 +78,9 @@
 # 排污口落盆体下方而非墙边，并消除 drain marker 骑墙线突出儿童房 1.5cm 的问题。
 # 同层排水沉箱接入，不得并入干区地漏。
 - id: drain_mbath_toilet
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-03-R1（沉箱内接入推断立管 #19）与 #31/#36 SKU 待定
+  status: inferred
+  construction_status: pending
   room: master_bath
   type: drain
   drain_dn: 110
@@ -82,6 +91,9 @@
   note: "DEC-2026-10-03-R1 主卫马桶排污口（对齐马桶中心 (2.60,1.50)）：同层排水沉箱内接入，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏。2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-toilet-to-riser`（gravity_floor_drain，同层沉箱内接入推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；坑距、坐便器形式（落地/壁挂，pending #31/#36）、主卫排水立管实测位置（pending #19）均待量房与 SKU 冻结后终核；DEC-2026-10-06-R1 管径分级：本马桶排污点口径 de110（管径字段本点未标 diameter，按 de110 分级补注）。2026-10-26 坐标修正记录：上文“对齐马桶中心 (2.60,1.50)”为误记——2026-09-08 家具马桶西移 25mm 后，(2.60,1.50) 只是马桶东缘与共墙 w_mbath_east 中心线（x=2.60）齐平之位，不是马桶中心；马桶本体 mbath.toilet（placement x=2.275）footprint 为 x[2.050,2.600]、base 中心 (2.275,1.50)，本点按原对齐意图修正为 footprint 中心 (2.275,1.50)，排污口落盆体下方而非墙边；同时消除 0.15m 见方 drain marker（无墙引用按裸坐标放置）骑共墙中心线、东缘突出儿童房（bedroom_nw，x>2.66）1.5cm 的问题；MEP route drain-mbath-toilet-to-riser 按点位 id 绑定自动跟随（西段 2.30m→1.975m，坡度链同步回算，见该路线 reason）。"
 
 - id: drain_mbath_shower
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-08-W03 推断路线；挡水坎/找坡与立管实测位待量房
+  status: inferred
+  construction_status: pending
   room: master_bath
   type: drain
   drain_dn: 50
@@ -92,6 +104,9 @@
   note: "主卫淋浴地漏（地面；2026-08-25 隔墙北移 z=2.86 后随湿区内收）；DEC-2026-10-08-W03 已画推断路线 drain-mbath-shower-to-riser（1% 坡接主卫推断立管，construction_status: pending、不作为施工依据），挡水坎/找坡与立管实测位待量房"
 
 - id: drain_mbath_floor
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-08-W03 推断路线；沉箱最低点与立管实测位待量房
+  status: inferred
+  construction_status: pending
   room: master_bath
   type: drain
   drain_dn: 50
@@ -141,6 +156,9 @@
   status: inferred
 
 - id: toilet_gbath
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-03-R1（坐便器形式/坑距未定 #31）
+  status: inferred
+  construction_status: pending
   room: guest_bath
   wall: w_gbath_east
   wall_side: west
@@ -153,6 +171,9 @@
   note: "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.75,3.05)，真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.20,3.05) h=0.3（2026-10-23 DEC-2026-10-23-R04 随东墙线 7.10→7.20 同步）、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31"
 
 - id: drain_gbath_shower
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-08-W03 推断路线；立管实测位待量房
+  status: inferred
+  construction_status: pending
   room: guest_bath
   type: drain
   drain_dn: 50
@@ -173,6 +194,9 @@
   note: "2026-08-29 客卫南段马桶/干区地漏（地面，随马桶中心调整至 z=3.05）；DEC-2026-10-08-W03 已画推断路线 drain-gbath-floor-to-riser（1% 坡接客卫推断立管，construction_status: pending、不作为施工依据），立管实测位待量房；外置洗漱区地漏若需要另行深化；DEC-2026-10-23-R03：本点兼作客卫沉箱二次排水口候选锚点（沉箱最低处候选，与 pending #74 客卫二次排水同位登记），二次排水需求路线 drain-gbath-secondary-requirement 以本点为最低处候选锚点、以 design_requirement 表达需求（示意段自锚点东侧 0.15m 起画，全程避开 drain-guest-bath 串联支路中线、独立接立管）——注意地面泄水与防水层下二次排水是两回事，不得并入同一接点（与主卫 drain_mbath_floor / #50 同口径），最低点与二次口位待量房"
 
 - id: faucet_kitchen_sink
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-08-02-013 台面定位与 2026-10-05 v1 推断；x 坐标以 #7/#16 立管与 #8 入户点为前提
+  status: inferred
+  construction_status: pending
   room: kitchen
   type: faucet
   water_temp: "mixed"
@@ -212,6 +236,9 @@
   note: "洗碗机给水（DEC-2026-10-17-R20 补建模：此前全模型未声明洗碗机给水，水电交底单会漏项；给水自水槽下角阀三通引出，与 drain_kitchen_dishwasher (9.00) 同区、与 sock_kitchen_dishwasher (9.30) 同位不同系统；随洗碗机 SKU（排水泵/接管方式）与量房终核。给水路线待走线专项与 water-purifier-branch 同批深化；**本轮不画 MEP route**：给水入户点 pending #8 与洗碗机 SKU 未选型，量房前画线等于编路由（pending #44，口径同 shower_mbath/shower_gbath））"
 
 - id: drain_kitchen_sink
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-08-02-013 与 2026-10-05 v1 推断落库；#7/#16 实测为准
+  status: inferred
+  construction_status: pending
   room: kitchen
   type: drain
   drain_dn: 50
@@ -222,6 +249,9 @@
   note: "厨房洗菜盆下水（DEC-2026-08-02-013 移至北墙地面）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-kitchen-sink-to-riser`（gravity_floor_drain 接推断立管 drain_riser_kitchen (10.5,0.3)，同 z 无折线），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；⚠️ 接立管位置以 pending #7/#16 实测为准，量房日升级 measured 后回写"
 
 - id: faucet_balcony_washer
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-08-W02（上游改绑 water_heater 锚点）；量房后以热水器实测位为准
+  status: inferred
+  construction_status: pending
   room: balcony
   wall: w_balc_west
   wall_side: east
@@ -234,6 +264,9 @@
   note: "生活阳台洗衣机给水（DEC-2026-10-08-W02：上游 from 由内联 (7.3,1.08) 改绑 water_heater 锚点，与热水器平面差 0.08m 属原候选偏移，量房后以热水器实测位为准）"
 
 - id: drain_balcony_floor
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-06-R1（改专用墙排后仅作地面泄水）与 DEC-2026-10-08-W01 路线；#51 立管实测待量房
+  status: inferred
+  construction_status: pending
   room: balcony
   type: drain
   drain_dn: 50
@@ -274,6 +307,9 @@
 # === 新增点位（2026-07-25 基线补齐） ===
 
 - id: drain_kitchen_dishwasher
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-08-02-013 与 2026-10-05 v1 推断落库；#7/#16 实测与洗碗机 SKU 终核
+  status: inferred
+  construction_status: pending
   room: kitchen
   type: drain
   drain_dn: 50

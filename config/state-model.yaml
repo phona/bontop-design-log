@@ -24,7 +24,11 @@ priority: [conflict, config_status, ledger, decision, fallback]
 
 # config 状态词 → 统一状态词。
 #   likely → inferred：两者都未经现场核实，统一按「推断」处理；原值保留在 statusSource 里。
-status_vocabulary:
+# 2026-11-08（issue #98 S1-B）：键名由蛇形 status_vocabulary 改为驼峰 statusVocabulary——
+# 此前代码（scripts/project/state-projection.ts 读 modelConfig.statusVocabulary）只认驼峰，
+# 蛇形键静默走 DEFAULT_STATE_MODEL，词汇表「可评审」沦为死配置。默认值与原 YAML 内容逐键
+# 相同，故本次改名无行为差，只是让声明真正被读取。
+statusVocabulary:
   measured: measured
   likely: inferred
   inferred: inferred

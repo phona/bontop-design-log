@@ -183,7 +183,13 @@ export function collectElements(): ElementInput[] {
       ...(zone.room ? { room: zone.room } : {}),
       // HVAC anchor 的 status（已映射成 ElementState 词汇）与出处覆盖 config_status 默认格式，
       // 使 statusSource 能说清「来自 config/hvac.yaml 的哪条 anchor、依据是什么」。
-      ...(hvac ? { configStatus: hvac.status, configStatusSource: hvac.statusSource } : {}),
+      // anchor 不在时退到分区自身的显式 status（issue #98 S1-B 补录通道；与电气/给排水同词汇）。
+      // 顺序硬约束：anchor 优先——6 个 ac_* 的 statusSource 逐位不变。
+      ...(hvac
+        ? { configStatus: hvac.status, configStatusSource: hvac.statusSource }
+        : zone.status
+          ? { configStatus: zone.status }
+          : {}),
       ...(decision ? { decision } : {}),
     });
   }

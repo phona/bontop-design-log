@@ -34,12 +34,6 @@ function readYaml<T>(file: string): T {
   return parseYaml(readFileSync(path.join(ROOT, file), 'utf8')) as T;
 }
 
-function extractDecision(note: string | undefined): string | undefined {
-  if (!note) return undefined;
-  const match = note.match(/DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.]+/);
-  return match ? match[0] : undefined;
-}
-
 const VERIFIER_SCRIPTS: Record<string, string> = {
   'verify-spatial': 'scripts/verify/spatial/verify-spatial.ts',
   'verify-penetration': 'scripts/verify/penetration/verify-penetration.ts',

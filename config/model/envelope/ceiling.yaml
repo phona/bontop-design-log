@@ -9,6 +9,8 @@
 # 注释自身贡献 0 处。与 openings 32 + floor-zones 9 + finish-defaults 3 同属阶段 C
 # 「DEC 退役 → intent/evidence」的输入清单（逐文件表与汇总算式见 openings.yaml 头注）。
 - id: ceiling_living
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-13-R4（原顶定案）与 DEC-2026-10-15-C02（扩深 z=5.55）——分区几何裁定值；风口/实机净空待核由 #39/#73 承接
+  status: inferred
   room: living_dining
   type: drop
   thickness: 0.30
@@ -78,6 +80,8 @@
   note: "儿童房空调内机"
 
 - id: drying_rack_living
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-08-C01（drying_rack trade 分类与计量）——设计值未经现场实测
+  status: inferred
   room: living_dining
   type: drop
   trade: drying_rack
@@ -86,6 +90,8 @@
   note: "客厅南侧隐藏式晾衣架吊顶（预埋加固板+电源 sock_living_drying）；溯源：DEC-2026-10-08-C01（drying_rack 隐藏晾衣架吊顶的 trade 工艺分类与计量，净 1.080㎡）"
 
 - id: curtain_box_living
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-08-C01（curtain_box trade 工艺分类与计量裁定）——设计值未经现场实测
+  status: inferred
   room: living_dining
   type: drop
   trade: curtain_box
@@ -96,6 +102,8 @@
 # === 餐厅服务带（2026-10-05 DEC-2026-10-05-R19：厨房铝扣板收 z=2.4 后的管线通道） ===
 
 - id: ceiling_dining_west_band
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-07-R04 与 DEC-2026-10-08-R05（终裁口径）——设计值未经现场实测
+  status: inferred
   room: living_dining
   type: drop
   thickness: 0.30
@@ -106,6 +114,8 @@
   note: "餐厅西侧服务带（0.5m 宽、底 2.50m）：藏冷媒主管 x=7.45 轴线（自设备平台穿 w_vrv_east 进厨房后沿此带南行，z=4.30 汇入 ceiling_living 设备带/走廊枢纽 bend_corridor）——2026-10-05 R19 按业主案1 立案。西缘 x=7.20 在 z[2.40,4.30] 无墙（w_kit_west 只到 z=2.40、z[2.90,4.30] 由 w_gbath_east@x=7.1 覆盖），故西立面是外露 bulkhead。圆角口径 2026-10-07 DEC-2026-10-07-R04（改判 R01；业主裁定「餐厅要一圈圆」，统一 R150、只做餐区能看到的角）：NW(7.20,2.40) 外露阳角倒 R150（西侧外露 bulkhead 折向厨房 2.65→2.50 台阶，两面皆外露）；SE(7.70,4.30) 是阴角，用 concave_fillets R150 加材料填成圆角拐肘（西带东 bulkhead 在此折向 ceiling_living 北立面，是餐区看到的第二个内凹角，与北带 SW 阴角成对）；NE(7.70,2.40) 沿厨房台阶与 ceiling_dining_north_band 连续、SW(7.20,4.30) 与走廊吊顶同标高对接，两处一律正交。此前 corner_radius 0.10 四角同半径把对接/连续处全切成凹口（读作内圆弧），2026-10-07 第一轮已清除。检修口与 bend_corridor 分歧区避让圆角。2026-10-08 DEC-2026-10-08-R01：东立面（朝餐区）加 R150 内凹弧面，与北带南缘弧面经 SW 拐肘弧段切点连续；北端在 se 拐肘切点 (7.70,4.15) 干净截断（不包裹鼓位、不悬空 flare），南端埋入北带体量，工艺与造价同北带口径。2026-10-08 DEC-2026-10-08-R02（覆盖 R01 的上部翻弧）：取消东立面上部翻弧，使平顶与竖直垂面直接交接；保留平面 NW 外圆角 R150 与 SE 内圆角 R150。2026-10-08 DEC-2026-10-08-R03（废止 R02 对东立面翻弧的取消）：恢复东立面（朝餐区）R150 上部翻弧，可见段 z[3.15,4.15]，北端埋入北带体量、南端在 se 拐肘切点 (7.70,4.15) 干净截断（R01 原口径）。2026-10-08 DEC-2026-10-08-R05（再废止 R03）：取消东立面 cove_fillets——垂面弧全拆，立面与平顶恢复硬相交（R02 语言）；保留平面 NW 外圆角 R150 与 SE 内圆角 R150。2026-10-23 DEC-2026-10-23-R04：客卫东墙线 7.10→7.20，本带 area x 7.20–7.70→7.30–7.80、北带西端 7.70→7.80 随之东移，冷媒主管 x=7.45 轴线仍在带内，墙面下引点位 x 同步 +0.10；本 note 前文坐标（西缘 7.20、w_gbath_east@x=7.1、角点坐标等）为改判前历史口径。"
 
 - id: ceiling_dining_north_band
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-07-R04（业主裁定统一 R150）与 DEC-2026-10-08-R05（垂面弧终裁）——设计值未经现场实测
+  status: inferred
   room: living_dining
   type: drop
   thickness: 0.30
@@ -119,6 +129,8 @@
 
 
 - id: ceiling_kitchen
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-05-R19（范围收回 z=2.40，DEC-014 口径）——设计值未经现场实测
+  status: inferred
   room: kitchen
   type: aluminum_buckle
   thickness: 0.15
@@ -127,6 +139,8 @@
   note: "厨房铝扣板吊顶（内藏油烟机烟管+灯具），完成面 2.65m（板厚 0.15，自 2.80 原顶降板——旧 note「净高约2.55m」与模型/meplint B 区口径不一致，2026-10-07 修正）。2026-10-07 增 buckle_panel：300×300 集成吊顶分格缝（沿 area 最小角起排块，边块不足一皮的为现场切割板），缝为板面下 1.5mm 暗色细条，第一人称抬头可见模块。2026-10-05 DEC-2026-10-05-R19：范围收回到厨房真实南墙 z=2.40（DEC-014 裁定；旧值 z=4.30 越界盖住餐桌上空，且把餐厅天花错误建成铝扣板——登记漂移自此关闭）；z[2.40,4.30] 的餐区改由 ceiling_dining_north_band + ceiling_dining_west_band 两条服务带（石膏板、底 2.50）承担管线通道，餐桌中部恢复 2.80 平顶；厨房/生活阳台分界与烟管走向随量房终核。"
 
 - id: ceiling_master_bath
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-07-R01（aluminum_buckle、完成面 2.65）——设计值未经现场实测
+  status: inferred
   room: master_bath
   type: aluminum_buckle
   thickness: 0.15
@@ -135,6 +149,8 @@
   note: "主卫铝扣板吊顶（内藏排风管+浴霸），完成面 2.65m（板厚 0.15；旧 note「净高约2.55m」为旧口径，2026-10-07 修正）；300×300 分格缝见 ceiling_kitchen 同款 buckle_panel。2026-08-26 修正：隔墙 2026-08-25 已北移至 z=2.86，旧值 3.26 越界 0.4m 侵入主卧条带，随墙收回；溯源：DEC-2026-10-07-R01（厨卫铝扣板加分格缝，正文点名 ceiling_master_bath 为 aluminum_buckle、完成面 2.65）"
 
 - id: ceiling_guest_bath
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-07-R01（aluminum_buckle、完成面 2.65）与 DEC-2026-10-23-R04（东墙 7.10→7.20 随改）——设计值未经现场实测
+  status: inferred
   room: guest_bath
   type: aluminum_buckle
   thickness: 0.15
@@ -153,6 +169,8 @@
   note: "主走廊吊顶（藏多联机风管），净高约2.50m；与semantic_only主走廊区域对齐，与客厅设备带共用完成面标高和饰面"
 
 - id: ceiling_corridor
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-05-R9（功能互换，标题明文几何不动）——分区几何经裁定复核的设计值，未经现场实测
+  status: inferred
   room: study
   type: drop
   thickness: 0.30
@@ -161,6 +179,8 @@
   note: "书房北缘边吊（靠走廊侧整条贯通，藏风管机+风管，下接北墙季节后台柜；侧送下回）；走廊地面 z[6.45,7.8] 段恢复 2.80m 原顶，净高约2.50m；2026-09-07 巡检修正 room 字段：几何 x[4.2,7.2] 位于书房（id=study），原值 master_bedroom 系笔误；2026-10-05 功能互换：该房由父母房改为书房，原北墙 1.8m 衣柜改为 1.70m 季节后台柜（同吊顶安装条件：2.40m 柜体+顶封板抵 2.50m 吊底）；溯源：DEC-2026-10-05-R9（父母房↔书房功能互换，标题明文「几何不动」——本分区几何最近一次经裁定复核）"
 
 - id: ceiling_entry_foyer
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-08-R05（西缘终裁）与 DEC-2026-10-25-R01（随墙线面积重标）——设计值未经现场实测
+  status: inferred
   room: entry_garden
   type: drop
   thickness: 0.30
@@ -171,6 +191,8 @@
 # === 卧室边吊（藏风管机，侧送下回，2026-08-25 方案 B） ===
 
 - id: ceiling_master_ac
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-08-26-045（创建）与 DEC-2026-09-06-R7/R7.1（门头盒定案）——设计值未经现场实测；机身外廓条件性参考待厂家图（#39）
+  status: inferred
   room: master_bedroom
   type: drop
   thickness: 0.30
@@ -182,6 +204,8 @@
   note: "主卧空调门头盒（2026-09-07：白色体块向西延伸至950衣柜东缘x=2.925，保持空调盒与木柜独立并以10–20mm阴影缝分界；平面小圆角R100，不照搬双层石膏线/灯带/大弧），东抵w_strip_east并跨越d_mb门头上空；下底板底面2.50m（builder y=2.502，持续可见），内机藏盒内(3.70,5.10)；南立面嵌0.6m窄线形送风中心x=3.70、东端x=4.00，朝南进睡眠区（侧送）；底面0.5m线形回风中心x=3.70、东端x=3.95（回检一体铰接格栅兼检修，下回，HVAC责任独立于家具）；送回风口轴均与当前机身中心 x=3.70 对齐，东墙卧室侧完成面约x=4.14；冷媒/电源由走廊穿孔（z≈4.6）进盒；冷凝水进入衣柜顶部服务带，沿协调路线隐藏。所提供 /PX-TS 参考规格中 56T2 为 900mm；仅当合同所列 MJV-56T2/P-SS 实机宽度也为 900mm 时，水平范围为 x∈[3.25,4.15]，门头盒东界 x=4.20 余0.05m，东墙卧室侧完成面约x=4.14处约越0.01m。此为条件性参考计算，不代表 P-SS 实机尺寸或已确认适配；须由 MJV-56T2/P-SS 厂家安装图与现场复核外廓、高度及安装间隙。当前模型为设计预演，尚未施工冻结。；溯源：DEC-2026-08-26-045（主卧空调檐口定案，创建本分区；后经 DEC-2026-09-06-R7/R7.1 修订为门头盒形式）"
 
 - id: ceiling_study_ac
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-05-R9（几何不动）——设计值未经现场实测；机身适配待厂家图（#39）
+  status: inferred
   room: bedroom_se
   type: drop
   thickness: 0.30
@@ -190,6 +214,8 @@
   note: "客房北墙边吊（靠走廊/电梯厅一侧，藏 28T2 风管机，侧送下回），纯 HVAC 服务几何（底 2.50m）；避飘窗：z 止 6.15 远离南侧凸窗；x 止 15.80 避让东侧家具；2026-10-05 功能互换：该房由书房改为客房；原 2.6m 通顶柜与东墙后台柜均已不存在，北墙现为 1.8m 成品衣柜（wardrobe_180，2.40m 柜体+顶封板抵 2.50m 吊底，x[14.20,16.00]）；实际机身/风口尺寸适配待核，当前模型尚未施工冻结；溯源：DEC-2026-10-05-R9（父母房↔书房功能互换，标题明文「几何不动」——本分区几何最近一次经裁定复核）"
 
 - id: ceiling_study_ac_corner
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-05-R9（几何不动，仅作 HVAC 服务几何保留）——设计值未经现场实测
+  status: inferred
   room: bedroom_se
   type: drop
   thickness: 0.30
@@ -224,6 +250,8 @@
   note: "主卧南环幕窗帘盒（DEC-2026-10-28-R05 归位：盒南缘贴南玻璃线 z=9.80、盒占 z[9.55,9.80]，与客厅南盒 curtain_box_living（盒南缘贴玻璃 9.80）同口径，帘布投影落在盒中线；原 z[8.70,8.95] 系『南飘窗凹进室内、内缘 8.70』旧读法遗留，与本房 bay_sill『南缘 z=10.90、飘台板南外凸』自相矛盾——凹进读法已由 DEC-2026-10-23-R04 废止，三间朝南卧室盒本轮统一归位，不得回退旧坐标；电动电源 sock_master_curtain 同步南移至盒中心线 (4.20,9.675)，其顶升分支自 2026-10-07 起只写在 strong-power-master reason 内、从未画线，本轮仍不补画（裸点已在 mep-takeoff 未路由清单显形；补画需延长 w_mb_east 剪力墙贴墙段，另案处理）；电动窗帘电机属二期，一期只留电源与位置）"
 
 - id: curtain_box_parent_south
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-28-R05（归位 z[9.55,9.80]，废止凹进读法不得回退）——设计值未经现场实测
+  status: inferred
   room: study
   type: drop
   trade: curtain_box
@@ -232,6 +260,8 @@
   note: "书房南墙窗帘盒（DEC-2026-10-28-R05 归位：盒南缘贴南玻璃线 z=9.80、盒占 z[9.55,9.80]，与客厅南盒同口径；原 z[8.70,8.95] 同属『贴南飘窗内缘 8.70』凹进读法遗留，与本房 bay_sill『南缘 z=10.90、外凸』矛盾，该读法已由 DEC-2026-10-23-R04 废止，本轮统一归位；sock_parent_curtain 与供电路由 strong-power-parent-child-study-curtain 随盒南移；2026-10-05 功能互换，id 不变）；溯源：DEC-2026-10-08-C01（吊顶算量子系统独立，5 个 curtain_box_* 的 trade 工艺分类与计量范围由此裁定）"
 
 - id: curtain_box_study_south
+  # S1-B 状态申报（issue #98）：依据 DEC-2026-10-28-R05（归位 z[9.63,9.88]，R04 复核项落地）——设计值未经现场实测
+  status: inferred
   room: bedroom_se
   type: drop
   trade: curtain_box
