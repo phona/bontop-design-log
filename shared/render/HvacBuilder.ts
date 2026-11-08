@@ -142,12 +142,26 @@ export function buildHvacEntityDescriptors(planId: string, diagram: HvacDiagram,
 }
 
 /**
- * 导出期望集（issue #98 S1，E7 接线）：与 buildHvacEntityDescriptors 同一解算、同一来源。
+ * 导出期望集（issue #98 S1，E7 独立化）：按**声明态**枚举可渲染实体的 id——**不解析位置**。
  *
- * 必须显式传 sources——**默认空源只产出 34 个 id**（13 个 ref anchor 一个不含），拿它当期望集
- * 会让「场景里没有」变成「期望里也没有」（自产期望集，ready 恒真，A §4.1）。调用方传与装配
- * 同源的完整 sources（ceiling/electrical/outdoor + pointWalls/mountHosts）才是有意义的期望。
+ * 为什么不再过 buildHvacEntityDescriptors：期望集的职责是「config 声明了哪些可导出实体」，
+ * 必须与「本次装配解算出几个」解耦。若期望集也走同一解算器，则源缺件（调用方少传
+ * pointWalls / electrical）时期望集同步缩水——「场景里没有」与「期望里也没有」同时成立，
+ * ready 恒真，这正是 A §4.1 记的自产期望集失效模式（旧写法 `[...index.all.keys()]` 与
+ * 「期望集过同一解算器」是同一个病的两种形态）。
+ *
+ * 声明态口径与 buildHvacEntityDescriptors 的过滤一致（confirmed 或带 position 的 anchor +
+ * 非冷凝候选 terminal），但这个「一致」不是抄来的恒等——它由
+ * tests/server/hvac-mep-drift-guard.test.ts 与 scripts/verify/project/verify-project-render-facts.ts
+ * 里**独立推导**的 id 集合逐 id 对账（两侧任一侧漂移即红）。
  */
-export function expectedHvacExportIds(planId: string, diagram: HvacDiagram, sources: HvacBuilderSources = { ceiling: [], electrical: [], outdoor: [] }): string[] {
-  return buildHvacEntityDescriptors(planId, diagram, sources).map((entity) => entity.objectId);
+export function expectedHvacExportIds(planId: string, diagram: HvacDiagram): string[] {
+  return [
+    ...diagram.anchors
+      .filter((anchor) => anchor.status === 'confirmed' || anchor.position !== undefined)
+      .map((anchor) => `hvac:${planId}:anchor:${anchor.id}`),
+    ...diagram.terminals
+      .filter((terminal) => terminal.kind !== 'condensate_drain_candidate')
+      .map((terminal) => `hvac:${planId}:terminal:${terminal.id}`),
+  ];
 }

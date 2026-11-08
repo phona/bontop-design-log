@@ -1901,6 +1901,60 @@ describe('HouseScene', () => {
       required: false, ready: true, expected: [], included: [], missing: [], terminalCount: 0,
     });
   });
+
+  it('期望集独立化：部分 anchor 解析失败时 expected 来自 config 派生值而非落场景数（E7）', () => {
+    // issue #98 S1（E7）+ 独立评审轮（2026-11-08）：原 `hvacExpectedExportIds = [...index.all.keys()]`
+    // 是自产期望集——「场景丢了实体」与「期望里也没有」同时成立，ready 恒真（A §4.1）。改为经
+    // expectedHvacExportIds(config+sources) 派生后，必须有一个能区分两种来源的测试：本用例构造
+    // 「缺 pointWalls → 沿墙 power anchor 解不出」的失败场景，断言 expected 仍是 config 派生的
+    // 3 个 id（旧写法会给 2 个）、missing 恰是那个 anchor、ready=false。回退旧写法本用例即红。
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const projection: any = {
+      version: '2.0', lightingFixtures: [], plumbing: [],
+      ceiling: [{ id: 'ac_living', room: 'living', type: 'ac_indoor', x: 10, z: 7, height: 2.85 }],
+      hvac: {
+        status: 'implemented', planId: 'A2',
+        diagram: {
+          anchors: [
+            { id: 'indoor_living', status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: 'ac_living' } },
+            // 沿墙取电点位（wall+along，无绝对 x/z）：调用方不传 pointWalls 时解不出——正是
+            // sock_child_ac 的形态（设计文档 A §4.1 探针 P1 的同类场景）。
+            { id: 'power_child', status: 'confirmed', system: 'power', ref: { source: 'electrical', id: 'sock_child_ac' } },
+          ],
+          terminals: [{ id: 'supply_living', status: 'inferred', system: 'supply_air', position: { x: 2, y: 2.5, z: 3 } }],
+          routes: [], reference_constraints: [],
+        },
+      },
+      materials: { floor: { default: null, roomOverrides: {} } }, presentation: { curtains: {} },
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      scene.rebuildHvacProjection(projection, {
+        ceiling: projection.ceiling,
+        // wall_side 是 YAML 声明名； ElectricalPoint 的投影字段名是 wallSide（parseElectricalPoints 映射）
+        electrical: [{ id: 'sock_child_ac', room: 'bedroom_nw', type: 'socket', wall: 'w_x', wallSide: 'west', along: 0.45, face_offset: -0.06, height: 2.5, count: 1 } as any],
+        outdoor: [],
+        // 故意不传 pointWalls
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+    const status = scene.getHvacExportStatus();
+    // config 派生：2 个 anchor + 1 个 terminal（旧写法只会给落场景的 2 个）
+    expect(status.expected.sort()).toEqual([
+      'hvac:A2:anchor:indoor_living',
+      'hvac:A2:anchor:power_child',
+      'hvac:A2:terminal:supply_living',
+    ]);
+    // 落场景 2 个；丢了的那個必须出现在 missing 里，且 ready=false（旧写法 missing=[]/ready=true）
+    expect(status.included.sort()).toEqual(['hvac:A2:anchor:indoor_living', 'hvac:A2:terminal:supply_living']);
+    expect(status.missing).toEqual(['hvac:A2:anchor:power_child']);
+    expect(status.ready).toBe(false);
+    expect(status.required).toBe(true);
+    // 失败必须同时经 placementDiagnostics 显形（E7 告警化），不是只丢进 missing 就完
+    expect(scene.getPlacementDiagnostics().some((line) => line.includes('power_child') && line.includes('sock_child_ac'))).toBe(true);
+  });
 });
 
 // ─── 共墙按面给材质（DEC-2026-10-07-R12）──────────────────────────────────

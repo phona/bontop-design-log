@@ -779,12 +779,9 @@ export class HouseScene implements SceneApi {
     this.mountHostIndex = index.mountHosts;
     this.hvacEntityIndex = index.hvac;
     this.hvacProjection = projectData.renderFactsProjection;
-    // 导出期望集独立化（issue #98 S1，E7）：由 config + 同源 sources 经 expectedHvacExportIds
-    // 算出，不再取「已建索引的键」——后者让「场景丢了实体」与「期望里也没有」同时成立，
-    // getHvacExportStatus 恒报 ready=true（A §4.1）。
-    this.hvacExpectedExportIds = projectData.renderFactsProjection?.hvac.status === 'implemented'
-      ? expectedHvacExportIds(projectData.renderFactsProjection.hvac.planId, projectData.renderFactsProjection.hvac.diagram, hvacSources)
-      : [];
+    // 导出期望集独立化（issue #98 S1，E7）：见 expectedHvacExportIdsFor——声明态枚举，
+    // 不再取「已建索引的键」（自产期望集让 ready 恒真，A §4.1）。
+    this.hvacExpectedExportIds = this.expectedHvacExportIdsFor(projectData.renderFactsProjection);
     for (const [id, curtain] of index.curtains) this.registerSharedCurtain(curtain);
     for (const room of projectData.house.rooms) {
       this.roomMeta.set(room.id, { wall_finish: room.wall_finish, wallOpenings: room.wallOpenings });
@@ -881,11 +878,25 @@ export class HouseScene implements SceneApi {
       this.placementDiagnostics.push(diagnostic);
       console.error('[scene] hvac placement:', diagnostic);
     }
-    // 期望集独立化（issue #98 S1，E7）：取 config + 同源 sources 的解算结果，不取已建索引的键。
-    this.hvacExpectedExportIds = projection?.hvac.status === 'implemented'
-      ? expectedHvacExportIds(projection.hvac.planId, projection.hvac.diagram, sources)
-      : [];
+    // 期望集独立化（issue #98 S1，E7）：见 expectedHvacExportIdsFor。
+    this.hvacExpectedExportIds = this.expectedHvacExportIdsFor(projection);
     this.batchHvacEntities();
+  }
+
+  /**
+   * 导出期望集（issue #98 S1，E7 独立化）：按**声明态**枚举可渲染实体 id——只读 diagram，
+   * 不解算位置、不读已建索引。
+   *
+   * 两个调用点（buildFromCatalog 首建 / rebuildHvacProjection 重建）共用这一处，避免各写一份
+   * 表达式后其中一个被回退成自产期望集而另一个不。旧的 `[...this.hvacEntityIndex.all.keys()]`
+   * 与「期望集过同一装配解算器」是同一个病：场景丢了实体，期望里也没有，ready 恒真（A §4.1）。
+   * 声明态与解算解耦后，源缺件（少传 pointWalls/electrical）会以 missing + ready=false 显形。
+   * 判别性测试：app/src/scene/HouseScene.test.ts「期望集独立化」。
+   */
+  private expectedHvacExportIdsFor(projection: ProjectRenderFactsProjection | undefined): string[] {
+    return projection?.hvac.status === 'implemented'
+      ? expectedHvacExportIds(projection.hvac.planId, projection.hvac.diagram)
+      : [];
   }
 
   private batchHvacEntities(): void {

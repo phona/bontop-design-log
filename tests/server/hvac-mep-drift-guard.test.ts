@@ -12,7 +12,7 @@ import {
 import { lintMepCoordination } from '../../shared/mep-hvac-lint.js';
 import { ElectricalPointSchema, parseCeilingZones, parseElectricalPoints, parsePlumbingPoints, parseProjectHvacFacts, validateProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
 import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
-import { buildHvacBuilderSources, buildHvacEntityDescriptors } from '../../shared/render/HvacBuilder.js';
+import { buildHvacBuilderSources, buildHvacEntityDescriptors, expectedHvacExportIds } from '../../shared/render/HvacBuilder.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import type { CeilingZone, ElectricalPoint, HvacDiagram, HvacTerminal, ProjectRenderFacts } from '../../shared/types.js';
@@ -274,4 +274,20 @@ test('E7 告警化：诊断经 SceneBuilder 的 placementDiagnostics 通道上�
   assert.equal(result.index.hvac.all.size, 34, '空源下 25 个 terminal + 9 个带 position 的 anchor 落场景，13 个 ref anchor 解不出');
   assert.equal(hvacDiagnostics.length, 13, `13 条 hvac 诊断必须上浮到 report.placementDiagnostics，实际 ${hvacDiagnostics.length}`);
   assert.ok(hvacDiagnostics.some((line) => line.includes('power_child')));
+});
+
+test('E7 期望集独立化：expectedHvacExportIds 按声明态枚举，与独立推导逐 id 一致', () => {
+  // 独立评审轮（2026-11-08）：期望集曾过装配解算器（expectedHvacExportIds(planId, diagram, sources)
+  // = buildHvacEntityDescriptors(...).map(id)），源缺件时期望集同步缩水，「场景里没有」与「期望里
+  // 也没有」同时成立、ready 恒真——与旧写法 [...index.all.keys()] 同病。现改为声明态枚举（只读
+  // diagram），本测试用一份独立重写的枚举与它对账（铁律④：两侧实现漂移即红）。
+  const ids = expectedHvacExportIds(plan.id, diagram);
+  const declared = [
+    ...diagram.anchors.filter((anchor) => anchor.status === 'confirmed' || anchor.position !== undefined).map((anchor) => `hvac:${plan.id}:anchor:${anchor.id}`),
+    ...diagram.terminals.filter((terminal) => terminal.kind !== 'condensate_drain_candidate').map((terminal) => `hvac:${plan.id}:terminal:${terminal.id}`),
+  ].sort();
+  assert.equal(ids.length, 47, `声明态期望集应为 47 个 id，实际 ${ids.length}`);
+  assert.deepEqual([...ids].sort(), declared);
+  // 签名不再接受 sources：任何「把解算结果当期望」的回退都要先改签名，typecheck 即拦
+  assert.equal(expectedHvacExportIds.length, 2, 'expectedHvacExportIds(planId, diagram) 不再接受 sources 形参');
 });

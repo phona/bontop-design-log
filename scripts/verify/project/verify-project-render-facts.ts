@@ -54,7 +54,7 @@ const noWallDiagnostics: string[] = [];
 const noWallEntities = buildHvacEntityDescriptors(plan.id, plan.diagram, noWallSources, noWallDiagnostics);
 const emptyDiagnostics: string[] = [];
 const emptyEntities = buildHvacEntityDescriptors(plan.id, plan.diagram, emptySources, emptyDiagnostics);
-const expectedIds = expectedHvacExportIds(plan.id, plan.diagram, fullSources);
+const expectedIds = expectedHvacExportIds(plan.id, plan.diagram);
 
 if (fullEntities.length !== 47) {
   throw new Error(`hvac entity contract: full sources must yield 47 entities, got ${fullEntities.length}（改解析/声明前先看本契约与 docs 迁移设计 §4.5-S1 指标 9）`);
@@ -68,10 +68,24 @@ if (noWallEntities.length !== 46) {
 if (emptyEntities.length !== 34) {
   throw new Error(`hvac entity contract: empty sources must yield 34 entities (13 个 ref anchor 落空)，got ${emptyEntities.length}`);
 }
-const fullIds = fullEntities.map((entity) => entity.objectId).sort();
+// 期望集与「按 diagram 声明独立推导的 id 集合」一致（铁律④：不许拿 expectedHvacExportIds 与
+// buildHvacEntityDescriptors 同参互比——两者一个过解算器一个不过，且期望集曾把解算结果当期望，
+// 源缺件时期望集同步缩水、ready 恒真）。expectedHvacExportIds 现为**声明态枚举**（只读
+// diagram、不解算位置，shared/render/HvacBuilder.ts:145-165），本块用一份**独立重写**的枚举
+// 与它对账：盯的是「过滤条件 + id 方案」两处实现是否漂移——改过滤（如把冷凝候选算进出入口）、
+// 改命名（如丢 planId）、或换掉组成而保持总数 47，都会在这里红；这些是上面的计数钉抓不到的
+// 「偷梁换柱」形态（变异实测：objectId 丢 planId → 红；枚举过滤去掉冷凝候选排除 → 红）。
+const declaredExportIds = [
+  ...plan.diagram.anchors
+    .filter((anchor) => anchor.status === 'confirmed' || anchor.position !== undefined)
+    .map((anchor) => `hvac:${plan.id}:anchor:${anchor.id}`),
+  ...plan.diagram.terminals
+    .filter((terminal) => terminal.kind !== 'condensate_drain_candidate')
+    .map((terminal) => `hvac:${plan.id}:terminal:${terminal.id}`),
+].sort();
 const sortedExpected = [...expectedIds].sort();
-if (sortedExpected.length !== fullIds.length || sortedExpected.some((id, index) => id !== fullIds[index])) {
-  throw new Error('hvac entity contract: expectedHvacExportIds(full sources) 必须与 buildHvacEntityDescriptors 的 47 个 id 一致');
+if (sortedExpected.length !== declaredExportIds.length || sortedExpected.some((id, index) => id !== declaredExportIds[index])) {
+  throw new Error(`hvac entity contract: expectedHvacExportIds(声明态枚举) 必须与独立推导的 ${declaredExportIds.length} 个 id 逐项一致（过滤条件或 objectId 命名被改了？），差集：${sortedExpected.filter((id) => !declaredExportIds.includes(id)).concat(declaredExportIds.filter((id) => !sortedExpected.includes(id))).join(',')}`);
 }
 
 // ① 不变量：可渲染实体数 == 落场景数 + 诊断数。旧写法（解析失败静默 continue）下
@@ -90,6 +104,13 @@ const emptyDiagAnchors = emptyDiagnostics.map((line) => /^hvac anchor ([^:]+):/.
 const expectedRefAnchors = plan.diagram.anchors.filter((anchor) => anchor.ref !== undefined).map((anchor) => anchor.id).sort();
 if (emptyDiagnostics.length !== 13 || emptyDiagAnchors.join(',') !== expectedRefAnchors.join(',')) {
   throw new Error(`hvac entity contract: empty sources must record one diagnostic per ref anchor (${expectedRefAnchors.join(',')}), got ${emptyDiagnostics.length}: ${emptyDiagAnchors.join(',')}`);
+}
+
+// ③ 解算结果（全量源）同样必须与声明集合逐 id 一致：全量源下一切正常时应全解出，
+//    少一个就是解析层静默丢件（与①不变量互补：①盯「失败有没有记诊断」，这里盯「该解出的有没有解出」）。
+const resolvedIds = fullEntities.map((entity) => entity.objectId).sort();
+if (resolvedIds.length !== declaredExportIds.length || resolvedIds.some((id, index) => id !== declaredExportIds[index])) {
+  throw new Error(`hvac entity contract: full sources must resolve every declared renderable entity（解出 ${resolvedIds.length} ≠ 声明 ${declaredExportIds.length}），差集：${resolvedIds.filter((id) => !declaredExportIds.includes(id)).concat(declaredExportIds.filter((id) => !resolvedIds.includes(id))).join(',')}`);
 }
 
 console.log(`ProjectRenderFacts verified: electrical=${projection.lightingFixtures.length} lighting fixtures, plumbing=${projection.plumbing.length}, ceiling=${projection.ceiling.length}`);
