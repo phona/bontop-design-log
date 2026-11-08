@@ -1,15 +1,18 @@
-// 构件级工程状态派生 + 待决台账解析的权威测试。
+// 构件级工程状态派生 + blocker 门禁 + 待决台账解析的权威测试。
 //
-// 守的不变量：
-//   ① 派生优先级（conflict > config_status > ledger > decision > undeclared）逐条可证，
-//      且配置删掉/加错规则会告警——覆盖矩阵不许说谎；
-//   ② 台账解析能区分「元素 id」与「类型/字段引用」，不把 `ac_indoor` 误报成构件已删；
-//   ③ 一个文件路径后的多个 id（`a`/`b`/`c`）全部取出；
-//   ④ config 声称已核实、台账却仍开着 → 矛盾告警；
-//   ⑤ 真实 sock_child_ac 端到端：状态、卡在谁、与门禁结论的绑定。
+// 守的不变量（2026-11-08 issue #98 第六阶段 S2-A「状态上对象」后）：
+//   ① 派生优先级只剩 [conflict, config_status, fallback]——**状态不查表**：
+//      docs/pending-site-data.md 的 ledger 规则与 note 内 DEC 编号的 decision 规则都已退役；
+//   ② census：total=162 不变、undeclared≤2、statusSource 全部来自 config 声明；
+//   ③ 每个 pending/undeclared 构件都带结构完整的 blocker（kind/owner/trigger/reverses_if/rationale）；
+//   ④ 台账解析本身仍可用（shared/pending-ledger.ts 还被 server 侧消费），能区分
+//      「元素 id」与「类型/字段引用」——它只是不再是状态来源。
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { load as parseYaml } from 'js-yaml';
+import { parseProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
+import type { BeamDef } from '../../shared/types.js';
 import {
   classifyTarget,
   extractBlockedBy,
@@ -26,6 +29,14 @@ import {
   type StateModel,
 } from '../../shared/element-state.js';
 import { collectElements, mapHvacStatus, mergeCeilingHvacAnchors } from '../../shared/element-sources.js';
+import {
+  BLOCKER_KINDS,
+  BLOCKER_OWNERS,
+  checkBlockers,
+  formatBlockerIssue,
+  type BlockerSubject,
+} from '../../shared/element-blockers.js';
+import { extractBlocker } from '../../scripts/project/extract-element-blockers.js';
 
 const LEDGER = readFileSync('docs/pending-site-data.md', 'utf8');
 
@@ -73,6 +84,20 @@ describe('pending ledger parsing', () => {
     assert.match(extractBlockedBy('待业主 + 物业确认能否开孔'), /业主/);
     assert.equal(extractBlockedBy('point_uncovered'), 'point_uncovered', '提不出「卡在谁」时原样返回，不猜');
   });
+
+  it('is no longer a status source: the ledger cannot change an element status (S2-A)', () => {
+    // 台账仍在仓里（删除属切片 B），但 deriveElementStates 已不再读它——
+    // 同一条 ledger 条目喂进去，状态必须由 config 的 status 决定。
+    const ledger = { entries: [{ ref: '42', summary: '儿童房空调电源', blockedBy: '卡在空调厂家深化图', targets: [{ file: 'config/electrical.yaml', id: 'ledgered' }] }] };
+    const result = deriveElementStates({
+      elements: [{ id: 'electrical:ledgered', kind: 'electrical', label: 'socket ledgered', configStatus: 'inferred' }],
+      ledger,
+      issues: [],
+    });
+    assert.equal(result.states[0].status, 'inferred', '台账条目不得把 config 声明 inferred 的点位改判成 pending');
+    assert.equal(result.states[0].statusSource, 'config:inferred');
+    assert.equal(result.states[0].blocker, undefined, '「卡在谁」来自对象自己的 blocker，不来自台账');
+  });
 });
 
 describe('element state derivation', () => {
@@ -84,8 +109,7 @@ describe('element state derivation', () => {
 
   it('puts a verifier error above every other signal', () => {
     const result = deriveElementStates({
-      elements: [element({ id: 'electrical:x', configStatus: 'measured', decision: 'DEC-2026-10-09-P01' })],
-      ledger: { entries: [] },
+      elements: [element({ id: 'electrical:x', configStatus: 'measured', blocker: { kind: 'site_measurement', owner: ['量房'], trigger: '量房', reverses_if: '改', rationale: '卡' } })],
       issues: [{ entity: 'electrical:x', code: 'furniture_wall_collision', level: 'error' }],
     });
     assert.equal(result.states[0].status, 'conflicted');
@@ -96,7 +120,6 @@ describe('element state derivation', () => {
   it('lets a warning-level issue show as a conflict but not override the status', () => {
     const result = deriveElementStates({
       elements: [element({ id: 'electrical:x', configStatus: 'measured' })],
-      ledger: { entries: [] },
       issues: [{ entity: 'electrical:x', code: 'furniture_glass_clearance_insufficient', level: 'warning' }],
     });
     assert.equal(result.states[0].status, 'measured', 'warning 不覆盖 config 状态');
@@ -111,8 +134,8 @@ describe('element state derivation', () => {
         element({ id: 'electrical:c', configStatus: 'inferred' }),
         element({ id: 'electrical:d', configStatus: 'pending' }),
         element({ id: 'electrical:e', configStatus: 'confirmed' }),
+        element({ id: 'electrical:f', configStatus: 'undeclared' }),
       ],
-      ledger: { entries: [] },
       issues: [],
     });
     const byId = new Map(result.states.map((state) => [state.id, state.status]));
@@ -121,38 +144,38 @@ describe('element state derivation', () => {
     assert.equal(byId.get('electrical:c'), 'inferred');
     assert.equal(byId.get('electrical:d'), 'pending');
     assert.equal(byId.get('electrical:e'), 'confirmed');
+    assert.equal(byId.get('electrical:f'), 'undeclared', '对象可显形申报「状态未申报」，与派生兜底同词同义');
   });
 
-  it('falls through to the ledger, then the decision, then undeclared', () => {
-    const ledger = { entries: [{ ref: '42', summary: '儿童房空调电源', blockedBy: '卡在空调厂家深化图', targets: [{ file: 'config/electrical.yaml', id: 'ledgered' }] }] };
+  it('carries the object blocker through to the state (S2-A: 未决项住对象本体)', () => {
+    const blocker = { kind: 'pending_vendor_drawing' as const, owner: ['厂家' as const], trigger: '厂家深化图到手', reverses_if: '接线盒在西/北侧则改位', rationale: '机身尺寸未定' };
     const result = deriveElementStates({
-      elements: [
-        element({ id: 'electrical:ledgered' }),
-        element({ id: 'electrical:decided', decision: 'DEC-2026-10-08-C01' }),
-        element({ id: 'electrical:bare' }),
-      ],
-      ledger,
+      elements: [element({ id: 'electrical:x', configStatus: 'pending', blocker })],
       issues: [],
     });
-    const byId = new Map(result.states.map((state) => [state.id, state]));
-    assert.equal(byId.get('electrical:ledgered')!.status, 'pending');
-    assert.equal(byId.get('electrical:ledgered')!.statusSource, 'pending-site-data #42');
-    assert.equal(byId.get('electrical:ledgered')!.openQuestion?.blockedBy, '卡在空调厂家深化图');
-    assert.equal(byId.get('electrical:decided')!.status, 'confirmed');
-    assert.equal(byId.get('electrical:bare')!.status, 'undeclared', '派生不出来必须显形，不是默认已确认');
+    assert.equal(result.states[0].status, 'pending');
+    assert.equal(result.states[0].statusSource, 'config:pending');
+    assert.deepEqual(result.states[0].blocker, blocker);
+  });
+
+  it('never produces a confirmed status from a DEC reference in the note (S2-A)', () => {
+    // 反事实锚点：采集器仍会把 note 里的 DEC 编号带进 decision 字段（溯源用），
+    // 但 deriveElementStates 不许再拿它当状态依据——这正是 issue #98 点名的隐式确认逻辑。
+    const result = deriveElementStates({
+      elements: [element({ id: 'electrical:decided', decision: 'DEC-2026-10-08-C01' })],
+      issues: [],
+    });
+    assert.equal(result.states[0].status, 'undeclared', 'note 内 DEC 编号不再产生 confirmed');
+    assert.equal(result.states[0].decision, 'DEC-2026-10-08-C01', '编号本身仍作溯源保留');
+  });
+
+  it('falls through to undeclared when nothing is declared', () => {
+    const result = deriveElementStates({
+      elements: [element({ id: 'electrical:bare' })],
+      issues: [],
+    });
+    assert.equal(result.states[0].status, 'undeclared', '派生不出来必须显形，不是默认已确认');
     assert.equal(result.summary.undeclared, 1);
-  });
-
-  it('attaches the open question even when config status decides, and flags the contradiction', () => {
-    const ledger = { entries: [{ ref: '42', summary: 'x', blockedBy: '卡在厂家图', targets: [{ file: 'config/electrical.yaml', id: 'x' }] }] };
-    const result = deriveElementStates({
-      elements: [element({ id: 'electrical:x', configStatus: 'measured' })],
-      ledger,
-      issues: [],
-    });
-    assert.equal(result.states[0].status, 'measured', 'config_status 优先级高于台账');
-    assert.equal(result.states[0].openQuestion?.ref, '42', '但「卡在谁」仍要带上——那才是可行动的部分');
-    assert.ok(result.warnings.some((warning) => warning.code === 'state.config_vs_ledger_conflict'), 'config 说已测、台账仍开着 → 必须显形');
   });
 
   it('matches issues written as a pair or as a bare id', () => {
@@ -165,40 +188,132 @@ describe('element state derivation', () => {
   it('warns when the state model declares an unknown rule or drops an implemented one', () => {
     const extra = deriveElementStates({
       elements: [element({ id: 'electrical:x' })],
-      ledger: { entries: [] },
       issues: [],
       model: { ...DEFAULT_STATE_MODEL, priority: ['conflict', 'nonsense', 'fallback'] as StateModel['priority'] },
     });
     assert.ok(extra.warnings.some((warning) => warning.code === 'state.rule_unknown' && warning.entity === 'nonsense'));
     assert.ok(extra.warnings.some((warning) => warning.code === 'state.rule_undeclared'));
 
+    // 已退役的两条规则（ledger / decision）再被写回优先级链，必须报「代码里没有这个规则」——
+    // 覆盖矩阵不许说谎：删掉的查表通道不许靠改配置悄悄复活。
+    const revived = deriveElementStates({
+      elements: [element({ id: 'electrical:x' })],
+      issues: [],
+      model: { ...DEFAULT_STATE_MODEL, priority: ['conflict', 'config_status', 'ledger', 'decision', 'fallback'] as StateModel['priority'] },
+    });
+    assert.ok(revived.warnings.some((warning) => warning.code === 'state.rule_unknown' && warning.entity === 'ledger'));
+    assert.ok(revived.warnings.some((warning) => warning.code === 'state.rule_unknown' && warning.entity === 'decision'));
+    assert.equal(revived.states[0].status, 'undeclared', '复活的规则没有实现，不改变任何状态');
+
     const noFallback = deriveElementStates({
       elements: [element({ id: 'electrical:x' })],
-      ledger: { entries: [] },
       issues: [],
-      model: { ...DEFAULT_STATE_MODEL, priority: ['conflict', 'config_status', 'ledger', 'decision'] },
+      model: { ...DEFAULT_STATE_MODEL, priority: ['conflict', 'config_status'] },
     });
     assert.ok(noFallback.warnings.some((warning) => warning.code === 'state.no_fallback'));
     assert.equal(noFallback.states[0].status, 'undeclared', '没有 fallback 也不静默给状态');
   });
 });
 
-describe('real project projection', () => {
-  it('binds sock_child_ac to its ledger question and the vendor drawing', () => {
-    const ledger = parsePendingLedger(LEDGER);
-    const entry = ledger.entries.find((item) => item.ref === '42');
-    assert.ok(entry, '#42 必须在台账里');
-    assert.ok(entry.targets.some((target) => target.file.endsWith('electrical.yaml') && target.id === 'sock_child_ac'));
+describe('element blocker gate', () => {
+  const subject = (overrides: Partial<BlockerSubject> & { id: string }): BlockerSubject => ({
+    kind: 'electrical',
+    ...overrides,
+  });
+  const goodBlocker = { kind: 'site_measurement' as const, owner: ['量房' as const], trigger: '量房实测', reverses_if: '不符则重算', rationale: '未实测' };
 
-    const result = deriveElementStates({
-      elements: [{ id: 'electrical:sock_child_ac', kind: 'electrical', label: 'socket sock_child_ac', room: 'bedroom_nw', configStatus: 'pending' }],
-      ledger,
-      issues: [],
-    });
-    const state = result.states[0];
-    assert.equal(state.status, 'pending');
-    assert.equal(state.openQuestion?.ref, '42');
-    assert.match(state.openQuestion?.blockedBy ?? '', /空调厂家深化图/);
+  it('requires a complete blocker for every pending or undeclared element', () => {
+    const issues = checkBlockers(
+      [
+        subject({ id: 'electrical:ok', status: 'pending', blocker: goodBlocker }),
+        subject({ id: 'electrical:undeclared', status: 'undeclared', blocker: goodBlocker }),
+      ],
+      (item) => item.status,
+    );
+    assert.deepEqual(issues.issues, []);
+    assert.equal(issues.checked, 2);
+  });
+
+  it('flags a missing blocker on a pending element', () => {
+    const result = checkBlockers([subject({ id: 'electrical:x', status: 'pending' })], (item) => item.status);
+    assert.equal(result.issues.length, 1);
+    assert.equal(result.issues[0].code, 'blocker_missing');
+    assert.match(formatBlockerIssue(result.issues[0]), /electrical:x \[blocker_missing\]/);
+  });
+
+  it('flags an undeclared element with no blocker (申报缺口也要说清卡在什么)', () => {
+    const result = checkBlockers([subject({ id: 'ceiling:y' })], () => 'undeclared');
+    assert.equal(result.issues[0].code, 'blocker_missing');
+  });
+
+  it('rejects a kind outside the enum', () => {
+    const result = checkBlockers(
+      [subject({ id: 'electrical:x', status: 'pending', blocker: { ...goodBlocker, kind: 'waiting_for_godot' as never } })],
+      (item) => item.status,
+    );
+    assert.equal(result.issues[0].code, 'blocker_kind_invalid');
+    assert.match(result.issues[0].message, /site_measurement/);
+  });
+
+  it('rejects an empty or unknown owner list', () => {
+    const empty = checkBlockers([subject({ id: 'electrical:x', status: 'pending', blocker: { ...goodBlocker, owner: [] } })], (item) => item.status);
+    assert.equal(empty.issues[0].code, 'blocker_owner_missing');
+    const unknown = checkBlockers([subject({ id: 'electrical:x', status: 'pending', blocker: { ...goodBlocker, owner: ['邻居' as never] } })], (item) => item.status);
+    assert.equal(unknown.issues[0].code, 'blocker_owner_invalid');
+    assert.match(unknown.issues[0].message, /业主/);
+  });
+
+  it('rejects empty trigger / reverses_if / rationale', () => {
+    for (const field of ['trigger', 'reverses_if', 'rationale'] as const) {
+      const result = checkBlockers(
+        [subject({ id: 'electrical:x', status: 'pending', blocker: { ...goodBlocker, [field]: '   ' } })],
+        (item) => item.status,
+      );
+      assert.equal(result.issues[0].code, `blocker_${field === 'trigger' ? 'trigger' : field === 'reverses_if' ? 'reverses_if' : 'rationale'}_empty`, field);
+    }
+  });
+
+  it('leaves non-pending elements alone', () => {
+    const result = checkBlockers(
+      [subject({ id: 'electrical:a', status: 'inferred' }), subject({ id: 'electrical:b', status: 'confirmed' }), subject({ id: 'electrical:c', status: 'measured' })],
+      (item) => item.status,
+    );
+    assert.deepEqual(result.issues, []);
+    assert.equal(result.checked, 0);
+  });
+
+  it('extracts kind and owner from a note that already states the blocker (mechanical, S2-A)', () => {
+    // 真实 note 片段：Hood SKU, final face/access and duct joint remain pending
+    const extraction = extractBlocker({ note: 'Hood SKU, final face/access and duct joint remain pending, so this point is explicitly position_status: pending.' });
+    assert.equal(extraction.kind, 'pending_selection');
+    assert.ok(extraction.owner.length > 0);
+    for (const owner of extraction.owner) assert.ok(BLOCKER_OWNERS.includes(owner), `owner ${owner} 必须在枚举内`);
+    for (const kind of BLOCKER_KINDS) assert.ok(typeof kind === 'string');
+  });
+
+  it('reports a note with no kind keyword as unresolved instead of guessing silently', () => {
+    const extraction = extractBlocker({ note: '主走廊吊顶（藏多联机风管），净高约2.50m' });
+    assert.deepEqual(extraction.missing, ['kind'], '抽不出 kind 必须进未命中清单交人工判');
+  });
+});
+
+describe('real project projection', () => {
+  it('binds sock_child_ac to its own blocker (no ledger, no DEC)', () => {
+    const elements = collectElements();
+    const byId = new Map(elements.map((item) => [item.id, item]));
+    const child = byId.get('electrical:sock_child_ac');
+    assert.ok(child, 'electrical:sock_child_ac 必须被采集到');
+    assert.equal(child.configStatus, 'pending');
+    assert.ok(child.blocker, '必须带 blocker（对象本体声明，不查台账）');
+    assert.equal(child.blocker!.kind, 'pending_vendor_drawing');
+    assert.deepEqual(child.blocker!.owner, ['厂家']);
+    assert.match(child.blocker!.trigger, /28T2/);
+
+    const result = deriveElementStates({ elements, issues: [] });
+    const state = result.states.find((item) => item.id === 'electrical:sock_child_ac');
+    assert.equal(state!.status, 'pending');
+    assert.equal(state!.statusSource, 'config:pending');
+    assert.match(state!.blocker!.trigger, /厂家深化图到手/);
   });
 
   it('keeps the ledger honest: no dangling element refs in the current tree', () => {
@@ -212,9 +327,9 @@ describe('real project projection', () => {
 
 describe('element census snapshot', () => {
   // 快照门禁：构件总数与「未声明状态」数是**申报缺口的度量**。它变化只意味着几件事——
-  //   ① 有人往配置里加了构件但没申报 status/position_status → 去申报，别改这个数；
+  //   ① 有人往配置里加了构件但没申报 status → 去申报，别改这个数；
   //   ② 有人删了构件 → 故意更新此快照并在 commit 里说明；
-  //   ③ 有人给既有构件补了 status/position_status 申报（如并行提交 769401e 给 46 个电气点位
+  //   ③ 有人给既有构件补了 status 申报（如并行提交 769401e 给 46 个电气点位
   //      补申报，undeclared 随之下降）→ 合法改进，更新此快照并在 commit 里说明来历；
   //   ④ 采集器新接了一份权威状态源（如本次接入 config/hvac.yaml）→ 相应构件不再是申报缺口，
   //      数字下降，在 commit 里说明来历。
@@ -222,38 +337,57 @@ describe('element census snapshot', () => {
   // 否则一个真实冲突会让这个数莫名少 1，掩盖申报缺口本身。
   it('pins the element census so undeclared elements cannot slip in silently', () => {
     const elements = collectElements();
-    const result = deriveElementStates({ elements, ledger: { entries: [] }, issues: [] });
-    assert.equal(result.summary.total, 162, '构件总数（电气 104 + 给排水 33 + 吊顶/HVAC 25；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104；2026-11-08 issue #98 S1-B 状态申报只补字段不增删构件）');
+    const result = deriveElementStates({ elements, issues: [] });
+    assert.equal(result.summary.total, 162, '构件总数（电气 104 + 给排水 33 + 吊顶/HVAC 25；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104；2026-11-08 issue #98 S1-B 状态申报只补字段不增删构件；S2-A 同）');
     // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
     // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
-    // 本轮将烟机插座试位 (z=1.50) 显式标为 pending，故空台账快照仍留下 5 个未知：
-    // 两个吊顶分区 + 阳台洗衣机排水 + 主卧两窗帘盒。
     // DEC-2026-10-28-R05：主卧南窗帘盒归位时 note 补了 DEC 全引 → 该盒不再是申报缺口，5→4。
     // 2026-11-08 issue #98 S1-B：原 67 个「DEC 引用 confirmed」构件补显式 status/position_status
     // （issue #98 要求 DEC 引用不再直接产生状态），decision 引用通道归零——申报缺口不因此变化，
     // 仍是既有 4 个：两个吊顶分区（ceiling_child_ac / ceiling_main_corridor）+ 主卧西窗帘盒
     // （curtain_box_master_west，#53 追踪）+ 阳台洗衣机排水（drain_balcony_washer，#51 追踪）。
-    assert.equal(result.summary.undeclared, 4, '空台账下的未声明状态数——纯申报缺口，不受台账/门禁影响');
+    // 2026-11-08 issue #98 S2-A：ledger 规则退役后这 4 个全部改由对象自身 status + blocker 承载
+    // （curtain_box_master_west / drain_balcony_washer → status: pending；两个吊顶分区 →
+    // status: undeclared 显形申报），申报缺口回到 2 个纯未申报的吊顶分区。
+    assert.equal(result.summary.undeclared, 2, '空 issues 下的未声明状态数——纯申报缺口，不受台账/门禁影响');
     assert.ok(result.summary.undeclared / result.summary.total < 0.15, '申报缺口应维持在低位；重新升高说明有新构件没申报');
   });
 
-  it('binds most elements once the real ledger and decisions are in play', () => {
+  it('binds every element to a config declaration once the real inputs are in play', () => {
     const elements = collectElements();
-    const ledger = parsePendingLedger(LEDGER);
-    const result = deriveElementStates({ elements, ledger, issues: [] });
-    // issue #98 S1-B（2026-11-08）：DEC 引用不再直接产生状态——原 67 个 statusSource=decision:
-    // 的构件已按语义 triage 补显式 status/position_status（每处依据见各 config 条目的
-    // 「S1-B 状态申报」注释：DEC 条目 id + config 现状事实），decision 通道归零是本断言的锚。
+    const result = deriveElementStates({ elements, issues: [] });
+    // issue #98 S2-A（2026-11-08）：状态不查表。statusSource 只允许两种形态——
+    // `config:<raw>`（电气/给排水/吊顶分区自身声明）与 `config/hvac.yaml anchor ...`
+    // （6 个 ac_* 内机的权威状态在 hvac.yaml anchor）。台账与 DEC 通道必须为 0。
     const byDecision = result.states.filter((state) => state.statusSource.startsWith('decision:'));
-    assert.deepEqual(byDecision.map((state) => state.id), [], 'DEC 引用通道必须为 0——67 个构件已补显式申报，不允许 note 内编号再隐式产生 confirmed');
-    // 接上真实台账后，#64 原绑定的冰箱旧端点 sock_kitchen_fridge 已删除（DEC-2026-10-17-R20），
-    // 其台账条目留存历史、不再绑元素；新端点 sock_fridge_living 由 config position_status 标 pending。
-    // 吊顶两个分区仍无出处，不因其他 pending 项而静默归类。
-    assert.equal(result.summary.undeclared, 2, '真实台账下只剩 2 个无出处的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 37); // 2026-11-08 issue #98 S1-B +2：sock_kitchen_dishwasher（note 明文坐标待量房）与 net_ap_corridor（note 明文边吊位/走廊位待网络方案定标）由 DEC 引用 confirmed 降为 position_status: pending 显形——诚实降级，不是丢失；confirmed 73→6（全部为 config/hvac.yaml ac_* anchor 权威状态，65 个设计裁定值落 inferred）。前史：DEC-2026-11-05-R5 新增 #75 水压实测绑 faucet_gbath_vanity（33→34）；2026-11-06 issue #98 PR-4 三点位显式申报后 faucet_gbath_vanity 由 ledger 规则改走 config_status 规则（status: inferred，#75 仍作 openQuestion 挂带、不丢「卡在谁」），pending 34→33；sock_gbath_robot（status: inferred——现坐标是塞柜底旧位、迁仓侧面后坐标待定，设计推断占位）与 drain_gbath_vanity（status: inferred + construction_status: pending，同族 drain_mbath_vanity 与所连路线精度三件套口径）原凭 note 内 DEC 引用落 confirmed，现按 config_status 落 inferred，confirmed 77→75、inferred 49→52；DEC-2026-10-17-R20 净 +4（sock_fridge_living / sock_kitchen_east_counter / sock_weakbox 新增未路由点位与 sock_gbath_towel 换墙迁移复核均落 pending，28→32，实测 derive 值）；DEC-2026-10-23-R03 +1：#74 改写显名 drain_gbath_floor 落 pending（32→33，实测 derive 值）；2026-11-06 issue #98 PR-6 +2：sock_gbath_vanity / sock_gbath_vanity_2 宿主核实=墙挂（不挂柜）并按口径 A 迁到西完成面 x 7.14，同步精度三件套 status: inferred + position_status: pending——原凭 note 内 DEC 引用落 confirmed，现按 config_status 落 pending，confirmed 75→73、pending 33→35
+    assert.deepEqual(byDecision.map((state) => state.id), [], 'DEC 引用通道必须为 0——note 内编号不得再隐式产生 confirmed');
+    const byLedger = result.states.filter((state) => state.statusSource.startsWith('pending-site-data'));
+    assert.deepEqual(byLedger.map((state) => state.id), [], '台账通道必须为 0——状态是对象的声明，不是查表查出来的结果');
+    for (const state of result.states) {
+      assert.ok(
+        state.statusSource.startsWith('config:') || state.statusSource.startsWith('config/hvac.yaml') || state.statusSource.startsWith('verifier:'),
+        `statusSource 必须来自 config 声明或 verifier：${state.id} → ${state.statusSource}`,
+      );
+    }
+    assert.equal(result.summary.undeclared, 2, '只剩 2 个显形申报 undeclared 的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
+    assert.equal(result.summary.pending, 37, '2026-11-08 issue #98 S2-A：37 个 pending 全部由 config status: pending 承载（原 S1-B 口径 37，其中 8 个原经 ledger 规则、2 个原为 undeclared 申报缺口）');
     const confirmed = result.states.filter((state) => state.status === 'confirmed');
     assert.equal(confirmed.length, 6, 'confirmed 剩 6 个且全部来自 hvac anchor（ac_* 成交映射），不再有 DEC 引用产生的 confirmed');
     for (const state of confirmed) assert.match(state.statusSource, /config\/hvac\.yaml/, `confirmed 的权威必须是 config/hvac.yaml：${state.id} → ${state.statusSource}`);
+  });
+
+  it('requires a complete blocker on every pending or undeclared element (S2-A 门禁)', () => {
+    // 这条断言是「未决项上对象」的机器约束：今天 39 个对象一个都不许漏。
+    const elements = collectElements();
+    const result = deriveElementStates({ elements, issues: [] });
+    const statusById = new Map(result.states.map((state) => [state.id, state.status]));
+    const gate = checkBlockers(elements as BlockerSubject[], (subject) => statusById.get(subject.id));
+    assert.equal(gate.checked, 39, `受门禁管辖的 pending/undeclared 构件数（pending 37 + undeclared 2）：${gate.checked}`);
+    assert.deepEqual(gate.issues.map((issue) => formatBlockerIssue(issue)), [], '每个 pending/undeclared 构件都必须带结构完整的 blocker');
+    // 反向锚：门禁不是恒真式——把一个对象的 blocker 抹掉，它必须报红。
+    const stripped = elements.map((item) => (item.id === 'electrical:sock_child_ac' ? { ...item, blocker: undefined } : item));
+    const broken = checkBlockers(stripped as BlockerSubject[], (subject) => statusById.get(subject.id));
+    assert.ok(broken.issues.some((issue) => issue.id === 'electrical:sock_child_ac' && issue.code === 'blocker_missing'), '抹掉一个 blocker 必须报红（证明门禁有约束力）');
   });
 });
 
@@ -272,7 +406,7 @@ describe('hvac ceiling anchors → authoritative status', () => {
 
   it('binds all six ac_* indoor units to their hvac.yaml anchor (no longer undeclared)', () => {
     const elements = collectElements();
-    const result = deriveElementStates({ elements, ledger: { entries: [] }, issues: [] });
+    const result = deriveElementStates({ elements, issues: [] });
     const byId = new Map(result.states.map((state) => [state.id, state]));
     for (const [ceilingId, anchorId] of Object.entries(CEILING_TO_ANCHOR)) {
       const state = byId.get(`ceiling:${ceilingId}`);
@@ -293,7 +427,6 @@ describe('hvac ceiling anchors → authoritative status', () => {
     // 采集器把 hvac anchor 的出处带进 configStatusSource，派生据此覆盖默认的 `config:<raw>`。
     const result = deriveElementStates({
       elements: [{ id: 'ceiling:ac_child', kind: 'hvac', label: 'x', configStatus: 'confirmed', configStatusSource: 'config/hvac.yaml anchor indoor_child:confirmed' }],
-      ledger: { entries: [] },
       issues: [],
     });
     assert.equal(result.states[0].status, 'confirmed');
@@ -302,7 +435,7 @@ describe('hvac ceiling anchors → authoritative status', () => {
 
   it('takes the most conservative status when several anchors reference one ceiling id', () => {
     // 一个内机常同时被 refrigerant/power/condensate 三个 anchor 引用；只要一条没确认，
-    // 整个构件就不能按 confirmed 计——否则「电源 confirmed」会盖掉「冷凝水仍 pending」。
+    // 整个构件就不能按 confirmed 计——否则「电源 confirmed」会把「冷凝水仍 pending」盖掉。
     const mixed = mergeCeilingHvacAnchors([
       { id: 'indoor_child', status: 'confirmed' },
       { id: 'power_child', status: 'confirmed' },
@@ -344,5 +477,49 @@ describe('hvac ceiling anchors → authoritative status', () => {
     assert.equal(mapHvacStatus('pending'), 'pending');
     assert.throws(() => mapHvacStatus('measured'), /Unknown HVAC status/, '电气词 measured 不是 HVAC 词——抛错，不静默猜测');
     assert.throws(() => mapHvacStatus('likely'), /Unknown HVAC status/, 'likely 同理');
+  });
+});
+
+describe('structural beams declared on the geometry object (S2-A)', () => {
+  // beam 对象是 2026-11-08 S2-A 从 docs/pending-site-data.md 的「梁体推断」表与「邻户实测参考」
+  // 节上到 config/layout/model-geometry.yaml 的。它当前没有运行期几何消费方（梁是量房待填项），
+  // 读者是这份测试——所以不变量必须在这里钉住，否则「上对象」会退化成一份没人校验的登记。
+  const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as { beams?: BeamDef[] };
+  const beams = mg.beams ?? [];
+
+  it('declares the four slab-span inferred beams from the pending-site-data table', () => {
+    assert.ok(beams.length >= 4, `梁体推断表 4 行必须全部上对象，实际 ${beams.length}`);
+    const slabSpan = beams.filter((beam) => !beam.inferred.neighbor_ref);
+    assert.equal(slabSpan.length, 4, '4 条板跨结构推断（不带 neighbor_ref 指针）');
+    for (const beam of slabSpan) {
+      assert.ok(beam.inferred.height && beam.inferred.height.length === 2, `${beam.id} 的推断梁高必须是区间 [min,max]`);
+      assert.ok(beam.inferred.height[0] < beam.inferred.height[1], `${beam.id} 的梁高区间必须递增`);
+      assert.ok(beam.inferred.basis.length > 0, `${beam.id} 必须写清推断依据`);
+    }
+  });
+
+  it('marks every beam as inferred and not for construction', () => {
+    for (const beam of beams) {
+      assert.equal(beam.structure_status, 'inferred', `${beam.id} 自家量房前无 confirmed 梁`);
+      assert.equal(beam.not_for_construction, true, `${beam.id} 不得作为开孔/穿梁/压标高依据`);
+      assert.ok(['east_west', 'north_south'].includes(beam.orientation), `${beam.id} 必须声明走向`);
+    }
+  });
+
+  it('points at the hvac reference_constraints instead of copying neighbour-survey numbers', () => {
+    // 单一真相：外部原件 survey/neighbor_ys01_original_structure_2025-06.png 只在
+    // config/hvac.yaml 的 reference_constraints 登记一次；beam 侧只存指针，不复制数字。
+    const hvac = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
+    const constraintIds = new Set(hvac.plans.flatMap((plan) => plan.diagram.reference_constraints.map((constraint) => constraint.id)));
+    const withRef = beams.filter((beam) => beam.inferred.neighbor_ref);
+    assert.ok(withRef.length >= 3, '邻户实测的梁体读数必须以指针形式上对象');
+    for (const beam of withRef) {
+      const refs = (beam.inferred.neighbor_ref ?? '').split(':').pop()!.split(',').map((ref) => ref.trim()).filter(Boolean);
+      assert.ok(refs.length > 0, `${beam.id} 的 neighbor_ref 不能为空`);
+      for (const ref of refs) {
+        assert.ok(constraintIds.has(ref), `${beam.id} 的 neighbor_ref ${ref} 必须存在于 config/hvac.yaml reference_constraints`);
+      }
+      assert.ok(!beam.inferred.height && !beam.inferred.width, `${beam.id} 是指针式登记，不得复制 hvac 约束的数字（第二份真相）`);
+    }
   });
 });

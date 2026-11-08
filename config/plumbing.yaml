@@ -28,6 +28,13 @@
   height: 0.8
   note: "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；DEC-2026-10-03-R1：当前 faucet_kitchen_sink 同款 h=0.8 是抽象服务点，不足施工——台上盆+壁挂龙头需单独定义冷热水预埋、暗装阀体/出水嘴高度与墙排中心，等台盆/龙头 SKU 冻结后才能埋设，水电工不得按 0.8m 抽象点直接开槽（site_pending）"
 
+  status: pending
+  blocker:
+    kind: pending_selection
+    owner: ["业主", "商家"]
+    trigger: "台盆/龙头 SKU 冻结"
+    reverses_if: "SKU 变更致台上盆+壁挂龙头的冷热水预埋、暗装阀体/出水嘴高度与墙排中心重定义；水电工不得按 0.8m 抽象点直接开槽"
+    rationale: "h=0.8 是抽象服务点、不足施工，等台盆/龙头 SKU 冻结后才能埋设（site_pending）"
 - id: drain_mbath_vanity
   # S1-B 状态申报（issue #98）：依据 DEC-2026-10-03-R1（台盆/龙头 SKU 未冻结、h=0.35 为抽象服务点）与 2026-10-05 给排水 v1 推断落库（立管 #19 推断值）
   status: inferred
@@ -193,6 +200,13 @@
   height: 0.02
   note: "2026-08-29 客卫南段马桶/干区地漏（地面，随马桶中心调整至 z=3.05）；DEC-2026-10-08-W03 已画推断路线 drain-gbath-floor-to-riser（1% 坡接客卫推断立管，construction_status: pending、不作为施工依据），立管实测位待量房；外置洗漱区地漏若需要另行深化；DEC-2026-10-23-R03：本点兼作客卫沉箱二次排水口候选锚点（沉箱最低处候选，与 pending #74 客卫二次排水同位登记），二次排水需求路线 drain-gbath-secondary-requirement 以本点为最低处候选锚点、以 design_requirement 表达需求（示意段自锚点东侧 0.15m 起画，全程避开 drain-guest-bath 串联支路中线、独立接立管）——注意地面泄水与防水层下二次排水是两回事，不得并入同一接点（与主卫 drain_mbath_floor / #50 同口径），最低点与二次口位待量房"
 
+  status: pending
+  blocker:
+    kind: site_measurement
+    owner: ["量房"]
+    trigger: "量房实测客卫沉箱最低点与二次排水口位（#74）"
+    reverses_if: "地面泄水与防水层下二次排水不得并入同一接点；最低点实测后重画推断路线"
+    rationale: "立管实测位待量房；本点兼作客卫沉箱二次排水口候选锚点，与 pending #74 同位登记"
 - id: faucet_kitchen_sink
   # S1-B 状态申报（issue #98）：依据 DEC-2026-08-02-013 台面定位与 2026-10-05 v1 推断；x 坐标以 #7/#16 立管与 #8 入户点为前提
   status: inferred
@@ -220,6 +234,13 @@
   height: 0.3
   note: "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）；DEC-2026-10-06-R1 RO 浓水排放：净水器浓水不得直插密封下水，须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），接管方式随 RO 净水器 SKU 冻结后定（pending-site-data #52）。DEC-2026-10-08-W01：给水侧已画 MEP 路线 `water-purifier-branch`（自 faucet_kitchen_sink 共支路、同平面纯竖向 0.50m，status inferred / construction_status pending / not_for_construction，route_kind physical 不计 candidate）；上游给水入户点 pending #8 已于 W01 落推断点位 water_entry。**仍待定**：RO 净水器 SKU（是否带泵/压力桶决定管径与走向）与量房，故本点管径走向未冻结（pending #44）"
 
+  status: pending
+  blocker:
+    kind: pending_selection
+    owner: ["业主", "商家"]
+    trigger: "RO 净水器 SKU 冻结"
+    reverses_if: "SKU 是否带泵/压力桶决定管径与走向；接管方式随 SKU 冻结后定，不得直插密封下水"
+    rationale: "RO 浓水须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），接管方式随 RO 净水器 SKU 冻结后定（#52）"
 - id: faucet_kitchen_dishwasher
   room: kitchen
   type: faucet
@@ -340,6 +361,13 @@
 #      2026-10-07-F03 修正落位为户内阀位锚点 (7.35,0.45)（平台侧接入候选由路线折线表达，见点位 note）。
 #   4. 业主 2026-10-05 批准：厨房排烟道并入本文件（type: duct，pending #17/#10），不新建 ductwork.yaml。
 
+  status: pending
+  blocker:
+    kind: site_measurement
+    owner: ["量房"]
+    trigger: "量房确认阳台排水立管实测位（#51）"
+    reverses_if: "实测立管位与现接入方向 (6.5,1.5) 不符时改接，并把 drain-balcony 终点 from 显式坐标升为实体立管点位"
+    rationale: "洗衣机排水须专用墙排接入立管、不通地面泄水地漏（否则共路反水）"
 - id: drain_riser_master_bath
   room: master_bath
   type: drain_riser

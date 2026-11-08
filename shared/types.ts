@@ -1128,6 +1128,36 @@ export interface PlatformDef {
   height: number;
 }
 
+/**
+ * 结构梁（issue #98 第六阶段 S2-A：把 `docs/pending-site-data.md` 的「梁体推断」表
+ * 与「邻户实测参考」里的梁体读数上到几何对象本体）。
+ *
+ * 全部条目都是**量房待填目标**：`structure_status: inferred` + `not_for_construction: true`，
+ * 不得作为开孔/穿梁/压标高的施工依据。邻户实测读数的权威副本住
+ * `config/hvac.yaml` 的 `reference_constraints`（外部原件
+ * `survey/neighbor_ys01_original_structure_2025-06.png` 只在那处登记一次），
+ * 这里的 `inferred.neighbor_ref` 是**指针**，不复制数字——避免第二份真相。
+ */
+export interface BeamDef {
+  id: string;
+  /** 梁的走向：east_west = 东西向梁，north_south = 南北向梁。 */
+  orientation: 'east_west' | 'north_south';
+  /** 定位线（米，model-geometry 局部坐标）：东西向梁给 z 与 x 范围，南北向梁给 x 与 z 范围。 */
+  line: { x1: number; x2: number; z1: number; z2: number };
+  /** 结构类型来源。梁体推断一律 inferred——自家量房前无 confirmed 梁。 */
+  structure_status: 'inferred';
+  /** true = 不得作为施工依据（推断值，量房后才可进交底）。 */
+  not_for_construction: true;
+  /** 推断依据：height/width 为区间时给 [min, max]；basis 说清凭什么推；neighbor_ref 指 hvac 约束 id。 */
+  inferred: {
+    height?: [number, number];
+    width?: [number, number] | number;
+    basis: string;
+    neighbor_ref?: string;
+  };
+  note?: string;
+}
+
 export interface VertexLayoutYaml {
   version: string;
   unit: string;
@@ -1137,6 +1167,11 @@ export interface VertexLayoutYaml {
   rooms: RoomDef[];
   platform?: PlatformDef;
   walls: WallDef[];
+  /**
+   * 结构梁（issue #98 S2-A 从 pending-site-data 台账上对象）。当前只作登记与测试读取，
+   * 无运行期几何消费方——梁是量房待填项，`not_for_construction: true`。
+   */
+  beams?: BeamDef[];
 }
 
 export interface ResolvedRoom extends RoomLayout {
@@ -1218,6 +1253,60 @@ export type ElectricalPointType =
   | 'night_light';
 
 export type ElectricalPointStatus = 'measured' | 'likely' | 'inferred' | 'pending';
+
+/**
+ * 构件工程状态词（issue #98 第六阶段 S2-A「状态上对象」）。
+ *
+ * 电气/给排水/吊顶三类构件**只有一个**能写状态的字段：`status`。词汇在既有
+ * measured / likely / inferred / pending 之上补两个词，与 `config/state-model.yaml`
+ * 的 `status_vocabulary` 逐键对齐：
+ *
+ *   measured   现场实测几何（电气/给排水既有精度词）
+ *   likely     未核实估计（电气/给排水既有精度词，词汇表映射为 inferred）
+ *   inferred   图纸/邻户图/设计推断，未经自家量房核实
+ *   pending    明确待量房/待选型/待深化图/待裁定——**必须同时声明 `blocker`**
+ *   confirmed  有成交/裁定依据的确认（HVAC anchor 既有词，S2-A 起三类构件同词同义）
+ *   undeclared 显形申报「本构件状态未申报」——**必须同时声明 `blocker`**（卡在什么上）
+ *
+ * 为什么 electrical 曾经的 `position_status` 退场：它是第二个能写构件状态的字段
+ * （采集器二选一读），同一事实两处可写。S2-A 后位置精度不再是独立状态字段，
+ * 「位置待核」由 `status: pending` + `blocker.kind: site_measurement` 承载；
+ * 仅 `shared/mep-takeoff.ts` 的算量延期仍按 `position_status === 'pending'` 判定的
+ * 两个预留占位点（sock_child_ac / sock_kitchen_oven）保留该字段，见其 schema 注。
+ */
+export type ComponentStatus = ElectricalPointStatus | 'confirmed' | 'undeclared';
+
+/** 阻塞项类别（`blocker.kind`）：这个构件卡在哪一类事上。 */
+export type BlockerKind =
+  | 'site_measurement'       // 量房待测
+  | 'pending_selection'      // 待选型（SKU/型号/方案未定）
+  | 'pending_vendor_drawing' // 待深化图（厂家/橱柜/柜商出图）
+  | 'pending_adjudication'   // 待裁定（业主/设计决策未拍板）
+  | 'unclosed_conflict';     // 冲突未闭（两处口径互相矛盾）
+
+/** 阻塞项责任方（`blocker.owner`）：谁推动才能解锁。可多值。 */
+export type BlockerOwner =
+  | '业主' | '设计' | '量房' | '厂家' | '商家'
+  | '电工' | '柜商' | '运营商' | '物业' | '燃气公司';
+
+/**
+ * 构件自带的未决声明（issue #98 S2-A）：`status` 为 pending / undeclared 时必填。
+ *
+ * 四个字段合起来回答决策铁律第 2 条的三问——谁负责（owner）、什么事件能解锁
+ * （trigger）、为什么卡（rationale）、什么条件下结论反转（reverses_if）。
+ * 缺任何一项 = 这条未决没有 owner 与期限，等于没写。
+ */
+export interface ComponentBlocker {
+  kind: BlockerKind;
+  owner: BlockerOwner[];
+  /** 短语：什么事件能解锁（如「厂家深化图到手」「量房实测梁底」）。 */
+  trigger: string;
+  /** 散文：什么条件下结论反转。 */
+  reverses_if: string;
+  /** 散文：为什么卡。 */
+  rationale: string;
+}
+
 export type ElectricalPointServiceability = 'usable' | 'blocked' | 'superseded';
 export type WallSide = 'north' | 'south' | 'east' | 'west';
 export interface FurnitureFaceMountAnchor {
@@ -1278,8 +1367,18 @@ export interface ElectricalPoint {
   height?: number;
   mount_height?: number;
   body_height?: number;
-  status?: ElectricalPointStatus;
+  status?: ComponentStatus;
+  /**
+   * 位置精度（历史字段，2026-11-08 S2-A 起**不再是构件状态字段**）。
+   *
+   * 构件状态唯一来源是 `status`（见 ComponentStatus 注）。本字段只剩一个消费者：
+   * `shared/mep-takeoff.ts` 的算量延期判定（`status === 'pending' && position_status === 'pending'`
+   * = 「点位尚未具备可报价/施工的稳定归属」）。当前仅 sock_child_ac / sock_kitchen_oven
+   * 两个预留占位点声明它；其余点位的「位置待核」已由 `status: pending` + `blocker` 承载。
+   */
   position_status?: ElectricalPointStatus;
+  /** 未决声明：`status` 为 pending / undeclared 时必填（issue #98 S2-A）。 */
+  blocker?: ComponentBlocker;
   /** Machine-readable endpoint usability; point geometry may remain for history/rendering after it stops being serviceable. */
   serviceability_status?: ElectricalPointServiceability;
   /**
@@ -1392,8 +1491,10 @@ export interface PlumbingPoint {
   host_intent?: string;
   note?: string;
   height?: number;
-  /** 精度等级（推断/实测口径）。推断点位必须与 docs/pending-site-data.md 的登记值一致。 */
-  status?: PlumbingPointStatus;
+  /** 精度等级（推断/实测口径）。构件状态的唯一字段（issue #98 S2-A）。 */
+  status?: ComponentStatus;
+  /** 未决声明：`status` 为 pending / undeclared 时必填（issue #98 S2-A）。 */
+  blocker?: ComponentBlocker;
   /** 施工状态：pending = 不作为施工依据，量房升级后才可进交底。 */
   construction_status?: PlumbingConstructionStatus;
   /** 推断坐标的不确定度（米）。仅推断点位填写，量房后删除。 */
@@ -1468,12 +1569,14 @@ export interface CeilingZone {
   power_point?: string;
   note?: string;
   /**
-   * 分区自身的显式工程状态（issue #98 第六阶段 S1-B 补录通道，与电气/给排水的
-   * `status` 同词汇表：measured/likely/inferred/pending）。不写 = 未申报（派生时
-   * 走 decision/ledger/fallback 原通道）。被 hvac anchor 引用的分区（ac_*）不读
+   * 分区自身的显式工程状态（issue #98 S1-B 补录通道）。S2-A 起词汇与电气/给排水
+   * 完全同源（`ComponentStatus`），并新增 confirmed / undeclared 两个词。
+   * 不写 = 未申报（派生为 undeclared）。被 hvac anchor 引用的分区（ac_*）不读
    * 本字段——anchor 的权威状态优先。
    */
-  status?: 'measured' | 'likely' | 'inferred' | 'pending';
+  status?: ComponentStatus;
+  /** 未决声明：`status` 为 pending / undeclared 时必填（issue #98 S2-A）。 */
+  blocker?: ComponentBlocker;
 }
 
 export type HvacStatus = 'confirmed' | 'inferred' | 'pending';
@@ -1504,6 +1607,8 @@ export interface HvacAnchor {
   ref?: HvacReference;
   position?: Vec3;
   reason?: string;
+  /** 未决的结构化声明（issue #98 S2-A，与 reason 二选一）。 */
+  blocker?: ComponentBlocker;
 }
 
 export interface HvacTerminal {
@@ -1512,6 +1617,8 @@ export interface HvacTerminal {
   system: HvacSystem;
   position: Vec3;
   reason?: string;
+  /** 未决的结构化声明（issue #98 S2-A，与 reason 二选一）。 */
+  blocker?: ComponentBlocker;
   kind?: 'terminal' | 'condensate_drain_candidate' | 'decorative_louver';
   confirmed?: boolean;
   render_interior?: boolean;

@@ -979,3 +979,89 @@ walls:
           along: [0.00, 3.00]
           height: 2.80
           reason: "客房墙面涂装（w_be_north）"
+
+# ── 结构梁（issue #98 第六阶段 S2-A：从 docs/pending-site-data.md 的「梁体推断」表上对象）──
+# 全部条目都是**量房待填目标**：structure_status 一律 inferred + not_for_construction: true，
+# 不得作为开孔/穿梁/压标高的施工依据（verify:mep 的 beam_collision 仍以 config/hvac.yaml 的
+# reference_constraints 为权威输入，本表不参与几何判定）。
+#
+# 单一真相纪律：邻户实测读法的权威副本住 config/hvac.yaml 的 reference_constraints
+# （外部原件 survey/neighbor_ys01_original_structure_2025-06.png 只在那处登记一次），
+# 这里的 `inferred.neighbor_ref` 是**指针**（hvac 约束 id），不复制数字——避免第二份真相。
+# 本表只承载「梁体推断」表的板跨结构推断（pending-site-data #1）。
+beams:
+  - id: beam_z555_x0_72
+    orientation: east_west
+    line: { x1: 0.00, x2: 7.20, z1: 5.55, z2: 5.55 }
+    structure_status: inferred
+    not_for_construction: true
+    inferred:
+      height: [0.35, 0.40]
+      width: 0.25
+      basis: "板跨 4.25m 支座（pending-site-data #1 梁体推断表第 1 行）；2026-10-25 R01 已把北厚墙北脸线由 5.55 改判 4.82，本梁线 z=5.55 仍按原登记，量房一并复核"
+    note: "东西向；位置/跨度方向为推断值，梁高给区间（推断表原文 350-400mm）"
+
+  - id: beam_z430_x0_134
+    orientation: east_west
+    line: { x1: 0.00, x2: 13.40, z1: 4.30, z2: 4.30 }
+    structure_status: inferred
+    not_for_construction: true
+    inferred:
+      height: [0.40, 0.50]
+      width: 0.30
+      basis: "客厅 6.2m 跨北支座（pending-site-data #1 梁体推断表第 2 行）"
+    note: "东西向；与餐厅北侧服务带/厨房门头盒（ceiling_dining_north_band）同标高带，量房复核梁底"
+
+  - id: beam_x720_z0_98
+    orientation: north_south
+    line: { x1: 7.20, x2: 7.20, z1: 0.00, z2: 9.80 }
+    structure_status: inferred
+    not_for_construction: true
+    inferred:
+      height: [0.40, 0.50]
+      width: 0.30
+      basis: "结构分界线（pending-site-data #1 梁体推断表第 3 行）"
+    note: "南北向；x=7.20 同时是客餐厅/卧室区分界与墙带基准线（口径 A 渲染基准），量房复核"
+
+  - id: beam_x1340_z0_98
+    orientation: north_south
+    line: { x1: 13.40, x2: 13.40, z1: 0.00, z2: 9.80 }
+    structure_status: inferred
+    not_for_construction: true
+    inferred:
+      height: [0.35, 0.40]
+      width: 0.25
+      basis: "结构分界线（pending-site-data #1 梁体推断表第 4 行）"
+    note: "南北向；与东南房错台线 9.88 相邻，量房复核"
+
+  # 幕墙带浅梁：邻户图「宽扁梁读法作废——梁仅为 LD:100–180 组 = 浅梁（底沉 100–180，
+  # 梁底≈2.65–2.73）」。数字不在此复制，指针指 hvac.yaml 的两条 reference_constraints。
+  - id: beam_curtain_wall_shallow_band
+    orientation: east_west
+    line: { x1: 0.00, x2: 16.40, z1: 0.00, z2: 9.95 }
+    structure_status: inferred
+    not_for_construction: true
+    inferred:
+      basis: "邻户图宽扁梁读法作废：南/北幕墙带梁仅为 LD:100–180 组浅梁（底沉 100–180mm，梁底≈2.65–2.73）；具体范围/梁底以指针所指 hvac 约束为准"
+      neighbor_ref: "config/hvac.yaml reference_constraints: ref_south_window_band_ld100, ref_kitchen_north_ld180"
+    note: "指针式登记（不复制数字）：南窗带/北厨房窗带的浅梁范围、梁底与±150mm 不确定度见 hvac reference_constraints"
+
+  - id: beam_kitchen_local_head
+    orientation: north_south
+    line: { x1: 9.00, x2: 9.40, z1: 1.50, z2: 2.66 }
+    structure_status: inferred
+    not_for_construction: true
+    inferred:
+      basis: "邻户图 LH:270/LW:210 局部投影解读为小梁头，不是窗洞；2026-10-25 梁体修正后与虚线梁对候选并存（量房定后删其一）"
+      neighbor_ref: "config/hvac.yaml reference_constraints: ref_kitchen_local_beam_head, ref_kitchen_dashed_beam_candidate"
+    note: "指针式登记：两处候选的范围、梁底（2.56）与量房裁定条件见 hvac reference_constraints"
+
+  - id: beam_master_bath_local_head
+    orientation: north_south
+    line: { x1: 1.20, x2: 1.90, z1: 3.10, z2: 4.52 }
+    structure_status: inferred
+    not_for_construction: true
+    inferred:
+      basis: "邻户图 LH:250/LH:420/LW:400 局部投影解读为小梁头，不是窗洞；三个候选（LH:250/LH:420/原登记）量房各量一遍再定归属"
+      neighbor_ref: "config/hvac.yaml reference_constraints: ref_master_bath_local_beam_head, ref_master_bath_lh250_candidate, ref_master_bath_lh420_candidate"
+    note: "指针式登记：候选范围、梁底（2.41/2.58）与量房裁定条件见 hvac reference_constraints"

@@ -168,6 +168,13 @@
   pricing_form: flat
   note: "主走廊吊顶（藏多联机风管），净高约2.50m；与semantic_only主走廊区域对齐，与客厅设备带共用完成面标高和饰面"
 
+  status: undeclared
+  blocker:
+    kind: pending_adjudication
+    owner: ["设计", "量房"]
+    trigger: "主走廊吊顶完成面标高与分区边界经设计裁定"
+    reverses_if: "走廊净高下限改判时，与客厅设备带共用的完成面标高和饰面同步重算"
+    rationale: "分区只声明了用途与净高约 2.50m，未申报工程状态（原为 undeclared 申报缺口）"
 - id: ceiling_corridor
   # S1-B 状态申报（issue #98）：依据 DEC-2026-10-05-R9（功能互换，标题明文几何不动）——分区几何经裁定复核的设计值，未经现场实测
   status: inferred
@@ -233,6 +240,13 @@
 
 # === 卧室窗帘盒（2026-08-26 补，curtain-design.md 要求 4 处；深 0.25m 容双轨，降 0.15m 与客厅窗帘盒同底标高 2.65m） ===
 
+  status: undeclared
+  blocker:
+    kind: pending_adjudication
+    owner: ["设计", "量房"]
+    trigger: "儿童房南墙边吊分区边界与底标高经设计裁定（与 ac_child 内机/风管方案一并）"
+    reverses_if: "内机改位或边吊底标高调整时，分区几何与净高判定重算"
+    rationale: "分区只声明了用途与避让范围，未申报工程状态（原为 undeclared 申报缺口）"
 - id: curtain_box_master_west
   room: master_bedroom
   type: drop
@@ -241,6 +255,13 @@
   area: [1.10, 5.55, 1.35, 8.80]
   note: "主卧西飘窗窗帘盒（贴飘窗内缘 x=1.10，覆盖西飘窗 z[5.55,8.80] 段）；2026-08-26 边吊迁东墙后不再由 ceiling_master_ac 兼任，独立补建"
 
+  status: pending
+  blocker:
+    kind: pending_adjudication
+    owner: ["业主", "设计"]
+    trigger: "主卧两条窗帘盒平面重叠 0.025㎡ 的设计裁定（#53）"
+    reverses_if: "若定西盒上界收到 z=8.70 则净面积 −0.025㎡；若定「转角两盒有意交汇」则维持现几何并确认封板收口"
+    rationale: "西窗帘盒 x[1.10,1.35]×z[5.55,8.80] 与南窗帘盒平面重叠 0.025㎡，设计待决（不是量房待决），量房只提供墙面完成面事实"
 - id: curtain_box_master_south
   room: master_bedroom
   type: drop
@@ -249,6 +270,13 @@
   area: [0.00, 9.55, 4.20, 9.80]
   note: "主卧南环幕窗帘盒（DEC-2026-10-28-R05 归位：盒南缘贴南玻璃线 z=9.80、盒占 z[9.55,9.80]，与客厅南盒 curtain_box_living（盒南缘贴玻璃 9.80）同口径，帘布投影落在盒中线；原 z[8.70,8.95] 系『南飘窗凹进室内、内缘 8.70』旧读法遗留，与本房 bay_sill『南缘 z=10.90、飘台板南外凸』自相矛盾——凹进读法已由 DEC-2026-10-23-R04 废止，三间朝南卧室盒本轮统一归位，不得回退旧坐标；电动电源 sock_master_curtain 同步南移至盒中心线 (4.20,9.675)，其顶升分支自 2026-10-07 起只写在 strong-power-master reason 内、从未画线，本轮仍不补画（裸点已在 mep-takeoff 未路由清单显形；补画需延长 w_mb_east 剪力墙贴墙段，另案处理）；电动窗帘电机属二期，一期只留电源与位置）"
 
+  status: pending
+  blocker:
+    kind: pending_adjudication
+    owner: ["业主", "设计"]
+    trigger: "主卧两条窗帘盒平面重叠 0.025㎡ 的设计裁定（#53）"
+    reverses_if: "若定西盒上界收到 z=8.70 则净面积 −0.025㎡；若定「转角两盒有意交汇」则维持现几何并确认封板收口"
+    rationale: "盒位已由 DEC-2026-10-28-R05 归位（不得回退旧坐标），仍未闭的是与西窗帘盒的平面重叠 0.025㎡（#53，设计待决）"
 - id: curtain_box_parent_south
   # S1-B 状态申报（issue #98）：依据 DEC-2026-10-28-R05（归位 z[9.55,9.80]，废止凹进读法不得回退）——设计值未经现场实测
   status: inferred
