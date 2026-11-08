@@ -370,7 +370,7 @@
 - **铝扣板只是估价**：`aluminum_buckle_owner_estimate_150` 是候选卡、非生效卡，预算口径不变；拿到商家裸价书面报价后替换 `per_unit` 与 `status`；
 - **不改** `config/budget/base.json` 的木工费率行，不动 `DEC-2026-10-08-C02` 的拆分行；
 - **不入** `schedule/phase-1/control.yaml` 的报价轮次：需先取得书面分项报价单（price_type + component_ids + evidence_path），届时补 `hard_finish_quote_rounds` 并 `npm run schedule:render`；
-- **不改** `docs/pending-site-data.md`：本方案的待办是采购/报价口径，不是量房待决，不进 53 条量表。
+- **不改** `原量房台账（已于 S2-B 退场）`：本方案的待办是采购/报价口径，不是量房待决，不进 53 条量表。
 
 ---
 

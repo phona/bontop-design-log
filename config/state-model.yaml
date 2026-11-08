@@ -12,12 +12,12 @@
 # objectId 前缀），台账腐烂核对改读注册表；本文件不再登记任何配置路径。
 #
 # 2026-11-08（issue #98 第六阶段 S2-A）**状态不再查表**：优先级链删掉两条规则——
-#   `ledger`（查 docs/pending-site-data.md 命中某条 → pending）与
+#   `ledger`（查 原量房台账（已于 S2-B 退场） 命中某条 → pending）与
 #   `decision`（note 里有 DEC 编号 → confirmed，issue #98 点名的隐式确认逻辑）。
 # 状态是对象的声明：电气/给排水/吊顶构件的 `status` 是唯一状态字段，pending/undeclared
 # 时必须同时声明 `blocker`（kind/owner/trigger/reverses_if/rationale，门禁见
 # shared/element-blockers.ts）。未决的「卡在谁、何时解锁、何时反转」从此住在对象本体，
-# 不住在任何中央账本。docs/pending-site-data.md 与 docs/decisions/ 的退役见各自切片。
+# 不住在任何中央账本。原量房台账（已于 S2-B 退场） 与 docs/decisions/ 的退役见各自切片。
 
 version: 1
 

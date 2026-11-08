@@ -980,7 +980,7 @@ walls:
           height: 2.80
           reason: "客房墙面涂装（w_be_north）"
 
-# ── 结构梁（issue #98 第六阶段 S2-A：从 docs/pending-site-data.md 的「梁体推断」表上对象）──
+# ── 结构梁（issue #98 第六阶段 S2-A：从 原量房台账（已于 S2-B 退场） 的「梁体推断」表上对象）──
 # 全部条目都是**量房待填目标**：structure_status 一律 inferred + not_for_construction: true，
 # 不得作为开孔/穿梁/压标高的施工依据（verify:mep 的 beam_collision 仍以 config/hvac.yaml 的
 # reference_constraints 为权威输入，本表不参与几何判定）。

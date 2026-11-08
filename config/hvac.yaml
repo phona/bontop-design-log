@@ -37,7 +37,7 @@ plans:
         currency: CNY
         contract_total_cny: 36000
         contract_total_terms: "合同附件第十二条合计 36,000 元（含辅材；不含复合风管与风口加长——加长 100 元/米另计、不含税）"
-        transcript_grade_limit: "含否口径据 evidence-notes 对合同附件备注 2/5 的历史转录；备注页原件不在已归档两页内，补齐前为转录级证据（待办挂 docs/pending-site-data.md #39⑥）"
+        transcript_grade_limit: "含否口径据 evidence-notes 对合同附件备注 2/5 的历史转录；备注页原件不在已归档两页内，补齐前为转录级证据（待办挂 原量房台账 #39（已退场，未决项现由对象 blocker 承载）⑥）"
     outdoor:
       id: vrf_outdoor_a2
       platform: west_platform

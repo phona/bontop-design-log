@@ -22,7 +22,7 @@ import {
  * 只派生不存储：权威仍在 config 字段与 verifier，本命令产出的是视图。
  *
  * 2026-11-08（issue #98 第六阶段 S2-A）：**不再读任何待决台账**。原
- * `docs/pending-site-data.md` 的两项职责都已退役——① 作为状态来源（`ledger` 优先级规则）
+ * `原量房台账（已于 S2-B 退场）` 的两项职责都已退役——① 作为状态来源（`ledger` 优先级规则）
  * 与 ② 「卡在谁」的展示源（openQuestion）；现在两者都由构件自己的 `status` / `blocker`
  * 字段承载（业主裁定①③⑤）。台账腐烂核对（ledger dangling refs）随之删除：blocker 住在
  * 对象上，「台账指向的构件已不存在」这类腐烂在结构上不再可能发生。

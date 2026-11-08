@@ -11,7 +11,7 @@
  *    `config/state-model.yaml`（调用方注入后经 `model` 参数进来），代码只提供谓词；
  *    配置申报了代码没有的规则 → warning（覆盖矩阵不许说谎）。
  *
- * 2026-11-08 issue #98 S2-A：**状态不再查表**。原 `ledger`（查 docs/pending-site-data.md）
+ * 2026-11-08 issue #98 S2-A：**状态不再查表**。原 `ledger`（查 原量房台账（已于 S2-B 退场））
  * 与 `decision`（note 里有 DEC 编号 → confirmed）两条规则删除，优先级只剩
  * `[conflict, config_status, fallback]`。未决的「卡在谁、什么事件能解锁、什么条件下反转」
  * 由构件自己的 `blocker` 字段承载（shared/element-blockers.ts 门禁兜底完整性），

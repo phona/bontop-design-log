@@ -75,7 +75,7 @@
 - **顺带修复（App 链路静默丢防水台的存量 bug）**：`SceneBuilder` sill_region 分支原需在墙表查 bay_sill 引用的墙，而 App 的墙表不含被 suppress 的玻璃幕墙——**客厅防水台自 R11 起在浏览器里从未渲染过**（测试未抓到：测试自己喂了完整墙表）。改为优先直用 bay_sill 自带 wallRefs 坐标、仅裸引用回退墙表，浏览器 23 网格实建验证。
 - **数字变化**：贴砖声明 sill_region 2→**6 段**、全屋 24.643→**25.651㎡**（主卫 4.13→**5.14**）；高度档 0.15m×6；网格 21（浏览器侧 17→23 含此前缺失的客厅防水台）。COST-060-08 planned 800→**871**；PKG-060 need 43,300→**43,371**、缺口 13,300→13,371；全局 known pending gap 34,594→**34,665**（control.yaml/budget.md/procurement.md 三处同步）。
 - **登记翻转**：#20（全屋飘窗 sill）改判 owner_asserted——儿童房衣柜降高/主卧斗柜 h<2.07 等由高窗台推断派生的约束**随之作废**，相关家具 v0 候选（床尾凸窗带可站人性）需重新评审；#54 分支收敛为①（齐地），量房终核反坎实存与尺寸，若量出高窗台系则回滚声明改补西墙墙砖。
-- **关联文件**：`config/layout/overlay.yaml`、`schedule/phase-1/control.yaml`、`schedule/phase-1/budget.md`、`schedule/procurement.md`、`docs/pending-site-data.md`（#20/#54）、`tests/server/wall-tile-inspection.test.ts`、`tmp/tile-report.ts`、`docs/decisions/11-tile-finish.md`（本条）。
+- **关联文件**：`config/layout/overlay.yaml`、`schedule/phase-1/control.yaml`、`schedule/phase-1/budget.md`、`schedule/procurement.md`、`原量房台账（已于 S2-B 退场）`（#20/#54）、`tests/server/wall-tile-inspection.test.ts`、`tmp/tile-report.ts`、`docs/decisions/11-tile-finish.md`（本条）。
 - **决策人**：业主（实地断言）；量房 #20/#54 终核保留。
 
 ### DEC-2026-10-07-R05 PKG-060 墙砖收口：墙砖主材补科目 + 面积不减走杂砖 + 更正链
@@ -247,9 +247,9 @@
 - **面积与材料估算**：新增面积 `19.710165578m × (0.15m + 0.15m) = 5.91305㎡`。现行总量：wall_region **21.2555㎡**（不变）+ sill_region **15.46810㎡**（原9.55505 + 5.91305）= **36.72360㎡**，共wall_region 17段、sill_region 20段。按当前`wall_tile_01`候选价 ¥12/片、覆盖0.18㎡、损耗1.05折算¥70/㎡，COST-060-08全量材料估算约 **¥2,571**；本次反坎面积对应主材增量约¥414；这不是门店成交价。
 - **人工口径**：新增窗边resolved长度 **19.7102m**；按瓦工费率表“窗边台贴小砖条¥20/米”新增约 **¥394**，仍列COST-060-05待书面报价。现有低反坎总长按客厅6.20m+主卫resolved弧墙3.9302m（西墙0.76m+北墙弧线路径3.1702m）+本轮19.7102m约29.8403m、按¥20/m名义约¥597；本轮新增约¥394。厨房高位飘窗另有3.60m sill延长米，施工口径不同，不套低反坎¥20/m费率。若常规墙砖人工报价已覆盖低反坎工艺，须去重，不得再加到¥18,500人工池。
 - **预算更新**：COST-060-08当前模型主材估算为 **¥2,571**；其`planned_cny`仍保留旧¥800、状态owner_decision_pending，未获业主批准前不自动调整计划额，也不把¥800当作足额成本。PKG-060 estimated_need ¥44,296 → **¥45,071**（原基础¥42,500 + 当前墙砖主材估算¥2,571），工作包缺口 ¥14,296 → **¥15,071**，全局已知缺口 ¥35,590 → **¥36,365**。旧need与旧几何量的价差一并按现行takeoff收敛。COST-060-05特殊工艺人工仍待报价且未并入need；预算计划池¥30,000不变，资金来源仍待业主裁决。
-- **量房闭环**：更新docs/pending-site-data.md #20；业主/量房在交房后、瓷砖排版/下单前复测六段高度、内出檐、曲角终点、窗框完成面与打胶排水做法；同步改overlay bay_sill/sill_region、takeoff数量、COST-060-08与check_sill_tile验收范围。旧2.07m高位bay_sill保持独立待核，不能当作低反坎尺寸。
+- **量房闭环**：更新原量房台账 #20（已退场，未决项现由对象 blocker 承载）；业主/量房在交房后、瓷砖排版/下单前复测六段高度、内出檐、曲角终点、窗框完成面与打胶排水做法；同步改overlay bay_sill/sill_region、takeoff数量、COST-060-08与check_sill_tile验收范围。旧2.07m高位bay_sill保持独立待核，不能当作低反坎尺寸。
 - **验证范围**：overlay声明层、共享masonry takeoff、budget lineItems、瓷砖验收项和schedule控制量一致；以贴砖检视态从主卧/书房/两次卧逐房查看front+top。样式/函数review以浏览器运行时证据为准，实际尺寸仍保留量房待办。
-- **关联文件**：`config/layout/overlay.yaml`、`config/acceptance.yaml`、`config/budget-pitfalls.yaml`、`config/materials.yaml`、`config/procurement.yaml`、`schedule/phase-1/control.yaml`、`schedule/procurement.md`、`docs/pending-site-data.md`、相关takeoff/budget/inspection tests、`docs/design-iterations/window-sill-tile-20261016/`。
+- **关联文件**：`config/layout/overlay.yaml`、`config/acceptance.yaml`、`config/budget-pitfalls.yaml`、`config/materials.yaml`、`config/procurement.yaml`、`schedule/phase-1/control.yaml`、`schedule/procurement.md`、`原量房台账（已于 S2-B 退场）`、相关takeoff/budget/inspection tests、`docs/design-iterations/window-sill-tile-20261016/`。
 - **决策人**：业主。
 
 ### DEC-2026-10-18-TILE-02 客卫门外开放洗漱区改随木纹砖，内卫保留小花砖

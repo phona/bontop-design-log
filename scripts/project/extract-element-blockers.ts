@@ -272,7 +272,7 @@ function readCandidates(file: string, kind: Candidate['kind']): Candidate[] {
  * 三种来源：
  *  ① `status: pending`（S1-B 补录通道）；
  *  ② `position_status: pending`（electrical 的旧第二状态字段——本轮对齐回 `status`）；
- *  ③ 完全没声明状态——它们在 S2-A 前靠 `docs/pending-site-data.md` 的 ledger 规则落 pending，
+ *  ③ 完全没声明状态——它们在 S2-A 前靠 `原量房台账（已于 S2-B 退场）` 的 ledger 规则落 pending，
  *     台账删除后会被兜底成 undeclared。脚本给它们补 `status: pending`（默认语义，报告里显形），
  *     真正该是 `undeclared` 的个别条目由实施者改。
  */

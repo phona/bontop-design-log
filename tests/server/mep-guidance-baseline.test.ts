@@ -1,7 +1,7 @@
 // tests/server/mep-guidance-baseline.test.ts
 //
 // 「文档不许再漂移」自审计：把 docs/mep-construction-guidance.md 的规模口径与
-// §6 验收基线、docs/pending-site-data.md 的表头计数口径、以及 MEP/电气 lint 治理
+// §6 验收基线、原量房台账（已于 S2-B 退场） 的表头计数口径、以及 MEP/电气 lint 治理
 // 台账（docs/design-iterations/mep-lint-governance-20261006/review-manifest.json）
 // 全部绑到**实算**上。
 //
@@ -21,11 +21,9 @@ import { load as parseYaml } from 'js-yaml';
 // ─── 被测文档 ────────────────────────────────────────────────────────────────
 
 const GUIDANCE_PATH = 'docs/mep-construction-guidance.md';
-const PENDING_PATH = 'docs/pending-site-data.md';
 const MANIFEST_PATH = 'docs/design-iterations/mep-lint-governance-20261006/review-manifest.json';
 
 const guidance = readFileSync(GUIDANCE_PATH, 'utf8');
-const pending = readFileSync(PENDING_PATH, 'utf8');
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8')) as {
   dispositions: Array<{ code: string; count: number; category: string; disposition: string }>;
   summary?: Record<string, unknown>;
@@ -217,29 +215,11 @@ test('§0 规模表：路由/层/电点/给排水点/吊顶分区与机器条目
   assert.equal(Number(docChains![2]), Number(info![3]), `§0 吊顶分区数 ${docChains![2]} ≠ verify:facts 实算 ${info![3]}`);
 });
 
-// ─── pending-site-data：表头计数口径（66 个编号 + #3a 子项 = 67 行） ────────
-
-test('pending-site-data 表头口径：「量表共 N 条」= 编号数，实际行数 = 编号数 + 子项数', () => {
-  const header = pending.match(/量表共\s*(\d+)\s*条/);
-  assert.ok(header, 'docs/pending-site-data.md 必须保留「量表共 N 条」这一叙事锚点（fact.pending_site_data_count 权威值）');
-  const claimed = Number(header![1]);
-
-  // 权威值（narrative）= 表头那一处，两者必须一致
-  const fact = registry.facts.find((f) => f.id === 'fact.pending_site_data_count');
-  assert.ok(fact, 'config/facts.yaml 必须登记 fact.pending_site_data_count');
-  const anchor = String(fact!.value ?? '').match(/量表共\s*(\d+)\s*条/);
-  assert.ok(anchor, 'fact.pending_site_data_count 的权威值必须锚在表头那一句上');
-  assert.equal(Number(anchor![1]), claimed, '登记表权威值与文档表头的编号数必须一致');
-
-  // 表格行：`| N |`（编号行）与 `| Na |`（子项行）
-  const rows = [...pending.matchAll(/^\|\s*(\d+[a-z]?)\s*\|/gm)].map((m) => m[1]);
-  const numbered = rows.filter((id) => /^\d+$/.test(id));
-  const subItems = rows.filter((id) => /^\d+[a-z]$/.test(id));
-  assert.equal(claimed, numbered.length, `表头声称 ${claimed} 个编号，实际编号行 ${numbered.length}`);
-  assert.deepEqual(subItems, ['3a'], '子项行应恰为 #3a（#3 的 A2 HVAC 子项）');
-  assert.equal(rows.length, claimed + subItems.length, '表格行数必须 = 编号数 + 子项数');
-  assert.equal(rows.length, 99, '当前口径：98 个编号 + #3a = 99 行'); // 2026-11-08 issue #98 第六阶段 S1 pending 迁移新增 #78–#98 共 21 条（DEC 退役迁移：DEC-045 悬案 + VIP 未决本体 + decisions/README 12 条 + 外部行动项，98→99）；2026-11-05 DEC-2026-11-05-R5 新增 #75/#76/#77（75→78）；2026-10-22 DEC-2026-10-22-R02 新增 #74 客卫沉箱构造核实（74→75）；前史：2026-10-18 DEC-2026-10-18-R22 审查结论新增 #73 吊顶构造包络（阻塞 Z 表下探与 B 区净距判定）；R20 批新增 #67–#72（67→73）
-});
+// ─── 原量房手账表头计数口径（已随 S2-B 退场） ─────────────────────────────
+// 2026-11-08 issue #98 S2-B：docs/pending-site-data.md 整份退场，未决项已全数搬到
+// config 各对象自己的 status/blocker 字段上，「量表共 N 条」这个自证式计数口径随之消失。
+// 替代的不变量在 tests/server/element-state.test.ts 的 blocker 门禁与
+// tests/server/decision-knowledge.test.ts 的 landing 词表——都不再需要文档计数。
 
 // ─── 治理台账：逐条与实算一致，且覆盖全部实算 code ───────────────────────
 

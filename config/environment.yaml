@@ -1,6 +1,6 @@
 # 环境模拟配置：气候参数的唯一权威源（日照模拟 + 湿度风险评估）。
 # 月均数据级别 estimated（中国气象数据网南宁站多年均值，未逐项核对）；
-# horizon.obstruction_deg 为 inferred，待现场量房升级（见 docs/pending-site-data.md）。
+# horizon.obstruction_deg 为 inferred，待现场量房升级（见 原量房台账（已于 S2-B 退场））。
 version: 1
 
 location:

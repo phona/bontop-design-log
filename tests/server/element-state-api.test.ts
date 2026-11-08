@@ -158,7 +158,7 @@ describe('element state API', () => {
   it('fails closed with 503 instead of serving empty states', async () => {
     // 输入读不到/解析失败时服务抛错；路由必须转 503，且 body 里不许出现空 states 兜底。
     const broken = createApp(() => {
-      throw new Error('docs/pending-site-data.md is unreadable');
+      throw new Error('原量房台账（已于 S2-B 退场） is unreadable');
     });
     const res = await request(broken).get('/api/element-state').expect(503);
     assert.match(res.body.error, /unreadable/);

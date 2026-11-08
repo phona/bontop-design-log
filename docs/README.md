@@ -28,7 +28,7 @@
 | 2026-11-04 | `docs/self-install-approval-design.md` | 登记 issue #65 落地：点位来源 select.all 展开（残留 P2-6 关闭），PKG-040 得 137 个水电点位 |
 | 2026-11-02 | `docs/self-install-approval-design.md` | 自装交互审批设计稿迁入 docs/（v1 口径定稿、v2 新增为提案待拍板） |
 | 2026-10-20 | `docs/README.md` | 新建（本索引） |
-| 2026-10-20 | `docs/pending-site-data.md` | #39 挂 hvac-ld 门禁指针 |
+| 2026-11-09 | ~~pending-site-data.md~~ | **已退场**：未决项全数迁至 config 各对象 status/blocker 字段；叙事决策登记表 D1–D19 迁入 `config/decision-gates.yaml` 的 missing_evidence。墓碑见本文件「退场墓碑」节 |
 | 2026-10-20 | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | v2 预研稿新建（两轮独立审查修订） |
 | 2026-10-19 | `docs/mep-construction-guidance.md` | 机电指导更新 |
 | 2026-10-17 | `docs/style-guide.md` | 风格指南更新 |
@@ -58,18 +58,17 @@
 
 ---
 
-## 根目录 14 个文档
+## 根目录 13 个文档
 
-### A. 核心控制与施工指南（4 个根目录文档）
+### A. 核心控制与施工指南（3 个根目录文档）
 
 | 文档 | 角色 | 状态 | 引用 |
 |---|---|---|---|
-| `pending-site-data.md` | 55 条待决台账（量房/厂家/业主三类，逐条写卡在谁） | 现役，高频更新（末改 10-19） | 62 |
 | `mep-construction-guidance.md` | 机电施工指导：墙体结构分类、穿墙口径、分层标高 | 现役（末改 10-19） | 24 |
 | `CURRENT-VALUES.md` | 现行值速查：预算、暖通、标高、面积与待决口径 | 汇总视图；权威回到各行列出的 config/docs 源，关键值由 verify:facts 对账 | 12 |
 | `visual-change-playbook.md` | 视觉反馈类迭代的标准流程 | 现役 | 4 |
 
-### B. 现役业务文档（常驻名，10 个）
+### B. 现役业务文档（常驻名，9 个）
 
 | 文档 | 角色 | 状态 | 引用 |
 |---|---|---|---|
@@ -109,7 +108,7 @@
 
 | 文档 | 现行路径 | 判定 | 说明 |
 |---|---|---|---|
-| `hvac-ld-condensate-receiver-predesign-20261019.md` | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | **活的、等拍板** | 曾全仓零引用。已在 `docs/pending-site-data.md` #39 挂指针，说明其 §10 红→绿门禁与 #39 ①–⑤ 项的对应关系（①–⑤ 即该门禁的关闭清单） |
+| `hvac-ld-condensate-receiver-predesign-20261019.md` | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | **活的、等拍板** | 曾全仓零引用。已在原量房台账 #39（已退场）挂过指针，说明其 §10 红→绿门禁与 #39 ①–⑤ 项的对应关系（①–⑤ 即该门禁的关闭清单） |
 | `ceiling-style-extension-guide.md` | 根目录 | **活的开发指南** | 曾零入链。不是过期分析报告——内容是「为 `config/model/envelope/ceiling.yaml` 新增吊顶造型种类的标准步骤」，列明要改 `server/config-loader.ts`、`ProblemDetector.ts`、`AnnotationRenderer.ts` 等 4 处。这是**可复用的操作指引**，零入链意味着下次要加造型时没人知道它存在 |
 
 ---
@@ -121,6 +120,7 @@
 |---|---|---|---|
 | `acceptance_checklist.md` | 2026-10-22 | 46e9e0c | 已退役的指针页（自声明）；真正的交付验收清单在 `schedule/phase-1/` 的 render 产物 |
 | `render-tech-debt.md` | 2026-10-22 | 46e9e0c | 自声明 PAUSED/HISTORICAL 的技术债台账，已删 |
+| pending-site-data.md | 2026-11-09 | 见退役 PR | 量房待填手账 + 叙事决策登记表。未决项全数迁至 config 各对象 `status`/`blocker` 字段（`shared/element-blockers.ts` 门禁守着）；D1–D19 的「缺的证据」迁入 `config/decision-gates.yaml` 各条 `missing_evidence`；人读视图改由 `npm run docs:generate-pending-view` 按需生成进 `tmp/capture/` |
 | `twinmotion-acceptance.md` | 2026-10-22 | 46e9e0c | Twinmotion 线随 Blender 主线一同暂停，已删 |
 | `blender-render-architecture.md`（原 `renders` 目录） | 2026-10-22 | 46e9e0c | Blender 渲染管线已冷归档；原文自 git 历史取回——`scripts/archive/blender-pipeline/` 是管线代码的冷归档，不含本文档 |
 | `pipeline-acceptance.md`（原 `renders` 目录） | 2026-10-22 | 46e9e0c | 同上 |

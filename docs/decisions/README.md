@@ -44,7 +44,7 @@
 
 ### 外部行动项（量房/交房后）
 
-- **量房 14 项**（docs/pending-site-data.md）：geometry/structure/mep 全部 inferred → measured
+- **量房 14 项**（原量房台账（已于 S2-B 退场））：geometry/structure/mep 全部 inferred → measured
 - **对色纪律**：漆色卡+柜门小样+门小样，房内自然光上午/下午西晒各看一次
 - **门店核价清单**：衣柜计价、人字拼长条砖（版面数/柔光/工费）、床箱床加价与气撑杆品牌
 

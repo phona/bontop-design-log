@@ -177,7 +177,7 @@
 - **决策依据**：GB 55038-2025 7.4.3-1/2/3、7.4.4、7.4.5、7.4.7；CJJ/T 146-2011；GB 50303 / GB 50327（绝缘、填充率、暗敷禁接头）；几何用 model-geometry 直算（厨房东墙有效区间 z[0,2.40]，z≥2.40 为通长推拉门无墙；生活阳台 1.60×1.20m）。
 - **验证**：19 路全量覆盖 66 个 powerable 点位（脚本核对无遗漏、无跨回路重复、无网络点误入回路）；每一条含 socket 的回路 breaker 均含漏保；polygon 校验新点位全部落在所属房间内。
 - **现场待确认**：① 强电箱单/双排、回路数、进线截面与箱体规格（390mm 箱单排撑死 ~20 位，19 路须双排；单排时箱底边须 ≥1.80m，现 1.65m 仅双排合规）；② 马桶 SKU/坑距/落地-壁挂；③ 燃气气源与燃气公司报警器 + 切断阀方案；④ 空调厂商配电图（能否集中供电、是否必须无漏保硬接线）；⑤ 橱柜台面取电形式；⑥ 洗烘/冰箱 SKU 尺寸与检修带。
-- **关联文件**：`config/electrical.yaml`、`config/plumbing.yaml`、`config/electrical-topology.yaml`、`config/mep-hvac-coordination.yaml`、`config/acceptance.yaml`、`docs/pending-site-data.md`、`docs/mep-construction-guidance.md`、`docs/design-iterations/mep-power-water-freeze-20261003/`、`tests/server/electrical-lint.test.ts`、`tests/server/render-facts-api.test.ts`、`tests/server/cli-glb-export.test.ts`
+- **关联文件**：`config/electrical.yaml`、`config/plumbing.yaml`、`config/electrical-topology.yaml`、`config/mep-hvac-coordination.yaml`、`config/acceptance.yaml`、`原量房台账（已于 S2-B 退场）`、`docs/mep-construction-guidance.md`、`docs/design-iterations/mep-power-water-freeze-20261003/`、`tests/server/electrical-lint.test.ts`、`tests/server/render-facts-api.test.ts`、`tests/server/cli-glb-export.test.ts`
 - **决策人**：业主（review 与计划审批）；点位终坐标待量房、水电交底与 SKU 定标
 
 ### DEC-2026-10-03-R7 水电收口的验证记录与跨迭代阻塞
@@ -211,7 +211,7 @@
 - **⑤ 状态**：contract_decided（选型与商务）/ vendor_verification_pending（上述四项）/ construction_not_frozen（量房与水电交底前任何机位、电源、冷凝水、穿墙不冻结）。
 - **附注一（主卧轴线，只登记不改坐标）**：机身中心 x=3.80 / 风口轴 x=3.70 / 门头盒中心 x≈3.5625 三值不一致；900mm 机身按现中心 3.80 越盒东界 x=4.20 约 5cm、并越主卧东墙完成面 ≈x=4.14 约 11cm，属 site_pending；交底前须实测外廓（合同判读 42T2 SS 或设计 45T2）后把机身中心统一到 ≈3.65–3.70 并对齐风口轴，此前不冻结任何机位。
 - **附注二（AP 点位）**：net_ap_corridor 自 (8.60,5.80)（落在所有已声明吊顶之外，原「藏吊顶空腔」不成立）移入 ceiling_living 北缘边吊空腔 (8.60,4.75)，备选走廊吊顶位待网络方案定标。
-- **关联文件**：`config/electrical.yaml`、`config/electrical-topology.yaml`、`config/mep-hvac-coordination.yaml`、`config/hvac.yaml`、`config/acceptance.yaml`、`config/ceiling.yaml`、`docs/mep-construction-guidance.md`、`docs/pending-site-data.md` #39、`config/house.yaml`（现行口径）
+- **关联文件**：`config/electrical.yaml`、`config/electrical-topology.yaml`、`config/mep-hvac-coordination.yaml`、`config/hvac.yaml`、`config/acceptance.yaml`、`config/ceiling.yaml`、`docs/mep-construction-guidance.md`、`原量房台账（已于 S2-B 退场）` #39、`config/house.yaml`（现行口径）
 - **决策人**：业主（审计口径）；施工尺寸与外廓待量房与厂家资料终核
 
 ### DEC-2026-10-05-R13 B5-A：书房电脑专用回路改道（ordinary_power_study 随功能互换归位）
@@ -220,7 +220,7 @@
 - **决策（业主拍板）**：选 **A 改道**，弃 B 修订口径。理由：DEC-2026-10-03-R1 的意图是"电脑负载不与他路混"，不是"某房间该有专用路"；电脑现在在书房，回路跟着电脑走。改道在**未施工**状态下仅配置层 declaration，成本 0；水电交底后即不可改（等于开槽返工）。
 - **电气拓扑**：`ordinary_power_study` 成员由 `[sock_study_desk, sock_study_curtain, sock_study_extra]` 改为 `[sock_parent_desk]`（书房书桌位 (4.20,9.00) count 2 = 电脑+显示器），breaker/wire/capacity 口径不变；`ordinary_power_parent_child` 成员加入客房三席位（`sock_study_desk`/`sock_study_extra`/`sock_study_curtain`），capacity ≈0.8kW → ≈1.2kW（方案值，交底按实际设备终核）。
 - **走线**：`config/mep-hvac-coordination.yaml` 的 `strong-power-study` 由"走廊东行→过 d_bese 门头→客房北边吊"改为"走廊 z=4.6 轴线西行至 x=5.5 → 正交穿 w_st_north（与 strong-ac-parent / strong-light-parent / strong-power-parent **同一穿孔带**，穿点位于门洞 d_study 以西实体段）→ 书房北缘边吊内西折至 x=4.3 → 贴 w_mb_east 东侧南下 → 下引至 sock_parent_desk"。id 不改，penetration 声明随改。
-- **对账影响（必须登记）**：改道使契约 `c.mep_layer_below_drop_bottom` 的实算冲突 **+1**（本路线 4 处分区内 hit，其中走廊/边吊段 2.45m 低于 2.50m 完成面，与同穿孔带三条既有路线同一类别）。该基数由并发工作线的客餐厅冷凝水改线从 149→153 先行登记，本决议后再由机器实算 154；`docs/mep-construction-guidance.md` 与 `config/facts.yaml` 的登记数 154 与实算一致（`verify:facts` 绿）。归口裁定项仍是 `docs/pending-site-data.md #41`（分层标高升入降板空腔或调整降板），本决议不替代该裁定。
+- **对账影响（必须登记）**：改道使契约 `c.mep_layer_below_drop_bottom` 的实算冲突 **+1**（本路线 4 处分区内 hit，其中走廊/边吊段 2.45m 低于 2.50m 完成面，与同穿孔带三条既有路线同一类别）。该基数由并发工作线的客餐厅冷凝水改线从 149→153 先行登记，本决议后再由机器实算 154；`docs/mep-construction-guidance.md` 与 `config/facts.yaml` 的登记数 154 与实算一致（`verify:facts` 绿）。归口裁定项仍是 `原量房台账 #41（已退场，未决项现由对象 blocker 承载）`（分层标高升入降板空腔或调整降板），本决议不替代该裁定。
 - **保留未动**：客房床头电位高度缺陷（P0-2：`sock_study_extra` h=0.3 不可当床头电位）与床头双侧点位/双控仍属批次 B，待量房墙体数据后申报；`sock_parent_bed_l` 孤儿位语义待量房定。
 - **验证**：`verify:mep` Exit 0 / `verify:electrical` 0 error / `verify:facts` OK / `test:server` 608/609（唯一红为并发未提交项的 mep 基数断言，已由对端同步至 154）/ `typecheck` / `test:app` 470/470。
 
@@ -444,7 +444,7 @@
   - **谁清理 / 多久一次**：线槽为平面，积灰量可忽略；业主自行，年均一次，站桌即可。
   - **要拆吊顶吗**：不要。原顶条件下站桌可更换灯具，这是相对平吊的真实优势。
 - **现场反转条件**：① 若量房发现该区间**梁底低于 2.78m**，板面明敷段须绕梁或改标高，明敷长度增加——超过约 2.6m 时重新评估是否改假梁；② 若**板底平整度超差**（肉眼可见波浪），线槽方案不成立，转假梁；③ 若业主改回全屋石膏板平吊，则 R4 与本条同时作废，走线改暗敷。
-- **数据改动**：`docs/pending-site-data.md` #62 由「卡业主视觉取舍 + 量房」收窄为「视觉取舍已定（外露），只剩量房提供梁位/板底平整度与线槽选型」；`schedule/procurement.md` §12 现场反转条件第①条同步标注已裁定。
+- **数据改动**：`原量房台账（已于 S2-B 退场）` #62 由「卡业主视觉取舍 + 量房」收窄为「视觉取舍已定（外露），只剩量房提供梁位/板底平整度与线槽选型」；`schedule/procurement.md` §12 现场反转条件第①条同步标注已裁定。
 - **决策人**：业主。
 
 
@@ -650,7 +650,7 @@
 - **几何共享**：新增 `shared/render/CloudOrbCeilingLightGeometry.ts`，浏览器 `InteriorLightingSystem` 和 GLB/export `LightingFixtureBuilder` 调用同一构造器；材质使用漫射+受限自发光，不开 `transmission`。保留单个电气 `PointLight`，渲染亮度不作为流明/照度证据。
 - **需要避免的静默失效**：① 商品真实总高或吊球分布若与486mm代理差异，模型不会自动代表 SKU，必须按厂家总装图改参数；② 实际 3000K 输出/配光若不足，桌面150 lx不成立，100 lx也须实测或按 SKU 重算；③ 底盘重量/固定和三球防坠、驱动更换、PE罩拆洗未在图片证明，供应商在下单前给安装/维修资料，电工安装前核底盒与固定；④ 50cm主体的木盘与云罩若非同径安装结构，需按实物图修正。
 - **现场/采购反转条件**：若精确 SKU 的总高/重量/固定方式与模型空间条件冲突，或 3000K 档配光不能达到桌面照度目标，重开候选/外形和照度口径；不通过移动灯位或改变回路掩盖接口。
-- **下一步责任**：业主+供应商在 SKU 下单前确认具体型号、3000K档流明/配光、总高/重量、底盘固定、LED/驱动更换与PE罩清洗说明；交房后由电工在安装前复核底盒和顶面承载条件。问题登记于 `docs/pending-site-data.md #65`。
+- **下一步责任**：业主+供应商在 SKU 下单前确认具体型号、3000K档流明/配光、总高/重量、底盘固定、LED/驱动更换与PE罩清洗说明；交房后由电工在安装前复核底盒和顶面承载条件。问题登记于 `原量房台账 #65（已退场，未决项现由对象 blocker 承载）`。
 - **验证/证据**：`gate:visual` 前后 CLEAR；`verify:lighting-config`、`verify:all`、`typecheck` 通过；云灯 server 聚焦测试 1/1、`InteriorLightingSystem` 聚焦测试 18/18 通过。浏览器同版四视图证据及运行时包络 x[9.55,10.05]、y[2.314,2.800]、z[3.20,3.70]m 见 `docs/design-iterations/dining-cloud-light-20261017/evidence/`。全量 server/app 测试各有既有环境/其他模块失败，详见该迭代 work-record；不覆盖本灯具的聚焦测试。审美复核 PASS；功能复核首轮 BLOCKED 后已按要求补全带 owner/trigger 的维护待核项，正在复核。本 DEC 只确认外观方向，不作为采购或施工定案。
 - **决策人**：业主确认主图比例预演；未标的吊线、木球与总高参数由设计侧估值并明确保留为推断。
 
@@ -731,7 +731,7 @@
 - **被本条修正的旧结论**：MEP 路线 reason 中「`ac_panel_study` 在东墙床头带 (16.40,7.60)」的位置陈述（2026-10-07 DEC-2026-10-07-M05 写路线时即与 electrical.yaml 不符）；同句「门口带无其他底盒」随之作废——门口带实为 `switch_study` + `ac_panel_study` 双底盒带。
 - **「X 不工作时」**（智能家居接入后的三种态，全部待核、不许留空）：① **待机/断网**——智能控制失效时线控器本身必须仍能控空调：底盒与信号线管不许拆、不许被智能面板方案替换掉物理载体；② **停机/故障**——若改厂商协议的智能面板，芯数与接线序变化时厂家售后认哪一端、对码责任归谁；③ **清理/维护**——若智能模组是插电式（空调伴侣类），门边墙带当前**无普通电位**（门边只有 `switch_study` + `ac_panel_study` 两个信号/灯控盒），取电位落点未定；且插电红外路线结构存疑——内机在吊顶内、红外够不到机身接收窗，该路线可能不成立，方案须以厂家协议/射频为前提。
 - **静默失效条件**：① 若智能家居方案最终要求底盒零火，而现在 6 个 `ac_panel_*` 底盒均未声明预埋零线（开关有 `neutral: true`、线控器没有）——封槽后只能开槽补，是本决定最大的不可逆风险；② 若 #58 线芯数按「纯线控器」口径定死，后续换智能面板时芯数不足；③ 若量房发现门边墙段实际容不下双联+线控模块（主卧南床头三联口径），门边方案自身要重议；④ 若智能家居只做床头侧而门边线控器被撤，则断网态失去保底控制。
-- **下一步责任**：底盒零火、信号线芯数口径、门边取电位三项核验（owner=业主 + 门店/厂家；触发=水电封槽前与智能家居方案定标，先到者算；三项不闭，智能家居接入即返工）——已并入 `docs/pending-site-data.md` #58。
+- **下一步责任**：底盒零火、信号线芯数口径、门边取电位三项核验（owner=业主 + 门店/厂家；触发=水电封槽前与智能家居方案定标，先到者算；三项不闭，智能家居接入即返工）——已并入 `原量房台账（已于 S2-B 退场）` #58。
 - **验证**：本决定不改任何坐标/回路/路线几何，只改备注文本与登记；`verify:electrical` / `verify:mep` / `verify:facts` / `test:server` 复跑结果见提交记录（路线计数与 must-fix 基线不变）。
 - **决策人**：业主（2026-10-28 裁定留门边）；设计侧执行订正与登记。
 - **编号说明**：本条目原编号为当日 R03，与同日 PR #37（`docs/decisions/05-hvac.md`，书房酒店标准布局，提交时间 04:53Z 更早）占用的同一编号撞车；按「当日全局下一个号」约定让号，本条目改编号 R06（2026-10-28 复核订正），涉及 electrical.yaml note、study-door 路由 reason、pending-site-data #58 与本文件共 5 处引用同步。同日 R04/R05（床头开关与窗帘盒归位）不撞号，保留原号。

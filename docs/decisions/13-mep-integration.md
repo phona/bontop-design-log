@@ -21,7 +21,7 @@
 
 - **日期**：2026-10-06。触发：全水电 review 后，业主授权"工程标准答案明确的项由 AI 按业界最佳实践兜住，不逐项请示"。
 - **范围**（两类，均不涉业主取舍）：①几何/坡度/坐标不自洽——lint 新规则 `route_not_orthogonal` 3 条、`gravity_slope_geometry_mismatch` 14 条、穿点坐标漂移（`water-master-bath` 穿点 x=0.26→0.575 对齐盆心、`water-master-bath` 首段斜线、`water-guest-bath` 末段斜线、`water-garden-requirement` seg2 斜线）；②给排水缺项建模——燃气热水器冷热水 + **回水管三通**（DEC-009 已决策预埋但配置层 0 路线）、洗碗机进水、全宅进水总阀 DN20 + 减压 0.25MPa + 前置过滤器位、主卫沉箱 DN50 二次排水、洗衣机专用墙排独立接管（**不通地漏**）、RO 浓水排放、管径分级 de110 排污 / de75 干管 / de50 支管 + 水封 ≥50mm + 通气管/间接排水。
-- **口径**（业界通行 / 规范 / 厂家安装手册）：重力管坡度 1%（阳台 2%）、禁上弯、禁直插密封下水；同层排水沉箱必须二次排水 + 轻质回填 + 回填前通球与 24h 闭水；管径分级按《建筑给水排水及采暖工程施工质量验收规范》GB 50242 与通用图集；等电位/防溅/零线按 GB 55038-2025。新点位/新路线一律带精度三件套（`status: inferred` + `construction_status: pending` + `not_for_construction`），坐标只取自 `docs/pending-site-data.md` 已登记推断值或以 `design_requirement` 路线表达需求（不写显式坐标端点）。
+- **口径**（业界通行 / 规范 / 厂家安装手册）：重力管坡度 1%（阳台 2%）、禁上弯、禁直插密封下水；同层排水沉箱必须二次排水 + 轻质回填 + 回填前通球与 24h 闭水；管径分级按《建筑给水排水及采暖工程施工质量验收规范》GB 50242 与通用图集；等电位/防溅/零线按 GB 55038-2025。新点位/新路线一律带精度三件套（`status: inferred` + `construction_status: pending` + `not_for_construction`），坐标只取自 `原量房台账（已于 S2-B 退场）` 已登记推断值或以 `design_requirement` 路线表达需求（不写显式坐标端点）。
 - **影响**：#41 的 clearance 实算数可能因新增排水路线而变化——按契约 `c.mep_layer_below_drop_bottom.repair_channel` 通道办理（附本 DEC 全引 + 同步 ceiling.yaml / guidance §0 / pending-site-data #41 / facts.yaml 四处）。
 - **验证**：`verify:all` / `test:server` / `typecheck` 见执行记录。
 - **未动**：#41 分层标高裁定、强电箱迁位、空调内机逐台回路三项属设计迭代，另见 DEC-2026-10-06-R3。

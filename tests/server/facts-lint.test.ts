@@ -591,7 +591,7 @@ test('真实登记表：fact.circuit_count 的六个镜像在真实文件上全�
   const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
   const circuit = (registry.facts ?? []).find((f) => f.id === 'fact.circuit_count')!;
   assert.ok(circuit, 'config/facts.yaml 必须登记 fact.circuit_count');
-  assert.equal(circuit.mirrors?.length, 5, 'fact.circuit_count 必须保留 5 个机器镜像');
+  assert.equal(circuit.mirrors?.length, 4, 'fact.circuit_count 必须保留 4 个机器镜像（第 5 个原指向量房手账，已随该文件退场移除）');
   const result = lintFacts({ ...emptyRegistry, facts: [circuit] }, realWorkspace());
   assert.deepEqual(result.errors, [], `circuit_count 对账应全绿，实际：${JSON.stringify(result.errors)}`);
 });
@@ -1190,8 +1190,8 @@ test('repair_channel：DEC 全引 + 非空 sync_files 即通过并在 INFO 露�
 
   // 裁定落地前的 pending: 占位同样放行（与 exempt.pending 同纪律：INFO 露面，不假装已有 DEC）
   const pending = lintFacts(channelProbe({
-    decision_ref: 'pending:docs/pending-site-data.md #41 裁定后替换为设计侧修正 DEC 全引',
-    sync_files: ['config/model/envelope/ceiling.yaml', 'docs/mep-construction-guidance.md', 'docs/pending-site-data.md', 'config/facts.yaml'],
+    decision_ref: 'pending:原量房台账 #41（已退场，未决项现由对象 blocker 承载） 裁定后替换为设计侧修正 DEC 全引',
+    sync_files: ['config/model/envelope/ceiling.yaml', 'docs/mep-construction-guidance.md', 'config/facts.yaml'],
   }), realWorkspace());
   assert.equal(pending.errors.length, 0);
   assert.match((pending.notes ?? []).join('\n'), /c\.probe_repair 修正通道待决/);
@@ -1325,7 +1325,7 @@ test('repair_channel：DEC 全引必须真的存在于 decision_log_files，否�
 
   // pending: 占位不参与存在性校验（它本来就声明「还没有 DEC」）
   const pending = lintFacts({
-    ...channelProbe({ decision_ref: 'pending:docs/pending-site-data.md #41', sync_files: ['config/model/envelope/ceiling.yaml'] }),
+    ...channelProbe({ decision_ref: 'pending:原量房台账 #41（已退场，未决项现由对象 blocker 承载）', sync_files: ['config/model/envelope/ceiling.yaml'] }),
     decision_log_files: ['docs/decisions/a.md'],
   }, workspaceOf({ 'docs/decisions/a.md': '### DEC-2026-10-06-R1 别的\n', 'config/model/envelope/ceiling.yaml': 'zones: []\n' }));
   assert.equal(pending.errors.length, 0);
@@ -1394,7 +1394,7 @@ test('真实登记表：c.mep_layer_below_drop_bottom 的 repair_channel 字段�
   );
   assert.deepEqual(
     channel.sync_files,
-    ['config/model/envelope/ceiling.yaml', 'docs/mep-construction-guidance.md', 'docs/pending-site-data.md', 'config/facts.yaml'],
+    ['config/model/envelope/ceiling.yaml', 'docs/mep-construction-guidance.md', 'config/facts.yaml'],
   );
   for (const file of channel.sync_files as string[]) {
     assert.doesNotThrow(() => readFileSync(file, 'utf8'), `sync_files 中的 ${file} 必须存在`);

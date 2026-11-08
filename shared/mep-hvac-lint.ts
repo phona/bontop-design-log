@@ -75,7 +75,7 @@ const SOLID_CEILING_TYPES = new Set(['drop', 'integrated', 'aluminum_buckle']);
  * gravity_slope_geometry_mismatch / route_not_orthogonal 独立负责，不因本修正失去覆盖。
  *
  * 同步落点：`config/facts.yaml` 契约 `c.mep_layer_below_drop_bottom` 的 registered_conflicts / check 口径、
- * `docs/mep-construction-guidance.md` §0/§3.3/§6、`docs/pending-site-data.md` #41。
+ * `docs/mep-construction-guidance.md` §0/§3.3/§6、`原量房台账（已于 S2-B 退场）` #41。
  */
 const CEILING_CARRIED_LAYERS = new Set(['strong_power', 'weak_power', 'refrigerant', 'condensate', 'supply_air', 'return_air']);
 

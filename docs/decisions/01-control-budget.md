@@ -168,7 +168,7 @@
 - **决策依据**：专业设计师 + 装修老炮视角逐空间审查；西墙有阳台门中断不能做连续台面（灶台只能东墙）；三层 Low-E 中空玻璃隔热已满足（窗帘非隔热刚需）；一梯一户入户门无需高安防
 - **预算影响**：doors_windows 10500→12000（减入户门 3000，加推拉门 3500-5300）；厨房水电改走东墙/北墙增加约 500-800
 - **待量房确认**：厨房排水立管/燃气表/排烟道位置、主卫立管位置、梁位、承重墙、飘窗实际 sill 高度、幕墙可开启扇尺寸
-- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/plumbing.yaml`、`config/materials.yaml`、`config/budget/base.json`、`docs/pending-site-data.md`
+- **关联文件**：`config/house.yaml`、`config/electrical.yaml`、`config/plumbing.yaml`、`config/materials.yaml`、`config/budget/base.json`、`原量房台账（已于 S2-B 退场）`
 - **决策人**：业主
 
 ---
@@ -214,7 +214,7 @@
 - **映射与去重规则**：Excel 26 项逐条映射到 PKG 与 COST 组件（如瓷砖主材→`COST-060-01`、瓦工人工池→`COST-060-04/05`、铝扣板报价→`COST-070-03`、智能马桶→`COST-100-01`、空调→`PKG-030`、固定柜体→`PKG-150`）。必须去重的三处：①瓦工 18,500 与防水 3,000、辅材 4,000 是否含并；②2 浴霸+凉霸+灯塞在吊顶报价里，归属须与 `COST-100-06`、PKG-120 二选一；③通用五金 1,500 与龙头下水角阀 1,200 同归 `COST-100-04`，不得叠加。Excel 口径**不含**厨房三联动推拉门（`COST-090-03`，BLK-GAS-DOOR）、物业收费、设计费、一期窗帘、必需家电与竣工清洁，因此其 8,800 元"门"不是降价空间。
 - **回填与缺口显形**：按可核口径回填 6 个组件金额（`COST-060-01=20000`、`COST-060-02=4000`、`COST-060-04=18500`、`COST-070-03=9537`、`COST-100-01=5598`、`COST-100-02=6000`），待报价组件由 85 项降到 79 项；PKG-060/070/100/110 登记 `estimated_need_cny` + `funding_status: owner_review_pending_20261003`，缺口合计 **42,235**（PKG-070 +17,037、PKG-100 +10,698、PKG-060 +12,500、PKG-110 +2,000）自动进入 `budget.md`「已知待分配预算缺口」与 checklist。未取得业主批准前不动用硬装预备金。
 - **审计闭环**：`npm run verify:schedule`/`schedule:render` 一行输出待报价组件数；`npm run schedule:audit` 追加待购项数、已锁轮次项数、报价单口径金额、已量化缺口与上限余量。后续轮次只追加记录并用 `supersedes` 指向被取代项，锁定项必须同时给 `locked_cny`/`contract_ref`/`evidence_path`，历史轮次不覆盖。
-- **关联文件**：`schedule/phase-1/control.yaml`（`hard_finish_quote_rounds`、组件回填、`estimated_need_cny`）、`scripts/schedule/control.ts`（校验+渲染+`--audit`）、`schedule/phase-1/budget.md`、`schedule/phase-1/checklist.md`、`schedule/procurement.md`（各组一句证据摘要）、`docs/material_selection_log.md`（floor_tile_04 与业主提供轮次归档）、`docs/pending-site-data.md`（#34–#39）、`contracts/2026-10-03/README.md`
+- **关联文件**：`schedule/phase-1/control.yaml`（`hard_finish_quote_rounds`、组件回填、`estimated_need_cny`）、`scripts/schedule/control.ts`（校验+渲染+`--audit`）、`schedule/phase-1/budget.md`、`schedule/phase-1/checklist.md`、`schedule/procurement.md`（各组一句证据摘要）、`docs/material_selection_log.md`（floor_tile_04 与业主提供轮次归档）、`原量房台账（已于 S2-B 退场）`（#34–#39）、`contracts/2026-10-03/README.md`
 - **决策人**：业主（提供轮次并要求归档）；映射与去重口径由 AI 助理整理，待业主复核
 
 ### DEC-2026-10-03-R4 固定柜体维持阶段边界：成品柜走一期家具池，通顶定制衣柜继续二期
@@ -258,7 +258,7 @@
   2. **橱柜深化图是水电点位的 owner，却排在水电之后**：微蒸烤预留点位（`sock_kitchen_oven`）、厨房台面电位、客卫扫地机基站柜格，全部等橱柜深化图，而 `PKG-110`（橱柜安装）在 `PKG-040` 之后 seq 110。缺的是"设计冻结"前置，不是安装前置。
   3. **吊顶封板不依赖防水**：`PKG-070` deps 只有 `[PKG-030, PKG-040]`，与 `PKG-050`（防水及闭水，含主卫沉箱二次排水）无依赖关系——闭水失败需返工时可能要动已封吊顶。
   4. **洁具不显式依赖水电**：`PKG-100` deps `[PKG-060, PKG-080]`，仅通过 060←050←040 传递；洁具直接消费水电成果（角阀、专用三孔、防水），传递链太长。
-  5. **量房数据未成为任何阻断项**：`docs/pending-site-data.md` 52 项（给水入户点 #8、梁位 7 条、墙类型、立管/燃气表/排烟道、强电箱开箱、沉箱分界线）只挂在 `BLK-HANDOVER` 之下，没有独立门槛。
+  5. **量房数据未成为任何阻断项**：`原量房台账（已于 S2-B 退场）` 52 项（给水入户点 #8、梁位 7 条、墙类型、立管/燃气表/排烟道、强电箱开箱、沉箱分界线）只挂在 `BLK-HANDOVER` 之下，没有独立门槛。
 - **修正（不改任何付款门槛金额与 sequence 编号）**：
   1. 新增 `BLK-MEP-INTERFACE-FREEZE`（alignment_required）：水电/空调接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口。`clears_when`：水电、空调、设计、施工四方联合交底并签认（附签认记录）。**挂到 `PKG-030.blockers` 与 `PKG-040.blockers` 双方**。
   2. 新增 `BLK-CABINET-FREEZE-FOR-MEP`（alignment_required）：橱柜深化图未冻结而它是水电点位的 owner。`clears_when`：橱柜深化图与水电点位表双向核对完成（微蒸烤预留点位/台面电位/基站柜格落实到图）。**挂到 `PKG-040.blockers`**——注意这是设计冻结前置，`PKG-110` 安装包本身仍保留在 seq 110。
@@ -327,7 +327,7 @@
 
 - **旧值**：`- **层高**：结构层高 3.0m，室内净高 2.8m`
 - **新值**：原顶（结构板底）约 2.8m（邻户图 +2830 佐证），室内净高 2.8m（推断值，量房后实测确认）
-- **权威源**：`docs/mep-construction-guidance.md:76`（+2830 与我们模型层高 2.8m 一致）、`docs/pending-site-data.md:18` #3、`docs/decisions/06-electrical.md:418-426`（DEC-2026-10-13-R4 定案原顶 2.80m）
+- **权威源**：`docs/mep-construction-guidance.md:76`（+2830 与我们模型层高 2.8m 一致）、`原量房台账（已于 S2-B 退场）:18` #3、`docs/decisions/06-electrical.md:418-426`（DEC-2026-10-13-R4 定案原顶 2.80m）
 - **理由**：3.0m 无现场依据；该件是对外交付件，层高错直接传导吊顶/柜体设计。
 - **同源待修（本轮不动，避免范围蔓延）**：`config/materials.yaml:465`、`docs/material_selection_log.md:125,270`、`docs/hvac/hvac_options_analysis.md:16,71`、`README.md:14`、`config/house.yaml:46,617`、`config/budget/base.json:89,101`、`config/budget-pitfalls.yaml:539`。注意 `README.md:14` 自称「结构 3.0m / 室内净高 2.8m 两个口径都真实」，且 `config/facts.yaml:640-660` 的 `fact.floor_height_net` mirror 只抽「室内净高」具名口径，恰好保护了 3.0m 不被门禁发现——建议下一轮以 README 为先。
 
