@@ -587,3 +587,71 @@ describe('note 与 blocker 不许并存两份（S2-A 评审 blocking 1 的防线
     assert.ok(dirty.some((entry) => entry.field === 'trigger'), '检出的重复必须点名是哪个字段');
   });
 });
+
+describe('构件状态唯一来源是 status 字段，position_status 不再是状态源（S2-A 头号契约）', () => {
+  // 业主裁定①：「status / position_status 两个字段都能写状态即 blocking」。
+  // 这条契约此前只靠 config 数据与注释维系——把 shared/element-sources.ts 的采集分支
+  // 改回 position_status 优先，test:server 1475 全绿、state:project exit 0，
+  // 而派生状态静默改变（panel_strong_entry_left measured→inferred、
+  // panel_weak_entry_left likely→inferred），census 钉的 total/undeclared/pending/confirmed
+  // 全不变，没有任何测试或门禁变红。以下三条锚把契约钉死。
+  const electricalPoints = parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8'));
+  const plumbingPoints = parsePlumbingPoints(readFileSync('config/plumbing.yaml', 'utf8'));
+  const elements = collectElements();
+  const configStatusById = new Map(elements.map((element) => [element.id, element.configStatus]));
+
+  it('reads every element status from the status field, never from position_status', () => {
+    // 通用锚：有 status 声明的对象，采集器给出的 configStatus 必须**等于 status 原值**。
+    // 采集器一旦改回 position_status 优先，两个面板点就会从这里分歧。
+    let checked = 0;
+    const groups: Array<[string, Array<{ id: string; status?: string }>]> = [
+      ['electrical', electricalPoints as Array<{ id: string; status?: string }>],
+      ['plumbing', plumbingPoints as Array<{ id: string; status?: string }>],
+    ];
+    for (const [prefix, points] of groups) {
+      for (const point of points) {
+        if (point.status === undefined) continue;
+        checked += 1;
+        assert.equal(
+          configStatusById.get(`${prefix}:${point.id}`),
+          point.status,
+          `${prefix}:${point.id} 的 configStatus 必须来自 status 字段（${point.status}），不得来自 position_status`,
+        );
+      }
+    }
+    assert.equal(checked, electricalPoints.length + plumbingPoints.length, '每个电气/给排水点都要被检查（一个都不能漏）');
+  });
+
+  it('pins the two panel points whose position_status deliberately differs from status', () => {
+    // 可读锚（评审点名）：这两个点是全仓唯一 position_status ≠ status 的对象，
+    // 也是「采集器改回 position_status 优先」时唯一会静默改变派生状态的对象。
+    assert.equal(configStatusById.get('electrical:panel_strong_entry_left'), 'measured');
+    assert.equal(configStatusById.get('electrical:panel_weak_entry_left'), 'likely');
+    const strong = electricalPoints.find((point) => point.id === 'panel_strong_entry_left');
+    const weak = electricalPoints.find((point) => point.id === 'panel_weak_entry_left');
+    assert.equal(strong?.position_status, 'inferred');
+    assert.equal(weak?.position_status, 'inferred');
+    assert.notEqual(strong?.position_status, strong?.status, '这两个点的 position_status 与 status 必须不同，否则本锚失去分辨力');
+  });
+
+  it('keeps position_status out of new declarations (regression anchor)', () => {
+    // 回归锚：position_status 已退役，电气配置里只允许存量 4 条（2 个 measured/likely 面板 +
+    // sock_child_ac / sock_kitchen_oven 两个预留占位点，后者是 shared/mep-takeoff.ts
+    // 算量延期判定「status 与 position_status 均 pending」的一半）。
+    // 给任何点新增 position_status 都会让「位置待核」在状态机 / DXF / 算量三处静默分叉。
+    const declared = (electricalPoints as Array<{ id: string; position_status?: string; status?: string }>)
+      .filter((point) => point.position_status !== undefined)
+      .map((point) => point.id)
+      .sort();
+    assert.deepEqual(declared, ['panel_strong_entry_left', 'panel_weak_entry_left', 'sock_child_ac', 'sock_kitchen_oven'], 'position_status 只允许存量 4 条，新增即是回归');
+    for (const point of electricalPoints as Array<{ id: string; position_status?: string; status?: string }>) {
+      if (point.position_status === 'pending') {
+        assert.equal(point.status, 'pending', `${point.id} 的 position_status=pending 只在 status 也 pending 时有意义（算量延期判定）`);
+      }
+    }
+    // 给排水/吊顶从未有第二个状态字段，补写 position_status 必须是 schema 错误。
+    for (const point of plumbingPoints as Array<{ id: string; position_status?: string }>) {
+      assert.equal(point.position_status, undefined, '给排水点不得出现 position_status');
+    }
+  });
+});
