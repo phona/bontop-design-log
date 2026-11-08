@@ -34,6 +34,7 @@ import {
   BLOCKER_OWNERS,
   checkBlockers,
   formatBlockerIssue,
+  noteBlockerDuplicates,
   type BlockerSubject,
 } from '../../shared/element-blockers.js';
 import { extractBlocker } from '../../scripts/project/extract-element-blockers.js';
@@ -535,7 +536,7 @@ describe('note 与 blocker 不许并存两份（S2-A 评审 blocking 1 的防线
     ...parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8')),
     ...parsePlumbingPoints(readFileSync('config/plumbing.yaml', 'utf8')),
     ...parseCeilingZones(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')),
-  ] as Array<{ id: string; note?: string; blocker?: ComponentBlocker }>;
+  ] as Array<{ id: string; note?: string; status?: string; blocker?: ComponentBlocker }>;
   const withBlocker = all.filter((item) => item.blocker);
 
   it('covers every blocker-carrying object', () => {
@@ -544,10 +545,8 @@ describe('note 与 blocker 不许并存两份（S2-A 评审 blocking 1 的防线
 
   it('never repeats a blocker field verbatim inside the note', () => {
     for (const item of withBlocker) {
-      const note = item.note ?? '';
-      for (const [field, value] of Object.entries({ trigger: item.blocker!.trigger, reverses_if: item.blocker!.reverses_if, rationale: item.blocker!.rationale })) {
-        assert.ok(!note.includes(value), `${item.id} 的 note 逐字包含 blocker.${field}——删掉 note 里那句或改为指向 blocker`);
-      }
+      const duplicates = noteBlockerDuplicates(item.note ?? '', item.blocker!);
+      assert.deepEqual(duplicates, [], `${item.id} 的 note 逐字包含 blocker 字段——删掉 note 里那句或改为指向 blocker`);
     }
   });
 
@@ -564,10 +563,27 @@ describe('note 与 blocker 不许并存两份（S2-A 评审 blocking 1 的防线
     }
   });
 
-  it('is not vacuous: injecting a verbatim copy must fail (reverse anchor)', () => {
-    // 反向锚：把某条 blocker 的 trigger 原样塞进它的 note，上面的断言必须能红。
+  it('flags a note that states a status conclusion contradicting the status field', () => {
+    // 同一事实两处可写且值不同 = 第二份真相（ask ⑥）。S1-B 曾在 note 里写
+    // 「状态依据：status 归入 topology 回路 X→inferred」，本轮 status 合并后这些对象已是
+    // status: pending——note 的旧派生结论与字段直接矛盾，必须显形。
+    const STATUS_CLAIM = /status\s*归入\s*topology\s*回路[^→\n]{0,60}→\s*(inferred|measured|confirmed|likely|pending)|status\s*暂不判|status\s*不判/g;
+    const contradicting = all.filter((item) => {
+      const hits = [...(item.note ?? '').matchAll(STATUS_CLAIM)];
+      return hits.some((hit) => (/暂不判|不判/.test(hit[0]) ? true : hit[1] !== item.status));
+    });
+    assert.deepEqual(contradicting.map((item) => item.id), [], 'note 不得声明与 status 字段矛盾的状态结论');
+  });
+
+  it('is not vacuous: the duplicate detector fires on a tampered note (real reverse anchor)', () => {
+    // 反向锚必须**真的调用被测逻辑**，不能只对「自己刚构造出来的字符串」做 includes 断言——
+    // 那种写法恒真、永不失败，是 S1/S2 教训里的「假的反向锚」。
     const victim = withBlocker[0];
+    const clean = noteBlockerDuplicates(victim.note ?? '', victim.blocker!);
+    assert.deepEqual(clean, [], '干净输入的重复列表必须为空');
     const tampered = { ...victim, note: `${victim.note ?? ''}${victim.blocker!.trigger}` };
-    assert.ok((tampered.note ?? '').includes(victim.blocker!.trigger), '注入的重复必须能被检测到（证明断言不是恒真式）');
+    const dirty = noteBlockerDuplicates(tampered.note ?? '', tampered.blocker!);
+    assert.ok(dirty.length > 0, `把 blocker.trigger 原样注入 note 必须被检测到，实际：${JSON.stringify(dirty)}`);
+    assert.ok(dirty.some((entry) => entry.field === 'trigger'), '检出的重复必须点名是哪个字段');
   });
 });

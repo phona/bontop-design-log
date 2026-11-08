@@ -289,7 +289,7 @@
   height: 0.75
   count: 2
   appearance: { style: warm_white_matte_modular, module: five_hole_replaceable_usb_c, faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008, panel_group: { id: master_bed_south_double, role: north, center_spacing: 0.086, union_width: 0.172 } }
-  note: "方案A 南侧床头插座：z=8.512、h=0.75；与 switch_master_bed_l（z=8.598）组成暖白哑光一体双联框，模块中心距86mm、并集宽约172mm，围绕床头柜轴线z=8.555居中；五孔＋可换USB-C；施工条件仍 site_pending；状态依据：status 归入 topology 回路 ordinary_power_master，方案A 南床头插座（五孔+USB-C）→inferred；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "方案A 南侧床头插座：z=8.512、h=0.75；与 switch_master_bed_l（z=8.598）组成暖白哑光一体双联框，模块中心距86mm、并集宽约172mm，围绕床头柜轴线z=8.555居中；五孔＋可换USB-C；施工条件仍 site_pending；回路归属 ordinary_power_master，方案A 南床头插座（五孔+USB-C）（topology 回路）；；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
   status: pending
 
   blocker:
@@ -565,7 +565,7 @@
   z: 0.3
   height: 0.3
   count: 4
-  note: "厨房台面带开关插座（DEC-021 定位北墙切配区；但北墙为玻璃幕 suppress_kitchen_north，铁律不可挂载，且原 wall 字段 w_kit_east 与坐标不符——改柜内预留 h=0.3、电源走地面（同洗碗机/净水器），台面取电形式【升降插座/背板穿线】待橱柜深化，量房复核立管）；状态依据：status 归入 topology 回路 ordinary_power_kitchen，DEC-021 台面插座改柜内预留→inferred；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "厨房台面带开关插座（DEC-021 定位北墙切配区；但北墙为玻璃幕 suppress_kitchen_north，铁律不可挂载，且原 wall 字段 w_kit_east 与坐标不符——改柜内预留 h=0.3、电源走地面（同洗碗机/净水器），台面取电形式【升降插座/背板穿线】待橱柜深化，量房复核立管）；回路归属 ordinary_power_kitchen，DEC-021 台面插座改柜内预留（topology 回路）；；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
   status: pending
 
 # DEC-2026-10-03-R1 灶台段第二取电区：原 4 个台面插座全落在 (8.60,0.30) 一个坐标，
@@ -648,7 +648,7 @@
     owner: ["业主", "商家"]
     trigger: "RO 净水器 SKU 冻结"
     reverses_if: "SKU 是否带泵/压力桶决定管径与走向，未冻结前本点管径走向不定"
-    rationale: "净水器插座随 RO 机身预演位 (10.05,0.32) 同柜对齐；SKU 及柜内格局待核"
+    rationale: "净水器插座随 RO 机身预演位 (10.05,0.32) 同柜对齐；RO 机身 163×445×379 为预演尺寸，SKU 与柜内格局待核"
 - id: sock_kitchen_gas
   room: kitchen
   wall: w_ent_west
@@ -714,7 +714,7 @@
   type: socket
   height: 0.95
   count: 2
-  note: "洗漱+梳妆一体台镜下双联插座（2026-08-30 回归梳妆位，服务吹风机/护理电器，避开台盆中心与门洞；带防溅盒，待量房确认）；状态依据：status 归入 topology 回路 ordinary_power_service，台镜下双联插座（防溅盒）→inferred；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "洗漱+梳妆一体台镜下双联插座（2026-08-30 回归梳妆位，服务吹风机/护理电器，避开台盆中心与门洞；带防溅盒，待量房确认）；回路归属 ordinary_power_service，台镜下双联插座（防溅盒）（topology 回路）；；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
   status: pending
 
   blocker:
@@ -780,7 +780,7 @@
   height: 1.0
   count: 1
   status: pending
-  note: "客卫开放洗漱区 vanity 插座·双联南位（DEC-2026-09-08-R1 业主拍板+1 位：吹风机/电动牙刷/剃须刀同用）；h=1.0 镜面下缘以下，带防溅盒；ordinary_power_service 回路成员；墙体挂载与给电按现场复核；DEC-2026-10-17-R20 双联北移——与 faucet_gbath_vanity (3.955) 横向拉开至 0.16/0.246m（≥0.15 达标，原 0.018/0.068 未达自有口径；2026-11-06 双联随柜体北移 +0.055，z 4.06→4.115 / 4.146→4.201，与龙头间距不变）；北板距段端 0.154m 贴角无 warning；另更正上文旧值：+0.055 北移后北板距墙段端（4.30）实为 0.099m <0.15m，verify-data-consistency 现登记 1 条「距墙段端点」贴角 warning（86mm 面板北缘距墙角 0.056m）——迁前该 warning 被「离墙超差即整体跳过后续几何检查」掩住（scripts/verify/placement/verify-point-placement.ts 2026-10-04 A4-b 注释所述的静默跳过），贴角安装属预期、不是新缺陷。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "客卫开放洗漱区 vanity 插座·双联南位（DEC-2026-09-08-R1 业主拍板+1 位：吹风机/电动牙刷/剃须刀同用）；h=1.0 镜面下缘以下，带防溅盒；ordinary_power_service 回路成员；墙体挂载与给电按现场复核；DEC-2026-10-17-R20 双联北移——与 faucet_gbath_vanity (3.955) 横向拉开至 0.16/0.246m（≥0.15 达标，原 0.018/0.068 未达自有口径；2026-11-06 双联随柜体北移 +0.055，z 4.06→4.115 / 4.146→4.201，与龙头间距不变）；2026-11-06 issue #98 PR-6 宿主核实=墙挂（不挂柜）：h=1.0 在台面 0.79m 与镜柜下缘 y=1.10 之间的露墙带、柜体模型无背板（shared/render/FixtureFactory.ts buildVanity），物理上只能上墙；按口径 A 迁到西完成面 x 7.05→7.14（= 墙线 7.20 − 半墙厚 0.06，与 vanity / mirror_cabinet_gbath 背沿同一完成面）；北板距段端 0.154m 贴角无 warning；另更正上文旧值：+0.055 北移后北板距墙段端（4.30）实为 0.099m <0.15m，verify-data-consistency 现登记 1 条「距墙段端点」贴角 warning（86mm 面板北缘距墙角 0.056m）——迁前该 warning 被「离墙超差即整体跳过后续几何检查」掩住（scripts/verify/placement/verify-point-placement.ts 2026-10-04 A4-b 注释所述的静默跳过），贴角安装属预期、不是新缺陷。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   blocker:
     kind: pending_vendor_drawing
@@ -853,7 +853,7 @@
   type: socket
   height: 1.8
   count: 1
-  note: "燃气热水器插座；热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开 w_balc_east 阳台门洞；排烟与燃气路由需物业/燃气公司确认（CO 安全），见 pending-site-data.md #26；status 暂不判，待 #26 定挂位后再升。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "燃气热水器插座；热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开 w_balc_east 阳台门洞；排烟与燃气路由需物业/燃气公司确认（CO 安全），见 pending-site-data.md #26；。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
 # DEC-2026-10-04-R2 外机（美的领航者Ⅳ MJV-200W-E01-LHIV 20kW）专用取电点位：四层数据缺口补齐的电气点位层。
   status: pending
@@ -1156,7 +1156,7 @@
   type: socket
   height: 0.3
   count: 1
-  note: "智能网关/路由位（走廊，房子中央，WiFi覆盖最优；DEC-014 由 z=4.8 移至 w_st_east 有效墙段；⚠️本点位位于电视墙北段通顶高柜（z5.55-6.9 深0.35，DEC-029/031）柜内，柜体深化时必须在此格位留开放格+走线孔并保证散热，不得做成封闭柜门）；状态依据：status 归入 topology 回路 ordinary_power_living，DEC-014 网关/路由位→inferred；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "智能网关/路由位（走廊，房子中央，WiFi覆盖最优；DEC-014 由 z=4.8 移至 w_st_east 有效墙段；⚠️本点位位于电视墙北段通顶高柜（z5.55-6.9 深0.35，DEC-029/031）柜内，柜体深化时必须在此格位留开放格+走线孔并保证散热，不得做成封闭柜门）；回路归属 ordinary_power_living，DEC-014 网关/路由位（topology 回路）；；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
   status: pending
 
 # DEC-2026-10-03-R1 网关位补网口：原只有电源无网口；弱电口径，不进强电回路。
@@ -1329,7 +1329,7 @@
   z: 5.78
   height: 0.02
   count: 1
-  note: "西侧可变家具通用服务点（候选未冻结）：服务梳妆桌镜灯/桌灯/吹风机短时/充电，兼容便携投影；2026-09-04 R1 随桌贴窗重算可行域——桌 footprint x[0.20,0.65] z[5.60,6.50] 北侧两腿（世界 x=0.265/0.585、z=5.66）之间，距最近桌腿 0.196m（≥0.10m）、不入凳收纳包络（z≥5.84）、不入西窗帘线/盒 x[1.10,1.35]、不入床侧主通道 x[1.35,2.20]，坐姿于东侧可触及；最终位置待窗帘堆叠现场确认；状态依据：status 归入 topology 回路 ordinary_power_master→inferred；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "西侧可变家具通用服务点（候选未冻结）：服务梳妆桌镜灯/桌灯/吹风机短时/充电，兼容便携投影；2026-09-04 R1 随桌贴窗重算可行域——桌 footprint x[0.20,0.65] z[5.60,6.50] 北侧两腿（世界 x=0.265/0.585、z=5.66）之间，距最近桌腿 0.196m（≥0.10m）、不入凳收纳包络（z≥5.84）、不入西窗帘线/盒 x[1.10,1.35]、不入床侧主通道 x[1.35,2.20]，坐姿于东侧可触及；最终位置待窗帘堆叠现场确认；回路归属 ordinary_power_master（topology 回路）；；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
   status: pending
 
 # 客卫电热毛巾架
@@ -1408,7 +1408,7 @@
   type: socket
   height: 0.7
   count: 1
-  note: "客房床头插座·北侧（2026-10-05 R15 新增；h=0.7 床头高度，挂在 w_east_upper 卧室侧。）；状态依据：status 归入 topology 回路 ordinary_power_parent_child（2026-10-05 R15 床头组）→inferred；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "客房床头插座·北侧（2026-10-05 R15 新增；h=0.7 床头高度，挂在 w_east_upper 卧室侧。）；回路归属 ordinary_power_parent_child（2026-10-05 R15 床头组）（topology 回路）；；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
   status: pending
   blocker:
     kind: site_measurement
@@ -1425,7 +1425,7 @@
   type: socket
   height: 0.7
   count: 1
-  note: "客房床头插座·南侧（2026-10-05 R15 新增；h=0.7；w_east_upper 剪力墙 inferred，开孔条件 site_pending）；状态依据：status 归入 topology 回路 ordinary_power_parent_child（2026-10-05 R15 床头组）→inferred；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "客房床头插座·南侧（2026-10-05 R15 新增；h=0.7；w_east_upper 剪力墙 inferred，开孔条件 site_pending）；回路归属 ordinary_power_parent_child（2026-10-05 R15 床头组）（topology 回路）；；本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
   status: pending
   blocker:
     kind: site_measurement
@@ -1465,7 +1465,7 @@
   face_offset: -0.06
   type: night_light
   height: 0.35
-  note: "起夜 NP-2 床头小夜灯（R15）：床头正上方低位，触摸+感应双模；w_east_upper 剪力墙 inferred，挂装条件 site_pending；状态依据：status 归入 topology 回路 lighting_bedrooms_bath（proposed），起夜 NP-2 床头小夜灯→inferred；2026-10-28 DEC-2026-10-28-R04：随 switch_guest_bed 一并南移至 (16.40,8.55)——原 (16.40,7.60) 同被 bed_150 床头板遮挡（板顶 0.80m 高于本灯 0.35m，触摸位不可达、光线被挡回墙面），新位在床南缘外 0.20m、 bedside 即触即亮，且与 switch_guest_bed 保持同点竖直流叠（MEP strong-light-bedrooms-study-guest-night 共享下引段不变）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "起夜 NP-2 床头小夜灯（R15）：床头正上方低位，触摸+感应双模；w_east_upper 剪力墙 inferred，挂装条件 site_pending；回路归属 lighting_bedrooms_bath（proposed），起夜 NP-2 床头小夜灯（topology 回路）；；2026-10-28 DEC-2026-10-28-R04：随 switch_guest_bed 一并南移至 (16.40,8.55)——原 (16.40,7.60) 同被 bed_150 床头板遮挡（板顶 0.80m 高于本灯 0.35m，触摸位不可达、光线被挡回墙面），新位在床南缘外 0.20m、 bedside 即触即亮，且与 switch_guest_bed 保持同点竖直流叠（MEP strong-light-bedrooms-study-guest-night 共享下引段不变）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
   status: pending
 
 # 起夜路径 NP-3/NP-4（客房门外 + 客厅过渡段）
@@ -1524,7 +1524,7 @@
     along: 0.25
     surface_gap: 0.003
   height: 0.30
-  note: "起夜 NP-5 走廊口低位灯：吸附到 wall_cabinet_tall 北端板（ld.wall_cabinet_tall），面向走廊北侧，完成面缝隙 3mm；不设通道落地柱。柜体端板固定方式、暗藏供电和感应朝向待柜体/水电深化，site_pending；light_corridor_1 日常下照仅作兜底。；状态依据：status 归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-5 走廊口低位灯→inferred；2026-11-07 issue #98 S2：mount_anchor（身份注记 + 手写 x/z）升级为真挂载定位声明 mount——along=0.25 自北脸轴西端（x=7.20）向东累计、face_offset 缺省 0（贴脸，北脸平面 z=5.55 即原声明值）、surface_gap 0.003 缝隙由 NightLightGeometry 灯体偏移沿用；宿主移动灯自动跟随；x/z 迁移期断言字段已于 2026-11-07 S3 删除（断言期逐点证明解析结果 == 声明值），平面位置只有解算器一个来源。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "起夜 NP-5 走廊口低位灯：吸附到 wall_cabinet_tall 北端板（ld.wall_cabinet_tall），面向走廊北侧，完成面缝隙 3mm；不设通道落地柱。柜体端板固定方式、暗藏供电和感应朝向待柜体/水电深化，site_pending；light_corridor_1 日常下照仅作兜底。；回路归属 lighting_entry_base（confirmed），起夜 NP-5 走廊口低位灯（topology 回路）；；2026-11-07 issue #98 S2：mount_anchor（身份注记 + 手写 x/z）升级为真挂载定位声明 mount——along=0.25 自北脸轴西端（x=7.20）向东累计、face_offset 缺省 0（贴脸，北脸平面 z=5.55 即原声明值）、surface_gap 0.003 缝隙由 NightLightGeometry 灯体偏移沿用；宿主移动灯自动跟随；x/z 迁移期断言字段已于 2026-11-07 S3 删除（断言期逐点证明解析结果 == 声明值），平面位置只有解算器一个来源。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
   status: pending
 
   blocker:

@@ -113,3 +113,21 @@ export function checkBlockers(subjects: BlockerSubject[], derivedStatus: (subjec
 export function formatBlockerIssue(issue: BlockerIssue): string {
   return `${issue.id} [${issue.code}] ${issue.message}`;
 }
+
+/**
+ * note 与 blocker 的重复检测（issue #98 S2-A 评审 blocking 1/3 的共用实现）。
+ *
+ * 抽成导出函数是为了让**测试的反向锚真的调用被测逻辑**——把判断内联在测试里、
+ * 再对「自己刚构造的字符串」做 includes 断言，是恒真的假反向锚。
+ *
+ * 返回 note 中与 blocker 逐字重复的字段名列表；空列表 = 没有并存两份。
+ */
+export function noteBlockerDuplicates(note: string, blocker: ComponentBlocker): Array<{ field: 'trigger' | 'reverses_if' | 'rationale'; text: string }> {
+  const out: Array<{ field: 'trigger' | 'reverses_if' | 'rationale'; text: string }> = [];
+  if (!note) return out;
+  for (const field of ['trigger', 'reverses_if', 'rationale'] as const) {
+    const value = blocker[field];
+    if (value && note.includes(value)) out.push({ field, text: value });
+  }
+  return out;
+}
