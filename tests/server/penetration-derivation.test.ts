@@ -297,6 +297,45 @@ test('lint 可见性：E 类（未触墙意图点）at 丢失 → orphaned/… �
     'E 类意图点失去 at 后应显形（设计意图不可派生，删除即丢语义）');
 });
 
+test('lint 可见性（验伪轮）：E 类 at 漂移 0.10m 不再静默——正交脱钩/离墙线即 mismatch', () => {
+  const context = lintContext();
+  // 验伪变异③复演：water-kitchen-requirement at (7.2,0.45)→(7.2,0.55)——仍在 0.25m 邻近豁免
+  // 圈内（距折线 0.1803m），但与最近点 (7.35,0.45) 变成斜对角（Δ=0.15×0.10）→ 必须红。
+  const mutatedDiagonal = structuredClone(config) as MepCoordination;
+  const routeDiagonal = mutatedDiagonal.routes.find((item) => item.id === 'water-kitchen-requirement')!;
+  ((routeDiagonal as unknown as { penetration: Array<Record<string, unknown>> }).penetration)[0]!.at = { x: 7.2, z: 0.55 };
+  const resultDiagonal = lintMepCoordination(mutatedDiagonal, sources, context);
+  const diagonalIssues = [...resultDiagonal.errors, ...resultDiagonal.warnings]
+    .filter((issue) => issue.code === 'penetration_point_mismatch' && issue.routeId === 'water-kitchen-requirement');
+  assert.ok(diagonalIssues.length >= 1, 'E 类 at 斜对角漂移（正交脱钩）必须显形——原 0.25m 邻近豁免圈内静默的洞');
+  assert.ok(diagonalIssues.some((issue) => issue.message.includes('orthogonally')), '诊断应点名正交对齐约束');
+  // 漂离墙线方向：at x+0.10 → (7.3,0.45)，垂距 0.10m → 必须红。
+  const mutatedOffWall = structuredClone(config) as MepCoordination;
+  const routeOffWall = mutatedOffWall.routes.find((item) => item.id === 'water-kitchen-requirement')!;
+  ((routeOffWall as unknown as { penetration: Array<Record<string, unknown>> }).penetration)[0]!.at = { x: 7.3, z: 0.45 };
+  const resultOffWall = lintMepCoordination(mutatedOffWall, sources, context);
+  const offWallIssues = [...resultOffWall.errors, ...resultOffWall.warnings]
+    .filter((issue) => issue.code === 'penetration_point_mismatch' && issue.routeId === 'water-kitchen-requirement');
+  assert.ok(offWallIssues.some((issue) => issue.message.includes('off the wall line')), 'E 类 at 漂离墙线必须显形');
+  // 真实 4 条 E 类锚定量全 0（垂距=0、正交对齐）——真实配置不新增告警由
+  // 「真实配置 lint penetration_* 计数」测试的 mismatch=0 钉住。
+});
+
+test('lint 可见性（验伪轮）：E 类沿墙正交滑动不误伤（设计自由度论证）', () => {
+  // at 沿墙线滑到与路线平行段保持正交对齐的位置（water-entry-valve 的 x=7.35 竖直段跟随）：
+  // 这是「孔位沿墙最终位置待量房定」的设计自由度（D 轨 §6.1-E：不可派生），没有第二事实
+  // 可对照——锚定只钉「离墙线」「斜对角」两个可验证方向，不为滑动方向发明锚。
+  // 该方向的出圈兜底是既有 0.25m 邻近豁免（>0.25m → orphaned，验伪员变异③b 实测红）。
+  const context = lintContext();
+  const mutated = structuredClone(config) as MepCoordination;
+  const route = mutated.routes.find((item) => item.id === 'water-entry-valve-requirement')!;
+  ((route as unknown as { penetration: Array<Record<string, unknown>> }).penetration)[0]!.at = { x: 7.2, z: 0.4 };
+  const result = lintMepCoordination(mutated, sources, context);
+  const mismatch = [...result.errors, ...result.warnings]
+    .filter((issue) => issue.code === 'penetration_point_mismatch' && issue.routeId === 'water-entry-valve-requirement');
+  assert.deepEqual(mismatch, [], '保持压墙线+正交对齐的沿墙滑动不误伤（量房自由度）');
+});
+
 test('真实配置 lint：penetration_* 计数与 S2 结束态一致（行为零变化）', () => {
   const result = lintMepCoordination(config, sources, lintContext());
   const all = [...result.errors, ...result.warnings];

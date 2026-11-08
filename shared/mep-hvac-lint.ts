@@ -214,10 +214,11 @@ const ORTHOGONAL_LONG_DROP_PLAN_DRIFT = 0.12;
 /** (c) 穿点与同墙门洞的最小净距。 */
 const DOOR_CLEARANCE_MIN = 0.15;
 /**
- * 保留手写 at 的锚定容差（issue #98 第五阶段 S3）：贴墙段穿越（C 形）/端点压墙线（D 形）的 at
- * 不可派生，但必须与形态锚点（贴墙段任一端 / 压墙端点）重合——路线改了、手写 at 没跟着改
- * 时在这里显形。取仓库断言期通用容差 0.005m（与点位/暖通断言同口径）；现网实测 7+1 条
- * 漂移 0.00e+0 / 8.88e-16。
+ * 保留手写 at 的锚定容差（issue #98 第五阶段 S3；验伪轮补 E 类）：不可派生的手写 at 必须
+ * 与其几何签名重合——贴墙段穿越（C 形）/端点压墙线（D 形）锚定形态端点，未触墙意图点
+ * （E 形）锚定「压墙线 + 与折线最近点正交对齐」两条硬约束（实测 4 条垂距=0、Δx/Δz=0）。
+ * 路线改了、手写 at 没跟着改时在这里显形。取仓库断言期通用容差 0.005m（与点位/暖通断言
+ * 同口径）；现网实测 7+1 条漂移 0.00e+0 / 8.88e-16，E 类 4 条锚定量全 0。
  */
 const PENETRATION_ANCHOR_TOLERANCE = 0.005;
 /** (d) 与剪力墙平行距离阈值 / 最小并行持续长度。 */
@@ -815,6 +816,45 @@ function penetrationPointOnRoute(point: Point, points: Point[], wall: WallGeomet
       x1: points[index].x, z1: points[index].z, x2: current.x, z2: current.z,
     })));
   return routeDistance <= 0.25 && wallSegments(wall).some((segment) => pointSegmentDistance(point, segment) <= 0.25);
+}
+/** 折线上距 point 最近的点（含端点；供 E 类意图点正交对齐锚定用）。 */
+function nearestPointOnPolyline(point: Point, points: Point[]): { x: number; z: number } {
+  let best = { x: points[0]!.x, z: points[0]!.z, d: Number.POSITIVE_INFINITY };
+  for (let index = 1; index < points.length; index += 1) {
+    const a = points[index - 1]!, b = points[index]!;
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const lengthSquared = dx * dx + dz * dz;
+    const t = lengthSquared < 1e-12 ? 0 : Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.z - a.z) * dz) / lengthSquared));
+    const qx = a.x + t * dx, qz = a.z + t * dz;
+    const d = Math.hypot(point.x - qx, point.z - qz);
+    if (d < best.d) best = { x: qx, z: qz, d };
+  }
+  return { x: best.x, z: best.z };
+}
+/**
+ * E 类（折线未触墙）意图点 at 的锚定校验（issue #98 第五阶段 S3 验伪轮补）：
+ * 不可派生的形态里几何能提供的两条硬约束——
+ *   ① at 压在墙线上（垂距 ≤ PENETRATION_ANCHOR_TOLERANCE）：意图点是「未来穿墙段的墙面点」，
+ *      漂离墙线即失去意图语义；
+ *   ② at 与折线最近点曼哈顿正交对齐（Δx 或 Δz ≤ 容差）：穿墙段与墙正交是全仓走线铁律，
+ *      意图点斜对角偏离延伸线即与路线几何脱钩。
+ * 实测 4 条 E 类现状两条锚定量全 0（垂距 0.00e+0、Δ 单分量 0）。沿墙线且保持正交的滑动
+ * 没有第二事实可对照（孔位沿墙的最终位置是量房日的设计自由度，D 轨 §6.1-E「不可派生」的
+ * 定义），不为它发明锚——出 0.25m 邻近圈由 orphaned 兜底。
+ * 返回诊断描述（问题成立）或 undefined（锚定成立）。
+ */
+function intentAnchorDiagnostic(at: { x: number; z: number }, points: Point[], wall: WallGeometry): string | undefined {
+  const perpendicular = perpendicularDistance(at, wall);
+  if (perpendicular > PENETRATION_ANCHOR_TOLERANCE) {
+    return `is ${perpendicular.toFixed(3)}m off the wall line; an un-crossed penetration intent must sit on the wall it will eventually penetrate`;
+  }
+  const nearest = nearestPointOnPolyline(at, points);
+  const dx = Math.abs(nearest.x - at.x);
+  const dz = Math.abs(nearest.z - at.z);
+  if (dx > PENETRATION_ANCHOR_TOLERANCE && dz > PENETRATION_ANCHOR_TOLERANCE) {
+    return `is diagonally offset ${Math.min(dx, dz).toFixed(3)}m×${Math.max(dx, dz).toFixed(3)}m from the nearest route point (${nearest.x.toFixed(3)},${nearest.z.toFixed(3)}); the intent must align orthogonally (Δx=0 or Δz=0) with the future wall crossing`;
+  }
+  return undefined;
 }
 function segmentIntersection(a: Point, b: Point, c: Point, d: Point): { x: number; z: number } | undefined {
   const d1x = b.x - a.x, d1z = b.z - a.z, d2x = d.x - c.x, d2z = d.z - c.z;
@@ -1503,7 +1543,10 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         //   strict/vertex：唯一交点时 at 可派生、声明可省；多交点必须手写 at；
         //   collinear_run / endpoint_on_wall：at 不可派生，必须声明且与形态锚点重合
         //     （贴墙段任一端 / 压墙端点），漂移超 PENETRATION_ANCHOR_TOLERANCE 即 mismatch；
-        //   none：保留既有邻近豁免（未触墙设计意图点，E 类），否则 orphaned。
+        //   none（未触墙设计意图点，E 类）：声明必须落进既有 0.25m 邻近豁免圈（否则
+        //     orphaned），且锚定两条几何签名（压墙线 + 正交对齐，验伪轮补）——漂移出签名
+        //     即 mismatch。沿墙线且保持正交的滑动无第二事实可对照（孔位沿墙的最终位置是
+        //     量房日的设计自由度），由出圈兜底，不为它发明锚。
         const form = resolveMepWallCrossingForm(points, wall);
         if (form.form === 'strict' || form.form === 'vertex') {
           if (form.total > 1 && !declared.at) {
@@ -1522,10 +1565,19 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
               add(result, issue('warning', 'penetration_point_mismatch', `Route ${route.id} declared penetration on ${wall.id} at (${declared.at.x.toFixed(3)},${declared.at.z.toFixed(3)}) is ${drift.toFixed(3)}m away from the route's ${form.form === 'collinear_run' ? 'wall-hug run ends' : 'on-wall endpoint'}; the hand-kept at no longer matches the route geometry`, route.id));
             }
           }
-        } else if (!(declared.at && penetrationPointOnRoute(declared.at, points, wall))) {
+        } else if (declared.at && penetrationPointOnRoute(declared.at, points, wall)) {
+          // 豁免圈内的 E 类意图点（折线未触墙，at 是「计划中该穿但还没画到」的墙面点）。
+          // 验伪轮（fired=false 修复）：0.25m 邻近豁免不是免检——at 还必须满足两条可验证
+          // 的几何签名，漂移出签名即 mismatch，不再静默。
+          if (declared.height === undefined) {
+            add(result, issue('warning', 'penetration_declaration_incomplete', `Route ${route.id} declares a penetration intent on ${wall.id} but lacks height; record the sleeve elevation`, route.id));
+          }
+          const anchorProblem = intentAnchorDiagnostic(declared.at, points, wall);
+          if (anchorProblem) {
+            add(result, issue('warning', 'penetration_point_mismatch', `Route ${route.id} declared penetration on ${wall.id} at (${declared.at.x.toFixed(3)},${declared.at.z.toFixed(3)}) ${anchorProblem}`, route.id));
+          }
+        } else {
           add(result, issue('warning', 'penetration_declaration_orphaned', `Route ${route.id} declares penetration on ${wall.id}, but its current geometry does not cross that wall`, route.id));
-        } else if (declared.height === undefined) {
-          add(result, issue('warning', 'penetration_declaration_incomplete', `Route ${route.id} declares a penetration intent on ${wall.id} but lacks height; record the sleeve elevation`, route.id));
         }
       }
       for (const wall of context.layout.walls) {
