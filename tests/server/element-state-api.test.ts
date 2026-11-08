@@ -18,6 +18,8 @@ import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { ConfigRegistry } from '../../server/config-loader.js';
 import { createApiRouter } from '../../server/routes.js';
 import { getElementState, type ElementStatePayload } from '../../server/element-state-service.js';
+import { projectElementStates } from '../../server/element-state-service.js';
+import { readFileSync } from 'node:fs';
 const TEST_DATA_DIR = './tmp/test-data-element-state-api';
 
 const ELEMENT_STATUSES = new Set(['measured', 'confirmed', 'inferred', 'pending', 'conflicted', 'undeclared']);
@@ -176,5 +178,38 @@ describe('element state API', () => {
     const off = await request(createApp(getElementState)).get('/api/element-state?conflicts=0&refresh=false').expect(200);
     assert.equal(off.body.withConflicts, false);
     assert.equal(off.body.cachedAt, null);
+  });
+});
+
+// ── state-model 词汇表的读者键名（issue #98 S1-B 评审 BLOCKING-1）─────────────
+// config/state-model.yaml 声明蛇形 status_vocabulary；CLI（state-projection.ts）与
+// 服务端（本文件 import 的 element-state-service.ts）必须同口径读它。
+// 失效形态：只有一个读者改了，另一个静默走 DEFAULT_STATE_MODEL——CLI 与 API 分叉，
+// 且默认值与 YAML 逐键相同，今天恰好掩盖，没有任何门禁会红。
+describe('state-model 词汇表读者键名', () => {
+  const YAML_KEY = 'status_vocabulary';
+  const CAMEL_KEY = 'statusVocabulary';
+
+  it('蛇形键被读、驼峰键不被读', () => {
+    // 基线：不传 modelConfig，走真实 YAML。
+    const base = projectElementStates([]);
+    const basePending = base.states.filter((s) => s.status === 'pending').length;
+    assert.ok(basePending > 0, '基线应有 pending 构件，否则本测试无判别力');
+
+    // 传蛇形键：把 inferred 一律映射成 pending，pending 数应大幅上升。
+    const snake = projectElementStates([], { [YAML_KEY]: { inferred: 'pending' as const } });
+    const snakePending = snake.states.filter((s) => s.status === 'pending').length;
+    assert.ok(snakePending > basePending, `蛇形 status_vocabulary 必须被读取（${basePending} → ${snakePending}）`);
+
+    // 传驼峰键：同样的映射必须无效（证明读者不是驼峰）。
+    const camel = projectElementStates([], { [CAMEL_KEY]: { inferred: 'pending' as const } } as never);
+    const camelPending = camel.states.filter((s) => s.status === 'pending').length;
+    assert.equal(camelPending, basePending, `驼峰 statusVocabulary 不得被读取（${basePending} → ${camelPending}）`);
+  });
+
+  it('YAML 里只存在蛇形键', () => {
+    const yaml = readFileSync('config/state-model.yaml', 'utf8');
+    assert.match(yaml, new RegExp(`^${YAML_KEY}:`, 'm'), 'config/state-model.yaml 必须声明蛇形 status_vocabulary');
+    assert.doesNotMatch(yaml, new RegExp(`^\\s*${CAMEL_KEY}:`, 'm'), '不许出现驼峰 statusVocabulary 键');
   });
 });
