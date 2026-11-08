@@ -42,6 +42,13 @@ export type HvacTerminalWithOffset = HvacTerminal & { offset?: { x: number; z: n
 export type HvacAnchorWithSchematicOnly = HvacAnchor & { schematic_only?: boolean };
 
 /**
+ * 同上：power 取电锚点的 serves_unit（issue #98 S3 显式化「哪个 anchor 服务哪台内机」）的
+ * 局部交叉类型，types.ts 不在本切片清单内。zod schema（project-render-facts-schema.ts 的
+ * HvacAnchorSchema）已把字段纳入 strict 解析并限 system=power。
+ */
+export type HvacAnchorWithServesUnit = HvacAnchor & { serves_unit?: string };
+
+/**
  * 侧装口（mount_face ∈ north/south/east/west）的面容差（米）。
  *
  * 依据：既有声明惯例里侧装百叶中心线与分区面线差 0.010m——supply_living z=5.56 对
@@ -407,6 +414,92 @@ export function lintHvacMepNodeParity(input: {
         issues.push(issue('error', 'mep_node_parity_mismatch',
           `hvac 锚点 ${pair.anchorId} 的 ${axis}=${hvacValue} 与 MEP ${pair.mepRouteId} via[${pair.viaIndex}] 的 ${axis}=${mepValue}`
           + ` 漂移 ${Math.abs(hvacValue - mepValue).toFixed(4)}m（> ${HVAC_MEP_PARITY_EPSILON_M}）——该锚点 reason 自称沿用此 MEP 协调节点（裁定三/DEC-2026-10-06-R5），两侧必须逐位相等`, pair.anchorId));
+      }
+    }
+  }
+  return issues;
+}
+
+/**
+ * power_* 取电锚点的三方配对 lint（issue #98 第五阶段 S3，任务书第 3 项①②）。
+ *
+ * 由来（phase5-survey.md §3-2）：「哪个插座供哪台内机」今天住 3 处——ceiling `ac_*.power_point`
+ * （6 处，无运行时读者）、hvac `power_*` anchor ref（有读者）、electrical `host_intent` 散文
+ * （5 处，sock_child_ac 缺）——但「哪个 anchor 服务哪台内机」只靠 id 里的房间名推断
+ * （power_living ↔ ac_living），是隐式映射，不够作为唯一源。S3 给 6 个 power anchor 加显式
+ * `serves_unit`（宿主内机 ceiling id），本检查把配对钉成机器断言（四条腿）：
+ *   ① anchor.serves_unit 必须声明且指向真实存在的 ac_indoor ceiling 对象；
+ *   ② anchor.ref 必须指向 electrical 取电点位，该点位声明的 host_intent（若声明）必须点名
+ *      serves_unit；未声明 host_intent 记 warning（登记缺口：sock_child_ac，C FM-4）；
+ *   ③ 以该 anchor 为起点的 power route 终点必须是 ref 指向同一 serves_unit 的 indoor anchor
+ *      ——serves_unit 因此被 ref / route / host_intent 三面夹住，成为真值而非又一份散文；
+ *   ④ 刻意与 S2 的 E8 三方配对测试（hvac-mep-drift-guard.test.ts，读 ceiling
+ *      ac_*.power_point）并存：那份断言在 power_point 退场前仍是活门禁，两份配对在同一
+ *      配置上必须同时全绿——power_point 的退场（本切片判定保留，消费方在另一路文件清单里）
+ *      以本检查 + ④ 的并存绿为替代机制就位的证据。
+ *
+ * 消费方：tests/server/hvac-terminal-placement-guard.test.ts（test:server 绿/红变异固化）；
+ * serves_unit 存在性校验（写错 id 加载期即抛）住 validateProjectHvacFacts，与本函数分工同
+ * access offset 的「validate 管存在性、lint 管对账」两层结构。
+ */
+export interface HvacPowerPairingInput {
+  anchors: readonly HvacAnchorWithServesUnit[];
+  ceiling: readonly CeilingZone[];
+  electrical: ReadonlyArray<{ id: string; host_intent?: string }>;
+  routes?: readonly HvacRoute[];
+}
+
+export function lintHvacPowerPairing(input: HvacPowerPairingInput): HvacTerminalLintIssue[] {
+  const issues: HvacTerminalLintIssue[] = [];
+  const { anchors, ceiling, electrical, routes } = input;
+  const zoneById = new Map(ceiling.map((zone) => [zone.id, zone]));
+  const anchorById = new Map(anchors.map((anchor) => [anchor.id, anchor]));
+  for (const anchor of anchors) {
+    if (anchor.system !== 'power') continue;
+    const servesUnit = anchor.serves_unit;
+    if (servesUnit === undefined) {
+      issues.push(issue('error', 'power_serves_unit_missing',
+        `power 锚点 ${anchor.id} 未声明 serves_unit（服务内机 ceiling id）——「哪个 anchor 服务哪台内机」不得只靠 id 房间名推断（issue #98 S3）`, anchor.id));
+      continue;
+    }
+    const unit = zoneById.get(servesUnit);
+    if (!unit) {
+      issues.push(issue('error', 'power_serves_unit_unknown', `power 锚点 ${anchor.id} 的 serves_unit ${servesUnit} 不存在`, anchor.id));
+      continue;
+    }
+    if (unit.type !== 'ac_indoor') {
+      issues.push(issue('error', 'power_serves_unit_not_indoor',
+        `power 锚点 ${anchor.id} 的 serves_unit ${servesUnit} 不是 ac_indoor 内机对象（type=${unit.type}）`, anchor.id));
+    }
+    if (anchor.ref?.source !== 'electrical') {
+      issues.push(issue('error', 'power_ref_not_electrical',
+        `power 锚点 ${anchor.id} 的 ref 不是 electrical 取电点位（source=${anchor.ref?.source ?? '无 ref'}）`, anchor.id));
+    } else {
+      const point = electrical.find((item) => item.id === anchor.ref!.id);
+      if (!point) {
+        issues.push(issue('error', 'power_ref_point_missing',
+          `power 锚点 ${anchor.id} 的 ref 指向不存在的 electrical 点位 ${anchor.ref.id}`, anchor.id));
+      } else if (point.host_intent === undefined) {
+        issues.push(issue('warning', 'power_host_intent_missing',
+          `${point.id} 未声明 host_intent 散文（登记缺口：sock_child_ac，C FM-4）——配对由 anchor.serves_unit 承担`, anchor.id));
+      } else if (!point.host_intent.includes(servesUnit)) {
+        issues.push(issue('error', 'power_host_intent_mismatch',
+          `${point.id} 的 host_intent「${point.host_intent}」未点名 serves_unit ${servesUnit}`, anchor.id));
+      }
+    }
+    if (routes !== undefined) {
+      const powerRoutes = routes.filter((route) => route.system === 'power' && route.from === anchor.id);
+      if (powerRoutes.length === 0) {
+        issues.push(issue('error', 'power_route_missing', `power 锚点 ${anchor.id} 没有任何以它为起点的 power route`, anchor.id));
+        continue;
+      }
+      for (const route of powerRoutes) {
+        const target = anchorById.get(route.to);
+        if (!target || target.ref?.source !== 'ceiling' || target.ref.id !== servesUnit) {
+          issues.push(issue('error', 'power_route_target_mismatch',
+            `power route ${route.id} 的终点 ${route.to} 不是 ref 指向 ${anchor.id}.serves_unit=${servesUnit} 的 indoor anchor`
+            + `（实际 ref=${target?.ref ? `${target.ref.source}:${target.ref.id}` : '无 ref 或终点不存在'}）`, anchor.id));
+        }
       }
     }
   }

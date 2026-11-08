@@ -15,7 +15,9 @@ import {
   lintHvacAccessOffsets,
   lintHvacLdDecoBandFill,
   lintHvacMepNodeParity,
+  lintHvacPowerPairing,
   lintHvacTerminalCeilingBands,
+  type HvacAnchorWithServesUnit,
   type HvacTerminalLintIssue,
 } from '../../shared/hvac-terminal-lint.js';
 import { parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
@@ -374,4 +376,82 @@ test('钉：parity 对账表快照——只登记裁定三认定的同源对，�
   assert.deepEqual(HVAC_MEP_NODE_PARITY_PAIRS.map((pair) => `${pair.anchorId}↔${pair.mepRouteId}:via[${pair.viaIndex}]`), [
     'branch_dining↔refrigerant-dining:via[0]',
   ]);
+});
+
+// ───────── power_* 取电锚点三方配对（S3：serves_unit 显式化，取代 id 房间名隐式映射） ─────────
+// 「哪个插座供哪台内机」原住 3 处（phase5-survey §3-2）：ceiling ac_*.power_point（无运行时
+// 读者）、hvac power_* anchor ref、electrical host_intent 散文——anchor 与内机的对应只靠
+// id 房间名推断。S3 给 6 个 power anchor 加显式 serves_unit，配对断言改基于
+// lintHvacPowerPairing（单一实现在 shared/hvac-terminal-lint.ts）。S2 建在
+// hvac-mep-drift-guard.test.ts 的 E8 三方配对（读 ceiling power_point）在 power_point 退场前
+// 仍是活门禁，两份配对同配置并存全绿（该文件归另一路，本切片不动它，power_point 判定保留）。
+
+test('绿：6 个 power anchor 的 serves_unit 四腿配对全绿（ref ↔ serves_unit ↔ host_intent ↔ route 终点）', () => {
+  const issues = lintHvacPowerPairing({ anchors: diagram.anchors, ceiling, electrical, routes: diagram.routes });
+  const errors = issues.filter((entry) => entry.level === 'error');
+  assert.deepEqual(errors, [], `现配置配对必须全绿，实际：${errors.map((entry) => entry.message).join('；')}`);
+  // 显式映射快照（S3 替代 id 房间名推断）：谁改 serves_unit、ref 或 route 终点都要过这道显形。
+  const pairs = diagram.anchors.filter((anchor) => anchor.system === 'power')
+    .map((anchor) => `${anchor.id}→${(anchor as HvacAnchorWithServesUnit).serves_unit}←${anchor.ref?.id}`)
+    .sort();
+  assert.deepEqual(pairs, [
+    'power_child→ac_child←sock_child_ac',
+    'power_dining→ac_dining←sock_dining_ac',
+    'power_living→ac_living←sock_living_ac',
+    'power_master→ac_master←sock_master_ac',
+    'power_parent→ac_parent←sock_parent_ac',
+    'power_study→ac_study←sock_study_ac',
+  ]);
+});
+
+test('绿：host_intent 散文缺口显形为 warning——登记缺口快照 == [power_child]（与 S2 E8 同口径）', () => {
+  const issues = lintHvacPowerPairing({ anchors: diagram.anchors, ceiling, electrical, routes: diagram.routes });
+  const missing = issues.filter((entry) => entry.code === 'power_host_intent_missing');
+  assert.deepEqual(missing.map((entry) => entry.terminalId), ['power_child'],
+    '缺 host_intent 的取电点位集合必须与登记缺口一致（sock_child_ac，C FM-4）');
+  assert.equal(issues.filter((entry) => entry.code === 'power_host_intent_mismatch').length, 0,
+    '已声明 host_intent 的 5 个点位必须点名各自 serves_unit');
+});
+
+test('红：serves_unit 漂移到别家内机（power_child serves ac_master）→ route 终点腿报 power_route_target_mismatch', () => {
+  // 合法 id 的错配：validate 的存在性校验抓不到（ac_master 真实存在且是 ac_indoor），
+  // 只有配对 lint 的 route/ref/host_intent 三腿能抓——这正是本检查存在的原因。
+  const drifted = diagram.anchors.map((anchor) => anchor.id === 'power_child'
+    ? { ...anchor, serves_unit: 'ac_master' }
+    : anchor);
+  const issues = lintHvacPowerPairing({ anchors: drifted, ceiling, electrical, routes: diagram.routes });
+  assert.equal(issues.filter((entry) => entry.code === 'power_route_target_mismatch').length, 1,
+    `route 终点与 serves_unit 不再一致必须报：${JSON.stringify(issues)}`);
+  const driftedFacts = { ...hvacFacts, plans: [{ ...plan, diagram: diagramWith((draft) => ({ ...draft, anchors: drifted })) }] } as unknown as ProjectHvacFacts;
+  assert.doesNotThrow(() => validateProjectHvacFacts(driftedFacts, { electrical, ceiling }),
+    '存在性校验对合法 id 错配不抛——错配防线只在配对 lint');
+});
+
+test('红：serves_unit 写错 id（ac_typo）→ validate 加载期即抛（存在性校验，与 terminal 侧同款 fail-closed）', () => {
+  const broken = diagram.anchors.map((anchor) => anchor.id === 'power_child'
+    ? { ...anchor, serves_unit: 'ac_typo' }
+    : anchor);
+  const brokenFacts = { ...hvacFacts, plans: [{ ...plan, diagram: diagramWith((draft) => ({ ...draft, anchors: broken })) }] } as unknown as ProjectHvacFacts;
+  assert.throws(() => validateProjectHvacFacts(brokenFacts, { electrical, ceiling }), /serves unknown ceiling unit: ac_typo/);
+});
+
+test('红：power anchor 缺 serves_unit → lint 报 power_serves_unit_missing（validate 不抛，完整性归 lint）', () => {
+  const missing = diagram.anchors.map((anchor) => {
+    if (anchor.id !== 'power_child') return anchor;
+    const clone: HvacAnchorWithServesUnit = { ...anchor };
+    delete clone.serves_unit;
+    return clone;
+  });
+  const issues = lintHvacPowerPairing({ anchors: missing, ceiling, electrical, routes: diagram.routes });
+  assert.deepEqual(issues.filter((entry) => entry.code === 'power_serves_unit_missing').map((entry) => entry.terminalId), ['power_child'],
+    '缺 serves_unit 必须点名（配对不得退回 id 房间名推断）');
+});
+
+test('红：serves_unit 用在非 power 锚点 → schema 拒绝（与 terminal 侧 offset 仅限 access 同款结构规则）', () => {
+  assert.throws(() => HvacAnchorSchema.parse({
+    id: 'indoor_probe', status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: 'ac_living' }, serves_unit: 'ac_living',
+  }), /serves_unit 仅限 system=power/);
+  // terminal 侧的 serves_unit（access 宿主）不受影响——同名不同物的边界钉住。
+  const accessStudy = diagram.terminals.find((terminal) => terminal.id === 'access_study')!;
+  assert.equal(accessStudy.serves_unit, 'ac_study');
 });

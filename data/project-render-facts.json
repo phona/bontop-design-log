@@ -1238,7 +1238,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_living_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_living"
         },
         {
           "id": "power_dining",
@@ -1247,7 +1249,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_dining_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_dining"
         },
         {
           "id": "power_master",
@@ -1256,7 +1260,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_master_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_master"
         },
         {
           "id": "power_study",
@@ -1265,7 +1271,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_study_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_study"
         },
         {
           "id": "power_parent",
@@ -1274,7 +1282,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_parent_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_parent"
         },
         {
           "id": "power_child",
@@ -1283,7 +1293,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_child_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_child"
         },
         {
           "id": "bend_corridor",
