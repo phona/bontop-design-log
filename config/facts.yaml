@@ -342,9 +342,13 @@ scan:
       scalars: [model_string]
       pattern: 'MJV-|领航者|理想家'
       reason: 材料清单 hvac_01 复述 DEC-2026-10-04-R1 成交配置（MJV-200W-E01-LHIV 20kW 一拖六，2026-10-05 由预研候选改写为成交口径）；型号一致性由 c.hvac_model_refs_resolvable 对账
-    # config/model/envelope/ceiling.yaml 的 ac_* 与 config/electrical.yaml 的 sock_*_ac 是**同一台内机**
-    # 在吊顶几何与电气取电两个子系统里的两份记录，型号串本身由 config/hvac.yaml 授权；
-    # 两处的漂移由 c.hvac_model_refs_resolvable 抓（型号必须存在于 hvac.yaml）。
+    # config/model/envelope/ceiling.yaml 的 ac_* 与 config/electrical.yaml 的 sock_*_ac 是
+    # **两个不同事实**（2026-11-08 issue #98 第五阶段按 C 轨实证修订措辞；原「同一台内机
+    # 两份记录」的自我描述有误——两者字段集不相交、无一共标量：ac_* 声明内机本体几何/型号，
+    # sock_*_ac 声明取电电位/回路，坐标不是双写）。两处的**关联**（哪台内机用哪个取电位）
+    # 由 config/hvac.yaml 的 power_* anchor ref 单一表达。本契约只盯**型号词汇外键**：
+    # 两处的型号串都必须存在于 config/hvac.yaml（c.hvac_model_refs_resolvable 抓型号漂移），
+    # 位置/配对关系不归本契约管。
     # 吊顶里的 ac_* 内机型号必须**全部**是 config/hvac.yaml 词汇表里的 MJV-* 串。
     # 2026-10-04 已把 5 条旧「风管机 NkW（DEC-2026-09-07-055）」口径改为现行 MJV-*，
     # 2026-10-05 DEC-2026-10-05-R1 再改为成交逐房映射 MJV-71T2/42T2/56T2/28T2×3；
@@ -577,6 +581,22 @@ facts:
       # 2026-10-20 措施 1：现行值速查表 mirror。
       - path: docs/CURRENT-VALUES.md
         extract: '^\| MEP 路线总数 \| (\d+) 条 \|'
+        severity: error
+        expect_matches: 1
+
+  # 穿墙声明计数（issue #98 第五阶段 S3，2026-11-08）：route 级 penetration 数组合计 60 条、
+  # 去重后 33 个孔位（wall@at；at 删除后由路线几何派生，孔位集不变）。kind 用 narrative 锚定
+  # 施工指导文档的清点句——facts-lint 现有 derived 选择器（#length/#field_sum/#find）表达不了
+  # 「跨路线嵌套数组求和 + 去重计数」，扩展选择器登记为后续项；机器计数契约（60 条全集、
+  # 45 钉值、15 保留）在 tests/server/penetration-derivation.test.ts，改配置必须同改测试。
+  - id: fact.mep_penetration_declarations
+    kind: narrative
+    value: "@docs/mep-construction-guidance.md:合计 **60 条声明、落在 33 个不同孔位**"
+    unit: 条
+    as_of: DEC-2026-11-08
+    mirrors:
+      - path: docs/mep-construction-guidance.md
+        extract: '合计 \*\*60 条声明、落在 33 个不同孔位\*\*'
         severity: error
         expect_matches: 1
 

@@ -857,6 +857,8 @@ const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknow
     routes: coordination.routes,
     resolution: resolveMepRoutes(coordination, sources),
     rules,
+    // 穿墙孔数按派生交点计（issue #98 第五阶段 S3）：与 takeoff:mep 同一条装配路径。
+    penetrationWalls: ProjectCatalog.load('.').getWalls(),
   });
   const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { project?: { usable_area?: number } };
   const areaSqm = house.project?.usable_area;

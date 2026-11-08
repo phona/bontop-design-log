@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { load as loadYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
-import { loadCeilingConfig, loadElectricalConfig } from '../../../server/config-loader.js';
+import { loadCeilingConfig, loadElectricalConfig, loadPlumbingConfig } from '../../../server/config-loader.js';
 import { FURNITURE_DIMS, CONDENSATE_CHAIN_FURNITURE_TYPES, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type FurnitureAnchor, type FurnitureMount, type VanityLayoutDecl } from '../../../shared/types.js';
 import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, type PlacementAnchors } from '../../../shared/furniture-placement.js';
-import { diffCondensateChainPlanAgainstMep, mepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
-import { parseMepCoordination, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
+import { diffCondensateChainPlanAgainstMep, deriveMepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
+import { endpointSourcesFromFacts, parseMepCoordination, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
 import { parseProjectHvacFacts } from '../../../shared/project-render-facts-schema.js';
 import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
 import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
@@ -188,13 +188,27 @@ function main(): void {
   // 与 SceneBuilder 同一函数），摆位与 3D/DXF 同口径。hvac 锚点（内机/候选接入点）读
   // config/hvac.yaml，穿墙点读 MEP condensate-master（只读引用，不改线）。解算失败 →
   // error：三件链条家具的定位声明解不出来，不出缺件校验。
-  const hvacDiagram = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')).plans[0]?.diagram;
+  const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
+  const hvacDiagram = hvacFacts.plans[0]?.diagram;
   const mepCoordination = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
   const mepRoute = mepCoordination.routes.find((route) => route.id === 'condensate-master');
+  // S3（issue #98 第五阶段）：condensate-master@w_mbath_south 的 at 已删（可派生 45 条之一），
+  // 冷凝链锚点由路线几何派生——与 lint/takeoff 同一算法、同一端点解算源。派生失败 → error
+  // 显形（不回退手写值），链条家具随即可解出失败。
+  const penetrationDerived = deriveMepPenetrationAt(mepRoute, 'w_mbath_south', {
+    sources: endpointSourcesFromFacts({
+      electrical: loadElectricalConfig(),
+      plumbing: loadPlumbingConfig(),
+      ceiling: loadCeilingConfig(),
+      hvac: hvacFacts,
+    }),
+    walls,
+  });
+  if (penetrationDerived.diagnostic) errors.push(`condensate chain: ${penetrationDerived.diagnostic}`);
   const { anchors, diagnostics: chainDiagnostics } = resolveCondensatePlacementAnchors({
     hvacDiagram,
     hvacSources: { ceiling: loadCeilingConfig(), electrical: loadElectricalConfig() },
-    penetration: mepPenetrationAt(mepRoute, 'w_mbath_south'),
+    penetration: penetrationDerived.point,
     wardrobe: hosts.get('mb.wardrobe_950'),
     wallRun: hosts.get('mb.vanity_pvc_box'),
     wallSegments,

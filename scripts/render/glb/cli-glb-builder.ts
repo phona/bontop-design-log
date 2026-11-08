@@ -10,8 +10,8 @@ import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared
 import { parseSceneInput } from '../../../shared/render/scene-input.js';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 import { mergeSceneElements, parseOverlayFiles } from '../../../server/overlay-merge.js';
-import { mepPenetrationAt } from '../../../shared/condensate-chain.js';
-import { parseMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
+import { deriveMepPenetrationAt } from '../../../shared/condensate-chain.js';
+import { endpointSourcesFromFacts, parseMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 
 interface HouseYamlSubset {
   furnishings?: FurnishingsYaml;
@@ -46,9 +46,10 @@ export function buildCliHouseScene(
   const projection = renderFactsPath
     ? parseProjectRenderFactsProjection(JSON.parse(readFileSync(renderFactsPath, 'utf8')))
     : undefined;
-  // 主卫冷凝链锚点（issue #98 PR-10）：内机锚点/候选接入点来自 config/hvac.yaml diagram，
-  // 穿墙点来自 MEP condensate-master。有没有 --render-facts 都读——CLI 有文件系统访问权，
-  // 链条家具不该因为少传一个参数就从导出里静默消失。
+  // 主卫冷凝链锚点（issue #98 PR-10；第五阶段 S3 改派生）：内机锚点/候选接入点来自
+  // config/hvac.yaml diagram，穿墙点由 MEP condensate-master 路线几何派生（S3 起该 at 已删，
+  // 与 lint/takeoff 同一算法、同一端点解算源）。有没有 --render-facts 都读——CLI 有文件系统
+  // 访问权，链条家具不该因为少传一个参数就从导出里静默消失。
   const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
   const hvacDiagram = hvacFacts.plans[0]?.diagram;
   // 点位宿主墙索引（issue #98 S3）+ 家具宿主索引（issue #98 S2 / 第五阶段 S1）：
@@ -60,10 +61,14 @@ export function buildCliHouseScene(
     pointWalls: pointWallIndexFromElements(resolved.walls),
     mountHosts: pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never),
   });
-  const condensatePenetration = mepPenetrationAt(
+  const condensatePenetration = deriveMepPenetrationAt(
     parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8')).routes.find((route) => route.id === 'condensate-master'),
     'w_mbath_south',
-  );
+    {
+      sources: endpointSourcesFromFacts({ electrical, plumbing, ceiling: ceilingZones, hvac: hvacFacts }),
+      walls: resolved.walls,
+    },
+  ).point;
   const rawWalls = resolved.walls;
   const elements = mergeSceneElements(rawWalls, parseOverlayFiles());
   const input = parseSceneInput({

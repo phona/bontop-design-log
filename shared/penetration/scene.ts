@@ -5,8 +5,8 @@ import * as THREE from 'three';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { mergeSceneElements, parseOverlay, parseOverlayFiles } from '../../server/overlay-merge.js';
 import { parseCeilingZones, parseElectricalPoints, parseLightingRenderConfig, parsePlumbingPoints, parseProjectHvacFacts, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
-import { parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
-import { mepPenetrationAt } from '../../shared/condensate-chain.js';
+import { endpointSourcesFromFacts, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
+import { deriveMepPenetrationAt } from '../../shared/condensate-chain.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { buildRenderLightingFixtures } from '../../shared/lighting-fixtures.js';
 import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
@@ -305,12 +305,22 @@ export function loadSceneInputs(options: LoadSceneOptions = {}): SceneInputs {
   // 主卫冷凝链锚点派生（issue #98 PR-10）：三件遮蔽家具的摆位从 hvac 锚点 + MEP 穿墙点
   // 解出，缺任一项链就解不出来（显形失败，不回退绝对坐标）。这里读的是同一份权威配置，
   // 与 app / GLB / verify:furniture 同口径。
-  const hvacDiagram = parseProjectHvacFacts(readFileSync(path.join(ROOT, 'config/hvac.yaml'), 'utf8')).plans[0]?.diagram;
+  const hvacFacts = parseProjectHvacFacts(readFileSync(path.join(ROOT, 'config/hvac.yaml'), 'utf8'));
   const mepCoordination = parseMepCoordination(readFileSync(path.join(ROOT, 'config/mep-hvac-coordination.yaml'), 'utf8'));
-  const condensatePenetration = mepPenetrationAt(
+  // 主卫冷凝链锚点派生（issue #98 PR-10；第五阶段 S3 改派生）：三件遮蔽家具的摆位从 hvac 锚点
+  // + MEP 穿墙点解出，缺任一项链就解不出来（显形失败，不回退绝对坐标）。这里读的是同一份权威
+  // 配置，与 app / GLB / verify:furniture 同口径。S3 起 condensate-master@w_mbath_south 的 at
+  // 已删（可派生 45 条之一），穿墙点由路线几何派生——与 lint/takeoff 同一算法
+  // （deriveMepPenetrationPoint）、同一端点解算源；派生失败 → 无锚，下游链条显形（fail-closed）。
+  const condensatePenetration = deriveMepPenetrationAt(
     mepCoordination.routes.find((route) => route.id === 'condensate-master'),
     'w_mbath_south',
-  );
+    {
+      sources: endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac: hvacFacts }),
+      walls: layout.walls,
+    },
+  ).point;
+  const hvacDiagram = hvacFacts.plans[0]?.diagram;
   const elements = mergeSceneElements(layout.walls, overlay);
   // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：判定读墙条目自身的 suppressed 属性
   // （layout.walls 经 resolveLayout 透传），唯一权威实现 shared/suppression.ts；
