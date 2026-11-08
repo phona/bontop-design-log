@@ -1467,6 +1467,13 @@ export interface CeilingZone {
   model?: string;
   power_point?: string;
   note?: string;
+  /**
+   * 分区自身的显式工程状态（issue #98 第六阶段 S1-B 补录通道，与电气/给排水的
+   * `status` 同词汇表：measured/likely/inferred/pending）。不写 = 未申报（派生时
+   * 走 decision/ledger/fallback 原通道）。被 hvac anchor 引用的分区（ac_*）不读
+   * 本字段——anchor 的权威状态优先。
+   */
+  status?: 'measured' | 'likely' | 'inferred' | 'pending';
 }
 
 export type HvacStatus = 'confirmed' | 'inferred' | 'pending';

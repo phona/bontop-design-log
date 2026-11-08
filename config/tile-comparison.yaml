@@ -8,7 +8,7 @@ dry_room_ids:
   - study
   - bedroom_nw
   - bedroom_se
-# 湿区主地面房（DEC-2026-10-13 阶段 2 第二半新增）：与 dry_room_ids 同处一份，作为
+# 湿区主地面房（2026-10-13/14 预算三层架构改造新增，commit 749426e0——该轮落地为提交而非 DEC 条目，故无编号可引）：与 dry_room_ids 同处一份，作为
 # shared/masonry-takeoff.ts 的 dryRoomIds / wetRoomIds 唯一源，server 预算与瓦工费率卡
 # （干区木纹砖 75 元/㎡ / 湿区 600×600 45 元/㎡）据此分档，不再各自另列房间表。
 # 厨房 needs_waterproof: true 但地面走干区木纹砖档，故在 dry_room_ids 而不在此表。
@@ -121,7 +121,7 @@ grout_model:
     owner_target_cny: 4500
     computed_need_cny: 2308
     headroom_cny: 1692
-    note: "定额拆分（DEC-2026-10-22-R03）：全屋美缝定额 ¥4,500（DEC-2026-08-22「美缝环氧彩砂暂估 4.5k」与 QR-2026-10-03-07，暂估非算量）按砖缝长度估算拆为 PKG-065 卫生间 ¥500 + PKG-130 其余区域 ¥4,000。干区实算 ¥2,308 = 115.404㎡ × ¥20/㎡（业主 2026-10-12 口述包工包料，未确认是否覆盖 200×1200；干区面积 2026-10-23 DEC-2026-10-23-R04 后 111.864→115.404㎡、实算 2,237→2,308），属 PKG-130 范围，余量 1,692。湿区（PKG-065，缝长约 56m）按米成本无任何估值，不据此证明全屋 ≤ 定额；若门店价远高于 3.32 元/米缝（如 8 元/米以上），定额转紧。"
+    note: "定额拆分（DEC-2026-10-22-R03）：全屋美缝定额 ¥4,500（2026-08-22 定额登记「美缝环氧彩砂暂估 4.5k」，与 QR-2026-10-03-07 同源，暂估非算量；该登记无 DEC 条目）按砖缝长度估算拆为 PKG-065 卫生间 ¥500 + PKG-130 其余区域 ¥4,000。干区实算 ¥2,308 = 115.404㎡ × ¥20/㎡（业主 2026-10-12 口述包工包料，未确认是否覆盖 200×1200；干区面积 2026-10-23 DEC-2026-10-23-R04 后 111.864→115.404㎡、实算 2,237→2,308），属 PKG-130 范围，余量 1,692。湿区（PKG-065，缝长约 56m）按米成本无任何估值，不据此证明全屋 ≤ 定额；若门店价远高于 3.32 元/米缝（如 8 元/米以上），定额转紧。"
 
 selection_baseline:
   decided_at: "2026-10-12"
@@ -132,7 +132,7 @@ selection_baseline:
     - "data/current-scheme.json selections.floor.default → floor_tile_kt_200x1200_01（湿区 roomOverrides 不变）"
     - "config/materials.yaml floor_tile_kt_200x1200_01.baseline_note"
   overturns:
-    - id: "DEC-2026-08-01-040"
+    - id: "DEC-2026-08-21-040"
       was: "600×1200 木纹砖步步高错缝为全屋默认地面（推翻 DEC-024 人字拼）"
       why_reversible: "该结论只有 65 元/片≈102 元/㎡ 的估算价，从未取得门店报价单；KT 200×1200 有手写报价单原件归档（docs/design-iterations/tile-plank-comparison-20261006/evidence/kt-quote-original.jpg），且同口径落地价更低、业主判定效果更优。DEC-040 的渲染与历史保留追溯，不作废条目。"
   remaining_before_order:

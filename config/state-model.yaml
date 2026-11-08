@@ -24,6 +24,11 @@ priority: [conflict, config_status, ledger, decision, fallback]
 
 # config 状态词 → 统一状态词。
 #   likely → inferred：两者都未经现场核实，统一按「推断」处理；原值保留在 statusSource 里。
+# 2026-11-08（issue #98 S1-B）：本键名保持蛇形 status_vocabulary，改的是**读取端**——
+# 此前 scripts/project/state-projection.ts 只认驼峰 statusVocabulary，蛇形键静默走
+# DEFAULT_STATE_MODEL，词汇表「可评审」沦为死配置；现代码改读蛇形（config/facts.yaml
+# coverage 矩阵 :2104 登记的字段名即 status_vocabulary，改键名会让该行覆盖登记说谎）。
+# 默认值与下面 YAML 内容逐键相同，故本次修复无行为差，只是让声明真正被读取。
 status_vocabulary:
   measured: measured
   likely: inferred

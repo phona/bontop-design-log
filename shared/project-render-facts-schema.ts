@@ -194,6 +194,9 @@ export const CeilingZoneSchema = z.object({
   trade: z.enum(CEILING_TRADE_CLASSES).optional(),
   pricing_form: z.enum(CEILING_PRICING_FORMS).optional(),
   inspection_layer: z.string().trim().min(1).optional(), inspection_opacity: finiteNumber.min(0).max(1).optional(), x: finiteNumber.optional(), z: finiteNumber.optional(), height: finiteNumber.optional(), model: z.string().optional(), power_point: z.string().optional(), note: z.string().optional(),
+  // 分区显式工程状态（issue #98 S1-B 补录通道）：与电气/给排水 status 同词汇表、同为可选。
+  // 加法式——不写即未申报，既有分区零变化；被 hvac anchor 引用的分区（ac_*）不读本字段。
+  status: z.enum(['measured', 'likely', 'inferred', 'pending']).optional(),
 }).strict();
 
 export const VrfOutdoorUnitSchema = z.object({

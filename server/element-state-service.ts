@@ -56,7 +56,14 @@ export interface GetElementStateOptions {
   refresh?: boolean;
 }
 
-interface StateModelConfig extends StateModel {
+// config/state-model.yaml 的词汇表键名是蛇形 status_vocabulary（coverage 矩阵
+// config/facts.yaml 按此名登记 reader）；此前这里继承 StateModel 读到的是驼峰
+// statusVocabulary，蛇形键静默走 DEFAULT_STATE_MODEL——CLI（state-projection.ts）
+// 已于 S1-B 改读蛇形，服务端读者同一文件同一键，必须同口径，否则 CLI 与 API 静默分叉。
+// 默认值与 YAML 内容逐键相同，故无行为差；但今后改词汇表只有 CLI 会变。
+interface StateModelConfig {
+  priority?: StateModel['priority'];
+  status_vocabulary?: StateModel['statusVocabulary'];
   issue_sources?: string[];
 }
 
@@ -143,13 +150,13 @@ function collectDanglingLedgerRefs(
  * `modelConfig` 只提供 priority / status_vocabulary / issue_sources；台账腐烂核对的
  * 承载文件表在 shared/envelope-sources.ts（S6，见 collectDanglingLedgerRefs 注释）。
  */
-function projectElementStates(
+export function projectElementStates(
   issues: IssueLike[],
   modelConfig: StateModelConfig = readYaml<StateModelConfig>('config/state-model.yaml'),
 ): ElementStatePayload {
   const model: StateModel = {
     priority: modelConfig.priority ?? DEFAULT_STATE_MODEL.priority,
-    statusVocabulary: modelConfig.statusVocabulary ?? DEFAULT_STATE_MODEL.statusVocabulary,
+    statusVocabulary: modelConfig.status_vocabulary ?? DEFAULT_STATE_MODEL.statusVocabulary,
   };
 
   const ledger = parsePendingLedger(readFileSync(path.join(ROOT, 'docs/pending-site-data.md'), 'utf8'));
