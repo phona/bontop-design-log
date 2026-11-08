@@ -26,7 +26,13 @@ import {
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const SOURCE = 'config/*.yaml + docs/pending-site-data.md + docs/decisions/ + verifier issues';
 
-interface StateModelConfig extends StateModel {
+// config/state-model.yaml 的词汇表键名是蛇形 status_vocabulary（coverage 矩阵
+// config/facts.yaml 按此名登记 reader）；此前这里读驼峰 statusVocabulary，蛇形键
+// 静默走 DEFAULT_STATE_MODEL——2026-11-08 issue #98 S1-B 改读蛇形，词汇表真正生效。
+// 默认值与 YAML 内容逐键相同，故无行为差。
+interface StateModelConfig {
+  priority?: StateModel['priority'];
+  status_vocabulary?: StateModel['statusVocabulary'];
   issue_sources?: string[];
 }
 
@@ -89,7 +95,7 @@ function main(): void {
   const modelConfig = readYaml<StateModelConfig>('config/state-model.yaml');
   const model: StateModel = {
     priority: modelConfig.priority ?? DEFAULT_STATE_MODEL.priority,
-    statusVocabulary: modelConfig.statusVocabulary ?? DEFAULT_STATE_MODEL.statusVocabulary,
+    statusVocabulary: modelConfig.status_vocabulary ?? DEFAULT_STATE_MODEL.statusVocabulary,
   };
   const issueSources = modelConfig.issue_sources ?? ['verify-spatial', 'verify-penetration', 'verify-electrical'];
 
