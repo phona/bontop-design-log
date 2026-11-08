@@ -12,6 +12,8 @@ import {
 import { lintMepCoordination } from '../../shared/mep-hvac-lint.js';
 import { ElectricalPointSchema, parseCeilingZones, parseElectricalPoints, parsePlumbingPoints, parseProjectHvacFacts, validateProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
 import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildHvacBuilderSources, buildHvacEntityDescriptors } from '../../shared/render/HvacBuilder.js';
+import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import type { CeilingZone, ElectricalPoint, HvacDiagram, HvacTerminal, ProjectRenderFacts } from '../../shared/types.js';
 
@@ -220,4 +222,56 @@ test('schema 禁 wall/mount 来源同时带 x/z（E2 收口的机器执法）', 
   assert.throws(() => ElectricalPointSchema.parse({ ...base, mount: { furniture_id: 'f', face: 'east', along: 0.2 }, x: 1 }), /定位来源必须唯一/);
   assert.doesNotThrow(() => ElectricalPointSchema.parse({ ...base }));
   assert.doesNotThrow(() => ElectricalPointSchema.parse({ id: 'abs', room: 'living', type: 'socket', absolute: true, x: 1, z: 2 }));
+});
+
+test('E7 告警化：解析失败必须记诊断——不变量「可渲染实体数 = 落场景数 + 诊断数」', () => {
+  // 独立验伪轮（2026-11-08）：原 CI 契约只在「全量源」断言 diagnostics 为空，而全量源无失败、
+  // 新旧写法 diagnostics 都恒空——把 resolveAnchor 回退成 `Vec3|undefined` + `if (!position)
+  // continue` 的旧写法时计数契约照过（实测复现：exit=0 + 51 个测试全绿）。本断言把「失败即记
+  // 诊断」本身钉住：每个可渲染 anchor 要么落场景、要么出一条诊断，旧写法下 noWall=46+0、
+  // empty=34+0 都小于 47 → 红。任何「删诊断逻辑」的变异都会被这条抓住。
+  const renderableTotal = diagram.anchors.filter((anchor) => anchor.status === 'confirmed' || anchor.position !== undefined).length
+    + diagram.terminals.filter((terminal) => terminal.kind !== 'condensate_drain_candidate').length;
+  const scenarios: Array<[string, ReturnType<typeof buildHvacBuilderSources>]> = [
+    ['full', buildHvacBuilderSources({ hvac: hvacFacts, electrical, ceiling, outdoor: [plan.outdoor], pointWalls, mountHosts })],
+    ['noPointWalls', buildHvacBuilderSources({ hvac: hvacFacts, electrical, ceiling, outdoor: [plan.outdoor] })],
+    ['empty', buildHvacBuilderSources({})],
+  ];
+  for (const [name, sources] of scenarios) {
+    const diagnostics: string[] = [];
+    const entities = buildHvacEntityDescriptors(plan.id, diagram, sources, diagnostics);
+    assert.equal(entities.length + diagnostics.length, renderableTotal,
+      `${name} 源：落场景 ${entities.length} + 诊断 ${diagnostics.length} 必须等于可渲染实体数 ${renderableTotal}（禁止静默 continue）`);
+  }
+});
+
+test('E7 告警化：失败场景的诊断内容逐条对账（noPointWalls 恰 1 条 sock_child_ac / empty 恰 13 条 ref anchor）', () => {
+  const noWallDiagnostics: string[] = [];
+  buildHvacEntityDescriptors(plan.id, diagram, buildHvacBuilderSources({ hvac: hvacFacts, electrical, ceiling, outdoor: [plan.outdoor] }), noWallDiagnostics);
+  assert.equal(noWallDiagnostics.length, 1, `noPointWalls 源应恰 1 条诊断，实际 ${noWallDiagnostics.length}`);
+  assert.match(noWallDiagnostics[0], /hvac anchor power_child:/);
+  assert.match(noWallDiagnostics[0], /sock_child_ac/, '诊断必须点名解不出的沿墙点位（缺 pointWalls 时调用方据此知道传索引）');
+
+  const emptyDiagnostics: string[] = [];
+  buildHvacEntityDescriptors(plan.id, diagram, buildHvacBuilderSources({}), emptyDiagnostics);
+  const refAnchors = diagram.anchors.filter((anchor) => anchor.ref !== undefined).map((anchor) => anchor.id).sort();
+  assert.equal(emptyDiagnostics.length, refAnchors.length, `empty 源应每个 ref anchor 一条诊断（${refAnchors.length} 条），实际 ${emptyDiagnostics.length}`);
+  assert.deepEqual(emptyDiagnostics.map((line) => /^hvac anchor ([^:]+):/.exec(line)?.[1]).sort(), refAnchors);
+  // 每条诊断都要带原因（断引用 / 缺索引 / 无坐标），不许只报 id
+  for (const line of emptyDiagnostics) assert.match(line, /(断引用|不在墙段索引里|无 x\/z 且无 area)/);
+});
+
+test('E7 告警化：诊断经 SceneBuilder 的 placementDiagnostics 通道上浮', () => {
+  // 3D/CLI 装配路径：buildHvacGeometry 的 diagnostics 必须进 report.placementDiagnostics，
+  // 页面控制台 / verify-spatial / DXF-GLB 装配日志才看得见（不允许只在共享层记完就断链）。
+  const projection = { version: '2.0', lightingFixtures: [], plumbing: [], ceiling: [], hvac: { status: 'implemented', planId: plan.id, diagram }, materials: { floor: { default: null, roomOverrides: {} } }, presentation: { curtains: {} } } as unknown as import('../../shared/types.js').ProjectRenderFactsProjection;
+  const result = buildScene({
+    rooms: [{ id: 'r', name: 'r', x: 0, z: 0, width: 4, depth: 4, height: 2.8, type: 'private', boundary_count: 4 }],
+    walls: [], elements: [], furnishings: {},
+    options: { hvac: { projection, sources: { ceiling: [], electrical: [], outdoor: [] } } },
+  });
+  const hvacDiagnostics = result.report.placementDiagnostics.filter((line) => line.startsWith('hvac: '));
+  assert.equal(result.index.hvac.all.size, 34, '空源下 25 个 terminal + 9 个带 position 的 anchor 落场景，13 个 ref anchor 解不出');
+  assert.equal(hvacDiagnostics.length, 13, `13 条 hvac 诊断必须上浮到 report.placementDiagnostics，实际 ${hvacDiagnostics.length}`);
+  assert.ok(hvacDiagnostics.some((line) => line.includes('power_child')));
 });

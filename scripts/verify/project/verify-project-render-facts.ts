@@ -22,7 +22,13 @@ if (JSON.stringify(generated) !== JSON.stringify(projection)) {
 //   全量源（ceiling+electrical+outdoor+pointWalls+mountHosts）= 47
 //   去 pointWalls（sock_child_ac 沿墙点位解不出）           = 46
 //   空源（13 个 ref anchor 全部落空）                       = 34
-// 外加：全量源下 placementDiagnostics 必须为空；expectedHvacExportIds（期望集）与描述符逐 id 一致。
+// 外加两条「告警化本身」的断言（独立验伪轮 2026-11-08 补：原契约只在全量源断言 diagnostics
+// 为空，而全量源无失败、新旧写法 diagnostics 都恒空——把 resolveAnchor 回退成
+// `Vec3|undefined` + `if (!position) continue` 的旧写法时计数契约照过，告警化形同空转）：
+//   ① 不变量：可渲染实体数 == 落场景数 + 诊断数（每个 anchor 要么解出、要么记一条诊断；
+//      旧写法下失败即静默丢弃，不变量被打破 → 红）。
+//   ② 失败场景的诊断内容：noWall 必须恰 1 条且点名 sock_child_ac；empty 必须恰 13 条且
+//      逐条对应 13 个 ref anchor。
 const hvac = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
 const plan = hvac.plans[0];
 const electrical = parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8'));
@@ -37,10 +43,17 @@ const fullSources = buildHvacBuilderSources({ ...base, pointWalls: walls, mountH
 const noWallSources = buildHvacBuilderSources(base);
 const emptySources = buildHvacBuilderSources({});
 
+// 可渲染实体数（与 buildHvacEntityDescriptors 的过滤条件同口径：confirmed 或带 position 的
+// anchor + 非冷凝候选 terminal）。它不依赖 sources，因此能当「不许静默丢件」的标尺。
+const renderableTotal = plan.diagram.anchors.filter((anchor) => anchor.status === 'confirmed' || anchor.position !== undefined).length
+  + plan.diagram.terminals.filter((terminal) => terminal.kind !== 'condensate_drain_candidate').length;
+
 const fullDiagnostics: string[] = [];
 const fullEntities = buildHvacEntityDescriptors(plan.id, plan.diagram, fullSources, fullDiagnostics);
-const noWallEntities = buildHvacEntityDescriptors(plan.id, plan.diagram, noWallSources);
-const emptyEntities = buildHvacEntityDescriptors(plan.id, plan.diagram, emptySources);
+const noWallDiagnostics: string[] = [];
+const noWallEntities = buildHvacEntityDescriptors(plan.id, plan.diagram, noWallSources, noWallDiagnostics);
+const emptyDiagnostics: string[] = [];
+const emptyEntities = buildHvacEntityDescriptors(plan.id, plan.diagram, emptySources, emptyDiagnostics);
 const expectedIds = expectedHvacExportIds(plan.id, plan.diagram, fullSources);
 
 if (fullEntities.length !== 47) {
@@ -61,5 +74,23 @@ if (sortedExpected.length !== fullIds.length || sortedExpected.some((id, index) 
   throw new Error('hvac entity contract: expectedHvacExportIds(full sources) 必须与 buildHvacEntityDescriptors 的 47 个 id 一致');
 }
 
+// ① 不变量：可渲染实体数 == 落场景数 + 诊断数。旧写法（解析失败静默 continue）下
+//    noWall=46+0、empty=34+0，都小于 47 → 这里红。这是「告警化」本身的断言，
+//    与实体计数的绝对值无关：任何让 anchor 失败却不记诊断的改动都会被抓。
+for (const [name, entities, diagnostics] of [['full', fullEntities, fullDiagnostics], ['noPointWalls', noWallEntities, noWallDiagnostics], ['empty', emptyEntities, emptyDiagnostics]] as const) {
+  if (entities.length + diagnostics.length !== renderableTotal) {
+    throw new Error(`hvac entity contract: ${name} sources must account for every renderable entity (entities ${entities.length} + diagnostics ${diagnostics.length} ≠ ${renderableTotal})——解析失败的 anchor 必须记诊断，禁止静默 continue`);
+  }
+}
+// ② 失败场景的诊断内容：noWall 恰 1 条且点名 sock_child_ac；empty 恰 13 条且逐条对应 ref anchor。
+if (noWallDiagnostics.length !== 1 || !noWallDiagnostics[0].includes('power_child') || !noWallDiagnostics[0].includes('sock_child_ac')) {
+  throw new Error(`hvac entity contract: noPointWalls sources must record exactly one diagnostic naming power_child/sock_child_ac, got ${JSON.stringify(noWallDiagnostics)}`);
+}
+const emptyDiagAnchors = emptyDiagnostics.map((line) => /^hvac anchor ([^:]+):/.exec(line)?.[1]).sort();
+const expectedRefAnchors = plan.diagram.anchors.filter((anchor) => anchor.ref !== undefined).map((anchor) => anchor.id).sort();
+if (emptyDiagnostics.length !== 13 || emptyDiagAnchors.join(',') !== expectedRefAnchors.join(',')) {
+  throw new Error(`hvac entity contract: empty sources must record one diagnostic per ref anchor (${expectedRefAnchors.join(',')}), got ${emptyDiagnostics.length}: ${emptyDiagAnchors.join(',')}`);
+}
+
 console.log(`ProjectRenderFacts verified: electrical=${projection.lightingFixtures.length} lighting fixtures, plumbing=${projection.plumbing.length}, ceiling=${projection.ceiling.length}`);
-console.log(`HVAC entity contract: full=${fullEntities.length} / noPointWalls=${noWallEntities.length} / empty=${emptyEntities.length}, diagnostics=${fullDiagnostics.length}, expectedIds=${expectedIds.length}`);
+console.log(`HVAC entity contract: full=${fullEntities.length} / noPointWalls=${noWallEntities.length} / empty=${emptyEntities.length}, diagnostics full/noWalls/empty=${fullDiagnostics.length}/${noWallDiagnostics.length}/${emptyDiagnostics.length}, renderable=${renderableTotal}, expectedIds=${expectedIds.length}`);
