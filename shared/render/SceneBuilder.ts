@@ -1378,8 +1378,13 @@ function addPlatform(root: THREE.Group, platform: ScenePlatform): THREE.Mesh {
   return mesh;
 }
 
-function addHvacEntities(root: THREE.Group, projection: ProjectRenderFactsProjection | undefined, sources: HvacBuilderSources | undefined): HvacEntityIndex {
-  return buildHvacGeometry(root, projection, sources).index;
+function addHvacEntities(root: THREE.Group, projection: ProjectRenderFactsProjection | undefined, sources: HvacBuilderSources | undefined, report: SceneBuildReport): HvacEntityIndex {
+  const { index, diagnostics } = buildHvacGeometry(root, projection, sources);
+  // issue #98 S1（E7）：暖通 anchor 解析失败走同一 placementDiagnostics 通道显形——
+  // 禁止 HvacBuilder 式静默 continue（projection-only 源曾静默丢 6/47 个 power anchor，
+  // 导出检查还自产期望集报 ready=true，A §2c/§4.1）。
+  for (const diagnostic of diagnostics) report.placementDiagnostics.push(`hvac: ${diagnostic}`);
+  return index;
 }
 
 const MAX_EXPORT_NAME_LENGTH = 63;
@@ -1639,7 +1644,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     report.lightingFixtures = lighting.fixtures.size;
     index.lightingFixtures = lighting.fixtures;
   }
-  index.hvac = addHvacEntities(exportRoot, input.options?.hvac?.projection, input.options?.hvac?.sources);
+  index.hvac = addHvacEntities(exportRoot, input.options?.hvac?.projection, input.options?.hvac?.sources, report);
   report.hvacEquipment = index.hvac.equipment.size;
   report.hvacTerminals = index.hvac.terminals.size;
 

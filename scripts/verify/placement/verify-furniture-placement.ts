@@ -7,7 +7,7 @@ import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, t
 import { diffCondensateChainPlanAgainstMep, mepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
 import { parseMepCoordination, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
 import { parseProjectHvacFacts } from '../../../shared/project-render-facts-schema.js';
-import { pointWallIndexFromElements } from '../../../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
 import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
 
 const EPS = 0.01;
@@ -531,6 +531,9 @@ function main(): void {
       outdoor: [],
       // 点位宿主墙索引（issue #98 S1）：冷凝链 ↔ MEP 对照的端点与 DXF/3D 同一解算。
       pointWalls: pointWallIndexFromElements(walls),
+      // mount 家具宿主索引（issue #98 S2 / 第五阶段 S1）：B 轨潜伏缺口——本装配点漏传
+      // mountHosts 时，起夜灯等 mount 端点在 MEP 侧解不出（回落声明坐标，断言期相等故不显形）。
+      mountHosts: pointMountHostIndex(Object.values(furnishings).flat() as never),
     };
     const from = resolveMepEndpoint(mepRoute.from, mepSources, mepCoordination.junctions);
     const to = resolveMepEndpoint(mepRoute.to, mepSources, mepCoordination.junctions);

@@ -132,7 +132,10 @@ const DEFAULT_CATEGORY: MepLintCategory = 'must_fix_before_briefing';
  * （如 faucet_garden 龙头出水口 (10.85,1.5) vs 底盒位 (10.80,1.5) 的 0.05m），不报警。
  */
 const ENDPOINT_BIND_TOLERANCE = 0.02;
-const ENDPOINT_BIND_LAYERS = new Set(['water_supply', 'drainage', 'strong_power', 'weak_power']);
+// issue #98 第五阶段 S1（E4）：送/回风层纳入端点绑定兜底。今天命中数为 0 的「干净」是层不在
+// 范围内的假象——5 条 inline `to:` 逐位抄写 hvac terminal 的 xyz（A §3.4 / B F1 两轨一致），
+// terminal 一移 MEP 端点留原地、两个 validator 不抛、lint 109/241 不变（探针 P2）。
+const ENDPOINT_BIND_LAYERS = new Set(['water_supply', 'drainage', 'strong_power', 'weak_power', 'supply_air', 'return_air']);
 const PLUMBING_SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'washer', 'faucet_outdoor', 'water_supply']);
 const PLUMBING_DRAIN_TYPES = new Set(['drain', 'drain_riser']);
 /** Objects that can cover a plug or service point; ordinary movable furniture is handled by route collision, not assumed to block access. */
@@ -140,6 +143,12 @@ const FURNITURE_ENDPOINT_ACCESS_TYPES = new Set(['wall_cabinet_tall', 'washer', 
 
 /** 端点绑定兜底用的"同专业点位池"：给水只对给水类点位比、排水只对 drain/drain_riser 比，避免把龙头算成排水锚点。 */
 function endpointBindPool(route: MepRoute, sources: MepEndpointSources): Array<{ id: string; x: number; z: number }> {
+  // 送/回风层的同专业点位池 = hvac terminals（issue #98 S1，E4）：风管端点抄的是风口坐标，
+  // 候选池必须是 hvac.yaml 的 terminal.position（唯一声明）。候选风口（condensate_drain_candidate）
+  // 与装饰段同池参与距离比较无副作用——它们在设备带外/地面层，与吊顶内风管端点不会 ≤0.02m。
+  if (route.layer === 'supply_air' || route.layer === 'return_air') {
+    return sources.hvacTerminals.map((terminal) => ({ id: terminal.id, x: terminal.position.x, z: terminal.position.z }));
+  }
   const pool = route.layer === 'water_supply'
     ? sources.plumbing.filter((point) => PLUMBING_SUPPLY_TYPES.has(point.type))
     : route.layer === 'drainage'

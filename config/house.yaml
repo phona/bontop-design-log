@@ -501,7 +501,7 @@ furnishings:
     # 2026-10-05 功能互换 v0（候选未冻结，iteration parent-room-study-swap-20261005）：父母房→书房。
     # 移除 bed_150/mattress_150/wardrobe_180（随功能迁至 bedroom_se 客房）；书桌椅原位不动；
     # study_seasonal_wardrobe_wall 由客房东墙平移至北墙边吊下 x[4.30,6.00] z[5.55,6.10]（沿用原 wardrobe_180 footprint，安装条件平移成立：2.40m 柜体顶封板抵 2.50m 吊底；避 d_study 扫掠 x≥6.15）。
-    # rotation=0 时该 type 柜门在局部 +z（朝南入房）；ac_parent 内机 @(5.50,6.00) h2.85 位于吊顶内、高于柜顶 2.50m，非同高冲突；回风栅在衣柜 x≤6.0 以东避让的关系保持。
+    # rotation=0 时该 type 柜门在局部 +z（朝南入房）；ac_parent 内机 @(6.50,6.00) h2.85 位于吊顶内、高于柜顶 2.50m，非同高冲突；回风栅在衣柜 x≤6.0 以东避让的关系保持。
     # site_pending：南墙书架/东墙柜体（二期，Q3/Q4）、书房电脑专用回路 ordinary_power_study 改道（B5）、西墙北段吊柜可选。
     - { type: desk, id: study.desk, x: 6.90, z: 7.80, rotation: 90 }        # DEC-018 西墙南端书桌（原位保留；桌后插座/网口原位有效）；2026-10-26 DEC-2026-10-26-R02：墙垛建模后书桌与墙垛碰撞（重叠 x[4.20,4.63]×z[8.60,8.71]），业主裁定书桌椅东移至东墙中南段（书桌 (6.90,7.80)，避窗帘盒 z≥8.70 与墙垛），插座/网口随桌东移
     - { type: chair, id: study.chair, x: 6.30, z: 7.80, rotation: 90 }       # DEC-018 书桌椅（原位保留）；2026-10-26 DEC-2026-10-26-R02：随书桌东移至 (6.30,7.80)，椅在桌西侧、朝东（rotation 90）
