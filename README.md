@@ -183,7 +183,7 @@ npm run state:project                # 人读：逐构件状态 + 未裁定/有�
 npm run state:project -- --json      # 机器可读：每构件一条 {status, statusSource, openQuestion, conflicts}
 ```
 
-回答一个问题：**每个构件确认到什么程度、卡在谁、和谁冲突。** 状态只派生不存储——权威仍在 `config/*.yaml` 的 `status`/`position_status`、`docs/pending-site-data.md` 的 98 条待决、config 层决策登记簿（decision-registry，PR #129 已合入）与各 verifier 结论；本命令产出的是视图。优先级：门禁 error(`conflicted`) > config 字段 > 待决台账(`pending`) > DEC 引用(`confirmed`) > **`undeclared`（派生不出来，显形而不是默认已确认）**。规则顺序与状态词映射在 `config/state-model.yaml`，可评审。
+回答一个问题：**每个构件确认到什么程度、卡在谁、和谁冲突。** 状态是对象的声明、只派生不存储——权威是 `config/*.yaml` 的 `status`/`position_status` 与 `blocker`（`kind`/`owner`/`trigger`/`reverses_if`/`rationale`）、`docs/pending-site-data.md` 的 98 条待决与各 verifier 结论；本命令产出的是视图。优先级：门禁 error(`conflicted`) > config 字段（`config_status`）> **`undeclared`（派生不出来，显形而不是默认已确认）**。（2026-11-08 业主裁定①：`decision`——「note 里有 DEC 编号 → confirmed」与 `ledger`——「查 pending-site-data.md 命中某条 → pending」两条查表规则已删，编号与台账命中不再产生状态。）规则顺序与状态词映射在 `config/state-model.yaml`，可评审。
 
 当前快照：**162 个构件** = confirmed 6 / undeclared 2 / pending 37 / inferred 117（`tests/server/element-state.test.ts` 钉住总数与申报缺口，数字变化必须是有意的；2026-11-08 issue #98 S1-B：DEC 引用通道退役、67 个构件按语义 triage 补显式申报——confirmed 剩 6 全为 config/hvac.yaml anchor 权威状态，未丢任何数据）。`sock_child_ac` 可答：「pending，卡在空调厂家深化图（#42）」。不需要 MCP——agent 读配置、跑这条命令、curl 既有 API 已足够。（2026-10-22 起 MCP 服务端已整体删除，本地 AI 直接拉文件 / 跑 CLI / curl API。）
 

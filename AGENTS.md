@@ -119,10 +119,17 @@
 ## 决策与调研工作流铁律
 
 > 2026-10-11 增补。由来：六台内机全带泵这一配置从 `DEC-2026-10-03-R6` 到 `DEC-2026-10-04-R1` 从未被论证——R6 只判了主卧一间，R1 以"升级项 / 可省 3D 面板费"覆盖其余五间，无任何一节说明那五间的重力路线为何不成立；同期 `docs/hvac/hvac-pitfall-audit-20261011.md` v4.2 删掉三条已研究证据（容量退化对比、17dB 噪音依据、主卧玻璃负荷核算），而 `test:app` / `typecheck` / `gate:visual` 全绿。以下六条堵这两类失效。
+>
+> 2026-11-08 业主裁定（issue #98 第六阶段）：**DEC 体系退役**，`docs/decisions/` 与 `config/decision-registry.yaml` 均已退场，本文出现的 `DEC-…` 编号一律指 git 历史里的旧记录（可经 `config/decision-knowledge.yaml` 的 `retired` 段定位到原文文件+行），**不再是任何写入通道**。新的落点只有四条，见第 2 条。
 
-1. **"我们选了 X"必须同时生成一组"X 不工作时"的问题。** 配置/选型落笔时，对每个新引入的部件问：待机、停机、故障三种态下它在做什么、留下什么、谁清理、多久一次、要不要拆顶。答案进 `docs/pending-site-data.md` 或该轮 `open_questions`，禁止留空。（例：六台带泵 → 每台残余水量、接水盘可否不拆吊顶清洗、能否旁通当重力用、有无防滞水设计、残水与回风路径距离。）
+1. **"我们选了 X"必须同时生成一组"X 不工作时"的问题。** 配置/选型落笔时，对每个新引入的部件问：待机、停机、故障三种态下它在做什么、留下什么、谁清理、多久一次、要不要拆顶。答案进 `docs/pending-site-data.md` 或该条对象自己的 `blocker` 字段（`kind` / `owner` / `trigger` / `reverses_if` / `rationale`），禁止留空。（例：六台带泵 → 每台残余水量、接水盘可否不拆吊顶清洗、能否旁通当重力用、有无防滞水设计、残水与回风路径距离。）
 
-2. **禁止在决策记录里写"供后续复盘"。** 发现要么带 owner 与触发条件进 DEC 或 `schedule/phase-*/control.yaml` 的 `audit_log`，要么不写。没有 owner 的技术意见等于没写——`DEC-2026-10-04-R1` 的"我的技术意见"已指出直吹、除湿、同开总量三个问题和"装修期内换机只补差价"这个窗口，无 owner 无日期，七天无人接。
+2. **禁止写"供后续复盘"。** 发现要么带 owner 与触发条件落到位，要么不写——没有 owner 的技术意见等于没写（`DEC-2026-10-04-R1` 的"我的技术意见"已指出直吹、除湿、同开总量三个问题和"装修期内换机只补差价"这个窗口，无 owner 无日期，七天无人接；该反例连同 36,000 成交语义已由 `config/decision-knowledge.yaml` 的 entries 段与 `config/hvac.yaml` 的 `commercial.evidence` 承接）。**四个落点，按内容性质选，不建中央决策账**：
+   - **对象 intent**（首选）：为什么这个值是这样、失效/反转条件 → 写进对象自己的 `note` / `blocker` / 结构化字段。数据全上对象，代码只剩「读对象 + 断言」。
+   - **报价卡 / 合同块**：价格、型号、竞品淘汰理由、合同成交语义 → `shared/quote-cards.ts` 的卡片与对应 trade 报价 YAML（L2 价层），合同事实走 `schedule/phase-*/control.yaml` 的 `contract` 结构化块（含 `archive_paths` 逐条 sha256）。
+   - **门禁**：能写成断言的失效条件 → 变成 verifier / 契约（`config/facts.yaml` 的 `contracts`、各 `verify:*`）。**最好的归档形式**：变成断言后不需要任何人维护。
+   - **`schedule/phase-*/control.yaml` 的 `audit_log`**：授权链、范围裁定、口径修正记录（owner + 日期 + 改动摘要 + 同步文件）。
+   不可再生的知识（竞品为何淘汰、合同语义、业主原话/口头规格、静默失效分析）→ `config/decision-knowledge.yaml` 的 `entries` 段，并同时落到上面四个位置之一。
 
 3. **新决策进来先查它推翻了什么。** 改动一项既有结论前，先列出被它推翻的旧结论并逐条说明为何可推翻。禁止以商务理由（"升级项""可省 X 费用"）覆盖未经重新论证的工程结论。
 
@@ -222,7 +229,7 @@ npm run verify:all
 - **过程物不进 git**：中间版截图（v1/v2/before 等过程版本）、`*.snapshot.txt`、`*.runtime.json` 等运行转储一律写入 `tmp/capture/` 或当轮删除；抓图/绘图脚本默认输出 `tmp/capture/`，禁止再把任何一轮的 evidence 目录硬编码为默认输出（终稿入仓走关账挑选，不走脚本直写）。
 - **进仓的只有终稿与外部原件**：一轮关账时每个视角至多留 1 张终稿图，置于该轮 evidence 的 final 子目录；外部原件（合同、报价、厂家资料、业主提供图，不可再生）正常进仓，并在该轮 brief 登记来源。
 - **关账即瘦身**：review_state 转为 delivery_ready、superseded 或移入 archive 时，收尾动作必须包含把本轮 evidence 压缩到终稿集；删了什么逐条写进 commit message。
-- **一题一文档，退场不建归档目录**：新认知写入既有主题文档，禁止新开散稿；文档退场 = 直接删除 + 在索引留一行墓碑（名称 + 关账结论 + 删除 commit），git 历史即归档，不另建 legacy/archive 目录。新轮次的结构化文件只写单个 round.yaml 一件套（brief/datum/fact_table/objects/review/index 段），不得另加 work-record、evidence-notes 等附属散件；INDEX.yaml 由 `npm run docs:generate-index` 从各轮 round.yaml 的 index 段生成，禁止手改。豁免两轮保留原文件：hvac-resix 的 fact-table/design-datum（facts error 级读者）、mep-lint-governance 的 review-manifest.json（治理基线读者），其余段仍并入 round.yaml 并在 index.exempt_files 注明。
+- **一题一文档，退场不建归档目录**：新认知写入既有主题文档，禁止新开散稿；文档退场 = 直接删除 + 在索引留一行墓碑（名称 + 关账结论 + 删除 commit），git 历史即归档，不另建 legacy/archive 目录。新轮次的结构化文件只写单个 round.yaml 一件套（brief/datum/fact_table/objects/review/index 段），不得另加 work-record、evidence-notes 等附属散件；INDEX.yaml 由 `npm run docs:generate-index` 从各轮 round.yaml 的 index 段生成，禁止手改。豁免两轮保留原文件：hvac-resix 的 fact-table/design-datum（facts error 级读者）、mep-lint-governance 的 review-manifest.json（治理基线读者），其余段仍并入 round.yaml 并在 index.exempt_files 注明。**机器可读的条目级墓碑是唯一例外形态**（2026-11-09 issue #98 S2）：当被删的是「约 1,900 处编号引用的解析靶」时（DEC 档案即此），必须有一个机器可读的墓碑段承接编号可解析性，否则引用方当天集体悬空——见 `config/decision-knowledge.yaml` 的 `retired` 段与 `config/facts.yaml` 的 `c.dec_unique` / `c.dec_ref_resolvable`。该段只许留 id / subject / status / superseded_by / record / landing，不搬正文。
 
 ## 回应 Codex 审查的铁律（2026-11-03 增补）
 

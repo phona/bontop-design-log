@@ -743,23 +743,34 @@ test('fk：R 系子修订引用（R7.1）按父条目 R7 解析，不悬空', ()
   assert.equal(result.errors.length, 0);
 });
 
-test('真实登记表：c.dec_ref_resolvable 的 ref/target 正则覆盖 R 系编号，且不放宽到非编号形态', () => {
+test('真实登记表：c.dec_ref_resolvable 的 ref/target 正则覆盖全编号族与 YAML 登记形态，且不放宽到非编号形态', () => {
   const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
   const contract = (registry.contracts ?? []).find((c) => c.id === 'c.dec_ref_resolvable')!;
   assert.ok(contract, 'config/facts.yaml 必须登记 c.dec_ref_resolvable');
+  // 2026-11-09 S2：编号族扩全族——3 位序号 / R 系 / 卷内分类号（C/M/W/P/S/G/E/F/TILE）都要在门禁内。
   const refRe = new RegExp(String(contract.ref_pattern));
-  for (const id of ['DEC-045', 'DEC-2026-08-26-045', 'DEC-2026-10-04-R2', 'DEC-2026-10-05-R15']) {
+  for (const id of [
+    'DEC-045', 'DEC-2026-08-26-045', 'DEC-2026-10-04-R2', 'DEC-2026-10-05-R15',
+    'DEC-2026-10-08-C01', 'DEC-2026-10-07-M02', 'DEC-2026-10-08-W01', 'DEC-2026-10-09-P11',
+    'DEC-2026-10-09-S01', 'DEC-2026-10-09-G01', 'DEC-2026-10-09-E01', 'DEC-2026-10-07-F01',
+    'DEC-2026-10-16-TILE-01', 'DEC-2026-09-02-051-补', 'DEC-2026-10-08-R01-补记三', 'DEC-2026-09-04-R2.1',
+  ]) {
     assert.ok(refRe.test(`引用 ${id} 处`), `ref_pattern 必须覆盖 ${id}`);
   }
   // 反向护栏：正则不许悄悄放宽到非决策编号形态（宽松比漏报更难发现）
-  for (const notId of ['DEC-2026-10-05-R', 'DEC-2026-10-05-R1234', 'DEC-14']) {
+  for (const notId of ['DEC-2026-10-05-R', 'DEC-2026-10-05-R1234', 'DEC-14', 'DEC-2026-10-13 批次说明']) {
     assert.equal(refRe.test(`引用 ${notId} 处`), false, `ref_pattern 不应匹配 ${notId}`);
   }
+  // target 已改指 config/decision-knowledge.yaml 的 YAML 登记行（DEC 档案退役，业主裁定②）。
+  assert.equal(String(contract.target), 'config/decision-knowledge.yaml', 'c.dec_ref_resolvable 的 target 必须指向知识载体');
   const targetRe = new RegExp(String(contract.target_pattern), 'm');
-  assert.ok(targetRe.test('### DEC-2026-10-05-R15 起夜路径照明'));
-  assert.ok(targetRe.test('### DEC-2026-08-26-045 主卧空调檐口定案'));
-  // 正文里提到编号不是标题，不得计入目标集合
-  assert.equal(targetRe.test('本文提到 DEC-2026-10-05-R15 但不是标题行'), false);
+  assert.ok(targetRe.test('  - id: "DEC-2026-10-05-R15"'), 'target_pattern 必须认 YAML 登记行（带引号）');
+  assert.ok(targetRe.test("  - id: 'DEC-2026-08-26-045'"), 'target_pattern 必须认 YAML 登记行（单引号）');
+  assert.ok(targetRe.test('  - id: DEC-2026-10-08-C01'), 'target_pattern 必须认 YAML 登记行（无引号）');
+  assert.ok(targetRe.test('  - id: "DEC-2026-09-02-051-补"'), 'target_pattern 必须认带补充号的登记行');
+  // 正文里提到编号不是登记行，不得计入目标集合
+  assert.equal(targetRe.test('本文提到 DEC-2026-10-05-R15 但不是登记行'), false);
+  assert.equal(targetRe.test('kind: design_caliber # DEC-2026-10-05-R15'), false);
 });
 
 test('fk：登记表自身必须从扫描域排除，否则自引用既虚增计数又污染定位', () => {
@@ -1245,6 +1256,55 @@ test('repair_channel：DEC 全引必须真的存在于 decision_log_files，否�
     'config/model/envelope/ceiling.yaml': 'zones: []\n',
   }));
   assert.equal(prose.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+
+  // ── 2026-11-09 issue #98 S2：DEC 档案退役，条目改住 config/decision-knowledge.yaml 的
+  //    YAML 登记行（`  - id: "DEC-…"`）。decision_log_files 的靶换成该文件后，存在性校验必须
+  //    同口径认登记形态——只认 md 标题的话，删档当天这里必炸 repair_channel_ref_unresolvable。
+  const yamlRegistry = (file: string, decision_ref: string): FactsRegistry => ({
+    ...channelProbe({ decision_ref, sync_files: ['config/model/envelope/ceiling.yaml'] }),
+    decision_log_files: [file],
+  });
+  const yamlHit = lintFacts(yamlRegistry('config/decision-knowledge.yaml', 'DEC-2026-10-06-R5'), workspaceOf({
+    'config/decision-knowledge.yaml': [
+      'entries:',
+      '  - id: "DEC-2026-10-06-R1"',
+      '    kind: design_caliber',
+      'retired:',
+      '  - id: "DEC-2026-10-06-R5"',
+      '    subject: "#41 裁定"',
+      '',
+    ].join('\n'),
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(yamlHit.errors.length, 0, yamlHit.errors.map((e) => e.message).join('\n'));
+
+  // 登记行里没有该编号（只有 prose 提及它）→ 仍报腐烂：登记形态与 prose 提及的区分不变
+  const yamlProse = lintFacts(yamlRegistry('config/decision-knowledge.yaml', 'DEC-2026-10-06-R5'), workspaceOf({
+    'config/decision-knowledge.yaml': '# 依据 DEC-2026-10-06-R5 已裁定\nretired: []\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(yamlProse.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+
+  // 边界同口径：`R01` 不冒充 `R01.1`；基号 `051` 不冒充 `051-补`（补充号救不了基号）
+  const yamlBoundary = lintFacts(yamlRegistry('config/decision-knowledge.yaml', 'DEC-2026-10-08-R01'), workspaceOf({
+    'config/decision-knowledge.yaml': 'retired:\n  - id: "DEC-2026-10-08-R01.1"\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(yamlBoundary.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+  const yamlBoundary2 = lintFacts(yamlRegistry('config/decision-knowledge.yaml', 'DEC-2026-09-02-051'), workspaceOf({
+    'config/decision-knowledge.yaml': 'retired:\n  - id: "DEC-2026-09-02-051-补"\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(yamlBoundary2.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+
+  // 真实仓：c.mep_layer_below_drop_bottom 的 decision_ref 必须能在现行 decision_log_files 里解析
+  const realRegistry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
+  const realChannel = ((realRegistry.contracts ?? []).find((c) => c.id === 'c.mep_layer_below_drop_bottom')?.repair_channel ?? {}) as { decision_ref?: string };
+  const realResolve = lintFacts(realRegistry, realWorkspace());
+  assert.deepEqual(realResolve.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').map((i) => i.message), [],
+    `repair_channel.decision_ref「${realChannel.decision_ref ?? ''}」必须在 decision_log_files 里可解析`);
+  assert.deepEqual((realRegistry.decision_log_files ?? []), ['config/decision-knowledge.yaml'],
+    'decision_log_files 应指向 config/decision-knowledge.yaml（S2 改切）');
 
   // 边界：`R01` 不冒充 `R01.1`；基号 `051` 不冒充 `051-补`
   const boundary = lintFacts(registry(['docs/decisions/a.md'], 'DEC-2026-10-08-R01'), workspaceOf({

@@ -16,6 +16,7 @@
  *     不再需要 SYNTHETIC_UNVERIFIED_TOPICS 白名单。
  */
 import type { DesignOption, IndoorUnit, OutdoorUnit } from './types.js';
+import type { QuoteCardEvidence } from './quote-cards.js';
 
 /** config/hvac.yaml 里本模块要用的子集（其余字段由 hvac-lint / render-facts 消费）。 */
 export interface HvacPlanCommercial {
@@ -28,6 +29,20 @@ export interface HvacPlanCommercial {
   price_basis?: string;
   scope_note?: string;
   source_refs?: string[];
+  /**
+   * 证据结构（2026-11-09 issue #98 S2）：形状与 shared/quote-cards.ts 的
+   * QuoteCardEvidence 同口径（kind 三级：photo / owner_reported / written_quote），
+   * 另带三个合同专用字段（合同成交语义的机器可读落点，理由见 config/hvac.yaml 注释）：
+   *   contract_total_cny      合同总价（**不是分项之和**——分项与总价不相等时必须显式登记）；
+   *   contract_total_terms    总价陈述原文（总价关键词与金额直接相连，供守卫回锚）；
+   *   transcript_grade_limit 证据等级限定（如「备注页原件不在仓内，补齐前为转录级」）。
+   * 消费方：scripts/schedule/cost-summary.ts 的已核实层守卫（kind 必须是 written_quote）。
+   */
+  evidence?: QuoteCardEvidence & {
+    contract_total_cny?: number;
+    contract_total_terms?: string;
+    transcript_grade_limit?: string;
+  };
 }
 
 export interface HvacPlanOutdoor {

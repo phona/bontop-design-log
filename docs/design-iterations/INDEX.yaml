@@ -8,7 +8,7 @@ meta:
   established: '2026-10-20'
   dir_count: 66
   stray_file_count: 1
-  external_refs_total: 173
+  external_refs_total: 158
   field_provenance:
     topic: round.yaml index.topic 原文（原按目录名前缀归类，命名事实）
     review_state: round.yaml index.review_state 原文（来自原 review-manifest 的 state/status 字段；无 manifest 记 none）
@@ -66,7 +66,7 @@ entries:
     topic: mep
     review_state: delivery_ready
     supersedes: box-spec
-    external_refs: 15
+    external_refs: 14
     note: facts.yaml L937/L941 的 error 级读者指向本目录 fact-table.yaml 与 design-datum.yaml，路径不可动
   - dir: hvac-caliber-sync-20261005
     topic: mep
@@ -111,12 +111,12 @@ entries:
     topic: mep
     review_state: none
     supersedes: none
-    external_refs: 2
+    external_refs: 1
   - dir: archive/hvac-airflow-centering-20261018
     topic: mep
     review_state: superseded
     supersedes: none
-    external_refs: 3
+    external_refs: 2
     note: 被 DEC-2026-10-19-R01 推翻。2026-10-20 批次 2 迁入 archive/（同步 mep-plan-axis R22-v0.5-iteration 与 hvac-airflow-row-centering 共 3 处引用）
   - dir: archive/hvac-airflow-grouping-20261018
     topic: mep
@@ -140,7 +140,7 @@ entries:
     topic: mep
     review_state: reviews_passed_delivery_blocked
     supersedes: none
-    external_refs: 4
+    external_refs: 3
     note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 hvac-airflow-grouping fact-table 1 处引用）
   - dir: archive/mep-b-class-20261006
     topic: mep
@@ -158,7 +158,7 @@ entries:
     topic: mep
     review_state: delivery_ready
     supersedes: none
-    external_refs: 1
+    external_refs: 0
     note: 2026-10-20 批次 1 迁入 archive/（零外部引用且零目录内互引）
   - dir: master-bedroom-r7-20260906
     topic: master-bedroom
@@ -257,12 +257,12 @@ entries:
     topic: kitchen-dining-equipment
     review_state: blocked
     supersedes: none
-    external_refs: 2
+    external_refs: 1
   - dir: kitchen-beverage-modules-20261016
     topic: kitchen-dining-equipment
     review_state: blocked
     supersedes: none
-    external_refs: 2
+    external_refs: 1
     note: 摆位已被 DEC-2026-10-17-R11 取代（水吧改放 living_dining，立式茶吧机与 390 低边柜代理退出）；2026-10-20 已建 README 加状态块，现行摆位见 config/house.yaml:530,535,537
   - dir: kitchen-beverage-stations-20261016
     topic: kitchen-dining-equipment
@@ -273,7 +273,7 @@ entries:
     topic: kitchen-dining-equipment
     review_state: evidence_review
     supersedes: none
-    external_refs: 3
+    external_refs: 2
   - dir: restaurant-fridge-waterbar-x980-acceptance-20261015
     topic: kitchen-dining-equipment
     review_state: blocked
@@ -305,7 +305,7 @@ entries:
     topic: tile-finish
     review_state: none
     supersedes: none
-    external_refs: 3
+    external_refs: 2
     note: 这是散落在 design-iterations 根下的 md 文件，不是目录；被 docs/decisions/11-tile-finish.md 引用。散文件无 round.yaml，登记字段在本生成脚本维护
   - dir: dining-ceiling-cove-restore-20261008
     topic: dining
@@ -328,7 +328,7 @@ entries:
     topic: dining
     review_state: blocked
     supersedes: none
-    external_refs: 4
+    external_refs: 3
     note: README 与 s1-shape-correction-v5.md 止于 V5，但 fact-table 已标 I-S1-SHAPE-V5 superseded_by V6（DEC-2026-10-17-R11，出水腔改 106mm 窄面）；2026-10-20 已在 README 与 v5 文档加 V5->V6 标注并补 V6 结论段
   - dir: archive/dining-semi-flush-20261016
     topic: dining
@@ -374,12 +374,12 @@ entries:
     topic: general
     review_state: batch_a_b1_b2_done
     supersedes: none
-    external_refs: 16
+    external_refs: 15
   - dir: phase1-scope-20260912
     topic: general
     review_state: blocked
     supersedes: none
-    external_refs: 3
+    external_refs: 2
   - dir: electrical-upgrade-20260908
     topic: general
     review_state: delivery_ready
@@ -394,7 +394,7 @@ entries:
     topic: general
     review_state: incomplete
     supersedes: none
-    external_refs: 3
+    external_refs: 2
   - dir: furniture-wall-clearance-20260908
     topic: general
     review_state: delivery_ready
@@ -414,7 +414,7 @@ entries:
     topic: general
     review_state: implemented_runtime_review_pending
     supersedes: none
-    external_refs: 2
+    external_refs: 1
   - dir: archive/spatial-validation-20260908
     topic: general
     review_state: verification
@@ -425,7 +425,7 @@ entries:
     topic: general
     review_state: delivery_ready
     supersedes: robot-dock-reservation-20260909
-    external_refs: 3
+    external_refs: 2
   - dir: archive/visual-calibration-floor-angle-20261015
     topic: general
     review_state: delivery_ready
