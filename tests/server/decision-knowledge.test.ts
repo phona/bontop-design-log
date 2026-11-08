@@ -148,6 +148,7 @@ const LANDING_VOCAB = new Set(['git', 'object', 'code', 'quote-card', 'gate', 'a
 test('landing 词表合法，且路径型/台账型词元指向的东西真实存在', () => {
   const ledger = readFileSync(LEDGER, 'utf8');
   const ledgerIds = new Set([...ledger.matchAll(/^\|\s*(\d+[a-z]?)\s*\|/gm)].map((m) => m[1]));
+  const ledgerRows = new Map([...ledger.matchAll(/^\|\s*(\d+[a-z]?)\s*\|[^\n]*/gm)].map((m) => [m[1], m[0]]));
   const bad: string[] = [];
   for (const e of allEntries) {
     const tokens = e.landing ?? [];
@@ -157,7 +158,11 @@ test('landing 词表合法，且路径型/台账型词元指向的东西真实�
       if (!LANDING_VOCAB.has(kind)) { bad.push(`${e.id} landing 词元「${token}」的词头不在词表内`); continue; }
       if (kind === 'ledger') {
         const n = (target ?? '').replace(/^#/, '');
-        if (!ledgerIds.has(n)) bad.push(`${e.id} landing 指向不存在的台账编号：${token}`);
+        if (!ledgerIds.has(n)) { bad.push(`${e.id} landing 指向不存在的台账编号：${token}`); continue; }
+        // 注意：存在性抓不到「指向了不相关的台账项」——实证错指
+        // DEC-2026-11-04-R3（机器人链）曾指向 #72（光猫/交换机最终位置），
+        // #72 真实存在所以旧断言全绿。已修正为 #80；指向正确性的兜底见
+        // 下面「ledger 指向不错指」回归锚（逐条钉，未登记即红）。
         continue;
       }
       if (target && !existsSync(target)) bad.push(`${e.id} landing 指向不存在的路径：${token}`);
@@ -169,6 +174,67 @@ test('landing 词表合法，且路径型/台账型词元指向的东西真实�
     if (isRetired && !tokens.includes('git')) bad.push(`${e.id} landing 缺 git 兜底——正文即 git 历史，必须显形`);
   }
   assert.deepEqual(bad, [], `landing 腐烂：${bad.join('；')}`);
+});
+
+// ── ④-c 已取代/证伪的条目必须结构显形（BLOCKING-1 防复发）────────────────────
+// BLOCKING-1：entries 段原本没有 superseded_by / as_of 字段，40 条里 5 条的数值已和它
+// 自己的 landing 指向的权威源不一致（其中 R3/R4 被对象层明确点名「已证伪/已取代」），
+// 而全仓无一处会报错。修法是把「已被 X 取代/证伪」写成结构字段，并让这条不变量可机检。
+const DRIFT_MARKERS = /已被[^。]{1,40}(取代|证伪)|现行(可核实)?口径|两个口径未对账|已随 DEC-/;
+test('knowledge 里声明「已被取代/证伪/口径已变」的条目，必须同时带 superseded_by / falsified_by / open_conflict', () => {
+  const bad: string[] = [];
+  for (const e of allEntries) {
+    if (!DRIFT_MARKERS.test(String(e.knowledge ?? ''))) continue;
+    const has = e.superseded_by !== undefined || e.falsified_by !== undefined || e.open_conflict !== undefined;
+    if (!has) bad.push(`${e.id} 的 knowledge 声明了取代/证伪/口径变更，却没带 superseded_by / falsified_by / open_conflict 字段——结构上无法被发现`);
+    if (e.as_of === undefined) bad.push(`${e.id} 缺 as_of——读者无法判断这条知识是哪个时点的快照`);
+  }
+  assert.deepEqual(bad, [], `取代/证伪未结构显形：${bad.join('；')}`);
+});
+
+// ── ④-b ledger 指向不错指（BLOCKING-2 回归锚）──────────────────────────────
+// 为什么需要：存在性检查抓不到「指向了不相关的台账项」——#72 真实存在，旧断言全绿但指错。
+// 这里逐条钉「这条知识的台账依赖是哪个编号」，改指向一个别的存在的编号会红。
+// 新条目加 ledger landing 时必须在此登记（测试会因未登记而红）。
+const LEDGER_PINS = new Map<string, string[]>([
+  // 已实证纠错的（S2 第 5 轮 blocking）：
+  ['DEC-2026-11-04-R4', ['80']],  // 机器人链 R4 残留三项（原误指 #76）
+  ['DEC-2026-11-04-R3', ['80']],  // 同族（原误指 #72 光猫/交换机——已实证错指）
+  ['DEC-2026-11-05-R5', ['81']],  // 机器人仓施工互斥令（原误指 #76）
+  ['DEC-2026-10-17-R20', ['67', '68']], // 冰箱净空 + 厨房东墙高柜（已去掉不相关的 #69 电热毛巾架）
+  // 其余按现值登记——pin 的价值在「将来改指向会红」，不是「现值一定对」；
+  // 若发现某条现值也指错，改这里的同时改 landing，并在 commit 里说明。
+  ['DEC-2026-10-03-R2', ['34', '39']],
+  ['DEC-2026-10-03-R3', ['39']],
+  ['DEC-2026-10-04-R1', ['39']],
+  ['DEC-2026-10-05-R15', ['59']],
+  ['DEC-2026-10-05-R1', ['39']],
+  ['DEC-2026-10-06-R5', ['41']],
+  ['DEC-2026-10-07-C17', ['54']],
+  ['DEC-2026-10-09-P06', ['55']],
+  ['DEC-2026-10-09-W04', ['56']],
+  ['DEC-2026-10-13-R1', ['62']],
+  ['DEC-2026-10-13-R2', ['61']],
+  ['DEC-2026-10-14-R01', ['64']],
+  ['DEC-2026-10-16-R01', ['64']],
+  ['DEC-2026-10-17-W05', ['52']],
+  ['DEC-2026-10-18-R01', ['39']],
+  ['DEC-2026-10-23-R03', ['74']],
+  ['DEC-2026-10-28-R03', ['39']],
+  ['DEC-2026-10-28-R06', ['58']],
+  ['DEC-2026-11-03-R1', ['77']],
+]);
+
+test('ledger 指向不错指：有 ledger landing 的条目必须登记且与钉值一致', () => {
+  const bad: string[] = [];
+  for (const e of allEntries) {
+    const pins = (e.landing ?? []).filter((t: string) => t.startsWith('ledger:')).map((t: string) => t.replace(/^ledger:#?/, ''));
+    if (pins.length === 0) continue;
+    const expected = LEDGER_PINS.get(e.id);
+    if (expected === undefined) { bad.push(`${e.id} 有 ledger landing（${pins.join('/')}）但未登记进 LEDGER_PINS——请人工核对后登记`); continue; }
+    for (const n of pins) if (!expected.includes(n)) bad.push(`${e.id} landing 指向 ledger:#${n}，登记的是 #${expected.join('/')}——指向了不相关的台账项`);
+  }
+  assert.deepEqual(bad, [], `ledger 指向待核对：${bad.join('；')}`);
 });
 
 // ── ⑤ retired 段：墓碑形态完整 ────────────────────────────────────────────

@@ -109,8 +109,11 @@ entries:
     subject: "吊顶主材改证据台账：用可核实电商/工程报价重算，区间 70～115 收窄为 80～103 元/㎡"
     knowledge: >-
       吊顶主材参考成本区间从「业主转述 155 元/㎡ 判定为配置兑现则价格合理偏好」改为证据
-      台账：只采可核实的电商/工程报价重算，区间 70～115 收窄为 80～103 元/㎡。竞品淘汰的
+      台账：只采可核实的电商/工程报价重算，区间 70～115 收窄为 80～103 元/㎡【现行可核实口径为 98～120 元/㎡（below_range），
+      见 schedule/procurement.md】。竞品淘汰的
       可机器化形态 = 每个候选带证据口径，淘汰理由随证据一起留痕。
+    superseded_by: "现行口径见 schedule/procurement.md 的 below_range 判定"
+    as_of: "2026-10-08"
     landing:
       - "quote-card:config/ceiling-material-cost.yaml"
       - "quote-card:config/ceiling-quotes.yaml"
@@ -119,9 +122,13 @@ entries:
     kind: competitor_elimination
     subject: "补龙骨用量口径：龙骨从「不可折算」变 36～45 元/㎡，材料额度判定翻转为 below_range"
     knowledge: >-
-      龙骨从「不可折算」变为 36～45 元/㎡，材料额度判定随之翻转为 below_range。教训：
+      龙骨从「不可折算」变为 36～45 元/㎡，材料额度判定随之翻转为 below_range
+      【同批米价在 config/ceiling-material-cost.yaml 另有「米价×用量实算的 28～37 元/㎡」
+      口径，两个口径未对账，采购前须裁】。教训：
       「算不出」与「算出来低于区间」是两种结论，前者不许伪装成后者——不可折算会把超支
       藏进「无法评估」里。
+    as_of: "2026-10-08"
+    open_conflict: "与 config/ceiling-material-cost.yaml 的 28～37 元/㎡ 口径未对账"
     landing:
       - "quote-card:config/ceiling-material-cost.yaml"
 
@@ -172,10 +179,14 @@ entries:
 
   - id: "DEC-2026-10-08-C13"
     kind: quote_card_mechanism
-    subject: "厨卫铝扣板独立计价：先按业主估价 150 元/㎡ 入卡（2,454.90 元）"
+    subject: "厨卫铝扣板独立计价：先按业主估价 150 元/㎡ 入卡（2,454.90 元）【金额已随 DEC-2026-10-23-R04 的量更新为 ¥2,486.40，见 config/ceiling-quotes.yaml:108】"
     knowledge: >-
       厨卫铝扣板独立计价，先按业主估价 150 元/㎡ 入卡。业主估价是可声明的输入，但必须
       标成待报价/估计口径，不与书面报价混层——混层会让「没报价」看起来像「已报价」。
+      本条金额已随 DEC-2026-10-23-R04 的量更新为 ¥2,486.40（原 16.366㎡ / ¥2,454.90，
+      见 config/ceiling-quotes.yaml:108），机制教训（估价可入卡但须标口径）仍现行。
+    superseded_by: "DEC-2026-10-23-R04"
+    as_of: "2026-10-08"
     landing:
       - "quote-card:config/ceiling-quotes.yaml"
 
@@ -213,11 +224,17 @@ entries:
       DEC-2026-11-04-R3 ⑤①「仓位图出来后才动 dock 位置与 sock 坐标」这一环，由业主
       2026-11-04 晚批准的**口头规格**取代，不再等设计师仓位图：专用仓落客卫台盆下开放格、
       开向西、格净宽≥0.51m（两侧各 0.05m）、深≥0.45m、顶部空到盆底 0.75m（拆除柜体后的
+      【几何已被 DEC-2026-11-05-R5 取代：现行 robot_bay_width 0.50 /
+      robot_bay_clear_width 0.46，见 config/house.yaml 的 vanity_layout】
       设计包络）。纠正记录：PR #92 初版「顶部空到盆底约 0.62m、开放格约 0.34m 空高」有误
       ——0.62m 是主卫底柜高度串数，客卫正确值是盆底 0.75m、包络余量约 0.47m。
       口头规格无书面件，是本条唯一的输入形态。
+    superseded_by: "DEC-2026-11-05-R5"
+    as_of: "2026-11-04"
     landing:
-      - "ledger:#76"
+      - "object:config/house.yaml"
+      - "object:config/electrical.yaml"
+      - "ledger:#80"
     owner: 业主
     fails_if: "业主书面规格/勘测结论与口头规格不一致 → 开放格几何与 dock 坐标重判"
 
@@ -229,12 +246,15 @@ entries:
       基站 280mm + 顶部开盖约 250mm + 余量 ≈ 55cm+；仓顶开放/开敞格；机器人从离地 ≥15cm
       底缝自由进出；底部不装底板。**调研实例（竞品失效证据）**：基站主体不凸出柜门投影——
       浴室溅水顺传感器渗入主板会烧机，调研实例维修 ¥500。
-      四问结论（调研笔记源，非官方手册，证据等级见 issue #72）：① 尘袋更换需顶部开盖约
-      25cm，封闭柜内不够；② 基站可整台移出但需断水断电、拔进出水口，且挪后旧地图失效
+      四问结论（调研笔记源，非官方手册，证据等级见 issue #72）：① 尘袋更换需顶部开盖约 25cm，封闭柜内不够【该前提已被 J65 官方手册证伪：尘袋/清洁液在基站前面板后取放、无顶盖机构，见 config/materials.yaml 的同条 notes】；② 基站可整台移出但需断水断电、拔进出水口，且挪后旧地图失效
       需重新建图；③ 底盘排水孔最易被毛发灰尘堵塞，可断水断电后棉签/冲牙器自救，前提是
       够得着；④ 插座放柜体侧面带开关即不用断电换水。
+    falsified_by: "J65 官方手册（config/materials.yaml 同条 notes）"
+    as_of: "2026-11-04"
     landing:
-      - "ledger:#72"
+      - "object:config/house.yaml"
+      - "object:config/electrical.yaml"
+      - "ledger:#80"
 
   - id: "DEC-2026-11-05-R5"
     kind: design_caliber
@@ -249,7 +269,9 @@ entries:
       「X 不工作时」逐条带 owner 与触发：仓门铰链（北侧外开）卫浴潮湿环境锈蚀失效 → 门
       下垂刮抽屉面板，owner 柜体厂家，触发 = 下单前指定不锈钢铰链。
     landing:
-      - "ledger:#76"
+      - "object:config/house.yaml"
+      - "object:config/anti-penetration.yaml"
+      - "ledger:#81"
 
   - id: "DEC-2026-10-07-C17"
     kind: owner_verbal
@@ -261,7 +283,7 @@ entries:
       （760mm 高的窗带在幕墙上不合常理，读法存疑但不删除历史记录）。幕墙玻璃均按齐地落地窗
       处理，玻璃根防水台按业主规则全宅存在；主卫湿区补 3 座防水台贴砖（湿区优先）。
     landing:
-      - "ledger:#20"
+      - "object:config/layout/model-geometry.yaml"
       - "ledger:#54"
     owner: 业主
     fails_if: "量房/开发商立面图证实某处幕墙窗带高于齐地 → 该处防水台与贴砖范围局部回退"
@@ -297,6 +319,7 @@ entries:
       芯数/协议未定，封槽前不可逆（pending #58）——预留的条件必须写明「什么未知」，否则
       「预留」会变成随意多布一根线。
     landing:
+      - "object:config/electrical.yaml"
       - "ledger:#58"
     owner: 业主
 
@@ -476,6 +499,7 @@ entries:
       主卫镜柜面光选型口径 + 镜位电位核查，**含自我更正：并非「零电位」**。自我更正要留痕
       ——未留痕的错误口径会被后续轮次当成已核事实引用（本例中「零电位」会影响面光取电方案）。
     landing:
+      - "object:config/electrical.yaml"
       - "ledger:#61"
 
   - id: "DEC-2026-10-23-R03"
@@ -485,6 +509,8 @@ entries:
       客卫沉箱二次排水与主卫同口径：#74 冻结解除 + design_requirement 建模 + 对等验收两条。
       硬约束：地面泄水与防水层下二次排水**不得并入同一接点**；最低点实测后重画推断路线。
     landing:
+      - "object:config/plumbing.yaml"
+      - "gate:config/acceptance.yaml"
       - "ledger:#74"
 
   # ── 门禁机制（已变成断言；这里是「为什么要有这道门禁」）────────────────────────
@@ -1541,7 +1567,7 @@ retired:
     status: active
     superseded_by: null
     record: "docs/decisions/06-electrical.md#L694"
-    landing: ["git", "ledger:#67", "ledger:#68", "ledger:#69"]
+    landing: ["git", "ledger:#67", "ledger:#68"]
   - id: "DEC-2026-10-23-R01"
     subject: "回路计价基数补计竖直段：平面 union 保留、竖直下引/立管计入"
     status: active
