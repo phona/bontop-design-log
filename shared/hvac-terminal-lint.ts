@@ -340,3 +340,75 @@ export function lintHvacTerminals(input: HvacTerminalLintInput): HvacTerminalLin
     ...lintHvacLdDecoBandFill(input),
   ];
 }
+
+/**
+ * branch_dining ↔ MEP refrigerant-dining via 节点的跨文件逐位 parity 门禁
+ * （issue #98 S2-B 验伪轮修复：业主裁定三只裁了「对齐到 2.6」，对齐本身不产生门禁——
+ * 既有 junction↔hvac-anchor 等值断言（mep-hvac-coordination-schema.ts:238-252）只遍历
+ * MEP junctions（全仓仅 condensate_living_dining_merge），branch_dining 是 hvac.yaml route
+ * via 引用的锚点、refrigerant-dining 的 (8.00,4.30,2.60) 是 MEP yaml 的 via 内联点，两文件
+ * 之间此前无任何机器对账，变异 branch_dining y→2.55 时上述断言零红（空转面，独立验伪员
+ * m2-dining255 实测）。§6.1-8 明文不许留无门禁的中间态，故补此对账。
+ *
+ * 范围有意收窄：对账表只登记裁定三明确认定的同源对（branch_dining reason「沿用 MEP
+ * refrigerant-dining 显式协调节点」，DEC-2026-10-06-R5）；其余 4 个 branch_* 是 schematic_only
+ * 示意（裁定四，离 MEP 折线 0.000–0.364m，MEP 不引用），不做 parity——把 22 条 diagram
+ * route 全量对齐 MEP 属 §6.3-10 未裁口径，不许顺手写进数据。对账表是快照：扩展/收缩都是
+ * 评审事件。判据与 junction 门禁同口径：逐位 ≤1e-6，两端任一漂移即红。
+ */
+export interface HvacMepNodeParityPair {
+  anchorId: string;
+  mepRouteId: string;
+  viaIndex: number;
+}
+export const HVAC_MEP_NODE_PARITY_PAIRS: readonly HvacMepNodeParityPair[] = [
+  { anchorId: 'branch_dining', mepRouteId: 'refrigerant-dining', viaIndex: 0 },
+];
+/** 跨文件逐位等值容差：与 junction↔anchor 门禁（schema.ts:247 同类比较）同口径。 */
+export const HVAC_MEP_PARITY_EPSILON_M = 1e-6;
+
+export function lintHvacMepNodeParity(input: {
+  anchors: readonly HvacAnchorWithSchematicOnly[];
+  mepRoutes: ReadonlyArray<{ id: string; via: ReadonlyArray<{ x: number; z: number; y?: number }> }>;
+}): HvacTerminalLintIssue[] {
+  const issues: HvacTerminalLintIssue[] = [];
+  for (const pair of HVAC_MEP_NODE_PARITY_PAIRS) {
+    const anchor = input.anchors.find((item) => item.id === pair.anchorId);
+    if (!anchor) {
+      issues.push(issue('error', 'mep_node_parity_pair_broken', `parity 对账的 hvac 锚点 ${pair.anchorId} 不存在（对账表失效，须复核 HVAC_MEP_NODE_PARITY_PAIRS）`));
+      continue;
+    }
+    if (!anchor.position) {
+      issues.push(issue('error', 'mep_node_parity_pair_broken', `parity 对账的 hvac 锚点 ${pair.anchorId} 无 position（对账表只覆盖内联坐标锚点）`));
+      continue;
+    }
+    const route = input.mepRoutes.find((item) => item.id === pair.mepRouteId);
+    if (!route) {
+      issues.push(issue('error', 'mep_node_parity_pair_broken', `parity 对账的 MEP route ${pair.mepRouteId} 不存在（对账表失效，须复核 HVAC_MEP_NODE_PARITY_PAIRS）`));
+      continue;
+    }
+    const node = route.via[pair.viaIndex];
+    if (!node) {
+      issues.push(issue('error', 'mep_node_parity_pair_broken', `MEP route ${pair.mepRouteId} 的 via[${pair.viaIndex}] 不存在，无法与 ${pair.anchorId} 对账`));
+      continue;
+    }
+    if (node.y === undefined) {
+      issues.push(issue('error', 'mep_node_parity_pair_broken',
+        `MEP route ${pair.mepRouteId} 的 via[${pair.viaIndex}] 缺 y——对账表承诺三维逐位相等，缺维即 fail-closed`, pair.anchorId));
+      continue;
+    }
+    const axes: Array<['x' | 'y' | 'z', number, number]> = [
+      ['x', anchor.position.x, node.x],
+      ['y', anchor.position.y, node.y],
+      ['z', anchor.position.z, node.z],
+    ];
+    for (const [axis, hvacValue, mepValue] of axes) {
+      if (Math.abs(hvacValue - mepValue) > HVAC_MEP_PARITY_EPSILON_M) {
+        issues.push(issue('error', 'mep_node_parity_mismatch',
+          `hvac 锚点 ${pair.anchorId} 的 ${axis}=${hvacValue} 与 MEP ${pair.mepRouteId} via[${pair.viaIndex}] 的 ${axis}=${mepValue}`
+          + ` 漂移 ${Math.abs(hvacValue - mepValue).toFixed(4)}m（> ${HVAC_MEP_PARITY_EPSILON_M}）——该锚点 reason 自称沿用此 MEP 协调节点（裁定三/DEC-2026-10-06-R5），两侧必须逐位相等`, pair.anchorId));
+      }
+    }
+  }
+  return issues;
+}

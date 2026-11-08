@@ -11,11 +11,14 @@ import {
 } from '../../shared/project-render-facts-schema.js';
 import {
   LD_DECO_INTENTIONAL_BLANKS,
+  HVAC_MEP_NODE_PARITY_PAIRS,
   lintHvacAccessOffsets,
   lintHvacLdDecoBandFill,
+  lintHvacMepNodeParity,
   lintHvacTerminalCeilingBands,
   type HvacTerminalLintIssue,
 } from '../../shared/hvac-terminal-lint.js';
+import { parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
 import type { CeilingZone, HvacDiagram, HvacTerminal, ProjectHvacFacts } from '../../shared/types.js';
 
 /**
@@ -325,4 +328,50 @@ test('钉：3 处散文改字不改值（裁定二）——方向词修正、坐
   const accessDining = diagram.terminals.find((terminal) => terminal.id === 'access_dining')!;
   assert.match(accessDining.reason!, /北移 0\.05/);
   assert.ok(!/南移 0\.05/.test(accessDining.reason!), '旧表述「南移 0.05」必须删净——Δz=−0.05 为北');
+});
+
+// ───────── branch_dining ↔ MEP refrigerant-dining 跨文件 parity（验伪轮修复） ─────────
+// 既有 junction↔anchor 等值断言只遍历 MEP junctions（全仓仅 condensate_living_dining_merge），
+// branch_dining ↔ refrigerant-dining via 内联点之间原本无任何机器对账：变异 y→2.55 零红
+// （独立验伪员 m2-dining255 实测，空转面）。本组测试补上双向 parity 门禁。
+
+const mepConfig = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
+
+test('绿：branch_dining 与 MEP refrigerant-dining via 节点跨文件逐位相等（裁定三 parity 门禁）', () => {
+  const dining = diagram.anchors.find((anchor) => anchor.id === 'branch_dining')!;
+  const node = mepConfig.routes.find((route) => route.id === 'refrigerant-dining')!.via[0]!;
+  assert.deepEqual([dining.position!.x, dining.position!.y, dining.position!.z], [node.x, node.y, node.z],
+    `branch_dining (${dining.position!.x},${dining.position!.y},${dining.position!.z}) 必须逐位等于 MEP via (${node.x},${node.y},${node.z})`);
+  const issues = lintHvacMepNodeParity({ anchors: diagram.anchors, mepRoutes: mepConfig.routes });
+  assert.deepEqual(issues, [], `parity 门禁必须全绿，实际：${issues.map((entry) => entry.message).join('；')}`);
+});
+
+test('红：hvac 侧 branch_dining y 漂移 2.6→2.55（验伪员主变异 m2-dining255 复刻）→ parity 红', () => {
+  const drifted = diagram.anchors.map((anchor) => anchor.id === 'branch_dining'
+    ? { ...anchor, position: { ...anchor.position!, y: 2.55 } }
+    : anchor);
+  const issues = lintHvacMepNodeParity({ anchors: drifted, mepRoutes: mepConfig.routes });
+  assert.equal(codesOf(issues).filter((code) => code === 'mep_node_parity_mismatch').length, 1,
+    `hvac 侧漂移必须红：${JSON.stringify(issues)}`);
+  assert.match(issues[0]!.message, /y=2\.55 .* y=2\.6/);
+});
+
+test('红：MEP 侧 via y 漂移 2.6→2.55（负对照 m2-mepside 复刻，内存变异）→ 同一断言红', () => {
+  const driftedMep = {
+    ...mepConfig,
+    routes: mepConfig.routes.map((route) => route.id === 'refrigerant-dining'
+      ? { ...route, via: route.via.map((node, index) => index === 0 ? { ...node, y: 2.55 } : node) }
+      : route),
+  };
+  const issues = lintHvacMepNodeParity({ anchors: diagram.anchors, mepRoutes: driftedMep.routes });
+  assert.equal(codesOf(issues).filter((code) => code === 'mep_node_parity_mismatch').length, 1,
+    `MEP 侧漂移必须红（同一门禁双向执法）：${JSON.stringify(issues)}`);
+});
+
+test('钉：parity 对账表快照——只登记裁定三认定的同源对，扩展/收缩都是评审事件', () => {
+  // 其余 4 个 branch_* 是 schematic_only 示意（裁定四），MEP 不引用它们，不做 parity；
+  // 22 条 diagram route 全量对齐 MEP 属 §6.3-10 未裁口径，不许顺手扩表。
+  assert.deepEqual(HVAC_MEP_NODE_PARITY_PAIRS.map((pair) => `${pair.anchorId}↔${pair.mepRouteId}:via[${pair.viaIndex}]`), [
+    'branch_dining↔refrigerant-dining:via[0]',
+  ]);
 });
