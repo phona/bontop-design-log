@@ -613,7 +613,7 @@ facts:
 
   - id: fact.hvac_contract_cny
     kind: narrative
-    value: "@docs/pending-site-data.md:已成交 36,000 元"
+    value: "@config/hvac.yaml:plans.0.commercial.price_cny"
     unit: 元
     as_of: DEC-2026-10-04-R1
     mirrors:
