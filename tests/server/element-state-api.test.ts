@@ -223,3 +223,41 @@ describe('state-model 词汇表读者键名', () => {
     assert.doesNotMatch(yaml, new RegExp(`^\\s*${CAMEL_KEY}:`, 'm'), '不许出现驼峰 statusVocabulary 键');
   });
 });
+
+// ── app 侧契约与真实 payload 绑定（S2-A 第 4 轮 blocking B1）─────────────────
+// 失效形态：服务端改了 ElementState 形状，app 侧 ElementStateLike 不跟着改，
+// 而 app 测试全部自造 fixture → 21/21 假绿，产品已坏。openQuestion → blocker
+// 这次迁移就踩中了（web 3D 的「卡在谁」全 blank，没有任何测试红）。
+// 这条锚把两侧字段集钉成相等，任一侧加/删/改字段都会红。
+describe('app 侧 ElementStateLike 契约与真实 payload 绑定', () => {
+  const APP_CONTRACT = 'app/src/render/analysis/element-state-colors.ts';
+  const SERVER_TYPE = 'shared/element-state.ts';
+
+  function fieldsOf(source: string, iface: string): string[] {
+    const start = source.indexOf(`interface ${iface} {`);
+    assert.ok(start >= 0, `找不到 interface ${iface}`);
+    const body = source.slice(start, source.indexOf('\n}', start));
+    return [...body.matchAll(/^\s{2}(\w+)\??:/gm)].map((m) => m[1]).sort();
+  }
+
+  it('两侧字段集相等（app 不许留服务端已删的字段，也不许缺服务端已加的）', () => {
+    const app = readFileSync(APP_CONTRACT, 'utf8');
+    const server = readFileSync(SERVER_TYPE, 'utf8');
+    const appFields = fieldsOf(app, 'ElementStateLike');
+    const serverFields = fieldsOf(server, 'ElementState');
+    assert.deepEqual(appFields, serverFields,
+      `app ElementStateLike 与 server ElementState 字段集不一致：\n  app:   ${appFields.join(', ')}\n  server: ${serverFields.join(', ')}`);
+    assert.ok(appFields.includes('blocker'), 'app 契约必须消费 blocker（卡在谁的新载体）');
+    assert.ok(!appFields.includes('openQuestion'), 'app 契约不得再留 openQuestion（已随台账/DEC 通道退役）');
+  });
+
+  it('真实 payload 上：pending 构件必带 blocker，且不再有 openQuestion 键', () => {
+    const payload = getElementState({ withConflicts: false });
+    const pending = payload.states.filter((s) => s.status === 'pending' || s.status === 'undeclared');
+    assert.ok(pending.length > 0, '应有 pending/undeclared 构件');
+    for (const state of pending) {
+      assert.ok(state.blocker, `${state.id} 必须带 blocker`);
+      assert.ok(!('openQuestion' in state), `${state.id} 不得再有 openQuestion 键`);
+    }
+  });
+});

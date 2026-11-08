@@ -7,7 +7,7 @@
 //
 // 交互：
 //  - 顶部状态图例：点某 status = solo 该状态（其余压暗），再点取消；
-//  - 逐构件表：点某行 = solo 该构件 id，再点取消；「未决问题」列显示 openQuestion.blockedBy，
+//  - 逐构件表：点某行 = solo 该构件 id，再点取消；「未决问题」列显示 blocker.owner + trigger，
 //    「冲突」列显示 verifier issue code；
 //  - 顶部一键「取消隔离」。
 import type { HouseScene } from '../HouseScene.js';
@@ -90,7 +90,7 @@ export class ElementStatePanel {
         const active = this.solo === element.id;
         const dim = this.solo !== null && !active;
         const color = elementStatusColorHex(element.status);
-        const blockedBy = element.openQuestion?.blockedBy ?? '';
+        const blockedBy = element.blocker ? `${element.blocker.owner.join('、')}｜${element.blocker.trigger}` : '';
         const conflicts = element.conflicts.length > 0 ? element.conflicts.join('，') : '';
         return `<tr data-solo-id="${escape(element.id)}" data-active="${active}" style="cursor:pointer;${dim ? 'opacity:0.45;' : ''}">
           <td style="width:16px;"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${color};border:1px solid rgba(255,255,255,.25);"></span></td>
@@ -117,7 +117,7 @@ export class ElementStatePanel {
         <tbody>${rows}</tbody>
       </table>
       <div style="margin-top:8px;color:#9aa4b2;font-size:11px;">
-        显示层；权威状态在 config 字段 / 待决台账 / DEC / verifier，出口 <code>npm run state:project</code>。
+        显示层；权威状态在 config 各对象自己的 status / blocker 字段（不查台账、不查 DEC），出口 <code>npm run state:project</code>。
         电气/给排水点位为合批渲染，改以状态标记层显示（不逐件上色）。
       </div>
     `;

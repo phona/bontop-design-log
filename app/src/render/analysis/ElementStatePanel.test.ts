@@ -18,7 +18,7 @@ function makeInspection() {
     ],
     elements: [
       { id: 'ceiling:ceiling_living', kind: 'ceiling', label: '石膏板 ceiling_living', room: 'living_dining', status: 'confirmed', statusSource: 'config:confirmed', conflicts: [], batched: false, inScene: true },
-      { id: 'electrical:sock_child_ac', kind: 'electrical', label: 'socket sock_child_ac', room: 'child', status: 'pending', statusSource: 'pending-site-data #42', openQuestion: { ref: '42', summary: '儿童房空调电源', blockedBy: '卡在空调厂家深化图' }, conflicts: [], batched: true, inScene: true },
+      { id: 'electrical:sock_child_ac', kind: 'electrical', label: 'socket sock_child_ac', room: 'child', status: 'pending', statusSource: 'config/electrical.yaml:status', blocker: { kind: 'pending_vendor_drawing', owner: ['厂家'], trigger: '儿童房 28T2/P-SS 机身尺寸与接管方向厂家深化图到手日', reverses_if: '厂家图到手即改 declared，坐标从预演值转实测', rationale: '空调厂家深化图决定本插座最终落位与预埋对象' }, conflicts: [], batched: true, inScene: true },
       { id: 'plumbing:drain_kitchen', kind: 'plumbing', label: 'drain drain_kitchen', room: 'kitchen', status: 'pending', statusSource: 'config:pending', conflicts: ['spatial.clearance'], batched: true, inScene: true },
       { id: 'electrical:panel_weak', kind: 'electrical', label: 'weak panel', status: 'undeclared', statusSource: 'no status field', conflicts: [], batched: true, inScene: false },
     ],
@@ -53,11 +53,12 @@ describe('ElementStatePanel', () => {
     expect(body.textContent).toContain('给排水 1');
   });
 
-  it('未决问题列显示 openQuestion.blockedBy，冲突列显示 issue code', () => {
+  it('未决问题列显示 blocker.owner + trigger，冲突列显示 issue code', () => {
     panel.show();
     const body = document.querySelector('#element-state-body') as HTMLElement;
     const sockRow = body.querySelector('tr[data-solo-id="electrical:sock_child_ac"]') as HTMLElement;
-    expect(sockRow.textContent).toContain('卡在空调厂家深化图');
+    expect(sockRow.textContent).toContain('厂家');
+    expect(sockRow.textContent).toContain('厂家深化图到手日');
     const drainRow = body.querySelector('tr[data-solo-id="plumbing:drain_kitchen"]') as HTMLElement;
     expect(drainRow.textContent).toContain('spatial.clearance');
   });

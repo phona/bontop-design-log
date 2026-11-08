@@ -34,7 +34,7 @@ interface FakeElement {
   batched: boolean;
   /** 合批点位的世界坐标（电气/给排水点有 x/z/height）。 */
   position?: [number, number, number];
-  openQuestion?: { ref: string; summary: string; blockedBy: string };
+  blocker?: { kind: string; owner: string[]; trigger: string; reverses_if: string; rationale: string };
   decision?: string;
   conflicts?: string[];
 }
@@ -67,7 +67,7 @@ function makeScene(elements: FakeElement[]) {
       label: element.id,
       status: element.status,
       statusSource: `test:${element.id}`,
-      ...(element.openQuestion ? { openQuestion: element.openQuestion } : {}),
+      ...(element.blocker ? { blocker: element.blocker } : {}),
       ...(element.decision ? { decision: element.decision } : {}),
       conflicts: element.conflicts ?? [],
     });
@@ -96,10 +96,10 @@ function makeScene(elements: FakeElement[]) {
 const ELEMENTS: FakeElement[] = [
   // 非合批（kind 非 electrical/plumbing）：ceiling + hvac(ceiling:ac_*)
   { id: 'ceiling:ceiling_living', kind: 'ceiling', status: 'confirmed', batched: false },
-  { id: 'ceiling:curtain_box_living', kind: 'ceiling', status: 'pending', batched: false, openQuestion: { ref: '7', summary: '分区边界', blockedBy: '卡在业主裁定' }, conflicts: ['ceiling.overlap'] },
+  { id: 'ceiling:curtain_box_living', kind: 'ceiling', status: 'pending', batched: false, blocker: { kind: 'pending_adjudication', owner: ['业主', '设计'], trigger: '吊顶分区边界裁定', reverses_if: '边界一定即改 declared', rationale: '吊顶分区边界属设计裁定，量房只提供墙面完成面事实' }, conflicts: ['ceiling.overlap'] },
   { id: 'ceiling:ac_child', kind: 'hvac', status: 'confirmed', batched: false, decision: 'DEC-2026-10-09' },
   // 合批 electrical
-  { id: 'electrical:sock_child_ac', kind: 'electrical', status: 'pending', batched: true, position: [3, 1.2, 4], openQuestion: { ref: '42', summary: '儿童房空调电源', blockedBy: '卡在空调厂家深化图' } },
+  { id: 'electrical:sock_child_ac', kind: 'electrical', status: 'pending', batched: true, position: [3, 1.2, 4], blocker: { kind: 'pending_vendor_drawing', owner: ['厂家'], trigger: '儿童房 28T2/P-SS 机身尺寸与接管方向厂家深化图到手日', reverses_if: '厂家图到手即改 declared，坐标从预演值转实测', rationale: '空调厂家深化图决定本插座最终落位与预埋对象' } },
   { id: 'electrical:sock_kitchen', kind: 'electrical', status: 'measured', batched: true, position: [1, 0.4, 2] },
   { id: 'electrical:panel_strong', kind: 'electrical', status: 'conflicted', batched: true, position: [13.4, 1.8, 3.6], conflicts: ['spatial.collision'] },
   // 合批 plumbing
@@ -292,7 +292,7 @@ describe('构件级工程状态叠加层', () => {
 
   it('inspectElementStates 聚合 + getElementStateHighlightStatus 口径正确', () => {
     const scene = makeScene(ELEMENTS);
-    scene.setElementStates(ELEMENTS.map((e) => ({ id: e.id, kind: e.kind, label: e.id, status: e.status, statusSource: `x`, conflicts: e.conflicts ?? [], ...(e.openQuestion ? { openQuestion: e.openQuestion } : {}) })));
+    scene.setElementStates(ELEMENTS.map((e) => ({ id: e.id, kind: e.kind, label: e.id, status: e.status, statusSource: `x`, conflicts: e.conflicts ?? [], ...(e.blocker ? { blocker: e.blocker } : {}) })));
     const inspection = scene.inspectElementStates();
     expect(inspection.summary.total).toBe(ELEMENTS.length);
     expect(inspection.summary.byStatus.confirmed).toBe(2);
@@ -362,10 +362,10 @@ describe('B1 修复·指针路径优先认领构件状态标记', () => {
 
   function sceneWithMarker() {
     const scene = makeScene(ELEMENTS);
-    // 注入带 openQuestion 的完整记录（sock_child_ac 的 blockedBy 含「空调厂家深化图」）
+    // 注入带 blocker 的完整记录（sock_child_ac 的 owner 含「厂家」、trigger 含「厂家深化图」）
     scene.setElementStates(ELEMENTS.map((e) => ({
       id: e.id, kind: e.kind, label: e.id, status: e.status, statusSource: `x`, conflicts: e.conflicts ?? [],
-      ...(e.openQuestion ? { openQuestion: e.openQuestion } : {}),
+      ...(e.blocker ? { blocker: e.blocker } : {}),
     })));
     scene.setElementStateHighlightVisible(true);
     const marker = markerFor(scene, 'electrical:sock_child_ac');
@@ -382,7 +382,8 @@ describe('B1 修复·指针路径优先认领构件状态标记', () => {
     expect(target.elementState?.id).toBe('electrical:sock_child_ac');
     expect(target.elementState?.status).toBe('pending');
     // InfoPanel 据此渲染「卡在」行：blockedBy 含「空调厂家深化图」
-    expect(target.elementState?.openQuestion?.blockedBy).toContain('空调厂家深化图');
+    expect(target.elementState?.blocker?.owner).toContain('厂家');
+    expect(target.elementState?.blocker?.trigger).toContain('厂家深化图');
     // 铁律：不靠给标记塞 objectId 修（requirement 2）——标记自身 userData 仍无 objectId
     expect((marker as any).userData.objectId).toBeUndefined();
     expect((marker as any).userData.elementStateId).toBe('electrical:sock_child_ac');
@@ -401,7 +402,8 @@ describe('B1 修复·指针路径优先认领构件状态标记', () => {
     // 修复前这里返回 hvac:A2:terminal:supply_dining（点灰球读风管，误导）
     expect(target.objectId).toBe('electrical:sock_child_ac');
     expect(target.objectId).not.toBe('hvac:A2:terminal:supply_dining');
-    expect(target.elementState?.openQuestion?.blockedBy).toContain('空调厂家深化图');
+    expect(target.elementState?.blocker?.owner).toContain('厂家');
+    expect(target.elementState?.blocker?.trigger).toContain('厂家深化图');
   });
 
   it('公共指针入口 raycastFromScreenCenter 也走标记优先（端到端，hoverableOnly 亦然）', () => {
