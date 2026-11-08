@@ -375,8 +375,12 @@ test('冷凝链锚点 deriveMepPenetrationAt：派生值 == 被删声明 (2.3, 2
 test('穿墙计数契约：60 条声明 / 33 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
   // config/facts.yaml 的 fact.mep_penetration_declarations 只锚定文档清点句的文本（facts-lint 的
   // derived 选择器表达不了「跨路线嵌套数组求和 + 去重」）；本断言从配置机器计算两数并要求文档
-  // 同值——改路线使孔位集变化、或改条目数时，文档旧数字不能再静默过期（guidance:37 的
-  // 「40 条 / 21 孔位」正是这样 stale 的）。孔位 = 同墙同坐标去重（多条路线共用一孔）。
+  // 同值——guidance:37 的「40 条 / 21 孔位」正是这样 stale 的。孔位 = 同墙同坐标去重（多条路线共用一孔）。
+  // **覆盖边界（评审员变异实测，勿过度声称）**：本测试只钉「孔位计数 + 声明条目数」两个数。
+  // ① 孔位**坐标移动**（路线改道但孔数不变）它抓不到——由同文件 PIN_45 逐点钉值测试负责；
+  // ② 文档里另一处历史旧值句它抓不到（只查规范句，verify:facts 的 mirror 同口径）；
+  // ③ 有手写 at 的声明改指向不存在的墙它抓不到（孔 key 照算），由 KEPT_15 + takeoff + lint 抓。
+  // 三条边界都有既有守卫兜底，但不要以为这一条是全能的。
   const declarations = declarationsOf(config);
   const holes = new Set<string>();
   for (const { route, wall, entry } of declarations) {
