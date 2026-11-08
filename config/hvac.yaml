@@ -20,6 +20,24 @@ plans:
         - config/procurement.yaml
         - config/materials.yaml
         - schedule/phase-1/control.yaml
+      # 证据结构（2026-11-09 issue #98 S2 新增）：合同成交语义的**机器可读**落点。
+      # 为什么必须有：DEC 退役前，scripts/schedule/cost-summary.ts 的已核实层守卫靠回
+      # docs/decisions/05-hvac.md 的 DEC-2026-10-04-R1 章节核对「登记金额被合同总价词
+      # 直接指称」；S3 一删档那道核对就 throw。业主裁定⑤「数据全上对象」+ S2 任务 3：
+      # 成交语义改落报价卡的 evidence 结构，与 shared/quote-cards.ts 的三级证据分级同口径
+      # （photo / owner_reported / written_quote），kind 必须是 written_quote 才能支撑已核实层。
+      # 分项与总价不相等（14,124 + 8,400 = 22,524 ≠ 36,000）正是必须显式登记
+      # contract_total_cny 的原因：总价不是分项之和，不能由分项推导。
+      evidence:
+        kind: written_quote
+        status: contract_attachment_itemized
+        source: "contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg"
+        observed_at: '2026-10-04'
+        quote_status: "已签约（deal_status signed，2026-10-04 定标成交；合同附件共 8 页，已归档 p1/p2 两页）"
+        currency: CNY
+        contract_total_cny: 36000
+        contract_total_terms: "合同附件第十二条合计 36,000 元（含辅材；不含复合风管与风口加长——加长 100 元/米另计、不含税）"
+        transcript_grade_limit: "含否口径据 evidence-notes 对合同附件备注 2/5 的历史转录；备注页原件不在已归档两页内，补齐前为转录级证据（待办挂 docs/pending-site-data.md #39⑥）"
     outdoor:
       id: vrf_outdoor_a2
       platform: west_platform

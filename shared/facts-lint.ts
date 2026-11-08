@@ -350,7 +350,12 @@ function pathMatches(spec: string, file: string): boolean {
  *  为什么需要：DEC 日志 2026-10-09 按主题拆成 `docs/decisions/` 14 个文件后，
  *  `c.dec_unique.source`（查重）与 `c.dec_ref_resolvable.target`（外键解析）必须覆盖全部文件，
  *  否则跨文件重号查不到、DEC 短引反查会集体 dangling。
- *  向后兼容：字符串形式照旧；不存在/不可读的文件跳过（与单文件语义一致）。 */
+ *  向后兼容：字符串形式照旧；不存在/不可读的文件跳过（与单文件语义一致）。
+ *  2026-11-09 issue #98 S2：DEC 档案退役后 target 收敛回单文件
+ *  `config/decision-knowledge.yaml`，本引擎读它的两个顶层段：
+ *    · `entries` —— 知识条目（`  - id: "DEC-…"` + kind/subject/knowledge/landing）；
+ *    · `retired` —— 墓碑行（同形 `  - id: "DEC-…"` + subject/status/superseded_by/record/landing）。
+ *  两段用同一种登记行形态，故 unique / fk / repair_channel 的 pattern 一套全覆盖。 */
 function pathList(v: unknown): string[] {
   if (Array.isArray(v)) return stringList(v);
   const one = str(v);
@@ -1826,7 +1831,8 @@ function runCoveredOrMarked(ws: FactsWorkspace, result: FactsLintResult, lines: 
 //      文件不存在 → repair_channel_invalid（error）。通道腐烂比没有通道更糟——
 //      它会让人以为有出路可走，走出去才发现是墙。
 //   ② 校验 DEC 全引**真的存在于决策日志**（登记表顶层 `decision_log_files` 列出的文件里
-//      有同名 `### DEC-` 标题）→ repair_channel_ref_unresolvable（error）。只验格式等于
+//      有同名条目：md 标题 `### DEC-…` 或 YAML 登记行 `- id: "DEC-…"`）→
+//      repair_channel_ref_unresolvable（error）。只验格式等于
 //      允许「指引人去查一条不存在的 DEC」；未登记 decision_log_files 时跳过并在 INFO 露面。
 //   ③ 契约报出偏差时（目前接在 ceiling_clearance 的基线漂移上），把该出口写进 issue 正文，
 //      并在 INFO 里登记。**不改变任何契约的 error 语义**：registered_conflicts ≠ 实算
@@ -1842,12 +1848,20 @@ export interface RepairChannel {
 const DEC_FULL_REF_RE = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
 
 /** decision_ref 指向的 DEC 是否真的作为条目存在于决策日志里。
- *  只认标题形态（`### DEC-…`），不认 prose 里的提及——否则「正文引用了一个已删编号」
- *  也会被判成存在。边界用 `(?![\w.\-])`：`DEC-…-R01` 不匹配 `R01.1`，`DEC-…-051` 不匹配
- *  `051-补`（基号不存在就是不存在，补号救不了它）。 */
+ *  2026-11-09 issue #98 S2：DEC 档案（docs/decisions/ 的 `### DEC-` 标题）退役后，条目住在
+ *  config/decision-knowledge.yaml 的 YAML 登记行（`  - id: "DEC-…"`）。故同时认两种形态：
+ *    ① md 标题形态 `^#{2,6}\s*DEC-…`（档案还在时的旧形态，保留到 S3 删档当天）；
+ *    ② YAML 登记形态 `^\s*-\s*id:\s*["']?DEC-…`（S2 起的现行形态，decision_log_files 的靶）。
+ *  只认**条目行**，不认 prose 里的提及——否则「正文引用了一个已删编号」也会被判成存在。
+ *  边界用 `(?![0-9A-Za-z.\-_])`：`DEC-…-R01` 不匹配 `R01.1`，`DEC-…-051` 不匹配 `051-补`
+ *  （基号不存在就是不存在，补号救不了它）；登记行尾的引号不在排除集里，故 YAML 形态可命中。 */
 function decisionRefResolves(ws: FactsWorkspace, files: string[], ref: string): boolean {
-  const pattern = `^#{2,6}\\s*${escapeLiteral(ref)}(?![0-9A-Za-z.\\-_])`;
-  return files.some((file) => grep(ws, file, pattern).length > 0);
+  const escaped = escapeLiteral(ref);
+  const patterns = [
+    `^#{2,6}\\s*${escaped}(?![0-9A-Za-z.\\-_])`,
+    `^\\s*-\\s*id:\\s*["']?${escaped}(?![0-9A-Za-z.\\-_])`,
+  ];
+  return files.some((file) => patterns.some((pattern) => grep(ws, file, pattern).length > 0));
 }
 
 function repairChannelOf(contract: Contract): RepairChannel | undefined {

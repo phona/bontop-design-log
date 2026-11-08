@@ -17,6 +17,8 @@ import {
   computeActiveMepQuote,
   contractArchivePathProblem,
   findDecisionSection,
+  findContractEvidence,
+  contractEvidenceText,
   anchoredContractTotalAmounts,
   hasAffirmativeDealSemantics,
   isValidCalendarDateText,
@@ -309,38 +311,46 @@ describe('成本总表 cost-summary', () => {
     pkgOf(subtotalSwap, 'PKG-030').budget.contracted_cny = 14124;
     assert.throws(
       () => assertVerifiedTierBasis('cost-hvac', contractBasis, subtotalSwap),
-      /金额与 DEC 脱节/,
-      '三方金额同步误改成同章分项金额 14,124 必须被总价锚定拦下',
+      /总价与登记金额脱节/,
+      '三方金额同步误改成同章分项金额 14,124 必须被总价锚定拦下（登记 14,124 ≠ 报价卡 evidence.contract_total_cny 36,000）',
     );
-    // DEC 金额在场核对（复审 P1）双向钉死：
-    //  - 登记金额 token 在 DEC 章节里被删改（改写成 99,999）→ DEC 与登记
-    //    脱节，必须抛错——三方金额同步改错时这道回锚就是最后一道；
-    //  - 金额仍在场、只是措辞改写（无辖域词、换表述）→ 照常通过：在场核
-    //    对不是辖域提取，措辞自由；
+    // 报价卡 evidence 的总价陈述金额在场核对（复审 P1，2026-11-09 S2 把注入源从
+    // DEC 章节目录换成 evidence override）双向钉死：
+    //  - 总价陈述里登记金额被删改（写成 99,999）→ 与登记脱节，必须抛错——三方
+    //    金额同步改错时这道回锚就是最后一道；
+    //  - 金额仍在场、只是措辞改写（无辖域词、换表述）→ 照常通过：在场核对不是
+    //    辖域提取，措辞自由；
     //  - 同一注入去掉成交表述 → 仍因语义核对抛错（成交语义关仍在岗）。
-    const dir = mkdtempSync(join(tmpdir(), 'dec-anchor-'));
-    try {
-      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 定标成交：99,999 元\n\n- **成交事实**：测试章节，金额已被改写。\n');
-      assert.throws(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
-        /金额与 DEC 脱节/,
-        'DEC 章节里登记金额 36,000 被删改必须抛错（复审 P1）',
-      );
-      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 空调合同\n\n- 双方签订，本户成交价 36,000 元整，含辅材。\n');
-      assert.doesNotThrow(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
-        '登记金额在场、措辞改写（无辖域词）不得影响凭据结论',
-      );
-      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 询价记录\n\n- 本轮仅为询价，价格待议，暂记 36,000。\n');
-      assert.throws(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
-        /语义对不上/,
-        'DEC 章节失去正向成交表述必须抛错（成交语义核对）',
-      );
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-    // 真实登记 + 真实 DEC 必须继续通过（不许把真凭据也拦了）
+    const ARCHIVED_P1 = 'contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg';
+    const evidenceWith = (terms: string, status = '已签约（deal_status signed，2026-10-04 定标成交）') => ({
+      kind: 'written_quote',
+      source: ARCHIVED_P1,
+      contract_total_cny: 36000,
+      contract_total_terms: terms,
+      quote_status: status,
+      file: 'config/hvac.yaml#plans[A2].commercial.evidence',
+    });
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, evidenceWith('定标成交：99,999 元')),
+      /金额与总价陈述脱节/,
+      'evidence 总价陈述里登记金额 36,000 被删改必须抛错（复审 P1，改读报价卡后同口径）',
+    );
+    assert.doesNotThrow(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, evidenceWith('双方签订，本户成交价 36,000 元整，含辅材')),
+      '登记金额在场、措辞改写（无辖域词）不得影响凭据结论',
+    );
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, evidenceWith('本轮仅为询价，价格待议，暂记 36,000。', '询价记录')),
+      /语义对不上/,
+      'evidence 失去正向成交表述必须抛错（成交语义核对）',
+    );
+    // 自称书面报价却指不回已归档原件（S2 新增的 source 回归档区核对）
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, { ...evidenceWith('合计 36,000 元'), source: 'contracts/2026-10-03/不在档.pdf' }),
+      /出处不在归档区/,
+      'evidence.source 不是 contract.archive_paths 登记的归档原件必须抛错',
+    );
+    // 真实登记 + 真实报价卡 evidence 必须继续通过（不许把真凭据也拦了）
     assert.doesNotThrow(() => assertVerifiedTierBasis('cost-hvac', contractBasis, control));
   });
 
@@ -397,21 +407,24 @@ describe('成本总表 cost-summary', () => {
     qr.contract.amount_cny = 14124;
     qr.locked_cny = 14124;
     pkgOf(swapped, 'PKG-030').budget.contracted_cny = 14124;
-    const dir = mkdtempSync(join(tmpdir(), 'dec-samesentence-'));
-    try {
-      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 中央空调定标\n\n- **成交事实**：双方已签约。合同总价36,000元（其中外机14,124元）。\n');
-      assert.throws(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, swapped, undefined, dir),
-        /金额与 DEC 脱节/,
-        '同句括注的分项金额不得冒充合同总价：三方同步改成分项价必须被位置对应锚定拦下',
-      );
-      assert.doesNotThrow(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
-        '同一注入章节、登记仍为真实 36,000 时必须锚定通过（总价词直接对应 36,000）',
-      );
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    // 2026-11-09 S2：注入源从 DEC 章节目录改为 evidence override（同一段总价陈述原文）。
+    const evidence = {
+      kind: 'written_quote',
+      source: 'contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg',
+      contract_total_cny: 36000,
+      contract_total_terms: '**成交事实**：双方已签约。合同总价36,000元（其中外机14,124元）。',
+      quote_status: '已签约',
+      file: 'config/hvac.yaml#plans[A2].commercial.evidence',
+    };
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, swapped, undefined, evidence),
+      /总价与登记金额脱节/,
+      '同句括注的分项金额不得冒充合同总价：三方同步改成分项价必须被位置对应锚定拦下',
+    );
+    assert.doesNotThrow(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, evidence),
+      '同一段总价陈述、登记仍为真实 36,000 时必须锚定通过（总价词直接对应 36,000）',
+    );
   });
 
   it('分项总价反例（守卫级）：DEC 写明分项总价与合同总价时，三方同步改成分项价仍必须抛错（复审第三轮 P1）', () => {
@@ -426,22 +439,25 @@ describe('成本总表 cost-summary', () => {
     qr.contract.amount_cny = 14124;
     qr.locked_cny = 14124;
     pkgOf(swapped, 'PKG-030').budget.contracted_cny = 14124;
-    const dir = mkdtempSync(join(tmpdir(), 'dec-subtotal-'));
-    try {
-      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 中央空调定标\n\n- **成交事实**：双方已签约。外机分项总价：14,124 元。合同总价：36,000 元。\n');
-      assert.throws(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, swapped, undefined, dir),
-        /金额与 DEC 脱节/,
-        '分项总价不得冒充合同总价：三方同步改成分项价必须被总价锚定拦下',
-      );
-      // 同一注入章节、登记仍为真实 36,000 时照常通过（不许误杀真凭据）
-      assert.doesNotThrow(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
-        '章节含分项总价与合同总价时，真实登记金额 36,000 必须锚定通过',
-      );
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    // 2026-11-09 S2：注入源改为 evidence override（原文同时含分项总价与合同总价两句）。
+    const evidence = {
+      kind: 'written_quote',
+      source: 'contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg',
+      contract_total_cny: 36000,
+      contract_total_terms: '**成交事实**：双方已签约。外机分项总价：14,124 元。合同总价：36,000 元。',
+      quote_status: '已签约',
+      file: 'config/hvac.yaml#plans[A2].commercial.evidence',
+    };
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, swapped, undefined, evidence),
+      /总价与登记金额脱节/,
+      '分项总价不得冒充合同总价：三方同步改成分项价必须被总价锚定拦下',
+    );
+    // 同一段陈述、登记仍为真实 36,000 时照常通过（不许误杀真凭据）
+    assert.doesNotThrow(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, evidence),
+      '陈述含分项总价与合同总价时，真实登记金额 36,000 必须锚定通过',
+    );
   });
 
   it('归档路径核查：规范路径放行、../ 与 symlink 拒绝（复审第二轮 P1）', () => {
@@ -562,23 +578,27 @@ describe('成本总表 cost-summary', () => {
       [35500, 36000],
       '新旧两个总价并存时集合必须含两个不同金额（歧义要显形）',
     );
-    const realSection = findDecisionSection('DEC-2026-10-04-R1');
-    assert.ok(realSection);
-    assert.deepEqual(anchoredContractTotalAmounts(realSection.text), [36000], '真实章节三处锚点同值，集合恒为 {36,000}');
-    // 守卫级：登记仍为 36,000 且能锚上，但章节多出第二个被锚定的总价
+    const realEvidence = findContractEvidence('DEC-2026-10-04-R1');
+    assert.ok(realEvidence);
+    assert.deepEqual(
+      anchoredContractTotalAmounts(contractEvidenceText(realEvidence)),
+      [36000],
+      '真实报价卡 evidence 的锚点同值，集合恒为 {36,000}（合同总价陈述 + 分项报价同段而分项锚不上）',
+    );
+    // 守卫级：登记仍为 36,000 且能锚上，但陈述里多出第二个被锚定的总价
     // （补充协议改价句）——歧义必须抛错，不得因「登记金额锚得上」放行。
     const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
-    const dir = mkdtempSync(join(tmpdir(), 'dec-ambiguity-'));
-    try {
-      writeFileSync(join(dir, '05-hvac.md'), '### DEC-2026-10-04-R1 中央空调定标\n\n- 定标成交：36,000 元。后补充协议改价，合同总价：35,500 元。\n');
-      assert.throws(
-        () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, dir),
-        /总价歧义/,
-        '章节内两个被锚定的不同总价并存时必须抛歧义错（恢复旧提取器时代的歧义检测）',
-      );
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
+    assert.throws(
+      () => assertVerifiedTierBasis('cost-hvac', contractBasis, control, undefined, {
+        kind: 'written_quote',
+        source: 'contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg',
+        contract_total_cny: 36000,
+        contract_total_terms: '定标成交：36,000 元。后补充协议改价，合同总价：35,500 元。',
+        quote_status: '已签约',
+      }),
+      /总价歧义/,
+      '陈述里两个被锚定的不同总价并存时必须抛歧义错（恢复旧提取器时代的歧义检测）',
+    );
   });
 
   it('报价卡凭据边界：证据须 written_quote、费率不得含公开参考价来源、行级证据不得低于 written_quote（复审 P2-c）', () => {

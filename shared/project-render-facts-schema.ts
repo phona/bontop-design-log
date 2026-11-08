@@ -406,6 +406,20 @@ export const HvacCommercialSchema = z.object({
   price_basis: z.string().optional(),
   scope_note: z.string().optional(),
   source_refs: z.array(nonEmpty).optional(),
+  // 2026-11-09 issue #98 S2：合同成交语义的机器可读落点（DEC 退役后 cost-summary 的
+  // 已核实层守卫改读它，不再回 docs/decisions/ 的 DEC 章节）。形状与
+  // shared/quote-cards.ts 的三级证据分级同口径，多写一个键就是配置错误（strict）。
+  evidence: z.object({
+    kind: z.enum(['photo', 'owner_reported', 'written_quote']),
+    status: nonEmpty,
+    source: z.string().optional(),
+    observed_at: z.string().optional(),
+    quote_status: z.string().optional(),
+    currency: z.string().optional(),
+    contract_total_cny: finiteNumber.nonnegative().optional(),
+    contract_total_terms: z.string().optional(),
+    transcript_grade_limit: z.string().optional(),
+  }).strict().optional(),
 }).strict();
 export const ProjectHvacFactsSchema = z.object({
   plans: z.array(z.object({
