@@ -61,7 +61,7 @@ import { buildScene, refreshSlidingDoorGroup, type CurtainBuildEntry, type Scene
 import { buildHvacGeometry, type HvacEntityIndex } from '@shared/render/HvacGeometryBuilder';
 import { buildHvacBuilderSources, expectedHvacExportIds, type HvacBuilderSources } from '@shared/render/HvacBuilder';
 import { buildInfrastructure } from '@shared/render/InfrastructureBuilder';
-import { pointMountHostIndex, pointWallIndexFromElements, type PointMountHost, type PointWall } from '@shared/point-placement';
+import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
 import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@shared/render/layout-bounds';
 import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
 import type { CeilingZone } from '@shared/types';
@@ -576,8 +576,11 @@ export class HouseScene implements SceneApi {
     const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('gbath.toilet'));
     const screenBox = segmentBox(points('shower_screen_gbath'));
     const shower = this.auditPlumbing.find((candidate) => candidate.room === 'guest_bath' && candidate.type === 'shower');
-    // x/z 是迁移期断言字段（issue #98 S1）：此示意图只画 plumbing 点位的平面位置，缺坐标即回退默认值
-    const showerPoint = shower && shower.x !== undefined && shower.z !== undefined ? { x: shower.x, z: shower.z } : { x: 7.10, z: 2.45 };
+    // 2026-11-09 修 Codex minor：shower_gbath 的 x/z 声明已在第四阶段 S3 删光（改 wall/along 定位），
+    // 原分支因此必然回落到硬编码 (7.10, 2.45)——而单一解算器的现位是 (7.20, 2.45)，差 100mm，
+    // 且后续调 along 审计图也不跟随。改走 resolvePointPlacementInWalls，与 3D/标注/DXF/MEP 同口径。
+    const showerPlacement = shower ? resolvePointPlacementInWalls(shower, this.pointWallIndex, this.mountHostIndex).placement : undefined;
+    const showerPoint = showerPlacement ? { x: showerPlacement.x, z: showerPlacement.z } : { x: 7.10, z: 2.45 };
     const dividerZ = screenBox ? (screenBox.minZ + screenBox.maxZ) / 2 : 2.80;
     const vanitySouth = vanityBox?.minZ ?? dividerZ;
     rect(bounds.minX, bounds.maxX, dividerZ, bounds.maxZ, 'rgba(245, 158, 11, 0.18)', '#d97706', 4);
