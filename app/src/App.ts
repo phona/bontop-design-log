@@ -3039,6 +3039,7 @@ export class App {
       this.stateSync.setPhase(phase);
       const data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
       this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
+      await this.ensureRenderFactsProjection(data);
       await this.houseScene.buildFromCatalog(data);
       this.reportPlacementDiagnostics();
       this.annotationRenderer?.clear();
@@ -3080,6 +3081,7 @@ export class App {
       this.projectData = previousProjectData;
       try {
         this.collision.setWalls(this.extractWalls(previousProjectData?.house?.sceneElements));
+        await this.ensureRenderFactsProjection(previousProjectData);
         await this.houseScene.buildFromCatalog(previousProjectData);
         this.reportPlacementDiagnostics();
         this.annotationRenderer?.clear();
@@ -3134,14 +3136,14 @@ export class App {
    * 幂等：已取过且 projectData 未变则直接返回。取不到不抛——灯光/标注层仍可工作，
    * 但 HVAC 源与三件冷凝链家具会缺（由 placementDiagnostics 显形）。
    */
-  private async ensureRenderFactsProjection(): Promise<void> {
-    if (this.projectData?.renderFactsProjection) return;
-    if (!this.projectData) return;
+  private async ensureRenderFactsProjection(target?: { renderFactsProjection?: unknown }): Promise<void> {
+    const data = target ?? this.projectData;
+    if (!data || (data as { renderFactsProjection?: unknown }).renderFactsProjection) return;
     try {
       const response = await fetch('/api/render-facts/projection');
       if (!response.ok) throw new Error('render facts projection is not ready');
       const projection = parseProjectRenderFactsProjection(await response.json());
-      this.projectData.renderFactsProjection = projection;
+      (data as { renderFactsProjection?: unknown }).renderFactsProjection = projection;
     } catch (err) {
       console.warn('[app] render-facts 投影取取失败，HVAC 源与冷凝链家具将缺：', err instanceof Error ? err.message : String(err));
     }

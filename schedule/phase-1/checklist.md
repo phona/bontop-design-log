@@ -144,7 +144,7 @@
 | 数据文件 | 本工作包引用范围 | 映射状态 |
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
-| [原量房台账（已于 S2-B 退场）](../../原量房台账（已于 S2-B 退场）) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
+| 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
 当前项目数据指纹：`sha256:1fdf18f47aa1176afd41d1951a18854776640198bc62415f611d06f295ec0951`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
@@ -197,7 +197,7 @@
 | 数据文件 | 本工作包引用范围 | 映射状态 |
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
-| [原量房台账（已于 S2-B 退场）](../../原量房台账（已于 S2-B 退场）) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
+| 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
 当前项目数据指纹：`sha256:1fdf18f47aa1176afd41d1951a18854776640198bc62415f611d06f295ec0951`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
@@ -236,7 +236,7 @@
 | 数据文件 | 本工作包引用范围 | 映射状态 |
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
-| [原量房台账（已于 S2-B 退场）](../../原量房台账（已于 S2-B 退场）) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
+| 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
 当前项目数据指纹：`sha256:1fdf18f47aa1176afd41d1951a18854776640198bc62415f611d06f295ec0951`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
@@ -308,7 +308,7 @@
 | [config/hvac.yaml](../../config/hvac.yaml) | plan_ids=A2 | partial |
 | [config/mep-hvac-coordination.yaml](../../config/mep-hvac-coordination.yaml) | layers=refrigerant,condensate,supply_air,return_air | partial |
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_ac,sock_dining_ac,sock_master_ac,sock_parent_ac,sock_child_ac,sock_study_ac,sock_vrf_outdoor_a2,ac_panel_living,ac_panel_dining,ac_panel_master,ac_panel_parent,ac_panel_child,ac_panel_study | partial |
-| [原量房台账（已于 S2-B 退场）](../../原量房台账（已于 S2-B 退场）) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
+| 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
 当前项目数据指纹：`sha256:23b5f1de9919d0fc869b0b4157c12c106b90625506dc5657080caf75f9f72788`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
@@ -363,7 +363,7 @@
 | [config/plumbing.yaml](../../config/plumbing.yaml) | all=true | partial |
 | [config/electrical-topology.yaml](../../config/electrical-topology.yaml) | all=true | partial |
 | [config/mep-hvac-coordination.yaml](../../config/mep-hvac-coordination.yaml) | layers=strong_power,weak_power,water_supply,drainage | partial |
-| [原量房台账（已于 S2-B 退场）](../../原量房台账（已于 S2-B 退场）) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
+| 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
 当前项目数据指纹：`sha256:e8ec8686f59ead9d5112b025dfe15c7e05b2282bad49ad895068776155bf1238`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
@@ -1042,7 +1042,7 @@
 | [config/mep-hvac-coordination.yaml](../../config/mep-hvac-coordination.yaml) | all=true | project_scope |
 | [config/hvac.yaml](../../config/hvac.yaml) | all=true | project_scope |
 | [config/model/envelope/ceiling.yaml](../../config/model/envelope/ceiling.yaml) | all=true | project_scope |
-| [原量房台账（已于 S2-B 退场）](../../原量房台账（已于 S2-B 退场）) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |
+| 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
 当前项目数据指纹：`sha256:66f1927f8f5f8eb4fd0158e2825b40909d64726af544dd436ece123e2d685d0c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 

@@ -7,7 +7,7 @@ import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, t
 import { diffCondensateChainPlanAgainstMep, deriveMepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
 import { endpointSourcesFromFacts, parseMepCoordination, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
 import { parseProjectHvacFacts } from '../../../shared/project-render-facts-schema.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls, type PointWall } from '../../../shared/point-placement.js';
 import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
 
 const EPS = 0.01;
@@ -451,14 +451,24 @@ function main(): void {
       warnings.push(`${mbDresser.label}: 与闭帘候选软包络 z[${MB_SOUTH_CLOSED_CURTAIN_ENVELOPE.minZ.toFixed(2)},${MB_SOUTH_CLOSED_CURTAIN_ENVELOPE.maxZ.toFixed(2)}] 相交；warning/BLOCKED，六抽柜保持原位，待现场核量`);
     }
     // 不侵东侧备用/窗帘插座点位 0.5m 内（可见可拔插、不被家具封死）
+    // 2026-11-09 修 Codex major：原直接读 socket.x/z，两点的 x/z 声明已在第四阶段 S3 删光
+    // （改 wall/along 定位），于是 `continue` 恒成立——这条「矮柜不侵插座 0.5m」的既有校验
+    // 完全静默跳过，后续把点位移到柜旁也不会报。改为走共享点位解算器（与 3D/DXF/MEP/
+    // 标注同一构造），解算失败显式报错而不是跳过。
+    const pointWalls: ReadonlyMap<string, PointWall> = pointWallIndexFromElements(catalog.getWalls());
     for (const socketId of ['sock_master_bed_r', 'sock_master_curtain']) {
-      const socket = electricalPoints.find((point) => point.id === socketId);
-      if (!socket || socket.x === undefined || socket.z === undefined) continue;
-      const dx = Math.max(mbDresser.box.minX - socket.x, socket.x - mbDresser.box.maxX, 0);
-      const dz = Math.max(mbDresser.box.minZ - socket.z, socket.z - mbDresser.box.maxZ, 0);
+      const socket = electricalPoints.find((point) => point.id === socketId) as { id: string; wall?: string; along?: number; face_offset?: number; x?: number; z?: number } | undefined;
+      if (!socket) continue;
+      const { placement, diagnostic } = resolvePointPlacementInWalls(socket as never, pointWalls);
+      if (!placement) {
+        errors.push(`${mbDresser.label}: ${socketId} 平面位置解算失败（${diagnostic ?? '解算器未返回结果'}）——无法校验 0.5m 净距，按 fail-closed 报错`);
+        continue;
+      }
+      const dx = Math.max(mbDresser.box.minX - placement.x, placement.x - mbDresser.box.maxX, 0);
+      const dz = Math.max(mbDresser.box.minZ - placement.z, placement.z - mbDresser.box.maxZ, 0);
       const dist = Math.hypot(dx, dz);
       if (dist < 0.5 - GAP_EPS) {
-        errors.push(`${mbDresser.label}: 距 ${socketId} @(${socket.x},${socket.z}) 仅 ${dist.toFixed(3)}m < 0.5m`);
+        errors.push(`${mbDresser.label}: 距 ${socketId} @(${placement.x.toFixed(3)},${placement.z.toFixed(3)}) 仅 ${dist.toFixed(3)}m < 0.5m`);
       }
     }
   }

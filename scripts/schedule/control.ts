@@ -63,8 +63,11 @@ function selectorLinkTable(packageId: string, outputPath: string): string {
   }
   const packageRecord = control.work_packages.find((pkg: AnyRecord) => pkg.id === packageId);
   if (packageRecord && (packageRecord.include_site_data_ledger === true || (packageRecord.blockers ?? []).some((id: string) => ['BLK-HANDOVER', 'BLK-SURVEY-DATA-FREEZE'].includes(id)))) {
-    const relativePath = path.posix.relative(path.posix.dirname(outputPath), '原量房台账（已于 S2-B 退场）');
-    markdown += `| [原量房台账（已于 S2-B 退场）](${relativePath}) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |\n`;
+    // 2026-11-09 修 Codex minor：原把「原量房台账（已于 S2-B 退场）」当真实文件路径算相对
+    // 链接，生成的 ../../原量房台账（已于 S2-B 退场） 全部指向不存在的文件，读者点
+    // 「现场数据」入口拿不到待核事项。改为不造链接、给命令与真实载体（对象 blocker 字段
+    // 与 config/open-items.yaml）。
+    markdown += `| 现场待测数据：跑 \`npm run docs:generate-pending-view\` 生成待决视图；权威在 config 各对象自己的 \`status\`/\`blocker\` 字段与 \`config/open-items.yaml\`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |\n`;
   }
   const dataFingerprint = packageRecord ? packageProjectFingerprint(packageRecord) : 'unknown';
   markdown += `\n当前项目数据指纹：\`sha256:${dataFingerprint}\`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。\n\n`;
