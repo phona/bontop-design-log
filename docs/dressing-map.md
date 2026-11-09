@@ -1,6 +1,6 @@
 # 装扮映射表（材质/家具/灯光的外观替换映射）
 
-生成：2026-11-07，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / electrical-topology.yaml（回路列，S3 起单一派生）/ config/model/envelope/（openings+floor-zones+ceiling+finish-defaults）/ environment.yaml / data/current-scheme.json
+生成：2026-11-09，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / electrical-topology.yaml（回路列，S3 起单一派生）/ config/model/envelope/（openings+floor-zones+ceiling+finish-defaults）/ environment.yaml / data/current-scheme.json
 
 数据规模：house.yaml furnishings 共 91 件（与 `fact.furnishings_count` 对账）。
 
@@ -66,38 +66,38 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | master_bedroom | master_bedside_cabinet_350_north | 1 | 0.38×0.35 | (4.01, 6.245) / 0° |
 | master_bedroom | master_bedside_cabinet_350_south | 1 | 0.38×0.35 | (4.01, 8.555) / 0° |
 | master_bedroom | mb_washbasin_cabinet | 1 | 1.05×0.5 | (0.575, 3.16) / 0° |
+| master_bedroom | faucet | 1 | （体块无尺寸记录） | （解算失败） |
 | master_bedroom | master_dressing_table | 1 | 0.9×0.45 | (0.425, 6.05) / 90° |
 | master_bedroom | dressing_stool | 1 | 0.42×0.4 | (0.42, 6.05) / 90° |
 | master_bedroom | master_hot_season_low_dresser | 1 | 1.4×0.48 | (1.05, 9.2) / 180° |
-| master_bedroom | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | mb_vanity_base_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | mb_vanity_lower_board | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | mb_vanity_main_board | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | condensate_pipe_ac_outlet | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | mb_vanity_pvc_wardrobe_entry | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | mb_vanity_pvc_service_chase | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | mb_vanity_pvc_box | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | mattress_180 | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
-| master_bedroom | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
+| master_bedroom | mb_vanity_base_cabinet | 1 | 1.38×0.565 | (2.243, 3.610) / 270°（解算） |
+| master_bedroom | mb_vanity_lower_board | 1 | （体块无尺寸记录） | (2.243, 3.610) / 270°（解算） |
+| master_bedroom | mb_vanity_main_board | 1 | （体块无尺寸记录） | (2.243, 3.610) / 270°（解算） |
+| master_bedroom | condensate_pipe_ac_outlet | 1 | 0.4×0.46 | （解算失败） |
+| master_bedroom | mb_vanity_pvc_wardrobe_entry | 1 | 1.175×0.03 | （解算失败） |
+| master_bedroom | mb_vanity_pvc_service_chase | 1 | 0.925×0.06 | （解算失败） |
+| master_bedroom | mb_vanity_pvc_box | 1 | 1.2×0.08 | (2.500, 3.700) / 270°（解算） |
+| master_bedroom | mattress_180 | 1 | （体块无尺寸记录） | （解算失败） |
+| master_bedroom | curtain_set | 1 | （体块无尺寸记录） | （解算失败） |
+| master_bedroom | ceiling_light | 1 | （体块无尺寸记录） | （解算失败） |
 | bedroom_nw | bed_150 | 1 | 1.5×2 | (4.6, 2.3) / 270° |
 | bedroom_nw | wardrobe_180 | 1 | 1.8×0.6 | (3.5, 4) / 0° |
 | bedroom_nw | desk | 1 | 1.2×0.6 | (2.9, 2.1) / 90° |
 | bedroom_nw | chair | 1 | 0.5×0.5 | (3.35, 3) / 270° |
 | bedroom_nw | shelf | 1 | 0.8×0.4 | (3, 1.3) / 0° |
-| bedroom_nw | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
-| bedroom_nw | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
-| bedroom_nw | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
+| bedroom_nw | mattress_150 | 1 | （体块无尺寸记录） | （解算失败） |
+| bedroom_nw | curtain_set | 1 | （体块无尺寸记录） | （解算失败） |
+| bedroom_nw | ceiling_light | 1 | （体块无尺寸记录） | （解算失败） |
 | bedroom_se | wardrobe_180 | 1 | 1.8×0.6 | (15.25, 5.85) / 180° |
 | bedroom_se | bed_150 | 1 | 1.5×2 | (15.35, 7.6) / 270° |
-| bedroom_se | mattress_150 | 1 | — | count-only（不在 glb，按实物补摆） |
-| bedroom_se | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
-| bedroom_se | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
+| bedroom_se | mattress_150 | 1 | （体块无尺寸记录） | （解算失败） |
+| bedroom_se | curtain_set | 1 | （体块无尺寸记录） | （解算失败） |
+| bedroom_se | ceiling_light | 1 | （体块无尺寸记录） | （解算失败） |
 | study | desk | 1 | 1.2×0.6 | (6.9, 7.8) / 90° |
 | study | chair | 1 | 0.5×0.5 | (6.3, 7.8) / 90° |
 | study | study_seasonal_wardrobe_wall | 3 | 1.7×0.55 | (5.1, 5.825) / 0°；(4.475, 6.289) / 90°；(4.475, 7.38) / 90° |
-| study | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |
-| study | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
+| study | curtain_set | 1 | （体块无尺寸记录） | （解算失败） |
+| study | ceiling_light | 1 | （体块无尺寸记录） | （解算失败） |
 | living_dining | wall_cabinet_tall | 1 | 1.35×0.35 | (7.375, 6.225) / 270° |
 | living_dining | tv_wall_low | 1 | 2.1×0.4 | (7.48, 8) / 270° |
 | living_dining | tv_65 | 1 | 1.45×0.25 | (7.42, 8) / 270° |
@@ -108,42 +108,42 @@ glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下
 | living_dining | entry_half_height_cabinet | 1 | 2×0.35 | (11.24, 4.35) / 90° |
 | living_dining | dining_table | 1 | 1.4×0.8 | (9.8, 3.45) / 90° |
 | living_dining | dining_chair | 4 | 0.45×0.45 | (9.125, 3) / 90°；(10.475, 3) / 270°；(9.125, 3.9) / 90°；(10.475, 3.9) / 270° |
+| living_dining | curtain_set | 1 | （体块无尺寸记录） | （解算失败） |
+| living_dining | ceiling_light | 1 | （体块无尺寸记录） | （解算失败） |
 | living_dining | fridge | 1 | 0.833×0.6 | (7.6025, 2.9865) / 270° |
 | living_dining | waterbar_low_cabinet_800_preview | 1 | 0.8×0.42 | (7.43, 3.87) / 90° |
 | living_dining | mijia_instant_dispenser_s1_preview | 1 | 0.106×0.312 | (7.47, 3.64) / 90° |
 | living_dining | coffee_machine_em450 | 1 | 0.22×0.285 | (7.37, 4) / 90° |
-| living_dining | curtain_set | 2 | — | count-only（不在 glb，按实物补摆） |
-| living_dining | ceiling_light | 2 | — | count-only（不在 glb，按实物补摆） |
 | kitchen | kitchen_cabinet_run | 3 | （体块无尺寸记录） | (7.86, 0.32) / 0°；(9.94, 0.32) / 0°；(10.48, 1.275) / 90° |
 | kitchen | kitchen_countertop_bridge | 1 | 0.6×0.6 | (8.8, 0.32) / 0° |
 | kitchen | dishwasher | 1 | 0.6×0.6 | (8.8, 0.3) / 0° |
+| kitchen | cabinet_base | 1 | （体块无尺寸记录） | （解算失败） |
+| kitchen | cabinet_wall | 1 | （体块无尺寸记录） | （解算失败） |
+| kitchen | countertop_quartz | 1 | （体块无尺寸记录） | （解算失败） |
 | kitchen | gas_stove | 1 | 0.75×0.6 | (10.5, 1.5) / 90° |
 | kitchen | range_hood | 1 | 0.9×0.5 | (10.5, 1.5) / 90° |
 | kitchen | sink | 1 | 0.8×0.6 | (9.5, 0.3) / 0° |
 | kitchen | water_heater | 1 | 0.36×0.16 | (7.3, 1) / 270° |
+| kitchen | ceiling_light | 1 | （体块无尺寸记录） | （解算失败） |
 | kitchen | mijia_ro_purifier_1400g_under_sink_preview | 1 | 0.163×0.445 | (10.05, 0.32) / 0° |
-| kitchen | cabinet_base | 5 | — | count-only（不在 glb，按实物补摆） |
-| kitchen | cabinet_wall | 2 | — | count-only（不在 glb，按实物补摆） |
-| kitchen | countertop_quartz | 5 | — | count-only（不在 glb，按实物补摆） |
-| kitchen | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
 | master_bath | toilet | 1 | 0.4×0.6 | (2.275, 1.5) / 270° |
+| master_bath | shower_set | 1 | （体块无尺寸记录） | （解算失败） |
 | master_bath | towel_set | 1 | 0.04×0.28 | (0.24, 2.23) / 0° |
 | master_bath | exhaust_fan | 1 | 0.3×0.3 | (1, 2.7) |
-| master_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
+| guest_bath | vanity | 1 | （体块无尺寸记录） | (6.890, 3.955) / 270°（解算） |
+| guest_bath | faucet | 1 | （体块无尺寸记录） | （解算失败） |
 | guest_bath | toilet | 1 | 0.4×0.6 | (6.75, 3.05) / 270° |
+| guest_bath | shower_set | 1 | （体块无尺寸记录） | （解算失败） |
 | guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 2.45) |
-| guest_bath | vanity | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | faucet | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | shower_set | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | mirror_cabinet_gbath | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | robot_dock_gbath | 1 | — | count-only（不在 glb，按实物补摆） |
-| guest_bath | heated_towel_rack | 1 | — | count-only（不在 glb，按实物补摆） |
+| guest_bath | mirror_cabinet_gbath | 1 | 0.66×0.14 | (7.070, 3.955) / 270°（解算） |
+| guest_bath | robot_dock_gbath | 1 | 0.41×0.433 | (6.924, 3.860) / 270°（解算） |
+| guest_bath | heated_towel_rack | 1 | 0.55×0.1 | (5.710, 3.955) / 90°（解算） |
 | balcony | washer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
 | balcony | dryer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
-| balcony | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
+| balcony | ceiling_light | 1 | （体块无尺寸记录） | （解算失败） |
 | entry_garden | garden_entry_station | 1 | 1.1×0.38 | (15.02, 1.35) / 270° |
-| entry_garden | shoe_cabinet | 1 | — | count-only（不在 glb，按实物补摆） |
-| entry_garden | ceiling_light | 1 | — | count-only（不在 glb，按实物补摆） |
+| entry_garden | shoe_cabinet | 1 | 1.5×0.35 | （解算失败） |
+| entry_garden | ceiling_light | 1 | （体块无尺寸记录） | （解算失败） |
 
 ## 3. 灯光点位（11 个）→ 灯具与光源摆放单
 
