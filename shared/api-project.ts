@@ -58,7 +58,8 @@ export interface ProjectApiHouse {
   sceneElements: SceneElement[];
   /** 布局来源标识（布局切换时回传给服务端）。 */
   layoutSource: string;
-  /** 主卫冷凝链 MEP 穿墙锚点；派生失败时路由发 undefined（JSON 后缺省），下游链条显形。 */
+  /** 主卫冷凝链 MEP 穿墙锚点；派生失败或**读取被隔离**（配置暂时不可解析）时路由不下发本键
+   * （JSON 后缺省，后者见 placementClosureDiagnostics.condensatePenetrationError），下游链条显形。 */
   condensatePenetration?: { x: number; z: number };
 }
 
@@ -94,17 +95,22 @@ export interface ProjectApiMaterialPreview {
  * 交付诊断（宽容读取，issue #98 + PR #122 深审修复）：/api/project 不因**可预见的降级**
  * 500/503 掐死页面，而是随 **200** 响应下发本字段，页面显形问题并继续预览其余部分。
  *
- * **一条通道，两类条目**（PR #122 Codex blocking 修复后）：
+ * **一条通道，三类条目**（PR #122 Codex blocking/major 修复后）：
  * - 点位闭合违例：mount 宿主断引用 / count-only 宿主无平面几何（逐条文案与交付断言一致）；
  * - 投影构造失败：render-facts 投影构造器抛错（如 `buildRenderLightingFixtures` 的
  *   fail-closed），此时响应**不下发** renderFactsProjection，错误并入 violations，
  *   并在 `projectionError` 给机器可读形态。投影是「数据源一次给全」的优化、不是正确性
  *   前提——页面少 HVAC 源仍可预览，但正式 DXF 导出与模型验证对同一断引用仍会失败。
+ * - 冷凝锚点读取失败：`house.condensatePenetration` 的派生链重读并解析 MEP/电气/给排水/
+ *   吊顶/HVAC 配置时抛错，此时响应**不下发** condensatePenetration，错误并入 violations，
+ *   并在 `condensatePenetrationError` 给机器可读形态。锚点同样是「数据源一次给全」的优化、
+ *   不是正确性前提——页面少锚点仍可预览，但正式 DXF/GLB 导出与验证脚本对同一份不可解析
+ *   配置仍会失败（严格输出）。
  *
- * 键缺省 = 本次响应两类都正常。正式交付路径不因本字段放松（严格输出）。
+ * 键缺省 = 本次响应三类都正常。正式交付路径不因本字段放松（严格输出）。
  */
 export interface PlacementClosureApiDiagnostics {
-  /** 降级条数（= violations.length，两类条目合并计数）。 */
+  /** 降级条数（= violations.length，三类条目合并计数）。 */
   count: number;
   /** 逐条人读诊断：哪一项降级、缺什么、可能原因（闭合违例与交付断言逐条文案一致）。 */
   violations: string[];
@@ -118,6 +124,17 @@ export interface PlacementClosureApiDiagnostics {
     /** 失败的构造阶段（当前只有 render-facts 投影一个产地）。 */
     stage: 'render-facts-projection';
     /** 原始错误文案（构造器的 fail-closed 信息，含具体点位/宿主/引用 id）。 */
+    message: string;
+  };
+  /**
+   * 冷凝锚点读取失败的机器可读形态（存在即说明本次响应未下发
+   * `house.condensatePenetration`，且 violations 里必有对应条目）。
+   * 缺失 = 锚点读取产地未注入/读取成功；注意派生「无锚」但未抛错时不产生本字段（既有 fail-closed 口径）。
+   */
+  condensatePenetrationError?: {
+    /** 失败的读取阶段（当前只有主卫冷凝链穿墙锚点一个产地）。 */
+    stage: 'condensate-penetration';
+    /** 原始错误文案（配置读取/解析的 fail-closed 信息）。 */
     message: string;
   };
 }
@@ -138,8 +155,9 @@ export interface ProjectApiResponse {
    */
   renderFactsProjection?: ProjectRenderFactsProjection;
   /**
-   * 交付诊断（宽容读取）：点位 mount 宿主断引用、或投影构造失败时随 200 下发，
-   * 与 renderFactsProjection 平级（响应顶层）。键缺省 = 本次响应无降级，页面照常预览。
+   * 交付诊断（宽容读取）：点位 mount 宿主断引用、投影构造失败、或冷凝锚点读取失败时
+   * 随 200 下发，与 renderFactsProjection 平级（响应顶层）。键缺省 = 本次响应无降级，
+   * 页面照常预览。
    */
   placementClosureDiagnostics?: PlacementClosureApiDiagnostics;
   house: ProjectApiHouse;
