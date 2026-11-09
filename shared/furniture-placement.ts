@@ -225,6 +225,12 @@ function resolveItem(
   }
 
   if (hasWallAnchor) {
+    if (hasAbsolute) {
+      // issue #98 修复项 C：「已迁移对象不能合法地退回双事实源」。挂墙对象写回绝对 x/z
+      // 必须当场诊断失败——此前只有 mount（宿主槽位）/ anchor（锚点派生）分支配了这条
+      // 互斥，wall 分支漏配，第二份坐标源静默被墙锚优先吞掉，verify/DXF 全绿。
+      return { placement: null, diagnostic: 'wall/wall_side/along 与绝对 x/z 不得同时声明（世界坐标由墙锚推出，禁写第二来源）' };
+    }
     if (item.wall === undefined || item.wall_side === undefined || item.along === undefined) {
       return { placement: null, diagnostic: 'wall anchor requires wall, wall_side, and along' };
     }
