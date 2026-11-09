@@ -26,8 +26,8 @@
 |---|---|---:|---|---|
 | P3-010 | 装饰画与墙面陈设 | 不预分配 | proposed | 待补数据映射 |
 | P3-020 | 地毯靠垫及补充织物 | 不预分配 | proposed | 待补数据映射 |
-| P3-030 | 绿植与小型摆件 | 不预分配 | proposed | [config/house.yaml](house.yaml) — types=plant_fiddle |
-| P3-040 | 入住后灯光氛围微调 | 不预分配 | proposed | [config/electrical.yaml](electrical.yaml) — types=downlight,ceiling_light |
+| P3-030 | 绿植与小型摆件 | 不预分配 | proposed | [config/house.yaml](../../config/house.yaml) — types=plant_fiddle |
+| P3-040 | 入住后灯光氛围微调 | 不预分配 | proposed | [config/electrical.yaml](../../config/electrical.yaml) — types=downlight,ceiling_light |
 
 ## 入住观察记录要求
 

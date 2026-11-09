@@ -194,3 +194,87 @@ items:
       已随 S2-B 退场，本条为其承接。
     carrier: config/layout/model-geometry.yaml 厨房东南角黑块（v_blk_* 段）
     legacy_ref: 'pending-site-data 外部行动项 R01-A'
+
+  # ── 2026-11-09 补录（Codex 第 5 轮）：建筑几何类量测待办 ─────────────────────
+  # 为什么单列一组：collectElements() 只采电气/给排水/吊顶/HVAC 四类构件，建筑对象
+  # （openings / walls / rooms / platform / bay_sill）没有 status/blocker schema。
+  # 旧手账的「精度」列曾是这些对象**唯一**的「这是估算值、要现场核」标记；
+  # 值本身大多已迁进 model-geometry.yaml / house.yaml，但精度标记随账一起没了。
+  # 判据同文件头：owner 对象不是四类构件。
+  - id: OI-13
+    subject: 入户门尺寸与开启方向待量
+    owner: 量房方
+    trigger: 交房量房
+    current_state: >-
+      model-geometry.yaml openings 段已登记入户门条目，但尺寸与开启方向无现场实测值，
+      精度未标。影响玄关柜避让与纱窗/门套下单。
+    needs: '`{门洞宽高实测, 开启方向（内开/外开/推拉）, 门槛高差}`'
+    reversal: 实测与登记值偏差 >0.03m → 玄关柜进深/开门避让全链回改；开启方向与登记不符 → 重审玄关柜开门侧与纱窗方案。
+    carrier: config/layout/model-geometry.yaml `openings`（入户门条目）
+    legacy_ref: 'pending-site-data #13'
+  - id: OI-15
+    subject: 幕墙可开启扇位置与尺寸（当前 estimated）
+    owner: 业主
+    trigger: 交房量房 + 窗帘/纱窗定案前
+    current_state: >-
+      house.yaml constraints.exterior 记「四面均有推拉窗、约 1m 宽」——**约 1m 是估算值，
+      无精度标记、无逐扇定位**。影响纱窗下单、窗帘避让与家具靠窗摆放。
+    needs: '`{逐扇位置 x/z, 可开启扇宽高, 扇型（推拉/平开）}`'
+    reversal: 任一扇实测宽与「约 1m」偏差 >0.15m → 纱窗/窗帘按实测重做；若实际无可开启扇 → 通风方案重审。
+    carrier: config/house.yaml `constraints.exterior`
+    legacy_ref: 'pending-site-data #15'
+  - id: OI-14
+    subject: 空调外机位净尺寸待量
+    owner: 量房方
+    trigger: 交房量房（外机下单前）
+    current_state: >-
+      house.yaml west_platform 已登记设备平台几何，但外机位净尺寸（含检修余量）为推断值，
+      精度未标。影响外机支架/减振垫与检修空间判定。
+    needs: '`{平台净尺寸, 外机位净空含检修余量, 护栏/挡板高度}`'
+    reversal: 净空不满足外机最小检修距 → 重审外机选型或平台改造方案。
+    carrier: config/house.yaml `west_platform`
+    legacy_ref: 'pending-site-data #14'
+  - id: OI-20
+    subject: 全屋飘窗实际 sill 高度待量
+    owner: 量房方
+    trigger: 交房量房（窗帘/台面下单前）
+    current_state: >-
+      overlay→envelope 的 bay_sill 已登记 sill 几何，但「实际 sill 高度」是范围估算值
+      （原账记「范围已裁；150×150 估算，尺寸待量房终核"），精度未标。影响窗帘盒/台面定制。
+    needs: '`{逐窗 sill 顶/底标高实测, 窗台进深}`'
+    reversal: 实测与登记偏差 >0.02m → 窗帘盒深度与台面高度全链回改。
+    carrier: config/model/envelope/floor-zones.yaml / finish-surfaces.yaml（bay_sill 段）
+    legacy_ref: 'pending-site-data #20'
+  - id: OI-24
+    subject: 全屋门洞实际位置与开启方向待量
+    owner: 量房方
+    trigger: 交房量房
+    current_state: >-
+      model-geometry.yaml openings 已登记全部门洞，但实际位置与开启方向为推断值、精度未标。
+      影响全屋门套/五金下单与家具动线避让。
+    needs: '`{逐门洞实测宽高, 开启方向, 门槛高差}`'
+    reversal: 实测与登记偏差 >0.03m → 门套下单数据与家具动线复核全链回改。
+    carrier: config/layout/model-geometry.yaml `openings`
+    legacy_ref: 'pending-site-data #24'
+  - id: OI-28
+    subject: 交付标准清单勾选状态核实
+    owner: 业主
+    trigger: 交房时向开发商索取勾选版清单
+    current_state: >-
+      图纸附交付标准清单但勾选状态不可辨（表格近空白），**不得当作邻户事实**。
+      影响水电 12,000 预算口径（原线路利用 vs 全改）与 888 铲除范围判定。
+    needs: '`{勾选版交付标准清单, 水电改造范围口径}`'
+    reversal: 清单显示原线路不可利用 → 水电预算从「原线路利用」口径切全改，COST 口径全链回改。
+    carrier: config/house.yaml `notes`（交付标准段）
+    legacy_ref: 'pending-site-data #28'
+  - id: OI-11
+    subject: 幕墙竖梃位置待量
+    owner: 量房方
+    trigger: 交房量房
+    current_state: >-
+      envelope 的 mullion 条目已登记竖梃，但实际位置为推断值、精度未标。
+      影响柜体靠幕墙段的避让与窗帘分段。
+    needs: '`{逐竖梃 x/z 实测, 梃宽}`'
+    reversal: 实测与登记偏差 >0.03m → 靠幕墙柜体进深与窗帘分段全链回改。
+    carrier: config/model/envelope/openings.yaml（mullion 段）
+    legacy_ref: 'pending-site-data #11'

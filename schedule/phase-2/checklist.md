@@ -23,21 +23,21 @@
 
 | ID | 项目 | 预算区间 | 状态 | 关联项目数据 |
 |---|---|---:|---|---|
-| P2-010 | 电视及电视墙系统（含客厅低柜） | ¥11,000—¥14,000 | proposed | [config/house.yaml](house.yaml) — room_ids=living_dining; types=tv_wall_low,tv_65,wall_cabinet_tall |
-| P2-020 | 烘干机 | ¥2,500—¥4,500 | proposed | [config/house.yaml](house.yaml) — room_ids=balcony; types=dryer |
-| P2-030 | 洗碗机 | ¥2,500—¥4,000 | proposed | [config/house.yaml](house.yaml) — room_ids=kitchen; types=dishwasher |
-| P2-040 | 净水器 | ¥1,500—¥2,500 | proposed | [config/plumbing.yaml](plumbing.yaml) — ids=faucet_kitchen_purifier |
-| P2-060 | 客厅咖啡桌、地灯、绿植等小件家具 | ¥2,000—¥4,000 | proposed | [config/house.yaml](house.yaml) — room_ids=living_dining; types=coffee_table,floor_lamp,plant_fiddle |
-| P2-070 | 窗帘电机 | ¥3,000—¥4,000 | proposed | [config/model/envelope/openings.yaml](openings.yaml) — ids=curtain_living_south,curtain_master_west,curtain_master_south,curtain_master_strip_fabric,curtain_mb_washbasin_blinds,curtain_parent_south,curtain_study_south,curtain_nw_north,curtain_mbath_corner<br>[config/model/envelope/floor-zones.yaml](floor-zones.yaml) — ids=curtain_living_south,curtain_master_west,curtain_master_south,curtain_master_strip_fabric,curtain_mb_washbasin_blinds,curtain_parent_south,curtain_study_south,curtain_nw_north,curtain_mbath_corner<br>[config/model/envelope/finish-defaults.yaml](finish-defaults.yaml) — ids=curtain_living_south,curtain_master_west,curtain_master_south,curtain_master_strip_fabric,curtain_mb_washbasin_blinds,curtain_parent_south,curtain_study_south,curtain_nw_north,curtain_mbath_corner<br>[config/electrical.yaml](electrical.yaml) — ids=sock_living_curtain,sock_master_curtain,sock_parent_curtain,sock_study_curtain |
+| P2-010 | 电视及电视墙系统（含客厅低柜） | ¥11,000—¥14,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=living_dining; types=tv_wall_low,tv_65,wall_cabinet_tall |
+| P2-020 | 烘干机 | ¥2,500—¥4,500 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=balcony; types=dryer |
+| P2-030 | 洗碗机 | ¥2,500—¥4,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=kitchen; types=dishwasher |
+| P2-040 | 净水器 | ¥1,500—¥2,500 | proposed | [config/plumbing.yaml](../../config/plumbing.yaml) — ids=faucet_kitchen_purifier |
+| P2-060 | 客厅咖啡桌、地灯、绿植等小件家具 | ¥2,000—¥4,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=living_dining; types=coffee_table,floor_lamp,plant_fiddle |
+| P2-070 | 窗帘电机 | ¥3,000—¥4,000 | proposed | [config/model/envelope/openings.yaml](../../config/model/envelope/openings.yaml) — ids=curtain_living_south,curtain_master_west,curtain_master_south,curtain_master_strip_fabric,curtain_mb_washbasin_blinds,curtain_parent_south,curtain_study_south,curtain_nw_north,curtain_mbath_corner<br>[config/model/envelope/floor-zones.yaml](../../config/model/envelope/floor-zones.yaml) — ids=curtain_living_south,curtain_master_west,curtain_master_south,curtain_master_strip_fabric,curtain_mb_washbasin_blinds,curtain_parent_south,curtain_study_south,curtain_nw_north,curtain_mbath_corner<br>[config/model/envelope/finish-defaults.yaml](../../config/model/envelope/finish-defaults.yaml) — ids=curtain_living_south,curtain_master_west,curtain_master_south,curtain_master_strip_fabric,curtain_mb_washbasin_blinds,curtain_parent_south,curtain_study_south,curtain_nw_north,curtain_mbath_corner<br>[config/electrical.yaml](../../config/electrical.yaml) — ids=sock_living_curtain,sock_master_curtain,sock_parent_curtain,sock_study_curtain |
 | P2-080 | 家庭健身设备 | ¥1,000—¥1,500 | proposed | 待补数据映射 |
-| P2-090 | 晾衣架 | ¥600—¥700 | proposed | [config/model/envelope/ceiling.yaml](ceiling.yaml) — trade=drying_rack |
-| P2-100 | 主卧通顶定制衣柜（一期后移，藏空调冷凝水管槽，必须定制） | ¥3,000—¥5,000 | proposed | [config/house.yaml](house.yaml) — room_ids=master_bedroom; ids=mb.wardrobe_950,mb.wardrobe_pelmet,mb.vanity_base_cabinet,mb.vanity_lower_board,mb.vanity_main_board,mb.vanity_pvc_box,mb.vanity_pvc_wardrobe_entry,mb.vanity_pvc_service_chase,mb.condensate_pipe |
-| P2-110 | 客厅与书房窗帘（一期后移） | ¥4,000—¥6,000 | proposed | [config/house.yaml](house.yaml) — room_ids=living_dining,study; types=curtain_set |
-| P2-120 | 书房与西北次卧家具（一期后移） | ¥3,000—¥5,000 | proposed | [config/house.yaml](house.yaml) — room_ids=study,bedroom_nw |
+| P2-090 | 晾衣架 | ¥600—¥700 | proposed | [config/model/envelope/ceiling.yaml](../../config/model/envelope/ceiling.yaml) — trade=drying_rack |
+| P2-100 | 主卧通顶定制衣柜（一期后移，藏空调冷凝水管槽，必须定制） | ¥3,000—¥5,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=master_bedroom; ids=mb.wardrobe_950,mb.wardrobe_pelmet,mb.vanity_base_cabinet,mb.vanity_lower_board,mb.vanity_main_board,mb.vanity_pvc_box,mb.vanity_pvc_wardrobe_entry,mb.vanity_pvc_service_chase,mb.condensate_pipe |
+| P2-110 | 客厅与书房窗帘（一期后移） | ¥4,000—¥6,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=living_dining,study; types=curtain_set |
+| P2-120 | 书房与西北次卧家具（一期后移） | ¥3,000—¥5,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=study,bedroom_nw |
 | P2-130 | 壁床柜（一期后移） | ¥3,000—¥5,000 | proposed | 待补数据映射 |
-| P2-140 | 客厅大收纳柜（一期后移） | ¥2,000—¥4,000 | proposed | [config/house.yaml](house.yaml) — room_ids=living_dining; types=wall_cabinet_tall |
+| P2-140 | 客厅大收纳柜（一期后移） | ¥2,000—¥4,000 | proposed | [config/house.yaml](../../config/house.yaml) — room_ids=living_dining; types=wall_cabinet_tall |
 | P2-150 | 展示柜（一期后移） | ¥1,000—¥3,000 | proposed | 待补数据映射 |
-| P2-160 | 复杂灯光升级（筒射灯轨道灯，一期后移） | ¥2,000—¥4,000 | proposed | [config/electrical.yaml](electrical.yaml) — types=downlight,ceiling_light |
+| P2-160 | 复杂灯光升级（筒射灯轨道灯，一期后移） | ¥2,000—¥4,000 | proposed | [config/electrical.yaml](../../config/electrical.yaml) — types=downlight,ceiling_light |
 ## 验收与记录
 
 - 每个启动 Checkpoint 核对后，在阶段控制源的 `audit.records` 追加 `gate_id`、结果、检查人、日期、证据、`gate_spec_sha256` 和 `project_data_sha256`。复验追加记录，不覆盖历史。
