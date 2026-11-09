@@ -170,6 +170,9 @@ scan:
     - path: config/decision-knowledge.yaml
       pattern: '.'
       reason: DEC 知识载体：金额/型号/尺寸均为指向权威源（报价卡、control.yaml contract 块、config 对象字段）的摘要，权威值以那些字段为准；本文件只承载「为什么」，不做数值对账
+    - path: config/open-items.yaml
+      pattern: '.'
+      reason: 无属主对象可挂的未决项（家具/采购选型/设计裁定三类——它们没有 status/blocker schema）。原载体 docs/pending-site-data.md 已于 S2-B 退场，本文件是 AGENTS.md 决策铁律第 1 条指定的目的地。每条带 subject/owner/trigger/reversal 四样，收录判据见文件头；不许长成第二本手账
 
     - path: docs/decision_log.md
       pattern: '.'

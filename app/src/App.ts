@@ -341,8 +341,6 @@ export class App {
     );
     // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）；
     // mount 挂载点位的宿主索引同源注入（issue #98 S2）。
-    this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
-    this.annotationRenderer.setMountHosts(this.houseScene.getMountHosts());
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
@@ -3008,8 +3006,6 @@ export class App {
     );
     // 标注层坐标一律走 shared/point-placement.ts 单一解算（issue #98 S1）；
     // mount 挂载点位的宿主索引同源注入（issue #98 S2）。
-    this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
-    this.annotationRenderer.setMountHosts(this.houseScene.getMountHosts());
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
     this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
@@ -3125,6 +3121,17 @@ export class App {
   }
 
   private async refreshInfrastructure(): Promise<void> {
+    // 索引注入下沉到这里（2026-11-09 修 Codex blocking）： AnnotationRenderer 的
+    // setPointWalls/setMountHosts 原来只在初载（344）与普通重建（3011）两处调用，
+    // 阶段切换（3045）与异常恢复（3086）会**新建** AnnotationRenderer 后直接进本函数，
+    // 漏掉注入 → 新实例索引为空 → 挂墙/挂载点位解算失败 → AnnotationRenderer.planOf
+    // 的 `return {x:0,z:0}` 无告警分支 → 全部标注静默聚到原点。
+    // 点位的 x/z 声明已在第四阶段 S3 删光，那条回落分支永远走不到，所以失败必现。
+    // 下沉到本函数后四个入口自动都拿到，且将来新增重建入口也不会再漏。
+    if (this.annotationRenderer) {
+      this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
+      this.annotationRenderer.setMountHosts(this.houseScene.getMountHosts());
+    }
     const carriedPreview = this.visualPreviewActive ? this.captureVisualPreviewSnapshot() : null;
     this.setHvacCoordinationState('loading');
     this.houseScene.clearHvacProjection();
