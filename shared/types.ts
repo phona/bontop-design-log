@@ -313,6 +313,18 @@ export interface PhaseScope {
   furnishing_rules?: Record<string, PhaseFurnishingRule>;
 }
 
+/**
+ * 阶段预算权限元数据（原 server/phase-scope.ts 声明，2026-11-09 迁到此处）：
+ * /api/project 的 phaseMeta.budget 与阶段预算接口共用它。shared/ 不得反向依赖
+ * server/（见 shared/model-package-links.ts 头注），故随 PhaseScope 一起放共享侧。
+ */
+export interface PhaseBudgetMeta {
+  ceilingCny?: number;
+  allocatedCny?: number;
+  unallocatedCny?: number;
+  authority?: string;
+}
+
 export interface TopicSelection {
   default: string | null;
   roomOverrides: Record<string, string>;

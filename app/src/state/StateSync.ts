@@ -1,4 +1,5 @@
 import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, BudgetSnapshot, DesignCheckResult, ArchivedScheme, CurtainPresentationState, CurtainState } from '@shared/types';
+import type { ProjectApiResponse } from '@shared/api-project';
 import { apiWrite } from '../api-write.js';
 
 type SchemeCallback = (scheme: CurrentScheme) => void;
@@ -53,7 +54,12 @@ export class StateSync {
     return this.layout;
   }
 
-  async fetchProject(options: ProjectFetchOptions = {}): Promise<any> {
+  /**
+   * 拉取项目建场数据。返回类型 = shared/api-project.ts 的 ProjectApiResponse
+   * （2026-11-09 issue #98 轨道③：边界从 any 变为共享类型）——字段层级以服务端
+   * routes.ts 实际下发为准，例如 renderFactsProjection 在 house 内而非顶层。
+   */
+  async fetchProject(options: ProjectFetchOptions = {}): Promise<ProjectApiResponse> {
     const phase = options.phase ?? this.phase;
     const layout = options.layout ?? this.layout;
     const query = new URLSearchParams();

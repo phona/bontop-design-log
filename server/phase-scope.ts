@@ -1,18 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { load } from 'js-yaml';
-import type { FurnishingItem, FurnishingsYaml, PhaseId, PhaseScope } from '../shared/types.js';
+import type { FurnishingItem, FurnishingsYaml, PhaseBudgetMeta, PhaseId, PhaseScope } from '../shared/types.js';
 import { loadPhaseControlAuthority } from './phase-control.js';
 
 interface PhaseScopeFile {
   phases: Record<PhaseId, PhaseScope>;
 }
 
-export interface PhaseBudgetMeta {
-  ceilingCny?: number;
-  allocatedCny?: number;
-  unallocatedCny?: number;
-  authority?: string;
-}
+export type { PhaseBudgetMeta };
 
 export function loadPhaseScopes(path = 'schedule/phase-scope.yaml'): Record<PhaseId, PhaseScope> {
   const parsed = load(readFileSync(path, 'utf8')) as PhaseScopeFile;
