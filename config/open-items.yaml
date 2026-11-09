@@ -159,3 +159,38 @@ items:
     reversal: owner=业主；触发=到店看样、地面下单前
     carrier: docs/decisions/README.md；config/materials.yaml
     legacy_ref: 'pending-site-data #97'
+
+  # ── 2026-11-09 补录：Codex 在总 PR #122 上指出、原手账里「带 owner/触发但无四类构件载体」的两处现场疑点 ──
+  # 判据同文件头：owner 对象不是电气/给排水/吊顶/HVAC 构件。这两处都是**几何疑点**
+  # （邻户图 YS-01 上有框、无图例、定性不明），靠量房拍特写关闭，不属任何构件的 status/blame。
+  - id: OI-25a
+    subject: "主卧东墙书房侧墙垛 + 紧邻白框的量房定性（原手账 #25 合并问）"
+    owner: 业主
+    trigger: "量房拍特写定性（与 #25 主卧东墙窗洞同一行程）"
+    current_state: >-
+      书房侧墙垛凸约 0.35m（2026-10-26 DEC-2026-10-26-R02 已按 YS-01 建模为 w_pier_north）；
+      紧邻该墙垛有一约 0.35m 见方白框，YS-01 图上有、无图例、**定性不明**，尚未建模。
+      影响书房西墙南段家具摆位与主卧南床头柜 (4.01, 8.555) 贴墙复核。
+    needs: '`{墙垛三面实测, 白框尺寸实测, 白框性质（实体/符号/标注框）}`'
+    reversal: >-
+      量房实测墙垛三面任一偏差 >0.03m → 墙垛几何 / 路由绕行 / 衣柜南延段全链回改（owner 量房方，
+      触发=交房量房复测墙垛三面）；白框定性为实体（非符号/标注框）→ 白框另行建模裁定并重审
+      该处 MEP 穿点（owner 业主，触发=量房拍特写定性）；定性为符号/标注框 → 在对象 note 里销号。
+      原载体 量房待填手账 #25 已随 S2-B 退场，本条为其承接。
+    carrier: config/layout/model-geometry.yaml `w_pier_north`（墙垛已建模，白框未建）
+    legacy_ref: 'pending-site-data #25'
+  - id: OI-R01A
+    subject: 厨房东南角黑块南侧白框的量房定性（原手账外部行动项 R01-A）
+    owner: 业主
+    trigger: "量房拍特写定性（与 #25 同行程）"
+    current_state: >-
+      厨房东南角黑块南侧有一白框 x10.76–11.46、z3.95–4.26（0.70×0.31m），功能/高度未识别，
+      本条未立墙体构件。若定性为承重 → 须补墙体建模并重审该处 MEP 穿点；定性后决定是否补非墙
+      overlay 元素。
+    needs: '`{白框功能识别, 高度, 是否承重}`'
+    reversal: >-
+      承重 → 补墙体建模 + 重审 MEP 穿点；非承重但有功能 → 补非墙 overlay 元素；
+      符号/标注框 → 在对象 note 里销号。原载体 量房待填手账外部行动项 R01-A
+      已随 S2-B 退场，本条为其承接。
+    carrier: config/layout/model-geometry.yaml 厨房东南角黑块（v_blk_* 段）
+    legacy_ref: 'pending-site-data 外部行动项 R01-A'
