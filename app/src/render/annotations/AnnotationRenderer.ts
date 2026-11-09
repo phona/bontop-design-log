@@ -97,6 +97,10 @@ export class AnnotationRenderer {
       console.warn(`[annotations] ${point.id}: 定位解析失败，回落声明坐标（详见 verify:consistency）`);
       return { x: point.x, z: point.z };
     }
+    // 2026-11-09：原此分支静默返回 (0,0)——点位的 x/z 声明已在第四阶段 S3 删光，
+    // 走到这里必然是宿主索引没注入（调用点漏 setPointWalls/setMountHosts），
+    // 静默会让全部标注聚到原点且界面无任何异常。补告警让它至少发声。
+    console.warn(`[annotations] ${point.id}: 定位解析失败且无声明坐标可回落（宿主索引未注入？pointWalls=${this.pointWalls.size} mountHosts=${this.mountHosts.size}）——返回原点，标注位置不可信`);
     return { x: 0, z: 0 };
   }
 

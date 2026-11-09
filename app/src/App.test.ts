@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 vi.mock('three', async (importOriginal: any) => {
   const __three = await importOriginal();
@@ -1040,4 +1041,18 @@ describe('App', () => {
     expect(app['scheduleSelection']!.get().packageId).toBe('PKG-1');
     location.hash = '';
   });
+});
+
+// ── 投影索引注入必须下沉在 refreshInfrastructure（2026-11-09 Codex blocking 回归锚）──
+// 失效形态：AnnotationRenderer 的 setPointWalls/setMountHosts 若只在个别重建入口调用，
+// 新建 AnnotationRenderer 的入口（阶段切换 / 异常恢复）漏注入 → 索引为空 → 挂墙/挂载
+// 点位解算失败 → planOf 的 return {x:0,z:0} 分支 → 全部标注静默聚到原点。
+// 点位的 x/z 声明已在第四阶段 S3 删光，该失败必现且无告警。
+it('refreshInfrastructure 内部注入 pointWalls/mountHosts，任一重建入口都不会漏', () => {
+  const src = readFileSync('src/App.ts', 'utf8');
+  const start = src.indexOf('private async refreshInfrastructure()');
+  expect(start >= 0).toBeTruthy();
+  const body = src.slice(start, src.indexOf('\n  }', start));
+  expect(body).toMatch(/setPointWalls\(/);
+  expect(body).toMatch(/setMountHosts\(/);
 });

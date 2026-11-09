@@ -56,7 +56,7 @@ export function watchConfigFiles(paths: string[], onAnyChange: () => void): FSWa
 export class ConfigLoader<T> {
   private config: T | undefined;
   private status: ConfigStatus;
-  private watcher: FSWatcher | null = null;
+  private watchers: FSWatcher[] = [];
 
   /**
    * `path` 可传单文件或多文件。多文件用于一份逻辑配置拆成多个 YAML 的场景
@@ -96,14 +96,16 @@ export class ConfigLoader<T> {
   }
 
   startWatching(): void {
-    this.watcher = watchConfigFiles(this.pathList, () => this.load())[0] ?? null;
+    // 2026-11-09 修 Codex minor：watchConfigFiles 按**父目录**分别建 watcher 并返回数组，
+    // 原实现只存 `[0]`——overlayLoader 的输入跨 envelope / layout / config 三个目录，
+    // stopWatching 只能关其中一个，其余 persistent watcher 继续监听并可能阻止进程退出。
+    this.watchers = watchConfigFiles(this.pathList, () => this.load());
   }
 
   async stopWatching(): Promise<void> {
-    if (this.watcher) {
-      await this.watcher.close();
-      this.watcher = null;
-    }
+    // 逐个关闭，一个都不留。用 allSettled：单个 close 失败不应让其余 watcher 泄漏。
+    const pending = this.watchers.splice(0);
+    await Promise.allSettled(pending.map((watcher) => watcher.close()));
   }
 
   getConfig(): T | undefined {

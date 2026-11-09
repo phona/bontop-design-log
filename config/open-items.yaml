@@ -1,0 +1,161 @@
+# ============================================================================
+# config/open-items.yaml —— 无属主对象可挂的未决项（issue #98 第六阶段收尾补建）
+#
+# 为什么需要这个文件：构件级未决项（电气/给排水/吊顶/HVAC）住各对象自己的
+# status/blocker 字段，由 shared/element-blockers.ts 的 checkBlockers 门禁盯着。
+# 但**家具对象、采购选型、设计裁定**这三类没有 status/blocker schema——它们的未决项
+# 曾经住在量房待填手账里，那份手账已于 S2-B 整份退场。
+#
+# 本文件只收「真的没有对象可挂」的少数几条（AGENTS.md 决策铁律第 1 条指定的目的地）。
+# 收录判据：owner 对象不是 electrical/plumbing/ceiling/hvac 四类构件（那四类有自己的
+# blocker 字段，不该来这里）。**不许长成第二本手账**——新增条目必须能回答「为什么不能挂到
+# 某个对象上」。
+#
+# 2026-11-09 建账时收录 14 条：原手账 #76/#77（客卫台盆柜出图基准 / 云鲸勘测）+
+# #86–#97（docs/decisions/README.md「待决策事项」12 条，其原始载体与中间载体都已退场，
+# 内容一度只剩 git 史——这正是停止条件第 1 条要防的「失去全部现存登记」）。
+#
+# YAML 铁律 7：值内含 `#`（编号 #76 等）一律加引号——js-yaml 会把未加引号的裸 `#`
+# 后内容整段吞成注释，文件仍合法、门禁全绿，但数据少一半。
+# ============================================================================
+
+version: 1
+# 受门禁管辖的未决项必须带齐四样：subject / owner / trigger / reversal。
+# 前三样是结构化字段（机器可查），reversal 允许散文（工程判断字段化不了）。
+required_fields: [subject, owner, trigger, reversal]
+
+items:
+  - id: OI-76
+    subject: 客卫台盆柜柜体出图基准（东墙完成面口径 + 墙段净跨/平整度）
+    owner: 量房方
+    trigger: 量尺复尺（柜体下单前）
+    current_state: >-
+      **当前基准（2026-11-06）**：柜宽 0.69 贴死可用跨度 [3.61,4.30]（南墙 w_gbath_south 南脸 3.61 至东墙段南端 4.30，两端 0 容差）；背沿贴墙面西脸 7.14（渲染口径，业主 2026-11-06 裁定先行、linter 兜底）；**7.04 为 DEC-2026-10-23-R04 墙线迁移前历史值**，结构读法 7.20
+      待量房裁；旧「0.72 柜居中墙段」几何已因北端侵入实体墙作废
+    needs: '`{东墙完成面 x 实测, 墙段 z[3.55,4.30] 实测净跨与两墙面平整度}`'
+    reversal: owner=量房方；触发=量尺复尺（柜体下单前）；**回退规则（2026-11-06 Codex blocking 修正）**：按实测净跨扣除安装余量（建议每端 ≥10mm）后**重算**柜宽与仓/抽屉分割，不得写死退回某个旧宽度；墙面不平 >5mm 或净跨 <0.67m 时暂停下单并重开 DEC；结构面口径按实测回改（偏差 >0.03m 级联回改柜/dock x）
+    carrier: config/house.yaml `guest_bath.vanity` / `robot_dock_gbath`；DEC-2026-11-05-R5 + Codex 复审修正
+    legacy_ref: 'pending-site-data #76'
+  - id: OI-77
+    subject: 云鲸官方安装勘测（柜内安装官方无章节）
+    owner: 业主
+    trigger: 柜体下单前（勘测前置，2026-11-06 Codex major 修正）**——勘测要判定柜内安装/背面水口软管走向/前面板拆装/整台前拉是否可行，结论直接改变定制柜体尺寸与结构，不能下单后才知不适配
+    current_state: >-
+      J65/J64 手册均无柜内/嵌入式安装章节，官方摆放口径仅为前方≥0.45m 空旷且无悬崖（2026-11-06 纠误：原「后≥0.3m」系误读图中临空边缘安全距离，非背向退墙要求——背贴墙方案不违背官方口径，勘测不得据此要求退墙）；京东预留图（宽>45/深>45/前>45/高≤30/出入口>15）是唯一柜内口径——现行仓满足宽 0.46>0.45、深 0.48>0.45、前
+      ~0.98>0.45、高（基站+托盘+盖 0.30≤0.30）四项；**底缝恰为 15cm、不满足「>15cm」的严格不等号（2026-11-06 Codex blocking 修正，原「全部满足」声明有误）**——底缝 0.16m 可满足且对机器人（高 0.095m）无影响，是否加高 1cm
+      待业主/勘测定；勘测时须将该条列为待确认项；官方安装走「自主预约安装流程」（400-080-0630，请勿自行拆箱）+ 免费上门安装勘测
+    needs: '`{勘测结论: 柜内安装是否放行, 背贴死+背面水口软管走向, 前面板取袋操作空间, 整台前拉路径}`'
+    reversal: >-
+      owner=业主；**触发=柜体下单前（勘测前置，2026-11-06 Codex major 修正）**——勘测要判定柜内安装/背面水口软管走向/前面板拆装/整台前拉是否可行，结论直接改变定制柜体尺寸与结构，不能下单后才知不适配；勘测不过 → 先改柜体方案并重开 DEC 再下单；勘测结论与预留图/手册冲突时以勘测为准并回写 DEC；三项操作空间任何一项不过即回 acceptance
+      未闭环。2026-11-08 issue #98 S1-B 迁移补登：本条同时承接 DEC-2026-11-04-R3 未闭环条件②③的条件文本——②「开盖最小顶部高度」的「顶部 25cm 开盖」前提已由 J65 官方手册证伪（换尘袋/加液在前面板后，全册无顶部开盖机构），残余=前面板取袋操作空间即本条勘测项；③「新仓检修三项（开盖可达/移出可断管拆接/清堵可达）对着仓位图与安装手册逐条核」=
+      本条勘测三问的执行；④ 订单 SKU/上下水配件复核挂 #79
+    carrier: DEC-2026-11-05-R5 遗留③；schedule/procurement.md JX 段
+    legacy_ref: 'pending-site-data #77'
+  - id: OI-86
+    subject: 灯光升级（2800→6500 按点位采购灯具）
+    owner: 业主
+    trigger: 灯具采购前
+    current_state: lighting 2800 → 6500（+3~4k）。3D 灯光系统已建，点位已在 electrical.yaml；此决策=按点位采购灯具（餐桌吊灯/客厅主灯/主卧壁灯为风格核心）
+    needs: '`{逐位灯具采购清单}`'
+    reversal: owner=业主；触发=灯具采购前
+    carrier: docs/decisions/README.md 待决策事项（本体迁移）；schedule/procurement.md
+    legacy_ref: 'pending-site-data #86'
+  - id: OI-87
+    subject: 客餐厅人字拼复活条件
+    owner: 业主
+    trigger: 到店看样
+    current_state: 全屋人字拼已由 DEC-2026-08-21-040 推翻（成本爆炸，改 600×1200 错缝通铺，后又由 KT 200×1200 基准接替）；人字拼降回候选：门店样板终审「能让人哇出来」才复活，否则正式放弃
+    needs: '`{门店样板终审}`'
+    reversal: owner=业主；触发=到店看样
+    carrier: docs/decisions/README.md；config/materials.yaml
+    legacy_ref: 'pending-site-data #87'
+  - id: OI-88
+    subject: 厨房框线柜门+黄铜拉手
+    owner: 业主
+    trigger: 橱柜定稿前
+    current_state: 法式柜门仅限厨房/玄关/主卫薄柜三处定制，衣柜维持成品推拉门（DEC-2026-08-02-013 不动）；kitchen_cabinet 池 +1.5~3k
+    needs: '`{是否立项, 预算 +1.5~3k}`'
+    reversal: owner=业主；触发=橱柜定稿前
+    carrier: docs/decisions/README.md；schedule/procurement.md
+    legacy_ref: 'pending-site-data #88'
+  - id: OI-89
+    subject: PU 线条框线
+    owner: 业主
+    trigger: 油漆进场前
+    current_state: 客厅+主卧 3 面墙，每面 1-2 框，+2~4k（paint 阶段同色刷）；纪律：少量多次，禁满墙
+    needs: '`{客厅+主卧 3 面墙框线}`'
+    reversal: owner=业主；触发=油漆进场前
+    carrier: docs/decisions/README.md
+    legacy_ref: 'pending-site-data #89'
+  - id: OI-90
+    subject: 卫浴风格包残余（黑窄边长虹门×2 / 黄铜五金 / 防霉玻璃胶）
+    owner: 业主
+    trigger: 卫浴采购前
+    current_state: '原包内各项已分流：客卫地面小花砖已建模（DEC-042 → DEC-2026-10-18-TILE-02 收窄为内卫保留）、电热毛巾架挂 #69、风暖浴霸×2 已入铝扣板套件报价（#38，9,537 含 2 浴霸+凉霸+灯）；**残余待拍板**：黑窄边长虹门×2（+0.6~1k，池内）、黄铜五金拉丝金（+0.5~1k，花洒维持亮铬防水垢）、防霉玻璃胶'
+    needs: '`{长虹门×2, 拉丝金五金, 防霉胶}`'
+    reversal: owner=业主；触发=卫浴采购前
+    carrier: docs/decisions/README.md；config/materials.yaml
+    legacy_ref: 'pending-site-data #90'
+  - id: OI-91
+    subject: 黑色载体 design rule 待拍板写入
+    owner: 业主
+    trigger: 五金/门/灯具定标前拍板
+    current_state: 门窗不可动后，8% 哑光黑载体=厨卫门/推拉门/灯具/五金/画框，同色同细度，0 元纪律。**业主书面拍板前不写入 config/design-rules.yaml**——README 原文即「待写入」，属未决提案而非已裁纪律
+    needs: '`{8% 哑光黑载体清单}`'
+    reversal: owner=业主；触发=五金/门/灯具定标前拍板；拍板后由 AI 会话按页面只读铁律写入 config 并过闸
+    carrier: config/design-rules.yaml；docs/decisions/README.md
+    legacy_ref: 'pending-site-data #91'
+  - id: OI-92
+    subject: 主卫缩小评估（量房后评估项）
+    owner: 业主+设计侧
+    trigger: 交房量房后
+    current_state: 轻优化已定方向（大淋浴区+壁龛+家政薄柜 +0.5~1k）；「缩小主卫让面积给邻房」登记为量房后评估项，闸门=立管位置/隔墙承重/玻璃幕角
+    needs: '`{立管位, 隔墙承重, 玻璃幕角}`'
+    reversal: owner=业主+设计侧；触发=交房量房后
+    carrier: docs/decisions/README.md
+    legacy_ref: 'pending-site-data #92'
+  - id: OI-93
+    subject: 衣柜核价三问（最高优先数据项）
+    owner: 业主
+    trigger: '到店核价（与 #98 门店核价清单同行程）'
+    current_state: wardrobe_240_01 price=4200 vs notes 1700 元/㎡（=11,016/组）矛盾，三组衣柜 ±17k；到店问：计价方式/板材/分组报价
+    needs: '`{计价方式, 板材, 分组报价}`'
+    reversal: 'owner=业主；触发=到店核价（与 #98 门店核价清单同行程）'
+    carrier: schedule/procurement.md；docs/decisions/README.md
+    legacy_ref: 'pending-site-data #93'
+  - id: OI-94
+    subject: 零散待补候选（室内门/洗烘叠放/管线机茶吧机/美缝踢脚颜色/工期计划）
+    owner: 业主
+    trigger: 对应采购/深化节点前
+    current_state: '① 室内门选型（黑窄边方向）未选型未核价；② 洗烘叠放摆位（生活阳台，叠放高约 1.70m 与现 h=1.2 插座冲突见 #33）；③ 管线机/茶吧机要不要；④ 美缝/踢脚线颜色——暖白家族内对色站一起办（踢脚线材质方向已定 DEC-2026-10-28-R01，仅颜色待对）；⑤ 工期计划（底座无时间维度）'
+    needs: '`{室内门选型, 叠放支架, 管线机/茶吧机, 对色, 工期}`'
+    reversal: owner=业主；触发=对应采购/深化节点前
+    carrier: docs/decisions/README.md
+    legacy_ref: 'pending-site-data #94'
+  - id: OI-95
+    subject: 入户花园消防通道处理
+    owner: 业主+物业/消防
+    trigger: 交房后物业确认
+    current_state: '保留通道宽度 / 局部柜体避让——**外部行动项**，需物业/消防确认通道宽度，非配置决策（与 #48 入户花园去留联动：若通道宽度不允许，faucet_garden/drain_garden 去留一并复核）'
+    needs: '`{通道宽度, 柜体避让}`'
+    reversal: owner=业主+物业/消防；触发=交房后物业确认
+    carrier: docs/decisions/README.md（本体迁移）
+    legacy_ref: 'pending-site-data #95'
+  - id: OI-96
+    subject: 主卧飘窗具体利用方式
+    owner: 业主
+    trigger: 主卧布置定稿前
+    current_state: 当前默认：保留 + 大理石台面 + 坐垫简装（DEC-010，控成本，可否决）；替代方向榻榻米/梳妆台/休闲区未拍板
+    needs: '`{榻榻米/梳妆台/休闲区}`'
+    reversal: owner=业主；触发=主卧布置定稿前
+    carrier: docs/decisions/README.md（本体迁移）
+    legacy_ref: 'pending-site-data #96'
+  - id: OI-97
+    subject: 各房间地面材料切换权（卧室系）
+    owner: 业主
+    trigger: 到店看样、地面下单前
+    current_state: 已建模 bedroom_floor topic（DEC-2026-08-01-011）：客餐厅=木纹砖通铺（floor_tile_01）；卧室默认木纹砖通铺（bedroom_tile_01），可切换实木复合（bedroom_wood_01）；到店看样后可调整
+    needs: '`{bedroom_tile_01 vs bedroom_wood_01}`'
+    reversal: owner=业主；触发=到店看样、地面下单前
+    carrier: docs/decisions/README.md；config/materials.yaml
+    legacy_ref: 'pending-site-data #97'
