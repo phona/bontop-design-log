@@ -124,7 +124,7 @@ describe('/api/project 冷凝锚点读取异常隔离（issue #98 宽容读取�
     assert.match(diagnostics.condensatePenetrationError?.message ?? '', /mep-hvac-coordination\.yaml/);
     // 统一处理方向：锚点是优化不是正确性前提，正式交付仍会失败，问题不会藏。
     assert.match(diagnostics.guidance, /不是正确性前提/, 'guidance 必须说清锚点只是优化');
-    assert.match(diagnostics.guidance, /正式 DXF 导出、GLB 导出与模型验证/, 'guidance 必须说明严格输出未放松');
+    assert.match(diagnostics.guidance, /正式 DXF 导出与模型验证/, 'guidance 必须说明严格输出未放松');
     assert.match(diagnostics.guidance, /问题不会藏/, 'guidance 必须说明问题不会因页面降级而隐藏');
 
     // 失败隔离到锚点一个字段：其余交付内容照常下发，页面继续预览。

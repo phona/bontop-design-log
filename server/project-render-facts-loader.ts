@@ -121,7 +121,7 @@ export class ProjectRenderFactsLoader implements StatusLoader {
         // 2026-11-09 修 Codex blocking：原这里调 buildProjectRenderFactsProjection 只为
         // 验算（结果丢弃），而 ProjectData.renderFactsProjection 全仓无赋值、/api/project
         // 也不返回它 → HouseScene 的 hvacSources 恒为 undefined → SceneBuilder 解不出
-        // indoor_master 锚点 → 三件冷凝链家具带诊断跳过、页面与 GLB 持续缺件。
+        // indoor_master 锚点 → 三件冷凝链家具带诊断跳过、页面持续缺件。
         // 改为把投影存下来并由 /api/project 下发（见 server/routes.ts）。
         this.projection = buildProjectRenderFactsProjection(
           loadedFacts,

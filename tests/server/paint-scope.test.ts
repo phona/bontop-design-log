@@ -185,7 +185,7 @@ test('buildScene emits paint meshes with reversible initial state, split at door
   assert.equal(regionIds.length, 31, '每条wall paint选择都有独立声明（R01：净 −1）');
   assert.ok(meshes.length > 32, `门洞必须把声明拆成多块平面，实际 ${meshes.length} 块`);
   for (const mesh of meshes) {
-    assert.equal(mesh.visible, false, '默认不可见（GLB 导出自动排除）');
+    assert.equal(mesh.visible, false, '默认不可见（检视态开关按需开启）');
     assert.equal(mesh.renderOrder, 0);
     assert.equal((mesh.userData as any).inspectionVisibleOnly, true);
     assert.equal((mesh.userData as any).inspectionLayer, 'wall-paint');
@@ -740,10 +740,10 @@ test('paint scope reconciliation stays free of browser globals and HVAC coupling
   assert.ok(!/Hvac|hvac/.test(appPaint![0]), 'App 的涂漆开关播报不得引用 HVAC');
 });
 
-test('paint inspection overlay is excluded from GLB export by default visibility', () => {
+test('paint inspection overlay stays invisible by default', () => {
   const scene: any = sceneWithPaintRegions();
   const meshes = paintMeshes(scene.exportRoot);
-  assert.ok(meshes.every((mesh) => mesh.visible === false), 'GLTFExporter 默认只导可见对象，默认不可见即自动排除');
+  assert.ok(meshes.every((mesh) => mesh.visible === false), '检视态叠加层默认不可见，打开开关才显示');
 });
 
 /**

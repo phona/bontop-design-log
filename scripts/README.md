@@ -1,6 +1,6 @@
 # scripts / 工具脚本
 
-本目录按职责分层保存项目自动化脚本。当前默认效果预览路线为 **Web + GPT**；Web/CLI GLB 构建、导出、检查和比较仍是 active 主线。Blender 管线已暂停并冷归档，不再提供顶层 wrapper、bundle 或默认 npm 入口。
+本目录按职责分层保存项目自动化脚本。当前默认效果预览路线为 **Web + GPT**；GLB 导出已下线（issue #168），Web 端为唯一现役渲染/预览线。Blender 管线已暂停并冷归档，不再提供顶层 wrapper、bundle 或默认 npm 入口。
 
 ## Active 目录结构
 
@@ -18,7 +18,8 @@ scripts/
 │   ├── electrical/              # electrical lint
 │   └── project/                 # 共享 facts/lighting 校验
 ├── render/
-│   ├── glb/                     # CLI GLB build/export/inspect/compare
+│   ├── cli-house-scene.ts       # Node 下场景装配（测试共用，非导出）
+│   ├── dxf/                     # 施工 DXF 导出
 │   ├── capture/                 # browser floor-plan capture and watcher
 │   └── diagrams/                # top-down and MEP/HVAC diagrams
 └── archive/
@@ -35,7 +36,7 @@ scripts/
 | 共享 project facts/灯光校验 | `npm run verify:project-render-facts`、`npm run verify:lighting-config` |
 | 空间声明/拓扑/安装校验 | `npm run verify:spatial` |
 | 防穿模（实体互撞/净距） | `npm run verify:penetration` |
-| GLB 导出/比较 | `npm run export:glb`、`npm run compare:glb` |
+| 施工 DXF 导出 | `npm run export:dxf`（唯一现役图纸导出） |
 | Floor-plan capture | `python scripts/render/capture/capture_floor_plan_screenshot.py` |
 | Floor-plan watcher | `python scripts/render/capture/watch_floor_plan_and_compare.py` |
 | 俯视图/MEP 图 | `python scripts/render/diagrams/draw-topdown.py`、`draw-mep-hvac-plan.py` |

@@ -609,7 +609,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     // 锚点（三件冷凝链家具退化为无锚，由场景诊断显形），其余交付内容照常预览；错误并入
     // 下方**同一条** placementClosureDiagnostics 通道，响应仍 200。
     // **严格输出零改动**：同一份不可解析配置在正式交付路径（scripts/render/dxf/export-dxf.ts
-    // 第 28 行无 catch 直接解析，npm run export:dxf 因此非零退出；GLB 导出与验证脚本同理）
+    // 第 28 行无 catch 直接解析，npm run export:dxf 因此非零退出；验证脚本同理）
     // 仍必须失败——锚点不可得 ≠ 放行，问题不会藏。
     let condensatePenetration: { x: number; z: number } | undefined;
     let condensatePenetrationFailure: string | undefined;
@@ -617,7 +617,7 @@ export function createApiRouter(deps: ApiDeps): Router {
       condensatePenetration = readCondensateMasterPenetration();
     } catch (err) {
       condensatePenetrationFailure = err instanceof Error ? err.message : String(err);
-      console.error('[api/project] 冷凝锚点读取失败：已降级为诊断（页面继续预览，正式 DXF/GLB/验证仍会失败）：', err);
+      console.error('[api/project] 冷凝锚点读取失败：已降级为诊断（页面继续预览，正式 DXF/验证仍会失败）：', err);
     }
     // 统一诊断通道：点位闭合违例、投影构造失败与冷凝锚点读取失败共用
     // placementClosureDiagnostics 一个键、一份 count、一组处理方向；

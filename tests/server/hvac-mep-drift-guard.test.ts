@@ -289,7 +289,7 @@ test('E7 告警化：失败场景的诊断内容逐条对账（noPointWalls 恰 
 
 test('E7 告警化：诊断经 SceneBuilder 的 placementDiagnostics 通道上浮', () => {
   // 3D/CLI 装配路径：buildHvacGeometry 的 diagnostics 必须进 report.placementDiagnostics，
-  // 页面控制台 / verify-spatial / DXF-GLB 装配日志才看得见（不允许只在共享层记完就断链）。
+  // 页面控制台 / verify-spatial / DXF 装配日志才看得见（不允许只在共享层记完就断链）。
   const projection = { version: '2.0', lightingFixtures: [], plumbing: [], ceiling: [], hvac: { status: 'implemented', planId: plan.id, diagram }, materials: { floor: { default: null, roomOverrides: {} } }, presentation: { curtains: {} } } as unknown as import('../../shared/types.js').ProjectRenderFactsProjection;
   const result = buildScene({
     rooms: [{ id: 'r', name: 'r', x: 0, z: 0, width: 4, depth: 4, height: 2.8, type: 'private', boundary_count: 4 }],

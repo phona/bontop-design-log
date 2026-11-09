@@ -249,10 +249,10 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     assert.ok((fullBuild.sources.ceiling?.length ?? 0) > 0, 'HVAC 装配源 ceiling 为空');
     assert.ok((fullBuild.sources.electrical?.length ?? 0) > 0, 'HVAC 装配源 electrical 为空（power anchor 会静默丢掉）');
     // 外机（PR #122 Codex blocking，2026-11-10）：页面首建手上只有这份投影，没有 render-facts
-    // 的 hvac facts；投影不带外机则 confirmed outdoor_a2 解不出，外机不画且 GLB 导出被拒。
+    // 的 hvac facts；投影不带外机则 confirmed outdoor_a2 解不出，外机不画且导出被拒。
     assert.ok(full.renderFactsProjection.hvac.status === 'implemented');
     assert.ok((full.renderFactsProjection.hvac.outdoor?.length ?? 0) > 0,
-      '响应里的 implemented 投影缺 hvac.outdoor：页面首建解不出 outdoor_a2（外机不画 + 诊断 + GLB 导出被拒）');
+      '响应里的 implemented 投影缺 hvac.outdoor：页面首建解不出 outdoor_a2（外机不画 + 诊断 + 导出被拒）');
     assert.ok((fullBuild.sources.outdoor?.length ?? 0) > 0, '首建装配源没有外机：buildHvacBuilderSources 未从投影取到 hvac.outdoor');
     assert.ok(fullBuild.anchors.has('outdoor_a2'), '首建源解不出 confirmed 外机锚点 outdoor_a2');
 

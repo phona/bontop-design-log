@@ -74,11 +74,11 @@ export const PROJECTION_CONSTRUCTION_GUIDANCE =
  * 配置。**读取异常**（配置文件暂时不可解析）在页面入口被隔离成诊断随 200 下发；锚点是
  * 「数据源一次给全」的优化，**不是正确性前提**——不可得时页面少锚点、其余内容照常预览。
  * 同一份不可解析配置在正式交付路径（`npm run export:dxf` 的 `loadMepCoordinationConfig`
- * 无 catch、GLB 导出、验证脚本）仍必须失败——锚点不可得 ≠ 放行，问题不会藏。
+ * 无 catch、验证脚本）仍必须失败——锚点不可得 ≠ 放行，问题不会藏。
  */
 export const CONDENSATE_PENETRATION_GUIDANCE =
   '冷凝锚点读取失败处理方向：修复暂时不可解析的配置（MEP 协调 / 电气 / 给排水 / 吊顶 / HVAC），不得绕过读取或硬编码锚点放行。'
-  + '该锚点是「数据源一次给全」的优化，不是正确性前提：本次响应不下发 house.condensatePenetration，页面少锚点但按宽容读取继续预览其余内容；但正式 DXF 导出、GLB 导出与模型验证遇到同一份不可解析配置仍必须失败（严格输出，issue #98），问题不会藏。';
+  + '该锚点是「数据源一次给全」的优化，不是正确性前提：本次响应不下发 house.condensatePenetration，页面少锚点但按宽容读取继续预览其余内容；但正式 DXF 导出与模型验证遇到同一份不可解析配置仍必须失败（严格输出，issue #98），问题不会藏。';
 
 const KIND_LABEL: Record<PlacementClosureViolation['kind'], string> = {
   electrical: '电气',
