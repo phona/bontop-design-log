@@ -86,9 +86,13 @@ export class AnnotationRenderer {
   }
 
   /**
-   * 解析后平面坐标（issue #98 S1 单一解算）：沿墙点位 = 完成面基点（与 MEP 端点同源）；
-   * 解算失败（缺 along/越界/断引用）回落声明 x/z 并 console 告警——标注层不是施工依据，
-   * 权威判定在 mep-hvac-lint 与 verify:consistency，那里同样的情况是 fail-closed。
+   * 解析后平面坐标（issue #98 S1 单一解算）：沿墙点位 = 完成面基点（与 MEP 端点同源）。
+   * 解算失败时回落声明 x/z 并 console 告警（仅剩绝对点位走这条路，见下方注释）；
+   * 连声明坐标都没有 → **抛错**。标注层不是施工依据，权威判定在 mep-hvac-lint 与
+   * verify:consistency，那里同样的情况是 fail-closed——但「不是施工依据」要用
+   * **不画 + 当场炸**表达，不能用回落原点表达：点位 x/z 声明已在第四阶段 S3 删光，
+   * 走到这里必然是宿主索引没注入（调用点漏 setPointWalls/setMountHosts）或宿主断引用，
+   * 回落 (0,0) 等于给全部标注发一个假坐标，界面照常、位置全错，比不画更坏。
    */
   private planOf(point: ElectricalPoint | PlumbingPoint): { x: number; z: number } {
     const { placement } = resolvePointPlacementInWalls(point, this.pointWalls, this.mountHosts);
@@ -97,11 +101,7 @@ export class AnnotationRenderer {
       console.warn(`[annotations] ${point.id}: 定位解析失败，回落声明坐标（详见 verify:consistency）`);
       return { x: point.x, z: point.z };
     }
-    // 2026-11-09：原此分支静默返回 (0,0)——点位的 x/z 声明已在第四阶段 S3 删光，
-    // 走到这里必然是宿主索引没注入（调用点漏 setPointWalls/setMountHosts），
-    // 静默会让全部标注聚到原点且界面无任何异常。补告警让它至少发声。
-    console.warn(`[annotations] ${point.id}: 定位解析失败且无声明坐标可回落（宿主索引未注入？pointWalls=${this.pointWalls.size} mountHosts=${this.mountHosts.size}）——返回原点，标注位置不可信`);
-    return { x: 0, z: 0 };
+    throw new Error(`[annotations] ${point.id}: 定位解析失败且无声明坐标可回落（宿主索引未注入或宿主断引用？pointWalls=${this.pointWalls.size} mountHosts=${this.mountHosts.size}）——拒绝回落原点，标注必须落在解算坐标上`);
   }
 
   async load(): Promise<void> {

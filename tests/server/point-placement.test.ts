@@ -150,13 +150,17 @@ describe('point mount resolution (issue #98 S2 real mount)', () => {
     assert.match(countOnly.diagnostic ?? '', /不在家具宿主索引或未放置/);
   });
 
-  it('requires mountHosts from the caller (no silent fallback to declared x/z)', () => {
-    const { placement, diagnostic } = resolvePointPlacementInWalls(
-      { id: 'p', mount: { furniture_id: 'ld.host', face: 'east', along: 0.9 } },
-      undefined,
+  it('requires mountHosts from the caller (throws, no silent fallback to declared x/z)', () => {
+    // 2026-11-09 issue #98 疗法①：缺宿主索引从「返回诊断」改成**当场抛**。诊断返回值会被
+    // 多个消费方降级（回落声明 x/z / 回落原点 / 跳过该模型）——x/z 声明已在 S3 删光，
+    // 降级路径只剩静默错位。口径与 shared/lighting-fixtures.ts「缺失即抛」对齐。
+    assert.throws(
+      () => resolvePointPlacementInWalls(
+        { id: 'p', mount: { furniture_id: 'ld.host', face: 'east', along: 0.9 } },
+        undefined,
+      ),
+      /mount 定位要求调用方提供家具宿主索引/,
     );
-    assert.equal(placement, null);
-    assert.match(diagnostic ?? '', /家具宿主索引/);
   });
 
   it('rejects mount without along and a wall_side inconsistent with mount.face', () => {

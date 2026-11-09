@@ -199,10 +199,13 @@ describe('lighting fixture derivation fail-closed', () => {
 
   it('throws when a mount fixture is derived without the furniture host index (fail-closed, no x/z fallback)', () => {
     // issue #98 S2 真挂载：mount 是定位来源，缺宿主索引必须抛错，不许回落声明 x/z。
+    // 2026-11-09 疗法①：抛点从调用方（lighting-fixtures 的「解析失败」包装）下沉到解算器
+    // 本身（shared/point-placement.ts 缺 mountHosts 即抛）——consumer 侧的降级路径
+    // （回落 x/z / 回落原点 / 跳过模型）从此吃不到这个失败。
     const mountPoint = point({ id: 'night_mount', type: 'night_light', mount: { furniture_id: 'ld.entry_half_height_cabinet', face: 'east', along: 1.45, surface_gap: 0.003 } }) as ElectricalPoint;
     assert.throws(
       () => buildRenderLightingFixtures([mountPoint], [override('night_mount')]),
-      /mount 定位解析失败/,
+      /mount 定位要求调用方提供家具宿主索引/,
     );
   });
 

@@ -5,7 +5,8 @@ import * as yaml from 'js-yaml';
 import * as THREE from 'three';
 import { buildCeilingZone } from '../../shared/render/CeilingZoneBuilder.js';
 import { ceilingSurfaceY, isSolidCeilingZone, lintMepCoordination } from '../../shared/mep-hvac-lint.js';
-import { endpointSourcesFromFacts, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';import type { CeilingZone } from '../../shared/types.js';
+import { endpointSourcesFromFacts, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
+import { pointMountHostIndex } from '../../shared/point-placement.js';import type { CeilingZone } from '../../shared/types.js';
 
 const load = <T,>(path: string): T => yaml.load(readFileSync(path, 'utf8')) as T;
 const ceiling = load<CeilingZone[]>('config/model/envelope/ceiling.yaml');
@@ -57,7 +58,11 @@ const coordination = parseMepCoordination(readFileSync('config/mep-hvac-coordina
 const electrical = load<any[]>('config/electrical.yaml');
 const plumbing = load<any[]>('config/plumbing.yaml');
 const hvac = load<any>('config/hvac.yaml');
-const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac });
+const houseFurnishings = load<Record<string, unknown[]>>('config/house.yaml').furnishings ?? {};
+// mountHosts 由 house.yaml furnishings 建（issue #98 疗法①）：解析器对「缺宿主索引」改为
+// fail-closed 抛错，生产 routes.ts:227 两个索引都传；本测试此前只传 facts，挂载端点
+// （night_living_mid 等）解算时炸在调用点上。与生产同口径补齐。
+const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac }, undefined, pointMountHostIndex(Object.values(houseFurnishings).flat() as never));
 describe('mep ceiling clearance lint (A1)', () => {
   it('flags a route point that dips below a drop surface inside its footprint', () => {
     const result = lintMepCoordination(

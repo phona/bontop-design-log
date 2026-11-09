@@ -10,6 +10,7 @@ import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 import { pointMountHostIndex, pointWallIndexFromElements } from '../shared/point-placement.js';
+import { assertPlacementHostClosure } from './placement-closure.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import { deriveMepPenetrationAt } from '../shared/condensate-chain.js';
@@ -536,6 +537,24 @@ export function createApiRouter(deps: ApiDeps): Router {
     const overlay = deps.getOverlay();
     const sceneElements = mergeSceneElements(projectCatalog.getWalls(), overlay);
     const modelLinks = loadModelPackageLinks();
+    // 本次下发的点位清单（与 house.electrical / house.plumbing 同一来源，先取出来供闭合性断言用）。
+    const electricalPoints = deps.getProjectRenderFacts?.()?.electrical ?? loadElectricalConfig();
+    const plumbingPoints = deps.getProjectRenderFacts?.()?.plumbing ?? loadPlumbingConfig();
+    // 定位宿主表（issue #98 疗法①）：**全量** furnishings，不按阶段过滤——一期排除某个柜
+    // 不影响它当定位宿主，排除的是「画不画」，不是「在不在」。与 house.furnishingsAll 同源。
+    const mountHosts = pointMountHostIndex(Object.values(projectCatalog.getFurnishings()).flat());
+    // 交付闭合性断言（PR #122 §一.1）：任何被交付点位声明的物理宿主必须存在于定位宿主表。
+    // 差一条即 503——不降级放行。缺宿主的点位在解算端只会静默错位（回落声明坐标 / 回落
+    // 原点 / 跳过该模型），那是 16 轮审查 A 类 12 条 finding 的机制根源。
+    try {
+      assertPlacementHostClosure(electricalPoints, plumbingPoints, mountHosts);
+    } catch (err) {
+      res.status(503).json({
+        error: err instanceof Error ? err.message : String(err),
+        detail: '点位声明的 mount 宿主不在本次交付的定位宿主表（house.furnishingsAll）；修配置而非放宽断言',
+      });
+      return;
+    }
     res.json({
       phase,
       phaseMeta: { ...phaseScopes[phase], budget: loadPhaseBudgetMeta(phaseScopes[phase]) },
@@ -553,12 +572,12 @@ export function createApiRouter(deps: ApiDeps): Router {
         // mountHosts 缺该宿主 → 解算失败 → 标注回落原点、回路显示缺成员。
         // **阶段可见性与定位宿主是两个关注点**，前者过滤，后者必须全量。
         furnishingsAll: projectCatalog.getFurnishings(),
-        electrical: deps.getProjectRenderFacts?.()?.electrical ?? loadElectricalConfig(),
+        electrical: electricalPoints,
         // 给排水点位全量清单（2026-11-04 issue #65）：点位来源 select.all（PKG-040 的
         // plumbing {all: true}）要在前端展开成「该分类全部点位」，清单必须在 /api/project
         // 里——sceneElements 不含点位，前端没有第二条路拿到 plumbing 全量。与 electrical 同源
         // （config/plumbing.yaml，经 getProjectRenderFacts 投影时同口径）。
-        plumbing: deps.getProjectRenderFacts?.()?.plumbing ?? loadPlumbingConfig(),
+        plumbing: plumbingPoints,
         ceilingZones: deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig(),
         sceneElements: filterCurtainElements(sceneElements, phase, phaseScopes),
         layoutSource: projectCatalog.getLayoutSource(),
@@ -567,12 +586,17 @@ export function createApiRouter(deps: ApiDeps): Router {
         // /api/mep-coordination 也返回同一份路线，但页面在建场之后才拉它；建场要用的这个
         // 点随 /api/project 先到，避免链条家具因拉取顺序从场景里消失（同源：MEP 配置）。
         condensatePenetration: condensateMasterPenetration(),
-        // render-facts 投影随项目数据一次下发：HouseScene.buildFromCatalog 要靠它构造 HVAC 源
-        // （SceneBuilder 解 indoor_master 锚点 → 三件冷凝链家具）。原 /api/project 不返回它、
-        // 全仓无赋值，导致四个建场入口各补一次 fetch——补丁打了三轮仍有漏（布局切换）。
-        // 数据源一次给全，入口自然不会再漏。
-        ...(deps.getProjectRenderFactsProjection?.() ? { renderFactsProjection: deps.getProjectRenderFactsProjection() } : {}),
       },
+      // render-facts 投影随项目数据一次下发：HouseScene.buildFromCatalog 要靠它构造 HVAC 源
+      // （SceneBuilder 解 indoor_master 锚点 → 三件冷凝链家具）。原 /api/project 不返回它、
+      // 全仓无赋值，导致四个建场入口各补一次 fetch——补丁打了三轮仍有漏（布局切换）。
+      // 数据源一次给全，入口自然不会再漏。
+      // 层级（2026-11-09 修 PR #122 §2.5-①）：ProjectData 把 renderFactsProjection 声明在
+      // **顶层**（app/src/render/HouseScene.ts:157，与 house 平级，748/750/761/789/792 全部读
+      // projectData.renderFactsProjection），此前却下发在 house 内 → 顶层恒 undefined →
+      // HVAC 源空 → 三件冷凝链家具静默缺失，而 house.renderFactsProjection 全仓无读取者。
+      // 声明在哪就从哪下发：与 topics / materialPreview / budgetCategories 平级。
+      ...(deps.getProjectRenderFactsProjection?.() ? { renderFactsProjection: deps.getProjectRenderFactsProjection() } : {}),
       topics: projectCatalog.getTopics().map((t) => ({
         id: t.id, name: t.name, perRoom: t.perRoom, optionCount: t.options.length,
       })),

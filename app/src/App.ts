@@ -332,13 +332,14 @@ export class App {
     this.stateSync.setLayout(this.activeLayout);
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
-    // 2026-11-09 修 Codex blocking：建场前先取 render-facts 投影并挂到 projectData 上。
-    // HouseScene.buildFromCatalog 靠 projectData.renderFactsProjection 构造 HVAC 源，
-    // 而 /api/project **不返回**该字段、全仓也无赋值——于是 hvacSources 恒为 undefined，
-    // SceneBuilder.resolveScenePlacementAnchors 解不出 indoor_master 锚点，
-    // condensate_pipe_ac_outlet / mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase
-    // 三件冷凝链家具带诊断跳过，页面与 GLB 导出持续缺件。
-    // 投影端点是 /api/render-facts/projection（同源构造），提前取一次即可。
+    // 2026-11-09 修 Codex blocking（PR #122 §2.5-①）：renderFactsProjection 由 /api/project
+    // 随项目数据一次下发，且在**响应顶层**（与 topics / materialPreview 平级）——与
+    // ProjectData 的声明位置一致（app/src/render/HouseScene.ts:157）。此前它下发在 house 内，
+    // 顶层恒 undefined → hvacSources 恒 undefined → SceneBuilder.resolveScenePlacementAnchors
+    // 解不出 indoor_master 锚点 → condensate_pipe_ac_outlet / mb_vanity_pvc_wardrobe_entry /
+    // mb_vanity_pvc_service_chase 三件冷凝链家具带诊断跳过，页面与 GLB 导出持续缺件。
+    // HouseScene.buildFromCatalog 直接读 projectData.renderFactsProjection 构造 HVAC 源，
+    // 四个建场入口因此拿到的都是同一份投影（layout 切换不再漏）。
 
     await this.houseScene.buildFromCatalog(this.projectData);
     this.reportPlacementDiagnostics();
