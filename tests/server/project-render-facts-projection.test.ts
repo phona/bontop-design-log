@@ -1,4 +1,5 @@
 import { describe, it } from 'node:test';
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { buildProjectRenderFactsProjection } from '../../shared/project-render-facts-projection.js';
 import { parseProjectHvacFacts, validateProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
@@ -222,4 +223,19 @@ describe('buildProjectRenderFactsProjection', () => {
     assert.throws(() => project(facts, [override('socket_1')], scheme), /does not reference a lighting fixture/);
     assert.throws(() => project(facts, [override(), override()], scheme), /Duplicate render override/);
   });
+});
+
+// ── 服务端投影调用点必须同时传两个宿主索引（issue #98 S3 回归锚）──────────────
+// 失效形态：buildProjectRenderFactsProjection 的第 7 参（mountHosts）与第 8 参
+// （pointWalls）都可选。漏传第 8 参**不会静默降级**——shared/lighting-fixtures.ts
+// 对解不出宿主墙的挂墙灯直接 throw（「调用方须提供 pointWalls」），路由转 503。
+// server/index.ts 曾只传第 7 参（Codex 在总 PR #122 上抓到的 blocking）。
+// 这里读源码钉住两个索引都在调用点上传入，防再漏。
+it('server/index.ts 的投影调用点同时传入 mountHosts 与 pointWalls', () => {
+  const src = readFileSync('server/index.ts', 'utf8');
+  const start = src.indexOf('getProjectRenderFactsProjection: () => {');
+  assert.ok(start >= 0, '找不到 getProjectRenderFactsProjection');
+  const call = src.slice(start, src.indexOf('\n  },', start));
+  assert.match(call, /pointMountHostIndex\(/, '必须传 mountHosts（第 7 参）');
+  assert.match(call, /pointWallIndexFromElements\(catalog\.getWalls\(\)\)/, '必须传 pointWalls（第 8 参）——漏传则挂墙灯解算抛错');
 });
