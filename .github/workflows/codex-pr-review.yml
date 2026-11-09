@@ -155,18 +155,23 @@ jobs:
             echo "PR 正文未解析到关联 issue，审查 prompt 不含 issue 上下文。"
             exit 0
           fi
-          json="["
-          first=1
-          for n in $refs; do
+          # 组装 issue JSON 后写入 GITHUB_ENV。**两个坑都实测过**：
+          # ① `jq -n` 默认 pretty-print，多行 JSON 写进 GITHUB_ENV 会被
+          #    `Invalid format '  "number": "98",'` 打回，整个步骤失败——2026-11-09
+          #    #159 合并后第一次带 issue 的审查就这么挂了：跑了 57 秒、零 review 产出。
+          # ② 所以这里先 `jq -c` 压成单行，同时用 GITHUB_ENV 的 heredoc 定界符写法，
+          #    将来正文里再出现换行也不会把 env 文件写坏。
+          json=$(for n in $refs; do
             body=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${n}" --jq '.body' 2>/dev/null || true)
             title=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${n}" --jq '.title' 2>/dev/null || true)
             if [ -z "$title" ]; then continue; fi
-            if [ "$first" -eq 0 ]; then json+=","; fi
-            first=0
-            json+=$(jq -n --arg n "$n" --arg t "$title" --arg b "$body" '{number:$n,title:$t,body:$b}')
-          done
-          json+="]"
-          echo "ISSUES=$json" >> "$GITHUB_ENV"
+            jq -cn --arg n "$n" --arg t "$title" --arg b "$body" '{number:$n,title:$t,body:$b}'
+          done | jq -cs '.')
+          {
+            echo "ISSUES<<ISSUES_EOF"
+            printf '%s\n' "$json"
+            echo "ISSUES_EOF"
+          } >> "$GITHUB_ENV"
           echo "no_linked_issues=false" >> "$GITHUB_OUTPUT"
           echo "已取到 issue 上下文：${refs}"
 
