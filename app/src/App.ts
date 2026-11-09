@@ -339,7 +339,6 @@ export class App {
     // condensate_pipe_ac_outlet / mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase
     // 三件冷凝链家具带诊断跳过，页面与 GLB 导出持续缺件。
     // 投影端点是 /api/render-facts/projection（同源构造），提前取一次即可。
-    await this.ensureRenderFactsProjection();
 
     await this.houseScene.buildFromCatalog(this.projectData);
     this.reportPlacementDiagnostics();
@@ -3008,7 +3007,6 @@ export class App {
     // 2026-11-09 修 Codex 第 8 轮 blocking：布局切换建场同样要先补 render-facts 投影
     // （/api/project 不返回该字段）。漏它则 SceneBuilder 解不出 indoor_master 锚点，
     // 三件冷凝链家具带诊断跳过，页面与随后导出的 GLB 缺件。
-    await this.ensureRenderFactsProjection();
     await this.houseScene.buildFromCatalog(this.projectData);
     this.reportPlacementDiagnostics();
     this.annotationRenderer?.clear();
@@ -3043,7 +3041,6 @@ export class App {
       this.stateSync.setPhase(phase);
       const data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
       this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
-      await this.ensureRenderFactsProjection(data);
       await this.houseScene.buildFromCatalog(data);
       this.reportPlacementDiagnostics();
       this.annotationRenderer?.clear();
@@ -3085,7 +3082,6 @@ export class App {
       this.projectData = previousProjectData;
       try {
         this.collision.setWalls(this.extractWalls(previousProjectData?.house?.sceneElements));
-        await this.ensureRenderFactsProjection(previousProjectData);
         await this.houseScene.buildFromCatalog(previousProjectData);
         this.reportPlacementDiagnostics();
         this.annotationRenderer?.clear();
@@ -3135,23 +3131,7 @@ export class App {
     this.compareActive = true;
   }
 
-  /**
-   * 取 render-facts 投影并挂到 projectData（2026-11-09 修 Codex blocking）。
-   * 幂等：已取过且 projectData 未变则直接返回。取不到不抛——灯光/标注层仍可工作，
-   * 但 HVAC 源与三件冷凝链家具会缺（由 placementDiagnostics 显形）。
-   */
-  private async ensureRenderFactsProjection(target?: { renderFactsProjection?: unknown }): Promise<void> {
-    const data = target ?? this.projectData;
-    if (!data || (data as { renderFactsProjection?: unknown }).renderFactsProjection) return;
-    try {
-      const response = await fetch('/api/render-facts/projection');
-      if (!response.ok) throw new Error('render facts projection is not ready');
-      const projection = parseProjectRenderFactsProjection(await response.json());
-      (data as { renderFactsProjection?: unknown }).renderFactsProjection = projection;
-    } catch (err) {
-      console.warn('[app] render-facts 投影取取失败，HVAC 源与冷凝链家具将缺：', err instanceof Error ? err.message : String(err));
-    }
-  }
+
 
   private async refreshInfrastructure(): Promise<void> {
     // 索引注入下沉到这里（2026-11-09 修 Codex blocking）： AnnotationRenderer 的

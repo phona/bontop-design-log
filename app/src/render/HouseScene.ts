@@ -147,6 +147,8 @@ interface ProjectData {
     platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
     ceilingZones?: import('@shared/types').CeilingZone[];
     furnishings?: FurnishingsYaml;
+    /** 未按阶段过滤的全量家具（2026-11-09）：仅用于 mountHosts 定位宿主。 */
+    furnishingsAll?: FurnishingsYaml;
     electrical?: ElectricalPoint[];
     sceneElements?: SceneElement[];
     /** 主卫冷凝链的 MEP 侧穿墙锚点（issue #98 PR-10）：三件遮蔽家具的锚点派生要用。 */
@@ -726,6 +728,9 @@ export class HouseScene implements SceneApi {
       elements: projectData.house.sceneElements,
       ceilingZones: projectData.house.ceilingZones,
       furnishings: projectData.house.furnishings,
+      // 未按阶段过滤的全量家具——仅用于 mountHosts 定位宿主（2026-11-09 结构修复：
+      // 阶段可见性不该让挂载点位失去宿主）。缺省时 SceneBuilder 回退到 furnishings。
+      ...(projectData.house.furnishingsAll ? { furnishingsAll: projectData.house.furnishingsAll } : {}),
       electrical: projectData.house.electrical,
     });
     const materialProvider: SceneMaterialProvider = {

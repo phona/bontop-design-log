@@ -129,6 +129,8 @@ export interface SceneBuilderInput {
   elements: SceneElement[];
   ceilingZones?: CeilingZoneSpec[];
   furnishings?: FurnishingsYaml;
+  /** 未按阶段过滤的全量家具——**仅**用于 mountHosts 定位宿主（issue #98 S2 / 2026-11-09 结构修复）。 */
+  furnishingsAll?: FurnishingsYaml;
   electrical?: ElectricalPoint[];
   plumbing?: PlumbingPoint[];
   lightingFixtures?: RenderLightingFixture[];
@@ -1608,7 +1610,11 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   }
   const furnishings = input.furnishings ?? {};
   // mount 挂载点位的家具宿主索引（issue #98 S2）：与 DXF/MEP/verify 同一份 furnishings 来源。
-  index.mountHosts = pointMountHostIndex(Object.values(furnishings).flat());
+  // 2026-11-09 结构修复：宿主索引取**未按阶段过滤**的 furnishingsAll（缺省回退 furnishings）。
+  // 阶段可见性只该管几何渲染，不该让挂载点位失去定位宿主——night_corridor 挂
+  // ld.wall_cabinet_tall，一期排除该柜，若宿主也被过滤则解算失败回落原点。
+  const hostFurnishings = input.furnishingsAll ?? furnishings;
+  index.mountHosts = pointMountHostIndex(Object.values(hostFurnishings).flat());
   const placedFurnitureKeys = new Set(
     Object.entries(furnishings).flatMap(([roomId, items]) => items
       .filter((item) => item.x !== undefined && item.z !== undefined)
