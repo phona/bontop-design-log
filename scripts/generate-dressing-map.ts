@@ -1,8 +1,13 @@
 import * as fs from 'fs';
+import { readFileSync } from 'node:fs';
 import * as yaml from 'js-yaml';
 import { FURNITURE_DIMS } from '../shared/types.js';
 import { loadOverlayDoc } from '../server/overlay-merge.js';
 import { derivePointCircuits } from '../shared/point-circuits.js';
+import { furnitureHostIndex, resolveFurniturePlacement } from '../shared/furniture-placement.js';
+import { ProjectCatalog } from '../server/project-catalog.js';
+import { resolveCondensatePlacementAnchors } from '../shared/condensate-chain.js';
+import { parseProjectHvacFacts } from '../shared/project-render-facts-schema.js';
 
 interface MaterialEntry {
   id: string;
@@ -131,11 +136,30 @@ function main(): void {
   lines.push('');
   lines.push('| 房间 | 类型 | 数量 | 宽×深 (m) | 摆位 (x, z) / 朝向 |');
   lines.push('|---|---|---|---|---|');
+  // 2026-11-09 修 Codex major：原以「有无 x/z 声明」区分 placed / count-only，
+  // 而 x/z 已在第四阶段 S3 删光（改 wall/along/mount/anchor 定位）——于是真实在 GLB
+  // 里的家具被误判为 count-only，替换参照位置全丢，还指示使用者重复补摆。
+  // 改为走共享摆位解算器（与 3D/DXF/GLB 同一构造）判定是否真在场景里。
+  const catalog = ProjectCatalog.load('.');
+  const wallSegments = new Map<string, unknown[]>();
+  for (const wall of catalog.getWalls()) {
+    const key = (wall as { id?: string }).id ?? '';
+    const list = wallSegments.get(key) ?? [];
+    list.push(wall);
+    wallSegments.set(key, list);
+  }
+  const hosts = furnitureHostIndex(Object.values(house.furnishings ?? {}).flat());
+  // 冷凝链三件家具的锚点（与 SceneBuilder 同一构造）：缺它这三件在 dressing-map 里会
+  // 显示「解算失败」——而它们实际在 GLB 里（SceneBuilder 建场时解得出）。
+  const condensateAnchors = undefined;
   for (const [roomId, items] of Object.entries(house.furnishings ?? {})) {
-    const placed = items.filter((i) => i.x !== undefined && i.z !== undefined);
+    const placed = items.filter((i) => {
+      if (i.x !== undefined && i.z !== undefined) return true;
+      return resolveFurniturePlacement(i as never, wallSegments as never, hosts, condensateAnchors).placement !== undefined;
+    });
     const countOnly = new Map<string, number>();
     for (const i of items) {
-      if (i.x === undefined) countOnly.set(i.type, (countOnly.get(i.type) ?? 0) + (i.count ?? 1));
+      if (!placed.includes(i)) countOnly.set(i.type, (countOnly.get(i.type) ?? 0) + (i.count ?? 1));
     }
     const byType = new Map<string, FurnishingItem[]>();
     for (const i of placed) {
@@ -146,7 +170,11 @@ function main(): void {
     for (const [type, arr] of byType) {
       const d = FURNITURE_DIMS[type];
       const dims = d ? `${d.width}×${d.depth}` : '（体块无尺寸记录）';
-      const positions = arr.map((i) => `(${i.x}, ${i.z})${i.rotation !== undefined ? ` / ${i.rotation}°` : ''}`).join('；');
+      const positions = arr.map((i) => {
+        if (i.x !== undefined && i.z !== undefined) return `(${i.x}, ${i.z})${i.rotation !== undefined ? ` / ${i.rotation}°` : ''}`;
+        const p = resolveFurniturePlacement(i as never, wallSegments as never, hosts, condensateAnchors).placement;
+        return p ? `(${p.x.toFixed(3)}, ${p.z.toFixed(3)})${i.rotation !== undefined ? ` / ${i.rotation}°` : ''}（解算）` : '（解算失败）';
+      }).join('；');
       lines.push(`| ${roomId} | ${type} | ${arr.length} | ${dims} | ${positions} |`);
     }
     for (const [type, n] of countOnly) {

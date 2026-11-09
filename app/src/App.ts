@@ -3005,6 +3005,10 @@ export class App {
       return;
     }
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
+    // 2026-11-09 修 Codex 第 8 轮 blocking：布局切换建场同样要先补 render-facts 投影
+    // （/api/project 不返回该字段）。漏它则 SceneBuilder 解不出 indoor_master 锚点，
+    // 三件冷凝链家具带诊断跳过，页面与随后导出的 GLB 缺件。
+    await this.ensureRenderFactsProjection();
     await this.houseScene.buildFromCatalog(this.projectData);
     this.reportPlacementDiagnostics();
     this.annotationRenderer?.clear();
