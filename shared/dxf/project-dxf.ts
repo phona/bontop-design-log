@@ -8,6 +8,10 @@
  * 复用既有单一实现：splitSegmentByOpenings（shared/wall-segments.ts，墙洞切分与 3D 渲染同口径）、
  * resolveFurniturePlacement（shared/furniture-placement.ts，摆位与 3D 渲染同口径）、
  * resolveMepRoutes / mepRoutePoints / resolveMepEndpoint（MEP 折线与 3D 渲染同口径）。
+ *
+ * 硬失败口径（issue #98）：家具摆位解析失败与电气/给排水点位定位解算失败一律进 `errors`——
+ * 摆位/点位是施工交付内容，解不出来就整次导出不成立（两个入口都只认 errors 并拒绝交付）；
+ * 降级成 warning 再跳过，等于交付一张缺点位/缺件的施工图。
  */
 
 import { type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type PlumbingPoint, type RoomLayout, type SceneElement } from '../types.js';
@@ -81,9 +85,10 @@ export interface ProjectDxfResult {
   entityCount: number;
   warnings: string[];
   /**
-   * 硬失败（issue #98 PR-3）：家具摆位声明解析失败（断引用/越界/负净宽/mount 宿主缺失）。
+   * 硬失败（issue #98 PR-3 / 点位定位 fail-closed）：家具摆位声明解析失败（断引用/越界/
+   * 负净宽/mount 宿主缺失）或电气/给排水点位定位解算失败（along 越界/断引用/缺声明）。
    * 非空即本次导出不成立——两个入口（web 按钮与 npm run export:dxf）都必须失败，
-   * 不允许带着缺件/错位的家具图层交付。
+   * 不允许带着缺件/错位的家具/点位图层交付。
    */
   errors: string[];
 }
@@ -161,7 +166,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('electrical: 无输入，E-* 图层为空（电气点位未导出——数据不可得时禁止用页面缓存当施工点位）');
     notes.push('ELECTRICAL NOT EXPORTED: electrical data unavailable at export time');
   } else {
-    emitElectrical(writer, house.electrical, pointWalls, pointMountHosts, warnings, label, restrict, pointCircuits);
+    emitElectrical(writer, house.electrical, pointWalls, pointMountHosts, warnings, errors, label, restrict, pointCircuits);
   }
   if (plumbing === undefined) {
     warnings.push('plumbing: 无输入，P-POINTS 图层为空（水路点位未导出）');
@@ -176,7 +181,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
         || point.status === 'inferred' || point.status === 'pending'
         || /抽象服务点|不得.{0,6}开槽|不作为施工依据/.test(point.note ?? '');
       // 与电气同一解算（见 emitElectrical）：解析后坐标 = 墙线 datum + 薄板惯例 0.075m。
-      const position = resolvedPointPosition(point, pointWalls, pointMountHosts, warnings);
+      const position = resolvedPointPosition(point, pointWalls, pointMountHosts, errors);
       if (!position) continue;
       const [x, y] = toDxf(position.x, position.z);
       writer.addCircle(DXF_LAYERS.P_POINTS[0], x, y, POINT_RADIUS_MM);
@@ -438,18 +443,23 @@ function emitFurniture(
  * 裁定的预期交付物变更）；绝对点位（C/D/E/F 组）取声明 x/z；mount 挂载点（issue #98 S2，
  * 起夜灯）取解析器宿主脸解果（宿主移动自动跟随，灯体半厚+surface_gap 由渲染管线追加，
  * 图上圈心 = 灯位锚点，与 3D 灯组 position 同点）。解算失败（along 越界/断引用/缺声明）
- * 返回 null 并把诊断写进 warnings（含「未解析」，随 D-NOTES 图层交付）——
+ * 返回 null 并把诊断写进 **errors**（与 emitFurniture 的定位诊断同一通道）：点位位置是施工
+ * 交付内容，解不出来就整次导出不成立——两个入口（web 按钮与 npm run export:dxf）都只认
+ * errors，进 warnings 会让缺电气/给排水点位的图纸照样交付（issue #98「正式 CAD/施工交付
+ * 与相关模型验证必须因适用范围内的真实错误失败」）。
  * **不钳位、不回落声明坐标**：回落就是再造一个事实源。
  */
 function resolvedPointPosition(
   point: PointPlacementInput,
   pointWalls: ReadonlyMap<string, PointWall>,
   pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined,
-  warnings: string[],
+  errors: string[],
 ): { x: number; z: number } | null {
   const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, pointMountHosts);
   if (diagnostic !== undefined || !placement) {
-    warnings.push(`点位 ${point.id}: 未解析定位（${diagnostic ?? '解算器未返回结果'}）——不出圈，修复声明后重导`);
+    // fail-closed（issue #98 疗法①，与 shared/lighting-fixtures.ts:65 / shared/point-placement.ts
+    // resolveMountedPoint 同一口径）：不出圈 + 诊断进 errors，入口据此拒绝交付。
+    errors.push(`点位 ${point.id}: 未解析定位（${diagnostic ?? '解算器未返回结果'}）——不出圈，修复声明后重导`);
     return null;
   }
   if (placement.kind === 'absolute' || placement.kind === 'mount') return { x: placement.x, z: placement.z };
@@ -473,6 +483,8 @@ function emitElectrical(
   pointWalls: ReadonlyMap<string, PointWall>,
   pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined,
   warnings: string[],
+  /** 点位定位诊断通道（issue #98）：与家具同一条 errors——非空即入口拒绝交付。 */
+  errors: string[],
   label: (text: string, fallback?: string) => string,
   restrict: RestrictLabels,
   /** 点位 → 回路 单一派生（issue #98 S3）；undefined = 调用方未提供 topology，不标回路。 */
@@ -486,8 +498,8 @@ function emitElectrical(
       || point.status === 'pending' || point.status === 'inferred';
     // 解析后坐标（2026-11-07 业主裁定「DXF 迁就 3D 投影」）：沿墙点位取解算器墙线 datum 再按
     // 薄板惯例偏移 0.075m（与 3D 渲染同一解算、同一偏移）；mount 挂载点取宿主脸解果（S2）；
-    // 解算失败不出圈、只显形告警。
-    const position = resolvedPointPosition(point, pointWalls, pointMountHosts, warnings);
+    // 解算失败不出圈，并把诊断计入 errors（整次导出失败，不交付缺点位图纸）。
+    const position = resolvedPointPosition(point, pointWalls, pointMountHosts, errors);
     if (!position) continue;
     const [x, y] = toDxf(position.x, position.z);
     const layer = electricalLayer(point.type);

@@ -704,6 +704,55 @@ describe('App', () => {
     consoleWarn.mockRestore();
   });
 
+  it('refuses to download DXF when a point cannot be placed (errors fail-closed)', async () => {
+    // issue #98 / Codex 266331dd blocking：点位定位解算失败必须让页面导出口抛错，
+    // 不创建下载锚点。1m 墙 + 插座 along=2 是最小复现（越出墙长）。
+    const projectWithWall = {
+      house: {
+        rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }],
+        sceneElements: [{ type: 'wall', id: 'w_1m', x1: 0, z1: 0, x2: 1, z2: 0, line_datum: 'centerline' }],
+      },
+    };
+    const factsWithBadPoint = {
+      electrical: [{ id: 'sock_over', room: 'living_room', type: 'socket', wall: 'w_1m', wallSide: 'south', along: 2 }],
+      plumbing: [],
+      ceiling: [],
+      hvac: null,
+    };
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/project')) {
+        return { ok: true, json: async () => projectWithWall } as Response;
+      }
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => factsWithBadPoint } as Response;
+      }
+      if (urlStr.includes('/api/config-status')) {
+        return { ok: true, json: async () => ({ configs: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const anchor = mockDocument.createElement.mock.results.map((result: any) => result.value).find((el: any) => el.tagName === 'a');
+    expect(anchor).toBeUndefined();
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('DXF 导出失败'));
+    expect(consoleError).toHaveBeenCalledWith('[dxf] placement error:', expect.stringContaining('sock_over'));
+    toast.mockRestore();
+    consoleError.mockRestore();
+  });
+
   it('still exports DXF when render-facts and mep-coordination both fail (503 → layer downgrade)', async () => {
     // 在 start() 之前装好：render-facts/mep 503 是本用例主题；schedule/state 同挡避免面板 render 崩
     vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
