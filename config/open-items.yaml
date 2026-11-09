@@ -252,6 +252,35 @@ items:
     reversal: 实测与登记偏差 >0.02m → 窗帘盒深度与台面高度全链回改。
     carrier: config/model/envelope/openings.yaml（bay_sill 段；原记的 floor-zones/finish-surfaces 有误——bay_sill 实际在 openings.yaml）
     legacy_ref: 'pending-site-data #20'
+  # ── 2026-11-10 补录（Codex 在总 PR #122 第 7 轮指出：原手账 #57 删除后未实际承接）──
+  # 判据同文件头：本事项跨**两对** bay_sill（西北圆角弧端 + 主卧 SW 圆角弧端），
+  # bay_sill 没有 status/blocker schema，单个对象也承接不了「两个对象相交」的关系，
+  # 故进本文件；openings.yaml 的涂装注释块同步指向本条。
+  - id: OI-57
+    subject: 相邻上飘窗弧端收口待复尺（残留真相交 0.0043㎡；端面双计 4.224㎡ 已按「算 0 次」剔除）
+    owner: 量房方
+    trigger: 交房量房复尺
+    current_state: >-
+      **2026-10-09 DEC-2026-10-09-P05**：全部 12 个 bay_sill 两两普查（2mm 网格采样，非包围盒）——
+      真相 polygon 相交仅两处、各 **0.002148㎡**：`bedroom_nw_west_bay↔master_bath_west_bay`
+      （西北圆角弧端；`bedroom_nw_west_bay` 已于 DEC-2026-10-09-P10 改名 `master_bath_west_lower_bay`，
+      只改名未动几何）、`master_bedroom_west_bay↔master_bedroom_south_bay`（主卧 SW 圆角弧端），
+      均位于 x[1.00,1.10] 的弧端扫掠区。主体问题原是**端面双计**：三对相邻飘窗在分界线各自声明
+      start_end/end_end，而两盒体背靠背、该面是内部接缝不外露，合计双计 4.224㎡——已由
+      `bayCoversCap` 按业主裁定「算 0 次」剔除，6 条指名 warning 进 API/UI；**这段已闭环，不重开**。
+      残留的 0.0043㎡ 需复尺定弧端切线位置后才能消除。早前两版「0.110㎡ / 0.186㎡」是包围盒相交
+      与弦长前缘的误算，DEC-2026-10-09-P05 已勘误，不得再作为现状引用。
+    needs: '`{西北角圆角弧的南端切线到底落在 z=2.10 还是 z=2.20, 主卧 SW 圆角弧端切线 z=8.90}`'
+    reversal: >-
+      owner=量房方；触发=交房量房复尺。复尺时量西北角与主卧 SW 圆角玻璃的弧端切线 z 值；
+      若切线在 z=2.20/z=8.90，则相邻飘窗起点应后移、扫掠区消失（真相交归零）；若实测切线与
+      推断不符，按实测值回改相邻 bay_sill 的 outline/起点并重算涂装面积，`bayCoversCap` 的
+      指名 warning 相应销号。量级 0.0014%，**不阻塞计价**，不得因该残留冻结涂装定稿。
+    carrier: >-
+      config/model/envelope/openings.yaml `master_bath_west_lower_bay` / `master_bath_west_bay` /
+      `master_bedroom_west_bay` / `master_bedroom_south_bay`（bay_sill 段，涂装注释块登记该遗留）+
+      shared/paint-sill-scope.ts `bayCoversCap`；DEC-2026-10-09-P05 / DEC-2026-10-09-P10
+    legacy_ref: 'pending-site-data #57'
   - id: OI-24
     subject: 全屋门洞实际位置与开启方向待量
     owner: 量房方
