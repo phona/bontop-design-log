@@ -240,6 +240,32 @@ describe('BudgetCalculator', () => {
       '显式排除不该挤占「落在已计费房间内」这一档');
   });
 
+  // 弧声明相切守卫（7d38aeb5 Codex blocking）：corner=(0,0) 带 r=1/cx=0.6/cz=0.6，
+  // prev=(1.4,0)、next=(0,1.4) 到弧心距离都是 1（在圆上），但半径向量与邻边成 36.87°，
+  // 都不是切点。修前 shared/arc.ts 直取圆上邻点、返回非相切弧，roundedPolygonArea
+  // 算出 cut = −0.308899㎡（负扣减 = 反向加面积）；修后必须在预算装载点抛错。
+  it('弧声明圆上邻点不是切点时预算抛错，而不是静默算出负扣减面积', () => {
+    const catalog = ProjectCatalog.load('.');
+    const elements = parseOverlayFiles().elements ?? [];
+    const nonTangent: any = {
+      id: '__non_tangent_arc_probe__',
+      type: 'floor_region',
+      points: [
+        { x: 1.4, z: 0 },
+        { x: 0, z: 0, radius: 1, cx: 0.6, cz: 0.6 },
+        { x: 0, z: 1.4 },
+      ],
+    };
+    assert.throws(
+      () => loadMasonryTakeoff(catalog, [...elements, nonTangent]),
+      /无法由 tangentArc 解出切点/,
+      '圆上邻点不是切点 → 预算必须抛错，不许静默算负面积',
+    );
+    // 合法声明不受影响：真实 config（含 north_platform_floor 的声明式圆角）照常解算。
+    const takeoff = loadMasonryTakeoff(catalog);
+    assert.ok(Number.isFinite(takeoff.floorRegionExtraSqm), '正常 config 的 floor_region 面积仍解得出');
+  });
+
   it('calculates HVAC as global topic', () => {
     const catalog = ProjectCatalog.load('.');
     const calc = new BudgetCalculator(catalog, rulesConfig);
