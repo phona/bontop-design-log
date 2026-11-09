@@ -213,7 +213,12 @@ function resolveMountedPoint(
   mountHosts: ReadonlyMap<string, PointMountHost> | undefined,
 ): PointPlacementResolution {
   if (mountHosts === undefined) {
-    return { placement: null, diagnostic: `点位 ${id}: mount 定位要求调用方提供家具宿主索引（mountHosts）；3D/DXF/MEP/校验入口均须从 house.yaml furnishings 建 pointMountHostIndex 传入` };
+    // fail-closed（issue #98 疗法①，与 shared/lighting-fixtures.ts:65「缺失即抛」同一口径）：
+    // 缺宿主索引是**调用方接线缺陷**（漏传参数），不是配置缺陷。原来的诊断返回值会被多个
+    // 消费方降级——回落声明 x/z（S3 已删光）、回落原点、或把该模型跳过——于是静默错位。
+    // 16 轮审查里 A 类 finding 反复复发正是这个机制：解算失败有声音，降级把声音吃掉。
+    // 这里改成当场抛：缺索引就炸在调用点上，不许带着空索引继续解算。
+    throw new Error(`点位 ${id}: mount 定位要求调用方提供家具宿主索引（mountHosts）；3D/DXF/MEP/校验入口均须从 house.yaml furnishings 建 pointMountHostIndex 传入`);
   }
   const host = mountHosts.get(mount.furniture_id);
   if (!host || host.x === undefined || host.z === undefined) {
