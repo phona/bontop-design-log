@@ -9,7 +9,7 @@ import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../shared/point-placement.js';
+import { buildPlacementIndexes } from '../shared/placement-indexes.js';
 import { assertPlacementHostClosure } from './placement-closure.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
@@ -224,8 +224,14 @@ export function createApiRouter(deps: ApiDeps): Router {
         return;
       }
       const config = loadMepCoordinationConfig();
-      // 点位宿主墙索引（issue #98 S1）：浏览器 MEP 路线与 DXF/3D 共用同一解算。
-      const sources = endpointSourcesFromFacts(facts, pointWallIndexFromElements(deps.catalog.getWalls()), pointMountHostIndex(Object.values(deps.catalog.getFurnishings()).flat()));
+      // 点位定位索引（issue #98 S1/S2）走 shared/placement-indexes.ts 单一产地（疗法②）：
+      // 墙取 catalog 墙几何，宿主取 catalog 的**全量** furnishings（不按阶段过滤）。
+      // 浏览器 MEP 路线与 DXF/3D 共用同一解算、同一张宿主表。
+      const placementIndexes = buildPlacementIndexes({
+        geometry: { walls: deps.catalog.getWalls() },
+        furnishings: deps.catalog.getFurnishings(),
+      });
+      const sources = endpointSourcesFromFacts(facts, placementIndexes.pointWalls, placementIndexes.mountHosts);
       validateMepCoordination(config, sources);
       res.json({ ...config, lint: lintMepCoordination(config, sources, deps.getMepLintContext?.()) });
     } catch (err) {
@@ -542,7 +548,12 @@ export function createApiRouter(deps: ApiDeps): Router {
     const plumbingPoints = deps.getProjectRenderFacts?.()?.plumbing ?? loadPlumbingConfig();
     // 定位宿主表（issue #98 疗法①）：**全量** furnishings，不按阶段过滤——一期排除某个柜
     // 不影响它当定位宿主，排除的是「画不画」，不是「在不在」。与 house.furnishingsAll 同源。
-    const mountHosts = pointMountHostIndex(Object.values(projectCatalog.getFurnishings()).flat());
+    // 索引走 shared/placement-indexes.ts 单一产地（疗法②）：闭合性断言消费的正是 /api/project
+    // 下发给浏览器 furnishingsAll 的同一份构造产物，不存在第二张宿主表。
+    const { mountHosts } = buildPlacementIndexes({
+      geometry: { walls: projectCatalog.getWalls() },
+      furnishings: projectCatalog.getFurnishings(),
+    });
     // 交付闭合性断言（PR #122 §一.1）：任何被交付点位声明的物理宿主必须存在于定位宿主表。
     // 差一条即 503——不降级放行。缺宿主的点位在解算端只会静默错位（回落声明坐标 / 回落
     // 原点 / 跳过该模型），那是 16 轮审查 A 类 12 条 finding 的机制根源。

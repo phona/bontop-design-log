@@ -230,12 +230,16 @@ describe('buildProjectRenderFactsProjection', () => {
 // （pointWalls）都可选。漏传第 8 参**不会静默降级**——shared/lighting-fixtures.ts
 // 对解不出宿主墙的挂墙灯直接 throw（「调用方须提供 pointWalls」），路由转 503。
 // server/index.ts 曾只传第 7 参（Codex 在总 PR #122 上抓到的 blocking）。
-// 这里读源码钉住两个索引都在调用点上传入，防再漏。
-it('server/index.ts 的投影调用点同时传入 mountHosts 与 pointWalls', () => {
+// 2026-11-09 疗法②：两个索引改由 shared/placement-indexes.ts 单一产地生产，调用点不再
+// 直接调用两个底层构造函数。本锚改为钉住「单一产地 + 两个产物都传」——同样防漏传。
+it('server/index.ts 的投影调用点从单一产地取两个索引并都传入', () => {
   const src = readFileSync('server/index.ts', 'utf8');
   const start = src.indexOf('getProjectRenderFactsProjection: () => {');
   assert.ok(start >= 0, '找不到 getProjectRenderFactsProjection');
   const call = src.slice(start, src.indexOf('\n  },', start));
-  assert.match(call, /pointMountHostIndex\(/, '必须传 mountHosts（第 7 参）');
-  assert.match(call, /pointWallIndexFromElements\(catalog\.getWalls\(\)\)/, '必须传 pointWalls（第 8 参）——漏传则挂墙灯解算抛错');
+  assert.match(call, /buildPlacementIndexes\(/, '宿主索引必须来自 shared/placement-indexes.ts 单一产地');
+  assert.match(call, /geometry: \{ walls: catalog\.getWalls\(\) \}/, 'pointWalls 的输入必须是 catalog 墙几何');
+  assert.match(call, /furnishings: catalog\.getFurnishings\(\)/, 'mountHosts 的输入必须是**全量** furnishings（不按阶段过滤）');
+  assert.match(call, /placementIndexes\.mountHosts/, '必须传 mountHosts（第 7 参）');
+  assert.match(call, /placementIndexes\.pointWalls/, '必须传 pointWalls（第 8 参）——漏传则挂墙灯解算抛错');
 });

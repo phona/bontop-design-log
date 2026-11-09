@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import type { CurtainPoint, ElectricalPoint, FurnishingsYaml, HvacDiagram, LightingRenderConfig, PlumbingPoint, ProjectRenderFactsProjection, RenderLightingFixture, ResolvedOpening, ResolvedRoom, SceneElement, SillPaintBand, SillTileBand, WallPaintBand, WallSegment, WallTileBand, RoomObject, WallSide } from '../types.js';
 import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS } from '../types.js';
 import { buildInfrastructure } from './InfrastructureBuilder.js';
-import { pointMountHostIndex, type PointMountHost, type PointWall } from '../point-placement.js';
+import { type PointMountHost, type PointWall } from '../point-placement.js';
+import { buildPlacementIndexes } from '../placement-indexes.js';
 import { buildLightingFixtures } from './LightingFixtureBuilder.js';
 import { type HvacBuilderSources } from './HvacBuilder.js';
 import { buildHvacGeometry, type HvacEntityIndex } from './HvacGeometryBuilder.js';
@@ -1606,7 +1607,6 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     if (!wall.id) continue;
     const segments = wall.segments?.length ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 })) : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
     index.wallSegments.set(wall.id, segments);
-    index.pointWalls.set(wall.id, { segments, ...(wall.line_datum ? { line_datum: wall.line_datum } : {}) });
   }
   const furnishings = input.furnishings ?? {};
   // mount 挂载点位的家具宿主索引（issue #98 S2）：与 DXF/MEP/verify 同一份 furnishings 来源。
@@ -1614,7 +1614,14 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   // 阶段可见性只该管几何渲染，不该让挂载点位失去定位宿主——night_corridor 挂
   // ld.wall_cabinet_tall，一期排除该柜，若宿主也被过滤则解算失败回落原点。
   const hostFurnishings = input.furnishingsAll ?? furnishings;
-  index.mountHosts = pointMountHostIndex(Object.values(hostFurnishings).flat());
+  // 点位定位索引走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）：pointWalls 用
+  // 本次建场的墙几何，mountHosts 用全量 furnishings——与 DXF/MEP/lint/闭合性断言同一构造。
+  const placementIndexes = buildPlacementIndexes({
+    geometry: { walls: input.walls },
+    furnishings: hostFurnishings,
+  });
+  index.pointWalls = placementIndexes.pointWalls;
+  index.mountHosts = placementIndexes.mountHosts;
   const placedFurnitureKeys = new Set(
     Object.entries(furnishings).flatMap(([roomId, items]) => items
       .filter((item) => item.x !== undefined && item.z !== undefined)

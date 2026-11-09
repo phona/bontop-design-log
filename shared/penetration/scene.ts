@@ -9,7 +9,7 @@ import { endpointSourcesFromFacts, parseMepCoordination } from '../../shared/mep
 import { deriveMepPenetrationAt } from '../../shared/condensate-chain.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { buildRenderLightingFixtures } from '../../shared/lighting-fixtures.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { glassJoinSpecs, joinDeclarationsOf, suppressedWallIds } from '../suppression.js';
 import { type FurnishingsYaml, type ElectricalPoint, type HvacDiagram, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, OverlayReplacement, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
 
@@ -333,6 +333,11 @@ export function loadSceneInputs(options: LoadSceneOptions = {}): SceneInputs {
 
 /** 构建 runtime 场景。抛错即调用方出口，这里不吞。 */
 export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildScene> {
+  // 点位定位索引单一产地（issue #98 疗法②）：墙取 layout.walls，宿主取全量 house.furnishings。
+  const placementIndexes = buildPlacementIndexes({
+    geometry: inputs.layout,
+    furnishings: inputs.house.furnishings,
+  });
   return buildScene({
     rooms: inputs.layout.rooms,
     platform: inputs.layout.platform,
@@ -345,13 +350,13 @@ export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildS
     // 灯具派生只走共享实现 shared/lighting-fixtures.ts（权威投影调用同一个函数）：
     // offset 平移、anchorY_offset 锚点、宿主墙透传、fail-closed 全部只有一份口径，
     // linter 校验的灯因此与 app/GLB 渲染的灯是同一个点位。
-    // mount 挂载灯（issue #98 S2）的宿主索引从同一份 house.furnishings 建。
+    // mount 挂载灯（issue #98 S2）的宿主索引从同一份 house.furnishings 建；墙索引同一构造。
+    // 两项都走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）。
     lightingFixtures: buildRenderLightingFixtures(
       inputs.electrical,
       inputs.renderOverrides,
-      pointMountHostIndex(Object.values(inputs.house.furnishings ?? {}).flat()),
-      // 挂墙起夜灯（issue #98 S3）：平面位置与 3D/DXF/MEP 同一墙线解算，不读声明 x/z。
-      pointWallIndexFromElements(inputs.layout.walls),
+      placementIndexes.mountHosts,
+      placementIndexes.pointWalls,
     ),
     options: {
       lighting: inputs.lighting,

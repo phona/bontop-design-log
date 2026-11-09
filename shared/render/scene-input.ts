@@ -29,6 +29,8 @@ export interface SceneInputSource {
   elements?: ReadonlyArray<SceneElement>;
   ceilingZones?: ReadonlyArray<CeilingZone>;
   furnishings?: FurnishingsYaml;
+  /** 未按阶段过滤的全量家具：仅用于 mountHosts 定位宿主（阶段可见性与定位宿主是两个关注点）。 */
+  furnishingsAll?: FurnishingsYaml;
   electrical?: ReadonlyArray<ElectricalPoint>;
   plumbing?: ReadonlyArray<PlumbingPoint>;
 }
@@ -40,6 +42,8 @@ export interface SceneInput {
   elements: SceneElement[];
   ceilingZones: CeilingZone[];
   furnishings?: FurnishingsYaml;
+  /** 未按阶段过滤的全量家具：仅用于 mountHosts 定位宿主，绝不用于几何渲染。 */
+  furnishingsAll?: FurnishingsYaml;
   electrical?: ElectricalPoint[];
   plumbing?: PlumbingPoint[];
 }
@@ -145,6 +149,9 @@ export function parseSceneInput(source: SceneInputSource): SceneInput {
     elements: [...suppliedElements, ...wallElements],
     ceilingZones: (source.ceilingZones ?? []).map((zone) => ({ ...zone, ...(zone.area ? { area: [...zone.area] as [number, number, number, number] } : {}) })),
     furnishings: source.furnishings,
+    // 原样透传（不 clone，与 furnishings 同口径）：漏这一行会让 HouseScene 传进来的全量宿主
+    // 在这里静默掉地，SceneBuilder 只能回退阶段过滤清单 → 挂载点位解不出宿主。
+    furnishingsAll: source.furnishingsAll,
     electrical: source.electrical?.map((point) => ({ ...point })),
     plumbing: source.plumbing?.map((point) => ({ ...point })),
   };

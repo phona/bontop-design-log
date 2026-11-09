@@ -5,7 +5,8 @@ import type {
   FurnishingsYaml,
   ResolvedLayout,
 } from './types.js';
-import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls } from './point-placement.js';
+import { resolvePointPlacementInWalls } from './point-placement.js';
+import { buildPlacementIndexes } from './placement-indexes.js';
 import { derivePointCircuits } from './point-circuits.js';
 
 const LIGHT_TYPES = new Set(['ceiling_light', 'pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'night_light']);
@@ -164,9 +165,12 @@ export function lintElectricalTopology(
   const curtainWalls = (context.layout?.walls ?? []).filter((wall) => context.suppressedWallIds?.includes(wall.id));
   // 平面坐标走点位解算器（issue #98 S1/S3）：与 3D/DXF/MEP 同源。S3 起沿墙/挂载点位不再
   // 声明绝对 x/z，回落分支只剩绝对点位（C/D/E/F 组）——它们本就以声明坐标为唯一事实源。
-  // mount 挂载点（S2）从同一份 furnishings 建宿主索引。
-  const pointWalls = context.layout ? pointWallIndexFromElements(context.layout.walls) : undefined;
-  const mountHosts = context.furnishings ? pointMountHostIndex(Object.values(context.furnishings).flat()) : undefined;
+  // mount 挂载点（S2）从同一份 furnishings 建宿主索引。索引走 shared/placement-indexes.ts
+  // 单一产地（issue #98 疗法②），与 3D/DXF/MEP/闭合性断言同一份构造。
+  const { pointWalls, mountHosts } = buildPlacementIndexes({
+    geometry: context.layout,
+    furnishings: context.furnishings,
+  });
   const planOf = (point: ElectricalPoint): { x: number; z: number } | undefined => {
     const { placement } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
     if (placement) return { x: placement.x, z: placement.z };

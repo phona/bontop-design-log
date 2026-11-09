@@ -75,7 +75,8 @@ import type { CaptureOptions, RoomAuditCaptureOptions, FurnishingsYaml } from '@
 import type { ProjectApiHouse, ProjectApiResponse } from '@shared/api-project';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot, MaterialAppearance, MaterialPreviewAtlasConfig } from '@shared/types';
 import { endpointSourcesFromFacts, type MepCoordination } from '@shared/mep-hvac-coordination-schema';
-import { pointMountHostIndex, pointWallIndexFromElements } from '@shared/point-placement';
+import type { PointWallElementInput } from '@shared/point-placement';
+import { buildPlacementIndexes } from '@shared/placement-indexes';
 import { buildProjectDxf } from '@shared/dxf/project-dxf';
 import type { PointCircuitTopologyLike } from '@shared/point-circuits';
 import type { MepLintResult } from '@shared/mep-hvac-lint';
@@ -2272,23 +2273,27 @@ export class App {
         ? (projectResponse.house as Partial<ProjectApiHouse> | undefined) ?? undefined
         : undefined);
       // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
-      // 端点解析的宿主索引（issue #98 S1/S3）：沿墙/挂载点位不再声明绝对 x/z，MEP 端点与
-      // 3D/DXF/lint 共用 shared/point-placement.ts 单一解算——墙几何取自本次 /api/project 的
-      // sceneElements（带 line_datum），家具宿主取自 /api/furnishings。几何不可得则 M-* 图层
-      // 整体不导出（端点解不出比缺图更危险：路线会静默错位），由 D-NOTES 声明。
-      const dxfPointWalls = pointWallIndexFromElements(
-        ((projectHouse?.sceneElements ?? []) as unknown[]).filter((element) => (element as { type?: string }).type === 'wall') as never,
-      );
-      const dxfMountHosts = pointMountHostIndex(Object.values((furnishingsResponse ?? {}) as Record<string, Array<Record<string, unknown>>>).flat() as never);
+      // null 规范化为 undefined（codex 十五审 major）：null 会穿透 undefined 判空直接进
+      // Object.entries 抛错，整次导出中止、缺失说明也无法交付。
+      const furnishings: FurnishingsYaml | undefined = (furnishingsResponse ?? undefined) as FurnishingsYaml | undefined;
+      // 端点解析的宿主索引（issue #98 S1/S2）走 shared/placement-indexes.ts 单一产地（疗法②）：
+      // 沿墙/挂载点位不再声明绝对 x/z，MEP 端点与 3D/DXF/lint 共用同一解算——墙几何取自本次
+      // /api/project 的 sceneElements（带 line_datum），家具宿主取自 /api/furnishings（全量
+      // house.yaml，不按阶段过滤）。几何不可得则 M-* 图层整体不导出（端点解不出比缺图更危险：
+      // 路线会静默错位），由 D-NOTES 声明。
+      const dxfPlacementIndexes = buildPlacementIndexes({
+        geometry: {
+          walls: ((projectHouse?.sceneElements ?? []) as PointWallElementInput[])
+            .filter((element) => (element as { type?: string }).type === 'wall'),
+        },
+        furnishings,
+      });
       const mep = facts?.hvac?.plans && mepPayload && projectHouse?.sceneElements
-        ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts, dxfPointWalls, dxfMountHosts) }
+        ? { coordination: mepPayload, sources: endpointSourcesFromFacts(facts, dxfPlacementIndexes.pointWalls, dxfPlacementIndexes.mountHosts) }
         : undefined;
       // 降级说明随图交付（codex 七审 major）：施工方拿到的 DXF 必须能区分「没设计」和「导出时接口失败」。
       // 家具全案口径后 PHASE 固定 full（3D 页面可能按阶段渲染，图内注明，codex 十一审 major）。
       const notes: string[] = ['PHASE: full (all furnishings; the 3D view may render a phase-filtered subset)'];
-      // null 规范化为 undefined（codex 十五审 major）：null 会穿透 undefined 判空直接进
-      // Object.entries 抛错，整次导出中止、缺失说明也无法交付。
-      const furnishings: FurnishingsYaml | undefined = (furnishingsResponse ?? undefined) as FurnishingsYaml | undefined;
       if (!furnishings) notes.push('FURNISHINGS NOT EXPORTED: furnishings API failed at export time');
       if (!projectHouse) {
         notes.push(configReloadDegraded
