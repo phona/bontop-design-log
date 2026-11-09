@@ -60,15 +60,29 @@ function collectRows(): Row[] {
   const byId = new Map(elements.map((element) => [element.id, element]));
   const rows: Row[] = [];
   for (const state of result.states) {
-    if (state.status !== 'pending' && state.status !== 'undeclared') continue;
+    // 2026-11-09 修 Codex major：原只收 pending/undeclared **且带 blocker** 的构件，
+    // 于是「仍声明 construction_status: pending / not_for_construction: true、note 明确
+    // 要求量房核实的 inferred 构件」完全不进替代清单——旧手账删了之后，按本脚本打印
+    // 量房清单会漏掉这类关键核验（实例：drain_riser_master_bath 要核实立管是否在幕墙
+    // 切角内侧并回改两条路线）。判据扩为：pending/undeclared，或 note/结构化字段里
+    // 显式声明了「待量房/待实测/待核实」的 inferred 构件。
     const element = byId.get(state.id);
-    if (!element?.blocker) continue;
+    if (!element) continue;
+    const needsSurvey = /待量房|待实测|待核实|须实测|量房实测|待复测/.test(element.note ?? '');
+    const isPending = state.status === 'pending' || state.status === 'undeclared';
+    if (!isPending && !needsSurvey) continue;
     rows.push({
       id: state.id,
       kind: state.kind,
       ...(state.room ? { room: state.room } : {}),
       status: state.status,
-      blocker: element.blocker,
+      blocker: element.blocker ?? {
+        kind: 'site_measurement',
+        owner: ['量房'],
+        trigger: '量房实测（该构件未申报 blocker，按其 note 的待量房要求纳入清单）',
+        reverses_if: '实测后按结果回改或销号',
+        rationale: `${element.note ?? '（无 note）'}`.slice(0, 400),
+      },
     });
   }
   return rows.sort((a, b) => a.blocker.kind.localeCompare(b.blocker.kind) || a.id.localeCompare(b.id));

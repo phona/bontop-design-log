@@ -332,6 +332,15 @@ export class App {
     this.stateSync.setLayout(this.activeLayout);
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
 
+    // 2026-11-09 修 Codex blocking：建场前先取 render-facts 投影并挂到 projectData 上。
+    // HouseScene.buildFromCatalog 靠 projectData.renderFactsProjection 构造 HVAC 源，
+    // 而 /api/project **不返回**该字段、全仓也无赋值——于是 hvacSources 恒为 undefined，
+    // SceneBuilder.resolveScenePlacementAnchors 解不出 indoor_master 锚点，
+    // condensate_pipe_ac_outlet / mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase
+    // 三件冷凝链家具带诊断跳过，页面与 GLB 导出持续缺件。
+    // 投影端点是 /api/render-facts/projection（同源构造），提前取一次即可。
+    await this.ensureRenderFactsProjection();
+
     await this.houseScene.buildFromCatalog(this.projectData);
     this.reportPlacementDiagnostics();
     this.annotationRenderer = new AnnotationRenderer(
@@ -3118,6 +3127,24 @@ export class App {
     this.schemePanel.initCompare(archiveId, data.diff);
     this.houseScene.setCompareScheme(data.compare.scheme);
     this.compareActive = true;
+  }
+
+  /**
+   * 取 render-facts 投影并挂到 projectData（2026-11-09 修 Codex blocking）。
+   * 幂等：已取过且 projectData 未变则直接返回。取不到不抛——灯光/标注层仍可工作，
+   * 但 HVAC 源与三件冷凝链家具会缺（由 placementDiagnostics 显形）。
+   */
+  private async ensureRenderFactsProjection(): Promise<void> {
+    if (this.projectData?.renderFactsProjection) return;
+    if (!this.projectData) return;
+    try {
+      const response = await fetch('/api/render-facts/projection');
+      if (!response.ok) throw new Error('render facts projection is not ready');
+      const projection = parseProjectRenderFactsProjection(await response.json());
+      this.projectData.renderFactsProjection = projection;
+    } catch (err) {
+      console.warn('[app] render-facts 投影取取失败，HVAC 源与冷凝链家具将缺：', err instanceof Error ? err.message : String(err));
+    }
   }
 
   private async refreshInfrastructure(): Promise<void> {

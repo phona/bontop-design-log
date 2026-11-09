@@ -243,7 +243,7 @@ items:
       （原账记「范围已裁；150×150 估算，尺寸待量房终核"），精度未标。影响窗帘盒/台面定制。
     needs: '`{逐窗 sill 顶/底标高实测, 窗台进深}`'
     reversal: 实测与登记偏差 >0.02m → 窗帘盒深度与台面高度全链回改。
-    carrier: config/model/envelope/floor-zones.yaml / finish-surfaces.yaml（bay_sill 段）
+    carrier: config/model/envelope/openings.yaml（bay_sill 段；原记的 floor-zones/finish-surfaces 有误——bay_sill 实际在 openings.yaml）
     legacy_ref: 'pending-site-data #20'
   - id: OI-24
     subject: 全屋门洞实际位置与开启方向待量
