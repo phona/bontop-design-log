@@ -284,7 +284,18 @@ export interface HouseYaml {
 export type PhaseId = 'full' | 'phase_1_basic_occupancy';
 
 export interface PhaseFurnishingRule {
-  /** When present, only these furnishing types are admitted for the phase. */
+  /**
+   * 阶段归属按稳定 ID 指名（issue #98 方案 §四①）：准入该阶段的 placed 家具条目 id
+   * （house.yaml 的 `id:`，如 `ld.wall_cabinet_tall`）。一期是冻结范围——新家具没被
+   * 点名就不进该阶段：不会被同名 type 顺手带进来，也不会被同名 type 顺手排掉。
+   */
+  include_ids?: string[];
+  exclude_ids?: string[];
+  /**
+   * 迁移期兼容（将逐步清退）：按 type 批量匹配，新声明一律用 include_ids /
+   * exclude_ids。现存唯一合法用途是指名 count-only 条目（无 x/z、无 id，ID 指不到
+   * 它们）——窗帘/灯具/床垫/龙头等预算计数条目只能靠 type 进阶段。
+   */
   include_types?: string[];
   exclude_types?: string[];
   exclude_placed?: boolean;

@@ -1,9 +1,19 @@
 schema: schedule.phase-scope/v1
 project_id: bontop-design-log
 version: 1.0.0
-updated_at: 2026-10-07
+updated_at: 2026-11-09
 
 # 这里只保存对 house.yaml / overlay.yaml 对象的引用；坐标、尺寸和预算不在此重复。
+#
+# 阶段归属按稳定 ID 指名（issue #98 方案 §四①，业主 2026-11-09 裁定）：placed 家具
+# 一律用 include_ids / exclude_ids 精确点到 config/house.yaml 的 `id:`。改之前是
+# exclude_types: [wall_cabinet_tall] 这类按 type 批量排除——ld.wall_cabinet_tall
+# 一期不显示它是故意的，但同一个 type 规则会把将来另一个房间新增的通顶柜一并排掉，
+# 不论想不想要。按 ID 点名后，排哪些、留哪些逐条可指，互不牵连。
+# type 规则（include_types / exclude_types）只作迁移期兼容，将逐步清退；现存唯一
+# 合法用途是指名 count-only 条目——它们无 x/z、无 id（无 runtime 对象可指），ID
+# 指不到，只能靠 type 进阶段。所以下面每个房间的 include_types 只剩 count-only
+# 类型（窗帘/灯具/床垫/龙头/柜体计数等），placed 家具已全部改 ID。
 phases:
   full:
     label: 全案
@@ -19,30 +29,53 @@ phases:
     budget_exclude_topics: [dishwasher, water_purifier, dryer]
     furnishing_rules:
       master_bedroom:
-        include_types: [bed_180, master_bedside_cabinet_350_north, master_bedside_cabinet_350_south, mb_washbasin_cabinet, faucet, master_hot_season_low_dresser, mattress_180, curtain_set, ceiling_light]
-        exclude_types: [master_north_wall_wardrobe_950, master_wardrobe_top_pelmet, master_dressing_table, dressing_stool, mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board, condensate_pipe_ac_outlet, mb_vanity_pvc_box, mb_vanity_pvc_wardrobe_entry, mb_vanity_pvc_service_chase]
+        # placed：床/南北床头柜/台盆柜/低柜；count-only：龙头/床垫/窗帘/灯。
+        include_ids: [mb.bed_180, mb.bedside_cabinet_north, mb.bedside_cabinet_south, mb.washbasin_cabinet, mb.low_dresser]
+        include_types: [faucet, mattress_180, curtain_set, ceiling_light]
+        # 通顶衣柜与门头、梳妆台凳、东墙浴室柜组与整条冷凝链留二期。
+        exclude_ids: [mb.wardrobe_950, mb.wardrobe_pelmet, mb.dressing_table, mb.dressing_stool, mb.vanity_base_cabinet, mb.vanity_lower_board, mb.vanity_main_board, mb.condensate_pipe, mb.vanity_pvc_box, mb.vanity_pvc_wardrobe_entry, mb.vanity_pvc_service_chase]
       study:
+        # 一期只留窗帘与灯（均 count-only，无 id 可指名）；书桌椅与通顶柜三段留二期。
+        include_ids: []
         include_types: [curtain_set, ceiling_light]
-        exclude_types: [bed_150, wardrobe_180, mattress_150, desk, chair, study_seasonal_wardrobe_wall]
+        exclude_ids: [study.desk, study.chair, study.seasonal_wardrobe_wall, study.seasonal_wardrobe_step_north, study.seasonal_wardrobe_step_south]
       living_dining:
-        include_types: [sofa_3seat, entry_half_height_cabinet, dining_table, dining_chair, ceiling_light]
-        exclude_types: [wall_cabinet_tall, tv_wall_low, tv_65, coffee_table, floor_lamp, plant_fiddle, curtain_set]
+        # placed：沙发/门内半高柜/餐桌/四椅；count-only：灯。
+        include_ids: [ld.sofa_3seat, ld.entry_half_height_cabinet, ld.dining_table, ld.dining_chair_nw, ld.dining_chair_ne, ld.dining_chair_sw, ld.dining_chair_se]
+        include_types: [ceiling_light]
+        # 一期不显示通顶柜是故意的：按 ID 排 ld.wall_cabinet_tall 这一件，
+        # 不是排 wall_cabinet_tall 这个 type（将来新柜子不会被顺手排掉）。
+        exclude_ids: [ld.wall_cabinet_tall, ld.tv_wall_low, ld.tv_65, ld.coffee_table, ld.floor_lamp, ld.plant_fiddle]
       bedroom_nw:
+        # 一期只留窗帘与灯（均 count-only，无 id 可指名）；床/衣柜/桌椅/置物架留二期。
+        include_ids: []
         include_types: [curtain_set, ceiling_light]
       bedroom_se:
-        include_types: [bed_150, wardrobe_180, mattress_150, ceiling_light]
-        exclude_types: [desk, chair, study_seasonal_wardrobe_wall, curtain_set]
+        # placed：床/衣柜；count-only：床垫/灯。
+        include_ids: [bese.bed_150, bese.wardrobe_180]
+        include_types: [mattress_150, ceiling_light]
       kitchen:
-        include_types: [kitchen_cabinet_run, kitchen_countertop_bridge, cabinet_base, cabinet_wall, countertop_quartz, fridge, gas_stove, range_hood, sink, water_heater, ceiling_light]
-        exclude_types: [dishwasher]
+        # placed：三段柜 run/台面桥/灶/烟机/水槽/热水器；count-only：地柜/吊柜/台面/灯计数。
+        include_ids: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.gas_stove, kitchen.range_hood, kitchen.sink, kitchen.water_heater]
+        include_types: [cabinet_base, cabinet_wall, countertop_quartz, ceiling_light]
+        exclude_ids: [kitchen.dishwasher]
       balcony:
-        include_types: [washer, ceiling_light]
-        exclude_types: [dryer]
+        # placed：洗衣机；count-only：灯。
+        include_ids: [balcony.washer]
+        include_types: [ceiling_light]
+        exclude_ids: [balcony.dryer]
       master_bath:
-        include_types: [toilet, shower_set, towel_set, ceiling_light, exhaust_fan]
+        # placed：马桶/毛巾架/排气扇；count-only：淋浴组。
+        include_ids: [mbath.toilet, mbath.towel_set, mbath.exhaust_fan]
+        include_types: [shower_set]
       guest_bath:
-        include_types: [vanity, faucet, toilet, shower_set, towel_set, ceiling_light, exhaust_fan, mirror_cabinet_gbath, robot_dock_gbath]
+        # placed：台盆柜/马桶/排气扇/镜柜/机器人泊位；count-only：龙头/淋浴组。
+        include_ids: [gbath.vanity, gbath.toilet, gbath.exhaust_fan, gbath.mirror_cabinet, gbath.robot_dock]
+        include_types: [faucet, shower_set]
       entry_garden:
-        include_types: [garden_entry_station, shoe_cabinet, ceiling_light]
+        # placed：换鞋站；count-only：鞋柜/灯。
+        include_ids: [garden.entry_station]
+        include_types: [shoe_cabinet, ceiling_light]
       south_balcony:
-        include_types: []
+        # 空房间（house.yaml south_balcony: []）；保留规则表明未登记即不进一期。
+        include_ids: []
