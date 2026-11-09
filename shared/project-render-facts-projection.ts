@@ -36,8 +36,11 @@ export function buildProjectRenderFactsProjection(
   const selectedHvacPlan = selectedHvacPlanId === 'A2'
     ? facts.hvac.plans.find((plan) => plan.id === 'A2')
     : undefined;
+  // implemented 投影必须带本 plan 的外机（PR #122 Codex blocking）：`diagram.anchors` 的
+  // confirmed `outdoor_a2` 靠它解算，投影不带外机 = 任何只有投影的建场路径都画不出外机
+  // 且带诊断拒绝导出。外机与 diagram 同源（同一份 facts.hvac.plans 条目），一次下发。
   const hvac = selectedHvacPlan
-    ? { status: 'implemented' as const, planId: 'A2' as const, diagram: selectedHvacPlan.diagram }
+    ? { status: 'implemented' as const, planId: 'A2' as const, diagram: selectedHvacPlan.diagram, outdoor: [selectedHvacPlan.outdoor] }
     : { status: 'unimplemented' as const, planId: selectedHvacPlanId };
   const configuredIds = new Set(lighting.fixtures.map((fixture) => fixture.id));
   for (const fixture of lighting.fixtures) {

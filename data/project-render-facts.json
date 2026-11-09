@@ -2490,7 +2490,21 @@
           "survey_confirmation": "量房实测该处窗带梁底与范围；不得据此开孔或穿梁。"
         }
       ]
-    }
+    },
+    "outdoor": [
+      {
+        "id": "vrf_outdoor_a2",
+        "platform": "west_platform",
+        "x": 6.4,
+        "z": 0.5,
+        "direction": "south",
+        "width": 0.99,
+        "depth": 0.4,
+        "height": 0.81,
+        "model": "美的领航者Ⅳ MJV-200W-E01-LHIV（成交配置 DEC-2026-10-04-R1，20kW / 大7匹；领航者Ⅳ系列，区别于三代 MJV-200W-E01-LHⅢ）",
+        "note": "成交配置 DEC-2026-10-04-R1：20kW 外机配六台双出风内机，额定能力合计 25.3kW，名义连接率 1.265（约 1.27）。⚠️外廓 0.99×0.40×0.81m 为 7HP 常见规格 **estimated**，200W 级实测尺寸、平台散热（百叶有效通风面积/进排风净距/检修距离/热短路）与 1.6×1.00m 西平台（bbox 口径；含 r=1.0 西北圆角后可用约 1.39㎡，依据 model-geometry.yaml platform.boundary + overlay.yaml north_platform_floor）的适配均 site_pending。**供电制式已由业主 2026-10-04 确认为 220V（DEC-2026-10-04-R1），本条待核项已收窄一项**，2026-10-06 业主补图证实三代 MJV-200W-E01-LHⅢ 参数列外形 951×1333×382（原图未标单位）、制冷额定 5.9kW/27A、最大输入 8.56kW/39A；同代际对照仅供识别旧占位外廓不可信，不能证明合同四代 MJV-200W-E01-LHIV 尺寸与配电；原图及去重哈希见 docs/design-iterations/hvac-resix-20261003/evidence/evidence-notes.md。历史：DEC-2026-09-07-055 的 7HP/21.4kW/138% 出局结论保留追溯 ‖ DEC-2026-10-04-R2：外机供电已单独成路（第 20 路 hvac_power_outdoor_a2，C32A+漏保 / 4.0mm²(φ20) proposed，待厂家配电图）；点位 sock_vrf_outdoor_a2 @(7.20,0.50,1.60)（外机本体 @(6.40,0.50)；取电点按预案挂平台东界墙 w_vrv_east 厨房侧脸，落位说明见 config/electrical.yaml）；输入功率估 ≈6kW（20kW 制冷量 / 估 EER≈3.5）；实际接线（专用插座 vs 硬接线）与平台防水/开孔待厂家图与物业核定。⚠️ 外廓 0.99×0.40×0.81m 仍为 estimated；其 0.81m 高与业主补图所列三代 200W 的 1.333m 参考高度相差 0.523m。旧占位值无厂家依据，不能据此判定合同四代机型能否容纳；须厂家提供 LHIV 对应外形、安装净距与平台通风图。"
+      }
+    ]
   },
   "materials": {
     "floor": {

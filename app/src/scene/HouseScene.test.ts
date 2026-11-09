@@ -2661,3 +2661,134 @@ describe('HouseScene 高亮分层叠加：6s 窗口内多系统 emissive 变更�
     }
   });
 });
+
+// ─── 诊断生命周期（PR #122 Codex blocking，审查提交 ad457b39）─────────────────
+// 病根两半：① 首建构造 hvacSources 时没有外机来源 → confirmed 锚点 outdoor_a2 解不出；
+// ② 诊断是单一数组，首建覆盖赋值、重建只 push → 成功重建后旧错误仍在，GLB 守卫据此
+// 拒绝一份完好场景。这里两条都钉行为，不钉源码文本。
+describe('HouseScene 诊断生命周期：diagnostics 只描述当前这次场景', () => {
+  const canvas = () => ({ addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as HTMLCanvasElement;
+
+  const electrical = [{ id: 'sock_living_ac', room: 'living', type: 'socket' as const, x: 9, z: 7, height: 0.3 }];
+  const ceiling = [{ id: 'ac_living', room: 'living', type: 'ac_indoor' as const, x: 10, z: 7, height: 2.85 }];
+  // 与 config/hvac.yaml 同形：锚点 id outdoor_a2 → ref outdoor id vrf_outdoor_a2（外机本体）。
+  const outdoor = [{ id: 'vrf_outdoor_a2', platform: 'west_platform', x: 6.4, z: 0.5, direction: 'south' as const, width: 0.99, depth: 0.4, height: 0.81, model: 'MJV-200W-E01-LHIV' }];
+  const diagram = {
+    anchors: [
+      { id: 'outdoor_a2', status: 'confirmed' as const, system: 'refrigerant' as const, ref: { source: 'outdoor' as const, id: 'vrf_outdoor_a2' } },
+      { id: 'indoor_living', status: 'confirmed' as const, system: 'refrigerant' as const, ref: { source: 'ceiling' as const, id: 'ac_living' } },
+      { id: 'power_living', status: 'confirmed' as const, system: 'power' as const, ref: { source: 'electrical' as const, id: 'sock_living_ac' } },
+    ],
+    terminals: [],
+    routes: [],
+    reference_constraints: [],
+  };
+  /** implemented 投影（2026-11-10 起必带 hvac.outdoor：投影自洽性的最小形态）。 */
+  const projection = (overrides: { outdoor?: unknown[] } = {}) => ({
+    version: '2.0',
+    lightingFixtures: [],
+    plumbing: [],
+    ceiling,
+    hvac: {
+      status: 'implemented',
+      planId: 'A2',
+      diagram,
+      outdoor: overrides.outdoor ?? outdoor,
+    },
+    materials: { floor: { default: null, roomOverrides: {} } },
+    presentation: { curtains: {} },
+  }) as any;
+
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  it('首建不再产生 outdoor_a2 断引用诊断（外机随投影下发，outdoor 锚点照常落场景）', async () => {
+    const errorSpy = quiet();
+    try {
+      const scene = new HouseScene(canvas());
+      // 首建只拿 /api/project 的数据：投影 + house.electrical（没有 render-facts 的 hvac facts）。
+      await scene.buildFromCatalog({ house: { rooms: [], electrical }, topics: [], renderFactsProjection: projection() });
+
+      const diagnostics = scene.getPlacementDiagnostics();
+      expect(diagnostics.filter((line) => line.includes('outdoor_a2'))).toEqual([]);
+      // 外机确实在场景里：期望集（声明态）与落场景集一致，没有 missing。
+      expect(scene.getHvacExportStatus()).toMatchObject({ required: true, ready: true, missing: [] });
+      expect(scene.getHvacExportStatus().included).toContain('hvac:A2:anchor:outdoor_a2');
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('同一路径先产生诊断、再成功重建：重建后的 diagnostics 反映新场景，不残留旧错误', async () => {
+    const { buildHvacBuilderSources } = await import('@shared/render/HvacBuilder');
+    const errorSpy = quiet();
+    try {
+      const scene = new HouseScene(canvas());
+      await scene.buildFromCatalog({ house: { rooms: [], electrical }, topics: [], renderFactsProjection: projection() });
+      expect(scene.getPlacementDiagnostics()).toEqual([]);
+
+      // ① 先走一次**缺外机来源**的 HVAC 构建（等价于历史首建路径）→ 诊断入列。
+      scene.rebuildHvacProjection(projection(), { ceiling, electrical });
+      const stale = scene.getPlacementDiagnostics().filter((line) => line.includes('outdoor_a2'));
+      expect(stale).toHaveLength(1);
+      expect(stale[0]).toContain('vrf_outdoor_a2');
+
+      // ② 补齐来源后成功重建 → 本次场景没有这条错误了，它必须消失（原实现只 push，此处会残留）。
+      scene.rebuildHvacProjection(projection(), buildHvacBuilderSources({ projection: projection(), electrical }));
+      expect(scene.getPlacementDiagnostics().filter((line) => line.includes('outdoor_a2'))).toEqual([]);
+
+      // ③ 反向对照：真实的解算失败仍然显形（不是「清空一次就永远为空」的假修复）。
+      scene.rebuildHvacProjection(projection(), { electrical });
+      expect(scene.getPlacementDiagnostics().filter((line) => line.includes('indoor_living')).length).toBeGreaterThan(0);
+      expect(scene.getHvacExportStatus().missing).toContain('hvac:A2:anchor:indoor_living');
+      // ④ 再次成功重建 → ③ 的诊断同样被替换掉。
+      scene.rebuildHvacProjection(projection(), buildHvacBuilderSources({ projection: projection(), electrical }));
+      expect(scene.getPlacementDiagnostics()).toEqual([]);
+      expect(scene.getHvacExportStatus()).toMatchObject({ ready: true, missing: [] });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('#181 误拒的真实现场：外机已恢复显示、场景已完整，诊断不得继续挂着（导出守卫据此判失败）', async () => {
+    // Codex ad457b39 描述的现场：首建缺外机来源 → 诊断入列；随后 refreshInfrastructure 用完整
+    // 来源重建，外机回到场景（HVAC 期望集 ready=true），但旧实现在 diagnostics 里留着首建那条
+    // 「outdoor_a2 断引用」→ App.exportGlb 先看 diagnostics，一份完好场景被拒。
+    const { buildHvacBuilderSources } = await import('@shared/render/HvacBuilder');
+    const errorSpy = quiet();
+    try {
+      const scene = new HouseScene(canvas());
+      // 首建拿到的投影没有外机（历史 payload 形态）
+      const projectionWithoutOutdoor = projection({ outdoor: [] });
+      await scene.buildFromCatalog({ house: { rooms: [], electrical }, topics: [], renderFactsProjection: projectionWithoutOutdoor });
+      expect(scene.getPlacementDiagnostics().filter((line) => line.includes('outdoor_a2'))).toHaveLength(1);
+
+      // refreshInfrastructure：同一投影补齐外机来源后成功重建 → 外机回到场景
+      scene.rebuildHvacProjection(projectionWithoutOutdoor, buildHvacBuilderSources({ projection: projectionWithoutOutdoor, electrical, outdoor }));
+      expect(scene.getHvacExportStatus()).toMatchObject({ required: true, ready: true, missing: [] });
+      expect(scene.getExportRoot().children.some((child: any) => child.name === 'HVAC_CONFIRMED_ENTITIES')).toBe(true);
+      // 场景已完整：诊断必须为空，导出守卫才不会被首建的旧结论误触发。
+      expect(scene.getPlacementDiagnostics()).toEqual([]);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('containment: 重建只替换 HVAC 段，不清掉家具摆位/点位落位两段的结论', async () => {
+    const errorSpy = quiet();
+    try {
+      const scene = new HouseScene(canvas());
+      await scene.buildFromCatalog({ house: { rooms: [], electrical }, topics: [], renderFactsProjection: projection() });
+      // 直接注入两段的既有结论（模拟本次建场已报告的问题）
+      (scene as any).placementDiagnostics.scene = ['living:vanity: mount host "x" not found'];
+      (scene as any).placementDiagnostics.points = ['point placement: sock_x along 越界'];
+      scene.rebuildHvacProjection(projection(), { ceiling, electrical });
+      const diagnostics = scene.getPlacementDiagnostics();
+      expect(diagnostics).toContain('living:vanity: mount host "x" not found');
+      expect(diagnostics).toContain('point placement: sock_x along 越界');
+      // HVAC 段的结论是本次重建的，不是上一次的
+      expect(diagnostics.filter((line) => line.includes('outdoor_a2'))).toHaveLength(1);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+});
