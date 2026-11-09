@@ -12,26 +12,43 @@
  * 同一构件可同时出现在多张表里（它可能既卡量房又卡业主）——三张表是三个**视角**，
  * 不是三个互斥分区，去重会让「找谁」变难。
  *
+ * 2026-11-10 修 Codex major：本脚本原来只消费 `collectElements()`（电气/给排水/吊顶）。
+ * S2 迁入 `config/layout/model-geometry.yaml` 的 `beams` 不是 SceneElement，整段不进清单——
+ * 旧手账 #1 删除后，梁位/梁宽/梁底实测任务整类消失。现在：
+ *   ① 梁体与 hvac reference_constraints 经 `shared/pending-carriers.ts` 的载体表并入 rows；
+ *   ② 覆盖自检改成**源侧逐条对账**（源里有 pending 语义、视图里没有 → 抛错），
+ *      不再只核对已采集 rows 的内部并集；
+ *   ③ 反向扫 config/**\/*.yaml，出现 pending 语义却未登记的段会抛错，防止下一类静默漏掉。
+ *
  * 用法：`npm run docs:generate-pending-view [-- --out <path>]`
  */
 
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { readFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { load as parseYaml } from 'js-yaml';
 import { collectElements } from '../../shared/element-sources.js';
 import { deriveElementStates } from '../../shared/element-state.js';
+import {
+  PENDING_CARRIERS,
+  assertCarrierCoverage,
+  assertNoUnregisteredPendingSections,
+  hasPendingSemantics,
+} from '../../shared/pending-carriers.js';
 import type { ComponentBlocker } from '../../shared/types.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 const DEFAULT_OUT = 'tmp/capture/pending-view.md';
 
-interface Row {
+export interface Row {
   id: string;
   kind: string;
   room?: string;
   status: string;
   blocker: ComponentBlocker;
+  /** 现场要量的字段 + 当前推断值（梁体 / hvac 参考约束这类无 note 的量房目标用）。 */
+  measure?: string;
 }
 
 interface OpenItem {
@@ -54,7 +71,7 @@ function collectOpenItems(): OpenItem[] {
   return parsed.items ?? [];
 }
 
-function collectRows(): Row[] {
+export function collectRows(): Row[] {
   const elements = collectElements();
   const result = deriveElementStates({ elements, issues: [] });
   const byId = new Map(elements.map((element) => [element.id, element]));
@@ -66,11 +83,27 @@ function collectRows(): Row[] {
     // 量房清单会漏掉这类关键核验（实例：drain_riser_master_bath 要核实立管是否在幕墙
     // 切角内侧并回改两条路线）。判据扩为：pending/undeclared，或 note/结构化字段里
     // 显式声明了「待量房/待实测/待核实」的 inferred 构件。
+    //
+    // 2026-11-10 补漏：结构化判据此前只写在注释里，实际只匹配 note 散文——
+    // 给排水 27 个 construction_status: pending 点位里有 16 个 note 不含关键词，
+    // 整类缺席。现在直接复用载体表的 hasPendingSemantics（同一判据，源侧对账也用它）。
     const element = byId.get(state.id);
     if (!element) continue;
     const needsSurvey = /待量房|待实测|待核实|须实测|量房实测|待复测/.test(element.note ?? '');
     const isPending = state.status === 'pending' || state.status === 'undeclared';
-    if (!isPending && !needsSurvey) continue;
+    const marked = hasPendingSemantics({
+      ...(element.configStatus !== undefined ? { status: element.configStatus } : {}),
+      ...(element.blocker !== undefined ? { blocker: element.blocker } : {}),
+      ...(element.constructionStatus !== undefined ? { construction_status: element.constructionStatus } : {}),
+      ...(element.notForConstruction !== undefined ? { not_for_construction: element.notForConstruction } : {}),
+    });
+    if (!isPending && !needsSurvey && !marked) continue;
+    const markerText = [
+      element.constructionStatus === 'pending' ? 'construction_status=pending' : undefined,
+      element.notForConstruction ? 'not_for_construction=true' : undefined,
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join('、');
     rows.push({
       id: state.id,
       kind: state.kind,
@@ -79,11 +112,25 @@ function collectRows(): Row[] {
       blocker: element.blocker ?? {
         kind: 'site_measurement',
         owner: ['量房'],
-        trigger: '量房实测（该构件未申报 blocker，按其 note 的待量房要求纳入清单）',
+        trigger: '量房实测（该构件未申报 blocker，按其结构化待核字段/note 纳入清单）',
         reverses_if: '实测后按结果回改或销号',
-        rationale: `${element.note ?? '（无 note）'}`.slice(0, 400),
+        rationale: `${markerText ? `${markerText}：` : ''}${element.note ?? '（无 note）'}`.slice(0, 400),
       },
     });
+  }
+  // 2026-11-10 修 Codex major：不是 SceneElement 的现役载体（结构梁 / hvac 参考约束）
+  // 由 shared/pending-carriers.ts 的登记表并入。数据从权威 config 现读，不抄第二份。
+  for (const carrier of PENDING_CARRIERS) {
+    for (const item of carrier.rows()) {
+      rows.push({
+        id: item.id,
+        kind: item.kind,
+        ...(item.room ? { room: item.room } : {}),
+        status: item.status,
+        blocker: item.blocker,
+        measure: `${item.measure}；当前推断：${item.currentValue}`,
+      });
+    }
   }
   return rows.sort((a, b) => a.blocker.kind.localeCompare(b.blocker.kind) || a.id.localeCompare(b.id));
 }
@@ -94,13 +141,13 @@ function table(title: string, rows: Row[], note: string): string {
     '',
     note,
     '',
-    '| 构件 | 类型 | 房间 | kind | 责任方 | 解锁事件 | 什么条件下反转 | 为什么卡 |',
-    '|---|---|---|---|---|---|---|---|',
+    '| 构件 | 类型 | 房间 | kind | 责任方 | 解锁事件 | 什么条件下反转 | 为什么卡 | 量什么 / 当前值 |',
+    '|---|---|---|---|---|---|---|---|---|',
   ];
   for (const row of rows) {
-    lines.push(`| \`${row.id}\` | ${row.kind} | ${row.room ?? '—'} | ${row.blocker.kind} | ${row.blocker.owner.join('/')} | ${row.blocker.trigger} | ${row.blocker.reverses_if} | ${row.blocker.rationale} |`);
+    lines.push(`| \`${row.id}\` | ${row.kind} | ${row.room ?? '—'} | ${row.blocker.kind} | ${row.blocker.owner.join('/')} | ${row.blocker.trigger} | ${row.blocker.reverses_if} | ${row.blocker.rationale} | ${row.measure ?? '—'} |`);
   }
-  if (rows.length === 0) lines.push('| — | — | — | — | — | — | — | — |');
+  if (rows.length === 0) lines.push('| — | — | — | — | — | — | — | — | — |');
   lines.push('');
   return lines.join('\n');
 }
@@ -141,8 +188,8 @@ function render(rows: Row[]): string {
     '# 待决视图（按需生成，过程物不进 git）',
     '',
     `- 生成命令：\`npm run docs:generate-pending-view\``,
-    `- 数据来源：config 里构件自己的 \`status\` / \`blocker\` 字段（**不读任何台账**）`,
-    `- pending/undeclared 构件共 **${rows.length}** 个；另有 **${collectOpenItems().length}** 条独立未决项（\`config/open-items.yaml\`，无构件载体）`,
+    `- 数据来源：config 里构件自己的 \`status\` / \`blocker\` / 施工闸门字段（**不读任何台账**）`,
+    `- 待决条目共 **${rows.length}** 个（场景构件 + \`model-geometry.yaml\` 结构梁 + \`hvac.yaml\` 参考约束）；另有 **${collectOpenItems().length}** 条独立未决项（\`config/open-items.yaml\`，无构件载体）`,
     '',
     '## 按 blocker.kind 汇总',
     '',
@@ -175,7 +222,7 @@ function render(rows: Row[]): string {
   // 同时命中多张筛选表（owner 既含「量房」又含「业主」），相加会双算。
   const covered = shown.size + rest.length;
   if (covered !== rows.length) {
-    throw new Error(`视图覆盖不完整：筛选表并集 ${shown.size} + 兜底表 ${rest.length} = ${covered}，pending/undeclared 构件 = ${rows.length}——有构件被筛掉了`);
+    throw new Error(`视图覆盖不完整：筛选表并集 ${shown.size} + 兜底表 ${rest.length} = ${covered}，待决条目 = ${rows.length}——有条目被筛掉了`);
   }
   return `${parts.join('\n')}\n`;
 }
@@ -185,14 +232,20 @@ function main(): void {
   const outIndex = args.indexOf('--out');
   const out = outIndex >= 0 ? args[outIndex + 1] : DEFAULT_OUT;
   const rows = collectRows();
+  // 2026-11-10 修 Codex major：渲染前做两道源侧覆盖自检——
+  //   ① 每个现役载体的 pending 条目必须逐条出现在 rows（整类遗漏在此炸）；
+  //   ② config 里出现 pending 语义的段必须已登记载体或写清豁免（新载体不能静默漏掉）。
+  assertCarrierCoverage(new Set(rows.map((row) => row.id)));
+  assertNoUnregisteredPendingSections();
   const markdown = render(rows);
   const full = path.join(ROOT, out);
   mkdirSync(path.dirname(full), { recursive: true });
   writeFileSync(full, markdown);
-  console.log(`待决视图已生成：${out}（${rows.length} 个 pending/undeclared 构件 + ${collectOpenItems().length} 条独立未决项）`);
+  console.log(`待决视图已生成：${out}（${rows.length} 个待决条目 + ${collectOpenItems().length} 条独立未决项）`);
   const byKind = new Map<string, number>();
   for (const row of rows) byKind.set(row.blocker.kind, (byKind.get(row.blocker.kind) ?? 0) + 1);
   for (const [kind, count] of [...byKind.entries()].sort((a, b) => a[0].localeCompare(b[0]))) console.log(`  ${kind}: ${count}`);
 }
 
-main();
+// 直接执行时跑 main；测试 import 本模块取 collectRows / render 时不写文件。
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();

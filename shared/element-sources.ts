@@ -164,6 +164,10 @@ export function collectElements(): ElementInput[] {
       ...(point.room ? { room: point.room } : {}),
       ...(point.status ? { configStatus: point.status } : {}),
       ...(point.blocker ? { blocker: point.blocker } : {}),
+      // 施工闸门（`construction_status: pending` / `not_for_construction: true`）不是状态字段，
+      // 但它们是「这条还不能进施工交底」的明确声明。只透传给待决视图，不参与状态派生。
+      ...(point.construction_status ? { constructionStatus: point.construction_status } : {}),
+      ...(point.not_for_construction ? { notForConstruction: point.not_for_construction } : {}),
       ...(decision ? { decision } : {}),
       ...(point.note ? { note: point.note } : {}),
     });

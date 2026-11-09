@@ -1955,6 +1955,9 @@ coverage:
   - { file: config/layout/model-geometry.yaml, field: "rooms", readers: ["shared/environment-schema.ts", "shared/glazing.ts"] }
   - { file: config/layout/model-geometry.yaml, field: "platform", readers: ["shared/project-render-facts-schema.ts"] }
   - { file: config/layout/model-geometry.yaml, field: "walls", readers: ["shared/electrical-lint.ts", "shared/suppression.ts", "shared/spatial-validation.ts", "scripts/verify/collision/verify-collision-coverage.ts", "scripts/verify/data/verify-data-consistency.ts", "server/index.ts"] }
+  # 结构梁（S2-A 从旧手账「梁体推断」表迁入）：无 SceneElement 载体，读者是待决视图的载体表
+  # （2026-11-10 修 Codex major，shared/pending-carriers.ts 的 layout:beams 载体）。
+  - { file: config/layout/model-geometry.yaml, field: "beams", readers: ["shared/pending-carriers.ts"] }
   # S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 文件；version 随
   # openings.yaml，elements 分布在 openings/floor-zones——合并读取入口
   # server/overlay-merge.ts parseOverlayFiles()。S3（2026-11-07）起 suppress 不再是本文件的
