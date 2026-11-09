@@ -10,7 +10,8 @@ import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 import { buildPlacementIndexes } from '../shared/placement-indexes.js';
-import { collectPlacementHostClosureViolations, PLACEMENT_CLOSURE_GUIDANCE } from './placement-closure.js';
+import { collectPlacementHostClosureViolations, PLACEMENT_CLOSURE_GUIDANCE, PROJECTION_CONSTRUCTION_GUIDANCE } from './placement-closure.js';
+import type { PlacementClosureApiDiagnostics } from '../shared/api-project.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import { deriveMepPenetrationAt } from '../shared/condensate-chain.js';
@@ -565,6 +566,46 @@ export function createApiRouter(deps: ApiDeps): Router {
     // shared/dxf/project-dxf.ts 的 errors 通道）与模型验证脚本（verify-rules / verify-spatial
     // 的 placement error）遇到同样的断引用必须失败——不许为了修页面把严格输出一起放松。
     const placementClosureViolations = collectPlacementHostClosureViolations(electricalPoints, plumbingPoints, mountHosts);
+    // render-facts 投影构造隔离（issue #98「宽容读取、局部降级、统一诊断、严格输出」；
+    // PR #122 深审 Codex blocking）。
+    // 病根：投影是「数据源一次给全」的**优化**，不是正确性前提。它的构造链
+    // `buildProjectRenderFactsProjection` → `buildRenderLightingFixtures` 遇点位宿主断引用
+    // 会 fail-closed 抛错；原实现把调用**内联在响应对象字面量里**，一抛就是整个处理器抛 →
+    // /api/project 500 → 同一响应里的 placementClosureDiagnostics 一个字都发不出去，
+    // 页面既看不到问题也预览不了其余交付内容。
+    // 现在：隔离成一次调用 + try/catch。失败 → 本次不下发投影，错误并入**同一条诊断通道**
+    // （下方 placementClosureDiagnostics），响应仍 200，页面继续预览（只是少 HVAC 源）。
+    // **严格输出零改动**：同一断引用在 DXF 导出（npm run export:dxf，实测 exit 1）与模型
+    // 验证脚本里仍必须失败——投影不可得 ≠ 放行，问题不会藏。
+    // 另修同源缺陷：原实现 `deps.getProjectRenderFactsProjection?.()` 在条件与取值里**各调
+    // 一次**，一个请求重建两遍投影；第二遍若抛错同样 500。这里只调一次，取到的就是下发的。
+    let renderFactsProjection: ProjectRenderFactsProjection | undefined;
+    let projectionFailure: string | undefined;
+    try {
+      renderFactsProjection = deps.getProjectRenderFactsProjection?.();
+    } catch (err) {
+      projectionFailure = err instanceof Error ? err.message : String(err);
+      console.error('[api/project] render-facts 投影构造失败：已降级为诊断（页面继续预览，正式 DXF/验证仍会失败）：', err);
+    }
+    // 统一诊断通道：点位闭合违例与投影构造失败共用 placementClosureDiagnostics 一个键、
+    // 一份 count、一组处理方向；**键缺省** = 本次响应两项都正常（页面据此区分正常/降级）。
+    const diagnosticMessages = [
+      ...(projectionFailure !== undefined ? [`render-facts 投影构造失败：${projectionFailure}`] : []),
+      ...placementClosureViolations.map((v) => v.message),
+    ];
+    const renderDiagnostics: PlacementClosureApiDiagnostics | undefined = diagnosticMessages.length > 0
+      ? {
+          count: diagnosticMessages.length,
+          violations: diagnosticMessages,
+          guidance: [
+            ...(projectionFailure !== undefined ? [PROJECTION_CONSTRUCTION_GUIDANCE] : []),
+            ...(placementClosureViolations.length > 0 ? [PLACEMENT_CLOSURE_GUIDANCE] : []),
+          ].join(''),
+          ...(projectionFailure !== undefined
+            ? { projectionError: { stage: 'render-facts-projection' as const, message: projectionFailure } }
+            : {}),
+        }
+      : undefined;
     res.json({
       phase,
       phaseMeta: { ...phaseScopes[phase], budget: loadPhaseBudgetMeta(phaseScopes[phase]) },
@@ -608,17 +649,14 @@ export function createApiRouter(deps: ApiDeps): Router {
       // projectData.renderFactsProjection），此前却下发在 house 内 → 顶层恒 undefined →
       // HVAC 源空 → 三件冷凝链家具静默缺失，而 house.renderFactsProjection 全仓无读取者。
       // 声明在哪就从哪下发：与 topics / materialPreview / budgetCategories 平级。
-      ...(deps.getProjectRenderFactsProjection?.() ? { renderFactsProjection: deps.getProjectRenderFactsProjection() } : {}),
-      // 宽容读取诊断（issue #98，PR #122 深审修复）：闭合性失败随 200 响应下发（不再 503），
-      // 页面显形「哪些点位缺哪个宿主、可能原因」并继续预览其余部分；键缺省 = 本次交付闭合。
+      // 构造已隔离（上方 try/catch）：抛错时本键不下发、错误进 placementClosureDiagnostics，
+      // 整个响应仍 200。此处只放**已成功构造的那一份**（同一值，不二次调用）。
+      ...(renderFactsProjection ? { renderFactsProjection } : {}),
+      // 宽容读取诊断（issue #98，PR #122 深审修复）：点位闭合性失败与投影构造失败同走这一条
+      // 通道，随 **200** 响应下发（不再 500/503），页面显形「哪个点位缺哪个宿主 / 投影为何
+      // 构造失败、可能原因」并继续预览其余部分；键缺省 = 本次响应无降级。
       // 处理方向与断言同一条（统一诊断）：修配置，而非放宽断言或降级解算。
-      ...(placementClosureViolations.length > 0 ? {
-        placementClosureDiagnostics: {
-          count: placementClosureViolations.length,
-          violations: placementClosureViolations.map((v) => v.message),
-          guidance: PLACEMENT_CLOSURE_GUIDANCE,
-        },
-      } : {}),
+      ...(renderDiagnostics ? { placementClosureDiagnostics: renderDiagnostics } : {}),
       topics: projectCatalog.getTopics().map((t) => ({
         id: t.id, name: t.name, perRoom: t.perRoom, optionCount: t.options.length,
       })),

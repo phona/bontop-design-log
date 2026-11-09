@@ -91,18 +91,35 @@ export interface ProjectApiMaterialPreview {
 }
 
 /**
- * 交付闭合性诊断（宽容读取，issue #98 + PR #122 深审修复）：/api/project 不因闭合性失败
- * 503 掐死页面；点位 mount 宿主断引用时随 **200** 响应下发本字段，页面显形问题并继续
- * 预览其余部分。键缺省 = 本次交付闭合。正式 DXF 导出与模型验证脚本对同样的失败仍会报错
- * （严格输出）——本字段只降级页面预览，不放松交付。
+ * 交付诊断（宽容读取，issue #98 + PR #122 深审修复）：/api/project 不因**可预见的降级**
+ * 500/503 掐死页面，而是随 **200** 响应下发本字段，页面显形问题并继续预览其余部分。
+ *
+ * **一条通道，两类条目**（PR #122 Codex blocking 修复后）：
+ * - 点位闭合违例：mount 宿主断引用 / count-only 宿主无平面几何（逐条文案与交付断言一致）；
+ * - 投影构造失败：render-facts 投影构造器抛错（如 `buildRenderLightingFixtures` 的
+ *   fail-closed），此时响应**不下发** renderFactsProjection，错误并入 violations，
+ *   并在 `projectionError` 给机器可读形态。投影是「数据源一次给全」的优化、不是正确性
+ *   前提——页面少 HVAC 源仍可预览，但正式 DXF 导出与模型验证对同一断引用仍会失败。
+ *
+ * 键缺省 = 本次响应两类都正常。正式交付路径不因本字段放松（严格输出）。
  */
 export interface PlacementClosureApiDiagnostics {
-  /** 违例条数（= violations.length）。 */
+  /** 降级条数（= violations.length，两类条目合并计数）。 */
   count: number;
-  /** 逐条人读诊断：哪个点位、缺哪个宿主、可能原因（与交付断言逐条文案一致）。 */
+  /** 逐条人读诊断：哪一项降级、缺什么、可能原因（闭合违例与交付断言逐条文案一致）。 */
   violations: string[];
   /** 统一处理方向（统一诊断）：修配置而非放宽断言；正式交付路径仍会因此失败。 */
   guidance: string;
+  /**
+   * 投影构造失败的机器可读形态（存在即说明本次响应未下发 renderFactsProjection，
+   * 且 violations 里必有对应条目）。缺失 = 投影未配置/未就绪或构造成功。
+   */
+  projectionError?: {
+    /** 失败的构造阶段（当前只有 render-facts 投影一个产地）。 */
+    stage: 'render-facts-projection';
+    /** 原始错误文案（构造器的 fail-closed 信息，含具体点位/宿主/引用 id）。 */
+    message: string;
+  };
 }
 
 /** GET /api/project 的完整响应。 */
@@ -116,12 +133,13 @@ export interface ProjectApiResponse {
   /**
    * render-facts 投影。**服务端下发在响应顶层**（routes.ts 的条件 spread 在 house 字面量
    * 闭合之后，疗法① PR #162 归位），与 topics / materialPreview / budgetCategories 平级。
-   * 投影端点未就绪时整个键不下发，故可选。
+   * 投影端点未配置/未就绪、或**构造抛错被隔离**时整个键不下发（后者见
+   * placementClosureDiagnostics.projectionError），故可选。
    */
   renderFactsProjection?: ProjectRenderFactsProjection;
   /**
-   * 交付闭合性诊断（宽容读取）：点位声明的 mount 宿主不在定位宿主表时随 200 下发，
-   * 与 renderFactsProjection 平级（响应顶层）。键缺省 = 闭合性通过，页面照常预览。
+   * 交付诊断（宽容读取）：点位 mount 宿主断引用、或投影构造失败时随 200 下发，
+   * 与 renderFactsProjection 平级（响应顶层）。键缺省 = 本次响应无降级，页面照常预览。
    */
   placementClosureDiagnostics?: PlacementClosureApiDiagnostics;
   house: ProjectApiHouse;
