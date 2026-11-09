@@ -122,7 +122,17 @@
 >
 > 2026-11-08 业主裁定（issue #98 第六阶段）：**DEC 体系退役**，`docs/decisions/` 与 `config/decision-registry.yaml` 均已退场，本文出现的 `DEC-…` 编号一律指 git 历史里的旧记录（可经 `config/decision-knowledge.yaml` 的 `retired` 段定位到原文文件+行），**不再是任何写入通道**。新的落点只有四条，见第 2 条。
 
-1. **"我们选了 X"必须同时生成一组"X 不工作时"的问题。** 配置/选型落笔时，对每个新引入的部件问：待机、停机、故障三种态下它在做什么、留下什么、谁清理、多久一次、要不要拆顶。答案进 `原量房台账（已于 S2-B 退场）` 或该条对象自己的 `blocker` 字段（`kind` / `owner` / `trigger` / `reverses_if` / `rationale`），禁止留空。（例：六台带泵 → 每台残余水量、接水盘可否不拆吊顶清洗、能否旁通当重力用、有无防滞水设计、残水与回风路径距离。）
+> 2026-11-09 业主裁定（issue #98 第六阶段 S4，**element-state 与 round 强制的去留**）：
+> ① **构件级工程状态机制整体保留**——数据层（对象 `status`/`blocker` + `shared/element-blockers.ts` 门禁）、
+> 投影（`npm run state:project` / `GET /api/element-state`）、3D 状态叠加层与 agent 查询出口全部留用。
+> 理由：它已是纯对象式（只读 config、不查任何表），且 census 申报缺口校验是全仓**唯一**的
+> 「构件没申报状态」机器拦截，无替代；3D 叠加层是 DEC-2026-10-09-E01 W3/W4 的验收交付。
+> ② **round 强制保留 round.yaml 一件套**（`verify-iteration-metadata` 的 `round_yaml_missing` 契约 +
+> `docs:generate-index` 的 INDEX.yaml 数据源），只清 DEC 相关文字。理由：round.yaml 是设计轮次记录，
+> 独立于 DEC；删了它设计迭代无结构化档案。**从来不存在「每轮必须产 DEC」的机器校验**——
+> 机器只校验 round.yaml 存在且可解析，DEC 纯粹是纪律文字，随档案退役即可。
+
+1. **"我们选了 X"必须同时生成一组"X 不工作时"的问题。** 配置/选型落笔时，对每个新引入的部件问：待机、停机、故障三种态下它在做什么、留下什么、谁清理、多久一次、要不要拆顶。答案进该条对象自己的 `blocker` 字段（`kind` / `owner` / `trigger` / `reverses_if` / `rationale`，由 `shared/element-blockers.ts` 的 checkBlockers 门禁强制非空），禁止留空。无属主的开放项进 `config/open-items.yaml`（仅收真的无对象可挂的少数几条）。（例：六台带泵 → 每台残余水量、接水盘可否不拆吊顶清洗、能否旁通当重力用、有无防滞水设计、残水与回风路径距离。）
 
 2. **禁止写"供后续复盘"。** 发现要么带 owner 与触发条件落到位，要么不写——没有 owner 的技术意见等于没写（`DEC-2026-10-04-R1` 的"我的技术意见"已指出直吹、除湿、同开总量三个问题和"装修期内换机只补差价"这个窗口，无 owner 无日期，七天无人接；该反例连同 36,000 成交语义已由 `config/decision-knowledge.yaml` 的 entries 段与 `config/hvac.yaml` 的 `commercial.evidence` 承接）。**四个落点，按内容性质选，不建中央决策账**：
    - **对象 intent**（首选）：为什么这个值是这样、失效/反转条件 → 写进对象自己的 `note` / `blocker` / 结构化字段。数据全上对象，代码只剩「读对象 + 断言」。

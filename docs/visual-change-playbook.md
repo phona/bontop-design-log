@@ -53,7 +53,7 @@ npm run gate:visual     # CLEAR / STALE + 修复命令；退出码 0/1/2
 ## 5. 分级动手 + 两次规则
 
 - config 能表达（声明式）就先 config；**同一个点两次 config 修不好 → 停下做架构评估**——那是模型表达力不足的信号（本例：cove 不过分区、角归两区共有），不是参数问题。本例信号第二轮就在，拖到第五轮。
-- 留痕分级：**机制级**改动（builder / 算量 / schema）走 DEC + 五件套 + 测试全套；**纯视觉微调**（半径、拆/加一处声明）只记一条 DEC + 一个 probe 数，不开五件套。
+- 留痕分级：**机制级**改动（builder / 算量 / schema）走 round.yaml 五件套 + 对象 `blocker`/`note` + 测试全套；**纯视觉微调**（半径、拆/加一处声明）只在该轮 round.yaml 的 review 段记一条 + 一个 probe 数，不开五件套。（2026-11-09 S4：原「走 DEC」的 DEC 通道已随档案退役，见 AGENTS.md 决策铁律节首的退役声明。）
 
 ## 6. 交付格式（每次变更报告）
 
@@ -73,11 +73,11 @@ npm run gate:visual     # CLEAR / STALE + 修复命令；退出码 0/1/2
 
 ## 8. 决策日志是证据，不是圣经
 
-终裁可能是工具卡住时的退让（本例原话：「回正交是因为实在改不动了」）。**重开条件：该决策的验收证据是在反馈环坏了的时候做的。** 重开时显式记一条新 DEC 废止旧条款，不静默翻案。
+终裁可能是工具卡住时的退让（本例原话：「回正交是因为实在改不动了」）。**重开条件：该决策的验收证据是在反馈环坏了的时候做的。** 重开时显式记一条新裁定废止旧条款（对象 `blocker.reverses_if` / `note` / `schedule/phase-*/control.yaml` 的 `audit_log`），不静默翻案。
 
 ## 9. 完整案例（反例教材）
 
-- `docs/decisions/08-ceiling-form.md`：DEC-2026-10-08-R01~R05 全链（含六轮评审子记录）
+- `docs/design-iterations/dining-ceiling-cove-restore-20261008/`：DEC-2026-10-08-R01~R05 全链（含六轮评审子记录）——原 `docs/decisions/08-ceiling-form.md` 已于 2026-11-09 S3 退场，正文见 git 史，编号可经 `config/decision-knowledge.yaml` 的 retired 段定位
 - `docs/design-iterations/dining-ceiling-cove-restore-20261008/`：五件套（R03/R04/R05 的实施与实测）
 - `docs/design-iterations/dining-ceiling-no-cove-20261008/`：R02 的 frozen 记录
 - 最终解法：一行 config（`concave_fillets_open: { se: sw }`）+ 一个小 builder 机制——几何工作一小时，其余全耗在环和语言上。
