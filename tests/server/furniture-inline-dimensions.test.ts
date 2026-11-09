@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import { buildCliHouseScene } from '../../scripts/render/glb/cli-glb-builder.js';
+import { buildCliHouseScene } from '../../scripts/render/cli-house-scene.js';
 
 // 回归：书房南延腿在 house.yaml 上带行内 width 2.182 / depth 0.55（目录 1.70×0.55）；
 // 北段带行内 width 1.80（2026-10-27 齐平：西延顶墙）。

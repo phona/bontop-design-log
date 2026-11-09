@@ -5,7 +5,7 @@ import test from 'node:test';
 import * as THREE from 'three';
 import { buildFixture, getNorthWallWardrobe950DoorAabb, getRecipeTypes, setNorthWallWardrobe950DoorConfiguration, setNorthWallWardrobe950DoorState, setPartitionWardrobeDoorState, type NorthWallWardrobe950DoorConfiguration } from '../../../shared/render/FixtureFactory.js';
 import { buildScene } from '../../../shared/render/SceneBuilder.js';
-import { buildCliHouseScene } from '../../../scripts/render/glb/cli-glb-builder.js';
+import { buildCliHouseScene } from '../../../scripts/render/cli-house-scene.js';
 import { FURNITURE_DIMS, getPartitionWardrobeDoorAabbs } from '../../../shared/types.js';
 import type { HvacDiagram, LightingRenderConfig, RenderLightingFixture, SceneElement } from '../../../shared/types.js';
 import { readFileSync as readTextFile } from 'node:fs';

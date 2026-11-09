@@ -44,10 +44,7 @@ test('shared render and CLI sources stay browser-free', async () => {
     'shared/render/FixtureFactory.ts',
     'shared/render/CeilingZoneBuilder.ts',
     'shared/render/uv-utils.ts',
-    'shared/render/export-gltf.ts',
-    'scripts/render/glb/cli-glb-builder.ts',
-    'scripts/render/glb/export-glb.ts',
-    'scripts/render/glb/node-gltf-runtime.ts',
+    'scripts/render/cli-house-scene.ts',
   ];
   for (const file of files) {
     const source = await readFile(file, 'utf8');
@@ -55,13 +52,9 @@ test('shared render and CLI sources stay browser-free', async () => {
   }
 });
 
-test('shared GLB exporter has no business filtering or app dependency', async () => {
-  const source = await readFile('shared/render/export-gltf.ts', 'utf8');
-  assert.doesNotMatch(source, /app\/src/);
-  assert.doesNotMatch(source, /userData\.type|EXPORT_INCLUDE_TYPES|EXPORT_EXCLUDE_TYPES|whitelist|allowlist|hvac|curtain/i);
-});
-
-test('CLI exporter does not import app render code', async () => {
-  const source = await readFile('scripts/render/glb/export-glb.ts', 'utf8');
+// shared/render/export-gltf.ts 的「无业务过滤 / 无 app 依赖」用例随 issue #168 下线 GLB 导出
+// 删除（导出器本身已删）。CLI 侧边界改为钉迁移后的场景装配器。
+test('CLI house scene builder does not import app render code', async () => {
+  const source = await readFile('scripts/render/cli-house-scene.ts', 'utf8');
   assert.doesNotMatch(source, /app\/src/);
 });
