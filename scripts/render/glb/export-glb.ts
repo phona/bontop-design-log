@@ -45,6 +45,16 @@ export function parseArgs(argv: string[]): Options {
 export async function exportCliGlb(options: CliGlbOptions = {}): Promise<CliGlbExport> {
   installNodeFileReader();
   const { exportRoot, report } = buildCliHouseScene(options.layout, options.house, options.ceiling, options.renderFacts);
+  // 定位诊断 = 场景缺件（issue #98；与 shared/dxf/project-dxf.ts 的 errors 同一通道、同一
+  // fail-closed 语义）：SceneBuilder 把定位声明解不出来的家具（断引用/along 越界/负净宽/mount
+  // 宿主缺失）、暖通 anchor、冷凝链记进 report.placementDiagnostics 并跳过该件。非空即本次
+  // 导出不成立——不序列化、不写文件、非零退出，禁止把页面宽容预览的局部降级写成成功交付物。
+  // 只允许在此判失败，不得降级成 warning 后照常导出。
+  if (report.placementDiagnostics.length > 0) {
+    const diagnostics = report.placementDiagnostics;
+    for (const diagnostic of diagnostics) console.error(`ERROR ${diagnostic}`);
+    throw new Error(`GLB 导出失败：${diagnostics.length} 条定位诊断（家具摆位/暖通锚点/冷凝链），修复配置后重导：${diagnostics[0]}${diagnostics.length > 1 ? ' 等' : ''}`);
+  }
   const result = await exportObjectTreeToGlbData(exportRoot);
   return { bytes: result instanceof ArrayBuffer ? new Uint8Array(result) : result, report };
 }

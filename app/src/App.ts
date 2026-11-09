@@ -493,6 +493,15 @@ export class App {
   }
 
   private async exportGlb(): Promise<{ blob: Blob; hvac: ReturnType<HouseScene['getHvacExportStatus']> }> {
+    // 定位诊断 = 场景缺件（issue #98；与 CLI export-glb、shared/dxf/project-dxf.ts 的 errors
+    // 同一通道、同一 fail-closed 语义）：SceneBuilder 把定位失败的家具/暖通锚点/冷凝链记进
+    // HouseScene.getPlacementDiagnostics 并跳过该件。非空即本次导出不成立——页面只许降级预览，
+    // 不许把缺件场景下载成成功交付物；CLI 侧对同一诊断同样判失败。
+    const placementDiagnostics = this.houseScene.getPlacementDiagnostics();
+    if (placementDiagnostics.length > 0) {
+      for (const diagnostic of placementDiagnostics) console.error('[glb] placement diagnostic:', diagnostic);
+      throw new Error(`GLB 导出失败：${placementDiagnostics.length} 条定位诊断（${placementDiagnostics[0]}${placementDiagnostics.length > 1 ? ' 等' : ''}），修复配置后重导`);
+    }
     // GLTFExporter 不认 BatchedMesh 且 HVAC 导出校验要看原始 mesh：先挂回，完成后重新合批
     this.houseScene.restoreStaticBatches();
     try {

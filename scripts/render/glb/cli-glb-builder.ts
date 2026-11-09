@@ -56,6 +56,10 @@ export function buildCliHouseScene(
   // 暖通 ref → 电气点位的坐标走单一解算器，两份索引与 MEP/DXF/verify 同一构造。
   const hvacSources = buildHvacBuilderSources({
     projection,
+    // 吊顶分区源（codex 5088dc1b 前一轮 blocking 的回归）：不带 --render-facts 时 projection
+    // 为空，缺 ceilingZones 则 indoor_master → ceiling/ac_master 解不出，冷凝链三件家具带诊断
+    // 跳过；导出却照样成功。与端点派生同源（下面 endpointSourcesFromFacts 的 ceiling 也是它）。
+    ceiling: ceilingZones,
     electrical,
     hvac: hvacFacts,
     pointWalls: pointWallIndexFromElements(resolved.walls),
