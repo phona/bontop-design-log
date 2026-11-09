@@ -910,8 +910,15 @@ export const CurtainRenderProjectionSchema = z.object({
   }).strict()),
   snapshotSha256: z.string().regex(/^[0-9a-f]{64}$/u),
 }).strict();
+/**
+ * implemented 投影必须带外机（PR #122 Codex blocking，2026-11-10）：`diagram.anchors` 里的
+ * `confirmed` `outdoor_a2` 靠 `ref.source === 'outdoor'` 解算，而 `buildHvacBuilderSources`
+ * 只从 `hvac` / `outdoor` 入参取外机——投影不带外机，任何「只有投影」的建场路径都必然
+ * 解不出该 anchor（外机不画 + 诊断 + GLB 导出被拒）。写成必填 = 这种不自洽投影在这一层
+ * 就被拒（fail-closed），而不是等到建场时才显形。
+ */
 const HvacProjectionSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('implemented'), planId: z.literal('A2'), diagram: HvacDiagramSchema }).strict(),
+  z.object({ status: z.literal('implemented'), planId: z.literal('A2'), diagram: HvacDiagramSchema, outdoor: z.array(VrfOutdoorUnitSchema) }).strict(),
   z.object({ status: z.literal('unimplemented'), planId: z.string().nullable() }).strict(),
 ]);
 export const ProjectRenderFactsProjectionSchema = z.object({

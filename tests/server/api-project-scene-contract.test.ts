@@ -86,7 +86,12 @@ function buildFromApiResponse(body: ProjectApiResponse): BuiltFromResponse {
   const result = buildScene({
     ...input,
     options: {
-      ...(projection && sources ? { hvac: { projection, sources } } : {}),
+      // 与 HouseScene.buildFromCatalog 同口径（2026-11-10 起）：buildScene 只拿 diagram
+      // 派生冷凝链锚点，HVAC **实体**由页面在自己唯一的 HVAC 构建路径（rebuildHvacProjection）
+      // 里建——诊断因此只有一个产地，成功重建能整体替换上一次的结论。
+      ...(projection && sources
+        ? { hvac: { diagram: projection.hvac.status === 'implemented' ? projection.hvac.diagram : undefined, sources } }
+        : {}),
       // 主卫冷凝链穿墙锚点（与 HouseScene 同口径）。
       condensatePenetration: house.condensatePenetration,
     },
@@ -243,6 +248,13 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     assert.ok(fullBuild.sources, 'buildHvacBuilderSources 未产出装配源');
     assert.ok((fullBuild.sources.ceiling?.length ?? 0) > 0, 'HVAC 装配源 ceiling 为空');
     assert.ok((fullBuild.sources.electrical?.length ?? 0) > 0, 'HVAC 装配源 electrical 为空（power anchor 会静默丢掉）');
+    // 外机（PR #122 Codex blocking，2026-11-10）：页面首建手上只有这份投影，没有 render-facts
+    // 的 hvac facts；投影不带外机则 confirmed outdoor_a2 解不出，外机不画且 GLB 导出被拒。
+    assert.ok(full.renderFactsProjection.hvac.status === 'implemented');
+    assert.ok((full.renderFactsProjection.hvac.outdoor?.length ?? 0) > 0,
+      '响应里的 implemented 投影缺 hvac.outdoor：页面首建解不出 outdoor_a2（外机不画 + 诊断 + GLB 导出被拒）');
+    assert.ok((fullBuild.sources.outdoor?.length ?? 0) > 0, '首建装配源没有外机：buildHvacBuilderSources 未从投影取到 hvac.outdoor');
+    assert.ok(fullBuild.anchors.has('outdoor_a2'), '首建源解不出 confirmed 外机锚点 outdoor_a2');
 
     const indoorMaster = fullBuild.anchors.get('indoor_master');
     assert.ok(indoorMaster, `indoor_master 锚点解不出（已解出：${[...fullBuild.anchors.keys()].join(', ')}）——三件冷凝链家具没有起点`);

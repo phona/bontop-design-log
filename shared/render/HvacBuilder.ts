@@ -45,7 +45,21 @@ export function buildHvacBuilderSources(input: HvacBuilderSourceInput = {}): Hva
   const ceiling = projection?.ceiling ?? input.ceiling ?? [];
   const electrical = input.electrical ?? [];
   const planId = projection?.hvac.status === 'implemented' ? projection.hvac.planId : undefined;
-  const outdoor = input.outdoor ?? (planId ? input.hvac?.plans.find((plan) => plan.id === planId)?.outdoor ? [input.hvac.plans.find((plan) => plan.id === planId)!.outdoor] : [] : []);
+  // 外机三个来路，按「显式优先」排序（PR #122 Codex blocking，2026-11-10）：
+  //   ① 调用方直传 `outdoor`（CLI/verify 有 facts 时一直这么传）；
+  //   ② 调用方传 `hvac` facts（`plans[].outdoor`）；
+  //   ③ **投影自带**（`hvac.outdoor`，2026-11-10 起 implemented 投影必带，schema 必填）。
+  // ③ 是页面首建的唯一来路：首建只有 `/api/project` 的投影，没有 facts。缺了它，
+  // `diagram.anchors` 的 confirmed `outdoor_a2` 解不出——外机不画、诊断入列、
+  // `getHvacExportStatus` 判 missing，GLB 导出被拒（本次 blocking 的症状）。
+  const outdoorFromFacts = planId
+    ? input.hvac?.plans.find((plan) => plan.id === planId)?.outdoor
+    : undefined;
+  const outdoorFromProjection = projection?.hvac.status === 'implemented' ? projection.hvac.outdoor : undefined;
+  const outdoor = input.outdoor
+    ?? (outdoorFromFacts ? [outdoorFromFacts] : undefined)
+    ?? outdoorFromProjection
+    ?? [];
   return {
     ceiling: uniqueById(ceiling).map(normalizeCeilingZone),
     electrical: uniqueById(electrical),

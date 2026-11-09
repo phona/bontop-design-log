@@ -520,7 +520,7 @@ describe('App', () => {
               { id: 'outdoor', status: 'confirmed', system: 'refrigerant', ref: { source: 'outdoor', id: 'outdoor_a2' } },
               { id: 'indoor', status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: 'ac_living' } },
             ], terminals: [], routes: [{ id: 'trunk', status: 'confirmed', system: 'refrigerant', from: 'outdoor', to: 'indoor' }], reference_constraints: [],
-          } },
+          }, outdoor: [{ id: 'outdoor_a2', platform: 'west_platform', x: 0, z: 0, direction: 'south', width: 1, depth: 0.4, height: 1, model: 'test' }] },
           materials: { floor: { default: null, roomOverrides: {} } },
           presentation: { curtains: {
             source: { default: 'open', roomOverrides: {}, updatedAt: '' }, effectiveByRoom: {}, curtains: [],

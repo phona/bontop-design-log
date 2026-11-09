@@ -132,6 +132,20 @@ const ELEMENT_STATE_RENDER_ORDER = 70;
 /** 标记层画在最上层（关深度测试，保证状态点穿过墙体家具也看得见）。 */
 const ELEMENT_STATE_MARKER_RENDER_ORDER = 200;
 
+/**
+ * 建场诊断的三个产地（PR #122 Codex blocking，2026-11-10）。每个产地一条构建路径、
+ * 一次整体替换：
+ * - `scene`：buildFromCatalog 的 buildScene 报告（家具摆位 / 冷凝链 / 建场期点位）；
+ * - `hvac`：rebuildHvacProjection（HVAC anchor 解算）——首建与后续重建共用这一条产地；
+ * - `points`：placeInfrastructureFixtures（刷新时重新落位的点位）。
+ * 分段的唯一目的：让「成功重建」能清掉同一产地上一次的错误，同时不误清其它产地的结论。
+ */
+interface ScenePlacementDiagnostics {
+  scene: string[];
+  hvac: string[];
+  points: string[];
+}
+
 interface CurtainRegistryEntry {
   id: string;
   roomId?: string;
@@ -227,8 +241,15 @@ export class HouseScene implements SceneApi {
   private auditFurnishings: FurnishingsYaml = {};
   private auditSceneElements: SceneElement[] = [];
   private auditPlumbing: PlumbingPoint[] = [];
-  /** 最近一次 buildFromCatalog 的家具摆位诊断（issue #98 PR-3）；空 = 全部定位声明解析成功。 */
-  private placementDiagnostics: string[] = [];
+  /**
+   * 建场诊断，**按产地分段**（PR #122 Codex blocking，2026-11-10）：
+   * 每段只由自己的构建路径整体替换，绝不追加到别的产地的段落里。因此任何重建之后
+   * `getPlacementDiagnostics()` 描述的都是「当前这次场景」——首建/上次构建的陈旧错误不会
+   * 残留，GLB 守卫（App.exportGlb / CLI export-glb）拿到的就是本次场景缺了什么。
+   * 病根：原先是单一数组，buildFromCatalog 覆盖赋值、rebuildHvacProjection 却 push——
+   * 首建那条「outdoor_a2 断引用」即使外机恢复显示也不会消失。
+   */
+  private placementDiagnostics: ScenePlacementDiagnostics = { scene: [], hvac: [], points: [] };
   private textureManager = new TextureManager();
   private envManager: EnvironmentManager;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
@@ -687,7 +708,9 @@ export class HouseScene implements SceneApi {
 
   async buildFromCatalog(projectData: ProjectData): Promise<void> {
     this.readyState = 'loading';
-    this.placementDiagnostics = [];
+    // 整场重建 = 三段诊断全部作废（上一次场景的结论不再描述这次场景）；
+    // 各自的产地随后重新填自己那一段，没填 = 该产地本次无诊断。
+    this.placementDiagnostics = { scene: [], hvac: [], points: [] };
     this.readyPromise = new Promise<void>((resolve, reject) => {
       this.resolveReady = resolve;
       this.rejectReady = reject;
@@ -754,6 +777,10 @@ export class HouseScene implements SceneApi {
     // 投影随 /api/project 一次下发，位置是**响应顶层**（疗法① PR #162 归位；2026-11-09 起
     // 路由的条件 spread 已移到 house 字面量之外）。此前消费方按顶层读而路由发在 house 内，
     // 顶层恒 undefined → HVAC 源空 → 三件冷凝链家具静默缺失。
+    // 外机随投影一起下发（PR #122 Codex blocking，2026-11-10）：implemented 投影带
+    // `hvac.outdoor`，`buildHvacBuilderSources` 在没有 hvac facts 的路径上取它，首建因此
+    // 能解出 confirmed `outdoor_a2`——不再产生「ref outdoor 宿主不在来源里」这条本可避免
+    // 的诊断（该诊断曾长期残留并让 #181 的 GLB 守卫拒绝一份完好场景）。
     // 点位定位索引走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）：墙取本次建场
     // 墙几何，mountHosts 取**全量** furnishingsAll（一期不显示的柜仍可能是已交付点位的宿主；
     // 缺省回退 furnishings，与 SceneBuilder 的 hostFurnishings 同口径）。
@@ -769,21 +796,30 @@ export class HouseScene implements SceneApi {
         mountHosts: placementIndexes.mountHosts,
       })
       : undefined;
+    // HVAC **实体**不在这次 buildScene 里建：这里只给 `diagram`（供冷凝链锚点派生），
+    // entity 由本方法末尾唯一的 HVAC 构建路径 rebuildHvacProjection 建（PR #122 Codex
+    // blocking，2026-11-10）。理由：诊断必须只有一个产地，重建时才能整体替换而不是追加——
+    // buildScene 的 report 里混着家具/冷凝链/点位诊断，若 HVAC 诊断也混进去，成功重建也
+    // 清不掉它（首建那条 outdoor_a2 残留就是这么来的）。
+    const hvacDiagram = projectData.renderFactsProjection?.hvac.status === 'implemented'
+      ? projectData.renderFactsProjection.hvac.diagram
+      : undefined;
     const result = buildScene({
       ...input,
       options: {
         materialProvider,
         curtainRooms: input.rooms,
-        hvac: hvacSources ? { projection: projectData.renderFactsProjection, sources: hvacSources } : undefined,
+        hvac: hvacDiagram && hvacSources ? { diagram: hvacDiagram, sources: hvacSources } : undefined,
         // 主卫冷凝链穿墙锚点（issue #98 PR-10）：缺它三件链条家具解不出锚点、会带诊断跳过。
         condensatePenetration: projectData.house.condensatePenetration,
       },
     });
     for (const child of [...result.exportRoot.children]) this.exportRoot.add(child);
-    // 家具摆位诊断（issue #98 PR-3）：定位声明解不出来的件不会进场景，逐条留在这里由
-    // App 显形（DXF 导出与 verify:furniture 同口径判失败）——页面同样不许静默少件。
-    this.placementDiagnostics = result.report.placementDiagnostics ?? [];
-    for (const diagnostic of this.placementDiagnostics) console.error('[scene] furniture placement:', diagnostic);
+    // 建场诊断（issue #98 PR-3）：定位声明解不出来的件不会进场景，逐条留在这里由 App 显形
+    // （DXF 导出与 verify:furniture 同口径判失败）——页面同样不许静默少件。
+    // 整体**替换** scene 段（不是追加）：本次建场的结论就是这一段，上一次的结论作废。
+    this.placementDiagnostics.scene = result.report.placementDiagnostics ?? [];
+    for (const diagnostic of this.placementDiagnostics.scene) console.error('[scene] furniture placement:', diagnostic);
     for (const child of [...result.viewOnlyRoot.children]) {
       if (child.userData.type === 'platform') this.viewOnlyRoot.add(child);
       else this.builderViewRoot.add(child);
@@ -801,11 +837,8 @@ export class HouseScene implements SceneApi {
     this.wallSegmentIndex = index.wallSegments;
     this.pointWallIndex = index.pointWalls;
     this.mountHostIndex = index.mountHosts;
-    this.hvacEntityIndex = index.hvac;
-    this.hvacProjection = projectData.renderFactsProjection;
-    // 导出期望集独立化（issue #98 S1，E7）：见 expectedHvacExportIdsFor——声明态枚举，
-    // 不再取「已建索引的键」（自产期望集让 ready 恒真，A §4.1）。
-    this.hvacExpectedExportIds = this.expectedHvacExportIdsFor(projectData.renderFactsProjection);
+    // HVAC 的三份状态（实体索引 / 当前投影 / 导出期望集）不在这里赋值：本次 buildScene
+    // 不建 HVAC 实体，它们由本方法末尾的 rebuildHvacProjection（唯一 HVAC 构建产地）设置。
     for (const [id, curtain] of index.curtains) this.registerSharedCurtain(curtain);
     for (const room of projectData.house.rooms ?? []) {
       this.roomMeta.set(room.id, { wall_finish: room.wall_finish, wallOpenings: room.wallOpenings });
@@ -847,7 +880,12 @@ export class HouseScene implements SceneApi {
       this.exportRoot,
     );
     // HVAC 实体（26 组 ~106 mesh、仅 4 种材质外观）：静态、整组重建，合批收益大。
-    this.batchHvacEntities();
+    // **唯一构建产地**（PR #122 Codex blocking，2026-11-10）：首建也走 rebuildHvacProjection，
+    // 不在这里另起一条。于是「HVAC 诊断」只有一个生命周期——每次（重）建替换上一次的结论，
+    // 成功重建即清掉首建/上次构建的错误（此前 rebuildHvacProjection 只追加，outdoor_a2
+    // 那条首建诊断残留下来，让 #181 的 GLB 守卫拒绝一份完好场景）。
+    // 它在 doors 合批之前调用：rebuildHvacProjection 内部完成 hvac scope 合批。
+    this.rebuildHvacProjection(projectData.renderFactsProjection, hvacSources);
     // 铰链门（~42 mesh）：静态无开合动画；换色经 setDoorMaterial → updateScopeMaterials 桥接。
     this.batcher.batchScope(
       'doors',
@@ -890,6 +928,14 @@ export class HouseScene implements SceneApi {
     }
   }
 
+  /**
+   * HVAC 实体构建——**全仓唯一产地**（首建 buildFromCatalog 与后续 refreshInfrastructure
+   * 都走这里，PR #122 Codex blocking，2026-11-10）。
+   *
+   * 诊断随之整体替换 `hvac` 段：本次构建就是当前场景的全部 HVAC 结论，上一次（哪怕是首建
+   * 缺源时）的结论在这里作废。原先这里是 `push`，所以缺 outdoor 的首建诊断在成功重建后
+   * 仍然存活，GLB 守卫据此拒绝导出——守卫没错，是诊断生命周期错了。
+   */
   rebuildHvacProjection(projection: ProjectRenderFactsProjection | undefined, sources: HvacBuilderSources = buildHvacBuilderSources({ projection })): void {
     this.batcher.clearScope('hvac');
     this.clearRoot(this.exportRoot, (object) => object.name === 'HVAC_CONFIRMED_ENTITIES');
@@ -897,8 +943,8 @@ export class HouseScene implements SceneApi {
     this.hvacEntityIndex = built.index;
     this.hvacProjection = projection;
     // anchor 解析失败诊断（issue #98 S1，E7）上浮到页面同一通道，不静默少件。
-    for (const diagnostic of built.diagnostics) {
-      this.placementDiagnostics.push(diagnostic);
+    this.placementDiagnostics.hvac = [...built.diagnostics];
+    for (const diagnostic of this.placementDiagnostics.hvac) {
       console.error('[scene] hvac placement:', diagnostic);
     }
     // 期望集独立化（issue #98 S1，E7）：见 expectedHvacExportIdsFor。
@@ -910,8 +956,8 @@ export class HouseScene implements SceneApi {
    * 导出期望集（issue #98 S1，E7 独立化）：按**声明态**枚举可渲染实体 id——只读 diagram，
    * 不解算位置、不读已建索引。
    *
-   * 两个调用点（buildFromCatalog 首建 / rebuildHvacProjection 重建）共用这一处，避免各写一份
-   * 表达式后其中一个被回退成自产期望集而另一个不。旧的 `[...this.hvacEntityIndex.all.keys()]`
+   * 唯一调用点 = rebuildHvacProjection（HVAC 构建的唯一产地，2026-11-10 起首建也走它）。
+   * 旧的 `[...this.hvacEntityIndex.all.keys()]`
    * 与「期望集过同一装配解算器」是同一个病：场景丢了实体，期望里也没有，ready 恒真（A §4.1）。
    * 声明态与解算解耦后，源缺件（少传 pointWalls/electrical）会以 missing + ready=false 显形。
    * 判别性测试：app/src/scene/HouseScene.test.ts「期望集独立化」。
@@ -2010,8 +2056,9 @@ export class HouseScene implements SceneApi {
     this.infrastructureMeshes = result.objects;
     // 点位定位诊断（issue #98 S1）：沿墙点位解算失败（缺 along/越界/断引用）不出场景，
     // 逐条显形——与家具摆位诊断同一通道，页面同样不许静默少件。
-    for (const diagnostic of result.placementDiagnostics) {
-      this.placementDiagnostics.push(diagnostic);
+    // 整体替换 points 段：本次落位就是这些点位的当前结论（不是把上次的结论再追加一遍）。
+    this.placementDiagnostics.points = [...result.placementDiagnostics];
+    for (const diagnostic of this.placementDiagnostics.points) {
       console.error('[scene] point placement:', diagnostic);
     }
     for (const model of result.objects) {
@@ -2091,9 +2138,19 @@ export class HouseScene implements SceneApi {
     return this.furnitureMeshes;
   }
 
-  /** 家具摆位诊断（issue #98 PR-3）：非空即场景里有家具因定位声明解析失败而缺席。 */
+  /**
+   * 当前场景的定位诊断（家具摆位 / 冷凝链 / HVAC anchor / 点位落位）：非空 = 场景里有件
+   * 因定位声明解析失败而缺席。GLB 导出（App.exportGlb）据此 fail-closed。
+   *
+   * 返回的是**三个产地的当前结论**（见 ScenePlacementDiagnostics）：每段在各自构建路径上
+   * 被整体替换，所以这里永远描述「当前这次场景」，不含任何已重建掉的陈旧错误。
+   */
   getPlacementDiagnostics(): string[] {
-    return [...this.placementDiagnostics];
+    return [
+      ...this.placementDiagnostics.scene,
+      ...this.placementDiagnostics.hvac,
+      ...this.placementDiagnostics.points,
+    ];
   }
 
   getEnvironmentManager(): EnvironmentManager {
