@@ -2,7 +2,7 @@
 
 > **核心原则**：所有数据本地化、版本化、可审计。AI驱动创意，Python驱动计算与归档，业主只做决策与验收。
 >
-> **当前效果预览主线**：Web + GPT。Web/CLI GLB 导出与比较保持 active；Blender 渲染主线已暂停，源码冷归档见 `scripts/archive/blender-pipeline/README.md`，不再提供默认 npm 或 wrapper 入口。
+> **当前效果预览主线**：Web + GPT。GLB 导出已下线（issue #168），Web 端为唯一现役渲染/预览线；Blender 渲染主线已暂停，源码冷归档见 `scripts/archive/blender-pipeline/README.md`，不再提供默认 npm 或 wrapper 入口。
 
 ## 项目信息
 

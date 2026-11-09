@@ -1,7 +1,7 @@
 // 灯具派生 parity 守门测试。
 //
 // 背景：渲染锚点派生曾经有两份实现——权威投影 shared/project-render-facts-projection.ts
-// （喂 app/GLB 的 data/project-render-facts.json）与 shared/penetration/scene.ts 的
+// （喂 app 的 data/project-render-facts.json）与 shared/penetration/scene.ts 的
 // renderLightingFixtures()（喂 verify:spatial / verify:penetration 的 runtime 场景）。
 // 分叉的那版不做 offsetX/offsetZ 平移、高度还静默兜底 2.8m，于是 linter 校验的是
 // 「位置上不存在的灯」（历史实例：light_tv_strip 的 offsetX: 0.15，该灯带已于

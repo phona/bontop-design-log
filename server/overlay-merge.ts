@@ -333,9 +333,10 @@ export function parseOverlay(raw: string): OverlayConfig {
 // suppress 自 2026-11-07 S3 起不住本处：改判为 config/layout/model-geometry.yaml 墙条目的
 // suppressed:{reason,replacement} 属性（原 overlay 顶层 8 条 wall/walls/region 选择器 +
 // spatial-validation.yaml 的 overlay_replacements 镜像表随之退场），语义唯一权威实现
-// shared/suppression.ts。合并必须恢复原 overlay.yaml 的元素物理顺序：GLB/DXF 产物按 elements
-// 顺序生成，实测乱序即字节变化（2026-11-07 实验把 floor 6 条移位重导出，GLB SHA 由
-// eba3dbda… 变 47087a67…）。原序是「bay_sill 组(25) → floor 6 → curtain/shower 等围护(15)
+// shared/suppression.ts。合并必须恢复原 overlay.yaml 的元素物理顺序：产物按 elements
+// 顺序生成（DXF 与已下线的 GLB 同口径），实测乱序即字节变化（2026-11-07 实验把 floor 6 条
+// 移位重导出，GLB SHA 由 eba3dbda… 变 47087a67…；GLB 已随 issue #168 下线，此记录保留为
+// 顺序敏感性的实测依据）。原序是「bay_sill 组(25) → floor 6 → curtain/shower 等围护(15)
 // → 面层配方(109，其中 skirting 24 是唯一产可见网格的一类)」，S4/S5 后只剩派生的 skirting 24
 // 还走元素表，接在原面层配方组的末尾位置（可见网格集合不变：24 段逐一对应原声明，
 // tests/server/skirting.test.ts 冻结原声明逐字段断言），因此 floor 6 条仍插在 openings 内
@@ -413,7 +414,7 @@ export function loadOverlayDoc(): { version: unknown; elements: unknown[] } {
   if (anchor < 0) {
     throw new Error(
       `envelope/openings.yaml 找不到锚点元素 ${FLOOR_ZONE_INSERT_AFTER}：floor-zones 的插入位失效，` +
-        '合并顺序无法恢复原 overlay.yaml 的元素序（GLB/DXF 产物会变）。请同步更新 FLOOR_ZONE_INSERT_AFTER。',
+        '合并顺序无法恢复原 overlay.yaml 的元素序（DXF 产物会变）。请同步更新 FLOOR_ZONE_INSERT_AFTER。',
     );
   }
   return {

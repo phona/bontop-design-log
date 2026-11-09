@@ -6,7 +6,7 @@
  * 传 projection + electrical + pointWalls/mountHosts——而投影当时**不带外机**，于是
  * confirmed 锚点 `outdoor_a2`（ref outdoor `vrf_outdoor_a2`）解不出：
  *   46/47 实体 + 1 条 `hvac anchor outdoor_a2: ref outdoor 宿主 "vrf_outdoor_a2" 不在来源里（断引用）`。
- * 之后 refreshInfrastructure 用完整来源重建、外机回到场景，但旧诊断残留 → GLB 守卫误拒。
+ * 之后 refreshInfrastructure 用完整来源重建、外机回到场景，但旧诊断残留 → 导出守卫误拒。
  *
  * 本文件用**真实 config**（不是手捏 fixture）钉首建源：
  *   ① 只给投影 + electrical + 两份索引 → 47 个可渲染实体、0 条诊断（外机在场）；
@@ -61,7 +61,7 @@ test('首建源（投影 + electrical + 宿主索引）解析出全部 47 个实
   assert.equal(entities.length, 47, `首建源应解析出 47 个可渲染实体，实际 ${entities.length}`);
   assert.ok(
     entities.some((entity) => entity.objectId === 'hvac:A2:anchor:outdoor_a2'),
-    '首建源缺 confirmed 外机锚点 outdoor_a2（外机不画 + 诊断 + GLB 守卫拒绝导出）',
+    '首建源缺 confirmed 外机锚点 outdoor_a2（外机不画 + 诊断 + 导出守卫拒绝）',
   );
   // 外机坐标来自投影自带的那份 facts（不是建场时另取的 facts）：与 config 声明一致。
   const outdoorEntity = entities.find((entity) => entity.objectId === 'hvac:A2:anchor:outdoor_a2')!;

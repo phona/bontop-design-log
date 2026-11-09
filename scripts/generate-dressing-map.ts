@@ -14,7 +14,7 @@
  * 2. **冷凝链锚点**：三件 `anchor` 定位家具（condensate_pipe_ac_outlet /
  *    mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase）的位置由
  *    shared/condensate-chain.ts 的 `resolveCondensatePlacementAnchors` 一次解出；构造与
- *    SceneBuilder（`resolveScenePlacementAnchors`）、CLI GLB（`buildCliHouseScene`）与
+ *    SceneBuilder（`resolveScenePlacementAnchors`）、Node CLI 场景装配（`buildCliHouseScene`）与
  *    verify:furniture 同一条链：hvac 锚点（ceiling 宿主）+ MEP `condensate-master`
  *    派生穿墙点 + 衣柜宿主。本文件不另写派生，也不把上下文置空。
  */
@@ -112,7 +112,7 @@ export interface DressingMapContext {
 /**
  * 读权威配置并解出装扮映射所需的全部定位上下文。
  *
- * 冷凝链锚点构造与 SceneBuilder / CLI GLB / verify:furniture 同一条链（issue #98 PR-10）：
+ * 冷凝链锚点构造与 SceneBuilder / Node CLI 场景装配（`buildCliHouseScene`）/ verify:furniture 同一条链（issue #98 PR-10）：
  * `config/hvac.yaml` diagram（内机锚点） + `config/mep-hvac-coordination.yaml` 的
  * condensate-master 派生穿墙点 + `mb.wardrobe_950` / `mb.vanity_pvc_box` 宿主。
  * 缺任一项时锚点解不出——三件链条家具按「定位失败」显形，不回退绝对坐标。
@@ -216,7 +216,7 @@ export function buildFurnishingSection(
       lines.push(`| ${roomId} | ${type} | ${list.length} | ${dims} | ${positions} |`);
     }
     for (const [type, n] of countOnly) {
-      lines.push(`| ${roomId} | ${type} | ${n} | — | count-only（不在 glb，按实物补摆） |`);
+      lines.push(`| ${roomId} | ${type} | ${n} | — | count-only（无家具体块，按实物补摆） |`);
     }
   }
   return { lines, failures };
@@ -307,11 +307,11 @@ function main(): void {
 
   lines.push('## 2. 家具体块清单 → 库家具替换参照');
   lines.push('');
-  lines.push('glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下表 width×depth（米）。');
+  lines.push('3D 场景中未声明 id 的家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下表 width×depth（米）。');
   lines.push('');
   lines.push('| 房间 | 类型 | 数量 | 宽×深 (m) | 摆位 (x, z) / 朝向 |');
   lines.push('|---|---|---|---|---|');
-  // 摆位一律走共享解算器（与 3D/DXF/GLB/verify:furniture 同一构造），三态判据见文件头。
+  // 摆位一律走共享解算器（与 3D/DXF/verify:furniture 同一构造），三态判据见文件头。
   const furnishingSection = buildFurnishingSection(
     context.furnishings,
     (item) => resolveFurniturePlacement(item, context.wallSegments, context.hosts, context.anchors),
@@ -360,7 +360,7 @@ function main(): void {
   lines.push('## 6. 渲染与回传指引（现行）');
   lines.push('');
   lines.push('### 地面（含人字拼 A/B）');
-  lines.push('- glb 内嵌贴图仅打底（程序化生成，质感非最终）；人字拼须用带多版面+倒角的真人字拼材质，不得以直纹贴图冒充，拖到地面节点比对版面');
+  lines.push('- Web 渲染的程序化贴图仅打底（程序化生成，质感非最终）；人字拼须用带多版面+倒角的真人字拼材质，不得以直纹贴图冒充，拖到地面节点比对版面');
   lines.push('- 直铺选浅胡桃色（#c49a6c 方向）柔光木地板款；替换后对比人字拼/直铺，作为 DEC-011 门店终审前的证据');
   lines.push('');
   lines.push('### 玻璃幕（5 段 curtain_run + 9 处飘窗）');

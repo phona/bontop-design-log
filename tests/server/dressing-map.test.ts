@@ -40,10 +40,10 @@ test('家具三态②：count-only 按声明 count 累计，不按条目数（�
     ],
   });
   assert.deepEqual(failures, []);
-  assert.ok(lines.includes('| kitchen | cabinet_base | 7 | — | count-only（不在 glb，按实物补摆） |'));
-  assert.ok(lines.includes('| kitchen | cabinet_wall | 2 | — | count-only（不在 glb，按实物补摆） |'));
-  assert.ok(lines.includes('| kitchen | countertop_quartz | 5 | — | count-only（不在 glb，按实物补摆） |'));
-  assert.ok(lines.includes('| kitchen | curtain_set | 1 | — | count-only（不在 glb，按实物补摆） |'));
+  assert.ok(lines.includes('| kitchen | cabinet_base | 7 | — | count-only（无家具体块，按实物补摆） |'));
+  assert.ok(lines.includes('| kitchen | cabinet_wall | 2 | — | count-only（无家具体块，按实物补摆） |'));
+  assert.ok(lines.includes('| kitchen | countertop_quartz | 5 | — | count-only（无家具体块，按实物补摆） |'));
+  assert.ok(lines.includes('| kitchen | curtain_set | 1 | — | count-only（无家具体块，按实物补摆） |'));
 });
 
 test('家具三态③：定位失败必须显形，不得静默落进 count-only', () => {

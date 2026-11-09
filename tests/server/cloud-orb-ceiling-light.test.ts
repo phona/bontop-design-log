@@ -49,5 +49,5 @@ test('dining cloud-orb fixture keeps the declared body size and image-proportion
   assert.ok(Math.abs(bounds.getSize(new THREE.Vector3()).z - 0.5) < 1e-6, `AABB z width ${bounds.getSize(new THREE.Vector3()).z}`);
   assert.ok(Math.abs(bounds.max.y - 2.8) < 1e-6);
   assert.ok(Math.abs(bounds.min.y - 2.314) < 1e-6);
-  assert.equal(built.group.getObjectByProperty('type', 'PointLight'), undefined, 'GLB/export builder must not add runtime lights');
+  assert.equal(built.group.getObjectByProperty('type', 'PointLight'), undefined, 'export builder must not add runtime lights');
 });
