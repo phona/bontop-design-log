@@ -7,7 +7,7 @@ import * as path from 'node:path';
  * 为什么存在：原 `verify:all` 是 `&&` 链，任何一步非零就中止——一个「等外部输入」的
  * 待决项（如 `sock_child_ac` 卡空调厂家深化图）会让后面 7 个 verifier 根本不执行，
  * 门禁对其余问题失明。本编排器全跑完再汇总，退出码语义不变（0 ⇔ 全部通过），
- * 因此 docs/decisions 里大量「N 步全过」的历史证据仍然有效。
+ * 因此 git 史里大量「N 步全过」的历史证据仍然有效（docs/decisions/ 已于 2026-11-09 S3 退场，正文即 git 史）。
  *
  * 对 agent 的出口：`npm run verify:all -- --json` 一次拿到全部 verifier 的结构化信封。
  * 支持 `--json` 的 verifier 会带上解析后的 `report`；不支持的带上原始 `output` 文本，
