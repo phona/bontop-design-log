@@ -49,6 +49,16 @@ export interface ElementInput {
   configStatusSource?: string;
   /** 构件自己声明的未决项（issue #98 S2-A）：pending/undeclared 时的「卡在谁 / 何时解锁 / 何时反转」。 */
   blocker?: ComponentBlocker;
+  /**
+   * 施工闸门字段原值（给排水点位的 `construction_status`）。只透传给待决视图判断
+   * 「这条能不能进施工交底」，**不参与状态派生**（状态仍只读 `configStatus`）。
+   */
+  constructionStatus?: string;
+  /**
+   * `not_for_construction: true` 原值：构件自己声明「不得作为施工依据」。
+   * 同样是待决视图的补充判据，不参与状态派生。
+   */
+  notForConstruction?: boolean;
   /** 声明 note 里出现的 DEC 引用（溯源用，**不参与状态派生**——S2-A 起 note 内编号不再产生 confirmed）。 */
   decision?: string;
 }
