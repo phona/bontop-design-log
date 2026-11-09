@@ -12,7 +12,7 @@ import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { ProjectRenderFactsLoader } from './project-render-facts-loader.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../shared/point-placement.js';
+import { buildPlacementIndexes } from '../shared/placement-indexes.js';
 import { parseOverlayFiles, OVERLAY_SOURCE_FILES, SKIRTING_DERIVATION_SOURCE_FILES } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes, invalidateMepFurnitureCollisionVolumes } from './mep-lint-context.js';
@@ -194,6 +194,12 @@ const apiDeps = {
     const overrides = projectRenderFactsLoader.getOverrides();
     const overlay = overlayLoader.getConfig();
     if (!facts || !overrides || !overlay) return undefined;
+    // 点位定位索引走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）：
+    // mountHosts 取 catalog 的**全量** furnishings（不按阶段过滤），pointWalls 取 catalog 墙几何。
+    const placementIndexes = buildPlacementIndexes({
+      geometry: { walls: catalog.getWalls() },
+      furnishings: catalog.getFurnishings(),
+    });
     return buildProjectRenderFactsProjection(
       facts,
       overrides,
@@ -202,11 +208,11 @@ const apiDeps = {
       presentationState.get(),
       projectRenderFactsLoader.getLighting(),
       // mount 挂载灯的宿主索引（issue #98 S2）。
-      pointMountHostIndex(Object.values(catalog.getFurnishings()).flat()),
+      placementIndexes.mountHosts,
       // 挂墙灯具的宿主墙索引（issue #98 S3）：与 CLI wrapper / loader / penetration scene
       // 三个调用点同口径。**漏传它不会静默降级**——shared/lighting-fixtures.ts 对解不出
       // 宿主墙的挂墙灯直接 throw（「调用方须提供 pointWalls」），路由转 503。
-      pointWallIndexFromElements(catalog.getWalls()),
+      placementIndexes.pointWalls,
     );
   },
   // 构件级工程状态投影：现算（conflicts 路径在服务内缓存），输入异常时抛错 → 路由 503。

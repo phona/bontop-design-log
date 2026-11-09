@@ -16,8 +16,10 @@
  * 可能的原因」，不许静默跳过。它挂在**交付边界**（/api/project 组装响应前）——
  * 渲染层可以挑着看（阶段可见性是业主预演用途），交付物必须自洽。
  *
- * 宿主表用 pointMountHostIndex 的产物（全量 furnishings，**不按阶段过滤**）：
+ * 宿主表用 shared/placement-indexes.ts 的 `mountHosts`（全量 furnishings，**不按阶段过滤**）：
  * 一期排除某个柜不影响它当定位宿主——排除的是「画不画」，不是「在不在」。
+ * 该表与 /api/project 下发给浏览器的 `house.furnishingsAll` 消费的是同一个单一产地，
+ * 不存在第二张宿主表（2026-11-09 疗法②）。
  */
 
 import type { PointMountHost } from '../shared/point-placement.js';

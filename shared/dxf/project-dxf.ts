@@ -16,7 +16,8 @@ import { centerlineSamples } from '../arc-polyline.js';
 
 import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
-import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall } from '../point-placement.js';
+import { resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall } from '../point-placement.js';
+import { buildPlacementIndexes } from '../placement-indexes.js';
 import { derivePointCircuits, type PointCircuitTopologyLike } from '../point-circuits.js';
 import { DxfWriter } from './dxf-writer.js';
 
@@ -133,13 +134,16 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   for (const element of house.sceneElements ?? []) {
     if (element.type === 'wall') wallsById.set(element.id, element);
   }
-  // 点位宿主墙索引（issue #98 S1）：电气/给排水点位与 MEP 端点共用 shared/point-placement.ts
-  // 单一解算（along 沿折线累计 + 口径 A 完成面 + 侧别法线），不再直读声明 x/z。
-  const pointWalls: ReadonlyMap<string, PointWall> = pointWallIndexFromElements(wallsById.values());
-  // mount 挂载点位宿主索引（issue #98 S2）：与家具摆位同一份 furnishings 来源。
-  const pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined = house.furnishings === undefined
-    ? undefined
-    : pointMountHostIndex(Object.values(house.furnishings).flat());
+  // 点位定位索引（issue #98 S1/S2）走 shared/placement-indexes.ts 单一产地（疗法②）：
+  // pointWalls 用本次装配的墙元素，mountHosts 用 house.furnishings 全量表（DXF 恒为全案口径，
+  // 不按阶段过滤）。电气/给排水点位与 MEP 端点共用同一份 shared/point-placement.ts 解算。
+  // house.furnishings 缺失时 mountHosts 为 undefined——保留「无家具上下文」的既有语义。
+  const placementIndexes = buildPlacementIndexes({
+    geometry: { walls: wallsById.values() },
+    furnishings: house.furnishings,
+  });
+  const pointWalls: ReadonlyMap<string, PointWall> = placementIndexes.pointWalls ?? new Map();
+  const pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined = placementIndexes.mountHosts;
   // 点位 → 回路 单一派生（issue #98 S3）：标注用，含 controls 反推出的开关归属。
   const pointCircuits = input.pointCircuitSources === undefined
     ? undefined

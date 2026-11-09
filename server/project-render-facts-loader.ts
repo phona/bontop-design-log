@@ -11,10 +11,11 @@ import {
 } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
 import type { ProjectRenderFactsProjection } from '../shared/types.js';
-import { pointMountHostIndex, pointWallIndexFromElements, type PointMountHost, type PointWall } from '../shared/point-placement.js';
+import { buildPlacementIndexes } from '../shared/placement-indexes.js';
+import type { PointMountHost } from '../shared/point-placement.js';
 import { resolveLayout } from './layout-resolver.js';
 import { load as parseYaml } from 'js-yaml';
-import type { CurrentScheme, ProjectRenderFacts, RenderLightingOverride } from '../shared/types.js';
+import type { CurrentScheme, FurnishingsYaml, ProjectRenderFacts, RenderLightingOverride } from '../shared/types.js';
 import { watchConfigFiles, type ConfigStatus, type StatusLoader } from './config-loader.js';
 
 export interface ProjectRenderFactsPaths {
@@ -62,23 +63,30 @@ export class ProjectRenderFactsLoader implements StatusLoader {
     let loadedOverrides: RenderLightingOverride[] | undefined;
     let loadedLighting: import('../shared/types.js').LightingRenderConfig | undefined;
     // mount 挂载灯（issue #98 S2 起夜灯）的位置由宿主家具解出：house.yaml 是第五份输入，
-    // 读不到时 mountHosts 置空、由 buildRenderLightingFixtures 的 fail-closed 抛错显形。
+    // 读不到时宿主索引置空、由 buildRenderLightingFixtures 的 fail-closed 抛错显形。
+    let loadedFurnishings: FurnishingsYaml | undefined;
     try {
-      const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
-      this.mountHosts = pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never);
+      const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
+      loadedFurnishings = house.furnishings;
     } catch (err) {
-      this.mountHosts = new Map();
       console.error('[project-render-facts-loader] Failed to load config/house.yaml for mount hosts:', err);
     }
     // 挂墙起夜灯（issue #98 S3）的宿主墙索引：model-geometry 第六份输入，与 3D/DXF/MEP 同一构造。
-    let pointWalls: ReadonlyMap<string, PointWall> | undefined;
+    let loadedLayout: ReturnType<typeof resolveLayout> | undefined;
     try {
       const geometry = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as Parameters<typeof resolveLayout>[0];
-      pointWalls = pointWallIndexFromElements(resolveLayout(geometry).walls);
+      loadedLayout = resolveLayout(geometry);
     } catch (err) {
-      pointWalls = undefined;
       console.error('[project-render-facts-loader] Failed to load config/layout/model-geometry.yaml for point walls:', err);
     }
+    // 两个索引一次产出（issue #98 疗法② / shared/placement-indexes.ts 单一产地）：
+    // pointWalls 取 layout.walls，mountHosts 取 house.yaml 的**全量** furnishings（不按阶段过滤）。
+    const { pointWalls, mountHosts } = buildPlacementIndexes({
+      geometry: loadedLayout,
+      furnishings: loadedFurnishings,
+    });
+    // 读不到 house.yaml 时保留「空表而非 undefined」的既有语义：挂载灯由 fail-closed 抛错显形。
+    this.mountHosts = mountHosts ?? new Map();
     let valid = true;
     const readers = {
       electrical: parseElectricalPoints,

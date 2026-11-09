@@ -60,7 +60,8 @@ import { buildScene, refreshSlidingDoorGroup, type CurtainBuildEntry, type Scene
 import { buildHvacGeometry, type HvacEntityIndex } from '@shared/render/HvacGeometryBuilder';
 import { buildHvacBuilderSources, expectedHvacExportIds, type HvacBuilderSources } from '@shared/render/HvacBuilder';
 import { buildInfrastructure } from '@shared/render/InfrastructureBuilder';
-import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
+import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
+import { buildPlacementIndexes } from '@shared/placement-indexes';
 import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@shared/render/layout-bounds';
 import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
 import type { CeilingZone } from '@shared/types';
@@ -734,7 +735,8 @@ export class HouseScene implements SceneApi {
       furnishings: projectData.house.furnishings,
       // 未按阶段过滤的全量家具——仅用于 mountHosts 定位宿主（2026-11-09 结构修复：
       // 阶段可见性不该让挂载点位失去宿主）。缺省时 SceneBuilder 回退到 furnishings。
-      ...(projectData.house.furnishingsAll ? { furnishingsAll: projectData.house.furnishingsAll } : {}),
+      // 直传字段（不再用条件展开）：字段声明在 scene-input.ts，excess property check 才能生效。
+      furnishingsAll: projectData.house.furnishingsAll,
       electrical: projectData.house.electrical,
     });
     const materialProvider: SceneMaterialProvider = {
@@ -752,12 +754,19 @@ export class HouseScene implements SceneApi {
     // 投影随 /api/project 一次下发，位置是**响应顶层**（疗法① PR #162 归位；2026-11-09 起
     // 路由的条件 spread 已移到 house 字面量之外）。此前消费方按顶层读而路由发在 house 内，
     // 顶层恒 undefined → HVAC 源空 → 三件冷凝链家具静默缺失。
+    // 点位定位索引走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）：墙取本次建场
+    // 墙几何，mountHosts 取**全量** furnishingsAll（一期不显示的柜仍可能是已交付点位的宿主；
+    // 缺省回退 furnishings，与 SceneBuilder 的 hostFurnishings 同口径）。
+    const placementIndexes = buildPlacementIndexes({
+      geometry: { walls: input.walls },
+      furnishings: input.furnishingsAll ?? input.furnishings ?? {},
+    });
     const hvacSources: HvacBuilderSources | undefined = projectData.renderFactsProjection
       ? buildHvacBuilderSources({
         projection: projectData.renderFactsProjection,
         electrical: projectData.house.electrical ?? [],
-        pointWalls: pointWallIndexFromElements(input.walls),
-        mountHosts: pointMountHostIndex(Object.values(input.furnishings ?? {}).flat()),
+        pointWalls: placementIndexes.pointWalls,
+        mountHosts: placementIndexes.mountHosts,
       })
       : undefined;
     const result = buildScene({

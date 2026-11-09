@@ -407,12 +407,23 @@ export function resolvePointPlacement(
   return { placement: { kind: 'absolute', x: point.x, z: point.z } };
 }
 
+/** 宿主墙索引的输入元素（layout.walls 的墙对象 / 场景墙元素 / 墙段数组均满足）。 */
+export interface PointWallElementInput {
+  id?: string;
+  x1?: number;
+  z1?: number;
+  x2?: number;
+  z2?: number;
+  segments?: readonly PointWallSegment[];
+  line_datum?: 'centerline';
+}
+
 /**
  * 从场景墙元素建点位宿主墙索引（id → 折线段 + line_datum）。DXF 装配、MEP 端点解析、
  * 浏览器 MEP 渲染共用这一份构造，避免每个调用方各写一遍「segments 缺省取主线」。
  */
 export function pointWallIndexFromElements(
-  walls: Iterable<{ id?: string; x1?: number; z1?: number; x2?: number; z2?: number; segments?: readonly PointWallSegment[]; line_datum?: 'centerline' }>,
+  walls: Iterable<PointWallElementInput>,
 ): Map<string, PointWall> {
   const index = new Map<string, PointWall>();
   for (const wall of walls) {
