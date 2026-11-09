@@ -35,6 +35,12 @@ export interface ElementInput {
   /** config 的 `status` 原值——构件状态的唯一声明字段（issue #98 S2-A）。 */
   configStatus?: string;
   /**
+   * config 条目的 note 原文（只读透传，不参与状态派生——S2-A 起 note 内编号不再产生
+   * confirmed）。存在的理由是让只读视图（generate-pending-view.ts）能识别「inferred 但
+   * note 明写待量房/待实测」的构件——旧手账删了之后，这类构件的量房待办只存在于 note 里。
+   */
+  note?: string;
+  /**
    * config_status 规则下的权威出处覆盖。采集器从某份具体配置接来状态时，可带出比
    * `config:<raw>` 更具体的出处（例如 `config/hvac.yaml anchor indoor_living:confirmed`），
    * 让 statusSource 说清「来自哪个文件的哪一条、依据是什么」。缺省时退回 `config:<raw>`，

@@ -10,6 +10,7 @@ import {
   validateProjectHvacFacts,
 } from '../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
+import type { ProjectRenderFactsProjection } from '../shared/types.js';
 import { pointMountHostIndex, pointWallIndexFromElements, type PointMountHost, type PointWall } from '../shared/point-placement.js';
 import { resolveLayout } from './layout-resolver.js';
 import { load as parseYaml } from 'js-yaml';
@@ -109,7 +110,12 @@ export class ProjectRenderFactsLoader implements StatusLoader {
       const loadedFacts = results as ProjectRenderFacts;
       try {
         validateProjectHvacFacts(loadedFacts.hvac, loadedFacts);
-        buildProjectRenderFactsProjection(
+        // 2026-11-09 修 Codex blocking：原这里调 buildProjectRenderFactsProjection 只为
+        // 验算（结果丢弃），而 ProjectData.renderFactsProjection 全仓无赋值、/api/project
+        // 也不返回它 → HouseScene 的 hvacSources 恒为 undefined → SceneBuilder 解不出
+        // indoor_master 锚点 → 三件冷凝链家具带诊断跳过、页面与 GLB 持续缺件。
+        // 改为把投影存下来并由 /api/project 下发（见 server/routes.ts）。
+        this.projection = buildProjectRenderFactsProjection(
           loadedFacts,
           loadedOverrides,
           { updatedAt: '', selections: {} } as CurrentScheme,
@@ -132,8 +138,14 @@ export class ProjectRenderFactsLoader implements StatusLoader {
 
   startWatching(): void {
     if (this.watchers.length > 0) return;
+    // 2026-11-09 修 Codex major：house.yaml 与 model-geometry.yaml 是本加载器的**真实依赖**
+    // （mountHosts / pointWalls 从它们构建，灯具定位校验要用），但原只监听 this.paths 里的
+    // 五份 render 配置——若加载时因家具宿主或墙体暂时无效把状态置 failed，随后只修家具或
+    // 墙体不会触发重载，失败状态一直保留，页面继续报配置错误、DXF 排除相关图层。
+    // 两份真实依赖纳入监听。
     this.watchers = watchConfigFiles(
-      Object.values(this.paths).filter((p): p is string => Boolean(p)),
+      [...Object.values(this.paths), 'config/house.yaml', 'config/layout/model-geometry.yaml']
+        .filter((p): p is string => Boolean(p)),
       () => this.load()
     );
   }
@@ -141,6 +153,13 @@ export class ProjectRenderFactsLoader implements StatusLoader {
   async stopWatching(): Promise<void> {
     await Promise.all(this.watchers.map((watcher) => watcher.close()));
     this.watchers = [];
+  }
+
+  private projection: ProjectRenderFactsProjection | undefined;
+
+  /** 2026-11-09：/api/project 下发它，供浏览器建场解 HVAC/冷凝链锚点（原字段全仓无赋值）。 */
+  getProjection(): ProjectRenderFactsProjection | undefined {
+    return this.projection;
   }
 
   getFacts(): ProjectRenderFacts | undefined {

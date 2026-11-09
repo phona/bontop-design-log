@@ -150,6 +150,7 @@ export function collectElements(): ElementInput[] {
       ...(point.status ? { configStatus: point.status } : {}),
       ...(point.blocker ? { blocker: point.blocker } : {}),
       ...(decision ? { decision } : {}),
+      ...(point.note ? { note: point.note } : {}),
     });
   }
 
@@ -164,6 +165,7 @@ export function collectElements(): ElementInput[] {
       ...(point.status ? { configStatus: point.status } : {}),
       ...(point.blocker ? { blocker: point.blocker } : {}),
       ...(decision ? { decision } : {}),
+      ...(point.note ? { note: point.note } : {}),
     });
   }
 
@@ -191,6 +193,7 @@ export function collectElements(): ElementInput[] {
           : {}),
       ...(zone.blocker ? { blocker: zone.blocker } : {}),
       ...(decision ? { decision } : {}),
+      ...(zone.note ? { note: zone.note } : {}),
     });
   }
 
