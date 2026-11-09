@@ -83,6 +83,23 @@ test('声明式弧心：邻点在圆上直取，否则取垂足', () => {
   close(projected.end.x, 1, 'projected end.x'); close(projected.end.z, 0, 'projected end.z');
 });
 
+test('声明式弧心：圆上的邻点必须先验证是切点（相切守卫）', () => {
+  // 7d38aeb5 Codex blocking 的最小复现：prev=(1.4,0)、next=(0,1.4) 都在圆上
+  // （到弧心 (0.6,0.6) 距离均为 1），但「弧心 → 邻点」的半径向量与邻边分别成
+  // 36.87°，两点都不是邻边的切点。统一前的 tangentPointOnEdge 会以「垂足到圆心
+  // 距离 ≠ radius」拒绝；统一弧解算后这条守卫曾丢失，函数返回非相切弧。
+  assert.equal(
+    tangentArc({ x: 0, z: 0 }, { x: 1.4, z: 0 }, { x: 0, z: 1.4 }, 1, { x: 0.6, z: 0.6 }),
+    null,
+    '圆上的邻点不是切点时必须 null（不许返回非相切弧）',
+  );
+  // 合法直取不受影响：邻点 (0,-1) 就是垂足，半径向量与入边垂直。
+  const direct = tangentArc({ x: 0, z: 0 }, { x: 0, z: -1 }, { x: 1, z: 0 }, 1, { x: 1, z: -1 });
+  assert.ok(direct, '合法相切声明仍能直取');
+  close(direct.start.x, 0, '合法直取 start.x'); close(direct.start.z, -1, '合法直取 start.z');
+  close(direct.end.x, 1, '合法直取 end.x'); close(direct.end.z, 0, '合法直取 end.z');
+});
+
 test('fail-closed：解不出一律 null，不猜不兜底', () => {
   assert.equal(tangentArc({ x: 0, z: 0 }, { x: 0, z: -1 }, { x: 1, z: 0 }, 0), null, '半径非正');
   assert.equal(tangentArc({ x: 0, z: 0 }, { x: 0, z: -1 }, { x: 0, z: 1 }, 1), null, '夹角退化（共线）');

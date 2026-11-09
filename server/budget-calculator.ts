@@ -283,12 +283,12 @@ const GEO_EPS = 1e-6;
  * 真实 1.3854㎡（1.60 − [0.5 − π/4]）。做法与 shared/render 的圆角同一套几何——圆心 + 半径
  * 在两条邻边上定切点、锐角面积减圆弓面积；这里取闭式解（不采样折线），所以不存在
  * 「渲染端折线段数不同导致面积对不上」的第二套口径。切点落在邻边线段之外、圆心与半径
- * 不自洽、扫角退化时直接抛错（fail-closed）：一条坏弧声明应该让预算算不出来，
- * 而不是悄悄少算 0.21㎡。
+ * 不自洽、弧心与邻边不相切、扫角退化时直接抛错（fail-closed）：一条坏弧声明应该让预算
+ * 算不出来，而不是悄悄少算 0.21㎡。
  *
  * 切点与弧心统一走 `shared/arc.ts` 的 `tangentArc`（原 `tangentPointOnEdge` 本地副本，
  * 2026-11-07 issue #98 第三阶段 S2 删除）：floor_region 圆角点带声明式 cx/cz，
- * 走 descriptor 的「垂足 = 切点」形态，其越界/不自洽校验即本函数的 fail-closed 守卫。
+ * 走 descriptor 的「垂足 = 切点」形态，其越界/不自洽/相切校验即本函数的 fail-closed 守卫。
  */
 function roundedPolygonArea(points: CurtainPoint[]): number {
   const signed = points.reduce((sum, p, i) => {
@@ -310,11 +310,11 @@ function roundedPolygonArea(points: CurtainPoint[]): number {
     const prev = points[(i - 1 + points.length) % points.length];
     const next = points[(i + 1) % points.length];
     // 切点/弧心解算唯一入口（shared/arc.ts）。返回 null = 切点落在邻边线段之外、
-    // 半径与弧心不自洽或夹角退化——预算算不出来，不悄悄少算一块地。
+    // 半径与弧心不自洽、弧心与邻边不相切或夹角退化——预算算不出来，不悄悄少算一块地。
     const arc = tangentArc(corner, prev, next, corner.radius, center);
     if (!arc) {
       throw new Error(
-        `floor_region 圆角点（第 ${i} 点）无法由 tangentArc 解出切点：切点落在邻边线段之外、半径与弧心不自洽或夹角退化`,
+        `floor_region 圆角点（第 ${i} 点）无法由 tangentArc 解出切点：切点落在邻边线段之外、半径与弧心不自洽、弧心与邻边不相切或夹角退化`,
       );
     }
     const t1 = arc.start;
