@@ -12,7 +12,7 @@ import { ArchivedSchemesStore } from './archived-schemes.js';
 import { ConfigLoader, ConfigRegistry } from './config-loader.js';
 import { ProjectRenderFactsLoader } from './project-render-facts-loader.js';
 import { buildProjectRenderFactsProjection } from '../shared/project-render-facts-projection.js';
-import { pointMountHostIndex } from '../shared/point-placement.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../shared/point-placement.js';
 import { parseOverlayFiles, OVERLAY_SOURCE_FILES, SKIRTING_DERIVATION_SOURCE_FILES } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import { buildMepBaySillCollisionVolumes, buildMepFurnitureCollisionVolumes, invalidateMepFurnitureCollisionVolumes } from './mep-lint-context.js';
@@ -201,7 +201,12 @@ const apiDeps = {
       overlay,
       presentationState.get(),
       projectRenderFactsLoader.getLighting(),
+      // mount 挂载灯的宿主索引（issue #98 S2）。
       pointMountHostIndex(Object.values(catalog.getFurnishings()).flat()),
+      // 挂墙灯具的宿主墙索引（issue #98 S3）：与 CLI wrapper / loader / penetration scene
+      // 三个调用点同口径。**漏传它不会静默降级**——shared/lighting-fixtures.ts 对解不出
+      // 宿主墙的挂墙灯直接 throw（「调用方须提供 pointWalls」），路由转 503。
+      pointWallIndexFromElements(catalog.getWalls()),
     );
   },
   // 构件级工程状态投影：现算（conflicts 路径在服务内缓存），输入异常时抛错 → 路由 503。
