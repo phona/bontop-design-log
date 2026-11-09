@@ -907,12 +907,22 @@ describe('App', () => {
     // projectData 补上点位全量清单（/api/project 的 house.electrical/house.plumbing；
     // sceneElements 里没有点位，resolvePackageScope 只认这两个字段）。其余字段保留，
     // 避免动到后台轮询面板读的 budgetCategories 等。
+    // 点位按真实形状补齐：id / room / type 是 ElectricalPoint、PlumbingPoint 的必填字段
+    // （原夹具只写了 id，是夹具写瘦了，不是契约该放宽）。
+    const loaded = app['projectData'];
+    if (!loaded) throw new Error('projectData 未加载：start() 应先完成 /api/project 拉取');
     app['projectData'] = {
-      ...app['projectData'],
+      ...loaded,
       house: {
-        ...app['projectData'].house,
-        electrical: [{id: 'sock_living_ac'}, {id: 'sock_kitchen_gas'}],
-        plumbing: [{id: 'drain_kitchen'}, {id: 'faucet_kitchen'}],
+        ...loaded.house,
+        electrical: [
+          { id: 'sock_living_ac', room: 'living_dining', type: 'socket' },
+          { id: 'sock_kitchen_gas', room: 'kitchen', type: 'socket' },
+        ],
+        plumbing: [
+          { id: 'drain_kitchen', room: 'kitchen', type: 'drain' },
+          { id: 'faucet_kitchen', room: 'kitchen', type: 'faucet' },
+        ],
       },
     };
     const objectsSpy = vi.spyOn(app['houseScene'], 'highlightObjects');

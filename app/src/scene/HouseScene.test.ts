@@ -704,8 +704,8 @@ describe('HouseScene', () => {
     const exportRoot = scene.getExportRoot();
     const viewOnlyRoot = scene.getViewOnlyRoot();
     const projectData = {
-      house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }] },
-      topics: [], budgetCategories: [],
+      house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' as const }] },
+      topics: [],
     };
     await scene.buildFromCatalog(projectData);
     const firstCount = exportRoot.children.length;
@@ -728,12 +728,11 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' },
-          { id: 'bedroom', name: 'Bedroom', x: 6, z: 0, width: 4, depth: 3, height: 3, type: 'private' },
+          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' as const },
+          { id: 'bedroom', name: 'Bedroom', x: 6, z: 0, width: 4, depth: 3, height: 3, type: 'private' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -766,13 +765,12 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'entry_garden', name: 'Entry Garden', x: -2, z: -3, width: 4, depth: 6, height: 3, type: 'outdoor' },
-          { id: 'living_room', name: 'Living', x: 5, z: 2, width: 6, depth: 4, height: 3, type: 'public' },
+          { id: 'entry_garden', name: 'Entry Garden', x: -2, z: -3, width: 4, depth: 6, height: 3, type: 'public' as const },
+          { id: 'living_room', name: 'Living', x: 5, z: 2, width: 6, depth: 4, height: 3, type: 'public' as const },
         ],
-        platform: { id: 'east_platform', name: 'East Platform', x: 12, z: -1, width: 4, depth: 2, height: 0.15 },
+        platform: { id: 'east_platform', name: 'East Platform', x: 12, z: -1, width: 4, depth: 2, height: 0.15, type: 'service' as const },
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -794,14 +792,13 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'room1', name: 'Room 1', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'public' },
+          { id: 'room1', name: 'Room 1', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'public' as const },
         ],
         sceneElements: [
           { type: 'wall' as const, id: 'wall:outer', x1: -2, z1: -2, x2: -2, z2: 2 },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -822,11 +819,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'kitchen', name: 'Kitchen', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'service' },
+          { id: 'kitchen', name: 'Kitchen', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'service' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -851,7 +847,7 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'a', name: 'A', x: 0, z: 0, width: 4, depth: 3, height: 3, type: 'public' },
+          { id: 'a', name: 'A', x: 0, z: 0, width: 4, depth: 3, height: 3, type: 'public' as const },
         ],
         sceneElements: [
           { type: 'wall' as const, id: 'wall:0', x1: -2, z1: -1.5, x2: 2, z2: -1.5 },
@@ -859,7 +855,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -891,7 +886,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let curtainCount = 0;
@@ -923,7 +917,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     });
 
     const visibility = () => {
@@ -973,7 +966,7 @@ describe('HouseScene', () => {
       points: [{ x: 0, z: 0 }, { x: 2, z: 0 }],
       height: 2.8,
     });
-    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-old')] }, topics: [], budgetCategories: [] });
+    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-old')] }, topics: [] });
     const visibility = () => {
       const variants = new Map<string, boolean>();
       scene.getScene().traverse((obj: any) => {
@@ -987,7 +980,7 @@ describe('HouseScene', () => {
     expect(scene.getCurtainState('blind-old')).toBe('privacy');
     expect(visibility()).toEqual({ deployed: true, gathered: false });
 
-    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-new')] }, topics: [], budgetCategories: [] });
+    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-new')] }, topics: [] });
     expect(scene.getCurtainState('blind-old')).toBeUndefined();
     expect(scene.getCurtainState('blind-new')).toBe('open');
   });
@@ -1005,7 +998,7 @@ describe('HouseScene', () => {
     });
     const buildWith = async (elements: ReturnType<typeof curtainEl>[]) => {
       const scene = makeScene();
-      await scene.buildFromCatalog({ house: { rooms: [], sceneElements: elements }, topics: [], budgetCategories: [] });
+      await scene.buildFromCatalog({ house: { rooms: [], sceneElements: elements }, topics: [] });
       return scene;
     };
     const curtainMeshes = (scene: HouseScene) => {
@@ -1099,7 +1092,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let objectId: string | undefined;
@@ -1131,7 +1123,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let curtainCount = 0;
@@ -1162,7 +1153,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let shape: any = null;
@@ -1205,7 +1195,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     const outlineLen = (s: any): number => {
@@ -1227,7 +1216,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     });
     const straightLen = outlineLen(straightScene);
 
@@ -1252,7 +1240,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let mesh: any;
@@ -1284,7 +1271,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let mesh: any;
@@ -1306,14 +1292,13 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'a', name: 'A', x: -2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' },
-          { id: 'b', name: 'B', x: 2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' },
+          { id: 'a', name: 'A', x: -2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' as const },
+          { id: 'b', name: 'B', x: 2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' as const },
         ],
         // A single shared wall segment between the two rooms.
         sceneElements: [{ type: 'wall' as const, id: 'wall:shared', x1: 0, z1: -2, x2: 0, z2: 2 }],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -1328,7 +1313,7 @@ describe('HouseScene', () => {
   it('refreshes shared sliding door geometry without duplicate groups', async () => {
     const scene = new HouseScene({ addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement);
     const element = { type: 'sliding_door_run' as const, id: 'door:test', points: [{ x: 0, z: 0 }, { x: 3, z: 0 }], height: 2.1, open: true };
-    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [element] }, topics: [], budgetCategories: [] });
+    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [element] }, topics: [] });
     const count = () => {
       let result = 0;
       scene.getScene().traverse((object: any) => { if (object.userData?.type === 'sliding_door_run') result++; });
@@ -1352,12 +1337,11 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' },
+          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' as const },
         ],
-        platform: { id: 'west_platform', name: 'West Platform', x: -3, z: 0, width: 2, depth: 1.5, height: 3 },
+        platform: { id: 'west_platform', name: 'West Platform', x: -3, z: 0, width: 2, depth: 1.5, height: 3, type: 'service' as const },
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -1394,11 +1378,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' },
+          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     expect(() => scene.highlightObject('test_room')).not.toThrow();
@@ -1414,11 +1397,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'test_room', name: 'Test', x: 5, z: 5, width: 3, depth: 3, height: 3, type: 'public' },
+          { id: 'test_room', name: 'Test', x: 5, z: 5, width: 3, depth: 3, height: 3, type: 'public' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     expect(() => scene.setCameraTarget('test_room')).not.toThrow();
@@ -1443,11 +1425,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' },
+          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1562,11 +1543,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' },
+          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1603,11 +1583,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'master_bedroom', name: 'Master Bedroom', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' },
+          { id: 'master_bedroom', name: 'Master Bedroom', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1630,11 +1609,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' },
+          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1672,12 +1650,11 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' },
+          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' as const },
         ],
-        platform: { id: 'west_platform', name: '西设备平台', x: -3, z: 0, width: 2, depth: 1.5, height: 3 },
+        platform: { id: 'west_platform', name: '西设备平台', x: -3, z: 0, width: 2, depth: 1.5, height: 3, type: 'service' as const },
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1717,7 +1694,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     });
 
     // along 起算 = 墙段起点顶点沿折线累计（issue #98 S1 唯一定位来源；x/z 只是断言字段）。
@@ -1760,9 +1736,8 @@ describe('HouseScene', () => {
     const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
     await scene.buildFromCatalog({
-      house: { rooms: [{ id: 'kitchen', name: '厨房', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'service' }] },
+      house: { rooms: [{ id: 'kitchen', name: '厨房', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'service' as const }] },
       topics: [],
-      budgetCategories: [],
     });
     scene.placeInfrastructureFixtures(
       [{ id: 'socket-main', room: 'kitchen', type: 'socket', x: 0, z: 0, height: 0.4, absolute: true, wallSide: 'west' }],

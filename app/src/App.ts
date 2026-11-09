@@ -71,7 +71,8 @@ import { exportObjectTreeToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
 import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-schema';
 import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
-import type { CaptureOptions, RoomAuditCaptureOptions } from '@shared/types';
+import type { CaptureOptions, RoomAuditCaptureOptions, FurnishingsYaml } from '@shared/types';
+import type { ProjectApiHouse, ProjectApiResponse } from '@shared/api-project';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot, MaterialAppearance, MaterialPreviewAtlasConfig } from '@shared/types';
 import { endpointSourcesFromFacts, type MepCoordination } from '@shared/mep-hvac-coordination-schema';
 import { pointMountHostIndex, pointWallIndexFromElements } from '@shared/point-placement';
@@ -149,7 +150,12 @@ export class App {
   private mepOverviewVisible = false;
   private collision: CollisionDetector;
   private fpController: FirstPersonController;
-  private projectData: any = null;
+  /**
+   * /api/project 响应缓存（2026-11-09 issue #98 轨道③）：由 shared/api-project.ts 的
+   * ProjectApiResponse 声明，不再 any。null = 尚未拉到（start 开头即赋值），
+   * 每次使用前按需判空收窄；禁止 as any 绕过。
+   */
+  private projectData: ProjectApiResponse | null = null;
   private phase: PhaseId = 'full';
   private activeLayout = 'model-geometry';
   private phaseReloading = false;
@@ -2262,11 +2268,9 @@ export class App {
       const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
       // 几何/overlay loader 重载失败同规则（codex 十八审 blocking）：隔离 projectHouse，
       // 不让旧墙体/旧洞口与新家具混装。
-      const projectHouse = (!configReloadDegraded && projectResponse !== null
-        ? (projectResponse.house ?? undefined)
-        : undefined) as
-        | { rooms?: unknown[]; ceilingZones?: unknown[]; sceneElements?: unknown[] }
-        | undefined;
+      const projectHouse: Partial<ProjectApiHouse> | undefined = (!configReloadDegraded && projectResponse !== null
+        ? (projectResponse.house as Partial<ProjectApiHouse> | undefined) ?? undefined
+        : undefined);
       // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
       // 端点解析的宿主索引（issue #98 S1/S3）：沿墙/挂载点位不再声明绝对 x/z，MEP 端点与
       // 3D/DXF/lint 共用 shared/point-placement.ts 单一解算——墙几何取自本次 /api/project 的
@@ -2284,7 +2288,7 @@ export class App {
       const notes: string[] = ['PHASE: full (all furnishings; the 3D view may render a phase-filtered subset)'];
       // null 规范化为 undefined（codex 十五审 major）：null 会穿透 undefined 判空直接进
       // Object.entries 抛错，整次导出中止、缺失说明也无法交付。
-      const furnishings = furnishingsResponse ?? undefined;
+      const furnishings: FurnishingsYaml | undefined = (furnishingsResponse ?? undefined) as FurnishingsYaml | undefined;
       if (!furnishings) notes.push('FURNISHINGS NOT EXPORTED: furnishings API failed at export time');
       if (!projectHouse) {
         notes.push(configReloadDegraded
@@ -2304,16 +2308,16 @@ export class App {
       if (!pointCircuitSources) notes.push('CIRCUIT LABELS NOT EXPORTED: electrical-topology API failed or returned no circuits at export time');
       const result = buildProjectDxf({
         house: {
-          rooms: (projectHouse?.rooms ?? undefined) as never,
-          furnishings: furnishings as never,
+          rooms: projectHouse?.rooms ?? undefined,
+          furnishings,
           // 电气/水路/吊顶/MEP 全部来自本次拉取的 facts（codex 十二～十四审 blocking），
           // 几何来自本次 /api/project（十五审）——任何一项不可得宁可缺图层并在 D-NOTES
           // 声明，也不混用页面缓存。
           electrical: facts?.electrical as never,
           // factsStale 时 projectHouse.ceilingZones 同样来自 stale facts 缓存（/api/project
           // 的 ceilingZones 优先取 render-facts），不可兜底（codex 十六审 blocking）。
-          ceilingZones: (factsStale ? undefined : (facts?.ceiling ?? projectHouse?.ceilingZones) ?? undefined) as never,
-          sceneElements: (projectHouse?.sceneElements ?? undefined) as never,
+          ceilingZones: factsStale ? undefined : ((facts?.ceiling ?? projectHouse?.ceilingZones) ?? undefined),
+          sceneElements: projectHouse?.sceneElements ?? undefined,
         },
         plumbing: facts?.plumbing,
         mep,
@@ -3083,7 +3087,9 @@ export class App {
       this.projectData = previousProjectData;
       try {
         this.collision.setWalls(this.extractWalls(previousProjectData?.house?.sceneElements));
-        await this.houseScene.buildFromCatalog(previousProjectData);
+        // previousProjectData 为 null 只发生在首次加载尚未成功时：没有旧建场数据可恢复，
+        // 跳过场景重建（不把 null 强转成 ProjectData）。
+        if (previousProjectData) await this.houseScene.buildFromCatalog(previousProjectData);
         this.reportPlacementDiagnostics();
         this.annotationRenderer?.clear();
         this.annotationRenderer = new AnnotationRenderer(

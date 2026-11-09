@@ -26,7 +26,6 @@ import type {
   CurrentScheme,
   TopicSelection,
   SceneElement,
-  CurtainPoint,
   FurnishingsYaml,
   ProjectRenderFactsProjection,
   VrfOutdoorUnit,
@@ -74,6 +73,7 @@ import {
   type ElementStatus,
 } from './analysis/element-state-colors.js';
 import type { WallSegment, ResolvedRoom, ResolvedOpening } from '@shared/types';
+import type { ProjectApiHouse, ProjectApiResponse } from '@shared/api-project';
 import { WALL_THICKNESS } from '@shared/furniture-placement';
 // 墙 mesh objectId → 源墙 id 的唯一实现（shared/package-scope.ts）：审计面判 suppress、
 // 以及 applyEmissiveHighlight 的二级命中都靠它把 `墙id:N`/`墙id:N.M` 桥回稳定墙 id——
@@ -141,26 +141,28 @@ interface CurtainRegistryEntry {
   blinds?: { deployed: THREE.Mesh; gathered: THREE.Mesh };
 }
 
-interface ProjectData {
-  house: {
-    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; semantic_only?: boolean; wall_finish?: string; wallOpenings?: ResolvedOpening[]; points?: import('@shared/types').CurtainPoint[] }>;
-    platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
-    ceilingZones?: import('@shared/types').CeilingZone[];
-    furnishings?: FurnishingsYaml;
-    /** 未按阶段过滤的全量家具（2026-11-09）：仅用于 mountHosts 定位宿主。 */
-    furnishingsAll?: FurnishingsYaml;
-    electrical?: ElectricalPoint[];
-    sceneElements?: SceneElement[];
-    /** 主卫冷凝链的 MEP 侧穿墙锚点（issue #98 PR-10）：三件遮蔽家具的锚点派生要用。 */
-    condensatePenetration?: { x: number; z: number };
-  };
-  renderFactsProjection?: ProjectRenderFactsProjection;
-  // issue #98 S1（E7）：原 `renderFactsSources?: HvacBuilderSources` 注入位全仓无赋值，唯一实际
-  // 路径是它后面的 projection-only 回退（缺 electrical → 6 个 power anchor 静默丢）。已删字段与
-  // 回退，装配源改由 buildFromCatalog 内按同一构造现算（见下方 hvacSources）。
-  topics: Array<{ id: string; name: string; perRoom: boolean; options: unknown[] }>;
-  budgetCategories: unknown[];
-}
+/**
+ * buildFromCatalog 的输入 = /api/project 响应中建场要用的部分（2026-11-09 issue #98
+ * 轨道③）。不再手抄第二份：从 shared/api-project.ts 的共享响应类型派生，字段层级与
+ * 服务端实际下发逐条对齐——renderFactsProjection 在**响应顶层**（疗法① PR #162 归位，
+ * routes.ts 的条件 spread 在 house 字面量闭合之后），不在 house 内；topics 是摘要
+ * （id/name/perRoom/optionCount），没有 options。
+ */
+type ProjectData = {
+  /**
+   * house 内字段取 Partial：buildFromCatalog 历来按 `?? {}` / `?? []` 容缺
+   * （furnishings / electrical / ceilingZones 等），测试与容缺路径传的就是局部数据。
+   * 契约类型 ProjectApiResponse 本身保持字段必填——严的是「服务端下发什么」，
+   * 宽的是「函数能吃进什么」，两个职责不同，不要把契约改松来迁就这里。
+   */
+  house: Partial<ProjectApiHouse>;
+  topics: ProjectApiResponse['topics'];
+  /** 与响应同层级：顶层下发，缺省即投影端点未就绪。 */
+  renderFactsProjection?: ProjectApiResponse['renderFactsProjection'];
+};
+// issue #98 S1（E7）：原 `renderFactsSources?: HvacBuilderSources` 注入位全仓无赋值，唯一实际
+// 路径是它后面的 projection-only 回退（缺 electrical → 6 个 power anchor 静默丢）。已删字段与
+// 回退，装配源改由 buildFromCatalog 内按同一构造现算（见下方 hvacSources）。
 
 export class HouseScene implements SceneApi {
   scene: THREE.Scene;
@@ -723,7 +725,9 @@ export class HouseScene implements SceneApi {
     if (this.topicGroup.parent !== this.scene) this.scene.add(this.topicGroup);
 
     const input = parseSceneInput({
-      rooms: projectData.house.rooms,
+      // rooms 缺省按空场景处理：入参是 Partial（容缺路径与测试只传局部数据），
+      // 与下方 furnishings/electrical 的 `?? {}` / `?? []` 同一口径。
+      rooms: projectData.house.rooms ?? [],
       platform: projectData.house.platform,
       elements: projectData.house.sceneElements,
       ceilingZones: projectData.house.ceilingZones,
@@ -745,6 +749,9 @@ export class HouseScene implements SceneApi {
     // HvacBuilder 静默 continue 丢掉（A §2c 实测丢 6/47），且 renderFactsSources 全仓无赋值、
     // 回退是唯一实际路径。现删回退与死字段，首建即按 SceneBuilder/DXF/verify 同一构造补
     // electrical + pointWalls/mountHosts（App 随后 rebuildHvacProjection 传的同源完整集）。
+    // 投影随 /api/project 一次下发，位置是**响应顶层**（疗法① PR #162 归位；2026-11-09 起
+    // 路由的条件 spread 已移到 house 字面量之外）。此前消费方按顶层读而路由发在 house 内，
+    // 顶层恒 undefined → HVAC 源空 → 三件冷凝链家具静默缺失。
     const hvacSources: HvacBuilderSources | undefined = projectData.renderFactsProjection
       ? buildHvacBuilderSources({
         projection: projectData.renderFactsProjection,
@@ -791,13 +798,13 @@ export class HouseScene implements SceneApi {
     // 不再取「已建索引的键」（自产期望集让 ready 恒真，A §4.1）。
     this.hvacExpectedExportIds = this.expectedHvacExportIdsFor(projectData.renderFactsProjection);
     for (const [id, curtain] of index.curtains) this.registerSharedCurtain(curtain);
-    for (const room of projectData.house.rooms) {
+    for (const room of projectData.house.rooms ?? []) {
       this.roomMeta.set(room.id, { wall_finish: room.wall_finish, wallOpenings: room.wallOpenings });
     }
     if (projectData.house.platform) this.platform = projectData.house.platform;
 
     this.topDownLayoutBounds = computeLayoutBounds({
-      rooms: projectData.house.rooms,
+      rooms: projectData.house.rooms ?? [],
       platform: projectData.house.platform,
       elements: projectData.house.sceneElements,
       wallThickness: WALL_THICKNESS,
@@ -851,21 +858,20 @@ export class HouseScene implements SceneApi {
     }
   }
 
+  /**
+   * 从主题清单抽材质外观喂 TextureManager。
+   *
+   * **存量漂移（2026-11-09 类型对照发现，本次只记录不擅改）**：/api/project 的 topics 是
+   * 摘要（id/name/perRoom/optionCount），**服务端从未下发 options**——本方法此前按手抄
+   * 类型读 `topic.options`，运行时恒为 undefined，故实际一直返回空数组。现在类型按服务端
+   * 真实下发声明，这一失效随之显形。要把主题材质真正接进 TextureManager，候选通道有两条：
+   * ① /api/project 的 materialPreview.materials（已下发 floor/paint 的 appearance，前端
+   * 目前只消费 atlases）；② /api/topics 完整清单。选哪条属渲染行为决策，不在本次
+   * 「边界上类型」范围内，移交记录见 PR 正文。
+   */
   private static extractMaterials(topics: ProjectData['topics']): Array<{ id: string; appearance: MaterialAppearance }> {
-    const seen = new Set<string>();
-    const materials: Array<{ id: string; appearance: MaterialAppearance }> = [];
-    for (const topic of topics) {
-      if (!topic.options) continue;
-      for (const option of topic.options as Array<{ id: string; data?: { appearance?: MaterialAppearance } }>) {
-        const app = option.data?.appearance;
-        if (!app) continue;
-        const key = JSON.stringify(app);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        materials.push({ id: option.id, appearance: app });
-      }
-    }
-    return materials;
+    void topics;
+    return [];
   }
 
   setSelection(topic: string, optionId: string, selection?: TopicSelection): void {
