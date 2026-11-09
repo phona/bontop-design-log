@@ -28,7 +28,7 @@
  *     contracted_cny 与轮次 contract_ref/locked 状态齐备外，凭据走轮次上的
  *     contract 结构化登记块（2026-10-23 归档收口）：登记金额与 locked_cny、
  *     contracted_cny 三方一致、deal_status 为 signed、archive_paths 逐条
- *     实算 sha256 与登记钉死值一致，再按 contract_ref 回 docs/decisions/
+ *     实算 sha256 与登记钉死值一致，再按 contract_ref 回 config/hvac.yaml 的 commercial.evidence（S2-C 起；原回 docs/decisions/ 的 DEC 章节）
  *     核对 DEC 章节存在、含正向成交表述且登记金额在章节中锚定到总价
  *     表述——金额的权威值只认登记，DEC 只作总价锚定核对、不作辖域提
  *     取（旧辖域提取整套已退役：从散文抠金额先后被子串误配、分项冒
@@ -214,7 +214,7 @@ export const LOCKED_QUOTE_CARD_STATUSES: ReadonlySet<string> = new Set(['contrac
 const DEC_ID_PATTERN = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
 
 /**
- * 按 DEC id 在 docs/decisions/*.md 中定位该决策的章节原文（从 `### <DEC id> …`
+ * 按 DEC id 在指定目录的 md 中定位该决策的章节原文（生产路径已改读报价卡，本函数保留为 md 档案的章节定位工具；docs/decisions/ 已于 S3 退场）（从 `### <DEC id> …`
  * 标题行到下一个同级或更高级标题之前）。找不到返回 null。仓库现行 DEC 章节
  * 均为 ### 级标题；这里接受 ##–#### 级以防分卷调整。
  * 两道 fail-closed（自主扫描 G5/G6）：
