@@ -333,6 +333,8 @@ export class App {
     try {
     this.stateSync.setPhase(this.phase);
     this.projectData = await this.stateSync.fetchProject({ phase: this.phase });
+    // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断建场与预览。
+    this.reportPlacementClosureDiagnostics(this.projectData);
     const previewAtlasConfig = this.projectData?.materialPreview?.atlases as MaterialPreviewAtlasConfig[] | undefined;
     this.materialPreviewAtlases = (previewAtlasConfig ?? []).map(resolvePreviewAtlas);
     this.activeLayout = this.projectData?.house?.layoutSource ?? this.activeLayout;
@@ -2365,6 +2367,20 @@ export class App {
     this.showToast(`家具摆位异常：${diagnostics[0]}${suffix}（请通过 AI 会话修复配置）`);
   }
 
+  /**
+   * 服务端交付闭合性诊断显形（issue #98「宽容读取」+ PR #122 深审修复）：/api/project 对
+   * 闭合性失败返回 200 + placementClosureDiagnostics（不再 503 掐死页面）。页面在此显形
+   * 「哪些点位缺哪个宿主、可能原因」并继续预览其余部分；正式 DXF 导出与模型验证脚本对
+   * 同样的失败仍会报错（严格输出）——页面只降级预览，不放松交付。
+   */
+  private reportPlacementClosureDiagnostics(data: ProjectApiResponse | null | undefined): void {
+    const diagnostics = data?.placementClosureDiagnostics;
+    if (!diagnostics) return;
+    console.error('[project] placement closure diagnostics:', diagnostics);
+    const suffix = diagnostics.count > 1 ? ` 等 ${diagnostics.count} 条` : '';
+    this.showToast(`交付闭合性异常：${diagnostics.violations[0] ?? ''}${suffix}（页面仅预览降级，正式导出/验证仍会失败；请通过 AI 会话修复配置）`);
+  }
+
   private async handleExportGlb(): Promise<void> {
     try {
       const { blob, hvac } = await this.exportGlb();
@@ -3007,6 +3023,8 @@ export class App {
       this.projectData = data;
       this.activeLayout = layoutName;
       this.stateSync.setLayout(layoutName);
+      // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断布局切换预览。
+      this.reportPlacementClosureDiagnostics(data);
     } catch (error) {
       this.activeLayout = previousLayout;
       this.overviewMenu.setActiveLayout(previousLayout);
@@ -3051,6 +3069,8 @@ export class App {
     try {
       this.stateSync.setPhase(phase);
       const data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
+      // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断阶段切换预览。
+      this.reportPlacementClosureDiagnostics(data);
       this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
       await this.houseScene.buildFromCatalog(data);
       this.reportPlacementDiagnostics();
