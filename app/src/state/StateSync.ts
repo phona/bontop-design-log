@@ -57,7 +57,7 @@ export class StateSync {
   /**
    * 拉取项目建场数据。返回类型 = shared/api-project.ts 的 ProjectApiResponse
    * （2026-11-09 issue #98 轨道③：边界从 any 变为共享类型）——字段层级以服务端
-   * routes.ts 实际下发为准，例如 renderFactsProjection 在 house 内而非顶层。
+   * routes.ts 实际下发为准，例如 renderFactsProjection 在响应顶层（PR #162 归位）。
    */
   async fetchProject(options: ProjectFetchOptions = {}): Promise<ProjectApiResponse> {
     const phase = options.phase ?? this.phase;

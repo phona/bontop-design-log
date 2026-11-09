@@ -73,7 +73,7 @@ import {
   type ElementStatus,
 } from './analysis/element-state-colors.js';
 import type { WallSegment, ResolvedRoom, ResolvedOpening } from '@shared/types';
-import type { ProjectApiResponse } from '@shared/api-project';
+import type { ProjectApiHouse, ProjectApiResponse } from '@shared/api-project';
 import { WALL_THICKNESS } from '@shared/furniture-placement';
 // 墙 mesh objectId → 源墙 id 的唯一实现（shared/package-scope.ts）：审计面判 suppress、
 // 以及 applyEmissiveHighlight 的二级命中都靠它把 `墙id:N`/`墙id:N.M` 桥回稳定墙 id——
@@ -143,11 +143,23 @@ interface CurtainRegistryEntry {
 
 /**
  * buildFromCatalog 的输入 = /api/project 响应中建场要用的部分（2026-11-09 issue #98
- * 轨道③）。不再手抄第二份：从 shared/api-project.ts 的共享响应类型 Pick，字段层级与
- * 服务端实际下发逐条对齐——renderFactsProjection 在 `house` 内（路由的条件 spread 写在
- * house 字面量中），不是顶层；topics 是摘要（id/name/perRoom/optionCount），没有 options。
+ * 轨道③）。不再手抄第二份：从 shared/api-project.ts 的共享响应类型派生，字段层级与
+ * 服务端实际下发逐条对齐——renderFactsProjection 在**响应顶层**（疗法① PR #162 归位，
+ * routes.ts 的条件 spread 在 house 字面量闭合之后），不在 house 内；topics 是摘要
+ * （id/name/perRoom/optionCount），没有 options。
  */
-type ProjectData = Pick<ProjectApiResponse, 'house' | 'topics'>;
+type ProjectData = {
+  /**
+   * house 内字段取 Partial：buildFromCatalog 历来按 `?? {}` / `?? []` 容缺
+   * （furnishings / electrical / ceilingZones 等），测试与容缺路径传的就是局部数据。
+   * 契约类型 ProjectApiResponse 本身保持字段必填——严的是「服务端下发什么」，
+   * 宽的是「函数能吃进什么」，两个职责不同，不要把契约改松来迁就这里。
+   */
+  house: Partial<ProjectApiHouse>;
+  topics: ProjectApiResponse['topics'];
+  /** 与响应同层级：顶层下发，缺省即投影端点未就绪。 */
+  renderFactsProjection?: ProjectApiResponse['renderFactsProjection'];
+};
 // issue #98 S1（E7）：原 `renderFactsSources?: HvacBuilderSources` 注入位全仓无赋值，唯一实际
 // 路径是它后面的 projection-only 回退（缺 electrical → 6 个 power anchor 静默丢）。已删字段与
 // 回退，装配源改由 buildFromCatalog 内按同一构造现算（见下方 hvacSources）。
@@ -713,7 +725,9 @@ export class HouseScene implements SceneApi {
     if (this.topicGroup.parent !== this.scene) this.scene.add(this.topicGroup);
 
     const input = parseSceneInput({
-      rooms: projectData.house.rooms,
+      // rooms 缺省按空场景处理：入参是 Partial（容缺路径与测试只传局部数据），
+      // 与下方 furnishings/electrical 的 `?? {}` / `?? []` 同一口径。
+      rooms: projectData.house.rooms ?? [],
       platform: projectData.house.platform,
       elements: projectData.house.sceneElements,
       ceilingZones: projectData.house.ceilingZones,
@@ -735,11 +749,12 @@ export class HouseScene implements SceneApi {
     // HvacBuilder 静默 continue 丢掉（A §2c 实测丢 6/47），且 renderFactsSources 全仓无赋值、
     // 回退是唯一实际路径。现删回退与死字段，首建即按 SceneBuilder/DXF/verify 同一构造补
     // electrical + pointWalls/mountHosts（App 随后 rebuildHvacProjection 传的同源完整集）。
-    // 投影随 /api/project 的 house.renderFactsProjection 一次下发（2026-11-09 起路由
-    // 即如此；此前消费方按顶层读，恒为 undefined，四个建场入口各补过一次 fetch 仍有漏）。
-    const hvacSources: HvacBuilderSources | undefined = projectData.house.renderFactsProjection
+    // 投影随 /api/project 一次下发，位置是**响应顶层**（疗法① PR #162 归位；2026-11-09 起
+    // 路由的条件 spread 已移到 house 字面量之外）。此前消费方按顶层读而路由发在 house 内，
+    // 顶层恒 undefined → HVAC 源空 → 三件冷凝链家具静默缺失。
+    const hvacSources: HvacBuilderSources | undefined = projectData.renderFactsProjection
       ? buildHvacBuilderSources({
-        projection: projectData.house.renderFactsProjection,
+        projection: projectData.renderFactsProjection,
         electrical: projectData.house.electrical ?? [],
         pointWalls: pointWallIndexFromElements(input.walls),
         mountHosts: pointMountHostIndex(Object.values(input.furnishings ?? {}).flat()),
@@ -750,7 +765,7 @@ export class HouseScene implements SceneApi {
       options: {
         materialProvider,
         curtainRooms: input.rooms,
-        hvac: hvacSources ? { projection: projectData.house.renderFactsProjection, sources: hvacSources } : undefined,
+        hvac: hvacSources ? { projection: projectData.renderFactsProjection, sources: hvacSources } : undefined,
         // 主卫冷凝链穿墙锚点（issue #98 PR-10）：缺它三件链条家具解不出锚点、会带诊断跳过。
         condensatePenetration: projectData.house.condensatePenetration,
       },
@@ -778,18 +793,18 @@ export class HouseScene implements SceneApi {
     this.pointWallIndex = index.pointWalls;
     this.mountHostIndex = index.mountHosts;
     this.hvacEntityIndex = index.hvac;
-    this.hvacProjection = projectData.house.renderFactsProjection;
+    this.hvacProjection = projectData.renderFactsProjection;
     // 导出期望集独立化（issue #98 S1，E7）：见 expectedHvacExportIdsFor——声明态枚举，
     // 不再取「已建索引的键」（自产期望集让 ready 恒真，A §4.1）。
-    this.hvacExpectedExportIds = this.expectedHvacExportIdsFor(projectData.house.renderFactsProjection);
+    this.hvacExpectedExportIds = this.expectedHvacExportIdsFor(projectData.renderFactsProjection);
     for (const [id, curtain] of index.curtains) this.registerSharedCurtain(curtain);
-    for (const room of projectData.house.rooms) {
+    for (const room of projectData.house.rooms ?? []) {
       this.roomMeta.set(room.id, { wall_finish: room.wall_finish, wallOpenings: room.wallOpenings });
     }
     if (projectData.house.platform) this.platform = projectData.house.platform;
 
     this.topDownLayoutBounds = computeLayoutBounds({
-      rooms: projectData.house.rooms,
+      rooms: projectData.house.rooms ?? [],
       platform: projectData.house.platform,
       elements: projectData.house.sceneElements,
       wallThickness: WALL_THICKNESS,

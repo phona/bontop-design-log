@@ -12,8 +12,9 @@
  * 全部从这里派生，不再各抄一份。改下发形状先改这里，typecheck 会拦住全部消费方。
  *
  * 边界说明（轨道边界）：本类型只保证「服务端此刻下发什么被单一、如实地声明」。
- * 下发层级本身的修正（例如 renderFactsProjection 究竟该在 house 内还是顶层）
- * 属轨道①；这里以服务端当前实际下发为准，不做预支。
+ * 下发层级已由疗法①（PR #162）定案并落地：`renderFactsProjection` 在**响应顶层**，
+ * `server/routes.ts` 的条件 spread 写在 house 字面量闭合之后（2026-11-09 复核）。
+ * 本文件跟随该事实，不改动层级。
  */
 
 import type {
@@ -36,7 +37,7 @@ import type { EnvironmentConfig } from './environment-schema.js';
 /**
  * house 内随项目数据一次下发的建场输入（routes.ts `/project` 的 house 字面量）。
  * 字段与路由逐条对照：rooms/platform/furnishings/furnishingsAll/electrical/plumbing/
- * ceilingZones/sceneElements/layoutSource/condensatePenetration/renderFactsProjection。
+ * ceilingZones/sceneElements/layoutSource/condensatePenetration。
  */
 export interface ProjectApiHouse {
   /** 全量房间（中心坐标，见 AGENTS.md 坐标系约定）；含 semantic_only 语义房。 */
@@ -59,12 +60,6 @@ export interface ProjectApiHouse {
   layoutSource: string;
   /** 主卫冷凝链 MEP 穿墙锚点；派生失败时路由发 undefined（JSON 后缺省），下游链条显形。 */
   condensatePenetration?: { x: number; z: number };
-  /**
-   * render-facts 投影。**服务端实际随 `house` 下发**（routes.ts 的条件 spread 写在
-   * house 字面量内），不是顶层字段——历史上手抄类型把它写在顶层，消费方按顶层读，
-   * 于是恒为 undefined（错了几轮的正是这一处）。投影端点未就绪时整个键不下发，故可选。
-   */
-  renderFactsProjection?: ProjectRenderFactsProjection;
 }
 
 /**
@@ -103,6 +98,12 @@ export interface ProjectApiResponse {
   phaseMeta: PhaseScope & { budget: PhaseBudgetMeta };
   /** 模型包链接；非 full 阶段按 phase_id 过滤。 */
   modelPackageLinks: ModelPackageLink[];
+  /**
+   * render-facts 投影。**服务端下发在响应顶层**（routes.ts 的条件 spread 在 house 字面量
+   * 闭合之后，疗法① PR #162 归位），与 topics / materialPreview / budgetCategories 平级。
+   * 投影端点未就绪时整个键不下发，故可选。
+   */
+  renderFactsProjection?: ProjectRenderFactsProjection;
   house: ProjectApiHouse;
   topics: ProjectApiTopic[];
   materialPreview: ProjectApiMaterialPreview;
