@@ -97,10 +97,10 @@ cat config/budget/base.json
 cat docs/README.md
 
 # 查看待决策事项（决策日志入口：索引 + 模板 + 待决）
-cat docs/decisions/README.md
+DEC 档案已于 2026-11-09（issue #98 第六阶段 S3）整份退场，292 条编号的解析靶子改为 git 史 + 墓碑（config/decision-knowledge.yaml 的 retired 段）
 
 # 查某条决策（反查编号）
-grep -rn "DEC-2026-10-08-R01" docs/decisions/
+grep -rn "DEC-2026-10-08-R01" config/decision-knowledge.yaml   # 编号的解析靶子：git 史 + 墓碑（ retired 段 record 字段给出行定位）
 ```
 
 ### 日照模拟

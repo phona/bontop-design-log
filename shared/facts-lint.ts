@@ -1325,17 +1325,19 @@ function runCount(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex,
 function runPointer(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
   const pattern = tryRegex(str(contract.path_pattern));
   if (!pattern) return;
-  const allow = (Array.isArray(contract.allow) ? contract.allow : []).filter(isRecord);
-  const allowed = new Set<string>();
-  for (const one of allow) {
-    const p = str(one.path);
-    if (p) allowed.add(p);
-  }
+  // allow 支持目录前缀（与 exclude 同语义，走 pathMatches）。
+  // 为什么需要：S3 删 docs/decisions/ 后，墓碑的 record 字段
+  // （docs/decisions/<file>#L<n>）必然指向不存在的路径——逐条列 20 个文件名既啰舒又易漏，
+  // 用目录前缀一条覆盖并附理由（理由仍受 pointer_allow_without_reason 约束）。
+  const allowed = (Array.isArray(contract.allow) ? contract.allow : [])
+    .filter(isRecord)
+    .map((one) => str(one.path))
+    .filter((p) => p.length > 0);
   const seen = new Set<string>();
   for (const file of contractPaths(ws, contract.ref_scope, 'contract.files', contract.exclude)) {
     for (const m of grep(ws, file, str(contract.path_pattern))) {
       const rel = matchText(m, 1).replace(/[),.'";]+$/, '');
-      if (!rel || allowed.has(rel)) continue;
+      if (!rel || allowed.some((p) => pathMatches(p, rel))) continue;
       const key = `${file}:${rel}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -1349,7 +1351,7 @@ function runPointer(ws: FactsWorkspace, result: FactsLintResult, lines: LineInde
       tally(result, 'pointer_dangling');
     }
   }
-  for (const one of allow) {
+  for (const one of (Array.isArray(contract.allow) ? contract.allow : []).filter(isRecord)) {
     const p = str(one.path);
     const reason = str(one.reason);
     if (p && !reason) {

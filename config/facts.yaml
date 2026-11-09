@@ -1365,6 +1365,8 @@ contracts:
         reason: "issue #98 第三阶段 S1 已删除（拆为 config/model/envelope/openings.yaml + floor-zones.yaml + finish-surfaces.yaml，合并入口 server/overlay-merge.ts parseOverlayFiles()）；历史文档、迁移注释与 schedule 快照保留旧路径是为了写明声明文件沿革（决策铁律 3/5），不是引用活配置"
       - path: config/ceiling.yaml
         reason: "issue #98 第三阶段 S1 已删除（迁至 config/model/envelope/ceiling.yaml）；历史文档与迁移注释保留旧路径是为了写明吊顶声明沿革，不是引用活配置"
+      - path: docs/decisions/
+        reason: "issue #98 第六阶段 S3 已整份删除（20 文件 / 292 条 DEC，正文即 git 历史）。config/decision-knowledge.yaml 的 retired 段 252 条 record 字段（形如 docs/decisions/05-hvac.md#L123）与 config/decision-gates.yaml 的旗标沿革注释保留这些路径，是为了写明「DEC 原文在 git 史的哪个文件哪一行」——文件删除后路径必然失效，这是墓碑的设计形态（AGENTS.md「一题一文档，退场不建归档目录」），不是引用腐烂"
 
   # ④ 规则引用的家具 type 必须存在于 house.yaml furnishings。固化上一轮手修成果
   # （tv_stand / wardrobe_240 / master_freestanding_wardrobe_062 三类已补齐），
