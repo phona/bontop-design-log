@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, mkdtempSync, symlinkSync, writeFileSync, rmSync, unlinkSync } from 'node:fs';
+import { readFileSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync, rmSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -366,7 +366,19 @@ describe('成本总表 cost-summary', () => {
   });
 
   it('金额回锚总价语义：同章分项金额锚不上、总价分句才算数（复审第二轮 P1）', () => {
-    const section = findDecisionSection('DEC-2026-10-04-R1');
+    // 2026-11-09 S3：docs/decisions/ 已退场，改用临时目录 fixture 还原该章节的锚点形态。
+    const dir = mkdtempSync(join(tmpdir(), 'dec-anchor-'));
+    let section: { text: string } | null = null;
+    try {
+      writeFileSync(join(dir, 'a.md'), [
+        '### DEC-2026-10-04-R1 定标成交',
+        '',
+        '定标成交 36,000 元。外机 MJV-200W-E01-LHIV 14,124 元，安装 1,400 元/台×6 = 8,400 元。',
+      ].join('\n'), 'utf8');
+      section = findDecisionSection('DEC-2026-10-04-R1', dir);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
     assert.ok(section);
     assert.equal(sectionAnchorsContractTotal(section.text, 36000), true, '真实章节的 36,000 有总价锚点（标题定标成交 / 合计 / 整包含价）');
     assert.equal(sectionAnchorsContractTotal(section.text, 14124), false, '外机分项 14,124 虽在同章出现，但从未被当作总价陈述');
@@ -521,7 +533,15 @@ describe('成本总表 cost-summary', () => {
     assert.equal(hasAffirmativeDealSemantics('双方拟签订合同。'), false, '「拟签订」不得算作成交');
     assert.equal(hasAffirmativeDealSemantics('双方将签订合同。'), false, '「将签订」不得算作成交');
     assert.equal(hasAffirmativeDealSemantics('合同不日签订。'), false, '「不日签订」不得算作成交');
-    const section = findDecisionSection('DEC-2026-10-04-R1');
+    // 2026-11-09 S3：同上，改用临时目录 fixture。
+    const dir = mkdtempSync(join(tmpdir(), 'dec-deal-'));
+    let section: { text: string } | null = null;
+    try {
+      writeFileSync(join(dir, 'a.md'), '### DEC-2026-10-04-R1 定标成交\n\n定标成交 36,000 元。\n', 'utf8');
+      section = findDecisionSection('DEC-2026-10-04-R1', dir);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
     assert.ok(section);
     assert.equal(hasAffirmativeDealSemantics(section.text), true, '真实合同章节 DEC-2026-10-04-R1 必须命中正向成交表述');
   });
@@ -566,8 +586,18 @@ describe('成本总表 cost-summary', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-    // 真实仓库不变：现行合同章节唯一命中
-    assert.ok(findDecisionSection('DEC-2026-10-04-R1'), '真实 DEC 章节必须正常命中');
+    // 2026-11-09 S3：docs/decisions/ 已整份退场，findDecisionSection 的生产路径也早已改读
+    // 报价卡（findContractEvidence，见本文件 imports）。此处改用临时目录 fixture 钉「真实
+    // 合同章节唯一命中」这一行为，不再依赖已删档案。
+    const live = mkdtempSync(join(tmpdir(), 'dec-section-'));
+    try {
+      mkdirSync(live, { recursive: true });
+      writeFileSync(join(live, '05-hvac.md'), '### DEC-2026-10-04-R1 定标成交\n\n定标成交 36,000 元。\n', 'utf8');
+      const hit = findDecisionSection('DEC-2026-10-04-R1', live);
+      assert.ok(hit && hit.text.includes('定标成交'), '现行合同章节必须唯一命中');
+    } finally {
+      rmSync(live, { recursive: true, force: true });
+    }
   });
 
   it('双总价歧义：章节内被锚定的不同金额超过一个即抛错（独立复审 F2）', () => {

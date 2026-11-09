@@ -85,7 +85,10 @@ test('钩子 1：知识载体 id 集合与 docs/decisions 标题实测集合差�
     // S3 删档后的形态：原档案已不存在，本文件成为编号的唯一在册载体。此时不要求「差集为 0」
     // （集合已空），但要求本文件自身完整、编号形态合法——真墓碑核对由 git 历史 + record 字段承接。
     assert.ok(allEntries.length > 0, 'docs/decisions 已删档，decision-knowledge.yaml 必须仍是编号的在册载体');
-    for (const e of allEntries) assert.match(e.id, /^DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.\-\u4e00-\u9fff]+$/, `${e.id} 编号形态非法`);
+    // 形态：日期 + 序号族，或裸日期（全仓唯一一条 DEC-2026-10-13，批次说明，无序号族）。
+    // 裸日期形态是存量（MAJOR-2 已登记：20 处引用对 c.dec_ref_resolvable 隐身），
+    // 这里只要求它编号形态合法，不要求它可解析。
+    for (const e of allEntries) assert.match(e.id, /^DEC-\d{4}-\d{2}-\d{2}(?:-[A-Za-z0-9.\-\u4e00-\u9fff]+)?$/, `${e.id} 编号形态非法`);
     return;
   }
   const missing = [...titleIds].filter((id) => !knowledgeIds.has(id));
