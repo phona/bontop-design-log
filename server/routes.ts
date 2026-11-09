@@ -545,7 +545,14 @@ export function createApiRouter(deps: ApiDeps): Router {
       house: {
         rooms: projectCatalog.getRooms(),
         platform: projectCatalog.getPlatform(),
+        // 阶段可见家具（几何渲染用）。**定位宿主不用它**——见 furnishingsAll。
         furnishings: projectCatalog.getFurnishingsForPhase(phase),
+        // 2026-11-09 结构修复（Codex 第 9 轮 blocking + 前 3 轮同主题补丁的根因）：
+        // 定位宿主数据**不按阶段过滤**。一期范围排除 wall_cabinet_tall，但电气清单仍含
+        // 挂载到 ld.wall_cabinet_tall 的 night_corridor（x/z 已删）——若宿主也按阶段过滤，
+        // mountHosts 缺该宿主 → 解算失败 → 标注回落原点、回路显示缺成员。
+        // **阶段可见性与定位宿主是两个关注点**，前者过滤，后者必须全量。
+        furnishingsAll: projectCatalog.getFurnishings(),
         electrical: deps.getProjectRenderFacts?.()?.electrical ?? loadElectricalConfig(),
         // 给排水点位全量清单（2026-11-04 issue #65）：点位来源 select.all（PKG-040 的
         // plumbing {all: true}）要在前端展开成「该分类全部点位」，清单必须在 /api/project
@@ -560,6 +567,11 @@ export function createApiRouter(deps: ApiDeps): Router {
         // /api/mep-coordination 也返回同一份路线，但页面在建场之后才拉它；建场要用的这个
         // 点随 /api/project 先到，避免链条家具因拉取顺序从场景里消失（同源：MEP 配置）。
         condensatePenetration: condensateMasterPenetration(),
+        // render-facts 投影随项目数据一次下发：HouseScene.buildFromCatalog 要靠它构造 HVAC 源
+        // （SceneBuilder 解 indoor_master 锚点 → 三件冷凝链家具）。原 /api/project 不返回它、
+        // 全仓无赋值，导致四个建场入口各补一次 fetch——补丁打了三轮仍有漏（布局切换）。
+        // 数据源一次给全，入口自然不会再漏。
+        ...(deps.getProjectRenderFactsProjection?.() ? { renderFactsProjection: deps.getProjectRenderFactsProjection() } : {}),
       },
       topics: projectCatalog.getTopics().map((t) => ({
         id: t.id, name: t.name, perRoom: t.perRoom, optionCount: t.options.length,
