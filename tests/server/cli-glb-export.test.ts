@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
-import { load as parseYaml } from 'js-yaml';
+import { load as parseYaml, dump as stringifyYaml } from 'js-yaml';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -9,7 +9,7 @@ import * as sharedSceneBuilder from '../../shared/render/SceneBuilder.js';
 import { exportSceneToGlbData } from '../../shared/render/export-gltf.js';
 import { buildCliHouseScene } from '../../scripts/render/glb/cli-glb-builder.js';
 import { installNodeFileReader } from '../../scripts/render/glb/node-gltf-runtime.js';
-import { assertOutputPathAvailable, parseArgs as parseExportArgs } from '../../scripts/render/glb/export-glb.js';
+import { assertOutputPathAvailable, exportCliGlb, parseArgs as parseExportArgs } from '../../scripts/render/glb/export-glb.js';
 import { inspectGlb } from '../../scripts/render/glb/inspect-glb.js';
 
 test('CLI render sources depend on shared modules, not app render modules', () => {
@@ -656,3 +656,67 @@ test('CLI output protection rejects an existing file', () => {
   writeFileSync(path, 'sentinel');
   assert.throws(() => assertOutputPathAvailable(path), /Refusing to overwrite existing output file/);
 });
+
+/** 场景根下是否挂有该稳定 objectId（家具/构件节点）。 */
+function objectIdPresent(root: THREE.Object3D, objectId: string): boolean {
+  let found = false;
+  root.traverse((node) => {
+    if (node.userData?.objectId === objectId) found = true;
+  });
+  return found;
+}
+
+/** 注入一份 gbath.vanity along 越界的 house 文件（其余配置照读仓库现值）。 */
+function brokenHousePath(): string {
+  const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as {
+    furnishings: Record<string, Array<Record<string, unknown>>>;
+  };
+  const items = house.furnishings.guest_bath;
+  const vanity = items.find((item) => item.id === 'gbath.vanity');
+  assert.ok(vanity, 'gbath.vanity must be declared in config/house.yaml');
+  vanity.along = 9.99;
+  const dir = mkdtempSync(join(tmpdir(), 'cli-glb-fail-closed-'));
+  const path = join(dir, 'house-broken-along.yaml');
+  writeFileSync(path, stringifyYaml(house), 'utf8');
+  return path;
+}
+
+test('GLB 导出：定位诊断非空即失败，不产出缺件 GLB（与 DXF fail-closed 同一口径）', async () => {
+  const housePath = brokenHousePath();
+  // 场景层先自证诊断确实产生、而且缺的正是台盆柜与挂载其上的机器人基站。
+  const scene = buildCliHouseScene(undefined, housePath);
+  assert.equal(scene.report.placementDiagnostics.length, 2);
+  assert.equal(objectIdPresent(scene.exportRoot, 'gbath.vanity'), false, 'vanity 应因定位失败缺席');
+  assert.equal(objectIdPresent(scene.exportRoot, 'gbath.robot_dock'), false, 'robot_dock 应随宿主一起缺席');
+  // 导出边界：非空诊断必须拒导；逐条 ERROR 行点名缺的是哪些构件（与 export-dxf.ts 的
+  // 「ERROR <诊断>」同一写法），异常信息带条数与首条。
+  const logged: string[] = [];
+  const originalError = console.error;
+  console.error = (...args: unknown[]) => { logged.push(args.map(String).join(' ')); };
+  try {
+    await assert.rejects(exportCliGlb({ house: housePath }), (error: Error) => {
+      assert.match(error.message, /GLB 导出失败：2 条定位诊断/);
+      assert.match(error.message, /guest_bath:vanity: wall anchor along=9\.99/);
+      return true;
+    });
+  } finally {
+    console.error = originalError;
+  }
+  const errorLines = logged.filter((line) => line.startsWith('ERROR '));
+  assert.equal(errorLines.length, 2, `每条诊断都必须有 ERROR 行，实际：${JSON.stringify(logged)}`);
+  assert.ok(errorLines.some((line) => line.includes('guest_bath:vanity: wall anchor along=9.99')));
+  assert.ok(errorLines.some((line) => line.includes('guest_bath:robot_dock_gbath: mount host "gbath.vanity"')), 'ERROR 行必须点名挂载基站');
+});
+
+test('GLB 导出：正常配置仍成功（fail-closed 守卫不误伤），冷凝链三件进场景', async () => {
+  const exported = await exportCliGlb();
+  assert.deepEqual(exported.report.placementDiagnostics, []);
+  assert.ok(exported.bytes.byteLength > 0, '健康配置必须写出非空 GLB');
+  // 默认入口（不带 --render-facts）不得漏传吊顶源：漏传时 indoor_master 锚点解不出，
+  // 这三件会带诊断跳过——也就是本测试上一行断言会先失败。
+  const scene = buildCliHouseScene();
+  for (const objectId of ['mb.condensate_pipe', 'mb.vanity_pvc_wardrobe_entry', 'mb.vanity_pvc_service_chase']) {
+    assert.ok(objectIdPresent(scene.exportRoot, objectId), `missing ${objectId} in CLI default export`);
+  }
+});
+

@@ -598,6 +598,27 @@ describe('App', () => {
     await expect(app.exportGlbDataUrl()).rejects.toThrow('GLB 导出已阻止：HVAC 缺失 hvac:A2:terminal:supply_living');
   });
 
+  // issue #98 / PR #122 Codex blocking：页面导出同样不许把缺件场景写成成功交付物。HVAC 完整
+  // 不等于家具完整——定位失败的家具由 SceneBuilder 记进 placementDiagnostics 后跳过。
+  it('blocks GLB export when the scene has placement diagnostics（缺件不交付）', async () => {
+    const app = new App(canvas);
+    // HVAC 一侧齐全，证明拦截来自定位诊断而不是既有 HVAC 通道。
+    vi.spyOn(app['houseScene'], 'getHvacExportStatus').mockReturnValue({
+      required: true,
+      ready: true,
+      expected: ['hvac:A2:terminal:supply_living'],
+      included: ['hvac:A2:terminal:supply_living'],
+      missing: [],
+      terminalCount: 1,
+    });
+    const diagnostic = 'guest_bath:vanity: wall anchor along=9.99 places furniture outside wall span [0.345, 0.405] on "w_gbath_east_open_vanity"';
+    vi.spyOn(app['houseScene'], 'getPlacementDiagnostics').mockReturnValue([diagnostic]);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    await expect(app.exportGlbDataUrl()).rejects.toThrow(`GLB 导出失败：1 条定位诊断（${diagnostic}）`);
+    expect(consoleError).toHaveBeenCalledWith('[glb] placement diagnostic:', diagnostic);
+  });
+
   // 2026-11-03 路由级独立页：boot 的路由应用。守两条——首访不再自动开审批页
   // （旧行为还会强行拉预演工作台，挤出「对象信息点开没东西」）；#pkg= 深链仍落 detail。
   it('boot：无 hash 首访 = 3D 页，不自动开审批页', async () => {
