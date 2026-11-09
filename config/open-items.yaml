@@ -58,8 +58,8 @@ items:
     current_state: lighting 2800 → 6500（+3~4k）。3D 灯光系统已建，点位已在 electrical.yaml；此决策=按点位采购灯具（餐桌吊灯/客厅主灯/主卧壁灯为风格核心）
     needs: '`{逐位灯具采购清单}`'
     reversal: owner=业主；触发=灯具采购前
-    carrier: docs/decisions/README.md 待决策事项（本体迁移）；schedule/procurement.md
-    legacy_ref: 'pending-site-data #86'
+    carrier: schedule/procurement.md §12 基础照明；config/electrical.yaml（灯具点位已建）
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #4（S3 已退场）'
   - id: OI-87
     subject: 客餐厅人字拼复活条件
     owner: 业主
@@ -67,8 +67,8 @@ items:
     current_state: 全屋人字拼已由 DEC-2026-08-21-040 推翻（成本爆炸，改 600×1200 错缝通铺，后又由 KT 200×1200 基准接替）；人字拼降回候选：门店样板终审「能让人哇出来」才复活，否则正式放弃
     needs: '`{门店样板终审}`'
     reversal: owner=业主；触发=到店看样
-    carrier: docs/decisions/README.md；config/materials.yaml
-    legacy_ref: 'pending-site-data #87'
+    carrier: config/materials.yaml `floor_tile_herringbone_01`；schedule/procurement.md §09 瓷砖与铺贴
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #5（S3 已退场）'
   - id: OI-88
     subject: 厨房框线柜门+黄铜拉手
     owner: 业主
@@ -76,8 +76,8 @@ items:
     current_state: 法式柜门仅限厨房/玄关/主卫薄柜三处定制，衣柜维持成品推拉门（DEC-2026-08-02-013 不动）；kitchen_cabinet 池 +1.5~3k
     needs: '`{是否立项, 预算 +1.5~3k}`'
     reversal: owner=业主；触发=橱柜定稿前
-    carrier: docs/decisions/README.md；schedule/procurement.md
-    legacy_ref: 'pending-site-data #88'
+    carrier: schedule/procurement.md §05 橱柜与台面；config/materials.yaml `cabinet_board_01` / `hardware_01`
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #6（S3 已退场）'
   - id: OI-89
     subject: PU 线条框线
     owner: 业主
@@ -85,8 +85,8 @@ items:
     current_state: 客厅+主卧 3 面墙，每面 1-2 框，+2~4k（paint 阶段同色刷）；纪律：少量多次，禁满墙
     needs: '`{客厅+主卧 3 面墙框线}`'
     reversal: owner=业主；触发=油漆进场前
-    carrier: docs/decisions/README.md
-    legacy_ref: 'pending-site-data #89'
+    carrier: schedule/procurement.md §11 墙顶基层与涂装；config/materials.yaml `latex_paint_01`
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #7（S3 已退场）'
   - id: OI-90
     subject: 卫浴风格包残余（黑窄边长虹门×2 / 黄铜五金 / 防霉玻璃胶）
     owner: 业主
@@ -94,8 +94,8 @@ items:
     current_state: '原包内各项已分流：客卫地面小花砖已建模（DEC-042 → DEC-2026-10-18-TILE-02 收窄为内卫保留）、电热毛巾架挂 #69、风暖浴霸×2 已入铝扣板套件报价（#38，9,537 含 2 浴霸+凉霸+灯）；**残余待拍板**：黑窄边长虹门×2（+0.6~1k，池内）、黄铜五金拉丝金（+0.5~1k，花洒维持亮铬防水垢）、防霉玻璃胶'
     needs: '`{长虹门×2, 拉丝金五金, 防霉胶}`'
     reversal: owner=业主；触发=卫浴采购前
-    carrier: docs/decisions/README.md；config/materials.yaml
-    legacy_ref: 'pending-site-data #90'
+    carrier: schedule/procurement.md §04 两卫洁具与五金；config/materials.yaml（`floor_tile_deco_small` 等）
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #8（S3 已退场）'
   - id: OI-91
     subject: 黑色载体 design rule 待拍板写入
     owner: 业主
@@ -103,8 +103,8 @@ items:
     current_state: 门窗不可动后，8% 哑光黑载体=厨卫门/推拉门/灯具/五金/画框，同色同细度，0 元纪律。**业主书面拍板前不写入 config/design-rules.yaml**——README 原文即「待写入」，属未决提案而非已裁纪律
     needs: '`{8% 哑光黑载体清单}`'
     reversal: owner=业主；触发=五金/门/灯具定标前拍板；拍板后由 AI 会话按页面只读铁律写入 config 并过闸
-    carrier: config/design-rules.yaml；docs/decisions/README.md
-    legacy_ref: 'pending-site-data #91'
+    carrier: config/design-rules.yaml（8% 哑光黑载体尚未写入）
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #9（S3 已退场）'
   - id: OI-92
     subject: 主卫缩小评估（量房后评估项）
     owner: 业主+设计侧
@@ -112,8 +112,8 @@ items:
     current_state: 轻优化已定方向（大淋浴区+壁龛+家政薄柜 +0.5~1k）；「缩小主卫让面积给邻房」登记为量房后评估项，闸门=立管位置/隔墙承重/玻璃幕角
     needs: '`{立管位, 隔墙承重, 玻璃幕角}`'
     reversal: owner=业主+设计侧；触发=交房量房后
-    carrier: docs/decisions/README.md
-    legacy_ref: 'pending-site-data #92'
+    carrier: config/layout/model-geometry.yaml（主卫隔墙/立管位）；schedule/procurement.md §04 两卫洁具与五金
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #10（S3 已退场）'
   - id: OI-93
     subject: 衣柜核价三问（最高优先数据项）
     owner: 业主
@@ -121,8 +121,8 @@ items:
     current_state: wardrobe_240_01 price=4200 vs notes 1700 元/㎡（=11,016/组）矛盾，三组衣柜 ±17k；到店问：计价方式/板材/分组报价
     needs: '`{计价方式, 板材, 分组报价}`'
     reversal: 'owner=业主；触发=到店核价（与 #98 门店核价清单同行程）'
-    carrier: schedule/procurement.md；docs/decisions/README.md
-    legacy_ref: 'pending-site-data #93'
+    carrier: config/materials.yaml `wardrobe_240_01`（price 与 notes 口径矛盾）；schedule/procurement.md §16 一期家具
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #11（S3 已退场）'
   - id: OI-94
     subject: 零散待补候选（室内门/洗烘叠放/管线机茶吧机/美缝踢脚颜色/工期计划）
     owner: 业主
@@ -130,8 +130,8 @@ items:
     current_state: '① 室内门选型（黑窄边方向）未选型未核价；② 洗烘叠放摆位（生活阳台，叠放高约 1.70m 与现 h=1.2 插座冲突见 #33）；③ 管线机/茶吧机要不要；④ 美缝/踢脚线颜色——暖白家族内对色站一起办（踢脚线材质方向已定 DEC-2026-10-28-R01，仅颜色待对）；⑤ 工期计划（底座无时间维度）'
     needs: '`{室内门选型, 叠放支架, 管线机/茶吧机, 对色, 工期}`'
     reversal: owner=业主；触发=对应采购/深化节点前
-    carrier: docs/decisions/README.md
-    legacy_ref: 'pending-site-data #94'
+    carrier: schedule/procurement.md §06 室内门与厨房门 / §07 必需家电 / §15 踢脚线、收边
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #12（S3 已退场）'
   - id: OI-95
     subject: 入户花园消防通道处理
     owner: 业主+物业/消防
@@ -139,8 +139,8 @@ items:
     current_state: '保留通道宽度 / 局部柜体避让——**外部行动项**，需物业/消防确认通道宽度，非配置决策（与 #48 入户花园去留联动：若通道宽度不允许，faucet_garden/drain_garden 去留一并复核）'
     needs: '`{通道宽度, 柜体避让}`'
     reversal: owner=业主+物业/消防；触发=交房后物业确认
-    carrier: docs/decisions/README.md（本体迁移）
-    legacy_ref: 'pending-site-data #95'
+    carrier: config/plumbing.yaml `faucet_garden` / `drain_garden`；config/house.yaml `entry_garden`
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #1（S3 已退场）'
   - id: OI-96
     subject: 主卧飘窗具体利用方式
     owner: 业主
@@ -148,17 +148,22 @@ items:
     current_state: 当前默认：保留 + 大理石台面 + 坐垫简装（DEC-010，控成本，可否决）；替代方向榻榻米/梳妆台/休闲区未拍板
     needs: '`{榻榻米/梳妆台/休闲区}`'
     reversal: owner=业主；触发=主卧布置定稿前
-    carrier: docs/decisions/README.md（本体迁移）
-    legacy_ref: 'pending-site-data #96'
+    carrier: config/house.yaml `master_bedroom`（飘窗保留口径）
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #2（S3 已退场）'
   - id: OI-97
     subject: 各房间地面材料切换权（卧室系）
     owner: 业主
     trigger: 到店看样、地面下单前
-    current_state: 已建模 bedroom_floor topic（DEC-2026-08-01-011）：客餐厅=木纹砖通铺（floor_tile_01）；卧室默认木纹砖通铺（bedroom_tile_01），可切换实木复合（bedroom_wood_01）；到店看样后可调整
-    needs: '`{bedroom_tile_01 vs bedroom_wood_01}`'
+    current_state: >-
+      地面系统为单一 `floor` topic + 分房覆盖（DEC-041，2026-08-21：原 `bedroom_floor` topic 撤销并入，
+      DEC-2026-08-01-011 的 topic 读法作废）：`data/current-scheme.json` 的 `selections.floor.default`
+      现为 `floor_tile_kt_200x1200_01`（KT 200×1200，2026-10-12 业主改定基准），卧室系可经
+      `roomOverrides` 切换到 `floor_tile_01`（浅胡桃木纹砖）或 `bedroom_wood_01`（实木复合）；
+      到店看样后可调整。原记的 `bedroom_tile_01` 在 config 中不存在，不得引用。
+    needs: '`{卧室 floor_tile_01 vs bedroom_wood_01, 各房间 roomOverrides}`'
     reversal: owner=业主；触发=到店看样、地面下单前
-    carrier: docs/decisions/README.md；config/materials.yaml
-    legacy_ref: 'pending-site-data #97'
+    carrier: 'config/materials.yaml（`topic_id: floor` 的材料与 `alternative_group: floor_tile`）；data/current-scheme.json `selections.floor`'
+    legacy_ref: 'docs/decisions/README.md 待决策事项 #3（S3 已退场）'
 
   # ── 2026-11-09 补录：Codex 在总 PR #122 上指出、原手账里「带 owner/触发但无四类构件载体」的两处现场疑点 ──
   # 判据同文件头：owner 对象不是电气/给排水/吊顶/HVAC 构件。这两处都是**几何疑点**
@@ -168,7 +173,9 @@ items:
     owner: 业主
     trigger: "量房拍特写定性（与 #25 主卧东墙窗洞同一行程）"
     current_state: >-
-      书房侧墙垛凸约 0.35m（2026-10-26 DEC-2026-10-26-R02 已按 YS-01 建模为 w_pier_north）；
+      书房侧墙垛已按矢量实测建模为 w_pier_north / w_pier_east / w_pier_south（footprint
+      x[4.20,4.63]×z[8.31,8.71]，凸 0.25、长 0.40，structure shear / structure_status inferred），
+      待量房终核；**旧估「凸 0.35 / 长 0.5 / z≈7.9–8.6」已由 2026-10-26 DEC-2026-10-26-R02 作废，不得再引用**。
       紧邻该墙垛有一约 0.35m 见方白框，YS-01 图上有、无图例、**定性不明**，尚未建模。
       影响书房西墙南段家具摆位与主卧南床头柜 (4.01, 8.555) 贴墙复核。
     needs: '`{墙垛三面实测, 白框尺寸实测, 白框性质（实体/符号/标注框）}`'
@@ -177,7 +184,7 @@ items:
       触发=交房量房复测墙垛三面）；白框定性为实体（非符号/标注框）→ 白框另行建模裁定并重审
       该处 MEP 穿点（owner 业主，触发=量房拍特写定性）；定性为符号/标注框 → 在对象 note 里销号。
       原载体 量房待填手账 #25 已随 S2-B 退场，本条为其承接。
-    carrier: config/layout/model-geometry.yaml `w_pier_north`（墙垛已建模，白框未建）
+    carrier: config/layout/model-geometry.yaml `w_pier_north` / `w_pier_east` / `w_pier_south`（墙垛已建模，白框未建）
     legacy_ref: 'pending-site-data #25'
   - id: OI-R01A
     subject: 厨房东南角黑块南侧白框的量房定性（原手账外部行动项 R01-A）
@@ -272,9 +279,14 @@ items:
     owner: 量房方
     trigger: 交房量房
     current_state: >-
-      envelope 的 mullion 条目已登记竖梃，但实际位置为推断值、精度未标。
-      影响柜体靠幕墙段的避让与窗帘分段。
+      **竖梃尚未建模**：`config/model/envelope/openings.yaml` 无 mullion 条目，`shared/types.ts`
+      的 SceneElement 联合也无 mullion 类型；原手账 #11 当前值仅记「待量」、精度列「—」，没有
+      任何逐根定位基线可对照。影响柜体靠幕墙段的避让与窗帘分段。
     needs: '`{逐竖梃 x/z 实测, 梃宽}`'
-    reversal: 实测与登记偏差 >0.03m → 靠幕墙柜体进深与窗帘分段全链回改。
-    carrier: config/model/envelope/openings.yaml（mullion 段）
+    reversal: >-
+      实测后按实测竖梃位新建模型（envelope 仍无 mullion 类型时，按 openings.yaml 窗帘段注释
+      的口径在 model-geometry 切分对应幕墙墙段）→ 靠幕墙柜体进深与窗帘分段全链回改。
+    carrier: >-
+      暂无载体：openings.yaml 无 mullion 条目、envelope schema 无 mullion 类型，原手账仅记「待量」。
+      量房后新建；现有唯一落点提示是 openings.yaml 窗帘段注释「量房定竖梃后在 model-geometry 切分 w_west_mid」
     legacy_ref: 'pending-site-data #11'
