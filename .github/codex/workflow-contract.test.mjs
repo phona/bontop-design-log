@@ -42,3 +42,13 @@ test('CODEX_MODEL and CODEX_EFFORT are optional and use the 0.166 flags', () => 
   assert.match(workflow, /model_reasoning_effort=\\"\$\{CODEX_EFFORT\}\\"/)
   assert.doesNotMatch(workflow, /--effort\b/)
 })
+
+test('CODEX_REVIEW_ISSUES is mapped from repository variables and split on commas', () => {
+  // 仓库变量不会自动成为 shell 环境变量；不映射，覆盖分支就是死的。
+  assert.match(workflow, /CODEX_REVIEW_ISSUES: \$\{\{ vars\.CODEX_REVIEW_ISSUES \}\}/)
+  const overrideStart = workflow.indexOf('if [ -n "${CODEX_REVIEW_ISSUES:-}" ]')
+  assert.ok(overrideStart > 0)
+  const overrideBranch = workflow.slice(overrideStart, workflow.indexOf('else', overrideStart))
+  assert.match(overrideBranch, /tr ',' ' '/)
+  assert.match(overrideBranch, /sort -un/)
+})
