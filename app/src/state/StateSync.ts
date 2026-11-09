@@ -68,7 +68,14 @@ export class StateSync {
     const queryString = query.toString();
     const url = queryString ? `/api/project?${queryString}` : '/api/project';
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to fetch project');
+    if (!response.ok) {
+      // 非 2xx 时把状态码与服务端错误体带出来（PR #122 深审修复：此前丢弃服务端诊断、
+      // 抛通用错误，页面连「为什么失败」都看不到）。交付闭合性失败按宽容读取已改为
+      // 200 + placementClosureDiagnostics（issue #98），不再走这里；这里兜住真正的
+      // 服务端故障，保留统一诊断。
+      const detail = await response.text().catch(() => '');
+      throw new Error(`Failed to fetch project: HTTP ${response.status}${detail ? ` — ${detail.slice(0, 500)}` : ''}`);
+    }
     return response.json();
   }
 

@@ -7,7 +7,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
-import { assertPlacementHostClosure, type PlacementClosurePoint } from '../../server/placement-closure.js';
+import { assertPlacementHostClosure, collectPlacementHostClosureViolations, type PlacementClosurePoint } from '../../server/placement-closure.js';
 import { pointMountHostIndex } from '../../shared/point-placement.js';
 import { parseElectricalPoints, parsePlumbingPoints } from '../../shared/project-render-facts-schema.js';
 import type { PlacementItem } from '../../shared/furniture-placement.js';
@@ -97,5 +97,57 @@ describe('placement closure assertion (issue #98 疗法①)', () => {
     const electrical = parseElectricalPoints(read('config/electrical.yaml'));
     const plumbing = parsePlumbingPoints(read('config/plumbing.yaml'));
     assert.doesNotThrow(() => assertPlacementHostClosure(electrical, plumbing, hostIndexFromHouse()));
+  });
+});
+
+describe('collectPlacementHostClosureViolations（宽容读取：收集诊断不抛，issue #98 + PR #122 深审修复）', () => {
+  it('returns [] for a closed delivery', () => {
+    const hosts = hostIndexFromHouse();
+    assert.deepEqual(collectPlacementHostClosureViolations(
+      [point('night_corridor', { furniture_id: 'ld.wall_cabinet_tall' })],
+      [],
+      hosts,
+    ), []);
+  });
+
+  it('returns structured violations naming kind/point/host (does not throw)', () => {
+    const hosts = hostIndexFromHouse();
+    const violations = collectPlacementHostClosureViolations(
+      [point('night_corridor', { furniture_id: 'ld.ghost_cabinet' })],
+      [point('sink_trap', { furniture_id: 'gb.ghost_vanity' })],
+      hosts,
+    );
+    assert.equal(violations.length, 2);
+    assert.deepEqual(
+      { kind: violations[0].kind, pointId: violations[0].pointId, hostId: violations[0].hostId },
+      { kind: 'electrical', pointId: 'night_corridor', hostId: 'ld.ghost_cabinet' },
+    );
+    assert.deepEqual(
+      { kind: violations[1].kind, pointId: violations[1].pointId, hostId: violations[1].hostId },
+      { kind: 'plumbing', pointId: 'sink_trap', hostId: 'gb.ghost_vanity' },
+    );
+    // 人读诊断点名点位、宿主与可能原因（/api/project 的 placementClosureDiagnostics 就用它）
+    assert.match(violations[0].message, /电气点位 night_corridor/);
+    assert.match(violations[0].message, /ld\.ghost_cabinet/);
+    assert.match(violations[0].message, /宿主被阶段过滤/);
+    assert.match(violations[1].message, /给排水点位 sink_trap/);
+  });
+
+  it('assert message is built from the collected violations (one checker, two dispositions)', () => {
+    const hosts = hostIndexFromHouse();
+    const input = {
+      electrical: [point('a', { furniture_id: 'ld.ghost_a' })],
+      plumbing: [point('p', { furniture_id: 'gb.ghost_p' })],
+      hosts,
+    };
+    const violations = collectPlacementHostClosureViolations(input.electrical, input.plumbing, input.hosts);
+    assert.throws(
+      () => assertPlacementHostClosure(input.electrical, input.plumbing, input.hosts),
+      (err: Error) => {
+        // 聚合错误逐条包含 collect 的每条 message（同一套检查、两种处置：页面收集 / 交付抛）
+        for (const v of violations) assert.match(err.message, new RegExp(v.message.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+        return true;
+      },
+    );
   });
 });

@@ -10,7 +10,7 @@ import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 import { buildPlacementIndexes } from '../shared/placement-indexes.js';
-import { assertPlacementHostClosure } from './placement-closure.js';
+import { collectPlacementHostClosureViolations, PLACEMENT_CLOSURE_GUIDANCE } from './placement-closure.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
 import { deriveMepPenetrationAt } from '../shared/condensate-chain.js';
@@ -547,25 +547,24 @@ export function createApiRouter(deps: ApiDeps): Router {
     const electricalPoints = deps.getProjectRenderFacts?.()?.electrical ?? loadElectricalConfig();
     const plumbingPoints = deps.getProjectRenderFacts?.()?.plumbing ?? loadPlumbingConfig();
     // 定位宿主表（issue #98 疗法①）：**全量** furnishings，不按阶段过滤——一期排除某个柜
-    // 不影响它当定位宿主，排除的是「画不画」，不是「在不在」。与 house.furnishingsAll 同源。
-    // 索引走 shared/placement-indexes.ts 单一产地（疗法②）：闭合性断言消费的正是 /api/project
-    // 下发给浏览器 furnishingsAll 的同一份构造产物，不存在第二张宿主表。
+    // 不影响它当定位宿主，排除的是「画不画」，不是「在不在」。
+    // 断言消费的正是下发给前端的那份产物（疗法② + PR #122 深审 medium 修复）：furnishingsAll
+    // 只取一次，闭合性检查与 house.furnishingsAll 字段共用**同一个值**——不存在「服务端
+    // 内部宿主表」与「下发宿主表」两张表，宿主表漂移时断言与响应必然同时变。
+    const furnishingsAll = projectCatalog.getFurnishings();
     const { mountHosts } = buildPlacementIndexes({
       geometry: { walls: projectCatalog.getWalls() },
-      furnishings: projectCatalog.getFurnishings(),
+      furnishings: furnishingsAll,
     });
-    // 交付闭合性断言（PR #122 §一.1）：任何被交付点位声明的物理宿主必须存在于定位宿主表。
-    // 差一条即 503——不降级放行。缺宿主的点位在解算端只会静默错位（回落声明坐标 / 回落
-    // 原点 / 跳过该模型），那是 16 轮审查 A 类 12 条 finding 的机制根源。
-    try {
-      assertPlacementHostClosure(electricalPoints, plumbingPoints, mountHosts);
-    } catch (err) {
-      res.status(503).json({
-        error: err instanceof Error ? err.message : String(err),
-        detail: '点位声明的 mount 宿主不在本次交付的定位宿主表（house.furnishingsAll）；修配置而非放宽断言',
-      });
-      return;
-    }
+    // 交付闭合性检查（PR #122 §一.1）：任何被交付点位声明的物理宿主必须存在于定位宿主表。
+    // **宽容读取**（issue #98，PR #122 深审 high 修复）：/api/project 是页面预览入口，不是
+    // 正式交付——闭合性失败不再 503 掐死页面，而是收集诊断随 200 响应下发（哪些点位缺哪个
+    // 宿主、可能原因、统一处理方向），页面显形问题并继续预览其余部分（下方
+    // placementClosureDiagnostics 字段）。
+    // **严格输出不受影响**：DXF 导出（npm run export:dxf 与页面「导出 DXF」，经
+    // shared/dxf/project-dxf.ts 的 errors 通道）与模型验证脚本（verify-rules / verify-spatial
+    // 的 placement error）遇到同样的断引用必须失败——不许为了修页面把严格输出一起放松。
+    const placementClosureViolations = collectPlacementHostClosureViolations(electricalPoints, plumbingPoints, mountHosts);
     res.json({
       phase,
       phaseMeta: { ...phaseScopes[phase], budget: loadPhaseBudgetMeta(phaseScopes[phase]) },
@@ -582,7 +581,9 @@ export function createApiRouter(deps: ApiDeps): Router {
         // 挂载到 ld.wall_cabinet_tall 的 night_corridor（x/z 已删）——若宿主也按阶段过滤，
         // mountHosts 缺该宿主 → 解算失败 → 标注回落原点、回路显示缺成员。
         // **阶段可见性与定位宿主是两个关注点**，前者过滤，后者必须全量。
-        furnishingsAll: projectCatalog.getFurnishings(),
+        // 闭合性检查消费的就是这份（上方 furnishingsAll 变量，同一值非两次调用）：
+        // 断言消费的正是下发给前端的那份产物，不存在第二张宿主表。
+        furnishingsAll,
         electrical: electricalPoints,
         // 给排水点位全量清单（2026-11-04 issue #65）：点位来源 select.all（PKG-040 的
         // plumbing {all: true}）要在前端展开成「该分类全部点位」，清单必须在 /api/project
@@ -608,6 +609,16 @@ export function createApiRouter(deps: ApiDeps): Router {
       // HVAC 源空 → 三件冷凝链家具静默缺失，而 house.renderFactsProjection 全仓无读取者。
       // 声明在哪就从哪下发：与 topics / materialPreview / budgetCategories 平级。
       ...(deps.getProjectRenderFactsProjection?.() ? { renderFactsProjection: deps.getProjectRenderFactsProjection() } : {}),
+      // 宽容读取诊断（issue #98，PR #122 深审修复）：闭合性失败随 200 响应下发（不再 503），
+      // 页面显形「哪些点位缺哪个宿主、可能原因」并继续预览其余部分；键缺省 = 本次交付闭合。
+      // 处理方向与断言同一条（统一诊断）：修配置，而非放宽断言或降级解算。
+      ...(placementClosureViolations.length > 0 ? {
+        placementClosureDiagnostics: {
+          count: placementClosureViolations.length,
+          violations: placementClosureViolations.map((v) => v.message),
+          guidance: PLACEMENT_CLOSURE_GUIDANCE,
+        },
+      } : {}),
       topics: projectCatalog.getTopics().map((t) => ({
         id: t.id, name: t.name, perRoom: t.perRoom, optionCount: t.options.length,
       })),

@@ -90,6 +90,21 @@ export interface ProjectApiMaterialPreview {
   atlases: MaterialPreviewAtlasConfig[];
 }
 
+/**
+ * 交付闭合性诊断（宽容读取，issue #98 + PR #122 深审修复）：/api/project 不因闭合性失败
+ * 503 掐死页面；点位 mount 宿主断引用时随 **200** 响应下发本字段，页面显形问题并继续
+ * 预览其余部分。键缺省 = 本次交付闭合。正式 DXF 导出与模型验证脚本对同样的失败仍会报错
+ * （严格输出）——本字段只降级页面预览，不放松交付。
+ */
+export interface PlacementClosureApiDiagnostics {
+  /** 违例条数（= violations.length）。 */
+  count: number;
+  /** 逐条人读诊断：哪个点位、缺哪个宿主、可能原因（与交付断言逐条文案一致）。 */
+  violations: string[];
+  /** 统一处理方向（统一诊断）：修配置而非放宽断言；正式交付路径仍会因此失败。 */
+  guidance: string;
+}
+
 /** GET /api/project 的完整响应。 */
 export interface ProjectApiResponse {
   /** 解析后的阶段 id（full / phase_1_basic_occupancy）。 */
@@ -104,6 +119,11 @@ export interface ProjectApiResponse {
    * 投影端点未就绪时整个键不下发，故可选。
    */
   renderFactsProjection?: ProjectRenderFactsProjection;
+  /**
+   * 交付闭合性诊断（宽容读取）：点位声明的 mount 宿主不在定位宿主表时随 200 下发，
+   * 与 renderFactsProjection 平级（响应顶层）。键缺省 = 闭合性通过，页面照常预览。
+   */
+  placementClosureDiagnostics?: PlacementClosureApiDiagnostics;
   house: ProjectApiHouse;
   topics: ProjectApiTopic[];
   materialPreview: ProjectApiMaterialPreview;
