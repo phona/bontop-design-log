@@ -46,10 +46,11 @@ function main(): void {
     notes: ['PHASE: full (all furnishings)'],
   });
 
-  // 家具摆位诊断 = 施工摆位不可得（issue #98 PR-3：断引用/越界/负净宽）：不出图纸，非零退出。
+  // 定位诊断 = 施工摆位/点位不可得（issue #98：家具断引用/越界/负净宽，以及电气/给排水
+  // 点位解算失败——两者同一 errors 通道）：不出图纸，非零退出。
   if (result.errors.length > 0) {
     for (const error of result.errors) console.error(`ERROR ${error}`);
-    throw new Error(`DXF 导出失败：${result.errors.length} 条家具摆位诊断，修复配置后重导`);
+    throw new Error(`DXF 导出失败：${result.errors.length} 条定位诊断（家具摆位/点位定位），修复配置后重导`);
   }
 
   mkdirSync('tmp/capture', { recursive: true });

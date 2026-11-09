@@ -829,3 +829,82 @@ test('project-dxf: 吊顶 area 四元组画矩形；无 area 的分区 warning �
   assert.equal(ceilLines.length, 4); // 矩形四边
   assert.ok(result.warnings.some((w) => w.includes('ac_living')));
 });
+
+// --- 点位定位 fail-closed（issue #98 / Codex 266331dd blocking）---
+
+/** 1m 墙（带 line_datum），供沿墙点位解算用例共用。 */
+function oneMetreWall(): SceneElement {
+  return { type: 'wall', id: 'w_1m', x1: 0, z1: 0, x2: 1, z2: 0, line_datum: 'centerline' };
+}
+
+test('project-dxf: 电气点位定位解算失败 = 整次导出失败（1m 墙 + along=2 最小复现）', () => {
+  const result = buildProjectDxf({
+    house: {
+      rooms: [],
+      furnishings: {},
+      electrical: [{ id: 'sock_over', room: 'living', type: 'socket', wall: 'w_1m', wallSide: 'south', along: 2 }],
+      ceilingZones: [],
+      sceneElements: [oneMetreWall()],
+    },
+  });
+  // 解不出的点位不出圈（与旧行为相同），但诊断必须进 errors 而不是 warnings：
+  // 两个入口（web 按钮 / npm run export:dxf）只认 errors，进 warnings 会照样交付缺点位图纸。
+  assert.equal(result.stats[DXF_LAYERS.E_POWER[0]], undefined);
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /sock_over/);
+  assert.match(result.errors[0], /along=2\.000/);
+  assert.match(result.errors[0], /越出墙段/);
+  assert.ok(!result.warnings.some((w) => w.includes('未解析定位')), '定位失败不得降级为 warning');
+});
+
+test('project-dxf: 电气点位宿主墙断引用同样令导出失败', () => {
+  const result = buildProjectDxf({
+    house: {
+      rooms: [],
+      furnishings: {},
+      electrical: [{ id: 'sock_lost_wall', room: 'living', type: 'socket', wall: 'w_missing', wallSide: 'south', along: 0.5 }],
+      ceilingZones: [],
+      sceneElements: [oneMetreWall()],
+    },
+  });
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /sock_lost_wall/);
+  assert.match(result.errors[0], /w_missing/);
+  assert.equal(result.stats[DXF_LAYERS.E_POWER[0]], undefined);
+});
+
+test('project-dxf: 给排水点位定位解算失败同样令导出失败（P-POINTS 不出圈）', () => {
+  const result = buildProjectDxf({
+    house: {
+      rooms: [],
+      furnishings: {},
+      electrical: [],
+      ceilingZones: [],
+      sceneElements: [oneMetreWall()],
+    },
+    plumbing: [{ id: 'drain_over', room: 'living', type: 'drain', wall: 'w_1m', wallSide: 'south', along: 9 }],
+  });
+  assert.equal(result.stats[DXF_LAYERS.P_POINTS[0]], undefined);
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /drain_over/);
+  assert.match(result.errors[0], /along=9\.000/);
+});
+
+test('project-dxf: 合法沿墙点位照常出圈且不产生 errors（fail-closed 不误伤）', () => {
+  const result = buildProjectDxf({
+    house: {
+      rooms: [],
+      furnishings: {},
+      electrical: [{ id: 'sock_ok', room: 'living', type: 'socket', wall: 'w_1m', wallSide: 'south', along: 0.5 }],
+      ceilingZones: [],
+      sceneElements: [oneMetreWall()],
+    },
+  });
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.stats[DXF_LAYERS.E_POWER[0]], 2); // 圆 + 文字
+  // 坐标口径不变：墙线 datum (0.5,0) + 薄板惯例 0.075m 朝南 → DXF (500, -75)。
+  const circles = parseEntities(result.dxf).filter((e) => e.type === 'CIRCLE' && e['8'] === DXF_LAYERS.E_POWER[0]);
+  assert.equal(circles.length, 1);
+  assert.equal(circles[0]['10'], '500.0000');
+  assert.equal(circles[0]['20'], '-75.0000');
+});
