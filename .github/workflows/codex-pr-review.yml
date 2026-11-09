@@ -142,7 +142,8 @@ jobs:
           set -euo pipefail
           # 从 PR 正文解析关联 issue。**必须带 issue 字样**——PR 正文里的裸 #NNN 大多是
           # 历史 PR 编号（阶段表）或 pending-site-data 条目号，不是 issue；早期版本用裸 # 匹配，
-          # 一次抓到 34 个号把 prompt 撑爆。支持 "issue #98" / "issues #98/#99" / GitHub URL。
+          # 一次抓到 34 个号把 prompt 撑爆。支持 "issue #98" / "issues #98/#99" /
+          # "issues #98, #99" / "issues #98 #99" / GitHub URL。
           # 也可用仓库变量 CODEX_REVIEW_ISSUES 显式指定（逗号分隔），优先。
           refs=""
           if [ -n "${CODEX_REVIEW_ISSUES:-}" ]; then
@@ -150,8 +151,14 @@ jobs:
             # 直接塞 "98,99" 会当成一个编号去取 issue（Codex 266331dd 实测）。
             refs=$(printf '%s' "${CODEX_REVIEW_ISSUES}" | grep -oE '[0-9]+' | tr '\n' ' ' || true)
           else
+            # 首个编号后继续吃掉整段列表（Codex 74f476ba / 66cedd minor：旧正则只取
+            # "issues #98/#99" 的 98，#99 静默缺席审查上下文）。续接只认三种分隔：
+            #   `[[:space:]]*[,/][[:space:]]*#?[0-9]+` → "#98/#99"、"#98, #99"、"#98,99"
+            #   `[[:space:]]+#[0-9]+`                 → "#98 #99"
+            # 空白续接必须带 `#`：否则 "issues #98 2026-11-09" 会把年份当编号抓走。
+            # 裸 #NNN 仍不匹配（首项就要求 issue 字样），head -5 上限保持不变。
             refs=$(printf '%s' "${PR_BODY:-}" \
-              | grep -oiE 'issues?[[:space:]]*#[0-9]+|github\.com/[^/[:space:]]+/[^/[:space:]]+/issues/[0-9]+' \
+              | grep -oiE 'issues?[[:space:]]*#[0-9]+([[:space:]]*[,/][[:space:]]*#?[0-9]+|[[:space:]]+#[0-9]+)*|github\.com/[^/[:space:]]+/[^/[:space:]]+/issues/[0-9]+' \
               | grep -oE '[0-9]+' | sort -un | head -5 | tr '\n' ' ' || true)
           fi
           if [ -z "${refs}" ]; then
