@@ -2368,6 +2368,25 @@ export class App {
   }
 
   /**
+   * 标注层定位诊断显形（issue #98「宽容读取 / 页面可显示问题并继续预览」，2026-11-10 修
+   * Codex blocking）：AnnotationRenderer.planOf 解算失败的点位不再 throw 中断 load()，而是
+   * 跳过该点并把原因记进它自己的诊断列表（不回落原点）。这里把「少画了哪些标注、为什么」
+   * 显形到页面：console 清单 + toast 点名首个点位。权威判定仍在 verify 与正式 CAD/施工
+   * 交付（那里对同样情况 fail-closed，严格输出）——页面只降级预览，不放松交付。
+   * 调用点放在 refreshInfrastructure 内：初载 / 布局切换 / 阶段切换 / 异常恢复四条重建
+   * 入口自动覆盖，将来新增入口也不会漏。
+   */
+  private reportAnnotationDiagnostics(): void {
+    const diagnostics = this.annotationRenderer?.getPlacementDiagnostics() ?? [];
+    if (diagnostics.length === 0) return;
+    console.error('[annotations] placement diagnostics:', diagnostics);
+    const first = diagnostics[0];
+    const reason = first.reason.length > 80 ? `${first.reason.slice(0, 80)}…` : first.reason;
+    const suffix = diagnostics.length > 1 ? ` 等 ${diagnostics.length} 条` : '';
+    this.showToast(`标注定位异常：${first.pointId}（${reason}）${suffix}；该点未画标注，其余照常预览（请通过 AI 会话修复配置）`);
+  }
+
+  /**
    * 服务端交付闭合性诊断显形（issue #98「宽容读取」+ PR #122 深审修复）：/api/project 对
    * 闭合性失败返回 200 + placementClosureDiagnostics（不再 503 掐死页面）。页面在此显形
    * 「哪些点位缺哪个宿主、可能原因」并继续预览其余部分；正式 DXF 导出与模型验证脚本对
@@ -3174,6 +3193,8 @@ export class App {
     // 的 `return {x:0,z:0}` 无告警分支 → 全部标注静默聚到原点。
     // 点位的 x/z 声明已在第四阶段 S3 删光，那条回落分支永远走不到，所以失败必现。
     // 下沉到本函数后四个入口自动都拿到，且将来新增重建入口也不会再漏。
+    // 2026-11-10：漏注入/断引用的后果已从「planOf 抛错中断建场」改为「跳过该点 + 诊断显形」
+    // （issue #98 宽容读取），诊断在下面 load() 之后由 reportAnnotationDiagnostics() 上桌。
     if (this.annotationRenderer) {
       this.annotationRenderer.setPointWalls(this.houseScene.getPointWalls());
       this.annotationRenderer.setMountHosts(this.houseScene.getMountHosts());
@@ -3187,6 +3208,8 @@ export class App {
     this.syncElectricalTopologyButton();
     this.annotationRenderer?.clear();
     await this.annotationRenderer?.load();
+    // 解算失败的标注点位已跳过（不中断本函数）；在此显形，页面继续预览。
+    this.reportAnnotationDiagnostics();
     if (this.annotationRenderer) {
       this.houseScene.placeInfrastructureFixtures(
         [],

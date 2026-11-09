@@ -136,6 +136,8 @@ vi.mock('./render/annotations/AnnotationRenderer.js', () => ({
     setMountHosts() {}
     getElectricalData() { return []; }
     getPlumbingData() { return []; }
+    // issue #98 宽容读取：解算失败的点位跳过并进诊断清单，App 读它显形
+    getPlacementDiagnostics() { return []; }
   },
 }));
 
@@ -1105,13 +1107,16 @@ describe('App', () => {
 // ── 投影索引注入必须下沉在 refreshInfrastructure（2026-11-09 Codex blocking 回归锚）──
 // 失效形态：AnnotationRenderer 的 setPointWalls/setMountHosts 若只在个别重建入口调用，
 // 新建 AnnotationRenderer 的入口（阶段切换 / 异常恢复）漏注入 → 索引为空 → 挂墙/挂载
-// 点位解算失败 → planOf 无坐标可回落 → 当场抛错（2026-11-09 疗法①：原 (0,0) 回落分支已删，
-// 标注层不再给假坐标）。点位的 x/z 声明已在第四阶段 S3 删光，该失败必现。
-it('refreshInfrastructure 内部注入 pointWalls/mountHosts，任一重建入口都不会漏', () => {
+// 点位解算失败。2026-11-10 起该失败不再抛错中断建场（issue #98 宽容读取：跳过该点 +
+// 诊断显形，不回落原点），但「漏注入 → 索引为空 → 标注成片缺失」仍要靠本锚堵住；诊断显形
+// 同样必须下沉在本函数（四个重建入口共用），否则被跳过的标注在部分入口无人知晓。
+// 点位的 x/z 声明已在第四阶段 S3 删光，该失败必现。
+it('refreshInfrastructure 内部注入 pointWalls/mountHosts 并显形标注诊断，任一重建入口都不会漏', () => {
   const src = readFileSync('src/App.ts', 'utf8');
   const start = src.indexOf('private async refreshInfrastructure()');
   expect(start >= 0).toBeTruthy();
   const body = src.slice(start, src.indexOf('\n  }', start));
   expect(body).toMatch(/setPointWalls\(/);
   expect(body).toMatch(/setMountHosts\(/);
+  expect(body).toMatch(/reportAnnotationDiagnostics\(\)/);
 });

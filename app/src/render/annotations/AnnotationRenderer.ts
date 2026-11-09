@@ -46,6 +46,26 @@ interface CeilingZone {
 
 const LABEL_DISTANCE_THRESHOLD = 2;
 
+/**
+ * 标注定位诊断（issue #98「宽容读取」，2026-11-10 修 Codex blocking）：解算失败的点位不画
+ * 标注，但必须被点名——`pointId` + 解算器原因 + 当时的索引尺寸，供页面 toast / console 清单
+ * 与后续排障使用。诊断的存在即「这里少了一个标注」，不是静默。
+ */
+export interface AnnotationPlacementDiagnostic {
+  category: 'electrical' | 'plumbing';
+  pointId: string;
+  /** 原 throw 文案的信息量保留：解算器诊断原文 + pointWalls/mountHosts 尺寸。 */
+  reason: string;
+}
+
+/**
+ * planOf 结果：`placed` 才有坐标可画；`skipped` = 已记入诊断列表、该点不画。
+ * **没有第三态**——尤其没有「解析失败返回 (0,0)」：那正是疗法①（PR #162）消灭的静默错位。
+ */
+type PlanResolution =
+  | { kind: 'placed'; x: number; z: number }
+  | { kind: 'skipped'; diagnostic: AnnotationPlacementDiagnostic };
+
 export class AnnotationRenderer {
   private group = new THREE.Group();
   private layerGroups: Record<string, THREE.Group> = {
@@ -63,6 +83,11 @@ export class AnnotationRenderer {
   private pointWalls: ReadonlyMap<string, PointWall> = new Map();
   /** mount 挂载点位的家具宿主索引（issue #98 S2）。 */
   private mountHosts: ReadonlyMap<string, PointMountHost> = new Map();
+  /**
+   * 解算失败的点位诊断（issue #98 宽容读取，2026-11-10）。按 `${category}:${pointId}` 去重，
+   * 顺序 = 首次遇见的顺序；`clear()` 时随本轮数据清空（诊断描述的是**当前这次**渲染）。
+   */
+  private placementDiagnostics = new Map<string, AnnotationPlacementDiagnostic>();
 
   constructor(
     private scene: THREE.Scene,
@@ -87,21 +112,70 @@ export class AnnotationRenderer {
 
   /**
    * 解析后平面坐标（issue #98 S1 单一解算）：沿墙点位 = 完成面基点（与 MEP 端点同源）。
-   * 解算失败时回落声明 x/z 并 console 告警（仅剩绝对点位走这条路，见下方注释）；
-   * 连声明坐标都没有 → **抛错**。标注层不是施工依据，权威判定在 mep-hvac-lint 与
-   * verify:consistency，那里同样的情况是 fail-closed——但「不是施工依据」要用
-   * **不画 + 当场炸**表达，不能用回落原点表达：点位 x/z 声明已在第四阶段 S3 删光，
-   * 走到这里必然是宿主索引没注入（调用点漏 setPointWalls/setMountHosts）或宿主断引用，
-   * 回落 (0,0) 等于给全部标注发一个假坐标，界面照常、位置全错，比不画更坏。
+   *
+   * 三种结果，**没有第四种**：
+   * - 解算成功 → `{kind:'placed'}`；
+   * - 解算失败但有声明 x/z → 回落声明坐标 + console.warn（第四阶段 S3 删光 x/z 后只剩
+   *   少数绝对点位走这条老路）；
+   * - 解算失败且无声明坐标 → `{kind:'skipped'}`，原因进 `getPlacementDiagnostics()` 并
+   *   console.error。**不回落 (0,0)**：那等于给标注发一个假坐标，界面照常、位置全错，
+   *   是疗法①（PR #162）已经消灭的静默错位。**也不 throw**：标注层不是施工依据，权威判定
+   *   在 verify 与正式 CAD/施工交付（那里对同样情况 fail-closed，严格输出）；页面按 issue
+   *   #98「宽容读取 / 页面可显示问题并继续预览」的要求，一个点解算不出来只跳过该点，不许
+   *   中断整个 load() → 页面初始化与阶段切换。
+   *   走到这里的现实形态：宿主索引没注入（调用点漏 setPointWalls/setMountHosts）、宿主墙
+   *   断引用、mount 宿主不在索引里（宿主 id 改动 / 被过滤 / count-only 无平面几何）——
+   *   都会在下一次重建时随诊断清单显形。
    */
-  private planOf(point: ElectricalPoint | PlumbingPoint): { x: number; z: number } {
-    const { placement } = resolvePointPlacementInWalls(point, this.pointWalls, this.mountHosts);
-    if (placement) return { x: placement.x, z: placement.z };
+  private planOf(
+    point: ElectricalPoint | PlumbingPoint,
+    category: 'electrical' | 'plumbing',
+  ): PlanResolution {
+    const { placement, diagnostic } = resolvePointPlacementInWalls(point, this.pointWalls, this.mountHosts);
+    if (placement) return { kind: 'placed', x: placement.x, z: placement.z };
     if (typeof point.x === 'number' && typeof point.z === 'number') {
       console.warn(`[annotations] ${point.id}: 定位解析失败，回落声明坐标（详见 verify:consistency）`);
-      return { x: point.x, z: point.z };
+      return { kind: 'placed', x: point.x, z: point.z };
     }
-    throw new Error(`[annotations] ${point.id}: 定位解析失败且无声明坐标可回落（宿主索引未注入或宿主断引用？pointWalls=${this.pointWalls.size} mountHosts=${this.mountHosts.size}）——拒绝回落原点，标注必须落在解算坐标上`);
+    const reason = `${diagnostic ?? '解算器未给出原因'}（pointWalls=${this.pointWalls.size} mountHosts=${this.mountHosts.size}；宿主索引未注入或宿主断引用？）`;
+    return { kind: 'skipped', diagnostic: this.recordPlacementDiagnostic(category, point.id, reason) };
+  }
+
+  /** 登记一条定位诊断并当场 console.error（显形优先于列表读取；同一 `category:pointId` 去重）。 */
+  private recordPlacementDiagnostic(
+    category: 'electrical' | 'plumbing',
+    pointId: string,
+    reason: string,
+  ): AnnotationPlacementDiagnostic {
+    const key = `${category}:${pointId}`;
+    const existing = this.placementDiagnostics.get(key);
+    if (existing) return existing;
+    const diagnostic: AnnotationPlacementDiagnostic = { category, pointId, reason };
+    this.placementDiagnostics.set(key, diagnostic);
+    console.error(
+      `[annotations] ${category} 点位 ${pointId}: 定位解析失败，已跳过该点标注（不回落原点，不中断建场）——${reason}` +
+      '。标注层不是施工依据：权威判定在 verify 与正式导出，请通过 AI 会话修复配置后重建。',
+    );
+    return diagnostic;
+  }
+
+  /** 本轮渲染的标注定位诊断清单（`length` 即「少画了几个标注」）。空 = 全部解算成功。 */
+  getPlacementDiagnostics(): readonly AnnotationPlacementDiagnostic[] {
+    return [...this.placementDiagnostics.values()];
+  }
+
+  /** 解算成功的点位（喂 ProblemDetector 用；失败点位没有可信坐标，不进检测器）。 */
+  private placedPoints<T extends ElectricalPoint | PlumbingPoint>(
+    points: readonly T[],
+    category: 'electrical' | 'plumbing',
+  ): Array<T & { x: number; z: number }> {
+    const placed: Array<T & { x: number; z: number }> = [];
+    for (const point of points) {
+      const plan = this.planOf(point, category);
+      if (plan.kind === 'skipped') continue;
+      placed.push({ ...point, x: plan.x, z: plan.z });
+    }
+    return placed;
   }
 
   async load(): Promise<void> {
@@ -130,10 +204,11 @@ export class AnnotationRenderer {
 
   detectProblems(furniture: FurnitureItem[], walls: WallInfo[]): Problem[] {
     // ProblemDetector 的契约是「x/z = 解析后坐标」（见其文件头）：这里先把声明解算再喂进去，
-    // 检测器自己不读声明 x/z 这个第二事实源。
+    // 检测器自己不读声明 x/z 这个第二事实源。解算失败的点点位坐标不可信 → 跳过（已进诊断
+    // 列表，detectProblems 不因为一个坏点中断，页面继续预览）。
     const problems = this.detector.detectAll(
-      this.electricalData.map((point) => ({ ...point, ...this.planOf(point) })),
-      this.plumbingData.map((point) => ({ ...point, ...this.planOf(point) })),
+      this.placedPoints(this.electricalData, 'electrical'),
+      this.placedPoints(this.plumbingData, 'plumbing'),
       this.ceilingData,
       furniture,
       walls,
@@ -181,6 +256,9 @@ export class AnnotationRenderer {
   private renderElectrical(points: ElectricalPoint[]): void {
     const g = this.layerGroups.electrical;
     points.forEach(p => {
+      // 先解算再建图标：解算失败就跳过该点（已进诊断列表），不为它创建永不入场景的 sprite。
+      const plan = this.planOf(p, 'electrical');
+      if (plan.kind === 'skipped') return;
       const icon = p.type === 'switch' || p.type === 'switch_2way' || p.type === 'ac_controller'
         ? createSwitchIcon()
         : p.type === 'floor_socket'
@@ -188,7 +266,6 @@ export class AnnotationRenderer {
         : p.type === 'network'
         ? createNetworkIcon()
         : createSocketIcon(p.count ?? 1);
-      const plan = this.planOf(p);
       icon.position.set(plan.x, p.type === 'floor_socket' ? 0.05 : p.height, plan.z);
       icon.userData = { type: 'annotation', category: 'electrical', pointId: p.id, note: p.note, objectId: 'electrical:' + p.id, wallSide: p.wallSide };
       const label = this.createLabel(p.note ?? '');
@@ -211,8 +288,9 @@ export class AnnotationRenderer {
         washer: createWasherIcon,
         faucet_outdoor: createFaucetIcon,
       };
+      const plan = this.planOf(p, 'plumbing');
+      if (plan.kind === 'skipped') return;
       const icon = (iconMap[p.type] ?? createFaucetIcon)();
-      const plan = this.planOf(p);
       icon.position.set(plan.x, p.height ?? 0.5, plan.z);
       icon.userData = { type: 'annotation', category: 'plumbing', pointId: p.id, note: p.note, objectId: 'plumbing:' + p.id, wallSide: p.wallSide };
       const label = this.createLabel(p.note ?? '');
@@ -303,6 +381,8 @@ export class AnnotationRenderer {
   clear(): void {
     Object.values(this.layerGroups).forEach((group) => this.clearChildren(group));
     this.clearChildren(this.problemGroup);
+    // 诊断描述的是「当前这次」渲染：重建前清空，避免上一轮的点位在本轮显形。
+    this.placementDiagnostics.clear();
     this.labelSprites = [];
     this.electricalData = [];
     this.plumbingData = [];
