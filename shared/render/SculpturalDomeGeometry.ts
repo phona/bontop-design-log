@@ -39,7 +39,7 @@ function rodBetween(
   return rod;
 }
 
-/** Browser and GLB/export share this declared suspended side-frame living-room fixture geometry. */
+/** Declared suspended side-frame living-room fixture geometry used by browser rendering. */
 export function buildSculpturalDomeVisual(
   fixture: RenderLightingFixture,
   config: SculpturalDomeConfig,

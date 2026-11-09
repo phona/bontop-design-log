@@ -25,7 +25,7 @@ export function normalizeCurtainState(state: CurtainState, kind: CurtainKind): C
   return kind === 'blinds' && state === 'blackout' ? 'privacy' : state;
 }
 
-/** 与 app 侧 GLB 导出的共同契约：按 kind+state 推导应导出的可见节点 */
+/** 与 app 侧窗帘可见性的共同契约：按 kind+state 推导应可见的节点 */
 export function expectedVisibleCurtainNodes(id: string, kind: CurtainKind, state: CurtainState): string[] {
   if (state === 'open') return [];
   if (kind === 'blinds') return [`${id}:blinds:deployed`];

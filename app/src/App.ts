@@ -67,7 +67,6 @@ import { HumidityOverlay } from './render/analysis/HumidityOverlay.js';
 import { HumidityButton } from './ui/HumidityButton.js';
 import { renderMepLintBadge } from './ui/MepLintSummary.js';
 import { isInHuinanWindow } from '@shared/humidity-model';
-import { exportObjectTreeToGlb } from './render/export-gltf.js';
 import './ui/keybindings.js';
 import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-schema';
 import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
@@ -280,7 +279,6 @@ export class App {
 
     this.setupFurniturePanel();
     this.setupPlacementPanel();
-    this.setupExportButton();
     this.setupExportDxfButton();
     this.setupTopDownButton();
     this.setupHvacCoordinationButton();
@@ -346,7 +344,7 @@ export class App {
     // ProjectData 的声明位置一致（app/src/render/HouseScene.ts:157）。此前它下发在 house 内，
     // 顶层恒 undefined → hvacSources 恒 undefined → SceneBuilder.resolveScenePlacementAnchors
     // 解不出 indoor_master 锚点 → condensate_pipe_ac_outlet / mb_vanity_pvc_wardrobe_entry /
-    // mb_vanity_pvc_service_chase 三件冷凝链家具带诊断跳过，页面与 GLB 导出持续缺件。
+    // mb_vanity_pvc_service_chase 三件冷凝链家具带诊断跳过，页面持续缺件。
     // HouseScene.buildFromCatalog 直接读 projectData.renderFactsProjection 构造 HVAC 源，
     // 四个建场入口因此拿到的都是同一份投影（layout 切换不再漏）。
 
@@ -480,39 +478,6 @@ export class App {
 
   inspectMasterBedroomCondensate(): ReturnType<HouseScene['inspectMasterBedroomCondensate']> {
     return this.houseScene.inspectMasterBedroomCondensate();
-  }
-
-  async exportGlbDataUrl(): Promise<string> {
-    const { blob } = await this.exportGlb();
-    const bytes = new Uint8Array(await blob.arrayBuffer());
-    let bin = '';
-    for (let i = 0; i < bytes.length; i += 0x8000) {
-      bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    }
-    return 'data:model/gltf-binary;base64,' + btoa(bin);
-  }
-
-  private async exportGlb(): Promise<{ blob: Blob; hvac: ReturnType<HouseScene['getHvacExportStatus']> }> {
-    // 定位诊断 = 场景缺件（issue #98；与 CLI export-glb、shared/dxf/project-dxf.ts 的 errors
-    // 同一通道、同一 fail-closed 语义）：SceneBuilder 把定位失败的家具/暖通锚点/冷凝链记进
-    // HouseScene.getPlacementDiagnostics 并跳过该件。非空即本次导出不成立——页面只许降级预览，
-    // 不许把缺件场景下载成成功交付物；CLI 侧对同一诊断同样判失败。
-    const placementDiagnostics = this.houseScene.getPlacementDiagnostics();
-    if (placementDiagnostics.length > 0) {
-      for (const diagnostic of placementDiagnostics) console.error('[glb] placement diagnostic:', diagnostic);
-      throw new Error(`GLB 导出失败：${placementDiagnostics.length} 条定位诊断（${placementDiagnostics[0]}${placementDiagnostics.length > 1 ? ' 等' : ''}），修复配置后重导`);
-    }
-    // GLTFExporter 不认 BatchedMesh 且 HVAC 导出校验要看原始 mesh：先挂回，完成后重新合批
-    this.houseScene.restoreStaticBatches();
-    try {
-      const hvac = this.houseScene.getHvacExportStatus();
-      if (hvac.required && !hvac.ready) {
-        throw new Error(`GLB 导出已阻止：HVAC 缺失 ${hvac.missing.join(', ')}`);
-      }
-      return { blob: await exportObjectTreeToGlb(this.houseScene.getExportRoot()), hvac };
-    } finally {
-      this.houseScene.reapplyStaticBatches();
-    }
   }
 
   private setupGlassFidelity(): void {
@@ -1532,13 +1497,6 @@ export class App {
 
       // 方案
       {
-        id: 'scheme.export_glb',
-        label: '导出 glb',
-        engineeringNote: '云渲染用；HVAC 协调 routes 已排除',
-        category: '方案',
-        run: () => { void this.handleExportGlb(); },
-      },
-      {
         id: 'scheme.export_dxf',
         label: '导出 DXF',
         engineeringNote: '施工图纸（单文件多图层、1:1 毫米、北朝上）；装配实现 shared/dxf/project-dxf.ts',
@@ -2230,13 +2188,6 @@ export class App {
     this.syncAlertsSummary();
   }
 
-  private setupExportButton(): void {
-    const btn = document.getElementById('export-glb-btn');
-    btn?.addEventListener('click', () => {
-      void this.handleExportGlb();
-    });
-  }
-
   private setupExportDxfButton(): void {
     const btn = document.getElementById('export-dxf-btn');
     btn?.addEventListener('click', () => {
@@ -2407,28 +2358,6 @@ export class App {
     console.error('[project] placement closure diagnostics:', diagnostics);
     const suffix = diagnostics.count > 1 ? ` 等 ${diagnostics.count} 条` : '';
     this.showToast(`交付闭合性异常：${diagnostics.violations[0] ?? ''}${suffix}（页面仅预览降级，正式导出/验证仍会失败；请通过 AI 会话修复配置）`);
-  }
-
-  private async handleExportGlb(): Promise<void> {
-    try {
-      const { blob, hvac } = await this.exportGlb();
-      const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `house-${stamp}.glb`;
-      a.click();
-      URL.revokeObjectURL(url);
-      if (hvac.required) {
-        const outdoor = hvac.included.filter((id) => id.includes(':anchor:') && id.includes('outdoor')).length;
-        const indoor = hvac.included.filter((id) => id.includes(':anchor:') && !id.includes('outdoor')).length;
-        this.showToast(`GLB 已导出：HVAC outdoor ${outdoor}/indoor ${indoor}/terminal ${hvac.terminalCount}；协调 routes 已排除`);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'GLB 导出失败';
-      console.error(message, error);
-      this.showToast(message);
-    }
   }
 
   private exitFurniturePlaceMode(): void {
@@ -3063,7 +2992,7 @@ export class App {
     this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
     // 2026-11-09 修 Codex 第 8 轮 blocking：布局切换建场同样要先补 render-facts 投影
     // （/api/project 不返回该字段）。漏它则 SceneBuilder 解不出 indoor_master 锚点，
-    // 三件冷凝链家具带诊断跳过，页面与随后导出的 GLB 缺件。
+    // 三件冷凝链家具带诊断跳过，页面缺件。
     await this.houseScene.buildFromCatalog(this.projectData);
     this.reportPlacementDiagnostics();
     this.annotationRenderer?.clear();

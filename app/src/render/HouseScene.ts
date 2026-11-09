@@ -245,7 +245,7 @@ export class HouseScene implements SceneApi {
    * 建场诊断，**按产地分段**（PR #122 Codex blocking，2026-11-10）：
    * 每段只由自己的构建路径整体替换，绝不追加到别的产地的段落里。因此任何重建之后
    * `getPlacementDiagnostics()` 描述的都是「当前这次场景」——首建/上次构建的陈旧错误不会
-   * 残留，GLB 守卫（App.exportGlb / CLI export-glb）拿到的就是本次场景缺了什么。
+   * 残留，页面诊断（App.reportPlacementDiagnostics）拿到的就是本次场景缺了什么。
    * 病根：原先是单一数组，buildFromCatalog 覆盖赋值、rebuildHvacProjection 却 push——
    * 首建那条「outdoor_a2 断引用」即使外机恢复显示也不会消失。
    */
@@ -383,10 +383,6 @@ export class HouseScene implements SceneApi {
 
   getCamera(): THREE.PerspectiveCamera {
     return this.camera;
-  }
-
-  getExportRoot(): THREE.Group {
-    return this.exportRoot;
   }
 
   getViewOnlyRoot(): THREE.Group {
@@ -780,7 +776,7 @@ export class HouseScene implements SceneApi {
     // 外机随投影一起下发（PR #122 Codex blocking，2026-11-10）：implemented 投影带
     // `hvac.outdoor`，`buildHvacBuilderSources` 在没有 hvac facts 的路径上取它，首建因此
     // 能解出 confirmed `outdoor_a2`——不再产生「ref outdoor 宿主不在来源里」这条本可避免
-    // 的诊断（该诊断曾长期残留并让 #181 的 GLB 守卫拒绝一份完好场景）。
+    // 的诊断（该诊断曾长期残留并让 #181 的导出守卫拒绝一份完好场景）。
     // 点位定位索引走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）：墙取本次建场
     // 墙几何，mountHosts 取**全量** furnishingsAll（一期不显示的柜仍可能是已交付点位的宿主；
     // 缺省回退 furnishings，与 SceneBuilder 的 hostFurnishings 同口径）。
@@ -883,7 +879,7 @@ export class HouseScene implements SceneApi {
     // **唯一构建产地**（PR #122 Codex blocking，2026-11-10）：首建也走 rebuildHvacProjection，
     // 不在这里另起一条。于是「HVAC 诊断」只有一个生命周期——每次（重）建替换上一次的结论，
     // 成功重建即清掉首建/上次构建的错误（此前 rebuildHvacProjection 只追加，outdoor_a2
-    // 那条首建诊断残留下来，让 #181 的 GLB 守卫拒绝一份完好场景）。
+    // 那条首建诊断残留下来，让 #181 的导出守卫拒绝一份完好场景）。
     // 它在 doors 合批之前调用：rebuildHvacProjection 内部完成 hvac scope 合批。
     this.rebuildHvacProjection(projectData.renderFactsProjection, hvacSources);
     // 铰链门（~42 mesh）：静态无开合动画；换色经 setDoorMaterial → updateScopeMaterials 桥接。
@@ -934,7 +930,7 @@ export class HouseScene implements SceneApi {
    *
    * 诊断随之整体替换 `hvac` 段：本次构建就是当前场景的全部 HVAC 结论，上一次（哪怕是首建
    * 缺源时）的结论在这里作废。原先这里是 `push`，所以缺 outdoor 的首建诊断在成功重建后
-   * 仍然存活，GLB 守卫据此拒绝导出——守卫没错，是诊断生命周期错了。
+   * 仍然存活，旧导出守卫据此拒绝导出——守卫没错，是诊断生命周期错了。
    */
   rebuildHvacProjection(projection: ProjectRenderFactsProjection | undefined, sources: HvacBuilderSources = buildHvacBuilderSources({ projection })): void {
     this.batcher.clearScope('hvac');
@@ -2140,7 +2136,7 @@ export class HouseScene implements SceneApi {
 
   /**
    * 当前场景的定位诊断（家具摆位 / 冷凝链 / HVAC anchor / 点位落位）：非空 = 场景里有件
-   * 因定位声明解析失败而缺席。GLB 导出（App.exportGlb）据此 fail-closed。
+   * 因定位声明解析失败而缺席。页面诊断（App.reportPlacementDiagnostics）据此显形。
    *
    * 返回的是**三个产地的当前结论**（见 ScenePlacementDiagnostics）：每段在各自构建路径上
    * 被整体替换，所以这里永远描述「当前这次场景」，不含任何已重建掉的陈旧错误。
@@ -2299,7 +2295,7 @@ export class HouseScene implements SceneApi {
    * 匹配口径与 highlightObjects 相同（userData.objectId / roomId），路线对象额外
    * 展开两端 endpoint ref；落色与恢复统一走 highlightStack 分层栈——旧实现自带一套
    * clone/setTimeout 簿记，与包级高亮互不相识：包高亮窗口内它会把橙色当原色捕获，
-   * 到期写回橙色（永久卡橙），且数组材质墙（GLB 按 group 分材质）在这里直接抛
+   * 到期写回橙色（永久卡橙），且数组材质墙（墙按 group 分材质）在这里直接抛
    * TypeError（App 的 onVisualCommand 没有 catch，会打断命令处理）。
    */
   highlightObject(objectId: string) {
@@ -2363,7 +2359,7 @@ export class HouseScene implements SceneApi {
       // sourceWallIdOf 把拆段/拆面后缀桥回源墙 id再比一次。
       const wallId = objectId ? sourceWallIdOf(objectId) : undefined;
       if (!((objectId && targetIds.has(objectId)) || (wallId && targetIds.has(wallId)) || (roomId && targetIds.has(roomId)))) return;
-      // 数组材质（GLB 墙按 group 分材质）必须逐元素处理：旧守卫只挡 !mat，mat.emissive
+      // 数组材质（墙按 group 分材质）必须逐元素处理：旧守卫只挡 !mat，mat.emissive
       // 对数组是 undefined，.set 直接抛 TypeError——被 App 的「高亮失败不打断审批流」
       // 静默吞掉，traverse 在第一个数组材质墙处中断：后续范围全部不高亮、末尾的
       // requestRender 也不执行，业主看到「点了没反应」（2026-11-02 浏览器实证，
@@ -3452,16 +3448,6 @@ export class HouseScene implements SceneApi {
 
   getGhostPosition(): { x: number; z: number } | null {
     return this.decorations.getGhostPosition();
-  }
-
-  /** GLB 导出前挂回原始 mesh（GLTFExporter 不认 BatchedMesh）；导出后须 reapplyStaticBatches。 */
-  restoreStaticBatches(): void {
-    this.batcher.restoreScopes();
-  }
-
-  reapplyStaticBatches(): void {
-    this.batcher.reapplyScopes();
-    this.requestRender();
   }
 
   dispose(): void {

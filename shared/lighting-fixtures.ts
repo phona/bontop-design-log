@@ -11,7 +11,7 @@ import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } fro
 /**
  * 灯具渲染派生：**唯一实现**。
  *
- * 权威投影 `shared/project-render-facts-projection.ts`（喂 app/GLB 的
+ * 权威投影 `shared/project-render-facts-projection.ts`（喂 app 页面渲染的
  * `data/project-render-facts.json`）与防穿模/声明层 linter
  * （`shared/penetration/scene.ts` 的 runtime 场景）都调用这里的同一个函数，
  * 因此「渲染看到的灯」与「linter 校验的灯」在定义上就是同一个点位：

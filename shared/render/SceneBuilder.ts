@@ -96,7 +96,7 @@ export interface SceneBuilderOptions {
   curtainRooms?: ResolvedRoom[];
   curtainOffset?: number;
   hvac?: {
-    /** 权威投影（页面 / GLB 路径）：带 projection 时 HVAC 实体照常构建。 */
+    /** 权威投影（页面 / CLI 路径）：带 projection 时 HVAC 实体照常构建。 */
     projection?: ProjectRenderFactsProjection;
     /** 无投影的 CLI/校验路径可直接给 diagram：只供锚点派生用，不建 HVAC 实体。 */
     diagram?: HvacDiagram;
@@ -178,9 +178,9 @@ export interface SceneBuildIndex {
 }
 
 export interface SceneBuildResult {
-  /** Configuration-driven geometry eligible for GLB export. */
+  /** 常驻建筑内容根：默认渲染与平面图截图的内容源（`viewOnlyRoot` 默认不参与截图）。 */
   exportRoot: THREE.Group;
-  /** Configuration-driven geometry visible in the browser but excluded from GLB export. */
+  /** 浏览专用叠加根：网格/平台/MEP 等，默认在平面图截图中隐藏。 */
   viewOnlyRoot: THREE.Group;
   /** Compatibility scene containing both persistent roots. */
   scene: THREE.Scene;

@@ -22,7 +22,7 @@ export function collectHvacExportContents(root: THREE.Object3D): HvacExportConte
       if (type === 'hvac_equipment') equipment.add(objectId);
       if (type === 'hvac_terminal') terminals.add(objectId);
     }
-    // 合批 mesh 已从树上摘下，实体元数据在批次的 batchUserData 里（导出前 restoreStaticBatches 会挂回）
+    // 合批 mesh 已从树上摘下，实体元数据在批次的 batchUserData 里（页面判 HVAC 完整性直接读批次元数据）。
     const batchUserData = object.userData?.isSceneBatch
       ? (object.userData.batchUserData as Map<number, Record<string, unknown>> | undefined)
       : undefined;

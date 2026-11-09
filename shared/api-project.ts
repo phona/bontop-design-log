@@ -104,7 +104,7 @@ export interface ProjectApiMaterialPreview {
  * - 冷凝锚点读取失败：`house.condensatePenetration` 的派生链重读并解析 MEP/电气/给排水/
  *   吊顶/HVAC 配置时抛错，此时响应**不下发** condensatePenetration，错误并入 violations，
  *   并在 `condensatePenetrationError` 给机器可读形态。锚点同样是「数据源一次给全」的优化、
- *   不是正确性前提——页面少锚点仍可预览，但正式 DXF/GLB 导出与验证脚本对同一份不可解析
+ *   不是正确性前提——页面少锚点仍可预览，但正式 DXF 导出与验证脚本对同一份不可解析
  *   配置仍会失败（严格输出）。
  *
  * 键缺省 = 本次响应三类都正常。正式交付路径不因本字段放松（严格输出）。

@@ -107,7 +107,7 @@ function openingSill(opening: { id: string; type: string; sill?: number }): numb
  * 所以 t 不在此处裁剪，由调用方各自执行自己的策略。
  *
  * 两个距离口径都给出，因为两个原消费方各写各的、数值上只差末位（统一不许改变任一方的
- * 逐位输出：DXF/GLB 产物零变化是验收口径）：
+ * 逐位输出：DXF 产物零变化是验收口径）：
  *   - `along`：单位向量点积式 `(c−a)·u`——splitSegmentByOpenings 原口径；
  *   - `t`：归一化参数 `(c−a)·d/|d|²`——openingsAlongWall 折线累计原口径
  *     （`total − remaining + length·clamp(t)`）。

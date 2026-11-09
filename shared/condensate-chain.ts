@@ -488,7 +488,7 @@ export function buildCondensateChain(
 
 /**
  * 摆位锚点上下文（issue #98 PR-10）：把「hvac diagram + MEP 穿墙点 + 衣柜/墙行条目」收敛成
- * `resolveFurniturePlacement` 的第四个参数。SceneBuilder（3D/GLB）、verify:spatial、
+ * `resolveFurniturePlacement` 的第四个参数。SceneBuilder（3D 页面）、verify:spatial、
  * verify:furniture 共用这一份——三处各自拼上下文必然漂移。
  *
  * 解算失败时 anchors 里**不给** condensateChain（三件链条家具随即可解出失败并显形），

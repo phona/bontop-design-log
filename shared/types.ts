@@ -1992,7 +1992,7 @@ export interface ImplementedHvacProjection {
    * `confirmed` 的 `outdoor_a2`（`ref: {source: outdoor, id: vrf_outdoor_a2}`），
    * 而 `buildHvacBuilderSources` 的签名只认 `hvac` / `outdoor` 两个入参——**投影本身
    * 取不到外机**。于是只拿投影建场的路径（页面首建）必然解不出这个 anchor：
-   * 外机不画、诊断入列，`getHvacExportStatus` 判 missing，GLB 导出被拒。
+   * 外机不画、诊断入列，`getHvacExportStatus` 判 missing，页面 HVAC 协调不就绪。
    * 外机是同一份 facts 的渲染数据，随投影一次下发，投影才自洽
    * （「数据源一次给全」的口径见 `commit ce93271e`）。
    */
