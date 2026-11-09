@@ -9,9 +9,10 @@
  * resolveFurniturePlacement（shared/furniture-placement.ts，摆位与 3D 渲染同口径）、
  * resolveMepRoutes / mepRoutePoints / resolveMepEndpoint（MEP 折线与 3D 渲染同口径）。
  *
- * 硬失败口径（issue #98）：家具摆位解析失败与电气/给排水点位定位解算失败一律进 `errors`——
- * 摆位/点位是施工交付内容，解不出来就整次导出不成立（两个入口都只认 errors 并拒绝交付）；
- * 降级成 warning 再跳过，等于交付一张缺点位/缺件的施工图。
+ * 硬失败口径（issue #98）：家具摆位解析失败、电气/给排水点位定位解算失败、MEP 路线端点
+ * 悬空（from/to 引用解不出来）一律进 `errors`——摆位/点位/路线是施工交付内容，解不出来
+ * 就整次导出不成立（两个入口都只认 errors 并拒绝交付）；降级成 warning 再跳过，等于交付
+ * 一张缺点位/缺路线的施工图。
  */
 
 import { type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type PlumbingPoint, type RoomLayout, type SceneElement } from '../types.js';
@@ -85,10 +86,11 @@ export interface ProjectDxfResult {
   entityCount: number;
   warnings: string[];
   /**
-   * 硬失败（issue #98 PR-3 / 点位定位 fail-closed）：家具摆位声明解析失败（断引用/越界/
-   * 负净宽/mount 宿主缺失）或电气/给排水点位定位解算失败（along 越界/断引用/缺声明）。
+   * 硬失败（issue #98 PR-3 / 点位定位 fail-closed / MEP 路线端点 fail-closed）：家具摆位
+   * 声明解析失败（断引用/越界/负净宽/mount 宿主缺失）、电气/给排水点位定位解算失败
+   * （along 越界/断引用/缺声明）或 MEP 路线端点悬空（from/to 引用解不出来）。
    * 非空即本次导出不成立——两个入口（web 按钮与 npm run export:dxf）都必须失败，
-   * 不允许带着缺件/错位的家具/点位图层交付。
+   * 不允许带着缺件/错位的家具/点位/缺路线图层交付。
    */
   errors: string[];
 }
@@ -220,7 +222,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('mep: 无输入，M-HVAC/M-ROUTE 图层为空（MEP 协调未导出）');
     notes.push('MEP NOT EXPORTED: coordination data unavailable at export time');
   } else {
-    emitMep(writer, mep.coordination, mep.sources, warnings, label, restrict, labels, notes);
+    emitMep(writer, mep.coordination, mep.sources, warnings, errors, label, restrict, labels, notes);
   }
 
   // 图内说明（D-NOTES，左上图框外）：交付限制随图走（codex 七审 major）。
@@ -688,6 +690,8 @@ function emitMep(
   coordination: MepCoordination,
   sources: MepEndpointSources,
   warnings: string[],
+  /** 路线端点悬空诊断通道：与家具摆位/点位定位同一条 errors——非空即入口拒绝交付。 */
+  errors: string[],
   label: (text: string, fallback?: string) => string,
   restrict: RestrictLabels,
   labelsMode: 'utf8' | 'ascii',
@@ -697,7 +701,10 @@ function emitMep(
   const report = resolveMepRoutes(coordination, sources);
   for (const resolved of report.routes) {
     if (resolved.unresolved.length > 0) {
-      warnings.push(`mep route ${resolved.route.id}: 端点未解析（${resolved.unresolved.join('/')}），未导出`);
+      // fail-closed（issue #98，与 resolvedPointPosition 同一口径）：路线端点是施工放线
+      // 内容，from/to 解不出来就整次导出不成立——跳过该路线后 M-ROUTE 照样出图，等于
+      // 交付一张缺路线的施工图。诊断进 errors，两个入口据此拒绝交付。
+      errors.push(`mep route ${resolved.route.id}: 端点未解析（${resolved.unresolved.join('/')}）——不导出该路线，修复声明后重导`);
       continue;
     }
     const points = mepRoutePoints(resolved.route, resolved.from, resolved.to);

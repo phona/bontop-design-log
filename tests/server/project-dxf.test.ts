@@ -734,6 +734,28 @@ test('project-dxf: length 型家具外框用显式 length，不吃目录宽（co
 });
 
 test('project-dxf: 跳过实体逐条写 D-NOTES（codex 十七审 major）', () => {
+  // fixture 从「路线端点悬空」换成「内机 anchor 引用解不出来」：前者已 fail-closed 进 errors
+  // （issue #98，见下一条用例），跳过原因随图交付的机制由仍走 warning 的 anchor 路径覆盖。
+  const result = buildProjectDxf({
+    ...baseInput(),
+    mep: {
+      coordination: { version: '1', status: 'ok', layers: {}, routes: [], junctions: [] } as never,
+      sources: {
+        electrical: [], plumbing: [], outdoor: [],
+        ceiling: [{ id: 'ac_lost', room: 'living', type: 'ac_indoor' as never, x: 10.3, z: 4.75 } as never],
+        hvacAnchors: [
+          { id: 'indoor_lost', status: 'confirmed' as never, system: 'refrigerant' as never, ref: { source: 'ceiling', id: 'ac_missing' } } as never,
+        ],
+        hvacTerminals: [],
+      } as never,
+    },
+  });
+  // anchor 引用解不出来 → 跳过 + 原因 + id 进 D-NOTES 随图交付
+  assert.ok(parseEntities(result.dxf).some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('indoor_lost')));
+  assert.ok(result.warnings.some((w) => w.includes('indoor_lost')));
+});
+
+test('project-dxf: MEP 路线端点悬空 fail-closed——诊断进 errors，不再 warning 跳过后照常出图（issue #98）', () => {
   const result = buildProjectDxf({
     ...baseInput(),
     mep: {
@@ -745,9 +767,11 @@ test('project-dxf: 跳过实体逐条写 D-NOTES（codex 十七审 major）', ()
       sources: { electrical: [], plumbing: [], ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] } as never,
     },
   });
-  // 端点未解析 → 路线跳过，原因 + id 进 D-NOTES 随图交付
-  assert.ok(parseEntities(result.dxf).some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('r_lost')));
-  assert.ok(result.warnings.some((w) => w.includes('r_lost')));
+  // 端点未解析 → 整次导出不成立：诊断进 errors（与点位定位 fail-closed 同一通道），
+  // 不降级成 warning/D-NOTES 后照样交付缺路线的施工图。
+  assert.ok(result.errors.some((e) => e.includes('r_lost') && e.includes('端点未解析')), JSON.stringify(result.errors));
+  assert.ok(!result.warnings.some((w) => w.includes('r_lost')), '悬空路线不得再走 warning 通道');
+  assert.ok(!parseEntities(result.dxf).some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('r_lost')));
 });
 
 test('project-dxf: ascii 模式路线标注显式带 id，同 label 路线可区分（codex 十三审 minor）', () => {
