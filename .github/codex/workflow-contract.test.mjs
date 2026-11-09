@@ -69,3 +69,60 @@ test('CODEX_REVIEW_ISSUES is mapped from repository variables and split on comma
     assert.deepEqual(o.trim().split(/\s+/).filter(Boolean), ['98', '99'], `输入 ${input} 应拆成两个编号`)
   }
 })
+
+// 自动提取分支：从 workflow 里把 `else ... fi` 片段抽出来，用假 PR_BODY 真跑。
+// **断言行为，不断言实现**——只要求「跑完分支后 refs 里是完整编号列表」，
+// 不管它用 grep 正则、sed 后处理还是别的等价写法。Codex 74f476ba / 66cedd 报的
+// 正是行为：#98/#99 只解析出 98。
+function fetchIssueRefsBranch() {
+  const overrideIf = workflow.indexOf('if [ -n "${CODEX_REVIEW_ISSUES:-}" ]')
+  assert.ok(overrideIf > 0, 'workflow 应有 CODEX_REVIEW_ISSUES 覆盖分支')
+  const elseAt = workflow.indexOf('\n          else\n', overrideIf)
+  assert.ok(elseAt > 0, '覆盖分支应有 else 自动提取分支')
+  const fiAt = workflow.indexOf('\n          fi\n', elseAt)
+  assert.ok(fiAt > 0, '覆盖分支应有结束 fi')
+  return workflow.slice(elseAt, fiAt).replace(/^\n\s*else\s*\n/, '')
+}
+
+function parseIssueRefs(body) {
+  const script = `${fetchIssueRefsBranch()}\nprintf '%s\\n' "\${refs:-}"\n`
+  return execFileSync('bash', ['-c', script], {
+    encoding: 'utf8',
+    env: { ...process.env, PR_BODY: body },
+  }).trim()
+}
+
+function refsOf(body) {
+  return parseIssueRefs(body).split(/\s+/).filter(Boolean)
+}
+
+test('linked issue list in the PR body keeps every number', () => {
+  const cases = [
+    // 三种分隔写法（issue #98/#99 曾只拿到 98）。
+    ['Fixes issues #98/#99.', ['98', '99']],
+    ['Fixes issues #98, #99.', ['98', '99']],
+    ['Fixes issues #98 #99.', ['98', '99']],
+    // 同族变体：斜杠或逗号后不带 #、逗号后空格。
+    ['Fixes issues #98/99.', ['98', '99']],
+    ['Fixes issues #98,99.', ['98', '99']],
+    // 单数、重复出现、GitHub URL 仍照旧。
+    ['Fixes issue #98.', ['98']],
+    ['Fixes issue #98 and issue #99.', ['98', '99']],
+    ['Fixes https://github.com/acme/repo/issues/98.', ['98']],
+    ['issues #98/#99, #98', ['98', '99']],
+  ]
+  for (const [body, expected] of cases) {
+    assert.deepEqual(refsOf(body), expected, `PR 正文 ${JSON.stringify(body)} 应解析出完整编号列表`)
+  }
+})
+
+test('bare # numbers in the PR body are still ignored', () => {
+  // 保护：早期用裸 # 匹配，一次抓到 34 个历史 PR / 条目号把 prompt 撑爆。
+  assert.deepEqual(refsOf('阶段表 PR #34、#12；pending-site-data 条目 #7。见 #98, #99'), [])
+  // "issue #98" 后面跟一个不带 # 的日期，年份不能被续接逻辑当成编号。
+  assert.deepEqual(refsOf('issue #98，2026-11-09 业主裁定'), ['98'])
+})
+
+test('linked issue extraction keeps the five-number cap', () => {
+  assert.deepEqual(refsOf('issues #1/#2/#3/#4/#5/#6/#7'), ['1', '2', '3', '4', '5'])
+})
