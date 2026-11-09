@@ -116,6 +116,12 @@ function render(rows: Row[]): string {
   const survey = rows.filter((row) => row.blocker.owner.includes('量房') || row.blocker.kind === 'site_measurement');
   const ownerBlocked = rows.filter((row) => row.blocker.owner.includes('业主') || row.blocker.kind === 'pending_adjudication');
   const conflicts = rows.filter((row) => row.blocker.kind === 'unclosed_conflict');
+  // 2026-11-09 修 Codex major：原实现只输出上述三类，责任方是「厂家/柜商/商家/设计」等、
+  // kind 又不是 site_measurement/unclosed_conflict 的构件**只进汇总数字、不出明细**——
+  // 旧手账删了之后，拿这个出口交接厂家/柜商任务会漏项。补一张兜底表明细，
+  // 并加覆盖完整性自检（三类 + 兜底 = 全部构件，一个都不许被筛掉）。
+  const shown = new Set([...survey, ...ownerBlocked, ...conflicts].map((r) => r.id));
+  const rest = rows.filter((row) => !shown.has(row.id));
 
   const parts: string[] = [
     '# 待决视图（按需生成，过程物不进 git）',
@@ -150,6 +156,13 @@ function render(rows: Row[]): string {
   parts.push(openItemsTable('④ 量房清单·独立未决项（无构件载体）', oiSurvey, '来自 `config/open-items.yaml`——家具/采购/设计裁定/几何疑点这类没有 status/blocker schema 的未决项。'));
   parts.push(openItemsTable('⑤ 卡业主的决策·独立未决项', oiOwner, '同上，owner 含「业主」。'));
   parts.push(openItemsTable('⑥ 其他独立未决项', oiOther, '同上，owner 不含「业主」（量房方/物业/消防等）。'));
+  parts.push(table('⑦ 其余受阻构件（责任方为厂家/柜商/商家/设计等）', rest, '兜底表：上面三张没盖到的 pending/undeclared 构件。它存在是为了保证「汇总数字 = 明细条目」，交接厂家/柜商任务时不漏项。'));
+  // 覆盖完整性：并集大小 + 兜底 = 全部构件。用并集而不是逐表相加——同一构件可能
+  // 同时命中多张筛选表（owner 既含「量房」又含「业主」），相加会双算。
+  const covered = shown.size + rest.length;
+  if (covered !== rows.length) {
+    throw new Error(`视图覆盖不完整：筛选表并集 ${shown.size} + 兜底表 ${rest.length} = ${covered}，pending/undeclared 构件 = ${rows.length}——有构件被筛掉了`);
+  }
   return `${parts.join('\n')}\n`;
 }
 

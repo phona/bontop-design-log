@@ -157,7 +157,11 @@ function phaseChecklist(phaseId: string, phaseControl: AnyRecord, phaseName: str
     // authority 可指多文件（overlay = envelope 三文件，issue #98 S1）：展开后逐文件聚合 scope。
     const sourcePaths = unique((link?.scope ?? []).flatMap((scope) => modelPackageLinks.authorities[scope.source] ? authorityFilePaths(modelPackageLinks.authorities[scope.source]!) : []));
     const sourceText = sourcePaths.map((itemPath) => {
-      const rel = path.posix.relative(path.posix.dirname(`${itemPath.slice(0, itemPath.lastIndexOf('/'))}/checklist.md`), itemPath);
+      // 2026-11-09 修 Codex minor：原以**目标文件所在目录**为基准算相对路径，
+      // 于是任何清单里都退化成裸文件名——phase-2/checklist.md 中的
+      // `[config/house.yaml](house.yaml)` 会指向不存在的 schedule/phase-2/house.yaml。
+      // 基准必须是**清单自身所在目录**（sourcePath 的 dirname）。
+      const rel = path.posix.relative(path.posix.dirname(sourcePath), itemPath);
       const scopes = (link?.scope ?? []).filter((scope) => authorityFilePaths(modelPackageLinks.authorities[scope.source] ?? []).includes(itemPath)).map((scope) => scopeSummary(scope.select));
       return `[${itemPath}](${rel})${scopes.length ? ` — ${escapeCell(scopes.join('; '))}` : ''}`;
     }).join('<br>');
