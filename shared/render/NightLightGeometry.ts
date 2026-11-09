@@ -79,7 +79,7 @@ function buildWallMounted(fixture: RenderLightingFixture, glow: THREE.Color): TH
   return group;
 }
 
-/** One low-glare geometry shared by browser and GLB/export rendering. */
+/** One low-glare geometry used by browser rendering. */
 export function buildNightLightVisual(fixture: RenderLightingFixture, glow: THREE.Color): THREE.Group {
   return buildWallMounted(fixture, glow);
 }

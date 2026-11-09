@@ -58,7 +58,7 @@ export interface DerivedSkirtingRegion {
 /**
  * 由墙特征涂漆带派生踢脚带。
  *
- * 顺序 = 传入墙序 × 各墙 paint_bands 序（model-geometry 声明序）——DXF/GLB 的
+ * 顺序 = 传入墙序 × 各墙 paint_bands 序（model-geometry 声明序）——DXF 的
  * A-SKIRT 实体按此序出；集合与原 24 段声明一一对应（零丢零增），顺序随面层配方
  * 下沉改「按墙归组」（与 S4 起 A-WFIN-TILE/A-WFIN-PAINT 同口径）。
  *

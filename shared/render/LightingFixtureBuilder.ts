@@ -145,7 +145,7 @@ function addLedStrip(group: THREE.Group, fixture: RenderLightingFixture, glow: T
 }
 
 // 2026-10-05 起夜路径低位灯（DEC-2026-10-05-R15）：必须挂墙或吸附柜体面；
-// 浏览器与 GLB/export 共用同一个几何生成器。
+// 浏览器渲染使用的几何生成器。
 function addNightLight(group: THREE.Group, fixture: RenderLightingFixture, glow: THREE.Color): number {
   const visual = buildNightLightVisual(fixture, glow);
   group.userData = { ...group.userData, ...visual.userData };

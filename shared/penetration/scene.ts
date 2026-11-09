@@ -304,12 +304,12 @@ export function loadSceneInputs(options: LoadSceneOptions = {}): SceneInputs {
   const lighting = parseLightingRenderConfig(readFileSync(path.join(ROOT, 'config/render/lighting.yaml'), 'utf8'));
   // 主卫冷凝链锚点派生（issue #98 PR-10）：三件遮蔽家具的摆位从 hvac 锚点 + MEP 穿墙点
   // 解出，缺任一项链就解不出来（显形失败，不回退绝对坐标）。这里读的是同一份权威配置，
-  // 与 app / GLB / verify:furniture 同口径。
+  // 与 app / verify:furniture 同口径。
   const hvacFacts = parseProjectHvacFacts(readFileSync(path.join(ROOT, 'config/hvac.yaml'), 'utf8'));
   const mepCoordination = parseMepCoordination(readFileSync(path.join(ROOT, 'config/mep-hvac-coordination.yaml'), 'utf8'));
   // 主卫冷凝链锚点派生（issue #98 PR-10；第五阶段 S3 改派生）：三件遮蔽家具的摆位从 hvac 锚点
   // + MEP 穿墙点解出，缺任一项链就解不出来（显形失败，不回退绝对坐标）。这里读的是同一份权威
-  // 配置，与 app / GLB / verify:furniture 同口径。S3 起 condensate-master@w_mbath_south 的 at
+  // 配置，与 app / verify:furniture 同口径。S3 起 condensate-master@w_mbath_south 的 at
   // 已删（可派生 45 条之一），穿墙点由路线几何派生——与 lint/takeoff 同一算法
   // （deriveMepPenetrationPoint）、同一端点解算源；派生失败 → 无锚，下游链条显形（fail-closed）。
   const condensatePenetration = deriveMepPenetrationAt(
@@ -349,7 +349,7 @@ export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildS
     plumbing: inputs.plumbing,
     // 灯具派生只走共享实现 shared/lighting-fixtures.ts（权威投影调用同一个函数）：
     // offset 平移、anchorY_offset 锚点、宿主墙透传、fail-closed 全部只有一份口径，
-    // linter 校验的灯因此与 app/GLB 渲染的灯是同一个点位。
+    // linter 校验的灯因此与 app 渲染的灯是同一个点位。
     // mount 挂载灯（issue #98 S2）的宿主索引从同一份 house.furnishings 建；墙索引同一构造。
     // 两项都走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）。
     lightingFixtures: buildRenderLightingFixtures(

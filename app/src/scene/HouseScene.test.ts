@@ -206,6 +206,16 @@ const realRooms = Object.fromEntries(
   modelGeometry.rooms.map((room) => [room.id, { id: room.id, name: room.name, height: room.height }]),
 );
 
+/**
+ * 页面常驻内容根。HouseScene 不再暴露 export 专用 getter——测试直接从场景图取
+ * 这个子树；它是默认渲染与平面图截图的内容源（viewOnlyRoot 仅浏览时叠加）。
+ */
+function contentRoot(scene: HouseScene): any {
+  const root = scene.getScene().children.find((child: any) => child.name === 'HOUSE_EXPORT');
+  if (!root) throw new Error('HOUSE_EXPORT root missing');
+  return root;
+}
+
 describe('HouseScene', () => {
   it('renders the declared pipe-chase inspection layer above its transparent covers and restores normal state', () => {
     const scene = Object.create(HouseScene.prototype) as any;
@@ -692,16 +702,16 @@ describe('HouseScene', () => {
     expect(scene).toBeDefined();
     expect(scene.getScene()).toBeDefined();
     expect(scene.getCamera()).toBeDefined();
-    expect(scene.getExportRoot().name).toBe('HOUSE_EXPORT');
+    expect(contentRoot(scene).name).toBe('HOUSE_EXPORT');
     expect(scene.getViewOnlyRoot().name).toBe('HOUSE_VIEW_ONLY');
-    expect(scene.getExportRoot().parent).toBe(scene.getScene());
+    expect(contentRoot(scene).parent).toBe(scene.getScene());
     expect(scene.getViewOnlyRoot().parent).toBe(scene.getScene());
   });
 
   it('keeps business roots stable and avoids duplicate objects across rebuilds', async () => {
     const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
-    const exportRoot = scene.getExportRoot();
+    const exportRoot = contentRoot(scene);
     const viewOnlyRoot = scene.getViewOnlyRoot();
     const projectData = {
       house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' as const }] },
@@ -710,7 +720,7 @@ describe('HouseScene', () => {
     await scene.buildFromCatalog(projectData);
     const firstCount = exportRoot.children.length;
     await scene.buildFromCatalog(projectData);
-    expect(scene.getExportRoot()).toBe(exportRoot);
+    expect(contentRoot(scene)).toBe(exportRoot);
     expect(scene.getViewOnlyRoot()).toBe(viewOnlyRoot);
     expect(exportRoot.children.length).toBe(firstCount);
     expect(viewOnlyRoot.parent).toBe(scene.getScene());
@@ -1323,7 +1333,7 @@ describe('HouseScene', () => {
     scene.refreshSlidingDoor({ ...element, open: false });
     expect(count()).toBe(1);
     let refreshed = false;
-    scene.getExportRoot().traverse((object: any) => { if (object.name === 'sliding_door:door:test') refreshed = true; });
+    contentRoot(scene).traverse((object: any) => { if (object.name === 'sliding_door:door:test') refreshed = true; });
     expect(refreshed).toBe(true);
   });
 
@@ -1347,7 +1357,7 @@ describe('HouseScene', () => {
     await scene.buildFromCatalog(projectData);
     expect(scene.rooms['west_platform']).toBeDefined();
     expect(scene.rooms['west_platform'].name).toBe('West Platform');
-    expect(scene.getExportRoot().children.some((obj: any) => obj.userData?.objectId === 'platform_boundary')).toBe(false);
+    expect(contentRoot(scene).children.some((obj: any) => obj.userData?.objectId === 'platform_boundary')).toBe(false);
     expect(scene.getViewOnlyRoot().children.some((obj: any) => obj.userData?.objectId === 'platform_boundary')).toBe(true);
 
     let platformCount = 0;
@@ -1859,11 +1869,11 @@ describe('HouseScene', () => {
 
     scene.loadHvacProjection(projection, { outdoor, electrical: [], ceiling: projection.ceiling });
     expect(scene.getScene().children.filter((object: any) => object.name === 'HVAC_DIAGRAM')).toHaveLength(0);
-    expect(scene.getExportRoot().children.some((object: any) => object.name === 'HVAC_CONFIRMED_ENTITIES')).toBe(true);
+    expect(contentRoot(scene).children.some((object: any) => object.name === 'HVAC_CONFIRMED_ENTITIES')).toBe(true);
     expect(scene.getViewOnlyRoot().children.some((object: any) => object.name === 'HVAC_COORDINATION')).toBe(true);
 
     const { collectHvacExportContents } = await import('../render/hvac-export-check.js');
-    const exportIds = collectHvacExportContents(scene.getExportRoot());
+    const exportIds = collectHvacExportContents(contentRoot(scene));
     const included = [...exportIds.equipment, ...exportIds.terminals];
     expect(exportIds.equipment.filter((id) => id.includes(':anchor:'))).toHaveLength(6);
     expect(exportIds.terminals.filter((id) => id.includes(':terminal:'))).toHaveLength(5);
@@ -2109,7 +2119,7 @@ describe('HouseScene highlightObjects 竞态防护', () => {
     }
   });
 
-  it('数组材质（GLB 墙按 group 分材质）：逐元素高亮与恢复，缺 emissive 的元素跳过不抛', async () => {
+  it('数组材质（墙按 group 分材质）：逐元素高亮与恢复，缺 emissive 的元素跳过不抛', async () => {
     vi.useFakeTimers();
     try {
       const scene = makeScene();
@@ -2664,7 +2674,7 @@ describe('HouseScene 高亮分层叠加：6s 窗口内多系统 emissive 变更�
 
 // ─── 诊断生命周期（PR #122 Codex blocking，审查提交 ad457b39）─────────────────
 // 病根两半：① 首建构造 hvacSources 时没有外机来源 → confirmed 锚点 outdoor_a2 解不出；
-// ② 诊断是单一数组，首建覆盖赋值、重建只 push → 成功重建后旧错误仍在，GLB 守卫据此
+// ② 诊断是单一数组，首建覆盖赋值、重建只 push → 成功重建后旧错误仍在，导出守卫据此
 // 拒绝一份完好场景。这里两条都钉行为，不钉源码文本。
 describe('HouseScene 诊断生命周期：diagnostics 只描述当前这次场景', () => {
   const canvas = () => ({ addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as HTMLCanvasElement;
@@ -2752,7 +2762,7 @@ describe('HouseScene 诊断生命周期：diagnostics 只描述当前这次场�
   it('#181 误拒的真实现场：外机已恢复显示、场景已完整，诊断不得继续挂着（导出守卫据此判失败）', async () => {
     // Codex ad457b39 描述的现场：首建缺外机来源 → 诊断入列；随后 refreshInfrastructure 用完整
     // 来源重建，外机回到场景（HVAC 期望集 ready=true），但旧实现在 diagnostics 里留着首建那条
-    // 「outdoor_a2 断引用」→ App.exportGlb 先看 diagnostics，一份完好场景被拒。
+    // 「outdoor_a2 断引用」→ 导出守卫先看 diagnostics，一份完好场景被拒。
     const { buildHvacBuilderSources } = await import('@shared/render/HvacBuilder');
     const errorSpy = quiet();
     try {
@@ -2765,7 +2775,7 @@ describe('HouseScene 诊断生命周期：diagnostics 只描述当前这次场�
       // refreshInfrastructure：同一投影补齐外机来源后成功重建 → 外机回到场景
       scene.rebuildHvacProjection(projectionWithoutOutdoor, buildHvacBuilderSources({ projection: projectionWithoutOutdoor, electrical, outdoor }));
       expect(scene.getHvacExportStatus()).toMatchObject({ required: true, ready: true, missing: [] });
-      expect(scene.getExportRoot().children.some((child: any) => child.name === 'HVAC_CONFIRMED_ENTITIES')).toBe(true);
+      expect(contentRoot(scene).children.some((child: any) => child.name === 'HVAC_CONFIRMED_ENTITIES')).toBe(true);
       // 场景已完整：诊断必须为空，导出守卫才不会被首建的旧结论误触发。
       expect(scene.getPlacementDiagnostics()).toEqual([]);
     } finally {

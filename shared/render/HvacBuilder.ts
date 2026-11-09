@@ -51,7 +51,7 @@ export function buildHvacBuilderSources(input: HvacBuilderSourceInput = {}): Hva
   //   ③ **投影自带**（`hvac.outdoor`，2026-11-10 起 implemented 投影必带，schema 必填）。
   // ③ 是页面首建的唯一来路：首建只有 `/api/project` 的投影，没有 facts。缺了它，
   // `diagram.anchors` 的 confirmed `outdoor_a2` 解不出——外机不画、诊断入列、
-  // `getHvacExportStatus` 判 missing，GLB 导出被拒（本次 blocking 的症状）。
+  // `getHvacExportStatus` 判 missing，页面 HVAC 协调不就绪（本次 blocking 的症状）。
   const outdoorFromFacts = planId
     ? input.hvac?.plans.find((plan) => plan.id === planId)?.outdoor
     : undefined;
@@ -138,7 +138,7 @@ export function buildHvacEntityDescriptors(planId: string, diagram: HvacDiagram,
     seen.add(objectId);
     const resolved = resolveAnchor(anchor, sources);
     // issue #98 S1（E7）：解析失败记诊断后跳过，禁止静默 continue。诊断经 SceneBuilder 的
-    // placementDiagnostics 通道上浮（3D 控制台 + verify-spatial + DXF/GLB 装配日志）。
+    // placementDiagnostics 通道上浮（3D 控制台 + verify-spatial + DXF 装配日志）。
     if (!resolved.position) {
       diagnostics?.push(resolved.diagnostic);
       continue;
