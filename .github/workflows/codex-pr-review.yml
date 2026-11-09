@@ -157,9 +157,21 @@ jobs:
             #   `[[:space:]]+#[0-9]+`                 → "#98 #99"
             # 空白续接必须带 `#`：否则 "issues #98 2026-11-09" 会把年份当编号抓走。
             # 裸 #NNN 仍不匹配（首项就要求 issue 字样），head -5 上限保持不变。
-            refs=$(printf '%s' "${PR_BODY:-}" \
-              | grep -oiE 'issues?[[:space:]]*#[0-9]+([[:space:]]*[,/][[:space:]]*#?[0-9]+|[[:space:]]+#[0-9]+)*|github\.com/[^/[:space:]]+/[^/[:space:]]+/issues/[0-9]+' \
-              | grep -oE '[0-9]+' | sort -un | head -5 | tr '\n' ' ' || true)
+            #
+            # 两种形态分开取号（Codex 5088dc1b minor）：URL 分支若先整段匹配、再和短语
+            # 分支一起 `grep -oE '[0-9]+'`，组织名/仓库名里的数字也会被当成编号——
+            # team2/design3/issues/98 曾解析出 2、3、98，随后会去读本仓的 #2/#3，
+            # 额外的号还可能占满 head -5、挤掉真正关联的 issue。URL 形态因此单独一条
+            # 管道：只匹配到 `/issues/<编号>`，再用 sed 截掉 `/issues/` 之前的部分。
+            # 两条管道合并后统一 sort -un 去重、head -5 封顶。
+            refs=$({
+              printf '%s' "${PR_BODY:-}" \
+                | grep -oiE 'issues?[[:space:]]*#[0-9]+([[:space:]]*[,/][[:space:]]*#?[0-9]+|[[:space:]]+#[0-9]+)*' \
+                | grep -oE '[0-9]+'
+              printf '%s' "${PR_BODY:-}" \
+                | grep -oiE 'github\.com/[^/[:space:]]+/[^/[:space:]]+/issues/[0-9]+' \
+                | sed -E 's#^.*/issues/##'
+            } | sort -un | head -5 | tr '\n' ' ' || true)
           fi
           if [ -z "${refs}" ]; then
             echo "no_linked_issues=true" >> "$GITHUB_OUTPUT"
