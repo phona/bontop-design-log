@@ -53,6 +53,19 @@ export const PLACEMENT_CLOSURE_GUIDANCE =
   '处理方向：把宿主加回全量 furnishings（阶段只该过滤渲染可见性），或改挂真实存在的宿主，或把点位本身移出本次交付；不得靠降级解算放行。'
   + '页面预览按宽容读取降级继续，但正式 DXF 导出与模型验证遇到同样的断引用必须失败（严格输出，issue #98）。';
 
+/**
+ * 投影构造失败的处理方向（**同一条诊断通道**里的第二类条目，不是第三套诊断）。
+ *
+ * /api/project 的 render-facts 投影（`buildProjectRenderFactsProjection` →
+ * `buildRenderLightingFixtures`）是「数据源一次给全」的优化，**不是正确性前提**：
+ * 它 fail-closed 的抛错（点位宿主断引用 / 缺渲染覆盖 / 缺安装高度）在页面入口被隔离成
+ * 诊断随 200 下发，页面少 HVAC 源但继续预览；同一断引用在正式交付路径（DXF 装配、
+ * 模型验证脚本）仍按真实错误失败——投影不可得 ≠ 放行，问题不会藏。
+ */
+export const PROJECTION_CONSTRUCTION_GUIDANCE =
+  '投影构造失败处理方向：修导致构造异常的配置断引用（点位宿主 / 渲染覆盖引用 / 安装高度声明），不得靠放宽构造器断言放行。'
+  + '投影是「数据源一次给全」的优化，不是正确性前提：本次响应不下发 renderFactsProjection，页面按宽容读取继续预览（少 HVAC 源），但正式 DXF 导出与模型验证会因同一断引用失败（严格输出，issue #98）。';
+
 const KIND_LABEL: Record<PlacementClosureViolation['kind'], string> = {
   electrical: '电气',
   plumbing: '给排水',
