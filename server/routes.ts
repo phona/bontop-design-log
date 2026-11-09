@@ -10,7 +10,7 @@ import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 import { buildPlacementIndexes } from '../shared/placement-indexes.js';
-import { collectPlacementHostClosureViolations, PLACEMENT_CLOSURE_GUIDANCE, PROJECTION_CONSTRUCTION_GUIDANCE } from './placement-closure.js';
+import { collectPlacementHostClosureViolations, PLACEMENT_CLOSURE_GUIDANCE, PROJECTION_CONSTRUCTION_GUIDANCE, CONDENSATE_PENETRATION_GUIDANCE } from './placement-closure.js';
 import type { PlacementClosureApiDiagnostics } from '../shared/api-project.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
@@ -73,6 +73,12 @@ export interface ApiDeps {
   getEnvironment?: () => EnvironmentConfig | undefined;
   getProjectRenderFacts?: () => ProjectRenderFacts | undefined;
   getProjectRenderFactsProjection?: () => ProjectRenderFactsProjection | undefined;
+  /**
+   * 主卫冷凝链穿墙锚点读取产地（默认读当前 config）。与
+   * `getProjectRenderFactsProjection` 同构：**调用可能抛错**（配置暂时不可解析），
+   * `/api/project` 负责隔离成 `placementClosureDiagnostics` 诊断；正式交付路径不受此隔离影响。
+   */
+  getCondensateMasterPenetration?: () => { x: number; z: number } | undefined;
   /** 构件级工程状态投影（现算/缓存，输入异常时抛错由路由转 503）。 */
   getElementState?: (options: { withConflicts?: boolean; refresh?: boolean }) => ElementStatePayload | undefined;
   getMepLintContext?: () => MepLintLayoutContext;
@@ -86,8 +92,11 @@ export function createApiRouter(deps: ApiDeps): Router {
   /** 主卫冷凝链穿墙锚点（issue #98 PR-10；第五阶段 S3 改派生）：MEP condensate-master
    * @w_mbath_south。S3 起该 at 已删（可派生 45 条之一），锚点由路线几何派生——与
    * lint/takeoff 同一算法（deriveMepPenetrationPoint）、同一端点解算源；派生失败 → 无锚，
-   * 下游链条显形（fail-closed）。 */
-  const condensateMasterPenetration = (): { x: number; z: number } | undefined => deriveMepPenetrationAt(
+   * 下游链条显形（fail-closed）。
+   * 注意：每次调用重读并解析 MEP / 电气 / 给排水 / 吊顶 / HVAC 配置，**读取可能抛错**
+   * （配置文件暂时不可解析）。调用点必须隔离异常（/api/project 的 try/catch），不得再内联
+   * 在响应对象字面量里——一次读取失败不该打掉整个项目预览。 */
+  const defaultCondensateMasterPenetration = (): { x: number; z: number } | undefined => deriveMepPenetrationAt(
     loadMepCoordinationConfig().routes.find((route) => route.id === 'condensate-master'),
     'w_mbath_south',
     {
@@ -100,6 +109,8 @@ export function createApiRouter(deps: ApiDeps): Router {
       walls: deps.catalog.getWalls(),
     },
   ).point;
+  /** 锚点读取产地：默认读当前 config；测试可注入抛错形态。每个请求只调一次，拿到即下发。 */
+  const readCondensateMasterPenetration = deps.getCondensateMasterPenetration ?? defaultCondensateMasterPenetration;
 
   router.get('/config-status', (_req, res) => {
     res.json({ configs: deps.getConfigRegistry().getStatuses() });
@@ -587,10 +598,33 @@ export function createApiRouter(deps: ApiDeps): Router {
       projectionFailure = err instanceof Error ? err.message : String(err);
       console.error('[api/project] render-facts 投影构造失败：已降级为诊断（页面继续预览，正式 DXF/验证仍会失败）：', err);
     }
-    // 统一诊断通道：点位闭合违例与投影构造失败共用 placementClosureDiagnostics 一个键、
-    // 一份 count、一组处理方向；**键缺省** = 本次响应两项都正常（页面据此区分正常/降级）。
+    // 冷凝锚点读取隔离（issue #98「宽容读取、局部降级、统一诊断、严格输出」；
+    // PR #122 Codex major）。
+    // 病根：`condensateMasterPenetration()` 每次重读并解析 MEP / 电气 / 给排水 / 吊顶 /
+    // HVAC 配置，原实现**内联在响应对象字面量里**；任一配置暂时不可解析（如
+    // config/mep-hvac-coordination.yaml 正在被编辑/写坏）→ 整个处理器抛 → /api/project
+    // 500 → 同一响应里的 placementClosureDiagnostics 与全部房间/点位清单一个字都发不出去，
+    // 初载与阶段切换均被阻断。
+    // 口径：这个锚点是「数据源一次给全」的**优化**，不是正确性前提——它不可得时页面少一个
+    // 锚点（三件冷凝链家具退化为无锚，由场景诊断显形），其余交付内容照常预览；错误并入
+    // 下方**同一条** placementClosureDiagnostics 通道，响应仍 200。
+    // **严格输出零改动**：同一份不可解析配置在正式交付路径（scripts/render/dxf/export-dxf.ts
+    // 第 28 行无 catch 直接解析，npm run export:dxf 因此非零退出；GLB 导出与验证脚本同理）
+    // 仍必须失败——锚点不可得 ≠ 放行，问题不会藏。
+    let condensatePenetration: { x: number; z: number } | undefined;
+    let condensatePenetrationFailure: string | undefined;
+    try {
+      condensatePenetration = readCondensateMasterPenetration();
+    } catch (err) {
+      condensatePenetrationFailure = err instanceof Error ? err.message : String(err);
+      console.error('[api/project] 冷凝锚点读取失败：已降级为诊断（页面继续预览，正式 DXF/GLB/验证仍会失败）：', err);
+    }
+    // 统一诊断通道：点位闭合违例、投影构造失败与冷凝锚点读取失败共用
+    // placementClosureDiagnostics 一个键、一份 count、一组处理方向；
+    // **键缺省** = 本次响应各项都正常（页面据此区分正常/降级）。
     const diagnosticMessages = [
       ...(projectionFailure !== undefined ? [`render-facts 投影构造失败：${projectionFailure}`] : []),
+      ...(condensatePenetrationFailure !== undefined ? [`冷凝锚点读取失败：${condensatePenetrationFailure}`] : []),
       ...placementClosureViolations.map((v) => v.message),
     ];
     const renderDiagnostics: PlacementClosureApiDiagnostics | undefined = diagnosticMessages.length > 0
@@ -599,10 +633,14 @@ export function createApiRouter(deps: ApiDeps): Router {
           violations: diagnosticMessages,
           guidance: [
             ...(projectionFailure !== undefined ? [PROJECTION_CONSTRUCTION_GUIDANCE] : []),
+            ...(condensatePenetrationFailure !== undefined ? [CONDENSATE_PENETRATION_GUIDANCE] : []),
             ...(placementClosureViolations.length > 0 ? [PLACEMENT_CLOSURE_GUIDANCE] : []),
           ].join(''),
           ...(projectionFailure !== undefined
             ? { projectionError: { stage: 'render-facts-projection' as const, message: projectionFailure } }
+            : {}),
+          ...(condensatePenetrationFailure !== undefined
+            ? { condensatePenetrationError: { stage: 'condensate-penetration' as const, message: condensatePenetrationFailure } }
             : {}),
         }
       : undefined;
@@ -638,7 +676,9 @@ export function createApiRouter(deps: ApiDeps): Router {
         // 派生（house.yaml anchor 声明），穿墙段从 MEP condensate-master 穿墙点解出。
         // /api/mep-coordination 也返回同一份路线，但页面在建场之后才拉它；建场要用的这个
         // 点随 /api/project 先到，避免链条家具因拉取顺序从场景里消失（同源：MEP 配置）。
-        condensatePenetration: condensateMasterPenetration(),
+        // 读取已隔离（上方 try/catch）：抛错时本键不下发、错误进 placementClosureDiagnostics，
+        // 整个响应仍 200。此处只放**本次确实解出的锚点**（与诊断里的失败态互斥）。
+        ...(condensatePenetration ? { condensatePenetration } : {}),
       },
       // render-facts 投影随项目数据一次下发：HouseScene.buildFromCatalog 要靠它构造 HVAC 源
       // （SceneBuilder 解 indoor_master 锚点 → 三件冷凝链家具）。原 /api/project 不返回它、
