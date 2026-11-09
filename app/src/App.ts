@@ -2329,8 +2329,8 @@ export class App {
         pointCircuitSources,
         notes,
       });
-      // 定位诊断 = 施工摆位/点位不可得（issue #98：家具摆位与电气/给排水点位定位同一 errors
-      // 通道）：与 CLI 同一口径，不交付缺件/错位图纸。
+      // 定位诊断 = 施工摆位/点位/路线不可得（issue #98：家具摆位、电气/给排水点位定位与
+      // MEP 路线端点悬空同一 errors 通道）：与 CLI 同一口径，不交付缺件/错位/缺路线图纸。
       if (result.errors.length > 0) {
         for (const error of result.errors) console.error('[dxf] placement error:', error);
         throw new Error(`DXF 导出失败：${result.errors.length} 条定位诊断（${result.errors[0]}${result.errors.length > 1 ? ' 等' : ''}）`);
