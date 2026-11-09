@@ -85,7 +85,9 @@ function fetchIssueRefsBranch() {
 }
 
 function parseIssueRefs(body) {
-  const script = `${fetchIssueRefsBranch()}\nprintf '%s\\n' "\${refs:-}"\n`
+  // 片段在 workflow 里跑在 `set -euo pipefail` 之下；测试必须同口径，
+  // 否则「grep 无匹配 + pipefail」这类真实失败会被测试放过。
+  const script = `set -euo pipefail\n${fetchIssueRefsBranch()}\nprintf '%s\\n' "\${refs:-}"\n`
   return execFileSync('bash', ['-c', script], {
     encoding: 'utf8',
     env: { ...process.env, PR_BODY: body },
@@ -110,6 +112,10 @@ test('linked issue list in the PR body keeps every number', () => {
     ['Fixes issue #98 and issue #99.', ['98', '99']],
     ['Fixes https://github.com/acme/repo/issues/98.', ['98']],
     ['issues #98/#99, #98', ['98', '99']],
+    // URL 与短语形态同时出现时合并、去重。
+    ['https://github.com/team2/design3/issues/98 and issues #99', ['98', '99']],
+    // URL 后的锚点/子路径不影响取号。
+    ['https://github.com/team2/design3/issues/98#issuecomment-1', ['98']],
   ]
   for (const [body, expected] of cases) {
     assert.deepEqual(refsOf(body), expected, `PR 正文 ${JSON.stringify(body)} 应解析出完整编号列表`)
@@ -123,6 +129,31 @@ test('bare # numbers in the PR body are still ignored', () => {
   assert.deepEqual(refsOf('issue #98，2026-11-09 业主裁定'), ['98'])
 })
 
+test('issue URL yields only the number after /issues/', () => {
+  // Codex 5088dc1b minor：旧实现先整段匹配 URL，再统一 grep -oE '[0-9]+'，
+  // 组织名/仓库名里的数字也被当成编号——team2/design3/issues/98 得到 2、3、98，
+  // 随后会去读当前仓库的 #2、#3。
+  const cases = [
+    ['https://github.com/team2/design3/issues/98', ['98']],
+    ['https://github.com/r2d2/repo7/issues/5', ['5']],
+    // 多个带数字的仓库地址各自只取 issue 号，并按数值排序。
+    [
+      'https://github.com/team2/design3/issues/98 and https://github.com/r2d2/repo7/issues/5',
+      ['5', '98'],
+    ],
+    // 带数字的仓库、但不是 /issues/ 路径：不产号。
+    ['https://github.com/team2/design3/pull/122', []],
+  ]
+  for (const [body, expected] of cases) {
+    assert.deepEqual(refsOf(body), expected, `PR 正文 ${JSON.stringify(body)} 只应取 /issues/ 后的编号`)
+  }
+})
+
 test('linked issue extraction keeps the five-number cap', () => {
   assert.deepEqual(refsOf('issues #1/#2/#3/#4/#5/#6/#7'), ['1', '2', '3', '4', '5'])
+  // URL 里组织/仓库的数字不得挤占上限：旧实现这里会得到 2、3、90、91、92。
+  assert.deepEqual(
+    refsOf('issues #90/#91/#92/#93/#94 and https://github.com/team2/design3/issues/98'),
+    ['90', '91', '92', '93', '94'],
+  )
 })
