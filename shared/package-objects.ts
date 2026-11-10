@@ -28,6 +28,7 @@
  */
 
 import { furnitureObjectId } from './furniture-object-id.js';
+import { CONDENSATE_CHAIN_INPUT_IDS } from './condensate-chain.js';
 
 /** 全模型标记：`mapping_status: project_scope` 链接的对象集。写进 targets 时必须加引号。 */
 export const ALL_MODEL_TARGET = '*';
@@ -53,6 +54,17 @@ export interface AuthorityObject {
 /** 对象摘要键：宿主关系也是对象身份的一部分（墙洞 @ 父墙）。 */
 export function objectDigestKey(source: string, object: AuthorityObject): string {
   return `${source}:${object.id}${object.parent ? `@${object.parent}` : ''}`;
+}
+
+/**
+ * count-only 商品条目的指纹 id（OI-79 兜底，`<room>:<type>`）。
+ *
+ * 与 placed 的 `furnitureObjectId` **同源不同类**：同一个派生规则（房间短名.类型），
+ * 但带 `quantity:` 前缀，保证它永不与 placed 对象 id 碰撞、也不会被 objectIds 的选择器选中。
+ * 实测全仓 24 条 count-only 按 `<room>.<type>` 派生全部唯一。
+ */
+export function quantityObjectId(roomId: string, type: string): string {
+  return `quantity:${roomId}:${type}`;
 }
 
 export interface AuthorityObjectIndex {
@@ -148,10 +160,23 @@ export function indexAuthorityObjects(source: string, doc: unknown): AuthorityOb
     case 'furnishings': {
       for (const [roomId, items] of Object.entries((d.furnishings ?? {}) as Record<string, AnyRecord[]>)) {
         (items ?? []).forEach((item, indexInRoom) => {
-          // count-only 条目没有 runtime 对象（无 x/z、无 wall/mount/anchor），不进对象索引。
-          // 这是 `collectDeclaredFurnitureIds` 的同一判据（shared/furniture-object-id.ts）。
+          // count-only 条目没有 runtime 对象（无 x/z、无 wall/mount/anchor）。
+          // 这是 `collectDeclaredFurnitureIds` 的同一判据（shared/furniture-object-id.ts）——
+          // 它们**不是** placed 工程对象，AGENTS.md「count-only 只喂预算/库存」就是这么划的界。
           const placed = !!(item.mount || item.wall || item.anchor || item.x !== undefined || item.z !== undefined);
-          if (!placed) return;
+          if (!placed) {
+            // 兜底（OI-79）：它们虽不进 objectIds，但**是商品事实**，验收正文会直接点名
+            // （SCH-150-02「逐件检查…床垫匹配…」）。在 OI-79 的「采购的东西也对象化后关联进
+            // 工程里」落地前，按 `quantity:<room>:<type>` 索引，让 digestResolvedObjects
+            // 把它们纳入覆盖房间的指纹——方向是**过度 stale（吵）**，不是漏 stale（哑）。
+            // 前缀 quantity: 保证永不与 placed 对象 id 碰撞，也不会被 objectIds 解析选中
+            // （选择器按 id 直选，不会命中这个前缀）。
+            // 同房同型重复时以下标消歧：静默吞掉一条等于重新制造我们要修的漏报。
+            let qid = quantityObjectId(roomId, item.type);
+            if (index.has(qid)) qid = `${qid}#${indexInRoom}`;
+            add(qid, item, {room: roomId, collection: 'quantity'});
+            return;
+          }
           add(furnitureObjectId(roomId, item as {id?: string; type: string}, indexInRoom), item, {room: roomId});
         });
       }
@@ -224,7 +249,10 @@ export function resolveScopeObjects(index: AuthorityObjectIndex, select: ObjectS
   const hasPlan = (select.plan_ids ?? []).length > 0;
 
   if (select.all === true) {
-    return {objectIds: [...index.objects.keys()].sort(), unresolved, dropped};
+    // count-only 商品条目（OI-79 兜底）不是 placed 工程对象，**不可被选为 scope**——
+    // 它们只经 digestResolvedObjects 的按房间兜底进指纹。放行会让 objectIds 混入
+    // `quantity:<room>:<type>`，targets 对账与 3D 高亮都会认不出这些键。
+    return {objectIds: [...index.objects.keys()].filter((id) => index.objects.get(id)?.collection !== 'quantity').sort(), unresolved, dropped};
   }
 
   let candidates: AuthorityObject[] | undefined;
@@ -234,6 +262,9 @@ export function resolveScopeObjects(index: AuthorityObjectIndex, select: ObjectS
     for (const value of values) {
       let hits = 0;
       for (const object of index.objects.values()) {
+        // 同见上：quantity 条目与 placed 条目共享 type/room 字段，若不过滤会被
+        // types / room_ids 选择器捞进 objectIds。它们只走 digest 兜底，不走选择器。
+        if (object.collection === 'quantity') continue;
         if (!matchesField(object, index.source, field, value)) continue;
         matched.add(object);
         hits += 1;
@@ -357,6 +388,31 @@ export function digestResolvedObjects(
     if (!found.has(id)) resolution.unresolved.push(`${id}: 对象声明节点缺失，无法建对象指纹`);
   }
 
+  // 兜底一（OI-79）：把**本包覆盖房间**的 count-only 商品条目纳入指纹。
+  // 它们不是 placed 工程对象（AGENTS.md「count-only 只喂预算/库存」），但验收正文会直接
+  // 点名（SCH-150-02「床垫匹配」）。在 OI-79 的商品对象化落地前，按房间纳入——改床垫
+  // 会让 PKG-150 的摘要变化、旧通过记录 stale。方向是过度 stale（吵），不是漏 stale（哑）。
+  // 不把它们塞进 objectIds：那会改 3D 渲染、预算 counts derive 与 placed 判据，
+  // 也越过 issue #98「不把报价/商品事实复制进工程对象」的界。
+  const coveredRooms = new Set<string>();
+  for (const source of resolution.sources) {
+    const index = options.indexes?.get(source);
+    if (!index) continue;
+    for (const object of index.objects.values()) {
+      if (resolution.objectIds.includes(object.id) && object.room) coveredRooms.add(object.room);
+    }
+  }
+  if (coveredRooms.size > 0) {
+    const furnishingsIndex = options.indexes?.get('furnishings');
+    if (furnishingsIndex) {
+      for (const object of furnishingsIndex.objects.values()) {
+        if (object.collection !== 'quantity') continue;
+        if (!object.room || !coveredRooms.has(object.room)) continue;
+        digests[objectDigestKey('furnishings', object)] = sha256(stableStringify(object.node));
+      }
+    }
+  }
+
   // 引用闭包：已知 id → 声明节点（只看参与解析的 authority 来源，不把预算/分期文件当对象域）。
   const referents = new Map<string, Array<{source: string; object: AuthorityObject}>>();
   for (const [source, index] of options.indexes ?? []) {
@@ -380,6 +436,14 @@ export function digestResolvedObjects(
     // 还不够——改变父墙 from/to 时，洞自己的声明一字未改，必须靠父墙声明进摘要才会 stale。
     const referenced = collectReferencedStrings(current.object.node);
     if (current.object.parent) referenced.add(current.object.parent);
+    // 兜底二（OI-80）：`anchor: {source: 'chain', id: wardrobe_east_band}` 指向的是
+    // **解算值**不是声明对象，字符串闭包捕不到链的实际输入（MEP condensate-master 穿墙点、
+    // hvac condensate_master_candidate、链上各点）。链解算器已声明它读哪些对象
+    // （shared/condensate-chain.ts 的 CONDENSATE_CHAIN_INPUT_IDS），这里跟着走——
+    // 否则改进候选接入点不会让挂链上家具的包 stale。
+    if (hasChainAnchor(current.object.node)) {
+      for (const id of CONDENSATE_CHAIN_INPUT_IDS) referenced.add(id);
+    }
     for (const value of referenced) {
       for (const referent of referents.get(value) ?? []) {
         const key = objectDigestKey(referent.source, referent.object);
@@ -391,6 +455,16 @@ export function digestResolvedObjects(
   }
   resolution.digests = digests;
   return resolution;
+}
+
+/**
+ * 该对象声明是否带「链解算锚点」（`anchor: {source: 'chain', id: ...}`）。
+ * 这种锚点指向的是解算值不是声明对象，字符串闭包捕不到它的实际输入——
+ * 故命中时要额外跟随 CONDENSATE_CHAIN_INPUT_IDS（OI-80 兜底）。
+ */
+function hasChainAnchor(node: AnyRecord): boolean {
+  const anchor = (node as {anchor?: {source?: unknown}}).anchor;
+  return !!anchor && typeof anchor === 'object' && anchor.source === 'chain';
 }
 
 /** 声明子树里的全部字符串值（精确匹配用；不做子串匹配，避免注释/散文误命中）。 */
