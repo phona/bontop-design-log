@@ -66,6 +66,12 @@ export const CONDENSATE_CHAIN_INPUT_IDS: readonly string[] = [
   'ac_master',
   'condensate-master',
   'condensate_master_candidate',
+  // 三面墙都要：resolveCondensateChain 的 wallOrDiagnostic 逐个取（:213-215）。
+  // 漏任何一面，该面端点重绑都不会让挂链上家具的包 stale——Codex 第 12 轮 blocking
+  // 正是抓到这个清单漏了 w_mb_east 与 w_mbath_east（我第 8 轮写清单时只对照了注释里的
+  // 穿墙点，没逐个核对 wallOrDiagnostic 调用）。
+  'w_mb_east',
+  'w_mbath_east',
   'w_mbath_south',
   'mb.wardrobe_950',
   'mb.vanity_pvc_box',

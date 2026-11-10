@@ -549,6 +549,70 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       `稳定 id 家具跨房迁移必须让 PKG-150 stale；实际 stale：${stale.join(', ') || '（无）'}`);
   });
 
+  // issue #191 Codex blocking 第 12 轮（一）：CONDENSATE_CHAIN_INPUT_IDS 漏了两面墙。
+  // resolveCondensateChain 的 wallOrDiagnostic 逐个取 w_mb_east / w_mbath_east /
+  // w_mbath_south 三面（shared/condensate-chain.ts:213-215），而我第 8 轮写清单时只对照了
+  // 注释里的穿墙点，漏了前两面。这正是 OI-80 预言的「清单靠人工维护，漏更新就是一个漏 stale」。
+  it('链输入清单补全：改 w_mb_east 端点，PKG-150 必须 stale', () => {
+    const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
+    const lines = readFileSync(geometryPath, 'utf8').split('\n');
+    // 墙声明是多行：`- id: w_mb_east` 之后若干行才是 from/to。
+    const wallAt = lines.findIndex((line) => /^\s*- id: w_mb_east\s*$/.test(line));
+    assert.ok(wallAt >= 0, '必须有 w_mb_east 墙');
+    const wallEnd = lines.findIndex((line, i) => i > wallAt && /^\s*- id:/.test(line));
+    const stop = wallEnd > 0 ? wallEnd : lines.length;
+    const fromAt = lines.findIndex((line, i) => i > wallAt && i < stop && /^\s*from:\s*\S+\s*$/.test(line));
+    assert.ok(fromAt > wallAt, 'w_mb_east 必须声明 from');
+    const vertexId = /from:\s*(\S+)/.exec(lines[fromAt])![1];
+    // 顶点是单行流式：`- { id: v_mb_ne, x: 4.20, z: 5.55 }`。改它的 x 即改墙几何。
+    const vAt = lines.findIndex((line) => new RegExp(`^- \\{ id: ${vertexId}\\b`).test(line.trim()));
+    assert.ok(vAt >= 0, `必须有顶点 ${vertexId}`);
+    const vBefore = lines[vAt];
+    const vMoved = vBefore.replace(/x:\s*[\d.-]+/, 'x: 9.99');
+    assert.ok(vMoved !== vBefore, `必须能改动 ${vertexId} 的 x：${vBefore.slice(0, 80)}`);
+
+    const patched = [...lines];
+    patched[vAt] = vMoved;
+    const baseline = fingerprintsNow();
+    writeFileSync(geometryPath, patched.join('\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-150'),
+      `改 w_mb_east 必须让挂链上家具的 PKG-150 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+  });
+
+  // issue #191 Codex blocking 第 12 轮（二）：PKG-160 的 SCH-160-01 验安装与维护空间，
+  // 而空间由厨房柜体与桥接台面决定； dishwasher 用绝对坐标、无宿主引用可供闭包跟随。
+  // 第 11 轮只登记了 OI-82 没修——Codex 评得对：登记不修复本次收窄造成的漏报。
+  it('安装空间依赖补反向：改桥接台面长度，PKG-160 必须 stale', () => {
+    const housePath = join(sandbox, 'config/house.yaml');
+    const lines = readFileSync(housePath, 'utf8').split('\n');
+    const idAt = lines.findIndex((line) => /^\s*- \{ type: kitchen_countertop_bridge, id: kitchen\.countertop_bridge/.test(line));
+    assert.ok(idAt >= 0, 'config/house.yaml 必须有 kitchen.countertop_bridge');
+    const before = lines[idAt];
+    const moved = /length:\s*[\d.]+/.test(before)
+      ? before.replace(/length:\s*[\d.]+/, 'length: 2.10')
+      : before.replace(/\}\s*$/, ', length: 2.10 }');
+    assert.ok(moved !== before, `必须能改动 countertop_bridge 的 length：${before.slice(0, 100)}`);
+
+    const patched = [...lines];
+    patched[idAt] = moved;
+    const baseline = fingerprintsNow();
+    writeFileSync(housePath, patched.join('\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-160'),
+      `改桥接台面必须让挂 SCH-160-01 的 PKG-160 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+    assert.ok(stale.includes('PKG-110'),
+      `改桥接台面也必须让施工归属包 PKG-110 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+  });
+
   it('门禁补洞：工作包 targets 必须覆盖其全部 SCH 检查点名对象的并集', () => {
     const universe = objectUniverse();
     // 每条 SCH 检查 → 所属包（按 control.yaml 的嵌套位置）。
