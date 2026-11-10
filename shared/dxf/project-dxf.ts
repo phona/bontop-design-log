@@ -794,16 +794,26 @@ function emitMep(
       }),
   );
   for (const anchor of sources.hvacAnchors) {
+    // 候选判定先于位置解析（issue #195 第 3 条）：候选/示意图层的异常不应拖垮正式交付。
+    const candidate = anchor.status === 'pending' || anchor.status === 'inferred' || candidateJunctionIds.has(anchor.id);
     // 内机普遍经 ref: {source: ceiling} 定位（无直接 position）——复用 resolveMepEndpoint 解析引用
-    // （与管路端点同口径），解析不了显式告警，不再静默跳过（codex 审 2026-11-03 blocking）。
+    // （与管路端点同口径）。解析失败按 issue #98「严格输出」分两档（issue #195 第 3 条）：
+    //   · 正式 anchor（confirmed / 未声明候选态）：断引用 = 交付物缺设备定位，进 errors 整次
+    //     导出拒绝交付（与 mep route 端点 fail-closed 同口径）；
+    //   · 候选/需求示意 anchor（pending/inferred/关联候选 junction）：本就隔离在 M-CAND、
+    //     非放线依据，保持 warning + 跳过——不得把它们一起 fail 掉。
     const position = anchor.position
       ? { x: anchor.position.x, z: anchor.position.z }
       : resolveMepEndpoint(anchor.id, sources, coordination.junctions);
     if (!position) {
-      warnings.push(`mep anchor ${anchor.id}: 无 position 且引用无法解析，未导出`);
+      const message = `mep anchor ${anchor.id}: 无 position 且引用无法解析`;
+      if (candidate) {
+        warnings.push(`${message}，未导出（候选/示意 anchor 已跳过，M-CAND 非放线依据）`);
+      } else {
+        errors.push(`${message}——正式 HVAC anchor 定位不可得，不导出该设备圈，修复声明后重导`);
+      }
       continue;
     }
-    const candidate = anchor.status === 'pending' || anchor.status === 'inferred' || candidateJunctionIds.has(anchor.id);
     const layer = candidate ? DXF_LAYERS.M_CAND : DXF_LAYERS.M_HVAC;
     const [x, y] = toDxf(position.x, position.z);
     writer.addCircle(layer[0], x, y, POINT_RADIUS_MM * 2);

@@ -355,13 +355,33 @@ function resolveMounted(
   if (!hostLayout.ok) {
     return { placement: null, diagnostic: `mount host "${hostId}": ${hostLayout.diagnostic}` };
   }
+  const layout = hostLayout.layout;
   const mountedDepth = item.depth ?? FURNITURE_DIMS[item.type]?.depth;
   if (mountedDepth === undefined) {
     return { placement: null, diagnostic: `mounted furniture "${item.type}" has no depth（行内或目录均缺，无法贴背摆放）` };
   }
+  // 槽位适配校验（issue #195 第 2 条）：槽位此前只解位置、不校验「装不装得下」——仓门净宽
+  // 小于基站宽度时全部门禁仍绿。robot_bay 的通过尺寸是仓门净宽
+  // `vanity_layout.robot_bay_clear_width`（机器人占用要求 = 基站 410 + 两侧各 25，见
+  // FixtureFactory.buildVanity 头注）；被挂物宽度超过它就是物理上装不进。这与
+  // resolveVanityLayout 的「净宽 ≤ 仓内腔」是两道约束：那道保证门比内腔窄，这道保证被挂物
+  // 比门窄。**只加校验，不动解算数学**——下方 localX/localZ 公式原样保持不变。
+  // 失败走同一条诊断通道：页面按宽容读取跳过该件并显形，DXF / verify:furniture 按既有
+  // error 通道 fail-closed（issue #98「统一诊断、严格输出」）。
+  const mountedWidth = item.width ?? FURNITURE_DIMS[item.type]?.width;
+  if (mountedWidth === undefined) {
+    return { placement: null, diagnostic: `mounted furniture "${item.type}" has no width（行内或目录均缺，无法校验槽位净宽）` };
+  }
+  if (mount.slot === 'robot_bay' && mountedWidth > layout.robot_bay_clear_width + ALONG_FIT_EPS) {
+    return {
+      placement: null,
+      diagnostic: `mount slot "${mount.slot}" 适配失败：${item.type} 宽 ${mountedWidth.toFixed(3)}m`
+        + ` 超过宿主 "${hostId}" 的仓门净宽 robot_bay_clear_width ${layout.robot_bay_clear_width.toFixed(3)}m`
+        + `（超出 ${(mountedWidth - layout.robot_bay_clear_width).toFixed(3)}m，物理上装不进）`,
+    };
+  }
   // 槽位在宿主局部系中声明（local +x = 沿墙、local +z = 柜前），再按宿主 rotation 转世界。
   // robot_bay：沿墙方向取仓区中心（贴北端），进深方向背沿贴柜体背板 + 自身半深。
-  const layout = hostLayout.layout;
   const localX = -layout.width / 2 + layout.robot_bay_width / 2;
   const localZ = -layout.depth / 2 + mountedDepth / 2;
   const theta = ((host.rotation ?? 0) * Math.PI) / 180;

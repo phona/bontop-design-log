@@ -80,6 +80,20 @@ export const CONDENSATE_PENETRATION_GUIDANCE =
   '冷凝锚点读取失败处理方向：修复暂时不可解析的配置（MEP 协调 / 电气 / 给排水 / 吊顶 / HVAC），不得绕过读取或硬编码锚点放行。'
   + '该锚点是「数据源一次给全」的优化，不是正确性前提：本次响应不下发 house.condensatePenetration，页面少锚点但按宽容读取继续预览其余内容；但正式 DXF 导出与模型验证遇到同一份不可解析配置仍必须失败（严格输出，issue #98），问题不会藏。';
 
+/**
+ * 模型包关联读取失败的处理方向（**同一条诊断通道**里的第四类条目，不是第四套诊断）。
+ *
+ * `/api/project` 的 `modelPackageLinks` 由 `loadModelPackageLinks()` 预解析
+ * `config/model-package-links.yaml` 并逐个读取/核对全部 authority（原始 YAML 语法错误与
+ * schema 级错误都会抛）。它是页面「模型包 → 对象」高亮范围的输入，**不是正确性前提**：
+ * 读取异常在页面入口被隔离成诊断随 200 下发，页面少关联范围但其余交付照常预览。
+ * 同一份坏配置在正式交付/验证路径（`verify:schedule` 的 `loadScheduleState` 指纹、
+ * 验收审批链路）仍必须按真实错误失败——读不到 ≠ 放行，问题不会藏。
+ */
+export const MODEL_PACKAGE_LINKS_GUIDANCE =
+  '模型包关联读取失败处理方向：修复 config/model-package-links.yaml 的 YAML 语法/schema 错误或它引用的 authority 文件，不得绕过读取或硬编码关联放行。'
+  + '模型包关联是页面高亮范围的输入，不是正确性前提：本次响应 modelPackageLinks 降级为空数组并显形诊断，页面继续预览其余交付内容；但正式交付与验证（verify:schedule 指纹、验收审批链路）遇到同一份坏配置仍必须失败（严格输出，issue #98），问题不会藏。';
+
 const KIND_LABEL: Record<PlacementClosureViolation['kind'], string> = {
   electrical: '电气',
   plumbing: '给排水',

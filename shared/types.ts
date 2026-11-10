@@ -535,7 +535,7 @@ export interface BudgetCategory {
    */
   pendingLabor?: Array<{ area: string; quantity: number; unit: string; reason: string }>;
   /**
-   * 有实算量但**没有计价归属**的材料条目（DEC-2026-10-13 阶段 2 第二半，瓦工科目专用）。
+   * 有实算量但**没有计价归属**的材料条目（2026-10-13 预算计算架构根治（commit 749426e0）阶段 2 第二半，瓦工科目专用）。
    *
    * 与 `pendingLabor` 的分工：pendingLabor 是「rate 待报价」，这里是「量算出来了但不知道该按哪档
    * 计价」——例如生活阳台地面（control.yaml 记其口径未裁）、反边/海棠角/底盒开孔/壁龛
@@ -1048,7 +1048,7 @@ export type SceneElement =
   // 与旧 `costed` 相反——旧标志要求每条都手工 opt-in，等于把「这块地是不是已被某个 applyRooms
   // 房间算过」这件几何已知的事再手抄一遍（改一处忘另一处即双计/漏计）。现在「整块落在已计费
   // 房间内」由 shared/masonry-takeoff.ts 的 floorRegionInsideCostedRoom 按几何处理：普通过渡区跳过
-  // （DEC-2026-10-13 阶段 2 第二半起唯一实现，server/budget-calculator.ts 只负责装配输入）；
+  // （2026-10-13 预算计算架构根治（commit 749426e0）阶段 2 第二半起唯一实现，server/budget-calculator.ts 只负责装配输入）；
   // `room + follow` 同时声明时表示已计费房间内部的独立地面材料区：从宿主房间面积扣出，
   // 再按 follow 房间的有效材质和干/湿费率计量；单独的 follow 仍表示外部过渡区。
   // `excluded` 只保留给几何说不清的例外（开发商已铺 / 业主裁定不铺），且必须带 reason。

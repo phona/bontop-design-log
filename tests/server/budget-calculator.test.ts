@@ -127,7 +127,7 @@ describe('BudgetCalculator', () => {
     assert.equal(Math.round(extra * 100) / 100, 3.75, 'extra 应只剩主走廊 3.75㎡');
     assert.ok(extra > 0, '主走廊必须计入，且不再依赖任何手工 costed 标志');
 
-    // DEC-2026-10-13 阶段 2 第二半：floor 算量的唯一出口是 shared/masonry-takeoff.ts。
+    // 2026-10-13 预算计算架构根治（commit 749426e0）阶段 2 第二半：floor 算量的唯一出口是 shared/masonry-takeoff.ts。
     // 独立复算（上面的 shoelace + 几何包含）与生产实现必须给出同一个 extra，否则就是两套口径。
     const takeoff = loadMasonryTakeoff(catalog);
     assert.ok(Math.abs(takeoff.floorRegionExtraSqm - extra) < 1e-6,
@@ -780,7 +780,7 @@ describe('BudgetCalculator', () => {
     }
   });
 
-  // DEC-2026-10-13 阶段 2 第二半改写：原断言是「entry_garden 的显式 override 能重新计费」。
+  // 2026-10-13 预算计算架构根治（commit 749426e0）阶段 2 第二半改写：原断言是「entry_garden 的显式 override 能重新计费」。
   // 新架构下 floor 的**数量**来自 shared/masonry-takeoff.ts 的干/湿区房间表，
   // entry_garden 两表都不列（DEC-041：开发商已铺），所以它没有可计费的量——
   // override 只决定「用哪个 option」，不能无中生有造出面积。要给它计费是 config 决定
@@ -821,7 +821,7 @@ describe('BudgetCalculator', () => {
     assert.equal(cabinetItems[0].roomId, 'kitchen');
   });
 
-  // DEC-2026-10-13「预算计算架构根治」阶段 2 第二半：masonry 科目锚点（改前 → 改后）。
+  // 2026-10-13「预算计算架构根治」（commit 749426e0）阶段 2 第二半：masonry 科目锚点（改前 → 改后）。
   // 治的两条根因：① `wetWallArea = (宽+深)×2×高×0.7` 那个 0.7 全库无依据；
   // ② 地面材料侧与人工侧各算一遍（121.510㎡ vs 125.260㎡，差 3.75㎡ 正是主走廊）。
   it('阶段 2 第二半：masonry 锚点——墙砖声明实算、地面材料/人工同一出口', () => {
@@ -891,7 +891,7 @@ describe('BudgetCalculator', () => {
       `masonry.candidateActual 应为19,252.301（材料全额转入候选档，R01 重算干区 +3.915），实际 ${masonry.candidateActual}`);
   });
 
-  // DEC-2026-10-13 阶段 2 第二半：橱柜/台面锚点。
+  // 2026-10-13 预算计算架构根治（commit 749426e0）阶段 2 第二半：橱柜/台面锚点。
   // 治的是 `linearKitchen = 深×0.8`（算出 1.92 而 house.yaml 柜体段实计 4.36m），
   // 以及随之而来的量纲错配：cabinet_board_01 是 ㎡ 单价（800 元/㎡**投影面积**，
   // control.yaml 原话「柜体800/㎡投影」）却被喂了延米数。

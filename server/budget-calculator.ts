@@ -117,7 +117,7 @@ function loadFloorRoomSplit(): { dryRoomIds: string[]; wetRoomIds: string[] } {
 }
 
 /**
- * DEC-2026-10-13「预算计算架构根治」阶段 2 第二半：**瓦工算量（量层）唯一入口**。
+ * 2026-10-13「预算计算架构根治」（commit 749426e0）阶段 2 第二半：**瓦工算量（量层）唯一入口**。
  *
  * 为什么不再有 `loadExtraFloorRegionArea` / `wetWallArea` / `linearKitchen`：
  * 同一个量在仓区里有多套算法、互不对账，是 2026-10-13 扫描出的 55+ 项拍脑袋数据的共同根因。
@@ -409,7 +409,7 @@ function roomArea(room: RoomLayout): number {
 /**
  * 仍按房间公式取量的 quantityField（count 制与遗留别名）。
  *
- * DEC-2026-10-13 阶段 2 第二半起，**三个拍系数已全部删除**，它们的量改由
+ * 2026-10-13「预算计算架构根治」（commit 749426e0）阶段 2 第二半起，**三个拍系数已全部删除**，它们的量改由
  * `shared/masonry-takeoff.ts` 从 overlay.yaml / house.yaml 声明实算：
  *   `wetWallArea`  (宽+深)×2×高×0.7 → `masonryTileArea`（wall_region + sill_region 声明）
  *   `linearKitchen` 深×0.8          → `cabinetProjectedArea` / `countertopRunLength`（house.yaml 柜体段）
@@ -678,7 +678,7 @@ export class BudgetCalculator {
    * 否则「拆分」会变成「悄悄少算一笔钱」。
    *
    * `quoteRates` 按 **labor area 名**索引的生效报价费率表，由调用方把各 trade 的报价卡展开进来
-   * （DEC-2026-10-13 阶段 3：原先只对 ceiling_zones / curtain_box_linear 两个 area 特判读报价卡，
+   * （2026-10-13 预算计算架构根治（commit 749426e0）阶段 3：原先只对 ceiling_zones / curtain_box_linear 两个 area 特判读报价卡，
    * 其余全部走 base.json；现在吊顶与瓦工两张卡走同一条路，吊顶特判随之删除）。
    * 查不到的行照旧走 base.json 的 labor.rate——「没有这个 trade 的报价卡」与「这行没报价」
    * 是两件事，前者不是错误。
@@ -707,7 +707,7 @@ export class BudgetCalculator {
       switch (area) {
         case 'floor':
           {
-            // DEC-2026-10-13 阶段 2 第二半：与材料侧**同一个出口**（this.masonryTakeoff()）。
+            // 2026-10-13 预算计算架构根治（commit 749426e0）阶段 2 第二半：与材料侧**同一个出口**（this.masonryTakeoff()）。
             // 旧口径材料侧只加 applyRooms 房间 footprint（121.510㎡）、人工侧另加
             // loadExtraFloorRegionArea()（125.260㎡），差 3.75㎡ 正是主走廊
             // main_corridor_floor——DEC-2026-10-09-P16 裁定「走廊需要铺砖」，结果
