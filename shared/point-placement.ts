@@ -3,7 +3,8 @@
  *
  * 电气/给排水点位原先有**两个事实源**：声明的绝对 x/z（DXF/MEP/校验直接消费）与墙引用
  * wall/wall_side（3D 用来重算投影），且 x/z 的垂直分量分了三种互不兼容的口径（墙中心线 65 个 /
- * 完成面+0.04 惯用偏移 10 个 / 完成面 3 个），3D 还完全丢弃声明垂直分量改按「中心线 + 0.075」落位。
+ * 完成面+0.04 惯用偏移 10 个 / 完成面+0.09 四点，合计 79；8abfbe3b 旧声明里没有「纯完成面
+ * 0.06m」档），3D 还完全丢弃声明垂直分量改按「中心线 + 0.075」落位。
  * 本文件把沿墙点位收敛成**单一解算**：`along`（沿墙距离，起算口径与家具摆位/洞口投影同一，
  * 见下）+ `face_offset`（离开完成面的附加量）+ 侧别法线，解析失败返回**诊断文本**而不是
  * clamp——clamp 正是 sock_weakbox 242mm 静默偏差的机制根源。
@@ -20,6 +21,15 @@
  * - `mount`（issue #98 S2 真挂载，处置表 A 组）：位置 = 宿主脸平面点 + along（沿脸位置）+
  *   face_offset；灯体半厚 + surface_gap 由渲染管线追加。S1 的 mount_anchor（身份注记 + 手写
  *   x/z 人工同步）已废——宿主移动时点位自动跟随，不再靠 note 记「随柜西移至 11.42」。
+ *
+ * **消费方 basis 分裂（口径选择，不是错误）**：`datum`+薄板惯例与 `x/z` 不是同一个基准——DXF
+ * 圈心与 3D 夹具以 datum + THIN_PLATE_FACE_OFFSET（0.075）为基准（3D 电箱与超厚件另有
+ * 按 frontProjection/贴墙内凹的微调），MEP 端点与电气回路归属叠加层
+ * （app/src/render/ElectricalTopologyRenderer.ts）取 `x/z`（= 墙线 + WALL_THICKNESS/2 +
+ * face_offset，底盒中心）。79 个沿墙点位两者平面差 = |0.075 − (0.06 + face_offset)|：66 点差
+ * 75mm（65 点 face_offset=-0.06 落在墙线上 + 1 点 face_offset=0.09）、10 点差 25mm（0.04）、3 点差 15mm
+ * （face_offset 缺省 = 纯完成面 0.06；这 3 点在 8abfbe3b 旧声明里离墙线 0.15m）。看图/看层时
+ * 不得把两套坐标当同一点。
  *
  * along 起算口径（§4.4，与 S2 统一）：**墙段起点顶点 (x1,z1) 沿折线链累计**——与
  * `shared/furniture-placement.ts` resolveItem 的 along 语义、`shared/wall-segments.ts`
@@ -178,8 +188,9 @@ const ALONG_EPS = 1e-6;
 /**
  * 薄板惯例偏移（米）：墙中心线 → 面盘安装面。3D 渲染（InfrastructureBuilder.placeModel 原
  * 口径）与 DXF 出图共用这一份——2026-11-07 业主裁定「DXF 迁就 3D 投影」，0.075 是投影真值，
- * 施工图底盒整体移动 15~75mm 是该裁定的预期交付物变更（79 个沿墙点位中 56 个原先画在
- * 120mm 墙身中心线上）。
+ * 施工图底盒整体移动 25mm / 75mm 两档是该裁定的预期交付物变更（79 个沿墙点位中 65 个原先
+ * 画在 120mm 墙身中心线上，移动 75mm；10 个完成面+0.04 点移动 25mm；4 个完成面+0.09 点移动
+ * 75mm；不存在 15mm 档）。
  */
 /** 面盘与完成面之间的安装缝（米）。 */
 export const POINT_WALL_GAP = 0.005;
