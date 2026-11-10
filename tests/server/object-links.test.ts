@@ -17,6 +17,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { load as parseYaml } from 'js-yaml';
 import { loadModelPackageLinks } from '../../server/model-package-links.js';
+import { authorityFilePaths } from '../../shared/model-package-links.js';
 import { ALL_MODEL_TARGET } from '../../shared/package-objects.js';
 import { loadScheduleState, type ScheduleState } from '../../shared/schedule-state.js';
 
@@ -202,9 +203,33 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       .map((pkg: AnyRecord) => pkg.id)
       .sort();
 
-    // PKG-150（一期家具 = furnishings all）与 PKG-142（临时入住整屋放行，project_scope）
-    // 是仅有的两个相关包；其余 23 个包（含同样引用 house.yaml 的 PKG-100/110/160）必须不动。
-    assert.deepEqual(stale, ['PKG-142', 'PKG-150']);
+    // 相关包 = PKG-150（一期家具 = furnishings all）+ **全部 6 个 project_scope 包**
+    // （PKG-000/005/010/142/170/900）。project_scope 的 targets 是 `*`（全模型），
+    // 指纹就必须按全部权威文件算——改 house.yaml 的任何对象都该让它们 stale。
+    // 这条曾只断言 ['PKG-142','PKG-150']：另 5 个 project_scope 链接的 scope 只列了
+    // model_geometry，于是声明了「跟任何对象变」却只跟几何变，PKG-170 的甲醛验收
+    // 在家具变化后不 stale（issue #191 独立复核 high）。现在 6 个全在里面。
+    assert.deepEqual(stale, [
+      'PKG-000', 'PKG-005', 'PKG-010', 'PKG-142', 'PKG-150', 'PKG-170', 'PKG-900',
+    ]);
+  });
+
+  // project_scope 的 `*` 必须落到指纹上，而不是只落到 targets 上：6 个整项目包的 scope
+  // 各自只列了少数来源（5 个只有 model_geometry），若指纹按 scope 列出的文件算，
+  // 非几何对象域的变化就静默漏过。这里对 6 个包逐一验证：指纹含全部权威对象域的文件。
+  it('project_scope 的 * 落到指纹：6 个整项目包都按全部权威文件计，不只按各自 scope', () => {
+    const projectScopeIds = ['PKG-000', 'PKG-005', 'PKG-010', 'PKG-142', 'PKG-170', 'PKG-900'];
+    const authorityFiles = [
+      ...new Set(Object.values(beforeState.modelPackageLinks.authorities).flatMap(authorityFilePaths)),
+    ];
+    for (const id of projectScopeIds) {
+      const pkg = beforeState.control.work_packages.find((item: AnyRecord) => item.id === id);
+      assert.ok(pkg, `${id} 必须存在`);
+      assert.deepEqual(pkg.targets, ['*'], `${id} 的 targets 必须是 *`);
+      const keys = Object.keys(beforeState.packageProjectSnapshot(pkg));
+      const missing = authorityFiles.filter((file) => !keys.includes(file));
+      assert.deepEqual(missing, [], `${id} 的指纹必须含全部权威文件，缺：${missing.join(', ')}`);
+    }
   });
 
   it('对象粒度指纹只含 scope 对象与结构性文件：家具包不再整份依赖 house.yaml', () => {
