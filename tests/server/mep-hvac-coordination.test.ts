@@ -6,20 +6,35 @@ import {
   MepCoordinationSchema,
   endpointSourcesFromFacts,
   parseMepCoordination,
+  resolveMepEndpoint,
   resolveMepRoutes,
   validateMepCoordination,
   type MepEndpointSources,
 } from '../../shared/mep-hvac-coordination-schema.js';
-import type { ElectricalPoint, PlumbingPoint, ProjectRenderFacts } from '../../shared/types.js';
+import type { ElectricalPoint, PlumbingPoint, ProjectRenderFacts, VertexLayoutYaml } from '../../shared/types.js';
+import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
 
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as PlumbingPoint[];
 const config = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
 const sources: MepEndpointSources = { electrical, plumbing, ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] };
 
+/** 真实宿主墙/家具索引（与 scripts/verify/mep/verify-mep-lint.ts 同一构造）。 */
+const realPointWalls = pointWallIndexFromElements(
+  resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls,
+);
+const realMountHosts = pointMountHostIndex(
+  Object.values((parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never,
+);
+
 function sourceIds(): MepEndpointSources {
   return {
     ...sources,
+    // 宿主墙/家具索引（issue #98 S3）：沿墙点位不再声明绝对 x/z，本夹具跑的是真实点位表，
+    // 端点解析必须带索引（否则 validate 第一轮就抛 "endpoint is unresolved" 挡住后面全部断言）。
+    pointWalls: realPointWalls,
+    mountHosts: realMountHosts,
     // 注：'outdoor_a2' 不能出现在 hvacAnchors 里——shared/mep-hvac-coordination-schema.ts:137-144 的
     // registerSources 禁止同一 id 跨 kind 重复注册（hvac anchor vs VRF outdoor），否则 validateMepCoordination
     // 第一句就抛 "Duplicate MEP endpoint id outdoor_a2"，把本文件所有测试挡在断言之前。
@@ -30,7 +45,10 @@ function sourceIds(): MepEndpointSources {
       // DEC-2026-10-19-R25 汇流拓扑新增的两个出水口候选锚点（与 hvac.yaml/facts 口径一致：pending / condensate）——bf29283 当时漏同步本夹具，validate 在此抛 unknown endpoint
       { id: 'condensate_living_outlet_candidate', status: 'pending' as const, system: 'condensate' as const, position: { x: 0, y: 0, z: 0 } },
       { id: 'condensate_dining_outlet_candidate', status: 'pending' as const, system: 'condensate' as const, position: { x: 0, y: 0, z: 0 } }],
-    hvacTerminals: ['supply_living', 'return_living', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child', 'condensate_living_candidate', 'condensate_master_candidate', 'condensate_study_candidate', 'condensate_parent_candidate', 'condensate_child_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
+    // issue #98 S2 改绑：return-air-living 等 5 条送/回风路线的 to 由 inline 坐标改为 terminal id，
+    // 夹具须提供 supply_dining / return_dining / supply_living_bottom / supply_dining_bottom 的存在性
+    // （否则 validateMepCoordination 以 "references unknown endpoint" 挡住——那是夹具缺口，不是配置错）。
+    hvacTerminals: ['supply_living', 'return_living', 'supply_dining', 'return_dining', 'supply_living_bottom', 'supply_dining_bottom', 'supply_master', 'return_master', 'supply_study', 'return_study', 'supply_parent', 'return_parent', 'supply_child', 'return_child', 'condensate_living_candidate', 'condensate_master_candidate', 'condensate_study_candidate', 'condensate_parent_candidate', 'condensate_child_candidate', 'net_unused'].map((id) => ({ id, status: 'pending', system: id.startsWith('supply') ? 'supply_air' as const : id.startsWith('return') ? 'return_air' as const : 'condensate' as const, position: { x: 0, y: 0, z: 0 } })),
     outdoor: [{ id: 'outdoor_a2', platform: 'west_platform', x: 6.4, z: 0.5, direction: 'south', width: 0.9, depth: 0.335, height: 0.7, model: 'test' }],
   };
 }
@@ -111,9 +129,10 @@ test('design requirement plumbing routes cannot reference authoritative plumbing
 
 test('real render facts resolve all configured MEP routes through HVAC ceiling and electrical refs', () => {
   const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
-  const ceiling = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
+  const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
   const facts = { electrical, plumbing, ceiling, hvac };
-  const factSources = endpointSourcesFromFacts(facts);
+  // 宿主墙/家具索引（issue #98 S1/S3）：沿墙点位不再声明绝对 x/z，端点解析与生产同一构造。
+  const factSources = endpointSourcesFromFacts(facts, realPointWalls, realMountHosts);
   const report = resolveMepRoutes(config, factSources);
   assert.equal(report.total, 137); // DEC-2026-10-27-R01 删床头路线 strong-light-bedrooms-parent-bed 后 138→137； // 80→87（DEC-2026-10-06-R1 给排水兜底）→92（2026-10-07 v1 水路估算：6 条要求提升 + 5 条干管）→102（2026-10-07 DEC-2026-10-07-M04 声明式补客客厅 ordinary_power_living 十条路由）→137（2026-10-07 之后 config/mep-hvac-coordination.yaml 继续补路由）→135（DEC-2026-10-12-R1 删 strong-light-bedrooms-master-wall-l/-r 两条路由）→131（DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带，删 strong-light-gbath / -mbath-panel / -mbath-switch / -gbath-switch 四条卫浴照明路由）→130（DEC-2026-10-13-R5 删 strong-light-tv）→128（DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l，冰箱改由 sock_fridge_living 就近取电）→135（DEC-2026-10-17-R20 走线专项为 7 个新点位补 7 条路线）→136（DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条）→137（DEC-2026-10-19-R25 新增客餐厅DN32共用主管）→138（DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线 drain-gbath-secondary-requirement）
   // 路线数随 config/mep-hvac-coordination.yaml 增长；改这个数之前先跑 `npm run verify:mep` 确认 resolved/unresolved 结构没变（resolved=136/unresolved=0 才算健康）
@@ -143,8 +162,73 @@ test('degenerate candidate routes are never physical or confirmed', () => {
 
 test('gravity condensate resolution carries pending warning metadata', () => {
   const route = config.routes.find((item) => item.id === 'condensate-study')!;
-  const report = resolveMepRoutes({ ...config, routes: [route] }, endpointSourcesFromFacts({ electrical, plumbing, ceiling: parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'], hvac: parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'] }));
+  const report = resolveMepRoutes({ ...config, routes: [route] }, endpointSourcesFromFacts({ electrical, plumbing, ceiling: parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'], hvac: parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'] }));
   assert.equal(report.routes[0].metadata.pendingReview, true);
   assert.match(report.routes[0].metadata.warning ?? '', /重力冷凝水候选路线/);
   assert.equal(route.status, 'pending');
+});
+
+// ── issue #98 第五阶段 S1：探针固化（设计文档 §4.5-S1 验收铁律 ②）─────────────────
+
+test('探针 P1 固化：electrical ref 一律走单一解算，过期声明 x/z 不得胜出（E2 收口）', () => {
+  // A §4.1 / E F-3 探针实证：给 sock_child_ac 加上过期 x/z=(5.0,4.3) 后，resolveMepEndpoint
+  // 返回 (5,4.3)，而 shared/point-placement.ts 解算器与 HvacBuilder 都给 (5.6,4)——「先直读
+  // 声明 x/z、失败才回落解算器」的短路是潜伏分叉。S1 起 electrical ref 一律委托点位分支。
+  const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
+  const powerChild = hvac.plans[0].diagram.anchors.find((anchor) => anchor.id === 'power_child')!;
+  assert.deepEqual(powerChild.ref, { source: 'electrical', id: 'sock_child_ac' });
+  const stale = electrical.map((point) => point.id === 'sock_child_ac' ? { ...point, x: 5.0, z: 4.3 } : point);
+  const probeSources = endpointSourcesFromFacts(
+    { electrical: stale, plumbing, ceiling: [], hvac },
+    realPointWalls,
+    realMountHosts,
+  );
+  const solved = resolvePointPlacementInWalls(stale.find((point) => point.id === 'sock_child_ac')!, realPointWalls, realMountHosts).placement!;
+  assert.ok(solved, 'sock_child_ac 在真实宿主墙索引下必须解得出');
+  const resolved = resolveMepEndpoint('power_child', probeSources)!;
+  assert.ok(resolved, 'power_child anchor 必须解析成功');
+  assert.ok(Math.abs(resolved.x - solved.x) < 1e-9 && Math.abs(resolved.z - solved.z) < 1e-9,
+    `MEP 端点必须等于解算器解果 (${solved.x},${solved.z})，实际 (${resolved.x},${resolved.z})`);
+  assert.ok(Math.abs(resolved.x - 5.0) > 1e-6 || Math.abs(resolved.z - 4.3) > 1e-6,
+    '过期声明 x/z=(5.0,4.3) 不得胜出（探针 P1 的失效模式）');
+});
+
+test('junction↔anchor 门禁补 y：anchor 的 y 漂移与 x/z 一样必抛（探针 y+0.5 不抛已修复）', () => {
+  // A §4.3 探针实证：resolveMepEndpoint 对带 position 的 anchor 原先丢 y，使
+  // validateMepCoordination 的跨文件比较 y 差恒为 0——anchor y+0.5 不抛、x+0.5 才抛。
+  const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
+  const junctionId = 'condensate_living_dining_merge';
+  const baseFacts = { electrical, plumbing, ceiling: parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'], hvac };
+  const driftedFacts = {
+    ...baseFacts,
+    hvac: { ...hvac, plans: hvac.plans.map((plan) => ({
+      ...plan,
+      diagram: {
+        ...plan.diagram,
+        anchors: plan.diagram.anchors.map((anchor) => anchor.id === junctionId && anchor.position
+          ? { ...anchor, position: { ...anchor.position, y: anchor.position.y + 0.5 } }
+          : anchor),
+      },
+    })) },
+  };
+  validateMepCoordination(config, endpointSourcesFromFacts(baseFacts, realPointWalls, realMountHosts));
+  assert.throws(() => validateMepCoordination(config, endpointSourcesFromFacts(driftedFacts, realPointWalls, realMountHosts)),
+    /position does not match its HVAC anchor/);
+});
+
+test('anchor 分支补 y 不改变路线几何：引用 hvac anchor 的路线必须显式声明高度', () => {
+  // resolveMepEndpoint 现在对带 position 的 anchor 返回 y（junction↔anchor 门禁补 y）。路线
+  // 的 y 取 `from_height ?? from.y`——若某条路线引用 hvac anchor 却不声明高度，y 会从「缺失」
+  // 静默变成「anchor 声明值」，即几何变化。本断言把「零几何变化」钉成可证条件。
+  const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
+  const anchorIds = new Set(hvac.plans[0].diagram.anchors.map((anchor) => anchor.id));
+  for (const route of config.routes) {
+    for (const side of ['from', 'to'] as const) {
+      const endpoint = route[side];
+      if (typeof endpoint !== 'string' || !anchorIds.has(endpoint)) continue;
+      const declared = side === 'from' ? route.from_height : route.to_height;
+      assert.notEqual(declared, undefined,
+        `route ${route.id} ${side} 引用 hvac anchor ${endpoint} 却未声明 ${side}_height：anchor 补 y 后路线几何会变`);
+    }
+  }
 });

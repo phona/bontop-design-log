@@ -83,28 +83,6 @@ describe('SceneBatcher', () => {
     expect(batch.getVisibleAt(otherId)).toBe(true);
   });
 
-  it('restoreScopes 挂回原 mesh，reapplyScopes 重新合批', () => {
-    const parent = new THREE.Group();
-    const units = [0, 1].map((i) => makeUnit(`electrical:sock_${i}`, new THREE.MeshStandardMaterial(), i));
-    units.forEach((u) => parent.add(u));
-
-    const batcher = new SceneBatcher();
-    batcher.batchScope('electrical', units, parent);
-    expect(parent.children.filter((c) => c.userData.isSceneBatch)).toHaveLength(1);
-
-    batcher.restoreScopes();
-    expect(parent.children.filter((c) => c.userData.isSceneBatch)).toHaveLength(0);
-    for (const unit of units) {
-      expect(unit.children.filter((c) => (c as THREE.Mesh).isMesh)).toHaveLength(1);
-    }
-
-    batcher.reapplyScopes();
-    expect(parent.children.filter((c) => c.userData.isSceneBatch)).toHaveLength(1);
-    for (const unit of units) {
-      expect(unit.children.filter((c) => (c as THREE.Mesh).isMesh)).toHaveLength(0);
-    }
-  });
-
   it('clearScope 销毁批次且不挂回原 mesh（场景重建语义）', () => {
     const parent = new THREE.Group();
     const units = [0, 1].map((i) => makeUnit(`electrical:sock_${i}`, new THREE.MeshStandardMaterial(), i));

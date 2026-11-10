@@ -7,6 +7,7 @@ import {
   type MepTakeoff,
   type MepTakeoffRules,
 } from '../../shared/mep-takeoff.js';
+import { pointMountHostIndex } from '../../shared/point-placement.js';
 import {
   endpointSourcesFromFacts,
   parseMepCoordination,
@@ -31,18 +32,26 @@ const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepT
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'];
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'];
 const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as { plans: unknown[] };
-const ceiling = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as unknown[];
+const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as unknown[];
 const topology = parseYaml(readFileSync('config/electrical-topology.yaml', 'utf8')) as {
   circuits: Parameters<typeof computeMepTakeoff>[0]['circuits'];
   controls?: Parameters<typeof computeMepTakeoff>[0]['controls'];
 };
+const houseFurnishings = (parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, unknown[]> }).furnishings ?? {};
 const coordination = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
-const sources = endpointSourcesFromFacts({
-  electrical,
-  plumbing,
-  ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
-  hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
-});
+// mountHosts 由 house.yaml furnishings 建（issue #98 疗法①）：解析器对「缺宿主索引」改为
+// fail-closed 抛错——调用方漏传是接线缺陷，不是配置缺陷。生产 routes.ts:227 两个索引都传，
+// 本测试此前只传 facts，挂载端点（night_corridor 等）解算时炸在调用点上。与生产同口径补齐。
+const sources = endpointSourcesFromFacts(
+  {
+    electrical,
+    plumbing,
+    ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
+    hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
+  },
+  undefined,
+  pointMountHostIndex(Object.values(houseFurnishings).flat() as never),
+);
 
 const takeoff = computeMepTakeoff({
   electrical: electrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],

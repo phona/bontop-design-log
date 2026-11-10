@@ -7,6 +7,7 @@
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
+import { suppressedWallIdSet } from '../../../shared/suppression.js';
 import {
   checkWallPointPlacements,
   formatPlacementIssue,
@@ -186,13 +187,14 @@ const placementWalls: PlacementWall[] = resolved.walls.map((w) => ({
   z1: w.z1,
   x2: w.x2,
   z2: w.z2,
+  ...(w.segments?.length ? { segments: w.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 })) } : {}),
   openings: w.openings,
+  // 墙线基准（口径 A）：点位离完成面的距离按 line_datum 解算，缺声明的宿主墙在此显形
+  ...(w.line_datum ? { line_datum: w.line_datum } : {}),
 }));
-const suppressedWalls = new Set<string>();
-for (const entry of (load('config/layout/overlay.yaml')?.suppress ?? []) as any[]) {
-  if (typeof entry.wall === 'string') suppressedWalls.add(entry.wall);
-  for (const wall of entry.walls ?? []) if (typeof wall === 'string') suppressedWalls.add(wall);
-}
+// suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读 model-geometry.yaml 墙条目自身的
+// suppressed 属性（resolveLayout 透传），唯一权威实现 shared/suppression.ts。
+const suppressedWalls = suppressedWallIdSet(resolved.walls);
 const placementItems = [...elec, ...plumb] as PlacementItem[];
 const roomCentroids = new Map<string, Pt>(
   [...modelRooms.entries()].map(([id, m]) => [id, { x: m.cx, z: m.cz }]),

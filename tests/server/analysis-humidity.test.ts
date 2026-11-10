@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import { describe, it, before } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
@@ -11,7 +12,7 @@ import { parseEnvironment } from '../../shared/environment-schema.js';
 describe('GET /api/analysis/humidity', () => {
   let app: express.Express;
   const env = parseEnvironment(readFileSync('config/environment.yaml', 'utf8'));
-  const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+  const overlay = parseOverlayFiles();
 
   before(() => {
     const catalog = ProjectCatalog.load('.');

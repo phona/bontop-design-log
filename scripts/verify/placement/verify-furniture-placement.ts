@@ -1,10 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { load as loadYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
-import { FURNITURE_DIMS, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE } from '../../../shared/types.js';
+import { loadCeilingConfig, loadElectricalConfig, loadPlumbingConfig } from '../../../server/config-loader.js';
+import { FURNITURE_DIMS, CONDENSATE_CHAIN_FURNITURE_TYPES, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type FurnitureAnchor, type FurnitureMount, type VanityLayoutDecl } from '../../../shared/types.js';
+import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, type PlacementAnchors } from '../../../shared/furniture-placement.js';
+import { diffCondensateChainPlanAgainstMep, deriveMepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
+import { endpointSourcesFromFacts, parseMepCoordination, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
+import { parseProjectHvacFacts } from '../../../shared/project-render-facts-schema.js';
+import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls, type PointWall } from '../../../shared/point-placement.js';
+import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
 
 const EPS = 0.01;
-const WALL_THICKNESS = 0.12;
 
 interface Aabb {
   minX: number;
@@ -14,7 +20,7 @@ interface Aabb {
 }
 
 type WallSide = 'north' | 'south' | 'east' | 'west';
-type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number };
+type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number; wall_clearance?: number; vanity_layout?: VanityLayoutDecl; mount?: FurnitureMount; anchor?: FurnitureAnchor };
 
 const MB_VANITY_TYPES = new Set([
   'mb_vanity_base_cabinet',
@@ -36,31 +42,31 @@ const MB_CONDENSATE_TYPES = new Set([
 ]);
 
 function rotatedDims(item: PlacedItem, rotation: number): { width: number; depth: number } | null {
+  // 尺寸来源与 3D/DXF 共用 declaredFurnitureDims（vanity 走 house.yaml vanity_layout，
+  // 行内宽深优先于 FURNITURE_DIMS 目录）；kitchen/bath run 另记台面外伸 0.04 的 AABB
+  // 包络（本校验器口径，DXF 仍按 carcass 出，差异既原有意保持）。
   const dims = (item.type === 'kitchen_cabinet_run' || item.type === 'bath_side_cabinet') && item.length !== undefined && item.depth !== undefined
     ? { width: item.length + (item.type === 'kitchen_cabinet_run' ? 0.04 : 0), depth: item.depth + (item.type === 'kitchen_cabinet_run' ? 0.04 : 0) }
-    : item.width !== undefined && item.depth !== undefined
-      ? { width: item.width, depth: item.depth }
-      : FURNITURE_DIMS[item.type];
-  if (!dims) return null;
+    : declaredFurnitureDims(item);
+  if (dims.width === undefined || dims.depth === undefined) return null;
   const quarterTurns = Math.round(rotation / 90) % 2 !== 0;
-  return quarterTurns ? { width: dims.depth, depth: dims.width } : dims;
+  return quarterTurns ? { width: dims.depth, depth: dims.width } : { width: dims.width, depth: dims.depth };
 }
 
-function resolvePlacement(item: PlacedItem, walls: Array<{ id?: string; x1: number; z1: number; x2: number; z2: number }>, label: string, errors: string[]): { x?: number; z?: number } {
+function resolvePlacement(
+  item: PlacedItem,
+  wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>,
+  hosts: ReadonlyMap<string, PlacedItem>,
+  label: string,
+  errors: string[],
+  anchors?: PlacementAnchors,
+): { x?: number; z?: number } {
   if (item.wall !== undefined || item.wall_side !== undefined || item.along !== undefined) {
     if (item.wall === undefined || item.wall_side === undefined || item.along === undefined) {
       errors.push(`${label}: wall anchor requires wall, wall_side, and along`);
       return {};
     }
-    const wall = walls.find((candidate) => candidate.id === item.wall);
-    if (!wall) {
-      errors.push(`${label}: wall "${item.wall}" not found`);
-      return {};
-    }
-    if (!['north', 'south', 'east', 'west'].includes(item.wall_side)) {
-      errors.push(`${label}: invalid wall_side "${item.wall_side}"`);
-      return {};
-    }
+    // 策略性锚点约定（非几何复算）：主卫柜组与冷凝水管行必须钉在 w_mbath_east 西侧、朝西、rotation 270。
     if (item.type === 'mb_vanity_pvc_box') {
       if (item.roomId !== 'master_bedroom' || item.wall !== 'w_mbath_east' || item.wall_side !== 'west' || item.rotation !== 270) {
         errors.push(`${label}: condensate wall run must use w_mbath_east west side at rotation 270`);
@@ -72,30 +78,19 @@ function resolvePlacement(item: PlacedItem, walls: Array<{ id?: string; x1: numb
         return {};
       }
     }
-    const dx = wall.x2 - wall.x1;
-    const dz = wall.z2 - wall.z1;
-    const wallLength = Math.hypot(dx, dz);
-    const dims = item.width !== undefined && item.depth !== undefined ? { width: item.width, depth: item.depth } : FURNITURE_DIMS[item.type];
-    const alongHalf = dims ? (item.type === 'mb_vanity_pvc_box' ? 0 : dims.width / 2) : Infinity;
-    const isMasterBedroomCondensateWall = item.type === 'mb_vanity_pvc_box' && wall.id === 'w_mbath_east';
-    let alongStart = wall.id === 'w_mbath_east' || wall.id === 'w_mb_east' ? Math.min(wall.z1, wall.z2) : 0;
-    let alongEnd = wall.id === 'w_mbath_east' || wall.id === 'w_mb_east' ? Math.max(wall.z1, wall.z2) : wallLength;
-    if (isMasterBedroomCondensateWall) alongStart = 3.10;
-    const vanityEndpointTolerance = MB_VANITY_TYPES.has(item.type) && (wall.id === 'w_mbath_east' || wall.id === 'w_mb_east') ? 0.02 : 0;
-    if (!dims || wallLength < EPS || item.along < alongStart + alongHalf - vanityEndpointTolerance || item.along > alongEnd - alongHalf + vanityEndpointTolerance) {
-      errors.push(`${label}: wall anchor along=${item.along} places furniture outside wall length ${wallLength.toFixed(2)}m`);
-      return {};
-    }
-    if ((wall.id === 'w_mbath_east' || wall.id === 'w_mb_east') && item.wall_side === 'west') {
-      const wallFinishOffset = item.type === 'mb_vanity_base_cabinet' || item.type === 'mb_vanity_lower_board' || item.type === 'mb_vanity_main_board' || item.type === 'mb_vanity_pvc_box' ? WALL_THICKNESS / 2 : 0;
-      return { x: wall.x1 - wallFinishOffset - dims.depth / 2, z: item.along };
-    }
-    const ux = dx / wallLength;
-    const uz = dz / wallLength;
-    const normal = item.wall_side === 'west' ? { x: -1, z: 0 } : item.wall_side === 'east' ? { x: 1, z: 0 } : item.wall_side === 'north' ? { x: 0, z: -1 } : { x: 0, z: 1 };
-    return { x: wall.x1 + ux * item.along + normal.x * dims.depth / 2, z: wall.z1 + uz * item.along + normal.z * dims.depth / 2 };
   }
-  return { x: item.x, z: item.z };
+  // 几何解算一律走共享实现（shared/furniture-placement.ts）：完成面起算（2026-11-06 口径 A）、
+  // along 合法域与半宽内缩、mount 挂载派生、vanity_layout 校验都在那一处。旧本地复算
+  // （墙查找 / dims 优先级 / 绝对 z 特例 / 端部容差）已随 issue #98 PR-3 删除——它曾是共享
+  // 函数的漂移副本，曾校验出一条比真实摆位东偏 15mm 的幻影包络；解不出来时返回诊断并落 error，
+  // 不再静默跳过。
+  const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts, anchors);
+  if (diagnostic !== undefined) {
+    errors.push(`${label}: ${diagnostic}`);
+    return {};
+  }
+  if (!placement) return {}; // count-only 条目：无平面几何，预期跳过（AGENTS.md furnishings 口径）
+  return { x: placement.x, z: placement.z };
 }
 
 function itemAabb(item: PlacedItem, x: number, z: number, rotation: number): Aabb | null {
@@ -163,6 +158,73 @@ function main(): void {
   // placed 实例索引（key = `${roomId}/${type}`），供房间级专项校验复用通用解析结果。
   const placedIndex = new Map<string, { label: string; item: PlacedItem; box: Aabb }>();
 
+  // 稳定对象 id（issue #98）全屋唯一：被 anti-penetration waivers 等跨文件按 id 引用，重复即绑错对象。
+  for (const duplicate of findDuplicateFurnitureIds(furnishings)) {
+    errors.push(`duplicate furniture id "${duplicate.id}": ${duplicate.entries.join(', ')}`);
+  }
+
+  // 墙线基准语义门禁（2026-11-06 业主口径 A）：挂墙家具的宿主墙必须在 model-geometry.yaml
+  // 显式声明 line_datum，且当前唯一受支持口径是 centerline（渲染墙盒中心线、完成面=线±半墙厚，
+  // shared/furniture-placement.ts 单一实现）。声明缺失=语义隐式漂移回类型清单时代；声明了
+  // 未实现的其他值=声明与消费方脱节，都拦 error。与 SceneBuilder/InfrastructureBuilder 的
+  // 同口径由 WALL_THICKNESS 单一声明保证。
+  const wallSegments = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>(
+    walls
+      .filter((wall) => wall.id !== undefined)
+      .map((wall) => [wall.id as string, wall.segments?.length
+        ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]]),
+  );
+  const anchoredWallIds = new Set<string>();
+  for (const items of Object.values(furnishings)) {
+    for (const item of items) {
+      if (item.wall !== undefined && item.wall_side !== undefined && item.along !== undefined) anchoredWallIds.add(item.wall);
+    }
+  }
+  // mount 宿主索引（稳定 id → 条目）：挂载家具（如 gbath.robot_dock）的世界坐标由宿主摆位
+  // 与宿主 vanity_layout 推出，与 3D/DXF 共用同一份解算与索引。
+  const hosts = furnitureHostIndex(Object.values(furnishings).flat());
+  // 主卫冷凝链锚点派生（issue #98 PR-10）：整条链一份解算（shared/condensate-chain.ts，
+  // 与 SceneBuilder 同一函数），摆位与 3D/DXF 同口径。hvac 锚点（内机/候选接入点）读
+  // config/hvac.yaml，穿墙点读 MEP condensate-master（只读引用，不改线）。解算失败 →
+  // error：三件链条家具的定位声明解不出来，不出缺件校验。
+  const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
+  const hvacDiagram = hvacFacts.plans[0]?.diagram;
+  const mepCoordination = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
+  const mepRoute = mepCoordination.routes.find((route) => route.id === 'condensate-master');
+  // S3（issue #98 第五阶段）：condensate-master@w_mbath_south 的 at 已删（可派生 45 条之一），
+  // 冷凝链锚点由路线几何派生——与 lint/takeoff 同一算法、同一端点解算源。派生失败 → error
+  // 显形（不回退手写值），链条家具随即可解出失败。
+  const penetrationDerived = deriveMepPenetrationAt(mepRoute, 'w_mbath_south', {
+    sources: endpointSourcesFromFacts({
+      electrical: loadElectricalConfig(),
+      plumbing: loadPlumbingConfig(),
+      ceiling: loadCeilingConfig(),
+      hvac: hvacFacts,
+    }),
+    walls,
+  });
+  if (penetrationDerived.diagnostic) errors.push(`condensate chain: ${penetrationDerived.diagnostic}`);
+  const { anchors, diagnostics: chainDiagnostics } = resolveCondensatePlacementAnchors({
+    hvacDiagram,
+    hvacSources: { ceiling: loadCeilingConfig(), electrical: loadElectricalConfig() },
+    penetration: penetrationDerived.point,
+    wardrobe: hosts.get('mb.wardrobe_950'),
+    wallRun: hosts.get('mb.vanity_pvc_box'),
+    wallSegments,
+    hosts,
+  });
+  const condensateChain = anchors.condensateChain;
+  for (const diagnostic of chainDiagnostics) errors.push(`condensate chain: ${diagnostic}`);
+  for (const wallId of anchoredWallIds) {
+    const wall = walls.find((candidate) => candidate.id === wallId);
+    if (!wall?.line_datum) {
+      errors.push(`wall "${wallId}" hosts wall-anchored furniture but declares no line_datum (基准语义必须显式声明，2026-11-06 口径 A)`);
+    } else if (wall.line_datum !== 'centerline') {
+      errors.push(`wall "${wallId}" declares line_datum "${String(wall.line_datum)}" but no placement consumer supports it (当前仅支持 centerline)`);
+    }
+  }
+
   for (const [roomId, items] of Object.entries(furnishings)) {
     const room = rooms.get(roomId);
     if (!room) {
@@ -198,7 +260,10 @@ function main(): void {
 
     items.forEach((item, index) => {
       const label = `${roomId}/${item.type}[${index}]`;
-      const placed = resolvePlacement({ ...item, roomId }, walls, label, errors);
+      // 链解算失败时三件链条家具一并解不出来：根因已在链级诊断里逐条入列，这里不按件重复。
+      if (condensateChain === undefined
+        && (CONDENSATE_CHAIN_FURNITURE_TYPES as readonly string[]).includes(item.type)) return;
+      const placed = resolvePlacement({ ...item, roomId }, wallSegments, hosts, label, errors, anchors);
       if (placed.x === undefined || placed.z === undefined) return;
       const rotation = item.rotation ?? 0;
 
@@ -237,8 +302,10 @@ function main(): void {
   // ---- 2026-09-03 专项：主卧家具化前台 + 书房季节后台（迭代 master-flexible-frontstage-20260903，候选未冻结判据）----
   const GAP_EPS = 1e-9;
 
-  // 主卫隔墙外柜组必须同时退出两道 120mm 墙体：东墙西完成面 x=2.54，
-  // 主卫南墙卧室侧完成面 z=2.92；南端仍与衣柜侧 z=4.30 对齐。
+  // 主卫隔墙外柜组包络（2026-11-06 口径 A 校验共享化后按真实摆位钉死）：
+  // 背面 = 东墙线 2.60 − 半墙厚 0.06 − wall_clearance 0.015 = 2.525（完成面 2.54 前退让 15mm），
+  // 西缘 = 2.525 − 0.565 = 1.96；z[2.92,4.30] 不变（主卫南墙卧室侧完成面 / 衣柜侧对齐）。
+  // 旧目标 x[1.975,2.540] 是本地复算忽略 wall_clearance 的幻影包络，随共享化删除。
   for (const type of MB_VANITY_CASEWORK_TYPES) {
     const entry = placedIndex.get(`master_bedroom/${type}`);
     if (!entry) {
@@ -246,8 +313,8 @@ function main(): void {
       continue;
     }
     const { box } = entry;
-    if (box.minX < 1.975 - GAP_EPS || box.maxX > 2.54 + GAP_EPS || box.minZ < 2.92 - GAP_EPS || box.maxZ > 4.30 + GAP_EPS) {
-      errors.push(`${entry.label}: 柜组包络 x[${box.minX.toFixed(3)},${box.maxX.toFixed(3)}] z[${box.minZ.toFixed(3)},${box.maxZ.toFixed(3)}] 越出双墙完成面目标 x[1.975,2.540] z[2.920,4.300]`);
+    if (box.minX < 1.96 - GAP_EPS || box.maxX > 2.525 + GAP_EPS || box.minZ < 2.92 - GAP_EPS || box.maxZ > 4.30 + GAP_EPS) {
+      errors.push(`${entry.label}: 柜组包络 x[${box.minX.toFixed(3)},${box.maxX.toFixed(3)}] z[${box.minZ.toFixed(3)},${box.maxZ.toFixed(3)}] 越出真实摆位目标 x[1.960,2.525] z[2.920,4.300]`);
     }
   }
 
@@ -384,14 +451,24 @@ function main(): void {
       warnings.push(`${mbDresser.label}: 与闭帘候选软包络 z[${MB_SOUTH_CLOSED_CURTAIN_ENVELOPE.minZ.toFixed(2)},${MB_SOUTH_CLOSED_CURTAIN_ENVELOPE.maxZ.toFixed(2)}] 相交；warning/BLOCKED，六抽柜保持原位，待现场核量`);
     }
     // 不侵东侧备用/窗帘插座点位 0.5m 内（可见可拔插、不被家具封死）
+    // 2026-11-09 修 Codex major：原直接读 socket.x/z，两点的 x/z 声明已在第四阶段 S3 删光
+    // （改 wall/along 定位），于是 `continue` 恒成立——这条「矮柜不侵插座 0.5m」的既有校验
+    // 完全静默跳过，后续把点位移到柜旁也不会报。改为走共享点位解算器（与 3D/DXF/MEP/
+    // 标注同一构造），解算失败显式报错而不是跳过。
+    const pointWalls: ReadonlyMap<string, PointWall> = pointWallIndexFromElements(catalog.getWalls());
     for (const socketId of ['sock_master_bed_r', 'sock_master_curtain']) {
-      const socket = electricalPoints.find((point) => point.id === socketId);
-      if (!socket || socket.x === undefined || socket.z === undefined) continue;
-      const dx = Math.max(mbDresser.box.minX - socket.x, socket.x - mbDresser.box.maxX, 0);
-      const dz = Math.max(mbDresser.box.minZ - socket.z, socket.z - mbDresser.box.maxZ, 0);
+      const socket = electricalPoints.find((point) => point.id === socketId) as { id: string; wall?: string; along?: number; face_offset?: number; x?: number; z?: number } | undefined;
+      if (!socket) continue;
+      const { placement, diagnostic } = resolvePointPlacementInWalls(socket as never, pointWalls);
+      if (!placement) {
+        errors.push(`${mbDresser.label}: ${socketId} 平面位置解算失败（${diagnostic ?? '解算器未返回结果'}）——无法校验 0.5m 净距，按 fail-closed 报错`);
+        continue;
+      }
+      const dx = Math.max(mbDresser.box.minX - placement.x, placement.x - mbDresser.box.maxX, 0);
+      const dz = Math.max(mbDresser.box.minZ - placement.z, placement.z - mbDresser.box.maxZ, 0);
       const dist = Math.hypot(dx, dz);
       if (dist < 0.5 - GAP_EPS) {
-        errors.push(`${mbDresser.label}: 距 ${socketId} @(${socket.x},${socket.z}) 仅 ${dist.toFixed(3)}m < 0.5m`);
+        errors.push(`${mbDresser.label}: 距 ${socketId} @(${placement.x.toFixed(3)},${placement.z.toFixed(3)}) 仅 ${dist.toFixed(3)}m < 0.5m`);
       }
     }
   }
@@ -448,7 +525,7 @@ function main(): void {
   const studyCabinet = placedIndex.get('study/study_seasonal_wardrobe_wall');
   const STUDY_DOOR_SWEEP: Aabb = { minX: 6.15, maxX: 7.05, minZ: 5.55, maxZ: 6.45 }; // d_study 北门扇扫掠域
   // 2026-10-26 DEC-2026-10-26-R02 修正：删“南缘 ≤6.45”硬约束。原规则把“柜顶抵边吊底”（北段在边吊段 z[5.55,6.45] 内、底 2.50m 的设计意图）误作全柜硬约束；
-  // 事实是边吊段以南 z>6.45 恢复 2.80m 原顶（config/ceiling.yaml ceiling_corridor 注记：“走廊地面 z[6.45,7.8] 段恢复 2.80m 原顶”），
+  // 事实是边吊段以南 z>6.45 恢复 2.80m 原顶（config/model/envelope/ceiling.yaml ceiling_corridor 注记：“走廊地面 z[6.45,7.8] 段恢复 2.80m 原顶”），
   // 柜顶 2.50m（柜体 2.40m + 顶封板 0.10m）在原顶下留 0.30m 空隙，不撞吊底；南缘越出 6.45 本身不是碰撞，属非通顶柜正常形态。
   // 本校验器为 2D（Aabb 无 Y），无法按柜顶标高 vs 实际吊底做高度判定，故不以南缘坐标代行高度检查；高度判定留待 3D 校验（见 DEC R02 遗留）。
   if (!studyCabinet) {
@@ -459,6 +536,40 @@ function main(): void {
     }
     if (studyCabinet.box.minZ < 5.55 - GAP_EPS) {
       errors.push(`${studyCabinet.label}: 北缘 z=${studyCabinet.box.minZ.toFixed(3)} < 5.55（越出房间北界）`);
+    }
+  }
+
+  // ── 主卫冷凝链 ↔ MEP condensate-master 逐段对照（issue #98 PR-10）────────────
+  // 家具链是遮蔽构造、MEP 是管：平面折线必须一一对应。不一致**不自动改线**（改线是设计
+  // 决定）——这里拦 error 逼那个决定显式发生，处置口径沿用 condensate-living-dining-trunk
+  // 与机器人仓冲突那条：带 owner 与触发条件登记后再裁。标高（y）不在本对照内：链条按
+  // mep layers 表 condensate 层高 2.65 画示意，MEP 路线按 DEC-2026-10-06-R5 抬入降板空腔
+  // （2.70–2.75），该差异已作为遗留登记在 condensate-master 的 reason 里。
+  if (condensateChain && mepRoute) {
+    const mepSources = {
+      electrical: loadElectricalConfig(),
+      plumbing: [],
+      ceiling: loadCeilingConfig(),
+      hvacAnchors: hvacDiagram?.anchors ?? [],
+      hvacTerminals: hvacDiagram?.terminals ?? [],
+      outdoor: [],
+      // 点位宿主墙索引（issue #98 S1）：冷凝链 ↔ MEP 对照的端点与 DXF/3D 同一解算。
+      pointWalls: pointWallIndexFromElements(walls),
+      // mount 家具宿主索引（issue #98 S2 / 第五阶段 S1）：B 轨潜伏缺口——本装配点漏传
+      // mountHosts 时，起夜灯等 mount 端点在 MEP 侧解不出（回落声明坐标，断言期相等故不显形）。
+      mountHosts: pointMountHostIndex(Object.values(furnishings).flat() as never),
+    };
+    const from = resolveMepEndpoint(mepRoute.from, mepSources, mepCoordination.junctions);
+    const to = resolveMepEndpoint(mepRoute.to, mepSources, mepCoordination.junctions);
+    if (from && to) {
+      const rawPlan = [from, ...mepRoute.via, to].map((point) => ({ x: point.x, z: point.z }));
+      const mepPlan = rawPlan.filter((point, index) =>
+        index === 0 || Math.hypot(point.x - rawPlan[index - 1].x, point.z - rawPlan[index - 1].z) > 1e-9);
+      for (const finding of diffCondensateChainPlanAgainstMep(condensateChain.plan, mepPlan)) {
+        errors.push(finding);
+      }
+    } else {
+      errors.push('condensate chain: MEP condensate-master 端点解析失败（from/to 缺位置或 ref 断链），对照做不了');
     }
   }
 

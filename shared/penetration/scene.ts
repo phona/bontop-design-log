@@ -3,11 +3,15 @@ import * as path from 'node:path';
 import { load as parseYaml } from 'js-yaml';
 import * as THREE from 'three';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import { mergeSceneElements, parseOverlay } from '../../server/overlay-merge.js';
-import { parseCeilingZones, parseElectricalPoints, parseLightingRenderConfig, parsePlumbingPoints, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
+import { mergeSceneElements, parseOverlay, parseOverlayFiles } from '../../server/overlay-merge.js';
+import { parseCeilingZones, parseElectricalPoints, parseLightingRenderConfig, parsePlumbingPoints, parseProjectHvacFacts, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
+import { endpointSourcesFromFacts, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
+import { deriveMepPenetrationAt } from '../../shared/condensate-chain.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { buildRenderLightingFixtures } from '../../shared/lighting-fixtures.js';
-import { type FurnishingsYaml, type ElectricalPoint, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedWall, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
+import { glassJoinSpecs, joinDeclarationsOf, suppressedWallIds } from '../suppression.js';
+import { type FurnishingsYaml, type ElectricalPoint, type HvacDiagram, type PlumbingPoint, type VertexLayoutYaml, type SceneElement, type ResolvedRoom, type RenderLightingOverride } from '../../shared/types.js';import type { Aabb3, GlassPathSegment, OverlayElementRef, OverlayReplacement, PlanSegment, RuntimeSpatialObject } from '../spatial-validation.js';
 
 /**
  * 场景采集层：把「权威配置 → runtime 场景 → 可判定实体」这一路收敛成**唯一实现**。
@@ -42,7 +46,9 @@ export interface SpatialConfig {
   junctions?: import('../spatial-validation.js').JunctionSpec[];
   allowed_collinear_overlaps?: Array<{ walls: string[]; max_overlap: number; reason?: string }>;
   allowed_overlay_wall_junctions?: import('../spatial-validation.js').OverlayWallJunctionSpec[];
-  overlay_replacements?: import('../spatial-validation.js').OverlayReplacement[];
+  // overlay_replacements 镜像表已删（2026-11-07 issue #98 第三阶段 S3）：suppress 改判为
+  // model-geometry 墙属性，join 接缝语义上移为 envelope 对象声明，由
+  // shared/suppression.ts 的 glassJoinSpecs 从对象声明机械派生（SceneInputs.replacementJoins）。
   lighting_host_overrides?: Array<{ id: string; wall: string; wall_side: string }>;
 }
 
@@ -93,18 +99,15 @@ export function overlayRefs(element: SceneElement): OverlayElementRef {
   return { id: value.id, type: value.type, wall: value.wall, walls: value.walls, parts: value.parts };
 }
 
-function elementWallRefs(element: SceneElement): string[] {
-  const value = overlayRefs(element);
-  const parts = value.parts ?? [];
-  if (parts.length > 0) return parts.flatMap((part) => [...(part.wall ? [part.wall] : []), ...(part.walls ?? []), ...(part.wallRefs ?? [])]);
-  return [...(value.wall ? [value.wall] : []), ...(value.walls ?? [])];
-}
+// 本文件原有的私有 elementWallRefs 副本（定义后无人调用）与 spatial-validation.ts 的
+// refsForElement 是同一算法的重复；S3 起"围护对象引用了哪些墙"只有 shared/suppression.ts
+// 一份实现（elementWallRefs），此处不再留私有副本。
 
 export function pathSegmentsFromOverlay(elements: SceneElement[], layout: ReturnType<typeof resolveLayout>): GlassPathSegment[] {
   const result: GlassPathSegment[] = [];
   const wallMap = new Map(layout.walls.map((wall) => [wall.id, wall]));
   for (const element of elements) {
-    if (element.type !== 'curtain_run' && element.type !== 'glass_infill' && element.type !== 'railing_run') continue;
+    if (element.type !== 'curtain_run' && element.type !== 'railing_run') continue;
     const value = element as SceneElement & { wall?: string; walls?: string[]; parts?: Array<{ id: string; wall?: string; walls?: string[]; wallRefs?: string[] }> };
     const parts = value.parts ?? [];
     const refs = parts.length > 0
@@ -122,26 +125,6 @@ export function pathSegmentsFromOverlay(elements: SceneElement[], layout: Return
     }
   }
   return result;
-}
-
-export function suppressionWallIds(overlay: ReturnType<typeof parseOverlay>, walls: ResolvedWall[] = []): string[] {
-  const ids = overlay.suppress.flatMap((entry) => {
-    if (entry.wall) return [entry.wall];
-    if (entry.walls) return entry.walls;
-    if (entry.region) {
-      const minX = Math.min(entry.region.x1, entry.region.x2);
-      const maxX = Math.max(entry.region.x1, entry.region.x2);
-      const minZ = Math.min(entry.region.z1, entry.region.z2);
-      const maxZ = Math.max(entry.region.z1, entry.region.z2);
-      return walls.filter((wall) => {
-        const mx = (wall.x1 + wall.x2) / 2;
-        const mz = (wall.z1 + wall.z2) / 2;
-        return mx >= minX && mx <= maxX && mz >= minZ && mz <= maxZ;
-      }).map((wall) => wall.id);
-    }
-    return [];
-  });
-  return ids;
 }
 
 function segmentFromRuntimeMesh(object: THREE.Object3D, entity: string): { segment: PlanSegment; thickness: number } | undefined {
@@ -200,7 +183,7 @@ function runtimeGlassBoxes(result: ReturnType<typeof buildScene>, structuralPath
   const entries: BoxEntry[] = [];
   result.exportRoot.traverse((object) => {
     const type = String(object.userData.type ?? '');
-    if (!(object as THREE.Mesh).isMesh || (type !== 'curtain_run' && type !== 'glass_infill' && type !== 'railing_run')) return;
+    if (!(object as THREE.Mesh).isMesh || (type !== 'curtain_run' && type !== 'railing_run')) return;
     const box = objectBox(object);
     if (!box) return;
     const rawObjectId = String(object.userData.objectId ?? object.name);
@@ -276,8 +259,18 @@ export interface SceneInputs {
   lighting: ReturnType<typeof parseLightingRenderConfig>;
   suppressIds: string[];
   structuralPaths: GlassPathSegment[];
+  /**
+   * 玻璃接缝声明（墙↔替换对象↔part↔join）：由 shared/suppression.ts 的 glassJoinSpecs
+   * 从 envelope 对象声明机械派生（2026-11-07 S3 前住在 spatial-validation.yaml 的
+   * overlay_replacements 镜像表，手工维护的第二份关联）。
+   */
+  replacementJoins: OverlayReplacement[];
   /** 房间绕向自动纠正等 layout 期 warning，原样透传给 CLI 报告。 */
   layoutWarnings: string[];
+  /** config/hvac.yaml 首个 plan 的 diagram（主卫冷凝链锚点派生用，issue #98 PR-10）。 */
+  hvacDiagram?: HvacDiagram;
+  /** MEP condensate-master 在 w_mbath_south 的穿墙点（service_chase 折点派生用）。 */
+  condensatePenetration?: { x: number; z: number };
 }
 
 export interface LoadSceneOptions {
@@ -301,22 +294,50 @@ export function loadSceneInputs(options: LoadSceneOptions = {}): SceneInputs {
   } finally {
     console.warn = warn;
   }
-  const overlay = parseOverlay(readFileSync(path.join(ROOT, 'config/layout/overlay.yaml'), 'utf8'));
+  const overlay = parseOverlayFiles();
   const config = readYaml<SpatialConfig>('config/spatial-validation.yaml');
   const house = readYaml<RawHouse>('config/house.yaml');
-  const ceiling = parseCeilingZones(readFileSync(path.join(ROOT, 'config/ceiling.yaml'), 'utf8'));
+  const ceiling = parseCeilingZones(readFileSync(path.join(ROOT, 'config/model/envelope/ceiling.yaml'), 'utf8'));
   const electrical = parseElectricalPoints(readFileSync(path.join(ROOT, 'config/electrical.yaml'), 'utf8'));
   const renderOverrides = parseRenderLightingOverrides(readFileSync(path.join(ROOT, 'config/render/overrides.yaml'), 'utf8'));
   const plumbing = parsePlumbingPoints(readFileSync(path.join(ROOT, 'config/plumbing.yaml'), 'utf8'));
   const lighting = parseLightingRenderConfig(readFileSync(path.join(ROOT, 'config/render/lighting.yaml'), 'utf8'));
+  // 主卫冷凝链锚点派生（issue #98 PR-10）：三件遮蔽家具的摆位从 hvac 锚点 + MEP 穿墙点
+  // 解出，缺任一项链就解不出来（显形失败，不回退绝对坐标）。这里读的是同一份权威配置，
+  // 与 app / verify:furniture 同口径。
+  const hvacFacts = parseProjectHvacFacts(readFileSync(path.join(ROOT, 'config/hvac.yaml'), 'utf8'));
+  const mepCoordination = parseMepCoordination(readFileSync(path.join(ROOT, 'config/mep-hvac-coordination.yaml'), 'utf8'));
+  // 主卫冷凝链锚点派生（issue #98 PR-10；第五阶段 S3 改派生）：三件遮蔽家具的摆位从 hvac 锚点
+  // + MEP 穿墙点解出，缺任一项链就解不出来（显形失败，不回退绝对坐标）。这里读的是同一份权威
+  // 配置，与 app / verify:furniture 同口径。S3 起 condensate-master@w_mbath_south 的 at
+  // 已删（可派生 45 条之一），穿墙点由路线几何派生——与 lint/takeoff 同一算法
+  // （deriveMepPenetrationPoint）、同一端点解算源；派生失败 → 无锚，下游链条显形（fail-closed）。
+  const condensatePenetration = deriveMepPenetrationAt(
+    mepCoordination.routes.find((route) => route.id === 'condensate-master'),
+    'w_mbath_south',
+    {
+      sources: endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac: hvacFacts }),
+      walls: layout.walls,
+    },
+  ).point;
+  const hvacDiagram = hvacFacts.plans[0]?.diagram;
   const elements = mergeSceneElements(layout.walls, overlay);
-  const suppressIds = suppressionWallIds(overlay, layout.walls);
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：判定读墙条目自身的 suppressed 属性
+  // （layout.walls 经 resolveLayout 透传），唯一权威实现 shared/suppression.ts；
+  // join 接缝语义从 envelope 对象声明机械派生（原 overlay_replacements 镜像表已删）。
+  const suppressIds = suppressedWallIds(layout.walls);
   const structuralPaths = pathSegmentsFromOverlay(elements, layout);
-  return { layout, overlay, elements, config, house, ceiling, electrical, renderOverrides, plumbing, lighting, suppressIds, structuralPaths, layoutWarnings };
+  const replacementJoins = glassJoinSpecs(joinDeclarationsOf(overlay.elements));
+  return { layout, overlay, elements, config, house, ceiling, electrical, renderOverrides, plumbing, lighting, suppressIds, structuralPaths, replacementJoins, layoutWarnings, hvacDiagram, condensatePenetration };
 }
 
 /** 构建 runtime 场景。抛错即调用方出口，这里不吞。 */
 export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildScene> {
+  // 点位定位索引单一产地（issue #98 疗法②）：墙取 layout.walls，宿主取全量 house.furnishings。
+  const placementIndexes = buildPlacementIndexes({
+    geometry: inputs.layout,
+    furnishings: inputs.house.furnishings,
+  });
   return buildScene({
     rooms: inputs.layout.rooms,
     platform: inputs.layout.platform,
@@ -328,9 +349,22 @@ export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildS
     plumbing: inputs.plumbing,
     // 灯具派生只走共享实现 shared/lighting-fixtures.ts（权威投影调用同一个函数）：
     // offset 平移、anchorY_offset 锚点、宿主墙透传、fail-closed 全部只有一份口径，
-    // linter 校验的灯因此与 app/GLB 渲染的灯是同一个点位。
-    lightingFixtures: buildRenderLightingFixtures(inputs.electrical, inputs.renderOverrides),
-    options: { lighting: inputs.lighting },
+    // linter 校验的灯因此与 app 渲染的灯是同一个点位。
+    // mount 挂载灯（issue #98 S2）的宿主索引从同一份 house.furnishings 建；墙索引同一构造。
+    // 两项都走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）。
+    lightingFixtures: buildRenderLightingFixtures(
+      inputs.electrical,
+      inputs.renderOverrides,
+      placementIndexes.mountHosts,
+      placementIndexes.pointWalls,
+    ),
+    options: {
+      lighting: inputs.lighting,
+      // 冷凝链锚点（issue #98 PR-10）：只给 diagram/sources 与穿墙点，不建 HVAC 实体
+      // （本路径的 HVAC 覆盖由 hvac-export-check 另行断言）。
+      ...(inputs.hvacDiagram ? { hvac: { diagram: inputs.hvacDiagram, sources: { ceiling: inputs.ceiling, electrical: inputs.electrical } } } : {}),
+      ...(inputs.condensatePenetration ? { condensatePenetration: inputs.condensatePenetration } : {}),
+    },
   });
 }
 

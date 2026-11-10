@@ -5,10 +5,11 @@ import * as yaml from 'js-yaml';
 import * as THREE from 'three';
 import { buildCeilingZone } from '../../shared/render/CeilingZoneBuilder.js';
 import { ceilingSurfaceY, isSolidCeilingZone, lintMepCoordination } from '../../shared/mep-hvac-lint.js';
-import { endpointSourcesFromFacts, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';import type { CeilingZone } from '../../shared/types.js';
+import { endpointSourcesFromFacts, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
+import { pointMountHostIndex } from '../../shared/point-placement.js';import type { CeilingZone } from '../../shared/types.js';
 
 const load = <T,>(path: string): T => yaml.load(readFileSync(path, 'utf8')) as T;
-const ceiling = load<CeilingZone[]>('config/ceiling.yaml');
+const ceiling = load<CeilingZone[]>('config/model/envelope/ceiling.yaml');
 const geometry = load<{ rooms: Array<{ id: string; height: number }>; platform: { id: string; height: number } }>('config/layout/model-geometry.yaml');
 const roomHeights = new Map<string, number>([
   ...geometry.rooms.map((room) => [room.id, room.height] as const),
@@ -16,7 +17,7 @@ const roomHeights = new Map<string, number>([
 ]);
 
 // 2026-10-04 A1：吊顶净空探测器此前是死代码——它要求 zone.area 与 zone.height 同时存在，
-// 而 config/ceiling.yaml 23 条里 17 条有 area 无 height（drop/aluminum）、6 条有 height
+// 而 config/model/envelope/ceiling.yaml 23 条里 17 条有 area 无 height（drop/aluminum）、6 条有 height
 // 无 area（ac_indoor），交集为 0，规则永远不触发。现在按 thickness 反算完成面。
 describe('ceiling surface derivation (A1)', () => {
   it('no solid ceiling zone relies on an undeclared height field', () => {
@@ -57,7 +58,11 @@ const coordination = parseMepCoordination(readFileSync('config/mep-hvac-coordina
 const electrical = load<any[]>('config/electrical.yaml');
 const plumbing = load<any[]>('config/plumbing.yaml');
 const hvac = load<any>('config/hvac.yaml');
-const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac });
+const houseFurnishings = load<Record<string, unknown[]>>('config/house.yaml').furnishings ?? {};
+// mountHosts 由 house.yaml furnishings 建（issue #98 疗法①）：解析器对「缺宿主索引」改为
+// fail-closed 抛错，生产 routes.ts:227 两个索引都传；本测试此前只传 facts，挂载端点
+// （night_living_mid 等）解算时炸在调用点上。与生产同口径补齐。
+const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac }, undefined, pointMountHostIndex(Object.values(houseFurnishings).flat() as never));
 describe('mep ceiling clearance lint (A1)', () => {
   it('flags a route point that dips below a drop surface inside its footprint', () => {
     const result = lintMepCoordination(
@@ -111,7 +116,7 @@ describe('mep ceiling clearance lint (A1)', () => {
           // (8.0,4.6)y=2.55 在 ceiling_living 的 footprint 内且高于完成面 2.50；
           // 起点也显式写 from_height=2.55，否则退回 strong_power 分层 2.45 制造假冲突。
           // (4.5,7.0)y=0.30 远低于任何完成面，但该坐标在主卧中部、不在任何吊顶分区里
-          // （已逐区核对 config/ceiling.yaml 的 area，无任何 footprint 含 (4.5,7.0)）。
+          // （已逐区核对 config/model/envelope/ceiling.yaml 的 area，无任何 footprint 含 (4.5,7.0)）。
           // 2026-10-07 夹具修正（旧）：低点取 (4.5,7.0) 避开窗帘盒 footprint——但旧几何用两条长对角
           // 斜降段连接高低点，是按「只看段两端点」的旧判定写的；bf29283（DEC-2026-10-19-R25）起
           // 净空检查改为中心线 5cm 步长采样 + 管道包络，斜降段在 footprint 内的采样点确实破面，

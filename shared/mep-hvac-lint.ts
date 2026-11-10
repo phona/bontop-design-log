@@ -1,4 +1,5 @@
-import type { CeilingZone, HvacAnchor, HvacTerminal, ResolvedLayout, ResolvedWall, ResolvedWallSegment, Vertex } from './types.js';
+import type { CeilingZone, ElectricalPoint, HvacAnchor, HvacTerminal, PlumbingPoint, ResolvedLayout, ResolvedWall, ResolvedWallSegment, Vertex } from './types.js';
+import { resolvePointPlacementInWalls } from './point-placement.js';
 import {
   isMepPhysicalRoute,
   mepRoutePoints,
@@ -74,7 +75,7 @@ const SOLID_CEILING_TYPES = new Set(['drop', 'integrated', 'aluminum_buckle']);
  * gravity_slope_geometry_mismatch / route_not_orthogonal 独立负责，不因本修正失去覆盖。
  *
  * 同步落点：`config/facts.yaml` 契约 `c.mep_layer_below_drop_bottom` 的 registered_conflicts / check 口径、
- * `docs/mep-construction-guidance.md` §0/§3.3/§6、`docs/pending-site-data.md` #41。
+ * `docs/mep-construction-guidance.md` §0/§3.3/§6、`原量房台账（已于 S2-B 退场）` #41。
  */
 const CEILING_CARRIED_LAYERS = new Set(['strong_power', 'weak_power', 'refrigerant', 'condensate', 'supply_air', 'return_air']);
 
@@ -131,7 +132,10 @@ const DEFAULT_CATEGORY: MepLintCategory = 'must_fix_before_briefing';
  * （如 faucet_garden 龙头出水口 (10.85,1.5) vs 底盒位 (10.80,1.5) 的 0.05m），不报警。
  */
 const ENDPOINT_BIND_TOLERANCE = 0.02;
-const ENDPOINT_BIND_LAYERS = new Set(['water_supply', 'drainage', 'strong_power', 'weak_power']);
+// issue #98 第五阶段 S1（E4）：送/回风层纳入端点绑定兜底。今天命中数为 0 的「干净」是层不在
+// 范围内的假象——5 条 inline `to:` 逐位抄写 hvac terminal 的 xyz（A §3.4 / B F1 两轨一致），
+// terminal 一移 MEP 端点留原地、两个 validator 不抛、lint 109/241 不变（探针 P2）。
+const ENDPOINT_BIND_LAYERS = new Set(['water_supply', 'drainage', 'strong_power', 'weak_power', 'supply_air', 'return_air']);
 const PLUMBING_SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'washer', 'faucet_outdoor', 'water_supply']);
 const PLUMBING_DRAIN_TYPES = new Set(['drain', 'drain_riser']);
 /** Objects that can cover a plug or service point; ordinary movable furniture is handled by route collision, not assumed to block access. */
@@ -139,9 +143,30 @@ const FURNITURE_ENDPOINT_ACCESS_TYPES = new Set(['wall_cabinet_tall', 'washer', 
 
 /** 端点绑定兜底用的"同专业点位池"：给水只对给水类点位比、排水只对 drain/drain_riser 比，避免把龙头算成排水锚点。 */
 function endpointBindPool(route: MepRoute, sources: MepEndpointSources): Array<{ id: string; x: number; z: number }> {
-  if (route.layer === 'water_supply') return sources.plumbing.filter((point) => PLUMBING_SUPPLY_TYPES.has(point.type));
-  if (route.layer === 'drainage') return sources.plumbing.filter((point) => PLUMBING_DRAIN_TYPES.has(point.type));
-  return sources.electrical;
+  // 送/回风层的同专业点位池 = hvac terminals（issue #98 S1，E4）：风管端点抄的是风口坐标，
+  // 候选池必须是 hvac.yaml 的 terminal.position（唯一声明）。候选风口（condensate_drain_candidate）
+  // 与装饰段同池参与距离比较无副作用——它们在设备带外/地面层，与吊顶内风管端点不会 ≤0.02m。
+  if (route.layer === 'supply_air' || route.layer === 'return_air') {
+    return sources.hvacTerminals.map((terminal) => ({ id: terminal.id, x: terminal.position.x, z: terminal.position.z }));
+  }
+  const pool = route.layer === 'water_supply'
+    ? sources.plumbing.filter((point) => PLUMBING_SUPPLY_TYPES.has(point.type))
+    : route.layer === 'drainage'
+      ? sources.plumbing.filter((point) => PLUMBING_DRAIN_TYPES.has(point.type))
+      : sources.electrical;
+  // 平面坐标走 shared/point-placement.ts 单一解算（issue #98 S1）：lint 与 DXF/3D/MEP 端点
+  // 必须同源，不许直读声明 x/z 这个第二事实源。无墙上下文的调用方回落声明坐标（断言模式下相等）。
+  return pool.flatMap((point) => {
+    const plan = pointPlan(point, sources);
+    return plan ? [{ id: point.id, ...plan }] : [];
+  });
+}
+
+/** 点位平面坐标（单一解算入口，见 endpointBindPool 注释）。 */
+function pointPlan(point: ElectricalPoint | PlumbingPoint, sources: MepEndpointSources): { x: number; z: number } | undefined {
+  const { placement } = resolvePointPlacementInWalls(point, sources.pointWalls, sources.mountHosts);
+  if (placement) return { x: placement.x, z: placement.z };
+  return typeof point.x === 'number' && typeof point.z === 'number' ? { x: point.x, z: point.z } : undefined;
 }
 function categoryOf(code: string): MepLintCategory { return ISSUE_CATEGORY[code] ?? DEFAULT_CATEGORY; }
 function emptyCategoryBuckets(): MepLintCategorySummary {
@@ -188,6 +213,14 @@ const ORTHOGONAL_MIN_ELEVATION_CHANGE = 0.05;
 const ORTHOGONAL_LONG_DROP_PLAN_DRIFT = 0.12;
 /** (c) 穿点与同墙门洞的最小净距。 */
 const DOOR_CLEARANCE_MIN = 0.15;
+/**
+ * 保留手写 at 的锚定容差（issue #98 第五阶段 S3；验伪轮补 E 类）：不可派生的手写 at 必须
+ * 与其几何签名重合——贴墙段穿越（C 形）/端点压墙线（D 形）锚定形态端点，未触墙意图点
+ * （E 形）锚定「压墙线 + 与折线最近点正交对齐」两条硬约束（实测 4 条垂距=0、Δx/Δz=0）。
+ * 路线改了、手写 at 没跟着改时在这里显形。取仓库断言期通用容差 0.005m（与点位/暖通断言
+ * 同口径）；现网实测 7+1 条漂移 0.00e+0 / 8.88e-16，E 类 4 条锚定量全 0。
+ */
+const PENETRATION_ANCHOR_TOLERANCE = 0.005;
 /** (d) 与剪力墙平行距离阈值 / 最小并行持续长度。 */
 const SHEAR_PARALLEL_MAX_DISTANCE = 0.15;
 const SHEAR_PARALLEL_MIN_RUN = 1.0;
@@ -236,10 +269,10 @@ function isFixtureConnectionSegment(route: MepRoute, points: Point[], index: num
 /**
  * 吊顶「完成面」标高——即从房间内看到的吊顶表面高度。
  *
- * 2026-10-04 A1：原实现直接读 `zone.height`，而 `config/ceiling.yaml` 的 23 条里
+ * 2026-10-04 A1：原实现直接读 `zone.height`，而 `config/model/envelope/ceiling.yaml` 的 23 条里
  * 6 条有 height 无 area（ac_indoor）、17 条有 area 无 height（drop/aluminum），
  * **交集为 0 → 那条吊顶净空规则对本项目永远不触发**（`if (!zone.area || zone.height === undefined) continue`）。
- * 本轮不动 config/ceiling.yaml（另有并行迭代在写该文件），改为按 CeilingZoneBuilder 的
+ * 本轮不动 config/model/envelope/ceiling.yaml（另有并行迭代在写该文件），改为按 CeilingZoneBuilder 的
  * 同一口径**反算**：`完成面 = 房间净高 − thickness`，其中房间净高取
  * `rooms.find(r => r.id === zone.room)?.height ?? 2.8`，与 SceneBuilder.addCeilingZones
  * 调 buildCeilingZone(zone, roomHeight) 完全一致（CeilingZoneBuilder 里
@@ -721,27 +754,44 @@ function wallSegments(wall: WallGeometry): Array<ResolvedWallSegment> {
   return [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2, kind: 'line' }];
 }
 
-function wallCrosses(points: Point[], wall: WallGeometry): boolean {
+/** 点是否压在墙弦（线段）上：共线且投影落在段范围内。issue #98 第五阶段 S3 抽出共用。 */
+function pointOnChord(point: Point, wallStart: Point, wallEnd: Point): boolean {
+  const wallVector = { x: wallEnd.x - wallStart.x, z: wallEnd.z - wallStart.z };
+  const side = wallVector.x * (point.z - wallStart.z) - wallVector.z * (point.x - wallStart.x);
+  return Math.abs(side) <= 1e-9
+    && point.x >= Math.min(wallStart.x, wallEnd.x) - 1e-9
+    && point.x <= Math.max(wallStart.x, wallEnd.x) + 1e-9
+    && point.z >= Math.min(wallStart.z, wallEnd.z) - 1e-9
+    && point.z <= Math.max(wallStart.z, wallEnd.z) + 1e-9;
+}
+/**
+ * strict/vertex 交点收集器（issue #98 第五阶段 S3：穿墙点派生的唯一算法口径）。
+ * 遍历序与既有 wallCrosses/routeWallIntersection 完全一致：墙弦序 × 折线段序，
+ * 每根弦先 strict 后顶点——first-hit 语义因此不变。顶点情形：折线顶点压墙线
+ * 且前后段在弦异侧（`segmentsCross` 严格异侧判不出「恰好压线穿过」）。
+ */
+function wallStrictVertexCrossings(points: Point[], wall: WallGeometry): Array<{ point: { x: number; z: number }; vertex: boolean }> {
+  const crossings: Array<{ point: { x: number; z: number }; vertex: boolean }> = [];
   for (const segment of wallSegments(wall)) {
     const wallStart = { x: segment.x1, z: segment.z1 };
     const wallEnd = { x: segment.x2, z: segment.z2 };
-    for (let i = 1; i < points.length; i += 1) if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return true;
-    // A route may intentionally place the declared penetration at a polyline
-    // vertex. `segmentsCross` is strict and therefore misses that exact case;
-    // treat a vertex as a crossing only when the adjacent segments leave it on
-    // opposite sides of this actual line/arc chord.
-    const wallVector = { x: wallEnd.x - wallStart.x, z: wallEnd.z - wallStart.z };
-    const side = (point: Point) => wallVector.x * (point.z - wallStart.z) - wallVector.z * (point.x - wallStart.x);
-    const onWall = (point: Point) => Math.abs(side(point)) <= 1e-9
-      && point.x >= Math.min(wallStart.x, wallEnd.x) - 1e-9
-      && point.x <= Math.max(wallStart.x, wallEnd.x) + 1e-9
-      && point.z >= Math.min(wallStart.z, wallEnd.z) - 1e-9
-      && point.z <= Math.max(wallStart.z, wallEnd.z) + 1e-9;
+    for (let i = 1; i < points.length; i += 1) {
+      if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) {
+        const hit = segmentIntersection(points[i - 1], points[i], wallStart, wallEnd);
+        if (hit) crossings.push({ point: hit, vertex: false });
+      }
+    }
     for (let i = 1; i < points.length - 1; i += 1) {
-      if (onWall(points[i]) && side(points[i - 1]) * side(points[i + 1]) < 0) return true;
+      if (pointOnChord(points[i], wallStart, wallEnd)
+        && sideOfChord(points[i - 1], wallStart, wallEnd) * sideOfChord(points[i + 1], wallStart, wallEnd) < 0) {
+        crossings.push({ point: { x: points[i].x, z: points[i].z }, vertex: true });
+      }
     }
   }
-  return false;
+  return crossings;
+}
+function sideOfChord(point: Point, wallStart: Point, wallEnd: Point): number {
+  return (wallEnd.x - wallStart.x) * (point.z - wallStart.z) - (wallEnd.z - wallStart.z) * (point.x - wallStart.x);
 }
 function routeTouchesWall(points: Point[], wall: WallGeometry, clearance: number): boolean {
   for (const chord of wallSegments(wall)) {
@@ -767,6 +817,45 @@ function penetrationPointOnRoute(point: Point, points: Point[], wall: WallGeomet
     })));
   return routeDistance <= 0.25 && wallSegments(wall).some((segment) => pointSegmentDistance(point, segment) <= 0.25);
 }
+/** 折线上距 point 最近的点（含端点；供 E 类意图点正交对齐锚定用）。 */
+function nearestPointOnPolyline(point: Point, points: Point[]): { x: number; z: number } {
+  let best = { x: points[0]!.x, z: points[0]!.z, d: Number.POSITIVE_INFINITY };
+  for (let index = 1; index < points.length; index += 1) {
+    const a = points[index - 1]!, b = points[index]!;
+    const dx = b.x - a.x, dz = b.z - a.z;
+    const lengthSquared = dx * dx + dz * dz;
+    const t = lengthSquared < 1e-12 ? 0 : Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.z - a.z) * dz) / lengthSquared));
+    const qx = a.x + t * dx, qz = a.z + t * dz;
+    const d = Math.hypot(point.x - qx, point.z - qz);
+    if (d < best.d) best = { x: qx, z: qz, d };
+  }
+  return { x: best.x, z: best.z };
+}
+/**
+ * E 类（折线未触墙）意图点 at 的锚定校验（issue #98 第五阶段 S3 验伪轮补）：
+ * 不可派生的形态里几何能提供的两条硬约束——
+ *   ① at 压在墙线上（垂距 ≤ PENETRATION_ANCHOR_TOLERANCE）：意图点是「未来穿墙段的墙面点」，
+ *      漂离墙线即失去意图语义；
+ *   ② at 与折线最近点曼哈顿正交对齐（Δx 或 Δz ≤ 容差）：穿墙段与墙正交是全仓走线铁律，
+ *      意图点斜对角偏离延伸线即与路线几何脱钩。
+ * 实测 4 条 E 类现状两条锚定量全 0（垂距 0.00e+0、Δ 单分量 0）。沿墙线且保持正交的滑动
+ * 没有第二事实可对照（孔位沿墙的最终位置是量房日的设计自由度，D 轨 §6.1-E「不可派生」的
+ * 定义），不为它发明锚——出 0.25m 邻近圈由 orphaned 兜底。
+ * 返回诊断描述（问题成立）或 undefined（锚定成立）。
+ */
+function intentAnchorDiagnostic(at: { x: number; z: number }, points: Point[], wall: WallGeometry): string | undefined {
+  const perpendicular = perpendicularDistance(at, wall);
+  if (perpendicular > PENETRATION_ANCHOR_TOLERANCE) {
+    return `is ${perpendicular.toFixed(3)}m off the wall line; an un-crossed penetration intent must sit on the wall it will eventually penetrate`;
+  }
+  const nearest = nearestPointOnPolyline(at, points);
+  const dx = Math.abs(nearest.x - at.x);
+  const dz = Math.abs(nearest.z - at.z);
+  if (dx > PENETRATION_ANCHOR_TOLERANCE && dz > PENETRATION_ANCHOR_TOLERANCE) {
+    return `is diagonally offset ${Math.min(dx, dz).toFixed(3)}m×${Math.max(dx, dz).toFixed(3)}m from the nearest route point (${nearest.x.toFixed(3)},${nearest.z.toFixed(3)}); the intent must align orthogonally (Δx=0 or Δz=0) with the future wall crossing`;
+  }
+  return undefined;
+}
 function segmentIntersection(a: Point, b: Point, c: Point, d: Point): { x: number; z: number } | undefined {
   const d1x = b.x - a.x, d1z = b.z - a.z, d2x = d.x - c.x, d2z = d.z - c.z;
   const denom = d1x * d2z - d1z * d2x;
@@ -775,24 +864,112 @@ function segmentIntersection(a: Point, b: Point, c: Point, d: Point): { x: numbe
   return { x: a.x + t * d1x, z: a.z + t * d1z };
 }
 function routeWallIntersection(points: Point[], wall: WallGeometry): { x: number; z: number } | undefined {
-  for (const segment of wallSegments(wall)) {
-    const wallStart = { x: segment.x1, z: segment.z1 };
-    const wallEnd = { x: segment.x2, z: segment.z2 };
-    for (let i = 1; i < points.length; i += 1) {
-      if (segmentsCross(points[i - 1], points[i], wallStart, wallEnd)) return segmentIntersection(points[i - 1], points[i], wallStart, wallEnd);
+  return wallStrictVertexCrossings(points, wall)[0]?.point;
+}
+
+// ── 穿墙形态识别与派生（issue #98 第五阶段 S3：penetration at 单一源收敛）──────
+//
+// D 轨实测 60 条声明分五类（phase5-survey-d §6.1）：
+//   A 45 条 strict/vertex 唯一交点且与声明 at 恒等（≤1e-6）→ 可派生，at 删除；
+//   B  3 条唯一交点但声明偏差 0.05–0.125m（路线斜段没画正，量房依赖，路线不修）→ 保留手写；
+//   C  7 条贴墙段穿越（折线沿墙线走一段再离开，无 strict 交点）→ 保留手写；
+//   D  1 条端点压墙线（at = from 点位本身）→ 保留手写；
+//   E  4 条未触墙的设计意图点 → 保留手写。
+// 派生必须是「lint 同口径唯一 strict/vertex 交点」且 fail-closed：无交点/多交点返回
+// 诊断，不回落字面值、不钳位（AGENTS.md 预算铁律「取不到值时静默发明」反模式的穿墙版）。
+
+/** 墙的最小形态：ResolvedWall 与 ProjectCatalog 墙条目共有的字段（圆角墙带弧弦 segments）。 */
+export interface PenetrationWallShape {
+  id?: string;
+  x1: number;
+  z1: number;
+  x2: number;
+  z2: number;
+  segments?: Array<{ x1: number; z1: number; x2: number; z2: number }>;
+}
+
+export type MepWallCrossingForm =
+  | { form: 'strict' | 'vertex'; point: { x: number; z: number }; /** strict+vertex 交点总数（>1 时 at 语义不唯一，派生必须拒绝） */ total: number }
+  | { form: 'collinear_run'; a: { x: number; z: number }; b: { x: number; z: number } }
+  | { form: 'endpoint_on_wall'; point: { x: number; z: number } }
+  | { form: 'none' };
+
+/**
+ * 识别路线与墙的穿越形态（优先级：strict/vertex → 贴墙段穿越 → 端点压墙线 → 无接触）。
+ * 贴墙段穿越（C 形）判别式（实测对全 137 条路线恰好只命中 7 条已声明 C 类、未声明 0 命中）：
+ * 折线存在**合并后连续**的贴墙段，两端都在同一墙弦跨度内，且进入段与离开段在墙线**异侧**
+ * （「上墙 → 沿墙线走 → 穿出到另一侧」；同侧进出是沿墙敷设的依托行，不是穿越）。
+ */
+export function resolveMepWallCrossingForm(points: Point[], wall: PenetrationWallShape): MepWallCrossingForm {
+  const crossings = wallStrictVertexCrossings(points, wall);
+  if (crossings.length > 0) {
+    return { form: crossings[0].vertex ? 'vertex' : 'strict', point: crossings[0].point, total: crossings.length };
+  }
+  const run = collinearPenetrationRun(points, wall);
+  if (run) return { form: 'collinear_run', a: run.a, b: run.b };
+  for (const endpoint of [points[0], points[points.length - 1]]) {
+    if (!endpoint) continue;
+    if (wallSegments(wall).some((chord) => pointOnChord(endpoint, { x: chord.x1, z: chord.z1 }, { x: chord.x2, z: chord.z2 }))) {
+      return { form: 'endpoint_on_wall', point: { x: endpoint.x, z: endpoint.z } };
     }
-    const wallVector = { x: wallEnd.x - wallStart.x, z: wallEnd.z - wallStart.z };
-    const side = (point: Point) => wallVector.x * (point.z - wallStart.z) - wallVector.z * (point.x - wallStart.x);
-    const onWall = (point: Point) => Math.abs(side(point)) <= 1e-9
-      && point.x >= Math.min(wallStart.x, wallEnd.x) - 1e-9
-      && point.x <= Math.max(wallStart.x, wallEnd.x) + 1e-9
-      && point.z >= Math.min(wallStart.z, wallEnd.z) - 1e-9
-      && point.z <= Math.max(wallStart.z, wallEnd.z) + 1e-9;
-    for (let i = 1; i < points.length - 1; i += 1) {
-      if (onWall(points[i]) && side(points[i - 1]) * side(points[i + 1]) < 0) return { x: points[i].x, z: points[i].z };
+  }
+  return { form: 'none' };
+}
+
+/** 合并连续贴墙段并按 C 形判别式取穿越 run（无则 undefined）。 */
+function collinearPenetrationRun(points: Point[], wall: WallGeometry): { a: { x: number; z: number }; b: { x: number; z: number } } | undefined {
+  for (const chord of wallSegments(wall)) {
+    const wallStart = { x: chord.x1, z: chord.z1 };
+    const wallEnd = { x: chord.x2, z: chord.z2 };
+    const runs: Array<{ a: Point; b: Point; startIdx: number; endIdx: number }> = [];
+    let current: { a: Point; b: Point; startIdx: number; endIdx: number } | undefined;
+    for (let i = 1; i < points.length; i += 1) {
+      const a = points[i - 1];
+      const b = points[i];
+      const collinear = pointOnChord(a, wallStart, wallEnd) && pointOnChord(b, wallStart, wallEnd)
+        && Math.hypot(b.x - a.x, b.z - a.z) > 1e-9;
+      if (collinear) {
+        if (current && Math.hypot(current.b.x - a.x, current.b.z - a.z) <= 1e-9) {
+          current.b = b;
+          current.endIdx = i;
+        } else {
+          current = { a, b, startIdx: i - 1, endIdx: i };
+          runs.push(current);
+        }
+      } else {
+        current = undefined;
+      }
+    }
+    for (const run of runs) {
+      const previous = points[run.startIdx - 1];
+      const next = points[run.endIdx + 1];
+      if (!previous || !next) continue;
+      const sideIn = sideOfChord(previous, wallStart, wallEnd);
+      const sideOut = sideOfChord(next, wallStart, wallEnd);
+      if (Math.abs(sideIn) <= 1e-9 || Math.abs(sideOut) <= 1e-9) continue;
+      if (sideIn * sideOut < 0) return { a: { x: run.a.x, z: run.a.z }, b: { x: run.b.x, z: run.b.z } };
     }
   }
   return undefined;
+}
+
+/**
+ * 派生穿墙点：唯一 strict/vertex 交点 → 点；无交点或多交点 → 诊断（fail-closed，
+ * 调用方必须显形而不是回落/钳位）。C/D/E 三类没有唯一交点，at 不可派生、保留手写。
+ */
+export function deriveMepPenetrationPoint(points: Point[], wall: PenetrationWallShape): { point: { x: number; z: number } } | { diagnostic: string } {
+  const crossings = wallStrictVertexCrossings(points, wall);
+  if (crossings.length === 1) return { point: crossings[0].point };
+  if (crossings.length > 1) {
+    return { diagnostic: `route crosses the wall at ${crossings.length} points; penetration at is ambiguous and must stay declared` };
+  }
+  return { diagnostic: 'route has no strict crossing with the wall (collinear hug / endpoint on wall / intent point); penetration at cannot be derived' };
+}
+
+/** lint 内部便捷式：唯一交点 → 派生点；否则 undefined（多交点/无交点不派生）。 */
+function penetrationDerivedAtOf(points: Point[], wall: WallGeometry): { x: number; z: number } | undefined {
+  const derived = deriveMepPenetrationPoint(points, wall);
+  return 'point' in derived ? derived.point : undefined;
 }
 interface PenetrationDecl { wall?: string; at?: { x: number; z: number }; height?: number }
 function penetrationsOf(route: MepRoute): PenetrationDecl[] {
@@ -1056,12 +1233,13 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         add(result, issue('warning', 'route_endpoint_unusable', `Route ${route.id} terminates at electrical point ${endpoint}, marked ${electrical.serviceability_status}; this endpoint is not a serviceable connection`, route.id));
       }
       const endpointHeight = (side === 'from' ? route.from_height : route.to_height) ?? electrical?.height ?? electrical?.mount_height;
-      if (electrical && endpointHeight !== undefined && !electrical.serviceability_status && context.furnitureVolumes?.length) {
+      const electricalPlan = electrical ? pointPlan(electrical, sources) : undefined;
+      if (electrical && electricalPlan && endpointHeight !== undefined && !electrical.serviceability_status && context.furnitureVolumes?.length) {
         const blockingFurniture = context.furnitureVolumes.find((volume) => FURNITURE_ENDPOINT_ACCESS_TYPES.has(volume.type)
           && (!volume.room || volume.room === electrical.room)
           && electrical.mountAnchor?.furnitureId !== volume.id
-          && electrical.x >= volume.bounds.minX && electrical.x <= volume.bounds.maxX
-          && electrical.z >= volume.bounds.minZ && electrical.z <= volume.bounds.maxZ
+          && electricalPlan.x >= volume.bounds.minX && electricalPlan.x <= volume.bounds.maxX
+          && electricalPlan.z >= volume.bounds.minZ && electricalPlan.z <= volume.bounds.maxZ
           && endpointHeight >= volume.bounds.minY && endpointHeight <= volume.bounds.maxY);
         if (blockingFurniture) add(result, issue('warning', 'endpoint_inaccessible', `Electrical endpoint ${endpoint} of ${route.id} lies inside furnishing ${blockingFurniture.id}; confirm an exposed face, service niche or access opening`, route.id));
       }
@@ -1075,8 +1253,10 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
         for (const plumbing of sources.plumbing) {
           const plumbingHeight = plumbing.height;
           const electricalHeight = declaredHeight ?? pointHeight;
-          if (plumbingHeight === undefined || electricalHeight === undefined) continue;
-          const planDistance = Math.hypot(electrical.x - plumbing.x, electrical.z - plumbing.z);
+          if (plumbingHeight === undefined || electricalHeight === undefined || !electricalPlan) continue;
+          const plumbingPlan = pointPlan(plumbing, sources);
+          if (!plumbingPlan) continue;
+          const planDistance = Math.hypot(electricalPlan.x - plumbingPlan.x, electricalPlan.z - plumbingPlan.z);
           if (planDistance <= 0.02 && Math.abs(electricalHeight - plumbingHeight) < 0.15) {
             add(result, issue('warning', 'mep_endpoint_service_conflict', `Electrical endpoint ${endpoint} of ${route.id} coincides with plumbing point ${plumbing.id} at the same service height; separate the electrical and plumbing connections`, route.id));
           }
@@ -1315,14 +1495,18 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     if (context.layout) {
       const penetrations = penetrationsOf(route);
       // (c) 穿点与同墙门洞净距：门垛 <0.15m 的穿孔现场做不出套管/盒，交底前必须清。
+      // S3 起 at 可省略（唯一 strict/vertex 交点可派生，shared/mep-hvac-lint.ts 派生器）：
+      // 声明 at 优先，缺省用派生点——两者恒等（测试钉 ≤1e-9），净距告警集合不变。
       const wallsById = new Map(context.layout.walls.map((wall) => [wall.id, wall]));
       for (const declared of penetrations) {
-        if (!declared.wall || !declared.at) continue;
+        if (!declared.wall) continue;
         const wall = wallsById.get(declared.wall);
         if (!wall) continue;
+        const at = declared.at ?? penetrationDerivedAtOf(points, wall);
+        if (!at) continue;
         const spans = doorSpans(wall, context.layout.vertices);
         if (!spans.length) continue; // 没有可解析门洞数据 → 静默跳过，不报错也不误报
-        const nearest = spans.map((span) => ({ span, clearance: doorClearance(declared.at!, span) })).sort((a, b) => a.clearance - b.clearance)[0];
+        const nearest = spans.map((span) => ({ span, clearance: doorClearance(at, span) })).sort((a, b) => a.clearance - b.clearance)[0];
         if (nearest.clearance >= DOOR_CLEARANCE_MIN) continue;
         const span = nearest.span;
         // (c) 过门头穿点分类（DEC-2026-10-06-R1）：declared height > 门头高度（span.top）= 合法过门头穿梁，
@@ -1335,7 +1519,7 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
           : (span.top !== undefined && declared.height !== undefined
               ? `; declared height ${declared.height!.toFixed(2)}m is inside the door opening height ${span.top!.toFixed(2)}m`
               : '');
-        add(result, { ...issue('warning', 'penetration_door_clearance', `Route ${route.id} declared penetration on ${wall.id} at (${declared.at.x.toFixed(2)},${declared.at.z.toFixed(2)}) is ${nearest.clearance.toFixed(2)}m from door opening ${span.id} (${span.axis} ${span.from.toFixed(2)}–${span.to.toFixed(2)}); keep at least ${DOOR_CLEARANCE_MIN.toFixed(2)}m from the door jamb${vertical}`, route.id), category: clearanceCategory });
+        add(result, { ...issue('warning', 'penetration_door_clearance', `Route ${route.id} declared penetration on ${wall.id} at (${at.x.toFixed(2)},${at.z.toFixed(2)}) is ${nearest.clearance.toFixed(2)}m from door opening ${span.id} (${span.axis} ${span.from.toFixed(2)}–${span.to.toFixed(2)}); keep at least ${DOOR_CLEARANCE_MIN.toFixed(2)}m from the door jamb${vertical}`, route.id), category: clearanceCategory });
       }
       // (d) 与剪力墙并行：贴墙长距离并行会限制开槽/植筋并易打穿保护层，需在交底前复核。
       if (points.length >= 2) {
@@ -1355,21 +1539,65 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
           add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'penetration_wall_unknown', `Route ${route.id} declares a penetration on unknown wall ${declared.wall ?? '(missing wall id)'}`, route.id));
           continue;
         }
-        if (!wallCrosses(points, wall) && !(declared.at && penetrationPointOnRoute(declared.at, points, wall))) {
+        // S3（issue #98 第五阶段）按穿越形态分层校验，三类不可派生形态从此「可见」：
+        //   strict/vertex：唯一交点时 at 可派生、声明可省；多交点必须手写 at；
+        //   collinear_run / endpoint_on_wall：at 不可派生，必须声明且与形态锚点重合
+        //     （贴墙段任一端 / 压墙端点），漂移超 PENETRATION_ANCHOR_TOLERANCE 即 mismatch；
+        //   none（未触墙设计意图点，E 类）：声明必须落进既有 0.25m 邻近豁免圈（否则
+        //     orphaned），且锚定两条几何签名（压墙线 + 正交对齐，验伪轮补）——漂移出签名
+        //     即 mismatch。沿墙线且保持正交的滑动无第二事实可对照（孔位沿墙的最终位置是
+        //     量房日的设计自由度），由出圈兜底，不为它发明锚。
+        const form = resolveMepWallCrossingForm(points, wall);
+        if (form.form === 'strict' || form.form === 'vertex') {
+          if (form.total > 1 && !declared.at) {
+            add(result, issue('warning', 'penetration_declaration_incomplete', `Route ${route.id} crosses ${wall.id} at ${form.total} points; the penetration at is ambiguous and cannot be derived — declare the sleeve center explicitly`, route.id));
+          } else if (declared.height === undefined) {
+            add(result, issue('warning', 'penetration_declaration_incomplete', `Route ${route.id} crosses ${wall.id} but its penetration declaration lacks height; record the sleeve elevation`, route.id));
+          }
+        } else if (form.form === 'collinear_run' || form.form === 'endpoint_on_wall') {
+          const shape = form.form === 'collinear_run' ? 'runs along the wall line' : 'starts or ends on the wall line';
+          if (!declared.at || declared.height === undefined) {
+            add(result, issue('warning', 'penetration_declaration_incomplete', `Route ${route.id} ${shape} of ${wall.id}; this penetration has no unique crossing point, so its ${!declared.at ? 'at' : 'height'} cannot be derived and must stay declared`, route.id));
+          } else {
+            const anchors = form.form === 'collinear_run' ? [form.a, form.b] : [form.point];
+            const drift = Math.min(...anchors.map((anchor) => Math.hypot(anchor.x - declared.at!.x, anchor.z - declared.at!.z)));
+            if (drift > PENETRATION_ANCHOR_TOLERANCE) {
+              add(result, issue('warning', 'penetration_point_mismatch', `Route ${route.id} declared penetration on ${wall.id} at (${declared.at.x.toFixed(3)},${declared.at.z.toFixed(3)}) is ${drift.toFixed(3)}m away from the route's ${form.form === 'collinear_run' ? 'wall-hug run ends' : 'on-wall endpoint'}; the hand-kept at no longer matches the route geometry`, route.id));
+            }
+          }
+        } else if (declared.at && penetrationPointOnRoute(declared.at, points, wall)) {
+          // 豁免圈内的 E 类意图点（折线未触墙，at 是「计划中该穿但还没画到」的墙面点）。
+          // 验伪轮（fired=false 修复）：0.25m 邻近豁免不是免检——at 还必须满足两条可验证
+          // 的几何签名，漂移出签名即 mismatch，不再静默。
+          if (declared.height === undefined) {
+            add(result, issue('warning', 'penetration_declaration_incomplete', `Route ${route.id} declares a penetration intent on ${wall.id} but lacks height; record the sleeve elevation`, route.id));
+          }
+          const anchorProblem = intentAnchorDiagnostic(declared.at, points, wall);
+          if (anchorProblem) {
+            add(result, issue('warning', 'penetration_point_mismatch', `Route ${route.id} declared penetration on ${wall.id} at (${declared.at.x.toFixed(3)},${declared.at.z.toFixed(3)}) ${anchorProblem}`, route.id));
+          }
+        } else {
           add(result, issue('warning', 'penetration_declaration_orphaned', `Route ${route.id} declares penetration on ${wall.id}, but its current geometry does not cross that wall`, route.id));
-        } else if (!declared.at || declared.height === undefined) {
-          add(result, issue('warning', 'penetration_declaration_incomplete', `Route ${route.id} crosses ${wall.id} but its penetration declaration lacks ${!declared.at ? 'at' : 'height'}; record the actual sleeve center and elevation`, route.id));
         }
       }
       for (const wall of context.layout.walls) {
-        const crosses = wallCrosses(points, wall);
+        const form = resolveMepWallCrossingForm(points, wall);
+        const crosses = form.form === 'strict' || form.form === 'vertex';
         if (suppressed.has(wall.id)) {
           if (!crosses && !routeTouchesWall(points, wall, routeEnvelopeRadius(route))) continue;
           add(result, issue('error', 'suppressed_wall_crossing', `Route ${route.id} crosses or touches suppressed/curtain wall ${wall.id}; do not attach or route through glazing`, route.id));
           continue;
         }
-        if (!crosses) continue;
         const declared = penetrations.find((p) => p.wall === wall.id);
+        if (!crosses) {
+          // S3 共线扩展：贴墙段穿越（C 形）与 strict 穿越同属穿墙事件，无声明即漏报。
+          // 判别式对现网 137 条路线只命中 7 条已声明 C 类（未声明 0 命中，零新增告警）；
+          // 删掉任一 C 类声明即红——原 lint 对整段贴线穿越零感知（D 轨演练 B3）。
+          if (form.form === 'collinear_run' && !declared) {
+            add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'penetration_missing', `Route ${route.id} crosses entity wall ${wall.id} along the wall line ((${form.a.x.toFixed(2)},${form.a.z.toFixed(2)})→(${form.b.x.toFixed(2)},${form.b.z.toFixed(2)})) without penetration information`, route.id));
+          }
+          continue;
+        }
         if (!declared) {
           add(result, issue(route.status === 'confirmed' ? 'error' : 'warning', 'penetration_missing', `Route ${route.id} crosses entity wall ${wall.id} without penetration information`, route.id));
         } else if (declared.at) {
@@ -1447,8 +1675,10 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
             if (typeof endpoint !== 'string') return false;
             const point = sources.plumbing.find((candidate) => candidate.id === endpoint);
             if (!point || (volume.room && point.room !== volume.room)) return false;
+            const plan = pointPlan(point, sources);
+            if (!plan) return false;
             const y = (endpointIndex === 0 ? route.from_height : route.to_height) ?? point.height ?? layer?.height ?? 0;
-            return pointBoxDistance({ x: point.x, z: point.z, y }, volume.bounds) <= 0.45;
+            return pointBoxDistance({ x: plan.x, z: plan.z, y }, volume.bounds) <= 0.45;
           }).length;
           insideRun = Math.max(0, insideRun - 0.45 * terminalInside);
         }

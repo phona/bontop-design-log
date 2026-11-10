@@ -145,7 +145,7 @@ export function getMultiGlobeGlobeCenters(
   return centers;
 }
 
-/** Browser and GLB/export share this declared multi-globe chandelier geometry. */
+/** Declared multi-globe chandelier geometry used by browser rendering. */
 export function buildMultiGlobeChandelierVisual(
   fixture: RenderLightingFixture,
   config: MultiGlobeChandelierConfig,

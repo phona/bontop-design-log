@@ -1,7 +1,7 @@
 // 灯具派生 parity 守门测试。
 //
 // 背景：渲染锚点派生曾经有两份实现——权威投影 shared/project-render-facts-projection.ts
-// （喂 app/GLB 的 data/project-render-facts.json）与 shared/penetration/scene.ts 的
+// （喂 app 的 data/project-render-facts.json）与 shared/penetration/scene.ts 的
 // renderLightingFixtures()（喂 verify:spatial / verify:penetration 的 runtime 场景）。
 // 分叉的那版不做 offsetX/offsetZ 平移、高度还静默兜底 2.8m，于是 linter 校验的是
 // 「位置上不存在的灯」（历史实例：light_tv_strip 的 offsetX: 0.15，该灯带已于
@@ -26,7 +26,11 @@ import {
 import { parseElectricalPoints, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsFromFiles } from '../../scripts/project/project-render-facts-projection.js';
 import { buildRuntimeScene, loadSceneInputs } from '../../shared/penetration/scene.js';
-import type { ElectricalPoint, RenderLightingFixture, RenderLightingOverride } from '../../shared/types.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { PlacementItem } from '../../shared/furniture-placement.js';
+import { load as parseYaml } from 'js-yaml';
+import type { ElectricalPoint, RenderLightingFixture, RenderLightingOverride, VertexLayoutYaml } from '../../shared/types.js';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const read = (relative: string) => readFileSync(new URL(`../../${relative}`, import.meta.url), 'utf8');
@@ -34,6 +38,22 @@ const read = (relative: string) => readFileSync(new URL(`../../${relative}`, imp
 /** 真实 house 的权威输入：电气点位 + 渲染挂点偏移。 */
 const houseElectrical = () => parseElectricalPoints(read('config/electrical.yaml'));
 const houseOverrides = () => parseRenderLightingOverrides(read('config/render/overrides.yaml'));
+/**
+ * mount 挂载灯（issue #98 S2 起夜灯）的宿主索引：与投影脚本/服务端同一构造
+ * （pointMountHostIndex + house.yaml furnishings）。
+ */
+const houseMountHosts = () => {
+  const house = parseYaml(read('config/house.yaml')) as { furnishings?: Record<string, PlacementItem[]> };
+  return pointMountHostIndex(Object.values(house.furnishings ?? {}).flat());
+};
+
+/**
+ * 挂墙灯具的宿主墙索引（issue #98 S3）：与投影脚本/服务端/3D 同一构造
+ * （resolveLayout(model-geometry) → pointWallIndexFromElements）。
+ */
+const housePointWalls = () => pointWallIndexFromElements(
+  resolveLayout(parseYaml(read('config/layout/model-geometry.yaml')) as VertexLayoutYaml).walls,
+);
 
 const override = (id: string, extra: Partial<RenderLightingOverride> = {}): RenderLightingOverride => ({
   id,
@@ -55,7 +75,7 @@ const point = (extra: Partial<ElectricalPoint> & Pick<ElectricalPoint, 'id' | 't
 describe('lighting fixture derivation parity', () => {
   it('derives the same fixtures in the linter as in the authoritative projection', () => {
     const projection = buildProjectRenderFactsFromFiles(ROOT);
-    const derived = buildRenderLightingFixtures(houseElectrical(), houseOverrides());
+    const derived = buildRenderLightingFixtures(houseElectrical(), houseOverrides(), houseMountHosts(), housePointWalls());
     assert.deepEqual(derived, projection.lightingFixtures);
     // 键序也要一致：project-render-facts 的 schema 对产出键序敏感（见 project-render-facts-schema.ts）。
     assert.equal(JSON.stringify(derived), JSON.stringify(projection.lightingFixtures));
@@ -63,7 +83,7 @@ describe('lighting fixture derivation parity', () => {
 
   it('computes the same position for every fixture id, offset included', () => {
     const projection = buildProjectRenderFactsFromFiles(ROOT);
-    const derived = new Map(buildRenderLightingFixtures(houseElectrical(), houseOverrides()).map((fixture) => [fixture.id, fixture]));
+    const derived = new Map(buildRenderLightingFixtures(houseElectrical(), houseOverrides(), houseMountHosts(), housePointWalls()).map((fixture) => [fixture.id, fixture]));
     assert.equal(derived.size, projection.lightingFixtures.length);
     for (const expected of projection.lightingFixtures) {
       const actual = derived.get(expected.id);
@@ -126,12 +146,16 @@ describe('lighting fixture derivation parity', () => {
 
 describe('lighting fixture derivation fail-closed', () => {
   it('applies offsetX/offsetZ and keeps host wall metadata', () => {
+    // issue #98 S3：挂墙灯具平面位置走解析器——合成墙 x=2、along 1 → datum (2,1)，
+    // 完成面 = 2 − 半墙厚 0.06 = 1.94，再加 offsetX 0.15 → 2.09；z = 1 − 0.25 = 0.75。
     const derived = buildRenderLightingFixtures(
-      [point({ id: 'lamp', type: 'wall_lamp', wall: 'w_liv_east', wallSide: 'west' })],
+      [point({ id: 'lamp', type: 'wall_lamp', wall: 'w_liv_east', wallSide: 'west', along: 1 })],
       [override('lamp', { offsetX: 0.15, offsetZ: -0.25, anchorY_offset: -0.25 })],
+      undefined,
+      new Map([['w_liv_east', { segments: [{ x1: 2, z1: 0, x2: 2, z2: 10 }], line_datum: 'centerline' }]]),
     );
     assert.equal(derived.length, 1);
-    assert.deepEqual(derived[0].position, { x: 1.15, y: 2.55, z: 1.75 });
+    assert.deepEqual(derived[0].position, { x: 2.09, y: 2.55, z: 0.75 });
     assert.equal(derived[0].wallId, 'w_liv_east');
     assert.equal(derived[0].wallSide, 'west');
     assert.equal(derived[0].temperatureK, 3000);
@@ -167,10 +191,33 @@ describe('lighting fixture derivation fail-closed', () => {
     const anchor = { kind: 'furniture_face' as const, furnitureId: 'furniture:living_dining:tv_stand:0', face: 'north' as const };
     assert.throws(
       () => buildRenderLightingFixtures([point({ id: 'dome', type: 'dome', mountAnchor: anchor })], [override('dome')]),
-      /mount_anchor is only supported for night_light/,
+      /mount is only supported for night_light/,
     );
     const allowed = buildRenderLightingFixtures([point({ id: 'night', type: 'night_light', mountAnchor: anchor })], [override('night')]);
     assert.deepEqual(allowed[0].mountAnchor, anchor);
+  });
+
+  it('throws when a mount fixture is derived without the furniture host index (fail-closed, no x/z fallback)', () => {
+    // issue #98 S2 真挂载：mount 是定位来源，缺宿主索引必须抛错，不许回落声明 x/z。
+    // 2026-11-09 疗法①：抛点从调用方（lighting-fixtures 的「解析失败」包装）下沉到解算器
+    // 本身（shared/point-placement.ts 缺 mountHosts 即抛）——consumer 侧的降级路径
+    // （回落 x/z / 回落原点 / 跳过模型）从此吃不到这个失败。
+    const mountPoint = point({ id: 'night_mount', type: 'night_light', mount: { furniture_id: 'ld.entry_half_height_cabinet', face: 'east', along: 1.45, surface_gap: 0.003 } }) as ElectricalPoint;
+    assert.throws(
+      () => buildRenderLightingFixtures([mountPoint], [override('night_mount')]),
+      /mount 定位要求调用方提供家具宿主索引/,
+    );
+  });
+
+  it('resolves a mount fixture from its host face (host moved → light follows)', () => {
+    // 宿主脸解析：entry_half_height_cabinet (11.24,4.35,rot90,depth 0.35) 东脸平面 x=11.415，
+    // along 1.45 自脸南端（z=3.35）向北 → z=4.80；face_offset 0.005 → x=11.42（与迁移期声明一致）。
+    // 合成点同时带 mount（解算输入）与 mountAnchor（parseElectricalPoints 的投影产出）——
+    // 生产路径里两者由解析投影同源给出。
+    const mountPoint = point({ id: 'night_mount', type: 'night_light', x: 11.42, z: 4.8, mount: { furniture_id: 'ld.entry_half_height_cabinet', face: 'east', along: 1.45, face_offset: 0.005, surface_gap: 0.003 }, mountAnchor: { kind: 'furniture_face', furnitureId: 'ld.entry_half_height_cabinet', face: 'east', surfaceGap: 0.003 } }) as ElectricalPoint;
+    const derived = buildRenderLightingFixtures([mountPoint], [override('night_mount')], houseMountHosts());
+    assert.deepEqual(derived[0].position, { x: 11.42, y: 2.8, z: 4.8 });
+    assert.deepEqual(derived[0].mountAnchor, { kind: 'furniture_face', furnitureId: 'ld.entry_half_height_cabinet', face: 'east', surfaceGap: 0.003 });
   });
 
   it('omits undeclared anchors from the height table instead of inventing one', () => {

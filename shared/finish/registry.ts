@@ -27,14 +27,15 @@ import {
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 export const CONFIG_PATH = 'config/finish-lint.yaml';
-const SOURCE = 'config/layout/overlay.yaml + config/ceiling.yaml + shared/finish/';
+const SOURCE = 'config/model/envelope/{openings,floor-zones,finish-defaults,ceiling}.yaml + shared/finish/';
 
 /** 代码里真实实现了的规则。配置申报与此清单互为镜像，缺一方即报错。 */
 export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
   {
     id: 'finish.wall_overlap',
     codes: ['finish.wall_finish_overlap'],
-    kinds: 'paint_region vs walltile(wall_region)',
+    // S4：声明改为墙对象 finish.paint_bands / finish.tile_bands；mesh 语义标签不变。
+    kinds: 'paint_bands(paint_region) vs tile_bands(wall_region)',
     severity: 'error',
     enabled: true,
     note: '同一面墙同一房间（同侧）的水平+竖向区间都相交 → 该面被计两次。跨房间是双面涂漆，合法不报。',
@@ -42,7 +43,7 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
   {
     id: 'finish.sill_duplicate',
     codes: ['finish.sill_finish_duplicate'],
-    kinds: 'paint_sill_region vs sill_region',
+    kinds: 'bay_sill.finish.paint(paint_sill_region) vs bay_sill.finish.tile(sill_region)',
     severity: 'error',
     enabled: true,
     note: '同一 bay 元素的同一个面被漆与砖同时声明。',
@@ -50,7 +51,7 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
   {
     id: 'finish.paint_duplicate_same_side',
     codes: ['finish.paint_duplicate_same_side'],
-    kinds: 'paint_region vs paint_region',
+    kinds: 'paint_bands(paint_region) vs paint_bands(paint_region)',
     severity: 'error',
     enabled: true,
     note: '同一面墙同一房间同侧两段涂漆声明 along 相交 → 纯计量重复。',
@@ -58,7 +59,7 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
   {
     id: 'finish.paint_room_binding',
     codes: ['finish.paint_outside_room', 'finish.paint_on_suppressed_wall', 'finish.paint_room_unresolvable', 'finish.paint_span_unresolvable'],
-    kinds: 'paint_region vs room boundary',
+    kinds: 'paint_bands(paint_region) vs room boundary',
     severity: 'error',
     enabled: true,
     note: 'along 端点须落在声明房间的 boundary 多边形上；挂 suppress 墙或定位失败显形。',
@@ -74,15 +75,15 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
   {
     id: 'finish.tile_over_opening',
     codes: ['finish.tile_over_opening'],
-    kinds: 'walltile(wall_region) vs door/window opening',
+    kinds: 'tile_bands(wall_region) vs door/window opening',
     severity: 'error',
     enabled: true,
-    note: '瓷砖声明盖住门/窗洞 → error。瓷砖算量不扣洞（splitRectByGaps 只服务漆，wall_region 是单张 PlaneGeometry），盖住洞就是实打实多算，且物理上不能贴砖过门洞。',
+    note: '瓷砖声明盖住门/窗洞 → error。瓷砖算量不扣洞（splitRectByGaps 只服务漆，tile 带是单张 PlaneGeometry），盖住洞就是实打实多算，且物理上不能贴砖过门洞。',
   },
   {
     id: 'finish.paint_over_opening',
     codes: ['finish.paint_over_opening'],
-    kinds: 'paint_region vs door/window opening',
+    kinds: 'paint_bands(paint_region) vs door/window opening',
     severity: 'info',
     enabled: true,
     note: '漆声明跨洞 → info。跨洞正是漆的声明机制（声明整面墙，由 splitRectByGaps 拆成左条+右条+门楃条），面积与 3D 网眼都实扣；登记供核对，不判错。配置可加严。',
@@ -93,7 +94,7 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
     kinds: 'finish declaration vs buildScene meshes',
     severity: 'error',
     enabled: true,
-    note: '每个面层声明必须在 buildScene 的产出里找到自己（objectId 命中，或门洞拆分的 id:sN）。声明落空不会报错——computePaintScope 照样算面积进预算，而 3D 里什么都没有：预算算了钱、现场找不到活儿。paint_ceiling_region 本身不产网格，改判房间有无 ceiling 几何。',
+    note: '每个面层声明必须在 buildScene 的产出里找到自己（objectId 命中，或门洞拆分的 id:sN）。声明落空不会报错——computePaintScope 照样算面积进预算，而 3D 里什么都没有：预算算了钱、现场找不到活儿。房间特征 ceiling_finish 本身不产网格，改判房间有无 ceiling 几何。',
   },
   {
     id: 'finish.mesh_unattached',
@@ -101,7 +102,7 @@ export const IMPLEMENTED_RULES: FinishRuleSpec[] = [
     kinds: 'buildScene finish mesh vs wall polyline / bay footprint',
     severity: 'error',
     enabled: true,
-    note: '逐块判「网格有没有贴在它该贴的几何上」——F08 只查 id 在不在场景里，查不出「网格存在但位置错了」（弧墙上 mid 取起终点弦中点，整块飘 0.50m，F08 一声不响）。墙类（wall_region/paint_region/sill-front）比中心到墙折线的最近距离；sill 类（sill-top/sill-underside/paint_sill_region）比中心到 bay footprint 边界的距离或在 footprint 内——必须用距离法，前缘面中心本身就在边界上，射线法 inPoly 对边界点不稳定（一次性探针曾因此误报 16 块）。拿不到 wallId/elementId/几何时报 unknown_anchor，不静默跳过。容差 0.12m（不是 config 的 0.01 重叠容差：漆面合法外偏移 0.068m）。逐块判与网格总数无关，逐段出网不影响。',
+    note: '逐块判「网格有没有贴在它该贴的几何上」——F08 只查 id 在不在场景里，查不出「网格存在但位置错了」（弧墙上 mid 取起终点弦中点，整块飘 0.50m，F08 一声不响）。墙类（tile 带/paint 带/sill-front）比中心到墙折线的最近距离；sill 类（sill-top/sill-underside/paint_sill_region）比中心到 bay footprint 边界的距离或在 footprint 内——必须用距离法，前缘面中心本身就在边界上，射线法 inPoly 对边界点不稳定（一次性探针曾因此误报 16 块）。拿不到 wallId/elementId/几何时报 unknown_anchor，不静默跳过。容差按锚类取（不是 config 的 0.01 重叠容差）：涂漆面 = wallFaceOffset 解析器输出 + 0.05 余量，其余 0.12m。逐块判与网格总数无关，逐段出网不影响。',
   },
 ];
 

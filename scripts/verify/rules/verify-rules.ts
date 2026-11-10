@@ -1,7 +1,9 @@
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { VALID_CEILING_TYPES } from '../../../server/config-loader.js';
 import { FURNITURE_DIMS } from '../../../shared/types.js';
+import { suppressedWallIdSet } from '../../../shared/suppression.js';
 import { CEILING_TRADE_CLASSES } from '../../../shared/ceiling-takeoff.js';
+import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../../shared/point-placement.js';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 
@@ -31,8 +33,9 @@ interface Positioned {
   id: string;
   room: string;
   wall?: string;
-  x: number;
-  z: number;
+  /** 平面坐标（issue #98 S3 起由 shared/point-placement.ts 解算后回填，不再是配置声明值）。 */
+  x?: number;
+  z?: number;
   note?: string;
   type?: string;
 }
@@ -40,12 +43,6 @@ interface Positioned {
 /** 吊顶平面角（area [x1,z1,x2,z2] 的四角），逐角圆角 corner_radii 的合法键。 */
 const VALID_CEILING_CORNERS = ['nw', 'ne', 'se', 'sw'] as const;
 const VALID_CEILING_EDGES = ['north', 'east', 'south', 'west'] as const;
-
-interface OverlaySuppress {
-  id: string;
-  wall?: string;
-  walls?: string[];
-}
 
 function dist(ax: number, az: number, bx: number, bz: number): number {
   return Math.hypot(ax - bx, az - bz);
@@ -67,8 +64,7 @@ function main(): void {
 
   const electrical = yaml.load(fs.readFileSync('config/electrical.yaml', 'utf-8')) as Positioned[];
   const plumbing = yaml.load(fs.readFileSync('config/plumbing.yaml', 'utf-8')) as Positioned[];
-  const ceiling = yaml.load(fs.readFileSync('config/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; thickness?: number; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; cove_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number; trade?: string }>;
-  const overlay = yaml.load(fs.readFileSync('config/layout/overlay.yaml', 'utf-8')) as { suppress: OverlaySuppress[] };
+  const ceiling = yaml.load(fs.readFileSync('config/model/envelope/ceiling.yaml', 'utf-8')) as Array<{ id: string; room: string; type: string; thickness?: number; x?: number; z?: number; area?: [number, number, number, number]; corner_radius?: number; corner_radii?: Record<string, number>; concave_fillets?: Record<string, number>; cove_fillets?: Record<string, number>; buckle_panel?: { module: number; seam_width?: number; seam_color?: string }; inspection_layer?: string; inspection_opacity?: number; trade?: string }>;
   const houseYaml = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }>; gift_areas: Array<{ id: string; name: string }> };
   const modelGeom = yaml.load(fs.readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as { rooms: Array<{ id: string; name: string }> };
 
@@ -79,14 +75,32 @@ function main(): void {
     else warnings.push(msg);
   };
 
-  const suppressedWalls = new Set<string>();
-  for (const s of overlay.suppress) {
-    if (s.wall) suppressedWalls.add(s.wall);
-    if (s.walls) for (const w of s.walls) suppressedWalls.add(w);
-  }
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性
+  // （ProjectCatalog 经 layout-resolver 透传），唯一权威实现 shared/suppression.ts。
+  const suppressedWalls = suppressedWallIdSet(walls);
 
   const wallIds = new Set(walls.map((w) => w.id).filter(Boolean) as string[]);
   const roomMap = new Map(rooms.map((r) => [r.id, r]));
+
+  // === 点位平面坐标：单一解算（issue #98 第四阶段 S3）===
+  // 沿墙/挂载点位不再声明绝对 x/z（S3 删除，79+2 个），bounds/proximity 若直读声明值会随
+  // 字段删除**静默空转**（undefined 参与比较恒 false、NaN 距离永不越限——门禁全绿而规则
+  // 已死）。一律先过 shared/point-placement.ts 单一解算器（与 3D/DXF/MEP/lint 同源），
+  // 解算失败即 error 显形，不兜底、不跳过。
+  const pointWalls = pointWallIndexFromElements(walls);
+  const houseForMountHosts = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
+  const mountHosts = pointMountHostIndex(Object.values(houseForMountHosts.furnishings ?? {}).flat() as never);
+  for (const [source, items] of [['electrical', electrical], ['plumbing', plumbing]] as const) {
+    for (const item of items) {
+      const { placement, diagnostic } = resolvePointPlacementInWalls(item as never, pointWalls, mountHosts);
+      if (!placement) {
+        report('error', `[placement] ${source}/${item.id}: 定位解算失败（${diagnostic ?? '解算器未返回结果'}）`);
+        continue;
+      }
+      item.x = placement.x;
+      item.z = placement.z;
+    }
+  }
 
   const allItems: Array<{ source: string; item: Positioned }> = [
     ...electrical.map((e) => ({ source: 'electrical', item: e })),
@@ -113,6 +127,7 @@ function main(): void {
   for (const { source, item } of boundsTargets) {
     const room = roomMap.get(item.room);
     if (!room) continue;
+    if (item.x === undefined || item.z === undefined) continue; // 解算失败已在上面报 error
     const minX = room.x - room.width / 2 - rules.bounds.tolerance;
     const maxX = room.x + room.width / 2 + rules.bounds.tolerance;
     const minZ = room.z - room.depth / 2 - rules.bounds.tolerance;
@@ -288,6 +303,7 @@ function main(): void {
     else if (rule.a.file === 'plumbing') aItems = plumbing.filter((p) => matchItem(p, rule.a.match));
 
     for (const a of aItems) {
+      if (a.x === undefined || a.z === undefined) continue; // 解算失败已在上面报 error
       let bItems: Positioned[] = [];
       if (rule.b.target === 'room_edge') {
         const room = roomMap.get(a.room);
@@ -297,8 +313,8 @@ function main(): void {
         const minZ = room.z - room.depth / 2;
         const maxZ = room.z + room.depth / 2;
         const dToEdge = Math.min(
-          Math.abs(a.x - minX), Math.abs(a.x - maxX),
-          Math.abs(a.z - minZ), Math.abs(a.z - maxZ)
+          Math.abs(a.x! - minX), Math.abs(a.x! - maxX),
+          Math.abs(a.z! - minZ), Math.abs(a.z! - maxZ)
         );
         if (dToEdge > rule.max_distance) {
           report(rule.severity, `[proximity] ${rule.id}: ${a.id} 距房间边缘 ${dToEdge.toFixed(2)}m (>${rule.max_distance}m)`);
@@ -322,7 +338,7 @@ function main(): void {
 
       if (bItems.length === 0) continue;
       const nearest = bItems.reduce((best, b) => {
-        const d = dist(a.x, a.z, b.x, b.z);
+        const d = dist(a.x!, a.z!, b.x!, b.z!);
         return d < best.d ? { d, b } : best;
       }, { d: Infinity, b: bItems[0] });
 

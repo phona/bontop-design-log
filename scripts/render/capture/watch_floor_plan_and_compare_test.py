@@ -29,7 +29,9 @@ def test_parse_args_log():
 
 def test_should_watch_only_target_files():
     assert should_watch('config/layout/model-geometry.yaml') is True
-    assert should_watch('config/layout/overlay.yaml') is True
+    assert should_watch('config/model/envelope/finish-defaults.yaml') is True
+    assert should_watch('config/model/envelope/ceiling.yaml') is True
+    assert should_watch('config/layout/overlay.yaml') is False
     assert should_watch('config/layout/other.yaml') is False
 
 
@@ -143,9 +145,9 @@ def test_process_pending_uses_latest_event():
 
     watcher.on_file_changed('config/layout/model-geometry.yaml')
     time.sleep(0.1)
-    watcher.on_file_changed('config/layout/overlay.yaml')
+    watcher.on_file_changed('config/model/envelope/finish-defaults.yaml')
     time.sleep(0.5)
     watcher.process_pending()
 
     assert len(captured) == 1
-    assert captured[0] == 'config/layout/overlay.yaml'
+    assert captured[0] == 'config/model/envelope/finish-defaults.yaml'

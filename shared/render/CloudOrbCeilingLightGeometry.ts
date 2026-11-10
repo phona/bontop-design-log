@@ -23,7 +23,7 @@ export function getCloudOrbCeilingLightConfig(
   ));
 }
 
-/** Browser and GLB/export share the same owner-approved cloud-lamp preview geometry. */
+/** Owner-approved cloud-lamp preview geometry used by browser rendering. */
 export function buildCloudOrbCeilingLightVisual(
   fixture: RenderLightingFixture,
   config: CloudOrbCeilingLightConfig,

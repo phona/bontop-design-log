@@ -1,7 +1,7 @@
 // tests/server/mep-guidance-baseline.test.ts
 //
 // 「文档不许再漂移」自审计：把 docs/mep-construction-guidance.md 的规模口径与
-// §6 验收基线、docs/pending-site-data.md 的表头计数口径、以及 MEP/电气 lint 治理
+// §6 验收基线、原量房台账（已于 S2-B 退场） 的表头计数口径、以及 MEP/电气 lint 治理
 // 台账（docs/design-iterations/mep-lint-governance-20261006/review-manifest.json）
 // 全部绑到**实算**上。
 //
@@ -21,11 +21,9 @@ import { load as parseYaml } from 'js-yaml';
 // ─── 被测文档 ────────────────────────────────────────────────────────────────
 
 const GUIDANCE_PATH = 'docs/mep-construction-guidance.md';
-const PENDING_PATH = 'docs/pending-site-data.md';
 const MANIFEST_PATH = 'docs/design-iterations/mep-lint-governance-20261006/review-manifest.json';
 
 const guidance = readFileSync(GUIDANCE_PATH, 'utf8');
-const pending = readFileSync(PENDING_PATH, 'utf8');
 const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8')) as {
   dispositions: Array<{ code: string; count: number; category: string; disposition: string }>;
   summary?: Record<string, unknown>;
@@ -106,7 +104,12 @@ for (const [bucket, bucketSummary] of Object.entries(mep.categories ?? {})) {
 
 test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必须等于实算（不写死 warning 总数）', () => {
   // ① error 契约：DEC-2026-10-17-R20 起 must_fix 桶统一进 errors（8aef523 硬门禁），
-  //    verify:mep 的 errors = must_fix 实算 125（DEC-2026-10-28-R03 书房酒店布局后实测：route_overlap 63 / route_not_orthogonal 27 / route_furniture_collision 10 / unsupported_span 8 / floor_band_method_mismatch 1，其余 code 不变，较 R02 对账 126 净 −1（回风 return-air-parent 正交化），见 guidance §6 R03 对账增量；DEC-2026-10-26-R02 书房墙垛建模 + 书桌东移 + 衣柜南延后实测 127，DEC-2026-10-27-R01 删床头路线后 126）；electrical 仍 0 error。
+  //    verify:mep 的 errors = must_fix 实算 130（DEC-2026-10-28-R03 书房酒店布局后实测：route_overlap 63 / route_not_orthogonal 27 / route_furniture_collision 10 / unsupported_span 8 / floor_band_method_mismatch 1，其余 code 不变，较 R02 对账 126 净 −1（回风 return-air-parent 正交化），见 guidance §6 R03 对账增量；DEC-2026-10-26-R02 书房墙垛建模 + 书桌东移 + 衣柜南延后实测 127，DEC-2026-10-27-R01 删床头路线后 126）；electrical 仍 0 error。
+  //    issue #98 第五阶段 S1（E4）：supply_air/return_air 纳入端点绑定兜底 + hvacTerminals 候选池，
+  //    5 条 inline `to:` 抄 terminal xyz 的真双写首次显形 → endpoint_not_bound_to_point ×5（must_fix
+  //    error），125→130；issue #98 第五阶段 S2（2026-11-08）：5 条已改绑 terminal id（to_height
+  //    保留、坐标按构造不变，DXF/takeoff 零几何变化），endpoint_not_bound_to_point 归零并回钉 125
+  //    （设计文档 §4.4-E4 / §5.3 指标 9）。
   assert.equal(mep.counts.errors, 125, `verify:mep must_fix errors 应为 125，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
@@ -170,7 +173,7 @@ test('§0 规模表：路由/层/电点/给排水点/吊顶分区与机器条目
   };
   const electricalPoints = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as unknown[];
   const plumbingPoints = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as unknown[];
-  const ceilingZones = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as unknown[];
+  const ceilingZones = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as unknown[];
 
   // 与 facts.yaml 的 mirror 正则同族：改写量必须同步改 facts.yaml 的 extract，否则本测试先炸
   const claims: Array<[string, RegExp, number]> = [
@@ -212,29 +215,11 @@ test('§0 规模表：路由/层/电点/给排水点/吊顶分区与机器条目
   assert.equal(Number(docChains![2]), Number(info![3]), `§0 吊顶分区数 ${docChains![2]} ≠ verify:facts 实算 ${info![3]}`);
 });
 
-// ─── pending-site-data：表头计数口径（66 个编号 + #3a 子项 = 67 行） ────────
-
-test('pending-site-data 表头口径：「量表共 N 条」= 编号数，实际行数 = 编号数 + 子项数', () => {
-  const header = pending.match(/量表共\s*(\d+)\s*条/);
-  assert.ok(header, 'docs/pending-site-data.md 必须保留「量表共 N 条」这一叙事锚点（fact.pending_site_data_count 权威值）');
-  const claimed = Number(header![1]);
-
-  // 权威值（narrative）= 表头那一处，两者必须一致
-  const fact = registry.facts.find((f) => f.id === 'fact.pending_site_data_count');
-  assert.ok(fact, 'config/facts.yaml 必须登记 fact.pending_site_data_count');
-  const anchor = String(fact!.value ?? '').match(/量表共\s*(\d+)\s*条/);
-  assert.ok(anchor, 'fact.pending_site_data_count 的权威值必须锚在表头那一句上');
-  assert.equal(Number(anchor![1]), claimed, '登记表权威值与文档表头的编号数必须一致');
-
-  // 表格行：`| N |`（编号行）与 `| Na |`（子项行）
-  const rows = [...pending.matchAll(/^\|\s*(\d+[a-z]?)\s*\|/gm)].map((m) => m[1]);
-  const numbered = rows.filter((id) => /^\d+$/.test(id));
-  const subItems = rows.filter((id) => /^\d+[a-z]$/.test(id));
-  assert.equal(claimed, numbered.length, `表头声称 ${claimed} 个编号，实际编号行 ${numbered.length}`);
-  assert.deepEqual(subItems, ['3a'], '子项行应恰为 #3a（#3 的 A2 HVAC 子项）');
-  assert.equal(rows.length, claimed + subItems.length, '表格行数必须 = 编号数 + 子项数');
-  assert.equal(rows.length, 78, '当前口径：77 个编号 + #3a = 78 行'); // 2026-11-05 DEC-2026-11-05-R5 新增 #75/#76/#77（75→78）；2026-10-22 DEC-2026-10-22-R02 新增 #74 客卫沉箱构造核实（74→75）；前史：2026-10-18 DEC-2026-10-18-R22 审查结论新增 #73 吊顶构造包络（阻塞 Z 表下探与 B 区净距判定）；R20 批新增 #67–#72（67→73）
-});
+// ─── 原量房手账表头计数口径（已随 S2-B 退场） ─────────────────────────────
+// 2026-11-08 issue #98 S2-B：docs/pending-site-data.md 整份退场，未决项已全数搬到
+// config 各对象自己的 status/blocker 字段上，「量表共 N 条」这个自证式计数口径随之消失。
+// 替代的不变量在 tests/server/element-state.test.ts 的 blocker 门禁与
+// tests/server/decision-knowledge.test.ts 的 landing 词表——都不再需要文档计数。
 
 // ─── 治理台账：逐条与实算一致，且覆盖全部实算 code ───────────────────────
 

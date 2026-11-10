@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 vi.mock('three', async (importOriginal: any) => {
   const __three = await importOriginal();
@@ -129,8 +130,14 @@ vi.mock('./render/annotations/AnnotationRenderer.js', () => ({
     setVisible() {}
     updateLabels() {}
     clear() {}
+    // issue #98 S1：标注层坐标经 shared/point-placement.ts 解算，宿主墙索引由 App 注入
+    setPointWalls() {}
+    // issue #98 S2：mount 挂载点位的家具宿主索引由 App 注入
+    setMountHosts() {}
     getElectricalData() { return []; }
     getPlumbingData() { return []; }
+    // issue #98 宽容读取：解算失败的点位跳过并进诊断清单，App 读它显形
+    getPlacementDiagnostics() { return []; }
   },
 }));
 
@@ -174,7 +181,7 @@ const mockWindow = {
 };
 vi.stubGlobal('window', mockWindow);
 
-// jsdom 没有 URL.createObjectURL（DXF/GLB 导出下载用）
+// jsdom 没有 URL.createObjectURL（DXF 导出下载用）
 const createdBlobs: Blob[] = [];
 vi.stubGlobal('URL', class extends URL {
   static createObjectURL = vi.fn((blob: Blob) => { createdBlobs.push(blob); return 'blob:mock'; });
@@ -206,12 +213,10 @@ function createMockElement(id?: string) {
   };
 }
 
-const exportGlbButton = createMockElement('export-glb-btn');
 const exportDxfButton = createMockElement('export-dxf-btn');
 const hvacCoordinationButton = createMockElement('hvac-coordination-btn');
 const mockDocument = {
   getElementById: vi.fn((id: string) => {
-    if (id === 'export-glb-btn') return exportGlbButton;
     if (id === 'export-dxf-btn') return exportDxfButton;
     if (id === 'hvac-coordination-btn') return hvacCoordinationButton;
     return createMockElement(id);
@@ -311,7 +316,6 @@ describe('App', () => {
 
   beforeEach(() => {
     createdBlobs.length = 0;
-    exportGlbButton.addEventListener.mockClear();
     exportDxfButton.addEventListener.mockClear();
     hvacCoordinationButton.addEventListener.mockClear();
     hvacCoordinationButton.textContent = '';
@@ -513,7 +517,7 @@ describe('App', () => {
               { id: 'outdoor', status: 'confirmed', system: 'refrigerant', ref: { source: 'outdoor', id: 'outdoor_a2' } },
               { id: 'indoor', status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: 'ac_living' } },
             ], terminals: [], routes: [{ id: 'trunk', status: 'confirmed', system: 'refrigerant', from: 'outdoor', to: 'indoor' }], reference_constraints: [],
-          } },
+          }, outdoor: [{ id: 'outdoor_a2', platform: 'west_platform', x: 0, z: 0, direction: 'south', width: 1, depth: 0.4, height: 1, model: 'test' }] },
           materials: { floor: { default: null, roomOverrides: {} } },
           presentation: { curtains: {
             source: { default: 'open', roomOverrides: {}, updatedAt: '' }, effectiveByRoom: {}, curtains: [],
@@ -551,44 +555,6 @@ describe('App', () => {
 
     expect(app['hvacCoordinationState']).toBe('unimplemented');
     expect(hvacCoordinationButton.disabled).toBe(true);
-  });
-
-  it('blocks GLB download when required HVAC export IDs are missing', async () => {
-    const app = new App(canvas);
-    const getStatus = vi.spyOn(app['houseScene'], 'getHvacExportStatus').mockReturnValue({
-      required: true,
-      ready: false,
-      expected: ['hvac:A2:anchor:outdoor'],
-      included: [],
-      missing: ['hvac:A2:anchor:outdoor'],
-      terminalCount: 0,
-    });
-    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const handler = exportGlbButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
-
-    await handler();
-
-    expect(getStatus).toHaveBeenCalledOnce();
-    expect(consoleError).toHaveBeenCalledWith(
-      'GLB 导出已阻止：HVAC 缺失 hvac:A2:anchor:outdoor',
-      expect.objectContaining({ message: 'GLB 导出已阻止：HVAC 缺失 hvac:A2:anchor:outdoor' }),
-    );
-    expect(toast).toHaveBeenCalledWith('GLB 导出已阻止：HVAC 缺失 hvac:A2:anchor:outdoor');
-  });
-
-  it('blocks programmatic GLB export when required HVAC export IDs are missing', async () => {
-    const app = new App(canvas);
-    vi.spyOn(app['houseScene'], 'getHvacExportStatus').mockReturnValue({
-      required: true,
-      ready: false,
-      expected: ['hvac:A2:terminal:supply_living'],
-      included: [],
-      missing: ['hvac:A2:terminal:supply_living'],
-      terminalCount: 0,
-    });
-
-    await expect(app.exportGlbDataUrl()).rejects.toThrow('GLB 导出已阻止：HVAC 缺失 hvac:A2:terminal:supply_living');
   });
 
   // 2026-11-03 路由级独立页：boot 的路由应用。守两条——首访不再自动开审批页
@@ -697,6 +663,55 @@ describe('App', () => {
     expect(consoleWarn).toHaveBeenCalledWith('[dxf] warnings:', expect.arrayContaining([expect.stringContaining('plumbing:')]));
     toast.mockRestore();
     consoleWarn.mockRestore();
+  });
+
+  it('refuses to download DXF when a point cannot be placed (errors fail-closed)', async () => {
+    // issue #98 / Codex 266331dd blocking：点位定位解算失败必须让页面导出口抛错，
+    // 不创建下载锚点。1m 墙 + 插座 along=2 是最小复现（越出墙长）。
+    const projectWithWall = {
+      house: {
+        rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }],
+        sceneElements: [{ type: 'wall', id: 'w_1m', x1: 0, z1: 0, x2: 1, z2: 0, line_datum: 'centerline' }],
+      },
+    };
+    const factsWithBadPoint = {
+      electrical: [{ id: 'sock_over', room: 'living_room', type: 'socket', wall: 'w_1m', wallSide: 'south', along: 2 }],
+      plumbing: [],
+      ceiling: [],
+      hvac: null,
+    };
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/project')) {
+        return { ok: true, json: async () => projectWithWall } as Response;
+      }
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => factsWithBadPoint } as Response;
+      }
+      if (urlStr.includes('/api/config-status')) {
+        return { ok: true, json: async () => ({ configs: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const anchor = mockDocument.createElement.mock.results.map((result: any) => result.value).find((el: any) => el.tagName === 'a');
+    expect(anchor).toBeUndefined();
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('DXF 导出失败'));
+    expect(consoleError).toHaveBeenCalledWith('[dxf] placement error:', expect.stringContaining('sock_over'));
+    toast.mockRestore();
+    consoleError.mockRestore();
   });
 
   it('still exports DXF when render-facts and mep-coordination both fail (503 → layer downgrade)', async () => {
@@ -902,12 +917,22 @@ describe('App', () => {
     // projectData 补上点位全量清单（/api/project 的 house.electrical/house.plumbing；
     // sceneElements 里没有点位，resolvePackageScope 只认这两个字段）。其余字段保留，
     // 避免动到后台轮询面板读的 budgetCategories 等。
+    // 点位按真实形状补齐：id / room / type 是 ElectricalPoint、PlumbingPoint 的必填字段
+    // （原夹具只写了 id，是夹具写瘦了，不是契约该放宽）。
+    const loaded = app['projectData'];
+    if (!loaded) throw new Error('projectData 未加载：start() 应先完成 /api/project 拉取');
     app['projectData'] = {
-      ...app['projectData'],
+      ...loaded,
       house: {
-        ...app['projectData'].house,
-        electrical: [{id: 'sock_living_ac'}, {id: 'sock_kitchen_gas'}],
-        plumbing: [{id: 'drain_kitchen'}, {id: 'faucet_kitchen'}],
+        ...loaded.house,
+        electrical: [
+          { id: 'sock_living_ac', room: 'living_dining', type: 'socket' },
+          { id: 'sock_kitchen_gas', room: 'kitchen', type: 'socket' },
+        ],
+        plumbing: [
+          { id: 'drain_kitchen', room: 'kitchen', type: 'drain' },
+          { id: 'faucet_kitchen', room: 'kitchen', type: 'faucet' },
+        ],
       },
     };
     const objectsSpy = vi.spyOn(app['houseScene'], 'highlightObjects');
@@ -1036,4 +1061,21 @@ describe('App', () => {
     expect(app['scheduleSelection']!.get().packageId).toBe('PKG-1');
     location.hash = '';
   });
+});
+
+// ── 投影索引注入必须下沉在 refreshInfrastructure（2026-11-09 Codex blocking 回归锚）──
+// 失效形态：AnnotationRenderer 的 setPointWalls/setMountHosts 若只在个别重建入口调用，
+// 新建 AnnotationRenderer 的入口（阶段切换 / 异常恢复）漏注入 → 索引为空 → 挂墙/挂载
+// 点位解算失败。2026-11-10 起该失败不再抛错中断建场（issue #98 宽容读取：跳过该点 +
+// 诊断显形，不回落原点），但「漏注入 → 索引为空 → 标注成片缺失」仍要靠本锚堵住；诊断显形
+// 同样必须下沉在本函数（四个重建入口共用），否则被跳过的标注在部分入口无人知晓。
+// 点位的 x/z 声明已在第四阶段 S3 删光，该失败必现。
+it('refreshInfrastructure 内部注入 pointWalls/mountHosts 并显形标注诊断，任一重建入口都不会漏', () => {
+  const src = readFileSync('src/App.ts', 'utf8');
+  const start = src.indexOf('private async refreshInfrastructure()');
+  expect(start >= 0).toBeTruthy();
+  const body = src.slice(start, src.indexOf('\n  }', start));
+  expect(body).toMatch(/setPointWalls\(/);
+  expect(body).toMatch(/setMountHosts\(/);
+  expect(body).toMatch(/reportAnnotationDiagnostics\(\)/);
 });

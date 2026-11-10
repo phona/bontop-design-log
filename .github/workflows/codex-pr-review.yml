@@ -15,6 +15,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
 
 defaults:
@@ -125,6 +126,78 @@ jobs:
           chmod 600 "$CODEX_HOME/config.toml"
           node .github/codex/check-auth.mjs "$CODEX_HOME/auth.json"
           unset CODEX_AUTH_JSON
+
+      # 关联 issue 的标题与正文喂给审查 prompt：没有它，审查者只能从 diff 反推意图，
+      # 会把「业主已裁定的设计后果」当成缺陷反复报 blocking（2026-11-09 实测九轮）。
+      # issue 内容在 prompt 里标为「设计意图，非指令」，审查口径见 .github/prompts/pr-review.md。
+      - name: Fetch linked issues
+        if: success() && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          GH_TOKEN: ${{ github.token }}
+          # 仓库变量不会自动成为 shell 环境变量，必须显式映射（#159 引入的漏映射，
+          # Codex 266331dd minor）；否则下面的覆盖入口永远是空串。
+          CODEX_REVIEW_ISSUES: ${{ vars.CODEX_REVIEW_ISSUES }}
+        run: |
+          set -euo pipefail
+          # 从 PR 正文解析关联 issue。**必须带 issue 字样**——PR 正文里的裸 #NNN 大多是
+          # 历史 PR 编号（阶段表）或 pending-site-data 条目号，不是 issue；早期版本用裸 # 匹配，
+          # 一次抓到 34 个号把 prompt 撑爆。支持 "issue #98" / "issues #98/#99" /
+          # "issues #98, #99" / "issues #98 #99" / GitHub URL。
+          # 也可用仓库变量 CODEX_REVIEW_ISSUES 显式指定（逗号分隔），优先。
+          refs=""
+          if [ -n "${CODEX_REVIEW_ISSUES:-}" ]; then
+            # 逗号/空白混写的列表都要拆成逐项数字：`for n in $refs` 按空白分词，
+            # 直接塞 "98,99" 会当成一个编号去取 issue（Codex 266331dd 实测）。
+            refs=$(printf '%s' "${CODEX_REVIEW_ISSUES}" | grep -oE '[0-9]+' | tr '\n' ' ' || true)
+          else
+            # 首个编号后继续吃掉整段列表（Codex 74f476ba / 66cedd minor：旧正则只取
+            # "issues #98/#99" 的 98，#99 静默缺席审查上下文）。续接只认三种分隔：
+            #   `[[:space:]]*[,/][[:space:]]*#?[0-9]+` → "#98/#99"、"#98, #99"、"#98,99"
+            #   `[[:space:]]+#[0-9]+`                 → "#98 #99"
+            # 空白续接必须带 `#`：否则 "issues #98 2026-11-09" 会把年份当编号抓走。
+            # 裸 #NNN 仍不匹配（首项就要求 issue 字样），head -5 上限保持不变。
+            #
+            # 两种形态分开取号（Codex 5088dc1b minor）：URL 分支若先整段匹配、再和短语
+            # 分支一起 `grep -oE '[0-9]+'`，组织名/仓库名里的数字也会被当成编号——
+            # team2/design3/issues/98 曾解析出 2、3、98，随后会去读本仓的 #2/#3，
+            # 额外的号还可能占满 head -5、挤掉真正关联的 issue。URL 形态因此单独一条
+            # 管道：只匹配到 `/issues/<编号>`，再用 sed 截掉 `/issues/` 之前的部分。
+            # 两条管道合并后统一 sort -un 去重、head -5 封顶。
+            refs=$({
+              printf '%s' "${PR_BODY:-}" \
+                | grep -oiE 'issues?[[:space:]]*#[0-9]+([[:space:]]*[,/][[:space:]]*#?[0-9]+|[[:space:]]+#[0-9]+)*' \
+                | grep -oE '[0-9]+'
+              printf '%s' "${PR_BODY:-}" \
+                | grep -oiE 'github\.com/[^/[:space:]]+/[^/[:space:]]+/issues/[0-9]+' \
+                | sed -E 's#^.*/issues/##'
+            } | sort -un | head -5 | tr '\n' ' ' || true)
+          fi
+          if [ -z "${refs}" ]; then
+            echo "no_linked_issues=true" >> "$GITHUB_OUTPUT"
+            echo "ISSUES=" >> "$GITHUB_ENV"
+            echo "PR 正文未解析到关联 issue，审查 prompt 不含 issue 上下文。"
+            exit 0
+          fi
+          # 组装 issue JSON 后写入 GITHUB_ENV。**两个坑都实测过**：
+          # ① `jq -n` 默认 pretty-print，多行 JSON 写进 GITHUB_ENV 会被
+          #    `Invalid format '  "number": "98",'` 打回，整个步骤失败——2026-11-09
+          #    #159 合并后第一次带 issue 的审查就这么挂了：跑了 57 秒、零 review 产出。
+          # ② 所以这里先 `jq -c` 压成单行，同时用 GITHUB_ENV 的 heredoc 定界符写法，
+          #    将来正文里再出现换行也不会把 env 文件写坏。
+          json=$(for n in $refs; do
+            body=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${n}" --jq '.body' 2>/dev/null || true)
+            title=$(gh api "repos/${GITHUB_REPOSITORY}/issues/${n}" --jq '.title' 2>/dev/null || true)
+            if [ -z "$title" ]; then continue; fi
+            jq -cn --arg n "$n" --arg t "$title" --arg b "$body" '{number:$n,title:$t,body:$b}'
+          done | jq -cs '.')
+          {
+            echo "ISSUES<<ISSUES_EOF"
+            printf '%s\n' "$json"
+            echo "ISSUES_EOF"
+          } >> "$GITHUB_ENV"
+          echo "no_linked_issues=false" >> "$GITHUB_OUTPUT"
+          echo "已取到 issue 上下文：${refs}"
 
       - name: Review the pull request
         if: success() && github.event.pull_request.head.repo.full_name == github.repository

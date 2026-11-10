@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { parseCeilingZones, parseElectricalPoints, parsePlumbingPoints, parseProjectHvacFacts } from './project-render-facts-schema.js';
+import { sourceFile } from './envelope-sources.js';
 import type { ElementInput, ElementKind } from './element-state.js';
 
 /**
@@ -24,12 +25,19 @@ function extractDecision(note: string | undefined): string | undefined {
   return match ? match[0] : undefined;
 }
 
-/** 承载场景构件的配置 → objectId 前缀。 */
+/**
+ * 承载场景构件的配置 → objectId 前缀（源名 → 文件路径）。
+ *
+ * 2026-11-07（issue #98 第三阶段 S6）：路径不再在本表手抄——全部取自
+ * `shared/envelope-sources.ts` 的来源注册表（S1 搬迁后 `config/ceiling.yaml` →
+ * `config/model/envelope/ceiling.yaml`，源名不变）。本表只保留「哪些源要采构件」这个
+ * 消费侧视图；漏同步路径的失效模式（台账腐烂核对静默漏判）随注册表单一真相消失。
+ */
 export const ELEMENT_SOURCES = {
-  electrical: 'config/electrical.yaml',
-  plumbing: 'config/plumbing.yaml',
-  ceiling: 'config/ceiling.yaml',
-  hvac: 'config/hvac.yaml',
+  electrical: sourceFile('electrical'),
+  plumbing: sourceFile('plumbing'),
+  ceiling: sourceFile('ceiling'),
+  hvac: sourceFile('hvac'),
 } as const;
 
 /**
@@ -137,26 +145,31 @@ export function collectElements(): ElementInput[] {
       kind: 'electrical',
       label: `${point.type} ${point.id}`,
       ...(point.room ? { room: point.room } : {}),
-      // position_status 优先于 status：前者描述「这个位置准不准」，后者描述「这项定没定」
-      ...(point.position_status ? { configStatus: point.position_status } : point.status ? { configStatus: point.status } : {}),
+      // 构件状态唯一字段（issue #98 S2-A）：只读 status。曾经的 position_status 二选一
+      // 读取已删——同一状态两个可写字段就是第二份真相。
+      ...(point.status ? { configStatus: point.status } : {}),
+      ...(point.blocker ? { blocker: point.blocker } : {}),
       ...(decision ? { decision } : {}),
+      ...(point.note ? { note: point.note } : {}),
     });
   }
 
   for (const point of parsePlumbingPoints(read(ELEMENT_SOURCES.plumbing))) {
     const note = (point as { note?: string }).note;
     const decision = extractDecision(note);
-    // 与电气同口径：position_status（位置准不准）优先于 status（这项定没定）。
-    // 早期只读 position_status，导致已有 `status: inferred` 的给排水点被误判成 undeclared。
-    const positionStatus = (point as { position_status?: string }).position_status;
-    const itemStatus = (point as { status?: string }).status;
     elements.push({
       id: `plumbing:${point.id}`,
       kind: 'plumbing',
       label: `${point.type} ${point.id}`,
       ...(point.room ? { room: point.room } : {}),
-      ...(positionStatus ? { configStatus: positionStatus } : itemStatus ? { configStatus: itemStatus } : {}),
+      ...(point.status ? { configStatus: point.status } : {}),
+      ...(point.blocker ? { blocker: point.blocker } : {}),
+      // 施工闸门（`construction_status: pending` / `not_for_construction: true`）不是状态字段，
+      // 但它们是「这条还不能进施工交底」的明确声明。只透传给待决视图，不参与状态派生。
+      ...(point.construction_status ? { constructionStatus: point.construction_status } : {}),
+      ...(point.not_for_construction ? { notForConstruction: point.not_for_construction } : {}),
       ...(decision ? { decision } : {}),
+      ...(point.note ? { note: point.note } : {}),
     });
   }
 
@@ -175,8 +188,16 @@ export function collectElements(): ElementInput[] {
       ...(zone.room ? { room: zone.room } : {}),
       // HVAC anchor 的 status（已映射成 ElementState 词汇）与出处覆盖 config_status 默认格式，
       // 使 statusSource 能说清「来自 config/hvac.yaml 的哪条 anchor、依据是什么」。
-      ...(hvac ? { configStatus: hvac.status, configStatusSource: hvac.statusSource } : {}),
+      // anchor 不在时退到分区自身的显式 status（issue #98 S1-B 补录通道；与电气/给排水同词汇）。
+      // 顺序硬约束：anchor 优先——6 个 ac_* 的 statusSource 逐位不变。
+      ...(hvac
+        ? { configStatus: hvac.status, configStatusSource: hvac.statusSource }
+        : zone.status
+          ? { configStatus: zone.status }
+          : {}),
+      ...(zone.blocker ? { blocker: zone.blocker } : {}),
       ...(decision ? { decision } : {}),
+      ...(zone.note ? { note: zone.note } : {}),
     });
   }
 

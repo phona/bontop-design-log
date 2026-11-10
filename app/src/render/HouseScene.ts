@@ -14,7 +14,8 @@ const MERGE_STATIC_UNITS = true;
 
 function isMergeableUnit(obj: THREE.Object3D): boolean {
   if (obj.userData?.type === 'railing_run') return true;
-  return obj.name.startsWith('furniture:')
+  // 家具按 userData.type 判：稳定 id（如 gbath.vanity）不带 furniture: 前缀。
+  return obj.userData?.type === 'furniture'
     || obj.name.startsWith('electrical:')
     || obj.name.startsWith('plumbing:');
 }
@@ -25,7 +26,6 @@ import type {
   CurrentScheme,
   TopicSelection,
   SceneElement,
-  CurtainPoint,
   FurnishingsYaml,
   ProjectRenderFactsProjection,
   VrfOutdoorUnit,
@@ -58,8 +58,10 @@ import { BrowserSceneDecorations } from './BrowserSceneDecorations.js';
 import { BrowserSceneMaterials } from './BrowserSceneMaterials.js';
 import { buildScene, refreshSlidingDoorGroup, type CurtainBuildEntry, type SceneMaterialProvider } from '@shared/render/SceneBuilder';
 import { buildHvacGeometry, type HvacEntityIndex } from '@shared/render/HvacGeometryBuilder';
-import { buildHvacBuilderSources, type HvacBuilderSources } from '@shared/render/HvacBuilder';
-import { buildInfrastructure, type InfrastructureWallSegment } from '@shared/render/InfrastructureBuilder';
+import { buildHvacBuilderSources, expectedHvacExportIds, type HvacBuilderSources } from '@shared/render/HvacBuilder';
+import { buildInfrastructure } from '@shared/render/InfrastructureBuilder';
+import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
+import { buildPlacementIndexes } from '@shared/placement-indexes';
 import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@shared/render/layout-bounds';
 import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
 import type { CeilingZone } from '@shared/types';
@@ -72,20 +74,15 @@ import {
   type ElementStatus,
 } from './analysis/element-state-colors.js';
 import type { WallSegment, ResolvedRoom, ResolvedOpening } from '@shared/types';
+import type { ProjectApiHouse, ProjectApiResponse } from '@shared/api-project';
+import { WALL_THICKNESS } from '@shared/furniture-placement';
+// 墙 mesh objectId → 源墙 id 的唯一实现（shared/package-scope.ts）：审计面判 suppress、
+// 以及 applyEmissiveHighlight 的二级命中都靠它把 `墙id:N`/`墙id:N.M` 桥回稳定墙 id——
+// links 的墙 select.ids 是稳定 id，不桥接就会「选了墙却高亮不到」。
+import { sourceWallIdOf } from '@shared/package-scope';
 
 export const GLASS_THICKNESS = 0.024;
 const DEFAULT_FLOOR = '#e8e0d5';
-const WALL_THICKNESS = 0.12;
-
-/**
- * 墙 mesh 的 objectId → 源墙 id。SceneBuilder.addWallElement 在开门洞拆段后写
- * `墙:N`，共墙按房间拆面后再追加 `.M`。墙 id 本身不含 ':'，故截第一个 ':' 即得源墙。
- * 审计必须按源墙 id 判 suppress，否则拆过的实体墙会被误判成玻璃幕墙。
- */
-function sourceWallIdOf(objectId: string): string {
-  const colon = objectId.indexOf(':');
-  return colon === -1 ? objectId : objectId.slice(0, colon);
-}
 
 /**
  * Area of a flat inspection mesh, including ShapeGeometry (which has no
@@ -135,6 +132,20 @@ const ELEMENT_STATE_RENDER_ORDER = 70;
 /** 标记层画在最上层（关深度测试，保证状态点穿过墙体家具也看得见）。 */
 const ELEMENT_STATE_MARKER_RENDER_ORDER = 200;
 
+/**
+ * 建场诊断的三个产地（PR #122 Codex blocking，2026-11-10）。每个产地一条构建路径、
+ * 一次整体替换：
+ * - `scene`：buildFromCatalog 的 buildScene 报告（家具摆位 / 冷凝链 / 建场期点位）；
+ * - `hvac`：rebuildHvacProjection（HVAC anchor 解算）——首建与后续重建共用这一条产地；
+ * - `points`：placeInfrastructureFixtures（刷新时重新落位的点位）。
+ * 分段的唯一目的：让「成功重建」能清掉同一产地上一次的错误，同时不误清其它产地的结论。
+ */
+interface ScenePlacementDiagnostics {
+  scene: string[];
+  hvac: string[];
+  points: string[];
+}
+
 interface CurtainRegistryEntry {
   id: string;
   roomId?: string;
@@ -145,20 +156,28 @@ interface CurtainRegistryEntry {
   blinds?: { deployed: THREE.Mesh; gathered: THREE.Mesh };
 }
 
-interface ProjectData {
-  house: {
-    rooms: Array<{ id: string; name: string; x: number; z: number; width: number; depth: number; height: number; type: string; semantic_only?: boolean; wall_finish?: string; wallOpenings?: ResolvedOpening[]; points?: import('@shared/types').CurtainPoint[] }>;
-    platform?: { id: string; name: string; x: number; z: number; width: number; depth: number; height: number };
-    ceilingZones?: import('@shared/types').CeilingZone[];
-    furnishings?: FurnishingsYaml;
-    electrical?: ElectricalPoint[];
-    sceneElements?: SceneElement[];
-  };
-  renderFactsProjection?: ProjectRenderFactsProjection;
-  renderFactsSources?: HvacBuilderSources;
-  topics: Array<{ id: string; name: string; perRoom: boolean; options: unknown[] }>;
-  budgetCategories: unknown[];
-}
+/**
+ * buildFromCatalog 的输入 = /api/project 响应中建场要用的部分（2026-11-09 issue #98
+ * 轨道③）。不再手抄第二份：从 shared/api-project.ts 的共享响应类型派生，字段层级与
+ * 服务端实际下发逐条对齐——renderFactsProjection 在**响应顶层**（疗法① PR #162 归位，
+ * routes.ts 的条件 spread 在 house 字面量闭合之后），不在 house 内；topics 是摘要
+ * （id/name/perRoom/optionCount），没有 options。
+ */
+type ProjectData = {
+  /**
+   * house 内字段取 Partial：buildFromCatalog 历来按 `?? {}` / `?? []` 容缺
+   * （furnishings / electrical / ceilingZones 等），测试与容缺路径传的就是局部数据。
+   * 契约类型 ProjectApiResponse 本身保持字段必填——严的是「服务端下发什么」，
+   * 宽的是「函数能吃进什么」，两个职责不同，不要把契约改松来迁就这里。
+   */
+  house: Partial<ProjectApiHouse>;
+  topics: ProjectApiResponse['topics'];
+  /** 与响应同层级：顶层下发，缺省即投影端点未就绪。 */
+  renderFactsProjection?: ProjectApiResponse['renderFactsProjection'];
+};
+// issue #98 S1（E7）：原 `renderFactsSources?: HvacBuilderSources` 注入位全仓无赋值，唯一实际
+// 路径是它后面的 projection-only 回退（缺 electrical → 6 个 power anchor 静默丢）。已删字段与
+// 回退，装配源改由 buildFromCatalog 内按同一构造现算（见下方 hvacSources）。
 
 export class HouseScene implements SceneApi {
   scene: THREE.Scene;
@@ -222,6 +241,15 @@ export class HouseScene implements SceneApi {
   private auditFurnishings: FurnishingsYaml = {};
   private auditSceneElements: SceneElement[] = [];
   private auditPlumbing: PlumbingPoint[] = [];
+  /**
+   * 建场诊断，**按产地分段**（PR #122 Codex blocking，2026-11-10）：
+   * 每段只由自己的构建路径整体替换，绝不追加到别的产地的段落里。因此任何重建之后
+   * `getPlacementDiagnostics()` 描述的都是「当前这次场景」——首建/上次构建的陈旧错误不会
+   * 残留，页面诊断（App.reportPlacementDiagnostics）拿到的就是本次场景缺了什么。
+   * 病根：原先是单一数组，buildFromCatalog 覆盖赋值、rebuildHvacProjection 却 push——
+   * 首建那条「outdoor_a2 断引用」即使外机恢复显示也不会消失。
+   */
+  private placementDiagnostics: ScenePlacementDiagnostics = { scene: [], hvac: [], points: [] };
   private textureManager = new TextureManager();
   private envManager: EnvironmentManager;
   private topDownLayoutBounds: LayoutBounds = DEFAULT_LAYOUT_BOUNDS;
@@ -247,6 +275,10 @@ export class HouseScene implements SceneApi {
   /** 已打开（隐藏面板）的检修口 objectId 集合。DEC-2026-10-27-R03。 */
   private readonly accessPanelOpen = new Set<string>();
   private wallSegmentIndex = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>();
+  /** 点位宿主墙索引（id → 折线段 + line_datum）：电气/给排水点位与 MEP 端点的单一解算输入。 */
+  private pointWallIndex = new Map<string, PointWall>();
+  /** mount 挂载点位的家具宿主索引（issue #98 S2）：标注层与浏览器 MEP 端点解算用。 */
+  private mountHostIndex: ReadonlyMap<string, PointMountHost> = new Map();
   private readyState: 'loading' | 'ready' | 'failed' = 'loading';
   private readyPromise: Promise<void>;
   private resolveReady!: () => void;
@@ -351,10 +383,6 @@ export class HouseScene implements SceneApi {
 
   getCamera(): THREE.PerspectiveCamera {
     return this.camera;
-  }
-
-  getExportRoot(): THREE.Group {
-    return this.exportRoot;
   }
 
   getViewOnlyRoot(): THREE.Group {
@@ -563,13 +591,18 @@ export class HouseScene implements SceneApi {
       if (!segment || segment.length < 2) return undefined;
       return { minX: Math.min(...segment.map((p) => p.x)), maxX: Math.max(...segment.map((p) => p.x)), minZ: Math.min(...segment.map((p) => p.z)), maxZ: Math.max(...segment.map((p) => p.z)) };
     };
-    const configuredFurnishing = this.auditFurnishings.guest_bath?.find((item) => item.type === 'vanity' && item.x !== undefined && item.z !== undefined);
-    const vanityBox = configuredFurnishing ? { minX: configuredFurnishing.x! - 0.20, maxX: configuredFurnishing.x! + 0.20, minZ: configuredFurnishing.z! - 0.40, maxZ: configuredFurnishing.z! + 0.40 } : aabb(this.findAuditObject('furniture:guest_bath:vanity:0'));
+    // vanity 自 issue #98 PR-3 起挂墙定位（无绝对 x/z）：审计框直接取 runtime mesh AABB，
+    // 不再按手写半宽拼框（旧 ±0.20/±0.40 是柜深 0.40 时代的口径，已随声明源删除）。
+    const vanityBox = aabb(this.findAuditObject('gbath.vanity'));
     const configuredToilet = this.auditFurnishings.guest_bath?.find((item) => item.type === 'toilet' && item.x !== undefined && item.z !== undefined);
-    const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('furniture:guest_bath:toilet:1'));
+    const toiletBox = configuredToilet ? { minX: configuredToilet.x! - 0.225, maxX: configuredToilet.x! + 0.325, minZ: configuredToilet.z! - 0.20, maxZ: configuredToilet.z! + 0.20 } : aabb(this.findAuditObject('gbath.toilet'));
     const screenBox = segmentBox(points('shower_screen_gbath'));
     const shower = this.auditPlumbing.find((candidate) => candidate.room === 'guest_bath' && candidate.type === 'shower');
-    const showerPoint = shower ? { x: shower.x, z: shower.z } : { x: 7.10, z: 2.45 };
+    // 2026-11-09 修 Codex minor：shower_gbath 的 x/z 声明已在第四阶段 S3 删光（改 wall/along 定位），
+    // 原分支因此必然回落到硬编码 (7.10, 2.45)——而单一解算器的现位是 (7.20, 2.45)，差 100mm，
+    // 且后续调 along 审计图也不跟随。改走 resolvePointPlacementInWalls，与 3D/标注/DXF/MEP 同口径。
+    const showerPlacement = shower ? resolvePointPlacementInWalls(shower, this.pointWallIndex, this.mountHostIndex).placement : undefined;
+    const showerPoint = showerPlacement ? { x: showerPlacement.x, z: showerPlacement.z } : { x: 7.10, z: 2.45 };
     const dividerZ = screenBox ? (screenBox.minZ + screenBox.maxZ) / 2 : 2.80;
     const vanitySouth = vanityBox?.minZ ?? dividerZ;
     rect(bounds.minX, bounds.maxX, dividerZ, bounds.maxZ, 'rgba(245, 158, 11, 0.18)', '#d97706', 4);
@@ -671,6 +704,9 @@ export class HouseScene implements SceneApi {
 
   async buildFromCatalog(projectData: ProjectData): Promise<void> {
     this.readyState = 'loading';
+    // 整场重建 = 三段诊断全部作废（上一次场景的结论不再描述这次场景）；
+    // 各自的产地随后重新填自己那一段，没填 = 该产地本次无诊断。
+    this.placementDiagnostics = { scene: [], hvac: [], points: [] };
     this.readyPromise = new Promise<void>((resolve, reject) => {
       this.resolveReady = resolve;
       this.rejectReady = reject;
@@ -699,6 +735,7 @@ export class HouseScene implements SceneApi {
     this.doorMeshes = [];
     this.slidingDoorGroups.clear();
     this.wallSegmentIndex.clear();
+    this.pointWallIndex.clear();
     this.roomMeta.clear();
     this.auditFurnishings = projectData.house.furnishings ?? {};
     this.auditSceneElements = projectData.house.sceneElements ?? [];
@@ -708,11 +745,17 @@ export class HouseScene implements SceneApi {
     if (this.topicGroup.parent !== this.scene) this.scene.add(this.topicGroup);
 
     const input = parseSceneInput({
-      rooms: projectData.house.rooms,
+      // rooms 缺省按空场景处理：入参是 Partial（容缺路径与测试只传局部数据），
+      // 与下方 furnishings/electrical 的 `?? {}` / `?? []` 同一口径。
+      rooms: projectData.house.rooms ?? [],
       platform: projectData.house.platform,
       elements: projectData.house.sceneElements,
       ceilingZones: projectData.house.ceilingZones,
       furnishings: projectData.house.furnishings,
+      // 未按阶段过滤的全量家具——仅用于 mountHosts 定位宿主（2026-11-09 结构修复：
+      // 阶段可见性不该让挂载点位失去宿主）。缺省时 SceneBuilder 回退到 furnishings。
+      // 直传字段（不再用条件展开）：字段声明在 scene-input.ts，excess property check 才能生效。
+      furnishingsAll: projectData.house.furnishingsAll,
       electrical: projectData.house.electrical,
     });
     const materialProvider: SceneMaterialProvider = {
@@ -721,18 +764,58 @@ export class HouseScene implements SceneApi {
       frostedPrivacy: () => this.materials.makeFrostedPrivacyMaterial(),
       showerScreen: () => this.materials.makeShowerScreenMaterial(),
       slidingDoorGlass: ({ paneWidth }) => this.materials.makeFlutedGlassMaterial(paneWidth),
-      hingedGlassDoorFrame: () => new THREE.MeshStandardMaterial({ color: 0x202328, metalness: 0.7, roughness: 0.3 }),
-      hingedGlassDoorGlass: () => this.materials.makeShowerScreenMaterial(),
     };
+    // 暖通实体装配源（issue #98 S1，E7）：原 `projectData.renderFactsSources ?? buildHvacBuilderSources({projection})`
+    // 回退产出 **projection-only 源**——projection 没有 electrical，6 个 power anchor 解析失败被
+    // HvacBuilder 静默 continue 丢掉（A §2c 实测丢 6/47），且 renderFactsSources 全仓无赋值、
+    // 回退是唯一实际路径。现删回退与死字段，首建即按 SceneBuilder/DXF/verify 同一构造补
+    // electrical + pointWalls/mountHosts（App 随后 rebuildHvacProjection 传的同源完整集）。
+    // 投影随 /api/project 一次下发，位置是**响应顶层**（疗法① PR #162 归位；2026-11-09 起
+    // 路由的条件 spread 已移到 house 字面量之外）。此前消费方按顶层读而路由发在 house 内，
+    // 顶层恒 undefined → HVAC 源空 → 三件冷凝链家具静默缺失。
+    // 外机随投影一起下发（PR #122 Codex blocking，2026-11-10）：implemented 投影带
+    // `hvac.outdoor`，`buildHvacBuilderSources` 在没有 hvac facts 的路径上取它，首建因此
+    // 能解出 confirmed `outdoor_a2`——不再产生「ref outdoor 宿主不在来源里」这条本可避免
+    // 的诊断（该诊断曾长期残留并让 #181 的导出守卫拒绝一份完好场景）。
+    // 点位定位索引走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）：墙取本次建场
+    // 墙几何，mountHosts 取**全量** furnishingsAll（一期不显示的柜仍可能是已交付点位的宿主；
+    // 缺省回退 furnishings，与 SceneBuilder 的 hostFurnishings 同口径）。
+    const placementIndexes = buildPlacementIndexes({
+      geometry: { walls: input.walls },
+      furnishings: input.furnishingsAll ?? input.furnishings ?? {},
+    });
+    const hvacSources: HvacBuilderSources | undefined = projectData.renderFactsProjection
+      ? buildHvacBuilderSources({
+        projection: projectData.renderFactsProjection,
+        electrical: projectData.house.electrical ?? [],
+        pointWalls: placementIndexes.pointWalls,
+        mountHosts: placementIndexes.mountHosts,
+      })
+      : undefined;
+    // HVAC **实体**不在这次 buildScene 里建：这里只给 `diagram`（供冷凝链锚点派生），
+    // entity 由本方法末尾唯一的 HVAC 构建路径 rebuildHvacProjection 建（PR #122 Codex
+    // blocking，2026-11-10）。理由：诊断必须只有一个产地，重建时才能整体替换而不是追加——
+    // buildScene 的 report 里混着家具/冷凝链/点位诊断，若 HVAC 诊断也混进去，成功重建也
+    // 清不掉它（首建那条 outdoor_a2 残留就是这么来的）。
+    const hvacDiagram = projectData.renderFactsProjection?.hvac.status === 'implemented'
+      ? projectData.renderFactsProjection.hvac.diagram
+      : undefined;
     const result = buildScene({
       ...input,
       options: {
         materialProvider,
         curtainRooms: input.rooms,
-        hvac: projectData.renderFactsProjection ? { projection: projectData.renderFactsProjection, sources: projectData.renderFactsSources ?? buildHvacBuilderSources({ projection: projectData.renderFactsProjection }) } : undefined,
+        hvac: hvacDiagram && hvacSources ? { diagram: hvacDiagram, sources: hvacSources } : undefined,
+        // 主卫冷凝链穿墙锚点（issue #98 PR-10）：缺它三件链条家具解不出锚点、会带诊断跳过。
+        condensatePenetration: projectData.house.condensatePenetration,
       },
     });
     for (const child of [...result.exportRoot.children]) this.exportRoot.add(child);
+    // 建场诊断（issue #98 PR-3）：定位声明解不出来的件不会进场景，逐条留在这里由 App 显形
+    // （DXF 导出与 verify:furniture 同口径判失败）——页面同样不许静默少件。
+    // 整体**替换** scene 段（不是追加）：本次建场的结论就是这一段，上一次的结论作废。
+    this.placementDiagnostics.scene = result.report.placementDiagnostics ?? [];
+    for (const diagnostic of this.placementDiagnostics.scene) console.error('[scene] furniture placement:', diagnostic);
     for (const child of [...result.viewOnlyRoot.children]) {
       if (child.userData.type === 'platform') this.viewOnlyRoot.add(child);
       else this.builderViewRoot.add(child);
@@ -748,17 +831,18 @@ export class HouseScene implements SceneApi {
     this.doorMeshes = index.doorMeshes;
     this.slidingDoorGroups = index.slidingDoorGroups;
     this.wallSegmentIndex = index.wallSegments;
-    this.hvacEntityIndex = index.hvac;
-    this.hvacProjection = projectData.renderFactsProjection;
-    this.hvacExpectedExportIds = [...this.hvacEntityIndex.all.keys()];
+    this.pointWallIndex = index.pointWalls;
+    this.mountHostIndex = index.mountHosts;
+    // HVAC 的三份状态（实体索引 / 当前投影 / 导出期望集）不在这里赋值：本次 buildScene
+    // 不建 HVAC 实体，它们由本方法末尾的 rebuildHvacProjection（唯一 HVAC 构建产地）设置。
     for (const [id, curtain] of index.curtains) this.registerSharedCurtain(curtain);
-    for (const room of projectData.house.rooms) {
+    for (const room of projectData.house.rooms ?? []) {
       this.roomMeta.set(room.id, { wall_finish: room.wall_finish, wallOpenings: room.wallOpenings });
     }
     if (projectData.house.platform) this.platform = projectData.house.platform;
 
     this.topDownLayoutBounds = computeLayoutBounds({
-      rooms: projectData.house.rooms,
+      rooms: projectData.house.rooms ?? [],
       platform: projectData.house.platform,
       elements: projectData.house.sceneElements,
       wallThickness: WALL_THICKNESS,
@@ -792,7 +876,12 @@ export class HouseScene implements SceneApi {
       this.exportRoot,
     );
     // HVAC 实体（26 组 ~106 mesh、仅 4 种材质外观）：静态、整组重建，合批收益大。
-    this.batchHvacEntities();
+    // **唯一构建产地**（PR #122 Codex blocking，2026-11-10）：首建也走 rebuildHvacProjection，
+    // 不在这里另起一条。于是「HVAC 诊断」只有一个生命周期——每次（重）建替换上一次的结论，
+    // 成功重建即清掉首建/上次构建的错误（此前 rebuildHvacProjection 只追加，outdoor_a2
+    // 那条首建诊断残留下来，让 #181 的导出守卫拒绝一份完好场景）。
+    // 它在 doors 合批之前调用：rebuildHvacProjection 内部完成 hvac scope 合批。
+    this.rebuildHvacProjection(projectData.renderFactsProjection, hvacSources);
     // 铰链门（~42 mesh）：静态无开合动画；换色经 setDoorMaterial → updateScopeMaterials 桥接。
     this.batcher.batchScope(
       'doors',
@@ -812,21 +901,20 @@ export class HouseScene implements SceneApi {
     }
   }
 
+  /**
+   * 从主题清单抽材质外观喂 TextureManager。
+   *
+   * **存量漂移（2026-11-09 类型对照发现，本次只记录不擅改）**：/api/project 的 topics 是
+   * 摘要（id/name/perRoom/optionCount），**服务端从未下发 options**——本方法此前按手抄
+   * 类型读 `topic.options`，运行时恒为 undefined，故实际一直返回空数组。现在类型按服务端
+   * 真实下发声明，这一失效随之显形。要把主题材质真正接进 TextureManager，候选通道有两条：
+   * ① /api/project 的 materialPreview.materials（已下发 floor/paint 的 appearance，前端
+   * 目前只消费 atlases）；② /api/topics 完整清单。选哪条属渲染行为决策，不在本次
+   * 「边界上类型」范围内，移交记录见 PR 正文。
+   */
   private static extractMaterials(topics: ProjectData['topics']): Array<{ id: string; appearance: MaterialAppearance }> {
-    const seen = new Set<string>();
-    const materials: Array<{ id: string; appearance: MaterialAppearance }> = [];
-    for (const topic of topics) {
-      if (!topic.options) continue;
-      for (const option of topic.options as Array<{ id: string; data?: { appearance?: MaterialAppearance } }>) {
-        const app = option.data?.appearance;
-        if (!app) continue;
-        const key = JSON.stringify(app);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        materials.push({ id: option.id, appearance: app });
-      }
-    }
-    return materials;
+    void topics;
+    return [];
   }
 
   setSelection(topic: string, optionId: string, selection?: TopicSelection): void {
@@ -836,13 +924,44 @@ export class HouseScene implements SceneApi {
     }
   }
 
+  /**
+   * HVAC 实体构建——**全仓唯一产地**（首建 buildFromCatalog 与后续 refreshInfrastructure
+   * 都走这里，PR #122 Codex blocking，2026-11-10）。
+   *
+   * 诊断随之整体替换 `hvac` 段：本次构建就是当前场景的全部 HVAC 结论，上一次（哪怕是首建
+   * 缺源时）的结论在这里作废。原先这里是 `push`，所以缺 outdoor 的首建诊断在成功重建后
+   * 仍然存活，旧导出守卫据此拒绝导出——守卫没错，是诊断生命周期错了。
+   */
   rebuildHvacProjection(projection: ProjectRenderFactsProjection | undefined, sources: HvacBuilderSources = buildHvacBuilderSources({ projection })): void {
     this.batcher.clearScope('hvac');
     this.clearRoot(this.exportRoot, (object) => object.name === 'HVAC_CONFIRMED_ENTITIES');
-    this.hvacEntityIndex = buildHvacGeometry(this.exportRoot, projection, sources).index;
+    const built = buildHvacGeometry(this.exportRoot, projection, sources);
+    this.hvacEntityIndex = built.index;
     this.hvacProjection = projection;
-    this.hvacExpectedExportIds = [...this.hvacEntityIndex.all.keys()];
+    // anchor 解析失败诊断（issue #98 S1，E7）上浮到页面同一通道，不静默少件。
+    this.placementDiagnostics.hvac = [...built.diagnostics];
+    for (const diagnostic of this.placementDiagnostics.hvac) {
+      console.error('[scene] hvac placement:', diagnostic);
+    }
+    // 期望集独立化（issue #98 S1，E7）：见 expectedHvacExportIdsFor。
+    this.hvacExpectedExportIds = this.expectedHvacExportIdsFor(projection);
     this.batchHvacEntities();
+  }
+
+  /**
+   * 导出期望集（issue #98 S1，E7 独立化）：按**声明态**枚举可渲染实体 id——只读 diagram，
+   * 不解算位置、不读已建索引。
+   *
+   * 唯一调用点 = rebuildHvacProjection（HVAC 构建的唯一产地，2026-11-10 起首建也走它）。
+   * 旧的 `[...this.hvacEntityIndex.all.keys()]`
+   * 与「期望集过同一装配解算器」是同一个病：场景丢了实体，期望里也没有，ready 恒真（A §4.1）。
+   * 声明态与解算解耦后，源缺件（少传 pointWalls/electrical）会以 missing + ready=false 显形。
+   * 判别性测试：app/src/scene/HouseScene.test.ts「期望集独立化」。
+   */
+  private expectedHvacExportIdsFor(projection: ProjectRenderFactsProjection | undefined): string[] {
+    return projection?.hvac.status === 'implemented'
+      ? expectedHvacExportIds(projection.hvac.planId, projection.hvac.diagram)
+      : [];
   }
 
   private batchHvacEntities(): void {
@@ -1716,12 +1835,22 @@ export class HouseScene implements SceneApi {
   }
 
   loadElectricalTopology(topology: import('@shared/types').ElectricalTopology, points: ElectricalPoint[]): void {
-    this.electricalTopologyRenderer.render(topology, points);
+    // 点位宿主墙/家具索引随场景重建刷新，这里取当前值注入（issue #98 S3：回路图坐标走单一解算，
+    // 沿墙/挂载点位不再声明绝对 x/z——与标注层、3D 基础设施、DXF、MEP 同一解算器）。
+    this.electricalTopologyRenderer.render(topology, points, {
+      pointWalls: this.pointWallIndex,
+      mountHosts: this.mountHostIndex,
+    });
     this.electricalTopologyRenderer.setVisible(false);
   }
 
   getElectricalTopologySummary(): import('./ElectricalTopologyRenderer.js').ElectricalTopologyRenderSummary {
     return this.electricalTopologyRenderer.getSummary();
+  }
+
+  /** 回路图跳过原因（issue #98 S3 诊断显形通道）。 */
+  getElectricalTopologyDiagnostics(): readonly string[] {
+    return this.electricalTopologyRenderer.getDiagnostics();
   }
 
   clearElectricalTopology(): void {
@@ -1899,6 +2028,16 @@ export class HouseScene implements SceneApi {
     this.requestRender();
   }
 
+  /** 点位宿主墙索引（issue #98 S1）：标注层解析坐标与 MEP 端点解算共用。 */
+  getPointWalls(): ReadonlyMap<string, PointWall> {
+    return this.pointWallIndex;
+  }
+
+  /** mount 挂载点位的家具宿主索引（issue #98 S2）：标注层与浏览器 MEP 端点解算共用。 */
+  getMountHosts(): ReadonlyMap<string, PointMountHost> {
+    return this.mountHostIndex;
+  }
+
   placeInfrastructureFixtures(electrical: ElectricalPoint[], plumbing: PlumbingPoint[]): void {
     this.auditPlumbing = plumbing;
     this.batcher.clearScope('plumbing');
@@ -1906,10 +2045,18 @@ export class HouseScene implements SceneApi {
     const result = buildInfrastructure({
       electrical,
       plumbing,
-      wallSegments: this.wallSegmentIndex as ReadonlyMap<string, InfrastructureWallSegment[]>,
+      // 点位宿主墙索引（issue #98 S1）：与 buildScene 首帧、DXF、MEP 共用同一解算。
+      pointWalls: this.pointWallIndex,
     });
     this.electricalMeshes = result.electrical;
     this.infrastructureMeshes = result.objects;
+    // 点位定位诊断（issue #98 S1）：沿墙点位解算失败（缺 along/越界/断引用）不出场景，
+    // 逐条显形——与家具摆位诊断同一通道，页面同样不许静默少件。
+    // 整体替换 points 段：本次落位就是这些点位的当前结论（不是把上次的结论再追加一遍）。
+    this.placementDiagnostics.points = [...result.placementDiagnostics];
+    for (const diagnostic of this.placementDiagnostics.points) {
+      console.error('[scene] point placement:', diagnostic);
+    }
     for (const model of result.objects) {
       this.decorations.addMarker(model);
       if (MERGE_STATIC_UNITS && isMergeableUnit(model)) mergeUnitMaterials(model);
@@ -1987,6 +2134,21 @@ export class HouseScene implements SceneApi {
     return this.furnitureMeshes;
   }
 
+  /**
+   * 当前场景的定位诊断（家具摆位 / 冷凝链 / HVAC anchor / 点位落位）：非空 = 场景里有件
+   * 因定位声明解析失败而缺席。页面诊断（App.reportPlacementDiagnostics）据此显形。
+   *
+   * 返回的是**三个产地的当前结论**（见 ScenePlacementDiagnostics）：每段在各自构建路径上
+   * 被整体替换，所以这里永远描述「当前这次场景」，不含任何已重建掉的陈旧错误。
+   */
+  getPlacementDiagnostics(): string[] {
+    return [
+      ...this.placementDiagnostics.scene,
+      ...this.placementDiagnostics.hvac,
+      ...this.placementDiagnostics.points,
+    ];
+  }
+
   getEnvironmentManager(): EnvironmentManager {
     return this.envManager;
   }
@@ -1995,13 +2157,14 @@ export class HouseScene implements SceneApi {
     return this.floorMeshes;
   }
 
-  getFurniturePosition(objectId: string): { x: number; z: number; rotation: number; sourceIndex?: number } | null {
+  getFurniturePosition(objectId: string): { x: number; z: number; rotation: number; furnishingType?: string; sourceIndex?: number } | null {
     for (const mesh of this.furnitureMeshes) {
       if (mesh.userData.objectId === objectId) {
         return {
           x: mesh.position.x,
           z: mesh.position.z,
           rotation: mesh.rotation.y * 180 / Math.PI,
+          ...(typeof mesh.userData.furnishingType === 'string' ? { furnishingType: mesh.userData.furnishingType } : {}),
           ...(typeof mesh.userData.sourceIndex === 'number' ? { sourceIndex: mesh.userData.sourceIndex } : {}),
         };
       }
@@ -2132,7 +2295,7 @@ export class HouseScene implements SceneApi {
    * 匹配口径与 highlightObjects 相同（userData.objectId / roomId），路线对象额外
    * 展开两端 endpoint ref；落色与恢复统一走 highlightStack 分层栈——旧实现自带一套
    * clone/setTimeout 簿记，与包级高亮互不相识：包高亮窗口内它会把橙色当原色捕获，
-   * 到期写回橙色（永久卡橙），且数组材质墙（GLB 按 group 分材质）在这里直接抛
+   * 到期写回橙色（永久卡橙），且数组材质墙（墙按 group 分材质）在这里直接抛
    * TypeError（App 的 onVisualCommand 没有 catch，会打断命令处理）。
    */
   highlightObject(objectId: string) {
@@ -2189,8 +2352,14 @@ export class HouseScene implements SceneApi {
       if (!mesh.userData) return;
       const objectId = mesh.userData.objectId as string | undefined;
       const roomId = mesh.userData.roomId as string | undefined;
-      if (!((objectId && targetIds.has(objectId)) || (roomId && targetIds.has(roomId)))) return;
-      // 数组材质（GLB 墙按 group 分材质）必须逐元素处理：旧守卫只挡 !mat，mat.emissive
+      // 二级命中（2026-11-07 issue #98 S4 评审 blocking）：墙 mesh 的 objectId 在开门洞
+      // 拆段/共墙拆面后是 `墙id:N`/`墙id:N.M`，而 links 的墙 select.ids 是稳定墙 id
+      // （面层配方下沉后工作包按宿主对象 id 选墙）——只按 objectId 精确匹配会让这 15 面
+      // 墙静默不高亮（业主点包没反应，与 2026-11-02 那次 ids no-op 同一失效类）。
+      // sourceWallIdOf 把拆段/拆面后缀桥回源墙 id再比一次。
+      const wallId = objectId ? sourceWallIdOf(objectId) : undefined;
+      if (!((objectId && targetIds.has(objectId)) || (wallId && targetIds.has(wallId)) || (roomId && targetIds.has(roomId)))) return;
+      // 数组材质（墙按 group 分材质）必须逐元素处理：旧守卫只挡 !mat，mat.emissive
       // 对数组是 undefined，.set 直接抛 TypeError——被 App 的「高亮失败不打断审批流」
       // 静默吞掉，traverse 在第一个数组材质墙处中断：后续范围全部不高亮、末尾的
       // requestRender 也不执行，业主看到「点了没反应」（2026-11-02 浏览器实证，
@@ -2500,7 +2669,7 @@ export class HouseScene implements SceneApi {
 
   /**
    * 吊顶分区·逐区明细 + 算量（与 shared/ceiling-takeoff.ts 同口径，数据源是场景里的
-   * `userData.ceiling` 声明 blob——浏览器不直读 config/ceiling.yaml）。
+   * `userData.ceiling` 声明 blob——浏览器不直读 config/model/envelope/ceiling.yaml）。
    */
   inspectCeilingZones(): {
     takeoff: CeilingTakeoff;
@@ -2943,9 +3112,9 @@ export class HouseScene implements SceneApi {
       }
     }
 
-    if (type === 'furniture' && objectId.startsWith('furniture:')) {
-      const parts = objectId.split(':');
-      const furnitureType = parts[2] ?? '';
+    if (type === 'furniture') {
+      // 下标 ID 取类型段；稳定 ID（如 gbath.vanity）本身即对象名，直接显示。
+      const furnitureType = objectId.startsWith('furniture:') ? (objectId.split(':')[2] ?? '') : objectId;
       return roomName ? `${roomName} · 家具 · ${furnitureType}` : `家具 · ${furnitureType}`;
     }
     const label = typeLabel[type] ?? type;
@@ -3279,16 +3448,6 @@ export class HouseScene implements SceneApi {
 
   getGhostPosition(): { x: number; z: number } | null {
     return this.decorations.getGhostPosition();
-  }
-
-  /** GLB 导出前挂回原始 mesh（GLTFExporter 不认 BatchedMesh）；导出后须 reapplyStaticBatches。 */
-  restoreStaticBatches(): void {
-    this.batcher.restoreScopes();
-  }
-
-  reapplyStaticBatches(): void {
-    this.batcher.reapplyScopes();
-    this.requestRender();
   }
 
   dispose(): void {

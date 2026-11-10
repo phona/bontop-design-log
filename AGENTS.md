@@ -7,6 +7,29 @@
 - 历史记录中的“已施工/拆改成本”判断仅作为历史背景，不自动作为当前方案约束。
 - 若后续状态变化（交房、量房、墙体/机电/窗帘施工、入住），由业主更新本节；更新前的状态是设计讨论和验证的唯一当前口径。
 
+### 迁移冻结区（issue #98）
+
+> 由来：issue #98（统一工程对象模型）迁移期间，冻结对象的几何与对象事实改在集成分支上用新格式演进，避免 master 与集成分支对同一对象双头写、合入时互相覆盖。
+
+本次登记**客卫东墙组**（guest_bath 东墙洗漱带及其电气/上下水点位）：
+
+| 冻结对象 | 范围 | 冻结起点 | 解冻条件 |
+| --- | --- | --- | --- |
+| guest_bath vanity（台盆柜，`config/house.yaml` guest_bath furnishings） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| robot_dock_gbath（机器人基站，`config/house.yaml` guest_bath furnishings） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| mirror_cabinet_gbath（镜柜，`config/house.yaml` guest_bath furnishings） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| sock_gbath_robot（电气点位，`config/electrical.yaml`） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| faucet_gbath_vanity（给水点位，`config/plumbing.yaml`） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| drain_gbath_vanity（排水点位，`config/plumbing.yaml`） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+| 主卫条带柜组 7 件（`config/house.yaml` master_bedroom furnishings：mb_vanity_base_cabinet / mb_vanity_lower_board / mb_vanity_main_board / mb_vanity_pvc_box / mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase / condensate_pipe_ac_outlet） | 几何与对象事实 | 2026-11-06 | 集成分支 `arch/object-first` 总 PR 合入 master |
+
+- **主卫条带柜组归属说明**：该组 7 件声明在 `config/house.yaml` 的 master_bedroom 段下，物理位置却在主卫（master_bath 隔墙西侧的套间条带）；表中按声明位置登记，迁移时按物理归属解析，不得因声明房间把条带柜误判为卧室对象。
+- **锚点引用不迁**：master_wardrobe_tall_240 / master_north_wall_wardrobe_950 / master_wardrobe_top_pelmet 仅作为锚点被引用（anti-penetration waivers 与 clearance 基准），本阶段不迁、不单独登记。
+
+- **冻结含义**：上表对象的几何与对象事实只在集成分支 `arch/object-first` 上用新格式改，master 上不改。
+- **冻结不覆盖商业与验收记录**：价格、状态、audit 追加仍可在 master 改。
+- **解冻**：`arch/object-first` 总 PR 合入 master 时整组自动解冻，本小节随之撤销或改写。
+
 ## 页面只读铁律（2026-11-04 起）
 
 > 由来：审批流引入页面直写配置后，导出等多副本消费方把不同新鲜度的缓存副本拼进同一交付物（DXF 导出 PR #61/#63 的"新鲜性"主题审查了 7 轮）。2026-11-04 业主拍板架构收口。
@@ -27,15 +50,15 @@
 
 > Blender 主线已暂停并冷归档到 `scripts/archive/blender-pipeline/`；本文件中的 Blender-specific 约束仅在明确恢复冷归档时适用。几何、坐标、电气、家具、碰撞与数据一致性铁律始终有效。
 >
-> `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/layout/overlay.yaml` 出一切意图。代码只读、只执行，禁止推断。
+> `config/layout/model-geometry.yaml` 是户型几何的唯一权威源；`config/model/envelope/{openings,floor-zones,finish-defaults}.yaml`（S1 起替代原 `config/layout/overlay.yaml`，合并入口 `server/overlay-merge.ts` 的 `parseOverlayFiles()`）出一切意图。代码只读、只执行，禁止推断。
 >
 > **视觉反馈类迭代**（业主看图说话 → 改模型 → 再看）开工前读 `docs/visual-change-playbook.md`，并跑 `npm run gate:visual` 确认客户端渲染的就是当前 config（config watch 曾因单文件监听挂 inode、原子替换写后静默断线而不可靠，2026-10-24 已改目录级监听修复；gate 对 schema 拒绝类 STALE 仍是保险丝）。
 >
 > `parse_cad.py` 仅用于从 CAD 初始化或参考导出，默认不覆盖 `model-geometry.yaml`。需要新行为 → 新增 element type + 声明式配置。
 >
-> **CAD 出图（2026-11-03 起）**：施工 DXF 导出双入口——web「导出 DXF」按钮与 `npm run export:dxf`（产物写 `tmp/capture/`，过程物不进 git），共用唯一装配实现 `shared/dxf/project-dxf.ts`。口径：独立新图、1:1 毫米、北朝上、原点归零（不对齐开发商原图坐标），坐标换算只许 `toDxf()` 一处（`dxf_x = local_x*1000, dxf_y = -local_z*1000`）；单文件多图层（A-WALL（含 wall_run 实体墙）/A-ROOM（非矩形房间优先 points 轮廓）/E-*/C-CEIL/F-FLOOR/M-HVAC/M-ROUTE/M-CAND 等，图层清单即 `DXF_LAYERS`）；墙洞切分与 along 插值复用 `shared/wall-segments.ts`、家具摆位复用 `shared/furniture-placement.ts`、圆角折线采样复用 `shared/arc-polyline.ts`（均自 SceneBuilder/CurtainGeometry 抽出，3D 与 DXF 同口径）；MEP 折线复用 `resolveMepRoutes/mepRoutePoints`，**候选/需求示意/待复核路线及其 junction 隔离 M-CAND 图层（非放线依据，禁止混入 M-ROUTE 交付）**，内机 anchor 经 `resolveMepEndpoint` 解析 ref 引用；P-POINTS 中抽象服务点（note「抽象服务点/不得开槽」或 inferred/pending 态）必须带「禁止开槽待SKU」标注 + 告警。饰面标注顶标高直接用声明 `height`（height 是顶标高不是带高）。中文 TEXT 走 UTF-8 + `$DWGCODEPAGE ANSI_936`，乱码时 `labels:'ascii'` 一行退路。改图层/口径必须同步本行与 `shared/dxf/project-dxf.ts` 头注。
+> **CAD 出图（2026-11-03 起）**：施工 DXF 导出双入口——web「导出 DXF」按钮与 `npm run export:dxf`（产物写 `tmp/capture/`，过程物不进 git），共用唯一装配实现 `shared/dxf/project-dxf.ts`。**定位失败即导出失败（fail-closed，issue #98）**：家具摆位解析失败与电气/给排水点位定位解算失败一律进 `errors`，两个入口非空即抛错/非零退出，禁止降级为告警后交付缺点位图纸。口径：独立新图、1:1 毫米、北朝上、原点归零（不对齐开发商原图坐标），坐标换算只许 `toDxf()` 一处（`dxf_x = local_x*1000, dxf_y = -local_z*1000`）；单文件多图层（A-WALL（含 wall_run 实体墙）/A-ROOM（非矩形房间优先 points 轮廓）/E-*/C-CEIL/F-FLOOR/M-HVAC/M-ROUTE/M-CAND 等，图层清单即 `DXF_LAYERS`）；墙洞切分与 along 插值复用 `shared/wall-segments.ts`、家具摆位复用 `shared/furniture-placement.ts`、圆角折线采样复用 `shared/arc-polyline.ts`（均自 SceneBuilder/CurtainGeometry 抽出，3D 与 DXF 同口径）；MEP 折线复用 `resolveMepRoutes/mepRoutePoints`，**候选/需求示意/待复核路线及其 junction 隔离 M-CAND 图层（非放线依据，禁止混入 M-ROUTE 交付）**，内机 anchor 经 `resolveMepEndpoint` 解析 ref 引用；P-POINTS 中抽象服务点（note「抽象服务点/不得开槽」或 inferred/pending 态）必须带「禁止开槽待SKU」标注 + 告警。饰面标注顶标高直接用声明 `height`（height 是顶标高不是带高）。中文 TEXT 走 UTF-8 + `$DWGCODEPAGE ANSI_936`，乱码时 `labels:'ascii'` 一行退路。改图层/口径必须同步本行与 `shared/dxf/project-dxf.ts` 头注。
 >
-> **检视态叠加层（inspection-only）现役清单**：`wall_region`（贴砖，层标签 `wall-tile`）、`paint_region`（涂漆，层标签 `wall-paint`）、`floor_region`/吊顶分区、`pipe-chase`（管井）、HVAC 协调态、MEP 总览、电气回路归属。它们必须**平级且互不引用**：每个 `set*InspectionVisible` 只遍历自己的层标签、按 `userData.inspectionInitial` 快照可逆恢复，禁止互相调用、禁止抽共享材质 helper（pipe-chase 的关闭分支硬编码默认值，会丢掉其他层的初始态）。`paint_region` 额外要求平面朝声明的 `room` 侧外偏移，否则同墙的贴砖面与另一侧涂漆面共面 z-fighting。
+> **检视态叠加层（inspection-only）现役清单**：`wall_region`（贴砖，层标签 `wall-tile`）、`paint_region`（涂漆，层标签 `wall-paint`）、`floor_region`/吊顶分区、`pipe-chase`（管井）、HVAC 协调态、MEP 总览、电气回路归属。它们必须**平级且互不引用**：每个 `set*InspectionVisible` 只遍历自己的层标签、按 `userData.inspectionInitial` 快照可逆恢复，禁止互相调用、禁止抽共享材质 helper（pipe-chase 的关闭分支硬编码默认值，会丢掉其他层的初始态）。`paint_region` 额外要求平面朝声明的 `room` 侧外偏移，否则同墙的贴砖面与另一侧涂漆面共面 z-fighting。叠加层的点位坐标同样只认单一解算（2026-11-07 issue #98 S3，含「电气回路归属」层）：`ElectricalTopologyRenderer` 的节点/marker 坐标走 `resolvePointPlacementInWalls`（HouseScene 注入墙段/家具宿主索引），解算失败记诊断显形并计入 summary 的 skipped 计数——**不许直读点位声明 x/z 后静默 continue**（S3 删 x/z 时该层曾因此静默跳掉 45/74 个成员 marker 与 2 块面板节点，review B1）。
 
 ## 坐标系约定
 
@@ -46,7 +69,7 @@
   - `+z` = 南，`-z` = 北
 - 俯视图约定：北朝上（`-z` 方向），南朝下（`+z` 方向）。
 - `model-geometry.yaml` 使用 DXF 原值（局部坐标），允许 `z < 0`（如入户花园向北凸出）。
-- `overlay.yaml` 必须与 `model-geometry.yaml` 使用同一坐标系，不得保留独立偏移。
+- envelope 意图文件（openings/floor-zones/finish-defaults，原 `overlay.yaml`）必须与 `model-geometry.yaml` 使用同一坐标系，不得保留独立偏移。
 - 全局坐标与局部坐标换算：
   - `DXF_mm = (local_m + origin) / scale`
   - `local_m = DXF_mm * scale - origin`
@@ -96,10 +119,27 @@
 ## 决策与调研工作流铁律
 
 > 2026-10-11 增补。由来：六台内机全带泵这一配置从 `DEC-2026-10-03-R6` 到 `DEC-2026-10-04-R1` 从未被论证——R6 只判了主卧一间，R1 以"升级项 / 可省 3D 面板费"覆盖其余五间，无任何一节说明那五间的重力路线为何不成立；同期 `docs/hvac/hvac-pitfall-audit-20261011.md` v4.2 删掉三条已研究证据（容量退化对比、17dB 噪音依据、主卧玻璃负荷核算），而 `test:app` / `typecheck` / `gate:visual` 全绿。以下六条堵这两类失效。
+>
+> 2026-11-08 业主裁定（issue #98 第六阶段）：**DEC 体系退役**，`docs/decisions/` 与 `config/decision-registry.yaml` 均已退场，本文出现的 `DEC-…` 编号一律指 git 历史里的旧记录（可经 `config/decision-knowledge.yaml` 的 `retired` 段定位到原文文件+行），**不再是任何写入通道**。新的落点只有四条，见第 2 条。
 
-1. **"我们选了 X"必须同时生成一组"X 不工作时"的问题。** 配置/选型落笔时，对每个新引入的部件问：待机、停机、故障三种态下它在做什么、留下什么、谁清理、多久一次、要不要拆顶。答案进 `docs/pending-site-data.md` 或该轮 `open_questions`，禁止留空。（例：六台带泵 → 每台残余水量、接水盘可否不拆吊顶清洗、能否旁通当重力用、有无防滞水设计、残水与回风路径距离。）
+> 2026-11-09 业主裁定（issue #98 第六阶段 S4，**element-state 与 round 强制的去留**）：
+> ① **构件级工程状态机制整体保留**——数据层（对象 `status`/`blocker` + `shared/element-blockers.ts` 门禁）、
+> 投影（`npm run state:project` / `GET /api/element-state`）、3D 状态叠加层与 agent 查询出口全部留用。
+> 理由：它已是纯对象式（只读 config、不查任何表），且 census 申报缺口校验是全仓**唯一**的
+> 「构件没申报状态」机器拦截，无替代；3D 叠加层是 DEC-2026-10-09-E01 W3/W4 的验收交付。
+> ② **round 强制保留 round.yaml 一件套**（`verify-iteration-metadata` 的 `round_yaml_missing` 契约 +
+> `docs:generate-index` 的 INDEX.yaml 数据源），只清 DEC 相关文字。理由：round.yaml 是设计轮次记录，
+> 独立于 DEC；删了它设计迭代无结构化档案。**从来不存在「每轮必须产 DEC」的机器校验**——
+> 机器只校验 round.yaml 存在且可解析，DEC 纯粹是纪律文字，随档案退役即可。
 
-2. **禁止在决策记录里写"供后续复盘"。** 发现要么带 owner 与触发条件进 DEC 或 `schedule/phase-*/control.yaml` 的 `audit_log`，要么不写。没有 owner 的技术意见等于没写——`DEC-2026-10-04-R1` 的"我的技术意见"已指出直吹、除湿、同开总量三个问题和"装修期内换机只补差价"这个窗口，无 owner 无日期，七天无人接。
+1. **"我们选了 X"必须同时生成一组"X 不工作时"的问题。** 配置/选型落笔时，对每个新引入的部件问：待机、停机、故障三种态下它在做什么、留下什么、谁清理、多久一次、要不要拆顶。答案进该条对象自己的 `blocker` 字段（`kind` / `owner` / `trigger` / `reverses_if` / `rationale`，由 `shared/element-blockers.ts` 的 checkBlockers 门禁强制非空），禁止留空。无属主的开放项进 `config/open-items.yaml`（仅收真的无对象可挂的少数几条）。（例：六台带泵 → 每台残余水量、接水盘可否不拆吊顶清洗、能否旁通当重力用、有无防滞水设计、残水与回风路径距离。）
+
+2. **禁止写"供后续复盘"。** 发现要么带 owner 与触发条件落到位，要么不写——没有 owner 的技术意见等于没写（`DEC-2026-10-04-R1` 的"我的技术意见"已指出直吹、除湿、同开总量三个问题和"装修期内换机只补差价"这个窗口，无 owner 无日期，七天无人接；该反例连同 36,000 成交语义已由 `config/decision-knowledge.yaml` 的 entries 段与 `config/hvac.yaml` 的 `commercial.evidence` 承接）。**四个落点，按内容性质选，不建中央决策账**：
+   - **对象 intent**（首选）：为什么这个值是这样、失效/反转条件 → 写进对象自己的 `note` / `blocker` / 结构化字段。数据全上对象，代码只剩「读对象 + 断言」。
+   - **报价卡 / 合同块**：价格、型号、竞品淘汰理由、合同成交语义 → `shared/quote-cards.ts` 的卡片与对应 trade 报价 YAML（L2 价层），合同事实走 `schedule/phase-*/control.yaml` 的 `contract` 结构化块（含 `archive_paths` 逐条 sha256）。
+   - **门禁**：能写成断言的失效条件 → 变成 verifier / 契约（`config/facts.yaml` 的 `contracts`、各 `verify:*`）。**最好的归档形式**：变成断言后不需要任何人维护。
+   - **`schedule/phase-*/control.yaml` 的 `audit_log`**：授权链、范围裁定、口径修正记录（owner + 日期 + 改动摘要 + 同步文件）。
+   不可再生的知识（竞品为何淘汰、合同语义、业主原话/口头规格、静默失效分析）→ `config/decision-knowledge.yaml` 的 `entries` 段，并同时落到上面四个位置之一。
 
 3. **新决策进来先查它推翻了什么。** 改动一项既有结论前，先列出被它推翻的旧结论并逐条说明为何可推翻。禁止以商务理由（"升级项""可省 X 费用"）覆盖未经重新论证的工程结论。
 
@@ -109,11 +149,11 @@
 
 6. **review 的 verdict 必须有"实质内容"这一格。** `config_status` / `geometry_status` / `consistency_status` / 渲染与美学 PASS 均不覆盖"这次改动丢了什么"。任何 review 结论必须显式回答三问：删了什么、推翻了什么、新增部分在什么条件下会静默失效。
 
-7. **写 YAML 时值内含 `#` 必须加引号。** `#` 在 YAML 里是注释起始符，写在未加引号的标量后面会把这行剩余内容整段吞成注释——文件仍然合法、解析器不报错、门禁全绿，但数据已经少了一半。已实测：`docs/design-iterations/mb-bedshift-stripcabinet-20260902/object-manifest.yaml` 的 `material: 浅色柜体 #c9c1b5、门板 #e7e0d6、按压无把手` 解析出来只有 `浅色柜体`，三个色值与做法全丢；`status: revoked # 2026-09-02 业主回滚（…）` 则是有意注释。**同一形态两种意图，任何 YAML 解析器和 schema 都区分不了**（js-yaml 5.2.1 六种模式实测全部丢弃 `#` 后内容），所以只能在写入端防：凡值内含 `#`（十六进制色值 `#c9c1b5`、编号 `#41` 等）一律加引号；`status:` 等枚举字段后面跟 `# 说明` 属既有约定，是有意注释，不受此限。
+7. **写 YAML 时值内含 `#` 必须加引号。** `#` 在 YAML 里是注释起始符，写在未加引号的标量后面会把这行剩余内容整段吞成注释——文件仍然合法、解析器不报错、门禁全绿，但数据已经少了一半。已实测：`docs/design-iterations/mb-bedshift-stripcabinet-20260902/` 一轮的 `material: 浅色柜体 #c9c1b5、门板 #e7e0d6、按压无把手`（原 object-manifest.yaml 未加引号时解析出来只有 `浅色柜体`，三个色值与做法全丢；五件套已并入 round.yaml，现行 quote 落在该轮 round.yaml 的 objects 段、已按本条加引号）；`status: revoked # 2026-09-02 业主回滚（…）` 则是有意注释。**同一形态两种意图，任何 YAML 解析器和 schema 都区分不了**（js-yaml 5.2.1 六种模式实测全部丢弃 `#` 后内容），所以只能在写入端防：凡值内含 `#`（十六进制色值 `#c9c1b5`、编号 `#41` 等）一律加引号；`status:` 等枚举字段后面跟 `# 说明` 属既有约定，是有意注释，不受此限。
 
 ## 电气/家具修改铁律
 
-- 移动任何电气点位或家具前，必须确认目标墙面是**实体墙**（不在 `overlay.yaml` 的 `suppress` 列表中）。
+- 移动任何电气点位或家具前，必须确认目标墙面是**实体墙**（不在 envelope/openings.yaml 的 `suppress` 列表中）。
 - 玻璃幕墙（`curtain_run` / 被 suppress 的墙）**不能挂载**：电视、插座、挂件、柜体。
 - 家具布局与电气点位必须**交叉验证**：插座位置 ≈ 电器实际位置（偏差 > 1.5m 需报警）。
 - 修改前先问："这面墙是什么材质？能打孔/挂重物吗？"
@@ -121,14 +161,15 @@
   ```bash
   npm run verify:all
   ```
-- 挂墙点位（electrical/plumbing）坐标压在墙线上时必须显式声明 `wall_side`，否则渲染默认取墙段左侧，可能渲到房间背面。`verify-data-consistency` 的点位专项会以 error 拦截"渲染面与所属房间异侧"（检查逻辑在 `scripts/verify/placement/verify-point-placement.ts`，与 `HouseScene.projectInfrastructurePoint` 同口径）。
+- 挂墙点位（electrical/plumbing）的定位来源是 `wall + wall_side + along`（`shared/point-placement.ts` 单一解算，2026-11-07 issue #98 S1）：**S3（2026-11-07）起沿墙/挂载点位的 `x/z` 声明已删**（79 沿墙 + 2 柜面挂载；S1/S2 断言期证明解析结果 == 声明值后移除），平面位置只有解算器一个来源；`x/z` 现在只属于绝对点位（`absolute: true`，C/D/E/F 组：顶面灯位/建筑服务基准/地面排水口/器具邻接点）。`wall_side` 必填——安装面决定侧别法线，缺它渲染默认取墙段左侧，可能渲到房间背面；`verify-data-consistency` 的点位专项会以 error 拦截"渲染面与所属房间异侧"（along 直接对 `openingsAlongWall` 的洞口 span 判定，不再靠投影反推）。`face_offset` 基准 = 口径 A 纯完成面（墙线 ± `WALL_THICKNESS`/2 = ±0.06，2026-11-07 S2 起；不再叠加 `wallFaceOffset` 里 0.008 的漆面渲染缝——那是渲染概念，折进坐标会让意图值全错 8mm）。柜面挂载点位（起夜灯）的定位来源是 `mount: {furniture_id, face, along, surface_gap, face_offset?}`（2026-11-07 S2 真挂载，原 `mount_anchor` 注记 + 手写 x/z 机制已废）：位置由宿主家具脸 + along（沿脸位置，东西脸自 minZ 向北、南北脸自 minX 向东）解出，宿主移动灯自动跟随，调用方必须传 `pointMountHostIndex`（house.yaml furnishings 构造）；沿墙/挂载点位越界（超出墙段/宿主脸）一律诊断显形，禁止钳位。3D/DXF 落位 = 墙线 datum + 薄板惯例 0.075m（业主口径：DXF 迁就 3D 投影），MEP 端点取完成面基点。**回路成员关系单一源（2026-11-07 S3）**：点位侧 `circuit` 字段与 topology 的 `source_circuit_id` 间接层已废，成员关系只住 `config/electrical-topology.yaml` 的 `member_point_ids`；「点位 → 回路」的唯一解算是 `shared/point-circuits.ts` 的 `derivePointCircuits`（member_point_ids + controls 反推开关回路，lint/mep-takeoff/DXF 标注/派生文档同源），交叉校验由成员完整性 error（悬空/重复/类型不符）、无条件 `point_uncovered` 与 `control_target_circuit_unresolved`（受控灯不在任何回路即报）接续，退役点位的成员关系在 `tests/server/electrical-lint.test.ts` 钉断。
 - `model-geometry.yaml` 的 wall 条目可带 `structure`（`shear`/`fill`/`curtain`/`new_partition`）+ `structure_status`（`confirmed`/`inferred`），由 `resolveWall` 透传给 lint。`verify:mep` 据此检查非法凿墙/穿梁：穿剪力墙报 `shear_wall_penetration`（双 confirmed 升 error）；`hvac.yaml` 的 `reference_constraints` 转 `confirmed` 且带 `reference_beam_bottom_y` 后，高于梁底的走线报 `beam_collision` error；穿越实体墙必须逐墙声明 `penetration` 且穿点与实际交点偏差 ≤0.25m。墙体结构分类依据与施工口径见 `docs/mep-construction-guidance.md`。
 
 ## 碰撞/相机修改铁律
 
 - 新增任何 `SceneElement` 类型时，必须评估是否需要碰撞：
   - 需要碰撞：`wall`, `curtain_run`
-  - 不需要碰撞：`floor_region`, `bay_sill`, `railing_run`, `glass_infill`, `shower_screen`
+  - 不需要碰撞：`floor_region`, `bay_sill`, `railing_run`, `shower_screen`
+  - （`glass_infill` 已随 issue #98 第三阶段 S1 删除：0 元素死类型，schema 与消费分支同步退场）
 - 碰撞数据提取逻辑在 `app/src/scene/collision-utils.ts`（`extractCollisionWalls`）。
 - 修改 `FirstPersonController` 旋转逻辑后，必须跑 `npm run test:app`。
 - 修改 `CollisionDetector`、`extractCollisionWalls` 或 `CameraAnimator` 后，必须跑：
@@ -175,7 +216,6 @@ npm run verify:all
 - 玻璃材质默认禁用 `transmission`（会触发 three.js 全场景二次渲染，draw call 翻倍），走 `transparent + opacity` 快路径；高保真仅在导出/取证时经工具栏「玻璃质感」开关临时开启。新增玻璃类材质必须走 `BrowserSceneMaterials.registerGlass` 注册，禁止直接写死 `transmission > 0`。
 - 静态 unit 经 `SceneBatcher` 跨 unit 合批为 `BatchedMesh`：电气点位（`electrical:*`）、装饰层 plumbing marker、HVAC 实体（`HVAC_CONFIRMED_ENTITIES`）、铰链门。**家具不合批**（碰撞分析需逐 unit 改 emissive）；滑动门、窗帘、灯具等有动态行为的不合批。新增需要动态改材质/显隐/开合的零件不得加入合批 scope，或在 mesh 上标 `userData.noBatch`。
 - 合批后拾取走 `batchId → batchUserData` 桥接（`targetFromIntersects`）；unit 级显隐用 `batcher.setUnitVisible` 桥接；统一换色用 `batcher.updateScopeMaterials` 桥接（见 `setDoorMaterial`）；`hvac-export-check` 已识别批次元数据，统计实体时不要绕过它直接遍历场景。
-- GLB 导出前后必须 `restoreStaticBatches` / `reapplyStaticBatches`（GLTFExporter 不认 BatchedMesh），且 restore 必须先于 `getHvacExportStatus`。
 - 修改 `SceneBatcher`、`SceneMeshMerger` 或玻璃材质链路后，必须跑：
   ```bash
   npm run test:app
@@ -198,7 +238,7 @@ npm run verify:all
 - **过程物不进 git**：中间版截图（v1/v2/before 等过程版本）、`*.snapshot.txt`、`*.runtime.json` 等运行转储一律写入 `tmp/capture/` 或当轮删除；抓图/绘图脚本默认输出 `tmp/capture/`，禁止再把任何一轮的 evidence 目录硬编码为默认输出（终稿入仓走关账挑选，不走脚本直写）。
 - **进仓的只有终稿与外部原件**：一轮关账时每个视角至多留 1 张终稿图，置于该轮 evidence 的 final 子目录；外部原件（合同、报价、厂家资料、业主提供图，不可再生）正常进仓，并在该轮 brief 登记来源。
 - **关账即瘦身**：review_state 转为 delivery_ready、superseded 或移入 archive 时，收尾动作必须包含把本轮 evidence 压缩到终稿集；删了什么逐条写进 commit message。
-- **一题一文档，退场不建归档目录**：新认知写入既有主题文档，禁止新开散稿；文档退场 = 直接删除 + 在索引留一行墓碑（名称 + 关账结论 + 删除 commit），git 历史即归档，不另建 legacy/archive 目录。新轮次的结构化文件只写单个 round.yaml 一件套（brief/datum/fact_table/objects/review/index 段），不得另加 work-record、evidence-notes 等附属散件；INDEX.yaml 由 `npm run docs:generate-index` 从各轮 round.yaml 的 index 段生成，禁止手改。豁免两轮保留原文件：hvac-resix 的 fact-table/design-datum（facts error 级读者）、mep-lint-governance 的 review-manifest.json（治理基线读者），其余段仍并入 round.yaml 并在 index.exempt_files 注明。
+- **一题一文档，退场不建归档目录**：新认知写入既有主题文档，禁止新开散稿；文档退场 = 直接删除 + 在索引留一行墓碑（名称 + 关账结论 + 删除 commit），git 历史即归档，不另建 legacy/archive 目录。新轮次的结构化文件只写单个 round.yaml 一件套（brief/datum/fact_table/objects/review/index 段），不得另加 work-record、evidence-notes 等附属散件；INDEX.yaml 由 `npm run docs:generate-index` 从各轮 round.yaml 的 index 段生成，禁止手改。豁免两轮保留原文件：hvac-resix 的 fact-table/design-datum（facts error 级读者）、mep-lint-governance 的 review-manifest.json（治理基线读者），其余段仍并入 round.yaml 并在 index.exempt_files 注明。**机器可读的条目级墓碑是唯一例外形态**（2026-11-09 issue #98 S2）：当被删的是「约 1,900 处编号引用的解析靶」时（DEC 档案即此），必须有一个机器可读的墓碑段承接编号可解析性，否则引用方当天集体悬空——见 `config/decision-knowledge.yaml` 的 `retired` 段与 `config/facts.yaml` 的 `c.dec_unique` / `c.dec_ref_resolvable`。该段只许留 id / subject / status / superseded_by / record / landing，不搬正文。
 
 ## 回应 Codex 审查的铁律（2026-11-03 增补）
 

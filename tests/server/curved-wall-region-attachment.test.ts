@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -83,13 +84,15 @@ test('w_bath_north really is an arc wall (the fixture this regression guards)', 
 });
 
 test('wall_region on the arc wall is split along the polyline and every piece hugs the wall', () => {
+  // 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：探针带住在墙对象 finish.tile_bands 里，
+  // 不再是平级 wall_region 元素——逐段出网与「贴墙」判据逐条未改。
   const scene: any = buildScene({
     walls: [curved],
     rooms: layout.rooms,
-    elements: [
-      { id: 'probe_full', type: 'wall_region', wall: 'w_bath_north', room: 'master_bath', along: [0, CURVED_TOTAL], height: 2.65, zone: 'visible' },
-      { id: 'probe_partial', type: 'wall_region', wall: 'w_bath_north', room: 'master_bath', along: [0.5, 2.0], height: 0.3 },
-    ],
+    elements: [{ type: 'wall', ...curved, finish: { tile_bands: [
+      { id: 'probe_full', room: 'master_bath', along: [0, CURVED_TOTAL], height: 2.65, zone: 'visible' },
+      { id: 'probe_partial', room: 'master_bath', along: [0.5, 2.0], height: 0.3 },
+    ] } }],
     furnishings: {},
   } as any);
   assert.deepEqual(scene.report.unsupported, [], '弧墙上的声明必须能落地');
@@ -114,9 +117,9 @@ test('wall_region on a straight wall stays a single mesh with the bare declarati
   const scene: any = buildScene({
     walls: [straight],
     rooms: layout.rooms,
-    elements: [
-      { id: 'probe_straight', type: 'wall_region', wall: 'w_mbath_south', room: 'master_bath', along: [0, 1.15], height: 2.65 },
-    ],
+    elements: [{ type: 'wall', ...straight, finish: { tile_bands: [
+      { id: 'probe_straight', room: 'master_bath', along: [0, 1.15], height: 2.65 },
+    ] } }],
     furnishings: {},
   } as any);
   assert.deepEqual(scene.report.unsupported, []);
@@ -130,11 +133,13 @@ test('paint_region on the arc wall is split per rect along the polyline and ever
   // computePaintScope 把 wallLength round 到 3 位小数，声明区间必须落在其内
   const span = Math.min(CURVED_TOTAL, 3.169);
   const scene: any = buildScene({
+    // line_datum 显式声明：完成面外偏移由 wallFaceOffset 解析器按它算（S4 起无私有常量，
+    // 未声明的墙不出网——#76 量房未裁前不设默认值）。
     walls: [curved],
     rooms: layout.rooms,
-    elements: [
-      { id: 'probe_paint', type: 'paint_region', wall: 'w_bath_north', room: 'master_bath', along: [0, span], height: 2.8 },
-    ],
+    elements: [{ type: 'wall', ...curved, line_datum: 'centerline', finish: { paint_bands: [
+      { id: 'probe_paint', room: 'master_bath', along: [0, span], height: 2.8 },
+    ] } }],
     furnishings: {},
   } as any);
   assert.deepEqual(scene.report.unsupported, [], '弧墙上的涂漆声明必须能落地');
@@ -161,11 +166,11 @@ test('paint_region on the arc wall is split per rect along the polyline and ever
 });
 
 test('every wall_region / paint_region mesh in the production scene hugs a real wall', () => {
-  const merged = mergeSceneElements(walls as any, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  const merged = mergeSceneElements(walls as any, parseOverlayFiles());
   const scene: any = buildScene({
     walls,
     rooms: layout.rooms,
-    elements: merged.filter((element: any) => ['wall_region', 'paint_region', 'sill_region', 'bay_sill', 'wall'].includes(element.type)),
+    elements: merged,
     furnishings: {},
   } as any);
   assert.deepEqual(scene.report.unsupported, [], '生产声明必须全部落地');

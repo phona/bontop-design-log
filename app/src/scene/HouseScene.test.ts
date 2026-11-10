@@ -206,6 +206,16 @@ const realRooms = Object.fromEntries(
   modelGeometry.rooms.map((room) => [room.id, { id: room.id, name: room.name, height: room.height }]),
 );
 
+/**
+ * 页面常驻内容根。HouseScene 不再暴露 export 专用 getter——测试直接从场景图取
+ * 这个子树；它是默认渲染与平面图截图的内容源（viewOnlyRoot 仅浏览时叠加）。
+ */
+function contentRoot(scene: HouseScene): any {
+  const root = scene.getScene().children.find((child: any) => child.name === 'HOUSE_EXPORT');
+  if (!root) throw new Error('HOUSE_EXPORT root missing');
+  return root;
+}
+
 describe('HouseScene', () => {
   it('renders the declared pipe-chase inspection layer above its transparent covers and restores normal state', () => {
     const scene = Object.create(HouseScene.prototype) as any;
@@ -692,25 +702,25 @@ describe('HouseScene', () => {
     expect(scene).toBeDefined();
     expect(scene.getScene()).toBeDefined();
     expect(scene.getCamera()).toBeDefined();
-    expect(scene.getExportRoot().name).toBe('HOUSE_EXPORT');
+    expect(contentRoot(scene).name).toBe('HOUSE_EXPORT');
     expect(scene.getViewOnlyRoot().name).toBe('HOUSE_VIEW_ONLY');
-    expect(scene.getExportRoot().parent).toBe(scene.getScene());
+    expect(contentRoot(scene).parent).toBe(scene.getScene());
     expect(scene.getViewOnlyRoot().parent).toBe(scene.getScene());
   });
 
   it('keeps business roots stable and avoids duplicate objects across rebuilds', async () => {
     const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
-    const exportRoot = scene.getExportRoot();
+    const exportRoot = contentRoot(scene);
     const viewOnlyRoot = scene.getViewOnlyRoot();
     const projectData = {
-      house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }] },
-      topics: [], budgetCategories: [],
+      house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' as const }] },
+      topics: [],
     };
     await scene.buildFromCatalog(projectData);
     const firstCount = exportRoot.children.length;
     await scene.buildFromCatalog(projectData);
-    expect(scene.getExportRoot()).toBe(exportRoot);
+    expect(contentRoot(scene)).toBe(exportRoot);
     expect(scene.getViewOnlyRoot()).toBe(viewOnlyRoot);
     expect(exportRoot.children.length).toBe(firstCount);
     expect(viewOnlyRoot.parent).toBe(scene.getScene());
@@ -728,12 +738,11 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' },
-          { id: 'bedroom', name: 'Bedroom', x: 6, z: 0, width: 4, depth: 3, height: 3, type: 'private' },
+          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' as const },
+          { id: 'bedroom', name: 'Bedroom', x: 6, z: 0, width: 4, depth: 3, height: 3, type: 'private' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -766,13 +775,12 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'entry_garden', name: 'Entry Garden', x: -2, z: -3, width: 4, depth: 6, height: 3, type: 'outdoor' },
-          { id: 'living_room', name: 'Living', x: 5, z: 2, width: 6, depth: 4, height: 3, type: 'public' },
+          { id: 'entry_garden', name: 'Entry Garden', x: -2, z: -3, width: 4, depth: 6, height: 3, type: 'public' as const },
+          { id: 'living_room', name: 'Living', x: 5, z: 2, width: 6, depth: 4, height: 3, type: 'public' as const },
         ],
-        platform: { id: 'east_platform', name: 'East Platform', x: 12, z: -1, width: 4, depth: 2, height: 0.15 },
+        platform: { id: 'east_platform', name: 'East Platform', x: 12, z: -1, width: 4, depth: 2, height: 0.15, type: 'service' as const },
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -794,14 +802,13 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'room1', name: 'Room 1', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'public' },
+          { id: 'room1', name: 'Room 1', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'public' as const },
         ],
         sceneElements: [
           { type: 'wall' as const, id: 'wall:outer', x1: -2, z1: -2, x2: -2, z2: 2 },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -822,11 +829,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'kitchen', name: 'Kitchen', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'service' },
+          { id: 'kitchen', name: 'Kitchen', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'service' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -851,7 +857,7 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'a', name: 'A', x: 0, z: 0, width: 4, depth: 3, height: 3, type: 'public' },
+          { id: 'a', name: 'A', x: 0, z: 0, width: 4, depth: 3, height: 3, type: 'public' as const },
         ],
         sceneElements: [
           { type: 'wall' as const, id: 'wall:0', x1: -2, z1: -1.5, x2: 2, z2: -1.5 },
@@ -859,7 +865,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -891,7 +896,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let curtainCount = 0;
@@ -923,7 +927,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     });
 
     const visibility = () => {
@@ -973,7 +976,7 @@ describe('HouseScene', () => {
       points: [{ x: 0, z: 0 }, { x: 2, z: 0 }],
       height: 2.8,
     });
-    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-old')] }, topics: [], budgetCategories: [] });
+    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-old')] }, topics: [] });
     const visibility = () => {
       const variants = new Map<string, boolean>();
       scene.getScene().traverse((obj: any) => {
@@ -987,7 +990,7 @@ describe('HouseScene', () => {
     expect(scene.getCurtainState('blind-old')).toBe('privacy');
     expect(visibility()).toEqual({ deployed: true, gathered: false });
 
-    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-new')] }, topics: [], budgetCategories: [] });
+    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [blind('blind-new')] }, topics: [] });
     expect(scene.getCurtainState('blind-old')).toBeUndefined();
     expect(scene.getCurtainState('blind-new')).toBe('open');
   });
@@ -1005,7 +1008,7 @@ describe('HouseScene', () => {
     });
     const buildWith = async (elements: ReturnType<typeof curtainEl>[]) => {
       const scene = makeScene();
-      await scene.buildFromCatalog({ house: { rooms: [], sceneElements: elements }, topics: [], budgetCategories: [] });
+      await scene.buildFromCatalog({ house: { rooms: [], sceneElements: elements }, topics: [] });
       return scene;
     };
     const curtainMeshes = (scene: HouseScene) => {
@@ -1099,7 +1102,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let objectId: string | undefined;
@@ -1131,7 +1133,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let curtainCount = 0;
@@ -1162,7 +1163,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let shape: any = null;
@@ -1205,7 +1205,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     const outlineLen = (s: any): number => {
@@ -1227,7 +1226,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     });
     const straightLen = outlineLen(straightScene);
 
@@ -1252,7 +1250,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let mesh: any;
@@ -1284,7 +1281,6 @@ describe('HouseScene', () => {
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     let mesh: any;
@@ -1306,14 +1302,13 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'a', name: 'A', x: -2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' },
-          { id: 'b', name: 'B', x: 2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' },
+          { id: 'a', name: 'A', x: -2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' as const },
+          { id: 'b', name: 'B', x: 2.5, z: 0, width: 3, depth: 4, height: 3, type: 'public' as const },
         ],
         // A single shared wall segment between the two rooms.
         sceneElements: [{ type: 'wall' as const, id: 'wall:shared', x1: 0, z1: -2, x2: 0, z2: 2 }],
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
@@ -1328,7 +1323,7 @@ describe('HouseScene', () => {
   it('refreshes shared sliding door geometry without duplicate groups', async () => {
     const scene = new HouseScene({ addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement);
     const element = { type: 'sliding_door_run' as const, id: 'door:test', points: [{ x: 0, z: 0 }, { x: 3, z: 0 }], height: 2.1, open: true };
-    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [element] }, topics: [], budgetCategories: [] });
+    await scene.buildFromCatalog({ house: { rooms: [], sceneElements: [element] }, topics: [] });
     const count = () => {
       let result = 0;
       scene.getScene().traverse((object: any) => { if (object.userData?.type === 'sliding_door_run') result++; });
@@ -1338,7 +1333,7 @@ describe('HouseScene', () => {
     scene.refreshSlidingDoor({ ...element, open: false });
     expect(count()).toBe(1);
     let refreshed = false;
-    scene.getExportRoot().traverse((object: any) => { if (object.name === 'sliding_door:door:test') refreshed = true; });
+    contentRoot(scene).traverse((object: any) => { if (object.name === 'sliding_door:door:test') refreshed = true; });
     expect(refreshed).toBe(true);
   });
 
@@ -1352,18 +1347,17 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' },
+          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' as const },
         ],
-        platform: { id: 'west_platform', name: 'West Platform', x: -3, z: 0, width: 2, depth: 1.5, height: 3 },
+        platform: { id: 'west_platform', name: 'West Platform', x: -3, z: 0, width: 2, depth: 1.5, height: 3, type: 'service' as const },
       },
       topics: [],
-      budgetCategories: [],
     };
 
     await scene.buildFromCatalog(projectData);
     expect(scene.rooms['west_platform']).toBeDefined();
     expect(scene.rooms['west_platform'].name).toBe('West Platform');
-    expect(scene.getExportRoot().children.some((obj: any) => obj.userData?.objectId === 'platform_boundary')).toBe(false);
+    expect(contentRoot(scene).children.some((obj: any) => obj.userData?.objectId === 'platform_boundary')).toBe(false);
     expect(scene.getViewOnlyRoot().children.some((obj: any) => obj.userData?.objectId === 'platform_boundary')).toBe(true);
 
     let platformCount = 0;
@@ -1394,11 +1388,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' },
+          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     expect(() => scene.highlightObject('test_room')).not.toThrow();
@@ -1414,11 +1407,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'test_room', name: 'Test', x: 5, z: 5, width: 3, depth: 3, height: 3, type: 'public' },
+          { id: 'test_room', name: 'Test', x: 5, z: 5, width: 3, depth: 3, height: 3, type: 'public' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
     expect(() => scene.setCameraTarget('test_room')).not.toThrow();
@@ -1443,11 +1435,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' },
+          { id: 'test_room', name: 'Test', x: 0, z: 0, width: 3, depth: 3, height: 3, type: 'public' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1562,11 +1553,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' },
+          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1603,11 +1593,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'master_bedroom', name: 'Master Bedroom', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' },
+          { id: 'master_bedroom', name: 'Master Bedroom', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1630,11 +1619,10 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' },
+          { id: 'master_bedroom', name: '主卧', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'private' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1672,12 +1660,11 @@ describe('HouseScene', () => {
     const projectData = {
       house: {
         rooms: [
-          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' },
+          { id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' as const },
         ],
-        platform: { id: 'west_platform', name: '西设备平台', x: -3, z: 0, width: 2, depth: 1.5, height: 3 },
+        platform: { id: 'west_platform', name: '西设备平台', x: -3, z: 0, width: 2, depth: 1.5, height: 3, type: 'service' as const },
       },
       topics: [],
-      budgetCategories: [],
     };
     await scene.buildFromCatalog(projectData);
 
@@ -1712,23 +1699,24 @@ describe('HouseScene', () => {
       house: {
         rooms: [],
         sceneElements: [
-          { type: 'wall' as const, id: 'wall:vertical', x1: 2, z1: -1, x2: 2, z2: 3 },
-          { type: 'wall' as const, id: 'w_mbath_south', x1: 0, z1: 3.26, x2: 2.6, z2: 3.26 },
+          { type: 'wall' as const, id: 'wall:vertical', x1: 2, z1: -1, x2: 2, z2: 3, line_datum: 'centerline' as const },
+          { type: 'wall' as const, id: 'w_mbath_south', x1: 0, z1: 3.26, x2: 2.6, z2: 3.26, line_datum: 'centerline' as const },
         ],
       },
       topics: [],
-      budgetCategories: [],
     });
 
+    // along 起算 = 墙段起点顶点沿折线累计（issue #98 S1 唯一定位来源；x/z 只是断言字段）。
+    // wall:vertical 自 (2,-1) 到 (2,3)；w_mbath_south 自 (0,3.26) 到 (2.6,3.26)。
     scene.placeInfrastructureFixtures(
       [
-        { id: 'switch-1', room: 'room', type: 'switch', x: 0, z: 1.5, height: 1.2, wall: 'wall:vertical' },
-        { id: 'switch-west', room: 'room', type: 'switch', x: 2, z: 0.5, height: 1.2, wall: 'wall:vertical', wallSide: 'west' },
-        { id: 'switch-east', room: 'room', type: 'switch', x: 2, z: 2.5, height: 1.2, wall: 'wall:vertical', wallSide: 'east' },
-        { id: 'switch-mbath-north', room: 'room', type: 'switch', x: 1, z: 3.21, height: 1.2, wall: 'w_mbath_south' },
-        { id: 'switch-mbath-south', room: 'room', type: 'switch', x: 2, z: 3.31, height: 1.2, wall: 'w_mbath_south' },
+        { id: 'switch-1', room: 'room', type: 'switch', x: 0, z: 1.5, along: 2.5, height: 1.2, wall: 'wall:vertical', wallSide: 'west' },
+        { id: 'switch-west', room: 'room', type: 'switch', x: 2, z: 0.5, along: 1.5, height: 1.2, wall: 'wall:vertical', wallSide: 'west' },
+        { id: 'switch-east', room: 'room', type: 'switch', x: 2, z: 2.5, along: 3.5, height: 1.2, wall: 'wall:vertical', wallSide: 'east' },
+        { id: 'switch-mbath-north', room: 'room', type: 'switch', x: 1, z: 3.21, along: 1, height: 1.2, wall: 'w_mbath_south' },
+        { id: 'switch-mbath-south', room: 'room', type: 'switch', x: 2, z: 3.31, along: 2, height: 1.2, wall: 'w_mbath_south' },
       ],
-      [{ id: 'faucet-1', room: 'room', type: 'faucet', x: 0, z: 9, height: 1.0, wall: 'wall:vertical' }],
+      [{ id: 'faucet-1', room: 'room', type: 'faucet', x: 2, z: 2, along: 3, height: 1.0, wall: 'wall:vertical' }],
     );
 
     const getModel = (objectId: string) => scene.getViewOnlyRoot().children.find((object: any) => object.userData?.objectId === objectId) as any;
@@ -1747,7 +1735,7 @@ describe('HouseScene', () => {
     expect(switchWest.userData).toMatchObject({ fixtureType: 'switch', wallSide: 'west' });
     expect(switchEast.userData).toMatchObject({ fixtureType: 'switch', wallSide: 'east' });
     expect(faucetModel.position.x).toBeCloseTo(2 - 0.06 - 0.005 - 0.01);
-    expect(faucetModel.position.z).toBeCloseTo(3);
+    expect(faucetModel.position.z).toBeCloseTo(2);
     expect(mbathNorth.position.z).toBeLessThan(3.26);
     expect(mbathNorth.position.z).toBeCloseTo(3.26 - wallOffset);
     expect(mbathSouth.position.z).toBeGreaterThan(3.26);
@@ -1758,13 +1746,12 @@ describe('HouseScene', () => {
     const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
     await scene.buildFromCatalog({
-      house: { rooms: [{ id: 'kitchen', name: '厨房', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'service' }] },
+      house: { rooms: [{ id: 'kitchen', name: '厨房', x: 0, z: 0, width: 4, depth: 4, height: 3, type: 'service' as const }] },
       topics: [],
-      budgetCategories: [],
     });
     scene.placeInfrastructureFixtures(
-      [{ id: 'socket-main', room: 'kitchen', type: 'socket', x: 0, z: 0, height: 0.4, wallSide: 'west' }],
-      [{ id: 'drain-main', room: 'kitchen', type: 'drain', x: 1, z: 1, height: 0.1 }],
+      [{ id: 'socket-main', room: 'kitchen', type: 'socket', x: 0, z: 0, height: 0.4, absolute: true, wallSide: 'west' }],
+      [{ id: 'drain-main', room: 'kitchen', type: 'drain', x: 1, z: 1, height: 0.1, absolute: true }],
     );
 
     const roots = scene.getViewOnlyRoot().children.filter((child: any) => child.userData?.objectId?.startsWith('electrical:') || child.userData?.objectId?.startsWith('plumbing:')) as any[];
@@ -1802,25 +1789,24 @@ describe('HouseScene', () => {
     }
   });
 
-  it('keeps infrastructure coordinates when wall is absent or unknown', () => {
+  it('keeps authored coordinates for absolute points and fails closed on an unknown wall', () => {
+    // issue #98 S1：墙引用解不出来不再静默按声明坐标落位（sock_weakbox 242mm 的机制根源）——
+    // 绝对点位照旧取声明坐标，未知宿主墙的点位不出场景、诊断显形。
     const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
     const scene = new HouseScene(canvas);
     scene.placeInfrastructureFixtures(
       [
-        { id: 'socket-1', room: 'room', type: 'socket', x: 1, z: 2, height: 0.4 },
-        { id: 'socket-2', room: 'room', type: 'socket', x: 3, z: 4, height: 0.5, wall: 'missing-wall' },
+        { id: 'socket-1', room: 'room', type: 'socket', x: 1, z: 2, height: 0.4, absolute: true },
+        { id: 'socket-2', room: 'room', type: 'socket', x: 3, z: 4, height: 0.5, wall: 'missing-wall', wallSide: 'west', along: 1 },
       ],
       [],
     );
 
-    const positions = ['electrical:socket-1', 'electrical:socket-2'].map((objectId) => {
-      const object = scene.getViewOnlyRoot().children.find((child: any) => child.userData?.objectId === objectId) as any;
-      return { x: object.position.x, y: object.position.y, z: object.position.z, rotation: object.rotation.y };
-    });
-    expect(positions).toEqual([
-      { x: 1, y: 0.4, z: 2, rotation: 0 },
-      { x: 3, y: 0.5, z: 4, rotation: 0 },
-    ]);
+    const object = scene.getViewOnlyRoot().children.find((child: any) => child.userData?.objectId === 'electrical:socket-1') as any;
+    expect({ x: object.position.x, y: object.position.y, z: object.position.z, rotation: object.rotation.y })
+      .toEqual({ x: 1, y: 0.4, z: 2, rotation: 0 });
+    expect(scene.getViewOnlyRoot().children.find((child: any) => child.userData?.objectId === 'electrical:socket-2')).toBeUndefined();
+    expect(scene.getPlacementDiagnostics().some((diagnostic: string) => diagnostic.includes('socket-2'))).toBe(true);
   });
 
   it('renders strong and weak electrical panels with authored dimensions and metadata', () => {
@@ -1828,8 +1814,8 @@ describe('HouseScene', () => {
     const scene = new HouseScene(canvas);
 
     scene.placeInfrastructureFixtures([
-      { id: 'panel-strong', room: 'living_dining', type: 'strong_panel', x: 13.4, z: 3.6, mount_height: 1.65, body_height: 0.39, width: 0.39, depth: 0.21, status: 'measured', position_status: 'inferred', wall: 'w_foyer_east', wallSide: 'west' },
-      { id: 'panel-weak', room: 'living_dining', type: 'weak_panel', x: 13.4, z: 3.6, mount_height: 0.5, body_height: 0.4, width: 0.4, depth: 0.3, status: 'likely', position_status: 'inferred', wall: 'w_foyer_east', wallSide: 'west' },
+      { id: 'panel-strong', room: 'living_dining', type: 'strong_panel', x: 13.4, z: 3.6, mount_height: 1.65, body_height: 0.39, width: 0.39, depth: 0.21, status: 'measured', position_status: 'inferred', absolute: true },
+      { id: 'panel-weak', room: 'living_dining', type: 'weak_panel', x: 13.4, z: 3.6, mount_height: 0.5, body_height: 0.4, width: 0.4, depth: 0.3, status: 'likely', position_status: 'inferred', absolute: true },
     ], []);
 
     const roots = scene.getViewOnlyRoot().children.filter((child: any) => child.userData?.type === 'electrical') as any[];
@@ -1883,11 +1869,11 @@ describe('HouseScene', () => {
 
     scene.loadHvacProjection(projection, { outdoor, electrical: [], ceiling: projection.ceiling });
     expect(scene.getScene().children.filter((object: any) => object.name === 'HVAC_DIAGRAM')).toHaveLength(0);
-    expect(scene.getExportRoot().children.some((object: any) => object.name === 'HVAC_CONFIRMED_ENTITIES')).toBe(true);
+    expect(contentRoot(scene).children.some((object: any) => object.name === 'HVAC_CONFIRMED_ENTITIES')).toBe(true);
     expect(scene.getViewOnlyRoot().children.some((object: any) => object.name === 'HVAC_COORDINATION')).toBe(true);
 
     const { collectHvacExportContents } = await import('../render/hvac-export-check.js');
-    const exportIds = collectHvacExportContents(scene.getExportRoot());
+    const exportIds = collectHvacExportContents(contentRoot(scene));
     const included = [...exportIds.equipment, ...exportIds.terminals];
     expect(exportIds.equipment.filter((id) => id.includes(':anchor:'))).toHaveLength(6);
     expect(exportIds.terminals.filter((id) => id.includes(':terminal:'))).toHaveLength(5);
@@ -1899,6 +1885,60 @@ describe('HouseScene', () => {
     expect(scene.getHvacExportStatus()).toEqual({
       required: false, ready: true, expected: [], included: [], missing: [], terminalCount: 0,
     });
+  });
+
+  it('期望集独立化：部分 anchor 解析失败时 expected 来自 config 派生值而非落场景数（E7）', () => {
+    // issue #98 S1（E7）+ 独立评审轮（2026-11-08）：原 `hvacExpectedExportIds = [...index.all.keys()]`
+    // 是自产期望集——「场景丢了实体」与「期望里也没有」同时成立，ready 恒真（A §4.1）。改为经
+    // expectedHvacExportIds(config+sources) 派生后，必须有一个能区分两种来源的测试：本用例构造
+    // 「缺 pointWalls → 沿墙 power anchor 解不出」的失败场景，断言 expected 仍是 config 派生的
+    // 3 个 id（旧写法会给 2 个）、missing 恰是那个 anchor、ready=false。回退旧写法本用例即红。
+    const canvas = { addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as HTMLCanvasElement;
+    const scene = new HouseScene(canvas);
+    const projection: any = {
+      version: '2.0', lightingFixtures: [], plumbing: [],
+      ceiling: [{ id: 'ac_living', room: 'living', type: 'ac_indoor', x: 10, z: 7, height: 2.85 }],
+      hvac: {
+        status: 'implemented', planId: 'A2',
+        diagram: {
+          anchors: [
+            { id: 'indoor_living', status: 'confirmed', system: 'refrigerant', ref: { source: 'ceiling', id: 'ac_living' } },
+            // 沿墙取电点位（wall+along，无绝对 x/z）：调用方不传 pointWalls 时解不出——正是
+            // sock_child_ac 的形态（设计文档 A §4.1 探针 P1 的同类场景）。
+            { id: 'power_child', status: 'confirmed', system: 'power', ref: { source: 'electrical', id: 'sock_child_ac' } },
+          ],
+          terminals: [{ id: 'supply_living', status: 'inferred', system: 'supply_air', position: { x: 2, y: 2.5, z: 3 } }],
+          routes: [], reference_constraints: [],
+        },
+      },
+      materials: { floor: { default: null, roomOverrides: {} } }, presentation: { curtains: {} },
+    };
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      scene.rebuildHvacProjection(projection, {
+        ceiling: projection.ceiling,
+        // wall_side 是 YAML 声明名； ElectricalPoint 的投影字段名是 wallSide（parseElectricalPoints 映射）
+        electrical: [{ id: 'sock_child_ac', room: 'bedroom_nw', type: 'socket', wall: 'w_x', wallSide: 'west', along: 0.45, face_offset: -0.06, height: 2.5, count: 1 } as any],
+        outdoor: [],
+        // 故意不传 pointWalls
+      });
+    } finally {
+      errorSpy.mockRestore();
+    }
+    const status = scene.getHvacExportStatus();
+    // config 派生：2 个 anchor + 1 个 terminal（旧写法只会给落场景的 2 个）
+    expect(status.expected.sort()).toEqual([
+      'hvac:A2:anchor:indoor_living',
+      'hvac:A2:anchor:power_child',
+      'hvac:A2:terminal:supply_living',
+    ]);
+    // 落场景 2 个；丢了的那個必须出现在 missing 里，且 ready=false（旧写法 missing=[]/ready=true）
+    expect(status.included.sort()).toEqual(['hvac:A2:anchor:indoor_living', 'hvac:A2:terminal:supply_living']);
+    expect(status.missing).toEqual(['hvac:A2:anchor:power_child']);
+    expect(status.ready).toBe(false);
+    expect(status.required).toBe(true);
+    // 失败必须同时经 placementDiagnostics 显形（E7 告警化），不是只丢进 missing 就完
+    expect(scene.getPlacementDiagnostics().some((line) => line.includes('power_child') && line.includes('sock_child_ac'))).toBe(true);
   });
 });
 
@@ -2079,7 +2119,7 @@ describe('HouseScene highlightObjects 竞态防护', () => {
     }
   });
 
-  it('数组材质（GLB 墙按 group 分材质）：逐元素高亮与恢复，缺 emissive 的元素跳过不抛', async () => {
+  it('数组材质（墙按 group 分材质）：逐元素高亮与恢复，缺 emissive 的元素跳过不抛', async () => {
     vi.useFakeTimers();
     try {
       const scene = makeScene();
@@ -2628,6 +2668,137 @@ describe('HouseScene 高亮分层叠加：6s 窗口内多系统 emissive 变更�
       expect(renderSpy).not.toHaveBeenCalled(); // 已销毁场景不再被请求渲染
     } finally {
       vi.useRealTimers();
+    }
+  });
+});
+
+// ─── 诊断生命周期（PR #122 Codex blocking，审查提交 ad457b39）─────────────────
+// 病根两半：① 首建构造 hvacSources 时没有外机来源 → confirmed 锚点 outdoor_a2 解不出；
+// ② 诊断是单一数组，首建覆盖赋值、重建只 push → 成功重建后旧错误仍在，导出守卫据此
+// 拒绝一份完好场景。这里两条都钉行为，不钉源码文本。
+describe('HouseScene 诊断生命周期：diagnostics 只描述当前这次场景', () => {
+  const canvas = () => ({ addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as HTMLCanvasElement;
+
+  const electrical = [{ id: 'sock_living_ac', room: 'living', type: 'socket' as const, x: 9, z: 7, height: 0.3 }];
+  const ceiling = [{ id: 'ac_living', room: 'living', type: 'ac_indoor' as const, x: 10, z: 7, height: 2.85 }];
+  // 与 config/hvac.yaml 同形：锚点 id outdoor_a2 → ref outdoor id vrf_outdoor_a2（外机本体）。
+  const outdoor = [{ id: 'vrf_outdoor_a2', platform: 'west_platform', x: 6.4, z: 0.5, direction: 'south' as const, width: 0.99, depth: 0.4, height: 0.81, model: 'MJV-200W-E01-LHIV' }];
+  const diagram = {
+    anchors: [
+      { id: 'outdoor_a2', status: 'confirmed' as const, system: 'refrigerant' as const, ref: { source: 'outdoor' as const, id: 'vrf_outdoor_a2' } },
+      { id: 'indoor_living', status: 'confirmed' as const, system: 'refrigerant' as const, ref: { source: 'ceiling' as const, id: 'ac_living' } },
+      { id: 'power_living', status: 'confirmed' as const, system: 'power' as const, ref: { source: 'electrical' as const, id: 'sock_living_ac' } },
+    ],
+    terminals: [],
+    routes: [],
+    reference_constraints: [],
+  };
+  /** implemented 投影（2026-11-10 起必带 hvac.outdoor：投影自洽性的最小形态）。 */
+  const projection = (overrides: { outdoor?: unknown[] } = {}) => ({
+    version: '2.0',
+    lightingFixtures: [],
+    plumbing: [],
+    ceiling,
+    hvac: {
+      status: 'implemented',
+      planId: 'A2',
+      diagram,
+      outdoor: overrides.outdoor ?? outdoor,
+    },
+    materials: { floor: { default: null, roomOverrides: {} } },
+    presentation: { curtains: {} },
+  }) as any;
+
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+  it('首建不再产生 outdoor_a2 断引用诊断（外机随投影下发，outdoor 锚点照常落场景）', async () => {
+    const errorSpy = quiet();
+    try {
+      const scene = new HouseScene(canvas());
+      // 首建只拿 /api/project 的数据：投影 + house.electrical（没有 render-facts 的 hvac facts）。
+      await scene.buildFromCatalog({ house: { rooms: [], electrical }, topics: [], renderFactsProjection: projection() });
+
+      const diagnostics = scene.getPlacementDiagnostics();
+      expect(diagnostics.filter((line) => line.includes('outdoor_a2'))).toEqual([]);
+      // 外机确实在场景里：期望集（声明态）与落场景集一致，没有 missing。
+      expect(scene.getHvacExportStatus()).toMatchObject({ required: true, ready: true, missing: [] });
+      expect(scene.getHvacExportStatus().included).toContain('hvac:A2:anchor:outdoor_a2');
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('同一路径先产生诊断、再成功重建：重建后的 diagnostics 反映新场景，不残留旧错误', async () => {
+    const { buildHvacBuilderSources } = await import('@shared/render/HvacBuilder');
+    const errorSpy = quiet();
+    try {
+      const scene = new HouseScene(canvas());
+      await scene.buildFromCatalog({ house: { rooms: [], electrical }, topics: [], renderFactsProjection: projection() });
+      expect(scene.getPlacementDiagnostics()).toEqual([]);
+
+      // ① 先走一次**缺外机来源**的 HVAC 构建（等价于历史首建路径）→ 诊断入列。
+      scene.rebuildHvacProjection(projection(), { ceiling, electrical });
+      const stale = scene.getPlacementDiagnostics().filter((line) => line.includes('outdoor_a2'));
+      expect(stale).toHaveLength(1);
+      expect(stale[0]).toContain('vrf_outdoor_a2');
+
+      // ② 补齐来源后成功重建 → 本次场景没有这条错误了，它必须消失（原实现只 push，此处会残留）。
+      scene.rebuildHvacProjection(projection(), buildHvacBuilderSources({ projection: projection(), electrical }));
+      expect(scene.getPlacementDiagnostics().filter((line) => line.includes('outdoor_a2'))).toEqual([]);
+
+      // ③ 反向对照：真实的解算失败仍然显形（不是「清空一次就永远为空」的假修复）。
+      scene.rebuildHvacProjection(projection(), { electrical });
+      expect(scene.getPlacementDiagnostics().filter((line) => line.includes('indoor_living')).length).toBeGreaterThan(0);
+      expect(scene.getHvacExportStatus().missing).toContain('hvac:A2:anchor:indoor_living');
+      // ④ 再次成功重建 → ③ 的诊断同样被替换掉。
+      scene.rebuildHvacProjection(projection(), buildHvacBuilderSources({ projection: projection(), electrical }));
+      expect(scene.getPlacementDiagnostics()).toEqual([]);
+      expect(scene.getHvacExportStatus()).toMatchObject({ ready: true, missing: [] });
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('#181 误拒的真实现场：外机已恢复显示、场景已完整，诊断不得继续挂着（导出守卫据此判失败）', async () => {
+    // Codex ad457b39 描述的现场：首建缺外机来源 → 诊断入列；随后 refreshInfrastructure 用完整
+    // 来源重建，外机回到场景（HVAC 期望集 ready=true），但旧实现在 diagnostics 里留着首建那条
+    // 「outdoor_a2 断引用」→ 导出守卫先看 diagnostics，一份完好场景被拒。
+    const { buildHvacBuilderSources } = await import('@shared/render/HvacBuilder');
+    const errorSpy = quiet();
+    try {
+      const scene = new HouseScene(canvas());
+      // 首建拿到的投影没有外机（历史 payload 形态）
+      const projectionWithoutOutdoor = projection({ outdoor: [] });
+      await scene.buildFromCatalog({ house: { rooms: [], electrical }, topics: [], renderFactsProjection: projectionWithoutOutdoor });
+      expect(scene.getPlacementDiagnostics().filter((line) => line.includes('outdoor_a2'))).toHaveLength(1);
+
+      // refreshInfrastructure：同一投影补齐外机来源后成功重建 → 外机回到场景
+      scene.rebuildHvacProjection(projectionWithoutOutdoor, buildHvacBuilderSources({ projection: projectionWithoutOutdoor, electrical, outdoor }));
+      expect(scene.getHvacExportStatus()).toMatchObject({ required: true, ready: true, missing: [] });
+      expect(contentRoot(scene).children.some((child: any) => child.name === 'HVAC_CONFIRMED_ENTITIES')).toBe(true);
+      // 场景已完整：诊断必须为空，导出守卫才不会被首建的旧结论误触发。
+      expect(scene.getPlacementDiagnostics()).toEqual([]);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('containment: 重建只替换 HVAC 段，不清掉家具摆位/点位落位两段的结论', async () => {
+    const errorSpy = quiet();
+    try {
+      const scene = new HouseScene(canvas());
+      await scene.buildFromCatalog({ house: { rooms: [], electrical }, topics: [], renderFactsProjection: projection() });
+      // 直接注入两段的既有结论（模拟本次建场已报告的问题）
+      (scene as any).placementDiagnostics.scene = ['living:vanity: mount host "x" not found'];
+      (scene as any).placementDiagnostics.points = ['point placement: sock_x along 越界'];
+      scene.rebuildHvacProjection(projection(), { ceiling, electrical });
+      const diagnostics = scene.getPlacementDiagnostics();
+      expect(diagnostics).toContain('living:vanity: mount host "x" not found');
+      expect(diagnostics).toContain('point placement: sock_x along 越界');
+      // HVAC 段的结论是本次重建的，不是上一次的
+      expect(diagnostics.filter((line) => line.includes('outdoor_a2'))).toHaveLength(1);
+    } finally {
+      errorSpy.mockRestore();
     }
   });
 });

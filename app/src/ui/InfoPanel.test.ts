@@ -172,14 +172,14 @@ describe('InfoPanel · 工程状态通用渲染器', () => {
   const createdTexts = (): string[] =>
     (document.createElement as ReturnType<typeof vi.fn>).mock.results.map((result) => result.value.textContent as string);
 
-  it('通用渲染器遍历状态记录字段，不按类别分支：status/statusSource/openQuestion/decision/conflicts 全显形', () => {
+  it('通用渲染器遍历状态记录字段，不按类别分支：status/statusSource/blocker/decision/conflicts 全显形', () => {
     const panel = new InfoPanel({ onSelectOption: vi.fn() });
     panel.showObject({
       objectId: 'electrical:sock_child_ac', name: '儿童房空调插座', type: 'electrical',
       elementState: {
         id: 'electrical:sock_child_ac', kind: 'electrical', label: 'socket', status: 'pending',
-        statusSource: 'pending-site-data #42', decision: 'DEC-2026-10-09-E01',
-        openQuestion: { ref: '42', summary: '儿童房空调电源', blockedBy: '卡在空调厂家深化图' },
+        statusSource: 'config/electrical.yaml:status', decision: 'DEC-2026-10-09-E01',
+        blocker: { kind: 'pending_vendor_drawing', owner: ['厂家'], trigger: '儿童房 28T2/P-SS 机身尺寸与接管方向厂家深化图到手日', reverses_if: '厂家图到手即改 declared，坐标从预演值转实测', rationale: '空调厂家深化图决定本插座最终落位与预埋对象' },
         conflicts: ['spatial.collision', 'clearance'],
       },
     });
@@ -187,9 +187,13 @@ describe('InfoPanel · 工程状态通用渲染器', () => {
     expect(texts).toContain('工程状态');
     expect(texts).toContain('状态：');
     expect(texts).toContain('待现场数据');       // status 标签
-    expect(texts).toContain('pending-site-data #42'); // statusSource
+    expect(texts).toContain('config/electrical.yaml:status'); // statusSource
     expect(texts).toContain('DEC-2026-10-09-E01');    // decision
-    expect(texts).toContain('卡在空调厂家深化图');     // openQuestion.blockedBy
+    // blocker 四个字段各占一行（label 与 value 分元素，故按整串精确匹配）
+    expect(texts).toContain('厂家');                                     // blocker.owner.join('、')
+    expect(texts).toContain('儿童房 28T2/P-SS 机身尺寸与接管方向厂家深化图到手日'); // blocker.trigger
+    expect(texts).toContain('厂家图到手即改 declared，坐标从预演值转实测');          // blocker.reverses_if
+    expect(texts).toContain('空调厂家深化图决定本插座最终落位与预埋对象');            // blocker.rationale
     expect(texts).toContain('spatial.collision，clearance'); // conflicts
     expect(elements.topics.appendChild).toHaveBeenCalled();
   });
@@ -207,7 +211,7 @@ describe('InfoPanel · 工程状态通用渲染器', () => {
     expect(texts).toContain('工程状态');
     expect(texts).toContain('已确认');
     expect(texts).toContain('config:confirmed');
-    // 无 openQuestion/decision/conflicts 时不渲染对应行
+    // 无 blocker/decision/conflicts 时不渲染对应行
     expect(texts).not.toContain('卡在');
     expect(texts).not.toContain('冲突：');
   });

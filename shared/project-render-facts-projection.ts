@@ -9,6 +9,7 @@ import type {
 import { buildCurtainRenderProjection, type CurtainOverlayLike } from './curtain-projection.js';
 import { getTrackLightConfig, resolveTrackLightHeads } from './render/TrackLightLayout.js';
 import { buildRenderLightingFixtures, isLightingFixtureType } from './lighting-fixtures.js';
+import type { PointMountHost, PointWall } from './point-placement.js';
 
 
 export function buildProjectRenderFactsProjection(
@@ -18,21 +19,28 @@ export function buildProjectRenderFactsProjection(
   overlay: CurtainOverlayLike,
   presentation: CurtainPresentationState,
   lighting: LightingRenderConfig = { fixtures: [] },
+  /** mount 挂载灯具的宿主索引（issue #98 S2）：调用方从 house.yaml furnishings 建 pointMountHostIndex。 */
+  mountHosts?: ReadonlyMap<string, PointMountHost>,
+  /** 挂墙灯具的宿主墙索引（issue #98 S3）：调用方从 layout.walls 建 pointWallIndexFromElements。 */
+  pointWalls?: ReadonlyMap<string, PointWall>,
 ): ProjectRenderFactsProjection {
   const fixtures = facts.electrical.filter((point) => isLightingFixtureType(point.type));
   const fixtureIds = new Set(fixtures.map((fixture) => fixture.id));
   // 灯具派生（offset 平移 / anchorY_offset 锚点 / fail-closed / 宿主墙透传）只有一份实现，
   // 与 linter 的 runtime 场景共用 shared/lighting-fixtures.ts：渲染看到的灯与被校验的灯
   // 在定义上就是同一个点位。这里不再本地复制坐标或高度派生。
-  const lightingFixtures = buildRenderLightingFixtures(facts.electrical, overrides);
+  const lightingFixtures = buildRenderLightingFixtures(facts.electrical, overrides, mountHosts, pointWalls);
 
   const floor = scheme.selections.floor ?? { default: null, roomOverrides: {} };
   const selectedHvacPlanId = scheme.selections.hvac?.default ?? null;
   const selectedHvacPlan = selectedHvacPlanId === 'A2'
     ? facts.hvac.plans.find((plan) => plan.id === 'A2')
     : undefined;
+  // implemented 投影必须带本 plan 的外机（PR #122 Codex blocking）：`diagram.anchors` 的
+  // confirmed `outdoor_a2` 靠它解算，投影不带外机 = 任何只有投影的建场路径都画不出外机
+  // 且带诊断拒绝导出。外机与 diagram 同源（同一份 facts.hvac.plans 条目），一次下发。
   const hvac = selectedHvacPlan
-    ? { status: 'implemented' as const, planId: 'A2' as const, diagram: selectedHvacPlan.diagram }
+    ? { status: 'implemented' as const, planId: 'A2' as const, diagram: selectedHvacPlan.diagram, outdoor: [selectedHvacPlan.outdoor] }
     : { status: 'unimplemented' as const, planId: selectedHvacPlanId };
   const configuredIds = new Set(lighting.fixtures.map((fixture) => fixture.id));
   for (const fixture of lighting.fixtures) {

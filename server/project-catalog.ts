@@ -23,6 +23,9 @@ import { hvacPlanOptions, type HvacPlanOption } from '../shared/hvac-plans.js';
 import { resolveLayout } from './layout-resolver.js';
 import type { VertexLayoutYaml, ResolvedRoom, WallDef, RoomDef, ResolvedOpening } from '../shared/types.js';
 import type { PhaseId } from '../shared/types.js';
+// /api/project 的 budgetCategories 行形状：单一来源在 shared/api-project.ts（2026-11-09
+// 从本文件迁出），消费方（路由响应类型）与生产者（本 catalog）不再各写一份。
+import type { BudgetCategory } from '../shared/api-project.js';
 import { filterFurnishings } from './phase-scope.js';
 
 function isWithinDirectory(directory: string, candidate: string): boolean {
@@ -30,13 +33,7 @@ function isWithinDirectory(directory: string, candidate: string): boolean {
   return !isAbsolute(rel) && rel !== '..' && !rel.startsWith(`..${sep}`);
 }
 
-export interface BudgetCategory {
-  key: string;
-  budget: number;
-  actual: number;
-  status: string;
-  notes: string;
-}
+export type { BudgetCategory };
 
 /**
  * 读 config/hvac.yaml 的 plans → HVAC 选项（2026-10-13 阶段 3）。
@@ -219,7 +216,7 @@ export class ProjectCatalog {
       this.walls = resolved.walls.map((w, i) => {
         // 墙→房间归属：复用 findRoomsForWall 拓扑（boundary 同时含 from/to 顶点），渲染端据此给厨卫墙挂砖
         const wallRooms = findRoomsForWall(vlayout.walls[i], vlayout.rooms);
-        return { id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ, openings: w.openings, ...(wallRooms.length ? { rooms: wallRooms } : {}) };
+        return { id: w.id, x1: w.x1, z1: w.z1, x2: w.x2, z2: w.z2, segments: w.segments, fromX: w.fromX, fromZ: w.fromZ, fromRadius: w.fromRadius, arcCenterX: w.arcCenterX, arcCenterZ: w.arcCenterZ, openings: w.openings, line_datum: w.line_datum, ...(w.finish ? { finish: w.finish } : {}), ...(w.suppressed ? { suppressed: w.suppressed } : {}), ...(wallRooms.length ? { rooms: wallRooms } : {}) };
       });
     } else {
       for (const r of layout.rooms) {

@@ -30,7 +30,7 @@
 
 `config/spatial-validation.yaml` 的 `mep_coordination_types` 历史上被整体排除在「家具互撞」之外（管线/检井构件必须有尺寸，穿墙由 MEP 专项校验负责）。这个排除现在是**显式申报**的：`config/anti-penetration.yaml` 的 `mep_parts.participation` 逐类型声明 `excluded`（不作为实体参与互撞）或 `solid`（按实体参与墙穿透），未申报的 placed 类型 → `pen.mep_participation_undeclared` fail-closed。
 
-2026-10-09 实测：`mb_vanity_pvc_service_chase` 的包络是 0.94×2.59×2.15m 的**预留区**（穿越 4 段墙、与 6 件家具重叠），不是实体管。该口径未裁定，已登记为 [`docs/pending-site-data.md`](./pending-site-data.md) #55 显形债务——未裁定前不当作缺陷，也不为了绿灯改坐标。
+2026-10-09 实测：`mb_vanity_pvc_service_chase` 的包络是 0.94×2.59×2.15m 的**预留区**（穿越 4 段墙、与 6 件家具重叠），不是实体管。该口径未裁定，已登记为原量房台账 #55（该台账已于 2026-11-09 S2-B 退场，未决项现由对象 blocker 承载）显形债务——未裁定前不当作缺陷，也不为了绿灯改坐标。
 
 ## CLI 契约
 
@@ -63,6 +63,6 @@
 ## 已知限制
 
 - **活动包络未覆盖**：门扇开启弧、推拉门开启态、冰箱/洗碗机/洗衣机门、抽屉/拉篮、椅子拉出、衣柜平开门 vs 床——这些是「用起来才穿模」，当前只验默认静态状态，不会被本 CLI 假装覆盖。
-- **机电预留区口径未裁定**：见上文与 `docs/pending-site-data.md` #55。
+- **机电预留区口径未裁定**：见上文与 `原量房台账（已于 S2-B 退场）` #55。
 - **OBB 未接管判定**：见上文前置条件。
 - 真实产品外廓、窗帘软包络、设备安装/检修余量、厂家深化与量房误差仍需现场/厂家数据更新；本轮不扩展 3D UI 面板。

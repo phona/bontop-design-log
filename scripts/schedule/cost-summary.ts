@@ -28,7 +28,7 @@
  *     contracted_cny 与轮次 contract_ref/locked 状态齐备外，凭据走轮次上的
  *     contract 结构化登记块（2026-10-23 归档收口）：登记金额与 locked_cny、
  *     contracted_cny 三方一致、deal_status 为 signed、archive_paths 逐条
- *     实算 sha256 与登记钉死值一致，再按 contract_ref 回 docs/decisions/
+ *     实算 sha256 与登记钉死值一致，再按 contract_ref 回 config/hvac.yaml 的 commercial.evidence（S2-C 起；原回 docs/decisions/ 的 DEC 章节）
  *     核对 DEC 章节存在、含正向成交表述且登记金额在章节中锚定到总价
  *     表述——金额的权威值只认登记，DEC 只作总价锚定核对、不作辖域提
  *     取（旧辖域提取整套已退役：从散文抠金额先后被子串误配、分项冒
@@ -126,6 +126,7 @@ import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { load as parseYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../server/project-catalog.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import {
   BudgetCalculator,
@@ -145,6 +146,7 @@ import {
   type MepTakeoff,
   type MepTakeoffRules,
 } from '../../shared/mep-takeoff.js';
+import { SOURCES, sourceFile } from '../../shared/envelope-sources.js';
 import {
   endpointSourcesFromFacts,
   parseMepCoordination,
@@ -165,14 +167,16 @@ export const COST_SUMMARY_PATH = 'schedule/phase-1/cost.md';
 export const COST_INPUT_PATHS: string[] = [
   'config/budget/base.json',
   'config/ceiling-quotes.yaml',
-  'config/ceiling.yaml',
+  // 2026-11-07（issue #98 S6）：吊顶与围护构件的文件清单取自来源注册表（S1 搬迁的落点），
+  // 不再在本表手抄路径——这是第七张会随搬迁漂移的 file 表。
+  ...SOURCES.ceiling.files,
+  ...SOURCES.overlay.files,
   'config/design-rules.yaml',
   'config/electrical-topology.yaml',
   'config/electrical.yaml',
   'config/house.yaml',
   'config/hvac.yaml',
   'config/layout/model-geometry.yaml',
-  'config/layout/overlay.yaml',
   'config/masonry-labor.yaml',
   'config/materials.yaml',
   'config/mep-hvac-coordination.yaml',
@@ -210,7 +214,7 @@ export const LOCKED_QUOTE_CARD_STATUSES: ReadonlySet<string> = new Set(['contrac
 const DEC_ID_PATTERN = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
 
 /**
- * 按 DEC id 在 docs/decisions/*.md 中定位该决策的章节原文（从 `### <DEC id> …`
+ * 按 DEC id 在指定目录的 md 中定位该决策的章节原文（生产路径已改读报价卡，本函数保留为 md 档案的章节定位工具；docs/decisions/ 已于 S3 退场）（从 `### <DEC id> …`
  * 标题行到下一个同级或更高级标题之前）。找不到返回 null。仓库现行 DEC 章节
  * 均为 ### 级标题；这里接受 ##–#### 级以防分卷调整。
  * 两道 fail-closed（自主扫描 G5/G6）：
@@ -220,7 +224,11 @@ const DEC_ID_PATTERN = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
  *  - 全部匹配章节都收集：同 id 出现在 >1 处（跨文件或同文件两章）即章
  *    节歧义抛错并点名全部文件——旧实现首命中即返回，分卷重复时静默读
  *    错卷、用错凭据原文。
- * dir 参数仅供测试注入临时目录，生产路径不传、走 docs/decisions。
+ * 2026-11-09 issue #98 S2：DEC 退役（业主裁定）后，**生产路径的合同凭据核验
+ * 不再走本函数**（改读 config/hvac.yaml 的 commercial.evidence，见
+ * findContractEvidence）。本函数保留为 md 档案的章节定位工具——docs/decisions/
+ * 在本 PR 仍在（删除属 S3），其单测仍以真实仓库章节为 fixture；S3 删档后随档案
+ * 一起退场。dir 参数仅供测试注入临时目录，生产路径不传、走 docs/decisions。
  */
 export function findDecisionSection(decId: string, dir: string = 'docs/decisions'): { file: string; text: string } | null {
   if (!DEC_ID_PATTERN.test(decId)) {
@@ -265,6 +273,9 @@ export function findDecisionSection(decId: string, dir: string = 'docs/decisions
  * 个 DEC 章节）：17 个章节命中旧正则但不命中本集合，逐一核对均为询价记
  * 录 / 合同外事项 / 否定式提及，无一是成交章节；现行唯一生产合同章节
  * DEC-2026-10-04-R1 同时命中定标成交、成交事实、签约方三项，通过有余量。
+ * 2026-11-09 issue #98 S2：DEC 退役后本集合改用于**报价卡 evidence 的总价陈述**
+ * （config/hvac.yaml 的 commercial.evidence）——成交语义的落点从 DEC 章节换成
+ * 报价卡，函数本身（正向集合 + 否定屏蔽）不变，仍是 fail-closed。
  * 紧邻否定屏蔽（复审 P2-b）：正向集合是子串匹配，分不清「定标成交」与
  * 「并非定标成交」——后者也含「定标成交」。故逐个命中点查紧邻前文：关键
  * 词起点前最近 1–3 字以「并非 / 不是 / 尚未 / 没有 / 不日」结尾、或最后
@@ -421,6 +432,73 @@ export function anchoredContractTotalAmounts(sectionText: string): number[] {
  * 已转发导出，import 路径不变。
  */
 
+/** 报价卡 evidence 的合同专用扩展（与 shared/hvac-plans.ts 的 HvacPlanCommercial.evidence 同形）。 */
+interface ContractEvidence {
+  kind?: string;
+  status?: string;
+  source?: string;
+  observed_at?: string;
+  quote_status?: string;
+  currency?: string;
+  /** 分项报价原文（外机/安装等），与 contract_total_terms 一起供总价回锚与歧义检测。 */
+  price_basis?: string;
+  contract_total_cny?: number;
+  contract_total_terms?: string;
+  transcript_grade_limit?: string;
+}
+
+/** evidence 的定位信息（报错时点名文件，便于人跳过去改）。 */
+interface LocatedContractEvidence extends ContractEvidence { file: string }
+
+/**
+ * 按 contract_ref（DEC 全引）在**报价卡**里定位合同成交语义的 evidence 结构
+ * （2026-11-09 issue #98 S2）。
+ *
+ * 为什么换源：DEC 退役前，本核对回 docs/decisions/05-hvac.md 的 DEC-2026-10-04-R1 章节
+ * 散文找「成交表述 + 总价锚点」；S3 一删档这道 fail-closed 就 throw（设计文档 §6.1 停止
+ * 条件 5）。业主裁定⑤「数据全上对象；代码只剩读对象 + 断言」+ S2 任务 3：成交语义改落
+ * 报价卡 config/hvac.yaml 的 commercial.evidence（L2 价层本就是它的归属地），
+ * evidence.kind 必须是 written_quote、contract_total_cny 显式登记合同总价、
+ * contract_total_terms 是可供回锚的总价陈述原文、source 指回已归档原件。
+ *
+ * 两条 fail-closed：
+ *  - 找不到 / 找到多条（同一 DEC 全引被两个方案的 evidence 引用）→ 返回 null 或抛错，
+ *    调用方一律抛错，不许静默降级；
+ *  - evidenceOverride 只供测试注入，生产路径不传、读真实 config/hvac.yaml。
+ */
+export function findContractEvidence(contractRef: string, override?: ContractEvidence & { file?: string }): LocatedContractEvidence | null {
+  if (!DEC_ID_PATTERN.test(contractRef)) {
+    throw new Error(`cost summary: contract_ref「${contractRef}」不符合严格格式 DEC-YYYY-MM-DD-(三位序号|R 序号）——合同引用只能是合法 DEC id，非法值不得拼进凭据检索`);
+  }
+  if (override !== undefined) {
+    if (!override || typeof override !== 'object') return null;
+    const kind = typeof override.kind === 'string' ? override.kind : undefined;
+    if (!kind) return null;
+    return { ...override, file: override.file ?? 'config/hvac.yaml' };
+  }
+  const doc = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as { plans?: Array<{ id?: string; commercial?: { decision_ref?: string; evidence?: ContractEvidence } }> };
+  const plans = Array.isArray(doc.plans) ? doc.plans : [];
+  const matched = plans.filter((plan) => plan?.commercial?.decision_ref === contractRef);
+  if (matched.length === 0) return null;
+  if (matched.length > 1) {
+    throw new Error(`cost summary: contract_ref ${contractRef} 在 config/hvac.yaml 里被 ${matched.length} 个方案的 evidence 引用（${matched.map((plan) => plan.id ?? '?').join('、')}）——成交语义歧义，无法判定哪一份是凭据，须先消歧再生成`);
+  }
+  const evidence = matched[0].commercial?.evidence;
+  if (!evidence || typeof evidence !== 'object') return null;
+  return { ...evidence, file: `config/hvac.yaml#plans[${matched[0].id ?? '?'}].commercial.evidence` };
+}
+
+/** 把 evidence 里可供「成交语义 + 总价回锚」的文本拼成一段（顺序固定，措辞自由不影响判定）。 */
+export function contractEvidenceText(evidence: ContractEvidence): string {
+  return [
+    evidence.contract_total_terms ?? '',
+    evidence.price_basis ?? '',
+    evidence.quote_status ?? '',
+    evidence.transcript_grade_limit ?? '',
+    evidence.status ?? '',
+  ].filter((part) => part.trim().length > 0).join('\n');
+}
+
 /**
  * 合同凭据核验（2026-10-23 归档收口改口）：凭据 = 询价轮次记录上的 contract
  * 结构化登记块，金额的权威值只认登记，不再从 DEC 散文提取。旧实现按
@@ -454,21 +532,27 @@ export function anchoredContractTotalAmounts(sectionText: string): number[] {
  *     同章分项金额同样在场；第二轮的同分句关键词被「分项总价」绕
  *     过（第三轮）；第三轮的同句口径又被同句多金额绕过（第四轮：
  *     总价与分项同句并列时分项借词锚上），故第四轮改位置对应。收
- *     紧后三方金额若被同步改错，只要 DEC 章节里的合同总价陈述没
- *     跟着改，⑥ 即抛错——金额不再只证登记自洽；总价陈述的措辞在
- *     关键词集合与连接段白名单内变化不影响结论。⑥ 附带双总价歧
- *     义检测（独立复审 F2，恢复随旧提取器退役的性质）：章节内被锚
+ *     紧后三方金额若被同步改错，只要报价卡 evidence 里的合同总价
+ *     陈述没跟着改，⑥ 即抛错——金额不再只证登记自洽；总价陈述的
+ *     措辞在关键词集合与连接段白名单内变化不影响结论。⑥ 附带双总价歧
+ *     义检测（独立复审 F2，恢复随旧提取器退役的性质）：陈述内被锚
  *     定的不同金额（anchoredContractTotalAmounts）超过一个即抛
  *     错——补充协议改价后新旧总价并存时，登记金额仍能锚上也不放
  *     行，须先清理旧总价陈述或更新登记。
+ *     2026-11-09 issue #98 S2：⑥ 的核对源从 DEC 章节（docs/decisions/
+ *     的散文）改为报价卡 evidence 结构（config/hvac.yaml 的
+ *     commercial.evidence）——DEC 退役后前者不存在，后者是 L2 价层
+ *     里成交语义的归属地。fail-closed 语义不变：取不到值仍抛错，
+ *     不许 `?? default`。新增一道 source 回归档区核对（见函数体末）。
  * 强度边界（如实）：守卫能拦「登记缺失、三方不一致、原件缺位或被替换、
- * DEC 凭据消失、成交语义被否定句冒充、登记金额与 DEC 脱节」，拦不住
- * 「登记时就把假数同时写进登记块与 DEC 章节、并按假原件重算登记哈希」
- * ——那一步的真实性靠登记时的人工复核（拿 contracts/ 归档原件与 DEC
- * 叙事逐项对）追溯，与「纸质合同不在机读范围」同级边界。
- * decisionsDir 参数仅供测试注入临时目录，生产路径不传、走 docs/decisions。
+ * 报价卡凭据消失、成交语义被否定句冒充、登记金额与总价陈述脱节、
+ * 自称书面报价却指不回已归档原件」，拦不住「登记时就把假数同时写进
+ * 登记块与 evidence、并按假原件重算登记哈希」——那一步的真实性靠登记
+ * 时的人工复核（拿 contracts/ 归档原件与合同叙事逐项对）追溯，与
+ * 「纸质合同不在机读范围」同级边界。
+ * evidenceOverride 参数仅供测试注入，生产路径不传、读真实 config/hvac.yaml。
  */
-function assertContractCredential(rowId: string, qr: AnyRecord, contracted: number, packageId: string, decisionsDir?: string): void {
+function assertContractCredential(rowId: string, qr: AnyRecord, contracted: number, packageId: string, evidenceOverride?: ContractEvidence & { file?: string }): void {
   const contractRef = qr.contract_ref as string;
   const contract = qr.contract as AnyRecord | undefined;
   if (!contract || typeof contract !== 'object' || Array.isArray(contract)) {
@@ -498,19 +582,41 @@ function assertContractCredential(rowId: string, qr: AnyRecord, contracted: numb
       throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据归档原件被替换：${archivePath} 实算 sha256=${actualSha256}，与登记钉死值 ${archiveEntry.sha256} 不符——原件字节与登记脱节，已核实层不成立`);
     }
   }
-  const section = findDecisionSection(contractRef, decisionsDir);
-  if (!section) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据无从核验：contract_ref ${contractRef} 在 docs/decisions/ 中解析不到对应的 DEC 章节——引用不存在，已核实层不成立`);
+  const evidence = findContractEvidence(contractRef, evidenceOverride);
+  if (!evidence) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据无从核验：contract_ref ${contractRef} 在报价卡（config/hvac.yaml 的 commercial.evidence）里解析不到对应条目——引用不存在，已核实层不成立`);
   }
-  if (!hasAffirmativeDealSemantics(section.text)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 章节原文（${section.file}）未见正向成交表述（定标成交 / 成交事实 / 已签约 / 签订 / 签约方 / 已成交）——只有「合同 / 签约」字样（含「尚未签约」「未成合同」式否定提及，或「并非定标成交」式紧邻否定屏蔽后的命中）不算成交凭据，该决策不是成交凭据`);
+  if (evidence.kind !== 'written_quote') {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据证据等级不够：${contractRef} 的 evidence.kind=${evidence.kind ?? '缺失'}，不是 written_quote——已核实层只认一级证据（施工方/商家的书面报价单，可签字、可追溯）；photo / owner_reported 一律不得支撑已核实层`);
   }
-  if (!sectionAnchorsContractTotal(section.text, contract.amount_cny)) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额与 DEC 脱节：登记金额 ${(contract.amount_cny as number).toLocaleString('en-US')} 未在 ${contractRef} 章节原文（${section.file}）中锚定到合同总价表述（合同总价 / 合同额 / 合计 / 成交价 / 定标成交 / 整包含价须与金额直接相连、仅隔空白/冒号/系词，且命中未被分项等子目语义屏蔽）——章节里只有分项金额同值（含写成「分项总价」的子目价、或与总价同句并列的括注金额）、或合同总价已被删改时同样判脱节，已核实层不成立`);
+  if (evidence.contract_total_cny === undefined) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据缺合同总价登记：${contractRef} 的 evidence 没有 contract_total_cny——总价不是分项之和（外机 14,124 + 安装 8,400 = 22,524 ≠ 成交总额），必须显式登记，已核实层不成立`);
   }
-  const anchoredAmounts = anchoredContractTotalAmounts(section.text);
+  if (evidence.contract_total_cny !== contract.amount_cny) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据总价与登记金额脱节：evidence.contract_total_cny=${evidence.contract_total_cny}、contract.amount_cny=${contract.amount_cny}、轮次 locked_cny=${qr.locked_cny}、${packageId} contracted_cny=${contracted} 必须一致——任一处被单独改动即抛错，已核实层不成立`);
+  }
+  const evidenceText = contractEvidenceText(evidence);
+  if (!evidenceText.trim()) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据缺总价陈述：${contractRef} 的 evidence 没有 contract_total_terms / price_basis / quote_status 任一文本——无陈述即无回锚对象，已核实层不成立`);
+  }
+  if (!hasAffirmativeDealSemantics(evidenceText)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据语义对不上：${contractRef} 的 evidence 陈述（${evidence.file}）未见正向成交表述（定标成交 / 成交事实 / 已签约 / 签订 / 签约方 / 已成交）——只有「合同 / 签约」字样（含「尚未签约」「未成合同」式否定提及，或「并非定标成交」式紧邻否定屏蔽后的命中）不算成交凭据，该决策不是成交凭据`);
+  }
+  if (!sectionAnchorsContractTotal(evidenceText, contract.amount_cny)) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据金额与总价陈述脱节：登记金额 ${(contract.amount_cny as number).toLocaleString('en-US')} 未在 ${contractRef} 的 evidence 陈述（${evidence.file}）中锚定到合同总价表述（合同总价 / 合同额 / 合计 / 成交价 / 定标成交 / 整包含价须与金额直接相连、仅隔空白/冒号/系词，且命中未被分项等子目语义屏蔽）——陈述里只有分项金额同值（含写成「分项总价」的子目价、或与总价同句并列的括注金额）、或合同总价已被删改时同样判脱节，已核实层不成立`);
+  }
+  const anchoredAmounts = anchoredContractTotalAmounts(evidenceText);
   if (anchoredAmounts.length > 1) {
-    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据章节总价歧义：${contractRef} 章节原文（${section.file}）中同时锚定了 ${anchoredAmounts.map((amount) => amount.toLocaleString('en-US')).join(' 与 ')} 两个以上不同的合同总价——章节里出现第二个被总价词直接指称的金额（如补充协议改价后新旧总价并存）时，登记金额即使仍能锚上也不得放行，须先在 DEC 里清理旧总价陈述或更新登记，已核实层不成立`);
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据总价歧义：${contractRef} 的 evidence 陈述（${evidence.file}）中同时锚定了 ${anchoredAmounts.map((amount) => amount.toLocaleString('en-US')).join(' 与 ')} 两个以上不同的合同总价——出现第二个被总价词直接指称的金额（如补充协议改价后新旧总价并存）时，登记金额即使仍能锚上也不得放行，须先清理旧总价陈述或更新登记，已核实层不成立`);
+  }
+  // 总价陈述必须指回已归档原件：evidence.source 若不落在 contract.archive_paths 里，
+  // 「书面报价」就只是一句自述文案（谁都能写 kind: written_quote）；原件路径上面已逐条
+  // 实算 sha256 与登记钉死值比对，字节被替换即抛错。这条把「自称一级证据」接到「字节可验」。
+  const sourcePath = typeof evidence.source === 'string' ? evidence.source : '';
+  const archived = (contract.archive_paths as Array<{ path?: unknown }>)
+    .some((entry) => entry && typeof entry.path === 'string' && entry.path === sourcePath);
+  if (!archived) {
+    throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据出处不在归档区：evidence.source「${sourcePath || '缺失'}」不是 contract.archive_paths 里登记的归档原件——总价陈述必须指回已按 sha256 钉死字节的原件，否则「书面报价」只是自述文案，已核实层不成立`);
   }
 }
 
@@ -633,10 +739,10 @@ function assertQuoteCardCredential(rowId: string, basis: { cardId: string; cardS
  * 合同额或 contract_ref 被删），生成直接抛错，而不是让旧层级静默通过。
  * 断言分两层：先对 control.yaml 内的字段一致性（合同额/轮次锁定/引用在位、
  * 卡状态锁定类），再核凭据本体（合同 → contract 登记块三方一致 + 归档原
- * 件存在 + DEC 章节存在性；报价卡 → 原卡字段），字段自报对不上凭据同样
- * 抛错。quotesFile / decisionsDir 仅供测试注入。
+ * 件存在 + 报价卡 evidence 的成交语义与总价回锚；报价卡 → 原卡字段），
+ * 字段自报对不上凭据同样抛错。quotesFile / evidenceOverride 仅供测试注入。
  */
-export function assertVerifiedTierBasis(rowId: string, basis: VerifiedBasis | undefined, control: AnyRecord, quotesFile?: AnyRecord, decisionsDir?: string): void {
+export function assertVerifiedTierBasis(rowId: string, basis: VerifiedBasis | undefined, control: AnyRecord, quotesFile?: AnyRecord, evidenceOverride?: ContractEvidence & { file?: string }): void {
   if (!basis) {
     throw new Error(`cost summary: 定价行 ${rowId} 声称已核实（tier=verified）但未登记来源凭据（verifiedBasis）——已核实层必须有可断言的锁定来源，请先在登记处补凭据或降为暂估层`);
   }
@@ -663,7 +769,7 @@ export function assertVerifiedTierBasis(rowId: string, basis: VerifiedBasis | un
   if (qr.pkg_id !== basis.packageId) {
     throw new Error(`cost summary: 定价行 ${rowId} 的合同凭据主体对不上：询价轮次 ${basis.quoteRoundId} 自带 pkg_id=${typeof qr.pkg_id === 'string' ? qr.pkg_id : '缺失'}，与登记的 packageId=${basis.packageId} 不一致——轮次归属与行归属不是同一个包，已核实层不成立`);
   }
-  assertContractCredential(rowId, qr, contracted, basis.packageId, decisionsDir);
+  assertContractCredential(rowId, qr, contracted, basis.packageId, evidenceOverride);
 }
 
 export interface CostRow {
@@ -827,7 +933,8 @@ export function computeActiveMepQuote(): { comparison: MepQuoteComparison; takeo
   const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepTakeoffRules & { sources: Record<string, string> };
   const electrical = parseYaml(readFileSync(rules.sources.electrical_points, 'utf8')) as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'];
   const plumbing = parseYaml(readFileSync(rules.sources.plumbing_points, 'utf8')) as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'];
-  const ceiling = parseYaml(readFileSync(rules.sources.ceiling, 'utf8')) as unknown[];
+  // 2026-11-07（issue #98 S6）：吊顶声明文件的路径取自来源注册表，不再读 rules.sources.ceiling
+const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknown[];
   const hvac = parseYaml(readFileSync(rules.sources.hvac, 'utf8')) as { plans: unknown[] };
   const coordination = parseMepCoordination(readFileSync(rules.sources.routes, 'utf8'));
   const topology = parseYaml(readFileSync(rules.sources.circuits, 'utf8')) as {
@@ -839,7 +946,11 @@ export function computeActiveMepQuote(): { comparison: MepQuoteComparison; takeo
     plumbing,
     ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
     hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
-  });
+    // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：与 takeoff:mep
+    // （scripts/project/mep-takeoff.ts 同式）完全同一条装配路径——mount 挂载点位（两条起夜灯
+    // 路线端点）由宿主脸解出，漏传会让 resolveMepRoutes 少解析 2 条路线、计价管长/导线量
+    // 静默缩水（2026-11-07 独立评审 blocking：¥16,035→¥15,986 即此错）。
+  }, pointWallIndexFromElements(ProjectCatalog.load('.').getWalls()), pointMountHostIndex(Object.values(ProjectCatalog.load('.').getFurnishings()).flat()));
   const takeoff = computeMepTakeoff({
     electrical: electrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
     plumbing: plumbing as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'],
@@ -848,6 +959,8 @@ export function computeActiveMepQuote(): { comparison: MepQuoteComparison; takeo
     routes: coordination.routes,
     resolution: resolveMepRoutes(coordination, sources),
     rules,
+    // 穿墙孔数按派生交点计（issue #98 第五阶段 S3）：与 takeoff:mep 同一条装配路径。
+    penetrationWalls: ProjectCatalog.load('.').getWalls(),
   });
   const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { project?: { usable_area?: number } };
   const areaSqm = house.project?.usable_area;

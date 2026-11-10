@@ -107,7 +107,7 @@ export type Exemption =
 export interface Fact {
   id: string;
   kind: 'derived' | 'narrative';
-  /** `@<path>:<点分路径|字面定位串>`；derived 支持 `#length`/`#shoelace`/`#bbox_area`/`#field_sum:f`/`#find:k=v`。 */
+  /** `@<path>:<点分路径|字面定位串|dataset:<点分键>>`；derived 支持 `#length`/`#shoelace`/`#bbox_area`/`#field_sum:f`/`#find:k=v`，以及入口脚本预算的 dataset 源。 */
   value: string;
   unit?: string;
   as_of?: string;
@@ -350,7 +350,12 @@ function pathMatches(spec: string, file: string): boolean {
  *  为什么需要：DEC 日志 2026-10-09 按主题拆成 `docs/decisions/` 14 个文件后，
  *  `c.dec_unique.source`（查重）与 `c.dec_ref_resolvable.target`（外键解析）必须覆盖全部文件，
  *  否则跨文件重号查不到、DEC 短引反查会集体 dangling。
- *  向后兼容：字符串形式照旧；不存在/不可读的文件跳过（与单文件语义一致）。 */
+ *  向后兼容：字符串形式照旧；不存在/不可读的文件跳过（与单文件语义一致）。
+ *  2026-11-09 issue #98 S2：DEC 档案退役后 target 收敛回单文件
+ *  `config/decision-knowledge.yaml`，本引擎读它的两个顶层段：
+ *    · `entries` —— 知识条目（`  - id: "DEC-…"` + kind/subject/knowledge/landing）；
+ *    · `retired` —— 墓碑行（同形 `  - id: "DEC-…"` + subject/status/superseded_by/record/landing）。
+ *  两段用同一种登记行形态，故 unique / fk / repair_channel 的 pattern 一套全覆盖。 */
 function pathList(v: unknown): string[] {
   if (Array.isArray(v)) return stringList(v);
   const one = str(v);
@@ -438,6 +443,15 @@ function resolveNarrative(text: string, anchor: string): Resolved {
 }
 
 function resolveAuthority(spec: string, ws: FactsWorkspace): Resolved & { path: string; body: string } {
+  // dataset:<点分键>（2026-11-07 issue #98 S3）：权威值是入口脚本预算的机器源，不落文件。
+  if (spec.startsWith('dataset:')) {
+    const key = spec.slice('dataset:'.length);
+    const value = datasetValue(ws, key);
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return { ok: false, detail: `dataset ${key} 解析不出有限数值（${String(value)}；入口脚本未预算该键或解算失败）`, path: spec, body: key };
+    }
+    return { ok: true, value, detail: spec, path: spec, body: key };
+  }
   const body = spec.startsWith('@') ? spec.slice(1) : spec;
   const colon = body.indexOf(':');
   const path = colon < 0 ? body : body.slice(0, colon);
@@ -1311,17 +1325,19 @@ function runCount(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex,
 function runPointer(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
   const pattern = tryRegex(str(contract.path_pattern));
   if (!pattern) return;
-  const allow = (Array.isArray(contract.allow) ? contract.allow : []).filter(isRecord);
-  const allowed = new Set<string>();
-  for (const one of allow) {
-    const p = str(one.path);
-    if (p) allowed.add(p);
-  }
+  // allow 支持目录前缀（与 exclude 同语义，走 pathMatches）。
+  // 为什么需要：S3 删 docs/decisions/ 后，墓碑的 record 字段
+  // （docs/decisions/<file>#L<n>）必然指向不存在的路径——逐条列 20 个文件名既啰舒又易漏，
+  // 用目录前缀一条覆盖并附理由（理由仍受 pointer_allow_without_reason 约束）。
+  const allowed = (Array.isArray(contract.allow) ? contract.allow : [])
+    .filter(isRecord)
+    .map((one) => str(one.path))
+    .filter((p) => p.length > 0);
   const seen = new Set<string>();
   for (const file of contractPaths(ws, contract.ref_scope, 'contract.files', contract.exclude)) {
     for (const m of grep(ws, file, str(contract.path_pattern))) {
       const rel = matchText(m, 1).replace(/[),.'";]+$/, '');
-      if (!rel || allowed.has(rel)) continue;
+      if (!rel || allowed.some((p) => pathMatches(p, rel))) continue;
       const key = `${file}:${rel}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -1335,7 +1351,7 @@ function runPointer(ws: FactsWorkspace, result: FactsLintResult, lines: LineInde
       tally(result, 'pointer_dangling');
     }
   }
-  for (const one of allow) {
+  for (const one of (Array.isArray(contract.allow) ? contract.allow : []).filter(isRecord)) {
     const p = str(one.path);
     const reason = str(one.reason);
     if (p && !reason) {
@@ -1536,13 +1552,13 @@ function collectExemptions(registry: FactsRegistry): Exemption[] {
 // ─── T3.11 ceiling_clearance：MEP 路线标高不得低于所经吊顶完成面 ─────────────
 //
 // 治一个「静默缺失」：config/mep-hvac-coordination.yaml 的分层标高（强电 2.45 / 弱电 2.50 /
-// 冷媒 2.55 / 冷凝水 2.35 …）与 config/ceiling.yaml 的降板完成面（2.80 − thickness）是两套
+// 冷媒 2.55 / 冷凝水 2.35 …）与 config/model/envelope/ceiling.yaml 的降板完成面（2.80 − thickness）是两套
 // 从未对齐的口径。修之前没有任何门禁看这件事——73 条路线照跑，谁也不说它穿出了吊顶。
 //
 // 完成面口径必须与 shared/render/CeilingZoneBuilder.ts 一致：
 //   `topY = ceilingHeight − zone.thickness + SLAB_EPS`，板下表面即完成面；
 //   ceilingHeight 取 `rooms.find(r => r.id === zone.room)?.height ?? 2.8`。
-// 这里不读 config/ceiling.yaml 的 `height` 字段（本项目 drop/aluminum 条目没有该字段，
+// 这里不读 config/model/envelope/ceiling.yaml 的 `height` 字段（本项目 drop/aluminum 条目没有该字段，
 // 读了就永远 0 命中），一律按 thickness 反算。
 //
 // 处置原则（2026-10-04 A1）：
@@ -1718,7 +1734,7 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
     add(result, issue(
       contractLevel(contract),
       'ceiling_clearance_baseline_drift',
-      `${contract.id}：登记的既有冲突基数 ${registered} ≠ 机器实算 ${actual}。只有两种合法解释：①设计侧真的裁定了（分层标高升入降板空腔 or 调整降板厚度，需同步更新 prose 与 registered_conflicts 并关闭 docs/pending-site-data.md #41）；②有人改数据消音。二者都必须是有意识的改动，git diff 里看得见${hint ? `。${hint}` : ''}`,
+      `${contract.id}：登记的既有冲突基数 ${registered} ≠ 机器实算 ${actual}。只有两种合法解释：①设计侧真的裁定了（分层标高升入降板空腔 or 调整降板厚度，需同步更新 prose 与 registered_conflicts 并关闭 原量房台账 #41（已退场，未决项现由对象 blocker 承载））；②有人改数据消音。二者都必须是有意识的改动，git diff 里看得见${hint ? `。${hint}` : ''}`,
       source,
     ));
     tally(result, 'ceiling_clearance_baseline_drift');
@@ -1817,7 +1833,8 @@ function runCoveredOrMarked(ws: FactsWorkspace, result: FactsLintResult, lines: 
 //      文件不存在 → repair_channel_invalid（error）。通道腐烂比没有通道更糟——
 //      它会让人以为有出路可走，走出去才发现是墙。
 //   ② 校验 DEC 全引**真的存在于决策日志**（登记表顶层 `decision_log_files` 列出的文件里
-//      有同名 `### DEC-` 标题）→ repair_channel_ref_unresolvable（error）。只验格式等于
+//      有同名条目：md 标题 `### DEC-…` 或 YAML 登记行 `- id: "DEC-…"`）→
+//      repair_channel_ref_unresolvable（error）。只验格式等于
 //      允许「指引人去查一条不存在的 DEC」；未登记 decision_log_files 时跳过并在 INFO 露面。
 //   ③ 契约报出偏差时（目前接在 ceiling_clearance 的基线漂移上），把该出口写进 issue 正文，
 //      并在 INFO 里登记。**不改变任何契约的 error 语义**：registered_conflicts ≠ 实算
@@ -1833,12 +1850,20 @@ export interface RepairChannel {
 const DEC_FULL_REF_RE = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
 
 /** decision_ref 指向的 DEC 是否真的作为条目存在于决策日志里。
- *  只认标题形态（`### DEC-…`），不认 prose 里的提及——否则「正文引用了一个已删编号」
- *  也会被判成存在。边界用 `(?![\w.\-])`：`DEC-…-R01` 不匹配 `R01.1`，`DEC-…-051` 不匹配
- *  `051-补`（基号不存在就是不存在，补号救不了它）。 */
+ *  2026-11-09 issue #98 S2：DEC 档案（docs/decisions/ 的 `### DEC-` 标题）退役后，条目住在
+ *  config/decision-knowledge.yaml 的 YAML 登记行（`  - id: "DEC-…"`）。故同时认两种形态：
+ *    ① md 标题形态 `^#{2,6}\s*DEC-…`（档案还在时的旧形态，保留到 S3 删档当天）；
+ *    ② YAML 登记形态 `^\s*-\s*id:\s*["']?DEC-…`（S2 起的现行形态，decision_log_files 的靶）。
+ *  只认**条目行**，不认 prose 里的提及——否则「正文引用了一个已删编号」也会被判成存在。
+ *  边界用 `(?![0-9A-Za-z.\-_])`：`DEC-…-R01` 不匹配 `R01.1`，`DEC-…-051` 不匹配 `051-补`
+ *  （基号不存在就是不存在，补号救不了它）；登记行尾的引号不在排除集里，故 YAML 形态可命中。 */
 function decisionRefResolves(ws: FactsWorkspace, files: string[], ref: string): boolean {
-  const pattern = `^#{2,6}\\s*${escapeLiteral(ref)}(?![0-9A-Za-z.\\-_])`;
-  return files.some((file) => grep(ws, file, pattern).length > 0);
+  const escaped = escapeLiteral(ref);
+  const patterns = [
+    `^#{2,6}\\s*${escaped}(?![0-9A-Za-z.\\-_])`,
+    `^\\s*-\\s*id:\\s*["']?${escaped}(?![0-9A-Za-z.\\-_])`,
+  ];
+  return files.some((file) => patterns.some((pattern) => grep(ws, file, pattern).length > 0));
 }
 
 function repairChannelOf(contract: Contract): RepairChannel | undefined {

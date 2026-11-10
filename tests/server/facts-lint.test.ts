@@ -7,6 +7,10 @@ import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { load as parseYaml } from 'js-yaml';
 import { lintFacts, type FactsRegistry, type FactsWorkspace } from '../../shared/facts-lint.js';
+import { endpointSourcesFromFacts, resolveMepEndpoint } from '../../shared/mep-hvac-coordination-schema.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { VertexLayoutYaml } from '../../shared/types.js';
 
 // ─── 内存 workspace ─────────────────────────────────────────────────────────
 
@@ -422,7 +426,7 @@ test('non_empty：规则引用的目标 type 不存在时报空转，规则自�
       sections: ['proximity', 'clearance'],
       rule_fields: ['b.match.type', 'furniture_types'],
       rule_file_field: 'b.file',
-      file_map: { ceiling: 'config/ceiling.yaml', furniture: 'config/house.yaml' },
+      file_map: { ceiling: 'config/model/envelope/ceiling.yaml', furniture: 'config/house.yaml' },
       target: 'config/house.yaml',
       target_path: 'furnishings',
       key_field: 'type',
@@ -438,7 +442,7 @@ test('non_empty：规则引用的目标 type 不存在时报空转，规则自�
       'clearance:',
       '  furniture_types: [wardrobe_240, bed_180]',
     ].join('\n'),
-    'config/ceiling.yaml': '- id: z\n  type: ac_indoor\n',
+    'config/model/envelope/ceiling.yaml': '- id: z\n  type: ac_indoor\n',
     'config/house.yaml': 'furnishings:\n  master_bedroom:\n    - type: bed_180\n',
   }));
   // tv_stand（furniture 域）与 wardrobe_240（默认域）空转；ac_indoor 在 ceiling.yaml 里存在，不报
@@ -544,9 +548,35 @@ const realWorkspace = (): FactsWorkspace => {
       'coverage.files': [],
       'layout.rooms': [],
       'layout.floor_regions': [],
+      // issue #98 S3：点位解析后坐标（fact.gas_alarm_x/z 的 dataset 权威源）——与入口脚本
+      // scripts/verify/facts/verify-facts.ts 同一构造，否则本测试会假红（dataset 缺键）。
+      'points.resolved': resolvedPointPositions(),
     },
   };
-};
+}
+
+/** 点位解析后坐标（单一解算，µm 取整）：与 verify-facts 入口同构造。 */
+const resolvedPointPositions = (): Record<string, { x: number; z: number }> => {
+  const load = (rel: string): unknown => parseYaml(readFileSync(rel, 'utf8'));
+  const electrical = load('config/electrical.yaml');
+  const plumbing = load('config/plumbing.yaml');
+  const sources = endpointSourcesFromFacts({
+    electrical: electrical as never,
+    plumbing: plumbing as never,
+    ceiling: load('config/model/envelope/ceiling.yaml') as never,
+    hvac: load('config/hvac.yaml') as never,
+  }, pointWallIndexFromElements(resolveLayout(load('config/layout/model-geometry.yaml') as VertexLayoutYaml).walls),
+     pointMountHostIndex(Object.values((load('config/house.yaml') as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never));
+  const positions: Record<string, { x: number; z: number }> = {};
+  for (const points of [electrical, plumbing] as Array<Array<{ id?: string }>>) {
+    for (const point of points) {
+      if (!point?.id || positions[point.id]) continue;
+      const at = resolveMepEndpoint(point.id, sources);
+      if (at) positions[point.id] = { x: Number(at.x.toFixed(6)), z: Number(at.z.toFixed(6)) };
+    }
+  }
+  return positions;
+};;
 
 test('真实登记表：fact.circuit_count 的六个镜像在真实文件上全部解析且与权威值 21 路一致', () => {
   // 2026-10-04 数据修正（A1/A2）后，acceptance.yaml:283 与 pending-site-data.md:90 的
@@ -561,7 +591,7 @@ test('真实登记表：fact.circuit_count 的六个镜像在真实文件上全�
   const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
   const circuit = (registry.facts ?? []).find((f) => f.id === 'fact.circuit_count')!;
   assert.ok(circuit, 'config/facts.yaml 必须登记 fact.circuit_count');
-  assert.equal(circuit.mirrors?.length, 5, 'fact.circuit_count 必须保留 5 个机器镜像');
+  assert.equal(circuit.mirrors?.length, 4, 'fact.circuit_count 必须保留 4 个机器镜像（第 5 个原指向量房手账，已随该文件退场移除）');
   const result = lintFacts({ ...emptyRegistry, facts: [circuit] }, realWorkspace());
   assert.deepEqual(result.errors, [], `circuit_count 对账应全绿，实际：${JSON.stringify(result.errors)}`);
 });
@@ -713,23 +743,34 @@ test('fk：R 系子修订引用（R7.1）按父条目 R7 解析，不悬空', ()
   assert.equal(result.errors.length, 0);
 });
 
-test('真实登记表：c.dec_ref_resolvable 的 ref/target 正则覆盖 R 系编号，且不放宽到非编号形态', () => {
+test('真实登记表：c.dec_ref_resolvable 的 ref/target 正则覆盖全编号族与 YAML 登记形态，且不放宽到非编号形态', () => {
   const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
   const contract = (registry.contracts ?? []).find((c) => c.id === 'c.dec_ref_resolvable')!;
   assert.ok(contract, 'config/facts.yaml 必须登记 c.dec_ref_resolvable');
+  // 2026-11-09 S2：编号族扩全族——3 位序号 / R 系 / 卷内分类号（C/M/W/P/S/G/E/F/TILE）都要在门禁内。
   const refRe = new RegExp(String(contract.ref_pattern));
-  for (const id of ['DEC-045', 'DEC-2026-08-26-045', 'DEC-2026-10-04-R2', 'DEC-2026-10-05-R15']) {
+  for (const id of [
+    'DEC-045', 'DEC-2026-08-26-045', 'DEC-2026-10-04-R2', 'DEC-2026-10-05-R15',
+    'DEC-2026-10-08-C01', 'DEC-2026-10-07-M02', 'DEC-2026-10-08-W01', 'DEC-2026-10-09-P11',
+    'DEC-2026-10-09-S01', 'DEC-2026-10-09-G01', 'DEC-2026-10-09-E01', 'DEC-2026-10-07-F01',
+    'DEC-2026-10-16-TILE-01', 'DEC-2026-09-02-051-补', 'DEC-2026-10-08-R01-补记三', 'DEC-2026-09-04-R2.1',
+  ]) {
     assert.ok(refRe.test(`引用 ${id} 处`), `ref_pattern 必须覆盖 ${id}`);
   }
   // 反向护栏：正则不许悄悄放宽到非决策编号形态（宽松比漏报更难发现）
-  for (const notId of ['DEC-2026-10-05-R', 'DEC-2026-10-05-R1234', 'DEC-14']) {
+  for (const notId of ['DEC-2026-10-05-R', 'DEC-2026-10-05-R1234', 'DEC-14', 'DEC-2026-10-13 批次说明']) {
     assert.equal(refRe.test(`引用 ${notId} 处`), false, `ref_pattern 不应匹配 ${notId}`);
   }
+  // target 已改指 config/decision-knowledge.yaml 的 YAML 登记行（DEC 档案退役，业主裁定②）。
+  assert.equal(String(contract.target), 'config/decision-knowledge.yaml', 'c.dec_ref_resolvable 的 target 必须指向知识载体');
   const targetRe = new RegExp(String(contract.target_pattern), 'm');
-  assert.ok(targetRe.test('### DEC-2026-10-05-R15 起夜路径照明'));
-  assert.ok(targetRe.test('### DEC-2026-08-26-045 主卧空调檐口定案'));
-  // 正文里提到编号不是标题，不得计入目标集合
-  assert.equal(targetRe.test('本文提到 DEC-2026-10-05-R15 但不是标题行'), false);
+  assert.ok(targetRe.test('  - id: "DEC-2026-10-05-R15"'), 'target_pattern 必须认 YAML 登记行（带引号）');
+  assert.ok(targetRe.test("  - id: 'DEC-2026-08-26-045'"), 'target_pattern 必须认 YAML 登记行（单引号）');
+  assert.ok(targetRe.test('  - id: DEC-2026-10-08-C01'), 'target_pattern 必须认 YAML 登记行（无引号）');
+  assert.ok(targetRe.test('  - id: "DEC-2026-09-02-051-补"'), 'target_pattern 必须认带补充号的登记行');
+  // 正文里提到编号不是登记行，不得计入目标集合
+  assert.equal(targetRe.test('本文提到 DEC-2026-10-05-R15 但不是登记行'), false);
+  assert.equal(targetRe.test('kind: design_caliber # DEC-2026-10-05-R15'), false);
 });
 
 test('fk：登记表自身必须从扫描域排除，否则自引用既虚增计数又污染定位', () => {
@@ -971,7 +1012,7 @@ test('带 pending 的豁免与契约在 INFO 里露面，不退化成静默待�
 test('ceiling_clearance：按共享 footprint 核点与穿越线段；走地分支不与吊顶面比较', () => {
   const contract = {
     id: 'c.probe_ceiling', kind: 'ceiling_clearance' as const, severity: 'error' as const,
-    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/ceiling.yaml',
+    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/model/envelope/ceiling.yaml',
     endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
     default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 4,
     prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
@@ -1023,7 +1064,7 @@ test('ceiling_clearance：按共享 footprint 核点与穿越线段；走地分�
       '    via: [{x: 8.0, z: 4.6, y: 2.45}]',
       '    to: {x: 8.5, z: 4.6}',
     ].join('\n'),
-    'config/ceiling.yaml': [
+    'config/model/envelope/ceiling.yaml': [
       '- id: drop_a',
       '  room: living_dining',
       '  type: drop',
@@ -1056,7 +1097,7 @@ test('ceiling_clearance：按共享 footprint 核点与穿越线段；走地分�
 test('ceiling_clearance：管线保温外包络穿出完成面时计入登记数', () => {
   const contract = {
     id: 'c.probe_insulated_ceiling', kind: 'ceiling_clearance' as const, severity: 'error' as const,
-    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/ceiling.yaml',
+    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/model/envelope/ceiling.yaml',
     endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
     default_room_height: 2.8, tolerance: 0, registered_conflicts: 1,
     prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
@@ -1077,7 +1118,7 @@ test('ceiling_clearance：管线保温外包络穿出完成面时计入登记数
       '    from: {x: 0.5, z: 1, y: 2.515}',
       '    to: {x: 1.5, z: 1, y: 2.515}',
     ].join('\n'),
-    'config/ceiling.yaml': '- id: drop_test\n  room: living_dining\n  type: drop\n  thickness: 0.30\n  area: [0, 0, 2, 2]\n',
+    'config/model/envelope/ceiling.yaml': '- id: drop_test\n  room: living_dining\n  type: drop\n  thickness: 0.30\n  area: [0, 0, 2, 2]\n',
     'docs/guidance.md': '冲突 1 处\n',
   };
   const datasets = {
@@ -1141,16 +1182,16 @@ test('repair_channel：DEC 全引 + 非空 sync_files 即通过并在 INFO 露�
   // 齐全：decision_ref 是合法 DEC 全引，sync_files 两个文件都真实存在
   const ok = lintFacts(channelProbe({
     decision_ref: 'DEC-2026-10-05-R20',
-    sync_files: ['config/ceiling.yaml', 'config/facts.yaml'],
+    sync_files: ['config/model/envelope/ceiling.yaml', 'config/facts.yaml'],
   }), realWorkspace());
   assert.equal(ok.errors.length, 0, ok.errors.map((e) => e.message).join('\n'));
   assert.match((ok.notes ?? []).join('\n'), /c\.probe_repair 修正通道已登记 — DEC-2026-10-05-R20/);
-  assert.match((ok.notes ?? []).join('\n'), /config\/ceiling\.yaml、config\/facts\.yaml/);
+  assert.match((ok.notes ?? []).join('\n'), /config\/model\/envelope\/ceiling\.yaml、config\/facts\.yaml/);
 
   // 裁定落地前的 pending: 占位同样放行（与 exempt.pending 同纪律：INFO 露面，不假装已有 DEC）
   const pending = lintFacts(channelProbe({
-    decision_ref: 'pending:docs/pending-site-data.md #41 裁定后替换为设计侧修正 DEC 全引',
-    sync_files: ['config/ceiling.yaml', 'docs/mep-construction-guidance.md', 'docs/pending-site-data.md', 'config/facts.yaml'],
+    decision_ref: 'pending:原量房台账 #41（已退场，未决项现由对象 blocker 承载） 裁定后替换为设计侧修正 DEC 全引',
+    sync_files: ['config/model/envelope/ceiling.yaml', 'docs/mep-construction-guidance.md', 'config/facts.yaml'],
   }), realWorkspace());
   assert.equal(pending.errors.length, 0);
   assert.match((pending.notes ?? []).join('\n'), /c\.probe_repair 修正通道待决/);
@@ -1171,7 +1212,7 @@ test('repair_channel：DEC 全引 + 非空 sync_files 即通过并在 INFO 露�
   assert.match(noFiles.errors[0].message, /sync_files 为空/);
 
   // sync_files 指向不存在的文件 → 登记出口腐烂
-  const gone = lintFacts(channelProbe({ decision_ref: 'DEC-2026-10-05-R20', sync_files: ['config/ceiling.yaml', 'config/gone.yaml'] }), realWorkspace());
+  const gone = lintFacts(channelProbe({ decision_ref: 'DEC-2026-10-05-R20', sync_files: ['config/model/envelope/ceiling.yaml', 'config/gone.yaml'] }), realWorkspace());
   assert.equal(gone.errors.filter((i) => i.code === 'repair_channel_invalid').length, 1);
   assert.match(gone.errors[0].message, /config\/gone\.yaml 不存在/);
 });
@@ -1180,7 +1221,7 @@ test('repair_channel：DEC 全引必须真的存在于 decision_log_files，否�
   // 背景：只验格式等于允许「error 正文指引人去改一条不存在的 DEC」——2026-10-09 决策日志
   // 拆成 14 个文件后，编号被改号/删掉时这条路会静默腐烂，故补存在性校验。
   const registry = (decision_log_files: string[], decision_ref: string): FactsRegistry => ({
-    ...channelProbe({ decision_ref, sync_files: ['config/ceiling.yaml'] }),
+    ...channelProbe({ decision_ref, sync_files: ['config/model/envelope/ceiling.yaml'] }),
     decision_log_files,
   });
 
@@ -1191,7 +1232,7 @@ test('repair_channel：DEC 全引必须真的存在于 decision_log_files，否�
   ), workspaceOf({
     'docs/decisions/a.md': '### DEC-2026-10-06-R1 别的\n',
     'docs/decisions/b.md': '### DEC-2026-10-06-R5 #41 裁定\n正文\n',
-    'config/ceiling.yaml': 'zones: []\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
   }));
   assert.equal(ok.errors.length, 0, ok.errors.map((e) => e.message).join('\n'));
 
@@ -1202,7 +1243,7 @@ test('repair_channel：DEC 全引必须真的存在于 decision_log_files，否�
   ), workspaceOf({
     'docs/decisions/a.md': '### DEC-2026-10-06-R1 别的\n',
     'docs/decisions/b.md': '### DEC-2026-10-06-R50 笔误成 50\n',
-    'config/ceiling.yaml': 'zones: []\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
   }));
   assert.equal(stale.errors.length, 1);
   assert.equal(stale.errors[0].code, 'repair_channel_ref_unresolvable');
@@ -1212,32 +1253,81 @@ test('repair_channel：DEC 全引必须真的存在于 decision_log_files，否�
   // 只认标题、不认 prose 提及：正文里引用一个已删编号不算存在
   const prose = lintFacts(registry(['docs/decisions/a.md'], 'DEC-2026-10-06-R5'), workspaceOf({
     'docs/decisions/a.md': '正文引用 DEC-2026-10-06-R5 已废止\n',
-    'config/ceiling.yaml': 'zones: []\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
   }));
   assert.equal(prose.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+
+  // ── 2026-11-09 issue #98 S2：DEC 档案退役，条目改住 config/decision-knowledge.yaml 的
+  //    YAML 登记行（`  - id: "DEC-…"`）。decision_log_files 的靶换成该文件后，存在性校验必须
+  //    同口径认登记形态——只认 md 标题的话，删档当天这里必炸 repair_channel_ref_unresolvable。
+  const yamlRegistry = (file: string, decision_ref: string): FactsRegistry => ({
+    ...channelProbe({ decision_ref, sync_files: ['config/model/envelope/ceiling.yaml'] }),
+    decision_log_files: [file],
+  });
+  const yamlHit = lintFacts(yamlRegistry('config/decision-knowledge.yaml', 'DEC-2026-10-06-R5'), workspaceOf({
+    'config/decision-knowledge.yaml': [
+      'entries:',
+      '  - id: "DEC-2026-10-06-R1"',
+      '    kind: design_caliber',
+      'retired:',
+      '  - id: "DEC-2026-10-06-R5"',
+      '    subject: "#41 裁定"',
+      '',
+    ].join('\n'),
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(yamlHit.errors.length, 0, yamlHit.errors.map((e) => e.message).join('\n'));
+
+  // 登记行里没有该编号（只有 prose 提及它）→ 仍报腐烂：登记形态与 prose 提及的区分不变
+  const yamlProse = lintFacts(yamlRegistry('config/decision-knowledge.yaml', 'DEC-2026-10-06-R5'), workspaceOf({
+    'config/decision-knowledge.yaml': '# 依据 DEC-2026-10-06-R5 已裁定\nretired: []\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(yamlProse.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+
+  // 边界同口径：`R01` 不冒充 `R01.1`；基号 `051` 不冒充 `051-补`（补充号救不了基号）
+  const yamlBoundary = lintFacts(yamlRegistry('config/decision-knowledge.yaml', 'DEC-2026-10-08-R01'), workspaceOf({
+    'config/decision-knowledge.yaml': 'retired:\n  - id: "DEC-2026-10-08-R01.1"\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(yamlBoundary.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+  const yamlBoundary2 = lintFacts(yamlRegistry('config/decision-knowledge.yaml', 'DEC-2026-09-02-051'), workspaceOf({
+    'config/decision-knowledge.yaml': 'retired:\n  - id: "DEC-2026-09-02-051-补"\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
+  }));
+  assert.equal(yamlBoundary2.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
+
+  // 真实仓：c.mep_layer_below_drop_bottom 的 decision_ref 必须能在现行 decision_log_files 里解析
+  const realRegistry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
+  const realChannel = ((realRegistry.contracts ?? []).find((c) => c.id === 'c.mep_layer_below_drop_bottom')?.repair_channel ?? {}) as { decision_ref?: string };
+  const realResolve = lintFacts(realRegistry, realWorkspace());
+  assert.deepEqual(realResolve.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').map((i) => i.message), [],
+    `repair_channel.decision_ref「${realChannel.decision_ref ?? ''}」必须在 decision_log_files 里可解析`);
+  assert.deepEqual((realRegistry.decision_log_files ?? []), ['config/decision-knowledge.yaml'],
+    'decision_log_files 应指向 config/decision-knowledge.yaml（S2 改切）');
 
   // 边界：`R01` 不冒充 `R01.1`；基号 `051` 不冒充 `051-补`
   const boundary = lintFacts(registry(['docs/decisions/a.md'], 'DEC-2026-10-08-R01'), workspaceOf({
     'docs/decisions/a.md': '### DEC-2026-10-08-R01.1 cove 改版\n',
-    'config/ceiling.yaml': 'zones: []\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
   }));
   assert.equal(boundary.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
   const boundary2 = lintFacts(registry(['docs/decisions/a.md'], 'DEC-2026-09-02-051'), workspaceOf({
     'docs/decisions/a.md': '### DEC-2026-09-02-051-补 百叶段南延\n',
-    'config/ceiling.yaml': 'zones: []\n',
+    'config/model/envelope/ceiling.yaml': 'zones: []\n',
   }));
   assert.equal(boundary2.errors.filter((i) => i.code === 'repair_channel_ref_unresolvable').length, 1);
 
   // 未登记 decision_log_files：跳过存在性校验，但必须在 INFO 露面，不静默
-  const undeclared = lintFacts(channelProbe({ decision_ref: 'DEC-2026-10-05-R20', sync_files: ['config/ceiling.yaml'] }), realWorkspace());
+  const undeclared = lintFacts(channelProbe({ decision_ref: 'DEC-2026-10-05-R20', sync_files: ['config/model/envelope/ceiling.yaml'] }), realWorkspace());
   assert.equal(undeclared.errors.length, 0);
   assert.match((undeclared.notes ?? []).join('\n'), /未校验 DEC 存在性/);
 
   // pending: 占位不参与存在性校验（它本来就声明「还没有 DEC」）
   const pending = lintFacts({
-    ...channelProbe({ decision_ref: 'pending:docs/pending-site-data.md #41', sync_files: ['config/ceiling.yaml'] }),
+    ...channelProbe({ decision_ref: 'pending:原量房台账 #41（已退场，未决项现由对象 blocker 承载）', sync_files: ['config/model/envelope/ceiling.yaml'] }),
     decision_log_files: ['docs/decisions/a.md'],
-  }, workspaceOf({ 'docs/decisions/a.md': '### DEC-2026-10-06-R1 别的\n', 'config/ceiling.yaml': 'zones: []\n' }));
+  }, workspaceOf({ 'docs/decisions/a.md': '### DEC-2026-10-06-R1 别的\n', 'config/model/envelope/ceiling.yaml': 'zones: []\n' }));
   assert.equal(pending.errors.length, 0);
 });
 
@@ -1254,7 +1344,7 @@ test('repair_channel：基线漂移的 error 正文带上正当修正出口（�
       '    via: [{x: 8.0, z: 4.6, y: 2.45}]',
       '    to: {x: 8.5, z: 4.6}',
     ].join('\n'),
-    'config/ceiling.yaml': [
+    'config/model/envelope/ceiling.yaml': [
       '- id: drop_a',
       '  room: living_dining',
       '  type: drop',
@@ -1267,13 +1357,13 @@ test('repair_channel：基线漂移的 error 正文带上正当修正出口（�
   };
   const datasets = { 'mep.endpoints': {}, 'mep.room_heights': { living_dining: 2.8 } };  const contract = {
     id: 'c.probe_ceiling', kind: 'ceiling_clearance' as const, severity: 'error' as const,
-    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/ceiling.yaml',
+    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/model/envelope/ceiling.yaml',
     endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
     default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 2,
     prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
     repair_channel: {
       decision_ref: 'DEC-2026-10-05-R20',
-      sync_files: ['config/ceiling.yaml', 'docs/mep-construction-guidance.md'],
+      sync_files: ['config/model/envelope/ceiling.yaml', 'docs/mep-construction-guidance.md'],
     },
   };
   const drift = lintFacts({ ...emptyRegistry, contracts: [contract] }, workspaceOf(files, datasets));
@@ -1282,7 +1372,7 @@ test('repair_channel：基线漂移的 error 正文带上正当修正出口（�
   // error 语义不变（仍 error），但正文必须给出「正当修正长什么样」
   assert.match(hit[0].message, /登记的既有冲突基数 2 ≠ 机器实算 1/);
   assert.match(hit[0].message, /正当修正通道：附 DEC-2026-10-05-R20 修改设计侧几何\/口径/);
-  assert.match(hit[0].message, /同步 config\/ceiling\.yaml、docs\/mep-construction-guidance\.md/);
+  assert.match(hit[0].message, /同步 config\/model\/envelope\/ceiling\.yaml、docs\/mep-construction-guidance\.md/);
 
   // 基数与实算一致时不报错，通道仍在 INFO 露面（登记出口不许静默消失）
   const aligned = lintFacts({ ...emptyRegistry, contracts: [{ ...contract, registered_conflicts: 1 }] }, workspaceOf(files, datasets));
@@ -1304,7 +1394,7 @@ test('真实登记表：c.mep_layer_below_drop_bottom 的 repair_channel 字段�
   );
   assert.deepEqual(
     channel.sync_files,
-    ['config/ceiling.yaml', 'docs/mep-construction-guidance.md', 'docs/pending-site-data.md', 'config/facts.yaml'],
+    ['config/model/envelope/ceiling.yaml', 'docs/mep-construction-guidance.md', 'config/facts.yaml'],
   );
   for (const file of channel.sync_files as string[]) {
     assert.doesNotThrow(() => readFileSync(file, 'utf8'), `sync_files 中的 ${file} 必须存在`);

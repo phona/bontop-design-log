@@ -1,8 +1,10 @@
 import fs from 'node:fs';
+import { countPendingComponents } from '../../shared/pending-count.js';
 import path from 'node:path';
 import process from 'node:process';
 import { buildCostSummary, renderCostSummary, COST_INPUT_PATHS, COST_SUMMARY_PATH } from './cost-summary.js';
 import { loadModelPackageLinks, MODEL_PACKAGE_LINKS_PATH } from '../../server/model-package-links.js';
+import { authorityFilePaths } from '../../shared/model-package-links.js';
 import { loadScheduleState, CONTROL_REL_PATH, ACCEPTANCE_REL_PATH, ROADMAP_REL_PATH } from '../../shared/schedule-state.js';
 
 // 2026-11-02（自装交互审批第一步）：本文件从 1105 行零 export 纯脚本退化为
@@ -51,16 +53,21 @@ function selectorLinkTable(packageId: string, outputPath: string): string {
   if (!links.length) markdown += '| — | 未登记项目模型映射 | 未映射 |\n';
   for (const link of links) {
     for (const scope of link.scope ?? []) {
-      const sourcePath = modelPackageLinks.authorities[scope.source] ?? scope.source;
-      const relativePath = path.posix.relative(path.posix.dirname(outputPath), sourcePath);
-      markdown += `| [${sourcePath}](${relativePath}) | ${escapeCell(scopeSummary(scope.select))} | ${link.mapping_status} |\n`;
+      // authority 可指多文件（overlay = envelope 三文件，issue #98 S1）：逐文件一行，scope 同。
+      for (const sourcePath of modelPackageLinks.authorities[scope.source] ? authorityFilePaths(modelPackageLinks.authorities[scope.source]!) : [scope.source]) {
+        const relativePath = path.posix.relative(path.posix.dirname(outputPath), sourcePath);
+        markdown += `| [${sourcePath}](${relativePath}) | ${escapeCell(scopeSummary(scope.select))} | ${link.mapping_status} |\n`;
+      }
     }
     if (!link.scope?.length && link.note) markdown += `| — | ${escapeCell(link.note)} | ${link.mapping_status} |\n`;
   }
   const packageRecord = control.work_packages.find((pkg: AnyRecord) => pkg.id === packageId);
   if (packageRecord && (packageRecord.include_site_data_ledger === true || (packageRecord.blockers ?? []).some((id: string) => ['BLK-HANDOVER', 'BLK-SURVEY-DATA-FREEZE'].includes(id)))) {
-    const relativePath = path.posix.relative(path.posix.dirname(outputPath), 'docs/pending-site-data.md');
-    markdown += `| [docs/pending-site-data.md](${relativePath}) | 现场待测数据；按各项影响、状态和触发条件闭环 | site ledger |\n`;
+    // 2026-11-09 修 Codex minor：原把「原量房台账（已于 S2-B 退场）」当真实文件路径算相对
+    // 链接，生成的 ../../原量房台账（已于 S2-B 退场） 全部指向不存在的文件，读者点
+    // 「现场数据」入口拿不到待核事项。改为不造链接、给命令与真实载体（对象 blocker 字段
+    // 与 config/open-items.yaml）。
+    markdown += `| 现场待测数据：跑 \`npm run docs:generate-pending-view\` 生成待决视图；权威在 config 各对象自己的 \`status\`/\`blocker\` 字段与 \`config/open-items.yaml\`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |\n`;
   }
   const dataFingerprint = packageRecord ? packageProjectFingerprint(packageRecord) : 'unknown';
   markdown += `\n当前项目数据指纹：\`sha256:${dataFingerprint}\`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。\n\n`;
@@ -150,10 +157,15 @@ function phaseChecklist(phaseId: string, phaseControl: AnyRecord, phaseName: str
   markdown += '\n## 候选范围\n\n| ID | 项目 | 预算区间 | 状态 | 关联项目数据 |\n|---|---|---:|---|---|\n';
   for (const item of items) {
     const link = modelPackageLinks.links.find((candidate) => candidate.budget_ref.id === item.id);
-    const sourcePaths = link?.scope?.map((scope) => modelPackageLinks.authorities[scope.source]).filter(Boolean) ?? [];
-    const sourceText = unique(sourcePaths).map((itemPath) => {
-      const rel = path.posix.relative(path.posix.dirname(`${sourcePath.slice(0, sourcePath.lastIndexOf('/'))}/checklist.md`), itemPath);
-      const scopes = (link?.scope ?? []).filter((scope) => modelPackageLinks.authorities[scope.source] === itemPath).map((scope) => scopeSummary(scope.select));
+    // authority 可指多文件（overlay = envelope 三文件，issue #98 S1）：展开后逐文件聚合 scope。
+    const sourcePaths = unique((link?.scope ?? []).flatMap((scope) => modelPackageLinks.authorities[scope.source] ? authorityFilePaths(modelPackageLinks.authorities[scope.source]!) : []));
+    const sourceText = sourcePaths.map((itemPath) => {
+      // 2026-11-09 修 Codex minor：原以**目标文件所在目录**为基准算相对路径，
+      // 于是任何清单里都退化成裸文件名——phase-2/checklist.md 中的
+      // `[config/house.yaml](house.yaml)` 会指向不存在的 schedule/phase-2/house.yaml。
+      // 基准必须是**清单自身所在目录**（sourcePath 的 dirname）。
+      const rel = path.posix.relative(path.posix.dirname(sourcePath), itemPath);
+      const scopes = (link?.scope ?? []).filter((scope) => authorityFilePaths(modelPackageLinks.authorities[scope.source] ?? []).includes(itemPath)).map((scope) => scopeSummary(scope.select));
       return `[${itemPath}](${rel})${scopes.length ? ` — ${escapeCell(scopes.join('; '))}` : ''}`;
     }).join('<br>');
     const budget = item.estimate_min_cny == null ? '不预分配' : `¥${item.estimate_min_cny.toLocaleString('zh-CN')}—¥${item.estimate_max_cny.toLocaleString('zh-CN')}`;
@@ -365,9 +377,10 @@ const phase2Checklist = phaseChecklist('phase_2_function_upgrade', phase2Control
 const phase3Checklist = phaseChecklist('phase_3_styling', phase3Control, '三期入住后优化', 'schedule/phase-3/control.yaml');
 
 const projectSnapshot = fileSnapshot(projectInputPaths);
-const pendingSiteText = fs.readFileSync(path.join(root, 'docs/pending-site-data.md'), 'utf8');
-const pendingSiteCount = Number(pendingSiteText.match(/量表共\s*(\d+)\s*条/)?.[1] ?? 0);
-let projectChecklist = `${snapshotComment(projectSnapshot)}# 项目进度与阶段 Checkpoint\n\n> 自动生成：请勿直接编辑。维护源为各阶段 control.yaml、roadmap.yaml、phase-scope.yaml、model-package-links.yaml、验收标准和已关联项目配置。  \n> 项目数据指纹：\`sha256:${snapshotDigest(projectSnapshot)}\`（${Object.keys(projectSnapshot).length} 个输入文件）  \n> 当前量房待确认台账：${pendingSiteCount} 个编号，详情见 [量房待填清单](../docs/pending-site-data.md)。\n\n`;
+// 2026-11-08 issue #98 S2-B：原「量房待确认台账」手账（原量房台账（已于 S2-B 退场））退场，
+// 未决项已全数搬到 config 各对象自己的 status/blocker 字段上——计数改由对象派生。
+const pendingSiteCount = countPendingComponents();
+let projectChecklist = `${snapshotComment(projectSnapshot)}# 项目进度与阶段 Checkpoint\n\n> 自动生成：请勿直接编辑。维护源为各阶段 control.yaml、roadmap.yaml、phase-scope.yaml、model-package-links.yaml、验收标准和已关联项目配置。  \n> 项目数据指纹：\`sha256:${snapshotDigest(projectSnapshot)}\`（${Object.keys(projectSnapshot).length} 个输入文件）  \n> 当前未决断构件：${pendingSiteCount} 个（每个都带 blocker，可读视图跑 npm run docs:generate-pending-view）。\n\n`;
 projectChecklist += '## 怎么用这份清单\n\n';
 projectChecklist += '- 先看阶段表，按“当前状态”和“启动门槛”决定是否进入下一阶段。\n';
 projectChecklist += '- 一期按 [一期施工与验收清单](phase-1/checklist.md) 的当前工作包推进；每个包展示开始条件、检查方法、通过标准、证据和关联项目数据。\n';

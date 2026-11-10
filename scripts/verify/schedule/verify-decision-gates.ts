@@ -120,7 +120,7 @@ function main(): void {
     console.log(JSON.stringify(report, null, 2));
   } else {
     console.log(`决策门禁（${DECISION_GATES_PATH}）：`);
-    console.log(`  登记 ${gates.decisions.length} 个决策（叙事登记表 docs/pending-site-data.md 同步 ${narrativeDecisionIds.size} 个），其中开放中的验收门禁 ${openGates.length} 个、阻塞 ${blockedChecks.length} 项验收；已有 passed 记录的验收 ${passedCheckIds.size} 项；散文决策引用 ${proseMentions.length} 处`);
+    console.log(`  登记 ${gates.decisions.length} 个决策（叙事登记表 原量房台账（已于 S2-B 退场） 同步 ${narrativeDecisionIds.size} 个），其中开放中的验收门禁 ${openGates.length} 个、阻塞 ${blockedChecks.length} 项验收；已有 passed 记录的验收 ${passedCheckIds.size} 项；散文决策引用 ${proseMentions.length} 处`);
     for (const issue of sorted) {
       const where = [issue.decision, issue.check].filter(Boolean).join(' / ');
       console.log(`  ${issue.severity === 'error' ? 'x' : '!'} [${issue.code}] ${where || '-'} ${issue.message}`);

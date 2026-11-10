@@ -65,7 +65,7 @@ not_started -> in_progress -> ready_for_inspection -> passed
 
 `acceptance.yaml` 与 `control.yaml` 散文里出现的「待 Dx 拍板」必须能在登记表找到对应决策，且散文点名的验收项必须登记在该决策的 `blocks` 里——门禁不许只活在注释里。登记表是各阶段视图与通过记录的项目数据指纹输入之一，登记表变化后旧 PASS 自动转 stale，复验追加新记录。
 
-叙事侧登记表在 `docs/pending-site-data.md`「决策点登记」节（待拍板内容与缺的证据，人读版），两侧编号集合必须一致：只登记一侧，另一侧就静默失效，校验器做双向对照。业主拍板后同时更新两侧：本表补拍板留痕四件套，叙事节同步改写。校验入口 `npm run verify:decision-gates`，已并入 `verify:all`。
+叙事侧登记表在 `原量房台账（已退场）`「决策点登记」节（待拍板内容与缺的证据，人读版），两侧编号集合必须一致：只登记一侧，另一侧就静默失效，校验器做双向对照。业主拍板后同时更新两侧：本表补拍板留痕四件套，叙事节同步改写。校验入口 `npm run verify:decision-gates`，已并入 `verify:all`。
 
 ## 4. 工作包规范
 

@@ -28,6 +28,8 @@
  * id 在权威文档里真实存在；本模块只负责「场景里能高亮什么」。
  */
 
+import { SOURCE_PREFIXES } from './envelope-sources.js';
+
 export interface ProjectScopeInput {
   house: {
     rooms: Array<{id: string}>;
@@ -104,9 +106,80 @@ const COLLECTION_ELEMENT_TYPES: Record<string, string[]> = {
 const POINT_SOURCE_PREFIXES: Record<string, string> = {
   electrical: 'electrical:',
   plumbing: 'plumbing:',
-  ceiling: 'ceiling:',
+  // 2026-11-07（issue #98 第三阶段 S6）：吊顶的 objectId 前缀取自 shared/envelope-sources.ts
+  // 的来源注册表（源名 → 前缀），不再在本文件手抄 'ceiling:'。overlay 不在此表：它的 ids 走
+  // OBJECT_ID_SOURCES（裸 id），见该常量的注释。
+  ceiling: SOURCE_PREFIXES.ceiling,
   hvac: 'hvac:',
 };
+
+/**
+ * 家具来源（furnishings）的 `select.ids` → 场景 objectId **裸 id**（2026-11-06 issue #98 PR-4）。
+ *
+ * 家具 objectId 的唯一实现在 `shared/furniture-object-id.ts`：条目声明了 `id`
+ * （如 `gbath.vanity`）就直接用它，未声明才退化成 `furniture:<room>:<type>:<index>`。
+ * 它**不带来源前缀**（与 electrical:/plumbing: 点位约定相反），所以不能套
+ * POINT_SOURCE_PREFIXES——套了会造出永远对不上的键，高亮与反查两边静默不命中。
+ *
+ * 取代的旧行为：furnishings 的 `types` 选择器（如 `types: [vanity]`）按 sceneElements 的
+ * type 匹配，而 sceneElements 只有墙与叠加层区域（server/overlay-merge.ts 的
+ * mergeSceneElements，walls + overlay.elements）、**不含家具**，所以这类选择器从来
+ * 解析不出任何对象——silent no-op。ids 走本条分支后，按稳定 id 选家具的链接
+ * （MODEL-PKG-100 选 gbath.vanity、MODEL-PKG-160 选 gbath.robot_dock）正查高亮
+ * （App.highlightApprovalPackage）与反查归属（buildObjectPackageIndex →
+ * revealPackageForObject）同时生效。**2026-11-06 更新（issue #98 PR-8）**：本集合
+ * 导出后另被 scripts/schedule/cost-by-object.ts 复用——按对象算账的「对象 → 工作包」
+ * 通道与 3D 高亮同源，新增对象 id 来源时两处自动跟随，不得在脚本里另立一套来源表。
+ *
+ * **2026-11-07 更新（issue #98 第三阶段 S4 面层配方下沉）**：登记 `overlay` 与
+ * `model_geometry`——墙（model-geometry.yaml 的墙条目，含 finish 面层配方）与围护构件
+ * （envelope/openings.yaml 的 bay_sill，含 finish）的 `select.ids` 按**宿主对象稳定 id**
+ * 表达。设计文档 §5.7 预裁的这一步随 S4 落地：面层配方不再是 overlay 平级元素后，
+ * `types: [wall_region/sill_region/paint_region]` 选择器无处可选，工作包范围改按宿主对象
+ * id 选（与家具片 PR-4 同一方向）。
+ *
+ * **2026-11-07 S6 补充（对设计文档 §5.7「overlay/ceiling 都登记为 ids=裸 objectId」的
+ * 按事实修正）**：`ceiling` **不**在本表，这不是疏漏——吊顶分区/设备位在场景里的 objectId
+ * 一律带 `ceiling:` 前缀（shared/render/SceneBuilder.ts:1323
+ * `objectId = \`ceiling:${zone.id}\``，房间平顶另在 :283 `ceiling:${room.id}`；
+ * app/src/scene/HouseScene.test.ts:1492 等用例钉的就是这个形式）。把 ceiling 登记成
+ * 「ids = 裸 objectId」会让 `{source: ceiling, select: {ids: [ceiling_living]}}` 产出裸键
+ * `ceiling_living`，与场景里的 `ceiling:ceiling_living` 永远对不上——正是本文件头注记载的
+ * 2026-11-02「ids 选择器静默 no-op、mock 测试照不到」同一失效类。故 ceiling 的 ids 走
+ * POINT_SOURCE_PREFIXES 的 `ceiling:` 前缀（前缀值本身来自来源注册表），两条归一化路径
+ * 不混；tests/server/package-scope.test.ts 有对应用例钉住这个分流。设计文档写这条时
+ * （S1 之前）假设「overlay/ceiling 的 id 已是 objectId」——对 overlay 成立（构件 id 即
+ * objectId），对 ceiling 不成立，此处按代码事实修正并留证。
+ *
+ * **墙 id ≠ 墙 mesh 的 objectId（2026-11-07 评审 blocking 修正）**：一度在本注释里断言
+ * 「墙的 select.ids 就是场景 objectId 裸值（mergeSceneElements 原样透传）」——**对开洞墙 /
+ * 共墙拆面墙是假不变量**。SceneBuilder.addWallElement 对拆段/拆面的墙写
+ * `墙id:N`（开门洞拆段）与 `墙id:N.M`（共墙按房间拆面），裸 id 只属于无洞且单面跨度的墙
+ * （实测 52 面墙里 15 面命中不了）。因此**消费侧必须经 sourceWallIdOf 桥接**：
+ * HouseScene.applyEmissiveHighlight 正查高亮、App.revealPackageForObject 反查归属各做一次
+ * 二级命中；tests/server/package-scope.test.ts 有门禁钉「生产 links 的每个 objectId 都能在
+ * buildScene 产出里命中（含桥接后）」——否则就是本文件头注记载的 2026-11-02「ids 选择器
+ * 静默 no-op、mock 测试照不到」同一失效类复发。
+ */
+export const OBJECT_ID_SOURCES = new Set(['furnishings', 'overlay', 'model_geometry']);
+
+/**
+ * 场景 objectId → 源墙 id（2026-11-07 issue #98 S4 评审 blocking 后新增的唯一实现）。
+ *
+ * SceneBuilder.addWallElement 的墙 mesh objectId 有三种形态（shared/render/SceneBuilder.ts
+ * `baseId`/`objectId` 两行）：无洞且单面跨度 = 裸 `墙id`；开门洞拆段 = `墙id:N`；
+ * 共墙按房间拆面 = `墙id:N.M`。墙 id 本身不含 ':'，故截第一个 ':' 即得源墙 id。
+ *
+ * 为什么需要它：links 的墙 select.ids 是**稳定墙 id**（model-geometry 的墙条目 id），
+ * 而 sceneElements 只有一份墙元素、mesh objectId 带拆段/拆面后缀——高亮与反查两侧都按
+ * objectId 精确命中，于是「选了墙却高亮不到」会静默发生（业主点包没反应）。
+ * 桥接只此一处：app/src/render/HouseScene.ts 原有一份同名本地实现（审计面 suppress 判定
+ * 用它）已改为 import 本函数，App.ts 的反查同样用它。
+ */
+export function sourceWallIdOf(objectId: string): string {
+  const colon = objectId.indexOf(':');
+  return colon === -1 ? objectId : objectId.slice(0, colon);
+}
 
 /**
  * 点位来源的 `select {all: true}` → 项目数据里该分类的全部点位（2026-11-04 issue #65）。
@@ -190,6 +263,12 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
     // （拾取侧 targetFromIntersects 解析出的就是带前缀 id）。裸 id 直接进集合会
     // 两边都静默不命中——2026-11-02 浏览器实证，勿回退。
     for (const id of select.ids ?? []) {
+      // 家具来源的 ids 是场景 objectId 裸值（OBJECT_ID_SOURCES）：家具 objectId 不带
+      // 来源前缀，走点位前缀归一化会造出对不上的键。
+      if (OBJECT_ID_SOURCES.has(scope.source)) {
+        objectIds.add(id);
+        continue;
+      }
       const prefix = POINT_SOURCE_PREFIXES[scope.source];
       if (prefix) {
         pointIds.add(`${prefix}${id}`);

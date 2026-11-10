@@ -1,3 +1,4 @@
+import { suppressedWallIds } from '../../shared/suppression.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -5,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { parseElectricalTopology, ElectricalPointSchema } from '../../shared/project-render-facts-schema.js';
 import { lintElectricalTopology } from '../../shared/electrical-lint.js';
+import { derivePointCircuits } from '../../shared/point-circuits.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { parseOverlay } from '../../server/overlay-merge.js';
 import type { ElectricalPoint, ElectricalTopology, FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
@@ -18,11 +20,26 @@ const raw = readFileSync('config/electrical-topology.yaml', 'utf8');
 // 本测试此前漏传 context（多 5 条 curtain_power_near_curtain_wall 噪声：53→58），
 // 因此这里照抄 verifier 的取法：model-geometry.yaml + overlay.yaml → resolveLayout/parseOverlay，
 // 几何一律由项目现有 resolver 解析，不在测试里手抄。
-const layoutContext = () => ({
-  layout: resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml),
-  suppressedWallIds: parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).suppress.flatMap((item) => (item.wall ? [item.wall] : item.walls ?? [])),
-  furnishings: (parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml }).furnishings ?? {},
-});
+const layoutContext = () => {
+  const layout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+  return {
+    layout,
+    // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性，
+    // 唯一权威实现 shared/suppression.ts（原 parseOverlayFiles().suppress 顶层清单已删）。
+    suppressedWallIds: suppressedWallIds(layout.walls),
+    furnishings: (parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml }).furnishings ?? {},
+  };
+};
+
+// fail-closed 之后，缺 mountHosts 会在解析器当场抛错（issue #98 疗法①）：调用方漏传索引
+// 是接线缺陷，不是配置缺陷，原来的诊断返回值会被消费方降级成静默错位。真实路径都带齐
+// context——/api/project 路由（server/routes.ts:244）与 verifier
+// （scripts/verify/electrical/verify-electrical-lint.ts:20）都传 furnishings。
+// 本测试此前多处裸调 lintElectricalTopology(topology, points)，那是漏传，不是解析器该放弱；
+// 现统一经本助手带齐 context，与生产同口径。layoutContext 读三个配置文件，memoize 一次。
+let cachedContext: ReturnType<typeof layoutContext> | undefined;
+const lint = (topology: Parameters<typeof lintElectricalTopology>[0], pts: ElectricalPoint[] = points) =>
+  lintElectricalTopology(topology, pts, (cachedContext ??= layoutContext()));
 
 const byCode = (result: ReturnType<typeof lintElectricalTopology>, code: string) => result.warnings.filter((issue) => issue.code === code);
 const idsOf = (result: ReturnType<typeof lintElectricalTopology>, code: string) => byCode(result, code).map((issue) => issue.id).sort();
@@ -31,7 +48,7 @@ const isSocket = (point: ElectricalPoint | undefined) => point !== undefined && 
 
 test('real electrical topology parses and lints', () => {
   const topology = parseElectricalTopology(raw, points);
-  const result = lintElectricalTopology(topology, points, layoutContext());
+  const result = lint(topology, points);
   assert.equal(topology.circuits.length, 20); // DEC-2026-10-03-R1：25 路合并至 19 路；DEC-2026-10-04-R2：+外机专用回路；DEC-2026-10-05-R3：浴霸拆每卫一路（20→21）；DEC-2026-10-13-R5：删电视墙灯带整条 lighting_tv_ambient 回路（21→20）
   assert.equal(topology.controls.length, 9); // DEC-2026-10-12-R2 删 control_mbath_light / control_gbath_light 后 11→9
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 17); // R15 起夜灯并入照明回路；R12 删除客卫 3 灯、R15 删除 NP-4b（24→20）；R1 删主卧两盏壁灯（20→18）；R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）；DEC-2026-10-17-R20 照明两回路 +light_balcony_dome/+night_living_mid（15→17）
@@ -57,20 +74,20 @@ test('unknown point and duplicate member are rejected by parser', () => {
 
 test('two-way control without target is warning and dedicated pending is warning', () => {
   const topology = parseElectricalTopology(raw, points);
-  const result = lintElectricalTopology(topology, points);
+  const result = lint(topology, points);
   // DEC-2026-09-07-056：全部控件已绑定受控灯具，真实拓扑不再出现 control_target_missing
   assert.equal(result.errors.filter((i) => i.code === 'control_target_missing').length, 0);
   assert.equal(result.warnings.filter((i) => i.code === 'control_target_missing').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'dedicated_parameters_pending'));
   assert.equal(topology.controls.filter((control) => control.target_point_ids.length === 0).length, 0);
   // 行为回归：合成一个无目标双控仍应产生 warning
-  const mutated = lintElectricalTopology({ ...topology, controls: [...topology.controls, { ...topology.controls[0], id: 'control_no_target', target_point_ids: [] }] }, points);
+  const mutated = lint({ ...topology, controls: [...topology.controls, { ...topology.controls[0], id: 'control_no_target', target_point_ids: [] }] }, points);
   assert.equal(mutated.warnings.filter((i) => i.code === 'control_target_missing').length, 1);
 });
 
 test('lint rejects non-load members and duplicate members', () => {
   const topology = parseElectricalTopology(raw, points) as ElectricalTopology;
-  const result = lintElectricalTopology({
+  const result = lint({
     ...topology,
     circuits: [{ ...topology.circuits[0], member_point_ids: ['switch_living_entrance', 'switch_living_entrance'] }],
   }, points);
@@ -81,9 +98,9 @@ test('lint rejects non-load members and duplicate members', () => {
 test('ordinary power accepts sockets and rejects lighting/network/switch points', () => {
   const topology = parseElectricalTopology(raw, points) as ElectricalTopology;
   const ordinary = topology.circuits.find((circuit) => circuit.purpose === 'ordinary_power')!;
-  const valid = lintElectricalTopology({ ...topology, circuits: [{ ...ordinary, member_point_ids: ['sock_living_tv', 'sock_living_sofa_l'] }] }, points);
+  const valid = lint({ ...topology, circuits: [{ ...ordinary, member_point_ids: ['sock_living_tv', 'sock_living_sofa_l'] }] }, points);
   assert.equal(valid.errors.filter((i) => i.code === 'ordinary_member_not_socket').length, 0);
-  const invalid = lintElectricalTopology({ ...topology, circuits: [{ ...ordinary, member_point_ids: ['light_master_dome', 'net_living', 'switch_living_entrance'] }] }, points);
+  const invalid = lint({ ...topology, circuits: [{ ...ordinary, member_point_ids: ['light_master_dome', 'net_living', 'switch_living_entrance'] }] }, points);
   assert.equal(invalid.errors.filter((i) => i.code === 'ordinary_member_not_socket').length, 3);
 });
 
@@ -94,13 +111,70 @@ test('unknown circuit purpose is rejected by schema', () => {
 
 test('lint keeps historical uncovered points as warnings and maps circuit facts', () => {
   const topology = parseElectricalTopology(raw, points);
-  const result = lintElectricalTopology(topology, points);
+  const result = lint(topology, points);
   assert.equal(result.errors.filter((i) => i.code === 'circuit_fact_mismatch').length, 0);
   assert.equal(result.warnings.filter((i) => i.code === 'declared_circuit_uncovered').length, 0);
+  // issue #98 S3：点位侧 circuit 字段退役，控制目标必须在某条回路上（否则开关的回路归属
+  // 无从派生——旧 point.circuit 在控制目标点上意外承担的那半份校验，由这条接住）。
+  assert.equal(result.warnings.filter((i) => i.code === 'control_target_circuit_unresolved').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
   assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 28); // DEC-2026-10-27-R01 删 switch_parent_bed（未覆盖点）29→28； // 2026-10-05 R15：+switch_guest_bed（床头双控开关非负载点，28→29）// DEC-2026-10-06-R2：+sock_kitchen_oven（29→30）；DEC-2026-10-12-R1 删两盏壁灯（30→28）；R2 删 switch_mbath/switch_gbath 两个非负载开关点（28→26）→ 当前 26 // 外机点位已入回路，不增未覆盖；DEC-2026-10-17-R20：+net_master_ap 未入回路（28→29）
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
+});
+
+// ── issue #98 第四阶段 S3：点位侧 circuit 字段退役，成员关系钉断 ────────────────
+// 原 13 个点位在 config/electrical.yaml 手写 `circuit: <source 名>`，与 topology 的
+// member_point_ids 双写，由 lint 的 circuit_fact_mismatch（error）交叉校验。S3 起声明只住
+// member_point_ids 一处，「两份声明漂移」按构造不可能；这里把当年的成员关系钉成显式断言——
+// 删错/加错一个成员即红（与旧 error 同一道 CI 门禁），防止单一源化被当成「校验没了」。
+const RETIRED_CIRCUIT_DECLARATIONS: Record<string, string> = {
+  light_dining_pendant: 'lighting_dining',
+  light_living_dome: 'lighting_living_base',
+  light_corridor_1: 'lighting_entry_base',
+  light_entry_down: 'lighting_entry_base',
+  light_entry_foyer: 'lighting_entry_base',
+  night_guest_door: 'lighting_entry_base',
+  night_living_north: 'lighting_entry_base',
+  night_living_mid: 'lighting_entry_base',
+  night_corridor: 'lighting_entry_base',
+  sock_guest_bed_l: 'ordinary_power_parent_child',
+  sock_guest_bed_r: 'ordinary_power_parent_child',
+  night_guest_bed_side: 'lighting_bedrooms_bath',
+  night_guest_head: 'lighting_bedrooms_bath',
+};
+
+test('retired point-side circuit declarations stay locked as member_point_ids assertions (S3)', () => {
+  const topology = parseElectricalTopology(raw, points);
+  const byId = new Map(points.map((point) => [point.id, point]));
+  for (const [pointId, circuitId] of Object.entries(RETIRED_CIRCUIT_DECLARATIONS)) {
+    assert.ok(byId.has(pointId), `${pointId} 不存在（退役声明表过期了？同步更新本断言）`);
+    // 单源化后点位侧不得再出现 circuit 声明（schema 已删字段，这里是双保险）
+    assert.equal((byId.get(pointId) as { circuit?: string }).circuit, undefined, `${pointId} 不得再声明 circuit 字段`);
+    const circuit = topology.circuits.find((item) => item.id === circuitId);
+    assert.ok(circuit, `回路 ${circuitId} 不存在（退役声明表过期了？同步更新本断言）`);
+    assert.ok(circuit.member_point_ids.includes(pointId), `${pointId} 必须仍是 ${circuitId} 的成员（member_point_ids 是唯一事实源；删除成员须同步改本断言并说明理由）`);
+  }
+  // 派生一致性：single-source 派生把这些点位放回同一批回路
+  const derived = derivePointCircuits(topology);
+  for (const [pointId, circuitId] of Object.entries(RETIRED_CIRCUIT_DECLARATIONS)) {
+    assert.equal(derived.memberCircuits.get(pointId), circuitId, `${pointId} 派生回路不符`);
+  }
+  // source_circuit_id 间接层已废：拓扑文件里不许再出现
+  assert.ok(!JSON.stringify(topology).includes('source_circuit_id'), 'source_circuit_id 间接层应随点位侧 circuit 字段一并废除');
+});
+
+test('a control whose target is on no circuit is surfaced (S3 cross-check)', () => {
+  const topology = parseElectricalTopology(raw, points);
+  const stripped = {
+    ...topology,
+    circuits: topology.circuits.map((circuit) => (
+      circuit.id === 'lighting_dining' ? { ...circuit, member_point_ids: circuit.member_point_ids.filter((id) => id !== 'light_dining_pendant') } : circuit
+    )),
+  };
+  const result = lint(stripped, points);
+  assert.ok(result.warnings.some((i) => i.code === 'control_target_circuit_unresolved' && /light_dining_pendant/.test(i.message)), JSON.stringify(result.warnings.filter((i) => i.code === 'control_target_circuit_unresolved')));
+  assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'light_dining_pendant'), '掉出回路的受控灯必须同时显形 point_uncovered');
 });
 
 // ── 2026-10 新增三条规范规则（全部 warning 起步）──────────────────────────────
@@ -110,11 +184,11 @@ test('every socket-bearing circuit must declare ≤30mA RCD protection (GB 55038
   // 合规方向：20 路中 16 路含 socket 类成员，breaker 全是 "CxxA+漏保" 写法 → 不应命中
   const socketCircuits = topology.circuits.filter((circuit) => circuit.member_point_ids.some((id) => isSocket(pointMap.get(id))));
   assert.equal(socketCircuits.length, 16);
-  const compliant = lintElectricalTopology(topology, points);
+  const compliant = lint(topology, points);
   assert.equal(compliant.warnings.filter((issue) => issue.code === 'rcd_missing_on_socket_circuit').length, 0);
 
   // 违反方向 1：breaker 退化成不带漏保的裸电流值
-  const stripped = lintElectricalTopology({
+  const stripped = lint({
     ...topology,
     circuits: topology.circuits.map((circuit) => (circuit.id === 'ordinary_power_living' ? { ...circuit, breaker: 'C20A' } : circuit)),
   }, points);
@@ -125,7 +199,7 @@ test('every socket-bearing circuit must declare ≤30mA RCD protection (GB 55038
   assert.match(hits[0].message, /sock_living_tv/);
 
   // 违反方向 2：breaker 整段缺失（同时仍会触发 electrical_parameters_pending，本规则独立计数）
-  const undeclared = lintElectricalTopology({
+  const undeclared = lint({
     ...topology,
     circuits: topology.circuits.map((circuit) => (circuit.id === 'ordinary_power_kitchen' ? { ...circuit, breaker: undefined } : circuit)),
   }, points);
@@ -135,7 +209,7 @@ test('every socket-bearing circuit must declare ≤30mA RCD protection (GB 55038
 
 test('bathroom socket points must declare a splash box (GB 55038-2025 7.4.5)', () => {
   const topology = parseElectricalTopology(raw, points) as ElectricalTopology;
-  const result = lintElectricalTopology(topology, points);
+  const result = lint(topology, points);
   // DEC-2026-10-06-R2：两个卫浴高位浴霸点位 note 已补防溅盒声明 → 原违反方向清空（2→0）
   assert.deepEqual(idsOf(result, 'bath_socket_splash_box_undeclared'), []);
   const bathSockets = points.filter((point) => (point.room === 'master_bath' || point.room === 'guest_bath') && isSocket(point));
@@ -145,7 +219,7 @@ test('bathroom socket points must declare a splash box (GB 55038-2025 7.4.5)', (
   // 违反方向（剥掉本轮补的防溅声明后告警复现，证明判据就是 note 文本而非点位 id）
   const strippedNote = (note: string) => note.replace(/；DEC-2026-10-06-R2 插座带防溅盒（GB 55038-2025 7.4.5）/, '');
   const stripped = points.map((point) => (point.id === 'sock_mbath_batheheater' ? { ...point, note: strippedNote(point.note ?? '') } : point));
-  assert.deepEqual(idsOf(lintElectricalTopology(topology, stripped), 'bath_socket_splash_box_undeclared'), ['sock_mbath_batheheater']);
+  assert.deepEqual(idsOf(lint(topology, stripped), 'bath_socket_splash_box_undeclared'), ['sock_mbath_batheheater']);
 });
 
 test('switch points must declare an explicit neutral policy (config/house.yaml 智能开关零线)', () => {
@@ -153,28 +227,28 @@ test('switch points must declare an explicit neutral policy (config/house.yaml �
   const switchPoints = points.filter((point) => point.type === 'switch' || point.type === 'switch_2way');
   assert.equal(switchPoints.length, 14); // DEC-2026-10-27-R01 删 switch_parent_bed（switch_2way）15→14；DEC-2026-10-06-R2：17 个已补 neutral: true；R1 删主卧壁灯不涉开关、R2 删 switch_mbath/switch_gbath 后 17→15
   // DEC-2026-10-06-R2：已全部补 neutral: true → 违规方向清空
-  assert.equal(lintElectricalTopology(topology, points).warnings.filter((issue) => issue.code === 'switch_neutral_policy_undeclared').length, 0);
+  assert.equal(lint(topology, points).warnings.filter((issue) => issue.code === 'switch_neutral_policy_undeclared').length, 0);
   assert.deepEqual(switchPoints.filter((point) => point.neutral !== true).map((point) => point.id), []);
   // note 统一口径同时落地（备用可读口径，与 neutral 字段无冲突）
   assert.equal(switchPoints.filter((point) => /零线/.test(point.note ?? '')).length, 14); // DEC-2026-10-27-R01 删 switch_parent_bed（含零线 note）15→14；R2 删 switch_mbath/switch_gbath 后 17→15
 
   // schema 同步：neutral 为 optional boolean；strict 仍然拒绝未知键
-  assert.equal(ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', x: 1, z: 2, neutral: false }).neutral, false);
-  assert.throws(() => ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', x: 1, z: 2, neutral_required: true }));
+  assert.equal(ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', absolute: true, x: 1, z: 2, neutral: false }).neutral, false);
+  assert.throws(() => ElectricalPointSchema.parse({ id: 'switch_probe', room: 'kitchen', type: 'switch', absolute: true, x: 1, z: 2, neutral_required: true }));
 
   // 违反方向 1：剥掉 neutral 字段且 note 不写零线 → 该点告警复现（判据在字段/note，不在点位 id）
   const strippedSwitchNote = (note: string) => note.replace(/；DEC-2026-10-06-R2 底盒预埋零线（单火智能开关防 LED 鬼火）/, '');
   const withoutNeutral = points.map((point) => (point.id === 'switch_kitchen' ? { ...point, neutral: undefined, note: strippedSwitchNote(point.note ?? '') } : point));
-  assert.deepEqual(idsOf(lintElectricalTopology(topology, withoutNeutral), 'switch_neutral_policy_undeclared'), ['switch_kitchen']);
+  assert.deepEqual(idsOf(lint(topology, withoutNeutral), 'switch_neutral_policy_undeclared'), ['switch_kitchen']);
 
   // 违反方向 2：note 写明"零线"等价于显式声明（单火线方案也可写"单火线不回零线"关机口径）
   const withNote = points.map((point) => (point.id === 'switch_kitchen' ? { ...point, neutral: undefined, note: `${strippedSwitchNote(point.note ?? '')}；智能开关零线已预留` } : point));
-  assert.equal(lintElectricalTopology(topology, withNote).warnings.filter((issue) => issue.code === 'switch_neutral_policy_undeclared').length, 0);
+  assert.equal(lint(topology, withNote).warnings.filter((issue) => issue.code === 'switch_neutral_policy_undeclared').length, 0);
 });
 
 test('lint validates panel topology/source semantics and status at runtime', () => {
   const topology = parseElectricalTopology(raw, points) as ElectricalTopology;
-  const result = lintElectricalTopology({
+  const result = lint({
     ...topology,
     panels: [{ ...topology.panels[0], kind: 'weak' as any, status: 'invalid' as any }],
   }, points);

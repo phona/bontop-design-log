@@ -192,7 +192,7 @@
   "summary": {
     "mep_total_warnings": 265,
     "mep_buckets": {
-      "must_fix_before_briefing": 125,
+      "must_fix_before_briefing": 130,
       "survey_dependent": 137,
       "envelope_approximation": 128
     },
@@ -207,7 +207,7 @@
   },
   "final_state": {
     "status": "open",
-    "lint": "verify:mep 138 errors（must_fix 在册，硬门禁） / 240 warnings（survey 112 + envelope 128）· routes 138/138 resolved；verify:electrical 0 error / 54 warnings（DEC-2026-10-22-R01 对账实测：gravity 逐段坡度 11 条清零、台账与施工指导 §6/§0 全量对齐；DEC-2026-10-23-R03 对账：客卫二次排水示意段两端点 +2 inline、独立接入不声明共干管（评审 P1），errors 138 不变）",
+    "lint": "verify:mep 130 errors（must_fix 在册，硬门禁：125 基线 + issue #98 第五阶段 S1 E4 lint 扩层新显形的 endpoint_not_bound_to_point ×5，S2 改绑 terminal id 后归零回钉 125）/ 265 warnings（survey 137 + envelope 128）· routes 137/137 resolved；verify:electrical 0 error / 53 warnings（DEC-2026-10-28-R05 对账实测）",
     "tests": "tests/server/mep-guidance-baseline.test.ts 动态对账本文数与 docs/mep-construction-guidance.md §0/§6、docs/pending-site-data.md 表头口径",
     "disclaimer": "全部 route 仍为 preliminary/proposed/pending，非施工放线依据；DEC-2026-10-06-R1 新增 6 条 design_requirement 给排水需求路线、以及 DEC-2026-10-06-R5 保留原标高的 condensate-living / condensate-dining 两条候选路线同样不构成放线许可；本台账只记录「哪些 warning 可以带着走、哪些必须交底前清」，不构成任何放线许可"
   }

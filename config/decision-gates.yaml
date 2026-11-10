@@ -23,9 +23,9 @@
 # 本表找到对应决策，且散文点名的 check 必须登记在该决策的 blocks 里——
 # 门禁不许只活在注释里。
 #
-# 双登记对照：docs/pending-site-data.md「决策点登记 D1–D18」节是本表的叙事侧
-# （待拍板内容与缺的证据，人读版），两侧必须同步移动——只登记一侧，另一侧就
-# 静默失效。校验器对两侧编号集合做双向对照，缺一侧即报错。
+# 单一登记（2026-11-08 S2-B）：原「双登记对照」的第二侧——量房手账「决策点登记
+# D1–D18」节——已随该文件退场，其「缺的证据」一列已逐条迁入本表各条的
+# missing_evidence 字段。本表现在是唯一登记侧，双向对照校验随之退役。
 #
 # 档位数字（400mm、24h、0.8MPa 等）在本文件中是待拍板选项，不是权威值；
 # 权威值落在 DEC 与 acceptance.yaml 的 standard。故本表在 facts.yaml 的
@@ -47,6 +47,7 @@ decisions:
       - 带存水弯专用二排器
       - 干区改「水封加机械辅助」并补写水封位置
     status: open
+    missing_evidence: "业主书面拍板记录；干区水封位置的书面写法"
     blocks:
       - check_plumb_master_bath_secondary_drain
       - check_plumb_guest_bath_secondary_drain
@@ -64,6 +65,7 @@ decisions:
       - 闭水 24 小时
       - 闭水 48 小时（现行 check_wp_flood 口径）
     status: open
+    missing_evidence: "业主书面拍板记录；合同里写明的档位"
     blocks:
       - check_plumb_pressure
       - check_plumb_pressure_gate
@@ -81,6 +83,7 @@ decisions:
       - 交叉处包锡纸屏蔽
       - 强弱电箱距离 50cm
     status: open
+    missing_evidence: "业主书面拍板记录；三个对象的对应关系表"
     blocks:
       - check_elec_strong_weak_separation
     blocked_effect: 该项标准现为「按交底口径执行」，分对象取值未定前不得判 passed；封槽前量距，30/20/50 三个数字分属不同对象，不得合并成一条。
@@ -95,6 +98,7 @@ decisions:
       - 主龙骨 ≤1000mm
       - 主龙骨 ≤1200mm（报告旗标档位；仓内无此验收口径——1200mm 仅见于算量规范区间 800–1200mm，见 config/ceiling-material-cost.yaml 与 docs/decisions/09-ceiling-takeoff.md，不是验收线）
     status: open
+    missing_evidence: "业主书面拍板记录"
     blocks:
       - check_carp_keel
     blocked_effect: 报告口径为「按较严一档核对并写进合同后才升级为判据」；档位未写进合同前，check_carp_keel 的 400mm 不得判 passed。
@@ -109,6 +113,7 @@ decisions:
       - 美缝贴砖后至少晾 7 天
       - 基层干透经验 7–10 天
     status: open
+    missing_evidence: "业主书面拍板记录"
     blocks:
       - check_tile_hollow
       - check_tile_grout_dry
@@ -123,6 +128,7 @@ decisions:
       - 石膏板 12mm
       - 背板 ≥9mm（现行 check_carp_board 口径）
     status: open
+    missing_evidence: "业主书面拍板记录"
     blocks:
       - check_carp_board
     blocked_effect: 报告口径「条件不满足，回退到不下单」；厚度档位未定前 check_carp_board 不得判 passed；铝扣板与 JS 涂料仓内无验收项，属覆盖缺口。
@@ -136,6 +142,7 @@ decisions:
       - 膜面第 3 面（北方保温为主）
       - 并列保留不合并
     status: open
+    missing_evidence: "业主书面拍板记录；交房验收时的逐块核对记录"
     blocks:
       - check_window_lowe_doc
     blocked_effect: 该项标准含「膜面在第 2 面」，属报告并列旗标；细节未核实、措辞未拍板前不得判 passed（其方法里「不得记为已证实」同此口径）。
@@ -151,7 +158,8 @@ decisions:
       - 继续比大金，先补经销商书面确认清单
       - 先做外机实测与西平台散热核算再定
     status: open
-    tracking_note: 品牌合同已签、逐房映射已定，没有任何验收项以「换不换品牌」为通过条件；外机尺寸与平台散热的缺口由 BLK-HVAC-DEEPENING 跟踪，不阻塞本表任何验收项。叙事侧详见 docs/pending-site-data.md 决策点登记节。
+    missing_evidence: "业主书面拍板记录；经销商书面确认清单（如继续比）"
+    tracking_note: 品牌合同已签、逐房映射已定，没有任何验收项以「换不换品牌」为通过条件；外机尺寸与平台散热的缺口由 BLK-HVAC-DEEPENING 跟踪，不阻塞本表任何验收项。
 
   - id: D3
     topic: 踢脚线高度与贴法
@@ -163,6 +171,7 @@ decisions:
       - 明贴
       - 暗贴（槽深 2–3cm 或 1.2–1.5cm 两档旗标）
     status: open
+    missing_evidence: "业主书面拍板记录"
     tracking_note: 仓内无踢脚线验收项（覆盖缺口，待另立清单改动补 check_skirting_*）；高度现值 80mm 为已定口径，本决策只在其上收窄，不阻塞现行验收项。
 
   - id: D4
@@ -175,6 +184,7 @@ decisions:
       - 真台下盆加卡扣云石胶支架三重固定
       - 台中盆
     status: open
+    missing_evidence: "业主书面拍板记录；做饭人身高实测"
     tracking_note: 仓内无厨房台面、水槽、烟机对图验收项（覆盖缺口）；烟机与橱柜四方对图属 PKG-130 交底内容，不阻塞现行验收项。
 
   - id: D7
@@ -187,6 +197,7 @@ decisions:
       - 大功率单独 4 平方
       - 蒸烤箱 6 平方专线
     status: open
+    missing_evidence: "业主书面拍板记录；实际电器清单与负荷计算"
     tracking_note: 仓内电气口径以 config/electrical-topology.yaml 的 20 路为准，无线径专项验收项；改线径先改拓扑配置再谈验收，不阻塞现行验收项。
 
   - id: D8
@@ -198,6 +209,7 @@ decisions:
       - 做大循环，预埋回水管
       - 大循环加外置单独循环泵
     status: open
+    missing_evidence: "业主书面拍板记录"
     tracking_note: 封槽前是否预埋回水管是不可逆分水岭，但仓内无对应验收项；热水器类别候选由 control.yaml 的 must_confirm_before_order 跟踪，不阻塞现行验收项。
 
   - id: D10
@@ -209,6 +221,7 @@ decisions:
       - 送回风间距通用 ≥1.5m
       - 满墙衣柜拉长风口场景最少 1m
     status: open
+    missing_evidence: "业主书面拍板记录；厂家图深化双校核"
     tracking_note: check_hvac_access_coordination_before_ceiling 现用「能伸头检修、对准电控盒、不被遮挡」的可验收措辞，不依赖未定尺寸数字；350mm 与格栅开口由 BLK-HVAC-DEEPENING（厂家图深化）跟踪，不阻塞。
 
   - id: D12
@@ -221,6 +234,7 @@ decisions:
       - 新三层
       - 强化地板
     status: open
+    missing_evidence: "业主书面拍板记录；地板批 15 篇代表性链接（如先补取）"
     tracking_note: 地板批结论只到标题级（无代表性链接），仓内无地板验收项；地面材料线未定前不下单，不阻塞现行验收项。
 
   - id: D13
@@ -231,6 +245,7 @@ decisions:
       - 进入本期范围，按内净尺寸双核对验收
       - 暂不进入，仅预留电位与柜格
     status: open
+    missing_evidence: "业主书面拍板记录；整柜第三方比价与厂家核实（如另起任务）"
     tracking_note: 仓内定制柜只有 check_carp_cabinet（门缝与开关），报告的内净尺寸双核对（净深、长衣短衣挂裤高度）尚无验收项——覆盖缺口，待另立清单改动；不阻塞现行项。
 
   - id: D14
@@ -242,6 +257,7 @@ decisions:
       - 乳胶漆按 GB 30981.1-2025 口径
       - 一门到顶欧松板首选
     status: open
+    missing_evidence: "业主书面拍板记录"
     tracking_note: 均为下单前合同口径，仓内无对应验收项；进场核对规则（标签、吸水率、CMA 报告加授权证书）是覆盖缺口，待另立清单改动。
 
   - id: D17
@@ -252,6 +268,7 @@ decisions:
       - 批准落地，按一题一 PR
       - 暂不落地，先补齐决策点
     status: open
+    missing_evidence: "业主书面拍板记录；要图消息的措辞、对方姓名与渠道"
     tracking_note: 流程决策，不对应具体验收项；本登记表本身就是该类机制改动的一件，落地走一题一 PR、合并归业主。
 
   - id: D18
@@ -262,4 +279,28 @@ decisions:
       - 补入交底对照表后作为验收依据
       - 维持现行点位口径
     status: open
+    missing_evidence: "业主书面拍板记录"
     tracking_note: 全盒零线已由 DEC-2026-10-06-R2 定并落成 check_elec_zero_line_all_switches，报告 D18 该子项看起来已被仓内回答——与仓内 DEC 的关系需业主确认（并列旗标，不静默合并）；其余为对照表合并与高度表，无直接验收项。
+
+  # 2026-11-06（issue #98 PR-8，按对象算账）：迁移把「对象 → 成本项」targets 通道建起来时
+  # 撞到这条悬而未决的预算边界——主卫条带柜组（master_bedroom 条带，7 个对象）的费用此前
+  # 只活在 COST-150-01 / P2-100 的 description 散文里，无 owner 无触发条件（决策铁律 2 的
+  # 失效形态）。按业主裁定「按开放项显形，不裁定」登记于此。
+  # 2026-11-07（issue #98 PR-11，条带柜组业务关联）修正 PR-8 的落实口径：PR-8 把「不裁定」
+  # 落实为「拍板前 COST-150-01 不得登记对象级 targets」；本条改按裁定④已定的对象关联机器化——
+  # DEC-2026-10-07-R02 裁定④明言条带柜组「整组划归二期，对应 P2-100 / COST-150-01」，该
+  # 对象→成本项关联不是本决策要拍的内容（本决策只问金额边界：含不含 3000-5000、要不要
+  # P2-101），故 targets 登记与「不裁定」并行成立；真正无 DEC 映射的归属未定对象仍不得挂
+  # targets。显形口相应改变：条带 7 件自 PR-11 起有 MODEL-P2-100 包链接与 COST-150-01
+  # 成本项，不再进「成本归属未定」汇总表；本决策改由各对象单对象视图（cost:by-object
+  # <id>）的「关联决策门禁」节 + 本登记表 + COST-150-01/P2-100 description 显形。
+  - id: D19
+    topic: COST-150-01 与主卫条带柜组的预算边界
+    scope: tracked
+    question: 主卫条带柜组（mb.vanity_base_cabinet / mb.vanity_lower_board / mb.vanity_main_board / mb.vanity_pvc_box / mb.vanity_pvc_wardrobe_entry / mb.vanity_pvc_service_chase / mb.condensate_pipe，均声明在 house.yaml master_bedroom）的费用是否含在二期 P2-100 的 3000-5000 区间内；若不含，是否按 P2-100 note 新增 P2-101 单列
+    options:
+      - 含在 P2-100 的 3000-5000 内（P2-100 现名扩为通顶衣柜+条带柜组）
+      - 不含，P2-100 现名仅对应主卧通顶定制衣柜（现行对象的对象引用见 P2-100 / COST-150-01 description），条带柜组新增 P2-101 单列
+    status: open
+    missing_evidence: "业主书面拍板记录（机器侧：config/decision-gates.yaml D19）"
+    tracking_note: "owner=业主；触发=二期启动（P2-100 深化）前。2026-11-06 issue #98 PR-8 迁移登记：边界事实见 schedule/phase-1/control.yaml COST-150-01 与 schedule/phase-2/control.yaml P2-100 的 description（DEC-2026-10-07-R02 边界补注）；按项目单价反算条带柜组约 1500-2300，为推断非报价。2026-11-07（issue #98 PR-11）更新：COST-150-01 targets 已按裁定④登记条带柜组 7 件、MODEL-P2-100 改按对象 id 选该组与衣柜共 9 件——对象→成本项关联机器化不构成金额裁定；本决策仍开放，金额边界（含 3000-5000 或新增 P2-101）拍板前不写任何金额结论、planned_cny 维持 0，各对象在 cost:by-object 单对象视图的「关联决策门禁」节显形本决策。PR-8「拍板前 COST-150-01 的对象级 targets 保持未登记」的口径由 PR-11 取代（裁定④已定的对象关联可机器化；无 DEC 映射的归属未定对象仍不得挂 targets）。"

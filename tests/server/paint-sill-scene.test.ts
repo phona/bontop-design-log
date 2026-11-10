@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -26,12 +27,12 @@ import { loadCeilingConfig } from '../../server/config-loader.js';
  */
 
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
-const OVERLAY: any = load(readFileSync('config/layout/overlay.yaml', 'utf8'));
+const OVERLAY: any = parseOverlayFiles();
 const layout = resolveLayout(MG);
 const ceilingZones = loadCeilingConfig();
 
 function mergedElements() {
-  return mergeSceneElements(layout.walls as any, parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  return mergeSceneElements(layout.walls as any, parseOverlayFiles());
 }
 
 /** 与 app 同路径：真实墙（带 openings）+ resolved 房间 + 真实吊顶分区 + 涂装/贴砖声明。 */
@@ -40,7 +41,9 @@ function sceneWithPaintSill() {
   return buildScene({
     walls: layout.walls,
     rooms: layout.rooms,
-    elements: merged.filter((element: any) => ['wall', 'paint_region', 'paint_sill_region', 'bay_sill', 'wall_region'].includes(element.type)),
+    // 面层配方下沉（S4）：paint_region/paint_sill_region/wall_region 不再是平级元素，
+    // 而是墙/构件特征——整份 merged 一次喂入（mesh 的 userData.type 仍是各自语义标签）。
+    elements: merged,
     ceilingZones,
     furnishings: {},
   } as any);
@@ -85,7 +88,9 @@ const near = (a: number, b: number, eps = 1e-6): boolean => Math.abs(a - b) <= e
 
 test('paint_sill_region underside lands on the bay_sill footprint: world vertices, AABB and flat elevation', () => {
   const scene: any = sceneWithPaintSill();
-  assert.deepEqual(scene.unsupported ?? [], [], '声明必须全部落地');
+  // 「excluded as concealed」是 computePaintSillScope 的登记项（声明面与实体墙重合 → 隐蔽面
+  // 排除 + warning），本来就走 /api/paint/comparison 的 warnings 通道，不是构建失败。
+  assert.deepEqual((scene.unsupported ?? []).filter((entry: string) => !/excluded as concealed/.test(entry)), [], '声明必须全部落地');
   scene.exportRoot.updateMatrixWorld(true);
 
   const sillMeshes: THREE.Mesh[] = [];
@@ -108,7 +113,10 @@ test('paint_sill_region underside lands on the bay_sill footprint: world vertice
   assert.ok(underside, 'faces 声明了 underside，必须产出一张水平底面');
 
   // ── ① 世界坐标顶点集合 == outline 投影到 (x, sill, z) ──
-  const declaration = (OVERLAY.elements ?? []).find((element: any) => element?.id === 'paint_master_bath_west_bay') as unknown as PaintSillFaceInput;
+  // 面层配方下沉（S4）：声明住在 bay_sill.finish.paint 里（原 overlay 平级 paint_sill_region 已退场）
+  const declaration = (OVERLAY.elements ?? [])
+    .flatMap((element: any) => ((element?.finish as { paint?: unknown[] } | undefined)?.paint ?? []).map((band) => ({ ...(band as object), element: element?.id })))
+    .find((band: any) => band?.id === 'paint_master_bath_west_bay') as unknown as PaintSillFaceInput;
   const bayElement: any = mergedElements().find((element: any) => element.type === 'bay_sill' && element.id === 'master_bath_west_bay');
   const room = layout.rooms.find((candidate) => candidate.id === declaration.room)!;
   const geometry = buildBaySillGeometry(bayElement.wallRefs, layout.rooms, bayElement.depth);

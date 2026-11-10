@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:b29bd31d6312c13bffd14f6ca4cbc9bf13ead714cb0e07846d3abb998c3716b7 -->
+     inputs-fingerprint: sha256:6c6e316a3f4dab89850fff3632e3fd7a647963a299c55472792828cf32ae1fc4 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -23,7 +23,7 @@
 | 一期预算池 | 6 池：基础硬装 126000 / 中央空调 36000 / 一期家具 19000 / 必需家电 16099 / 设计与开工准备 8000 / 一期窗帘 5000 | schedule/phase-1/control.yaml:34-52 | 六池合计 = 执行上限；家电 16099 含 GC5 追加 4000 与 JX ¥99 追加（2026-11-04 DEC-2026-11-04-R2） |
 | 暖通执行池 | 36000 元 | schedule/phase-1/control.yaml:40 | 与合同成交价同额；原 33000 询价口径作废 |
 | 全硬装询价轮次目标 | all_in 205098 元（核心 187098 + 柜体 18000） | schedule/phase-1/control.yaml:203-207 | 业主提供的预算池/封顶/候选价，**不是合同承诺** |
-| 墙砖面积（wall_region 实算） | 21.5505 ㎡ | config/layout/overlay.yaml（wall/sill_region 声明）+ config/layout/model-geometry.yaml（几何）+ config/tile-comparison.yaml（干湿分区）+ config/ceiling.yaml（净高上限）→ shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts:160-168 | 窗台/防水台 sill_region 另计 15.468 ㎡；合计 37.0186 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※ |
+| 墙砖面积（墙 finish.tile_bands 实算） | 21.5505 ㎡ | config/layout/model-geometry.yaml（墙 finish.tile_bands 声明 + 几何）+ config/model/envelope/openings.yaml（bay_sill finish.tile）+ config/tile-comparison.yaml（干湿分区）+ config/model/envelope/ceiling.yaml（净高上限）→ server/budget-calculator.ts loadMasonryTakeoff → shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts | 窗台/防水台 bay_sill finish.tile 另计 15.468 ㎡；合计 37.0186 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※ |
 
 ## 暖通
 
@@ -52,7 +52,7 @@
 | 口径 | 现行值 | 权威源（file:line） | 备注 |
 |---|---|---|---|
 | 结构层高/室内净高 | 2.80 m | config/house.yaml:7；docs/mep-construction-guidance.md:76 | 邻户结构板 +2830 佐证；fact.floor_height_net 由 house.yaml 派生 ※ |
-| A 区吊顶完成面 | 2.50 m | config/mep-hvac-coordination.yaml:7 | 0.30m 降板（2.80−0.30）；完成面权威为 config/ceiling.yaml（guidance:141 明文） |
+| A 区吊顶完成面 | 2.50 m | config/mep-hvac-coordination.yaml:7 | 0.30m 降板（2.80−0.30）；完成面权威为 config/model/envelope/ceiling.yaml（guidance:141 明文） |
 | B 区铝扣板完成面 | 2.65 m | config/mep-hvac-coordination.yaml:12 | 0.15m 板厚；厨房/主卫/客卫三区，空腔仅 150mm |
 | 客餐厅面积 | 43.17 ㎡ | config/house.yaml:178；config/hvac.yaml:36 | polygon 实测；bbox 45.88 ㎡含 2.71㎡ 凹口 ※（2026-10-25 DEC-2026-10-25-R01 本体标定重算后客餐厅 44.58→43.1734㎡，凹口 1.30→2.71㎡） |
 | 套内面积 | 94.76 ㎡ | config/house.yaml:6 | 合同净口径；与毛口径/赠送/建面三口径未闭合见 pending-site-data.md #40 ※ |
@@ -71,9 +71,9 @@
 
 | 口径 | 现行值 | 权威源（file:line） | 备注 |
 |---|---|---|---|
-| 待决台账条数 | 77 条编号 | docs/pending-site-data.md:3 | #1–#77 + #3a 子项 = 78 行；fact.pending_site_data_count 锚在表头，新增/关闭必须同步编号数 ※ |
-| #30 强电箱规格 | pending（单/双排、回路数、进线截面） | docs/pending-site-data.md:105 | 20 路 + 2P + 浪涌需双排；1.65m 底边仅在双排时合规 |
-| #39 暖通待验证项 | pending（外机实测尺寸/平台散热/厂家配电图/风口加长计价/冷负荷计算书） | docs/pending-site-data.md:115 | 已成交 36000，但上述项闭环前不冻结施工 |
+| 未决断构件数 | 39 个构件 | config 各对象 status/blocker 字段（shared/pending-count.ts 派生） | 每个都带 blocker（kind/owner/trigger/reverses_if/rationale）；可读视图跑 npm run docs:generate-pending-view（输出 tmp/capture/）。原量房手账已于 S2-B 退场 |
+| #30 强电箱规格 | pending（单/双排、回路数、进线截面） | config/electrical.yaml panel_strong_entry_left 的 blocker | 20 路 + 2P + 浪涌需双排；1.65m 底边仅在双排时合规 |
+| #39 暖通待验证项 | pending（外机实测尺寸/平台散热/厂家配电图/风口加长计价/冷负荷计算书） | config/hvac.yaml commercial 块 + plans 的 blocker | 已成交 36000，但上述项闭环前不冻结施工 |
 
 ---
 

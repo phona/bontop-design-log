@@ -31,10 +31,11 @@ function walk(dir: string, out: string[]): void {
     const full = path.join(dir, entry.name);
     const rel = path.relative(ROOT, full).split(path.sep).join('/');
     if (entry.isDirectory()) {
-      if (rel.split('/').some((part) => part === 'decisions' && rel.startsWith('docs/decisions/'))) continue;
       walk(full, out);
     } else if (/\.(?:md|yaml|yml|json)$/i.test(entry.name)) {
-      if (entry.name.toLowerCase().endsWith('.md') && rel.startsWith('docs/decisions/')) continue;
+      // 2026-11-09 S3：原此处有两条 docs/decisions/ 专属跳过分支（该目录曾是「时间序档案」，
+      // 按既有约定不参与引用核对）。目录已整份退场，分支随之移除——留着就是对一个
+      // 不存在的路径做特判，下一个人会以为它还在。
       out.push(rel);
     }
   }

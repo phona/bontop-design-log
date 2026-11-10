@@ -8,14 +8,22 @@
  * 复用既有单一实现：splitSegmentByOpenings（shared/wall-segments.ts，墙洞切分与 3D 渲染同口径）、
  * resolveFurniturePlacement（shared/furniture-placement.ts，摆位与 3D 渲染同口径）、
  * resolveMepRoutes / mepRoutePoints / resolveMepEndpoint（MEP 折线与 3D 渲染同口径）。
+ *
+ * 硬失败口径（issue #98）：家具摆位解析失败、电气/给排水点位定位解算失败、MEP 路线端点
+ * 悬空（from/to 引用解不出来）一律进 `errors`——摆位/点位/路线是施工交付内容，解不出来
+ * 就整次导出不成立（两个入口都只认 errors 并拒绝交付）；降级成 warning 再跳过，等于交付
+ * 一张缺点位/缺路线的施工图。
  */
 
 import { type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type PlumbingPoint, type RoomLayout, type SceneElement } from '../types.js';
 import { type MepCoordination, type MepEndpointSources, mepRoutePoints, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
 import { centerlineSamples } from '../arc-polyline.js';
 
-import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, resolveFurniturePlacement } from '../furniture-placement.js';
+import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
+import { resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall } from '../point-placement.js';
+import { buildPlacementIndexes } from '../placement-indexes.js';
+import { derivePointCircuits, type PointCircuitTopologyLike } from '../point-circuits.js';
 import { DxfWriter } from './dxf-writer.js';
 
 /** 图层清单（ASCII；CAD 侧按专业开关）。颜色为 ACI 色号。 */
@@ -57,6 +65,13 @@ export interface ProjectDxfInput {
   house: ProjectDxfHouse;
   plumbing?: PlumbingPoint[];
   mep?: { coordination: MepCoordination; sources: MepEndpointSources };
+  /**
+   * 回路归属来源（issue #98 S3）：点位侧 circuit 字段退役后，图上「点位属于哪条回路」的
+   * 标注改走 shared/point-circuits.ts 单一派生。两个入口（web 按钮与 CLI）各自把
+   * config/electrical-topology.yaml 的 circuits+controls 传进来；缺省则不标回路
+   * （而非回落已删除的点位侧声明）。
+   */
+  pointCircuitSources?: PointCircuitTopologyLike;
   /** utf8（默认，中望/浩辰兼容）或 ascii（业主 CAD 乱码时的一行退路，只影响 TEXT 标注，不影响几何）。 */
   labels?: 'utf8' | 'ascii';
   /** 图内说明（codex 七审 major）：接口降级、专业缺失等交付限制写进 D-NOTES 图层随图走，
@@ -70,6 +85,14 @@ export interface ProjectDxfResult {
   stats: Record<string, number>;
   entityCount: number;
   warnings: string[];
+  /**
+   * 硬失败（issue #98 PR-3 / 点位定位 fail-closed / MEP 路线端点 fail-closed）：家具摆位
+   * 声明解析失败（断引用/越界/负净宽/mount 宿主缺失）、电气/给排水点位定位解算失败
+   * （along 越界/断引用/缺声明）或 MEP 路线端点悬空（from/to 引用解不出来）。
+   * 非空即本次导出不成立——两个入口（web 按钮与 npm run export:dxf）都必须失败，
+   * 不允许带着缺件/错位的家具/点位/缺路线图层交付。
+   */
+  errors: string[];
 }
 
 /** 点位圈半径（mm）：1:100 出图下直径 2mm，可辨识。 */
@@ -86,6 +109,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   const notes = [...(input.notes ?? [])];
   const labels = input.labels ?? 'utf8';
   const warnings: string[] = [];
+  const errors: string[] = [];
   const writer = new DxfWriter();
   for (const [name, color] of Object.values(DXF_LAYERS)) writer.addLayer(name, color);
 
@@ -117,6 +141,20 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   for (const element of house.sceneElements ?? []) {
     if (element.type === 'wall') wallsById.set(element.id, element);
   }
+  // 点位定位索引（issue #98 S1/S2）走 shared/placement-indexes.ts 单一产地（疗法②）：
+  // pointWalls 用本次装配的墙元素，mountHosts 用 house.furnishings 全量表（DXF 恒为全案口径，
+  // 不按阶段过滤）。电气/给排水点位与 MEP 端点共用同一份 shared/point-placement.ts 解算。
+  // house.furnishings 缺失时 mountHosts 为 undefined——保留「无家具上下文」的既有语义。
+  const placementIndexes = buildPlacementIndexes({
+    geometry: { walls: wallsById.values() },
+    furnishings: house.furnishings,
+  });
+  const pointWalls: ReadonlyMap<string, PointWall> = placementIndexes.pointWalls ?? new Map();
+  const pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined = placementIndexes.mountHosts;
+  // 点位 → 回路 单一派生（issue #98 S3）：标注用，含 controls 反推出的开关归属。
+  const pointCircuits = input.pointCircuitSources === undefined
+    ? undefined
+    : derivePointCircuits(input.pointCircuitSources).pointCircuits;
 
   if (house.sceneElements !== undefined) emitWalls(writer, house.sceneElements);
 
@@ -124,13 +162,13 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('furnishings: 无输入，A-FURN 图层为空（家具摆位未导出——数据不可得时禁止用页面缓存当施工摆位）');
     notes.push('FURNISHINGS NOT EXPORTED: furnishings data unavailable at export time');
   } else {
-    emitFurniture(writer, house.furnishings, wallsById, warnings, label);
+    emitFurniture(writer, house.furnishings, wallsById, warnings, label, errors);
   }
   if (house.electrical === undefined) {
     warnings.push('electrical: 无输入，E-* 图层为空（电气点位未导出——数据不可得时禁止用页面缓存当施工点位）');
     notes.push('ELECTRICAL NOT EXPORTED: electrical data unavailable at export time');
   } else {
-    emitElectrical(writer, house.electrical, warnings, label, restrict);
+    emitElectrical(writer, house.electrical, pointWalls, pointMountHosts, warnings, errors, label, restrict, pointCircuits);
   }
   if (plumbing === undefined) {
     warnings.push('plumbing: 无输入，P-POINTS 图层为空（水路点位未导出）');
@@ -144,7 +182,10 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
         || point.construction_status === 'pending'
         || point.status === 'inferred' || point.status === 'pending'
         || /抽象服务点|不得.{0,6}开槽|不作为施工依据/.test(point.note ?? '');
-      const [x, y] = toDxf(point.x, point.z);
+      // 与电气同一解算（见 emitElectrical）：解析后坐标 = 墙线 datum + 薄板惯例 0.075m。
+      const position = resolvedPointPosition(point, pointWalls, pointMountHosts, errors);
+      if (!position) continue;
+      const [x, y] = toDxf(position.x, position.z);
       writer.addCircle(DXF_LAYERS.P_POINTS[0], x, y, POINT_RADIUS_MM);
       const heightText = point.height !== undefined ? ` H${point.height}` : '';
       const sideText = point.wallSide ? ` ${point.wallSide}` : '';
@@ -181,7 +222,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('mep: 无输入，M-HVAC/M-ROUTE 图层为空（MEP 协调未导出）');
     notes.push('MEP NOT EXPORTED: coordination data unavailable at export time');
   } else {
-    emitMep(writer, mep.coordination, mep.sources, warnings, label, restrict, labels, notes);
+    emitMep(writer, mep.coordination, mep.sources, warnings, errors, label, restrict, labels, notes);
   }
 
   // 图内说明（D-NOTES，左上图框外）：交付限制随图走（codex 七审 major）。
@@ -206,6 +247,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     stats,
     entityCount: Object.values(stats).reduce((sum, count) => sum + count, 0),
     warnings,
+    errors,
   };
 }
 
@@ -293,43 +335,14 @@ function emitGlazingAndDoors(writer: DxfWriter, elements: SceneElement[], warnin
       emitArcAwarePolyline(writer, DXF_LAYERS.GLAZING[0], element.points, closed);
       const [x, y] = toDxf(element.points[0].x, element.points[0].z);
       writer.addText(DXF_LAYERS.GLAZING[0], x, y + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM, element.id);
-    } else if (element.type === 'glass_infill') {
-      warnings.push(`glass_infill ${element.id}: 嵌在墙体内，无独立平面几何，未导出`);
     } else if (element.type === 'sliding_door_run') {
       const pts = element.points.map((point) => toDxf(point.x, point.z));
       writer.addPolyline(DXF_LAYERS.DOOR[0], pts, true);
       writer.addText(DXF_LAYERS.DOOR[0], pts[0][0], pts[0][1] + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
         `${element.id}${element.panels ? ` x${element.panels}` : ''}`);
-    } else if (element.type === 'hinged_glass_door') {
-      const [start, end] = element.points;
-      const hingeIsStart = (element.hinge ?? 'start') === 'start';
-      const [hx, hy] = hingeIsStart ? toDxf(start.x, start.z) : toDxf(end.x, end.z);
-      const [ox, oy] = hingeIsStart ? toDxf(end.x, end.z) : toDxf(start.x, start.z);
-      writer.addLine(DXF_LAYERS.DOOR[0], hx, hy, ox, oy); // 关闭位门扇
-      // 开启位：门扇绕铰链转 90°，方向取 swing 声明（north→-z 即 DXF +y）。
-      const vx = ox - hx;
-      const vy = oy - hy;
-      let px = -vy;
-      let py = vx;
-      if (element.swing === 'north' ? py < 0 : py > 0) {
-        px = -px;
-        py = -py;
-      }
-      const openX = hx + px;
-      const openY = hy + py;
-      writer.addLine(DXF_LAYERS.DOOR[0], hx, hy, openX, openY);
-      const radius = Math.hypot(vx, vy);
-      const angleClosed = (Math.atan2(vy, vx) * 180) / Math.PI;
-      const angleOpen = (Math.atan2(py, px) * 180) / Math.PI;
-      // DXF ARC 只能逆时针：叉积判断从关闭位到开启位的转向，必要时交换起止角。
-      const cross = vx * py - vy * px;
-      const [startDeg, endDeg] = cross >= 0
-        ? [angleClosed, angleOpen < angleClosed ? angleOpen + 360 : angleOpen]
-        : [angleOpen, angleClosed < angleOpen ? angleClosed + 360 : angleClosed];
-      writer.addArc(DXF_LAYERS.DOOR[0], hx, hy, radius, startDeg, endDeg);
-      writer.addText(DXF_LAYERS.DOOR[0], hx, hy + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
-        `${element.id} ${element.swing ?? ''}`.trim());
     }
+    // glass_infill / hinged_glass_door 分支已于 issue #98 第三阶段 S1 删除（overlay 0 元素，
+    // DEC-2026-09-07-054 客卫玻璃门取消后 hinged 无声明；glass_infill 从未启用）。
   }
 }
 
@@ -370,6 +383,7 @@ function emitFurniture(
   wallsById: Map<string, Extract<SceneElement, { type: 'wall' }>>,
   warnings: string[],
   label: (text: string, fallback?: string) => string,
+  errors: string[],
 ): void {
   // 墙锚参照线与 3D 同口径（codex 二十审 major，SceneBuilder.wallSegments）：带 segments
   // 细分的墙优先传细分段——resolveFurniturePlacement 以数组首段算方向/along 合法域，
@@ -379,6 +393,8 @@ function emitFurniture(
       ? wall.segments
       : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]])
     : []);
+  // mount 宿主索引与 3D 同一份实现：挂载家具的世界坐标由宿主摆位推出（issue #98 PR-3）。
+  const hosts = furnitureHostIndex(Object.values(furnishings ?? {}).flat());
   for (const [roomId, items] of Object.entries(furnishings ?? {})) {
     for (const item of items) {
       // 协调示意代理件不进家具图层（codex 十一审 blocking）：冷凝水几何已由 M-CAND 路线表达，
@@ -387,10 +403,16 @@ function emitFurniture(
         warnings.push(`furniture ${roomId}:${item.type}: 协调示意件（冷凝水走向代理），DXF 不画——几何以 M-CAND 候选路线为准`);
         continue;
       }
-      const placement = resolveFurniturePlacement(item, wallSegments);
+      const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts);
+      if (diagnostic !== undefined) {
+        // 定位声明解不出来 = 施工摆位不可得：整次导出失败，不出缺件图纸（issue #98 PR-3）。
+        errors.push(`furniture ${roomId}:${item.type}: ${diagnostic}`);
+        continue;
+      }
       if (!placement) continue; // count-only 条目，无平面几何（口径见 AGENTS.md furnishings 条目）
       // 外框尺寸与 3D buildFurniture 同优先级（codex 十六审 major）：length 型的显式
-      // length 优先于目录宽，否则外框比实际建模窄（bath_side_cabinet 0.45 vs 0.90）。
+      // length 优先于目录宽，否则外框比实际建模窄（bath_side_cabinet 0.45 vs 0.90）；
+      // vanity 走 house.yaml vanity_layout 声明宽深（目录不再存第二套）。
       const { width, depth } = furnitureFootprint(item);
       if (width === undefined || depth === undefined) {
         warnings.push(`furniture ${roomId}:${item.type}: 无 width/depth/length 声明，未导出外框`);
@@ -416,6 +438,39 @@ function emitFurniture(
 
 // --- 电气（按 type 分层）---
 
+/**
+ * 点位平面坐标（issue #98 S1 单一解算）：沿墙点位 = 解算器墙线 datum + 薄板惯例偏移
+ * （THIN_PLATE_FACE_OFFSET = 0.075m，与 3D 渲染 InfrastructureBuilder.placeModel 同一解算
+ * 同一偏移——业主 2026-11-07 裁定「DXF 迁就 3D 投影」，施工图底盒整体移动 15~75mm 是该
+ * 裁定的预期交付物变更）；绝对点位（C/D/E/F 组）取声明 x/z；mount 挂载点（issue #98 S2，
+ * 起夜灯）取解析器宿主脸解果（宿主移动自动跟随，灯体半厚+surface_gap 由渲染管线追加，
+ * 图上圈心 = 灯位锚点，与 3D 灯组 position 同点）。解算失败（along 越界/断引用/缺声明）
+ * 返回 null 并把诊断写进 **errors**（与 emitFurniture 的定位诊断同一通道）：点位位置是施工
+ * 交付内容，解不出来就整次导出不成立——两个入口（web 按钮与 npm run export:dxf）都只认
+ * errors，进 warnings 会让缺电气/给排水点位的图纸照样交付（issue #98「正式 CAD/施工交付
+ * 与相关模型验证必须因适用范围内的真实错误失败」）。
+ * **不钳位、不回落声明坐标**：回落就是再造一个事实源。
+ */
+function resolvedPointPosition(
+  point: PointPlacementInput,
+  pointWalls: ReadonlyMap<string, PointWall>,
+  pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined,
+  errors: string[],
+): { x: number; z: number } | null {
+  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, pointMountHosts);
+  if (diagnostic !== undefined || !placement) {
+    // fail-closed（issue #98 疗法①，与 shared/lighting-fixtures.ts:65 / shared/point-placement.ts
+    // resolveMountedPoint 同一口径）：不出圈 + 诊断进 errors，入口据此拒绝交付。
+    errors.push(`点位 ${point.id}: 未解析定位（${diagnostic ?? '解算器未返回结果'}）——不出圈，修复声明后重导`);
+    return null;
+  }
+  if (placement.kind === 'absolute' || placement.kind === 'mount') return { x: placement.x, z: placement.z };
+  return {
+    x: placement.datum.x + placement.normal.x * THIN_PLATE_FACE_OFFSET,
+    z: placement.datum.z + placement.normal.z * THIN_PLATE_FACE_OFFSET,
+  };
+}
+
 function electricalLayer(type: string): readonly [string, number] {
   if (type === 'switch' || type === 'switch_2way' || type === 'ac_controller') return DXF_LAYERS.E_SWITCH;
   if (type.endsWith('light') || type === 'pendant' || type === 'dome' || type === 'wall_lamp' || type === 'led_strip' || type === 'night_light') return DXF_LAYERS.E_LIGHT;
@@ -427,9 +482,15 @@ type RestrictLabels = { abstract: string; candidate: string; pending: string; bl
 function emitElectrical(
   writer: DxfWriter,
   points: ElectricalPoint[],
+  pointWalls: ReadonlyMap<string, PointWall>,
+  pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined,
   warnings: string[],
+  /** 点位定位诊断通道（issue #98）：与家具同一条 errors——非空即入口拒绝交付。 */
+  errors: string[],
   label: (text: string, fallback?: string) => string,
   restrict: RestrictLabels,
+  /** 点位 → 回路 单一派生（issue #98 S3）；undefined = 调用方未提供 topology，不标回路。 */
+  pointCircuits?: ReadonlyMap<string, string>,
 ): void {
   for (const point of points) {
     // 已知不可用/待核点位（codex 三审 blocking）：sock_balcony_washer 这类 blocked 点
@@ -437,7 +498,12 @@ function emitElectrical(
     const notUsable = point.serviceability_status === 'blocked' || point.serviceability_status === 'superseded';
     const pendingPos = point.position_status === 'pending' || point.position_status === 'inferred'
       || point.status === 'pending' || point.status === 'inferred';
-    const [x, y] = toDxf(point.x, point.z);
+    // 解析后坐标（2026-11-07 业主裁定「DXF 迁就 3D 投影」）：沿墙点位取解算器墙线 datum 再按
+    // 薄板惯例偏移 0.075m（与 3D 渲染同一解算、同一偏移）；mount 挂载点取宿主脸解果（S2）；
+    // 解算失败不出圈，并把诊断计入 errors（整次导出失败，不交付缺点位图纸）。
+    const position = resolvedPointPosition(point, pointWalls, pointMountHosts, errors);
+    if (!position) continue;
+    const [x, y] = toDxf(position.x, position.z);
     const layer = electricalLayer(point.type);
     writer.addCircle(layer[0], x, y, POINT_RADIUS_MM);
     // mount_height 是箱底安装标高（强/弱电箱只有 mount_height 无 height），与 height 同席标注。
@@ -447,10 +513,11 @@ function emitElectrical(
     // 缺 count 施工方会漏配底盒；缺 wall_side 共墙两侧交底会装错面。
     const countText = point.count && point.count > 1 ? ` x${point.count}` : '';
     const sideText = point.wallSide ? ` ${point.wallSide}` : '';
-    // 柜面安装件（codex 十一审 major）：宿主柜体与安装面必须随图，否则无法判断固定在哪件柜、哪一面。
+    // 柜面安装件（codex 十一审 major；S2 起宿主由 mount 定位声明解析，标注格式不变）：
+    // 宿主柜体与安装面必须随图，否则无法判断固定在哪件柜、哪一面。
     const mountText = point.mountAnchor ? ` M=${point.mountAnchor.furnitureId}/${point.mountAnchor.face}` : '';
     writer.addText(layer[0], x + POINT_RADIUS_MM, y + POINT_RADIUS_MM, TEXT_HEIGHT_MM,
-      label(`${point.id} ${point.type}${mountElev !== undefined ? ` H${mountElev}` : ''}${countText}${sideText}${mountText}${point.circuit ? ` ${point.circuit}` : ''}${suffix}`, point.id));
+      label(`${point.id} ${point.type}${mountElev !== undefined ? ` H${mountElev}` : ''}${countText}${sideText}${mountText}${pointCircuits?.get(point.id) ? ` ${pointCircuits.get(point.id)}` : ''}${suffix}`, point.id));
     if (notUsable) {
       warnings.push(`electrical ${point.id}: serviceability ${point.serviceability_status}（H${mountElev ?? '?'} 落点不可用，不得按普通点施工）`);
     } else if (pendingPos) {
@@ -473,17 +540,99 @@ function emitCeiling(writer: DxfWriter, zones: CeilingZone[], warnings: string[]
     const [bx, by] = toDxf(Math.max(x1, x2), Math.max(z1, z2));
     writer.addPolyline(DXF_LAYERS.C_CEIL[0], [[ax, ay], [bx, ay], [bx, by], [ax, by]], true);
     // 声明了圆角/阴角弧的分区（codex 七审 major）：DXF 出的是矩形包络，不可直接按线放样。
+    // 这是**有意分歧**不算重复事实：3D 与算量的弧口径走 shared/arc.ts 的 tangentArc
+    // （切点/弧心 descriptor）+ CeilingZoneBuilder 采样，DXF 施工图只给矩形外包络，
+    // 放线以 3D/算量口径为准——warning 点名 descriptor，避免读者去找第三套弧词汇。
     const rounded = (zone.corner_radius ?? 0) > 0 || Object.keys(zone.corner_radii ?? {}).length > 0 || Object.keys(zone.concave_fillets ?? {}).length > 0;
     const approxSuffix = rounded
       ? (inputLabels === 'ascii' ? ' RECT-ENVELOPE ONLY-NO FILLET' : ' 矩形示意-圆角未表达')
       : '';
-    if (rounded) warnings.push(`ceiling ${zone.id}: 声明了圆角/阴角弧，DXF 为矩形包络示意，不可直接放线`);
+    if (rounded) warnings.push(`ceiling ${zone.id}: 声明了圆角/阴角弧（切点/弧心见 shared/arc.ts 的 tangentArc），DXF 为矩形包络示意，不可直接放线`);
     writer.addText(DXF_LAYERS.C_CEIL[0], ax, by + TEXT_HEIGHT_MM, TEXT_HEIGHT_MM,
       label(`${zone.id} ${zone.type}${zone.thickness !== undefined ? ` T${zone.thickness}` : ''}${approxSuffix}`, `${zone.id} ${zone.type}`));
   }
 }
 
 // --- 地面分区 + 墙面做法 ---
+
+/**
+ * 一段墙面做法出图（贴砖带 / 涂装带 / 踢脚线共用）。
+ *
+ * 2026-11-07 issue #98 第三阶段 S4：调用方的数据源从「overlay 平级元素 wall_region /
+ * paint_region」改为「墙对象特征 wall.finish.tile_bands / paint_bands」——元素类型没了，
+ * 但出图口径逐条未改（along 沿折线累计、越界显形、跨转角逐段、共墙双面标注分侧）。
+ * `declaredType` 只用于告警文案里指名声明的来源类型，保持历史可读。
+ */
+function emitWallFinishBand(
+  writer: DxfWriter,
+  wall: Extract<SceneElement, { type: 'wall' }>,
+  band: { id: string; room: string; along: [number, number]; bottom?: number; height?: number },
+  layer: readonly [string, number],
+  declaredType: string,
+  splitByOpenings: boolean,
+  roomCenters: Map<string, { x: number; z: number }>,
+  warnings: string[],
+  label: (text: string, fallback?: string) => string,
+): void {
+  // along 沿折线链逐段累计（与 3D SceneBuilder.pointAt 同口径）：带 segments 细分的墙
+  // 不能按主线直插，否则子线段错位。区间越界按 3D 同款显形跳过。
+  const chain: Array<{ x1: number; z1: number; x2: number; z2: number }> = wall.segments?.length
+    ? wall.segments
+    : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
+  const total = polylineLength(chain);
+  const from = Math.min(band.along[0], band.along[1]);
+  const to = Math.max(band.along[0], band.along[1]);
+  if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
+    warnings.push(`${declaredType} ${band.id}: along [${from}, ${to}] 超出墙 ${wall.id} 长度 ${total.toFixed(3)}，未导出`);
+    return;
+  }
+  // 沿折线链逐段裁剪（codex 四审 blocking，与 3D clipAlongSpan 同口径）：区间跨转角时
+  // 保留全部墙段，不连起终点弦；每段独立画线。
+  const clipped = clipAlongSpan(chain, from, to);
+  if (clipped.length === 0) {
+    warnings.push(`${declaredType} ${band.id}: 区间 [${from}, ${to}] 裁剪后为空（墙 ${wall.id}），未导出`);
+    return;
+  }
+  // 踢脚线按墙洞切分（codex 三审 blocking，与 3D skirting 分支同口径）：skirting_region
+  // 在门洞处实扣断开，不横穿门口；贴砖/涂漆的 3D 分支不扣洞（砖不扣、漆由 splitRectByGaps
+  // 在算量侧扣），DXF 同口径不扣。
+  const spans = splitByOpenings && wall.openings?.length
+    ? clipped.flatMap((piece) => splitSegmentByOpenings({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }, wall.openings!))
+    : clipped.map((piece) => ({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }));
+  if (spans.length === 0) {
+    warnings.push(`${declaredType} ${band.id}: 区间被洞口完全覆盖（墙 ${wall.id}），未导出`);
+    return;
+  }
+  for (const span of spans) {
+    writer.addLine(layer[0], ...toDxf(span.x1, span.z1), ...toDxf(span.x2, span.z2));
+  }
+  // height 是**顶标高**（SceneBuilder 按 height - bottom 建带高），不是带高——标注直接用声明顶标高。
+  const bottom = band.bottom ?? 0;
+  const topText = band.height !== undefined ? band.height.toFixed(2) : '?';
+  // 共墙双面声明（codex 八审 blocking）：线在同一中心线是出图惯例，但标注必须分侧——
+  // 文字沿墙法线朝声明房间侧偏移 300mm + 标注房间归属，两侧做法（如阳台 0.30m / 客卫 2.65m）不再叠印。
+  const [ax, ay] = toDxf(spans[0].x1, spans[0].z1);
+  let [tx, ty] = [ax, ay + TEXT_HEIGHT_MM];
+  const center = roomCenters.get(band.room);
+  if (center) {
+    const wdx = wall.x2 - wall.x1;
+    const wdz = wall.z2 - wall.z1;
+    const wlen = Math.hypot(wdx, wdz);
+    if (wlen > 1e-9) {
+      const nx = -wdz / wlen;
+      const nz = wdx / wlen;
+      const midX = (wall.x1 + wall.x2) / 2;
+      const midZ = (wall.z1 + wall.z2) / 2;
+      const sideSign = (center.x - midX) * nx + (center.z - midZ) * nz >= 0 ? 1 : -1;
+      // 法线是 local 坐标（y-up，z 南北）；DXF y = -local z，z 分量必须取反（codex 九审 blocking），
+      // 否则横墙两侧标注互换落到对侧房间。
+      tx = ax + sideSign * nx * 300;
+      ty = ay + sideSign * (-nz) * 300 + TEXT_HEIGHT_MM;
+    }
+  }
+  writer.addText(layer[0], tx, ty, TEXT_HEIGHT_MM,
+    label(`${band.id} [${band.room}] ${bottom.toFixed(2)}~${topText}m`, band.id));
+}
 
 function emitFloorAndWallFinishes(
   writer: DxfWriter,
@@ -505,74 +654,23 @@ function emitFloorAndWallFinishes(
         return [sx + x / sampled.length, sy + y / sampled.length];
       }, [0, 0]);
       writer.addText(DXF_LAYERS.F_FLOOR[0], centroid[0], centroid[1], TEXT_HEIGHT_MM, element.id);
-    } else if (element.type === 'wall_region' || element.type === 'paint_region' || element.type === 'skirting_region') {
+    } else if (element.type === 'wall') {
+      // 面层配方（S4 下沉）：贴砖带/涂装带是墙对象自己的特征，按墙出图。
+      // 实体集合与逐条几何口径同下沉前（A-WFIN-TILE 18 条 / A-WFIN-PAINT 31 条），
+      // 只是遍历顺序从「历史声明序」变为「按墙归组」。
+      for (const band of element.finish?.tile_bands ?? []) {
+        emitWallFinishBand(writer, element, band, DXF_LAYERS.WFIN_TILE, 'wall_region', false, roomCenters, warnings, label);
+      }
+      for (const band of element.finish?.paint_bands ?? []) {
+        emitWallFinishBand(writer, element, band, DXF_LAYERS.WFIN_PAINT, 'paint_region', false, roomCenters, warnings, label);
+      }
+    } else if (element.type === 'skirting_region') {
       const wall = wallsById.get(element.wall);
       if (!wall) {
         warnings.push(`${element.type} ${element.id}: 引用的墙 ${element.wall} 不在 sceneElements，未导出`);
         continue;
       }
-      // along 沿折线链逐段累计（与 3D SceneBuilder.pointAt 同口径）：带 segments 细分的墙
-      // 不能按主线直插，否则子线段错位。区间越界按 3D 同款显形跳过。
-      const chain: Array<{ x1: number; z1: number; x2: number; z2: number }> = wall.segments?.length
-        ? wall.segments
-        : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
-      const total = polylineLength(chain);
-      const from = Math.min(element.along[0], element.along[1]);
-      const to = Math.max(element.along[0], element.along[1]);
-      if (!(total > 0) || from < -1e-9 || to > total + 1e-9 || to - from <= 1e-9) {
-        warnings.push(`${element.type} ${element.id}: along [${from}, ${to}] 超出墙 ${element.wall} 长度 ${total.toFixed(3)}，未导出`);
-        continue;
-      }
-      const layer = element.type === 'wall_region'
-        ? DXF_LAYERS.WFIN_TILE
-        : element.type === 'paint_region' ? DXF_LAYERS.WFIN_PAINT : DXF_LAYERS.SKIRT;
-      // 沿折线链逐段裁剪（codex 四审 blocking，与 3D clipAlongSpan 同口径）：区间跨转角时
-      // 保留全部墙段，不连起终点弦；每段独立画线。
-      const clipped = clipAlongSpan(chain, from, to);
-      if (clipped.length === 0) {
-        warnings.push(`${element.type} ${element.id}: 区间 [${from}, ${to}] 裁剪后为空（墙 ${element.wall}），未导出`);
-        continue;
-      }
-      // 踢脚线按墙洞切分（codex 三审 blocking，与 3D skirting 分支同口径）：skirting_region
-      // 在门洞处实扣断开，不横穿门口；wall_region/paint_region 的 3D 分支不扣洞，DXF 同口径不扣。
-      const spans = element.type === 'skirting_region' && wall.openings?.length
-        ? clipped.flatMap((piece) => splitSegmentByOpenings({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }, wall.openings!))
-        : clipped.map((piece) => ({ x1: piece.a.x, z1: piece.a.z, x2: piece.b.x, z2: piece.b.z }));
-      if (spans.length === 0) {
-        warnings.push(`${element.type} ${element.id}: 区间被洞口完全覆盖（墙 ${element.wall}），未导出`);
-        continue;
-      }
-      for (const span of spans) {
-        writer.addLine(layer[0], ...toDxf(span.x1, span.z1), ...toDxf(span.x2, span.z2));
-      }
-      // height 是**顶标高**（SceneBuilder 按 height - bottom 建带高），不是带高——标注直接用声明顶标高。
-      const bottom = element.bottom ?? 0;
-      const topText = element.height !== undefined ? element.height.toFixed(2) : '?';
-      // 共墙双面声明（codex 八审 blocking）：线在同一中心线是出图惯例，但标注必须分侧——
-      // 文字沿墙法线朝声明房间侧偏移 300mm + 标注房间归属，两侧做法（如阳台 0.30m / 客卫 2.65m）不再叠印。
-      const side = element.type === 'wall_region' || element.type === 'paint_region' || element.type === 'skirting_region' ? element.room : undefined;
-      const [ax, ay] = toDxf(spans[0].x1, spans[0].z1);
-      let [tx, ty] = [ax, ay + TEXT_HEIGHT_MM];
-      const center = side ? roomCenters.get(side) : undefined;
-      if (center) {
-        const wdx = wall.x2 - wall.x1;
-        const wdz = wall.z2 - wall.z1;
-        const wlen = Math.hypot(wdx, wdz);
-        if (wlen > 1e-9) {
-          const nx = -wdz / wlen;
-          const nz = wdx / wlen;
-          const midX = (wall.x1 + wall.x2) / 2;
-          const midZ = (wall.z1 + wall.z2) / 2;
-          const sideSign = (center.x - midX) * nx + (center.z - midZ) * nz >= 0 ? 1 : -1;
-          // 法线是 local 坐标（y-up，z 南北）；DXF y = -local z，z 分量必须取反（codex 九审 blocking），
-          // 否则横墙两侧标注互换落到对侧房间。
-          tx = ax + sideSign * nx * 300;
-          ty = ay + sideSign * (-nz) * 300 + TEXT_HEIGHT_MM;
-        }
-      }
-      const roomText = side ? ` [${side}]` : '';
-      writer.addText(layer[0], tx, ty, TEXT_HEIGHT_MM,
-        label(`${element.id}${roomText} ${bottom.toFixed(2)}~${topText}m`, element.id));
+      emitWallFinishBand(writer, wall, element, DXF_LAYERS.SKIRT, element.type, true, roomCenters, warnings, label);
     }
   }
 }
@@ -592,6 +690,8 @@ function emitMep(
   coordination: MepCoordination,
   sources: MepEndpointSources,
   warnings: string[],
+  /** 路线端点悬空诊断通道：与家具摆位/点位定位同一条 errors——非空即入口拒绝交付。 */
+  errors: string[],
   label: (text: string, fallback?: string) => string,
   restrict: RestrictLabels,
   labelsMode: 'utf8' | 'ascii',
@@ -601,7 +701,10 @@ function emitMep(
   const report = resolveMepRoutes(coordination, sources);
   for (const resolved of report.routes) {
     if (resolved.unresolved.length > 0) {
-      warnings.push(`mep route ${resolved.route.id}: 端点未解析（${resolved.unresolved.join('/')}），未导出`);
+      // fail-closed（issue #98，与 resolvedPointPosition 同一口径）：路线端点是施工放线
+      // 内容，from/to 解不出来就整次导出不成立——跳过该路线后 M-ROUTE 照样出图，等于
+      // 交付一张缺路线的施工图。诊断进 errors，两个入口据此拒绝交付。
+      errors.push(`mep route ${resolved.route.id}: 端点未解析（${resolved.unresolved.join('/')}）——不导出该路线，修复声明后重导`);
       continue;
     }
     const points = mepRoutePoints(resolved.route, resolved.from, resolved.to);

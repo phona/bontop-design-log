@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -6,6 +7,7 @@ import { load } from 'js-yaml';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { parseOverlay, mergeSceneElements } from '../../server/overlay-merge.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
+import { suppressedWallIds } from '../../shared/suppression.js';
 
 // 贴砖检视态子系统（DEC-2026-10-07-R08）。三道防线：
 //  ① overlay 声明能过 schema 校验（overlay-merge 的 Zod 判别联合）
@@ -13,7 +15,7 @@ import { resolveLayout } from '../../server/layout-resolver.js';
 //  ③ 与 pipe-chase 检视态互不干扰（层标签隔离 + HVAC/管道重建不摧毁本层）
 
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
-const OV: any = load(readFileSync('config/layout/overlay.yaml', 'utf8'));
+const OV: any = parseOverlayFiles();
 const RESOLVED_LAYOUT: any = resolveLayout(MG);
 function sillWallLength(wallId: string): number {
   // 与 shared/masonry-takeoff.ts / SceneBuilder 的墙长口径一致：弧墙按 resolved
@@ -27,22 +29,50 @@ function sillWallLength(wallId: string): number {
 }
 
 /** 把 model-geometry 的 from/to 顶点 id 解析成 buildScene 契约的 x1/z1/x2/z2。 */
-function resolvedWalls(): Array<{ id: string; x1: number; z1: number; x2: number; z2: number; height: number }> {
+function resolvedWalls(): any[] {
   const V: Record<string, { x: number; z: number }> = {};
   for (const v of MG.vertices) V[v.id] = { x: v.x, z: v.z };
-  return MG.walls.map((w: any) => ({ id: w.id, x1: V[w.from].x, z1: V[w.from].z, x2: V[w.to].x, z2: V[w.to].z, height: w.height ?? 2.8 }));
+  // 面层配方（2026-11-07 issue #98 第三阶段 S4）与 line_datum 必须随墙透传：
+  // 贴砖带/涂装带住在墙对象上，完成面偏移由 wallFaceOffset 按 line_datum 解算。
+  return MG.walls.map((w: any) => ({
+    id: w.id, x1: V[w.from].x, z1: V[w.from].z, x2: V[w.to].x, z2: V[w.to].z, height: w.height ?? 2.8,
+    ...(w.finish ? { finish: w.finish } : {}),
+    ...(w.line_datum ? { line_datum: w.line_datum } : {}),
+    // suppressed 属性必须随墙透传：mergeSceneElements 靠它把幕墙/已删墙挡在场景外（S3 口径）
+    ...(w.suppressed ? { suppressed: w.suppressed } : {}),
+  }));
+}
+
+/** 全部贴砖带（S4 起 = 墙对象 finish.tile_bands，原 overlay 平级 wall_region 已下沉）。 */
+function tileBands(): Array<any & { wall: string }> {
+  return (MG.walls ?? []).flatMap((w: any) => (w.finish?.tile_bands ?? []).map((b: any) => ({ ...b, wall: w.id })));
+}
+
+/** 全部防水台/上飘窗贴砖带（S4 起 = bay_sill 构件 finish.tile，原 sill_region 已下沉）。 */
+function sillTileBands(): Array<any & { element: string }> {
+  return ((OV.elements ?? []) as any[])
+    .filter((e: any) => e.type === 'bay_sill')
+    .flatMap((e: any) => (e.finish?.tile ?? []).map((b: any) => ({ ...b, element: e.id })));
 }
 
 function sceneWithWallTile() {
   // 走 mergeSceneElements（与 App 同路径）：bay_sill 的 wall 引用在此解析成 points/wallRefs，
   // sill_region 靠它找到防水台构件几何；直接喂原始 YAML 的 bay_sill 没有 points 会炸。
-  const merged = mergeSceneElements(resolvedWalls(), parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')));
+  const merged = mergeSceneElements(resolvedWalls(), parseOverlayFiles());
   return buildScene({
     walls: resolvedWalls(),
     rooms: resolveLayout(MG).rooms,
-    elements: merged.filter((e: any) => ['wall_region', 'sill_region', 'bay_sill'].includes(e.type)),
+    elements: merged,
     furnishings: {},
   } as any);
+}
+
+/** 场景 unsupported 里属于「已登记事实」的两类飘窗涂装告警（computePaintSillScope 产出：
+ *  声明面与实体墙重合 → 按隐蔽面排除并 warning）。它们不是构建失败，且本来就走
+ *  /api/paint/comparison 的 warnings 通道；面层下沉后它们随 bay_sill.finish.paint 一起进场景，
+ *  故「unsupported 必须为空」的断言要把这两条登记项排除，否则把告警当成错误。 */
+function buildFailures(scene: any): string[] {
+  return scene.report.unsupported.filter((entry: string) => !/excluded as concealed/.test(entry));
 }
 
 function wallTileMeshes(root: THREE.Object3D): THREE.Mesh[] {
@@ -51,31 +81,31 @@ function wallTileMeshes(root: THREE.Object3D): THREE.Mesh[] {
   return out;
 }
 
-test('overlay wall_region declarations pass the Zod discriminated union', () => {
-  const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
-  const regions: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'wall_region');
+// 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：贴砖带不再是 overlay 平级元素，
+// 而是墙对象的 finish.tile_bands / bay_sill 构件的 finish.tile。原「过 Zod 判别联合」
+// 的断言随之改为「下沉后的声明自洽」——schema（WallTileBandSchema/SillTileBandSchema）
+// 仍在 server/overlay-merge.ts，凡走 parseOverlayFiles 的构件侧由它把守。
+test('面层配方声明自洽：18 段墙砖 + 20 段防水台砖，默认值与枚举齐全', () => {
+  const regions: any[] = tileBands();
   assert.equal(regions.length, 18, '2026-10-09 P07 删 C18 后 stale 的 walltile_kitchen_ent_hood_wall 后 16 段墙；P11 厨房生活阳台门段拆东西两段 → 17；2026-10-23 DEC-2026-10-23-R04 客卫东墙淋浴砖段拆二（kitseg）→ 18');
-  // schema 会填入默认值：bottom 默认 0、zone 默认 visible
   for (const r of regions) {
-    assert.ok(r.bottom >= 0, `${r.id} bottom 必须非负`);
-    assert.ok(r.zone === 'visible' || r.zone === 'covered');
+    assert.ok((r.bottom ?? 0) >= 0, `${r.id} bottom 必须非负`);
+    assert.ok(r.zone === undefined || r.zone === 'visible' || r.zone === 'covered');
     assert.ok(r.along[1] > r.along[0], `${r.id} along 区间必须为正`);
-    assert.ok(r.height > r.bottom, `${r.id} height（顶标高）必须大于 bottom`);
-    assert.ok(r.wall.length > 0, `${r.id} 必须引用一面墙`);
+    assert.ok(r.height > (r.bottom ?? 0), `${r.id} height（顶标高）必须大于 bottom`);
+    assert.ok(typeof r.wall === 'string' && r.wall.length > 0, `${r.id} 必须挂在墙对象上`);
     assert.ok(typeof r.room === 'string' && r.room.length > 0, `${r.id} R11 起必须声明 room（贴砖面归属房间）`);
   }
-  // R11 D4=L 型：防水台贴砖带（sill_region）两段——front 竖面 + top 台面，均引用同一 bay_sill 构件
-  const sills: any[] = (parsed.elements ?? []).filter((e: any) => e.type === 'sill_region');
+  // R11 D4=L 型：防水台贴砖带两段——front 竖面 + top 台面，住在 bay_sill 构件里
+  const sills: any[] = sillTileBands();
   assert.equal(sills.length, 20, '卧室/书房新增 6 座防水台各 front+top 12 段；连同既有 8 段共 20 段');
-  const baySillIds = new Set((parsed.elements ?? []).filter((e: any) => e.type === 'bay_sill').map((e: any) => e.id));
-  const living = (parsed.elements ?? []).find((e: any) => e.id === 'living_south_waterproof_ledge');
+  for (const s of sills) {
+    assert.ok(s.face === 'front' || s.face === 'top' || s.face === 'underside', `${s.id} face 只能是 front/top/underside`);
+  }
+  const living = (OV.elements ?? []).find((e: any) => e.id === 'living_south_waterproof_ledge');
   assert.equal(living?.type, 'bay_sill', '客厅防水台构件必须是 bay_sill');
   assert.equal(living.height, 0.15);
   assert.equal(living.depth, 0.15);
-  for (const s of sills) {
-    assert.ok(baySillIds.has(s.element), `sill_region ${s.id} 必须引用已声明的 bay_sill`);
-    assert.ok(s.face === 'front' || s.face === 'top' || s.face === 'underside', `${s.id} face 只能是 front/top/underside`);
-  }
   assert.equal(sills.filter((s) => s.room === 'living_dining').length, 2, '客厅 L 型两段');
   assert.equal(sills.filter((s) => s.room === 'master_bath').length, 4, '主卫湿区 2 台 × front/top（C17；w_west_ap 圆角段留现场收口）');
   assert.equal(sills.filter((s) => s.room === 'master_bedroom').length, 6, '主卧 3 座防水台 × front/top');
@@ -84,16 +114,20 @@ test('overlay wall_region declarations pass the Zod discriminated union', () => 
   assert.equal(sills.filter((s) => s.room === 'bedroom_se').length, 2, '东南客房 1 座防水台 × front/top');
 });
 
-test('mergeSceneElements preserves wall_region elements alongside overlay types', () => {
-  const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+test('mergeSceneElements 把墙的面层配方透传成 wall 元素特征（S4 下沉后无平级元素）', () => {
+  const parsed = parseOverlayFiles();
   const merged = mergeSceneElements(resolvedWalls(), parsed);
-  const regions: any[] = merged.filter((e: any) => e.type === 'wall_region');
-  assert.equal(regions.length, 18, "2026-10-09 P07 删 walltile_kitchen_ent_hood_wall 后 16 段墙；P11 厨房门段拆分 → 17；DEC-2026-10-23-R04 客卫东墙砖段拆二 → 18");
+  const bands: any[] = merged.flatMap((e: any) => (e.type === 'wall' ? e.finish?.tile_bands ?? [] : []));
+  assert.equal(bands.length, 18, "2026-10-09 P07 删 walltile_kitchen_ent_hood_wall 后 16 段墙；P11 厨房门段拆分 → 17；DEC-2026-10-23-R04 客卫东墙砖段拆二 → 18");
+  // 被 suppress 的墙不进场景（S3 口径）：其贴砖带（如有）随墙一起不渲染
+  const suppressed = new Set<string>(suppressedWallIds(RESOLVED_LAYOUT.walls));
+  const wallIds = new Set(merged.filter((e: any) => e.type === 'wall').map((e: any) => e.id));
+  for (const id of suppressed) assert.ok(!wallIds.has(id), `${id} 被 suppress，不得进场景`);
 });
 
 test('buildScene emits 38 inspection-only wall-tile meshes with reversible initial state', () => { // R04：wall_region 37→38 段
   const scene = sceneWithWallTile();
-  assert.deepEqual(scene.report.unsupported, [], '墙引用或 along 区间有误会在这里现形');
+  assert.deepEqual(buildFailures(scene), [], '墙引用或 along 区间有误会在这里现形');
   const meshes = wallTileMeshes(scene.exportRoot);
   assert.equal(meshes.length, 38);
   for (const mesh of meshes) {
@@ -182,13 +216,14 @@ test('wall-tile geometry matches the declared wall span and height', () => {
   assert.equal(byId.has('walltile_kitchen_balc_east'), false, '整段 1.20m 的旧声明必须已拆分删除');
 });
 
-test('wall_region references only existing, non-suppressed walls', () => {
-  const suppressed = new Set<string>();
-  for (const s of OV.suppress ?? []) for (const k of ['wall', 'walls']) if (s[k]) (Array.isArray(s[k]) ? s[k] : [s[k]]).forEach((w: string) => suppressed.add(w));
+test('tile bands reference only existing, non-suppressed walls', () => {
+  // suppress 改判（2026-11-07 issue #98 第三阶段 S3）：读墙条目自身的 suppressed 属性
+  // （resolveLayout 透传），唯一权威实现 shared/suppression.ts。
+  const suppressed = new Set<string>(suppressedWallIds(RESOLVED_LAYOUT.walls));
   const wallIds = new Set(MG.walls.map((w: any) => w.id));
-  for (const e of (OV.elements ?? []).filter((x: any) => x.type === 'wall_region')) {
-    assert.ok(wallIds.has(e.wall), `${e.id} 引用了不存在的墙 ${e.wall}`);
-    assert.ok(!suppressed.has(e.wall), `${e.id} 引用了已被 suppress 的墙 ${e.wall}（玻璃幕墙/已删除，不可贴）`);
+  for (const e of tileBands()) {
+    assert.ok(wallIds.has(e.wall), `${e.id} 挂在不存在的墙 ${e.wall} 上`);
+    assert.ok(!suppressed.has(e.wall), `${e.id} 挂在已被 suppress 的墙 ${e.wall} 上（玻璃幕墙/已删除，不可贴）`);
   }
 });
 
@@ -228,16 +263,16 @@ test('inspectWallTileRegions returns per-segment detail with the same rules as t
   // SceneBuilder 的 buildScene 不返回 HouseScene；此处在 server 侧只验证 overlay/几何一致性，
   // 浏览器侧 inspectWallTileRegions 由 app/src 测试覆盖。这里退化为检查 buildScene 的 unsupported 为空，
   // 即"每段声明都能落到真实墙体上"。
-  assert.deepEqual(scene.report.unsupported, [], '每段声明都能落到真实构件上（含 sill_region 的 bay_sill 引用）');
+  assert.deepEqual(buildFailures(scene), [], '每段声明都能落到真实构件上（含防水台 finish.tile 的构件引用）');
   assert.ok(inspection === undefined, 'buildScene 不暴露 HouseScene 的 inspect API，符合分层');
 });
 
 test('wall-tile status surface mirrors HVAC: required/ready/missing + byRoom + byHeightTier', () => {
   // 用 overlay 声明直接复算，验证摘要口径与 App 播报一致。
   // tier 口径 = **贴砖带高**（与 HouseScene.inspectWallTileRegions 从网格几何读的 height 一致，非顶标高）。
-  const parsed = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
-  const elements: any[] = parsed.elements ?? [];
-  const regions: any[] = elements.filter((e: any) => e.type === 'wall_region' || e.type === 'sill_region');
+  const elements: any[] = OV.elements ?? [];
+  // 面层配方下沉（S4）：墙砖带来自墙对象 finish.tile_bands，防水台砖带来自构件 finish.tile
+  const regions: any[] = [...tileBands(), ...sillTileBands()];
   const CN: Record<string, string> = {
     kitchen: '厨房', master_bath: '主卫', guest_bath: '客卫', balcony: '阳台', living_dining: '客厅',
     master_bedroom: '主卧', study: '书房', bedroom_nw: '西北次卧', bedroom_se: '客房',
@@ -247,14 +282,14 @@ test('wall-tile status surface mirrors HVAC: required/ready/missing + byRoom + b
   for (const r of regions) {
     const room = CN[r.room as string] ?? '客卫';
     let len: number, band: number;
-    if (r.type === 'sill_region') {
+    if (r.element) {
       const target = elements.find((e: any) => e.id === r.element);
-      assert.equal(target?.type, 'bay_sill', 'sill_region 必须引用 bay_sill 构件');
+      assert.equal(target?.type, 'bay_sill', '防水台砖带必须住在 bay_sill 构件里');
       len = r.along ? r.along[1] - r.along[0] : sillWallLength(target.wall);
       band = r.face === 'front' ? target.height : target.depth;
     } else {
       len = r.along[1] - r.along[0];
-      band = r.height - r.bottom;
+      band = r.height - (r.bottom ?? 0);
     }
     byRoom[room] ??= { lengthM: 0, areaSqm: 0 };
     byRoom[room].lengthM += len; byRoom[room].areaSqm += len * band;

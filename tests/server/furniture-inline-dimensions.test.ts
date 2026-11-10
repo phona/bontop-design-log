@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
-import { buildCliHouseScene } from '../../scripts/render/glb/cli-glb-builder.js';
+import { buildCliHouseScene } from '../../scripts/render/cli-house-scene.js';
 
 // 回归：书房南延腿在 house.yaml 上带行内 width 2.182 / depth 0.55（目录 1.70×0.55）；
 // 北段带行内 width 1.80（2026-10-27 齐平：西延顶墙）。
@@ -18,10 +18,12 @@ function studyWardrobeGroups(): THREE.Object3D[] {
   const found: THREE.Object3D[] = [];
   scene.traverse((object) => {
     // 柜体零件（门板/层板等）与柜组共享 objectId，只取 Group 本体，勿把零件也算成柜体。
+    // 按 userData 的 roomId/furnishingType 认家具（issue #98 起 objectId 是稳定 id，
+    // 如 study.seasonal_wardrobe_wall，不再编码房间/类型）。
     if (
       object instanceof THREE.Group &&
-      typeof object.userData.objectId === 'string' &&
-      object.userData.objectId.startsWith('furniture:study:study_seasonal_wardrobe_wall:')
+      object.userData.roomId === 'study' &&
+      object.userData.furnishingType === 'study_seasonal_wardrobe_wall'
     ) {
       found.push(object);
     }

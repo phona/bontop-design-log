@@ -10,7 +10,7 @@ import {
 } from '../../shared/project-render-facts-schema.js';
 
 const electrical = ElectricalPointsSchema.parse(parseYaml(readFileSync('config/electrical.yaml', 'utf8')));
-const ceiling = CeilingZonesSchema.parse(parseYaml(readFileSync('config/ceiling.yaml', 'utf8')));
+const ceiling = CeilingZonesSchema.parse(parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')));
 const hvac = ProjectHvacFactsSchema.parse(parseYaml(readFileSync('config/hvac.yaml', 'utf8')));
 
 test('hvac.yaml declares the complete A2 diagram against existing MEP facts', () => {

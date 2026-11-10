@@ -4,7 +4,14 @@
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildObjectPackageIndex, isPointSourceAllSelector, resolvePackageScope, type ProjectScopeInput } from '../../shared/package-scope.js';
+import { readFileSync } from 'node:fs';
+import { load as parseYaml } from 'js-yaml';
+import { buildObjectPackageIndex, isPointSourceAllSelector, resolvePackageScope, sourceWallIdOf, type ProjectScopeInput } from '../../shared/package-scope.js';
+import { loadModelPackageLinks } from '../../server/model-package-links.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import { mergeSceneElements, parseOverlayFiles } from '../../server/overlay-merge.js';
+import { buildScene } from '../../shared/render/SceneBuilder.js';
+import { loadCeilingConfig } from '../../server/config-loader.js';
 
 const project: ProjectScopeInput = {
   house: {
@@ -248,6 +255,26 @@ describe('resolvePackageScope', () => {
     }, project);
     assert.deepEqual(result.roomIds, []);
   });
+
+  // 2026-11-07（issue #98 第三阶段 S6）：迁移设计 §5.7 曾要求「overlay/ceiling 都登记为
+  // ids = 场景 objectId 裸值」。overlay 成立（构件 id 即 objectId，S4 已登记）；ceiling 不
+  // 成立——吊顶分区的 objectId 带 `ceiling:` 前缀（SceneBuilder.ts:1323），登记成裸值会
+  // 让高亮与反查双双静默 no-op（2026-11-02 同一失效类）。本用例钉住这个分流，防以后
+  // 「按文档把 ceiling 加进 OBJECT_ID_SOURCES」。
+  it('ceiling 的 ids 走 ceiling: 前缀（不进 OBJECT_ID_SOURCES 裸值通道）', () => {
+    const result = resolvePackageScope({
+      scope: [{source: 'ceiling', select: {ids: ['ceiling_living', 'ac_master']}}],
+    }, project);
+    assert.deepEqual(result.objectIds, [], 'ceiling ids 不得进裸 objectIds（场景里没有这个键）');
+    assert.deepEqual(result.pointIds, ['ceiling:ceiling_living', 'ceiling:ac_master']);
+    assert.deepEqual(result.unresolved, []);
+    // overlay 的同一形态必须走裸值（OBJECT_ID_SOURCES）——两条通道不能混
+    const overlay = resolvePackageScope({
+      scope: [{source: 'overlay', select: {ids: ['kitchen_north_bay']}}],
+    }, project);
+    assert.deepEqual(overlay.objectIds, ['kitchen_north_bay']);
+    assert.deepEqual(overlay.pointIds, []);
+  });
 });
 
 describe('buildObjectPackageIndex', () => {
@@ -310,5 +337,183 @@ describe('buildObjectPackageIndex', () => {
     assert.equal(index.get('electrical:sock_living_ac'), undefined);
     assert.equal(index.get('plumbing:drain_kitchen'), undefined);
     assert.equal(index.size, 0);
+  });
+});
+
+// 2026-11-06（issue #98 PR-4）：真实 links 配置按**稳定 id** 选家具对象。
+// MODEL-PKG-100 / MODEL-PKG-160 原按 type 选 vanity / robot_dock_gbath——治的失效模式
+// 与 tests/server/model-package-links.test.ts 同源：删/改类型后忘了同步选择器，
+// assertSelector 抛错、/api/project 500；且 furnishings 的 types 选择器按 sceneElements
+// 匹配，而 sceneElements 只有墙与叠加层（mergeSceneElements）、不含家具，从来解析不出
+// 对象——silent no-op。改成 ids 后，正查高亮与反查归属同时生效。
+describe('issue #98 PR-4： furnishings ids 选择器 ↔ 包/验收项（真实 links）', () => {
+  const links = loadModelPackageLinks();
+  const gbathProject: ProjectScopeInput = {
+    house: {
+      rooms: [{id: 'master_bath'}, {id: 'guest_bath'}, {id: 'master_bedroom'}],
+      sceneElements: [
+        {id: 'gbath.vanity', type: 'vanity'},
+        {id: 'gbath.robot_dock', type: 'robot_dock_gbath'},
+      ],
+    },
+  };
+
+  it('反查：gbath.vanity → PKG-100，gbath.robot_dock → PKG-160', () => {
+    const index = buildObjectPackageIndex(links.links, gbathProject);
+    assert.ok(
+      index.get('gbath.vanity')?.includes('PKG-100'),
+      `点客卫台盆柜应反查到 PKG-100，实际 ${JSON.stringify(index.get('gbath.vanity'))}`,
+    );
+    assert.ok(
+      index.get('gbath.robot_dock')?.includes('PKG-160'),
+      `点基站泊位应反查到 PKG-160，实际 ${JSON.stringify(index.get('gbath.robot_dock'))}`,
+    );
+  });
+
+  it('正查 PKG-100：gbath.vanity 进 objectIds，furnishings ids 不再落 unresolved', () => {
+    const link = links.links.find((item) => item.id === 'MODEL-PKG-100');
+    assert.ok(link, 'MODEL-PKG-100 必须存在');
+    const result = resolvePackageScope(link, gbathProject);
+    assert.ok(result.objectIds.includes('gbath.vanity'));
+    assert.ok(
+      !result.unresolved.some((entry) => entry.includes('furnishings.ids')),
+      `furnishings ids 是场景 objectId 裸值，不该进 unresolved：${JSON.stringify(result.unresolved)}`,
+    );
+  });
+
+  it('正查 PKG-160：gbath.robot_dock 进 objectIds，水电点位仍走点位前缀', () => {
+    const link = links.links.find((item) => item.id === 'MODEL-PKG-160');
+    assert.ok(link, 'MODEL-PKG-160 必须存在');
+    const result = resolvePackageScope(link, gbathProject);
+    assert.ok(result.objectIds.includes('gbath.robot_dock'));
+    assert.ok(result.pointIds.includes('plumbing:faucet_gbath_vanity'));
+    assert.ok(result.pointIds.includes('electrical:sock_gbath_robot'));
+  });
+
+  it('验收项按对象 id 可追溯：check_plumb_external_vanity_waterproof 点名 gbath.vanity 且挂 PKG-050', () => {
+    const acceptance = parseYaml(readFileSync('config/acceptance.yaml', 'utf8')) as {
+      phases: Array<{ items: Array<{ id: string; item: string; standard: string }> }>;
+    };
+    const check = acceptance.phases.flatMap((phase) => phase.items).find((item) => item.id === 'check_plumb_external_vanity_waterproof');
+    assert.ok(check, 'check_plumb_external_vanity_waterproof 必须存在');
+    assert.ok(check.item.includes('gbath.vanity'), `验收项应点名对象 id：${check.item}`);
+    assert.ok(check.standard.includes('gbath.vanity'), `判定标准应引用对象 id：${check.standard}`);
+
+    const control = parseYaml(readFileSync('schedule/phase-1/control.yaml', 'utf8')) as {
+      work_packages: Array<{ id: string; acceptance_refs?: string[] }>;
+    };
+    const pkg050 = control.work_packages.find((pkg) => pkg.id === 'PKG-050');
+    assert.ok(pkg050?.acceptance_refs?.includes('check_plumb_external_vanity_waterproof'), 'PKG-050 应挂接该验收项');
+  });
+});
+
+// ── 生产 links × 生产场景：选择器 id 必须真的能在 3D 里命中 ────────────────────
+// 2026-11-07 issue #98 第三阶段 S4 评审 blocking：面层配方下沉后 MODEL-PKG-050/060/
+// 065/080/130/135 的 scope 从「配方 id」改为「宿主对象稳定 id」（墙 / bay_sill）。
+// 但墙 mesh 的 objectId 在开门洞拆段/共墙拆面后是 `墙id:N`/`墙id:N.M`（SceneBuilder
+// addWallElement 的 baseId/objectId 两行），裸墙 id 只属于无洞且单面跨度的墙——实测
+// 52 面墙里 15 面命中不了，正查高亮与反查归属都会静默 no-op（本文件头注记载的
+// 2026-11-02「ids 选择器静默 no-op、mock 测试照不到」同一失效类）。
+// 消费侧（HouseScene.applyEmissiveHighlight / App.revealPackageForObject）已按
+// sourceWallIdOf 做二级命中；本门禁钉的是**另一侧**：每个 link 的 objectIds 都必须
+// 能在 buildScene 的真实产出里命中（直接命中或经源墙 id 桥接命中），
+// 且反过来桥接不能把不是墙的对象错配过来。
+//
+// 2026-11-07 S6 扩展：选择器从 types 全量改 ids（floor_region ×4、floor+skirting、
+// sliding_door_run、shower_screen、curtain ×2——见 config/model-package-links.yaml 头注），
+// 命中检查随之从「墙 / bay_sill」扩到**全部非家具 objectId**：判据是 id 不含 '.'——
+// 墙/围护/吊顶/派生踢脚 id 都不含点号，家具稳定 id 一律 `房间.类型`（furnishings 的
+// 裸值约定由上面 PR-4 的用例守，点位带前缀也另有用例）。这样 S6 新写进 links 的
+// 6 floor zone、24 skirt_*、kitchen_dining_sliding_door、3 shower_screen、9 curtain
+// 全部进命中门禁——其中 curtain mesh 的 objectId 是 `id:layer:variant`、shower_screen
+// 是 `id:N`，靠的正是 sourceWallIdOf 的一级桥接，门禁照过即证明高亮/反查真的通。
+describe('生产 links 的 objectIds 必须能在 buildScene 产出里命中（S4 宿主对象选择器 → S6 全量 ids）', () => {
+  function productionScene() {
+    const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
+    const layout = resolveLayout(mg);
+    const merged = mergeSceneElements(layout.walls as never, parseOverlayFiles());
+    const scene = buildScene({
+      walls: layout.walls,
+      rooms: layout.rooms,
+      elements: merged,
+      ceilingZones: loadCeilingConfig(),
+      furnishings: {},
+    } as never) as unknown as {exportRoot: {traverse: (fn: (o: never) => void) => void}};
+    const objectIds = new Set<string>();
+    scene.exportRoot.traverse((object: never) => {
+      const userData = (object as {userData?: {objectId?: string}}).userData;
+      if (userData?.objectId) objectIds.add(userData.objectId);
+    });
+    // 源墙 id 集合：桥接的兜底域（`墙id:N`/`墙id:N.M` → 墙id）
+    const sourceWallIds = new Set([...objectIds].map(sourceWallIdOf));
+    return {objectIds, sourceWallIds};
+  }
+
+  it('每条 link 的非家具 objectId 全部可在场景里命中（直接或经源墙 id 桥接）', () => {
+    const links = loadModelPackageLinks();
+    const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
+    const layout = resolveLayout(mg);
+    const project: ProjectScopeInput = {
+      house: {
+        rooms: layout.rooms.map((room) => ({id: room.id})),
+        sceneElements: mergeSceneElements(layout.walls as never, parseOverlayFiles()).map((element) => ({id: element.id, type: element.type})),
+      },
+    };
+    const {objectIds, sourceWallIds} = productionScene();
+    const checked: string[] = [];
+    const checkedIds = new Set<string>();
+    for (const link of links.links) {
+      const {objectIds: scopeIds, projectScope} = resolvePackageScope(link, project);
+      if (projectScope) continue;
+      // 非家具对象 id（不含点号）：墙 / 围护构件 / floor zone / 派生踢脚 / 帘布 / 隔断。
+      const hostIds = scopeIds.filter((id) => !id.includes('.'));
+      for (const id of hostIds) {
+        const hit = objectIds.has(id) || sourceWallIds.has(id);
+        assert.ok(hit, `${link.id} 的对象 id ${id} 在 buildScene 产出里命中不了（objectId 直接命中与 sourceWallIdOf 桥接都失败）——选择器又会静默 no-op`);
+        checkedIds.add(id);
+      }
+      if (hostIds.length) checked.push(`${link.id}:${hostIds.length}`);
+    }
+    // S4 改写的 6 条 + S6 新纳入门禁的 4 条都必须真的被检查到（否则本门禁空转）
+    for (const id of ['MODEL-PKG-050', 'MODEL-PKG-060', 'MODEL-PKG-065', 'MODEL-PKG-080', 'MODEL-PKG-130', 'MODEL-PKG-135', 'MODEL-PKG-090', 'MODEL-PKG-100', 'MODEL-PKG-145', 'MODEL-P2-070']) {
+      assert.ok(checked.some((entry) => entry.startsWith(id)), `${id} 应带非家具对象 id 并接受命中检查`);
+    }
+    // S6 新写进 links 的 id 家族逐个点名：都真的过了命中检查（不是只写在 YAML 里）
+    for (const id of ['north_platform_floor', 'skirt_master_bedroom_w_mb_east', 'curtain_master_west', 'kitchen_dining_sliding_door', 'shower_screen_mbath']) {
+      assert.ok(checkedIds.has(id), `${id} 应进入命中检查集合（S6 的 ids 直选）`);
+    }
+  });
+
+  it('桥接方向正确：只有墙 mesh 的后缀 id 才桥回墙 id，构件 id 不被桥接篡改', () => {
+    assert.equal(sourceWallIdOf('w_mbath_east'), 'w_mbath_east');
+    assert.equal(sourceWallIdOf('w_mbath_east:0'), 'w_mbath_east');
+    assert.equal(sourceWallIdOf('w_mbath_east:0.1'), 'w_mbath_east');
+    // 墙 id 不含 ':'，截第一个 ':' 即得源墙；构件/点位的冒号属另一套前缀约定，
+    // 不经本函数（点位的 electrical:/plumbing: 由 POINT_SOURCE_PREFIXES 归一化）
+    assert.equal(sourceWallIdOf('master_bath_west_bay'), 'master_bath_west_bay');
+  });
+
+  it('反查索引按桥接后可命中：buildObjectPackageIndex 的墙键与场景 objectId 对得上', () => {
+    const links = loadModelPackageLinks();
+    const mg = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
+    const layout = resolveLayout(mg);
+    const project: ProjectScopeInput = {
+      house: {
+        rooms: layout.rooms.map((room) => ({id: room.id})),
+        sceneElements: mergeSceneElements(layout.walls as never, parseOverlayFiles()).map((element) => ({id: element.id, type: element.type})),
+      },
+    };
+    const index = buildObjectPackageIndex(links.links, project);
+    const {objectIds} = productionScene();
+    // 索引里的每个墙键，必须至少有一个场景 objectId 直接等于它或桥回它
+    const wallKeys = [...index.keys()].filter((key) => /^w_/.test(key));
+    assert.ok(wallKeys.length > 0, '索引里应有墙键');
+    const sceneWallIds = new Set([...objectIds].map(sourceWallIdOf));
+    for (const key of wallKeys) {
+      assert.ok(
+        objectIds.has(key) || sceneWallIds.has(key),
+        `索引墙键 ${key} 在场景里没有对应 objectId（点这面墙反查不到包）`,
+      );
+    }
   });
 });

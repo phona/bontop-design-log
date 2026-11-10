@@ -12,11 +12,11 @@ model: kimi-for-coding/k3-256k
 
 任何设计建议前，**必须**先读取项目真实状态。MCP 已于 2026-10-22 删除，本地 AI 直接拉文件更简单可靠：读 `config/*.yaml`、跑 `npm run` CLI、或 server 在 localhost:4000 运行时 curl 既有 API：
 
-1. 数据成熟度 — 读各 config 的 `status` 字段与 `docs/pending-site-data.md`。几何/MEP 多为 `inferred`（CAD 估算未量房），材料多为 `candidate`（到店未确认）。**基于推断数据的设计必须标注"待量房复核"**
+1. 数据成熟度 — 读各 config 的 `status` 字段，或直接跑 `npm run state:project`（每个构件一条：确认了吗 / 卡在谁 / 和谁冲突；39 个 pending 构件个儿带 `blocker{kind,owner,trigger,reverses_if,rationale}`）。几何/MEP 多为 `inferred`（CAD 估算未量房），材料多为 `candidate`（到店未确认）。**基于推断数据的设计必须标注"待量房复核"**
 2. 项目概览 — `config/house.yaml` + `GET /api/project`（房间、topic、预算科目）
 3. 预算快照 — `GET /api/budget` 或直接读 `config/budget/base.json` + 跑算量 CLI（totalActual / 阶段上限 / 各科 over-near）
-4. 房间布局 — `config/layout/model-geometry.yaml` + `config/layout/overlay.yaml`（目标房间的尺寸/墙体/门窗/家具/电气点位）
-5. 已定选材与决策历史 — `GET /api/scheme/current` + `GET /api/decisions`，或读 `docs/decisions/`，**不重复已决、不推翻未说明理由**
+4. 房间布局 — `config/layout/model-geometry.yaml`（尺寸/墙体/门窗/家具/电气点位）+ `config/model/envelope/` 三文件（openings / floor-zones / finish-surfaces，幕墙·飘窗·窗帘·面层；合并入口 `server/overlay-merge.ts` 的 `parseOverlayFiles()`）
+5. 已定选材与决策历史 — `GET /api/scheme/current` + `GET /api/decisions`，或跑 `npm run state:project` 看构件状态、读 `config/decision-knowledge.yaml` 的 entries 段（真·不可再生知识：竞品为何淘汰 / 合同成交语义 / 业主原话）。历史 DEC 编号可经同文件 retired 段的 `record` 字段定位到 git 史原文。**不重复已决、不推翻未说明理由**
 
 ## 预算护栏（硬约束）
 
@@ -67,13 +67,13 @@ model: kimi-for-coding/k3-256k
 
 ## 可用数据出口（无 MCP）
 
-- 文件直读：`config/*.yaml` / `config/budget/base.json` / `docs/decisions/`（见下「关键配置」）
+- 文件直读：`config/*.yaml` / `config/budget/base.json` / `config/decision-knowledge.yaml`（见下「关键配置」）
 - HTTP API（server 在 localhost:4000 时）：`GET /api/project` · `GET /api/budget` · `GET /api/scheme/current` · `PATCH /api/scheme/current` · `GET /api/decisions` · `POST /api/decisions` · `GET /api/topics` · `GET /api/topics/:id/options` · `GET /api/risks` · `GET /api/ceiling/takeoff` · `GET /api/element-state` · `POST /api/visual-commands`（相机/高亮）
 - CLI：`npm run takeoff:ceiling` · `npm run state:project` · `npm run verify:all`
 
 ## 关键配置（可直接读）
 
-`config/house.yaml`（户型）· `config/layout/model-geometry.yaml`（几何，vertices 架构）· `config/layout/overlay.yaml`（玻璃幕/飘窗/窗帘）· `config/materials.yaml`（材料）· `config/budget/base.json`（四池预算 + ceiling）· `config/electrical.yaml` / `plumbing.yaml` / `ceiling.yaml`（MEP）· `config/acceptance.yaml`（验收）· `docs/decisions/`（决策历史：README 是入口，14 个主题文件按域归档）
+`config/house.yaml`（户型）· `config/layout/model-geometry.yaml`（几何，vertices 架构）· `config/model/envelope/`（玻璃幕/飘窗/窗帘/面层）· `config/materials.yaml`（材料）· `config/budget/base.json`（四池预算 + ceiling）· `config/electrical.yaml` / `plumbing.yaml` / `ceiling.yaml`（MEP）· `config/acceptance.yaml`（验收）· `config/decision-knowledge.yaml`（决策知识：entries 40 条真知识 + retired 252 条墓碑带 git 定位）· `config/decision-gates.yaml`（19 条待业主拍板的决策门禁）
 
 ## 红线
 

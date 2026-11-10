@@ -26,6 +26,8 @@ import {
   type MepRoute,
   type MepRouteResolutionReport,
 } from './mep-hvac-coordination-schema.js';
+import { deriveMepPenetrationPoint, type PenetrationWallShape } from './mep-hvac-lint.js';
+import { derivePointCircuits } from './point-circuits.js';
 import type { ElectricalPoint, PlumbingPoint } from './types.js';
 
 type ResolvedMepRoute = MepRouteResolutionReport['routes'][number];
@@ -46,14 +48,19 @@ export interface TakeoffControl {
 }
 
 export interface MepTakeoffRules {
-  /** 唯一事实源路径清单（CLI/verify 按它读文件，配置与代码不双写路径）。 */
+  /**
+   * 唯一事实源路径清单（CLI/verify 按它读文件，配置与代码不双写路径）。
+   *
+   * 2026-11-07（issue #98 第三阶段 S6）：原 `ceiling` 键已删——吊顶声明文件的路径在
+   * shared/envelope-sources.ts 的来源注册表（源名 ceiling），消费方用 `sourceFile('ceiling')`
+   * 取。留在本表就是第六张各抄一份的「文件路径当身份」表（S1 搬迁后全都要改）。
+   */
   sources: {
     electrical_points: string;
     plumbing_points: string;
     circuits: string;
     routes: string;
     hvac: string;
-    ceiling: string;
   };
   covered_layers: string[];
   excluded_layers: Array<{ layer: string; reason: string }>;
@@ -98,6 +105,14 @@ export interface MepTakeoffInput {
   routes: MepRoute[];
   resolution: MepRouteResolutionReport;
   rules: MepTakeoffRules;
+  /**
+   * 穿墙孔数的派生墙几何（issue #98 第五阶段 S3）：传入时孔数 = 每条穿墙声明按「路线折线 ∩
+   * 墙段唯一交点」派生（shared/mep-hvac-lint.ts deriveMepPenetrationPoint，与 lint 同一算法），
+   * 不可派生的条目（贴墙段/端点压墙线/意图点/多交点）必须保留手写 at，否则 fail-closed 进
+   * unresolved(error) 且不计孔——不再「只数数组长度」。生产调用方（takeoff:mep /
+   * verify:mep-takeoff / cost-summary）必须传；缺省只留给手搭输入的单元测试（旧口径：数组长度）。
+   */
+  penetrationWalls?: readonly PenetrationWallShape[];
 }
 
 export interface WireBucket {
@@ -473,8 +488,55 @@ export function pricedCircuitLength(paths: Array<Array<{ x: number; z: number; y
   return plan + vertical;
 }
 
+/**
+ * 一条路线的穿墙孔数（issue #98 第五阶段 S3：孔数从「数 penetration 数组长度」改为「数派生交点」）。
+ *
+ * 每条穿墙声明恰好记 1 孔，但必须**可定位**：
+ *   - 路线折线 ∩ 墙段有唯一 strict/vertex 交点 → 派生点即孔位（at 可省，S3 已删 45 条）；
+ *   - 无唯一交点（贴墙段穿越 / 端点压墙线 / 未触墙意图点 / 多交点）→ 必须保留手写 at；
+ *   - 二者皆无，或墙在几何里查不到 → unresolved(error) 且不计孔（fail-closed：孔位不可知时
+ *     不发明，下游 feasibleForQuote 随之为 false，而不是静默按数组长度出一个「看起来正常」的数）。
+ * 未传墙几何（wallsById 缺省）时退回旧口径（数组长度）——仅供手搭输入的单元测试；生产调用方
+ * 全部传 `penetrationWalls`。
+ */
+export function countRoutePenetrations(
+  route: MepRoute,
+  points: Array<{ x: number; y?: number; z: number }>,
+  wallsById: ReadonlyMap<string, PenetrationWallShape> | undefined,
+  unresolved: MepTakeoff['unresolved'],
+): number {
+  const raw = route.penetration;
+  if (!Array.isArray(raw)) return 0;
+  if (!wallsById) return raw.length;
+  let count = 0;
+  raw.forEach((entry: unknown, index) => {
+    const declared = typeof entry === 'object' && entry !== null ? entry as { wall?: unknown; at?: unknown } : {};
+    const wallId = typeof declared.wall === 'string' ? declared.wall : undefined;
+    const label = `${route.id}.penetration[${index}]${wallId ? `@${wallId}` : ''}`;
+    const wall = wallId ? wallsById.get(wallId) : undefined;
+    if (!wall) {
+      unresolved.push({ id: label, reason: `穿墙声明 ${label} 的墙 ${wallId ?? '(缺 wall)'} 不在墙几何里：孔位不可派生，不计孔`, kind: 'error' });
+      return;
+    }
+    if ('point' in deriveMepPenetrationPoint(points, wall)) {
+      count += 1;
+      return;
+    }
+    const at = typeof declared.at === 'object' && declared.at !== null ? declared.at as { x?: unknown; z?: unknown } : undefined;
+    if (at && typeof at.x === 'number' && typeof at.z === 'number') {
+      count += 1;
+      return;
+    }
+    unresolved.push({ id: label, reason: `穿墙声明 ${label} 无唯一交点可派生（贴墙段/端点压墙线/意图点/多交点）且未保留手写 at：孔位不可知，不计孔（fail-closed）`, kind: 'error' });
+  });
+  return count;
+}
+
 export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
-  const { electrical, plumbing, circuits, controls = [], routes, resolution, rules } = input;
+  const { electrical, plumbing, circuits, controls = [], routes, resolution, rules, penetrationWalls } = input;
+  const penetrationWallById = penetrationWalls
+    ? new Map(penetrationWalls.filter((wall) => typeof wall.id === 'string').map((wall) => [wall.id as string, wall]))
+    : undefined;
   const covered = new Set(rules.covered_layers);
   const unresolved: MepTakeoff['unresolved'] = validateTakeoffRules(rules).map((item) => ({ ...item, kind: 'error' }));
   // 2026-10-14 阶段 4：规则层的三个"参与乘法"的值在动手算之前先取值，缺了就抛错。
@@ -504,22 +566,11 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const pointHeights = new Map<string, { height?: number }>();
   for (const point of [...electrical, ...plumbing]) if (point.height !== undefined) pointHeights.set(point.id, { height: point.height });
 
-  // ---------- 点位 → 回路 的三条声明通道（都不猜）----------
-  // ① topology.member_point_ids：回路成员（79/100 个点位）
-  const pointCircuit = new Map<string, string>();
-  for (const circuit of circuits) {
-    for (const member of circuit.member_point_ids ?? []) {
-      if (!pointCircuit.has(member)) pointCircuit.set(member, circuit.id);
-    }
-  }
-  // ② controls.switch_point_ids → target_point_ids：开关受控灯具所属回路（双控/三控的开关本身不是成员）
-  const pointByIdCircuit = new Map(electrical.map((point) => [point.id, point.circuit]));
-  for (const control of controls) {
-    const targets = (control.target_point_ids ?? []).map((id) => pointCircuit.get(id) ?? pointByIdCircuit.get(id)).filter((value): value is string => Boolean(value));
-    for (const switchId of control.switch_point_ids ?? []) {
-      if (targets.length > 0 && !pointCircuit.has(switchId)) pointCircuit.set(switchId, targets[0]);
-    }
-  }
+  // ---------- 点位 → 回路 单一派生（issue #98 S3，shared/point-circuits.ts）----------
+  // 原三条声明通道：① topology.member_point_ids、② controls 反推、③ point.circuit 字段。
+  // ③ 已退役（成员关系只住回路侧），①② 收拢成 derivePointCircuits 一处实现——
+  // lint（covered/point_uncovered）、DXF 标注、派生文档与这里同源，不各写一遍。
+  const { pointCircuits: pointCircuit } = derivePointCircuits({ circuits, controls });
   const resolvedById = new Map(resolution.routes.map((item) => [item.route.id, item]));
   const drawnPlanPaths: Array<Array<{ x: number; z: number }>> = [];
   /** 每条回路的画线路由平面路径（同回路 union：同一回路内共享段只铺一次管、只穿一次线）。 */
@@ -607,7 +658,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       // A pending reserve must not become routed coverage or consume material.
       continue;
     }
-    penetrations += Array.isArray(route.penetration) ? route.penetration.length : 0;
+    penetrations += countRoutePenetrations(route, mepRoutePoints(route, resolved.from, resolved.to), penetrationWallById, unresolved);
     const drawnLength = routeLength(route, resolved.from, resolved.to);
     drawnMWithoutDrop += drawnLength;
     const points3d = mepRoutePoints(route, resolved.from, resolved.to);

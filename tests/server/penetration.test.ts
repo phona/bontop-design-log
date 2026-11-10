@@ -273,9 +273,9 @@ describe('penetration CLI integration', () => {
     const hits = report.shadow.envelopes.hits as Array<{ envelope_id: string; overlaps: Array<{ entity: string }> }>;
     const slider = hits.find((hit) => hit.envelope_id === 'envelope:sliding_open:kitchen_dining_sliding_door');
     assert.ok(slider, 'the production shadow must include the open Longhong panel stack');
-    assert.ok(!slider.overlaps.some((overlap) => overlap.entity === 'furniture:kitchen:kitchen_cabinet_run:4'),
+    assert.ok(!slider.overlaps.some((overlap) => overlap.entity === 'kitchen.cabinet_run_east'),
       'the final 1.95m east run must clear the open slider stack (the rejected 2.05m run overlapped it)');
-    assert.ok(!hits.some((hit) => hit.envelope_id.startsWith('envelope:env.fridge.door:furniture:living_dining:fridge:')),
+    assert.ok(!hits.some((hit) => hit.envelope_id.startsWith('envelope:env.fridge.door:ld.fridge')),
       'the west-facing 0.60m fridge opening envelope must remain clear of placed furniture and door sweeps');
     assert.ok(!hits.some((hit) => hit.envelope_id === 'envelope:door_swing:d_ent'),
       'the entry-door swing must not intersect the fridge/cabinet trial');

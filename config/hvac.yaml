@@ -20,6 +20,24 @@ plans:
         - config/procurement.yaml
         - config/materials.yaml
         - schedule/phase-1/control.yaml
+      # 证据结构（2026-11-09 issue #98 S2 新增）：合同成交语义的**机器可读**落点。
+      # 为什么必须有：DEC 退役前，scripts/schedule/cost-summary.ts 的已核实层守卫靠回
+      # docs/decisions/05-hvac.md 的 DEC-2026-10-04-R1 章节核对「登记金额被合同总价词
+      # 直接指称」；S3 一删档那道核对就 throw。业主裁定⑤「数据全上对象」+ S2 任务 3：
+      # 成交语义改落报价卡的 evidence 结构，与 shared/quote-cards.ts 的三级证据分级同口径
+      # （photo / owner_reported / written_quote），kind 必须是 written_quote 才能支撑已核实层。
+      # 分项与总价不相等（14,124 + 8,400 = 22,524 ≠ 36,000）正是必须显式登记
+      # contract_total_cny 的原因：总价不是分项之和，不能由分项推导。
+      evidence:
+        kind: written_quote
+        status: contract_attachment_itemized
+        source: "contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p1_20261004.jpg"
+        observed_at: '2026-10-04'
+        quote_status: "已签约（deal_status signed，2026-10-04 定标成交；合同附件共 8 页，已归档 p1/p2 两页）"
+        currency: CNY
+        contract_total_cny: 36000
+        contract_total_terms: "合同附件第十二条合计 36,000 元（含辅材；不含复合风管与风口加长——加长 100 元/米另计、不含税）"
+        transcript_grade_limit: "含否口径据 evidence-notes 对合同附件备注 2/5 的历史转录；备注页原件不在已归档两页内，补齐前为转录级证据（待办挂 原量房台账 #39（已退场，未决项现由对象 blocker 承载）⑥）"
     outdoor:
       id: vrf_outdoor_a2
       platform: west_platform
@@ -218,7 +236,7 @@ plans:
           status: pending
           system: condensate
           position: { x: 7.6, y: 2.52, z: 4.34 }
-          reason: "R25 为避让 DEC-2026-10-19-R02 餐厅下出风支管临时放在机位中心西侧0.40m、南侧0.41m；2.52m自然排水口及坐标均为路由假设，不代表 MJV-42T2/P-SS 的真实接管方向/高度，须用厂家安装图确认。"
+          reason: "R25 为避让 DEC-2026-10-19-R02 餐厅下出风支管临时放在机位中心西侧0.40m、北侧0.41m（2026-11-08 S2 改字不改值：实测 Δx=−0.40 西、Δz=4.34−4.75=−0.41 北，原「南侧」与 +z=南 的坐标约定冲突，position 未动）；2.52m自然排水口及坐标均为路由假设，不代表 MJV-42T2/P-SS 的真实接管方向/高度，须用厂家安装图确认。"
         - id: indoor_master
           status: confirmed
           system: refrigerant
@@ -239,26 +257,38 @@ plans:
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_living_ac }
+          serves_unit: ac_living
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_dining
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_dining_ac }
+          serves_unit: ac_dining
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_master
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_master_ac }
+          serves_unit: ac_master
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_study
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_study_ac }
+          serves_unit: ac_study
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_parent
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_parent_ac }
+          serves_unit: ac_parent
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: power_child
           status: confirmed
           system: power
           ref: { source: electrical, id: sock_child_ac }
+          serves_unit: ac_child
+          reason: "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。"
         - id: bend_corridor
           status: inferred
           system: refrigerant
@@ -268,27 +298,31 @@ plans:
           status: inferred
           system: refrigerant
           position: { x: 4.2, y: 2.5, z: 4.6 }
-          reason: "主卧冷媒支路按走廊吊顶穿孔后直管带向西进延伸空调盒示意；950衣柜东缘x=2.925与门头盒西缘对齐；分歧、梁位和套管待厂家深化。"
+          schematic_only: true
+          reason: "主卧冷媒支路按走廊吊顶穿孔后直管带向西进延伸空调盒示意；950衣柜东缘x=2.925与门头盒西缘对齐；分歧、梁位和套管待厂家深化。业主裁定四（2026-11-08）：schematic_only 示意图层并行表达，不参与几何/不放线，不作为 MEP 折线的副本对账对象（§6.3-6 完整定性未裁，位置不动）。"
         - id: branch_study
           status: inferred
           system: refrigerant
           position: { x: 13.6, y: 2.5, z: 5.85 }
-          reason: "客房冷媒支路按北墙边吊转入示意，分歧、梁位和套管待厂家深化。"
+          schematic_only: true
+          reason: "客房冷媒支路按北墙边吊转入示意，分歧、梁位和套管待厂家深化。业主裁定四（2026-11-08）：schematic_only 示意图层并行表达，不参与几何/不放线，不作为 MEP 折线的副本对账对象（§6.3-6 完整定性未裁，位置不动）。"
         - id: branch_parent
           status: inferred
           system: refrigerant
           position: { x: 5.5, y: 2.5, z: 6.2 }
-          reason: "书房冷媒支路按北缘边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化（2026-10-05 功能互换，路由不变）。"
+          schematic_only: true
+          reason: "书房冷媒支路按北缘边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化（2026-10-05 功能互换，路由不变）。业主裁定四（2026-11-08）：schematic_only 示意图层并行表达，不参与几何/不放线，不作为 MEP 折线的副本对账对象（§6.3-6 完整定性未裁，位置不动）。"
         - id: branch_child
           status: inferred
           system: refrigerant
           position: { x: 4.0, y: 2.5, z: 3.9 }
-          reason: "儿童房冷媒支路按南墙边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化。"
+          schematic_only: true
+          reason: "儿童房冷媒支路按南墙边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化。业主裁定四（2026-11-08）：schematic_only 示意图层并行表达，不参与几何/不放线，不作为 MEP 折线的副本对账对象（§6.3-6 完整定性未裁，位置不动）。"
         - id: branch_dining
           status: inferred
           system: refrigerant
-          position: { x: 8.0, y: 2.55, z: 4.3 }
-          reason: "沿用 MEP refrigerant-dining 显式协调节点 (8.00,2.55,4.30)；仅为边吊内冷媒支路示意，分歧器、管径、梁位、机身接口与实际施工走向待量房及厂家深化，施工未冻结。"
+          position: { x: 8.0, y: 2.6, z: 4.3 }
+          reason: "沿用 MEP refrigerant-dining 显式协调节点 (8.00,2.60,4.30)（业主裁定三 2026-11-08：DEC-2026-10-06-R5 明文 A 区冷媒 2.60，MEP 侧当日已改，本锚点 2.55 系 2026-10-05 引入、次日漏跟，现对齐；x/z 未动）；仅为边吊内冷媒支路示意，分歧器、管径、梁位、机身接口与实际施工走向待量房及厂家深化，施工未冻结。"
       terminals:
         - id: supply_living
           status: inferred
@@ -536,7 +570,7 @@ plans:
           system: return_air
           position: { x: 6.5, y: 2.49, z: 6.15 }
           mount_face: bottom
-          reason: "书房回风口下回底装于北缘边吊顶底面，DEC-2026-10-28-R03 酒店标准入口吊顶紧凑布局：现为机身 ac_parent 正下方（机身 6.5, 6.0），铰接回风格栅兼机身检修口（回风 + 机身检修一体，酒店标准），不另设侧口；尺寸待厂家安装图按机身服务面定（合同回风 1000×300 / 1300×300 档，只许放大不许缩小）；铰接可拆卸、与吊顶同材质同漆。"
+          reason: "书房回风口下回底装于北缘边吊顶底面，DEC-2026-10-28-R03 酒店标准入口吊顶紧凑布局：现为机身 ac_parent 下方南偏 0.15m（机身 6.5, 6.0；口心 z=6.15，Δz=+0.15=南；2026-11-08 S2 改字不改值：原「正下方」与实测平面位置不符，position 未动），铰接回风格栅兼机身检修口（回风 + 机身检修一体，酒店标准），不另设侧口；尺寸待厂家安装图按机身服务面定（合同回风 1000×300 / 1300×300 档，只许放大不许缩小）；铰接可拆卸、与吊顶同材质同漆。"
         - id: supply_child
           status: inferred
           system: supply_air
@@ -557,7 +591,8 @@ plans:
           length: 0.6
           grille_height: 0.6
           serves_unit: ac_dining
-          reason: "DEC-2026-10-27-R03 餐厅内机检修口：底装于客厅北缘边吊底面，服务 ac_dining（42T2，机身 8.00, 4.75）；回风 return_dining 在机身东 1.65m 外够不到机身，故另设面板（不沿用回检一体口径）。暂定 600×600，中心 z=4.70（机身中心 4.75 南移 0.05，为避让 supply_dining_bottom 北缘 z=5.05、留 0.05 缝）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。"
+          offset: { x: 0, z: -0.05 }
+          reason: "DEC-2026-10-27-R03 餐厅内机检修口：底装于客厅北缘边吊底面，服务 ac_dining（42T2，机身 8.00, 4.75）；回风 return_dining 在机身东 1.65m 外够不到机身，故另设面板（不沿用回检一体口径）。暂定 600×600，中心 z=4.70（机身中心 4.75 北移 0.05——2026-11-08 S2 改字不改值：Δz=4.70−4.75=−0.05 为北，原「南移」与 +z=南 约定冲突，为避让 supply_dining_bottom 北缘 z=5.05、留 0.05 缝）；结构化 offset (0,−0.05) 即此关系（业主裁定一 2026-11-08，validate 断言 offset == position − 机身 position，坐标真值仍只有 position 一份）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。"
         - id: access_study
           status: inferred
           system: access
@@ -566,7 +601,8 @@ plans:
           length: 0.6
           grille_height: 0.6
           serves_unit: ac_study
-          reason: "DEC-2026-10-27-R03 客房内机检修口：底装于客房北墙边吊底面，服务 ac_study（28T2，机身 15.1, 5.85）；回风 return_study 在机身东 0.60m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=15.05（机身中心 15.1 西移 0.05，为避让 return_study 西缘 x=15.40、留 0.05 缝）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆；补前确认下方无柜体遮挡。"
+          offset: { x: -0.05, z: 0 }
+          reason: "DEC-2026-10-27-R03 客房内机检修口：底装于客房北墙边吊底面，服务 ac_study（28T2，机身 15.1, 5.85）；回风 return_study 在机身东 0.60m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=15.05（机身中心 15.1 西移 0.05，为避让 return_study 西缘 x=15.40、留 0.05 缝）；结构化 offset (−0.05,0) 即此关系（业主裁定一 2026-11-08，validate 断言 offset == position − 机身 position，坐标真值仍只有 position 一份）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆；补前确认下方无柜体遮挡。"
         - id: access_child
           status: inferred
           system: access
@@ -575,7 +611,8 @@ plans:
           length: 0.6
           grille_height: 0.6
           serves_unit: ac_child
-          reason: "DEC-2026-10-27-R03 儿童房内机检修口：底装于儿童房南墙边吊底面，服务 ac_child（28T2，机身 4.4, 4.0）；回风 return_child 在机身东 0.50m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=4.25（机身中心 4.4 西移 0.15，为避让 return_child 西缘 x=4.60、留 0.05 缝，仍覆盖机身西段）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。补前确认：机身 x=4.4 正处衣柜东缘，若实机压在衣柜上方则底口改侧口或移位（本 PR 先按底口建，待确认项，不静默定案）。"
+          offset: { x: -0.15, z: 0 }
+          reason: "DEC-2026-10-27-R03 儿童房内机检修口：底装于儿童房南墙边吊底面，服务 ac_child（28T2，机身 4.4, 4.0）；回风 return_child 在机身东 0.50m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=4.25（机身中心 4.4 西移 0.15，为避让 return_child 西缘 x=4.60、留 0.05 缝，仍覆盖机身西段）；结构化 offset (−0.15,0) 即此关系（业主裁定一 2026-11-08，validate 断言 offset == position − 机身 position，坐标真值仍只有 position 一份）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。补前确认：机身 x=4.4 正处衣柜东缘，若实机压在衣柜上方则底口改侧口或移位（本 PR 先按底口建，待确认项，不静默定案）。"
       routes:
         - id: refrigerant_trunk
           status: inferred

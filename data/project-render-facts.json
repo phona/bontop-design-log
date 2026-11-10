@@ -119,8 +119,7 @@
         "z": 3.65
       },
       "temperatureK": 3000,
-      "enabled": true,
-      "circuit": "dining"
+      "enabled": true
     },
     {
       "id": "light_living_dome",
@@ -132,8 +131,7 @@
         "z": 7.15
       },
       "temperatureK": 3000,
-      "enabled": true,
-      "circuit": "living_base"
+      "enabled": true
     },
     {
       "id": "light_master_dome",
@@ -194,7 +192,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "recessed": true
     },
     {
@@ -207,8 +204,7 @@
         "z": 1.45
       },
       "temperatureK": 3000,
-      "enabled": true,
-      "circuit": "entry_base"
+      "enabled": true
     },
     {
       "id": "light_entry_foyer",
@@ -221,7 +217,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "recessed": true
     },
     {
@@ -247,7 +242,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "lighting_bedrooms_bath",
       "wallId": "w_be_west",
       "wallSide": "east"
     },
@@ -262,7 +256,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "lighting_bedrooms_bath",
       "wallId": "w_east_upper",
       "wallSide": "west"
     },
@@ -277,7 +270,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "wallId": "w_be_west",
       "wallSide": "west"
     },
@@ -292,7 +284,6 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "wallId": "w_cent_south",
       "wallSide": "west"
     },
@@ -307,10 +298,9 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "mountAnchor": {
         "kind": "furniture_face",
-        "furnitureId": "furniture:living_dining:entry_half_height_cabinet:7",
+        "furnitureId": "ld.entry_half_height_cabinet",
         "face": "east",
         "surfaceGap": 0.003
       }
@@ -326,10 +316,9 @@
       },
       "temperatureK": 3000,
       "enabled": true,
-      "circuit": "entry_base",
       "mountAnchor": {
         "kind": "furniture_face",
-        "furnitureId": "furniture:living_dining:wall_cabinet_tall:0",
+        "furnitureId": "ld.wall_cabinet_tall",
         "face": "north",
         "surfaceGap": 0.003
       }
@@ -340,11 +329,22 @@
       "id": "faucet_mbath_vanity",
       "room": "master_bedroom",
       "type": "faucet",
-      "x": 0.575,
-      "z": 2.96,
       "wall": "w_mbath_south",
-      "note": "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；DEC-2026-10-03-R1：当前 faucet_kitchen_sink 同款 h=0.8 是抽象服务点，不足施工——台上盆+壁挂龙头需单独定义冷热水预埋、暗装阀体/出水嘴高度与墙排中心，等台盆/龙头 SKU 冻结后才能埋设，水电工不得按 0.8m 抽象点直接开槽（site_pending）",
+      "along": 0.575,
+      "face_offset": 0.04,
+      "note": "台盆外移条带，墙排穿墙回主卫沉箱接原立管；2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高）：盆随柜体收宽东移并居中至 x=0.575，柜体 x[0.05,1.10]；DEC-2026-10-03-R1：当前 faucet_kitchen_sink 同款 h=0.8 是抽象服务点，不足施工——台上盆+壁挂龙头需单独定义冷热水预埋、暗装阀体/出水嘴高度与墙排中心，等后才能埋设，水电工不得按 0.8m 抽象点直接开槽（site_pending）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
       "height": 0.8,
+      "status": "pending",
+      "blocker": {
+        "kind": "pending_selection",
+        "owner": [
+          "业主",
+          "商家"
+        ],
+        "trigger": "台盆/龙头 SKU 冻结",
+        "reverses_if": "SKU 变更致台上盆+壁挂龙头的冷热水预埋、暗装阀体/出水嘴高度与墙排中心重定义；水电工不得按 0.8m 抽象点直接开槽",
+        "rationale": "h=0.8 是抽象服务点、不足施工，等台盆/龙头 SKU 冻结后才能埋设（site_pending）"
+      },
       "water_temp": "mixed",
       "water_dn": 20,
       "wallSide": "south"
@@ -353,11 +353,13 @@
       "id": "drain_mbath_vanity",
       "room": "master_bedroom",
       "type": "drain",
-      "x": 0.575,
-      "z": 2.96,
       "wall": "w_mbath_south",
-      "note": "2026-08-25 台盆墙排下水（h0.35），穿墙回主卫沉箱接原立管；2026-09-02 初版随盆居中移至 x=0.575（假定情形，待量房核立管位置与下沉:300 分界线后终核）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-vanity-to-riser`（穿 w_mbath_south 回主卫沉箱，接推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级。原「立管位置未定 → 无法成线」的阻塞由 docs/pending-site-data.md #19 推断值 (0.3,1.3) ±0.3m 落模型解除（推断 ≠ 实测）；台盆/龙头 SKU 仍未冻结（DEC-2026-10-03-R1：台上盆+壁挂龙头的冷热水预埋、暗装阀体/出水嘴高度与墙排中心待 SKU），h=0.35 为抽象服务点，水电工不得按此直接开槽",
+      "along": 0.575,
+      "face_offset": 0.04,
+      "note": "2026-08-25 台盆墙排下水（h0.35），穿墙回主卫沉箱接原立管；2026-09-02 初版随盆居中移至 x=0.575（假定情形，待量房核立管位置与下沉:300 分界线后终核）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-vanity-to-riser`（穿 w_mbath_south 回主卫沉箱，接推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级。原「立管位置未定 → 无法成线」的阻塞由 原量房台账 #19（已退场，未决项现由对象 blocker 承载） 推断值 (0.3,1.3) ±0.3m 落模型解除（推断 ≠ 实测）；台盆/龙头 SKU 仍未冻结（DEC-2026-10-03-R1：台上盆+壁挂龙头的冷热水预埋、暗装阀体/出水嘴高度与墙排中心待 SKU），h=0.35 为抽象服务点，水电工不得按此直接开槽",
       "height": 0.35,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 50,
       "wallSide": "south"
     },
@@ -365,23 +367,26 @@
       "id": "shower_mbath",
       "room": "master_bath",
       "type": "shower",
-      "x": 0.5,
-      "z": 2.76,
       "wall": "w_mbath_south",
+      "along": 0.5,
+      "face_offset": 0.04,
       "note": "主卫淋浴花洒（2026-08-25 隔墙北移2.86随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）；**本轮不画 MEP route**：冷/热给水管路由既无 DEC 定案也无 prose 路径（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 热水器/龙头 SKU 后单独深化（pending #44）；状态依据：花洒本体与挂位为 2026-08-25 随隔墙北移确定的设计值（docs/decisions/12-plumbing.md 登记该两点给水路线端点内联问题），故 status=inferred；pending 的是给水管路而非本点位位置，路由缺口由 #44 跟踪",
       "height": 1,
       "status": "inferred",
       "water_temp": "mixed",
-      "water_dn": 20
+      "water_dn": 20,
+      "wallSide": "north"
     },
     {
       "id": "toilet_mbath",
       "room": "master_bath",
       "type": "toilet",
-      "x": 2.6,
-      "z": 1.5,
       "wall": "w_mbath_east",
+      "along": 0.4,
+      "face_offset": -0.06,
       "note": "主卫马桶给水（DEC-2026-09-08-R1 补声明 wall_side west；DEC-2026-10-03-R1：坐便器形式（落地/壁挂）与坑距未定——壁挂则给水、电、排污全部进假墙，现有墙挂模型整体作废。与同柱电点 sock_mbath_toilet (2.60,1.50) h=0.3 撞线，交底前横向错开 ≥0.15m 或竖向分层；SKU 见 pending-site-data #31）",
+      "status": "inferred",
+      "construction_status": "pending",
       "water_temp": "cold",
       "water_dn": 20,
       "wallSide": "west"
@@ -392,8 +397,11 @@
       "type": "drain",
       "x": 2.275,
       "z": 1.5,
-      "note": "DEC-2026-10-03-R1 主卫马桶排污口（对齐马桶中心 (2.60,1.50)）：同层排水沉箱内接入，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏。2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-toilet-to-riser`（gravity_floor_drain，同层沉箱内接入推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；坑距、坐便器形式（落地/壁挂，pending #31/#36）、主卫排水立管实测位置（pending #19）均待量房与 SKU 冻结后终核；DEC-2026-10-06-R1 管径分级：本马桶排污点口径 de110（管径字段本点未标 diameter，按 de110 分级补注）。2026-10-26 坐标修正记录：上文“对齐马桶中心 (2.60,1.50)”为误记——2026-09-08 家具马桶西移 25mm 后，(2.60,1.50) 只是马桶东缘与共墙 w_mbath_east 中心线（x=2.60）齐平之位，不是马桶中心；马桶本体 furniture:master_bath:toilet:0（placement x=2.275）footprint 为 x[2.050,2.600]、base 中心 (2.275,1.50)，本点按原对齐意图修正为 footprint 中心 (2.275,1.50)，排污口落盆体下方而非墙边；同时消除 0.15m 见方 drain marker（无墙引用按裸坐标放置）骑共墙中心线、东缘突出儿童房（bedroom_nw，x>2.66）1.5cm 的问题；MEP route drain-mbath-toilet-to-riser 按点位 id 绑定自动跟随（西段 2.30m→1.975m，坡度链同步回算，见该路线 reason）。",
+      "absolute": true,
+      "note": "DEC-2026-10-03-R1 主卫马桶排污口（对齐马桶中心 (2.60,1.50)）：同层排水沉箱内接入，与干区地漏 drain_mbath_floor (2.0,1.15) 是两回事，不得并入地漏。2026-10-05 给排水 v1 落地：已画 MEP route `drain-mbath-toilet-to-riser`（gravity_floor_drain，同层沉箱内接入推断立管 drain_riser_master_bath (0.3,1.3)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；坑距、坐便器形式（落地/壁挂，pending #31/#36）、主卫排水立管实测位置（pending #19）均待量房与 SKU 冻结后终核；DEC-2026-10-06-R1 管径分级：本马桶排污点口径 de110（管径字段本点未标 diameter，按 de110 分级补注）。2026-10-26 坐标修正记录：上文“对齐马桶中心 (2.60,1.50)”为误记——2026-09-08 家具马桶西移 25mm 后，(2.60,1.50) 只是马桶东缘与共墙 w_mbath_east 中心线（x=2.60）齐平之位，不是马桶中心；马桶本体 mbath.toilet（placement x=2.275）footprint 为 x[2.050,2.600]、base 中心 (2.275,1.50)，本点按原对齐意图修正为 footprint 中心 (2.275,1.50)，排污口落盆体下方而非墙边；同时消除 0.15m 见方 drain marker（无墙引用按裸坐标放置）骑共墙中心线、东缘突出儿童房（bedroom_nw，x>2.66）1.5cm 的问题；MEP route drain-mbath-toilet-to-riser 按点位 id 绑定自动跟随（西段 2.30m→1.975m，坡度链同步回算，见该路线 reason）。",
       "height": 0.02,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 110
     },
     {
@@ -402,8 +410,11 @@
       "type": "drain",
       "x": 0.6,
       "z": 2.2,
+      "absolute": true,
       "note": "主卫淋浴地漏（地面；2026-08-25 隔墙北移 z=2.86 后随湿区内收）；DEC-2026-10-08-W03 已画推断路线 drain-mbath-shower-to-riser（1% 坡接主卫推断立管，construction_status: pending、不作为施工依据），挡水坎/找坡与立管实测位待量房",
       "height": 0.02,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 50
     },
     {
@@ -412,19 +423,23 @@
       "type": "drain",
       "x": 2,
       "z": 1.15,
+      "absolute": true,
       "note": "主卫干区地漏（地面；沉箱最低处候选锚点，与 #50 二次排水口 drain_mbath_floor 同位）；DEC-2026-10-08-W03 已画推断路线 drain-mbath-floor-to-riser（1% 坡接主卫推断立管，construction_status: pending、不作为施工依据），最低点与立管实测位待量房——注意与 #50 沉箱二次排水口是两回事、不得并入同一接点",
       "height": 0.02,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 50
     },
     {
       "id": "faucet_gbath_vanity",
       "room": "guest_bath",
       "type": "faucet",
-      "x": 7.05,
-      "z": 3.955,
       "wall": "w_gbath_east_open_vanity",
-      "note": "客卫洗手池龙头：复用标准 faucet 模型，东侧延伸实体墙西侧（wall_side=west），中心线 z=3.955（与台盆共用中心线，2026-11-06 随 DEC-2026-11-05-R5 柜体北移 3cm 由 3.90 调整），底座标高约0.84m，贴近0.77m台面并避开台盆；墙体挂载与给排水按现场复核（DEC-2026-09-09-R1：给水预留三通，兼扫地机基站进水；排水接台盆下水——该下水路由本身待现场确认；DEC-2026-09-09-R6：悬浮柜+台下基站后下水定案墙排——穿南墙回内卫沉箱，地面无管，见 drain_gbath_vanity）",
+      "along": 0.405,
+      "note": "客卫洗手池龙头：复用标准 faucet 模型，东侧延伸实体墙西侧（wall_side=west），中心线 z=3.955（与台盆共用中心线，2026-11-06 随 DEC-2026-11-05-R5 柜体北移 3cm 由 3.90 调整），底座标高约0.84m，贴近0.77m台面并避开台盆；墙体挂载与给排水按现场复核（DEC-2026-09-09-R1：给水预留三通，兼扫地机基站进水；排水接台盆下水——该下水路由本身待现场确认；DEC-2026-09-09-R6：悬浮柜+台下基站后下水定案墙排——穿南墙回内卫沉箱，地面无管，见 drain_gbath_vanity）。status: inferred + construction_status: pending（2026-11-06 issue #98 PR-4 显式申报）——本点为设计推断位、未实测，挂载与给排水按现场复核、pending-site-data #75（基站进水水压实测+减压阀位）绑本点，实测前不冻结；同 faucet_kitchen_dishwasher 口径（给水未画路线前不标 confirmed）；2026-11-06 issue #98 PR-6 宿主核实=墙挂（不挂柜）：本点按墙面龙头贴 w_gbath_east_open_vanity 西脸（note 既有「墙体挂载」口径；shared/render/FixtureFactory.ts buildVanity 亦按标准墙面龙头建模、龙头由本 plumbing 点位统一生成），台上盆占台面 x[6.70,6.98]、龙头在盆后墙面上方，与柜体无挂载关系；按 2026-11-06 口径 A（墙线=渲染墙盒中心线、完成面=线±WALL_THICKNESS/2，shared/furniture-placement.ts 单一口径）迁到西完成面 x 7.05→7.14（= 墙线 7.20 − 半墙厚 0.06，与 vanity / mirror_cabinet_gbath 背沿同一完成面）；精度三件套维持 status: inferred + construction_status: pending（设计推断位、未实测，pending-site-data #75 绑本点），迁移后离墙线 0.06m ≤0.15m 无 verify-point-placement 告警；所连 MEP 路线（water-guest-bath / water-hot-water-gbath-requirement）按点位 id 绑定自动跟随，route_not_orthogonal 既有告警条数与分桶不变（该线为 candidate 估算口径、量房日重画），穿墙 penetration 声明点 (7.05,3.55) 与实际交点偏差 0.066m ≤0.25m 仍合规",
       "height": 0.84,
+      "status": "inferred",
+      "construction_status": "pending",
       "water_temp": "mixed",
       "water_dn": 20,
       "wallSide": "west"
@@ -433,11 +448,13 @@
       "id": "drain_gbath_vanity",
       "room": "guest_bath",
       "type": "drain",
-      "x": 6.9,
-      "z": 3.55,
       "wall": "w_gbath_south",
-      "note": "客卫洗漱区台盆墙排穿墙点（DEC-2026-09-09-R6：悬浮台盆柜+台下扫地机基站，下水不得走地面——下水器柜内转 90° 穿 w_gbath_south 回内卫沉箱/排水系统；穿点 x=6.90 对齐台盆轴线，避 d_gbath 门洞 x[5.70,6.40]；穿墙套管/坡度/沉箱与立管关系待现场及水电交底终核）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-gbath-vanity-to-riser`（穿 w_gbath_south 回内卫，接推断立管 drain_riser_guest_bath (5.8,2.4)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；台盆 SKU 仍未冻结，柜内转 90° 的存水弯/净高待 SKU 冻结后终核",
+      "along": 1.3,
+      "face_offset": -0.06,
+      "note": "客卫洗漱区台盆墙排穿墙点（DEC-2026-09-09-R6：悬浮台盆柜+台下扫地机基站，下水不得走地面——下水器柜内转 90° 穿 w_gbath_south 回内卫沉箱/排水系统；穿点 x=6.90 对齐台盆轴线，避 d_gbath 门洞 x[5.70,6.40]；穿墙套管/坡度/沉箱与立管关系待现场及水电交底终核）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-gbath-vanity-to-riser`（穿 w_gbath_south 回内卫，接推断立管 drain_riser_guest_bath (5.8,2.4)），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；台盆 SKU 仍未冻结，柜内转 90° 的存水弯/净高待 SKU 冻结后终核。status/construction_status 与同族 drain_mbath_vanity、所连路线精度三件套同口径：本点为设计推断位、非实测，量房日升级 measured 后回写",
       "height": 0.3,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 50,
       "wallSide": "north"
     },
@@ -445,9 +462,9 @@
       "id": "shower_gbath",
       "room": "guest_bath",
       "type": "shower",
-      "x": 7.2,
-      "z": 2.45,
       "wall": "w_gbath_east",
+      "along": 0.05,
+      "face_offset": -0.06,
       "note": "2026-08-29 客卫北端淋浴花洒；东墙实体墙西侧挂载，坐东朝西，淋浴区 z≈2.30~2.75；**本轮不画 MEP route**：给水管路由无定案（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 花洒 SKU 后单独深化（pending #44）；状态依据：花洒本体与挂位为 2026-08-29 确定的设计值（docs/decisions/12-plumbing.md 登记该两点给水路线端点内联问题），故 status=inferred；pending 的是给水管路而非本点位位置",
       "height": 1,
       "status": "inferred",
@@ -459,11 +476,13 @@
       "id": "toilet_gbath",
       "room": "guest_bath",
       "type": "toilet",
-      "x": 7.2,
-      "z": 3.05,
       "wall": "w_gbath_east",
+      "along": 0.65,
+      "face_offset": -0.06,
       "note": "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.75,3.05)，真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.20,3.05) h=0.3（2026-10-23 DEC-2026-10-23-R04 随东墙线 7.10→7.20 同步）、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31",
       "height": 0.3,
+      "status": "inferred",
+      "construction_status": "pending",
       "water_temp": "cold",
       "water_dn": 20,
       "wallSide": "west"
@@ -474,8 +493,11 @@
       "type": "drain",
       "x": 6.3,
       "z": 2.45,
+      "absolute": true,
       "note": "2026-08-29 客卫北端淋浴地漏（地面，与花洒同步）；DEC-2026-10-08-W03 已画推断路线 drain-gbath-shower-to-riser（1% 坡接客卫推断立管，construction_status: pending、不作为施工依据），立管实测位待量房",
       "height": 0.02,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 50
     },
     {
@@ -484,8 +506,19 @@
       "type": "drain",
       "x": 6.45,
       "z": 3.05,
-      "note": "2026-08-29 客卫南段马桶/干区地漏（地面，随马桶中心调整至 z=3.05）；DEC-2026-10-08-W03 已画推断路线 drain-gbath-floor-to-riser（1% 坡接客卫推断立管，construction_status: pending、不作为施工依据），立管实测位待量房；外置洗漱区地漏若需要另行深化；DEC-2026-10-23-R03：本点兼作客卫沉箱二次排水口候选锚点（沉箱最低处候选，与 pending #74 客卫二次排水同位登记），二次排水需求路线 drain-gbath-secondary-requirement 以本点为最低处候选锚点、以 design_requirement 表达需求（示意段自锚点东侧 0.15m 起画，全程避开 drain-guest-bath 串联支路中线、独立接立管）——注意地面泄水与防水层下二次排水是两回事，不得并入同一接点（与主卫 drain_mbath_floor / #50 同口径），最低点与二次口位待量房",
+      "absolute": true,
+      "note": "2026-08-29 客卫南段马桶/干区地漏（地面，随马桶中心调整至 z=3.05）；DEC-2026-10-08-W03 已画推断路线 drain-gbath-floor-to-riser（1% 坡接客卫推断立管，construction_status: pending、不作为施工依据），立管实测位待量房；外置洗漱区地漏若需要另行深化；DEC-2026-10-23-R03：本点兼作客卫沉箱二次排水口候选锚点（沉箱最低处候选，与 pending #74 客卫二次排水同位登记），二次排水需求路线 drain-gbath-secondary-requirement 以本点为最低处候选锚点、以 design_requirement 表达需求（示意段自锚点东侧 0.15m 起画，全程避开 drain-guest-bath 串联支路中线、独立接立管）——注意地面泄水与防水层下二次排水是两回事，不得并入同一接点（与主卫 drain_mbath_floor / #50 同口径），最低点与二次口位待量房。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
       "height": 0.02,
+      "status": "pending",
+      "blocker": {
+        "kind": "site_measurement",
+        "owner": [
+          "量房"
+        ],
+        "trigger": "量房实测客卫沉箱最低点与二次排水口位（#74）",
+        "reverses_if": "地面泄水与防水层下二次排水不得并入同一接点；最低点实测后重画推断路线",
+        "rationale": "立管实测位待量房；本点兼作客卫沉箱二次排水口候选锚点，与 pending #74 同位登记"
+      },
       "drain_dn": 50
     },
     {
@@ -494,8 +527,12 @@
       "type": "faucet",
       "x": 9.5,
       "z": 0.3,
+      "absolute": true,
+      "host_intent": "kitchen.sink 水槽（北墙地柜台下）",
       "note": "厨房洗菜盆冷热水（DEC-2026-08-02-013 北墙落地柜台面，上下水走地面非挂墙）；2026-10-05 给排水 v1 落地：排水侧已画 MEP route `drain-kitchen-sink-to-riser`（gravity_floor_drain 接推断立管 drain_riser_kitchen (10.5,0.3)），给水侧 `water-kitchen-requirement` 的 to 已由显式坐标改指本点位，method 由 floor_branch_candidate 升为 floor_branch、status 升为 inferred（两条均带精度三件套，不作为施工依据，量房升级）；⚠️ x 坐标仍以厨房排水立管实测（pending #7/#16）与给水入户点（pending #8）为前提，净水器 faucet_kitchen_purifier 与本点同坐标 (9.50,0.30)、同支路（按 strong-power-kitchen 惯例在 reason 声明共支路，不新增 to 数组）",
       "height": 0.8,
+      "status": "inferred",
+      "construction_status": "pending",
       "water_temp": "mixed",
       "water_dn": 20
     },
@@ -505,8 +542,21 @@
       "type": "faucet",
       "x": 9.5,
       "z": 0.3,
-      "note": "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）；DEC-2026-10-06-R1 RO 浓水排放：净水器浓水不得直插密封下水，须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），接管方式随 RO 净水器 SKU 冻结后定（pending-site-data #52）。DEC-2026-10-08-W01：给水侧已画 MEP 路线 `water-purifier-branch`（自 faucet_kitchen_sink 共支路、同平面纯竖向 0.50m，status inferred / construction_status pending / not_for_construction，route_kind physical 不计 candidate）；上游给水入户点 pending #8 已于 W01 落推断点位 water_entry。**仍待定**：RO 净水器 SKU（是否带泵/压力桶决定管径与走向）与量房，故本点管径走向未冻结（pending #44）",
+      "absolute": true,
+      "host_intent": "kitchen.ro_purifier 净水支路水柱",
+      "note": "厨房净水器给水（DEC-2026-08-02-013 北墙落地柜台下，与水槽同侧）；DEC-2026-10-06-R1 RO 浓水排放：净水器浓水不得直插密封下水，须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），接管方式随 后定（pending-site-data #52）。DEC-2026-10-08-W01：给水侧已画 MEP 路线 `water-purifier-branch`（自 faucet_kitchen_sink 共支路、同平面纯竖向 0.50m，status inferred / construction_status pending / not_for_construction，route_kind physical 不计 candidate）；上游给水入户点 pending #8 已于 W01 落推断点位 water_entry。**仍待定**：RO 净水器 SKU（是否带泵/压力桶决定管径与走向）与量房，故本点管径走向未冻结（pending #44）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
       "height": 0.3,
+      "status": "pending",
+      "blocker": {
+        "kind": "pending_selection",
+        "owner": [
+          "业主",
+          "商家"
+        ],
+        "trigger": "RO 净水器 SKU 冻结",
+        "reverses_if": "SKU 是否带泵/压力桶决定管径与走向；接管方式随 SKU 冻结后定，不得直插密封下水",
+        "rationale": "RO 浓水须接水槽排水三通或专用排污点（接管高度/水气分离/防虹吸做法），接管方式随 RO 净水器 SKU 冻结后定（#52）"
+      },
       "water_temp": "cold",
       "water_dn": 20
     },
@@ -516,6 +566,8 @@
       "type": "faucet",
       "x": 9.3,
       "z": 0.3,
+      "absolute": true,
+      "host_intent": "kitchen.dishwasher 洗碗机进水",
       "note": "洗碗机给水（DEC-2026-10-17-R20 补建模：此前全模型未声明洗碗机给水，水电交底单会漏项；给水自水槽下角阀三通引出，与 drain_kitchen_dishwasher (9.00) 同区、与 sock_kitchen_dishwasher (9.30) 同位不同系统；随洗碗机 SKU（排水泵/接管方式）与量房终核。给水路线待走线专项与 water-purifier-branch 同批深化；**本轮不画 MEP route**：给水入户点 pending #8 与洗碗机 SKU 未选型，量房前画线等于编路由（pending #44，口径同 shower_mbath/shower_gbath））",
       "height": 0.3,
       "status": "inferred",
@@ -530,19 +582,24 @@
       "type": "drain",
       "x": 9.5,
       "z": 0.3,
+      "absolute": true,
       "note": "厨房洗菜盆下水（DEC-2026-08-02-013 移至北墙地面）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-kitchen-sink-to-riser`（gravity_floor_drain 接推断立管 drain_riser_kitchen (10.5,0.3)，同 z 无折线），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；⚠️ 接立管位置以 pending #7/#16 实测为准，量房日升级 measured 后回写",
       "height": 0.02,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 50
     },
     {
       "id": "faucet_balcony_washer",
       "room": "balcony",
       "type": "faucet",
-      "x": 5.6,
-      "z": 1.5,
       "wall": "w_balc_west",
+      "along": 0.5,
+      "face_offset": -0.06,
       "note": "生活阳台洗衣机给水（DEC-2026-10-08-W02：上游 from 由内联 (7.3,1.08) 改绑 water_heater 锚点，与热水器平面差 0.08m 属原候选偏移，量房后以热水器实测位为准）",
       "height": 0.8,
+      "status": "inferred",
+      "construction_status": "pending",
       "water_temp": "mixed",
       "water_dn": 20,
       "wallSide": "east"
@@ -553,18 +610,21 @@
       "type": "drain",
       "x": 6.5,
       "z": 1.5,
+      "absolute": true,
       "note": "生活阳台地漏（地面）；DEC-2026-10-06-R1：洗衣机排水改走专用墙排→阳台立管（见 MEP route drain-balcony），**不通本点**，两路不共用防反水；本点仅作阳台地面泄水。DEC-2026-10-08-W01：已画 MEP 路线 `drain-balcony-floor-to-riser`（同平面纯竖直接入 drain_riser_balcony，status inferred / construction_status pending / not_for_construction）；汇入形式（三通/存水弯/水封）与阳台排水立管实测位仍待量房（pending #51）",
       "height": 0.02,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 50
     },
     {
       "id": "faucet_garden",
       "room": "entry_garden",
       "type": "faucet",
-      "x": 10.8,
-      "z": 1.5,
       "wall": "w_ent_west",
-      "note": "入户花园浇花水龙头（DEC-2026-09-08-R1 补声明 wall_side east）；入户花园为开发商已完成区（地面/墙面/天花/入户门，见 house.yaml corrections 2026-08-02），能否开孔/接管需量房+物业确认；**若不能，删除该点位**（业主 2026-10-05 已接受此选项）。**本轮不画 MEP route**：给水入户点未定（pending #8，5 处给水 shower_mbath/shower_gbath/faucet_kitchen_sink/faucet_kitchen_purifier/faucet_garden 的路线均以该项为前提）+ 开发商完成面开槽/明敷需物业确认，待量房 + 物业确认后单独深化（pending #44）；另见 docs/pending-site-data.md 设计待决：入户花园 faucet_garden + drain_garden 去留",
+      "along": 1.5,
+      "face_offset": -0.06,
+      "note": "入户花园浇花水龙头（DEC-2026-09-08-R1 补声明 wall_side east）；入户花园为开发商已完成区（地面/墙面/天花/入户门，见 house.yaml corrections 2026-08-02），能否开孔/接管需量房+物业确认；**若不能，删除该点位**（业主 2026-10-05 已接受此选项）。**本轮不画 MEP route**：给水入户点未定（pending #8，5 处给水 shower_mbath/shower_gbath/faucet_kitchen_sink/faucet_kitchen_purifier/faucet_garden 的路线均以该项为前提）+ 开发商完成面开槽/明敷需物业确认，待量房 + 物业确认后单独深化（pending #44）；另见 原量房台账（已于 S2-B 退场） 设计待决：入户花园 faucet_garden + drain_garden 去留",
       "height": 0.8,
       "status": "inferred",
       "construction_status": "pending",
@@ -579,7 +639,8 @@
       "type": "drain",
       "x": 13,
       "z": 1.5,
-      "note": "入户花园地漏（地面）；入户花园为开发商已完成区（地面/墙面/天花/入户门，见 house.yaml corrections 2026-08-02），能否开孔/接管需量房+物业确认；**若不能，删除该点位**（业主 2026-10-05 已接受此选项）。**本轮不画 MEP route**（业主决定）：是否存在既有排水接点、能否新开孔均需量房 + 物业确认，且入户花园排水走向未定案，待确认后单独深化（pending #44）；另见 docs/pending-site-data.md 设计待决：入户花园 faucet_garden + drain_garden 去留",
+      "absolute": true,
+      "note": "入户花园地漏（地面）；入户花园为开发商已完成区（地面/墙面/天花/入户门，见 house.yaml corrections 2026-08-02），能否开孔/接管需量房+物业确认；**若不能，删除该点位**（业主 2026-10-05 已接受此选项）。**本轮不画 MEP route**（业主决定）：是否存在既有排水接点、能否新开孔均需量房 + 物业确认，且入户花园排水走向未定案，待确认后单独深化（pending #44）；另见 原量房台账（已于 S2-B 退场） 设计待决：入户花园 faucet_garden + drain_garden 去留",
       "height": 0.02,
       "status": "inferred",
       "construction_status": "pending",
@@ -592,8 +653,11 @@
       "type": "drain",
       "x": 9,
       "z": 0.3,
+      "absolute": true,
       "note": "洗碗机排水（DEC-2026-08-02-013 移至北墙厨下）；2026-10-05 给排水 v1 落地：已画 MEP route `drain-kitchen-dishwasher-to-riser`（gravity_floor_drain 接推断立管 drain_riser_kitchen (10.5,0.3)，与 drain-kitchen-sink-to-riser 同立管并联同轴，不重复画管），该路线带精度三件套 status: inferred / source_status: plan_supported / construction_status: pending，不作为施工依据，量房升级；⚠️ 原 note 的「接排水管」至此落到推断立管（pending #7/#16），洗碗机 SKU 仍未选型（排水泵/高度影响接管方式），量房+SKU 后终核",
       "height": 0.02,
+      "status": "inferred",
+      "construction_status": "pending",
       "drain_dn": 50
     },
     {
@@ -602,8 +666,19 @@
       "type": "drain",
       "x": 5.8,
       "z": 1.5,
-      "note": "洗衣机墙排排水（不走地漏，防反水）",
+      "absolute": true,
+      "note": "洗衣机墙排排水（不走地漏，防反水）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
       "height": 0.6,
+      "status": "pending",
+      "blocker": {
+        "kind": "site_measurement",
+        "owner": [
+          "量房"
+        ],
+        "trigger": "量房确认阳台排水立管实测位（#51）",
+        "reverses_if": "实测立管位与现接入方向 (6.5,1.5) 不符时改接，并把 drain-balcony 终点 from 显式坐标升为实体立管点位",
+        "rationale": "洗衣机排水须专用墙排接入立管、不通地面泄水地漏（否则共路反水）"
+      },
       "drain_dn": 50
     },
     {
@@ -612,7 +687,8 @@
       "type": "drain_riser",
       "x": 0.3,
       "z": 1.3,
-      "note": "主卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #19（#6 卫生间排水立管同源）登记的主卫推断值 (0.3,1.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-mbath-vanity-to-riser / drain-mbath-toilet-to-riser 两条 v1 MEP route。⚠️ 推断位落在主卫西北圆弧幕墙的切角外侧（距弧心 (1.00,2.10) 1.06m > r=1.00），量房重点核立管是否在房间内侧；点位不声明 wall（不在任何墙线上，AGENTS.md 挂墙点位 wall_side 规则不适用）；DEC-2026-10-06-R1 管径分级：本主卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径 de110/de75/de50 分级留待 #41 轮批量裁定）。",
+      "absolute": true,
+      "note": "主卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 原量房台账 #19（已退场，未决项现由对象 blocker 承载）（#6 卫生间排水立管同源）登记的主卫推断值 (0.3,1.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-mbath-vanity-to-riser / drain-mbath-toilet-to-riser 两条 v1 MEP route。⚠️ 推断位落在主卫西北圆弧幕墙的切角外侧（距弧心 (1.00,2.10) 1.06m > r=1.00），量房重点核立管是否在房间内侧；点位不声明 wall（不在任何墙线上，AGENTS.md 挂墙点位 wall_side 规则不适用）；DEC-2026-10-06-R1 管径分级：本主卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径 de110/de75/de50 分级留待 #41 轮批量裁定）。",
       "status": "inferred",
       "construction_status": "pending",
       "uncertainty_m": 0.3,
@@ -626,7 +702,8 @@
       "type": "drain_riser",
       "x": 5.8,
       "z": 2.4,
-      "note": "客卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #6（卫生间排水立管）登记的客卫推断值 (5.8,2.4)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-gbath-vanity-to-riser；点位不声明 wall（不在任何墙线上）；DEC-2026-10-06-R1 管径分级：本客卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径分级留待 #41 轮）。",
+      "absolute": true,
+      "note": "客卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 原量房台账 #6（已退场，未决项现由对象 blocker 承载）（卫生间排水立管）登记的客卫推断值 (5.8,2.4)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-gbath-vanity-to-riser；点位不声明 wall（不在任何墙线上）；DEC-2026-10-06-R1 管径分级：本客卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径分级留待 #41 轮）。",
       "status": "inferred",
       "construction_status": "pending",
       "uncertainty_m": 0.3,
@@ -640,7 +717,8 @@
       "type": "drain_riser",
       "x": 10.5,
       "z": 0.3,
-      "note": "厨房排水立管锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #7 与 #16（两条同值登记）推断的厨房排水立管 (10.5,0.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-kitchen-sink-to-riser / drain-kitchen-dishwasher-to-riser，以及 faucet_kitchen_sink / drain_kitchen_sink 的 x 坐标口径（DEC-2026-08-02-013 北墙落地柜台面）；点位不声明 wall（不在任何墙线上）；DEC-2026-10-06-R1 管径分级：本厨房排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径分级留待 #41 轮）。",
+      "absolute": true,
+      "note": "厨房排水立管锚点（2026-10-05 v1 落地）：坐标取自 原量房台账 #7（已退场，未决项现由对象 blocker 承载） 与 #16（两条同值登记）推断的厨房排水立管 (10.5,0.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-kitchen-sink-to-riser / drain-kitchen-dishwasher-to-riser，以及 faucet_kitchen_sink / drain_kitchen_sink 的 x 坐标口径（DEC-2026-08-02-013 北墙落地柜台面）；点位不声明 wall（不在任何墙线上）；DEC-2026-10-06-R1 管径分级：本厨房排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径分级留待 #41 轮）。",
       "status": "inferred",
       "construction_status": "pending",
       "uncertainty_m": 0.3,
@@ -654,7 +732,8 @@
       "type": "gas_meter",
       "x": 8,
       "z": 0.2,
-      "note": "厨房燃气表锚点（2026-10-05 v1 落地）：坐标取自 docs/pending-site-data.md #18（#9 同源）登记的推断值 (8.0,0.2) h=1.5，属图纸/规范推断，不确定度 ±0.2m；表体口径按电点 sock_kitchen_gas 的报警器同侧协调。**本轮不画 MEP route**：本项目机电走线不含燃气（docs/mep-construction-guidance.md 标题口径「燃气除外」），燃气路由待燃气公司方案（pending #26/#32，气源/表位/切断阀未定）。不作为施工依据，量房日实测后升级 status: measured 并回写本点与热水器/灶具定位",
+      "absolute": true,
+      "note": "厨房燃气表锚点（2026-10-05 v1 落地）：坐标取自 原量房台账 #18（已退场，未决项现由对象 blocker 承载）（#9 同源）登记的推断值 (8.0,0.2) h=1.5，属图纸/规范推断，不确定度 ±0.2m；表体口径按电点 sock_kitchen_gas 的报警器同侧协调。**本轮不画 MEP route**：本项目机电走线不含燃气（docs/mep-construction-guidance.md 标题口径「燃气除外」），燃气路由待燃气公司方案（pending #26/#32，气源/表位/切断阀未定）。不作为施工依据，量房日实测后升级 status: measured 并回写本点与热水器/灶具定位",
       "height": 1.5,
       "status": "inferred",
       "construction_status": "pending",
@@ -668,6 +747,7 @@
       "type": "duct",
       "x": 10.6,
       "z": 1.5,
+      "absolute": true,
       "note": "厨房排烟道锚点：**2026-10-09 迁位**——据邻户原始结构图 YS-01 + 业主现场指认，公共烟道在厨房东墙 w_ent_west（实体墙）油烟机/冰箱高柜旁；原推断值 (9.0,0.1) 落在被 suppress 的北玻璃幕墙 w_kit_north 上、土建烟道不可能与幕墙共存，故废。新值 (10.60,1.50) 取油烟机(10.50,1.18)与东墙南端冰箱高柜之间的 industry-standard 推断位，紧贴油烟机、烟管改走相邻高柜内、不再横穿 150mm 铝扣板吊顶空腔（连带消解 φ150 占满空腔）。raster 1:65 读数有限，精确 mm 待量房实测后回写并升 measured。断面按 0.15m 口径协调。**本轮不画 MEP route**：排烟道属成品土建管井，油烟机烟管走向待 SKU 与量房；mep-hvac-coordination 的 supply_air/return_air 层不覆盖排烟道，故不新增 duct 路线。不作为施工依据，量房日实测后升级 status: measured；2026-10-14 3D trial 将 range_hood 候选移至 (10.50,1.50)，与本 inferred marker z 对齐且中心x差0.10m；烟道坐标和 ±0.20m / not_for_construction 状态均未改，准确接口/烟管走向待量房及SKU复核。",
       "status": "inferred",
       "construction_status": "pending",
@@ -681,6 +761,7 @@
       "type": "duct",
       "x": 0.55,
       "z": 1.6,
+      "absolute": true,
       "note": "主卫浴霸换气排风 infer（2026-10-09，业界标准，pending 量房）：主卫仅东/南为内隔墙、西/北为玻璃幕墙禁穿孔，无可用外墙，acceptance『出外墙』口径对本卫不可施工。按标准 infer 专用/公共排气道接口于主卫西北角近排水立管(0.3,1.3)处，服务吊顶换气扇(1.00,2.70)。**本轮不画 MEP route**：排气道属楼宇土建竖井，接口位置待量房确认开发商是否预留卫浴公共排气道，暂不画路线。⚠️若开发商未预留，主卫无合规排风路径（设计级硬伤，且影响『带+漆』成立性），须在饰面冻结前解决。不作为施工依据",
       "status": "inferred",
       "construction_status": "pending",
@@ -694,6 +775,7 @@
       "type": "duct",
       "x": 6.1,
       "z": 2.45,
+      "absolute": true,
       "note": "客卫浴霸换气排风 infer（2026-10-09，业界标准，pending 量房）：客卫四面皆内墙、无外墙，acceptance『出外墙』口径对本卫不可施工。按标准 infer 专用/公共排气道接口于客卫西北角近排水立管(5.8,2.4)处，服务吊顶换气扇(6.35,2.45)。**本轮不画 MEP route**：排气道属楼宇土建竖井，接口位置待量房确认开发商是否预留卫浴公共排气道，暂不画路线。⚠️若开发商未预留，客卫（内卫）无合规排风路径（设计级硬伤），须在饰面冻结前解决。不作为施工依据",
       "status": "inferred",
       "construction_status": "pending",
@@ -707,6 +789,7 @@
       "type": "water_supply",
       "x": 7.35,
       "z": 0.45,
+      "absolute": true,
       "note": "给水入户点（台账 #8；DEC-2026-10-08-W01 按最佳实践推断落库；DEC-2026-10-07-F03 修正落位）。**两个语义解耦**：① 平台侧接入候选——水自 VRV 设备平台侧穿 w_vrv_east 垫层入户，接入折点 (7.00,0.45)（墙外侧）由 water-kitchen-requirement 的折线与穿墙声明表达，口径不变（pending #8 量房闭环）；② 本点位=穿墙后的**户内阀位锚点**（总阀→减压阀→前置过滤器安装位，acceptance.yaml check_plumb_prefilter_and_prv + pending #49 联动）——阀件必须在户内可操作位，落 (7.35,0.45)（厨房西北角、墙内侧 0.15m，bound 合规）。业界依据：新交付住宅水表井多在公区/户外，入户管通常经设备平台/管井进厨房；本户型厨房与平台仅一墙（x=7.2），是最短路径。**量房日第一项必须闭环**：拍全屋给水立管/水表/分水器 → 定 x/z/管径 → 回写本点并升 status: measured。在此之前不得作为施工依据（not_for_construction: true）。⚠️ 平台侧能否开孔/接管需物业确认；若物业禁止，入户点改厨房北墙或生活阳台，届时本点与 5 条引用路线一起改写。户内安装顺序按 acceptance.yaml check_plumb_prefilter_and_prv：总阀 → 减压阀 → 前置过滤器位",
       "height": 0.18,
       "status": "inferred",
@@ -723,7 +806,8 @@
       "type": "drain_riser",
       "x": 6.5,
       "z": 1.5,
-      "note": "生活阳台排水立管位（台账 #51；DEC-2026-10-08-W01 按最佳实践推断落库）。坐标取自既有路线 drain-balcony 的终点 (6.50,1.50)——该路线 2026-10-06 已按 DEC-2026-10-06-R1 改为洗衣机专用墙排（带 ≥50mm 水封、独立三通）东行至 (6.5,1.5,0.586) 接入'阳台排水立管方向'，本点把该方向落成模型对象；接入标高 0.586m 由该路线坡度反算得出（0.60 − 0.014）。业界依据：阳台排水立管多在阳台与厨卫之间的管井/墙角，洗衣机排水独立三通、不通地面泄水地漏（否则共路反水，见 drain_balcony_floor note）。**不作为施工依据**（not_for_construction: true），量房日实测立管位后回写并升 measured；主卫/客卫/厨房三处立管的推断坐标同样待量房实测复判（docs/pending-site-data.md #7/#16/#17 等）",
+      "absolute": true,
+      "note": "生活阳台排水立管位（台账 #51；DEC-2026-10-08-W01 按最佳实践推断落库）。坐标取自既有路线 drain-balcony 的终点 (6.50,1.50)——该路线 2026-10-06 已按 DEC-2026-10-06-R1 改为洗衣机专用墙排（带 ≥50mm 水封、独立三通）东行至 (6.5,1.5,0.586) 接入'阳台排水立管方向'，本点把该方向落成模型对象；接入标高 0.586m 由该路线坡度反算得出（0.60 − 0.014）。业界依据：阳台排水立管多在阳台与厨卫之间的管井/墙角，洗衣机排水独立三通、不通地面泄水地漏（否则共路反水，见 drain_balcony_floor note）。**不作为施工依据**（not_for_construction: true），量房日实测立管位后回写并升 measured；主卫/客卫/厨房三处立管的推断坐标同样待量房实测复判（原量房台账 #7（已退场，未决项现由对象 blocker 承载）/#16/#17 等）",
       "height": 0.586,
       "status": "inferred",
       "construction_status": "pending",
@@ -738,6 +822,7 @@
       "type": "water_heater",
       "x": 7.3,
       "z": 1,
+      "absolute": true,
       "note": "燃气热水器管道锚点（DEC-2026-10-08-W02 落库）：平面坐标 (7.30,1.00) 取自 config/house.yaml:524 furnishings 锚点 water_heater（rot 270，w_vrv_east 厨房侧、避开 w_balc_east 阳台门洞），**一个数都没新造**；此前 6 条给排水路线把该坐标写成内联字面量（(7.3,1.0)/(7.3,1.08)），点位一移位路线全部静默 stale，本轮落成模型对象后统一改绑。本类型不渲染 3D 几何（house.yaml furnishings 已画本体），只做管道锚点——冷进水/热出水/回水三路的实际接口高度由各路线的 from_height/to_height 表达，本点位 height 1.20 为挂装中心参考、不参与竖向下引计算（各路 to_height 0.18/0.35 均低于它）。**量房日待核**：机身实测尺寸与挂装高度（pending #26/#32）、h=1.8 插座是否被机身遮挡（sock_balcony_waterheater）、排烟与燃气审批；坐标更新只改本点，6 条路线自动跟随。",
       "height": 1.2,
       "status": "inferred",
@@ -768,7 +853,8 @@
         "sw": 0
       },
       "pricing_form": "edge_drop",
-      "note": "客厅北缘边吊（藏风管机+衔接走廊/门厅吊顶管线，侧送下回）；客厅中部保持原顶 2.80m（DEC-2026-10-13-R4 定案：不做石膏板平吊——原 note「原顶/石膏板平吊」是二选一的悬空表述，同时 strong-light-living 的 reason 写「平吊板上方敷设」、weak-ap 写「保持原顶」，控制源自相矛盾；定原顶后客厅中部无降板，电路走板面明装线槽，见 mep-hvac-coordination.yaml strong-light-living）；ac_living 为 71T2，ac_dining 为 42T2（业主确认房间型号映射）；两台机位沿同一边吊布置，中心距 2.3m。42T2 实际机身尺寸待核，边吊内净空及风口位置尚未按实机复核；本模型为设计预演，机位与吊顶均未施工冻结。2026-10-05 DEC-2026-10-05-R18 分区重构：两台内机安装方向相反——ac_living（71T2）水平送风朝南（客厅侧立面连续百叶）、ac_dining（42T2）整机旋转 180° 水平送风朝北（餐厅侧立面连续百叶，餐桌 x=7.90/z=3.45 在北侧）；两台的第二出风口均下出风至边吊底面 (10.30/8.00, 2.50, 4.85)，同一几何轴线、等宽 0.9m、同收口语言成组；回风口移至底面东西两端 (12.60/7.40, 2.49, 4.62) 避让下出风轴线；立面百叶有效段外以同规格装饰百叶延续线条。风口尺寸/下出风位置/回风与检修以实际机型与厂家安装图为约束。2026-10-05 R18 附则（业主审定细节语言）：设备带与餐厅侧交接保持正交几何，禁止斜切、喇叭口、渐变扩宽与多层台阶；仅外露转角小半径圆角 R100（corner_radius 0.10，与主卧门头盒同语言）；黑槽内部风道不做渐变/斜口，槽端正交收口、端头最多同语言小倒角，黑色内衬贴至圆角最深处不外露石膏；餐厅平顶与吊带北立面只做一次正交交接（当前餐厅无圈吊）。2026-10-07 DEC-2026-10-07-R03 三层线修正（只改风口表达与施工节点、不动吊顶几何/标高/梁体）：设备带读作三层水平线——侧立面上出风层（南 supply_living x[9.70,13.20] / 北 supply_dining x[7.70,9.70]，matte_black linear_slot）、底面前侧下出风层（z=4.85，supply_living_bottom x=10.30 / supply_dining_bottom x=8.00，各 0.9m）、底面后侧回风/检修层（z=4.45，return_living x=12.60 1.0m / return_dining x=7.90 0.9m，回风自此改 matte_black 与三层同语言）；非功能区以 8 个 LD-deco-* 封闭装饰段同款延续（背板封闭、无风道、不进 MEP 路线），两台内机送回风各自独立、不共用风道。；DEC-2026-10-15-C02：客厅边吊扩深至z=5.55，与主走廊同1.25m深、同吊底和石膏板可视面；西侧共边NW/SW方正，东侧外露NE/SE保留R100；南侧百叶中心移至z=5.56。仅作预演，实机净空待核。；DEC-2026-10-18-R01：下出风 x=8.00/10.30 保持，回风中心候选 x=9.10/11.40，均 z=4.45；各与对应下出风向东错开 1.10m，形成约 1.10/1.20/1.10m 节奏；仅作设计预演，P-SS 厂家气流、接口、风量和检修资料未核，施工不冻结。；DEC-2026-10-18-R02：客餐厅底面四个功能口按 x=8.60/9.70/10.90/12.00 整体东移0.60m，中心值平均x=10.30居中于边吊；相邻中心距1.10/1.20/1.10m。仅为预演口位，送回风风量、射流、接口与检修深化另核。；DEC-2026-10-19-R01：下出风排 x=8.60/12.00、回风排 x=9.65/10.95，两排中心各为 x=10.30；四口间距1.05/1.30/1.05m，外缘距边吊两端各0.95m。针对 R02 仅合组居中的问题，本轮改为每排独立居中，仍为预演口位。；DEC-2026-10-19-R02：两排整体向南移0.275m（+z），下出风行z=5.125、回风行z=4.725；两排中心均为边吊南北中心z=4.925，间距0.40m。仅为设计预演。"
+      "note": "客厅北缘边吊（藏风管机+衔接走廊/门厅吊顶管线，侧送下回）；客厅中部保持原顶 2.80m（DEC-2026-10-13-R4 定案：不做石膏板平吊——原 note「原顶/石膏板平吊」是二选一的悬空表述，同时 strong-light-living 的 reason 写「平吊板上方敷设」、weak-ap 写「保持原顶」，控制源自相矛盾；定原顶后客厅中部无降板，电路走板面明装线槽，见 mep-hvac-coordination.yaml strong-light-living）；ac_living 为 71T2，ac_dining 为 42T2（业主确认房间型号映射）；两台机位沿同一边吊布置，中心距 2.3m。42T2 实际机身尺寸待核，边吊内净空及风口位置尚未按实机复核；本模型为设计预演，机位与吊顶均未施工冻结。2026-10-05 DEC-2026-10-05-R18 分区重构：两台内机安装方向相反——ac_living（71T2）水平送风朝南（客厅侧立面连续百叶）、ac_dining（42T2）整机旋转 180° 水平送风朝北（餐厅侧立面连续百叶，餐桌 x=7.90/z=3.45 在北侧）；两台的第二出风口均下出风至边吊底面 (10.30/8.00, 2.50, 4.85)，同一几何轴线、等宽 0.9m、同收口语言成组；回风口移至底面东西两端 (12.60/7.40, 2.49, 4.62) 避让下出风轴线；立面百叶有效段外以同规格装饰百叶延续线条。风口尺寸/下出风位置/回风与检修以实际机型与厂家安装图为约束。2026-10-05 R18 附则（业主审定细节语言）：设备带与餐厅侧交接保持正交几何，禁止斜切、喇叭口、渐变扩宽与多层台阶；仅外露转角小半径圆角 R100（corner_radius 0.10，与主卧门头盒同语言）；黑槽内部风道不做渐变/斜口，槽端正交收口、端头最多同语言小倒角，黑色内衬贴至圆角最深处不外露石膏；餐厅平顶与吊带北立面只做一次正交交接（当前餐厅无圈吊）。2026-10-07 DEC-2026-10-07-R03 三层线修正（只改风口表达与施工节点、不动吊顶几何/标高/梁体）：设备带读作三层水平线——侧立面上出风层（南 supply_living x[9.70,13.20] / 北 supply_dining x[7.70,9.70]，matte_black linear_slot）、底面前侧下出风层（z=4.85，supply_living_bottom x=10.30 / supply_dining_bottom x=8.00，各 0.9m）、底面后侧回风/检修层（z=4.45，return_living x=12.60 1.0m / return_dining x=7.90 0.9m，回风自此改 matte_black 与三层同语言）；非功能区以 8 个 LD-deco-* 封闭装饰段同款延续（背板封闭、无风道、不进 MEP 路线），两台内机送回风各自独立、不共用风道。；DEC-2026-10-15-C02：客厅边吊扩深至z=5.55，与主走廊同1.25m深、同吊底和石膏板可视面；西侧共边NW/SW方正，东侧外露NE/SE保留R100；南侧百叶中心移至z=5.56。仅作预演，实机净空待核。；DEC-2026-10-18-R01：下出风 x=8.00/10.30 保持，回风中心候选 x=9.10/11.40，均 z=4.45；各与对应下出风向东错开 1.10m，形成约 1.10/1.20/1.10m 节奏；仅作设计预演，P-SS 厂家气流、接口、风量和检修资料未核，施工不冻结。；DEC-2026-10-18-R02：客餐厅底面四个功能口按 x=8.60/9.70/10.90/12.00 整体东移0.60m，中心值平均x=10.30居中于边吊；相邻中心距1.10/1.20/1.10m。仅为预演口位，送回风风量、射流、接口与检修深化另核。；DEC-2026-10-19-R01：下出风排 x=8.60/12.00、回风排 x=9.65/10.95，两排中心各为 x=10.30；四口间距1.05/1.30/1.05m，外缘距边吊两端各0.95m。针对 R02 仅合组居中的问题，本轮改为每排独立居中，仍为预演口位。；DEC-2026-10-19-R02：两排整体向南移0.275m（+z），下出风行z=5.125、回风行z=4.725；两排中心均为边吊南北中心z=4.925，间距0.40m。仅为设计预演。",
+      "status": "inferred"
     },
     {
       "id": "ac_living",
@@ -848,7 +934,8 @@
         9.8
       ],
       "trade": "drying_rack",
-      "note": "客厅南侧隐藏式晾衣架吊顶（预埋加固板+电源 sock_living_drying）；溯源：DEC-2026-10-08-C01（drying_rack 隐藏晾衣架吊顶的 trade 工艺分类与计量，净 1.080㎡）"
+      "note": "客厅南侧隐藏式晾衣架吊顶（预埋加固板+电源 sock_living_drying）；溯源：DEC-2026-10-08-C01（drying_rack 隐藏晾衣架吊顶的 trade 工艺分类与计量，净 1.080㎡）",
+      "status": "inferred"
     },
     {
       "id": "curtain_box_living",
@@ -862,7 +949,8 @@
         9.8
       ],
       "trade": "curtain_box",
-      "note": "客厅南墙窗帘盒（深 0.25m 容双轨，电动电源已预留；与晾衣架吊顶同底标高 2.65m，兼遮南窗带浅梁）；溯源：DEC-2026-10-08-C01（吊顶算量子系统独立，5 个 curtain_box_* 的 trade 工艺分类与计量范围由此裁定，净 4.463㎡）"
+      "note": "客厅南墙窗帘盒（深 0.25m 容双轨，电动电源已预留；与晾衣架吊顶同底标高 2.65m，兼遮南窗带浅梁）；溯源：DEC-2026-10-08-C01（吊顶算量子系统独立，5 个 curtain_box_* 的 trade 工艺分类与计量范围由此裁定，净 4.463㎡）",
+      "status": "inferred"
     },
     {
       "id": "ceiling_dining_west_band",
@@ -882,7 +970,8 @@
         "se": 0.15
       },
       "pricing_form": "edge_drop",
-      "note": "餐厅西侧服务带（0.5m 宽、底 2.50m）：藏冷媒主管 x=7.45 轴线（自设备平台穿 w_vrv_east 进厨房后沿此带南行，z=4.30 汇入 ceiling_living 设备带/走廊枢纽 bend_corridor）——2026-10-05 R19 按业主案1 立案。西缘 x=7.20 在 z[2.40,4.30] 无墙（w_kit_west 只到 z=2.40、z[2.90,4.30] 由 w_gbath_east@x=7.1 覆盖），故西立面是外露 bulkhead。圆角口径 2026-10-07 DEC-2026-10-07-R04（改判 R01；业主裁定「餐厅要一圈圆」，统一 R150、只做餐区能看到的角）：NW(7.20,2.40) 外露阳角倒 R150（西侧外露 bulkhead 折向厨房 2.65→2.50 台阶，两面皆外露）；SE(7.70,4.30) 是阴角，用 concave_fillets R150 加材料填成圆角拐肘（西带东 bulkhead 在此折向 ceiling_living 北立面，是餐区看到的第二个内凹角，与北带 SW 阴角成对）；NE(7.70,2.40) 沿厨房台阶与 ceiling_dining_north_band 连续、SW(7.20,4.30) 与走廊吊顶同标高对接，两处一律正交。此前 corner_radius 0.10 四角同半径把对接/连续处全切成凹口（读作内圆弧），2026-10-07 第一轮已清除。检修口与 bend_corridor 分歧区避让圆角。2026-10-08 DEC-2026-10-08-R01：东立面（朝餐区）加 R150 内凹弧面，与北带南缘弧面经 SW 拐肘弧段切点连续；北端在 se 拐肘切点 (7.70,4.15) 干净截断（不包裹鼓位、不悬空 flare），南端埋入北带体量，工艺与造价同北带口径。2026-10-08 DEC-2026-10-08-R02（覆盖 R01 的上部翻弧）：取消东立面上部翻弧，使平顶与竖直垂面直接交接；保留平面 NW 外圆角 R150 与 SE 内圆角 R150。2026-10-08 DEC-2026-10-08-R03（废止 R02 对东立面翻弧的取消）：恢复东立面（朝餐区）R150 上部翻弧，可见段 z[3.15,4.15]，北端埋入北带体量、南端在 se 拐肘切点 (7.70,4.15) 干净截断（R01 原口径）。2026-10-08 DEC-2026-10-08-R05（再废止 R03）：取消东立面 cove_fillets——垂面弧全拆，立面与平顶恢复硬相交（R02 语言）；保留平面 NW 外圆角 R150 与 SE 内圆角 R150。2026-10-23 DEC-2026-10-23-R04：客卫东墙线 7.10→7.20，本带 area x 7.20–7.70→7.30–7.80、北带西端 7.70→7.80 随之东移，冷媒主管 x=7.45 轴线仍在带内，墙面下引点位 x 同步 +0.10；本 note 前文坐标（西缘 7.20、w_gbath_east@x=7.1、角点坐标等）为改判前历史口径。"
+      "note": "餐厅西侧服务带（0.5m 宽、底 2.50m）：藏冷媒主管 x=7.45 轴线（自设备平台穿 w_vrv_east 进厨房后沿此带南行，z=4.30 汇入 ceiling_living 设备带/走廊枢纽 bend_corridor）——2026-10-05 R19 按业主案1 立案。西缘 x=7.20 在 z[2.40,4.30] 无墙（w_kit_west 只到 z=2.40、z[2.90,4.30] 由 w_gbath_east@x=7.1 覆盖），故西立面是外露 bulkhead。圆角口径 2026-10-07 DEC-2026-10-07-R04（改判 R01；业主裁定「餐厅要一圈圆」，统一 R150、只做餐区能看到的角）：NW(7.20,2.40) 外露阳角倒 R150（西侧外露 bulkhead 折向厨房 2.65→2.50 台阶，两面皆外露）；SE(7.70,4.30) 是阴角，用 concave_fillets R150 加材料填成圆角拐肘（西带东 bulkhead 在此折向 ceiling_living 北立面，是餐区看到的第二个内凹角，与北带 SW 阴角成对）；NE(7.70,2.40) 沿厨房台阶与 ceiling_dining_north_band 连续、SW(7.20,4.30) 与走廊吊顶同标高对接，两处一律正交。此前 corner_radius 0.10 四角同半径把对接/连续处全切成凹口（读作内圆弧），2026-10-07 第一轮已清除。检修口与 bend_corridor 分歧区避让圆角。2026-10-08 DEC-2026-10-08-R01：东立面（朝餐区）加 R150 内凹弧面，与北带南缘弧面经 SW 拐肘弧段切点连续；北端在 se 拐肘切点 (7.70,4.15) 干净截断（不包裹鼓位、不悬空 flare），南端埋入北带体量，工艺与造价同北带口径。2026-10-08 DEC-2026-10-08-R02（覆盖 R01 的上部翻弧）：取消东立面上部翻弧，使平顶与竖直垂面直接交接；保留平面 NW 外圆角 R150 与 SE 内圆角 R150。2026-10-08 DEC-2026-10-08-R03（废止 R02 对东立面翻弧的取消）：恢复东立面（朝餐区）R150 上部翻弧，可见段 z[3.15,4.15]，北端埋入北带体量、南端在 se 拐肘切点 (7.70,4.15) 干净截断（R01 原口径）。2026-10-08 DEC-2026-10-08-R05（再废止 R03）：取消东立面 cove_fillets——垂面弧全拆，立面与平顶恢复硬相交（R02 语言）；保留平面 NW 外圆角 R150 与 SE 内圆角 R150。2026-10-23 DEC-2026-10-23-R04：客卫东墙线 7.10→7.20，本带 area x 7.20–7.70→7.30–7.80、北带西端 7.70→7.80 随之东移，冷媒主管 x=7.45 轴线仍在带内，墙面下引点位 x 同步 +0.10；本 note 前文坐标（西缘 7.20、w_gbath_east@x=7.1、角点坐标等）为改判前历史口径。",
+      "status": "inferred"
     },
     {
       "id": "ceiling_dining_north_band",
@@ -903,7 +992,8 @@
         "se": "sw"
       },
       "pricing_form": "edge_drop",
-      "note": "餐厅北侧服务带/厨房门头盒（0.6m 深、底 2.50m）：厨房南墙 z=2.40 三联动推拉门门头盒+厨房电路衔接与餐桌吊灯出线通道；东端 x=10.80 接入户门厅吊顶（同底 2.50），西端接 ceiling_dining_west_band 正交通面；北侧与厨房铝扣板一次正交台阶（2.65→2.50），南侧对餐桌平顶 2.80 一次正交台阶。圆角口径 2026-10-07 DEC-2026-10-07-R04（改判 R01；业主裁定「餐厅要一圈圆」，统一 R150、只做餐区能看到的角）：SW(7.70,3.00) 是阴角，concave_fillets R150 加材料填成圆角拐肘（西带东 bulkhead 与北带南 bulkhead 在此交汇，是餐区最显眼的内凹角，也是这一圈圆的视觉主角）；SE(10.80,3.00) 外露阳角倒 R150（南 bulkhead 东端折向入户花园墙与门厅吊顶折段）；NW(7.70,2.40) 沿厨房台阶与西带连续、NE(10.80,2.40) 贴 w_ent_west 与厨房台阶，两处正交。2026-10-07 第一轮曾取消全部圆角，本轮按业主「得是一圈圆的，不然很丑」改回 R150 一圈。2026-10-08 DEC-2026-10-08-R01（改判 R18 附则/R04 的正交交接）：业主指令「门头盒与餐厅平顶衔接好弧面」，南立面与餐桌平顶 2.80 的交线改 R150 内凹弧面（石膏板弧形基层+板，弧面工艺与延长米造价待施工方报价，登记为 site/vendor_pending）。端头口径（业主评审多轮后终裁）：**SE 角整体回到正交**——取消 se 圆角（corner_radii se 移除），南缘弧面直行到角点 (10.80,3.00) 直截、贴 w_ent_west 墙垛收头，本角不再有任何曲面；SW 端维持经拐肘弧段切向连续到西带东立面（west 段声明埋入西带体量内，仅为使拐肘纳入包裹规则）。吊灯出线：由带内引至 (7.45,3.55) 后短距垂直下引至 light_dining_pendant，≤0.6m 吊杆/柔性管常规做法，施工图标注。2026-10-08 DEC-2026-10-08-R02 业主批准取消北侧服务带南/西两边上部翻弧，顶面与竖直垂面直接交接；保留平面 SW 内圆角 R150。2026-10-08 DEC-2026-10-08-R03（废止 R02 对南/西两边翻弧的取消）：恢复南缘 R150 上部翻弧（可见段 SW 拐肘切点 (7.85,3.00) → SE 角点 (10.80,3.00)）；west 段埋入西带体量、零视觉成本，仅为使 SW 拐肘纳入包裹规则；南缘弧面东端在角点 (10.80,3.00) 由门厅吊顶西缘新增翻弧延续（业主指令「弧面拐到门厅平吊上」）；北带不加 east cove——东缘外侧为入户花园露天 void，R01 补记四已判死该方向。2026-10-08 DEC-2026-10-08-R04（业主 Web 实见 R03 后方角 90° 折弯后裁定「要的是角本身圆过来」，重开 R01 补记六正交终裁）：SE 角倒 R150 外圆角（corner_radii se 0.15，与 R04 该角原圆角同半径），南缘弧面按半程包裹规则扫至圆弧中点 (10.694,2.894) 淡进转角、由门厅西缘弧面接力向南；仍不声明 east cove。圆角退缩区由 w_ent_west 墙垛（x[10.74,10.86]）与门厅西裙边覆盖，残留约 10cm 影线级口子待 Web 验收。2026-10-08 DEC-2026-10-08-R05（业主 Web 实见后裁定「要的是角本身圆过来、圆弧过渡到门厅西面」，垂面弧全拆回 R02 硬垂直面）：①取消本区 cove_fillets——立面与平顶恢复硬相交（R02 语言，业主明言垂面应为垂直平面）；②SE 角由 R04 阳角圆改为**镜像凹弧**——该角对组合轮廓实为阴角（门厅占东北/东南、开口在西南），阳角圆切料既成「口子」、弧又止于背靠背的东缘，到不了另一边；concave_fillets se 0.15 + concave_fillets_open se:sw：沿南缘往回至切点 (10.65,3.00)、弧心 (10.65,3.15)，与门厅吊顶西缘 x=10.80 在 (10.80,3.15) 相切——弧面从门头盒南面相切一路过渡到门厅西面，无口子；加料区 x[10.65,10.80]×z[3.00,3.15] 为开放餐区，不与门厅/墙垛重叠；净面积 +0.15²(1−π/4)≈+0.0048㎡。builder 侧 concave_fillets_open 为镜像凹弧声明（DEC-2026-10-08-R05 新增机制）。"
+      "note": "餐厅北侧服务带/厨房门头盒（0.6m 深、底 2.50m）：厨房南墙 z=2.40 三联动推拉门门头盒+厨房电路衔接与餐桌吊灯出线通道；东端 x=10.80 接入户门厅吊顶（同底 2.50），西端接 ceiling_dining_west_band 正交通面；北侧与厨房铝扣板一次正交台阶（2.65→2.50），南侧对餐桌平顶 2.80 一次正交台阶。圆角口径 2026-10-07 DEC-2026-10-07-R04（改判 R01；业主裁定「餐厅要一圈圆」，统一 R150、只做餐区能看到的角）：SW(7.70,3.00) 是阴角，concave_fillets R150 加材料填成圆角拐肘（西带东 bulkhead 与北带南 bulkhead 在此交汇，是餐区最显眼的内凹角，也是这一圈圆的视觉主角）；SE(10.80,3.00) 外露阳角倒 R150（南 bulkhead 东端折向入户花园墙与门厅吊顶折段）；NW(7.70,2.40) 沿厨房台阶与西带连续、NE(10.80,2.40) 贴 w_ent_west 与厨房台阶，两处正交。2026-10-07 第一轮曾取消全部圆角，本轮按业主「得是一圈圆的，不然很丑」改回 R150 一圈。2026-10-08 DEC-2026-10-08-R01（改判 R18 附则/R04 的正交交接）：业主指令「门头盒与餐厅平顶衔接好弧面」，南立面与餐桌平顶 2.80 的交线改 R150 内凹弧面（石膏板弧形基层+板，弧面工艺与延长米造价待施工方报价，登记为 site/vendor_pending）。端头口径（业主评审多轮后终裁）：**SE 角整体回到正交**——取消 se 圆角（corner_radii se 移除），南缘弧面直行到角点 (10.80,3.00) 直截、贴 w_ent_west 墙垛收头，本角不再有任何曲面；SW 端维持经拐肘弧段切向连续到西带东立面（west 段声明埋入西带体量内，仅为使拐肘纳入包裹规则）。吊灯出线：由带内引至 (7.45,3.55) 后短距垂直下引至 light_dining_pendant，≤0.6m 吊杆/柔性管常规做法，施工图标注。2026-10-08 DEC-2026-10-08-R02 业主批准取消北侧服务带南/西两边上部翻弧，顶面与竖直垂面直接交接；保留平面 SW 内圆角 R150。2026-10-08 DEC-2026-10-08-R03（废止 R02 对南/西两边翻弧的取消）：恢复南缘 R150 上部翻弧（可见段 SW 拐肘切点 (7.85,3.00) → SE 角点 (10.80,3.00)）；west 段埋入西带体量、零视觉成本，仅为使 SW 拐肘纳入包裹规则；南缘弧面东端在角点 (10.80,3.00) 由门厅吊顶西缘新增翻弧延续（业主指令「弧面拐到门厅平吊上」）；北带不加 east cove——东缘外侧为入户花园露天 void，R01 补记四已判死该方向。2026-10-08 DEC-2026-10-08-R04（业主 Web 实见 R03 后方角 90° 折弯后裁定「要的是角本身圆过来」，重开 R01 补记六正交终裁）：SE 角倒 R150 外圆角（corner_radii se 0.15，与 R04 该角原圆角同半径），南缘弧面按半程包裹规则扫至圆弧中点 (10.694,2.894) 淡进转角、由门厅西缘弧面接力向南；仍不声明 east cove。圆角退缩区由 w_ent_west 墙垛（x[10.74,10.86]）与门厅西裙边覆盖，残留约 10cm 影线级口子待 Web 验收。2026-10-08 DEC-2026-10-08-R05（业主 Web 实见后裁定「要的是角本身圆过来、圆弧过渡到门厅西面」，垂面弧全拆回 R02 硬垂直面）：①取消本区 cove_fillets——立面与平顶恢复硬相交（R02 语言，业主明言垂面应为垂直平面）；②SE 角由 R04 阳角圆改为**镜像凹弧**——该角对组合轮廓实为阴角（门厅占东北/东南、开口在西南），阳角圆切料既成「口子」、弧又止于背靠背的东缘，到不了另一边；concave_fillets se 0.15 + concave_fillets_open se:sw：沿南缘往回至切点 (10.65,3.00)、弧心 (10.65,3.15)，与门厅吊顶西缘 x=10.80 在 (10.80,3.15) 相切——弧面从门头盒南面相切一路过渡到门厅西面，无口子；加料区 x[10.65,10.80]×z[3.00,3.15] 为开放餐区，不与门厅/墙垛重叠；净面积 +0.15²(1−π/4)≈+0.0048㎡。builder 侧 concave_fillets_open 为镜像凹弧声明（DEC-2026-10-08-R05 新增机制）。",
+      "status": "inferred"
     },
     {
       "id": "ceiling_kitchen",
@@ -919,7 +1009,8 @@
       "buckle_panel": {
         "module": 0.3
       },
-      "note": "厨房铝扣板吊顶（内藏油烟机烟管+灯具），完成面 2.65m（板厚 0.15，自 2.80 原顶降板——旧 note「净高约2.55m」与模型/meplint B 区口径不一致，2026-10-07 修正）。2026-10-07 增 buckle_panel：300×300 集成吊顶分格缝（沿 area 最小角起排块，边块不足一皮的为现场切割板），缝为板面下 1.5mm 暗色细条，第一人称抬头可见模块。2026-10-05 DEC-2026-10-05-R19：范围收回到厨房真实南墙 z=2.40（DEC-014 裁定；旧值 z=4.30 越界盖住餐桌上空，且把餐厅天花错误建成铝扣板——登记漂移自此关闭）；z[2.40,4.30] 的餐区改由 ceiling_dining_north_band + ceiling_dining_west_band 两条服务带（石膏板、底 2.50）承担管线通道，餐桌中部恢复 2.80 平顶；厨房/生活阳台分界与烟管走向随量房终核。"
+      "note": "厨房铝扣板吊顶（内藏油烟机烟管+灯具），完成面 2.65m（板厚 0.15，自 2.80 原顶降板——旧 note「净高约2.55m」与模型/meplint B 区口径不一致，2026-10-07 修正）。2026-10-07 增 buckle_panel：300×300 集成吊顶分格缝（沿 area 最小角起排块，边块不足一皮的为现场切割板），缝为板面下 1.5mm 暗色细条，第一人称抬头可见模块。2026-10-05 DEC-2026-10-05-R19：范围收回到厨房真实南墙 z=2.40（DEC-014 裁定；旧值 z=4.30 越界盖住餐桌上空，且把餐厅天花错误建成铝扣板——登记漂移自此关闭）；z[2.40,4.30] 的餐区改由 ceiling_dining_north_band + ceiling_dining_west_band 两条服务带（石膏板、底 2.50）承担管线通道，餐桌中部恢复 2.80 平顶；厨房/生活阳台分界与烟管走向随量房终核。",
+      "status": "inferred"
     },
     {
       "id": "ceiling_master_bath",
@@ -935,7 +1026,8 @@
       "buckle_panel": {
         "module": 0.3
       },
-      "note": "主卫铝扣板吊顶（内藏排风管+浴霸），完成面 2.65m（板厚 0.15；旧 note「净高约2.55m」为旧口径，2026-10-07 修正）；300×300 分格缝见 ceiling_kitchen 同款 buckle_panel。2026-08-26 修正：隔墙 2026-08-25 已北移至 z=2.86，旧值 3.26 越界 0.4m 侵入主卧条带，随墙收回；溯源：DEC-2026-10-07-R01（厨卫铝扣板加分格缝，正文点名 ceiling_master_bath 为 aluminum_buckle、完成面 2.65）"
+      "note": "主卫铝扣板吊顶（内藏排风管+浴霸），完成面 2.65m（板厚 0.15；旧 note「净高约2.55m」为旧口径，2026-10-07 修正）；300×300 分格缝见 ceiling_kitchen 同款 buckle_panel。2026-08-26 修正：隔墙 2026-08-25 已北移至 z=2.86，旧值 3.26 越界 0.4m 侵入主卧条带，随墙收回；溯源：DEC-2026-10-07-R01（厨卫铝扣板加分格缝，正文点名 ceiling_master_bath 为 aluminum_buckle、完成面 2.65）",
+      "status": "inferred"
     },
     {
       "id": "ceiling_guest_bath",
@@ -951,7 +1043,8 @@
       "buckle_panel": {
         "module": 0.3
       },
-      "note": "客卫铝扣板吊顶（内藏排风管+浴霸），完成面 2.65m（板厚 0.15；旧 note「净高约2.55m」为旧口径，2026-10-07 修正）；300×300 分格缝见 ceiling_kitchen 同款 buckle_panel；溯源：DEC-2026-10-07-R01（厨卫铝扣板加分格缝，正文点名 ceiling_guest_bath 为 aluminum_buckle、完成面 2.65）；2026-10-23 DEC-2026-10-23-R04：东墙线 7.10→7.20，吊顶东界随之，面积 3.15→3.36㎡"
+      "note": "客卫铝扣板吊顶（内藏排风管+浴霸），完成面 2.65m（板厚 0.15；旧 note「净高约2.55m」为旧口径，2026-10-07 修正）；300×300 分格缝见 ceiling_kitchen 同款 buckle_panel；溯源：DEC-2026-10-07-R01（厨卫铝扣板加分格缝，正文点名 ceiling_guest_bath 为 aluminum_buckle、完成面 2.65）；2026-10-23 DEC-2026-10-23-R04：东墙线 7.10→7.20，吊顶东界随之，面积 3.15→3.36㎡",
+      "status": "inferred"
     },
     {
       "id": "ceiling_main_corridor",
@@ -965,7 +1058,18 @@
         5.55
       ],
       "pricing_form": "flat",
-      "note": "主走廊吊顶（藏多联机风管），净高约2.50m；与semantic_only主走廊区域对齐，与客厅设备带共用完成面标高和饰面"
+      "note": "主走廊吊顶（藏多联机风管），净高约2.50m；与semantic_only主走廊区域对齐，与客厅设备带共用完成面标高和饰面。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
+      "status": "undeclared",
+      "blocker": {
+        "kind": "pending_adjudication",
+        "owner": [
+          "设计",
+          "量房"
+        ],
+        "trigger": "主走廊吊顶完成面标高与分区边界经设计裁定",
+        "reverses_if": "走廊净高下限改判时，与客厅设备带共用的完成面标高和饰面同步重算",
+        "rationale": "分区只声明了用途与净高约 2.50m，未申报工程状态（原为 undeclared 申报缺口）"
+      }
     },
     {
       "id": "ceiling_corridor",
@@ -979,7 +1083,8 @@
         6.45
       ],
       "pricing_form": "edge_drop",
-      "note": "书房北缘边吊（靠走廊侧整条贯通，藏风管机+风管，下接北墙季节后台柜；侧送下回）；走廊地面 z[6.45,7.8] 段恢复 2.80m 原顶，净高约2.50m；2026-09-07 巡检修正 room 字段：几何 x[4.2,7.2] 位于书房（id=study），原值 master_bedroom 系笔误；2026-10-05 功能互换：该房由父母房改为书房，原北墙 1.8m 衣柜改为 1.70m 季节后台柜（同吊顶安装条件：2.40m 柜体+顶封板抵 2.50m 吊底）；溯源：DEC-2026-10-05-R9（父母房↔书房功能互换，标题明文「几何不动」——本分区几何最近一次经裁定复核）"
+      "note": "书房北缘边吊（靠走廊侧整条贯通，藏风管机+风管，下接北墙季节后台柜；侧送下回）；走廊地面 z[6.45,7.8] 段恢复 2.80m 原顶，净高约2.50m；2026-09-07 巡检修正 room 字段：几何 x[4.2,7.2] 位于书房（id=study），原值 master_bedroom 系笔误；2026-10-05 功能互换：该房由父母房改为书房，原北墙 1.8m 衣柜改为 1.70m 季节后台柜（同吊顶安装条件：2.40m 柜体+顶封板抵 2.50m 吊底）；溯源：DEC-2026-10-05-R9（父母房↔书房功能互换，标题明文「几何不动」——本分区几何最近一次经裁定复核）",
+      "status": "inferred"
     },
     {
       "id": "ceiling_entry_foyer",
@@ -993,7 +1098,8 @@
         4.3
       ],
       "pricing_form": "flat",
-      "note": "入户门厅吊顶（藏风管），净高约2.50m。2026-10-08 DEC-2026-10-08-R03：西缘（朝客厅 2.80 原顶）新增 R150 上部翻弧，承接门头盒南缘弧面在东南角 (10.80,3.00) 的转弯延续；北端埋 w_ent_west 墙垛南脸 (10.80,2.90)、南端埋 ceiling_living 设备带实体 (10.80,4.30)，可见段 z[3.00,4.30]；工艺与造价同服务带弧面口径（site/vendor_pending）。2026-10-08 DEC-2026-10-08-R05（再废止 R03 该条）：取消西缘 cove_fillets——垂面弧全拆，立面与平顶恢复硬相交（R02 语言）；西缘自 (10.80,3.15) 起与门头盒 SE 镜像凹弧相切相接（业主「弧面拐到门厅平吊上」的落地形态）。 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随墙线北缘 2.90→3.00、东缘 13.40→12.77（中竖墙），面积 3.64→2.56㎡。"
+      "note": "入户门厅吊顶（藏风管），净高约2.50m。2026-10-08 DEC-2026-10-08-R03：西缘（朝客厅 2.80 原顶）新增 R150 上部翻弧，承接门头盒南缘弧面在东南角 (10.80,3.00) 的转弯延续；北端埋 w_ent_west 墙垛南脸 (10.80,2.90)、南端埋 ceiling_living 设备带实体 (10.80,4.30)，可见段 z[3.00,4.30]；工艺与造价同服务带弧面口径（site/vendor_pending）。2026-10-08 DEC-2026-10-08-R05（再废止 R03 该条）：取消西缘 cove_fillets——垂面弧全拆，立面与平顶恢复硬相交（R02 语言）；西缘自 (10.80,3.15) 起与门头盒 SE 镜像凹弧相切相接（业主「弧面拐到门厅平吊上」的落地形态）。 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随墙线北缘 2.90→3.00、东缘 13.40→12.77（中竖墙），面积 3.64→2.56㎡。",
+      "status": "inferred"
     },
     {
       "id": "ceiling_master_ac",
@@ -1010,7 +1116,8 @@
       "pricing_form": "edge_drop",
       "inspection_layer": "pipe-chase",
       "inspection_opacity": 0.18,
-      "note": "主卧空调门头盒（2026-09-07：白色体块向西延伸至950衣柜东缘x=2.925，保持空调盒与木柜独立并以10–20mm阴影缝分界；平面小圆角R100，不照搬双层石膏线/灯带/大弧），东抵w_strip_east并跨越d_mb门头上空；下底板底面2.50m（builder y=2.502，持续可见），内机藏盒内(3.70,5.10)；南立面嵌0.6m窄线形送风中心x=3.70、东端x=4.00，朝南进睡眠区（侧送）；底面0.5m线形回风中心x=3.70、东端x=3.95（回检一体铰接格栅兼检修，下回，HVAC责任独立于家具）；送回风口轴均与当前机身中心 x=3.70 对齐，东墙卧室侧完成面约x=4.14；冷媒/电源由走廊穿孔（z≈4.6）进盒；冷凝水进入衣柜顶部服务带，沿协调路线隐藏。所提供 /PX-TS 参考规格中 56T2 为 900mm；仅当合同所列 MJV-56T2/P-SS 实机宽度也为 900mm 时，水平范围为 x∈[3.25,4.15]，门头盒东界 x=4.20 余0.05m，东墙卧室侧完成面约x=4.14处约越0.01m。此为条件性参考计算，不代表 P-SS 实机尺寸或已确认适配；须由 MJV-56T2/P-SS 厂家安装图与现场复核外廓、高度及安装间隙。当前模型为设计预演，尚未施工冻结。；溯源：DEC-2026-08-26-045（主卧空调檐口定案，创建本分区；后经 DEC-2026-09-06-R7/R7.1 修订为门头盒形式）"
+      "note": "主卧空调门头盒（2026-09-07：白色体块向西延伸至950衣柜东缘x=2.925，保持空调盒与木柜独立并以10–20mm阴影缝分界；平面小圆角R100，不照搬双层石膏线/灯带/大弧），东抵w_strip_east并跨越d_mb门头上空；下底板底面2.50m（builder y=2.502，持续可见），内机藏盒内(3.70,5.10)；南立面嵌0.6m窄线形送风中心x=3.70、东端x=4.00，朝南进睡眠区（侧送）；底面0.5m线形回风中心x=3.70、东端x=3.95（回检一体铰接格栅兼检修，下回，HVAC责任独立于家具）；送回风口轴均与当前机身中心 x=3.70 对齐，东墙卧室侧完成面约x=4.14；冷媒/电源由走廊穿孔（z≈4.6）进盒；冷凝水进入衣柜顶部服务带，沿协调路线隐藏。所提供 /PX-TS 参考规格中 56T2 为 900mm；仅当合同所列 MJV-56T2/P-SS 实机宽度也为 900mm 时，水平范围为 x∈[3.25,4.15]，门头盒东界 x=4.20 余0.05m，东墙卧室侧完成面约x=4.14处约越0.01m。此为条件性参考计算，不代表 P-SS 实机尺寸或已确认适配；须由 MJV-56T2/P-SS 厂家安装图与现场复核外廓、高度及安装间隙。当前模型为设计预演，尚未施工冻结。；溯源：DEC-2026-08-26-045（主卧空调檐口定案，创建本分区；后经 DEC-2026-09-06-R7/R7.1 修订为门头盒形式）",
+      "status": "inferred"
     },
     {
       "id": "ceiling_study_ac",
@@ -1024,7 +1131,8 @@
         6.15
       ],
       "pricing_form": "edge_drop",
-      "note": "客房北墙边吊（靠走廊/电梯厅一侧，藏 28T2 风管机，侧送下回），纯 HVAC 服务几何（底 2.50m）；避飘窗：z 止 6.15 远离南侧凸窗；x 止 15.80 避让东侧家具；2026-10-05 功能互换：该房由书房改为客房；原 2.6m 通顶柜与东墙后台柜均已不存在，北墙现为 1.8m 成品衣柜（wardrobe_180，2.40m 柜体+顶封板抵 2.50m 吊底，x[14.20,16.00]）；实际机身/风口尺寸适配待核，当前模型尚未施工冻结；溯源：DEC-2026-10-05-R9（父母房↔书房功能互换，标题明文「几何不动」——本分区几何最近一次经裁定复核）"
+      "note": "客房北墙边吊（靠走廊/电梯厅一侧，藏 28T2 风管机，侧送下回），纯 HVAC 服务几何（底 2.50m）；避飘窗：z 止 6.15 远离南侧凸窗；x 止 15.80 避让东侧家具；2026-10-05 功能互换：该房由书房改为客房；原 2.6m 通顶柜与东墙后台柜均已不存在，北墙现为 1.8m 成品衣柜（wardrobe_180，2.40m 柜体+顶封板抵 2.50m 吊底，x[14.20,16.00]）；实际机身/风口尺寸适配待核，当前模型尚未施工冻结；溯源：DEC-2026-10-05-R9（父母房↔书房功能互换，标题明文「几何不动」——本分区几何最近一次经裁定复核）",
+      "status": "inferred"
     },
     {
       "id": "ceiling_study_ac_corner",
@@ -1038,7 +1146,8 @@
         5.85
       ],
       "pricing_form": "edge_drop",
-      "note": "客房边吊 L 形拐角（既有 HVAC 服务几何，与 ceiling_study_ac 同底标高 2.50m，z 止 5.85）；2026-10-05 功能互换：原通顶柜与东墙后台柜均已不存在，本段不再有柜体避让关系，仅作 HVAC 服务几何保留；溯源：DEC-2026-10-05-R9（父母房↔书房功能互换后仅作 HVAC 服务几何保留，标题明文「几何不动」）"
+      "note": "客房边吊 L 形拐角（既有 HVAC 服务几何，与 ceiling_study_ac 同底标高 2.50m，z 止 5.85）；2026-10-05 功能互换：原通顶柜与东墙后台柜均已不存在，本段不再有柜体避让关系，仅作 HVAC 服务几何保留；溯源：DEC-2026-10-05-R9（父母房↔书房功能互换后仅作 HVAC 服务几何保留，标题明文「几何不动」）",
+      "status": "inferred"
     },
     {
       "id": "ceiling_child_ac",
@@ -1052,7 +1161,18 @@
         4.3
       ],
       "pricing_form": "edge_drop",
-      "note": "儿童房南墙边吊（靠走廊一侧整条贯通，藏风管机，下接南墙通顶衣柜；侧送朝北下回），远离北墙飘窗（侵入区 z[1.1,2.2]）"
+      "note": "儿童房南墙边吊（靠走廊一侧整条贯通，藏风管机，下接南墙通顶衣柜；侧送朝北下回），远离北墙飘窗（侵入区 z[1.1,2.2]）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
+      "status": "undeclared",
+      "blocker": {
+        "kind": "pending_adjudication",
+        "owner": [
+          "设计",
+          "量房"
+        ],
+        "trigger": "儿童房南墙边吊分区边界与底标高经设计裁定（与 ac_child 内机/风管方案一并）",
+        "reverses_if": "内机改位或边吊底标高调整时，分区几何与净高判定重算",
+        "rationale": "分区只声明了用途与避让范围，未申报工程状态（原为 undeclared 申报缺口）"
+      }
     },
     {
       "id": "curtain_box_master_west",
@@ -1066,7 +1186,18 @@
         8.8
       ],
       "trade": "curtain_box",
-      "note": "主卧西飘窗窗帘盒（贴飘窗内缘 x=1.10，覆盖西飘窗 z[5.55,8.80] 段）；2026-08-26 边吊迁东墙后不再由 ceiling_master_ac 兼任，独立补建"
+      "note": "主卧西飘窗窗帘盒（贴飘窗内缘 x=1.10，覆盖西飘窗 z[5.55,8.80] 段）；2026-08-26 边吊迁东墙后不再由 ceiling_master_ac 兼任，独立补建。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
+      "status": "pending",
+      "blocker": {
+        "kind": "pending_adjudication",
+        "owner": [
+          "业主",
+          "设计"
+        ],
+        "trigger": "主卧两条窗帘盒平面重叠 0.025㎡ 的设计裁定（#53）",
+        "reverses_if": "若定西盒上界收到 z=8.70 则净面积 −0.025㎡；若定「转角两盒有意交汇」则维持现几何并确认封板收口",
+        "rationale": "西窗帘盒 x[1.10,1.35]×z[5.55,8.80] 与南窗帘盒平面重叠 0.025㎡，设计待决（不是量房待决），量房只提供墙面完成面事实"
+      }
     },
     {
       "id": "curtain_box_master_south",
@@ -1080,7 +1211,18 @@
         9.8
       ],
       "trade": "curtain_box",
-      "note": "主卧南环幕窗帘盒（DEC-2026-10-28-R05 归位：盒南缘贴南玻璃线 z=9.80、盒占 z[9.55,9.80]，与客厅南盒 curtain_box_living（盒南缘贴玻璃 9.80）同口径，帘布投影落在盒中线；原 z[8.70,8.95] 系『南飘窗凹进室内、内缘 8.70』旧读法遗留，与本房 bay_sill『南缘 z=10.90、飘台板南外凸』自相矛盾——凹进读法已由 DEC-2026-10-23-R04 废止，三间朝南卧室盒本轮统一归位，不得回退旧坐标；电动电源 sock_master_curtain 同步南移至盒中心线 (4.20,9.675)，其顶升分支自 2026-10-07 起只写在 strong-power-master reason 内、从未画线，本轮仍不补画（裸点已在 mep-takeoff 未路由清单显形；补画需延长 w_mb_east 剪力墙贴墙段，另案处理）；电动窗帘电机属二期，一期只留电源与位置）"
+      "note": "主卧南环幕窗帘盒（DEC-2026-10-28-R05 归位：盒南缘贴南玻璃线 z=9.80、盒占 z[9.55,9.80]，与客厅南盒 curtain_box_living（盒南缘贴玻璃 9.80）同口径，帘布投影落在盒中线；原 z[8.70,8.95] 系『南飘窗凹进室内、内缘 8.70』旧读法遗留，与本房 bay_sill『南缘 z=10.90、飘台板南外凸』自相矛盾——凹进读法已由 DEC-2026-10-23-R04 废止，三间朝南卧室盒本轮统一归位，不得回退旧坐标；电动电源 sock_master_curtain 同步南移至盒中心线 (4.20,9.675)，其顶升分支自 2026-10-07 起只写在 strong-power-master reason 内、从未画线，本轮仍不补画（裸点已在 mep-takeoff 未路由清单显形；补画需延长 w_mb_east 剪力墙贴墙段，另案处理）；电动窗帘电机属二期，一期只留电源与位置）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
+      "status": "pending",
+      "blocker": {
+        "kind": "pending_adjudication",
+        "owner": [
+          "业主",
+          "设计"
+        ],
+        "trigger": "主卧两条窗帘盒平面重叠 0.025㎡ 的设计裁定（#53）",
+        "reverses_if": "若定西盒上界收到 z=8.70 则净面积 −0.025㎡；若定「转角两盒有意交汇」则维持现几何并确认封板收口",
+        "rationale": "盒位已由 DEC-2026-10-28-R05 归位（不得回退旧坐标），仍未闭的是与西窗帘盒的平面重叠 0.025㎡（#53，设计待决）"
+      }
     },
     {
       "id": "curtain_box_parent_south",
@@ -1094,7 +1236,8 @@
         9.8
       ],
       "trade": "curtain_box",
-      "note": "书房南墙窗帘盒（DEC-2026-10-28-R05 归位：盒南缘贴南玻璃线 z=9.80、盒占 z[9.55,9.80]，与客厅南盒同口径；原 z[8.70,8.95] 同属『贴南飘窗内缘 8.70』凹进读法遗留，与本房 bay_sill『南缘 z=10.90、外凸』矛盾，该读法已由 DEC-2026-10-23-R04 废止，本轮统一归位；sock_parent_curtain 与供电路由 strong-power-parent-child-study-curtain 随盒南移；2026-10-05 功能互换，id 不变）；溯源：DEC-2026-10-08-C01（吊顶算量子系统独立，5 个 curtain_box_* 的 trade 工艺分类与计量范围由此裁定）"
+      "note": "书房南墙窗帘盒（DEC-2026-10-28-R05 归位：盒南缘贴南玻璃线 z=9.80、盒占 z[9.55,9.80]，与客厅南盒同口径；原 z[8.70,8.95] 同属『贴南飘窗内缘 8.70』凹进读法遗留，与本房 bay_sill『南缘 z=10.90、外凸』矛盾，该读法已由 DEC-2026-10-23-R04 废止，本轮统一归位；sock_parent_curtain 与供电路由 strong-power-parent-child-study-curtain 随盒南移；2026-10-05 功能互换，id 不变）；溯源：DEC-2026-10-08-C01（吊顶算量子系统独立，5 个 curtain_box_* 的 trade 工艺分类与计量范围由此裁定）",
+      "status": "inferred"
     },
     {
       "id": "curtain_box_study_south",
@@ -1108,7 +1251,8 @@
         9.88
       ],
       "trade": "curtain_box",
-      "note": "客房南墙窗帘盒（DEC-2026-10-28-R05 归位：盒南缘贴南玻璃线 z=9.88、盒占 z[9.63,9.88]，与客厅南盒同口径，帘布投影落在盒中线——DEC-2026-10-23-R04 登记的『盒位暂留待床尾区重新预演』复核项本轮落地；原 z[7.60,7.85] 悬在 bed_150 床中段正上方、离玻璃 2.28m，系 2026-08-27 凹进读法遗留，该读法已废止，不得回退旧坐标；sock_study_curtain 随盒南移至盒中心线，NP-1 起夜灯西行段与床头双控供电路东行段失去盒腔依托、改按开放区口径重写理由；电动电源已预留；2026-10-05 功能互换，id 不变）；溯源：DEC-2026-10-08-C01（吊顶算量子系统独立，5 个 curtain_box_* 的 trade 工艺分类与计量范围由此裁定）"
+      "note": "客房南墙窗帘盒（DEC-2026-10-28-R05 归位：盒南缘贴南玻璃线 z=9.88、盒占 z[9.63,9.88]，与客厅南盒同口径，帘布投影落在盒中线——DEC-2026-10-23-R04 登记的『盒位暂留待床尾区重新预演』复核项本轮落地；原 z[7.60,7.85] 悬在 bed_150 床中段正上方、离玻璃 2.28m，系 2026-08-27 凹进读法遗留，该读法已废止，不得回退旧坐标；sock_study_curtain 随盒南移至盒中心线，NP-1 起夜灯西行段与床头双控供电路东行段失去盒腔依托、改按开放区口径重写理由；电动电源已预留；2026-10-05 功能互换，id 不变）；溯源：DEC-2026-10-08-C01（吊顶算量子系统独立，5 个 curtain_box_* 的 trade 工艺分类与计量范围由此裁定）",
+      "status": "inferred"
     }
   ],
   "hvac": {
@@ -1174,7 +1318,7 @@
             "y": 2.52,
             "z": 4.34
           },
-          "reason": "R25 为避让 DEC-2026-10-19-R02 餐厅下出风支管临时放在机位中心西侧0.40m、南侧0.41m；2.52m自然排水口及坐标均为路由假设，不代表 MJV-42T2/P-SS 的真实接管方向/高度，须用厂家安装图确认。"
+          "reason": "R25 为避让 DEC-2026-10-19-R02 餐厅下出风支管临时放在机位中心西侧0.40m、北侧0.41m（2026-11-08 S2 改字不改值：实测 Δx=−0.40 西、Δz=4.34−4.75=−0.41 北，原「南侧」与 +z=南 的坐标约定冲突，position 未动）；2.52m自然排水口及坐标均为路由假设，不代表 MJV-42T2/P-SS 的真实接管方向/高度，须用厂家安装图确认。"
         },
         {
           "id": "indoor_master",
@@ -1219,7 +1363,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_living_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_living"
         },
         {
           "id": "power_dining",
@@ -1228,7 +1374,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_dining_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_dining"
         },
         {
           "id": "power_master",
@@ -1237,7 +1385,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_master_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_master"
         },
         {
           "id": "power_study",
@@ -1246,7 +1396,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_study_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_study"
         },
         {
           "id": "power_parent",
@@ -1255,7 +1407,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_parent_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_parent"
         },
         {
           "id": "power_child",
@@ -1264,7 +1418,9 @@
           "ref": {
             "source": "electrical",
             "id": "sock_child_ac"
-          }
+          },
+          "reason": "issue #98 第五阶段 S3：显式声明服务内机（serves_unit 取代按 id 房间名的隐式映射，phase5-survey §3-2）；四腿配对由 lintHvacPowerPairing 钉住（ref ↔ serves_unit ↔ host_intent ↔ route 终点），本行不改 ref 与任何坐标。",
+          "serves_unit": "ac_child"
         },
         {
           "id": "bend_corridor",
@@ -1286,7 +1442,8 @@
             "y": 2.5,
             "z": 4.6
           },
-          "reason": "主卧冷媒支路按走廊吊顶穿孔后直管带向西进延伸空调盒示意；950衣柜东缘x=2.925与门头盒西缘对齐；分歧、梁位和套管待厂家深化。"
+          "reason": "主卧冷媒支路按走廊吊顶穿孔后直管带向西进延伸空调盒示意；950衣柜东缘x=2.925与门头盒西缘对齐；分歧、梁位和套管待厂家深化。业主裁定四（2026-11-08）：schematic_only 示意图层并行表达，不参与几何/不放线，不作为 MEP 折线的副本对账对象（§6.3-6 完整定性未裁，位置不动）。",
+          "schematic_only": true
         },
         {
           "id": "branch_study",
@@ -1297,7 +1454,8 @@
             "y": 2.5,
             "z": 5.85
           },
-          "reason": "客房冷媒支路按北墙边吊转入示意，分歧、梁位和套管待厂家深化。"
+          "reason": "客房冷媒支路按北墙边吊转入示意，分歧、梁位和套管待厂家深化。业主裁定四（2026-11-08）：schematic_only 示意图层并行表达，不参与几何/不放线，不作为 MEP 折线的副本对账对象（§6.3-6 完整定性未裁，位置不动）。",
+          "schematic_only": true
         },
         {
           "id": "branch_parent",
@@ -1308,7 +1466,8 @@
             "y": 2.5,
             "z": 6.2
           },
-          "reason": "书房冷媒支路按北缘边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化（2026-10-05 功能互换，路由不变）。"
+          "reason": "书房冷媒支路按北缘边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化（2026-10-05 功能互换，路由不变）。业主裁定四（2026-11-08）：schematic_only 示意图层并行表达，不参与几何/不放线，不作为 MEP 折线的副本对账对象（§6.3-6 完整定性未裁，位置不动）。",
+          "schematic_only": true
         },
         {
           "id": "branch_child",
@@ -1319,7 +1478,8 @@
             "y": 2.5,
             "z": 3.9
           },
-          "reason": "儿童房冷媒支路按南墙边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化。"
+          "reason": "儿童房冷媒支路按南墙边吊（靠走廊侧）转入示意，分歧、梁位和套管待厂家深化。业主裁定四（2026-11-08）：schematic_only 示意图层并行表达，不参与几何/不放线，不作为 MEP 折线的副本对账对象（§6.3-6 完整定性未裁，位置不动）。",
+          "schematic_only": true
         },
         {
           "id": "branch_dining",
@@ -1327,10 +1487,10 @@
           "system": "refrigerant",
           "position": {
             "x": 8,
-            "y": 2.55,
+            "y": 2.6,
             "z": 4.3
           },
-          "reason": "沿用 MEP refrigerant-dining 显式协调节点 (8.00,2.55,4.30)；仅为边吊内冷媒支路示意，分歧器、管径、梁位、机身接口与实际施工走向待量房及厂家深化，施工未冻结。"
+          "reason": "沿用 MEP refrigerant-dining 显式协调节点 (8.00,2.60,4.30)（业主裁定三 2026-11-08：DEC-2026-10-06-R5 明文 A 区冷媒 2.60，MEP 侧当日已改，本锚点 2.55 系 2026-10-05 引入、次日漏跟，现对齐；x/z 未动）；仅为边吊内冷媒支路示意，分歧器、管径、梁位、机身接口与实际施工走向待量房及厂家深化，施工未冻结。"
         }
       ],
       "terminals": [
@@ -1728,7 +1888,7 @@
             "y": 2.49,
             "z": 6.15
           },
-          "reason": "书房回风口下回底装于北缘边吊顶底面，DEC-2026-10-28-R03 酒店标准入口吊顶紧凑布局：现为机身 ac_parent 正下方（机身 6.5, 6.0），铰接回风格栅兼机身检修口（回风 + 机身检修一体，酒店标准），不另设侧口；尺寸待厂家安装图按机身服务面定（合同回风 1000×300 / 1300×300 档，只许放大不许缩小）；铰接可拆卸、与吊顶同材质同漆。",
+          "reason": "书房回风口下回底装于北缘边吊顶底面，DEC-2026-10-28-R03 酒店标准入口吊顶紧凑布局：现为机身 ac_parent 下方南偏 0.15m（机身 6.5, 6.0；口心 z=6.15，Δz=+0.15=南；2026-11-08 S2 改字不改值：原「正下方」与实测平面位置不符，position 未动），铰接回风格栅兼机身检修口（回风 + 机身检修一体，酒店标准），不另设侧口；尺寸待厂家安装图按机身服务面定（合同回风 1000×300 / 1300×300 档，只许放大不许缩小）；铰接可拆卸、与吊顶同材质同漆。",
           "mount_face": "bottom"
         },
         {
@@ -1764,11 +1924,15 @@
             "y": 2.49,
             "z": 4.7
           },
-          "reason": "DEC-2026-10-27-R03 餐厅内机检修口：底装于客厅北缘边吊底面，服务 ac_dining（42T2，机身 8.00, 4.75）；回风 return_dining 在机身东 1.65m 外够不到机身，故另设面板（不沿用回检一体口径）。暂定 600×600，中心 z=4.70（机身中心 4.75 南移 0.05，为避让 supply_dining_bottom 北缘 z=5.05、留 0.05 缝）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。",
+          "reason": "DEC-2026-10-27-R03 餐厅内机检修口：底装于客厅北缘边吊底面，服务 ac_dining（42T2，机身 8.00, 4.75）；回风 return_dining 在机身东 1.65m 外够不到机身，故另设面板（不沿用回检一体口径）。暂定 600×600，中心 z=4.70（机身中心 4.75 北移 0.05——2026-11-08 S2 改字不改值：Δz=4.70−4.75=−0.05 为北，原「南移」与 +z=南 约定冲突，为避让 supply_dining_bottom 北缘 z=5.05、留 0.05 缝）；结构化 offset (0,−0.05) 即此关系（业主裁定一 2026-11-08，validate 断言 offset == position − 机身 position，坐标真值仍只有 position 一份）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。",
           "mount_face": "bottom",
           "length": 0.6,
           "grille_height": 0.6,
-          "serves_unit": "ac_dining"
+          "serves_unit": "ac_dining",
+          "offset": {
+            "x": 0,
+            "z": -0.05
+          }
         },
         {
           "id": "access_study",
@@ -1779,11 +1943,15 @@
             "y": 2.49,
             "z": 5.85
           },
-          "reason": "DEC-2026-10-27-R03 客房内机检修口：底装于客房北墙边吊底面，服务 ac_study（28T2，机身 15.1, 5.85）；回风 return_study 在机身东 0.60m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=15.05（机身中心 15.1 西移 0.05，为避让 return_study 西缘 x=15.40、留 0.05 缝）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆；补前确认下方无柜体遮挡。",
+          "reason": "DEC-2026-10-27-R03 客房内机检修口：底装于客房北墙边吊底面，服务 ac_study（28T2，机身 15.1, 5.85）；回风 return_study 在机身东 0.60m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=15.05（机身中心 15.1 西移 0.05，为避让 return_study 西缘 x=15.40、留 0.05 缝）；结构化 offset (−0.05,0) 即此关系（业主裁定一 2026-11-08，validate 断言 offset == position − 机身 position，坐标真值仍只有 position 一份）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆；补前确认下方无柜体遮挡。",
           "mount_face": "bottom",
           "length": 0.6,
           "grille_height": 0.6,
-          "serves_unit": "ac_study"
+          "serves_unit": "ac_study",
+          "offset": {
+            "x": -0.05,
+            "z": 0
+          }
         },
         {
           "id": "access_child",
@@ -1794,11 +1962,15 @@
             "y": 2.49,
             "z": 4
           },
-          "reason": "DEC-2026-10-27-R03 儿童房内机检修口：底装于儿童房南墙边吊底面，服务 ac_child（28T2，机身 4.4, 4.0）；回风 return_child 在机身东 0.50m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=4.25（机身中心 4.4 西移 0.15，为避让 return_child 西缘 x=4.60、留 0.05 缝，仍覆盖机身西段）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。补前确认：机身 x=4.4 正处衣柜东缘，若实机压在衣柜上方则底口改侧口或移位（本 PR 先按底口建，待确认项，不静默定案）。",
+          "reason": "DEC-2026-10-27-R03 儿童房内机检修口：底装于儿童房南墙边吊底面，服务 ac_child（28T2，机身 4.4, 4.0）；回风 return_child 在机身东 0.50m 外经风管连接够不到机身，故另设面板。暂定 600×600，中心 x=4.25（机身中心 4.4 西移 0.15，为避让 return_child 西缘 x=4.60、留 0.05 缝，仍覆盖机身西段）；结构化 offset (−0.15,0) 即此关系（业主裁定一 2026-11-08，validate 断言 offset == position − 机身 position，坐标真值仍只有 position 一份）；尺寸待厂家安装图终核、只许放大不许缩小；卡扣可拆卸、与吊顶同材质同漆。补前确认：机身 x=4.4 正处衣柜东缘，若实机压在衣柜上方则底口改侧口或移位（本 PR 先按底口建，待确认项，不静默定案）。",
           "mount_face": "bottom",
           "length": 0.6,
           "grille_height": 0.6,
-          "serves_unit": "ac_child"
+          "serves_unit": "ac_child",
+          "offset": {
+            "x": -0.15,
+            "z": 0
+          }
         }
       ],
       "routes": [
@@ -2318,7 +2490,21 @@
           "survey_confirmation": "量房实测该处窗带梁底与范围；不得据此开孔或穿梁。"
         }
       ]
-    }
+    },
+    "outdoor": [
+      {
+        "id": "vrf_outdoor_a2",
+        "platform": "west_platform",
+        "x": 6.4,
+        "z": 0.5,
+        "direction": "south",
+        "width": 0.99,
+        "depth": 0.4,
+        "height": 0.81,
+        "model": "美的领航者Ⅳ MJV-200W-E01-LHIV（成交配置 DEC-2026-10-04-R1，20kW / 大7匹；领航者Ⅳ系列，区别于三代 MJV-200W-E01-LHⅢ）",
+        "note": "成交配置 DEC-2026-10-04-R1：20kW 外机配六台双出风内机，额定能力合计 25.3kW，名义连接率 1.265（约 1.27）。⚠️外廓 0.99×0.40×0.81m 为 7HP 常见规格 **estimated**，200W 级实测尺寸、平台散热（百叶有效通风面积/进排风净距/检修距离/热短路）与 1.6×1.00m 西平台（bbox 口径；含 r=1.0 西北圆角后可用约 1.39㎡，依据 model-geometry.yaml platform.boundary + overlay.yaml north_platform_floor）的适配均 site_pending。**供电制式已由业主 2026-10-04 确认为 220V（DEC-2026-10-04-R1），本条待核项已收窄一项**，2026-10-06 业主补图证实三代 MJV-200W-E01-LHⅢ 参数列外形 951×1333×382（原图未标单位）、制冷额定 5.9kW/27A、最大输入 8.56kW/39A；同代际对照仅供识别旧占位外廓不可信，不能证明合同四代 MJV-200W-E01-LHIV 尺寸与配电；原图及去重哈希见 docs/design-iterations/hvac-resix-20261003/evidence/evidence-notes.md。历史：DEC-2026-09-07-055 的 7HP/21.4kW/138% 出局结论保留追溯 ‖ DEC-2026-10-04-R2：外机供电已单独成路（第 20 路 hvac_power_outdoor_a2，C32A+漏保 / 4.0mm²(φ20) proposed，待厂家配电图）；点位 sock_vrf_outdoor_a2 @(7.20,0.50,1.60)（外机本体 @(6.40,0.50)；取电点按预案挂平台东界墙 w_vrv_east 厨房侧脸，落位说明见 config/electrical.yaml）；输入功率估 ≈6kW（20kW 制冷量 / 估 EER≈3.5）；实际接线（专用插座 vs 硬接线）与平台防水/开孔待厂家图与物业核定。⚠️ 外廓 0.99×0.40×0.81m 仍为 estimated；其 0.81m 高与业主补图所列三代 200W 的 1.333m 参考高度相差 0.523m。旧占位值无厂家依据，不能据此判定合同四代机型能否容纳；须厂家提供 LHIV 对应外形、安装净距与平台通风图。"
+      }
+    ]
   },
   "materials": {
     "floor": {

@@ -12,8 +12,8 @@ authorities:
     role: only authoritative source for house geometry; v2.0 vertex format
     update_rule: change geometry only here and preserve room/wall topology
   intent:
-    path: config/layout/overlay.yaml
-    role: authoritative source for all design/render intent
+    paths: [config/model/envelope/openings.yaml, config/model/envelope/floor-zones.yaml, config/model/envelope/finish-defaults.yaml]
+    role: "authoritative source for all design/render intent (merged by server/overlay-merge.ts parseOverlayFiles; issue #98 phase-3 S1 moved the former config/layout/overlay.yaml here)"
     coordinate_rule: same coordinate system as geometry; no independent offset
   furnishing:
     path: config/house.yaml
@@ -32,7 +32,7 @@ authorities:
     path: config/mep-hvac-coordination.yaml
     role: authoritative MEP/HVAC coordination
   ceiling:
-    path: config/ceiling.yaml
+    path: config/model/envelope/ceiling.yaml
     role: authoritative ceiling geometry, levels, access, and components
   materials:
     paths: [config/materials.yaml, config/materials]

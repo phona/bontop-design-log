@@ -29,6 +29,8 @@
  * 本模块**不 import three、不读文件系统**：CLI/verify 负责加载，server 与 app 共用同一份口径。
  */
 
+import { openingsAlongWall, type WallOpeningSpan } from './wall-segments.js';
+
 const EPS = 1e-9;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -350,53 +352,15 @@ export function masonryPointAt(wall: MasonryWallInput, distance: number): { x: n
   return null;
 }
 
-/**
- * 把墙上的 openings（世界坐标中心）投影成沿墙区间。
- * 与 `shared/paint-scope.ts` 的 `doorGapsOnWall` 同款投影：openings 的 x/z 是洞口**中心**绝对值，
- * 投影到墙 from→to 方向得到 along 区间（墙在当前模型里均为单段，保留折线通用性）。
- */
-export function masonryOpeningSpans(wall: MasonryWallInput): Array<{
-  id: string;
-  kind: 'door' | 'window';
-  from: number;
-  to: number;
-  bottom: number;
-  top: number;
-}> {
-  const segments = wallSegments(wall);
-  const total = masonryWallLength(wall);
-  const out: Array<{ id: string; kind: 'door' | 'window'; from: number; to: number; bottom: number; top: number }> = [];
-  for (const opening of wall.openings ?? []) {
-    let remaining = total;
-    let along = -1;
-    for (const segment of segments) {
-      const dx = segment.x2 - segment.x1;
-      const dz = segment.z2 - segment.z1;
-      const length = Math.hypot(dx, dz);
-      if (length <= EPS) continue;
-      const t = ((opening.x - segment.x1) * dx + (opening.z - segment.z1) * dz) / (length * length);
-      if (t < -1e-6 || t > 1 + 1e-6) {
-        remaining -= length;
-        continue;
-      }
-      const clamped = Math.min(1, Math.max(0, t));
-      along = total - remaining + length * clamped;
-      break;
-    }
-    if (along < 0) continue;
-    const half = opening.width / 2;
-    const bottom = opening.sill ?? 0;
-    out.push({
-      id: opening.id,
-      kind: opening.type === 'door' ? 'door' : 'window',
-      from: along - half,
-      to: along + half,
-      bottom,
-      top: bottom + opening.height,
-    });
-  }
-  return out;
-}
+// ── 开洞投影已统一 ──────────────────────────────────────────────────────────
+// 本模块原有一份 `masonryOpeningSpans` 副本（注释自认"与 doorGapsOnWall 同款投影"），
+// 2026-11-07（issue #98 第三阶段 S2）删除，全改走 `shared/wall-segments.ts` 的
+// `openingsAlongWall`——开洞投影唯一入口。
+//
+// **fail-closed 语义变更（设计文档 §5.6 裁决）**：原实现对非门洞口缺 sill 取
+// `opening.sill ?? 0`（按落地洞扣），统一后继承涂装侧的 `openingSill`：门 → 0，
+// 非门缺 sill **抛错**。本案 model-geometry 的 9 条 openings 全部是 door，
+// 现行数据零行为变化；将来若有窗/垭口声明缺 sill，这里会红而不是静默少扣。
 
 /** 点是否在多边形内或边上。边界算「内」：`corridor_floor` 的四角正压在邻房边上。 */
 export function masonryPointInPolygonOrOnEdge(
@@ -753,9 +717,9 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   // 口径与 `shared/finish/rules.ts` 的 F07a `finish.tile_over_opening` 一致：只查**竖向**面层
   // （wall_region + sill 的 front 竖面）——`wall_region` 是单张 PlaneGeometry、不拆洞，
   // 盖住洞口就是实打实多算。水平台面（top / underside）不在 F07a 现行范围内。
-  const openingsByWall = new Map<string, ReturnType<typeof masonryOpeningSpans>>();
+  const openingsByWall = new Map<string, WallOpeningSpan[]>();
   for (const wall of input.walls) {
-    const spans = masonryOpeningSpans(wall);
+    const spans = openingsAlongWall(wall);
     if (spans.length) {
       openingsByWall.set(wall.id, spans);
       result.openingsProjected += spans.length;

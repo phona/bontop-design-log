@@ -2,7 +2,7 @@
 
 > **核心原则**：所有数据本地化、版本化、可审计。AI驱动创意，Python驱动计算与归档，业主只做决策与验收。
 >
-> **当前效果预览主线**：Web + GPT。Web/CLI GLB 导出与比较保持 active；Blender 渲染主线已暂停，源码冷归档见 `scripts/archive/blender-pipeline/README.md`，不再提供默认 npm 或 wrapper 入口。
+> **当前效果预览主线**：Web + GPT。GLB 导出已下线（issue #168），Web 端为唯一现役渲染/预览线；Blender 渲染主线已暂停，源码冷归档见 `scripts/archive/blender-pipeline/README.md`，不再提供默认 npm 或 wrapper 入口。
 
 ## 项目信息
 
@@ -97,10 +97,10 @@ cat config/budget/base.json
 cat docs/README.md
 
 # 查看待决策事项（决策日志入口：索引 + 模板 + 待决）
-cat docs/decisions/README.md
+DEC 档案已于 2026-11-09（issue #98 第六阶段 S3）整份退场，292 条编号的解析靶子改为 git 史 + 墓碑（config/decision-knowledge.yaml 的 retired 段）
 
 # 查某条决策（反查编号）
-grep -rn "DEC-2026-10-08-R01" docs/decisions/
+grep -rn "DEC-2026-10-08-R01" config/decision-knowledge.yaml   # 编号的解析靶子：git 史 + 墓碑（ retired 段 record 字段给出行定位）
 ```
 
 ### 日照模拟
@@ -113,7 +113,7 @@ grep -rn "DEC-2026-10-08-R01" docs/decisions/
 
 ### 吊顶分区高亮与算量（DEC-2026-10-08-C01）
 
-机电组点“吊顶分区”按钮：按 `config/ceiling.yaml` 的逐分区声明上色——**每个分区一个颜色**（同工艺同一色相带，按分区 id 哈希取点，新增/删除分区不打乱已有颜色），图例按工艺分组并给出净面积/展开面积/延长米（窗帘盒）/板块数（铝扣板），点图例某行可隔离该分区。hover 任一分区即在“机电信息”里看到工艺、净面积、展开面积与板块数。
+机电组点“吊顶分区”按钮：按 `config/model/envelope/ceiling.yaml` 的逐分区声明上色——**每个分区一个颜色**（同工艺同一色相带，按分区 id 哈希取点，新增/删除分区不打乱已有颜色），图例按工艺分组并给出净面积/展开面积/延长米（窗帘盒）/板块数（铝扣板），点图例某行可隔离该分区。hover 任一分区即在“机电信息”里看到工艺、净面积、展开面积与板块数。
 
 算量与 3D 严格同源（同一个函数 `shared/ceiling-takeoff.ts`，几何口径与 `CeilingZoneBuilder` 一致）：
 
@@ -130,18 +130,18 @@ npm run takeoff:ceiling -- --json  # 机器可读
 
 ### 涂漆（墙顶面独立选择）一键高亮与成本核算（DEC-2026-10-08-C05、DEC-2026-10-15-P17）
 
-机电组点「涂漆区」按钮：按 `config/layout/overlay.yaml` 的 **32 段 `paint_region` 声明**透视高亮已选墙面——绿色单色、初始 opacity 0.38、检视态 0.55、`renderOrder` 100、`depthTest=false`；平面沿墙法线**朝声明房间侧外偏移 0.068m**，因此同一段墙上的贴砖面与双面涂漆的另一面不会共面。顶面由独立的 8 条 `paint_ceiling_region` 声明选择并单独计量；缺少顶面声明就表示该房间顶面不纳入涂装，不从墙面选择推导。两类声明可分别增删，涂漆检视态仍只高亮墙面和已选窗台，不显示顶面。
+机电组点「涂漆区」按钮：按 `config/layout/model-geometry.yaml` 墙条目 `finish.paint_bands`（issue #98 S4 起面层配方下沉为墙特征，承接原 overlay 声明文件的 **31 段 `paint_region` 声明**）透视高亮已选墙面——绿色单色、初始 opacity 0.38、检视态 0.55、`renderOrder` 100、`depthTest=false`；平面沿墙法线**朝声明房间侧外偏移 0.068m**（半墙厚 + 8mm，`wallFaceOffset` 解析器按墙 `line_datum` 解算），因此同一段墙上的贴砖面与双面涂漆的另一面不会共面。顶面涂装是房间特征 `ceiling_finish`（8 间）并单独计量；房间没有该特征就表示其顶面不纳入涂装，不从墙面选择推导。两类声明可分别增删，涂漆检视态仍只高亮墙面和已选窗台，不显示顶面。
 
 墙面、顶面与窗台各自有明确选择声明；成本核算和预算统一读取这些声明，墙面和顶面的计算不要求房间集合相同。`house.yaml#rooms[].wall_finish` 只校验墙面选择。
 
 ```bash
-npx tsx --test tests/server/paint-scope.test.ts   # 32 段墙面声明 + 逐房间独立复算面积 + 成本四情景
+npx tsx --test tests/server/paint-scope.test.ts   # 31 段墙面涂装带 + 逐房间独立复算面积 + 成本四情景
 npx tsx --test tests/server/paint-sill-scope.test.ts  # 上飘窗外露面几何（遮挡扣除/端面/守恒）
 ```
 
 当前声明快照：**8 间房、48 段声明** = 32 段 `paint_region`（墙面）+ 8 段 `paint_ceiling_region`（显式顶面）+ **8 段 `paint_sill_region`（上飘窗外露面）**。顶面和墙面是独立选择；现有主走廊 3 段墙面及 1 段顶面声明均保留。2026-10-09 业主裁定「所有上飘窗都算上」：主卫那处刷**防霉漆**（单独计价，费率待现场核验与分项报价），其余 7 处按普通乳胶漆计入 `ordinaryAreaSqm`；相邻飘窗背靠背的端面按「算 0 次」由 `bayCoversCap` 剔除（内部接缝不外露）。入户花园已出范围——开发商已做好墙面，收房后视情况再定；厨房本来就在范围外（贴砖墙）。
 
-**门窗洞按实扣除**（业主 2026-10-08 裁定）：3D 每段平面在洞口处拆成「洞口以下的左右条 + 洞口以上的通长带」，当前毛墙面 **188.375㎡** − 门洞 **20.340㎡** = 净墙面 **168.035㎡**（3D 高亮的就是这个范围）+ 独立选中的顶面 **106.974㎡** + 上飘窗 **37.198㎡**（普通漆 33.643 + 防霉漆 3.555）= 全部涂装面 **312.207㎡**；其中**按普通乳胶漆计费 308.652㎡**（防霉漆窗台单独计价，不进普通漆金额；砖漆互斥后两卫漆声明已让出防水/防溅砖带，厨房上飘窗 P09 已整块改贴砖，P11 起瓷砖与漆声明均不盖门洞）。当前三段主走廊墙面、3.75㎡顶面已纳入这些值。顶面口径 2026-10-09 修正：`paint_ceiling_region` 按房取 footprint 后**扣除整间铝扣板投影**——客卫 3.15㎡ 与主卫 4.576㎡ 的顶面整间都是铝扣板，不是涂装面（旧实现按满 footprint 计，多计 7.726㎡，已由独立复算纠正）。窗洞当前为 **0**——全部 8 樘窗都在 suppress 的玻璃幕墙/飘窗让路墙上，本就不是涂装面；`bay_sill`/`glass_infill` 增加可选 `along`，将来窗声明落到实体墙上会自动扣，缺 `along` 则告警而非静默少扣。拆洞与墙面积算法只有一个实现：`shared/paint-scope.ts`；墙面、顶面和窗台面积由显式声明分别选择与计算。
+**门窗洞按实扣除**（业主 2026-10-08 裁定）：3D 每段平面在洞口处拆成「洞口以下的左右条 + 洞口以上的通长带」，当前毛墙面 **188.375㎡** − 门洞 **20.340㎡** = 净墙面 **168.035㎡**（3D 高亮的就是这个范围）+ 独立选中的顶面 **106.974㎡** + 上飘窗 **37.198㎡**（普通漆 33.643 + 防霉漆 3.555）= 全部涂装面 **312.207㎡**；其中**按普通乳胶漆计费 308.652㎡**（防霉漆窗台单独计价，不进普通漆金额；砖漆互斥后两卫漆声明已让出防水/防溅砖带，厨房上飘窗 P09 已整块改贴砖，P11 起瓷砖与漆声明均不盖门洞）。当前三段主走廊墙面、3.75㎡顶面已纳入这些值。顶面口径 2026-10-09 修正：`paint_ceiling_region` 按房取 footprint 后**扣除整间铝扣板投影**——客卫 3.15㎡ 与主卫 4.576㎡ 的顶面整间都是铝扣板，不是涂装面（旧实现按满 footprint 计，多计 7.726㎡，已由独立复算纠正）。窗洞当前为 **0**——全部 8 樘窗都在 suppress 的玻璃幕墙/飘窗让路墙上，本就不是涂装面；`bay_sill` 增加可选 `along`（`glass_infill` 已随 issue #98 第三阶段 S1 作为 0 元素死类型删除），将来窗声明落到实体墙上会自动扣，缺 `along` 则告警而非静默少扣。拆洞与墙面积算法只有一个实现：`shared/paint-scope.ts`；墙面、顶面和窗台面积由显式声明分别选择与计算。
 
 外部报价登记（DEC-2026-10-08-C07）：`config/paint-comparison.yaml` 的 `quotes[]` 收包工包料类报价，按声明的净计费面积折算总额，并给出「vs PKG-080 计划额 / vs 业主目标 / vs 自下而上涂刷模型」三方对照。当前登记：多乐士包工包料 55 元/㎡ × 308.652㎡ = **¥16,975.86**（高于计划 ¥5,475.86；与默认情景差 ¥4,039.56 = 折合 13.09 元/㎡，即基层/腻子/样品成品保护的隐含额度）。覆盖范围与遍数未确认，只对照、不与计划额划等号。
 
@@ -159,7 +159,7 @@ npm run verify:penetration -- --json --shadow    # 附加 OBB 对照与白名单
 
 规则、严重级与豁免只有一份真相：`config/anti-penetration.yaml`。**severity 是下限**——规则按几何量自判更严则保持，配置只许加严、不许放宽；`enabled: false` 降为 info 并标注，不静默消失。豁免必须写 `reason`/`owner`/`expires`，按「规则 + 实体对」匹配且必须绑定稳定 runtime id，禁止按家具类型全局放行；到期自动复活为 error。容差仍只读 `config/spatial-validation.yaml`，配置文件里不出现第二套数字。当前结论：0 error / 8 warning（均为 `furniture_glass_clearance_insufficient`，既有净距不足）。
 
-机电协调构件（管/管井）逐类型显式申报参与策略 `excluded`/`solid`，未申报即 fail-closed；`mb_vanity_pvc_service_chase` 的预留区口径未裁定，10 处墙/家具重叠登记为 `docs/pending-site-data.md` #55 显形债务，未裁定前不当作缺陷、也不为了绿灯改坐标。活动包络（门扇开启、抽屉、电器门）尚未覆盖，详见 `docs/penetration-lint.md`。
+机电协调构件（管/管井）逐类型显式申报参与策略 `excluded`/`solid`，未申报即 fail-closed；`mb_vanity_pvc_service_chase` 的预留区口径未裁定，10 处墙/家具重叠登记为 `原量房台账（已于 S2-B 退场）` #55 显形债务，未裁定前不当作缺陷、也不为了绿灯改坐标。活动包络（门扇开启、抽屉、电器门）尚未覆盖，详见 `docs/penetration-lint.md`。
 
 ### 面层范围核查（DEC-2026-10-09-P06）
 
@@ -183,9 +183,9 @@ npm run state:project                # 人读：逐构件状态 + 未裁定/有�
 npm run state:project -- --json      # 机器可读：每构件一条 {status, statusSource, openQuestion, conflicts}
 ```
 
-回答一个问题：**每个构件确认到什么程度、卡在谁、和谁冲突。** 状态只派生不存储——权威仍在 `config/*.yaml` 的 `status`/`position_status`、`docs/pending-site-data.md` 的 73 条待决、`docs/decisions/` 的 DEC 与各 verifier 结论；本命令产出的是视图。优先级：门禁 error(`conflicted`) > config 字段 > 待决台账(`pending`) > DEC 引用(`confirmed`) > **`undeclared`（派生不出来，显形而不是默认已确认）**。规则顺序与状态词映射在 `config/state-model.yaml`，可评审。
+回答一个问题：**每个构件确认到什么程度、卡在谁、和谁冲突。** 状态是对象的声明、只派生不存储——权威是 `config/*.yaml` 的 `status`/`position_status` 与 `blocker`（`kind`/`owner`/`trigger`/`reverses_if`/`rationale`）、`原量房台账（已于 S2-B 退场）` 的 98 条待决与各 verifier 结论；本命令产出的是视图。优先级：门禁 error(`conflicted`) > config 字段（`config_status`）> **`undeclared`（派生不出来，显形而不是默认已确认）**。（2026-11-08 业主裁定①：`decision`——「note 里有 DEC 编号 → confirmed」与 `ledger`——「查 pending-site-data.md 命中某条 → pending」两条查表规则已删，编号与台账命中不再产生状态。）规则顺序与状态词映射在 `config/state-model.yaml`，可评审。
 
-当前快照：**164 个构件** = confirmed 73 / undeclared 68 / pending 21 / inferred 2（`tests/server/element-state.test.ts` 钉住总数与申报缺口，数字变化必须是有意的）。`sock_child_ac` 可答：「pending，卡在空调厂家深化图（#42）」。不需要 MCP——agent 读配置、跑这条命令、curl 既有 API 已足够。（2026-10-22 起 MCP 服务端已整体删除，本地 AI 直接拉文件 / 跑 CLI / curl API。）
+当前快照：**162 个构件** = confirmed 6 / undeclared 2 / pending 37 / inferred 117（`tests/server/element-state.test.ts` 钉住总数与申报缺口，数字变化必须是有意的；2026-11-08 issue #98 S1-B：DEC 引用通道退役、67 个构件按语义 triage 补显式申报——confirmed 剩 6 全为 config/hvac.yaml anchor 权威状态，未丢任何数据）。`sock_child_ac` 可答：「pending，卡在空调厂家深化图（#42）」。不需要 MCP——agent 读配置、跑这条命令、curl 既有 API 已足够。（2026-10-22 起 MCP 服务端已整体删除，本地 AI 直接拉文件 / 跑 CLI / curl API。）
 
 ## 核心原则
 

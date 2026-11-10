@@ -2,8 +2,7 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { load as parseYaml } from 'js-yaml';
-import { collectElements, collectKnownTypes } from '../shared/element-sources.js';
-import { classifyTarget, parsePendingLedger } from '../shared/pending-ledger.js';
+import { collectElements } from '../shared/element-sources.js';
 import {
   DEFAULT_STATE_MODEL,
   deriveElementStates,
@@ -18,8 +17,10 @@ import {
  * 让浏览器里的 3D 也能回答「这个构件确认到什么程度、卡在谁、和谁冲突」。
  *
  * 三条约束（与 CLI 同一套，不另写一份真相）：
- * 1. **只派生不存储**：权威仍在 config/*.yaml、docs/pending-site-data.md、DEC 与 verifier，
+ * 1. **只派生不存储**：权威仍在 config/*.yaml 的 `status` / `blocker` 字段与 verifier，
  *    本服务每次请求现算（或读缓存），不落盘、不引入第二份状态。
+ *    2026-11-08 issue #98 S2-A：**不读 原量房台账（已于 S2-B 退场）**——状态与「卡在谁」
+ *    全部来自对象自身的 status / blocker（业主裁定①③⑤）。
  * 2. **fail-closed**：任何一份输入读不到 / 解析失败 → 抛错，由路由转 503。
  *    绝不返回空 states 假装「没有状态」——那比报错更危险。
  * 3. **conflicts 路径缓存**：跑三个 verifier 约 3 秒，不能每次请求都跑；
@@ -55,9 +56,15 @@ export interface GetElementStateOptions {
   refresh?: boolean;
 }
 
-interface StateModelConfig extends StateModel {
+// config/state-model.yaml 的词汇表键名是蛇形 status_vocabulary（coverage 矩阵
+// config/facts.yaml 按此名登记 reader）；此前这里继承 StateModel 读到的是驼峰
+// statusVocabulary，蛇形键静默走 DEFAULT_STATE_MODEL——CLI（state-projection.ts）
+// 已于 S1-B 改读蛇形，服务端读者同一文件同一键，必须同口径，否则 CLI 与 API 静默分叉。
+// 默认值与 YAML 内容逐键相同，故无行为差；但今后改词汇表只有 CLI 会变。
+interface StateModelConfig {
+  priority?: StateModel['priority'];
+  status_vocabulary?: StateModel['statusVocabulary'];
   issue_sources?: string[];
-  element_bearing_files?: Record<string, string>;
 }
 
 function readYaml<T>(file: string): T {
@@ -114,49 +121,23 @@ function collectIssues(sources: string[]): IssueLike[] {
   return issues;
 }
 
-/** 台账腐烂核对：指向承载构件的文件、但配置里已不存在的引用（与 CLI 同口径）。 */
-function collectDanglingLedgerRefs(
-  ledger: ReturnType<typeof parsePendingLedger>,
-  elementBearing: Record<string, string>,
-  knownElementIds: Set<string>,
-): Array<{ ref: string; file: string; id: string }> {
-  const knownTypes = collectKnownTypes();
-  const dangling: Array<{ ref: string; file: string; id: string }> = [];
-  for (const entry of ledger.entries) {
-    for (const target of entry.targets) {
-      if (!elementBearing[target.file] || !target.id) continue;
-      if (classifyTarget(target, knownElementIds, knownTypes) === 'unresolved') {
-        dangling.push({ ref: entry.ref, file: target.file, id: target.id });
-      }
-    }
-  }
-  return dangling;
-}
-
 /**
  * 现算一次投影。`issues` 为空数组 = 不带 conflicts 的路径（只读配置 + 台账，不跑 verifier）。
  *
- * `modelConfig` 一份两用：priority / status_vocabulary 喂派生模型，
- * element_bearing_files 喂台账腐烂核对（与 CLI 同口径）。
+ * `modelConfig` 只提供 priority / status_vocabulary / issue_sources；台账腐烂核对的
+ * 承载文件表在 shared/envelope-sources.ts（S6，见 collectDanglingLedgerRefs 注释）。
  */
-function projectElementStates(
+export function projectElementStates(
   issues: IssueLike[],
   modelConfig: StateModelConfig = readYaml<StateModelConfig>('config/state-model.yaml'),
 ): ElementStatePayload {
   const model: StateModel = {
     priority: modelConfig.priority ?? DEFAULT_STATE_MODEL.priority,
-    statusVocabulary: modelConfig.statusVocabulary ?? DEFAULT_STATE_MODEL.statusVocabulary,
+    statusVocabulary: modelConfig.status_vocabulary ?? DEFAULT_STATE_MODEL.statusVocabulary,
   };
 
-  const ledger = parsePendingLedger(readFileSync(path.join(ROOT, 'docs/pending-site-data.md'), 'utf8'));
   const elements = collectElements();
-  const result = deriveElementStates({ elements, ledger, issues, model });
-
-  const dangling = collectDanglingLedgerRefs(
-    ledger,
-    modelConfig.element_bearing_files ?? {},
-    new Set(elements.map((element) => element.id)),
-  );
+  const result = deriveElementStates({ elements, issues, model });
 
   return {
     version: 1,
@@ -167,14 +148,7 @@ function projectElementStates(
     summary: result.summary,
     // 与 CLI 同序：按 status 再按 id，app 与 `npm run state:project` 逐行可比。
     states: [...result.states].sort((a, b) => a.status.localeCompare(b.status) || a.id.localeCompare(b.id)),
-    warnings: [
-      ...result.warnings,
-      ...dangling.map((item) => ({
-        code: 'state.ledger_dangling',
-        entity: `${item.file} ${item.id}`,
-        message: `pending-site-data #${item.ref} references a构件 that no longer exists in config`,
-      })),
-    ],
+    warnings: result.warnings,
   };
 }
 

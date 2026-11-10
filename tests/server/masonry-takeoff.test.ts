@@ -1,11 +1,12 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { load } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
+import { suppressedWallIds } from '../../shared/suppression.js';
 import {
   computeMasonryTakeoff,
-  masonryOpeningSpans,
   masonryPointAt,
   masonryTileableWallLength,
   masonryUnionLength,
@@ -13,6 +14,7 @@ import {
   type MasonryTakeoffInput,
   type MasonryWallInput,
 } from '../../shared/masonry-takeoff.js';
+import { openingsAlongWall } from '../../shared/wall-segments.js';
 
 // 瓦工算量子系统（shared/masonry-takeoff.ts）。DEC-2026-10-13「预算计算架构根治」阶段 2 第一半。
 // 四道防线：
@@ -25,22 +27,14 @@ import {
 // 且它的 DEC 对账锚点停在 R11（15.33㎡ / 1.86㎡ / 4.80m）。本测试钉的是 overlay 当前声明的实算值。
 
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
-const OV: any = load(readFileSync('config/layout/overlay.yaml', 'utf8'));
+const OV: any = parseOverlayFiles();
 
-/** overlay.suppress 压制的墙 id（玻璃幕墙 / 实体已删除）。 */
-function suppressedWallIds(): Set<string> {
-  const ids = new Set<string>();
-  for (const entry of OV.suppress ?? []) {
-    for (const key of ['wall', 'walls'] as const) {
-      const value = (entry as Record<string, unknown>)[key];
-      if (!value) continue;
-      for (const wall of Array.isArray(value) ? value : [value]) ids.add(String(wall));
-    }
-  }
-  return ids;
-}
-
-const SUPPRESSED = suppressedWallIds();
+/**
+ * 被 suppress 的墙 id（玻璃幕墙 / 实体已删除）。suppress 改判（2026-11-07 issue #98
+ * 第三阶段 S3）：读墙条目自身的 suppressed 属性，唯一权威实现 shared/suppression.ts
+ * （原 OV.suppress 顶层清单已删）。
+ */
+const SUPPRESSED = new Set<string>(suppressedWallIds(resolveLayout(MG).walls));
 
 /** config → 模块输入。与 tmp/verify-wall-tile.ts 的解析口径一致（js-yaml，不用正则）。 */
 function buildInput(): MasonryTakeoffInput {
@@ -86,27 +80,33 @@ function buildInput(): MasonryTakeoffInput {
 
   return {
     walls,
-    wallRegions: elements
-      .filter((element) => element.type === 'wall_region')
-      .map((element) => ({
-        id: element.id,
-        wall: element.wall,
-        room: element.room,
-        along: element.along,
-        bottom: element.bottom ?? 0,
-        height: element.height,
-        zone: element.zone,
+    // 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：贴砖带不再是 overlay 平级元素
+    // wall_region，而是墙对象自己的 finish.tile_bands[]（model-geometry.yaml）；
+    // 防水台/上飘窗贴砖不再是 sill_region，而是 bay_sill 构件的 finish.tile[]
+    // （envelope/openings.yaml）。装载口径与 server/budget-calculator.ts 同源。
+    wallRegions: (MG.walls ?? []).flatMap((wall: any) =>
+      (wall.finish?.tile_bands ?? []).map((band: any) => ({
+        id: band.id,
+        wall: wall.id,
+        room: band.room,
+        along: band.along,
+        bottom: band.bottom ?? 0,
+        height: band.height,
+        zone: band.zone,
       })),
+    ),
     sillRegions: elements
-      .filter((element) => element.type === 'sill_region')
-      .map((element) => ({
-        id: element.id,
-        element: element.element,
-        room: element.room,
-        face: element.face,
-        along: element.along,
-        zone: element.zone,
-      })),
+      .filter((element) => element.type === 'bay_sill')
+      .flatMap((element) =>
+        (element.finish?.tile ?? []).map((band: any) => ({
+          id: band.id,
+          element: element.id,
+          room: band.room,
+          face: band.face,
+          along: band.along,
+          zone: band.zone,
+        })),
+      ),
     baySills,
     rooms,
     // config/tile-comparison.yaml 的 dry_room_ids（六个干区主地面）；湿区 = 两间卫生间。
@@ -484,7 +484,7 @@ test('纯函数：墙长 / 沿线取点 / 洞口投影 / union', () => {
     z2: 2.86,
     openings: [{ id: 'd_mbath', type: 'door', x: 1.55, z: 2.86, width: 0.8, height: 2.1 }],
   };
-  const spans = masonryOpeningSpans(withOpening);
+  const spans = openingsAlongWall(withOpening);
   assert.equal(spans.length, 1);
   close(spans[0].from, 1.15, 'offset 语义是「锚点到洞口中心」，与 layout-resolver 同口径');
   close(spans[0].to, 1.95);

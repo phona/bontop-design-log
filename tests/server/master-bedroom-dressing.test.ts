@@ -5,6 +5,9 @@ import { load } from 'js-yaml';
 import { FURNITURE_DIMS, isCurtainSoftEnvelopePreview, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type RenderLightingFixture } from '../../shared/types.js';
 import { buildFixture, setNorthWallWardrobe950DoorConfiguration, type NorthWallWardrobe950DoorConfiguration, setNorthWallWardrobe950DoorState } from '../../shared/render/FixtureFactory.js';
 import { buildInfrastructure } from '../../shared/render/InfrastructureBuilder.js';
+import { pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { VertexLayoutYaml } from '../../shared/types.js';
 import { buildLightingFixtures } from '../../shared/render/LightingFixtureBuilder.js';
 import * as THREE from 'three';
 
@@ -27,7 +30,7 @@ type ElectricalPoint = {
     panel_group?: { id: string; role: string; center_spacing: number; union_width: number };
   };
 };
-type PlumbingPoint = { id: string; x?: number; z?: number };
+type PlumbingPoint = { id: string; x?: number; z?: number; wall?: string; wall_side?: string; along?: number; face_offset?: number };
 type RuntimeAabb = { minX: number; maxX: number; minY: number; maxY: number; minZ: number; maxZ: number };
 
 const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: Record<string, Furnishing[]> };
@@ -71,10 +74,31 @@ function placed(type: string, room: Furnishing[] = master): Furnishing {
   return item;
 }
 
+// 主卧宿主墙索引（issue #98 S1/S3）：点位定位走 shared/point-placement.ts 单一解算，
+// 沿墙点位不再声明绝对 x/z，测试里的「坐标」一律取解析结果（与 3D/DXF/MEP 同源）。
+// 索引直接取 model-geometry（经 resolveLayout），不手抄墙段——手抄就会出现第二份几何。
+const MB_POINT_WALLS = pointWallIndexFromElements(
+  resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls,
+);
+
+function plumbPoint(id: string): PlumbingPoint {
+  const found = plumbing.find((candidate) => candidate.id === id);
+  assert.ok(found, `missing plumbing point ${id}`);
+  if (found.wall === undefined) return found;
+  const { placement, diagnostic } = resolvePointPlacementInWalls(found as never, MB_POINT_WALLS);
+  assert.equal(diagnostic, undefined, `${id}: ${diagnostic ?? ''}`);
+  assert.ok(placement, `${id}: 解算失败`);
+  return { ...found, x: placement!.x, z: placement!.z };
+}
+
 function point(id: string): ElectricalPoint {
   const found = electrical.find((candidate) => candidate.id === id);
   assert.ok(found, `missing electrical point ${id}`);
-  return found;
+  if (found.wall === undefined) return found;
+  const { placement, diagnostic } = resolvePointPlacementInWalls(found as never, MB_POINT_WALLS);
+  assert.equal(diagnostic, undefined, `${id}: ${diagnostic ?? ''}`);
+  assert.ok(placement, `${id}: 解算失败`);
+  return { ...found, x: placement!.x, z: placement!.z };
 }
 
 // 世界 AABB：奇数 quarter-turn 旋转交换 width/depth（与 verify-furniture-placement 同口径）
@@ -123,7 +147,7 @@ function runtimeElectricalAabb(id: string): RuntimeAabb {
   const built = buildInfrastructure({
     electrical: [normalized as any],
     plumbing: [],
-    wallSegments: new Map([['w_mb_east', [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }]]]),
+    pointWalls: MB_POINT_WALLS,
   });
   const fixture = built.electrical[0];
   assert.ok(fixture, `missing runtime electrical fixture ${id}`);
@@ -147,11 +171,11 @@ test('950 left shift clears d_mb while preserving the north-wall room envelope',
 });
 
 test('R9 master-bedroom furniture set places the 950 three-door wardrobe and removes R5/R6 objects', () => {
-  assert.deepEqual(placed('bed_180'), { type: 'bed_180', x: 3.20, z: 7.40, rotation: 270 });
-  assert.deepEqual(placed('master_north_wall_wardrobe_950'), { type: 'master_north_wall_wardrobe_950', x: 2.45, z: 4.59, rotation: 0 });
-  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', x: 2.45, z: 4.59, rotation: 0 });
-  assert.deepEqual(placed('master_bedside_cabinet_350_north'), { type: 'master_bedside_cabinet_350_north', x: 4.01, z: 6.245, rotation: 0 });
-  assert.deepEqual(placed('master_bedside_cabinet_350_south'), { type: 'master_bedside_cabinet_350_south', x: 4.01, z: 8.555, rotation: 0 });
+  assert.deepEqual(placed('bed_180'), { type: 'bed_180', id: 'mb.bed_180', x: 3.20, z: 7.40, rotation: 270 });
+  assert.deepEqual(placed('master_north_wall_wardrobe_950'), { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 });
+  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', id: 'mb.wardrobe_pelmet', x: 2.45, z: 4.59, rotation: 0 });
+  assert.deepEqual(placed('master_bedside_cabinet_350_north'), { type: 'master_bedside_cabinet_350_north', id: 'mb.bedside_cabinet_north', x: 4.01, z: 6.245, rotation: 0 });
+  assert.deepEqual(placed('master_bedside_cabinet_350_south'), { type: 'master_bedside_cabinet_350_south', id: 'mb.bedside_cabinet_south', x: 4.01, z: 8.555, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.master_north_wall_wardrobe_950, { width: 0.95, depth: 0.58 });
   assert.deepEqual(FURNITURE_DIMS.master_bedside_cabinet_350_north, { width: 0.38, depth: 0.35 });
   assert.deepEqual(FURNITURE_DIMS.master_bedside_cabinet_350_south, { width: 0.38, depth: 0.35 });
@@ -180,17 +204,21 @@ test('R9 master-bedroom furniture set places the 950 three-door wardrobe and rem
   }
   for (const type of ['mb_vanity_lower_board', 'mb_vanity_main_board']) {
     const board = master.find((item) => item.type === type);
-    assert.deepEqual(board, { type, wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 3.61, width: 1.38, depth: 0.565, wall_clearance: 0.015 });
+    // along 2.51 = 沿墙距离（自墙段起点顶点 v_bath_ne z=1.10 向北量，2026-11-07 issue #98
+    // 删除本墙「along = 绝对 z」历史特例）→ 世界 z = 1.10 + 2.51 = 3.61。
+    assert.deepEqual(board, { type, id: { mb_vanity_base_cabinet: 'mb.vanity_base_cabinet', mb_vanity_lower_board: 'mb.vanity_lower_board', mb_vanity_main_board: 'mb.vanity_main_board' }[type], wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 });
   }
-  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', x: 2.45, z: 4.59, rotation: 0 });
+  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', id: 'mb.wardrobe_pelmet', x: 2.45, z: 4.59, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.master_wardrobe_top_pelmet, { width: 0.95, depth: 0.58 });
   const baseCabinet = buildFixture('mb_vanity_base_cabinet');
   assert.ok(baseCabinet);
-  baseCabinet!.position.set(2.2575, 0, 3.61);
+  // 摆位中心 = 墙线 2.60 − 半墙厚 0.06 − wall_clearance 0.015 − 深 0.565/2 = 2.2425
+  //（2026-11-06 口径 A 校验共享化后按真实摆位取值；旧 2.2575 系忽略 clearance 的幻影中心）。
+  baseCabinet!.position.set(2.2425, 0, 3.61);
   baseCabinet!.rotation.y = THREE.MathUtils.degToRad(270);
   baseCabinet!.updateMatrixWorld(true);
   const baseBox = new THREE.Box3().setFromObject(baseCabinet!);
-  assert.ok(Math.abs(baseBox.min.x - 1.975) < 1e-6 && Math.abs(baseBox.max.x - 2.54) < 1e-6);
+  assert.ok(Math.abs(baseBox.min.x - 1.96) < 1e-6 && Math.abs(baseBox.max.x - 2.525) < 1e-6);
   assert.ok(Math.abs(baseBox.min.z - 2.92) < 1e-6 && Math.abs(baseBox.max.z - 4.30) < 1e-6);
   assert.equal(buildFixture('mb_vanity_continuous_closure_cabinet'), null);
 });
@@ -199,12 +227,13 @@ test('R9 vanity boards anchor to the wall west finish without bridge geometry', 
   for (const [type, yBand] of [['mb_vanity_lower_board', [0.965, 1.035]], ['mb_vanity_main_board', [1.515, 1.585]]] as const) {
     const board = buildFixture(type);
     assert.ok(board, `missing fixture ${type}`);
-    board!.position.set(2.2575, 0, 3.61);
+    // 摆位中心 2.2425（口径 A 真实摆位，见上方 baseCabinet 注释）。
+    board!.position.set(2.2425, 0, 3.61);
     board!.rotation.y = THREE.MathUtils.degToRad(270);
     board!.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(board!);
     assert.ok(Math.abs(box.min.z - 2.92) < 1e-6 && Math.abs(box.max.z - 4.30) < 1e-6, `${type} z[${box.min.z},${box.max.z}]`);
-    assert.ok(Math.abs(box.min.x - 1.975) < 1e-6 && Math.abs(box.max.x - 2.54) < 1e-6, `${type} AABB must be x[1.975,2.54]`);
+    assert.ok(Math.abs(box.min.x - 1.96) < 1e-6 && Math.abs(box.max.x - 2.525) < 1e-6, `${type} AABB must be x[1.96,2.525]`);
     assert.ok(box.min.y >= yBand[0] - 1e-6 && box.max.y <= yBand[1] + 1e-6, `${type} y band ${box.min.y}..${box.max.y}`);
     const endFinish = board!.children.find((child) => child.userData.part === 'wardrobe-side-board-end');
     assert.equal(endFinish, undefined, `${type} must remain a plain floating board without a wardrobe-colored end panel`);
@@ -246,8 +275,8 @@ test('R9 wardrobe top pelmet closes the left-shifted 950 wardrobe-to-head-box se
 test('dressing table and stool use the 2026-09-04 R1 window-adjacent candidate transforms', () => {
   const table = placed('master_dressing_table');
   const stool = placed('dressing_stool');
-  assert.deepEqual(table, { type: 'master_dressing_table', x: 0.425, z: 6.05, rotation: 90 });
-  assert.deepEqual(stool, { type: 'dressing_stool', x: 0.42, z: 6.05, rotation: 90 });
+  assert.deepEqual(table, { type: 'master_dressing_table', id: 'mb.dressing_table', x: 0.425, z: 6.05, rotation: 90 });
+  assert.deepEqual(stool, { type: 'dressing_stool', id: 'mb.dressing_stool', x: 0.42, z: 6.05, rotation: 90 });
   assert.deepEqual(FURNITURE_DIMS.master_dressing_table, { width: 0.90, depth: 0.45 });
   assert.deepEqual(FURNITURE_DIMS.dressing_stool, { width: 0.42, depth: 0.40 });
   // rotation=90 后桌 footprint：x[0.20,0.65] z[5.60,6.50]，桌背与西玻璃 x=0 留约 0.20m 通风/冷凝缝
@@ -264,9 +293,9 @@ test('dressing table and stool use the 2026-09-04 R1 window-adjacent candidate t
 test('washbasin-only cabinet preserves envelope and plumbing center without a dressing chair', () => {
   // 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：
   // 柜体东移 5cm 收宽 1.05，盆/龙头居中至 x=0.575
-  assert.deepEqual(placed('mb_washbasin_cabinet'), { type: 'mb_washbasin_cabinet', x: 0.575, z: 3.16, rotation: 0 });
+  assert.deepEqual(placed('mb_washbasin_cabinet'), { type: 'mb_washbasin_cabinet', id: 'mb.washbasin_cabinet', x: 0.575, z: 3.16, rotation: 0 });
   assert.deepEqual(FURNITURE_DIMS.mb_washbasin_cabinet, { width: 1.05, depth: 0.50 });
-  const faucet = plumbing.find((candidate) => candidate.id === 'faucet_mbath_vanity');
+  const faucet = plumbPoint('faucet_mbath_vanity');
   assert.ok(faucet);
   assert.equal(faucet.x, 0.575);
   assert.equal(faucet.z, 2.96);
@@ -342,10 +371,11 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
     assert.equal(p.wall_side, 'west', `${p.id} must keep wall_side west`);
     assert.equal(p.x, 4.20);
   }
-  assert.equal(left.z, 6.202);
-  assert.equal(switchN.z, 6.288);
-  assert.equal(right.z, 8.512);
-  assert.equal(switchL.z, 8.598);
+  // 沿墙解算的浮点尾差（along + 墙段起点的加减）用 GAP_EPS 容差收口；4.20 是墙线本身故严格相等
+  assert.ok(Math.abs(left.z! - 6.202) < GAP_EPS, `left z=${left.z}`);
+  assert.ok(Math.abs(switchN.z! - 6.288) < GAP_EPS, `switchN z=${switchN.z}`);
+  assert.ok(Math.abs(right.z! - 8.512) < GAP_EPS, `right z=${right.z}`);
+  assert.ok(Math.abs(switchL.z! - 8.598) < GAP_EPS, `switchL z=${switchL.z}`);
   // 两侧统一 380×350×500 候选柜分别服务北/南床头点位；两侧均为 172×86 暖白哑光一体双联框（北侧 DEC-2026-09-08-R1 补齐）。
   assert.equal(left.height, 0.75);
   assert.equal(right.height, 0.75);
@@ -407,7 +437,7 @@ test('removed master-bedroom items stay removed; living room plant survives', ()
   assert.equal(master.some((item) => item.type === 'master_wardrobe_tall_240'), false, 'master_wardrobe_tall_240 must not appear in master_bedroom furnishings');
   assert.equal(master.some((item) => item.type === 'plant_fiddle'), false, '主卧 plant_fiddle 已删除');
   const living = house.furnishings.living_dining;
-  assert.deepEqual(placed('plant_fiddle', living), { type: 'plant_fiddle', x: 7.93, z: 9.18, rotation: 270 });
+  assert.deepEqual(placed('plant_fiddle', living), { type: 'plant_fiddle', id: 'ld.plant_fiddle', x: 7.93, z: 9.18, rotation: 270 });
 });
 
 test('R8 north wardrobe 950 door configurations use real mesh pivots without door interpenetration', () => {
@@ -433,7 +463,7 @@ test('R8 north wardrobe 950 door configurations use real mesh pivots without doo
 
 test('south-window-band low dresser uses the 2026-09-06 east-shifted transform and stays clear of constraints', () => {
   const dresser = placed('master_hot_season_low_dresser');
-  assert.deepEqual(dresser, { type: 'master_hot_season_low_dresser', x: 1.05, z: 9.20, rotation: 180 });
+  assert.deepEqual(dresser, { type: 'master_hot_season_low_dresser', id: 'mb.low_dresser', x: 1.05, z: 9.20, rotation: 180 });
   assert.deepEqual(FURNITURE_DIMS.master_hot_season_low_dresser, { width: 1.40, depth: 0.48 });
   // rotation=180 为偶数 quarter-turn：AABB x[0.35,1.75]，北移后 z 约[8.96,9.44]，正面（局部 +z）转朝北对房间
   const box = worldAabb(dresser);
@@ -456,7 +486,7 @@ test('south-window-band low dresser uses the 2026-09-06 east-shifted transform a
 
 test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven and 950-adapted', () => {
   type CeilingEntry = { id: string; room?: string; type: string; x?: number; z?: number; height?: number; thickness?: number; area?: [number, number, number, number]; power_point?: string };
-  const ceiling = load(readFileSync('config/ceiling.yaml', 'utf8')) as CeilingEntry[];
+  const ceiling = load(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as CeilingEntry[];
   const hvac = load(readFileSync('config/hvac.yaml', 'utf8')) as { plans: Array<{ diagram: { terminals: Array<{ id: string; system: string; position: { x: number; y: number; z: number }; mount_face: string; length?: number }> } }> };
   const box = ceiling.find((entry) => entry.id === 'ceiling_master_ac');
   assert.ok(box, 'missing ceiling_master_ac');

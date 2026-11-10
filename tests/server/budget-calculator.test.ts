@@ -1,3 +1,4 @@
+import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -73,7 +74,7 @@ describe('BudgetCalculator', () => {
     // DEC-2026-10-09-P16：非房间地面**默认**进算量，只有两种例外退出——① 整块落在某个
     // applyRooms 房间内（几何判定，双计路径从根上消失）；② 显式 `excluded: true`。
     // 这里独立复算同一口径（不调生产函数 loadMasonryTakeoff），两边各自算才算交叉验证。
-    const overlay = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8'));
+    const overlay = parseOverlayFiles();
     const shoelace = (pts: Array<{ x: number; z: number }>) => {
       let acc = 0;
       for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) acc += pts[j].x * pts[i].z - pts[i].x * pts[j].z;
@@ -202,7 +203,7 @@ describe('BudgetCalculator', () => {
   // （shared/masonry-takeoff.ts 是地面算量唯一实现），缝仍是「注入 elements」。
   it('DEC-2026-10-09-P16 负例①：excluded:false 救不回落在已计费房间内的双计', () => {
     const catalog = ProjectCatalog.load('.');
-    const elements = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
+    const elements = parseOverlayFiles().elements ?? [];
     const base = loadMasonryTakeoff(catalog);
     const forced = loadMasonryTakeoff(catalog, elements.map((element: any) =>
       element.id === 'corridor_floor' ? { ...element, excluded: false } : element));
@@ -227,7 +228,7 @@ describe('BudgetCalculator', () => {
   // 这是新口径唯一允许的例外口子，且必须留档到 excludedSqm——「有意不算」和「漏算」要能区分。
   it('DEC-2026-10-09-P16 负例②：不在任何房间内的 region 标 excluded:true 即退出', () => {
     const catalog = ProjectCatalog.load('.');
-    const elements = parseOverlay(readFileSync('config/layout/overlay.yaml', 'utf8')).elements ?? [];
+    const elements = parseOverlayFiles().elements ?? [];
     const base = loadMasonryTakeoff(catalog);
     const marked = loadMasonryTakeoff(catalog, elements.map((element: any) =>
       element.id === 'main_corridor_floor' ? { ...element, excluded: true } : element));
@@ -237,6 +238,32 @@ describe('BudgetCalculator', () => {
       `排除面积要留档（${base.floorRegionExcludedSqm} → ${marked.floorRegionExcludedSqm}）`);
     assert.ok(Math.abs(marked.floorRegionSkippedInsideRoomSqm - base.floorRegionSkippedInsideRoomSqm) < 1e-6,
       '显式排除不该挤占「落在已计费房间内」这一档');
+  });
+
+  // 弧声明相切守卫（7d38aeb5 Codex blocking）：corner=(0,0) 带 r=1/cx=0.6/cz=0.6，
+  // prev=(1.4,0)、next=(0,1.4) 到弧心距离都是 1（在圆上），但半径向量与邻边成 36.87°，
+  // 都不是切点。修前 shared/arc.ts 直取圆上邻点、返回非相切弧，roundedPolygonArea
+  // 算出 cut = −0.308899㎡（负扣减 = 反向加面积）；修后必须在预算装载点抛错。
+  it('弧声明圆上邻点不是切点时预算抛错，而不是静默算出负扣减面积', () => {
+    const catalog = ProjectCatalog.load('.');
+    const elements = parseOverlayFiles().elements ?? [];
+    const nonTangent: any = {
+      id: '__non_tangent_arc_probe__',
+      type: 'floor_region',
+      points: [
+        { x: 1.4, z: 0 },
+        { x: 0, z: 0, radius: 1, cx: 0.6, cz: 0.6 },
+        { x: 0, z: 1.4 },
+      ],
+    };
+    assert.throws(
+      () => loadMasonryTakeoff(catalog, [...elements, nonTangent]),
+      /无法由 tangentArc 解出切点/,
+      '圆上邻点不是切点 → 预算必须抛错，不许静默算负面积',
+    );
+    // 合法声明不受影响：真实 config（含 north_platform_floor 的声明式圆角）照常解算。
+    const takeoff = loadMasonryTakeoff(catalog);
+    assert.ok(Number.isFinite(takeoff.floorRegionExtraSqm), '正常 config 的 floor_region 面积仍解得出');
   });
 
   it('calculates HVAC as global topic', () => {

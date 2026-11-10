@@ -1,6 +1,8 @@
 import { load as parseYaml } from 'js-yaml';
 import { z } from 'zod';
 import type { CeilingZone, ElectricalPoint, HvacAnchor, HvacTerminal, PlumbingPoint, VrfOutdoorUnit } from './types.js';
+import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from './point-placement.js';
+import { normalizeCeilingZone } from './ceiling-zone.js';
 
 export const MepLayerSchema = z.enum([
   'strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant',
@@ -73,6 +75,19 @@ export interface MepEndpointSources {
   hvacAnchors: HvacAnchor[];
   hvacTerminals: HvacTerminal[];
   outdoor: VrfOutdoorUnit[];
+  /**
+   * 点位宿主墙索引（id → 折线段 + line_datum，issue #98 第四阶段 S1）：electrical/plumbing
+   * 点位的路线端点改调 shared/point-placement.ts 单一解算，不再直读声明 x/z。缺省 = 调用方
+   * 没有墙上下文（少数 takeoff 脚本），此时回落声明坐标——断言模式下两者相等
+   * （解析结果 == x/z，容差 0.005m），但墙上下文的调用方必须传，否则 3D/DXF/MEP 会分叉。
+   */
+  pointWalls?: ReadonlyMap<string, PointWall>;
+  /**
+   * mount 挂载点位的家具宿主索引（issue #98 第四阶段 S2）：mount 点位（起夜灯）的路线端点
+   * 由宿主脸解出（宿主移动自动跟随）。缺省 = 调用方没有家具上下文，此时与 pointWalls 同规
+   * 回落声明坐标（断言模式下相等）；有家具上下文的调用方必须传。
+   */
+  mountHosts?: ReadonlyMap<string, PointMountHost>;
 }
 
 export interface MepRouteSemanticMetadata {
@@ -226,6 +241,8 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
     }
     // The render-facts anchor is the cross-file 2D reference for diagrams and
     // operations; it must describe the same 3D node as the MEP topology.
+    // x/y/z 三维 ≤1e-6（issue #98 S1 补 y：resolveMepEndpoint 的 anchor 分支原先丢 y，
+    // 使下面的 y 差恒为 0——探针「anchor y+0.5 不抛、x+0.5 才抛」证实漏检，A §4.3）。
     const anchorPosition = sourceKind === 'hvac anchor' ? resolveMepEndpoint(junction.id, sources) : undefined;
     if (anchorPosition && Math.hypot(
       anchorPosition.x - junction.position.x,
@@ -263,26 +280,70 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
   }
 }
 
+/**
+ * 点位型端点（issue #98 S1）：调 shared/point-placement.ts 单一解算取平面位置。
+ *
+ * 取解算器的完成面基点（datum + wallFaceOffset + face_offset）而不是 3D/DXF 的薄板惯例位置
+ * （datum + 0.075）：管线接在底盒上，不在面盘上。迁移期断言保证该值 == 声明 x/z，故本期
+ * MEP 路线几何零变化（167 个点位端点、107 条路线的穿墙点/坡度链全部机械跟随，无需人工重判）。
+ * 解算失败（along 越界/断引用）返回 undefined，由 validateMepCoordination 的
+ * 「endpoint is unresolved」显形——不回落声明坐标。
+ */
+function resolvedPointEndpoint(
+  point: ElectricalPoint | PlumbingPoint,
+  pointWalls: ReadonlyMap<string, PointWall> | undefined,
+  y: number | undefined,
+  mountHosts: ReadonlyMap<string, PointMountHost> | undefined,
+): { x: number; z: number; y?: number } | undefined {
+  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+  if (!placement) {
+    if (diagnostic === undefined) return undefined;
+    // 无墙/家具上下文时（pointWalls 与 mountHosts 均缺失）退回声明坐标：断言模式下相等，
+    // 且少数 takeoff 脚本不装布局；有上下文却解失败则是真错误，交回 undefined 让上层显形。
+    if (pointWalls === undefined && typeof point.x === 'number' && typeof point.z === 'number') {
+      return { x: point.x, z: point.z, y };
+    }
+    return undefined;
+  }
+  return { x: placement.x, z: placement.z, y };
+}
+
 export function resolveMepEndpoint(endpoint: string | { x: number; z: number; y?: number }, sources: MepEndpointSources, junctions: MepJunction[] = []): { x: number; z: number; y?: number } | undefined {
   if (typeof endpoint !== 'string') return endpoint;
   const junction = junctions.find((item) => item.id === endpoint);
   if (junction) return junction.position;
   const electrical = sources.electrical.find((item) => item.id === endpoint);
-  if (electrical) return { x: electrical.x, z: electrical.z, y: electrical.height ?? electrical.mount_height };
+  if (electrical) return resolvedPointEndpoint(electrical, sources.pointWalls, electrical.height ?? electrical.mount_height, sources.mountHosts);
   const plumbing = sources.plumbing.find((item) => item.id === endpoint);
-  if (plumbing) return { x: plumbing.x, z: plumbing.z, y: plumbing.height };
+  if (plumbing) return resolvedPointEndpoint(plumbing, sources.pointWalls, plumbing.height, sources.mountHosts);
   const anchor = sources.hvacAnchors.find((item) => item.id === endpoint);
   if (anchor) {
-    if (anchor.position) return { x: anchor.position.x, z: anchor.position.z };
+    // junction↔anchor 门禁补 y（issue #98 S1）：原先这里只回 {x,z}，使
+    // validateMepCoordination 的跨文件比较 `(anchorPosition.y ?? junction.position.y)`
+    // 恒等于 0——探针实证「anchor y 加 0.5 不抛、x 加 0.5 才抛」（A §4.3）。带上 y 后该
+    // 比较覆盖 x/y/z 三维。现 config 引用 hvac anchor 的路线全部显式声明 from/to_height
+    // （`route.from_height ?? from.y` 恒取前者），故路线几何零变化。
+    if (anchor.position) return { x: anchor.position.x, y: anchor.position.y, z: anchor.position.z };
     if (anchor.ref) {
-      const refSources = anchor.ref.source === 'ceiling'
-        ? sources.ceiling
-        : anchor.ref.source === 'electrical'
-          ? sources.electrical
-          : sources.outdoor;
+      if (anchor.ref.source === 'electrical') {
+        // E2 收口（A 轨 P1 / E F-3）：电气 ref 一律委托点位分支，走 shared/point-placement.ts
+        // 单一解算。原先「先直读声明 x/z、失败才回落解算器」是潜伏分叉——给 sock_child_ac
+        // 加上过期 x/z=(5.0,4.3) 后本函数返回 (5,4.3)，而解算器与 HvacBuilder 都给 (5.6,4)；
+        // 绝对点位的解果即声明值（迁移期断言恒等），沿墙点位本就没有 x/z 可直读。
+        return resolveMepEndpoint(anchor.ref.id, sources, junctions);
+      }
+      const refSources = anchor.ref.source === 'ceiling' ? sources.ceiling : sources.outdoor;
       const source = refSources.find((item) => item.id === anchor.ref!.id);
-      if (source && typeof source.x === 'number' && typeof source.z === 'number') return { x: source.x, z: source.z };
-      return resolveMepEndpoint(anchor.ref.id, sources);
+      if (!source) return undefined;
+      // ceiling 宿主经 shared/ceiling-zone.ts 归一（area → 中心）：与 HvacBuilder 同一实现，
+      // 关 F-2 潜伏「area-only 内机对象 3D 有、DXF/MEP 圈缺」。outdoor 直读权威坐标。
+      if (anchor.ref.source === 'ceiling') {
+        const zone = normalizeCeilingZone(source as CeilingZone);
+        if (typeof zone.x === 'number' && typeof zone.z === 'number') return { x: zone.x, z: zone.z };
+        return undefined;
+      }
+      if (typeof source.x === 'number' && typeof source.z === 'number') return { x: source.x, z: source.z };
+      return undefined;
     }
   }
   const terminal = sources.hvacTerminals.find((item) => item.id === endpoint);
@@ -295,7 +356,7 @@ export function resolveMepEndpoint(endpoint: string | { x: number; z: number; y?
 export function endpointSourcesFromFacts(facts: {
   electrical: ElectricalPoint[]; plumbing: PlumbingPoint[]; ceiling: CeilingZone[];
   hvac: { plans: Array<{ outdoor: VrfOutdoorUnit; diagram: { anchors: HvacAnchor[]; terminals: HvacTerminal[] } }> };
-}): MepEndpointSources {
+}, pointWalls?: ReadonlyMap<string, PointWall>, mountHosts?: ReadonlyMap<string, PointMountHost>): MepEndpointSources {
   const plan = facts.hvac.plans[0];
   return {
     electrical: facts.electrical,
@@ -304,5 +365,7 @@ export function endpointSourcesFromFacts(facts: {
     hvacAnchors: plan?.diagram.anchors ?? [],
     hvacTerminals: plan?.diagram.terminals ?? [],
     outdoor: plan ? [plan.outdoor] : [],
+    ...(pointWalls ? { pointWalls } : {}),
+    ...(mountHosts ? { mountHosts } : {}),
   };
 }

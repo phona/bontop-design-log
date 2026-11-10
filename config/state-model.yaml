@@ -1,35 +1,49 @@
 # 构件级工程状态派生模型（`npm run state:project`）
 #
 # 本文件只声明**规则顺序与状态词映射**，不复制任何坐标、面积或构件的状态值——
-# 那些权威仍在 config/*.yaml、docs/pending-site-data.md、docs/decisions/ 与各 verifier。
-# 派生不出来的状态是 `undeclared`：一种要显形的状态，不是「默认已确认」。
+# 那些权威仍在 config/*.yaml 与各 verifier。派生不出来的状态是 `undeclared`：
+# 一种要显形的状态，不是「默认已确认」。
+#
+# 2026-11-07（issue #98 第三阶段 S6）删除的字段：原 `element_bearing_files`
+# （`config/electrical.yaml: electrical` 等三行，file → objectId 前缀表）。它与
+# shared/pending-ledger.ts 的 ELEMENT_BEARING_FILES 是同一张表的两份登记，S1 把
+# config/ceiling.yaml 搬进 config/model/envelope/ 后两边都要改——「文件路径构成身份」
+# 的典型形态。现单一真相在 shared/envelope-sources.ts 的来源注册表（源名 → 权威文件 →
+# objectId 前缀），台账腐烂核对改读注册表；本文件不再登记任何配置路径。
+#
+# 2026-11-08（issue #98 第六阶段 S2-A）**状态不再查表**：优先级链删掉两条规则——
+#   `ledger`（查 原量房台账（已于 S2-B 退场） 命中某条 → pending）与
+#   `decision`（note 里有 DEC 编号 → confirmed，issue #98 点名的隐式确认逻辑）。
+# 状态是对象的声明：电气/给排水/吊顶构件的 `status` 是唯一状态字段，pending/undeclared
+# 时必须同时声明 `blocker`（kind/owner/trigger/reverses_if/rationale，门禁见
+# shared/element-blockers.ts）。未决的「卡在谁、何时解锁、何时反转」从此住在对象本体，
+# 不住在任何中央账本。原量房台账（已于 S2-B 退场） 与 docs/decisions/ 的退役见各自切片。
 
 version: 1
 
 # 优先级：从高到低，第一条命中的规则决定该构件的 status。
 #   conflict       有 error 级 verifier issue 触及它      → conflicted
-#   config_status  config 里有 status/position_status    → 按下面词汇表映射
-#   ledger         命中 docs/pending-site-data.md 某条   → pending（附 #编号与「卡在谁」）
-#   decision       声明 note 里有 DEC 引用               → confirmed
+#   config_status  config 里有 status                    → 按下面词汇表映射
 #   fallback        以上都不命中                         → undeclared（显形）
 # 顺序可调，但删掉任何一条都会让对应实现变成「未申报规则」而告警——覆盖矩阵不许说谎。
-priority: [conflict, config_status, ledger, decision, fallback]
+priority: [conflict, config_status, fallback]
 
 # config 状态词 → 统一状态词。
 #   likely → inferred：两者都未经现场核实，统一按「推断」处理；原值保留在 statusSource 里。
+# 2026-11-08（issue #98 S1-B）：本键名保持蛇形 status_vocabulary，改的是**读取端**——
+# 此前 scripts/project/state-projection.ts 只认驼峰 statusVocabulary，蛇形键静默走
+# DEFAULT_STATE_MODEL，词汇表「可评审」沦为死配置；现代码改读蛇形（config/facts.yaml
+# coverage 矩阵 :2104 登记的字段名即 status_vocabulary，改键名会让该行覆盖登记说谎）。
+# 默认值与下面 YAML 内容逐键相同，故本次修复无行为差，只是让声明真正被读取。
+# 2026-11-08（issue #98 S2-A）：补 `undeclared: undeclared`——对象可显形申报「本构件状态
+# 未申报」，与派生兜底同词同义（census 的「申报缺口」计数因此不变）。
 status_vocabulary:
   measured: measured
   likely: inferred
   inferred: inferred
   pending: pending
   confirmed: confirmed
-
-# 台账「填入文件」列里，哪些文件承载场景构件（要按 objectId 前缀拼起来做存在性核对）。
-# 指向 procurement/materials/schedule/budget 的条目本来就不绑定场景构件，不做核对。
-element_bearing_files:
-  config/electrical.yaml: electrical
-  config/plumbing.yaml: plumbing
-  config/ceiling.yaml: ceiling
+  undeclared: undeclared
 
 # 派生时读取的 issue 来源（verifier 名，对应 scripts/verify/ 下的入口）。
 # 只取**与构件绑定相关**的 verifier；全量门禁结论看 `npm run verify:all -- --json`。

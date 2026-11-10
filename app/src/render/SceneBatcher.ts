@@ -11,8 +11,6 @@ import { materialKey, geometrySignature } from './SceneMeshMerger.js';
  * - 拾取：BatchedMesh.raycast 返回 batchId，batch.userData.batchUserData 映射回
  *   源 userData（unit 元数据 + 零件元数据合并），HouseScene.targetFromIntersects 据此解析。
  * - 可见性：setUnitVisible 桥接 unit 级 visible 开关（机电总览等按组切换）。
- * - GLB 导出：restoreScopes() 把原始 mesh 挂回原父级（GLTFExporter 不认 BatchedMesh），
- *   导出后 reapplyScopes() 重新合批。
  *
  * 不适合合批的对象（调用方负责排除）：
  * - 材质需要逐 unit 突变（家具碰撞分析的 emissive 红闪）。
@@ -44,7 +42,6 @@ interface ScopeState {
 
 export class SceneBatcher {
   private scopes = new Map<string, ScopeState>();
-  private restored = new Map<string, { units: THREE.Object3D[]; parent: THREE.Object3D }>();
 
   static isSupported(): boolean {
     return typeof (THREE as { BatchedMesh?: unknown }).BatchedMesh === 'function';
@@ -52,7 +49,6 @@ export class SceneBatcher {
 
   batchScope(scope: string, units: THREE.Object3D[], parent: THREE.Object3D): void {
     this.clearScope(scope);
-    this.restored.delete(scope);
     if (!SceneBatcher.isSupported() || units.length === 0) return;
     // 测试用 mock 对象（无 updateWorldMatrix/traverse）不支持合批，直接跳过
     if (typeof (parent as { updateWorldMatrix?: unknown }).updateWorldMatrix !== 'function') return;
@@ -170,28 +166,6 @@ export class SceneBatcher {
     for (const record of state.records) fn(record.mesh.material as THREE.Material);
   }
 
-  /** 把暂存的原始 mesh 挂回原父级并移除批次（GLB 导出前调用，导出后须 reapplyScopes）。 */
-  restoreScopes(): void {
-    for (const [scope, state] of this.scopes) {
-      for (const record of state.records) {
-        record.mesh.parent?.remove(record.mesh);
-        record.mesh.dispose();
-      }
-      for (const { mesh, originalParent } of state.stashed) {
-        if (!mesh.parent) originalParent.add(mesh);
-      }
-      this.restored.set(scope, { units: state.units, parent: state.parent });
-      this.scopes.delete(scope);
-    }
-  }
-
-  /** 导出后按原 scope 定义重新合批。 */
-  reapplyScopes(): void {
-    const definitions = [...this.restored.entries()];
-    this.restored.clear();
-    for (const [scope, def] of definitions) this.batchScope(scope, def.units, def.parent);
-  }
-
   /** 场景重建时调用：销毁批次，暂存 mesh 不挂回（随旧场景整体丢弃）。 */
   clearScope(scope: string): void {
     const state = this.scopes.get(scope);
@@ -205,6 +179,5 @@ export class SceneBatcher {
 
   disposeAll(): void {
     for (const scope of [...this.scopes.keys()]) this.clearScope(scope);
-    this.restored.clear();
   }
 }

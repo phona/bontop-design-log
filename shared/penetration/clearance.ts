@@ -1,6 +1,7 @@
 import type { ResolvedWall } from '../../shared/types.js';
 import { resolveFurnitureProfile, type ResolvedFurnitureProfile } from '../furniture-profile.js';
 import { FURNITURE_DIMS } from '../../shared/types.js';
+import { furnitureFootprint } from '../furniture-placement.js';
 import { requiredClearance, type SpatialIssue, type SpatialToleranceProfile } from '../spatial-validation.js';
 import type { BoxEntry, SpatialConfig } from './scene.js';
 
@@ -24,10 +25,15 @@ export function profileFor(type: string, config: SpatialConfig): ProfileOverride
   return resolveFurnitureProfile(type, config);
 }
 
+/**
+ * 家具平面尺寸的读取口径。与 3D 渲染 / DXF 外框 / 摆位解算共用
+ * shared/furniture-placement.ts 的 furnitureFootprint（issue #98 PR-3：vanity 的宽深来自
+ * house.yaml vanity_layout，FURNITURE_DIMS 不再存第二套数字）；长度型（连续柜/桥接台面/
+ * 洁柜侧柜）按 length 记外框，与 DXF 出口径一致。
+ */
 export function declaredDims(item: Record<string, unknown>, type: string): { width: number; depth: number } | undefined {
-  const width = typeof item.width === 'number' ? item.width : typeof item.length === 'number' ? item.length : undefined;
-  const depth = typeof item.depth === 'number' ? item.depth : undefined;
-  if (width !== undefined && depth !== undefined) return { width, depth };
+  const declared = furnitureFootprint(item as Parameters<typeof furnitureFootprint>[0]);
+  if (declared.width !== undefined && declared.depth !== undefined) return { width: declared.width, depth: declared.depth };
   return FURNITURE_DIMS[type];
 }
 

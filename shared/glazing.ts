@@ -1,4 +1,4 @@
-import type { SceneElement, WallSegment } from './types.js';
+import type { SceneElement } from './types.js';
 
 export interface RoomCenter {
   id: string;
@@ -88,7 +88,6 @@ function makeAperture(
 export function extractApertures(
   elements: SceneElement[],
   rooms: RoomCenter[],
-  walls: WallSegment[] = []
 ): WindowAperture[] {
   const apertures: WindowAperture[] = [];
 
@@ -101,11 +100,8 @@ export function extractApertures(
         if (Math.hypot(b.x - a.x, b.z - a.z) < 1e-9) continue;
         apertures.push(makeAperture(`${el.id}:seg${i}`, a.x, a.z, b.x, b.z, rooms));
       }
-    } else if (el.type === 'glass_infill') {
-      const wall = walls.find((w) => w.id === el.wall);
-      if (!wall) continue;
-      apertures.push(makeAperture(el.id, wall.x1, wall.z1, wall.x2, wall.z2, rooms));
     }
+    // glass_infill 分支已于 issue #98 第三阶段 S1 删除（overlay 0 元素，从未启用）。
   }
 
   return apertures;

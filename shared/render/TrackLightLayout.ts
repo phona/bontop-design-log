@@ -54,7 +54,7 @@ export function getTrackLightHeadAim(origin: Vec3, config: TrackLightConfig, hea
   return { position, target: targetPosition, direction };
 }
 
-/** Materialize all positions consumed by Web/GLB and Blender from the YAML layout. */
+/** Materialize all positions consumed by Web and Blender from the YAML layout. */
 export function resolveTrackLightHeads(origin: Vec3, config: TrackLightConfig): TrackLightResolvedHead[] {
   return config.heads.map((head) => {
     const aim = getTrackLightHeadAim(origin, config, head);

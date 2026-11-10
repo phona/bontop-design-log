@@ -1,4 +1,5 @@
 import { Router, type Request, type Response } from 'express';
+import { readFileSync } from 'node:fs';
 import { ProjectCatalog } from './project-catalog.js';
 import type { DesignState } from './design-state.js';
 import type { RuleEngine } from './rule-engine.js';
@@ -8,8 +9,13 @@ import type { ArchivedSchemesStore } from './archived-schemes.js';
 import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
+import { buildPlacementIndexes } from '../shared/placement-indexes.js';
+import { collectPlacementHostClosureViolations, PLACEMENT_CLOSURE_GUIDANCE, PROJECTION_CONSTRUCTION_GUIDANCE, CONDENSATE_PENETRATION_GUIDANCE } from './placement-closure.js';
+import type { PlacementClosureApiDiagnostics } from '../shared/api-project.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
+import { deriveMepPenetrationAt } from '../shared/condensate-chain.js';
+import { parseProjectHvacFacts } from '../shared/project-render-facts-schema.js';
 import { mergeSceneElements } from './overlay-merge.js';
 import type { OverlayConfig } from './overlay-merge.js';
 import type { CurrentScheme, CurtainState, ProjectRenderFacts, ProjectRenderFactsProjection } from '../shared/types.js';
@@ -67,6 +73,12 @@ export interface ApiDeps {
   getEnvironment?: () => EnvironmentConfig | undefined;
   getProjectRenderFacts?: () => ProjectRenderFacts | undefined;
   getProjectRenderFactsProjection?: () => ProjectRenderFactsProjection | undefined;
+  /**
+   * 主卫冷凝链穿墙锚点读取产地（默认读当前 config）。与
+   * `getProjectRenderFactsProjection` 同构：**调用可能抛错**（配置暂时不可解析），
+   * `/api/project` 负责隔离成 `placementClosureDiagnostics` 诊断；正式交付路径不受此隔离影响。
+   */
+  getCondensateMasterPenetration?: () => { x: number; z: number } | undefined;
   /** 构件级工程状态投影（现算/缓存，输入异常时抛错由路由转 503）。 */
   getElementState?: (options: { withConflicts?: boolean; refresh?: boolean }) => ElementStatePayload | undefined;
   getMepLintContext?: () => MepLintLayoutContext;
@@ -77,6 +89,28 @@ export function createApiRouter(deps: ApiDeps): Router {
   const { state, getRuleEngine, getBudgetCalculator, archiveStore } = deps;
   const router = Router();
   const phaseScopes = loadPhaseScopes();
+  /** 主卫冷凝链穿墙锚点（issue #98 PR-10；第五阶段 S3 改派生）：MEP condensate-master
+   * @w_mbath_south。S3 起该 at 已删（可派生 45 条之一），锚点由路线几何派生——与
+   * lint/takeoff 同一算法（deriveMepPenetrationPoint）、同一端点解算源；派生失败 → 无锚，
+   * 下游链条显形（fail-closed）。
+   * 注意：每次调用重读并解析 MEP / 电气 / 给排水 / 吊顶 / HVAC 配置，**读取可能抛错**
+   * （配置文件暂时不可解析）。调用点必须隔离异常（/api/project 的 try/catch），不得再内联
+   * 在响应对象字面量里——一次读取失败不该打掉整个项目预览。 */
+  const defaultCondensateMasterPenetration = (): { x: number; z: number } | undefined => deriveMepPenetrationAt(
+    loadMepCoordinationConfig().routes.find((route) => route.id === 'condensate-master'),
+    'w_mbath_south',
+    {
+      sources: endpointSourcesFromFacts({
+        electrical: loadElectricalConfig(),
+        plumbing: loadPlumbingConfig(),
+        ceiling: loadCeilingConfig(),
+        hvac: parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')),
+      }),
+      walls: deps.catalog.getWalls(),
+    },
+  ).point;
+  /** 锚点读取产地：默认读当前 config；测试可注入抛错形态。每个请求只调一次，拿到即下发。 */
+  const readCondensateMasterPenetration = deps.getCondensateMasterPenetration ?? defaultCondensateMasterPenetration;
 
   router.get('/config-status', (_req, res) => {
     res.json({ configs: deps.getConfigRegistry().getStatuses() });
@@ -202,7 +236,14 @@ export function createApiRouter(deps: ApiDeps): Router {
         return;
       }
       const config = loadMepCoordinationConfig();
-      const sources = endpointSourcesFromFacts(facts);
+      // 点位定位索引（issue #98 S1/S2）走 shared/placement-indexes.ts 单一产地（疗法②）：
+      // 墙取 catalog 墙几何，宿主取 catalog 的**全量** furnishings（不按阶段过滤）。
+      // 浏览器 MEP 路线与 DXF/3D 共用同一解算、同一张宿主表。
+      const placementIndexes = buildPlacementIndexes({
+        geometry: { walls: deps.catalog.getWalls() },
+        furnishings: deps.catalog.getFurnishings(),
+      });
+      const sources = endpointSourcesFromFacts(facts, placementIndexes.pointWalls, placementIndexes.mountHosts);
       validateMepCoordination(config, sources);
       res.json({ ...config, lint: lintMepCoordination(config, sources, deps.getMepLintContext?.()) });
     } catch (err) {
@@ -514,6 +555,95 @@ export function createApiRouter(deps: ApiDeps): Router {
     const overlay = deps.getOverlay();
     const sceneElements = mergeSceneElements(projectCatalog.getWalls(), overlay);
     const modelLinks = loadModelPackageLinks();
+    // 本次下发的点位清单（与 house.electrical / house.plumbing 同一来源，先取出来供闭合性断言用）。
+    const electricalPoints = deps.getProjectRenderFacts?.()?.electrical ?? loadElectricalConfig();
+    const plumbingPoints = deps.getProjectRenderFacts?.()?.plumbing ?? loadPlumbingConfig();
+    // 定位宿主表（issue #98 疗法①）：**全量** furnishings，不按阶段过滤——一期排除某个柜
+    // 不影响它当定位宿主，排除的是「画不画」，不是「在不在」。
+    // 断言消费的正是下发给前端的那份产物（疗法② + PR #122 深审 medium 修复）：furnishingsAll
+    // 只取一次，闭合性检查与 house.furnishingsAll 字段共用**同一个值**——不存在「服务端
+    // 内部宿主表」与「下发宿主表」两张表，宿主表漂移时断言与响应必然同时变。
+    const furnishingsAll = projectCatalog.getFurnishings();
+    const { mountHosts } = buildPlacementIndexes({
+      geometry: { walls: projectCatalog.getWalls() },
+      furnishings: furnishingsAll,
+    });
+    // 交付闭合性检查（PR #122 §一.1）：任何被交付点位声明的物理宿主必须存在于定位宿主表。
+    // **宽容读取**（issue #98，PR #122 深审 high 修复）：/api/project 是页面预览入口，不是
+    // 正式交付——闭合性失败不再 503 掐死页面，而是收集诊断随 200 响应下发（哪些点位缺哪个
+    // 宿主、可能原因、统一处理方向），页面显形问题并继续预览其余部分（下方
+    // placementClosureDiagnostics 字段）。
+    // **严格输出不受影响**：DXF 导出（npm run export:dxf 与页面「导出 DXF」，经
+    // shared/dxf/project-dxf.ts 的 errors 通道）与模型验证脚本（verify-rules / verify-spatial
+    // 的 placement error）遇到同样的断引用必须失败——不许为了修页面把严格输出一起放松。
+    const placementClosureViolations = collectPlacementHostClosureViolations(electricalPoints, plumbingPoints, mountHosts);
+    // render-facts 投影构造隔离（issue #98「宽容读取、局部降级、统一诊断、严格输出」；
+    // PR #122 深审 Codex blocking）。
+    // 病根：投影是「数据源一次给全」的**优化**，不是正确性前提。它的构造链
+    // `buildProjectRenderFactsProjection` → `buildRenderLightingFixtures` 遇点位宿主断引用
+    // 会 fail-closed 抛错；原实现把调用**内联在响应对象字面量里**，一抛就是整个处理器抛 →
+    // /api/project 500 → 同一响应里的 placementClosureDiagnostics 一个字都发不出去，
+    // 页面既看不到问题也预览不了其余交付内容。
+    // 现在：隔离成一次调用 + try/catch。失败 → 本次不下发投影，错误并入**同一条诊断通道**
+    // （下方 placementClosureDiagnostics），响应仍 200，页面继续预览（只是少 HVAC 源）。
+    // **严格输出零改动**：同一断引用在 DXF 导出（npm run export:dxf，实测 exit 1）与模型
+    // 验证脚本里仍必须失败——投影不可得 ≠ 放行，问题不会藏。
+    // 另修同源缺陷：原实现 `deps.getProjectRenderFactsProjection?.()` 在条件与取值里**各调
+    // 一次**，一个请求重建两遍投影；第二遍若抛错同样 500。这里只调一次，取到的就是下发的。
+    let renderFactsProjection: ProjectRenderFactsProjection | undefined;
+    let projectionFailure: string | undefined;
+    try {
+      renderFactsProjection = deps.getProjectRenderFactsProjection?.();
+    } catch (err) {
+      projectionFailure = err instanceof Error ? err.message : String(err);
+      console.error('[api/project] render-facts 投影构造失败：已降级为诊断（页面继续预览，正式 DXF/验证仍会失败）：', err);
+    }
+    // 冷凝锚点读取隔离（issue #98「宽容读取、局部降级、统一诊断、严格输出」；
+    // PR #122 Codex major）。
+    // 病根：`condensateMasterPenetration()` 每次重读并解析 MEP / 电气 / 给排水 / 吊顶 /
+    // HVAC 配置，原实现**内联在响应对象字面量里**；任一配置暂时不可解析（如
+    // config/mep-hvac-coordination.yaml 正在被编辑/写坏）→ 整个处理器抛 → /api/project
+    // 500 → 同一响应里的 placementClosureDiagnostics 与全部房间/点位清单一个字都发不出去，
+    // 初载与阶段切换均被阻断。
+    // 口径：这个锚点是「数据源一次给全」的**优化**，不是正确性前提——它不可得时页面少一个
+    // 锚点（三件冷凝链家具退化为无锚，由场景诊断显形），其余交付内容照常预览；错误并入
+    // 下方**同一条** placementClosureDiagnostics 通道，响应仍 200。
+    // **严格输出零改动**：同一份不可解析配置在正式交付路径（scripts/render/dxf/export-dxf.ts
+    // 第 28 行无 catch 直接解析，npm run export:dxf 因此非零退出；验证脚本同理）
+    // 仍必须失败——锚点不可得 ≠ 放行，问题不会藏。
+    let condensatePenetration: { x: number; z: number } | undefined;
+    let condensatePenetrationFailure: string | undefined;
+    try {
+      condensatePenetration = readCondensateMasterPenetration();
+    } catch (err) {
+      condensatePenetrationFailure = err instanceof Error ? err.message : String(err);
+      console.error('[api/project] 冷凝锚点读取失败：已降级为诊断（页面继续预览，正式 DXF/验证仍会失败）：', err);
+    }
+    // 统一诊断通道：点位闭合违例、投影构造失败与冷凝锚点读取失败共用
+    // placementClosureDiagnostics 一个键、一份 count、一组处理方向；
+    // **键缺省** = 本次响应各项都正常（页面据此区分正常/降级）。
+    const diagnosticMessages = [
+      ...(projectionFailure !== undefined ? [`render-facts 投影构造失败：${projectionFailure}`] : []),
+      ...(condensatePenetrationFailure !== undefined ? [`冷凝锚点读取失败：${condensatePenetrationFailure}`] : []),
+      ...placementClosureViolations.map((v) => v.message),
+    ];
+    const renderDiagnostics: PlacementClosureApiDiagnostics | undefined = diagnosticMessages.length > 0
+      ? {
+          count: diagnosticMessages.length,
+          violations: diagnosticMessages,
+          guidance: [
+            ...(projectionFailure !== undefined ? [PROJECTION_CONSTRUCTION_GUIDANCE] : []),
+            ...(condensatePenetrationFailure !== undefined ? [CONDENSATE_PENETRATION_GUIDANCE] : []),
+            ...(placementClosureViolations.length > 0 ? [PLACEMENT_CLOSURE_GUIDANCE] : []),
+          ].join(''),
+          ...(projectionFailure !== undefined
+            ? { projectionError: { stage: 'render-facts-projection' as const, message: projectionFailure } }
+            : {}),
+          ...(condensatePenetrationFailure !== undefined
+            ? { condensatePenetrationError: { stage: 'condensate-penetration' as const, message: condensatePenetrationFailure } }
+            : {}),
+        }
+      : undefined;
     res.json({
       phase,
       phaseMeta: { ...phaseScopes[phase], budget: loadPhaseBudgetMeta(phaseScopes[phase]) },
@@ -523,17 +653,50 @@ export function createApiRouter(deps: ApiDeps): Router {
       house: {
         rooms: projectCatalog.getRooms(),
         platform: projectCatalog.getPlatform(),
+        // 阶段可见家具（几何渲染用）。**定位宿主不用它**——见 furnishingsAll。
         furnishings: projectCatalog.getFurnishingsForPhase(phase),
-        electrical: deps.getProjectRenderFacts?.()?.electrical ?? loadElectricalConfig(),
+        // 2026-11-09 结构修复（Codex 第 9 轮 blocking + 前 3 轮同主题补丁的根因）：
+        // 定位宿主数据**不按阶段过滤**。一期范围排除 wall_cabinet_tall，但电气清单仍含
+        // 挂载到 ld.wall_cabinet_tall 的 night_corridor（x/z 已删）——若宿主也按阶段过滤，
+        // mountHosts 缺该宿主 → 解算失败 → 标注回落原点、回路显示缺成员。
+        // **阶段可见性与定位宿主是两个关注点**，前者过滤，后者必须全量。
+        // 闭合性检查消费的就是这份（上方 furnishingsAll 变量，同一值非两次调用）：
+        // 断言消费的正是下发给前端的那份产物，不存在第二张宿主表。
+        furnishingsAll,
+        electrical: electricalPoints,
         // 给排水点位全量清单（2026-11-04 issue #65）：点位来源 select.all（PKG-040 的
         // plumbing {all: true}）要在前端展开成「该分类全部点位」，清单必须在 /api/project
         // 里——sceneElements 不含点位，前端没有第二条路拿到 plumbing 全量。与 electrical 同源
         // （config/plumbing.yaml，经 getProjectRenderFacts 投影时同口径）。
-        plumbing: deps.getProjectRenderFacts?.()?.plumbing ?? loadPlumbingConfig(),
+        plumbing: plumbingPoints,
         ceilingZones: deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig(),
         sceneElements: filterCurtainElements(sceneElements, phase, phaseScopes),
         layoutSource: projectCatalog.getLayoutSource(),
+        // 主卫冷凝链的 MEP 侧锚点（2026-11-07 issue #98 PR-10）：三件遮蔽家具的摆位改锚点
+        // 派生（house.yaml anchor 声明），穿墙段从 MEP condensate-master 穿墙点解出。
+        // /api/mep-coordination 也返回同一份路线，但页面在建场之后才拉它；建场要用的这个
+        // 点随 /api/project 先到，避免链条家具因拉取顺序从场景里消失（同源：MEP 配置）。
+        // 读取已隔离（上方 try/catch）：抛错时本键不下发、错误进 placementClosureDiagnostics，
+        // 整个响应仍 200。此处只放**本次确实解出的锚点**（与诊断里的失败态互斥）。
+        ...(condensatePenetration ? { condensatePenetration } : {}),
       },
+      // render-facts 投影随项目数据一次下发：HouseScene.buildFromCatalog 要靠它构造 HVAC 源
+      // （SceneBuilder 解 indoor_master 锚点 → 三件冷凝链家具）。原 /api/project 不返回它、
+      // 全仓无赋值，导致四个建场入口各补一次 fetch——补丁打了三轮仍有漏（布局切换）。
+      // 数据源一次给全，入口自然不会再漏。
+      // 层级（2026-11-09 修 PR #122 §2.5-①）：ProjectData 把 renderFactsProjection 声明在
+      // **顶层**（app/src/render/HouseScene.ts:157，与 house 平级，748/750/761/789/792 全部读
+      // projectData.renderFactsProjection），此前却下发在 house 内 → 顶层恒 undefined →
+      // HVAC 源空 → 三件冷凝链家具静默缺失，而 house.renderFactsProjection 全仓无读取者。
+      // 声明在哪就从哪下发：与 topics / materialPreview / budgetCategories 平级。
+      // 构造已隔离（上方 try/catch）：抛错时本键不下发、错误进 placementClosureDiagnostics，
+      // 整个响应仍 200。此处只放**已成功构造的那一份**（同一值，不二次调用）。
+      ...(renderFactsProjection ? { renderFactsProjection } : {}),
+      // 宽容读取诊断（issue #98，PR #122 深审修复）：点位闭合性失败与投影构造失败同走这一条
+      // 通道，随 **200** 响应下发（不再 500/503），页面显形「哪个点位缺哪个宿主 / 投影为何
+      // 构造失败、可能原因」并继续预览其余部分；键缺省 = 本次响应无降级。
+      // 处理方向与断言同一条（统一诊断）：修配置，而非放宽断言或降级解算。
+      ...(renderDiagnostics ? { placementClosureDiagnostics: renderDiagnostics } : {}),
       topics: projectCatalog.getTopics().map((t) => ({
         id: t.id, name: t.name, perRoom: t.perRoom, optionCount: t.options.length,
       })),

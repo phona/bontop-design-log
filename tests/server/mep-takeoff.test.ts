@@ -8,6 +8,9 @@ import {
   resolveMepRoutes,
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { computeMepTakeoff, parseWireSizeMm2, pricedCircuitLength, unionPlanLength, type MepTakeoffRules, type TakeoffCircuit } from '../../shared/mep-takeoff.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { VertexLayoutYaml } from '../../shared/types.js';
 
 /**
  * 水电子系统算量（Phase 0）。四道防线：
@@ -22,19 +25,25 @@ const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepT
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as Array<Record<string, unknown>>;
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as Array<Record<string, unknown>>;
 const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as { plans: unknown[] };
-const ceiling = parseYaml(readFileSync('config/ceiling.yaml', 'utf8')) as unknown[];
+const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as unknown[];
 const topology = parseYaml(readFileSync('config/electrical-topology.yaml', 'utf8')) as {
   circuits: TakeoffCircuit[];
   controls?: Array<{ switch_point_ids?: string[]; target_point_ids?: string[] }>;
 };
 const coordination = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
 
+// 点位宿主墙/家具索引（issue #98 S1/S3）：与 scripts/project/mep-takeoff.ts 同一构造。
+// S3 起沿墙/挂载点位不再声明绝对 x/z，不传索引则 68 个路线端点解析不出。
+const geometry = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as VertexLayoutYaml;
+const pointWalls = pointWallIndexFromElements(resolveLayout(geometry).walls);
+const houseForMountHosts = parseYaml(readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
+const mountHosts = pointMountHostIndex(Object.values(houseForMountHosts.furnishings ?? {}).flat() as never);
 const sources = endpointSourcesFromFacts({
   electrical: electrical as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'],
   plumbing: plumbing as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'],
   ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
   hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
-});
+}, pointWalls, mountHosts);
 const resolution = resolveMepRoutes(coordination, sources);
 const takeoff = computeMepTakeoff({
   electrical: electrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],

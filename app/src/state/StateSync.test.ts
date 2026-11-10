@@ -450,4 +450,14 @@ describe('StateSync', () => {
 
     expect(fetchMock).toHaveBeenCalledWith('/api/project?layout=neighbor-baseline&phase=phase_1_basic_occupancy');
   });
+
+  it('surfaces the server status and body on a failed project fetch (no dropped diagnostics)', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => JSON.stringify({ error: '服务端内部错误' }),
+    } as Response);
+
+    await expect(stateSync.fetchProject()).rejects.toThrow(/HTTP 500[\s\S]*服务端内部错误/);
+  });
 });

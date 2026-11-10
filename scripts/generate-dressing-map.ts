@@ -1,6 +1,46 @@
+/**
+ * 装扮映射表生成器（docs/dressing-map.md）。
+ *
+ * 两条定位契约（PR #122 Codex e44cc676 blocking / major）：
+ *
+ * 1. **家具三态**：resolveFurniturePlacement 返回 `{ placement, diagnostic }`——
+ *    - `placement` 非空 = 有效摆位，进「已摆位」行；
+ *    - `placement === null` **且** `diagnostic` 存在 = 定位失败：记入失败清单并让生成器
+ *      以非零退出码拒绝写文档（显形，不许静默变成 count-only 或 `(—, —)`）；
+ *    - `placement === null` 且**无** diagnostic = 正常 count-only，按声明 `count` 计数。
+ *    旧实现用 `placement !== undefined` 判「已摆位」——null !== undefined 恒真，count-only
+ *    与失败都被当成已摆位，数量按条目数输出（厨房 5/2/5 被写成 1/1/1）。
+ *
+ * 2. **冷凝链锚点**：三件 `anchor` 定位家具（condensate_pipe_ac_outlet /
+ *    mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase）的位置由
+ *    shared/condensate-chain.ts 的 `resolveCondensatePlacementAnchors` 一次解出；构造与
+ *    SceneBuilder（`resolveScenePlacementAnchors`）、Node CLI 场景装配（`buildCliHouseScene`）与
+ *    verify:furniture 同一条链：hvac 锚点（ceiling 宿主）+ MEP `condensate-master`
+ *    派生穿墙点 + 衣柜宿主。本文件不另写派生，也不把上下文置空。
+ */
 import * as fs from 'fs';
+import { readFileSync } from 'node:fs';
 import * as yaml from 'js-yaml';
-import { FURNITURE_DIMS } from '../shared/types.js';
+import { FURNITURE_DIMS, type ElectricalPoint, type FurnishingItem, type FurnishingsYaml } from '../shared/types.js';
+import { loadOverlayDoc } from '../server/overlay-merge.js';
+import { derivePointCircuits } from '../shared/point-circuits.js';
+import {
+  furnitureHostIndex,
+  resolveFurniturePlacement,
+  type FurniturePlacementResolution,
+  type PlacementAnchors,
+  type PlacementItem,
+  type WallLike,
+} from '../shared/furniture-placement.js';
+import { ProjectCatalog } from '../server/project-catalog.js';
+import { loadCeilingConfig, loadElectricalConfig, loadPlumbingConfig } from '../server/config-loader.js';
+import { deriveMepPenetrationAt, resolveCondensatePlacementAnchors } from '../shared/condensate-chain.js';
+import { endpointSourcesFromFacts, parseMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
+import { parseProjectHvacFacts } from '../shared/project-render-facts-schema.js';
+import { buildPlacementIndexes } from '../shared/placement-indexes.js';
+import { buildHvacBuilderSources } from '../shared/render/HvacBuilder.js';
+import { isLightingFixtureType } from '../shared/lighting-fixtures.js';
+import { resolvePointPlacementInWalls, type PointMountHost, type PointPlacementResolution, type PointWall } from '../shared/point-placement.js';
 
 interface MaterialEntry {
   id: string;
@@ -14,24 +54,10 @@ interface MaterialEntry {
   appearance?: Record<string, unknown>;
 }
 
-interface ElectricalPoint {
-  id: string;
-  room: string;
-  type: string;
-  x?: number;
-  z?: number;
-  height?: number;
-  temp?: number;
-  circuit?: string;
-  note?: string;
-}
-
-interface FurnishingItem {
-  type: string;
-  x?: number;
-  z?: number;
-  rotation?: number;
-  count?: number;
+/** 回路拓扑的最小视图（issue #98 S3：点位侧 circuit 字段退役，回路归属改单一派生）。 */
+interface TopologyLike {
+  circuits: Array<{ id: string; member_point_ids?: string[] }>;
+  controls?: Array<{ switch_point_ids?: string[]; target_point_ids?: string[] }>;
 }
 
 interface OverlayElement {
@@ -43,7 +69,6 @@ interface OverlayElement {
   reason?: string;
 }
 
-const LIGHT_TYPES = new Set(['pendant', 'dome', 'wall_lamp', 'downlight', 'led_strip', 'track_light', 'ceiling_light']);
 const LIGHT_TYPE_LABEL: Record<string, string> = {
   pendant: '吊灯',
   dome: '吸顶灯',
@@ -52,6 +77,7 @@ const LIGHT_TYPE_LABEL: Record<string, string> = {
   led_strip: '灯带',
   track_light: '明装轨道灯',
   ceiling_light: '天花灯',
+  night_light: '起夜灯',
 };
 
 function loadYaml<T>(path: string): T {
@@ -70,25 +96,190 @@ function appearanceToTwinmotion(a?: Record<string, unknown>): string {
   return parts.length ? parts.join('，') : '按实物选材替换';
 }
 
+/** 生成器与测试共用的摆位上下文（家具 / 冷凝链 / 点位三套索引同一份，不各拼一份）。 */
+export interface DressingMapContext {
+  furnishings: FurnishingsYaml;
+  electrical: ElectricalPoint[];
+  wallSegments: Map<string, WallLike[]>;
+  hosts: ReadonlyMap<string, PlacementItem>;
+  anchors: PlacementAnchors;
+  /** 链级诊断（穿墙点派生 + 链解算）；非空即定位失败，生成器必须显形。 */
+  chainDiagnostics: string[];
+  pointWalls: Map<string, PointWall>;
+  mountHosts: Map<string, PointMountHost>;
+}
+
+/**
+ * 读权威配置并解出装扮映射所需的全部定位上下文。
+ *
+ * 冷凝链锚点构造与 SceneBuilder / Node CLI 场景装配（`buildCliHouseScene`）/ verify:furniture 同一条链（issue #98 PR-10）：
+ * `config/hvac.yaml` diagram（内机锚点） + `config/mep-hvac-coordination.yaml` 的
+ * condensate-master 派生穿墙点 + `mb.wardrobe_950` / `mb.vanity_pvc_box` 宿主。
+ * 缺任一项时锚点解不出——三件链条家具按「定位失败」显形，不回退绝对坐标。
+ */
+export function loadDressingMapContext(): DressingMapContext {
+  const house = loadYaml<{ furnishings?: FurnishingsYaml }>('config/house.yaml');
+  const furnishings = house.furnishings ?? {};
+  const catalog = ProjectCatalog.load('.');
+  const walls = catalog.getWalls();
+  const wallSegments = new Map<string, WallLike[]>();
+  for (const wall of walls) {
+    const key = wall.id ?? '';
+    const list = wallSegments.get(key) ?? [];
+    list.push(wall);
+    wallSegments.set(key, list);
+  }
+  const hosts = furnitureHostIndex(Object.values(furnishings).flat());
+  // 点位/家具宿主索引单一产地（issue #98 疗法②）：生产消费方与脚本同一条构造。
+  const { pointWalls, mountHosts } = buildPlacementIndexes({ geometry: { walls }, furnishings });
+
+  const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
+  const electrical = loadElectricalConfig();
+  const plumbing = loadPlumbingConfig();
+  const ceiling = loadCeilingConfig();
+  const hvacSources = buildHvacBuilderSources({ ceiling, electrical, hvac: hvacFacts, pointWalls, mountHosts });
+  const penetration = deriveMepPenetrationAt(
+    parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8')).routes.find((route) => route.id === 'condensate-master'),
+    'w_mbath_south',
+    {
+      sources: endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac: hvacFacts }, pointWalls, mountHosts),
+      walls,
+    },
+  );
+  const { anchors, diagnostics } = resolveCondensatePlacementAnchors({
+    hvacDiagram: hvacFacts.plans[0]?.diagram,
+    hvacSources,
+    penetration: penetration.point,
+    wardrobe: hosts.get('mb.wardrobe_950'),
+    wallRun: hosts.get('mb.vanity_pvc_box'),
+    wallSegments,
+    hosts,
+  });
+  return {
+    furnishings,
+    electrical,
+    wallSegments,
+    hosts,
+    anchors,
+    chainDiagnostics: [...(penetration.diagnostic ? [penetration.diagnostic] : []), ...diagnostics],
+    pointWalls,
+    mountHosts,
+  };
+}
+
+export interface SectionOutput {
+  lines: string[];
+  /** 定位失败（placement null + diagnostic）：生成器必须显形并拒绝写文档。 */
+  failures: string[];
+}
+
+/**
+ * §2 家具体块清单。三态判据见文件头：placement 非空 = 已摆位；null + diagnostic =
+ * 定位失败（进 failures，不出表格行）；null 无 diagnostic = 正常 count-only（按声明 count 计）。
+ */
+export function buildFurnishingSection(
+  furnishings: FurnishingsYaml,
+  resolve: (item: FurnishingItem) => FurniturePlacementResolution,
+): SectionOutput {
+  const lines: string[] = [];
+  const failures: string[] = [];
+  for (const [roomId, items] of Object.entries(furnishings)) {
+    const placedByType = new Map<string, Array<{ x: number; z: number; rotation?: number; resolved: boolean }>>();
+    const countOnly = new Map<string, number>();
+    for (const item of items) {
+      const { placement, diagnostic } = resolve(item);
+      if (diagnostic !== undefined) {
+        // 声明了定位却解不出来：显形，禁止按 count-only 静默吞掉（PR #122 Codex e44cc676）。
+        failures.push(`${roomId}:${item.type}${item.id ? ` (${item.id})` : ''}: ${diagnostic}`);
+        continue;
+      }
+      if (placement === null) {
+        countOnly.set(item.type, (countOnly.get(item.type) ?? 0) + (item.count ?? 1));
+        continue;
+      }
+      const list = placedByType.get(item.type) ?? [];
+      list.push({
+        x: placement.x,
+        z: placement.z,
+        rotation: item.rotation,
+        resolved: item.x === undefined || item.z === undefined,
+      });
+      placedByType.set(item.type, list);
+    }
+    for (const [type, list] of placedByType) {
+      const d = FURNITURE_DIMS[type];
+      const dims = d ? `${d.width}×${d.depth}` : '（体块无尺寸记录）';
+      const positions = list.map((p) => {
+        const coord = p.resolved ? `(${p.x.toFixed(3)}, ${p.z.toFixed(3)})` : `(${p.x}, ${p.z})`;
+        return `${coord}${p.rotation !== undefined ? ` / ${p.rotation}°` : ''}${p.resolved ? '（解算）' : ''}`;
+      }).join('；');
+      lines.push(`| ${roomId} | ${type} | ${list.length} | ${dims} | ${positions} |`);
+    }
+    for (const [type, n] of countOnly) {
+      lines.push(`| ${roomId} | ${type} | ${n} | — | count-only（无家具体块，按实物补摆） |`);
+    }
+  }
+  return { lines, failures };
+}
+
+/**
+ * §3 灯光点位。位置一律走 shared/point-placement.ts 单一解算（与 3D/DXF/MEP/标注同口径）：
+ * 沿墙灯读 wall+along、挂载灯读宿主脸，声明 x/z 只是绝对定位来源的取值——不再直接回显
+ * `p.x/p.z`（删除后沿墙/挂载灯会显示 `(—, —)`）。
+ */
+export function buildLightingSection(
+  lights: ElectricalPoint[],
+  circuitOf: (pointId: string) => string,
+  resolve: (point: ElectricalPoint) => PointPlacementResolution,
+): SectionOutput {
+  const lines: string[] = [];
+  const failures: string[] = [];
+  lines.push(`## 3. 灯光点位（${lights.length} 个）→ 灯具与光源摆放单`);
+  lines.push('');
+  lines.push('| id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |');
+  lines.push('|---|---|---|---|---|---|---|---|');
+  for (const point of lights) {
+    const { placement, diagnostic } = resolve(point);
+    if (placement === null) {
+      failures.push(`灯光 ${point.id}: ${diagnostic ?? '点位定位解算失败（解算器未返回诊断）'}`);
+    }
+    const position = placement === null
+      ? '（解算失败）'
+      : `(${formatCoord(placement.x)}, ${formatCoord(placement.z)})`;
+    lines.push(`| ${point.id} | ${point.room} | ${LIGHT_TYPE_LABEL[point.type] ?? point.type} | ${position} | ${point.height ?? '—'} | ${point.temp ?? '—'} | ${circuitOf(point.id)} | ${point.note ?? ''} |`);
+  }
+  lines.push('');
+  return { lines, failures };
+}
+
+/** 坐标显示精度：3 位小数、去掉浮点尾巴（解算值 7.450000000000001 → 7.45）。 */
+function formatCoord(value: number): string {
+  return String(Number(value.toFixed(3)));
+}
+
 function main(): void {
   const materials = loadYaml<{ materials: MaterialEntry[] }>('config/materials.yaml').materials;
-  const electrical = loadYaml<ElectricalPoint[]>('config/electrical.yaml');
-  const house = loadYaml<{ furnishings?: Record<string, FurnishingItem[]> }>('config/house.yaml');
-  const overlay = loadYaml<{ elements: OverlayElement[] }>('config/layout/overlay.yaml');
+  const topology = loadYaml<TopologyLike>('config/electrical-topology.yaml');
+  const overlay = loadOverlayDoc() as unknown as { elements: OverlayElement[] };
   const env = loadYaml<{ location: { latitude: number; longitude: number; timezone: number } }>('config/environment.yaml');
   const scheme = JSON.parse(fs.readFileSync('data/current-scheme.json', 'utf8')) as {
     selections: Record<string, { default?: string; roomOverrides?: Record<string, string> }>;
   };
+  const context = loadDressingMapContext();
+
+  // 点位 → 回路 单一派生（issue #98 S3）：本表「回路」列不再读点位侧 circuit 字段（已退役）。
+  const pointCircuits = derivePointCircuits(topology).pointCircuits;
 
   const byId = new Map(materials.map((m) => [m.id, m]));
+  const failures: string[] = context.chainDiagnostics.map((diagnostic) => `condensate chain: ${diagnostic}`);
   const lines: string[] = [];
   const today = new Date().toISOString().slice(0, 10);
   // fact.furnishings_count 的镜像出口：house.yaml furnishings 的递归条目数（含 count-only）。
-  const furnishingCount = Object.values(house.furnishings ?? {}).reduce((sum, items) => sum + items.length, 0);
+  const furnishingCount = Object.values(context.furnishings).reduce((sum, items) => sum + items.length, 0);
 
   lines.push('# 装扮映射表（材质/家具/灯光的外观替换映射）');
   lines.push('');
-  lines.push(`生成：${today}，数据源：materials.yaml / house.yaml furnishings / electrical.yaml / overlay.yaml / environment.yaml / data/current-scheme.json`);
+  lines.push(`生成：${today}，数据源：materials.yaml / house.yaml furnishings（摆位走 shared/furniture-placement 解算器）/ electrical.yaml（灯具位置走 shared/point-placement 解算器）/ electrical-topology.yaml（回路列，S3 起单一派生）/ hvac.yaml + mep-hvac-coordination.yaml（冷凝链家具锚点）/ config/model/envelope/（openings+floor-zones+ceiling+finish-defaults）/ environment.yaml / data/current-scheme.json`);
   lines.push('');
   lines.push(`数据规模：house.yaml furnishings 共 ${furnishingCount} 件（与 \`fact.furnishings_count\` 对账）。`);
   lines.push('');
@@ -116,50 +307,36 @@ function main(): void {
 
   lines.push('## 2. 家具体块清单 → 库家具替换参照');
   lines.push('');
-  lines.push('glb 中家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下表 width×depth（米）。');
+  lines.push('3D 场景中未声明 id 的家具节点名为 `furniture:{room}:{type}:{index}`，体块尺寸即下表 width×depth（米）。');
   lines.push('');
   lines.push('| 房间 | 类型 | 数量 | 宽×深 (m) | 摆位 (x, z) / 朝向 |');
   lines.push('|---|---|---|---|---|');
-  for (const [roomId, items] of Object.entries(house.furnishings ?? {})) {
-    const placed = items.filter((i) => i.x !== undefined && i.z !== undefined);
-    const countOnly = new Map<string, number>();
-    for (const i of items) {
-      if (i.x === undefined) countOnly.set(i.type, (countOnly.get(i.type) ?? 0) + (i.count ?? 1));
-    }
-    const byType = new Map<string, FurnishingItem[]>();
-    for (const i of placed) {
-      const arr = byType.get(i.type) ?? [];
-      arr.push(i);
-      byType.set(i.type, arr);
-    }
-    for (const [type, arr] of byType) {
-      const d = FURNITURE_DIMS[type];
-      const dims = d ? `${d.width}×${d.depth}` : '（体块无尺寸记录）';
-      const positions = arr.map((i) => `(${i.x}, ${i.z})${i.rotation !== undefined ? ` / ${i.rotation}°` : ''}`).join('；');
-      lines.push(`| ${roomId} | ${type} | ${arr.length} | ${dims} | ${positions} |`);
-    }
-    for (const [type, n] of countOnly) {
-      lines.push(`| ${roomId} | ${type} | ${n} | — | count-only（不在 glb，按实物补摆） |`);
-    }
-  }
+  // 摆位一律走共享解算器（与 3D/DXF/verify:furniture 同一构造），三态判据见文件头。
+  const furnishingSection = buildFurnishingSection(
+    context.furnishings,
+    (item) => resolveFurniturePlacement(item, context.wallSegments, context.hosts, context.anchors),
+  );
+  lines.push(...furnishingSection.lines);
+  failures.push(...furnishingSection.failures);
   lines.push('');
 
-  const lights = electrical.filter((p) => LIGHT_TYPES.has(p.type));
-  lines.push(`## 3. 灯光点位（${lights.length} 个）→ 灯具与光源摆放单`);
-  lines.push('');
-  lines.push('| id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |');
-  lines.push('|---|---|---|---|---|---|---|---|');
-  for (const p of lights) {
-    lines.push(`| ${p.id} | ${p.room} | ${LIGHT_TYPE_LABEL[p.type] ?? p.type} | (${p.x ?? '—'}, ${p.z ?? '—'}) | ${p.height ?? '—'} | ${p.temp ?? '—'} | ${p.circuit ?? '—'} | ${p.note ?? ''} |`);
-  }
-  lines.push('');
+  // 灯具类型判定走 shared/lighting-fixtures.ts 单一清单（此前本文件私有一份，漏了 night_light，
+  // 六个起夜灯因此完全缺席；位置也必须走共享点位解算器而不是回显已删除的 x/z）。
+  const lights = context.electrical.filter((point) => isLightingFixtureType(point.type));
+  const lightingSection = buildLightingSection(
+    lights,
+    (pointId) => pointCircuits.get(pointId) ?? '—',
+    (point) => resolvePointPlacementInWalls(point, context.pointWalls, context.mountHosts),
+  );
+  lines.push(...lightingSection.lines);
+  failures.push(...lightingSection.failures);
   lines.push('### 后续深化预留（当前未实施点位）');
   lines.push('厨房台面/柜底灯、主卫/客卫镜前灯、父母房床头灯、书房桌面灯均为后续深化预留/现场确认项，不属于当前已实施灯光点位。主卧南床头梳妆台的镜前灯为家具插接式部件，复用 `sock_master_bed_r`，不新增墙内灯位。');
   lines.push('');
   lines.push('**已取消、不再纳入装扮**：电视墙灯带（DEC-2026-10-13-R5，业主裁定「不搞了」）。点位与整条照明回路已从 config 删除，**不要**在渲染里摆这条灯带。取电插座 `sock_living_tv_led` 保留在电视墙，后期想要氛围光走插电式灯带挂该插座即可，零预埋零开槽。');
   lines.push('');
 
-  const glass = overlay.elements.filter((e) => e.type === 'curtain_run' || e.type === 'glass_infill');
+  const glass = overlay.elements.filter((e) => e.type === 'curtain_run');
   const bays = overlay.elements.filter((e) => e.type === 'bay_sill');
   lines.push('## 4. 玻璃幕/飘窗清单 → 玻璃材质（Low-E 微反）');
   lines.push('');
@@ -183,7 +360,7 @@ function main(): void {
   lines.push('## 6. 渲染与回传指引（现行）');
   lines.push('');
   lines.push('### 地面（含人字拼 A/B）');
-  lines.push('- glb 内嵌贴图仅打底（程序化生成，质感非最终）；人字拼须用带多版面+倒角的真人字拼材质，不得以直纹贴图冒充，拖到地面节点比对版面');
+  lines.push('- Web 渲染的程序化贴图仅打底（程序化生成，质感非最终）；人字拼须用带多版面+倒角的真人字拼材质，不得以直纹贴图冒充，拖到地面节点比对版面');
   lines.push('- 直铺选浅胡桃色（#c49a6c 方向）柔光木地板款；替换后对比人字拼/直铺，作为 DEC-011 门店终审前的证据');
   lines.push('');
   lines.push('### 玻璃幕（5 段 curtain_run + 9 处飘窗）');
@@ -197,8 +374,17 @@ function main(): void {
   lines.push('- 已退场的 Twinmotion Cloud 发布链路不再使用');
   lines.push('');
 
+  // 定位失败必须显形：拒绝写出一份缺件/错数的文档（PR #122 Codex e44cc676）。
+  // 只打印不写盘——旧文档保留在原地，调用方按非零退出码失败，修复后再重跑。
+  if (failures.length > 0) {
+    console.error(`docs/dressing-map.md 未生成：${failures.length} 条定位失败（禁止把失败写成 count-only 或（—, —））：`);
+    for (const failure of failures) console.error(`  - ${failure}`);
+    process.exitCode = 1;
+    return;
+  }
+
   fs.writeFileSync('docs/dressing-map.md', lines.join('\n'));
   console.log(`docs/dressing-map.md written: ${lights.length} lights, ${Object.keys(scheme.selections).length} topics`);
 }
 
-main();
+if (process.argv[1] && /generate-dressing-map\.(ts|js)$/u.test(process.argv[1])) main();

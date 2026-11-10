@@ -8,7 +8,7 @@ meta:
   established: '2026-10-20'
   dir_count: 66
   stray_file_count: 1
-  external_refs_total: 156
+  external_refs_total: 104
   field_provenance:
     topic: round.yaml index.topic 原文（原按目录名前缀归类，命名事实）
     review_state: round.yaml index.review_state 原文（来自原 review-manifest 的 state/status 字段；无 manifest 记 none）
@@ -66,36 +66,36 @@ entries:
     topic: mep
     review_state: delivery_ready
     supersedes: box-spec
-    external_refs: 14
+    external_refs: 13
     note: facts.yaml L937/L941 的 error 级读者指向本目录 fact-table.yaml 与 design-datum.yaml，路径不可动
   - dir: hvac-caliber-sync-20261005
     topic: mep
     review_state: implementation
     supersedes: hvac-contract-mapping-20261005
-    external_refs: 3
+    external_refs: 1
   - dir: hvac-contract-mapping-20261005
     topic: mep
     review_state: superseded_by_hvac-caliber-sync-20261005
     supersedes: none
-    external_refs: 2
+    external_refs: 1
     note: 目录被 caliber-sync 取代，但结论由 DEC-2026-10-05-R1 收口且仍在 config/hvac.yaml 现行
   - dir: mep-lint-governance-20261006
     topic: mep
     review_state: none
     supersedes: none
-    external_refs: 9
+    external_refs: 6
     note: 唯一有活测试读者的目录（tests/server/mep-guidance-baseline.test.ts:25），随 DEC 滚动归档
   - dir: mep-power-water-freeze-20261003
     topic: mep
     review_state: delivery_ready
     supersedes: none
-    external_refs: 1
+    external_refs: 0
     note: 'manifest 自称 delivery_ready/19 路，但同目录 round.yaml（brief 段）:127-149 已登记 supersession.status: superseded（19 路 -> 20 -> 21）；2026-10-20 已在 manifest 加 superseded 字段回标'
   - dir: mep-routing-20260901
     topic: mep
     review_state: none
     supersedes: none
-    external_refs: 3
+    external_refs: 2
   - dir: hvac-dual-outlet-threeline-20261007
     topic: mep
     review_state: none
@@ -111,7 +111,7 @@ entries:
     topic: mep
     review_state: none
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: archive/hvac-airflow-centering-20261018
     topic: mep
     review_state: superseded
@@ -140,7 +140,7 @@ entries:
     topic: mep
     review_state: reviews_passed_delivery_blocked
     supersedes: none
-    external_refs: 3
+    external_refs: 2
     note: 2026-10-20 批次 2 迁入 archive/（零外部引用；同步 hvac-airflow-grouping fact-table 1 处引用）
   - dir: archive/mep-b-class-20261006
     topic: mep
@@ -164,22 +164,22 @@ entries:
     topic: master-bedroom
     review_state: blocked
     supersedes: none
-    external_refs: 2
+    external_refs: 0
   - dir: master-condensate-l-route-20260907
     topic: master-bedroom
     review_state: none
     supersedes: none
-    external_refs: 2
+    external_refs: 0
   - dir: master-bedroom-20260901
     topic: master-bedroom
     review_state: verification
     supersedes: none
-    external_refs: 2
+    external_refs: 1
   - dir: master-bedroom-r6-20260905
     topic: master-bedroom
     review_state: blocked
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: master-flexible-frontstage-20260903
     topic: master-bedroom
     review_state: blocked
@@ -195,7 +195,7 @@ entries:
     topic: master-bedroom
     review_state: incomplete
     supersedes: none
-    external_refs: 7
+    external_refs: 6
   - dir: archive/master-bedroom-bedside-electrical-20260908
     topic: master-bedroom
     review_state: implementation_verified_site_pending
@@ -206,24 +206,24 @@ entries:
     topic: living
     review_state: none
     supersedes: none
-    external_refs: 3
+    external_refs: 2
   - dir: living-antique-eight-globe-light-20261017
     topic: living
     review_state: delivery_ready
     supersedes: none
-    external_refs: 1
+    external_refs: 0
     note: 2026-10-22 更正——本轮 review-manifest 状态键为 status、值 delivery_ready（R6 双评审 PASS，业主 2026-10-17 确认）；INDEX 原按 state 键回抽误记 none；同日按关账规则清理 evidence，仅留 R6 五视角终稿
   - dir: living-ceiling-underpanel-20261015
     topic: living
     review_state: incomplete
     supersedes: none
-    external_refs: 2
+    external_refs: 1
     note: evidence/before 与 after 的 snapshot.txt 字节相同，疑修复未生效或快照不捕获差异，待核
   - dir: living-main-light-archive-20261017
     topic: living
     review_state: none
     supersedes: none
-    external_refs: 3
+    external_refs: 2
   - dir: archive/living-multi-globe-main-light-20261016
     topic: living
     review_state: none
@@ -252,49 +252,49 @@ entries:
     topic: kitchen-dining-equipment
     review_state: implementation
     supersedes: none
-    external_refs: 2
+    external_refs: 1
   - dir: fridge-four-door-20261015
     topic: kitchen-dining-equipment
     review_state: blocked
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: kitchen-beverage-modules-20261016
     topic: kitchen-dining-equipment
     review_state: blocked
     supersedes: none
-    external_refs: 1
+    external_refs: 0
     note: 摆位已被 DEC-2026-10-17-R11 取代（水吧改放 living_dining，立式茶吧机与 390 低边柜代理退出）；2026-10-20 已建 README 加状态块，现行摆位见 config/house.yaml:530,535,537
   - dir: kitchen-beverage-stations-20261016
     topic: kitchen-dining-equipment
     review_state: evidence_review
     supersedes: none
-    external_refs: 2
+    external_refs: 1
   - dir: kitchen-espresso-workstation-20261016
     topic: kitchen-dining-equipment
     review_state: evidence_review
     supersedes: none
-    external_refs: 2
+    external_refs: 1
   - dir: restaurant-fridge-waterbar-x980-acceptance-20261015
     topic: kitchen-dining-equipment
     review_state: blocked
     supersedes: none
-    external_refs: 3
+    external_refs: 2
   - dir: tile-plank-comparison-20261006
     topic: tile-finish
     review_state: delivery_ready
     supersedes: none
-    external_refs: 9
+    external_refs: 7
     note: 被 tests/server/tile-cost-comparison.test.ts 与 masonry-quotes.test.ts 硬编码引用 evidence 图片路径
   - dir: tile-preview-axis-r04-20261019
     topic: tile-finish
     review_state: delivery_ready
     supersedes: DEC-2026-10-19-R03 中仅有关地砖预演默认 90 度和 0/90 方向说明的部分
-    external_refs: 2
+    external_refs: 1
   - dir: window-sill-tile-20261016
     topic: tile-finish
     review_state: blocked
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: archive/tile-preview-on-entry-r05-20261019
     topic: tile-finish
     review_state: delivery_ready
@@ -305,30 +305,30 @@ entries:
     topic: tile-finish
     review_state: none
     supersedes: none
-    external_refs: 2
+    external_refs: 1
     note: 这是散落在 design-iterations 根下的 md 文件，不是目录；被 docs/decisions/11-tile-finish.md 引用。散文件无 round.yaml，登记字段在本生成脚本维护
   - dir: dining-ceiling-cove-restore-20261008
     topic: dining
     review_state: implemented_runtime_review_pending
     supersedes: none
-    external_refs: 3
+    external_refs: 2
     note: brief 冻结于 R03 态，但同目录 fact-table/design-datum/object-manifest 已到 R05 终态（垂面弧全拆 + concave_fillets_open），以 R05 为准；2026-10-20 已在 brief 顶部加状态块
   - dir: dining-ceiling-no-cove-20261008
     topic: dining
     review_state: implementation
     supersedes: none
-    external_refs: 4
+    external_refs: 3
     note: 「取消 cove_fillets」部分已被 R03 废止（见 cove-restore/round.yaml（fact_table 段） 的 f_r02_superseded），R05 以镜像凹弧达成硬相交；2026-10-20 已建 README 加状态块
   - dir: dining-cloud-light-20261017
     topic: dining
     review_state: incomplete
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: dining-waterbar-s1-em450-20261016
     topic: dining
     review_state: blocked
     supersedes: none
-    external_refs: 3
+    external_refs: 2
     note: README 与 s1-shape-correction-v5.md 止于 V5，但 fact-table 已标 I-S1-SHAPE-V5 superseded_by V6（DEC-2026-10-17-R11，出水腔改 106mm 窄面）；2026-10-20 已在 README 与 v5 文档加 V5->V6 标注并补 V6 结论段
   - dir: archive/dining-semi-flush-20261016
     topic: dining
@@ -340,7 +340,7 @@ entries:
     topic: lighting-ceiling
     review_state: incomplete
     supersedes: none
-    external_refs: 2
+    external_refs: 1
     note: 几何结论已归档；涂装范围结论被 visual-calibration-floor-angle 轮后续推翻
   - dir: archive/night-only-indoor-lighting-20261015
     topic: lighting-ceiling
@@ -364,37 +364,37 @@ entries:
     topic: bath
     review_state: blocked
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: guest-bath-door-hinge-20260909
     topic: bath
     review_state: none
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: parent-room-study-swap-20261005
     topic: general
     review_state: batch_a_b1_b2_done
     supersedes: none
-    external_refs: 15
+    external_refs: 12
   - dir: phase1-scope-20260912
     topic: general
     review_state: blocked
     supersedes: none
-    external_refs: 2
+    external_refs: 0
   - dir: electrical-upgrade-20260908
     topic: general
     review_state: delivery_ready
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: element-state-overlay-20261009
     topic: general
     review_state: reviews_passed_delivery_pending_owner_commit
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: entry-cabinet-700-20261015
     topic: general
     review_state: incomplete
     supersedes: none
-    external_refs: 2
+    external_refs: 1
   - dir: furniture-wall-clearance-20260908
     topic: general
     review_state: delivery_ready
@@ -404,17 +404,17 @@ entries:
     topic: general
     review_state: delivery_ready
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: robot-dock-reservation-20260909
     topic: general
     review_state: none
     supersedes: none
-    external_refs: 3
+    external_refs: 2
   - dir: control-surface-refactor-20261026
     topic: general
     review_state: implemented_runtime_review_pending
     supersedes: none
-    external_refs: 1
+    external_refs: 0
   - dir: archive/spatial-validation-20260908
     topic: general
     review_state: verification
@@ -425,7 +425,7 @@ entries:
     topic: general
     review_state: delivery_ready
     supersedes: robot-dock-reservation-20260909
-    external_refs: 2
+    external_refs: 1
   - dir: archive/visual-calibration-floor-angle-20261015
     topic: general
     review_state: delivery_ready

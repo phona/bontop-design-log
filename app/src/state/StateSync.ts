@@ -1,4 +1,5 @@
 import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, BudgetSnapshot, DesignCheckResult, ArchivedScheme, CurtainPresentationState, CurtainState } from '@shared/types';
+import type { ProjectApiResponse } from '@shared/api-project';
 import { apiWrite } from '../api-write.js';
 
 type SchemeCallback = (scheme: CurrentScheme) => void;
@@ -53,7 +54,12 @@ export class StateSync {
     return this.layout;
   }
 
-  async fetchProject(options: ProjectFetchOptions = {}): Promise<any> {
+  /**
+   * 拉取项目建场数据。返回类型 = shared/api-project.ts 的 ProjectApiResponse
+   * （2026-11-09 issue #98 轨道③：边界从 any 变为共享类型）——字段层级以服务端
+   * routes.ts 实际下发为准，例如 renderFactsProjection 在响应顶层（PR #162 归位）。
+   */
+  async fetchProject(options: ProjectFetchOptions = {}): Promise<ProjectApiResponse> {
     const phase = options.phase ?? this.phase;
     const layout = options.layout ?? this.layout;
     const query = new URLSearchParams();
@@ -62,7 +68,14 @@ export class StateSync {
     const queryString = query.toString();
     const url = queryString ? `/api/project?${queryString}` : '/api/project';
     const response = await fetch(url);
-    if (!response.ok) throw new Error('Failed to fetch project');
+    if (!response.ok) {
+      // 非 2xx 时把状态码与服务端错误体带出来（PR #122 深审修复：此前丢弃服务端诊断、
+      // 抛通用错误，页面连「为什么失败」都看不到）。交付闭合性失败按宽容读取已改为
+      // 200 + placementClosureDiagnostics（issue #98），不再走这里；这里兜住真正的
+      // 服务端故障，保留统一诊断。
+      const detail = await response.text().catch(() => '');
+      throw new Error(`Failed to fetch project: HTTP ${response.status}${detail ? ` — ${detail.slice(0, 500)}` : ''}`);
+    }
     return response.json();
   }
 

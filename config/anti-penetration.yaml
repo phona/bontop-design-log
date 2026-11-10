@@ -85,19 +85,19 @@ sibling_policy:
 #
 # 2026-10-09 实测：4 个 placed 机电件中，mb_vanity_pvc_service_chase 的包络是
 # 一个**预留区**（按设计穿越 4 段墙、与 6 件家具重叠），不是实体管；包络尺寸与逐处重叠深度见
-# docs/pending-site-data.md #55（权威记录，此处不手抄尺寸——禁双写）。
+# 原量房台账 #55（已退场，未决项现由对象 blocker 承载）（权威记录，此处不手抄尺寸——禁双写）。
 # 把它当实体判穿透会得到 10 处「穿模」，但那不是缺陷而是建模口径未裁定。
 #
 # 因此这里要求**逐类型显式申报**，未申报 → fail-closed（pen.mep_participation_undeclared）：
 #   excluded  不作为实体参与互撞（当前口径）
 #   solid     按实体参与墙穿透检查（需要业主/厂家确认该构件是实体后再改）
-# 预留区与实体管的口径裁定、以及那 10 处重叠的定性，跟踪 docs/pending-site-data.md，
+# 预留区与实体管的口径裁定、以及那 10 处重叠的定性，跟踪 原量房台账（已于 S2-B 退场），
 # 未裁定前不得为了绿灯改坐标或改口径。
 mep_parts:
   participation:
     - types: [mb_vanity_pvc_box, mb_vanity_pvc_service_chase, mb_vanity_pvc_wardrobe_entry, condensate_pipe_ac_outlet]
       policy: excluded
-      note: "预埋管/检视构件按预留区口径，穿墙由 verify:mep 专项负责；其中 mb_vanity_pvc_service_chase 的 4 处墙穿越 + 6 处家具重叠待口径裁定（见 docs/pending-site-data.md）"
+      note: "预埋管/检视构件按预留区口径，穿墙由 verify:mep 专项负责；其中 mb_vanity_pvc_service_chase 的 4 处墙穿越 + 6 处家具重叠待口径裁定（见 原量房台账（已于 S2-B 退场））"
 
 # ── 豁免（waiver）────────────────────────────────────────────────────────
 # 每条豁免必须带 reason / owner / expires。到期自动复活为 error 并带上豁免编号，
@@ -117,16 +117,16 @@ waivers:
   # ── 阳台洗烘叠放 ──
   - id: laundry_stack
     rule: pen.furniture.furniture
-    pair: [furniture:balcony:washer:0, furniture:balcony:dryer:1]
+    pair: [balcony.washer, balcony.dryer]
     kind: stacked
-    reason: "10kg 滚筒洗衣机与 9kg 热泵烘干机按厂家叠放支架垂直堆叠（支架承重 ≥120kg，见 config/budget-pitfalls.yaml「叠放未确认承重」）；两者共用阳台西墙给水 faucet_balcony_washer / 墙排 drain_balcony_washer 与两条专用回路插座（DEC-2026-10-03-R1 按 GB 55038 7.4.4 拆分），且生活阳台面积极小、东墙又有门洞，无并排条件。SKU 冻结后须复核叠放支架承重、开门侧与检修带（docs/pending-site-data.md #33）"
+    reason: "10kg 滚筒洗衣机与 9kg 热泵烘干机按厂家叠放支架垂直堆叠（支架承重 ≥120kg，见 config/budget-pitfalls.yaml「叠放未确认承重」）；两者共用阳台西墙给水 faucet_balcony_washer / 墙排 drain_balcony_washer 与两条专用回路插座（DEC-2026-10-03-R1 按 GB 55038 7.4.4 拆分），且生活阳台面积极小、东墙又有门洞，无并排条件。SKU 冻结后须复核叠放支架承重、开门侧与检修带（原量房台账 #33（已退场，未决项现由对象 blocker 承载））"
     owner: 业主
     expires: 2027-06-30
 
   # ── 厨房地柜 / 台面 / 嵌入式设备 ──
   - id: countertop_run
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:0, furniture:kitchen:kitchen_countertop_bridge:1]
+    pair: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge]
     kind: stacked
     reason: "北墙地柜第一段与跨洗碗机位的桥台面同属一组台下柜：台面由柜体上口承托，两者在端部共面收口，是「柜体 + 台面」的一体构造，不是两件独立家具各占一地"
     owner: 业主
@@ -134,7 +134,7 @@ waivers:
 
   - id: countertop_run_corner
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_countertop_bridge:1, furniture:kitchen:kitchen_cabinet_run:2]
+    pair: [kitchen.countertop_bridge, kitchen.cabinet_run_north_east]
     kind: stacked
     reason: "桥台面东端与水槽柜段端部共面收口：同一台面高度连续跨过洗碗机位后接上水槽柜，属同一组地柜的台面连续性接触，不是两台柜体互撞"
     owner: 业主
@@ -142,7 +142,7 @@ waivers:
 
   - id: kitchen_cabinet_corner_join
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:kitchen_cabinet_run:4]
+    pair: [kitchen.cabinet_run_north_east, kitchen.cabinet_run_east]
     kind: attached
     reason: "L 形厨房地柜：北墙水槽柜段与东墙灶台柜段在转角相交并共用转角柜体，是同一组地柜的两个分支，不是两个独立柜体压在同一块地上"
     owner: 业主
@@ -150,7 +150,7 @@ waivers:
 
   - id: kitchen_dishwasher_under_counter
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:0, furniture:kitchen:dishwasher:3]
+    pair: [kitchen.cabinet_run_north_west, kitchen.dishwasher]
     kind: attached
     reason: "嵌入式洗碗机整机收在北墙地柜台下（DEC-2026-08-02-013），门板与柜体齐平，属嵌入式安装而非独立占地；机位坐标仍待量房（config/house.yaml 原注），SKU 冻结后复核开门侧与检修带"
     owner: 业主
@@ -158,7 +158,7 @@ waivers:
 
   - id: kitchen_dishwasher_under_counter_corner
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:dishwasher:3]
+    pair: [kitchen.cabinet_run_north_east, kitchen.dishwasher]
     kind: attached
     reason: "同一台洗碗机同时贴邻水槽柜段端部（DEC-2026-08-02-013「水槽柜西侧紧邻」），两侧柜体门板收口共面；与 kitchen_dishwasher_under_counter 是同一处嵌入关系在两个柜体段上的投影，不是两次独立占地"
     owner: 业主
@@ -166,7 +166,7 @@ waivers:
 
   - id: kitchen_sink_cutout
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:sink:7]
+    pair: [kitchen.cabinet_run_north_east, kitchen.sink]
     kind: attached
     reason: "水槽嵌入台面开孔：config/house.yaml 在该柜体段显式声明 cutouts {kind: sink, id: kitchen-sink}，开孔位置由既有水槽点位与柜体中心换算为 run-local offset，水槽是台面构件而非独立占地体"
     owner: 业主
@@ -174,7 +174,7 @@ waivers:
 
   - id: kitchen_ro_purifier_inside_sink_base
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:2, furniture:kitchen:mijia_ro_purifier_1400g_under_sink_preview:9]
+    pair: [kitchen.cabinet_run_north_east, kitchen.ro_purifier]
     kind: contained
     reason: "净水器机身作为业主给定尺寸的台下包络预演，位于北墙水槽柜组东侧收纳格内；当前橱柜运行时carcass是占满内部的简化外形盒，豁免仅表达‘设备收在柜内’的预期包含关系。真实隔板、存水弯、滤芯抽取、进排水和插座位置仍待橱柜/RO SKU/现场复尺核验，现场结论回来前不得把此豁免解释为施工通过。"
     owner: 业主
@@ -182,7 +182,7 @@ waivers:
 
   - id: kitchen_cooktop_cutout
     rule: pen.furniture.furniture
-    pair: [furniture:kitchen:kitchen_cabinet_run:4, furniture:kitchen:gas_stove:5]
+    pair: [kitchen.cabinet_run_east, kitchen.gas_stove]
     kind: attached
     reason: "灶具嵌入台面开孔：config/house.yaml 在该柜体段显式声明 cutouts {kind: cooktop, id: kitchen-cooktop}，开孔由既有灶具点位经世界偏移再按柜体旋转换算为 run-local offset，属台面开孔安装"
     owner: 业主
@@ -191,7 +191,7 @@ waivers:
   # ── 主卫浴室柜组 / 主卧梳妆位 / 通顶衣柜收口 ──
   - id: vanity_layers
     rule: pen.furniture.furniture
-    pair: [furniture:master_bedroom:mb_vanity_base_cabinet:9, furniture:master_bedroom:mb_vanity_lower_board:10]
+    pair: [mb.vanity_base_cabinet, mb.vanity_lower_board]
     kind: attached
     reason: "主卫浴室柜组的分层构造：下悬浮板与底柜同轴（同一 along / 宽 / 深，主体退让东墙完成面 15mm，端部由独立收口处理，见 config/house.yaml 原注），是同一组家具的上下构件，不是两台独立柜体"
     owner: 业主
@@ -199,7 +199,7 @@ waivers:
 
   - id: vanity_layers_upper
     rule: pen.furniture.furniture
-    pair: [furniture:master_bedroom:mb_vanity_lower_board:10, furniture:master_bedroom:mb_vanity_main_board:11]
+    pair: [mb.vanity_lower_board, mb.vanity_main_board]
     kind: attached
     reason: "主卫浴室柜组：上悬浮板与下悬浮板同轴叠置（同一 along / 宽 / 深，主体退让东墙完成面 15mm），三层柜体构件属同一组家具，板件之间的共面不是互撞"
     owner: 业主
@@ -207,15 +207,15 @@ waivers:
 
   - id: robot_dock_in_gbath_vanity_bay
     rule: pen.furniture.furniture
-    pair: [furniture:guest_bath:vanity:0, furniture:guest_bath:robot_dock_gbath:4]
+    pair: [gbath.vanity, gbath.robot_dock]
     kind: contained
-    reason: "客卫台盆下开放格（DEC-2026-11-04-R4，2026-11-05 几何落地）：基站 410×433×280mm 泊入格内，格净宽 0.51m（两侧各 0.05m）、深 0.50m、顶余 0.45m，零件层面不相交；vanity 包络是含空腔的并集，AABB 重叠属内含关系而非互撞"
+    reason: "客卫台盆下开放格（DEC-2026-11-04-R4，2026-11-05 几何落地）：基站 410×433×280mm 泊入格内——格净宽/仓深/顶余等现行数值以对象 gbath.robot_dock 的 mount 声明与 gbath.vanity 的 vanity_layout 为准（DEC-2026-11-04-R4 的「格净宽 0.51 居中 + 两侧各 0.05」几何已被 DEC-2026-11-05-R5 取代，不再复录），零件层面不相交；vanity 包络是含空腔的并集，AABB 重叠属内含关系而非互撞"
     owner: 业主
     expires: 2027-06-30
 
   - id: dressing_stool_storage
     rule: pen.furniture.furniture
-    pair: [furniture:master_bedroom:dressing_stool:7, furniture:master_bedroom:master_dressing_table:6]
+    pair: [mb.dressing_stool, mb.dressing_table]
     kind: contained
     reason: "梳妆凳收纳态完整收入梳妆桌 footprint 之内（config/house.yaml 原注「收纳态完整收入桌下，使用时向东拉出」），是「内含」关系而非互撞；拉出使用态属活动包络，本轮静态判定不覆盖"
     owner: 业主
@@ -223,7 +223,7 @@ waivers:
 
   - id: wardrobe_top_pelmet
     rule: pen.furniture.furniture
-    pair: [furniture:master_bedroom:master_north_wall_wardrobe_950:1, furniture:master_bedroom:master_wardrobe_top_pelmet:2]
+    pair: [mb.wardrobe_950, mb.wardrobe_pelmet]
     kind: attached
     reason: "通顶衣柜顶部薄收口件：config/house.yaml 原注「通顶柜顶部薄收口，主体固定门头已由衣柜对象表达；不承担 HVAC 责任」，与衣柜主体是同一通顶柜的上下构件，不是两件独立家具"
     owner: 业主

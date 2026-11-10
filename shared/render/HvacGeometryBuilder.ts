@@ -17,6 +17,11 @@ export interface HvacEntityIndex {
 export interface HvacGeometryBuildResult {
   index: HvacEntityIndex;
   descriptors: HvacEntityDescriptor[];
+  /**
+   * anchor 解析失败诊断（issue #98 S1，E7）：空 = 全部实体都落进场景。非空时实体数会小于
+   * 声明数——调用方必须把它上浮到 placementDiagnostics 通道显形，禁止静默少件。
+   */
+  diagnostics: string[];
 }
 
 function metadata(object: THREE.Object3D, type: 'hvac_equipment' | 'hvac_terminal', descriptor: HvacEntityDescriptor, extra: Record<string, unknown> = {}): void {
@@ -184,17 +189,18 @@ export function buildHvacGeometry(
   sources: HvacBuilderSources = { ceiling: [], electrical: [], outdoor: [] },
 ): HvacGeometryBuildResult {
   const index: HvacEntityIndex = { equipment: new Map(), terminals: new Map(), all: new Map() };
-  if (projection?.hvac.status !== 'implemented') return { index, descriptors: [] };
-  const descriptors = buildHvacEntityDescriptors(projection.hvac.planId, projection.hvac.diagram, sources);
+  const diagnostics: string[] = [];
+  if (projection?.hvac.status !== 'implemented') return { index, descriptors: [], diagnostics };
+  const descriptors = buildHvacEntityDescriptors(projection.hvac.planId, projection.hvac.diagram, sources, diagnostics);
   const entitiesRoot = new THREE.Group();
   entitiesRoot.name = 'HVAC_CONFIRMED_ENTITIES';
   root.add(entitiesRoot);
   for (const descriptor of descriptors) addDescriptor(entitiesRoot, descriptor, index);
-  return { index, descriptors };
+  return { index, descriptors, diagnostics };
 }
 
-export function expectedHvacGeometryIds(projection: ProjectRenderFactsProjection | undefined, sources: HvacBuilderSources = {}): string[] {
-  return buildHvacGeometry(new THREE.Group(), projection, sources).descriptors.map((descriptor) => descriptor.objectId);
-}
+// issue #98 S1（E7）：原 `expectedHvacGeometryIds`（本文件内的重复包装，默认空 sources、
+// 无调用方）已删——期望集单一实现在 shared/render/HvacBuilder.ts 的 expectedHvacExportIds，
+// 且必须显式传完整 sources（默认空源只产出 34 个 id，见那里的注释）。
 
 export type HvacGeometryPosition = Vec3;

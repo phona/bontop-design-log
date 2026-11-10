@@ -26,6 +26,8 @@
 #        `#field_sum:<f>`     数组里每个对象的 <f> 求和
 #        `#find:<k>=<v>`      在数组里找 <k> 等于 <v> 的元素，后续路径段继续深入
 #      最小示例：`value: "@config/electrical-topology.yaml:circuits.length"`
+#      点位坐标字段改 along（issue #98 S3）后，坐标权威值改锚入口脚本预算的解析结果：
+#      `value: "dataset:points.resolved.<点位id>.x"`（机器源见 scripts/verify/facts/verify-facts.ts）。
 #    - kind: narrative 权威值是一句人写的话，value 写 `@<file>:<字面定位串>`。
 #      引擎用后半段**逐字**在文件里定位，取其中第一个数字作为权威值。
 #      定位不到 → `authoritative_unresolvable`（error）。
@@ -114,7 +116,7 @@
 #       数组根文件没有命名字段，用伪字段 `*` 登记一次。
 #    2. 每条 coverage 的 `readers` 会被真的 grep：字段名一次都没出现 →
 #       `declared_reader_does_not_read`（error）。**覆盖矩阵不许说谎。**
-#       最小示例：{ file: config/ceiling.yaml, field: height,
+#       最小示例：{ file: config/model/envelope/ceiling.yaml, field: height,
 #                  readers: [shared/mep-hvac-lint.ts] }
 #       `fields` 是 `field` 的多字段简写；`readers: []` 表示「纯数据，无声称读者」。
 #
@@ -155,9 +157,22 @@ scan:
     # 2026-10-09 DEC-2026-10-09-S01：单文件 docs/decision_log.md 按主题拆成 docs/decisions/
     # 14 个文件 + README，豁免跟着改成目录前缀（引擎 pathMatches 支持 `xxx/` 前缀）。
     # 旧路径一并保留：拆分说明与历史条目正文里仍写字面 docs/decision_log.md。
+    # 2026-11-09 issue #98 S2：docs/decisions/ 仍在本轮存在（删除属 S3），故本条目录级豁免
+    # **保留到 S3 删档当天**——现在删它会往 T1 报告里灌约 600 条没人能处置的 warning
+    # （目录还在、值还在，只是即将退场），那是噪声不是显形。S3 删目录时同步删本行。
     - path: docs/decisions/
       pattern: '.'
-      reason: 时间序决策档案：金额/回路数/功率/面积均为当轮快照，权威值以当轮 DEC 引用的 config 字段为准；本目录只做追溯，不做对账
+      reason: 时间序决策档案：金额/回路数/功率/面积均为当轮快照，权威值以当轮 DEC 引用的 config 字段为准；本目录只做追溯，不做对账（2026-11-09 S2 注：随 docs/decisions/ 删除（S3）同步退场）
+
+    # 2026-11-09 issue #98 S2 新增：DEC 退役后唯一保留的知识载体（业主裁定②）。与
+    # docs/decisions/ 同性质——里面的 36,000 / 型号串 / 尺寸都是**指向权威源的摘要**，
+    # 权威值在报价卡、control.yaml 合同块与 config 对象字段里，本文件不得成为第二份数字真相。
+    - path: config/decision-knowledge.yaml
+      pattern: '.'
+      reason: DEC 知识载体：金额/型号/尺寸均为指向权威源（报价卡、control.yaml contract 块、config 对象字段）的摘要，权威值以那些字段为准；本文件只承载「为什么」，不做数值对账
+    - path: config/open-items.yaml
+      pattern: '.'
+      reason: 无属主对象可挂的未决项（家具/采购选型/设计裁定三类——它们没有 status/blocker schema）。原载体 docs/pending-site-data.md 已于 S2-B 退场，本文件是 AGENTS.md 决策铁律第 1 条指定的目的地。每条带 subject/owner/trigger/reversal 四样，收录判据见文件头；不许长成第二本手账
 
     - path: docs/decision_log.md
       pattern: '.'
@@ -202,7 +217,7 @@ scan:
     - path: schedule/procurement-archive.md
       scalars: [kw]
       pattern: 'kW'
-      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由 docs/pending-site-data.md #39 跟踪收敛"
+      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由原量房台账 #39 跟踪收敛（该台账已退场，未决项现由对象 blocker 承载）"
     - path: schedule/procurement-archive.md
       scalars: [area_sqm]
       pattern: '㎡'
@@ -218,7 +233,7 @@ scan:
     - path: schedule/procurement.md
       scalars: [kw]
       pattern: 'kW'
-      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由 docs/pending-site-data.md #39 跟踪收敛"
+      reason: "暖通功率双口径（设计 21.6kW / 成交判读 25.3kW）与历史轮次叙述，无单一权威值，由原量房台账 #39 跟踪收敛（该台账已退场，未决项现由对象 blocker 承载）"
     - path: schedule/procurement.md
       scalars: [area_sqm]
       pattern: '㎡'
@@ -300,26 +315,17 @@ scan:
       scalars: [area_sqm]
       pattern: '㎡'
       reason: 旧四池口径的估算基数，面积权威在 config/house.yaml
-    - path: config/layout/overlay.yaml
+    - path: config/model/envelope/floor-zones.yaml
       scalars: [area_sqm]
       pattern: '㎡'
-      reason: 检视态叠加层注释里的面积是人工汇总口径（贴砖 12.21㎡、涂漆墙 184.35㎡/顶 116.13㎡/合计 300.48㎡ 等）；机器口径由 geometry 与声明实算，tests/server/wall-tile-inspection.test.ts 与 tests/server/paint-scope.test.ts 逐房间独立复算对账
+      reason: floor_region 注释里的面积为人工标注口径（1.125㎡ 过渡带、1.385㎡ 设备平台等）；机器口径由 geometry 与声明实算对账
     - path: config/layout/model-geometry.yaml
       scalars: [area_sqm]
       pattern: '㎡'
       reason: 几何模型注释里的面积为人工标注口径，机器口径以多边形求值为准
-    - path: docs/pending-site-data.md
-      scalars: [kw]
-      pattern: 'kW'
-      reason: "量房清单 #39 复述成交判读容量（25.3kW）与厂家待核项；#39 已于 2026-10-05 重写，不再含设计口径 21.6kW，本豁免随该重写一并收窄"
     # 2026-10-05 DEC-2026-10-05-R2 新增 #47：#47 引用 CAD 标注的次卧面积值作为
     # 「标签数/面积口径未裁决」这一冲突本身的证据。这些值是待裁决对象，不是现行面积口径，
     # 权威面积由 model-geometry 多边形实测与 fact.rooms_area_caliber / #40 承载。
-    - path: docs/pending-site-data.md
-      scalars: [area_sqm]
-      pattern: '㎡'
-      reason: "量房清单 #47 引用 CAD 标注面积（8.39㎡/8.35㎡）作为未裁决冲突的证据，不是现行面积口径；权威以 model-geometry 多边形与 fact.rooms_area_caliber 为准，收敛由 #47 与 #40 跟踪"
-
     # ─── 2026-10-04 新增标量的登记（T1 发现层的噪声归属） ─────────────────────
     # 原则：**不是把新标量一律关掉**，而是把每一处出现归到「谁是这个数的权威」。
     # 型号串的跨文件一致性由契约 c.hvac_model_refs_resolvable 强制（见 contracts），
@@ -340,15 +346,19 @@ scan:
       scalars: [model_string]
       pattern: 'MJV-|领航者|理想家'
       reason: 材料清单 hvac_01 复述 DEC-2026-10-04-R1 成交配置（MJV-200W-E01-LHIV 20kW 一拖六，2026-10-05 由预研候选改写为成交口径）；型号一致性由 c.hvac_model_refs_resolvable 对账
-    # config/ceiling.yaml 的 ac_* 与 config/electrical.yaml 的 sock_*_ac 是**同一台内机**
-    # 在吊顶几何与电气取电两个子系统里的两份记录，型号串本身由 config/hvac.yaml 授权；
-    # 两处的漂移由 c.hvac_model_refs_resolvable 抓（型号必须存在于 hvac.yaml）。
+    # config/model/envelope/ceiling.yaml 的 ac_* 与 config/electrical.yaml 的 sock_*_ac 是
+    # **两个不同事实**（2026-11-08 issue #98 第五阶段按 C 轨实证修订措辞；原「同一台内机
+    # 两份记录」的自我描述有误——两者字段集不相交、无一共标量：ac_* 声明内机本体几何/型号，
+    # sock_*_ac 声明取电电位/回路，坐标不是双写）。两处的**关联**（哪台内机用哪个取电位）
+    # 由 config/hvac.yaml 的 power_* anchor ref 单一表达。本契约只盯**型号词汇外键**：
+    # 两处的型号串都必须存在于 config/hvac.yaml（c.hvac_model_refs_resolvable 抓型号漂移），
+    # 位置/配对关系不归本契约管。
     # 吊顶里的 ac_* 内机型号必须**全部**是 config/hvac.yaml 词汇表里的 MJV-* 串。
     # 2026-10-04 已把 5 条旧「风管机 NkW（DEC-2026-09-07-055）」口径改为现行 MJV-*，
     # 2026-10-05 DEC-2026-10-05-R1 再改为成交逐房映射 MJV-71T2/42T2/56T2/28T2×3；
     # 哪一条被改回旧串（或新条目漏写型号），立刻 unregistered_fact_occurrence
     # + c.hvac_model_refs_resolvable 双报。
-    - path: config/ceiling.yaml
+    - path: config/model/envelope/ceiling.yaml
       scalars: [model_string]
       pattern: 'MJV-'
       reason: 吊顶里的 ac_* 内机型号抄自 config/hvac.yaml rooms 表（现行：71T2/42T2/56T2/28T2×3）；旧口径「风管机 NkW（DEC-2026-09-07-055）」与 R6 的 45T2/22T2 分级均已被 DEC-2026-10-05-R1 取代，因此本文件只允许出现 MJV- 串——出现别的型号写法即视为漂移，由 unregistered_fact_occurrence 与 c.hvac_model_refs_resolvable 双报
@@ -407,10 +417,6 @@ scan:
       scalars: [model_string]
       pattern: 'MJV-|JSQ|领航者|理想家'
       reason: 采购决议书同时收录现行成交型号（MJV-200W-E01-LHIV）与历史轮次参照型号（三代 180W MJV-180W-E01-LX/LH，文档自述「不是本项目已选系列」）；现行型号权威在 config/hvac.yaml，历史型号属时间序留档，故不做 fk 对账
-    - path: docs/pending-site-data.md
-      scalars: [model_string]
-      pattern: 'MJV-|JSQ|领航者|理想家'
-      reason: 量房清单复述定标型号与热水器候选，权威值在 config/hvac.yaml 与 schedule/phase-1/control.yaml
     - path: docs/mep-construction-guidance.md
       scalars: [model_string]
       pattern: '领航者|理想家'
@@ -438,10 +444,6 @@ scan:
       scalars: [dimension]
       pattern: '[×x]'
       reason: 点位 note 里的设备机身尺寸用于说明避让关系，权威在对应设备记录；点位坐标本身由 model-geometry 与 verify-rules 门禁承接
-    - path: docs/pending-site-data.md
-      scalars: [dimension]
-      pattern: '[×x]'
-      reason: 量房清单的尺寸是设计图标注口径，权威面积/坐标以 config/house.yaml 与 model-geometry 多边形为准
     - path: schedule/phase-1/control.yaml
       scalars: [dimension]
       pattern: '[×x]'
@@ -470,30 +472,31 @@ scan:
       reason: 材料清单 hvac_01 的 price_per_unit/notes 复述 DEC-2026-10-04-R1 定标成交 36,000 元（2026-10-05 由预研估价 29,000 改写）；权威金额由 fact.hvac_contract_cny 的三方镜像对账
 
     # 主卫 PVC 服务井包络 0.94×2.59×2.15m：runtime 实测包络的**叙述引用**，权威记录是
-    # docs/pending-site-data.md #55（同文件已按「量房清单口径」豁免，且该条含完整坐标
+    # 原量房台账 #55（已退场，该条含完整坐标
     # x[1.99,2.93] y[0.10,2.69] z[2.49,4.63]）。属「双口径未收敛」：该包络是预留区还是
     # 实体管尚未裁定（#55 跟踪），裁定前 prose 只引用不新建数字；config/anti-penetration.yaml
     # 的注释已改为指向 #55，不再手抄尺寸（禁双写）。
     - path: config/finish-lint.yaml
       scalars: [area_sqm]
       pattern: '1\.05'
-      reason: 面层核查层上线时 F07 抓到的门洞多算量（厨房 0.72 + 主卫干区 0.225 + 主卫淋浴 0.105），权威在 config/layout/overlay.yaml 的声明 reason 与 DEC-2026-10-09-P11；此处为规则说明里的汇总数，不新建口径
+      reason: "面层核查层上线时 F07 抓到的门洞多算量（厨房 0.72 + 主卫干区 0.225 + 主卫淋浴 0.105），权威在 config/layout/model-geometry.yaml 墙条目 finish.paint_bands 的声明 reason 与 DEC-2026-10-09-P11（2026-11-07 issue #98 S4 面层配方下沉，原 finish-surfaces.yaml 已于 S5 退场）；此处为规则说明里的汇总数，不新建口径"
     - path: config/finish-lint.yaml
       scalars: [area_sqm]
       pattern: '0\.3'
-      reason: 面层核查层注释里举例的 0.30m 防水砖带高度，权威在 config/layout/overlay.yaml 的 walltile_* 声明；此处为规则说明，不新建口径
+      reason: "面层核查层注释里举例的 0.30m 防水砖带高度，权威在 config/layout/model-geometry.yaml 墙条目 finish.tile_bands 的 walltile_* 声明（2026-11-07 issue #98 S4 下沉，原 finish-surfaces.yaml）；此处为规则说明，不新建口径"
     - path: docs/penetration-lint.md
       scalars: [dimension]
       pattern: '0\.94'
-      reason: "引用 pending-site-data #55 的 runtime 实测包络尺寸，权威在 #55（含完整坐标）；口径未裁定，不新建数字"
-    - path: docs/decisions/15-penetration-lint.md
-      scalars: [dimension]
-      pattern: '0\.94'
-      reason: "DEC 历史条目（只登记不改写），引用 #55 的实测包络尺寸；权威在 #55"
+      reason: "引用原量房台账 #55 的 runtime 实测包络尺寸，权威在 #55（含完整坐标）；口径未裁定，不新建数字"
+    # 2026-11-09 issue #98 S2 删：`docs/decisions/15-penetration-lint.md` 的 0.94 dimension 豁免。
+    # 删除理由（决策铁律第 5 条）：该行被上一级 `docs/decisions/` 目录级豁免（pattern '.'）完全
+    # 覆盖，属重复登记；且权威在 #55（已由 docs/penetration-lint.md 的同值豁免承接）。
+    # 删了什么：一行 exempt_occurrences（path=docs/decisions/15-penetration-lint.md /
+    # scalars=[dimension] / pattern='0\.94' / reason「DEC 历史条目（只登记不改写），引用 #55」）。
     # 空调厂家确认单是**汇总视图（rendered view）**：单子上的每个数字/型号都是从已登记的权威源
     # 抄来做面对面核对用的——价格与型号口径在 config/hvac.yaml + docs/decisions/05-hvac.md
-    # （DEC-2026-10-04-R1）、现场几何在 config/ceiling.yaml / house.yaml / model-geometry.yaml、
-    # 待决项在 docs/pending-site-data.md #39/#42。本文件不得成为第二份数字真相：单子开头已写明
+    # （DEC-2026-10-04-R1）、现场几何在 config/model/envelope/ceiling.yaml / house.yaml / model-geometry.yaml、
+    # 待决项在原量房台账 #39/#42（已退场）。本文件不得成为第二份数字真相：单子开头已写明
     # 「如与本单不符，以权威源与合同附件为准」。若某数字在权威源里没有对应，应删单子上的它，
     # 而不是给它登记 fact。
     - path: docs/hvac/hvac-vendor-confirmation-sheet.md
@@ -514,10 +517,6 @@ facts:
     mirrors:
       - path: config/acceptance.yaml
         extract: '本户\s*(\d+)\s*条回路'
-        severity: error
-        expect_matches: 1
-      - path: docs/pending-site-data.md
-        extract: '(\d+)\s*路\s*\+\s*2P'
         severity: error
         expect_matches: 1
       - path: docs/mep-construction-guidance.md
@@ -551,9 +550,6 @@ facts:
       - path: config/house.yaml
         pattern: '第\s*\d+\s*路'
         reason: house.yaml mep_strategy 复述 R2 结论（外机供电第 20 路），权威在 topology circuits
-      - path: docs/pending-site-data.md
-        pattern: '第\s*\d+\s*路'
-        reason: "量房清单 #39 复述 R2 结论；#30 的「20 路 + 2P」由上面的 mirror 单列校验（DEC-2026-10-05-R3 浴霸拆每卫一路 20→21）"
       - path: docs/mep-construction-guidance.md
         pattern: '合并至'
         reason: 施工指导表格复述历史合并口径（25 路合并至 20 路），权威在 topology
@@ -578,9 +574,25 @@ facts:
         severity: error
         expect_matches: 1
 
+  # 穿墙声明计数（issue #98 第五阶段 S3，2026-11-08）：route 级 penetration 数组合计 60 条、
+  # 去重后 33 个孔位（wall@at；at 删除后由路线几何派生，孔位集不变）。kind 用 narrative 锚定
+  # 施工指导文档的清点句——facts-lint 现有 derived 选择器（#length/#field_sum/#find）表达不了
+  # 「跨路线嵌套数组求和 + 去重计数」，扩展选择器登记为后续项；机器计数契约（60 条全集、
+  # 45 钉值、15 保留）在 tests/server/penetration-derivation.test.ts，改配置必须同改测试。
+  - id: fact.mep_penetration_declarations
+    kind: narrative
+    value: "@docs/mep-construction-guidance.md:合计 **60 条声明、落在 33 个不同孔位**"
+    unit: 条
+    as_of: DEC-2026-11-08
+    mirrors:
+      - path: docs/mep-construction-guidance.md
+        extract: '合计 \*\*60 条声明、落在 33 个不同孔位\*\*'
+        severity: error
+        expect_matches: 1
+
   - id: fact.hvac_contract_cny
     kind: narrative
-    value: "@docs/pending-site-data.md:已成交 36,000 元"
+    value: "@config/hvac.yaml:plans.0.commercial.price_cny"
     unit: 元
     as_of: DEC-2026-10-04-R1
     mirrors:
@@ -713,15 +725,8 @@ facts:
       # 原 extract 把乘积 3.6×2.9=10.44 写死在正则里，改数据后只能二选一（写假算术 or 放宽正则）。
       # 正确做法是把「面积」单列一条 fact：权威值由 kitchen 多边形实测导出，
       # 镜像校验量房清单里手写的乘积，z 与面积两条互补，各自都能独立抓漂移。
-      - path: docs/pending-site-data.md
-        # 注意：该行手写乘积后不带单位（「3.6×2.4=8.64（开发商标注 6.09 为净口径）」），
-        # 因此只捕获数字；6.09㎡ 是开发商标注的净口径、与本 fact 的多边形毛口径不同量纲，
-        # 已由该行文字自证，不纳入对账。
-        extract: '3\.6×\d\.\d+=([\d.]+)'
-        severity: error
-        expect_matches: 1
       # 2026-10-04 A3：house.yaml 撤掉 area_sqm 文件级豁免后，kitchen room note 里的
-      # 「3.6×2.4=8.64㎡」必须被认领。与 pending-site-data 那条是同一事实的两处复述，
+      # 「3.6×2.4=8.64㎡」必须被认领。与原量房台账那条是同一事实的两处复述，
       # 各自 expect_matches: 1，任一被删 → mirror_unresolvable（禁止静默跳过）。
       - path: config/house.yaml
         extract: '3\.6×\d\.\d+=([\d.]+)㎡'
@@ -733,17 +738,13 @@ facts:
     value: "@config/layout/model-geometry.yaml:vertices#find:id=v_kit_s2.z"
     unit: m
     mirrors:
-      - path: docs/pending-site-data.md
-        # 2026-10-04 数据修正（DEC-021 现行口径）：厨房南界 z 由 2.90 改为 2.40，
-        # 毛口径面积随之由 3.6×2.9=10.44㎡ 改为 3.6×2.4=8.64㎡（= model-geometry
-        # rooms#find:id=kitchen 多边形实测 8.64㎡）。原 extract 把乘积 10.44 写死在
-        # 正则里，数据修正后永不命中 → mirror_unresolvable，属登记表缺陷而非数据问题。
-        # 改为捕获任意乘积：句子形状、expect_matches、severity 均不变，
-        # z 与 v_kit_s2.z 的对账仍是 error 级，门禁强度不降。
+      # 2026-11-09 S2-B：原唯一镜像指向量房手账里手写的「3.6×2.4」乘积，该文件已整份退场。
+      # 同一句算术在 config/house.yaml 的 kitchen room notes 里也有（DEC-014 z=2.9 经
+      # DEC-021 缩至 z=2.4），接回那里——活文件，改南界会同时改这里。
+      - path: config/house.yaml
         extract: '3\.6×(\d\.\d+)=[\d.]+'
         severity: error
         expect_matches: 1
-
   - id: fact.west_platform_area
     kind: derived
     value: "@config/layout/model-geometry.yaml:platform.boundary#bbox_area"
@@ -782,9 +783,6 @@ facts:
       # （1.60 − (1² − π·1²/4) = 1.60 − 0.2146 ≈ 1.385，文中取 1.39），不是独立事实。
       # 权威值仍是本 fact 的 bbox 1.60㎡；圆角扣除量未做机读对账（引擎暂缺
       # #rounded_area 算子），人工可依上式复核。若后续要给引擎补该算子，再把本条转 mirror。
-      - path: docs/pending-site-data.md
-        pattern: '1\.39'
-        reason: 'bbox 1.60㎡ 扣除 r=1.0 圆角楔形后的估算可用面积，非独立事实；权威值见 fact.west_platform_area'
       # 2026-10-04 A2/A3：同一个 1.39㎡ 在 house.yaml 也有两处（hvac notes 与 572 行
       # notes 汇总）。措辞锁定为「可用约 1.39㎡」，改成别的写法立刻 unregistered。
       - path: config/house.yaml
@@ -869,7 +867,7 @@ facts:
   # 客餐厅 polygon 实测面积：43.1734㎡（bbox 45.88㎡ 含 2.71㎡ 凹口，见
   # fact.living_dining_bbox_area）。两者是**不同口径**，不可互相对账。
   # 2026-10-20 措施 1 新建：此前 44.58（2026-10-25 DEC-2026-10-25-R01 本体标定重算后为 43.1734）只在 config/hvac.yaml load_design.basis 与
-  # docs/pending-site-data.md #39 以 prose 出现，无机器对账；建本条让
+  # 原量房台账 #39 以 prose 出现，无机器对账；建本条让
   # hvac.yaml 的叙述与速查表都不会静默漂移。
   - id: fact.living_dining_area
     kind: derived
@@ -902,7 +900,9 @@ facts:
 
   - id: fact.gas_alarm_z
     kind: derived
-    value: "@config/electrical.yaml:#find:id=sock_kitchen_gas.z"
+    # 2026-11-07 issue #98 S3：sock_kitchen_gas 是沿墙点位，x/z 声明已删——坐标权威值改锚
+    # 解析后坐标（shared/point-placement.ts 单一解算，与 DXF/3D/MEP 同源），不再直读配置字段。
+    value: "dataset:points.resolved.sock_kitchen_gas.z"
     unit: m
     mirrors:
       - path: docs/mep-construction-guidance.md
@@ -910,12 +910,6 @@ facts:
         severity: error
         expect_matches: 1
         group: 2
-      - path: docs/pending-site-data.md
-        extract: '暂定报警位\s*\(([\d.]+),([\d.]+)\)'
-        severity: error
-        expect_matches: 1
-        group: 2
-
   - id: fact.rooms_area_caliber
     kind: derived
     value: "@config/house.yaml:rooms#field_sum:area"
@@ -926,21 +920,18 @@ facts:
     #（入户花园 11.06→12.90、西设备平台 2.48→1.60），并删掉「≈ 预测建面 119.38㎡」
     # 这个伪等式（94.76 + 28.45 = 123.21 ≠ 119.38）。**剩余的是口径闭合性问题，不是
     # 算术问题**：净口径 / 毛口径 / 赠送计入规则三者的对齐需合同分户图裁定，
-    # 见 docs/pending-site-data.md #40。因此本处豁免是为「四套口径并存」留的显式登记，
+    # 见原量房台账 #40（已退场）。因此本处豁免是为「四套口径并存」留的显式登记，
     # 不是为某个错值开脱。
     exempt:
       - path: config/house.yaml
         pattern: 'usable_area'
-        reason: "rooms=多边形毛口径 / usable=合同净口径 / gift_areas=bbox 毛口径 / building_area=预测建面，四套口径并存；已修正汇总行错加数，剩余口径闭合性由 docs/pending-site-data.md #40 跟踪（需合同分户图裁定后才可对账）"
-        pending: "套内 94.76㎡（合同净）+ 赠送 28.45㎡（模型 bbox 毛）= 123.21㎡ ≠ 预测建面 119.38㎡；需合同分户图裁定净/毛/赠送计入规则三者关系，跟踪 docs/pending-site-data.md #40"
+        reason: "rooms=多边形毛口径 / usable=合同净口径 / gift_areas=bbox 毛口径 / building_area=预测建面，四套口径并存；已修正汇总行错加数，剩余口径闭合性由原量房台账 #40 跟踪（已退场）（需合同分户图裁定后才可对账）"
+        pending: "套内 94.76㎡（合同净）+ 赠送 28.45㎡（模型 bbox 毛）= 123.21㎡ ≠ 预测建面 119.38㎡；需合同分户图裁定净/毛/赠送计入规则三者关系，跟踪原量房台账 #40（已退场）"
       # #40 把三个口径的数值原样复述在量房清单里（94.76 合同净 / 123.21 模型毛+赠送 /
       # 119.38 预测建面）。它们不是新的独立事实，权威值分别在上面的
       # project.usable_area / rooms#field_sum:area + gift_areas bbox / project.building_area；
       # 等式不闭合是口径问题，由 #40 的待决跟踪。用「94.76㎡（合同净）」这个具名措辞锁定，
       # 哪一天该行被改写成本措辞不再命中，立刻 unregistered_fact_occurrence 提醒回来补登记。
-      - path: docs/pending-site-data.md
-        pattern: '94\.76㎡（合同净）'
-        reason: "docs/pending-site-data.md #40 复述三个面积口径（94.76㎡ 合同净 / 123.21㎡ 模型 bbox 毛+赠送 / 119.38㎡ 预测建面）；权威值分别在 config/house.yaml 的 project.usable_area / rooms 多边形+gift_areas bbox / project.building_area，三者不可直接相加这一结论由 #40 跟踪"
       # ─── 2026-10-04 A3：house.yaml notes 的面积行级登记 ────────────────────
       # 文件级豁免撤掉后，notes 里每个面积数字都要单独表态。分类原则：
       #   ① 模型可导出 → 建 mirror（fact.usable_area / fact.building_area /
@@ -958,7 +949,7 @@ facts:
         reason: "厨房 6.09㎡ 是开发商标注的净面积口径，与本 fact 的多边形毛口径（fact.kitchen_area，3.6×2.4=8.64㎡）不同量纲；同 note 已自证「净尺寸待量房」，净/毛关系随 #40 一并裁定"
       - path: config/house.yaml
         pattern: '南向大阳台\s*[\d.]+\s*㎡'
-        reason: "south_balcony status: not_modeled——模型未按室内地面建模、无几何权威源，13.95㎡ 是合同图标注口径；待量房/合同图确认地面通铺与计入规则后再建 mirror（docs/pending-site-data.md #40）"
+        reason: "south_balcony status: not_modeled——模型未按室内地面建模、无几何权威源，13.95㎡ 是合同图标注口径；待量房/合同图确认地面通铺与计入规则后再建 mirror（原量房台账 #40，已退场）"
       - path: config/house.yaml
         pattern: '赠送约\s*28\.90㎡'
         reason: "28.90㎡ = 13.35（entry_garden bbox）+ 13.95（south_balcony 合同标注）+ 1.60（platform bbox），是 #40 口径裁定用的推导和，不是独立事实；两个 bbox 加数分别由 fact.entry_garden_area / fact.west_platform_area 对账，第三个无几何权威源"
@@ -1023,19 +1014,13 @@ facts:
         extract: 'mount_height:\s*([\d.]+)'
         severity: error
         expect_matches: 1
-      - path: docs/pending-site-data.md
-        # #4（强电箱，1.65m）、#5（弱电箱，0.50m）、#30（强电箱规格，1.65m）三处都写
-        # 「底部离地 N m」，其中两处是强电箱；首处即强电箱，与权威值对账。
-        extract: '底部离地\s*([\d.]+)m'
-        severity: error
-        expect_matches: 3
-
   # 燃气报警器插座 x 坐标：CJJ/T 146-2011 要求探测器距灶具及排风口 >0.5m。
   # x=10.80 与 z=0.20 是 2026-10-04 按机体最近缘重算后的值（R1 的 z=0.55 不达标），
   # 三处（electrical.yaml / mep-guidance / pending #32）必须同值，否则合规结论失据。
   - id: fact.gas_alarm_x
     kind: derived
-    value: "@config/electrical.yaml:#find:id=sock_kitchen_gas.x"
+    # 2026-11-07 issue #98 S3：同 fact.gas_alarm_z——沿墙点位坐标改锚解析后坐标。
+    value: "dataset:points.resolved.sock_kitchen_gas.x"
     unit: m
     as_of: DEC-2026-10-04-R2
     mirrors:
@@ -1044,12 +1029,6 @@ facts:
         severity: error
         expect_matches: 1
         group: 1
-      - path: docs/pending-site-data.md
-        extract: '暂定报警位\s*\(([\d.]+),([\d.]+)\)'
-        severity: error
-        expect_matches: 1
-        group: 1
-
   # 几何房间数：model-geometry rooms=12（含 entry_garden / elevator_shaft 两个纯几何房间及 main_corridor 开放语义区域），
   # house.yaml rooms=10（设计房间口径）。README/designer_brief 的「四房两厅两卫」是**卧室数**
   # 口径（4）。三个口径都真实，但必须显式登记，否则「改了几个房间」这类问题无人对账。
@@ -1122,14 +1101,9 @@ facts:
       # 2026-10-05 给排水 v1：点位 22→27（新增 drain_riser×3 / gas_meter / duct），
       # 其中 6 处补了 v1 路线（5 条排水 + water-kitchen-requirement 的 to 改指点位），
       # 显式 deferred 标记 11→7（gas_meter / duct 是非管路锚点，按契约登记 deferred）。
-      - path: docs/pending-site-data.md
-        extract: '(\d+)\s*个点位中\s*(\d+)\s*处既不是任何 route'
-        severity: error
-        expect_matches: 1
-
   - id: fact.ceiling_zones_count
     kind: derived
-    value: "@config/ceiling.yaml:#length"
+    value: "@config/model/envelope/ceiling.yaml:#length"
     unit: 个
     mirrors:
       - path: docs/mep-construction-guidance.md
@@ -1160,22 +1134,7 @@ facts:
         reason: 权威源自身字段声明；3 处赠送面积的逐项叙述在北开敞外廊/南大阳台/西设备平台三行 notes，面积口径另由 fact.west_platform_area 对账
 
   # 量房待确认项条数：文档编号数是「还有什么没量」的账面。新增/关闭条目必须同步。
-  - id: fact.pending_site_data_count
-    kind: derived
-    value: "@docs/pending-site-data.md:量表共 77 条"
-    unit: 条
-    mirrors:
-      - path: docs/pending-site-data.md
-        extract: '量表共\s*(\d+)\s*条'
-        severity: error
-        expect_matches: 1
-      # 2026-10-20 措施 1：现行值速查表 mirror。
-      - path: docs/CURRENT-VALUES.md
-        extract: '^\| 待决台账条数 \| (\d+) 条编号 \|'
-        severity: error
-        expect_matches: 1
 
-  # MEP 协同分层数：8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风），决定走线表的层口径。
   - id: fact.mep_layers_count
     kind: derived
     value: "@config/mep-hvac-coordination.yaml:layers#keys"
@@ -1188,90 +1147,70 @@ facts:
 
 # ─── T3 契约层 ───────────────────────────────────────────────────────────────
 
-# DEC 日志 2026-10-09 按主题拆分（DEC-2026-10-09-S01）后的 14 个主题文件。
-# 三条契约（查重 + 两道外键）共用同一份清单，用 YAML 锚点避免三处手抄漂移；
-# README 不在此列——它只有索引表，没有 `### DEC-` 条目正文。
-x_decision_files: &decision_files
-  - docs/decisions/01-control-budget.md
-  - docs/decisions/02-layout-public.md
-  - docs/decisions/03-master-bedroom.md
-  - docs/decisions/04-bathrooms.md
-  - docs/decisions/05-hvac.md
-  - docs/decisions/06-electrical.md
-  - docs/decisions/06-electrical-archive.md
-  - docs/decisions/07-lighting.md
-  - docs/decisions/08-ceiling-form.md
-  - docs/decisions/09-ceiling-takeoff.md
-  - docs/decisions/10-paint.md
-  - docs/decisions/11-tile-finish.md
-  - docs/decisions/12-plumbing.md
-  - docs/decisions/13-mep-integration.md
-  - docs/decisions/14-style-furniture.md
-  - docs/decisions/15-penetration-lint.md
-  - docs/decisions/16-verify-gate.md
-  - docs/decisions/17-paint-scope-extension.md
-  - docs/decisions/17-paint-scope-extension.md
-  - docs/decisions/18-engineering-state.md
+# 2026-11-09 issue #98 第六阶段 S2：DEC 编号的机器可解析靶 = config/decision-knowledge.yaml
+# （业主 2026-11-08 裁定②：不建中央决策账；S1 的 config/decision-registry.yaml 是原料、拆完即删）。
+# 该文件两段：entries（真·不可再生的知识）+ retired（292 条墓碑一行，只登记 id/subject/status/
+# superseded_by/record/landing）。它**不是**活文档——没有任何事实以它为权威源，它只回答
+# 「这个编号还在册吗、它的原文在 git 哪里、内容去了哪」。
+#
+# 本字段（decision_log_files）是 repair_channel.decision_ref 存在性校验的靶清单
+# （shared/facts-lint.ts 的 decisionRefResolves 逐文件搜条目形态）。S1 时它指向
+# docs/decisions/ 的 14 个 md 标题；S2 改指本文件，引擎同步扩为认 `- id: "DEC-…"` YAML 形态
+# （审读轮 M1：原先只认 `^#{2,6}\s*DEC-…`，删档当天必炸 repair_channel_ref_unresolvable）。
+# x_decision_files 锚点（原 14 个 md 文件清单，17-paint-scope-extension.md 还重复登记两次）
+# 随本字段改切一并删除——它是 DEC 档案时代的治理设施，契约 target 已不再需要它。
+decision_log_files:
+  - config/decision-knowledge.yaml
 
 contracts:
 
   - id: c.dec_unique
     kind: unique
-    # 2026-10-09 DEC-2026-10-09-S01：DEC 日志拆成 docs/decisions/ 14 个主题文件，
-    # source 改文件数组（引擎 runUnique 支持 string|string[]），跨文件查重不削弱。
-    source: *decision_files
-    pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.]+)'
-    allow_suffix: ['-补', '-补2', '-补3', '.1', '.2', '.3']
-    # 注意：`-补` 等含 CJK 的后缀不在 pattern 的字符类里，引擎会再看匹配之后的正文；
-    # 因此 `DEC-...-051-补` 与 `DEC-...-051` 不被判为重号，但两个**无后缀**的同号
-    # 标题会立刻报 duplicate_id。
-    # README 不入 source：它只有索引表，没有 `### DEC-` 条目正文。
+    # 2026-11-09 issue #98 第六阶段 S2：DEC 编号的唯一性载体从 docs/decisions/ 的 md 标题
+    # 改为 config/decision-knowledge.yaml 的登记行（业主 2026-11-08 裁定②：不建中央决策账，
+    # S1 的 decision-registry.yaml 拆完即删，本文件是它拆完之后的残壳）。
+    # source 仍是单文件：登记只发生在这一个地方，跨文件查重随 md 档案一起退场。
+    source: config/decision-knowledge.yaml
+    pattern: '^\s*-\s*id:\s*["'']?(DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.\-\u4e00-\u9fff]+)'
+    allow_suffix: ['-补', '-补2', '-补3', '-补记', '.1', '.2', '.3']
+    # 注意：`-补` / `-补记` / `.n` 等补充号在 id 字符串里（YAML 登记形态，字符类必须含 CJK，
+    # 否则 `-补` 被切掉、基号变成 `…-051-` 判出三个假重号），引擎按后缀判补充条目，
+    # 因此 `DEC-...-051-补` 与 `DEC-...-051` 不被判为重号；两个**同 base 的无后缀** id 才报 duplicate_id。
 
   - id: c.dec_ref_resolvable
     kind: fk
-    # 两级解析：全引直接命中；短引（DEC-nnn）按序号在全引里反查，唯一命中视为已解析
-    # （本项目约定 config/prose 用短引、decision_log 只登记全引，全报 dangling 会是
-    # 220 处噪声）。因此真正要抓的是两类：
+    # 两级解析：全引直接命中；短引（DEC-nnn）按序号在登记 id 里反查，唯一命中视为已解析
+    # （本项目约定 config/prose 用短引，全报 dangling 会是 276 处噪声）。真正要抓的是：
     #   ① 反查不到 → dangling_reference
-    #   ② 反查到了、但标题主题与引用语境不符 → reference_subject_mismatch
-    # 编号族：既兼容 3 位序号（DEC-2026-08-26-045 / 短引 DEC-045），
-    # 也兼容同日多轮修订号 `-Rnn`（DEC-2026-10-04-R2 / DEC-2026-10-05-R15）。
-    # `R` 族的反查口径与 3 位序号不同：序号可按数字反查（DEC-045 → DEC-2026-…-045），
-    # 而 `Rnn` 必须带日期才是全引（DEC-2026-10-05-R15）；裸 `DEC-Rnn` 不构成可反查短引，
-    # 宁可报 dangling 也不猜。
-    ref_pattern: '(DEC-(?:\d{4}-\d{2}-\d{2}-)?(?:\d{3}|R\d{1,3}))\b'
+    #   ② 反查到了、但登记主题与引用语境不符 → reference_subject_mismatch
+    # 编号族（2026-11-09 S2 扩全族，原先只认 `\d{3}|R\d{1,3}`，-Cnn/-Mnn/-Wnn/-Pnn/-Snn/-Gnn/-Enn/-Fnn
+    #   与 -TILE-nn 全族在门禁里隐身）：既兼容 3 位序号（DEC-2026-08-26-045 / 短引 DEC-045），
+    #   也兼容同日多轮修订号 `-Rnn`，以及卷内分类号 `-Cnn`（ceiling）/`-Mnn`（mep）/`-Wnn`（water）/
+    #   `-Pnn`（paint）/`-Snn`（split）/`-Gnn`（gate）/`-Enn`（engineering）/`-Fnn`（fix）/
+    #   `-TILE-nn`（tile）。补充号族（-补N / -补记N / .N）整体可选，紧跟 id 之后。
+    # 反查口径与序号族不同：序号可按数字反查（DEC-045 → DEC-2026-…-045），而 `Rnn`/`Cnn` 必须带
+    # 日期才是全引；裸 `DEC-Rnn` 不构成可反查短引，宁可报 dangling 也不猜。
+    # 边界：尾部负向预查 `(?![0-9A-Za-z])` 防 `DEC-…-R1234` 被截成 `R123` 假解析，同时放行
+    #   `-补`/`.1` 补充号（旧口径的 `\b` 会把它们切掉）。
+    ref_pattern: '(DEC-(?:\d{4}-\d{2}-\d{2}-)?(?:\d{3}|[A-Z]{1,4}-?\d{1,3})(?:[.\-](?:\d+|补记[一二三四五六]|补\d*))?)(?![0-9A-Za-z])'
     ref_scope: [config/, shared/, docs/, server/]
-    target: *decision_files
-    target_pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3}))\b.*'
-    # 已知错配：DEC-045 序号反查到 DEC-2026-08-26-045「主卧空调檐口」，
-    # 但全仓把 DEC-045 当「主卫东墙底柜+下板+主板+PVC 盒四件同轴」引用，该决策从未入账。
-    # 2026-10-04：该条 subject_assertion 已移至 c.dec045_subject_pending_adjudication
-    # （warning 级，待业主/设计裁决后回迁或消除）。本契约的 severity 保持 error 不变，
-    # dangling_reference 仍为 error——不因为豁免一条待决项而削弱整层外键门禁。
+    target: config/decision-knowledge.yaml
+    target_pattern: '^\s*-\s*id:\s*["'']?(DEC-(?:\d{4}-\d{2}-\d{2}-)?(?:\d{3}|[A-Z]{1,4}-?\d{1,3})(?:[.\-](?:\d+|补记[一二三四五六]|补\d*))?)'
+    # 2026-11-09 S2：DEC-045 错配悬案已由 S1 迁进原量房台账 #78（含随迁的两个
+    # 裁决选项），专用 warning 级哨兵契约 c.dec045_subject_pending_adjudication 随之删除——
+    # 悬案有台账承接后，哨兵只是第二处登记（一题一文档）。
     subject_assertions: []
 
-  # C5（2026-10-04 挂豁免，待业主/设计裁决）
-  # ──────────────────────────────────────────────────────────────────────────
-  # 为什么不能自动修：DEC-045 序号唯一反查到 DEC-2026-08-26-045「主卧空调檐口定案 +
-  # 条带东北角通顶储物柜（冷凝水柜内走管）」，但全仓 66 处引用把 DEC-045 当
-  # 「主卫东墙底柜+下板+主板+PVC 盒四件同轴」用——该决策从未入账。两种修法都是治理决策：
-  #   ① 补录正式条目并重编号（项目已有 DEC-052/053 改号先例）；
-  #   ② 把 66 处引用改指向正确编号。
-  # 待谁裁决：业主 + 设计侧（选①还是②，以及补录条目的正文）。
-  # 跟踪入口：docs/decisions/README.md（新增/改编号条目）；本契约即显式待决登记。
-  # 实现方式：从 c.dec_ref_resolvable 摘出该条 assertion，单独置为 warning 级契约，
-  # 其余外键检查（dangling_reference 仍为 error）完全不受影响。
-  - id: c.dec045_subject_pending_adjudication
-    kind: fk
-    severity: warning
-    ref_pattern: '(DEC-045)\b'
-    ref_scope: [config/, shared/, docs/, server/]
-    target: *decision_files
-    target_pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-\d{3})\b.*'
-    subject_assertions:
-      - ref: 'DEC-045'
-        expect: '主卫|悬浮板|vanity|PVC|四件|台盆'
-        note: 'DEC-045 序号反查到 DEC-2026-08-26-045（主卧空调檐口），但全仓 66 处引用意指主卫四件套；需裁决：补录正式条目并重编号，或改引用指向正确编号；跟踪：docs/decisions/README.md'
+  # 2026-11-09 issue #98 第六阶段 S2：c.dec045_subject_pending_adjudication（warning 级哨兵）
+  # 已删。删除理由（决策铁律第 5 条，逐条列名）：
+  #   · 删了什么：一条 fk 契约（ref_pattern `(DEC-045)\b` / ref_scope 四目录 /
+  #     target=docs/decisions/ / target_pattern md 标题形态 / 一条 subject_assertion，
+  #     期望匹配 /主卫|悬浮板|vanity|PVC|四件|台盆/ + 66→71 处错配注记）。
+  #   · 为什么可删：悬案本体已由 S1 迁进原量房台账 #78（含随迁的两个裁决选项
+  #     「补录并重编号 / 引用改指」与 71 处引用计数），哨兵只是同一待决项的第二处登记；
+  #     一题一文档铁律下应只有一处跟踪入口。
+  #   · 不丢什么：dangling_reference 仍由 c.dec_ref_resolvable 以 error 级覆盖（DEC-045 反查到
+  #     DEC-2026-08-26-045，仍可解析）；错配叙事在 #78 与 config/decision-knowledge.yaml 可查。
 
   - id: c.procurement_subset_of_materials
     kind: fk
@@ -1325,7 +1264,7 @@ contracts:
   - id: c.hvac_model_refs_resolvable
     kind: fk
     ref_pattern: '(MJV-[0-9A-Za-z\-]+)'
-    ref_scope: [config/ceiling.yaml, config/electrical.yaml, config/house.yaml, config/procurement.yaml, schedule/phase-1/control.yaml]
+    ref_scope: [config/model/envelope/ceiling.yaml, config/electrical.yaml, config/house.yaml, config/procurement.yaml, schedule/phase-1/control.yaml]
     target: config/hvac.yaml
     target_pattern: '(MJV-[0-9A-Za-z\-]+)'
 
@@ -1425,6 +1364,12 @@ contracts:
         reason: 阶段 3 已删除的文件：invented HVAC 报价表（A1 30,500 / A2 29,000 / … / F2 31,500 + FLOOR_HEIGHT 3.0）与合同成交价 36,000 并存，业主端长期看到 29,000。注释保留该路径是为了写明被推翻的旧结论（决策铁律 3），不是引用活代码
       - path: config/mep-material-baseline.yaml
         reason: 已退役配置（无机器读者，退出配置见 DEC-2026-10-07-M01，规格落实在 docs/mep-construction-guidance.md）：schedule/procurement.md §02 选型基线段保留该路径是为了写明其退出配置的沿革，不是引用活配置
+      - path: config/layout/overlay.yaml
+        reason: "issue #98 第三阶段 S1 已删除（拆为 config/model/envelope/openings.yaml + floor-zones.yaml + finish-surfaces.yaml，合并入口 server/overlay-merge.ts parseOverlayFiles()）；历史文档、迁移注释与 schedule 快照保留旧路径是为了写明声明文件沿革（决策铁律 3/5），不是引用活配置"
+      - path: config/ceiling.yaml
+        reason: "issue #98 第三阶段 S1 已删除（迁至 config/model/envelope/ceiling.yaml）；历史文档与迁移注释保留旧路径是为了写明吊顶声明沿革，不是引用活配置"
+      - path: docs/decisions/
+        reason: "issue #98 第六阶段 S3 已整份删除（20 文件 / 292 条 DEC，正文即 git 历史）。config/decision-knowledge.yaml 的 retired 段 252 条 record 字段（形如 docs/decisions/05-hvac.md#L123）与 config/decision-gates.yaml 的旗标沿革注释保留这些路径，是为了写明「DEC 原文在 git 史的哪个文件哪一行」——文件删除后路径必然失效，这是墓碑的设计形态（AGENTS.md「一题一文档，退场不建归档目录」），不是引用腐烂"
 
   # ④ 规则引用的家具 type 必须存在于 house.yaml furnishings。固化上一轮手修成果
   # （tv_stand / wardrobe_240 / master_freestanding_wardrobe_062 三类已补齐），
@@ -1438,11 +1383,11 @@ contracts:
     target_path: furnishings
     key_field: type
     # 唯一的非家具 type：ac_indoor 是空调内机，其 match.type 由
-    # c.rule_targets_exist 的 `rule_file_field: b.file` + `file_map.ceiling: config/ceiling.yaml`
+    # c.rule_targets_exist 的 `rule_file_field: b.file` + `file_map.ceiling: config/model/envelope/ceiling.yaml`
     # 对账（目标集合改从 ceiling.yaml 取），不属于 furnishings 的家具词汇。
     allow:
       - type: ac_indoor
-        reason: 空调内机不是家具 type；其 match.type 由 c.rule_targets_exist 的 b.file=ceiling 文件映射对账（目标集合为 config/ceiling.yaml 的 ac_* 条目）
+        reason: 空调内机不是家具 type；其 match.type 由 c.rule_targets_exist 的 b.file=ceiling 文件映射对账（目标集合为 config/model/envelope/ceiling.yaml 的 ac_* 条目）
 
   # ④ 泛化后的 requires_when：状态机必须自洽。
   # `pattern` 而不是 `equals`：control.yaml 的实际词汇是 budget_pool_locked 而不是 locked，
@@ -1518,7 +1463,7 @@ contracts:
     file_map:
       electrical: config/electrical.yaml
       plumbing: config/plumbing.yaml
-      ceiling: config/ceiling.yaml
+      ceiling: config/model/envelope/ceiling.yaml
       furniture: config/house.yaml
       house: config/house.yaml
     target: config/house.yaml
@@ -1544,13 +1489,19 @@ contracts:
   # 因此本契约登记为「已武装、0 命中」的前置契约：词汇一旦有人启用就开始强制
   # 「每个 leb 点位必须带坐标/高度 + note（note 里写联结金属构件清单与规范关系）」，
   # 而 0 命中这件事通过 pending 在报告 INFO 里露面，不会悄悄腐烂。
+  #
+  # 2026-11-07 issue #98 S3 显式登记（设计文档 §6.1-3，**本 PR 不改契约语义**）：
+  # `then: [x, z, ...]` 与「沿墙点位只声明 wall+along」存在**潜在**冲突——端子箱落点
+  # 若在卫浴墙面上， leb 点位会走 along 定位而不带 x/z，届时本契约会误报。属 facts 层
+  # 手术（改 then 为 along 或显式允许绝对例外），须单独论证、单独门禁，不混在定位迁移里
+  # 静默改。跟踪原量房台账 #43（已退场）（该行「待测量项」已同步登记）。
   - id: c.leb_point_requires_bond_schedule
     kind: requires_when
     path: config/plumbing.yaml
     when: { field: type, equals: leb }
     then: [x, z, height, note]
     min_matches: 0
-    pending: "LEB 局部等电位端子箱：GB 55038-2025 7.4.7 要求设局部等电位联结的场所（本项目主卫/客卫）应做 LEB；端子箱位置、需联结金属构件清单（花洒/龙头/毛巾架/排水口/采暖管）与联结截面均未知，位置未知前不得在 config/plumbing.yaml 造点位。枚举值已在 shared/types.ts 与 shared/project-render-facts-schema.ts 补齐；待位置与构件清单回来后落点，本契约立即强制 note 写明联结清单与规范关系。跟踪 docs/pending-site-data.md #43"
+    pending: "LEB 局部等电位端子箱：GB 55038-2025 7.4.7 要求设局部等电位联结的场所（本项目主卫/客卫）应做 LEB；端子箱位置、需联结金属构件清单（花洒/龙头/毛巾架/排水口/采暖管）与联结截面均未知，位置未知前不得在 config/plumbing.yaml 造点位。枚举值已在 shared/types.ts 与 shared/project-render-facts-schema.ts 补齐；待位置与构件清单回来后落点，本契约立即强制 note 写明联结清单与规范关系。跟踪原量房台账 #43（已退场）"
 
   # ⑧ 给排水点位要么被 route 引用，要么显式登记 deferred。2026-10-04 A7。
   # ──────────────────────────────────────────────────────────────────────────
@@ -1643,7 +1594,7 @@ contracts:
     severity: error
     source: config/mep-hvac-coordination.yaml
     items_path: routes
-    ceiling_source: config/ceiling.yaml
+    ceiling_source: config/model/envelope/ceiling.yaml
     endpoints_key: mep.endpoints
     room_heights_key: mep.room_heights
     default_room_height: 2.8
@@ -1679,7 +1630,7 @@ contracts:
     # 「不许静默消音」，没告诉人「正当修正长什么样」——于是任何一次几何改动都像消音。
     # 本字段把修正出口显式登记，让合规修改变成可审计动作而不是游击改动：
     #   decision_ref —— 修正必须附的 DEC 编号（全引，编号族见 c.dec_ref_resolvable）。
-    #     裁定落地前（docs/pending-site-data.md #41 未关）登记为 `pending:` 占位，
+    #     裁定落地前（原量房台账 #41，已退场）登记为 `pending:` 占位，
     #     引擎按 exempt.pending 同纪律在 INFO 里露面；一旦设计侧出修正 DEC，必须换成该全引。
     #   sync_files   —— 该修正必须同步的四个文件：改几何/降板（ceiling.yaml）→ 同步
     #     施工指导 §0 prose → 同步待决台账 #41 → 同步本登记表的 registered_conflicts。
@@ -1689,8 +1640,8 @@ contracts:
     # 通道只回答「要改的话必须怎么改」，不提供任何免检。
     repair_channel:
       decision_ref: 'DEC-2026-10-06-R5'
-      sync_files: [config/ceiling.yaml, docs/mep-construction-guidance.md, docs/pending-site-data.md, config/facts.yaml]
-    pending: "**2026-10-06 DEC-2026-10-06-R5 已裁定并执行**（#41 分层标高升入降板空腔，保走廊净高 2.50m；废止「降板加厚」方案②）。分层标高改为**分区口径**：A 区（走廊满吊/门厅满吊/客厅北缘边吊/餐厅两条服务带/各房边吊，完成面 2.50）强电 2.55 / 弱电 2.60 / 冷凝水 2.65 / 冷媒 2.60、上限 2.75；B 区（厨房铝扣板/主卫铝扣板/客卫铝扣板，完成面 2.65，空腔仅 150mm）进入该区的管路段 2.70–2.76；送风 2.68 / 回风 2.72 原位不变（已在空腔内，回风格栅面板贴完成面 2.49）。参考梁约束带内 ≤ 梁底−0.05（南窗带 2.73→2.68、厨房北窗带 2.65→2.60、厨房局部梁头 2.56→2.51、主卫梁头 2.41→2.36、走廊服务带 2.65→2.60）。**登记数 160 → 24**：其中 −20 为走地给排水（water_supply/drainage）按 DEC 配套口径修正退出比较、−136−20=−116 为吊顶承载层抬入空腔；verify:mep 与 verify:facts 双引擎实算一致 = 24。残留 24 处全部显式登记：① 竖直下引至设备点位的末点（to_height 0.02–1.60m，点位坐标在 config/electrical.yaml / config/plumbing.yaml，本轮禁改，竖直下引段本身合法）；② 贴在完成面上的设备开口（回风格栅 2.49，见 config/ceiling.yaml 回风口坐标 2.49）；③ 窗帘盒内电动窗帘电源（0.7m）；④ condensate-living / condensate-dining 两条绕不开走廊服务带梁带的候选路线（末端立管接点 (6.70,3.70) 固定、客卫吊顶区四面有墙，重力管不得上弯，无法同时满足「梁带内 ≤2.60」与「客卫段 ≥2.70」，按 DEC「确实绕不开的保留原标高」处理，量房实测梁底后复判）。**分解链条**：144→149→154→153→160（历史，见下）→ 160→24（DEC-2026-10-06-R5：分层标高升入降板空腔，−136 为承载层抬入空腔、−20 为走地给排水按 DEC 配套口径修正退出比较）。#41 已裁定，decision_ref 由 pending 占位改为 DEC-2026-10-06-R5 全引；跟踪 docs/pending-site-data.md #41（已改写为「已裁定 + 残留」）。"
+      sync_files: [config/model/envelope/ceiling.yaml, docs/mep-construction-guidance.md, config/facts.yaml]
+    pending: "**2026-10-06 DEC-2026-10-06-R5 已裁定并执行**（#41 分层标高升入降板空腔，保走廊净高 2.50m；废止「降板加厚」方案②）。分层标高改为**分区口径**：A 区（走廊满吊/门厅满吊/客厅北缘边吊/餐厅两条服务带/各房边吊，完成面 2.50）强电 2.55 / 弱电 2.60 / 冷凝水 2.65 / 冷媒 2.60、上限 2.75；B 区（厨房铝扣板/主卫铝扣板/客卫铝扣板，完成面 2.65，空腔仅 150mm）进入该区的管路段 2.70–2.76；送风 2.68 / 回风 2.72 原位不变（已在空腔内，回风格栅面板贴完成面 2.49）。参考梁约束带内 ≤ 梁底−0.05（南窗带 2.73→2.68、厨房北窗带 2.65→2.60、厨房局部梁头 2.56→2.51、主卫梁头 2.41→2.36、走廊服务带 2.65→2.60）。**登记数 160 → 24**：其中 −20 为走地给排水（water_supply/drainage）按 DEC 配套口径修正退出比较、−136−20=−116 为吊顶承载层抬入空腔；verify:mep 与 verify:facts 双引擎实算一致 = 24。残留 24 处全部显式登记：① 竖直下引至设备点位的末点（to_height 0.02–1.60m，点位坐标在 config/electrical.yaml / config/plumbing.yaml，本轮禁改，竖直下引段本身合法）；② 贴在完成面上的设备开口（回风格栅 2.49，见 config/model/envelope/ceiling.yaml 回风口坐标 2.49）；③ 窗帘盒内电动窗帘电源（0.7m）；④ condensate-living / condensate-dining 两条绕不开走廊服务带梁带的候选路线（末端立管接点 (6.70,3.70) 固定、客卫吊顶区四面有墙，重力管不得上弯，无法同时满足「梁带内 ≤2.60」与「客卫段 ≥2.70」，按 DEC「确实绕不开的保留原标高」处理，量房实测梁底后复判）。**分解链条**：144→149→154→153→160（历史，见下）→ 160→24（DEC-2026-10-06-R5：分层标高升入降板空腔，−136 为承载层抬入空腔、−20 为走地给排水按 DEC 配套口径修正退出比较）。#41 已裁定，decision_ref 由 pending 占位改为 DEC-2026-10-06-R5 全引；跟踪 原量房台账 #41（已退场，未决项现由对象 blocker 承载）（已改写为「已裁定 + 残留」）。"
     # 历史分解链条（保留备查）：144→149（2026-10-05 给排水 v1 新增 5 条排水路线）；149→154（DEC-2026-10-05-R11 客餐厅冷凝水改线）；154→153（DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4，refrigerant-trunk 该 hit 合法消失）；153→160（DEC-2026-10-06-R1 给排水缺项兜底新增 7 条 floor-branch 路线，每条在所经厨卫/套间吊顶 footprint 内新增 1 处 hit——给排水走地 0.02–0.45m 本就低于完成面，与既有给排水 floor-branch 路线同源、非 #41 分层标高问题）。
 
   - id: c.layout_region_room_overlap
@@ -1725,7 +1676,7 @@ contracts:
     unit: ㎡
     tolerance: 0.005
     compare:
-      - { label: 'overlay 声明实算（shared/masonry-takeoff.ts，wall_region + sill_region）', value: 'dataset:budget.masonry.totalTileSqm' }
+      - { label: '声明实算（shared/masonry-takeoff.ts，墙 finish.tile_bands + bay_sill finish.tile；2026-11-07 issue #98 S4 下沉，原 overlay wall_region + sill_region）', value: 'dataset:budget.masonry.totalTileSqm' }
       - { label: 'control.yaml COST-060-08 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-08.quantity_declared.total_tile_sqm' }
       - { label: '预算实际计价量（快照 lineItems topic=wall）', value: 'dataset:budget.line_items.wall' }
 
@@ -1863,15 +1814,17 @@ coverage:
   # （缺一方即 finish.rule_undeclared/code_unknown）；waivers[] 是带保质期的豁免登记册，
   # tolerance 是判定容差（米）——小于此值的水平/竖向重叠不算压。
   - { file: config/finish-lint.yaml, field: "version", readers: ["shared/finish/types.ts", "scripts/verify/finish/verify-finish-scope.ts"] }
-  - { file: config/finish-lint.yaml, field: "rules", readers: ["shared/finish/registry.ts", "scripts/verify/finish/verify-finish-scope.ts"] }
+  # 2026-11-07 issue #98 第三阶段 S4：装配从 verifier 脚本上移到 shared/finish/input.ts
+  # （verifier 与测试共用一份，连 /^walltile/ 前缀判定的手抄副本一并消除），reader 随之改。
+  - { file: config/finish-lint.yaml, field: "rules", readers: ["shared/finish/registry.ts", "shared/finish/input.ts"] }
   - { file: config/finish-lint.yaml, field: "waivers", readers: ["shared/finish/types.ts", "shared/finish/registry.ts"] }
-  - { file: config/finish-lint.yaml, field: "tolerance", readers: ["shared/finish/types.ts", "shared/finish/rules.ts", "scripts/verify/finish/verify-finish-scope.ts"] }
+  - { file: config/finish-lint.yaml, field: "tolerance", readers: ["shared/finish/types.ts", "shared/finish/rules.ts", "shared/finish/input.ts"] }
   - { file: config/finish-lint.yaml, field: "note", readers: [] }
   # MEP lint warning 交付表态登记册（DEC-2026-10-17-R19）：每个存活的 warning 类
   # 必须登记 accepted(dec_ref+owner+trigger)，未表态的类本身是 must_fix error。
   - { file: config/mep-warning-adjudication.yaml, field: "version", readers: ["shared/mep-warning-adjudication.ts"] }
   - { file: config/mep-warning-adjudication.yaml, field: "adjudications", readers: ["shared/mep-warning-adjudication.ts"] }
-  - { file: config/ceiling.yaml, field: "*", readers: [] }
+  - { file: config/model/envelope/ceiling.yaml, field: "*", readers: [] }
   # 瓦工人工费率卡（2026-10-13 从 config/tile-comparison.yaml 的 masonry_rate_card 提为项目级）。
   # 搬迁理由：该卡原先只喂 /api/tiles/comparison，而 server/budget-calculator.ts 的 computeLabor
   # 另读 config/budget/base.json 的 categories.masonry.labor（45 元/㎡），同一件事两处定价。
@@ -1892,7 +1845,7 @@ coverage:
   # shared/masonry-takeoff.ts 的 dryRoomIds / wetRoomIds 唯一源，server/budget-calculator.ts 的
   # floor 材料量与 base.json masonry.labor 的 floor 人工行都读它——「地面面积」从此只有一处口径。
   - { file: config/tile-comparison.yaml, field: "dry_room_ids", readers: ["server/budget-calculator.ts", "server/tile-cost-comparison.ts"] }
-  - { file: config/tile-comparison.yaml, field: "wet_room_ids", readers: ["server/budget-calculator.ts"] }
+  - { file: config/tile-comparison.yaml, field: "wet_room_ids", readers: ["server/budget-calculator.ts", "server/overlay-merge.ts"] }
   # grout_model 只剩 pkg130_reconciliation 对账最小集，cost-summary.ts 与 QR-2026-10-03-07 fail-closed 对账
   - { file: config/tile-comparison.yaml, field: "grout_model", readers: ["scripts/schedule/cost-summary.ts"] }
   - { file: config/ceiling-quotes.yaml, field: "active", readers: ["server/ceiling-quotes.ts", "server/budget-calculator.ts", "server/routes.ts"] }
@@ -1916,9 +1869,10 @@ coverage:
   # DEC-2026-10-08-C01：吊顶算量子系统。trade 是显式声明的工艺/计价类别
   # （gypsum_board/aluminum_buckle/curtain_box/drying_rack），算量与高亮分区都从它取口径，
   # 禁止任何模块靠 id 命名推断归类。
-  - { file: config/ceiling.yaml, field: "trade", readers: ["shared/ceiling-takeoff.ts", "shared/project-render-facts-schema.ts", "shared/render/CeilingZoneBuilder.ts", "shared/render/SceneBuilder.ts", "scripts/verify/rules/verify-rules.ts", "scripts/project/ceiling-takeoff.ts"] }
+  - { file: config/model/envelope/ceiling.yaml, field: "trade", readers: ["shared/ceiling-takeoff.ts", "shared/project-render-facts-schema.ts", "shared/render/CeilingZoneBuilder.ts", "shared/render/SceneBuilder.ts", "scripts/verify/rules/verify-rules.ts", "scripts/project/ceiling-takeoff.ts"] }
   # DEC-2026-10-08-R01：涂漆（墙顶面涂装 PKG-080）成本核算口径。area_source 只作溯源标注，
-  # 真正的面积来自 config/layout/overlay.yaml 的 paint_region 声明（同一份声明也驱动 3D 检视态）。
+  # 真正的面积来自 config/layout/model-geometry.yaml 墙条目 finish.paint_bands 的声明
+  # （2026-11-07 issue #98 第三阶段 S4 下沉，原 finish-surfaces.yaml 的 paint_region；同一份声明也驱动 3D 检视态）。
   - { file: config/paint-comparison.yaml, field: "version", readers: [] }
   - { file: config/paint-comparison.yaml, field: "area_source", readers: ["server/paint-cost-comparison.ts"] }
   - { file: config/paint-comparison.yaml, field: "room_finish_source", readers: ["server/paint-cost-comparison.ts", "tests/server/paint-scope.test.ts"] }
@@ -1948,10 +1902,31 @@ coverage:
   - { file: config/facts.yaml, field: "scan", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   - { file: config/facts.yaml, field: "facts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   - { file: config/facts.yaml, field: "contracts", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
-  # x_decision_files 是 2026-10-09 DEC-2026-10-09-S01 引入的 YAML 锚点：DEC 日志拆成
-  # docs/decisions/ 14 个文件后，三条契约（查重 + 两道外键）共用同一份文件清单，避免手抄漂移。
-  # 纯声明式复用，没有代码 reader。
-  - { file: config/facts.yaml, field: "x_decision_files", readers: [] }
+  # decision_log_files（2026-11-08 issue #98 S1 补，2026-11-09 S2 改切）：repair_channel.decision_ref
+  # 存在性校验的靶清单。S1 时值是 docs/decisions/ 14 个 md 标题；S2 改指
+  # config/decision-knowledge.yaml（引擎同步认 `- id: "DEC-…"` YAML 登记形态）。
+  # 读者 = 引擎本身（读该字段并搜条目形态）+ facts-lint 单测（断言「未登记则跳过且 INFO 露面」）。
+  - { file: config/facts.yaml, field: "decision_log_files", readers: ["shared/facts-lint.ts", "tests/server/facts-lint.test.ts"] }
+  # ─── DEC 知识载体（issue #98 第六阶段 S2；替代 S1 的 config/decision-registry.yaml）─────
+  # 业主 2026-11-08 裁定②：不建中央决策账。decision-registry.yaml（292 条 × intent 摘要 +
+  # evidence 指针 + pending 指针）已删，本文件是它拆完之后的残壳，只收两类东西：
+  #   entries  —— 真·不可再生的知识（合同成交语义/竞品淘汰理由/业主原话与口头规格/实地断言/
+  #               静默失效分析），每条带 landing 指向它同时落到的机读位置；
+  #   retired  —— 292 条里其余的墓碑一行（id/subject/status/superseded_by/record/landing），
+  #               不搬正文——正文即 git 历史。它存在的机器理由是让 c.dec_unique /
+  #               c.dec_ref_resolvable / repair_channel.decision_ref 在 docs/decisions/
+  #               删除后仍有靶（约 1,900 处编号引用不能变悬空）。
+  # 读者逐个写实，不虚报：
+  #   ① shared/facts-lint.ts + scripts/verify/facts/verify-facts.ts —— 契约层与 T4 覆盖层
+  #      （c.dec_unique.source / c.dec_ref_resolvable.target / repair_channel 存在性校验都读它）；
+  #   ② tests/server/decision-knowledge.test.ts —— 内容级自检（id 覆盖 292/唯一性/landing 词表与
+  #      路径真实性/台账编号真实性/值内 # 已加引号），钩住「编号可查」这件事。
+  - { file: config/decision-knowledge.yaml, field: "entries", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts", "tests/server/decision-knowledge.test.ts"] }
+  - { file: config/decision-knowledge.yaml, field: "retired", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts", "tests/server/decision-knowledge.test.ts"] }
+  # 2026-11-09 issue #98 S2 删：x_decision_files（YAML 锚点，原值 = docs/decisions/ 14 个主题
+  # 文件清单，其中 17-paint-scope-extension.md 重复登记两次）。删除理由：三条 DEC 契约的
+  # target 已改指 config/decision-knowledge.yaml，锚点无人再引用；纯声明式复用、零 reader。
+  # 删了什么：facts.yaml 顶层 `x_decision_files: &decision_files [...]`（20 行清单）+ 本 coverage 行。
   - { file: config/facts.yaml, field: "coverage", readers: ["shared/facts-lint.ts", "scripts/verify/facts/verify-facts.ts"] }
   # 2026-11-03 修正：原登记 CurtainGeometry.ts / FixtureFactory.ts 是字符串级巧合命中
   # （arcDescriptor 局部函数名 project / 英文注释 projecting），从未真读 house.yaml 的
@@ -1979,10 +1954,21 @@ coverage:
   - { file: config/layout/model-geometry.yaml, field: "vertices", readers: ["shared/types.ts", "scripts/verify/data/verify-data-consistency.ts"] }
   - { file: config/layout/model-geometry.yaml, field: "rooms", readers: ["shared/environment-schema.ts", "shared/glazing.ts"] }
   - { file: config/layout/model-geometry.yaml, field: "platform", readers: ["shared/project-render-facts-schema.ts"] }
-  - { file: config/layout/model-geometry.yaml, field: "walls", readers: ["shared/electrical-lint.ts", "shared/glazing.ts"] }
-  - { file: config/layout/overlay.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
-  - { file: config/layout/overlay.yaml, field: "suppress", readers: ["shared/spatial-validation.ts", "scripts/verify/collision/verify-collision-coverage.ts"] }
-  - { file: config/layout/overlay.yaml, field: "elements", readers: ["shared/curtain-projection.ts", "shared/glazing.ts"] }
+  - { file: config/layout/model-geometry.yaml, field: "walls", readers: ["shared/electrical-lint.ts", "shared/suppression.ts", "shared/spatial-validation.ts", "scripts/verify/collision/verify-collision-coverage.ts", "scripts/verify/data/verify-data-consistency.ts", "server/index.ts"] }
+  # 结构梁（S2-A 从旧手账「梁体推断」表迁入）：无 SceneElement 载体，读者是待决视图的载体表
+  # （2026-11-10 修 Codex major，shared/pending-carriers.ts 的 layout:beams 载体）。
+  - { file: config/layout/model-geometry.yaml, field: "beams", readers: ["shared/pending-carriers.ts"] }
+  # S1 搬迁（issue #98）：原 config/layout/overlay.yaml 拆为 envelope 文件；version 随
+  # openings.yaml，elements 分布在 openings/floor-zones——合并读取入口
+  # server/overlay-merge.ts parseOverlayFiles()。S3（2026-11-07）起 suppress 不再是本文件的
+  # 顶层字段：改判为 config/layout/model-geometry.yaml 墙条目的 suppressed:{reason,replacement}
+  # （reader 已并入上面 walls 行），原 suppress coverage 行随之删除。S5（2026-11-07）起
+  # finish-surfaces.yaml（面层配方最后 24 段 skirting 声明）退场：声明删、改派生，锚点进
+  # finish-defaults.yaml，故其 coverage 行替换为 finish-defaults 的 version/skirting 两行。
+  - { file: config/model/envelope/openings.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }
+  - { file: config/model/envelope/openings.yaml, field: "elements", readers: ["shared/curtain-projection.ts", "shared/glazing.ts"] }
+  - { file: config/model/envelope/floor-zones.yaml, field: "elements", readers: ["shared/curtain-projection.ts", "shared/glazing.ts"] }
+  - { file: config/model/envelope/finish-defaults.yaml, field: "skirting", readers: ["server/overlay-merge.ts"] }
   - { file: config/materials.yaml, field: "notes", readers: ["shared/types.ts"] }
   - { file: config/materials.yaml, field: "preview_assets", readers: ["server/project-catalog.ts", "shared/types.ts"] }
   - { file: config/materials.yaml, field: "render_roles", readers: [] }
@@ -2008,7 +1994,11 @@ coverage:
   # waivers[]（13 条合法重叠白名单补上 reason/owner/expires，语义类型随迁到 waiver.kind）。
   # 该键在 spatial-validation.yaml 里已不存在，故整条登记删除；给一个不存在的字段登记
   # reader 正是「覆盖矩阵说谎」，比不登记更坏。新的读取方登记在下方 waivers 一行。
-  - { file: config/spatial-validation.yaml, field: "overlay_replacements", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts", "shared/penetration/registry.ts"] }
+  # 2026-11-07 删除（issue #98 第三阶段 S3）：overlay_replacements 镜像表已删——suppress
+  # 改判为 model-geometry.yaml 墙条目的 suppressed:{reason,replacement}，join 接缝语义上移为
+  # envelope 对象声明并由 shared/suppression.ts 机械派生。字段不存在故整条登记删除
+  # （注意：reader 源文件注释里仍出现该字段名，T4 的「reader 真的读它」检查会被注释骗过，
+  #  这类陈旧行只能靠删字段时同步删登记来清，不能依赖门禁发现）。
   - { file: config/spatial-validation.yaml, field: "lighting_host_overrides", readers: ["scripts/verify/spatial/verify-spatial.ts", "shared/penetration/scene.ts"] }
   # version 暂无 reader（与 plumbing/tradeoffs 等同为未消费字段，显式登记为空，不装作有人读）
   - { file: config/anti-penetration.yaml, field: "version", readers: [] }
@@ -2027,7 +2017,14 @@ coverage:
   - { file: config/anti-penetration.yaml, field: "envelopes", readers: ["shared/penetration/types.ts", "shared/penetration/envelopes.ts", "shared/penetration/shadow.ts", "scripts/verify/penetration/verify-penetration.ts"] }
   - { file: config/state-model.yaml, field: "priority", readers: ["scripts/project/state-projection.ts", "shared/element-state.ts"] }
   - { file: config/state-model.yaml, field: "status_vocabulary", readers: ["scripts/project/state-projection.ts", "shared/element-state.ts"] }
-  - { file: config/state-model.yaml, field: "element_bearing_files", readers: ["scripts/project/state-projection.ts", "shared/pending-ledger.ts"] }
+  # 2026-11-07 issue #98 第三阶段 S6 删除的 coverage 行：config/state-model.yaml 的
+  # `element_bearing_files`（file → objectId 前缀表，登记 readers 为 state-projection.ts 与
+  # shared/pending-ledger.ts）。删除理由：该字段与 shared/pending-ledger.ts 的
+  # ELEMENT_BEARING_FILES 是同一张表的两份登记，S1 把 config/ceiling.yaml 搬进
+  # config/model/envelope/ 后两边都要改路径——「文件路径构成身份」。现单一真相在
+  # shared/envelope-sources.ts 的来源注册表（源名 → 权威文件 → objectId 前缀），
+  # state-projection.ts / element-state-service.ts / pending-ledger.ts / element-state.ts
+  # 全部改读注册表，故本行无对应字段可登记。
   - { file: config/state-model.yaml, field: "issue_sources", readers: ["scripts/project/state-projection.ts"] }
   - { file: config/tradeoffs.yaml, field: "tradeoffs", readers: [] }
   - { file: config/verify-rules.yaml, field: "version", readers: ["shared/environment-schema.ts", "shared/mep-hvac-coordination-schema.ts"] }

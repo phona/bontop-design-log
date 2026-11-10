@@ -361,7 +361,7 @@ export class InteriorLightingSystem {
     const cloudOrbConfig = getCloudOrbCeilingLightConfig(this.lighting, fixture.id);
     if (cloudOrbConfig) return buildCloudOrbCeilingLightVisual(fixture, cloudOrbConfig, color);
 
-    // 客厅八头灯的可见几何与 LightingFixtureBuilder/GLB 共用同一构造器。
+    // 客厅八头灯的可见几何与 LightingFixtureBuilder 共用同一构造器。
     const multiGlobeConfig = getMultiGlobeChandelierConfig(this.lighting, fixture.id);
     if (multiGlobeConfig) return buildMultiGlobeChandelierVisual(fixture, multiGlobeConfig, color);
 
