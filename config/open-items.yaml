@@ -91,13 +91,17 @@ items:
       `config/house.yaml` 的 furnishings 有 67 条 placed + **24 条 count-only**
       （mattress_150 ×2 / mattress_180 / curtain_set ×5 / ceiling_light ×8 / shower_set ×2 /
       faucet ×2 / cabinet_base / cabinet_wall / countertop_quartz / shoe_cabinet）。
-      count-only 按 AGENTS.md「无 x/z 的为 count-only（只喂预算/库存）」被
-      `shared/package-objects.ts:152-154` 整体跳过，不进对象索引、无稳定 ID。
-      实测 `roomId.type` 派生 24 个候选 id 全部唯一，ID 方案可行。
-      后果：改/删这些条目不改变任何工作包的对象摘要——而 SCH-150-02 的 method 原文
-      写着「逐件检查牢固、水平、开合、边角、**床垫匹配**和主要通道」。床垫换了，
-      这条验收的旧通过记录不会 stale。targets 对账也抓不到：解析端与登记端同时排除了它。
+      count-only 按 AGENTS.md「无 x/z 的为 count-only（只喂预算/库存）」不列为 placed
+      工程对象（该判据未改）。实测 `roomId.type` 派生 24 个候选 id 全部唯一。
       同类暴露面覆盖全部 24 条（窗帘/灯具/洁具验收均直接点名这些商品）。
+      **2026-11-10 已加安全兜底（PR #208），本条 current_state 随之订正**：
+      它们现按 `quantity:<room>:<type>` 进对象索引（只作指纹用，不可被 scope 选择器选中），
+      `digestResolvedObjects` 按「本包覆盖房间」把 quantity 条目纳入摘要。故改床垫**已会**
+      让 PKG-150 stale、`SCH-150-02`「床垫匹配」的旧通过记录会正确过期。
+      边界自证：`verify:furniture` OK、`cost:by-object` 有归属对象仍 51 件——商品事实进了
+      指纹，但没有进工程对象模型（符合 issue #98「不把报价/商品事实复制进工程对象」）。
+      **仍未完成**：这 24 条没有稳定业务 ID、没有挂到宿主工程对象、cost:by-object 账本
+      也不含它们。方向见 needs。
       今天零实际损害：`schedule/phase-1/control.yaml` 的 `audit_log.status` 为 `empty`，
       项目里没有任何验收通过记录。
     needs: >-
@@ -126,15 +130,19 @@ items:
     trigger: 冷凝水遮蔽链相关验收（PKG-150 家具包 / PKG-040 空调包）首次判 passed 前必须关闭；
       或改 hvac.yaml 的 condensate_master_candidate、mep 的 condensate-master 路由前
     current_state: >-
-      `shared/package-objects.ts:381-388` 的引用闭包只沿**对象声明里的完整字符串**展开。
+      `shared/package-objects.ts` 的引用闭包沿**对象声明里的完整字符串**展开。
       但 `mb.vanity_pvc_service_chase` 的锚点是 `{source: chain, id: wardrobe_east_band}`——
       `wardrobe_east_band` 不是任何权威文件里的对象，是 `shared/condensate-chain.ts`
       解出的链上点（`shared/types.ts:2054` 标明 `source: chain`）。
       该链还读取 MEP `condensate-master` 的穿墙点与 `config/hvac.yaml` 的
       `condensate_master_candidate`（`shared/condensate-chain.ts:16-17,56-58`）。
-      这些依赖是代码算出来的，不是声明里的字符串，闭包结构上捕不到。
-      后果：改候选接入点会改变遮蔽链几何，但 PKG-150 的指纹不变，相关旧验收仍显示 passed；
-      #191 新增的正文点名扫描也覆盖不到这类依赖（没有正文点名它）。
+      这些依赖是代码算出来的，不是声明里的字符串，字符串闭包结构上捕不到。
+      **2026-11-10 已加安全兜底（PR #208），本条 current_state 随之订正**：
+      `shared/condensate-chain.ts` 新增导出的 `CONDENSATE_CHAIN_INPUT_IDS`（7 个对象 id），
+      闭包在命中链锚点时跟随它。故改候选接入点**已会**让 PKG-150 stale、相关旧验收
+      会正确过期。
+      **仍未完成**：该清单靠人工维护，没有契约/测试守护「清单覆盖 resolveCondensateChain
+      的全部读取」——改了解算器的读取面而漏更新清单，就是一个漏 stale。方向见 needs。
       今天零实际损害：audit_log 仍为 empty。
     needs: >-
       让计算依赖变成**可声明**的：`shared/condensate-chain.ts` 导出它实际读取的对象 id
