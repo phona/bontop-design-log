@@ -57,6 +57,19 @@ export function objectDigestKey(source: string, object: AuthorityObject): string
 }
 
 /**
+ * 对象声明的摘要值（issue #191 Codex blocking 第 10 轮）。
+ *
+ * **不能只哈希 `object.node`**：`room`（对象所属分组）与 `parent`（宿主关系）也是对象
+ * 身份的一部分，却不写在 node 里。家具的房间分组影响 ProjectCatalog 的逐房清单与数量；
+ * 墙洞的父墙决定其几何解算。只哈希 node 时，把稳定 id 的家具从 living_dining 组移到
+ * study 组，键与摘要都不变——旧通过记录不会 stale，而逐房清单其实已经变了。
+ * 宿主墙已由 objectDigestKey 的 `@parent` 后缀进键，但为免再漏，这里一并纳入摘要值。
+ */
+function objectDigestValue(object: AuthorityObject, sha256: (text: string) => string): string {
+  return sha256(stableStringify({node: object.node, room: object.room ?? null, parent: object.parent ?? null}));
+}
+
+/**
  * count-only 商品条目的指纹 id（OI-79 兜底，`<room>:<type>`）。
  *
  * 与 placed 的 `furnitureObjectId` **同源不同类**：同一个派生规则（房间短名.类型），
@@ -397,7 +410,7 @@ export function digestResolvedObjects(
     if (!index) continue;
     for (const object of index.objects.values()) {
       if (!resolution.objectIds.includes(object.id)) continue;
-      digests[objectDigestKey(source, object)] = sha256(stableStringify(object.node));
+      digests[objectDigestKey(source, object)] = objectDigestValue(object, sha256);
       found.add(object.id);
     }
   }
@@ -425,7 +438,7 @@ export function digestResolvedObjects(
       for (const object of furnishingsIndex.objects.values()) {
         if (object.collection !== 'quantity') continue;
         if (!object.room || !coveredRooms.has(object.room)) continue;
-        digests[objectDigestKey('furnishings', object)] = sha256(stableStringify(object.node));
+        digests[objectDigestKey('furnishings', object)] = objectDigestValue(object, sha256);
       }
     }
   }
@@ -461,7 +474,7 @@ export function digestResolvedObjects(
       for (const referent of referents.get(value) ?? []) {
         const key = objectDigestKey(referent.source, referent.object);
         if (digests[key] !== undefined) continue;
-        digests[key] = sha256(stableStringify(referent.object.node));
+        digests[key] = objectDigestValue(referent.object, sha256);
         queue.push(referent);
       }
     }
@@ -529,7 +542,7 @@ export function digestResolvedObjects(
           for (const control of controlsByPointId.get(currentId) ?? []) {
             const key = objectDigestKey('electrical_topology', control);
             if (digests[key] !== undefined) continue;
-            digests[key] = sha256(stableStringify(control.node));
+            digests[key] = objectDigestValue(control, sha256);
             // 控制组声明的其它点位：既入指纹，也继续反向搜索（找更多指向它的控制组）。
             for (const field of ['target_point_ids', 'switch_point_ids'] as const) {
               for (const pointId of (control.node[field] ?? []) as string[]) {

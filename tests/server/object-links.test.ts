@@ -504,6 +504,51 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
   // 每个工作包的 targets 必须覆盖「它全部 SCH 检查点名对象的并集」。
   // 判据来源：SCH 检查没有 objects 字段，其对象集完全来自所属包 targets——
   // 所以 targets 漏了，SCH 的旧通过记录就会漏 stale。
+  // issue #191 Codex blocking 第 10 轮：房间归属没进摘要。AuthorityObject.room 记了家具
+  // 所在分组，但 objectDigestKey 与摘要值都只哈希 item.node——把稳定 id 的家具从
+  // living_dining 组移到 study 组，键与摘要都不变。房间分组实际影响 ProjectCatalog 的
+  // 逐房清单与数量，PKG-150 又已移除整份 house.yaml 指纹，故旧通过记录不会 stale。
+  it('房间归属进摘要：稳定 id 家具跨房迁移，PKG-150 必须 stale', () => {
+    const housePath = join(sandbox, 'config/house.yaml');
+    const lines = readFileSync(housePath, 'utf8').split('\n');
+    // ld.coffee_table 是 living_dining 组的 placed 家具（稳定 id）。
+    const idAt = lines.findIndex((line) => /^\s*- \{ type: coffee_table, id: ld\.coffee_table/.test(line));
+    assert.ok(idAt >= 0, 'config/house.yaml 必须有 ld.coffee_table');
+    const decl = lines[idAt];
+    // 找到 living_dining 组的起止，把该行整条移到 study 组末尾。
+    const groupAt = lines.findIndex((line, i) => i < idAt && /^  living_dining:\s*$/.test(line));
+    assert.ok(groupAt >= 0, '必须有 living_dining 分组');
+    const groupEnd = lines.findIndex((line, i) => i > groupAt && /^  \S/.test(line));
+    const studyAt = lines.findIndex((line) => /^  study:\s*$/.test(line));
+    assert.ok(studyAt >= 0, '必须有 study 分组');
+    const studyEnd = lines.findIndex((line, i) => i > studyAt && /^  \S/.test(line));
+    assert.ok(groupEnd > 0 && studyEnd > studyAt, '两个分组的边界都必须能定位');
+
+    const patched = [...lines];
+    patched.splice(idAt, 1);
+    // 删除后 study 组末行索引可能前移 1（若 study 在 living_dining 之后）。
+    const insertAt = studyEnd > idAt ? studyEnd - 1 : studyEnd;
+    patched.splice(insertAt, 0, decl);
+    const moved = patched.join('\n');
+    assert.ok(moved !== lines.join('\n'), '必须真的发生了迁移');
+    // 自证：该行现在落在 study 组内、不在 living_dining 组内。
+    const after = moved.split('\n');
+    const newAt = after.findIndex((line) => line === decl);
+    const newStudyStart = after.findIndex((line) => /^  study:\s*$/.test(line));
+    const newStudyEnd = after.findIndex((line, i) => i > newStudyStart && /^  \S/.test(line));
+    assert.ok(newAt > newStudyStart && newAt < newStudyEnd, '迁移后该条必须落在 study 组内');
+
+    const baseline = fingerprintsNow();
+    writeFileSync(housePath, moved);
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-150'),
+      `稳定 id 家具跨房迁移必须让 PKG-150 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+  });
+
   it('门禁补洞：工作包 targets 必须覆盖其全部 SCH 检查点名对象的并集', () => {
     const universe = objectUniverse();
     // 每条 SCH 检查 → 所属包（按 control.yaml 的嵌套位置）。
