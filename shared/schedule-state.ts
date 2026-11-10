@@ -207,6 +207,18 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     const paths = [MODEL_PACKAGE_LINKS_PATH, 'schedule/phase-scope.yaml', 'config/acceptance.yaml', DECISION_GATES_PATH];
     for (const link of links) {
       if (!linkNeedsWholeAuthority(link)) continue;
+      // project_scope 的语义是「全模型」：边界收窄不到对象，就按**全部**权威文件建指纹。
+      // 不能只按该链接 scope 恰好列出的那几份——6 个 project_scope 链接里有 5 个只列了
+      // model_geometry，那样 house/electrical/overlay 等对象域的变化就不会让它们 stale，
+      // 而它们的 targets 是 `*`、验收项对象集也按 `*` 派生，等于声明了「跟任何对象变」
+      // 却只跟几何变（issue #191 独立复核 high：改 house.yaml 的 study.chair 时 PKG-170
+      // 不 stale，而它唯一的验收项是甲醛检测）。
+      // 解析不出（unresolved）的链接仍按其 scope 列出的文件整份计入——那是「不知道边界」，
+      // 不是「边界是全模型」，按 scope 算已是安全方向，不该借道全量。
+      if (modelPackageLinks.objectResolutions?.[link.id]?.projectScope) {
+        paths.push(...Object.values(modelPackageLinks.authorities).flatMap(authorityFilePaths));
+        continue;
+      }
       for (const scope of link.scope ?? []) {
         const authorityPath = modelPackageLinks.authorities[scope.source];
         if (authorityPath) paths.push(...authorityFilePaths(authorityPath));
@@ -223,8 +235,9 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
    * 结构：**结构性文件**（整份）+ `object:<source>:<id>` → 对象声明 sha256。
    * 按对象的是每个链接 scope 解析出的对象声明（见 shared/package-objects.ts）；
    * 按整份的是 model-package-links.yaml 自身、phase-scope.yaml、acceptance.yaml 的结构与
-   * decision-gates.yaml——改这四份会影响所有包的判定，本就该整份计。project_scope 链接
-   * 与解析不出的链接仍整份计入（见 linkNeedsWholeAuthority），方向偏过度 stale。
+   * decision-gates.yaml——改这四份会影响所有包的判定，本就该整份计。project_scope 链接按
+   * **全部**权威文件整份计入（它的 targets 是 `*`，见 packageProjectPaths），解析不出的链接
+   * 按其 scope 列出的文件整份计入；两者方向都偏过度 stale。
    */
   function packageProjectSnapshot(pkg: AnyRecord): Record<string, string> {
     const snapshot = fileSnapshot(packageProjectPaths(pkg));
