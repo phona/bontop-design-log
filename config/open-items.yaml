@@ -194,13 +194,16 @@ items:
       这是同一个结构性缺口的两个方向，Codex 第 9 轮与第 11 轮各报了一次。
       第 9 轮（已修）：PKG-110 的 SCH-110-01/02 要核对烟机、灶具、预留电器，但三件家电
       施工归属在 PKG-160，当时不在 PKG-110 scope，已按 id 纳入。
-      第 11 轮（未修，本条登记）：MODEL-PKG-160 的 scope 只有 6 件家电加电位水路，
-      没有决定其安装空间的柜体与桥接台面。kitchen.dishwasher 用绝对坐标
-      （config/house.yaml:558，x: 8.80, z: 0.30），引用闭包找不到宿主柜体。
-      内存复核：改 kitchen.countertop_bridge.length 后 PKG-160 的对象摘要完全不变。
-      根因：家电装在哪只柜体、留多大口这个关系在模型里不存在。它既不是对象的声明字段，
-      也不是任何权威源里的结构化数据，只活在图纸与人的判断里。所以每轮补一个方向
-      （家电到柜体，或柜体到家电）都补不完：两个方向、多个房间、每种嵌装组合。
+      第 11 轮（初仅登记，Codex 第 12 轮评得对：登记不修复本次收窄造成的漏报）：
+      MODEL-PKG-160 的 scope 只有 6 件家电加电位水路，没有决定其安装空间的柜体与
+      桥接台面。kitchen.dishwasher 用绝对坐标（config/house.yaml:558），
+      引用闭包找不到宿主柜体；改 kitchen.countertop_bridge.length 后 PKG-160 摘要不变。
+      **2026-11-10 第 12 轮已补（PR #214）**：MODEL-PKG-160 的 scope 纳入
+      kitchen.cabinet_run_north_west / north_east / east、countertop_bridge、sink
+      五件柜体与台面，PKG-160 targets 同步。回归测试：改 countertop_bridge 的 length，
+      断言 PKG-160 与 PKG-110 都 stale。故「家电到柜体」这个方向已有补丁。
+      **仍未完成（本条继续跟踪）**：这个依赖是**逐条手工补的**，没有数据表达
+      「家电装在哪只柜体、留多大口」。每新增一种嵌装组合仍要人工记起补 scope。
       今天零实际损害：schedule/phase-1/control.yaml 的 audit_log.status 为 empty，
       项目里没有任何验收通过记录。
     needs: >-
@@ -214,10 +217,12 @@ items:
       改家电位时 PKG-110 必须 stale，两个方向都要。
       注意：三最省事但把负担转给人；一最根治但动 schema。请业主裁。
     reversal: >-
-      owner 为业主加设计侧，触发见上。关闭条件：改 kitchen.countertop_bridge.length 或
-      kitchen.cabinet_run_north_west.length 后，PKG-160 的对象摘要必须变化、
-      SCH-160 必需家电逐台安装和接口试运行的旧通过记录必须 stale；同时改 kitchen.gas_stove
-      的位置后 PKG-110 也必须 stale（第 9 轮那个方向仍要成立）。两侧都有实测命令与输出才关本条。
+      owner 为业主加设计侧，触发见上。两个方向的**补丁级**验证在第 12 轮已满足
+      （改 countertop_bridge.length 时 PKG-160 与 PKG-110 都 stale；改 gas_stove 位置时
+      PKG-110 stale——均已有回归测试）。本条剩下的关闭条件是**数据级**：
+      「家电装在哪只柜体、留多大口」必须以结构化数据表达（housed_in 声明或安装接口
+      scope ref 类型），使得新增嵌装组合时无需人工记起补 scope，且有测试证明
+      「新增一条嵌装关系后两个方向的 stale 自动成立」。
     carrier: >-
       本条目加 PR #204 短评（issuecomment-6771409963 及其后续补充）
     legacy_ref: 'issue #191 已知缺口四（PR #204 Codex review 第 11 轮 blocking；第 9 轮的同源反向已修）'

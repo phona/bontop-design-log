@@ -313,6 +313,11 @@ links:
       # 2026-11-10（issue #191）：原 types:[fridge, washer, gas_stove, range_hood,
       # water_heater, dishwasher] 解析成这 6 个家电对象 id，逐一登记。
       - {source: furnishings, select: {ids: [ld.fridge, kitchen.dishwasher, kitchen.gas_stove, kitchen.range_hood, kitchen.water_heater, balcony.washer]}}
+      # 2026-11-10（issue #191 Codex blocking 第 12 轮）：SCH-160-01「必需家电逐台安装和
+      # 接口试运行」验的安装与维护空间由厨房柜体与桥接台面决定（洗碗机留口、灶具开孔、
+      # 冰箱位深）。这些柜体施工归属在 PKG-110；kitchen.dishwasher 用绝对坐标、
+      # 没有宿主引用可供闭包跟随，故必须显式纳入。与第 9 轮「PKG-110 纳入家电」互为反向。
+      - {source: furnishings, select: {ids: [kitchen.cabinet_run_north_west, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.countertop_bridge, kitchen.sink]}}
       - {source: furnishings, select: {ids: [gbath.robot_dock]}}
       - {source: electrical, select: {ids: [sock_fridge_living, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}} # sock_kitchen_fridge → sock_fridge_living（DEC-2026-10-17-R20 冰箱点位迁客餐厅西侧重绑）
       - {source: plumbing, select: {ids: [faucet_balcony_washer, drain_balcony_washer, faucet_gbath_vanity, drain_gbath_vanity]}}

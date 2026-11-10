@@ -1828,7 +1828,7 @@ work_packages:
     # 对象 targets（issue #191）：= MODEL-PKG-160 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
     # 来源：furnishings(ids=ld.fridge/kitchen.dishwasher/kitchen.gas_stove/kitchen.range_hood/kitchen.water_heater/balcony.washer) → 6；furnishings(ids=gbath.robot_dock) → 1；electrical(ids=sock_fridge_living/sock_kitchen_hood/sock_kitchen_gas/sock_kitchen_oven/sock_balcony_washer/sock_balcony_dryer/sock_balcony_waterheater/sock_gbath_robot) → 8；plumbing(ids=faucet_balcony_washer/drain_balcony_washer/faucet_gbath_vanity/drain_gbath_vanity) → 4。去重后共 19 个对象 id。
-    targets: [balcony.washer, drain_balcony_washer, drain_gbath_vanity, faucet_balcony_washer, faucet_gbath_vanity, gbath.robot_dock, kitchen.dishwasher, kitchen.gas_stove, kitchen.range_hood, kitchen.water_heater, ld.fridge, sock_balcony_dryer, sock_balcony_washer, sock_balcony_waterheater, sock_fridge_living, sock_gbath_robot, sock_kitchen_gas, sock_kitchen_hood, sock_kitchen_oven]
+    targets: [balcony.washer, drain_balcony_washer, drain_gbath_vanity, faucet_balcony_washer, faucet_gbath_vanity, gbath.robot_dock, kitchen.cabinet_run_east, kitchen.cabinet_run_north_east, kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.dishwasher, kitchen.gas_stove, kitchen.range_hood, kitchen.sink, kitchen.water_heater, ld.fridge, sock_balcony_dryer, sock_balcony_washer, sock_balcony_waterheater, sock_fridge_living, sock_gbath_robot, sock_kitchen_gas, sock_kitchen_hood, sock_kitchen_oven]
     checks:
       - id: SCH-160-01
         severity: critical
