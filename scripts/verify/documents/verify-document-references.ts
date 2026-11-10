@@ -127,7 +127,7 @@ function main(): void {
     .sort((a, b) => a.file.localeCompare(b.file) || a.target.localeCompare(b.target));
   const report = {
     version: 1,
-    scope: ['Markdown links under docs/** except docs/decisions/**', 'stale pre-archive roots in iteration metadata', ...ROOT_RELATIVE_REFERENCES],
+    scope: ['Markdown links under docs/**', 'stale pre-archive roots in iteration metadata', ...ROOT_RELATIVE_REFERENCES],
     counts: { errors: sorted.length, warnings: 0 },
     issues: sorted,
   };

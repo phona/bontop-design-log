@@ -170,8 +170,8 @@ const coverageFiles = [
   ...fs.readdirSync(rel('data')).filter((f) => f.endsWith('.json')).map((f) => `data/${f}`),
 ].sort();
 // 注：本清单自动收录 config/*.yaml，因此 config/decision-knowledge.yaml（issue #98 S2 的 DEC
-// 知识载体）也在内——它的两个顶层字段 entries（真·不可再生的知识）与 retired（292 条墓碑一行）
-// 由 shared/facts-lint.ts 的 c.dec_unique / c.dec_ref_resolvable / repair_channel 存在性校验读取，
+// 知识载体）也在内——它的两个顶层字段 entries（真·不可再生的知识）与 retired（其余条目的
+// 墓碑一行）由 shared/facts-lint.ts 的 c.dec_unique / c.dec_ref_resolvable / repair_channel 存在性校验读取，
 // 漏登记任一字段即 field_uncovered warning。
 
 // ── 量对账（quantity_parity）的机器源 ─────────────────────────────────────────

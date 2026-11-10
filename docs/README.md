@@ -51,10 +51,12 @@
 
 | 目录 | 内容 | 性质 |
 |---|---|---|
-| `decisions/` | 已退场（原 18 个主题文件 + 1 个归档分册 + README，268 条 DEC；2026-11-09 S3 整份删除） | **不再存在**。追溯：编号见 `config/decision-knowledge.yaml` 的 `retired` 段；原文 `git show 8abfbe3b:docs/decisions/<file>.md`（墓碑见本文件「退场墓碑」节） |
+| `decisions/` | 已退场（原 20 文件：18 个主题文件 + 1 个归档分册 + README，292 条 DEC；2026-11-09 S3 整份删除） | **不再存在**。追溯：编号见 `config/decision-knowledge.yaml` 的 `retired` 段；原文 `git show 8abfbe3b:docs/decisions/<file>.md`（墓碑见本文件「退场墓碑」节） |
 | `design-iterations/` | 46 个现役目录 + `archive/` 20 个 + `INDEX.yaml` | 迭代证据。机读索引见 `INDEX.yaml` |
 | `standards/` | 1 个 md | 起夜路径照明标准 |
 | `hvac/` | 6 个 md | 暖通专题。2026-10-20 从根目录迁出，消除「一眼过去全是 hvac」的平铺噪声 |
+
+> **DEC 总数的三个版本（2026-11-10 订正）**：`292` 是实测口径——`config/decision-knowledge.yaml` 的 `entries` 40 条 + `retired` 252 条（实解析，两段 id 无重号）。旧 `docs/decisions/README.md` 自己最后公布的是 `278`（2026-10-27，`git show 8abfbe3b:docs/decisions/README.md` 第 99 行），该文件是手工逐条统计，正文自述旧总数 264 属长期漂移、此后又经多轮增补与更正才到 278。本索引此前承袭的 `268` 既不是档案公布数、也不是实测数，同属手工表漂移值。**追溯条数以实测口径为准；引用旧公布数时必须带上述出处。**
 
 ---
 

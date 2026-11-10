@@ -47,8 +47,11 @@
 #    unique    对 source 全文 grep，pattern 首捕为 id；重复即 error。
 #              `allow_suffix` 列出的后缀视为补充条目（如 `-补`/`.1`），不与正牌判重。
 #              `source` 接受单文件路径或路径数组（DEC 日志 2026-10-09 拆分后跨文件查重）。
-#              最小示例：{ id: c.x, kind: unique, source: config/hvac.yaml,
-#                          pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.]+)' }
+#              最小示例：{ id: c.x, kind: unique, source: config/materials.yaml,
+#                          pattern: '^\s*-\s*id:\s*["'']?([a-z0-9_]+)["'']?' }
+#              （示例必须是「源文件 + 能命中它的 pattern」配对：上面这组对 config/materials.yaml
+#               实测命中其全部 `- id:` 行且 id 互不重复；同一 pattern 套到 DEC 编号或
+#               md 标题上不成立，别照抄错配。）
 #    fk        ref_scope 各文件里 grep ref_pattern 拿引用 id 集合；target 文件里 grep
 #              target_pattern 拿目标 id 集合；引用∖目标 = dangling。
 #              `target` 同样接受路径数组（取各文件 id 集合的并集）。
@@ -152,17 +155,6 @@ scan:
   # 文件/目录级噪声登记。不属于任何 fact 的域，但必须显式登记并写 reason，
   # 否则 T1 会把它们全报成 unregistered_fact_occurrence。
   exempt_occurrences:
-
-    # --- 时间序档案：全仓 DEC 历史，数值都是「当时快照」---
-    # 2026-10-09 DEC-2026-10-09-S01：单文件 docs/decision_log.md 按主题拆成 docs/decisions/
-    # 14 个文件 + README，豁免跟着改成目录前缀（引擎 pathMatches 支持 `xxx/` 前缀）。
-    # 旧路径一并保留：拆分说明与历史条目正文里仍写字面 docs/decision_log.md。
-    # 2026-11-09 issue #98 S2：docs/decisions/ 仍在本轮存在（删除属 S3），故本条目录级豁免
-    # **保留到 S3 删档当天**——现在删它会往 T1 报告里灌约 600 条没人能处置的 warning
-    # （目录还在、值还在，只是即将退场），那是噪声不是显形。S3 删目录时同步删本行。
-    - path: docs/decisions/
-      pattern: '.'
-      reason: 时间序决策档案：金额/回路数/功率/面积均为当轮快照，权威值以当轮 DEC 引用的 config 字段为准；本目录只做追溯，不做对账（2026-11-09 S2 注：随 docs/decisions/ 删除（S3）同步退场）
 
     # 2026-11-09 issue #98 S2 新增：DEC 退役后唯一保留的知识载体（业主裁定②）。与
     # docs/decisions/ 同性质——里面的 36,000 / 型号串 / 尺寸都是**指向权威源的摘要**，
@@ -1149,7 +1141,7 @@ facts:
 
 # 2026-11-09 issue #98 第六阶段 S2：DEC 编号的机器可解析靶 = config/decision-knowledge.yaml
 # （业主 2026-11-08 裁定②：不建中央决策账；S1 的 config/decision-registry.yaml 是原料、拆完即删）。
-# 该文件两段：entries（真·不可再生的知识）+ retired（292 条墓碑一行，只登记 id/subject/
+# 该文件两段：entries（真·不可再生的知识）+ retired（其余条目的墓碑一行，只登记 id/subject/
 # superseded_by/record/landing；墓碑不带 status——业主 2026-11-10 裁定）。它**不是**活文档——没有任何事实以它为权威源，它只回答
 # 「这个编号还在册吗、它的原文在 git 哪里、内容去了哪」。
 #
