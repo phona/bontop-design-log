@@ -94,18 +94,24 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.match(String(d19.tracking_note), /二期启动/);
   });
 
-  it('对象 → 工作包走 OBJECT_ID_SOURCES 通道（与 3D 高亮/反查同源）：gbath.vanity→PKG-100、gbath.robot_dock→PKG-160', () => {
-    assert.deepEqual(ledgerOf('gbath.vanity').packageLinks.map((link) => link.pkgId), ['PKG-100']);
+  it('对象 → 工作包走 OBJECT_ID_SOURCES 通道（与 3D 高亮/反查同源）：gbath.vanity→PKG-050/100、gbath.robot_dock→PKG-160', () => {
+    // 2026-11-10（issue #191 Codex blocking）：check_plumb_external_vanity_waterproof 的
+    // 被验柜体 gbath.vanity 按 id 纳入 MODEL-PKG-050 的 scope（防水验收要按柜内布局核托盘/
+    // 排水走廊/前拉空间），故包链接由 PKG-100 变为 PKG-050 + PKG-100。
+    assert.deepEqual(ledgerOf('gbath.vanity').packageLinks.map((link) => link.pkgId), ['PKG-050', 'PKG-100']);
     assert.deepEqual(ledgerOf('gbath.robot_dock').packageLinks.map((link) => link.pkgId), ['PKG-160']);
     assert.deepEqual(ledgerOf('mb.washbasin_cabinet').packageLinks.map((link) => link.pkgId), ['PKG-100', 'P2-100']);
   });
 
-  it('gbath.vanity 验收项：包级（PKG-100）+ acceptance.yaml 直接点名', () => {
+  it('gbath.vanity 验收项：包级（PKG-100）+ 防水包（PKG-050）结构化 acceptance_refs', () => {
     const checks = ledgerOf('gbath.vanity').acceptanceChecks;
     assert.ok(checks.some((check) => check.checkId === 'SCH-100-01' && check.via === 'PKG-100 checks'), JSON.stringify(checks));
-    const direct = checks.find((check) => check.checkId === 'check_plumb_external_vanity_waterproof');
-    assert.ok(direct, 'check_plumb_external_vanity_waterproof 必须经 acceptance.yaml 点名可达');
-    assert.equal(direct.via, 'acceptance.yaml 点名');
+    // 2026-11-10（issue #191）：gbath.vanity 现同时是 PKG-050（防水验收被验柜体）的包链接对象。
+    // check_plumb_external_vanity_waterproof 因此经 PKG-050 的 acceptance_refs 结构化可达，
+    // 不再依赖 acceptance.yaml 的散文点名（acceptance_text 通道对已结构化可达的检查去重）。
+    const waterproof = checks.find((check) => check.checkId === 'check_plumb_external_vanity_waterproof');
+    assert.ok(waterproof, 'check_plumb_external_vanity_waterproof 必须可达');
+    assert.equal(waterproof.via, 'PKG-050 acceptance_refs');
   });
 
   it('mb.washbasin_cabinet 经 MODEL-PKG-100 的 id 直选有包链接，验收点名与自带 blocker 可达', () => {

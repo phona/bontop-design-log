@@ -129,15 +129,21 @@ describe('issue #191 验收项对象关联（验收标准二）', () => {
     assert.deepEqual(state.acceptanceObjectIds.get('check_window_paper_per_window'), [ALL_MODEL_TARGET]);
   });
 
-  it('验收正文点名的被验对象必须在派生对象集里（check_elec_micro_oven_reserved → sock_kitchen_oven）', () => {
-    // issue #191 Codex blocking：该条验收正文点名的被验点位是 sock_kitchen_oven（插拔可及性），
-    // 施工归属在水电包、验收记录挂在本包；若只按 PKG-110 的橱柜 scope 派生，插座改动不会让
-    // 本包 stale。MODEL-PKG-110 的 scope 已按 id 直选纳入该点位（不是改 acceptance 的派生规则）。
-    const objects = state.acceptanceObjectIds.get('check_elec_micro_oven_reserved');
-    assert.ok(objects?.includes('sock_kitchen_oven'), `对象集必须含 sock_kitchen_oven：${JSON.stringify(objects)}`);
+  it('验收正文点名的被验对象必须在派生对象集里（check_elec_micro_oven_reserved → sock_kitchen_oven；check_plumb_external_vanity_waterproof → gbath.vanity）', () => {
+    // issue #191 Codex blocking：验收正文点名的被验对象，施工归属可能在别的包；若只按引用包
+    // 原 scope 派生，被验对象变化不会让本包 stale。处理方式是把被验对象按 id 纳入引用包的
+    // 链接 scope（不是改 acceptance 的派生规则）。
+    const microOven = state.acceptanceObjectIds.get('check_elec_micro_oven_reserved');
+    assert.ok(microOven?.includes('sock_kitchen_oven'), `对象集必须含 sock_kitchen_oven：${JSON.stringify(microOven)}`);
     const pkg110 = packages.find((pkg) => pkg.id === 'PKG-110');
     assert.ok(pkg110, 'PKG-110 必须存在');
     assert.ok(pkg110.targets.includes('sock_kitchen_oven'), 'PKG-110 targets 必须含被验插座');
+
+    const vanityWaterproof = state.acceptanceObjectIds.get('check_plumb_external_vanity_waterproof');
+    assert.ok(vanityWaterproof?.includes('gbath.vanity'), `对象集必须含被验柜体 gbath.vanity：${JSON.stringify(vanityWaterproof)}`);
+    const pkg050 = packages.find((pkg) => pkg.id === 'PKG-050');
+    assert.ok(pkg050, 'PKG-050 必须存在');
+    assert.ok(pkg050.targets.includes('gbath.vanity'), 'PKG-050 targets 必须含被验柜体');
   });
 
   it('验收项不再只靠 rooms: 选择器表达适用范围（rooms 保留为现场上下文，不承担对象关联）', () => {
@@ -270,6 +276,40 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
       .map((pkg: AnyRecord) => pkg.id);
     assert.ok(stale.includes('PKG-110'), `PKG-110 的验收点名 sock_kitchen_oven，插座改动后必须 stale；实际 ${stale.join(', ')}`);
+  });
+
+  // issue #191 Codex blocking：check_plumb_external_vanity_waterproof 正文按 gbath.vanity 的
+  // vanity_layout 核托盘/排水走廊/前拉空间；柜体施工归属在 PKG-100，但验收记录挂在 PKG-050。
+  // MODEL-PKG-050 已按 id 纳入该柜体；本用例守「柜内布局改动 → PKG-050 stale」。
+  it('改被验柜体的 vanity_layout：挂该验收的 PKG-050 必须 stale', () => {
+    const housePath = join(sandbox, 'config/house.yaml');
+    const text = readFileSync(housePath, 'utf8');
+    const anchor = 'vanity_layout: { width: 0.69, depth: 0.50,';
+    assert.equal(text.split(anchor).length - 1, 1, 'gbath.vanity vanity_layout 锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    writeFileSync(housePath, text.replace(anchor, 'vanity_layout: { width: 0.69, depth: 0.51,'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id);
+    assert.ok(stale.includes('PKG-050'), `PKG-050 的验收点名 gbath.vanity，柜内布局改动后必须 stale；实际 ${stale.join(', ')}`);
+  });
+
+  // issue #191 Codex blocking（三轮）：门洞摘要键带父墙还不够——宿主墙的声明也要进引用闭包。
+  // 只改父墙端点（洞声明不变）时，若闭包不沿 parent 展开，PKG-090 的摘要不会变化。
+  it('宿主墙几何变化：只选 openings 的 PKG-090 必须 stale（父墙进闭包）', () => {
+    const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
+    const text = readFileSync(geometryPath, 'utf8');
+    const anchor = '  - id: w_strip_east\n    from: v_strip_ne\n';
+    assert.equal(text.split(anchor).length - 1, 1, 'w_strip_east 端点锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    // 改宿主墙起点端点（洞声明不动）：d_mb 的解算方向/位置依赖这面墙。
+    writeFileSync(geometryPath, text.replace(anchor, '  - id: w_strip_east\n    from: v_st_ne\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id);
+    assert.ok(stale.includes('PKG-090'), `PKG-090 只选 openings，宿主墙端点变化后必须 stale；实际 ${stale.join(', ')}`);
   });
 
   // issue #191 Codex blocking：门洞声明本身不带 wall 字段，父墙只由嵌套位置表达。摘要键

@@ -97,6 +97,12 @@ links:
       - {source: overlay, select: {ids: [entry_garden_floor, entry_foyer_floor, corridor_floor, main_corridor_floor, guest_bath_open_vanity_floor, north_platform_floor]}}
       - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]}}
       - {source: overlay, select: {ids: [kitchen_north_bay, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge]}}
+      # 2026-11-10（issue #191 Codex blocking）：check_plumb_external_vanity_waterproof 的正文
+      # 要求按 gbath.vanity 的 vanity_layout 验证托盘/排水走廊/整台基站前拉空间——被验柜体是
+      # 本包验收的实际依赖，但它的施工归属在洁具包（PKG-100）。验收对象集按引用包 targets
+      # 派生，若不把柜体纳入本链接 scope，柜内布局（depth 等）变化不会让本包摘要变化、旧通过
+      # 记录也不会 stale。故按稳定 id 直选纳入（与 PKG-110 纳入被验插座同一处理）。
+      - {source: furnishings, select: {ids: [gbath.vanity]}}
   - id: MODEL-PKG-060
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-060}

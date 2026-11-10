@@ -376,7 +376,11 @@ export function digestResolvedObjects(
   }
   while (queue.length) {
     const current = queue.shift()!;
-    for (const value of collectReferencedStrings(current.object.node)) {
+    // 宿主关系（墙洞 @ 父墙）也要进闭包：门洞的几何依赖父墙端点，只把父墙写进摘要键
+    // 还不够——改变父墙 from/to 时，洞自己的声明一字未改，必须靠父墙声明进摘要才会 stale。
+    const referenced = collectReferencedStrings(current.object.node);
+    if (current.object.parent) referenced.add(current.object.parent);
+    for (const value of referenced) {
       for (const referent of referents.get(value) ?? []) {
         const key = objectDigestKey(referent.source, referent.object);
         if (digests[key] !== undefined) continue;
