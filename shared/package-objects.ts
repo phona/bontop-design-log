@@ -439,15 +439,11 @@ export function digestResolvedObjects(
       referents.set(object.id, list);
     }
   }
-  const queue: Array<{source: string; object: AuthorityObject}> = [];
-  for (const source of resolution.sources) {
-    const index = options.indexes?.get(source);
-    if (!index) continue;
-    for (const object of index.objects.values()) {
-      if (resolution.objectIds.includes(object.id)) queue.push({source, object});
-    }
-  }
-  while (queue.length) {
+  // 正向闭包 BFS。提成函数是为了反向闭包之后能**再入**——反向发现的控制组关联点位
+  // 要展开自身的正向依赖（点位可能引用墙/回路）。
+  const expandForward = (seeds: Array<{source: string; object: AuthorityObject}>) => {
+    const queue = [...seeds];
+    while (queue.length) {
     const current = queue.shift()!;
     // 宿主关系（墙洞 @ 父墙）也要进闭包：门洞的几何依赖父墙端点，只把父墙写进摘要键
     // 还不够——改变父墙 from/to 时，洞自己的声明一字未改，必须靠父墙声明进摘要才会 stale。
@@ -470,6 +466,17 @@ export function digestResolvedObjects(
       }
     }
   }
+  };
+
+  const initialSeeds: Array<{source: string; object: AuthorityObject}> = [];
+  for (const source of resolution.sources) {
+    const index = options.indexes?.get(source);
+    if (!index) continue;
+    for (const object of index.objects.values()) {
+      if (resolution.objectIds.includes(object.id)) initialSeeds.push({source, object});
+    }
+  }
+  expandForward(initialSeeds);
 
   // 反向闭包（OI/Codex blocking 第 7 轮）：控制关系由 electrical_topology.controls 的
   // target_point_ids / switch_point_ids **反向**指向受控灯具与开关，灯具/开关自己的声明
@@ -502,22 +509,41 @@ export function digestResolvedObjects(
         const reverseQueue: string[] = Object.keys(digests)
           .map((key) => key.slice(key.indexOf(':') + 1).split('@')[0]);
         const seen = new Set<string>(reverseQueue);
+        // 控制组关联到的点位（受控灯 + 开关）：它们的**声明本身**也必须进摘要，否则改开关的
+        // height/type/neutral 不会让相关包 stale（Codex blocking 第 8 轮——上一轮只存了控制组
+        // 摘要、把点位 id 塞进队列却没存点位声明，等于做了一半）。
+        const associatedPoints: Array<{source: string; object: AuthorityObject}> = [];
+        const associatedSeen = new Set<string>();
+        const noteAssociated = (pointId: string) => {
+          if (associatedSeen.has(pointId)) return;
+          for (const [source, index] of options.indexes ?? []) {
+            const object = index.objects.get(pointId);
+            if (!object) continue;
+            associatedSeen.add(pointId);
+            associatedPoints.push({source, object});
+            return;
+          }
+        };
         while (reverseQueue.length) {
           const currentId = reverseQueue.shift()!;
           for (const control of controlsByPointId.get(currentId) ?? []) {
             const key = objectDigestKey('electrical_topology', control);
             if (digests[key] !== undefined) continue;
             digests[key] = sha256(stableStringify(control.node));
-            // 控制组声明的其它点位也要进指纹：改受控灯清单同样该让相关包 stale。
+            // 控制组声明的其它点位：既入指纹，也继续反向搜索（找更多指向它的控制组）。
             for (const field of ['target_point_ids', 'switch_point_ids'] as const) {
               for (const pointId of (control.node[field] ?? []) as string[]) {
-                if (typeof pointId !== 'string' || seen.has(pointId)) continue;
+                if (typeof pointId !== 'string') continue;
+                noteAssociated(pointId);
+                if (seen.has(pointId)) continue;
                 seen.add(pointId);
                 reverseQueue.push(pointId);
               }
             }
           }
         }
+        // 点位声明入摘要，并展开其自身正向依赖（点位可能引用墙/回路等）。
+        expandForward(associatedPoints);
       }
     }
   }

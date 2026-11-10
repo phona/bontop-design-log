@@ -418,6 +418,46 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       `PKG-120 摘要必须含控制组 control_master_bed_door，实际键 ${keys.filter((k) => k.includes('control_')).join(', ') || '（无）'}`);
   });
 
+  // issue #191 Codex blocking 第 8 轮：上一轮的反向闭包只存了控制组摘要、把关联点位 id
+  // 塞进队列却没存点位声明——改开关的 height/type/neutral 不会让只选灯具的 PKG-120 stale。
+  // 这是上一轮做了一半，本条补全并钉住。
+  it('反向闭包补全：改关联开关的声明，只选灯具的 PKG-120 必须 stale', () => {
+    const elecPath = join(sandbox, 'config/electrical.yaml');
+    const lines = readFileSync(elecPath, 'utf8').split('\n');
+    const idAt = lines.findIndex((line) => /^- id: switch_master_door\s*$/.test(line));
+    assert.ok(idAt >= 0, 'config/electrical.yaml 必须有 switch_master_door');
+    // 该开关必须被某控制组关联（否则前提不成立）。
+    const topoLinks = loadModelPackageLinks(join(sandbox, 'config/model-package-links.yaml'), {root: sandbox});
+    const referenced = Object.values(topoLinks.objectResolutions ?? {}).some((r) =>
+      Object.keys(r.digests).some((k) => k.includes('switch_master_door')));
+    assert.ok(referenced, 'switch_master_door 必须经控制组进入某包的指纹（反向闭包生效）');
+
+    const blockEnd = lines.findIndex((line, i) => i > idAt && /^- id:/.test(line));
+    const stop = blockEnd > 0 ? blockEnd : lines.length;
+    const heightAt = lines.findIndex((line, i) => i > idAt && i < stop && /^\s*height:\s*[\d.]+\s*$/.test(line));
+    assert.ok(heightAt > idAt, 'switch_master_door 必须有 height');
+    const before = lines[heightAt];
+    const moved = before.replace(/1\.3/, '1.4');
+    assert.ok(moved !== before, `必须能改动 height：${before}`);
+
+    const patched = [...lines];
+    patched[heightAt] = moved;
+    const baseline = fingerprintsNow();
+    writeFileSync(elecPath, patched.join('\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-120'),
+      `改关联开关必须让只选灯具的 PKG-120 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+    const keys = Object.keys(afterState.packageProjectSnapshot(
+      afterState.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-120')!,
+    ));
+    assert.ok(keys.some((key) => key.includes('switch_master_door')),
+      `PKG-120 摘要必须含开关 switch_master_door，实际键 ${keys.filter((k) => k.includes('switch_')).join(', ') || '（无）'}`);
+  });
+
   it('回归：存验收记录的 control.yaml 不进任何工作包的项目数据指纹（防自指）', () => {
     const controlFile = 'schedule/phase-1/control.yaml';
     for (const pkg of beforeState.control.work_packages) {
