@@ -11,6 +11,12 @@
  * 铁律：判定规则只有这一份。UI / API 只消费本模块的输出，不得另写一套。
  * 模型包关联的解析（loadModelPackageLinks）仍留在 server/model-package-links.ts
  * 单一实现，由调用方注入——shared/ 不反向依赖 server/。
+ *
+ * 2026-11-10（issue #202 切片 B）：①新增排程扩展声明的校验——顶层 work_calendar、
+ * PKG 级 constraints、SCH 级 coordination（docs/schedule-coordination-design.md §2.1(d)，
+ * 全部 error 级）；②buildScheduleSnapshot 纯增量产出 schedule / coordination 两个键
+ * （§6.1）。排程算法本身不在这里：单一实现住 shared/schedule-projection.ts，本文件
+ * 只做声明校验与装配（喂包/日历/约束/实际窗口，收投影结果），不写第二套日历或前向传播。
  */
 
 import fs from 'node:fs';
@@ -26,6 +32,16 @@ import { ALL_MODEL_TARGET } from './package-objects.js';
 import { collectDeclaredFurnitureIds, type DeclaredFurnitureIdEntry } from './furniture-object-id.js';
 import { collectFinishRecipeIds } from './finish/input.js';
 import type { FurnishingsYaml } from './types.js';
+import {
+  projectSchedule,
+  validateDag,
+  ProjectionError,
+  type ProjectionActualWindow,
+  type ProjectionCalendar,
+  type ProjectionConstraint,
+  type ProjectionPackage,
+  type ScheduleProjection,
+} from './schedule-projection.js';
 
 type AnyRecord = Record<string, any>;
 
@@ -544,6 +560,20 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
       if (!packageIds.has(dependency)) errors.push(`${pkg.id}: unknown dependency ${dependency}`);
       if (dependency === pkg.id) errors.push(`${pkg.id}: self dependency`);
     }
+  }
+
+  // ─── 排程扩展声明校验（issue #202 切片 B；docs/schedule-coordination-design.md §2.1(d)）───
+  // work_calendar / PKG constraints / SCH coordination 三类新事实只描述排程，不参与门禁与
+  // 就绪判定（设计 §5 的机器保险丝是 facts 契约，不在这份代码里）。全部 error 级：
+  // 带坏排程声明的控制源必须在 load 阶段显形，快照消费方（route）见到 errors 即 503——
+  // 所以这些校验放 load 而不是放快照装配：route 的 503 判定发生在 buildScheduleSnapshot 之前。
+  validateScheduleControlExtensions(control, errors, blockerStatusValues);
+  // 跨包环的显形校验：未知依赖/自依赖已由上面的逐包检查原样报出，这里只补它们报不出的环。
+  // 「依赖环」措辞的单一来源是 schedule-projection.ts 的 validateDag，这里按前缀取环、
+  // 加 dependency_cycle 码前缀，不复制它的报错文案。
+  for (const dagIssue of validateDag(scheduleProjectionPackages(control).map(projectionPackageInput))) {
+    if (!dagIssue.startsWith('依赖环')) continue;
+    errors.push(`dependency_cycle: ${dagIssue}`);
   }
 
   const quoteRound = control.hard_finish_quote_rounds ?? {};
@@ -1083,6 +1113,41 @@ export interface SchedulePackageView {
   project_fingerprint: string;
 }
 
+/** 排程投影视图（issue #202 切片 B；docs/schedule-coordination-design.md §6.1）。 */
+export interface ScheduleOrdinalView { ord: number; date: string | null; }
+/** 单包窗口：start_ord 取 min 口径起点，end_ord_min/end_ord_max 是 min/max 两口径末端。 */
+export interface ScheduleWindowView { start_ord: number; end_ord_min: number; end_ord_max: number; }
+export interface ScheduleConstraintView { id: string; type: string; status: string; date: string | null; detail?: string; }
+export interface SchedulePackageProjectionView {
+  duration_workdays: { min: number; max: number };
+  baseline: ScheduleWindowView;
+  forecast: ScheduleWindowView;
+  actual: { start_ord: number; end_ord: number } | null;
+  /** 未满足依赖 + 未关闭阻塞项的解释性汇总（只解释，不参与排程计算）。 */
+  blocking_reasons: string[];
+  constraints: ScheduleConstraintView[];
+}
+export interface ScheduleProjectionView {
+  /** 排程零点；null = 尚未定锚（此时 ordinals 的 date 全 null，UI 只显示「第 N 工作日」）。 */
+  anchor_date: string | null;
+  calendar: { workdays: number[]; rest_dates: string[]; extra_workdates: string[] };
+  ordinals: ScheduleOrdinalView[];
+  /** key = PKG id；只含主车道（sequence < 900）——PKG-900 侧车道不参与排程（设计 §4）。 */
+  packages: Record<string, SchedulePackageProjectionView>;
+}
+/** SCH 协调快照（设计 §2.1(c)）：只描述「何时、谁到场、什么方式」，不是门禁输入。 */
+export interface ScheduleCoordinationView {
+  package_id: string;
+  required_roles: string[];
+  mode: 'onsite' | 'remote' | 'notify';
+  lead_time_workdays: number;
+  owner_role: string;
+  status: string;
+  actor: { name: string | null; org: string | null };
+  confirmed_at: string | null;
+  escalation: string;
+}
+
 export interface ScheduleSnapshot {
   phase: {
     id: string;
@@ -1109,6 +1174,14 @@ export interface ScheduleSnapshot {
   next_actions: NextActionItem[];
   stale_audits: string[];
   package_gate_issues: string[];
+  // ─── 排程投影（issue #202 切片 B，§6.1 纯增量两键；既有字段一个不动）───
+  // buildScheduleSnapshot 恒产出这两个键；类型上可选只因 app 侧 4 个测试 fixture
+  // 手造 ScheduleSnapshot 字面量（NextActionPanel/SchedulePanel/FlowChartPanel/
+  // ScheduleDetailPanel 的 .test.ts），收编它们超出「只改 schedule-state.ts」的边界。
+  // UI 消费按 undefined 兜底即为「503 或旧快照」形态。
+  schedule?: ScheduleProjectionView;
+  /** key = SCH id；稀疏——没有 coordination 块的 SCH 不出现，不造空对象。 */
+  coordination?: Record<string, ScheduleCoordinationView>;
 }
 
 export function computeStaleAudits(state: ScheduleState): string[] {
@@ -1119,6 +1192,336 @@ export function computeStaleAudits(state: ScheduleState): string[] {
     const reasons = state.staleAuditReason(pkg, record.check_id, record);
     return reasons.length ? [`${record.package_id}/${record.check_id}: ${reasons.join('、')}`] : [];
   });
+}
+
+// ─── 排程扩展：声明校验与快照装配（issue #202 切片 B；设计 §2.1 / §4 / §6.1）────────
+// 算法不在这里：日历展开、DAG、min/max 前向传播、实际窗口钉死的单一实现是
+// shared/schedule-projection.ts。本节只做三件事——①校验新声明字段（load 阶段，error 级）；
+// ②把 control.yaml 的声明喂给投影（含从 audit_log 派生的实际窗口）；③把投影结果
+// 与 coordination 声明摊平成快照两键。
+
+/** 约束 type 枚举（设计 §2.1(b)）。 */
+const CONSTRAINT_TYPES = ['not_before', 'not_after', 'time_window'];
+/** SCH coordination 的 mode / status 枚举（设计 §2.1(c)）。 */
+const COORDINATION_MODES = ['onsite', 'remote', 'notify'];
+const COORDINATION_STATUSES = ['unassigned', 'pending_invite', 'invited', 'confirmed', 'cancelled'];
+/** 「等人响应」的中间态：这两个状态必须写明 escalation（没人响应时怎么办）。 */
+const COORDINATION_PENDING_STATUSES = ['pending_invite', 'invited'];
+
+/**
+ * control.yaml 日期声明归一。null/undefined → null（null 是合法声明值，不是缺字段，
+ * 同「0 是合法声明值」口径）；js-yaml 会把未加引号的日期解析成 Date，归一回
+ * YYYY-MM-DD（同 contract.signed_at 的既有先例）；其余必须是真实存在的 YYYY-MM-DD
+ * 串，返回 undefined 表示「声明非法」——报错交给校验层，这里不静默改值。
+ */
+function normalizeCalendarDateText(value: unknown): string | null | undefined {
+  if (value === null || value === undefined) return null;
+  const text = value instanceof Date ? value.toISOString().slice(0, 10) : value;
+  if (typeof text !== 'string' || !isValidCalendarDateText(text)) return undefined;
+  return text;
+}
+
+function validateWorkCalendar(calendar: unknown, errors: string[], blockerStatusValues: Set<string>): void {
+  if (!calendar || typeof calendar !== 'object' || Array.isArray(calendar)) {
+    errors.push('work_calendar: work_calendar_invalid — 缺少顶层 work_calendar 段（排程投影的必需输入；anchor_date: null 是合法声明值，不是缺字段）');
+    return;
+  }
+  const cal = calendar as AnyRecord;
+  if (!Array.isArray(cal.workdays) || cal.workdays.some((day: unknown) => !Number.isInteger(day) || (day as number) < 0 || (day as number) > 6)) {
+    errors.push(`work_calendar.workdays: work_calendar_invalid — 必须是 0-6 的整数数组（0=周日 … 6=周六，got ${JSON.stringify(cal.workdays)}）`);
+  }
+  for (const field of ['rest_dates', 'extra_workdates'] as const) {
+    const values = cal[field];
+    if (!Array.isArray(values)) {
+      errors.push(`work_calendar.${field}: work_calendar_invalid — 必须是 YYYY-MM-DD 日期串数组（got ${JSON.stringify(values)}）`);
+      continue;
+    }
+    for (const value of values) {
+      if (typeof value !== 'string' || !isValidCalendarDateText(value)) {
+        errors.push(`work_calendar.${field}: work_calendar_invalid — 非法日期 ${JSON.stringify(value)}（须为真实存在的 YYYY-MM-DD）`);
+      }
+    }
+  }
+  const anchorDate = normalizeCalendarDateText(cal.anchor_date);
+  if (anchorDate === undefined) {
+    errors.push(`work_calendar.anchor_date: work_calendar_invalid — 须为 null 或真实存在的 YYYY-MM-DD（got ${JSON.stringify(cal.anchor_date)}）`);
+  }
+  if (typeof cal.anchor_status !== 'string' || !blockerStatusValues.has(cal.anchor_status)) {
+    errors.push(`work_calendar.anchor_status: work_calendar_invalid — 取值须同 control.blocker_status_values（got ${JSON.stringify(cal.anchor_status)}）`);
+  }
+  // 填锚点日期的前提是锚点事实已 resolved（BLK-HANDOVER 关闭后才允许定排程零点）；
+  // 「有日期但没拍板」= 用未成立的假设排施工，必须拦下。
+  if (typeof anchorDate === 'string' && cal.anchor_status !== 'resolved') {
+    errors.push(`work_calendar.anchor_date: anchor_date_without_resolved_status — anchor_date=${anchorDate} 但 anchor_status=${JSON.stringify(cal.anchor_status)}，锚点日期必须等 anchor_status: resolved 才允许填`);
+  }
+}
+
+function validatePackageConstraints(pkg: AnyRecord, errors: string[], blockerStatusValues: Set<string>): void {
+  const constraints = pkg.constraints;
+  if (constraints === undefined || constraints === null) return;
+  if (!Array.isArray(constraints)) {
+    errors.push(`${pkg.id}: constraints_invalid — 必须是约束数组（got ${typeof constraints}）`);
+    return;
+  }
+  // 约束 status 复用 control.blocker_status_values；「未决」= 除 resolved/waived 外的取值
+  // （site_pending / alignment_required）——日期未定的约束只能停在未决态，带结论没日期等于丢事实。
+  const pendingStatuses = [...blockerStatusValues].filter((status) => status !== 'resolved' && status !== 'waived');
+  constraints.forEach((constraint: AnyRecord, index: number) => {
+    const label = typeof constraint?.id === 'string' && constraint.id ? constraint.id : `${pkg.id}.constraints[${index}]`;
+    if (!constraint || typeof constraint !== 'object' || Array.isArray(constraint)) {
+      errors.push(`${label}: constraint_invalid — 约束必须是 {id, type, status, date, …} 映射（got ${JSON.stringify(constraint)}）`);
+      return;
+    }
+    if (!CONSTRAINT_TYPES.includes(constraint.type)) {
+      errors.push(`${label}: constraint_type_invalid — type 须为 not_before|not_after|time_window（got ${JSON.stringify(constraint.type)}）`);
+    }
+    if (typeof constraint.status !== 'string' || !blockerStatusValues.has(constraint.status)) {
+      errors.push(`${label}: constraint_status_invalid — status 取值须同 control.blocker_status_values（got ${JSON.stringify(constraint.status)}）`);
+    }
+    const date = normalizeCalendarDateText(constraint.date);
+    if (date === undefined) {
+      errors.push(`${label}: constraint_date_invalid — date 须为 null 或真实存在的 YYYY-MM-DD（got ${JSON.stringify(constraint.date)}）`);
+    } else if (date === null && typeof constraint.status === 'string' && blockerStatusValues.has(constraint.status) && !pendingStatuses.includes(constraint.status)) {
+      errors.push(`${label}: constraint_status_invalid — date 为 null 时 status 必须是未决值（${pendingStatuses.join(' / ')}），got ${constraint.status}`);
+    }
+  });
+}
+
+function validateCheckCoordination(label: string, block: unknown, errors: string[], blockerStatusValues: Set<string>): void {
+  if (block === undefined || block === null) return;
+  if (typeof block !== 'object' || Array.isArray(block)) {
+    errors.push(`${label}: coordination_invalid — coordination 必须是映射（got ${JSON.stringify(block)}）`);
+    return;
+  }
+  const coordinationBlock = block as AnyRecord;
+  if (!COORDINATION_MODES.includes(coordinationBlock.mode)) {
+    errors.push(`${label}: coordination_mode_invalid — mode 须为 onsite|remote|notify（got ${JSON.stringify(coordinationBlock.mode)}）`);
+  }
+  if (!COORDINATION_STATUSES.includes(coordinationBlock.status)) {
+    errors.push(`${label}: coordination_status_invalid — status 须为 unassigned|pending_invite|invited|confirmed|cancelled（got ${JSON.stringify(coordinationBlock.status)}）`);
+  }
+  // 决策铁律第 1 条：新部件必须回答「它不工作时怎么办」。等人响应的中间态没写升级路径 = 没写。
+  if (COORDINATION_PENDING_STATUSES.includes(coordinationBlock.status)
+    && (typeof coordinationBlock.escalation !== 'string' || !coordinationBlock.escalation.trim())) {
+    errors.push(`${label}: coordination_pending_without_escalation — status=${coordinationBlock.status} 而 escalation 为空：必须写明没人确认时怎么办（升级给谁、何时触发）`);
+  }
+  // 已确认却不知道谁确认的 = 不可追溯的确认，等于没确认。
+  const actor = coordinationBlock.actor;
+  if (coordinationBlock.status === 'confirmed'
+    && (!actor || typeof actor !== 'object' || Array.isArray(actor)
+      || typeof actor.name !== 'string' || !actor.name.trim())) {
+    errors.push(`${label}: coordination_confirmed_without_actor — status=confirmed 而 actor.name 为空：确认必须落到可追溯的确认人`);
+  }
+  if (!Array.isArray(coordinationBlock.required_roles) || coordinationBlock.required_roles.length === 0
+    || coordinationBlock.required_roles.some((role: unknown) => typeof role !== 'string' || !role.trim())) {
+    errors.push(`${label}: coordination_roles_invalid — required_roles 必须是非空的角色字符串数组（到场要求，不是责任归属，got ${JSON.stringify(coordinationBlock.required_roles)}）`);
+  }
+  if (typeof coordinationBlock.owner_role !== 'string' || !coordinationBlock.owner_role.trim()) {
+    errors.push(`${label}: coordination_roles_invalid — owner_role 必须是非空角色（协调组织者：谁去约人）`);
+  }
+  if (!Number.isInteger(coordinationBlock.lead_time_workdays) || (coordinationBlock.lead_time_workdays as number) < 0) {
+    errors.push(`${label}: coordination_lead_time_invalid — lead_time_workdays 必须是非负整数工作日（got ${JSON.stringify(coordinationBlock.lead_time_workdays)}）`);
+  }
+  if (normalizeCalendarDateText(coordinationBlock.confirmed_at) === undefined) {
+    errors.push(`${label}: coordination_confirmed_at_invalid — confirmed_at 须为 null 或真实存在的 YYYY-MM-DD（got ${JSON.stringify(coordinationBlock.confirmed_at)}）`);
+  }
+}
+
+/** 排程扩展声明的一站式校验（load 阶段调用；全部 error 级，见 §2.1(d)）。 */
+function validateScheduleControlExtensions(control: AnyRecord, errors: string[], blockerStatusValues: Set<string>): void {
+  validateWorkCalendar(control.work_calendar, errors, blockerStatusValues);
+  for (const pkg of control.work_packages ?? []) {
+    validatePackageConstraints(pkg, errors, blockerStatusValues);
+    for (const check of pkg.checks ?? []) {
+      const label = typeof check?.id === 'string' && check.id ? check.id : `${pkg.id}.checks[?]`;
+      validateCheckCoordination(label, check?.coordination, errors, blockerStatusValues);
+    }
+  }
+}
+
+/** 排程投影的输入包集：只收主车道（sequence < 900，设计 §4）——PKG-900 侧车道不参与排程。 */
+function scheduleProjectionPackages(control: AnyRecord): AnyRecord[] {
+  return (control.work_packages ?? []).filter((pkg: AnyRecord) => pkg.sequence < 900);
+}
+
+/** control.yaml 包声明 → 投影输入。工期缺失时留 undefined，让投影的 invalid_duration 显形，不造 0。 */
+function projectionPackageInput(pkg: AnyRecord): ProjectionPackage {
+  return {
+    id: pkg.id,
+    sequence: pkg.sequence,
+    dependencies: Array.isArray(pkg.dependencies) ? [...pkg.dependencies] : [],
+    duration_workdays: { min: pkg.duration_workdays?.min, max: pkg.duration_workdays?.max },
+  };
+}
+
+/** PKG constraints 按包 id 归组（投影输入与快照视图共用同一份归组，不抄两遍）。 */
+function projectionConstraintsByPackage(packages: AnyRecord[]): Record<string, ProjectionConstraint[]> {
+  const grouped: Record<string, ProjectionConstraint[]> = {};
+  for (const pkg of packages) {
+    if (!Array.isArray(pkg.constraints) || pkg.constraints.length === 0) continue;
+    grouped[pkg.id] = pkg.constraints.map((constraint: AnyRecord) => ({
+      id: constraint?.id,
+      type: constraint?.type,
+      status: constraint?.status,
+      date: normalizeCalendarDateText(constraint?.date) ?? null,
+      ...(typeof constraint?.detail === 'string' ? { detail: constraint.detail } : {}),
+    }));
+  }
+  return grouped;
+}
+
+function declaredDateList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item: unknown) => normalizeCalendarDateText(item))
+    .filter((item): item is string => typeof item === 'string');
+}
+
+/** work_calendar 声明的宽容读取（快照键用）：非法成员已被 load 校验报错，这里只滤掉不投。 */
+function readWorkCalendarSnapshot(control: AnyRecord): { anchor_date: string | null; calendar: { workdays: number[]; rest_dates: string[]; extra_workdates: string[] } } {
+  const declared = control.work_calendar && typeof control.work_calendar === 'object' && !Array.isArray(control.work_calendar)
+    ? control.work_calendar as AnyRecord
+    : {};
+  const anchorDate = normalizeCalendarDateText(declared.anchor_date);
+  return {
+    anchor_date: typeof anchorDate === 'string' ? anchorDate : null,
+    calendar: {
+      workdays: Array.isArray(declared.workdays)
+        ? declared.workdays.filter((day: unknown): day is number => Number.isInteger(day) && (day as number) >= 0 && (day as number) <= 6)
+        : [],
+      rest_dates: declaredDateList(declared.rest_dates),
+      extra_workdates: declaredDateList(declared.extra_workdates),
+    },
+  };
+}
+
+/**
+ * 实际窗口派生（设计 §2.2「派生，不存储」）：对每包取当前审计状态为 passed 的检查
+ * （auditStatusFor 已把指纹过期的旧记录降级成 'stale'，天然排除），用其审计记录的
+ * checked_at 在投影 ordinals 里反查 ord，包实际窗口 = [最小 ord, 最大 ord]；一条都没有 → 无窗口。
+ * checked_at 不是合法日期串的记录跳过、不计错（记录形态由既有 audit 校验管）；日期落在
+ * 本遍 ordinals 地平线之外（如锚点未定时 1970 名义纪元下的远期真实日期）同样无法定位
+ * ord，跳过不造数。
+ */
+function deriveActualWindowsFromAudits(
+  state: ScheduleState,
+  packages: AnyRecord[],
+  ordinals: ScheduleOrdinalView[],
+): Record<string, ProjectionActualWindow> {
+  const ordByDate = new Map<string, number>();
+  for (const entry of ordinals) {
+    if (entry.date !== null && !ordByDate.has(entry.date)) ordByDate.set(entry.date, entry.ord);
+  }
+  const windows: Record<string, ProjectionActualWindow> = {};
+  for (const pkg of packages) {
+    const ords: number[] = [];
+    for (const check of state.packageChecks(pkg)) {
+      if (state.auditStatusFor(pkg.id, check.id) !== 'passed') continue;
+      const record = state.auditByCheckKey.get(`${pkg.id}:${check.id}`);
+      const checkedAt = record?.checked_at;
+      if (typeof checkedAt !== 'string' || !isValidCalendarDateText(checkedAt)) continue;
+      const ord = ordByDate.get(checkedAt);
+      if (ord === undefined) continue;
+      ords.push(ord);
+    }
+    if (ords.length) windows[pkg.id] = { start_ord: Math.min(...ords), end_ord: Math.max(...ords) };
+  }
+  return windows;
+}
+
+/** SCH coordination 声明 → 快照（稀疏：只收声明了 coordination 块的检查；key = SCH id）。 */
+function buildCoordinationSnapshot(state: ScheduleState): Record<string, ScheduleCoordinationView> {
+  const snapshot: Record<string, ScheduleCoordinationView> = {};
+  for (const pkg of state.control.work_packages ?? []) {
+    for (const check of pkg.checks ?? []) {
+      const block = check?.coordination;
+      // 畸形块（非映射）已在 load 校验报成 coordination_invalid；这里只摊平正常块
+      if (!block || typeof block !== 'object' || Array.isArray(block)) continue;
+      snapshot[check.id] = {
+        package_id: pkg.id,
+        required_roles: Array.isArray(block.required_roles) ? [...block.required_roles] : [],
+        mode: block.mode,
+        lead_time_workdays: block.lead_time_workdays,
+        owner_role: block.owner_role,
+        status: block.status,
+        actor: { name: block.actor?.name ?? null, org: block.actor?.org ?? null },
+        confirmed_at: normalizeCalendarDateText(block.confirmed_at) ?? null,
+        escalation: block.escalation,
+      };
+    }
+  }
+  return snapshot;
+}
+
+/**
+ * 排程投影装配（buildScheduleSnapshot 的 schedule 键）。
+ * 有错即不投影：控制源带任何校验错误时返回空骨架（ordinals: [] / packages: {}），
+ * route 对 errors 一律 503——空骨架只是让类型完整，不是可消费的降级排程。
+ */
+function buildScheduleProjectionView(state: ScheduleState): ScheduleProjectionView {
+  const declared = readWorkCalendarSnapshot(state.control);
+  const skipped: ScheduleProjectionView = {
+    anchor_date: declared.anchor_date,
+    calendar: declared.calendar,
+    ordinals: [],
+    packages: {},
+  };
+  if (state.errors.length) return skipped;
+
+  const projectedRaw = scheduleProjectionPackages(state.control);
+  const projectionPackages = projectedRaw.map(projectionPackageInput);
+  // loader 在 load 阶段已跑过一轮（环必须赶在 route 的 503 判定前进 errors）；
+  // 这里对绕过 loadScheduleState 直接构造 state 的调用方再兜一道。
+  const dagIssues = validateDag(projectionPackages);
+  if (dagIssues.length) {
+    for (const dagIssue of dagIssues) state.errors.push(`schedule projection: ${dagIssue}`);
+    return skipped;
+  }
+
+  const constraints = projectionConstraintsByPackage(projectedRaw);
+  const calendar: ProjectionCalendar = { ...declared.calendar, anchor_date: declared.anchor_date };
+  let projection: ScheduleProjection;
+  try {
+    // 两遍调用：第一遍不带实际窗口，只为拿 ord↔date 全表供 checked_at 反查 ord
+    // （日历展开的唯一实现住 schedule-projection，loader 不写第二套日历算法；ord↔date
+    // 映射与窗口无关，两遍一致）；第二遍把派生出的实际窗口钉进去重算预测。
+    const firstPass = projectSchedule({ packages: projectionPackages, calendar, constraints });
+    const actualWindows = deriveActualWindowsFromAudits(state, projectedRaw, firstPass.ordinals);
+    projection = Object.keys(actualWindows).length
+      ? projectSchedule({ packages: projectionPackages, calendar, constraints, actual_windows: actualWindows })
+      : firstPass;
+  } catch (error) {
+    const code = error instanceof ProjectionError ? error.code : 'projection_failed';
+    state.errors.push(`schedule projection: projection_failed — [${code}] ${error instanceof Error ? error.message : String(error)}`);
+    return skipped;
+  }
+
+  const schedulePackages: Record<string, SchedulePackageProjectionView> = {};
+  for (const pkg of projectedRaw) {
+    const projected = projection.packages[pkg.id];
+    if (!projected) continue; // 投影按同一包集计算，缺项只会是内部错误；防御性跳过
+    schedulePackages[pkg.id] = {
+      duration_workdays: { min: pkg.duration_workdays?.min, max: pkg.duration_workdays?.max },
+      baseline: projected.baseline,
+      forecast: projected.forecast,
+      actual: projected.actual,
+      // 阻塞解释单一来源：packagePrerequisiteIssues 已汇总「依赖未过」与
+      // 「阻塞项 X 尚未有证据关闭」（未关闭 blocker 的汇总就在其中），不另写第二套阻塞判定。
+      blocking_reasons: state.packagePrerequisiteIssues(pkg),
+      constraints: constraints[pkg.id] ?? [],
+    };
+  }
+
+  return {
+    anchor_date: declared.anchor_date,
+    calendar: declared.calendar,
+    // 无锚点时 UI 契约「未知保持未知，不造年月日」：date 全 null，ord 照常
+    ordinals: projection.ordinals.map((entry) => ({
+      ord: entry.ord,
+      date: declared.anchor_date === null ? null : entry.date,
+    })),
+    packages: schedulePackages,
+  };
 }
 
 export function buildScheduleSnapshot(state: ScheduleState): ScheduleSnapshot {
@@ -1240,5 +1643,9 @@ export function buildScheduleSnapshot(state: ScheduleState): ScheduleSnapshot {
     next_actions: computeNextActions(state),
     stale_audits: computeStaleAudits(state),
     package_gate_issues: state.packageGateIssues,
+    // 排程投影与 SCH 协调快照（issue #202 切片 B，§6.1 纯增量两键）。
+    // coordination 只描述排程到场事实，不进入上方任何门禁/就绪判定（设计 §5）。
+    schedule: buildScheduleProjectionView(state),
+    coordination: buildCoordinationSnapshot(state),
   };
 }
