@@ -186,6 +186,42 @@ items:
     carrier: >-
       本条目 + PR #204 短评（issuecomment-6771409963）+ shared/schedule-state.ts 头注
     legacy_ref: 'issue #191 已知缺口三（PR #204 Codex review 第 5 轮 major；前四轮已按「只修 blocking」保留）'
+  - id: OI-82
+    subject: '安装空间依赖未建模：家电包与柜体包互相看不见对方（issue #191 已知缺口四）'
+    owner: 业主+设计侧
+    trigger: PKG-110（橱柜安装）或 PKG-160（家电安装）任一验收项首次判 passed 前必须关闭；或改任一厨房/阳台柜体长度、或改任一嵌装家电位前
+    current_state: >-
+      这是同一个结构性缺口的两个方向，Codex 第 9 轮与第 11 轮各报了一次。
+      第 9 轮（已修）：PKG-110 的 SCH-110-01/02 要核对烟机、灶具、预留电器，但三件家电
+      施工归属在 PKG-160，当时不在 PKG-110 scope，已按 id 纳入。
+      第 11 轮（未修，本条登记）：MODEL-PKG-160 的 scope 只有 6 件家电加电位水路，
+      没有决定其安装空间的柜体与桥接台面。kitchen.dishwasher 用绝对坐标
+      （config/house.yaml:558，x: 8.80, z: 0.30），引用闭包找不到宿主柜体。
+      内存复核：改 kitchen.countertop_bridge.length 后 PKG-160 的对象摘要完全不变。
+      根因：家电装在哪只柜体、留多大口这个关系在模型里不存在。它既不是对象的声明字段，
+      也不是任何权威源里的结构化数据，只活在图纸与人的判断里。所以每轮补一个方向
+      （家电到柜体，或柜体到家电）都补不完：两个方向、多个房间、每种嵌装组合。
+      今天零实际损害：schedule/phase-1/control.yaml 的 audit_log.status 为 empty，
+      项目里没有任何验收通过记录。
+    needs: >-
+      把安装空间依赖变成数据，而不是每轮补 scope。三个方向供设计侧裁定：
+      一是在家具条目上加结构化宿主声明（如 housed_in: kitchen.cabinet_run_north_west），
+      引用闭包自动双向跟随，这是根治但要新 schema 字段；
+      二是在 model-package-links.yaml 加一种安装接口 scope ref 类型，显式表达
+      A 的安装空间由 B 决定，两个包都据此扩展指纹；
+      三是维持现状，把改柜体长度或家电位前必须人工核两个包写成 AGENTS.md 纪律。
+      无论选哪条，都要有回归测试：改柜体长度时 PKG-160 必须 stale，
+      改家电位时 PKG-110 必须 stale，两个方向都要。
+      注意：三最省事但把负担转给人；一最根治但动 schema。请业主裁。
+    reversal: >-
+      owner 为业主加设计侧，触发见上。关闭条件：改 kitchen.countertop_bridge.length 或
+      kitchen.cabinet_run_north_west.length 后，PKG-160 的对象摘要必须变化、
+      SCH-160 必需家电逐台安装和接口试运行的旧通过记录必须 stale；同时改 kitchen.gas_stove
+      的位置后 PKG-110 也必须 stale（第 9 轮那个方向仍要成立）。两侧都有实测命令与输出才关本条。
+    carrier: >-
+      本条目加 PR #204 短评（issuecomment-6771409963 及其后续补充）
+    legacy_ref: 'issue #191 已知缺口四（PR #204 Codex review 第 11 轮 blocking；第 9 轮的同源反向已修）'
+
   - id: OI-86
     subject: 灯光升级（2800→6500 按点位采购灯具）
     owner: 业主
