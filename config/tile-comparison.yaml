@@ -114,7 +114,7 @@ grout_model:
   # 与核价问法、行业耗量参考、¥8/米压力测试、定额拆分口径）唯一存放于 §09「美缝规格敏感性」。
   # 本节只保留 cost-summary.ts 的对账最小集：owner_target_cny 须与 QR-2026-10-03-07 的
   # owner_target_cny fail-closed 一致；computed_need_cny 供干区交叉核对。
-  # docs/decisions/04-bathrooms.md 裁定④引用的干区缝长 652.5m 已随叙事迁至 §09。
+  # DEC 原文（git show 8abfbe3b:docs/decisions/04-bathrooms.md）裁定④引用的干区缝长 652.5m 已随叙事迁至 §09。
   pkg130_reconciliation:
     pkg_id: "PKG-130"
     planned_cny: 4000

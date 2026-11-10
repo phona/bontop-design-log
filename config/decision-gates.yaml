@@ -96,7 +96,7 @@ decisions:
       - 副龙骨 ≤300mm
       - 副龙骨 ≤400mm（check_carp_keel 现行标准只写「龙骨间距 ≤400mm」、未分主副，本行是解释性归并）
       - 主龙骨 ≤1000mm
-      - 主龙骨 ≤1200mm（报告旗标档位；仓内无此验收口径——1200mm 仅见于算量规范区间 800–1200mm，见 config/ceiling-material-cost.yaml 与 docs/decisions/09-ceiling-takeoff.md，不是验收线）
+      - 主龙骨 ≤1200mm（报告旗标档位；仓内无此验收口径——1200mm 仅见于算量规范区间 800–1200mm，见 config/ceiling-material-cost.yaml 与 git show 8abfbe3b:docs/decisions/09-ceiling-takeoff.md，不是验收线）
     status: open
     missing_evidence: "业主书面拍板记录"
     blocks:

@@ -6,8 +6,10 @@
 // 残壳，只收两类东西：
 //   entries —— 真·不可再生的知识（合同成交语义/竞品淘汰理由/业主原话与口头规格/实地断言/
 //              静默失效分析），每条带 landing 指向它同时落到的机读位置；
-//   retired —— 其余 292−entries 条的墓碑一行（id/subject/status/superseded_by/record/landing），
-//              不搬正文（正文即 git 历史）。
+//   retired —— 其余 292−entries 条的墓碑一行（id/subject/superseded_by/record/landing），
+//              不搬正文（正文即 git 历史）。业主 2026-11-10 裁定：墓碑不带 status——
+//              status 曾腐烂过一次（25 条标 active 但内容早已被取代），且无机制保证它跟随
+//              对象配置；编号/标题/原文位置是历史事实，追溯交给 git。
 //
 // 这个文件是它的**机器校验器**，对应设计文档 §2.5 的对账钩子：
 //   钩子 1 id 覆盖对账 —— 本文件 id 集合 ⊇ docs/decisions/ 标题实测集合（差集必须为 0）；
@@ -22,6 +24,7 @@
 // 门禁报警，但会让「编号可查」这件事悄悄失效——而那正是删档当天不炸的唯一保障。
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { load as parseYaml } from 'js-yaml';
@@ -47,7 +50,6 @@ interface KnowledgeEntry {
 interface RetiredEntry {
   id: string;
   subject: string;
-  status: string;
   superseded_by: string | null;
   record: string;
   landing: string[];
@@ -184,28 +186,52 @@ test('knowledge 里声明「已被取代/证伪/口径已变」的条目，必�
   assert.deepEqual(bad, [], `取代/证伪未结构显形：${bad.join('；')}`);
 });
 
-// ── ⑤ retired 段：墓碑形态完整 ────────────────────────────────────────────
-test('retired 段：墓碑字段齐全、status 合法、superseded 必带取代者、record 是仓内定位', () => {
-  const allowed = new Set(['active', 'superseded', 'archived', 'retired']);
+// ── ⑤ retired 段：墓碑形态完整（业主 2026-11-10 裁定：墓碑不带 status）────────
+test('retired 段：墓碑字段齐全、无 status、superseded 必带取代者、record 是 commit+仓内定位', () => {
   const bad: string[] = [];
+  // record = `<commit>:<path>#L<line>`——`git show <commit>:<path>` 必须能取到原文，
+  // 且 #L 行必须是该条 DEC 的标题行（「原文位置」不是摆设）。
+  const RECORD = /^([0-9a-f]{7,40}):(docs\/decisions\/[^#]+\.md)#L(\d+)$/;
+  const commits = new Set<string>();
+  const byFile = new Map<string, { commit: string; path: string; lines: string[] }>();
   for (const e of retired) {
-    if (!allowed.has(e.status)) bad.push(`${e.id} status「${e.status}」不在取值表内`);
-    if (e.status === 'superseded' && !e.superseded_by) bad.push(`${e.id} 判为 superseded 却没写 superseded_by——读者无法知道取代者是谁`);
+    // 业主 2026-11-10 裁定：墓碑只留编号/标题/原文位置；status 已整体移除，不得回流。
+    if ('status' in e) bad.push(`${e.id} 仍带 status 字段——业主 2026-11-10 裁定墓碑不带 status`);
     if (e.superseded_by) {
       assert.ok(knowledgeIds.has(e.superseded_by), `${e.id} 的 superseded_by「${e.superseded_by}」不在册——取代边指向不存在的 id`);
       assert.notEqual(e.superseded_by, e.id, `${e.id} 的 superseded_by 指向自己`);
     }
     if (!e.subject || !e.subject.trim()) bad.push(`${e.id} subject 为空——墓碑必须能让人认出这条是什么`);
     if (!e.record || !e.record.trim()) { bad.push(`${e.id} record 为空——原文在 git 历史里的定位必须显形`); continue; }
-    // record 指向 docs/decisions/ 的文件+行：档案还在时必须真实存在（S3 删档后由 git show 承接）。
-    if (titles.length) {
-      const base = e.record.split('#')[0];
-      if (!existsSync(base)) bad.push(`${e.id} record 路径不存在：${e.record}`);
-    }
+    const m = e.record.match(RECORD);
+    if (!m) { bad.push(`${e.id} record 不是 <commit>:<path>#L<line> 形态：${e.record}`); continue; }
+    const line = Number(m[3]);
+    if (!Number.isInteger(line) || line < 1) bad.push(`${e.id} record 行号非法：${e.record}`);
+    commits.add(m[1]);
+    if (!byFile.has(`${m[1]}\0${m[2]}`)) byFile.set(`${m[1]}\0${m[2]}`, { commit: m[1], path: m[2], lines: [] });
   }
   assert.deepEqual(bad, [], `墓碑形态不合格：${bad.join('；')}`);
-  // 取代边必须真的存在（否则 status 表是空转的）。
-  const withSuperseder = retired.filter((e) => e.superseded_by).length + entries.filter((e) => false).length;
+  assert.equal(commits.size, 1, `record 的 commit 必须统一为归档基线单值，实际：${[...commits].join(', ')}`);
+  // 原文可取性：每个 record 的 (commit, path) 真实存在，且 #L 行命中该条编号。
+  // 用 git show 逐文件取一次（20 个文件），避免 252 次子进程。
+  for (const [, ref] of byFile) {
+    let lines: string[];
+    try {
+      lines = execFileSync('git', ['show', `${ref.commit}:${ref.path}`], { encoding: 'utf8' }).split('\n');
+    } catch {
+      assert.fail(`${ref.commit}:${ref.path} 取不到——record 的 commit/路径定位失效`);
+    }
+    const members = retired.filter((e) => e.record.startsWith(`${ref.commit}:${ref.path}#L`));
+    for (const e of members) {
+      const line = Number(e.record.split('#L').at(-1));
+      assert.ok(
+        (lines[line - 1] ?? '').includes(e.id),
+        `${e.id} 的 record ${e.record} 未落在该条编号的标题行：实际为「${(lines[line - 1] ?? '').trim().slice(0, 80)}」`,
+      );
+    }
+  }
+  // 取代边必须真的存在（否则取代关系丢了）。
+  const withSuperseder = retired.filter((e) => e.superseded_by).length;
   assert.ok(withSuperseder > 0, 'retired 段里没有任何取代边——C 轨 168 对边的结构化沉淀丢失');
 });
 

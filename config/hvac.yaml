@@ -22,7 +22,7 @@ plans:
         - schedule/phase-1/control.yaml
       # 证据结构（2026-11-09 issue #98 S2 新增）：合同成交语义的**机器可读**落点。
       # 为什么必须有：DEC 退役前，scripts/schedule/cost-summary.ts 的已核实层守卫靠回
-      # docs/decisions/05-hvac.md 的 DEC-2026-10-04-R1 章节核对「登记金额被合同总价词
+      # git show 8abfbe3b:docs/decisions/05-hvac.md 的 DEC-2026-10-04-R1 章节核对「登记金额被合同总价词
       # 直接指称」；S3 一删档那道核对就 throw。业主裁定⑤「数据全上对象」+ S2 任务 3：
       # 成交语义改落报价卡的 evidence 结构，与 shared/quote-cards.ts 的三级证据分级同口径
       # （photo / owner_reported / written_quote），kind 必须是 written_quote 才能支撑已核实层。

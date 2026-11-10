@@ -77,7 +77,7 @@ npm run gate:visual     # CLEAR / STALE + 修复命令；退出码 0/1/2
 
 ## 9. 完整案例（反例教材）
 
-- `docs/design-iterations/dining-ceiling-cove-restore-20261008/`：DEC-2026-10-08-R01~R05 全链（含六轮评审子记录）——原 `docs/decisions/08-ceiling-form.md` 已于 2026-11-09 S3 退场，正文见 git 史，编号可经 `config/decision-knowledge.yaml` 的 retired 段定位
+- `docs/design-iterations/dining-ceiling-cove-restore-20261008/`：DEC-2026-10-08-R01~R05 全链（含六轮评审子记录）——原 `docs/decisions/08-ceiling-form.md` 已于 2026-11-09 S3 退场，正文见 `git show 8abfbe3b:docs/decisions/08-ceiling-form.md`，编号可经 `config/decision-knowledge.yaml` 的 retired 段定位
 - `docs/design-iterations/dining-ceiling-cove-restore-20261008/`：五件套（R03/R04/R05 的实施与实测）
 - `docs/design-iterations/dining-ceiling-no-cove-20261008/`：R02 的 frozen 记录
 - 最终解法：一行 config（`concave_fillets_open: { se: sw }`）+ 一个小 builder 机制——几何工作一小时，其余全耗在环和语言上。

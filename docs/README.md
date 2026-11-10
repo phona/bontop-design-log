@@ -1,8 +1,8 @@
 # docs/ 文档索引
 
-> 用途：`docs/` 根目录文档 + 4 个子目录的角色、状态与权威指向。
+> 用途：`docs/` 根目录文档 + 3 个现役子目录的角色、状态与权威指向（`decisions/` 已退场）。
 > 建立日：2026-10-20。**只登记事实，不派生结论**；状态列写明是文档自述还是本索引推断。
-> 与 `docs/decisions/README.md`（决策日志索引）、`docs/design-iterations/INDEX.yaml`（迭代记录索引）同级。
+> 同级索引：`docs/design-iterations/INDEX.yaml`（迭代记录索引）。原 `docs/decisions/README.md`（决策日志索引）已于 2026-11-09（issue #98 第六阶段 S3）随档案退场，原文自 git 取回：`git show 8abfbe3b:docs/decisions/README.md`。
 
 ## 权威层级（冲突时按序）
 
@@ -45,13 +45,13 @@
 | 2026-10-05 | `docs/hvac/hvac-deepening-20260907.md` | 「已被 R6 取代」状态注记 |
 | 2026-09-02 | `docs/curtain-design.md` | 窗帘设计定稿 |
 
-> 深层的迭代记录见 `design-iterations/INDEX.yaml`；决策变更见 `decisions/` 各主题文件。
+> 深层的迭代记录见 `design-iterations/INDEX.yaml`；决策变更已随 DEC 体系退场（2026-11-09 S3）——编号可经 `config/decision-knowledge.yaml` 的 `retired` 段定位到原文 commit+文件+行，原文自 git 取回（`git show 8abfbe3b:docs/decisions/<file>.md`）。
 
 ## 子目录
 
 | 目录 | 内容 | 性质 |
 |---|---|---|
-| `decisions/` | 18 个主题文件 + 1 个归档分册 + README，268 条 DEC | 决策日志。**正文只登记不改写**，索引与纪律见其 README |
+| `decisions/` | 已退场（原 18 个主题文件 + 1 个归档分册 + README，268 条 DEC；2026-11-09 S3 整份删除） | **不再存在**。追溯：编号见 `config/decision-knowledge.yaml` 的 `retired` 段；原文 `git show 8abfbe3b:docs/decisions/<file>.md`（墓碑见本文件「退场墓碑」节） |
 | `design-iterations/` | 46 个现役目录 + `archive/` 20 个 + `INDEX.yaml` | 迭代证据。机读索引见 `INDEX.yaml` |
 | `standards/` | 1 个 md | 起夜路径照明标准 |
 | `hvac/` | 6 个 md | 暖通专题。2026-10-20 从根目录迁出，消除「一眼过去全是 hvac」的平铺噪声 |
@@ -98,7 +98,7 @@
 
 | 文档 | 现行路径 | 自述状态 | 为什么保留 | 引用 |
 |---|---|---|---|---|
-| `hvac-ld-condensate-receiver-predesign-20261019.md` | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | **预研稿，未裁定**；不改 config、不替代 DEC，业主拍板后另开 DEC | 客餐厅冷凝水受纳系统预研；§10 是业主已裁定的红→绿门禁（量房日+#39 回来后 verify 必须全绿） | 2 |
+| `hvac-ld-condensate-receiver-predesign-20261019.md` | `docs/hvac/hvac-ld-condensate-receiver-predesign-20261019.md` | **预研稿，未裁定**；不改 config；业主拍板后按 AGENTS.md 决策铁律第 2 条落四条落点（对象 intent / 报价卡 / 门禁 / control.yaml audit_log），不再另开 DEC（DEC 体系已于 2026-11-09 S3 退场） | 客餐厅冷凝水受纳系统预研；§10 是业主已裁定的红→绿门禁（量房日+#39 回来后 verify 必须全绿） | 2 |
 | `hvac-pitfall-audit-20261011.md` | `docs/hvac/hvac-pitfall-audit-20261011.md` | 方案复核稿 v4.4 | 安装前复核；量房与厂家资料回来后再转施工图 | 2 |
 | `hvac-rfq-brief-20261003.md` | `docs/hvac/hvac-rfq-brief-20261003.md` | 已完成询价并成交，本文是**询价要求与合同核对基准** | 合同核对需要「当时提出了什么」；§七 5 条谈判红线含 10-04 触发留档 | 4 |
 | `ceiling-scheme-20261008.md` | 根目录 | 现行优先方案**归档**，DEC-2026-10-08-C08 | 吊顶材料与施工方案快照；10-15 已加几何修订提示，旧数量明确标注不代表当前几何 | 4 |
@@ -121,6 +121,7 @@
 | `acceptance_checklist.md` | 2026-10-22 | 46e9e0c | 已退役的指针页（自声明）；真正的交付验收清单在 `schedule/phase-1/` 的 render 产物 |
 | `render-tech-debt.md` | 2026-10-22 | 46e9e0c | 自声明 PAUSED/HISTORICAL 的技术债台账，已删 |
 | pending-site-data.md | 2026-11-09 | 见退役 PR | 量房待填手账 + 叙事决策登记表。未决项全数迁至 config 各对象 `status`/`blocker` 字段（`shared/element-blockers.ts` 门禁守着）；D1–D19 的「缺的证据」迁入 `config/decision-gates.yaml` 各条 `missing_evidence`；人读视图改由 `npm run docs:generate-pending-view` 按需生成进 `tmp/capture/` |
+| `decisions/`（20 文件 / 292 条 DEC） | 2026-11-09 | a5f70890 | DEC 体系退役（业主 2026-11-08 裁定），正文即 git 历史。编号解析靶改为 `config/decision-knowledge.yaml` 的 `retired` 段（record 给到 commit+文件+行）；原文自归档基线取回：`git show 8abfbe3b:docs/decisions/<file>.md` |
 | `twinmotion-acceptance.md` | 2026-10-22 | 46e9e0c | Twinmotion 线随 Blender 主线一同暂停，已删 |
 | `blender-render-architecture.md`（原 `renders` 目录） | 2026-10-22 | 46e9e0c | Blender 渲染管线已冷归档；原文自 git 历史取回——`scripts/archive/blender-pipeline/` 是管线代码的冷归档，不含本文档 |
 | `pipeline-acceptance.md`（原 `renders` 目录） | 2026-10-22 | 46e9e0c | 同上 |

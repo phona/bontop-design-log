@@ -97,7 +97,7 @@
 
 > 2026-10-11 增补。由来：六台内机全带泵这一配置从 `DEC-2026-10-03-R6` 到 `DEC-2026-10-04-R1` 从未被论证——R6 只判了主卧一间，R1 以"升级项 / 可省 3D 面板费"覆盖其余五间，无任何一节说明那五间的重力路线为何不成立；同期 `docs/hvac/hvac-pitfall-audit-20261011.md` v4.2 删掉三条已研究证据（容量退化对比、17dB 噪音依据、主卧玻璃负荷核算），而 `test:app` / `typecheck` / `gate:visual` 全绿。以下六条堵这两类失效。
 >
-> 2026-11-08 业主裁定（issue #98 第六阶段）：**DEC 体系退役**，`docs/decisions/` 与 `config/decision-registry.yaml` 均已退场，本文出现的 `DEC-…` 编号一律指 git 历史里的旧记录（可经 `config/decision-knowledge.yaml` 的 `retired` 段定位到原文文件+行），**不再是任何写入通道**。新的落点只有四条，见第 2 条。
+> 2026-11-08 业主裁定（issue #98 第六阶段）：**DEC 体系退役**，`docs/decisions/` 与 `config/decision-registry.yaml` 均已退场，本文出现的 `DEC-…` 编号一律指 git 历史里的旧记录（可经 `config/decision-knowledge.yaml` 的 `retired` 段定位到原文 commit+文件+行），**不再是任何写入通道**。新的落点只有四条，见第 2 条。
 
 > 2026-11-09 业主裁定（issue #98 第六阶段 S4，**element-state 与 round 强制的去留**）：
 > ① **构件级工程状态机制整体保留**——数据层（对象 `status`/`blocker` + `shared/element-blockers.ts` 门禁）、
@@ -215,7 +215,7 @@ npm run verify:all
 - **过程物不进 git**：中间版截图（v1/v2/before 等过程版本）、`*.snapshot.txt`、`*.runtime.json` 等运行转储一律写入 `tmp/capture/` 或当轮删除；抓图/绘图脚本默认输出 `tmp/capture/`，禁止再把任何一轮的 evidence 目录硬编码为默认输出（终稿入仓走关账挑选，不走脚本直写）。
 - **进仓的只有终稿与外部原件**：一轮关账时每个视角至多留 1 张终稿图，置于该轮 evidence 的 final 子目录；外部原件（合同、报价、厂家资料、业主提供图，不可再生）正常进仓，并在该轮 brief 登记来源。
 - **关账即瘦身**：review_state 转为 delivery_ready、superseded 或移入 archive 时，收尾动作必须包含把本轮 evidence 压缩到终稿集；删了什么逐条写进 commit message。
-- **一题一文档，退场不建归档目录**：新认知写入既有主题文档，禁止新开散稿；文档退场 = 直接删除 + 在索引留一行墓碑（名称 + 关账结论 + 删除 commit），git 历史即归档，不另建 legacy/archive 目录。新轮次的结构化文件只写单个 round.yaml 一件套（brief/datum/fact_table/objects/review/index 段），不得另加 work-record、evidence-notes 等附属散件；INDEX.yaml 由 `npm run docs:generate-index` 从各轮 round.yaml 的 index 段生成，禁止手改。豁免两轮保留原文件：hvac-resix 的 fact-table/design-datum（facts error 级读者）、mep-lint-governance 的 review-manifest.json（治理基线读者），其余段仍并入 round.yaml 并在 index.exempt_files 注明。**机器可读的条目级墓碑是唯一例外形态**（2026-11-09 issue #98 S2）：当被删的是「约 1,900 处编号引用的解析靶」时（DEC 档案即此），必须有一个机器可读的墓碑段承接编号可解析性，否则引用方当天集体悬空——见 `config/decision-knowledge.yaml` 的 `retired` 段与 `config/facts.yaml` 的 `c.dec_unique` / `c.dec_ref_resolvable`。该段只许留 id / subject / status / superseded_by / record / landing，不搬正文。
+- **一题一文档，退场不建归档目录**：新认知写入既有主题文档，禁止新开散稿；文档退场 = 直接删除 + 在索引留一行墓碑（名称 + 关账结论 + 删除 commit），git 历史即归档，不另建 legacy/archive 目录。新轮次的结构化文件只写单个 round.yaml 一件套（brief/datum/fact_table/objects/review/index 段），不得另加 work-record、evidence-notes 等附属散件；INDEX.yaml 由 `npm run docs:generate-index` 从各轮 round.yaml 的 index 段生成，禁止手改。豁免两轮保留原文件：hvac-resix 的 fact-table/design-datum（facts error 级读者）、mep-lint-governance 的 review-manifest.json（治理基线读者），其余段仍并入 round.yaml 并在 index.exempt_files 注明。**机器可读的条目级墓碑是唯一例外形态**（2026-11-09 issue #98 S2）：当被删的是「约 1,900 处编号引用的解析靶」时（DEC 档案即此），必须有一个机器可读的墓碑段承接编号可解析性，否则引用方当天集体悬空——见 `config/decision-knowledge.yaml` 的 `retired` 段与 `config/facts.yaml` 的 `c.dec_unique` / `c.dec_ref_resolvable`。该段只许留 id / subject / superseded_by / record / landing（**墓碑不带 status**，业主 2026-11-10 裁定：只留编号/标题/原文位置，追溯交给 git），不搬正文。
 
 ## 回应 Codex 审查的铁律（2026-11-03 增补）
 

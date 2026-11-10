@@ -226,9 +226,9 @@ const DEC_ID_PATTERN = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
  *    错卷、用错凭据原文。
  * 2026-11-09 issue #98 S2：DEC 退役（业主裁定）后，**生产路径的合同凭据核验
  * 不再走本函数**（改读 config/hvac.yaml 的 commercial.evidence，见
- * findContractEvidence）。本函数保留为 md 档案的章节定位工具——docs/decisions/
- * 在本 PR 仍在（删除属 S3），其单测仍以真实仓库章节为 fixture；S3 删档后随档案
- * 一起退场。dir 参数仅供测试注入临时目录，生产路径不传、走 docs/decisions。
+ * findContractEvidence）。docs/decisions/ 已于 S3 整份退场，本函数的默认目录因此
+ * 不可用（readdir 失败返回 null）；它只保留为 md 档案的章节定位工具，单测一律
+ * 注入临时目录 fixture。原文取用 git：`git show 8abfbe3b:docs/decisions/<file>.md`。
  */
 export function findDecisionSection(decId: string, dir: string = 'docs/decisions'): { file: string; text: string } | null {
   if (!DEC_ID_PATTERN.test(decId)) {
@@ -454,7 +454,7 @@ interface LocatedContractEvidence extends ContractEvidence { file: string }
  * 按 contract_ref（DEC 全引）在**报价卡**里定位合同成交语义的 evidence 结构
  * （2026-11-09 issue #98 S2）。
  *
- * 为什么换源：DEC 退役前，本核对回 docs/decisions/05-hvac.md 的 DEC-2026-10-04-R1 章节
+ * 为什么换源：DEC 退役前，本核对回 git show 8abfbe3b:docs/decisions/05-hvac.md 的 DEC-2026-10-04-R1 章节
  * 散文找「成交表述 + 总价锚点」；S3 一删档这道 fail-closed 就 throw（设计文档 §6.1 停止
  * 条件 5）。业主裁定⑤「数据全上对象；代码只剩读对象 + 断言」+ S2 任务 3：成交语义改落
  * 报价卡 config/hvac.yaml 的 commercial.evidence（L2 价层本就是它的归属地），
