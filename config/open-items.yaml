@@ -82,6 +82,102 @@ items:
       config/decision-knowledge.yaml `DEC-2026-08-26-045`（序号反查靶，主题是主卧空调檐口，非本悬案）+
       本条目 + config/facts.yaml `c.dec045_mismatch_tracked`
     legacy_ref: 'pending-site-data #78（台账已于 2026-11-09 S2-B 整份退场，原文见 git 821176c2^:docs/pending-site-data.md 第 233 行）'
+  - id: OI-79
+    subject: 'count-only 商品条目无 ID 通道，其变化不触发相关验收 stale（issue #191 已知缺口一）'
+    owner: 业主+设计侧
+    trigger: 任一家具/商品类验收（SCH-150-02 床垫匹配、窗帘、灯具、洁具）首次判 passed 前必须关闭；
+      或任何 count-only 条目改型/增减前
+    current_state: >-
+      `config/house.yaml` 的 furnishings 有 67 条 placed + **24 条 count-only**
+      （mattress_150 ×2 / mattress_180 / curtain_set ×5 / ceiling_light ×8 / shower_set ×2 /
+      faucet ×2 / cabinet_base / cabinet_wall / countertop_quartz / shoe_cabinet）。
+      count-only 按 AGENTS.md「无 x/z 的为 count-only（只喂预算/库存）」被
+      `shared/package-objects.ts:152-154` 整体跳过，不进对象索引、无稳定 ID。
+      实测 `roomId.type` 派生 24 个候选 id 全部唯一，ID 方案可行。
+      后果：改/删这些条目不改变任何工作包的对象摘要——而 SCH-150-02 的 method 原文
+      写着「逐件检查牢固、水平、开合、边角、**床垫匹配**和主要通道」。床垫换了，
+      这条验收的旧通过记录不会 stale。targets 对账也抓不到：解析端与登记端同时排除了它。
+      同类暴露面覆盖全部 24 条（窗帘/灯具/洁具验收均直接点名这些商品）。
+      今天零实际损害：`schedule/phase-1/control.yaml` 的 `audit_log.status` 为 `empty`，
+      项目里没有任何验收通过记录。
+    needs: >-
+      业主 2026-11-10 裁定：**采购的东西也对象化后关联进工程里**。即给 count-only 条目
+      稳定 ID（Commercial 域自身业务 ID，issue #98 四域表已预留「自身业务 ID + 关联对象/
+      工作包 ID」），并关联到所属工程对象（房间 / 宿主家具），使其声明进入所属工作包的指纹。
+      实现要点（不破架构边界）：
+      ① ID 按 `<room>.<type>` 派生（实测唯一），与 placed 的 `furnitureObjectId` 同源不同类；
+      ② 在对象索引里标为 quantity/commercial 类，**不改** `collectDeclaredFurnitureIds`
+         的 placed 判据（3D 渲染、预算 counts derive、ProjectCatalog 一律不受影响）；
+      ③ 关联目标：挂到所属房间，能认出宿主家具的挂到宿主（如 mattress → bed_150）；
+      ④ `cost:by-object` 账本纳入这 24 条（其 `aliases` 已支持 `roomId.type` 形态）；
+      ⑤ #191 的正文点名扫描门禁随之能匹配这些 id。
+      **不许**为了进指纹把商品事实复制进工程对象（issue #98 明文禁止）。
+    reversal: >-
+      owner=业主+设计侧；触发见上。关闭条件：改任一 count-only 条目（如 mattress_150 的
+      数量或型编），挂 SCH-150-02 的 PKG-150 对象摘要必须变化、旧通过记录必须 stale
+      （有实测命令与输出）；同时 3D 渲染与 `ProjectCatalog.getFurnishingCounts` 的输出
+      与改前逐条相同（证明没把商品事实搬进工程对象）。两者都满足才关本条目。
+    carrier: >-
+      本条目 + PR #204 短评（issuecomment-6771409963）+ config/facts.yaml 的 object_link 契约族
+    legacy_ref: 'issue #191 已知缺口一（PR #204 Codex review 第 5 轮 blocking 1）'
+  - id: OI-80
+    subject: '计算出来的依赖不进闭包，其变化不触发相关验收 stale（issue #191 已知缺口二）'
+    owner: 业主+设计侧
+    trigger: 冷凝水遮蔽链相关验收（PKG-150 家具包 / PKG-040 空调包）首次判 passed 前必须关闭；
+      或改 hvac.yaml 的 condensate_master_candidate、mep 的 condensate-master 路由前
+    current_state: >-
+      `shared/package-objects.ts:381-388` 的引用闭包只沿**对象声明里的完整字符串**展开。
+      但 `mb.vanity_pvc_service_chase` 的锚点是 `{source: chain, id: wardrobe_east_band}`——
+      `wardrobe_east_band` 不是任何权威文件里的对象，是 `shared/condensate-chain.ts`
+      解出的链上点（`shared/types.ts:2054` 标明 `source: chain`）。
+      该链还读取 MEP `condensate-master` 的穿墙点与 `config/hvac.yaml` 的
+      `condensate_master_candidate`（`shared/condensate-chain.ts:16-17,56-58`）。
+      这些依赖是代码算出来的，不是声明里的字符串，闭包结构上捕不到。
+      后果：改候选接入点会改变遮蔽链几何，但 PKG-150 的指纹不变，相关旧验收仍显示 passed；
+      #191 新增的正文点名扫描也覆盖不到这类依赖（没有正文点名它）。
+      今天零实际损害：audit_log 仍为 empty。
+    needs: >-
+      让计算依赖变成**可声明**的：`shared/condensate-chain.ts` 导出它实际读取的对象 id
+      集合（condensate-master 穿墙点、condensate_master_candidate、链上各点），
+      引用闭包除字符串外也跟随这类「解算器声明的输入」。
+      这开一个先例：**以后每个「算出来的依赖」都必须显式导出**，需把该纪律写进 AGENTS.md
+      （与「Resolver 需要独立基准几何测试」同级的条款）。
+      实现时先全仓盘点还有哪些解算器有隐含输入（不限于冷凝水链），一并列入导出清单，
+      不要只修这一处。
+    reversal: >-
+      owner=业主+设计侧；触发见上。关闭条件：改 `config/hvac.yaml` 的
+      `condensate_master_candidate` 或 MEP `condensate-master` 路由后，PKG-150 与 PKG-040
+      的对象摘要必须变化（有实测命令与输出）；且 AGENTS.md 已写入「解算器必须声明其输入」
+      的纪律条款。
+    carrier: >-
+      本条目 + PR #204 短评（issuecomment-6771409963）+ shared/condensate-chain.ts 头注
+    legacy_ref: 'issue #191 已知缺口二（PR #204 Codex review 第 5 轮 blocking 2）'
+  - id: OI-81
+    subject: '单条链接/验收定义变化仍使全部 25 个包 stale（issue #191 已知缺口三，过度 stale 方向）'
+    owner: 业主+设计侧
+    trigger: 维护对象关联（给某条 MODEL-PKG 增补对象）或修订单条验收方法成为日常操作前
+    current_state: >-
+      `shared/schedule-state.ts:207` 仍把整份 `config/model-package-links.yaml`、
+      `config/acceptance.yaml`、`config/decision-gates.yaml` 无条件计入**每个**包的指纹。
+      单给 MODEL-PKG-110 增补一个厨房对象、或只改一条厨房验收方法，会让全部 25 个包的
+      旧通过记录一起 stale。
+      这是 #191 任务决策 4 的显式口径（结构性文件整份计入，方向偏过度不漏），
+      PR #204 的 Codex major 已正式登记。与 OI-79/OI-80 方向相反：那两个是漏 stale（危险），
+      本个是过度 stale（噪音）。今天零实际损害：audit_log 仍为 empty。
+    needs: >-
+      按包摘要「当前包用到的链接、检查定义与适用门禁」而非整份文件；只把真正影响全项目的
+      字段（如 authorities 映射表本身）按整份处理。需要先想清楚哪些字段真·全局——
+      这是一个设计判断，不是机械拆分。
+      **注意方向**：宁可偏过度，不可为了降噪音引入漏 stale。若无法干净拆分，
+      保持现状并在 AGENTS.md 写明这是有意的权衡。
+    reversal: >-
+      owner=业主+设计侧；触发见上。关闭条件：只改 MODEL-PKG-110 的 scope 后，
+      指纹变化的包数显著小于 25，且**不漏**——改任一对象仍让 scope 含它的包 stale
+      （OI-79/OI-80 的验证条件同时满足）。若判定保持现状，则在 AGENTS.md 写明
+      「结构性文件整份计入是有意权衡」并关闭本条目。
+    carrier: >-
+      本条目 + PR #204 短评（issuecomment-6771409963）+ shared/schedule-state.ts 头注
+    legacy_ref: 'issue #191 已知缺口三（PR #204 Codex review 第 5 轮 major；前四轮已按「只修 blocking」保留）'
   - id: OI-86
     subject: 灯光升级（2800→6500 按点位采购灯具）
     owner: 业主
