@@ -1269,6 +1269,15 @@ retired:
     superseded_by: null
     record: "8abfbe3b:docs/decisions/06-electrical.md#L321"
     landing: ["git", "object"]
+  # 2026-11-10 issue 195 第 5 条：本条 id `DEC-2026-10-13` 是全仓唯一不合
+  # `DEC-YYYY-MM-DD-Rn` 形态的登记（原文标题「DEC-2026-10-13 批次说明：…」，
+  # git 8abfbe3b:docs/decisions/06-electrical.md 第 335 行，覆盖当日 R1–R6 六条修订）。
+  # **不补格式的理由**：它是 retired 墓碑，id 必须逐字等于原文标题行——retired 段的
+  # record 行号核对会断言该行 `.includes(id)`（tests/server/decision-knowledge.test.ts），
+  # 改成 -R0 等于伪造原文定位。故按 issue 195 的「明确豁免」分支处理：豁免在
+  # config/facts.yaml 显式登记为 c.dec_bare_date_tombstone_registered（存在性 + 字段齐全
+  # 有门禁），不静默。另：代码里借用该名的 16 处「预算计算架构根治」注释实际指
+  # commit 749426e0 的重构、不是本条决策，已就地改指 commit，不再借电气批次 id 指预算改造。
   - id: "DEC-2026-10-13"
     subject: "批次说明：客厅主灯改吸顶灯 / 主卫镜柜面光口径与电位核查 / 主卧吸顶灯移位 / 客厅中部定原顶"
     superseded_by: null

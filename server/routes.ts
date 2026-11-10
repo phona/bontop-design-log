@@ -10,7 +10,7 @@ import type { ConfigRegistry } from './config-loader.js';
 import { loadElectricalConfig, loadElectricalTopologyConfig, loadPlumbingConfig, loadCeilingConfig, loadMepCoordinationConfig } from './config-loader.js';
 import { endpointSourcesFromFacts, validateMepCoordination } from '../shared/mep-hvac-coordination-schema.js';
 import { buildPlacementIndexes } from '../shared/placement-indexes.js';
-import { collectPlacementHostClosureViolations, PLACEMENT_CLOSURE_GUIDANCE, PROJECTION_CONSTRUCTION_GUIDANCE, CONDENSATE_PENETRATION_GUIDANCE } from './placement-closure.js';
+import { collectPlacementHostClosureViolations, PLACEMENT_CLOSURE_GUIDANCE, PROJECTION_CONSTRUCTION_GUIDANCE, CONDENSATE_PENETRATION_GUIDANCE, MODEL_PACKAGE_LINKS_GUIDANCE } from './placement-closure.js';
 import type { PlacementClosureApiDiagnostics } from '../shared/api-project.js';
 import { lintElectricalTopology } from '../shared/electrical-lint.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../shared/mep-hvac-lint.js';
@@ -554,7 +554,23 @@ export function createApiRouter(deps: ApiDeps): Router {
     }
     const overlay = deps.getOverlay();
     const sceneElements = mergeSceneElements(projectCatalog.getWalls(), overlay);
-    const modelLinks = loadModelPackageLinks();
+    // 模型包关联读取隔离（issue #195 第 4 条，同 PR #174/#182 的「宽容读取、局部降级」路子）。
+    // 病根：loadModelPackageLinks() 会解析 config/model-package-links.yaml 并逐个读取/核对
+    // 全部 authority；原始 YAML 语法错误（区别于 PR #182 已隔离的 schema 级错误）会让它在
+    // 本行抛出 → 整个处理器抛 → /api/project 500，早于下方投影/锚点隔离，页面拿不到任何东西。
+    // 口径：模型包关联是页面的**高亮范围**输入，不是正确性前提——不可得时页面少「模型包→
+    // 对象」映射并显形，其余房间/点位/场景照常预览；错误并入下方同一条
+    // placementClosureDiagnostics 通道，响应仍 200。**严格输出零改动**：同一份坏 YAML 在
+    // verify:schedule / 审批链路（loadScheduleState 指纹）仍按真实错误失败，问题不会藏。
+    let modelLinks: ReturnType<typeof loadModelPackageLinks>;
+    let modelLinksFailure: string | undefined;
+    try {
+      modelLinks = loadModelPackageLinks();
+    } catch (err) {
+      modelLinksFailure = err instanceof Error ? err.message : String(err);
+      modelLinks = { schema: 'project.model-package-links/v1', authorities: {}, links: [] };
+      console.error('[api/project] 模型包关联读取失败：已降级为诊断（页面继续预览，正式交付与验证仍会失败）：', err);
+    }
     // 本次下发的点位清单（与 house.electrical / house.plumbing 同一来源，先取出来供闭合性断言用）。
     const electricalPoints = deps.getProjectRenderFacts?.()?.electrical ?? loadElectricalConfig();
     const plumbingPoints = deps.getProjectRenderFacts?.()?.plumbing ?? loadPlumbingConfig();
@@ -619,12 +635,13 @@ export function createApiRouter(deps: ApiDeps): Router {
       condensatePenetrationFailure = err instanceof Error ? err.message : String(err);
       console.error('[api/project] 冷凝锚点读取失败：已降级为诊断（页面继续预览，正式 DXF/验证仍会失败）：', err);
     }
-    // 统一诊断通道：点位闭合违例、投影构造失败与冷凝锚点读取失败共用
+    // 统一诊断通道：点位闭合违例、投影构造失败、冷凝锚点读取失败与模型包关联读取失败共用
     // placementClosureDiagnostics 一个键、一份 count、一组处理方向；
     // **键缺省** = 本次响应各项都正常（页面据此区分正常/降级）。
     const diagnosticMessages = [
       ...(projectionFailure !== undefined ? [`render-facts 投影构造失败：${projectionFailure}`] : []),
       ...(condensatePenetrationFailure !== undefined ? [`冷凝锚点读取失败：${condensatePenetrationFailure}`] : []),
+      ...(modelLinksFailure !== undefined ? [`模型包关联读取失败：${modelLinksFailure}`] : []),
       ...placementClosureViolations.map((v) => v.message),
     ];
     const renderDiagnostics: PlacementClosureApiDiagnostics | undefined = diagnosticMessages.length > 0
@@ -634,6 +651,7 @@ export function createApiRouter(deps: ApiDeps): Router {
           guidance: [
             ...(projectionFailure !== undefined ? [PROJECTION_CONSTRUCTION_GUIDANCE] : []),
             ...(condensatePenetrationFailure !== undefined ? [CONDENSATE_PENETRATION_GUIDANCE] : []),
+            ...(modelLinksFailure !== undefined ? [MODEL_PACKAGE_LINKS_GUIDANCE] : []),
             ...(placementClosureViolations.length > 0 ? [PLACEMENT_CLOSURE_GUIDANCE] : []),
           ].join(''),
           ...(projectionFailure !== undefined
@@ -641,6 +659,9 @@ export function createApiRouter(deps: ApiDeps): Router {
             : {}),
           ...(condensatePenetrationFailure !== undefined
             ? { condensatePenetrationError: { stage: 'condensate-penetration' as const, message: condensatePenetrationFailure } }
+            : {}),
+          ...(modelLinksFailure !== undefined
+            ? { modelPackageLinksError: { stage: 'model-package-links' as const, message: modelLinksFailure } }
             : {}),
         }
       : undefined;

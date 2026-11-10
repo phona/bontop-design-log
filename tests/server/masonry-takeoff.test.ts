@@ -16,7 +16,7 @@ import {
 } from '../../shared/masonry-takeoff.js';
 import { openingsAlongWall } from '../../shared/wall-segments.js';
 
-// 瓦工算量子系统（shared/masonry-takeoff.ts）。DEC-2026-10-13「预算计算架构根治」阶段 2 第一半。
+// 瓦工算量子系统（shared/masonry-takeoff.ts）。2026-10-13「预算计算架构根治」（commit 749426e0）阶段 2 第一半。
 // 四道防线：
 //   ① overlay 的 wall_region / sill_region 声明能过 L2 几何交叉层（不抛错）
 //   ② 数量独立复算：声明值 vs 从 model-geometry 推出的几何值，逐房对账

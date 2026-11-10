@@ -24,7 +24,7 @@ const rulesConfig: DesignRulesConfig = {
     furnishingTypeToTopic: { robot_dock_gbath: 'robot_vacuum' },
     lineItems: [
       { topic: 'floor', quantityField: 'floorArea' },
-      // DEC-2026-10-13 阶段 2 第二半：wetWallArea 拍系数已删除，墙砖量改由
+      // 2026-10-13 预算计算架构根治（commit 749426e0）阶段 2 第二半：wetWallArea 拍系数已删除，墙砖量改由
       // shared/masonry-takeoff.ts 从 overlay 声明实算（字段名 masonryTileArea）。
       { topic: 'wall', quantityField: 'masonryTileArea' },
       { topic: 'paint', quantityField: 'paintWallArea' },

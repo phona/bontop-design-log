@@ -51,6 +51,37 @@ items:
       本条勘测三问的执行；④ 订单 SKU/上下水配件复核挂 #79
     carrier: DEC-2026-11-05-R5 遗留③；schedule/procurement.md JX 段
     legacy_ref: 'pending-site-data #77'
+  # ── 2026-11-10 补录（issue #195 第 1 条：S2-B 台账退场时带走了原 #78，悬案失去全部现存登记）──
+  # 存在性由 config/facts.yaml 的 c.dec045_mismatch_tracked 守着：本条目主题含 DEC-045 且
+  # owner/trigger/reversal 齐，否则门禁报 required_condition_unmatched / required_field_missing。
+  - id: OI-78
+    subject: 'DEC-045 主题错配悬案（「主卫四件套」决策从未入账）'
+    owner: 业主+设计侧
+    trigger: DEC 编号批量修订前，或主卫条带柜组（底柜/下板/主板/PVC 盒）与台盆、服务井再次改设计时
+    current_state: >-
+      改动前（2026-11-10）全仓实测 78 处 `DEC-045` 短引（`grep -ro "DEC-045" --exclude-dir=node_modules
+      --exclude-dir=.git --exclude-dir=tmp . | wc -l`；docs/design-iterations 52、tests 11、config 8、
+      shared 5、scripts 2，含契约注释与测试夹具；本次 issue 新增的登记/契约提及不计入该快照）。设计叙事均指
+      「主卫东墙底柜 + 下板 + 主板 + PVC 盒四件同轴」，但该决策从未作为独立 DEC 入账；短引按序号
+      反查唯一命中 DEC-2026-08-26-045「主卧空调檐口定案 + 条带东北角通顶储物柜」——主题错配。
+      原载体是 2026-11-08 S1-B 在量房台账新增的 #78（git 821176c2^:docs/pending-site-data.md 第 233 行）；
+      该台账 2026-11-09 S2-B（commit 821176c2）整份退场时 #78 随文件消失，facts.yaml 的 warning 级哨兵
+      c.dec045_subject_pending_adjudication 也已按「悬案有台账承接」删除，导致本悬案一度既无跟踪入口也无门禁。
+      `c.dec_ref_resolvable` 只能保证编号可解析，抓不到主题不符；其扫描面（config/docs/schedule）内可见的
+      config 侧 3 处引用（house.yaml 1、materials.yaml 2）全部「解析成功但语义错指」。
+    needs: >-
+      `{裁决: ① 补录正式条目并重编号（项目有 DEC-052/053 改号先例）｜② 把引用改指向正确编号,
+      补录条目正文或改指映射表, 该 78 处引用的逐处复核}`
+    reversal: >-
+      owner=业主+设计侧；触发=DEC 编号批量修订前，或主卫条带柜组/台盆/服务井改设计时。裁决未落前，
+      任何把 `DEC-045` 当作「主卫四件套已入账决策依据」的说明不得视为已裁定——它只指向主卧空调檐口。
+      选①：补录条目正文并给新编号，逐处把引用改到新编号；选②：逐处改指正确编号并复核语境。
+      改完须让 `grep -ro "DEC-045"` 的结果只剩历史档案（docs/design-iterations）内的原文引用，
+      并把本条目从 open-items 关闭（同时调整 c.dec045_mismatch_tracked 的 min_matches 或删除该契约）。
+    carrier: >-
+      config/decision-knowledge.yaml `DEC-2026-08-26-045`（序号反查靶，主题是主卧空调檐口，非本悬案）+
+      本条目 + config/facts.yaml `c.dec045_mismatch_tracked`
+    legacy_ref: 'pending-site-data #78（台账已于 2026-11-09 S2-B 整份退场，原文见 git 821176c2^:docs/pending-site-data.md 第 233 行）'
   - id: OI-86
     subject: 灯光升级（2800→6500 按点位采购灯具）
     owner: 业主

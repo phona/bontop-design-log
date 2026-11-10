@@ -214,7 +214,7 @@ test('project-dxf: 候选/需求示意管路隔离到 M-CAND 并告警，不进 
   assert.ok(candTexts.some((e) => (e['1'] ?? '').includes('非放线依据')));
 });
 
-test('project-dxf: 内机 anchor 经 ref:ceiling 解析进 M-HVAC，解析不了显式告警（codex 审 blocking）', () => {
+test('project-dxf: 内机 anchor 经 ref:ceiling 解析进 M-HVAC；正式 anchor 断引用 fail-closed（issue #195 第 3 条）', () => {
   const result = buildProjectDxf({
     ...baseInput(),
     mep: {
@@ -230,9 +230,10 @@ test('project-dxf: 内机 anchor 经 ref:ceiling 解析进 M-HVAC，解析不了
       } as never,
     },
   });
-  // indoor_living 解析成功：圆 + 标注；indoor_lost 显形告警
+  // indoor_living 解析成功：圆 + 标注；正式 indoor_lost 断引用 → 交付物缺设备定位，进 errors
   assert.equal(result.stats[DXF_LAYERS.M_HVAC[0]], 2);
-  assert.ok(result.warnings.some((w) => w.includes('indoor_lost')));
+  assert.ok(result.errors.some((e) => e.includes('indoor_lost') && e.includes('正式 HVAC anchor')), JSON.stringify(result.errors));
+  assert.ok(!result.warnings.some((w) => w.includes('indoor_lost')), '正式 anchor 断引用不得再走 warning 通道');
 });
 
 test('project-dxf: 圆角折线经 centerlineSamples 展开（弧不成直线折点）+ R 标注（codex 二审 blocking）', () => {
@@ -734,8 +735,8 @@ test('project-dxf: length 型家具外框用显式 length，不吃目录宽（co
 });
 
 test('project-dxf: 跳过实体逐条写 D-NOTES（codex 十七审 major）', () => {
-  // fixture 从「路线端点悬空」换成「内机 anchor 引用解不出来」：前者已 fail-closed 进 errors
-  // （issue #98，见下一条用例），跳过原因随图交付的机制由仍走 warning 的 anchor 路径覆盖。
+  // issue #195 第 3 条后：正式 anchor 断引用已 fail-closed 进 errors（见上一条用例），
+  // 「跳过原因随图交付」由仍走 warning 的**候选** anchor（pending，M-CAND 非放线依据）覆盖。
   const result = buildProjectDxf({
     ...baseInput(),
     mep: {
@@ -744,15 +745,16 @@ test('project-dxf: 跳过实体逐条写 D-NOTES（codex 十七审 major）', ()
         electrical: [], plumbing: [], outdoor: [],
         ceiling: [{ id: 'ac_lost', room: 'living', type: 'ac_indoor' as never, x: 10.3, z: 4.75 } as never],
         hvacAnchors: [
-          { id: 'indoor_lost', status: 'confirmed' as never, system: 'refrigerant' as never, ref: { source: 'ceiling', id: 'ac_missing' } } as never,
+          { id: 'indoor_lost', status: 'pending' as never, system: 'refrigerant' as never, ref: { source: 'ceiling', id: 'ac_missing' } } as never,
         ],
         hvacTerminals: [],
       } as never,
     },
   });
-  // anchor 引用解不出来 → 跳过 + 原因 + id 进 D-NOTES 随图交付
+  // 候选 anchor 引用解不出来 → 跳过 + 原因 + id 进 D-NOTES 随图交付（不判交付失败）
+  assert.deepEqual(result.errors, []);
   assert.ok(parseEntities(result.dxf).some((e) => e['8'] === DXF_LAYERS.D_NOTES[0] && (e['1'] ?? '').includes('indoor_lost')));
-  assert.ok(result.warnings.some((w) => w.includes('indoor_lost')));
+  assert.ok(result.warnings.some((w) => w.includes('indoor_lost') && w.includes('未导出')));
 });
 
 test('project-dxf: MEP 路线端点悬空 fail-closed——诊断进 errors，不再 warning 跳过后照常出图（issue #98）', () => {

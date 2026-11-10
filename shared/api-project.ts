@@ -95,7 +95,7 @@ export interface ProjectApiMaterialPreview {
  * 交付诊断（宽容读取，issue #98 + PR #122 深审修复）：/api/project 不因**可预见的降级**
  * 500/503 掐死页面，而是随 **200** 响应下发本字段，页面显形问题并继续预览其余部分。
  *
- * **一条通道，三类条目**（PR #122 Codex blocking/major 修复后）：
+ * **一条通道，四类条目**（PR #122 Codex blocking/major 修复后；第四类为 issue #195 第 4 条）：
  * - 点位闭合违例：mount 宿主断引用 / count-only 宿主无平面几何（逐条文案与交付断言一致）；
  * - 投影构造失败：render-facts 投影构造器抛错（如 `buildRenderLightingFixtures` 的
  *   fail-closed），此时响应**不下发** renderFactsProjection，错误并入 violations，
@@ -106,11 +106,16 @@ export interface ProjectApiMaterialPreview {
  *   并在 `condensatePenetrationError` 给机器可读形态。锚点同样是「数据源一次给全」的优化、
  *   不是正确性前提——页面少锚点仍可预览，但正式 DXF 导出与验证脚本对同一份不可解析
  *   配置仍会失败（严格输出）。
+ * - 模型包关联读取失败：`loadModelPackageLinks()` 预解析 model-package-links.yaml 及其
+ *   authority 时抛错（原始 YAML 语法错误 / schema 错误），此时响应 modelPackageLinks
+ *   降级为空数组，错误并入 violations，并在 `modelPackageLinksError` 给机器可读形态。
+ *   关联范围是页面高亮输入、不是正确性前提——页面少关联仍可预览，但 verify:schedule
+ *   指纹与验收审批链路对同一份坏配置仍会失败（严格输出，issue #195）。
  *
- * 键缺省 = 本次响应三类都正常。正式交付路径不因本字段放松（严格输出）。
+ * 键缺省 = 本次响应四类都正常。正式交付路径不因本字段放松（严格输出）。
  */
 export interface PlacementClosureApiDiagnostics {
-  /** 降级条数（= violations.length，三类条目合并计数）。 */
+  /** 降级条数（= violations.length，四类条目合并计数）。 */
   count: number;
   /** 逐条人读诊断：哪一项降级、缺什么、可能原因（闭合违例与交付断言逐条文案一致）。 */
   violations: string[];
@@ -137,6 +142,16 @@ export interface PlacementClosureApiDiagnostics {
     /** 原始错误文案（配置读取/解析的 fail-closed 信息）。 */
     message: string;
   };
+  /**
+   * 模型包关联读取失败的机器可读形态（存在即说明本次响应 modelPackageLinks 已降级为空
+   * 数组，且 violations 里必有对应条目）。缺失 = 读取成功（issue #195 第 4 条）。
+   */
+  modelPackageLinksError?: {
+    /** 失败的读取阶段（当前只有 model-package-links 一个产地）。 */
+    stage: 'model-package-links';
+    /** 原始错误文案（YAML/authority 解析的 fail-closed 信息）。 */
+    message: string;
+  };
 }
 
 /** GET /api/project 的完整响应。 */
@@ -155,9 +170,9 @@ export interface ProjectApiResponse {
    */
   renderFactsProjection?: ProjectRenderFactsProjection;
   /**
-   * 交付诊断（宽容读取）：点位 mount 宿主断引用、投影构造失败、或冷凝锚点读取失败时
-   * 随 200 下发，与 renderFactsProjection 平级（响应顶层）。键缺省 = 本次响应无降级，
-   * 页面照常预览。
+   * 交付诊断（宽容读取）：点位 mount 宿主断引用、投影构造失败、冷凝锚点读取失败、
+   * 或模型包关联读取失败时随 200 下发，与 renderFactsProjection 平级（响应顶层）。
+   * 键缺省 = 本次响应无降级，页面照常预览。
    */
   placementClosureDiagnostics?: PlacementClosureApiDiagnostics;
   house: ProjectApiHouse;

@@ -120,7 +120,7 @@ export function compareCeilingQuotes(
 
 // ─── base.json 兜底费率表（**全仓唯一一份**）──────────────────────────────────
 //
-// DEC-2026-10-13「预算计算架构根治」第二道对账（价单一源）。这张表此前在
+// 2026-10-13「预算计算架构根治」（commit 749426e0）第二道对账（价单一源）。这张表此前在
 // `server/routes.ts`、已删除的 MCP 服务端、`server/budget-calculator.ts` 里
 // **逐字复制了三份**（前两份连缩进都一致），连三条硬编码 null
 // （`gypsum_edge_drop_linear` / `gypsum_flat_sqm` / `aluminum_buckle_sqm`）也各抄一遍。

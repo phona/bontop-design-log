@@ -88,8 +88,9 @@ test('钩子 1：知识载体 id 集合与 docs/decisions 标题实测集合差�
     // （集合已空），但要求本文件自身完整、编号形态合法——真墓碑核对由 git 历史 + record 字段承接。
     assert.ok(allEntries.length > 0, 'docs/decisions 已删档，decision-knowledge.yaml 必须仍是编号的在册载体');
     // 形态：日期 + 序号族，或裸日期（全仓唯一一条 DEC-2026-10-13，批次说明，无序号族）。
-    // 裸日期形态是存量（MAJOR-2 已登记：20 处引用对 c.dec_ref_resolvable 隐身），
-    // 这里只要求它编号形态合法，不要求它可解析。
+    // 裸日期形态是存量（MAJOR-2 已登记：20 处引用对 c.dec_ref_resolvable 隐身），issue 195
+    // 选择「明确豁免」而非补格式（墓碑 id 必须逐字等于原文标题行，补 -R0 等于伪造原文定位），
+    // 豁免由 config/facts.yaml 的 c.dec_bare_date_tombstone_registered 显式登记并守存在性。
     for (const e of allEntries) assert.match(e.id, /^DEC-\d{4}-\d{2}-\d{2}(?:-[A-Za-z0-9.\-\u4e00-\u9fff]+)?$/, `${e.id} 编号形态非法`);
     return;
   }
@@ -284,7 +285,8 @@ test('facts.yaml 接线：知识载体进了 coverage 矩阵且读者真实存�
   const defined = raw.split('\n').filter((line) => !/^\s*#/.test(line)).join('\n');
   assert.ok(!/^\s*x_decision_files\s*:/m.test(defined), 'facts.yaml 仍定义 x_decision_files——S2 应随 target 改切一并删除');
   assert.ok(!/id:\s*c\.dec045_subject_pending_adjudication/.test(defined),
-    'facts.yaml 仍有 c.dec045_subject_pending_adjudication 契约定义——悬案已迁 pending #78，哨兵应删');
+    'facts.yaml 仍有 c.dec045_subject_pending_adjudication 契约定义——旧 warning 哨兵已被通用门禁取代：'
+    + '跟踪入口在 config/open-items.yaml 的 OI-78，入口存在性由 c.dec045_mismatch_tracked 守（issue #195）');
 });
 
 // ── ⑧ 登记簿已删（业主裁定②：S1 的 decision-registry.yaml 拆完即删）──────────

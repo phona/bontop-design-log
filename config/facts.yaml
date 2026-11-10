@@ -1188,9 +1188,13 @@ contracts:
     ref_scope: [config/, shared/, docs/, server/]
     target: config/decision-knowledge.yaml
     target_pattern: '^\s*-\s*id:\s*["'']?(DEC-(?:\d{4}-\d{2}-\d{2}-)?(?:\d{3}|[A-Z]{1,4}-?\d{1,3})(?:[.\-](?:\d+|补记[一二三四五六]|补\d*))?)'
-    # 2026-11-09 S2：DEC-045 错配悬案已由 S1 迁进原量房台账 #78（含随迁的两个
-    # 裁决选项），专用 warning 级哨兵契约 c.dec045_subject_pending_adjudication 随之删除——
-    # 悬案有台账承接后，哨兵只是第二处登记（一题一文档）。
+    # 2026-11-09 S2 曾以「悬案已迁原量房台账 #78」为由删除 warning 级哨兵
+    # c.dec045_subject_pending_adjudication。2026-11-10 issue #195 核实：台账 #78 确实存在过
+    # （git 821176c2^:docs/pending-site-data.md 第 233 行，S1-B 为承接该悬案而新增），但整份
+    # 台账在 S2-B（commit 821176c2）退场时把 #78 一并带走——此后悬案既无跟踪入口也无门禁，
+    # 且 config/decision-knowledge.yaml 的 DEC-2026-08-26-045 条目只有「主卧空调檐口」主题，
+    # 没有任何错配注记。现持久化落点为 config/open-items.yaml 的 OI-78（四字段齐）；
+    # 专用哨兵不恢复（一题一文档），改由下方 c.dec045_mismatch_tracked 守入口存在性。
     subject_assertions: []
 
   # 2026-11-09 issue #98 第六阶段 S2：c.dec045_subject_pending_adjudication（warning 级哨兵）
@@ -1198,11 +1202,47 @@ contracts:
   #   · 删了什么：一条 fk 契约（ref_pattern `(DEC-045)\b` / ref_scope 四目录 /
   #     target=docs/decisions/ / target_pattern md 标题形态 / 一条 subject_assertion，
   #     期望匹配 /主卫|悬浮板|vanity|PVC|四件|台盆/ + 66→71 处错配注记）。
-  #   · 为什么可删：悬案本体已由 S1 迁进原量房台账 #78（含随迁的两个裁决选项
+  #   · 为什么当时可删：悬案本体已由 S1 迁进原量房台账 #78（含随迁的两个裁决选项
   #     「补录并重编号 / 引用改指」与 71 处引用计数），哨兵只是同一待决项的第二处登记；
   #     一题一文档铁律下应只有一处跟踪入口。
   #   · 不丢什么：dangling_reference 仍由 c.dec_ref_resolvable 以 error 级覆盖（DEC-045 反查到
-  #     DEC-2026-08-26-045，仍可解析）；错配叙事在 #78 与 config/decision-knowledge.yaml 可查。
+  #     DEC-2026-08-26-045，仍可解析）；错配叙事当时在 #78 与 config/decision-knowledge.yaml 可查。
+  #   · 2026-11-10 issue #195 订正上一条：台账退场时 #78 没有独立落点，错配叙事在现存文件里
+  #     已不可查；本注释保留原文只为可追溯（决策铁律第 5 条），现行落点以 OI-78 为准。
+
+  # 2026-11-10 issue #195 第 1 条：DEC-045 主题错配的「跟踪入口存在性」门禁。
+  # 为什么需要：c.dec045_subject_pending_adjudication 删除时以为悬案由量房台账 #78 承接，
+  # 但 #78 随 S2-B 台账退场一并消失（现存文件与 DEC 条目里都没有错配注记），悬案一度既无
+  # 跟踪也无门禁。本契约只断言「config/open-items.yaml 至少有一条主题含 DEC-045 的条目，
+  # 且该条 owner/trigger/reversal 齐全」——悬案本体住在 OI-78，不在此重复登记；删条目或
+  # 漏字段即 required_condition_unmatched / required_field_missing，不许静默消失。
+  - id: c.dec045_mismatch_tracked
+    kind: requires
+    path: config/open-items.yaml
+    when:
+      field: subject
+      pattern: 'DEC-045'
+    min_matches: 1
+    then: [owner, trigger, reversal]
+
+  # 2026-11-10 issue #195 第 5 条：全仓唯一裸日期 id `DEC-2026-10-13`（retired 墓碑）的
+  # **显式豁免登记**。豁免的是 c.dec_unique 与 c.dec_ref_resolvable 的 pattern 覆盖：
+  # 两条 pattern 都要求日期后缀 `-<编号族>`，裸日期因此既不参与重号检查、也不能当解析靶
+  # （存量盲区，非本次迁移引入）。**不补格式的理由**：它是墓碑，id 必须逐字等于原文标题行
+  # （retired 段的 record 行号核对断言 `lines[line-1].includes(id)`，见
+  # tests/server/decision-knowledge.test.ts），补成 `-R0` 等于伪造原文定位；而全仓另有
+  # 20+ 处「DEC-日期」是散文里指「当天批次」的写法，把裸日期整体纳入 ref_pattern 会制造
+  # 大量 dangling 噪声。故按 issue 195 的「明确豁免」分支：本契约单独兜住它的存在性与
+  # 墓碑字段完整性，删条目或漏字段即 required_condition_unmatched / required_field_missing，
+  # 不许静默消失。代码里 16 处借用该名的「预算计算架构根治」注释已改指 commit 749426e0。
+  - id: c.dec_bare_date_tombstone_registered
+    kind: requires
+    path: config/decision-knowledge.yaml
+    when:
+      field: id
+      pattern: '^DEC-2026-10-13$'
+    min_matches: 1
+    then: [subject, record, landing]
 
   - id: c.procurement_subset_of_materials
     kind: fk
@@ -1362,6 +1402,8 @@ contracts:
         reason: "issue #98 第三阶段 S1 已删除（迁至 config/model/envelope/ceiling.yaml）；历史文档与迁移注释保留旧路径是为了写明吊顶声明沿革，不是引用活配置"
       - path: docs/decisions/
         reason: "issue #98 第六阶段 S3 已整份删除（20 文件 / 292 条 DEC，正文即 git 历史）。config/decision-knowledge.yaml 的 retired 段 252 条 record 字段（形如 8abfbe3b:docs/decisions/05-hvac.md#L123）与 config/decision-gates.yaml 的旗标沿革注释保留这些路径，是为了写明「DEC 原文在 git 史的哪个文件哪一行」——文件删除后路径必然失效，这是墓碑的设计形态（AGENTS.md「一题一文档，退场不建归档目录」），不是引用腐烂"
+      - path: docs/pending-site-data.md
+        reason: "issue #98 第六阶段 S2-B（commit 821176c2）已整份删除（未决项全数上对象；业主裁定③）。config/open-items.yaml 的 OI-78 与 config/facts.yaml 的 c.dec045_mismatch_tracked 注释保留该路径 + git 提交号，是为了写明 DEC-045 错配悬案的原载体（#78）随台账退场而消失、现落点改到 OI-78——不写原文位置就无法核实「#78 曾经存在」；这是墓碑式历史引用，不是引用活台账"
 
   # ④ 规则引用的家具 type 必须存在于 house.yaml furnishings。固化上一轮手修成果
   # （tv_stand / wardrobe_240 / master_freestanding_wardrobe_062 三类已补齐），
@@ -1832,7 +1874,7 @@ coverage:
   # 检测到内联 masonry_rate_card 即 fail-loud；tests/server/tile-cost-comparison.test.ts
   # 断言本字段存在且内联卡不存在。
   - { file: config/tile-comparison.yaml, field: "masonry_rate_card_ref", readers: [] }
-  # DEC-2026-10-13 阶段 2 第二半：干/湿区**地面**房划分升级为预算算量输入（不再是仅喂预览的面积口径）。
+  # 2026-10-13 预算计算架构根治（commit 749426e0）阶段 2 第二半：干/湿区**地面**房划分升级为预算算量输入（不再是仅喂预览的面积口径）。
   # dry_room_ids 原为干区净铺面积 111.864㎡ 的权威源；wet_room_ids 本次新增，两表共同作为
   # shared/masonry-takeoff.ts 的 dryRoomIds / wetRoomIds 唯一源，server/budget-calculator.ts 的
   # floor 材料量与 base.json masonry.labor 的 floor 人工行都读它——「地面面积」从此只有一处口径。
