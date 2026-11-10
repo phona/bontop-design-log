@@ -227,6 +227,64 @@ items:
       本条目加 PR #204 短评（issuecomment-6771409963 及其后续补充）
     legacy_ref: 'issue #191 已知缺口四（PR #204 Codex review 第 11 轮 blocking；第 9 轮的同源反向已修）'
 
+  - id: OI-83
+    subject: '被验对象与挂载包 scope 的同步无机器守护（issue #191 已知缺口五，一类缺陷的第五次实例）'
+    owner: 业主+设计侧
+    trigger: PKG-160（家电安装）任一验收项首次判 passed 前必须关闭；或改任一嵌装家电的
+      电位/水路接口前。更一般地：**新增或修改任何 SCH/验收项前**，都要按本条自检
+    current_state: >-
+      **这是同一类缺陷的第五个实例，前四个都已逐个补掉，本条登记第五个并指出这一类。**
+
+      一类缺陷的形态：某工作包的 SCH/验收项实际依赖对象 Y，但 Y 不在该包的
+      MODEL-PKG scope 里，引用闭包也到不了。于是改 Y 不会让该包 stale，
+      旧通过记录继续有效——而旧实现靠整份权威文件指纹是能抓到的。
+
+      五次实例：
+      R2 sock_kitchen_oven（微蒸烤插座）不在 PKG-110 scope —— 已补
+      R4 mb.washbasin_cabinet（主卫洗手柜）不在 PKG-050 scope —— 已补
+      R9 kitchen.gas_stove / range_hood / dishwasher 不在 PKG-110 scope —— 已补
+      R11 厨房柜体与桥接台面不在 PKG-160 scope —— 已补（PR #214）
+      R13 faucet_kitchen_dishwasher / drain_kitchen_dishwasher 不在 PKG-160 scope
+         —— **未补，本条登记**。SCH-160-01 的 method 明写「按设备说明检查电源、
+         给排水、散热、水平和试运行状态」，但 PKG-160 的 plumbing scope 只有
+         faucet_balcony_washer / drain_balcony_washer / faucet_gbath_vanity /
+         drain_gbath_vanity 四项。内存反证：分别改这两个点位的 height，
+         PKG-160 摘要不变、PKG-040 摘要变化、解析无 unresolved。
+
+      为什么补不完：**「这条验收到底依赖哪些对象」的知识住在人的判断和中文正文里**
+      （「给排水」「烟机」「床垫匹配」），没有任何机器通道把它同步进 scope。
+      #206 的扫描门禁只认**字面出现的对象 id**，中文通称它匹配不到；
+      #209 补的 SCH 门禁同样只认字面 id。所以每轮都是审查器或我人工发现一个，
+      补一个，再来一个。
+
+      今天零实际损害：schedule/phase-1/control.yaml 的 audit_log.status 为 empty，
+      项目里没有任何验收通过记录。
+    needs: >-
+      把「验收依赖」从人工转录变成**机器可同步**的。三个方向供设计侧裁定：
+      ① 给 SCH/验收项加显式 objects 声明（现在只有 acceptance.yaml 的 67 条有，
+         control.yaml 的 49 条 SCH 没有），并加契约断言「声明的对象集非空、
+         且与所属包 targets 有交集」——不解决中文通称，但把隐式依赖变显式；
+      ② 建「领域关键词 → authority source」映射，加启发式门禁：某 SCH 的正文提到
+         给排水/电气/烟机等域，而所属包 scope 没有对应 source 的对象即报警。
+         会有假阳性（需白名单），但能把这一类漏报变成可见；
+      ③ 维持逐条人工补，把「新增/修改 SCH 前必须逐条核对其依赖对象已进 scope」
+         写成 AGENTS.md 纪律，并在 PR 模板里加检查项。
+      无论选哪条，都要有回归测试：改 faucet_kitchen_dishwasher 的 height 时
+      PKG-160 必须 stale（R13 这个方向的补丁级验证）。
+      注意：③ 最省事但把负担转给人；② 最有希望自动防住但要做噪声控制；
+      ① 是另两项的地基。
+    reversal: >-
+      owner 为业主加设计侧，触发见上。关闭条件分两层：
+      补丁级——改 faucet_kitchen_dishwasher 或 drain_kitchen_dishwasher 的 height，
+      PKG-160 的对象摘要必须变化、SCH-160-01 的旧通过记录必须 stale（有实测命令与输出）。
+      结构级——一类缺陷的五个实例（R2/R4/R9/R11/R13）全部有回归测试，
+      且新增第六条时机器能自动报出（不需要等到 Codex 或人工发现）。
+      两层都满足才关本条。
+    carrier: >-
+      本条目 + PR #204 短评（issuecomment-6771409963 及其后续补充）+
+      config/facts.yaml 的 object_link 契约族
+    legacy_ref: 'issue #191 已知缺口五（PR #204 Codex review 第 13 轮 blocking；同类的 R2/R4/R9/R11 已补）'
+
   - id: OI-86
     subject: 灯光升级（2800→6500 按点位采购灯具）
     owner: 业主
