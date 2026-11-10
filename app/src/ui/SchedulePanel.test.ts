@@ -31,6 +31,7 @@ function packageView(overrides: Partial<SchedulePackageView> = {}): SchedulePack
       unpriced_count: 1,
     },
     checks: [],
+    targets: ['pkg.test_object'],
     project_fingerprint: 'a'.repeat(64),
     ...overrides,
   };

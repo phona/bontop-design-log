@@ -808,6 +808,10 @@ work_packages:
     blockers: [BLK-HANDOVER, BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-GAS-DOOR, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [业主, 设计师, 施工方, 空调商]
     payment_gate: GATE-000-COMPLETE
+    # 对象 targets（issue #191）：MODEL-PKG-000 显式声明 mapping_status: project_scope（全项目范围），
+    # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
+    # 清单：清单副本会和模型漂移，标记由 facts 契约 c.package_targets 与链接声明对账。
+    targets: ["*"]
     acceptance_refs: [check_window_paper_per_window, check_window_gasket_sealant, check_window_drain_hole, check_window_lowe_doc, check_window_rain_recheck, check_window_external_issue_report]
     checks:
       - id: SCH-000-PRE-01
@@ -881,6 +885,10 @@ work_packages:
     blockers: [BLK-HANDOVER]
     owner_roles: [业主, 物业]
     payment_gate: GATE-005-PROPERTY-APPROVED
+    # 对象 targets（issue #191）：MODEL-PKG-005 显式声明 mapping_status: project_scope（全项目范围），
+    # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
+    # 清单：清单副本会和模型漂移，标记由 facts 契约 c.package_targets 与链接声明对账。
+    targets: ["*"]
     checks:
       - id: SCH-005-01
         severity: critical
@@ -910,6 +918,10 @@ work_packages:
     blockers: [BLK-HANDOVER]
     owner_roles: [施工方, 设计师, 业主]
     payment_gate: GATE-010-SITE-READY
+    # 对象 targets（issue #191）：MODEL-PKG-010 显式声明 mapping_status: project_scope（全项目范围），
+    # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
+    # 清单：清单副本会和模型漂移，标记由 facts 契约 c.package_targets 与链接声明对账。
+    targets: ["*"]
     checks:
       - id: SCH-010-01
         severity: critical
@@ -950,6 +962,10 @@ work_packages:
     blockers: [BLK-STRUCTURE]
     owner_roles: [施工方, 设计师, 业主]
     payment_gate: GATE-020-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-020 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：model_geometry(collections=walls/openings) → 61。去重后共 61 个对象 id。
+    targets: [d_bese, d_bnw, d_elev, d_ent, d_gbath, d_kit_balc, d_mb, d_mbath, d_study, w_balc_east, w_balc_south, w_balc_west, w_bath_north, w_be_north, w_be_north_west, w_be_south, w_be_west, w_blk_east_north, w_blk_east_south, w_blk_north, w_blk_south, w_blk_west, w_cent_north, w_cent_south, w_east_upper, w_ent_east, w_ent_north_railing, w_ent_south_e, w_ent_south_w, w_ent_south_w_east, w_ent_west, w_foyer_east_step, w_foyer_outer_east, w_gbath_east, w_gbath_east_open_vanity, w_gbath_south, w_gbath_west, w_gbath_west_open_vanity, w_kit_north, w_kit_west, w_liv_south, w_mb_east, w_mb_south, w_mbath_east, w_mbath_south, w_nw_north, w_nw_south, w_pier_east, w_pier_north, w_pier_south, w_st_east, w_st_north, w_st_south, w_strip_east, w_vrv_east, w_vrv_north, w_vrv_nw_gap, w_west_ap, w_west_lower, w_west_mid, w_west_upper]
     acceptance_refs: [check_demo_wall, check_demo_structure]
     checks:
       - id: SCH-020-01
@@ -987,6 +1003,10 @@ work_packages:
     blockers: [BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-MEP-INTERFACE-FREEZE, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [空调商, 设计师, 施工方, 业主]
     payment_gate: GATE-030-FIRST-FIX
+    # 对象 targets（issue #191）：= MODEL-PKG-030 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：hvac(plan_ids=A2) → 2；mep_routes(layers=refrigerant/condensate/supply_air/return_air) → 28；electrical(ids=sock_living_ac/sock_dining_ac/sock_master_ac/sock_parent_ac/sock_child_ac/sock_study_ac/sock_vrf_outdoor_a2/ac_panel_living/ac_panel_dining/ac_panel_master/ac_panel_parent/ac_panel_child/ac_panel_study) → 13。去重后共 43 个对象 id。
+    targets: [A2, ac_panel_child, ac_panel_dining, ac_panel_living, ac_panel_master, ac_panel_parent, ac_panel_study, condensate-child, condensate-dining, condensate-living, condensate-living-dining-trunk, condensate-master, condensate-parent, condensate-study, condensate_living_dining_merge, refrigerant-child, refrigerant-dining, refrigerant-master, refrigerant-parent, refrigerant-study, refrigerant-trunk, return-air-child, return-air-dining, return-air-living, return-air-master, return-air-parent, return-air-study, sock_child_ac, sock_dining_ac, sock_living_ac, sock_master_ac, sock_parent_ac, sock_study_ac, sock_vrf_outdoor_a2, supply-air-child, supply-air-dining, supply-air-dining-bottom, supply-air-living, supply-air-living-bottom, supply-air-master, supply-air-parent, supply-air-study, vrf_outdoor_a2]
     acceptance_refs: [check_hvac_weld, check_hvac_drain, check_hvac_condensate_before_ceiling, check_hvac_level, check_hvac_outdoor, check_hvac_exhaust_outlet, check_elec_ac_service_access]
     checks:
       - id: SCH-030-01
@@ -1051,6 +1071,10 @@ work_packages:
     blockers: [BLK-HVAC-DEEPENING, BLK-MEP-INTERFACE-FREEZE, BLK-CABINET-FREEZE-FOR-MEP, BLK-SURVEY-DATA-FREEZE]
     owner_roles: [水电施工, 设计师, 空调商, 业主]
     payment_gate: GATE-040-HIDDEN-WORK
+    # 对象 targets（issue #191）：= MODEL-PKG-040 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：electrical(all=true) → 104；plumbing(all=true) → 33；electrical_topology(all=true) → 31；mep_routes(layers=strong_power/weak_power/water_supply/drainage) → 110。去重后共 278 个对象 id。
+    targets: [ac_panel_child, ac_panel_dining, ac_panel_living, ac_panel_master, ac_panel_parent, ac_panel_study, control_child_light, control_corridor_downlight, control_dining, control_garden_light, control_kitchen_light, control_living_entrance_corridor, control_master_bed_door, control_parent_bed_door, control_study_light, dedicated_balcony_dryer, dedicated_balcony_washer, dedicated_bath_heater_gbath, dedicated_bath_heater_mbath, dedicated_kitchen_dishwasher, dedicated_kitchen_fridge, drain-balcony, drain-balcony-floor-to-riser, drain-garden-requirement, drain-gbath-floor-to-riser, drain-gbath-secondary-requirement, drain-gbath-shower-to-riser, drain-gbath-vanity-to-riser, drain-guest-bath, drain-kitchen-dishwasher-to-riser, drain-kitchen-requirement, drain-kitchen-sink-to-riser, drain-master-bath, drain-mbath-floor-to-riser, drain-mbath-secondary-requirement, drain-mbath-shower-to-riser, drain-mbath-toilet-to-riser, drain-mbath-vanity-to-riser, drain_balcony_floor, drain_balcony_washer, drain_garden, drain_gbath_floor, drain_gbath_shower, drain_gbath_vanity, drain_kitchen_dishwasher, drain_kitchen_sink, drain_mbath_floor, drain_mbath_shower, drain_mbath_toilet, drain_mbath_vanity, drain_riser_balcony, drain_riser_guest_bath, drain_riser_kitchen, drain_riser_master_bath, duct_gbath_exhaust, duct_kitchen_exhaust, duct_mbath_exhaust, faucet_balcony_washer, faucet_garden, faucet_gbath_vanity, faucet_kitchen_dishwasher, faucet_kitchen_purifier, faucet_kitchen_sink, faucet_mbath_vanity, gas_meter_kitchen, hvac_power_bedrooms, hvac_power_living, hvac_power_outdoor_a2, light_balcony_dome, light_child_dome, light_corridor_1, light_dining_pendant, light_entry_down, light_entry_foyer, light_kitchen_panel, light_living_dome, light_master_dome, light_parent_dome, light_study_dome, lighting_bedrooms_bath, lighting_dining, lighting_entry_base, lighting_living_base, net_ap_corridor, net_child, net_gateway, net_living, net_master_ap, net_parent, net_study, night_corridor, night_guest_bed_side, night_guest_door, night_guest_head, night_living_mid, night_living_north, ordinary_power_garden, ordinary_power_kitchen, ordinary_power_living, ordinary_power_master, ordinary_power_parent_child, ordinary_power_service, ordinary_power_study, panel_strong, panel_strong_entry_left, panel_weak, panel_weak_entry_left, shower_gbath, shower_mbath, sock_balcony_dryer, sock_balcony_drying, sock_balcony_washer, sock_balcony_waterheater, sock_child_ac, sock_child_bed, sock_child_desk, sock_dining_ac, sock_fridge_living, sock_garden, sock_gateway, sock_gbath_batheheater, sock_gbath_robot, sock_gbath_toilet, sock_gbath_towel, sock_gbath_vanity, sock_gbath_vanity_2, sock_guest_bed_l, sock_guest_bed_r, sock_kitchen_counter, sock_kitchen_counter_east, sock_kitchen_dishwasher, sock_kitchen_east_counter, sock_kitchen_gas, sock_kitchen_hood, sock_kitchen_oven, sock_kitchen_purifier, sock_living_ac, sock_living_curtain, sock_living_drying, sock_living_robot, sock_living_sofa_l, sock_living_sofa_r, sock_living_table, sock_living_tv, sock_living_tv_high, sock_living_tv_led, sock_living_water, sock_master_ac, sock_master_bed_l, sock_master_bed_r, sock_master_bed_r_head, sock_master_curtain, sock_master_projector, sock_mbath_batheheater, sock_mbath_toilet, sock_mbath_vanity, sock_parent_ac, sock_parent_bed_r, sock_parent_curtain, sock_parent_desk, sock_study_ac, sock_study_curtain, sock_study_desk, sock_study_extra, sock_vrf_outdoor_a2, sock_waterbar, sock_weakbox, strong-ac-child, strong-ac-dining, strong-ac-living, strong-ac-master, strong-ac-outdoor, strong-ac-parent, strong-ac-study, strong-ded-bathheaters-gbath, strong-ded-bathheaters-mbath, strong-ded-dishwasher, strong-ded-fridge-living, strong-ded-washer-dryer, strong-light-balcony, strong-light-bedrooms-child-bed, strong-light-bedrooms-child-door, strong-light-bedrooms-master-bed-l, strong-light-bedrooms-master-bed-north, strong-light-bedrooms-master-door, strong-light-bedrooms-parent-door, strong-light-bedrooms-study-door, strong-light-bedrooms-study-guest-bed, strong-light-bedrooms-study-guest-night, strong-light-bedrooms-study-night-side, strong-light-child, strong-light-corridor, strong-light-dining, strong-light-entry-base, strong-light-entry-foyer, strong-light-entry-night-corridor, strong-light-entry-night-guest-door, strong-light-entry-night-living-north, strong-light-entry-night-mid, strong-light-entry-switch-corridor, strong-light-entry-switch-garden, strong-light-kitchen, strong-light-living, strong-light-master, strong-light-parent, strong-light-study, strong-main, strong-power-child, strong-power-garden, strong-power-gbath, strong-power-kitchen, strong-power-kitchen-east, strong-power-living, strong-power-living-curtain, strong-power-living-gateway, strong-power-living-robot, strong-power-living-sofa-l, strong-power-living-sofa-r, strong-power-living-table, strong-power-living-tv-high, strong-power-living-tv-led, strong-power-living-water, strong-power-living-west-wall, strong-power-master, strong-power-mbath-service, strong-power-parent, strong-power-parent-child-childbed, strong-power-parent-child-guest-bed-l, strong-power-parent-child-guest-bed-r, strong-power-parent-child-guest-north, strong-power-parent-child-guest-west, strong-power-parent-child-guest-west-curtain, strong-power-parent-child-study-curtain, strong-power-study, strong-power-waterbar, strong-power-weakbox, switch_child, switch_child_bed, switch_corridor, switch_dining, switch_garden, switch_guest_bed, switch_kitchen, switch_living_corridor, switch_living_entrance, switch_master_bed_l, switch_master_bed_north, switch_master_door, switch_parent_door, switch_study, toilet_gbath, toilet_mbath, water-balcony, water-entry-valve-requirement, water-garden-requirement, water-guest-bath, water-hot-water-gbath-requirement, water-hot-water-mbath-requirement, water-kitchen-dishwasher-branch, water-kitchen-requirement, water-master-bath, water-purifier-branch, water-v1-entry-to-gbath-cold, water-v1-entry-to-mbath-cold, water-v1-heater-to-gbath-hot, water-v1-heater-to-mbath-hot, water-v1-recirc-loop, water-water-heater-inlet-requirement, water-water-heater-recirc-requirement, water_entry, water_heater, weak-ap, weak-ap-master, weak-gateway, weak-main-living, weak-master, weak-parent, weak-study]
     acceptance_refs: [check_plumb_pressure, check_plumb_pressure_gate, check_plumb_drain, check_elec_continuity, check_elec_switch, check_elec_pe_polarity, check_elec_insulation, check_elec_rcd_30ma, check_elec_leb, check_elec_strong_weak_separation, check_elec_panel_labeling, check_elec_circuit_separation, check_elec_gas_alarm, check_plumb_prefilter_and_prv, check_plumb_softener_reserved, check_plumb_valve_per_point, check_elec_zero_line_all_switches, check_elec_leb_bonding_list]
     checks:
       - id: SCH-030-04
@@ -1105,6 +1129,10 @@ work_packages:
     blockers: []
     owner_roles: [防水施工, 施工方, 业主]
     payment_gate: GATE-050-FLOOD-TEST
+    # 对象 targets（issue #191）：= MODEL-PKG-050 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：model_geometry(ids=master_bath/guest_bath/kitchen/balcony) → 4；plumbing(ids=shower_mbath/toilet_mbath/drain_mbath_toilet/drain_mbath_shower/drain_mbath_floor/faucet_gbath_vanity/drain_gbath_vanity/shower_gbath/toilet_gbath/drain_gbath_shower/drain_gbath_floor/faucet_kitchen_sink/faucet_kitchen_purifier/faucet_kitchen_dishwasher/drain_kitchen_sink/faucet_balcony_washer/drain_balcony_floor/drain_kitchen_dishwasher/drain_balcony_washer/drain_riser_master_bath/drain_riser_guest_bath/drain_riser_kitchen/gas_meter_kitchen/duct_kitchen_exhaust/duct_mbath_exhaust/duct_gbath_exhaust/water_entry/drain_riser_balcony/water_heater) → 29；overlay(ids=entry_garden_floor/entry_foyer_floor/corridor_floor/main_corridor_floor/guest_bath_open_vanity_floor/north_platform_floor) → 6；model_geometry(ids=w_balc_east/w_balc_south/w_balc_west/w_ent_west/w_gbath_east/w_gbath_east_open_vanity/w_gbath_west/w_gbath_west_open_vanity/w_kit_west/w_mbath_east/w_mbath_south/w_vrv_east) → 12；overlay(ids=kitchen_north_bay/mbath_north_waterproof_ledge/mbath_west_lower_waterproof_ledge) → 3。去重后共 54 个对象 id。
+    targets: [balcony, corridor_floor, drain_balcony_floor, drain_balcony_washer, drain_gbath_floor, drain_gbath_shower, drain_gbath_vanity, drain_kitchen_dishwasher, drain_kitchen_sink, drain_mbath_floor, drain_mbath_shower, drain_mbath_toilet, drain_riser_balcony, drain_riser_guest_bath, drain_riser_kitchen, drain_riser_master_bath, duct_gbath_exhaust, duct_kitchen_exhaust, duct_mbath_exhaust, entry_foyer_floor, entry_garden_floor, faucet_balcony_washer, faucet_gbath_vanity, faucet_kitchen_dishwasher, faucet_kitchen_purifier, faucet_kitchen_sink, gas_meter_kitchen, guest_bath, guest_bath_open_vanity_floor, kitchen, kitchen_north_bay, main_corridor_floor, master_bath, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, north_platform_floor, shower_gbath, shower_mbath, toilet_gbath, toilet_mbath, w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east, water_entry, water_heater]
     acceptance_refs: [check_wp_coats, check_wp_flood, check_wp_dry_gate, check_plumb_master_bath_secondary_drain, check_plumb_master_bath_box_flood, check_plumb_guest_bath_secondary_drain, check_plumb_guest_bath_box_flood, check_covering_gate_secondary_drain, check_plumb_external_vanity_waterproof]
     checks:
       - id: SCH-050-01
@@ -1146,6 +1174,10 @@ work_packages:
     blockers: [BLK-SOUTH-BALCONY]
     owner_roles: [泥瓦施工, 设计师, 业主]
     payment_gate: GATE-060-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-060 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：model_geometry(collections=rooms) → 12；overlay(ids=entry_garden_floor/entry_foyer_floor/corridor_floor/main_corridor_floor/guest_bath_open_vanity_floor/north_platform_floor) → 6；model_geometry(ids=w_balc_east/w_balc_south/w_balc_west/w_ent_west/w_gbath_east/w_gbath_east_open_vanity/w_gbath_west/w_gbath_west_open_vanity/w_kit_west/w_mbath_east/w_mbath_south/w_vrv_east) → 12；overlay(ids=bedroom_nw_north_waterproof_ledge/bedroom_se_south_waterproof_ledge/kitchen_north_bay/living_south_waterproof_ledge/master_bedroom_south_waterproof_ledge/master_bedroom_west_mid_waterproof_ledge/master_bedroom_west_upper_waterproof_ledge/mbath_north_waterproof_ledge/mbath_west_lower_waterproof_ledge/study_south_waterproof_ledge) → 10。去重后共 40 个对象 id。
+    targets: [balcony, bedroom_nw, bedroom_nw_north_waterproof_ledge, bedroom_se, bedroom_se_south_waterproof_ledge, corridor_floor, elevator_shaft, entry_foyer_floor, entry_garden, entry_garden_floor, guest_bath, guest_bath_open_vanity_floor, kitchen, kitchen_north_bay, living_dining, living_south_waterproof_ledge, main_corridor, main_corridor_floor, master_bath, master_bedroom, master_bedroom_south_waterproof_ledge, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, north_platform_floor, study, study_south_waterproof_ledge, w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]
     acceptance_refs: [check_tile_hollow, check_tile_gap, check_tile_flatness, check_tile_slope, check_tile_slope_same_day, check_sill_tile]
     checks:
       - id: SCH-060-01
@@ -1178,6 +1210,10 @@ work_packages:
     blockers: []
     owner_roles: [美缝施工, 业主]
     payment_gate: GATE-065-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-065 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：overlay(ids=entry_garden_floor/entry_foyer_floor/corridor_floor/main_corridor_floor/guest_bath_open_vanity_floor/north_platform_floor) → 6；model_geometry(ids=w_balc_south/w_gbath_east/w_gbath_east_open_vanity/w_gbath_west/w_gbath_west_open_vanity/w_kit_west/w_mbath_east/w_mbath_south) → 8；overlay(ids=mbath_north_waterproof_ledge/mbath_west_lower_waterproof_ledge) → 2。去重后共 16 个对象 id。
+    targets: [corridor_floor, entry_foyer_floor, entry_garden_floor, guest_bath_open_vanity_floor, main_corridor_floor, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, north_platform_floor, w_balc_south, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south]
     acceptance_refs: [check_tile_grout_dry, check_wp_finish_flood]
     checks:
       - id: SCH-065-01
@@ -1229,6 +1265,10 @@ work_packages:
     blockers: [BLK-HVAC-DEEPENING]
     owner_roles: [吊顶施工, 空调商, 水电施工, 设计师, 业主]
     payment_gate: GATE-070-CEILING-CLOSED
+    # 对象 targets（issue #191）：= MODEL-PKG-070 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：ceiling(all=true) → 25。去重后共 25 个对象 id。
+    targets: [ac_child, ac_dining, ac_living, ac_master, ac_parent, ac_study, ceiling_child_ac, ceiling_corridor, ceiling_dining_north_band, ceiling_dining_west_band, ceiling_entry_foyer, ceiling_guest_bath, ceiling_kitchen, ceiling_living, ceiling_main_corridor, ceiling_master_ac, ceiling_master_bath, ceiling_study_ac, ceiling_study_ac_corner, curtain_box_living, curtain_box_master_south, curtain_box_master_west, curtain_box_parent_south, curtain_box_study_south, drying_rack_living]
     acceptance_refs: [check_carp_keel, check_carp_board, check_hvac_access_coordination_before_ceiling]
     checks:
       - id: SCH-070-01
@@ -1270,6 +1310,10 @@ work_packages:
     blockers: []
     owner_roles: [涂装施工, 设计师, 业主]
     payment_gate: GATE-080-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-080 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：model_geometry(ids=w_balc_west/w_be_north/w_be_west/w_cent_south/w_east_upper/w_ent_south_w/w_ent_west/w_gbath_east/w_gbath_east_open_vanity/w_gbath_west/w_gbath_west_open_vanity/w_mb_east/w_mbath_east/w_mbath_south/w_nw_south/w_st_east/w_st_north/w_strip_east) → 18；overlay(ids=bedroom_nw_north_bay/bedroom_se_south_bay/master_bath_west_bay/master_bath_west_lower_bay/master_bedroom_south_bay/master_bedroom_west_bay/master_bedroom_west_mid_bay/study_south_bay) → 8。去重后共 26 个对象 id。
+    targets: [bedroom_nw_north_bay, bedroom_se_south_bay, master_bath_west_bay, master_bath_west_lower_bay, master_bedroom_south_bay, master_bedroom_west_bay, master_bedroom_west_mid_bay, study_south_bay, w_balc_west, w_be_north, w_be_west, w_cent_south, w_east_upper, w_ent_south_w, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_mb_east, w_mbath_east, w_mbath_south, w_nw_south, w_st_east, w_st_north, w_strip_east]
     acceptance_refs: [check_paint_surface, check_paint_env, check_paint_reserve]
     checks:
       - id: SCH-080-01
@@ -1304,6 +1348,10 @@ work_packages:
     blockers: [BLK-GAS-DOOR]
     owner_roles: [门供应商, 施工方, 业主]
     payment_gate: GATE-090-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-090 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：model_geometry(collections=openings) → 9；overlay(ids=kitchen_dining_sliding_door) → 1。去重后共 10 个对象 id。
+    targets: [d_bese, d_bnw, d_elev, d_ent, d_gbath, d_kit_balc, d_mb, d_mbath, d_study, kitchen_dining_sliding_door]
     acceptance_refs: [check_dw_swing, check_dw_seal]
     checks:
       - id: SCH-090-01
@@ -1343,6 +1391,10 @@ work_packages:
     blockers: [BLK-MASTER-VANITY-SKU]
     owner_roles: [洁具供应商, 水电施工, 业主]
     payment_gate: GATE-100-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-100 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：furnishings(ids=mb.washbasin_cabinet/mbath.toilet/mbath.exhaust_fan/gbath.toilet/gbath.exhaust_fan/gbath.mirror_cabinet) → 6；furnishings(ids=gbath.vanity) → 1；plumbing(ids=faucet_mbath_vanity/drain_mbath_vanity/shower_mbath/toilet_mbath/drain_mbath_toilet/drain_mbath_shower/drain_mbath_floor/faucet_gbath_vanity/drain_gbath_vanity/shower_gbath/toilet_gbath/drain_gbath_shower/drain_gbath_floor/drain_riser_master_bath/drain_riser_guest_bath/duct_mbath_exhaust/duct_gbath_exhaust) → 17；overlay(ids=shower_screen_mbath/shower_screen_gbath/vanity_screen_glass) → 3。去重后共 27 个对象 id。
+    targets: [drain_gbath_floor, drain_gbath_shower, drain_gbath_vanity, drain_mbath_floor, drain_mbath_shower, drain_mbath_toilet, drain_mbath_vanity, drain_riser_guest_bath, drain_riser_master_bath, duct_gbath_exhaust, duct_mbath_exhaust, faucet_gbath_vanity, faucet_mbath_vanity, gbath.exhaust_fan, gbath.mirror_cabinet, gbath.toilet, gbath.vanity, mb.washbasin_cabinet, mbath.exhaust_fan, mbath.toilet, shower_gbath, shower_mbath, shower_screen_gbath, shower_screen_mbath, toilet_gbath, toilet_mbath, vanity_screen_glass]
     acceptance_refs: [check_dw_drain, check_plumb_drain]
     checks:
       - id: SCH-100-01
@@ -1381,6 +1433,10 @@ work_packages:
     blockers: []
     owner_roles: [橱柜供应商, 设计师, 业主]
     payment_gate: GATE-110-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-110 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：furnishings(ids=kitchen.cabinet_run_north_west/kitchen.countertop_bridge/kitchen.cabinet_run_north_east/kitchen.cabinet_run_east/kitchen.sink) → 5。去重后共 5 个对象 id。
+    targets: [kitchen.cabinet_run_east, kitchen.cabinet_run_north_east, kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.sink]
     acceptance_refs: [check_carp_cabinet, check_elec_micro_oven_reserved]
     checks:
       - id: SCH-110-01
@@ -1420,6 +1476,10 @@ work_packages:
     blockers: []
     owner_roles: [电工, 灯具供应商, 业主]
     payment_gate: GATE-120-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-120 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：electrical(ids=light_balcony_dome/light_dining_pendant/light_living_dome/light_master_dome/light_parent_dome/light_child_dome/light_study_dome/light_corridor_1/light_entry_down/light_entry_foyer/light_kitchen_panel/night_guest_bed_side/night_guest_head/night_guest_door/night_living_north/night_living_mid/night_corridor) → 17。去重后共 17 个对象 id。
+    targets: [light_balcony_dome, light_child_dome, light_corridor_1, light_dining_pendant, light_entry_down, light_entry_foyer, light_kitchen_panel, light_living_dome, light_master_dome, light_parent_dome, light_study_dome, night_corridor, night_guest_bed_side, night_guest_door, night_guest_head, night_living_mid, night_living_north]
     acceptance_refs: [check_elec_continuity, check_elec_switch]
     checks:
       - id: SCH-120-01
@@ -1453,6 +1513,10 @@ work_packages:
     blockers: []
     owner_roles: [电工, 智能设备供应商, 业主]
     payment_gate: GATE-125-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-125 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：electrical(ids=sock_living_tv/sock_living_tv_high/net_living/sock_living_sofa_l/sock_living_sofa_r/sock_living_water/sock_living_table/sock_fridge_living/sock_waterbar/sock_living_curtain/sock_living_ac/sock_dining_ac/switch_living_entrance/switch_living_corridor/sock_master_bed_l/switch_master_bed_north/sock_master_bed_r/switch_master_bed_l/switch_master_door/sock_master_bed_r_head/sock_master_ac/net_master_ap/sock_parent_bed_r/switch_parent_door/sock_parent_desk/net_parent/sock_study_desk/net_study/sock_study_extra/switch_study/sock_child_bed/switch_child_bed/sock_child_desk/net_child/switch_child/sock_child_ac/sock_kitchen_counter/sock_kitchen_counter_east/sock_kitchen_east_counter/sock_kitchen_hood/sock_kitchen_purifier/sock_kitchen_gas/sock_kitchen_oven/switch_kitchen/sock_mbath_vanity/sock_mbath_toilet/sock_mbath_batheheater/sock_gbath_vanity/sock_gbath_vanity_2/sock_gbath_batheheater/sock_balcony_washer/sock_balcony_dryer/sock_balcony_waterheater/sock_vrf_outdoor_a2/sock_weakbox/sock_garden/switch_garden/switch_corridor/switch_dining/sock_kitchen_dishwasher/sock_master_curtain/sock_parent_curtain/sock_study_curtain/sock_study_ac/sock_parent_ac/sock_gbath_toilet/sock_balcony_drying/sock_living_drying/sock_gateway/net_gateway/net_ap_corridor/sock_living_tv_led/sock_master_projector/sock_gbath_towel/sock_gbath_robot/sock_living_robot/sock_guest_bed_l/sock_guest_bed_r/switch_guest_bed) → 79；electrical_topology(all=true) → 31。去重后共 110 个对象 id。
+    targets: [control_child_light, control_corridor_downlight, control_dining, control_garden_light, control_kitchen_light, control_living_entrance_corridor, control_master_bed_door, control_parent_bed_door, control_study_light, dedicated_balcony_dryer, dedicated_balcony_washer, dedicated_bath_heater_gbath, dedicated_bath_heater_mbath, dedicated_kitchen_dishwasher, dedicated_kitchen_fridge, hvac_power_bedrooms, hvac_power_living, hvac_power_outdoor_a2, lighting_bedrooms_bath, lighting_dining, lighting_entry_base, lighting_living_base, net_ap_corridor, net_child, net_gateway, net_living, net_master_ap, net_parent, net_study, ordinary_power_garden, ordinary_power_kitchen, ordinary_power_living, ordinary_power_master, ordinary_power_parent_child, ordinary_power_service, ordinary_power_study, panel_strong, panel_weak, sock_balcony_dryer, sock_balcony_drying, sock_balcony_washer, sock_balcony_waterheater, sock_child_ac, sock_child_bed, sock_child_desk, sock_dining_ac, sock_fridge_living, sock_garden, sock_gateway, sock_gbath_batheheater, sock_gbath_robot, sock_gbath_toilet, sock_gbath_towel, sock_gbath_vanity, sock_gbath_vanity_2, sock_guest_bed_l, sock_guest_bed_r, sock_kitchen_counter, sock_kitchen_counter_east, sock_kitchen_dishwasher, sock_kitchen_east_counter, sock_kitchen_gas, sock_kitchen_hood, sock_kitchen_oven, sock_kitchen_purifier, sock_living_ac, sock_living_curtain, sock_living_drying, sock_living_robot, sock_living_sofa_l, sock_living_sofa_r, sock_living_table, sock_living_tv, sock_living_tv_high, sock_living_tv_led, sock_living_water, sock_master_ac, sock_master_bed_l, sock_master_bed_r, sock_master_bed_r_head, sock_master_curtain, sock_master_projector, sock_mbath_batheheater, sock_mbath_toilet, sock_mbath_vanity, sock_parent_ac, sock_parent_bed_r, sock_parent_curtain, sock_parent_desk, sock_study_ac, sock_study_curtain, sock_study_desk, sock_study_extra, sock_vrf_outdoor_a2, sock_waterbar, sock_weakbox, switch_child, switch_child_bed, switch_corridor, switch_dining, switch_garden, switch_guest_bed, switch_kitchen, switch_living_corridor, switch_living_entrance, switch_master_bed_l, switch_master_bed_north, switch_master_door, switch_parent_door, switch_study]
     acceptance_refs: [check_elec_continuity, check_elec_switch, check_elec_splash_socket, check_elec_point_reachability]
     checks:
       - id: SCH-125-01
@@ -1485,6 +1549,10 @@ work_packages:
     blockers: []
     owner_roles: [美缝施工, 业主]
     payment_gate: GATE-130-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-130 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：overlay(ids=entry_garden_floor/entry_foyer_floor/corridor_floor/main_corridor_floor/guest_bath_open_vanity_floor/north_platform_floor) → 6；model_geometry(ids=w_balc_east/w_balc_south/w_balc_west/w_ent_west/w_gbath_east/w_gbath_east_open_vanity/w_gbath_west/w_gbath_west_open_vanity/w_kit_west/w_mbath_east/w_mbath_south/w_vrv_east) → 12；overlay(ids=bedroom_nw_north_waterproof_ledge/bedroom_se_south_waterproof_ledge/kitchen_north_bay/living_south_waterproof_ledge/master_bedroom_south_waterproof_ledge/master_bedroom_west_mid_waterproof_ledge/master_bedroom_west_upper_waterproof_ledge/mbath_north_waterproof_ledge/mbath_west_lower_waterproof_ledge/study_south_waterproof_ledge) → 10。去重后共 28 个对象 id。
+    targets: [bedroom_nw_north_waterproof_ledge, bedroom_se_south_waterproof_ledge, corridor_floor, entry_foyer_floor, entry_garden_floor, guest_bath_open_vanity_floor, kitchen_north_bay, living_south_waterproof_ledge, main_corridor_floor, master_bedroom_south_waterproof_ledge, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, north_platform_floor, study_south_waterproof_ledge, w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]
     acceptance_refs: [check_tile_grout_dry]
     checks:
       - id: SCH-130-01
@@ -1526,6 +1594,10 @@ work_packages:
     blockers: []
     owner_roles: [施工方, 踢脚线供应商, 保洁, 业主]
     payment_gate: GATE-135-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-135 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：model_geometry(collections=rooms/walls/openings) → 73；overlay(ids=entry_garden_floor/entry_foyer_floor/corridor_floor/main_corridor_floor/guest_bath_open_vanity_floor/north_platform_floor/skirt_bedroom_se_w_east_upper/skirt_living_dining_w_ent_south_w/skirt_living_dining_w_cent_south/skirt_living_dining_w_ent_west/skirt_bedroom_nw_w_mbath_east/skirt_master_bedroom_w_mbath_east/skirt_master_bedroom_w_mbath_south/skirt_bedroom_nw_w_nw_south/skirt_main_corridor_w_nw_south/skirt_master_bedroom_w_nw_south/skirt_main_corridor_w_strip_east/skirt_master_bedroom_w_strip_east/skirt_main_corridor_w_st_north/skirt_study_w_st_north/skirt_living_dining_w_st_east/skirt_study_w_st_east/skirt_master_bedroom_w_mb_east/skirt_study_w_mb_east/skirt_bedroom_nw_w_balc_west/skirt_bedroom_nw_w_gbath_west/skirt_bedroom_nw_w_gbath_west_open_vanity/skirt_bedroom_se_w_be_west/skirt_living_dining_w_be_west/skirt_bedroom_se_w_be_north) → 30；model_geometry(ids=w_balc_east/w_balc_south/w_balc_west/w_be_north/w_be_west/w_cent_south/w_east_upper/w_ent_south_w/w_ent_west/w_gbath_east/w_gbath_east_open_vanity/w_gbath_west/w_gbath_west_open_vanity/w_kit_west/w_mb_east/w_mbath_east/w_mbath_south/w_nw_south/w_st_east/w_st_north/w_strip_east/w_vrv_east) → 22；overlay(ids=bedroom_nw_north_bay/bedroom_nw_north_waterproof_ledge/bedroom_se_south_bay/bedroom_se_south_waterproof_ledge/kitchen_north_bay/living_south_waterproof_ledge/master_bath_west_bay/master_bath_west_lower_bay/master_bedroom_south_bay/master_bedroom_south_waterproof_ledge/master_bedroom_west_bay/master_bedroom_west_mid_bay/master_bedroom_west_mid_waterproof_ledge/master_bedroom_west_upper_waterproof_ledge/mbath_north_waterproof_ledge/mbath_west_lower_waterproof_ledge/study_south_bay/study_south_waterproof_ledge) → 18。去重后共 121 个对象 id。
+    targets: [balcony, bedroom_nw, bedroom_nw_north_bay, bedroom_nw_north_waterproof_ledge, bedroom_se, bedroom_se_south_bay, bedroom_se_south_waterproof_ledge, corridor_floor, d_bese, d_bnw, d_elev, d_ent, d_gbath, d_kit_balc, d_mb, d_mbath, d_study, elevator_shaft, entry_foyer_floor, entry_garden, entry_garden_floor, guest_bath, guest_bath_open_vanity_floor, kitchen, kitchen_north_bay, living_dining, living_south_waterproof_ledge, main_corridor, main_corridor_floor, master_bath, master_bath_west_bay, master_bath_west_lower_bay, master_bedroom, master_bedroom_south_bay, master_bedroom_south_waterproof_ledge, master_bedroom_west_bay, master_bedroom_west_mid_bay, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, north_platform_floor, skirt_bedroom_nw_w_balc_west, skirt_bedroom_nw_w_gbath_west, skirt_bedroom_nw_w_gbath_west_open_vanity, skirt_bedroom_nw_w_mbath_east, skirt_bedroom_nw_w_nw_south, skirt_bedroom_se_w_be_north, skirt_bedroom_se_w_be_west, skirt_bedroom_se_w_east_upper, skirt_living_dining_w_be_west, skirt_living_dining_w_cent_south, skirt_living_dining_w_ent_south_w, skirt_living_dining_w_ent_west, skirt_living_dining_w_st_east, skirt_main_corridor_w_nw_south, skirt_main_corridor_w_st_north, skirt_main_corridor_w_strip_east, skirt_master_bedroom_w_mb_east, skirt_master_bedroom_w_mbath_east, skirt_master_bedroom_w_mbath_south, skirt_master_bedroom_w_nw_south, skirt_master_bedroom_w_strip_east, skirt_study_w_mb_east, skirt_study_w_st_east, skirt_study_w_st_north, study, study_south_bay, study_south_waterproof_ledge, w_balc_east, w_balc_south, w_balc_west, w_bath_north, w_be_north, w_be_north_west, w_be_south, w_be_west, w_blk_east_north, w_blk_east_south, w_blk_north, w_blk_south, w_blk_west, w_cent_north, w_cent_south, w_east_upper, w_ent_east, w_ent_north_railing, w_ent_south_e, w_ent_south_w, w_ent_south_w_east, w_ent_west, w_foyer_east_step, w_foyer_outer_east, w_gbath_east, w_gbath_east_open_vanity, w_gbath_south, w_gbath_west, w_gbath_west_open_vanity, w_kit_north, w_kit_west, w_liv_south, w_mb_east, w_mb_south, w_mbath_east, w_mbath_south, w_nw_north, w_nw_south, w_pier_east, w_pier_north, w_pier_south, w_st_east, w_st_north, w_st_south, w_strip_east, w_vrv_east, w_vrv_north, w_vrv_nw_gap, w_west_ap, w_west_lower, w_west_mid, w_west_upper]
     checks:
       - id: SCH-135-01
         severity: major
@@ -1555,6 +1627,10 @@ work_packages:
     blockers: []
     owner_roles: [空调商, 业主]
     payment_gate: GATE-140-COMMISSIONED
+    # 对象 targets（issue #191）：= MODEL-PKG-140 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：hvac(plan_ids=A2) → 2；mep_routes(layers=refrigerant/condensate/supply_air/return_air) → 28；electrical(ids=sock_living_ac/sock_dining_ac/sock_master_ac/sock_parent_ac/sock_child_ac/sock_study_ac/sock_vrf_outdoor_a2/ac_panel_living/ac_panel_dining/ac_panel_master/ac_panel_parent/ac_panel_child/ac_panel_study) → 13。去重后共 43 个对象 id。
+    targets: [A2, ac_panel_child, ac_panel_dining, ac_panel_living, ac_panel_master, ac_panel_parent, ac_panel_study, condensate-child, condensate-dining, condensate-living, condensate-living-dining-trunk, condensate-master, condensate-parent, condensate-study, condensate_living_dining_merge, refrigerant-child, refrigerant-dining, refrigerant-master, refrigerant-parent, refrigerant-study, refrigerant-trunk, return-air-child, return-air-dining, return-air-living, return-air-master, return-air-parent, return-air-study, sock_child_ac, sock_dining_ac, sock_living_ac, sock_master_ac, sock_parent_ac, sock_study_ac, sock_vrf_outdoor_a2, supply-air-child, supply-air-dining, supply-air-dining-bottom, supply-air-living, supply-air-living-bottom, supply-air-master, supply-air-parent, supply-air-study, vrf_outdoor_a2]
     acceptance_refs: [check_hvac_vacuum, check_hvac_vent, check_hvac_cooling, check_hvac_outdoor]
     checks:
       - id: SCH-140-01
@@ -1579,6 +1655,10 @@ work_packages:
     blockers: []
     owner_roles: [业主, 施工方, 水电施工, 空调商]
     payment_gate: GATE-142-OCCUPANCY-RELEASE
+    # 对象 targets（issue #191）：MODEL-PKG-142 显式声明 mapping_status: project_scope（全项目范围），
+    # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
+    # 清单：清单副本会和模型漂移，标记由 facts 契约 c.package_targets 与链接声明对账。
+    targets: ["*"]
     gate_label: 临时入住放行门槛
     include_site_data_ledger: true
     checks:
@@ -1632,6 +1712,10 @@ work_packages:
     blockers: [BLK-CURTAIN-SCOPE]
     owner_roles: [窗帘供应商, 设计师, 业主]
     payment_gate: GATE-145-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-145 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：overlay(ids=curtain_living_south/curtain_master_west/curtain_master_south/curtain_master_strip_fabric/curtain_mb_washbasin_blinds/curtain_parent_south/curtain_study_south/curtain_nw_north/curtain_mbath_corner) → 9；ceiling(trade=curtain_box) → 5；electrical(ids=sock_living_curtain/sock_master_curtain/sock_parent_curtain/sock_study_curtain) → 4。去重后共 18 个对象 id。
+    targets: [curtain_box_living, curtain_box_master_south, curtain_box_master_west, curtain_box_parent_south, curtain_box_study_south, curtain_living_south, curtain_master_south, curtain_master_strip_fabric, curtain_master_west, curtain_mb_washbasin_blinds, curtain_mbath_corner, curtain_nw_north, curtain_parent_south, curtain_study_south, sock_living_curtain, sock_master_curtain, sock_parent_curtain, sock_study_curtain]
     checks:
       - id: SCH-145-01
         severity: critical
@@ -1680,6 +1764,10 @@ work_packages:
     blockers: []
     owner_roles: [家具供应商, 定制供应商, 设计师, 业主]
     payment_gate: GATE-150-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-150 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：furnishings(all=true) → 67。去重后共 67 个对象 id。
+    targets: [balcony.dryer, balcony.washer, bese.bed_150, bese.wardrobe_180, bnw.bed_150, bnw.chair, bnw.desk, bnw.shelf, bnw.wardrobe_180, garden.entry_station, gbath.exhaust_fan, gbath.heated_towel_rack, gbath.mirror_cabinet, gbath.robot_dock, gbath.toilet, gbath.vanity, kitchen.cabinet_run_east, kitchen.cabinet_run_north_east, kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.dishwasher, kitchen.gas_stove, kitchen.range_hood, kitchen.ro_purifier, kitchen.sink, kitchen.water_heater, ld.coffee_machine, ld.coffee_table, ld.dining_chair_ne, ld.dining_chair_nw, ld.dining_chair_se, ld.dining_chair_sw, ld.dining_table, ld.dispenser_s1, ld.entry_half_height_cabinet, ld.floor_lamp, ld.fridge, ld.plant_fiddle, ld.sofa_3seat, ld.tv_65, ld.tv_wall_low, ld.wall_cabinet_tall, ld.waterbar_cabinet, mb.bed_180, mb.bedside_cabinet_north, mb.bedside_cabinet_south, mb.condensate_pipe, mb.dressing_stool, mb.dressing_table, mb.low_dresser, mb.vanity_base_cabinet, mb.vanity_lower_board, mb.vanity_main_board, mb.vanity_pvc_box, mb.vanity_pvc_service_chase, mb.vanity_pvc_wardrobe_entry, mb.wardrobe_950, mb.wardrobe_pelmet, mb.washbasin_cabinet, mbath.exhaust_fan, mbath.toilet, mbath.towel_set, study.chair, study.desk, study.seasonal_wardrobe_step_north, study.seasonal_wardrobe_step_south, study.seasonal_wardrobe_wall]
     acceptance_refs: [check_carp_cabinet]
     checks:
       - id: SCH-150-01
@@ -1736,6 +1824,10 @@ work_packages:
     blockers: [BLK-PHASE1-APPLIANCES, BLK-WATER-HEATER-SITE, BLK-FRIDGE-FIT]
     owner_roles: [家电供应商, 水电施工, 业主]
     payment_gate: GATE-160-COMPLETE
+    # 对象 targets（issue #191）：= MODEL-PKG-160 的 scope 解析结果，唯一来源是链接 scope，
+    # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
+    # 来源：furnishings(ids=ld.fridge/kitchen.dishwasher/kitchen.gas_stove/kitchen.range_hood/kitchen.water_heater/balcony.washer) → 6；furnishings(ids=gbath.robot_dock) → 1；electrical(ids=sock_fridge_living/sock_kitchen_hood/sock_kitchen_gas/sock_kitchen_oven/sock_balcony_washer/sock_balcony_dryer/sock_balcony_waterheater/sock_gbath_robot) → 8；plumbing(ids=faucet_balcony_washer/drain_balcony_washer/faucet_gbath_vanity/drain_gbath_vanity) → 4。去重后共 19 个对象 id。
+    targets: [balcony.washer, drain_balcony_washer, drain_gbath_vanity, faucet_balcony_washer, faucet_gbath_vanity, gbath.robot_dock, kitchen.dishwasher, kitchen.gas_stove, kitchen.range_hood, kitchen.water_heater, ld.fridge, sock_balcony_dryer, sock_balcony_washer, sock_balcony_waterheater, sock_fridge_living, sock_gbath_robot, sock_kitchen_gas, sock_kitchen_hood, sock_kitchen_oven]
     checks:
       - id: SCH-160-01
         severity: critical
@@ -1758,6 +1850,10 @@ work_packages:
     blockers: []
     owner_roles: [业主, 设计师, 施工方, 各供应商]
     payment_gate: GATE-170-FINAL
+    # 对象 targets（issue #191）：MODEL-PKG-170 显式声明 mapping_status: project_scope（全项目范围），
+    # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
+    # 清单：清单副本会和模型漂移，标记由 facts 契约 c.package_targets 与链接声明对账。
+    targets: ["*"]
     acceptance_refs: [check_occ_formaldehyde]
     checks:
       - id: SCH-170-01
@@ -1795,6 +1891,10 @@ work_packages:
     blockers: []
     owner_roles: [业主]
     payment_gate: GATE-900-OWNER-APPROVAL
+    # 对象 targets（issue #191）：MODEL-PKG-900 显式声明 mapping_status: project_scope（全项目范围），
+    # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
+    # 清单：清单副本会和模型漂移，标记由 facts 契约 c.package_targets 与链接声明对账。
+    targets: ["*"]
     checks:
       - id: SCH-900-01
         severity: critical

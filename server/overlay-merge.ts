@@ -366,15 +366,18 @@ const FLOOR_ZONE_INSERT_AFTER = 'bedroom_se_south_waterproof_ledge';
 /**
  * 装配 skirting 派生输入并派生（S5）。fail-closed：finish-defaults 的锚点、湿区房间表、
  * 墙特征任一读不动/不合法都抛错——不静默少生成踢脚线，也不 invent 默认高度。
+ *
+ * `root` 默认仓库根（模块位置推导）；issue #191 起可注入沙箱根——对象粒度指纹的
+ * 反证测试要在配置副本上改一个对象，必须让合并文档也从该副本读取。
  */
-function loadDerivedSkirtingRegions(): unknown[] {
-  const defaultsDoc = load(readFileSync(path.join(OVERLAY_ROOT, OVERLAY_SOURCE_FILES.finishDefaults), 'utf8')) as {
+function loadDerivedSkirtingRegions(root: string): unknown[] {
+  const defaultsDoc = load(readFileSync(path.join(root, OVERLAY_SOURCE_FILES.finishDefaults), 'utf8')) as {
     skirting?: { height?: unknown; color?: unknown };
   } | null;
-  const wetDoc = load(readFileSync(path.join(OVERLAY_ROOT, WET_ROOM_IDS_SOURCE), 'utf8')) as {
+  const wetDoc = load(readFileSync(path.join(root, WET_ROOM_IDS_SOURCE), 'utf8')) as {
     wet_room_ids?: unknown;
   } | null;
-  const geometryDoc = load(readFileSync(path.join(OVERLAY_ROOT, SKIRTING_PAINT_BANDS_SOURCE), 'utf8')) as {
+  const geometryDoc = load(readFileSync(path.join(root, SKIRTING_PAINT_BANDS_SOURCE), 'utf8')) as {
     walls?: Array<{ id?: string; finish?: { paint_bands?: unknown[] } }>;
   } | null;
 
@@ -399,9 +402,9 @@ function loadDerivedSkirtingRegions(): unknown[] {
   );
 }
 
-export function loadOverlayDoc(): { version: unknown; elements: unknown[] } {
+export function loadOverlayDoc(root = OVERLAY_ROOT): { version: unknown; elements: unknown[] } {
   const readDoc = (file: string) =>
-    (load(readFileSync(path.join(OVERLAY_ROOT, file), 'utf8')) ?? {}) as {
+    (load(readFileSync(path.join(root, file), 'utf8')) ?? {}) as {
       version?: unknown;
       elements?: unknown[];
     };
@@ -424,7 +427,7 @@ export function loadOverlayDoc(): { version: unknown; elements: unknown[] } {
       ...(floorZones.elements ?? []),
       ...openingElements.slice(anchor + 1),
       // S5：skirting 24 段由 paint_bands 派生，接在原 finish-surfaces 面层配方组的末尾。
-      ...loadDerivedSkirtingRegions(),
+      ...loadDerivedSkirtingRegions(root),
     ],
   };
 }

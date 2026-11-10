@@ -24,6 +24,8 @@ import { endpointSourcesFromFacts, resolveMepEndpoint } from '../../../shared/me
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
 import { BudgetCalculator, loadMasonryTakeoff } from '../../../server/budget-calculator.js';
+import { loadModelPackageLinks } from '../../../server/model-package-links.js';
+import { ALL_MODEL_TARGET } from '../../../shared/package-objects.js';
 import { loadOverlayDoc } from '../../../server/overlay-merge.js';
 import type { CurrentScheme } from '../../../shared/types.js';
 
@@ -255,12 +257,94 @@ try {
   console.error(`facts 量对账机器源装载失败（相关 quantity_parity 契约将报 parity_unresolvable）：${error instanceof Error ? error.message : String(error)}`);
 }
 
+// ── 对象关联（issue #191）的机器源：链接 scope 解析结果 + control/acceptance 登记 ──
+// 引擎只做集合对账（facts-lint 的 object_link）；这里负责把「解析出的对象集」与
+// 「control.yaml / acceptance.yaml 的显式登记」配成同一形状。解析只有
+// shared/package-objects.ts 一份实现，本脚本不重算选择器。
+function buildPackageObjectsDataset(): unknown {
+  const modelLinks = loadModelPackageLinks();
+  const controlDoc = loadDoc('schedule/phase-1/control.yaml') as any;
+  const acceptanceDoc = loadDoc('config/acceptance.yaml') as any;
+  if (!controlDoc?.work_packages || !acceptanceDoc?.phases) {
+    throw new Error('control.yaml 或 acceptance.yaml 缺 work_packages/phases');
+  }
+  const refsByCheck = new Map<string, string[]>();
+  for (const pkg of controlDoc.work_packages) {
+    for (const ref of pkg.acceptance_refs ?? []) refsByCheck.set(ref, [...(refsByCheck.get(ref) ?? []), pkg.id]);
+  }
+  const declaredTargets = new Map<string, string[] | null>();
+  for (const pkg of controlDoc.work_packages) {
+    declaredTargets.set(pkg.id, Array.isArray(pkg.targets) ? pkg.targets as string[] : null);
+  }
+  const unionOf = (packageIds: string[]): string[] => {
+    const merged = new Set<string>();
+    for (const packageId of packageIds) {
+      for (const id of declaredTargets.get(packageId) ?? []) merged.add(id);
+    }
+    return merged.has(ALL_MODEL_TARGET) ? [ALL_MODEL_TARGET] : [...merged].sort();
+  };
+
+  const packages = controlDoc.work_packages.map((pkg: any) => {
+    const links = modelLinks.links.filter((link) => link.budget_ref.id === pkg.id);
+    const resolutions = links.map((link) => modelLinks.objectResolutions?.[link.id]);
+    const merged = new Set<string>();
+    for (const resolution of resolutions) {
+      for (const id of resolution?.objectIds ?? []) merged.add(id);
+    }
+    return {
+      id: pkg.id as string,
+      targets: declaredTargets.get(pkg.id) ?? null,
+      resolved: merged.has(ALL_MODEL_TARGET) ? [ALL_MODEL_TARGET] : [...merged].sort(),
+      link_ids: links.map((link) => link.id),
+      project_scope: links.some((link) => link.mapping_status === 'project_scope'),
+      unresolved: resolutions.flatMap((resolution) => resolution?.unresolved ?? []),
+    };
+  });
+
+  const links = modelLinks.links.map((link) => {
+    const resolution = modelLinks.objectResolutions?.[link.id];
+    const selectors = (link.scope ?? []).flatMap((ref) =>
+      (['room_ids', 'types'] as const)
+        .filter((field) => (ref.select[field] ?? []).length > 0)
+        .map((field) => ({source: ref.source, field, values: [...(ref.select[field] ?? [])]})));
+    return {
+      id: link.id,
+      package_id: link.budget_ref.id,
+      mapping_status: link.mapping_status,
+      selectors,
+      resolved_count: resolution?.objectIds.length ?? 0,
+      unresolved: resolution?.unresolved ?? [],
+    };
+  });
+
+  const acceptance = acceptanceDoc.phases.flatMap((phase: any) => phase.items ?? []).map((item: any) => {
+    const packagesForItem = [...(refsByCheck.get(item.id) ?? [])].sort();
+    const fromPackages = Array.isArray(item.objects?.from_packages) ? item.objects.from_packages as string[] : null;
+    return {
+      id: item.id as string,
+      packages: packagesForItem,
+      from_packages: fromPackages,
+      derived_from_refs: unionOf(packagesForItem),
+      derived_from_declared: unionOf(fromPackages ?? []),
+    };
+  });
+
+  return {packages, links, acceptance};
+}
+
+let packageObjectsDataset: unknown = null;
+try {
+  packageObjectsDataset = buildPackageObjectsDataset();
+} catch (error) {
+  // 机器源缺失由契约报 object_link_dataset_missing；这里只留可读痕迹。
+  console.error(`facts 对象关联数据集装载失败（c.package_targets / c.model_package_link_ids_only / c.acceptance_objects 将报错）：${error instanceof Error ? error.message : String(error)}`);
+}
+
 const registryDoc = loadDoc(REGISTRY) as FactsRegistry | null;
 if (registryDoc === null) {
   console.error(`FAIL facts registry 不可解析：${REGISTRY}`);
   process.exit(1);
 }
-
 const workspace: FactsWorkspace = {
   read: readText,
   load: loadDoc,
@@ -284,6 +368,8 @@ const workspace: FactsWorkspace = {
     'mep.endpoints': mepEndpoints,
     'points.resolved': pointPositions,
     'mep.room_heights': mepRoomHeights,
+    // 对象关联（issue #191）：object_link 契约的数据集。
+    'package_objects': packageObjectsDataset,
   },
 };
 

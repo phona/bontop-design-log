@@ -263,6 +263,14 @@ export function resolvePackageScope(link: PackageScopeLink, project: ProjectScop
     // （拾取侧 targetFromIntersects 解析出的就是带前缀 id）。裸 id 直接进集合会
     // 两边都静默不命中——2026-11-02 浏览器实证，勿回退。
     for (const id of select.ids ?? []) {
+      // issue #191：model_geometry 的 ids 也用于「房间对象直选」（原 room_ids 选择器改造，
+      // 如 MODEL-PKG-050 的 [master_bath, guest_bath, kitchen, balcony]）。房间在场景里没有
+      // mesh objectId，它是按 userData.roomId 高亮的 roomIds 集合——这里按 knownRoomIds 分流，
+      // 否则房间会进 objectIds 然后静默 no-op（本文件头注 2026-11-02 同一失效类）。
+      if (scope.source === 'model_geometry' && knownRoomIds.has(id)) {
+        roomIds.add(id);
+        continue;
+      }
       // 家具来源的 ids 是场景 objectId 裸值（OBJECT_ID_SOURCES）：家具 objectId 不带
       // 来源前缀，走点位前缀归一化会造出对不上的键。
       if (OBJECT_ID_SOURCES.has(scope.source)) {

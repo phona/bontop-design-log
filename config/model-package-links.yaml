@@ -79,12 +79,18 @@ links:
     budget_ref: {source: phase_1_budget, id: PKG-050}
     mapping_status: partial
     scope:
-      - {source: model_geometry, select: {room_ids: [master_bath, guest_bath, kitchen, balcony]}}
-      - {source: plumbing, select: {room_ids: [master_bath, guest_bath, kitchen, balcony]}}
+      # 2026-11-10（issue #191）：原 {room_ids: [master_bath, guest_bath, kitchen, balcony]} 改为
+      # 房间对象 id 直选（room_ids 粗选择器退场）。四间房逐一登记，解析结果与原选择器一致；
+      # 代价：以后新增同类型对象不会自动进 scope，须显式加 id（与 PR-4 的 vanity、S6 的
+      # overlay/ceiling ids 同一方向，项目已裁定）。
+      - {source: model_geometry, select: {ids: [master_bath, guest_bath, kitchen, balcony]}}
+      # 同上：原 plumbing.room_ids 解析成这 29 个给排水点位 id（master_bath 7 +
+      # guest_bath 8 + kitchen 10 + balcony 4），逐点登记；新增点位不再自动进 scope。
+      - {source: plumbing, select: {ids: [shower_mbath, toilet_mbath, drain_mbath_toilet, drain_mbath_shower, drain_mbath_floor, faucet_gbath_vanity, drain_gbath_vanity, shower_gbath, toilet_gbath, drain_gbath_shower, drain_gbath_floor, faucet_kitchen_sink, faucet_kitchen_purifier, faucet_kitchen_dishwasher, drain_kitchen_sink, faucet_balcony_washer, drain_balcony_floor, drain_kitchen_dishwasher, drain_balcony_washer, drain_riser_master_bath, drain_riser_guest_bath, drain_riser_kitchen, gas_meter_kitchen, duct_kitchen_exhaust, duct_mbath_exhaust, duct_gbath_exhaust, water_entry, drain_riser_balcony, water_heater]}}
       # 面层配方下沉（2026-11-07 issue #98 第三阶段 S4）：wall_region 不再是 overlay 平级元素，
       # 工作包范围改按宿主对象稳定 id 表达（设计文档 §5.7「选择器 → ids」）。下面两组 id =
       # 「厨/卫/阳台四间房里带贴砖带的墙」+「同范围的防水台构件」，逐条对应原 wall_region 的
-      # (wall, room) 声明；房间维度由上面的 model_geometry room_ids 承担（原 overlay room_ids
+      # (wall, room) 声明；房间维度由上面的 model_geometry 房间对象 id 承担（原 overlay room_ids
       # 随元素一起退场——overlay 文档里已没有 room 字段可对）。
       # S6：地面 part 由 types:[floor_region] 改按 6 个 floor zone 对象 id 直选（等价——
       # 合并文档里 floor_region 元素恰好这 6 个，ids 与 type 匹配结果逐一相同）。
@@ -144,9 +150,16 @@ links:
       # 2026-11-06（issue #98 PR-4）：vanity 改按稳定 id 选（gbath.vanity，house.yaml 已声明）——
       # types 里已无 vanity（全仓仅此一条 type: vanity 记录，核实无误删），type 选择器随
       # 「删类型不同步本文件」失效模式（见 MODEL-PKG-120 注释）一并退场。
-      - {source: furnishings, select: {room_ids: [master_bath, guest_bath, master_bedroom], types: [toilet, shower_set, faucet, mb_washbasin_cabinet, mirror_cabinet_gbath, exhaust_fan]}}
+      # 2026-11-10（issue #191）：原 {room_ids: [master_bath, guest_bath, master_bedroom],
+      # types: [toilet, shower_set, faucet, mb_washbasin_cabinet, mirror_cabinet_gbath,
+      # exhaust_fan]} 按「房间 ∩ 类型」解析成这 6 个已建模家具对象 id。types 里的
+      # shower_set / faucet 是 count-only 计价条目（无 runtime 对象），不以 id 表达——
+      # 其金额仍由预算 counts 承担，对象 targets 只收有 runtime 身份的条目。
+      - {source: furnishings, select: {ids: [mb.washbasin_cabinet, mbath.toilet, mbath.exhaust_fan, gbath.toilet, gbath.exhaust_fan, gbath.mirror_cabinet]}}
       - {source: furnishings, select: {ids: [gbath.vanity]}}
-      - {source: plumbing, select: {room_ids: [master_bath, guest_bath, master_bedroom]}}
+      # 同上：原 plumbing.room_ids 解析成这 17 条点位 id（master_bedroom 2 +
+      # master_bath 7 + guest_bath 8）。
+      - {source: plumbing, select: {ids: [faucet_mbath_vanity, drain_mbath_vanity, shower_mbath, toilet_mbath, drain_mbath_toilet, drain_mbath_shower, drain_mbath_floor, faucet_gbath_vanity, drain_gbath_vanity, shower_gbath, toilet_gbath, drain_gbath_shower, drain_gbath_floor, drain_riser_master_bath, drain_riser_guest_bath, duct_mbath_exhaust, duct_gbath_exhaust]}}
       # S6：types:[shower_screen] → ids（3 件玻璃隔断对象，等价；按 AGENTS.md 新类型评估
       # 不需碰撞。mesh objectId 是 `id:N` 分段形式，与改 ids 前 type 选择器产出的裸 id 同形，
       # 高亮命中面不改。）
@@ -155,7 +168,11 @@ links:
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-110}
     mapping_status: mapped
-    scope: [{source: furnishings, select: {room_ids: [kitchen], types: [kitchen_cabinet_run, kitchen_countertop_bridge, cabinet_base, cabinet_wall, countertop_quartz, sink]}}]
+    # 2026-11-10（issue #191）：原 {room_ids: [kitchen], types: [kitchen_cabinet_run,
+    # kitchen_countertop_bridge, cabinet_base, cabinet_wall, countertop_quartz, sink]} 按
+    # 「房间 ∩ 类型」解析出 5 个已建模对象 id；cabinet_base / cabinet_wall /
+    # countertop_quartz 是 count-only 计价条目（无 runtime 对象），不以 id 表达。
+    scope: [{source: furnishings, select: {ids: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.sink]}}]
   - id: MODEL-PKG-120
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-120}
@@ -178,7 +195,10 @@ links:
     # ceiling_light。这是同一失效模式第四次复发（wall_lamp → track_light → led_strip
     # → pendant）：删/改点位类型必须同步本文件，否则 assertSelector 抛错、/api/project 500。
     # 现在 ceiling_light 是在役类型（餐厅半吸顶）；dome 为客厅主灯与其余吸顶灯。
-    scope: [{source: electrical, select: {types: [ceiling_light, dome, downlight, night_light]}}]
+    # 2026-11-10（issue #191）：原灯具词汇表 types:[ceiling_light, dome, downlight,
+    # night_light] 解析成这 17 个在役灯具点位 id（ceiling_light 1 + dome 6 +
+    # downlight 4 + night_light 6）。以后新增灯具不再自动进 scope，须显式加 id。
+    scope: [{source: electrical, select: {ids: [light_balcony_dome, light_dining_pendant, light_living_dome, light_master_dome, light_parent_dome, light_child_dome, light_study_dome, light_corridor_1, light_entry_down, light_entry_foyer, light_kitchen_panel, night_guest_bed_side, night_guest_head, night_guest_door, night_living_north, night_living_mid, night_corridor]}}]
   - id: MODEL-PKG-125
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-125}
@@ -186,7 +206,10 @@ links:
     scope:
       # USB 不是独立 type：USB 插座是 socket 的模块特性
       # （appearance.module: five_hole_replaceable_usb_c），已由下面的 socket 覆盖。
-      - {source: electrical, select: {types: [socket, switch, switch_2way, network, floor_socket]}}
+      # 2026-11-10（issue #191）：原 types:[socket, switch, switch_2way, network,
+      # floor_socket] 解析成这 79 个面板点位 id（插座 56 + 灯控 17 + 网口 6，与
+      # COST-125-01 的数量口径同源）；新增点位不再自动进 scope，须显式加 id。
+      - {source: electrical, select: {ids: [sock_living_tv, sock_living_tv_high, net_living, sock_living_sofa_l, sock_living_sofa_r, sock_living_water, sock_living_table, sock_fridge_living, sock_waterbar, sock_living_curtain, sock_living_ac, sock_dining_ac, switch_living_entrance, switch_living_corridor, sock_master_bed_l, switch_master_bed_north, sock_master_bed_r, switch_master_bed_l, switch_master_door, sock_master_bed_r_head, sock_master_ac, net_master_ap, sock_parent_bed_r, switch_parent_door, sock_parent_desk, net_parent, sock_study_desk, net_study, sock_study_extra, switch_study, sock_child_bed, switch_child_bed, sock_child_desk, net_child, switch_child, sock_child_ac, sock_kitchen_counter, sock_kitchen_counter_east, sock_kitchen_east_counter, sock_kitchen_hood, sock_kitchen_purifier, sock_kitchen_gas, sock_kitchen_oven, switch_kitchen, sock_mbath_vanity, sock_mbath_toilet, sock_mbath_batheheater, sock_gbath_vanity, sock_gbath_vanity_2, sock_gbath_batheheater, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_vrf_outdoor_a2, sock_weakbox, sock_garden, switch_garden, switch_corridor, switch_dining, sock_kitchen_dishwasher, sock_master_curtain, sock_parent_curtain, sock_study_curtain, sock_study_ac, sock_parent_ac, sock_gbath_toilet, sock_balcony_drying, sock_living_drying, sock_gateway, net_gateway, net_ap_corridor, sock_living_tv_led, sock_master_projector, sock_gbath_towel, sock_gbath_robot, sock_living_robot, sock_guest_bed_l, sock_guest_bed_r, switch_guest_bed]}}
       - {source: electrical_topology, select: {all: true}}
   - id: MODEL-PKG-130
     phase_id: phase_1_basic_occupancy
@@ -266,7 +289,9 @@ links:
       # house.yaml 已声明并经 gbath.vanity 的 robot_bay 槽位挂载）——全仓仅此一条
       # type: robot_dock_gbath 记录，核实无误删；type 选择器随「删类型不同步本文件」
       # 失效模式（见 MODEL-PKG-120 注释）一并退场。
-      - {source: furnishings, select: {types: [fridge, washer, gas_stove, range_hood, water_heater, dishwasher]}}
+      # 2026-11-10（issue #191）：原 types:[fridge, washer, gas_stove, range_hood,
+      # water_heater, dishwasher] 解析成这 6 个家电对象 id，逐一登记。
+      - {source: furnishings, select: {ids: [ld.fridge, kitchen.dishwasher, kitchen.gas_stove, kitchen.range_hood, kitchen.water_heater, balcony.washer]}}
       - {source: furnishings, select: {ids: [gbath.robot_dock]}}
       - {source: electrical, select: {ids: [sock_fridge_living, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}} # sock_kitchen_fridge → sock_fridge_living（DEC-2026-10-17-R20 冰箱点位迁客餐厅西侧重绑）
       - {source: plumbing, select: {ids: [faucet_balcony_washer, drain_balcony_washer, faucet_gbath_vanity, drain_gbath_vanity]}}
@@ -285,17 +310,21 @@ links:
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-010}
     mapping_status: mapped
-    scope: [{source: furnishings, select: {room_ids: [living_dining], types: [tv_wall_low, tv_65, wall_cabinet_tall]}}]
+    # 2026-11-10（issue #191）：原 {room_ids: [living_dining], types: [tv_wall_low, tv_65,
+    # wall_cabinet_tall]} 按「房间 ∩ 类型」解析出这 3 个对象 id。
+    scope: [{source: furnishings, select: {ids: [ld.wall_cabinet_tall, ld.tv_wall_low, ld.tv_65]}}]
   - id: MODEL-P2-020
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-020}
     mapping_status: mapped
-    scope: [{source: furnishings, select: {room_ids: [balcony], types: [dryer]}}]
+    # 2026-11-10（issue #191）：原 {room_ids: [balcony], types: [dryer]} 等价于 balcony.dryer。
+    scope: [{source: furnishings, select: {ids: [balcony.dryer]}}]
   - id: MODEL-P2-030
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-030}
     mapping_status: mapped
-    scope: [{source: furnishings, select: {room_ids: [kitchen], types: [dishwasher]}}]
+    # 2026-11-10（issue #191）：原 {room_ids: [kitchen], types: [dishwasher]} 等价于 kitchen.dishwasher。
+    scope: [{source: furnishings, select: {ids: [kitchen.dishwasher]}}]
   - id: MODEL-P2-040
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-040}
@@ -305,7 +334,9 @@ links:
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-060}
     mapping_status: mapped
-    scope: [{source: furnishings, select: {room_ids: [living_dining], types: [coffee_table, floor_lamp, plant_fiddle]}}]
+    # 2026-11-10（issue #191）：原 {room_ids: [living_dining], types: [coffee_table, floor_lamp,
+    # plant_fiddle]} 按「房间 ∩ 类型」解析出这 3 个对象 id。
+    scope: [{source: furnishings, select: {ids: [ld.floor_lamp, ld.plant_fiddle, ld.coffee_table]}}]
   - id: MODEL-P2-070
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-070}
@@ -344,18 +375,27 @@ links:
       # 前者 2026-09-07（commit 2283c9f5）已退出 placed（通用 recipe 保留），现行通顶衣柜即
       # master_north_wall_wardrobe_950（mb.wardrobe_950）；D19 选项与旧 description 的旧名
       # 随本 PR 一并改对象引用，历史 DEC 文本不改。
-      - {source: furnishings, select: {room_ids: [master_bedroom]}}
+      # 2026-11-10（issue #191）：原 furnishings.room_ids [master_bedroom] 解析出该房 16 个
+      # 已建模家具对象 id（count-only 的 mattress_180 / curtain_set / ceiling_light / faucet
+      # 不在对象索引内）；与下面 9 件显式 id 的并集即本链接对象集。
+      - {source: furnishings, select: {ids: [mb.bed_180, mb.wardrobe_950, mb.wardrobe_pelmet, mb.bedside_cabinet_north, mb.bedside_cabinet_south, mb.washbasin_cabinet, mb.dressing_table, mb.dressing_stool, mb.low_dresser, mb.vanity_base_cabinet, mb.vanity_lower_board, mb.vanity_main_board, mb.condensate_pipe, mb.vanity_pvc_wardrobe_entry, mb.vanity_pvc_service_chase, mb.vanity_pvc_box]}}
       - {source: furnishings, select: {ids: [mb.wardrobe_950, mb.wardrobe_pelmet, mb.vanity_base_cabinet, mb.vanity_lower_board, mb.vanity_main_board, mb.vanity_pvc_box, mb.vanity_pvc_wardrobe_entry, mb.vanity_pvc_service_chase, mb.condensate_pipe]}}
   - id: MODEL-P2-110
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-110}
     mapping_status: partial
+    # 2026-11-10（issue #191）：本链接的 room_ids + types 是**显式保留的例外**——
+    # house.yaml 的 curtain_set 是 count-only 计价条目（无 runtime 对象），「房间 ∩ 类型」
+    # 解析为空集；待二期窗帘选型落成模型对象后改 ids。例外登记在 config/facts.yaml 的
+    # c.model_package_link_ids_only（带理由），不是静默遗留。
     scope: [{source: furnishings, select: {room_ids: [living_dining, study], types: [curtain_set]}}]
   - id: MODEL-P2-120
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-120}
     mapping_status: mapped
-    scope: [{source: furnishings, select: {room_ids: [study, bedroom_nw]}}]
+    # 2026-11-10（issue #191）：原 room_ids [study, bedroom_nw] 解析出两房 10 个已建模
+    # 家具对象 id（count-only 条目不在对象索引内）。
+    scope: [{source: furnishings, select: {ids: [bnw.bed_150, bnw.wardrobe_180, bnw.desk, bnw.chair, bnw.shelf, study.desk, study.chair, study.seasonal_wardrobe_wall, study.seasonal_wardrobe_step_north, study.seasonal_wardrobe_step_south]}}]
   - id: MODEL-P2-130
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-130}
@@ -365,7 +405,9 @@ links:
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-140}
     mapping_status: mapped
-    scope: [{source: furnishings, select: {room_ids: [living_dining], types: [wall_cabinet_tall]}}]
+    # 2026-11-10（issue #191）：原 {room_ids: [living_dining], types: [wall_cabinet_tall]}
+    # 等价于 ld.wall_cabinet_tall。
+    scope: [{source: furnishings, select: {ids: [ld.wall_cabinet_tall]}}]
   - id: MODEL-P2-150
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-150}
@@ -375,7 +417,10 @@ links:
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-160}
     mapping_status: mapped
-    scope: [{source: electrical, select: {types: [downlight, ceiling_light]}}] # 2026-10-13 DEC-2026-10-13-R1 移除 track_light、R5 移除 led_strip；2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位，换成 ceiling_light（留着会让 assertSelector 拒掉）
+    # 2026-11-10（issue #191）：原 types:[downlight, ceiling_light] 解析成这 4 个灯具点位 id。
+    # 保留原沿革：2026-10-13 DEC-2026-10-13-R1 移除 track_light、R5 移除 led_strip；
+    # 2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位。
+    scope: [{source: electrical, select: {ids: [light_dining_pendant, light_corridor_1, light_entry_down, light_entry_foyer]}}] # 2026-10-13 DEC-2026-10-13-R1 移除 track_light、R5 移除 led_strip；2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位，换成 ceiling_light（留着会让 assertSelector 拒掉）
 
   - id: MODEL-P3-010
     phase_id: phase_3_styling
@@ -391,10 +436,14 @@ links:
     phase_id: phase_3_styling
     budget_ref: {source: phase_3_scope, id: P3-030}
     mapping_status: partial
-    scope: [{source: furnishings, select: {types: [plant_fiddle]}}]
+    # 2026-11-10（issue #191）：原 types:[plant_fiddle] 等价于 ld.plant_fiddle（全屋唯一）。
+    scope: [{source: furnishings, select: {ids: [ld.plant_fiddle]}}]
     note: 绿植已有琴叶榕对象；小型摆件尚未建模。
   - id: MODEL-P3-040
     phase_id: phase_3_styling
     budget_ref: {source: phase_3_scope, id: P3-040}
     mapping_status: mapped
-    scope: [{source: electrical, select: {types: [downlight, ceiling_light]}}] # 2026-10-13 DEC-2026-10-13-R1 移除 track_light、R5 移除 led_strip；2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位，换成 ceiling_light（留着会让 assertSelector 拒掉）
+    # 2026-11-10（issue #191）：原 types:[downlight, ceiling_light] 解析成这 4 个灯具点位 id。
+    # 保留原沿革：2026-10-13 DEC-2026-10-13-R1 移除 track_light、R5 移除 led_strip；
+    # 2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位。
+    scope: [{source: electrical, select: {ids: [light_dining_pendant, light_corridor_1, light_entry_down, light_entry_foyer]}}] # 2026-10-13 DEC-2026-10-13-R1 移除 track_light、R5 移除 led_strip；2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位，换成 ceiling_light（留着会让 assertSelector 拒掉）
