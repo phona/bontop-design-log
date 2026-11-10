@@ -490,4 +490,71 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
     assert.ok(keys.some((key) => key.includes('d_mb@w_st_north')),
       `摘要键必须带父墙（d_mb@w_st_north），实际 ${keys.filter((key) => key.includes('d_mb')).join(', ')}`);
   });
+
+  // issue #191 Codex blocking 第 5 轮兜底一（OI-79）：count-only 商品条目不是 placed 工程对象，
+  // 但 SCH-150-02 的 method 原文写着「逐件检查牢固、水平、开合、边角、床垫匹配和主要通道」。
+  // 在商品对象化（OI-79）落地前，按房间把这些条目纳入指纹——改床垫必须让 PKG-150 stale。
+  // 方向是过度 stale（吵），不是漏 stale（哑）。
+  it('兜底一：改 count-only 商品条目（床垫），挂「床垫匹配」的 PKG-150 必须 stale', () => {
+    const housePath = join(sandbox, 'config/house.yaml');
+    const lines = readFileSync(housePath, 'utf8').split('\n');
+    // furnishings 的房键是缩进 2 的 `  <room>:`；条目是缩进 4 的 `    - { ... }`。
+    const roomAt = lines.findIndex((line) => /^  bedroom_se:\s*$/.test(line));
+    assert.ok(roomAt >= 0, 'config/house.yaml 的 furnishings 必须有 bedroom_se 房键');
+    const nextRoom = lines.findIndex((line, i) => i > roomAt && /^  \S/.test(line));
+    const roomEnd = nextRoom > 0 ? nextRoom : lines.length;
+    const itemAt = lines.findIndex((line, i) => i > roomAt && i < roomEnd && /^    - \{ type: mattress_150 \}\s*$/.test(line));
+    assert.ok(itemAt >= 0, 'bedroom_se 段内必须有一条 count-only 的 mattress_150');
+
+    const patched = [...lines];
+    patched[itemAt] = '    - { type: mattress_180 }';
+    const baseline = fingerprintsNow();
+    writeFileSync(housePath, patched.join('\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-150'),
+      `改床垫必须让挂 SCH-150-02「床垫匹配」的 PKG-150 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+    // 反向自证：摘要里必须出现 quantity: 键，证明走的是 quantity 兜底而不是别的路径。
+    const keys = Object.keys(afterState.packageProjectSnapshot(
+      afterState.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-150')!,
+    ));
+    assert.ok(keys.some((key) => key.includes(':quantity:')),
+      `PKG-150 摘要必须含 quantity: 类的 count-only 条目，实际键 ${keys.filter((k) => k.includes('quantity')).join(', ') || '（无）'}`);
+  });
+
+  it('兜底二：改冷凝水候选接入点，挂链上家具的 PKG-150 必须 stale', () => {
+    const hvacPath = join(sandbox, 'config/hvac.yaml');
+    const lines = readFileSync(hvacPath, 'utf8').split('\n');
+    const idAt = lines.findIndex((line) => /^\s*- id: condensate_master_candidate\s*$/.test(line));
+    assert.ok(idAt >= 0, 'config/hvac.yaml 必须有 condensate_master_candidate terminal');
+    // 该 block 内第一条 position 行（到下一个 `- id:` 之前）。
+    const blockEnd = lines.findIndex((line, i) => i > idAt && /^\s*- id:/.test(line));
+    const stop = blockEnd > 0 ? blockEnd : lines.length;
+    const posAt = lines.findIndex((line, i) => i > idAt && i < stop && /^\s*position: \{/.test(line));
+    assert.ok(posAt > idAt, 'condensate_master_candidate block 内必须有 position 行');
+    const before = lines[posAt];
+    const moved = before.replace(/x:\s*[\d.]+/, 'x: 9.87');
+    assert.ok(moved !== before, `必须能改动候选点的 x：${before}`);
+
+    const patched = [...lines];
+    patched[posAt] = moved;
+    const baseline = fingerprintsNow();
+    writeFileSync(hvacPath, patched.join('\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-150'),
+      `改进候选接入点必须让挂链上家具的 PKG-150 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+    // 反向自证：摘要里必须出现链声明的输入对象，证明闭包确实跟随了 CONDENSATE_CHAIN_INPUT_IDS。
+    const keys = Object.keys(afterState.packageProjectSnapshot(
+      afterState.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-150')!,
+    ));
+    assert.ok(keys.some((key) => key.includes('condensate_master_candidate')),
+      `PKG-150 摘要必须含链输入 condensate_master_candidate，实际键 ${keys.filter((k) => k.includes('condensate')).join(', ') || '（无）'}`);
+  });
 });
