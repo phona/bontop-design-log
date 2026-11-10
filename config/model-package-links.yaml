@@ -172,7 +172,13 @@ links:
     # kitchen_countertop_bridge, cabinet_base, cabinet_wall, countertop_quartz, sink]} 按
     # 「房间 ∩ 类型」解析出 5 个已建模对象 id；cabinet_base / cabinet_wall /
     # countertop_quartz 是 count-only 计价条目（无 runtime 对象），不以 id 表达。
-    scope: [{source: furnishings, select: {ids: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.sink]}}]
+    # 2026-11-10（issue #191 Codex blocking）：微蒸烤预留点位 sock_kitchen_oven 是
+    # check_elec_micro_oven_reserved 正文点名的被验对象（插拔可及性），施工归属在水电包；
+    # 本包是这条验收记录的挂载包，验收对象集按引用包 targets 派生——若不把该点位纳入本链接
+    # scope，插座改动不会让本包的对象摘要变化、旧通过记录也不会 stale。故按 id 直选纳入。
+    scope:
+      - {source: furnishings, select: {ids: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.sink]}}
+      - {source: electrical, select: {ids: [sock_kitchen_oven]}}
   - id: MODEL-PKG-120
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-120}

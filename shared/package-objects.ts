@@ -40,8 +40,19 @@ export interface AuthorityObject {
   node: AnyRecord;
   /** 对象自身的 `room`（点位/吊顶分区/家具）或家具声明的房组名。 */
   room?: string;
-  /** model_geometry 的集合归属：room / wall / opening / beam / platform。 */
+  /** model_geometry 的集合归属：room / wall / opening / beam / platform / vertex。 */
   collection?: string;
+  /**
+   * 宿主对象 id（目前只有墙洞：wall.openings[] 的声明本身不带 wall 字段，父墙只在
+   * 嵌套位置里）。摘要键必须带它——否则把门洞从一面墙搬到另一面墙，洞的声明一字未改，
+   * 指纹却不变，layout-resolver 已按新宿主墙重算位置（issue #191 Codex blocking）。
+   */
+  parent?: string;
+}
+
+/** 对象摘要键：宿主关系也是对象身份的一部分（墙洞 @ 父墙）。 */
+export function objectDigestKey(source: string, object: AuthorityObject): string {
+  return `${source}:${object.id}${object.parent ? `@${object.parent}` : ''}`;
 }
 
 export interface AuthorityObjectIndex {
@@ -113,7 +124,7 @@ export function stableStringify(value: unknown): string {
  */
 export function indexAuthorityObjects(source: string, doc: unknown): AuthorityObjectIndex {
   const index = new Map<string, AuthorityObject>();
-  const add = (id: unknown, node: AnyRecord, extra: {room?: string; collection?: string} = {}) => {
+  const add = (id: unknown, node: AnyRecord, extra: {room?: string; collection?: string; parent?: string} = {}) => {
     if (typeof id !== 'string' || !id || index.has(id)) return;
     index.set(id, {id, node, ...extra});
   };
@@ -128,7 +139,7 @@ export function indexAuthorityObjects(source: string, doc: unknown): AuthorityOb
       for (const room of d.rooms ?? []) add(room.id, room, {room: room.id, collection: 'room'});
       for (const wall of d.walls ?? []) {
         add(wall.id, wall, {collection: 'wall'});
-        for (const opening of wall.openings ?? []) add(opening.id, opening, {collection: 'opening'});
+        for (const opening of wall.openings ?? []) add(opening.id, opening, {collection: 'opening', parent: wall.id});
       }
       for (const beam of d.beams ?? []) add(beam.id, beam, {collection: 'beam'});
       if (d.platform?.id) add(d.platform.id, d.platform, {collection: 'platform'});
@@ -338,7 +349,7 @@ export function digestResolvedObjects(
     if (!index) continue;
     for (const object of index.objects.values()) {
       if (!resolution.objectIds.includes(object.id)) continue;
-      digests[`${source}:${object.id}`] = sha256(stableStringify(object.node));
+      digests[objectDigestKey(source, object)] = sha256(stableStringify(object.node));
       found.add(object.id);
     }
   }
@@ -347,29 +358,29 @@ export function digestResolvedObjects(
   }
 
   // 引用闭包：已知 id → 声明节点（只看参与解析的 authority 来源，不把预算/分期文件当对象域）。
-  const referents = new Map<string, Array<{source: string; node: AnyRecord}>>();
+  const referents = new Map<string, Array<{source: string; object: AuthorityObject}>>();
   for (const [source, index] of options.indexes ?? []) {
     for (const object of index.objects.values()) {
       const list = referents.get(object.id) ?? [];
-      list.push({source, node: object.node});
+      list.push({source, object});
       referents.set(object.id, list);
     }
   }
-  const queue: Array<{source: string; node: AnyRecord}> = [];
+  const queue: Array<{source: string; object: AuthorityObject}> = [];
   for (const source of resolution.sources) {
     const index = options.indexes?.get(source);
     if (!index) continue;
     for (const object of index.objects.values()) {
-      if (resolution.objectIds.includes(object.id)) queue.push({source, node: object.node});
+      if (resolution.objectIds.includes(object.id)) queue.push({source, object});
     }
   }
   while (queue.length) {
     const current = queue.shift()!;
-    for (const value of collectReferencedStrings(current.node)) {
+    for (const value of collectReferencedStrings(current.object.node)) {
       for (const referent of referents.get(value) ?? []) {
-        const key = `${referent.source}:${value}`;
+        const key = objectDigestKey(referent.source, referent.object);
         if (digests[key] !== undefined) continue;
-        digests[key] = sha256(stableStringify(referent.node));
+        digests[key] = sha256(stableStringify(referent.object.node));
         queue.push(referent);
       }
     }

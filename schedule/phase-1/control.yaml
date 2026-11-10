@@ -1435,8 +1435,8 @@ work_packages:
     payment_gate: GATE-110-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-110 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
-    # 来源：furnishings(ids=kitchen.cabinet_run_north_west/kitchen.countertop_bridge/kitchen.cabinet_run_north_east/kitchen.cabinet_run_east/kitchen.sink) → 5。去重后共 5 个对象 id。
-    targets: [kitchen.cabinet_run_east, kitchen.cabinet_run_north_east, kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.sink]
+    # 来源：furnishings(ids=kitchen.cabinet_run_north_west/kitchen.countertop_bridge/kitchen.cabinet_run_north_east/kitchen.cabinet_run_east/kitchen.sink) → 5；electrical(ids=sock_kitchen_oven) → 1。去重后共 6 个对象 id。
+    targets: [kitchen.cabinet_run_east, kitchen.cabinet_run_north_east, kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.sink, sock_kitchen_oven]
     acceptance_refs: [check_carp_cabinet, check_elec_micro_oven_reserved]
     checks:
       - id: SCH-110-01

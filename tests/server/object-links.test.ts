@@ -129,6 +129,17 @@ describe('issue #191 验收项对象关联（验收标准二）', () => {
     assert.deepEqual(state.acceptanceObjectIds.get('check_window_paper_per_window'), [ALL_MODEL_TARGET]);
   });
 
+  it('验收正文点名的被验对象必须在派生对象集里（check_elec_micro_oven_reserved → sock_kitchen_oven）', () => {
+    // issue #191 Codex blocking：该条验收正文点名的被验点位是 sock_kitchen_oven（插拔可及性），
+    // 施工归属在水电包、验收记录挂在本包；若只按 PKG-110 的橱柜 scope 派生，插座改动不会让
+    // 本包 stale。MODEL-PKG-110 的 scope 已按 id 直选纳入该点位（不是改 acceptance 的派生规则）。
+    const objects = state.acceptanceObjectIds.get('check_elec_micro_oven_reserved');
+    assert.ok(objects?.includes('sock_kitchen_oven'), `对象集必须含 sock_kitchen_oven：${JSON.stringify(objects)}`);
+    const pkg110 = packages.find((pkg) => pkg.id === 'PKG-110');
+    assert.ok(pkg110, 'PKG-110 必须存在');
+    assert.ok(pkg110.targets.includes('sock_kitchen_oven'), 'PKG-110 targets 必须含被验插座');
+  });
+
   it('验收项不再只靠 rooms: 选择器表达适用范围（rooms 保留为现场上下文，不承担对象关联）', () => {
     const withRooms = items.filter((item) => (item.rooms ?? []).length > 0);
     assert.ok(withRooms.length > 0, 'rooms 字段仍作为现场上下文保留');
@@ -158,6 +169,17 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
   after(() => {
     rmSync(sandbox, {recursive: true, force: true});
   });
+
+  /** 以当前沙箱文件状态重新加载，返回「该状态」的工作包指纹。测试会逐步改文件，每次重取基线。 */
+  function fingerprintsNow(): {state: ScheduleState; fingerprints: Map<string, string>} {
+    const current = loadScheduleState(sandbox, {
+      modelPackageLinks: loadModelPackageLinks(join(sandbox, 'config/model-package-links.yaml'), {root: sandbox}),
+    });
+    return {
+      state: current,
+      fingerprints: new Map(current.control.work_packages.map((pkg: AnyRecord) => [pkg.id, current.packageProjectFingerprint(pkg)])),
+    };
+  }
 
   it('改一件家具的声明：只有 scope 含该对象的包 stale（project_scope 包按定义变化）', () => {
     const housePath = join(sandbox, 'config/house.yaml');
@@ -231,5 +253,46 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
     const snapshot = afterState.packageProjectSnapshot(pkg020);
     assert.ok(Object.keys(snapshot).some((key) => key.startsWith('object:model_geometry:v_')),
       '对象粒度指纹必须含顶点声明（object:model_geometry:v_*）');
+  });
+
+  // issue #191 Codex blocking：check_elec_micro_oven_reserved 正文点名 sock_kitchen_oven
+  // （插拔可及性），但施工归属在水电包。MODEL-PKG-110 已按 id 直选该点位；本用例守
+  // 「插座改动 → 挂该验收的 PKG-110 stale」，防止验收关联再次退化成只跟橱柜对象。
+  it('改被验插座的高度：挂该验收的 PKG-110 必须 stale', () => {
+    const electricalPath = join(sandbox, 'config/electrical.yaml');
+    const text = readFileSync(electricalPath, 'utf8');
+    const anchor = '  x: 10.80\n  z: 1.95\n  height: 1.2\n';
+    assert.equal(text.split(anchor).length - 1, 1, 'sock_kitchen_oven 坐标块锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    writeFileSync(electricalPath, text.replace(anchor, '  x: 10.80\n  z: 1.95\n  height: 1.3\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id);
+    assert.ok(stale.includes('PKG-110'), `PKG-110 的验收点名 sock_kitchen_oven，插座改动后必须 stale；实际 ${stale.join(', ')}`);
+  });
+
+  // issue #191 Codex blocking：门洞声明本身不带 wall 字段，父墙只由嵌套位置表达。摘要键
+  // 必须带父墙（`source:opening@parentWall`），否则把门洞从一面墙搬到另一面墙，洞的声明
+  // 一字未改、指纹不变，而 layout-resolver 已按新宿主墙重算位置/朝向。
+  it('门洞换宿主墙：只选 openings 的 PKG-090 必须 stale（摘要键含父墙）', () => {
+    const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
+    const text = readFileSync(geometryPath, 'utf8');
+    const opening = '      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.45, width: 0.9, height: 2.1, room: master_bath, swing: inward, hinge: start }\n';
+    const study = '      - { id: d_study, type: door, anchor: v_mb_ne, offset: 2.4, width: 0.9, height: 2.1, room: study }\n';
+    assert.equal(text.split(opening).length - 1, 1, 'd_mb 声明锚点必须恰出现一次');
+    assert.equal(text.split(study).length - 1, 1, 'd_study 声明锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    // d_mb 从 w_strip_east 的 openings 段搬到 w_st_north 的 openings 段（洞声明本身不变）。
+    writeFileSync(geometryPath, text.replace(opening, '').replace(study, study + opening));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id);
+    assert.ok(stale.includes('PKG-090'), `PKG-090 只选 openings，门洞换宿主墙后必须 stale；实际 ${stale.join(', ')}`);
+    const pkg090 = afterState.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-090');
+    const keys = Object.keys(afterState.packageProjectSnapshot(pkg090));
+    assert.ok(keys.some((key) => key.includes('d_mb@w_st_north')),
+      `摘要键必须带父墙（d_mb@w_st_north），实际 ${keys.filter((key) => key.includes('d_mb')).join(', ')}`);
   });
 });
