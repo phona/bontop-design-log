@@ -549,12 +549,15 @@ describe('成本总表 cost-summary', () => {
   it('DEC 章节检索加固：非法 id 守卫式抛错、同 id 双章节歧义抛错（G5/G6）', () => {
     // G5：decId 未校验未转义拼进 RegExp 时，「R8|R7」式交替能劫持到别的
     // 章节、含括号的值抛裸 SyntaxError。非法 id 必须守卫式抛错点名。
+    // 2026-11-10：findDecisionSection 的 dir 已改为必填（不再默认指向已删的
+    // docs/decisions/）。格式守卫先于 readdir 抛错，这里的目录值不会被读取。
+    const unusedDir = join(tmpdir(), 'dec-guard-unused');
     assert.throws(
-      () => findDecisionSection('DEC-2026-10-04-R8|R7'),
+      () => findDecisionSection('DEC-2026-10-04-R8|R7', unusedDir),
       (error: unknown) => !(error instanceof SyntaxError) && /不符合严格格式/.test((error as Error).message),
       '交替形 ref 必须守卫式抛错（非 SyntaxError、非命中错章）',
     );
-    assert.throws(() => findDecisionSection('DEC-2026-10-04'), /不符合严格格式/, '截断形 ref 必须抛错');
+    assert.throws(() => findDecisionSection('DEC-2026-10-04', unusedDir), /不符合严格格式/, '截断形 ref 必须抛错');
     const control = parseYaml(readFileSync('schedule/phase-1/control.yaml', 'utf8')) as AnyRecord;
     const contractBasis = { type: 'contract', packageId: 'PKG-030', quoteRoundId: 'QR-2026-10-03-24' } as const;
     const hijacked = structuredClone(control) as AnyRecord;

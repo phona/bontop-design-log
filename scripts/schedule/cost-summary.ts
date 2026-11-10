@@ -226,11 +226,11 @@ const DEC_ID_PATTERN = /^DEC-\d{4}-\d{2}-\d{2}-(?:\d{3}|R\d{1,3})$/;
  *    错卷、用错凭据原文。
  * 2026-11-09 issue #98 S2：DEC 退役（业主裁定）后，**生产路径的合同凭据核验
  * 不再走本函数**（改读 config/hvac.yaml 的 commercial.evidence，见
- * findContractEvidence）。docs/decisions/ 已于 S3 整份退场，本函数的默认目录因此
- * 不可用（readdir 失败返回 null）；它只保留为 md 档案的章节定位工具，单测一律
- * 注入临时目录 fixture。原文取用 git：`git show 8abfbe3b:docs/decisions/<file>.md`。
+ * findContractEvidence）。docs/decisions/ 已于 S3 整份退场，本函数因此**不设默认目录**：
+ * `dir` 必填，调用方必须显式给出要检索的 md 目录（生产路径无调用，单测一律注入
+ * 临时目录 fixture）。原文取用 git：`git show 8abfbe3b:docs/decisions/<file>.md`。
  */
-export function findDecisionSection(decId: string, dir: string = 'docs/decisions'): { file: string; text: string } | null {
+export function findDecisionSection(decId: string, dir: string): { file: string; text: string } | null {
   if (!DEC_ID_PATTERN.test(decId)) {
     throw new Error(`cost summary: DEC id「${decId}」不符合严格格式 DEC-YYYY-MM-DD-(三位序号|R 序号）——contract_ref 只能是合法 DEC id，非法值不得拼进章节检索`);
   }
