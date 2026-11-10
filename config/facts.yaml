@@ -47,7 +47,7 @@
 #    unique    对 source 全文 grep，pattern 首捕为 id；重复即 error。
 #              `allow_suffix` 列出的后缀视为补充条目（如 `-补`/`.1`），不与正牌判重。
 #              `source` 接受单文件路径或路径数组（DEC 日志 2026-10-09 拆分后跨文件查重）。
-#              最小示例：{ id: c.x, kind: unique, source: docs/decisions/01-control-budget.md,
+#              最小示例：{ id: c.x, kind: unique, source: config/hvac.yaml,
 #                          pattern: '^#+\s*(DEC-\d{4}-\d{2}-\d{2}-[A-Za-z0-9.]+)' }
 #    fk        ref_scope 各文件里 grep ref_pattern 拿引用 id 集合；target 文件里 grep
 #              target_pattern 拿目标 id 集合；引用∖目标 = dangling。
@@ -494,8 +494,8 @@ scan:
     # 删了什么：一行 exempt_occurrences（path=docs/decisions/15-penetration-lint.md /
     # scalars=[dimension] / pattern='0\.94' / reason「DEC 历史条目（只登记不改写），引用 #55」）。
     # 空调厂家确认单是**汇总视图（rendered view）**：单子上的每个数字/型号都是从已登记的权威源
-    # 抄来做面对面核对用的——价格与型号口径在 config/hvac.yaml + docs/decisions/05-hvac.md
-    # （DEC-2026-10-04-R1）、现场几何在 config/model/envelope/ceiling.yaml / house.yaml / model-geometry.yaml、
+    # 抄来做面对面核对用的——价格与型号口径在 config/hvac.yaml + DEC-2026-10-04-R1
+    # （原文：git show 8abfbe3b:docs/decisions/05-hvac.md#L89）、现场几何在 config/model/envelope/ceiling.yaml / house.yaml / model-geometry.yaml、
     # 待决项在原量房台账 #39/#42（已退场）。本文件不得成为第二份数字真相：单子开头已写明
     # 「如与本单不符，以权威源与合同附件为准」。若某数字在权威源里没有对应，应删单子上的它，
     # 而不是给它登记 fact。
@@ -804,7 +804,7 @@ facts:
       # house.yaml 的 rooms.study.area，镜像又回到同一文件，属**自指检查**，改什么都能过。
       # 且原 extract 拿「点石设计图净标注 8.35㎡」与「多边形毛口径 12.75㎡」比大小，
       # 两个量纲永远不可能相等，是注定失败的检查（8.35㎡ 实为东南客房 bedroom_se 标注，
-      # 见 docs/decisions/02-layout-public.md DEC-2026-08-27-047，原记录误引，已删）。
+      # 见 DEC-2026-08-27-047（原文：git show 8abfbe3b:docs/decisions/02-layout-public.md#L389），原记录误引，已删）。
       # 改为**跨文件三方对账**：study 房面积是冷负荷的分母（2.8kW ÷ 12.75㎡ ≈ 220W/㎡），
       # house.yaml / hvac.yaml / RFQ 三处必须同值，任一处漂移都会让冷负荷结论失据。
       - path: config/hvac.yaml
@@ -1149,8 +1149,8 @@ facts:
 
 # 2026-11-09 issue #98 第六阶段 S2：DEC 编号的机器可解析靶 = config/decision-knowledge.yaml
 # （业主 2026-11-08 裁定②：不建中央决策账；S1 的 config/decision-registry.yaml 是原料、拆完即删）。
-# 该文件两段：entries（真·不可再生的知识）+ retired（292 条墓碑一行，只登记 id/subject/status/
-# superseded_by/record/landing）。它**不是**活文档——没有任何事实以它为权威源，它只回答
+# 该文件两段：entries（真·不可再生的知识）+ retired（292 条墓碑一行，只登记 id/subject/
+# superseded_by/record/landing；墓碑不带 status——业主 2026-11-10 裁定）。它**不是**活文档——没有任何事实以它为权威源，它只回答
 # 「这个编号还在册吗、它的原文在 git 哪里、内容去了哪」。
 #
 # 本字段（decision_log_files）是 repair_channel.decision_ref 存在性校验的靶清单
@@ -1369,7 +1369,7 @@ contracts:
       - path: config/ceiling.yaml
         reason: "issue #98 第三阶段 S1 已删除（迁至 config/model/envelope/ceiling.yaml）；历史文档与迁移注释保留旧路径是为了写明吊顶声明沿革，不是引用活配置"
       - path: docs/decisions/
-        reason: "issue #98 第六阶段 S3 已整份删除（20 文件 / 292 条 DEC，正文即 git 历史）。config/decision-knowledge.yaml 的 retired 段 252 条 record 字段（形如 docs/decisions/05-hvac.md#L123）与 config/decision-gates.yaml 的旗标沿革注释保留这些路径，是为了写明「DEC 原文在 git 史的哪个文件哪一行」——文件删除后路径必然失效，这是墓碑的设计形态（AGENTS.md「一题一文档，退场不建归档目录」），不是引用腐烂"
+        reason: "issue #98 第六阶段 S3 已整份删除（20 文件 / 292 条 DEC，正文即 git 历史）。config/decision-knowledge.yaml 的 retired 段 252 条 record 字段（形如 8abfbe3b:docs/decisions/05-hvac.md#L123）与 config/decision-gates.yaml 的旗标沿革注释保留这些路径，是为了写明「DEC 原文在 git 史的哪个文件哪一行」——文件删除后路径必然失效，这是墓碑的设计形态（AGENTS.md「一题一文档，退场不建归档目录」），不是引用腐烂"
 
   # ④ 规则引用的家具 type 必须存在于 house.yaml furnishings。固化上一轮手修成果
   # （tv_stand / wardrobe_240 / master_freestanding_wardrobe_062 三类已补齐），
@@ -1603,12 +1603,12 @@ contracts:
     registered_conflicts: 89
     # 2026-10-12 DEC-2026-10-12-R1：删主卧两盏明装床头壁灯改小米床头灯插电，删 2 条照明路由，55→54。
     # 2026-10-12 DEC-2026-10-12-R2：业主裁定两卫照明用浴霸三合一自带、删 4 条卫浴照明路由，54→52。
-    # 均为设计侧删灯具导致的真实减少，非消音。授权来源：docs/decisions/06-electrical.md §DEC-2026-10-12-R1 / R2。
-    # 2026-10-18 DEC-2026-10-18-R21：走线修复批改 strong-power-kitchen / strong-ded-dishwasher 尾段（R13 误序还原 + 「电源走地面」落地重画），两条路线的厨房幕墙脸下引竖段不再进入 ceiling_kitchen footprint 低于完成面，2 处 hit 合法消失，54→52。授权来源：docs/decisions/13-mep-integration.md §DEC-2026-10-18-R21。
+    # 均为设计侧删灯具导致的真实减少，非消音。授权来源：DEC-2026-10-12-R1 / R2（原文：git show 8abfbe3b:docs/decisions/06-electrical.md#L307、#L321）。
+    # 2026-10-18 DEC-2026-10-18-R21：走线修复批改 strong-power-kitchen / strong-ded-dishwasher 尾段（R13 误序还原 + 「电源走地面」落地重画），两条路线的厨房幕墙脸下引竖段不再进入 ceiling_kitchen footprint 低于完成面，2 处 hit 合法消失，54→52。授权来源：DEC-2026-10-18-R21（原文：git show 8abfbe3b:docs/decisions/13-mep-integration.md#L138）。
     # 2026-10-17 DEC-2026-10-17-R4：承载层 floor_branch(_candidate) 且有 route point 进入 y≤0.35m 垫层带时退出吊顶完成面比较；高位误标仍被计入。开放起降继续由 unsupported_span 检查。事实引擎复用 MEP footprint/段相交逻辑，纳入 strong-power-master × curtain_box_master_south 段内穿越项；最终双引擎同为 51/42 条路线/14 区，本轮较旧登记少 1 处，无路线被删除。
     # 2026-10-27 DEC-2026-10-27-R01：书房删除床头开关，删 strong-light-bedrooms-parent-bed 路线，99→97（灯位端点 + 开关端点 2 处低于完成面 hit 随路线消失）。
-    # 2026-10-28 DEC-2026-10-28-R04：客房床头双控开关与 NP-2 起夜灯从 bed_150 床头板正后方 (16.40,7.60) 南移至床边带 (16.40,8.55)，两条路线（strong-light-bedrooms-study-guest-bed / -night）的竖直下引段随之移出 curtain_box_study_south footprint，2 处低于完成面 hit 合法消失，97→95（涉及路线 76→74，分区 16 不变——窗帘盒仍有 strong-light-bedrooms-study-night-side 等路由命中）。授权来源：docs/decisions/06-electrical.md §DEC-2026-10-28-R04。
-    # 2026-10-28 DEC-2026-10-28-R05：三间朝南卧室窗帘盒归位到各自玻璃线内侧（客房 z[9.63,9.88]、主卧/书房 z[9.55,9.80]，盒南缘贴玻璃，与 curtain_box_living 同口径），旧盒 footprint（客房 z[7.60,7.85] 悬在床中段上方、主卧/书房 z[8.70,8.95] 浮在窗内 0.85m）内的 6 处低于完成面 hit 全部消失，95→89（涉及路线 74→72、分区 16→13——三个 curtain_box_* 分区退出涉及集合）；新增 1 条 shear_wall_parallel_route 来自床头开关供电路贴 w_east_upper 墙段 1.43m，不属本契约。授权来源：docs/decisions/06-electrical.md §DEC-2026-10-28-R05。
+    # 2026-10-28 DEC-2026-10-28-R04：客房床头双控开关与 NP-2 起夜灯从 bed_150 床头板正后方 (16.40,7.60) 南移至床边带 (16.40,8.55)，两条路线（strong-light-bedrooms-study-guest-bed / -night）的竖直下引段随之移出 curtain_box_study_south footprint，2 处低于完成面 hit 合法消失，97→95（涉及路线 76→74，分区 16 不变——窗帘盒仍有 strong-light-bedrooms-study-night-side 等路由命中）。授权来源：DEC-2026-10-28-R04（原文：git show 8abfbe3b:docs/decisions/06-electrical.md#L739）。
+    # 2026-10-28 DEC-2026-10-28-R05：三间朝南卧室窗帘盒归位到各自玻璃线内侧（客房 z[9.63,9.88]、主卧/书房 z[9.55,9.80]，盒南缘贴玻璃，与 curtain_box_living 同口径），旧盒 footprint（客房 z[7.60,7.85] 悬在床中段上方、主卧/书房 z[8.70,8.95] 浮在窗内 0.85m）内的 6 处低于完成面 hit 全部消失，95→89（涉及路线 74→72、分区 16→13——三个 curtain_box_* 分区退出涉及集合）；新增 1 条 shear_wall_parallel_route 来自床头开关供电路贴 w_east_upper 墙段 1.43m，不属本契约。授权来源：DEC-2026-10-28-R05（原文：git show 8abfbe3b:docs/decisions/06-electrical.md#L751）。
     prose:
       - path: docs/mep-construction-guidance.md
         extract: '低于降板完成面的既有冲突\s*(\d+)\s*处'
@@ -1622,7 +1622,7 @@ contracts:
     check_scope:
       compared_layers: [strong_power, weak_power, refrigerant, condensate, supply_air, return_air]
       exempt_layers: [water_supply, drainage]
-      exemption_basis: 'DEC-2026-10-06-R5（docs/decisions/13-mep-integration.md「#41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」配套口径修正）'
+      exemption_basis: 'DEC-2026-10-06-R5（原文：git show 8abfbe3b:docs/decisions/13-mep-integration.md#L29「#41 裁定：MEP 分层标高升入降板空腔，保走廊净高 2.50m」配套口径修正）'
       exemption_count_in_current_engine: 20
       engine_note: '比较范围同为吊顶承载层 6 类；只有 floor_branch / floor_branch_candidate 且 route points 至少有一点落入 y≤0.35m 垫层带的路线退出吊顶面比较。缺少垫层点的误标路线由 verify:mep floor_branch_missing_floor_band 报出，空间起降依托仍由 3D unsupported_span 检查。两引擎共享 ceiling footprint 与 segment 相交算法，R22-v0.5 历史快照双引擎实算49（42 条路线/15 个分区）；R25 按管径及声明保温外包络复核后当前 verify:facts = registered_conflicts = verify:mep ceiling_clearance_unverified = 62（50 条路线/15 个分区）：R22-v0.5-3 纯重力迭代把 condensate-living / condensate-dining 走廊段抬至吊顶腔内（y2.48–2.52，重力口假设 2.52 待厂家 #39），两线 × 走廊/客厅带的 3 处低于完成面 hit 合法消失 −3（52→49）；客卫镜柜背后段仍在（B2a 视觉遮蔽口径，镜柜通高待业主裁定）。上一态 52：R21 厨房尾段竖井落地 −2（54→52）。上一态 54（44 条路线/15 个分区，ceiling_entry_foyer 为新增涉及分区）：DEC-2026-10-17-R20 一减一增——删 strong-ded-fridge/strong-power-parent-child-parentbed-l 两条旧位路线 −1（51→50），同批走线专项 4 条新路线（strong-ded-fridge-living/strong-power-waterbar/strong-power-kitchen-east/strong-power-weakbox）终点即设备点位本身、落吊顶分区边缘，属已登记①类「竖直下引至设备点位的末点」同类残留 +4（50→54）。修正记录见 DEC-2026-10-17-R4：移除有地面点路线的低于吊顶平面误报，并补上此前 facts 点检查漏掉的 strong-power-master × curtain_box_master_south 段内穿越。历史 24 处基线见 DEC-2026-10-06-R5。R04（2026-10-23 DEC-2026-10-23-R04）：ceiling_guest_bath 东界随客卫东墙线 7.10→7.20，其 SE 角点 (7.20,4.30) 与走廊枢纽 bend_corridor 坐标重合，39 条以该枢纽为端点的吊顶承载层路线在起点单点触碰角部（标高 2.55 < B 区完成面 2.65），双引擎实算 62→101（78 条路线/15 个分区）；逐条 diff 核实无一例实体穿越新增东界带，属角点单点触碰登记，量房实测枢纽/角点任一偏移即消解。R01（2026-10-25 DEC-2026-10-25-R01 复核）：strong-light-entry-night-guest-door 自直连段改为中竖墙/东南房西墙墙面带走线（12.77/12.71 面带、0.30m 高），但其墙面带段仍在 ceiling_study_ac / ceiling_living footprint 内且低于完成面（方法仍为 conduit、未走 floor_branch 口径），故该 hit 未消失；双引擎实算仍为 101（与 master 一致），登记数不改。本轮新增的量房桶 +1 来自 w_cent_north 穿孔声明（shear_wall_penetration 10→11），见 guidance §6。R02（2026-10-26 DEC-2026-10-26-R02）：书桌东移，strong-power-study 与 weak-parent 改道东墙、不再南下，两专线各减 1 处低于完成面 hit，双引擎实算 101→99，登记数同步 101→99。'
     # ⑦ 修正通道（repair_channel）：本契约抓的既有冲突只能由**设计侧裁定**消解
@@ -1912,7 +1912,8 @@ coverage:
   # evidence 指针 + pending 指针）已删，本文件是它拆完之后的残壳，只收两类东西：
   #   entries  —— 真·不可再生的知识（合同成交语义/竞品淘汰理由/业主原话与口头规格/实地断言/
   #               静默失效分析），每条带 landing 指向它同时落到的机读位置；
-  #   retired  —— 292 条里其余的墓碑一行（id/subject/status/superseded_by/record/landing），
+  #   retired  —— 292 条里其余的墓碑一行（id/subject/superseded_by/record/landing；
+  #               墓碑不带 status——业主 2026-11-10 裁定），
   #               不搬正文——正文即 git 历史。它存在的机器理由是让 c.dec_unique /
   #               c.dec_ref_resolvable / repair_channel.decision_ref 在 docs/decisions/
   #               删除后仍有靶（约 1,900 处编号引用不能变悬空）。

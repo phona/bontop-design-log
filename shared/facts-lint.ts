@@ -354,7 +354,8 @@ function pathMatches(spec: string, file: string): boolean {
  *  2026-11-09 issue #98 S2：DEC 档案退役后 target 收敛回单文件
  *  `config/decision-knowledge.yaml`，本引擎读它的两个顶层段：
  *    · `entries` —— 知识条目（`  - id: "DEC-…"` + kind/subject/knowledge/landing）；
- *    · `retired` —— 墓碑行（同形 `  - id: "DEC-…"` + subject/status/superseded_by/record/landing）。
+ *    · `retired` —— 墓碑行（同形 `  - id: "DEC-…"` + subject/superseded_by/record/landing；
+ *      不带 status——业主 2026-11-10 裁定墓碑只留编号/标题/原文位置）。
  *  两段用同一种登记行形态，故 unique / fk / repair_channel 的 pattern 一套全覆盖。 */
 function pathList(v: unknown): string[] {
   if (Array.isArray(v)) return stringList(v);

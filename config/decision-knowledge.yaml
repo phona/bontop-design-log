@@ -12,8 +12,9 @@
 #    实地断言、静默失效分析、证据等级限定）。每条带 `landing` 指向它同时落到的机读位置。
 #    这段不承载状态、不承载未决项本体（未决项住 原量房台账（已于 S2-B 退场））、不承载几何。
 #
-# ② retired —— **墓碑一行 + git commit**。只登记 id / subject / status / superseded_by /
-#    record（DEC 原文在 git 历史里的文件+行定位）/ landing（内容去了哪）。
+# ② retired —— **墓碑一行 + git commit**。只登记 id / subject / superseded_by /
+#    record（原文定位，形如 `8abfbe3b:docs/decisions/05-hvac.md#L123`，`git show
+#    8abfbe3b:docs/decisions/05-hvac.md` 可取原文）/ landing（内容去了哪）。
 #    **不搬正文、不搬 intent 摘要**——正文即 git 历史（AGENTS.md「一题一文档，退场不建
 #    归档目录」）。它存在的机器理由是：全仓约 1,900 处 DEC 编号引用在 docs/decisions/
 #    删除后仍需可解析（facts.yaml 的 c.dec_unique / c.dec_ref_resolvable 与
@@ -22,9 +23,13 @@
 # 与 S1 登记簿的区别（为什么这不是换名的登记簿）：
 #   登记簿 292 条 × intent 摘要（均长 324 字符）+ evidence 指针 + pending 指针 = 一份
 #   中央决策账；本文件 entries 只收拆不出去的知识，retired 只留墓碑行。
-#   status 不再由查表维护（业主裁定①）：构件的 confirmed/inferred/pending 是对象自己声明
-#   的字段（config/state-model.yaml 优先级链只剩 [conflict, config_status, fallback]），
+#   **墓碑不带 status**（业主 2026-11-10 裁定）：status 曾腐烂过一次（25 条标 active 但
+#   内容早已被取代），且没有机制保证它跟随对象配置；编号/标题/原文位置是历史事实不会
+#   腐烂，追溯交给 git。构件的 confirmed/inferred/pending 是对象自己声明的字段
+#   （config/state-model.yaml 优先级链只剩 [conflict, config_status, fallback]），
 #   DEC 编号不再产生任何状态。
+#   record 的 commit 固定为 8abfbe3b（业主 2026-11-10 指定的 DEC 档案归档基线；该 commit
+#   的 20 个 docs/decisions 文件均在，252 条 record 的标题行已逐条核对可命中）。
 #
 # YAML 铁律 7：值内含 `#`（编号 #39、色值 #c9c1b5 等）一律加引号或写进折叠块标量；
 #   未加引号的裸 `#` 会被 js-yaml 静默吞掉半行——由 tests/server/decision-knowledge.test.ts
@@ -570,1518 +575,1267 @@ entries:
 # ---------------------------------------------------------------------------
 # retired —— 墓碑一行 + git commit（不搬正文）
 # ---------------------------------------------------------------------------
-# record = DEC 原文在 git 历史里的定位（docs/decisions/ 删除后由 git show 取得）；
-# landing = 本条内容去了哪（词表见文件头）。status 只作历史状态留痕，不再派生任何构件状态。
+# record = DEC 原文在 git 历史里的定位：`<commit>:<path>#L<line>`，`git show <commit>:<path>`
+# 取得原文；commit 固定为归档基线 8abfbe3b（见文件头）。
+# landing = 本条内容去了哪（词表见文件头）。墓碑不带 status（业主 2026-11-10 裁定）。
 retired:
   - id: "DEC-2026-07-03-001"
     subject: "项目控制框架确定"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L32"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L32"
     landing: ["git"]
   - id: "DEC-2026-07-25-008"
     subject: "验证体系补强"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L48"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L48"
     landing: ["git"]
   - id: "DEC-2026-08-01-009"
     subject: "预算口径重构为四池 + 关键选材定稿"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L63"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L63"
     landing: ["git"]
   - id: "DEC-2026-08-01-010"
     subject: "承包方式与飘窗（计划内默认，可否决）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L81"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L81"
     landing: ["git"]
   - id: "DEC-2026-08-01-011"
     subject: "卧室地面建模 + 数据置信度机制 + 人工费假设"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L96"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L96"
     landing: ["git", "object"]
   - id: "DEC-2026-08-01-012"
     subject: "巡场高优先修复：补空调插座 + 西北次卧衣柜降 1.8m"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L116"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L116"
     landing: ["git", "object"]
   - id: "DEC-2026-08-01-013"
     subject: "窗帘预算调整 + 电动策略"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L134"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L134"
     landing: ["git", "quote-card"]
   - id: "DEC-2026-08-02-013"
     subject: "设计审查：全屋布局深化 + 水电交底清单"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L151"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L151"
     landing: ["git", "object"]
   - id: "DEC-2026-09-12-R1"
     subject: "一期预算压缩至20万：成品柜路线+七项后移二期+选择性保档"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L176"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L176"
     landing: ["git", "quote-card"]
   - id: "DEC-2026-09-12-R2"
     subject: "一期家具逐房范围冻结：最低浪费、保证日常"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L188"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L188"
     landing: ["git"]
   - id: "DEC-2026-09-12-R3"
     subject: "云鲸 J6 按 3,000 元追加进入一期"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L198"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L198"
     landing: ["git", "quote-card:schedule/phase-1/control.yaml"]
   - id: "DEC-2026-10-03-R4"
     subject: "固定柜体维持阶段边界：成品柜走一期家具池，通顶定制衣柜继续二期"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L220"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L220"
     landing: ["git", "object"]
   - id: "DEC-2026-10-06-R3"
     subject: "三项设计迭代延后登记（业主授权默认方案，执行轮次待排）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L245"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L245"
     landing: ["git", "object"]
   - id: "DEC-2026-10-06-R6"
     subject: "施工排期捋顺：补三个接口冻结阻断项 + 两处依赖倒挂修正"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L253"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L253"
     landing: ["git"]
   - id: "DEC-2026-11-03-R1"
     subject: "扫地机现行候选由 J6 改 JX 超薄上下水版（业主拍板，非最终锁定）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L364"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L364"
     landing: ["git"]
   - id: "DEC-2026-11-04-R2"
     subject: "批准云鲸 JX ¥99 追加批复（家电池与一期上限同步 +99）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/01-control-budget.md#L378"
+    record: "8abfbe3b:docs/decisions/01-control-budget.md#L378"
     landing: ["git", "quote-card:schedule/phase-1/control.yaml"]
   - id: "DEC-2026-07-05-002"
     subject: "确定套内布局底图"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L48"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L48"
     landing: ["git"]
   - id: "DEC-2026-07-05-003"
     subject: "确定入户花园范围与用途"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L63"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L63"
     landing: ["git"]
   - id: "DEC-2026-07-05-004"
     subject: "确认外立面为玻璃幕墙"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L79"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L79"
     landing: ["git"]
   - id: "DEC-2026-07-05-005"
     subject: "80% 方案共创定稿"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L94"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L94"
     landing: ["git"]
   - id: "DEC-2026-07-25-006"
     subject: "房间功能调整"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L124"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L124"
     landing: ["git"]
   - id: "DEC-2026-07-25-007"
     subject: "客厅电视墙确认在西墙"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L139"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L139"
     landing: ["git"]
   - id: "DEC-2026-08-05-014"
     subject: "厨房南界修正（创想图核对）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L154"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L154"
     landing: ["git"]
   - id: "DEC-2026-08-05-015"
     subject: "餐桌西移对齐创想图（让出厨房动线）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L172"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L172"
     landing: ["git"]
   - id: "DEC-2026-08-05-018"
     subject: "书桌补家具 + 全屋家具 3D 模型补全 + 预算拍板"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L182"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L182"
     landing: ["git"]
   - id: "DEC-2026-08-06-020"
     subject: "餐桌旋转靠墙成餐区角（终结\"过道中间\"观感）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L196"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L196"
     landing: ["git"]
   - id: "DEC-2026-08-06-021"
     subject: "厨房缩界 z=2.4 / 餐厅带扩至 1.9m（冰箱灶台北移）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L206"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L206"
     landing: ["git", "object"]
   - id: "DEC-2026-08-06-022"
     subject: "三联动推拉门建模（overlay 声明式元素 + 可交互 + 随状态碰撞）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L220"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L220"
     landing: ["git"]
   - id: "DEC-2026-08-20-028"
     subject: "玄关餐边一体柜立项 + 东南卧室门北移 + 玄关不做隔断"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L235"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L235"
     landing: ["git"]
   - id: "DEC-2026-08-20-029"
     subject: "西墙电视背景柜墙 + 沙发电视同轴南移 0.7m"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L251"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L251"
     landing: ["git"]
   - id: "DEC-2026-08-20-030"
     subject: "入户花园可移动换鞋站 + 门内双面低柜"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L270"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L270"
     landing: ["git"]
   - id: "DEC-2026-08-20-031"
     subject: "玄关与电视墙柜体缩尺让出动线"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L286"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L286"
     landing: ["git"]
   - id: "DEC-2026-08-20-032"
     subject: "门内半高定制柜：玄关与餐厅的可见边界"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L300"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L300"
     landing: ["git", "object"]
   - id: "DEC-2026-08-21-033"
     subject: "西墙电视区：不做电视背景墙；高柜定制、低柜选型待定"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L313"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L313"
     landing: ["git"]
   - id: "DEC-2026-08-21-034"
     subject: "餐桌靠客卫实体墙，释放厨房入口动线"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L333"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L333"
     landing: ["git"]
   - id: "DEC-2026-08-21-035"
     subject: "邻户图校准三事：飘窗 sill 分房间、儿童房 B 案、主卫隔墙北移"
-    status: superseded
     superseded_by: "DEC-2026-08-21-039"
-    record: "docs/decisions/02-layout-public.md#L342"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L342"
     landing: ["git"]
   - id: "DEC-2026-08-26-044"
     subject: "餐厨推拉门改版：到顶极窄边长虹玻璃 + 一固三活单向叠收东端"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L356"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L356"
     landing: ["git"]
   - id: "DEC-2026-08-26-046"
     subject: "书房多功能个人提升空间定案"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L373"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L373"
     landing: ["git", "object"]
   - id: "DEC-2026-08-27-047"
     subject: "书房南玻璃栏板凹进修正（东南角凹口）"
-    status: superseded
     superseded_by: "DEC-2026-10-23-R04"
-    record: "docs/decisions/02-layout-public.md#L389"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L389"
     landing: ["git"]
   - id: "DEC-2026-10-05-R9"
     subject: "父母房↔书房功能互换 v0（几何不动）+ 删除轻训练器材 + 起夜照明立项"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L400"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L400"
     landing: ["git", "object"]
   - id: "DEC-2026-10-05-R10"
     subject: "v0 审查整改批次 A：衣柜预算 roomOverride 修正与防回归"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L413"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L413"
     landing: ["git", "quote-card"]
   - id: "DEC-2026-10-05-R19"
     subject: "厨房铝扣板收墙+餐厅两条服务带（案1）：餐桌区恢复 2.80 平顶"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L423"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L423"
     landing: ["git", "object"]
   - id: "DEC-2026-10-05-R20"
     subject: "功能评审阻断项修复轮（三项）+ 双复评审通过"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L434"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L434"
     landing: ["git", "object"]
   - id: "DEC-2026-10-14-R01"
     subject: "冰箱搬至长虹门南/入户门西侧的3D候选 + 东墙灶台段扩展"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L444"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L444"
     landing: ["git"]
   - id: "DEC-2026-10-15-R02"
     subject: "玄关双面半高柜冻结为700mm北端落物区并进入结构深化"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L456"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L456"
     landing: ["git", "object"]
   - id: "DEC-2026-10-16-R01"
     subject: "日常四人南北向餐桌与西侧冰箱布局落入模型"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L470"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L470"
     landing: ["git"]
   - id: "DEC-2026-10-16-R02"
     subject: "厨房北侧800mm咖啡工作段与EM450真实尺寸程序化预演"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L483"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L483"
     landing: ["git", "object"]
   - id: "DEC-2026-10-16-R03"
     subject: "餐厅加入米家茶吧机独立落地预演"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R05"
-    record: "docs/decisions/02-layout-public.md#L495"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L495"
     landing: ["git"]
   - id: "DEC-2026-10-16-R04"
     subject: "餐厅水吧增加可移动低边柜视觉预演"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R05"
-    record: "docs/decisions/02-layout-public.md#L507"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L507"
     landing: ["git", "code:app/src"]
   - id: "DEC-2026-10-16-R05"
     subject: "餐厅水吧并置S1与EM450、厨下RO机身预演"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L520"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L520"
     landing: ["git"]
   - id: "DEC-2026-10-16-R06"
     subject: "米家S1程序化形体修正：外挑上盖与内凹出水腔"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R07"
-    record: "docs/decisions/02-layout-public.md#L533"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L533"
     landing: ["git"]
   - id: "DEC-2026-10-16-R07"
     subject: "米家S1按参考图改为左偏出水腔/右侧主机身 V3"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R09"
-    record: "docs/decisions/02-layout-public.md#L545"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L545"
     landing: ["git"]
   - id: "DEC-2026-10-16-R08"
     subject: "米家S1外观V4修正：高凹腔、贴合水位窗与栅格接水盘"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R09"
-    record: "docs/decisions/02-layout-public.md#L556"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L556"
     landing: ["git"]
   - id: "DEC-2026-10-16-R09"
     subject: "米家S1外观V5方向修正：东侧出水、西侧后置水箱"
-    status: superseded
     superseded_by: "DEC-2026-10-17-R11"
-    record: "docs/decisions/02-layout-public.md#L567"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L567"
     landing: ["git"]
   - id: "DEC-2026-10-17-R11"
     subject: "米家S1外观V6修正：官方三视图确认出水腔在106窄面，312长轴转东西向"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L579"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L579"
     landing: ["git", "object"]
   - id: "DEC-2026-10-26-R01"
     subject: "入户黑块建模：端头厚块立墙，强弱电箱获墙背衬（推翻 R01“以墙线代理、不另建墙”）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L651"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L651"
     landing: ["git", "object"]
   - id: "DEC-2026-10-26-R03"
     subject: "入户块东脸西缩：避 d_ent 西铰链（R01 门洞重叠项落定）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L675"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L675"
     landing: ["git", "object"]
   - id: "DEC-2026-10-26-R02"
     subject: "书房墙垛建模：x=4.20 墙书房侧墙垛 + 书桌椅东移 + 衣柜南延（方案一）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L696"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L696"
     landing: ["git", "object"]
   - id: "DEC-2026-10-27-R02"
     subject: "书房 L 柜腿通顶：腿顶跟吊顶走台阶（边吊区 2.50 / 平顶区 2.80）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/02-layout-public.md#L726"
+    record: "8abfbe3b:docs/decisions/02-layout-public.md#L726"
     landing: ["git", "object"]
   - id: "DEC-2026-08-26-045"
     subject: "主卧空调檐口定案 + 条带东北角通顶储物柜（冷凝水柜内走管）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L35"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L35"
     landing: ["git", "object"]
   - id: "DEC-2026-09-01-050"
     subject: "主卧南床头独立干式梳妆台 + 外置纯洗手柜"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L57"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L57"
     landing: ["git"]
   - id: "DEC-2026-09-02-001"
     subject: "主卧候选方案落地（未落地施工）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L76"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L76"
     landing: ["git", "object"]
   - id: "DEC-2026-09-02-051"
     subject: "主卧洗手柜角部窗帘分段 + 柜体东移收宽 + 盆居中（初版，待量房终核）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L89"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L89"
     landing: ["git", "object"]
   - id: "DEC-2026-09-02-051-补"
     subject: "百叶段南延至 z=4.00"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L112"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L112"
     landing: ["git"]
   - id: "DEC-2026-09-02-051-补2"
     subject: "分界立柱建模 + 布帘起点 4.00→4.06 消重合"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L121"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L121"
     landing: ["git"]
   - id: "DEC-2026-09-02-051-补3"
     subject: "磨砂隐私层 + 无构件收口，取消独立黑柱"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L130"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L130"
     landing: ["git"]
   - id: "DEC-2026-09-02-052"
     subject: "主卧候选方案视觉反馈修正（未落地施工）（同日另一条 DEC-2026-09-02-053 原与本条同号 052，已改号）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L142"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L142"
     landing: ["git", "object"]
   - id: "DEC-2026-09-02-052-补"
     subject: "条带柜组回滚：恢复两块悬浮板，撤销薄高柜"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L157"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L157"
     landing: ["git", "object"]
   - id: "DEC-2026-09-02-053"
     subject: "主卧床北移 0.25m + 条带薄高柜替换两块悬浮板（迭代 mb-bedshift-stripcabinet-20260902）（原编号 052，因与同日另一决策重号已改号；同日另一条见 DEC-2026-09-02-052）"
-    status: superseded
     superseded_by: "DEC-2026-09-02-052-补"
-    record: "docs/decisions/03-master-bedroom.md#L167"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L167"
     landing: ["git"]
   - id: "DEC-2026-09-03-053"
     subject: "主卧家具化前台 + 书房季节后台（迭代 master-flexible-frontstage-20260903，五件协议文档建立，未冻结）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L184"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L184"
     landing: ["git", "object"]
   - id: "DEC-2026-09-04-R1"
     subject: "梳妆桌贴西窗 + 南侧轻中古矮柜（迭代 master-flexible-frontstage-20260903 R1 修订，未冻结）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L200"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L200"
     landing: ["git", "object"]
   - id: "DEC-2026-09-04-R2"
     subject: "东墙构成修正（衣柜降 620mm 级 + 点位枕头区成组，迭代 master-flexible-frontstage-20260903，未冻结）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L213"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L213"
     landing: ["git", "object"]
   - id: "DEC-2026-09-04-R2.1"
     subject: "/R2.2 点位重叠修复与壁灯渲染锚点根因修复"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L228"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L228"
     landing: ["git"]
   - id: "DEC-2026-09-04-R2.3"
     subject: "床头点位抬升出床头板"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L234"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L234"
     landing: ["git"]
   - id: "DEC-2026-09-05-002"
     subject: "候选 A 双普通床头柜 runtime 净距修正（未落地施工）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L240"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L240"
     landing: ["git"]
   - id: "DEC-2026-09-05-003"
     subject: "R5纠偏：统一350mm床头柜与横柜真实门状态"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L253"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L253"
     landing: ["git"]
   - id: "DEC-2026-09-05-R6.2"
     subject: "主卧北墙衣柜与窗帘软包络契约修正（候选预演，blocked）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L266"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L266"
     landing: ["git"]
   - id: "DEC-2026-09-06-R7.1"
     subject: "衣柜-悬浮板 L 形转角与门头盒一体收口修正"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L279"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L279"
     landing: ["git"]
   - id: "DEC-2026-09-06-R7"
     subject: "主卧北墙通顶定制衣柜（650 收窄版）+ 空调门头盒一体预演"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L292"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L292"
     landing: ["git", "code"]
   - id: "DEC-2026-09-07-R10"
     subject: "主卧门头盒送回风轴线微调"
-    status: active
     superseded_by: null
-    record: "docs/decisions/03-master-bedroom.md#L311"
+    record: "8abfbe3b:docs/decisions/03-master-bedroom.md#L311"
     landing: ["git"]
   - id: "DEC-2026-08-21-036"
     subject: "主卫布局纠正：台盆外置贴东墙（业主原意）"
-    status: superseded
     superseded_by: "DEC-2026-08-21-039"
-    record: "docs/decisions/04-bathrooms.md#L36"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L36"
     landing: ["git"]
   - id: "DEC-2026-08-21-037"
     subject: "主卫终版：隔墙累计北移0.9 + 卫门推拉 + 东墙1.25m柜带"
-    status: superseded
     superseded_by: "DEC-2026-08-21-039"
-    record: "docs/decisions/04-bathrooms.md#L46"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L46"
     landing: ["git"]
   - id: "DEC-2026-08-21-038"
     subject: "主卫终版纠正：台盆柜带改隔墙外侧（东墙路线证伪）"
-    status: superseded
     superseded_by: "DEC-2026-08-21-039"
-    record: "docs/decisions/04-bathrooms.md#L57"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L57"
     landing: ["git"]
   - id: "DEC-2026-08-21-039"
     subject: "主卫终终版：照样板间恢复6.5 平米、内部左右分离、条带改存储区"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L67"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L67"
     landing: ["git"]
   - id: "DEC-2026-08-25-043"
     subject: "主卫台盆外移至套间条带（干湿分离，第一版）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L81"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L81"
     landing: ["git", "object"]
   - id: "DEC-2026-08-29-048"
     subject: "客卫南墙北移、外置洗漱及南北串联布局"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L109"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L109"
     landing: ["git"]
   - id: "DEC-2026-08-29-049"
     subject: "客卫马桶按真实模型 AABB 南移并避让外门扫掠"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L122"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L122"
     landing: ["git"]
   - id: "DEC-2026-09-07-054"
     subject: "客卫改整面固定玻璃 + 西端开敞入口（取消铰接玻璃门）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L133"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L133"
     landing: ["git", "object"]
   - id: "DEC-2026-09-07-R11"
     subject: "主卫东墙底柜收深并贴西完成面"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L144"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L144"
     landing: ["git"]
   - id: "DEC-2026-09-09-R1"
     subject: "扫地机器人基站预留（客卫台盆下主位 + 客厅备用；阳台方案否决回滚）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L155"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L155"
     landing: ["git", "object"]
   - id: "DEC-2026-09-09-R2"
     subject: "客卫镜柜登记（台盆上方储物主层，替换台盆内置平镜）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L167"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L167"
     landing: ["git", "object"]
   - id: "DEC-2026-09-09-R3"
     subject: "客卫门铰链改西侧 + 电热毛巾架迁马桶上方"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L177"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L177"
     landing: ["git", "object"]
   - id: "DEC-2026-09-09-R4"
     subject: "客卫门洞东移 0.10m（修 R3 引入的门叶穿模）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L187"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L187"
     landing: ["git", "object"]
   - id: "DEC-2026-09-09-R5"
     subject: "客卫台盆柜改悬空 + 扫地机基站模型泊入"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L197"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L197"
     landing: ["git", "object"]
   - id: "DEC-2026-09-09-R7"
     subject: "客卫台盆柜加深至 0.50m（全藏台下基站）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L217"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L217"
     landing: ["git", "object"]
   - id: "DEC-2026-10-05-R3"
     subject: "浴霸设备锚点定案与卫浴回路拆分"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L228"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L228"
     landing: ["git", "object"]
   - id: "DEC-2026-10-05-R12"
     subject: "卫浴洁具目标下调归档（花洒/客卫浴室柜）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L238"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L238"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-R02"
     subject: "卫浴 PKG-100 第二次收口：主卫柜先入账 1,500 + 花洒降档 + 玻璃屏归属定案 + 条带定制柜划归二期"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L245"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L245"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-22-R03"
     subject: "卫生间施工与 QA 门禁收口（第二批）：美缝拆包 PKG-065 卫生间先行 + 洁具门禁改指 + 规范条号复核结论"
-    status: active
     superseded_by: null
-    record: "docs/decisions/04-bathrooms.md#L284"
+    record: "8abfbe3b:docs/decisions/04-bathrooms.md#L284"
     landing: ["git", "gate:config/acceptance.yaml"]
   - id: "DEC-2026-09-07-055"
     subject: "空调方案深化：内机按负荷重选 + 外机定 7HP 级（品牌未定标）"
-    status: superseded
     superseded_by: "DEC-2026-10-03-R6"
-    record: "docs/decisions/05-hvac.md#L32"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L32"
     landing: ["git"]
   - id: "DEC-2026-10-03-R5"
     subject: "空调逐台容量表补齐：客餐厅拆两台，第 6 台内机落在客餐厅"
-    status: superseded
     superseded_by: "DEC-2026-10-03-R6"
-    record: "docs/decisions/05-hvac.md#L53"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L53"
     landing: ["git"]
   - id: "DEC-2026-10-03-R6"
     subject: "中央空调配置定版：200W 外机 + 21.6 千瓦 六内机（supersedes DEC-2026-10-03-R5）"
-    status: superseded
     superseded_by: "DEC-2026-10-05-R1"
-    record: "docs/decisions/05-hvac.md#L63"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L63"
     landing: ["git"]
   - id: "DEC-2026-10-05-R1"
     subject: "成交内机逐房映射确认与主卧轴线修正"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L117"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L117"
     landing: ["git", "quote-card:config/hvac.yaml"]
   - id: "DEC-2026-10-05-R2"
     subject: "HVAC 口径收口：x=3.70 四层落地与旧口径清除"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L126"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L126"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-05-R11"
     subject: "客餐厅冷凝水改线：候选竖管移出客餐厅平顶区（登记数 149→154 收口）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L138"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L138"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-05-R16"
     subject: "客餐厅送风口升级通长隐藏式黑槽（matte_black）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L149"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L149"
     landing: ["git", "object"]
   - id: "DEC-2026-10-05-R18"
     subject: "客餐厅内机反向安装：南宅北餐分区，下出风同轴成组"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L157"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L157"
     landing: ["git", "object"]
   - id: "DEC-2026-10-06-R4"
     subject: "中央空调方案级初步冻结（施工参数待深化）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L168"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L168"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-R03"
     subject: "客餐厅双出风内机风口三层线语言：功能段独立 + 装饰段封闭（只改表达与节点，不动吊顶几何）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L176"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L176"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-18-R01"
     subject: "客餐厅回风口成组候选：功能间距统一 + 厂家待核"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L191"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L191"
     landing: ["git"]
   - id: "DEC-2026-10-18-R02"
     subject: "客餐厅底面四口整体居中：功能口组中心对齐边吊中心"
-    status: superseded
     superseded_by: "DEC-2026-10-19-R01"
-    record: "docs/decisions/05-hvac.md#L202"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L202"
     landing: ["git"]
   - id: "DEC-2026-10-19-R01"
     subject: "客餐厅下出风排与回风排分别居中：两行中心各对齐边吊中心"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L213"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L213"
     landing: ["git", "object"]
   - id: "DEC-2026-10-19-R02"
     subject: "下出风与回风两行整体南移：南北向居中于边吊"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L224"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L224"
     landing: ["git", "object"]
   - id: "DEC-2026-10-28-R03"
     subject: "书房酒店标准布局：机子移至回风口正上方、删侧口、立面只剩送风"
-    status: active
     superseded_by: null
-    record: "docs/decisions/05-hvac.md#L260"
+    record: "8abfbe3b:docs/decisions/05-hvac.md#L260"
     landing: ["git"]
   - id: "DEC-2026-08-26-043"
     subject: "客厅无主灯整改收敛"
-    status: archived
     superseded_by: "DEC-2026-10-13-R1"
-    record: "docs/decisions/06-electrical-archive.md#L5"
+    record: "8abfbe3b:docs/decisions/06-electrical-archive.md#L5"
     landing: ["git"]
   - id: "DEC-2026-10-16-R1"
     subject: "客厅主灯更新为浅吸顶雕塑形"
-    status: archived
     superseded_by: "DEC-2026-10-16-R2"
-    record: "docs/decisions/06-electrical-archive.md#L18"
+    record: "8abfbe3b:docs/decisions/06-electrical-archive.md#L18"
     landing: ["git"]
   - id: "DEC-2026-10-16-R4"
     subject: "客厅主灯收深钟形并修正外置支撑"
-    status: archived
     superseded_by: "DEC-2026-10-16-R5"
-    record: "docs/decisions/06-electrical-archive.md#L34"
+    record: "8abfbe3b:docs/decisions/06-electrical-archive.md#L34"
     landing: ["git"]
   - id: "DEC-2026-10-16-R12"
     subject: "餐厅吊灯改半吸顶并修正灯位漂移"
-    status: archived
     superseded_by: "DEC-2026-10-17-R8"
-    record: "docs/decisions/06-electrical-archive.md#L47"
+    record: "8abfbe3b:docs/decisions/06-electrical-archive.md#L47"
     landing: ["git"]
   - id: "DEC-2026-08-05-017"
     subject: "全屋插座-洁具/家具交叉验证修正"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L39"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L39"
     landing: ["git"]
   - id: "DEC-2026-08-06-019"
     subject: "厨卫洁具渲染补全 + 死代码清理"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L56"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L56"
     landing: ["git"]
   - id: "DEC-2026-08-12-023"
     subject: "3D 效果模型升级包（PBR 地面 + 收纳三层摆位 + 室内灯光系统）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L69"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L69"
     landing: ["git"]
   - id: "DEC-2026-08-26-011"
     subject: "玄关门厅筒灯与最小灯光回路语义"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L86"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L86"
     landing: ["git", "object"]
   - id: "DEC-2026-08-26-012"
     subject: "保留走廊口筒灯并纳入既有客厅边吊"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L100"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L100"
     landing: ["git"]
   - id: "DEC-2026-09-07-056"
     subject: "电气回路拓扑补全：全部插座/灯具归回路 + 开关绑定受控灯具 + 回路参数"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L114"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L114"
     landing: ["git"]
   - id: "DEC-2026-09-07-057"
     subject: "强电实体走线补全：普通插座/照明/专用回路全部上走线图（40→65 条）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L127"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L127"
     landing: ["git", "object"]
   - id: "DEC-2026-09-08-R1"
     subject: "全屋电气点位审计与升级（插座/灯控/空调线控）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L142"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L142"
     landing: ["git", "gate"]
   - id: "DEC-2026-09-08-R2"
     subject: "父母房门口开关移至门垛中心"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L156"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L156"
     landing: ["git", "object"]
   - id: "DEC-2026-10-03-R1"
     subject: "水电施工冻结前收口：25 条回路→19 条回路、补漏保、燃气报警器合规位、验收扩 9 项"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L165"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L165"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-03-R7"
     subject: "水电收口的验证记录与跨迭代阻塞"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L183"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L183"
     landing: ["git"]
   - id: "DEC-2026-10-04-R2"
     subject: "三路审计收口：外机供电入账第 20 条回路、燃气位重算、验收接门禁、悬空编号回补"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L193"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L193"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-05-R13"
     subject: "B5-A：书房电脑专用回路改道（ordinary_power_study 随功能互换归位）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L217"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L217"
     landing: ["git", "object"]
   - id: "DEC-2026-10-06-R2"
     subject: "电气兜底轮：微蒸烤预留接口 + 全盒零线 + 防溅盒 + 窗帘电源入盒"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L227"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L227"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-F01"
     subject: "飞线改线批：unsupported_span 首扫 33 条清至 8 条显式保留"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L239"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L239"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-F02"
     subject: "unsupported_span 依托模型补全：首末段设备接线段（原顶暗敷带）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L249"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L249"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-M04"
     subject: "声明式补客餐厅电源回路路由 + 纯竖直段纳入物理路由口径"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L281"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L281"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-M05"
     subject: "并行声明式补路由：书房/客房/儿童房 + 四卧两卫 + 走廊入户（三条回路 23 条）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L291"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L291"
     landing: ["git", "object"]
   - id: "DEC-2026-10-12-R1"
     subject: "删主卧两盏明装床头壁灯，改小米床头灯插电"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L307"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L307"
     landing: ["git", "object"]
   - id: "DEC-2026-10-12-R2"
     subject: "两卫照明改用浴霸三合一自带，删平板灯与对应墙控"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L321"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L321"
     landing: ["git", "object"]
   - id: "DEC-2026-10-13"
     subject: "批次说明：客厅主灯改吸顶灯 / 主卫镜柜面光口径与电位核查 / 主卧吸顶灯移位 / 客厅中部定原顶"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L335"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L335"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-13-R1"
     subject: "客厅基础光由明装轨道灯改为贴原顶吸顶灯"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R1"
-    record: "docs/decisions/06-electrical.md#L343"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L343"
     landing: ["git"]
   - id: "DEC-2026-10-13-R3"
     subject: "主卧吸顶灯移位 (2.60,7.60) → (1.70,6.00)"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L387"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L387"
     landing: ["git", "object"]
   - id: "DEC-2026-10-13-R4"
     subject: "客厅中部吊顶定案为原顶 2.80m，不做石膏板平吊"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L411"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L411"
     landing: ["git", "object"]
   - id: "DEC-2026-10-13-R5"
     subject: "电视墙灯带不搞，删点位与整条照明回路（取电插座保留供后期加装）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L421"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L421"
     landing: ["git", "object"]
   - id: "DEC-2026-10-13-R6"
     subject: "客厅中部 1.95m 走线接受明装线槽外露，不做局部假梁"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L436"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L436"
     landing: ["git", "object"]
   - id: "DEC-2026-10-16-R2"
     subject: "客厅主灯由浅吸顶改为悬垂雕塑形"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R3"
-    record: "docs/decisions/06-electrical.md#L452"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L452"
     landing: ["git"]
   - id: "DEC-2026-10-16-R3"
     subject: "客厅主灯改为侧架垂吊灯体，修正R2仍像吸顶灯"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R4"
-    record: "docs/decisions/06-electrical.md#L467"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L467"
     landing: ["git"]
   - id: "DEC-2026-10-16-R5"
     subject: "客厅主灯改10头球泡半吸顶造型"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L482"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L482"
     landing: ["git", "object"]
   - id: "DEC-2026-10-16-R6"
     subject: "客厅主灯按产品参数图修正几何（取代 R5b 内部分解）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L496"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L496"
     landing: ["git", "object"]
   - id: "DEC-2026-10-16-R7"
     subject: "客厅主灯上层环改贴 hub 紧内环（纯视觉微调）"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R10"
-    record: "docs/decisions/06-electrical.md#L509"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L509"
     landing: ["git"]
   - id: "DEC-2026-10-16-R8"
     subject: "客厅主灯夜预演开灯修复（业主反馈「这个主灯不会发光吗」）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L520"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L520"
     landing: ["git", "code"]
   - id: "DEC-2026-10-16-R9"
     subject: "客厅主灯每球泡独立光源"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L529"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L529"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-16-R10"
     subject: "客厅主灯下层环加倾斜对齐参考图（取代 R7 平环读法）"
-    status: superseded
     superseded_by: "DEC-2026-10-16-R11"
-    record: "docs/decisions/06-electrical.md#L538"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L538"
     landing: ["git"]
   - id: "DEC-2026-10-16-R11"
     subject: "客厅主灯改等曲度等长10臂模板（取代 R7~R10 双臂异几何）"
-    status: superseded
     superseded_by: "DEC-2026-10-17-R1"
-    record: "docs/decisions/06-electrical.md#L548"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L548"
     landing: ["git"]
   - id: "DEC-2026-10-17-R1"
     subject: "客厅主灯试换为8头古铜木色弧臂灯（仅视觉预演）"
-    status: superseded
     superseded_by: "DEC-2026-10-17-R3"
-    record: "docs/decisions/06-electrical.md#L563"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L563"
     landing: ["git"]
   - id: "DEC-2026-10-17-R3"
     subject: "客厅8头灯按业主反馈修正连接造型（仅视觉预演）"
-    status: superseded
     superseded_by: "DEC-2026-10-17-R5"
-    record: "docs/decisions/06-electrical.md#L577"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L577"
     landing: ["git"]
   - id: "DEC-2026-10-17-R4"
     subject: "客厅南臂地插改为强电箱侧落地垫层支路，并补查竖向飞线"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L589"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L589"
     landing: ["git", "object"]
   - id: "DEC-2026-10-17-R5"
     subject: "客厅8头灯球罩统一高度，仅保留水平错位"
-    status: superseded
     superseded_by: "DEC-2026-10-17-R6"
-    record: "docs/decisions/06-electrical.md#L606"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L606"
     landing: ["git"]
   - id: "DEC-2026-10-17-R6"
     subject: "客厅8头灯臂根共面并同向上拱"
-    status: superseded
     superseded_by: "DEC-2026-10-17-R7"
-    record: "docs/decisions/06-electrical.md#L618"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L618"
     landing: ["git"]
   - id: "DEC-2026-10-17-R7"
     subject: "客厅8头灯共面弧臂根改接下杯"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L631"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L631"
     landing: ["git", "object"]
   - id: "DEC-2026-10-17-R8"
     subject: "餐厅灯替换为中古风奶油云团灯比例预演"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L642"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L642"
     landing: ["git", "code"]
   - id: "DEC-2026-10-17-R9"
     subject: "餐厅云团灯移至餐厅平顶范围中心"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L657"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L657"
     landing: ["git", "object"]
   - id: "DEC-2026-10-17-R10"
     subject: "餐厅灯明确为平顶中心氛围灯"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L670"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L670"
     landing: ["git", "object"]
   - id: "DEC-2026-10-17-R12"
     subject: "吸顶灯渲染锚点统一贴安装完成面：5 盏遗留 Blender 基线 offset 归零"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L681"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L681"
     landing: ["git", "code"]
   - id: "DEC-2026-10-17-R20"
     subject: "水电点位深度 review 落地：西侧供电补齐、撞位/孤儿位清理、阳台照明与东墙保底取电"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L694"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L694"
     landing: ["git"]
   - id: "DEC-2026-10-23-R01"
     subject: "回路计价基数补计竖直段：平面 union 保留、竖直下引/立管计入"
-    status: active
     superseded_by: null
-    record: "docs/decisions/06-electrical.md#L713"
+    record: "8abfbe3b:docs/decisions/06-electrical.md#L713"
     landing: ["git", "quote-card"]
   - id: "DEC-2026-10-05-R15"
     subject: "起夜路径照明 + 客房床头组落地（B-2，全部 candidate_not_frozen）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/07-lighting.md#L22"
+    record: "8abfbe3b:docs/decisions/07-lighting.md#L22"
     landing: ["git"]
   - id: "DEC-2026-10-05-R17"
     subject: "客房不做嵌入式床头灯与阅读灯"
-    status: active
     superseded_by: null
-    record: "docs/decisions/07-lighting.md#L34"
+    record: "8abfbe3b:docs/decisions/07-lighting.md#L34"
     landing: ["git"]
   - id: "DEC-2026-10-07-R12"
     subject: "删除客卫内置起夜灯，后续按需使用可插拔感应夜灯"
-    status: active
     superseded_by: null
-    record: "docs/decisions/07-lighting.md#L45"
+    record: "8abfbe3b:docs/decisions/07-lighting.md#L45"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-R13"
     subject: "夜灯模型改为贴墙灯体 + 低位落地引导柱"
-    status: active
     superseded_by: null
-    record: "docs/decisions/07-lighting.md#L56"
+    record: "8abfbe3b:docs/decisions/07-lighting.md#L56"
     landing: ["git"]
   - id: "DEC-2026-10-07-R14"
     subject: "NP-5 吸附到最近柜体端板，取消通道落地柱"
-    status: active
     superseded_by: null
-    record: "docs/decisions/07-lighting.md#L66"
+    record: "8abfbe3b:docs/decisions/07-lighting.md#L66"
     landing: ["git"]
   - id: "DEC-2026-10-07-R15"
     subject: "删除客厅中段 NP-4b 起夜灯"
-    status: active
     superseded_by: null
-    record: "docs/decisions/07-lighting.md#L75"
+    record: "8abfbe3b:docs/decisions/07-lighting.md#L75"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-R16"
     subject: "移除夜灯通用落地柱形态"
-    status: active
     superseded_by: null
-    record: "docs/decisions/07-lighting.md#L81"
+    record: "8abfbe3b:docs/decisions/07-lighting.md#L81"
     landing: ["git", "object"]
   - id: "DEC-2026-10-27-R01"
     subject: "书房删除床头开关，只留吸顶灯门口单控"
-    status: active
     superseded_by: null
-    record: "docs/decisions/07-lighting.md#L88"
+    record: "8abfbe3b:docs/decisions/07-lighting.md#L88"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-R01"
     subject: "餐厅边吊只倒外露阳角 + 厨卫铝扣板加分格缝（同日经 R04 改判：餐区改「一圈圆」R150）"
-    status: superseded
     superseded_by: "DEC-2026-10-07-R04"
-    record: "docs/decisions/08-ceiling-form.md#L28"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L28"
     landing: ["git"]
   - id: "DEC-2026-10-07-R04"
     subject: "（改判 R01）餐厅吊顶环改成「一圈圆」R150，阴角也要圆弧"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L37"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L37"
     landing: ["git", "object"]
   - id: "DEC-2026-10-08-R01"
     subject: "北带南缘弧面衔接：门头盒与餐厅平顶交线改 R150 内凹弧（改判 R18 附则/R04 正交裁定）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L50"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L50"
     landing: ["git", "object"]
   - id: "DEC-2026-10-08-R01.1"
     subject: "cove 从「逐边直条」改版为「沿轮廓扫掠」（业主 3D 评审判丑后返工）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L60"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L60"
     landing: ["git"]
   - id: "DEC-2026-10-08-R01.2"
     subject: "端头统一 + 直边法线 bug 修复（业主第二轮评审「跟西北角差远了/西北角后面同样毛病」）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L67"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L67"
     landing: ["git"]
   - id: "DEC-2026-10-08-R01-补记三"
     subject: "：着色域拆分（业主第三轮「法线还有问题?」）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L74"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L74"
     landing: ["git"]
   - id: "DEC-2026-10-08-R01-补记四"
     subject: "：SE 端头废除「东立面回转」，改圆角半程截断（业主第四轮评审）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L80"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L80"
     landing: ["git"]
   - id: "DEC-2026-10-08-R01-补记五"
     subject: "：SE 角「白色竖向凸起」身份审计（回应外部 GPT 分析的关键提问）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L86"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L86"
     landing: ["git"]
   - id: "DEC-2026-10-08-R01-补记六"
     subject: "（终裁）：SE 角回到正交，其余弧面维持"
-    status: superseded
     superseded_by: "DEC-2026-10-08-R04"
-    record: "docs/decisions/08-ceiling-form.md#L92"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L92"
     landing: ["git"]
   - id: "DEC-2026-10-08-R02"
     subject: "餐厅服务带取消上部翻弧（弧面部分已被 R03 废止）"
-    status: superseded
     superseded_by: "DEC-2026-10-08-R03"
-    record: "docs/decisions/08-ceiling-form.md#L98"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L98"
     landing: ["git"]
   - id: "DEC-2026-10-08-R03"
     subject: "弧面回归 + 东南角接门厅平吊（废止 R02 弧面取消部分）"
-    status: superseded
     superseded_by: "DEC-2026-10-08-R05"
-    record: "docs/decisions/08-ceiling-form.md#L106"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L106"
     landing: ["git"]
   - id: "DEC-2026-10-08-R04"
     subject: "东南角逐回 R150 圆角 + 弧面半程包裹（重开 R01 补记六正交终裁）"
-    status: superseded
     superseded_by: "DEC-2026-10-08-R05"
-    record: "docs/decisions/08-ceiling-form.md#L117"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L117"
     landing: ["git"]
   - id: "DEC-2026-10-08-R05"
     subject: "东南角逐改镜像凹弧 + 垂面弧全拆（废止 R03/R04 的 cove 与阳角圆）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L127"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L127"
     landing: ["git", "object"]
   - id: "DEC-2026-10-15-C01"
     subject: "修复纯圆角边吊缺失的下方面板（不改 R100 或 HVAC 配置）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L140"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L140"
     landing: ["git"]
   - id: "DEC-2026-10-15-C02"
     subject: "客厅边吊扩至1.25m并与主走廊同饰面连续预演"
-    status: active
     superseded_by: null
-    record: "docs/decisions/08-ceiling-form.md#L151"
+    record: "8abfbe3b:docs/decisions/08-ceiling-form.md#L151"
     landing: ["git", "code"]
   - id: "DEC-2026-10-08-C02"
     subject: "窗帘盒人工从吊顶 ㎡ 行拆出，按延长米单列（rate 待报价）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/09-ceiling-takeoff.md#L62"
+    record: "8abfbe3b:docs/decisions/09-ceiling-takeoff.md#L62"
     landing: ["git", "quote-card:config/ceiling-quotes.yaml"]
   - id: "DEC-2026-10-08-C04"
     subject: "吊顶报价面板：App 内并排看数 + 一键切换"
-    status: active
     superseded_by: null
-    record: "docs/decisions/09-ceiling-takeoff.md#L92"
+    record: "8abfbe3b:docs/decisions/09-ceiling-takeoff.md#L92"
     landing: ["git", "code:app/src/ui/OverviewMenu.ts"]
   - id: "DEC-2026-10-08-C08"
     subject: "归档吊顶材料与施工方案（全轻钢 + 9mm ENF 欧松板满铺 + C7 封面），并把业主转述报价登记为候选卡"
-    status: active
     superseded_by: null
-    record: "docs/decisions/09-ceiling-takeoff.md#L104"
+    record: "8abfbe3b:docs/decisions/09-ceiling-takeoff.md#L104"
     landing: ["git", "quote-card:config/ceiling-material-cost.yaml"]
   - id: "DEC-2026-10-08-C09"
     subject: "吊顶主材参考成本区间入配置：155 元/㎡ 判定为「配置兑现则价格合理偏好」"
-    status: active
     superseded_by: null
-    record: "docs/decisions/09-ceiling-takeoff.md#L125"
+    record: "8abfbe3b:docs/decisions/09-ceiling-takeoff.md#L125"
     landing: ["git", "quote-card:config/ceiling-material-cost.yaml"]
   - id: "DEC-2026-10-08-C05"
     subject: "涂漆（墙顶面涂装）子系统独立：一键高亮 + 声明式成本核算 + 预算面积同源"
-    status: active
     superseded_by: null
-    record: "docs/decisions/10-paint.md#L17"
+    record: "8abfbe3b:docs/decisions/10-paint.md#L17"
     landing: ["git", "gate:shared/paint-scope.ts"]
   - id: "DEC-2026-10-08-C06"
     subject: "涂漆范围修正：门洞按实扣除 + 入户花园出范围（+ 面积口径三处同源）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/10-paint.md#L43"
+    record: "8abfbe3b:docs/decisions/10-paint.md#L43"
     landing: ["git", "gate:shared/paint-scope.ts"]
   - id: "DEC-2026-10-06-TILE-01"
     subject: "干区窄长木纹砖双方案预演"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L30"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L30"
     landing: ["git", "code"]
   - id: "DEC-2026-10-07-C15"
     subject: "厨房贴砖按 E2 贴满落地：三面可贴墙 0.90m 建议基线升至吊顶完成面 2.65"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L49"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L49"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-C16"
     subject: "主卫饰面终裁：与客卫 C14 同口径\"带+漆\"——淋浴南墙砖到顶 2.65，其余 0.30m 带 + 乳胶漆"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L59"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L59"
     landing: ["git"]
   - id: "DEC-2026-10-07-R05"
     subject: "PKG-060 墙砖收口：墙砖主材补科目 + 面积不减走杂砖 + 更正链"
-    status: superseded
     superseded_by: "DEC-2026-10-07-R06"
-    record: "docs/decisions/11-tile-finish.md#L81"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L81"
     landing: ["git"]
   - id: "DEC-2026-10-07-R08"
     subject: "贴砖检视态子系统落地：wall_region 元素类型 + 三层独立开关 + 预算同源"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L140"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L140"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-07-R09"
     subject: "贴砖系统独立审计面：状态摘要 + 逐段明细 + 开启播报"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L161"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L161"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-07-R10"
     subject: "贴砖/HVAC 相互隔离的行为级证明（补 R08/R09 的实证）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L178"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L178"
     landing: ["git"]
   - id: "DEC-2026-10-07-R11"
     subject: "贴砖范围业主质询终裁：杂砖带保留 + 灶台挡水条 + 生活阳台 + room 脸语义"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L196"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L196"
     landing: ["git", "object"]
   - id: "DEC-2026-10-08-C19"
     subject: "下架「墙砖方案」贴图预览：贴砖的唯一视觉口径为贴砖检视态"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L232"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L232"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-16-TILE-01"
     subject: "卧室/书房落地窗防水台统一贴砖"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L241"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L241"
     landing: ["git", "object"]
   - id: "DEC-2026-10-18-TILE-02"
     subject: "客卫门外开放洗漱区改随木纹砖，内卫保留小花砖"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L255"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L255"
     landing: ["git", "object"]
   - id: "DEC-2026-10-28-R01"
     subject: "全屋奶白瓷砖踢脚线方向定案：跟厨卫墙砖同款/同色系，风格靠深胡桃家具与灯光表达"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L267"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L267"
     landing: ["git", "object"]
   - id: "DEC-2026-10-28-R02"
     subject: "踢脚线进 3D 常显 + 方案落地卡点：高度现值 80mm 可调（不写死）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/11-tile-finish.md#L289"
+    record: "8abfbe3b:docs/decisions/11-tile-finish.md#L289"
     landing: ["git", "object"]
   - id: "DEC-2026-10-07-F03"
     subject: "water_entry 落位修正：平台侧接入候选与户内阀位锚点解耦"
-    status: active
     superseded_by: null
-    record: "docs/decisions/12-plumbing.md#L20"
+    record: "8abfbe3b:docs/decisions/12-plumbing.md#L20"
     landing: ["git", "object"]
   - id: "DEC-2026-10-08-W01"
     subject: "上下水按最佳实践推断落库：water_entry / 阳台立管 落点 + 13 条路线端点绑定"
-    status: active
     superseded_by: null
-    record: "docs/decisions/12-plumbing.md#L29"
+    record: "8abfbe3b:docs/decisions/12-plumbing.md#L29"
     landing: ["git", "gate:config/plumbing.yaml"]
   - id: "DEC-2026-10-08-W02"
     subject: "端点绑定兜底：linter 两条新规则 + 10 处内联端点焊死 + water_heater 管道锚点"
-    status: active
     superseded_by: null
-    record: "docs/decisions/12-plumbing.md#L46"
+    record: "8abfbe3b:docs/decisions/12-plumbing.md#L46"
     landing: ["git", "gate:shared/mep-hvac-lint.ts"]
   - id: "DEC-2026-10-08-W03"
     subject: "上下水补齐（除入户花园）：客卫热水孤岛改绑 + 两卫 4 处地漏重力排水"
-    status: active
     superseded_by: null
-    record: "docs/decisions/12-plumbing.md#L64"
+    record: "8abfbe3b:docs/decisions/12-plumbing.md#L64"
     landing: ["git", "object"]
   - id: "DEC-2026-10-09-W04"
     subject: "厨房烟道迁东墙冰箱旁 + 两卫浴霸排气道 infer（业界标准，量房敲定）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/12-plumbing.md#L78"
+    record: "8abfbe3b:docs/decisions/12-plumbing.md#L78"
     landing: ["git"]
   - id: "DEC-2026-10-17-W05"
     subject: "洗碗机给水补建模：faucet_kitchen_dishwasher 落库（deferred 标记）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/12-plumbing.md#L92"
+    record: "8abfbe3b:docs/decisions/12-plumbing.md#L92"
     landing: ["git"]
   - id: "DEC-2026-10-06-R1"
     subject: "水电工程口径兜底轮：几何自洽 + 给排水缺项建模"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L20"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L20"
     landing: ["git", "gate"]
   - id: "DEC-2026-10-07-M01"
     subject: "归档水电主材选型基线（业主锁死项 + 成本目标 + 反转条件）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L42"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L42"
     landing: ["git", "quote-card"]
   - id: "DEC-2026-10-17-R13"
     subject: "bend_corridor 干线正交化 + MEP 机械批次第一轮（224→202 must_fix）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L57"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L57"
     landing: ["git", "gate:shared/mep-hvac-lint.ts"]
   - id: "DEC-2026-10-17-R14"
     subject: "shear_wall_parallel_route 挪入 survey_dependent 桶"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L75"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L75"
     landing: ["git", "gate:config/mep-warning-adjudication.yaml"]
   - id: "DEC-2026-10-17-R15"
     subject: "route_overlap 治理第一轮：弱电让轴 z=4.60→4.55 + 剩余 80 对的分类口径"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L86"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L86"
     landing: ["git", "gate:config/mep-warning-adjudication.yaml"]
   - id: "DEC-2026-10-17-R16"
     subject: "共槽/汇流声明通道 shared_trunk_with（给排水 overlap 清零）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L100"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L100"
     landing: ["git", "gate:config/mep-hvac-coordination.yaml"]
   - id: "DEC-2026-10-17-R17"
     subject: "台体穿越声明通道 sill_crossings（bay_sill 15→1）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L114"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L114"
     landing: ["git", "gate:config/mep-hvac-coordination.yaml"]
   - id: "DEC-2026-10-18-R21"
     subject: "走线修复批：R13 误序回归还原 + 六条飞线/斜线/穿幕墙路线重画 + F01 下引漏计回补"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L138"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L138"
     landing: ["git", "object"]
   - id: "DEC-2026-10-18-R23"
     subject: "R22-v0.5 迭代批：冷凝水柜内隐藏 + 弱电走廊轴北移（首批配置迭代）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L156"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L156"
     landing: ["git", "object"]
   - id: "DEC-2026-10-19-R25"
     subject: "客餐厅冷凝水显式Y汇流、外包络与逐段坡度校核"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L169"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L169"
     landing: ["git", "gate:config/mep-hvac-coordination.yaml"]
   - id: "DEC-2026-10-22-R01"
     subject: "R25 登记收尾：逐段坡度短段链门槛、4 条路线建真坡度与三登记全量对账"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L182"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L182"
     landing: ["git", "gate:config/mep-hvac-coordination.yaml"]
   - id: "DEC-2026-10-23-R02"
     subject: "墙排全线汇总判坡恢复 + 存量失败测试全量迁移"
-    status: active
     superseded_by: null
-    record: "docs/decisions/13-mep-integration.md#L194"
+    record: "8abfbe3b:docs/decisions/13-mep-integration.md#L194"
     landing: ["git", "gate:shared/mep-hvac-lint.ts"]
   - id: "DEC-2026-08-20-024"
     subject: "地板定案：全屋人字拼（浅暖橡木），深色家具承担沉稳感"
-    status: superseded
     superseded_by: "DEC-2026-08-21-040"
-    record: "docs/decisions/14-style-furniture.md#L26"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L26"
     landing: ["git"]
   - id: "DEC-2026-08-20-025"
     subject: "家具风格定调中古胡桃 + Blender 渲染真实感升级"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L47"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L47"
     landing: ["git", "code"]
   - id: "DEC-2026-08-20-026"
     subject: "中古款式细化：直排沙发/细腿餐椅/深胡桃餐桌/圆几 + 采购清单对齐"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L66"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L66"
     landing: ["git", "quote-card"]
   - id: "DEC-2026-08-20-027"
     subject: "轻中古胡桃设计基准（Style Guide）定稿"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L86"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L86"
     landing: ["git", "object"]
   - id: "DEC-2026-08-21-040"
     subject: "地板改案：推翻全屋人字拼，定案 600×1200 木纹砖步步高错缝通铺"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L102"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L102"
     landing: ["git", "object"]
   - id: "DEC-2026-08-21-041"
     subject: "地砖系统抽象重构：单一 floor topic + 分房状态（roomOverrides 全链路贯通）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L123"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L123"
     landing: ["git"]
   - id: "DEC-2026-08-21-042"
     subject: "地砖分区定案：全屋浅橡木错缝通铺 + 湿区分化（防滑小砖/客卫小花砖）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L141"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L141"
     landing: ["git", "object"]
   - id: "DEC-2026-10-15-R01"
     subject: "法式四门冰箱外观预演（保留 10-14 试位）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L160"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L160"
     landing: ["git", "object"]
   - id: "DEC-2026-10-19-R03"
     subject: "全屋窗帘默认收起；地砖预演默认90°"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L175"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L175"
     landing: ["git", "code:app/src"]
   - id: "DEC-2026-10-19-R04"
     subject: "地砖预演0°南北向、90°东西向，默认0°"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L187"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L187"
     landing: ["git", "code:app/src"]
   - id: "DEC-2026-10-19-R05"
     subject: "初次进入时自动显示地砖默认南北向预演"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L199"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L199"
     landing: ["git", "code:app/src"]
   - id: "DEC-2026-10-26-R04"
     subject: "客户端控制面重构：命令注册表 + 面板管理器 + 画布优先 + 移动端 tab bar/第一人称触屏"
-    status: active
     superseded_by: null
-    record: "docs/decisions/14-style-furniture.md#L213"
+    record: "8abfbe3b:docs/decisions/14-style-furniture.md#L213"
     landing: ["git", "code:app/src"]
   - id: "DEC-2026-10-09-P02"
     subject: "涂装范围扩展到显式顶面与上飘窗外露面，并修正顶面多计 7.726㎡"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L29"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L29"
     landing: ["git", "gate:shared/paint-scope.ts"]
   - id: "DEC-2026-10-09-P03"
     subject: "上飘窗涂装精度与几何口径修正：逐段 round3 累加改内部全精度、底面映射与 bay_sill 本体对齐、审计分水平/立面"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L57"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L57"
     landing: ["git", "gate:shared/paint-scope.ts"]
   - id: "DEC-2026-10-09-P04"
     subject: "全部上飘窗纳入涂装范围：主卫刷防霉漆独立计价，其余 8 处按普通漆；预算侧补算漏记的窗台面积"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L77"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L77"
     landing: ["git", "quote-card:config/paint-comparison.yaml"]
   - id: "DEC-2026-10-09-P05"
     subject: "相邻上飘窗端面去重：背靠背的内部接缝按「算 0 次」剔除"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L94"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L94"
     landing: ["git", "gate:shared/paint-scope.ts"]
   - id: "DEC-2026-10-09-P06"
     subject: "建立 `verify:finish-scope` 面层范围核查层（F01–F04），并查出 2.741㎡ 面层双计"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L138"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L138"
     landing: ["git"]
   - id: "DEC-2026-10-09-P08"
     subject: "吊顶纳入面层核查：新增 F05（顶面归属未登记）/ F06（铝扣板越界），确认铝扣板不刷漆"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L250"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L250"
     landing: ["git", "gate:shared/finish/rules.ts"]
   - id: "DEC-2026-10-09-P09"
     subject: "厨房上飘窗终裁改贴砖（竖面 + 底面），`sill_region` 的 face 枚举扩为 `front`/`top`/`underside`"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L286"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L286"
     landing: ["git", "object"]
   - id: "DEC-2026-10-09-P10"
     subject: "两个「名实不符」飘窗按方案 A 改名：只改 id，不动几何/面积/room"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L339"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L339"
     landing: ["git", "object"]
   - id: "DEC-2026-10-09-P11"
     subject: "新增 F07 面层不得盖住门/窗洞，修 3 条 stale 瓷砖声明共 1.05 平米"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L380"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L380"
     landing: ["git", "gate:shared/finish/rules.ts"]
   - id: "DEC-2026-10-09-P12"
     subject: "非房间地面进预算：`floor_region` 加 `costed` 标志，主走廊 3.75 平米 计入、设备平台 1.60 平米 不计"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L431"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L431"
     landing: ["git", "gate:shared/masonry-takeoff.ts"]
   - id: "DEC-2026-10-09-P13"
     subject: "新增 F08 面层声明必须附着在 3D 实体（回答「漆面是不是飘在空中」）"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L467"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L467"
     landing: ["git", "gate:shared/finish/rules.ts"]
   - id: "DEC-2026-10-09-P14"
     subject: "修 `sill_region` 弧墙悬空：`mid` 取弦中点改为沿折线逐段出网"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L502"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L502"
     landing: ["git", "gate:shared/finish/rules.ts"]
   - id: "DEC-2026-10-09-P15"
     subject: "新增 F09「网格必须贴在墙面几何上」：把一次性探针固化为门禁规则"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L543"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L543"
     landing: ["git", "gate:shared/finish/rules.ts"]
   - id: "DEC-2026-10-09-P16"
     subject: "地面算量从 `costed` opt-in 改为几何驱动 opt-out：`excluded` 只留给例外"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L589"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L589"
     landing: ["git", "gate:shared/masonry-takeoff.ts"]
   - id: "DEC-2026-10-15-P17"
     subject: "墙面与顶面涂装可独立选择、独立计量"
-    status: active
     superseded_by: null
-    record: "docs/decisions/17-paint-scope-extension.md#L665"
+    record: "8abfbe3b:docs/decisions/17-paint-scope-extension.md#L665"
     landing: ["git", "quote-card:config/paint-comparison.yaml"]

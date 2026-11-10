@@ -96,11 +96,11 @@ cat config/budget/base.json
 # 查看文档入口与权威源
 cat docs/README.md
 
-# 查看待决策事项（决策日志入口：索引 + 模板 + 待决）
+# 查看待决策事项（原决策日志入口已退场：未决项住 config 对象 blocker，人读视图由 docs:generate-pending-view 生成）
 DEC 档案已于 2026-11-09（issue #98 第六阶段 S3）整份退场，292 条编号的解析靶子改为 git 史 + 墓碑（config/decision-knowledge.yaml 的 retired 段）
 
 # 查某条决策（反查编号）
-grep -rn "DEC-2026-10-08-R01" config/decision-knowledge.yaml   # 编号的解析靶子：git 史 + 墓碑（ retired 段 record 字段给出行定位）
+grep -rn "DEC-2026-10-08-R01" config/decision-knowledge.yaml   # 编号的解析靶子：git 史 + 墓碑（retired 段 record 字段给出 commit+文件+行定位）
 ```
 
 ### 日照模拟

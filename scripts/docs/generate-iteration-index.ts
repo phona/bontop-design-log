@@ -39,7 +39,7 @@ const EXTRA_ENTRIES = [
     topic: 'tile-finish',
     review_state: 'none',
     supersedes: 'none',
-    note: '这是散落在 design-iterations 根下的 md 文件，不是目录；被 docs/decisions/11-tile-finish.md 引用。散文件无 round.yaml，登记字段在本生成脚本维护',
+    note: '这是散落在 design-iterations 根下的 md 文件，不是目录；原被 docs/decisions/11-tile-finish.md 引用（该档案已于 2026-11-09 S3 退场，原文：git show 8abfbe3b:docs/decisions/11-tile-finish.md）。散文件无 round.yaml，登记字段在本生成脚本维护',
   },
 ];
 
@@ -93,7 +93,7 @@ const PRESERVED_META = {
       "refs_detail": "32 处跨目录引用 + 91 处自引用 + 2 处裸目录名，涉及 20 个文件",
       "ls_before": 56,
       "ls_after": 45,
-      "residual": "docs/decisions/02-layout-public.md:430 以裸名提及 hvac-dining-ceiling-20261005；按 decisions 归档纪律「历史条目只登记不改写」未动，待业主裁定是否补一条修正 DEC"
+      "residual": "docs/decisions/02-layout-public.md:430 以裸名提及 hvac-dining-ceiling-20261005；按 decisions 归档纪律「历史条目只登记不改写」未动，待业主裁定是否补一条修正 DEC（该档案已于 2026-11-09 S3 退场，本条为退场前的历史审计记录；原文：git show 8abfbe3b:docs/decisions/02-layout-public.md#L430）"
     },
     {
       "batches_total": null,
