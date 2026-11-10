@@ -31,6 +31,29 @@ const acceptance = parseYaml(readFileSync('config/acceptance.yaml', 'utf8')) as 
 const state = loadScheduleState(repoRoot, {modelPackageLinks: links});
 
 const packages: AnyRecord[] = control.work_packages;
+
+/**
+ * 全部权威源 → 工程对象 id 全集。索引复用 shared/package-objects.ts 的唯一实现。
+ *
+ * 排除已知的**非工程对象前缀**：default 分支会 walk 所有带 id 的节点，把
+ * BLK-*（blocker）、PKG-*（工作包）、DEC-*（决策编号）、OI-*（开放项）之类也收进来。
+ * 那些不是工程对象，验收/SCH 正文提到它们不代表依赖其几何——混进来就是假阳性
+ * （第 9 轮实测 4 条全是这类）。不能用「要求有 collection」替代：plumbing/electrical
+ * 的点位在 default 分支里 add 时没传 collection，那样会把宇宙从 732 削到 194。
+ */
+const NON_OBJECT_ID_PREFIX = /^(BLK-|PKG-|DEC-|OI-|COST-|SCH-|GATE-|check_)/;
+function objectUniverse(): Set<string> {
+  const universe = new Set<string>();
+  for (const [source, value] of Object.entries(links.authorities)) {
+    for (const file of authorityFilePaths(value)) {
+      const index = indexAuthorityObjects(source, parseYaml(readFileSync(join(repoRoot, file), 'utf8')));
+      for (const object of index.objects.values()) {
+        if (!NON_OBJECT_ID_PREFIX.test(object.id)) universe.add(object.id);
+      }
+    }
+  }
+  return universe;
+}
 const items: AnyRecord[] = acceptance.phases.flatMap((phase: AnyRecord) => phase.items as AnyRecord[]);
 
 function linkOf(packageId: string): AnyRecord {
@@ -169,18 +192,6 @@ describe('issue #191 验收项对象关联（验收标准二）', () => {
 // PKG-050 的 targets，但被 drain_gbath_vanity 的 wall 引用带进闭包，算已覆盖，不报。
 // 这与全仓扫描的口径一致：清单没写但闭包已覆盖的，不算漏 stale。
 describe('issue #191 扫描式门禁：验收正文点名的对象必须被指纹覆盖', () => {
-  /** 全部权威源 → 工程对象 id 全集。索引复用 shared/package-objects.ts 的唯一实现。 */
-  function objectUniverse(): Set<string> {
-    const universe = new Set<string>();
-    for (const [source, value] of Object.entries(links.authorities)) {
-      for (const file of authorityFilePaths(value)) {
-        const index = indexAuthorityObjects(source, parseYaml(readFileSync(join(repoRoot, file), 'utf8')));
-        for (const object of index.objects.values()) universe.add(object.id);
-      }
-    }
-    return universe;
-  }
-
   /** 某条验收项被指纹覆盖的对象 id 集合 = 其 from_packages 全部链接的 digest 键（含闭包）。 */
   function coveredIds(fromPackages: string[]): {covered: Set<string>; wholeModel: boolean} {
     const covered = new Set<string>();
@@ -456,6 +467,73 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
     ));
     assert.ok(keys.some((key) => key.includes('switch_master_door')),
       `PKG-120 摘要必须含开关 switch_master_door，实际键 ${keys.filter((k) => k.includes('switch_')).join(', ') || '（无）'}`);
+  });
+
+  // issue #191 Codex blocking 第 9 轮：SCH-110-01「核对柜体、台面、烟机、灶具、水槽及
+  // 预留电器的尺寸和水电接口」与 SCH-110-02「设备安装空间」实际验收的三件家电
+  // （gas_stove / range_hood / dishwasher）施工归属在 PKG-160，本包是这两条 SCH 的挂载包。
+  // 不纳入则移动 gas_stove 不会让 PKG-110 摘要变化、旧的接口冻结与安装空间通过记录继续有效。
+  it('SCH 被验设备纳入挂载包：改灶具声明，PKG-110 必须 stale', () => {
+    const housePath = join(sandbox, 'config/house.yaml');
+    const lines = readFileSync(housePath, 'utf8').split('\n');
+    const idAt = lines.findIndex((line) => /^\s*- \{ type: gas_stove, id: kitchen\.gas_stove/.test(line));
+    assert.ok(idAt >= 0, 'config/house.yaml 必须有 kitchen.gas_stove');
+    const before = lines[idAt];
+    const moved = before.replace('x: 10.50', 'x: 10.65');
+    assert.ok(moved !== before, `必须能改动 gas_stove 的 x：${before.slice(0, 90)}`);
+
+    const patched = [...lines];
+    patched[idAt] = moved;
+    const baseline = fingerprintsNow();
+    writeFileSync(housePath, patched.join('\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-110'),
+      `改灶具必须让挂 SCH-110-01/02 的 PKG-110 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+    // PKG-160 是施工归属包，本来就该 stale——两个包都要在，缺一个即漏。
+    assert.ok(stale.includes('PKG-160'),
+      `改灶具也必须让施工归属包 PKG-160 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+  });
+
+  // 门禁覆盖洞（第 9 轮暴露）：上面的扫描式门禁只扫 config/acceptance.yaml 的 67 条，
+  // **没扫 control.yaml 里 49 条 SCH-xxx 工作包内置检查**——而 SCH 正文用的是中文通称
+  // （「烟机、灶具」）不是对象 id，词边界匹配扫不到。本条用另一条判据堵这个洞：
+  // 每个工作包的 targets 必须覆盖「它全部 SCH 检查点名对象的并集」。
+  // 判据来源：SCH 检查没有 objects 字段，其对象集完全来自所属包 targets——
+  // 所以 targets 漏了，SCH 的旧通过记录就会漏 stale。
+  it('门禁补洞：工作包 targets 必须覆盖其全部 SCH 检查点名对象的并集', () => {
+    const universe = objectUniverse();
+    // 每条 SCH 检查 → 所属包（按 control.yaml 的嵌套位置）。
+    const schOwner = new Map<string, string>();
+    let currentPkg = '';
+    for (const line of readFileSync(join(repoRoot, 'schedule/phase-1/control.yaml'), 'utf8').split('\n')) {
+      const pkgMatch = /^  - id: (PKG-\d+)\s*$/.exec(line);
+      if (pkgMatch) currentPkg = pkgMatch[1];
+      const schMatch = /^      - id: (SCH-[\w-]+)\s*$/.exec(line);
+      if (schMatch && currentPkg) schOwner.set(schMatch[1], currentPkg);
+    }
+    assert.ok(schOwner.size > 0, `必须能解析出 SCH 检查及其所属包，实得 ${schOwner.size} 条`);
+
+    const missing: string[] = [];
+    for (const pkg of packages) {
+      const checks = (pkg.checks ?? []) as AnyRecord[];
+      const targets = new Set((pkg.targets ?? []) as string[]);
+      for (const check of checks) {
+        const text = [check.item, check.method, check.pass_condition, ...(check.evidence_required ?? [])]
+          .filter((v: unknown) => typeof v === 'string')
+          .join('\n');
+        for (const id of universe) {
+          const pattern = new RegExp(`(?<![A-Za-z0-9_.\\-])${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z0-9_.\\-])`);
+          if (pattern.test(text) && !targets.has(id) && !targets.has('*')) {
+            missing.push(`${check.id}（属 ${pkg.id}）点名 ${id}，但 ${pkg.id} 的 targets 没有它`);
+          }
+        }
+      }
+    }
+    assert.deepEqual(missing, [], `以下 SCH 检查点名的对象未被所属包 targets 覆盖：\n${missing.join('\n')}`);
   });
 
   it('回归：存验收记录的 control.yaml 不进任何工作包的项目数据指纹（防自指）', () => {

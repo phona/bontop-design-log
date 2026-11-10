@@ -187,6 +187,12 @@ links:
     # scope，插座改动不会让本包的对象摘要变化、旧通过记录也不会 stale。故按 id 直选纳入。
     scope:
       - {source: furnishings, select: {ids: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.sink]}}
+      # 2026-11-10（issue #191 Codex blocking 第 9 轮）：SCH-110-01「核对柜体、台面、烟机、
+      # 灶具、水槽及预留电器的尺寸和水电接口」与 SCH-110-02「设备安装空间」实际验收的三件
+      # 家电。它们施工归属在 PKG-160，本包是这两条 SCH 的挂载包；不纳入则移动 gas_stove
+      # 不会让本包摘要变化、旧的接口冻结与安装空间通过记录继续有效。
+      # 与 sock_kitchen_oven 同一处理（被验对象按 id 直选纳入挂载包 scope）。
+      - {source: furnishings, select: {ids: [kitchen.gas_stove, kitchen.range_hood, kitchen.dishwasher]}}
       - {source: electrical, select: {ids: [sock_kitchen_oven]}}
   - id: MODEL-PKG-120
     phase_id: phase_1_basic_occupancy
