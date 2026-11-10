@@ -121,6 +121,10 @@ export function indexAuthorityObjects(source: string, doc: unknown): AuthorityOb
 
   switch (source) {
     case 'model_geometry': {
+      // 顶点也是几何对象：墙的 from/to、房间/平台的 boundary、门洞 anchor 都以 id 引用顶点。
+      // 不索引顶点时，移动一个顶点不会改变任何已收录对象的声明，引用闭包也无从捕获——
+      // 移墙后相关工作包的旧通过记录仍会显得有效（issue #191 Codex blocking）。
+      for (const vertex of d.vertices ?? []) add(vertex.id, vertex, {collection: 'vertex'});
       for (const room of d.rooms ?? []) add(room.id, room, {room: room.id, collection: 'room'});
       for (const wall of d.walls ?? []) {
         add(wall.id, wall, {collection: 'wall'});

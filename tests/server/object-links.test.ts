@@ -193,4 +193,43 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
     const pkg142 = beforeState.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-142');
     assert.ok(Object.keys(beforeState.packageProjectSnapshot(pkg142)).includes('config/house.yaml'));
   });
+
+  // issue #191 Codex blocking：model-geometry 的顶点（vertices）也是几何对象——墙的 from/to、
+  // 房间/平台的 boundary、门洞 anchor 都以 id 引用顶点。只索引房间/墙/洞口时，移动一个顶点
+  // 不会改变任何已收录对象的声明，引用闭包也无从捕获，移墙后相关包的旧通过记录仍显得有效。
+  // 本用例改一个顶点坐标，断言「拥有该顶点的墙」所在包 stale，而无关的厨房橱柜包不动。
+  it('移动一个顶点：引用它的墙/房间所在包 stale，无关包不动（顶点进对象索引）', () => {
+    const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
+    const text = readFileSync(geometryPath, 'utf8');
+    const anchor = 'id: v_gbath_se,x: 7.20,';
+    assert.equal(text.split(anchor).length - 1, 1, '顶点锚点必须恰出现一次');
+    // 上一用例已改 house.yaml；这里在「当前」状态上取基线，只比较顶点改动的影响。
+    const baseline = loadScheduleState(sandbox, {
+      modelPackageLinks: loadModelPackageLinks(join(sandbox, 'config/model-package-links.yaml'), {root: sandbox}),
+    });
+    const baselineFingerprints = new Map(
+      baseline.control.work_packages.map((pkg: AnyRecord) => [pkg.id, baseline.packageProjectFingerprint(pkg)]),
+    );
+    writeFileSync(geometryPath, text.replace(anchor, 'id: v_gbath_se,x: 7.21,'));
+
+    const afterState = loadScheduleState(sandbox, {
+      modelPackageLinks: loadModelPackageLinks(join(sandbox, 'config/model-package-links.yaml'), {root: sandbox}),
+    });
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baselineFingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id);
+
+    // v_gbath_se 是 w_gbath_south / w_gbath_east / w_gbath_east_open_vanity 的端点；
+    // 防水、铺贴、美缝、踢脚等包按墙/房间选对象，必须跟着 stale。
+    for (const pkgId of ['PKG-020', 'PKG-050', 'PKG-060', 'PKG-065', 'PKG-130', 'PKG-135']) {
+      assert.ok(stale.includes(pkgId), `${pkgId} 的 scope 含引用 v_gbath_se 的墙，顶点移动后必须 stale；实际 ${stale.join(', ')}`);
+    }
+    // 厨房橱柜包只引用厨房墙（不引用 v_gbath_se），不得被无关几何改动打成 stale。
+    assert.ok(!stale.includes('PKG-110'), `PKG-110 与 v_gbath_se 无关，不应 stale；实际 ${stale.join(', ')}`);
+    // 顶点必须真的进了摘要（否则上面「墙 stale」只是整份 model-geometry 兜底的假阳性）。
+    const pkg020 = afterState.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-020');
+    const snapshot = afterState.packageProjectSnapshot(pkg020);
+    assert.ok(Object.keys(snapshot).some((key) => key.startsWith('object:model_geometry:v_')),
+      '对象粒度指纹必须含顶点声明（object:model_geometry:v_*）');
+  });
 });
