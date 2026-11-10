@@ -9,6 +9,16 @@
  * resolveFurniturePlacement（shared/furniture-placement.ts，摆位与 3D 渲染同口径）、
  * resolveMepRoutes / mepRoutePoints / resolveMepEndpoint（MEP 折线与 3D 渲染同口径）。
  *
+ * 点位圈心口径（2026-11-07 业主裁定「DXF 迁就 3D 投影」，issue #98 S1）：沿墙点位的圈心 =
+ * 墙线 datum + THIN_PLATE_FACE_OFFSET（0.075m = 半墙厚 0.06 + 墙缝 0.005 + 半件厚 0.01），
+ * 与 3D 渲染 InfrastructureBuilder.placeModel 同构造——0.075 这个偏移在 3D 侧早于本次迁移
+ * 就已存在（旧 3D 的 placeModel 同样是 半墙厚 + 墙缝 + 半件厚），本次是 DXF 向 3D 既有贴合法
+ * 靠拢，不是几何改动（点位引用的 21 面墙迁移前后逐段相同）。
+ * 迁移前本文件直接画声明的 x/z（当时场内并存三套垂直分量口径：墙中心线 65 点 / 完成面+0.04
+ * 10 点 / 完成面+0.09 4 点），因此相对迁移前的图纸，79 个沿墙点位全部发生位移：有符号位移 =
+ * 0.075 − 该点旧声明离墙线的垂距，只有 +75 / −25 / −75mm 三个值（幅值 25mm 与 75mm 两档），
+ * 沿墙方向零位移；56 个绝对点位与 2 个柜面挂载点坐标不变。
+ *
  * 硬失败口径（issue #98）：家具摆位解析失败、电气/给排水点位定位解算失败、MEP 路线端点
  * 悬空（from/to 引用解不出来）一律进 `errors`——摆位/点位/路线是施工交付内容，解不出来
  * 就整次导出不成立（两个入口都只认 errors 并拒绝交付）；降级成 warning 再跳过，等于交付
@@ -441,8 +451,9 @@ function emitFurniture(
 /**
  * 点位平面坐标（issue #98 S1 单一解算）：沿墙点位 = 解算器墙线 datum + 薄板惯例偏移
  * （THIN_PLATE_FACE_OFFSET = 0.075m，与 3D 渲染 InfrastructureBuilder.placeModel 同一解算
- * 同一偏移——业主 2026-11-07 裁定「DXF 迁就 3D 投影」，施工图底盒整体移动 15~75mm 是该
- * 裁定的预期交付物变更）；绝对点位（C/D/E/F 组）取声明 x/z；mount 挂载点（issue #98 S2，
+ * 同一偏移——业主 2026-11-07 裁定「DXF 迁就 3D 投影」，施工图点位相对迁移前位移
+ * +75 / −25 / −75mm（幅值 25mm 与 75mm 两档，逐档复算见文件头注）是该裁定的预期交付物
+ * 变更）；绝对点位（C/D/E/F 组）取声明 x/z；mount 挂载点（issue #98 S2，
  * 起夜灯）取解析器宿主脸解果（宿主移动自动跟随，灯体半厚+surface_gap 由渲染管线追加，
  * 图上圈心 = 灯位锚点，与 3D 灯组 position 同点）。解算失败（along 越界/断引用/缺声明）
  * 返回 null 并把诊断写进 **errors**（与 emitFurniture 的定位诊断同一通道）：点位位置是施工
