@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"2340e53f508d2e88815a6855c0bf930e3f0911aa44bd4408f66c9ad8048455d2"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"eb7367df306d03484316b545cf49b07b8c14cd9cd49b30eff4887136e0a22ae1"} -->
 # 一期预算控制表
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:def302178db1573144f131deeea7dc7b92170838bb7e142a2bcbba38f8b1ed06`（1 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:9834fbcb67761e5b6c5783f906855ae2dd7b646a13c1111854534e0db5f21aeb`（1 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 

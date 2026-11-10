@@ -102,7 +102,10 @@ links:
       # 本包验收的实际依赖，但它的施工归属在洁具包（PKG-100）。验收对象集按引用包 targets
       # 派生，若不把柜体纳入本链接 scope，柜内布局（depth 等）变化不会让本包摘要变化、旧通过
       # 记录也不会 stale。故按稳定 id 直选纳入（与 PKG-110 纳入被验插座同一处理）。
-      - {source: furnishings, select: {ids: [gbath.vanity]}}
+      # 同一条验收的正文还点名了主卧条带 mb.washbasin_cabinet（R4 blocking；全仓扫描确认这是
+      # 「正文点名对象不在对象集」的唯一存量漏项）：它与 gbath.vanity 是同一条外移防水验的两
+      # 个被验柜体，施工归属同样在 PKG-100，按同一处理一并纳入。
+      - {source: furnishings, select: {ids: [gbath.vanity, mb.washbasin_cabinet]}}
   - id: MODEL-PKG-060
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-060}
