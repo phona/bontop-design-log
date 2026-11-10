@@ -100,7 +100,10 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     // 排水走廊/前拉空间），故包链接由 PKG-100 变为 PKG-050 + PKG-100。
     assert.deepEqual(ledgerOf('gbath.vanity').packageLinks.map((link) => link.pkgId), ['PKG-050', 'PKG-100']);
     assert.deepEqual(ledgerOf('gbath.robot_dock').packageLinks.map((link) => link.pkgId), ['PKG-160']);
-    assert.deepEqual(ledgerOf('mb.washbasin_cabinet').packageLinks.map((link) => link.pkgId), ['PKG-100', 'P2-100']);
+    // 2026-11-10（R4 Codex blocking + 全仓扫描）：mb.washbasin_cabinet 与 gbath.vanity 是
+    // 同一条外移防水验收的两个被验柜体，按 id 一并纳入 MODEL-PKG-050 的 scope，故包链接
+    // 由 PKG-100 + P2-100 变为 PKG-050 + PKG-100 + P2-100。
+    assert.deepEqual(ledgerOf('mb.washbasin_cabinet').packageLinks.map((link) => link.pkgId), ['PKG-050', 'PKG-100', 'P2-100']);
   });
 
   it('gbath.vanity 验收项：包级（PKG-100）+ 防水包（PKG-050）结构化 acceptance_refs', () => {
@@ -116,8 +119,8 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
 
   it('mb.washbasin_cabinet 经 MODEL-PKG-100 的 id 直选有包链接，验收点名与自带 blocker 可达', () => {
     const ledger = ledgerOf('mb.washbasin_cabinet');
-    assert.deepEqual(ledger.packageLinks.map((link) => link.pkgId), ['PKG-100', 'P2-100'],
-      'issue #191：PKG-100 的 ids 含 mb_washbasin_cabinet；P2-100 的 room_ids [master_bedroom] 改 ids 后也覆盖它');
+    assert.deepEqual(ledger.packageLinks.map((link) => link.pkgId), ['PKG-050', 'PKG-100', 'P2-100'],
+      'issue #191：PKG-100 的 ids 含 mb_washbasin_cabinet；P2-100 的 room_ids [master_bedroom] 改 ids 后也覆盖它；2026-11-10 R4 起 PKG-050 也按 id 纳入（与 gbath.vanity 同一条外移防水验收的被验柜体）');
     assert.ok(ledger.aliases.includes('mb_washbasin_cabinet'), 'mb_washbasin_cabinet 全屋唯一，裸类型名是全等别名');
     assert.ok(ledger.acceptanceChecks.some((check) => check.checkId === 'check_plumb_external_vanity_waterproof'));
     // 注意：mb.washbasin_cabinet 是**家具对象**，本身没有 status/blocker 字段（那四个实体

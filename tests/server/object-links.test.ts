@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os';
 import { load as parseYaml } from 'js-yaml';
 import { loadModelPackageLinks } from '../../server/model-package-links.js';
 import { authorityFilePaths } from '../../shared/model-package-links.js';
-import { ALL_MODEL_TARGET } from '../../shared/package-objects.js';
+import { ALL_MODEL_TARGET, indexAuthorityObjects } from '../../shared/package-objects.js';
 import { loadScheduleState, type ScheduleState } from '../../shared/schedule-state.js';
 
 type AnyRecord = Record<string, any>;
@@ -30,6 +30,7 @@ const acceptance = parseYaml(readFileSync('config/acceptance.yaml', 'utf8')) as 
 const state = loadScheduleState(repoRoot, {modelPackageLinks: links});
 
 const packages: AnyRecord[] = control.work_packages;
+const items: AnyRecord[] = acceptance.phases.flatMap((phase: AnyRecord) => phase.items as AnyRecord[]);
 
 function linkOf(packageId: string): AnyRecord {
   const found = links.links.filter((link) => link.budget_ref.id === packageId);
@@ -98,7 +99,6 @@ describe('issue #191 验收项对象关联（验收标准二）', () => {
   for (const pkg of packages) {
     for (const ref of pkg.acceptance_refs ?? []) refsByCheck.set(ref, [...(refsByCheck.get(ref) ?? []), pkg.id]);
   }
-  const items: AnyRecord[] = acceptance.phases.flatMap((phase: AnyRecord) => phase.items as AnyRecord[]);
 
   it('67 条验收项都登记了 objects.from_packages，且与 acceptance_refs 反查集合一致', () => {
     assert.equal(items.length, 67, 'acceptance.yaml 必须 67 条');
@@ -152,6 +152,136 @@ describe('issue #191 验收项对象关联（验收标准二）', () => {
     assert.ok(withRooms.length > 0, 'rooms 字段仍作为现场上下文保留');
     for (const item of withRooms) {
       assert.ok(item.objects?.from_packages?.length, `${item.id} 必须同时有对象关联，rooms 不再是唯一关联`);
+    }
+  });
+});
+
+// issue #191 扫描式门禁：把「正文点名对象不在对象集里」这个缺陷类变成常驻防线。
+//
+// 来历：同一缺陷被 Codex 逐个发现三次——sock_kitchen_oven（R2）、gbath.vanity（R3）、
+// mb.washbasin_cabinet（R4）。每次都是往链接 scope 里补一个对象，而守护测试只硬编码检查
+// 已修过的那两个，所以第三个照样溜过。三角度全仓扫描（67 验收项 + 49 内置检查 × 732 个
+// 对象 id）确认存量只有 R4 那一处，但没人保证以后新增条目不再犯。
+//
+// 判据不是「在 targets 里」，而是「在指纹覆盖里」——resolution.digests 的键是
+// 对象集 ∪ 引用闭包（digestResolvedObjects 的产物）。所以墙 w_gbath_south 虽不在
+// PKG-050 的 targets，但被 drain_gbath_vanity 的 wall 引用带进闭包，算已覆盖，不报。
+// 这与全仓扫描的口径一致：清单没写但闭包已覆盖的，不算漏 stale。
+describe('issue #191 扫描式门禁：验收正文点名的对象必须被指纹覆盖', () => {
+  /** 全部权威源 → 工程对象 id 全集。索引复用 shared/package-objects.ts 的唯一实现。 */
+  function objectUniverse(): Set<string> {
+    const universe = new Set<string>();
+    for (const [source, value] of Object.entries(links.authorities)) {
+      for (const file of authorityFilePaths(value)) {
+        const index = indexAuthorityObjects(source, parseYaml(readFileSync(join(repoRoot, file), 'utf8')));
+        for (const object of index.objects.values()) universe.add(object.id);
+      }
+    }
+    return universe;
+  }
+
+  /** 某条验收项被指纹覆盖的对象 id 集合 = 其 from_packages 全部链接的 digest 键（含闭包）。 */
+  function coveredIds(fromPackages: string[]): {covered: Set<string>; wholeModel: boolean} {
+    const covered = new Set<string>();
+    let wholeModel = false;
+    for (const packageId of fromPackages) {
+      const resolution = links.objectResolutions?.[linkOf(packageId).id];
+      if (!resolution) continue;
+      if (resolution.projectScope) {
+        wholeModel = true;
+        continue;
+      }
+      for (const key of Object.keys(resolution.digests)) {
+        // 键形态 `<source>:<id>` 或 `<source>:<id>@<parentId>`（墙洞的宿主墙）。
+        const bare = key.slice(key.indexOf(':') + 1).split('@')[0];
+        if (bare) covered.add(bare);
+      }
+    }
+    return {covered, wholeModel};
+  }
+
+  it('67 条验收项四段正文点名的每个工程对象，都被其对象集或引用闭包覆盖', () => {
+    const universe = objectUniverse();
+    assert.ok(universe.size > 500, `对象宇宙应有数百个 id，实得 ${universe.size}——枚举不全会导致漏报`);
+
+    const missing: string[] = [];
+    for (const item of items) {
+      // 只扫四段承载验收口径的正文。rooms 是现场上下文、evidence 是取证清单，
+      // 都不承担对象关联（与上一条既有测试同口径）。
+      const text = [item.item, item.method, item.standard, item.knowledge]
+        .filter((value: unknown) => typeof value === 'string')
+        .join('\n');
+      const {covered, wholeModel} = coveredIds(item.objects?.from_packages ?? []);
+      if (wholeModel) continue;
+      for (const id of universe) {
+        // 词边界匹配：id 含字母数字与 . _ -，两侧不能再跟这些字符，
+        // 否则 sock 会命中 sock_kitchen_oven、LED 会命中别的串。
+        const pattern = new RegExp(`(?<![A-Za-z0-9_.\\-])${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z0-9_.\\-])`);
+        if (pattern.test(text) && !covered.has(id)) {
+          missing.push(`${item.id}（${item.objects?.from_packages?.join('+')}）点名 ${id}，但对象集与闭包都没有它`);
+        }
+      }
+    }
+    assert.deepEqual(missing, [], `以下验收项点名的对象未被覆盖，改这些对象不会让旧通过记录 stale：\n${missing.join('\n')}`);
+  });
+
+  it('门禁真的会红：把被验柜体从 PKG-050 scope 去掉，上一条必须失败', () => {
+    // 反证：临时从链接 scope 删掉 mb.washbasin_cabinet，重新解析后门禁应报它漏。
+    // 这与 R2/R3/R4 三次 Codex blocking 是同一处缺陷，删掉任意一个被验对象都该红。
+    const probe = mkdtempSync(join(tmpdir(), 'object-links-gate-'));
+    try {
+      cpSync(join(repoRoot, 'config'), join(probe, 'config'), {recursive: true});
+      // phase_1_budget 权威源指向 schedule/phase-1/control.yaml，沙箱必须连 schedule 一起复制。
+      cpSync(join(repoRoot, 'schedule'), join(probe, 'schedule'), {recursive: true});
+      const path = join(probe, 'config/model-package-links.yaml');
+      const before = readFileSync(path, 'utf8');
+      const tampered = before.replace('ids: [gbath.vanity, mb.washbasin_cabinet]', 'ids: [gbath.vanity]');
+      assert.ok(tampered !== before, '必须能改坏：scope 里应含 mb.washbasin_cabinet');
+      writeFileSync(path, tampered);
+
+      const probeLinks = loadModelPackageLinks(join(probe, 'config/model-package-links.yaml'), {root: probe});
+      const probeUniverse = new Set<string>();
+      for (const [source, value] of Object.entries(probeLinks.authorities)) {
+        for (const file of authorityFilePaths(value)) {
+          const index = indexAuthorityObjects(source, parseYaml(readFileSync(join(probe, file), 'utf8')));
+          for (const object of index.objects.values()) probeUniverse.add(object.id);
+        }
+      }
+
+      const missing: string[] = [];
+      for (const item of items) {
+        const text = [item.item, item.method, item.standard, item.knowledge]
+          .filter((value: unknown) => typeof value === 'string')
+          .join('\n');
+        let wholeModel = false;
+        const covered = new Set<string>();
+        for (const packageId of item.objects?.from_packages ?? []) {
+          const link = probeLinks.links.find((l) => l.budget_ref.id === packageId);
+          const resolution = link ? probeLinks.objectResolutions?.[link.id] : undefined;
+          if (!resolution) continue;
+          if (resolution.projectScope) {
+            wholeModel = true;
+            continue;
+          }
+          for (const key of Object.keys(resolution.digests)) {
+            const bare = key.slice(key.indexOf(':') + 1).split('@')[0];
+            if (bare) covered.add(bare);
+          }
+        }
+        if (wholeModel) continue;
+        for (const id of probeUniverse) {
+          const pattern = new RegExp(`(?<![A-Za-z0-9_.\\-])${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z0-9_.\\-])`);
+          if (pattern.test(text) && !covered.has(id)) {
+            missing.push(`${item.id} 点名 ${id}`);
+          }
+        }
+      }
+      assert.ok(
+        missing.some((line) => line.includes('mb.washbasin_cabinet')),
+        `去掉被验柜体后门禁必须报 mb.washbasin_cabinet，实得：${missing.join('；') || '（无）'}`,
+      );
+    } finally {
+      rmSync(probe, {recursive: true, force: true});
     }
   });
 });
