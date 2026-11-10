@@ -19,6 +19,7 @@ import { load as parseYaml } from 'js-yaml';
 import { loadModelPackageLinks } from '../../server/model-package-links.js';
 import { authorityFilePaths } from '../../shared/model-package-links.js';
 import { ALL_MODEL_TARGET, indexAuthorityObjects } from '../../shared/package-objects.js';
+import { ENGINEERING_AUTHORITY_SOURCES } from '../../shared/schedule-state.js';
 import { loadScheduleState, type ScheduleState } from '../../shared/schedule-state.js';
 
 type AnyRecord = Record<string, any>;
@@ -347,18 +348,82 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
   // project_scope 的 `*` 必须落到指纹上，而不是只落到 targets 上：6 个整项目包的 scope
   // 各自只列了少数来源（5 个只有 model_geometry），若指纹按 scope 列出的文件算，
   // 非几何对象域的变化就静默漏过。这里对 6 个包逐一验证：指纹含全部权威对象域的文件。
-  it('project_scope 的 * 落到指纹：6 个整项目包都按全部权威文件计，不只按各自 scope', () => {
+  it('project_scope 的 * 落到指纹：含全部工程对象域，且不含存验收记录的执行文件', () => {
     const projectScopeIds = ['PKG-000', 'PKG-005', 'PKG-010', 'PKG-142', 'PKG-170', 'PKG-900'];
-    const authorityFiles = [
-      ...new Set(Object.values(beforeState.modelPackageLinks.authorities).flatMap(authorityFilePaths)),
+    // 只算工程对象域（ENGINEERING_AUTHORITY_SOURCES）。schedule/execution 文件
+    // （phase_scope / phase_*_budget / phase_*_scope）**故意不在内**——见下。
+    const engineeringFiles = [
+      ...new Set(ENGINEERING_AUTHORITY_SOURCES.flatMap((source) => authorityFilePaths(beforeState.modelPackageLinks.authorities[source] ?? source))),
     ];
+    // 存验收通过记录的文件。它若进指纹，记录一存进去就会改变自己保存的
+    // project_data_sha256，重新加载即判 stale——付款门槛永远无法稳定通过（自指）。
+    const executionFiles = ['schedule/phase-1/control.yaml', 'schedule/phase-2/control.yaml', 'schedule/phase-3/control.yaml'];
     for (const id of projectScopeIds) {
       const pkg = beforeState.control.work_packages.find((item: AnyRecord) => item.id === id);
       assert.ok(pkg, `${id} 必须存在`);
       assert.deepEqual(pkg.targets, ['*'], `${id} 的 targets 必须是 *`);
       const keys = Object.keys(beforeState.packageProjectSnapshot(pkg));
-      const missing = authorityFiles.filter((file) => !keys.includes(file));
-      assert.deepEqual(missing, [], `${id} 的指纹必须含全部权威文件，缺：${missing.join(', ')}`);
+      const missing = engineeringFiles.filter((file) => !keys.includes(file));
+      assert.deepEqual(missing, [], `${id} 的指纹必须含全部工程对象域，缺：${missing.join(', ')}`);
+      const leaked = executionFiles.filter((file) => keys.includes(file));
+      assert.deepEqual(leaked, [], `${id} 的指纹不得含存验收记录的执行文件（自指），实际含：${leaked.join(', ')}`);
+    }
+  });
+
+  // issue #191 Codex blocking 第 7 轮（#205 引入的回归）：project_scope 包曾把**全部**
+  // authorities 圈进指纹，其中 phase_1_budget 指向 schedule/phase-1/control.yaml，而该文件
+  // 的 audit_log.records 就是验收通过记录本身。存一条记录 → 文件变 → 这条记录保存的
+  // project_data_sha256 失效 → 重新加载立即判 stale → 付款门槛永远无法稳定通过。
+  // 本条钉住：control.yaml 不进任何包的指纹。
+  // issue #191 Codex blocking 第 7 轮：控制关系是**反向**的——controls[] 的
+  // target_point_ids 指向受控灯具，灯具自己的声明不写「我被哪个开关控」。PKG-120 只选
+  // 灯具，正向闭包到不了控制组；改 control_master_bed_door 的 kind/status/开关清单不会
+  // 让 PKG-120 stale，而 SCH-120-01「开关和双处控制关系」的旧通过记录会继续有效。
+  // 旧实现靠整份 electrical.yaml 能抓到，本次收窄后必须由反向闭包接住。
+  it('反向闭包：改控制组声明，只选灯具的 PKG-120 必须 stale', () => {
+    const topologyPath = join(sandbox, 'config/electrical-topology.yaml');
+    const lines = readFileSync(topologyPath, 'utf8').split('\n');
+    const idAt = lines.findIndex((line) => /^\s*- id: control_master_bed_door\s*$/.test(line));
+    assert.ok(idAt >= 0, 'config/electrical-topology.yaml 必须有 control_master_bed_door');
+    // 该控制组必须指向 PKG-120 scope 里的一盏灯（否则本用例的前提不成立）。
+    const blockEnd = lines.findIndex((line, i) => i > idAt && /^\s*- id:/.test(line));
+    const stop = blockEnd > 0 ? blockEnd : lines.length;
+    const targetAt = lines.findIndex((line, i) => i > idAt && i < stop && /^\s*target_point_ids:/.test(line));
+    assert.ok(targetAt > idAt, 'control_master_bed_door 必须有 target_point_ids');
+    assert.ok(/light_master_dome/.test(lines[targetAt]),
+      `该控制组必须受控 PKG-120 scope 里的 light_master_dome，实际：${lines[targetAt]}`);
+
+    const kindAt = lines.findIndex((line, i) => i > idAt && i < stop && /^\s*kind:/.test(line));
+    assert.ok(kindAt > idAt, 'control_master_bed_door 必须有 kind');
+    const before = lines[kindAt];
+    const moved = before.replace(/switch_multiway/, 'switch_2way');
+    assert.ok(moved !== before, `必须能改动 kind：${before}`);
+
+    const patched = [...lines];
+    patched[kindAt] = moved;
+    const baseline = fingerprintsNow();
+    writeFileSync(topologyPath, patched.join('\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-120'),
+      `改控制组必须让只选灯具的 PKG-120 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+    // 反向自证：摘要里必须出现该控制组，证明走的是反向闭包。
+    const keys = Object.keys(afterState.packageProjectSnapshot(
+      afterState.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-120')!,
+    ));
+    assert.ok(keys.some((key) => key.includes('control_master_bed_door')),
+      `PKG-120 摘要必须含控制组 control_master_bed_door，实际键 ${keys.filter((k) => k.includes('control_')).join(', ') || '（无）'}`);
+  });
+
+  it('回归：存验收记录的 control.yaml 不进任何工作包的项目数据指纹（防自指）', () => {
+    const controlFile = 'schedule/phase-1/control.yaml';
+    for (const pkg of beforeState.control.work_packages) {
+      const keys = Object.keys(beforeState.packageProjectSnapshot(pkg));
+      assert.ok(!keys.includes(controlFile),
+        `${pkg.id} 的指纹不得含 ${controlFile}（audit_log.records 在其中，会自指）`);
     }
   });
 

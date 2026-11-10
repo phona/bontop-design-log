@@ -182,6 +182,23 @@ export function indexAuthorityObjects(source: string, doc: unknown): AuthorityOb
       }
       break;
     }
+    case 'electrical_topology': {
+      // 控制关系是**反向**的：controls[].target_point_ids 指向受控灯具，而灯具自己的声明
+      // 不写「我被哪个开关控」。只做正向闭包时，改开关的 type/neutral 不会让只选灯具的包
+      // （PKG-120，SCH-120-01「开关和双处控制关系」）stale（issue #191 Codex blocking 第 7 轮）。
+      // 故这里把 controls / panels / circuits 都建成对象，供 digestResolvedObjects 的
+      // 反向闭包跟随。
+      for (const control of (d.controls ?? []) as AnyRecord[]) {
+        if (control?.id) add(control.id, control, {collection: 'control'});
+      }
+      for (const panel of (d.panels ?? []) as AnyRecord[]) {
+        if (panel?.id) add(panel.id, panel, {collection: 'panel'});
+      }
+      for (const circuit of (d.circuits ?? []) as AnyRecord[]) {
+        if (circuit?.id) add(circuit.id, circuit, {collection: 'circuit'});
+      }
+      break;
+    }
     default: {
       if (Array.isArray(doc)) {
         for (const item of doc) {
@@ -453,6 +470,58 @@ export function digestResolvedObjects(
       }
     }
   }
+
+  // 反向闭包（OI/Codex blocking 第 7 轮）：控制关系由 electrical_topology.controls 的
+  // target_point_ids / switch_point_ids **反向**指向受控灯具与开关，灯具/开关自己的声明
+  // 不写「我被哪个控制组管」。只做正向闭包时，改控制组的 type/kind/note 不会让只选灯具的
+  // 包（PKG-120，SCH-120-01「开关和双处控制关系」）stale——而旧实现靠整份 electrical.yaml
+  // 是能抓到的，属于本次收窄引入的漏报。
+  // 范围**限定在 electrical_topology**：不做通用反向闭包。通用反向会把墙→家具之类的
+  // 大量无关对象拖进指纹，过度 stale 到失去分辨力；控制关系是仓内已知的反向依赖形态。
+  {
+    const topologyIndex = options.indexes?.get('electrical_topology');
+    if (topologyIndex) {
+      // 控制组 → 它声明指向的点位 id（受控 + 开关两侧都要）。
+      const controlsByPointId = new Map<string, AuthorityObject[]>();
+      for (const object of topologyIndex.objects.values()) {
+        if (object.collection !== 'control') continue;
+        for (const field of ['target_point_ids', 'switch_point_ids'] as const) {
+          for (const pointId of (object.node[field] ?? []) as string[]) {
+            if (typeof pointId !== 'string') continue;
+            const list = controlsByPointId.get(pointId) ?? [];
+            list.push(object);
+            controlsByPointId.set(pointId, list);
+          }
+        }
+      }
+      if (controlsByPointId.size > 0) {
+        // 已收录对象的 id → 指向它的控制组 → 该控制组声明的其它点位（递归）。
+        // 注意：被收录对象可能在任意索引里（灯具在 electrical、控制在 electrical_topology），
+        // 所以队列存 **id 字符串**，不存 AuthorityObject——按 topologyIndex.objects.get(id)
+        // 取会漏掉不在该索引里的对象（PKG-120 的灯具全在 electrical 索引）。
+        const reverseQueue: string[] = Object.keys(digests)
+          .map((key) => key.slice(key.indexOf(':') + 1).split('@')[0]);
+        const seen = new Set<string>(reverseQueue);
+        while (reverseQueue.length) {
+          const currentId = reverseQueue.shift()!;
+          for (const control of controlsByPointId.get(currentId) ?? []) {
+            const key = objectDigestKey('electrical_topology', control);
+            if (digests[key] !== undefined) continue;
+            digests[key] = sha256(stableStringify(control.node));
+            // 控制组声明的其它点位也要进指纹：改受控灯清单同样该让相关包 stale。
+            for (const field of ['target_point_ids', 'switch_point_ids'] as const) {
+              for (const pointId of (control.node[field] ?? []) as string[]) {
+                if (typeof pointId !== 'string' || seen.has(pointId)) continue;
+                seen.add(pointId);
+                reverseQueue.push(pointId);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   resolution.digests = digests;
   return resolution;
 }

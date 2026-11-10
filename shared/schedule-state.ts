@@ -33,6 +33,35 @@ export const CONTROL_REL_PATH = 'schedule/phase-1/control.yaml';
 export const ACCEPTANCE_REL_PATH = 'config/acceptance.yaml';
 export const ROADMAP_REL_PATH = 'schedule/roadmap.yaml';
 
+/**
+ * 工程对象域的 authority source（issue #191 Codex blocking 第 7 轮）。
+ *
+ * `model-package-links.yaml` 的 authorities 映射里混了两类条目：
+ *   - **工程对象域**（本清单）：模型几何、围护/面层、家具、电气、给排水、电气拓扑、
+ *     MEP 路由、HVAC、吊顶。它们的声明是**工程输入**。
+ *   - **分期与执行文件**（不在本清单）：`phase_scope` / `phase_1_budget` /
+ *     `phase_2_scope` / `phase_3_scope`。其中 `phase_1_budget` 指向
+ *     `schedule/phase-1/control.yaml`，而该文件的 `audit_log.records` **就是验收通过
+ *     记录本身**——是执行产出，不是工程输入。
+ *
+ * 为什么必须分开：project_scope 包的指纹按「全模型」扩到全部权威文件时，若把执行文件
+ * 也圈进去，存一条通过记录就会改变这条记录保存下来的 project_data_sha256，重新加载后
+ * staleAuditReason 立即判 stale——付款门槛永远无法稳定通过（自指循环）。
+ * 检查定义的变化由 check_spec_sha256 单独覆盖（checkSpecHash 哈希 {packageSpec, check}），
+ * 不需要靠整份 control.yaml 进项目数据指纹。
+ */
+export const ENGINEERING_AUTHORITY_SOURCES: readonly string[] = [
+  'model_geometry',
+  'overlay',
+  'furnishings',
+  'electrical',
+  'plumbing',
+  'electrical_topology',
+  'mep_routes',
+  'hvac',
+  'ceiling',
+];
+
 export interface ScheduleState {
   root: string;
   errors: string[];
@@ -207,7 +236,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     const paths = [MODEL_PACKAGE_LINKS_PATH, 'schedule/phase-scope.yaml', 'config/acceptance.yaml', DECISION_GATES_PATH];
     for (const link of links) {
       if (!linkNeedsWholeAuthority(link)) continue;
-      // project_scope 的语义是「全模型」：边界收窄不到对象，就按**全部**权威文件建指纹。
+      // project_scope 的语义是「全模型」：边界收窄不到对象，就按**全部工程对象域**建指纹。
       // 不能只按该链接 scope 恰好列出的那几份——6 个 project_scope 链接里有 5 个只列了
       // model_geometry，那样 house/electrical/overlay 等对象域的变化就不会让它们 stale，
       // 而它们的 targets 是 `*`、验收项对象集也按 `*` 派生，等于声明了「跟任何对象变」
@@ -216,7 +245,15 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
       // 解析不出（unresolved）的链接仍按其 scope 列出的文件整份计入——那是「不知道边界」，
       // 不是「边界是全模型」，按 scope 算已是安全方向，不该借道全量。
       if (modelPackageLinks.objectResolutions?.[link.id]?.projectScope) {
-        paths.push(...Object.values(modelPackageLinks.authorities).flatMap(authorityFilePaths));
+        // **只扩工程对象域，不扩 schedule/execution 文件**（issue #191 Codex blocking 第 7 轮）：
+        // authorities 里混了两类——`phase_scope` / `phase_*_budget` / `phase_*_scope` 是
+        // 分期与执行文件，其中 phase_1_budget 指向 schedule/phase-1/control.yaml，
+        // 而该文件的 `audit_log.records` **就是验收通过记录本身**。
+        // 若把它圈进指纹，存一条通过记录就会改变这条记录保存下来的 project_data_sha256，
+        // 重新加载后 staleAuditReason 立即判 stale——付款门槛永远无法稳定通过（自指）。
+        // 检查定义的变化由 check_spec_sha256 单独覆盖（checkSpecHash 哈希 {packageSpec, check}），
+        // 不需要靠整份 control.yaml 进项目数据指纹。
+        paths.push(...ENGINEERING_AUTHORITY_SOURCES.flatMap((source) => authorityFilePaths(modelPackageLinks.authorities[source] ?? source)));
         continue;
       }
       for (const scope of link.scope ?? []) {
