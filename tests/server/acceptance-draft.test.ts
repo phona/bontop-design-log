@@ -277,9 +277,9 @@ describe('projectAuditRecords / renderPrBody', () => {
 
   it('P1-8 付款节点显式结论：未全部通过写「不放行 N/M」，全部通过写放行 GATE', () => {
     const pkg = pkg060();
-    // 部分通过：草稿只过 1/7 → 明确写「本次放行：无」
+    // 部分通过：草稿只过 1/8 → 明确写「本次放行：无」
     const partial = renderPrBody(draft(), pkg, 'accept/PKG-060-20261102-101530');
-    assert.match(partial, /\*\*本次放行：无（包未全部通过：1\/7）；付款只在合并后生效\*\*/);
+    assert.match(partial, /\*\*本次放行：无（包未全部通过：1\/8）；付款只在合并后生效\*\*/);
     assert.doesNotMatch(partial, /本次放行：GATE-060-COMPLETE/);
     // 全部通过：草稿覆盖 PKG-060 每一条检查且全 passed → 写放行的付款节点
     const all = renderPrBody({
@@ -305,7 +305,7 @@ describe('projectAuditRecords / renderPrBody', () => {
     const pkg = pkg060();
     const regressed = pkg.checks.find((check) => check.id === 'check_tile_hollow')!;
     regressed.audit_status = 'passed';   // 此前已通过
-    // 草稿覆盖全部 7 条：6 条 passed + 该检查改判 failed
+    // 草稿覆盖全部 8 条：7 条 passed + 该检查改判 failed
     const body = renderPrBody({
       package_id: 'PKG-060',
       results: pkg.checks.map((check) => ({
@@ -316,7 +316,7 @@ describe('projectAuditRecords / renderPrBody', () => {
         evidence: [`schedule/phase-1/evidence/PKG-060/${check.id}/a.jpg`],
       })),
     }, pkg, 'accept/PKG-060-20261102-101530');
-    assert.match(body, /\*\*本次放行：无（包未全部通过：6\/7）；付款只在合并后生效\*\*/);
+    assert.match(body, /\*\*本次放行：无（包未全部通过：7\/8）；付款只在合并后生效\*\*/);
     assert.doesNotMatch(body, /本次放行：GATE-060-COMPLETE/, '退化的包不得写放行付款节点');
     // 改判的检查在「本次改动」里如实呈现为 failed
     assert.match(body, /`check_tile_hollow` → \*\*failed\*\*/);
@@ -337,7 +337,7 @@ describe('projectAuditRecords / renderPrBody', () => {
         evidence: [`schedule/phase-1/evidence/PKG-060/${check.id}/a.jpg`],
       })),
     }, pkg, 'accept/PKG-060-20261102-101530');
-    assert.match(body, /\*\*本次放行：无（包未全部通过：6\/7）；付款只在合并后生效\*\*/);
+    assert.match(body, /\*\*本次放行：无（包未全部通过：7\/8）；付款只在合并后生效\*\*/);
     assert.doesNotMatch(body, /本次放行：GATE-060-COMPLETE/);
   });
 
@@ -345,7 +345,7 @@ describe('projectAuditRecords / renderPrBody', () => {
     const pkg = pkg060();
     const alreadyPassed = pkg.checks.find((check) => check.id === 'check_tile_hollow')!;
     alreadyPassed.audit_status = 'passed';
-    // 草稿只覆盖其余 6 条且全 passed → 连同 untouched 的那条已过项，7/7 放行
+    // 草稿只覆盖其余 7 条且全 passed → 连同 untouched 的那条已过项，8/8 放行
     const body = renderPrBody({
       package_id: 'PKG-060',
       results: pkg.checks

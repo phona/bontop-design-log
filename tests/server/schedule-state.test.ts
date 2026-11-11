@@ -32,12 +32,13 @@ describe('shared/schedule-state: 真实仓集成', () => {
     assert.deepEqual(state.errors, []);
     // 2026-11-02 实测锚点（npm run verify:schedule）：
     // 25 phase-1 packages, 106 cost components (89 unpriced), 116 auditable checks
+    // 2026-11-11 先定门再贴砖门禁新增 check_tile_door_gate（PKG-060 acceptance_refs）→ 117。
     // orderedPackages 按原语义过滤 sequence<900（PKG-900 预备金不进施工顺序），故 24。
     assert.equal(state.control.work_packages.length, 25);
     assert.equal(state.orderedPackages.length, 24);
     assert.equal(state.componentIds.size, 106);
     assert.equal(state.unpricedComponents.length, 89);
-    assert.equal(state.usedCheckIds.size, 116);
+    assert.equal(state.usedCheckIds.size, 117);
     // 当前真实状态：25 包全部 blocked、0 个 ready（design v2 §4 的口径）
     assert.equal(state.orderedPackages.filter((pkg: AnyRecord) => state.effectiveReadiness(pkg) === 'ready').length, 0);
     assert.ok(state.openDecisionGates.length >= 1, '至少一条 open 决策门禁');
@@ -58,7 +59,7 @@ describe('shared/schedule-state: 真实仓集成', () => {
     const pkg060 = snapshot.packages.find((pkg) => pkg.id === 'PKG-060');
     assert.ok(pkg060, 'PKG-060 必须在 snapshot 里');
     assert.equal(pkg060!.effective_readiness, 'blocked');
-    assert.ok(pkg060!.checks.length >= 6, 'PKG-060 acceptance_refs 6 项');
+    assert.ok(pkg060!.checks.length >= 7, 'PKG-060 acceptance_refs 7 项');
     assert.equal(pkg060!.gate_status, 'pending');
     assert.ok(pkg060!.project_fingerprint.length === 64);
     const hollow = pkg060!.checks.find((check) => check.id === 'check_tile_hollow');

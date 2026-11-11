@@ -1387,7 +1387,9 @@ contracts:
         # 新项已挂 PKG-000 交房查验（SCH-000-01 handover_survey）的 acceptance_refs 并 schedule:render 落 checklist；
         # 不挂 PKG-170 竣工联合验收：交房缺陷追责窗口在竣工前已过，且施工期间归属易搅浑；
         # 本阶段只验开发商已封好的窗，不涉及用户自己买窗。
-        expect_matches: 67
+        # 2026-11-11 先定门再贴砖门禁新增 1 项验收（check_tile_door_gate，D20 阻塞）→ 67 → 68；
+        # 新项已挂 PKG-060 的 acceptance_refs 并 schedule:render 落 checklist。
+        expect_matches: 68
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写
@@ -1870,7 +1872,7 @@ contracts:
   # ③ 验收项对象集：每条验收项的 objects.from_packages 必须等于引用它的工作包集合
   #    （acceptance_refs 反查）；对象集 = 这些工作包 targets 的并集。
   #    两种来源（from_packages / acceptance_refs）各自求并集后必须相等，派生不出对象集的
-  #    验收项直接报错。当前 67 条全部能被派生（无「无包引用」的孤儿项），其中
+  #    验收项直接报错。当前 68 条全部能被派生（无「无包引用」的孤儿项），其中
   #    check_window_* 6 条与 check_occ_formaldehyde 由 project_scope 包派生为 "*"。
   - id: c.acceptance_objects
     kind: object_link
