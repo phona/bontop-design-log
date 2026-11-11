@@ -139,8 +139,12 @@ function snapshot(overrides: Partial<ScheduleSnapshot> = {}): ScheduleSnapshot {
   };
 }
 
-/** what-if 响应：§6.1 的 schedule 键平铺 + scenario（设计 §6.2）。返回类型钉住服务端形状。 */
-function whatIfPayload(): ScheduleProjectionView & {scenario: GanttScenarioView} {
+/**
+ * what-if 响应：§6.1 的 schedule 键平铺 + scenario（设计 §6.2）+ 同次 load 的数据指纹
+ * （Codex 一审 blocking，PR #218：面板凭它验明演算与所显示基线同版本，不符即丢弃）。
+ * 默认指纹与 snapshot() 的 data_fingerprint 相同（'f'.repeat(64)）——相符才呈现。
+ */
+function whatIfPayload(fingerprint = 'f'.repeat(64)): ScheduleProjectionView & {scenario: GanttScenarioView; data_fingerprint: string} {
   const shifted = scheduleView({
     packages: {
       'PKG-010': projectionPkg(),
@@ -154,6 +158,7 @@ function whatIfPayload(): ScheduleProjectionView & {scenario: GanttScenarioView}
       overrides: [{pkg: 'PKG-020', workdays: 3}],
       affected: [{pkg: 'PKG-020', delta: 3}, {pkg: 'PKG-030', delta: 3}],
     },
+    data_fingerprint: fingerprint,
   };
 }
 
@@ -587,5 +592,90 @@ describe('GanttPanel', () => {
     panel.hide();
     expect(panel.isVisible()).toBe(false);
     expect((document.querySelector('#gantt-panel') as HTMLElement).style.display).toBe('none');
+  });
+
+  // ─── Codex 一审（PR #218）：取数状态机结构性重做——单 epoch + ready 门 + 版本核对 ───
+  // 推翻的双计数器口径（refreshSeq/whatIfSeq 各管一段）：刷新在途时演算仍可发起、后到
+  // 基线无提示清掉新演算；基线失败后到演算还能在错误条下画图。现在一条 dataEpoch 管
+  // 全部路径，ready 之前阻塞演算，版本不符一律 fail-closed。
+
+  // blocking 根治：服务端每次 what-if 都重载控制源。响应指纹与所显示基线不符 =
+  // 新排程配旧包状态（一行之内新旧工程事实混排）。丢弃演算、明示、自动重取基线，
+  // 且丢弃原因必须留在新鲜基线之上（不能被自动重取的 reset 清掉）。
+  it('版本不符即丢弃：指纹不一致的演算不呈现；自动重取基线且丢弃原因留在新基线上', async () => {
+    const state = snapshot();
+    const fetchMock = stubFetch({state, whatIf: whatIfPayload('e'.repeat(64))});
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.gantt-row[data-pkg-id="PKG-010"]')).toBeTruthy());
+
+    (document.querySelector('#gantt-delay-input') as HTMLInputElement).value = 'PKG-020:3';
+    (document.querySelector('#gantt-what-if') as HTMLElement).click();
+    // 版本不符必须触发一次自动重取（基线 fetch 第二次）
+    await vi.waitFor(() => expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/schedule/state')).length,
+    ).toBe(2));
+
+    // 演算未呈现：scenario 区回到非生效态，受影响清单（PKG-020 +3）不得出现
+    expect(document.querySelector('#gantt-scenario')?.getAttribute('data-active')).toBe('false');
+    expect(bodyText()).not.toContain('PKG-020 +3');
+    // 丢弃原因保留；PKG-020 画的是声明基线 2/3/4，不是演算的 5/6/7
+    expect(bodyText()).toContain('数据指纹不符');
+    const row = document.querySelector('.gantt-row[data-pkg-id="PKG-020"]') as HTMLElement;
+    expect(row.textContent).toContain('基线：起点 第 2 工作日｜下界 第 3 工作日｜上界 第 4 工作日');
+    expect(row.textContent).not.toContain('上界 第 7 工作日');
+  });
+
+  // fail-closed：响应不带 data_fingerprint（旧形态/被裁剪）= 无法核对版本，不赌它同版本。
+  it('响应无数据指纹（旧形态）：无法核对版本，丢弃演算并重取', async () => {
+    const legacy = whatIfPayload();
+    delete (legacy as {data_fingerprint?: string}).data_fingerprint;
+    const fetchMock = stubFetch({whatIf: legacy});
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.gantt-row[data-pkg-id="PKG-010"]')).toBeTruthy());
+
+    (document.querySelector('#gantt-what-if') as HTMLElement).click();
+    await vi.waitFor(() => expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/schedule/state')).length,
+    ).toBe(2));
+    expect(bodyText()).toContain('未带数据指纹');
+    expect(document.querySelector('#gantt-scenario')?.getAttribute('data-active')).toBe('false');
+  });
+
+  // major 根治（ready 门）：基线在途时演算按钮禁用，处理层也不发 what-if 请求——
+  // 排队/混跑会把过期基线演算成新结论（Codex 探针：刷新完成后在途演算重新生效）。
+  it('ready 前阻塞演算：基线在途时按钮禁用且处理层不发 what-if 请求', async () => {
+    const fetchMock = vi.fn((url: string) => (
+      String(url).includes('/api/schedule/what-if')
+        ? Promise.resolve({ok: true, status: 200, json: async () => whatIfPayload()})
+        : new Promise(() => {}) // 基线永在途
+    ));
+    vi.stubGlobal('fetch', fetchMock as never);
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    panel['render'](); // 在途态渲染一次，钉 DOM 里的禁用态
+    expect((document.querySelector('#gantt-what-if') as HTMLButtonElement).disabled).toBe(true);
+
+    await panel['runWhatIf']();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/schedule/what-if'))).toBe(false);
+    expect(bodyText()).toContain('基线加载中');
+  });
+
+  // 基线取数失败（payload 已清空）后同样不接受演算：错误条下不得借后到演算命重新画图。
+  it('基线失败后阻塞演算：503 之后点演算不发请求，明示先加载成功', async () => {
+    const fetchMock = vi.fn(async (url: string) => (
+      String(url).includes('/api/schedule/what-if')
+        ? {ok: true, status: 200, json: async () => whatIfPayload()}
+        : {ok: false, status: 503, json: async () => ({error: 'schedule control invalid: 1 issue(s)', issues: ['demo']})}
+    ));
+    vi.stubGlobal('fetch', fetchMock as never);
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#gantt-error')).toBeTruthy());
+
+    await panel['runWhatIf']();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/schedule/what-if'))).toBe(false);
+    expect(bodyText()).toContain('未取得基线快照');
   });
 });

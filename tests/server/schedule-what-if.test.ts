@@ -126,8 +126,12 @@ describe('GET /api/schedule/what-if（设计 §6.2）', () => {
     const stateRes = await request(app).get('/api/schedule/state').expect(200);
     const res = await request(app).get('/api/schedule/what-if').expect(200);
     assert.equal(res.body.scenario, null, '没有 delay 就没有 scenario（模块口径，不造 {overrides: [], affected: []}）');
-    const {scenario: _scenario, ...schedule} = res.body;
+    const {scenario: _scenario, data_fingerprint: _fingerprint, ...schedule} = res.body;
     assert.deepEqual(schedule, stateRes.body.schedule, '无参 what-if 必须与 /schedule/state 的 schedule 键逐值相同');
+    // Codex 一审 blocking（PR #218）：响应必须带同次 load 的数据指纹，面板据此验明
+    // 「演算排程」与「所显示基线包状态」同版本；不符即丢弃演算，不混排新旧事实。
+    assert.equal(res.body.data_fingerprint, stateRes.body.data_fingerprint, 'what-if 响应的 data_fingerprint 必须与 /schedule/state 的快照指纹一致');
+    assert.ok(/^[0-9a-f]{64}$/.test(res.body.data_fingerprint), 'data_fingerprint 必须是 64 位十六进制');
     for (const [pkgId, pkg] of Object.entries(schedule.packages as Record<string, {baseline: unknown; forecast: unknown}>)) {
       assert.deepEqual(pkg.forecast, pkg.baseline, `${pkgId}: 无 scenario 时 forecast 必须与 baseline 相同（§16.3）`);
     }
@@ -139,6 +143,7 @@ describe('GET /api/schedule/what-if（设计 §6.2）', () => {
     const empty = await request(app).get('/api/schedule/what-if?delay=').expect(200);
     assert.equal(empty.body.scenario, null);
     assert.deepEqual(empty.body.packages, stateRes.body.schedule.packages);
+    assert.equal(empty.body.data_fingerprint, stateRes.body.data_fingerprint, '空 delay 也须带指纹（面板的无参演算同样要核对版本）');
   });
 
   it('10. delay PKG-040:3 只影响拓扑下游；并行分支 PKG-030 不动；affected 列真实受影响包', async () => {

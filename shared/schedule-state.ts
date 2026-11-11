@@ -1720,6 +1720,15 @@ function buildCoordinationSnapshot(state: ScheduleState): Record<string, Schedul
  * what-if 路由（设计 §6.2）把带 scenario 重跑得到的投影传进来，复用同一套包/窗口装配——
  * check_window 映射、blocking_reasons、constraints 视图口径不允许有第二份。
  */
+/**
+ * 项目数据指纹：快照 `data_fingerprint` 与 what-if 响应共用同一算法（Codex 一审 blocking
+ * 的版本核对地基，PR #218）。what-if 每次请求都重载控制源，响应带上同次 load 的指纹，
+ * 面板才能验明「演算排程」与「所显示包状态」同版本；算法分两处就会漂移。
+ */
+export function scheduleDataFingerprint(state: ScheduleState): string {
+  return state.snapshotDigest(state.fileSnapshot(state.projectInputPaths));
+}
+
 export function buildScheduleProjectionView(
   state: ScheduleState,
   projection: ScheduleProjection | null = state.scheduleProjection,
@@ -1880,7 +1889,7 @@ export function buildScheduleSnapshot(state: ScheduleState): ScheduleSnapshot {
       open_gated_checks: state.openGatedCheckCount,
       ready_packages: packages.filter((pkg) => pkg.effective_readiness === 'ready').length,
     },
-    data_fingerprint: state.snapshotDigest(state.fileSnapshot(state.projectInputPaths)),
+    data_fingerprint: scheduleDataFingerprint(state),
     packages,
     decision_gates: {
       open: state.openDecisionGates.map((decision) => ({

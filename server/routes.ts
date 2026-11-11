@@ -26,7 +26,7 @@ import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-c
 import { buildPaintCostComparison, loadPaintComparisonConfig } from './paint-cost-comparison.js';
 import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadModelPackageLinks } from './model-package-links.js';
-import { buildScheduleProjectionView, buildScheduleSnapshot, loadScheduleState, type ScheduleState } from '../shared/schedule-state.js';
+import { buildScheduleProjectionView, buildScheduleSnapshot, loadScheduleState, scheduleDataFingerprint, type ScheduleState } from '../shared/schedule-state.js';
 import { MAX_SCENARIO_DELAY_WORKDAYS, projectSchedule, ProjectionError } from '../shared/schedule-projection.js';
 import {
   AcceptanceError, acceptBranchName, assertPackageCheckExists, finalizeEvidence, loadDraft, runPreSubmitGates, saveDraft, stageEvidence, submitAcceptance,
@@ -541,7 +541,10 @@ export function createApiRouter(deps: ApiDeps): Router {
           throw err;
         }
       }
-      res.json({...buildScheduleProjectionView(state, projection), scenario: projection.scenario});
+      // data_fingerprint：同次 load 的项目数据指纹（Codex 一审 blocking，PR #218）。服务端
+      // 每次 what-if 都重载控制源，面板据此验明「演算排程」与「所显示基线包状态」同版本；
+      // 指纹不符时面板丢弃演算并重取基线，不把新排程与旧状态拼成一行。
+      res.json({...buildScheduleProjectionView(state, projection), scenario: projection.scenario, data_fingerprint: scheduleDataFingerprint(state)});
     } catch (err) {
       res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
     }

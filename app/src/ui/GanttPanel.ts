@@ -55,10 +55,16 @@ export interface GanttScenarioView {
   affected: Array<{pkg: string; delta: number}>;
 }
 
-/** 演算响应归一结果：排程视图 + scenario（无 scenario 键 = 基线）。 */
+/** 演算响应归一结果：排程视图 + scenario（无 scenario 键 = 基线）+ 同次 load 的数据指纹。 */
 interface ResolvedScheduleView {
   schedule: ScheduleProjectionView;
   scenario: GanttScenarioView | null;
+  /**
+   * 同次 load 的项目数据指纹（服务端 what-if 响应带，shared/schedule-state.ts 的
+   * scheduleDataFingerprint）。缺失 = 旧响应形态，按版本不符处理——fail-closed，
+   * 不把无法核对版本的排程与旧包状态拼在一行（Codex 一审 blocking，PR #218）。
+   */
+  dataFingerprint: string | null;
 }
 
 // ─── 固定映射表（颜色只能来自这里；文字与颜色必须同时出现）────────────────────
@@ -217,6 +223,8 @@ function isProjectionLike(value: unknown): value is ScheduleProjectionView {
  * 演算响应归一（设计 §6.2）：口径是 §6.1 的 `schedule` 键**平铺** + `scenario`；
  * 同时容忍 `{schedule: {...}, scenario}` 嵌套形态（同一端点两种装配都出现过时，面板
  * 不应静默画空）。关键字段缺一即返回 null——不渲染不完整结果。
+ * `data_fingerprint` 缺或不符时**不**在这里丢（调用方要拿它和所显示基线比对，见
+ * runWhatIf 的版本核对）；这里只负责取出来，取不到给 null。
  */
 function normalizeWhatIfPayload(payload: unknown): ResolvedScheduleView | null {
   const record = asRecord(payload);
@@ -232,7 +240,10 @@ function normalizeWhatIfPayload(payload: unknown): ResolvedScheduleView | null {
     && Array.isArray(scenarioRecord.affected)
     ? scenarioRecord as unknown as GanttScenarioView
     : null;
-  return {schedule, scenario};
+  const fingerprint = typeof record.data_fingerprint === 'string' && record.data_fingerprint
+    ? record.data_fingerprint
+    : null;
+  return {schedule, scenario, dataFingerprint: fingerprint};
 }
 
 /** HTTP 失败文案：状态码 + 服务端 error + 前三条 issues（全部动态串在渲染处转义）。 */
@@ -262,9 +273,15 @@ export class GanttPanel {
   private delayText = '';
   private layoutKey = 'wide';
   private resizeObserver: ResizeObserver | null = null;
-  /** 请求代号：只应用最后一次 refresh / 演算的响应，丢弃过期的在途响应。 */
-  private refreshSeq = 0;
-  private whatIfSeq = 0;
+  /**
+   * 取数世代（Codex 一审 blocking+major 的结构性重做，PR #218）：全面板唯一一条合并规则——
+   * 每次发起取数/演算/重置都 dataEpoch+1，响应只有 epoch 仍最新才允许写，在途响应一律丢弃。
+   * 取代旧的 refreshSeq/whatIfSeq 双计数器（各管一段、互不看守：刷新在途时演算仍可发起，
+   * 后到的基线会无提示清掉新演算；基线刷新失败后，后到演算还能在错误条下重新画图）。
+   */
+  private dataEpoch = 0;
+  /** 基线加载中：ready 之前阻塞演算（不排队——排队会把过期基线演算成新结论）。 */
+  private baselineLoading = false;
 
   constructor(private readonly selection: ScheduleSelectionStore) {}
 
@@ -297,32 +314,41 @@ export class GanttPanel {
     };
   }
 
-  /** 重新拉取快照并渲染；同时丢弃上一次演算结果（打开/刷新 = 回到基线视图）。 */
-  async refresh(): Promise<void> {
-    const seq = ++this.refreshSeq;
-    // 刷新即回到基线：在途演算响应一律作废，避免「刷新后旧演算又写回来」。
-    this.whatIfSeq += 1;
+  /** 重新拉取快照并渲染；同时丢弃上一次演算结果（打开/刷新 = 回到基线视图）。
+   *  keepNotice：版本不符后的自动重取用——丢弃演算的原因要留在新鲜基线之上，
+   *  不能被这次 refresh 的 reset 清掉（用户看得到「演算为何消失」）。 */
+  async refresh(options: {keepNotice?: boolean} = {}): Promise<void> {
+    // 唯一合并规则：发起即换代。在途的取数/演算响应从此作废（刷新后旧演算写不回来，
+    // 演算在途时刷新也会让旧演算作废——一个计数器管全部，不再有互不看守的双计数器）。
+    const epoch = ++this.dataEpoch;
+    this.baselineLoading = true;
     try {
       const response = await fetch('/api/schedule/state');
-      if (seq !== this.refreshSeq) return;
+      if (epoch !== this.dataEpoch) return;
       if (!response.ok) {
         const payload: unknown = await response.json().catch(() => null);
         throw new Error(describeHttpError(payload, response.status, '/api/schedule/state'));
       }
       const payload: unknown = await response.json();
-      if (seq !== this.refreshSeq) return;
+      if (epoch !== this.dataEpoch) return;
       this.payload = payload as ScheduleSnapshot;
       this.errorMessage = null;
-      this.resetWhatIfState();
+      this.resetWhatIfState(options.keepNotice === true);
     } catch (err) {
-      if (seq !== this.refreshSeq) return;
+      if (epoch !== this.dataEpoch) return;
       // 失败不能保留上一次的快照/演算：错误条写着「本面板不渲染来自坏快照的数据」，
       // 下面却继续画旧条，会让用户把过期状态当当前状态（任务书 §5）。
       this.payload = null;
-      this.resetWhatIfState();
+      this.resetWhatIfState(options.keepNotice === true);
       this.errorMessage = err instanceof Error ? err.message : String(err);
+    } finally {
+      // 只有当前世代负责清加载旗标并渲染：被更新世代顶掉的在途刷新，不许把别人的
+      // 加载态清掉（Codex 一审 major：两个在途请求互相清对方的态）。
+      if (epoch === this.dataEpoch) {
+        this.baselineLoading = false;
+        this.render();
+      }
     }
-    this.render();
   }
 
   // ─── 渲染 ────────────────────────────────────────────────────────────────
@@ -358,11 +384,14 @@ export class GanttPanel {
     const active = this.whatIfScenario !== null || this.whatIfSchedule !== null;
     const note = this.scenarioNoteText();
     const noteState = this.whatIfPending ? 'pending' : this.whatIfError ? 'error' : active ? 'scenario' : 'baseline';
+    // ready 之前不接受演算（Codex 一审 major，PR #218）：基线未加载/加载中/取数失败时按钮
+    // 禁用；runWhatIf 里还有一道处理层拦截（DOM 禁用之外的双保险）。
+    const ready = this.payload !== null && !this.baselineLoading;
     return `<div id="gantt-scenario" data-active="${active}" style="margin-bottom:8px;padding:8px 10px;border:1px solid rgba(233,196,106,.4);border-radius:6px;background:rgba(233,196,106,.07);">
       <div style="color:#f4dfa8;font-size:11px;">${escapeHtml(SCENARIO_WATERMARK)}</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px;">
         <input id="gantt-delay-input" type="text" value="${escapeHtml(this.delayText)}" placeholder="PKG-040:3（可多条，逗号分隔）" aria-label="what-if 延迟输入" style="flex:1 1 200px;min-width:0;padding:4px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:#232342;color:#e0e0e0;font-size:12px;" />
-        <button id="gantt-what-if" type="button"${this.whatIfPending ? ' disabled' : ''} style="cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid #e9c46a;background:#4a4027;color:#f4dfa8;font-size:12px;">演算</button>
+        <button id="gantt-what-if" type="button"${this.whatIfPending || !ready ? ' disabled' : ''} style="cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid #e9c46a;background:#4a4027;color:#f4dfa8;font-size:12px;">演算</button>
         <button id="gantt-reset" type="button"${active ? '' : ' disabled'} style="cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:#2a2a3e;color:#ccd;font-size:12px;">回到基线</button>
       </div>
       <div id="gantt-scenario-note" data-state="${noteState}" style="margin-top:6px;font-size:11px;line-height:1.6;color:${noteState === 'error' ? '#f0a9a5' : noteState === 'scenario' ? '#f4dfa8' : '#9aa4b2'};">${escapeHtml(note)}</div>
@@ -381,10 +410,13 @@ export class GanttPanel {
         ? this.whatIfScenario.affected
             .map((entry) => `${entry.pkg} ${entry.delta >= 0 ? '+' : ''}${entry.delta} 工作日`)
             .join('、')
-        : '无下游包受影响';
+            : '无下游包受影响';
       return `演算入参：${overrides}；受影响 ${this.whatIfScenario.affected.length} 包：${affected}。演算只改本视图的 forecast 呈现，不改检查记录窗口（证据不参与计算，§16），也不写任何配置。`;
     }
     if (this.whatIfSchedule) return '演算响应未带 scenario 段（无参演算 = 基线）；本视图仍是演算结果，非计划。';
+    // ready 之前的明示：演算必须跑在所显示基线之上，排队/混跑会把过期基线演算成新结论。
+    if (this.baselineLoading) return '基线加载中：就绪前不接受演算。';
+    if (this.payload === null) return '未取得基线快照：先加载成功再演算。';
     return '当前为基线视图（未参与演算）。输入 delay 后点「演算」；无参演算 = 基线。';
   }
 
@@ -584,8 +616,8 @@ export class GanttPanel {
       void this.runWhatIf();
     });
     body.querySelector('#gantt-reset')?.addEventListener('click', () => {
-      // 作废在途演算（后到的 pending 响应不得把演算写回来），再丢弃当前结果。
-      this.whatIfSeq += 1;
+      // 作废在途取数/演算（后到的响应不得把演算写回来），再丢弃当前结果。
+      this.dataEpoch += 1;
       this.resetWhatIfState();
       this.render();
     });
@@ -593,7 +625,21 @@ export class GanttPanel {
 
   /** delay 语法/未知包/非正方正的判定全部在服务端（单一实现）；面板只转发原文并展示 400/503 原因。 */
   private async runWhatIf(): Promise<void> {
-    const seq = ++this.whatIfSeq;
+    // ready 之前阻塞（Codex 一审 major，PR #218）：基线加载中或未就绪时不发起演算——
+    // 排队会把过期基线演算成新结论。DOM 里按钮已 disabled，这里是处理层双重拦截。
+    if (this.baselineLoading) {
+      this.whatIfError = '基线加载中：就绪前不接受演算（避免把过期基线演算成新结论）';
+      this.render();
+      return;
+    }
+    if (this.payload === null) {
+      this.whatIfError = '未取得基线快照：先加载成功再演算';
+      this.render();
+      return;
+    }
+    const epoch = ++this.dataEpoch;
+    // 发起时锚定所显示基线的指纹：响应必须同版本才允许呈现（见下方核对）。
+    const baselineFingerprint = this.payload.data_fingerprint;
     const delay = this.delayText.trim();
     this.whatIfPending = true;
     this.whatIfError = null;
@@ -602,9 +648,9 @@ export class GanttPanel {
       const query = delay ? `?${new URLSearchParams({delay}).toString()}` : '';
       const response = await fetch(`/api/schedule/what-if${query}`);
       const payload: unknown = await response.json().catch(() => null);
-      // 过期响应（期间点了「回到基线」/触发了刷新/又跑了一次演算）一律丢弃，
+      // 过期响应（期间触发了刷新/回到基线/又跑了一次演算）一律丢弃，
       // 不得把旧 scenario 写回当前视图。
-      if (seq !== this.whatIfSeq) return;
+      if (epoch !== this.dataEpoch) return;
       if (!response.ok) {
         this.whatIfSchedule = null;
         this.whatIfScenario = null;
@@ -615,29 +661,43 @@ export class GanttPanel {
           this.whatIfSchedule = null;
           this.whatIfScenario = null;
           this.whatIfError = '演算响应缺少排程投影（anchor_date / ordinals / packages）——不渲染不完整结果';
+        } else if (normalized.dataFingerprint === null || normalized.dataFingerprint !== baselineFingerprint) {
+          // 版本不符即丢弃并重取（Codex 一审 blocking 的根治，PR #218）：服务端每次 what-if
+          // 都重载控制源，指纹与所显示基线不一致时，新排程 + 旧包状态会拼成一行虚构事实
+          // （新的阻塞解释/工期配旧的「已通过」）。这里一律 fail-closed：丢演算、明示、刷新。
+          this.whatIfSchedule = null;
+          this.whatIfScenario = null;
+          this.whatIfError = normalized.dataFingerprint === null
+            ? '演算响应未带数据指纹（旧响应形态）——无法核对版本，已丢弃本次演算'
+            : '控制源已在演算期间变更（数据指纹不符）——已丢弃本次演算并重新取数，避免新旧工程事实拼在同一行';
+          void this.refresh({keepNotice: true});
         } else {
           this.whatIfSchedule = normalized.schedule;
           this.whatIfScenario = normalized.scenario;
         }
       }
     } catch (err) {
-      if (seq !== this.whatIfSeq) return;
+      if (epoch !== this.dataEpoch) return;
       this.whatIfSchedule = null;
       this.whatIfScenario = null;
       this.whatIfError = `网络或解析失败：${err instanceof Error ? err.message : String(err)}`;
     } finally {
-      if (seq === this.whatIfSeq) {
+      if (epoch === this.dataEpoch) {
         this.whatIfPending = false;
         this.render();
       }
     }
   }
 
-  private resetWhatIfState(): void {
+  /**
+   * 丢弃演算结果、回到基线态。keepNotice：版本不符后的自动重取传 true——丢弃原因
+   * （whatIfError）要留在新鲜基线之上；其余路径（用户刷新/回到基线/新演算）一律清掉。
+   */
+  private resetWhatIfState(keepNotice = false): void {
     this.whatIfSchedule = null;
     this.whatIfScenario = null;
-    this.whatIfError = null;
     this.whatIfPending = false;
+    if (!keepNotice) this.whatIfError = null;
   }
 
   // ─── 容器宽度（≤700px 退化，issue #83 先例）─────────────────────────────
