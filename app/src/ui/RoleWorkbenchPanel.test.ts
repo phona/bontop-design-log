@@ -382,6 +382,40 @@ describe('RoleWorkbenchPanel', () => {
     panel.hide();
   });
 
+  // Codex 一审 blocking（PR #220）：owner_role 是协调组织者（谁去约人），不是到场参与者。
+  // 现场占用只认 required_roles（与模块 detectCoordinationConflicts 同一口径）——两条都由
+  // 设计师组织、required_roles 只有施工方的 onsite 预约，不得给设计师算出同日双现场/窗口重叠；
+  // 但组织者仍要在自己的待确认协调列表里看到自己要约的条目。
+  it('组织者不进现场占用：owner_role 不在 required_roles 时无冲突/潜在徽标，但进待确认列表', async () => {
+    stubFetch(snapshotView({
+      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['设计师', '施工方']})],
+      next_actions: [],
+      coordination: {
+        // 同日 + 都由设计师组织 + 参与者都只有施工方：旧口径会给设计师算「同日双现场」
+        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['施工方'], owner_role: '设计师', mode: 'onsite', lead_time_workdays: 3, status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '张三', org: '甲公司'}}),
+        'SCH-030-02': coordView({package_id: 'PKG-030', required_roles: ['施工方'], owner_role: '设计师', mode: 'onsite', lead_time_workdays: 3, status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '李四', org: '乙公司'}}),
+        // 未确认 + 窗口重叠：旧口径会给设计师算「潜在」
+        'SCH-040-01': coordView({package_id: 'PKG-040', required_roles: ['施工方'], owner_role: '设计师', mode: 'onsite', status: 'pending_invite'}),
+      },
+    }));
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
+
+    // 设计师（仅组织者）：没有任何徽标
+    const designer = roleGroup('设计师');
+    expect(designer.querySelector('.rw-badge')).toBeNull();
+    expect(sectionOf('设计师', 'conflicts').textContent).toContain('没有现场冲突');
+    // 但组织者仍看到自己要约的条目（待确认协调节）
+    expect(sectionOf('设计师', 'coordination').textContent).toContain('SCH-040-01');
+    // 施工方（明确参与者）：照常出同日双现场冲突徽标
+    const badge = sectionOf('施工方', 'conflicts').querySelector('.rw-badge[data-level="conflict"]') as HTMLElement;
+    expect(badge.textContent).toContain('冲突：同日双现场');
+    expect(badge.textContent).toContain('2 条｜同日 2026-03-02');
+    expect(sectionOf('施工方', 'conflicts').querySelectorAll('.rw-conflict-row')).toHaveLength(2);
+    panel.hide();
+  });
+
   // 任务书 §4-8 / D5：点行只写 selection；面板没有 onHighlight 钩子、不拉其他端点。
   it('点项写 selection 且不调 onHighlight（构造时只传 selection）', async () => {
     const mock = stubFetch(snapshotView());

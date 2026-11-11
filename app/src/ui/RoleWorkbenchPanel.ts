@@ -17,12 +17,15 @@
 //  - 每组三节顺序固定：待办检查 → 待确认协调 → 现场冲突；
 //  - 待办检查只列未完成（audit_status 为 passed/waived 算已完成，其余含 undefined 算待办），
 //    状态文字**原样**显示 audit_status 或「未登记」——不把派生值翻译成看起来像声明值的词；
-//  - 待确认协调只列 status ∈ {unassigned, pending_invite, invited} 且角色相关的条目；
+//  - 待确认协调只列 status ∈ {unassigned, pending_invite, invited} 且角色相关的条目
+//    （相关 = required_roles 之一或 owner_role——组织者要看自己要约的条目）；
 //    actor.name 为 null 显「待指定」，严禁造人名；
 //  - 现场冲突两级口径（§1.4）：cancelled 排除；mode !== 'onsite' 排除；冲突 = 同角色 ≥2 条
 //    onsite 且都已确认且 confirmed_at 同日；潜在 = 同角色 ≥2 条 onsite 且都未确认且 forecast
 //    窗口闭区间重叠；confirmed + 未确认混合两者都不出；snapshot.schedule 缺失时不出潜在
-//    徽标，只出文字「缺排程投影，潜在窗口无法判断」；
+//    徽标，只出文字「缺排程投影，潜在窗口无法判断」。**占用口径只认 required_roles**
+//    （participatesIn）——owner_role 是协调组织者不是到场参与者，与模块
+//    detectCoordinationConflicts 同一口径（Codex 一审 blocking）；
 //  - 颜色旁必须始终有文字（状态点/mode chip/冲突徽标一律「色块 + 中文」），颜色只来自下面的
 //    固定映射表，禁止把 payload 字符串当颜色用；
 //  - 每节行数上限 MAX_VISIBLE_ROWS，超出「等 N 条」，完整列表进 title 属性；
@@ -139,6 +142,17 @@ function dayOf(confirmedAt: string): string {
 function belongsToRole(entry: ScheduleCoordinationView, role: string): boolean {
   return (Array.isArray(entry.required_roles) ? entry.required_roles : []).includes(role)
     || entry.owner_role === role;
+}
+
+/**
+ * 现场占用只认**明确参与要求**（`required_roles`）——`owner_role` 是协调组织者（谁去约人），
+ * 不表示必须到场（Codex 一审 blocking：与模块 `detectCoordinationConflicts` 同一口径——
+ * loader 与测试装配 `CoordinationScheduleItem.role` 时只遍历 `required_roles`）。
+ * 两条都由设计师组织、`required_roles` 只有施工方的 onsite 预约，不得给设计师算出
+ * 「同日双现场」或窗口重叠。待确认列表仍用 `belongsToRole`：组织者要看自己要约的条目。
+ */
+function participatesIn(entry: ScheduleCoordinationView, role: string): boolean {
+  return (Array.isArray(entry.required_roles) ? entry.required_roles : []).includes(role);
 }
 
 /** 潜在窗口（只读 snapshot.schedule；包不在投影里 = 窗口未知，回 null 不进重叠判定）。 */
@@ -365,8 +379,10 @@ export class RoleWorkbenchPanel {
       }
 
       // ③ 现场冲突（§1.4 两级口径）：先排除 cancelled 与非 onsite，再分冲突/潜在。
+      // 占用口径 = participatesIn（只认 required_roles）；owner_role 是组织者不是参与者
+      // （Codex 一审 blocking）——待确认协调节才用 belongsToRole 把组织者算进来。
       const onsite = coordEntries.filter(([, entry]) =>
-        entry.mode === 'onsite' && entry.status !== 'cancelled' && belongsToRole(entry, role));
+        entry.mode === 'onsite' && entry.status !== 'cancelled' && participatesIn(entry, role));
       const clusters: ConflictCluster[] = [];
 
       // 冲突：同角色 ≥2 条 onsite 且都已确认且 confirmed_at 同日（按日分组，规模 ≥2 出簇）。
