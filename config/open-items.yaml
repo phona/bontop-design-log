@@ -82,6 +82,209 @@ items:
       config/decision-knowledge.yaml `DEC-2026-08-26-045`（序号反查靶，主题是主卧空调檐口，非本悬案）+
       本条目 + config/facts.yaml `c.dec045_mismatch_tracked`
     legacy_ref: 'pending-site-data #78（台账已于 2026-11-09 S2-B 整份退场，原文见 git 821176c2^:docs/pending-site-data.md 第 233 行）'
+  - id: OI-79
+    subject: 'count-only 商品条目无 ID 通道，其变化不触发相关验收 stale（issue #191 已知缺口一）'
+    owner: 业主+设计侧
+    trigger: 任一家具/商品类验收（SCH-150-02 床垫匹配、窗帘、灯具、洁具）首次判 passed 前必须关闭；
+      或任何 count-only 条目改型/增减前
+    current_state: >-
+      `config/house.yaml` 的 furnishings 有 67 条 placed + **24 条 count-only**
+      （mattress_150 ×2 / mattress_180 / curtain_set ×5 / ceiling_light ×8 / shower_set ×2 /
+      faucet ×2 / cabinet_base / cabinet_wall / countertop_quartz / shoe_cabinet）。
+      count-only 按 AGENTS.md「无 x/z 的为 count-only（只喂预算/库存）」不列为 placed
+      工程对象（该判据未改）。实测 `roomId.type` 派生 24 个候选 id 全部唯一。
+      同类暴露面覆盖全部 24 条（窗帘/灯具/洁具验收均直接点名这些商品）。
+      **2026-11-10 已加安全兜底（PR #208），本条 current_state 随之订正**：
+      它们现按 `quantity:<room>:<type>` 进对象索引（只作指纹用，不可被 scope 选择器选中），
+      `digestResolvedObjects` 按「本包覆盖房间」把 quantity 条目纳入摘要。故改床垫**已会**
+      让 PKG-150 stale、`SCH-150-02`「床垫匹配」的旧通过记录会正确过期。
+      边界自证：`verify:furniture` OK、`cost:by-object` 有归属对象仍 51 件——商品事实进了
+      指纹，但没有进工程对象模型（符合 issue #98「不把报价/商品事实复制进工程对象」）。
+      **仍未完成**：这 24 条没有稳定业务 ID、没有挂到宿主工程对象、cost:by-object 账本
+      也不含它们。方向见 needs。
+      今天零实际损害：`schedule/phase-1/control.yaml` 的 `audit_log.status` 为 `empty`，
+      项目里没有任何验收通过记录。
+    needs: >-
+      业主 2026-11-10 裁定：**采购的东西也对象化后关联进工程里**。即给 count-only 条目
+      稳定 ID（Commercial 域自身业务 ID，issue #98 四域表已预留「自身业务 ID + 关联对象/
+      工作包 ID」），并关联到所属工程对象（房间 / 宿主家具），使其声明进入所属工作包的指纹。
+      实现要点（不破架构边界）：
+      ① ID 按 `<room>.<type>` 派生（实测唯一），与 placed 的 `furnitureObjectId` 同源不同类；
+      ② 在对象索引里标为 quantity/commercial 类，**不改** `collectDeclaredFurnitureIds`
+         的 placed 判据（3D 渲染、预算 counts derive、ProjectCatalog 一律不受影响）；
+      ③ 关联目标：挂到所属房间，能认出宿主家具的挂到宿主（如 mattress → bed_150）；
+      ④ `cost:by-object` 账本纳入这 24 条（其 `aliases` 已支持 `roomId.type` 形态）；
+      ⑤ #191 的正文点名扫描门禁随之能匹配这些 id。
+      **不许**为了进指纹把商品事实复制进工程对象（issue #98 明文禁止）。
+    reversal: >-
+      owner=业主+设计侧；触发见上。关闭条件：改任一 count-only 条目（如 mattress_150 的
+      数量或型编），挂 SCH-150-02 的 PKG-150 对象摘要必须变化、旧通过记录必须 stale
+      （有实测命令与输出）；同时 3D 渲染与 `ProjectCatalog.getFurnishingCounts` 的输出
+      与改前逐条相同（证明没把商品事实搬进工程对象）。两者都满足才关本条目。
+    carrier: >-
+      本条目 + PR #204 短评（issuecomment-6771409963）+ config/facts.yaml 的 object_link 契约族
+    legacy_ref: 'issue #191 已知缺口一（PR #204 Codex review 第 5 轮 blocking 1）'
+  - id: OI-80
+    subject: '计算出来的依赖不进闭包，其变化不触发相关验收 stale（issue #191 已知缺口二）'
+    owner: 业主+设计侧
+    trigger: 冷凝水遮蔽链相关验收（PKG-150 家具包 / PKG-040 空调包）首次判 passed 前必须关闭；
+      或改 hvac.yaml 的 condensate_master_candidate、mep 的 condensate-master 路由前
+    current_state: >-
+      `shared/package-objects.ts` 的引用闭包沿**对象声明里的完整字符串**展开。
+      但 `mb.vanity_pvc_service_chase` 的锚点是 `{source: chain, id: wardrobe_east_band}`——
+      `wardrobe_east_band` 不是任何权威文件里的对象，是 `shared/condensate-chain.ts`
+      解出的链上点（`shared/types.ts:2054` 标明 `source: chain`）。
+      该链还读取 MEP `condensate-master` 的穿墙点与 `config/hvac.yaml` 的
+      `condensate_master_candidate`（`shared/condensate-chain.ts:16-17,56-58`）。
+      这些依赖是代码算出来的，不是声明里的字符串，字符串闭包结构上捕不到。
+      **2026-11-10 已加安全兜底（PR #208），本条 current_state 随之订正**：
+      `shared/condensate-chain.ts` 新增导出的 `CONDENSATE_CHAIN_INPUT_IDS`（7 个对象 id），
+      闭包在命中链锚点时跟随它。故改候选接入点**已会**让 PKG-150 stale、相关旧验收
+      会正确过期。
+      **仍未完成**：该清单靠人工维护，没有契约/测试守护「清单覆盖 resolveCondensateChain
+      的全部读取」——改了解算器的读取面而漏更新清单，就是一个漏 stale。方向见 needs。
+      今天零实际损害：audit_log 仍为 empty。
+    needs: >-
+      让计算依赖变成**可声明**的：`shared/condensate-chain.ts` 导出它实际读取的对象 id
+      集合（condensate-master 穿墙点、condensate_master_candidate、链上各点），
+      引用闭包除字符串外也跟随这类「解算器声明的输入」。
+      这开一个先例：**以后每个「算出来的依赖」都必须显式导出**，需把该纪律写进 AGENTS.md
+      （与「Resolver 需要独立基准几何测试」同级的条款）。
+      实现时先全仓盘点还有哪些解算器有隐含输入（不限于冷凝水链），一并列入导出清单，
+      不要只修这一处。
+    reversal: >-
+      owner=业主+设计侧；触发见上。关闭条件：改 `config/hvac.yaml` 的
+      `condensate_master_candidate` 或 MEP `condensate-master` 路由后，PKG-150 与 PKG-040
+      的对象摘要必须变化（有实测命令与输出）；且 AGENTS.md 已写入「解算器必须声明其输入」
+      的纪律条款。
+    carrier: >-
+      本条目 + PR #204 短评（issuecomment-6771409963）+ shared/condensate-chain.ts 头注
+    legacy_ref: 'issue #191 已知缺口二（PR #204 Codex review 第 5 轮 blocking 2）'
+  - id: OI-81
+    subject: '单条链接/验收定义变化仍使全部 25 个包 stale（issue #191 已知缺口三，过度 stale 方向）'
+    owner: 业主+设计侧
+    trigger: 维护对象关联（给某条 MODEL-PKG 增补对象）或修订单条验收方法成为日常操作前
+    current_state: >-
+      `shared/schedule-state.ts:207` 仍把整份 `config/model-package-links.yaml`、
+      `config/acceptance.yaml`、`config/decision-gates.yaml` 无条件计入**每个**包的指纹。
+      单给 MODEL-PKG-110 增补一个厨房对象、或只改一条厨房验收方法，会让全部 25 个包的
+      旧通过记录一起 stale。
+      这是 #191 任务决策 4 的显式口径（结构性文件整份计入，方向偏过度不漏），
+      PR #204 的 Codex major 已正式登记。与 OI-79/OI-80 方向相反：那两个是漏 stale（危险），
+      本个是过度 stale（噪音）。今天零实际损害：audit_log 仍为 empty。
+    needs: >-
+      按包摘要「当前包用到的链接、检查定义与适用门禁」而非整份文件；只把真正影响全项目的
+      字段（如 authorities 映射表本身）按整份处理。需要先想清楚哪些字段真·全局——
+      这是一个设计判断，不是机械拆分。
+      **注意方向**：宁可偏过度，不可为了降噪音引入漏 stale。若无法干净拆分，
+      保持现状并在 AGENTS.md 写明这是有意的权衡。
+    reversal: >-
+      owner=业主+设计侧；触发见上。关闭条件：只改 MODEL-PKG-110 的 scope 后，
+      指纹变化的包数显著小于 25，且**不漏**——改任一对象仍让 scope 含它的包 stale
+      （OI-79/OI-80 的验证条件同时满足）。若判定保持现状，则在 AGENTS.md 写明
+      「结构性文件整份计入是有意权衡」并关闭本条目。
+    carrier: >-
+      本条目 + PR #204 短评（issuecomment-6771409963）+ shared/schedule-state.ts 头注
+    legacy_ref: 'issue #191 已知缺口三（PR #204 Codex review 第 5 轮 major；前四轮已按「只修 blocking」保留）'
+  - id: OI-82
+    subject: '安装空间依赖未建模：家电包与柜体包互相看不见对方（issue #191 已知缺口四）'
+    owner: 业主+设计侧
+    trigger: PKG-110（橱柜安装）或 PKG-160（家电安装）任一验收项首次判 passed 前必须关闭；或改任一厨房/阳台柜体长度、或改任一嵌装家电位前
+    current_state: >-
+      这是同一个结构性缺口的两个方向，Codex 第 9 轮与第 11 轮各报了一次。
+      第 9 轮（已修）：PKG-110 的 SCH-110-01/02 要核对烟机、灶具、预留电器，但三件家电
+      施工归属在 PKG-160，当时不在 PKG-110 scope，已按 id 纳入。
+      第 11 轮（初仅登记，Codex 第 12 轮评得对：登记不修复本次收窄造成的漏报）：
+      MODEL-PKG-160 的 scope 只有 6 件家电加电位水路，没有决定其安装空间的柜体与
+      桥接台面。kitchen.dishwasher 用绝对坐标（config/house.yaml:558），
+      引用闭包找不到宿主柜体；改 kitchen.countertop_bridge.length 后 PKG-160 摘要不变。
+      **2026-11-10 第 12 轮已补（PR #214）**：MODEL-PKG-160 的 scope 纳入
+      kitchen.cabinet_run_north_west / north_east / east、countertop_bridge、sink
+      五件柜体与台面，PKG-160 targets 同步。回归测试：改 countertop_bridge 的 length，
+      断言 PKG-160 与 PKG-110 都 stale。故「家电到柜体」这个方向已有补丁。
+      **仍未完成（本条继续跟踪）**：这个依赖是**逐条手工补的**，没有数据表达
+      「家电装在哪只柜体、留多大口」。每新增一种嵌装组合仍要人工记起补 scope。
+      今天零实际损害：schedule/phase-1/control.yaml 的 audit_log.status 为 empty，
+      项目里没有任何验收通过记录。
+    needs: >-
+      把安装空间依赖变成数据，而不是每轮补 scope。三个方向供设计侧裁定：
+      一是在家具条目上加结构化宿主声明（如 housed_in: kitchen.cabinet_run_north_west），
+      引用闭包自动双向跟随，这是根治但要新 schema 字段；
+      二是在 model-package-links.yaml 加一种安装接口 scope ref 类型，显式表达
+      A 的安装空间由 B 决定，两个包都据此扩展指纹；
+      三是维持现状，把改柜体长度或家电位前必须人工核两个包写成 AGENTS.md 纪律。
+      无论选哪条，都要有回归测试：改柜体长度时 PKG-160 必须 stale，
+      改家电位时 PKG-110 必须 stale，两个方向都要。
+      注意：三最省事但把负担转给人；一最根治但动 schema。请业主裁。
+    reversal: >-
+      owner 为业主加设计侧，触发见上。两个方向的**补丁级**验证在第 12 轮已满足
+      （改 countertop_bridge.length 时 PKG-160 与 PKG-110 都 stale；改 gas_stove 位置时
+      PKG-110 stale——均已有回归测试）。本条剩下的关闭条件是**数据级**：
+      「家电装在哪只柜体、留多大口」必须以结构化数据表达（housed_in 声明或安装接口
+      scope ref 类型），使得新增嵌装组合时无需人工记起补 scope，且有测试证明
+      「新增一条嵌装关系后两个方向的 stale 自动成立」。
+    carrier: >-
+      本条目加 PR #204 短评（issuecomment-6771409963 及其后续补充）
+    legacy_ref: 'issue #191 已知缺口四（PR #204 Codex review 第 11 轮 blocking；第 9 轮的同源反向已修）'
+
+  - id: OI-83
+    subject: '被验对象与挂载包 scope 的同步无机器守护（issue #191 已知缺口五，一类缺陷的第五次实例）'
+    owner: 业主+设计侧
+    trigger: PKG-160（家电安装）任一验收项首次判 passed 前必须关闭；或改任一嵌装家电的
+      电位/水路接口前。更一般地：**新增或修改任何 SCH/验收项前**，都要按本条自检
+    current_state: >-
+      **这是同一类缺陷的第五个实例，前四个都已逐个补掉，本条登记第五个并指出这一类。**
+
+      一类缺陷的形态：某工作包的 SCH/验收项实际依赖对象 Y，但 Y 不在该包的
+      MODEL-PKG scope 里，引用闭包也到不了。于是改 Y 不会让该包 stale，
+      旧通过记录继续有效——而旧实现靠整份权威文件指纹是能抓到的。
+
+      五次实例：
+      R2 sock_kitchen_oven（微蒸烤插座）不在 PKG-110 scope —— 已补
+      R4 mb.washbasin_cabinet（主卫洗手柜）不在 PKG-050 scope —— 已补
+      R9 kitchen.gas_stove / range_hood / dishwasher 不在 PKG-110 scope —— 已补
+      R11 厨房柜体与桥接台面不在 PKG-160 scope —— 已补（PR #214）
+      R13 faucet_kitchen_dishwasher / drain_kitchen_dishwasher 不在 PKG-160 scope
+         —— **未补，本条登记**。SCH-160-01 的 method 明写「按设备说明检查电源、
+         给排水、散热、水平和试运行状态」，但 PKG-160 的 plumbing scope 只有
+         faucet_balcony_washer / drain_balcony_washer / faucet_gbath_vanity /
+         drain_gbath_vanity 四项。内存反证：分别改这两个点位的 height，
+         PKG-160 摘要不变、PKG-040 摘要变化、解析无 unresolved。
+
+      为什么补不完：**「这条验收到底依赖哪些对象」的知识住在人的判断和中文正文里**
+      （「给排水」「烟机」「床垫匹配」），没有任何机器通道把它同步进 scope。
+      #206 的扫描门禁只认**字面出现的对象 id**，中文通称它匹配不到；
+      #209 补的 SCH 门禁同样只认字面 id。所以每轮都是审查器或我人工发现一个，
+      补一个，再来一个。
+
+      今天零实际损害：schedule/phase-1/control.yaml 的 audit_log.status 为 empty，
+      项目里没有任何验收通过记录。
+    needs: >-
+      把「验收依赖」从人工转录变成**机器可同步**的。三个方向供设计侧裁定：
+      ① 给 SCH/验收项加显式 objects 声明（现在只有 acceptance.yaml 的 67 条有，
+         control.yaml 的 49 条 SCH 没有），并加契约断言「声明的对象集非空、
+         且与所属包 targets 有交集」——不解决中文通称，但把隐式依赖变显式；
+      ② 建「领域关键词 → authority source」映射，加启发式门禁：某 SCH 的正文提到
+         给排水/电气/烟机等域，而所属包 scope 没有对应 source 的对象即报警。
+         会有假阳性（需白名单），但能把这一类漏报变成可见；
+      ③ 维持逐条人工补，把「新增/修改 SCH 前必须逐条核对其依赖对象已进 scope」
+         写成 AGENTS.md 纪律，并在 PR 模板里加检查项。
+      无论选哪条，都要有回归测试：改 faucet_kitchen_dishwasher 的 height 时
+      PKG-160 必须 stale（R13 这个方向的补丁级验证）。
+      注意：③ 最省事但把负担转给人；② 最有希望自动防住但要做噪声控制；
+      ① 是另两项的地基。
+    reversal: >-
+      owner 为业主加设计侧，触发见上。关闭条件分两层：
+      补丁级——改 faucet_kitchen_dishwasher 或 drain_kitchen_dishwasher 的 height，
+      PKG-160 的对象摘要必须变化、SCH-160-01 的旧通过记录必须 stale（有实测命令与输出）。
+      结构级——一类缺陷的五个实例（R2/R4/R9/R11/R13）全部有回归测试，
+      且新增第六条时机器能自动报出（不需要等到 Codex 或人工发现）。
+      两层都满足才关本条。
+    carrier: >-
+      本条目 + PR #204 短评（issuecomment-6771409963 及其后续补充）+
+      config/facts.yaml 的 object_link 契约族
+    legacy_ref: 'issue #191 已知缺口五（PR #204 Codex review 第 13 轮 blocking；同类的 R2/R4/R9/R11 已补）'
+
   - id: OI-86
     subject: 灯光升级（2800→6500 按点位采购灯具）
     owner: 业主

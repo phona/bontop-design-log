@@ -64,6 +64,7 @@ function packageView(overrides: Partial<SchedulePackageView> = {}): SchedulePack
         check_spec_sha256: '112233445566',
       }),
     ],
+    targets: ['pkg.test_object'],
     project_fingerprint: 'f'.repeat(64),
     ...overrides,
   };

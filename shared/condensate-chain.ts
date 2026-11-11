@@ -42,6 +42,41 @@ export const SERVICE_BAND_OFFSET_Z = 0.03;
 /** 检视态管路的示意标高：mep-hvac-coordination.yaml layers 表 condensate 层高（A 区）。 */
 export const CHAIN_SCHEMATIC_Y = 2.65;
 
+/**
+ * 本解算器**实际读取**的工程对象 id（OI-80：让计算依赖变成可声明的）。
+ *
+ * 为什么需要它：`anchor: {source: 'chain', id: wardrobe_east_band}` 指向的是解算值，
+ * 不是任何权威文件里的对象。对象指纹的引用闭包只沿声明里的完整字符串展开，因此捕不到
+ * 这条链的真正输入——改进候选接入点不会让挂链上家具的工作包 stale，旧通过记录静默保留
+ * （issue #191 Codex blocking 第 5 轮）。
+ *
+ * 这份清单是**闭包跟随的依据**，也是 OI-80「解算器必须声明其输入」纪律的第一处落地。
+ * 改动本解算器的读取面时必须同步更新它——`shared/package-objects.ts` 的闭包靠它兜底，
+ * 漏一个就是漏一个 stale。将来应加契约/测试守护「清单覆盖 resolveCondensateChain 的全部读取」。
+ *
+ * 成员（对应 ResolveCondensateChainInput）：
+ * - `indoor_master` / `ac_master`：内机锚点（hvac terminal + 其 ref 的 ceiling 构件）
+ * - `condensate-master`：MEP 路由在 w_mbath_south 的穿墙点（链的折点 x 由它派生）
+ * - `condensate_master_candidate`：候选接入点（hvac terminal，含下引段标高）
+ * - `w_mbath_south`：穿墙那道墙的几何
+ * - `mb.wardrobe_950` / `mb.vanity_pvc_box`：链的服务带/东缘/南缘/墙行侧向由它们派生
+ */
+export const CONDENSATE_CHAIN_INPUT_IDS: readonly string[] = [
+  'indoor_master',
+  'ac_master',
+  'condensate-master',
+  'condensate_master_candidate',
+  // 三面墙都要：resolveCondensateChain 的 wallOrDiagnostic 逐个取（:213-215）。
+  // 漏任何一面，该面端点重绑都不会让挂链上家具的包 stale——Codex 第 12 轮 blocking
+  // 正是抓到这个清单漏了 w_mb_east 与 w_mbath_east（我第 8 轮写清单时只对照了注释里的
+  // 穿墙点，没逐个核对 wallOrDiagnostic 调用）。
+  'w_mb_east',
+  'w_mbath_east',
+  'w_mbath_south',
+  'mb.wardrobe_950',
+  'mb.vanity_pvc_box',
+];
+
 export interface ChainPoint {
   x: number;
   z: number;

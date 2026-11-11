@@ -10,6 +10,7 @@ import {
   type FootprintPoint,
 } from './mep-hvac-lint.js';
 import type { CeilingZone } from './types.js';
+import { ALL_MODEL_TARGET } from './package-objects.js';
 //
 // 本层防线解决什么问题
 // ───────────────────
@@ -136,7 +137,9 @@ export type ContractKind =
   /** 量对账：同一个物理量在 N 个出现处必须相等（2026-10-14「三道强制对账」第一道）。 */
   | 'quantity_parity'
   /** 价单一源：同一张费率表/常量表在全仓只许出现一次（第二道）。 */
-  | 'single_source';
+  | 'single_source'
+  /** 对象关联（issue #191）：工作包 targets、选择器、验收项对象集三条不变量。 */
+  | 'object_link';
 export interface Contract {
   id: string;
   kind: ContractKind;
@@ -144,6 +147,189 @@ export interface Contract {
   /** 待决事项：契约已登记但当前 0 命中（词汇表尚未启用）时，在报告 INFO 里单列露面。 */
   pending?: string;
   [field: string]: unknown;
+}
+
+/**
+ * `object_link` 契约的数据集形状（issue #191）。由 verify-facts.ts 从
+ * `loadModelPackageLinks()` 的解析结果 + `schedule/phase-1/control.yaml` +
+ * `config/acceptance.yaml` 构造；引擎不自己读这三份文件，只做集合对账。
+ *
+ * 三种 mode：
+ * - `package_targets`：每个工作包的 targets == 其 MODEL-PKG 链接 scope 解析出的对象集；
+ * - `selector_ids_only`：链接 scope 不再有 room_ids/types 粗选择器（例外按
+ *   `allow_legacy_selectors` 逐条登记理由），且每条链接解析出的对象集非空；
+ * - `acceptance_objects`：每条验收项的 objects.from_packages == 引用它的工作包集合，
+ *   且「登记来源并集」== 「acceptance_refs 并集」。
+ */
+export interface ObjectLinkDataset {
+  packages: Array<{
+    id: string;
+    /** control.yaml 的显式登记；缺失 = null。 */
+    targets: string[] | null;
+    /** 链接 scope 解析出的对象集（`*` = 全模型）。 */
+    resolved: string[];
+    link_ids: string[];
+    project_scope: boolean;
+    unresolved: string[];
+  }>;
+  links: Array<{
+    id: string;
+    package_id: string;
+    /** mapping_status：not_modelled 链接按 schema 本就不许声明 scope，空集是设计状态。 */
+    mapping_status: string;
+    /** 仅 room_ids/types 两类粗选择器（其余字段按 ids 口径，不在此列）。 */
+    selectors: Array<{source: string; field: string; values: string[]}>;
+    resolved_count: number;
+    unresolved: string[];
+  }>;
+  acceptance: Array<{
+    id: string;
+    /** control.yaml 的 acceptance_refs 反查结果。 */
+    packages: string[];
+    /** acceptance.yaml 的 objects.from_packages 登记；缺失 = null。 */
+    from_packages: string[] | null;
+    /** 按 acceptance_refs 的包 targets 求并集。 */
+    derived_from_refs: string[];
+    /** 按 from_packages 的包 targets 求并集。 */
+    derived_from_declared: string[];
+  }>;
+}
+
+function sameMembers(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  const set = new Set(left);
+  return right.every((value) => set.has(value));
+}
+
+function diffList(left: string[], right: string[]): string {
+  const leftOnly = left.filter((value) => !right.includes(value));
+  const rightOnly = right.filter((value) => !left.includes(value));
+  const fmt = (values: string[]) => values.length > 8 ? `${values.slice(0, 8).join(', ')} …(+${values.length - 8})` : values.join(', ');
+  return [leftOnly.length ? `多出 [${fmt(leftOnly)}]` : '', rightOnly.length ? `缺少 [${fmt(rightOnly)}]` : ''].filter(Boolean).join('；');
+}
+
+/**
+ * 对象关联契约（issue #191）。
+ *
+ * 为什么数据集由入口脚本构造而不是引擎自己读文件：解析 scope 需要 overlay 合并
+ * （server/overlay-merge.ts）与链接装载器（server/model-package-links.ts），两者都在
+ * server 侧；facts-lint 保持纯函数，只做集合对账，与 quantity_parity 的 dataset 模式同构。
+ */
+function runObjectLink(ws: FactsWorkspace, result: FactsLintResult, contract: Contract): void {
+  const mode = str(contract.mode);
+  const datasetKey = str(contract.dataset, 'package_objects');
+  const dataset = ws.datasets?.[datasetKey] as ObjectLinkDataset | undefined;
+  if (!dataset || !Array.isArray(dataset.packages) || !Array.isArray(dataset.links) || !Array.isArray(dataset.acceptance)) {
+    add(result, issue('error', 'object_link_dataset_missing', `${contract.id}：数据集 ${datasetKey} 缺失或形状不对——对象关联契约不许静默空转`, str(contract.dataset)));
+    tally(result, 'object_link_dataset_missing');
+    return;
+  }
+  const level = contractLevel(contract);
+  const report = (code: string, message: string, location?: string) => {
+    add(result, issue(level, code, `${contract.id}：${message}`, location));
+    tally(result, code);
+  };
+
+  if (mode === 'package_targets') {
+    for (const pkg of dataset.packages) {
+      if (!pkg.link_ids.length) {
+        report('package_targets_no_link', `${pkg.id} 没有 MODEL-PKG 链接，targets 无来源可派生`, pkg.id);
+        continue;
+      }
+      if (!Array.isArray(pkg.targets) || pkg.targets.length === 0) {
+        report('package_targets_missing', `${pkg.id} 的 targets 缺失或为空——工作包必须登记对象 targets`, pkg.id);
+        continue;
+      }
+      if (new Set(pkg.targets).size !== pkg.targets.length) {
+        report('package_targets_duplicate', `${pkg.id} 的 targets 有重复项`, pkg.id);
+      }
+      const hasAllModel = pkg.targets.includes(ALL_MODEL_TARGET);
+      if (hasAllModel && !pkg.project_scope) {
+        report('package_targets_all_model_without_scope', `${pkg.id} 的 targets 写了 "${ALL_MODEL_TARGET}"，但链接未声明 mapping_status: project_scope`, pkg.id);
+      }
+      if (pkg.project_scope && (pkg.targets.length !== 1 || !hasAllModel)) {
+        report('package_targets_scope_marker', `${pkg.id} 是 project_scope 链接，targets 必须是 ["${ALL_MODEL_TARGET}"]（全模型标记），实际 [${pkg.targets.join(', ')}]`, pkg.id);
+      }
+      const expected = pkg.project_scope ? [ALL_MODEL_TARGET] : [...new Set(pkg.resolved)].sort();
+      if (!sameMembers(pkg.targets, expected)) {
+        report(
+          'package_targets_mismatch',
+          `${pkg.id} 的 targets 与 ${pkg.link_ids.join(' + ')} 的 scope 解析结果不一致（登记 ${pkg.targets.length} / 解析 ${expected.length}）：${diffList(pkg.targets, expected)}`,
+          pkg.id,
+        );
+      }
+      if (!hasAllModel && pkg.targets.join('\u0000') !== [...pkg.targets].sort().join('\u0000')) {
+        report('package_targets_unsorted', `${pkg.id} 的 targets 未按字典序登记（去重、排序是登记口径）`, pkg.id);
+      }
+      if (pkg.unresolved.length) {
+        report('package_targets_unresolved', `${pkg.id} 的链接有解析不出的选择器：${pkg.unresolved.join('；')}`, pkg.id);
+      }
+    }
+    return;
+  }
+
+  if (mode === 'selector_ids_only') {
+    const allow = Array.isArray(contract.allow_legacy_selectors) ? contract.allow_legacy_selectors as Array<Record<string, unknown>> : [];
+    const allowById = new Map(allow.map((entry) => [str(entry.link_id), entry]));
+    for (const entry of allow) {
+      if (!str(entry.link_id) || !str(entry.reason)) {
+        report('selector_exception_malformed', `allow_legacy_selectors 条目缺 link_id 或 reason：${JSON.stringify(entry)}`, str(contract.source));
+      }
+    }
+    for (const link of dataset.links) {
+      const exception = allowById.get(link.id);
+      const allowedFields = stringList(exception?.fields);
+      for (const selector of link.selectors) {
+        if (allowedFields.includes(selector.field)) continue;
+        report(
+          'legacy_selector_forbidden',
+          `${link.id}（${link.package_id}）仍有粗选择器 ${selector.source}.${selector.field}: [${selector.values.join(', ')}]——必须改按对象 id 直选；确属无 runtime 对象的例外须在 allow_legacy_selectors 登记理由`,
+          link.id,
+        );
+      }
+      if (!link.resolved_count && !exception && link.mapping_status !== 'not_modelled') {
+        report('link_empty_object_set', `${link.id}（${link.package_id}）解析出的对象集为空——选择器选不到对象（或用了 count-only 条目的 type），须改 ids 或登记例外`, link.id);
+      }
+      if (link.unresolved.length && !exception && link.mapping_status !== 'not_modelled') {
+        report('link_unresolved', `${link.id}（${link.package_id}）有解析不出的选择器：${link.unresolved.join('；')}`, link.id);
+      }
+    }
+    return;
+  }
+
+  if (mode === 'acceptance_objects') {
+    if (!dataset.acceptance.length) {
+      report('acceptance_objects_empty', '验收项数据集为空——契约不许静默空转', str(contract.source));
+      return;
+    }
+    for (const item of dataset.acceptance) {
+      if (!Array.isArray(item.from_packages) || item.from_packages.length === 0) {
+        report('acceptance_objects_missing', `${item.id} 缺少 objects.from_packages——验收项必须登记对象集的派生来源`, item.id);
+        continue;
+      }
+      if (!sameMembers(item.from_packages, item.packages)) {
+        report(
+          'acceptance_objects_source_mismatch',
+          `${item.id} 的 objects.from_packages 与引用它的工作包不一致：登记 [${item.from_packages.join(', ')}] / acceptance_refs [${item.packages.join(', ')}]`,
+          item.id,
+        );
+      }
+      if (!item.derived_from_declared.length) {
+        report('acceptance_objects_empty_set', `${item.id} 派生的对象集为空——引用它的工作包 targets 全空或未登记`, item.id);
+      }
+      if (!sameMembers(item.derived_from_declared, item.derived_from_refs)) {
+        report(
+          'acceptance_objects_derived_mismatch',
+          `${item.id} 按 from_packages 派生的对象集与按 acceptance_refs 派生的不一致（${item.derived_from_declared.length} / ${item.derived_from_refs.length}）：${diffList(item.derived_from_declared, item.derived_from_refs)}`,
+          item.id,
+        );
+      }
+    }
+    return;
+  }
+
+  add(result, issue('error', 'object_link_unresolvable', `${contract.id}：未知 mode "${mode}"（可用 package_targets / selector_ids_only / acceptance_objects）`, str(contract.source)));
+  tally(result, 'object_link_unresolvable');
 }
 
 export interface Coverage {
@@ -2165,6 +2351,7 @@ export function lintFacts(registry: FactsRegistry, ws: FactsWorkspace): FactsLin
       case 'covered_or_marked': runCoveredOrMarked(ws, result, lines, contract); break;
       case 'quantity_parity': runQuantityParity(ws, result, lines, contract); break;
       case 'single_source': runSingleSource(ws, result, lines, contract); break;
+      case 'object_link': runObjectLink(ws, result, contract); break;
       default: break;
     }
   }

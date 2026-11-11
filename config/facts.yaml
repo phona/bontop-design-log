@@ -43,7 +43,7 @@
 #    - `exempt[]`  { path, pattern, reason }：该文件里命中 pattern 的**行**不再参与
 #      T1 出现登记。reason 必填。
 #
-# T3 `contracts`（契约层，8 种内置 kind，均声明式、无表达式/eval）
+# T3 `contracts`（契约层，18 种内置 kind，均声明式、无表达式/eval）
 #    unique    对 source 全文 grep，pattern 首捕为 id；重复即 error。
 #              `allow_suffix` 列出的后缀视为补充条目（如 `-补`/`.1`），不与正牌判重。
 #              `source` 接受单文件路径或路径数组（DEC 日志 2026-10-09 拆分后跨文件查重）。
@@ -112,6 +112,16 @@
 #              （默认 1）；多出来的一份连位置一起报。`exclude` 排除 tests/ 等夹具目录。
 #              最小示例：{ id: c.u, kind: single_source, scope: [server/], exclude: [tests/],
 #                          patterns: ['gypsum_flat_sqm:\\s*\\{\\s*per_unit:\\s*null'] }
+#    object_link
+#              **对象 ID 关联**（issue #191）。`mode` 三选一，数据集由入口脚本预算
+#              （`dataset` 默认 package_objects，形状见 shared/facts-lint.ts 的 ObjectLinkDataset）：
+#                package_targets    工作包 targets == 其 MODEL-PKG 链接 scope 解析出的对象集；
+#                                   project_scope 链接登记 "*"（全模型）。
+#                selector_ids_only  scope 不再有 room_ids/types 粗选择器（例外逐条登记理由），
+#                                   且每条链接解析出的对象集非空。
+#                acceptance_objects 验收项 objects.from_packages == acceptance_refs 反查集合，
+#                                   两种来源派生的对象集并集相等且非空。
+#              最小示例：{ id: c.x, kind: object_link, mode: package_targets, dataset: package_objects }
 #
 # T4 `coverage`（覆盖层）
 #    1. 对 `config/*.yaml`、`config/layout/*.yaml`、`config/render/*.yaml`、`data/*.json`
@@ -1822,6 +1832,49 @@ contracts:
     when: { field: status, pattern: '^(open|decided)$' }
     then: [id, topic, scope, question, options]
     min_matches: 1
+
+  # ─── 对象 ID 关联（issue #191，issue #98 验收清单第 3、4 项）───────────────
+  # 三条不变量，数据集 `package_objects` 由 verify-facts.ts 从
+  # `loadModelPackageLinks()` 的 scope 解析（shared/package-objects.ts 唯一实现）
+  # + schedule/phase-1/control.yaml + config/acceptance.yaml 构造：
+  #   packages[]   = 每个工作包的 targets 登记值 / 链接解析出的对象集 / 链接 id / 是否全模型
+  #   links[]      = 每条 MODEL-PKG 链接的 room_ids|types 粗选择器、解析对象数、unresolved
+  #   acceptance[] = 每条验收项的 acceptance_refs 反查包集合 / objects.from_packages 登记 /
+  #                  两种来源各派生的对象集并集
+  #
+  # ① 工作包 targets 的单一来源：targets 必须 == 其 MODEL-PKG 链接 scope 解析出的对象集。
+  #    映射口径与设计决策一致——targets 是派生的显式登记，不是第二套独立名单；
+  #    临时改一个 target 使其与 scope 不一致，本契约立即报 package_targets_mismatch。
+  #    `mapping_status: project_scope` 的六个整项目包（PKG-000/005/010/142/170/900）用
+  #    "*"（全模型标记）登记：它们按定义跟着任何对象变，复制全模型 id 清单只会与模型漂移。
+  - id: c.package_targets
+    kind: object_link
+    mode: package_targets
+    dataset: package_objects
+
+  # ② 粗选择器退场：model-package-links.yaml 的 scope 不再有 room_ids/types，
+  #    例外必须逐条登记理由（当前唯一例外 MODEL-P2-110：house.yaml 的 curtain_set 是
+  #    count-only 计价条目、无 runtime 对象可解析，待二期窗帘选型落对象后改 ids）。
+  #    同时断言每条链接解析出的对象集非空（除非该链接在例外表里）——空集链接等于
+  #    「scope 选不到任何对象」，是比粗选择器更隐蔽的失效。
+  - id: c.model_package_link_ids_only
+    kind: object_link
+    mode: selector_ids_only
+    dataset: package_objects
+    allow_legacy_selectors:
+      - link_id: MODEL-P2-110
+        fields: [room_ids, types]
+        reason: "house.yaml 的 curtain_set（living_dining / study）是 count-only 计价条目（无 x/z、无 wall/mount/anchor，无 runtime 对象）；room_ids+types 的交集解析为空集是事实而非缺陷。待二期窗帘选型落成模型对象后改 ids。"
+
+  # ③ 验收项对象集：每条验收项的 objects.from_packages 必须等于引用它的工作包集合
+  #    （acceptance_refs 反查）；对象集 = 这些工作包 targets 的并集。
+  #    两种来源（from_packages / acceptance_refs）各自求并集后必须相等，派生不出对象集的
+  #    验收项直接报错。当前 67 条全部能被派生（无「无包引用」的孤儿项），其中
+  #    check_window_* 6 条与 check_occ_formaldehyde 由 project_scope 包派生为 "*"。
+  - id: c.acceptance_objects
+    kind: object_link
+    mode: acceptance_objects
+    dataset: package_objects
 
 # ─── T4 覆盖层 ───────────────────────────────────────────────────────────────
 

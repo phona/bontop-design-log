@@ -53,6 +53,17 @@ export type ModelPackageLinks = z.infer<typeof ModelPackageLinksSchema>;
 /** 单条 scope 引用（source + select）：服务端 assertSelector 用它取 selector 类型。 */
 export type ModelPackageScopeRef = z.infer<typeof ScopeRefSchema>;
 
+/**
+ * 装载结果：schema 校验通过的登记表 + 逐链接的对象解析（issue #191）。
+ *
+ * `objectResolutions` 由 `server/model-package-links.ts` 在**非 enumerable** 属性上挂载，
+ * 因此 `/api/model-package-links` 的 JSON 形状与旧版逐字相同（前端不需要这些摘要）；
+ * `shared/schedule-state.ts` 与 verify:facts 直接读它建对象粒度指纹与契约数据集。
+ */
+export type LoadedModelPackageLinks = ModelPackageLinks & {
+  readonly objectResolutions?: Readonly<Record<string, import('./package-objects.js').LinkObjectResolution>>;
+};
+
 /** authority 值的文件清单：单 key 可指多文件（overlay = envelope 三文件，issue #98 S1）。 */
 export function authorityFilePaths(value: string | string[]): string[] {
   return Array.isArray(value) ? value : [value];

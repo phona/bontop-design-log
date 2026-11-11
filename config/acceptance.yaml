@@ -3,6 +3,10 @@ phases:
     name: "拆改验收"
     items:
       - id: check_demo_wall
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-020]
         item: "拆除范围核对"
         method: |
           对照拆墙图，用卷尺量拆除边界。
@@ -17,6 +21,10 @@ phases:
           4. 钢筋外露——如果看到钢筋，立刻停止
 
       - id: check_demo_structure
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-020]
         item: "梁柱状况检查"
         method: "拆完后检查裸露的梁、柱、楼板是否有裂缝或损伤"
         standard: "无结构性裂缝，钢筋无锈蚀"
@@ -28,6 +36,10 @@ phases:
       # DEC-2026-10-22-R02：淋浴区防水高度 1.8m 作废，改 ≥2.00m 且不低于喷淋口高度（GB 55038-2025）；
       # 仅 supersede D1=A 的防水高度部分，贴砖高度口径不变（防水与贴砖自此分开登记）。
       - id: check_wp_coats
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
         item: "涂刷遍数检查"
         method: |
           墙面防水：淋浴区刷到不低于 2.00m、且不低于喷淋口高度，地面满刷。
@@ -36,6 +48,10 @@ phases:
         severity: critical
 
       - id: check_wp_flood
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
         item: "闭水试验"
         method: |
           1. 堵住所有地漏，放水 3~5cm 深
@@ -51,6 +67,10 @@ phases:
           - 如果发现渗水，补刷后重新做 48h 闭水
 
       - id: check_wp_dry_gate
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
         item: "闭水前干透门禁 + 淋浴区防水宽度 + 楼下复查"
         when: before_covering
         method: |
@@ -76,6 +96,10 @@ phases:
       # DEC-2026-10-22-R02 拆分：本条只管排水通畅性（找坡/通球）与回填材料；沉箱蓄水（防水层完整性）
       # 单独立条 check_plumb_master_bath_box_flood，两类测试分开记录、分开留证。
       - id: check_plumb_master_bath_secondary_drain
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
         item: "主卫沉箱二次排水 DN50（最低处）+ 1% 找坡 + 轻质回填 + 回填前通球"
         when: before_covering
         method: |
@@ -101,6 +125,10 @@ phases:
       # DEC-2026-10-23-R03（PR #17 评审 P2）：蓄水试验补「封堵二次排水口 → 试后拆堵恢复 → 注水复核畅通」三步；
       # 主卫存量同缺口随本批一并修，与客卫保持对等。
       - id: check_plumb_master_bath_box_flood
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
         item: "主卫沉箱蓄水试验（回填前 24h）"
         when: before_covering
         method: |
@@ -130,6 +158,10 @@ phases:
       # DEC-2026-10-22-R02 裁定④冻结解除）。与主卫同口径拆分：本条只管找坡/通球/回填材料，
       # 蓄水单独立条 check_plumb_guest_bath_box_flood，两类测试分开记录、分开留证。
       - id: check_plumb_guest_bath_secondary_drain
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
         item: "客卫沉箱二次排水 DN50（最低处）+ 1% 找坡 + 轻质回填 + 回填前通球"
         when: before_covering
         method: |
@@ -154,6 +186,10 @@ phases:
 
       # PR #17 评审 P2：蓄水前封堵二次排水口、试后拆堵恢复并注水复核畅通（与主卫同修）。
       - id: check_plumb_guest_bath_box_flood
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
         item: "客卫沉箱蓄水试验（回填前 24h）"
         when: before_covering
         method: |
@@ -180,6 +216,10 @@ phases:
           蓄水验的是沉箱底防水层完整性，通球验的是排水通畅性；两类测试混在一条记录里，任一项不合格都说不清是哪类问题。客卫沉箱底防水为开发商现状（pending #74 未核），蓄水不合格先修底防水再谈二次排水口；二次排水口漏封则试验无效、漏拆则二次排水失效。
 
       - id: check_covering_gate_secondary_drain
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
         item: "封回填门禁：两卫坡度、通球、回填材料证据齐 + 蓄水通过，缺一不得回填"
         when: before_covering
         method: |
@@ -196,6 +236,10 @@ phases:
 
       # DEC-2026-10-22-R02：台盆后墙面（洗面器溅水区）防水高度改 ≥1.20m（GB 55038-2025），其余墙面维持 0.3–0.5m。
       - id: check_plumb_external_vanity_waterproof
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
         item: "两处外移位（主卧条带 mb.washbasin_cabinet + 客卫开放洗漱区 gbath.vanity）防水连体 + 柜内防漏水托盘 + 基站柜格溢水报警"
         when: [before_waterproofing, at_delivery]
         method: |
@@ -221,6 +265,10 @@ phases:
       # DEC-2026-10-22-R02 新增：饰面层第二次闭水。第一次闭水（防水层后 check_wp_flood，PKG-050）验的是
       # 防水层本身；本条验贴砖/美缝/地漏安装之后的饰面层整体，时点在美缝后、洁具安装前，由 PKG-065 挂接放行（DEC-2026-10-22-R03 拆包后自 PKG-130 迁入）。
       - id: check_wp_finish_flood
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-065]
         item: "饰面层闭水试验（美缝后、洁具安装前，两卫分别记录）"
         method: |
           1. 美缝完成且养护满后、洁具安装前进行；主卫、客卫分别堵地漏蓄水并分别记录，不得合并成一条。
@@ -244,24 +292,40 @@ phases:
     name: "瓷砖铺贴验收"
     items:
       - id: check_tile_hollow
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-060]
         item: "空鼓检查"
         method: "用空鼓锤轻敲每块砖的四角+中心"
         standard: "单片空鼓率 < 15%，整面墙 < 5%"
         severity: critical
 
       - id: check_tile_gap
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-060]
         item: "缝隙均匀"
         method: "用塞尺测量相邻砖缝"
         standard: "2mm ± 0.5mm"
         severity: major
 
       - id: check_tile_flatness
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-060]
         item: "平整度"
         method: "2m靠尺贴墙面，测量最大空隙"
         standard: "< 2mm"
         severity: major
 
       - id: check_tile_slope
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-060]
         item: "坡度检查"
         method: "倒水测试是否流向地漏"
         standard: "不积水"
@@ -269,6 +333,10 @@ phases:
         rooms: [master_bath, guest_bath, balcony]
 
       - id: check_tile_slope_same_day
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-060]
         item: "贴砖当天倒水测坡：半盆水 10 秒内全部流向地漏"
         when: before_covering
         method: |
@@ -286,6 +354,10 @@ phases:
       # DEC-2026-10-22-R02 新增：美缝前置条件。此前美缝只有包级完工检查、无干燥门槛，
       # 湿缝施工是美缝发黑/脱落的主因；本条挂 PKG-065 与 PKG-130 两包作为各自开工前置（DEC-2026-10-22-R03）。
       - id: check_tile_grout_dry
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-065, PKG-130]
         item: "美缝前砖缝干燥确认"
         method: |
           1. 贴砖完成且粘结层养护期满（按所用粘结材料说明，不早于铺贴后 7 天）后方可确认。
@@ -300,6 +372,10 @@ phases:
           - "DEC-2026-10-22-R02"
 
       - id: check_sill_tile
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-060]
         item: "窗台/防水台面砖检查"
         method: "逐个落地窗核对防水台 L 型两段——客厅、主卫、主卧、书房、西北次卧、东南客房的矮台竖面与水平台面是否都贴砖/窗台石、是否出檐收口、打胶是否连续；倒水试验窗框下沿不渗漏"
         standard: "声明范围内的防水台竖面与水平台面全段贴砖或窗台石；出檐/打胶收口连续，窗框下沿倒水不渗。当前卧室/书房估算150×150mm，量房后复核"
@@ -313,6 +389,10 @@ phases:
     name: "油漆验收"
     items:
       - id: check_paint_surface
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-080]
         item: "漆膜质量检查"
         method: |
           用侧光（手机手电筒贴墙斜照）检查墙面。
@@ -321,6 +401,10 @@ phases:
         severity: major
 
       - id: check_paint_env
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-080]
         item: "施工环境记录"
         method: |
           刷漆时记录室内温湿度。
@@ -334,6 +418,10 @@ phases:
           - 南宁回南天绝对不能刷漆
 
       - id: check_paint_reserve
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-080]
         item: "留罐记录"
         method: "留半罐调好的漆，用保鲜膜封口盖紧，标注色号和涂刷位置"
         standard: "每个颜色留 0.5L 以上，标注色号+房间"
@@ -347,6 +435,10 @@ phases:
     name: "木工验收（吊顶+柜体）"
     items:
       - id: check_carp_keel
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-070]
         item: "吊顶龙骨间距"
         method: "测量主龙骨间距，检查吊杆是否牢固"
         standard: "龙骨间距 ≤ 400mm，吊杆无松动"
@@ -357,6 +449,10 @@ phases:
           - 吊杆太少或膨胀螺栓没打牢
 
       - id: check_carp_board
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-070]
         item: "石膏板拼接"
         method: "检查板间是否留缝、转角是否整板"
         standard: "板间留 V 型缝，转角用整板（7字角），背板 ≥ 9mm"
@@ -367,6 +463,10 @@ phases:
           - 转角整板（7字型）比拼接抗裂
 
       - id: check_carp_cabinet
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-110, PKG-150]
         item: "柜门开关与缝隙"
         method: "逐个柜门开关测试，测门缝均匀度"
         standard: "开关顺畅无异响，门缝均匀 ≤ 2mm，五金阻尼正常"
@@ -376,18 +476,30 @@ phases:
     name: "门窗安装验收"
     items:
       - id: check_dw_swing
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-090]
         item: "门开关与门框"
         method: "逐个门开关测试，检查门框灌浆"
         standard: "开关顺畅无异响，门框灌浆密实，合页螺丝全打"
         severity: major
 
       - id: check_dw_seal
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-090]
         item: "密封胶检查"
         method: "检查门套/窗框密封胶打设"
         standard: "密封胶均匀连续无断点，门吸避开踢脚线"
         severity: major
 
       - id: check_dw_drain
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-100]
         item: "下水通畅"
         method: "各下水口冲水/倒水测试"
         standard: "下水通畅无堵塞、无返水"
@@ -397,6 +509,10 @@ phases:
     name: "水路打压验收"
     items:
       - id: check_plumb_pressure
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "水管打压试验"
         method: |
           1. 堵住所有出水口，接打压泵
@@ -411,6 +527,10 @@ phases:
           - PPR 管热熔接头是渗漏高发点
 
       - id: check_plumb_pressure_gate
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "打压封槽门禁：合同写明档位 + 冷热水串联全屋 + 热熔满 24 小时 + 接头纸巾擦"
         when: before_covering
         method: |
@@ -428,6 +548,10 @@ phases:
           本条是门禁，不锁定打压档位数值：打压压力与保压时长档位待 D5 拍板，不得用本条擅自改写 check_plumb_pressure 的既有口径；合同档位写明后，验收记录必须与合同档位一致。
 
       - id: check_plumb_drain
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040, PKG-100]
         item: "排水坡度与存水弯"
         method: |
           1. 检查排水管坡度、地漏/下水存水弯。
@@ -443,6 +567,10 @@ phases:
 
       # === DEC-2026-10-06-R1 施工范围收口：入户阀件/软水预留/角阀与硬接 ===
       - id: check_plumb_prefilter_and_prv
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "入户总阀 DN20 + 可调减压阀 0.25MPa + 反冲洗前置过滤器位（带排污与旁通三通）"
         when: before_covering
         method: |
@@ -464,6 +592,10 @@ phases:
           前置位不留排污与旁通，后期装过滤器只能停水砍管。
 
       - id: check_plumb_softener_reserved
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "软水机柜格预留：≥400×500mm + 排污管 + 旁通三通（不装机也埋三通）"
         when: before_covering
         method: |
@@ -480,6 +612,10 @@ phases:
           - "DEC-2026-10-06-R1"
 
       - id: check_plumb_valve_per_point
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "每个用水点一只全铜角阀（含洗衣机快接、洗碗机/净水器三通）+ 硬接编织管"
         when: before_covering
         method: |
@@ -499,24 +635,40 @@ phases:
     name: "中央空调验收"
     items:
       - id: check_hvac_weld
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
         item: "铜管焊接质量"
         method: "检查焊接处有无氧化、砂眼"
         standard: "充氮焊接，无氧化皮"
         severity: critical
 
       - id: check_hvac_vacuum
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-140]
         item: "抽真空时间"
         method: "看真空泵运行记录"
         standard: "≥ 15min，保持 -756mmHg"
         severity: critical
 
       - id: check_hvac_drain
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
         item: "冷凝水排水"
         method: "内机注水测试"
         standard: "排水通畅无积水"
         severity: critical
 
       - id: check_hvac_condensate_before_ceiling
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
         item: "封板前冷凝水测试：满水或通水 + 关机回流观察 + 接水盘不积水"
         when: before_covering
         method: |
@@ -530,6 +682,10 @@ phases:
           - "关机静置后接水盘照片"
 
       - id: check_hvac_access_coordination_before_ceiling
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-070]
         item: "封板前三方对接：检修口对准电控盒、回风密封、风口不被遮挡"
         when: before_covering
         method: |
@@ -544,24 +700,40 @@ phases:
           书房旧侧口 600x250 已被酒店布局删除，不得套到新布局；本条只管封板前定位门禁，不改变已定书房回风底面铰接格栅兼检修口口径。
 
       - id: check_hvac_level
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
         item: "内机水平度"
         method: "水平尺测量四角"
         standard: "误差 < 2mm"
         severity: major
 
       - id: check_hvac_vent
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-140]
         item: "风口尺寸"
         method: "测量风口开孔 vs 内机接口"
         standard: "对齐无缝隙"
         severity: major
 
       - id: check_hvac_cooling
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-140]
         item: "制冷测试"
         method: "开机 30min 测出风口温度"
         standard: "出风口 6-12°C（与环境温差）"
         severity: critical
 
       - id: check_hvac_outdoor
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030, PKG-140]
         item: "外机散热"
         method: "测量外机位通风尺寸"
         standard: "百叶通风面积 ≥ 80%"
@@ -569,6 +741,10 @@ phases:
 
       # === DEC-2026-10-06-R1 施工范围收口：两卫浴霸排风出外墙口径 ===
       - id: check_hvac_exhaust_outlet
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
         item: "两卫浴霸排风管出外墙 φ100 防火止回阀，禁接公共烟道与排水立管"
         when: before_covering
         method: |
@@ -594,12 +770,20 @@ phases:
     name: "电路验收"
     items:
       - id: check_elec_continuity
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040, PKG-120, PKG-125]
         item: "通断测试"
         method: "用测电笔逐个插座测试"
         standard: "全部通电，零火线正确"
         severity: critical
 
       - id: check_elec_switch
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040, PKG-120, PKG-125]
         item: "开关功能"
         method: "逐个开关测试"
         standard: "双控/单控功能正常"
@@ -607,6 +791,10 @@ phases:
 
       # === DEC-2026-10-03-R1 新增：从"通断+开关"扩到可施工冻结的安全验收 ===
       - id: check_elec_pe_polarity
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "PE 接地连续性与相/零/地极性"
         method: |
           1. 用验电插座或万用表逐个点位核对 L/N/PE 极性（左零右火上地）。
@@ -620,6 +808,10 @@ phases:
           GB 55038-2025 7.4.5 还要求插座全部采用安全型插座（带保护门）。
 
       - id: check_elec_insulation
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "绝缘电阻测试"
         method: |
           1. 断电，拆下灯具/电器负载，兆欧表 500V 档逐回路测 L-L、L-PE、N-PE。
@@ -633,6 +825,10 @@ phases:
           暗敷管路内严禁有接头 —— 如果工人中间接的线，全部作废重做。
 
       - id: check_elec_rcd_30ma
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "30mA 漏电保护动作测试"
         method: |
           1. 用剩余电流动作测试仪（或漏电保护测试仪）逐回路测试，不只看箱内"试验按钮"。
@@ -647,6 +843,10 @@ phases:
           按钮自检只能验机构，验不了动作电流值。
 
       - id: check_elec_leb
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "卫生间局部等电位联结"
         method: |
           1. 检查两卫是否设局部等电位端子箱（LEB）。
@@ -660,6 +860,10 @@ phases:
           等电位线不得与平时提到的"地线"互相替代，两者作用不同、都要做。
 
       - id: check_elec_splash_socket
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-125]
         item: "卫生间/厨房插座防溅与安全型插座"
         method: "逐点检查两卫与厨房台面插座是否防溅盒、面板是否为安全型（带保护门）插座，目视 + 拍照"
         standard: "两卫与厨房操作面插座全部带防溅盒；全屋插座采用安全型插座"
@@ -670,6 +874,10 @@ phases:
           本户需重点核对：sock_mbath_toilet / sock_gbath_toilet（智能马桶位）、两个客卫台盆位、客卫毛巾架位、客卫台盆下扫地机基站位。
 
       - id: check_elec_strong_weak_separation
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "强弱电分管、间距与管内填充率"
         method: |
           1. 检查强电与弱电（网线/电视线）是否分管敷设，交叉是否成直角。
@@ -683,6 +891,10 @@ phases:
           暗敷禁止接头；管内不得有超过允许数量的 90° 弯。
 
       - id: check_elec_panel_labeling
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "配电箱标识、进线开关与安装高度"
         method: |
           1. 开箱核对箱内每条断路器与回路标签一一对应，贴回路图（须含中央空调外机专用回路）。
@@ -697,6 +909,10 @@ phases:
           本户 20 路（含中央空调外机专用回路）对 390mm 箱体需双排；若现场为单排箱，须换箱或上移箱体，否则位数与安装高度均不达标。
 
       - id: check_elec_point_reachability
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-125]
         item: "点位可及性抽检（防设备/柜体封死）"
         method: "模拟日常：插拔智能马桶、冰箱、油烟机、洗衣机、烘干机插座，确认不必挪动机器或拆柜体即可操作"
         standard: "上述点位全部可徒手插拔，或已有明确检修口/检修位"
@@ -708,6 +924,10 @@ phases:
           封墙前把"怎么拿出来"问清楚，比入住后拆柜子便宜得多。
 
       - id: check_elec_circuit_separation
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "分路合规核对（GB 55038 7.4.4）"
         method: |
           按配电箱回路标签逐条核对五类回路是否分别设置：照明 / 空调电源插座 / 电热水器等 2kW 及以上
@@ -721,6 +941,10 @@ phases:
           GB 55038-2025 7.4.4 是类型级分别设置（不要求每房每灯独立），合并合法但类别不能混。
 
       - id: check_elec_gas_alarm
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "燃气报警器位置与联动切断"
         method: |
           1. 复量探测器安装高度与水平位置。
@@ -736,6 +960,10 @@ phases:
 
       # === DEC-2026-10-06-R2 施工范围收口：全盒零线 / LEB 联结清单 / 微蒸烤可插拔 / 内机检修断电位 ===
       - id: check_elec_zero_line_all_switches
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "全盒零线：每个开关底盒 3 根 1.5mm²（L/N/灯控）"
         when: before_covering
         method: |
@@ -756,6 +984,10 @@ phases:
           封墙后补穿等于把电全部重做一次。
 
       - id: check_elec_leb_bonding_list
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-040]
         item: "两卫 LEB 端子箱 + BV-6mm² 黄绿联结干线 + 待联结金属构件清单（防水层施工前完成）"
         when: before_waterproofing
         method: |
@@ -781,6 +1013,10 @@ phases:
           等电位联结属隐蔽工程，防水层一上就无法补埋，是水电阶段最容易被整段漏掉的一项。
 
       - id: check_elec_micro_oven_reserved
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-110]
         item: "微蒸烤预留点位 sock_kitchen_oven 落位必须在柜外/开放格可徒手插拔处"
         when: [before_covering, at_delivery]
         method: |
@@ -801,6 +1037,10 @@ phases:
           预留位一旦错到机器背后，后期只能拆柜或加排插。
 
       - id: check_elec_ac_service_access
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
         item: "六台内机供电硬接线或下引带盖 86 盒（回风检修格栅旁）+ 检修断电位"
         when: before_covering
         method: |
@@ -827,6 +1067,10 @@ phases:
     name: "入住前检测"
     items:
       - id: check_occ_formaldehyde
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-170]
         item: "甲醛检测"
         method: |
           建议找 CMA 资质机构上门检测。
@@ -845,6 +1089,10 @@ phases:
     name: "开发商窗交房验收（只验开发商已封好的窗，不涉及用户自己买窗）"
     items:
       - id: check_window_paper_per_window
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-000]
         item: "每扇窗纸片法：A4 纸夹缝关窗后抽，抽不动过、很容易抽出来不过"
         method: |
           1. 每扇窗逐扇做：把 A4 纸夹在窗扇与框的缝里，关窗锁紧后抽纸。
@@ -857,6 +1105,10 @@ phases:
           - "不过的窗扇与边位清单"
 
       - id: check_window_gasket_sealant
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-000]
         item: "胶条与密封胶：胶条整根连续无断开卷边脱落发硬，框墙缝与框接缝密封胶打满连续无断点开裂"
         method: |
           1. 目视加手摸逐扇查胶条：整根连续、无断开、无卷边、无脱落、无发硬。
@@ -869,6 +1121,10 @@ phases:
           - "推玻璃与开关锁点检查记录"
 
       - id: check_window_drain_hole
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-000]
         item: "排水孔：室内轨道倒少量水看排水孔是否顺畅排出、不往室内漫"
         method: |
           1. 只在室内轨道倒少量水，看排水孔是否顺畅排出、不往室内漫。
@@ -879,6 +1135,10 @@ phases:
           - "排水孔排水照片（轨道水位与排水口可辨）"
 
       - id: check_window_lowe_doc
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-000]
         item: "Low-E 验收：看纸 + 打火机法 + 外观密封 + 安装"
         method: |
           1. 看纸：型号、厚度、中空层、单双银、U 值、SHGC 与检测报告、钢化 3C 对得上；型号、单双银、膜面位置、检测报告等细节未核实前不得记为已证实。
@@ -891,6 +1151,10 @@ phases:
           - "打火机法倒影照片（异色倒影位置可辨）"
 
       - id: check_window_rain_recheck
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-000]
         item: "雨后复查：雨天绕窗看渗漏、水渍"
         method: |
           1. 雨后绕每扇窗看渗漏、水渍，记下哪扇窗、哪个部位。
@@ -901,6 +1165,10 @@ phases:
           - "雨后绕窗复查照片（渗漏与水渍部位可辨）"
 
       - id: check_window_external_issue_report
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-000]
         item: "外侧问题书面报开发商或物业，不探身窗外"
         method: |
           1. 外侧项（外侧防水胶打满、隔热条标记等）只作记录，不得探身窗外补胶、不得往窗外倒水。

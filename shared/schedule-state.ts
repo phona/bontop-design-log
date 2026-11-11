@@ -21,7 +21,8 @@ import { computeGateStatus } from './gate-status.js';
 import { contractArchivePathProblem, isValidCalendarDateText } from './contract-archive.js';
 import { DECISION_GATES_PATH, loadDecisionGates, openGatesByCheck, type Decision, type DecisionGates } from './decision-gates.js';
 import { MODEL_PACKAGE_LINKS_PATH, authorityFilePaths } from './model-package-links.js';
-import type { ModelPackageLinks } from './model-package-links.js';
+import type { LoadedModelPackageLinks, ModelPackageLinks } from './model-package-links.js';
+import { ALL_MODEL_TARGET } from './package-objects.js';
 import { collectDeclaredFurnitureIds, type DeclaredFurnitureIdEntry } from './furniture-object-id.js';
 import { collectFinishRecipeIds } from './finish/input.js';
 import type { FurnishingsYaml } from './types.js';
@@ -31,6 +32,35 @@ type AnyRecord = Record<string, any>;
 export const CONTROL_REL_PATH = 'schedule/phase-1/control.yaml';
 export const ACCEPTANCE_REL_PATH = 'config/acceptance.yaml';
 export const ROADMAP_REL_PATH = 'schedule/roadmap.yaml';
+
+/**
+ * 工程对象域的 authority source（issue #191 Codex blocking 第 7 轮）。
+ *
+ * `model-package-links.yaml` 的 authorities 映射里混了两类条目：
+ *   - **工程对象域**（本清单）：模型几何、围护/面层、家具、电气、给排水、电气拓扑、
+ *     MEP 路由、HVAC、吊顶。它们的声明是**工程输入**。
+ *   - **分期与执行文件**（不在本清单）：`phase_scope` / `phase_1_budget` /
+ *     `phase_2_scope` / `phase_3_scope`。其中 `phase_1_budget` 指向
+ *     `schedule/phase-1/control.yaml`，而该文件的 `audit_log.records` **就是验收通过
+ *     记录本身**——是执行产出，不是工程输入。
+ *
+ * 为什么必须分开：project_scope 包的指纹按「全模型」扩到全部权威文件时，若把执行文件
+ * 也圈进去，存一条通过记录就会改变这条记录保存下来的 project_data_sha256，重新加载后
+ * staleAuditReason 立即判 stale——付款门槛永远无法稳定通过（自指循环）。
+ * 检查定义的变化由 check_spec_sha256 单独覆盖（checkSpecHash 哈希 {packageSpec, check}），
+ * 不需要靠整份 control.yaml 进项目数据指纹。
+ */
+export const ENGINEERING_AUTHORITY_SOURCES: readonly string[] = [
+  'model_geometry',
+  'overlay',
+  'furnishings',
+  'electrical',
+  'plumbing',
+  'electrical_topology',
+  'mep_routes',
+  'hvac',
+  'ceiling',
+];
 
 export interface ScheduleState {
   root: string;
@@ -80,6 +110,10 @@ export interface ScheduleState {
   snapshotDigest: (snapshot: Record<string, string>) => string;
   scopeSummary: (selector: AnyRecord) => string;
   packageModelLinks: (packageId: string) => AnyRecord[];
+  /** 工作包的对象 targets（control.yaml 的显式登记；缺失时回退到链接解析结果）。 */
+  packageTargets: (pkg: AnyRecord) => string[];
+  /** 验收项对象集：引用它的工作包 targets 并集（`*` 吸收为全模型）。 */
+  acceptanceObjectIds: Map<string, string[]>;
   packageProjectPaths: (pkg: AnyRecord) => string[];
   packageProjectSnapshot: (pkg: AnyRecord) => Record<string, string>;
   packageProjectFingerprint: (pkg: AnyRecord) => string;
@@ -111,7 +145,7 @@ export interface ScheduleState {
  * 加载 + 校验 + 派生。返回 errors（由调用方决定退出/呈现），不退出、不打印。
  * modelPackageLinks 由调用方注入（server/model-package-links.ts 是唯一解析器）。
  */
-export function loadScheduleState(root: string, options: { modelPackageLinks: ModelPackageLinks }): ScheduleState {
+export function loadScheduleState(root: string, options: { modelPackageLinks: LoadedModelPackageLinks }): ScheduleState {
   const phaseDir = path.join(root, 'schedule/phase-1');
   const controlPath = path.join(phaseDir, 'control.yaml');
   const acceptancePath = path.join(root, ACCEPTANCE_REL_PATH);
@@ -170,10 +204,58 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     return modelPackageLinks.links.filter((link) => link.budget_ref.id === packageId) as AnyRecord[];
   }
 
+  /**
+   * 对象 targets（issue #191）：control.yaml 的显式登记优先；缺失时回退到链接解析结果。
+   * 回退只保证 UI/查询在登记缺失时仍可运行——「登记 == 解析」由 config/facts.yaml 的
+   * c.package_targets 契约强制，不靠本函数的回退兜底。
+   */
+  function packageTargets(pkg: AnyRecord): string[] {
+    if (Array.isArray(pkg.targets) && pkg.targets.length) return [...pkg.targets];
+    const derived = new Set<string>();
+    for (const link of packageModelLinks(pkg.id)) {
+      const resolution = modelPackageLinks.objectResolutions?.[link.id];
+      for (const id of resolution?.objectIds ?? []) derived.add(id);
+    }
+    return [...derived].sort();
+  }
+
+  /**
+   * 链接是否需要按**整份权威文件**建指纹（宁可过度 stale，不漏报）：
+   * - 显式 project_scope（PKG-000/005/010/142/170/900 的整项目声明）；
+   * - 解析器不可用（注入的 mock / 旧调用方）或该链接存在 unresolved 选择器——
+   *   此时无法确定对象边界，退回整份文件是唯一安全方向。
+   */
+  function linkNeedsWholeAuthority(link: AnyRecord): boolean {
+    const resolution = modelPackageLinks.objectResolutions?.[link.id];
+    if (!resolution) return true;
+    return resolution.projectScope || resolution.unresolved.length > 0;
+  }
+
   function packageProjectPaths(pkg: AnyRecord): string[] {
     const links = packageModelLinks(pkg.id);
     const paths = [MODEL_PACKAGE_LINKS_PATH, 'schedule/phase-scope.yaml', 'config/acceptance.yaml', DECISION_GATES_PATH];
     for (const link of links) {
+      if (!linkNeedsWholeAuthority(link)) continue;
+      // project_scope 的语义是「全模型」：边界收窄不到对象，就按**全部工程对象域**建指纹。
+      // 不能只按该链接 scope 恰好列出的那几份——6 个 project_scope 链接里有 5 个只列了
+      // model_geometry，那样 house/electrical/overlay 等对象域的变化就不会让它们 stale，
+      // 而它们的 targets 是 `*`、验收项对象集也按 `*` 派生，等于声明了「跟任何对象变」
+      // 却只跟几何变（issue #191 独立复核 high：改 house.yaml 的 study.chair 时 PKG-170
+      // 不 stale，而它唯一的验收项是甲醛检测）。
+      // 解析不出（unresolved）的链接仍按其 scope 列出的文件整份计入——那是「不知道边界」，
+      // 不是「边界是全模型」，按 scope 算已是安全方向，不该借道全量。
+      if (modelPackageLinks.objectResolutions?.[link.id]?.projectScope) {
+        // **只扩工程对象域，不扩 schedule/execution 文件**（issue #191 Codex blocking 第 7 轮）：
+        // authorities 里混了两类——`phase_scope` / `phase_*_budget` / `phase_*_scope` 是
+        // 分期与执行文件，其中 phase_1_budget 指向 schedule/phase-1/control.yaml，
+        // 而该文件的 `audit_log.records` **就是验收通过记录本身**。
+        // 若把它圈进指纹，存一条通过记录就会改变这条记录保存下来的 project_data_sha256，
+        // 重新加载后 staleAuditReason 立即判 stale——付款门槛永远无法稳定通过（自指）。
+        // 检查定义的变化由 check_spec_sha256 单独覆盖（checkSpecHash 哈希 {packageSpec, check}），
+        // 不需要靠整份 control.yaml 进项目数据指纹。
+        paths.push(...ENGINEERING_AUTHORITY_SOURCES.flatMap((source) => authorityFilePaths(modelPackageLinks.authorities[source] ?? source)));
+        continue;
+      }
       for (const scope of link.scope ?? []) {
         const authorityPath = modelPackageLinks.authorities[scope.source];
         if (authorityPath) paths.push(...authorityFilePaths(authorityPath));
@@ -184,12 +266,43 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     return unique(paths).sort();
   }
 
+  /**
+   * 对象粒度指纹（issue #191，替代整份权威文件求和）。
+   *
+   * 结构：**结构性文件**（整份）+ `object:<source>:<id>` → 对象声明 sha256。
+   * 按对象的是每个链接 scope 解析出的对象声明（见 shared/package-objects.ts）；
+   * 按整份的是 model-package-links.yaml 自身、phase-scope.yaml、acceptance.yaml 的结构与
+   * decision-gates.yaml——改这四份会影响所有包的判定，本就该整份计。project_scope 链接按
+   * **全部**权威文件整份计入（它的 targets 是 `*`，见 packageProjectPaths），解析不出的链接
+   * 按其 scope 列出的文件整份计入；两者方向都偏过度 stale。
+   */
   function packageProjectSnapshot(pkg: AnyRecord): Record<string, string> {
-    return fileSnapshot(packageProjectPaths(pkg));
+    const snapshot = fileSnapshot(packageProjectPaths(pkg));
+    for (const link of packageModelLinks(pkg.id)) {
+      if (linkNeedsWholeAuthority(link)) continue;
+      const resolution = modelPackageLinks.objectResolutions?.[link.id];
+      for (const [key, digest] of Object.entries(resolution?.digests ?? {})) snapshot[`object:${key}`] = digest;
+    }
+    return snapshot;
   }
 
   function packageProjectFingerprint(pkg: AnyRecord): string {
     return snapshotDigest(packageProjectSnapshot(pkg));
+  }
+
+  /**
+   * 验收项对象集（issue #191 决策 2）：= 引用该验收项的工作包 targets 并集。
+   * 任一引用包是 `*`（全模型）→ 结果收敛为 `*`（并集含全模型即全模型）。
+   */
+  const acceptanceObjectIds = new Map<string, string[]>();
+  for (const pkg of control.work_packages ?? []) {
+    const targets = packageTargets(pkg);
+    for (const ref of pkg.acceptance_refs ?? []) {
+      const existing = acceptanceObjectIds.get(ref) ?? [];
+      if (existing.includes(ALL_MODEL_TARGET)) continue;
+      const merged = new Set([...existing, ...targets]);
+      acceptanceObjectIds.set(ref, merged.has(ALL_MODEL_TARGET) ? [ALL_MODEL_TARGET] : [...merged].sort());
+    }
   }
 
   function phaseInputPaths(phaseId: string, phaseControlPath: string): string[] {
@@ -796,6 +909,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Mo
     roundTargetTotal, roundQuotedTotal, poolTotals, allocated, fixed,
     money, moneyOrPending, range, list, escapeCell, sha256, unique,
     fileSnapshot, snapshotDigest, scopeSummary, packageModelLinks,
+    packageTargets, acceptanceObjectIds,
     packageProjectPaths, packageProjectSnapshot, packageProjectFingerprint,
     phaseInputPaths, phaseDataInputPaths, projectInputPaths,
     snapshotComment, fingerprintLine, header, packageChecks, packageGateLabel,
@@ -933,6 +1047,8 @@ export interface ScheduleCheckView {
   audit?: {id: string; checked_by?: string; checked_at?: string; evidence?: string[]; supersedes?: string};
   open_gates?: string[];
   check_spec_sha256: string;
+  /** 验收项对象集的派生来源（issue #191）：引用该条的工作包；对象集 = 这些包 targets 并集。 */
+  objects_from_packages?: string[];
 }
 
 export interface SchedulePackageView {
@@ -962,6 +1078,8 @@ export interface SchedulePackageView {
     unpriced_count: number;
   };
   checks: ScheduleCheckView[];
+  /** 工作包对象 targets（issue #191；`*` = 显式全模型范围）。 */
+  targets: string[];
   project_fingerprint: string;
 }
 
@@ -1032,6 +1150,9 @@ export function buildScheduleSnapshot(state: ScheduleState): ScheduleSnapshot {
           ? {id: record.id, checked_by: record.checked_by, checked_at: record.checked_at, evidence: record.evidence, supersedes: record.supersedes}
           : undefined,
         open_gates: openGateIds.length ? openGateIds : undefined,
+        objects_from_packages: Array.isArray(check.objects?.from_packages) && check.objects.from_packages.length
+          ? check.objects.from_packages
+          : undefined,
         check_spec_sha256: state.checkSpecHash(pkg, check.id),
       };
     });
@@ -1072,6 +1193,7 @@ export function buildScheduleSnapshot(state: ScheduleState): ScheduleSnapshot {
         unpriced_count: components.filter((component: AnyRecord) => component.planned_cny == null).length,
       },
       checks,
+      targets: state.packageTargets(pkg),
       project_fingerprint: state.packageProjectFingerprint(pkg),
     };
   });

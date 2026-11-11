@@ -94,22 +94,33 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.match(String(d19.tracking_note), /二期启动/);
   });
 
-  it('对象 → 工作包走 OBJECT_ID_SOURCES 通道（与 3D 高亮/反查同源）：gbath.vanity→PKG-100、gbath.robot_dock→PKG-160', () => {
-    assert.deepEqual(ledgerOf('gbath.vanity').packageLinks.map((link) => link.pkgId), ['PKG-100']);
+  it('对象 → 工作包走 OBJECT_ID_SOURCES 通道（与 3D 高亮/反查同源）：gbath.vanity→PKG-050/100、gbath.robot_dock→PKG-160', () => {
+    // 2026-11-10（issue #191 Codex blocking）：check_plumb_external_vanity_waterproof 的
+    // 被验柜体 gbath.vanity 按 id 纳入 MODEL-PKG-050 的 scope（防水验收要按柜内布局核托盘/
+    // 排水走廊/前拉空间），故包链接由 PKG-100 变为 PKG-050 + PKG-100。
+    assert.deepEqual(ledgerOf('gbath.vanity').packageLinks.map((link) => link.pkgId), ['PKG-050', 'PKG-100']);
     assert.deepEqual(ledgerOf('gbath.robot_dock').packageLinks.map((link) => link.pkgId), ['PKG-160']);
-    assert.equal(ledgerOf('mb.washbasin_cabinet').packageLinks.length, 0);
+    // 2026-11-10（R4 Codex blocking + 全仓扫描）：mb.washbasin_cabinet 与 gbath.vanity 是
+    // 同一条外移防水验收的两个被验柜体，按 id 一并纳入 MODEL-PKG-050 的 scope，故包链接
+    // 由 PKG-100 + P2-100 变为 PKG-050 + PKG-100 + P2-100。
+    assert.deepEqual(ledgerOf('mb.washbasin_cabinet').packageLinks.map((link) => link.pkgId), ['PKG-050', 'PKG-100', 'P2-100']);
   });
 
-  it('gbath.vanity 验收项：包级（PKG-100）+ acceptance.yaml 直接点名', () => {
+  it('gbath.vanity 验收项：包级（PKG-100）+ 防水包（PKG-050）结构化 acceptance_refs', () => {
     const checks = ledgerOf('gbath.vanity').acceptanceChecks;
     assert.ok(checks.some((check) => check.checkId === 'SCH-100-01' && check.via === 'PKG-100 checks'), JSON.stringify(checks));
-    const direct = checks.find((check) => check.checkId === 'check_plumb_external_vanity_waterproof');
-    assert.ok(direct, 'check_plumb_external_vanity_waterproof 必须经 acceptance.yaml 点名可达');
-    assert.equal(direct.via, 'acceptance.yaml 点名');
+    // 2026-11-10（issue #191）：gbath.vanity 现同时是 PKG-050（防水验收被验柜体）的包链接对象。
+    // check_plumb_external_vanity_waterproof 因此经 PKG-050 的 acceptance_refs 结构化可达，
+    // 不再依赖 acceptance.yaml 的散文点名（acceptance_text 通道对已结构化可达的检查去重）。
+    const waterproof = checks.find((check) => check.checkId === 'check_plumb_external_vanity_waterproof');
+    assert.ok(waterproof, 'check_plumb_external_vanity_waterproof 必须可达');
+    assert.equal(waterproof.via, 'PKG-050 acceptance_refs');
   });
 
-  it('mb.washbasin_cabinet 无包链接，但验收点名与自带 blocker 可达', () => {
+  it('mb.washbasin_cabinet 经 MODEL-PKG-100 的 id 直选有包链接，验收点名与自带 blocker 可达', () => {
     const ledger = ledgerOf('mb.washbasin_cabinet');
+    assert.deepEqual(ledger.packageLinks.map((link) => link.pkgId), ['PKG-050', 'PKG-100', 'P2-100'],
+      'issue #191：PKG-100 的 ids 含 mb_washbasin_cabinet；P2-100 的 room_ids [master_bedroom] 改 ids 后也覆盖它；2026-11-10 R4 起 PKG-050 也按 id 纳入（与 gbath.vanity 同一条外移防水验收的被验柜体）');
     assert.ok(ledger.aliases.includes('mb_washbasin_cabinet'), 'mb_washbasin_cabinet 全屋唯一，裸类型名是全等别名');
     assert.ok(ledger.acceptanceChecks.some((check) => check.checkId === 'check_plumb_external_vanity_waterproof'));
     // 注意：mb.washbasin_cabinet 是**家具对象**，本身没有 status/blocker 字段（那四个实体
@@ -189,12 +200,49 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.ok(!report.undecided.some((ledger) => ledger.ref === 'gbath.vanity'));
   });
 
-  it('无参数汇总：有归属 12 件（PR-11 起含条带 7 件 + 衣柜 2 件）、共担成本项去重合计 ¥6,599', () => {
+  it('无参数汇总：有归属 51 件（issue #191 起 room_ids/types 改 ids 后包链接通道覆盖真实家具）、共担成本项去重合计 ¥6,599', () => {
+    // 2026-11-10（issue #191）：12 → 51。原因是 model-package-links 的 19 处 room_ids/types
+    // 选择器改成对象 id 直选后，MODEL-PKG-110/160/P2-010/P2-020/P2-030/P2-060/P2-100/
+    // P2-120/P2-140/P3-030 的包链接第一次真正指名家具对象（此前 types 对 furnishings 是
+    // silent no-op，room_ids 只记房间）。这 51 件是「有包链接或成本项」的真实集合，
+    // 逐件列出而不是只报数量——包/对象关联漂移时本断言当场点名。
     const owned = report.objects.filter(hasBusinessLink);
     assert.deepEqual(owned.map((ledger) => ledger.ref).sort(), [
+      'balcony.dryer',
+      'balcony.washer',
+      'bnw.bed_150',
+      'bnw.chair',
+      'bnw.desk',
+      'bnw.shelf',
+      'bnw.wardrobe_180',
+      'gbath.exhaust_fan',
+      'gbath.mirror_cabinet',
       'gbath.robot_dock',
+      'gbath.toilet',
       'gbath.vanity',
+      'kitchen.cabinet_run_east',
+      'kitchen.cabinet_run_north_east',
+      'kitchen.cabinet_run_north_west',
+      'kitchen.countertop_bridge',
+      'kitchen.dishwasher',
+      'kitchen.gas_stove',
+      'kitchen.range_hood',
+      'kitchen.sink',
+      'kitchen.water_heater',
+      'ld.coffee_table',
+      'ld.floor_lamp',
+      'ld.fridge',
+      'ld.plant_fiddle',
+      'ld.tv_65',
+      'ld.tv_wall_low',
+      'ld.wall_cabinet_tall',
+      'mb.bed_180',
+      'mb.bedside_cabinet_north',
+      'mb.bedside_cabinet_south',
       'mb.condensate_pipe',
+      'mb.dressing_stool',
+      'mb.dressing_table',
+      'mb.low_dresser',
       'mb.vanity_base_cabinet',
       'mb.vanity_lower_board',
       'mb.vanity_main_board',
@@ -204,6 +252,13 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
       'mb.wardrobe_950',
       'mb.wardrobe_pelmet',
       'mb.washbasin_cabinet',
+      'mbath.exhaust_fan',
+      'mbath.toilet',
+      'study.chair',
+      'study.desk',
+      'study.seasonal_wardrobe_step_north',
+      'study.seasonal_wardrobe_step_south',
+      'study.seasonal_wardrobe_wall',
     ]);
     const summary = renderOwnershipSummary(report);
     assert.match(summary, /¥6,599/);
@@ -247,7 +302,11 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     // 2026-11-07（issue #98 PR-11）：条带 7 件 + 衣柜 2 件经 MODEL-P2-100 的 select.ids
     // 进反查（pvc_box/wardrobe_entry/service_chase/condensate_pipe 4 件此前零机器引用），
     // 22 → 26 件。
-    assert.match(inventory, /被机器绑定引用的对象：\*\*26\*\* 件/);
+    // 2026-11-10（issue #191）：model-package-links 的 19 处 room_ids/types 选择器改 ids 后，
+    // model_package_link 通道能反查到真实家具对象（此前 furnishings 的 types 选择器按
+    // sceneElements 匹配，家具对象从不命中；room_ids 只记房间）。26 → 53 件是通道变真，
+    // 不是新造引用——总 placed 67 件中未挂任何机器引用的只剩 14 件。
+    assert.match(inventory, /被机器绑定引用的对象：\*\*53\*\* 件/);
   });
 });
 

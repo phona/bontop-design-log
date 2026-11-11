@@ -20,7 +20,7 @@
 //  - 3D 反查高亮把传入的全部包都标出来，不许静默只标首个；多包命中时选中态
 //    **不预设首个包**（#67）：留空 + 提示由业主点节点选，或保留仍命中的上次选择。
 import type { ScheduleSnapshot, SchedulePackageView } from '@shared/schedule-state';
-import { isPointSourceAllSelector } from '@shared/package-scope';
+import { isPointSourceAllSelector, OBJECT_ID_SOURCES } from '@shared/package-scope';
 import type { ScheduleSelectionStore } from '../state/schedule-selection.js';
 import { computeFlowLayout, type FlowLayout, type FlowLayoutNode } from '@shared/flow-layout';
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
@@ -234,8 +234,13 @@ const SCENE_SELECTOR_KEYS = new Set(['room_ids', 'types', 'collections']);
  * 家具来源（furnishings）的 ids 是**场景对象 id**（裸 id，shared/furniture-object-id.ts），
  * 不是点位——与 shared/package-scope 的 OBJECT_ID_SOURCES 同口径（2026-11-06 issue #98 PR-4）。
  * 少了这条，只有 furnishings ids 的链接会被误判成「点位级」徽标，而实际高亮走对象路径。
+ *
+ * 2026-11-10（issue #191）：直接复用 OBJECT_ID_SOURCES 而不是本地只写 furnishings——
+ * S4/S6 起 model_geometry / overlay 的 ids 也是宿主对象 id（墙/围护构件/房间），
+ * 原 room_ids/types 选择器改 ids 后（PKG-050 的四个房间即一例），本地表会把它们误判成
+ * 「点位级」。源表只许一份，改口径两边同时跟随。
  */
-const OBJECT_ID_SELECTOR_SOURCES = new Set(['furnishings']);
+const OBJECT_ID_SELECTOR_SOURCES = OBJECT_ID_SOURCES;
 
 const CAPABILITY_BADGE: Record<GeometryCapability, {label: string; title: string}> = {
   project: {

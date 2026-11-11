@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import * as nodePath from 'node:path';
 import { load as parseYaml } from 'js-yaml';
-import { MODEL_PACKAGE_LINKS_PATH, ModelPackageLinksSchema, authorityFilePaths, type ModelPackageLinks, type ModelPackageScopeRef } from '../shared/model-package-links.js';
+import { MODEL_PACKAGE_LINKS_PATH, ModelPackageLinksSchema, authorityFilePaths, type LoadedModelPackageLinks, type ModelPackageLinks, type ModelPackageScopeRef } from '../shared/model-package-links.js';
+import { digestResolvedObjects, indexAuthorityObjects, resolveLinkObjects, type AuthorityObjectIndex, type LinkObjectResolution } from '../shared/package-objects.js';
 import { loadOverlayDoc } from './overlay-merge.js';
 import { SOURCES, SOURCE_NAMES } from '../shared/envelope-sources.js';
 
@@ -60,8 +63,17 @@ function assertAuthorityMatchesRegistry(authorities: Record<string, unknown>, pa
 /**
  * Load the internal package-to-model crosswalk and verify each budget reference.
  * Amounts and component descriptions stay in the referenced phase control files.
+ *
+ * issue #191：装载时同时把每条链接的 scope 解析成**工程对象 ID 集合 + 对象声明摘要**
+ * （`shared/package-objects.ts` 唯一实现），挂在返回对象的非 enumerable
+ * `objectResolutions` 上。非 enumerable 是有意的：`/api/model-package-links` 直接
+ * `res.json()` 本对象，JSON 形状必须与旧版一致；对象粒度指纹与 facts 契约在进程内读它。
+ *
+ * `options.root`：authority 路径（以及 overlay 合并的三个 envelope 文件）相对该根解析。
+ * 默认 `process.cwd()`（既有全仓调用口径不变）；issue #191 的指纹反证测试用它指向配置副本。
  */
-export function loadModelPackageLinks(path = MODEL_PACKAGE_LINKS_PATH): ModelPackageLinks {
+export function loadModelPackageLinks(path = MODEL_PACKAGE_LINKS_PATH, options: {root?: string} = {}): LoadedModelPackageLinks {
+  const root = options.root ?? process.cwd();
   let parsed: ModelPackageLinks;
   try {
     const raw = parseYaml(readFileSync(path, 'utf8'));
@@ -81,7 +93,9 @@ export function loadModelPackageLinks(path = MODEL_PACKAGE_LINKS_PATH): ModelPac
         // issue #98 第三阶段 S1：overlay 拆为 envelope 三文件（原 config/layout/overlay.yaml 已删），
         // 其选择器（types 分布在 floor-zones/openings 之间）必须按合并文档核对，
         // 走 server/overlay-merge.ts 的唯一合并点 loadOverlayDoc()；其余 authority 仍是单文件。
-        authorityDocs.set(key, key === 'overlay' ? loadOverlayDoc() : parseYaml(readFileSync(authorityFilePaths(authorityValue)[0], 'utf8')));
+        authorityDocs.set(key, key === 'overlay'
+          ? loadOverlayDoc(root)
+          : parseYaml(readFileSync(nodePath.resolve(root, authorityFilePaths(authorityValue)[0]), 'utf8')));
       } catch (err) {
         throw new Error(`${path}: cannot read authority ${key} (${authorityFilePaths(authorityValue).join(' + ')}): ${err instanceof Error ? err.message : String(err)}`);
       }
@@ -127,6 +141,22 @@ export function loadModelPackageLinks(path = MODEL_PACKAGE_LINKS_PATH): ModelPac
     if (budgetRefs.has(budgetRefKey)) throw new Error(`${path}: duplicate budget link ${budgetRefKey}`);
     budgetRefs.add(budgetRefKey);
   }
+
+  // issue #191：解析每条链接的对象集 + 对象声明摘要。索引按 authority 只建一次；
+  // 解析不出对象的选择器记 unresolved，不在这里抛错——是否允许（如 P2-110 的 count-only
+  // 例外）由 config/facts.yaml 的 object_link 契约显式登记，避免「配置一改、/api/project 500」
+  // 的历史失效模式（见 shared/package-scope.ts 头注 2026-11-02）。
+  const indexes = new Map<string, AuthorityObjectIndex>();
+  for (const key of new Set(parsed.links.flatMap((link) => (link.scope ?? []).map((ref) => ref.source)))) {
+    indexes.set(key, indexAuthorityObjects(key, getAuthority(key)));
+  }
+  const objectResolutions: Record<string, LinkObjectResolution> = {};
+  for (const link of parsed.links) {
+    const resolution = resolveLinkObjects(link, {docs: authorityDocs, indexes});
+    digestResolvedObjects(resolution, {docs: authorityDocs, indexes}, (text) => createHash('sha256').update(text).digest('hex'));
+    objectResolutions[link.id] = resolution;
+  }
+  Object.defineProperty(parsed, 'objectResolutions', {value: objectResolutions, enumerable: false});
 
   return parsed;
 }
