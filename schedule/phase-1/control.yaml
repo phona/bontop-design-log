@@ -975,6 +975,15 @@ work_packages:
         method: 逐房核对新墙、门洞、柜体、水电点位、空调内机、送回风口、检修口和吊顶边界的现场标记
         pass_condition: 关键位置和尺寸与确认图纸一致，业主、设计师和施工方完成现场交底签认
         evidence_required: [setting_out_photos, signed_site_brief]
+        coordination:
+          required_roles: [业主, 设计师, 施工方]
+          mode: onsite
+          lead_time_workdays: 2
+          owner_role: 设计师
+          status: pending_invite
+          actor: {name: null, org: null}
+          confirmed_at: null
+          escalation: "提前量过半未确认 → 升级到业主并顺延预测窗口"
 
   - id: PKG-020
     sequence: 20
@@ -1122,6 +1131,15 @@ work_packages:
         method: 空调商提供内机与接管清单（机身尺寸、供电取电方式、检修口、冷凝水接点），与水电点位表和吊顶分层标高逐项核对并四方签认
         pass_condition: 签认记录覆盖全部六台内机与外机，供电回路、控制线、冷凝水接入点与分层标高无冲突
         evidence_required: [coordination_record, circuit_schedule, signed_interface_sheet]
+        coordination:
+          required_roles: [业主, 设计师, 空调商, 水电施工]
+          mode: onsite
+          lead_time_workdays: 3
+          owner_role: 设计师
+          status: pending_invite
+          actor: {name: null, org: null}
+          confirmed_at: null
+          escalation: "提前量过半未确认 → 升级到业主并顺延预测窗口"
       - id: SCH-040-01
         severity: critical
         checkpoint: before_covering
@@ -1144,6 +1162,15 @@ work_packages:
         method: 核对 BLK-MEP-INTERFACE-FREEZE 与 BLK-CABINET-FREEZE-FOR-MEP 的解除证据：联合交底签认记录、橱柜深化图与点位表双向核对结论
         pass_condition: 两项阻断均有书面解除证据，微蒸烤预留点位、分层标高、穿墙孔位高度与冷凝水接点已落实到交底单
         evidence_required: [signed_interface_sheet, cabinet_drawing_reference, briefing_sheet]
+        coordination:
+          required_roles: [业主, 设计师, 空调商, 橱柜供应商]
+          mode: onsite
+          lead_time_workdays: 3
+          owner_role: 设计师
+          status: pending_invite
+          actor: {name: null, org: null}
+          confirmed_at: null
+          escalation: "提前量过半未确认 → 升级到业主并顺延预测窗口"
   - id: PKG-050
     sequence: 50
     name: 防水及闭水
@@ -1371,6 +1398,17 @@ work_packages:
         method: 在实际墙面制作样板并在日间、夜间照明条件下观察
         pass_condition: 色号、光泽和使用房间经业主确认
         evidence_required: [signed_sample_photos]
+        # mode=remote：method 的现场观察由设计师与涂装施工完成，pass_condition 的确认动作
+        # （色号/光泽/房间）不必到场——样板照片远程签认即满足「经业主确认」。
+        coordination:
+          required_roles: [业主, 设计师]
+          mode: remote
+          lead_time_workdays: 2
+          owner_role: 设计师
+          status: pending_invite
+          actor: {name: null, org: null}
+          confirmed_at: null
+          escalation: "提前量过半未确认 → 升级到业主并顺延预测窗口"
 
   - id: PKG-090
     sequence: 90
@@ -1409,6 +1447,17 @@ work_packages:
         method: 逐樘记录完成面洞口尺寸，并核对燃气单位或物业的书面要求
         pass_condition: 复尺单签认且厨房门方案满足确认要求
         evidence_required: [door_measurement_sheet, gas_requirement_record]
+        # mode=notify：燃气单位/物业以书面要求参与，不到场；业主要负责发起并接收
+        # 书面要求（method 正文「核对燃气单位或物业的书面要求」）。
+        coordination:
+          required_roles: [业主, 物业, 燃气单位]
+          mode: notify
+          lead_time_workdays: 5
+          owner_role: 业主
+          status: pending_invite
+          actor: {name: null, org: null}
+          confirmed_at: null
+          escalation: "提前量过半未确认 → 升级到业主并顺延预测窗口"
 
   - id: PKG-100
     sequence: 100

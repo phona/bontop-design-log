@@ -592,6 +592,27 @@ describe('App', () => {
     }
   });
 
+  // 2026-11-11 issue #202 S3：同口径守 roles / calendar——枚举、白名单、
+  // showApprovalView 分支、面板构造四处任一失效时不再静默落 next_action。
+  it('boot：#approval=roles / #approval=calendar 深链打开对应子页', async () => {
+    const cases = [
+      {subPage: 'roles' as const, panel: 'roleWorkbenchPanel' as const},
+      {subPage: 'calendar' as const, panel: 'coordinationCalendarPanel' as const},
+    ];
+    for (const {subPage, panel} of cases) {
+      location.hash = `#approval=${subPage}`;
+      const app = new App(canvas);
+      try {
+        await app.start();
+        expect(app['approvalView']).toBe(subPage);
+        expect(app[panel]?.isVisible()).toBe(true);
+      } finally {
+        location.hash = '';
+        localStorage.removeItem('bontop-view-state/v1');
+      }
+    }
+  });
+
   // 2026-11-03 codex 四审 major：命令面板的「切换视角模式」是键盘屏蔽的漏网入口——
   // 审批页里切第一人格会 requestLock 把指针锁给背后的画布。toggleMode 本体加守卫。
   it('审批页打开期间 toggleMode 是 no-op（命令面板漏网入口）', async () => {

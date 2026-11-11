@@ -37,8 +37,17 @@ describe('view-state-store', () => {
     expect(readViewState().approvalView).toBe('gantt');
   });
 
-  it('未声明的审批子页仍被忽略（S3 的 roles/calendar 不提前放行）', () => {
-    localStorage.setItem('bontop-view-state/v1', JSON.stringify({ approvalView: 'roles' }));
+  // 2026-11-11 issue #202 S3：roles / calendar 子页落地，白名单必须同步放行——
+  // 否则刷新后静默回落 next_action（S2 时「不提前放行」的断言随之反转）。
+  it('approvalView=roles / calendar 可写入并读回（白名单守卫，issue #202 S3）', () => {
+    writeViewState({ approvalView: 'roles' });
+    expect(readViewState().approvalView).toBe('roles');
+    writeViewState({ approvalView: 'calendar' });
+    expect(readViewState().approvalView).toBe('calendar');
+  });
+
+  it('未声明的审批子页仍被忽略', () => {
+    localStorage.setItem('bontop-view-state/v1', JSON.stringify({ approvalView: 'nonsense' }));
     expect(readViewState()).toEqual({});
   });
 });

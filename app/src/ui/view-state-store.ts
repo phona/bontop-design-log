@@ -9,8 +9,8 @@
 
 const STORAGE_KEY = 'bontop-view-state/v1';
 
-/** 审批视图的页面（自装交互审批第一步，2026-11-02）：null = 审批视图未打开。flow = 依赖流程图（2026-11-02 流程图任务）。gantt = 动态甘特（2026-11-11 issue #202 S2，设计 §7）。 */
-export type ApprovalViewPage = 'next_action' | 'schedule' | 'detail' | 'flow' | 'gantt';
+/** 审批视图的页面（自装交互审批第一步，2026-11-02）：null = 审批视图未打开。flow = 依赖流程图（2026-11-02 流程图任务）。gantt = 动态甘特（2026-11-11 issue #202 S2，设计 §7）。roles / calendar = 角色工作台 / 协调日历（2026-11-11 issue #202 S3，设计 §7）。 */
+export type ApprovalViewPage = 'next_action' | 'schedule' | 'detail' | 'flow' | 'gantt' | 'roles' | 'calendar';
 
 export interface PersistedViewState {
   workbenchOpen: boolean;
@@ -32,7 +32,7 @@ export function readViewState(): Partial<PersistedViewState> {
     if (obj.workbenchPage === 'object' || obj.workbenchPage === 'material' || obj.workbenchPage === 'lighting') {
       state.workbenchPage = obj.workbenchPage;
     }
-    if (obj.approvalView === 'next_action' || obj.approvalView === 'schedule' || obj.approvalView === 'detail' || obj.approvalView === 'flow' || obj.approvalView === 'gantt') {
+    if (obj.approvalView === 'next_action' || obj.approvalView === 'schedule' || obj.approvalView === 'detail' || obj.approvalView === 'flow' || obj.approvalView === 'gantt' || obj.approvalView === 'roles' || obj.approvalView === 'calendar') {
       state.approvalView = obj.approvalView;
     }
     return state;
