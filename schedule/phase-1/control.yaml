@@ -1318,7 +1318,7 @@ work_packages:
         pass_condition: PKG-030与PKG-040关键验收全部通过并完成相关方签字
         evidence_required: [signed_ceiling_close_permit, concealed_work_photos]
         coordination:
-          required_roles: [业主, 施工方, 设计师]
+          required_roles: [业主, 施工方, 设计师, 空调商]
           mode: onsite
           lead_time_workdays: 3
           owner_role: 业主

@@ -5,8 +5,10 @@
 // 汇合取最大）、无锚点时按名义纪元确定性地出 date、实际窗口钉死与后继顺延、
 // what-if 只动拓扑下游且不动已完工包、同角色 onsite 窗口重叠才报冲突。
 // §14（Codex PR #216）增补：not_before 的锚点守卫（B5）；actual_windows 以真实日期
-// 给入、ordinals 双向地平线（锚点前负 ord，B3）。全部是纯函数断言，不读 config、
-// 不跑 loader——loader 接线由下一个切片测。
+// 给入、ordinals 双向地平线（锚点前负 ord，B3）。
+// §15（Codex PR #216 第 2 轮）增补：日期→ord 查询顺序无关（F1）、affected 以
+// forecast-no-scenario 为对照并比较完整窗口（M1）、零工期里程碑不推后继（m1）。
+// 全部是纯函数断言，不读 config、不跑 loader——loader 接线由下一个切片测。
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -142,15 +144,30 @@ describe('min/max 双前向传播', () => {
 });
 
 describe('侧车道零工期包（PKG-900 真实形态）', () => {
-  it('duration_workdays {0,0} 传进来不崩，按零工作日里程碑占位', () => {
+  it('duration_workdays {0,0} 不占工作日，后继从同一 ord 起算（§15/m1）', () => {
     // schedule/phase-1/control.yaml:1838 的真实声明；设计 §4 说侧车道由调用方过滤，
     // 但漏过滤时本模块不得崩、也不得造出 start > end 的窗口。
+    // §15/m1：零工期根包位于 ord 1，后继必须也从 ord 1 起算（旧行为是 ord 2，
+    // 与头注「不占 ord，也不推后任何后继包」相反——本用例是契约变更）。
     const projection = projectSchedule({
-      packages: [pkg('PKG-000', 10, 2, 2), pkg('PKG-900', 900, 0, 0)],
+      packages: [pkg('PKG-000', 10, 2, 2, ['PKG-900']), pkg('PKG-900', 900, 0, 0)],
       calendar: calendar(),
     });
     assert.deepEqual(projection.packages['PKG-900'].baseline, { start_ord: 1, end_ord_min: 1, end_ord_max: 1 });
-    assert.deepEqual(projection.packages['PKG-000'].baseline, { start_ord: 1, end_ord_min: 2, end_ord_max: 2 });
+    assert.deepEqual(
+      projection.packages['PKG-000'].baseline,
+      { start_ord: 1, end_ord_min: 2, end_ord_max: 2 },
+      '后继不得被零工期里程碑推后到第 2 日',
+    );
+  });
+
+  it('零工期根节点不推后继：后继 start_ord = 1（不是 2）', () => {
+    const projection = projectSchedule({
+      packages: [pkg('MILESTONE', 10, 0, 0), pkg('SUCCESSOR', 20, 1, 1, ['MILESTONE'])],
+      calendar: calendar(),
+    });
+    assert.deepEqual(projection.packages.MILESTONE.baseline, { start_ord: 1, end_ord_min: 1, end_ord_max: 1 });
+    assert.deepEqual(projection.packages.SUCCESSOR.baseline, { start_ord: 1, end_ord_min: 1, end_ord_max: 1 });
   });
 });
 
@@ -249,6 +266,35 @@ describe('scenario.delay：what-if 只动拓扑下游', () => {
     assert.deepEqual(withDelay.packages.A.forecast, base.packages.A.forecast, 'delay 不得改写实际窗口');
     assert.deepEqual(withDelay.packages.A.forecast, { start_ord: 1, end_ord_min: 4, end_ord_max: 4 });
     assert.deepEqual(withDelay.scenario?.affected, []);
+  });
+});
+
+describe('§15/M1：affected 以 forecast-no-scenario 为对照、比较完整窗口', () => {
+  it('仅保守末端变化的下游包也进 affected（Codex 探针）', () => {
+    // A {1,10} 与 B {5} 并行 → C {1} 依赖两者。delay A +3 后：
+    // 乐观起点仍由 B 决定（6），但保守末端 11 → 14，旧算法 delta = 0 会漏掉 C。
+    const packages = [pkg('A', 10, 1, 10), pkg('B', 20, 5, 5), pkg('C', 30, 1, 1, ['A', 'B'])];
+    const projection = projectSchedule({
+      packages,
+      calendar: calendar(),
+      scenario: { delay: [{ pkg: 'A', workdays: 3 }] },
+    });
+    assert.deepEqual(projection.packages.C.forecast, { start_ord: 6, end_ord_min: 6, end_ord_max: 14 });
+    assert.deepEqual(projection.scenario?.affected, [{ pkg: 'C', delta: 3 }]);
+  });
+
+  it('delay 0 且存在实际延期：既有实际位移不得进 affected', () => {
+    const packages = [pkg('A', 10, 2, 2), pkg('B', 20, 2, 2, ['A'])];
+    const projection = projectSchedule({
+      packages,
+      calendar: calendar(),
+      // A 实际窗口 01-05…01-09 = ord 1…5；B 的既有实际位移是 start 3 → 6
+      actual_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-09' } },
+      scenario: { delay: [{ pkg: 'A', workdays: 0 }] },
+    });
+    assert.equal(projection.packages.A.forecast.start_ord, 1);
+    assert.equal(projection.packages.B.forecast.start_ord, 6, '既有实际位移保留在 forecast 里');
+    assert.deepEqual(projection.scenario?.affected, [], '本次演算没有造成任何位移');
   });
 });
 
@@ -370,6 +416,139 @@ describe('actual_windows 以真实日期给入（§14/B3）', () => {
       }),
       (error: unknown) => error instanceof ProjectionError && error.code === 'invalid_actual_window',
     );
+  });
+});
+
+describe('§15/F1：日期→ord 查询顺序无关', () => {
+  const packages = [pkg('A', 10, 1, 1), pkg('B', 20, 1, 1)];
+
+  it('先查 2026-01-01 再查 2025-12-31 与反向顺序同结果，负 ord 不漏记', () => {
+    const actualA = { start_date: '2026-01-01', end_date: '2026-01-01' };
+    const actualB = { start_date: '2025-12-31', end_date: '2025-12-31' };
+    const forward = projectSchedule({
+      packages,
+      calendar: calendar(),
+      actual_windows: { A: actualA, B: actualB },
+    });
+    const reverse = projectSchedule({
+      packages,
+      calendar: calendar(),
+      actual_windows: { B: actualB, A: actualA },
+    });
+    assert.deepEqual(forward, reverse, '实际窗口的输入顺序不得改变投影');
+    assert.deepEqual(forward.packages.A.actual, { start_ord: -1, end_ord: -1 });
+    assert.deepEqual(forward.packages.B.actual, { start_ord: -2, end_ord: -2 });
+    assert.deepEqual(
+      forward.ordinals.filter((entry) => entry.ord <= 0),
+      [
+        { ord: -2, date: '2025-12-31' },
+        { ord: -1, date: '2026-01-01' },
+        { ord: 0, date: '2026-01-02' },
+      ],
+      '2025-12-31 不得从 ordinals 消失',
+    );
+  });
+
+  it('约束日期与实际窗口混查：正反向映射互不干扰', () => {
+    const makeInput = (order: 'AB' | 'BA') => {
+      const restB = { start_date: '2025-12-31', end_date: '2025-12-31' };
+      const restA = { start_date: '2026-01-01', end_date: '2026-01-01' };
+      const constraintA = { id: 'C-A', type: 'not_before' as const, status: 'resolved', date: '2026-01-08' };
+      const constraintB = { id: 'C-B', type: 'not_before' as const, status: 'resolved', date: '2025-12-30' };
+      return {
+        packages: order === 'AB' ? packages : [packages[1], packages[0]],
+        calendar: calendar(),
+        actual_windows: order === 'AB' ? { A: restA, B: restB } : { B: restB, A: restA },
+        constraints: order === 'AB' ? { A: [constraintA], B: [constraintB] } : { B: [constraintB], A: [constraintA] },
+      };
+    };
+    const first = projectSchedule(makeInput('AB'));
+    const second = projectSchedule(makeInput('BA'));
+    assert.deepEqual(first, second, '包顺序与查询顺序不得改变投影');
+    assert.deepEqual(first.packages.A.actual, { start_ord: -1, end_ord: -1 });
+    assert.deepEqual(first.packages.B.actual, { start_ord: -2, end_ord: -2 });
+    assert.equal(first.packages.A.baseline.start_ord, 4, '01-08 在锚点后 = ord 4');
+    assert.equal(
+      first.packages.B.baseline.start_ord,
+      1,
+      '2025-12-30 映射为 ord -3，但 not_before 只能抬升，不得把声明起点压到 ord 1 之前',
+    );
+  });
+
+  it('休息日反向查询取之后第一个工作日', () => {
+    const projection = projectSchedule({
+      packages: [pkg('A', 10, 1, 1)],
+      calendar: calendar({ rest_dates: ['2026-01-01'] }), // 元旦调休
+      actual_windows: { A: { start_date: '2025-12-31', end_date: '2026-01-01' } },
+    });
+    // 12-31(三) 工作日 → ord -1（01-01 休息不占 ord）；01-01 → 之后第一个工作日 01-02 = ord 0
+    assert.deepEqual(projection.packages.A.actual, { start_ord: -1, end_ord: 0 });
+    assert.deepEqual(projection.ordinals.find((entry) => entry.ord === -1), { ord: -1, date: '2025-12-31' });
+    assert.deepEqual(projection.ordinals.find((entry) => entry.ord === 0), { ord: 0, date: '2026-01-02' });
+    assert.ok(!projection.ordinals.some((entry) => entry.date === '2026-01-01'), '休息日不得占 ord');
+  });
+
+  it('一批锚点前日期的 ord 连续、无跳号、无重复', () => {
+    const dates = ['2025-12-29', '2025-12-30', '2025-12-31'];
+    const entries = dates.map((date, index) => [`P${index}`, { start_date: date, end_date: date }] as const);
+    const makeInput = (windows: typeof entries) => ({
+      packages: dates.map((_, index) => pkg(`P${index}`, 10 + index, 1, 1)),
+      calendar: calendar(),
+      actual_windows: Object.fromEntries(windows),
+    });
+    const forward = projectSchedule(makeInput(entries));
+    const reverse = projectSchedule(makeInput([...entries].reverse()));
+    assert.deepEqual(forward, reverse, '反向插入实际窗口不得改变序数');
+    for (const [index, expected] of [[0, -4], [1, -3], [2, -2]] as const) {
+      assert.equal(forward.packages[`P${index}`].actual?.start_ord, expected, `${dates[index]} 的 ord 错误`);
+    }
+    const negative = forward.ordinals.filter((entry) => entry.ord <= 0);
+    assert.deepEqual(negative.map((entry) => entry.ord), [-4, -3, -2, -1, 0], '负序数连续');
+    assert.deepEqual(
+      negative.map((entry) => entry.date),
+      ['2025-12-29', '2025-12-30', '2025-12-31', '2026-01-01', '2026-01-02'],
+    );
+    for (let index = 1; index < forward.ordinals.length; index += 1) {
+      assert.equal(forward.ordinals[index].ord, forward.ordinals[index - 1].ord + 1, 'ordinals 不得跳号');
+    }
+    assert.equal(
+      new Set(forward.ordinals.map((entry) => entry.ord)).size,
+      forward.ordinals.length,
+      'ordinals 不得重复',
+    );
+  });
+
+  it('稀疏日历（workdays 为空、只有 extra_workdates）的锚点前日期 → 第一个工作日 ord 1，不误报 exhausted', () => {
+    // 合法日历：loader 只校验 workdays 元素合法（shared/schedule-state.ts:1484），
+    // 投影只要求 workdays 与 extra_workdates 不同时为空；两个补班日相隔 59 天的稀疏日历
+    // 不得触发 ensureBackward 的「凑足 count 个工作日」保险丝（§15/F1 复审回归）。
+    const sparse = calendar({
+      workdays: [],
+      rest_dates: [],
+      extra_workdates: ['2026-01-05', '2026-03-05'],
+    });
+    const beforeAnchor = projectSchedule({
+      packages: [pkg('A', 10, 1, 1)],
+      calendar: sparse,
+      actual_windows: { A: { start_date: '2025-12-31', end_date: '2025-12-31' } },
+    });
+    // 12-31 之后没有任何工作日 → 第一个工作日 2026-01-05 即 ord 1
+    assert.deepEqual(beforeAnchor.packages.A.actual, { start_ord: 1, end_ord: 1 });
+    assert.deepEqual(beforeAnchor.ordinals, [{ ord: 1, date: '2026-01-05' }]);
+
+    const anchoredLater = projectSchedule({
+      packages: [pkg('A', 10, 1, 1)],
+      calendar: calendar({
+        workdays: [],
+        rest_dates: [],
+        extra_workdates: ['2026-01-05', '2026-03-05'],
+        anchor_date: '2026-03-05',
+      }),
+      actual_windows: { A: { start_date: '2026-02-01', end_date: '2026-02-01' } },
+    });
+    // 02-01 与锚点之间没有工作日（01-05 在目标日期之前）→ 锚点日仍是 ord 1
+    assert.deepEqual(anchoredLater.packages.A.actual, { start_ord: 1, end_ord: 1 });
+    assert.deepEqual(anchoredLater.ordinals, [{ ord: 1, date: '2026-03-05' }]);
   });
 });
 

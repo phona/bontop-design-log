@@ -125,18 +125,19 @@ SCH-000-02 会审、PKG-070 的 SCH-070-01 联合验收，约 6-10 条），**�
 | `coordination_pending_without_escalation` | `status` ∈ {pending_invite, invited} 但 `escalation` 为空（决策铁律第 1 条：新部件必须回答"没人响应时怎么办"） |
 | `coordination_confirmed_without_actor` | `status: confirmed` 但 `actor.name` 为 null |
 
-### 2.2 实际日期：派生，不存储（D2）
+### 2.2 检查记录窗口：派生，不存储（D2；F2 正名，2026-11-11）
+
+> 原文「实际日期：派生，不存储」及公式「PKG 实际窗口 = [min, max](`audit_log` 的 `records` 中该包 passed 记录的 `checked_at`)」已随 PR #216 二审 F2 推翻（见 §15.9）：检查通过日期不是施工起止事实。D2 的「派生，不存储」结论保留，被正名的是这个派生事实的语义。
 
 ```
-PKG 实际窗口 = [min, max](`audit_log` 的 `records` 中该包 passed 记录的 `checked_at`)
+PKG 检查记录窗口 = [first_ord, last_ord]（该包全部 passed 检查的 checked_at，经 work_calendar 映射后的首末工作日）
 ```
 
-- 未 passed → 无实际窗口（现在全 25 包皆此态，诚实）。
-- 复验 supersedes 旧记录后取最新 passed 的 `checked_at`（`auditStatusFor` 已有 stale 降级，
-  schedule-state.ts:664-672，直接复用）。
-- **停工/复工**：不新增事件类型。停工 = 期间无新 passed 记录 + blocker 保持未关闭；
-  恢复 = 新记录出现。甘特上"实际"段天然断开。若未来需要显式停工原因，进 blocker 的
-  `trigger`/`rationale`，不建事件流。
+- **语义**：首末 passed 检查日期的**证据窗口**，回答「门禁 passed 的完成证据登记在哪些检查日」；**不是施工实际起止**。检查通过时间与施工起止无关（拆墙/结构检查在拆完后才做；全部检查同日登记时，多日施工会被压成一天），**实际开工时间从未记录，保持未知**。
+- **交付键**：快照 `schedule.packages[pkg].check_window: {first_ord, last_ord} | null`（F2 起；旧键 `actual` 退场）。模块入参 `ProjectionInput.actual_windows` 的字段名本轮冻结（模块文件不动），loader 在边界处把检查记录日期映射成 `{start_date,end_date}`；投影把该窗口当作「门禁 passed 的完成证据」钉死 forecast，不是「施工实际起止」。
+- 未 passed → `check_window: null`（现在全 25 包皆此态，诚实）；部分通过（1/N）不生成——单条检查通过不等于整包完工。
+- 复验 supersedes 旧记录后取最新 passed 的 `checked_at`（`auditStatusFor` 已有 stale 降级，shared/schedule-state.ts:958 起，直接复用）。
+- **停工/复工**：不新增事件类型。停工 = 期间无新 passed 记录 + blocker 保持未关闭；恢复 = 新记录出现。窗口是检查登记日的首末包络，不声称期间连续施工；若未来需要显式停工原因，进 blocker 的 `trigger`/`rationale`，不建事件流。
 
 ### 2.3 提案：PR 即通道（D3）
 
@@ -151,8 +152,8 @@ MVP 没有任何"排程建议"存储。人看到的任何调整（拖甘特条�
 | 线 | 定义 | 数据来源 | 存储 |
 |---|---|---|---|
 | 计划基线 | 声明依赖 + 声明工期区间，两次前向传播（min 口径 = 乐观，max 口径 = 保守） | `dependencies` + `duration_workdays` | 不存，每次重算 |
-| 当前预测 | 基线重算，但把**已有实际窗口**的包替换为实际值，未完工包继承基线 | 基线 + `records` 的 `checked_at` | 不存 |
-| 实际 | 该包 passed 记录的 `checked_at` 窗口 | `audit_log` | 已存 |
+| 当前预测 | 基线重算，但把**已有检查记录窗口**的包钉死在该窗口，未完工包继承基线 | 基线 + `records` 的 `checked_at` | 不存 |
+| 检查记录 | 该包全部 passed 检查的 `checked_at` 首末窗口（门禁完成证据，不是施工起止；快照键 `check_window`） | `audit_log` | 已存 |
 | 外部固定约束 | `not_before/not_after/time_window`，`site_pending` 只登记不生效 | PKG `constraints` | 已存（新增） |
 
 **相对工作日序数（ord）**：全部计算输出以"自排程零点起第 N 个工作日"表示（1-based）。
@@ -247,7 +248,7 @@ schedule: {
     duration_workdays: { min: number, max: number },
     baseline:  { start_ord: number, end_ord_min: number, end_ord_max: number },
     forecast:  { start_ord: number, end_ord_min: number, end_ord_max: number },
-    actual:    { start_ord: number, end_ord: number } | null,
+    check_window: { first_ord: number, last_ord: number } | null,   // F2：检查记录窗口，不是施工起止
     blocking_reasons: string[],          // 未关闭 blocker / 未满足依赖（只解释，不参与计算）
     constraints: Array<{ id, type, status, detail }>,
   }>,
@@ -340,7 +341,7 @@ issue #83 的单列降级先例）；工作台与日历本就是列表/纵列形
 - 工作历：`workdays`/`rest_dates`/`extra_workdates` 展开正确；跨周末 ord 连续。
 - 双前向：min/max 区间；并行分支（PKG-030/040 同层）互不推高；汇合（PKG-070 等 030+040+050）取最大。
 - 无 anchor：输出 ordinals `date: null`，UI 契约"不造年月日"有测试钉。
-- 实际派生：空 audit → `actual: null`；passed 记录 → 窗口 = checked_at 区间；supersedes 后取最新。
+- 检查记录窗口派生：空 audit / 部分通过 / waived → `check_window: null`；gate passed → `check_window` = 首末 passed 检查 `checked_at` 映射的 ord；同日多条记录时 first = last；supersedes 后取最新。
 - what-if：delay PKG-040:3 → 只影响拓扑下游；并行分支序数不变；`affected` 列出真实受影响包。
 - 已完成包不可因排程回退：`status: passed` 包在 what-if 中 forecast 不被改写。
 - 协调契约：`coordination` 字段不出现在 gate/readiness 输入（结构断言 + facts 契约回归）。
@@ -523,6 +524,133 @@ Codex 探针：十天工期的包第一天一条通过记录 → 预测缩成一
   列随之变化，已用 `npm run schedule:render` 重生成（diff 仅该列哈希值，无内容行变化）。
 - 本文 §1–§13 正文暂不改写；B1/B2/B4 的 loader 实现落地时应同步修正被推翻的句子（§2.2、§5、§6.1），
   改写时按「文档改写必须 diff 出删了什么」附改动说明。
+
+---
+
+## 15. Codex 二审回应（PR #216，第 2 轮）
+
+> **审查事件**：Codex 对提交 `4a568b9` 的 `REQUEST_CHANGES`（2026-11-11 03:27 UTC）：
+> blocking 2 · major 1 · minor 2 · nit 0。审查正文见 PR #216 最新 review；本节的 finding
+> 编号沿用本轮修复任务书：**F1**（反向日期映射）、**F2**（loader 实际窗口语义）、**M1**
+> （延期影响清单）、**m1**（零工期里程碑）、**空调商**（封板联合验收名单）。
+> **修复端纪律**（`.github/prompts/codex-fix.md`）：每条先定「主题（模块/状态机 + 失败类）」
+> 与「决定」，写在这里再动代码；同一主题不打补丁。**本轮 major/minor 是业主对话点名「全修」**，
+> 不是自动跟审——本条同时写进修复说明。
+> **§15.1–15.8 只记录决策与被推翻的旧口径，不改写 §1–§13 与 §14 正文；§15.9 起为落地记录，F2 正名按 §15.9 的删改清单改写被推翻的正文（§2.2 / §3 / §6.1 / §10）。**
+
+### 15.1 处置总表
+
+| 编号 | 主题（模块/状态机 + 失败类） | 决定 | 推翻本文什么（章节 + 原文口径） |
+|---|---|---|---|
+| **F1**（blocking） | `schedule-projection.ts` 的日期→ord 映射；失败类 = **正确性**（顺序相关状态：查询顺序改变结果，合法实际日期被静默改写） | **修复（结构性）**：日期→ord 改为无状态查询——ord 只由日历决定，按日期 memo 缓存；删除共享反向游标在查询路径上的推进。任何调用顺序、任何查询次数同结果 | **§14.4** 的「新口径」只规定了日期映射方向（休息日向后取）与 ordinals 双向地平线，**没有要求查询顺序无关**；实现里 `ordForDate` 越过目标日期时保留已递减的 `backwardCursorDay` 且不缓存该日（`4a568b9` 的 `schedule-projection.ts:293-296`）。**§14.6** 只处理锚点守卫，未覆盖此路径 |
+| **M1**（major） | `scenario.affected` 计算；失败类 = **漏报 + 误报**（漏：仅保守末端变化的包；误：把既有实际窗口造成的位移算成本次演算） | **修复**（业主点名）：对照基准改为「未应用 scenario 的当前预测」（`forecast-no-scenario`，含实际窗口、不含 delay）；比较完整窗口（`start_ord` / `end_ord_min` / `end_ord_max` 任一变化即受影响）；`delta` 只计本次 scenario 造成的最大窗口位移 | **§14.7** 明确把 M1 列为「本次未改」（major「延期影响清单漏掉仅保守日期变化的下游包」）；**§4 第 5 条** 原文「输出 `affected: [{pkg, baseline, forecast, delta}]` 与原基线对照」——以声明基线为对照，必然混入既有实际偏移，也只看得到乐观起点 |
+| **m1**（minor） | 零工期包的窗口边界（前向传播后继起点）；失败类 = **正确性**（零工期里程碑实际占用一个工作日，与模块头注承诺相反） | **修复**（业主点名）：零工期包不占工作日——后继从该包的 `start_ord` 起算（`start = max(dep.end)+1` 对零工期依赖特判为 `dep.end`）。模块头注「不占 ord，也不推后任何后继包」由承诺变为事实 | **§14.7** 明确把 m1 列为「本次未改」（minor「零工期里程碑实际仍占用一个工作日」）；**§4 第 3 条** 原文「`start = max(dep.end) + 1`」是无条件公式，没有零工期例外；模块头注（`4a568b9` 的 `schedule-projection.ts:38-39`）早已声称「不占 ord」，实现与声明相反 |
+| **F2**（blocking） | loader 实际窗口派生（`shared/schedule-state.ts` 的 `deriveActualWindowsFromAudits`）；失败类 = **语义过度声称**（把检查通过日期冒充实际施工起止事实） | **正名重构**（业主点名全修；**由下一棒落地，本轮只登记**）：停止把「最早/最晚 passed 检查的 `checked_at`」以「实际开工/完工」语义交付；保留未知的实际开工时间，或把该窗口正名为检查记录窗口，投影侧 `actual` 字段的命名与消费口径同步评估 | **§14.3** 的「新口径：实际窗口 = 完工事实」声称 loader 已能区分「部分执行记录」与「工作包完工」、只有后者进入 `actual_windows`；二审指出 `4a568b9` 的 `schedule-state.ts:1119-1120` 仍把最早 passed `checked_at` 直接写成 `start_date`。该保证是过度声称，`actual_windows` 目前不是施工起止事实 |
+| **空调商**（minor） | 排程配置数据（`schedule/phase-1/control.yaml` 的 SCH 协调名单）；失败类 = **漏报**（封板联合验收缺空调商，角色工作台会漏协调要求） | **补数据**（业主裁定补上；**由下一棒落 control.yaml，本轮只登记**）：`4a568b9` 的 `control.yaml:1321` 封板联合验收 `required_roles` 补入空调商，与设计文档同一示例一致 | **§2.1(c)** 的协调事实以 control.yaml 名单为完整声明；§14 的 loader 层修复未涉及名单完整性，本轮确认「名单可后补、当前快照可交付」的隐含口径不成立 |
+
+### 15.2 F1：日期→ord 改为无状态查询
+
+**原口径的问题**（与 Codex 探针一致）：`ordForDate` 走反向扫描时直接推进共享的
+`backwardCursorDay`；越过目标日期（`backwardCursorDay < targetDay`）即返回，却既不缓存刚
+越过的那个工作日，也不回退游标。复现：锚点 2026-01-05、周一至周五工作，先映射
+2026-01-01、再映射 2025-12-31，两者都得到 ord −1，且 2025-12-31 从 ordinals 消失；
+交换顺序才得到 −2 / −1。合法实际日期因此被静默改写，后继预测随之偏移。
+
+**新口径**：
+
+- `ordForDate` 的结果只由「工作日历 + 目标日期」决定，**不依赖此前查询过哪些日期、查询几次**。
+- 反向段改为「把 `backwardDays` 单调展开到目标日期之下，再二分取最后一个 ≥ targetDay 的
+  工作日」；`backwardDays` 只由 `ensureBackward(count)` 顺序追加，查询路径不再直接推进游标。
+- 正向段同样改为「展开到目标日期、二分取第一个 ≥ targetDay 的 ord」，并对目标日期做
+  `Map<天序号, ord>` memo。
+- 断言：① 同一批实际窗口按两种插入顺序（01-01 先 / 12-31 先）投影结果 `deepEqual`；
+  ② `not_before` 约束与实际窗口混查结果一致；③ 休息日反向查询取之后第一个工作日；
+  ④ 一批锚点前日期的 ord 连续、无跳号、无重复，且 ordinals 含 2025-12-31。
+
+### 15.3 M1：affected 以「无 scenario 的当前预测」为对照，比较完整窗口
+
+**原口径的问题**：`scenario.affected` 只比较 `forecast.start_ord − baseline.start_ord`。
+以 Codex 探针为例：A 工期 1–10、B 工期 5、C 依赖 A 与 B，A 延期 3 天后 C 的保守完工日从
+11 变 14，但乐观起点仍由 B 决定（不变）→ 旧算法 `delta = 0` 直接把 C 从清单里丢掉。
+另一半是误报：`baseline` 不含实际窗口，已有实际延期会被记成「本次演算影响」，即使
+`scenario.delay` 为 0 也会输出受影响清单。
+
+**新口径**：
+
+- 新增 `forecast-no-scenario`：实际窗口照常钉死、**不加** scenario delay，其余与 forecast 同。
+- `affected` 条件：拓扑下游包在 `start_ord` / `end_ord_min` / `end_ord_max` 三者中**任一**变化。
+- `delta` = 该包三处位移的最大值（`max(start 差, end_min 差, end_max 差)`）——只承载本次
+  scenario 的贡献；仅保守末端变化时 delta 即该末端的位移，不再为 0 被误读。
+- 断言：① Codex 探针（A 1–10 ∥ B 5 → C）delay +3 后 C 进 affected 且 delta 3；
+  ② 存在实际延期、`scenario.delay` 为 0 时 affected 为空，既有实际位移仍留在 forecast 里。
+
+### 15.4 m1：零工期包不推后继
+
+**原口径的问题**：零工期包 `end = start`，但后继无条件 `start = dep.end + 1`，把里程碑
+当成占用一个工作日；根节点零工期 → 后继从第 2 日起算，与模块头注「不占 ord，也不推后
+任何后继包」相反。
+
+**新口径**：前向传播按本遍口径的声明工期判定「零工期包」；依赖贡献对零工期包取
+`dep.end`（= `dep.start`），对非零工期包仍取 `dep.end + 1`。实际窗口钉死的包不参与零工期
+特判（实际窗口是事实，仍按末端顺延）。既有 PKG-900 `{0,0}` 用例改为带后继断言：
+PKG-900 与后继 PKG-000 的基线起点都是 ord 1，不是 2。
+
+### 15.5 F2：loader 实际窗口语义正名（下一棒落地）
+
+二审 blocking「验收日期不能直接充当实际开工日期」：`deriveActualWindowsFromAudits` 把
+该包全部 passed 记录中最晚的 `checked_at` 作 `end_date`、最早的作 `start_date`。检查通过
+时间不是施工起止事实（拆墙/结构检查在拆完后才做；所有检查同一天登记时多日施工会被钉成
+一天）。**决定：正名重构**——停止以「实际施工起止」语义交付该窗口；保留未知的实际开工
+时间，或把它明确为检查记录窗口，并同步评估投影 `actual` 字段的命名/消费。**本轮模块层
+不改**，由下一棒在 loader 层落地；落地前该字段不得被描述为实际施工起止。
+
+### 15.6 空调商：封板联合验收名单补数据（下一棒落地）
+
+二审 minor：`control.yaml:1321` 封板联合验收的 `required_roles` 只有业主、施工方、设计师，
+但该检查要复查空调保压、冷凝水、风口和检修口，设计文档同一示例含空调商。业主裁定补上。
+**决定：补数据**（`control.yaml` 由下一棒修改，本轮只登记）；在补上之前，当前快照的
+协调名单不得被当作完整名单消费。
+
+### 15.7 轮次预算
+
+- **F1**（日期映射模块）：本轮为该主题**第 1 次**自动回应，按结构性修复处理（不是计数器补丁）。
+- **F2**（实际窗口语义）：属「实际窗口」主题**第 2 轮**（第 1 轮见 §14.3 的 B2）。本轮按业主
+  指示做正名重构；若第 3 轮仍咬该主题，按 `.github/prompts/codex-fix.md` 停止自动修复并升级给人。
+- **M1 / m1 / 空调商**：本轮按业主「全修」指示一并处理（M1/m1 在本轮模块层落地，空调商下一棒）。
+
+### 15.8 本次落点
+
+- **本次模块层修复**：F1、M1、m1 落在 `shared/schedule-projection.ts` ＋
+  `tests/server/schedule-projection.test.ts`；本节为决策记录。
+- **不改**：`shared/schedule-state.ts`（loader）、`schedule/phase-1/control.yaml`——F2 与空调商
+  由下一棒落地。
+- §1–§13 与 §14 正文不改写；§14.3 的「实际窗口 = 完工事实」、§14.7 的「本次未改」两条
+  按 15.5 / 15.3 / 15.4 的新口径执行。
+
+### 15.9 F2 落地：检查记录窗口正名（loader 层，2026-11-11）
+
+**落地内容**：
+
+- `shared/schedule-state.ts` 的 `deriveActualWindowsFromAudits` → `deriveCheckWindowsFromAudits`，返回 `{first_date, last_date}` 的检查记录窗口；loader 边界再映射成模块冻结入参 `actual_windows: {start_date, end_date}`。函数注释写明「首末 passed 检查日期的证据窗口，不是施工实际起止；实际开工时间从未记录，保持未知」。
+- 快照 `SchedulePackageProjectionView` 的 `actual: {start_ord, end_ord}` → `check_window: {first_ord, last_ord} | null`（模块 `ProjectedPackage.actual` 字段名本轮冻结，模块文件不动；交付侧在 `buildScheduleProjectionView` 换名换字段）。
+- loader 诊断错误码 `actual_window_unresolved` / `actual_window_invalid_checked_at` → `check_window_unresolved` / `check_window_invalid_checked_at`，文案同步去掉「完工事实 / 实际窗口」的过度声称。§14.4 里出现的那两个旧 loader code 名是历史记录（当轮尚未正名），现役名称以本条与 `shared/schedule-state.ts` 头注为准。模块 code `invalid_actual_window` 保持不变（模块层冻结），语义按「检查记录窗口没有真实日期坐标」解释。
+- **投影消费不变**：有窗口的包 forecast 仍钉死在该窗口；钉的是「门禁 passed 的完成证据」，不是「施工实际起止」。§2.2 公式按此重写。
+- 测试：`tests/server/schedule-loader-contract.test.ts` 的窗口断言改读快照 `check_window`；新增一条语义钉死断言——PKG-005 声明工期 min 3 工作日、两条检查同日登记时 `check_window.first_ord === last_ord === 3`，且快照视图不含 `actual` 键；waived / 部分通过 → `check_window: null` 由既有用例与新增用例共同钉住。
+
+**推翻关系 / 删改清单**（AGENTS「文档改写必须 diff 出删了什么」）：
+
+- §2.2 标题「实际日期：派生，不存储（D2）」与公式「PKG 实际窗口 = [min, max](…passed 记录的 checked_at)」删除，改为「检查记录窗口」口径；理由：检查通过时间 ≠ 施工起止（拆墙检查在拆完后才做；同日登记把多日施工压成一天）。
+- §14.3 标题与正文「新口径：实际窗口 = 完工事实」不再按「施工完工」解读；「完工」仅指「门禁全部检查 passed」，交付物是检查记录窗口。
+- §6.1 快照契约 `actual:` 字段改为 `check_window:`；§3 四线表的「实际」行改为「检查记录」行；§10 测试计划 bullet 同步。删除的只是旧字段名/旧语义，窗口数据本身与钉死行为不变。
+- 本条推翻 §15.8 末条「§1–§13 正文不改写」在 §2.2 / §3 / §6.1 / §10 四处的作用范围——F2 正名必须让这些正文与新字段名一致，否则文档继续声称 `actual`。
+- **轮次预算**：F2 属「实际窗口」主题第 2 轮（§15.7）。本轮已按业主指示做正名重构（不是补丁）；若下一轮 Codex 仍咬该主题，按 `.github/prompts/codex-fix.md` 升级给人，不再自动修复。
+
+### 15.10 空调商：封板联合验收名单落地（2026-11-11）
+
+- `schedule/phase-1/control.yaml` 的 `SCH-070-01 coordination.required_roles` 由 `[业主, 施工方, 设计师]` 补为 `[业主, 施工方, 设计师, 空调商]`。
+- **理由**：该检查的 `method` 全文是空调隐蔽工程复查（保压、冷凝水、风口、回风、检修口、上部水电和全部隐蔽影像），空调商不到场无法完成；设计 §2.1(c) 的同一示例本就含空调商；两条独立复审均提出该缺口。业主裁定补上。
+- **隔离边界不变**：`coordination` 只是到场要求，不是门禁/就绪输入——它不在 `checkSpecHash` 白名单（§14.2），不参与 `gateStatus` / `effectiveReadiness`，快照走独立 `coordination` 键（§6.1）。本次只加一个角色字符串，不改变任何包的门禁/就绪判定。
+- 派生视图已用 `npm run schedule:render` 重生成（指纹新鲜性由 `verify:schedule` 检查）。
 
 ---
 

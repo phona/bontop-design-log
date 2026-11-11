@@ -22,24 +22,28 @@
  * - B1 验收指纹只哈希显式白名单的 checkSpec + packageSpec（CHECK_SPEC_HASH_FIELDS /
  *   PACKAGE_SPEC_HASH_FIELDS），coordination、包名/描述/顺序/依赖/责任角色、阻塞项文案等
  *   非 spec 字段不进哈希——它们的变更不得让既有通过记录变 stale。
- * - B2 实际窗口 = 完工事实：只有 gateStatus(pkg) === 'passed' 且非 waived 的包才派生，
- *   部分通过的包保持「未完工未知」，不拿首条验收日期冒充完工。
- * - B3 actual_windows 以真实日期（{start_date,end_date}）交给模块，ord 映射归模块；
- *   非法 checked_at 是记录级数据错误（audit 校验即报），gate passed 的包只要有一条
- *   passed 记录的 checked_at 非法就不派生窗口并报 diagnostic error——不许拿其余合法
- *   日期拼出偏短窗口、丢掉实际完工日期。
+ * - B2 检查记录窗口（F2 正名，设计 §2.2/§15.9）：只有 gateStatus(pkg) === 'passed' 且非
+ *   waived 的包才派生首末 passed 检查日期窗口，部分通过不生成。该窗口是「门禁 passed 的
+ *   完成证据登记在哪些检查日」的证据窗口，**不是施工实际起止**——实际开工时间从未记录，
+ *   保持未知；早先以「实际窗口/完工事实」命名的自述属于过度声称，已随 F2 正名退场。
+ * - B3 该窗口以真实日期（{start_date,end_date}，适配模块冻结入参名 actual_windows）交给模块，
+ *   ord 映射归模块；非法 checked_at 是记录级数据错误（audit 校验即报），gate passed 的包
+ *   只要有一条 passed 记录的 checked_at 非法就不派生窗口并报 diagnostic error——不许拿
+ *   其余合法日期拼出偏短窗口、丢掉最晚的检查证据日期。
  * - B4 投影从 buildScheduleSnapshot 装配期前移到 loadScheduleState：投影错误与既有校验
  *   同走 state.errors（route 在 build 之前 503），build 只消费已存投影。
  *
- * 排程投影相关 loader 诊断错误码（设计 §14/B2/B3/B5，error 级）：
- * - actual_window_unresolved：gate_status=passed 但该包没有任何可用的 checked_at（YYYY-MM-DD）。
- * - actual_window_invalid_checked_at：gate_status=passed 且至少一条 passed 记录的 checked_at
- *   不是真实存在的 YYYY-MM-DD；即使另有合法日期也不派生窗口（完工日期未知，不得低估延期）。
+ * 排程投影相关 loader 诊断错误码（设计 §2.2/§14/B5/§15.9，error 级）：
+ * - check_window_unresolved：gate_status=passed 但该包没有任何可用的 checked_at（YYYY-MM-DD）。
+ * - check_window_invalid_checked_at：gate_status=passed 且至少一条 passed 记录的 checked_at
+ *   不是真实存在的 YYYY-MM-DD；即使另有合法日期也不派生窗口（最晚检查证据日期未知，
+ *   不得低估延期）。
  * - constraint_resolved_without_anchor：锚点未定时存在带日期的 resolved not_before 约束，
  *   模块不按 1970 名义纪元造序数（跳过抬升），loader 显形该事实。
  * - schedule projection: projection_failed — [code]：ProjectionError 的 code 原样透传，不是
- *   未映射的兜底。特别地，锚点未定（anchor_date: null）时只要有完工包的实际窗口，
- *   模块按 §14.4 抛 invalid_actual_window → 这里的错误串带 `[invalid_actual_window]`，
+ *   未映射的兜底。特别地，锚点未定（anchor_date: null）时只要有 gate passed 包的检查
+ *   记录窗口，模块按 §14.4 抛 invalid_actual_window（模块 code 名本轮冻结；语义即
+ *   「检查记录窗口没有真实日期坐标」）→ 这里的错误串带 `[invalid_actual_window]`，
  *   由 tests/server/schedule-loader-contract.test.ts 钉住。
  */
 
@@ -884,8 +888,8 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     if (!control.audit_log.record_schema.status_values.includes(record.status)) errors.push(`${record.id}: invalid audit status ${record.status}`);
     if (!record.checked_at || !record.checked_by) errors.push(`${record.id}: missing checked_at or checked_by`);
     else if (normalizeCalendarDateText(record.checked_at) === undefined) {
-      // checked_at 是完工/执行事实的日期坐标：非空还不够，必须是真实存在的 YYYY-MM-DD。
-      // 否则下游 deriveActualWindowsFromAudits 会把这条记录静默跳过（B3「静默删证据」同类）。
+      // checked_at 是检查记录日期的坐标：非空还不够，必须是真实存在的 YYYY-MM-DD。
+      // 否则下游 deriveCheckWindowsFromAudits 会把这条记录静默跳过（B3「静默删证据」同类）。
       errors.push(`${record.id}: invalid checked_at ${JSON.stringify(record.checked_at)}（须为真实存在的 YYYY-MM-DD）`);
     }
     if (!Array.isArray(record.evidence)) errors.push(`${record.id}: evidence must be an array`);
@@ -1080,17 +1084,25 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
   // 装配期，失败只会追加到已经检查过 errors 的状态里，API 会 200 返回空排程；verify:schedule
   // 只跑 loader，也只有在 load 期投影才能看见这些错误（「无效配置通过校验」的洞）。
   /**
-   * 实际窗口派生 = 完工事实（设计 §14/B2/B3）。
+   * 检查记录窗口派生（F2 正名，设计 §2.2/§15.9）。
+   *
    * 只有 gateStatus(pkg) === 'passed' 的包才生成窗口——该判据是「全部检查当前 passed」；
-   * 部分通过、pending、failed 的包保持「未完工未知」，绝不拿首条验收日期冒充完工。
-   * status: waived 的包不生成（豁免没有 checked_at 完工事实）。
-   * 窗口是 gate-passed 全部检查的 checked_at 的 [min, max] 真实日期（YYYY-MM-DD），
+   * 部分通过、pending、failed 的包不生成，绝不拿单条检查通过冒充整包完工。
+   * status: waived 的包不生成（豁免没有 checked_at 证据日期）。
+   *
+   * 窗口 = 全部 passed 检查的 checked_at 的 [最早, 最晚] 真实日期（YYYY-MM-DD）。语义是
+   * **首末 passed 检查日期的证据窗口**，回答「门禁 passed 的完成证据登记在哪些日子」；
+   * 它**不是施工实际起止**——检查通过时间不等于施工开始/结束时间（拆墙检查在拆完后才做，
+   * 全部检查同日登记时多日施工会被压成一天），实际开工时间从未记录，保持未知。
+   *
+   * 投影侧消费（forecast 钉死）不变：模块 ProjectionInput.actual_windows 的字段名本轮冻结
+   * （模块文件不动），钉的是「门禁 passed 的完成证据」，不是「施工实际起止」。
    * ord 映射与地平线归 shared/schedule-projection.ts，loader 不查 ordinals 反查。
    * 任何一条 passed 记录的 checked_at 非法都不生成窗口：剩下合法日期拼出的窗口会丢掉
-   * 实际完工日期、让预测低估延期（B3「静默删证据」同类），因此整包判为未解析。
+   * 最晚的检查证据日期、让预测低估延期（B3「静默删证据」同类），因此整包判为未解析。
    */
-  function deriveActualWindowsFromAudits(packages: AnyRecord[]): Record<string, ProjectionActualDates> {
-    const windows: Record<string, ProjectionActualDates> = {};
+  function deriveCheckWindowsFromAudits(packages: AnyRecord[]): Record<string, {first_date: string; last_date: string}> {
+    const windows: Record<string, {first_date: string; last_date: string}> = {};
     for (const pkg of packages) {
       if (pkg.status === 'waived') continue;
       if (gateStatus(pkg) !== 'passed') continue;
@@ -1099,8 +1111,8 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
       for (const check of packageChecks(pkg)) {
         if (auditStatusFor(pkg.id, check.id) !== 'passed') continue;
         const record = auditByCheckKey.get(`${pkg.id}:${check.id}`);
-        // 非法 checked_at 已在 audit_log 段按记录报错；这里再对完工事实显形，并且绝不
-        // 静默跳过——只要还有一条合法日期就生成窗口，实际完工日期可能正是被跳过的那条。
+        // 非法 checked_at 已在 audit_log 段按记录报错；这里再对检查记录证据显形，并且绝不
+        // 静默跳过——只要还有一条合法日期就生成窗口，最晚的检查证据日期可能正是被跳过的那条。
         const checkedAt = normalizeCalendarDateText(record?.checked_at);
         if (typeof checkedAt !== 'string') {
           invalidRecords.push(record?.id ? `${record.id}(${check.id})` : check.id);
@@ -1109,15 +1121,15 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
         dates.push(checkedAt);
       }
       if (dates.length === 0) {
-        errors.push(`${pkg.id}: actual_window_unresolved — gate_status=passed 但没有任何可用的 checked_at（须为 YYYY-MM-DD），无法派生实际窗口；完工事实不得静默丢弃`);
+        errors.push(`${pkg.id}: check_window_unresolved — gate_status=passed 但没有任何可用的 checked_at（须为 YYYY-MM-DD），无法派生检查记录窗口；门禁完成证据不得静默丢弃（实际施工起止从未记录，保持未知）`);
         continue;
       }
       if (invalidRecords.length > 0) {
-        errors.push(`${pkg.id}: actual_window_invalid_checked_at — gate_status=passed 但以下 passed 记录的 checked_at 不是真实存在的 YYYY-MM-DD：${invalidRecords.join('、')}；完工日期无法确定，不派生实际窗口（补录合法日期后重载）`);
+        errors.push(`${pkg.id}: check_window_invalid_checked_at — gate_status=passed 但以下 passed 记录的 checked_at 不是真实存在的 YYYY-MM-DD：${invalidRecords.join('、')}；检查记录窗口无法确定，不派生窗口（补录合法日期后重载）`);
         continue;
       }
       dates.sort();
-      windows[pkg.id] = {start_date: dates[0], end_date: dates[dates.length - 1]};
+      windows[pkg.id] = {first_date: dates[0], last_date: dates[dates.length - 1]};
     }
     return windows;
   }
@@ -1142,7 +1154,14 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
   }
   let scheduleProjection: ScheduleProjection | null = null;
   try {
-    const actualWindows = deriveActualWindowsFromAudits(projectedRaw);
+    // 正名边界（F2）：loader 派生的是「检查记录窗口」（见 deriveCheckWindowsFromAudits 注释）；
+    // 模块入参名 actual_windows 本轮冻结（模块文件不动），此处只把检查记录日期映射成模块
+    // 的 {start_date,end_date} 形状。投影据此钉死 forecast 的是「门禁 passed 的完成证据」，
+    // 不是「施工实际起止」——实际开工时间从未记录，保持未知。
+    const checkWindows = deriveCheckWindowsFromAudits(projectedRaw);
+    const actualWindows: Record<string, ProjectionActualDates> = Object.fromEntries(
+      Object.entries(checkWindows).map(([pkgId, window]) => [pkgId, {start_date: window.first_date, end_date: window.last_date}]),
+    );
     scheduleProjection = projectSchedule({
       packages: projectionPackages,
       calendar: projectionCalendar,
@@ -1350,7 +1369,13 @@ export interface SchedulePackageProjectionView {
   duration_workdays: { min: number; max: number };
   baseline: ScheduleWindowView;
   forecast: ScheduleWindowView;
-  actual: { start_ord: number; end_ord: number } | null;
+  /**
+   * 检查记录窗口（F2 正名，设计 §2.2/§15.9）：首末 passed 检查日期经工作日历映射的
+   * [first_ord, last_ord]。语义是「门禁 passed 的完成证据登记在哪些检查日」，
+   * **不是施工实际起止**——实际开工时间从未记录，保持未知。null = 未完工（部分通过 /
+   * waived / pending），绝不拿单条检查通过冒充整包完工。
+   */
+  check_window: { first_ord: number; last_ord: number } | null;
   /** 未满足依赖 + 未关闭阻塞项的解释性汇总（只解释，不参与排程计算）。 */
   blocking_reasons: string[];
   constraints: ScheduleConstraintView[];
@@ -1423,9 +1448,9 @@ export function computeStaleAudits(state: ScheduleState): string[] {
 }
 
 // ─── 排程扩展：声明校验与快照装配（issue #202 切片 B；设计 §2.1 / §4 / §6.1）────────
-// 算法不在这里：日历展开、DAG、min/max 前向传播、实际窗口钉死的单一实现是
+// 算法不在这里：日历展开、DAG、min/max 前向传播、检查记录窗口钉死的单一实现是
 // shared/schedule-projection.ts。本节只做三件事——①校验新声明字段（load 阶段，error 级）；
-// ②把 control.yaml 的声明喂给投影（含从 audit_log 派生的实际窗口）；③把投影结果
+// ②把 control.yaml 的声明喂给投影（含从 audit_log 派生的检查记录窗口）；③把投影结果
 // 与 coordination 声明摊平成快照两键。
 
 /** 约束 type 枚举（设计 §2.1(b)）。 */
@@ -1683,7 +1708,11 @@ function buildScheduleProjectionView(state: ScheduleState): ScheduleProjectionVi
       duration_workdays: { min: pkg.duration_workdays?.min, max: pkg.duration_workdays?.max },
       baseline: projected.baseline,
       forecast: projected.forecast,
-      actual: projected.actual,
+      // F2 正名：模块 ProjectedPackage.actual 字段名本轮冻结（模块文件不动），交付侧按
+      // 「检查记录窗口」重命名并换字段名，避免把检查日期读成施工实际起止（§15.9）。
+      check_window: projected.actual === null
+        ? null
+        : { first_ord: projected.actual.start_ord, last_ord: projected.actual.end_ord },
       // 阻塞解释单一来源：packagePrerequisiteIssues 已汇总「依赖未过」与
       // 「阻塞项 X 尚未有证据关闭」（未关闭 blocker 的汇总就在其中），不另写第二套阻塞判定。
       blocking_reasons: state.packagePrerequisiteIssues(pkg),

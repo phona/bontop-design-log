@@ -6,11 +6,14 @@
 //      passed 记录变 stale；改 pass_condition 换指纹；遍历 control.yaml 全部 check 的键与
 //      packageChecks 派生视图（含 acceptance_refs 摊平）的全部键、以及全部包级键，白名单外
 //      且未显式排除的键必须失败。
-//   B2 实际窗口 = 完工事实：gateStatus(pkg) !== 'passed'（含 1/N 部分通过）不生成窗口；
-//      全部 passed 才生成 = 各 checked_at 的 [min, max]；status: waived 不生成。
-//   B3 actual_windows 以真实日期给模块：非法 checked_at 按记录报错；gate passed 的包只要有一
-//      条 passed 记录日期非法就不生成窗口（actual_window_invalid_checked_at，不许拿剩余日期
-//      拼偏短窗口）；一条都映射不到时报 actual_window_unresolved（不许静默丢完工事实）。
+//   B2 检查记录窗口（F2 正名，§2.2/§15.9）：gateStatus(pkg) !== 'passed'（含 1/N 部分通过）
+//      不生成窗口；全部 passed 才生成 = 各 checked_at 的 [min, max]；status: waived 不生成。
+//      交付键是 check_window（不是 actual）——窗口是首末 passed 检查日期的证据窗口，
+//      不是施工实际起止；同日多条 passed 时 first_ord === last_ord，即使声明工期多日。
+//   B3 检查记录窗口以真实日期给模块（模块入参 actual_windows 字段名冻结）：非法 checked_at 按
+//      记录报错；gate passed 的包只要有一条 passed 记录日期非法就不生成窗口
+//      （check_window_invalid_checked_at，不许拿剩余日期拼偏短窗口）；一条都映射不到时报
+//      check_window_unresolved（不许静默丢门禁完成证据）。
 //   B4 投影前移到 load 期：ProjectionError 的 code 进 state.errors（route 在 build 之前 503），
 //      buildScheduleSnapshot 只消费已存投影、不得再追加错误。
 //   B5 loader 侧显形 constraint_resolved_without_anchor（锚点未定时 resolved 约束不静默丢）。
@@ -349,14 +352,14 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     return replaceOnce(text, '  records: []', `  records: ${JSON.stringify(records)}`);
   }
 
-  it('B2/B3：1/N 条 passed → 无实际窗口；全部 passed → 窗口 = checked_at 的 [min,max] 真实日期', (t) => {
+  it('B2/B3：1/N 条 passed → 无检查记录窗口；全部 passed → check_window = checked_at 的 [min,max] 真实日期', (t) => {
     t.after(restoreControl);
     writeControl(pristineControlText);
     const baseline = loadSandbox();
     assert.deepEqual(baseline.errors, [], '未篡改的农场副本必须无错误');
     assert.equal(baseline.gateStatus(baseline.control.work_packages.find((item: AnyRecord) => item.id === 'PKG-005')), 'pending');
 
-    // ① 部分通过：PKG-005 有 2 条检查，只有 1 条 passed —— 不是完工事实，不得生成实际窗口。
+    // ① 部分通过：PKG-005 有 2 条检查，只有 1 条 passed —— 不是完工证据，不得生成检查记录窗口。
     const partialText = withAuditRecords(
       withAnchor(pristineControlText),
       pkg005AuditRecords(baseline, {'SCH-005-01': '2026-01-07'}),
@@ -366,11 +369,15 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     const partialPkg = partial.control.work_packages.find((item: AnyRecord) => item.id === 'PKG-005');
     assert.deepEqual(partial.errors, []);
     assert.equal(partial.gateStatus(partialPkg), 'pending', '1/2 passed 不得判 gate passed');
-    assert.equal(partial.scheduleProjection?.packages['PKG-005']?.actual, null, '部分通过不得冒充完工事实');
-    assert.ok(partial.scheduleProjection, '投影本身必须成功（只是该包无实际窗口）');
+    assert.equal(
+      buildScheduleSnapshot(partial).schedule?.packages['PKG-005']?.check_window,
+      null,
+      '部分通过不得冒充完工证据（check_window 必须为 null）',
+    );
+    assert.ok(partial.scheduleProjection, '投影本身必须成功（只是该包无检查记录窗口）');
 
-    // ② 全部通过：窗口 = 两条 checked_at 的 [min,max]；模块把 2026-01-05(一) 映射为 ord 1，
-    //    01-07→ord 3、01-09→ord 5（workdays 含周六，故 01-10 也是工作日）。
+    // ② 全部通过：check_window = 两条 checked_at 的 [min,max]；模块把 2026-01-05(一) 映射为
+    //    ord 1，01-07→ord 3、01-09→ord 5（workdays 含周六，故 01-10 也是工作日）。
     writeControl(withAuditRecords(
       withAnchor(pristineControlText),
       pkg005AuditRecords(baseline, {'SCH-005-01': '2026-01-07', 'SCH-005-02': '2026-01-09'}),
@@ -379,19 +386,38 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     const fullPkg = full.control.work_packages.find((item: AnyRecord) => item.id === 'PKG-005');
     assert.deepEqual(full.errors, []);
     assert.equal(full.gateStatus(fullPkg), 'passed');
-    assert.deepEqual(full.scheduleProjection?.packages['PKG-005']?.actual, {start_ord: 3, end_ord: 5});
-    assert.deepEqual(full.scheduleProjection?.packages['PKG-005']?.forecast, {
+    const fullSnapshot = buildScheduleSnapshot(full);
+    assert.deepEqual(fullSnapshot.schedule?.packages['PKG-005']?.check_window, {first_ord: 3, last_ord: 5});
+    assert.deepEqual(fullSnapshot.schedule?.packages['PKG-005']?.forecast, {
       start_ord: 3,
       end_ord_min: 5,
       end_ord_max: 5,
     });
-    assert.deepEqual(full.scheduleProjection?.ordinals.find((entry) => entry.ord === 3), {
+    assert.deepEqual(fullSnapshot.schedule?.ordinals.find((entry) => entry.ord === 3), {
       ord: 3,
       date: '2026-01-07',
     });
   });
 
-  it('B2：status: waived 的包不生成实际窗口（豁免没有 checked_at 完工事实）', (t) => {
+  it('F2：check_window 是检查记录窗口——同日多条 passed 收成一天，不冒充施工起止', (t) => {
+    t.after(restoreControl);
+    const baseline = loadRealState();
+    // PKG-005 声明工期 min 3 / max 7 个工作日；两条检查同日登记时窗口必须是单日。
+    // 这正是「检查通过时间 ≠ 施工起止」的钉死断言：窗口宽度由检查登记日决定，不由工期决定。
+    writeControl(withAuditRecords(
+      withAnchor(pristineControlText),
+      pkg005AuditRecords(baseline, {'SCH-005-01': '2026-01-07', 'SCH-005-02': '2026-01-07'}),
+    ));
+    const state = loadSandbox();
+    assert.deepEqual(state.errors, []);
+    const view = buildScheduleSnapshot(state).schedule?.packages['PKG-005'];
+    assert.ok(view, 'gate passed 的包必须有投影视图');
+    assert.deepEqual(view.check_window, {first_ord: 3, last_ord: 3}, '首末 passed 检查同日的证据窗口就是一天');
+    assert.equal(view.duration_workdays.min, 3, 'PKG-005 声明工期是多工作日——窗口单日证明它来自检查登记日，不是施工起止');
+    assert.equal('actual' in (view as AnyRecord), false, 'F2 正名：快照不得再以 actual 交付该窗口');
+  });
+
+  it('B2：status: waived 的包不生成检查记录窗口（豁免没有 checked_at 完成证据）', (t) => {
     t.after(restoreControl);
     const baseline = loadRealState();
     let text = withAnchor(pristineControlText);
@@ -402,17 +428,21 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
       'status: not_started',
       'status: waived\n    waiver: {approved_by: 业主, reason: 测试豁免, evidence: [test-evidence]}',
     );
-    // 即使两条检查都留有 passed 记录，waived 是豁免事实而不是完工事实。
+    // 即使两条检查都留有 passed 记录，waived 是豁免事实而不是完工证据。
     writeControl(withAuditRecords(text, pkg005AuditRecords(baseline, {'SCH-005-01': '2026-01-07', 'SCH-005-02': '2026-01-09'})));
     const state = loadSandbox();
     const pkg = state.control.work_packages.find((item: AnyRecord) => item.id === 'PKG-005');
     assert.deepEqual(state.errors, []);
     assert.equal(state.gateStatus(pkg), 'passed', '审计记录确实全部通过（排除「因为 gate 未过」的假阴性）');
     assert.equal(state.effectivePackageStatus(pkg), 'waived');
-    assert.equal(state.scheduleProjection?.packages['PKG-005']?.actual, null, 'waived 包不得生成实际窗口');
+    assert.equal(
+      buildScheduleSnapshot(state).schedule?.packages['PKG-005']?.check_window,
+      null,
+      'waived 包不得生成检查记录窗口',
+    );
   });
 
-  it('B3：gate passed 但 checked_at 全部非法 → actual_window_unresolved 诊断 error（不许静默）', (t) => {
+  it('B3：gate passed 但 checked_at 全部非法 → check_window_unresolved 诊断 error（不许静默）', (t) => {
     t.after(restoreControl);
     const baseline = loadRealState();
     writeControl(withAuditRecords(
@@ -421,39 +451,43 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     ));
     const state = loadSandbox();
     assert.ok(
-      state.errors.some((error) => error.includes('PKG-005: actual_window_unresolved')),
+      state.errors.some((error) => error.includes('PKG-005: check_window_unresolved')),
       `gate passed 却一条日期都映射不到必须显形，实际 errors：${state.errors.join(' | ')}`,
     );
-    assert.equal(state.scheduleProjection?.packages['PKG-005']?.actual, null);
+    assert.equal(buildScheduleSnapshot(state).schedule?.packages['PKG-005']?.check_window, null);
     assert.ok(state.scheduleProjection, '单包日期不可用不应让整份投影失败');
   });
 
-  it('B3：gate passed 但部分 checked_at 非法 → 不生成偏短窗口，actual_window_invalid_checked_at 显形', (t) => {
+  it('B3：gate passed 但部分 checked_at 非法 → 不生成偏短窗口，check_window_invalid_checked_at 显形', (t) => {
     t.after(restoreControl);
     const baseline = loadRealState();
     // 混合情形（复审缺口）：SCH-005-01 合法、SCH-005-02 非法。旧实现只跳过非法记录，
-    // 用剩余日期生成 {3,3} 窗口——实际完工日可能正是被跳过的那条，预测会被低估。
+    // 用剩余日期生成 {3,3} 窗口——最晚的检查证据日期可能正是被跳过的那条，预测会被低估。
     writeControl(withAuditRecords(
       withAnchor(pristineControlText),
       pkg005AuditRecords(baseline, {'SCH-005-01': '2026-01-07', 'SCH-005-02': '2026-13-40'}),
     ));
     const state = loadSandbox();
     assert.ok(
-      state.errors.some((error) => error.includes('actual_window_invalid_checked_at')),
-      `部分非法 checked_at 必须显形为 actual_window_invalid_checked_at，实际 errors：${state.errors.join(' | ')}`,
+      state.errors.some((error) => error.includes('check_window_invalid_checked_at')),
+      `部分非法 checked_at 必须显形为 check_window_invalid_checked_at，实际 errors：${state.errors.join(' | ')}`,
     );
     assert.ok(
       state.errors.some((error) => error.includes('invalid checked_at')),
       `audit 记录级校验必须报出非法日期（loader 不能只查非空），实际 errors：${state.errors.join(' | ')}`,
     );
-    assert.equal(state.scheduleProjection?.packages['PKG-005']?.actual, null, '部分日期不可用不得拿剩余日期拼偏短窗口');
+    assert.equal(
+      buildScheduleSnapshot(state).schedule?.packages['PKG-005']?.check_window,
+      null,
+      '部分日期不可用不得拿剩余日期拼偏短窗口',
+    );
     assert.ok(state.scheduleProjection, '单包日期不可用不应让整份投影失败');
   });
 
-  it('B4/B3：锚点未定 + 完工包实际窗口 → invalid_actual_window 原样透传（不吞成未映射的 projection_failed）', (t) => {
+  it('B4/B3：锚点未定 + 检查记录窗口 → invalid_actual_window 原样透传（不吞成未映射的 projection_failed）', (t) => {
     t.after(restoreControl);
     const baseline = loadRealState();
-    // 不填锚点：真实日期没有日期坐标系。模块按 §14.4 抛 invalid_actual_window，
+    // 不填锚点：真实日期没有日期坐标系。模块（code 名冻结）按 §14.4 抛 invalid_actual_window，
     // loader 必须把该 code 原样带进 errors，不得降级成一个无 code 的泛化 projection_failed。
     writeControl(withAuditRecords(
       pristineControlText,
@@ -462,7 +496,7 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     const state = loadSandbox();
     assert.ok(
       state.errors.some((error) => error.includes('schedule projection: projection_failed — [invalid_actual_window]')),
-      `锚点未定时实际窗口的 code 必须透传，实际 errors：${state.errors.join(' | ')}`,
+      `锚点未定时检查记录窗口的 code 必须透传，实际 errors：${state.errors.join(' | ')}`,
     );
     assert.equal(state.scheduleProjection, null, '投影失败时不得存空投影冒充结果');
   });

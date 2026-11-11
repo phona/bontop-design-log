@@ -17,6 +17,9 @@
  *
  * 日期映射规则（约束与实际窗口同一条）：落在非工作日的日期取「当天或之后第一个工作日」；
  * 工作日判定顺序见 createCalendarCursor（rest_dates 优先，其次 extra_workdates，再看 workdays）。
+ * 日期→ord 是**查询顺序无关**的纯查询（§15/F1）：ord 只由日历与目标日期决定，按日期 memo；
+ * 任何调用顺序、任何查询次数结果一致。正向/反向的工作日展开只做单调缓存，不在查询路径上
+ * 共享可变游标。
  *
  * 单 start_ord 的口径（ProjectedWindow 只有三个字段）：start_ord 取 min 口径（乐观）
  * 那一遍的起点，end_ord_min 取 min 口径的末端，end_ord_max 取 max 口径的末端。
@@ -36,7 +39,8 @@
  * 侧车道：sequence >= 900 的包（PKG-900）由调用方过滤（设计 §4）；本模块不特判，
  * 传进来按普通包计算，不会崩，也不会被静默丢弃。PKG-900 的真实声明是
  * duration_workdays {min: 0, max: 0}（硬装预备金，不进行任何施工），零工期一律按
- * 「零工作日里程碑」处理：start_ord = end_ord，不占 ord，也不推后任何后继包。
+ * 「零工作日里程碑」处理：start_ord = end_ord，不占 ord，后继从该包的 start_ord 起算
+ * （§15/m1：前向传播对零工期依赖不再 +1）。
  *
  * 错误（fail-closed，全部抛 ProjectionError，code 供 loader 映射到 §2.1(d) 的错误码）：
  * unknown_dependency / self_dependency / dependency_cycle（DAG）、invalid_duration、
@@ -200,9 +204,14 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
   let cursorDay = epochDay;
 
   // 负序数展开（设计 §14/B3）：backwardDays[0] = ord 0（ord 1 之前最后一个工作日），
-  // backwardDays[k] = ord -k；严格递减，天序号与正向 days 不重叠。两个游标互相独立。
+  // backwardDays[k] = ord -k；严格递减，天序号与正向 days 不重叠。
+  // 只由 ensureBackward(count) 顺序追加（§15/F1）：查询路径不得直接推进这里的游标，
+  // 游标每次从最后一个已缓存工作日重新开始，缓存因此始终连续、无跳号。
   const backwardDays: number[] = [];
-  let backwardCursorDay = epochDay;
+
+  // 天序号 → ord 的查询缓存（§15/F1）：ordForDate 是纯查询，同一日期永不重复计算，
+  // 也不因查询顺序改变结果。
+  const ordByDate = new Map<number, number>();
 
   const scanLimitFor = (targetOrd: number): number => 7 * (targetOrd + restDates.size + 1) + 7;
 
@@ -225,20 +234,26 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
     }
   };
 
-  /** 向后至少展开 count 个工作日（ord 0 起），供 ordinals 的负序数段与 dateOf(ord ≤ 0) 用。 */
+  /**
+   * 向后至少展开 count 个工作日（ord 0 起），供 ordinals 的负序数段与 dateOf(ord ≤ 0) 用。
+   * 游标从「最后一个已缓存工作日的再前一日」开始，只做单调追加——不回退、不被查询路径
+   * 交叉推进，因此任意调用顺序得到同一数组。ordForDate 的反向查询**不走**本函数：它的
+   * 终止条件是越过目标日期，而这里的保险丝要求凑足 count 个工作日，二者语义不同（§15/F1 修正）。
+   */
   const ensureBackward = (count: number): void => {
     if (!Number.isInteger(count) || count < 0) {
       throw new ProjectionError('invalid_ordinal', `向后展开的工作日个数必须是非负整数（收到 ${count}）`);
     }
     const scanLimit = scanLimitFor(count);
-    const startDay = backwardCursorDay;
+    let cursorDay = backwardDays.length === 0 ? epochDay : backwardDays[backwardDays.length - 1];
+    const startDay = cursorDay;
     while (backwardDays.length < count) {
-      backwardCursorDay -= 1;
-      if (isWorkday(backwardCursorDay)) backwardDays.push(backwardCursorDay);
-      if (backwardDays.length < count && startDay - backwardCursorDay > scanLimit) {
+      cursorDay -= 1;
+      if (isWorkday(cursorDay)) backwardDays.push(cursorDay);
+      if (backwardDays.length < count && startDay - cursorDay > scanLimit) {
         throw new ProjectionError(
           'work_calendar_exhausted',
-          `锚点前已扫描 ${startDay - backwardCursorDay} 天只得到 ${backwardDays.length} 个工作日，无法达到序数 ${1 - count}（检查 rest_dates 是否把工作日全部吃掉）`,
+          `锚点前已扫描 ${startDay - cursorDay} 天只得到 ${backwardDays.length} 个工作日，无法达到序数 ${1 - count}（检查 rest_dates 是否把工作日全部吃掉）`,
         );
       }
     }
@@ -265,45 +280,69 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
   };
 
   /**
+   * 锚点前日期（targetDay < ord 1）的纯查询：数 [targetDay, epochDay) 内的工作日个数 k，
+   * 返回 1 - k（k = 0 即区间内没有工作日，第一个工作日就是 ord 1；k ≥ 1 时最后一个
+   * ≥ targetDay 的工作日即 ord 1 - k，设计 §14/B3）。
+   *
+   * 不推进 backwardDays：查询的终止条件是「越过 targetDay」，不是「凑足 count 个工作日」，
+   * 因此不能复用 ensureBackward 的保险丝——合法稀疏日历（workdays: [] 且只有少量
+   * extra_workdates）里两个工作日可能相隔任意远，凑数式展开会把 ord 1 误判成
+   * work_calendar_exhausted（§15/F1 复审回归）。已缓存的反向工作日是自 epoch 起的连续
+   * 前缀，先数其中 ≥ targetDay 的部分，再从最后一个已缓存日之下继续扫，结果与缓存状态无关。
+   */
+  const backwardOrdForDate = (targetDay: number): number => {
+    let found = 0;
+    while (found < backwardDays.length && backwardDays[found] >= targetDay) found += 1;
+    if (found < backwardDays.length) return 1 - found;
+    let scanDay = backwardDays.length === 0 ? epochDay : backwardDays[backwardDays.length - 1];
+    while (scanDay > targetDay) {
+      scanDay -= 1;
+      if (isWorkday(scanDay)) found += 1;
+    }
+    return 1 - found;
+  };
+
+  /**
    * 真实日期 → ord：取「当天或之后第一个工作日」。
-   * - 不早于 ord 1 的日期：自 ord 1 向前数（原口径不变）；
-   * - 早于 ord 1 的日期：自 ord 1 向后数，得到 ord 0、-1、-2…（设计 §14/B3：锚点前的
-   *   实际日期必须有负序数，不得因「地平线外」丢弃）。
+   * - 不早于 ord 1 的日期：从正向展开表里二分第一个 ≥ targetDay 的工作日；
+   * - 早于 ord 1 的日期：用 backwardOrdForDate 纯扫描（不写缓存；设计 §14/B3：锚点前的
+   *   实际日期必须有负序数）。
+   *
+   * 无状态查询（§15/F1）：结果只由日历与 targetDay 决定，按天序号 memo。正向/反向展开表
+   * 都是单调缓存，查询只读不推进游标——先查 01-01 再查 12-31 与反过来必须得到同一组 ord。
    */
   const ordForDate = (text: string, label = 'constraint.date'): number => {
     const targetDay = parseIsoDate(text, label);
+    const cached = ordByDate.get(targetDay);
+    if (cached !== undefined) return cached;
+
     ensure(1);
     const firstWorkday = days[0];
     if (firstWorkday === undefined) {
       // createCalendarCursor 已保证至少一个工作日，这里只防御内部错位
       throw new ProjectionError('work_calendar_empty', '工作日历未能展开出任何工作日');
     }
+
+    let ord: number;
     if (targetDay >= firstWorkday) {
-      for (let ord = 1; ; ord += 1) {
-        ensure(ord);
-        if (days[ord - 1] >= targetDay) return ord;
+      // days 严格递增：展开到最晚一个 ≥ targetDay 的工作日即可二分
+      while (days[days.length - 1] < targetDay) {
+        ensure(days.length + 1);
       }
+      let low = 0;
+      let high = days.length - 1;
+      while (low < high) {
+        const mid = (low + high) >> 1;
+        if (days[mid] >= targetDay) high = mid;
+        else low = mid + 1;
+      }
+      ord = low + 1;
+    } else {
+      ord = backwardOrdForDate(targetDay);
     }
-    // 目标日期早于 ord 1：向后扫描。backwardDays 严格递减，我们要「≥ targetDay 的最小
-    // ord」，即向后看最后一个仍 ≥ targetDay 的工作日（索引 k 对应 ord -k）。
-    let index = 0;
-    while (true) {
-      if (index >= backwardDays.length) {
-        while (true) {
-          backwardCursorDay -= 1;
-          if (backwardCursorDay < targetDay) {
-            // [targetDay, ord 1) 内没有工作日：第一个工作日就是 ord 1
-            return index === 0 ? 1 : 1 - index;
-          }
-          if (isWorkday(backwardCursorDay)) break;
-        }
-        backwardDays.push(backwardCursorDay);
-      }
-      if (backwardDays[index] < targetDay) {
-        return index === 0 ? 1 : 1 - index;
-      }
-      index += 1;
-    }
+
+    ordByDate.set(targetDay, ord);
+    return ord;
   };
 
   return { ensure, dateOf, ordForDate };
@@ -463,6 +502,9 @@ interface ForwardPassOptions {
 
 function forwardPass(options: ForwardPassOptions): Map<string, PassWindow> {
   const windows = new Map<string, PassWindow>();
+  // 本遍口径下的零工期包（§15/m1）：里程碑不占用工作日，后继从它的 start_ord 起算。
+  // 实际窗口钉死的包不进此集合——实际窗口是事实，仍按末端 +1 顺延。
+  const nonOccupying = new Set<string>();
   for (const pkg of options.order) {
     const actual = options.actualWindows?.[pkg.id];
     if (actual) {
@@ -480,7 +522,8 @@ function forwardPass(options: ForwardPassOptions): Map<string, PassWindow> {
           `${pkg.id}: 依赖 ${dependency} 未在拓扑序中先行计算`,
         );
       }
-      start = Math.max(start, dependencyWindow.end + 1);
+      const successorStart = nonOccupying.has(dependency) ? dependencyWindow.end : dependencyWindow.end + 1;
+      start = Math.max(start, successorStart);
     }
     start = Math.max(start, options.constraintFloor.get(pkg.id) ?? 1);
 
@@ -490,8 +533,10 @@ function forwardPass(options: ForwardPassOptions): Map<string, PassWindow> {
     }
     const length = options.useMaxDuration ? duration.max : duration.min;
     // 零工期 = 不占工作日的里程碑（PKG-900 硬装预备金是真实先例）：
-    // 若照 end = start - 1 会造出 start > end 的非法窗口，也会把后继包错前移。
+    // 若照 end = start - 1 会造出 start > end 的非法窗口；后继也不能按 end + 1 顺延，
+    // 否则里程碑会实际占用一个工作日（§15/m1）。
     const end = length === 0 ? start : start + length - 1;
+    if (length === 0) nonOccupying.add(pkg.id);
     windows.set(pkg.id, { start, end });
   }
   return windows;
@@ -662,6 +707,24 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     useMaxDuration: true,
   });
 
+  // 5b. forecast-no-scenario：实际窗口照常钉死、不加 delay（§15/M1）。
+  // 这是 scenario 效果的唯一对照基准：它与 forecast 的差只来自本次演算，
+  // 既有实际窗口造成的位移在两边同时存在，不会被误列进 affected。
+  const noScenarioMin = forwardPass({
+    order,
+    durations: durationLimits,
+    actualWindows,
+    constraintFloor,
+    useMaxDuration: false,
+  });
+  const noScenarioMax = forwardPass({
+    order,
+    durations: durationLimits,
+    actualWindows,
+    constraintFloor,
+    useMaxDuration: true,
+  });
+
   // 6. 组装每个包的基线/预测/实际，顺带求 ordinals 的上下界
   const packages: Record<string, ProjectedPackage> = {};
   let maxOrd = 0;
@@ -693,9 +756,11 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     ordinals.push({ ord, date: cursor.dateOf(ord) });
   }
 
-  // 7. scenario：只列拓扑下游且 start 真的变了的包（并行分支不动就不列）
-  // delta 按契约取 forecast.start_ord − baseline.start_ord；baseline 不含实际窗口，
-  // 因此若某下游包同时被实际窗口推移，其 delta 里也含实际窗口的效应（不作为「delay 造成」解读）。
+  // 7. scenario：只列拓扑下游、且完整预测窗口相对 forecast-no-scenario 变了的包
+  // （并行分支不动就不列）。对照基准是「未应用 scenario 的当前预测」，不是声明基线：
+  // 既排除既有实际窗口位移的误报，也捕获只有保守末端变化（start_ord 不变）的漏报（§15/M1）。
+  // delta = 本次演算对该包窗口的最大位移（start / end_min / end_max 三处差值的最大值），
+  // 仅保守末端变化时即该末端的位移，不再因 start 差为 0 而被丢弃。
   let scenario: ScheduleProjection['scenario'] = null;
   if (input.scenario !== undefined) {
     const overrides = [...delayByPkg].map(([pkg, workdays]) => ({ pkg, workdays }));
@@ -703,10 +768,20 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     const affected: Array<{ pkg: string; delta: number }> = [];
     for (const pkg of order) {
       if (!downstream.has(pkg.id)) continue;
-      const projected = packages[pkg.id];
-      const delta = projected.forecast.start_ord - projected.baseline.start_ord;
-      if (delta === 0) continue;
-      affected.push({ pkg: pkg.id, delta });
+      const projected = packages[pkg.id].forecast;
+      const control = {
+        start: noScenarioMin.get(pkg.id)?.start,
+        endMin: noScenarioMin.get(pkg.id)?.end,
+        endMax: noScenarioMax.get(pkg.id)?.end,
+      };
+      if (control.start === undefined || control.endMin === undefined || control.endMax === undefined) {
+        throw new ProjectionError('internal_order_error', `${pkg.id}: 缺少 forecast-no-scenario 结果`);
+      }
+      const startDelta = projected.start_ord - control.start;
+      const endMinDelta = projected.end_ord_min - control.endMin;
+      const endMaxDelta = projected.end_ord_max - control.endMax;
+      if (startDelta === 0 && endMinDelta === 0 && endMaxDelta === 0) continue;
+      affected.push({ pkg: pkg.id, delta: Math.max(startDelta, endMinDelta, endMaxDelta) });
     }
     scenario = { overrides, affected };
   }
