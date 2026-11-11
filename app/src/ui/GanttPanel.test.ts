@@ -678,4 +678,41 @@ describe('GanttPanel', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/schedule/what-if'))).toBe(false);
     expect(bodyText()).toContain('未取得基线快照');
   });
+
+  // Codex 二审 major（PR #218）：重置作废在途基线加载后，必须接续 baselineLoading 的
+  // 归属。探针同构路径：演算生效 → 切 tab 重开（refresh 在途）→ 点仍可用的「回到基线」。
+  // 旧行为：在途 refresh 被顶掉后 finally 不清旗标 → 旧快照留着、永远卡「基线加载中」。
+  it('刷新期间重置：接续基线加载，面板不卡在「基线加载中」', async () => {
+    let stateCalls = 0;
+    const fetchMock = vi.fn((url: string) => {
+      if (String(url).includes('/api/schedule/what-if')) {
+        return Promise.resolve({ok: true, status: 200, json: async () => whatIfPayload()});
+      }
+      stateCalls += 1;
+      // 第 2 次基线（切 tab 重开后的刷新）永在途——重置就发生在它上面
+      if (stateCalls === 2) return new Promise(() => {});
+      return Promise.resolve({ok: true, status: 200, json: async () => snapshot()});
+    });
+    vi.stubGlobal('fetch', fetchMock as never);
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.gantt-row[data-pkg-id="PKG-010"]')).toBeTruthy());
+
+    // 演算生效（scenario active → 「回到基线」按钮可用）
+    (document.querySelector('#gantt-delay-input') as HTMLInputElement).value = 'PKG-020:3';
+    (document.querySelector('#gantt-what-if') as HTMLElement).click();
+    await vi.waitFor(() => expect(document.querySelector('#gantt-scenario')?.getAttribute('data-active')).toBe('true'));
+
+    // 模拟「切 tab 重开」：第二次基线刷新在途（按钮被 ready 门禁用）
+    void panel.refresh();
+    panel['render']();
+    expect((document.querySelector('#gantt-what-if') as HTMLButtonElement).disabled).toBe(true);
+
+    // 在途点「回到基线」：必须接续加载（重取基线）而不是留下孤儿旗标
+    (document.querySelector('#gantt-reset') as HTMLElement).click();
+    await vi.waitFor(() => expect((document.querySelector('#gantt-what-if') as HTMLButtonElement).disabled).toBe(false));
+    expect(bodyText()).not.toContain('基线加载中');
+    expect(bodyText()).toContain('当前为基线视图');
+    expect(document.querySelector('#gantt-scenario')?.getAttribute('data-active')).toBe('false');
+  });
 });

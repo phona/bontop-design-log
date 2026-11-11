@@ -280,7 +280,12 @@ export class GanttPanel {
    * 后到的基线会无提示清掉新演算；基线刷新失败后，后到演算还能在错误条下重新画图）。
    */
   private dataEpoch = 0;
-  /** 基线加载中：ready 之前阻塞演算（不排队——排队会把过期基线演算成新结论）。 */
+  /**
+   * 基线加载中：ready 之前阻塞演算（不排队——排队会把过期基线演算成新结论）。
+   * 所有权不变量（Codex 二审 major，PR #218）：此旗标只能由「拥有当前 epoch 的 refresh」
+   * 置真/置假；任何作废在途加载的路径（重置）必须同时接续它的归属，否则留下永远为 true
+   * 的孤儿旗标。回归用例见 GanttPanel.test.ts「刷新期间重置」。
+   */
   private baselineLoading = false;
 
   constructor(private readonly selection: ScheduleSelectionStore) {}
@@ -619,6 +624,12 @@ export class GanttPanel {
       // 作废在途取数/演算（后到的响应不得把演算写回来），再丢弃当前结果。
       this.dataEpoch += 1;
       this.resetWhatIfState();
+      // 重置作废了在途基线加载时，必须接续加载态的所有权（Codex 二审 major，PR #218）：
+      // 被顶掉的 refresh 的 finally 不再清 baselineLoading，直接丢会给面板留下一个永远
+      // 为 true 的孤儿旗标——旧快照留着、演算永远被「基线加载中」拦到重开页面。
+      // 接续 = 重取一次基线（无在途加载时仍是纯本地操作，不触发取数）；旗标仍由
+      // refresh 自己拥有，不新增并行路径，也不加新计数器。
+      if (this.baselineLoading) void this.refresh();
       this.render();
     });
   }
