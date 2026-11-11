@@ -4,7 +4,9 @@
 // （rest_dates 优先、补班日占 ord、周末不占 ord）、min/max 双前向（并行不互推、
 // 汇合取最大）、无锚点时按名义纪元确定性地出 date、实际窗口钉死与后继顺延、
 // what-if 只动拓扑下游且不动已完工包、同角色 onsite 窗口重叠才报冲突。
-// 全部是纯函数断言，不读 config、不跑 loader——loader 接线由下一个切片测。
+// §14（Codex PR #216）增补：not_before 的锚点守卫（B5）；actual_windows 以真实日期
+// 给入、ordinals 双向地平线（锚点前负 ord，B3）。全部是纯函数断言，不读 config、
+// 不跑 loader——loader 接线由下一个切片测。
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -190,7 +192,8 @@ describe('actual_windows：实际窗口钉死与后继顺延', () => {
     const projection = projectSchedule({
       packages,
       calendar: calendar(),
-      actual_windows: { A: { start_ord: 1, end_ord: 5 } },
+      // 2026-01-05(一)…01-09(五) → ord 1…5
+      actual_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-09' } },
     });
     assert.deepEqual(projection.packages.A.actual, { start_ord: 1, end_ord: 5 });
     assert.deepEqual(projection.packages.A.forecast, { start_ord: 1, end_ord_min: 5, end_ord_max: 5 });
@@ -235,12 +238,12 @@ describe('scenario.delay：what-if 只动拓扑下游', () => {
     const base = projectSchedule({
       packages: packagesWithActual,
       calendar: calendar(),
-      actual_windows: { A: { start_ord: 1, end_ord: 4 } },
+      actual_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-08' } },
     });
     const withDelay = projectSchedule({
       packages: packagesWithActual,
       calendar: calendar(),
-      actual_windows: { A: { start_ord: 1, end_ord: 4 } },
+      actual_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-08' } },
       scenario: { delay: [{ pkg: 'A', workdays: 3 }] },
     });
     assert.deepEqual(withDelay.packages.A.forecast, base.packages.A.forecast, 'delay 不得改写实际窗口');
@@ -273,6 +276,100 @@ describe('not_before 约束（resolved 才生效）', () => {
       constraints: { A: [{ id: 'C1', type: 'not_before', status: 'resolved', date: '2026-01-07' }] },
     });
     assert.equal(projection.packages.A.baseline.start_ord, 3);
+  });
+});
+
+describe('not_before 约束的锚点守卫（§14/B5）', () => {
+  it('anchor_date 为 null：resolved not_before 带真实日期不抬升', () => {
+    const projection = projectSchedule({
+      packages: [pkg('A', 10, 2, 2)],
+      calendar: calendar({ anchor_date: null }),
+      constraints: { A: [{ id: 'C1', type: 'not_before', status: 'resolved', date: '2026-01-07' }] },
+    });
+    // 无锚点不得把 2026-01-07 映射到 1970 名义纪元（否则会被算成第 14613 工作日并抬升）
+    assert.deepEqual(projection.packages.A.baseline, { start_ord: 1, end_ord_min: 2, end_ord_max: 2 });
+  });
+
+  it('anchor_date 就绪：同一约束照常抬升', () => {
+    const projection = projectSchedule({
+      packages: [pkg('A', 10, 2, 2)],
+      calendar: calendar({ anchor_date: '2026-01-05' }),
+      constraints: { A: [{ id: 'C1', type: 'not_before', status: 'resolved', date: '2026-01-07' }] },
+    });
+    assert.deepEqual(projection.packages.A.baseline, { start_ord: 3, end_ord_min: 4, end_ord_max: 4 });
+  });
+});
+
+describe('actual_windows 以真实日期给入（§14/B3）', () => {
+  it('锚点后且超出基线末端的实际日期 → 窗口存在、ordinals 扩展、forecast 顺延', () => {
+    const packages = [pkg('A', 10, 2, 2), pkg('B', 20, 2, 2, ['A'])];
+    const projection = projectSchedule({
+      packages,
+      calendar: calendar(),
+      // A 基线末端只到 ord 2；实际日期扩到 01-12（跳过周末）= ord 6
+      actual_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-12' } },
+    });
+    assert.deepEqual(projection.packages.A.actual, { start_ord: 1, end_ord: 6 });
+    assert.deepEqual(projection.packages.A.forecast, { start_ord: 1, end_ord_min: 6, end_ord_max: 6 });
+    assert.deepEqual(projection.packages.A.baseline, { start_ord: 1, end_ord_min: 2, end_ord_max: 2 }, '基线不被实际窗口改写');
+    assert.equal(projection.packages.B.forecast.start_ord, 7, '后继从实际末端顺延');
+    assert.deepEqual(projection.ordinals.find((entry) => entry.ord === 6), { ord: 6, date: '2026-01-12' });
+    assert.equal(projection.ordinals.length, 8, 'ordinals 覆盖到预测末端 ord 8');
+  });
+
+  it('锚点前的实际日期 → 负 ord，ordinals 向后覆盖', () => {
+    const packages = [pkg('A', 10, 2, 2), pkg('B', 20, 2, 2, ['A'])];
+    const projection = projectSchedule({
+      packages,
+      calendar: calendar(),
+      // ord 1 = 2026-01-05(一)：01-02(五)=0、01-01(四)=-1、2025-12-31(三)=-2
+      actual_windows: { A: { start_date: '2025-12-31', end_date: '2026-01-02' } },
+    });
+    assert.deepEqual(projection.packages.A.actual, { start_ord: -2, end_ord: 0 });
+    assert.deepEqual(projection.packages.A.forecast, { start_ord: -2, end_ord_min: 0, end_ord_max: 0 });
+    assert.equal(projection.packages.B.forecast.start_ord, 1, '后继仍从排程零点（ord 1）起算');
+    assert.deepEqual(projection.ordinals.slice(0, 4), [
+      { ord: -2, date: '2025-12-31' },
+      { ord: -1, date: '2026-01-01' },
+      { ord: 0, date: '2026-01-02' },
+      { ord: 1, date: '2026-01-05' },
+    ]);
+  });
+
+  it('实际日期落在休息日/周末 → 取之后第一个工作日，不丢弃', () => {
+    const packages = [pkg('A', 10, 2, 2), pkg('B', 20, 2, 2, ['A'])];
+    const projection = projectSchedule({
+      packages,
+      calendar: calendar({ rest_dates: ['2026-01-06'] }), // 周二调休
+      actual_windows: { A: { start_date: '2026-01-06', end_date: '2026-01-10' } },
+    });
+    // 01-06(二) 调休 → 01-07(三)=ord 2；01-10(六) 周末 → 01-12(一)=ord 5
+    assert.deepEqual(projection.packages.A.actual, { start_ord: 2, end_ord: 5 });
+    assert.equal(projection.ordinals[1].date, '2026-01-07', '休息日的实际开始日映射到之后第一个工作日');
+    assert.deepEqual(projection.ordinals.find((entry) => entry.ord === 5), { ord: 5, date: '2026-01-12' });
+    assert.equal(projection.packages.B.forecast.start_ord, 6);
+  });
+
+  it('start_date 晚于 end_date → invalid_actual_window', () => {
+    assert.throws(
+      () => projectSchedule({
+        packages: [pkg('A', 10, 2, 2)],
+        calendar: calendar(),
+        actual_windows: { A: { start_date: '2026-01-08', end_date: '2026-01-05' } },
+      }),
+      (error: unknown) => error instanceof ProjectionError && error.code === 'invalid_actual_window',
+    );
+  });
+
+  it('anchor_date 为 null：不把真实日期映射到 1970 名义纪元', () => {
+    assert.throws(
+      () => projectSchedule({
+        packages: [pkg('A', 10, 2, 2)],
+        calendar: calendar({ anchor_date: null }),
+        actual_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-06' } },
+      }),
+      (error: unknown) => error instanceof ProjectionError && error.code === 'invalid_actual_window',
+    );
   });
 });
 

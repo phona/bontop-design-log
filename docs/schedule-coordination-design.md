@@ -394,6 +394,138 @@ issue #83 的单列降级先例）；工作台与日历本就是列表/纵列形
 
 ---
 
+## 14. Codex 审查回应（PR #216）
+
+> **审查事件**：Codex 对提交 `43b4487` 的 `REQUEST_CHANGES`（2026-11-11）：blocking 5 · major 1 · minor 1 · nit 0。
+> **修复端纪律**（`.github/prompts/codex-fix.md`）：每条 blocking 先定「主题（模块/状态机 + 失败类）」与
+> 「决定（修复 / 结构性重做 / 升级）」，写在这里再动代码；同一主题不打补丁；major/minor 只列标题、不随本次提交。
+> **本节只记录决策与被推翻的旧口径，不改写 §1–§13 正文。** 下文 `file:line` 均指被审提交
+> `43b4487` 的行号（修复后行号会漂移，以函数名/原文为准）。
+
+### 14.1 处置总表
+
+| 编号 | 主题（模块/状态机 + 失败类） | 决定 | 推翻本文什么（章节 + 原文口径） |
+|---|---|---|---|
+| **B1** | 验收指纹链：`checkSpecHash`（`shared/schedule-state.ts:780-796`，对整个 `check` 求哈希）＋ coordination 注入点；失败类 = **静默失效**（仅改预约 status/actor/confirmed_at → 指纹变 → 已 passed 记录变 stale → `gate_status` 从 passed 退回 pending，并影响下游就绪） | **结构性重做**：协调事实移出被哈希的 `check` 对象；指纹输入改为**字段白名单**；补「新增未知键不改变指纹」的测试 | **§5 第 2 条机器断言**原文：「实现即『投影时 coordination 字段根本不进这两个函数的输入』（结构上不可能，比断言更强；契约 1 是防回归的保险丝）」——该结构保证只覆盖 gate/readiness 的**直接入参**，没管住「check → `checkSpecHash` → audit stale → gate_status」这条**间接**路径 |
+| **B2** | 实际窗口派生：`deriveActualWindowsFromAudits`（`shared/schedule-state.ts:1406-1431`）＋投影钉死（`schedule-projection.ts:384-388`）；失败类 = **正确性**（假完工：任一条检查 passed 即把整个包钉成已完成，预测缩水、后继提前） | **结构性重做**：实际窗口的输入口径从「任一条 passed 检查的 `checked_at` 区间」改为「**完工事实**」；loader 只把完工事实交给投影，部分执行记录不生成实际窗口 | **§2.2** 原文：「PKG 实际窗口 = [min, max](`audit_log` 的 `records` 中该包 passed 记录的 `checked_at`)」及其「未 passed → 无实际窗口」的二分——它把「某条检查通过」与「工作包完工」当成同一件事，单条通过不等于完工 |
+| **B3** | 工作日历 ord 地平线：`schedule-projection` 的 ord↔date 映射 ＋ loader 两遍调用按 ordinals 反查 `checked_at`（`shared/schedule-state.ts:1487-1496`）；失败类 = **静默删证据**（地平线外的真实验收日期被跳过，实际延期不传播） | **结构性重做**：`actual_windows` 输入改为真实日期（`{start_date,end_date}`，YYYY-MM-DD），由模块经日历映射；ordinals 按实际日期**双向扩展**，锚点前给负 ord；休息日按「之后第一个工作日」映射 | **§2.2/§6.1 的隐含假设**——§2.2 的 `checked_at` 反查与 §6.1 的 `ordinals: Array<{ord,date}>` 都假定「ordinals 只需覆盖基线所需日期、查不到就跳过」；**§3** 原文「全部计算输出以『自排程零点起第 N 个工作日』表示（1-based）」也隐含 ord 从 1 起，未定义锚点前的序数 |
+| **B4** | `GET /api/schedule/state` 的 503 状态机：装配期投影（`buildScheduleProjectionView`，`shared/schedule-state.ts:1461-1505`）× route 时序（`server/routes.ts:412-419` 先查 `state.errors` 再调 `buildScheduleSnapshot`）；失败类 = **静默降级**（投影失败后追加 errors，但 503 判定已经过去，最终 200 返回空排程） | **结构性重做**：投影/日历校验全部提前到 load 阶段、并入 `state.errors` 同一通道；route 的 503 判定之前不得再产生新错误；`buildScheduleSnapshot` 内不得把投影失败包装成「正常空骨架」 | **§6.1** 原文「503 行为不变（`state.errors.length` → 503）；新 loader 错误码走同一通道」——原实现把投影放在 route 检查 errors **之后**，新错误赶不上这次 503 判定，「行为不变」只对 load 阶段错误成立 |
+| **B5** | not_before 约束映射：`schedule-projection.ts:505-513` 对 resolved 约束无条件 `ordForDate`；失败类 = **正确性**（锚点 null 时把 2026 真实日期算成 1970 名义纪元第 14613 工作日，loader 虽隐藏日期却仍交付错误序数） | **修复**（锚点守卫）：`anchor_date === null` 时**不调用** `ordForDate`、跳过该约束抬升；由 loader 报 `constraint_resolved_without_anchor` | **§4 前向传播条**（对应审查意见所称「§4 第 5 条」；原文该句在算法第 3 条）原文「`not_before` 约束 resolved 时抬 start」的**无条件映射**——resolved 只说明约束生效，不说明存在可映射的时间坐标 |
+
+### 14.2 B1：协调事实不得进入验收指纹
+
+**事实链**（Codex 原文与代码一致）：`control.yaml:852-860` 的 `coordination` 块写在 `SCH-000-01` 的 check 内 →
+`checkSpecHash` 对 `{packageSpec, check}` 整体 `JSON.stringify` → 只改 `status`/`actor`/`confirmed_at` 也会换指纹 →
+`staleAuditReason` 把已 passed 记录降级成 stale（`shared/schedule-state.ts:797-806`）→ `auditStatusFor` 返回 stale →
+`gate_status` 退回 pending。§5 的两条断言（facts 正则 + 「结构上不可能」）都没覆盖这条链：正则只扫
+`gateStatus(...coordination` 这类直接文本，结构保证只约束「函数入参」。
+
+**新保证**：① 协调事实不再住在 `check` 对象内，改为与 check 平级的独立块（loader 侧落）；②
+`checkSpecHash` 只序列化显式**白名单**字段（验收标准字段 + `packageSpec`），新增键默认不进指纹；③
+测试断言「给 check/coordination 加未知键后指纹不变、已有验收记录不 stale」。协调状态仍然连「被门禁读」都
+不允许——§5 的 facts 契约保留为防回归保险丝。
+
+**落地补充（loader 层，2026-11-11）**：白名单同时覆盖控制源 check 与引用型验收项（`acceptance.yaml` 经
+`packageChecks` 摊平的字段并集），因为反向失效不分来源——新增 acceptance 字段而没人决定归属，同样会让
+验收标准变化静默不进指纹。进哈希：`id/item/severity/checkpoint/method/pass_condition/evidence_required/
+can_run_while_blocked/does_not_release_construction/owner_roles/rooms/when/standard_ref`（`standard`→
+`pass_condition`、`evidence`→`evidence_required` 归一）；显式排除：`coordination`（协调事实）、
+`knowledge`（背景说明，无机器强制）、`objects`（`from_packages` 是挂接登记，一致性由 `c.acceptance_objects`
+对账）、`phase`/`phase_name`（阶段元数据）。测试遍历两个视图的**全部**键，未分类的键当场失败。
+
+**package 侧白名单（2026-11-11 复审收口）**：`packageSpec` 同样不能整体入哈希。进哈希的包级字段只有
+`id`（哈希作用域）；`name`/`description`/`sequence`/`dependencies`/`owner_roles`/`blockers`（含阻塞项
+文案）等包级键全部显式排除——改名字、改描述、调顺序、改依赖或责任角色、换阻塞项文案都不改变「这项检查
+怎么算通过」，不得让已 passed 记录变 stale。`targets` 由 `c.package_targets` 对账且
+`model-package-links.yaml` 本身在项目数据指纹里，不需重复进验收指纹。测试对 control.yaml 的**全部包级
+键**做同样的反向围栏，新增包级键未显式归类即失败。
+
+### 14.3 B2：实际窗口只接受完工事实
+
+**原口径的问题**：`deriveActualWindowsFromAudits` 取「该包所有 passed 检查的 `checked_at` 的 [min,max]」，
+一条开工前检查（如 `SCH-000-PRE-01`）、隐蔽工程检查或任何一条验收通过，都会让整个包被钉成已完成。
+Codex 探针：十天工期的包第一天一条通过记录 → 预测缩成一天、后继从第十一天提前到第二天。投影侧
+（`schedule-projection.ts:384-388`）把 `actual_windows` 当事实钉死，本身没有错——错在 loader 把
+「部分执行记录」冒充「完工事实」。
+
+**新口径**：**实际窗口 = 完工事实**。loader 负责区分「部分执行记录」与「工作包完工」，只有后者进入
+`actual_windows`；检查级别的执行时间线继续留在 `audit_log`，不再被投影消费。投影侧契约不变（给出即钉死），
+因此 loader 侧的完工判定必须可解释、可测试。§2.2 的「复验 supersedes 取最新 passed」保留，但同样只在
+完工事实上生效。
+
+### 14.4 B3：ordinals 地平线按实际日期双向扩展
+
+**原口径的问题**：loader 先用第一遍投影的 `ordinals` 建 `date → ord` 表，再拿 `checked_at` 精确反查；
+`ordinals` 只展开到基线末端，锚点外的真实日期查不到 → 静默 `continue`。以锚点 2026-01-05、总计划
+两工作日为例，2026-01-07 的通过记录被丢弃，预测仍保留原计划；休息日的检查记录同样丢失。
+
+**新口径（模块 API 契约变更）**：
+
+- `ProjectionInput.actual_windows: Record<pkg, {start_date: string, end_date: string}>`（YYYY-MM-DD），
+  **不再接受 ord**；模块用同一张工作日历把它映射成 ord（loader 不再需要两遍调用）。
+- **ord 定义**：ord 1 = 锚点当天或之后第一个工作日；锚点之前的工作日依次为 **0、-1、-2…**。
+- **日期映射规则**：落在非工作日的日期取「当天或之后第一个工作日」——约束与 actual 窗口**同一条**规则
+  （模块内 `ordForDate` 的既有 docstring 口径）；休息日/补班日按 `rest_dates` / `extra_workdates` 判定。
+- **地平线**：`ordinals` 覆盖 `[minOrd, maxOrd]`，向后到最早的实际日期（可为负 ord），向前到
+  基线/预测/实际的最晚末端。任何真实日期都不因「地平线外」被丢弃；非法日期报 `invalid_date` 而非跳过。
+- **锚点为 null 的边界**：没有锚点就没有真实日期坐标系，模块不做名义纪元映射——actual 窗口直接判
+  `invalid_actual_window`（与 B5 同一原则：不把 1970 序数交付给消费者）。
+- **该边界的 loader 报错口径（loader 层落地，2026-11-11）**：loader 按 `projection_failed — [code]`
+  原样透传 `invalid_actual_window`，不降级成无 code 的泛化 `projection_failed`；该 code 与
+  `actual_window_unresolved`（gate passed 但没有任何可用 `checked_at`）一并登记在
+  `shared/schedule-state.ts` 头注，并由 `tests/server/schedule-loader-contract.test.ts` 钉住。
+- **部分 checked_at 非法的口径（2026-11-11 复审补）**：`checked_at` 必须是非空且真实存在的
+  YYYY-MM-DD（loader 的记录级校验）。gate passed 的包只要有一条 passed 记录的 `checked_at` 非法，
+  就不派生实际窗口并报 `actual_window_invalid_checked_at`——不许跳过非法记录、用其余合法日期拼出
+  偏短窗口（实际完工日期可能正是被跳过的那条，预测会低估延期）。
+
+### 14.5 B4：503 判定必须晚于全部投影校验
+
+**原口径的问题**：`server/routes.ts:412-419` 先查 `state.errors.length` 再调 `buildScheduleSnapshot`；
+投影在装配期才失败、失败后只往 `state.errors` 追加，响应已是 200，且响应体不包含新错误。空 `workdays`
+且无补班日、`rest_dates` 与 `extra_workdates` 重叠这两类都能通过 load 校验却在装配期触发此路径；
+`verify:schedule` 又不构建快照 → 无效配置全绿通行，API 把它包装成正常空排程。
+
+**新口径**：投影所依赖的全部校验（DAG、工作日历可展开性、实际窗口日期合法性、约束日期合法性）在
+**load 阶段**完成并进 `state.errors`；route 的 503 判定在「不会再产生新错误」之后执行。
+`buildScheduleProjectionView` 不得再把投影失败降级成空骨架——要么 load 已拦截（503），要么成功。
+§6.1 的「503 行为不变」保留其对 load 阶段错误的部分，删去「装配期投影错误走同一通道」的假保证。
+
+### 14.6 B5：锚点守卫（本次模块层修复）
+
+**原口径的问题**：`schedule-projection.ts:505-513` 对 resolved 的 not_before 无条件调用 `ordForDate`。
+锚点 null 时日历用 1970-01-01 名义纪元展开，2026-01-05 被算成第 14613 工作日；loader 虽把 `ordinals.date`
+置 null，却把错误序数交付给快照消费者。
+
+**新口径**：resolved 的 not_before 带 `date` 时，若 `calendar.anchor_date` 为 null，**不调用**
+`ordForDate`、不抬升该约束；loader 侧报 `constraint_resolved_without_anchor`（loader 层已落地，见 §14.8）。
+锚点就绪后同一约束照常抬升。名义纪元只用于「无真实日期输入的 ord↔date 占位」，**不得**用于映射任何真实日期。
+
+### 14.7 本次未改（标题照录）
+
+本次 Codex 审查中以下两项**未改**，按 `.github/prompts/codex-fix.md` 的严重级别门留在审查评论里，
+不随 blocking 修复提交：
+
+- **major**「延期影响清单漏掉仅保守日期变化的下游包」——M1：`affected` 只比较 `forecast.start_ord −
+  baseline.start_ord`（min 口径），仅 `end_ord_max` 变化的下游包 delta 为 0 被漏掉。
+- **minor**「零工期里程碑实际仍占用一个工作日」——m1：零工期包 `end = start`，后继 `start = end + 1`，
+  与头注「不占 ord，也不推后任何后继包」相反（当前 PKG-900 被调用方过滤，真实主排程暂不受影响）。
+
+### 14.8 本次落点与后续
+
+- **本次模块层修复**：B5（锚点守卫）与 B3（`actual_windows` 改为日期输入、负 ord、地平线双向扩展）落在
+  `shared/schedule-projection.ts` ＋ `tests/server/schedule-projection.test.ts`；本节为决策记录。
+- **loader 层落地（同 PR 后续提交，2026-11-11）**：B1/B2/B3 接线/B4 全部落在 `shared/schedule-state.ts`
+  ＋ 新增 `tests/server/schedule-loader-contract.test.ts`。**`server/routes.ts` 未改**——原口径「B1/B2/B4
+  落在 loader 与 route 层」中的 route 部分没有需要：投影前移后投影错误已进 load 期 `state.errors`，
+  既有 `GET /api/schedule/state` 的 503 判定（`state.errors.length` 先于 `buildScheduleSnapshot`）自动覆盖，
+  不需要也不应新增第二个错误通道。B1 改指纹算法使生成物 `schedule/phase-1/checklist.md` 的「检查标准指纹」
+  列随之变化，已用 `npm run schedule:render` 重生成（diff 仅该列哈希值，无内容行变化）。
+- 本文 §1–§13 正文暂不改写；B1/B2/B4 的 loader 实现落地时应同步修正被推翻的句子（§2.2、§5、§6.1），
+  改写时按「文档改写必须 diff 出删了什么」附改动说明。
+
+---
+
 ## 附：本设计回答的 Issue 原文第一问（切片 A 首个待答项）
 
 > "先判断现有 `SCH` 能否承载施工活动、会审、验收和协同预约。"

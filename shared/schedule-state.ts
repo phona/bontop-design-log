@@ -16,7 +16,31 @@
  * PKG 级 constraints、SCH 级 coordination（docs/schedule-coordination-design.md §2.1(d)，
  * 全部 error 级）；②buildScheduleSnapshot 纯增量产出 schedule / coordination 两个键
  * （§6.1）。排程算法本身不在这里：单一实现住 shared/schedule-projection.ts，本文件
- * 只做声明校验与装配（喂包/日历/约束/实际窗口，收投影结果），不写第二套日历或前向传播。
+ * 只做声明校验与投影接线，不写第二套日历或前向传播。
+ *
+ * 2026-11-11（PR #216 Codex blocking，设计 §14）loader 层结构性重做：
+ * - B1 验收指纹只哈希显式白名单的 checkSpec + packageSpec（CHECK_SPEC_HASH_FIELDS /
+ *   PACKAGE_SPEC_HASH_FIELDS），coordination、包名/描述/顺序/依赖/责任角色、阻塞项文案等
+ *   非 spec 字段不进哈希——它们的变更不得让既有通过记录变 stale。
+ * - B2 实际窗口 = 完工事实：只有 gateStatus(pkg) === 'passed' 且非 waived 的包才派生，
+ *   部分通过的包保持「未完工未知」，不拿首条验收日期冒充完工。
+ * - B3 actual_windows 以真实日期（{start_date,end_date}）交给模块，ord 映射归模块；
+ *   非法 checked_at 是记录级数据错误（audit 校验即报），gate passed 的包只要有一条
+ *   passed 记录的 checked_at 非法就不派生窗口并报 diagnostic error——不许拿其余合法
+ *   日期拼出偏短窗口、丢掉实际完工日期。
+ * - B4 投影从 buildScheduleSnapshot 装配期前移到 loadScheduleState：投影错误与既有校验
+ *   同走 state.errors（route 在 build 之前 503），build 只消费已存投影。
+ *
+ * 排程投影相关 loader 诊断错误码（设计 §14/B2/B3/B5，error 级）：
+ * - actual_window_unresolved：gate_status=passed 但该包没有任何可用的 checked_at（YYYY-MM-DD）。
+ * - actual_window_invalid_checked_at：gate_status=passed 且至少一条 passed 记录的 checked_at
+ *   不是真实存在的 YYYY-MM-DD；即使另有合法日期也不派生窗口（完工日期未知，不得低估延期）。
+ * - constraint_resolved_without_anchor：锚点未定时存在带日期的 resolved not_before 约束，
+ *   模块不按 1970 名义纪元造序数（跳过抬升），loader 显形该事实。
+ * - schedule projection: projection_failed — [code]：ProjectionError 的 code 原样透传，不是
+ *   未映射的兜底。特别地，锚点未定（anchor_date: null）时只要有完工包的实际窗口，
+ *   模块按 §14.4 抛 invalid_actual_window → 这里的错误串带 `[invalid_actual_window]`，
+ *   由 tests/server/schedule-loader-contract.test.ts 钉住。
  */
 
 import fs from 'node:fs';
@@ -36,7 +60,7 @@ import {
   projectSchedule,
   validateDag,
   ProjectionError,
-  type ProjectionActualWindow,
+  type ProjectionActualDates,
   type ProjectionCalendar,
   type ProjectionConstraint,
   type ProjectionPackage,
@@ -63,7 +87,8 @@ export const ROADMAP_REL_PATH = 'schedule/roadmap.yaml';
  * 为什么必须分开：project_scope 包的指纹按「全模型」扩到全部权威文件时，若把执行文件
  * 也圈进去，存一条通过记录就会改变这条记录保存下来的 project_data_sha256，重新加载后
  * staleAuditReason 立即判 stale——付款门槛永远无法稳定通过（自指循环）。
- * 检查定义的变化由 check_spec_sha256 单独覆盖（checkSpecHash 哈希 {packageSpec, check}），
+ * 检查定义的变化由 check_spec_sha256 单独覆盖（checkSpecHash 只哈希显式的验收标准白名单，
+ * 见 CHECK_SPEC_HASH_FIELDS / PACKAGE_SPEC_HASH_FIELDS 与设计 §14/B1），
  * 不需要靠整份 control.yaml 进项目数据指纹。
  */
 export const ENGINEERING_AUTHORITY_SOURCES: readonly string[] = [
@@ -77,6 +102,110 @@ export const ENGINEERING_AUTHORITY_SOURCES: readonly string[] = [
   'hvac',
   'ceiling',
 ];
+
+/**
+ * checkSpecHash 的 check 侧输入白名单（设计 §14/B1，PR #216 Codex blocking）。
+ *
+ * 指纹的语义是「验收标准规格」：只有这里点名的字段变了，才允许把已 passed 的验收记录
+ * 判成 stale。coordination（预约 status/actor/confirmed_at）是执行期的协调事实，会随
+ * 约人过程变化，把它混进指纹会让 gate_status 从 passed 无故退回 pending——因此：
+ * - coordination 与任何未来新增的非 spec 键都不进哈希（见 CHECK_NON_SPEC_KEYS）；
+ * - 新增 check 字段时必须显式决定进哪一边，tests/server/schedule-loader-contract.test.ts
+ *   遍历 control.yaml 与 packageChecks 派生视图（含 acceptance.yaml 引用型验收项）的实际
+ *   键集合，白名单外且未在排除清单里的键会让测试当场点名——新 spec 字段静默不进哈希与
+ *   非 spec 字段悄悄进哈希两个方向都拦。
+ *
+ * 字段并集：控制源 check（control.yaml）与引用型验收项（acceptance.yaml 经 packageChecks
+ * 摊平）都在这份白名单的语义里。`rooms`（检查范围）、`when`（检查时机）、`standard_ref`
+ * （判定依据的引用出处）与判定标准本身同属规格——前三者在旧实现里随整个 check 对象一起
+ * 进过哈希，收窄白名单时不得静默丢掉。
+ */
+export const CHECK_SPEC_HASH_FIELDS = [
+  'id',
+  'item',
+  'severity',
+  'checkpoint',
+  'method',
+  'pass_condition',
+  'evidence_required',
+  'can_run_while_blocked',
+  'does_not_release_construction',
+  'owner_roles',
+  'rooms',
+  'when',
+  'standard_ref',
+] as const;
+
+/**
+ * 引用型验收项的源字段 → 指纹槽位归一（快照视图同一条回退：`pass_condition ?? standard`、
+ * `evidence_required` 由 acceptance 的 `evidence` 映射），所以改 standard / evidence 仍然换
+ * 指纹，但指纹里只出现一个槽位，不会因两条来源并存产生重复语义。
+ */
+export const CHECK_SPEC_FIELD_ALIASES: Readonly<Record<string, readonly string[]>> = {
+  pass_condition: ['standard'],
+  evidence_required: ['evidence'],
+};
+
+/**
+ * 已知、显式决定「不进验收指纹」的 check 键（控制源 check 与引用型验收项字段的并集）：
+ * - coordination：预约协调事实，随约人过程变化，且按设计 §5 不得进入任何门禁/就绪判定；
+ * - knowledge：验收背景说明（decision-gates.ts 头注已声明它没有机器强制），改它不改变判定标准；
+ * - objects：`from_packages` 是「哪几个包引用这条验收项」的挂接登记，不是判定标准；其与
+ *   acceptance_refs 的一致性由 config/facts.yaml 的 c.acceptance_objects 契约对账；
+ * - phase / phase_name：acceptanceById 注入的阶段元数据，不属验收规格。
+ */
+export const CHECK_NON_SPEC_KEYS = ['coordination', 'knowledge', 'objects', 'phase', 'phase_name'] as const;
+
+/**
+ * checkSpecHash 的 package 侧输入白名单（设计 §14/B1 的同类收口，2026-11-11 复审）。
+ *
+ * 指纹语义是「这条检查的验收标准」。包级字段里只有 `id` 属于规格——它是哈希作用域，
+ * 保证不同包的同名检查不会共享指纹。其余包级键全部是执行/协调/预算/展示信息：
+ * 改名、改描述、调顺序、改依赖、改责任角色、换阻塞项或改阻塞项文案，都不改变
+ * 「这项检查怎么算通过」，因此不得让已 passed 记录变 stale（否则 gate 退回 pending）。
+ * 对象范围（targets）不在这里：它由 config/facts.yaml 的 c.package_targets 对账，
+ * 且 model-package-links.yaml 本身就在项目数据指纹里。
+ *
+ * 与 check 侧同一个反向围栏：新增包级键必须显式决定进 PACKAGE_SPEC_HASH_FIELDS 还是
+ * PACKAGE_NON_SPEC_KEYS，tests/server/schedule-loader-contract.test.ts 逐个包键点名。
+ */
+export const PACKAGE_SPEC_HASH_FIELDS = ['id'] as const;
+
+/**
+ * 显式决定「不进验收指纹」的包级键：当前 control.yaml 全部包键（除 id）＋已知的 waiver。
+ * - name / description / sequence / dependencies / owner_roles：命名、排序、依赖与角色分派，
+ *   不影响判定标准；
+ * - blockers：门禁前置条件（读的是 blocker 对象），不是验收标准；其文案变化同样不得 stale；
+ * - checks / acceptance_refs：检查成员登记；增删检查由 gateStatus 按当前检查集判定，
+ *   单条检查的标准变化由 check 侧白名单覆盖；
+ * - budget / budget_pool / duration_workdays / constraints / readiness / status：预算、
+ *   工期、排程约束与执行状态，不是验收标准；
+ * - gate_label / payment_gate：门禁展示与付款闸 ID，不改变「怎么算通过」；
+ * - include_site_data_ledger：项目数据指纹的范围开关（旧量房台账退场后的遗留键）；
+ * - targets：对象范围登记，由 c.package_targets 对账并经 model-package-links.yaml 进项目指纹；
+ * - waiver：豁免事实（执行期裁定），豁免不改变检查标准。
+ */
+export const PACKAGE_NON_SPEC_KEYS = [
+  'acceptance_refs',
+  'blockers',
+  'budget',
+  'budget_pool',
+  'checks',
+  'constraints',
+  'dependencies',
+  'description',
+  'duration_workdays',
+  'gate_label',
+  'include_site_data_ledger',
+  'name',
+  'owner_roles',
+  'payment_gate',
+  'readiness',
+  'sequence',
+  'status',
+  'targets',
+  'waiver',
+] as const;
 
 export interface ScheduleState {
   root: string;
@@ -155,6 +284,13 @@ export interface ScheduleState {
   packageGateIssues: string[];
   currentPackage: AnyRecord | undefined;
   nextCheckpoint: (pkg: AnyRecord) => AnyRecord | undefined;
+  /**
+   * load 期完成校验并算出的排程投影（设计 §14/B4）。
+   * null = 投影失败（ProjectionError 已按 `schedule projection: projection_failed — [code]`
+   * 写进 errors）；调用方见到 errors 非空即不得消费快照（route 在 build 之前 503）。
+   * buildScheduleSnapshot 只消费此字段，不得在装配期再调用 projectSchedule。
+   */
+  scheduleProjection: ScheduleProjection | null;
 }
 
 /**
@@ -267,7 +403,8 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
         // 而该文件的 `audit_log.records` **就是验收通过记录本身**。
         // 若把它圈进指纹，存一条通过记录就会改变这条记录保存下来的 project_data_sha256，
         // 重新加载后 staleAuditReason 立即判 stale——付款门槛永远无法稳定通过（自指）。
-        // 检查定义的变化由 check_spec_sha256 单独覆盖（checkSpecHash 哈希 {packageSpec, check}），
+        // 检查定义的变化由 check_spec_sha256 单独覆盖（checkSpecHash 只哈希显式的验收
+        // 标准白名单，见 CHECK_SPEC_HASH_FIELDS / PACKAGE_SPEC_HASH_FIELDS 与设计 §14/B1），
         // 不需要靠整份 control.yaml 进项目数据指纹。
         paths.push(...ENGINEERING_AUTHORITY_SOURCES.flatMap((source) => authorityFilePaths(modelPackageLinks.authorities[source] ?? source)));
         continue;
@@ -746,6 +883,11 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     if (!packageCheckKeys.has(checkKey)) errors.push(`${record.id}: check ${record.check_id} does not belong to ${record.package_id}`);
     if (!control.audit_log.record_schema.status_values.includes(record.status)) errors.push(`${record.id}: invalid audit status ${record.status}`);
     if (!record.checked_at || !record.checked_by) errors.push(`${record.id}: missing checked_at or checked_by`);
+    else if (normalizeCalendarDateText(record.checked_at) === undefined) {
+      // checked_at 是完工/执行事实的日期坐标：非空还不够，必须是真实存在的 YYYY-MM-DD。
+      // 否则下游 deriveActualWindowsFromAudits 会把这条记录静默跳过（B3「静默删证据」同类）。
+      errors.push(`${record.id}: invalid checked_at ${JSON.stringify(record.checked_at)}（须为真实存在的 YYYY-MM-DD）`);
+    }
     if (!Array.isArray(record.evidence)) errors.push(`${record.id}: evidence must be an array`);
     if (record.status === 'passed' && record.evidence.length === 0) errors.push(`${record.id}: passed result requires evidence`);
     if (record.supersedes && !auditRecordIds.has(record.supersedes)) errors.push(`${record.id}: supersedes must reference an earlier record`);
@@ -777,22 +919,27 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     ...(pkg.checks ?? []),
   ];
   const packageGateLabel = (pkg: AnyRecord) => pkg.gate_label ?? '付款门槛';
+  /**
+   * 验收标准指纹（设计 §14/B1）：check 侧与 package 侧都只哈希显式白名单字段。
+   * coordination / 预约状态、包名/描述/顺序/依赖/责任角色、阻塞项文案等非 spec 字段
+   * 不参与——它们的变更不得让既有通过记录变 stale（那会把 gate_status 退回 pending，
+   * 并影响下游就绪）。新增 check 或 package 字段默认不进指纹，须显式决定
+   * （见 CHECK_SPEC_HASH_FIELDS / PACKAGE_SPEC_HASH_FIELDS 两份头注）。
+   */
   const checkSpecHash = (pkg: AnyRecord, checkId: string) => {
     const check = packageChecks(pkg).find((item: AnyRecord) => item.id === checkId);
-    const blockerSpecs = (pkg.blockers ?? []).map((id: string) => {
-      const blocker = blockerById.get(id);
-      return blocker ? {id: blocker.id, item: blocker.item, clears_when: blocker.clears_when, trigger: blocker.trigger, owner_roles: blocker.owner_roles} : {id};
-    });
-    const packageSpec = {
-      id: pkg.id,
-      name: pkg.name,
-      description: pkg.description,
-      sequence: pkg.sequence,
-      dependencies: pkg.dependencies ?? [],
-      owner_roles: pkg.owner_roles ?? [],
-      blockerSpecs,
-    };
-    return check ? sha256(JSON.stringify({packageSpec, check})) : '';
+    if (!check) return '';
+    const packageSpec: AnyRecord = {};
+    for (const field of PACKAGE_SPEC_HASH_FIELDS) packageSpec[field] = pkg[field] ?? null;
+    const checkSpec: AnyRecord = {};
+    for (const field of CHECK_SPEC_HASH_FIELDS) {
+      // 引用型验收项把判定标准/必需证据放在 standard / evidence 上（快照视图同一条回退），
+      // 归一到 pass_condition / evidence_required 一个槽位：改 standard 同样换指纹。
+      const candidates = [field, ...(CHECK_SPEC_FIELD_ALIASES[field] ?? [])];
+      const value = candidates.map((key) => check[key]).find((item) => item !== undefined && item !== null);
+      checkSpec[field] = value ?? null;
+    }
+    return sha256(JSON.stringify({packageSpec, checkSpec}));
   };
   const staleAuditReason = (pkg: AnyRecord, checkId: string, record: AnyRecord): string[] => {
     const reasons: string[] = [];
@@ -928,6 +1075,87 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     return pending[0];
   }
 
+  // ─── 排程投影（设计 §14/B2/B3/B4）：load 期算完，错误与既有校验同走 state.errors ───
+  // route 的 503 判定在 buildScheduleSnapshot 之前（server/routes.ts:414-419）：投影若留到
+  // 装配期，失败只会追加到已经检查过 errors 的状态里，API 会 200 返回空排程；verify:schedule
+  // 只跑 loader，也只有在 load 期投影才能看见这些错误（「无效配置通过校验」的洞）。
+  /**
+   * 实际窗口派生 = 完工事实（设计 §14/B2/B3）。
+   * 只有 gateStatus(pkg) === 'passed' 的包才生成窗口——该判据是「全部检查当前 passed」；
+   * 部分通过、pending、failed 的包保持「未完工未知」，绝不拿首条验收日期冒充完工。
+   * status: waived 的包不生成（豁免没有 checked_at 完工事实）。
+   * 窗口是 gate-passed 全部检查的 checked_at 的 [min, max] 真实日期（YYYY-MM-DD），
+   * ord 映射与地平线归 shared/schedule-projection.ts，loader 不查 ordinals 反查。
+   * 任何一条 passed 记录的 checked_at 非法都不生成窗口：剩下合法日期拼出的窗口会丢掉
+   * 实际完工日期、让预测低估延期（B3「静默删证据」同类），因此整包判为未解析。
+   */
+  function deriveActualWindowsFromAudits(packages: AnyRecord[]): Record<string, ProjectionActualDates> {
+    const windows: Record<string, ProjectionActualDates> = {};
+    for (const pkg of packages) {
+      if (pkg.status === 'waived') continue;
+      if (gateStatus(pkg) !== 'passed') continue;
+      const dates: string[] = [];
+      const invalidRecords: string[] = [];
+      for (const check of packageChecks(pkg)) {
+        if (auditStatusFor(pkg.id, check.id) !== 'passed') continue;
+        const record = auditByCheckKey.get(`${pkg.id}:${check.id}`);
+        // 非法 checked_at 已在 audit_log 段按记录报错；这里再对完工事实显形，并且绝不
+        // 静默跳过——只要还有一条合法日期就生成窗口，实际完工日期可能正是被跳过的那条。
+        const checkedAt = normalizeCalendarDateText(record?.checked_at);
+        if (typeof checkedAt !== 'string') {
+          invalidRecords.push(record?.id ? `${record.id}(${check.id})` : check.id);
+          continue;
+        }
+        dates.push(checkedAt);
+      }
+      if (dates.length === 0) {
+        errors.push(`${pkg.id}: actual_window_unresolved — gate_status=passed 但没有任何可用的 checked_at（须为 YYYY-MM-DD），无法派生实际窗口；完工事实不得静默丢弃`);
+        continue;
+      }
+      if (invalidRecords.length > 0) {
+        errors.push(`${pkg.id}: actual_window_invalid_checked_at — gate_status=passed 但以下 passed 记录的 checked_at 不是真实存在的 YYYY-MM-DD：${invalidRecords.join('、')}；完工日期无法确定，不派生实际窗口（补录合法日期后重载）`);
+        continue;
+      }
+      dates.sort();
+      windows[pkg.id] = {start_date: dates[0], end_date: dates[dates.length - 1]};
+    }
+    return windows;
+  }
+
+  const projectedRaw = scheduleProjectionPackages(control);
+  const projectionPackages = projectedRaw.map(projectionPackageInput);
+  const declaredCalendar = readWorkCalendarSnapshot(control);
+  const projectionCalendar: ProjectionCalendar = {...declaredCalendar.calendar, anchor_date: declaredCalendar.anchor_date};
+  // 设计 §14.6/B5：锚点未定时，带日期的 resolved not_before 没有真实坐标可映射——模块按
+  // 「不造 1970 名义序数」跳过抬升，loader 必须显形，否则约束被静默丢掉。
+  if (projectionCalendar.anchor_date === null) {
+    for (const pkg of projectedRaw) {
+      if (!Array.isArray(pkg.constraints)) continue;
+      for (const constraint of pkg.constraints) {
+        if (constraint?.type !== 'not_before' || constraint?.status !== 'resolved') continue;
+        const date = normalizeCalendarDateText(constraint?.date);
+        if (typeof date !== 'string') continue;
+        const label = typeof constraint.id === 'string' && constraint.id ? constraint.id : `${pkg.id}.constraints[?]`;
+        errors.push(`${label}: constraint_resolved_without_anchor — 约束已 resolved 且带日期 ${date}，但 work_calendar.anchor_date 为 null：没有真实日期坐标系，投影跳过该约束的抬升`);
+      }
+    }
+  }
+  let scheduleProjection: ScheduleProjection | null = null;
+  try {
+    const actualWindows = deriveActualWindowsFromAudits(projectedRaw);
+    scheduleProjection = projectSchedule({
+      packages: projectionPackages,
+      calendar: projectionCalendar,
+      constraints: projectionConstraintsByPackage(projectedRaw),
+      ...(Object.keys(actualWindows).length ? {actual_windows: actualWindows} : {}),
+    });
+  } catch (error) {
+    // 错误码透传，文案与旧装配期口径一致（消费方按 `schedule projection: projection_failed — [code]` 识别）。
+    // 这里不再吞成空骨架：errors 非空 → route 在 build 之前 503。
+    const code = error instanceof ProjectionError ? error.code : 'projection_failed';
+    errors.push(`schedule projection: projection_failed — [${code}] ${error instanceof Error ? error.message : String(error)}`);
+  }
+
   return {
     root, errors, control, acceptance, roadmap, modelPackageLinks, decisionGates,
     openDecisionGates, openGatedCheckCount, openGates,
@@ -946,7 +1174,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     checkSpecHash, staleAuditReason, auditStatusFor, gateStatus, auditDisplay, glossarySection,
     blockerIsClosed, packageWaiverIsValid, packagePrerequisiteIssues,
     effectiveReadiness, effectivePackageStatus, packageGateIssues,
-    currentPackage, nextCheckpoint,
+    currentPackage, nextCheckpoint, scheduleProjection,
   };
 }
 
@@ -1395,40 +1623,6 @@ function readWorkCalendarSnapshot(control: AnyRecord): { anchor_date: string | n
   };
 }
 
-/**
- * 实际窗口派生（设计 §2.2「派生，不存储」）：对每包取当前审计状态为 passed 的检查
- * （auditStatusFor 已把指纹过期的旧记录降级成 'stale'，天然排除），用其审计记录的
- * checked_at 在投影 ordinals 里反查 ord，包实际窗口 = [最小 ord, 最大 ord]；一条都没有 → 无窗口。
- * checked_at 不是合法日期串的记录跳过、不计错（记录形态由既有 audit 校验管）；日期落在
- * 本遍 ordinals 地平线之外（如锚点未定时 1970 名义纪元下的远期真实日期）同样无法定位
- * ord，跳过不造数。
- */
-function deriveActualWindowsFromAudits(
-  state: ScheduleState,
-  packages: AnyRecord[],
-  ordinals: ScheduleOrdinalView[],
-): Record<string, ProjectionActualWindow> {
-  const ordByDate = new Map<string, number>();
-  for (const entry of ordinals) {
-    if (entry.date !== null && !ordByDate.has(entry.date)) ordByDate.set(entry.date, entry.ord);
-  }
-  const windows: Record<string, ProjectionActualWindow> = {};
-  for (const pkg of packages) {
-    const ords: number[] = [];
-    for (const check of state.packageChecks(pkg)) {
-      if (state.auditStatusFor(pkg.id, check.id) !== 'passed') continue;
-      const record = state.auditByCheckKey.get(`${pkg.id}:${check.id}`);
-      const checkedAt = record?.checked_at;
-      if (typeof checkedAt !== 'string' || !isValidCalendarDateText(checkedAt)) continue;
-      const ord = ordByDate.get(checkedAt);
-      if (ord === undefined) continue;
-      ords.push(ord);
-    }
-    if (ords.length) windows[pkg.id] = { start_ord: Math.min(...ords), end_ord: Math.max(...ords) };
-  }
-  return windows;
-}
-
 /** SCH coordination 声明 → 快照（稀疏：只收声明了 coordination 块的检查；key = SCH id）。 */
 function buildCoordinationSnapshot(state: ScheduleState): Record<string, ScheduleCoordinationView> {
   const snapshot: Record<string, ScheduleCoordinationView> = {};
@@ -1454,47 +1648,32 @@ function buildCoordinationSnapshot(state: ScheduleState): Record<string, Schedul
 }
 
 /**
- * 排程投影装配（buildScheduleSnapshot 的 schedule 键）。
- * 有错即不投影：控制源带任何校验错误时返回空骨架（ordinals: [] / packages: {}），
- * route 对 errors 一律 503——空骨架只是让类型完整，不是可消费的降级排程。
+ * 排程投影装配（buildScheduleSnapshot 的 schedule 键）——只消费 load 期已存的投影
+ * （设计 §14/B4）。这里不再调用 projectSchedule、不再追加 errors、也不再有「装配期 catch
+ * 后返回空骨架」的分支：投影失败时 state.scheduleProjection 为 null 且 state.errors 已非空，
+ * route 在 build 之前就 503；空骨架只是让类型完整，不是可消费的降级排程。
  */
 function buildScheduleProjectionView(state: ScheduleState): ScheduleProjectionView {
   const declared = readWorkCalendarSnapshot(state.control);
-  const skipped: ScheduleProjectionView = {
-    anchor_date: declared.anchor_date,
-    calendar: declared.calendar,
-    ordinals: [],
-    packages: {},
-  };
-  if (state.errors.length) return skipped;
+  const projection = state.scheduleProjection;
+  if (!projection) {
+    // 只有 load 期投影失败才会走到这里：loadScheduleState 已把原因写进 errors，route 在
+    // 调用 build 之前就按 errors 503（server/routes.ts 的 /schedule/state）。下面的空表
+    // 不是可消费排程，只是让 ScheduleProjectionView 类型完整；「直接构造 ScheduleState 却
+    // 漏填投影」属于契约破坏，这里立即报错而不是静默降级成空排程（B4 的主题）。
+    if (state.errors.length === 0) {
+      throw new Error('scheduleProjection 缺失且 errors 为空：ScheduleState 契约被破坏（投影必须在 loadScheduleState 内完成）');
+    }
+    return {
+      anchor_date: declared.anchor_date,
+      calendar: declared.calendar,
+      ordinals: [],
+      packages: {},
+    };
+  }
 
   const projectedRaw = scheduleProjectionPackages(state.control);
-  const projectionPackages = projectedRaw.map(projectionPackageInput);
-  // loader 在 load 阶段已跑过一轮（环必须赶在 route 的 503 判定前进 errors）；
-  // 这里对绕过 loadScheduleState 直接构造 state 的调用方再兜一道。
-  const dagIssues = validateDag(projectionPackages);
-  if (dagIssues.length) {
-    for (const dagIssue of dagIssues) state.errors.push(`schedule projection: ${dagIssue}`);
-    return skipped;
-  }
-
   const constraints = projectionConstraintsByPackage(projectedRaw);
-  const calendar: ProjectionCalendar = { ...declared.calendar, anchor_date: declared.anchor_date };
-  let projection: ScheduleProjection;
-  try {
-    // 两遍调用：第一遍不带实际窗口，只为拿 ord↔date 全表供 checked_at 反查 ord
-    // （日历展开的唯一实现住 schedule-projection，loader 不写第二套日历算法；ord↔date
-    // 映射与窗口无关，两遍一致）；第二遍把派生出的实际窗口钉进去重算预测。
-    const firstPass = projectSchedule({ packages: projectionPackages, calendar, constraints });
-    const actualWindows = deriveActualWindowsFromAudits(state, projectedRaw, firstPass.ordinals);
-    projection = Object.keys(actualWindows).length
-      ? projectSchedule({ packages: projectionPackages, calendar, constraints, actual_windows: actualWindows })
-      : firstPass;
-  } catch (error) {
-    const code = error instanceof ProjectionError ? error.code : 'projection_failed';
-    state.errors.push(`schedule projection: projection_failed — [${code}] ${error instanceof Error ? error.message : String(error)}`);
-    return skipped;
-  }
 
   const schedulePackages: Record<string, SchedulePackageProjectionView> = {};
   for (const pkg of projectedRaw) {
