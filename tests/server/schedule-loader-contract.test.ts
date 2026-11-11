@@ -6,14 +6,19 @@
 //      passed 记录变 stale；改 pass_condition 换指纹；遍历 control.yaml 全部 check 的键与
 //      packageChecks 派生视图（含 acceptance_refs 摊平）的全部键、以及全部包级键，白名单外
 //      且未显式排除的键必须失败。
-//   B2 检查记录窗口（F2 正名，§2.2/§15.9）：gateStatus(pkg) !== 'passed'（含 1/N 部分通过）
-//      不生成窗口；全部 passed 才生成 = 各 checked_at 的 [min, max]；status: waived 不生成。
-//      交付键是 check_window（不是 actual）——窗口是首末 passed 检查日期的证据窗口，
-//      不是施工实际起止；同日多条 passed 时 first_ord === last_ord，即使声明工期多日。
+//   B2 检查记录窗口（F2 正名，§2.2/§15.9；§17 形状）：gateStatus(pkg) !== 'passed'
+//      （含 1/N 部分通过）不生成窗口；全部 passed 才生成 = 各 checked_at 的 [min, max]；
+//      status: waived 不生成。交付键是 check_window（不是 actual）——窗口是首末 passed
+//      检查日期的证据窗口，不是施工实际起止；同日多条 passed 时 first_ord === last_ord，
+//      即使声明工期多日。快照同时带 first_date/last_date；序数在锚点未定时为 null，
+//      不是 0（0 是锚点前的合法序数）。
 //   B3 检查记录窗口以真实日期给模块（入参 check_windows）：非法 checked_at 按
 //      记录报错；gate passed 的包只要有一条 passed 记录日期非法就不生成窗口
 //      （check_window_invalid_checked_at，不许拿剩余日期拼偏短窗口）；一条都映射不到时报
-//      check_window_unresolved（不许静默丢门禁完成证据）。
+//      check_window_unresolved（不许静默丢门禁完成证据）。这两条在送进模块之前拦住，
+//      所以 loadScheduleState 不把它们包成 projection_failed — [invalid_check_window]
+//      （那会让整份投影变 null）。invalid_check_window 这个码本身改钉非法日期串：
+//      直接把坏日期交给模块时抛这个码，锚点有没有都一样（§17，不再钉「无锚点」）。
 //   B4 投影前移到 load 期：ProjectionError 的 code 进 state.errors（route 在 build 之前 503），
 //      buildScheduleSnapshot 只消费已存投影、不得再追加错误。
 //   B5 loader 侧显形 constraint_resolved_without_anchor（锚点未定时 resolved 约束不静默丢）。
@@ -38,6 +43,7 @@ import {
   type ScheduleState,
 } from '../../shared/schedule-state.js';
 import { loadModelPackageLinks } from '../../server/model-package-links.js';
+import { projectSchedule, ProjectionError } from '../../shared/schedule-projection.js';
 
 type AnyRecord = Record<string, any>;
 
@@ -387,7 +393,12 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     assert.deepEqual(full.errors, []);
     assert.equal(full.gateStatus(fullPkg), 'passed');
     const fullSnapshot = buildScheduleSnapshot(full);
-    assert.deepEqual(fullSnapshot.schedule?.packages['PKG-005']?.check_window, {first_ord: 3, last_ord: 5});
+    assert.deepEqual(fullSnapshot.schedule?.packages['PKG-005']?.check_window, {
+      first_date: '2026-01-07',
+      last_date: '2026-01-09',
+      first_ord: 3,
+      last_ord: 5,
+    });
     // §16 A：检查日不钉死 forecast。无 scenario 时 forecast 与 baseline 同源
     // （PKG-000 工期 min 15 / max 25 → PKG-005 从第 16 个工作日起，声明工期 min 3 / max 7）。
     const pkg005 = fullSnapshot.schedule?.packages['PKG-005'];
@@ -412,7 +423,12 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     assert.deepEqual(state.errors, []);
     const view = buildScheduleSnapshot(state).schedule?.packages['PKG-005'];
     assert.ok(view, 'gate passed 的包必须有投影视图');
-    assert.deepEqual(view.check_window, {first_ord: 3, last_ord: 3}, '首末 passed 检查同日的证据窗口就是一天');
+    assert.deepEqual(view.check_window, {
+      first_date: '2026-01-07',
+      last_date: '2026-01-07',
+      first_ord: 3,
+      last_ord: 3,
+    }, '首末 passed 检查同日的证据窗口就是一天');
     assert.equal(view.duration_workdays.min, 3, 'PKG-005 声明工期是多工作日——窗口单日证明它来自检查登记日，不是施工起止');
     assert.equal('actual' in (view as AnyRecord), false, 'F2 正名：快照不得再以 actual 交付该窗口');
   });
@@ -484,21 +500,92 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     assert.ok(state.scheduleProjection, '单包日期不可用不应让整份投影失败');
   });
 
-  it('B4/B3：锚点未定 + 检查记录窗口 → invalid_check_window 原样透传（不吞成未映射的 projection_failed）', (t) => {
+  it('§17：锚点未定 + 真实检查记录 → 不抛错，check_window 保留日期、序数为 null', (t) => {
     t.after(restoreControl);
     const baseline = loadRealState();
-    // 不填锚点：真实日期没有日期坐标系。模块按 §14.4 / §16 抛 invalid_check_window，
-    // loader 必须把该 code 原样带进 errors，不得降级成一个无 code 的泛化 projection_failed。
+    // anchor_date 保持 null。两条 passed 的 checked_at 是真实日期。
+    // 旧口径「无锚点即抛 invalid_check_window」会让第一条验收记录把 /api/schedule/state 打成 503。
     writeControl(withAuditRecords(
       pristineControlText,
       pkg005AuditRecords(baseline, {'SCH-005-01': '2026-01-07', 'SCH-005-02': '2026-01-09'}),
     ));
     const state = loadSandbox();
-    assert.ok(
-      state.errors.some((error) => error.includes('schedule projection: projection_failed — [invalid_check_window]')),
-      `锚点未定时检查记录窗口的 code 必须透传，实际 errors：${state.errors.join(' | ')}`,
+    assert.deepEqual(
+      state.errors,
+      [],
+      `第一条真实验收记录在锚点未定时不得 503，实际 errors：${state.errors.join(' | ')}`,
     );
-    assert.equal(state.scheduleProjection, null, '投影失败时不得存空投影冒充结果');
+    assert.ok(state.scheduleProjection, '无锚点不再是投影失败');
+    const pkg = state.control.work_packages.find((item: AnyRecord) => item.id === 'PKG-005');
+    assert.equal(state.gateStatus(pkg), 'passed');
+    const snapshot = buildScheduleSnapshot(state);
+    const view = snapshot.schedule?.packages['PKG-005'];
+    assert.deepEqual(view?.check_window, {
+      first_date: '2026-01-07',
+      last_date: '2026-01-09',
+      first_ord: null,
+      last_ord: null,
+    });
+    assert.notEqual(view?.check_window?.first_ord, 0, 'null 是待定，0 是合法序数，不许兜底');
+    assert.notEqual(view?.check_window?.last_ord, 0, 'null 是待定，0 是合法序数，不许兜底');
+    assert.deepEqual(view?.forecast, view?.baseline, '无锚点的检查窗口不得改 forecast');
+    assert.deepEqual(view?.forecast, {start_ord: 16, end_ord_min: 18, end_ord_max: 32});
+    assert.equal(snapshot.schedule?.anchor_date, null);
+    const ord3 = snapshot.schedule?.ordinals.find((entry) => entry.ord === 3);
+    assert.ok(ord3, '计划序数仍在（检查窗口不删计划）');
+    assert.equal(ord3.date, null, '无锚点时 ordinals 不因检查日造年月日');
+    assert.equal(
+      snapshot.schedule?.ordinals.some((entry) => entry.date === '2026-01-07' || entry.date === '2026-01-09'),
+      false,
+      '检查日不得把 ordinals 地平线拉到 2026',
+    );
+  });
+
+  it('§17：序数 0 是锚点前的合法工作日，与「待定的 null」不是一回事', (t) => {
+    t.after(restoreControl);
+    const baseline = loadRealState();
+    // 锚点 2026-01-05（周一）= ord 1。2026-01-03 是周六，workdays 含周六 → ord 0。
+    // 若映射写成 `start_ord || null` / `?? null`，这个 0 会被吞成 null。
+    writeControl(withAuditRecords(
+      withAnchor(pristineControlText),
+      pkg005AuditRecords(baseline, {'SCH-005-01': '2026-01-03', 'SCH-005-02': '2026-01-03'}),
+    ));
+    const state = loadSandbox();
+    assert.deepEqual(state.errors, [], `序数 0 不得被当成失败，实际 errors：${state.errors.join(' | ')}`);
+    assert.deepEqual(buildScheduleSnapshot(state).schedule?.packages['PKG-005']?.check_window, {
+      first_date: '2026-01-03',
+      last_date: '2026-01-03',
+      first_ord: 0,
+      last_ord: 0,
+    });
+  });
+
+  it('invalid_check_window 改钉非法日期串（锚点有没有都抛，不再钉无锚点）', () => {
+    // loader 不把审计里的非法 checked_at 送进 check_windows：送进去会让整份投影变 null，
+    // 单包坏日期打掉全部包的排程（上面两条 B3）。所以这个码不出现在 loadScheduleState 的
+    // errors 里——那里的诊断是 check_window_invalid_checked_at / check_window_unresolved。
+    // 码的触发条件从「无锚点」改成「日期串非法」。loader 的 catch 仍会把模块抛出的同一个
+    // code 原样写成 `projection_failed — [code]`（B4 的 work_calendar_empty 钉的是这条透传）。
+    const packages = [{
+      id: 'PKG-005',
+      sequence: 20,
+      dependencies: [] as string[],
+      duration_workdays: {min: 3, max: 7},
+    }];
+    const calendarBase = {workdays: [1, 2, 3, 4, 5, 6], rest_dates: [] as string[], extra_workdates: [] as string[]};
+    for (const anchor of [null, '2026-01-05'] as const) {
+      for (const start of ['not-a-date', '2026-02-30', '2026-13-40']) {
+        assert.throws(
+          () => projectSchedule({
+            packages,
+            calendar: {...calendarBase, anchor_date: anchor},
+            check_windows: {'PKG-005': {start_date: start, end_date: '2026-01-09'}},
+          }),
+          (error: unknown) => error instanceof ProjectionError && error.code === 'invalid_check_window',
+          `非法日期 ${start}（anchor=${String(anchor)}）必须是 invalid_check_window`,
+        );
+      }
+    }
   });
 
   it('B4：workdays 为空 → 投影错误在 load 期进入 errors，build 不再追加错误、不再投影', (t) => {

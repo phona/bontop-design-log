@@ -34,18 +34,24 @@
  *   同走 state.errors（route 在 build 之前 503），build 只消费已存投影。
  * - §16（业主裁定 A）：检查记录窗口只作证据，不参与 forecast。无 scenario 时 forecast
  *   与 baseline 相同；差异只来自 scenario，以及未来才会有的显式实际开工事实。
+ * - §17（业主裁定 A）：锚点未定不再把检查窗口判成 invalid_check_window。快照把模块返回的
+ *   日期与可空序数一并映射（first_date/last_date + first_ord/last_ord）。序数 null 原样
+ *   交付，不兜成 0，也不换成名义纪元序数。
  *
- * 排程投影相关 loader 诊断错误码（设计 §2.2/§14/B5/§15.9/§16，error 级）：
+ * 排程投影相关 loader 诊断错误码（设计 §2.2/§14/B5/§15.9/§16/§17，error 级）：
  * - check_window_unresolved：gate_status=passed 但该包没有任何可用的 checked_at（YYYY-MM-DD）。
  * - check_window_invalid_checked_at：gate_status=passed 且至少一条 passed 记录的 checked_at
  *   不是真实存在的 YYYY-MM-DD；即使另有合法日期也不派生窗口（最晚检查证据日期未知，
- *   不得丢掉）。
+ *   不得丢掉）。这两条在送进模块之前拦住：单包坏日期不得让 projectSchedule 抛错，
+ *   否则整份投影变 null（B3）。因此审计记录里的非法日期不会变成
+ *   `projection_failed — [invalid_check_window]`。
  * - constraint_resolved_without_anchor：锚点未定时存在带日期的 resolved not_before 约束，
- *   模块不按 1970 名义纪元造序数（跳过抬升），loader 显形该事实。
+ *   模块不按 1970 名义纪元造序数（跳过抬升），loader 显形该事实。约束是计划输入，
+ *   没有坐标就还不生效；检查窗口不是约束，不要再并成一句「与 B5 同一原则」（§17）。
  * - schedule projection: projection_failed — [code]：ProjectionError 的 code 原样透传，不是
- *   未映射的兜底。特别地，锚点未定（anchor_date: null）时只要有 gate passed 包的检查
- *   记录窗口，模块抛 invalid_check_window（语义即「检查记录窗口没有真实日期坐标」）
- *   → 这里的错误串带 `[invalid_check_window]`，由 tests/server/schedule-loader-contract.test.ts 钉住。
+ *   未映射的兜底。invalid_check_window 只留给模块真的收到的坏窗口（日期串非法或起止颠倒，
+ *   §17）。锚点未定不再抛这个码：检查窗口的日期原样进快照，序数为 null（待定）。
+ *   null 不是 0，也不是名义纪元序数——0 是锚点前一个工作日的合法序数。
  */
 
 import fs from 'node:fs';
@@ -1096,11 +1102,13 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
    * 它**不是施工实际起止**——检查通过时间不等于施工开始/结束时间（拆墙检查在拆完后才做，
    * 全部检查同日登记时多日施工会被压成一天），实际开工时间从未记录，保持未知。
    *
-   * 交给模块的入参是 check_windows: {start_date, end_date}。模块映射成 ord 后只作为证据
-   * 字段返回，并扩展 ordinals 地平线；不覆盖 forecast，不顺延后继（设计 §16）。无 scenario
-   * 时 forecast 与 baseline 相同。ord 映射与地平线归 shared/schedule-projection.ts，loader
-   * 不查 ordinals 反查。任何一条 passed 记录的 checked_at 非法都不生成窗口：剩下合法日期
-   * 拼出的窗口会丢掉最晚的检查证据日期（B3「静默删证据」同类），因此整包判为未解析。
+   * 交给模块的入参仍是 check_windows: {start_date, end_date}（日期，不是序数）。模块返回
+   * 日期 + 可空序数：锚点就绪时映射成 ord 并扩展 ordinals 地平线；锚点为 null 时日期原样
+   * 返回、序数为 null，不扩展地平线、不抛错（设计 §17）。两种情况都不覆盖 forecast、
+   * 不顺延后继（设计 §16）。无 scenario 时 forecast 与 baseline 相同。ord 映射归
+   * shared/schedule-projection.ts，loader 不查 ordinals 反查，也不把 null 序数改写成 0。
+   * 任何一条 passed 记录的 checked_at 非法都不生成窗口：剩下合法日期拼出的窗口会丢掉
+   * 最晚的检查证据日期（B3「静默删证据」同类），因此整包判为未解析，坏日期不送进模块。
    */
   function deriveCheckWindowsFromAudits(packages: AnyRecord[]): Record<string, {first_date: string; last_date: string}> {
     const windows: Record<string, {first_date: string; last_date: string}> = {};
@@ -1369,13 +1377,21 @@ export interface SchedulePackageProjectionView {
   baseline: ScheduleWindowView;
   forecast: ScheduleWindowView;
   /**
-   * 检查记录窗口（F2 正名，设计 §2.2/§15.9；§16 起不进 forecast）：首末 passed 检查日期
-   * 经工作日历映射的 [first_ord, last_ord]。语义是「门禁 passed 的完成证据登记在哪些检查日」，
-   * **不是施工实际起止**——实际开工时间从未记录，保持未知。也不覆盖 forecast、不顺延后继；
-   * 无 scenario 时 forecast 与 baseline 相同。null = 未形成整包检查证据（部分通过 /
-   * waived / pending），绝不拿单条检查通过冒充整包完工。
+   * 检查记录窗口（F2 正名，设计 §2.2/§15.9；§16 起不进 forecast；§17 起带日期与可空序数）。
+   * 语义是「门禁 passed 的完成证据登记在哪些检查日」，**不是施工实际起止**——实际开工时间
+   * 从未记录，保持未知。也不覆盖 forecast、不顺延后继；无 scenario 时 forecast 与 baseline 相同。
+   * first_date/last_date 是 checked_at 的首末日，锚点未定时也保留。
+   * first_ord/last_ord 只在锚点就绪时才是 number（可为 0 或负值）；锚点为 null 时为 null
+   * （待定）。null 与 0 不是一回事，禁止用 0 或名义纪元序数填这个空。
+   * 窗口本身为 null = 未形成整包检查证据（部分通过 / waived / pending），
+   * 绝不拿单条检查通过冒充整包完工。
    */
-  check_window: { first_ord: number; last_ord: number } | null;
+  check_window: {
+    first_date: string;
+    last_date: string;
+    first_ord: number | null;
+    last_ord: number | null;
+  } | null;
   /** 未满足依赖 + 未关闭阻塞项的解释性汇总（只解释，不参与排程计算）。 */
   blocking_reasons: string[];
   constraints: ScheduleConstraintView[];
@@ -1708,11 +1724,19 @@ function buildScheduleProjectionView(state: ScheduleState): ScheduleProjectionVi
       duration_workdays: { min: pkg.duration_workdays?.min, max: pkg.duration_workdays?.max },
       baseline: projected.baseline,
       forecast: projected.forecast,
-      // 模块 check_window 是 {start_ord, end_ord}；快照沿用 {first_ord, last_ord}。
+      // 模块 check_window 是 {start_date, end_date, start_ord, end_ord}；
+      // 快照沿用 {first_date, last_date, first_ord, last_ord}，四者都从模块返回值映射。
+      // 序数原样透传：null 是「锚点未定、待定」（§17），0 是锚点前工作日的合法序数。
+      // 不许 `?? 0`、不许 `||`、不许改写成 1970 名义纪元序数。
       // 这是检查记录的证据窗口，不是施工实际起止，也不参与 forecast（设计 §16）。
       check_window: projected.check_window === null
         ? null
-        : { first_ord: projected.check_window.start_ord, last_ord: projected.check_window.end_ord },
+        : {
+            first_date: projected.check_window.start_date,
+            last_date: projected.check_window.end_date,
+            first_ord: projected.check_window.start_ord,
+            last_ord: projected.check_window.end_ord,
+          },
       // 阻塞解释单一来源：packagePrerequisiteIssues 已汇总「依赖未过」与
       // 「阻塞项 X 尚未有证据关闭」（未关闭 blocker 的汇总就在其中），不另写第二套阻塞判定。
       blocking_reasons: state.packagePrerequisiteIssues(pkg),

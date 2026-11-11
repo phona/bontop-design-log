@@ -11,6 +11,8 @@
 // §16（业主裁定 A）：检查记录窗口不进 forecast；稀疏日历声明日必须找得到；
 // 协调冲突与潜在重叠分开。无 scenario 时 forecast 与 baseline 逐字节相同，
 // 这一条对真实 control.yaml 成立（只读该文件，不跑 loader）。
+// §17（第 4 轮，业主裁定 A）：无锚点时检查窗口保留日期、序数 null，不抛错、
+// 不改 baseline/forecast/ordinals；锚点就绪时序数照常。cancelled 在分组前退出协调检测。
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -42,6 +44,16 @@ function calendar(overrides: Partial<ProjectionCalendar> = {}): ProjectionCalend
 
 function ordinates(projection: ReturnType<typeof projectSchedule>): Array<[number, string | null]> {
   return projection.ordinals.map((entry) => [entry.ord, entry.date]);
+}
+
+/** §17 起 check_window 同时带原样日期与可空序数。锚点就绪时序数是 number，无锚点时是 null。 */
+function checkEvidence(
+  start_date: string,
+  end_date: string,
+  start_ord: number | null,
+  end_ord: number | null,
+): { start_date: string; end_date: string; start_ord: number | null; end_ord: number | null } {
+  return { start_date, end_date, start_ord, end_ord };
 }
 
 describe('validateDag / projectSchedule：DAG 显形校验', () => {
@@ -220,7 +232,7 @@ describe('§16：检查记录窗口不进 forecast', () => {
       calendar: calendar(),
       check_windows: { 'PKG-005': { start_date: '2026-01-05', end_date: '2026-01-05' } },
     });
-    assert.deepEqual(projection.packages['PKG-005'].check_window, { start_ord: 1, end_ord: 1 });
+    assert.deepEqual(projection.packages['PKG-005'].check_window, checkEvidence('2026-01-05', '2026-01-05', 1, 1));
     assert.deepEqual(
       projection.packages['PKG-005'].forecast,
       { start_ord: 1, end_ord_min: 3, end_ord_max: 7 },
@@ -243,7 +255,7 @@ describe('§16：检查记录窗口不进 forecast', () => {
       // 2026-01-05(一)…01-09(五) → ord 1…5。计划 A 只到 ord 2。
       check_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-09' } },
     });
-    assert.deepEqual(projection.packages.A.check_window, { start_ord: 1, end_ord: 5 });
+    assert.deepEqual(projection.packages.A.check_window, checkEvidence('2026-01-05', '2026-01-09', 1, 5));
     assert.deepEqual(projection.packages.A.forecast, { start_ord: 1, end_ord_min: 2, end_ord_max: 2 });
     assert.deepEqual(projection.packages.B.forecast, { start_ord: 3, end_ord_min: 4, end_ord_max: 4 });
     assert.deepEqual(projection.packages.C.forecast, { start_ord: 5, end_ord_min: 6, end_ord_max: 6 });
@@ -292,7 +304,7 @@ describe('scenario.delay：what-if 只动拓扑下游', () => {
       check_windows: { ROOT: { start_date: '2026-01-05', end_date: '2026-01-09' } },
       scenario: { delay: [{ pkg: 'BRANCH', workdays: 2 }] },
     });
-    assert.deepEqual(withWindow.packages.ROOT.check_window, { start_ord: 1, end_ord: 5 });
+    assert.deepEqual(withWindow.packages.ROOT.check_window, checkEvidence('2026-01-05', '2026-01-09', 1, 5));
     assert.deepEqual(withWindow.packages.ROOT.forecast, withWindow.packages.ROOT.baseline);
     assert.deepEqual(withWindow.packages.MAIN.forecast, withWindow.packages.MAIN.baseline);
     assert.equal(withWindow.packages.BRANCH.forecast.end_ord_max, 7, 'BRANCH 工期 3+2');
@@ -307,7 +319,7 @@ describe('scenario.delay：what-if 只动拓扑下游', () => {
       check_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-08' } },
       scenario: { delay: [{ pkg: 'A', workdays: 3 }] },
     });
-    assert.deepEqual(withDelay.packages.A.check_window, { start_ord: 1, end_ord: 4 }, '证据窗口不被 delay 改写');
+    assert.deepEqual(withDelay.packages.A.check_window, checkEvidence('2026-01-05', '2026-01-08', 1, 4), '证据窗口不被 delay 改写');
     assert.deepEqual(withDelay.packages.A.forecast, { start_ord: 1, end_ord_min: 5, end_ord_max: 5 }, '工期 2+3');
     assert.equal(withDelay.packages.B.forecast.start_ord, 6, '后继从计划末端加 delay 起算，不从检查窗口');
     assert.deepEqual(withDelay.scenario?.affected, [{ pkg: 'B', delta: 3 }]);
@@ -342,7 +354,7 @@ describe('§15/M1：affected 比较完整窗口（§16 起对照基准就是 bas
       JSON.stringify(projection.packages.A.baseline),
     );
     assert.equal(projection.packages.B.forecast.start_ord, 3, '检查窗口不得把后继从第 3 日推到第 6 日');
-    assert.deepEqual(projection.packages.A.check_window, { start_ord: 1, end_ord: 5 });
+    assert.deepEqual(projection.packages.A.check_window, checkEvidence('2026-01-05', '2026-01-09', 1, 5));
     assert.deepEqual(projection.scenario?.affected, [], '本次演算没有造成任何位移');
   });
 });
@@ -404,7 +416,7 @@ describe('check_windows 以真实日期给入（§14/B3）', () => {
       // A 计划末端只到 ord 2；检查日期扩到 01-12（跳过周末）= ord 6
       check_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-12' } },
     });
-    assert.deepEqual(projection.packages.A.check_window, { start_ord: 1, end_ord: 6 });
+    assert.deepEqual(projection.packages.A.check_window, checkEvidence('2026-01-05', '2026-01-12', 1, 6));
     assert.deepEqual(projection.packages.A.forecast, projection.packages.A.baseline);
     assert.deepEqual(projection.packages.A.baseline, { start_ord: 1, end_ord_min: 2, end_ord_max: 2 });
     assert.equal(projection.packages.B.forecast.start_ord, 3, '后继不被检查日期顺延');
@@ -420,7 +432,7 @@ describe('check_windows 以真实日期给入（§14/B3）', () => {
       // ord 1 = 2026-01-05(一)：01-02(五)=0、01-01(四)=-1、2025-12-31(三)=-2
       check_windows: { A: { start_date: '2025-12-31', end_date: '2026-01-02' } },
     });
-    assert.deepEqual(projection.packages.A.check_window, { start_ord: -2, end_ord: 0 });
+    assert.deepEqual(projection.packages.A.check_window, checkEvidence('2025-12-31', '2026-01-02', -2, 0));
     assert.deepEqual(projection.packages.A.forecast, { start_ord: 1, end_ord_min: 2, end_ord_max: 2 });
     assert.equal(projection.packages.B.forecast.start_ord, 3, '后继按计划从第 3 日开始，不因检查日期提前');
     assert.deepEqual(projection.ordinals.slice(0, 4), [
@@ -439,7 +451,7 @@ describe('check_windows 以真实日期给入（§14/B3）', () => {
       check_windows: { A: { start_date: '2026-01-06', end_date: '2026-01-10' } },
     });
     // 01-06(二) 调休 → 01-07(三)=ord 2；01-10(六) 周末 → 01-12(一)=ord 5
-    assert.deepEqual(projection.packages.A.check_window, { start_ord: 2, end_ord: 5 });
+    assert.deepEqual(projection.packages.A.check_window, checkEvidence('2026-01-06', '2026-01-10', 2, 5));
     assert.equal(projection.ordinals.find((entry) => entry.ord === 2)?.date, '2026-01-07', '休息日的检查日期映射到之后第一个工作日');
     assert.deepEqual(projection.ordinals.find((entry) => entry.ord === 5), { ord: 5, date: '2026-01-12' });
     assert.equal(projection.packages.B.forecast.start_ord, 3, 'forecast 不被检查日期顺延');
@@ -457,14 +469,79 @@ describe('check_windows 以真实日期给入（§14/B3）', () => {
     );
   });
 
-  it('anchor_date 为 null：不把真实日期映射到 1970 名义纪元', () => {
+});
+
+describe('§17：无锚点检查窗口保留日期、序数待定', () => {
+  const packages = [pkg('A', 10, 3, 7), pkg('B', 20, 2, 4, ['A'])];
+
+  it('锚点 null + 检查窗：不抛；日期保留、序数 null；baseline/forecast/ordinals 与无检查窗逐字节相同', () => {
+    const cal = calendar({ anchor_date: null });
+    const bare = projectSchedule({ packages, calendar: cal });
+    const withWindow = projectSchedule({
+      packages,
+      calendar: cal,
+      check_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-09' } },
+    });
+    assert.deepEqual(
+      withWindow.packages.A.check_window,
+      checkEvidence('2026-01-05', '2026-01-09', null, null),
+    );
+    assert.equal(withWindow.packages.B.check_window, null, '没有窗口的包仍是 null，不是空序数');
+    for (const id of ['A', 'B']) {
+      assert.equal(
+        JSON.stringify(withWindow.packages[id].baseline),
+        JSON.stringify(bare.packages[id].baseline),
+        `${id} baseline`,
+      );
+      assert.equal(
+        JSON.stringify(withWindow.packages[id].forecast),
+        JSON.stringify(bare.packages[id].forecast),
+        `${id} forecast`,
+      );
+    }
+    assert.equal(JSON.stringify(withWindow.ordinals), JSON.stringify(bare.ordinals), '地平线不得因检查日期扩大');
+    assert.ok(
+      withWindow.ordinals.every((entry) => entry.date?.startsWith('1970-')),
+      '检查日期不得被映射进 1970 名义纪元',
+    );
+    assert.equal(withWindow.scenario, null);
+    assert.equal(bare.scenario, null);
+  });
+
+  it('锚点就绪 + 检查窗：序数照常（B3 不回归）', () => {
+    const projection = projectSchedule({
+      packages: [pkg('A', 10, 2, 2)],
+      calendar: calendar(),
+      check_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-06' } },
+    });
+    assert.deepEqual(projection.packages.A.check_window, checkEvidence('2026-01-05', '2026-01-06', 1, 2));
+    assert.deepEqual(projection.packages.A.forecast, projection.packages.A.baseline);
+  });
+
+  it('非法日期串仍抛 invalid_check_window（与锚点是否就绪无关）', () => {
+    for (const anchor_date of ['2026-01-05', null] as const) {
+      for (const start_date of ['not-a-date', '2026-02-30']) {
+        assert.throws(
+          () => projectSchedule({
+            packages: [pkg('A', 10, 2, 2)],
+            calendar: calendar({ anchor_date }),
+            check_windows: { A: { start_date, end_date: '2026-03-01' } },
+          }),
+          (error: unknown) => error instanceof ProjectionError && error.code === 'invalid_check_window',
+          `anchor=${String(anchor_date)} start=${start_date}`,
+        );
+      }
+    }
+  });
+
+  it('未知包仍抛 unknown_check_window_package', () => {
     assert.throws(
       () => projectSchedule({
         packages: [pkg('A', 10, 2, 2)],
-        calendar: calendar({ anchor_date: null }),
-        check_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-06' } },
+        calendar: calendar(),
+        check_windows: { 'PKG-NOPE': { start_date: '2026-01-05', end_date: '2026-01-06' } },
       }),
-      (error: unknown) => error instanceof ProjectionError && error.code === 'invalid_check_window',
+      (error: unknown) => error instanceof ProjectionError && error.code === 'unknown_check_window_package',
     );
   });
 });
@@ -486,8 +563,8 @@ describe('§15/F1：日期→ord 查询顺序无关', () => {
       check_windows: { B: actualB, A: actualA },
     });
     assert.deepEqual(forward, reverse, '检查记录窗口的输入顺序不得改变投影');
-    assert.deepEqual(forward.packages.A.check_window, { start_ord: -1, end_ord: -1 });
-    assert.deepEqual(forward.packages.B.check_window, { start_ord: -2, end_ord: -2 });
+    assert.deepEqual(forward.packages.A.check_window, checkEvidence('2026-01-01', '2026-01-01', -1, -1));
+    assert.deepEqual(forward.packages.B.check_window, checkEvidence('2025-12-31', '2025-12-31', -2, -2));
     assert.deepEqual(
       forward.ordinals.filter((entry) => entry.ord <= 0),
       [
@@ -515,8 +592,8 @@ describe('§15/F1：日期→ord 查询顺序无关', () => {
     const first = projectSchedule(makeInput('AB'));
     const second = projectSchedule(makeInput('BA'));
     assert.deepEqual(first, second, '包顺序与查询顺序不得改变投影');
-    assert.deepEqual(first.packages.A.check_window, { start_ord: -1, end_ord: -1 });
-    assert.deepEqual(first.packages.B.check_window, { start_ord: -2, end_ord: -2 });
+    assert.deepEqual(first.packages.A.check_window, checkEvidence('2026-01-01', '2026-01-01', -1, -1));
+    assert.deepEqual(first.packages.B.check_window, checkEvidence('2025-12-31', '2025-12-31', -2, -2));
     assert.equal(first.packages.A.baseline.start_ord, 4, '01-08 在锚点后 = ord 4');
     assert.equal(
       first.packages.B.baseline.start_ord,
@@ -532,7 +609,7 @@ describe('§15/F1：日期→ord 查询顺序无关', () => {
       check_windows: { A: { start_date: '2025-12-31', end_date: '2026-01-01' } },
     });
     // 12-31(三) 工作日 → ord -1（01-01 休息不占 ord）；01-01 → 之后第一个工作日 01-02 = ord 0
-    assert.deepEqual(projection.packages.A.check_window, { start_ord: -1, end_ord: 0 });
+    assert.deepEqual(projection.packages.A.check_window, checkEvidence('2025-12-31', '2026-01-01', -1, 0));
     assert.deepEqual(projection.ordinals.find((entry) => entry.ord === -1), { ord: -1, date: '2025-12-31' });
     assert.deepEqual(projection.ordinals.find((entry) => entry.ord === 0), { ord: 0, date: '2026-01-02' });
     assert.ok(!projection.ordinals.some((entry) => entry.date === '2026-01-01'), '休息日不得占 ord');
@@ -583,7 +660,7 @@ describe('§15/F1：日期→ord 查询顺序无关', () => {
       check_windows: { A: { start_date: '2025-12-31', end_date: '2025-12-31' } },
     });
     // 12-31 之后没有任何工作日 → 第一个工作日 2026-01-05 即 ord 1
-    assert.deepEqual(beforeAnchor.packages.A.check_window, { start_ord: 1, end_ord: 1 });
+    assert.deepEqual(beforeAnchor.packages.A.check_window, checkEvidence('2025-12-31', '2025-12-31', 1, 1));
     assert.deepEqual(beforeAnchor.ordinals, [{ ord: 1, date: '2026-01-05' }]);
 
     const anchoredLater = projectSchedule({
@@ -597,7 +674,7 @@ describe('§15/F1：日期→ord 查询顺序无关', () => {
       check_windows: { A: { start_date: '2026-02-01', end_date: '2026-02-01' } },
     });
     // 02-01 与锚点之间没有工作日（01-05 在目标日期之前）→ 锚点日仍是 ord 1
-    assert.deepEqual(anchoredLater.packages.A.check_window, { start_ord: 1, end_ord: 1 });
+    assert.deepEqual(anchoredLater.packages.A.check_window, checkEvidence('2026-02-01', '2026-02-01', 1, 1));
     assert.deepEqual(anchoredLater.ordinals, [{ ord: 1, date: '2026-03-05' }]);
   });
 });
@@ -637,7 +714,7 @@ describe('§16 major：稀疏工作日历的声明日必须找得到', () => {
       }),
       check_windows: { A: { start_date: '2026-01-05', end_date: '2026-01-05' } },
     });
-    assert.deepEqual(projection.packages.A.check_window, { start_ord: 0, end_ord: 0 });
+    assert.deepEqual(projection.packages.A.check_window, checkEvidence('2026-01-05', '2026-01-05', 0, 0));
     assert.deepEqual(projection.ordinals.find((entry) => entry.ord === 0), { ord: 0, date: '2026-01-05' });
     assert.deepEqual(projection.packages.A.forecast, { start_ord: 1, end_ord_min: 1, end_ord_max: 1 });
   });
@@ -718,6 +795,39 @@ describe('detectCoordinationConflicts：潜在重叠与已确认冲突分开', (
     assert.deepEqual(report.conflicts, []);
     assert.equal(report.potential.length, 1);
     assert.deepEqual(report.potential[0].sch_ids, ['SCH-X', 'SCH-Y']);
+  });
+});
+
+describe('§17 minor：cancelled 在分组前退出', () => {
+  const packages = [pkg('X', 10, 5, 5), pkg('Y', 20, 5, 5)];
+  const projection = projectSchedule({ packages, calendar: calendar() });
+
+  it('cancelled + pending 同角色 onsite → conflicts 与 potential 均空', () => {
+    const report = detectCoordinationConflicts([
+      { sch_id: 'SCH-X', pkg: 'X', role: '业主', mode: 'onsite', status: 'cancelled', confirmed_at: '2026-01-05' },
+      { sch_id: 'SCH-Y', pkg: 'Y', role: '业主', mode: 'onsite', status: 'pending_invite', confirmed_at: null },
+    ], projection);
+    assert.deepEqual(report.conflicts, []);
+    assert.deepEqual(report.potential, []);
+  });
+
+  it('cancelled + cancelled → 空', () => {
+    const report = detectCoordinationConflicts([
+      { sch_id: 'SCH-X', pkg: 'X', role: '业主', mode: 'onsite', status: 'cancelled', confirmed_at: '2026-01-06' },
+      { sch_id: 'SCH-Y', pkg: 'Y', role: '业主', mode: 'onsite', status: 'cancelled', confirmed_at: '2026-01-06' },
+    ], projection);
+    assert.deepEqual(report, { conflicts: [], potential: [] });
+  });
+
+  it('pending + pending → potential 照实（不回归）', () => {
+    const report = detectCoordinationConflicts([
+      { sch_id: 'SCH-X', pkg: 'X', role: '业主', mode: 'onsite', status: 'pending_invite', confirmed_at: null },
+      { sch_id: 'SCH-Y', pkg: 'Y', role: '业主', mode: 'onsite', status: 'pending_invite', confirmed_at: null },
+    ], projection);
+    assert.deepEqual(report.conflicts, []);
+    assert.equal(report.potential.length, 1);
+    assert.deepEqual(report.potential[0].sch_ids, ['SCH-X', 'SCH-Y']);
+    assert.match(report.potential[0].reason, /潜在窗口重叠/);
   });
 });
 

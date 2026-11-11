@@ -127,16 +127,21 @@ SCH-000-02 会审、PKG-070 的 SCH-070-01 联合验收，约 6-10 条），**�
 
 ### 2.2 检查记录窗口：派生，不存储（D2；F2 正名；§16 起与预测解耦）
 
-> **推翻了什么**（总账在 §16.6，这里同步正文，不静默删）：
+> **推翻了什么**（总账在 §16.6 与 §17.6，这里同步正文，不静默删）：
 > 1. 原文标题「实际日期：派生，不存储」及公式「PKG 实际窗口 = [min, max](`audit_log` 的 `records` 中该包 passed 记录的 `checked_at`)」已随 PR #216 二审 F2 推翻（§15.9）。检查通过日期不是施工起止事实。D2 的「派生，不存储」保留，被正名的是这个派生事实的语义。
 > 2. F2 落地后本节约仍写：「模块入参 `actual_windows` 字段名冻结；投影把该窗口当作『门禁 passed 的完成证据』钉死 forecast」。§16 业主裁定 A **删掉钉死**：门禁证据可以独立交付，不能因此确定施工预测起止。「不是施工实际起止」保留。检查日期不再覆盖 forecast、不再顺延后继。模块入参同步改名为 `check_windows`，不留 `actual_windows` 别名。
+> 3. §17 推翻「无锚点即抛」，以及上一版公式「窗口 = `[first_ord, last_ord]`、投影总是把日期映射成 ord 并扩展 ordinals 地平线」。无锚点时没有可映射的序数：日期仍是事实，序数待定（null），不抛错、不进 forecast、不扩展地平线。锚点就绪后的映射与地平线扩展保留。删掉的是「只有序数、没有日期」的快照形状，不是检查窗口本身。
 
 ```
-PKG 检查记录窗口 = [first_ord, last_ord]（该包全部 passed 检查的 checked_at，经 work_calendar 映射后的首末工作日）
+PKG 检查记录窗口 = {first_date, last_date, first_ord, last_ord}
+  first_date / last_date = 该包全部 passed 检查的 checked_at 最早 / 最晚（YYYY-MM-DD，原样保留）
+  first_ord / last_ord   = 锚点就绪时，上述日期经 work_calendar 映射的首末工作日（可为 0 或负值）
+                           锚点为 null 时为 null（待定）。null 不是 0，也不是 1970 名义纪元序数
 ```
 
 - **语义**：首末 passed 检查日期的**证据窗口**，回答「门禁 passed 的完成证据登记在哪些检查日」；**不是施工实际起止**。检查通过时间与施工起止无关（拆墙/结构检查在拆完后才做；全部检查同日登记时，多日施工会被压成一天），**实际开工时间从未记录，保持未知**。在引入显式的开工事实之前，没有「计划 vs 施工实际」这一层；检查窗口不是那个事实。
-- **交付键**：快照 `schedule.packages[pkg].check_window: {first_ord, last_ord} | null`（F2 起；旧键 `actual` 退场，快照键名此后未再改）。模块入参是 `ProjectionInput.check_windows: {start_date, end_date}`；loader 在边界处把检查记录日期映射成这个形状。投影把它映射成 ord，作为证据字段返回，并参与 ordinals 地平线扩展。**不参与 baseline / forecast**。
+- **交付键**：快照 `schedule.packages[pkg].check_window: {first_date, last_date, first_ord, last_ord} | null`，其中两个序数的类型是 `number | null`（F2 起键名是 `check_window`，旧键 `actual` 已退场；§17 起形状带上日期与可空序数）。模块入参仍是 `ProjectionInput.check_windows: {start_date, end_date}`——loader 入参照旧传日期。模块返回日期 + 可空序数，loader 在快照边界把四者一并映射，不把 null 序数兜成 0。锚点就绪时序数参与 ordinals 地平线扩展；锚点为 null 时序数保持 null，不扩展地平线。**两种情况下都不参与 baseline / forecast**。
+- **无锚点**（§17）：`anchor_date: null` 且门禁 passed → 窗口仍交付。日期是检查登记日，序数是 null。与「没有这份窗口」相比，baseline / forecast / ordinals 的日期不变（无 scenario 时 forecast 仍等于 baseline）。接口不因此 503。
 - 未 passed → `check_window: null`（现在全 25 包皆此态，诚实）；部分通过（1/N）不生成——单条检查通过不等于整包完工。
 - 复验 supersedes 旧记录后取最新 passed 的 `checked_at`（`auditStatusFor` 已有 stale 降级，直接复用）。
 - **停工/复工**：不新增事件类型。停工 = 期间无新 passed 记录 + blocker 保持未关闭；恢复 = 新记录出现。窗口是检查登记日的首末包络，不声称期间连续施工；若未来需要显式停工原因，进 blocker 的 `trigger`/`rationale`，不建事件流。
@@ -164,6 +169,12 @@ MVP 没有任何"排程建议"存储。人看到的任何调整（拖甘特条�
 `anchor_date: null` 时 UI 只显示"第 N 工作日"及上下界；`resolved` 后同一计算自动带出
 `YYYY-MM-DD`。**未知保持未知，不造年月日。** 检查记录窗口的日期可以落在锚点之前，
 对应 ord 为 0 或负值（§14/B3）；那是证据坐标，不改变基线/预测从 ord 1 起算。
+
+**无锚点时的检查窗口**（§17，推翻「无锚点即抛」）：`anchor_date: null` 时窗口的
+`first_date` / `last_date` 仍是真实检查日，`first_ord` / `last_ord` 为 null。null 是
+「序数待定」，不是 0，也不是按 1970 名义纪元算出来的序数——0 只在锚点就绪、且检查日
+落在锚点前一个工作日时出现（上一段）。这份窗口不进入 baseline / forecast，也不把
+ordinals 的 `date` 从全 null 改成检查日。锚点就绪后，同一窗口才映射出序数。
 
 ---
 
@@ -255,7 +266,7 @@ schedule: {
     duration_workdays: { min: number, max: number },
     baseline:  { start_ord: number, end_ord_min: number, end_ord_max: number },
     forecast:  { start_ord: number, end_ord_min: number, end_ord_max: number },
-    check_window: { first_ord: number, last_ord: number } | null,   // 检查记录证据窗口，不是施工起止，不参与 forecast（§16）
+    check_window: { first_date: string, last_date: string, first_ord: number | null, last_ord: number | null } | null,   // 证据窗口。无锚点时日期保留、序数 null（§17）；不参与 forecast（§16）
     blocking_reasons: string[],          // 未关闭 blocker / 未满足依赖（只解释，不参与计算）
     constraints: Array<{ id, type, status, detail }>,
   }>,
@@ -348,7 +359,7 @@ issue #83 的单列降级先例）；工作台与日历本就是列表/纵列形
 - 工作历：`workdays`/`rest_dates`/`extra_workdates` 展开正确；跨周末 ord 连续。
 - 双前向：min/max 区间；并行分支（PKG-030/040 同层）互不推高；汇合（PKG-070 等 030+040+050）取最大。
 - 无 anchor：输出 ordinals `date: null`，UI 契约"不造年月日"有测试钉。
-- 检查记录窗口派生：空 audit / 部分通过 / waived → `check_window: null`；gate passed → `check_window` = 首末 passed 检查 `checked_at` 映射的 ord；同日多条记录时 first = last；supersedes 后取最新。
+- 检查记录窗口派生：空 audit / 部分通过 / waived → `check_window: null`；gate passed 且锚点就绪 → `check_window` = 首末 passed 检查 `checked_at` 的日期 + 映射序数；同日多条记录时 first = last；supersedes 后取最新。锚点未定 → 日期保留、序数为 null、errors 不含 `invalid_check_window`、forecast 仍等于 baseline（§17；非法日期串才是 `invalid_check_window`）。
 - what-if：delay PKG-040:3 → 只影响拓扑下游；并行分支序数不变；`affected` 列出真实受影响包。
 - 检查记录窗口不被 what-if 改写（它是证据，不是工期）。forecast 不再因 `gate passed` 被窗口钉死：delay 照常改点名包与拓扑下游。原句「已完成包不可因排程回退：`status: passed` 包在 what-if 中 forecast 不被改写」靠窗口钉死实现，§16 推翻（见 §16.6）。
 - 协调契约：`coordination` 字段不出现在 gate/readiness 输入（结构断言 + facts 契约回归）。
@@ -761,6 +772,121 @@ audit_log.checked_at
 删掉的不是检查窗口数据，是「检查日期 → forecast 起止」这条消费。窗口、ordinals 双向地平线、锚点守卫、日期查询顺序无关都还在。
 
 **loader 接线（本节写完后的下一棒，已落地）**：`shared/schedule-state.ts` 已按上面四条改名接线——入参 `check_windows`、类型 `ProjectionCheckDates`、快照由 `projected.check_window` 映射成 `{first_ord, last_ord}`（快照键名自 S1 起就是 `check_window`，未改）。头注与 `deriveCheckWindowsFromAudits` 里「投影据此钉死 forecast」「模块入参名本轮冻结」已删；「不是施工实际起止」保留。`tests/server/schedule-loader-contract.test.ts` 两处旧钉一并改掉，否则接线后必红：`[invalid_actual_window]` → `[invalid_check_window]`；PKG-005 全部 passed 时把 forecast 钉成检查日 `{start_ord:3, end_ord_min:5, end_ord_max:5}` 的断言，改为无 scenario 时 forecast 等于 baseline（PKG-000 工期 15–25 之后，PKG-005 为 `{16, 18, 32}`）。§2.2 / §3 / §4 第 4 条 / §6.1 快照注释 / §10 对应句已按上表改写。§14 / §15 的当轮原文留作历史，不回改。
+
+---
+
+## 17. 无锚点检查窗口的过度防御（第 4 轮，业主裁定 A）
+
+> **审查事件**：同一条链（检查日期 ↔ 锚点/预测）的第 4 轮 Codex `REQUEST_CHANGES`。前三轮记账是 §14 / §15 / §16。
+> **本轮不是自动跟审。** `.github/prompts/codex-fix.md` 规定第 4 轮起该主题只由人处理。本轮改代码，是因为业主在对话里裁定「A」并指示修复——与 §16 同一条例外（业主点名），不把这次记成第 4 次自动跟审，也不占用「再自动回应一次」的配额。
+> **本节先于代码改动写入。只追加，不改写 §1–§16。** 下文「推翻」是登记被推翻的旧句，那些句子仍留在原节，以本节为准。
+> **引入点核对**（写本节时在工作树 `ep-202-scheduling` 跑的，不是记忆）：`git diff 43b44873 4a568b9e -- shared/schedule-projection.ts` 里，无锚点抛错与 B5 的 not_before 跳过是同一次新增；`git diff 4a568b9e 9f474efb` 在该抛错上为空；`git log -S "无法把检查记录窗口"` 只命中 `eed4dc5e`（三审把「实际窗口」改名为「检查记录窗口」，抛错行为没变）。
+
+### 17.1 轮次总账：检查日期被反复贴标签
+
+对象四轮没换过。换过的是贴在它身上的标签，而且是两条边轮流贴：
+
+```
+audit_log.checked_at
+  → 检查记录窗口（曾用名 actual_windows）
+  → 预测边：被当成施工起止，写进 forecast
+  → 锚点边：无锚点时被当成「必须能映射成序数，否则整份投影非法」
+```
+
+| 轮 | 审查与修复提交 | 这一轮贴的标签 | 修了什么 | 没动的根因 |
+|---|---|---|---|---|
+| 一审（§14，审 `43b4487`，修复 `4a568b9e`） | B2 假完工；B3 地平线外的日期被跳过；B5 约束日期被算进 1970 名义纪元 | **完成条件**，外加第一次把锚点边写成抛错 | B2：派生门槛收到 gate passed。B3：窗口改真实日期、负 ord、地平线双向扩展。B5：`anchor_date === null` 时 resolved not_before **不调用** `ordForDate`、不抬升 | forecast 仍消费窗口。同一提交把 B5 扩进窗口：锚点 null 且 `actual_windows` 非空 → 抛 `invalid_actual_window`。§14.4 称之为「与 B5 同一原则」 |
+| 二审（§15，审 `4a568b9`，修复 `9f474efb`） | F2「验收日期不能直接充当实际开工日期」 | **命名** | 交付侧 `actual` → `check_window`，文案去掉「完工事实」。模块按当时纪律冻结，抛错原句未改（diff 为空） | 消费链还在。「无锚点即抛」还在 |
+| 三审（§16，审 `9f474efb`，业主裁定 A，修复 `eed4dc5e`） | 「检查记录窗口仍被当作施工预测起止消费」 | **消费链** | forecast 改为与 baseline 同源；模块入参改名 `check_windows`；错误码改名 `invalid_check_window` | 锚点边上的抛错只换了名字。本轮改代码之前，`shared/schedule-projection.ts:633-642` 仍是：锚点 null 且 `check_windows` 非空 → `invalid_check_window`（「无法把检查记录窗口的真实日期映射成排程序数」）。loader 把该抛错计入 `state.errors`，`GET /api/schedule/state` 503 |
+| 四审（本轮，业主裁定 A） | 无锚点 + 真实检查日期 → 抛错 → 503。这是三审留下的那半边 | **锚点守卫过度防御** | 删抛错，补完无锚点半边模型（§17.3）。不是再加一道「窗口合法才映射」的门 | 见 §17.5。五审再咬这条链就升级，不再自动改 |
+
+根因不是某一轮的字段名。检查日期在两条边上被当成计划输入：预测边要它决定起止，锚点边要它要么变成序数、要么让整份投影失败。三审剪了预测边，锚点边的「不能映射 = 非法」还在。那一句不是 Codex 一审 B5 的要求。§14.6 的 B5 只说 resolved not_before 在锚点 null 时不调用 `ordForDate`、不抬升。把它写成「检查窗口无锚点即抛」，是一审修复自己加的。
+
+### 17.2 自我教训
+
+B5 守卫本只防「1970 名义纪元造序数」：没有锚点时，不要把 2026 的真实日期算成名义纪元上的第 N 个工作日再交给消费者。正确的半边是「不算这个序数」。
+
+任务书把后续的扩大称作「二审被过度扩展成无锚点即抛」。对照 diff，扩大发生在回应一审的同一次提交里（和真正的 B5 跳过写在一起，注释原文「设计 §14/B5 同一原则」）；二审没有再扩，也没有拆；三审剪消费链时只改了错误码的名字。记在哪一轮名下不改变教训：**拒绝造假序数，被实现成了拒绝交付证据。** 证据日期映射不了，就标待定，不要抛。
+
+### 17.3 本轮根治（业主裁定 A 的可执行口径）
+
+无锚点时，检查窗口是证据，不是计划坐标：
+
+1. **日期保留为事实。** `start_date` / `end_date` 原样返回，不改写成映射后的工作日，也不丢。
+2. **序数标待定。** `start_ord` / `end_ord` 为 `null`。不调用 `ordForDate`，不碰 1970 名义纪元。
+3. **不抛错。** `invalid_check_window` 不再因「无锚点」触发。
+4. **不参与任何计划计算。** 不进 baseline，不进 forecast，不扩展 `ordinals` 地平线，因此也不改变 scenario。与「没有这份检查窗口」的投影相比，baseline / forecast / ordinals 逐字节相同。
+
+锚点就绪时照常映射：序数、锚点前的 0 与负 ord、休息日向后取、地平线双向扩展，都是 §14/B3 的成果，不回归。
+
+类型以现有 `ProjectionCheckWindow` 扩展，不删 `start_ord` / `end_ord`：
+
+```ts
+{ start_date: string, end_date: string, start_ord: number | null, end_ord: number | null }
+```
+
+`invalid_check_window` 只留给真正的坏数据：日期串非法（格式不对或日期不存在）、起止颠倒。未知包仍是 `unknown_check_window_package`，不并进前一个码。
+
+**not_before 的 B5 守卫不动。** 锚点 null 时约束仍然跳过抬升，不改成「序数 null 的约束」。约束是计划输入，没有坐标就还不生效；检查窗口是证据，没有坐标也要留下来。两套半边不要再并成一句「与 B5 同一原则」。
+
+### 17.4 minor：cancelled 在分组前退出（业主点名，不是自动跟审）
+
+`detectCoordinationConflicts` 在把条目放进潜在窗口或已确认占用之前，排除 `status === 'cancelled'`。已取消的预约不进 `conflicts`，也不进 `potential`。取消即解除占用。
+
+- cancelled + pending、同角色 onsite：两边都空。单条 pending 不成重叠；cancelled 不算另一条潜在窗口。
+- cancelled + cancelled：空。
+- pending + pending：`potential` 照 §16 的分级照实，本轮不改这一档。
+
+### 17.5 轮次预算
+
+- 本主题（检查日期 ↔ 锚点/预测，链见 §16.1 与 §17.1）的 Codex `REQUEST_CHANGES`，本轮是 **第 4 轮**。
+- 本轮代码是业主指示修复（裁定「A」：无锚点半边模型），不是第 4 次自动跟审。
+- 若 Codex **五审仍咬该链**——症状换行、再要求无锚点就抛、再把检查日期钉回 forecast，或钉回 ordinals 地平线——升级给人，**不再自动改**。
+
+### 17.6 本轮落点，以及被推翻、但前文尚未改写的旧句
+
+**本轮改的文件**：`shared/schedule-projection.ts`、`tests/server/schedule-projection.test.ts`、本节。**不改** `shared/schedule-state.ts`（loader 由下一棒接线）。
+
+模块不再抛之后，loader 还按旧契约等这个错误，这是预期断点，不是兼容层：
+
+- `shared/schedule-state.ts:46-48` 写着锚点未定且有检查窗口时模块抛 `invalid_check_window`，错误串带 `[invalid_check_window]`。
+- `tests/server/schedule-loader-contract.test.ts` 的「B4/B3：锚点未定 + 检查记录窗口」断言该串出现，且 `scheduleProjection === null`。模块改为成功返回后，这条会红。
+- 快照装配（`shared/schedule-state.ts:1711-1715`）把 `start_ord` / `end_ord` 填进 `{first_ord, last_ord}`，类型是 `number`。序数改为 `number | null` 之后，这里对不齐，下一棒决定 null 序数在快照里怎么交付。本轮不留「无锚点仍抛」来维持旧类型。
+
+**被推翻的旧句**（留在原节，执行以本节为准）：
+
+| 位置 | 被推翻的原文口径 | 为何可推翻 |
+|---|---|---|
+| §14.4「锚点为 null 的边界」 | 「actual 窗口直接判 `invalid_actual_window`（与 B5 同一原则：不把 1970 序数交付给消费者）」 | B5 只禁止把 1970 序数交出去。不造序数的办法是序数标 null，不是把证据判非法。三审已把码改名为 `invalid_check_window`，行为没改；本轮改行为 |
+| 模块头注（修复前 `shared/schedule-projection.ts:40-43`） | 「带真实日期的 check_windows 直接判 `invalid_check_window`」 | 同上。头注随本轮代码改写；§14.4 的当轮原文留作历史 |
+| loader 头注 `shared/schedule-state.ts:46-48` | 锚点未定 + 检查窗口 → `[invalid_check_window]` → 503 | 模块不再抛。下一棒删这句并改快照，不要再按它接线 |
+| §2.2 公式与交付键 | 检查记录窗口 = `[first_ord, last_ord]`，快照只有序数；投影总是把日期映射成 ord 并扩展 ordinals 地平线 | 无锚点时没有可映射的序数。窗口改为带 `first_date` / `last_date` 与可空序数：日期原样保留，序数为 null（待定）。null 不是 0，也不是 1970 名义纪元序数。锚点就绪后的映射与地平线扩展保留。不进 forecast |
+| §6.1 快照类型行 | `check_window: { first_ord: number, last_ord: number }` 或 null | 同上。删掉的是「序数必有、没有日期」的形状，不是 `check_window` 这个键 |
+| loader 测试「锚点未定 + 检查记录窗口」 | 断言 `projection_failed — [invalid_check_window]` 且 `scheduleProjection === null` | **被推翻的旧口径是「无锚点即抛」。** 该场景改为 errors 为空、快照带日期且序数 null。`invalid_check_window` 改钉非法日期串（格式不对或日期不存在），不再钉缺锚点 |
+
+删掉的是「无锚点 = 检查窗口非法」。检查窗口本身、B3 的序数映射、B5 对约束的跳过、§16 剪掉的 forecast 消费，都还在。
+
+### 17.7 loader 接线（本棒，2026-11-11）
+
+§17.6 写下时 loader 还按旧契约等 `invalid_check_window`，那是预期断点。本棒把断点接上。上一节表格的后三行就是这次要推翻的旧口径；**§2.2 / §3 / §6.1 / §10 已按那些行改写，不再是「尚未改写」。** §14 / §15 / §16 与 §17.1–§17.6 的当轮原文留作历史，不回改。
+
+**本棒改的文件**：`shared/schedule-state.ts`、`tests/server/schedule-loader-contract.test.ts`、本节所改的 §2.2 / §3 / §6.1 / §10 / §17.6 表。不改 `shared/schedule-projection.ts`，不改 `schedule/phase-1/control.yaml`。
+
+**快照**：`check_window` 从模块返回值映射 `{first_date, last_date, first_ord, last_ord}`。入参仍是 `check_windows: {start_date, end_date}`。`first_ord` / `last_ord` 原样透传——null 保持 null，不写成 0，也不写成名义纪元序数。
+
+**`invalid_check_window` 的钉法**：触发条件从「无锚点」改成非法日期串（模块：格式不对或日期不存在；起止颠倒仍是同一个码）。loader **不把**审计记录里的非法 `checked_at` 送进 `check_windows`。送进去会让 `projectSchedule` 抛错、整份投影变 null，单包坏日期打掉全部包的排程——这是 B3 已经否决的（`check_window_invalid_checked_at` / `check_window_unresolved` 在送进模块之前拦住，投影继续，route 仍因 `state.errors` 非空而 503）。因此 `projection_failed — [invalid_check_window]` 不会从「审计里有一条坏日期」这条路上出现。码本身由 loader 契约测试直接把非法日期串交给模块来钉，锚点有没有都抛。loader 对 `ProjectionError.code` 的原样透传仍由 B4 的 `work_calendar_empty` / `calendar_date_conflict` 钉住。
+
+**删了什么**（正文改写，按「必须 diff 出删了什么」）：
+
+| 位置 | 删掉的句子 | 理由 |
+|---|---|---|
+| §2.2 公式 | `PKG 检查记录窗口 = [first_ord, last_ord]（…经 work_calendar 映射后的首末工作日）` | 无锚点时映射不出序数。日期才是始终在的事实。锚点就绪时的映射留在新公式的序数行 |
+| §2.2 交付键 | 快照只有 `{first_ord, last_ord}`；「投影把它映射成 ord，作为证据字段返回，并参与 ordinals 地平线扩展」写成无条件 | 地平线扩展只在锚点就绪时发生。无锚点时序数 null、不扩展地平线。键名 `check_window` 未改 |
+| §6.1 类型行 | `check_window: { first_ord: number, last_ord: number }` 或 null | 与快照实现不一致就会让本文和代码各说各的。改成带日期、序数可空 |
+| §10 一条测试计划 | gate passed 只写「= 映射的 ord」，没有无锚点形态 | 补上「锚点未定 → 日期保留、序数 null、不因此报 invalid_check_window」。原来的空 audit / 部分通过 / waived / 同日 / supersedes 都还在 |
+| §3 | 无删句。上一版只说了锚点前的 0 / 负 ord，没说锚点缺失时序数待定 | 加了一段，不改「未知保持未知，不造年月日」 |
+
+coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进 `gateStatus` 或 `effectiveReadiness`。
 
 ---
 
