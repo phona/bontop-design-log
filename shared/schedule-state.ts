@@ -1747,11 +1747,11 @@ function buildScheduleProjectionView(state: ScheduleState): ScheduleProjectionVi
   return {
     anchor_date: declared.anchor_date,
     calendar: declared.calendar,
-    // 无锚点时 UI 契约「未知保持未知，不造年月日」：date 全 null，ord 照常
-    ordinals: projection.ordinals.map((entry) => ({
-      ord: entry.ord,
-      date: declared.anchor_date === null ? null : entry.date,
-    })),
+    // ordinals 原样透传，不做第二次清空：无锚点时 date 全 null 已由模块输出边界保证
+    // （设计 §18——名义纪元已退役，模块不会再产出纪元日期；装配层清空曾是冗余的第二道）。
+    // UI 契约「未知保持未知，不造年月日」仍成立：锚点未定 → date null，锚点就绪 → 真实日期；
+    // 序号（ord）与检查窗口的序数不受影响。
+    ordinals: projection.ordinals,
     packages: schedulePackages,
   };
 }

@@ -1,5 +1,5 @@
 /**
- * 施工排程投影（issue #202 切片 B；设计依据 docs/schedule-coordination-design.md §4 / §14 / §15 / §16 / §17）。
+ * 施工排程投影（issue #202 切片 B；设计依据 docs/schedule-coordination-design.md §4 / §14 / §15 / §16 / §17 / §18）。
  *
  * 纯函数模块，与 shared/flow-layout.ts 同宗：不碰 fs、不碰 DOM、同输入必得同输出。
  * 输入是 schedule/phase-1/control.yaml 的声明值（包/依赖/工期/约束/工作日历）加
@@ -19,7 +19,9 @@
  *   地平线扩展——向后到最早的检查日期（可为负 ord），向前到基线/预测/检查窗口的最晚末端。
  *   任何真实日期都不因「地平线外」被丢弃（B3 保留）。
  *   锚点为空时（§17）：日期原样保留，序数为 null（待定）。不抛错、不调用 ordForDate、
- *   不造 1970 序数，也不扩展 ordinals 地平线、不进 baseline / forecast。
+ *   不造序数，也不扩展 ordinals 地平线、不进 baseline / forecast。
+ *   同一情况下 ordinals 的 date 也是 null（§18）：那是排程轴上的未知，不是纪元日期。
+ *   检查窗口的日期是另一件事（checked_at 事实），无锚点也保留，不抄进 ordinals。
  *
  * 日期映射规则（约束与检查记录窗口同一条）：落在非工作日的日期取「当天或之后第一个工作日」；
  * 工作日判定顺序见 createCalendarCursor（rest_dates 优先，其次 extra_workdates，再看 workdays）。
@@ -40,13 +42,15 @@
  * 对应的 ord（date 落在休息日时取当天或之后第一个工作日）。not_after / time_window 在
  * MVP 只登记不生效。约束抬升同时进入 baseline 与 forecast（它是计划的一部分，不是检查日期）。
  *
- * 锚点为 null 的执行口径（两套半边，不要再并成一句）：
+ * 锚点为 null 的执行口径（三件事，不要并成一句）：
  * - not_before（设计 §14/B5，本意只到这里）：没有锚点就没有真实日期坐标系，resolved 的
  *   not_before 不调用 ordForDate、不抬升（loader 报 constraint_resolved_without_anchor）。
- *   名义纪元不得用来映射任何约束日期。
  * - 检查记录窗口（设计 §17）：一审修复曾把 B5 扩成「无锚点即抛 invalid_check_window」。
  *   那是过度防御。无锚点时日期是事实、序数是 null；不抛错、不造序数、不参与计划计算。
  *   锚点就绪后同一窗口照常映射（§14/B3）。invalid_check_window 只留给日期串非法与起止颠倒。
+ * - ordinals 的 date（设计 §18）：排程轴产物。无锚点时每项为 null，不调用 dateOf，
+ *   不设名义纪元。序号仍由前向传播确定（minOrd..maxOrd 连续）。锚点就绪后才是真实日期。
+ *   与检查窗口的日期不是一回事：后者是 checked_at 事实，无锚点也保留。
  *
  * 侧车道：sequence >= 900 的包（PKG-900）由调用方过滤（设计 §4）；本模块不特判，
  * 传进来按普通包计算，不会崩，也不会被静默丢弃。PKG-900 的真实声明是
@@ -64,15 +68,6 @@
  */
 
 const MS_PER_DAY = 86_400_000;
-
-/**
- * 无锚点时的名义纪元（1970-01-01，周四）。
- * 只用于「没有锚点时的 ord→date 占位表」，让 ordinals 的形状保持确定性；**不得**用它把
- * 任何真实日期（约束日期 / 检查记录窗口）映射成 ord（设计 §14/B5：1970 序数不是可交付坐标）。
- * UI 不得把名义纪元的日期显示给用户——anchor_date 为空时只显示「第 N 工作日」，
- * ordinals 的 date 置 null 由 loader 负责（设计 §3「未知保持未知，不造年月日」）。
- */
-const NOMINAL_EPOCH = '1970-01-01';
 
 export interface ProjectionPackage {
   id: string;
@@ -198,7 +193,9 @@ interface CalendarCursor {
 }
 
 /**
- * 从纪元（anchor_date，缺省名义纪元）起逐日推进，只数工作日，ord 从 1 连续编号。
+ * 从 anchor_date 起逐日推进，只数工作日，ord 从 1 连续编号。
+ * anchor_date 为空时不设纪元（设计 §18：名义纪元已退场）：上面的结构校验照常做完，
+ * 日期映射入口直接失败，调用方不得把序数换成日期。
  * 判定顺序：rest_dates 命中 → 非工作日（优先于 workdays）；extra_workdates 命中 → 工作日；
  * 否则看 weekday 是否在 workdays 内。rest_dates 与 extra_workdates 同一日期冲突时直接报错，
  * 不做静默取舍（两种声明都想说了算，任何一边赢都是丢事实）。
@@ -232,7 +229,27 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
     throw new ProjectionError('work_calendar_empty', '工作日历没有任何工作日（workdays 与 extra_workdates 均为空），无法展开序数');
   }
 
-  const epochDay = parseIsoDate(calendar.anchor_date ?? NOMINAL_EPOCH, 'anchor_date');
+  // §18：没有锚点就没有日期轴。结构校验（非法星期、日期冲突、空历）已经做完；
+  // 这里不设 1970 名义纪元。dateOf / ordForDate 若被调用直接失败，避免任何路径把编造日期带出模块。
+  if (calendar.anchor_date === null || calendar.anchor_date === undefined) {
+    const refuse = (action: string): never => {
+      throw new ProjectionError(
+        'internal_order_error',
+        `无锚点时不得${action}（名义纪元已退场，日期未知；设计 §18）`,
+      );
+    };
+    return {
+      ensure() {},
+      dateOf() {
+        return refuse('把序数映射成日期');
+      },
+      ordForDate() {
+        return refuse('把日期映射成序数');
+      },
+    };
+  }
+
+  const epochDay = parseIsoDate(calendar.anchor_date, 'anchor_date');
 
   // 扫描上限至少覆盖日历自己声明过的日期（§16 major）。
   // 旧上限按「目标工作日数 × 7」估算：workdays 为空、extra_workdates 相隔约两个月时，
@@ -688,8 +705,9 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
   // 检查记录窗口（§17）：
   // - 锚点就绪：真实日期 → ord（休息日取之后第一个工作日，见 ordForDate docstring）。
   //   映射结果只写入证据字段与 ordinals 地平线，下面的前向传播不读它（§16）。
-  // - 锚点为空：日期原样保留，序数 null。不调用 ordForDate（那会落到 1970 名义纪元），
+  // - 锚点为空：日期原样保留，序数 null。不调用 ordForDate（无锚点没有日期轴），
   //   也不把这份窗口交给地平线。它只是还没法标序数的证据。
+  //   这不改变 ordinals：那些 date 另按 §18 置 null，不把检查日抄进去。
   const checkWindows: Record<string, ProjectionCheckWindow> = {};
   for (const [pkgId, window] of Object.entries(declaredChecks)) {
     if (!anchorReady) {
@@ -725,7 +743,7 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
       if (constraint.type !== 'not_before') continue;
       if (constraint.status !== 'resolved') continue;
       if (constraint.date === null || constraint.date === undefined) continue;
-      // 设计 §14/B5 锚点守卫：无锚点 = 无真实日期坐标系，不调用 ordForDate 做名义纪元映射，
+      // 设计 §14/B5 锚点守卫：无锚点 = 无真实日期坐标系，不调用 ordForDate，
       // 直接跳过该约束的抬升（loader 侧报 constraint_resolved_without_anchor）。
       // 这里不改成「序数 null」：约束是计划输入，没有坐标就还不生效（§17，与检查窗口分开）。
       if (!anchorReady) continue;
@@ -796,12 +814,18 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     if (typeof checkWindow?.end_ord === 'number') maxOrd = Math.max(maxOrd, checkWindow.end_ord);
   }
 
-  cursor.ensure(maxOrd);
   const ordinals: Array<{ ord: number; date: string | null }> = [];
-  for (let ord = minOrd; ord <= maxOrd; ord += 1) {
-    // anchor_date 为空时也照样算出 date（名义纪元占位），置 null 由 loader 负责；
-    // ord ≤ 0 是锚点前的工作日（检查记录窗口可能落在那里），date 由向后展开给出。
-    ordinals.push({ ord, date: cursor.dateOf(ord) });
+  if (!anchorReady) {
+    // §18：序号由前向传播确定，日期无锚点即未知。不调用 dateOf（没有纪元可展）。
+    for (let ord = minOrd; ord <= maxOrd; ord += 1) {
+      ordinals.push({ ord, date: null });
+    }
+  } else {
+    cursor.ensure(maxOrd);
+    for (let ord = minOrd; ord <= maxOrd; ord += 1) {
+      // ord ≤ 0 是锚点前的工作日（检查记录窗口可能落在那里），date 由向后展开给出。
+      ordinals.push({ ord, date: cursor.dateOf(ord) });
+    }
   }
 
   // 7. scenario：只列拓扑下游、且完整预测窗口相对 baseline 变了的包

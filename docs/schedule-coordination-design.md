@@ -141,7 +141,7 @@ PKG 检查记录窗口 = {first_date, last_date, first_ord, last_ord}
 
 - **语义**：首末 passed 检查日期的**证据窗口**，回答「门禁 passed 的完成证据登记在哪些检查日」；**不是施工实际起止**。检查通过时间与施工起止无关（拆墙/结构检查在拆完后才做；全部检查同日登记时，多日施工会被压成一天），**实际开工时间从未记录，保持未知**。在引入显式的开工事实之前，没有「计划 vs 施工实际」这一层；检查窗口不是那个事实。
 - **交付键**：快照 `schedule.packages[pkg].check_window: {first_date, last_date, first_ord, last_ord} | null`，其中两个序数的类型是 `number | null`（F2 起键名是 `check_window`，旧键 `actual` 已退场；§17 起形状带上日期与可空序数）。模块入参仍是 `ProjectionInput.check_windows: {start_date, end_date}`——loader 入参照旧传日期。模块返回日期 + 可空序数，loader 在快照边界把四者一并映射，不把 null 序数兜成 0。锚点就绪时序数参与 ordinals 地平线扩展；锚点为 null 时序数保持 null，不扩展地平线。**两种情况下都不参与 baseline / forecast**。
-- **无锚点**（§17）：`anchor_date: null` 且门禁 passed → 窗口仍交付。日期是检查登记日，序数是 null。与「没有这份窗口」相比，baseline / forecast / ordinals 的日期不变（无 scenario 时 forecast 仍等于 baseline）。接口不因此 503。
+- **无锚点**（§17）：`anchor_date: null` 且门禁 passed → 窗口仍交付。日期是检查登记日，序数是 null。与「没有这份窗口」相比，baseline / forecast / ordinals 的日期不变（无 scenario 时 forecast 仍等于 baseline；ordinals 在无锚点时本就是全 null，该保证在模块输出边界完成，§18）。接口不因此 503。
 - 未 passed → `check_window: null`（现在全 25 包皆此态，诚实）；部分通过（1/N）不生成——单条检查通过不等于整包完工。
 - 复验 supersedes 旧记录后取最新 passed 的 `checked_at`（`auditStatusFor` 已有 stale 降级，直接复用）。
 - **停工/复工**：不新增事件类型。停工 = 期间无新 passed 记录 + blocker 保持未关闭；恢复 = 新记录出现。窗口是检查登记日的首末包络，不声称期间连续施工；若未来需要显式停工原因，进 blocker 的 `trigger`/`rationale`，不建事件流。
@@ -167,7 +167,9 @@ MVP 没有任何"排程建议"存储。人看到的任何调整（拖甘特条�
 
 **相对工作日序数（ord）**：基线与预测的计算输出以"自排程零点起第 N 个工作日"表示（1-based）。
 `anchor_date: null` 时 UI 只显示"第 N 工作日"及上下界；`resolved` 后同一计算自动带出
-`YYYY-MM-DD`。**未知保持未知，不造年月日。** 检查记录窗口的日期可以落在锚点之前，
+`YYYY-MM-DD`。**未知保持未知，不造年月日。** 快照 `ordinals` 的 `date` 列同理：`anchor_date: null`
+时每项 `date: null`（序号仍由前向传播连续给出），锚点就绪后才是真实日期。这个 null 在生产处
+（模块输出边界，§18）就完成，装配层不再二次清空。检查记录窗口的日期可以落在锚点之前，
 对应 ord 为 0 或负值（§14/B3）；那是证据坐标，不改变基线/预测从 ord 1 起算。
 
 **无锚点时的检查窗口**（§17，推翻「无锚点即抛」）：`anchor_date: null` 时窗口的
@@ -261,7 +263,7 @@ coordination（协调确认）    ← SCH coordination 块                 【�
 schedule: {
   anchor_date: string | null,
   calendar: { workdays: number[], rest_dates: string[], extra_workdates: string[] },
-  ordinals: Array<{ ord: number, date: string | null }>,   // anchor 未定则 date 全 null
+  ordinals: Array<{ ord: number, date: string | null }>,   // anchor 未定则 date 全 null（模块输出边界保证，§18；装配层不作第二次清空）
   packages: Record<string, {
     duration_workdays: { min: number, max: number },
     baseline:  { start_ord: number, end_ord_min: number, end_ord_max: number },
@@ -280,6 +282,9 @@ coordination: Record<string, {          // key = SCH id
 
 - `schedule` 与 `coordination` 分开两个键：前者每包都有，后者稀疏——混在一个结构里会让
   "没有协调数据的 43 个 SCH"变成 43 个空对象。
+- `schedule.ordinals[].date` 的「无锚点即 null」由模块输出边界（§18）单点保证：
+  `buildScheduleProjectionView` 原样透传模块返回值，不按 `anchor_date` 做二次清空
+  （装配层清空已随 §18.6 删除）。锚点就绪时为真实日期，锚点前的检查日给出 ord ≤ 0 照常。
 - 503 行为不变（`state.errors.length` → 503）；新 loader 错误码走同一通道。
 
 ### 6.2 `GET /api/schedule/what-if?delay=PKG-040:3,PKG-030:2`（新，只读）
@@ -887,6 +892,100 @@ B5 守卫本只防「1970 名义纪元造序数」：没有锚点时，不要把
 | §3 | 无删句。上一版只说了锚点前的 0 / 负 ord，没说锚点缺失时序数待定 | 加了一段，不改「未知保持未知，不造年月日」 |
 
 coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进 `gateStatus` 或 `effectiveReadiness`。
+
+---
+
+## 18. 无锚点投影虚构日期（第 5 轮，业主点名 major）
+
+> **审查事件**：Codex 对提交 `1ab10a9c58a2454f190f604ebb51d6426e6a1ff5` 的 review（2026-11-11T10:17:55Z，`PRR_kwDOTV2tGM8AAAABXR1stQ`）：blocking 0 · major 1 · minor 0 · nit 0，事件是 `COMMENT`。
+> **本轮不是自动跟审。** 没有 blocking，本来不触发自动修复；改代码是因为业主在对话里点名修这条 major（`.github/prompts/codex-fix.md`：「业主在对话里点名要修的 `major` / `minor` / `nit`，按业主的要求做。那不是自动跟审」）。
+> **本节只追加，不改写 §1–§17。** 决策记录与代码改动同一次落地（工作树里先有模块改动，本节随后补齐记账，不假装「先写决策再动代码」）。
+> **major 原文（要点照录）**：「**无锚点的共享投影仍返回虚构年月日** `shared/schedule-projection.ts`」——第 801–804 行无条件调用 `cursor.dateOf(ord)`，`anchor_date` 为 null 时投影仍返回 1970-01-01 等名义日期；目前只有 `schedule-state` 的快照装配层把日期清空。共享模块返回类型又未携带锚点状态，后续消费者（what-if 等）无法仅凭返回值区分真实日期与占位日期，容易把它当计划日期交付。**处方**：在投影输出边界统一返回 `date: null`，并调整目前断言 1970 日期的测试。
+
+### 18.1 轮次总账：同一条链的五轮
+
+对象五轮没换过：**无锚点时的日期坐标**。换过的是补在同一条链五处边上的补丁（约束边 §14 → 命名边 §15 → 预测边 §16 → 抛错边 §17 → 输出边 §18）。
+
+```
+约束边（§14/B5）→ 抛错边（§17）→ 输出边（§18）
+证据边（§16 剪预测消费、§17 保留日期标 null 序数）在这条链之外，本轮不碰
+```
+
+| 轮 | 审查与修复提交 | 这一轮补的边 | 修了什么 | 没动的根因 |
+|---|---|---|---|---|
+| 一审（§14，审 `43b4487`，修复 `4a568b9e`） | B5 约束日期被算进 1970 名义纪元 | 约束边 | `anchor_date === null` 时 resolved 的 `not_before` 不调用 `ordForDate`、不抬升；loader 报 `constraint_resolved_without_anchor` | 名义纪元设备留在模块里，注释只写「不得映射真实日期」；同一提交还把 B5 扩成「无锚点 + 检查窗口 → 抛 `invalid_actual_window`」 |
+| 二审（§15，审 `4a568b9`，修复 `9f474efb`） | F2「验收日期不能直接充当实际开工日期」 | 命名边 | 交付侧 `actual` → `check_window`，文案去掉「完工事实」；模块按当时纪律冻结 | 消费链与名义纪元都在。冻结使「无锚点即抛」原样留下 |
+| 三审（§16，审 `9f474efb`，业主裁定 A，修复 `eed4dc5e`） | 「检查记录窗口仍被当作施工预测起止消费」 | 预测边 | forecast 改为与 baseline 同源；检查窗口只作证据层；错误码改名 `invalid_check_window` | 锚点边的抛错只换了名字，行为没改 |
+| 四审（§17，审 `eed4dc5e`，业主裁定 A，修复 `1ab10a9c`） | 「合法检查记录不应强制要求已确定开工锚点」 | 抛错边 | 删掉无锚点抛错；检查窗口日期保留、序数 null（§17.3） | `ordinals` 的 date 仍由 `cursor.dateOf` 在名义纪元上算出，「置 null 由 loader 负责」——§17.6 的反推表没有列这一句 |
+| **五审（本节，审 `1ab10a9c`，业主点名 major）** | 「无锚点的共享投影仍返回虚构年月日」 | **输出边** | `ordinals` 在模块边界统一 `date: null`；名义纪元设备整体退役；测例从钉 1970 改为钉 null | 无锚点时的计划语义（序数仍是坐标）保留；loader 侧清空成为冗余的第二道（下一棒可删） |
+
+五轮补的是同一个缺口的不同边：模块内部需要一个「无锚点时 ord↔date 映射仍然存在」的占位设备，而它造出来的值是可以越过模块边界被读到的返回值。§17 把「拒绝交付证据」改回「交付证据、序数待定」，只要占位设备还在生产端，同一族失真就会在第五条消费路径上再出现一次——五审点名的正是这个生产端。
+
+### 18.2 关键区分：两条边上的日期不是一回事
+
+| | `ordinals[].date`（本节改） | `check_window.start_date` / `end_date`（§17 成果，不碰） |
+|---|---|---|
+| 它是什么 | 排程轴产物：`ord ↔ date` 映射表的日期列 | `audit_log.checked_at` 事实：检查登记日，原样保留 |
+| 无锚点时 | **未知**：没有锚点就没有日期轴，每项 `date: null` | **保留真实日期**（§17.3 第 1 条）；序数 `null` |
+| 锚点就绪时 | 真实日期（`ord ≤ 0` 为锚点前工作日，§14/B3） | 同一张日历映射出 `start_ord` / `end_ord` |
+| 数据来源 | `createCalendarCursor` 的 `dateOf` | 模块入参（loader 从审计派生） |
+| 交付位置 | 快照 `schedule.ordinals` | 快照 `schedule.packages[].check_window` |
+
+一句话：**排程轴上的日期无锚点即未知，检查登记日无锚点也还是事实。** §17 保住的是后者，本节删掉的是前者的编造值。两条边不要并成一句「无锚点就置 null」——这句话对前者是修复，对后者是删证据。
+
+### 18.3 本轮修复口径（模块输出边界，唯一一处）
+
+1. **名义纪元设备整体退役。** `NOMINAL_EPOCH` 常量与 `calendar.anchor_date ?? NOMINAL_EPOCH` 一并删除（`shared/schedule-projection.ts`）。模块里没有任何其他消费者需要它，也没有「内部确定性」用途要保留它——确定性由 `ordinals` 的**序号**保证：`minOrd..maxOrd` 连续、前向传播是纯函数、同输入必得同输出。日期无锚点即未知。
+2. **`ordinals` 在输出边界统一 null。** 无锚点时装配 `{ord, date: null}`（序号仍由前向传播决定，不调用 `dateOf`）；锚点就绪时照常 `cursor.ensure(maxOrd)` 后逐项 `cursor.dateOf(ord)` 出真实日期（现有行为不回归）。类型 `Array<{ord: number, date: string | null}>` 本来就是可空的，未改——改的是值，不是形状。
+3. **结构校验与日期映射分开。** `createCalendarCursor` 的结构校验在无锚点时照常先跑完，顺序不变：非法星期 `invalid_calendar`、同日双声明 `calendar_date_conflict`、空历 `work_calendar_empty`、`rest_dates` / `extra_workdates` 的 `invalid_date`。校验之后，无锚点的游标没有纪元可展，`dateOf` / `ordForDate` 改为 fail-closed 抛 `internal_order_error`（沿用模块既有的内部不变量错误码，不新增对外错误面）。这是保险丝，不是可达路径：`projectSchedule` 的三处调用（检查窗口映射、约束抬升、`ordinals` 装配）都已按 `anchorReady` 分流，无锚点时一次都不调用。将来新增第四条调用而忘了锚点判断，会当场失败，而不是把编造日期交出去。
+4. **不碰的两件事。** ① 检查窗口：日期保留、序数 null、不抛错、不进 baseline/forecast、不扩展 `ordinals` 地平线——§17.3 四条一字不动。② `not_before` 的 B5 守卫：无锚点仍跳过抬升，不改成「序数 null 的约束」（§17.3 末段：约束是计划输入，没有坐标就还不生效）。
+5. **测试口径。** 断言 1970 名义纪元日期的用例改钉 `date: null`，保留序号连续与「同输入必得同输出」的确定性断言；新增对照用例「锚点就绪 → 同一工期给出真实日期」。检查窗口的用例（日期保留、序数 null、地平线不扩）原样保留。
+
+**只改三个文件**：`shared/schedule-projection.ts`、`tests/server/schedule-projection.test.ts`、本节。**不改** `shared/schedule-state.ts`（loader 由下一棒接线；接线已落地，见 §18.6）。
+
+### 18.4 被推翻、但前文尚未改写的旧句（§16.6 式表格加行）
+
+| 位置 | 被推翻的原文口径 | 为何可推翻 |
+|---|---|---|
+| 模块常量（修复前 `shared/schedule-projection.ts:68-75`） | 「无锚点时的名义纪元（1970-01-01，周四）。只用于『没有锚点时的 ord→date 占位表』，让 ordinals 的形状保持确定性」 | 「确定性」是序号的性质，不是日期的性质：`ord` 连续、前向传播纯函数已经保证同输入同输出。占位日期一旦越过模块边界就是看着像真的年月日，而返回值不带锚点状态，消费者无法区分 |
+| 模块头注（修复前 `:72-73`） | 「UI 不得把名义纪元的日期显示给用户……`ordinals` 的 date 置 null 由 loader 负责」 | 「由 loader 负责」把边界纪律寄存在单一消费方身上：第二条消费路径（what-if 等）要第二次记得清空。清空必须发生在生产处，即本模块输出边界 |
+| 模块头注（修复前 `:200-201`） | 「从纪元（anchor_date，缺省名义纪元）起逐日推进，只数工作日，ord 从 1 连续编号」 | 无锚点时没有「纪元」可起。无锚点不再生成 ord→date 映射表（结构校验照做）；映射表只在锚点就绪时存在 |
+| 模块内注释（修复前 `:799-804`） | 「anchor_date 为空时也照样算出 date（名义纪元占位），置 null 由 loader 负责」 | 同第二行。这行正是五审 major 点名的代码位置 |
+| 模块头注（修复前 `:46`）与 §14.6 末句 | 「名义纪元不得用来映射任何约束日期」／「名义纪元只用于『无真实日期输入的 ord↔date 占位』，**不得**用于映射任何真实日期」 | 这两句把「无锚点占位」当作合法设备，只限制它不碰真实日期。§18 退役整个设备：不给排程轴造替身日期。这不是放宽 B5——B5 的约束边行为一字未动（§18.3 第 4 条） |
+| §4 算法第 2 条 | 「工作历展开：从零点（或 `anchor_date`）逐日推进，按 `workdays`/`rest_dates`/`extra_workdates` 生成 ord→date 映射表」 | 无锚点时那个「零点」就是名义纪元。无锚点不再展开日期轴，只校验日历结构；映射表只在锚点就绪时生成（§18.3 第 2、3 条） |
+| loader `shared/schedule-state.ts:1750-1754` | 「无锚点时 UI 契约『未知保持未知，不造年月日』：date 全 null，ord 照常」＋ `declared.anchor_date === null ? null : entry.date` | 模块输出边界已经保证同一件事，这一层清空成为冗余的第二道。当前结果不变（两处同时清空，值相同），但不要再按「模块会给出纪元日期」接线；下一棒可删。**本轮不动 loader** |
+| 模块无锚点分支（修复前经名义纪元展开日历，`cursor.ensure` 调用点） | 无锚点时也会沿名义纪元展开日历：`workdays: []` + 两个相隔两月的 `extra_workdates` + 工期 3 → 抛 `work_calendar_exhausted`（loader 记 errors → API 503） | 不再造日期轴后，无锚点连 ord 都不展开（ordinals 为 `[{n,null}…]`），这条保险丝**推迟**到锚点就绪后生效而非丢失——锚点就绪时同一输入照旧抛（§16 major 修复保留）。删除的失败路径须记账：修复前探针（before-root，`git show 1ab10a9c` 落地）实测抛「已扫描 20525 天只得到 2 个工作日，无法达到序数 3」；修复后同输入返回 `[[1,null],[2,null],[3,null]]`。属于「不再造排程轴」的正确后果，不是静默放宽 |
+
+删掉的是「无锚点的 ord↔date 替身」。保留的：`ordinals` 的序号与确定性、锚点就绪时的真实日期、B3 的双向地平线（锚点前的 0 / 负 ord）、检查窗口的证据语义与 §17.3 四条、B5 的约束跳过。
+
+### 18.5 轮次预算
+
+- Codex 五审的事件是 `COMMENT`（blocking 0），按 `.github/prompts/codex-fix.md` 本不触发自动修复；本轮是业主点名修 major。§17.5 那句「若 Codex 五审仍咬该链就升级给人，不再自动改」针对的是**自动跟审路径**，本轮没有走那条路径。
+- 同一主题（无锚点 ↔ 日期坐标，链见 §16.1 / §17.1 / §18.1）若六审仍咬——症状换行、再让模块输出纪元日期、或反向要求无锚点就抛/丢证据——仍按 §17.5 升级给人，不再自动改。
+
+### 18.6 loader 装配层清空退场（本棒接线，2026-11-11）
+
+§18.4 表末行「loader 侧清空成为冗余的第二道（下一棒可删）」在本棒执行。
+
+**本棒改的文件**：`shared/schedule-state.ts`、本节所改的 §2.2 / §3 / §6.1。不改 `shared/schedule-projection.ts`（上一棒已完成），不改 `schedule/phase-1/control.yaml`，不改测试。
+
+**删了什么**（按「必须 diff 出删了什么」）：
+
+| 位置 | 删掉的代码 / 句子 | 理由 |
+|---|---|---|
+| loader `shared/schedule-state.ts`（§18.4 记为 :1750-1754） | `ordinals: projection.ordinals.map((entry) => ({ord: entry.ord, date: declared.anchor_date === null ? null : entry.date}))` | 模块输出边界已保证无锚点时 `date: null`（§18.3 第 2 条），这一层清空是冗余的第二道，且会让读者以为「模块会给出纪元日期、由 loader 兜住」。改为 `ordinals: projection.ordinals` 原样透传并改写注释 |
+| §2.2「无锚点」条、§3 序数段、§6.1 类型注释 | 按 `anchor_date` 清空发生在装配层的口径（§6.1 只写「anchor 未定则 date 全 null」，未点名保证在哪一层） | 同步为「保证在模块输出边界（§18），装配层不清空」；无锚点 = date null 的结论不变 |
+
+**没动的**：§18.3 四条（检查窗口日期保留、B5 跳过抬升、结构校验、fail-closed 游标）一字未动；`check_window` 在快照边界的四键映射未动；`ord` 序号、锚点就绪时的真实日期、§14/B3 的双向地平线未动。
+
+**快照行为不变**：无锚点时模块已给 `date: null`，删掉清空后 `schedule.ordinals` 输出逐字节相同；锚点就绪时两条路径都透传真实日期。这是删冗余，不是行为变更——既有断言（`api.test.ts` / `control-contract-validation.test.ts` 快照断言、`schedule-loader-contract.test.ts` 的 §17 用例）应天然通过；若红说明行为变了，先停下查。
+
+**消费者核对**（全仓 grep，本棒）：
+
+- `shared/schedule-projection.ts` 的生产进口只有 `shared/schedule-state.ts` 一处（load 期投影 + 快照装配）。
+- `app/src` 无 `ordinals` 读取（UI 只经 `ScheduleSnapshot` 类型使用其它键）；`server/` 只有 `routes.ts` 的 `/schedule/state` 直出 `buildScheduleSnapshot` 结果，不触碰 ordinals；what-if 路由尚未落地（§6.2 仍为设计）。
+- 其余引用都在测试里（`schedule-projection.test.ts` 直接 import 模块断言；`schedule-loader-contract.test.ts` 经 loader 快照断言 `date: null`），不依赖 loader 清空。
+- 结论：删除后没有任何消费者会拿到「原本被 loader 清成 null、现在变成非 null」的值。
 
 ---
 

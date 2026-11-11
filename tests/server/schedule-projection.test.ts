@@ -2,7 +2,7 @@
 //
 // 守设计 §4 的算法与 §10 的 node 侧测试计划：DAG 显形报错、工作历展开
 // （rest_dates 优先、补班日占 ord、周末不占 ord）、min/max 双前向（并行不互推、
-// 汇合取最大）、无锚点时按名义纪元确定性地出 date、what-if 只动拓扑下游、
+// 汇合取最大）、无锚点时 ordinals 的 date 为 null 而序号仍连续确定、what-if 只动拓扑下游、
 // 同角色 onsite 的分级（潜在重叠 vs 已确认冲突）。
 // §14（Codex PR #216）增补：not_before 的锚点守卫（B5）；check_windows 以真实日期
 // 给入、ordinals 双向地平线（锚点前负 ord，B3）。
@@ -13,6 +13,8 @@
 // 这一条对真实 control.yaml 成立（只读该文件，不跑 loader）。
 // §17（第 4 轮，业主裁定 A）：无锚点时检查窗口保留日期、序数 null，不抛错、
 // 不改 baseline/forecast/ordinals；锚点就绪时序数照常。cancelled 在分组前退出协调检测。
+// §18（第 5 轮，业主点名 major）：无锚点时 ordinals 的 date 在模块边界就是 null，
+// 不再出 1970 名义纪元日期；锚点就绪时 date 仍是真实日期。检查窗口的日期不动。
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
@@ -188,8 +190,8 @@ describe('侧车道零工期包（PKG-900 真实形态）', () => {
   });
 });
 
-describe('anchor_date 为空：仍按名义纪元确定性地算 date', () => {
-  it('1970-01-01 起展开，跳周末，重复调用结果一致', () => {
+describe('§18：anchor_date 为空时 ordinals 的 date 为 null，序号仍确定', () => {
+  it('无锚点：date 全 null，序号 1..N 连续，重复调用一致', () => {
     const input = {
       packages: [pkg('A', 10, 3, 3)],
       calendar: calendar({ anchor_date: null }),
@@ -197,12 +199,55 @@ describe('anchor_date 为空：仍按名义纪元确定性地算 date', () => {
     const first = projectSchedule(input);
     const second = projectSchedule(input);
     assert.deepEqual(ordinates(first), [
-      [1, '1970-01-01'],
-      [2, '1970-01-02'],
-      [3, '1970-01-05'],
+      [1, null],
+      [2, null],
+      [3, null],
     ]);
-    assert.deepEqual(ordinates(second), ordinates(first), '同输入必须同输出');
-    assert.deepEqual(first.ordinals, second.ordinals);
+    assert.deepEqual(first.ordinals, second.ordinals, '同输入必须同输出');
+    for (let index = 1; index < first.ordinals.length; index += 1) {
+      assert.equal(first.ordinals[index].ord, first.ordinals[index - 1].ord + 1, '序号连续');
+    }
+  });
+
+  it('锚点就绪：同一工期给出真实日期（对照，不回归）', () => {
+    // 2026-01-05 是周一。三天工期停在周三，不跨周末。
+    const projection = projectSchedule({
+      packages: [pkg('A', 10, 3, 3)],
+      calendar: calendar(),
+    });
+    assert.deepEqual(ordinates(projection), [
+      [1, '2026-01-05'],
+      [2, '2026-01-06'],
+      [3, '2026-01-07'],
+    ]);
+  });
+
+  it('无锚点 + 稀疏日历：不因凑不够日期轴上的工作日而 exhausted，序号仍按工期连续', () => {
+    // 有锚点时这两个补班日不够三天工期，会报 work_calendar_exhausted（§16 的用例）。
+    // 无锚点没有日期轴，工期序号不靠展开日历，date 为 null。
+    const projection = projectSchedule({
+      packages: [pkg('A', 10, 3, 3)],
+      calendar: calendar({
+        anchor_date: null,
+        workdays: [],
+        extra_workdates: ['2026-01-05', '2026-03-05'],
+      }),
+    });
+    assert.deepEqual(ordinates(projection), [
+      [1, null],
+      [2, null],
+      [3, null],
+    ]);
+  });
+
+  it('无锚点仍校验日历结构：空历照旧抛 work_calendar_empty', () => {
+    assert.throws(
+      () => projectSchedule({
+        packages: [pkg('A', 10, 1, 1)],
+        calendar: calendar({ anchor_date: null, workdays: [], extra_workdates: [] }),
+      }),
+      (error: unknown) => error instanceof ProjectionError && error.code === 'work_calendar_empty',
+    );
   });
 
   it('无包且无检查记录窗口 → ordinals 为空数组', () => {
@@ -393,8 +438,10 @@ describe('not_before 约束的锚点守卫（§14/B5）', () => {
       calendar: calendar({ anchor_date: null }),
       constraints: { A: [{ id: 'C1', type: 'not_before', status: 'resolved', date: '2026-01-07' }] },
     });
-    // 无锚点不得把 2026-01-07 映射到 1970 名义纪元（否则会被算成第 14613 工作日并抬升）
+    // 无锚点不得把 2026-01-07 映成序数再抬升；ordinals 的 date 也不得是编造日期（§18）
     assert.deepEqual(projection.packages.A.baseline, { start_ord: 1, end_ord_min: 2, end_ord_max: 2 });
+    assert.deepEqual(projection.ordinals.map((entry) => entry.ord), [1, 2]);
+    assert.ok(projection.ordinals.every((entry) => entry.date === null));
   });
 
   it('anchor_date 就绪：同一约束照常抬升', () => {
@@ -501,8 +548,8 @@ describe('§17：无锚点检查窗口保留日期、序数待定', () => {
     }
     assert.equal(JSON.stringify(withWindow.ordinals), JSON.stringify(bare.ordinals), '地平线不得因检查日期扩大');
     assert.ok(
-      withWindow.ordinals.every((entry) => entry.date?.startsWith('1970-')),
-      '检查日期不得被映射进 1970 名义纪元',
+      withWindow.ordinals.length > 0 && withWindow.ordinals.every((entry) => entry.date === null),
+      '无锚点时 ordinals 的 date 必须为 null，不得是名义纪元日期，也不得抄入检查日',
     );
     assert.equal(withWindow.scenario, null);
     assert.equal(bare.scenario, null);
