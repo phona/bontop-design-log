@@ -36,6 +36,14 @@ control:
     - 声明的付款门槛通过后，才可释放对应付款
     - 未分配预算未经业主批准不得承诺或支出
 
+work_calendar:
+  schema_note: 工作日历是业主声明的计划假设，不是法规；法定节假日与物业禁止时段以 rest_dates 与 PKG 约束为准
+  workdays: [1, 2, 3, 4, 5, 6]
+  rest_dates: []
+  extra_workdates: []
+  anchor_date: null
+  anchor_status: site_pending
+
 budget_pools:
   - id: hard_finish
     name: 基础硬装
@@ -841,6 +849,15 @@ work_packages:
         method: 按 原量房台账（已退场） 逐房走查并按顺序记录：①交房缺陷和现场保护边界；②房间净长宽、对角线、墙厚、门窗及开启方向；③梁柱、梁底、结构墙和可打孔边界；④强弱电箱、给排水、燃气表、排烟道、沉箱和外机平台；⑤家具家电接口、吊顶净空和检修条件。每条记录对应稳定编号、实测值/单位、测量人、日期、照片编号与精度；邻户或模型推断值不得写成实测。
         pass_condition: 形成逐房测量记录和可定位照片索引；交房缺陷有责任方与处理状态；未能实测的项目保留原状态并登记负责人和触发条件。
         evidence_required: [handover_defect_record, measurement_record, site_photo_index]
+        coordination:
+          required_roles: [业主, 施工方, 设计师]
+          mode: onsite
+          lead_time_workdays: 3
+          owner_role: 业主
+          status: pending_invite
+          actor: {name: null, org: null}
+          confirmed_at: null
+          escalation: "提前量过半未确认 → 升级到业主并顺延预测窗口"
       - id: SCH-000-04
         severity: critical
         checkpoint: data_backfill
@@ -855,6 +872,15 @@ work_packages:
         method: 业主、设计、施工、水电、空调和橱柜方逐版核对拆改、吊顶标高、灯位、回路、给排水、冷凝水、风口/检修口、柜体和家电接口；记录设计图编号、版本、日期及逐项冲突责任人。
         pass_condition: 施工图和专业深化图有一致的冻结版本；影响近期工序的冲突已关闭；剩余 site_pending 项有负责人、触发节点和停工边界。
         evidence_required: [signed_drawing_set, coordination_record, closed_conflict_register]
+        coordination:
+          required_roles: [业主, 设计师, 施工方, 空调商, 橱柜供应商]
+          mode: onsite
+          lead_time_workdays: 5
+          owner_role: 设计师
+          status: pending_invite
+          actor: {name: null, org: null}
+          confirmed_at: null
+          escalation: "提前量过半未确认 → 升级到业主并顺延预测窗口"
       - id: SCH-000-03
         severity: critical
         checkpoint: payment
@@ -884,6 +910,9 @@ work_packages:
     status: not_started
     blockers: [BLK-HANDOVER]
     owner_roles: [业主, 物业]
+    constraints:
+      - {id: CON-005-PROPERTY-HOURS, type: time_window, detail: 物业允许施工时段（周末/节假日禁噪）, source: 物业装修许可, status: site_pending, date: null}
+      - {id: CON-005-DEPOSIT-PAID, type: not_before, detail: 装修押金缴纳后才能进场, source: 物业收费通知, status: site_pending, date: null}
     payment_gate: GATE-005-PROPERTY-APPROVED
     # 对象 targets（issue #191）：MODEL-PKG-005 显式声明 mapping_status: project_scope（全项目范围），
     # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
@@ -897,6 +926,15 @@ work_packages:
         method: 提交物业要求的装修申请、施工图、施工单位和人员资料，核对允许施工时间及禁止事项
         pass_condition: 已取得物业允许进场施工的书面或系统记录
         evidence_required: [property_approval]
+        coordination:
+          required_roles: [业主, 物业]
+          mode: onsite
+          lead_time_workdays: 5
+          owner_role: 业主
+          status: pending_invite
+          actor: {name: null, org: null}
+          confirmed_at: null
+          escalation: "提前量过半未确认 → 升级到业主并顺延预测窗口"
       - id: SCH-005-02
         severity: major
         checkpoint: payment
@@ -1279,6 +1317,15 @@ work_packages:
         method: 复查空调保压、冷凝水、风口、回风、检修口、上部水电和全部隐蔽影像
         pass_condition: PKG-030与PKG-040关键验收全部通过并完成相关方签字
         evidence_required: [signed_ceiling_close_permit, concealed_work_photos]
+        coordination:
+          required_roles: [业主, 施工方, 设计师, 空调商]
+          mode: onsite
+          lead_time_workdays: 3
+          owner_role: 业主
+          status: pending_invite
+          actor: {name: null, org: null}
+          confirmed_at: null
+          escalation: "提前量过半未确认 → 升级到业主并顺延预测窗口"
       - id: SCH-070-02
         severity: critical
         checkpoint: completion

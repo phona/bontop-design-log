@@ -1875,6 +1875,31 @@ contracts:
     kind: object_link
     mode: acceptance_objects
     dataset: package_objects
+  # 协调状态不是门禁输入：门禁/就绪代码出现 coordination 字样即红（issue #202 切片 A）。
+  # 设计依据 docs/schedule-coordination-design.md §5「状态机边界：三条事实互不推导」：
+  #   readiness/gate（工程就绪）← control.yaml + gate-status.ts
+  #   acceptance（验收通过）  ← acceptance.yaml + audit_log
+  #   coordination（协调确认）← SCH coordination 块，只描述排程
+  # 三条事实互不推导：协调确认（「供应商确认了下周到场」）**不等于验收通过**，
+  # 也不改变任何包的开工门槛。一旦 gateStatus()/effectiveReadiness 的输入里混进
+  # coordination，一句口头或日历确认就能把未验收的工程放行——而门禁全绿看不出
+  # 差别。要堵的失效是「读了它」这个事实本身，不是读出来的值对不对。
+  # 故沿用 c.floor_height_3m_forbidden 的 single_source + expect: 0 语义做「禁用引用」检查：
+  # scope 内凡出现「gateStatus(...) 同行带 coordination」「effectiveReadiness 同行带
+  # coordination」「coordination 同行带 passed|auditStatus」，即报
+  # single_source_count_mismatch 并带出位置。
+  # scope 只覆盖门禁/就绪代码所在的三目录（shared/ server/ scripts/）：UI 面板全部只读、
+  # 只 render 快照（设计 §7），tests/ 是断言夹具、不是门禁代码，均不扫。
+  # 结构性保证（投影时 coordination 根本不进这两个函数的输入）由 verify:schedule
+  # 承担；本契约是防回归的保险丝（设计文档 §5 机器断言 1）。
+  - id: c.coordination_not_gate_input
+    kind: single_source
+    expect: 0
+    scope: [shared/, server/, scripts/]
+    patterns:
+      - 'gateStatus\s*\([^)]*\)[^\n]*coordination'
+      - 'effectiveReadiness[^\n]*coordination'
+      - 'coordination[^\n]*(passed|auditStatus)'
 
 # ─── T4 覆盖层 ───────────────────────────────────────────────────────────────
 
