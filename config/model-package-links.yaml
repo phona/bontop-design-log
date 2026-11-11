@@ -118,6 +118,12 @@ links:
       - {source: overlay, select: {ids: [entry_garden_floor, entry_foyer_floor, corridor_floor, main_corridor_floor, guest_bath_open_vanity_floor, north_platform_floor]}}
       - {source: model_geometry, select: {ids: [w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]}}
       - {source: overlay, select: {ids: [bedroom_nw_north_waterproof_ledge, bedroom_se_south_waterproof_ledge, kitchen_north_bay, living_south_waterproof_ledge, master_bedroom_south_waterproof_ledge, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, study_south_waterproof_ledge]}}
+      # 2026-11-11（先定门再贴砖门禁，Codex 二审 blocking）：check_tile_door_gate 的正文
+      # 要求按两卫门洞实测值（d_gbath / d_mbath）定门与排版——被验门洞是本项验收的实际
+      # 依赖，但它的施工归属在装门包（PKG-090）。若不纳入本链接 scope，门洞尺寸/offset
+      # 变化不会让本包摘要变化、旧通过记录也不会 stale。故按稳定 id 直选纳入
+      # （与 MODEL-PKG-050 纳入被验柜体、PKG-110 纳入被验插座同一处理）。
+      - {source: model_geometry, select: {ids: [d_gbath, d_mbath]}}
   - id: MODEL-PKG-065
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-065}

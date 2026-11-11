@@ -742,6 +742,24 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
     assert.ok(stale.includes('PKG-050'), `PKG-050 的验收点名 gbath.vanity，柜内布局改动后必须 stale；实际 ${stale.join(', ')}`);
   });
 
+  // 先定门再贴砖门禁（Codex 二审 blocking）：check_tile_door_gate 正文按两卫门洞实测值
+  // （d_gbath / d_mbath）定门与排版；门洞施工归属在 PKG-090，但验收记录挂在 PKG-060。
+  // MODEL-PKG-060 已按 id 直选两扇门洞；本用例守「客卫门洞改宽 → PKG-060 stale」，
+  // 防止洞宽改动后旧通过记录仍有效、已变的门洞与藏缝排版继续被视为验收通过。
+  it('改客卫门洞宽：挂该验收的 PKG-060 必须 stale', () => {
+    const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
+    const text = readFileSync(geometryPath, 'utf8');
+    const anchor = '      - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.45, width: 0.7, height: 2.1, room: guest_bath, swing: inward, hinge: start }';
+    assert.equal(text.split(anchor).length - 1, 1, 'd_gbath 声明锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    writeFileSync(geometryPath, text.replace(anchor, anchor.replace('width: 0.7', 'width: 0.8')));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id);
+    assert.ok(stale.includes('PKG-060'), `PKG-060 的验收点名 d_gbath，门洞改宽后必须 stale；实际 ${stale.join(', ')}`);
+  });
+
   // issue #191 Codex blocking（三轮）：门洞摘要键带父墙还不够——宿主墙的声明也要进引用闭包。
   // 只改父墙端点（洞声明不变）时，若闭包不沿 parent 展开，PKG-090 的摘要不会变化。
   it('宿主墙几何变化：只选 openings 的 PKG-090 必须 stale（父墙进闭包）', () => {
