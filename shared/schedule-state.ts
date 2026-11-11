@@ -38,6 +38,11 @@
  *   日期与可空序数一并映射（first_date/last_date + first_ord/last_ord）。序数 null 原样
  *   交付，不兜成 0，也不换成名义纪元序数。
  *
+ * 2026-11-11（issue #202 S2，设计 §6.2）：load 期装配好的投影入参原样挂在
+ * ScheduleState.scheduleProjectionInput（投影失败为 null）。what-if 路由只在这份入参上加
+ * scenario 重跑 projectSchedule，视图复用 buildScheduleProjectionView——check_windows 派生 /
+ * constraints 映射 / 主车道过滤只有 loader 一份，路由不得另装配一套。
+ *
  * 排程投影相关 loader 诊断错误码（设计 §2.2/§14/B5/§15.9/§16/§17，error 级）：
  * - check_window_unresolved：gate_status=passed 但该包没有任何可用的 checked_at（YYYY-MM-DD）。
  * - check_window_invalid_checked_at：gate_status=passed 且至少一条 passed 记录的 checked_at
@@ -74,6 +79,7 @@ import {
   type ProjectionCheckDates,
   type ProjectionCalendar,
   type ProjectionConstraint,
+  type ProjectionInput,
   type ProjectionPackage,
   type ScheduleProjection,
 } from './schedule-projection.js';
@@ -302,6 +308,16 @@ export interface ScheduleState {
    * buildScheduleSnapshot 只消费此字段，不得在装配期再调用 projectSchedule。
    */
   scheduleProjection: ScheduleProjection | null;
+  /**
+   * load 期装配好的排程投影入参（设计 §6.2）：主车道过滤后的 packages / calendar /
+   * constraints / check_windows。what-if 路由只在这份入参上加 scenario 重跑 projectSchedule，
+   * **不得**在路由侧重新装配（check_windows 派生 / constraints 映射 / 主车道过滤只有 loader
+   * 一份）。null = 投影失败（与 scheduleProjection 同步；errors 非空 → route 503）。
+   *
+   * 可选：纯增量加字段，不逼既有手造 `ScheduleState` 字面量同步加键（任务书 §1.3）。缺失与
+   * null 同义——what-if 路由按「缺投影入参」回 503 契约错误，不静默降级成空演算。
+   */
+  scheduleProjectionInput?: ProjectionInput | null;
 }
 
 /**
@@ -1162,6 +1178,10 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     }
   }
   let scheduleProjection: ScheduleProjection | null = null;
+  // what-if 路由复用这份装配好的入参（设计 §6.2）：packages / calendar / constraints /
+  // check_windows 只有 loader 一份，路由只加 scenario 重跑 projectSchedule。
+  // 投影失败时为 null（与 scheduleProjection 同步；errors 非空 → route 503）。
+  let scheduleProjectionInput: ProjectionInput | null = null;
   try {
     // 检查记录窗口（见 deriveCheckWindowsFromAudits）：真实日期交给模块的 check_windows。
     // 它不是施工实际起止，也不参与 forecast（设计 §16）。
@@ -1169,13 +1189,16 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     const checkWindowInputs: Record<string, ProjectionCheckDates> = Object.fromEntries(
       Object.entries(checkWindows).map(([pkgId, window]) => [pkgId, {start_date: window.first_date, end_date: window.last_date}]),
     );
-    scheduleProjection = projectSchedule({
+    scheduleProjectionInput = {
       packages: projectionPackages,
       calendar: projectionCalendar,
       constraints: projectionConstraintsByPackage(projectedRaw),
       ...(Object.keys(checkWindowInputs).length ? {check_windows: checkWindowInputs} : {}),
-    });
+    };
+    scheduleProjection = projectSchedule(scheduleProjectionInput);
   } catch (error) {
+    // 投影失败：入参与投影一起置 null，不把半装配的入参留给 what-if 路由。
+    scheduleProjectionInput = null;
     // 错误码透传，文案与旧装配期口径一致（消费方按 `schedule projection: projection_failed — [code]` 识别）。
     // 这里不再吞成空骨架：errors 非空 → route 在 build 之前 503。
     const code = error instanceof ProjectionError ? error.code : 'projection_failed';
@@ -1200,7 +1223,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     checkSpecHash, staleAuditReason, auditStatusFor, gateStatus, auditDisplay, glossarySection,
     blockerIsClosed, packageWaiverIsValid, packagePrerequisiteIssues,
     effectiveReadiness, effectivePackageStatus, packageGateIssues,
-    currentPackage, nextCheckpoint, scheduleProjection,
+    currentPackage, nextCheckpoint, scheduleProjection, scheduleProjectionInput,
   };
 }
 
@@ -1689,21 +1712,26 @@ function buildCoordinationSnapshot(state: ScheduleState): Record<string, Schedul
 }
 
 /**
- * 排程投影装配（buildScheduleSnapshot 的 schedule 键）——只消费 load 期已存的投影
- * （设计 §14/B4）。这里不再调用 projectSchedule、不再追加 errors、也不再有「装配期 catch
+ * 排程投影装配（buildScheduleSnapshot 的 schedule 键）——只消费传入的投影（默认 load 期已存
+ * 的那份，设计 §14/B4）。这里不调用 projectSchedule、不追加 errors、也不再有「装配期 catch
  * 后返回空骨架」的分支：投影失败时 state.scheduleProjection 为 null 且 state.errors 已非空，
  * route 在 build 之前就 503；空骨架只是让类型完整，不是可消费的降级排程。
+ *
+ * what-if 路由（设计 §6.2）把带 scenario 重跑得到的投影传进来，复用同一套包/窗口装配——
+ * check_window 映射、blocking_reasons、constraints 视图口径不允许有第二份。
  */
-function buildScheduleProjectionView(state: ScheduleState): ScheduleProjectionView {
+export function buildScheduleProjectionView(
+  state: ScheduleState,
+  projection: ScheduleProjection | null = state.scheduleProjection,
+): ScheduleProjectionView {
   const declared = readWorkCalendarSnapshot(state.control);
-  const projection = state.scheduleProjection;
   if (!projection) {
     // 只有 load 期投影失败才会走到这里：loadScheduleState 已把原因写进 errors，route 在
     // 调用 build 之前就按 errors 503（server/routes.ts 的 /schedule/state）。下面的空表
     // 不是可消费排程，只是让 ScheduleProjectionView 类型完整；「直接构造 ScheduleState 却
     // 漏填投影」属于契约破坏，这里立即报错而不是静默降级成空排程（B4 的主题）。
     if (state.errors.length === 0) {
-      throw new Error('scheduleProjection 缺失且 errors 为空：ScheduleState 契约被破坏（投影必须在 loadScheduleState 内完成）');
+      throw new Error('排程投影缺失且 errors 为空：ScheduleState 契约被破坏（投影必须在 loadScheduleState 内完成）');
     }
     return {
       anchor_date: declared.anchor_date,

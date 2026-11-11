@@ -39,6 +39,7 @@ import { SchedulePanel } from './ui/SchedulePanel.js';
 import { NextActionPanel } from './ui/NextActionPanel.js';
 import { ScheduleDetailPanel } from './ui/ScheduleDetailPanel.js';
 import { FlowChartPanel } from './ui/FlowChartPanel.js';
+import { GanttPanel } from './ui/GanttPanel.js';
 import { ScheduleSelectionStore, type ScheduleSelection } from './state/schedule-selection.js';
 import {
   parseApprovalRoute, getApprovalRoute, setApprovalRoute, navigateApproval, exitApproval,
@@ -136,6 +137,9 @@ export class App {
   private schedulePanel: SchedulePanel | null = null;
   private scheduleDetailPanel: ScheduleDetailPanel | null = null;
   private flowChartPanel: FlowChartPanel | null = null;
+  // 动态甘特（2026-11-11 issue #202 S2，设计 §7）：只消费 GET /api/schedule/state
+  // 快照的 schedule 键；条点击只写共享选中态，面板没有 onHighlight 钩子、不展开 scope。
+  private ganttPanel: GanttPanel | null = null;
   private approvalView: ApprovalViewPage | null = null;
   /** 上次停留的审批页（关闭再开时回到那里；首次为 next_action）。 */
   private lastApprovalPage: ApprovalViewPage = 'next_action';
@@ -421,8 +425,9 @@ export class App {
     // 不阻塞 ready；服务端没上这个端点就降级成「不可用」，不弹错误刷屏。
     this.elementStatePanel = new ElementStatePanel(this.houseScene);
     void this.loadElementStates();
-    // 自装交互审批（2026-11-02）：store 先行，三面板构造时注入；3D 高亮回调走
+    // 自装交互审批（2026-11-02）：store 先行，面板构造时注入；3D 高亮回调走
     // highlightApprovalPackage（resolvePackageScope 展开房间/对象 id 集合）。
+    // 2026-11-11 issue #202 S2 起共五个审批面板：next_action / schedule / detail / flow / gantt。
     this.scheduleSelection = new ScheduleSelectionStore();
     this.nextActionPanel = new NextActionPanel(this.scheduleSelection);
     this.schedulePanel = new SchedulePanel(this.scheduleSelection, {
@@ -440,6 +445,10 @@ export class App {
         this.navigateToApproval('detail');
       },
     });
+    // 动态甘特（2026-11-11 issue #202 S2，设计 §7）：构造只注入共享选中 store，
+    // 不传 onHighlight——D5 规定定位与 scope 展开的唯一使用者仍是 ScheduleDetailPanel，
+    // 本面板条点击只写 selection（#191 退役选择器时零改动）。
+    this.ganttPanel = new GanttPanel(this.scheduleSelection);
     // 详情页订阅选中态（subscribe 幂等：重复调用先退订再订）；直接打开带
     // #pkg=… 的链接时，restoreFromHash 会把选中写回 store 并触发渲染。
     this.scheduleDetailPanel?.subscribe();
@@ -1166,6 +1175,7 @@ export class App {
     this.schedulePanel?.hide();
     this.scheduleDetailPanel?.hide();
     this.flowChartPanel?.hide();
+    this.ganttPanel?.hide();
     if (page === 'next_action') {
       this.nextActionPanel?.show();
       void this.nextActionPanel?.refresh();
@@ -1178,6 +1188,11 @@ export class App {
     } else if (page === 'flow') {
       this.flowChartPanel?.show();
       void this.flowChartPanel?.refresh();
+    } else if (page === 'gantt') {
+      // 2026-11-11 issue #202 S2：动态甘特子页（设计 §7）。show() 内部已经 refresh，
+      // 这里不再重复拉 /api/schedule/state——两次在途基线请求的后到者会 reset 掉用户
+      // 刚跑完的演算。深链/历史/push-replace 由既有 hash 路由机制承担，这里不自造。
+      this.ganttPanel?.show();
     }
     // 持久化「上次所在子页」而非「当前是否开着」：退出时若写 null，刷新后
     // lastApprovalPage 永远回落 next_action，「记忆上次所在审批页」的承诺就
@@ -1661,7 +1676,8 @@ export class App {
         unavailableReason: this.capabilities.touchPrimary ? '编辑功能仅桌面端可用' : '仅第一人称模式可用',
         run: () => { void this.deleteHoveredPoint(); },
       },
-      // 自装交互审批（2026-11-02）：三个审批页各一条命令，run 委托 showApprovalView。
+      // 自装交互审批（2026-11-02；2026-11-11 issue #202 S2 加甘特）：审批页各一条命令，
+      // run 委托 navigateToApproval（路由 → UI 的统一入口）。
       {
         id: 'approval.next_action',
         label: '审批：下一步干什么',
@@ -1693,6 +1709,14 @@ export class App {
         category: '工程',
         run: () => this.navigateToApproval('flow'),
         getActive: () => this.approvalView === 'flow',
+      },
+      {
+        id: 'approval.gantt',
+        label: '审批：动态甘特',
+        engineeringNote: '区间条画 baseline/forecast 的 min–max 上下界（不是单值条）；无锚点时横轴为「第 N 工作日」、不造年月日；what-if 为演算视图，固定水印「非计划，落配置走 AI 会话/PR」；点条只写共享选中，不做 3D 高亮',
+        category: '工程',
+        run: () => this.navigateToApproval('gantt'),
+        getActive: () => this.approvalView === 'gantt',
       },
     ]);
 

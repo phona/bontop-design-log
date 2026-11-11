@@ -187,6 +187,7 @@ ordinals 的 `date` 从全 null 改成检查日。锚点就绪后，同一窗口
 （UI 只消费快照里的结果）。
 
 ```ts
+// 实现名：ProjectionInput（shared/schedule-projection.ts）。本节的 ScheduleInput 是设计举例名。
 export interface ScheduleInput {
   packages: Array<{ id, sequence, dependencies, duration_workdays: {min,max},
                    constraints?, readiness, status, gate_status }>;
@@ -209,7 +210,7 @@ export function projectSchedule(input: ScheduleInput): ScheduleProjection;
 4. **基线 vs 预测**：两者同一套前向传播（声明工期 / 依赖 / resolved 的 `not_before`）。无 scenario 时逐值相同；有 scenario 时只把 delay 加在点名包的工期上，后继只因此重算。§16 推翻了上一句「把 `auditWindows` 中已有实际窗口的包钉死在实际值，其后包从实际末端继续」——后继从检查日末端继续会把检查日传播成施工延期。检查记录窗口不进入这一步。
 5. **延期传播（what-if）**：`scenario.delay` 从指定包起把 duration 加 N，**只重算拓扑下游**
    （并行分支的序数不变——这正是"不简单平移所有下游"的算法含义）；输出
-   `affected: [{pkg, baseline, forecast, delta}]` 与原基线对照。
+   `affected: [{pkg, delta}]`（对照「无 scenario 的当前预测」，delta 取完整窗口三处位移的最大值，§15.3）。
 6. **冲突检测（角色工作台用）**：分两级——未确认预约（无 `confirmed_at`）的条目只有潜在窗口
    （所属包预测区间），潜在窗口重叠只记提示；`status: confirmed` 且同日的同角色 `onsite` 条目
    才算冲突（同一天两处现场）。`notify`/`remote` 不产生冲突。（§16.4 两级口径；原“预测窗口
@@ -290,8 +291,12 @@ coordination: Record<string, {          // key = SCH id
 ### 6.2 `GET /api/schedule/what-if?delay=PKG-040:3,PKG-030:2`（新，只读）
 
 - GET 不触发写 token 守卫（守卫只拦 POST/PUT/PATCH/DELETE）——what-if 是计算不是写。
-- 语法 `pkg:workdays` 逗号列表；未知包/非正整数 → 400 带原因；无参 → 等同基线。
-- 响应 = §6.1 的 `schedule` 再加 `scenario: { overrides, affected: [{pkg, delta, baseline, forecast}] }`。
+- 语法 `pkg:workdays` 逗号列表；未知包 / 非正整数 / 同一包重复出现 / 单个包超过
+  `MAX_SCENARIO_DELAY_WORKDAYS`（3650 工作日）→ 400 带原因；无参 → 等同基线，
+  响应 `scenario: null`（没有 scenario 就没有演算结论，不造空 overrides/affected）。
+  上限是防 DoS 的边界：delay 会变成 ordinals 地平线，无上限时可让无 token 的 GET 展开十亿项/天。
+- 响应 = §6.1 的 `schedule` 键**平铺**再加 `scenario: { overrides, affected: [{pkg, delta}] }`
+  （affected 的口径见 §15.3；模块形状 `shared/schedule-projection.ts` 的 `ScheduleProjection['scenario']`）。
 - 试点场景"水电或空调延迟 3 个工作日"（Issue 切片 C）正好一个参数。
 
 ---
@@ -305,7 +310,7 @@ coordination: Record<string, {          // key = SCH id
 | 视图 | 形态 | 面板 | 数据 | 交互 |
 |---|---|---|---|---|
 | 项目看板 | **升级** `SchedulePanel`（progress 模式加一列"预测窗口"） | 已有 334 行 | `schedule.packages` | 行点击写 selection（现状不变） |
-| 动态甘特 | **新** `GanttPanel` | 新 ~450 行 | `schedule.*` | 条点击 → selection；what-if 控件（delay 输入 → GET what-if → 重渲）；min/max 画**区间条**不是单值条；无 anchor 时 x 轴标"第 N 工作日" |
+| 动态甘特 | **新** `GanttPanel` | 新 ~700 行（S2 实现） | `schedule.*` | 条点击 → selection；what-if 控件（delay 输入 → GET what-if → 重渲）；min/max 画**区间条**不是单值条；无 anchor 时 x 轴标"第 N 工作日"；演算视图的来源行写 `/api/schedule/what-if`，基线才写 `/api/schedule/state` |
 | 角色工作台 | **新** `RoleWorkbenchPanel` | 新 ~400 行 | `owner_roles` + `coordination` + `next_actions` | 按角色分组：待办检查 / 待确认协调 / 现场冲突；点项 → selection |
 | 协调日历 | **新** `CoordinationCalendarPanel` | 新 ~400 行 | `coordination` + `schedule.packages` | 按工作日列 onsite/remote/notify 三类 chip；`site_pending` 约束标"待定" |
 
@@ -314,11 +319,15 @@ coordination: Record<string, {          // key = SCH id
 `resolvePackageScope` 的唯一使用者（现状如此）。#191 退役 MODEL-PKG-100 选择器时，
 只迁这一处，本设计的三个面板零改动。
 
-**路由**：`#approval=` 枚举加 `gantt|roles|calendar`（approval-route.ts:25-59 + App.ts:1150/1162/1251
-三处登记），tab 文案"甘特/角色/日历"。深链、push/replace、退出语义由现有路由机制免费获得。
+**路由**：`#approval=` 枚举加 `gantt|roles|calendar`。S2 先落地 `gantt`（`approval-route.ts`
+的 `SUB_PAGES`、`App.ts` 的 `showApprovalView` / 命令注册、`view-state-store.ts` 的持久化白名单
+三处同步）；`roles` / `calendar` 属 S3，实现落地前不进枚举（坏 hash 照既有口径回落 3D 页）。
+tab 文案只加已落地的"甘特"。深链、push/replace、退出语义由现有路由机制免费获得。
 
-**移动端**：甘特在 ≤700px 退化为"包列表 + 序数条"（不硬画时间轴，参照 FlowChartPanel
-issue #83 的单列降级先例）；工作台与日历本就是列表/纵列形态，天然适配。
+**移动端**：甘特在 ≤700px 退化为"包列表 + 序数条"（包信息单列堆叠，区间条按 ordinals
+上下界做相对定位，**不建日期轴/刻度**；参照 FlowChartPanel issue #83 的单列降级先例）；
+无锚点时轴与条几何都不出现年月日，检查记录窗口的 checked_at 证据日期另行保留（§17）。
+工作台与日历本就是列表/纵列形态，天然适配。
 
 **零新依赖**：不引 Frappe Gantt/任何图表库（判据见 §8）。
 
@@ -983,7 +992,11 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 **消费者核对**（全仓 grep，本棒）：
 
 - `shared/schedule-projection.ts` 的生产进口只有 `shared/schedule-state.ts` 一处（load 期投影 + 快照装配）。
-- `app/src` 无 `ordinals` 读取（UI 只经 `ScheduleSnapshot` 类型使用其它键）；`server/` 只有 `routes.ts` 的 `/schedule/state` 直出 `buildScheduleSnapshot` 结果，不触碰 ordinals；what-if 路由尚未落地（§6.2 仍为设计）。
+- `app/src` 的 `GanttPanel` 是 `schedule.ordinals` 的第一个消费者（2026-11-11 issue #202 S2），
+  只读渲染、不改写数组（单测钉住渲染与点击前后逐字节不变）；what-if 路由已落地
+  （`server/routes.ts` 的 `GET /schedule/what-if`，设计 §6.2），复用 loader 装配好的
+  `scheduleProjectionInput` 重跑 `projectSchedule`，不碰 ordinals 的二次清空。
+  `server/` 只有 `routes.ts` 的 `/schedule/state` 直出 `buildScheduleSnapshot` 结果，不触碰 ordinals。
 - 其余引用都在测试里（`schedule-projection.test.ts` 直接 import 模块断言；`schedule-loader-contract.test.ts` 经 loader 快照断言 `date: null`），不依赖 loader 清空。
 - 结论：删除后没有任何消费者会拿到「原本被 loader 清成 null、现在变成非 null」的值。
 
@@ -993,8 +1006,8 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 
 | # | 位置 | 问题与证据（复审员探针） | 严重度 | 处置与触发条件 |
 |---|---|---|---|---|
-| L1 | `shared/schedule-projection.ts` 无锚点游标存根内 `ensure(){}`（对照 `dateOf` :243-245 / `ordForDate` :246-248 抛 `internal_order_error`） | 三个游标方法口径不对称：`ensure` 是静默 no-op。今天不可达（唯一 `cursor.ensure` 调用点在 anchorReady 分支内，复审员逐点枚举 722/723、750、824、827 全部有守卫），但将来新增第四条调用点若只写 `cursor.ensure(n)`（以为「保证展开」）会得到静默成功而非当场失败，§18.3 第 3 条「忘了锚点判断会当场失败」对 ensure 这一条不成立 | low | **S2 动模块时收**（what-if 路由是本模块的新消费方，正是容易新增调用点的时机）：把存根 `ensure` 改为与另两个方法一致抛 `internal_order_error`，或显式注释声明不可达。owner：S2 实施者；触发：S2 任务书开工 |
-| L2 | `shared/schedule-state.ts` 快照 `ordinals` 透传（删掉二次 `.map` 的后果，探针 `ordinals_same_object_reference` 修复前 false → 修复后 true） | 快照数组与 `state.scheduleProjection.ordinals` 是同一对象，消费者若原地改快照会改到 loader 保留态。今天无实际风险：全仓只有 `shared/` 与 `tests/` 引用 ordinals（`app/src`、`server/`、`scripts/` 零命中），且 `baseline`/`forecast` 等键本来就走引用透传，属既有风格 | low | **记录即可，S2 择机**：甘特面板只读快照不改写，无需动作；若未来任何消费方要 mutate 快照 ordinals，先在快照侧 copy。owner：S2 实施者复核；触发：S2 出现第一个 ordinals 消费方 |
+| L1 | `shared/schedule-projection.ts` 无锚点游标存根内 `ensure()`（对照 `dateOf` :275-277 / `ordForDate` :278-280 抛 `internal_order_error`） | 三个游标方法口径不对称：`ensure` 是静默 no-op。今天不可达（唯一 `cursor.ensure` 调用点在 anchorReady 分支内，复审员逐点枚举 722/723、750、824、827 全部有守卫），但将来新增第四条调用点若只写 `cursor.ensure(n)`（以为「保证展开」）会得到静默成功而非当场失败，§18.3 第 3 条「忘了锚点判断会当场失败」对 ensure 这一条不成立 | low | **S2 已收（2026-11-11）**：存根 `ensure` 改为与另两个方法一致抛 `internal_order_error`，模块单测直接钉住三方法 fail-closed；`CalendarCursor` / `createCalendarCursor` 加 `@internal` 标注（测试专用导出，生产调用点仍只有 projectSchedule 一处）。owner：S2 实施者；触发：S2 任务书开工 |
+| L2 | `shared/schedule-state.ts` 快照 `ordinals` 透传（删掉二次 `.map` 的后果，探针 `ordinals_same_object_reference` 修复前 false → 修复后 true） | 快照数组与 `state.scheduleProjection.ordinals` 是同一对象，消费者若原地改快照会改到 loader 保留态。S2 起 `app/src/ui/GanttPanel.ts` 是第一个 ordinals 消费者，但它只读渲染（单测钉住渲染+点击前后逐字节不变），`server/`/`scripts/` 仍不直接改写；`baseline`/`forecast` 等键本来就走引用透传，属既有风格 | low | **记录即可，S2 已复核无动作**：甘特面板只读快照不改写；若未来任何消费方要 mutate 快照 ordinals，先在快照侧 copy。owner：S2 实施者复核；触发：S2 出现第一个 ordinals 消费方 |
 | L3 | `tests/server/schedule-loader-contract.test.ts`（loader 删掉的那行冗余无测试可区分） | 旧 masking 与新透传在无锚点时同值，loader 单测对「删没删」不敏感——「这是死代码」只由复审员探针的逐字节对比支撑，不是测试支撑。端到端行为仍被一条断言钉住（anchor null 时 `ord3.date===null`），模块改错时会红；反向变异实验：把模块测试换成 1ab10a9c 版本得 53 pass / 4 fail，证明模块侧咬得住，loader 侧造不出红 | low | **不修，覆盖说明**：该删除的正确性由「快照输出前后逐字节一致」的探针 + 端到端断言共同保证，无需为一行死代码造专属测试。owner：无需（记录在案） |
 
 ### 18.8 轮次预算后的状态（六审收口）
@@ -1002,6 +1015,18 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 - Codex 六审（审查提交 `1497bac1`，事件 `COMMENT`）：**blocking 0 · major 0 · minor 0 · nit 0，「没有发现项」**。一审至六审在同一条链上提出的全部 finding 处理完毕。
 - PR #216 于 2026-11-11 合并入 master（`e54abc56`），master CI 六项门禁全绿。
 - 本设计文档的角色至此从「施工中的验证台账」转为「切片 A 的定稿设计 + 审查全账」；S2 及以后的轮次记账在新切片续写（§19 起），本节不改写。
+
+---
+
+## 19. S2 甘特切片落地（2026-11-11）
+
+- **交付**（工作树 `ep-202-gantt`，分支 `arch/202-gantt`；实施四路 + 集成 + 独立评审跑 `magpie/auto/deepseek-v4.1-flash`，主会话仲裁）：`GanttPanel`（705 行——区间条 min/max、无锚点只标「第 N 工作日」、点条只写 selection 不碰 3D/scope（D5）、what-if 控件带「演算视图，非计划」水印、≤700px 退化为 ordinals 相对条不建日期轴）+ 路由 tab `gantt`（`SUB_PAGES` / `showApprovalView` / 命令面板 / view-state 白名单四处同步，`roles`/`calendar` 留 S3 不进枚举）+ `GET /api/schedule/what-if`（复用 loader 装配好的 `scheduleProjectionInput` 重跑 `projectSchedule`，无第二套装配；`MAX_SCENARIO_DELAY_WORKDAYS` = 3650 防排程轴无界展开；只有请求类 ProjectionError 回 400，内部不变量错误走 503）。
+- **§18.7 L1 已收**：无锚点游标存根 `ensure` 改为与 `dateOf` / `ordForDate` 同为 fail-closed（`internal_order_error`），模块单测钉住三方法；`CalendarCursor` / `createCalendarCursor` 为测试专用导出（`@internal`，生产调用点仍只有 `projectSchedule` 一处）。
+- **§18.7 L2 已复核无动作**：`GanttPanel` 是 `schedule.ordinals` 的第一个消费方，只读渲染，单测钉住渲染 + 点击前后逐字节不变；未来消费方要 mutate 时先在快照侧 copy。
+- **本文档同步**（只改口径、不删证据；被替换的旧句：§4 第 5 条 affected 的 `{pkg, baseline, forecast, delta}` 形状、§6.2 的「未知包/非正整数 → 400」与 scenario 恒为对象、§7 的 App.ts 三处行号与 `gantt|roles|calendar` 一次枚举、§7 移动端「序数条」未定义形态、§18.6「app/src 零命中 ordinals」、§18.7 L1/L2 两行的待办状态）——逐条换成当前实现口径，无候选、证据或淘汰理由被删。
+- **门禁**（工作树实测判定行）：ci:typecheck 0/0 通过；ci:test-app 892 测 3 失败全在 `ci/baseline/`（HouseScene 存量）；ci:verify-all 22/23，verify-mep 存量在基线内；build:app 通过。
+- **已知未收**（独立评审 15 条：2 条 medium 已在本片修掉——delay 上限与演算视图来源行；余 13 条 low 登记在 PR 描述待业主裁）：测试缺口（真实路由响应 → 面板渲染的集成测试、无锚点 + 检查记录时的日期展示口径）、`scheduleProjectionInput` 必填 vs 可选、窄屏图例与内容一致性、重复 delay 包在模块层的求和语义等。
+- **S3 前提**：切片 B/C 的角色工作台与协调日历按 §7 现文接线；`#approval=` 枚举到 S3 才补 `roles|calendar`。
 
 ---
 

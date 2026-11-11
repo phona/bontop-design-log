@@ -82,7 +82,7 @@
 
     <!-- 自装审批独立页（2026-11-03 路由级）：从预演工作台 dock 搬出，地址栏
          #approval=<子页>&pkg=&check= 即状态；body.approval-page 控制显隐。
-         四个审批面板运行时挂到 #approval-page-panels（不再挤右坞）。 -->
+         五个审批面板运行时挂到 #approval-page-panels（不再挤右坞）。 -->
     <div id="approval-page" aria-label="自装审批">
       <header class="approval-page-head">
         <button id="approval-page-back" type="button" title="返回 3D（浏览器返回键同效）">← 返回 3D</button>
@@ -92,6 +92,7 @@
           <button type="button" data-approval-tab="schedule">进度/门禁</button>
           <button type="button" data-approval-tab="detail">包详情</button>
           <button type="button" data-approval-tab="flow">流程图</button>
+          <button type="button" data-approval-tab="gantt">甘特</button>
         </nav>
       </header>
       <div id="approval-page-panels"></div>

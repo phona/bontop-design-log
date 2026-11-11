@@ -577,6 +577,21 @@ describe('App', () => {
     }
   });
 
+  // 2026-11-11 issue #202 S2：深链 #approval=gantt 必须真的打开动态甘特子页——
+  // readViewState 白名单/showApprovalView 的 gantt 分支任一失效时这条红（不再静默落 next_action）。
+  it('boot：#approval=gantt 深链打开动态甘特子页', async () => {
+    location.hash = '#approval=gantt';
+    try {
+      const app = new App(canvas);
+      await app.start();
+      expect(app['approvalView']).toBe('gantt');
+      expect(app['ganttPanel']?.isVisible()).toBe(true);
+    } finally {
+      location.hash = '';
+      localStorage.removeItem('bontop-view-state/v1');
+    }
+  });
+
   // 2026-11-03 codex 四审 major：命令面板的「切换视角模式」是键盘屏蔽的漏网入口——
   // 审批页里切第一人格会 requestLock 把指针锁给背后的画布。toggleMode 本体加守卫。
   it('审批页打开期间 toggleMode 是 no-op（命令面板漏网入口）', async () => {
