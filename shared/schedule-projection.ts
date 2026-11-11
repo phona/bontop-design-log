@@ -1,21 +1,25 @@
 /**
- * 施工排程投影（issue #202 切片 B；设计依据 docs/schedule-coordination-design.md §2.1 / §4 / §6.1 / §10）。
+ * 施工排程投影（issue #202 切片 B；设计依据 docs/schedule-coordination-design.md §4 / §14 / §15 / §16）。
  *
  * 纯函数模块，与 shared/flow-layout.ts 同宗：不碰 fs、不碰 DOM、同输入必得同输出。
  * 输入是 schedule/phase-1/control.yaml 的声明值（包/依赖/工期/约束/工作日历）加
- * loader 从 audit_log 派生的实际窗口，输出是纯计算出的投影；本模块不读文件、不写状态。
+ * loader 从 audit_log 派生的检查记录窗口，输出是纯计算出的投影；本模块不读文件、不写状态。
  * UI 不 import 本模块做计算（设计 §4：UI 只消费快照里的结果，第二套排程实现即第二权威源）。
  *
- * 时间模型（设计 §3）：所有位置以「自排程零点起第 N 个工作日」（1-based，下文记作 ord）。
+ * 时间模型（设计 §3 的四条线；§16 推翻「预测钉死检查记录窗口」）：
+ * 所有位置以「自排程零点起第 N 个工作日」（1-based，下文记作 ord）。
  * - ord 1 = 锚点当天或之后第一个工作日；锚点之前的工作日依次为 ord 0、-1、-2…（设计 §14/B3）。
  * - baseline：声明依赖 + 声明工期区间，min/max 各做一遍前向传播（乐观/保守），不存。
- * - forecast：同样两遍，但已有实际窗口的包钉死在实际窗口，其后继从实际末端起算。
- * - scenario（what-if）：在 forecast 基础上给点名的包加工期，只重算拓扑下游。
- * - 实际窗口由 loader 以真实日期给入（{start_date, end_date}，YYYY-MM-DD）：本模块用同一张
- *   工作日历把它映射成 ord，ordinals 覆盖 [minOrd, maxOrd]——向后到最早的实际日期（可为负
- *   ord），向前到基线/预测/实际的最晚末端，任何真实日期都不因「地平线外」被丢弃。
+ * - forecast：与 baseline 同一套前向传播（声明工期 / 依赖 / resolved 约束）。
+ *   无 scenario 时与 baseline 相同；有 scenario 时差异只来自 scenario.delay（§16，业主裁定 A）。
+ *   检查记录窗口不参与 forecast，也不顺延后继。
+ * - scenario（what-if）：给点名的包加工期，只重算拓扑下游。
+ * - 检查记录窗口由 loader 以真实日期给入（{start_date, end_date}，YYYY-MM-DD）：本模块用同一张
+ *   工作日历把它映射成 ord，作为证据字段返回，并参与 ordinals 地平线扩展——向后到最早的
+ *   检查日期（可为负 ord），向前到基线/预测/检查窗口的最晚末端。它不是施工起止。
+ *   任何真实日期都不因「地平线外」被丢弃（B3 保留）。
  *
- * 日期映射规则（约束与实际窗口同一条）：落在非工作日的日期取「当天或之后第一个工作日」；
+ * 日期映射规则（约束与检查记录窗口同一条）：落在非工作日的日期取「当天或之后第一个工作日」；
  * 工作日判定顺序见 createCalendarCursor（rest_dates 优先，其次 extra_workdates，再看 workdays）。
  * 日期→ord 是**查询顺序无关**的纯查询（§15/F1）：ord 只由日历与目标日期决定，按日期 memo；
  * 任何调用顺序、任何查询次数结果一致。正向/反向的工作日展开只做单调缓存，不在查询路径上
@@ -24,30 +28,33 @@
  * 单 start_ord 的口径（ProjectedWindow 只有三个字段）：start_ord 取 min 口径（乐观）
  * 那一遍的起点，end_ord_min 取 min 口径的末端，end_ord_max 取 max 口径的末端。
  * 因此区间 [start_ord, end_ord_max] 是「最早可能开工 → 最晚可能完工」的全不确定区间，
- * 甘特的区间条与冲突检测都用这个区间（设计 §7「min/max 画区间条不是单值条」）。
+ * 甘特的区间条用这个区间（设计 §7「min/max 画区间条不是单值条」）。
+ * 协调检测不再把这个整段区间当成已确认的现场占用（§16 minor）：没有 confirmed 日期的条目
+ * 只有潜在窗口；真实占用是 confirmed_at 当天。
  *
  * 约束（设计 §2.1(b)）：只有 type === 'not_before'、status === 'resolved'、date 非空
  * 且 calendar.anchor_date 非 null 的约束参与计算，把该包 start_ord 抬到不早于该 date
  * 对应的 ord（date 落在休息日时取当天或之后第一个工作日）。not_after / time_window 在
- * MVP 只登记不生效。
+ * MVP 只登记不生效。约束抬升同时进入 baseline 与 forecast（它是计划的一部分，不是检查日期）。
  *
  * 锚点为 null 的执行口径（设计 §14/B5）：没有锚点就没有真实日期坐标系，本模块不做任何
  * 名义纪元（1970-01-01）映射——resolved 的 not_before 直接跳过抬升（loader 报
- * constraint_resolved_without_anchor）；带真实日期的 actual_windows 直接判
- * invalid_actual_window，不把 1970 序数交付给消费者。
+ * constraint_resolved_without_anchor）；带真实日期的 check_windows 直接判
+ * invalid_check_window，不把 1970 序数交付给消费者。
  *
  * 侧车道：sequence >= 900 的包（PKG-900）由调用方过滤（设计 §4）；本模块不特判，
  * 传进来按普通包计算，不会崩，也不会被静默丢弃。PKG-900 的真实声明是
  * duration_workdays {min: 0, max: 0}（硬装预备金，不进行任何施工），零工期一律按
  * 「零工作日里程碑」处理：start_ord = end_ord，不占 ord，后继从该包的 start_ord 起算
- * （§15/m1：前向传播对零工期依赖不再 +1）。
+ * （§15/m1：前向传播对零工期依赖不再 +1）。零工期只看声明工期，检查记录窗口不改这个判定。
  *
  * 错误（fail-closed，全部抛 ProjectionError，code 供 loader 映射到 §2.1(d) 的错误码）：
  * unknown_dependency / self_dependency / dependency_cycle（DAG）、invalid_duration、
- * invalid_actual_window / unknown_actual_window_package、invalid_calendar /
+ * invalid_check_window / unknown_check_window_package、invalid_calendar /
  * calendar_date_conflict / work_calendar_empty / work_calendar_exhausted / invalid_date、
  * unknown_scenario_package / invalid_delay、unknown_coordination_package。
  * validateDag 按契约返回中文错误串而不抛错，projectSchedule 用第一条 issue 的 code 抛。
+ * §16 起不再使用 invalid_actual_window / unknown_actual_window_package（旧名是第四种叫法）。
  */
 
 const MS_PER_DAY = 86_400_000;
@@ -55,7 +62,7 @@ const MS_PER_DAY = 86_400_000;
 /**
  * 无锚点时的名义纪元（1970-01-01，周四）。
  * 只用于「没有锚点时的 ord→date 占位表」，让 ordinals 的形状保持确定性；**不得**用它把
- * 任何真实日期（约束日期 / 实际窗口）映射成 ord（设计 §14/B5：1970 序数不是可交付坐标）。
+ * 任何真实日期（约束日期 / 检查记录窗口）映射成 ord（设计 §14/B5：1970 序数不是可交付坐标）。
  * UI 不得把名义纪元的日期显示给用户——anchor_date 为空时只显示「第 N 工作日」，
  * ordinals 的 date 置 null 由 loader 负责（设计 §3「未知保持未知，不造年月日」）。
  */
@@ -76,22 +83,23 @@ export interface ProjectionCalendar {
   extra_workdates: string[]; // YYYY-MM-DD
   anchor_date: string | null;
 }
-/** 投影输出里的实际窗口（ord 坐标；锚点前的工作日为 0 / 负值，设计 §14/B3）。 */
-export interface ProjectionActualWindow { start_ord: number; end_ord: number; }
-/** 实际窗口的模块输入：真实日期（本模块经工作日历映射成 ord）。 */
-export interface ProjectionActualDates { start_date: string; end_date: string; }
+/** 投影输出里的检查记录窗口（ord 坐标；锚点前的工作日为 0 / 负值，设计 §14/B3）。不是施工起止。 */
+export interface ProjectionCheckWindow { start_ord: number; end_ord: number; }
+/** 检查记录窗口的模块输入：真实日期（本模块经工作日历映射成 ord，只作证据，不进 forecast）。 */
+export interface ProjectionCheckDates { start_date: string; end_date: string; }
 export interface ProjectionInput {
   packages: ProjectionPackage[];
   calendar: ProjectionCalendar;
   constraints?: Record<string, ProjectionConstraint[]>;  // key = PKG id
-  actual_windows?: Record<string, ProjectionActualDates>; // key = PKG id；日期须为 YYYY-MM-DD
+  check_windows?: Record<string, ProjectionCheckDates>; // key = PKG id；日期须为 YYYY-MM-DD
   scenario?: { delay: Array<{ pkg: string; workdays: number }> };
 }
 export interface ProjectedWindow { start_ord: number; end_ord_min: number; end_ord_max: number; }
 export interface ProjectedPackage {
   baseline: ProjectedWindow;
   forecast: ProjectedWindow;
-  actual: ProjectionActualWindow | null;
+  /** 检查记录窗口的证据 ord。不参与 baseline / forecast（设计 §16）。 */
+  check_window: ProjectionCheckWindow | null;
 }
 export interface ScheduleProjection {
   ordinals: Array<{ ord: number; date: string | null }>;
@@ -153,7 +161,7 @@ interface CalendarCursor {
   ensure(targetOrd: number): void;
   /** ord（任意整数，0 / 负值表示锚点前的工作日）→ YYYY-MM-DD。 */
   dateOf(ord: number): string;
-  /** 某日期当天或之后第一个工作日的 ord（约束日期与实际窗口落在休息日时向后取）。 */
+  /** 某日期当天或之后第一个工作日的 ord（约束日期与检查记录日期落在休息日时向后取）。 */
   ordForDate(text: string, label?: string): number;
 }
 
@@ -194,6 +202,26 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
 
   const epochDay = parseIsoDate(calendar.anchor_date ?? NOMINAL_EPOCH, 'anchor_date');
 
+  // 扫描上限至少覆盖日历自己声明过的日期（§16 major）。
+  // 旧上限按「目标工作日数 × 7」估算：workdays 为空、extra_workdates 相隔约两个月时，
+  // 第二个已声明的工作日在上限之外，误报 work_calendar_exhausted（01-05 与 03-05、工期 2，
+  // 正向扫 29 天只得到 1 个工作日；锚点改到后一个声明日时反向同样在 22 天处断开）。
+  // 声明日不够凑工期时仍然报 exhausted——上限变长，保险丝还在。7× 保留为密日历的下限，
+  // 避免休息日把工作日吃光时扫得比原来更短。
+  const DECLARED_DATE_BUFFER = 7;
+  let latestDeclared = epochDay;
+  let earliestDeclared = epochDay;
+  for (const day of extraWorkdates) {
+    if (day > latestDeclared) latestDeclared = day;
+    if (day < earliestDeclared) earliestDeclared = day;
+  }
+  for (const day of restDates) {
+    if (day > latestDeclared) latestDeclared = day;
+    if (day < earliestDeclared) earliestDeclared = day;
+  }
+  const declaredForwardSpan = latestDeclared - epochDay;
+  const declaredBackwardSpan = epochDay - earliestDeclared;
+
   const isWorkday = (day: number): boolean => {
     if (restDates.has(day)) return false;
     return extraWorkdates.has(day) || workdays.has(weekdayOfDay(day));
@@ -213,13 +241,14 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
   // 也不因查询顺序改变结果。
   const ordByDate = new Map<number, number>();
 
-  const scanLimitFor = (targetOrd: number): number => 7 * (targetOrd + restDates.size + 1) + 7;
+  const scanLimitFor = (targetCount: number, declaredSpan: number): number =>
+    Math.max(7 * (targetCount + restDates.size + 1) + 7, declaredSpan + DECLARED_DATE_BUFFER);
 
   const ensure = (targetOrd: number): void => {
     if (!Number.isInteger(targetOrd) || targetOrd < 0) {
       throw new ProjectionError('invalid_ordinal', `工作日序数必须是非负整数（收到 ${targetOrd}）`);
     }
-    const scanLimit = scanLimitFor(targetOrd);
+    const scanLimit = scanLimitFor(targetOrd, declaredForwardSpan);
     while (days.length < targetOrd) {
       if (isWorkday(cursorDay)) {
         days.push(cursorDay);
@@ -228,7 +257,7 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
       if (days.length < targetOrd && cursorDay - epochDay > scanLimit) {
         throw new ProjectionError(
           'work_calendar_exhausted',
-          `已扫描 ${cursorDay - epochDay} 天只得到 ${days.length} 个工作日，无法达到序数 ${targetOrd}（检查 rest_dates 是否把工作日全部吃掉）`,
+          `已扫描 ${cursorDay - epochDay} 天只得到 ${days.length} 个工作日，无法达到序数 ${targetOrd}（声明过的工作日已纳入扫描上限；若仍不够，是 rest_dates 吃掉了工作日，或 workdays / extra_workdates 不足以凑够序数）`,
         );
       }
     }
@@ -244,7 +273,7 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
     if (!Number.isInteger(count) || count < 0) {
       throw new ProjectionError('invalid_ordinal', `向后展开的工作日个数必须是非负整数（收到 ${count}）`);
     }
-    const scanLimit = scanLimitFor(count);
+    const scanLimit = scanLimitFor(count, declaredBackwardSpan);
     let cursorDay = backwardDays.length === 0 ? epochDay : backwardDays[backwardDays.length - 1];
     const startDay = cursorDay;
     while (backwardDays.length < count) {
@@ -253,7 +282,7 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
       if (backwardDays.length < count && startDay - cursorDay > scanLimit) {
         throw new ProjectionError(
           'work_calendar_exhausted',
-          `锚点前已扫描 ${startDay - cursorDay} 天只得到 ${backwardDays.length} 个工作日，无法达到序数 ${1 - count}（检查 rest_dates 是否把工作日全部吃掉）`,
+          `锚点前已扫描 ${startDay - cursorDay} 天只得到 ${backwardDays.length} 个工作日，无法达到序数 ${1 - count}（声明过的工作日已纳入扫描上限；若仍不够，是 rest_dates 吃掉了工作日，或 workdays / extra_workdates 不足以凑够序数）`,
         );
       }
     }
@@ -306,7 +335,7 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
    * 真实日期 → ord：取「当天或之后第一个工作日」。
    * - 不早于 ord 1 的日期：从正向展开表里二分第一个 ≥ targetDay 的工作日；
    * - 早于 ord 1 的日期：用 backwardOrdForDate 纯扫描（不写缓存；设计 §14/B3：锚点前的
-   *   实际日期必须有负序数）。
+   *   检查记录日期必须有负序数，供证据字段与 ordinals 使用，不进 forecast）。
    *
    * 无状态查询（§15/F1）：结果只由日历与 targetDay 决定，按天序号 memo。正向/反向展开表
    * 都是单调缓存，查询只读不推进游标——先查 01-01 再查 12-31 与反过来必须得到同一组 ord。
@@ -493,8 +522,6 @@ interface PassWindow {
 interface ForwardPassOptions {
   order: ProjectionPackage[];
   durations: Map<string, { min: number; max: number }>;
-  /** 实际窗口：命中即钉死，两个口径都取实际值；null = 基线口径。 */
-  actualWindows: Record<string, ProjectionActualWindow> | null;
   /** 包 id → 约束抬起后的最早 start_ord。 */
   constraintFloor: Map<string, number>;
   useMaxDuration: boolean;
@@ -503,16 +530,9 @@ interface ForwardPassOptions {
 function forwardPass(options: ForwardPassOptions): Map<string, PassWindow> {
   const windows = new Map<string, PassWindow>();
   // 本遍口径下的零工期包（§15/m1）：里程碑不占用工作日，后继从它的 start_ord 起算。
-  // 实际窗口钉死的包不进此集合——实际窗口是事实，仍按末端 +1 顺延。
+  // 只看声明工期。检查记录窗口不进本函数（§16：它不是工期，也不顺延后继）。
   const nonOccupying = new Set<string>();
   for (const pkg of options.order) {
-    const actual = options.actualWindows?.[pkg.id];
-    if (actual) {
-      // 已完成包是事实：实际窗口压过依赖、约束与 scenario（forecast 口径才传 actualWindows）
-      windows.set(pkg.id, { start: actual.start_ord, end: actual.end_ord });
-      continue;
-    }
-
     let start = 1;
     for (const dependency of pkg.dependencies ?? []) {
       const dependencyWindow = windows.get(dependency);
@@ -534,7 +554,7 @@ function forwardPass(options: ForwardPassOptions): Map<string, PassWindow> {
     const length = options.useMaxDuration ? duration.max : duration.min;
     // 零工期 = 不占工作日的里程碑（PKG-900 硬装预备金是真实先例）：
     // 若照 end = start - 1 会造出 start > end 的非法窗口；后继也不能按 end + 1 顺延，
-    // 否则里程碑会实际占用一个工作日（§15/m1）。
+    // 否则里程碑会多占一个工作日（§15/m1）。
     const end = length === 0 ? start : start + length - 1;
     if (length === 0) nonOccupying.add(pkg.id);
     windows.set(pkg.id, { start, end });
@@ -593,30 +613,31 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     durationLimits.set(pkg.id, { min, max });
   }
 
-  // 实际窗口（设计 §14/B3）：loader 给真实日期，本模块经工作日历映射成 ord。
+  // 检查记录窗口（设计 §14/B3 + §16）：loader 给真实日期，本模块经工作日历映射成 ord。
+  // 只作证据，并扩展 ordinals 地平线；不进入 baseline / forecast。
   // 先做与日历无关的校验（未知包 / 日期格式 / 起止顺序）；日期→ord 的映射在 cursor 建好后进行。
-  const declaredActuals = input.actual_windows ?? {};
-  for (const [pkgId, window] of Object.entries(declaredActuals)) {
+  const declaredChecks = input.check_windows ?? {};
+  for (const [pkgId, window] of Object.entries(declaredChecks)) {
     if (!durationLimits.has(pkgId)) {
-      throw new ProjectionError('unknown_actual_window_package', `实际窗口引用了未知包 ${pkgId}`);
+      throw new ProjectionError('unknown_check_window_package', `检查记录窗口引用了未知包 ${pkgId}`);
     }
     parseIsoDate(window.start_date, `${pkgId}.start_date`);
     parseIsoDate(window.end_date, `${pkgId}.end_date`);
     if (window.start_date > window.end_date) {
       throw new ProjectionError(
-        'invalid_actual_window',
-        `${pkgId}: 实际窗口非法（${window.start_date} → ${window.end_date}），start_date 不得晚于 end_date`,
+        'invalid_check_window',
+        `${pkgId}: 检查记录窗口非法（${window.start_date} → ${window.end_date}），start_date 不得晚于 end_date`,
       );
     }
   }
   // 设计 §14/B5 同一原则：锚点为 null 时没有真实日期坐标系，不按 1970 名义纪元造序数。
-  // 实际窗口是真实日期，无法定位时不降级、不丢弃——直接判定非法。
+  // 检查记录日期无法定位时不降级、不丢弃——直接判定非法。
   if (calendar.anchor_date === null || calendar.anchor_date === undefined) {
-    const anchored = Object.keys(declaredActuals);
+    const anchored = Object.keys(declaredChecks);
     if (anchored.length > 0) {
       throw new ProjectionError(
-        'invalid_actual_window',
-        `${anchored.join('、')}: anchor_date 为空时无法把实际窗口的真实日期映射成排程序数（不按 1970 名义纪元造序数）`,
+        'invalid_check_window',
+        `${anchored.join('、')}: anchor_date 为空时无法把检查记录窗口的真实日期映射成排程序数（不按 1970 名义纪元造序数）`,
       );
     }
   }
@@ -636,23 +657,24 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     delayByPkg.set(entry.pkg, (delayByPkg.get(entry.pkg) ?? 0) + entry.workdays);
   }
 
-  // 3. 工作历：约束日期与实际窗口日期都经同一张日历映射成 ord
-  // （可能需要把展开推进到约束/实际日期之后，或向后扩到锚点之前）
+  // 3. 工作历：约束日期与检查记录日期都经同一张日历映射成 ord
+  // （可能需要把展开推进到约束/检查日期之后，或向后扩到锚点之前）
   const cursor = createCalendarCursor(calendar);
 
-  // 实际窗口：真实日期 → ord（休息日取之后第一个工作日，见 ordForDate docstring）
-  const actualWindows: Record<string, ProjectionActualWindow> = {};
-  for (const [pkgId, window] of Object.entries(declaredActuals)) {
+  // 检查记录窗口：真实日期 → ord（休息日取之后第一个工作日，见 ordForDate docstring）。
+  // 映射结果只写入证据字段与 ordinals 地平线，下面的前向传播不读它（§16）。
+  const checkWindows: Record<string, ProjectionCheckWindow> = {};
+  for (const [pkgId, window] of Object.entries(declaredChecks)) {
     const startOrd = cursor.ordForDate(window.start_date, `${pkgId}.start_date`);
     const endOrd = cursor.ordForDate(window.end_date, `${pkgId}.end_date`);
     if (endOrd < startOrd) {
       // 日期映射单调，理论上不可达；留作内部不变量检查而不是静默取反
       throw new ProjectionError(
-        'invalid_actual_window',
-        `${pkgId}: 实际窗口映射后非法（${window.start_date} → ord ${startOrd}，${window.end_date} → ord ${endOrd}）`,
+        'invalid_check_window',
+        `${pkgId}: 检查记录窗口映射后非法（${window.start_date} → ord ${startOrd}，${window.end_date} → ord ${endOrd}）`,
       );
     }
-    actualWindows[pkgId] = { start_ord: startOrd, end_ord: endOrd };
+    checkWindows[pkgId] = { start_ord: startOrd, end_ord: endOrd };
   }
 
   const constraintFloor = new Map<string, number>();
@@ -670,23 +692,22 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     }
   }
 
-  // 4. baseline：声明依赖 + 声明工期，两遍前向（不含实际窗口、不含 scenario）
+  // 4. baseline：声明依赖 + 声明工期 + resolved 约束，两遍前向。不读检查记录窗口。
   const baselineMin = forwardPass({
     order,
     durations: durationLimits,
-    actualWindows: null,
     constraintFloor,
     useMaxDuration: false,
   });
   const baselineMax = forwardPass({
     order,
     durations: durationLimits,
-    actualWindows: null,
     constraintFloor,
     useMaxDuration: true,
   });
 
-  // 5. forecast：实际窗口钉死 + scenario 加工期（已完工包不吃 delay）
+  // 5. forecast：与 baseline 同一套传播，唯一差别是 scenario.delay 加在点名包的工期上（§16）。
+  // 检查记录窗口不在这里。无 delay 时两遍与 baseline 逐值相同。
   const forecastDurations = new Map<string, { min: number; max: number }>();
   for (const [pkgId, duration] of durationLimits) {
     const delay = delayByPkg.get(pkgId) ?? 0;
@@ -695,40 +716,21 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
   const forecastMin = forwardPass({
     order,
     durations: forecastDurations,
-    actualWindows,
     constraintFloor,
     useMaxDuration: false,
   });
   const forecastMax = forwardPass({
     order,
     durations: forecastDurations,
-    actualWindows,
     constraintFloor,
     useMaxDuration: true,
   });
 
-  // 5b. forecast-no-scenario：实际窗口照常钉死、不加 delay（§15/M1）。
-  // 这是 scenario 效果的唯一对照基准：它与 forecast 的差只来自本次演算，
-  // 既有实际窗口造成的位移在两边同时存在，不会被误列进 affected。
-  const noScenarioMin = forwardPass({
-    order,
-    durations: durationLimits,
-    actualWindows,
-    constraintFloor,
-    useMaxDuration: false,
-  });
-  const noScenarioMax = forwardPass({
-    order,
-    durations: durationLimits,
-    actualWindows,
-    constraintFloor,
-    useMaxDuration: true,
-  });
-
-  // 6. 组装每个包的基线/预测/实际，顺带求 ordinals 的上下界
+  // 6. 组装每个包的基线/预测/检查记录窗口，顺带求 ordinals 的上下界。
+  // 检查窗口只扩展地平线（B3），不改 forecast。
   const packages: Record<string, ProjectedPackage> = {};
   let maxOrd = 0;
-  // ordinals 默认从 ord 1 起；只有实际窗口能把下界拉到 0 或负值（锚点前的实际日期，设计 §14/B3）
+  // ordinals 默认从 ord 1 起；只有检查记录窗口能把下界拉到 0 或负值（锚点前的检查日期，设计 §14/B3）
   let minOrd = 1;
   for (const pkg of input.packages) {
     const baseMin = baselineMin.get(pkg.id);
@@ -738,28 +740,29 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     if (!baseMin || !baseMax || !castMin || !castMax) {
       throw new ProjectionError('internal_order_error', `${pkg.id}: 前向传播缺少结果`);
     }
-    const actual = actualWindows[pkg.id] ? { ...actualWindows[pkg.id] } : null;
+    const checkWindow = checkWindows[pkg.id] ? { ...checkWindows[pkg.id] } : null;
     packages[pkg.id] = {
       baseline: { start_ord: baseMin.start, end_ord_min: baseMin.end, end_ord_max: baseMax.end },
       forecast: { start_ord: castMin.start, end_ord_min: castMin.end, end_ord_max: castMax.end },
-      actual,
+      check_window: checkWindow,
     };
-    minOrd = Math.min(minOrd, baseMin.start, castMin.start, actual?.start_ord ?? 1);
-    maxOrd = Math.max(maxOrd, baseMax.end, castMax.end, actual?.end_ord ?? 0);
+    minOrd = Math.min(minOrd, baseMin.start, castMin.start, checkWindow?.start_ord ?? 1);
+    maxOrd = Math.max(maxOrd, baseMax.end, castMax.end, checkWindow?.end_ord ?? 0);
   }
 
   cursor.ensure(maxOrd);
   const ordinals: Array<{ ord: number; date: string | null }> = [];
   for (let ord = minOrd; ord <= maxOrd; ord += 1) {
     // anchor_date 为空时也照样算出 date（名义纪元占位），置 null 由 loader 负责；
-    // ord ≤ 0 是锚点前的工作日（实际窗口可能落在那里），date 由向后展开给出。
+    // ord ≤ 0 是锚点前的工作日（检查记录窗口可能落在那里），date 由向后展开给出。
     ordinals.push({ ord, date: cursor.dateOf(ord) });
   }
 
-  // 7. scenario：只列拓扑下游、且完整预测窗口相对 forecast-no-scenario 变了的包
-  // （并行分支不动就不列）。对照基准是「未应用 scenario 的当前预测」，不是声明基线：
-  // 既排除既有实际窗口位移的误报，也捕获只有保守末端变化（start_ord 不变）的漏报（§15/M1）。
-  // delta = 本次演算对该包窗口的最大位移（start / end_min / end_max 三处差值的最大值），
+  // 7. scenario：只列拓扑下游、且完整预测窗口相对 baseline 变了的包
+  // （并行分支不动就不列）。§16 之后检查记录窗口不制造 forecast 位移，
+  // 「未应用 scenario 的当前预测」就是 baseline，不再另跑一遍。
+  // 比较完整窗口（start / end_min / end_max），捕获只有保守末端变化的下游（§15/M1 的比较口径保留）。
+  // delta = 本次演算对该包窗口的最大位移（三处差值的最大值），
   // 仅保守末端变化时即该末端的位移，不再因 start 差为 0 而被丢弃。
   let scenario: ScheduleProjection['scenario'] = null;
   if (input.scenario !== undefined) {
@@ -769,17 +772,10 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     for (const pkg of order) {
       if (!downstream.has(pkg.id)) continue;
       const projected = packages[pkg.id].forecast;
-      const control = {
-        start: noScenarioMin.get(pkg.id)?.start,
-        endMin: noScenarioMin.get(pkg.id)?.end,
-        endMax: noScenarioMax.get(pkg.id)?.end,
-      };
-      if (control.start === undefined || control.endMin === undefined || control.endMax === undefined) {
-        throw new ProjectionError('internal_order_error', `${pkg.id}: 缺少 forecast-no-scenario 结果`);
-      }
-      const startDelta = projected.start_ord - control.start;
-      const endMinDelta = projected.end_ord_min - control.endMin;
-      const endMaxDelta = projected.end_ord_max - control.endMax;
+      const base = packages[pkg.id].baseline;
+      const startDelta = projected.start_ord - base.start_ord;
+      const endMinDelta = projected.end_ord_min - base.end_ord_min;
+      const endMaxDelta = projected.end_ord_max - base.end_ord_max;
       if (startDelta === 0 && endMinDelta === 0 && endMaxDelta === 0) continue;
       affected.push({ pkg: pkg.id, delta: Math.max(startDelta, endMinDelta, endMaxDelta) });
     }
@@ -794,22 +790,62 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
 // ---------------------------------------------------------------------------
 
 /**
- * 同一 role 的多个 mode === 'onsite' 项，若 forecast 窗口 [start_ord, end_ord_max] 相互重叠
- * → 冲突（同一天两处现场）。notify 与 remote 不产生冲突。
- * 重叠按连通簇分组：A 叠 B、B 叠 C 即使 A 不叠 C 也算同一个连续占用簇（两处现场连成一片）。
- * 同角色内不相连的两段重叠各报一条。
+ * 协调项。`status === 'confirmed'` 且 `confirmed_at` 非空才是真实占用（当天）；
+ * 其余 onsite 条目只有潜在窗口（所属包的预测区间），重叠只记提示，不记冲突（§16 minor）。
+ */
+export interface CoordinationScheduleItem {
+  sch_id: string;
+  pkg: string;
+  role: string;
+  mode: 'onsite' | 'remote' | 'notify';
+  status?: string;
+  confirmed_at?: string | null;
+}
+
+export interface CoordinationOverlap {
+  role: string;
+  sch_ids: string[];
+  reason: string;
+}
+
+export interface CoordinationConflictReport {
+  /** 两个已确认、同角色、onsite、同一天的真实占用。 */
+  conflicts: CoordinationOverlap[];
+  /** 没有确认日期的潜在窗口重叠。提示，不是确定冲突。 */
+  potential: CoordinationOverlap[];
+}
+
+function isConfirmedOccupancy(
+  item: CoordinationScheduleItem,
+): item is CoordinationScheduleItem & { confirmed_at: string } {
+  return item.status === 'confirmed' && typeof item.confirmed_at === 'string' && item.confirmed_at.length > 0;
+}
+
+/**
+ * 区分潜在窗口重叠与已确认预约冲突（§16 minor）。
+ *
+ * - notify / remote 两边都不参与。
+ * - 没有 confirmed 日期的 onsite：占用窗口 = 所属包 forecast [start_ord, end_ord_max]。
+ *   两个这样的窗口重叠只进 potential。同包两条未预约的 onsite 因此不再被报成「同一天两处现场」。
+ * - status === 'confirmed' 且带 confirmed_at：真实占用是该日期当天（YYYY-MM-DD 相同即重叠），
+ *   不是包的整段预测区间。两个真实占用同角色 onsite 同一天才进 conflicts。
+ *   一条 confirmed、一条 pending 不构成冲突，也不把 confirmed 算进潜在窗口。
+ * - 潜在窗口的重叠仍按连通簇分组（A 叠 B、B 叠 C 算同一簇）。真实占用按日期相等分组，
+ *   不把相邻两天并成一簇。
  */
 export function detectCoordinationConflicts(
-  items: Array<{ sch_id: string; pkg: string; role: string; mode: "onsite" | "remote" | "notify" }>,
+  items: CoordinationScheduleItem[],
   projection: ScheduleProjection,
-): Array<{ role: string; sch_ids: string[]; reason: string }> {
-  interface OnsiteWindow {
+): CoordinationConflictReport {
+  interface PotentialWindow {
     sch_id: string;
     start: number;
     end: number;
   }
 
-  const onsiteByRole = new Map<string, OnsiteWindow[]>();
+  const potentialByRole = new Map<string, PotentialWindow[]>();
+  const confirmedByRole = new Map<string, Map<string, string[]>>();
+
   for (const item of items) {
     if (item.mode !== 'onsite') continue;
     const projected = projection.packages[item.pkg];
@@ -819,21 +855,31 @@ export function detectCoordinationConflicts(
         `${item.sch_id}: 协调项引用了投影中不存在的包 ${item.pkg}`,
       );
     }
-    const list = onsiteByRole.get(item.role) ?? [];
+    if (isConfirmedOccupancy(item)) {
+      // 校验日期真实存在，避免把非法字符串当成「当天」聚成冲突。
+      parseIsoDate(item.confirmed_at, `${item.sch_id}.confirmed_at`);
+      const byDate = confirmedByRole.get(item.role) ?? new Map<string, string[]>();
+      const sameDay = byDate.get(item.confirmed_at) ?? [];
+      sameDay.push(item.sch_id);
+      byDate.set(item.confirmed_at, sameDay);
+      confirmedByRole.set(item.role, byDate);
+      continue;
+    }
+    const list = potentialByRole.get(item.role) ?? [];
     list.push({
       sch_id: item.sch_id,
       start: projected.forecast.start_ord,
       end: projected.forecast.end_ord_max,
     });
-    onsiteByRole.set(item.role, list);
+    potentialByRole.set(item.role, list);
   }
 
-  const conflicts: Array<{ role: string; sch_ids: string[]; reason: string }> = [];
-  for (const role of [...onsiteByRole.keys()].sort((left, right) => left.localeCompare(right))) {
-    const list = (onsiteByRole.get(role) ?? []).sort(
+  const potential: CoordinationOverlap[] = [];
+  for (const role of [...potentialByRole.keys()].sort((left, right) => left.localeCompare(right))) {
+    const list = (potentialByRole.get(role) ?? []).sort(
       (left, right) => left.start - right.start || left.end - right.end || left.sch_id.localeCompare(right.sch_id),
     );
-    let cluster: OnsiteWindow[] = [];
+    let cluster: PotentialWindow[] = [];
     let clusterEnd = 0;
 
     const flush = (): void => {
@@ -841,10 +887,10 @@ export function detectCoordinationConflicts(
       const detail = cluster
         .map((entry) => `${entry.sch_id} 第 ${entry.start}–${entry.end} 工作日`)
         .join('、');
-      conflicts.push({
+      potential.push({
         role,
         sch_ids: cluster.map((entry) => entry.sch_id),
-        reason: `同角色现场窗口重叠（同一天两处现场）：${detail}`,
+        reason: `同角色潜在窗口重叠（尚未确认预约，不是确定冲突）：${detail}`,
       });
     };
 
@@ -865,5 +911,22 @@ export function detectCoordinationConflicts(
     }
     flush();
   }
-  return conflicts;
+
+  const conflicts: CoordinationOverlap[] = [];
+  for (const role of [...confirmedByRole.keys()].sort((left, right) => left.localeCompare(right))) {
+    const byDate = confirmedByRole.get(role) ?? new Map<string, string[]>();
+    for (const date of [...byDate.keys()].sort((left, right) => left.localeCompare(right))) {
+      const schIds = [...(byDate.get(date) ?? [])].sort((left, right) => left.localeCompare(right));
+      if (schIds.length < 2) continue;
+      const ord = projection.ordinals.find((entry) => entry.date === date)?.ord;
+      const when = ord === undefined ? date : `${date}（第 ${ord} 工作日）`;
+      conflicts.push({
+        role,
+        sch_ids: schIds,
+        reason: `同角色已确认预约重叠（同一天两处现场）：${schIds.join('、')} 均在 ${when}`,
+      });
+    }
+  }
+
+  return { conflicts, potential };
 }

@@ -10,7 +10,7 @@
 //      不生成窗口；全部 passed 才生成 = 各 checked_at 的 [min, max]；status: waived 不生成。
 //      交付键是 check_window（不是 actual）——窗口是首末 passed 检查日期的证据窗口，
 //      不是施工实际起止；同日多条 passed 时 first_ord === last_ord，即使声明工期多日。
-//   B3 检查记录窗口以真实日期给模块（模块入参 actual_windows 字段名冻结）：非法 checked_at 按
+//   B3 检查记录窗口以真实日期给模块（入参 check_windows）：非法 checked_at 按
 //      记录报错；gate passed 的包只要有一条 passed 记录日期非法就不生成窗口
 //      （check_window_invalid_checked_at，不许拿剩余日期拼偏短窗口）；一条都映射不到时报
 //      check_window_unresolved（不许静默丢门禁完成证据）。
@@ -388,11 +388,11 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     assert.equal(full.gateStatus(fullPkg), 'passed');
     const fullSnapshot = buildScheduleSnapshot(full);
     assert.deepEqual(fullSnapshot.schedule?.packages['PKG-005']?.check_window, {first_ord: 3, last_ord: 5});
-    assert.deepEqual(fullSnapshot.schedule?.packages['PKG-005']?.forecast, {
-      start_ord: 3,
-      end_ord_min: 5,
-      end_ord_max: 5,
-    });
+    // §16 A：检查日不钉死 forecast。无 scenario 时 forecast 与 baseline 同源
+    // （PKG-000 工期 min 15 / max 25 → PKG-005 从第 16 个工作日起，声明工期 min 3 / max 7）。
+    const pkg005 = fullSnapshot.schedule?.packages['PKG-005'];
+    assert.deepEqual(pkg005?.forecast, pkg005?.baseline, '无 scenario 时预测不得偏离基线');
+    assert.deepEqual(pkg005?.forecast, {start_ord: 16, end_ord_min: 18, end_ord_max: 32});
     assert.deepEqual(fullSnapshot.schedule?.ordinals.find((entry) => entry.ord === 3), {
       ord: 3,
       date: '2026-01-07',
@@ -462,7 +462,7 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     t.after(restoreControl);
     const baseline = loadRealState();
     // 混合情形（复审缺口）：SCH-005-01 合法、SCH-005-02 非法。旧实现只跳过非法记录，
-    // 用剩余日期生成 {3,3} 窗口——最晚的检查证据日期可能正是被跳过的那条，预测会被低估。
+    // 用剩余日期生成 {3,3} 窗口——最晚的检查证据日期可能正是被跳过的那条。
     writeControl(withAuditRecords(
       withAnchor(pristineControlText),
       pkg005AuditRecords(baseline, {'SCH-005-01': '2026-01-07', 'SCH-005-02': '2026-13-40'}),
@@ -484,10 +484,10 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     assert.ok(state.scheduleProjection, '单包日期不可用不应让整份投影失败');
   });
 
-  it('B4/B3：锚点未定 + 检查记录窗口 → invalid_actual_window 原样透传（不吞成未映射的 projection_failed）', (t) => {
+  it('B4/B3：锚点未定 + 检查记录窗口 → invalid_check_window 原样透传（不吞成未映射的 projection_failed）', (t) => {
     t.after(restoreControl);
     const baseline = loadRealState();
-    // 不填锚点：真实日期没有日期坐标系。模块（code 名冻结）按 §14.4 抛 invalid_actual_window，
+    // 不填锚点：真实日期没有日期坐标系。模块按 §14.4 / §16 抛 invalid_check_window，
     // loader 必须把该 code 原样带进 errors，不得降级成一个无 code 的泛化 projection_failed。
     writeControl(withAuditRecords(
       pristineControlText,
@@ -495,7 +495,7 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     ));
     const state = loadSandbox();
     assert.ok(
-      state.errors.some((error) => error.includes('schedule projection: projection_failed — [invalid_actual_window]')),
+      state.errors.some((error) => error.includes('schedule projection: projection_failed — [invalid_check_window]')),
       `锚点未定时检查记录窗口的 code 必须透传，实际 errors：${state.errors.join(' | ')}`,
     );
     assert.equal(state.scheduleProjection, null, '投影失败时不得存空投影冒充结果');
