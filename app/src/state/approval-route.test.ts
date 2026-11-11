@@ -1,5 +1,6 @@
 // 审批路由（hash 语法 + 选中派生）的回归测试（2026-11-03 独立页面化）。
 // 守：深链 #pkg= 落 detail；选中写 hash 保持子页；序列化往返；坏 hash 不抛。
+// 2026-11-11 issue #202 S2：补 gantt 子页解析/序列化，roles/calendar 留 S3 不声明。
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
@@ -17,6 +18,7 @@ import {
 describe('parseApprovalRoute', () => {
   it('approval 参数指定子页', () => {
     expect(parseApprovalRoute('#approval=flow')).toEqual({subPage: 'flow', packageId: null, checkId: null});
+    expect(parseApprovalRoute('#approval=gantt')).toEqual({subPage: 'gantt', packageId: null, checkId: null});
     expect(parseApprovalRoute('#approval=next_action')).toEqual({subPage: 'next_action', packageId: null, checkId: null});
     expect(parseApprovalRoute('#approval=detail&pkg=PKG-060&check=check_tile_hollow')).toEqual({
       subPage: 'detail', packageId: 'PKG-060', checkId: 'check_tile_hollow',
@@ -35,6 +37,9 @@ describe('parseApprovalRoute', () => {
     expect(parseApprovalRoute('#')).toEqual({subPage: null, packageId: null, checkId: null});
     // 未知 approval 值不当真，回落：无 pkg → 3D 页
     expect(parseApprovalRoute('#approval=nonsense')).toEqual({subPage: null, packageId: null, checkId: null});
+    // roles / calendar 属 S3（issue #202 S2 只落地 gantt）：未声明的子页不得被解析成真页
+    expect(parseApprovalRoute('#approval=roles')).toEqual({subPage: null, packageId: null, checkId: null});
+    expect(parseApprovalRoute('#approval=calendar')).toEqual({subPage: null, packageId: null, checkId: null});
     // 坏 percent 编码：URLSearchParams 宽容替换、不抛——契约只是不抛
     expect(() => parseApprovalRoute('#%E0%A4%A')).not.toThrow();
     expect(() => parseApprovalRoute('#pkg=%E0%A4%A&approval=')).not.toThrow();
@@ -47,6 +52,12 @@ describe('serializeApprovalRoute', () => {
     expect(serializeApprovalRoute(route)).toBe('#approval=detail&pkg=PKG-060');
     expect(parseApprovalRoute(serializeApprovalRoute(route))).toEqual(route);
     expect(serializeApprovalRoute({subPage: null, packageId: null, checkId: null})).toBe('#');
+  });
+
+  it('gantt 子页往返（2026-11-11 issue #202 S2）', () => {
+    const route = {subPage: 'gantt' as const, packageId: 'PKG-040', checkId: 'SCH-040-01'};
+    expect(serializeApprovalRoute(route)).toBe('#approval=gantt&pkg=PKG-040&check=SCH-040-01');
+    expect(parseApprovalRoute(serializeApprovalRoute(route))).toEqual(route);
   });
 });
 

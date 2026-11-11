@@ -26,7 +26,8 @@ import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-c
 import { buildPaintCostComparison, loadPaintComparisonConfig } from './paint-cost-comparison.js';
 import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
 import { loadModelPackageLinks } from './model-package-links.js';
-import { buildScheduleSnapshot, loadScheduleState } from '../shared/schedule-state.js';
+import { buildScheduleProjectionView, buildScheduleSnapshot, loadScheduleState, scheduleDataFingerprint, type ScheduleState } from '../shared/schedule-state.js';
+import { MAX_SCENARIO_DELAY_WORKDAYS, projectSchedule, ProjectionError } from '../shared/schedule-projection.js';
 import {
   AcceptanceError, acceptBranchName, assertPackageCheckExists, finalizeEvidence, loadDraft, runPreSubmitGates, saveDraft, stageEvidence, submitAcceptance,
 } from './acceptance-draft-store.js';
@@ -59,6 +60,70 @@ function parseFlagParam(value: unknown, name: string): boolean {
   if (value === '' || value === '1' || value === 'true') return true;
   if (value === '0' || value === 'false') return false;
   throw new Error(`${name} must be one of 1, true, 0, false`);
+}
+
+/**
+ * what-if 的 delay 参数解析（docs/schedule-coordination-design.md §6.2）：
+ * `delay=PKG-040:3,PKG-030:2`。
+ *
+ * - 无参 / 空串 = 基线（无 overrides）；
+ * - 每项必须是「包 id:1..3650 工作日」；坏语法、非正整数、超过上限
+ *   （MAX_SCENARIO_DELAY_WORKDAYS，与模块共用同一个常量）、重复包（同一参数内或重复同名
+ *   参数）一律抛错，由路由回 400 带原因。模块的 invalid_delay 只拒负数/非整数/重复/超上限，
+ *   并接受 0（§15.3 的 M1 回归用例以 delay 0 表达空演算）；端点契约是「非正整数」一律 400，
+ *   所以 0 在这里拦。这层差异是 HTTP 语法与模块不变量的分工，不是两套上限；
+ * - 未知包**不在**这里判：包集合的唯一来源是投影入参（loader 装配），由 projectSchedule
+ *   抛 unknown_scenario_package，路由原样回 400——路由不另持一份包清单（防第二套装配）。
+ */
+function parseWhatIfDelay(value: unknown): Array<{pkg: string; workdays: number}> {
+  if (value === undefined) return [];
+  if (typeof value !== 'string') {
+    throw new Error('delay must be a single query value like "PKG-040:3,PKG-030:2"');
+  }
+  const text = value.trim();
+  if (text === '') return [];
+  const overrides: Array<{pkg: string; workdays: number}> = [];
+  const seen = new Set<string>();
+  for (const rawEntry of text.split(',')) {
+    const entry = rawEntry.trim();
+    const match = /^([^:\s]+):([+-]?\d+)$/.exec(entry);
+    if (!match) {
+      throw new Error(`delay 项 ${JSON.stringify(rawEntry)} 语法非法：须为 PKG-040:3（包 id:工作日数）`);
+    }
+    const workdays = Number(match[2]);
+    if (!Number.isSafeInteger(workdays) || workdays <= 0) {
+      throw new Error(`delay 项 ${match[1]} 的工作日数必须是正整数（收到 ${match[2]}）`);
+    }
+    if (workdays > MAX_SCENARIO_DELAY_WORKDAYS) {
+      throw new Error(
+        `delay 项 ${match[1]} 的工作日数 ${workdays} 超过上限 ${MAX_SCENARIO_DELAY_WORKDAYS}（约 14 年；上限防止排程轴无界展开）`,
+      );
+    }
+    if (seen.has(match[1])) {
+      throw new Error(`delay 项 ${match[1]} 重复出现；请合并成一个条目（演算不会把重复项求和）`);
+    }
+    seen.add(match[1]);
+    overrides.push({pkg: match[1], workdays});
+  }
+  return overrides;
+}
+
+/**
+ * what-if 重跑时哪些 ProjectionError 属于「本次请求的 delay 非法」，可以回 400。
+ *
+ * 只有请求类错误：未知包 / delay 非法 / 序数非法 / 工作日历不足以展开本次演算。其余
+ * ProjectionError（如 internal_order_error 这类内部不变量错误，或未来新增的非请求类错误）
+ * 不得伪装成客户端错误——重新抛出，由路由外层 catch 回 503，与「配置本身在 load 期已过校验」
+ * 的语义一致。导出仅供服务端测试直接钉住分类，不是公共 API。
+ *
+ * @internal 测试专用导出：生产调用点只有 /schedule/what-if 的 catch。
+ */
+export function isWhatIfRequestProjectionError(error: unknown): boolean {
+  if (!(error instanceof ProjectionError)) return false;
+  return error.code === 'unknown_scenario_package'
+    || error.code === 'invalid_delay'
+    || error.code === 'invalid_ordinal'
+    || error.code === 'work_calendar_exhausted';
 }
 
 export interface ApiDeps {
@@ -409,14 +474,77 @@ export function createApiRouter(deps: ApiDeps): Router {
   // 只读、无 POST：验收状态 / audit_log / 门禁拍板的写路径一律走 PR（铁律），
   // 浏览器不持有写仓库的令牌。控制源本身校验不过时 503 并列出问题——UI 不得
   // 渲染一份来自坏配置的快照（与「机械卡点不过不让提交」同向）。
+  /**
+   * schedule 控制源的统一 load + 503 判定（设计 §14/B4）。
+   * /schedule/state 与 /schedule/what-if 必须走同一条通道：errors 非空时任何消费方都不得
+   * 返回快照或演算结果（投影错误与既有校验错误都在 load 期进入 errors）。
+   * 返回 null 表示已写好 503 响应，调用方直接 return。
+   */
+  const loadScheduleStateOr503 = (res: Response): ScheduleState | null => {
+    const state = loadScheduleState('.', {modelPackageLinks: loadModelPackageLinks()});
+    if (state.errors.length) {
+      res.status(503).json({error: `schedule control invalid: ${state.errors.length} issue(s)`, issues: state.errors});
+      return null;
+    }
+    return state;
+  };
+
   router.get('/schedule/state', (_req, res) => {
     try {
-      const state = loadScheduleState('.', {modelPackageLinks: loadModelPackageLinks()});
-      if (state.errors.length) {
-        res.status(503).json({error: `schedule control invalid: ${state.errors.length} issue(s)`, issues: state.errors});
+      const state = loadScheduleStateOr503(res);
+      if (!state) return;
+      res.json(buildScheduleSnapshot(state));
+    } catch (err) {
+      res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
+    }
+  });
+
+  // ─── 排程 what-if 演算（设计 §6.2，issue #202 S2）───
+  // 只读计算，不是写：GET 不经过写 token 守卫（守卫只拦 POST/PUT/PATCH/DELETE），
+  // 本端点不得为此加任何 token 逻辑。
+  // 响应 = /schedule/state 的 schedule 键 + scenario（模块现形状：无 delay 参数时 scenario
+  // 为 null——没给 scenario 就没有演算结论，不造 {overrides: [], affected: []}）。
+  // 装配只有 loader 一份：复用 state.scheduleProjectionInput（主车道过滤后的 packages /
+  // calendar / constraints / check_windows），只加 scenario 重跑 projectSchedule；禁止在
+  // 路由侧重新派生 check_windows、映射 constraints 或过滤主车道（§6.2 接线决定）。
+  // affected 口径由模块保证：对「无 scenario 的当前预测」全窗对照、只列拓扑下游（§15.3）。
+  router.get('/schedule/what-if', (req, res) => {
+    let overrides: Array<{pkg: string; workdays: number}>;
+    try {
+      overrides = parseWhatIfDelay(req.query.delay);
+    } catch (err) {
+      res.status(400).json({error: err instanceof Error ? err.message : String(err)});
+      return;
+    }
+    try {
+      const state = loadScheduleStateOr503(res);
+      if (!state) return;
+      const baseline = state.scheduleProjection;
+      const projectionInput = state.scheduleProjectionInput;
+      if (!baseline || !projectionInput) {
+        // errors 为空却缺投影 = ScheduleState 契约被破坏（buildScheduleProjectionView 同款判定）。
+        res.status(503).json({error: 'schedule projection is missing although load reported no errors'});
         return;
       }
-      res.json(buildScheduleSnapshot(state));
+      let projection = baseline;
+      if (overrides.length > 0) {
+        try {
+          projection = projectSchedule({...projectionInput, scenario: {delay: overrides}});
+        } catch (err) {
+          if (isWhatIfRequestProjectionError(err)) {
+            // 演算失败的原因来自本次请求的 delay（未知包 / delay 非法 / 越出工作日历），400 带
+            // 原因，不 503：配置本身已在 load 期通过校验。非请求类 ProjectionError（内部不变量
+            // 错误等）重新抛出，由外层 catch 回 503——不把服务端 bug 伪装成客户端 400。
+            res.status(400).json({error: `what-if scenario invalid: [${(err as ProjectionError).code}] ${(err as Error).message}`});
+            return;
+          }
+          throw err;
+        }
+      }
+      // data_fingerprint：同次 load 的项目数据指纹（Codex 一审 blocking，PR #218）。服务端
+      // 每次 what-if 都重载控制源，面板据此验明「演算排程」与「所显示基线包状态」同版本；
+      // 指纹不符时面板丢弃演算并重取基线，不把新排程与旧状态拼成一行。
+      res.json({...buildScheduleProjectionView(state, projection), scenario: projection.scenario, data_fingerprint: scheduleDataFingerprint(state)});
     } catch (err) {
       res.status(503).json({ error: err instanceof Error ? err.message : String(err) });
     }

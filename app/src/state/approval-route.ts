@@ -6,7 +6,7 @@
  * 挤出「对象信息点开没东西」等一串耦合病。本模块把「在不在审批页、在哪个子页、
  * 选中哪个包/检查项」收拢成**一个 hash 路由**，地址栏即状态：
  *
- *   #approval=next_action|schedule|detail|flow&pkg=PKG-xxx&check=yyy
+ *   #approval=next_action|schedule|detail|flow|gantt&pkg=PKG-xxx&check=yyy
  *
  * 语义：
  * - 有 approval 参数 → 审批页开着，落在该子页；
@@ -22,7 +22,7 @@
  * 不碰 DOM、不 import 其它模块——单测不需要任何环境。
  */
 
-export type ApprovalSubPage = 'next_action' | 'schedule' | 'detail' | 'flow';
+export type ApprovalSubPage = 'next_action' | 'schedule' | 'detail' | 'flow' | 'gantt';
 
 export interface ApprovalRoute {
   /** null = 3D 页（审批页未开） */
@@ -31,7 +31,9 @@ export interface ApprovalRoute {
   checkId: string | null;
 }
 
-const SUB_PAGES: readonly string[] = ['next_action', 'schedule', 'detail', 'flow'];
+// gantt = 动态甘特（2026-11-11 issue #202 S2，设计 §7）。roles / calendar 属 S3，
+// 实现落地前不在此声明——坏 hash 照既有口径回落 3D 页，不假装子页存在。
+const SUB_PAGES: readonly string[] = ['next_action', 'schedule', 'detail', 'flow', 'gantt'];
 
 /** 解析地址栏 hash。容错：坏 hash 不抛，回落 3D 页。 */
 export function parseApprovalRoute(hash: string): ApprovalRoute {

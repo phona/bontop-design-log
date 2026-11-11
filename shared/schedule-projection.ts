@@ -69,6 +69,17 @@
 
 const MS_PER_DAY = 86_400_000;
 
+/**
+ * what-if 单个包的延迟上限（工作日，约 14 年）。
+ *
+ * 为什么必须有上限：delay 直接加进工期，再经前向传播变成 maxOrd。无锚点时
+ * projectSchedule 会把 minOrd..maxOrd 逐项装进 ordinals、锚点就绪时 cursor.ensure(maxOrd)
+ * 会逐日展开日历——`PKG-040:1000000000` 能通过 Number.isSafeInteger，但会让一个无 token 的
+ * GET 展开十亿项/十亿天，把服务端挂死或 OOM。3650 个工作日已远超本项目任何真实工期。
+ * 路由（server/routes.ts 的 parseWhatIfDelay）与模块共用这一个常量，不另写第二套上限。
+ */
+export const MAX_SCENARIO_DELAY_WORKDAYS = 3650;
+
 export interface ProjectionPackage {
   id: string;
   sequence: number;
@@ -183,24 +194,38 @@ function weekdayOfDay(dayIndex: number): number {
 // 工作日历展开：ord ↔ date 双向映射
 // ---------------------------------------------------------------------------
 
-interface CalendarCursor {
-  /** 至少展开到 targetOrd 个正向工作日（ord ≥ 1）。 */
+/**
+ * 工作日历游标的三个方法。无锚点时三者口径一致 fail-closed（设计 §18.3 第 3 条）：
+ * 全部抛 internal_order_error，没有任何一个静默成功（§18.7 L1）。
+ * 导出供模块单测直接钉住该契约；生产调用点只有 projectSchedule 一处。
+ *
+ * @internal 测试专用导出：本仓唯一的生产消费者是 projectSchedule 内部；对外 API 面不承诺
+ * 存在本接口。保留导出只为直接钉住无锚点存根的三方法契约（§18.7 L1），新增生产调用点前
+ * 先把它收回模块私有。
+ */
+export interface CalendarCursor {
+  /** 至少展开到 targetOrd 个正向工作日（ord ≥ 1）；无锚点时抛 internal_order_error，不静默 no-op。 */
   ensure(targetOrd: number): void;
-  /** ord（任意整数，0 / 负值表示锚点前的工作日）→ YYYY-MM-DD。 */
+  /** ord（任意整数，0 / 负值表示锚点前的工作日）→ YYYY-MM-DD；无锚点时抛 internal_order_error。 */
   dateOf(ord: number): string;
-  /** 某日期当天或之后第一个工作日的 ord（约束日期与检查记录日期落在休息日时向后取）。 */
+  /** 某日期当天或之后第一个工作日的 ord（约束日期与检查记录日期落在休息日时向后取）；无锚点时抛 internal_order_error。 */
   ordForDate(text: string, label?: string): number;
 }
 
 /**
  * 从 anchor_date 起逐日推进，只数工作日，ord 从 1 连续编号。
  * anchor_date 为空时不设纪元（设计 §18：名义纪元已退场）：上面的结构校验照常做完，
- * 日期映射入口直接失败，调用方不得把序数换成日期。
+ * 三个游标方法（ensure / dateOf / ordForDate）口径一致 fail-closed，调用方不得把序数换成日期，
+ * 也不得指望 ensure 替它展开日历（§18.3 第 3 条、§18.7 L1）。
  * 判定顺序：rest_dates 命中 → 非工作日（优先于 workdays）；extra_workdates 命中 → 工作日；
  * 否则看 weekday 是否在 workdays 内。rest_dates 与 extra_workdates 同一日期冲突时直接报错，
  * 不做静默取舍（两种声明都想说了算，任何一边赢都是丢事实）。
+ *
+ * 导出供模块单测直接钉住无锚点存根的三方法契约（§18.7 L1）；生产调用点只有 projectSchedule 一处。
+ *
+ * @internal 测试专用导出（同 CalendarCursor）：不是对外 API 面，生产代码不得新增调用点。
  */
-function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
+export function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
   const workdays = new Set<number>();
   for (const weekday of calendar.workdays) {
     if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
@@ -230,7 +255,12 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
   }
 
   // §18：没有锚点就没有日期轴。结构校验（非法星期、日期冲突、空历）已经做完；
-  // 这里不设 1970 名义纪元。dateOf / ordForDate 若被调用直接失败，避免任何路径把编造日期带出模块。
+  // 这里不设 1970 名义纪元。三个方法口径一致 fail-closed（§18.3 第 3 条）：任何路径调用
+  // ensure / dateOf / ordForDate 都当场抛 internal_order_error，不把编造日期带出模块。
+  // §18.7 L1：旧版 ensure(){} 是静默 no-op，与另两个方法不对称——将来新增调用点若只写
+  // cursor.ensure(n)（以为「保证展开」）会静默成功而不是当场失败。今天不可达：
+  // projectSchedule 的三处调用（检查窗口映射 / 约束抬升 / ordinals 装配）都按 anchorReady
+  // 分流，这是保险丝不是可达路径。
   if (calendar.anchor_date === null || calendar.anchor_date === undefined) {
     const refuse = (action: string): never => {
       throw new ProjectionError(
@@ -239,7 +269,9 @@ function createCalendarCursor(calendar: ProjectionCalendar): CalendarCursor {
       );
     };
     return {
-      ensure() {},
+      ensure() {
+        return refuse('展开工作日序数');
+      },
       dateOf() {
         return refuse('把序数映射成日期');
       },
@@ -683,7 +715,15 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
     }
   }
 
-  // scenario 校验：只认已声明包；workdays 为非负整数（what-if API 的 400 校验在 loader/路由侧）
+  // scenario 校验（模块层不变量，HTTP 语法层见 server/routes.ts 的 parseWhatIfDelay）：
+  // - 只认已声明包（包集合的唯一来源是本入参，路由不另持清单）；
+  // - workdays 必须是 0..MAX_SCENARIO_DELAY_WORKDAYS 的整数。**0 在模块层合法**：
+  //   §15.3 的 M1 回归用例就以 delay 0 校验「没有位移时 affected 为空」，且直接调用本模块的
+  //   消费方可能用 0 表达空演算。HTTP 端点的契约更严——`PKG-040:0` 一律 400（用户在请求里
+  //   写 0 没有演算意义），这层差异在路由注释与响应契约里明说，不是两份上限；
+  // - 同一包重复出现直接报错，不静默求和（`PKG-040:3,PKG-040:2` 有两个意图，合并成 +5
+  //   会让调用方以为其中一个没生效）。上限同样在这里拦：delay 会经前向传播变成 maxOrd，
+  //   无上限时 GET /schedule/what-if 能把 ordinals / 工作日历展开成十亿级（DoS）。
   const delayByPkg = new Map<string, number>();
   for (const entry of input.scenario?.delay ?? []) {
     if (!durationLimits.has(entry.pkg)) {
@@ -695,7 +735,19 @@ export function projectSchedule(input: ProjectionInput): ScheduleProjection {
         `${entry.pkg}: 演算延迟须为非负整数工作日（收到 ${entry.workdays}）`,
       );
     }
-    delayByPkg.set(entry.pkg, (delayByPkg.get(entry.pkg) ?? 0) + entry.workdays);
+    if (entry.workdays > MAX_SCENARIO_DELAY_WORKDAYS) {
+      throw new ProjectionError(
+        'invalid_delay',
+        `${entry.pkg}: 演算延迟 ${entry.workdays} 个工作日超过上限 ${MAX_SCENARIO_DELAY_WORKDAYS}（约 14 年；上限防止排程轴无界展开）`,
+      );
+    }
+    if (delayByPkg.has(entry.pkg)) {
+      throw new ProjectionError(
+        'invalid_delay',
+        `${entry.pkg}: 同一包在 scenario.delay 中重复出现（先 ${delayByPkg.get(entry.pkg)}、后 ${entry.workdays}）；请合并成一个条目，模块不求和`,
+      );
+    }
+    delayByPkg.set(entry.pkg, entry.workdays);
   }
 
   // 3. 工作历：约束日期与检查记录日期都经同一张日历映射成 ord

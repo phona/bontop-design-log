@@ -15,13 +15,17 @@
 // 不改 baseline/forecast/ordinals；锚点就绪时序数照常。cancelled 在分组前退出协调检测。
 // §18（第 5 轮，业主点名 major）：无锚点时 ordinals 的 date 在模块边界就是 null，
 // 不再出 1970 名义纪元日期；锚点就绪时 date 仍是真实日期。检查窗口的日期不动。
+// §18.7 L1（五审 low，S2 收）：无锚点游标存根 ensure 不再静默 no-op，与 dateOf / ordForDate
+// 一致抛 internal_order_error；单测直接钉住三个方法的 fail-closed 与锚点就绪路径（§18.3 第 3 条）。
 
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import {
+  createCalendarCursor,
   detectCoordinationConflicts,
+  MAX_SCENARIO_DELAY_WORKDAYS,
   projectSchedule,
   ProjectionError,
   validateDag,
@@ -255,6 +259,47 @@ describe('§18：anchor_date 为空时 ordinals 的 date 为 null，序号仍确
   });
 });
 
+describe('§18.3 第 3 条 / §18.7 L1：无锚点游标三方法一致 fail-closed', () => {
+  const isInternalOrderError = (error: unknown): boolean =>
+    error instanceof ProjectionError && error.code === 'internal_order_error';
+
+  it('无锚点：ensure 与 dateOf / ordForDate 一样抛 internal_order_error（不再静默 no-op）', () => {
+    const cursor = createCalendarCursor(calendar({ anchor_date: null }));
+    // §18.7 L1：旧版存根 ensure(){} 静默成功，将来新增第四条调用点若只写 cursor.ensure(n)
+    // （以为「保证展开」）会拿到 no-op 而不是当场失败。三个方法必须同一口径。
+    assert.throws(() => cursor.ensure(1), isInternalOrderError, 'ensure 不得静默 no-op');
+    assert.throws(() => cursor.dateOf(1), isInternalOrderError, 'dateOf 对照');
+    assert.throws(() => cursor.ordForDate('2026-01-05'), isInternalOrderError, 'ordForDate 对照');
+  });
+
+  it('无锚点 + what-if 入参（scenario）：projectSchedule 不触碰存根，ordinals 的 date 仍全 null', () => {
+    // what-if 路由是 S2 引入的新消费方（设计 §6.2）：无锚点状态照样能演算工期，
+    // 但不得因此把日期轴带回来——三个游标方法一次都不被调用，日期仍由模块边界置 null（§18）。
+    const projection = projectSchedule({
+      packages: [pkg('A', 10, 3, 3), pkg('B', 20, 2, 2, ['A'])],
+      calendar: calendar({ anchor_date: null }),
+      scenario: { delay: [{ pkg: 'A', workdays: 2 }] },
+    });
+    assert.deepEqual(ordinates(projection), [
+      [1, null],
+      [2, null],
+      [3, null],
+      [4, null],
+      [5, null],
+      [6, null],
+      [7, null],
+    ]);
+    assert.deepEqual(projection.scenario?.affected, [{ pkg: 'B', delta: 2 }], '演算只推拓扑下游');
+  });
+
+  it('锚点就绪：同一游标照常展开，ensure / dateOf / ordForDate 不受 L1 改动影响', () => {
+    const cursor = createCalendarCursor(calendar());
+    cursor.ensure(3);
+    assert.deepEqual([cursor.dateOf(1), cursor.dateOf(3)], ['2026-01-05', '2026-01-07']);
+    assert.equal(cursor.ordForDate('2026-01-07'), 3);
+  });
+});
+
 describe('§16：检查记录窗口不进 forecast', () => {
   const packages = [pkg('A', 10, 2, 2), pkg('B', 20, 2, 2, ['A']), pkg('C', 30, 2, 2, ['B'])];
 
@@ -368,6 +413,53 @@ describe('scenario.delay：what-if 只动拓扑下游', () => {
     assert.deepEqual(withDelay.packages.A.forecast, { start_ord: 1, end_ord_min: 5, end_ord_max: 5 }, '工期 2+3');
     assert.equal(withDelay.packages.B.forecast.start_ord, 6, '后继从计划末端加 delay 起算，不从检查窗口');
     assert.deepEqual(withDelay.scenario?.affected, [{ pkg: 'B', delta: 3 }]);
+  });
+});
+
+describe('scenario.delay 的模块层校验（不依赖 HTTP 路由）', () => {
+  const packages = [pkg('A', 10, 2, 2), pkg('B', 20, 2, 2, ['A'])];
+  const invalid = (delay: Array<{pkg: string; workdays: number}>): ProjectionError => {
+    try {
+      projectSchedule({packages, calendar: calendar(), scenario: {delay}});
+    } catch (error) {
+      assert.ok(error instanceof ProjectionError, `应抛 ProjectionError，实际 ${String(error)}`);
+      return error;
+    }
+    assert.fail(`delay ${JSON.stringify(delay)} 应被拒绝`);
+  };
+
+  it('负数 / 非整数 → invalid_delay', () => {
+    assert.equal(invalid([{pkg: 'A', workdays: -3}]).code, 'invalid_delay');
+    assert.equal(invalid([{pkg: 'A', workdays: 1.5}]).code, 'invalid_delay');
+  });
+
+  it('同一包重复出现 → invalid_delay（不静默求和成 +5）', () => {
+    const error = invalid([
+      {pkg: 'A', workdays: 3},
+      {pkg: 'A', workdays: 2},
+    ]);
+    assert.equal(error.code, 'invalid_delay');
+    assert.match(error.message, /重复出现/);
+    assert.match(error.message, /不求和/);
+  });
+
+  it('超过上限 → invalid_delay（防止无锚点 ordinals / 锚点日历无界展开）', () => {
+    const error = invalid([{pkg: 'A', workdays: MAX_SCENARIO_DELAY_WORKDAYS + 1}]);
+    assert.equal(error.code, 'invalid_delay');
+    assert.match(error.message, /超过上限/);
+    // 边界值本身合法（3650 个工作日），且不依赖 HTTP 层。
+    const atLimit = projectSchedule({
+      packages,
+      calendar: calendar(),
+      scenario: {delay: [{pkg: 'A', workdays: MAX_SCENARIO_DELAY_WORKDAYS}]},
+    });
+    assert.equal(atLimit.scenario?.overrides[0].workdays, MAX_SCENARIO_DELAY_WORKDAYS);
+  });
+
+  it('delay 0 在模块层仍合法（§15.3 M1 的「无位移」表达；HTTP 端点单独拒绝 0）', () => {
+    const projection = projectSchedule({packages, calendar: calendar(), scenario: {delay: [{pkg: 'A', workdays: 0}]}});
+    assert.deepEqual(projection.scenario?.overrides, [{pkg: 'A', workdays: 0}]);
+    assert.deepEqual(projection.scenario?.affected, []);
   });
 });
 
