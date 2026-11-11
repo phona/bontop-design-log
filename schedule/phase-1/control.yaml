@@ -1436,8 +1436,8 @@ work_packages:
     payment_gate: GATE-090-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-090 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
-    # 来源：model_geometry(collections=openings) → 9；overlay(ids=kitchen_dining_sliding_door) → 1。去重后共 10 个对象 id。
-    targets: [d_bese, d_bnw, d_elev, d_ent, d_gbath, d_kit_balc, d_mb, d_mbath, d_study, kitchen_dining_sliding_door]
+    # 来源：model_geometry(collections=openings) → 9；overlay(ids=kitchen_dining_sliding_door) → 1；overlay(ids=guest_bath_open_vanity_floor) → 1（2026-11-11 先定门再贴砖门禁，Codex 三审 blocking：关门复核的被验分界须进指纹，否则分界移动后旧通过不 stale）。去重后共 11 个对象 id。
+    targets: [d_bese, d_bnw, d_elev, d_ent, d_gbath, d_kit_balc, d_mb, d_mbath, d_study, guest_bath_open_vanity_floor, kitchen_dining_sliding_door]
     acceptance_refs: [check_dw_swing, check_dw_seal, check_tile_door_seam_closed]
     checks:
       - id: SCH-090-01

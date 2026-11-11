@@ -760,6 +760,24 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
     assert.ok(stale.includes('PKG-060'), `PKG-060 的验收点名 d_gbath，门洞改宽后必须 stale；实际 ${stale.join(', ')}`);
   });
 
+  // 先定门再贴砖门禁（Codex 三审 blocking）：check_tile_door_seam_closed 正文按客卫干湿
+  // 分界（guest_bath_open_vanity_floor 的 z=3.55 边）复核关门后接缝不可见；地面分区施工
+  // 归属在 PKG-060，但复核记录挂在 PKG-090。MODEL-PKG-090 已按 id 直选该分区；本用例
+  // 守「分界边北移 → PKG-090 stale」，防止砖缝移出门下后旧复核通过记录仍有效。
+  it('改干湿分界边：挂该复核的 PKG-090 必须 stale', () => {
+    const floorZonesPath = join(sandbox, 'config/model/envelope/floor-zones.yaml');
+    const text = readFileSync(floorZonesPath, 'utf8');
+    const anchor = '  - id: guest_bath_open_vanity_floor\n    type: floor_region\n    points:\n      - { x: 5.60, z: 3.55 }';
+    assert.equal(text.split(anchor).length - 1, 1, 'guest_bath_open_vanity_floor 声明锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    writeFileSync(floorZonesPath, text.replace(anchor, anchor.replace('z: 3.55', 'z: 3.60')));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id);
+    assert.ok(stale.includes('PKG-090'), `PKG-090 的复核点名 guest_bath_open_vanity_floor，分界移动后必须 stale；实际 ${stale.join(', ')}`);
+  });
+
   // issue #191 Codex blocking（三轮）：门洞摘要键带父墙还不够——宿主墙的声明也要进引用闭包。
   // 只改父墙端点（洞声明不变）时，若闭包不沿 parent 展开，PKG-090 的摘要不会变化。
   it('宿主墙几何变化：只选 openings 的 PKG-090 必须 stale（父墙进闭包）', () => {

@@ -157,6 +157,13 @@ links:
       # S6：types:[sliding_door_run] → ids（全册仅此一件推拉门对象，等价；它带开合态与
       # MEP 包络语义，是对象而不是面层配方）。
       - {source: overlay, select: {ids: [kitchen_dining_sliding_door]}}
+      # 2026-11-11（先定门再贴砖门禁，Codex 三审 blocking）：check_tile_door_seam_closed
+      # 的正文按客卫干湿分界（guest_bath_open_vanity_floor 的 z=3.55 边）复核关门后接缝
+      # 不可见——被验地面分区是本项验收的实际依赖，但它的施工归属在铺贴包（PKG-060）。
+      # 若不纳入本链接 scope，分界边界移动后本包摘要不变、旧复核通过记录也不会 stale。
+      # 故按稳定 id 直选纳入（与 MODEL-PKG-050 纳入被验柜体、MODEL-PKG-060 纳入被验
+      # 门洞同一处理）。
+      - {source: overlay, select: {ids: [guest_bath_open_vanity_floor]}}
   - id: MODEL-PKG-100
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-100}
