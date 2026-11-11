@@ -33,12 +33,13 @@ describe('shared/schedule-state: 真实仓集成', () => {
     // 2026-11-02 实测锚点（npm run verify:schedule）：
     // 25 phase-1 packages, 106 cost components (89 unpriced), 116 auditable checks
     // 2026-11-11 先定门再贴砖门禁新增 check_tile_door_gate（PKG-060 acceptance_refs）→ 117。
+    // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed（PKG-090）→ 118。
     // orderedPackages 按原语义过滤 sequence<900（PKG-900 预备金不进施工顺序），故 24。
     assert.equal(state.control.work_packages.length, 25);
     assert.equal(state.orderedPackages.length, 24);
     assert.equal(state.componentIds.size, 106);
     assert.equal(state.unpricedComponents.length, 89);
-    assert.equal(state.usedCheckIds.size, 117);
+    assert.equal(state.usedCheckIds.size, 118);
     // 当前真实状态：25 包全部 blocked、0 个 ready（design v2 §4 的口径）
     assert.equal(state.orderedPackages.filter((pkg: AnyRecord) => state.effectiveReadiness(pkg) === 'ready').length, 0);
     assert.ok(state.openDecisionGates.length >= 1, '至少一条 open 决策门禁');

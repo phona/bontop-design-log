@@ -163,7 +163,8 @@ decisions:
     missing_evidence: "业主书面拍板记录；两卫门洞实测记录；卖门商家书面确认（门扇尺寸、门套形式、厚度与外凸量）；干湿接缝与门位置关系的排版图"
     blocks:
       - check_tile_door_gate
-    blocked_effect: 档位与实测值未书面拍板前，check_tile_door_gate 不得判 passed；贴砖前拍板，贴砖后改是返工。
+      - check_tile_door_seam_closed
+    blocked_effect: 档位与实测值未书面拍板前，两项均不得判 passed；贴砖前拍板，贴砖后改是返工。两项分属不同包（PKG-060 贴砖前置 / PKG-090 装门复核），互不阻塞对方包的放行。
 
   # ---- 不阻塞验收项的决策（scope: tracked，必须写 tracking_note）----
 
