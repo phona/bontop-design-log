@@ -987,6 +987,22 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 - 其余引用都在测试里（`schedule-projection.test.ts` 直接 import 模块断言；`schedule-loader-contract.test.ts` 经 loader 快照断言 `date: null`），不依赖 loader 清空。
 - 结论：删除后没有任何消费者会拿到「原本被 loader 清成 null、现在变成非 null」的值。
 
+### 18.7 五审复审的 low 工作项登记（2026-11-11 补记）
+
+五审针对性复审共 4 条 low。第 2 条（被删错误面未记账）已补入 §18.4 表，其余三条此前的唯一记录是 workflow 运行报告——按「无 owner 的技术意见等于没写」的纪律，登记于此。全部为 low，无 blocking。
+
+| # | 位置 | 问题与证据（复审员探针） | 严重度 | 处置与触发条件 |
+|---|---|---|---|---|
+| L1 | `shared/schedule-projection.ts` 无锚点游标存根内 `ensure(){}`（对照 `dateOf` :243-245 / `ordForDate` :246-248 抛 `internal_order_error`） | 三个游标方法口径不对称：`ensure` 是静默 no-op。今天不可达（唯一 `cursor.ensure` 调用点在 anchorReady 分支内，复审员逐点枚举 722/723、750、824、827 全部有守卫），但将来新增第四条调用点若只写 `cursor.ensure(n)`（以为「保证展开」）会得到静默成功而非当场失败，§18.3 第 3 条「忘了锚点判断会当场失败」对 ensure 这一条不成立 | low | **S2 动模块时收**（what-if 路由是本模块的新消费方，正是容易新增调用点的时机）：把存根 `ensure` 改为与另两个方法一致抛 `internal_order_error`，或显式注释声明不可达。owner：S2 实施者；触发：S2 任务书开工 |
+| L2 | `shared/schedule-state.ts` 快照 `ordinals` 透传（删掉二次 `.map` 的后果，探针 `ordinals_same_object_reference` 修复前 false → 修复后 true） | 快照数组与 `state.scheduleProjection.ordinals` 是同一对象，消费者若原地改快照会改到 loader 保留态。今天无实际风险：全仓只有 `shared/` 与 `tests/` 引用 ordinals（`app/src`、`server/`、`scripts/` 零命中），且 `baseline`/`forecast` 等键本来就走引用透传，属既有风格 | low | **记录即可，S2 择机**：甘特面板只读快照不改写，无需动作；若未来任何消费方要 mutate 快照 ordinals，先在快照侧 copy。owner：S2 实施者复核；触发：S2 出现第一个 ordinals 消费方 |
+| L3 | `tests/server/schedule-loader-contract.test.ts`（loader 删掉的那行冗余无测试可区分） | 旧 masking 与新透传在无锚点时同值，loader 单测对「删没删」不敏感——「这是死代码」只由复审员探针的逐字节对比支撑，不是测试支撑。端到端行为仍被一条断言钉住（anchor null 时 `ord3.date===null`），模块改错时会红；反向变异实验：把模块测试换成 1ab10a9c 版本得 53 pass / 4 fail，证明模块侧咬得住，loader 侧造不出红 | low | **不修，覆盖说明**：该删除的正确性由「快照输出前后逐字节一致」的探针 + 端到端断言共同保证，无需为一行死代码造专属测试。owner：无需（记录在案） |
+
+### 18.8 轮次预算后的状态（六审收口）
+
+- Codex 六审（审查提交 `1497bac1`，事件 `COMMENT`）：**blocking 0 · major 0 · minor 0 · nit 0，「没有发现项」**。一审至六审在同一条链上提出的全部 finding 处理完毕。
+- PR #216 于 2026-11-11 合并入 master（`e54abc56`），master CI 六项门禁全绿。
+- 本设计文档的角色至此从「施工中的验证台账」转为「切片 A 的定稿设计 + 审查全账」；S2 及以后的轮次记账在新切片续写（§19 起），本节不改写。
+
 ---
 
 ## 附：本设计回答的 Issue 原文第一问（切片 A 首个待答项）
