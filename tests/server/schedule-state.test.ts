@@ -70,6 +70,28 @@ describe('shared/schedule-state: 真实仓集成', () => {
     assert.ok(hollow!.evidence_required.length > 0, '必需证据类型必须在投影里');
     assert.equal(JSON.parse(JSON.stringify(snapshot)).counts.packages, 25);
   });
+
+  it('先定门门禁拦开工：BLK-DOOR-BEFORE-TILE 未关闭时 PKG-060 前置未满足、readiness 保持 blocked；门禁本身是预演项', () => {
+    // Codex 三审开工就绪缺口修复：D20 未拍板时铺贴包不得开工。接线是既有机制——
+    // 阻塞项进 PKG-060 的 blockers，effectiveReadiness 与第五道卡点同源判定。
+    const state = loadRealState();
+    const pkg060 = state.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-060');
+    assert.ok(pkg060.blockers.includes('BLK-DOOR-BEFORE-TILE'), 'PKG-060 blockers 必须含门禁阻塞项');
+    const issues = state.packagePrerequisiteIssues(pkg060);
+    assert.ok(issues.some((issue: string) => issue.includes('BLK-DOOR-BEFORE-TILE')), `前置问题必须列出门禁阻塞项；实际 ${issues.join('；')}`);
+    assert.equal(state.effectiveReadiness(pkg060), 'blocked');
+    // 门禁本身必须能在阻塞期间判 passed（否则 D20 拍板后仍过不了第五道卡点），
+    // 但通过不放行施工；D20 未拍板前草稿校验仍拦 passed（与 open_gates 同向）。
+    const gate = state.packageChecks(pkg060).find((check: AnyRecord) => check.id === 'check_tile_door_gate');
+    assert.ok(gate, 'check_tile_door_gate 必须在 PKG-060 的检查集里');
+    assert.equal(gate.can_run_while_blocked, true, '门禁必须是预演项');
+    assert.equal(gate.does_not_release_construction, true, '预演项通过不得放行施工');
+    const snapshot = buildScheduleSnapshot(state);
+    const snapGate = snapshot.packages.find((pkg) => pkg.id === 'PKG-060')!.checks
+      .find((check) => check.id === 'check_tile_door_gate');
+    assert.equal(snapGate!.can_run_while_blocked, true, '预演标志必须进快照投影');
+    assert.ok((snapGate!.open_gates ?? []).includes('D20'), 'D20 未拍板前门禁仍带 open_gates');
+  });
 });
 
 describe('shared/schedule-state: next-action', () => {

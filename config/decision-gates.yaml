@@ -164,7 +164,7 @@ decisions:
     blocks:
       - check_tile_door_gate
       - check_tile_door_seam_closed
-    blocked_effect: 档位与实测值未书面拍板前，两项均不得判 passed；贴砖前拍板，贴砖后改是返工。两项分属不同包（PKG-060 贴砖前置 / PKG-090 装门复核），互不阻塞对方包的放行。
+    blocked_effect: 档位与实测值未书面拍板前，两项均不得判 passed；贴砖前拍板，贴砖后改是返工。两项分属不同包（PKG-060 贴砖前置 / PKG-090 装门复核），互不阻塞对方包的放行。开工侧另有 BLK-DOOR-BEFORE-TILE 挂在 PKG-060 的 blockers 上：D20 未拍板时铺贴包 readiness 保持 blocked，不得开工；check_tile_door_gate 本身是预演项，阻塞期间可判 passed，但通过不放行施工。
 
   # ---- 不阻塞验收项的决策（scope: tracked，必须写 tracking_note）----
 

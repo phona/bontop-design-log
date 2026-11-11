@@ -307,6 +307,12 @@ phases:
           3. 排版：干湿接缝落在门扇/门套正下方，排版图或现场放样记录须标出接缝与门的位置关系；接缝未落门下，不得贴砖。
         standard: "两卫门洞实测值已登记；门扇尺寸、门套形式与外凸量已书面定档；干湿接缝落门下"
         severity: critical
+        # 预演项（2026-11-12 Codex 三审开工就绪缺口修复）：本条是贴砖前置验证，必须在
+        # PKG-060 仍被 BLK-DOOR-BEFORE-TILE 阻塞时就能判 passed，否则门禁自身会被
+        # 第五道卡点挡住、永远过不了；通过它不放行施工（does_not_release_construction），
+        # 开工仍须等阻塞项本身凭证据关闭，readiness 保持 blocked。
+        can_run_while_blocked: true
+        does_not_release_construction: true
         rooms: [master_bath, guest_bath]
         evidence:
           - "两卫门洞宽、高与墙厚实测记录（逐扇）"
