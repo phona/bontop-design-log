@@ -425,10 +425,10 @@ coordination: Record<string, {          // key = SCH id
 ## 13. Issue #202 关闭标准对账（交付标准 5 条）
 
 1. **可评审的设计记录**（对象关系/事实归属/状态机边界/排程规则 + 四外部项目取舍）→ 本文 §1/§2/§5/§8。✅
-2. **最小真实工作流跑通**（看下一步→角色行动→协调确认→执行/验收留证→状态更新→排期重算），覆盖 PKG-000 与 PKG-070 → S3 后由切片 C 试点脚本验证；协调确认走"复制 YAML diff → AI 会话 → PR"通道，执行/验收留证走既有 audit 写路径。⏳ S4 对账
-3. **同一 PKG/SCH 四视图状态一致，无第二权威源** → 四视图共吃一个快照；门禁/就绪仍单实现于 `shared/schedule-state.ts`。✅（结构保证）
-4. **基线/预测可区分，未知保持未知，协调≠验收，审批走现有授权** → §3 四线分离 + §5 两条机器断言 + D3 只读写路径。✅
-5. **测试可重复，既有校验不回退，不加假进度/假日期/自动放行** → §10；每片 PR 退出条件含 `verify:all` + `test:app`。⏳ 随 S1-S3
+2. **最小真实工作流跑通**（看下一步→角色行动→协调确认→执行/验收留证→状态更新→排期重算），覆盖 PKG-000 与 PKG-070 → **§21 对账：六腿各有单一实现与门禁、只读证据齐；真实实例（协调确认、验收留证）待交房后，见 §21.3**。⏳ 待业主裁定关闭口径
+3. **同一 PKG/SCH 四视图状态一致，无第二权威源** → 四视图共吃一个快照；门禁/就绪仍单实现于 `shared/schedule-state.ts`。✅（结构保证，§21.1 复核）
+4. **基线/预测可区分，未知保持未知，协调≠验收，审批走现有授权** → §3 四线分离 + §5 两条机器断言 + D3 只读写路径。✅（§21.1 给了只读实测数字）
+5. **测试可重复，既有校验不回退，不加假进度/假日期/自动放行** → §10；每片 PR 退出条件含 `verify:all` + `test:app`。✅ **§21.2 清单**（S1–S3.1 门禁判定行 + 切片 C 测试覆盖逐条）
 
 ---
 
@@ -1056,6 +1056,49 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 - **已知未收**：① 模块 `detectCoordinationConflicts` 无活消费方，面板侧展示分类与之并存（见上，留业主裁）；② 日历「确认占用日」标记只在锚点就绪时画（无锚点不钉列是 §17/§18 口径）；③ 两个面板行数超设计估值（762/612 vs ~400——`RoleWorkbenchPanel` 含 Codex 一审 blocking 修复后的行数；注释密度照 `GanttPanel` 776 行先例，未为压行数删口径注释）；④ 工作台每节 8 条上限 + `title` 全量，无分页；⑤ 无「真实路由响应 → 面板渲染」集成测试（S2 同款缺口）。
 - **Codex 审查**（PR #220）：一审 `b8f4d394` **blocking 1**——现场占用把 `owner_role`（协调组织者）误算为必须到场，与模块 `detectCoordinationConflicts` 的 `required_roles` 口径漂移 → 修（`6e0fd010`：占用口径改 `participatesIn` 只认 `required_roles`，待确认列表保留「required_roles ∪ owner_role」，新增钉死用例 20 测）。二审 `6e0fd010` **blocking 0 · major 1 · minor 2**（事件 COMMENTED，按修复端纪律不自动修，登记待业主裁）：major「工作台截断后没有访问剩余条目的入口」（每节前 8 行 + `title` 全量，无展开/分页/跳转；多个角色检查数已超 8，触屏端无法可靠读 title）；minor「`tickOrds` 末端刻度间距检查用了倒数第二个索引」（1–26 时末端 25/26 相距 44px < 72px 最小间距，末端标签可重叠）；minor「ordinals 未命中 `confirmed_at` 时误标『不在工作日历内』」（ordinals 是有限投影范围不是完整工作日历，应按「未知保持未知」改为「日期不在当前投影范围，无法定位」）。
 - **S4 前提**：切片 B/C 的联合验收试点可引用本片两个面板；Issue 关闭标准第 2 条（最小真实工作流跑通）仍待 S4 对账。
+
+---
+
+## 21. S4 收尾对账（2026-11-12）
+
+> **证据口径**：本节数字全部来自**只读运行**——`loadScheduleState` + `buildScheduleSnapshot`
+> 读真实 `control.yaml`，以及 `projectSchedule` 的只读演算（脚本落在 `tmp/`，过程物不进 git）；
+> 测试条目是仓库内既有用例。**未写入任何施工/协调/验收事实**：`audit_log.records` 为空、
+> 9 条协调全 `pending_invite`、`anchor_date: null` 都是「尚未交房」的诚实态。
+
+### 21.1 关闭标准逐条对账
+
+| # | 标准 | 判定 | 证据（只读实测 / 结构） |
+|---|---|---|---|
+| 1 | 可评审的设计记录（对象关系/事实归属/状态机边界/排程规则 + 四外部项目取舍） | ✅ | §1 缺口矩阵、§2 事实归属、§5 状态机边界、§8 四项目「复用/参考/不采用」 |
+| 2 | 最小真实工作流跑通，覆盖 PKG-000 与 PKG-070 | ⏳ 结构就绪，实跑待交房 | 六腿逐条见 §21.2 第 1/3/4 条与 §21.3 |
+| 3 | 同一 PKG/SCH 四视图状态一致，无第二权威源 | ✅ | 看板/甘特/工作台/日历/详情共吃 `GET /api/schedule/state` 一个快照；门禁与就绪仍单实现于 `shared/schedule-state.ts`；新增两键是纯增量（`schedule` / `coordination`），旧字段一个不动（api.test.ts:287） |
+| 4 | 基线/预测可区分、未知保持未知、协调≠验收、审批走既有授权 | ✅ | `anchor_date: null` → 130 个 ordinals 全 `date: null`；`check_window` 非 null 0/24；协调 `actor.name` 非空 0/9；`PKG-040 +3` 演算：`baseline` 逐包不变、`check_window` 逐包不变（§21.2 第 4 条）；协调不进 `gateStatus`/`effectiveReadiness`（facts 契约 `c.coordination_not_gate_input`，`verify:all` 覆盖） |
+| 5 | 测试可重复、既有校验不回退、无假进度/假日期/自动放行 | ✅ | 各片门禁判定行（§19/§20 与本轮 §21.2 第 7 条）；新增只读断言（`api.test.ts:303` POST 一律 404） |
+
+### 21.2 切片 C 回归清单对账（Issue 原文 7 项）
+
+| # | 要求 | 现状 | 证据 |
+|---|---|---|---|
+| 1 | 交房前 PKG-000：`SCH-000-PRE-01/02` 在工程 blocked 时仍可推进；不生成虚假交房日期 | ✅ | `SCH-000-PRE-01/02`：`can_run_while_blocked: true`、审计未登记、无 open gate；`PKG-000` `effective_readiness: blocked`、5 个未关闭阻塞；`anchor_date: null`（无年月日可用） |
+| 2 | 并行施工：PKG-020 完成后 PKG-030/040 并行；PKG-070 须同时满足 030/040/050 | ✅ | 依赖实测：`PKG-030 dep=[PKG-020]`、`PKG-040 dep=[PKG-020]`（两者 `start_ord` 均 26 → 并行）；`PKG-050 dep=[PKG-040]`；`PKG-070 dep=[PKG-030,PKG-040,PKG-050]`（`start_ord` 37 → 汇合） |
+| 3 | 联合验收协调：多角色参与、协调方、预约状态、缺席冲突、真实门禁；参与方式不得从 `owner_roles` 推定 | ✅ | `SCH-070-01`：`mode: onsite`、`required_roles = [业主,施工方,设计师,空调商]`、`owner_role: 业主`、`pending_invite`、`actor: null`——到场要求全部来自声明；缺席冲突两级口径见 `schedule-projection.test.ts` 的真实试点用例（潜在 4 簇：业主 7 / 设计师 6 / 施工方 3 / 空调商 3；`conflicts` 0）；施工门禁仍是 `GATE-070-CEILING-CLOSED` + 前置包验收，不被协调状态影响 |
+| 4 | 延期传播：水电或空调延迟 3 个工作日按依赖与并行关系影响预测，不平移全部下游，保留基线 | ✅ | 只读演算 `PKG-040 +3`：`affected` 18 包（`PKG-050…PKG-170`），**并行支 `PKG-030` 不受影响**；forecast 仅点名包与下游变化；`baseline` 与 `check_window` 逐包不变。测试：`schedule-what-if.test.ts:179-181`（点名包起点不变、终点 +3）、`:135`（无 scenario 时 forecast 与 baseline 逐值相同） |
+| 5 | 无日期/无演员/无报价：未知按未知展示；资源未绑定不阻碍抽象角色排程；不污染预算与施工事实 | ✅ | `anchor_date: null` → 130/130 ordinals `date: null`；协调 `actor.name` 非空 0/9（全部「待指定」）；未报价组件 89 个 → 进 `next_actions` 的 `quote_pending`（数量显形、金额不编）；`next_actions` 共 41 条 = `external_blocker` 14 / `quote_pending` 20 / `decision_gate` 7（**无 `ready_package`**——尚未交房，没有就绪包），含 `BLK-HANDOVER`（unblocks 1071）等 |
+| 6 | 单测/集成：依赖环、缺失引用、休息日、时间窗冲突、已完成包不回退、审批验收不被 UI 绕过、派生可重算 | ✅（一处口径已按业主裁定更新） | 依赖环/自依赖/未知依赖：`schedule-projection.test.ts:71/76/88`；工作日历（`rest_dates` 优先、补班占 ord）：`:125`；约束（`not_before` 抬升、`site_pending`/`not_after`/`time_window` 只登记）：`:500`；协调冲突两级与 cancelled/notify 退出：`:872+` 与真实试点用例；loader 契约（协调不进验收指纹）：`schedule-loader-contract.test.ts:76`；只读：`api.test.ts:303-306`；派生可重算（指纹）：`schedule-state.test.ts:54/63`。**「已完成包不可因排程回退」一句已被 §16 业主裁定推翻**：检查记录窗口不再钉 forecast（钉死的是检查日、不是施工起止），现行口径 = 无 scenario 时 forecast 与 baseline 同源、delay 照常影响点名包与下游 |
+| 7 | 对比引入前后重复代码/事实字段/维护工作量；仅有冗余不改善则缩范围 | ✅ | 四个 PR：`#216` 4553+/161−（16 文件，含 S0 设计）、`#218` 2303+/44−（15）、`#220` 2893+/57−（22）、`#221` 107+/7−（2，已合入 `cf4ffea5`）。**新增事实面只有 D1 裁定的三处**（`work_calendar` / PKG `constraints` / SCH `coordination`，全部住既有 `control.yaml`）+ 快照纯增量两键；排程数学单实现于 `shared/schedule-projection.ts`；复用既有 loader/门禁/选中态/面板形态/验收草稿流——没有第二套状态机、任务源或预算源 |
+
+### 21.3 未验证：待真实事实的两腿（关闭口径请业主裁）
+
+- **协调确认实跑**：9 条协调全部 `pending_invite`、`actor: null`。通道已在位：`coordination` 块写回 `control.yaml` 走「AI 会话 + PR」（D3，页面无写路径），loader 校验 `coordination_confirmed_without_actor`（确认必须落到可追溯的人）。要让第一条变成 `confirmed`，需要一个真实的约人结果——只有业主/现场能提供。
+- **现场执行/验收留证实跑**：`audit_log.records` 为空（未施工，是诚实态）。通道已在位且有测试：验收草稿流（页面 PUT 草稿 → `tmp/capture/acceptance-staging/` 暂存 → 提交时**开分支**，在分支内先做 `audit_log` 文本手术追加 → 重渲视图 → **带上新记录复跑 `verify:schedule`** → 显式路径 `git add` + commit + push + 开 PR → 业主合并），`acceptance-draft.test.ts` / `acceptance-staging-sweep.test.ts` 覆盖。「提交前跑两遍」= 当前树必须干净通过、带上新记录必须再次通过，两遍都在 commit 之前（`server/acceptance-draft-store.ts` 的 `submitAcceptance`）。
+- **因此标准 2 的诚实状态是**：六腿（看下一步 → 角色行动/到场 → 协调确认 → 执行/验收留证 → 状态更新 → 排期重算）各有单一实现、门禁与只读证据；**真实实例为 0**，因为交房与施工都还没开始。请业主裁定：以「结构性就绪 + 只读证据齐」关闭 #202，或保留 #202 到交房后完成一次真实协调确认与一次真实验收留证再关。
+
+### 21.4 S3 登记未收项的现状（2026-11-12）
+
+- **已收**：Codex 二审 minor ×2（`tickOrds` 末端刻度索引、`confirmed_at` 未命中措辞）与独立评审 verified medium ×1（日历轴/条幅 9px 错位）→ PR #221（已合入 `cf4ffea5`；含该 PR 自引入回归的收口：两列跨度不得删唯一首刻度）。
+- **仍开**：Codex 二审 major 1（工作台每节 8 条截断后无展开/分页入口）；独立评审 low 2（工作台 `coordination` 形状兜底、`windowOf` 缺包时静默移出重叠判定）。
+- **待业主裁的结构问题**：面板侧冲突分类与模块 `detectCoordinationConflicts` 是同一口径的两处实现（模块至今无生产消费方）——是否改由 loader 单一来源、面板纯渲染（§20 已登记）。
 
 ---
 
