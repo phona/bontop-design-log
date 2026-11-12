@@ -354,7 +354,7 @@ const SECTIONS: Section[] = [
           return `${fmt2(c.house.project.floor_height - z.thickness)} m`;
         },
         source: 'config/mep-hvac-coordination.yaml:12',
-        note: '0.15m 板厚；厨房/主卫/客卫三区，空腔仅 150mm',
+        note: '0.30m 降板（2.80−0.30）；厨房/主卫/客卫三区，空腔 300mm（2026-11-12 由 0.15m 板厚/空腔 150mm 下调）',
       },
       {
         label: '客餐厅面积',

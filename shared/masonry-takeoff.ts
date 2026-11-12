@@ -176,7 +176,8 @@ export interface MasonryTakeoffInput {
   /** overlay 的 floor_region（非房间地面）。 */
   floorRegions?: MasonryFloorRegionInput[];
   /**
-   * 贴砖带顶标高上限（厨卫铝扣板完成面 2.65）。**必填，不设默认值**——
+   * 贴砖带顶标高上限（厨卫铝扣板完成面；2026-11-12 吊顶已下调至 2.50，本值 2.65 待跟进 PR 下调——
+   * 贴砖带顶随吊顶走，7 条 2.65m 贴砖带 + 本值同批改，另带砌筑量/预算奇偶重算，见本 PR 描述跟进项①）。**必填，不设默认值**——
    * `?? 2.65` / `?? 2.8` 这类兜底正是「漏写一条 height 就静默少算一截」的机制。
    */
   clearHeight: number;

@@ -279,7 +279,7 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
   // 旧基线 0 error / 22 warning、15 条已接受项、68 条路线 / 13 个吊顶分区、13 处穿墙点
   assert.equal(/0 error \/ 22 warning/.test(guidance), false, '§6 的旧基线「0 error / 22 warning」必须已替换为实跑口径');
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
-  assert.match(guidance, /涉及\s*\*\*72 条路线 \/ 13 个吊顶分区\*\*/); // DEC-2026-10-28-R05 后现值 72/13
+  assert.match(guidance, /涉及\s*\*\*39 条路线 \/ 13 个吊顶分区\*\*/); // 2026-11-12 后现值 39/13（吊顶下调，三区内 y 2.50–2.65 的 39 处 hit 合法消失）
   // DEC-2026-10-28-R05：三个旧 curtain_box_* 分区退出涉及集合，分区数合法回到 13（16→13），旧快照守卫改钉路线数
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
   assert.equal(/design-datum\.yaml`（13 处）/.test(guidance), false, '§1 的穿墙点留档条数必须已按 design-datum.yaml 实条数改写');

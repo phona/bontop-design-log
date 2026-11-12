@@ -18,10 +18,10 @@
   "dispositions": [
     {
       "code": "ceiling_clearance_unverified",
-      "count": 89,
+      "count": 50,
       "category": "survey_dependent",
       "disposition": "pending_adjudication",
-      "basis": "历史基线（2026-10-06 DEC-2026-10-06-R5）：160 处收敛为 24 处残留；旧项分类与现场复核条件见 docs/pending-site-data.md #41。当前快照（2026-10-17 R4）：verify:mep 与 verify:facts 均为 51 处 / 42 条路线 / 14 个吊顶分区。承载层 floor_branch(_candidate) 仅在至少一个 route point 落入 y≤0.35m 垫层带时退出完成面比较；无垫层点的误标路线由 floor_branch_missing_floor_band 提醒，开放起降仍由 3D unsupported_span 检查。facts 与 MEP 共用渲染 footprint 与 segment 相交逻辑。点/段差异已定位并修复：strong-power-master 在未声明 route vertex 之间穿过 curtain_box_master_south；sofa-r 与 sofa-l 的垫层路线不再产生吊顶面误报。registered_conflicts 52→51 是规则口径修正，无路线删除。｜DEC-2026-10-17-R20：删 2 条旧位路线 −1（51→50），同批走线专项 4 条新路线终点即设备点位（①类同类残留）+4（50→54，44 条路线/15 分区，ceiling_entry_foyer 新增涉及）；registered_conflicts 已同步 54。｜DEC-2026-10-22-R01 对账：R25 外包络复核（管径+声明保温、每 50mm 采样）后现行实算 62 处 / 50 条路线 / 15 分区，与 facts 契约 registered_conflicts 62 双引擎一致，本台账据实更新 50→62。｜DEC-2026-10-23-R04 对账：ceiling_guest_bath 东界随客卫东墙线 7.10→7.20，SE 角点 (7.20,4.30) 与走廊枢纽 bend_corridor 重合，39 条以该枢纽为端点的路线起点单点触碰角部新增登记（逐条 diff 核实无实体穿越），双引擎实算 62→101（78 条路线/15 分区），registered_conflicts 已同步 101，本台账据实更新 62→101。｜DEC-2026-10-26-R02 对账：书桌东移，strong-power-study 与 weak-parent 改道东墙、不再南下，两专线各减 1 处低于完成面 hit，双引擎实算 101→99，涉及路线 78→77，本台账据实更新 101→99。｜DEC-2026-10-28-R04 对账：客房床头双控开关与 NP-2 起夜灯从床头板正后方 (16.40,7.60) 南移至床边带 (16.40,8.55)，strong-light-bedrooms-study-guest-bed / -night 两条路由竖直下引段移出 curtain_box_study_south footprint，双引擎实算 97→95（74 条路线/16 分区），registered_conflicts 已同步 95，本台账据实更新 97→95。｜DEC-2026-10-28-R05 对账：三间朝南卧室窗帘盒归位玻璃线内侧（旧 footprint 内 6 处低于完成面 hit 随盒移位消失），双引擎实算 95→89（72 条路线/13 分区），registered_conflicts 已同步 89，本台账据实更新 95→89。",
+      "basis": "历史基线（2026-10-06 DEC-2026-10-06-R5）：160 处收敛为 24 处残留；旧项分类与现场复核条件见 docs/pending-site-data.md #41。当前快照（2026-10-17 R4）：verify:mep 与 verify:facts 均为 51 处 / 42 条路线 / 14 个吊顶分区。承载层 floor_branch(_candidate) 仅在至少一个 route point 落入 y≤0.35m 垫层带时退出完成面比较；无垫层点的误标路线由 floor_branch_missing_floor_band 提醒，开放起降仍由 3D unsupported_span 检查。facts 与 MEP 共用渲染 footprint 与 segment 相交逻辑。点/段差异已定位并修复：strong-power-master 在未声明 route vertex 之间穿过 curtain_box_master_south；sofa-r 与 sofa-l 的垫层路线不再产生吊顶面误报。registered_conflicts 52→51 是规则口径修正，无路线删除。｜DEC-2026-10-17-R20：删 2 条旧位路线 −1（51→50），同批走线专项 4 条新路线终点即设备点位（①类同类残留）+4（50→54，44 条路线/15 分区，ceiling_entry_foyer 新增涉及）；registered_conflicts 已同步 54。｜DEC-2026-10-22-R01 对账：R25 外包络复核（管径+声明保温、每 50mm 采样）后现行实算 62 处 / 50 条路线 / 15 分区，与 facts 契约 registered_conflicts 62 双引擎一致，本台账据实更新 50→62。｜DEC-2026-10-23-R04 对账：ceiling_guest_bath 东界随客卫东墙线 7.10→7.20，SE 角点 (7.20,4.30) 与走廊枢纽 bend_corridor 重合，39 条以该枢纽为端点的路线起点单点触碰角部新增登记（逐条 diff 核实无实体穿越），双引擎实算 62→101（78 条路线/15 分区），registered_conflicts 已同步 101，本台账据实更新 62→101。｜DEC-2026-10-26-R02 对账：书桌东移，strong-power-study 与 weak-parent 改道东墙、不再南下，两专线各减 1 处低于完成面 hit，双引擎实算 101→99，涉及路线 78→77，本台账据实更新 101→99。｜DEC-2026-10-28-R04 对账：客房床头双控开关与 NP-2 起夜灯从床头板正后方 (16.40,7.60) 南移至床边带 (16.40,8.55)，strong-light-bedrooms-study-guest-bed / -night 两条路由竖直下引段移出 curtain_box_study_south footprint，双引擎实算 97→95（74 条路线/16 分区），registered_conflicts 已同步 95，本台账据实更新 97→95。｜DEC-2026-10-28-R05 对账：三间朝南卧室窗帘盒归位玻璃线内侧（旧 footprint 内 6 处低于完成面 hit 随盒移位消失），双引擎实算 95→89（72 条路线/13 分区），registered_conflicts 已同步 89，本台账据实更新 95→89。｜2026-11-12：厨房/客卫/主卫铝扣板完成面 2.65→2.50（降板 0.15→0.30），三区内 y 2.50–2.65 的 39 处低于完成面 hit 合法消失，双引擎实算 89→50（39 条路线/13 分区），registered_conflicts 已同步 50，本台账据实更新 89→50。授权：业主 2026-11-12 接受（DEC 体系已退役，无新 DEC 编号）。",
       "owner": "业主 + 设计侧（裁定降板/标高）",
       "clearing_condition": "按 route id × ceiling zone 复核现有 warning：真实设备末端低位、完成面开口、窗帘盒电源与绕梁冷凝水路线仍按现场事实复判。承载层 floor_branch(_candidate) 只有实际 route point 落入 y≤0.35m 垫层带时才退出完成面比较；无此点的误标由 floor_branch_missing_floor_band 显形，全部开放起降继续经过 3D unsupported_span。owner=业主 + 设计侧（裁定降板/标高）；触发=量房与水电交底前。",
       "superseded_note": "历史：R1 56→55；R2 删 4 条卫浴照明路由后 55→53（facts 登记 52 的旧口径仍有 1 条路线差异）。｜2026-10-17 DEC-2026-10-17-R4：floor_branch(_candidate) 仅对有实际垫层点的承载层路线豁免完成面比较，且高位误标新增 floor_branch_missing_floor_band 哨兵；事实引擎改为共享 footprint/segment 相交算法。两引擎从旧登记 52 / MEP 54 收敛到 51 处、42 条路线、14 个分区；未删除路线，开放竖降另由 unsupported_span 报警。"
@@ -190,10 +190,10 @@
     }
   ],
   "summary": {
-    "mep_total_warnings": 265,
+    "mep_total_warnings": 226,
     "mep_buckets": {
       "must_fix_before_briefing": 130,
-      "survey_dependent": 137,
+      "survey_dependent": 98,
       "envelope_approximation": 128
     },
     "electrical_total_warnings": 53,

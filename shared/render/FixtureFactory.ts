@@ -671,7 +671,8 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     type: 'range_hood',
     parts: [
       { shape: 'box', size: [0.9, 0.3, 0.5], position: [0, 1.5, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.3 },
-      { shape: 'box', size: [0.3, 0.9, 0.3], position: [0, 2.1, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.3 },
+      // 2026-11-12 ceiling_kitchen 完成面 2.65→2.50：排烟道短 0.15m（顶 2.55→2.40），与完成面的 0.10m 间隙与旧口径一致；罩体不动。
+      { shape: 'box', size: [0.3, 0.75, 0.3], position: [0, 2.025, 0], color: '#c0c0c0', metalness: 0.6, roughness: 0.3 },
     ],
   },
   {
@@ -743,9 +744,10 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
+    // 2026-11-12 两卫/厨房铝扣板完成面 2.65→2.50：风机中心下移 0.15m（2.50→2.35），顶缘与完成面的 0.075m 间隙与旧口径一致。
     type: 'exhaust_fan',
     parts: [
-      { shape: 'box', size: [0.3, 0.15, 0.3], position: [0, 2.5, 0], color: '#dddddd', roughness: 0.5 },
+      { shape: 'box', size: [0.3, 0.15, 0.3], position: [0, 2.35, 0], color: '#dddddd', roughness: 0.5 },
     ],
   },
   {

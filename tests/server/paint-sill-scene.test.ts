@@ -22,7 +22,7 @@ import { loadCeilingConfig } from '../../server/config-loader.js';
  * 三条不变量：
  *   ① underside 网格的世界坐标顶点集合 == bay_sill outline 在 (x, sill, z) 上的投影；
  *   ② underside 的 x/z 包围盒与 bay_sill 本体的 x/z 包围盒重合，且 y 恒等于 sill（水平面）；
- *   ③ 独立三角网格面积合计 == computePaintSillScope 的汇总口径（4.193㎡，全精度累加后 round3），
+ *   ③ 独立三角网格面积合计 == computePaintSillScope 的汇总口径（3.765㎡，全精度累加后 round3），
  *      且与「outline 鞋带 + 前缘/端面宽×高」的解析复算一致。
  */
 
@@ -165,8 +165,8 @@ test('paint_sill_region underside lands on the bay_sill footprint: world vertice
   const analytic = scope.surfaces.find((surface) => surface.kind === 'underside')!.areaSqm
     + frontWidth * (ceilingFinish - sill) + capWidth * (ceilingFinish - sill);
   assert.ok(Math.abs(meshTotal - analytic) < 1e-6, `三角网格合计 ${meshTotal} 与解析复算 ${analytic} 对不上`);
-  assert.ok(Math.abs(meshTotal - 4.193365) < 1e-5, `三角网格合计 ${meshTotal}（浏览器独立复算 4.193365㎡）`);
-  assert.equal(scope.totalAreaSqm, 4.193, '汇总口径 round3 后必须是 4.193㎡（旧逐段 round3 是 4.198㎡）');
+  assert.ok(Math.abs(meshTotal - 3.7648127505531916) < 1e-5, `三角网格合计 ${meshTotal}（浏览器独立复算 3.764813㎡）`); // 2026-11-12：主卫完成面 2.65→2.50，前缘/端面外露高 0.58→0.43，网格合计 4.193365→3.764813
+  assert.equal(scope.totalAreaSqm, 3.765, '汇总口径 round3 后必须是 3.765㎡（旧逐段 round3 是 4.198㎡）'); // 2026-11-12 同上
   assert.ok(Math.abs(scope.totalAreaSqm - meshTotal) < 5e-4, '汇总口径与三角网格复算必须同源');
 
   // 立面必须给真实标高（审计靠 bottom/top 算带高，不能是 0）

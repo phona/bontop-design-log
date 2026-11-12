@@ -78,21 +78,21 @@ describe('GET /api/paint/comparison', () => {
     assert.ok(Math.abs(payload.scope.netWallAreaSqm - 163.786) <= 0.02, `净墙面 ${payload.scope.netWallAreaSqm}`);
     // 顶面仅由 paint_ceiling_region 选择；选中 footprint 119.233㎡ 减两间卫浴铝扣板 7.936㎡（R01 重算后）。
     assert.ok(Math.abs(payload.scope.ceilingAreaSqm - 111.297) <= 0.02, `顶面 ${payload.scope.ceilingAreaSqm}`); // R01 重算
-    assert.ok(Math.abs(payload.scope.grossAreaSqm - 334.702) <= 0.02); // R01 重算；DEC-2026-10-28-R05 窗帘盒归位后主卧/书房上飘窗端面涂装面 +1.100，333.602→334.702
+    assert.ok(Math.abs(payload.scope.grossAreaSqm - 334.325) <= 0.02); // R01 重算；DEC-2026-10-28-R05 窗帘盒归位后主卧/书房上飘窗端面涂装面 +1.100，333.602→334.702；2026-11-12 吊顶下调 334.702→334.325
     // 净面积 = 墙 + 顶 + 普通窗台 + 湿区窗台（全部涂装面，含单独计价的湿区）
-    assert.ok(Math.abs(payload.scope.netAreaSqm - 313.921) <= 0.02, `净计费面积 ${payload.scope.netAreaSqm}`); // R01 重算
+    assert.ok(Math.abs(payload.scope.netAreaSqm - 313.544) <= 0.02, `净计费面积 ${payload.scope.netAreaSqm}`); // R01 重算；2026-11-12 吊顶下调 313.921→313.544
     // 普通墙漆计价面积：湿区窗台单独计价，不按普通漆费率计费（旧 270.865 把湿区窗台也算进普通口径）
-    assert.ok(Math.abs(payload.scope.ordinaryAreaSqm - 310.366) <= 0.02, `普通计费面积 ${payload.scope.ordinaryAreaSqm}`); // R01 重算
+    assert.ok(Math.abs(payload.scope.ordinaryAreaSqm - 310.252) <= 0.02, `普通计费面积 ${payload.scope.ordinaryAreaSqm}`); // R01 重算；2026-11-12 吊顶下调 310.366→310.252
     // 守恒：普通 + 湿区 = 全部涂装面
     assert.ok(Math.abs(payload.scope.ordinaryAreaSqm + payload.scope.antiMoldSqm - payload.scope.netAreaSqm) <= 0.01);
-    assert.equal(payload.scope.ordinarySillAreaSqm, 35.283, '其余 7 处上飘窗按普通漆计价（厨房 P09 改贴砖）');
+    assert.equal(payload.scope.ordinarySillAreaSqm, 35.169, '其余 7 处上飘窗按普通漆计价（厨房 P09 改贴砖）'); // 2026-11-12 吊顶下调 35.283→35.169
     // 2026-10-09 精度口径修复：内部全精度 + 汇总 round3，4.198 → 4.193㎡
-    assert.equal(payload.scope.antiMoldSqm, 3.555, '主卫上飘窗外露面刷防霉漆，单独计价（已扣内部接缝端面）');
+    assert.equal(payload.scope.antiMoldSqm, 3.292, '主卫上飘窗外露面刷防霉漆，单独计价（已扣内部接缝端面）'); // 2026-11-12 吊顶下调 3.555→3.292
     assert.equal(payload.scope.antiMoldStatus, 'pending_system_quote_and_site_validation');
-    assert.deepEqual(payload.scope.sillAreaByRoom, { master_bath: 4.832, master_bedroom: 17.266, study: 5.58, bedroom_se: 5.58, bedroom_nw: 5.58 }, '厨房上飘窗 P09 改贴砖'); // R04：bedroom_se 窗台面 5.04→5.58；DEC-2026-10-28-R05：主卧/书房窗帘盒移离上飘窗端面，master_bedroom 16.706→17.266、study 5.04→5.58
-    // 防霉漆只落在主卫（3.555），其余 8 处是普通漆
-    assert.deepEqual(payload.scope.antiMoldSillAreaByRoom, { master_bath: 3.555 });
-    assert.equal(payload.scope.ordinarySillAreaSqm, 35.283);
+    assert.deepEqual(payload.scope.sillAreaByRoom, { master_bath: 4.455, master_bedroom: 17.266, study: 5.58, bedroom_se: 5.58, bedroom_nw: 5.58 }, '厨房上飘窗 P09 改贴砖'); // R04：bedroom_se 窗台面 5.04→5.58；DEC-2026-10-28-R05：主卧/书房窗帘盒移离上飘窗端面，master_bedroom 16.706→17.266、study 5.04→5.58；2026-11-12：主卫完成面 2.65→2.50，master_bath 4.832→4.455
+    // 防霉漆只落在主卫（3.292），其余 8 处是普通漆
+    assert.deepEqual(payload.scope.antiMoldSillAreaByRoom, { master_bath: 3.292 });
+    assert.equal(payload.scope.ordinarySillAreaSqm, 35.169);
     assert.equal(payload.scope.sillSurfaces.length, 8, '8 条 paint_sill_region 声明（主卫防霉漆 + 其余 7 处普通漆；厨房 P09 改贴砖）');
     // 3D 高亮从「只高亮墙」扩展到「墙 + 已声明的窗台面」：窗台端面旧值源于
     // BaySillGeometry.reverse() 原地反转污染 wallPath，被配成横跨整条窗台的 1.803m 斜肢
@@ -130,30 +130,30 @@ describe('GET /api/paint/comparison', () => {
     const byId = new Map(payload.scenarios.map((scenario: any) => [scenario.scenarioId, scenario]));
     // 默认口径：2 遍 + 扣门窗洞。计价面积 = ordinaryAreaSqm（防霉漆窗台单列，不按普通漆计价）
     const deduct = byId.get('topcoats2_deduct') as any;
-    assert.equal(deduct.areaSqm, 310.366);
+    assert.equal(deduct.areaSqm, 310.252);
     assert.equal(deduct.topcoatBuckets, 6);
     assert.equal(deduct.primerBuckets, 3);
     assert.equal(deduct.materialYuan, 5220);
-    assert.equal(deduct.laborYuan, 7759.15); // DEC-2026-10-28-R05 窗帘盒归位后计价面积 +1.100，人工 7731.65→7759.15
-    assert.equal(deduct.subtotalYuan, 12979.15); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    assert.equal(deduct.vsPlannedDeltaYuan, 1479.15); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    assert.equal(deduct.vsOwnerTargetDeltaYuan, 1979.15); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    // 对照：不扣洞 = 普通计费面积 + 门窗洞占位（310.366 + 20.781 = 331.147㎡）
+    assert.equal(deduct.laborYuan, 7756.3); // DEC-2026-10-28-R05 窗帘盒归位后计价面积 +1.100，人工 7731.65→7759.15；2026-11-12 吊顶下调计价面积 −0.114，人工 7759.15→7756.3
+    assert.equal(deduct.subtotalYuan, 12976.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    assert.equal(deduct.vsPlannedDeltaYuan, 1476.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    assert.equal(deduct.vsOwnerTargetDeltaYuan, 1976.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    // 对照：不扣洞 = 普通计费面积 + 门窗洞占位（310.252 + 20.781 = 331.033㎡）
     const gross = byId.get('topcoats2_no_deduct') as any;
-    assert.equal(gross.areaSqm, 331.147);
+    assert.equal(gross.areaSqm, 331.033);
     assert.equal(gross.topcoatBuckets, 7);
     assert.equal(gross.primerBuckets, 4);
     assert.equal(gross.materialYuan, 6380);
-    assert.equal(gross.laborYuan, 8278.67); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    assert.equal(gross.subtotalYuan, 14658.67); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    assert.equal(gross.vsPlannedDeltaYuan, 3158.67); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    assert.equal((byId.get('topcoats1_deduct') as any).areaSqm, 310.366);
-    assert.equal((byId.get('topcoats1_deduct') as any).subtotalYuan, 11239.15); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    assert.equal((byId.get('topcoats1_deduct') as any).vsOwnerTargetDeltaYuan, 239.15); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    assert.equal((byId.get('topcoats1_no_deduct') as any).areaSqm, 331.147);
-    assert.equal((byId.get('topcoats1_no_deduct') as any).subtotalYuan, 12918.67); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    assert.equal((byId.get('topcoats1_no_deduct') as any).vsPlannedDeltaYuan, 1418.67); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡
-    assert.deepEqual(payload.reconciliation.modeledRangeCny, [11239.15, 14658.67]); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡ // R01 重算
+    assert.equal(gross.laborYuan, 8275.83); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    assert.equal(gross.subtotalYuan, 14655.83); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    assert.equal(gross.vsPlannedDeltaYuan, 3155.83); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    assert.equal((byId.get('topcoats1_deduct') as any).areaSqm, 310.252);
+    assert.equal((byId.get('topcoats1_deduct') as any).subtotalYuan, 11236.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    assert.equal((byId.get('topcoats1_deduct') as any).vsOwnerTargetDeltaYuan, 236.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    assert.equal((byId.get('topcoats1_no_deduct') as any).areaSqm, 331.033);
+    assert.equal((byId.get('topcoats1_no_deduct') as any).subtotalYuan, 12915.83); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    assert.equal((byId.get('topcoats1_no_deduct') as any).vsPlannedDeltaYuan, 1415.83); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+    assert.deepEqual(payload.reconciliation.modeledRangeCny, [11236.3, 14655.83]); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡ // R01 重算；2026-11-12 同上
     assert.ok(payload.assumptions.some((a: any) => a.status === 'assumed_unconfirmed'));
     assert.equal(payload.interpretation.selectedScenarioId, null);
     assert.match(payload.interpretation.disclaimer, /COST-080-01\/02\/04/);
@@ -212,9 +212,9 @@ describe('GET /api/budget paint preview overlay', () => {
     assert.equal(preview.includedInTotalActual, false);
     assert.equal(preview.includedInCategoryTotals, false);
     assert.equal(preview.scope.highlightedIn3d, 'walls_and_declared_sill_faces');
-    assert.ok(Math.abs(preview.scope.netAreaSqm - 313.921) <= 0.02); // R01 重算；DEC-2026-10-28-R05 窗帘盒归位后 +1.100
+    assert.ok(Math.abs(preview.scope.netAreaSqm - 313.544) <= 0.02); // R01 重算；DEC-2026-10-28-R05 窗帘盒归位后 +1.100；2026-11-12 吊顶下调 313.921→313.544
     // 湿区窗台单独计价：预览里必须显形，不能悄悄并进普通墙漆面积
-    assert.equal(preview.scope.antiMoldSqm, 3.555);
+    assert.equal(preview.scope.antiMoldSqm, 3.292); // 2026-11-12 吊顶下调 3.555→3.292
     assert.equal(preview.scope.antiMoldStatus, 'pending_system_quote_and_site_validation');
     assert.equal(preview.scope.doorGapAreaSqm, 20.781); // R01
     // 涂装科目自身按声明+拆洞实算，取「普通墙漆计价面积」306.236㎡
@@ -223,7 +223,7 @@ describe('GET /api/budget paint preview overlay', () => {
     assert.ok(Math.abs(painting.autoActual - 1650) <= 1, `painting autoActual=${painting.autoActual}`); // DEC-2026-10-28-R05 +1.100㎡ → 候选材料款 1644→1650 // R01 重算
     // 阶段 5 口径变更：actual 只计已取证款 + 人工。
     // painting 的材料款（1,566.912）是候选价 → 不进 actual；人工 7,369 进。
-    assert.ok(Math.abs(painting.actual - 7759) <= 1, `painting actual=${painting.actual}`); // R01 重算；DEC-2026-10-28-R05 +1.100
+    assert.ok(Math.abs(painting.actual - 7756) <= 1, `painting actual=${painting.actual}`); // R01 重算；DEC-2026-10-28-R05 +1.100；2026-11-12 吊顶下调 7759→7756
     assert.ok(Math.abs(painting.candidateActual! - 1650) <= 1, `painting candidateActual=${painting.candidateActual}`); // DEC-2026-10-28-R05 +1.100㎡ // R01 重算
     assert.equal(painting.status, 'ok');
   });
