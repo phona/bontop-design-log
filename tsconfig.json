@@ -4,7 +4,10 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2022", "DOM"],
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -14,8 +17,25 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "."
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": [
+        "shared/*.ts"
+      ]
+    }
   },
-  "include": ["shared/**/*.ts", "server/**/*.ts", "scripts/**/*.ts", "tests/**/*.ts"],
-  "exclude": ["node_modules", "app", "dist", "mcp-server", "scripts/archive/blender-pipeline"]
+  "include": [
+    "shared/**/*.ts",
+    "server/**/*.ts",
+    "scripts/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "app",
+    "dist",
+    "mcp-server",
+    "scripts/archive/blender-pipeline"
+  ]
 }
