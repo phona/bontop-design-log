@@ -4,17 +4,18 @@ import { ScheduleSelectionStore } from '../state/schedule-selection.js';
 import type {
   ScheduleCheckView,
   ScheduleCoordinationView,
-  SchedulePackageProjectionView,
   SchedulePackageView,
-  ScheduleProjectionView,
   ScheduleSnapshot,
 } from '@shared/schedule-state';
+import type { CoordinationConflictReport, CoordinationOverlap } from '@shared/schedule-projection';
 
-// 合成快照覆盖任务书 §4 的 11 条 + §1.4 冲突两级口径 + §1.1 只读/上限/空态：
+// 合成快照覆盖任务书 §4 的 11 条 + S3.2 收尾后的冲突口径：
 //  - PKG-010 带四种 audit_status（未登记 / failed / passed / waived）对照「只列未完成」；
 //  - 默认 coordination 五条覆盖三态入场（pending_invite/invited/unassigned）与
 //    不入场（confirmed/cancelled）；
-//  - 默认无锚点：ordinals[].date 全 null，本面板不造年月日（ confirmed_at 是证据
+//  - 现场冲突**只从 `coordination_conflicts` 夹具来**（S3.2：面板侧分类已删，
+//    不再用 snapshot.schedule 造冲突，也不再给夹具带 schedule 键）；
+//  - 默认无锚点：ordinals[].date 全 null，本面板不造年月日（confirmed_at 是证据
 //    日期，原样展示并注明「确认登记日」）。
 function checkView(overrides: Partial<ScheduleCheckView> = {}): ScheduleCheckView {
   return {
@@ -73,36 +74,23 @@ function coordView(overrides: Partial<ScheduleCoordinationView> = {}): ScheduleC
   };
 }
 
-function projectionPkg(start: number, endMin: number, endMax: number): SchedulePackageProjectionView {
-  return {
-    duration_workdays: {min: 1, max: Math.max(1, endMax - start + 1)},
-    baseline: {start_ord: start, end_ord_min: endMin, end_ord_max: endMax},
-    forecast: {start_ord: start, end_ord_min: endMin, end_ord_max: endMax},
-    check_window: null,
-    blocking_reasons: [],
-    constraints: [],
-  };
+/** 报告里的一簇（契约形状 {role, sch_ids, reason}；sch_ids 是 SCH id 列表）。 */
+function overlap(role: string, schIds: Array<string | null>, reason: string): CoordinationOverlap {
+  // schIds 允许喂坏成员（null/空串）：面板对报告只做运行时形状守卫，测试要能构造坏形状。
+  return {role, sch_ids: schIds as string[], reason};
 }
 
-/** 默认排程投影：无锚点（ordinals[].date 全 null），PKG-030/040/050/060 供潜在窗口判定。 */
-function scheduleView(overrides: Partial<ScheduleProjectionView> = {}): ScheduleProjectionView {
-  return {
-    anchor_date: null,
-    calendar: {workdays: [1, 2, 3, 4, 5], rest_dates: [], extra_workdates: []},
-    ordinals: [1, 2, 3, 4, 5, 6].map((ord) => ({ord, date: null})),
-    packages: {
-      'PKG-010': projectionPkg(2, 3, 4),
-      'PKG-020': projectionPkg(3, 4, 5),
-      'PKG-030': projectionPkg(5, 6, 6),
-      'PKG-040': projectionPkg(6, 7, 7),
-      'PKG-050': projectionPkg(2, 3, 4),
-      'PKG-060': projectionPkg(3, 4, 5),
-    },
-    ...overrides,
-  };
-}
+/**
+ * 快照夹具。`coordination_conflicts` 是 S3.2 新键（声明在 shared/schedule-state.ts，
+ * 类型 = CoordinationConflictReport）；本测要覆盖「键缺失 / 形状不符」两种面板必须扛住的
+ * 形态，故把该键从 Partial<ScheduleSnapshot> 里摘掉再放宽到 unknown（只在夹具里放宽，
+ * 被测代码仍按声明类型读）。
+ */
+type SnapshotOverrides = Omit<Partial<ScheduleSnapshot>, 'coordination_conflicts'> & {
+  coordination_conflicts?: unknown;
+};
 
-function snapshotView(overrides: Partial<ScheduleSnapshot> = {}): ScheduleSnapshot {
+function snapshotView(overrides: SnapshotOverrides = {}): ScheduleSnapshot {
   return {
     phase: {
       id: 'phase_1_basic_occupancy',
@@ -157,9 +145,10 @@ function snapshotView(overrides: Partial<ScheduleSnapshot> = {}): ScheduleSnapsh
       'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', lead_time_workdays: 3, status: 'confirmed', actor: {name: '张三', org: '甲公司'}, confirmed_at: '2026-03-02'}),
       'SCH-040-01': coordView({package_id: 'PKG-040', required_roles: ['业主'], owner_role: '业主', lead_time_workdays: 3, status: 'cancelled'}),
     },
-    schedule: scheduleView(),
+    // 默认报告：无冲突、无潜在重叠（现代服务端形态）。
+    coordination_conflicts: {conflicts: [], potential: []},
     ...overrides,
-  };
+  } as unknown as ScheduleSnapshot;
 }
 
 /** 只 stub /api/schedule/state；面板若拉任何其他端点，这里回 404 让调用留痕。 */
@@ -183,6 +172,9 @@ const roleGroup = (role: string): HTMLElement => document.querySelector(`.rw-rol
 
 const sectionOf = (role: string, section: string): HTMLElement =>
   roleGroup(role).querySelector(`.rw-section[data-section="${section}"]`) as HTMLElement;
+
+const toggleOf = (role: string, section: string): HTMLButtonElement | null =>
+  sectionOf(role, section).querySelector('button[data-rw-toggle]') as HTMLButtonElement | null;
 
 /** jsdom 不做布局（clientWidth 恒 0）；窄容器用例显式 stub 容器实测宽（同 GanttPanel 测）。 */
 function stubClientWidth(width: number): () => void {
@@ -215,6 +207,8 @@ describe('RoleWorkbenchPanel', () => {
     // 试点水印固定在场（§5 风险表：未登记的 SCH 不出现 ≠ 无协调）
     expect(bodyText()).toContain('试点数据：仅登记了 coordination 的 SCH 出现，未登记不代表无协调');
     expect(bodyText()).toContain('数据只读自');
+    // 表头点名数据来源键（S3.2 起 conflicts 来自 coordination_conflicts，不再是面板自算）
+    expect(bodyText()).toContain('coordination_conflicts');
     panel.hide();
   });
 
@@ -259,66 +253,139 @@ describe('RoleWorkbenchPanel', () => {
     expect(worker.textContent).toContain('SCH-020-02'); // invited
     expect(worker.textContent).toContain('已邀请');
     expect(worker.textContent).toContain('参与人：王工（水电施工队）');
-    // cancelled 全程不出现（冲突/潜在也不出，见后续用例）
+    // cancelled / confirmed 两节都不出现（报告为空，见后续用例）
     expect(bodyText()).not.toContain('SCH-040-01');
     expect(bodyText()).not.toContain('SCH-030-01');
     panel.hide();
   });
 
-  // 任务书 §4-4 / §1.4：notify 不产冲突也不进潜在（mode !== 'onsite' 排除）。
-  it('notify 不产冲突：徽标不存在', async () => {
-    stubFetch(snapshotView({
-      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
-      next_actions: [],
-      coordination: {
-        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'notify', status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '张三', org: '甲公司'}}),
-        'SCH-030-02': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'notify', status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '李四', org: '乙公司'}}),
-      },
-    }));
+  // S3.2 契约：键缺失 = 「不知道」——旧服务端/旧快照不带这个键时不许当「无冲突」。
+  it('冲突键缺失：出「冲突无法检测（…服务端可能仍是旧版）」，不出徽标', async () => {
+    const snap = snapshotView();
+    delete (snap as {coordination_conflicts?: unknown}).coordination_conflicts;
+    stubFetch(snap);
     const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
     panel.show();
     await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
 
+    expect(sectionOf('业主', 'conflicts').textContent)
+      .toContain('冲突无法检测（快照未带 coordination_conflicts，服务端可能仍是旧版）');
     expect(document.querySelector('.rw-badge')).toBeNull();
-    expect(sectionOf('业主', 'conflicts').textContent).not.toContain('冲突：同日双现场');
-    expect(sectionOf('业主', 'conflicts').textContent).toContain('没有现场冲突');
     panel.hide();
   });
 
-  // 任务书 §4-5 / §1.4：同角色 ≥2 条 onsite 且都已确认且 confirmed_at 同日 → 冲突徽标。
-  it('同角色 onsite 同日双现场（都 confirmed，confirmed_at 同日）→ 冲突徽标', async () => {
+  // S3.2 契约：键在但两数组为空 = 「无冲突、无潜在重叠」（明确的无，不是不知道）。
+  it('冲突键在且两数组为空：出「无冲突、无潜在窗口重叠」', async () => {
+    stubFetch(snapshotView({coordination_conflicts: {conflicts: [], potential: []}}));
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
+
+    expect(sectionOf('业主', 'conflicts').textContent).toContain('无冲突、无潜在窗口重叠');
+    expect(sectionOf('业主', 'conflicts').textContent).not.toContain('冲突无法检测');
+    expect(document.querySelector('.rw-badge')).toBeNull();
+    panel.hide();
+  });
+
+  // fail-closed：键在但值不是 {conflicts, potential} 两个数组 → 与「缺失」同归「无法检测」，
+  // 绝不能被读成「无冲突」。
+  it('冲突键形状不符：归「冲突无法检测」，不读成「无冲突」', async () => {
+    stubFetch(snapshotView({coordination_conflicts: {conflicts: 'oops'}}));
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
+
+    const conflicts = sectionOf('业主', 'conflicts').textContent ?? '';
+    expect(conflicts).toContain('冲突无法检测（coordination_conflicts 形状不符');
+    expect(conflicts).not.toContain('无冲突、无潜在窗口重叠');
+    expect(document.querySelector('.rw-badge')).toBeNull();
+    panel.hide();
+  });
+
+  // S3.2 契约：确定冲突簇 = 服务端报告里的一簇（面板不做分类），徽标文字由面板按级别配，
+  // reason 原样透传；簇内每个 SCH 仍可点 → selection.set({packageId, checkId: SCH id})。
+  it('确定冲突簇：徽标「确定冲突」+ reason 原文，簇内每个 SCH 可点写 selection', async () => {
+    const selection = new ScheduleSelectionStore();
+    const setSpy = vi.spyOn(selection, 'set');
+    const reason = '同角色已确认预约重叠（同一天两处现场）：SCH-030-01、SCH-040-01 均在 2026-03-02（第 7 工作日）';
     stubFetch(snapshotView({
       packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
       next_actions: [],
       coordination: {
         'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', lead_time_workdays: 3, status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '张三', org: '甲公司'}}),
-        // 同日但带时刻：按日期前缀判「同日」
         'SCH-040-01': coordView({package_id: 'PKG-040', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', lead_time_workdays: 3, status: 'confirmed', confirmed_at: '2026-03-02T09:30:00', actor: {name: '李四', org: '乙公司'}}),
       },
+      coordination_conflicts: {conflicts: [overlap('业主', ['SCH-030-01', 'SCH-040-01'], reason)], potential: []},
     }));
-    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    const panel = new RoleWorkbenchPanel(selection);
     panel.show();
     await vi.waitFor(() => expect(document.querySelector('.rw-cluster')).toBeTruthy());
 
     const badge = document.querySelector('.rw-badge[data-level="conflict"]') as HTMLElement;
-    expect(badge.textContent).toContain('冲突：同日双现场');
-    expect(badge.textContent).toContain('2 条｜同日 2026-03-02');
+    expect(badge.textContent).toContain('确定冲突');
+    expect(badge.textContent).toContain('2 条');
+    expect(badge.textContent).toContain(reason); // reason 原文，不重写、不折叠
     const conflicts = sectionOf('业主', 'conflicts');
     expect(conflicts.querySelectorAll('.rw-conflict-row')).toHaveLength(2);
     expect(conflicts.textContent).toContain('确认登记日 2026-03-02');
     expect(conflicts.textContent).toContain('确认登记日 2026-03-02T09:30:00');
     expect(document.querySelector('.rw-badge[data-level="potential"]')).toBeNull();
+
+    (conflicts.querySelector('.rw-conflict-row[data-sch-id="SCH-040-01"]') as HTMLElement).click();
+    expect(setSpy).toHaveBeenLastCalledWith({packageId: 'PKG-040', checkId: 'SCH-040-01'});
+    (sectionOf('业主', 'conflicts').querySelector('.rw-conflict-row[data-sch-id="SCH-030-01"]') as HTMLElement).click();
+    expect(setSpy).toHaveBeenLastCalledWith({packageId: 'PKG-030', checkId: 'SCH-030-01'});
+    expect(selection.get()).toEqual({packageId: 'PKG-030', checkId: 'SCH-030-01'});
     panel.hide();
   });
 
-  // 任务书 §4-6 / §1.4：未确认 + 窗口闭区间重叠 → 潜在徽标。
-  it('同角色 onsite 未确认 + forecast 窗口重叠 → 潜在徽标', async () => {
-    stubFetch(snapshotView({
+  // S3.2 契约：潜在重叠簇（尚未确认预约）+ 面板不再读 snapshot.schedule
+  // （装上会抛的 getter：一旦被读，渲染失败、waitFor 超时，测试当场红）。
+  it('潜在重叠簇：徽标「潜在重叠（尚未确认预约）」+ reason；面板不读 snapshot.schedule', async () => {
+    const reason = '同角色潜在窗口重叠（尚未确认预约，不是确定冲突）：SCH-030-01 第 5–6 工作日、SCH-040-01 第 6–7 工作日';
+    const snap = snapshotView({
       packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
       next_actions: [],
       coordination: {
         'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'pending_invite'}),
         'SCH-040-01': coordView({package_id: 'PKG-040', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'invited', actor: {name: '王工', org: null}}),
+      },
+      coordination_conflicts: {conflicts: [], potential: [overlap('业主', ['SCH-030-01', 'SCH-040-01'], reason)]},
+    });
+    Object.defineProperty(snap, 'schedule', {
+      configurable: true,
+      get: () => {
+        throw new Error('面板不得再读 snapshot.schedule（S3.2 起潜在窗口由服务端报告给出）');
+      },
+    });
+    stubFetch(snap);
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-cluster')).toBeTruthy());
+
+    const badge = document.querySelector('.rw-badge[data-level="potential"]') as HTMLElement;
+    expect(badge.textContent).toContain('潜在重叠（尚未确认预约）');
+    expect(badge.textContent).toContain(reason);
+    const conflicts = sectionOf('业主', 'conflicts');
+    expect(conflicts.querySelectorAll('.rw-conflict-row')).toHaveLength(2);
+    expect(document.querySelector('.rw-badge[data-level="conflict"]')).toBeNull();
+    // 潜在簇的行不再有面板自算的窗口字段（窗口信息只在服务端 reason 原文里）
+    expect(conflicts.textContent).not.toContain('窗口 第');
+    panel.hide();
+  });
+
+  // Codex 二审 minor（2026-11-12 修）：报告里非字符串/空串的成员编号不得被静默过滤——
+  // 徽标按报告规模（含非法成员）、非法条数显形，合法成员照常可点。
+  it('报告成员编号非法：徽标按报告规模、非法条数显形，合法成员仍可点', async () => {
+    stubFetch(snapshotView({
+      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
+      next_actions: [],
+      coordination: {
+        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite'}),
+      },
+      coordination_conflicts: {
+        conflicts: [],
+        potential: [overlap('业主', ['SCH-030-01', null, ''], '同角色潜在窗口重叠（尚未确认预约，不是确定冲突）：SCH-030-01 第 5–6 工作日')],
       },
     }));
     const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
@@ -326,93 +393,195 @@ describe('RoleWorkbenchPanel', () => {
     await vi.waitFor(() => expect(document.querySelector('.rw-cluster')).toBeTruthy());
 
     const badge = document.querySelector('.rw-badge[data-level="potential"]') as HTMLElement;
-    expect(badge.textContent).toContain('潜在：窗口重叠（未确认）');
-    // PKG-030 窗口 [5,6] 与 PKG-040 窗口 [6,7] 闭区间相交 → 第 5–第 7 工作日
-    expect(badge.textContent).toContain('2 条｜第 5–第 7 工作日');
+    expect(badge.textContent).toContain('3 条'); // 报告规模 = 3（含 2 条非法），不缩水成 1
     const conflicts = sectionOf('业主', 'conflicts');
-    expect(conflicts.querySelectorAll('.rw-conflict-row')).toHaveLength(2);
-    expect(conflicts.textContent).toContain('窗口 第 5–第 6 工作日');
-    expect(document.querySelector('.rw-badge[data-level="conflict"]')).toBeNull();
+    expect(conflicts.textContent).toContain('2 条成员编号非法，已跳过');
+    expect(conflicts.querySelectorAll('.rw-conflict-row')).toHaveLength(1);
+    expect(conflicts.querySelector('.rw-conflict-row[data-sch-id="SCH-030-01"]')).toBeTruthy();
     panel.hide();
   });
 
-  // 任务书 §4-6 / §1.4：confirmed + 未确认混合，两者都不出（confirmed 不进潜在窗口）。
-  it('confirmed + 未确认混合：冲突与潜在徽标都不出', async () => {
+  // S3.2：面板不再分类——报告为空时，notify 同日两条已确认、confirmed+未确认混合
+  // 都造不出徽标（这些分级口径现在单住在服务端 detectCoordinationConflicts）。
+  it('面板不自算：报告为空时 notify 与 confirmed+未确认混合都造不出徽标', async () => {
     stubFetch(snapshotView({
       packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
       next_actions: [],
       coordination: {
-        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '张三', org: '甲公司'}}),
-        'SCH-040-01': coordView({package_id: 'PKG-040', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'pending_invite'}),
+        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'notify', status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '张三', org: '甲公司'}}),
+        'SCH-030-02': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'notify', status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '李四', org: '乙公司'}}),
+        'SCH-040-01': coordView({package_id: 'PKG-040', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '王五', org: null}}),
+        'SCH-040-02': coordView({package_id: 'PKG-040', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'pending_invite'}),
       },
+      coordination_conflicts: {conflicts: [], potential: []},
     }));
     const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
     panel.show();
     await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
 
     expect(document.querySelector('.rw-badge')).toBeNull();
-    expect(sectionOf('业主', 'conflicts').textContent).not.toContain('冲突：同日双现场');
-    expect(sectionOf('业主', 'conflicts').textContent).not.toContain('潜在：窗口重叠（未确认）');
+    expect(bodyText()).not.toContain('确定冲突');
+    expect(bodyText()).not.toContain('潜在重叠');
+    expect(sectionOf('业主', 'conflicts').textContent).toContain('无冲突、无潜在窗口重叠');
     panel.hide();
   });
 
-  // 任务书 §4-7 / §1.4：cancelled 排除（取消即解除占用）——把它拿掉才有簇，故两者都不出。
-  it('cancelled 排除：冲突与潜在都不出，已取消条目不渲染', async () => {
+  // cancelled 排除（服务端口径）：既不出徽标，也不渲染条目本身。
+  it('cancelled 条目：不进徽标也不渲染（报告为空）', async () => {
     stubFetch(snapshotView({
       packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
       next_actions: [],
       coordination: {
         'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '张三', org: '甲公司'}}),
-        // 若不被排除，它会是第二个同日已确认 → 冲突
         'SCH-040-01': coordView({package_id: 'PKG-040', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'cancelled', confirmed_at: '2026-03-02'}),
-        'SCH-050-01': coordView({package_id: 'PKG-050', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'pending_invite'}),
-        // 若不被排除，它（窗口 [3,5]）会与 SCH-050-01（窗口 [2,4]）重叠 → 潜在
-        'SCH-060-01': coordView({package_id: 'PKG-060', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'cancelled'}),
       },
+      coordination_conflicts: {conflicts: [], potential: []},
     }));
     const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
     panel.show();
     await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
 
     expect(document.querySelector('.rw-badge')).toBeNull();
-    expect(bodyText()).not.toContain('冲突：同日双现场');
-    expect(bodyText()).not.toContain('潜在：窗口重叠（未确认）');
     expect(bodyText()).not.toContain('SCH-040-01');
-    expect(bodyText()).not.toContain('SCH-060-01');
+    expect(bodyText()).not.toContain('确定冲突');
     panel.hide();
   });
 
-  // Codex 一审 blocking（PR #220）：owner_role 是协调组织者（谁去约人），不是到场参与者。
-  // 现场占用只认 required_roles（与模块 detectCoordinationConflicts 同一口径）——两条都由
-  // 设计师组织、required_roles 只有施工方的 onsite 预约，不得给设计师算出同日双现场/窗口重叠；
-  // 但组织者仍要在自己的待确认协调列表里看到自己要约的条目。
-  it('组织者不进现场占用：owner_role 不在 required_roles 时无冲突/潜在徽标，但进待确认列表', async () => {
+  // Codex 一审 blocking（PR #220）口径现在单住在服务端：占用只认 required_roles，
+  // owner_role（协调组织者）不算到场。面板只渲染报告——报告里没有设计师的簇，
+  // 设计师组就只出「无冲突」文字；但组织者仍要在自己的待确认协调列表里看到要约条目。
+  it('占用口径由服务端决定：组织者不进簇，但仍看到自己要约的条目', async () => {
+    const reason = '同角色已确认预约重叠（同一天两处现场）：SCH-030-01、SCH-030-02 均在 2026-03-02（第 7 工作日）';
     stubFetch(snapshotView({
       packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['设计师', '施工方']})],
       next_actions: [],
       coordination: {
-        // 同日 + 都由设计师组织 + 参与者都只有施工方：旧口径会给设计师算「同日双现场」
+        // 同日 + 都由设计师组织 + 参与者都只有施工方：旧面板侧口径会给设计师算「同日双现场」
         'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['施工方'], owner_role: '设计师', mode: 'onsite', lead_time_workdays: 3, status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '张三', org: '甲公司'}}),
         'SCH-030-02': coordView({package_id: 'PKG-030', required_roles: ['施工方'], owner_role: '设计师', mode: 'onsite', lead_time_workdays: 3, status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '李四', org: '乙公司'}}),
-        // 未确认 + 窗口重叠：旧口径会给设计师算「潜在」
         'SCH-040-01': coordView({package_id: 'PKG-040', required_roles: ['施工方'], owner_role: '设计师', mode: 'onsite', status: 'pending_invite'}),
+      },
+      coordination_conflicts: {conflicts: [overlap('施工方', ['SCH-030-01', 'SCH-030-02'], reason)], potential: []},
+    }));
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
+
+    // 设计师（仅组织者）：报告里没有它的簇 → 无徽标
+    expect(roleGroup('设计师').querySelector('.rw-badge')).toBeNull();
+    expect(sectionOf('设计师', 'conflicts').textContent).toContain('无冲突、无潜在窗口重叠');
+    // 但组织者仍看到自己要约的条目（待确认协调节）
+    expect(sectionOf('设计师', 'coordination').textContent).toContain('SCH-040-01');
+    // 施工方（required_roles）：报告给的簇照常渲染
+    const badge = sectionOf('施工方', 'conflicts').querySelector('.rw-badge[data-level="conflict"]') as HTMLElement;
+    expect(badge.textContent).toContain('确定冲突');
+    expect(sectionOf('施工方', 'conflicts').querySelectorAll('.rw-conflict-row')).toHaveLength(2);
+    panel.hide();
+  });
+
+  // S3.2 low 收口：coordination 条目形状守卫（null / 数组 / 非对象 → 跳过 + 计数），
+  // 面板不抛错，合法条目照常渲染。
+  it('coordination 形状非法条目：跳过 + 计数文案，面板不抛错、其余条目照常', async () => {
+    stubFetch(snapshotView({
+      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
+      next_actions: [],
+      coordination: {
+        'SCH-030-01': null,
+        'SCH-030-02': ['not', 'an', 'entry'],
+        'SCH-030-03': 'garbage',
+        'SCH-030-04': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'invited', actor: {name: '王工', org: null}}),
+      } as unknown as Record<string, ScheduleCoordinationView>,
+      coordination_conflicts: {conflicts: [], potential: []},
+    }));
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    expect(() => panel.show()).not.toThrow();
+    await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
+
+    expect(document.querySelector('#rw-shape-note')).toBeTruthy();
+    expect(bodyText()).toContain('3 条协调项形状非法，已跳过（快照版本不符）');
+    // 合法条目照常渲染
+    expect(sectionOf('业主', 'coordination').textContent).toContain('SCH-030-04');
+    expect(sectionOf('业主', 'coordination').textContent).toContain('已邀请');
+    // 非法条目的 id 不出现（跳过，不是渲染半条）
+    expect(bodyText()).not.toContain('SCH-030-01');
+    expect(document.querySelector('.rw-badge')).toBeNull();
+    panel.hide();
+  });
+
+  // S3.2 low 收口：报告簇形状守卫同理（形状不符的簇跳过 + 计数），合法簇照常。
+  it('报告簇形状非法：跳过 + 计数文案，合法簇照常渲染', async () => {
+    const reason = '同角色潜在窗口重叠（尚未确认预约，不是确定冲突）：SCH-030-01 第 5–6 工作日、SCH-030-02 第 6–7 工作日';
+    stubFetch(snapshotView({
+      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
+      next_actions: [],
+      coordination: {
+        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'pending_invite'}),
+        'SCH-030-02': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'invited', actor: {name: '王工', org: null}}),
+      },
+      coordination_conflicts: {
+        conflicts: ['not-a-cluster', null],
+        potential: [overlap('业主', ['SCH-030-01', 'SCH-030-02'], reason)],
       },
     }));
     const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
     panel.show();
     await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
 
-    // 设计师（仅组织者）：没有任何徽标
-    const designer = roleGroup('设计师');
-    expect(designer.querySelector('.rw-badge')).toBeNull();
-    expect(sectionOf('设计师', 'conflicts').textContent).toContain('没有现场冲突');
-    // 但组织者仍看到自己要约的条目（待确认协调节）
-    expect(sectionOf('设计师', 'coordination').textContent).toContain('SCH-040-01');
-    // 施工方（明确参与者）：照常出同日双现场冲突徽标
-    const badge = sectionOf('施工方', 'conflicts').querySelector('.rw-badge[data-level="conflict"]') as HTMLElement;
-    expect(badge.textContent).toContain('冲突：同日双现场');
-    expect(badge.textContent).toContain('2 条｜同日 2026-03-02');
-    expect(sectionOf('施工方', 'conflicts').querySelectorAll('.rw-conflict-row')).toHaveLength(2);
+    expect(bodyText()).toContain('2 簇冲突报告形状非法，已跳过（快照版本不符）');
+    const badge = document.querySelector('.rw-badge[data-level="potential"]') as HTMLElement;
+    expect(badge.textContent).toContain('潜在重叠（尚未确认预约）');
+    expect(badge.textContent).toContain(reason);
+    expect(sectionOf('业主', 'conflicts').querySelectorAll('.rw-conflict-row')).toHaveLength(2);
+    panel.hide();
+  });
+
+  // Codex 三审 minor（2026-11-12 修）：有簇被跳过时空态不得同时说「无冲突」——
+  // 报告不完整 → 结论只能是「判不了」，一个判定点（conflictShapeSkipped > 0）改判。
+  it('全部簇形状非法：空态说「报告不完整」，不说「无冲突」', async () => {
+    stubFetch(snapshotView({
+      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
+      next_actions: [],
+      coordination: {
+        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite'}),
+      },
+      coordination_conflicts: {conflicts: [null], potential: []},
+    }));
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
+
+    expect(bodyText()).toContain('1 簇冲突报告形状非法，已跳过（快照版本不符）');
+    const conflicts = sectionOf('业主', 'conflicts');
+    expect(conflicts.textContent).toContain('冲突报告不完整：1 簇形状非法已跳过（快照版本不符），无法判断是否还有冲突');
+    expect(conflicts.textContent).not.toContain('无冲突、无潜在窗口重叠');
+    expect(document.querySelector('.rw-badge')).toBeNull();
+    panel.hide();
+  });
+
+  // 快照自相矛盾（报告点名的 SCH 不在 coordination 里）：徽标按报告规模照出 + 说明差额，
+  // 不静默丢簇、也不把「解析不到」当成「没有这条协调」。
+  it('报告点名的 SCH 在 coordination 里没有条目：徽标 + 说明行，面板不抛错', async () => {
+    const reason = '同角色已确认预约重叠（同一天两处现场）：SCH-030-01、SCH-999-99 均在 2026-03-02（第 7 工作日）';
+    stubFetch(snapshotView({
+      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
+      next_actions: [],
+      coordination: {
+        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'confirmed', confirmed_at: '2026-03-02', actor: {name: '张三', org: '甲公司'}}),
+      },
+      coordination_conflicts: {conflicts: [overlap('业主', ['SCH-030-01', 'SCH-999-99'], reason)], potential: []},
+    }));
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-cluster')).toBeTruthy());
+
+    const badge = document.querySelector('.rw-badge[data-level="conflict"]') as HTMLElement;
+    expect(badge.textContent).toContain('确定冲突');
+    expect(badge.textContent).toContain('（2 条）'); // 徽标口径 = 服务端说的簇规模
+    expect(badge.textContent).toContain(reason);
+    expect(sectionOf('业主', 'conflicts').querySelectorAll('.rw-conflict-row')).toHaveLength(1);
+    // 措辞随 Codex 二审 minor 拆分：非法编号与「解析不到」分开计数（这里只有后者）
+    expect((document.querySelector('.rw-cluster-note') as HTMLElement).textContent)
+      .toContain('另有 1 条在本快照 coordination 里没有条目（快照版本不符）');
     panel.hide();
   });
 
@@ -476,7 +645,7 @@ describe('RoleWorkbenchPanel', () => {
     panel.hide();
   });
 
-  it('coordination 缺失：节级空文案，待办检查分组照常渲染（不置空整面板）', async () => {
+  it('coordination 缺失：协调节级空文案，待办检查照常渲染（不置空整面板）', async () => {
     stubFetch(snapshotView({coordination: undefined}));
     const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
     panel.show();
@@ -485,29 +654,37 @@ describe('RoleWorkbenchPanel', () => {
     // 待办检查只依赖 packages：coordination 缺失不连带删掉有用的分组
     expect(document.querySelector('.rw-role')).toBeTruthy();
     expect(bodyText()).toContain('没有协调数据（coordination 键缺失/为空）：本节列不出条目');
-    expect(bodyText()).toContain('没有协调数据（coordination 键缺失/为空）：现场冲突无法判断');
     expect(document.querySelector('.rw-coord-row')).toBeNull();
     expect(document.querySelector('.rw-conflict-row')).toBeNull();
+    // 冲突节的文字现在由报告（而非 coordination）决定：夹具报告为空数组 →「无冲突、无潜在窗口重叠」。
+    // 旧文案「没有协调数据…：现场冲突无法判断」随面板侧分类一起退场。
+    expect(sectionOf('设计师', 'conflicts').textContent).toContain('无冲突、无潜在窗口重叠');
+    expect(bodyText()).not.toContain('现场冲突无法判断');
     // 试点水印仍在（固定文案）
     expect(bodyText()).toContain('试点数据：仅登记了 coordination 的 SCH 出现，未登记不代表无协调');
     panel.hide();
   });
 
-  // 任务书 §4-10：角色名 / 包名 / 检查名里的 hostile 字符串不变形、不执行。
-  it('转义：角色名 / 包名 / 检查名带 <script> 不变形', async () => {
+  // 任务书 §4-10：角色名 / 包名 / 检查名 / 报告 reason 里的 hostile 字符串不变形、不执行。
+  it('转义：角色名 / 包名 / 检查名 / 报告 reason 带 <script> 不变形', async () => {
+    const hostile = '<script>window.__rw_pwned=1</script>';
     stubFetch(snapshotView({
       packages: [pkgView({
         name: '<img src=x onerror="window.__rw_pwned=1">瓦工铺贴',
-        owner_roles: ['<script>window.__rw_pwned=1</script>'],
+        owner_roles: [hostile],
         checks: [checkView({id: 'SCH-010-01', item: '<script>window.__rw_pwned2=1</script>拆除交底'})],
       })],
       next_actions: [],
       coordination: {
         'SCH-011-01': coordView({
           package_id: 'PKG-010',
-          required_roles: ['<script>window.__rw_pwned=1</script>'],
-          owner_role: '<script>window.__rw_pwned=1</script>',
+          required_roles: [hostile],
+          owner_role: hostile,
         }),
+      },
+      coordination_conflicts: {
+        conflicts: [overlap(hostile, ['SCH-011-01'], '<script>window.__rw_pwned3=1</script>同角色已确认预约重叠')],
+        potential: [],
       },
     }));
     const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
@@ -519,10 +696,13 @@ describe('RoleWorkbenchPanel', () => {
     expect(body.querySelector('script')).toBeNull();
     expect((window as unknown as {__rw_pwned?: number}).__rw_pwned).toBeUndefined();
     expect((window as unknown as {__rw_pwned2?: number}).__rw_pwned2).toBeUndefined();
+    expect((window as unknown as {__rw_pwned3?: number}).__rw_pwned3).toBeUndefined();
     expect(bodyText()).toContain('瓦工铺贴');
     expect(bodyText()).toContain('拆除交底');
-    // 角色名以文本形态出现（被转义，不是 DOM 节点）
-    expect(bodyText()).toContain('<script>window.__rw_pwned=1</script>');
+    // 角色名以文本形态出现（被转义，不是 DOM 节点）；徽标 reason 同样原文但不执行
+    expect(bodyText()).toContain(hostile);
+    expect(bodyText()).toContain('<script>window.__rw_pwned3=1</script>同角色已确认预约重叠');
+    expect(document.querySelectorAll('.rw-conflict-row')).toHaveLength(1);
     panel.hide();
   });
 
@@ -548,50 +728,39 @@ describe('RoleWorkbenchPanel', () => {
     }
   });
 
-  // 任务书 §1.1 / §16：只读快照——渲染 + 点击前后 coordination 与 schedule 逐字节不变。
-  it('只读快照：渲染 + 点击前后 coordination / schedule JSON 逐字节不变', async () => {
-    const snap = snapshotView();
-    const beforeCoordination = JSON.stringify(snap.coordination);
-    const beforeSchedule = JSON.stringify(snap.schedule);
-    stubFetch(snap);
-    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
-    panel.show();
-    await vi.waitFor(() => expect(document.querySelector('.rw-check-row')).toBeTruthy());
+  // Codex 二审 major：截断后的可操作入口在窄屏同样可用——真按钮、文字自带，不依赖 title。
+  it('窄屏下截断入口可用：按钮文字自带、无 title，点击后全量', async () => {
+    const restore = stubClientWidth(334);
+    try {
+      const manyChecks = Array.from({length: 9}, (_unused, index) =>
+        checkView({id: `SCH-090-${String(index + 1).padStart(2, '0')}`, item: `木工检查 ${index + 1}`}));
+      stubFetch(snapshotView({
+        packages: [pkgView({id: 'PKG-090', name: '木作安装', sequence: 90, owner_roles: ['施工方'], checks: manyChecks})],
+        next_actions: [],
+      }));
+      const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+      panel.show();
+      await vi.waitFor(() => expect(document.querySelector('.rw-check-row')).toBeTruthy());
 
-    (document.querySelector('.rw-check-row[data-check-id="SCH-010-01"]') as HTMLElement).click();
-    (document.querySelector('.rw-coord-row[data-sch-id="SCH-020-02"]') as HTMLElement).click();
-    await panel.refresh();
-    panel.hide();
-
-    expect(JSON.stringify(snap.coordination)).toBe(beforeCoordination);
-    expect(JSON.stringify(snap.schedule)).toBe(beforeSchedule);
+      expect((document.querySelector('#rw-groups') as HTMLElement).dataset.rwNarrow).toBe('true');
+      const expand = toggleOf('施工方', 'checks') as HTMLButtonElement;
+      expect(expand.tagName).toBe('BUTTON');
+      expect(expand.textContent).toContain('查看全部 9 条');
+      expect(expand.getAttribute('title')).toBeNull(); // 入口不靠 title
+      expand.click();
+      expect(sectionOf('施工方', 'checks').querySelectorAll('.rw-check-row')).toHaveLength(9);
+      panel.hide();
+    } finally {
+      restore();
+    }
   });
 
-  // 任务书 §1.4：snapshot.schedule 缺失 → 不出潜在徽标，出明确文字。
-  it('缺排程投影：不出潜在徽标，出「缺排程投影，潜在窗口无法判断」', async () => {
-    stubFetch(snapshotView({
-      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
-      next_actions: [],
-      schedule: undefined,
-      coordination: {
-        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'pending_invite'}),
-        'SCH-040-01': coordView({package_id: 'PKG-040', required_roles: ['业主'], owner_role: '业主', mode: 'onsite', status: 'invited'}),
-      },
-    }));
-    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
-    panel.show();
-    await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
-
-    expect(document.querySelector('.rw-badge')).toBeNull();
-    expect(sectionOf('业主', 'conflicts').textContent).toContain('缺排程投影，潜在窗口无法判断');
-    panel.hide();
-  });
-
-  // 任务书 §1.1：每节行数上限 8，超出「等 N 条」，完整列表进 title 属性。
-  it('行数上限：每节最多 8 行，超出「等 N 条」，完整列表进 title', async () => {
+  // Codex 二审 major：每节 8 条上限保留 + 可操作入口（展开 → 全量 + 收起），
+  // 展开态在 re-render（点选、选中态订阅回调）后保持。
+  it('每节 8 条上限：折叠 8 行 +「等 N 条」+ 展开入口；展开全量可点、再点收起回 8 行', async () => {
     const manyChecks = Array.from({length: 10}, (_unused, index) =>
       checkView({id: `SCH-090-${String(index + 1).padStart(2, '0')}`, item: `木工检查 ${index + 1}`}));
-    stubFetch(snapshotView({
+    const mock = stubFetch(snapshotView({
       packages: [
         pkgView({
           id: 'PKG-090',
@@ -603,26 +772,54 @@ describe('RoleWorkbenchPanel', () => {
       ],
       next_actions: [],
     }));
-    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    const selection = new ScheduleSelectionStore();
+    const panel = new RoleWorkbenchPanel(selection);
     panel.show();
     await vi.waitFor(() => expect(document.querySelector('.rw-check-row')).toBeTruthy());
 
-    const checks = sectionOf('施工方', 'checks');
-    // PKG-090 十项未完成检查，只渲染 8 行
-    expect(checks.querySelectorAll('.rw-check-row')).toHaveLength(8);
-    expect(checks.textContent).toContain('等 10 条');
-    // 完整列表在 title 里（含被截断的 SCH-090-10）
-    expect(checks.title).toContain('SCH-090-10');
-    expect(checks.title).toContain('木工检查 10');
+    // 折叠态：8 行 +「等 10 条」+ 入口；全量仍在 title（既有通道保留）
+    expect(sectionOf('施工方', 'checks').querySelectorAll('.rw-check-row')).toHaveLength(8);
+    expect(sectionOf('施工方', 'checks').textContent).toContain('等 10 条');
+    expect(sectionOf('施工方', 'checks').title).toContain('SCH-090-10');
+    expect(sectionOf('施工方', 'checks').title).toContain('木工检查 10');
+    const expand = toggleOf('施工方', 'checks') as HTMLButtonElement;
+    expect(expand.textContent).toContain('查看全部 10 条');
+    expect(expand.dataset.expanded).toBe('false');
+
+    // 展开：全量 10 行、条目可点、按钮变「收起」；展开动作本身不写选中态
+    expand.click();
+    expect(selection.get()).toEqual({packageId: null, checkId: null});
+    expect(sectionOf('施工方', 'checks').querySelectorAll('.rw-check-row')).toHaveLength(10);
+    expect(sectionOf('施工方', 'checks').textContent).not.toContain('等 10 条');
+    expect((toggleOf('施工方', 'checks') as HTMLButtonElement).textContent).toContain('收起');
+
+    // 展开态在点选条目（re-render + 选中态订阅回调）后保持
+    (sectionOf('施工方', 'checks').querySelector('.rw-check-row[data-check-id="SCH-090-10"]') as HTMLElement).click();
+    expect(selection.get()).toEqual({packageId: 'PKG-090', checkId: 'SCH-090-10'});
+    expect(sectionOf('施工方', 'checks').querySelectorAll('.rw-check-row')).toHaveLength(10);
+    expect((toggleOf('施工方', 'checks') as HTMLButtonElement).textContent).toContain('收起');
+
+    // 收起：回 8 行 + 入口回来
+    (toggleOf('施工方', 'checks') as HTMLButtonElement).click();
+    expect(sectionOf('施工方', 'checks').querySelectorAll('.rw-check-row')).toHaveLength(8);
+    expect(sectionOf('施工方', 'checks').textContent).toContain('等 10 条');
+    expect((toggleOf('施工方', 'checks') as HTMLButtonElement).textContent).toContain('查看全部 10 条');
+    // 展开/收起只是本地 UI 状态：不拉任何端点（fetch 仍只有首次快照那一次）
+    expect(mock.mock.calls).toHaveLength(1);
     panel.hide();
   });
 
-  // 任务书 §1.1/§1.4：冲突节的行数上限同样按 SCH 行计（簇数组不是行数组）。
-  it('冲突节行数上限：跨簇按 SCH 行截断，「等 N 条」+ title 全量', async () => {
+  // 任务书 §1.1/§1.4：冲突节的行数上限同样按 SCH 行计（簇数组不是行数组），
+  // 展开入口同样在场（截断的那部分簇整块折叠，不出一排没有行的空徽标）。
+  it('冲突节行数上限：跨簇按 SCH 行折叠 + 展开入口 → 全量 12 行 / 6 簇', async () => {
     const coordination: Record<string, ScheduleCoordinationView> = {};
+    const conflicts: CoordinationOverlap[] = [];
     for (let day = 1; day <= 6; day += 1) {
+      const schIds: string[] = [];
       for (let slot = 1; slot <= 2; slot += 1) {
-        coordination[`SCH-1${day}0-0${slot}`] = coordView({
+        const schId = `SCH-1${day}0-0${slot}`;
+        schIds.push(schId);
+        coordination[schId] = coordView({
           package_id: `PKG-1${day}0-${slot}`,
           required_roles: ['业主'],
           owner_role: '业主',
@@ -632,20 +829,52 @@ describe('RoleWorkbenchPanel', () => {
           actor: {name: `工人${day}${slot}`, org: null},
         });
       }
+      conflicts.push(overlap('业主', schIds, `同角色已确认预约重叠（同一天两处现场）：${schIds.join('、')} 均在 2026-03-0${day}（第 ${day} 工作日）`));
     }
-    stubFetch(snapshotView({next_actions: [], coordination}));
+    stubFetch(snapshotView({next_actions: [], coordination, coordination_conflicts: {conflicts, potential: []}}));
     const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
     panel.show();
     await vi.waitFor(() => expect(document.querySelector('.rw-cluster')).toBeTruthy());
 
-    const conflicts = sectionOf('业主', 'conflicts');
-    // 6 个同日簇 × 2 条 = 12 行，只渲染 8 行；前 4 个簇完整可见，后 2 个簇整体进 title
-    expect(conflicts.querySelectorAll('.rw-conflict-row')).toHaveLength(8);
-    expect(conflicts.querySelectorAll('.rw-cluster')).toHaveLength(4);
-    expect(conflicts.textContent).toContain('等 12 条');
-    expect(conflicts.title).toContain('SCH-160-02');
-    expect(conflicts.title).toContain('冲突：同日双现场');
+    // 折叠：6 个同日簇 × 2 条 = 12 行，只渲染 8 行；前 4 个簇完整可见，后 2 个簇整体折叠
+    expect(sectionOf('业主', 'conflicts').querySelectorAll('.rw-conflict-row')).toHaveLength(8);
+    expect(sectionOf('业主', 'conflicts').querySelectorAll('.rw-cluster')).toHaveLength(4);
+    expect(sectionOf('业主', 'conflicts').textContent).toContain('等 12 条');
+    expect(sectionOf('业主', 'conflicts').title).toContain('SCH-160-02');
+    expect(sectionOf('业主', 'conflicts').title).toContain('确定冲突');
+    const expand = toggleOf('业主', 'conflicts') as HTMLButtonElement;
+    expect(expand.textContent).toContain('查看全部 12 条');
+
+    expand.click();
+    expect(sectionOf('业主', 'conflicts').querySelectorAll('.rw-conflict-row')).toHaveLength(12);
+    expect(sectionOf('业主', 'conflicts').querySelectorAll('.rw-cluster')).toHaveLength(6);
+    expect((toggleOf('业主', 'conflicts') as HTMLButtonElement).textContent).toContain('收起');
     panel.hide();
+  });
+
+  // 任务书 §1.1 / §16：只读快照——渲染 + 点击 + 刷新前后 coordination /
+  // coordination_conflicts 逐字节不变（S3.2 起面板不消费 snapshot.schedule）。
+  it('只读快照：渲染 + 点击 + 刷新前后 coordination / coordination_conflicts 逐字节不变', async () => {
+    const report: CoordinationConflictReport = {
+      conflicts: [],
+      potential: [overlap('业主', ['SCH-011-01', 'SCH-020-02'], '同角色潜在窗口重叠（尚未确认预约，不是确定冲突）：SCH-011-01 第 2–4 工作日、SCH-020-02 第 3–5 工作日')],
+    };
+    const snap = snapshotView({coordination_conflicts: report});
+    const beforeCoordination = JSON.stringify(snap.coordination);
+    const beforeConflicts = JSON.stringify(report);
+    stubFetch(snap);
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-check-row')).toBeTruthy());
+
+    (document.querySelector('.rw-check-row[data-check-id="SCH-010-01"]') as HTMLElement).click();
+    (document.querySelector('.rw-coord-row[data-sch-id="SCH-020-02"]') as HTMLElement).click();
+    (document.querySelector('.rw-conflict-row[data-sch-id="SCH-011-01"]') as HTMLElement).click();
+    await panel.refresh();
+    panel.hide();
+
+    expect(JSON.stringify(snap.coordination)).toBe(beforeCoordination);
+    expect(JSON.stringify(report)).toBe(beforeConflicts);
   });
 
   it('show/hide/isVisible 状态正确', async () => {

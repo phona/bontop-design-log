@@ -1,49 +1,63 @@
-// 自装审批「角色工作台」面板（2026-11-11 issue #202 S3，设计 §7 / §2.1(c) / §16.4 / §17.4）。
+// 自装审批「角色工作台」面板（2026-11-11 issue #202 S3，设计 §7 / §2.1(c) / §16.4 / §17.4；
+// 2026-11-12 S3.2 收尾：冲突改读服务端报告——面板侧分类删除、截断入口、形状守卫）。
 //
 // 数据只有一个来源：`GET /api/schedule/state` 的同一个快照——
 //  - `snapshot.packages[]`：包名/sequence/owner_roles/checks（待办检查的来源）；
 //  - `snapshot.coordination`（可选键，Record<SCH id, ScheduleCoordinationView>）：
-//    待确认协调与现场冲突的来源（稀疏：没有 coordination 块的 SCH 不出现，不造空对象）；
-//  - `snapshot.next_actions[]`：只把 unblocks 数作为行内注释带在待办行上（只解释不计算）；
-//  - `snapshot.schedule`（可选键）：仅用于潜在窗口（packages[pkg].forecast 的
-//    [start_ord, end_ord_max] 闭区间）。
-// 本面板**不 import** `shared/schedule-projection.ts`（投影唯一实现在服务端，浏览器只渲染
-// 快照，设计 D4）；不另读 control.yaml；不拉其他端点；不调 onHighlight、不做 scope 展开
-// （D5：点行只写 selection.set({packageId, checkId})，定位的唯一使用者仍是 ScheduleDetailPanel）。
+//    待确认协调的来源（稀疏：没有 coordination 块的 SCH 不出现，不造空对象）；
+//  - `snapshot.coordination_conflicts`（可选键，S3.2 起；类型 = CoordinationConflictReport，
+//    与 shared/schedule-state.ts 的键声明同源）：现场冲突/潜在重叠的**唯一来源**——服务端
+//    load 期用 `shared/schedule-projection.ts` 的 `detectCoordinationConflicts` 算好
+//    （单一来源，设计 §20 登记的「两处实现」张力在此收口）；
+//  - `snapshot.next_actions[]`：只把 unblocks 数作为行内注释带在待办行上（只解释不计算）。
+// **`snapshot.schedule` 自 S3.2 起不再被本面板消费**（潜在窗口重叠由服务端报告给出，
+// 面板不再自己算窗口、不再有「缺排程投影」静默降级路径）。
+// 本面板只从 `shared/schedule-projection.ts` import **类型**（CoordinationConflictReport /
+// CoordinationOverlap——契约形状的单一来源，不重定义），不 import 它的任何函数、不做排程或
+// 冲突计算（设计 D4：投影唯一实现在服务端，浏览器只渲染快照）；不另读 control.yaml；
+// 不拉其他端点；不调 onHighlight、不做 scope 展开（D5：点行只写
+// selection.set({packageId, checkId})，定位的唯一使用者仍是 ScheduleDetailPanel）。
 //
 // 渲染口径（任务书 §1.1 + §1.4）：
-//  - 按角色分组（角色集合 = 各包 owner_roles ∪ 各 coordination 的 required_roles ∪ owner_role，
-//    按 `<`/`>` 字典序排——localeCompare 环境相关，禁用）；
+//  - 按角色分组（角色集合 = 各包 owner_roles ∪ coordination 的 required_roles ∪ owner_role
+//    ∪ 报告里出现的角色，按 `<`/`>` 字典序排——localeCompare 环境相关，禁用）；
 //  - 每组三节顺序固定：待办检查 → 待确认协调 → 现场冲突；
 //  - 待办检查只列未完成（audit_status 为 passed/waived 算已完成，其余含 undefined 算待办），
 //    状态文字**原样**显示 audit_status 或「未登记」——不把派生值翻译成看起来像声明值的词；
 //  - 待确认协调只列 status ∈ {unassigned, pending_invite, invited} 且角色相关的条目
-//    （相关 = required_roles 之一或 owner_role——组织者要看自己要约的条目）；
+//    （相关 = required_roles 之一或 owner_role——组织者要看自己要约的条目，口径不变）；
 //    actor.name 为 null 显「待指定」，严禁造人名；
-//  - 现场冲突两级口径（§1.4）：cancelled 排除；mode !== 'onsite' 排除；冲突 = 同角色 ≥2 条
-//    onsite 且都已确认且 confirmed_at 同日；潜在 = 同角色 ≥2 条 onsite 且都未确认且 forecast
-//    窗口闭区间重叠；confirmed + 未确认混合两者都不出；snapshot.schedule 缺失时不出潜在
-//    徽标，只出文字「缺排程投影，潜在窗口无法判断」。**占用口径只认 required_roles**
-//    （participatesIn）——owner_role 是协调组织者不是到场参与者，与模块
-//    detectCoordinationConflicts 同一口径（Codex 一审 blocking）；
+//  - 现场冲突**只读 `snapshot.coordination_conflicts`，面板不做任何分类**：占用口径只认
+//    required_roles、cancelled/non-onsite 排除、confirmed 同日与未确认窗口重叠的分级，全部
+//    是服务端 detectCoordinationConflicts 的口径，面板不复制、不重算。簇徽标 = 级别文字
+//    （「确定冲突」/「潜在重叠（尚未确认预约）」）+ 服务端 reason 原文；簇内每个 SCH 仍可点
+//    （selection = {packageId: 该 SCH 的包, checkId: SCH id}）。缺失语义三分：键缺失/形状不符
+//    →「冲突无法检测（…）」；键在但两数组为空 →「无冲突、无潜在窗口重叠」；有簇 → 逐簇徽标；
+//  - 形状守卫（S3.2 low 收口）：遍历 `coordination` 时 entry 为 null/数组/非对象 → 跳过并计数，
+//    面板级文案「N 条协调项形状非法，已跳过（快照版本不符）」；报告里的簇形状不符同理。
+//    原先 windowOf 那一类「静默移出判定」的路径随面板侧分类一起删除；
 //  - 颜色旁必须始终有文字（状态点/mode chip/冲突徽标一律「色块 + 中文」），颜色只来自下面的
 //    固定映射表，禁止把 payload 字符串当颜色用；
-//  - 每节行数上限 MAX_VISIBLE_ROWS，超出「等 N 条」，完整列表进 title 属性；
+//  - 每节行数上限 MAX_VISIBLE_ROWS 保留：折叠态前 8 行 +「等 N 条」，超出时给**可操作入口**
+//    （「查看全部 N 条」按钮 → 该节全量 +「收起」；真按钮、文字自带、窄屏同样可用，不依赖
+//    title）。展开态住实例字段 expandedSections（key = `${role}|${section}`），re-render
+//    （含点选、选中态订阅回调）后保持；只是本地 UI 状态，不写服务端、不进任何配置；
 //  - 空态有明确文字（无快照 / 取数失败 / 无角色 / 无待办），不渲染空骨架；
 //    coordination 缺失或为空时**不置空整面板**——待办检查只依赖 packages，照常渲染，
-//    协调两节出节级空文案；
+//    协调节出节级空文案；
 //  - ≤700px（NARROW_MAX_PX，与 style.css 的 @media 断点同源）单列退化：工作台本就是列表，
 //    窄屏只放宽布局约束，不建第二套布局；
-//  - 只读快照：渲染前后不改写 snapshot.coordination / snapshot.schedule 任何数组/对象
-//    （不 sort/splice/赋值；排序只做副本）。测试钉住逐字节不变。
+//  - 只读快照：渲染前后不改写 snapshot.coordination / snapshot.coordination_conflicts 任何
+//    数组/对象（不 sort/splice/赋值；排序只做副本）。测试钉住逐字节不变。
 import type {
   NextActionItem,
   ScheduleCheckView,
   ScheduleCoordinationView,
   SchedulePackageView,
-  ScheduleProjectionView,
   ScheduleSnapshot,
 } from '@shared/schedule-state';
+// 只 import 类型：契约形状的单一来源是 shared/schedule-projection.ts；面板不自算冲突（D4）。
+import type { CoordinationConflictReport, CoordinationOverlap } from '@shared/schedule-projection';
 import type { ScheduleSelectionStore } from '../state/schedule-selection.js';
 import { setupCollapsiblePanel } from './CollapsiblePanel.js';
 import { escapeHtml } from './escape-html.js';
@@ -86,14 +100,27 @@ const COORD_STATUS_COLOR: Record<string, string> = {
 /** 待确认协调的入场三态（§1.1）；confirmed/cancelled/未知值不进这一节。 */
 const PENDING_COORD_STATUSES = new Set(['unassigned', 'pending_invite', 'invited']);
 
-/** 两级冲突徽标文字（§1.4：必须写清是哪一级）。 */
-const CONFLICT_BADGE = '冲突：同日双现场';
-const POTENTIAL_BADGE = '潜在：窗口重叠（未确认）';
+/** 两级冲突徽标文字（服务端报告只给级别与 reason，文字由面板按级别配固定中文）。 */
+const CONFLICT_BADGE = '确定冲突';
+const POTENTIAL_BADGE = '潜在重叠（尚未确认预约）';
 const CONFLICT_COLOR = '#d9534f';
 const POTENTIAL_COLOR = '#e9c46a';
 const NEUTRAL_COLOR = '#8a93a3';
 
-const SCHEDULE_MISSING_NOTE = '缺排程投影，潜在窗口无法判断';
+/** 冲突报告三态文案（键缺失 = 不知道；空数组 = 无冲突；有簇 = 徽标）。 */
+const CONFLICTS_UNKNOWN_NOTE = '冲突无法检测（快照未带 coordination_conflicts，服务端可能仍是旧版）';
+/** 键在但值不是契约形状：与「缺失」同归「无法检测」——绝不把坏形状读成「无冲突」。 */
+const CONFLICTS_MALFORMED_NOTE = '冲突无法检测（coordination_conflicts 形状不符：需 {conflicts, potential} 两个数组，服务端可能仍是旧版）';
+const CONFLICTS_EMPTY_NOTE = '无冲突、无潜在窗口重叠';
+/**
+ * 有簇被形状守卫跳过时空态不得说「无冲突」（Codex 三审 minor）：报告不完整 → 结论只能是
+ * 「判不了」。与 CONFLICTS_MALFORMED_NOTE 的区别：这里部分簇合法（照常展示），只是不完整。
+ */
+const CONFLICTS_INCOMPLETE_NOTE = (skipped: number): string => `冲突报告不完整：${skipped} 簇形状非法已跳过（快照版本不符），无法判断是否还有冲突`;
+/** 形状守卫计数文案（S3.2 low 收口）：跳过多少、为什么，面板级显形，不静默。 */
+const shapeSkipCoordinationNote = (count: number): string => `${count} 条协调项形状非法，已跳过（快照版本不符）`;
+const shapeSkipClusterNote = (count: number): string => `${count} 簇冲突报告形状非法，已跳过（快照版本不符）`;
+
 /** 试点数据固定水印（§5 风险表：试点 9 条不是全部名单）。 */
 const PILOT_NOTICE = '试点数据：仅登记了 coordination 的 SCH 出现，未登记不代表无协调';
 
@@ -128,82 +155,57 @@ function isDoneCheck(check: ScheduleCheckView): boolean {
   return check.audit_status !== undefined && AUDIT_DONE_STATUSES.has(check.audit_status);
 }
 
-/** 已确认 = 声明 confirmed 且带 confirmed_at（缺一视为未确认，fail-closed）。 */
-function isConfirmed(entry: ScheduleCoordinationView): boolean {
-  return entry.status === 'confirmed' && !!entry.confirmed_at;
-}
-
-/** confirmed_at 同日：取日期前缀（ISO 日期/日期时间同口径）。 */
-function dayOf(confirmedAt: string): string {
-  return confirmedAt.slice(0, 10);
-}
-
-/** 角色与一条 coordination 的相关性：必填角色之一或责任角色（§1.1/§1.4 同一 membership）。 */
+/** 角色与一条 coordination 的相关性：必填角色之一或责任角色（§1.1 待确认列表口径）。 */
 function belongsToRole(entry: ScheduleCoordinationView, role: string): boolean {
   return (Array.isArray(entry.required_roles) ? entry.required_roles : []).includes(role)
     || entry.owner_role === role;
 }
 
-/**
- * 现场占用只认**明确参与要求**（`required_roles`）——`owner_role` 是协调组织者（谁去约人），
- * 不表示必须到场（Codex 一审 blocking：与模块 `detectCoordinationConflicts` 同一口径——
- * loader 与测试装配 `CoordinationScheduleItem.role` 时只遍历 `required_roles`）。
- * 两条都由设计师组织、`required_roles` 只有施工方的 onsite 预约，不得给设计师算出
- * 「同日双现场」或窗口重叠。待确认列表仍用 `belongsToRole`：组织者要看自己要约的条目。
- */
-function participatesIn(entry: ScheduleCoordinationView, role: string): boolean {
-  return (Array.isArray(entry.required_roles) ? entry.required_roles : []).includes(role);
-}
-
-/** 潜在窗口（只读 snapshot.schedule；包不在投影里 = 窗口未知，回 null 不进重叠判定）。 */
-function windowOf(schedule: ScheduleProjectionView, packageId: string): {start: number; end: number} | null {
-  const forecast = schedule.packages?.[packageId]?.forecast;
-  if (!forecast || typeof forecast.start_ord !== 'number' || typeof forecast.end_ord_max !== 'number') return null;
-  return {start: forecast.start_ord, end: forecast.end_ord_max};
-}
-
-/** 闭区间相交（§1.4：潜在 = 窗口重叠）。 */
-function windowsOverlap(left: {start: number; end: number}, right: {start: number; end: number}): boolean {
-  return left.start <= right.end && right.start <= left.end;
-}
-
-interface WindowedEntry {
-  schId: string;
-  entry: ScheduleCoordinationView;
-  window: {start: number; end: number};
-}
-
-/**
- * 重叠连通分量（§1.4 的一般化）：两两闭区间相交即并簇；规模 ≥2 的分量出潜在徽标。
- * 链式重叠（A-B、B-C 而 A-C 不相交）会并成一簇——fail-loud：宁可多标潜在，不漏标。
- */
-function overlapComponents(items: WindowedEntry[]): WindowedEntry[][] {
-  const parent = items.map((_item, index) => index);
-  const find = (index: number): number => {
-    let cursor = index;
-    while (parent[cursor] !== cursor) {
-      parent[cursor] = parent[parent[cursor]!]!;
-      cursor = parent[cursor]!;
-    }
-    return cursor;
-  };
-  for (let left = 0; left < items.length; left += 1) {
-    for (let right = left + 1; right < items.length; right += 1) {
-      if (windowsOverlap(items[left]!.window, items[right]!.window)) parent[find(left)] = find(right);
-    }
-  }
-  const clusters = new Map<number, WindowedEntry[]>();
-  items.forEach((item, index) => {
-    const root = find(index);
-    const bucket = clusters.get(root) ?? [];
-    bucket.push(item);
-    clusters.set(root, bucket);
-  });
-  return [...clusters.values()];
+/** 合法角色名（空串/非串不进角色集合：不给快照噪声造出「undefined 角色组」）。 */
+function isRoleName(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+/**
+ * coordination 条目形状守卫（S3.2 low 收口）：null / 数组 / 非对象一律非法——这类 entry
+ * 读 `required_roles` 之类字段会抛，旧代码只在个别分支兜底（静默）。现在统一跳过并计数。
+ */
+function isCoordinationEntry(value: unknown): value is ScheduleCoordinationView {
+  return asRecord(value) !== null;
+}
+
+/** 报告簇形状守卫（契约：{role: string; sch_ids: string[]; reason: string}）。 */
+function isOverlapShape(value: unknown): value is CoordinationOverlap {
+  const record = asRecord(value);
+  return !!record
+    && isRoleName(record.role)
+    && Array.isArray(record.sch_ids)
+    && typeof record.reason === 'string';
+}
+
+/**
+ * 冲突报告三态判定（键与形状：`ScheduleSnapshot.coordination_conflicts`
+ * = shared/schedule-projection.ts 的 CoordinationConflictReport，类型直接复用）：
+ * 键缺失 →「不知道」（旧快照/旧服务端）；键在且两数组为空 →「无冲突、无潜在窗口重叠」；
+ * 有簇 → 逐簇徽标。声明类型虽然只允许报告形状，快照毕竟是网络数据，运行时仍做形状守卫：
+ * 坏形状归「无法检测」，**绝不**读成「无冲突」（fail-closed）。
+ */
+function readConflictReport(snapshot: ScheduleSnapshot): ConflictReportRead {
+  const raw: unknown = snapshot.coordination_conflicts;
+  if (raw === undefined) return {kind: 'missing'};
+  const record = asRecord(raw);
+  if (!record || !Array.isArray(record.conflicts) || !Array.isArray(record.potential)) return {kind: 'malformed'};
+  return {
+    kind: 'present',
+    report: {
+      conflicts: record.conflicts as CoordinationOverlap[],
+      potential: record.potential as CoordinationOverlap[],
+    },
+  };
 }
 
 /** HTTP 失败文案：状态码 + 服务端 error + 前三条 issues（渲染处统一转义）。 */
@@ -234,10 +236,16 @@ interface CoordinationRow {
   packageName: string;
 }
 
+/** 服务端报告里的一簇（面板只配级别文字与颜色，reason 与簇规模原样透传）。 */
 interface ConflictCluster {
   level: 'conflict' | 'potential';
   badge: string;
-  detail: string;
+  reason: string;
+  /** 报告点名的 SCH 条数（徽标口径 = 服务端说的簇规模，不因成员编号非法/解析失败而缩水）。 */
+  size: number;
+  /** sch_ids 里非字符串/空串的成员条数（报告形状坏；计入 size，渲染时明说，不静默丢）。 */
+  invalidMembers: number;
+  /** sch_ids 在 coordination 索引里解析到的成员（解析不到的渲染不出行，见 renderCluster）。 */
   members: CoordinationRow[];
 }
 
@@ -246,10 +254,44 @@ interface RoleGroup {
   checks: CheckTodoRow[];
   coordinations: CoordinationRow[];
   clusters: ConflictCluster[];
-  /** 有 ≥2 条未确认 onsite 但快照缺 schedule：潜在窗口无法判断。 */
-  scheduleMissingNote: boolean;
-  /** coordination 键缺失/为空：协调两节出节级空文案，待办检查照常（不置空整面板）。 */
+  /** 报告里被形状守卫跳过的簇数（全局事实，逐角色复制）：空态文案据此改判「不完整」。 */
+  conflictShapeSkipped: number;
+  /** coordination 键缺失/为空：协调节出节级空文案，待办检查照常（不置空整面板）。 */
   coordinationMissing: boolean;
+}
+
+/** 冲突报告读取结果（三分缺失语义；见 readConflictReport）。 */
+type ConflictReportRead =
+  | {kind: 'missing'}
+  | {kind: 'malformed'}
+  | {kind: 'present'; report: CoordinationConflictReport};
+
+/**
+ * 一节的渲染体：html 是已按折叠/展开口径切好的渲染块（检查/协调节一行一块，
+ * 冲突节一簇一块），totalRows 是该节总行数（截断文案与按钮口径都按它）。
+ */
+interface SectionBody {
+  html: string[];
+  totalRows: number;
+}
+
+interface SectionSpec {
+  role: string;
+  section: string;
+  title: string;
+  body: SectionBody;
+  /** 完整列表（进 title 属性；展开入口只是补充，不清掉 title 这条既有通道）。 */
+  fullText: string;
+  emptyText: string;
+}
+
+interface BuildResult {
+  groups: RoleGroup[];
+  conflictRead: ConflictReportRead;
+  /** 形状非法被跳过的 coordination 条目数（面板级显形）。 */
+  skippedCoordinationEntries: number;
+  /** 形状非法被跳过的报告簇数（面板级显形）。 */
+  skippedConflictClusters: number;
 }
 
 export class RoleWorkbenchPanel {
@@ -260,6 +302,12 @@ export class RoleWorkbenchPanel {
   private errorMessage: string | null = null;
   private layoutKey = 'wide';
   private resizeObserver: ResizeObserver | null = null;
+  /**
+   * 展开的节（key = `${role}|${section}`）：截断入口（Codex 二审 major）的状态。
+   * 只住实例——本地 UI 状态，不写服务端、不进任何配置；re-render（点选、选中态订阅回调、
+   * 容器 resize）后保持，因为 render 每次都从这里读。
+   */
+  private expandedSections = new Set<string>();
   /**
    * 取数世代（照 GanttPanel 单 epoch 纪律，本面板无 what-if 故只此一条）：
    * 每次 refresh 发起即换代，只有最新一代的响应允许写 payload/渲染，在途旧响应一律丢弃。
@@ -322,11 +370,18 @@ export class RoleWorkbenchPanel {
 
   // ─── 分组构建（纯函数式；不碰快照任何数组/对象）─────────────────────────
 
-  private buildGroups(): {groups: RoleGroup[]; coordinationMissing: boolean} {
+  private buildGroups(): BuildResult {
     const snapshot = this.payload;
-    if (!snapshot) return {groups: [], coordinationMissing: false};
+    if (!snapshot) {
+      return {
+        groups: [],
+        conflictRead: {kind: 'missing'},
+        skippedCoordinationEntries: 0,
+        skippedConflictClusters: 0,
+      };
+    }
     // coordination 缺失或为空：**不把整面板置空**——待办检查只依赖 packages，降级时仍要可用；
-    // 协调两节出节级空文案（§1.1：不渲染空列表 = 不出无解释的空节，不是删掉有用的分组）。
+    // 协调节出节级空文案（§1.1：不渲染空列表 = 不出无解释的空节，不是删掉有用的分组）。
     const coordination = snapshot.coordination ?? {};
     const coordinationMissing = !snapshot.coordination || Object.keys(coordination).length === 0;
 
@@ -341,22 +396,75 @@ export class RoleWorkbenchPanel {
       actionsByPackage.set(action.package_id, bucket);
     }
 
-    // 角色集合 = owner_roles ∪ required_roles ∪ owner_role；排序只做副本（Set 迭代序不稳定）。
+    // ─── coordination 形状守卫（S3.2 low 收口）─────────────────────────────
+    // entry 为 null/数组/非对象 → 跳过 + 计数（面板级显形）。下游一律只认这份索引，
+    // 不再有「读到半个条目后静默 continue」的路径。
+    const coordById = new Map<string, ScheduleCoordinationView>();
+    let skippedCoordinationEntries = 0;
+    for (const [schId, raw] of Object.entries(coordination)) {
+      if (!isCoordinationEntry(raw)) {
+        skippedCoordinationEntries += 1;
+        continue;
+      }
+      coordById.set(schId, raw);
+    }
+    const coordEntries = [...coordById.entries()].sort(([left], [right]) => compareRaw(left, right));
+
+    // 角色集合 = packages.owner_roles ∪ coordination 的 required_roles ∪ owner_role ∪ 报告角色。
+    // 排序只做副本（Set 迭代序不稳定）。
     const roles = new Set<string>();
     for (const pkg of packages) {
       for (const role of Array.isArray(pkg.owner_roles) ? pkg.owner_roles : []) roles.add(role);
     }
-    const coordEntries: Array<[string, ScheduleCoordinationView]> = [];
-    for (const [schId, entry] of Object.entries(coordination)) {
-      coordEntries.push([schId, entry]);
+    for (const [, entry] of coordEntries) {
       for (const role of Array.isArray(entry.required_roles) ? entry.required_roles : []) roles.add(role);
-      roles.add(entry.owner_role);
+      if (isRoleName(entry.owner_role)) roles.add(entry.owner_role);
     }
-    coordEntries.sort(([left], [right]) => compareRaw(left, right));
 
-    const schedule = snapshot.schedule;
     const rowOf = (schId: string, entry: ScheduleCoordinationView): CoordinationRow =>
       ({schId, entry, packageName: packageName.get(entry.package_id) ?? entry.package_id});
+
+    // ─── 现场冲突：只读服务端报告（面板不做任何分类）───────────────────────
+    const read = readConflictReport(snapshot);
+    const clustersByRole = new Map<string, ConflictCluster[]>();
+    let skippedConflictClusters = 0;
+    if (read.kind === 'present') {
+      const collect = (level: 'conflict' | 'potential', overlaps: CoordinationOverlap[]): void => {
+        for (const overlap of overlaps) {
+          if (!isOverlapShape(overlap)) {
+            skippedConflictClusters += 1;
+            continue;
+          }
+          // sch_ids 逐个在 coordination 索引里解析（单次遍历，只读）：解析不到 = 快照自相矛盾，
+          // 该 SCH 渲染不出可点行，但簇徽标（按报告规模）与 reason 照出，差额在 renderCluster
+          // 里明说——不静默缩水、也不假装没有这条协调。
+          const named = overlap.sch_ids.filter((schId) => isRoleName(schId));
+          // 非法成员（非字符串/空串）与「解析不到」分开计数：前者是报告形状坏、后者是快照自相矛盾，
+          // 两种差额都要显形（Codex 二审 minor：只过滤不计数 = 静默丢）。
+          const invalidMembers = overlap.sch_ids.length - named.length;
+          clustersByRole.set(overlap.role, [
+            ...(clustersByRole.get(overlap.role) ?? []),
+            {
+              level,
+              badge: level === 'conflict' ? CONFLICT_BADGE : POTENTIAL_BADGE,
+              reason: overlap.reason,
+              size: overlap.sch_ids.length,
+              invalidMembers,
+              members: named
+                .map((schId) => {
+                  const entry = coordById.get(schId);
+                  return entry ? rowOf(schId, entry) : null;
+                })
+                .filter((row): row is CoordinationRow => row !== null),
+            },
+          ]);
+          // 报告角色也进角色集合：只出现在报告里的角色不得被静默丢掉（不影响 required_roles 口径）。
+          roles.add(overlap.role);
+        }
+      };
+      collect('conflict', read.report.conflicts);
+      collect('potential', read.report.potential);
+    }
 
     const groups = [...roles].sort(compareRaw).map((role): RoleGroup => {
       // ① 待办检查：该角色 ∈ owner_roles 的包的未完成检查（passed/waived 已完成）。
@@ -370,7 +478,7 @@ export class RoleWorkbenchPanel {
         }
       }
 
-      // ② 待确认协调：三态入场 + 角色相关。
+      // ② 待确认协调：三态入场 + 角色相关（required_roles ∪ owner_role，口径不变）。
       const coordinations: CoordinationRow[] = [];
       for (const [schId, entry] of coordEntries) {
         if (!PENDING_COORD_STATUSES.has(entry.status)) continue;
@@ -378,48 +486,17 @@ export class RoleWorkbenchPanel {
         coordinations.push(rowOf(schId, entry));
       }
 
-      // ③ 现场冲突（§1.4 两级口径）：先排除 cancelled 与非 onsite，再分冲突/潜在。
-      // 占用口径 = participatesIn（只认 required_roles）；owner_role 是组织者不是参与者
-      // （Codex 一审 blocking）——待确认协调节才用 belongsToRole 把组织者算进来。
-      const onsite = coordEntries.filter(([, entry]) =>
-        entry.mode === 'onsite' && entry.status !== 'cancelled' && participatesIn(entry, role));
-      const clusters: ConflictCluster[] = [];
+      // ③ 现场冲突：报告按 role 归位（面板侧的占用/判定逻辑已整体删除）。
+      const clusters = clustersByRole.get(role) ?? [];
 
-      // 冲突：同角色 ≥2 条 onsite 且都已确认且 confirmed_at 同日（按日分组，规模 ≥2 出簇）。
-      const confirmedByDay = new Map<string, CoordinationRow[]>();
-      for (const [schId, entry] of onsite) {
-        if (!isConfirmed(entry) || !entry.confirmed_at) continue;
-        const day = dayOf(entry.confirmed_at);
-        const bucket = confirmedByDay.get(day) ?? [];
-        bucket.push(rowOf(schId, entry));
-        confirmedByDay.set(day, bucket);
-      }
-      for (const [day, members] of [...confirmedByDay.entries()].sort(([left], [right]) => compareRaw(left, right))) {
-        if (members.length < 2) continue;
-        clusters.push({level: 'conflict', badge: CONFLICT_BADGE, detail: `${members.length} 条｜同日 ${day}`, members});
-      }
-
-      // 潜在：同角色 ≥2 条 onsite 且都未确认且 forecast 窗口重叠（confirmed 不进潜在）。
-      const unconfirmed = onsite.filter(([, entry]) => !isConfirmed(entry));
-      const scheduleMissingNote = !schedule && unconfirmed.length >= 2;
-      if (schedule && unconfirmed.length >= 2) {
-        const windowed: WindowedEntry[] = [];
-        for (const [schId, entry] of unconfirmed) {
-          const window = windowOf(schedule, entry.package_id);
-          if (window) windowed.push({schId, entry, window});
-        }
-        for (const component of overlapComponents(windowed)) {
-          if (component.length < 2) continue;
-          const members = component.map((item) => rowOf(item.schId, item.entry));
-          const start = Math.min(...component.map((item) => item.window.start));
-          const end = Math.max(...component.map((item) => item.window.end));
-          clusters.push({level: 'potential', badge: POTENTIAL_BADGE, detail: `${members.length} 条｜第 ${start}–第 ${end} 工作日`, members});
-        }
-      }
-
-      return {role, checks, coordinations, clusters, scheduleMissingNote, coordinationMissing};
+      return {role, checks, coordinations, clusters, conflictShapeSkipped: skippedConflictClusters, coordinationMissing};
     });
-    return {groups, coordinationMissing};
+    return {
+      groups,
+      conflictRead: read,
+      skippedCoordinationEntries,
+      skippedConflictClusters,
+    };
   }
 
   // ─── 渲染 ────────────────────────────────────────────────────────────────
@@ -435,26 +512,37 @@ export class RoleWorkbenchPanel {
     const pilot = `<div id="rw-pilot" style="margin-bottom:8px;padding:4px 8px;border:1px solid rgba(233,196,106,.4);border-radius:6px;background:rgba(233,196,106,.07);color:#f4dfa8;font-size:11px;">${escapeHtml(PILOT_NOTICE)}</div>`;
 
     const built = this.buildGroups();
+    const shapeNotes = this.renderShapeNotes(built);
     let content: string;
     if (!this.payload) {
       content = this.emptyBox('未取得角色工作台数据（/api/schedule/state 尚未返回或取数失败）：本面板不渲染来自坏快照的分组。');
     } else if (built.groups.length === 0) {
-      content = this.emptyBox('快照里汇总不出任何角色（packages 的 owner_roles 与 coordination 的 required_roles/owner_role 均为空）：本面板不渲染空分组。');
+      content = this.emptyBox('快照里汇总不出任何角色（packages 的 owner_roles、coordination 的 required_roles/owner_role 与冲突报告的角色均为空）：本面板不渲染空分组。');
     } else {
-      content = this.renderGroups(built.groups);
+      content = this.renderGroups(built);
     }
 
-    body.innerHTML = `${error}${pilot}${content}`;
+    body.innerHTML = `${error}${pilot}${shapeNotes}${content}`;
     this.bind(body);
     this.layoutKey = this.layoutKeyOf();
+  }
+
+  /** 形状守卫显形（S3.2 low 收口）：跳过多少条、为什么，一句话说清，不静默。 */
+  private renderShapeNotes(built: BuildResult): string {
+    const parts: string[] = [];
+    if (built.skippedCoordinationEntries > 0) parts.push(shapeSkipCoordinationNote(built.skippedCoordinationEntries));
+    if (built.skippedConflictClusters > 0) parts.push(shapeSkipClusterNote(built.skippedConflictClusters));
+    if (!parts.length) return '';
+    return `<div id="rw-shape-note" style="margin-bottom:8px;padding:4px 8px;border:1px solid rgba(233,196,106,.4);border-radius:6px;background:rgba(233,196,106,.07);color:#f4dfa8;font-size:11px;">${escapeHtml(parts.join('；'))}</div>`;
   }
 
   private emptyBox(text: string): string {
     return `<div id="rw-empty" style="padding:10px;border:1px dashed rgba(255,255,255,.2);border-radius:6px;color:#9aa4b2;font-size:12px;">${escapeHtml(text)}</div>`;
   }
 
-  private renderGroups(groups: RoleGroup[]): string {
+  private renderGroups(built: BuildResult): string {
     const narrow = this.isNarrowContainer();
+    const groups = built.groups;
     const totalChecks = groups.reduce((sum, group) => sum + group.checks.length, 0);
     const totalCoord = groups.reduce((sum, group) => sum + group.coordinations.length, 0);
     const conflictClusters = groups.reduce((sum, group) => sum + group.clusters.filter((cluster) => cluster.level === 'conflict').length, 0);
@@ -462,21 +550,21 @@ export class RoleWorkbenchPanel {
 
     const head = `<div id="rw-head" style="margin-bottom:8px;color:#9aa4b2;font-size:11px;line-height:1.7;">
       共 ${groups.length} 个角色｜待办检查 ${totalChecks} 项｜待确认协调 ${totalCoord} 项｜冲突 ${conflictClusters} 簇／潜在 ${potentialClusters} 簇
-      <br>数据只读自 <code>/api/schedule/state</code>（packages / coordination / next_actions / schedule 四个键）；点行只写共享选中态，不做 3D 高亮、不改任何配置——写路径一律走 PR。
+      <br>数据只读自 <code>/api/schedule/state</code>（packages / coordination / coordination_conflicts / next_actions 四个键；冲突分级由服务端 <code>detectCoordinationConflicts</code> 单算，本面板不自算）；点行只写共享选中态，不做 3D 高亮、不改任何配置——写路径一律走 PR。
     </div>`;
     const narrowNote = narrow
       ? `<div style="margin-bottom:6px;color:#7d8698;font-size:10px;">窄屏（≤${NARROW_MAX_PX}px）：单列列表（工作台本就是列表，只放宽布局约束）。</div>`
       : '';
-    const roles = groups.map((group) => this.renderRoleGroup(group, narrow)).join('');
+    const roles = groups.map((group) => this.renderRoleGroup(group, narrow, built.conflictRead)).join('');
     return `<div id="rw-groups" data-rw-narrow="${narrow}">${head}${narrowNote}${roles}</div>`;
   }
 
-  private renderRoleGroup(group: RoleGroup, narrow: boolean): string {
+  private renderRoleGroup(group: RoleGroup, narrow: boolean, read: ConflictReportRead): string {
     return `<div class="rw-role" data-role="${escapeHtml(group.role)}" style="margin-bottom:10px;padding:8px 10px;border:1px solid rgba(255,255,255,.14);border-radius:8px;background:rgba(255,255,255,.03);">
       <div class="rw-role-head" style="margin-bottom:6px;font-size:13px;"><strong>角色：${escapeHtml(group.role)}</strong></div>
       ${this.renderCheckSection(group, narrow)}
       ${this.renderCoordSection(group, narrow)}
-      ${this.renderConflictSection(group, narrow)}
+      ${this.renderConflictSection(group, narrow, read)}
     </div>`;
   }
 
@@ -485,73 +573,138 @@ export class RoleWorkbenchPanel {
   private renderCheckSection(group: RoleGroup, narrow: boolean): string {
     const rows = group.checks.map((row) => this.renderCheckRow(row, narrow));
     const fullText = group.checks.map((row) => this.checkRowText(row)).join('\n');
-    return this.sectionShell('checks', `待办检查（${group.checks.length}）`, rows, fullText,
-      group.checks.length === 0 ? '没有待办（该角色名下没有未完成检查）' : '');
+    const html = this.visibleRowChunks(group.role, 'checks', rows);
+    return this.sectionShell({
+      role: group.role,
+      section: 'checks',
+      title: `待办检查（${group.checks.length}）`,
+      body: {html, totalRows: rows.length},
+      fullText,
+      emptyText: group.checks.length === 0 ? '没有待办（该角色名下没有未完成检查）' : '',
+    });
   }
 
   private renderCoordSection(group: RoleGroup, narrow: boolean): string {
     const rows = group.coordinations.map((row) => this.renderCoordRow(row, narrow));
     const fullText = group.coordinations.map((row) => this.coordRowText(row)).join('\n');
+    const html = this.visibleRowChunks(group.role, 'coordination', rows);
     // coordination 键缺失/为空：节级空文案（待办检查不受影响，见 buildGroups）。
     const empty = group.coordinationMissing
       ? '没有协调数据（coordination 键缺失/为空）：本节列不出条目；试点只登记确有协调动作的 SCH'
       : group.coordinations.length === 0 ? '没有待确认协调（该角色名下没有待邀请/待确认条目）' : '';
-    return this.sectionShell('coordination', `待确认协调（${group.coordinations.length}）`, rows, fullText, empty);
-  }
-
-  private renderConflictSection(group: RoleGroup, narrow: boolean): string {
-    // 行数上限按 SCH 行计：簇头只在有可见成员时渲染，被截断的簇整体进 title 全量。
-    const fullText: string[] = [];
-    let total = 0;
-    let shown = 0;
-    const clusterHtml: string[] = [];
-    for (const cluster of group.clusters) {
-      total += cluster.members.length;
-      const visible = shown < MAX_VISIBLE_ROWS ? cluster.members.slice(0, MAX_VISIBLE_ROWS - shown) : [];
-      shown += visible.length;
-      for (const member of cluster.members) fullText.push(`${cluster.badge}｜${this.coordRowText(member)}`);
-      if (visible.length === 0) continue;
-      const badgeColor = cluster.level === 'conflict' ? CONFLICT_COLOR : POTENTIAL_COLOR;
-      const members = visible.map((member) => this.renderConflictRow(member, cluster, narrow)).join('');
-      clusterHtml.push(`<div class="rw-cluster" data-level="${cluster.level}" style="margin-bottom:6px;">
-        <div class="rw-badge" data-level="${cluster.level}" style="margin-bottom:3px;font-size:11px;font-weight:600;">${dot(badgeColor)}${escapeHtml(cluster.badge)}（${escapeHtml(cluster.detail)}）</div>
-        ${members}
-      </div>`);
-    }
-    // 缺排程投影：潜在窗口无法判断（§1.4）——只有当该角色真有 ≥2 条未确认 onsite 时才出。
-    const scheduleNote = group.scheduleMissingNote
-      ? `<div class="rw-schedule-note" style="margin-bottom:4px;color:#f4dfa8;font-size:11px;">${escapeHtml(SCHEDULE_MISSING_NOTE)}</div>`
-      : '';
-    const empty = group.coordinationMissing
-      ? '没有协调数据（coordination 键缺失/为空）：现场冲突无法判断'
-      : group.clusters.length === 0 ? '没有现场冲突（该角色名下没有同日双现场或窗口重叠）' : '';
-    // 截断提示按 SCH 行数计（簇内已在上面切好）；moreText 覆盖 sectionShell 的按行数组口径。
-    const moreText = total > shown ? `<div class="rw-more" style="color:#9aa4b2;font-size:11px;">等 ${total} 条</div>` : '';
-    // extra（缺排程投影提示）渲染在节标题之前：它解释的是「为什么没有潜在徽标」。
-    return this.sectionShell('conflicts', '现场冲突', clusterHtml, fullText.join('\n'), empty, scheduleNote, moreText);
+    return this.sectionShell({
+      role: group.role,
+      section: 'coordination',
+      title: `待确认协调（${group.coordinations.length}）`,
+      body: {html, totalRows: rows.length},
+      fullText,
+      emptyText: empty,
+    });
   }
 
   /**
-   * 节外壳：extra + 标题 + 行列表 + 完整列表进 title + 空态文字。
-   * moreText：冲突节按 SCH 行数自算截断提示（行数组里装的是簇，不是行）；其余两节传 undefined，
-   * 由行数组长度算（超过 MAX_VISIBLE_ROWS 出「等 N 条」）。
+   * 现场冲突节：只读报告（read）给出的簇，面板不自算。
+   * 空态三分：键缺失/形状不符 →「冲突无法检测（…）」；键在且无簇 →「无冲突、无潜在窗口重叠」
+   * （coordination 缺失不再改判冲突节——那时报告说了算）。
    */
-  private sectionShell(
-    section: string,
-    title: string,
-    rows: string[],
-    fullText: string,
-    emptyText: string,
-    extra = '',
-    moreText?: string,
-  ): string {
-    const shown = rows.slice(0, MAX_VISIBLE_ROWS);
-    const more = moreText
-      ?? (rows.length > shown.length ? `<div class="rw-more" style="color:#9aa4b2;font-size:11px;">等 ${rows.length} 条</div>` : '');
-    const body = shown.length ? shown.join('') : `<div class="rw-section-empty" style="color:#9aa4b2;font-size:11px;">${escapeHtml(emptyText)}</div>`;
-    return `<div class="rw-section" data-section="${section}" title="${escapeHtml(fullText)}" style="margin-bottom:8px;">
-      ${extra}<div class="rw-section-title" style="margin-bottom:3px;color:#c9cfe0;font-size:11px;font-weight:600;">${escapeHtml(title)}</div>
-      ${body}${more}
+  private renderConflictSection(group: RoleGroup, narrow: boolean, read: ConflictReportRead): string {
+    const totalRows = group.clusters.reduce((sum, cluster) => sum + cluster.members.length, 0);
+    const budget = this.isExpanded(group.role, 'conflicts') ? Number.POSITIVE_INFINITY : MAX_VISIBLE_ROWS;
+    const chunks = this.clusterChunks(group.clusters, narrow, budget);
+    const fullText = group.clusters.map((cluster) => `${cluster.badge}｜${cluster.reason}`).join('\n');
+    const emptyText = read.kind === 'missing'
+      ? CONFLICTS_UNKNOWN_NOTE
+      : read.kind === 'malformed'
+        ? CONFLICTS_MALFORMED_NOTE
+        : group.conflictShapeSkipped > 0
+          ? CONFLICTS_INCOMPLETE_NOTE(group.conflictShapeSkipped)
+          : CONFLICTS_EMPTY_NOTE;
+    return this.sectionShell({
+      role: group.role,
+      section: 'conflicts',
+      title: '现场冲突',
+      body: {html: chunks, totalRows},
+      fullText,
+      emptyText,
+    });
+  }
+
+  /**
+   * 节外壳：标题 + 行块 + 完整列表进 title + 空态文字 + 截断入口。
+   * 截断口径统一按 `body.totalRows`：> MAX_VISIBLE_ROWS 时折叠态出「等 N 条」与
+   * 「查看全部 N 条」按钮（真按钮，文字自带、窄屏同样可用，不依赖 title），展开态出「收起」。
+   * 折叠态是否真的隐藏了行由调用方按同一预算切块决定（visibleRowChunks / clusterChunks）。
+   */
+  private sectionShell(spec: SectionSpec): string {
+    const expanded = this.isExpanded(spec.role, spec.section);
+    const truncated = spec.body.totalRows > MAX_VISIBLE_ROWS;
+    const more = truncated && !expanded
+      ? `<div class="rw-more" style="color:#9aa4b2;font-size:11px;">等 ${spec.body.totalRows} 条</div>`
+      : '';
+    const toggle = truncated
+      ? `<button type="button" class="rw-more-toggle" data-rw-toggle="${escapeHtml(`${spec.role}|${spec.section}`)}" data-expanded="${expanded}" aria-expanded="${expanded}" style="margin-top:2px;padding:2px 8px;border-radius:6px;border:1px solid rgba(111,168,220,.5);background:rgba(111,168,220,.12);color:#cfe1f5;font-size:11px;cursor:pointer;">${expanded ? '收起' : `查看全部 ${spec.body.totalRows} 条`}</button>`
+      : '';
+    const rows = spec.body.html.length
+      ? spec.body.html.join('')
+      : `<div class="rw-section-empty" style="color:#9aa4b2;font-size:11px;">${escapeHtml(spec.emptyText)}</div>`;
+    return `<div class="rw-section" data-section="${spec.section}" title="${escapeHtml(spec.fullText)}" style="margin-bottom:8px;">
+      <div class="rw-section-title" style="margin-bottom:3px;color:#c9cfe0;font-size:11px;font-weight:600;">${escapeHtml(spec.title)}</div>
+      ${rows}${more}${toggle}
+    </div>`;
+  }
+
+  // ─── 截断入口（Codex 二审 major）─────────────────────────────────────────
+
+  private isExpanded(role: string, section: string): boolean {
+    return this.expandedSections.has(`${role}|${section}`);
+  }
+
+  private toggleSection(key: string): void {
+    if (this.expandedSections.has(key)) this.expandedSections.delete(key);
+    else this.expandedSections.add(key);
+  }
+
+  /** 折叠态切前 MAX_VISIBLE_ROWS 行；展开态全量。 */
+  private visibleRowChunks(role: string, section: string, rows: string[]): string[] {
+    return this.isExpanded(role, section) ? rows : rows.slice(0, MAX_VISIBLE_ROWS);
+  }
+
+  /**
+   * 冲突节按 SCH 行预算切块（折叠 = MAX_VISIBLE_ROWS 行；展开 = budget 无穷）。
+   * 预算用尽后的簇整块不渲染（只出「等 N 条」与按钮，不出一排没有行的空徽标）；
+   * 报告中真的点名了、却在 coordination 索引里解析不到的簇仍出徽标（见 renderCluster）。
+   */
+  private clusterChunks(clusters: ConflictCluster[], narrow: boolean, budget: number): string[] {
+    const chunks: string[] = [];
+    let shown = 0;
+    for (const cluster of clusters) {
+      const visible = shown < budget ? cluster.members.slice(0, budget - shown) : [];
+      shown += visible.length;
+      if (visible.length === 0 && cluster.members.length > 0) continue;
+      chunks.push(this.renderCluster(cluster, visible, narrow));
+    }
+    return chunks;
+  }
+
+  private renderCluster(cluster: ConflictCluster, visible: CoordinationRow[], narrow: boolean): string {
+    const color = cluster.level === 'conflict' ? CONFLICT_COLOR : POTENTIAL_COLOR;
+    // 两类差额都显形（徽标按报告规模，不静默缩水）：① 成员编号非法（报告形状坏）
+    // ② 编号合法但本快照 coordination 里没有条目（快照自相矛盾）。
+    const unresolved = Math.max(0, cluster.size - cluster.invalidMembers - cluster.members.length);
+    const notes: string[] = [];
+    if (cluster.invalidMembers > 0) {
+      notes.push(`该簇点名的 ${cluster.size} 条 SCH 里有 ${cluster.invalidMembers} 条成员编号非法，已跳过（快照版本不符）`);
+    }
+    if (unresolved > 0) {
+      notes.push(`另有 ${unresolved} 条在本快照 coordination 里没有条目（快照版本不符）`);
+    }
+    const note = notes.length > 0
+      ? `<div class="rw-cluster-note" style="color:#9aa4b2;font-size:10px;">${notes.join('；')}</div>`
+      : '';
+    const members = visible.map((member) => this.renderConflictRow(member, cluster, narrow)).join('');
+    return `<div class="rw-cluster" data-level="${cluster.level}" style="margin-bottom:6px;">
+      <div class="rw-badge" data-level="${cluster.level}" style="margin-bottom:3px;font-size:11px;font-weight:600;">${dot(color)}<span class="rw-badge-label">${escapeHtml(cluster.badge)}（${cluster.size} 条）</span> <span class="rw-badge-reason">${escapeHtml(cluster.reason)}</span></div>
+      ${note}${members}
     </div>`;
   }
 
@@ -652,19 +805,15 @@ export class RoleWorkbenchPanel {
     const entry = row.entry;
     const mode = entry.mode;
     const statusLabel = labelOf(COORD_STATUS_LABEL, entry.status);
-    // 冲突簇带确认登记日（证据日期，原样）；潜在簇带 forecast 窗口（第 N–第 M 工作日）。
-    let extra: string;
-    if (cluster.level === 'conflict') {
-      extra = `确认登记日 ${entry.confirmed_at ?? '—'}`;
-    } else {
-      const window = this.payload?.schedule ? windowOf(this.payload.schedule, entry.package_id) : null;
-      extra = window ? `窗口 第 ${window.start}–第 ${window.end} 工作日` : '窗口未知';
-    }
+    // 冲突簇带确认登记日（证据日期，原样）；潜在簇的窗口信息在服务端 reason 原文里，
+    // 面板不再自算窗口（windowOf 与整条面板侧分类一起删除）。
+    const extra = cluster.level === 'conflict' ? `确认登记日 ${entry.confirmed_at ?? '—'}` : '';
     const hover = [
       `${cluster.badge}｜${row.schId} ${row.packageName}`,
       `方式：${labelOf(MODE_LABEL, mode)}（${mode}）`,
       `状态：${statusLabel}（${entry.status}）`,
-      extra,
+      ...(extra ? [extra] : []),
+      `判定依据（服务端原文）：${cluster.reason}`,
       `提前量：${entry.lead_time_workdays} 个工作日`,
       this.actorText(entry),
     ].join('\n');
@@ -673,7 +822,7 @@ export class RoleWorkbenchPanel {
         <strong>${escapeHtml(row.schId)}</strong>
         <span style="margin-left:6px;color:#9aa4b2;">${escapeHtml(row.packageName)}</span>
       </div>`;
-    const meta = `<div class="rw-row-meta" style="flex:0 0 auto;${narrow ? 'margin-top:2px;' : ''}color:#c9cfe0;font-size:11px;white-space:nowrap;">${dot(colorOf(COORD_STATUS_COLOR, entry.status))}${escapeHtml(statusLabel)}｜${escapeHtml(extra)}</div>`;
+    const meta = `<div class="rw-row-meta" style="flex:0 0 auto;${narrow ? 'margin-top:2px;' : ''}color:#c9cfe0;font-size:11px;white-space:nowrap;">${dot(colorOf(COORD_STATUS_COLOR, entry.status))}${escapeHtml(statusLabel)}${extra ? `｜${escapeHtml(extra)}` : ''}</div>`;
     return this.rowShell(
       'rw-conflict-row',
       `data-pkg-id="${escapeHtml(entry.package_id)}" data-sch-id="${escapeHtml(row.schId)}"`,
@@ -696,6 +845,17 @@ export class RoleWorkbenchPanel {
         // （coordination 的键）。不调 onHighlight、不展开 scope。
         const checkId = element.dataset.checkId ?? element.dataset.schId ?? null;
         this.selection.set({packageId, checkId});
+        this.render();
+      });
+    }
+    // 截断入口（Codex 二审 major）：展开/收起只改本地展开态再重渲——不写选中、不碰快照。
+    for (const toggle of Array.from(body.querySelectorAll('button[data-rw-toggle]'))) {
+      toggle.addEventListener('click', (event) => {
+        // 按钮不在行内；stopPropagation 只是保险，防止将来把入口塞进可点行里。
+        event.stopPropagation();
+        const key = (toggle as HTMLElement).dataset.rwToggle ?? '';
+        if (!key) return;
+        this.toggleSection(key);
         this.render();
       });
     }

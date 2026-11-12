@@ -124,6 +124,7 @@ SCH-000-02 会审、PKG-070 的 SCH-070-01 联合验收，约 6-10 条），**�
 | `coordination_mode_invalid` / `coordination_status_invalid` | 枚举越界 |
 | `coordination_pending_without_escalation` | `status` ∈ {pending_invite, invited} 但 `escalation` 为空（决策铁律第 1 条：新部件必须回答"没人响应时怎么办"） |
 | `coordination_confirmed_without_actor` | `status: confirmed` 但 `actor.name` 为 null |
+| `coordination_roles_duplicate` | `required_roles` 含重复角色（同一预约不会与自身成冲突；重复声明是错误，不静默去重——Codex 二审 blocking，2026-11-12 加） |
 
 ### 2.2 检查记录窗口：派生，不存储（D2；F2 正名；§16 起与预测解耦）
 
@@ -311,7 +312,7 @@ coordination: Record<string, {          // key = SCH id
 |---|---|---|---|---|
 | 项目看板 | **升级** `SchedulePanel`（progress 模式加一列"预测窗口"） | 已有 334 行 | `schedule.packages` | 行点击写 selection（现状不变） |
 | 动态甘特 | **新** `GanttPanel` | 新 ~700 行（S2 实现） | `schedule.*` | 条点击 → selection；what-if 控件（delay 输入 → GET what-if → 重渲）；min/max 画**区间条**不是单值条；无 anchor 时 x 轴标"第 N 工作日"；演算视图的来源行写 `/api/schedule/what-if`，基线才写 `/api/schedule/state` |
-| 角色工作台 | **新** `RoleWorkbenchPanel` | 新 762 行 + 663 行测试（S3 实现） | `owner_roles` + `coordination` + `next_actions`（潜在窗口另只读 `schedule.packages`）。现场冲突两级口径：同角色 onsite 都已确认且 `confirmed_at` 同日 = 冲突；未确认且 forecast 窗口重叠 = 潜在（§16.4） | 按角色分组：待办检查 / 待确认协调 / 现场冲突；点项 → selection |
+| 角色工作台 | **新** `RoleWorkbenchPanel` | 新 898 行 + 840 行测试（S3 实现；S3.2 收尾后实测 `wc -l`，原 762/663） | `owner_roles` + `coordination` + `coordination_conflicts` + `next_actions`（S3.2 起——冲突/潜在窗口的唯一来源改为服务端报告；原「潜在窗口另只读 `schedule.packages`」随面板侧分类删除，§22）。现场冲突两级口径：同角色 onsite 都已确认且 `confirmed_at` 同日 = 冲突；未确认且 forecast 窗口重叠 = 潜在（§16.4） | 按角色分组：待办检查 / 待确认协调 / 现场冲突；点项 → selection |
 | 协调日历 | **新** `CoordinationCalendarPanel` | 新 612 行 + 578 行测试（S3 实现） | `coordination` + `schedule.packages` | 按工作日列 onsite/remote/notify 三类 chip；chip 位置 = 所属包 forecast 潜在窗口（不钉确认日列）；`site_pending` 约束标"待定"；点 chip → selection |
 
 **关键复用（D5）**：三个新面板的点击一律 `selection.set({packageId, checkId})`，
@@ -1038,7 +1039,7 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 ## 20. S3 角色工作台与协调日历（2026-11-11）
 
 - **交付**（工作树 `ep-202-roles-calendar`，分支 `arch/202-roles-calendar`，基 `origin/master` `d239acb8`；两路并行实施 + 集成门禁 + 主会话仲裁）：`RoleWorkbenchPanel`（762 行 + 663 行测试，20 测——按角色分组三节、待办检查只列未完成、冲突两级徽标、点项只写 selection、三态空文案、转义、窄屏单列、只读快照逐字节钉）+ `CoordinationCalendarPanel`（612 行 + 578 行测试，16 测——三类 mode chip、chip 按 forecast 潜在窗口定位、无锚点无日期字符串、`site_pending` 标「待定」、confirmed 登记日证据文字、cancelled 不画 chip、窄屏文字行、只读钉）+ 路由 `roles`/`calendar` 补全（`SUB_PAGES` / `showApprovalView` / 命令面板 / view-state 白名单 / `index.html` tab 五处同步，七个审批面板）+ control.yaml coordination 试点 4 → 9 条。
-- **冲突两级口径的落点（本片关键决定）**：§4 第 6 条的 `detectCoordinationConflicts` 至今无活消费方；面板铁律禁止 import 排程投影模块、S3 范围不含 loader 改动，因此面板按 §16.4/§17.4 同一两级口径做**展示分类**（数据全部来自快照键）：冲突 = 同角色 onsite 都已确认且 `confirmed_at` 同日；潜在 = 同角色 onsite 未确认且 forecast 窗口闭区间重叠（连通分量）；`cancelled` 与 non-onsite 分组前排除；confirmed + 未确认混合两者都不出。**已知张力（留业主裁）**：模块函数与面板分类是同一口径的两处实现；若要求单一来源，后续切片应由 loader 调用模块函数、把报告加进快照，面板改纯渲染。
+- **冲突两级口径的落点（本片关键决定）**：§4 第 6 条的 `detectCoordinationConflicts` 至今无活消费方；面板铁律禁止 import 排程投影模块、S3 范围不含 loader 改动，因此面板按 §16.4/§17.4 同一两级口径做**展示分类**（数据全部来自快照键）：冲突 = 同角色 onsite 都已确认且 `confirmed_at` 同日；潜在 = 同角色 onsite 未确认且 forecast 窗口闭区间重叠（连通分量）；`cancelled` 与 non-onsite 分组前排除；confirmed + 未确认混合两者都不出。**已知张力（留业主裁）**：模块函数与面板分类是同一口径的两处实现；若要求单一来源，后续切片应由 loader 调用模块函数、把报告加进快照，面板改纯渲染。→ 已由 §22 收口（loader 单一来源、面板改纯渲染，2026-11-12）。
 - **coordination 缺失/为空的降级口径**：不置空整面板——待办检查只依赖 `packages` 照常渲染，协调两节出节级空文案（子代理初版按整面板空态实现，集成时按「不渲染空列表 ≠ 删掉有用的分组」修正）。
 - **试点数据 4 → 9 条**（S1 已有 SCH-000-01 / SCH-000-02 / SCH-005-01 / SCH-070-01 四条；本片新增五条，仍只挂主车道包，「确有协调动作」标准，不 backfill 49 条）：
 
@@ -1053,7 +1054,7 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
   九条全 `pending_invite` / `actor` null / `confirmed_at` null（尚未交房、无人可确认是诚实态，不造确认人）。真实数据冲突报告（模块层实测）：`conflicts` 0；潜在 4 簇——业主 7 条、设计师 6 条、施工方 3 条、空调商 3 条。SCH-070-01 因 PKG-040 窗口（26–55）桥接进入潜在簇（4 条数据时它接不上 PKG-005 的 16–32，`schedule-projection.test.ts` 里「SCH-070-01 不进任何潜在簇」「空调商不进潜在」两条旧断言随数据扩充反转）；SCH-080-01（remote）/SCH-090-01（notify）分组前退出，不进任何簇。
 - **测试**：工作台 20 测 + 日历 16 测（清单见上）；`approval-route.test.ts` 补 `roles`/`calendar` 解析与序列化往返；`view-state-store.test.ts` 白名单反转（S2 的「roles 不放行」断言改放行 + nonsense 仍忽略）；`schedule-projection.test.ts` 真实试点数据用例同步到 9 条（每个窗口/簇经主会话独立复算核对）。
 - **门禁**（工作树实测判定行，六项全部 exit 0）：`ci:typecheck` 实际失败 0 条、基线 0 条——无基线外新失败，对照通过；`ci:test-server` 实际失败 0 条、基线 0 条——无基线外新失败，对照通过；`ci:test-app` 实际失败 3 条、基线 3 条（存量为 `ci/baseline/` 的 HouseScene）——无基线外新失败，对照通过；`ci:verify-all` 实际失败 1 条、基线 1 条（存量 verify-mep）——无基线外新失败，对照通过；`npm run schedule:render` exit 0（stdout 仅既有两条边界自动反向提示：「Room kitchen boundary was CW, auto-reversed to CCW」「Room entry_garden boundary was CW, auto-reversed to CCW」）；`build:app` exit 0（仅 Rollup 提示：`manualChunks` 分块建议与 `chunkSizeWarningLimit`）。`schedule:render` 重生成 7 个渲染文件（schedule/checklist.md、phase-1/{budget,checklist,cost,schedule}.md、phase-2/checklist.md、phase-3/checklist.md）diff **仅指纹行**（control.yaml 输入哈希 + 项目数据指纹），无内容行变化；连带 `docs:generate-current-values` 重生成（`docs/CURRENT-VALUES.md` 仅指纹一行——control.yaml 进其输入指纹，不跑则 `verify-current-values` 报基线外新失败）。
-- **已知未收**：① 模块 `detectCoordinationConflicts` 无活消费方，面板侧展示分类与之并存（见上，留业主裁）；② 日历「确认占用日」标记只在锚点就绪时画（无锚点不钉列是 §17/§18 口径）；③ 两个面板行数超设计估值（762/612 vs ~400——`RoleWorkbenchPanel` 含 Codex 一审 blocking 修复后的行数；注释密度照 `GanttPanel` 776 行先例，未为压行数删口径注释）；④ 工作台每节 8 条上限 + `title` 全量，无分页；⑤ 无「真实路由响应 → 面板渲染」集成测试（S2 同款缺口）。
+- **已知未收**：① 模块 `detectCoordinationConflicts` 无活消费方，面板侧展示分类与之并存（见上，留业主裁）；② 日历「确认占用日」标记只在锚点就绪时画（无锚点不钉列是 §17/§18 口径）；③ 两个面板行数超设计估值（762/612 vs ~400——`RoleWorkbenchPanel` 含 Codex 一审 blocking 修复后的行数；注释密度照 `GanttPanel` 776 行先例，未为压行数删口径注释）；④ 工作台每节 8 条上限 + `title` 全量，无分页；⑤ 无「真实路由响应 → 面板渲染」集成测试（S2 同款缺口）。（**2026-11-12 状态更新**：① 与 ④ 已由 §22 收口——① 改 loader 单一来源、面板纯渲染；④ 每节「查看全部 N 条」展开入口；②③⑤ 仍开。口径修正的落点是本节 + §22：`audit_log.record_schema` 的 required 是验收记录字段（`checked_at`/`check_spec_sha256` 等），不作为修正记录落点。）
 - **Codex 审查**（PR #220）：一审 `b8f4d394` **blocking 1**——现场占用把 `owner_role`（协调组织者）误算为必须到场，与模块 `detectCoordinationConflicts` 的 `required_roles` 口径漂移 → 修（`6e0fd010`：占用口径改 `participatesIn` 只认 `required_roles`，待确认列表保留「required_roles ∪ owner_role」，新增钉死用例 20 测）。二审 `6e0fd010` **blocking 0 · major 1 · minor 2**（事件 COMMENTED，按修复端纪律不自动修，登记待业主裁）：major「工作台截断后没有访问剩余条目的入口」（每节前 8 行 + `title` 全量，无展开/分页/跳转；多个角色检查数已超 8，触屏端无法可靠读 title）；minor「`tickOrds` 末端刻度间距检查用了倒数第二个索引」（1–26 时末端 25/26 相距 44px < 72px 最小间距，末端标签可重叠）；minor「ordinals 未命中 `confirmed_at` 时误标『不在工作日历内』」（ordinals 是有限投影范围不是完整工作日历，应按「未知保持未知」改为「日期不在当前投影范围，无法定位」）。
 - **S4 前提**：切片 B/C 的联合验收试点可引用本片两个面板；Issue 关闭标准第 2 条（最小真实工作流跑通）仍待 S4 对账。
 
@@ -1097,8 +1098,119 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 ### 21.4 S3 登记未收项的现状（2026-11-12）
 
 - **已收**：Codex 二审 minor ×2（`tickOrds` 末端刻度索引、`confirmed_at` 未命中措辞）与独立评审 verified medium ×1（日历轴/条幅 9px 错位）→ PR #221（已合入 `cf4ffea5`；含该 PR 自引入回归的收口：两列跨度不得删唯一首刻度）。
-- **仍开**：Codex 二审 major 1（工作台每节 8 条截断后无展开/分页入口）；独立评审 low 2（工作台 `coordination` 形状兜底、`windowOf` 缺包时静默移出重叠判定）。
-- **待业主裁的结构问题**：面板侧冲突分类与模块 `detectCoordinationConflicts` 是同一口径的两处实现（模块至今无生产消费方）——是否改由 loader 单一来源、面板纯渲染（§20 已登记）。
+- **仍开**：Codex 二审 major 1（工作台每节 8 条截断后无展开/分页入口）；独立评审 low 2（工作台 `coordination` 形状兜底、`windowOf` 缺包时静默移出重叠判定）。 → 已收（§22）。
+- **待业主裁的结构问题**：面板侧冲突分类与模块 `detectCoordinationConflicts` 是同一口径的两处实现（模块至今无生产消费方）——是否改由 loader 单一来源、面板纯渲染（§20 已登记）。 → 已裁定并收口（§22）。
+
+---
+
+## 22. S3.2 收尾闭环（2026-11-12）
+
+> **本节只追加，不改写 §1–§21。** 工作树 `/home/tao/projects/bontop-wt/ep-202-s3-2-closeout`
+> （分支 `fix/202-s3-2-closeout`，基 `origin/master` `4d5b595c`）。本片收口 §21.4 两条未收项与
+> §20 登记的「已知张力（留业主裁）」：冲突分级从「两处实现」收成 loader 单一来源、面板改纯渲染，
+> 并补上 Codex 二审 major 的截断入口与独立评审 low 的形状守卫。
+
+### 22.1 单一来源接线：loader 调 `detectCoordinationConflicts`，快照透出 `coordination_conflicts`
+
+- **算法不动**：冲突分级唯一实现仍是 `shared/schedule-projection.ts` 的
+  `detectCoordinationConflicts`（§4 第 6 条 / §16.4 / §17.4 的两级口径），本片不重写、不改语义。
+- **loader 摊平 + 接线**（`shared/schedule-state.ts`）：
+  - `coordinationScheduleItems(control)`：主车道（`sequence < 900`）`checks[].coordination` 摊平成
+    `CoordinationScheduleItem[]`——**每条 coordination 的每个 `required_roles` 角色产出一条**；
+    `owner_role`（协调组织者「谁去约人」）**不进占用**；侧车道 PKG-900 不进（投影里没有它的包，
+    硬塞会被模块判 `unknown_coordination_package`）。
+  - load 期调用 `detectCoordinationConflicts(items, scheduleProjection)`，结果挂
+    `ScheduleState.coordinationConflicts`；检测失败 **fail-closed**：`coordination conflicts: <code> — <message>`
+    进 `errors`（不降级成空报告——空报告是「无冲突」这个结论，失败是「不知道」），route 见 errors 即 503。
+  - `buildScheduleSnapshot` 纯增量搬运：快照新键 `coordination_conflicts`（形状 =
+    `CoordinationConflictReport`，类型从模块复用、不另定义）。**键三分语义**：键缺失 = 不知道
+    （旧快照/旧服务端）；`{conflicts: [], potential: []}` = 无冲突也无潜在重叠；有簇 = 逐簇徽标。
+    冲突不是门禁输入，不进 `gateStatus` / `effectiveReadiness`，不新增任何写通道（§5 口径不变）。
+- **面板删掉第二套分类改纯渲染**（`app/src/ui/RoleWorkbenchPanel.ts`）：S3 的面板侧展示分类
+  （`isConfirmed` / `dayOf` / `participatesIn` / `windowOf` / `windowsOverlap` / `overlapComponents`
+  及 `WindowedEntry`、`scheduleMissingNote`）连同 `snapshot.schedule` 消费一起删除；现场冲突节只读
+  `coordination_conflicts`，徽标 = 级别固定中文（「确定冲突」/「潜在重叠（尚未确认预约）」）+
+  服务端 `reason` 原文，簇内每个 SCH 仍可点（selection = {该 SCH 的包, SCH id}）。面板只从模块
+  import **类型**（`CoordinationConflictReport` / `CoordinationOverlap`），不 import 任何函数、
+  不自算冲突（D4）。
+- **机器对账**：新增 `tests/server/schedule-coordination-conflicts.test.ts`（283 行）：真实
+  `control.yaml` 下快照 `coordination_conflicts` 存在、`conflicts` 0、`potential` 4 簇（业主 7 /
+  设计师 6 / 施工方 3 / 空调商 3）与 `tests/server/schedule-projection.test.ts` 的模块用例逐条同值
+  （SCH-080-01 remote / SCH-090-01 notify 不进簇）；构造用例钉 `owner_role` 排除、无 coordination 时
+  键为 `{conflicts: [], potential: []}`（不是 undefined）、真有冲突时键里带得出 `conflicts`。
+
+### 22.2 面板两条收尾
+
+- **截断入口（Codex 二审 major 的答复）**：每节行数上限 `MAX_VISIBLE_ROWS`（8）保留、折叠态出
+  「等 N 条」；超出时给**可操作入口**——真按钮「查看全部 N 条」→ 该节全量 +「收起」。按钮文字自带、
+  窄屏同样可用，不依赖 `title`（`title` 全量通道保留）。展开态住实例字段 `expandedSections`
+  （key = `${role}|${section}`），re-render（点选、选中态订阅回调、容器尺寸变化重渲）后保持——
+  只是本地 UI 状态，不写服务端、不进任何配置。
+- **coordination 形状守卫（独立评审 low 的答复）**：遍历 `coordination` 时 entry 为 null/数组/非对象
+  → 跳过并计数，面板级文案「N 条协调项形状非法，已跳过（快照版本不符）」；报告簇形状不符同理
+  （「N 簇冲突报告形状非法，已跳过」）。报告点名而 `coordination` 索引里解析不到的 SCH：徽标（按
+  报告规模）与 `reason` 照出、差额在说明行明说——不静默缩水；`windowOf` 一类「缺包即静默移出
+  判定」的路径随面板侧分类一起删除。
+
+### 22.3 三条历史未收项逐条判账
+
+| 登记处 | 原口径 | 判定 |
+|---|---|---|
+| §20 Codex 审查段（二审 major 1）／§21.4「仍开」 | 工作台每节 8 条截断后无展开/分页入口（触屏端无法可靠读 `title`） | **已收**：§22.2 截断入口 |
+| §21.4「仍开」（独立评审 low 2） | 工作台 `coordination` 形状兜底；`windowOf` 缺包时静默移出重叠判定 | **已收**：形状守卫显形计数（§22.2）；`windowOf` 及其所属面板侧分类已随单一来源整体删除（§22.1），该静默路径不再存在 |
+| §20「已知张力（留业主裁）」／§21.4「待业主裁的结构问题」 | 面板侧冲突分类与模块 `detectCoordinationConflicts` 同一口径两处实现（模块无生产消费方） | **已收**：§22.1 loader 单一来源、面板纯渲染；对账由 `schedule-coordination-conflicts.test.ts` 承担 |
+
+### 22.5 Codex 二审 blocking 与 minor 的收口（2026-11-12，同一 PR）
+
+- **blocking（角色摊平去重，正确性/接线回归）**：`coordinationScheduleItems` 原先按 `required_roles`
+  的每个元素直接产出占用项，而校验不拒绝重复角色——`['业主','业主']` 且 confirmed 时会产出
+  `sch_ids: ['SCH-X','SCH-X']` 的「确定冲突」（未确认时误报潜在重叠）。S3 的旧面板用 `includes`
+  判角色、每条 SCH 只计一次，故这是接线后的回归。两层收口：① 摊平层保序去重（即使校验被绕过也不自冲突）；
+  ② 校验层 fail-loud 新错误码 `coordination_roles_duplicate`（见 §2.1(d) 表）。
+- **minor 2（三审：有簇被跳过后仍显示「无冲突」）**：报告 `{conflicts:[null], potential:[]}` 时页面同时出
+  「1 簇冲突报告形状非法，已跳过」与「无冲突、无潜在窗口重叠」，两句矛盾。收口为一个判定点：
+  `conflictShapeSkipped > 0` 时空态改判「冲突报告不完整：N 簇形状非法已跳过（快照版本不符），
+  无法判断是否还有冲突」——不完整就不下「无冲突」结论。
+- **minor（报告成员编号非法被静默过滤）**：面板把 `sch_ids` 里非字符串/空串成员过滤掉却只按合法成员算徽标。
+  现在非法成员计入徽标规模（报告口径不缩水），说明行拆分两类差额：「N 条成员编号非法，已跳过」与
+  「另有 N 条在本快照 coordination 里没有条目」——两种差额都显形，`windowOf` 静默路径已随单一来源删除。
+
+### 22.4 门禁判定行（工作树实测，原文）
+
+```
+typecheck（exit 0）：[ci] typecheck: 实际失败 0 条，基线 0 条。 / [ci] typecheck: 无基线外新失败，对照通过。
+test-server（exit 0）：[ci] test-server: 实际失败 0 条，基线 0 条。 / [ci] test-server: 无基线外新失败，对照通过。
+test-app（exit 0）：[ci] test-app: 实际失败 3 条，基线 3 条。 / [ci] test-app: 无基线外新失败，对照通过。
+verify-all（exit 0）：[ci] verify-all: 实际失败 1 条，基线 1 条。 / [ci] verify-all: 无基线外新失败，对照通过。
+build:app（exit 0）：- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks / - Adjust chunk size warning limit for this warning via build.chunkSizeWarningLimit.
+```
+
+### 22.5 三问回答（删了什么 / 推翻了什么 / 何时静默失效）
+
+- **删了什么**：面板侧整套冲突分类与 `scheduleMissingNote`（「缺排程投影，潜在窗口无法判断」
+  文案）、面板对 `snapshot.schedule` 的消费；§7 角色工作台行行数由 S3 估值改 S3.2 实测（898/840，
+  原 762/663）并补数据列 `coordination_conflicts`。删除的是第二套口径与其静默路径，不是任何
+  冲突/协调数据——数据全在快照（`coordination` / `coordination_conflicts`）里。
+- **推翻了什么**：§20「已知张力（留业主裁）」的「面板侧展示分类与之并存」状态——本片按该段
+  预先写好的方向（loader 调模块函数、报告进快照、面板纯渲染）收口；§21.4 两条未收项判「已收」；
+  面板「缺排程投影时出文字、不出潜在徽标」的降级口径被「键缺失 = 冲突无法检测（不冒充无冲突）」
+  取代（原文字面保留在 §20 / §21.4，执行以本节为准）。§16.4 / §17.4 的两级口径本身不变，只是
+  执行位置从面板搬到模块（模块口径一字未动）。
+- **新增部分在什么条件下会静默失效**：
+  1. **键缺失被读成「无冲突」**：缺失语义是「不知道」（旧快照/旧服务端）。本面板用三分语义挡住
+     这一处；未来新消费方若直接 `?? {conflicts: [], potential: []}`，就把「不知道」读成「无冲突」。
+     触发：新增消费方不查键存在性。
+  2. **单一来源再次漂移**：机器对账目前只在测试里（loader 报告与模块用例逐条同值），没有 facts
+     契约拦「面板/新消费方自算分级」。触发：新 UI 需求要求面板自己排序/过滤并顺手重算分级——
+     届时须先把该需求搬进报告形状。
+  3. **摊平侧少条目**：`coordinationScheduleItems` 跳过空/非字符串角色与畸形块，依赖 loader 校验
+     `coordination_roles_invalid` / `coordination_invalid` 显形兜底；新增一种畸形形态而校验没跟上
+     时会静默少算占用。触发：`coordination` 块结构扩展而摊平与校验其一先落地。
+  4. **展开态是实例内存**：`expandedSections` 跨 re-render 保持，但页面重载即丢——本地 UI 状态，
+     不带任何持久语义；若未来写进 URL/存储须另登记口径。
+
+- **本文档同步**：§20 段末与 §21.4 两条 bullet 只追加指向（原文保留）；§7 角色工作台行改实测
+  行数并补 `coordination_conflicts`（原 762/663 保留在括注里）。
 
 ---
 
