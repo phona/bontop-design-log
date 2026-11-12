@@ -67,6 +67,9 @@ test('真实路由响应喂进两个面板：真实数据渲染出来，形状�
   }
   const schedule = payload.schedule;
   assert.ok(schedule, 'schedule 键必须在（面板的排程视图来源）');
+  // 只读基准必须取在面板拿到 payload **之前**：渲染期间的原地改写才可能被下面比较抓到
+  // （Codex 一审 major：基准取在渲染后等于把改写写进基准）。
+  const payloadBaseline = JSON.stringify(payload);
 
   // ② 装 DOM + 喂响应体。
   const dom = new JSDOM('<!doctype html><html><body><div id="approval-page-panels"></div></body></html>', {url: 'http://localhost/'});
@@ -94,16 +97,30 @@ test('真实路由响应喂进两个面板：真实数据渲染出来，形状�
 
   // ③ 真实数据断言（期望值从响应体本身推导，不做「面板没渲染也不会红」的空断言）。
   const coordination = payload.coordination ?? {};
-  const firstSchId = Object.keys(coordination)[0];
-  assert.ok(firstSchId, '真实 control.yaml 应有 9 条 coordination（数据扩面后本测试自动跟随）');
-  assert.ok(workbenchText.includes(firstSchId), `工作台应渲染 coordination 条目 ${firstSchId}`);
-  assert.ok(calendarText.includes(firstSchId), `日历应渲染 chip ${firstSchId}`);
+  const coordinationIds = Object.keys(coordination);
+  // 条数必须独立钉死，不能从响应体自身推导：条目若从快照里整体消失，循环里就没有它，
+  // 「逐条断言」会静默通过（Codex 一审 major 的同类陷阱）。9 = 设计 §20 的试点规模；
+  // 扩面时同步本断言（失败信息直接说明该改哪里）。
+  assert.equal(coordinationIds.length, 9, '真实 control.yaml 的试点 coordination 应为 9 条（设计 §20）；扩面时同步本断言');
   const packageNameById = new Map((payload.packages ?? []).map((pkg) => [pkg.id, pkg.name ?? pkg.id]));
-  for (const entry of Object.values(coordination)) {
+  // 逐条按 data-sch-id 定位**具体行/chip**（Codex 一审 major：只查全文会出现「行漏渲染但包名
+  // 恰好出现在其它节里」的假绿）。工作台协调行 = .rw-coord-row，日历条幅 = .cal-chip。
+  const coordRows = Array.from(dom.window.document.querySelectorAll('.rw-coord-row[data-sch-id]'));
+  const chips = Array.from(dom.window.document.querySelectorAll('.cal-chip[data-sch-id]'));
+  for (const schId of coordinationIds) {
+    const entry = coordination[schId];
     const name = packageNameById.get(entry.package_id);
     assert.ok(name, `coordination 指向的包 ${entry.package_id} 必须在 packages 里（快照自洽）`);
-    assert.ok(workbenchText.includes(name), `工作台应渲染协调项所属包「${name}」（${entry.package_id}）`);
+    const row = coordRows.find((element) => (element as HTMLElement).dataset.schId === schId);
+    assert.ok(row, `工作台应有协调行 ${schId}（.rw-coord-row[data-sch-id]）`);
+    assert.ok((row.textContent ?? '').includes(name), `协调行 ${schId} 内应写所属包「${name}」`);
+    assert.equal((row as HTMLElement).dataset.pkgId, entry.package_id, `协调行 ${schId} 的 data-pkg-id 应与快照一致`);
+    const chip = chips.find((element) => (element as HTMLElement).dataset.schId === schId);
+    assert.ok(chip, `日历应有 chip ${schId}（.cal-chip[data-sch-id]）`);
+    // chip 不带 data-pkg-id（日历按 SCH 定位；包归属由工作台行的 data-pkg-id 与快照自洽性覆盖）。
+    assert.equal((chip as HTMLElement).dataset.status, entry.status, `chip ${schId} 的 data-status 应与快照一致`);
   }
+  assert.equal(chips.length, coordinationIds.length, '日历 chip 数应等于协调条目数（每条的潜在窗口各一条幅）');
 
   // 冲突节：真实数据有潜在簇（9 条全 pending_invite）时不得显示「无冲突」。
   const potentialClusters = payload.coordination_conflicts?.potential ?? [];
@@ -129,11 +146,10 @@ test('真实路由响应喂进两个面板：真实数据渲染出来，形状�
     assert.match(calendarText, DATE_PATTERN, '锚点就绪时日历列头应带快照日期');
   }
 
-  // 只读：渲染不改写响应体（面板只读快照；改写了说明有原地 mutate）。
-  const payloadAfter = JSON.stringify(payload);
+  // 只读：与**渲染前**的基准逐字节比较（渲染期间的原地改写才可能被抓到）。
   workbench.hide();
   calendar.hide();
-  assert.equal(JSON.stringify(payload), payloadAfter, '面板渲染不得改写快照对象');
+  assert.equal(JSON.stringify(payload), payloadBaseline, '面板渲染不得改写快照对象（逐字节对照渲染前基准）');
 
   dom.window.close();
 });

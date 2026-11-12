@@ -1229,8 +1229,13 @@ build:app（exit 0）：- Use build.rollupOptions.output.manualChunks to improve
   会把 app 面板拉进 root 类型检查，别名与 `app/tsconfig.json` 同源；两棵树 typecheck 均 0 错。
   新增 devDependency `@types/jsdom`（与既有 `@types/express`/`@types/supertest` 同惯例；jsdom
   本来就在 devDeps，此前无类型声明）。
-- **变异验证**：删掉快照的 `coordination_conflicts` 装配 → 集成测试精确报「响应缺
-  coordination_conflicts——面板读的就是这个键」；恢复 → 绿。
+- **Codex 一审 major 两处的收口**：① 只读基准改取在面板拿到 payload **之前**（渲染期间的原地
+  改写才可能被抓到）；② 逐条断言改为按 `.rw-coord-row[data-sch-id]` / `.cal-chip[data-sch-id]`
+  定位具体行/chip（并在行内核对所属包名与 `data-pkg-id`），不再拿整段文本的包名出现当证据；
+  另钉死试点条数 9（从响应体自身推导会出现「条目整体消失 → 循环里没有它 → 假绿」）。
+- **变异验证**：① 删掉快照的 `coordination_conflicts` 装配 → 精确报「响应缺
+  coordination_conflicts——面板读的就是这个键」；② 快照漏掉一条试点协调（SCH-070-01）→
+  报「试点 coordination 应为 9 条」；恢复 → 绿。
 - **门禁**（工作树实测判定行）：`ci:typecheck` 0/0；`ci:test-server` 0/0（含新测试）；
   `ci:test-app` 3 失败（HouseScene 存量，基线内）/ 944 通过；`ci:verify-all` 1 失败（verify-mep 存量，
   基线内）；`build:app` 通过。
