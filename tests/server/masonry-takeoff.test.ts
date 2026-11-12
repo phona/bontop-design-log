@@ -157,13 +157,13 @@ test('overlay 的 38 段贴砖声明全部通过 L2 几何交叉层', () => { //
 
 // ── ② 数量独立复算 ───────────────────────────────────────────────────────────
 
-test('wall_region 18 段实算 21.551㎡，逐房拆分', () => { // R04：客卫北墙砖段 +0.265㎡、阳台南墙砖段 +0.03㎡，东墙淋浴段拆二面积不变
+test('wall_region 18 段实算 20.516㎡，逐房拆分', () => { // R04：客卫北墙砖段 +0.265㎡、阳台南墙砖段 +0.03㎡，东墙淋浴段拆二面积不变；2026-11-12 PR #225 砖带 2.65→2.50，−1.035
   const result = computeMasonryTakeoff(buildInput());
-  close(result.wallTileSqm, 21.5505); // R04：客卫北墙砖段 +0.265㎡ + 阳台南墙砖段 +0.03㎡
-  close(result.byRoom.kitchen.wallTileSqm, 9.9);
+  close(result.wallTileSqm, 20.5155); // R04：客卫北墙砖段 +0.265㎡ + 阳台南墙砖段 +0.03㎡；2026-11-12 PR #225：7 条砖带 −1.035㎡
+  close(result.byRoom.kitchen.wallTileSqm, 9.36); // 2026-11-12 PR #225：东墙 6.36→6.00、西墙 2.65→2.50、残段 0.53→0.50，−0.54
   close(result.byRoom.balcony.wallTileSqm, 0.84); // R04：南墙阳台侧砖段随墙长 +0.03㎡
-  close(result.byRoom.master_bath.wallTileSqm, 3.7705);
-  close(result.byRoom.guest_bath.wallTileSqm, 7.04); // R04：北墙砖段 +0.265㎡（6.775→7.040）
+  close(result.byRoom.master_bath.wallTileSqm, 3.598); // 2026-11-12 PR #225：南墙淋浴 3.0475→2.875，−0.1725
+  close(result.byRoom.guest_bath.wallTileSqm, 6.7175); // R04：北墙砖段 +0.265㎡（6.775→7.040）；2026-11-12 PR #225：北墙 4.24→4.00、东墙 0.9275→0.875、kitseg 0.53→0.50，−0.3225
   close(result.byRoom.living_dining.wallTileSqm, 0, '客厅只有 sill_region（防水台），没有 wall_region');
 });
 
@@ -188,9 +188,9 @@ test('sill_region 20 段实算 15.468㎡（含卧室/书房防水台 front+top�
   close(front.top, 2.83, 'front 是竖面，top = sill + height');
 });
 
-test('全部贴砖 37.019㎡ = wall_region + sill_region', () => { // R04 后实算（原 36.724）
+test('全部贴砖 35.984㎡ = wall_region + sill_region', () => { // R04 后实算（原 36.724）；2026-11-12 PR #225 砖带随吊顶下调 2.65→2.50，−1.035
   const result = computeMasonryTakeoff(buildInput());
-  close(result.totalTileSqm, 37.018599347, undefined, 1e-4);
+  close(result.totalTileSqm, 35.983599347, undefined, 1e-4);
   close(result.totalTileSqm, result.wallTileSqm + result.sillTileSqm);
   assert.deepEqual(Object.keys(result.byZone), ['visible'], 'C18 废止杂砖后全部 zone=visible');
 });
@@ -201,7 +201,7 @@ test('along 单位是米不是毫米（0.60–3.00 = 2.4m，除 1000 会得 0.02
   close(region.from, 0.60);
   close(region.to, 3.00);
   close(region.spanM, 2.4);
-  close(region.areaSqm, 2.4 * 2.65, '6.36㎡；若误按毫米会得到 0.024㎡');
+  close(region.areaSqm, 2.4 * 2.50, '6.00㎡；若误按毫米会得到 0.024㎡'); // 2026-11-12 PR #225：砖带随吊顶下调 2.65→2.50，6.36→6.00
 });
 
 test('干区地面 116.1874㎡ / 湿区 7.936㎡ / 合计 124.1234㎡', () => { // 2026-10-25 DEC-2026-10-25-R01 重算：客餐厅 +1.725、东南房 +2.19 干（原 112.2724 / 7.936 / 120.2084）

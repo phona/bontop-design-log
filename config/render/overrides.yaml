@@ -65,8 +65,8 @@
   applies_to: [web, blender]
 - id: light_kitchen_panel
   anchorY_offset: 0
-  basis: "DEC-2026-10-17-R12：厨房平板灯安装完成面即 ceiling_kitchen 铝扣板吊顶完成面 2.65m（electrical.height 已同步改为 2.65），渲染锚点不再下移"
-  reason: "原 -0.25（已审计 Blender 基线：最终渲染高度 2.55m）废弃；原锚点 2.55m 悬在 2.65m 宿主面下方 0.10m，被 lighting_ceiling_mount_detached 抓出。"
+  basis: "DEC-2026-10-17-R12：厨房平板灯安装完成面即 ceiling_kitchen 铝扣板吊顶完成面 2.50m（electrical.height 已同步改为 2.50；2026-11-12 完成面由 2.65 下调至 2.50），渲染锚点不再下移"
+  reason: "原 -0.25（已审计 Blender 基线：最终渲染高度 2.55m）废弃；原锚点 2.55m 悬在 2.65m 宿主面下方 0.10m，被 lighting_ceiling_mount_detached 抓出。2026-11-12 随完成面下调 0.15m，锚点与宿主面关系不变。"
   applies_to: [web, blender]
 - id: night_guest_bed_side
   anchorY_offset: 0

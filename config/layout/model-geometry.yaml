@@ -398,9 +398,9 @@ walls:
           room: kitchen
           along: [0.60, 3.00]      # z[2.40, 0.00] 段 = 2.40m（东墙，与入户门厅共墙；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：v_ent_sw 移至 3.00，along 自新南端起算 3.00−z）
           bottom: 0.00
-          height: 2.65
+          height: 2.50
           zone: visible
-          reason: 厨房东墙 E2 贴满至 2.65（当前灶台/烟机柜墙，C18 废止杂砖后整段正砖，吊柜以上不再有口径分歧；DEC-2026-10-14 fridge trial 把冰箱移出本墙，瓷砖范围不随此3D候选改变；门厅 0.50m 过渡段收口待门厅终裁）
+          reason: 厨房东墙 E2 贴满至 2.50（2026-11-12 随吊顶完成面下调，原 2.65；当前灶台/烟机柜墙，C18 废止杂砖后整段正砖，吊柜以上不再有口径分歧；DEC-2026-10-14 fridge trial 把冰箱移出本墙，瓷砖范围不随此3D候选改变；门厅 0.50m 过渡段收口待门厅终裁）
       paint_bands:
         - id: paint_living_dining_w_ent_west
           room: living_dining
@@ -526,9 +526,9 @@ walls:
           room: master_bath
           along: [0.00, 1.15]      # x[0, 1.15] 段 = 1.15m，淋浴湿区；2026-10-09 由 1.20 收至 1.15——门洞 d_mbath 自沿墙 1.15 起，瓷砖不扣洞（DEC-2026-10-09-P11）
           bottom: 0.00
-          height: 2.65
+          height: 2.50
           zone: visible
-          reason: 主卫南墙西段，西淋浴湿区 x[0,1.2]，砖到顶 2.65（业主 2026-10-07 终裁 C16，与客卫 C14 同口径；西墙为玻璃幕墙不贴，砖面止于玻璃碰接）
+          reason: 主卫南墙西段，西淋浴湿区 x[0,1.2]，砖到顶 2.50（2026-11-12 随吊顶完成面下调，原 2.65；业主 2026-10-07 终裁 C16，与客卫 C14 同口径；西墙为玻璃幕墙不贴，砖面止于玻璃碰接）
         - id: walltile_mbath_south_dry
           room: master_bath
           along: [1.95, 2.60]      # x[1.95, 2.60] 段 = 0.65m；2026-10-09 由 1.20 推至 1.95——门洞 d_mbath 至沿墙 1.95 止，瓷砖不扣洞（DEC-2026-10-09-P11）
@@ -788,9 +788,9 @@ walls:
           room: guest_bath
           along: [0.00, 1.60]      # 1.60m，客卫北墙（2026-10-23 DEC-2026-10-23-R04：东墙线 7.20 后北墙长 1.50→1.60，砖面随墙贴满）
           bottom: 0.00
-          height: 2.65
+          height: 2.50
           zone: visible
-          reason: 客卫北墙，淋浴区砖到顶（业主 2026-10-07 终裁，吊顶完成面 2.65；北墙窗洞扣减量房后计）
+          reason: 客卫北墙，淋浴区砖到顶（业主 2026-10-07 终裁砖到顶，当时吊顶完成面 2.65；2026-11-12 吊顶下调至 2.50，砖到顶随之 2.50；北墙窗洞扣减量房后计）
   - id: w_gbath_south
     from: v_nw_s
     to: v_gbath_se
@@ -812,9 +812,9 @@ walls:
           room: guest_bath
           along: [0.00, 0.35]      # z[2.40, 2.75] 段（R04 前为沿旧墙 [0.00,0.55]=z[2.20,2.75]，北段 0.20 已分出 kitseg）
           bottom: 0.00
-          height: 2.65
+          height: 2.50
           zone: visible
-          reason: 客卫东墙北段，花洒贴此墙挂载，淋浴区砖到顶（业主 2026-10-07 终裁）
+          reason: 客卫东墙北段，花洒贴此墙挂载，淋浴区砖到顶（业主 2026-10-07 终裁；2026-11-12 吊顶下调至 2.50，砖到顶随之 2.50）
         - id: walltile_gbath_east_rest
           room: guest_bath
           along: [0.35, 1.15]      # z[2.75, 3.55] 段 = 0.80m（R04 随墙起点南移沿墙坐标 −0.20）
@@ -887,9 +887,9 @@ walls:
           room: kitchen
           along: [0.00, 1.00]      # 1.00m
           bottom: 0.00
-          height: 2.65
+          height: 2.50
           zone: visible
-          reason: 厨房西墙实墙段（与 VRV 设备间共墙），无橱柜遮蔽，E2 贴满至 2.65 正砖
+          reason: 厨房西墙实墙段（与 VRV 设备间共墙），无橱柜遮蔽，E2 贴满至 2.50 正砖（2026-11-12 随吊顶下调）
   - id: w_balc_east
     from: v_vrv_se
     to: v_balc_ne
@@ -922,16 +922,16 @@ walls:
           room: kitchen
           along: [0.00, 0.20]      # 0.20m 残段
           bottom: 0.00
-          height: 2.65
+          height: 2.50
           zone: visible
-          reason: 西墙南端 0.20m 残段，E2 贴满至 2.65 正砖；“冰箱位背墙/高柜包络”仅为历史备注，DEC-2026-10-14试案将冰箱置于客餐厅，不能据此推断当前位置或柜体。
+          reason: 西墙南端 0.20m 残段，E2 贴满至 2.50 正砖（2026-11-12 随吊顶下调）；“冰箱位背墙/高柜包络”仅为历史备注，DEC-2026-10-14试案将冰箱置于客餐厅，不能据此推断当前位置或柜体。
         - id: walltile_gbath_east_shower_kitseg
           room: guest_bath
           along: [0.00, 0.20]      # z[2.20, 2.40] 段：2026-10-23 DEC-2026-10-23-R04 墙线拉直后该段由 w_kit_west 承载，西脸属客卫淋浴区
           bottom: 0.00
-          height: 2.65
+          height: 2.50
           zone: visible
-          reason: 客卫东墙最北段（与 w_gbath_east 淋浴段同面连续），淋浴区砖到顶（业主 2026-10-07 终裁）
+          reason: 客卫东墙最北段（与 w_gbath_east 淋浴段同面连续），淋浴区砖到顶（业主 2026-10-07 终裁；2026-11-12 吊顶下调至 2.50，砖到顶随之 2.50）
   # w_liv_west 已删除——主走廊与客厅开放贯通
   # 内墙 — 厨房 / 客餐厅 / 客房
   # w_kit_east 已删除（2026-08-23）：与 w_ent_west 是同一堵物理墙（x=10.8, z 0→2.9，西侧厨房/客餐厅、东侧入户花园），

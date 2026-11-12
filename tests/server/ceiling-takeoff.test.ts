@@ -118,7 +118,7 @@ test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   assert.equal(byClass.drying_rack.zones, 1);
   assert.ok(Math.abs(byClass.drying_rack.netAreaM2 - 1.08) < 1e-9);
   assert.ok(Math.abs(takeoff.totalNetAreaM2 - 46.385) < 0.01) // R01 重算：门厅区 +1.5026; // R04：北带 −0.06 + 客卫吊顶 +0.21
-  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 78.256) < 0.05); // R01 重算：门厅区展开面积 = 净 2.561 + 周长 6.54×厚 0.30
+  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 82.474) < 0.05); // R01 重算：门厅区展开面积 = 净 2.561 + 周长 6.54×厚 0.30；2026-11-12：厨房/客卫/主卫铝扣板 0.15→0.30，三区周长 (12.0+8.72+7.4)×0.15 = +4.218，78.256→82.474
 });
 
 test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () => {
@@ -146,7 +146,7 @@ test('铝扣板板块数：eps-ceil，浮点不会多算一块板', () => {
 
 test('完成面标高与房间对照：原顶房间显形，不静默跳过', () => {
   assert.ok(Math.abs(byId.get('ceiling_living')!.bottomY - (2.8 - 0.3)) < 1e-9);
-  assert.ok(Math.abs(byId.get('ceiling_kitchen')!.bottomY - (2.8 - 0.15)) < 1e-9);
+  assert.ok(Math.abs(byId.get('ceiling_kitchen')!.bottomY - (2.8 - 0.3)) < 1e-9); // 2026-11-12：厨房铝扣板 0.15→0.30，完成面 2.65→2.50
   // 走廊语义区与其实际降板分别归属；语义区不生成默认房间顶面，但会计入吊顶分区归属。
   assert.equal(takeoff.roomIdsWithCeiling.length, 10);
   assert.ok(takeoff.roomIdsWithCeiling.includes('main_corridor'), '走廊实际降板归属走廊语义区域');

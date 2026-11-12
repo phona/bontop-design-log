@@ -6,7 +6,7 @@
 // 施工安装完成面，灯体下垂由共享几何表达（与 DEC-2026-10-16-R2 / R8/R9 同源）。
 //
 // 本文件钉住三件事：
-// ① 5 盏迁移灯 overrides 归零、basis 引 R12、派生锚点 == electrical.height（kitchen 2.65）；
+// ① 5 盏迁移灯 overrides 归零、basis 引 R12、派生锚点 == electrical.height（kitchen 2.50；2026-11-12 完成面由 2.65 下调）；
 // ② dome 默认分支几何包围盒顶 == 锚点（灯体贴顶，这是 detached 检查的通过前提；
 //    若未来改几何导致「顶≠锚点」，本测试先红，防止检查与渲染再次脱钩）；
 // ③ 宿主面选择/容差纯函数的机制行为：多分区取最低实心面、非实心分区（ac_indoor）
@@ -34,13 +34,13 @@ import type { ElectricalPoint, RenderLightingFixture, ResolvedRoom } from '../..
 const read = (relative: string) => readFileSync(new URL(`../../${relative}`, import.meta.url), 'utf8');
 
 const MIGRATED_IDS = ['light_master_dome', 'light_parent_dome', 'light_child_dome', 'light_study_dome', 'light_kitchen_panel'] as const;
-// kitchen 宿主为 ceiling_kitchen 铝扣板完成面 2.65m，其余 4 盏落在原顶 2.80m 平顶区。
+// kitchen 宿主为 ceiling_kitchen 铝扣板完成面 2.50m（2026-11-12 由 2.65 下调），其余 4 盏落在原顶 2.80m 平顶区。
 const MIGRATED_HEIGHTS: Record<(typeof MIGRATED_IDS)[number], number> = {
   light_master_dome: 2.8,
   light_parent_dome: 2.8,
   light_child_dome: 2.8,
   light_study_dome: 2.8,
-  light_kitchen_panel: 2.65,
+  light_kitchen_panel: 2.5,
 };
 
 const room = (id: string, height = 2.8): ResolvedRoom => ({
@@ -73,19 +73,19 @@ describe('DEC-2026-10-17-R12 吸顶灯锚点迁移', () => {
     }
   });
 
-  it('kitchen 平板灯安装面 2.65 与 ceiling_kitchen 宿主面一致（宿主选择取最低实心面）', () => {
+  it('kitchen 平板灯安装面 2.50 与 ceiling_kitchen 宿主面一致（宿主选择取最低实心面）', () => {
     const electrical = parseElectricalPoints(read('config/electrical.yaml'));
     const zones = parseCeilingZones(read('config/model/envelope/ceiling.yaml'));
     const rooms = [room('kitchen')];
     const point = electrical.find((candidate) => candidate.id === 'light_kitchen_panel');
     assert.ok(point);
-    assert.equal(point.height, 2.65);
+    assert.equal(point.height, 2.5);
     // 顶装灯平面坐标（x/z）本期仍是灯具自身口径（issue #98 S1 不迁灯具平面）
     assert.ok(point.x !== undefined && point.z !== undefined, 'light_kitchen_panel 必须带 x/z');
     const host = selectCeilingHost({ x: point.x, z: point.z }, zones, rooms);
     assert.ok(host, 'kitchen 点位必须落在某个实心吊顶分区内');
     assert.equal(host.zone.id, 'ceiling_kitchen');
-    assert.ok(Math.abs(host.surfaceY - 2.65) < 1e-9);
+    assert.ok(Math.abs(host.surfaceY - 2.5) < 1e-9);
   });
 
   it('4 间卧室 dome 点位均不在任何吊顶分区内（宿主回退原顶 2.80）', () => {

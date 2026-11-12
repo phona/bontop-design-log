@@ -1470,7 +1470,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   {
     const need = needOf(control, 'PKG-060');
     const tileSqm = loadMasonryTakeoff(catalog).totalTileSqm;
-    const wallTilePart = 2591; // R04：墙砖量 36.7236→37.0186 ㎡ ×70 ≈ 2,591（原 2,571）
+    const wallTilePart = 2519; // 2026-11-12 PR #225：墙砖量 37.0186→35.9836 ㎡ ×70 ≈ 2,519（R04 后 2,591）
     if (Math.abs(tileSqm * 70 - wallTilePart) > 1) {
       throw new Error(`cost summary: 墙砖主材对不上（${qty(tileSqm, 4)} ㎡ × 70 = ${qty(tileSqm * 70, 2)}，映射登记 ${wallTilePart}）`);
     }

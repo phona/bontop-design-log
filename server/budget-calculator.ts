@@ -268,8 +268,9 @@ export function loadMasonryTakeoff(
     wetRoomIds: floorRoomSplit.wetRoomIds,
     floorRegions,
     // 厨卫铝扣板完成面（config/model/envelope/ceiling.yaml 的 ceiling_kitchen / ceiling_master_bath /
-    // ceiling_guest_bath，均「完成面 2.65m」）= 贴砖带顶标高上限。必填、不设默认值。
-    clearHeight: 2.65,
+    // ceiling_guest_bath，2026-11-12 已下调至「完成面 2.50m」，本值已同批下调，见 PR #225 Codex 复审 blocking②）
+    // = 贴砖带顶标高上限。必填、不设默认值。
+    clearHeight: 2.50,
   });
 }
 
