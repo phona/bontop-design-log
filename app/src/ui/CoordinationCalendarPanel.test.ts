@@ -345,6 +345,69 @@ describe('CoordinationCalendarPanel', () => {
     expect(chip.style.left).toBe('44px');
   });
 
+  // Codex 二审 minor（2026-11-12 修）：补末列刻度要与**最后一个已排刻度**比最小间距——
+  // 旧实现比的是倒数第二个，1–26 会留下 25、26 相邻 44px（< 72px）导致末端标签压盖。
+  it('末端刻度：抽稀后末列与最后一刻度间距不小于最小间距（1–26 回归钉）', async () => {
+    const ordinals = Array.from({length: 26}, (_unused, index) => ({ord: index + 1, date: null}));
+    const view = scheduleView({
+      ordinals,
+      packages: {'PKG-010': projectionPkg({forecast: windowView(1, 26, 26)})},
+    });
+    stubFetch({state: snapshot({schedule: view})});
+    const panel = new CoordinationCalendarPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.cal-tick')).toBeTruthy());
+
+    const ticks = Array.from(document.querySelectorAll('.cal-tick')).map((el) => Number((el as HTMLElement).dataset.ord));
+    expect(ticks[0]).toBe(1);
+    expect(ticks[ticks.length - 1]).toBe(26);
+    for (let index = 1; index < ticks.length; index += 1) {
+      // 最小间距 = ceil(MIN_TICK_SPACING_PX / DAY_COLUMN_PX) = ceil(72/44) = 2 个 ord
+      expect(ticks[index] - ticks[index - 1]).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  // 独立评审 medium（2026-11-12 修）：轴刻度与行内容区（chip/网格）必须同源内缩，
+  // 否则条幅整体右移「行边框 + 行内边距」= 9px。jsdom 不做布局，这里钉两处样式的耦合。
+  it('轴线与行内容区同源内缩：轴 margin = 行内边距 + 行边框（9px 错位回归钉）', async () => {
+    stubFetch();
+    const panel = new CoordinationCalendarPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.cal-chip')).toBeTruthy());
+
+    const axis = document.querySelector('#coordination-calendar-axis') as HTMLElement;
+    const row = document.querySelector('.cal-row[data-sch-id="SCH-010-02"]') as HTMLElement;
+    const rowStyle = getComputedStyle(row);
+    const rowInset = parseFloat(rowStyle.paddingLeft) + parseFloat(rowStyle.borderLeftWidth);
+    expect(rowInset).toBe(9);
+    expect(axis.style.marginLeft).toBe(`${rowInset}px`);
+    expect(axis.style.marginRight).toBe(`${rowInset}px`);
+  });
+
+  // Codex 二审 minor（2026-11-12 修）：ordinals 是有限投影范围、不是完整工作日历——
+  // 查表未命中只能声明「日期不在当前投影范围」，不得推断成「不在工作日历内」。
+  it('confirmed_at 不在投影范围：措辞只声明「日期不在当前投影范围，无法定位」', async () => {
+    const view = scheduleView({
+      anchor_date: '2026-03-02',
+      ordinals: [
+        {ord: 1, date: '2026-03-02'},
+        {ord: 2, date: '2026-03-03'},
+        {ord: 3, date: '2026-03-04'},
+        {ord: 4, date: '2026-03-05'},
+      ],
+    });
+    const snap = snapshot({schedule: view});
+    snap.coordination!['SCH-010-02'] = coordination({status: 'confirmed', confirmed_at: '2026-04-30'});
+    stubFetch({state: snap});
+    const panel = new CoordinationCalendarPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.cal-row[data-sch-id="SCH-010-02"]')).toBeTruthy());
+
+    const rowText = (document.querySelector('.cal-row[data-sch-id="SCH-010-02"]') as HTMLElement).textContent ?? '';
+    expect(rowText).toContain('确认登记日 2026-04-30（日期不在当前投影范围，无法定位）');
+    expect(rowText).not.toContain('不在工作日历内');
+  });
+
   // 任务书 §4-17 / 设计 §17.4：cancelled 不画 chip，只在面板说明里注明计数。
   it('cancelled 不画 chip 且计数注明「已取消 N 条（解除占用）」', async () => {
     stubFetch();
