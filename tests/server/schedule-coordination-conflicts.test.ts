@@ -178,6 +178,35 @@ describe('coordinationScheduleItems：只走 required_roles（owner_role 是组�
       [],
     );
   });
+
+  // Codex 二审 blocking（2026-11-12 修）：重复角色会让单条预约产出两条占用项、与自己成簇
+  // （confirmed → sch_ids ['SCH-Y-01','SCH-Y-01'] 的「确定冲突」；旧面板用 includes 判角色，
+  // 每条 SCH 只计一次，故这是接线后的回归）。摊平层去重（保序）是第一道；校验层已把重复角色
+  // 报成 coordination_roles_duplicate（见沙箱用例），这里钉「即使校验被绕过也不自冲突」。
+  it('重复角色去重（保序）：单条预约不与自身成冲突', () => {
+    const items = coordinationScheduleItems({
+      work_packages: [{
+        id: 'PKG-Y',
+        sequence: 10,
+        checks: [{
+          id: 'SCH-Y-01',
+          coordination: {
+            required_roles: ['业主', '业主', '施工方'],
+            mode: 'onsite',
+            lead_time_workdays: 1,
+            owner_role: '业主',
+            status: 'confirmed',
+            actor: {name: '王工', org: null},
+            confirmed_at: '2026-03-02',
+            escalation: '提前量过半未确认 → 升级到业主并顺延预测窗口',
+          },
+        }],
+      }],
+    });
+    assert.deepEqual(items.map((item) => item.role), ['业主', '施工方'], '重复角色必须去重且保序');
+    assert.equal(items.filter((item) => item.role === '业主').length, 1);
+    assert.ok(!items.some((item, index) => items.some((other, otherIndex) => index !== otherIndex && other.sch_id === item.sch_id && other.role === item.role)), '同一 SCH 同一角色不得出现两条');
+  });
 });
 
 describe('沙箱（symlink 农场，js-yaml 改树）：空报告与真冲突', () => {
@@ -238,6 +267,30 @@ describe('沙箱（symlink 农场，js-yaml 改树）：空报告与真冲突', 
       assert.deepEqual(buildScheduleSnapshot(state).coordination_conflicts, {conflicts: [], potential: []});
       // 同一份数据的 coordination 键同样退化成空映射，不造空对象
       assert.deepEqual(buildScheduleSnapshot(state).coordination, {});
+    } finally {
+      writeFileSync(join(sandbox, 'schedule/phase-1/control.yaml'), pristineControlText);
+    }
+  });
+
+  it('required_roles 含重复角色：报 coordination_roles_duplicate（fail-loud，不静默去重）', () => {
+    writeControl((tree) => {
+      const coordination = findCheck(tree, 'SCH-000-01').coordination;
+      coordination.required_roles = ['业主', '业主', '施工方'];
+    });
+    try {
+      const state = loadState(sandbox);
+      assert.ok(
+        state.errors.some((error) => error.includes('coordination_roles_duplicate')),
+        `重复角色必须显形为错误（声明错误不静默去重），实际 errors：${JSON.stringify(state.errors)}`,
+      );
+      // fail-loud 走 errors（非空 → route 在 build 之前 503，报告不会被消费）；即便这里仍算出了报告，
+      // 也不得出现「同一条预约与自己成簇」的伪冲突——摊平层去重是第二道保险。
+      const report = state.coordinationConflicts;
+      if (report) {
+        for (const entry of [...report.conflicts, ...report.potential]) {
+          assert.equal(new Set(entry.sch_ids).size, entry.sch_ids.length, `簇内不得有重复成员：${JSON.stringify(entry)}`);
+        }
+      }
     } finally {
       writeFileSync(join(sandbox, 'schedule/phase-1/control.yaml'), pristineControlText);
     }

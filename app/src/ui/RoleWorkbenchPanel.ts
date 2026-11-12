@@ -236,8 +236,10 @@ interface ConflictCluster {
   level: 'conflict' | 'potential';
   badge: string;
   reason: string;
-  /** 报告点名的 SCH 条数（徽标口径 = 服务端说的簇规模，不因本面板解析失败而缩水）。 */
+  /** 报告点名的 SCH 条数（徽标口径 = 服务端说的簇规模，不因成员编号非法/解析失败而缩水）。 */
   size: number;
+  /** sch_ids 里非字符串/空串的成员条数（报告形状坏；计入 size，渲染时明说，不静默丢）。 */
+  invalidMembers: number;
   /** sch_ids 在 coordination 索引里解析到的成员（解析不到的渲染不出行，见 renderCluster）。 */
   members: CoordinationRow[];
 }
@@ -430,13 +432,17 @@ export class RoleWorkbenchPanel {
           // 该 SCH 渲染不出可点行，但簇徽标（按报告规模）与 reason 照出，差额在 renderCluster
           // 里明说——不静默缩水、也不假装没有这条协调。
           const named = overlap.sch_ids.filter((schId) => isRoleName(schId));
+          // 非法成员（非字符串/空串）与「解析不到」分开计数：前者是报告形状坏、后者是快照自相矛盾，
+          // 两种差额都要显形（Codex 二审 minor：只过滤不计数 = 静默丢）。
+          const invalidMembers = overlap.sch_ids.length - named.length;
           clustersByRole.set(overlap.role, [
             ...(clustersByRole.get(overlap.role) ?? []),
             {
               level,
               badge: level === 'conflict' ? CONFLICT_BADGE : POTENTIAL_BADGE,
               reason: overlap.reason,
-              size: named.length,
+              size: overlap.sch_ids.length,
+              invalidMembers,
               members: named
                 .map((schId) => {
                   const entry = coordById.get(schId);
@@ -671,11 +677,18 @@ export class RoleWorkbenchPanel {
 
   private renderCluster(cluster: ConflictCluster, visible: CoordinationRow[], narrow: boolean): string {
     const color = cluster.level === 'conflict' ? CONFLICT_COLOR : POTENTIAL_COLOR;
-    // 报告点名的 SCH 在本快照 coordination 里解析不到：徽标（按报告规模）与 reason 照出
-    // （不静默丢簇），但行渲染不出来——明说差额，不假装没有这几条协调。
-    const unresolved = cluster.size - cluster.members.length;
-    const note = unresolved > 0
-      ? `<div class="rw-cluster-note" style="color:#9aa4b2;font-size:10px;">该簇点名的 ${cluster.size} 条 SCH 里有 ${unresolved} 条在本快照 coordination 里没有条目（快照版本不符）</div>`
+    // 两类差额都显形（徽标按报告规模，不静默缩水）：① 成员编号非法（报告形状坏）
+    // ② 编号合法但本快照 coordination 里没有条目（快照自相矛盾）。
+    const unresolved = Math.max(0, cluster.size - cluster.invalidMembers - cluster.members.length);
+    const notes: string[] = [];
+    if (cluster.invalidMembers > 0) {
+      notes.push(`该簇点名的 ${cluster.size} 条 SCH 里有 ${cluster.invalidMembers} 条成员编号非法，已跳过（快照版本不符）`);
+    }
+    if (unresolved > 0) {
+      notes.push(`另有 ${unresolved} 条在本快照 coordination 里没有条目（快照版本不符）`);
+    }
+    const note = notes.length > 0
+      ? `<div class="rw-cluster-note" style="color:#9aa4b2;font-size:10px;">${notes.join('；')}</div>`
       : '';
     const members = visible.map((member) => this.renderConflictRow(member, cluster, narrow)).join('');
     return `<div class="rw-cluster" data-level="${cluster.level}" style="margin-bottom:6px;">

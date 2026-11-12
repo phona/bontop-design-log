@@ -75,8 +75,9 @@ function coordView(overrides: Partial<ScheduleCoordinationView> = {}): ScheduleC
 }
 
 /** 报告里的一簇（契约形状 {role, sch_ids, reason}；sch_ids 是 SCH id 列表）。 */
-function overlap(role: string, schIds: string[], reason: string): CoordinationOverlap {
-  return {role, sch_ids: schIds, reason};
+function overlap(role: string, schIds: Array<string | null>, reason: string): CoordinationOverlap {
+  // schIds 允许喂坏成员（null/空串）：面板对报告只做运行时形状守卫，测试要能构造坏形状。
+  return {role, sch_ids: schIds as string[], reason};
 }
 
 /**
@@ -373,6 +374,33 @@ describe('RoleWorkbenchPanel', () => {
     panel.hide();
   });
 
+  // Codex 二审 minor（2026-11-12 修）：报告里非字符串/空串的成员编号不得被静默过滤——
+  // 徽标按报告规模（含非法成员）、非法条数显形，合法成员照常可点。
+  it('报告成员编号非法：徽标按报告规模、非法条数显形，合法成员仍可点', async () => {
+    stubFetch(snapshotView({
+      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
+      next_actions: [],
+      coordination: {
+        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite'}),
+      },
+      coordination_conflicts: {
+        conflicts: [],
+        potential: [overlap('业主', ['SCH-030-01', null, ''], '同角色潜在窗口重叠（尚未确认预约，不是确定冲突）：SCH-030-01 第 5–6 工作日')],
+      },
+    }));
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-cluster')).toBeTruthy());
+
+    const badge = document.querySelector('.rw-badge[data-level="potential"]') as HTMLElement;
+    expect(badge.textContent).toContain('3 条'); // 报告规模 = 3（含 2 条非法），不缩水成 1
+    const conflicts = sectionOf('业主', 'conflicts');
+    expect(conflicts.textContent).toContain('2 条成员编号非法，已跳过');
+    expect(conflicts.querySelectorAll('.rw-conflict-row')).toHaveLength(1);
+    expect(conflicts.querySelector('.rw-conflict-row[data-sch-id="SCH-030-01"]')).toBeTruthy();
+    panel.hide();
+  });
+
   // S3.2：面板不再分类——报告为空时，notify 同日两条已确认、confirmed+未确认混合
   // 都造不出徽标（这些分级口径现在单住在服务端 detectCoordinationConflicts）。
   it('面板不自算：报告为空时 notify 与 confirmed+未确认混合都造不出徽标', async () => {
@@ -528,8 +556,9 @@ describe('RoleWorkbenchPanel', () => {
     expect(badge.textContent).toContain('（2 条）'); // 徽标口径 = 服务端说的簇规模
     expect(badge.textContent).toContain(reason);
     expect(sectionOf('业主', 'conflicts').querySelectorAll('.rw-conflict-row')).toHaveLength(1);
+    // 措辞随 Codex 二审 minor 拆分：非法编号与「解析不到」分开计数（这里只有后者）
     expect((document.querySelector('.rw-cluster-note') as HTMLElement).textContent)
-      .toContain('该簇点名的 2 条 SCH 里有 1 条在本快照 coordination 里没有条目（快照版本不符）');
+      .toContain('另有 1 条在本快照 coordination 里没有条目（快照版本不符）');
     panel.hide();
   });
 

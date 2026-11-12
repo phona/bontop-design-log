@@ -1664,6 +1664,8 @@ function validateCheckCoordination(label: string, block: unknown, errors: string
   if (!Array.isArray(coordinationBlock.required_roles) || coordinationBlock.required_roles.length === 0
     || coordinationBlock.required_roles.some((role: unknown) => typeof role !== 'string' || !role.trim())) {
     errors.push(`${label}: coordination_roles_invalid — required_roles 必须是非空的角色字符串数组（到场要求，不是责任归属，got ${JSON.stringify(coordinationBlock.required_roles)}）`);
+  } else if (new Set(coordinationBlock.required_roles).size !== coordinationBlock.required_roles.length) {
+    errors.push(`${label}: coordination_roles_duplicate — required_roles 含重复角色（got ${JSON.stringify(coordinationBlock.required_roles)}）：同一预约不会与自身成冲突，重复声明是错误，不静默去重`);
   }
   if (typeof coordinationBlock.owner_role !== 'string' || !coordinationBlock.owner_role.trim()) {
     errors.push(`${label}: coordination_roles_invalid — owner_role 必须是非空角色（协调组织者：谁去约人）`);
@@ -1768,7 +1770,10 @@ export function coordinationScheduleItems(control: AnyRecord): CoordinationSched
       // 畸形块（非映射）已在 load 校验报成 coordination_invalid；这里只摊平正常块
       if (!block || typeof block !== 'object' || Array.isArray(block)) continue;
       if (!Array.isArray(block.required_roles)) continue;
-      for (const role of block.required_roles) {
+      // 角色去重（保序）：重复角色会让同一条预约产出两条占用项，与自身形成冲突（Codex 二审
+      // blocking：`['业主','业主']` 会得到 sch_ids ['SCH-X','SCH-X'] 的「确定冲突」）。
+      // 校验层已把重复角色报成 coordination_roles_duplicate；这里再兜一层，即使校验被绕过也不自冲突。
+      for (const role of [...new Set(block.required_roles)]) {
         if (typeof role !== 'string' || !role.trim()) continue;
         items.push({
           sch_id: check.id,

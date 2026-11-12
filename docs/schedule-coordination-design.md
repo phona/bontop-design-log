@@ -124,6 +124,7 @@ SCH-000-02 会审、PKG-070 的 SCH-070-01 联合验收，约 6-10 条），**�
 | `coordination_mode_invalid` / `coordination_status_invalid` | 枚举越界 |
 | `coordination_pending_without_escalation` | `status` ∈ {pending_invite, invited} 但 `escalation` 为空（决策铁律第 1 条：新部件必须回答"没人响应时怎么办"） |
 | `coordination_confirmed_without_actor` | `status: confirmed` 但 `actor.name` 为 null |
+| `coordination_roles_duplicate` | `required_roles` 含重复角色（同一预约不会与自身成冲突；重复声明是错误，不静默去重——Codex 二审 blocking，2026-11-12 加） |
 
 ### 2.2 检查记录窗口：派生，不存储（D2；F2 正名；§16 起与预测解耦）
 
@@ -1158,6 +1159,17 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 | §20 Codex 审查段（二审 major 1）／§21.4「仍开」 | 工作台每节 8 条截断后无展开/分页入口（触屏端无法可靠读 `title`） | **已收**：§22.2 截断入口 |
 | §21.4「仍开」（独立评审 low 2） | 工作台 `coordination` 形状兜底；`windowOf` 缺包时静默移出重叠判定 | **已收**：形状守卫显形计数（§22.2）；`windowOf` 及其所属面板侧分类已随单一来源整体删除（§22.1），该静默路径不再存在 |
 | §20「已知张力（留业主裁）」／§21.4「待业主裁的结构问题」 | 面板侧冲突分类与模块 `detectCoordinationConflicts` 同一口径两处实现（模块无生产消费方） | **已收**：§22.1 loader 单一来源、面板纯渲染；对账由 `schedule-coordination-conflicts.test.ts` 承担 |
+
+### 22.5 Codex 二审 blocking 与 minor 的收口（2026-11-12，同一 PR）
+
+- **blocking（角色摊平去重，正确性/接线回归）**：`coordinationScheduleItems` 原先按 `required_roles`
+  的每个元素直接产出占用项，而校验不拒绝重复角色——`['业主','业主']` 且 confirmed 时会产出
+  `sch_ids: ['SCH-X','SCH-X']` 的「确定冲突」（未确认时误报潜在重叠）。S3 的旧面板用 `includes`
+  判角色、每条 SCH 只计一次，故这是接线后的回归。两层收口：① 摊平层保序去重（即使校验被绕过也不自冲突）；
+  ② 校验层 fail-loud 新错误码 `coordination_roles_duplicate`（见 §2.1(d) 表）。
+- **minor（报告成员编号非法被静默过滤）**：面板把 `sch_ids` 里非字符串/空串成员过滤掉却只按合法成员算徽标。
+  现在非法成员计入徽标规模（报告口径不缩水），说明行拆分两类差额：「N 条成员编号非法，已跳过」与
+  「另有 N 条在本快照 coordination 里没有条目」——两种差额都显形，`windowOf` 静默路径已随单一来源删除。
 
 ### 22.4 门禁判定行（工作树实测，原文）
 
