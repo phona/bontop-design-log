@@ -43,6 +43,16 @@
  * scenario 重跑 projectSchedule，视图复用 buildScheduleProjectionView——check_windows 派生 /
  * constraints 映射 / 主车道过滤只有 loader 一份，路由不得另装配一套。
  *
+ * 2026-11-12（issue #202 S3.2 收尾，设计 §4 第 6 条 / §20 的「单一来源」落点）：协调冲突检测
+ * 接到 loader 单一来源。算法仍是 shared/schedule-projection.ts 的 detectCoordinationConflicts
+ * 一份（本文件不改它的语义、不重写第二套冲突口径），loader 只做两件事：①把主车道
+ * checks[].coordination 摊平成 CoordinationScheduleItem[]（coordinationScheduleItems——每个
+ * required_roles 角色一条；owner_role 是组织者、不是到场参与者，不进）；②load 期算好挂到
+ * ScheduleState.coordinationConflicts，由 buildScheduleSnapshot 纯增量搬进
+ * coordination_conflicts 键。快照键三分语义：**键缺失 = 不知道**（旧快照/旧服务端）；
+ * `{conflicts: [], potential: []}` = 无冲突也无潜在重叠；有簇 = 逐簇徽标。冲突不是门禁输入，
+ * 不进 gateStatus / effectiveReadiness，也不新增任何写通道（页面仍只读）。
+ *
  * 排程投影相关 loader 诊断错误码（设计 §2.2/§14/B5/§15.9/§16/§17，error 级）：
  * - check_window_unresolved：gate_status=passed 但该包没有任何可用的 checked_at（YYYY-MM-DD）。
  * - check_window_invalid_checked_at：gate_status=passed 且至少一条 passed 记录的 checked_at
@@ -57,6 +67,9 @@
  *   未映射的兜底。invalid_check_window 只留给模块真的收到的坏窗口（日期串非法或起止颠倒，
  *   §17）。锚点未定不再抛这个码：检查窗口的日期原样进快照，序数为 null（待定）。
  *   null 不是 0，也不是名义纪元序数——0 是锚点前一个工作日的合法序数。
+ * - coordination conflicts: <code> — <message>：协调冲突检测抛错（S3.2）。检测失败时不降级成
+ *   空报告——空报告是「无冲突」这个结论，失败是「不知道」，两者不得混为一谈；errors 非空 →
+ *   route 在 build 之前 503。投影为 null（load 期已失败）时不再补一条：同一失败不重复报。
  */
 
 import fs from 'node:fs';
@@ -73,9 +86,12 @@ import { collectDeclaredFurnitureIds, type DeclaredFurnitureIdEntry } from './fu
 import { collectFinishRecipeIds } from './finish/input.js';
 import type { FurnishingsYaml } from './types.js';
 import {
+  detectCoordinationConflicts,
   projectSchedule,
   validateDag,
   ProjectionError,
+  type CoordinationConflictReport,
+  type CoordinationScheduleItem,
   type ProjectionCheckDates,
   type ProjectionCalendar,
   type ProjectionConstraint,
@@ -318,6 +334,19 @@ export interface ScheduleState {
    * null 同义——what-if 路由按「缺投影入参」回 503 契约错误，不静默降级成空演算。
    */
   scheduleProjectionInput?: ProjectionInput | null;
+  /**
+   * load 期算出的协调冲突报告（issue #202 S3.2 收尾，设计 §4 第 6 条；单一来源落点）。
+   * 唯一算法是 shared/schedule-projection.ts 的 detectCoordinationConflicts；本文件只负责摊平
+   * （coordinationScheduleItems，只走 required_roles）与接线，不写第二套冲突口径。
+   *
+   * null 只有一种来路：投影失败（scheduleProjection 为 null，errors 已非空）——此时不重复
+   * 报错，也不冒充「无冲突」。检测本身抛错时 fail-closed：`coordination conflicts: <code> —
+   * <message>` 进 errors 并置 null（route 见 errors 即 503），不降级成空报告。
+   *
+   * 空报告 `{conflicts: [], potential: []}` 是「无冲突也无潜在重叠」这个结论，与 null
+   * （不知道）不是一回事。本字段不是门禁输入：不参与 gateStatus / effectiveReadiness。
+   */
+  coordinationConflicts: CoordinationConflictReport | null;
 }
 
 /**
@@ -1205,6 +1234,23 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     errors.push(`schedule projection: projection_failed — [${code}] ${error instanceof Error ? error.message : String(error)}`);
   }
 
+  // ─── 协调冲突（issue #202 S3.2 收尾，设计 §4 第 6 条 / §20 待裁项的落点）───
+  // 单一来源：冲突算法只有 shared/schedule-projection.ts 的 detectCoordinationConflicts 一份，
+  // 这里只做摊平（coordinationScheduleItems，只走 required_roles）与接线，不重写第二套口径。
+  // 投影为 null 时（load 期已把原因写进 errors）保持 null：不重复报错，也不冒充「无冲突」。
+  let coordinationConflicts: CoordinationConflictReport | null = null;
+  if (scheduleProjection) {
+    try {
+      coordinationConflicts = detectCoordinationConflicts(coordinationScheduleItems(control), scheduleProjection);
+    } catch (error) {
+      // fail-closed：检测失败（如协调项引用了投影里不存在的包）不降级成空报告——
+      // 空报告是「无冲突」这个结论，失败是「不知道」。errors 非空 → route 在 build 之前 503。
+      const code = error instanceof ProjectionError ? error.code : 'coordination_conflicts_failed';
+      errors.push(`coordination conflicts: ${code} — ${error instanceof Error ? error.message : String(error)}`);
+      coordinationConflicts = null;
+    }
+  }
+
   return {
     root, errors, control, acceptance, roadmap, modelPackageLinks, decisionGates,
     openDecisionGates, openGatedCheckCount, openGates,
@@ -1223,7 +1269,7 @@ export function loadScheduleState(root: string, options: { modelPackageLinks: Lo
     checkSpecHash, staleAuditReason, auditStatusFor, gateStatus, auditDisplay, glossarySection,
     blockerIsClosed, packageWaiverIsValid, packagePrerequisiteIssues,
     effectiveReadiness, effectivePackageStatus, packageGateIssues,
-    currentPackage, nextCheckpoint, scheduleProjection, scheduleProjectionInput,
+    currentPackage, nextCheckpoint, scheduleProjection, scheduleProjectionInput, coordinationConflicts,
   };
 }
 
@@ -1474,6 +1520,17 @@ export interface ScheduleSnapshot {
   schedule?: ScheduleProjectionView;
   /** key = SCH id；稀疏——没有 coordination 块的 SCH 不出现，不造空对象。 */
   coordination?: Record<string, ScheduleCoordinationView>;
+  /**
+   * 协调冲突报告（issue #202 S3.2 收尾，设计 §4 第 6 条）：load 期由唯一实现
+   * detectCoordinationConflicts 算好（ScheduleState.coordinationConflicts），build 只搬运。
+   * `{conflicts, potential}` 形状即 CoordinationConflictReport，类型直接复用、不另定义。
+   *
+   * 键三分语义，消费方不得把三者混为一谈：**缺失 = 不知道**（旧快照/旧服务端）；
+   * `{conflicts: [], potential: []}` = 无冲突也无潜在重叠；有簇 = 逐簇徽标
+   * （conflicts = 同角色 onsite 已确认且同日；potential = 未确认预约的预测窗口重叠，只是提示）。
+   * 冲突不是门禁输入，不进 gateStatus / effectiveReadiness（设计 §5）。
+   */
+  coordination_conflicts?: CoordinationConflictReport;
 }
 
 export function computeStaleAudits(state: ScheduleState): string[] {
@@ -1685,6 +1742,46 @@ function readWorkCalendarSnapshot(control: AnyRecord): { anchor_date: string | n
       extra_workdates: declaredDateList(declared.extra_workdates),
     },
   };
+}
+
+/**
+ * 主车道（sequence < 900）checks[].coordination → 协调项摊平（issue #202 S3.2，设计 §4 第 6 条）。
+ *
+ * 每个 `required_roles` 角色产出一条 `{sch_id, pkg, role, mode, status, confirmed_at}`：
+ * **owner_role 不进**——它是协调组织者「谁去约人」，不是到场参与者；把组织者当占用是 S3 的
+ * Codex blocking 主题（工作台侧已按同一口径只认 required_roles）。侧车道 PKG-900 不进
+ * （不参与排程，投影里也没有它的包，硬塞进去会被模块判 unknown_coordination_package）。
+ *
+ * 口径细节：mode 非 onsite 的条目照常产出，由模块决定排除（notify/remote 两边都不参与
+ * 冲突或潜在重叠）；status 与 confirmed_at 原样透传（confirmed_at 经日期归一，非法值已被
+ * validateCheckCoordination 报成 coordination_confirmed_at_invalid，这里不静默改值）；
+ * 空/非字符串角色跳过——同样的缺口已由 coordination_roles_invalid 显形，不是静默丢弃。
+ *
+ * @internal 生产消费者是 loadScheduleState 里的 detectCoordinationConflicts；导出供单测直接
+ * 钉「只走 required_roles」与「侧车道不进」两条口径（不必整仓 load）。
+ */
+export function coordinationScheduleItems(control: AnyRecord): CoordinationScheduleItem[] {
+  const items: CoordinationScheduleItem[] = [];
+  for (const pkg of scheduleProjectionPackages(control)) {
+    for (const check of pkg.checks ?? []) {
+      const block = check?.coordination;
+      // 畸形块（非映射）已在 load 校验报成 coordination_invalid；这里只摊平正常块
+      if (!block || typeof block !== 'object' || Array.isArray(block)) continue;
+      if (!Array.isArray(block.required_roles)) continue;
+      for (const role of block.required_roles) {
+        if (typeof role !== 'string' || !role.trim()) continue;
+        items.push({
+          sch_id: check.id,
+          pkg: pkg.id,
+          role,
+          mode: block.mode,
+          status: typeof block.status === 'string' ? block.status : '',
+          confirmed_at: normalizeCalendarDateText(block.confirmed_at) ?? null,
+        });
+      }
+    }
+  }
+  return items;
 }
 
 /** SCH coordination 声明 → 快照（稀疏：只收声明了 coordination 块的检查；key = SCH id）。 */
@@ -1916,5 +2013,9 @@ export function buildScheduleSnapshot(state: ScheduleState): ScheduleSnapshot {
     // coordination 只描述排程到场事实，不进入上方任何门禁/就绪判定（设计 §5）。
     schedule: buildScheduleProjectionView(state),
     coordination: buildCoordinationSnapshot(state),
+    // 协调冲突报告（issue #202 S3.2）：load 期算好的报告原样搬运，既有字段一个不动。
+    // 键只在非 null 时出现——键缺失 = 不知道（旧快照/旧服务端），空报告 = 无冲突，
+    // 两者语义不同。投影失败时 route 在 build 之前已 503，所以这里不带键不是降级路径。
+    ...(state.coordinationConflicts ? {coordination_conflicts: state.coordinationConflicts} : {}),
   };
 }
