@@ -166,8 +166,10 @@ function boundsOf(view: ScheduleProjectionView, entries: CalendarEntry[]): Calen
  * 列头刻度序号：首末必标，中间按步长抽稀（步长同时受 MAX_AXIS_TICKS 与
  * MIN_TICK_SPACING_PX 约束）。补末列时与**最后一个已排刻度**（`ticks[length-1]`，
  * 不是倒数第二个——Codex 二审 minor，2026-11-12 修）比间距：过近就删该刻度再补末列，
- * 否则末端两个标签会以 44px 相邻（< 72px 最小间距）互相压盖。span 极小时
- * （如 1–4，抽稀后只剩首末）末列与首列仍可能相邻，纯装饰、不影响 chip 定位。
+ * 否则末端两个标签会以 44px 相邻（< 72px 最小间距）互相压盖。
+ * **删之前必须 `ticks.length > 1`**（Codex 一审 minor 回归，2026-11-12 修）：两列跨度
+ * （1–2）初始只有首刻度，无条件 pop 会把唯一首刻度删掉、只剩末列，违反「首末必标」；
+ * 极小跨度（1–2、1–4）末列与首列相邻是保留首末的代价，纯装饰、不影响 chip 定位。
  */
 function tickOrds(bounds: CalendarBounds): number[] {
   const span = Math.max(1, bounds.maxOrd - bounds.minOrd + 1);
@@ -176,7 +178,7 @@ function tickOrds(bounds: CalendarBounds): number[] {
   const ticks: number[] = [];
   for (let ord = bounds.minOrd; ord <= bounds.maxOrd; ord += step) ticks.push(ord);
   if (ticks[ticks.length - 1] !== bounds.maxOrd) {
-    if (bounds.maxOrd - ticks[ticks.length - 1] < minStepOrds) ticks.pop();
+    if (ticks.length > 1 && bounds.maxOrd - ticks[ticks.length - 1] < minStepOrds) ticks.pop();
     ticks.push(bounds.maxOrd);
   }
   return ticks;

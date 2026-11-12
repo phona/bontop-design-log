@@ -367,6 +367,23 @@ describe('CoordinationCalendarPanel', () => {
     }
   });
 
+  // Codex 一审 minor（2026-11-12 修）：两列跨度（1–2）初始只有首刻度，补末列时无条件
+  // pop 会把唯一首刻度删掉、只剩末列——违反「首末必标」。守卫 = 只在 ticks.length > 1 时删。
+  it('两列跨度：补末列不得删掉唯一首刻度（1–2 首末俱在）', async () => {
+    const ordinals = [1, 2].map((ord) => ({ord, date: null}));
+    const view = scheduleView({
+      ordinals,
+      packages: {'PKG-010': projectionPkg({forecast: windowView(1, 2, 2)})},
+    });
+    stubFetch({state: snapshot({schedule: view})});
+    const panel = new CoordinationCalendarPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.cal-tick')).toBeTruthy());
+
+    const ticks = Array.from(document.querySelectorAll('.cal-tick')).map((el) => Number((el as HTMLElement).dataset.ord));
+    expect(ticks).toEqual([1, 2]);
+  });
+
   // 独立评审 medium（2026-11-12 修）：轴刻度与行内容区（chip/网格）必须同源内缩，
   // 否则条幅整体右移「行边框 + 行内边距」= 9px。jsdom 不做布局，这里钉两处样式的耦合。
   it('轴线与行内容区同源内缩：轴 margin = 行内边距 + 行边框（9px 错位回归钉）', async () => {
