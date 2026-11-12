@@ -112,6 +112,11 @@ const CONFLICTS_UNKNOWN_NOTE = '冲突无法检测（快照未带 coordination_c
 /** 键在但值不是契约形状：与「缺失」同归「无法检测」——绝不把坏形状读成「无冲突」。 */
 const CONFLICTS_MALFORMED_NOTE = '冲突无法检测（coordination_conflicts 形状不符：需 {conflicts, potential} 两个数组，服务端可能仍是旧版）';
 const CONFLICTS_EMPTY_NOTE = '无冲突、无潜在窗口重叠';
+/**
+ * 有簇被形状守卫跳过时空态不得说「无冲突」（Codex 三审 minor）：报告不完整 → 结论只能是
+ * 「判不了」。与 CONFLICTS_MALFORMED_NOTE 的区别：这里部分簇合法（照常展示），只是不完整。
+ */
+const CONFLICTS_INCOMPLETE_NOTE = (skipped: number): string => `冲突报告不完整：${skipped} 簇形状非法已跳过（快照版本不符），无法判断是否还有冲突`;
 /** 形状守卫计数文案（S3.2 low 收口）：跳过多少、为什么，面板级显形，不静默。 */
 const shapeSkipCoordinationNote = (count: number): string => `${count} 条协调项形状非法，已跳过（快照版本不符）`;
 const shapeSkipClusterNote = (count: number): string => `${count} 簇冲突报告形状非法，已跳过（快照版本不符）`;
@@ -249,6 +254,8 @@ interface RoleGroup {
   checks: CheckTodoRow[];
   coordinations: CoordinationRow[];
   clusters: ConflictCluster[];
+  /** 报告里被形状守卫跳过的簇数（全局事实，逐角色复制）：空态文案据此改判「不完整」。 */
+  conflictShapeSkipped: number;
   /** coordination 键缺失/为空：协调节出节级空文案，待办检查照常（不置空整面板）。 */
   coordinationMissing: boolean;
 }
@@ -482,7 +489,7 @@ export class RoleWorkbenchPanel {
       // ③ 现场冲突：报告按 role 归位（面板侧的占用/判定逻辑已整体删除）。
       const clusters = clustersByRole.get(role) ?? [];
 
-      return {role, checks, coordinations, clusters, coordinationMissing};
+      return {role, checks, coordinations, clusters, conflictShapeSkipped: skippedConflictClusters, coordinationMissing};
     });
     return {
       groups,
@@ -607,7 +614,11 @@ export class RoleWorkbenchPanel {
     const fullText = group.clusters.map((cluster) => `${cluster.badge}｜${cluster.reason}`).join('\n');
     const emptyText = read.kind === 'missing'
       ? CONFLICTS_UNKNOWN_NOTE
-      : read.kind === 'malformed' ? CONFLICTS_MALFORMED_NOTE : CONFLICTS_EMPTY_NOTE;
+      : read.kind === 'malformed'
+        ? CONFLICTS_MALFORMED_NOTE
+        : group.conflictShapeSkipped > 0
+          ? CONFLICTS_INCOMPLETE_NOTE(group.conflictShapeSkipped)
+          : CONFLICTS_EMPTY_NOTE;
     return this.sectionShell({
       role: group.role,
       section: 'conflicts',

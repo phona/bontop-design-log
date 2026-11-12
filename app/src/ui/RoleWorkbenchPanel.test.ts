@@ -535,6 +535,29 @@ describe('RoleWorkbenchPanel', () => {
     panel.hide();
   });
 
+  // Codex 三审 minor（2026-11-12 修）：有簇被跳过时空态不得同时说「无冲突」——
+  // 报告不完整 → 结论只能是「判不了」，一个判定点（conflictShapeSkipped > 0）改判。
+  it('全部簇形状非法：空态说「报告不完整」，不说「无冲突」', async () => {
+    stubFetch(snapshotView({
+      packages: [pkgView({id: 'PKG-030', name: '瓦工铺贴', sequence: 30, owner_roles: ['业主']})],
+      next_actions: [],
+      coordination: {
+        'SCH-030-01': coordView({package_id: 'PKG-030', required_roles: ['业主'], owner_role: '业主', mode: 'onsite'}),
+      },
+      coordination_conflicts: {conflicts: [null], potential: []},
+    }));
+    const panel = new RoleWorkbenchPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.rw-role')).toBeTruthy());
+
+    expect(bodyText()).toContain('1 簇冲突报告形状非法，已跳过（快照版本不符）');
+    const conflicts = sectionOf('业主', 'conflicts');
+    expect(conflicts.textContent).toContain('冲突报告不完整：1 簇形状非法已跳过（快照版本不符），无法判断是否还有冲突');
+    expect(conflicts.textContent).not.toContain('无冲突、无潜在窗口重叠');
+    expect(document.querySelector('.rw-badge')).toBeNull();
+    panel.hide();
+  });
+
   // 快照自相矛盾（报告点名的 SCH 不在 coordination 里）：徽标按报告规模照出 + 说明差额，
   // 不静默丢簇、也不把「解析不到」当成「没有这条协调」。
   it('报告点名的 SCH 在 coordination 里没有条目：徽标 + 说明行，面板不抛错', async () => {
