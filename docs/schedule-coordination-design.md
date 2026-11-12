@@ -1086,7 +1086,7 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 | 4 | 延期传播：水电或空调延迟 3 个工作日按依赖与并行关系影响预测，不平移全部下游，保留基线 | ✅ | 只读演算 `PKG-040 +3`：`affected` 18 包（`PKG-050…PKG-170`），**并行支 `PKG-030` 不受影响**；forecast 仅点名包与下游变化；`baseline` 与 `check_window` 逐包不变。测试：`schedule-what-if.test.ts:179-181`（点名包起点不变、终点 +3）、`:135`（无 scenario 时 forecast 与 baseline 逐值相同） |
 | 5 | 无日期/无演员/无报价：未知按未知展示；资源未绑定不阻碍抽象角色排程；不污染预算与施工事实 | ✅ | `anchor_date: null` → 130/130 ordinals `date: null`；协调 `actor.name` 非空 0/9（全部「待指定」）；未报价组件 89 个 → 进 `next_actions` 的 `quote_pending`（数量显形、金额不编）；`next_actions` 共 41 条 = `external_blocker` 14 / `quote_pending` 20 / `decision_gate` 7（**无 `ready_package`**——尚未交房，没有就绪包），含 `BLK-HANDOVER`（unblocks 1071）等 |
 | 6 | 单测/集成：依赖环、缺失引用、休息日、时间窗冲突、已完成包不回退、审批验收不被 UI 绕过、派生可重算 | ✅（一处口径已按业主裁定更新） | 依赖环/自依赖/未知依赖：`schedule-projection.test.ts:71/76/88`；工作日历（`rest_dates` 优先、补班占 ord）：`:125`；约束（`not_before` 抬升、`site_pending`/`not_after`/`time_window` 只登记）：`:500`；协调冲突两级与 cancelled/notify 退出：`:872+` 与真实试点用例；loader 契约（协调不进验收指纹）：`schedule-loader-contract.test.ts:76`；只读：`api.test.ts:303-306`；派生可重算（指纹）：`schedule-state.test.ts:54/63`。**「已完成包不可因排程回退」一句已被 §16 业主裁定推翻**：检查记录窗口不再钉 forecast（钉死的是检查日、不是施工起止），现行口径 = 无 scenario 时 forecast 与 baseline 同源、delay 照常影响点名包与下游 |
-| 7 | 对比引入前后重复代码/事实字段/维护工作量；仅有冗余不改善则缩范围 | ✅ | 四个 PR：`#216` 4553+/161−（16 文件，含 S0 设计）、`#218` 2303+/44−（15）、`#220` 2893+/57−（22）、`#221` 107+/7−（2，待合）。**新增事实面只有 D1 裁定的三处**（`work_calendar` / PKG `constraints` / SCH `coordination`，全部住既有 `control.yaml`）+ 快照纯增量两键；排程数学单实现于 `shared/schedule-projection.ts`；复用既有 loader/门禁/选中态/面板形态/验收草稿流——没有第二套状态机、任务源或预算源 |
+| 7 | 对比引入前后重复代码/事实字段/维护工作量；仅有冗余不改善则缩范围 | ✅ | 四个 PR：`#216` 4553+/161−（16 文件，含 S0 设计）、`#218` 2303+/44−（15）、`#220` 2893+/57−（22）、`#221` 107+/7−（2，已合入 `cf4ffea5`）。**新增事实面只有 D1 裁定的三处**（`work_calendar` / PKG `constraints` / SCH `coordination`，全部住既有 `control.yaml`）+ 快照纯增量两键；排程数学单实现于 `shared/schedule-projection.ts`；复用既有 loader/门禁/选中态/面板形态/验收草稿流——没有第二套状态机、任务源或预算源 |
 
 ### 21.3 未验证：待真实事实的两腿（关闭口径请业主裁）
 
@@ -1096,7 +1096,7 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 
 ### 21.4 S3 登记未收项的现状（2026-11-12）
 
-- **已收**：Codex 二审 minor ×2（`tickOrds` 末端刻度索引、`confirmed_at` 未命中措辞）与独立评审 verified medium ×1（日历轴/条幅 9px 错位）→ PR #221（待合；含本 PR 自引入回归的收口：两列跨度不得删唯一首刻度）。
+- **已收**：Codex 二审 minor ×2（`tickOrds` 末端刻度索引、`confirmed_at` 未命中措辞）与独立评审 verified medium ×1（日历轴/条幅 9px 错位）→ PR #221（已合入 `cf4ffea5`；含该 PR 自引入回归的收口：两列跨度不得删唯一首刻度）。
 - **仍开**：Codex 二审 major 1（工作台每节 8 条截断后无展开/分页入口）；独立评审 low 2（工作台 `coordination` 形状兜底、`windowOf` 缺包时静默移出重叠判定）。
 - **待业主裁的结构问题**：面板侧冲突分类与模块 `detectCoordinationConflicts` 是同一口径的两处实现（模块至今无生产消费方）——是否改由 loader 单一来源、面板纯渲染（§20 已登记）。
 
