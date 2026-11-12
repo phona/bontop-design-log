@@ -1091,7 +1091,7 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 ### 21.3 未验证：待真实事实的两腿（关闭口径请业主裁）
 
 - **协调确认实跑**：9 条协调全部 `pending_invite`、`actor: null`。通道已在位：`coordination` 块写回 `control.yaml` 走「AI 会话 + PR」（D3，页面无写路径），loader 校验 `coordination_confirmed_without_actor`（确认必须落到可追溯的人）。要让第一条变成 `confirmed`，需要一个真实的约人结果——只有业主/现场能提供。
-- **现场执行/验收留证实跑**：`audit_log.records` 为空（未施工，是诚实态）。通道已在位且有测试：验收草稿流（页面 PUT 草稿 → `tmp/capture/acceptance-staging/` 暂存 → 分支 + commit + PR → 业主合并 → `audit_log` 文本手术追加，提交前 `verify:schedule` 跑两遍），`acceptance-draft.test.ts` / `acceptance-staging-sweep.test.ts` 覆盖。
+- **现场执行/验收留证实跑**：`audit_log.records` 为空（未施工，是诚实态）。通道已在位且有测试：验收草稿流（页面 PUT 草稿 → `tmp/capture/acceptance-staging/` 暂存 → 提交时**开分支**，在分支内先做 `audit_log` 文本手术追加 → 重渲视图 → **带上新记录复跑 `verify:schedule`** → 显式路径 `git add` + commit + push + 开 PR → 业主合并），`acceptance-draft.test.ts` / `acceptance-staging-sweep.test.ts` 覆盖。「提交前跑两遍」= 当前树必须干净通过、带上新记录必须再次通过，两遍都在 commit 之前（`server/acceptance-draft-store.ts` 的 `submitAcceptance`）。
 - **因此标准 2 的诚实状态是**：六腿（看下一步 → 角色行动/到场 → 协调确认 → 执行/验收留证 → 状态更新 → 排期重算）各有单一实现、门禁与只读证据；**真实实例为 0**，因为交房与施工都还没开始。请业主裁定：以「结构性就绪 + 只读证据齐」关闭 #202，或保留 #202 到交房后完成一次真实协调确认与一次真实验收留证再关。
 
 ### 21.4 S3 登记未收项的现状（2026-11-12）
