@@ -74,11 +74,13 @@ test('真实路由响应喂进两个面板：真实数据渲染出来，形状�
   // ② 装 DOM + 喂响应体。
   const dom = new JSDOM('<!doctype html><html><body><div id="approval-page-panels"></div></body></html>', {url: 'http://localhost/'});
   installDomGlobals(dom);
-  (globalThis as unknown as Record<string, unknown>).fetch = async () => ({
-    ok: true,
-    status: 200,
-    json: async () => payload,
-  });
+  // fetch 替身记录请求地址：端点写错（面板改成别的接口）也必须红——否则这条接线测试
+  // 对「请求打到哪里」毫无约束（Codex 二审 minor）。
+  const requestedUrls: string[] = [];
+  (globalThis as unknown as Record<string, unknown>).fetch = async (url: unknown) => {
+    requestedUrls.push(String(url));
+    return {ok: true, status: 200, json: async () => payload};
+  };
 
   const { RoleWorkbenchPanel } = await import('../../app/src/ui/RoleWorkbenchPanel.js');
   const { CoordinationCalendarPanel } = await import('../../app/src/ui/CoordinationCalendarPanel.js');
@@ -144,6 +146,12 @@ test('真实路由响应喂进两个面板：真实数据渲染出来，形状�
     assert.match(calendarText, /第 \d+ 工作日/, '无锚点日历应标「第 N 工作日」');
   } else {
     assert.match(calendarText, DATE_PATTERN, '锚点就绪时日历列头应带快照日期');
+  }
+
+  // 请求地址：两个面板都只该请求 /api/schedule/state，各至少一次（多了说明有第二数据源）。
+  assert.ok(requestedUrls.length >= 2, `两个面板各应请求一次快照接口，实际请求：${JSON.stringify(requestedUrls)}`);
+  for (const url of requestedUrls) {
+    assert.equal(url, '/api/schedule/state', `面板只该请求 /api/schedule/state，实际打到：${url}`);
   }
 
   // 只读：与**渲染前**的基准逐字节比较（渲染期间的原地改写才可能被抓到）。

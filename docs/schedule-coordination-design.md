@@ -1233,6 +1233,8 @@ build:app（exit 0）：- Use build.rollupOptions.output.manualChunks to improve
   改写才可能被抓到）；② 逐条断言改为按 `.rw-coord-row[data-sch-id]` / `.cal-chip[data-sch-id]`
   定位具体行/chip（并在行内核对所属包名与 `data-pkg-id`），不再拿整段文本的包名出现当证据；
   另钉死试点条数 9（从响应体自身推导会出现「条目整体消失 → 循环里没有它 → 假绿」）。
+  ③ （二审 minor）fetch 替身记录并断言请求地址：两个面板都只许打 `/api/schedule/state`——
+  端点写错时这条接线测试必须红（否则它对「请求打到哪里」毫无约束）。
 - **变异验证**：① 删掉快照的 `coordination_conflicts` 装配 → 精确报「响应缺
   coordination_conflicts——面板读的就是这个键」；② 快照漏掉一条试点协调（SCH-070-01）→
   报「试点 coordination 应为 9 条」；恢复 → 绿。
