@@ -1,6 +1,7 @@
 // 审批路由（hash 语法 + 选中派生）的回归测试（2026-11-03 独立页面化）。
 // 守：深链 #pkg= 落 detail；选中写 hash 保持子页；序列化往返；坏 hash 不抛。
-// 2026-11-11 issue #202 S2：补 gantt 子页解析/序列化，roles/calendar 留 S3 不声明。
+// 2026-11-11 issue #202 S3：roles / calendar 子页落地（S2 时曾断言它们回落 3D 页，
+// 该断言随枚举补全反转——「未声明回落」只对真正未落地的子页成立）。
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
@@ -19,6 +20,8 @@ describe('parseApprovalRoute', () => {
   it('approval 参数指定子页', () => {
     expect(parseApprovalRoute('#approval=flow')).toEqual({subPage: 'flow', packageId: null, checkId: null});
     expect(parseApprovalRoute('#approval=gantt')).toEqual({subPage: 'gantt', packageId: null, checkId: null});
+    expect(parseApprovalRoute('#approval=roles')).toEqual({subPage: 'roles', packageId: null, checkId: null});
+    expect(parseApprovalRoute('#approval=calendar')).toEqual({subPage: 'calendar', packageId: null, checkId: null});
     expect(parseApprovalRoute('#approval=next_action')).toEqual({subPage: 'next_action', packageId: null, checkId: null});
     expect(parseApprovalRoute('#approval=detail&pkg=PKG-060&check=check_tile_hollow')).toEqual({
       subPage: 'detail', packageId: 'PKG-060', checkId: 'check_tile_hollow',
@@ -35,11 +38,9 @@ describe('parseApprovalRoute', () => {
   it('两者都无 = 3D 页；未知子页值回落；坏输入不抛', () => {
     expect(parseApprovalRoute('')).toEqual({subPage: null, packageId: null, checkId: null});
     expect(parseApprovalRoute('#')).toEqual({subPage: null, packageId: null, checkId: null});
-    // 未知 approval 值不当真，回落：无 pkg → 3D 页
+    // 未知 approval 值不当真，回落：无 pkg → 3D 页（roles/calendar 已随 S3 落地，
+    // 这里守的是「未声明值回落」本身——nonsense 永远不构成子页）
     expect(parseApprovalRoute('#approval=nonsense')).toEqual({subPage: null, packageId: null, checkId: null});
-    // roles / calendar 属 S3（issue #202 S2 只落地 gantt）：未声明的子页不得被解析成真页
-    expect(parseApprovalRoute('#approval=roles')).toEqual({subPage: null, packageId: null, checkId: null});
-    expect(parseApprovalRoute('#approval=calendar')).toEqual({subPage: null, packageId: null, checkId: null});
     // 坏 percent 编码：URLSearchParams 宽容替换、不抛——契约只是不抛
     expect(() => parseApprovalRoute('#%E0%A4%A')).not.toThrow();
     expect(() => parseApprovalRoute('#pkg=%E0%A4%A&approval=')).not.toThrow();
@@ -58,6 +59,14 @@ describe('serializeApprovalRoute', () => {
     const route = {subPage: 'gantt' as const, packageId: 'PKG-040', checkId: 'SCH-040-01'};
     expect(serializeApprovalRoute(route)).toBe('#approval=gantt&pkg=PKG-040&check=SCH-040-01');
     expect(parseApprovalRoute(serializeApprovalRoute(route))).toEqual(route);
+  });
+
+  it('roles / calendar 子页往返（2026-11-11 issue #202 S3）', () => {
+    for (const subPage of ['roles', 'calendar'] as const) {
+      const route = {subPage, packageId: 'PKG-000', checkId: 'SCH-000-02'};
+      expect(serializeApprovalRoute(route)).toBe(`#approval=${subPage}&pkg=PKG-000&check=SCH-000-02`);
+      expect(parseApprovalRoute(serializeApprovalRoute(route))).toEqual(route);
+    }
   });
 });
 

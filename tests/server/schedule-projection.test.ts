@@ -1082,10 +1082,20 @@ describe('§16：真实 control.yaml，无 scenario 时 forecast 与 baseline �
 });
 
 describe('§16 minor：当前试点协调数据', () => {
-  it('4 条全 pending_invite → conflicts 0，potential 按预测区间重叠照实', () => {
+  it('9 条全 pending_invite → conflicts 0，potential 按预测区间重叠照实', () => {
     const input = loadRealProjectionInput();
     const schIds = [...new Set(input.coordinationItems.map((item) => item.sch_id))].sort();
-    assert.deepEqual(schIds, ['SCH-000-01', 'SCH-000-02', 'SCH-005-01', 'SCH-070-01']);
+    assert.deepEqual(schIds, [
+      'SCH-000-01',
+      'SCH-000-02',
+      'SCH-005-01',
+      'SCH-010-02',
+      'SCH-030-04',
+      'SCH-040-03',
+      'SCH-070-01',
+      'SCH-080-01',
+      'SCH-090-01',
+    ]);
     assert.ok(input.coordinationItems.every((item) => item.status === 'pending_invite'));
     assert.ok(input.coordinationItems.every((item) => item.confirmed_at === null));
 
@@ -1098,31 +1108,86 @@ describe('§16 minor：当前试点协调数据', () => {
     assert.equal(projection.packages['PKG-000'].forecast.end_ord_max, 25);
 
     // 潜在窗口是 [乐观 start_ord, 保守 end_ord_max]，不是某一遍的完整区间。
-    // PKG-000 是 1–25；PKG-005 是 16–32，与前者重叠。PKG-070 乐观起点是 37，
-    // 接不上 32，所以 SCH-070-01 不进任何潜在簇。施工方/设计师不在 SCH-005 上，只有两条 SCH-000。
+    // 真实投影（无锚点、无 scenario）实测窗口：
+    //   PKG-000 1–25（SCH-000-01/SCH-000-02）、PKG-005 16–32（SCH-005-01）、
+    //   PKG-010 19–35（SCH-010-02）、PKG-040 26–55（SCH-030-04/SCH-040-03）、
+    //   PKG-070 37–73（SCH-070-01）、PKG-080 49–97（SCH-080-01，remote）、
+    //   PKG-090 61–102（SCH-090-01，notify）。
+    // 按角色做闭区间链式合并（remote/notify 在分组前退出）：
+    //   业主：1–25/1–25/16–32/19–35/26–55/26–55/37–73 首尾相连 → 7 条一簇；
+    //   施工方：1–25/1–25/19–35 相连 → 3 条；37–73 接不上 35，单独不成簇；
+    //   空调商：1–25 与 26–55 不交（SCH-000-02 单独不成簇），
+    //           26–55/26–55/37–73 相连 → SCH-030-04/SCH-040-03/SCH-070-01；
+    //   设计师：1–25/1–25/19–35/26–55/26–55/37–73 → 6 条（SCH-080-01 是 remote，退出）；
+    //   橱柜供应商：1–25 与 26–55 不相交，无常住簇；
+    //   水电施工/物业/燃气单位各只有 1 条 onsite（或 notify 退出），不成簇。
     assert.deepEqual(
       [projection.packages['PKG-005'].forecast.start_ord, projection.packages['PKG-005'].forecast.end_ord_max],
       [16, 32],
     );
+    assert.deepEqual(
+      [projection.packages['PKG-010'].forecast.start_ord, projection.packages['PKG-010'].forecast.end_ord_max],
+      [19, 35],
+    );
+    assert.deepEqual(
+      [projection.packages['PKG-040'].forecast.start_ord, projection.packages['PKG-040'].forecast.end_ord_max],
+      [26, 55],
+    );
     assert.equal(projection.packages['PKG-070'].forecast.start_ord, 37);
+    assert.deepEqual(
+      [projection.packages['PKG-080'].forecast.start_ord, projection.packages['PKG-080'].forecast.end_ord_max],
+      [49, 97],
+    );
+    assert.deepEqual(
+      [projection.packages['PKG-090'].forecast.start_ord, projection.packages['PKG-090'].forecast.end_ord_max],
+      [61, 102],
+    );
 
     const report = detectCoordinationConflicts(input.coordinationItems, projection);
     assert.deepEqual(report.conflicts, []);
     const byRole = new Map(report.potential.map((entry) => [entry.role, entry]));
     assert.deepEqual(
       [...byRole.keys()].sort((left, right) => left.localeCompare(right)),
-      ['业主', '施工方', '设计师'].sort((left, right) => left.localeCompare(right)),
+      ['业主', '施工方', '空调商', '设计师'].sort((left, right) => left.localeCompare(right)),
     );
     const owner = byRole.get('业主');
     assert.ok(owner);
-    assert.deepEqual(owner.sch_ids, ['SCH-000-01', 'SCH-000-02', 'SCH-005-01']);
+    assert.deepEqual(owner.sch_ids, [
+      'SCH-000-01',
+      'SCH-000-02',
+      'SCH-005-01',
+      'SCH-010-02',
+      'SCH-030-04',
+      'SCH-040-03',
+      'SCH-070-01',
+    ]);
     assert.match(owner.reason, /SCH-000-01 第 1–25 工作日/);
     assert.match(owner.reason, /SCH-000-02 第 1–25 工作日/);
     assert.match(owner.reason, /SCH-005-01 第 16–32 工作日/);
+    assert.match(owner.reason, /SCH-010-02 第 19–35 工作日/);
+    assert.match(owner.reason, /SCH-030-04 第 26–55 工作日/);
+    assert.match(owner.reason, /SCH-040-03 第 26–55 工作日/);
+    assert.match(owner.reason, /SCH-070-01 第 37–73 工作日/);
     assert.match(owner.reason, /不是确定冲突/);
-    assert.deepEqual(byRole.get('施工方')?.sch_ids, ['SCH-000-01', 'SCH-000-02']);
-    assert.deepEqual(byRole.get('设计师')?.sch_ids, ['SCH-000-01', 'SCH-000-02']);
-    assert.ok(!report.potential.some((entry) => entry.sch_ids.includes('SCH-070-01')));
-    assert.ok(!report.potential.some((entry) => entry.role === '空调商' || entry.role === '物业' || entry.role === '橱柜供应商'));
+    assert.deepEqual(byRole.get('施工方')?.sch_ids, ['SCH-000-01', 'SCH-000-02', 'SCH-010-02']);
+    assert.deepEqual(byRole.get('空调商')?.sch_ids, ['SCH-030-04', 'SCH-040-03', 'SCH-070-01']);
+    assert.deepEqual(byRole.get('设计师')?.sch_ids, [
+      'SCH-000-01',
+      'SCH-000-02',
+      'SCH-010-02',
+      'SCH-030-04',
+      'SCH-040-03',
+      'SCH-070-01',
+    ]);
+    assert.equal(report.potential.length, 4);
+    // remote（SCH-080-01）/notify（SCH-090-01）在分组前退出，不进任何潜在簇。
+    assert.ok(!report.potential.some((entry) => entry.sch_ids.includes('SCH-080-01')));
+    assert.ok(!report.potential.some((entry) => entry.sch_ids.includes('SCH-090-01')));
+    assert.ok(
+      !report.potential.some(
+        (entry) =>
+          entry.role === '物业' || entry.role === '橱柜供应商' || entry.role === '水电施工' || entry.role === '燃气单位',
+      ),
+    );
   });
 });

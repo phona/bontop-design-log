@@ -311,23 +311,25 @@ coordination: Record<string, {          // key = SCH id
 |---|---|---|---|---|
 | 项目看板 | **升级** `SchedulePanel`（progress 模式加一列"预测窗口"） | 已有 334 行 | `schedule.packages` | 行点击写 selection（现状不变） |
 | 动态甘特 | **新** `GanttPanel` | 新 ~700 行（S2 实现） | `schedule.*` | 条点击 → selection；what-if 控件（delay 输入 → GET what-if → 重渲）；min/max 画**区间条**不是单值条；无 anchor 时 x 轴标"第 N 工作日"；演算视图的来源行写 `/api/schedule/what-if`，基线才写 `/api/schedule/state` |
-| 角色工作台 | **新** `RoleWorkbenchPanel` | 新 ~400 行 | `owner_roles` + `coordination` + `next_actions` | 按角色分组：待办检查 / 待确认协调 / 现场冲突；点项 → selection |
-| 协调日历 | **新** `CoordinationCalendarPanel` | 新 ~400 行 | `coordination` + `schedule.packages` | 按工作日列 onsite/remote/notify 三类 chip；`site_pending` 约束标"待定" |
+| 角色工作台 | **新** `RoleWorkbenchPanel` | 新 762 行 + 663 行测试（S3 实现） | `owner_roles` + `coordination` + `next_actions`（潜在窗口另只读 `schedule.packages`）。现场冲突两级口径：同角色 onsite 都已确认且 `confirmed_at` 同日 = 冲突；未确认且 forecast 窗口重叠 = 潜在（§16.4） | 按角色分组：待办检查 / 待确认协调 / 现场冲突；点项 → selection |
+| 协调日历 | **新** `CoordinationCalendarPanel` | 新 612 行 + 578 行测试（S3 实现） | `coordination` + `schedule.packages` | 按工作日列 onsite/remote/notify 三类 chip；chip 位置 = 所属包 forecast 潜在窗口（不钉确认日列）；`site_pending` 约束标"待定"；点 chip → selection |
 
 **关键复用（D5）**：三个新面板的点击一律 `selection.set({packageId, checkId})`，
 **不自己做 3D 高亮、不自己做 scope 展开**——`ScheduleDetailPanel` 是定位与
 `resolvePackageScope` 的唯一使用者（现状如此）。#191 退役 MODEL-PKG-100 选择器时，
 只迁这一处，本设计的三个面板零改动。
 
-**路由**：`#approval=` 枚举加 `gantt|roles|calendar`。S2 先落地 `gantt`（`approval-route.ts`
-的 `SUB_PAGES`、`App.ts` 的 `showApprovalView` / 命令注册、`view-state-store.ts` 的持久化白名单
-三处同步）；`roles` / `calendar` 属 S3，实现落地前不进枚举（坏 hash 照既有口径回落 3D 页）。
-tab 文案只加已落地的"甘特"。深链、push/replace、退出语义由现有路由机制免费获得。
+**路由**：`#approval=` 枚举加 `gantt|roles|calendar`。S2 已落地 `gantt`、S3 已落地
+`roles`/`calendar`（`approval-route.ts` 的 `SUB_PAGES`、`App.ts` 的
+`showApprovalView` / 命令注册、`view-state-store.ts` 的持久化白名单三处同步，
+`index.html` tab 文案「甘特」「角色」「日历」）。坏 hash 仍照既有口径回落 3D 页。
+深链、push/replace、退出语义由现有路由机制免费获得。
 
 **移动端**：甘特在 ≤700px 退化为"包列表 + 序数条"（包信息单列堆叠，区间条按 ordinals
 上下界做相对定位，**不建日期轴/刻度**；参照 FlowChartPanel issue #83 的单列降级先例）；
 无锚点时轴与条几何都不出现年月日，检查记录窗口的 checked_at 证据日期另行保留（§17）。
-工作台与日历本就是列表/纵列形态，天然适配。
+工作台窄屏单列放宽布局约束（本就是列表）；日历窄屏退化为单列文字行（chip 改文字行，
+不画工作日列网格）。
 
 **零新依赖**：不引 Frappe Gantt/任何图表库（判据见 §8）。
 
@@ -358,7 +360,7 @@ tab 文案只加已落地的"甘特"。深链、push/replace、退出语义由�
 | **S0** | 本文 + docs/README.md 登记 + issue #202 评论挂链接 | `docs/schedule-coordination-design.md` | `verify:document-references` 过；业主评审通过 |
 | **S1 投影层** | `schedule-projection`（DAG 校验 + 工作历 + 双前向 + 派生实际窗口 + what-if）；`buildScheduleSnapshot` 加 `schedule`/`coordination` 两键；loader 新错误码；control.yaml 加 `work_calendar` + PKG-005 constraints + 6-10 条试点 coordination | `schedule-projection`(新)、`shared/schedule-state.ts`、`schedule/phase-1/control.yaml`、`config/facts.yaml`(契约) | `npm run typecheck && test:server && schedule:render && verify:all`；api.test.ts 既有断言不改为通过；新投影单测全绿 |
 | **S2 甘特** | `GanttPanel` + 路由/tab + what-if 控件 + 移动端降级 | `GanttPanel`(新，`app/src/ui/`)、`app/src/state/approval-route.ts`、`app/src/App.ts`、`app/style.css` | `npm run test:app && typecheck && build:app`；FlowChartPanel 既有 21 测不回退 |
-| **S3 工作台+日历** | 两个新面板 + 试点数据补全（SCH-000-02/SCH-070-01 coordination） | 两个新面板 + control.yaml | 同上；冲突检测用例（同角色双现场）绿 |
+| **S3 工作台+日历** | `RoleWorkbenchPanel` + `CoordinationCalendarPanel` + 路由 `roles`/`calendar` 补全 + 试点 coordination 4 → 9 条（SCH-010-02/030-04/040-03/080-01/090-01，见 §20） | 两个新面板（`app/src/ui/`）、`approval-route.ts`、`App.ts`、`view-state-store.ts`、`index.html`、`schedule/phase-1/control.yaml` | 同上（`schedule:render` 必跑）；冲突检测两级用例（同日 confirmed 双现场 = 冲突、未确认窗口重叠 = 潜在）绿 |
 | **S4 收尾对账** | Issue 关闭标准 5 条逐条对账写入本文 §10；切片 C 回归清单执行记录 | 本文 | 业主确认关闭 #202 |
 
 **为什么 S1 先于一切 UI**：快照是四个视图的共同上游，先锁增量形状再画界面，
@@ -380,10 +382,13 @@ tab 文案只加已落地的"甘特"。深链、push/replace、退出语义由�
 
 **app 侧（vitest）**：
 - 甘特：区间条渲染 min/max；无 anchor 显示"第 N 工作日"；点击写 selection 且不调 onHighlight；
-  空/503 态；转义。
-- 工作台：按角色分组；`notify` 不产冲突；同角色 onsite 窗口重叠 → 冲突徽标。
-- 日历：三类 chip；`site_pending` 标"待定"。
-- 移动端：≤700px 甘特退化列表（照 FlowChartPanel issue #83 块写）。
+  空/503 态；转义。（S2 已落地）
+- 工作台：按角色分组；`notify` 不产冲突；同角色 onsite 冲突分两级——都已确认且同日 → 冲突徽标，
+  未确认且 forecast 窗口重叠 → 潜在徽标（§16.4，S3 已落地，20 测）。
+- 日历：三类 chip；`site_pending` 标"待定"；chip 位置 = 所属包 forecast 潜在窗口；
+  confirmed 的登记日作证据文字展示、无锚点不钉列（S3 已落地，16 测）。
+- 移动端：≤700px 甘特退化列表（照 FlowChartPanel issue #83 块写，S2 已落地）；
+  工作台单列放宽、日历 chip 改文字行（S3 已落地）。
 
 **契约/既有**：`tests/server/api.test.ts` 快照字段断言（增量为加法，不改旧值）；
 `control-contract-validation.test.ts` 错误文案钉（新错误码是新增不是改文案）；
@@ -1027,6 +1032,30 @@ coordination 仍不进入门禁 / 就绪。本棒没有把 `coordination` 读进
 - **门禁**（工作树实测判定行）：ci:typecheck 0/0 通过；ci:test-app 892 测 3 失败全在 `ci/baseline/`（HouseScene 存量）；ci:verify-all 22/23，verify-mep 存量在基线内；build:app 通过。
 - **已知未收**（独立评审 15 条：2 条 medium 已在本片修掉——delay 上限与演算视图来源行；余 13 条 low 登记在 PR 描述待业主裁）：测试缺口（真实路由响应 → 面板渲染的集成测试、无锚点 + 检查记录时的日期展示口径）、`scheduleProjectionInput` 必填 vs 可选、窄屏图例与内容一致性、重复 delay 包在模块层的求和语义等。
 - **S3 前提**：切片 B/C 的角色工作台与协调日历按 §7 现文接线；`#approval=` 枚举到 S3 才补 `roles|calendar`。
+
+---
+
+## 20. S3 角色工作台与协调日历（2026-11-11）
+
+- **交付**（工作树 `ep-202-roles-calendar`，分支 `arch/202-roles-calendar`，基 `origin/master` `d239acb8`；两路并行实施 + 集成门禁 + 主会话仲裁）：`RoleWorkbenchPanel`（762 行 + 663 行测试，20 测——按角色分组三节、待办检查只列未完成、冲突两级徽标、点项只写 selection、三态空文案、转义、窄屏单列、只读快照逐字节钉）+ `CoordinationCalendarPanel`（612 行 + 578 行测试，16 测——三类 mode chip、chip 按 forecast 潜在窗口定位、无锚点无日期字符串、`site_pending` 标「待定」、confirmed 登记日证据文字、cancelled 不画 chip、窄屏文字行、只读钉）+ 路由 `roles`/`calendar` 补全（`SUB_PAGES` / `showApprovalView` / 命令面板 / view-state 白名单 / `index.html` tab 五处同步，七个审批面板）+ control.yaml coordination 试点 4 → 9 条。
+- **冲突两级口径的落点（本片关键决定）**：§4 第 6 条的 `detectCoordinationConflicts` 至今无活消费方；面板铁律禁止 import 排程投影模块、S3 范围不含 loader 改动，因此面板按 §16.4/§17.4 同一两级口径做**展示分类**（数据全部来自快照键）：冲突 = 同角色 onsite 都已确认且 `confirmed_at` 同日；潜在 = 同角色 onsite 未确认且 forecast 窗口闭区间重叠（连通分量）；`cancelled` 与 non-onsite 分组前排除；confirmed + 未确认混合两者都不出。**已知张力（留业主裁）**：模块函数与面板分类是同一口径的两处实现；若要求单一来源，后续切片应由 loader 调用模块函数、把报告加进快照，面板改纯渲染。
+- **coordination 缺失/为空的降级口径**：不置空整面板——待办检查只依赖 `packages` 照常渲染，协调两节出节级空文案（子代理初版按整面板空态实现，集成时按「不渲染空列表 ≠ 删掉有用的分组」修正）。
+- **试点数据 4 → 9 条**（S1 已有 SCH-000-01 / SCH-000-02 / SCH-005-01 / SCH-070-01 四条；本片新增五条，仍只挂主车道包，「确有协调动作」标准，不 backfill 49 条）：
+
+  | SCH | mode | required_roles | 依据（检查正文） |
+  |---|---|---|---|
+  | SCH-010-02 | onsite | 业主、设计师、施工方 | pass_condition「业主、设计师和施工方完成现场交底签认」 |
+  | SCH-030-04 | onsite | 业主、设计师、空调商、水电施工 | method「逐项核对并四方签认」 |
+  | SCH-040-03 | onsite | 业主、设计师、空调商、橱柜供应商 | method「联合交底签认记录、橱柜深化图与点位表双向核对结论」 |
+  | SCH-080-01 | remote | 业主、设计师 | method 的现场观察由设计师/涂装施工完成，pass_condition「经业主确认」不必到场 |
+  | SCH-090-01 | notify | 业主、物业、燃气单位 | method「核对燃气单位或物业的书面要求」——外部方以书面要求参与 |
+
+  九条全 `pending_invite` / `actor` null / `confirmed_at` null（尚未交房、无人可确认是诚实态，不造确认人）。真实数据冲突报告（模块层实测）：`conflicts` 0；潜在 4 簇——业主 7 条、设计师 6 条、施工方 3 条、空调商 3 条。SCH-070-01 因 PKG-040 窗口（26–55）桥接进入潜在簇（4 条数据时它接不上 PKG-005 的 16–32，`schedule-projection.test.ts` 里「SCH-070-01 不进任何潜在簇」「空调商不进潜在」两条旧断言随数据扩充反转）；SCH-080-01（remote）/SCH-090-01（notify）分组前退出，不进任何簇。
+- **测试**：工作台 20 测 + 日历 16 测（清单见上）；`approval-route.test.ts` 补 `roles`/`calendar` 解析与序列化往返；`view-state-store.test.ts` 白名单反转（S2 的「roles 不放行」断言改放行 + nonsense 仍忽略）；`schedule-projection.test.ts` 真实试点数据用例同步到 9 条（每个窗口/簇经主会话独立复算核对）。
+- **门禁**（工作树实测判定行，六项全部 exit 0）：`ci:typecheck` 实际失败 0 条、基线 0 条——无基线外新失败，对照通过；`ci:test-server` 实际失败 0 条、基线 0 条——无基线外新失败，对照通过；`ci:test-app` 实际失败 3 条、基线 3 条（存量为 `ci/baseline/` 的 HouseScene）——无基线外新失败，对照通过；`ci:verify-all` 实际失败 1 条、基线 1 条（存量 verify-mep）——无基线外新失败，对照通过；`npm run schedule:render` exit 0（stdout 仅既有两条边界自动反向提示：「Room kitchen boundary was CW, auto-reversed to CCW」「Room entry_garden boundary was CW, auto-reversed to CCW」）；`build:app` exit 0（仅 Rollup 提示：`manualChunks` 分块建议与 `chunkSizeWarningLimit`）。`schedule:render` 重生成 7 个渲染文件（schedule/checklist.md、phase-1/{budget,checklist,cost,schedule}.md、phase-2/checklist.md、phase-3/checklist.md）diff **仅指纹行**（control.yaml 输入哈希 + 项目数据指纹），无内容行变化；连带 `docs:generate-current-values` 重生成（`docs/CURRENT-VALUES.md` 仅指纹一行——control.yaml 进其输入指纹，不跑则 `verify-current-values` 报基线外新失败）。
+- **已知未收**：① 模块 `detectCoordinationConflicts` 无活消费方，面板侧展示分类与之并存（见上，留业主裁）；② 日历「确认占用日」标记只在锚点就绪时画（无锚点不钉列是 §17/§18 口径）；③ 两个面板行数超设计估值（762/612 vs ~400——`RoleWorkbenchPanel` 含 Codex 一审 blocking 修复后的行数；注释密度照 `GanttPanel` 776 行先例，未为压行数删口径注释）；④ 工作台每节 8 条上限 + `title` 全量，无分页；⑤ 无「真实路由响应 → 面板渲染」集成测试（S2 同款缺口）。
+- **Codex 审查**（PR #220）：一审 `b8f4d394` **blocking 1**——现场占用把 `owner_role`（协调组织者）误算为必须到场，与模块 `detectCoordinationConflicts` 的 `required_roles` 口径漂移 → 修（`6e0fd010`：占用口径改 `participatesIn` 只认 `required_roles`，待确认列表保留「required_roles ∪ owner_role」，新增钉死用例 20 测）。二审 `6e0fd010` **blocking 0 · major 1 · minor 2**（事件 COMMENTED，按修复端纪律不自动修，登记待业主裁）：major「工作台截断后没有访问剩余条目的入口」（每节前 8 行 + `title` 全量，无展开/分页/跳转；多个角色检查数已超 8，触屏端无法可靠读 title）；minor「`tickOrds` 末端刻度间距检查用了倒数第二个索引」（1–26 时末端 25/26 相距 44px < 72px 最小间距，末端标签可重叠）；minor「ordinals 未命中 `confirmed_at` 时误标『不在工作日历内』」（ordinals 是有限投影范围不是完整工作日历，应按「未知保持未知」改为「日期不在当前投影范围，无法定位」）。
+- **S4 前提**：切片 B/C 的联合验收试点可引用本片两个面板；Issue 关闭标准第 2 条（最小真实工作流跑通）仍待 S4 对账。
 
 ---
 

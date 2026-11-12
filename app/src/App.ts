@@ -40,6 +40,8 @@ import { NextActionPanel } from './ui/NextActionPanel.js';
 import { ScheduleDetailPanel } from './ui/ScheduleDetailPanel.js';
 import { FlowChartPanel } from './ui/FlowChartPanel.js';
 import { GanttPanel } from './ui/GanttPanel.js';
+import { RoleWorkbenchPanel } from './ui/RoleWorkbenchPanel.js';
+import { CoordinationCalendarPanel } from './ui/CoordinationCalendarPanel.js';
 import { ScheduleSelectionStore, type ScheduleSelection } from './state/schedule-selection.js';
 import {
   parseApprovalRoute, getApprovalRoute, setApprovalRoute, navigateApproval, exitApproval,
@@ -140,6 +142,11 @@ export class App {
   // 动态甘特（2026-11-11 issue #202 S2，设计 §7）：只消费 GET /api/schedule/state
   // 快照的 schedule 键；条点击只写共享选中态，面板没有 onHighlight 钩子、不展开 scope。
   private ganttPanel: GanttPanel | null = null;
+  // 角色工作台 / 协调日历（2026-11-11 issue #202 S3，设计 §7）：同样只消费
+  // /api/schedule/state 快照（packages / coordination / next_actions / schedule 键），
+  // 点项只写共享选中态，无 onHighlight 钩子、不展开 scope（D5）。
+  private roleWorkbenchPanel: RoleWorkbenchPanel | null = null;
+  private coordinationCalendarPanel: CoordinationCalendarPanel | null = null;
   private approvalView: ApprovalViewPage | null = null;
   /** 上次停留的审批页（关闭再开时回到那里；首次为 next_action）。 */
   private lastApprovalPage: ApprovalViewPage = 'next_action';
@@ -427,7 +434,8 @@ export class App {
     void this.loadElementStates();
     // 自装交互审批（2026-11-02）：store 先行，面板构造时注入；3D 高亮回调走
     // highlightApprovalPackage（resolvePackageScope 展开房间/对象 id 集合）。
-    // 2026-11-11 issue #202 S2 起共五个审批面板：next_action / schedule / detail / flow / gantt。
+    // 2026-11-11 issue #202 S3 起共七个审批面板：next_action / schedule / detail / flow /
+    // gantt（S2）/ roles / calendar（S3）。
     this.scheduleSelection = new ScheduleSelectionStore();
     this.nextActionPanel = new NextActionPanel(this.scheduleSelection);
     this.schedulePanel = new SchedulePanel(this.scheduleSelection, {
@@ -449,6 +457,10 @@ export class App {
     // 不传 onHighlight——D5 规定定位与 scope 展开的唯一使用者仍是 ScheduleDetailPanel，
     // 本面板条点击只写 selection（#191 退役选择器时零改动）。
     this.ganttPanel = new GanttPanel(this.scheduleSelection);
+    // 角色工作台 / 协调日历（2026-11-11 issue #202 S3，设计 §7）：同 D5 口径，只注入
+    // 共享选中 store；点项（待办检查/协调条目/冲突行/日历条幅）一律只写 selection。
+    this.roleWorkbenchPanel = new RoleWorkbenchPanel(this.scheduleSelection);
+    this.coordinationCalendarPanel = new CoordinationCalendarPanel(this.scheduleSelection);
     // 详情页订阅选中态（subscribe 幂等：重复调用先退订再订）；直接打开带
     // #pkg=… 的链接时，restoreFromHash 会把选中写回 store 并触发渲染。
     this.scheduleDetailPanel?.subscribe();
@@ -1176,6 +1188,8 @@ export class App {
     this.scheduleDetailPanel?.hide();
     this.flowChartPanel?.hide();
     this.ganttPanel?.hide();
+    this.roleWorkbenchPanel?.hide();
+    this.coordinationCalendarPanel?.hide();
     if (page === 'next_action') {
       this.nextActionPanel?.show();
       void this.nextActionPanel?.refresh();
@@ -1193,6 +1207,13 @@ export class App {
       // 这里不再重复拉 /api/schedule/state——两次在途基线请求的后到者会 reset 掉用户
       // 刚跑完的演算。深链/历史/push-replace 由既有 hash 路由机制承担，这里不自造。
       this.ganttPanel?.show();
+    } else if (page === 'roles') {
+      // 2026-11-11 issue #202 S3：角色工作台（设计 §7）。同 gantt 口径——show() 内部
+      // 已 refresh，不重复拉取；面板点项只写共享选中态（D5）。
+      this.roleWorkbenchPanel?.show();
+    } else if (page === 'calendar') {
+      // 2026-11-11 issue #202 S3：协调日历（设计 §7）。同 gantt 口径。
+      this.coordinationCalendarPanel?.show();
     }
     // 持久化「上次所在子页」而非「当前是否开着」：退出时若写 null，刷新后
     // lastApprovalPage 永远回落 next_action，「记忆上次所在审批页」的承诺就
@@ -1717,6 +1738,22 @@ export class App {
         category: '工程',
         run: () => this.navigateToApproval('gantt'),
         getActive: () => this.approvalView === 'gantt',
+      },
+      {
+        id: 'approval.roles',
+        label: '审批：角色工作台',
+        engineeringNote: '按角色分组待办检查/待确认协调/现场冲突；冲突分两级——同角色 onsite 同日双现场（都已确认）才算冲突，未确认的窗口重叠只标潜在（§16.4）；协调是到场要求不是门禁输入；点行只写共享选中，不做 3D 高亮',
+        category: '工程',
+        run: () => this.navigateToApproval('roles'),
+        getActive: () => this.approvalView === 'roles',
+      },
+      {
+        id: 'approval.calendar',
+        label: '审批：协调日历',
+        engineeringNote: '按工作日列画 coordination 条目（onsite/remote/notify 三类 chip，颜色旁恒有文字）；chip 位置 = 所属包 forecast 潜在窗口，无锚点时只标「第 N 工作日」、不造年月日；site_pending 约束标「待定」；点条幅只写共享选中，不做 3D 高亮',
+        category: '工程',
+        run: () => this.navigateToApproval('calendar'),
+        getActive: () => this.approvalView === 'calendar',
       },
     ]);
 
