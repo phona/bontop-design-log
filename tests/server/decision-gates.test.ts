@@ -259,9 +259,9 @@ describe('决策门禁：叙事登记表双向对照', () => {
   // 双登记对照退役，readNarrativeDecisionIds 恒返回空集。
   it('readNarrativeDecisionIds 单一登记后恒为空集（不再有第二侧可读）', () => {
     assert.equal(readNarrativeDecisionIds(process.cwd()).size, 0);
-    // 迁入的证明：19 个 D 条个儿都带 missing_evidence。
+    // 迁入的证明：20 个 D 条个儿都带 missing_evidence。
     const gates = parseDecisionGates(fs.readFileSync('config/decision-gates.yaml', 'utf8'));
-    assert.equal(gates.decisions.length, 19);
+    assert.equal(gates.decisions.length, 20);
     assert.ok(gates.decisions.every((d) => typeof d.missing_evidence === 'string' && d.missing_evidence.length > 0),
       `缺 missing_evidence 的条目：${gates.decisions.filter((d) => !d.missing_evidence).map((d) => d.id).join(',')}`);
   });

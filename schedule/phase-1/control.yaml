@@ -638,6 +638,12 @@ global_blockers:
     clears_when: 燃气单位或物业书面确认厨房分隔要求
     owner_roles: [业主, 施工方, 燃气单位, 物业]
     trigger: 厨房门形式与燃气分隔要求必须在厨房门套下单和泥瓦收口前取得燃气单位或物业的书面确认；未闭环只能按最严做法预留门洞与门宽，后期调整涉及门套与墙面双返工
+  - id: BLK-DOOR-BEFORE-TILE
+    status: site_pending
+    item: 两卫门未定，干湿接缝落点未定——D20 未拍板，门扇尺寸、单包/双包、门套厚度与外凸量均未定，门洞实测与商家书面确认未归档
+    clears_when: D20 拍板并归档两卫门洞实测记录、商家书面确认与接缝落门下的排版图
+    owner_roles: [业主, 门供应商, 施工方]
+    trigger: 门与接缝落点必须在泥瓦铺贴开工前冻结；未闭环则瓦工一旦起铺，干湿接缝位置即固定，事后发现露在门外只能返工重贴或加过门石/收口条遮盖
   - id: BLK-MASTER-WARDROBE
     status: alignment_required
     item: 主卧北墙通顶定制衣柜（藏空调冷凝水管槽，必须定制）随2026-09-12压缩决策整体后移至二期，一期用成品衣架和斗柜过渡；门扇、位置、高度及空调检修关系仍未关闭
@@ -1237,14 +1243,14 @@ work_packages:
     dependencies: [PKG-050]
     readiness: blocked
     status: not_started
-    blockers: [BLK-SOUTH-BALCONY]
+    blockers: [BLK-SOUTH-BALCONY, BLK-DOOR-BEFORE-TILE]
     owner_roles: [泥瓦施工, 设计师, 业主]
     payment_gate: GATE-060-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-060 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
-    # 来源：model_geometry(collections=rooms) → 12；overlay(ids=entry_garden_floor/entry_foyer_floor/corridor_floor/main_corridor_floor/guest_bath_open_vanity_floor/north_platform_floor) → 6；model_geometry(ids=w_balc_east/w_balc_south/w_balc_west/w_ent_west/w_gbath_east/w_gbath_east_open_vanity/w_gbath_west/w_gbath_west_open_vanity/w_kit_west/w_mbath_east/w_mbath_south/w_vrv_east) → 12；overlay(ids=bedroom_nw_north_waterproof_ledge/bedroom_se_south_waterproof_ledge/kitchen_north_bay/living_south_waterproof_ledge/master_bedroom_south_waterproof_ledge/master_bedroom_west_mid_waterproof_ledge/master_bedroom_west_upper_waterproof_ledge/mbath_north_waterproof_ledge/mbath_west_lower_waterproof_ledge/study_south_waterproof_ledge) → 10。去重后共 40 个对象 id。
-    targets: [balcony, bedroom_nw, bedroom_nw_north_waterproof_ledge, bedroom_se, bedroom_se_south_waterproof_ledge, corridor_floor, elevator_shaft, entry_foyer_floor, entry_garden, entry_garden_floor, guest_bath, guest_bath_open_vanity_floor, kitchen, kitchen_north_bay, living_dining, living_south_waterproof_ledge, main_corridor, main_corridor_floor, master_bath, master_bedroom, master_bedroom_south_waterproof_ledge, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, north_platform_floor, study, study_south_waterproof_ledge, w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]
-    acceptance_refs: [check_tile_hollow, check_tile_gap, check_tile_flatness, check_tile_slope, check_tile_slope_same_day, check_sill_tile]
+    # 来源：model_geometry(collections=rooms) → 12；overlay(ids=entry_garden_floor/entry_foyer_floor/corridor_floor/main_corridor_floor/guest_bath_open_vanity_floor/north_platform_floor) → 6；model_geometry(ids=w_balc_east/w_balc_south/w_balc_west/w_ent_west/w_gbath_east/w_gbath_east_open_vanity/w_gbath_west/w_gbath_west_open_vanity/w_kit_west/w_mbath_east/w_mbath_south/w_vrv_east) → 12；overlay(ids=bedroom_nw_north_waterproof_ledge/bedroom_se_south_waterproof_ledge/kitchen_north_bay/living_south_waterproof_ledge/master_bedroom_south_waterproof_ledge/master_bedroom_west_mid_waterproof_ledge/master_bedroom_west_upper_waterproof_ledge/mbath_north_waterproof_ledge/mbath_west_lower_waterproof_ledge/study_south_waterproof_ledge) → 10；model_geometry(ids=d_gbath/d_mbath) → 2（2026-11-11 先定门再贴砖门禁，Codex 二审 blocking：被验门洞须进指纹，否则洞宽改动后旧通过不 stale）。去重后共 42 个对象 id。
+    targets: [balcony, bedroom_nw, bedroom_nw_north_waterproof_ledge, bedroom_se, bedroom_se_south_waterproof_ledge, corridor_floor, d_gbath, d_mbath, elevator_shaft, entry_foyer_floor, entry_garden, entry_garden_floor, guest_bath, guest_bath_open_vanity_floor, kitchen, kitchen_north_bay, living_dining, living_south_waterproof_ledge, main_corridor, main_corridor_floor, master_bath, master_bedroom, master_bedroom_south_waterproof_ledge, master_bedroom_west_mid_waterproof_ledge, master_bedroom_west_upper_waterproof_ledge, mbath_north_waterproof_ledge, mbath_west_lower_waterproof_ledge, north_platform_floor, study, study_south_waterproof_ledge, w_balc_east, w_balc_south, w_balc_west, w_ent_west, w_gbath_east, w_gbath_east_open_vanity, w_gbath_west, w_gbath_west_open_vanity, w_kit_west, w_mbath_east, w_mbath_south, w_vrv_east]
+    acceptance_refs: [check_tile_door_gate, check_tile_hollow, check_tile_gap, check_tile_flatness, check_tile_slope, check_tile_slope_same_day, check_sill_tile]
     checks:
       - id: SCH-060-01
         severity: major
@@ -1436,9 +1442,9 @@ work_packages:
     payment_gate: GATE-090-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-090 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
-    # 来源：model_geometry(collections=openings) → 9；overlay(ids=kitchen_dining_sliding_door) → 1。去重后共 10 个对象 id。
-    targets: [d_bese, d_bnw, d_elev, d_ent, d_gbath, d_kit_balc, d_mb, d_mbath, d_study, kitchen_dining_sliding_door]
-    acceptance_refs: [check_dw_swing, check_dw_seal]
+    # 来源：model_geometry(collections=openings) → 9；overlay(ids=kitchen_dining_sliding_door) → 1；overlay(ids=guest_bath_open_vanity_floor) → 1（2026-11-11 先定门再贴砖门禁，Codex 三审 blocking：关门复核的被验分界须进指纹，否则分界移动后旧通过不 stale）。去重后共 11 个对象 id。
+    targets: [d_bese, d_bnw, d_elev, d_ent, d_gbath, d_kit_balc, d_mb, d_mbath, d_study, guest_bath_open_vanity_floor, kitchen_dining_sliding_door]
+    acceptance_refs: [check_dw_swing, check_dw_seal, check_tile_door_seam_closed]
     checks:
       - id: SCH-090-01
         severity: critical

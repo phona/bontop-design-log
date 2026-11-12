@@ -124,8 +124,8 @@ describe('issue #191 验收项对象关联（验收标准二）', () => {
     for (const ref of pkg.acceptance_refs ?? []) refsByCheck.set(ref, [...(refsByCheck.get(ref) ?? []), pkg.id]);
   }
 
-  it('67 条验收项都登记了 objects.from_packages，且与 acceptance_refs 反查集合一致', () => {
-    assert.equal(items.length, 67, 'acceptance.yaml 必须 67 条');
+  it('69 条验收项都登记了 objects.from_packages，且与 acceptance_refs 反查集合一致', () => {
+    assert.equal(items.length, 69, 'acceptance.yaml 必须 69 条'); // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed：68 → 69
     for (const item of items) {
       const declared = item.objects?.from_packages;
       assert.ok(Array.isArray(declared) && declared.length > 0, `${item.id} 必须登记 objects.from_packages`);
@@ -212,7 +212,7 @@ describe('issue #191 扫描式门禁：验收正文点名的对象必须被指�
     return {covered, wholeModel};
   }
 
-  it('67 条验收项四段正文点名的每个工程对象，都被其对象集或引用闭包覆盖', () => {
+  it('69 条验收项四段正文点名的每个工程对象，都被其对象集或引用闭包覆盖', () => {
     const universe = objectUniverse();
     assert.ok(universe.size > 500, `对象宇宙应有数百个 id，实得 ${universe.size}——枚举不全会导致漏报`);
 
@@ -498,7 +498,7 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       `改灶具也必须让施工归属包 PKG-160 stale；实际 stale：${stale.join(', ') || '（无）'}`);
   });
 
-  // 门禁覆盖洞（第 9 轮暴露）：上面的扫描式门禁只扫 config/acceptance.yaml 的 67 条，
+  // 门禁覆盖洞（第 9 轮暴露）：上面的扫描式门禁只扫 config/acceptance.yaml 的 69 条，
   // **没扫 control.yaml 里 49 条 SCH-xxx 工作包内置检查**——而 SCH 正文用的是中文通称
   // （「烟机、灶具」）不是对象 id，词边界匹配扫不到。本条用另一条判据堵这个洞：
   // 每个工作包的 targets 必须覆盖「它全部 SCH 检查点名对象的并集」。
@@ -740,6 +740,42 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
       .map((pkg: AnyRecord) => pkg.id);
     assert.ok(stale.includes('PKG-050'), `PKG-050 的验收点名 gbath.vanity，柜内布局改动后必须 stale；实际 ${stale.join(', ')}`);
+  });
+
+  // 先定门再贴砖门禁（Codex 二审 blocking）：check_tile_door_gate 正文按两卫门洞实测值
+  // （d_gbath / d_mbath）定门与排版；门洞施工归属在 PKG-090，但验收记录挂在 PKG-060。
+  // MODEL-PKG-060 已按 id 直选两扇门洞；本用例守「客卫门洞改宽 → PKG-060 stale」，
+  // 防止洞宽改动后旧通过记录仍有效、已变的门洞与藏缝排版继续被视为验收通过。
+  it('改客卫门洞宽：挂该验收的 PKG-060 必须 stale', () => {
+    const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
+    const text = readFileSync(geometryPath, 'utf8');
+    const anchor = '      - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.45, width: 0.7, height: 2.1, room: guest_bath, swing: inward, hinge: start }';
+    assert.equal(text.split(anchor).length - 1, 1, 'd_gbath 声明锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    writeFileSync(geometryPath, text.replace(anchor, anchor.replace('width: 0.7', 'width: 0.8')));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id);
+    assert.ok(stale.includes('PKG-060'), `PKG-060 的验收点名 d_gbath，门洞改宽后必须 stale；实际 ${stale.join(', ')}`);
+  });
+
+  // 先定门再贴砖门禁（Codex 三审 blocking）：check_tile_door_seam_closed 正文按客卫干湿
+  // 分界（guest_bath_open_vanity_floor 的 z=3.55 边）复核关门后接缝不可见；地面分区施工
+  // 归属在 PKG-060，但复核记录挂在 PKG-090。MODEL-PKG-090 已按 id 直选该分区；本用例
+  // 守「分界边北移 → PKG-090 stale」，防止砖缝移出门下后旧复核通过记录仍有效。
+  it('改干湿分界边：挂该复核的 PKG-090 必须 stale', () => {
+    const floorZonesPath = join(sandbox, 'config/model/envelope/floor-zones.yaml');
+    const text = readFileSync(floorZonesPath, 'utf8');
+    const anchor = '  - id: guest_bath_open_vanity_floor\n    type: floor_region\n    points:\n      - { x: 5.60, z: 3.55 }';
+    assert.equal(text.split(anchor).length - 1, 1, 'guest_bath_open_vanity_floor 声明锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    writeFileSync(floorZonesPath, text.replace(anchor, anchor.replace('z: 3.55', 'z: 3.60')));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id);
+    assert.ok(stale.includes('PKG-090'), `PKG-090 的复核点名 guest_bath_open_vanity_floor，分界移动后必须 stale；实际 ${stale.join(', ')}`);
   });
 
   // issue #191 Codex blocking（三轮）：门洞摘要键带父墙还不够——宿主墙的声明也要进引用闭包。

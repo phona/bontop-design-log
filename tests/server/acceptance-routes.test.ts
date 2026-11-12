@@ -186,10 +186,11 @@ describe('验收写路径 API', () => {
     assert.ok(names.some((name: string) => /verify:schedule/.test(name)));
     const fifth = res.body.gates.find((gate: {name: string}) => gate.name === '前置与阻塞');
     assert.ok(fifth, '必须有第五道卡点「前置与阻塞」');
-    // PKG-060 依赖 PKG-050 未通过 + BLK-SOUTH-BALCONY 未关闭 → 不 ok 且列出原因
+    // PKG-060 依赖 PKG-050 未通过 + BLK-SOUTH-BALCONY / BLK-DOOR-BEFORE-TILE 未关闭 → 不 ok 且列出原因
     assert.equal(fifth.ok, false, fifth.detail);
     assert.match(fifth.detail, /PKG-050/);
     assert.match(fifth.detail, /BLK-SOUTH-BALCONY/);
+    assert.match(fifth.detail, /BLK-DOOR-BEFORE-TILE/);
   });
 
   it('P1-3 第五道卡点：预演项（can_run_while_blocked）passed 放行但注明 readiness 保持 blocked', async () => {
