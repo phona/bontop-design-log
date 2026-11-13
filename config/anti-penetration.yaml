@@ -88,16 +88,19 @@ sibling_policy:
 # 原量房台账 #55（已退场，未决项现由对象 blocker 承载）（权威记录，此处不手抄尺寸——禁双写）。
 # 把它当实体判穿透会得到 10 处「穿模」，但那不是缺陷而是建模口径未裁定。
 #
+# 2026-11-13 issue #116：三件 PVC 链件（box/entry/chase）随冷凝链退役已删，本表现只剩
+# condensate_pipe_ac_outlet 一件；service_chase 的预留区口径问题随件删除而关闭。
+#
 # 因此这里要求**逐类型显式申报**，未申报 → fail-closed（pen.mep_participation_undeclared）：
 #   excluded  不作为实体参与互撞（当前口径）
 #   solid     按实体参与墙穿透检查（需要业主/厂家确认该构件是实体后再改）
 # 预留区与实体管的口径裁定、以及那 10 处重叠的定性，跟踪 原量房台账（已于 S2-B 退场），
 # 未裁定前不得为了绿灯改坐标或改口径。
+# 2026-11-13 issue #116：mep_parts participation 已退役——最后一件机电协调构件
+# condensate_pipe_ac_outlet（内机出口示意）随冷凝链退役已删，本节无申报对象可管；
+# 全带泵改路由另案落仓时，如有新的机电协调构件再按本节口径逐类型显式申报。
 mep_parts:
-  participation:
-    - types: [mb_vanity_pvc_box, mb_vanity_pvc_service_chase, mb_vanity_pvc_wardrobe_entry, condensate_pipe_ac_outlet]
-      policy: excluded
-      note: "预埋管/检视构件按预留区口径，穿墙由 verify:mep 专项负责；其中 mb_vanity_pvc_service_chase 的 4 处墙穿越 + 6 处家具重叠待口径裁定（见 原量房台账（已于 S2-B 退场））"
+  participation: []
 
 # ── 豁免（waiver）────────────────────────────────────────────────────────
 # 每条豁免必须带 reason / owner / expires。到期自动复活为 error 并带上豁免编号，
@@ -189,21 +192,8 @@ waivers:
     expires: 2027-06-30
 
   # ── 主卫浴室柜组 / 主卧梳妆位 / 通顶衣柜收口 ──
-  - id: vanity_layers
-    rule: pen.furniture.furniture
-    pair: [mb.vanity_base_cabinet, mb.vanity_lower_board]
-    kind: attached
-    reason: "主卫浴室柜组的分层构造：下悬浮板与底柜同轴（同一 along / 宽 / 深，主体退让东墙完成面 15mm，端部由独立收口处理，见 config/house.yaml 原注），是同一组家具的上下构件，不是两台独立柜体"
-    owner: 业主
-    expires: 2027-06-30
-
-  - id: vanity_layers_upper
-    rule: pen.furniture.furniture
-    pair: [mb.vanity_lower_board, mb.vanity_main_board]
-    kind: attached
-    reason: "主卫浴室柜组：上悬浮板与下悬浮板同轴叠置（同一 along / 宽 / 深，主体退让东墙完成面 15mm），三层柜体构件属同一组家具，板件之间的共面不是互撞"
-    owner: 业主
-    expires: 2027-06-30
+  # 2026-11-13 issue #116：vanity_layers / vanity_layers_upper 两条豁免已删——
+  # 底柜 + 双悬浮板由单一通顶柜 mb.full_height_cabinet 取代，无分层共面可豁免。
 
   - id: robot_dock_in_gbath_vanity_bay
     rule: pen.furniture.furniture
@@ -221,13 +211,8 @@ waivers:
     owner: 业主
     expires: 2027-06-30
 
-  - id: wardrobe_top_pelmet
-    rule: pen.furniture.furniture
-    pair: [mb.wardrobe_950, mb.wardrobe_pelmet]
-    kind: attached
-    reason: "通顶衣柜顶部薄收口件：config/house.yaml 原注「通顶柜顶部薄收口，主体固定门头已由衣柜对象表达；不承担 HVAC 责任」，与衣柜主体是同一通顶柜的上下构件，不是两件独立家具"
-    owner: 业主
-    expires: 2027-06-30
+  # 2026-11-13 issue #116：wardrobe_top_pelmet 豁免已删——950 衣柜 + 顶封已删，
+  # 顶封现为通顶柜 mb.full_height_cabinet 2.50–2.80m 固定板的一部分，不再是独立对象。
 
 # ── 活动包络（envelopes）申报：shadow-only ──────────────────────────────────
 # 补「用起来才穿模」这一洞：门扇开启占位、推拉门开启态、冰箱/洗碗机/洗衣机门、
@@ -308,14 +293,14 @@ envelopes:
       declared_basis: "config/house.yaml「收纳态完整收入桌下，使用时向东拉出」——拉出向=东，显式声明"
 
     # ── 衣柜门（wardrobe_door）：铰开按平开门扇扫掠，推拉按贴面薄包络 ──
-    - id: env.wardrobe_950.door
-      type: master_north_wall_wardrobe_950
+    - id: env.mb_full_height_cabinet.door
+      type: mb_full_height_cabinet
       kind: wardrobe_door
-      open_face: south
+      open_face: west
       door_face_axis: local+z
-      leaf_width_m: 0.29
+      leaf_width_m: 0.46
       leaf_count: 3
-      declared_basis: "config/house.yaml「三扇约0.29m平开门朝南」；FixtureFactory 门板在 local +z，rotation=0 → 朝南；每扇 90° 扫掠用「正面探出 0.29m」的保守盒外包（不知每扇铰侧，只过冲不漏）"
+      declared_basis: "config/house.yaml（2026-11-13 issue #116）「三扇平开门 × 约 0.46m 至 2.50m（朝西，3 阻尼铰链/扇），2.10–2.50m 顶柜上下分门」；FixtureFactory 门板在 local +z，rotation=270 → 朝西；每扇 90° 扫掠用「正面探出 0.46m」的保守盒外包（不知每扇铰侧，只过冲不漏）；2026-11-13 前为 env.wardrobe_950.door（950 衣柜三扇 0.29m 朝南），随衣柜删除改记本条"
     - id: env.wardrobe_180.slide
       type: wardrobe_180
       kind: wardrobe_door

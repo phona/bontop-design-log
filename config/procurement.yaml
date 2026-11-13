@@ -42,7 +42,7 @@ materials:
     current_stage: selection
     waste_rate: 1.05
     unit: sqm
-    notes: ["全屋定制柜，需提前30天", "主卧主卫隔墙外底柜 mb_vanity_base_cabinet：1.38m×0.565m×0.62m；按 x[1.975,2.54] z[2.92,4.30] 双墙完成面收口，现场复尺确认后下单"]
+    notes: ["全屋定制柜，需提前30天", "主卧主卫隔墙外通顶定制柜 mb.full_height_cabinet（2026-11-13 issue #116，取代底柜 + 双悬浮板）：1.38m×0.565m，柜身 2.50m + 顶封 0.30m 至 2.80m；按 x[1.975,2.54] z[2.92,4.30] 双墙完成面收口，现场复尺确认后下单；报价未定价，待柜商报价"]
 
   - id: quartz_stone_01
     name: "石英石台面"
@@ -445,14 +445,14 @@ materials:
     unit: 扇
     notes: ["P0补录，到店确认型号价格"]
   - id: wardrobe_north_950_custom_01
-    name: "主卧北墙950定制模块化衣柜（R8 active）"
+    name: "主卧北墙950定制模块化衣柜（R8，2026-11-13 issue #116 superseded）"
     room: master_bedroom
     category: 家具
     current_stage: selection
     waste_rate: 1
     unit: 组
     price: 0
-    notes: ["active wardrobe_north_950_custom_01；950×580×2800mm，三扇窄平开门（±95°）+顶部固定木饰面门头，真正通顶；冷凝水PVC管槽隐藏在顶部固定段；空调仍在主卫门口上方，衣柜与 HVAC 保持独立；price 0 明确 pending/site_pending，现场核实完成面外廓、防倾倒固定、门套净距、管径坡度与 HVAC 检修"]
+    notes: ["2026-11-13 issue #116 superseded：950 衣柜已删，改通顶定制柜 mb.full_height_cabinet（1.38m×0.565m，柜身 2.50m + 顶封至 2.80m）；原方案 950×580×2800mm，三扇窄平开门（±95°）+顶部固定木饰面门头，真正通顶；冷凝水PVC管槽隐藏在顶部固定段；空调仍在主卫门口上方，衣柜与 HVAC 保持独立；price 0 明确 pending/site_pending，仅历史保留"]
 
   - id: wardrobe_north_650_custom_01
     name: "主卧北墙650定制模块化衣柜（R7 收窄版 superseded）"

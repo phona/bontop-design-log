@@ -37,7 +37,7 @@ import type { ProjectApiResponse } from '../../shared/api-project.js';
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
-/** 三件冷凝链遮蔽家具（house.yaml 稳定 id）。 */
+/** 三件冷凝链遮蔽家具（house.yaml 稳定 id）——2026-11-13 issue #116 已退役，本文件断言 2 钉其缺席。 */
 const CONDENSATE_CHAIN_FURNITURE_IDS = [
   'mb.condensate_pipe',
   'mb.vanity_pvc_wardrobe_entry',
@@ -264,10 +264,15 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     assert.deepEqual(chainDiagnostics, [], `冷凝链锚点解算失败：\n${chainDiagnostics.join('\n')}`);
   });
 
-  it('断言 2：三件冷凝链遮蔽家具在建场结果里在场', () => {
+  it('断言 2：三件冷凝链遮蔽家具已退役、不再建场，通顶柜在场', () => {
+    // 2026-11-13 issue #116：冷凝链退役——三件链件（mb.condensate_pipe /
+    // mb.vanity_pvc_wardrobe_entry / mb.vanity_pvc_service_chase）已从 house.yaml 删除，
+    // 建场结果里不得再有它们；通顶柜 mb.full_height_cabinet 须在场。
     const objectIds = fullBuild.result.index.furnitureMeshes.map((mesh) => String(mesh.userData.objectId));
-    const missing = CONDENSATE_CHAIN_FURNITURE_IDS.filter((id) => !objectIds.includes(id));
-    assert.deepEqual(missing, [], `建场结果缺冷凝链家具（共 ${objectIds.length} 件家具）：\n${objectIds.filter((id) => id.startsWith('mb.')).join('\n')}`);
+    for (const id of CONDENSATE_CHAIN_FURNITURE_IDS) {
+      assert.ok(!objectIds.includes(id), `退役链件 ${id} 不得再建场`);
+    }
+    assert.ok(objectIds.includes('mb.full_height_cabinet'), '通顶柜 mb.full_height_cabinet 必须在场');
   });
 
   it('断言 3：一期响应里 night_corridor 的标注坐标不是 (0,0)', () => {

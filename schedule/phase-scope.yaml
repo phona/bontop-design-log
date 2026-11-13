@@ -32,8 +32,9 @@ phases:
         # placed：床/南北床头柜/台盆柜/低柜；count-only：龙头/床垫/窗帘/灯。
         include_ids: [mb.bed_180, mb.bedside_cabinet_north, mb.bedside_cabinet_south, mb.washbasin_cabinet, mb.low_dresser]
         include_types: [faucet, mattress_180, curtain_set, ceiling_light]
-        # 通顶衣柜与门头、梳妆台凳、东墙浴室柜组与整条冷凝链留二期。
-        exclude_ids: [mb.wardrobe_950, mb.wardrobe_pelmet, mb.dressing_table, mb.dressing_stool, mb.vanity_base_cabinet, mb.vanity_lower_board, mb.vanity_main_board, mb.condensate_pipe, mb.vanity_pvc_box, mb.vanity_pvc_wardrobe_entry, mb.vanity_pvc_service_chase]
+        # 通顶定制柜与梳妆台凳留二期。
+        # 2026-11-13 issue #116：950 衣柜 + 底柜 + 双悬浮板 + 三件 PVC 链件 + 内机出口示意已删，冷凝链已退役。
+        exclude_ids: [mb.full_height_cabinet, mb.dressing_table, mb.dressing_stool]
       study:
         # 一期只留窗帘与灯（均 count-only，无 id 可指名）；书桌椅与通顶柜三段留二期。
         include_ids: []

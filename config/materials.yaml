@@ -206,7 +206,7 @@ materials:
     pros: ["多层实木环保", "PET肤感好擦洗", "含基础五金"]
     cons: ["定制周期长"]
     price_source: "快环建材市场 / 本地定制工厂报价"
-    notes: "按投影面积计价，含基础五金、设计、安装；L 型橱柜投影约 6㎡；主卧主卫隔墙外 mb_vanity_base_cabinet 采用 1.38m×0.565m×0.62m，包络 x[1.975,2.54] z[2.92,4.30]，现场复尺后下单"
+    notes: "按投影面积计价，含基础五金、设计、安装；L 型橱柜投影约 6㎡；主卧主卫隔墙外通顶定制柜 mb.full_height_cabinet（2026-11-13 issue #116，取代底柜 + 双悬浮板）采用 1.38m×0.565m，柜身 2.50m + 顶封 0.30m 至 2.80m，包络 x[1.975,2.54] z[2.92,4.30]，现场复尺后下单；报价未定价" 
 
   - id: "quartz_stone_01"
     topic_id: "countertop"
@@ -1063,7 +1063,7 @@ materials:
     topic_id: "wardrobe"
     alternative_group: "wardrobe"
     category: "家具"
-    name: "主卧北墙950定制模块化衣柜（R8 active）"
+    name: "主卧北墙950定制模块化衣柜（R8，2026-11-13 issue #116 superseded）"
     brand: "本地全屋定制工厂 / 待核样"
     model: "950×580×2800mm，三扇窄平开门+顶部固定木饰面门头，真正通顶；冷凝水管槽隐藏于顶部"
     spec: "950×580×2800mm"
@@ -1080,7 +1080,7 @@ materials:
     pros: ["定制模块化", "一体木饰面", "三门独立 pivot 真实开合", "与空调门头盒一体衔接"]
     cons: ["价格与真实完成面外廓待核", "防倾倒固定待现场确认", "门套净距与现场开启包络待复核"]
     price_source: "pending"
-    notes: "当前试做方案：950W×580D×2500H，三扇窄平开门朝南（±95°），AABB平面保持当前家具配置；柜体/门板完成面与 ceiling_master_ac 底标高约2.50m齐平，顶部仅保留细收口，不把HVAC设备、送回风或检修责任并入家具。price pending 不以 0 伪装完成；现场仍需核实完成面外廓、防倾倒固定、门套净距与 HVAC 检修"
+    notes: "2026-11-13 issue #116 superseded：950 衣柜已删，改通顶定制柜 mb.full_height_cabinet（1.38m×0.565m，柜身 2.50m + 顶封至 2.80m）。原方案：950W×580D×2500H，三扇窄平开门朝南（±95°），AABB平面保持当时家具配置；柜体/门板完成面与 ceiling_master_ac 底标高约2.50m齐平，顶部仅保留细收口，不把HVAC设备、送回风或检修责任并入家具。price pending 不以 0 伪装完成；仅历史保留" 
     appearance: { type: "wood", color: "medium_light_walnut_warm_smoked_oak" }
 
   - id: "wardrobe_north_650_custom_01"

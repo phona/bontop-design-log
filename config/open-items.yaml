@@ -69,6 +69,11 @@ items:
       c.dec045_subject_pending_adjudication 也已按「悬案有台账承接」删除，导致本悬案一度既无跟踪入口也无门禁。
       `c.dec_ref_resolvable` 只能保证编号可解析，抓不到主题不符；其扫描面（config/docs/schedule）内可见的
       config 侧 3 处引用（house.yaml 1、materials.yaml 2）全部「解析成功但语义错指」。
+      2026-11-13 issue #116（业主裁定）：主卫条带柜组四件套（底柜/下板/主板/PVC 盒）+ 950 衣柜已删，
+      改通顶定制柜 mb.full_height_cabinet（1.38m×0.565m，柜身 2.50m + 顶封至 2.80m）；DEC-045 短引
+      所指的「四件套」设计已不在现行 config 中，本悬案的标的物随之消失。本条仍保持 open：正式裁决
+      （上文选项①/②）+ grep 收敛 + c.dec045_mismatch_tracked 调整，待业主另行拍板；本次只登记
+      supersession 事实，不关闭本条。
     needs: >-
       `{裁决: ① 补录正式条目并重编号（项目有 DEC-052/053 改号先例）｜② 把引用改指向正确编号,
       补录条目正文或改指映射表, 该 78 处引用的逐处复核}`

@@ -23,6 +23,12 @@
  * - shared/furniture-placement.ts：三件家具的摆位原点；
  * - shared/render/FixtureFactory.ts：配方零件位置（原写死长度改为按几何算）；
  * - scripts/verify/placement/verify-furniture-placement.ts：段接口与 MEP 对照诊断。
+ *
+ * 2026-11-13 issue #116：链已退役——950 通顶衣柜与三件链条家具（entry/chase/box）全删，
+ * 全带泵后冷凝水改走客卫，不再经主卫服务带。两宿主皆无时 resolveCondensateChain 返回
+ * 无链无诊断（不是错误）；仅缺其一时仍按缺失宿主诊断（防单件残留静默漂移）。
+ * 本模块与 buildCondensate* 配方保留（condensate-chain.test.ts 以夹具回归其锚点派生），
+ * 若日后确认链永久不用再另案清理。
  */
 
 import { declaredFurnitureDims, resolveFurniturePlacement, WALL_THICKNESS, type PlacementAnchors, type PlacementItem, type WallLike } from './furniture-placement.js';
@@ -197,6 +203,12 @@ export function resolveCondensateChain(
   const { anchors, wallSegments } = input;
 
   const wardrobe = input.wardrobe;
+  if (wardrobe === undefined && input.wallRun === undefined) {
+    // 2026-11-13 issue #116：两宿主皆无 = 链已退役（见模块头注），不是错误。
+    // 调用方按 condensateChain 未定义跳过链上摆位与 MEP 对照；若日后有家具重新挂
+    // chain 锚点，furniture-placement 会对缺失的 condensateChain 显形。
+    return { geometry: null, diagnostics };
+  }
   if (wardrobe === undefined) {
     diagnostics.push('通顶衣柜条目缺失（链的服务带/东缘/南缘无宿主）');
     return { geometry: null, diagnostics };

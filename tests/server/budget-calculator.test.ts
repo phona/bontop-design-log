@@ -972,9 +972,9 @@ describe('BudgetCalculator', () => {
   it('wardrobe topic bills per-room with distinct options (master frontstage / study seasonal backstage)', () => {
     const catalog = ProjectCatalog.load('.');
     // Stub furnishings so this test does not depend on in-flight house.yaml edits:
-    // master_bedroom 用 R7 北墙650定制柜（收窄避 d_mb 门扇），bedroom_se 用新后台柜，bedroom_nw 沿用既有 wardrobe_180
+    // master_bedroom 用 issue #116 通顶定制柜（1.38×0.565m，沿主卫东墙西脸），bedroom_se 用新后台柜，bedroom_nw 沿用既有 wardrobe_180
     (catalog as unknown as { furnishings: FurnishingsYaml }).furnishings = {
-      master_bedroom: [{ type: 'master_north_wall_wardrobe_950', x: 1.0, z: 1.0, rotation: 0 }],
+      master_bedroom: [{ type: 'mb_full_height_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015 }],
       bedroom_se: [{ type: 'study_seasonal_wardrobe_wall', x: 1.0, z: 1.0, rotation: 0 }],
       bedroom_nw: [{ type: 'wardrobe_180', x: 1.0, z: 1.0, rotation: 0 }],
     };
@@ -1089,13 +1089,13 @@ describe('BudgetCalculator', () => {
     const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: Record<string, Array<{ type: string }>> };
     const expectedByRoom: Record<string, string> = {
       // 房间 → 该房间实际放置的柜类 furnishing type
-      master_bedroom: 'master_north_wall_wardrobe_950',
+      master_bedroom: 'mb_full_height_cabinet',
       study: 'study_seasonal_wardrobe_wall',
       bedroom_se: 'wardrobe_180',
       bedroom_nw: 'wardrobe_180',
     };
     const optionByFurnishing: Record<string, string> = {
-      master_north_wall_wardrobe_950: 'wardrobe_north_950_custom_01',
+      mb_full_height_cabinet: 'wardrobe_north_950_custom_01',
       study_seasonal_wardrobe_wall: 'study_seasonal_wardrobe_170_01',
       wardrobe_180: 'wardrobe_180_01',
     };
@@ -1120,11 +1120,11 @@ describe('BudgetCalculator', () => {
 
   it('dresser topic bills the low dresser on its own line without polluting wardrobe (R1)', () => {
     const catalog = ProjectCatalog.load('.');
-    // R7：主卧同时持有北墙650定制柜（收窄版，wardrobe topic）与南侧矮柜（dresser topic），
+    // issue #116：主卧同时持有通顶定制柜（wardrobe topic）与南侧矮柜（dresser topic），
     // 两者必须各自成行——矮柜并入 wardrobe 会按柜价重复计价
     (catalog as unknown as { furnishings: FurnishingsYaml }).furnishings = {
       master_bedroom: [
-        { type: 'master_north_wall_wardrobe_950', x: 3.075, z: 4.59, rotation: 0 },
+        { type: 'mb_full_height_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015 },
         { type: 'master_hot_season_low_dresser', x: 1.00, z: 9.31, rotation: 180 },
       ],
       bedroom_nw: [{ type: 'wardrobe_180', x: 3.50, z: 4.00, rotation: 0 }],
@@ -1149,14 +1149,14 @@ describe('BudgetCalculator', () => {
     assert.equal(dresserItems[0].quantity, 1);
     assert.equal(dresserItems[0].unitPrice, 2200);
     assert.equal(dresserItems[0].cost, 2200);
-    // wardrobe 不受污染：主卧仅计 R7 北墙650定制柜（只数衣柜，不含矮柜）
+    // wardrobe 不受污染：主卧仅计通顶定制柜（只数衣柜，不含矮柜）
     const mbWardrobe = snapshot.lineItems.find((li) => li.topic === 'wardrobe' && li.roomId === 'master_bedroom');
     assert.ok(mbWardrobe);
     assert.equal(mbWardrobe.optionId, 'wardrobe_north_950_custom_01');
     assert.equal(mbWardrobe.quantity, 1);
     assert.equal(mbWardrobe.unitPrice, 0);
     assert.equal(mbWardrobe.cost, 0);
-    // 矮柜归 furniture_soft 池；R7 衣柜 price pending 为 0（不伪装完成）
+    // 矮柜归 furniture_soft 池；通顶柜 price pending 为 0（不伪装完成）
     const furnitureSoft = snapshot.categories.find((c) => c.key === 'furniture_soft');
     assert.ok(furnitureSoft && furnitureSoft.autoActual >= 2200, 'dresser + pending wardrobe both flow into furniture_soft');
   });

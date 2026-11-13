@@ -1,7 +1,9 @@
 // 主卫东墙（w_mbath_east）along 语义收口：issue #98 删除「along = 绝对 z」历史特例后，
 // along 一律是「从墙段起点顶点沿墙向的距离」（与 overlay.yaml wall_region/paint_region 的
-// along 区间同一口径）。本文件把 4 件受影响家具的世界包络用手算基准钉死，并证明越界的
-// along 不再被静默解析成绝对坐标，而是走 PR-3 已建的摆位诊断链（页面 / DXF / verify:furniture）。
+// along 区间同一口径）。本文件把 1 件受影响家具（2026-11-13 issue #116 通顶柜）的世界
+// 包络用手算基准钉死，并证明越界的 along 不再被静默解析成绝对坐标，而是走 PR-3 已建的
+// 摆位诊断链（页面 / DXF / verify:furniture）。原 4 件（底柜 + 双悬浮板 + PVC 墙行包管）
+// 已随 #116 退役，清单守卫现只认通顶柜 1 件。
 //
 // 期望值全部手算写死（算式见各断言旁注释），不经被测代码推导；墙几何与条目声明从
 // config/layout/model-geometry.yaml、config/house.yaml 实读，防止本文件字面输入随配置漂移。
@@ -93,15 +95,13 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     closeTo(WALL_THICKNESS, 0.12);
   });
 
-  it('受影响条目清单已穷尽：这两面墙上只有这 4 件挂墙家具，且 along = 原绝对 z − 墙起点 z', () => {
+  it('受影响条目清单已穷尽：这两面墙上只有这 1 件挂墙家具，且 along = 原绝对 z − 墙起点 z', () => {
     // 清单穷尽性守卫：原特例只在 w_mbath_east / w_mb_east 上生效，house.yaml 里挂在这两面
-    // 墙上的家具必须且只能是被改写的 4 件——新增第 5 件而不按沿墙距离书写时这里显形。
+    // 墙上的家具必须且只能是被改写的条目——新增第 2 件而不按沿墙距离书写时这里显形。
     // 右侧期望值是改前（along 当绝对 z）的世界锚点 z，逐件手抄自 git 历史里的原声明。
+    // 2026-11-13 issue #116：底柜 + 双悬浮板 + PVC 墙行包管退役，只剩通顶柜 1 件。
     const historicalAnchorZ: Record<string, number> = {
-      'mb.vanity_base_cabinet': 3.61,
-      'mb.vanity_lower_board': 3.61,
-      'mb.vanity_main_board': 3.61,
-      'mb.vanity_pvc_box': 3.70,
+      'mb.full_height_cabinet': 3.61,
     };
     const anchored = Object.entries(houseFurnishings()).flatMap(([room, items]) =>
       items
@@ -110,7 +110,7 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     assert.deepEqual(
       anchored.map(({ item }) => item.id).sort(),
       Object.keys(historicalAnchorZ).sort(),
-      '这两面墙上的挂墙家具必须恰好是被特例改写的 4 件',
+      '这两面墙上的挂墙家具必须恰好是被特例改写的 1 件',
     );
     for (const { room, item } of anchored) {
       const wall = WALLS[item.wall as string];
@@ -129,7 +129,7 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     const lengths = new Map(layout.walls.map((wall) => [wall.id, Math.hypot(wall.x2 - wall.x1, wall.z2 - wall.z1)]));
     const anchored = Object.entries(houseFurnishings()).flatMap(([room, items]) =>
       items.filter((item) => item.wall !== undefined && item.along !== undefined).map((item) => ({ room, item })));
-    assert.ok(anchored.length >= 7, `house.yaml 应有 ≥7 件挂墙家具（4 主卫 + 3 客卫），现 ${anchored.length}`);
+    assert.ok(anchored.length >= 4, `house.yaml 应有 ≥4 件挂墙家具（1 主卫 + 3 客卫），现 ${anchored.length}`);
     for (const { room, item } of anchored) {
       const length = lengths.get(item.wall as string);
       assert.ok(length !== undefined, `${room}/${item.type}: wall "${String(item.wall)}" 不在 model-geometry.yaml`);
@@ -140,17 +140,20 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     }
   });
 
-  it('mb_vanity_base_cabinet：along 2.51 → 中心 (2.2425, 3.61)，包络 x[1.96,2.525] z[2.92,4.30]', () => {
+  it('mb_full_height_cabinet：along 2.51 → 中心 (2.2425, 3.61)，包络 x[1.96,2.525] z[2.92,4.30]', () => {
     // 手算：along 2.51 自起点顶点 v_bath_ne(2.60,1.10) 沿墙向北 → 锚点 (2.60, 1.10+2.51=3.61)；
     // 中心 x = 2.60 − 0.06(半墙厚) − 0.015(wall_clearance) − 0.565/2 = 2.2425；
-    // 宽 1.38 / 深 0.565 来自 FURNITURE_DIMS 目录（行内未重复声明）；rotation 270 交换轴
+    // 宽 1.38 / 深 0.565 / 总高 2.80 行内声明（issue #116 参数化单点定义；总高 = 柜身 2.50 +
+    // 顶封 0.30，SceneBuilder 按 cabinetHeight 缩放配方总高）；rotation 270 交换轴
     // → 世界宽 = 深 0.565、世界深 = 宽 1.38。
-    const item = byId(masterBedroomItems(), 'mb.vanity_base_cabinet');
+    const item = byId(masterBedroomItems(), 'mb.full_height_cabinet');
     assert.equal(item.wall, 'w_mbath_east');
     assert.equal(item.wall_side, 'west');
     assert.equal(item.rotation, 270);
     closeTo(item.along as number, 2.51);
-    assert.equal(item.width, undefined, '尺寸走 FURNITURE_DIMS 目录，行内不写第二套');
+    assert.equal(item.width, 1.38);
+    assert.equal(item.depth, 0.565);
+    assert.equal(item.cabinetHeight, 2.80);
     closeTo(item.wall_clearance as number, 0.015);
     const placement = resolveOk(item, segments('w_mbath_east'));
     closeTo(placement.x, 2.2425);
@@ -159,49 +162,6 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     closeTo(box.minX, 1.96);
     closeTo(box.maxX, 2.525);
     closeTo(box.minZ, 2.92);
-    closeTo(box.maxZ, 4.30);
-  });
-
-  it('mb_vanity_lower_board / mb_vanity_main_board：与底柜同轴同包络', () => {
-    // 两块悬浮板与底柜同 wall/wall_side/rotation/along/width/depth/clearance → 同解。
-    for (const id of ['mb.vanity_lower_board', 'mb.vanity_main_board']) {
-      const item = byId(masterBedroomItems(), id);
-      assert.equal(item.wall, 'w_mbath_east');
-      assert.equal(item.wall_side, 'west');
-      assert.equal(item.rotation, 270);
-      closeTo(item.along as number, 2.51);
-      closeTo(item.width as number, 1.38);
-      closeTo(item.depth as number, 0.565);
-      closeTo(item.wall_clearance as number, 0.015);
-      const placement = resolveOk(item, segments('w_mbath_east'));
-      closeTo(placement.x, 2.2425);
-      closeTo(placement.z, 3.61);
-      const box = worldEnvelope(item, placement.x, placement.z, 1.38, 0.565);
-      closeTo(box.minX, 1.96);
-      closeTo(box.maxX, 2.525);
-      closeTo(box.minZ, 2.92);
-      closeTo(box.maxZ, 4.30);
-    }
-  });
-
-  it('mb_vanity_pvc_box：along 2.60 → 中心 (2.50, 3.70)，trim 包络 x[2.46,2.54] z[3.10,4.30]', () => {
-    // 手算：目录尺寸 1.20×0.08；along 2.60 → 锚点 (2.60, 1.10+2.60=3.70)；
-    // 中心 x = 2.60 − 0.06(半墙厚) − 0 − 0.08/2 = 2.50（管心 x=2.50，与 FixtureFactory 注释一致）；
-    // rotation 270 → 世界宽 = 0.08、世界深 = 1.20 → z[3.10,4.30]（= 管行 z 3.10..4.30）。
-    const item = byId(masterBedroomItems(), 'mb.vanity_pvc_box');
-    assert.equal(item.wall, 'w_mbath_east');
-    assert.equal(item.wall_side, 'west');
-    assert.equal(item.rotation, 270);
-    closeTo(item.along as number, 2.60);
-    assert.equal(item.width, undefined);
-    assert.equal(item.depth, undefined);
-    const placement = resolveOk(item, segments('w_mbath_east'));
-    closeTo(placement.x, 2.50);
-    closeTo(placement.z, 3.70);
-    const box = worldEnvelope(item, placement.x, placement.z, 1.20, 0.08);
-    closeTo(box.minX, 2.46);
-    closeTo(box.maxX, 2.54);
-    closeTo(box.minZ, 3.10);
     closeTo(box.maxZ, 4.30);
   });
 
@@ -265,36 +225,25 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     const healthy = buildProjectDxf(dxfInput(items));
     assert.deepEqual(healthy.errors, []);
     // 中心文字坐标（DXF x = local_x×1000、y = −local_z×1000，4 位小数）：与「along 当绝对 z」
-    // 时代的手写值逐位相同——三件柜组同为 (2242.5000, −3610.0000)。
-    assert.ok(healthy.dxf.includes('10\n2242.5000\n20\n-3610.0000'), 'mb_vanity 柜组中心文字坐标');
-    // mb_vanity_pvc_box 属协调示意件（冷凝水走向代理），DXF 不画、只告警——几何以 M-CAND 为准。
-    assert.ok(healthy.warnings.some((warning) => /mb_vanity_pvc_box: 协调示意件/.test(warning)), 'pvc_box 必须以告警形式显形而非静默消失');
+    // 时代的手写值逐位相同——通顶柜中心仍为 (2242.5000, −3610.0000)，与原三件柜组同值。
+    // 2026-11-13 issue #116：pvc_box（冷凝水走向代理，DXF 不画、只告警）随冷凝链退役，
+    // 协调示意件告警在本房已无主体。
+    assert.ok(healthy.dxf.includes('10\n2242.5000\n20\n-3610.0000'), '通顶柜中心文字坐标');
 
     const broken = JSON.parse(JSON.stringify(items)) as FurnishingItem[];
-    for (const id of ['mb.vanity_base_cabinet', 'mb.vanity_lower_board', 'mb.vanity_main_board']) {
-      byId(broken, id).along = 3.61;
-    }
-    byId(broken, 'mb.vanity_pvc_box').along = 3.70;
-    // 3 条 error：pvc_box 是协调示意件，DXF 在解算前就按 M-CAND 口径跳过（其越界诊断由
-    // 解算器 / SceneBuilder / verify:furniture 三处覆盖，见本文件其余用例）。
+    byId(broken, 'mb.full_height_cabinet').along = 3.61;
+    // 1 条 error：通顶柜 along 越界即整次导出失败。
     const brokenResult = buildProjectDxf(dxfInput(broken));
-    assert.equal(brokenResult.errors.length, 3);
-    for (const error of brokenResult.errors) assert.match(error, /master_bedroom:mb_vanity_\w+: wall anchor along=3\.\d+ places furniture outside wall span/);
-    // 被跳过的 pvc_box 仍以告警点名（coordination schematic 豁免只免画，不免显形）——
-    // 否则一次「pvc_box along 越界 + 其余三件修好」的导出会静悄悄少掉这条墙行。
-    assert.ok(
-      brokenResult.warnings.some((warning) => /mb_vanity_pvc_box: 协调示意件/.test(warning)),
-      'pvc_box 即使在越界态也必须在 warnings 里显形',
-    );
+    assert.equal(brokenResult.errors.length, 1);
+    assert.match(brokenResult.errors[0], /master_bedroom:mb_full_height_cabinet: wall anchor along=3\.61 places furniture outside wall span/);
   });
 
   it('页面（SceneBuilder）：越界 along 进 report.placementDiagnostics，坏件不进场景', () => {
     const items = masterBedroomItems();
     // 链解算的三面宿主墙（shared/condensate-chain.ts 从 w_mb_east / w_mbath_east /
-    // w_mbath_south 派生段端点）+ hvac 锚点/候选点与 MEP 穿墙点：PR-10 起 master_bedroom
-    // 实配含三件 anchor 声明的链条家具（condensate_pipe_ac_outlet 等），场景不喂这些输入
-    // 时链条解不出、会带与 along 无关的根因诊断打穿「无诊断」健康态——口径见
-    // tests/server/shared/scene-builder.test.ts 同族用例（场景侧喂合成 diagram + 穿墙点）。
+    // w_mbath_south 派生段端点）+ hvac 锚点/候选点与 MEP 穿墙点：2026-11-13 issue #116
+    // 冷凝链退役，场景不再喂链条家具；此处仍喂 HVAC 锚点上下文（indoor_master +
+    // condensate_master_candidate），覆盖「带 HVAC 图建场」路径，健康态仍须零诊断。
     const chainWalls = [
       { id: 'w_mbath_east', ...WALLS.w_mbath_east, height: 2.8 },
       { id: 'w_mb_east', ...WALLS.w_mb_east, height: 2.8 },
@@ -325,33 +274,22 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
 
     const healthy = build(items);
     assert.deepEqual(healthy.report.placementDiagnostics, []);
-    const cabinet = healthy.index.furnitureMeshes.find((group) => group.userData.objectId === 'mb.vanity_base_cabinet');
-    assert.ok(cabinet, 'healthy config must place mb.vanity_base_cabinet');
+    const cabinet = healthy.index.furnitureMeshes.find((group) => group.userData.objectId === 'mb.full_height_cabinet');
+    assert.ok(cabinet, 'healthy config must place mb.full_height_cabinet');
     closeTo(cabinet!.position.x, 2.2425);
     closeTo(cabinet!.position.z, 3.61);
 
     const broken = JSON.parse(JSON.stringify(items)) as FurnishingItem[];
-    for (const id of ['mb.vanity_base_cabinet', 'mb.vanity_lower_board', 'mb.vanity_main_board']) {
-      byId(broken, id).along = 3.61;
-    }
-    byId(broken, 'mb.vanity_pvc_box').along = 3.70;
+    byId(broken, 'mb.full_height_cabinet').along = 3.61;
     const brokenResult = build(broken);
-    // 5 条 = 4 件越界 along（底柜/两块板/墙行包管）+ 1 条链级根因：pvc_box 同时是链的墙行
-    // 宿主（resolveCondensateChain 的 wallRun），它的 along 越界使整条链作废，三件链条锚点
-    // 件按件跳过、不在件级重复根因（addFurniture 口径）。链诊断点名同一越界值，不新增第二
-    // 套坐标事实；越界件本身仍一件都不进场景。
-    assert.equal(brokenResult.report.placementDiagnostics.length, 5);
-    const alongDiagnostics = brokenResult.report.placementDiagnostics.filter((line) => line.startsWith('master_bedroom:mb_vanity_'));
-    assert.equal(alongDiagnostics.length, 4);
-    for (const diagnostic of alongDiagnostics) {
-      assert.match(diagnostic, /master_bedroom:mb_vanity_\w+: wall anchor along=3\.\d+ places furniture outside wall span/);
-    }
-    assert.ok(
-      brokenResult.report.placementDiagnostics.some((line) =>
-        line.startsWith('condensate chain:') && line.includes('mb.vanity_pvc_box') && line.includes('along=3.7')),
-      '链级根因须显形（墙行宿主越界 → 链作废），且不带双前缀',
+    // 1 条 = 通顶柜 along 越界。2026-11-13 issue #116 冷凝链退役：链级根因不再产生
+    // （wallRun 宿主已删，resolveCondensateChain 返回空几何、无诊断），越界件本身不进场景。
+    assert.equal(brokenResult.report.placementDiagnostics.length, 1);
+    assert.match(
+      brokenResult.report.placementDiagnostics[0],
+      /master_bedroom:mb_full_height_cabinet: wall anchor along=3\.61 places furniture outside wall span/,
     );
-    assert.ok(!brokenResult.index.furnitureMeshes.some((group) => group.userData.objectId === 'mb.vanity_base_cabinet'), '坏件不得静默进场景');
+    assert.ok(!brokenResult.index.furnitureMeshes.some((group) => group.userData.objectId === 'mb.full_height_cabinet'), '坏件不得静默进场景');
   });
 
   it('verify:furniture：越界 along 令校验退出非零并点名 wall span', () => {
@@ -361,10 +299,8 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     try {
       cpSync(`${ROOT}/config`, join(workspace, 'config'), { recursive: true });
       const mutated = readFileSync(`${ROOT}/config/house.yaml`, 'utf8')
-        .replaceAll('along: 2.51', 'along: 3.61')
-        .replace('along: 2.60', 'along: 3.70');
+        .replaceAll('along: 2.51', 'along: 3.61');
       assert.match(mutated, /along: 3\.61/);
-      assert.match(mutated, /along: 3\.70/);
       writeFileSync(join(workspace, 'config', 'house.yaml'), mutated, 'utf8');
 
       const result = spawnSync(

@@ -549,20 +549,21 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       `稳定 id 家具跨房迁移必须让 PKG-150 stale；实际 stale：${stale.join(', ') || '（无）'}`);
   });
 
-  // issue #191 Codex blocking 第 12 轮（一）：CONDENSATE_CHAIN_INPUT_IDS 漏了两面墙。
-  // resolveCondensateChain 的 wallOrDiagnostic 逐个取 w_mb_east / w_mbath_east /
-  // w_mbath_south 三面（shared/condensate-chain.ts:213-215），而我第 8 轮写清单时只对照了
-  // 注释里的穿墙点，漏了前两面。这正是 OI-80 预言的「清单靠人工维护，漏更新就是一个漏 stale」。
-  it('链输入清单补全：改 w_mb_east 端点，PKG-150 必须 stale', () => {
+  // 2026-11-13 issue #116：冷凝链退役，CONDENSATE_CHAIN_INPUT_IDS 不再是 PKG-150 的
+  // 输入清单；本用例改测同一指纹机制的另一条真输入——通顶柜的宿主墙 w_mbath_east
+  // （PKG-150 经 MODEL-PKG-150 的对象 id 直选挂 mb.full_height_cabinet，柜随墙动）。
+  // （原用例「改 w_mb_east 端点」随链清单一并退役；OI-80 的教训仍在：清单靠人工维护，
+  // 漏更新就是一个漏 stale——现由对象直选 + 本用例钉住宿主墙跟随。）
+  it('宿主墙跟随：改 w_mbath_east 端点，PKG-150 必须 stale', () => {
     const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
     const lines = readFileSync(geometryPath, 'utf8').split('\n');
-    // 墙声明是多行：`- id: w_mb_east` 之后若干行才是 from/to。
-    const wallAt = lines.findIndex((line) => /^\s*- id: w_mb_east\s*$/.test(line));
-    assert.ok(wallAt >= 0, '必须有 w_mb_east 墙');
+    // 墙声明是多行：`- id: w_mbath_east` 之后若干行才是 from/to。
+    const wallAt = lines.findIndex((line) => /^\s*- id: w_mbath_east\s*$/.test(line));
+    assert.ok(wallAt >= 0, '必须有 w_mbath_east 墙');
     const wallEnd = lines.findIndex((line, i) => i > wallAt && /^\s*- id:/.test(line));
     const stop = wallEnd > 0 ? wallEnd : lines.length;
     const fromAt = lines.findIndex((line, i) => i > wallAt && i < stop && /^\s*from:\s*\S+\s*$/.test(line));
-    assert.ok(fromAt > wallAt, 'w_mb_east 必须声明 from');
+    assert.ok(fromAt > wallAt, 'w_mbath_east 必须声明 from');
     const vertexId = /from:\s*(\S+)/.exec(lines[fromAt])![1];
     // 顶点是单行流式：`- { id: v_mb_ne, x: 4.20, z: 5.55 }`。改它的 x 即改墙几何。
     const vAt = lines.findIndex((line) => new RegExp(`^- \\{ id: ${vertexId}\\b`).test(line.trim()));
@@ -581,7 +582,7 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       .map((pkg: AnyRecord) => pkg.id)
       .sort();
     assert.ok(stale.includes('PKG-150'),
-      `改 w_mb_east 必须让挂链上家具的 PKG-150 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+      `改 w_mbath_east 必须让挂通顶柜的 PKG-150 stale；实际 stale：${stale.join(', ') || '（无）'}`);
   });
 
   // issue #191 Codex blocking 第 12 轮（二）：PKG-160 的 SCH-160-01 验安装与维护空间，
@@ -853,7 +854,11 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       `PKG-150 摘要必须含 quantity: 类的 count-only 条目，实际键 ${keys.filter((k) => k.includes('quantity')).join(', ') || '（无）'}`);
   });
 
-  it('兜底二：改冷凝水候选接入点，挂链上家具的 PKG-150 必须 stale', () => {
+  it('兜底二（反向）：改冷凝水候选接入点，PKG-150 不得 stale、摘要不得含该候选点', () => {
+    // 2026-11-13 issue #116：冷凝链退役——condensate_master_candidate 不再是 PKG-150
+    // 的输入；改它的坐标不得再让 PKG-150 stale（防依赖静默回归：若某天链输入清单
+    // 被误恢复，本断言立刻显形）。候选点本身仍在 hvac.yaml（全带泵改路由另案落仓时
+    // 再处置），故变异手法不变，只反转断言方向。
     const hvacPath = join(sandbox, 'config/hvac.yaml');
     const lines = readFileSync(hvacPath, 'utf8').split('\n');
     const idAt = lines.findIndex((line) => /^\s*- id: condensate_master_candidate\s*$/.test(line));
@@ -876,13 +881,13 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
       .map((pkg: AnyRecord) => pkg.id)
       .sort();
-    assert.ok(stale.includes('PKG-150'),
-      `改进候选接入点必须让挂链上家具的 PKG-150 stale；实际 stale：${stale.join(', ') || '（无）'}`);
-    // 反向自证：摘要里必须出现链声明的输入对象，证明闭包确实跟随了 CONDENSATE_CHAIN_INPUT_IDS。
+    assert.ok(!stale.includes('PKG-150'),
+      `改候选接入点不得再让 PKG-150 stale（链已退役）；实际 stale：${stale.join(', ') || '（无）'}`);
+    // 反向自证：摘要里不得再出现已退役的链输入对象。
     const keys = Object.keys(afterState.packageProjectSnapshot(
       afterState.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-150')!,
     ));
-    assert.ok(keys.some((key) => key.includes('condensate_master_candidate')),
-      `PKG-150 摘要必须含链输入 condensate_master_candidate，实际键 ${keys.filter((k) => k.includes('condensate')).join(', ') || '（无）'}`);
+    assert.ok(!keys.some((key) => key.includes('condensate_master_candidate')),
+      `PKG-150 摘要不得再含已退役的链输入 condensate_master_candidate，实际键 ${keys.filter((k) => k.includes('condensate')).join(', ') || '（无）'}`);
   });
 });

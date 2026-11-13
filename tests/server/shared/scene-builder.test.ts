@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import * as THREE from 'three';
-import { buildFixture, getNorthWallWardrobe950DoorAabb, getRecipeTypes, setNorthWallWardrobe950DoorConfiguration, setNorthWallWardrobe950DoorState, setPartitionWardrobeDoorState, type NorthWallWardrobe950DoorConfiguration } from '../../../shared/render/FixtureFactory.js';
+import { buildFixture, getNorthWallWardrobe950DoorAabb, getRecipeTypes, setNorthWallWardrobe950DoorState, setPartitionWardrobeDoorState } from '../../../shared/render/FixtureFactory.js';
 import { buildScene } from '../../../shared/render/SceneBuilder.js';
 import { buildCliHouseScene } from '../../../scripts/render/cli-house-scene.js';
 import { FURNITURE_DIMS, getPartitionWardrobeDoorAabbs } from '../../../shared/types.js';
@@ -1021,35 +1021,33 @@ function furnitureByType(result: ReturnType<typeof buildCliHouseScene>, type: st
   return object;
 }
 
-test('R9 SceneBuilder vanity boards anchor to the wall west finish with no west-side bridge meshes', () => {
+test('R9 SceneBuilder full-height cabinet anchors to the wall west finish with no west-side bridge meshes', () => {
   const result = buildCliHouseScene();
   result.exportRoot.updateMatrixWorld(true);
-  for (const type of ['mb_vanity_lower_board', 'mb_vanity_main_board']) {
-    const board = furnitureByType(result, type);
-    const boardBox = new THREE.Box3().setFromObject(board);
-    assert.ok(Math.abs(board.position.x - 2.2425) < 1e-6, `${type} center x must be 2.2425m after 15mm finish retreat`);
-    assert.ok(Math.abs(board.position.z - 3.61) < 1e-6, `${type} center z must be 3.61m`);
-    assert.ok(Math.abs(boardBox.min.x - 1.960) < 1e-6 && Math.abs(boardBox.max.x - 2.525) < 1e-6, `${type} AABB must be x[1.960,2.525] after finish retreat`);
-    assert.ok(Math.abs(boardBox.min.z - 2.92) < 1e-6, `${type} must start at the bedroom-side finish of w_mbath_south`);
-    assert.ok(Math.abs(boardBox.max.z - 4.30) < 1e-6, `${type} must terminate at wall north edge`);
-    assert.equal(board.children.some((child) => child.userData.part === 'wardrobe-side-board-end'), false, `${type} must remain a plain floating board without a wardrobe-colored end panel`);
-  }
+  const cabinet = furnitureByType(result, 'mb_full_height_cabinet');
+  const cabinetBox = new THREE.Box3().setFromObject(cabinet);
+  assert.ok(Math.abs(cabinet.position.x - 2.2425) < 1e-6, `cabinet center x must be 2.2425m after 15mm finish retreat`);
+  assert.ok(Math.abs(cabinet.position.z - 3.61) < 1e-6, `cabinet center z must be 3.61m`);
+  assert.ok(Math.abs(cabinetBox.min.x - 1.960) < 1e-6 && Math.abs(cabinetBox.max.x - 2.525) < 1e-6, `cabinet AABB must be x[1.960,2.525] after finish retreat`);
+  assert.ok(Math.abs(cabinetBox.min.z - 2.92) < 1e-6, `cabinet must start at the bedroom-side finish of w_mbath_south`);
+  assert.ok(Math.abs(cabinetBox.max.z - 4.30) < 1e-6, `cabinet must terminate at wall north edge`);
+  assert.ok(Math.abs(cabinetBox.min.y - 0) < 1e-6 && Math.abs(cabinetBox.max.y - 2.80) < 1e-6, `cabinet must run floor to ceiling (carcass 0–2.50 + fixed header 2.50–2.80)`);
   assert.equal(result.index.furnitureMeshes.some((group) => group.userData.furnishingType === 'mb_vanity_continuous_closure_cabinet'), false);
   assert.equal(result.index.furnitureMeshes.some((group) => String(group.userData.furnishingType).endsWith('_board_bridge')), false);
 });
 
-test('R11 SceneBuilder vanity base cabinet and every child part stay inside the west finish envelope', () => {
+test('R11 SceneBuilder full-height cabinet and every child part stay inside the west finish envelope', () => {
   const result = buildCliHouseScene();
   result.exportRoot.updateMatrixWorld(true);
-  const base = furnitureByType(result, 'mb_vanity_base_cabinet');
-  const baseBox = new THREE.Box3().setFromObject(base);
-  assert.ok(Math.abs(base.position.x - 2.2425) < 1e-6, `base cabinet center x=${base.position.x}`);
-  assert.ok(Math.abs(base.position.z - 3.61) < 1e-6, `base cabinet center z=${base.position.z}`);
-  assert.ok(Math.abs(baseBox.min.x - 1.960) < 1e-6 && Math.abs(baseBox.max.x - 2.525) < 1e-6, `base cabinet AABB x[${baseBox.min.x},${baseBox.max.x}]`);
-  assert.ok(Math.abs(baseBox.min.z - 2.92) < 1e-6 && Math.abs(baseBox.max.z - 4.30) < 1e-6, `base cabinet AABB z[${baseBox.min.z},${baseBox.max.z}]`);
+  const cabinet = furnitureByType(result, 'mb_full_height_cabinet');
+  const cabinetBox = new THREE.Box3().setFromObject(cabinet);
+  assert.ok(Math.abs(cabinet.position.x - 2.2425) < 1e-6, `cabinet center x=${cabinet.position.x}`);
+  assert.ok(Math.abs(cabinet.position.z - 3.61) < 1e-6, `cabinet center z=${cabinet.position.z}`);
+  assert.ok(Math.abs(cabinetBox.min.x - 1.960) < 1e-6 && Math.abs(cabinetBox.max.x - 2.525) < 1e-6, `cabinet AABB x[${cabinetBox.min.x},${cabinetBox.max.x}]`);
+  assert.ok(Math.abs(cabinetBox.min.z - 2.92) < 1e-6 && Math.abs(cabinetBox.max.z - 4.30) < 1e-6, `cabinet AABB z[${cabinetBox.min.z},${cabinetBox.max.z}]`);
   const parts: THREE.Object3D[] = [];
-  base.traverse((object) => { if (object.userData.part) parts.push(object); });
-  assert.deepEqual(parts.map((object) => object.userData.part), ['base-cabinet', 'base-plinth', 'base-front-reveal', 'base-door-seam']);
+  cabinet.traverse((object) => { if (object.userData.part) parts.push(object); });
+  assert.deepEqual(parts.map((object) => object.userData.part), ['full-height-carcass', 'full-height-header', 'full-height-plinth', 'full-height-door-lower', 'full-height-door-lower', 'full-height-door-lower', 'full-height-door-upper', 'full-height-door-upper', 'full-height-door-upper', 'full-height-door-seam-1', 'full-height-door-seam-2']);
   for (const part of parts) {
     const box = new THREE.Box3().setFromObject(part);
     assert.ok(box.min.x >= 1.960 - 1e-6, `${part.userData.part} crosses west edge: ${box.min.x}`);
@@ -1059,16 +1057,14 @@ test('R11 SceneBuilder vanity base cabinet and every child part stay inside the 
   }
 });
 
-test('R7 wardrobe four-state real-mesh collision matrix clears declared room obstacles and HVAC geometry', () => {
+test('R7 full-height cabinet real-mesh collision check clears declared room obstacles and HVAC geometry', () => {
   const result = buildCliHouseScene(undefined, undefined, undefined, 'data/project-render-facts.json');
-  const wardrobe = furnitureByType(result, 'master_north_wall_wardrobe_950');
+  const cabinet = furnitureByType(result, 'mb_full_height_cabinet');
   const obstacles = new Map<string, THREE.Object3D>();
   const door = result.exportRoot.getObjectByName('d_mb');
   assert.ok(door, 'missing d_mb open door mesh');
   obstacles.set('d_mb_open_leaf', door);
   for (const type of [
-    'mb_vanity_lower_board',
-    'mb_vanity_main_board',
     'bed_180',
     'master_bedside_cabinet_350_north',
     'master_bedside_cabinet_350_south',
@@ -1084,39 +1080,32 @@ test('R7 wardrobe four-state real-mesh collision matrix clears declared room obs
     assert.ok(object, `missing modeled HVAC obstacle ${id}`);
     obstacles.set(id, object);
   }
-  const doorRoots: THREE.Object3D[] = [];
-  wardrobe.traverse((object) => { if (object.userData.materialRole === 'door_root') doorRoots.push(object); });
-  doorRoots.sort((a, b) => Number(a.userData.doorIndex) - Number(b.userData.doorIndex));
-  assert.equal(doorRoots.length, 3);
-  const expectedRotations: Record<NorthWallWardrobe950DoorConfiguration, [number, number, number]> = {
-    closed: [0, 0, 0],
-    left_open: [-95, 0, 0],
-    middle_open: [0, 95, 0],
-    right_open: [0, 0, 95],
-    left_middle_open: [-95, 95, 0],
-    left_right_open: [-95, 0, 95],
-    middle_right_open: [0, 95, 95],
-    all_open: [-95, 95, 95],
-  };
-  for (const configuration of Object.keys(expectedRotations) as NorthWallWardrobe950DoorConfiguration[]) {
-    setNorthWallWardrobe950DoorConfiguration(wardrobe, configuration);
-    result.exportRoot.updateMatrixWorld(true);
-    assert.deepEqual(doorRoots.map((root) => Math.round(THREE.MathUtils.radToDeg(root.rotation.y))), expectedRotations[configuration]);
-    const leaves = doorRoots.map((root) => new THREE.Box3().setFromObject(root));
-    for (let a = 0; a < leaves.length; a++) {
-      for (let b = a + 1; b < leaves.length; b++) {
-        assert.equal(strictBoxIntersects(leaves[a], leaves[b]), false, `${configuration}: wardrobe door leaves ${a + 1}/${b + 1} intersect`);
-      }
-    }
-    let minimumClearance = Infinity;
+  // 2026-11-13 issue #116：950 衣柜（三扇带铰链门、可八态开合）退役；通顶柜的门是
+  // 平嵌面板、无建模铰链轴，故八态门矩阵无主体。改钉两件事：① 闭合态整柜实 mesh
+  // 与各障碍无交叠且有正净距；② 每扇下柜门（0.44m 宽、朝西开）的摆动扫掠盒
+  // （x 自柜前脸向西 0.46m、z 取门幅——铰链无论在南缘还是北缘，90° 扫掠都落
+  // 在此盒内）与各障碍无交叠。
+  const cabinetBox = new THREE.Box3().setFromObject(cabinet);
+  let minimumClearance = Infinity;
+  for (const [name, obstacle] of obstacles) {
+    const obstacleBox = new THREE.Box3().setFromObject(obstacle);
+    assert.equal(strictBoxIntersects(cabinetBox, obstacleBox), false, `cabinet intersects ${name}`);
+    minimumClearance = Math.min(minimumClearance, boxClearance(cabinetBox, obstacleBox));
+  }
+  assert.ok(Number.isFinite(minimumClearance) && minimumClearance > 0, 'no positive modeled clearance');
+  const lowerDoors: THREE.Object3D[] = [];
+  cabinet.traverse((object) => { if (object.userData.part === 'full-height-door-lower') lowerDoors.push(object); });
+  assert.equal(lowerDoors.length, 3, 'cabinet must have three lower swing doors');
+  for (const [index, leaf] of lowerDoors.entries()) {
+    const leafBox = new THREE.Box3().setFromObject(leaf);
+    const sweep = new THREE.Box3(
+      new THREE.Vector3(leafBox.min.x - 0.46, leafBox.min.y, leafBox.min.z),
+      new THREE.Vector3(leafBox.min.x, leafBox.max.y, leafBox.max.z),
+    );
     for (const [name, obstacle] of obstacles) {
       const obstacleBox = new THREE.Box3().setFromObject(obstacle);
-      for (const [index, leafBox] of leaves.entries()) {
-        assert.equal(strictBoxIntersects(leafBox, obstacleBox), false, `${configuration}: door ${index + 1} intersects ${name}`);
-        minimumClearance = Math.min(minimumClearance, boxClearance(leafBox, obstacleBox));
-      }
+      assert.equal(strictBoxIntersects(sweep, obstacleBox), false, `door ${index + 1} swing sweep intersects ${name}`);
     }
-    assert.ok(Number.isFinite(minimumClearance) && minimumClearance > 0, `${configuration}: no positive modeled clearance`);
   }
 });
 

@@ -70,20 +70,16 @@ budget:
     mb_washbasin_cabinet: vanity
     master_dressing_table: vanity
     dressing_stool: chair
-    mb_vanity_base_cabinet: wardrobe
-    mb_vanity_lower_board: wardrobe
-    mb_vanity_main_board: wardrobe
-    mb_vanity_pvc_box: wardrobe
+    mb_full_height_cabinet: wardrobe
     sofa_3seat: sofa
     shoe_cabinet: shoe_cabinet
-    # 主卧 R8 北墙950定制衣柜按 wardrobe topic 计价；650 收窄版、R6 600成品柜与旧 wardrobe_062 仅历史保留
+    # 主卧 R8 北墙950定制衣柜已于 2026-11-13 issue #116 删除（改通顶定制柜 mb_full_height_cabinet，见上）；
+    # 650 收窄版、R6 600成品柜与旧 wardrobe_062 仅历史保留
     master_north_wall_wardrobe_600: wardrobe
     master_north_wall_wardrobe_650: wardrobe
-    master_north_wall_wardrobe_950: wardrobe
     # 主卧家具化前台 + 书房季节后台（2026-09 迭代）：新柜体并入 wardrobe topic，支持逐房选材计价
     master_freestanding_wardrobe_062: wardrobe
     master_partition_wardrobe_1600: wardrobe
-    master_wardrobe_top_pelmet: wardrobe
     master_bedside_cabinet_350_north: dresser
     master_bedside_cabinet_350_south: dresser
     master_dressing_connection_storage: dresser

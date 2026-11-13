@@ -22,24 +22,15 @@ interface Aabb {
 type WallSide = 'north' | 'south' | 'east' | 'west';
 type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number; wall_clearance?: number; vanity_layout?: VanityLayoutDecl; mount?: FurnitureMount; anchor?: FurnitureAnchor };
 
+// 2026-11-13 issue #116：底柜 + 双悬浮板 + PVC 包管已删，由通顶定制柜 mb_full_height_cabinet
+// 取代（同墙 w_mbath_east 西侧、朝西、rotation 270、沿墙锚点；包络目标 x[1.960,2.525] z[2.920,4.300] 不变）。
 const MB_VANITY_TYPES = new Set([
-  'mb_vanity_base_cabinet',
-  'mb_vanity_lower_board',
-  'mb_vanity_main_board',
-  'mb_vanity_pvc_box',
+  'mb_full_height_cabinet',
 ]);
 
 const MB_VANITY_CASEWORK_TYPES = [
-  'mb_vanity_base_cabinet',
-  'mb_vanity_lower_board',
-  'mb_vanity_main_board',
+  'mb_full_height_cabinet',
 ] as const;
-
-const MB_CONDENSATE_TYPES = new Set([
-  'mb_vanity_pvc_box',
-  'mb_vanity_pvc_wardrobe_entry',
-  'mb_vanity_pvc_service_chase',
-]);
 
 function rotatedDims(item: PlacedItem, rotation: number): { width: number; depth: number } | null {
   // 尺寸来源与 3D/DXF 共用 declaredFurnitureDims（vanity 走 house.yaml vanity_layout，
@@ -66,15 +57,11 @@ function resolvePlacement(
       errors.push(`${label}: wall anchor requires wall, wall_side, and along`);
       return {};
     }
-    // 策略性锚点约定（非几何复算）：主卫柜组与冷凝水管行必须钉在 w_mbath_east 西侧、朝西、rotation 270。
-    if (item.type === 'mb_vanity_pvc_box') {
+    // 策略性锚点约定（非几何复算）：主卫东墙柜必须钉在 w_mbath_east 西侧、朝西、rotation 270。
+    // 2026-11-13 issue #116：冷凝水管行（mb_vanity_pvc_box）已删，该分支同步删除。
+    if (MB_VANITY_TYPES.has(item.type)) {
       if (item.roomId !== 'master_bedroom' || item.wall !== 'w_mbath_east' || item.wall_side !== 'west' || item.rotation !== 270) {
-        errors.push(`${label}: condensate wall run must use w_mbath_east west side at rotation 270`);
-        return {};
-      }
-    } else if (MB_VANITY_TYPES.has(item.type)) {
-      if (item.roomId !== 'master_bedroom' || item.wall !== 'w_mbath_east' || item.wall_side !== 'west' || item.rotation !== 270) {
-        errors.push(`${label}: bathroom vanity anchor must use w_mbath_east west side at rotation 270`);
+        errors.push(`${label}: east-wall cabinet anchor must use w_mbath_east west side at rotation 270`);
         return {};
       }
     }
@@ -121,7 +108,7 @@ const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['kitchen_countertop_bridge', 'kitchen_cabinet_run'], // bridge intentionally overlaps both run ends to make one continuous countertop
   ['kitchen_countertop_bridge', 'dishwasher'], // bridge is the declared countertop over the dishwasher reservation
   ['master_dressing_table', 'dressing_stool'], // 专用凳明确收进梳妆台台下，平面 footprint 可重叠但高度不冲突
-  ['master_wardrobe_top_pelmet', 'master_north_wall_wardrobe_950'], // 950衣柜顶部仅保留细收口，视觉同高但不承担 HVAC 责任
+  // 2026-11-13 issue #116：950 衣柜 + 顶封已删，其层叠豁免同步删除。
   ['bed_180', 'master_bedside_tray_south'], // 床架集成托盘位于床投影内，独立校验收起/使用态
   ['vanity', 'mirror_cabinet_gbath'], // DEC-2026-09-09-R2 镜柜挂墙位于台盆正上方（y[1.10,2.00] vs 台盆 ≤0.79），高度不冲突，平面 footprint 投影重叠属预期
   ['vanity', 'robot_dock_gbath'], // DEC-2026-09-09-R6 基站泊入悬空台盆柜下（柜体底缘 y=0.30，基站顶 0.280，顶余 0.020；2026-11-02 本 PR 由 J6 改 JX YJCC034），竖向错层，平面投影重叠属预期
@@ -137,8 +124,8 @@ function isMasterBedroomEastWallStackedPair(a: PlacedItem, b: PlacedItem): boole
   if (a.roomId !== 'master_bedroom' || b.roomId !== 'master_bedroom') return false;
   if (!MB_VANITY_TYPES.has(a.type) || !MB_VANITY_TYPES.has(b.type)) return false;
   if (a.rotation !== 270 || b.rotation !== 270) return false;
-  // These are four explicitly layered objects on the solid east wall x=2.60;
-  // their 2D footprints may overlap although their elevations do not.
+  // 2026-11-13 issue #116：东墙柜组现为单一通顶柜（mb_full_height_cabinet），层叠豁免暂无
+  // 第二件可配对；保留本函数守锚点约定（同墙同向同 along 的两件仍豁免重叠）。
   return [a, b].every((item) => item.wall === 'w_mbath_east' && item.wall_side === 'west' && item.along !== undefined);
 }
 
@@ -188,6 +175,8 @@ function main(): void {
   // 与 SceneBuilder 同一函数），摆位与 3D/DXF 同口径。hvac 锚点（内机/候选接入点）读
   // config/hvac.yaml，穿墙点读 MEP condensate-master（只读引用，不改线）。解算失败 →
   // error：三件链条家具的定位声明解不出来，不出缺件校验。
+  // 2026-11-13 issue #116：链已退役（950 衣柜 + 三件链条家具全删，全带泵后冷凝水改走客卫）；
+  // resolveCondensateChain 在两宿主皆无时返回无链无诊断，调用方按 condensateChain 未定义跳过。
   const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
   const hvacDiagram = hvacFacts.plans[0]?.diagram;
   const mepCoordination = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
@@ -274,14 +263,13 @@ function main(): void {
       }
 
       const anchoredVanity = MB_VANITY_TYPES.has(item.type) && item.wall === 'w_mbath_east' && item.wall_side === 'west';
-      const anchoredCondensate = MB_CONDENSATE_TYPES.has(item.type);
-      if (!anchoredVanity && !anchoredCondensate && (box.minX < roomBounds.minX - EPS || box.maxX > roomBounds.maxX + EPS ||
+      if (!anchoredVanity && (box.minX < roomBounds.minX - EPS || box.maxX > roomBounds.maxX + EPS ||
           box.minZ < roomBounds.minZ - EPS || box.maxZ > roomBounds.maxZ + EPS)) {
         errors.push(`${label}: AABB (${box.minX.toFixed(2)},${box.minZ.toFixed(2)})→(${box.maxX.toFixed(2)},${box.maxZ.toFixed(2)}) outside room bounds (${roomBounds.minX.toFixed(2)},${roomBounds.minZ.toFixed(2)})→(${roomBounds.maxX.toFixed(2)},${roomBounds.maxZ.toFixed(2)})`);
       }
 
       for (const swing of doorSwings) {
-        if (intersects(box, swing) && !anchoredCondensate) {
+        if (intersects(box, swing)) {
           errors.push(`${label}: intersects door swing zone (${swing.minX.toFixed(2)},${swing.minZ.toFixed(2)})→(${swing.maxX.toFixed(2)},${swing.maxZ.toFixed(2)})`);
         }
       }
@@ -289,7 +277,7 @@ function main(): void {
       for (const other of placedBoxes) {
         const currentItem = { ...item, roomId };
         const otherItem = { ...other.item, roomId };
-        if (intersects(box, other.box) && !anchoredCondensate && !MB_CONDENSATE_TYPES.has(other.item.type) && !isStackedPair(item.type, other.item.type) && !isMasterBedroomEastWallStackedPair(currentItem, otherItem)) {
+        if (intersects(box, other.box) && !isStackedPair(item.type, other.item.type) && !isMasterBedroomEastWallStackedPair(currentItem, otherItem)) {
           errors.push(`${label}: overlaps ${other.label}`);
         }
       }
@@ -331,23 +319,16 @@ function main(): void {
   const MB_WEST_CURTAIN_BOX_MAX_X = 1.35;    // 主卧西窗帘盒内缘
 
   const mbBed = placedIndex.get('master_bedroom/bed_180');
-  const mbWardrobe = placedIndex.get('master_bedroom/master_north_wall_wardrobe_950');
   const mbTable = placedIndex.get('master_bedroom/master_dressing_table');
   const mbStool = placedIndex.get('master_bedroom/dressing_stool');
   const mbNorthCabinet = placedIndex.get('master_bedroom/master_bedside_cabinet_350_north');
   const mbSouthCabinet = placedIndex.get('master_bedroom/master_bedside_cabinet_350_south');
   const mbConnectionStorage = placedIndex.get('master_bedroom/master_dressing_connection_storage');
-  const mbPelmet = placedIndex.get('master_bedroom/master_wardrobe_top_pelmet');
   const electricalPoints = loadYaml(readFileSync('config/electrical.yaml', 'utf8')) as Array<{ id: string; x?: number; z?: number }>;
   const floorSocket = electricalPoints.find((point) => point.id === 'sock_master_projector');
 
-  if (!mbWardrobe) {
-    errors.push('master_bedroom: missing placed master_north_wall_wardrobe_950');
-  } else {
-    if (intersects(mbWardrobe.box, MB_DOOR_SWEEP)) {
-      errors.push(`${mbWardrobe.label}: 衣柜与 d_mb 开启门扇硬冲突（wardrobe x[${mbWardrobe.box.minX.toFixed(2)},${mbWardrobe.box.maxX.toFixed(2)}] z[${mbWardrobe.box.minZ.toFixed(2)},${mbWardrobe.box.maxZ.toFixed(2)}], d_mb x[3.30,4.20] z[4.65,4.67]）`);
-    }
-  }
+  // 2026-11-13 issue #116：950 衣柜已删，其与 d_mb 门扇扫掠的冲突校验同步删除。
+  // 通顶柜在 z[2.92,4.30]，与 d_mb 门洞（z[4.65,5.55]）无交集；柜门朝西，见 #116 批注。
 
   if (!mbBed) {
     errors.push('master_bedroom: missing placed bed_180');
@@ -372,13 +353,9 @@ function main(): void {
     if (cabinet.item.type === 'master_bedside_cabinet_350_south' && intersects(cabinet.box, MB_SOUTH_CLOSED_CURTAIN_ENVELOPE)) {
       warnings.push(`${cabinet.label}: 与闭帘候选软包络 z[${MB_SOUTH_CLOSED_CURTAIN_ENVELOPE.minZ.toFixed(2)},${MB_SOUTH_CLOSED_CURTAIN_ENVELOPE.maxZ.toFixed(2)}] 相交；warning/BLOCKED，待现场核量，不升级为结构 error`);
     }
-    if (mbWardrobe && intersects(cabinet.box, mbWardrobe.box)) errors.push(`${cabinet.label}: overlaps north-wall wardrobe`);
   }
 
-  if (!mbPelmet) {
-    errors.push('master_bedroom: missing placed master_wardrobe_top_pelmet');
-  }
-
+  // 2026-11-13 issue #116：950 衣柜顶封已删，其存在性校验同步删除（顶封现为通顶柜 2.50–2.80m 固定板的一部分）。
 
   if (!mbTable) {
     errors.push('master_bedroom: missing placed master_dressing_table');
