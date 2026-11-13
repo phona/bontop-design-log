@@ -722,9 +722,12 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   if (strip.length === 1) {
     // Codex 三审 minor：净距不得钉死精确值——净距改善（仍 < 报警阈值）时消息一变即红。
     // 只断言身份（墙 / 穿点 / 门洞）+ 净距仍在报警侧：DOOR_CLEARANCE_MIN = 0.15m（shared/mep-hvac-lint.ts）。
+    // Codex 四审 minor：生产侧按原始精度判（clearance < 0.15），消息只保留两位小数（toFixed(2)）；
+    // lint 结果不暴露未舍入值，故只能对消息解析值做舍入容差断言：净距 0.146m 显示为 0.15m，
+    // 仍是合法报警。显示值 > 0.15 即原始值 ≥ 0.155，报警本不应触发，才 fail。
     const clearance = /on w_strip_east at \(4\.20,4\.60\) is (\d+\.\d+)m from door opening d_mb \(z 4\.65–5\.55\)/.exec(strip[0].message)?.[1];
     assert.ok(clearance !== undefined, `门洞穿点消息格式已变、解析不出净距：${strip[0].message}`);
-    assert.ok(Number(clearance) < 0.15, `strong-ac-master 门洞穿点净距 ${clearance}m 已 ≥ 报警阈值 0.15m：该警告应已消失或消息口径已变`);
+    assert.ok(Number(clearance) <= 0.15, `strong-ac-master 门洞穿点净距 ${clearance}m 已 > 报警阈值 0.15m（计舍入容差）：该警告应已消失或消息口径已变`);
     assert.match(strip[0].message, /过门头穿梁，需核梁底与套管/);
     assert.equal(strip[0].category, 'survey_dependent');
   }
@@ -736,9 +739,13 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
     // Codex 三审 minor：并行长度 / 贴墙距离不得钉死精确值——缩短改善（仍在报警侧）时消息一变即红。
     // 只断言身份（墙）+ 仍在报警侧：长度 > SHEAR_PARALLEL_MIN_RUN 1.0m、距离 ≤ SHEAR_PARALLEL_MAX_DISTANCE 0.15m
     //（shared/mep-hvac-lint.ts）。
+    // Codex 四审 minor：同门洞净距，生产侧按原始精度判、消息只保留两位小数；lint 结果不暴露未舍入值，
+    // 故长度用舍入容差断言：长度 1.004m 显示为 1.00m，仍是合法报警。显示值 < 1.00 即原始值 < 0.995，
+    // 报警本不应触发，才 fail。距离的 <= 已是舍入容差形式（生产侧只累计原始距离 ≤ 0.15 的段，
+    // 合法报警的显示值不可能超过 0.15），保持不变。
     const parts = /parallel to shear wall w_mb_east for (\d+\.\d+)m at (\d+\.\d+)m/.exec(masterParallel.message);
     assert.ok(parts, `剪力墙并行消息格式已变、解析不出长度/距离：${masterParallel.message}`);
-    assert.ok(Number(parts[1]) > 1.0, `strong-power-master 剪力墙并行长度 ${parts[1]}m 已 ≤ 报警阈值 1.0m：该警告应已消失或消息口径已变`);
+    assert.ok(Number(parts[1]) >= 1.0, `strong-power-master 剪力墙并行长度 ${parts[1]}m 已 < 报警阈值 1.0m（计舍入容差）：该警告应已消失或消息口径已变`);
     assert.ok(Number(parts[2]) <= 0.15, `strong-power-master 剪力墙贴墙距离 ${parts[2]}m 已 > 报警阈值 0.15m：该警告应已消失或消息口径已变`);
   }
   // shear_wall_parallel_route 由 survey 上限 8 把守，不再钉死 8。
@@ -773,8 +780,16 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // Codex 二审 minor：flying.reduce 无初始值，空数组抛错；且下文曾强制 condensate-living 在飞线集里，
   // 该飞线清掉时测试反会红。空集即全部飞线已清，是好事：最长段只在非空时查，成员身份不再强制。
   if (flying.length > 0) {
-    const worstFlying = flying.reduce((a, b) => (b.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') > (a.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') ? b : a);
-    const worstSpan = Number(worstFlying.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0');
+    // Codex 四审 major：旧写法按字符串比较长度（'3.82' > '10.00'），两位数长度会被漏判、
+    // 悄悄通过上限。逐条解析为数值并校验解析成功，再取数值最大；上限本身不变。
+    const spanOf = (issue: { message: string }): number => {
+      const m = issue.message.match(/for (\d+\.\d\d)m/);
+      assert.ok(m, `无依托段消息格式已变、解析不出长度：${issue.message}`);
+      const n = Number(m[1]);
+      assert.ok(Number.isFinite(n), `无依托段长度解析失败：${issue.message}`);
+      return n;
+    };
+    const worstSpan = Math.max(...flying.map(spanOf));
     assert.ok(worstSpan <= LONGEST_UNSUPPORTED_SPAN_CEILING_M, `最长无依托段不得超过已知待决上限 3.82m，实际 ${worstSpan}m：增长须显式登记并写清原因`);
   }
   assert.equal(flying.some((i) => i.routeId === 'strong-power-living-sofa-r'), false, '箱体侧垂直段贴墙、水平段在垫层，不应报无依托');
