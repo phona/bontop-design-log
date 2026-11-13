@@ -1308,6 +1308,16 @@ function buildFurniture(item: FurnishingsYaml[string][number], condensateChain?:
     const dims = FURNITURE_DIMS[item.type];
     if (dims && dims.width > 0 && dims.depth > 0) {
       model.scale.set(item.width / dims.width, 1, item.depth / dims.depth);
+    } else {
+      // 无目录条目的参数化柜（issue #116 通顶柜，全仓唯一）：分母改取 THREE.Box3 实测的
+      // 模型包络宽深（与下方 cabinetHeight 的实测总高同口径），不另建目录条目造第二份
+      // 尺寸源；否则改 house.yaml 宽深后定位/DXF 用新尺寸、3D 仍保持配方尺寸且无诊断。
+      const box = new THREE.Box3().setFromObject(model);
+      const builtWidth = box.max.x - box.min.x;
+      const builtDepth = box.max.z - box.min.z;
+      if (builtWidth > 0 && builtDepth > 0) {
+        model.scale.set(item.width / builtWidth, 1, item.depth / builtDepth);
+      }
     }
   }
   if (model && item.cabinetHeight !== undefined && item.cabinetHeight > 0) {

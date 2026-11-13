@@ -1,6 +1,8 @@
 import { parseOverlayFiles } from '../../../server/overlay-merge.js';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import * as THREE from 'three';
 import { buildFixture, getNorthWallWardrobe950DoorAabb, getRecipeTypes, setNorthWallWardrobe950DoorState, setPartitionWardrobeDoorState } from '../../../shared/render/FixtureFactory.js';
@@ -1034,6 +1036,36 @@ test('R9 SceneBuilder full-height cabinet anchors to the wall west finish with n
   assert.ok(Math.abs(cabinetBox.min.y - 0) < 1e-6 && Math.abs(cabinetBox.max.y - 2.80) < 1e-6, `cabinet must run floor to ceiling (carcass 0–2.50 + fixed header 2.50–2.80)`);
   assert.equal(result.index.furnitureMeshes.some((group) => group.userData.furnishingType === 'mb_vanity_continuous_closure_cabinet'), false);
   assert.equal(result.index.furnitureMeshes.some((group) => String(group.userData.furnishingType).endsWith('_board_bridge')), false);
+});
+
+test('R9 SceneBuilder full-height cabinet follows inline width/depth edits (Codex blocking, PR #226)', () => {
+  // 2026-11-13 issue #116 参数化单点定义：改 house.yaml 宽深一处，3D 必须跟随。
+  // 旧实现只在 FURNITURE_DIMS 有条目时缩放；通顶柜无目录条目，改宽深后定位/DXF
+  // 用新尺寸、3D 仍保持配方 1.38×0.565 且无诊断。现分母取实测包络，无第二份尺寸源。
+  // 改后值取收窄（width 1.20 / depth 0.50；加宽会顶出 w_mbath_east 墙段南端 z=4.30，
+  // 那是沿墙合法域的真约束、与缩放无关）：中心 x = 2.525−0.25 = 2.275（背脸贴墙
+  // 完成面 2.525 不动），AABB x[2.025,2.525] z[3.01,4.21]，总高仍 2.80。
+  const tmp = mkdtempSync(join(tmpdir(), 'mb-cabinet-parametric-'));
+  try {
+    const housePath = join(tmp, 'house.yaml');
+    const mutated = readFileSync('config/house.yaml', 'utf8')
+      .replace('width: 1.38, depth: 0.565, cabinetHeight: 2.80', 'width: 1.20, depth: 0.50, cabinetHeight: 2.80');
+    assert.ok(mutated.includes('width: 1.20, depth: 0.50'), 'must mutate the cabinet declaration');
+    writeFileSync(housePath, mutated, 'utf8');
+    const result = buildCliHouseScene('config/layout/model-geometry.yaml', housePath);
+    result.exportRoot.updateMatrixWorld(true);
+    const cabinet = furnitureByType(result, 'mb_full_height_cabinet');
+    assert.ok(Math.abs(cabinet.position.x - 2.275) < 1e-6, `cabinet center x=${cabinet.position.x}`);
+    assert.ok(Math.abs(cabinet.position.z - 3.61) < 1e-6, `cabinet center z=${cabinet.position.z}`);
+    const box = new THREE.Box3().setFromObject(cabinet);
+    assert.ok(Math.abs(box.min.x - 2.025) < 1e-6 && Math.abs(box.max.x - 2.525) < 1e-6, `cabinet AABB x[${box.min.x},${box.max.x}]`);
+    assert.ok(Math.abs(box.min.z - 3.01) < 1e-6 && Math.abs(box.max.z - 4.21) < 1e-6, `cabinet AABB z[${box.min.z},${box.max.z}]`);
+    assert.ok(Math.abs(box.min.y - 0) < 1e-6 && Math.abs(box.max.y - 2.80) < 1e-6, 'cabinet height must stay 2.80');
+    assert.ok(Math.abs(cabinet.scale.x - 1.20 / 1.38) < 1e-6, `scale.x must be 1.20/1.38, got ${cabinet.scale.x}`);
+    assert.ok(Math.abs(cabinet.scale.z - 0.50 / 0.565) < 1e-6, `scale.z must be 0.50/0.565, got ${cabinet.scale.z}`);
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 test('R11 SceneBuilder full-height cabinet and every child part stay inside the west finish envelope', () => {
