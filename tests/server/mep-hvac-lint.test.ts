@@ -42,6 +42,96 @@ function bucketsOf(result: ReturnType<typeof lintMepCoordination>) {
   assert.ok(result.categories, 'lint result should carry category buckets');
   return result.categories;
 }
+/**
+ * 规则断言取代钉死数值（2026-11-13 断言规则化第一刀）：
+ * must_fix 不再钉死总数 / 分码明细——总数随几何变是正常的（#116 删 950 柜 −3、加通顶柜 +2
+ * 即一例），钉死数值的代价就是 135→132→127→125→124 一路重钉。改成三条规则：
+ * ① 出现的 error 代码必须是已知待决集合的子集（新代码即 fail）；
+ * ② 家具相关的实例（碰撞 / 端点被家具遮挡）必须逐条落在已知待决清单里（新实例即 fail）；
+ * ③ 其余代码的条数不得超过已知待决上限（只许减少、不许增长；增长须显式登记并写清原因）。
+ * 已知待决集合只许显式增删、不得静默扩表；清单是 allowlist——某项消失（家具移走、路由
+ * 改道）不使测试变红，复核时顺手清理即可。
+ */
+const KNOWN_MUST_FIX_CODES: ReadonlySet<string> = new Set([
+  'route_overlap',
+  'route_not_orthogonal',
+  'suppressed_wall_crossing',
+  'unsupported_span',
+  'mep_endpoint_service_conflict',
+  'door_opening_collision',
+  'route_endpoint_unusable',
+  'floor_band_method_mismatch',
+  'route_furniture_collision',
+  'endpoint_inaccessible',
+]);
+// 家具碰撞实例（route ↔ furniture；穿入深度只记 note、不参与断言——柜子一动深度就变）。
+const KNOWN_FURNITURE_COLLISIONS: ReadonlyArray<{ routeId: string; furnitureId: string; note: string }> = [
+  // PR #226 新柜全高包络引入的两处：改路由另案 / 待改道裁定。
+  { routeId: 'condensate-master', furnitureId: 'mb.full_height_cabinet', note: '穿入 1.61m；全带泵改路由时重画' },
+  { routeId: 'strong-ded-bathheaters-mbath', furnitureId: 'mb.full_height_cabinet', note: '穿入 1.41m；待改道/开检修槽裁定' },
+  { routeId: 'strong-power-living-west-wall', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 1.36m' },
+  { routeId: 'strong-power-living-gateway', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 2.35m' },
+  { routeId: 'strong-power-living-robot', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 4.42m' },
+  { routeId: 'strong-power-child', furnitureId: 'bnw.wardrobe_180', note: '穿入 2.49m' },
+  { routeId: 'strong-power-mbath-service', furnitureId: 'mb.washbasin_cabinet', note: '穿入 0.85m' },
+  { routeId: 'weak-main-living', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 1.37m' },
+  { routeId: 'weak-gateway', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 2.46m' },
+];
+// 端点被家具遮挡实例（route ↔ point ↔ furniture；与碰撞同源，柜子一动就变）。
+const KNOWN_INACCESSIBLE_ENDPOINTS: ReadonlyArray<{ routeId: string; pointId: string; furnitureId: string }> = [
+  { routeId: 'strong-power-living-gateway', pointId: 'sock_gateway', furnitureId: 'ld.wall_cabinet_tall' },
+  { routeId: 'strong-power-living-robot', pointId: 'sock_gateway', furnitureId: 'ld.wall_cabinet_tall' },
+  { routeId: 'strong-power-living-robot', pointId: 'sock_living_robot', furnitureId: 'ld.wall_cabinet_tall' },
+  { routeId: 'strong-power-kitchen', pointId: 'sock_kitchen_counter', furnitureId: 'kitchen.dishwasher' },
+  { routeId: 'weak-gateway', pointId: 'net_gateway', furnitureId: 'ld.wall_cabinet_tall' },
+];
+// must_fix 分码上限的公共底座（8 条与路线几何相关的代码；两口径现值相同）。
+// 上限只许减少、不许增长；增长须显式登记并写清原因。
+const MUST_FIX_ROUTE_CEILINGS: Readonly<Record<string, number>> = {
+  route_overlap: 63,
+  route_not_orthogonal: 27,
+  suppressed_wall_crossing: 7,
+  unsupported_span: 8,
+  mep_endpoint_service_conflict: 2,
+  door_opening_collision: 1,
+  route_endpoint_unusable: 1,
+  floor_band_method_mismatch: 1,
+};
+// realContext harness（无家具/飘窗/可达性上下文）的 must_fix 分桶上限：两家具类为 0。
+const HARNESS_MUST_FIX_CEILINGS: Readonly<Record<string, number>> = {
+  ...MUST_FIX_ROUTE_CEILINGS,
+  route_furniture_collision: 0,
+  endpoint_inaccessible: 0,
+};
+// verify:mep 全上下文的 must_fix 上限：两家具类由实例清单长度派生——登记新实例即同步抬上限，不另填数。
+const FULL_CONTEXT_MUST_FIX_CEILINGS: Readonly<Record<string, number>> = {
+  ...MUST_FIX_ROUTE_CEILINGS,
+  route_furniture_collision: KNOWN_FURNITURE_COLLISIONS.length,
+  endpoint_inaccessible: KNOWN_INACCESSIBLE_ENDPOINTS.length,
+};
+function assertMustFixCeilings(codes: ReadonlyArray<{ code: string; count: number }>, ceilings: Readonly<Record<string, number>>, where: string): void {
+  for (const { code, count } of codes) {
+    const ceiling = ceilings[code];
+    assert.ok(ceiling !== undefined, `${where} 出现已知待决集合外的新代码 ${code}：须显式登记并写清原因`);
+    assert.ok(count <= ceiling, `${where} 代码 ${code} 由上限 ${ceiling} 增至 ${count}：须显式登记并写清原因`);
+  }
+}
+
+function furnitureIdOfCollision(issue: { message: string }): string {
+  const match = /inside furnishing (\S+);/.exec(issue.message);
+  assert.ok(match, `route_furniture_collision 消息格式已变、解析不出家具 id：${issue.message}`);
+  return match[1];
+}
+function inaccessibleEndpointOf(issue: { message: string }): { pointId: string; furnitureId: string } {
+  const match = /Electrical endpoint (\S+) of (\S+) lies inside furnishing (\S+);/.exec(issue.message);
+  assert.ok(match, `endpoint_inaccessible 消息格式已变、解析不出点位/家具：${issue.message}`);
+  return { pointId: match[1], furnitureId: match[3] };
+}
+function assertKnownMustFixCodes(issues: ReadonlyArray<{ code: string }>, where: string): void {
+  for (const issue of issues) {
+    assert.ok(KNOWN_MUST_FIX_CODES.has(issue.code), `${where} 出现已知待决集合外的新 must_fix 代码 ${issue.code}：须显式登记并写清原因，不得静默扩表`);
+  }
+}
 
 function sample(route: Record<string, unknown>) {
   return MepCoordinationSchema.parse({ version: '1', status: 'preliminary', layers, routes: [route] });
@@ -176,7 +266,34 @@ test('verify:mep JSON has stable result and exit contract', () => {
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
   assert.equal(result.counts.routes, 137); // DEC-2026-10-27-R01 删床头路线 strong-light-bedrooms-parent-bed 后 138→137； // DEC-2026-10-18-R21 补画 strong-power-living-water 后135→136；R25新增主管后137；DEC-2026-10-23-R03 新增客卫二次排水需求路线后138
-  assert.equal(result.counts.errors, 124); // DEC-2026-10-28 rebase 收敛（#37 先合，消 1 条 route_not_orthogonal）：126→125；// 2026-10-26 实测重钉：DEC-2026-10-26-R02 书房墙垛建模 + 书桌东移 + 衣柜南延后 route_overlap 63、route_not_orthogonal 28、route_furniture_collision 10、unsupported_span 9，132→127；此前 DEC-2026-10-25-R01 厨房东南角墙线改判后 route_overlap 68→66、route_not_orthogonal 32→30、floor_band_method_mismatch 0→1，135→132；此前 DEC-2026-10-23-R04 几何改判（东南玻璃线 9.88 / 客卫东墙 7.20）后 route_overlap −1、suppressed_wall_crossing −1、bay_sill_collision −1 → 135；// issue #98 第五阶段 S1（E4 lint 扩层）：supply_air/return_air 纳入 ENDPOINT_BIND_LAYERS 且候选池加 hvacTerminals 后，5 条 inline `to:` 逐位抄 terminal xyz 的真双写首次显形（endpoint_not_bound_to_point ×5，must_fix error），125→130；// issue #98 第五阶段 S2（2026-11-08）：5 条已改绑 terminal id（to_height 保留、坐标按构造不变），该类归零，回钉 125; // 2026-11-13 issue #116：950 衣柜删除，route_furniture_collision 10→9（−3 与 mb.wardrobe_950 的碰撞随柜删除而消失；+2 新通顶柜全高包络引入 condensate-master 1.61m / strong-ded-bathheaters-mbath 1.41m 穿入新柜），净 125→124
+  // 规则断言取代钉死总数 124：error 代码必须是已知待决集合的子集；家具相关实例逐条落在清单里。
+  // 总数随几何变是正常的（#116 删柜 −3、加柜 +2 即一例），不再钉死。
+  const jsonErrors = result.errors as Array<{ code: string; message: string; routeId?: string }>;
+  assertKnownMustFixCodes(jsonErrors, 'verify:mep');
+  const actualCollisions = jsonErrors
+    .filter((issue) => issue.code === 'route_furniture_collision')
+    .map((issue) => `${issue.routeId}↔${furnitureIdOfCollision(issue)}`)
+    .sort();
+  const knownCollisions = KNOWN_FURNITURE_COLLISIONS.map((entry) => `${entry.routeId}↔${entry.furnitureId}`).sort();
+  for (const key of actualCollisions) {
+    assert.ok(knownCollisions.includes(key), `verify:mep 出现已知待决清单外的新家具碰撞 ${key}：须显式登记并写清原因`);
+  }
+  const actualInaccessible = jsonErrors
+    .filter((issue) => issue.code === 'endpoint_inaccessible')
+    .map((issue) => {
+      const parsed = inaccessibleEndpointOf(issue);
+      return `${issue.routeId}↔${parsed.pointId}↔${parsed.furnitureId}`;
+    })
+    .sort();
+  const knownInaccessible = KNOWN_INACCESSIBLE_ENDPOINTS.map((entry) => `${entry.routeId}↔${entry.pointId}↔${entry.furnitureId}`).sort();
+  for (const key of actualInaccessible) {
+    assert.ok(knownInaccessible.includes(key), `verify:mep 出现已知待决清单外的新端点遮挡 ${key}：须显式登记并写清原因`);
+  }
+  // 各代码条数不得超过全上下文上限：家具移动会拖动挂载点位、改动路线几何（实测：通顶柜东移
+  // 0.50m 使 route_not_orthogonal 27→28、unsupported_span 8→9），只断言代码子集会漏掉这类新增实例。
+  const errorCounts = new Map<string, number>();
+  for (const issue of jsonErrors) errorCounts.set(issue.code, (errorCounts.get(issue.code) ?? 0) + 1);
+  assertMustFixCeilings([...errorCounts].map(([code, count]) => ({ code, count })), FULL_CONTEXT_MUST_FIX_CEILINGS, 'verify:mep');
   assert.equal(result.counts.warnings, 226); // DEC-2026-10-28 rebase 收敛（#37 先合）：269→265（survey 137 不变、envelope 132→128）；// survey_dependent 137 + envelope_approximation 128（2026-10-26 DEC-2026-10-26-R02 重算后实测：ceiling_clearance 101→99、shear_wall_parallel 12→8、bay_sill 13→11；此前 2026-10-25 DEC-2026-10-25-R01 重算后实测：shear_wall_penetration 10→11（w_cent_north 声明穿孔）、shear_wall_parallel_route 11→12；同日梁体修正：参考梁约束 5→11 条，reference_constraint_uncertain +6，其余不变；2026-10-28 DEC-2026-10-28-R04 客房床头开关与 NP-2 南移出窗帘盒 footprint，ceiling_clearance 97→95，276→274；DEC-2026-10-28-R05 窗帘盒归位 ceiling −6、床头开关供电路贴墙段 1.43m 新增 shear_wall_parallel +1，274→269）；2026-11-12 吊顶下调：三区铝扣板完成面 2.65→2.50，ceiling_clearance 89→50，survey 137→98，265→226
   assert.equal(result.categories.survey_dependent?.count, 98); // ceiling_clearance_unverified 50 + penetration_door_clearance 16 + shear_wall_parallel_route 8 + shear_wall_penetration 11 + route_insulation_unverified 7 + inline_endpoint 6（R02 ceiling −2、shear_parallel −4；R01 w_cent_north 声明穿孔 +1；R01 重算 shear_parallel +1；R04 角点触碰 +39；R03 客卫二次排水示意段两端点 +2；DEC-2026-10-28-R04 ceiling −2、survey 144→142；DEC-2026-10-28-R05 窗帘盒归位 ceiling −6、床头开关供电路贴墙段 +1 shear_parallel，142→137；2026-11-12 吊顶下调 ceiling −39，survey 137→98）
   assert.equal(result.categories.envelope_approximation?.count, 128); // DEC-2026-10-28 rebase 收敛（#37 先合）：132→128；// route_clearance_unverified 35 + route_overlap 39 + route_overlap_declared_trunk 14 + bay_sill_crossing_declared 11 + nonphysical_route 8 + reference_constraint_uncertain 11 + 其余零星（2026-10-26 R02：bay_sill 13→11，两专线不再过南窗台；2026-10-25 梁体修正：约束 5→11）
@@ -451,7 +568,9 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   const result = lintMepCoordination(config, sources, realContext());
   assert.equal(result.counts.routes, 137); // DEC-2026-10-27-R01 删床头路线 strong-light-bedrooms-parent-bed 后 138→137； // DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线后 138（前史：DEC-2026-10-18-R21 补画 strong-power-living-water 后 135→136（前史：DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l 后 130→128（前史：R1 删两条照明路由 137→135；R2 删四条卫浴照明路由后 131；DEC-2026-10-13-R5 删 strong-light-tv 后 130）；同批走线专项 +7 条新点位路线后 128→135
   assert.equal(result.counts.resolvedRoutes, 137); // DEC-2026-10-27-R01 删床头路线后与 routes 同步 137； // DEC-2026-10-18-R21后136；R25新增主管后与routes同步137；DEC-2026-10-23-R03 后同步 138（前史：R1 删 strong-light-bedrooms-master-wall-l/-r 后 135；R2 删 strong-light-gbath/-mbath-panel/-mbath-switch/-gbath-switch 四条卫浴照明路由后 routes/resolved 均 131；DEC-2026-10-17-R20 后 128；走线专项后与 routes 同步 135
-  assert.equal(result.errors.length, 110); // DEC-2026-10-28 rebase 收敛（#37 先合，消 1 条 route_not_orthogonal）：111→110；// issue #98 第五阶段 S1（E4）：风层端点绑定兜底上线，5 条 inline `to:` 抄 terminal xyz 显形（+5 must_fix），110→115；// issue #98 第五阶段 S2（2026-11-08）：5 条已改绑 terminal id（to_height 保留、坐标按构造不变），回钉 110；// DEC-2026-10-27-R01 删床头路线，must_fix 悬空 hit −1 // R19/R20 起 must_fix 桶即 errors[]。本 harness（realContext 无家具/飘窗/可达性上下文）为 112（DEC-2026-10-26-R02 书房墙垛建模 + 书桌东移 + 衣柜南延后实测：route_overlap 63、route_not_orthogonal 28、unsupported_span 9、floor_band_method_mismatch 1，自 116 降至 112）；verify:mep 全上下文口径为 127（R02 登记值），差 15 = route_furniture_collision 10 + endpoint_inaccessible 5，只在全上下文下产生（bay_sill_collision 两口径均为 0）
+  // 规则断言取代钉死总数 110：本 harness 的 errors 必须全部来自已知待决代码集合；新代码即 fail。
+  // 总数随几何变是正常的，不再钉死；分码上限由下方 must_fix 分桶断言把守。
+  assertKnownMustFixCodes(result.errors, 'realContext harness');
   // (a) 重力坡度：R1 后 14 条全清（地埋全平/过陡、冷凝水候选沿程、drain-balcony 2% 回算、墙排汇总不足坡）
   assert.equal(countByCode(result, 'gravity_slope_geometry_mismatch'), 0);
   assert.equal(result.warnings.some((i) => i.code === 'gravity_slope_geometry_mismatch' && i.routeId === 'drain-gbath-vanity-to-riser'), false);
@@ -485,7 +604,9 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // unsupported_span：F01/F02 首轮只检查水平段；2026-10-17 R2 后按3D长度检查水平/斜向/竖直段。
   // inline_endpoint_without_point_anchor 5 条：DEC-2026-10-08-W02 端点绑定兜底（给排水无锚点端点的量房判读清单；W03 客卫热水改绑 faucet_gbath_vanity 后由 5 降为 4；DEC-2026-10-23-R03 客卫二次排水示意段两端点 +2 至 6）
   // 2026-10-23 按本 harness 现行实测整体重钉（R21 期旧表已被 R25 拓扑/R01 登记/DEC-2026-10-23-R02 墙排口径取代；与 verify:mep 全上下文的差异见 errors 断言注释）
-  assert.deepEqual(Object.fromEntries(buckets.must_fix_before_briefing.codes.map((e) => [e.code, e.count])), { route_overlap: 63, route_not_orthogonal: 27, suppressed_wall_crossing: 7, unsupported_span: 8, mep_endpoint_service_conflict: 2, door_opening_collision: 1, route_endpoint_unusable: 1, floor_band_method_mismatch: 1 }); // issue #98 第五阶段 S1（E4）：风层端点绑定兜底上线，5 条 inline `to:` 抄 terminal xyz 显形（当时含 endpoint_not_bound_to_point: 5）；// issue #98 第五阶段 S2（2026-11-08）：5 条改绑 terminal id 后本项归零移除 // DEC-2026-10-26-R02：route_overlap 67→63、route_not_orthogonal 30→28、unsupported_span 7→9（干线/冷凝水东腿走开放空间）；DEC-2026-10-25-R01：route_overlap 68→66、route_not_orthogonal 32→30、floor_band_method_mismatch 0→1；R01 重算 overlap +1
+  // 规则断言取代钉死分码明细：must_fix 分桶不得出现已知待决集合外的新代码，
+  // 各代码条数不得超过上限（现值即上限，只许减少、不许增长；增长须显式登记并写清原因）。
+  assertMustFixCeilings(buckets.must_fix_before_briefing.codes, HARNESS_MUST_FIX_CEILINGS, 'must_fix 分桶');
   assert.deepEqual(Object.fromEntries(buckets.survey_dependent.codes.map((e) => [e.code, e.count])), { ceiling_clearance_unverified: 50, penetration_door_clearance: 16, shear_wall_parallel_route: 8, shear_wall_penetration: 11, route_insulation_unverified: 7, inline_endpoint_without_point_anchor: 6 }); // R02：ceiling_clearance 101→99（两专线改道东墙）、shear_wall_parallel_route 12→8（两专线离墙 + 干线/冷凝水东腿离墙）；R01：shear_wall_penetration 10→11（w_cent_north 声明穿孔）；R01 重算 shear_wall_parallel_route 11→12（guest-north 贴北墙面 1.10m）；R04：ceiling_clearance 62→101 角点触碰登记；DEC-2026-10-28-R04：客房床头开关与 NP-2 南移出窗帘盒 footprint，ceiling_clearance 97→95；DEC-2026-10-28-R05：窗帘盒归位 ceiling 95→89、床头开关供电路贴墙 1.43m shear_parallel 7→8；2026-11-12：吊顶下调 ceiling 89→50
   assert.deepEqual(Object.fromEntries(buckets.envelope_approximation.codes.map((e) => [e.code, e.count])), { route_clearance_unverified: 35, route_overlap: 39, route_overlap_declared_trunk: 14, nonphysical_route: 8, reference_constraint_uncertain: 11, route_not_orthogonal: 4, unsupported_span: 2, supply_return_overlap: 2 }); // 2026-10-25 梁体修正：参考梁约束 5→11 条
   assert.equal(buckets.must_fix_before_briefing.count, 110); // DEC-2026-10-28 rebase 收敛（#37 先合）：111→110；// issue #98 第五阶段 S1（E4）：+endpoint_not_bound_to_point 5，110→115；// issue #98 第五阶段 S2（2026-11-08）：5 条改绑 terminal id 后该类归零，回钉 110；// DEC-2026-10-27-R01 删床头路线，must_fix 悬空 hit −1 // R02 重算后与 errors.length 同值（见上）
