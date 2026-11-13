@@ -109,6 +109,19 @@ const FULL_CONTEXT_MUST_FIX_CEILINGS: Readonly<Record<string, number>> = {
   route_furniture_collision: KNOWN_FURNITURE_COLLISIONS.length,
   endpoint_inaccessible: KNOWN_INACCESSIBLE_ENDPOINTS.length,
 };
+// 无 layout 用例的 must_fix 单独立上限（Codex 三审 major）：墙 / 剪力墙 / 依托类检查需要 layout
+// 才运行，本口径下这些代码必须为 0。旧写法复用 HARNESS 上限（完整上下文配额：
+// suppressed_wall_crossing 7、unsupported_span 8、door_opening_collision 1），墙检查一旦漏进
+// 无 layout 口径会静默通过；旧 errors.length == 94 钉死值本会拦下这种漂移，新子集+上限不断言
+// 总数，须由这里的 0 上限接住。家具类同 HARNESS 置 0。
+const NO_LAYOUT_MUST_FIX_CEILINGS: Readonly<Record<string, number>> = {
+  ...MUST_FIX_ROUTE_CEILINGS,
+  suppressed_wall_crossing: 0,
+  unsupported_span: 0,
+  door_opening_collision: 0,
+  route_furniture_collision: 0,
+  endpoint_inaccessible: 0,
+};
 function assertMustFixCeilings(codes: ReadonlyArray<{ code: string; count: number }>, ceilings: Readonly<Record<string, number>>, where: string): void {
   for (const { code, count } of codes) {
     const ceiling = ceilings[code];
@@ -200,7 +213,7 @@ const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
   'bay_sill_crossing_declared',
   'route_furniture_collision',
 ]);
-// survey 分桶分码上限（现值即上限；三口径共用，无 layout 口径只有其中 3 码）。
+// survey 分桶分码上限（现值即上限；realContext 与 verify:mep 全上下文共用）。
 const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
   ceiling_clearance_unverified: 50,
   penetration_door_clearance: 16,
@@ -209,7 +222,7 @@ const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
   route_insulation_unverified: 7,
   inline_endpoint_without_point_anchor: 6,
 };
-// envelope 分桶分码上限（现值即上限；三口径共用，无 layout 口径只有其中 6 码，realContext 8 码）。
+// envelope 分桶分码上限（现值即上限；realContext 与 verify:mep 全上下文共用）。
 const ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
   route_overlap: 39,
   route_clearance_unverified: 35,
@@ -221,6 +234,22 @@ const ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
   route_furniture_collision: 2,
   supply_return_overlap: 2,
   unsupported_span: 2,
+};
+// 无 layout 用例的 survey / envelope 单独立上限（与 must_fix 同一 Codex 三审 major）：
+// 门洞 / 剪力墙 / 依托 / 参照约束类警告需要 layout 或上下文才运行，本口径下必须为 0，
+// 否则墙检查漏进无 layout 口径会静默通过（旧总数钉死值本会拦下这种漂移）。
+const NO_LAYOUT_SURVEY_CEILINGS: Readonly<Record<string, number>> = {
+  ...SURVEY_CEILINGS,
+  penetration_door_clearance: 0,
+  shear_wall_penetration: 0,
+  shear_wall_parallel_route: 0,
+};
+const NO_LAYOUT_ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
+  ...ENVELOPE_CEILINGS,
+  bay_sill_crossing_declared: 0,
+  reference_constraint_uncertain: 0,
+  route_furniture_collision: 0,
+  unsupported_span: 0,
 };
 // 无依托段总数上限（must_fix ≤8 + envelope ≤2；只许减少）。
 const UNSUPPORTED_SPAN_CEILING = 10;
@@ -257,15 +286,16 @@ test('real MEP configuration lints without false errors and reports warnings str
   const buckets = bucketsOf(result);
   // 规则断言：error 代码必须是已知待决集合的子集，分码不得超过上限；总数随几何变是正常的，不再钉死。
   assertKnownMustFixCodes(result.errors, 'no-layout harness');
-  assertMustFixCeilings(buckets.must_fix_before_briefing.codes, HARNESS_MUST_FIX_CEILINGS, 'no-layout must_fix 分桶');
+  // 本口径无 layout：用单独立上限——墙 / 剪力墙 / 依托类代码置 0，漏进来的墙检查即 fail。
+  assertMustFixCeilings(buckets.must_fix_before_briefing.codes, NO_LAYOUT_MUST_FIX_CEILINGS, 'no-layout must_fix 分桶');
   assert.equal(result.warnings.filter((issue) => issue.code === 'hvac_coverage_missing').length, 0);
   assert.equal(result.warnings.some((issue) => issue.code === 'ceiling_clearance_unverified' && issue.routeId === 'strong-power-living-sofa-r'), false,
     'a floor-branch candidate is not compared against ceiling finish heights; its supports remain checked in 3D');
   // 当前无 layout：通用正交规则仍运行；墙、幕墙与剪力墙规则需要 layout 才运行。
   // 规则断言：警告代码必须是已知待决集合的子集；总数随几何变是正常的，不再钉死。
   assertKnownWarningCodes(result.warnings, 'no-layout harness');
-  assertBucketCeilings(buckets.survey_dependent.codes, SURVEY_CEILINGS, 'no-layout survey 分桶');
-  assertBucketCeilings(buckets.envelope_approximation.codes, ENVELOPE_CEILINGS, 'no-layout envelope 分桶');
+  assertBucketCeilings(buckets.survey_dependent.codes, NO_LAYOUT_SURVEY_CEILINGS, 'no-layout survey 分桶');
+  assertBucketCeilings(buckets.envelope_approximation.codes, NO_LAYOUT_ENVELOPE_CEILINGS, 'no-layout envelope 分桶');
   assert.equal(Object.values(buckets).reduce((sum, bucket) => sum + bucket.count, 0), result.errors.length + result.warnings.length);
   for (const bucket of Object.values(buckets)) assert.equal(bucket.count, bucket.codes.reduce((sum, entry) => sum + entry.count, 0));
   assert.ok(result.warnings.some((issue) => issue.code === 'supply_return_overlap'));
@@ -690,7 +720,11 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // Codex 二审 minor：上限允许 0 条，strip[0] 无条件访问会在该警告消失时抛 TypeError。
   // 实例细节只在实例存在时查；0 条即该问题已清，是好事，不 fail。
   if (strip.length === 1) {
-    assert.match(strip[0].message, /on w_strip_east at \(4\.20,4\.60\) is 0\.05m from door opening d_mb \(z 4\.65–5\.55\)/);
+    // Codex 三审 minor：净距不得钉死精确值——净距改善（仍 < 报警阈值）时消息一变即红。
+    // 只断言身份（墙 / 穿点 / 门洞）+ 净距仍在报警侧：DOOR_CLEARANCE_MIN = 0.15m（shared/mep-hvac-lint.ts）。
+    const clearance = /on w_strip_east at \(4\.20,4\.60\) is (\d+\.\d+)m from door opening d_mb \(z 4\.65–5\.55\)/.exec(strip[0].message)?.[1];
+    assert.ok(clearance !== undefined, `门洞穿点消息格式已变、解析不出净距：${strip[0].message}`);
+    assert.ok(Number(clearance) < 0.15, `strong-ac-master 门洞穿点净距 ${clearance}m 已 ≥ 报警阈值 0.15m：该警告应已消失或消息口径已变`);
     assert.match(strip[0].message, /过门头穿梁，需核梁底与套管/);
     assert.equal(strip[0].category, 'survey_dependent');
   }
@@ -699,7 +733,13 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // 同 strip 一样用 if 守卫：该实例消失即问题已清，不抛 TypeError。
   const masterParallel = result.warnings.find((i) => i.code === 'shear_wall_parallel_route' && i.routeId === 'strong-power-master');
   if (masterParallel) {
-    assert.match(masterParallel.message, /parallel to shear wall w_mb_east for 3\.60m at 0\.10m/);
+    // Codex 三审 minor：并行长度 / 贴墙距离不得钉死精确值——缩短改善（仍在报警侧）时消息一变即红。
+    // 只断言身份（墙）+ 仍在报警侧：长度 > SHEAR_PARALLEL_MIN_RUN 1.0m、距离 ≤ SHEAR_PARALLEL_MAX_DISTANCE 0.15m
+    //（shared/mep-hvac-lint.ts）。
+    const parts = /parallel to shear wall w_mb_east for (\d+\.\d+)m at (\d+\.\d+)m/.exec(masterParallel.message);
+    assert.ok(parts, `剪力墙并行消息格式已变、解析不出长度/距离：${masterParallel.message}`);
+    assert.ok(Number(parts[1]) > 1.0, `strong-power-master 剪力墙并行长度 ${parts[1]}m 已 ≤ 报警阈值 1.0m：该警告应已消失或消息口径已变`);
+    assert.ok(Number(parts[2]) <= 0.15, `strong-power-master 剪力墙贴墙距离 ${parts[2]}m 已 > 报警阈值 0.15m：该警告应已消失或消息口径已变`);
   }
   // shear_wall_parallel_route 由 survey 上限 8 把守，不再钉死 8。
   // DEC-2026-10-13-R3 锁定改善：重画后的两条路由不得再贴 w_mb_east 长距离平行。
