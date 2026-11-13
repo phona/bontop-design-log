@@ -360,6 +360,11 @@ test('verify:mep JSON has stable result and exit contract', () => {
   assert.equal(status, 1); // DEC-2026-10-17-R20：must_fix 未清零 → exit=1 属预期，清零前不得伪装成功
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
+  // Codex 二审 major：删掉钉死总数后 JSON 汇总字段 counts.errors / counts.warnings 再无人读，
+  // 汇总算错会静默通过。补内部一致性断言（汇总 == 数组长度），不是钉死总数：总数随几何变仍自由，
+  // 但汇总与数组不一致即 fail。
+  assert.equal(result.counts.errors, result.errors.length, 'verify:mep JSON 汇总 errors 须等于 errors 数组长度（汇总错算即 fail）');
+  assert.equal(result.counts.warnings, result.warnings.length, 'verify:mep JSON 汇总 warnings 须等于 warnings 数组长度（汇总错算即 fail）');
   assertKnownRouteIds(config.routes, 'verify:mep');
   assert.equal(result.counts.routes, config.routes.length, 'verify:mep 路线数须与配置一致');
   // 规则断言取代钉死总数 124：error 代码必须是已知待决集合的子集；家具相关实例逐条落在清单里。
@@ -682,13 +687,20 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // (c) 穿点距门洞：2026-10-07 M05 声明式补路由后 15 → 19；过门头 → survey_dependent，门洞高度内贴门垛 → must_fix
   const strip = result.warnings.filter((i) => i.code === 'penetration_door_clearance' && i.routeId === 'strong-ac-master');
   assert.ok(strip.length <= 1, 'strong-ac-master 门洞穿点不得超过已知待决上限 1 处：新增即须显式登记并写清原因');
-  assert.match(strip[0].message, /on w_strip_east at \(4\.20,4\.60\) is 0\.05m from door opening d_mb \(z 4\.65–5\.55\)/);
-  assert.match(strip[0].message, /过门头穿梁，需核梁底与套管/);
-  assert.equal(strip[0].category, 'survey_dependent');
+  // Codex 二审 minor：上限允许 0 条，strip[0] 无条件访问会在该警告消失时抛 TypeError。
+  // 实例细节只在实例存在时查；0 条即该问题已清，是好事，不 fail。
+  if (strip.length === 1) {
+    assert.match(strip[0].message, /on w_strip_east at \(4\.20,4\.60\) is 0\.05m from door opening d_mb \(z 4\.65–5\.55\)/);
+    assert.match(strip[0].message, /过门头穿梁，需核梁底与套管/);
+    assert.equal(strip[0].category, 'survey_dependent');
+  }
   // penetration_door_clearance 由 survey 上限 16 把守，不再钉死 16。
   // (d) 剪力墙并行 8 → 14（2026-10-07 M04/M05 补路由贴剪力墙竖槽，见各条 reason 扫筋声明）
-  const masterParallel = result.warnings.find((i) => i.code === 'shear_wall_parallel_route' && i.routeId === 'strong-power-master')!;
-  assert.match(masterParallel.message, /parallel to shear wall w_mb_east for 3\.60m at 0\.10m/);
+  // 同 strip 一样用 if 守卫：该实例消失即问题已清，不抛 TypeError。
+  const masterParallel = result.warnings.find((i) => i.code === 'shear_wall_parallel_route' && i.routeId === 'strong-power-master');
+  if (masterParallel) {
+    assert.match(masterParallel.message, /parallel to shear wall w_mb_east for 3\.60m at 0\.10m/);
+  }
   // shear_wall_parallel_route 由 survey 上限 8 把守，不再钉死 8。
   // DEC-2026-10-13-R3 锁定改善：重画后的两条路由不得再贴 w_mb_east 长距离平行。
   // 若将来有人把几何改回贴墙（或把灯位改回 (2.60,7.60) 而不同步路由），这里立即 fail——
@@ -718,10 +730,13 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // F01 改线批：33 条命中清至 8 条显式保留（每条 reason 带 DEC-2026-10-07-F01 归因）
   const flying = [...result.errors, ...result.warnings].filter((i) => i.code === 'unsupported_span');
   assert.ok(flying.length <= UNSUPPORTED_SPAN_CEILING, '无依托段总数不得超过已知待决上限 10（must_fix ≤8 + envelope ≤2）：增长须显式登记并写清原因');
-  const worstFlying = flying.reduce((a, b) => (b.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') > (a.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') ? b : a);
-  const worstSpan = Number(worstFlying.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0');
-  assert.ok(worstSpan <= LONGEST_UNSUPPORTED_SPAN_CEILING_M, `最长无依托段不得超过已知待决上限 3.82m，实际 ${worstSpan}m：增长须显式登记并写清原因`);
-  assert.ok(flying.some((i) => i.routeId === 'condensate-living'), 'condensate-living 应仍在已知待决飞线清单里（最长飞线身份随几何变是正常的，不再钉死）');
+  // Codex 二审 minor：flying.reduce 无初始值，空数组抛错；且下文曾强制 condensate-living 在飞线集里，
+  // 该飞线清掉时测试反会红。空集即全部飞线已清，是好事：最长段只在非空时查，成员身份不再强制。
+  if (flying.length > 0) {
+    const worstFlying = flying.reduce((a, b) => (b.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') > (a.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0') ? b : a);
+    const worstSpan = Number(worstFlying.message.match(/for (\d+\.\d\d)m/)?.[1] ?? '0');
+    assert.ok(worstSpan <= LONGEST_UNSUPPORTED_SPAN_CEILING_M, `最长无依托段不得超过已知待决上限 3.82m，实际 ${worstSpan}m：增长须显式登记并写清原因`);
+  }
   assert.equal(flying.some((i) => i.routeId === 'strong-power-living-sofa-r'), false, '箱体侧垂直段贴墙、水平段在垫层，不应报无依托');
   assert.equal(flying.some((i) => i.routeId === 'strong-power-living-sofa-l'), false, '左沙发地插路线现行几何已不飞线（2026-10-23 实测；旧断言的开放空间长竖降已被后续改线消除）');
   // 改线自证：strong-power-living 干线已改走 w_be_west 东脸 + 窗帘盒带（原 4.16m 横穿客厅中部已清）
