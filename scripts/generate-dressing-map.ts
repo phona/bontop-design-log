@@ -11,20 +11,21 @@
  *    旧实现用 `placement !== undefined` 判「已摆位」——null !== undefined 恒真，count-only
  *    与失败都被当成已摆位，数量按条目数输出（厨房 5/2/5 被写成 1/1/1）。
  *
- * 2. **冷凝链锚点**：三件 `anchor` 定位家具（condensate_pipe_ac_outlet /
- *    mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase）的位置由
- *    shared/condensate-chain.ts 的 `resolveCondensatePlacementAnchors` 一次解出；构造与
- *    SceneBuilder（`resolveScenePlacementAnchors`）、Node CLI 场景装配（`buildCliHouseScene`）与
- *    verify:furniture 同一条链：hvac 锚点（ceiling 宿主）+ MEP `condensate-master`
- *    派生穿墙点 + 衣柜宿主。本文件不另写派生，也不把上下文置空。
+ * 2. **冷凝链锚点已退役（2026-11-13 issue #116）**：三件 `anchor` 定位家具
+ *    （condensate_pipe_ac_outlet / mb_vanity_pvc_wardrobe_entry /
+ *    mb_vanity_pvc_service_chase）随 950 衣柜与三件 PVC 链件一并删除；
+ *    `resolveCondensatePlacementAnchors` 在双宿主（wardrobe / wallRun）均缺席时
+ *    返回空几何、无诊断（不报错），装扮映射不再列出这三件。本文件不另写派生，
+ *    也不把上下文置空——退役路径即 `shared/condensate-chain.ts` 的空几何分支。
  */
 import * as fs from 'fs';
 import { readFileSync } from 'node:fs';
 import * as yaml from 'js-yaml';
-import { FURNITURE_DIMS, type ElectricalPoint, type FurnishingItem, type FurnishingsYaml } from '../shared/types.js';
+import { type ElectricalPoint, type FurnishingItem, type FurnishingsYaml } from '../shared/types.js';
 import { loadOverlayDoc } from '../server/overlay-merge.js';
 import { derivePointCircuits } from '../shared/point-circuits.js';
 import {
+  declaredFurnitureDims,
   furnitureHostIndex,
   resolveFurniturePlacement,
   type FurniturePlacementResolution,
@@ -184,6 +185,10 @@ export function buildFurnishingSection(
   const lines: string[] = [];
   const failures: string[] = [];
   for (const [roomId, items] of Object.entries(furnishings)) {
+    // 每类体块尺寸取首件的 declaredFurnitureDims（行内 width/depth > 目录，与
+    // SceneBuilder / verify:furniture 同一口径）：行内参数化柜（如 issue #116 通顶柜）
+    // 无目录条目，旧写法只读目录会写成「体块无尺寸记录」。
+    const dimsByType = new Map<string, string>();
     const placedByType = new Map<string, Array<{ x: number; z: number; rotation?: number; resolved: boolean }>>();
     const countOnly = new Map<string, number>();
     for (const item of items) {
@@ -197,6 +202,10 @@ export function buildFurnishingSection(
         countOnly.set(item.type, (countOnly.get(item.type) ?? 0) + (item.count ?? 1));
         continue;
       }
+      if (!dimsByType.has(item.type)) {
+        const dd = declaredFurnitureDims(item as unknown as PlacementItem);
+        if (dd.width !== undefined && dd.depth !== undefined) dimsByType.set(item.type, `${dd.width}×${dd.depth}`);
+      }
       const list = placedByType.get(item.type) ?? [];
       list.push({
         x: placement.x,
@@ -207,8 +216,7 @@ export function buildFurnishingSection(
       placedByType.set(item.type, list);
     }
     for (const [type, list] of placedByType) {
-      const d = FURNITURE_DIMS[type];
-      const dims = d ? `${d.width}×${d.depth}` : '（体块无尺寸记录）';
+      const dims = dimsByType.get(type) ?? '（体块无尺寸记录）';
       const positions = list.map((p) => {
         const coord = p.resolved ? `(${p.x.toFixed(3)}, ${p.z.toFixed(3)})` : `(${p.x}, ${p.z})`;
         return `${coord}${p.rotation !== undefined ? ` / ${p.rotation}°` : ''}${p.resolved ? '（解算）' : ''}`;

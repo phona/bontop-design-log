@@ -61,20 +61,17 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.ok(ledgerOf('gbath.vanity').mountedChildren.includes('gbath.robot_dock'));
   });
 
-  it('COST-150-01 targets = 条带柜组 7 件（DEC-2026-10-07-R02 裁定④的对象关联）；金额边界仍 D19 未拍板', () => {
+  it('COST-150-01 targets = 主卧通顶定制柜 1 件（issue #116，2026-11-13）；金额边界仍 D19 未拍板', () => {
     // 2026-11-07（issue #98 PR-11）口径修正：PR-8 曾断言「COST-150-01 不登记 targets」
     // （把业主「按开放项显形，不裁定」的裁定落实为「拍板前不挂对象」）。PR-11 改为按
     // 裁定④已定的对象→成本项关联机器化：targets 登记的是「哪些对象归本项跟踪」，
-    // 不是金额裁定——D19 问的是含不含 P2-100 的 3000-5000、要不要 P2-101，仍开放。
+    // 不是金额裁定。2026-11-13 issue #116：条带柜组 7 件 + 内机出口示意
+    // mb.condensate_pipe 已删，改单一通顶柜 mb.full_height_cabinet；targets 登记 1 件。
+    // D19 问的是通顶柜费用是否含在 P2-100 的 3000-5000 内、是否新增 P2-101，仍开放；
+    // 原按项目单价反算的条带约 1500-2300 随组删除而作废（推断非报价，不得转作通顶柜估价）。
     const {pkg, component} = componentOf('COST-150-01');
     assert.deepEqual(component.targets, [
-      'mb.vanity_base_cabinet',
-      'mb.vanity_lower_board',
-      'mb.vanity_main_board',
-      'mb.vanity_pvc_box',
-      'mb.vanity_pvc_wardrobe_entry',
-      'mb.vanity_pvc_service_chase',
-      'mb.condensate_pipe',
+      'mb.full_height_cabinet',
     ]);
     // 不裁定：金额侧零结论——planned 维持 0、不新增 P2 行、推断区间不进 targets
     assert.equal(component.planned_cny, 0);
@@ -155,37 +152,26 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     // 原子串误挂（vanity 吃进 mb.vanity_base_cabinet / faucet_gbath_vanity 等 6 行假阳性）
     // 在单一源下不可能再发生：没有跨对象散文可被吃。家具对象恒空即证。
     assert.deepEqual(ledger.pendingEntries, [], JSON.stringify(ledger.pendingEntries));
-    assert.deepEqual(ledger.openDecisions, [], `D19 的 question 只点名条带 7 件，不得经子串挂到 gbath.vanity：${JSON.stringify(ledger.openDecisions)}`);
+    assert.deepEqual(ledger.openDecisions, [], `D19 的 question 只点名通顶柜 1 件，不得经子串挂到 gbath.vanity：${JSON.stringify(ledger.openDecisions)}`);
     assert.deepEqual(ledgerOf('mb.washbasin_cabinet').openDecisions, []);
-    // 全局：挂 D19 的对象必须恰好是条带 7 件（决策通道与对象两两核对，防同类子串误挂；
+    // 全局：挂 D19 的对象必须恰好是通顶柜 1 件（决策通道与对象两两核对，防同类子串误挂；
     // 衣柜对象不得挂 D19——其归属不在本决策问价范围，D19 options 只以非 id 写法提衣柜名件）
     const d19Refs = [...new Map([...report.objects, ...report.undecided].map((candidate) => [candidate.ref, candidate])).values()]
       .filter((candidate) => candidate.openDecisions.some((decision) => decision.id === 'D19'))
       .map((candidate) => candidate.ref).sort();
     assert.deepEqual(d19Refs, [
-      'mb.condensate_pipe',
-      'mb.vanity_base_cabinet',
-      'mb.vanity_lower_board',
-      'mb.vanity_main_board',
-      'mb.vanity_pvc_box',
-      'mb.vanity_pvc_service_chase',
-      'mb.vanity_pvc_wardrobe_entry',
+      'mb.full_height_cabinet',
     ]);
   });
 
-  it('D19 挂在条带 7 件全部对象上；PR-11 起 7 件同时有 P2-100 包链接与 COST-150-01 成本项', () => {
+  it('D19 挂在主卧通顶柜 1 件上；该件同时有 P2-100 包链接与 COST-150-01 成本项', () => {
     // 2026-11-07（issue #98 PR-11）：条带柜组业务关联落地——MODEL-P2-100 改按对象 id
     // 选（原 types 选择器对 furnishings 是 silent no-op）+ COST-150-01 targets 登记。
-    // 7 件自此有业务链接，「成本归属未定」汇总表不再收它们（该表现在为空）；D19 的
-    // 显形口改为各对象单对象视图的「关联决策门禁」节 + 决策登记表 + description 散文。
+    // 2026-11-13 issue #116：7 件退役，改单一通顶柜 1 件；该件自此有业务链接，
+    // 「成本归属未定」汇总表不再收它（该表现在为空）；D19 的显形口改为各对象单对象视图的
+    // 「关联决策门禁」节 + 决策登记表 + description 散文。
     const stripIds = [
-      'mb.vanity_base_cabinet',
-      'mb.vanity_lower_board',
-      'mb.vanity_main_board',
-      'mb.vanity_pvc_box',
-      'mb.vanity_pvc_wardrobe_entry',
-      'mb.vanity_pvc_service_chase',
-      'mb.condensate_pipe',
+      'mb.full_height_cabinet',
     ];
     assert.equal(report.undecided.length, 0, `「被开放决策点名且无业务链接」应无对象：${JSON.stringify(report.undecided.map((ledger) => ledger.ref))}`);
     for (const ref of stripIds) {
@@ -200,12 +186,14 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.ok(!report.undecided.some((ledger) => ledger.ref === 'gbath.vanity'));
   });
 
-  it('无参数汇总：有归属 51 件（issue #191 起 room_ids/types 改 ids 后包链接通道覆盖真实家具）、共担成本项去重合计 ¥6,599', () => {
+  it('无参数汇总：有归属 43 件（issue #191 起 room_ids/types 改 ids 后包链接通道覆盖真实家具）、共担成本项去重合计 ¥6,599', () => {
     // 2026-11-10（issue #191）：12 → 51。原因是 model-package-links 的 19 处 room_ids/types
     // 选择器改成对象 id 直选后，MODEL-PKG-110/160/P2-010/P2-020/P2-030/P2-060/P2-100/
     // P2-120/P2-140/P3-030 的包链接第一次真正指名家具对象（此前 types 对 furnishings 是
     // silent no-op，room_ids 只记房间）。这 51 件是「有包链接或成本项」的真实集合，
     // 逐件列出而不是只报数量——包/对象关联漂移时本断言当场点名。
+    // 2026-11-13 issue #116：51 → 43——条带柜组 7 件 + 内机出口示意 1 件 + 950 衣柜与
+    // 顶封 2 件退役，新增通顶柜 1 件（51−9+1）；总 placed 67→59，未绑定仍 14 件。
     const owned = report.objects.filter(hasBusinessLink);
     assert.deepEqual(owned.map((ledger) => ledger.ref).sort(), [
       'balcony.dryer',
@@ -239,18 +227,10 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
       'mb.bed_180',
       'mb.bedside_cabinet_north',
       'mb.bedside_cabinet_south',
-      'mb.condensate_pipe',
       'mb.dressing_stool',
       'mb.dressing_table',
+      'mb.full_height_cabinet',
       'mb.low_dresser',
-      'mb.vanity_base_cabinet',
-      'mb.vanity_lower_board',
-      'mb.vanity_main_board',
-      'mb.vanity_pvc_box',
-      'mb.vanity_pvc_service_chase',
-      'mb.vanity_pvc_wardrobe_entry',
-      'mb.wardrobe_950',
-      'mb.wardrobe_pelmet',
       'mb.washbasin_cabinet',
       'mbath.exhaust_fan',
       'mbath.toilet',
@@ -263,8 +243,8 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     const summary = renderOwnershipSummary(report);
     assert.match(summary, /¥6,599/);
     assert.match(summary, /2 对象共担/);
-    // COST-150-01 planned=0（二期 deferred）进合计但不加钱；7 件条带共担该项、
-    // 与衣柜 9 件共担 P2-100 包链接，金额仍只有 COST-100-02/160-06 两项有数
+    // COST-150-01 planned=0（二期 deferred）进合计但不加钱；2026-11-13 issue #116 后
+    // 通顶柜 1 件共担该项并独担 P2-100 包链接，金额仍只有 COST-100-02/160-06 两项有数
     assert.match(summary, /COST-150-01/);
     assert.match(summary, /成本归属未定（开放决策点名，非归属认定）/);
   });
@@ -306,7 +286,9 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     // model_package_link 通道能反查到真实家具对象（此前 furnishings 的 types 选择器按
     // sceneElements 匹配，家具对象从不命中；room_ids 只记房间）。26 → 53 件是通道变真，
     // 不是新造引用——总 placed 67 件中未挂任何机器引用的只剩 14 件。
-    assert.match(inventory, /被机器绑定引用的对象：\*\*53\*\* 件/);
+    // 2026-11-13 issue #116：53 → 45 件——条带柜组 7 件 + 内机出口示意 1 件 + 950 衣柜
+    // 与顶封 2 件退役，新增通顶柜 1 件（53−9+1）；总 placed 67→59，未绑定仍 14 件。
+    assert.match(inventory, /被机器绑定引用的对象：\*\*45\*\* 件/);
   });
 });
 

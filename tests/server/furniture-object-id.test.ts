@@ -95,7 +95,7 @@ describe('whole-house stable ids (issue #98 PR-7)', () => {
       });
     }
     // 覆盖全屋每个房间的 placed 家具，而不是只测客卫。
-    assert.ok(placed >= 60, `placed 家具应全屋覆盖（当前 ${placed} 件）`);
+    assert.ok(placed >= 59, `placed 家具应全屋覆盖（当前 ${placed} 件）`);
     const rooms = Object.keys(furnishings).filter((roomId) => (furnishings[roomId] ?? []).some(isPlaced));
     assert.ok(rooms.length >= 10, `应有 ≥10 个房间带 placed 家具（当前 ${rooms.length}）`);
   });
@@ -103,7 +103,7 @@ describe('whole-house stable ids (issue #98 PR-7)', () => {
   it('keeps every runtime furniture id when any single room is reordered', () => {
     const furnishings = loadSceneInputs().house.furnishings ?? {};
     const before = allRuntimeFurnitureIds(furnishings);
-    assert.ok(before.length >= 60, `runtime 家具对象应全屋覆盖（当前 ${before.length} 个）`);
+    assert.ok(before.length >= 59, `runtime 家具对象应全屋覆盖（当前 ${before.length} 个）`);
     // 稳定 id 不带 ':'，按它认不出房间/类型；确认 id 集合本身就是权威。
     assert.ok(before.every((id) => !id.startsWith('furniture:')), `全部 placed 家具都应走稳定 id，仍在下标口径的是：${before.filter((id) => id.startsWith('furniture:'))}`);
 

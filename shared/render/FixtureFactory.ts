@@ -266,6 +266,23 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
       { shape: 'box', size: [1.38, 0.07, 0.565], position: [0, 1.55, 0], color: '#c9b29a', roughness: 0.45, part: 'main-board', materialRole: 'shelf' },
     ],
   },
+  {
+    // 2026-11-13 issue #116（业主裁定，supersede DEC-045）：悬浮板位改通顶定制柜。
+    // 参数化：尺寸与 config/house.yaml 的 mb.full_height_cabinet 条目同口径——
+    // 宽 1.38（沿墙）× 深 0.565 × 柜身 2.50m + 顶封 0.30m 至 2.80m；现场改参数时本配方同步改数。
+    // local x 是沿墙宽度、local y 是世界竖向高度、local z 是进深；rotation=270 后 local x 沿世界 z，local z 正向朝 west（柜门面）。
+    // 三扇平开门 × 约 0.46m 至 2.50m（2.10m 以下主门 + 2.10–2.50m 顶柜分门），2.50–2.80m 顶封固定不开。
+    type: 'mb_full_height_cabinet',
+    parts: [
+      { shape: 'box', size: [1.38, 2.50, 0.565], position: [0, 1.25, 0], color: '#c9c1b5', roughness: 0.5, part: 'full-height-carcass', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.38, 0.30, 0.565], position: [0, 2.65, 0], color: '#c9c1b5', roughness: 0.5, part: 'full-height-header', materialRole: 'cabinet_body' },
+      { shape: 'box', size: [1.30, 0.08, 0.025], position: [0, 0.04, 0.27], color: '#8f877d', roughness: 0.7, part: 'full-height-plinth', materialRole: 'cabinet_body' },
+      ...([-0.46, 0, 0.46].map((x) => ({ shape: 'box' as const, size: [0.44, 2.08, 0.018] as [number, number, number], position: [x, 1.05, 0.2735] as [number, number, number], color: '#e7e0d6', roughness: 0.45, part: 'full-height-door-lower', materialRole: 'door_front' }))),
+      ...([-0.46, 0, 0.46].map((x) => ({ shape: 'box' as const, size: [0.44, 0.38, 0.018] as [number, number, number], position: [x, 2.30, 0.2735] as [number, number, number], color: '#e7e0d6', roughness: 0.45, part: 'full-height-door-upper', materialRole: 'door_front' }))),
+      { shape: 'box', size: [0.012, 2.08, 0.018], position: [-0.23, 1.05, 0.2735], color: '#8f877d', roughness: 0.7, part: 'full-height-door-seam-1', materialRole: 'door_seam' },
+      { shape: 'box', size: [0.012, 2.08, 0.018], position: [0.23, 1.05, 0.2735], color: '#8f877d', roughness: 0.7, part: 'full-height-door-seam-2', materialRole: 'door_seam' },
+    ],
+  },
   // ── 主卫冷凝水遮蔽链（issue #98 PR-10）────────────────────────────────────
   // 三件原先在这里写死零件长度（outlet 0.40/0.48、entry 1.175、chase 0.425/0.32/0.20/0.60/0.30/2.55），
   // 与 house.yaml 的绝对 x/z、MEP via 点各写一份接口坐标：挪衣柜或改穿墙点后三处静默漂移。

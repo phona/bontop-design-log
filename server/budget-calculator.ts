@@ -47,7 +47,7 @@ import { computePaintScopeForLayout, loadPaintScopeInputs } from './paint-cost-c
  *
  * 三个字段过去全写成 `option.X ?? <兜底>`：
  *   - `price_per_unit ?? 0`     → 金额静默归零（已实际发生 2 次：entry_door_01 开发商已装、
- *                                 wardrobe_north_950_custom_01 定制衣柜——两者在 materials.yaml
+ *                                 wardrobe_mb_full_height_custom_01 通顶定制柜——两者在 materials.yaml
  *                                 里显式写了 0，所以兜底没触发，但"缺字段"与"声明为 0"曾被混为一谈）
  *   - `coverage_per_unit ?? 1`  → 面积型材料按"片数×单价"计价，量级错 100 倍
  *   - `loss_rate ?? 1.0`        → 主公式损耗变 1.0，少算 8~15%
@@ -883,7 +883,7 @@ export class BudgetCalculator {
             coveragePerUnit: 1, lossRate: 1, cost,
           });
           // 门控必须逐房判：roomOverrides 能让同一 topic 在不同房间用不同 option
-          // （如 master_bedroom 的 wardrobe_north_950_custom_01，price 0 / candidate），
+          // （如 master_bedroom 的 wardrobe_mb_full_height_custom_01，price 0 / candidate），
           // 拿到循环外按 default 判一次就会把覆盖房的取证态判错。
           addAutoActual(categoryKey, li.topic, cost, option);
         }

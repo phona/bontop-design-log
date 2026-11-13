@@ -1,8 +1,8 @@
 # 装扮映射表（材质/家具/灯光的外观替换映射）
 
-生成：2026-11-09，数据源：materials.yaml / house.yaml furnishings（摆位走 shared/furniture-placement 解算器）/ electrical.yaml（灯具位置走 shared/point-placement 解算器）/ electrical-topology.yaml（回路列，S3 起单一派生）/ hvac.yaml + mep-hvac-coordination.yaml（冷凝链家具锚点）/ config/model/envelope/（openings+floor-zones+ceiling+finish-defaults）/ environment.yaml / data/current-scheme.json
+生成：2026-11-13，数据源：materials.yaml / house.yaml furnishings（摆位走 shared/furniture-placement 解算器）/ electrical.yaml（灯具位置走 shared/point-placement 解算器）/ electrical-topology.yaml（回路列，S3 起单一派生）/ hvac.yaml + mep-hvac-coordination.yaml（冷凝链家具锚点）/ config/model/envelope/（openings+floor-zones+ceiling+finish-defaults）/ environment.yaml / data/current-scheme.json
 
-数据规模：house.yaml furnishings 共 91 件（与 `fact.furnishings_count` 对账）。
+数据规模：house.yaml furnishings 共 83 件（与 `fact.furnishings_count` 对账）。
 
 用法：渲染时按本表替换材质/家具/灯光外观；节点名即映射键。渲染线现状（2026-10-22 批 2 审阅修复）：Twinmotion/Blender 线已退场（其验收文档已删除，历史见 git），现行定妆走 Web 渲染线（app/ Three.js）；本表只保留与渲染器无关的映射数据与外观意图，§6 为现行回传流程。
 
@@ -34,7 +34,7 @@
 | mattress | mattress_180_01 | 1.8m 独立袋装弹簧床垫 | 喜临门 / 雅兰 / 20-25cm 独立袋装弹簧 + 乳胶 | 1800×2000mm | 按实物选材替换 |
 | wardrobe | wardrobe_240_01 | 2.4m 定制衣柜 | 本地全屋定制工厂 / 2.4×0.6×2.7m，平开门 | 2400×600×2700mm | 按实物选材替换 |
 | wardrobe | wardrobe_180_01 | 1.8m 定制衣柜 | 本地全屋定制工厂 / 1.8×0.6×2.7m，平开门 | 1800×600×2700mm | 底色 #d8cbb2 |
-| wardrobe | wardrobe_north_950_custom_01 | 主卧北墙950定制模块化衣柜（R8 active） | 本地全屋定制工厂 / 待核样 / 950×580×2800mm，三扇窄平开门+顶部固定木饰面门头，真正通顶；冷凝水管槽隐藏于顶部 | 950×580×2800mm | 底色 medium_light_walnut_warm_smoked_oak |
+| wardrobe | wardrobe_mb_full_height_custom_01 | 主卧通顶定制柜（issue #116，2026-11-13） | 本地全屋定制工厂 / 待核样 / 1380×565×2800mm，三扇平开门（约 0.46m/扇）朝西，柜身 2.50m + 顶封 0.30m 至 2.80m，上下分门；柜顶干净固定板，不藏冷凝水管 | 1380×565×2800mm | 按实物选材替换 |
 | wardrobe | study_seasonal_wardrobe_170_01 | 1.7m 模块化季节后台柜（书房） | 本地全屋定制工厂 / 宜家 modular 系列 / 1.70×0.55×2.40m 模块化组合柜，换季收纳 | 1700×550×2400mm | 按实物选材替换 |
 | dresser | light_midcentury_dresser_01 | 轻中古六抽矮柜（主卧南侧窗带） | 林氏家居 / 源氏木语 / 本地家具厂（按中古款筛选） / 1.40×0.48×0.85m 六抽屉细腿矮柜，中古木色（与梳妆桌同族） | 1400×480×850mm | 按实物选材替换 |
 | sofa | sofa_3seat_01 | 直排现代中古沙发（深棕/黑棕仿皮，低矮简洁轮廓） | 林氏家居 / 源氏木语 / 本地家具厂（按中古款筛选） / 2.8m 直排三人位，细金属腿或矮木腿，无拉扣无弧形背 | 2800×900×750mm（坐高≤420mm） | 按实物选材替换 |
@@ -61,28 +61,20 @@
 | 房间 | 类型 | 数量 | 宽×深 (m) | 摆位 (x, z) / 朝向 |
 |---|---|---|---|---|
 | master_bedroom | bed_180 | 1 | 1.8×2 | (3.2, 7.4) / 270° |
-| master_bedroom | master_north_wall_wardrobe_950 | 1 | 0.95×0.58 | (2.45, 4.59) / 0° |
-| master_bedroom | master_wardrobe_top_pelmet | 1 | 0.95×0.58 | (2.45, 4.59) / 0° |
 | master_bedroom | master_bedside_cabinet_350_north | 1 | 0.38×0.35 | (4.01, 6.245) / 0° |
 | master_bedroom | master_bedside_cabinet_350_south | 1 | 0.38×0.35 | (4.01, 8.555) / 0° |
 | master_bedroom | mb_washbasin_cabinet | 1 | 1.05×0.5 | (0.575, 3.16) / 0° |
 | master_bedroom | master_dressing_table | 1 | 0.9×0.45 | (0.425, 6.05) / 90° |
 | master_bedroom | dressing_stool | 1 | 0.42×0.4 | (0.42, 6.05) / 90° |
 | master_bedroom | master_hot_season_low_dresser | 1 | 1.4×0.48 | (1.05, 9.2) / 180° |
-| master_bedroom | mb_vanity_base_cabinet | 1 | 1.38×0.565 | (2.243, 3.610) / 270°（解算） |
-| master_bedroom | mb_vanity_lower_board | 1 | （体块无尺寸记录） | (2.243, 3.610) / 270°（解算） |
-| master_bedroom | mb_vanity_main_board | 1 | （体块无尺寸记录） | (2.243, 3.610) / 270°（解算） |
-| master_bedroom | condensate_pipe_ac_outlet | 1 | 0.4×0.46 | (3.700, 5.100) / 0°（解算） |
-| master_bedroom | mb_vanity_pvc_wardrobe_entry | 1 | 1.175×0.03 | (2.925, 4.620) / 0°（解算） |
-| master_bedroom | mb_vanity_pvc_service_chase | 1 | 0.925×0.06 | (2.925, 4.620) / 0°（解算） |
-| master_bedroom | mb_vanity_pvc_box | 1 | 1.2×0.08 | (2.500, 3.700) / 270°（解算） |
+| master_bedroom | mb_full_height_cabinet | 1 | 1.38×0.565 | (2.243, 3.610) / 270°（解算） |
 | master_bedroom | faucet | 1 | — | count-only（无家具体块，按实物补摆） |
 | master_bedroom | mattress_180 | 1 | — | count-only（无家具体块，按实物补摆） |
 | master_bedroom | curtain_set | 1 | — | count-only（无家具体块，按实物补摆） |
 | master_bedroom | ceiling_light | 1 | — | count-only（无家具体块，按实物补摆） |
 | bedroom_nw | bed_150 | 1 | 1.5×2 | (4.6, 2.3) / 270° |
 | bedroom_nw | wardrobe_180 | 1 | 1.8×0.6 | (3.5, 4) / 0° |
-| bedroom_nw | desk | 1 | 1.2×0.6 | (2.9, 2.1) / 90° |
+| bedroom_nw | desk | 1 | 1.2×0.45 | (2.9, 2.1) / 90° |
 | bedroom_nw | chair | 1 | 0.5×0.5 | (3.35, 3) / 270° |
 | bedroom_nw | shelf | 1 | 0.8×0.4 | (3, 1.3) / 0° |
 | bedroom_nw | mattress_150 | 1 | — | count-only（无家具体块，按实物补摆） |
@@ -95,7 +87,7 @@
 | bedroom_se | ceiling_light | 1 | — | count-only（无家具体块，按实物补摆） |
 | study | desk | 1 | 1.2×0.6 | (6.9, 7.8) / 90° |
 | study | chair | 1 | 0.5×0.5 | (6.3, 7.8) / 90° |
-| study | study_seasonal_wardrobe_wall | 3 | 1.7×0.55 | (5.1, 5.825) / 0°；(4.475, 6.289) / 90°；(4.475, 7.38) / 90° |
+| study | study_seasonal_wardrobe_wall | 3 | 1.8×0.55 | (5.1, 5.825) / 0°；(4.475, 6.289) / 90°；(4.475, 7.38) / 90° |
 | study | curtain_set | 1 | — | count-only（无家具体块，按实物补摆） |
 | study | ceiling_light | 1 | — | count-only（无家具体块，按实物补摆） |
 | living_dining | wall_cabinet_tall | 1 | 1.35×0.35 | (7.375, 6.225) / 270° |
@@ -130,7 +122,7 @@
 | master_bath | towel_set | 1 | 0.04×0.28 | (0.24, 2.23) / 0° |
 | master_bath | exhaust_fan | 1 | 0.3×0.3 | (1, 2.7) |
 | master_bath | shower_set | 1 | — | count-only（无家具体块，按实物补摆） |
-| guest_bath | vanity | 1 | （体块无尺寸记录） | (6.890, 3.955) / 270°（解算） |
+| guest_bath | vanity | 1 | 0.69×0.5 | (6.890, 3.955) / 270°（解算） |
 | guest_bath | toilet | 1 | 0.4×0.6 | (6.75, 3.05) / 270° |
 | guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 2.45) |
 | guest_bath | mirror_cabinet_gbath | 1 | 0.66×0.14 | (7.070, 3.955) / 270°（解算） |
@@ -159,7 +151,7 @@
 | light_corridor_1 | main_corridor | 筒灯 | (5.7, 4.9) | 2.5 | 3000 | lighting_entry_base | 历史旧位：坐标由原(7.9,5.75)调整至既有ceiling_living范围(7.9,5.0)，避开电视高柜x≤7.55并靠近走廊口；原点嵌入既有边吊、不新增吊顶；这些旧位理由和坐标由DEC-2026-10-15-C02覆盖。当前点：因距餐厅下出风槽投影边约75mm，迁至主走廊中段(5.70,4.90)，嵌入ceiling_main_corridor吊底y=2.50；归入lighting_entry_base的回路与开关控制拓扑保持，线路同步协调。开孔、上方风管/梁/冷媒/冷凝水/桥架与龙骨净距待现场复核；坐标是设计候选值，未实测。状态依据：lighting_entry_base回路confirmed，当前灯位为业主明确确认的预演位置。 |
 | light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | lighting_entry_base | 玄关筒灯；状态依据：归入 topology 回路 lighting_entry_base（confirmed），玄关筒灯为设计声明→inferred；位置为设计值未实测 |
 | light_entry_foyer | living_dining | 筒灯 | (12.4, 4.05) | 2.5 | 3000 | lighting_entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区；状态依据：归入 topology 回路 lighting_entry_base（confirmed），门厅筒灯利用既有吊顶为设计声明→inferred；取红框中心避让半高柜与入户门，位置为设计值未实测；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随入户门厅吊顶北缘 2.90→3.00、东缘 13.40→12.77，仍在新吊顶内（新吊顶 z[3.00,4.30]，中心 z≈4.05，x 不变）。 |
-| light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.65 | 4000 | lighting_bedrooms_bath | 厨房平板灯（4000K 工作区例外）；height=2.65 对齐 ceiling_kitchen 铝扣板吊顶完成面（DEC-2026-10-17-R12：安装完成面即吊顶底，原 2.8 与吊顶分区声明矛盾）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测 |
+| light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.5 | 4000 | lighting_bedrooms_bath | 厨房平板灯（4000K 工作区例外）；height=2.50 对齐 ceiling_kitchen 铝扣板吊顶完成面（2026-11-12 由 2.65 下调；DEC-2026-10-17-R12：安装完成面即吊顶底，原 2.8 与吊顶分区声明矛盾）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测 |
 | night_guest_bed_side | bedroom_se | 起夜灯 | (13.4, 7.6) | 0.3 | — | lighting_bedrooms_bath | 起夜 NP-1 床沿下位灯（R15）：挂在客房西墙 w_be_west 卧室侧、床西侧（上下床侧）地面引导，与床西缘距约 1.0m；避 d_bese 门扫掠域（z 6.05 洞口以北/以南均不侵入）；高度 0.30m 符合 night_light 0.25–0.40m 区间；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），起夜 NP-1 床沿灯为设计声明→inferred；挂 w_be_west 实体隔墙、高度符合夜灯区间，位置为设计值未实测 |
 | night_guest_head | bedroom_se | 起夜灯 | (16.4, 8.55) | 0.35 | — | lighting_bedrooms_bath | 起夜 NP-2 床头小夜灯（R15）：床头正上方低位，触摸+感应双模；w_east_upper 剪力墙 inferred，挂装条件 site_pending；回路归属 lighting_bedrooms_bath（proposed），起夜 NP-2 床头小夜灯（topology 回路）；；2026-10-28 DEC-2026-10-28-R04：随 switch_guest_bed 一并南移至 (16.40,8.55)——原 (16.40,7.60) 同被 bed_150 床头板遮挡（板顶 0.80m 高于本灯 0.35m，触摸位不可达、光线被挡回墙面），新位在床南缘外 0.20m、 bedside 即触即亮，且与 switch_guest_bed 保持同点竖直流叠（MEP strong-light-bedrooms-study-guest-night 共享下引段不变）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。 |
 | night_guest_door | living_dining | 起夜灯 | (13.4, 6.9) | 0.3 | — | lighting_entry_base | 起夜 NP-3 客房门外灯（R15）：挂在 d_bese 门洞以南的客厅侧墙面（门洞跨度约 z[5.65,6.55]，本点位 z=6.90 在跨度外 0.35m，避开 stay-in-opening 校验），出门即亮；w_be_west 为实体隔墙非玻璃幕墙；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-3 客房门外灯为设计声明→inferred；门洞以南避开门扇扫掠，位置为设计值未实测 |

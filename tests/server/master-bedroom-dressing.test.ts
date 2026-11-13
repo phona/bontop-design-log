@@ -170,13 +170,10 @@ test('950 left shift clears d_mb while preserving the north-wall room envelope',
   assert.ok(targetMaxX <= 3.30, 'candidate must clear d_mb sweep west edge');
 });
 
-test('R9 master-bedroom furniture set places the 950 three-door wardrobe and removes R5/R6 objects', () => {
+test('R9 master-bedroom furniture set places the full-height cabinet and removes R5/R6 objects', () => {
   assert.deepEqual(placed('bed_180'), { type: 'bed_180', id: 'mb.bed_180', x: 3.20, z: 7.40, rotation: 270 });
-  assert.deepEqual(placed('master_north_wall_wardrobe_950'), { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 });
-  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', id: 'mb.wardrobe_pelmet', x: 2.45, z: 4.59, rotation: 0 });
   assert.deepEqual(placed('master_bedside_cabinet_350_north'), { type: 'master_bedside_cabinet_350_north', id: 'mb.bedside_cabinet_north', x: 4.01, z: 6.245, rotation: 0 });
   assert.deepEqual(placed('master_bedside_cabinet_350_south'), { type: 'master_bedside_cabinet_350_south', id: 'mb.bedside_cabinet_south', x: 4.01, z: 8.555, rotation: 0 });
-  assert.deepEqual(FURNITURE_DIMS.master_north_wall_wardrobe_950, { width: 0.95, depth: 0.58 });
   assert.deepEqual(FURNITURE_DIMS.master_bedside_cabinet_350_north, { width: 0.38, depth: 0.35 });
   assert.deepEqual(FURNITURE_DIMS.master_bedside_cabinet_350_south, { width: 0.38, depth: 0.35 });
   assert.ok(fixtureSize('master_bedside_cabinet_350_north').y >= 0.495 && fixtureSize('master_bedside_cabinet_350_north').y <= 0.505);
@@ -194,32 +191,33 @@ test('R9 master-bedroom furniture set places the 950 three-door wardrobe and rem
   for (const removed of ['master_partition_wardrobe_1600', 'master_dressing_connection_storage', 'master_freestanding_wardrobe_062', 'master_bedside_cabinet_north', 'master_bedside_tray_south', 'master_north_wall_wardrobe_600', 'master_north_wall_wardrobe_650']) {
     assert.equal(master.some((item) => item.type === removed && item.x !== undefined), false, `${removed} must be removed from R7 placed set`);
   }
-  const wardrobe = placed('master_north_wall_wardrobe_950');
-  const box = worldAabb(wardrobe);
-  assert.ok(Math.abs(box.minX - 1.975) < GAP_EPS && Math.abs(box.maxX - 2.925) < GAP_EPS);
-  assert.ok(Math.abs(box.minZ - 4.30) < GAP_EPS && Math.abs(box.maxZ - 4.88) < GAP_EPS);
+  // 2026-11-13 issue #116：950 衣柜 + 顶封 + 底柜 + 双悬浮板 + 三件 PVC 链件退役，
+  // 悬浮板位改为通顶定制柜。退役件是挂墙声明（无 x/z），须按 type 全量查、不能用
+  // placed() 的 x/z 条件（该条件对挂墙件恒假，会把「仍在」误判成「已删」）。
+  for (const removed of ['master_north_wall_wardrobe_950', 'master_wardrobe_top_pelmet', 'mb_vanity_base_cabinet', 'mb_vanity_lower_board', 'mb_vanity_main_board', 'mb_vanity_pvc_box', 'mb_vanity_pvc_wardrobe_entry', 'mb_vanity_pvc_service_chase', 'mb_condensate_pipe']) {
+    assert.equal(master.some((item) => item.type === removed), false, `${removed} must be removed from master_bedroom furnishings (issue #116)`);
+  }
+  // 通顶柜：单点参数化声明（house.yaml），沿墙 along 2.51 = 沿墙距离（自墙段起点顶点
+  // v_bath_ne z=1.10 向北量，2026-11-07 issue #98 删除本墙「along = 绝对 z」历史特例）
+  // → 世界 z = 1.10 + 2.51 = 3.61。宽/深/柜身高行内声明（FURNITURE_DIMS 不再是
+  // 第二套尺寸来源；PR-9「行内不写第二套」口径由 #116 参数化单点声明取代）。
+  const cabinet = master.find((item) => item.type === 'mb_full_height_cabinet');
+  assert.deepEqual(cabinet, { type: 'mb_full_height_cabinet', id: 'mb.full_height_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015 });
   for (const type of ['mb_vanity_lower_board_bridge', 'mb_vanity_main_board_bridge']) {
     assert.equal(master.some((item) => item.type === type), false, `${type} must be removed from active placed set`);
     assert.equal((FURNITURE_DIMS as Record<string, unknown>)[type], undefined, `${type} fixture dimensions must be removed`);
   }
-  for (const type of ['mb_vanity_lower_board', 'mb_vanity_main_board']) {
-    const board = master.find((item) => item.type === type);
-    // along 2.51 = 沿墙距离（自墙段起点顶点 v_bath_ne z=1.10 向北量，2026-11-07 issue #98
-    // 删除本墙「along = 绝对 z」历史特例）→ 世界 z = 1.10 + 2.51 = 3.61。
-    assert.deepEqual(board, { type, id: { mb_vanity_base_cabinet: 'mb.vanity_base_cabinet', mb_vanity_lower_board: 'mb.vanity_lower_board', mb_vanity_main_board: 'mb.vanity_main_board' }[type], wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 });
-  }
-  assert.deepEqual(placed('master_wardrobe_top_pelmet'), { type: 'master_wardrobe_top_pelmet', id: 'mb.wardrobe_pelmet', x: 2.45, z: 4.59, rotation: 0 });
-  assert.deepEqual(FURNITURE_DIMS.master_wardrobe_top_pelmet, { width: 0.95, depth: 0.58 });
-  const baseCabinet = buildFixture('mb_vanity_base_cabinet');
-  assert.ok(baseCabinet);
+  const cabinetFixture = buildFixture('mb_full_height_cabinet');
+  assert.ok(cabinetFixture);
   // 摆位中心 = 墙线 2.60 − 半墙厚 0.06 − wall_clearance 0.015 − 深 0.565/2 = 2.2425
   //（2026-11-06 口径 A 校验共享化后按真实摆位取值；旧 2.2575 系忽略 clearance 的幻影中心）。
-  baseCabinet!.position.set(2.2425, 0, 3.61);
-  baseCabinet!.rotation.y = THREE.MathUtils.degToRad(270);
-  baseCabinet!.updateMatrixWorld(true);
-  const baseBox = new THREE.Box3().setFromObject(baseCabinet!);
-  assert.ok(Math.abs(baseBox.min.x - 1.96) < 1e-6 && Math.abs(baseBox.max.x - 2.525) < 1e-6);
-  assert.ok(Math.abs(baseBox.min.z - 2.92) < 1e-6 && Math.abs(baseBox.max.z - 4.30) < 1e-6);
+  cabinetFixture!.position.set(2.2425, 0, 3.61);
+  cabinetFixture!.rotation.y = THREE.MathUtils.degToRad(270);
+  cabinetFixture!.updateMatrixWorld(true);
+  const cabinetBox = new THREE.Box3().setFromObject(cabinetFixture!);
+  assert.ok(Math.abs(cabinetBox.min.x - 1.96) < 1e-6 && Math.abs(cabinetBox.max.x - 2.525) < 1e-6);
+  assert.ok(Math.abs(cabinetBox.min.z - 2.92) < 1e-6 && Math.abs(cabinetBox.max.z - 4.30) < 1e-6);
+  assert.ok(Math.abs(cabinetBox.min.y - 0) < 1e-6 && Math.abs(cabinetBox.max.y - 2.80) < 1e-6, 'cabinet must run floor to ceiling: carcass 0–2.50 + fixed header 2.50–2.80');
   assert.equal(buildFixture('mb_vanity_continuous_closure_cabinet'), null);
 });
 
@@ -240,36 +238,32 @@ test('R9 vanity boards anchor to the wall west finish without bridge geometry', 
   }
 });
 
-test('R9 wardrobe top pelmet closes the left-shifted 950 wardrobe-to-head-box seam', () => {
-  const pelmet = buildFixture('master_wardrobe_top_pelmet');
-  assert.ok(pelmet, 'missing master_wardrobe_top_pelmet fixture');
-  pelmet!.position.set(2.45, 0, 4.59);
-  pelmet!.updateMatrixWorld(true);
-  const box = new THREE.Box3().setFromObject(pelmet!);
-  // 包络与当前950衣柜同 footprint，顶部只保留通顶柜的薄收口
-  assert.ok(Math.abs(box.min.x - 1.975) < 1e-6 && Math.abs(box.max.x - 2.925) < 1e-6, `pelmet x[${box.min.x},${box.max.x}]`);
-  assert.ok(Math.abs(box.min.z - 4.30) < 1e-6 && Math.abs(box.max.z - 4.88) < 1e-6, `pelmet z[${box.min.z},${box.max.z}]`);
-  assert.ok(Math.abs(box.min.y - 2.79) < 1e-6 && Math.abs(box.max.y - 2.80) < 1e-6, `pelmet y[${box.min.y},${box.max.y}]`);
-  // 与柜门同木色、现有 top_filler/end_panel 角色
+test('R9 full-height cabinet header closes the cabinet-to-ceiling seam (issue #116)', () => {
+  // 2026-11-13 issue #116：950 衣柜 + 顶封退役，悬浮板位改通顶定制柜——柜身到 2.50m、
+  // 固定顶封到 2.80m；柜顶为干净固定板（全带泵后无冷凝水管过柜顶，不设托盘/检修口/带子）。
+  const cabinet = buildFixture('mb_full_height_cabinet');
+  assert.ok(cabinet, 'missing mb_full_height_cabinet fixture');
+  cabinet!.position.set(2.2425, 0, 3.61);
+  cabinet!.rotation.y = THREE.MathUtils.degToRad(270);
+  cabinet!.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(cabinet!);
+  // 包络与原底柜/悬浮板组同 footprint，顶部改为柜身 + 固定顶封到净高
+  assert.ok(Math.abs(box.min.x - 1.96) < 1e-6 && Math.abs(box.max.x - 2.525) < 1e-6, `cabinet x[${box.min.x},${box.max.x}]`);
+  assert.ok(Math.abs(box.min.z - 2.92) < 1e-6 && Math.abs(box.max.z - 4.30) < 1e-6, `cabinet z[${box.min.z},${box.max.z}]`);
+  assert.ok(Math.abs(box.min.y - 0) < 1e-6 && Math.abs(box.max.y - 2.80) < 1e-6, `cabinet y[${box.min.y},${box.max.y}]`);
+  // 固定顶封：与柜身同 footprint，2.50–2.80m 不可开启
   const parts: THREE.Object3D[] = [];
-  pelmet!.traverse((object) => { if (object.userData.materialRole) parts.push(object); });
-  assert.ok(parts.some((part) => part.userData.materialRole === 'top_filler'));
-  assert.ok(parts.some((part) => part.userData.materialRole === 'end_panel'));
-  // 东竖向填板：贴当前柜体东缘、厚 ≤15mm，不进入主卫门洞
-  const filler = parts.find((part) => part.userData.part === 'pelmet-east-filler');
-  assert.ok(filler, 'missing pelmet-east-filler');
-  const fillerBox = new THREE.Box3().setFromObject(filler!);
-  assert.ok(fillerBox.max.x - fillerBox.min.x <= 0.015 + 1e-9, `east filler thickness ${fillerBox.max.x - fillerBox.min.x}`);
-  assert.ok(Math.abs(fillerBox.max.x - 2.925) < 1e-6, `east filler maxX=${fillerBox.max.x}`);
-  assert.ok(Math.abs(fillerBox.min.z - 4.55) < 1e-6 && Math.abs(fillerBox.max.z - 4.88) < 1e-6, `east filler z[${fillerBox.min.z},${fillerBox.max.z}]`);
+  cabinet!.traverse((object) => { if (object.userData.part) parts.push(object); });
+  const header = parts.find((part) => part.userData.part === 'full-height-header');
+  assert.ok(header, 'missing full-height-header');
+  const headerBox = new THREE.Box3().setFromObject(header!);
+  assert.ok(Math.abs(headerBox.min.x - 1.96) < 1e-6 && Math.abs(headerBox.max.x - 2.525) < 1e-6, `header x[${headerBox.min.x},${headerBox.max.x}]`);
+  assert.ok(Math.abs(headerBox.min.z - 2.92) < 1e-6 && Math.abs(headerBox.max.z - 4.30) < 1e-6, `header z[${headerBox.min.z},${headerBox.max.z}]`);
+  assert.ok(Math.abs(headerBox.min.y - 2.50) < 1e-6 && Math.abs(headerBox.max.y - 2.80) < 1e-6, `header y[${headerBox.min.y},${headerBox.max.y}]`);
   // 不侵 d_mb 开启门扇带 x[3.30,4.20] z[4.63,4.67]
-  assert.ok(box.max.x <= 2.925 + 1e-9, 'pelmet must remain within the current 950 wardrobe east edge');
+  assert.ok(box.max.x <= 2.525 + 1e-9, 'cabinet must remain within the west finish envelope');
   // 不压回风格栅底面包络：return_master x[3.45,3.95] z[5.075,5.325]
-  assert.ok(box.max.x <= 3.45 - 1e-9, 'pelmet must stay west of the return grille bottom envelope x[3.45,3.95]');
-  // 与当前衣柜包络关系：x/z 与衣柜一致，柜体顶面到室内净高
-  const wardrobe = worldAabb(placed('master_north_wall_wardrobe_950'));
-  assert.ok(Math.abs(box.min.x - wardrobe.minX) < 1e-6 && Math.abs(box.max.x - wardrobe.maxX) < 1e-6);
-  assert.ok(Math.abs(box.min.z - wardrobe.minZ) < 1e-6 && Math.abs(box.max.z - wardrobe.maxZ) < 1e-6);
+  assert.ok(box.max.x <= 3.45 - 1e-9, 'cabinet must stay west of the return grille bottom envelope x[3.45,3.95]');
 });
 
 test('dressing table and stool use the 2026-09-04 R1 window-adjacent candidate transforms', () => {
@@ -305,9 +299,13 @@ test('R9 bed and bedside AABBs remain explicit', () => {
   const bedBox = worldAabb(placed('bed_180'));
   assert.ok(Math.abs(bedBox.minX - 2.20) < GAP_EPS && Math.abs(bedBox.maxX - 4.20) < GAP_EPS);
   assert.ok(Math.abs(bedBox.minZ - 6.50) < GAP_EPS && Math.abs(bedBox.maxZ - 8.30) < GAP_EPS);
-  const wardrobeBox = worldAabb(placed('master_north_wall_wardrobe_950'));
-  assert.ok(Math.abs(wardrobeBox.minX - 1.975) < GAP_EPS && Math.abs(wardrobeBox.maxX - 2.925) < GAP_EPS);
-  assert.ok(Math.abs(wardrobeBox.minZ - 4.30) < GAP_EPS && Math.abs(wardrobeBox.maxZ - 4.88) < GAP_EPS);
+  const cabinetFixture = buildFixture('mb_full_height_cabinet');
+  assert.ok(cabinetFixture, 'missing mb_full_height_cabinet fixture');
+  cabinetFixture!.position.set(2.2425, 0, 3.61);
+  cabinetFixture!.rotation.y = THREE.MathUtils.degToRad(270);
+  const cabinetBox = runtimeAabb(cabinetFixture!);
+  assert.ok(Math.abs(cabinetBox.minX - 1.96) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - 2.525) < RUNTIME_EPS);
+  assert.ok(Math.abs(cabinetBox.minZ - 2.92) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - 4.30) < RUNTIME_EPS);
   const north = worldAabb(placed('master_bedside_cabinet_350_north'));
   const south = worldAabb(placed('master_bedside_cabinet_350_south'));
   assert.ok(Math.abs(north.minX - 3.82) < GAP_EPS && Math.abs(north.maxX - 4.20) < GAP_EPS);
@@ -484,14 +482,14 @@ test('south-window-band low dresser uses the 2026-09-06 east-shifted transform a
   }
 });
 
-test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven and 950-adapted', () => {
+test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven', () => {
   type CeilingEntry = { id: string; room?: string; type: string; x?: number; z?: number; height?: number; thickness?: number; area?: [number, number, number, number]; power_point?: string };
   const ceiling = load(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as CeilingEntry[];
   const hvac = load(readFileSync('config/hvac.yaml', 'utf8')) as { plans: Array<{ diagram: { terminals: Array<{ id: string; system: string; position: { x: number; y: number; z: number }; mount_face: string; length?: number }> } }> };
   const box = ceiling.find((entry) => entry.id === 'ceiling_master_ac');
   assert.ok(box, 'missing ceiling_master_ac');
   assert.equal(box!.type, 'drop');
-  assert.deepEqual(box!.area, [2.925, 4.55, 4.20, 5.60], 'head box extends to the independent wardrobe east edge');
+  assert.deepEqual(box!.area, [2.925, 4.55, 4.20, 5.60], 'head box west edge stands free after the 950 wardrobe retirement (issue #116)');
   assert.equal((box as CeilingEntry & { corner_radius?: number }).corner_radius, 0.10, 'head box uses the approved R100 plan corner');
   assert.equal(box!.thickness, 0.30);
   const bottom = 2.80 - box!.thickness!;
@@ -537,17 +535,25 @@ test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven and 95
   assert.ok(Math.abs(ret!.position.y - (bottom - 0.01)) <= 0.02 + GAP_EPS, 'return grille must sit on the head box bottom');
   assert.ok(ret!.position.x - ret!.length! / 2 >= minX - GAP_EPS && ret!.position.x + ret!.length! / 2 <= maxX + GAP_EPS, 'return span must stay inside the head box');
   assert.ok(ret!.position.z - 0.125 >= minZ - GAP_EPS && ret!.position.z + 0.125 <= maxZ + GAP_EPS, 'return footprint must stay inside the head box');
-  // 衣柜完成面与门头盒底（2.50m）齐平；HVAC盒仍保持独立责任，不互相侵占
-  const wardrobe = placed('master_north_wall_wardrobe_950');
-  const wardrobeBox = worldAabb(wardrobe);
-  assert.ok(supply!.position.x - supply!.length! / 2 >= wardrobeBox.maxX - GAP_EPS, 'supply must stay clear of wardrobe');
-  assert.ok(ret!.position.x - ret!.length! / 2 >= wardrobeBox.maxX - GAP_EPS, 'return must stay clear of wardrobe');
+  // 通顶柜完成面与门头盒底（2.50m）齐平；HVAC盒仍保持独立责任，不互相侵占。
+  // 2026-11-13 issue #116：950 衣柜退役，门头盒西缘 2.925 不再贴任何衣柜东缘——
+  // 通顶柜东缘（真实包络 2.525）在盒西缘以西 0.40m，两者 z 向亦不重叠（柜 z[2.92,4.30]，
+  // 盒 z[4.55,5.60]）。56T2 盒装不下（机身东端 4.30 > 盒东界 4.20）不在本 PR 修，
+  // 修法是机身西移 + 盒子向西扩，待厂家安装图。
+  const cabinetFixture = buildFixture('mb_full_height_cabinet');
+  assert.ok(cabinetFixture, 'missing mb_full_height_cabinet fixture');
+  cabinetFixture!.position.set(2.2425, 0, 3.61);
+  cabinetFixture!.rotation.y = THREE.MathUtils.degToRad(270);
+  const cabinetBox = runtimeAabb(cabinetFixture!);
+  assert.ok(Math.abs(cabinetBox.minX - 1.96) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - 2.525) < RUNTIME_EPS);
+  assert.ok(Math.abs(cabinetBox.minZ - 2.92) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - 4.30) < RUNTIME_EPS);
+  assert.ok(supply!.position.x - supply!.length! / 2 >= cabinetBox.maxX - GAP_EPS, 'supply must stay clear of the full-height cabinet');
+  assert.ok(ret!.position.x - ret!.length! / 2 >= cabinetBox.maxX - GAP_EPS, 'return must stay clear of the full-height cabinet');
   assert.ok(supplyEastX <= eastWallBedroomFinishX - 0.14 + GAP_EPS, 'supply must stay clear of the bedroom east wall finish');
   assert.ok(returnEastX <= eastWallBedroomFinishX - 0.19 + GAP_EPS, 'return must stay clear of the bedroom east wall finish');
-  assert.ok(Math.abs(wardrobeBox.maxZ - 4.88) < GAP_EPS && Math.abs(box!.area![2] - 4.20) < GAP_EPS);
+  assert.ok(Math.abs(box!.area![2] - 4.20) < GAP_EPS);
   assert.ok(bottom <= 2.50 + GAP_EPS, 'head box bottom must remain at the independent HVAC datum');
-  assert.ok(FURNITURE_DIMS.master_north_wall_wardrobe_950.width === 0.95, 'wardrobe plan width remains declared independently of the head box');
-  assert.ok(maxX >= wardrobeBox.maxX, 'head box should visually continue over the wardrobe east end');
-  // 2026-09-07：白色门头盒延伸至衣柜东缘；两者由独立材质和阴影缝表达。
-  assert.ok(Math.abs(minX - wardrobeBox.maxX) <= GAP_EPS, `head box west edge ${minX} must meet wardrobe east edge ${wardrobeBox.maxX}`);
+  // 2026-09-07 的「门头盒延伸至衣柜东缘」缝已随 950 退役：盒西缘 2.925 与柜东缘 2.525
+  // 之间是 0.40m 空隙，不再有贴合缝要收口。
+  assert.ok(Math.abs(minX - cabinetBox.maxX - 0.40) <= RUNTIME_EPS, `head box west edge ${minX} must stand 0.40m east of the cabinet east edge ${cabinetBox.maxX}`);
 });

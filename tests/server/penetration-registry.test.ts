@@ -33,9 +33,9 @@ describe('anti-penetration registry', () => {
     const config = loadAntiPenetrationConfig();
     assert.deepEqual(validateAntiPenetrationRegistry(config), []);
     assert.equal(IMPLEMENTED_RULES.length, (config.rules ?? []).length);
-    // The original migration recorded 13 relationships. The 2026-10-14 fridge relocation removes the now-dead kitchen_fridge_corner relation, leaving 12; 2026-10-17 (99c5b20) the RO purifier model adds kitchen_ro_purifier_inside_sink_base, back to 13 current waivers; 2026-11-05 the guest-bath robot bay geometry adds robot_dock_in_gbath_vanity_bay (contained: dock inside the open vanity bay), back to 14 current waivers.
+    // The original migration recorded 13 relationships. The 2026-10-14 fridge relocation removes the now-dead kitchen_fridge_corner relation, leaving 12; 2026-10-17 (99c5b20) the RO purifier model adds kitchen_ro_purifier_inside_sink_base, back to 13 current waivers; 2026-11-05 the guest-bath robot bay geometry adds robot_dock_in_gbath_vanity_bay (contained: dock inside the open vanity bay), back to 14 current waivers; 2026-11-13 issue #116 retires the master-bedroom vanity stack and the 950 wardrobe with its pelmet (vanity_layers / vanity_layers_upper / wardrobe_top_pelmet), back to 11 current waivers.
     // Remaining waivers must still carry reason/owner/expires and known rules, otherwise the registry must fail closed.
-    assert.equal((config.waivers ?? []).length, 14, 'the current relationship registry has 14 entries (12 post-fridge-removal + the 2026-10-17 purifier waiver + the 2026-11-05 robot-dock-in-bay waiver)');
+    assert.equal((config.waivers ?? []).length, 11, 'the current relationship registry has 11 entries (14 − the 3 retired by issue #116)');
   });
 
   it('fails closed when config declares a rule with no implementation', () => {
@@ -131,26 +131,23 @@ describe('penetration waivers', () => {
 });
 
 describe('relationship waiver migration (2026-10-09)', () => {
-  // 历史：迁移前 `config/spatial-validation.yaml` 有13条 relationships 白名单（HEAD f6be0ab）；迁入 waivers[] 后，2026-10-14 冰箱移位使 `kitchen_fridge_corner` 成为死关系并移除（12条）；2026-10-17 提交 99c5b20 给净水器建模时新增 `kitchen_ro_purifier_inside_sink_base`（contained，水槽柜内嵌），现锁13条仍适用的关系；2026-11-05 客卫机器人仓几何落地新增 `robot_dock_in_gbath_vanity_bay`（contained，基站泊入台盆下开放格），现锁14条。
+  // 历史：迁移前 `config/spatial-validation.yaml` 有13条 relationships 白名单（HEAD f6be0ab）；迁入 waivers[] 后，2026-10-14 冰箱移位使 `kitchen_fridge_corner` 成为死关系并移除（12条）；2026-10-17 提交 99c5b20 给净水器建模时新增 `kitchen_ro_purifier_inside_sink_base`（contained，水槽柜内嵌），现锁13条仍适用的关系；2026-11-05 客卫机器人仓几何落地新增 `robot_dock_in_gbath_vanity_bay`（contained，基站泊入台盆下开放格），现锁14条；2026-11-13 issue #116 退役主卫条带柜组与 950 衣柜（`vanity_layers` / `vanity_layers_upper` / `wardrobe_top_pelmet`），现锁11条。
   // 少一条 = 合法叠放被误报成穿模；多一条 = 悄悄放行一次真互撞；保留本历史说明供差异追溯。
   const CURRENT_WAIVER_RELATIONSHIPS = [
     { id: 'laundry_stack', type: 'stacked', pair: ['balcony.washer', 'balcony.dryer'] },
     { id: 'countertop_run', type: 'stacked', pair: ['kitchen.cabinet_run_north_west', 'kitchen.countertop_bridge'] },
     { id: 'countertop_run_corner', type: 'stacked', pair: ['kitchen.countertop_bridge', 'kitchen.cabinet_run_north_east'] },
-    { id: 'vanity_layers', type: 'attached', pair: ['mb.vanity_base_cabinet', 'mb.vanity_lower_board'] },
-    { id: 'vanity_layers_upper', type: 'attached', pair: ['mb.vanity_lower_board', 'mb.vanity_main_board'] },
     { id: 'dressing_stool_storage', type: 'contained', pair: ['mb.dressing_stool', 'mb.dressing_table'] },
     { id: 'kitchen_cabinet_corner_join', type: 'attached', pair: ['kitchen.cabinet_run_north_east', 'kitchen.cabinet_run_east'] },
     { id: 'kitchen_dishwasher_under_counter', type: 'attached', pair: ['kitchen.cabinet_run_north_west', 'kitchen.dishwasher'] },
     { id: 'kitchen_dishwasher_under_counter_corner', type: 'attached', pair: ['kitchen.cabinet_run_north_east', 'kitchen.dishwasher'] },
     { id: 'kitchen_sink_cutout', type: 'attached', pair: ['kitchen.cabinet_run_north_east', 'kitchen.sink'] },
     { id: 'kitchen_cooktop_cutout', type: 'attached', pair: ['kitchen.cabinet_run_east', 'kitchen.gas_stove'] },
-    { id: 'wardrobe_top_pelmet', type: 'attached', pair: ['mb.wardrobe_950', 'mb.wardrobe_pelmet'] },
     { id: 'kitchen_ro_purifier_inside_sink_base', type: 'contained', pair: ['kitchen.cabinet_run_north_east', 'kitchen.ro_purifier'] },
     { id: 'robot_dock_in_gbath_vanity_bay', type: 'contained', pair: ['gbath.vanity', 'gbath.robot_dock'] },
   ];
 
-  it('keeps the 14 current migrated relationships as complete waivers carrying the original kind', () => {
+  it('keeps the 11 current migrated relationships as complete waivers carrying the original kind', () => {
     const config = loadAntiPenetrationConfig();
     const waivers = config.waivers ?? [];
     assert.equal(waivers.length, CURRENT_WAIVER_RELATIONSHIPS.length, 'one waiver per current relationship, no more no less');
@@ -254,8 +251,11 @@ describe('mep participation policy', () => {
     assert.ok(issues.some((item) => item.code === 'pen.mep_participation_undeclared' && item.level === 'error'));
   });
 
-  it('resolves the declared policy per type', () => {
-    assert.equal(resolveMepParticipation('mb_vanity_pvc_service_chase', config), 'excluded');
+  it('resolves the declared policy per type (empty participation since the condensate chain retired)', () => {
+    // 2026-11-13 issue #116：冷凝链退役，mep_parts participation 已清空——通顶柜
+    // mb_full_height_cabinet 不是 MEP 协调类型（柜内不再走管），故无策略；未在任何
+    // participation 里出现的类型同样无策略（sofa_3seat 对照）。
+    assert.equal(resolveMepParticipation('mb_full_height_cabinet', config), undefined);
     assert.equal(resolveMepParticipation('sofa_3seat', config), undefined);
   });
 });

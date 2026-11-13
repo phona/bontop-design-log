@@ -443,10 +443,7 @@ furnishings:
   # 重名由 verify:furniture 的 findDuplicateFurnitureIds 拦截。
   master_bedroom:
     # 房间寝区 x∈[0,4.20] z∈[5.55,9.80]；南侧上飘窗室内占用带 z=8.70..9.80
-    # 2026-09-06：950W×580D×2800H 三门定制模块化衣柜，真正通顶；下部活动门保留约2.41m，上部固定木饰面门头内隐藏冷凝水管槽；HVAC与家具责任独立；南帘闭帘0.12m软包络与堆叠端仍 site_pending。
     - { type: bed_180, id: mb.bed_180, x: 3.20, z: 7.40, rotation: 270 }     # 保留；runtime mesh z[6.47,8.33]
-    - { type: master_north_wall_wardrobe_950, id: mb.wardrobe_950, x: 2.45, z: 4.59, rotation: 0 } # 西缘 x=1.975；AABB x[1.975,2.925] z[4.30,4.88]，完成高2.80m；三扇约0.29m平开门朝南，上部为固定门头；隐藏冷凝水管槽；防倾倒site_pending
-    - { type: master_wardrobe_top_pelmet, id: mb.wardrobe_pelmet, x: 2.45, z: 4.59, rotation: 0 } # 通顶柜顶部薄收口，主体固定门头已由衣柜对象表达；不承担HVAC责任
     - { type: master_bedside_cabinet_350_north, id: mb.bedside_cabinet_north, x: 4.01, z: 6.245, rotation: 0 } # R6 北侧床头柜：380W×350D×500H候选，服务北插座 z=6.95
     - { type: master_bedside_cabinet_350_south, id: mb.bedside_cabinet_south, x: 4.01, z: 8.555, rotation: 0 } # R6 南侧床头柜：380W×350D×500H候选，服务南插座/双控；闭帘软包络仅warning/BLOCKED
     - { type: mb_washbasin_cabinet, id: mb.washbasin_cabinet, x: 0.575, z: 3.16, rotation: 0 } # 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：东移 5cm 且收宽 1.10→1.05（世界 x[0.05,1.10]），西让百叶升降缝、东留门套缝，盆/龙头/墙排居中至 x=0.575；2026-09-01 纯洗手柜：取消梳妆膝位，东侧封闭抽屉收纳，贴 w_mbath_south 南脸；待量房确认墙排与抽屉避让
@@ -454,20 +451,20 @@ furnishings:
     - { type: master_dressing_table, id: mb.dressing_table, x: 0.425, z: 6.05, rotation: 90 } # 2026-09-04 R1 候选未冻结：贴窗梳妆位——900W×450D×750H 四腿开放式独立桌贴西侧北段玻璃；AABB x[0.20,0.65] z[5.60,6.50]；rotation=90 局部长边沿世界 z、正面（抽屉/座位侧）朝东，使用者坐东侧面向西玻璃；桌背（西缘 x=0.20）与玻璃幕墙 x=0 留约 0.20m 通风/冷凝缝；西窗帘线 x[1.10,1.35] 在桌东侧，不压帘；北缘避门扇扫掠 z≤5.55
     - { type: dressing_stool, id: mb.dressing_stool, x: 0.42, z: 6.05, rotation: 90 } # 2026-09-04 R1 候选未冻结：随桌贴窗，收纳态完整收入桌下（AABB x[0.22,0.62] z[5.84,6.26] ⊂ 桌 footprint），使用时向东拉出
     - { type: master_hot_season_low_dresser, id: mb.low_dresser, x: 1.05, z: 9.20, rotation: 180 } # 2026-09-08：北移避开西南圆弧玻璃幕；1400W×480D×850H（h<2.07 不挡窗带），抽屉朝北；西端距西帘堆叠侧留余量，南帘堆叠端 site_pending
-    # DEC-045：底柜保留原位；上下双层悬浮板共用 wall=w_mbath_east、wall_side=west、rotation=270，贴墙西侧完成面，不再从衣柜回退。
-    # 2026-11-07 issue #98：w_mbath_east 的 along 由「绝对 z」历史约定改为沿墙距离（自起点顶点
-    # v_bath_ne z=1.10 向北量），世界位置不变——along 2.51 = 3.61 − 1.10。
-    - { type: mb_vanity_base_cabinet, id: mb.vanity_base_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, wall_clearance: 0.015 } # 2026-09-07：1.38m×0.565m×0.62m；主体从东墙完成面退让15mm，北端与主卫南墙完成面保持 site_trim 收口
-    - { type: mb_vanity_lower_board, id: mb.vanity_lower_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 下悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
-    - { type: mb_vanity_main_board, id: mb.vanity_main_board, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 } # 上悬浮板与底柜同轴，主体退让东墙15mm，端部由独立收口处理
-    # 2026-11-07 issue #98 PR-10 冷凝链改锚点派生：三件的 x/z 曾各自手写（outlet 3.70,5.10；
-    # entry 4.10,4.62；chase 2.925,4.62），同一接口坐标在注释、FixtureFactory 配方长度与 MEP via
-    # 点里各写一份，改一段不跟随。现整条链由 shared/condensate-chain.ts 从共同锚点单一解算，
-    # 这里只声明锚点引用（定位来源唯一，禁写第二份坐标）；接口坐标由锚点算出，改一段另一段自动跟随。
-    - { type: condensate_pipe_ac_outlet, id: mb.condensate_pipe, anchor: { source: hvac, id: indoor_master }, rotation: 0 } # 挂 ac_master 内机锚点（config/hvac.yaml anchors indoor_master → ceiling ac_master，机身中心轴 x=3.70 即来源）：出口段自内机锚点向东至空调盒东转点、再向南落入衣柜顶服务带，接主卧东墙贴墙 run，不接 return/supply 格栅。厂家出口在机身上的具体位置仍 pending（本件是协调示意，非施工件）。
-    - { type: mb_vanity_pvc_wardrobe_entry, id: mb.vanity_pvc_wardrobe_entry, anchor: { source: chain, id: wardrobe_east_band }, rotation: 0 } # 服务带西行段：东端=空调盒东转点（由 w_mb_east 卧室侧完成面 −40mm 解出），西端=通顶衣柜东缘 × 服务带（衣柜 mb.wardrobe_950 派生）——即本锚点。仅检视态显示，柜体主体保留。
-    - { type: mb_vanity_pvc_service_chase, id: mb.vanity_pvc_service_chase, anchor: { source: chain, id: wardrobe_east_band }, rotation: 0 } # 柜顶内转至墙行（w_mbath_east 西完成面 −40mm），沿墙行南落至折点，折点 x 由 MEP condensate-master 穿墙点派生、z 由衣柜南缘 − 墙行长度解出，再穿 w_mbath_south 进主卫吊顶到候选点并下引；两段白色 L 形包边收至南墙 bedroom-side finish。pending，非施工依据。
-    - { type: mb_vanity_pvc_box, id: mb.vanity_pvc_box, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.60 } # 2026-09-07：沿 w_mbath_east 西侧完成面内留约40mm贴墙走，管心 x=2.50、z=3.10..4.30；白色平直包边与墙面收口，南端由 service_chase 的 L 形白色 trim 连续收至 w_mbath_south bedroom-side finish z=2.92，管线仅HVAC检视态显示。2026-11-07 issue #98：along 由绝对 z 3.70 改沿墙距离 2.60（= 3.70 − 1.10），世界位置不变，trim 包络仍 z[3.10,4.30]。遗留（PR-10 登记）：along=2.60 仍是手写值，其北端 z=4.30 与衣柜南缘重合系当年取值巧合；衣柜若在 z 向移动，本包管不会跟随——届时链的接口诊断会显形，须同步改 along 或把它也改锚点派生（owner 设计侧；触发=衣柜 z 向移位或柜体深化会审）。
+    # 2026-11-13 issue #116（业主裁定，supersede DEC-045）：悬浮板位改通顶定制柜。
+    # 参数化单点定义——现场调整只改本条参数，不改他处：
+    #   width 1.38（沿墙）× depth 0.565 × cabinetHeight 2.80（总高 = 柜身 2.50 + 顶封板 0.30；
+    #   SceneBuilder 按 cabinetHeight 缩放配方总高，写 2.50 会把整柜压到 2.50m、顶封被压扁、柜顶离顶 0.30m）；
+    #   footprint x[1.975,2.54] z[2.92,4.30]（约 0.78㎡），柜身毛体积约 1.95m³，正面约 3.86㎡；
+    #   三扇平开门 × 约 0.46m 至 2.50m（朝西，3 阻尼铰链/扇），2.10–2.50m 顶柜上下分门，
+    #   2.50–2.80m 顶封固定不开；不用一门到顶、不用推拉门。
+    #   along 2.51 = 中心 z 3.61 − 起点 v_bath_ne z=1.10（2026-11-07 issue #98 沿墙距离口径）。
+    #   底柜（0.62m）已并入本柜，不再单列；950 衣柜 + 顶封 + 双悬浮板 + bridge 已删（见本 PR）；
+    #   柜顶无托盘/检修口/带子（2026-11-13 全带泵后冷凝水改走客卫，柜顶为干净固定板）。
+    #   内机出口示意 mb.condensate_pipe 随冷凝链退役已删（链几何是其唯一 mesh 来源，留置会触发
+    #   verify:spatial 的 furniture_runtime_missing）；待全带泵改路由另案落仓时再按新路由重建。
+    #   待决（现场补）：柜内物品清单 + #105/#116 共用容量表、柜商报价（未定价）、56T2 厂家安装图。
+    - { type: mb_full_height_cabinet, id: mb.full_height_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015 }
     # mattress/curtain/ceiling count-only entries remain after placed furniture
     - { type: mattress_180 }
     - { type: curtain_set }

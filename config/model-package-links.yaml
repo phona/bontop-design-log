@@ -414,11 +414,15 @@ links:
       # 前者 2026-09-07（commit 2283c9f5）已退出 placed（通用 recipe 保留），现行通顶衣柜即
       # master_north_wall_wardrobe_950（mb.wardrobe_950）；D19 选项与旧 description 的旧名
       # 随本 PR 一并改对象引用，历史 DEC 文本不改。
+      # 2026-11-13 issue #116：上段覆盖已由通顶定制柜 mb.full_height_cabinet 取代
+      # （950 衣柜 + 顶封 + 底柜 + 双悬浮板 + 三件 PVC 链件全删，DEC-045 已 supersede）；
+      # 本链接现选 mb.full_height_cabinet（内机出口示意 mb.condensate_pipe 随冷凝链退役已删，
+      # 待全带泵改路由另案落仓）。
       # 2026-11-10（issue #191）：原 furnishings.room_ids [master_bedroom] 解析出该房 16 个
       # 已建模家具对象 id（count-only 的 mattress_180 / curtain_set / ceiling_light / faucet
       # 不在对象索引内）；与下面 9 件显式 id 的并集即本链接对象集。
-      - {source: furnishings, select: {ids: [mb.bed_180, mb.wardrobe_950, mb.wardrobe_pelmet, mb.bedside_cabinet_north, mb.bedside_cabinet_south, mb.washbasin_cabinet, mb.dressing_table, mb.dressing_stool, mb.low_dresser, mb.vanity_base_cabinet, mb.vanity_lower_board, mb.vanity_main_board, mb.condensate_pipe, mb.vanity_pvc_wardrobe_entry, mb.vanity_pvc_service_chase, mb.vanity_pvc_box]}}
-      - {source: furnishings, select: {ids: [mb.wardrobe_950, mb.wardrobe_pelmet, mb.vanity_base_cabinet, mb.vanity_lower_board, mb.vanity_main_board, mb.vanity_pvc_box, mb.vanity_pvc_wardrobe_entry, mb.vanity_pvc_service_chase, mb.condensate_pipe]}}
+      - {source: furnishings, select: {ids: [mb.bed_180, mb.full_height_cabinet, mb.bedside_cabinet_north, mb.bedside_cabinet_south, mb.washbasin_cabinet, mb.dressing_table, mb.dressing_stool, mb.low_dresser]}}
+      - {source: furnishings, select: {ids: [mb.full_height_cabinet]}}
   - id: MODEL-P2-110
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-110}

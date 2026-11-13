@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"b37ef01811bc544b03fb8c61640f199aae98b11050874f5fe35b2dcb2255597d","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"d708440b8ed1fbef1f3e5203b1a980d31260294e5ebf45f5b028cb653e821a72","schedule/roadmap.yaml":"a3b9e2b41bcaa8c3c9f049ab6b905fb4d56b957f9c7c880e77ba84ec0ddbafd9"} -->
 # 一期施工计划
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:3bd9d168633a9d804c7aae6d4897c0932b7a401c0dcbe78780593a6ad6cdce7a`（2 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:37e8973c8c097e74f8090f46516a52e8d7ed74327165a83ece44fb05dbbd45fd`（2 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -49,7 +49,7 @@
 | BLK-SOUTH-BALCONY | alignment_required | 南阳台使用方式、地面和预算边界未冻结 | 业主确认范围并同步预算及施工图 |
 | BLK-GAS-DOOR | site_pending | 燃气厨房门的现场验收要求未确认 | 燃气单位或物业书面确认厨房分隔要求 |
 | BLK-DOOR-BEFORE-TILE | site_pending | 两卫门未定，干湿接缝落点未定——D20 未拍板，门扇尺寸、单包/双包、门套厚度与外凸量均未定，门洞实测与商家书面确认未归档 | D20 拍板并归档两卫门洞实测记录、商家书面确认与接缝落门下的排版图 |
-| BLK-MASTER-WARDROBE | alignment_required | 主卧北墙通顶定制衣柜（藏空调冷凝水管槽，必须定制）随2026-09-12压缩决策整体后移至二期，一期用成品衣架和斗柜过渡；门扇、位置、高度及空调检修关系仍未关闭 | 二期启动前深化图经业主、设计和厂家共同确认 |
+| BLK-MASTER-WARDROBE | alignment_required | 主卧通顶定制柜（必须定制）随2026-09-12压缩决策整体后移至二期，一期用成品衣架和斗柜过渡；门扇、位置、高度及空调检修关系仍未关闭 | 二期启动前深化图经业主、设计和厂家共同确认 |
 | BLK-CURTAIN-SCOPE | alignment_required | 一期窗帘范围需要统一：本阻塞项写主卧/父母房/西北次卧，PKG-145写主卧/书房/西北次卧，schedule/phase-scope.yaml还包含两个卫生间；未统一前不冻结采购范围 | 业主确认一期窗帘房间与产品范围，并同步本阻塞项、PKG-145、phase-scope.yaml 和预算 |
 | BLK-PHASE1-APPLIANCES | alignment_required | 一期家电额度在原9,000元下探组合基础上追加云鲸JX超薄上下水版3,000元，2026-10-05（DEC-2026-10-05-R4）业主定标美的 GC5 微蒸烤按4,000元进入一期后现按16,099元控制；JX为现行候选（2026-11-03业主拍板由J6改JX，非最终锁定，DEC-2026-11-03-R1）、金额3,099元业主2026-11-04确认（含¥99追加批复，DEC-2026-11-04-R2，家电池与一期上限同步调整为16,099/210,099），客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结 | 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金 |
 | BLK-WATER-HEATER-SITE | site_pending | 已确认一期采用燃气热水器；模型虽有厨房西侧实体墙的暂定协调点，但交房前仍未确认是否已有开发商设备、实际安装墙面、燃气表位置、排烟路径、冷凝水排放和物业审批条件 | 现场核对现有设备和燃气条件，形成最终安装位置、排烟、给排水、专用电路及物业审批记录 |

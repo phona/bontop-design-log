@@ -110,7 +110,14 @@ test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必�
   //    error），125→130；issue #98 第五阶段 S2（2026-11-08）：5 条已改绑 terminal id（to_height
   //    保留、坐标按构造不变，DXF/takeoff 零几何变化），endpoint_not_bound_to_point 归零并回钉 125
   //    （设计文档 §4.4-E4 / §5.3 指标 9）。
-  assert.equal(mep.counts.errors, 125, `verify:mep must_fix errors 应为 125，实际 ${mep.counts.errors}`);
+  //    2026-11-13 issue #116：950 衣柜 + 顶封 + 双悬浮板 + 三件 PVC 链件删除，
+  //    route_furniture_collision 10→9（−3：condensate-master、strong-ded-bathheaters-mbath、
+  //    strong-power-mbath-service 三条与 mb.wardrobe_950 的碰撞随柜删除而消失；
+  //    +2：新通顶柜 mb.full_height_cabinet（柜身 2.50 + 顶封至 2.80，全高包络）引入
+  //    condensate-master 1.61m 与 strong-ded-bathheaters-mbath 1.41m 穿入新柜——前者随
+  //    全带泵改路由另案重画，后者待改道/开检修槽裁定；净 125→124）。其余 code 不变。
+  //    注：本数以 cabinetHeight: 2.80（总高）实测；若误写 2.50 会把柜压扁、少计 2 条。
+  assert.equal(mep.counts.errors, 124, `verify:mep must_fix errors 应为 124，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 

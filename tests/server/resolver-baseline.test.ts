@@ -440,13 +440,14 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
   it('手算锚点：挂墙家具中心 = 完成面 + wall_clearance + 半深', () => {
     // gbath.vanity：墙线 x=7.20、west 侧 ⇒ 完成面 7.14；柜深 0.50、clearance 0 ⇒ 中心 x = 7.14−0.25 = 6.89；
     // along 0.405 自墙段北端 z=3.55 ⇒ z = 3.955。
-    // mb.vanity_base_cabinet：墙线 x=2.60、west ⇒ 完成面 2.54；深 0.565、clearance 0.015
+    // mb.full_height_cabinet：墙线 x=2.60、west ⇒ 完成面 2.54；深 0.565、clearance 0.015
     // ⇒ 中心 x = 2.60−0.06−0.015−0.2825 = 2.2425；along 2.51 自 z=1.10 ⇒ z = 3.61。
+    // （2026-11-13 issue #116：原底柜 mb.vanity_base_cabinet 退役，同数由通顶柜承接。）
     // gbath.mirror_cabinet：墙线 7.20、west ⇒ 中心 x = 7.20−0.06−0.14/2 = 7.07；z = 3.955。
     // gbath.heated_towel_rack：墙线 5.60、east ⇒ 中心 x = 5.60+0.06+0.10/2 = 5.71；z = 3.55+0.405 = 3.955。
     const anchors: Array<{ id: string; x: number; z: number }> = [
       { id: 'gbath.vanity', x: 6.89, z: 3.955 },
-      { id: 'mb.vanity_base_cabinet', x: 2.2425, z: 3.61 },
+      { id: 'mb.full_height_cabinet', x: 2.2425, z: 3.61 },
       { id: 'gbath.mirror_cabinet', x: 7.07, z: 3.955 },
       { id: 'gbath.heated_towel_rack', x: 5.71, z: 3.955 },
     ];
@@ -493,7 +494,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     }
   });
 
-  it('全量独立复算：79 沿墙点位 + 2 挂载点位 + 7 挂墙家具 + 全部绝对家具逐条对照', () => {
+  it('全量独立复算：79 沿墙点位 + 2 挂载点位 + 4 挂墙家具 + 全部绝对家具逐条对照', () => {
     // 参考实现的墙几何来自 raw vertices + wall from/to；先证明它与生产 layout 的墙段一致，
     // 否则参考值与被测输入不是同一份声明，对照无意义。
     for (const wallId of referencedWallIds) {
@@ -551,7 +552,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
       assert.ok(placement, `${item.id}: 必须有摆位`);
       assertXZ(placement, reference, `${item.id}`);
     }
-    assert.equal(wallFurniture, 7, '挂墙家具数量变化：新增/删除对象必须同步更新本基准的覆盖口径');
+    assert.equal(wallFurniture, 4, '挂墙家具数量变化：新增/删除对象必须同步更新本基准的覆盖口径');
 
     let absoluteFurniture = 0;
     for (const item of allRawFurnishings) {
@@ -649,8 +650,8 @@ describe('移墙跟随（issue #192 第 2 项）', () => {
     assertXZ(dockAfter.placement, { x: dockBefore.placement.x + 0.10, z: dockBefore.placement.z }, 'robot_dock 随宿主墙');
 
     // 对照：另一面墙（w_mbath_east）上的家具不动。
-    const controlBefore = resolveFurniturePlacement(furnishingById('mb.vanity_base_cabinet') as unknown as PlacementItem, furnitureWallSegments, baseFurnitureHosts);
-    const controlAfter = resolveFurniturePlacement(furnishingById('mb.vanity_base_cabinet') as unknown as PlacementItem, walls, baseFurnitureHosts);
+    const controlBefore = resolveFurniturePlacement(furnishingById('mb.full_height_cabinet') as unknown as PlacementItem, furnitureWallSegments, baseFurnitureHosts);
+    const controlAfter = resolveFurniturePlacement(furnishingById('mb.full_height_cabinet') as unknown as PlacementItem, walls, baseFurnitureHosts);
     assert.ok(controlBefore.placement && controlAfter.placement);
     assertXZ(controlAfter.placement, { x: controlBefore.placement.x, z: controlBefore.placement.z }, '别墙家具不动');
   });

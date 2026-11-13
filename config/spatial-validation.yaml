@@ -77,11 +77,7 @@ furniture_profiles:
   heated_towel_rack: { profile: built_in_casework }
   kitchen_cabinet_run: { profile: built_in_casework }
   kitchen_countertop_bridge: { profile: built_in_casework }
-  master_north_wall_wardrobe_950: { profile: built_in_casework }
-  master_wardrobe_top_pelmet: { profile: built_in_casework }
-  mb_vanity_base_cabinet: { profile: built_in_casework }
-  mb_vanity_lower_board: { profile: built_in_casework }
-  mb_vanity_main_board: { profile: built_in_casework }
+  mb_full_height_cabinet: { profile: built_in_casework }
   mb_washbasin_cabinet: { profile: built_in_casework }
   mirror_cabinet_gbath: { profile: built_in_casework }
   study_seasonal_wardrobe_wall: { profile: built_in_casework }
@@ -129,27 +125,20 @@ furniture_profiles:
   washer: { profile: freestanding }
   water_heater: { profile: freestanding }
   # ── mep_coordination：机电协调构件（管线 / 管井 / 换气通风设备，按协调示意维护）──
-  condensate_pipe_ac_outlet: { profile: mep_coordination }
   exhaust_fan: { profile: mep_coordination }
-  mb_vanity_pvc_box: { profile: mep_coordination }
-  mb_vanity_pvc_service_chase: { profile: mep_coordination }
-  mb_vanity_pvc_wardrobe_entry: { profile: mep_coordination }
 
 furniture_profile_overrides:
-  - types: [mb_vanity_base_cabinet, mb_vanity_lower_board, mb_vanity_main_board]
+  - types: [mb_full_height_cabinet]
     profile: built_in_casework
     wall: w_mbath_east
     wall_side: west
     required_wall_clearance: 0.015
     site_trim: true
-    note: "柜体主体退让东墙完成面 15mm；端部收口现场裁切"
-  - types: [master_north_wall_wardrobe_950, master_wardrobe_top_pelmet, wardrobe_180, study_seasonal_wardrobe_wall]
+    note: "柜体主体退让东墙完成面 15mm；端部收口现场裁切（2026-11-13 issue #116：底柜 + 双悬浮板改单一通顶柜，锚点口径不变）"
+  - types: [wardrobe_180, study_seasonal_wardrobe_wall]
     profile: built_in_casework
-  - types: [mb_vanity_pvc_box, mb_vanity_pvc_wardrobe_entry, mb_vanity_pvc_service_chase, condensate_pipe_ac_outlet]
-    profile: mep_coordination
-
 # 管线/检视构件必须有尺寸，但不作为“家具互撞”对象；其穿墙由 MEP 专项校验负责。
-mep_coordination_types: [mb_vanity_pvc_box, mb_vanity_pvc_wardrobe_entry, mb_vanity_pvc_service_chase, condensate_pipe_ac_outlet]
+mep_coordination_types: []
 
 # 原始墙段端点落在另一墙段中部时，必须在此声明 T/L 接头；交叉线没有此声明会失败。
 junctions:
