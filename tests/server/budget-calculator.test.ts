@@ -986,7 +986,7 @@ describe('BudgetCalculator', () => {
         wardrobe: {
           default: 'wardrobe_180_01',
           roomOverrides: {
-            master_bedroom: 'wardrobe_north_950_custom_01',
+            master_bedroom: 'wardrobe_mb_full_height_custom_01',
             bedroom_se: 'study_seasonal_wardrobe_170_01',
           },
         },
@@ -996,7 +996,7 @@ describe('BudgetCalculator', () => {
     const wardrobeItems = snapshot.lineItems.filter((li) => li.topic === 'wardrobe');
     assert.equal(wardrobeItems.length, 3, 'three rooms each produce one wardrobe line');
     const mb = wardrobeItems.find((li) => li.roomId === 'master_bedroom');
-    assert.equal(mb?.optionId, 'wardrobe_north_950_custom_01');
+    assert.equal(mb?.optionId, 'wardrobe_mb_full_height_custom_01');
     assert.equal(mb?.unitPrice, 0);
     const mbOption = catalog.getOption('wardrobe', 'wardrobe_north_600_finished_01');
     assert.ok(mbOption);
@@ -1095,7 +1095,7 @@ describe('BudgetCalculator', () => {
       bedroom_nw: 'wardrobe_180',
     };
     const optionByFurnishing: Record<string, string> = {
-      mb_full_height_cabinet: 'wardrobe_north_950_custom_01',
+      mb_full_height_cabinet: 'wardrobe_mb_full_height_custom_01',
       study_seasonal_wardrobe_wall: 'study_seasonal_wardrobe_170_01',
       wardrobe_180: 'wardrobe_180_01',
     };
@@ -1136,7 +1136,7 @@ describe('BudgetCalculator', () => {
       selections: {
         wardrobe: {
           default: 'wardrobe_180_01',
-          roomOverrides: { master_bedroom: 'wardrobe_north_950_custom_01' },
+          roomOverrides: { master_bedroom: 'wardrobe_mb_full_height_custom_01' },
         },
         dresser: { default: 'light_midcentury_dresser_01', roomOverrides: {} },
       },
@@ -1152,7 +1152,7 @@ describe('BudgetCalculator', () => {
     // wardrobe 不受污染：主卧仅计通顶定制柜（只数衣柜，不含矮柜）
     const mbWardrobe = snapshot.lineItems.find((li) => li.topic === 'wardrobe' && li.roomId === 'master_bedroom');
     assert.ok(mbWardrobe);
-    assert.equal(mbWardrobe.optionId, 'wardrobe_north_950_custom_01');
+    assert.equal(mbWardrobe.optionId, 'wardrobe_mb_full_height_custom_01');
     assert.equal(mbWardrobe.quantity, 1);
     assert.equal(mbWardrobe.unitPrice, 0);
     assert.equal(mbWardrobe.cost, 0);
@@ -1283,9 +1283,9 @@ describe('BudgetCalculator', () => {
       assert.equal(autoActualBucket(option('x', status), 'any_topic'), 'candidate', `${status} 属未取证`);
     }
     // 两个 price 0 的真实条目：归位必须按 status 判，不能因为价格是 0 就混过去
-    const wardrobe = catalog.getOption('wardrobe', 'wardrobe_north_950_custom_01');
+    const wardrobe = catalog.getOption('wardrobe', 'wardrobe_mb_full_height_custom_01');
     assert.equal(wardrobe?.price_per_unit, 0);
-    assert.equal(autoActualBucket(wardrobe, 'wardrobe'), 'candidate', '主卧 950 定制衣柜 price 0 / candidate → 候选（待现场/厂家核价）');
+    assert.equal(autoActualBucket(wardrobe, 'wardrobe'), 'candidate', '主卧通顶定制柜 price 0 / candidate → 候选（待现场/厂家核价）');
     const entryDoor = catalog.getOption('entry_door', 'entry_door_01');
     assert.equal(entryDoor?.price_per_unit, 0);
     assert.equal(autoActualBucket(entryDoor, 'entry_door'), 'verified', '入户门开发商已装 / provided_by_developer → 已取证（无需采购）');
@@ -1357,9 +1357,9 @@ describe('BudgetCalculator 类别 1 兜底已改 fail-closed', () => {
     const calc = new BudgetCalculator(catalog, rulesConfig);
     const scheme: CurrentScheme = {
       updatedAt: new Date().toISOString(),
-      selections: { wardrobe: { default: 'wardrobe_north_950_custom_01', roomOverrides: { master_bedroom: 'wardrobe_north_950_custom_01' } } },
+      selections: { wardrobe: { default: 'wardrobe_mb_full_height_custom_01', roomOverrides: { master_bedroom: 'wardrobe_mb_full_height_custom_01' } } },
     };
-    // 主卧 950 定制衣柜 price 0 / candidate：必须照常出 0 元并归入 candidateActual，
+    // 主卧通顶定制柜 price 0 / candidate：必须照常出 0 元并归入 candidateActual，
     // 不能被"缺价格"的守卫误伤——「没写价格」与「声明为 0」是两件事。
     assert.doesNotThrow(() => calc.calculate(scheme));
   });

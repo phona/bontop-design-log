@@ -89,7 +89,7 @@
       "default": "wardrobe_240_01",
       "roomOverrides": {
         "bedroom_se": "wardrobe_180_01",
-        "master_bedroom": "wardrobe_north_950_custom_01",
+        "master_bedroom": "wardrobe_mb_full_height_custom_01",
         "study": "study_seasonal_wardrobe_170_01"
       }
     },

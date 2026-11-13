@@ -1,7 +1,7 @@
 notes:
   - "外立面玻璃幕墙已由开发商安装完成，装修阶段无需采购封窗，只需核对门窗口位置及幕墙保护"
   - "本清单以套内 94.76㎡、层高 2.8m 为基数估算"
-  - "本清单共 74 条材料项（2026-10-05 复核：删除 home_fitness_light_set_01 轻训练套，iteration parent-room-study-swap-20261005；与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
+  - "本清单共 75 条材料项（2026-11-13 issue #116 新增通顶定制柜 wardrobe_mb_full_height_custom_01，替代已删 950 衣柜；2026-10-05 复核：删除 home_fitness_light_set_01 轻训练套，iteration parent-room-study-swap-20261005；与 fact.materials_count / c.materials_count_matches_note 对账：增删条目必须同步此数）"
 
 # 临时 3D 预演素材，不属于采购候选，不进入 materials 数量或预算。
 # 用户提供的厂家拼版截图标注「一砖五十四面」，当前截图可辨识 11×4=44 面；剩余 10 面未提供。
@@ -1082,6 +1082,31 @@ materials:
     price_source: "pending"
     notes: "2026-11-13 issue #116 superseded：950 衣柜已删，改通顶定制柜 mb.full_height_cabinet（1.38m×0.565m，柜身 2.50m + 顶封至 2.80m）。原方案：950W×580D×2500H，三扇窄平开门朝南（±95°），AABB平面保持当时家具配置；柜体/门板完成面与 ceiling_master_ac 底标高约2.50m齐平，顶部仅保留细收口，不把HVAC设备、送回风或检修责任并入家具。price pending 不以 0 伪装完成；仅历史保留" 
     appearance: { type: "wood", color: "medium_light_walnut_warm_smoked_oak" }
+
+  # === 主卧通顶定制柜（2026-11-13 issue #116，替代已删 950 衣柜；在役候选，未定价）===
+
+  - id: "wardrobe_mb_full_height_custom_01"
+    topic_id: "wardrobe"
+    alternative_group: "wardrobe"
+    category: "家具"
+    name: "主卧通顶定制柜（issue #116，2026-11-13）"
+    brand: "本地全屋定制工厂 / 待核样"
+    model: "1380×565×2800mm，三扇平开门（约 0.46m/扇）朝西，柜身 2.50m + 顶封 0.30m 至 2.80m，上下分门；柜顶干净固定板，不藏冷凝水管"
+    spec: "1380×565×2800mm"
+    unit: "组"
+    price_per_unit: 0
+    coverage_per_unit: 1
+    loss_rate: 1
+    calc_mode: "count"
+    supplier: "待现场/厂家核定"
+    online_link: ""
+    sample_acquired: false
+    sample_date: null
+    status: "candidate"
+    pros: ["通顶定制", "三扇平开门朝西", "柜顶干净固定板（全带泵后不藏管）"]
+    cons: ["价格待柜商报价", "柜内物品清单与 #105/#116 共用容量表待定"]
+    price_source: "pending"
+    notes: "2026-11-13 issue #116：悬浮板位改通顶定制柜 mb.full_height_cabinet（1.38m×0.565m，柜身 2.50m + 顶封 0.30m 至 2.80m，沿主卫东墙西脸，z[2.92,4.30]）；替代已删 950 衣柜 wardrobe_north_950_custom_01（仅历史保留）。price pending 不以 0 伪装完成；柜商报价未出。饰面未定，不写 appearance"
 
   - id: "wardrobe_north_650_custom_01"
     topic_id: "wardrobe"
