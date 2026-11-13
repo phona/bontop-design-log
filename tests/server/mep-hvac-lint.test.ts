@@ -222,7 +222,8 @@ const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
   route_insulation_unverified: 7,
   inline_endpoint_without_point_anchor: 6,
 };
-// envelope 分桶分码上限（现值即上限；realContext 与 verify:mep 全上下文共用）。
+// envelope 分桶分码上限（现值即上限；verify:mep 全上下文配额。realContext 与无 layout
+// 用例各有单独立上限，见 REAL_CONTEXT_ENVELOPE_CEILINGS / NO_LAYOUT_ENVELOPE_CEILINGS）。
 const ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
   route_overlap: 39,
   route_clearance_unverified: 35,
@@ -250,6 +251,15 @@ const NO_LAYOUT_ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
   reference_constraint_uncertain: 0,
   route_furniture_collision: 0,
   unsupported_span: 0,
+};
+// realContext 用例的 envelope 单独立上限（Codex 五审 major）：realContext() 不传 baySills /
+// furnitureVolumes，飘窗穿越与家具碰撞两码本口径下必须为 0；复用全上下文配额（11 / 2）
+// 会让这两类检查漏进来时静默通过（旧分码 deepEqual 本要求二者不存在）。完整配额只
+// 用于 verify:mep 全上下文。
+const REAL_CONTEXT_ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
+  ...ENVELOPE_CEILINGS,
+  bay_sill_crossing_declared: 0,
+  route_furniture_collision: 0,
 };
 // 无依托段总数上限（must_fix ≤8 + envelope ≤2；只许减少）。
 const UNSUPPORTED_SPAN_CEILING = 10;
@@ -770,7 +780,9 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // 各代码条数不得超过上限（现值即上限，只许减少、不许增长；增长须显式登记并写清原因）。
   assertMustFixCeilings(buckets.must_fix_before_briefing.codes, HARNESS_MUST_FIX_CEILINGS, 'must_fix 分桶');
   assertBucketCeilings(buckets.survey_dependent.codes, SURVEY_CEILINGS, 'survey 分桶');
-  assertBucketCeilings(buckets.envelope_approximation.codes, ENVELOPE_CEILINGS, 'envelope 分桶');
+  // Codex 五审 major：本 harness 无 baySills / furnitureVolumes 上下文，飘窗穿越与家具碰撞
+  // 两码必须为 0，用单独立上限 REAL_CONTEXT_ENVELOPE_CEILINGS；全上下文配额只用于 verify:mep。
+  assertBucketCeilings(buckets.envelope_approximation.codes, REAL_CONTEXT_ENVELOPE_CEILINGS, 'envelope 分桶');
   // must_fix 总数断言已删（Codex minor）：总数是各桶之和，上限已把守住；消掉问题不再使测试变红。
   // 飞线依托检查自证：最长飞线是 strong-power-living 出边吊后的 4.16m 无依托段（reason 声称「平吊板上方敷设」
   // 但 weak-ap reason 明说客厅中部保持原顶 2.80m 无吊顶——两处自相矛盾被机器显形）
