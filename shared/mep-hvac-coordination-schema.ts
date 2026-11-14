@@ -40,7 +40,8 @@ export const MepJunctionSchema = z.object({
  * - `from_drop`：从 from 端点竖直落到竖井高度（平面点 = from 端点，y 取竖井高度）；
  * - `shaft_corner`：竖井内拐点 = 过 from 沿 x 的线与过竖井沿 z 的线的垂线交点
  *   (shaft.x, from.z)——shaft.z 不参与拐点求解；
- * - `shaft_run`：沿竖井轴线跑到竖井（x/z = shaft 位置，y 取竖井高度）。
+ * - `shaft_run`：沿竖井轴线跑到终点 z（x = shaft.x，z = to.z，y 取竖井高度）——
+ *   南行段沿竖井 x 走到插座的 z，末 jog 再折向终点；shaft.z 只参一致性校验，不进拐点。
  * 三步共享同一竖井（`shaft` id 必须在顶层 `shafts` 表里）；from 端点与竖井的
  * z 必须一致（|shaft.z − from.z| ≤ 0.005m，解算器内校验——0.02m 的差恰等于
  * ORTHOGONAL_TOLERANCE，lint 拦不住，见 §10.3 R-S3）。
@@ -225,12 +226,13 @@ const VIA_SHAFT_CONSISTENCY_TOLERANCE = 0.005;
 /**
  * 解算关系型 via 步（issue #98 二阶段 S3 关系步最小集）：
  * from_drop → (from.x, from.z)，shaft_corner → (shaft.x, from.z)（垂线交点），
- * shaft_run → (shaft.x, shaft.z)；y 一律取步内声明或竖井高度。绝对坐标步原样透传。
+ * shaft_run → (shaft.x, to.z)（沿竖井 x 走到终点 z，末 jog 再折向终点）；y 一律取步内声明或竖井高度。绝对坐标步原样透传。
  * 任一步失败即整条 via 失败（fail-closed，不给半条路径）。
  */
 function resolveMepViaSteps(
   route: MepRoute,
   from: { x: number; z: number; y?: number },
+  to: { x: number; z: number; y?: number },
   shafts: MepShaft[],
 ): { points: Array<{ x: number; y?: number; z: number }>; diagnostic?: string } {
   const points: Array<{ x: number; y?: number; z: number }> = [];
@@ -249,7 +251,7 @@ function resolveMepViaSteps(
     const y = step.y ?? shaft.y;
     if (step.kind === 'from_drop') points.push({ x: from.x, z: from.z, y });
     else if (step.kind === 'shaft_corner') points.push({ x: shaft.x, z: from.z, y });
-    else points.push({ x: shaft.x, z: shaft.z, y });
+    else points.push({ x: shaft.x, z: to.z, y });
   }
   return { points };
 }
@@ -278,11 +280,12 @@ export function resolveMepRoute(
   }
   let viaPoints: Array<{ x: number; y?: number; z: number }> = [];
   if (route.via.some((step) => !isMepViaCoordinate(step))) {
-    if (!from) {
+    // shaft_run 的终点是 to.z：to 未解出时关系步无终点，via 同失败（fail-closed）。
+    if (!from || !to) {
       unresolved.push('via');
-      diagnostics.push(`MEP route ${route.id} via 未解：from 端点未解析，关系步无起点`);
+      diagnostics.push(`MEP route ${route.id} via 未解：${!from ? 'from' : 'to'} 端点未解析，关系步无${!from ? '起点' : '终点'}`);
     } else {
-      const via = resolveMepViaSteps(route, from, shafts);
+      const via = resolveMepViaSteps(route, from, to, shafts);
       if (via.diagnostic !== undefined) {
         unresolved.push('via');
         diagnostics.push(via.diagnostic);

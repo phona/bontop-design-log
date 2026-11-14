@@ -93,17 +93,17 @@ test('关系 via 三步走法：from_drop → shaft_corner → shaft_run，全�
   const resolved = resolveMepRoute(route, EMPTY_SOURCES, config.junctions, config.shafts);
   assert.deepEqual(resolved.unresolved, []);
   assert.deepEqual(resolved.diagnostics, []);
-  // from_drop 取 from 平面位置、shaft 高；corner 取垂线交点；run 取竖井平面位置、step.y 覆盖 shaft.y。
+  // from_drop 取 from 平面位置、shaft 高；corner 取垂线交点；run 取竖井 x + 终点 z、step.y 覆盖 shaft.y。
   assert.deepEqual(resolved.viaPoints, [
     { x: 10.74, y: 2.6, z: 2.963 },
     { x: 11.2, y: 2.6, z: 2.963 },
-    { x: 11.2, y: 2.62, z: 2.96 },
+    { x: 11.2, y: 2.62, z: 4.0 },
   ]);
   assert.deepEqual(resolved.points, [
     { x: 10.74, y: 2.98, z: 2.963 },
     { x: 10.74, y: 2.6, z: 2.963 },
     { x: 11.2, y: 2.6, z: 2.963 },
-    { x: 11.2, y: 2.62, z: 2.96 },
+    { x: 11.2, y: 2.62, z: 4.0 },
     { x: 11.2, y: 2.6, z: 4.0 },
   ]);
   assertOrthogonal(resolved.points);
@@ -210,4 +210,84 @@ test('validate：竖井 id 重复显式拦下；isMepViaCoordinate 区分绝对�
   assert.equal(isMepViaCoordinate({ x: 1, z: 2 }), true);
   assert.equal(isMepViaCoordinate({ kind: 'from_drop', shaft: 'sh1' }), false);
   assert.equal(isMepViaCoordinate({ x: 1, z: 2, y: 2.5 }), true);
+});
+
+test('shaft_run 语义修正：南行段沿竖井 x 走到终点 z（真实沙发地插拓扑 to.x != shaft.x，to.z != shaft.z）', () => {
+  // 旧语义 shaft_run 取 (shaft.x, shaft.z) = (11.2, 2.98)：南行段在竖井 z 处就停了，
+  // 终点 (11.0, 6.05) 只能靠一段斜线接回；新语义 run 走到 to.z，末 jog 才折向插座。
+  const route = makeRoute({
+    id: 'r-sofa',
+    from: { x: 10.74, y: 2.98, z: 2.98 },
+    to: { x: 11.0, y: 2.6, z: 6.05 },
+    via: [
+      { kind: 'from_drop', shaft: 'sh1' },
+      { kind: 'shaft_corner', shaft: 'sh1' },
+      { kind: 'shaft_run', shaft: 'sh1', y: 2.62 },
+    ],
+  });
+  const config = testConfig([route], [{ id: 'sh1', x: 11.2, z: 2.98, y: 2.6 }]);
+  const resolved = resolveMepRoute(route, EMPTY_SOURCES, config.junctions, config.shafts);
+  assert.deepEqual(resolved.unresolved, []);
+  assert.deepEqual(resolved.diagnostics, []);
+  assert.deepEqual(resolved.viaPoints, [
+    { x: 10.74, y: 2.6, z: 2.98 },
+    { x: 11.2, y: 2.6, z: 2.98 },
+    { x: 11.2, y: 2.62, z: 6.05 },
+  ]);
+  assert.deepEqual(resolved.points, [
+    { x: 10.74, y: 2.98, z: 2.98 },
+    { x: 10.74, y: 2.6, z: 2.98 },
+    { x: 11.2, y: 2.6, z: 2.98 },
+    { x: 11.2, y: 2.62, z: 6.05 },
+    { x: 11.0, y: 2.6, z: 6.05 },
+  ]);
+  assertOrthogonal(resolved.points);
+  // 平面长度：0.46（东折）+ 3.07（南行）+ 0.20（末 jog）= 3.73m（from_drop 竖直段平面长 0）。
+  const planLength = resolved.points.slice(1).reduce((sum, point, index) => {
+    const prev = resolved.points[index];
+    return sum + Math.hypot(point.x - prev.x, point.z - prev.z);
+  }, 0);
+  assert.ok(Math.abs(planLength - 3.73) < 1e-9, `平面长度应为 3.73m，实际 ${planLength}`);
+});
+
+test('shaft_run 终点跟随终点：to.z 移动，run 终点与平面长度同步移动', () => {
+  const route = makeRoute({
+    id: 'r-sofa-move',
+    from: { x: 10.74, y: 2.98, z: 2.98 },
+    to: { x: 11.0, y: 2.6, z: 6.55 },
+    via: [
+      { kind: 'from_drop', shaft: 'sh1' },
+      { kind: 'shaft_corner', shaft: 'sh1' },
+      { kind: 'shaft_run', shaft: 'sh1' },
+    ],
+  });
+  const config = testConfig([route], [{ id: 'sh1', x: 11.2, z: 2.98, y: 2.6 }]);
+  const resolved = resolveMepRoute(route, EMPTY_SOURCES, config.junctions, config.shafts);
+  assert.deepEqual(resolved.unresolved, []);
+  assert.equal(resolved.viaPoints[2].z, 6.55);
+  assert.equal(resolved.points[resolved.points.length - 1].z, 6.55);
+  const planLength = resolved.points.slice(1).reduce((sum, point, index) => {
+    const prev = resolved.points[index];
+    return sum + Math.hypot(point.x - prev.x, point.z - prev.z);
+  }, 0);
+  assert.ok(Math.abs(planLength - 4.23) < 1e-9, `平面长度应为 4.23m，实际 ${planLength}`);
+});
+
+test('关系 via 且 to 未解：via 同失败、整条路由 fail-closed', () => {
+  const route = makeRoute({
+    id: 'r-to-missing',
+    from: { x: 10.74, y: 2.98, z: 2.98 },
+    to: 'missing_endpoint',
+    via: [
+      { kind: 'from_drop', shaft: 'sh1' },
+      { kind: 'shaft_corner', shaft: 'sh1' },
+      { kind: 'shaft_run', shaft: 'sh1' },
+    ],
+  });
+  const config = testConfig([route], [{ id: 'sh1', x: 11.2, z: 2.98, y: 2.6 }]);
+  const resolved = resolveMepRoute(route, EMPTY_SOURCES, config.junctions, config.shafts);
+  assert.deepEqual(resolved.unresolved, ['to', 'via']);
+  assert.deepEqual(resolved.points, []);
+  assert.deepEqual(resolved.viaPoints, []);
+  assert.ok(resolved.diagnostics.some((line) => line.includes('to 端点未解析')));
 });
