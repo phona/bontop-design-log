@@ -35,7 +35,7 @@ import { declaredFurnitureDims, resolveFurniturePlacement, WALL_THICKNESS, type 
 import { CONDENSATE_CHAIN_FURNITURE_TYPES, type CondensateChainFurnitureType } from './types.js';
 import type { HvacDiagram } from './types.js';
 import { hvacAnchorPositions, type HvacBuilderSources } from './render/HvacBuilder.js';
-import { mepRoutePoints, resolveMepEndpoint, type MepEndpointSources, type MepJunction, type MepRoute } from './mep-hvac-coordination-schema.js';
+import { resolveMepRoute, type MepEndpointSources, type MepJunction, type MepRoute, type MepShaft } from './mep-hvac-coordination-schema.js';
 import { deriveMepPenetrationPoint, type PenetrationWallShape } from './mep-hvac-lint.js';
 
 export { CONDENSATE_CHAIN_FURNITURE_TYPES };
@@ -440,6 +440,7 @@ export interface MepPenetrationDerivationContext {
   sources: MepEndpointSources;
   walls: readonly PenetrationWallShape[];
   junctions?: MepJunction[];
+  shafts?: MepShaft[];
 }
 
 /**
@@ -457,16 +458,13 @@ export function deriveMepPenetrationAt(
   context: MepPenetrationDerivationContext,
 ): { point?: ChainPoint; diagnostic?: string } {
   if (!route) return { diagnostic: `MEP 路线缺失：${wallId} 穿墙点无从派生` };
-  const junctions = context.junctions ?? [];
-  const from = resolveMepEndpoint(route.from, context.sources, junctions);
-  const to = resolveMepEndpoint(route.to, context.sources, junctions);
-  if (!from || !to) {
-    const missing = [from ? undefined : 'from', to ? undefined : 'to'].filter((side): side is string => side !== undefined).join('/');
-    return { diagnostic: `MEP ${route.id} 端点解不出（${missing}）：${wallId} 穿墙点无从派生` };
+  const resolved = resolveMepRoute(route, context.sources, context.junctions ?? [], context.shafts ?? []);
+  if (resolved.unresolved.length > 0) {
+    return { diagnostic: `MEP ${route.id} 未解析（${resolved.unresolved.join('/')}）：${resolved.diagnostics.join('；')}——${wallId} 穿墙点无从派生` };
   }
   const wall = context.walls.find((candidate) => candidate.id === wallId);
   if (!wall) return { diagnostic: `墙 ${wallId} 不在墙几何里：MEP ${route.id} 穿墙点无从派生` };
-  const derived = deriveMepPenetrationPoint(mepRoutePoints(route, from, to), wall);
+  const derived = deriveMepPenetrationPoint(resolved.points, wall);
   if ('point' in derived) return { point: { x: derived.point.x, z: derived.point.z } };
   return { diagnostic: `MEP ${route.id} @ ${wallId}：${derived.diagnostic}` };
 }

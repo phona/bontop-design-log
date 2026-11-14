@@ -22,7 +22,7 @@ import * as yaml from 'js-yaml';
 import { lintFacts, type FactsRegistry, type FactsWorkspace } from '../../../shared/facts-lint.js';
 import { endpointSourcesFromFacts, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
 import { BudgetCalculator, loadMasonryTakeoff } from '../../../server/budget-calculator.js';
 import { loadModelPackageLinks } from '../../../server/model-package-links.js';
 import { ALL_MODEL_TARGET } from '../../../shared/package-objects.js';
@@ -116,13 +116,16 @@ const mepDocs = ['config/electrical.yaml', 'config/plumbing.yaml', 'config/model
   .map((p) => ({ p, doc: loadDoc(p) as any }));
 
 const mepEndpoints: Record<string, { x: number; z: number; y?: number }> = {};
+// （二阶段 S1）点位宿主墙索引（S1）与 mount 家具宿主索引（S2）一律取 buildPlacementIndexes
+// 产物，与 verify:mep 同一解算；家具解算诊断由 verify:furniture 门禁负责，本文件不重复计入。
+const factsCatalog = ProjectCatalog.load('.');
+const factsPlacementIndexes = buildPlacementIndexes({ geometry: { walls: factsCatalog.getWalls() }, furnishings: factsCatalog.getFurnishings() });
 const mepSources = mepDocs.length ? endpointSourcesFromFacts({
   electrical: mepDocs[0].doc,
   plumbing: mepDocs[1].doc,
   ceiling: mepDocs[2].doc,
   hvac: mepDocs[3].doc,
-  // 点位宿主墙索引（issue #98 S1）：与 verify:mep 同一解算，facts 契约与 lint 对同一批点位同结论。
-}, pointWallIndexFromElements(ProjectCatalog.load('.').getWalls()), pointMountHostIndex(Object.values(ProjectCatalog.load('.').getFurnishings()).flat())) : undefined;
+}, factsPlacementIndexes.pointWalls, factsPlacementIndexes.mountHosts) : undefined;
 if (mepSources) {
   const mepConfig = loadDoc('config/mep-hvac-coordination.yaml') as { routes?: unknown[] } | null;
   const wanted = new Set<string>();
@@ -131,6 +134,8 @@ if (mepSources) {
     for (const side of [route.from, route.to]) if (typeof side === 'string') wanted.add(side);
     for (const via of (Array.isArray(route.via) ? route.via : [])) {
       if (via && typeof via === 'object' && typeof (via as { id?: unknown }).id === 'string') wanted.add((via as { id: string }).id);
+      // 关系型 via 步的竖井 id 也收进 wanted（解不出端点、无害；只为不漏收引用目标）。
+      if (via && typeof via === 'object' && typeof (via as { shaft?: unknown }).shaft === 'string') wanted.add((via as { shaft: string }).shaft);
     }
   }
   for (const id of [...wanted].sort()) {

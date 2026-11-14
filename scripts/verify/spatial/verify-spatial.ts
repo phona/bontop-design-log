@@ -42,7 +42,9 @@ import { buildRenderLightingFixtureHeights, CEILING_MOUNTED_LIGHT_TYPES, ceiling
 import { declaredDims, profileFor } from '../../../shared/penetration/clearance.js';
 import { loadAntiPenetrationConfig, relationshipSpecsFromWaivers } from '../../../shared/penetration/registry.js';
 import { furnitureHostIndex, resolveFurniturePlacement, type PlacementAnchors } from '../../../shared/furniture-placement.js';
-import { pointMountHostIndex, resolvePointPlacementInWalls } from '../../../shared/point-placement.js';
+import { resolvePointPlacementInWalls } from '../../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
+import type { PointWallElementInput } from '../../../shared/point-placement.js';
 import { mepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
 import { parseMepCoordination } from '../../../shared/mep-hvac-coordination-schema.js';
 import { furnitureObjectId } from '../../../shared/furniture-object-id.js';
@@ -204,7 +206,7 @@ function validateLighting(
   return issues;
 }
 
-function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings: FurnishingsYaml): SpatialIssue[] {
+function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings: FurnishingsYaml, walls: Iterable<PointWallElementInput>): SpatialIssue[] {
   const issues: SpatialIssue[] = [];
   const source = 'config/electrical.yaml + config/house.yaml';
   const placed = new Map<string, { room: string; item: FurnishingsYaml[string][number]; bounds: { minX: number; maxX: number; minZ: number; maxZ: number } }>();
@@ -235,7 +237,10 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
   // shared/point-placement.ts 单一解算器解出，手写 x/z 与 0.01m 贴脸容差校验随之退役。
   // 声明层校验剩下的三件事：宿主可解（断引用/count-only/越脸在解算器诊断里显形）、
   // 安装缝合法、房间一致；迁移期另断言「解析结果 == 声明 x/z」（容差 0.005m，S3 删 x/z 后撤销）。
-  const mountHosts = pointMountHostIndex(Object.values(furnishings).flat());
+  // （二阶段 S1）宿主索引取 buildPlacementIndexes 产物（家具由共享解算一次解出）；
+  // 本函数不传 anchors（冷凝链锚点在 validateScene 另建），anchor 模式家具在此显式失败，
+  // 由 verify:furniture 门禁（传 anchors）覆盖——同一根因只一处红。
+  const mountHosts = buildPlacementIndexes({ geometry: { walls }, furnishings }).mountHosts;
   for (const point of electrical) {
     const anchor = point.mountAnchor;
     if (!anchor) continue;
@@ -372,11 +377,11 @@ function main(): void {
   try {
     scene = buildRuntimeScene(inputs);
     issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides, inputs.renderOverrides, scene.index.lightingFixtures));
-    issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));
+    issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}, layout.walls));
     issues.push(...validateScene(inputs, scene, antiConfig));
   } catch (error) {
     issues.push(...validateLighting(inputs.electrical, layout.walls, new Set(suppressIds), inputs.ceiling, layout.rooms, config.lighting_host_overrides, inputs.renderOverrides));
-    issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}));
+    issues.push(...validateFurnitureFaceMounts(inputs.electrical, house.furnishings ?? {}, layout.walls));
     issues.push({ level: 'error', code: 'scene_build_failed', entity: 'HOUSE_EXPORT', source: 'shared/render/SceneBuilder.ts', message: error instanceof Error ? error.message : String(error), evidence: {} });
   }
 

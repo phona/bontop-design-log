@@ -770,15 +770,16 @@ describe('柜宽变化（issue #192 第 3 项）', () => {
     const routeId = 'strong-light-entry-night-mid';
     const routeDecl = coordination.routes.find((route) => route.id === routeId);
     assert.ok(routeDecl, `${routeId} 必须仍在声明的路由表里`);
-    const lastVia = routeDecl.via[routeDecl.via.length - 1];
+    const routeBefore = before.resolution.routes.find((entry) => entry.route.id === routeId);
+    const routeAfter = after.resolution.routes.find((entry) => entry.route.id === routeId);
+    assert.ok(routeBefore?.to && routeAfter?.to, `${routeId} 必须解析出端点`);
     // 这条路由的末段声明是本基准的几何前提：末 via 落点 + to_height 变了，增量公式必须重推。
+    // （二阶段 S1）末 via 读统一出口的 viaPoints，不读原始 route.via。
+    const lastVia = routeBefore.viaPoints[routeBefore.viaPoints.length - 1]!;
     assertXZ(lastVia, { x: 11.42, z: 4.80 }, `${routeId} 末 via 平面点`);
     assertClose(lastVia.y ?? NaN, 0.02, `${routeId} 末 via 标高`);
     assertClose(routeDecl.to_height ?? NaN, 0.30, `${routeId} to_height`);
 
-    const routeBefore = before.resolution.routes.find((entry) => entry.route.id === routeId);
-    const routeAfter = after.resolution.routes.find((entry) => entry.route.id === routeId);
-    assert.ok(routeBefore?.to && routeAfter?.to, `${routeId} 必须解析出端点`);
     assertXZ(routeBefore.to, { x: 11.42, z: 4.80 }, '改宽前路由端点');
     assertXZ(routeAfter.to, { x: 11.42, z: 5.00 }, '改宽后路由端点');
 

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
-import { endpointSourcesFromFacts, MepCoordinationSchema, parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
+import { endpointSourcesFromFacts, MepCoordinationSchema, parseMepCoordination, resolveMepRoutes } from '../../shared/mep-hvac-coordination-schema.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../../shared/mep-hvac-lint.js';
 import type { ProjectRenderFacts, ResolvedLayout, VertexLayoutYaml } from '../../shared/types.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
@@ -906,10 +906,16 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
 /** 取一条真实路线在吊顶 footprint 内的 via 点标高（只查 via：from/to 可能是设备末点，本就该低于完成面）。
  * 只查承载段 via（y≥2.0）：R21 起部分路线在 footprint 平面范围内带下引分发段（如 strong-power-kitchen
  * 沿墙下引至台面插座，via y=0.02 是垫层点位），那不是吊顶承载段、不受带高约束。 */
+/** （二阶段 S1）一条路线的已解 via 点：统一出口的 viaPoints（与声明的绝对 via 同值）。 */
+let mepResolutionCache: ReturnType<typeof resolveMepRoutes> | undefined;
+function viaPointsOf(routeId: string): Array<{ x: number; y?: number; z: number }> {
+  mepResolutionCache ??= resolveMepRoutes(config, sources);
+  return mepResolutionCache.routes.find((item) => item.route.id === routeId)?.viaPoints ?? [];
+}
 function viaYsInCeilings(routeId: string): Array<{ y: number; zone: string }> {
-  const route = config.routes.find((r) => r.id === routeId)!;
+  // （二阶段 S1）via 点读统一出口的 viaPoints，不读原始 route.via。
   const out: Array<{ y: number; zone: string }> = [];
-  for (const v of route.via ?? []) {
+  for (const v of viaPointsOf(routeId)) {
     const zone = (ceiling as Array<{ id: string; area?: number[]; type: string; thickness?: number }>).find((z) => z.area
       && v.x >= Math.min(z.area[0], z.area[2]) && v.x <= Math.max(z.area[0], z.area[2])
       && v.z >= Math.min(z.area[1], z.area[3]) && v.z <= Math.max(z.area[1], z.area[3]));
@@ -933,23 +939,20 @@ test('DEC-2026-10-06-R5: carried layers are lifted into the drop-ceiling cavity 
   }
   // 走廊服务带参考梁底 2.65 → 带内 ≤2.60；主干必经 bend_corridor (7.2,4.3) 与 z=4.6 轴线
   for (const id of ['strong-main', 'strong-ac-living', 'weak-master', 'refrigerant-master']) {
-    const route = config.routes.find((r) => r.id === id)!;
-    const spine = (route.via ?? []).filter((v) => v.x >= 6.9 && v.x <= 7.5 && v.z >= 3.6 && v.z <= 8).map((v) => v.y as number);
+    const spine = viaPointsOf(id).filter((v) => v.x >= 6.9 && v.x <= 7.5 && v.z >= 3.6 && v.z <= 8).map((v) => v.y as number);
     assert.ok(spine.length > 0, `${id} 应有点落在走廊服务带梁带内`);
     for (const y of spine) assert.ok(y <= 2.60, `${id} 在走廊服务带梁带内应 ≤2.60（参考梁底 2.65 − 0.05）`);
   }
   // B 区（厨房铝扣板，完成面 2.65）：进入该区的管路段 ≥2.70 且 ≤2.76
   for (const id of ['strong-power-kitchen', 'strong-ded-dishwasher', 'strong-ded-washer-dryer', 'strong-light-kitchen', 'refrigerant-trunk']) {
-    const route = config.routes.find((r) => r.id === id)!;
-    const inKitchen = (route.via ?? []).filter((v) => v.x >= KITCHEN[0] && v.x <= KITCHEN[2] && v.z >= KITCHEN[1] && v.z <= KITCHEN[3] && (v.y as number) >= 2.0).map((v) => v.y as number); // 同 viaYsInCeilings：只查承载段，排除下引分发低位点
+    const inKitchen = viaPointsOf(id).filter((v) => v.x >= KITCHEN[0] && v.x <= KITCHEN[2] && v.z >= KITCHEN[1] && v.z <= KITCHEN[3] && (v.y as number) >= 2.0).map((v) => v.y as number); // 同 viaYsInCeilings：只查承载段，排除下引分发低位点
     assert.ok(inKitchen.length > 0, `${id} 应有段落进入厨房铝扣板 footprint`);
     for (const y of inKitchen) assert.ok(y >= 2.70 && y <= 2.76, `${id} 厨房段应在 2.70–2.76（B 区），实际 ${y}`);
   }
   // B 区（客卫铝扣板）：≥2.70
   // DEC-2026-10-12-R2：strong-light-gbath（客卫照明）已随平板灯删除，故 B 区客卫只剩电源与浴霸两条
   for (const id of ['strong-power-gbath', 'strong-ded-bathheaters-gbath']) {
-    const route = config.routes.find((r) => r.id === id)!;
-    const inBath = (route.via ?? []).filter((v) => v.x >= GUEST_BATH[0] && v.x <= GUEST_BATH[2] && v.z >= GUEST_BATH[1] && v.z <= GUEST_BATH[3] && (v.y as number) >= 2.0).map((v) => v.y as number);
+    const inBath = viaPointsOf(id).filter((v) => v.x >= GUEST_BATH[0] && v.x <= GUEST_BATH[2] && v.z >= GUEST_BATH[1] && v.z <= GUEST_BATH[3] && (v.y as number) >= 2.0).map((v) => v.y as number);
     assert.ok(inBath.length > 0, `${id} 应有段落进入客卫铝扣板 footprint`);
     for (const y of inBath) assert.ok(y >= 2.70 && y <= 2.76, `${id} 客卫段应在 2.70–2.76（B 区），实际 ${y}`);
   }

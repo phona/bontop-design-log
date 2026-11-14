@@ -21,6 +21,7 @@
  *      重叠；R18 附则的有意空白作为显式例外登记（例外本身受反向执法：不许为铺满把空白堵上）。
  */
 import type { CeilingZone, HvacAnchor, HvacRoute, HvacTerminal } from './types.js';
+import type { ResolvedMepRoute } from './mep-hvac-coordination-schema.js';
 import { normalizeCeilingZone } from './ceiling-zone.js';
 
 export type HvacTerminalLintLevel = 'error' | 'warning';
@@ -376,7 +377,8 @@ export const HVAC_MEP_PARITY_EPSILON_M = 1e-6;
 
 export function lintHvacMepNodeParity(input: {
   anchors: readonly HvacAnchorWithSchematicOnly[];
-  mepRoutes: ReadonlyArray<{ id: string; via: ReadonlyArray<{ x: number; z: number; y?: number }> }>;
+  /** 统一出口的已解路由（issue #98 二阶段 S1）：对账读 resolved.viaPoints，不读原始 route.via。 */
+  mepRoutes: ReadonlyArray<ResolvedMepRoute>;
 }): HvacTerminalLintIssue[] {
   const issues: HvacTerminalLintIssue[] = [];
   for (const pair of HVAC_MEP_NODE_PARITY_PAIRS) {
@@ -389,12 +391,16 @@ export function lintHvacMepNodeParity(input: {
       issues.push(issue('error', 'mep_node_parity_pair_broken', `parity 对账的 hvac 锚点 ${pair.anchorId} 无 position（对账表只覆盖内联坐标锚点）`));
       continue;
     }
-    const route = input.mepRoutes.find((item) => item.id === pair.mepRouteId);
-    if (!route) {
+    const resolved = input.mepRoutes.find((item) => item.route.id === pair.mepRouteId);
+    if (!resolved) {
       issues.push(issue('error', 'mep_node_parity_pair_broken', `parity 对账的 MEP route ${pair.mepRouteId} 不存在（对账表失效，须复核 HVAC_MEP_NODE_PARITY_PAIRS）`));
       continue;
     }
-    const node = route.via[pair.viaIndex];
+    if (resolved.unresolved.includes('via')) {
+      issues.push(issue('error', 'mep_node_parity_pair_broken', `MEP route ${pair.mepRouteId} 的 via 未解出（${resolved.diagnostics.join('；')}），无法与 ${pair.anchorId} 对账`));
+      continue;
+    }
+    const node = resolved.viaPoints[pair.viaIndex];
     if (!node) {
       issues.push(issue('error', 'mep_node_parity_pair_broken', `MEP route ${pair.mepRouteId} 的 via[${pair.viaIndex}] 不存在，无法与 ${pair.anchorId} 对账`));
       continue;

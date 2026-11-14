@@ -6,6 +6,8 @@
  * （mount: {furniture_id, slot}）、锚点引用（anchor: {source, id}，PR-10）、
  * 绝对 x/z 四种定位声明都在这里解算，解析失败返回 **诊断文本**而不是 null——null 只保留给
  * count-only 条目（无平面几何，预期跳过），「声明了却解不出来」必须让页面/DXF/verify:furniture 显形并失败。
+ * （二阶段 S1 无来源规则：声明了稳定 id 的条目无任何定位来源也算「声明了却解不出来」，
+ * 同样出诊断；无 id 的 count-only / type-only 条目仍合法 null。）
  */
 
 import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS, type FurnishingItem, type VanityLayout, type VanityLayoutDecl, type WallSide } from './types.js';
@@ -185,6 +187,63 @@ export function resolveFurniturePlacement(
   return resolveItem(item, wallSegments, hosts, anchors, new Set<string>());
 }
 
+/**
+ * 已解家具宿主（issue #98 二阶段 S1 共享解算出口）：一条家具的完整解算结果。
+ * x/z 为世界平面坐标；rotation/width/depth 沿用条目声明与目录（与旧 pointMountHostIndex
+ * 同口径：width/depth 取 declaredFurnitureDims，不取 furnitureFootprint——length 型
+ * 柜体的台面外伸不进挂载宿主外框）。
+ */
+export interface ResolvedFurnitureHost {
+  id: string;
+  x: number;
+  z: number;
+  rotation?: number;
+  width?: number;
+  depth?: number;
+}
+
+/** 批量家具解算结果：placements 只含成功解出的 id 条目；diagnostics 逐条列出失败。 */
+export interface FurniturePlacementsResolution {
+  placements: Map<string, ResolvedFurnitureHost>;
+  diagnostics: Array<{ id: string; diagnostic: string }>;
+}
+
+/**
+ * 一次解出全部家具（issue #98 二阶段 S1）：在既有单件 resolveFurniturePlacement 之上
+ * 的批量出口，点位宿主索引（pointMountHostIndexFromResolved）与 verify:furniture
+ * 共用同一份解算结果，不再各跑一份。无 id 的 count-only / type-only 条目不进
+ * placements、不出诊断（合法）；有 id 的条目解不出即进 diagnostics（无来源规则）。
+ */
+export function resolveFurniturePlacements(
+  items: Iterable<PlacementItem>,
+  wallSegments: Map<string, WallLike[]>,
+  anchors?: PlacementAnchors,
+): FurniturePlacementsResolution {
+  const itemList = [...items];
+  const hosts = furnitureHostIndex(itemList);
+  const placements = new Map<string, ResolvedFurnitureHost>();
+  const diagnostics: Array<{ id: string; diagnostic: string }> = [];
+  for (const item of itemList) {
+    if (item.id === undefined) continue;
+    const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts, anchors);
+    if (diagnostic !== undefined) {
+      diagnostics.push({ id: item.id, diagnostic });
+      continue;
+    }
+    if (!placement) continue; // 有 id 的条目无来源已在 resolveItem 出诊断，此处不可达。
+    const dims = declaredFurnitureDims(item);
+    placements.set(item.id, {
+      id: item.id,
+      x: placement.x,
+      z: placement.z,
+      ...(item.rotation !== undefined ? { rotation: item.rotation } : {}),
+      ...(dims.width !== undefined ? { width: dims.width } : {}),
+      ...(dims.depth !== undefined ? { depth: dims.depth } : {}),
+    });
+  }
+  return { placements, diagnostics };
+}
+
 function resolveItem(
   item: PlacementItem,
   wallSegments: Map<string, WallLike[]>,
@@ -221,7 +280,7 @@ function resolveItem(
     if (hasWallAnchor) {
       return { placement: null, diagnostic: 'anchor 与 wall/wall_side/along 不得同时声明（定位来源必须唯一）' };
     }
-    return resolveAnchored(item, anchors);
+    return resolveAnchored(item, wallSegments, hosts, anchors, visited);
   }
 
   if (hasWallAnchor) {
@@ -319,6 +378,12 @@ function resolveItem(
   }
 
   // count-only 条目：只喂预算/库存，无平面几何（AGENTS.md furnishings 口径）。
+  // （二阶段 S1 无来源规则）但声明了稳定 id 的条目必须有位置：id 是别的消费方
+  // （点位挂载、MEP 锚点、DXF、3D）定位它的唯一凭据，无来源即显式诊断，消费方
+  // 不得静默跳过；无 id 的 count-only / type-only 条目仍合法 null。
+  if (item.id !== undefined) {
+    return { placement: null, diagnostic: `furniture "${item.id}": 无定位来源（已声明稳定 id，必须有位置）` };
+  }
   return { placement: null };
 }
 
@@ -399,9 +464,39 @@ function resolveMounted(
  * 锚点派生解算（issue #98 PR-10）：位置来自另一份配置的锚点对象，不写绝对坐标。
  * hvac 锚点（indoor_master 等）与链上点（unit / box_turn / wardrobe_east_band）
  * 都由调用方预解后随上下文传入——resolver 自己不读配置文件，保持纯函数。
+ * （二阶段 S1）`furniture` 来源：位置 = 宿主家具中心 + 世界轴 offset，宿主由
+ * resolveItem 递归解出（与 resolveMounted 同一套 visited 循环检测与诊断透传）。
  */
-function resolveAnchored(item: PlacementItem, anchors: PlacementAnchors | undefined): FurniturePlacementResolution {
+function resolveAnchored(
+  item: PlacementItem,
+  wallSegments: Map<string, WallLike[]>,
+  hosts: ReadonlyMap<string, PlacementItem> | undefined,
+  anchors: PlacementAnchors | undefined,
+  visited: ReadonlySet<string>,
+): FurniturePlacementResolution {
   const anchor = item.anchor!;
+  if (anchor.offset !== undefined && anchor.source !== 'furniture') {
+    return { placement: null, diagnostic: `anchor offset 只允许 furniture 来源携带（${anchor.source} 来源不得声明 offset）` };
+  }
+  if (anchor.source === 'furniture') {
+    const hostId = anchor.id;
+    if (visited.has(hostId)) {
+      return { placement: null, diagnostic: `anchor 循环依赖：${[...visited, hostId].join(' -> ')}` };
+    }
+    const host = hosts?.get(hostId);
+    if (!host) {
+      return { placement: null, diagnostic: `anchor host "${hostId}" not found in furnishings（断引用：宿主条目缺失或未声明稳定 id）` };
+    }
+    const hostResolved = resolveItem(host, wallSegments, hosts, anchors, new Set([...visited, hostId]));
+    if (hostResolved.diagnostic !== undefined) {
+      return { placement: null, diagnostic: `anchor host "${hostId}": ${hostResolved.diagnostic}` };
+    }
+    if (!hostResolved.placement) {
+      return { placement: null, diagnostic: `anchor host "${hostId}" has no planar placement（count-only 条目不能当宿主）` };
+    }
+    const offset = anchor.offset ?? { x: 0, z: 0 };
+    return { placement: { x: hostResolved.placement.x + offset.x, z: hostResolved.placement.z + offset.z } };
+  }
   if (anchor.source === 'hvac') {
     const position = anchors?.hvacAnchors?.get(anchor.id);
     if (!position) {

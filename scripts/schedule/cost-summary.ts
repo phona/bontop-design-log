@@ -126,7 +126,7 @@ import { lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 import { load as parseYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../server/project-catalog.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import {
   BudgetCalculator,
@@ -941,6 +941,8 @@ const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknow
     circuits: Parameters<typeof computeMepTakeoff>[0]['circuits'];
     controls?: Parameters<typeof computeMepTakeoff>[0]['controls'];
   };
+  // 宿主索引单一产地（issue #98 二阶段 S1）：见下 endpointSourcesFromFacts 的 costIndexes。
+  const costIndexes = buildPlacementIndexes({ geometry: { walls: ProjectCatalog.load('.').getWalls() }, furnishings: ProjectCatalog.load('.').getFurnishings() });
   const sources = endpointSourcesFromFacts({
     electrical,
     plumbing,
@@ -950,7 +952,7 @@ const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknow
     // （scripts/project/mep-takeoff.ts 同式）完全同一条装配路径——mount 挂载点位（两条起夜灯
     // 路线端点）由宿主脸解出，漏传会让 resolveMepRoutes 少解析 2 条路线、计价管长/导线量
     // 静默缩水（2026-11-07 独立评审 blocking：¥16,035→¥15,986 即此错）。
-  }, pointWallIndexFromElements(ProjectCatalog.load('.').getWalls()), pointMountHostIndex(Object.values(ProjectCatalog.load('.').getFurnishings()).flat()));
+  }, costIndexes.pointWalls, costIndexes.mountHosts);
   const takeoff = computeMepTakeoff({
     electrical: electrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
     plumbing: plumbing as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'],

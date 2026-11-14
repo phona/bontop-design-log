@@ -6,6 +6,7 @@ import {
   HvacTerminalSchema,
   parseCeilingZones,
   parseElectricalPoints,
+  parsePlumbingPoints,
   parseProjectHvacFacts,
   validateProjectHvacFacts,
 } from '../../shared/project-render-facts-schema.js';
@@ -20,7 +21,11 @@ import {
   type HvacAnchorWithServesUnit,
   type HvacTerminalLintIssue,
 } from '../../shared/hvac-terminal-lint.js';
-import { parseMepCoordination } from '../../shared/mep-hvac-coordination-schema.js';
+import { parseMepCoordination, resolveMepRoutes, endpointSourcesFromFacts } from '../../shared/mep-hvac-coordination-schema.js';
+import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import { load as parseYaml } from 'js-yaml';
+import type { VertexLayoutYaml } from '../../shared/types.js';
 import type { CeilingZone, HvacDiagram, HvacTerminal, ProjectHvacFacts } from '../../shared/types.js';
 
 /**
@@ -338,13 +343,24 @@ test('钉：3 处散文改字不改值（裁定二）——方向词修正、坐
 // （独立验伪员 m2-dining255 实测，空转面）。本组测试补上双向 parity 门禁。
 
 const mepConfig = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
+// parity 对账读统一出口的 viaPoints（issue #98 二阶段 S1）。统一出口要全上下文：
+// 挂载点位（如 night_corridor）无声明 x/z，缺 mountHosts 时解算直接抛错、不回落。
+const plumbing = parsePlumbingPoints(readFileSync('config/plumbing.yaml', 'utf8'));
+const realLayout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
+const mepSources = endpointSourcesFromFacts(
+  { electrical, plumbing, ceiling, hvac: hvacFacts },
+  pointWallIndexFromElements(realLayout.walls),
+  pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never),
+);
+const mepResolved = resolveMepRoutes(mepConfig, mepSources).routes;
 
 test('绿：branch_dining 与 MEP refrigerant-dining via 节点跨文件逐位相等（裁定三 parity 门禁）', () => {
   const dining = diagram.anchors.find((anchor) => anchor.id === 'branch_dining')!;
-  const node = mepConfig.routes.find((route) => route.id === 'refrigerant-dining')!.via[0]!;
+  const node = mepResolved.find((item) => item.route.id === 'refrigerant-dining')!.viaPoints[0]!;
   assert.deepEqual([dining.position!.x, dining.position!.y, dining.position!.z], [node.x, node.y, node.z],
     `branch_dining (${dining.position!.x},${dining.position!.y},${dining.position!.z}) 必须逐位等于 MEP via (${node.x},${node.y},${node.z})`);
-  const issues = lintHvacMepNodeParity({ anchors: diagram.anchors, mepRoutes: mepConfig.routes });
+  const issues = lintHvacMepNodeParity({ anchors: diagram.anchors, mepRoutes: mepResolved });
   assert.deepEqual(issues, [], `parity 门禁必须全绿，实际：${issues.map((entry) => entry.message).join('；')}`);
 });
 
@@ -352,7 +368,7 @@ test('红：hvac 侧 branch_dining y 漂移 2.6→2.55（验伪员主变异 m2-d
   const drifted = diagram.anchors.map((anchor) => anchor.id === 'branch_dining'
     ? { ...anchor, position: { ...anchor.position!, y: 2.55 } }
     : anchor);
-  const issues = lintHvacMepNodeParity({ anchors: drifted, mepRoutes: mepConfig.routes });
+  const issues = lintHvacMepNodeParity({ anchors: drifted, mepRoutes: mepResolved });
   assert.equal(codesOf(issues).filter((code) => code === 'mep_node_parity_mismatch').length, 1,
     `hvac 侧漂移必须红：${JSON.stringify(issues)}`);
   assert.match(issues[0]!.message, /y=2\.55 .* y=2\.6/);
@@ -362,10 +378,10 @@ test('红：MEP 侧 via y 漂移 2.6→2.55（负对照 m2-mepside 复刻，内�
   const driftedMep = {
     ...mepConfig,
     routes: mepConfig.routes.map((route) => route.id === 'refrigerant-dining'
-      ? { ...route, via: route.via.map((node, index) => index === 0 ? { ...node, y: 2.55 } : node) }
+      ? { ...route, via: route.via.map((node, index) => index === 0 && 'x' in node ? { ...node, y: 2.55 } : node) }
       : route),
   };
-  const issues = lintHvacMepNodeParity({ anchors: diagram.anchors, mepRoutes: driftedMep.routes });
+  const issues = lintHvacMepNodeParity({ anchors: diagram.anchors, mepRoutes: resolveMepRoutes(driftedMep, mepSources).routes });
   assert.equal(codesOf(issues).filter((code) => code === 'mep_node_parity_mismatch').length, 1,
     `MEP 侧漂移必须红（同一门禁双向执法）：${JSON.stringify(issues)}`);
 });

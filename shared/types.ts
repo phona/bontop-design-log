@@ -2051,11 +2051,15 @@ export interface FurnitureAnchor {
   /**
    * 锚点来源：
    * - `hvac`：config/hvac.yaml `diagram.anchors` 的 id（如 `indoor_master`，ref ceiling `ac_master`）；
-   * - `chain`：shared/condensate-chain.ts 解出的链上点（`unit` / `box_turn` / `wardrobe_east_band`）。
+   * - `chain`：shared/condensate-chain.ts 解出的链上点（`unit` / `box_turn` / `wardrobe_east_band`）；
+   * - `furniture`：另一件家具的中心（issue #98 二阶段 S1：家具相对摆位，如沙发锚定电视）；
+   *   `offset` 为世界轴偏移（x 东正、z 南正），只允许家具来源携带。
    */
-  source: 'hvac' | 'chain';
-  /** 锚点 id（hvac 锚点 id 或链上点名）。 */
+  source: 'hvac' | 'chain' | 'furniture';
+  /** 锚点 id（hvac 锚点 id、链上点名，或宿主家具的稳定 id）。 */
   id: string;
+  /** 世界轴偏移（仅 `furniture` 来源）：相对宿主家具中心的 (x, z) 位移，单位 m。 */
+  offset?: { x: number; z: number };
 }
 
 /**

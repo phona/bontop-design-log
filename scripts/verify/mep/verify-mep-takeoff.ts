@@ -9,7 +9,7 @@ import {
 import { computeMepTakeoff, type MepTakeoffRules, type TakeoffCircuit } from '../../../shared/mep-takeoff.js';
 import { sourceFile } from '../../../shared/envelope-sources.js';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
 
 /**
  * verify:mep-takeoff —— 水电子系统算量的 count/覆盖度/显形项契约。
@@ -64,14 +64,15 @@ function resolveFactExpression(raw: string | undefined): number | string | undef
   return Array.isArray(cursor) ? cursor.length : (cursor as number | string);
 }
 
+  // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：与 verify:mep /
+  // takeoff:mep / DXF 同一解算，量只有一份（家具由共享解算一次解出，不再直读手写 x/z）。
+const takeoffGateIndexes = buildPlacementIndexes({ geometry: { walls: ProjectCatalog.load('.').getWalls() }, furnishings: ProjectCatalog.load('.').getFurnishings() });
 const sources = endpointSourcesFromFacts({
   electrical: electrical as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'],
   plumbing: plumbing as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'],
   ceiling: ceiling as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
   hvac: hvac as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
-  // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：与 verify:mep /
-  // takeoff:mep / DXF 同一解算，量只有一份。
-}, pointWallIndexFromElements(ProjectCatalog.load('.').getWalls()), pointMountHostIndex(Object.values(ProjectCatalog.load('.').getFurnishings()).flat()));
+}, takeoffGateIndexes.pointWalls, takeoffGateIndexes.mountHosts);
 // Keep the takeoff gate on the same cross-file contract as verify:mep.  The
 // resolver can report a count, but it cannot detect duplicate source IDs or a
 // plumbing route with contradictory evidence/status declarations.

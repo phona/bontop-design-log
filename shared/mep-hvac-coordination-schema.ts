@@ -35,6 +35,38 @@ export const MepJunctionSchema = z.object({
   fitting_overlap_m: z.number().finite().positive().max(0.1),
   reason: z.string().min(1),
 }).strict();
+/**
+ * 关系型 via 步（issue #98 二阶段 S3 关系步最小集，Stage 1 只建模式、不迁移任何路由）：
+ * - `from_drop`：从 from 端点竖直落到竖井高度（平面点 = from 端点，y 取竖井高度）；
+ * - `shaft_corner`：竖井内拐点 = 过 from 沿 x 的线与过竖井沿 z 的线的垂线交点
+ *   (shaft.x, from.z)——shaft.z 不参与拐点求解；
+ * - `shaft_run`：沿竖井轴线跑到竖井（x/z = shaft 位置，y 取竖井高度）。
+ * 三步共享同一竖井（`shaft` id 必须在顶层 `shafts` 表里）；from 端点与竖井的
+ * z 必须一致（|shaft.z − from.z| ≤ 0.005m，解算器内校验——0.02m 的差恰等于
+ * ORTHOGONAL_TOLERANCE，lint 拦不住，见 §10.3 R-S3）。
+ */
+export const MepViaStepSchema = z.object({
+  kind: z.enum(['from_drop', 'shaft_corner', 'shaft_run']),
+  shaft: z.string().min(1),
+  y: z.number().finite().optional(),
+}).strict();
+export type MepViaStep = z.infer<typeof MepViaStepSchema>;
+export type MepVia = z.infer<typeof CoordinateSchema> | MepViaStep;
+
+/** 竖井（关系型 via 的引用目标，与 junctions 并列的顶层表）。 */
+export const MepShaftSchema = z.object({
+  id: z.string().min(1),
+  x: z.number().finite(),
+  z: z.number().finite(),
+  y: z.number().finite(),
+}).strict();
+export type MepShaft = z.infer<typeof MepShaftSchema>;
+
+/** via 步是纯坐标（绝对弯点）还是关系步。 */
+export function isMepViaCoordinate(step: MepVia): step is { x: number; z: number; y?: number; source_status?: MepSourceStatus; construction_status?: MepStatus } {
+  return typeof (step as { x?: unknown }).x === 'number' && typeof (step as { z?: unknown }).z === 'number';
+}
+
 export const MepRouteSchema = z.object({
   id: z.string().min(1), layer: MepLayerSchema, status: MepStatusSchema,
   source_status: MepSourceStatusSchema.default('preliminary'),
@@ -53,7 +85,7 @@ export const MepRouteSchema = z.object({
   insulation_thickness: z.number().finite().nonnegative().optional(),
   insulation_status: z.enum(['assumed', 'confirmed']).optional(),
   from_height: z.number().finite().optional(), to_height: z.number().finite().optional(),
-  from: EndpointSchema, to: EndpointSchema, via: z.array(CoordinateSchema).default([]),
+  from: EndpointSchema, to: EndpointSchema, via: z.array(z.union([CoordinateSchema, MepViaStepSchema])).default([]),
   label: z.string().min(1).optional(), reason: z.string().min(1).optional(),
 }).strict();
 export const MepCoordinationSchema = z.object({
@@ -63,6 +95,7 @@ export const MepCoordinationSchema = z.object({
   layers: z.record(MepLayerSchema, z.object({ label: z.string(), color: z.string(), height: z.number().finite() }).strict()),
   routes: z.array(MepRouteSchema),
   junctions: z.array(MepJunctionSchema).default([]),
+  shafts: z.array(MepShaftSchema).default([]),
 }).strict();
 export type MepRoute = z.infer<typeof MepRouteSchema>;
 export type MepJunction = z.infer<typeof MepJunctionSchema>;
@@ -101,7 +134,17 @@ export interface ResolvedMepRoute {
   route: MepRoute;
   from?: { x: number; z: number; y?: number };
   to?: { x: number; z: number; y?: number };
-  unresolved: Array<'from' | 'to'>;
+  /**
+   * 已解全路径点（issue #98 二阶段 S1 统一出口）：[from, ...viaPoints, to]，
+   * 端点标高取 from_height/to_height（无声明时取端点 y）。未解出时为 []——
+   * 不给半条路径（fail-closed，消费方不得用半条路径算长度/画折线）。
+   */
+  points: Array<{ x: number; y?: number; z: number }>;
+  /** 已解 via 点（只含 via 步，不含端点）；via 未解出时为 []。 */
+  viaPoints: Array<{ x: number; y?: number; z: number }>;
+  unresolved: Array<'from' | 'to' | 'via'>;
+  /** 未解原因（逐条，与 unresolved 对应）；全解出时为 []。 */
+  diagnostics: string[];
   metadata: MepRouteSemanticMetadata;
 }
 
@@ -109,6 +152,8 @@ export interface MepRouteResolutionReport {
   total: number;
   resolved: number;
   unresolved: number;
+  /** 全部路由的诊断汇总（逐条，与各路由 diagnostics 同源）。 */
+  diagnostics: string[];
   routes: ResolvedMepRoute[];
 }
 
@@ -120,10 +165,29 @@ function samePlanPoint(a?: { x: number; z: number }, b?: { x: number; z: number 
   return Boolean(a && b && a.x === b.x && a.z === b.z);
 }
 
-export function mepRoutePoints(route: MepRoute, from?: { x: number; z: number; y?: number }, to?: { x: number; z: number; y?: number }): Array<{ x: number; y?: number; z: number }> {
+/**
+ * 已解路由的纯投影：返回统一出口的 points（不再重算）。统一出口自身不调本函数。
+ */
+export function mepRoutePoints(resolved: ResolvedMepRoute): Array<{ x: number; y?: number; z: number }>;
+/**
+ * 兼容壳（issue #98 二阶段 S1）：只接受纯绝对 via。关系型 via 必须走统一出口
+ * resolveMepRoutes / resolveMepRoute（带完整上下文：端点源 + junctions + shafts）；
+ * 关系步传进来即当场抛，不静默接受；本函数亦不调统一出口（新旧接口不互递归）。
+ */
+export function mepRoutePoints(route: MepRoute, from?: { x: number; z: number; y?: number }, to?: { x: number; z: number; y?: number }): Array<{ x: number; y?: number; z: number }>;
+export function mepRoutePoints(
+  routeOrResolved: MepRoute | ResolvedMepRoute,
+  from?: { x: number; z: number; y?: number },
+  to?: { x: number; z: number; y?: number },
+): Array<{ x: number; y?: number; z: number }> {
+  if ('points' in routeOrResolved && 'viaPoints' in routeOrResolved) return routeOrResolved.points;
+  const route = routeOrResolved;
+  if (route.via.some((step) => !isMepViaCoordinate(step))) {
+    throw new Error(`mepRoutePoints 是纯绝对 via 兼容壳：路由 ${route.id} 含关系型 via 步，须走 resolveMepRoutes / resolveMepRoute 统一出口`);
+  }
   return [
     ...(from ? [{ ...from, y: route.from_height ?? from.y }] : []),
-    ...route.via,
+    ...route.via.filter(isMepViaCoordinate),
     ...(to ? [{ ...to, y: route.to_height ?? to.y }] : []),
   ];
 }
@@ -141,8 +205,7 @@ export function isMepPhysicalRoute(route: MepRoute, points: Array<{ x: number; y
     && points.some((point, index) => index > 0 && (point.y ?? 0) !== (points[index - 1].y ?? 0));
 }
 
-function routeMetadata(route: MepRoute, from?: { x: number; z: number }, to?: { x: number; z: number }): MepRouteSemanticMetadata {
-  const points = mepRoutePoints(route, from, to);
+function routeMetadata(route: MepRoute, points: Array<{ x: number; y?: number; z: number }>): MepRouteSemanticMetadata {
   const isGravityDrain = (route.layer === 'condensate' || route.layer === 'drainage') && route.method?.includes('gravity');
   const warning = isGravityDrain
     ? (route.layer === 'condensate' ? '重力冷凝水候选路线：坡度、存水弯、立管接点和检修条件待确认；非施工依据。' : '重力排水候选路线：坡度、立管接点和检修条件待确认；非施工依据。')
@@ -156,17 +219,97 @@ function routeMetadata(route: MepRoute, from?: { x: number; z: number }, to?: { 
   };
 }
 
+/** 竖井 z 与 from 端点 z 的一致性容差（m）：0.02m 的差恰等于 ORTHOGONAL_TOLERANCE，lint 拦不住，故校验须在解算器里（§10.3 R-S3）。 */
+const VIA_SHAFT_CONSISTENCY_TOLERANCE = 0.005;
+
+/**
+ * 解算关系型 via 步（issue #98 二阶段 S3 关系步最小集）：
+ * from_drop → (from.x, from.z)，shaft_corner → (shaft.x, from.z)（垂线交点），
+ * shaft_run → (shaft.x, shaft.z)；y 一律取步内声明或竖井高度。绝对坐标步原样透传。
+ * 任一步失败即整条 via 失败（fail-closed，不给半条路径）。
+ */
+function resolveMepViaSteps(
+  route: MepRoute,
+  from: { x: number; z: number; y?: number },
+  shafts: MepShaft[],
+): { points: Array<{ x: number; y?: number; z: number }>; diagnostic?: string } {
+  const points: Array<{ x: number; y?: number; z: number }> = [];
+  for (const step of route.via) {
+    if (isMepViaCoordinate(step)) {
+      points.push({ x: step.x, z: step.z, ...(step.y !== undefined ? { y: step.y } : {}) });
+      continue;
+    }
+    const shaft = shafts.find((item) => item.id === step.shaft);
+    if (!shaft) {
+      return { points: [], diagnostic: `MEP route ${route.id} via 步 ${step.kind} 引用未知竖井 "${step.shaft}"（shafts 表里没有该 id）` };
+    }
+    if (Math.abs(shaft.z - from.z) > VIA_SHAFT_CONSISTENCY_TOLERANCE) {
+      return { points: [], diagnostic: `MEP route ${route.id} via 步 ${step.kind}：竖井 "${step.shaft}" z=${shaft.z} 与 from z=${from.z} 差 ${Math.abs(shaft.z - from.z).toFixed(3)}m，超过 ${VIA_SHAFT_CONSISTENCY_TOLERANCE}m（竖井 z 未裁定，S3 阻塞，见 §10.3 R-S3）` };
+    }
+    const y = step.y ?? shaft.y;
+    if (step.kind === 'from_drop') points.push({ x: from.x, z: from.z, y });
+    else if (step.kind === 'shaft_corner') points.push({ x: shaft.x, z: from.z, y });
+    else points.push({ x: shaft.x, z: shaft.z, y });
+  }
+  return { points };
+}
+
+/**
+ * 单条路由统一解算出口（issue #98 二阶段 S1）：端点 + via 步 + 诊断一次解出。
+ * 关系型 via 的任一步失败即整条路由 fail-closed（unresolved 含 'via'，points/viaPoints 为 []）。
+ */
+export function resolveMepRoute(
+  route: MepRoute,
+  sources: MepEndpointSources,
+  junctions: MepJunction[] = [],
+  shafts: MepShaft[] = [],
+): ResolvedMepRoute {
+  const from = resolveMepEndpoint(route.from, sources, junctions);
+  const to = resolveMepEndpoint(route.to, sources, junctions);
+  const unresolved: Array<'from' | 'to' | 'via'> = [];
+  const diagnostics: string[] = [];
+  if (!from) {
+    unresolved.push('from');
+    diagnostics.push(`MEP route ${route.id} from endpoint is unresolved`);
+  }
+  if (!to) {
+    unresolved.push('to');
+    diagnostics.push(`MEP route ${route.id} to endpoint is unresolved`);
+  }
+  let viaPoints: Array<{ x: number; y?: number; z: number }> = [];
+  if (route.via.some((step) => !isMepViaCoordinate(step))) {
+    if (!from) {
+      unresolved.push('via');
+      diagnostics.push(`MEP route ${route.id} via 未解：from 端点未解析，关系步无起点`);
+    } else {
+      const via = resolveMepViaSteps(route, from, shafts);
+      if (via.diagnostic !== undefined) {
+        unresolved.push('via');
+        diagnostics.push(via.diagnostic);
+      } else {
+        viaPoints = via.points;
+      }
+    }
+  } else {
+    viaPoints = route.via.filter(isMepViaCoordinate).map((step) => ({ x: step.x, z: step.z, ...(step.y !== undefined ? { y: step.y } : {}) }));
+  }
+  const points = unresolved.length > 0 ? [] : [
+    ...(from ? [{ ...from, y: route.from_height ?? from.y }] : []),
+    ...viaPoints,
+    ...(to ? [{ ...to, y: route.to_height ?? to.y }] : []),
+  ];
+  return { route, from, to, points, viaPoints, unresolved, diagnostics, metadata: routeMetadata(route, points) };
+}
+
 export function resolveMepRoutes(config: MepCoordination, sources: MepEndpointSources): MepRouteResolutionReport {
-  const routes = config.routes.map((route) => {
-    const from = resolveMepEndpoint(route.from, sources, config.junctions);
-    const to = resolveMepEndpoint(route.to, sources, config.junctions);
-    return {
-      route, from, to,
-      unresolved: [from ? undefined : 'from', to ? undefined : 'to'].filter((value): value is 'from' | 'to' => value !== undefined),
-      metadata: routeMetadata(route, from, to),
-    };
-  });
-  return { total: routes.length, resolved: routes.filter((item) => item.unresolved.length === 0).length, unresolved: routes.filter((item) => item.unresolved.length > 0).length, routes };
+  const routes = config.routes.map((route) => resolveMepRoute(route, sources, config.junctions, config.shafts));
+  return {
+    total: routes.length,
+    resolved: routes.filter((item) => item.unresolved.length === 0).length,
+    unresolved: routes.filter((item) => item.unresolved.length > 0).length,
+    diagnostics: routes.flatMap((item) => item.diagnostics),
+    routes,
+  };
 }
 
 export function validateMepCoordination(config: MepCoordination, sources: MepEndpointSources): void {
@@ -189,6 +332,8 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
   registerSources('VRF outdoor', sources.outdoor);
   const junctionIds = new Set(config.junctions.map((junction) => junction.id));
   if (junctionIds.size !== config.junctions.length) throw new Error('Duplicate MEP junction id');
+  const shaftIds = new Set(config.shafts.map((shaft) => shaft.id));
+  if (shaftIds.size !== config.shafts.length) throw new Error('Duplicate MEP shaft id');
   const routeIds = new Set<string>();
   for (const route of config.routes) {
     if (routeIds.has(route.id)) throw new Error(`Duplicate MEP route id: ${route.id}`);
@@ -199,6 +344,9 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
     }
     const from = resolveMepEndpoint(route.from, sources, config.junctions);
     const to = resolveMepEndpoint(route.to, sources, config.junctions);
+    for (const step of route.via) {
+      if (!isMepViaCoordinate(step) && !shaftIds.has(step.shaft)) throw new Error(`MEP route ${route.id} via 步 ${step.kind} 引用未知竖井 "${step.shaft}"`);
+    }
     const requirementRoute = route.route_kind === 'requirement' || route.source_status === 'design_requirement';
     const candidateRoute = route.route_kind === 'candidate';
     if (from && to && samePlanPoint(from, to) && route.status === 'confirmed') {

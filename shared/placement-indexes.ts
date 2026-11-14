@@ -26,11 +26,23 @@
  * 疗法① 的交付闭合性断言（server/placement-closure.ts）消费的就是本函数的 `mountHosts`：
  * `assertPlacementHostClosure(..., buildPlacementIndexes({ furnishings: 全量 }).mountHosts)`。
  * 断言与被断言的数据来自同一份产物，不存在第二张宿主表。
+ *
+ * （二阶段 S1）mountHosts 的 x/z 不再读条目手写 x/z，改由
+ * `resolveFurniturePlacements`（shared/furniture-placement.ts）一次解出——墙锚/挂载/
+ * 锚点派生家具至此才进宿主索引；解不出的 id 条目进 `furnitureDiagnostics`，完整上下文
+ * 下非空即定位失败，正式消费方（verify:* 门禁）必须把它计入错误，**不得静默过滤**。
+ * 部分上下文（缺 geometry）只能解出绝对/mount/anchor 来源的家具，墙锚家具以
+ * `wall "<id>" not found` 显式失败——不回落手写 x/z。
  */
 
 import type { FurnishingsYaml } from './types.js';
 import {
-  pointMountHostIndex,
+  resolveFurniturePlacements,
+  type PlacementAnchors,
+  type WallLike,
+} from './furniture-placement.js';
+import {
+  pointMountHostIndexFromResolved,
   pointWallIndexFromElements,
   type PointMountHost,
   type PointWall,
@@ -49,29 +61,70 @@ export interface PlacementIndexes {
   pointWalls: Map<string, PointWall> | undefined;
   /** 家具宿主表；未提供 furnishings 时为 undefined（保留「无家具上下文」的既有语义）。 */
   mountHosts: Map<string, PointMountHost> | undefined;
+  /**
+   * 家具批量解算诊断（issue #98 二阶段 S1）：有 id 的家具解不出位置即逐条列入；
+   * 未提供 furnishings 时为 undefined。完整上下文（geometry + furnishings）下非空即
+   * 定位失败，正式消费方必须计入错误，不得静默过滤。
+   */
+  furnitureDiagnostics: Array<{ id: string; diagnostic: string }> | undefined;
 }
 
-/** 两项输入齐备（交付/建场主路径）：两个索引都必然产出。 */
+/** 两项输入齐备（交付/建场主路径）：两个索引与诊断都必然产出。 */
 export function buildPlacementIndexes(input: {
   geometry: PlacementGeometrySource;
   furnishings: FurnishingsYaml;
-}): { pointWalls: Map<string, PointWall>; mountHosts: Map<string, PointMountHost> };
+  anchors?: PlacementAnchors;
+}): {
+  pointWalls: Map<string, PointWall>;
+  mountHosts: Map<string, PointMountHost>;
+  furnitureDiagnostics: Array<{ id: string; diagnostic: string }>;
+};
 /** 容缺路径（lint/loader 的局部上下文）：缺哪份输入，对应索引即 undefined。 */
 export function buildPlacementIndexes(input: {
   geometry?: PlacementGeometrySource;
   furnishings?: FurnishingsYaml;
+  anchors?: PlacementAnchors;
 }): PlacementIndexes;
 export function buildPlacementIndexes(input: {
   geometry?: PlacementGeometrySource;
   furnishings?: FurnishingsYaml;
+  anchors?: PlacementAnchors;
 }): PlacementIndexes {
+  const pointWalls = input.geometry === undefined
+    ? undefined
+    : pointWallIndexFromElements(input.geometry.walls);
+  if (input.furnishings === undefined) {
+    return { pointWalls, mountHosts: undefined, furnitureDiagnostics: undefined };
+  }
+  // 入参 furnishings 必须是全量（含一期不显示的家具）：见文件头「阶段可见性与定位宿主」。
+  const items = Object.values(input.furnishings).flat();
+  // 缺 geometry 时墙段表为空：墙锚家具显式失败（`wall "<id>" not found`），绝对/mount/
+  // anchor 来源照常解算——绝对 x/z 是其自身声明来源，不是回落。
+  const wallSegments = input.geometry === undefined
+    ? new Map<string, WallLike[]>()
+    : wallSegmentsFromElements(input.geometry.walls);
+  const resolved = resolveFurniturePlacements(items, wallSegments, input.anchors);
   return {
-    pointWalls: input.geometry === undefined
-      ? undefined
-      : pointWallIndexFromElements(input.geometry.walls),
-    // 入参 furnishings 必须是全量（含一期不显示的家具）：见文件头「阶段可见性与定位宿主」。
-    mountHosts: input.furnishings === undefined
-      ? undefined
-      : pointMountHostIndex(Object.values(input.furnishings).flat()),
+    pointWalls,
+    mountHosts: pointMountHostIndexFromResolved(resolved.placements),
+    furnitureDiagnostics: resolved.diagnostics,
   };
+}
+
+/**
+ * 家具解算用墙段表（与 scripts/generate-dressing-map.ts 同一构造）：按墙 id 分组，
+ * 每墙取主线（x1/z1/x2/z2）。resolveItem 只取每墙第一段；本仓墙全部单段，
+ * 与 SceneBuilder 的 segments 展开式构造等价（等价性由 Stage 1 等价校验覆盖）。
+ */
+export function wallSegmentsFromElements(
+  walls: Iterable<PointWallElementInput>,
+): Map<string, WallLike[]> {
+  const segments = new Map<string, WallLike[]>();
+  for (const wall of walls) {
+    if (wall.id === undefined || wall.x1 === undefined || wall.z1 === undefined || wall.x2 === undefined || wall.z2 === undefined) continue;
+    const list = segments.get(wall.id) ?? [];
+    list.push({ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 });
+    segments.set(wall.id, list);
+  }
+  return segments;
 }
