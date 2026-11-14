@@ -77,6 +77,13 @@ const KNOWN_FURNITURE_COLLISIONS: ReadonlyArray<{ routeId: string; furnitureId: 
   { routeId: 'weak-main-living', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 1.37m' },
   { routeId: 'weak-gateway', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 2.46m' },
 ];
+// 包络桶家具碰撞实例（route ↔ furniture；需求/候选路线在包络近似桶里报 warning，
+// 不进 must_fix errors——只读 errors 的旧写法会漏掉它们，见 F1。穿入深度只记 note、
+// 不参与断言；两条均为 2026-11-14 实测现值。）
+const KNOWN_ENVELOPE_COLLISIONS: ReadonlyArray<{ routeId: string; furnitureId: string; note: string }> = [
+  { routeId: 'water-garden-requirement', furnitureId: 'kitchen.cabinet_run_east', note: '穿入约 1.25m；需求路线，包络桶' },
+  { routeId: 'condensate-living-dining-trunk', furnitureId: 'gbath.vanity', note: '穿入约 0.89m；需求路线，包络桶' },
+];
 // 端点被家具遮挡实例（route ↔ point ↔ furniture；与碰撞同源，柜子一动就变）。
 const KNOWN_INACCESSIBLE_ENDPOINTS: ReadonlyArray<{ routeId: string; pointId: string; furnitureId: string }> = [
   { routeId: 'strong-power-living-gateway', pointId: 'sock_gateway', furnitureId: 'ld.wall_cabinet_tall' },
@@ -134,6 +141,26 @@ function furnitureIdOfCollision(issue: { message: string }): string {
   const match = /inside furnishing (\S+);/.exec(issue.message);
   assert.ok(match, `route_furniture_collision 消息格式已变、解析不出家具 id：${issue.message}`);
   return match[1];
+}
+// 家具碰撞实例身份校验（F1：must_fix errors 与 envelope warnings 共用）。
+// ① 每条实际碰撞必须落在已知待决清单里（新实例即 fail）；② 同一实例不得重复出现——
+// 子集检查本身拦不住重复：两条重复顶满包络上限 2 时，子集与数量上限同时通过，
+// 旧实例消失、新实例出现、总数不变的静默替换就漏网了。
+function assertKnownCollisionInstances(
+  issues: ReadonlyArray<{ code: string; message: string; routeId?: string }>,
+  known: ReadonlyArray<{ routeId: string; furnitureId: string }>,
+  where: string,
+): void {
+  const keys = issues
+    .filter((issue) => issue.code === 'route_furniture_collision')
+    .map((issue) => `${issue.routeId}↔${furnitureIdOfCollision(issue)}`)
+    .sort();
+  const duplicates = keys.filter((key, index) => keys.indexOf(key) !== index);
+  assert.equal(duplicates.length, 0, `${where} 出现重复的家具碰撞实例 ${[...new Set(duplicates)].join('、')}：重复不得顶替登记与数量约束`);
+  const knownKeys = known.map((entry) => `${entry.routeId}↔${entry.furnitureId}`).sort();
+  for (const key of keys) {
+    assert.ok(knownKeys.includes(key), `${where} 出现已知待决清单外的新家具碰撞 ${key}：须显式登记并写清原因`);
+  }
 }
 function inaccessibleEndpointOf(issue: { message: string }): { pointId: string; furnitureId: string } {
   const match = /Electrical endpoint (\S+) of (\S+) lies inside furnishing (\S+);/.exec(issue.message);
@@ -232,7 +259,7 @@ const ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
   reference_constraint_uncertain: 11,
   nonphysical_route: 8,
   route_not_orthogonal: 4,
-  route_furniture_collision: 2,
+  route_furniture_collision: KNOWN_ENVELOPE_COLLISIONS.length, // 由实例清单长度派生——登记新实例即同步抬上限，不另填数（与 must_fix 侧同口径）
   supply_return_overlap: 2,
   unsupported_span: 2,
 };
@@ -397,9 +424,12 @@ test('verify:mep JSON has stable result and exit contract', () => {
     output = (error as { stdout?: string }).stdout ?? '';
   }
   const result = JSON.parse(output) as { errors: unknown[]; warnings: unknown[]; counts: { errors: number; warnings: number; routes: number }; categories: Record<string, { count: number; codes?: Array<{ code: string; count: number }> }> };
-  assert.equal(status, 1); // DEC-2026-10-17-R20：must_fix 未清零 → exit=1 属预期，清零前不得伪装成功
   assert.ok(Array.isArray(result.errors));
   assert.ok(Array.isArray(result.warnings));
+  // F4：退出码按 JSON 实际 errors 是否非空动态断言——must_fix 清零后 exit 0 属预期，
+  // 错误仍存在时必须 exit 1（生产契约：scripts/verify/mep/verify-mep-lint.ts 末尾
+  // `if (result.errors.length > 0) process.exitCode = 1`）。现值 errors 124 条，仍断言 exit 1。
+  assert.equal(status, result.errors.length > 0 ? 1 : 0, `verify:mep 退出码须与 errors 是否非空一致：errors ${result.errors.length} 条时应 exit ${result.errors.length > 0 ? 1 : 0}，实际 ${status}`);
   // Codex 二审 major：删掉钉死总数后 JSON 汇总字段 counts.errors / counts.warnings 再无人读，
   // 汇总算错会静默通过。补内部一致性断言（汇总 == 数组长度），不是钉死总数：总数随几何变仍自由，
   // 但汇总与数组不一致即 fail。
@@ -411,14 +441,8 @@ test('verify:mep JSON has stable result and exit contract', () => {
   // 总数随几何变是正常的（#116 删柜 −3、加柜 +2 即一例），不再钉死。
   const jsonErrors = result.errors as Array<{ code: string; message: string; routeId?: string }>;
   assertKnownMustFixCodes(jsonErrors, 'verify:mep');
-  const actualCollisions = jsonErrors
-    .filter((issue) => issue.code === 'route_furniture_collision')
-    .map((issue) => `${issue.routeId}↔${furnitureIdOfCollision(issue)}`)
-    .sort();
-  const knownCollisions = KNOWN_FURNITURE_COLLISIONS.map((entry) => `${entry.routeId}↔${entry.furnitureId}`).sort();
-  for (const key of actualCollisions) {
-    assert.ok(knownCollisions.includes(key), `verify:mep 出现已知待决清单外的新家具碰撞 ${key}：须显式登记并写清原因`);
-  }
+  // F1：must_fix 家具碰撞按实例登记（helper 内含去重检查，防重复顶替登记与数量约束）。
+  assertKnownCollisionInstances(jsonErrors, KNOWN_FURNITURE_COLLISIONS, 'verify:mep must_fix 家具碰撞');
   const actualInaccessible = jsonErrors
     .filter((issue) => issue.code === 'endpoint_inaccessible')
     .map((issue) => {
@@ -437,12 +461,68 @@ test('verify:mep JSON has stable result and exit contract', () => {
   assertMustFixCeilings([...errorCounts].map(([code, count]) => ({ code, count })), FULL_CONTEXT_MUST_FIX_CEILINGS, 'verify:mep');
   // 规则断言：警告代码必须是已知待决集合的子集，两桶分码不得超过上限；总数随几何变是正常的，不再钉死。
   assertKnownWarningCodes(result.warnings as Array<{ code: string }>, 'verify:mep');
+  // F1：包络桶家具碰撞同样按实例登记——需求/候选路线在包络近似桶里报 warning，不进
+  // errors；只读 errors 的旧写法会让包络实例的静默替换漏网（旧实例消失、新实例出现、
+  // 总数仍为 2 时子集与上限同时通过）。不升级为 must_fix。
+  const jsonEnvelopeCollisions = (result.warnings as Array<{ code: string; message: string; routeId?: string; category?: string }>)
+    .filter((issue) => issue.code === 'route_furniture_collision' && issue.category === 'envelope_approximation');
+  assertKnownCollisionInstances(jsonEnvelopeCollisions, KNOWN_ENVELOPE_COLLISIONS, 'verify:mep envelope 家具碰撞');
   const jsonSurveyCodes = result.categories.survey_dependent?.codes;
   assert.ok(jsonSurveyCodes, 'verify:mep JSON 须带 survey 分桶分码明细');
   assertBucketCeilings(jsonSurveyCodes, SURVEY_CEILINGS, 'verify:mep survey 分桶');
   const jsonEnvelopeCodes = result.categories.envelope_approximation?.codes;
   assert.ok(jsonEnvelopeCodes, 'verify:mep JSON 须带 envelope 分桶分码明细');
   assertBucketCeilings(jsonEnvelopeCodes, ENVELOPE_CEILINGS, 'verify:mep envelope 分桶');
+  // F2：分桶内部一致性（同 no-layout / realContext harness 的分桶核算）：每桶 count ==
+  // codes 计数之和，各桶合计 == errors + warnings 总数。不是钉死总数——现值（survey 98 /
+  // envelope 128）只作参照，分桶汇总算错即 fail。
+  for (const [bucketName, bucket] of Object.entries(result.categories)) {
+    assert.ok(bucket.codes, `verify:mep JSON 分桶 ${bucketName} 须带分码明细`);
+    assert.equal(bucket.count, bucket.codes.reduce((sum, entry) => sum + entry.count, 0), `verify:mep JSON 分桶 ${bucketName} 的 count ${bucket.count} 须等于分码计数之和`);
+  }
+  assert.equal(
+    Object.values(result.categories).reduce((sum, bucket) => sum + bucket.count, 0),
+    result.errors.length + result.warnings.length,
+    'verify:mep JSON 各桶 count 之和须等于 errors + warnings 总数',
+  );
+});
+
+// F1 永久反证：包络桶家具碰撞的“旧实例消失、新实例出现、总数不变”必须失败。
+// 只断言数量上限（2）与只读 errors 的旧写法都会放过这种替换；实例身份 + 去重才拦得住。
+// fixture 直接跑生产 lint：两条需求路线各穿入一个家具包络，均报 warning + envelope 桶。
+test('envelope furniture collision swap fails even when the count stays the same', () => {
+  const furnitureVolumes = [
+    { id: 'fix-a', type: 'cabinet', bounds: { minX: 0, maxX: 1, minY: 0, maxY: 2, minZ: 0, maxZ: 1 } },
+    { id: 'fix-b', type: 'cabinet', bounds: { minX: 2, maxX: 3, minY: 0, maxY: 2, minZ: 0, maxZ: 1 } },
+  ];
+  const requirementRoute = (id: string, x: number) => ({
+    id, layer: 'strong_power', status: 'pending', source_status: 'design_requirement',
+    diameter: 0.02, from_height: 1.0, to_height: 1.0,
+    from: { x: x + 0.1, z: 0.5, y: 1.0 }, to: { x: x + 0.9, z: 0.5, y: 1.0 },
+  });
+  const swapped = lintMepCoordination(MepCoordinationSchema.parse({ version: '1', status: 'preliminary', layers, routes: [
+    requirementRoute('req-a', 0),
+    requirementRoute('req-b', 2),
+  ] }), sources, { furnitureVolumes });
+  const envelopeCollisions = swapped.warnings.filter((issue) => issue.code === 'route_furniture_collision' && issue.category === 'envelope_approximation');
+  assert.equal(envelopeCollisions.length, 2, 'fixture 须产生两条包络桶家具碰撞');
+  // 只登记第一条、第二条是新实例：总数仍为 2，但身份检查必须失败。
+  assert.throws(
+    () => assertKnownCollisionInstances(envelopeCollisions, [{ routeId: 'req-a', furnitureId: 'fix-a' }], 'swap fixture'),
+    /新家具碰撞/,
+  );
+  // 两条都登记：通过。
+  assert.doesNotThrow(() => assertKnownCollisionInstances(envelopeCollisions, [
+    { routeId: 'req-a', furnitureId: 'fix-a' },
+    { routeId: 'req-b', furnitureId: 'fix-b' },
+  ], 'swap fixture'));
+  // 同一实例出现两次：子集与数量上限都拦不住，必须由去重断言失败。
+  assert.throws(
+    () => assertKnownCollisionInstances([envelopeCollisions[0], envelopeCollisions[0]], [{ routeId: 'req-a', furnitureId: 'fix-a' }], 'duplicate fixture'),
+    /重复/,
+  );
+  // 旧实例消失：空集通过（问题已清是好事）。
+  assert.doesNotThrow(() => assertKnownCollisionInstances([], [{ routeId: 'req-a', furnitureId: 'fix-a' }], 'cleared fixture'));
 });
 
 // ── 结构墙 / 梁碰撞规则（2026-09-01）──
@@ -730,13 +810,20 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // Codex 二审 minor：上限允许 0 条，strip[0] 无条件访问会在该警告消失时抛 TypeError。
   // 实例细节只在实例存在时查；0 条即该问题已清，是好事，不 fail。
   if (strip.length === 1) {
-    // Codex 三审 minor：净距不得钉死精确值——净距改善（仍 < 报警阈值）时消息一变即红。
-    // 只断言身份（墙 / 穿点 / 门洞）+ 净距仍在报警侧：DOOR_CLEARANCE_MIN = 0.15m（shared/mep-hvac-lint.ts）。
-    // Codex 四审 minor：生产侧按原始精度判（clearance < 0.15），消息只保留两位小数（toFixed(2)）；
-    // lint 结果不暴露未舍入值，故只能对消息解析值做舍入容差断言：净距 0.146m 显示为 0.15m，
-    // 仍是合法报警。显示值 > 0.15 即原始值 ≥ 0.155，报警本不应触发，才 fail。
-    const clearance = /on w_strip_east at \(4\.20,4\.60\) is (\d+\.\d+)m from door opening d_mb \(z 4\.65–5\.55\)/.exec(strip[0].message)?.[1];
-    assert.ok(clearance !== undefined, `门洞穿点消息格式已变、解析不出净距：${strip[0].message}`);
+    // F3：穿点坐标 / 门洞范围只解析为变量、不钉死——穿点移动、净距改善（仍 < 报警阈值）
+    // 时不再要求改测试。只断言身份（墙 / 门洞）+ 净距仍在报警侧 + 解析出的净距与解析出
+    // 的几何一致（点到门洞区间的距离，计两位小数舍入容差 0.02m）。报警阈值仍为
+    // DOOR_CLEARANCE_MIN = 0.15m（shared/mep-hvac-lint.ts），舍入容差沿用四审口径。
+    const stripMatch = /on (\S+) at \((\d+\.\d+),(\d+\.\d+)\) is (\d+\.\d+)m from door opening (\S+) \((\w+) (\d+\.\d+)–(\d+\.\d+)\)/.exec(strip[0].message);
+    assert.ok(stripMatch, `门洞穿点消息格式已变、解析不出墙/穿点/净距/门洞：${strip[0].message}`);
+    const [, stripWall, pointX, pointZ, clearance, doorId, axis, doorFrom, doorTo] = stripMatch;
+    assert.equal(stripWall, 'w_strip_east', '门洞穿点须在 w_strip_east 墙上');
+    assert.equal(doorId, 'd_mb', '门洞穿点须对应门洞 d_mb');
+    const pointCoord = axis === 'x' ? Number(pointX) : Number(pointZ);
+    const geometricClearance = pointCoord < Number(doorFrom)
+      ? Number(doorFrom) - pointCoord
+      : pointCoord > Number(doorTo) ? pointCoord - Number(doorTo) : 0;
+    assert.ok(Math.abs(Number(clearance) - geometricClearance) <= 0.02, `门洞穿点净距 ${clearance}m 与解析出的几何（穿点 ${axis}=${pointCoord}，门洞 ${doorFrom}–${doorTo}）不一致：消息口径已变`);
     assert.ok(Number(clearance) <= 0.15, `strong-ac-master 门洞穿点净距 ${clearance}m 已 > 报警阈值 0.15m（计舍入容差）：该警告应已消失或消息口径已变`);
     assert.match(strip[0].message, /过门头穿梁，需核梁底与套管/);
     assert.equal(strip[0].category, 'survey_dependent');
@@ -765,8 +852,10 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   const shearRouteIds = result.warnings.filter((i) => i.code === 'shear_wall_parallel_route').map((i) => i.routeId);
   assert.equal(shearRouteIds.includes('strong-light-master'), false, 'strong-light-master 应走 ceiling_master_ac 门头盒空腔，不得贴 w_mb_east 长距离平行');
   assert.equal(shearRouteIds.includes('strong-light-bedrooms-master-bed-north'), false, 'strong-light-bedrooms-master-bed-north 同上');
-  // 未改动的南床头联络管仍贴墙（证明上面的 false 不是"规则失效"而是"这两条真的改了"）
-  assert.equal(shearRouteIds.includes('strong-light-bedrooms-master-bed-l'), true);
+  // F4：上面两条 false 是负向保护（已消除问题不得重现），保留；“已知问题必须存在”
+  // 的正向断言已删——检测规则有效的证明在合成 fixture 用例
+  // 'long parallel runs beside a shear wall are flagged, short ones are not'，
+  // 真实配置只断言禁止新增问题，旧警告消失即通过。
   // 分桶核算：三桶之和 == error + warning 总数，且每桶 count == 各类 count 之和
   const buckets = bucketsOf(result);
   const total = result.errors.length + result.warnings.length;
