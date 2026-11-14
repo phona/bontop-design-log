@@ -11,8 +11,9 @@ import {
   validateMepCoordination,
   type MepEndpointSources,
 } from '../../shared/mep-hvac-coordination-schema.js';
-import type { ElectricalPoint, PlumbingPoint, ProjectRenderFacts, VertexLayoutYaml } from '../../shared/types.js';
-import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
+import type { ElectricalPoint, FurnishingsYaml, PlumbingPoint, ProjectRenderFacts, VertexLayoutYaml } from '../../shared/types.js';
+import { pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
 
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
@@ -21,12 +22,14 @@ const config = parseMepCoordination(readFileSync('config/mep-hvac-coordination.y
 const sources: MepEndpointSources = { electrical, plumbing, ceiling: [], hvacAnchors: [], hvacTerminals: [], outdoor: [] };
 
 /** 真实宿主墙/家具索引（与 scripts/verify/mep/verify-mep-lint.ts 同一构造）。 */
-const realPointWalls = pointWallIndexFromElements(
-  resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls,
-);
-const realMountHosts = pointMountHostIndex(
-  Object.values((parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never,
-);
+// 二阶段 S1 起家具宿主索引须走 buildPlacementIndexes 统一解算：anchor 家具无手写 x/z，
+// 直读 x/z 的 pointMountHostIndex 会把它静默排除，锚定点位随即断引用。
+const realLayout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+const realPointWalls = pointWallIndexFromElements(realLayout.walls);
+const { mountHosts: realMountHosts } = buildPlacementIndexes({
+  geometry: { walls: realLayout.walls },
+  furnishings: (parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml }).furnishings ?? {},
+});
 
 function sourceIds(): MepEndpointSources {
   return {

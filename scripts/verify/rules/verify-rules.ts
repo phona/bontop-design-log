@@ -113,13 +113,30 @@ function main(): void {
   const furnishings = catalog.getFurnishings();
   const furnitureItems: Array<{ source: string; item: Positioned }> = [];
   for (const [roomId, items] of Object.entries(furnishings)) {
-    for (const fi of items as Array<{ type: string; x?: number; z?: number }>) {
+    for (const fi of items as Array<{ id?: string; type: string; x?: number; z?: number }>) {
       if (fi.x !== undefined && fi.z !== undefined) {
         furnitureItems.push({
           source: 'furniture',
           item: { id: `${roomId}/${fi.type}`, room: roomId, x: fi.x, z: fi.z, type: fi.type },
         });
+        continue;
       }
+      // 无稳定 id 的条目（count-only/type-only）本来就没有平面几何，沿用旧行为跳过
+      // （与 S1 无来源规则一致：只有带 id 的条目才必须有位置）。
+      if (fi.id === undefined) continue;
+      // 有 id 却无声明位置：取共享解算结果（与 clearance 循环、3D/DXF/点位解算同源）；
+      // 解不出即 error 显形，禁止静默退出 bounds/existence/proximity。根因：直读声明
+      // x/z 会把 anchor/墙锚家具排除出本清单（ld.sofa_3seat 等三件即因此退出）。
+      const host = mountHosts.get(fi.id);
+      if (host === undefined || host.x === undefined || host.z === undefined) {
+        const diag = rulesIndexes.furnitureDiagnostics.find((d) => d.id === fi.id)?.diagnostic;
+        report('error', `[furniture] ${roomId}/${fi.type} (${fi.id}): 定位解算失败（${diag ?? '家具未解出位置'}），bounds/existence/proximity 校验无法执行`);
+        continue;
+      }
+      furnitureItems.push({
+        source: 'furniture',
+        item: { id: `${roomId}/${fi.type}`, room: roomId, x: host.x, z: host.z, type: fi.type },
+      });
     }
   }
 
@@ -331,9 +348,18 @@ function main(): void {
           .filter((f) => !rule.b.same_room || f.item.room === a.room)
           .map((f) => f.item);
       } else if (rule.b.file === 'ceiling') {
-        bItems = ceiling
-          .filter((c) => c.x !== undefined && c.z !== undefined && (!rule.b.match?.type || c.type === rule.b.match.type))
-          .filter((c) => !rule.b.same_room || c.room === a.room)
+        const matched = ceiling
+          .filter((c) => !rule.b.match?.type || c.type === rule.b.match.type)
+          .filter((c) => !rule.b.same_room || c.room === a.room);
+        // 匹配上却无平面位置的吊顶条目不得静默过滤：位置缺失是数据缺陷，显形为 error
+        // （与点位 [placement]、家具 [furniture] 的 fail-closed 口径一致）。
+        for (const c of matched) {
+          if (c.x === undefined || c.z === undefined) {
+            report('error', `[proximity] ${rule.id}: ceiling/${c.id} 缺少平面位置，无法参与邻近校验`);
+          }
+        }
+        bItems = matched
+          .filter((c) => c.x !== undefined && c.z !== undefined)
           .map((c) => ({ id: c.id, room: c.room, x: c.x!, z: c.z! }));
       } else if (rule.b.file === 'electrical') {
         bItems = electrical.filter((e) => matchItem(e, rule.b.match!));
@@ -352,6 +378,10 @@ function main(): void {
   }
 
   // === clearance check ===
+  // （二阶段 Stage 2）家具位置一律取共享解算结果（上文 buildPlacementIndexes 产物，
+  // 与 3D/DXF/点位解算同源），不再直读声明 x/z：anchor/墙锚家具没有声明 x/z，直读
+  // 会把它们静默排除出通道校验（ld.sofa_3seat 即因此退出 0.50m 检查）。绝对家具
+  // 仍走声明值，数学/阈值/级别与修复前一致。
   for (const [roomId, items] of Object.entries(furnishings)) {
     const room = roomMap.get(roomId);
     if (!room) continue;
@@ -360,17 +390,32 @@ function main(): void {
     const roomMinZ = room.z - room.depth / 2;
     const roomMaxZ = room.z + room.depth / 2;
 
-    for (const fi of items as Array<{ type: string; x?: number; z?: number; rotation?: number }>) {
-      if (fi.x === undefined || fi.z === undefined) continue;
+    for (const fi of items as Array<{ id?: string; type: string; x?: number; z?: number; rotation?: number }>) {
       if (!rules.clearance.furniture_types.includes(fi.type)) continue;
+      // 位置来源：绝对声明优先（与修复前一致）；否则取共享解算的宿主位置。
+      let px = fi.x;
+      let pz = fi.z;
+      if (px === undefined || pz === undefined) {
+        // 无稳定 id 的条目（count-only/type-only）本来就没有平面几何，沿用旧行为跳过；
+        // 有 id 却解不出位置是定位失败，显形为 error，禁止静默跳过（S1 无静默过滤规则）。
+        if (fi.id === undefined) continue;
+        const host = mountHosts.get(fi.id);
+        if (host === undefined || host.x === undefined || host.z === undefined) {
+          const diag = rulesIndexes.furnitureDiagnostics.find((d) => d.id === fi.id)?.diagnostic;
+          report('error', `[clearance] ${roomId}/${fi.type} (${fi.id}): 定位解算失败（${diag ?? '家具未解出位置'}），通道校验无法执行`);
+          continue;
+        }
+        px = host.x;
+        pz = host.z;
+      }
       const dims = FURNITURE_DIMS[fi.type];
       if (!dims) continue;
       const rot = fi.rotation ?? 0;
       const quarter = Math.round(rot / 90) % 2 !== 0;
       const w = quarter ? dims.depth : dims.width;
       const d = quarter ? dims.width : dims.depth;
-      const fMinX = fi.x - w / 2, fMaxX = fi.x + w / 2;
-      const fMinZ = fi.z - d / 2, fMaxZ = fi.z + d / 2;
+      const fMinX = px - w / 2, fMaxX = px + w / 2;
+      const fMinZ = pz - d / 2, fMaxZ = pz + d / 2;
 
       const gapWest = fMinX - roomMinX;
       const gapEast = roomMaxX - fMaxX;

@@ -13,8 +13,9 @@ import {
   type MepJunction,
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { lintMepCoordination } from '../../shared/mep-hvac-lint.js';
-import type { ProjectRenderFacts, VertexLayoutYaml } from '../../shared/types.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import type { FurnishingsYaml, ProjectRenderFacts, VertexLayoutYaml } from '../../shared/types.js';
+import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
 
 const layerNames = ['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'] as const;
@@ -127,10 +128,17 @@ test('R25 project branches meet one declared wye and meet their declared minimum
   const project = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
   // 宿主墙/家具索引（issue #98 S1/S3）：与 scripts/verify/mep/verify-mep-lint.ts 同一构造；
   // S3 起沿墙点位不再声明绝对 x/z，端点解析必须带索引。
+  // 二阶段 S1 起家具宿主索引须走 buildPlacementIndexes 统一解算：anchor 家具无手写 x/z，
+  // 直读 x/z 的 pointMountHostIndex 会把它静默排除，锚定点位随即断引用。
+  const r25Layout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+  const { mountHosts: r25MountHosts } = buildPlacementIndexes({
+    geometry: { walls: r25Layout.walls },
+    furnishings: (parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml }).furnishings ?? {},
+  });
   const sources = endpointSourcesFromFacts(
     { electrical, plumbing, ceiling, hvac },
-    pointWallIndexFromElements(resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls),
-    pointMountHostIndex(Object.values((parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> }).furnishings ?? {}).flat() as never),
+    pointWallIndexFromElements(r25Layout.walls),
+    r25MountHosts,
   );
   validateMepCoordination(project, sources);
   const misalignedAnchor = {
