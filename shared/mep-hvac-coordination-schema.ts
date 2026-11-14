@@ -398,6 +398,25 @@ export function resolveMepViaSteps(
 }
 
 /**
+ * 坡度派生终端标高（统一出口与 facts 门禁共用，单一实现——PR #233 blocking 修复）：
+ * to_height 未声明且末步为 slope_run 时，终端标高取末步落点高度
+ * （slope_run 末步已校验平面重合 to 端点——终端标高由坡度派生，不读端点 y；
+ * hvac terminal 的 resolveMepEndpoint 本就不回 y，缺这一步终端点会无高度，
+ * facts 门禁的 yOf 会静默回退到层高 2.65m，与统一出口分叉）。
+ */
+export function derivedSlopeRunToHeight(
+  route: MepRoute,
+  viaPoints: Array<{ x: number; y?: number; z: number }>,
+): number | undefined {
+  if (route.to_height !== undefined || route.via.length === 0 || viaPoints.length === 0) return undefined;
+  const lastStep = route.via[route.via.length - 1];
+  if (!isMepViaCoordinate(lastStep) && lastStep.kind === 'slope_run') {
+    return viaPoints[viaPoints.length - 1].y;
+  }
+  return undefined;
+}
+
+/**
  * 单条路由统一解算出口（issue #98 二阶段 S1）：端点 + via 步 + 诊断一次解出。
  * 关系型 via 的任一步失败即整条路由 fail-closed（unresolved 含 'via'，points/viaPoints 为 []）。
  */
@@ -438,15 +457,8 @@ export function resolveMepRoute(
     viaPoints = route.via.filter(isMepViaCoordinate).map((step) => ({ x: step.x, z: step.z, ...(step.y !== undefined ? { y: step.y } : {}) }));
   }
   // 终端标高：to_height 声明优先；缺省且末步为 slope_run 时取末步落点高度
-  // （slope_run 末步已校验平面重合 to 端点——终端标高由坡度派生，不读端点 y；
-  // hvac terminal 的 resolveMepEndpoint 本就不回 y，缺这一步终端点会无高度）。
-  let derivedToHeight: number | undefined;
-  if (route.to_height === undefined && route.via.length > 0) {
-    const lastStep = route.via[route.via.length - 1];
-    if (!isMepViaCoordinate(lastStep) && lastStep.kind === 'slope_run' && viaPoints.length > 0) {
-      derivedToHeight = viaPoints[viaPoints.length - 1].y;
-    }
-  }
+  // （见 derivedSlopeRunToHeight：hvac terminal 的 resolveMepEndpoint 本就不回 y）。
+  const derivedToHeight = derivedSlopeRunToHeight(route, viaPoints);
   const points = unresolved.length > 0 ? [] : [
     ...(from ? [{ ...from, y: route.from_height ?? from.y }] : []),
     ...viaPoints,
