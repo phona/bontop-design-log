@@ -42,10 +42,7 @@
 - id: sock_living_sofa_l
   room: living_dining
   type: floor_socket
-  absolute: true
-  host_intent: "ld.sofa_3seat 北臂外侧地插（宿主未 frozen，S4 候选转 mount）"
-  x: 11.0
-  z: 6.05
+  anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: 0, z: -1.65 } }
   height: 0.02
   count: 1
   note: "沙发北臂旁地插: 手机充电+落地灯（DEC-017 沙发不靠墙，改地插；DEC-029 沙发南移后原位 z=5.35 已脱离北臂（现北臂 z≈6.3），随移至臂外侧 0.25m，与南臂地插 z=9.35 口径一致）；状态依据：DEC-017/DEC-029 沙发旁地插，归入 topology 回路 ordinary_power_living→inferred；随沙发臂外侧定位为设计值未实测"
@@ -54,10 +51,7 @@
 - id: sock_living_sofa_r
   room: living_dining
   type: floor_socket
-  absolute: true
-  host_intent: "ld.sofa_3seat 南臂外侧地插（随沙发南移，S4 候选）"
-  x: 11.0
-  z: 9.35
+  anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: 0, z: 1.65 } }
   height: 0.02
   count: 1
   note: "沙发南臂旁地插: 手机充电+落地灯（DEC-017 沙发不靠墙，改地插；DEC-029 随沙发南移至 9.35）；状态依据：DEC-017/DEC-029 沙发旁地插，归入 topology 回路 ordinary_power_living→inferred；随沙发南移定位为设计值未实测"

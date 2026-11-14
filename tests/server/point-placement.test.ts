@@ -22,7 +22,6 @@ import { load as parseYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { parseElectricalPoints, parseElectricalTopology, parsePlumbingPoints } from '../../shared/project-render-facts-schema.js';
 import {
-  pointMountHostIndex,
   pointWallIndexFromElements,
   resolvePointPlacement,
   resolvePointPlacementInWalls,
@@ -31,6 +30,7 @@ import {
   type PointWall,
   type PointWallSegment,
 } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { WALL_THICKNESS } from '../../shared/furniture-placement.js';
 import type { PlacementItem } from '../../shared/furniture-placement.js';
 import type { ElectricalPoint, PlumbingPoint, VertexLayoutYaml } from '../../shared/types.js';
@@ -40,8 +40,13 @@ const electrical = parseElectricalPoints(readFileSync('config/electrical.yaml', 
 const plumbing = parsePlumbingPoints(readFileSync('config/plumbing.yaml', 'utf-8'));
 const pointWalls = pointWallIndexFromElements(layout.walls);
 // mount 宿主索引（issue #98 S2）：与生产入口（DXF/MEP/lighting-fixtures/server loader）同一构造。
+// 二阶段 S1 起须走 buildPlacementIndexes 统一解算：anchor 家具无手写 x/z，直读 x/z 的
+// pointMountHostIndex 会把它静默排除，锚定点位随即断引用。
 const house = parseYaml(readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: Record<string, PlacementItem[]> };
-const mountHosts = pointMountHostIndex(Object.values(house.furnishings ?? {}).flat());
+const { mountHosts } = buildPlacementIndexes({
+  geometry: { walls: layout.walls },
+  furnishings: house.furnishings ?? {},
+});
 // 电气拓扑（issue #98 S3）：回路图/归属层的输入——成员、面板源点位、控制开关三类点位。
 const topology = parseElectricalTopology(readFileSync('config/electrical-topology.yaml', 'utf-8'), electrical);
 

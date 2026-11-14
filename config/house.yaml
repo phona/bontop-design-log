@@ -513,10 +513,10 @@ furnishings:
     - { type: wall_cabinet_tall, id: ld.wall_cabinet_tall, x: 7.375, z: 6.225, rotation: 270 } # 通顶柜 z=5.55-6.90，面朝东侧客厅；浅 PET+局部开放格
     - { type: tv_wall_low, id: ld.tv_wall_low, x: 7.48, z: 8.00, rotation: 270 }         # 2.1m 深胡桃带细腿落地低柜，面朝东侧客厅；沿 w_st_east +x 最小脱离 slab 约5mm，z/电视轴线保持
     - { type: tv_65, id: ld.tv_65, x: 7.42, z: 8.00, rotation: 270 }               # 65寸电视居中挂墙，面朝东侧沙发
-    - { type: floor_lamp, id: ld.floor_lamp, x: 11.0, z: 9.35, rotation: 0 }    # 沙发南臂地插位（sock_living_sofa_r@9.35），随沙发南移
+    - { type: floor_lamp, id: ld.floor_lamp, anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: 0, z: 1.65 } }, rotation: 0 } # 沙发南臂地插位（sock_living_sofa_r@9.35），anchor 相对沙发 (0,+1.65)
     - { type: plant_fiddle, id: ld.plant_fiddle, x: 7.93, z: 9.18, rotation: 270 } # 琴叶榕：电视柜东移后最小联动东移 30mm，保持南侧玻璃净距与落地摆放
-    - { type: sofa_3seat, id: ld.sofa_3seat, x: 11.00, z: 7.70, rotation: 270 } # 面朝西看电视（与电视同轴南移 0.7）
-    - { type: coffee_table, id: ld.coffee_table, x: 9.70, z: 7.70, rotation: 0 }  # 沙发与电视柜之间，随沙发南移
+    - { type: sofa_3seat, id: ld.sofa_3seat, anchor: { source: furniture, id: ld.tv_65, offset: { x: 3.58, z: -0.30 } }, rotation: 270 } # 面朝西看电视；偏移 (+3.58,-0.30) 为未裁定设计值（R6：设计值还是残留待裁），基准 ld.tv_65 不迁移
+    - { type: coffee_table, id: ld.coffee_table, anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: -1.30, z: 0 } }, rotation: 0 }  # 沙发与电视柜之间，anchor 相对沙发 (-1.30,0)
     # 门内右手定制半高柜：从门内向客厅延伸，柜高 1.5m；玄关侧封闭，餐厅侧开放，柜顶以上可见餐厅。
     # footprint x=11.065-11.415、z=3.35-5.35；北缘脱黑块南墙面 z=3.25 净空 0.10m；柜东缘 11.415 距新门洞西缘 11.54 留 0.125m，与旧口径一致（门扇内开进北侧入户花园，柜在墙南侧亦不挡扫掠），东侧主通道 1.725m。
     - { type: entry_half_height_cabinet, id: ld.entry_half_height_cabinet, x: 11.24, z: 4.35, rotation: 90 }  # 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随南墙南移 0.10m、西移 0.26m 避新门洞西缘（东缘距门洞 0.125m）；2026-10-26 DEC-2026-10-26-R01（用户批准）：再南移 0.25m 避黑块南墙（原 4.10 北端压入块体 0.15m，与 DEC 名义足迹口径一致）

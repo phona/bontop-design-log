@@ -12,11 +12,12 @@ import {
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { lintMepCoordination } from '../../shared/mep-hvac-lint.js';
 import { ElectricalPointSchema, parseCeilingZones, parseElectricalPoints, parsePlumbingPoints, parseProjectHvacFacts, validateProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { buildHvacBuilderSources, buildHvacEntityDescriptors, expectedHvacExportIds } from '../../shared/render/HvacBuilder.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import type { CeilingZone, ElectricalPoint, HvacDiagram, HvacTerminal, ProjectRenderFacts } from '../../shared/types.js';
+import type { CeilingZone, ElectricalPoint, FurnishingsYaml, HvacDiagram, HvacTerminal, ProjectRenderFacts } from '../../shared/types.js';
 
 /**
  * issue #98 第五阶段 S1（暖通机制层）探针固化 + E8 校验；P2 段已按 S2 改写（M4 语义反转）。
@@ -35,11 +36,12 @@ const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')
 const plan = hvacFacts.plans[0];
 const diagram = plan.diagram;
 const mepConfig = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
-const pointWalls = pointWallIndexFromElements(
-  resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0]).walls,
-);
-const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
-const mountHosts = pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never);
+const realLayout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0]);
+const pointWalls = pointWallIndexFromElements(realLayout.walls);
+const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
+// 二阶段 S1 起家具宿主索引须走 buildPlacementIndexes 统一解算：anchor 家具无手写 x/z，
+// 直读 x/z 的 pointMountHostIndex 会把它静默排除，锚定点位随即断引用。
+const { mountHosts } = buildPlacementIndexes({ geometry: { walls: realLayout.walls }, furnishings: house.furnishings ?? {} });
 
 function sourcesOf(hvac: ProjectRenderFacts['hvac'] = hvacFacts, points: ElectricalPoint[] = electrical): MepEndpointSources {
   return endpointSourcesFromFacts({ electrical: points, plumbing, ceiling, hvac }, pointWalls, mountHosts);

@@ -10,7 +10,8 @@ import { endpointSourcesFromFacts, MepCoordinationSchema, parseMepCoordination }
 import { lintMepCoordination, type MepLintLayoutContext } from '../../shared/mep-hvac-lint.js';
 import type { VertexLayoutYaml } from '../../shared/types.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
@@ -94,10 +95,16 @@ describe('render facts API', () => {
     // （server/routes.ts：catalog.getWalls() + getFurnishings()）。S3 起沿墙点位不再声明
     // 绝对 x/z，两边都必须带索引，否则直调与 API 的解析输入不同、计数对不上。
     const catalog = ProjectCatalog.load('.');
+    // 二阶段 S1 起家具宿主索引须走 buildPlacementIndexes 统一解算：anchor 家具无手写 x/z，
+    // 直读 x/z 的 pointMountHostIndex 会把它静默排除，锚定点位随即断引用。
+    const { mountHosts: directMountHosts } = buildPlacementIndexes({
+      geometry: { walls: catalog.getWalls() },
+      furnishings: catalog.getFurnishings(),
+    });
     const directSources = endpointSourcesFromFacts(
       testFacts,
       pointWallIndexFromElements(catalog.getWalls()),
-      pointMountHostIndex(Object.values(catalog.getFurnishings()).flat()),
+      directMountHosts,
     );
     const direct = lintMepCoordination(mepConfig, directSources, context);
     const app = createApp(() => testFacts, undefined, () => context);

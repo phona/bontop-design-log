@@ -6,9 +6,10 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { endpointSourcesFromFacts, MepCoordinationSchema, parseMepCoordination, resolveMepRoutes } from '../../shared/mep-hvac-coordination-schema.js';
 import { lintMepCoordination, type MepLintLayoutContext } from '../../shared/mep-hvac-lint.js';
-import type { ProjectRenderFacts, ResolvedLayout, VertexLayoutYaml } from '../../shared/types.js';
+import type { FurnishingsYaml, ProjectRenderFacts, ResolvedLayout, VertexLayoutYaml } from '../../shared/types.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ProjectRenderFacts['electrical'];
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as ProjectRenderFacts['plumbing'];
@@ -19,11 +20,17 @@ const realLayout = resolveLayout(parseYaml(readFileSync('config/layout/model-geo
 const config = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
 // 点位宿主墙/家具索引（issue #98 S1/S3）：与 scripts/verify/mep/verify-mep-lint.ts 同一构造。
 // S3 起沿墙/挂载点位不再声明绝对 x/z，不传索引则路线端点解析不出。
-const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
+// 二阶段 S1 起家具宿主索引须走 buildPlacementIndexes 统一解算：anchor 家具无手写 x/z，
+// 直读 x/z 的 pointMountHostIndex 会把它静默排除，锚定点位随即断引用。
+const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
+const { mountHosts: realMountHosts } = buildPlacementIndexes({
+  geometry: { walls: realLayout.walls },
+  furnishings: house.furnishings ?? {},
+});
 const sources = endpointSourcesFromFacts(
   { electrical, plumbing, ceiling, hvac },
   pointWallIndexFromElements(realLayout.walls),
-  pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never),
+  realMountHosts,
 );
 const layers = Object.fromEntries(['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'].map((id) => [id, { label: id, color: '#fff', height: 2 }])) as ProjectRenderFacts extends never ? never : typeof config.layers;
 

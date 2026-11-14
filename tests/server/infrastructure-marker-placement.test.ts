@@ -124,6 +124,8 @@ function realSceneMarkers(): { walls: WallEntry[]; markers: MarkerEntry[] } {
       plumbing: inputs.plumbing,
       // 与 SceneBuilder 同一份 pointWalls（index.pointWalls 即其构造源：折线段 + line_datum）。
       pointWalls: scene.index.pointWalls,
+      // 与 SceneBuilder 同一份 mountHosts：anchor 点位无它即抛错（issue #98 二阶段 S1）。
+      mountHosts: scene.index.mountHosts,
     });
     realScene = { walls: wallEntries(scene.index.wallMeshes), markers: markerEntries(built.objects) };
   }

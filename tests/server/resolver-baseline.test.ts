@@ -485,7 +485,9 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     assertXZ(dock.placement, { x: 6.9235, z: 3.86 }, 'robot_dock 解算结果');
 
     // 绝对声明：解算器不得用任何派生量覆盖声明的 x/z。
-    for (const id of ['light_living_dome', 'sock_living_sofa_l', 'drain_gbath_shower']) {
+    // sock_living_sofa_l 已不在此列：二阶段 Stage 2 起它改为 anchor 相对定位（见
+    // tests/server/stage2-sofa-move.test.ts），不再是绝对点位；此处以 sock_living_table 补位。
+    for (const id of ['light_living_dome', 'sock_living_table', 'drain_gbath_shower']) {
       const point = pointById(id);
       assert.ok(point.x !== undefined && point.z !== undefined, `${id}: 应为绝对点位`);
       const { placement, diagnostic } = resolvePoint(point, baseMountHosts);

@@ -9,9 +9,10 @@ import {
   resolveMepRoutes,
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { computeMepTakeoff, parseWireSizeMm2, pricedCircuitLength, unionPlanLength, type MepTakeoffRules, type TakeoffCircuit } from '../../shared/mep-takeoff.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import type { VertexLayoutYaml } from '../../shared/types.js';
+import type { FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
 
 /**
  * 水电子系统算量（Phase 0）。四道防线：
@@ -35,10 +36,13 @@ const coordination = parseMepCoordination(readFileSync('config/mep-hvac-coordina
 
 // 点位宿主墙/家具索引（issue #98 S1/S3）：与 scripts/project/mep-takeoff.ts 同一构造。
 // S3 起沿墙/挂载点位不再声明绝对 x/z，不传索引则 68 个路线端点解析不出。
+// 二阶段 S1 起家具宿主索引须走 buildPlacementIndexes 统一解算：anchor 家具无手写 x/z，
+// 直读 x/z 的 pointMountHostIndex 会把它静默排除，锚定点位随即断引用。
 const geometry = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf-8')) as VertexLayoutYaml;
-const pointWalls = pointWallIndexFromElements(resolveLayout(geometry).walls);
-const houseForMountHosts = parseYaml(readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
-const mountHosts = pointMountHostIndex(Object.values(houseForMountHosts.furnishings ?? {}).flat() as never);
+const layout = resolveLayout(geometry);
+const pointWalls = pointWallIndexFromElements(layout.walls);
+const houseForMountHosts = parseYaml(readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: FurnishingsYaml };
+const { mountHosts } = buildPlacementIndexes({ geometry: { walls: layout.walls }, furnishings: houseForMountHosts.furnishings ?? {} });
 const sources = endpointSourcesFromFacts({
   electrical: electrical as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'],
   plumbing: plumbing as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'],
