@@ -1,8 +1,8 @@
 /**
  * Issue #98 二阶段 Stage 2 永久回归测试：沙发南移 0.20m 实验（§10.5 A1–A3、A7b）。
  *
- * 真实配置 + 内存改动：只改 `ld.sofa_3seat` 的 anchor offset dz 一处
- * （−0.30 → −0.10），其余 YAML 不动；实验后不写盘。
+ * 真实配置 + 内存改动：只改 `ld.sofa_3seat` 的 anchor offset dz 一处（+0.20m），
+ * 其余 YAML 不动；起点从当前配置读取，不钉 R6 待裁定值；实验后不写盘。
  * 断言全部是相对量（位移差），不钉绝对坐标——日后家具再移动不改本测试。
  * MEP 路由端到端（A4/A5）留待 Stage 3，本测试不覆盖路由。
  */
@@ -91,11 +91,12 @@ test('Stage 2：沙发南移 0.20m 只改一处声明，依赖自动跟随，固
     assert.equal((pt as any).z, undefined, `${pt.id} 不得再带绝对 z`);
   }
 
-  // A1：只改一处声明——沙发 anchor offset dz −0.30 → −0.10。
+  // A1：只改一处声明——沙发 anchor offset dz +0.20m（起点从当前配置读取，不钉 R6 待裁定值）。
   const moved = JSON.parse(JSON.stringify(furnishings)) as FurnishingsYaml;
   const movedSofa = moved.living_dining.find((i) => i.id === 'ld.sofa_3seat')!;
-  assert.equal(movedSofa.anchor?.offset?.z, -0.30, '实验前置：沙发 offset dz 须为 −0.30');
-  movedSofa.anchor!.offset!.z = -0.10;
+  const originalZ = movedSofa.anchor?.offset?.z;
+  assert.ok(typeof originalZ === 'number', '实验前置：沙发须有 anchor offset dz');
+  movedSofa.anchor!.offset!.z = originalZ + MOVE;
   const changed = leafDiffPaths(furnishings, moved);
   const sofaIndex = furnishings.living_dining.findIndex((i) => i.id === 'ld.sofa_3seat');
   assert.deepEqual(changed, [`living_dining.${sofaIndex}.anchor.offset.z`], '实验只能改动一处声明');
