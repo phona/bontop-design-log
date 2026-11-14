@@ -120,7 +120,7 @@ test('insulation changes both collision and ceiling-finish envelopes', () => {
   assert.equal(raisedPipe.warnings.some((issue) => issue.code === 'ceiling_clearance_unverified'), false);
 });
 
-test('R25 project branches meet one declared wye and meet their declared minimum slopes', () => {
+test('R25 all-pump branches run 2.70m + 1% slope to the fixed guest-bath terminal (wye superseded)', () => {
   const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ProjectRenderFacts['electrical'];
   const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as ProjectRenderFacts['plumbing'];
   const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'];
@@ -141,35 +141,68 @@ test('R25 project branches meet one declared wye and meet their declared minimum
     r25MountHosts,
   );
   validateMepCoordination(project, sources);
-  const misalignedAnchor = {
-    ...sources,
-    hvacAnchors: sources.hvacAnchors.map((anchor) => anchor.id === 'condensate_living_dining_merge'
-      ? { ...anchor, position: { ...anchor.position!, x: anchor.position!.x + 0.01 } }
-      : anchor),
-  };
-  assert.throws(() => validateMepCoordination(project, misalignedAnchor), /does not match its HVAC anchor/);
+  // 2026-11-14 全带泵重画：R25 显式汇流节点 condensate_living_dining_merge 已删除，
+  // 五条支管改直达客卫固定候选点 (6.70,3.70)；MEP 侧不再有任何 junction。
+  assert.equal(project.junctions.length, 0);
+  const branchIds = ['condensate-master', 'condensate-living', 'condensate-dining', 'condensate-parent', 'condensate-child'];
+  const resolved = resolveMepRoutes(project, sources).routes;
+  for (const id of branchIds) {
+    const entry = resolved.find((item) => item.route.id === id)!;
+    assert.equal(entry.unresolved.length, 0, `${id} must resolve`);
+    const route = entry.route;
+    assert.equal(route.to, 'condensate_living_candidate');
+    assert.equal(route.from_height, 2.70);
+    assert.equal(route.slope, 0.01);
+    assert.equal(route.route_kind, 'candidate');
+    assert.ok(route.method?.includes('pump'));
+    assert.equal(route.to_height, undefined, `${id} must not declare to_height: the terminal height is derived from the last slope_run`);
+    const points = entry.points;
+    assert.equal(points[0].y, 2.70, `${id} starts at the pump-lift top`);
+    const terminal = points[points.length - 1];
+    assert.equal(terminal.x, 6.70);
+    assert.equal(terminal.z, 3.70);
+    for (let index = 1; index < points.length; index += 1) {
+      const a = points[index - 1], b = points[index];
+      const horizontal = Math.hypot(b.x - a.x, b.z - a.z);
+      if (horizontal < 1e-6) continue;
+      const fall = a.y! - b.y!;
+      assert.ok(fall >= 0, `${id} segment ${index} rises`);
+      assert.ok(Math.abs(fall - 0.01 * horizontal) <= 0.001, `${id} segment ${index} is not a 1% slope (fall ${fall} over ${horizontal})`);
+      assert.ok(Math.abs(b.x - a.x) < 1e-9 || Math.abs(b.z - a.z) < 1e-9, `${id} segment ${index} is not orthogonal in plan`);
+    }
+  }
+  // DN32 主管：from 由节点 id 改内联坐标，解出折线与旧几何逐点相同，仍按现路由作废。
+  const trunk = resolved.find((item) => item.route.id === 'condensate-living-dining-trunk')!;
+  assert.deepEqual(trunk.route.from, { x: 6.8, z: 3.7 });
+  assert.deepEqual(trunk.points.map((p) => [p.x, p.y, p.z]), [[6.8, 2.435, 3.7], [6.8, 0.101, 3.7], [6.7, 0.1, 3.7]]);
+  // 东南客房（condensate-study）终端待定，本批不动：仍为旧绝对重力路由。
+  const study = resolved.find((item) => item.route.id === 'condensate-study')!;
+  assert.equal(study.route.to, 'condensate_study_candidate');
+
   const targetIds = new Set([
-    'condensate-living', 'condensate-dining', 'condensate-living-dining-trunk',
+    ...branchIds, 'condensate-living-dining-trunk',
     'strong-main', 'supply-air-living-bottom', 'return-air-living',
     'supply-air-dining-bottom', 'return-air-dining',
   ]);
   const subset = { ...project, routes: project.routes.filter((route) => targetIds.has(route.id)) };
   const result = lintMepCoordination(subset, sources, { ceiling });
-  assert.equal([...result.errors, ...result.warnings].some((issue) => issue.code === 'route_overlap'
-    && ((issue.routeId !== undefined && targetIds.has(issue.routeId))
-      || (issue.relatedRouteId !== undefined && targetIds.has(issue.relatedRouteId)))), false);
-  assert.ok(result.warnings.some((issue) => issue.code === 'route_overlap_declared_trunk' && issue.message.includes('condensate_living_dining_merge')));
-
-  const resolved = resolveMepRoutes(project, sources).routes;
-  for (const id of ['condensate-living', 'condensate-dining']) {
-    const entry = resolved.find((item) => item.route.id === id)!;
-    // （二阶段 S1）折线取统一出口的 points（端点标高已含 from_height/to_height 覆盖）。
-    const points = entry.points;
-    for (let index = 1; index < points.length; index += 1) {
-      const a = points[index - 1], b = points[index];
-      const horizontal = Math.hypot(b.x - a.x, b.z - a.z);
-      if (horizontal < 1e-6) continue;
-      assert.ok((a.y! - b.y!) + 0.001 >= (entry.route.slope ?? 0) * horizontal, `${id} segment ${index} falls below its declared minimum`);
-    }
-  }
+  assert.equal(result.warnings.some((issue) => issue.code === 'route_overlap_declared_trunk'), false);
+  const overlaps = [...result.errors, ...result.warnings].filter((issue) => issue.code === 'route_overlap');
+  // 五条支管共用一个终端点：10 对中有 9 对在终端区重叠（客厅–餐厅到点标高差 0.0471m，
+  // 超出包络半径和 0.037m，逃过）；其余子集内不得再有任何 route_overlap。
+  const pairKey = (issue: { routeId?: string; relatedRouteId?: string }) => [issue.routeId, issue.relatedRouteId].sort().join('↔');
+  const overlapPairs = [...new Set(overlaps.map(pairKey))].sort();
+  assert.equal(overlaps.length, 9);
+  assert.ok(overlaps.every((issue) => issue.level === 'warning'));
+  assert.deepEqual(overlapPairs, [
+    'condensate-child↔condensate-dining',
+    'condensate-child↔condensate-living',
+    'condensate-child↔condensate-master',
+    'condensate-child↔condensate-parent',
+    'condensate-dining↔condensate-master',
+    'condensate-dining↔condensate-parent',
+    'condensate-living↔condensate-master',
+    'condensate-living↔condensate-parent',
+    'condensate-master↔condensate-parent',
+  ]);
 });

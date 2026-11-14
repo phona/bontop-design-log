@@ -155,25 +155,34 @@ export function createApiRouter(deps: ApiDeps): Router {
   const router = Router();
   const phaseScopes = loadPhaseScopes();
   /** 主卫冷凝链穿墙锚点（issue #98 PR-10；第五阶段 S3 改派生）：MEP condensate-master
-   * @w_mbath_south。S3 起该 at 已删（可派生 45 条之一），锚点由路线几何派生——与
-   * lint/takeoff 同一算法（deriveMepPenetrationPoint）、同一端点解算源；派生失败 → 无锚，
-   * 下游链条显形（fail-closed）。
+   * 的首条 penetration 声明墙。2026-11-14 全带泵重画：穿墙由 w_mbath_south
+   * 改 w_strip_east（旧路由整段作废），墙 id 不再硬编码——取路由 penetration
+   * 声明的首条墙（本路由仅 1 条），由路线几何派生——与 lint/takeoff 同一算法
+   * （deriveMepPenetrationPoint）、同一端点解算源；派生失败 → 无锚，
+   * 下游链条显形（fail-closed）。三件链家具已随 #116 删除、链随本轮重画退役，
+   * 锚点现为路由首条穿墙声明的派生点（仍随 /api/project 下发，供场景建场用）。
    * 注意：每次调用重读并解析 MEP / 电气 / 给排水 / 吊顶 / HVAC 配置，**读取可能抛错**
    * （配置文件暂时不可解析）。调用点必须隔离异常（/api/project 的 try/catch），不得再内联
    * 在响应对象字面量里——一次读取失败不该打掉整个项目预览。 */
-  const defaultCondensateMasterPenetration = (): { x: number; z: number } | undefined => deriveMepPenetrationAt(
-    loadMepCoordinationConfig().routes.find((route) => route.id === 'condensate-master'),
-    'w_mbath_south',
-    {
-      sources: endpointSourcesFromFacts({
-        electrical: loadElectricalConfig(),
-        plumbing: loadPlumbingConfig(),
-        ceiling: loadCeilingConfig(),
-        hvac: parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')),
-      }),
-      walls: deps.catalog.getWalls(),
-    },
-  ).point;
+  const defaultCondensateMasterPenetration = (): { x: number; z: number } | undefined => {
+    const route = loadMepCoordinationConfig().routes.find((item) => item.id === 'condensate-master');
+    const wall = (route as unknown as { penetration?: Array<{ wall?: unknown }> } | undefined)
+      ?.penetration?.[0]?.wall;
+    if (!route || typeof wall !== 'string') return undefined;
+    return deriveMepPenetrationAt(
+      route,
+      wall,
+      {
+        sources: endpointSourcesFromFacts({
+          electrical: loadElectricalConfig(),
+          plumbing: loadPlumbingConfig(),
+          ceiling: loadCeilingConfig(),
+          hvac: parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')),
+        }),
+        walls: deps.catalog.getWalls(),
+      },
+    ).point;
+  };
   /** 锚点读取产地：默认读当前 config；测试可注入抛错形态。每个请求只调一次，拿到即下发。 */
   const readCondensateMasterPenetration = deps.getCondensateMasterPenetration ?? defaultCondensateMasterPenetration;
 
@@ -821,8 +830,9 @@ export function createApiRouter(deps: ApiDeps): Router {
         ceilingZones: deps.getProjectRenderFacts?.()?.ceiling ?? loadCeilingConfig(),
         sceneElements: filterCurtainElements(sceneElements, phase, phaseScopes),
         layoutSource: projectCatalog.getLayoutSource(),
-        // 主卫冷凝链的 MEP 侧锚点（2026-11-07 issue #98 PR-10）：三件遮蔽家具的摆位改锚点
-        // 派生（house.yaml anchor 声明），穿墙段从 MEP condensate-master 穿墙点解出。
+        // condensate-master 的 MEP 侧穿墙锚点（2026-11-07 issue #98 PR-10 立项；
+        // 三件遮蔽家具已随 #116 删除、链随 2026-11-14 全带泵重画退役，现为路由首条
+        // penetration 声明墙的派生点 (4.20,4.60)，仍随 /api/project 先到、供场景建场用。
         // /api/mep-coordination 也返回同一份路线，但页面在建场之后才拉它；建场要用的这个
         // 点随 /api/project 先到，避免链条家具因拉取顺序从场景里消失（同源：MEP 配置）。
         // 读取已隔离（上方 try/catch）：抛错时本键不下发、错误进 placementClosureDiagnostics，

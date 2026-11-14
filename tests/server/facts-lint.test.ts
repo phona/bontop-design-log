@@ -6,11 +6,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { load as parseYaml } from 'js-yaml';
-import { lintFacts, type FactsRegistry, type FactsWorkspace } from '../../shared/facts-lint.js';
-import { endpointSourcesFromFacts, resolveMepEndpoint } from '../../shared/mep-hvac-coordination-schema.js';
+import { clearanceRoutePoints, lintFacts, type FactsRegistry, type FactsWorkspace } from '../../shared/facts-lint.js';
+import { endpointSourcesFromFacts, parseMepCoordination, resolveMepEndpoint, resolveMepRoute } from '../../shared/mep-hvac-coordination-schema.js';
 import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import type { VertexLayoutYaml } from '../../shared/types.js';
+import type { FurnishingsYaml, ProjectRenderFacts, VertexLayoutYaml } from '../../shared/types.js';
 
 // ─── 内存 workspace ─────────────────────────────────────────────────────────
 
@@ -1398,5 +1399,93 @@ test('真实登记表：c.mep_layer_below_drop_bottom 的 repair_channel 字段�
   );
   for (const file of channel.sync_files as string[]) {
     assert.doesNotThrow(() => readFileSync(file, 'utf8'), `sync_files 中的 ${file} 必须存在`);
+  }
+});
+
+// ─── facts 门禁点位 vs 统一出口一致性（PR #233 blocking）─────────────────────
+//
+// clearanceRoutePoints 是 facts 吊顶净空契约的点位来源；它用兼容壳重组路线，
+// 曾漏掉坡度派生的终端标高：hvac terminal 不回 y，to_height 又未声明，终端点
+// y 为空、yOf 静默回退到冷凝水层高 2.65m，与统一出口的坡度到点分叉——计数恰好
+// 相同也证明不了几何一致。本测试把真实配置全部路线同时走两条路逐点比对：
+// facts 壳再漏传任一派生字段，数组即不等（容差 1e-9m，仅容浮点噪声）。
+
+test('facts 门禁点位与统一出口逐点一致：五条冷凝水支管终端标高取坡度派生值', () => {
+  const raw = parseYaml(readFileSync('config/mep-hvac-coordination.yaml', 'utf8')) as {
+    routes?: Array<Record<string, unknown>>;
+  };
+  const project = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
+  const load = (rel: string): unknown => parseYaml(readFileSync(rel, 'utf8'));
+  const layout = resolveLayout(load('config/layout/model-geometry.yaml') as VertexLayoutYaml);
+  const { mountHosts } = buildPlacementIndexes({
+    geometry: { walls: layout.walls },
+    furnishings: (load('config/house.yaml') as { furnishings?: FurnishingsYaml }).furnishings ?? {},
+  });
+  const sources = endpointSourcesFromFacts(
+    {
+      electrical: load('config/electrical.yaml') as ProjectRenderFacts['electrical'],
+      plumbing: load('config/plumbing.yaml') as ProjectRenderFacts['plumbing'],
+      ceiling: load('config/model/envelope/ceiling.yaml') as ProjectRenderFacts['ceiling'],
+      hvac: load('config/hvac.yaml') as ProjectRenderFacts['hvac'],
+    },
+    pointWallIndexFromElements(layout.walls),
+    mountHosts,
+  );
+  // mep.endpoints 平面数据集：与 scripts/verify/facts/verify-facts.ts 同一构造
+  // （wanted 集 + 同一份 sources、同一个 resolveMepEndpoint）。
+  const wanted = new Set<string>();
+  for (const route of raw.routes ?? []) {
+    for (const side of [route.from, route.to]) if (typeof side === 'string') wanted.add(side);
+    for (const via of (Array.isArray(route.via) ? route.via : [])) {
+      if (via && typeof via === 'object') {
+        if (typeof (via as { id?: unknown }).id === 'string') wanted.add((via as { id: string }).id);
+        if (typeof (via as { shaft?: unknown }).shaft === 'string') wanted.add((via as { shaft: string }).shaft);
+      }
+    }
+  }
+  const endpoints: Record<string, { x: number; z: number; y?: number }> = {};
+  for (const id of [...wanted].sort()) {
+    const at = resolveMepEndpoint(id, sources);
+    if (at) endpoints[id] = at;
+  }
+  const shafts = project.shafts ?? [];
+  const assertPointsClose = (
+    actual: ReadonlyArray<{ x: number; y?: number; z: number }>,
+    expected: ReadonlyArray<{ x: number; y?: number; z: number }>,
+    where: string,
+  ): void => {
+    assert.equal(actual.length, expected.length, `${where}: 点数 ${actual.length} !== ${expected.length}`);
+    for (let index = 0; index < expected.length; index += 1) {
+      for (const axis of ['x', 'y', 'z'] as const) {
+        const a = actual[index][axis];
+        const e = expected[index][axis];
+        assert.ok(
+          (a === undefined && e === undefined) || (typeof a === 'number' && typeof e === 'number' && Math.abs(a - e) <= 1e-9),
+          `${where}[${index}].${axis} ${String(a)} !== ${String(e)}`,
+        );
+      }
+    }
+  };
+  const branchPoints = new Map<string, ReadonlyArray<{ x: number; y?: number; z: number }>>();
+  const branches = ['condensate-master', 'condensate-living', 'condensate-dining', 'condensate-parent', 'condensate-child'];
+  for (const rawRoute of raw.routes ?? []) {
+    const id = String(rawRoute.id);
+    const parsed = project.routes.find((r) => r.id === id)!;
+    const unified = resolveMepRoute(parsed, sources, project.junctions, shafts);
+    assert.deepEqual(unified.unresolved, [], `${id}: 统一出口须可解（否则 facts 侧无从比对）`);
+    const factsPoints = clearanceRoutePoints(rawRoute, endpoints, shafts);
+    assertPointsClose(factsPoints, unified.points, id);
+    if (branches.includes(id)) branchPoints.set(id, unified.points);
+  }
+  assert.equal(branchPoints.size, branches.length, '五条冷凝水支管必须全部在比对集内');
+  for (const id of branches) {
+    const points = branchPoints.get(id)!;
+    const terminal = points[points.length - 1];
+    const viaLast = points[points.length - 2];
+    assert.ok(Number.isFinite(terminal.y), `${id}: 终端标高须为坡度派生值，不得为空（空即回退层高 2.65m）`);
+    assert.ok(
+      typeof terminal.y === 'number' && typeof viaLast.y === 'number' && Math.abs(terminal.y - viaLast.y) <= 1e-9,
+      `${id}: 终端标高 ${String(terminal.y)} 须等于末步 slope_run 落点高度 ${String(viaLast.y)}`,
+    );
   }
 });

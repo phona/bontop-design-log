@@ -73,8 +73,8 @@ const KNOWN_MUST_FIX_CODES: ReadonlySet<string> = new Set([
 ]);
 // 家具碰撞实例（route ↔ furniture；穿入深度只记 note、不参与断言——柜子一动深度就变）。
 const KNOWN_FURNITURE_COLLISIONS: ReadonlyArray<{ routeId: string; furnitureId: string; note: string }> = [
-  // PR #226 新柜全高包络引入的两处：改路由另案 / 待改道裁定。
-  { routeId: 'condensate-master', furnitureId: 'mb.full_height_cabinet', note: '穿入 1.61m；全带泵改路由时重画' },
+  // PR #226 新柜全高包络引入的两处：改路由另案 / 待改道裁定。2026-11-14 全带泵重画：
+  // condensate-master 穿入 1.61m 一条已随改路由消除（登记移除），仅剩 bathheaters-mbath 一条。
   { routeId: 'strong-ded-bathheaters-mbath', furnitureId: 'mb.full_height_cabinet', note: '穿入 1.41m；待改道/开检修槽裁定' },
   { routeId: 'strong-power-living-west-wall', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 1.36m' },
   { routeId: 'strong-power-living-gateway', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 2.35m' },
@@ -101,11 +101,15 @@ const KNOWN_INACCESSIBLE_ENDPOINTS: ReadonlyArray<{ routeId: string; pointId: st
 ];
 // must_fix 分码上限的公共底座（8 条与路线几何相关的代码；两口径现值相同）。
 // 上限只许减少、不许增长；增长须显式登记并写清原因。
+// 2026-11-14 全带泵重画（issue #98 MEP batch 1，verify:mep 124/226 → 117/231 实测）：
+// route_overlap 63→59（儿童房 4 处 must_fix 重叠消除：ac-child 斜升段避让、bathheaters 段
+// 避让、childbed/door-light 两处改 candidate 后迁入 envelope 桶）、unsupported_span 8→6
+// （主卧/书房竖直下引段消除）；其余 6 码现值不变。survey/envelope 两桶的同批登记见各表上方。
 const MUST_FIX_ROUTE_CEILINGS: Readonly<Record<string, number>> = {
-  route_overlap: 63,
+  route_overlap: 59,
   route_not_orthogonal: 27,
   suppressed_wall_crossing: 7,
-  unsupported_span: 8,
+  unsupported_span: 6,
   mep_endpoint_service_conflict: 2,
   door_opening_collision: 1,
   route_endpoint_unusable: 1,
@@ -248,27 +252,36 @@ const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
   'route_furniture_collision',
 ]);
 // survey 分桶分码上限（现值即上限；realContext 与 verify:mep 全上下文共用）。
+// 2026-11-14 全带泵重画：penetration_door_clearance 16→17、shear_wall_penetration 11→12
+// （主卧新穿墙 w_strip_east 各 +1：门洞 d_mb 净距 0.05m、剪力墙 inferred）；ceiling_clearance
+// 50→42（客厅/餐厅末端低于完成面与主卧/儿童房竖直段消除）、shear_wall_parallel_route 8→7
+// （主卧沿 w_mbath_east 平行段消除）为减少、同步收紧上限。
 const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
-  ceiling_clearance_unverified: 50,
-  penetration_door_clearance: 16,
-  shear_wall_penetration: 11,
-  shear_wall_parallel_route: 8,
+  ceiling_clearance_unverified: 42,
+  penetration_door_clearance: 17,
+  shear_wall_penetration: 12,
+  shear_wall_parallel_route: 7,
   route_insulation_unverified: 7,
   inline_endpoint_without_point_anchor: 6,
 };
 // envelope 分桶分码上限（现值即上限；verify:mep 全上下文配额。realContext 与无 layout
 // 用例各有单独立上限，见 REAL_CONTEXT_ENVELOPE_CEILINGS / NO_LAYOUT_ENVELOPE_CEILINGS）。
+// 2026-11-14 全带泵重画：route_overlap 39→53（五管终端汇流 +9、儿童房 must_fix→envelope
+// 迁移 +2、餐厅末段 jog 贴 x=6.70 浴霸/客卫强电轴 +2、客厅西行段贴餐厅送风 +1；其余 6 处
+// 起点共享锚点重叠为改写措辞、净 0）、nonphysical_route 8→11（主卧/书房/儿童房改 candidate
+// +3）、route_overlap_declared_trunk 14→11（R25 汇流节点删除 −3）、unsupported_span 2→0
+// （客厅 3.82m / 餐厅 0.44m 斜段消除）。
 const ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
-  route_overlap: 39,
+  route_overlap: 53,
   route_clearance_unverified: 35,
-  route_overlap_declared_trunk: 14,
+  route_overlap_declared_trunk: 11,
   bay_sill_crossing_declared: 11,
   reference_constraint_uncertain: 11,
-  nonphysical_route: 8,
+  nonphysical_route: 11,
   route_not_orthogonal: 4,
   route_furniture_collision: KNOWN_ENVELOPE_COLLISIONS.length, // 由实例清单长度派生——登记新实例即同步抬上限，不另填数（与 must_fix 侧同口径）
   supply_return_overlap: 2,
-  unsupported_span: 2,
+  unsupported_span: 0,
 };
 // 无 layout 用例的 survey / envelope 单独立上限（与 must_fix 同一 Codex 三审 major）：
 // 门洞 / 剪力墙 / 依托 / 参照约束类警告需要 layout 或上下文才运行，本口径下必须为 0，
@@ -295,10 +308,12 @@ const REAL_CONTEXT_ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
   bay_sill_crossing_declared: 0,
   route_furniture_collision: 0,
 };
-// 无依托段总数上限（must_fix ≤8 + envelope ≤2；只许减少）。
-const UNSUPPORTED_SPAN_CEILING = 10;
-// 最长无依托段上限（condensate-living 现值 3.82m；只许缩短）。
-const LONGEST_UNSUPPORTED_SPAN_CEILING_M = 3.82;
+// 无依托段总数上限（must_fix ≤6 + envelope ≤0；只许减少）。
+// 2026-11-14 全带泵重画 10→6（客厅/餐厅斜段与主卧/书房竖直段共 4 条消除）。
+const UNSUPPORTED_SPAN_CEILING = 6;
+// 最长无依托段上限（strong-power-child 现值 2.04m；只许缩短）。
+// 2026-11-14 全带泵重画 3.82m→2.04m（客厅 3.82m 斜段消除）。
+const LONGEST_UNSUPPORTED_SPAN_CEILING_M = 2.04;
 function assertKnownRouteIds(routes: ReadonlyArray<{ id: string }>, where: string): void {
   for (const route of routes) {
     assert.ok(KNOWN_ROUTE_IDS.has(route.id), `${where} 出现未登记的新路线 ${route.id}：须显式登记并写清原因`);
@@ -884,7 +899,7 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // 但 weak-ap reason 明说客厅中部保持原顶 2.80m 无吊顶——两处自相矛盾被机器显形）
   // F01 改线批：33 条命中清至 8 条显式保留（每条 reason 带 DEC-2026-10-07-F01 归因）
   const flying = [...result.errors, ...result.warnings].filter((i) => i.code === 'unsupported_span');
-  assert.ok(flying.length <= UNSUPPORTED_SPAN_CEILING, '无依托段总数不得超过已知待决上限 10（must_fix ≤8 + envelope ≤2）：增长须显式登记并写清原因');
+  assert.ok(flying.length <= UNSUPPORTED_SPAN_CEILING, '无依托段总数不得超过已知待决上限 6（must_fix ≤6 + envelope ≤0）：增长须显式登记并写清原因');
   // Codex 二审 minor：flying.reduce 无初始值，空数组抛错；且下文曾强制 condensate-living 在飞线集里，
   // 该飞线清掉时测试反会红。空集即全部飞线已清，是好事：最长段只在非空时查，成员身份不再强制。
   if (flying.length > 0) {
@@ -898,7 +913,7 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
       return n;
     };
     const worstSpan = Math.max(...flying.map(spanOf));
-    assert.ok(worstSpan <= LONGEST_UNSUPPORTED_SPAN_CEILING_M, `最长无依托段不得超过已知待决上限 3.82m，实际 ${worstSpan}m：增长须显式登记并写清原因`);
+    assert.ok(worstSpan <= LONGEST_UNSUPPORTED_SPAN_CEILING_M, `最长无依托段不得超过已知待决上限 2.04m，实际 ${worstSpan}m：增长须显式登记并写清原因`);
   }
   assert.equal(flying.some((i) => i.routeId === 'strong-power-living-sofa-r'), false, '箱体侧垂直段贴墙、水平段在垫层，不应报无依托');
   assert.equal(flying.some((i) => i.routeId === 'strong-power-living-sofa-l'), false, '左沙发地插路线现行几何已不飞线（2026-10-23 实测；旧断言的开放空间长竖降已被后续改线消除）');
@@ -989,12 +1004,14 @@ test('DEC-2026-10-06-R5: carried layers are lifted into the drop-ceiling cavity 
     const ys = [route.from_height as number, ...(route.via ?? []).map((v) => v.y as number)];
     for (let i = 1; i < ys.length; i += 1) assert.ok(ys[i] <= ys[i - 1] + 1e-9, `${route.id} 第 ${i} 段上弯，违反重力铁律`);
   }
-  // 绕不开梁带的两条冷凝水候选路线：标高逐条显式登记（DEC-2026-10-06-R5 允许的残留；
-  // from_height 2.35 → 2.52 为 DEC-2026-10-19-R25 汇流拓扑建模后的现值，残留登记仍在 reason 中）
+  // 2026-11-14 全带泵重画：绕不开梁带的 R5 残留随泵扬 2.70 + 1% 坡直达客卫而关闭——
+  // 两条支管 from_height 由 2.52 改 2.70，末端低于完成面与 3.60m/1.30m 飞线一并消除；
+  // R5 登记本身仍在 reason 历史段中（显式残留文字保留作审计线索，不再是现行残留）。
   for (const id of ['condensate-living', 'condensate-dining']) {
     const route = config.routes.find((r) => r.id === id)!;
-    assert.equal(route.from_height, 2.52, `${id} 应保留登记 from_height 2.52（绕不开走廊服务带梁带）`);
+    assert.equal(route.from_height, 2.70, `${id} 全带泵重画后 from_height 应为泵扬 2.70（R5 残留已关闭）`);
     assert.match(route.reason ?? '', /DEC-2026-10-06-R5 显式残留/);
+    assert.match(route.reason ?? '', /随重画关闭/);
   }
 });
 

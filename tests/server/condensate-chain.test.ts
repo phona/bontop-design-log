@@ -137,6 +137,18 @@ test('锚点缺失即诊断失败，不发明坐标', () => {
   assert.ok(noWallRun.diagnostics.some((line) => line.includes('墙行包管')));
 });
 
+test('链已退役：双宿主皆无时无链无诊断，即使穿墙点也已随改线消失（2026-11-14 全带泵重画）', () => {
+  // 退役判定须在穿墙点检查之前：新 condensate-master 不再穿 w_mbath_south，
+  // 穿墙点缺失不得把退役链报成错误（verify:furniture 误红的根因）。
+  const retired = chainWith({ wardrobe: undefined, wallRun: undefined, mepRoute: undefined });
+  assert.equal(retired.geometry, null);
+  assert.deepEqual(retired.diagnostics, []);
+  // 仅缺其一时仍诊断（防单件残留静默漂移），与 resolveCondensateChain 首行分支同口径。
+  const onlyWallRun = chainWith({ wardrobe: undefined, mepRoute: undefined });
+  assert.equal(onlyWallRun.geometry, null);
+  assert.ok(onlyWallRun.diagnostics.some((line) => line.includes('穿墙点')));
+});
+
 test('家具摆位解算：anchor 声明解出链上点，绝对 x/z 对三件已废', () => {
   const { geometry } = chainWith();
   assert.ok(geometry);

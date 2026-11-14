@@ -18,7 +18,6 @@ import { parseOverlayFiles } from '../../server/overlay-merge.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import {
   endpointSourcesFromFacts,
-  mepRoutePoints,
   parseMepCoordination,
   resolveMepRoutes,
   type MepCoordination,
@@ -53,9 +52,12 @@ const resolvedById = new Map(resolution.routes.map((item) => [item.route.id, ite
 const wallsById = new Map(layout.walls.map((wall) => [wall.id, wall]));
 
 function routePoints(route: MepRoute): Array<{ x: number; z: number }> {
+  // 统一出口唯一来源：直接取 resolveMepRoutes 的已解折线，不得用 mepRoutePoints
+  // 兼容壳重解 raw via——关系型 via 步（slope_run 等）它会抛错（2026-11-14 全带泵
+  // 重画：condensate-master 改 slope_run 后本文件即因此红过）。
   const resolved = resolvedById.get(route.id);
   assert.ok(resolved?.from && resolved.to, `route ${route.id} 端点应可解`);
-  return mepRoutePoints(route, resolved.from, resolved.to);
+  return resolved.points;
 }
 
 /**
@@ -74,6 +76,11 @@ function lintContext(): MepLintLayoutContext {
 }
 
 // ── 45 条被删 at 的钉值墓碑（删除前 derive-assert 实跑导出；偏差全部 ≤1e-9） ──
+// 2026-11-14 全带泵重画（issue #98 MEP batch 1）：condensate-master 旧 pin
+// (w_mbath_south, 2.3, 2.86) 随整条旧路由作废——新路由不再穿主卫，改钉新穿点
+// (w_strip_east, 4.2, 4.6)；condensate-child 穿点由 (5.6, 3.87) 改 (5.6, 4.20)。
+// 条目数仍 45（一换一），孔位计数不受影响（新主卧孔与 strong-ac-master 等
+// 共用 w_strip_east@4.2,4.6 去重后同一孔）。
 const PIN_45: Array<[string, string, number, number]> = [
   ['strong-ac-master', 'w_strip_east', 4.2, 4.6],
   ['strong-ac-parent', 'w_st_north', 5.5, 5.55],
@@ -113,9 +120,9 @@ const PIN_45: Array<[string, string, number, number]> = [
   ['refrigerant-master', 'w_strip_east', 4.2, 4.6],
   ['refrigerant-parent', 'w_st_north', 5.5, 5.55],
   ['refrigerant-child', 'w_nw_south', 4.35, 4.3],
-  ['condensate-master', 'w_mbath_south', 2.3, 2.86],
+  ['condensate-master', 'w_strip_east', 4.2, 4.6],
   ['condensate-study', 'w_be_west', 13.4, 6.29],
-  ['condensate-child', 'w_gbath_west_open_vanity', 5.6, 3.87],
+  ['condensate-child', 'w_gbath_west_open_vanity', 5.6, 4.2],
   ['strong-power-parent-child-study-curtain', 'w_st_north', 5.5, 5.55],
   ['strong-power-parent-child-guest-north', 'w_be_west', 13.4, 5.9],
   ['weak-ap-master', 'w_strip_east', 4.2, 4.48],
@@ -153,7 +160,11 @@ const declarationsOf = (parsed: MepCoordination): Array<{ route: MepRoute; wall:
 
 test('45 条被删 at：派生交点逐一等于被删声明值（≤1e-9）', () => {
   const declared = new Set(declarationsOf(config).map((d) => `${d.route.id}@${d.wall}`));
-  assert.equal(declarationsOf(config).length, 60, '穿墙声明总数应保持 60（at 删除不改条目数）');
+  // 2026-11-14 全带泵重画：声明总数 60→61——condensate-parent 新路由正交穿
+  // w_st_north (5.40,5.55)，新增 1 条穿墙声明（旧路由 z=6.0/6.10 全程在墙南、
+  // 从未穿该墙）；condensate-master 1 换 1（w_mbath_south→w_strip_east），
+  // condensate-child 声明不变（穿点由 (5.6,3.87) 改 (5.6,4.20)）。
+  assert.equal(declarationsOf(config).length, 61, '穿墙声明总数应保持 61（at 删除不改条目数）');
   for (const [routeId, wallId, x, z] of PIN_45) {
     const route = config.routes.find((item) => item.id === routeId);
     assert.ok(route, `route ${routeId} 存在`);
@@ -336,29 +347,43 @@ test('lint 可见性（验伪轮）：E 类沿墙正交滑动不误伤（设计�
   assert.deepEqual(mismatch, [], '保持压墙线+正交对齐的沿墙滑动不误伤（量房自由度）');
 });
 
-test('真实配置 lint：penetration_* 计数与 S2 结束态一致（行为零变化）', () => {
+test('真实配置 lint：penetration_* 计数与 2026-11-14 全带泵重画后一致', () => {
   const result = lintMepCoordination(config, sources, lintContext());
   const all = [...result.errors, ...result.warnings];
   const count = (code: string): number => all.filter((issue) => issue.code === code).length;
-  assert.equal(count('penetration_door_clearance'), 16);
+  // 2026-11-14 全带泵重画（issue #98 MEP batch 1）：penetration_door_clearance
+  // 16→17、shear_wall_penetration 11→12——均来自 condensate-master 新穿点
+  // w_strip_east (4.20,4.60)：距门洞 d_mb 仅 0.05m（过门头穿梁），墙体剪力墙
+  // inferred；其余 penetration_* 计数不变（parent 新增的 w_st_north 穿点
+  // (5.40,5.55) 在门洞 d_study 西侧、无剪力墙声明，不进这两项）。
+  assert.equal(count('penetration_door_clearance'), 17);
   assert.equal(count('penetration_wall_unknown'), 0);
   assert.equal(count('penetration_declaration_orphaned'), 0);
   assert.equal(count('penetration_declaration_incomplete'), 0);
   assert.equal(count('penetration_missing'), 0);
   assert.equal(count('penetration_point_mismatch'), 0);
-  assert.equal(count('shear_wall_penetration'), 11);
+  assert.equal(count('shear_wall_penetration'), 12);
 });
 
-test('冷凝链锚点 deriveMepPenetrationAt：派生值 == 被删声明 (2.3, 2.86)，fail-closed 三态', () => {
+test('冷凝链锚点 deriveMepPenetrationAt：新穿点 (4.20,4.60) 可派生，旧墙正确诊断，fail-closed 三态', () => {
+  // 2026-11-14 全带泵重画：condensate-master 不再穿 w_mbath_south，改穿
+  // w_strip_east (4.20,4.60)（与 strong-ac-master 等共用一孔）。旧 pin
+  // (2.3, 2.86) 随旧路由作废——本测试改钉新穿点，并断言旧墙改报「无严格交点」
+  // 诊断（链已退役，旧墙不再是该路由的穿墙点），不是静默给错点。
   const derived = deriveMepPenetrationAt(
     config.routes.find((route) => route.id === 'condensate-master'),
-    'w_mbath_south',
+    'w_strip_east',
     { sources, walls: layout.walls },
   );
   assert.equal(derived.diagnostic, undefined);
   assert.ok(derived.point);
-  assert.ok(Math.hypot(derived.point!.x - 2.3, derived.point!.z - 2.86) <= 1e-9,
-    `派生锚点 (${derived.point!.x},${derived.point!.z}) 应等于被删声明 (2.3, 2.86)`);
+  assert.ok(Math.hypot(derived.point!.x - 4.2, derived.point!.z - 4.6) <= 1e-9,
+    `派生锚点 (${derived.point!.x},${derived.point!.z}) 应等于新穿点 (4.2, 4.6)`);
+  assert.ok(deriveMepPenetrationAt(
+    config.routes.find((route) => route.id === 'condensate-master'),
+    'w_mbath_south',
+    { sources, walls: layout.walls },
+  ).diagnostic, '新路由不穿 w_mbath_south 时必须给诊断、不发明穿点');
   // fail-closed：路线缺失 / 墙缺失
   assert.ok(deriveMepPenetrationAt(undefined, 'w_mbath_south', { sources, walls: layout.walls }).diagnostic);
   assert.ok(deriveMepPenetrationAt(config.routes.find((route) => route.id === 'condensate-master'), 'w_missing', { sources, walls: layout.walls }).diagnostic);
@@ -397,7 +422,11 @@ test('穿墙计数契约：60 条声明 / 33 个孔位（手写 at 或派生点�
     }
     holes.add(`${wall}@${point.x.toFixed(3)},${point.z.toFixed(3)}`);
   }
-  assert.equal(declarations.length, 60, '穿墙声明条目数变了：同步施工指导文档清点句与 facts 契约');
+  // 2026-11-14 全带泵重画：声明 60→61（parent 新增 w_st_north 1 条），孔位
+  // 仍 33——旧主卧孔 w_mbath_south@2.300,2.860 随旧路由消失（−1），新 parent
+  // 孔 w_st_north@5.400,5.550 补入（+1），新主卧孔与 strong-ac-master 等共用
+  // w_strip_east@4.200,4.600（+0），儿童房孔 (5.6,3.87)→(5.6,4.20) 平移（+0）。
+  assert.equal(declarations.length, 61, '穿墙声明条目数变了：同步施工指导文档清点句与 facts 契约');
   assert.equal(holes.size, 33, '孔位数变了：同步施工指导文档清点句与 facts 契约');
   const guidance = readFileSync('docs/mep-construction-guidance.md', 'utf8');
   assert.ok(guidance.includes(`合计 **${declarations.length} 条声明、落在 ${holes.size} 个不同孔位**`),
