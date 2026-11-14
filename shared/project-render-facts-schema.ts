@@ -159,10 +159,11 @@ const PointAnchorSchema = z.object({
   if (sources[0] === 'absolute' && (value.x === undefined || value.z === undefined)) {
     ctx.addIssue({ code: 'custom', message: '绝对定位（absolute）要求 x 与 z 齐备' });
   }
-  // wall / mount 来源禁带 x/z（issue #98 S1，E2）：resolver 忽略它们，直读消费者会读到 stale
-  // 值（探针 P1 的失效模式）。x/z 只对 absolute 来源是定位字段，对 wall/mount 是哑弹。
-  if ((sources[0] === 'wall' || sources[0] === 'mount') && (value.x !== undefined || value.z !== undefined)) {
-    ctx.addIssue({ code: 'custom', message: `${sources[0]} 定位来源禁止同时声明 x/z（解算器只读 wall+along / mount.along；声明 x/z 会成为 stale 第二事实源，探针 P1）` });
+  // wall / mount / anchor 来源禁带 x/z（issue #98 S1，E2；anchor 由二阶段 S1 补入）：
+  // resolver 忽略它们，直读消费者会读到 stale 值（探针 P1 的失效模式）。x/z 只对
+  // absolute 来源是定位字段，对 wall/mount/anchor 是哑弹。
+  if ((sources[0] === 'wall' || sources[0] === 'mount' || sources[0] === 'anchor') && (value.x !== undefined || value.z !== undefined)) {
+    ctx.addIssue({ code: 'custom', message: `${sources[0]} 定位来源禁止同时声明 x/z（解算器只读 wall+along / mount.along / anchor 宿主坐标；声明 x/z 会成为 stale 第二事实源，探针 P1）` });
   }
 }
 

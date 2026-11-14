@@ -334,16 +334,26 @@ function pointAndTangentOnPolyline(
  * 高度仍由点位自身的 `height` 声明给出（锚点只解平面 x/z）。其它来源仍未实现——
  * hvac ref 通道改走 resolveMepEndpoint（MEP 端点），不在本解算器里。
  * 缺 mountHosts 时与 resolveMountedPoint 同一口径当场抛（调用方接线缺陷）。
+ * anchor 与 x/z 不得共存（声明 x/z 会成为 stale 第二事实源，见 schema
+ * refinePointPlacement 同款禁令；检查放在 source 判定之后，hvac + x/z 仍先报“未实现”）。
  */
 function resolveAnchoredPoint(
   anchor: NonNullable<PointPlacementInput['anchor']>,
   id: string,
   mountHosts: ReadonlyMap<string, PointMountHost> | undefined,
+  x?: number,
+  z?: number,
 ): PointPlacementResolution {
   if (anchor.source !== 'furniture') {
     return {
       placement: null,
       diagnostic: `点位 ${id}: anchor 定位解析未实现（source "${anchor.source}"；当前只支持 furniture；暖通 ref 通道改走 resolveMepEndpoint）`,
+    };
+  }
+  if (x !== undefined || z !== undefined) {
+    return {
+      placement: null,
+      diagnostic: `点位 ${id}: anchor 与 x/z 不得同时声明（anchor 坐标来自宿主，声明 x/z 会成为 stale 第二事实源）`,
     };
   }
   if (mountHosts === undefined) {
@@ -389,7 +399,7 @@ export function resolvePointPlacement(
     if (hasWallAnchor || hasAbsoluteFlag) {
       return { placement: null, diagnostic: `点位 ${id}: anchor 与 wall/absolute 不得同时声明（定位来源必须唯一）` };
     }
-    return resolveAnchoredPoint(point.anchor, id, mountHosts);
+    return resolveAnchoredPoint(point.anchor, id, mountHosts, point.x, point.z);
   }
 
   if (hasWallAnchor && hasAbsoluteFlag) {

@@ -116,6 +116,16 @@ export function buildRenderLightingFixtures(
       }
       planeX = placement.x;
       planeZ = placement.z;
+    } else if (fixture.anchor !== undefined) {
+      // anchor 灯具（issue #98 二阶段 S1）：平面位置走同一解算（宿主中心 + offset），
+      // 不读声明 x/z——anchor 本就不许带 x/z（schema 与解算器双禁令），else 分支的
+      // “绝对灯位必须声明坐标”不适用于它。
+      const { placement, diagnostic } = resolvePointPlacementInWalls(fixture, pointWalls, mountHosts);
+      if (!placement || placement.kind !== 'absolute') {
+        throw new Error(`Lighting fixture ${fixture.id}: anchor 定位解析失败（${diagnostic ?? '解算器未返回结果'}；调用方须提供 mountHosts）`);
+      }
+      planeX = placement.x;
+      planeZ = placement.z;
     } else {
       if (fixture.x === undefined || fixture.z === undefined) {
         throw new Error(`Lighting fixture ${fixture.id} has no electrical x/z: 绝对灯位必须声明坐标`);

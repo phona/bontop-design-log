@@ -161,6 +161,19 @@ describe('lighting fixture derivation fail-closed', () => {
     assert.equal(derived[0].temperatureK, 3000);
   });
 
+  it('derives anchor fixtures from the host centre + offset without declared x/z', () => {
+    // issue #98 二阶段 S1（Codex 二审 blocking）：anchor 灯具曾走 else 分支抛
+    // “绝对灯位必须声明坐标”——灯具投影是 anchor 模式的第三个消费链路（3D/DXF/MEP 之外）。
+    const derived = buildRenderLightingFixtures(
+      [{ id: 'night-sofa', room: 'living_dining', type: 'night_light', height: 0.4, anchor: { source: 'furniture', id: 'test.sofa', offset: { x: 0.5, z: 0 } } }],
+      [override('night-sofa')],
+      new Map([['test.sofa', { id: 'test.sofa', x: 11.0, z: 7.7, rotation: 0, width: 2.2, depth: 1.0 }]]),
+      new Map(),
+    );
+    assert.equal(derived.length, 1);
+    assert.deepEqual(derived[0].position, { x: 11.5, y: 0.4, z: 7.7 });
+  });
+
   it('throws when a lighting fixture has no render override', () => {
     assert.throws(
       () => buildRenderLightingFixtures([point({ id: 'orphan', type: 'ceiling_light' })], []),

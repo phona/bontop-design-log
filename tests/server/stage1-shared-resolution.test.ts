@@ -204,3 +204,27 @@ test('anchor offset 走真实解析入口：parseElectricalPoints 接受 offset�
   assert.equal(resolved.placement?.kind, 'absolute');
   assert.deepEqual([resolved.placement?.x, resolved.placement?.z], [11.5, 7.7]);
 });
+
+test('anchor 与 x/z 不得共存：解算器与 schema 双禁令', () => {
+  const { placements } = resolveFurniturePlacements(TV_SOFA, WALLS);
+  const mountHosts = pointMountHostIndexFromResolved(placements);
+  const bad = resolvePointPlacementInWalls(
+    { id: 'p-xz', anchor: { source: 'furniture', id: 'test.sofa' }, x: 11.0, z: 7.7 },
+    new Map(), mountHosts,
+  );
+  assert.equal(bad.placement, null);
+  assert.match(bad.diagnostic ?? '', /anchor 与 x\/z 不得同时声明/);
+  // schema 入口同款禁令：写进 electrical.yaml 即被拒（Codex 二审 blocking）。
+  assert.throws(
+    () => parseElectricalPoints([
+      '- id: sock_xz',
+      '  room: living_dining',
+      '  type: socket',
+      '  anchor: { source: furniture, id: test.sofa }',
+      '  x: 11.0',
+      '  z: 7.7',
+      '  height: 0.4',
+    ].join('\n')),
+    /anchor 定位来源禁止同时声明 x\/z/,
+  );
+});
