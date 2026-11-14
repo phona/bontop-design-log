@@ -139,14 +139,17 @@ export function loadDressingMapContext(): DressingMapContext {
   const plumbing = loadPlumbingConfig();
   const ceiling = loadCeilingConfig();
   const hvacSources = buildHvacBuilderSources({ ceiling, electrical, hvac: hvacFacts, pointWalls, mountHosts });
-  const penetration = deriveMepPenetrationAt(
+  // 2026-11-14 全带泵重画：链已退役且新 condensate-master 不再穿 w_mbath_south——
+  // 两宿主皆无时不派生穿墙点（不派生、不报错），有任一宿主时仍按旧口径派生并显形。
+  const chainHostsPresent = hosts.get('mb.wardrobe_950') !== undefined || hosts.get('mb.vanity_pvc_box') !== undefined;
+  const penetration = chainHostsPresent ? deriveMepPenetrationAt(
     parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8')).routes.find((route) => route.id === 'condensate-master'),
     'w_mbath_south',
     {
       sources: endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac: hvacFacts }, pointWalls, mountHosts),
       walls,
     },
-  );
+  ) : {};
   const { anchors, diagnostics } = resolveCondensatePlacementAnchors({
     hvacDiagram: hvacFacts.plans[0]?.diagram,
     hvacSources,

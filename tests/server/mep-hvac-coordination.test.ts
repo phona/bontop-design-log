@@ -199,23 +199,41 @@ test('探针 P1 固化：electrical ref 一律走单一解算，过期声明 x/z
 test('junction↔anchor 门禁补 y：anchor 的 y 漂移与 x/z 一样必抛（探针 y+0.5 不抛已修复）', () => {
   // A §4.3 探针实证：resolveMepEndpoint 对带 position 的 anchor 原先丢 y，使
   // validateMepCoordination 的跨文件比较 y 差恒为 0——anchor y+0.5 不抛、x+0.5 才抛。
-  const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as ProjectRenderFacts['hvac'];
-  const junctionId = 'condensate_living_dining_merge';
-  const baseFacts = { electrical, plumbing, ceiling: parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as ProjectRenderFacts['ceiling'], hvac };
-  const driftedFacts = {
-    ...baseFacts,
-    hvac: { ...hvac, plans: hvac.plans.map((plan) => ({
-      ...plan,
-      diagram: {
-        ...plan.diagram,
-        anchors: plan.diagram.anchors.map((anchor) => anchor.id === junctionId && anchor.position
-          ? { ...anchor, position: { ...anchor.position, y: anchor.position.y + 0.5 } }
-          : anchor),
-      },
-    })) },
+  // 2026-11-14 全带泵重画：真实汇流节点 condensate_living_dining_merge 已删除，门禁改由
+  // 合成 junction 覆盖（机制测试，不依赖真实配置仍有 junction）。
+  const layers = Object.fromEntries(['strong_power', 'weak_power', 'water_supply', 'drainage', 'refrigerant', 'condensate', 'supply_air', 'return_air'].map((layer) => [layer, { label: layer, color: '#fff', height: 2 }]));
+  const junction = {
+    id: 'synthetic_merge', layer: 'condensate', kind: 'merge',
+    position: { x: 1, z: 1, y: 1.99 }, inlet_routes: ['syn-branch-a', 'syn-branch-b'],
+    outlet_route: 'syn-trunk', fitting: 'wye', fitting_overlap_m: 0.06,
+    reason: 'synthetic junction for the junction↔anchor y-guard test',
   };
-  validateMepCoordination(config, endpointSourcesFromFacts(baseFacts, realPointWalls, realMountHosts));
-  assert.throws(() => validateMepCoordination(config, endpointSourcesFromFacts(driftedFacts, realPointWalls, realMountHosts)),
+  const branch = (id: string, from: { x: number; z: number; y: number }) => ({
+    id, layer: 'condensate', status: 'inferred', source_status: 'plan_supported',
+    construction_status: 'pending', method: 'gravity_condensate_candidate',
+    diameter: 0.025, from_height: from.y, to_height: 1.99, flow_direction: 'down', slope: 0.01,
+    from, to: 'synthetic_merge',
+  });
+  const synthetic = MepCoordinationSchema.parse({
+    version: '1', status: 'preliminary', layers,
+    routes: [
+      branch('syn-branch-a', { x: 0, z: 1, y: 2 }),
+      branch('syn-branch-b', { x: 1, z: 0, y: 2 }),
+      {
+        id: 'syn-trunk', layer: 'condensate', status: 'inferred', source_status: 'plan_supported',
+        construction_status: 'pending', method: 'gravity_condensate_candidate', diameter: 0.032,
+        from_height: 1.99, to_height: 0.1, flow_direction: 'down', slope: 0.01,
+        from: 'synthetic_merge', to: { x: 1.1, z: 1, y: 0.099 },
+      },
+    ],
+    junctions: [junction],
+  });
+  const anchor = { id: 'synthetic_merge', status: 'pending' as const, system: 'condensate' as const, position: { x: 1, y: 1.99, z: 1 } };
+  const baseSources = { ...sourceIds(), hvacAnchors: [...sourceIds().hvacAnchors, anchor] };
+  validateMepCoordination(synthetic, baseSources);
+  const driftedAnchor = { ...anchor, position: { ...anchor.position, y: anchor.position.y + 0.5 } };
+  const driftedSources = { ...baseSources, hvacAnchors: [...sourceIds().hvacAnchors, driftedAnchor] };
+  assert.throws(() => validateMepCoordination(synthetic, driftedSources),
     /position does not match its HVAC anchor/);
 });
 

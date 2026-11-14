@@ -178,6 +178,9 @@ function main(): void {
   // error：三件链条家具的定位声明解不出来，不出缺件校验。
   // 2026-11-13 issue #116：链已退役（950 衣柜 + 三件链条家具全删，全带泵后冷凝水改走客卫）；
   // resolveCondensateChain 在两宿主皆无时返回无链无诊断，调用方按 condensateChain 未定义跳过。
+  // 2026-11-14 全带泵重画：新 condensate-master 不再穿 w_mbath_south，穿墙点派生必失败——
+  // 两宿主皆无时连派生都不跑（不派生、不报错），有任一宿主时仍按旧口径派生并显形。
+  const chainHostsPresent = hosts.get('mb.wardrobe_950') !== undefined || hosts.get('mb.vanity_pvc_box') !== undefined;
   const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
   const hvacDiagram = hvacFacts.plans[0]?.diagram;
   const mepCoordination = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
@@ -185,7 +188,7 @@ function main(): void {
   // S3（issue #98 第五阶段）：condensate-master@w_mbath_south 的 at 已删（可派生 45 条之一），
   // 冷凝链锚点由路线几何派生——与 lint/takeoff 同一算法、同一端点解算源。派生失败 → error
   // 显形（不回退手写值），链条家具随即可解出失败。
-  const penetrationDerived = deriveMepPenetrationAt(mepRoute, 'w_mbath_south', {
+  const penetrationDerived = chainHostsPresent ? deriveMepPenetrationAt(mepRoute, 'w_mbath_south', {
     sources: endpointSourcesFromFacts({
       electrical: loadElectricalConfig(),
       plumbing: loadPlumbingConfig(),
@@ -193,7 +196,7 @@ function main(): void {
       hvac: hvacFacts,
     }),
     walls,
-  });
+  }) : {};
   if (penetrationDerived.diagnostic) errors.push(`condensate chain: ${penetrationDerived.diagnostic}`);
   const { anchors, diagnostics: chainDiagnostics } = resolveCondensatePlacementAnchors({
     hvacDiagram,
