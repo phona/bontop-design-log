@@ -164,6 +164,31 @@ test('反例：零行程与末步未落到 to 端点 → 显式诊断、无不�
   assert.equal(green.unresolved, 0);
 });
 
+test('反例：无 y 绝对步后接 slope_run → 显式失败（旧标高游标须清除，不静默算错坡度）', () => {
+  // PR #233 二审 blocking：from_height=2.70、slope=0.01，via=[{x:1,z:0} 无 y, slope_run x→'to']，
+  // to=(2,0)。旧行为：末点 y=2.69 求解成功，但前一点下游按层高 2.65 回退，形成 40mm 上坡，
+  // 且 lint 的坡度检查跳过无 y 点。清除游标后 slope_run 以「缺少有效起算标高」显式失败。
+  const mixed = slopeConfig([slopeRoute('syn-mixed', [
+    { x: 1, z: 0 },
+    { kind: 'slope_run', axis: 'x', to: 'to' },
+  ], { to: { x: 2, z: 0 } })]);
+  const red = resolveMepViaSteps(mixed.routes[0], { x: 0, z: 0 }, { x: 2, z: 0 }, []);
+  assert.deepEqual(red.points, []);
+  assert.match(red.diagnostic ?? '', /缺少有效起算标高/);
+  // 同一路线的统一出口同样 fail-closed。
+  const entry = resolveMepRoutes(mixed, emptySources).routes[0];
+  assert.deepEqual(entry.unresolved, ['via']);
+  assert.deepEqual(entry.points, []);
+  // 对照：同一绝对步带 y 时坡度照常派生（2.70 − 0.01×1 = 2.69，到点 2.69）。
+  const withY = slopeConfig([slopeRoute('syn-mixed-y', [
+    { x: 1, z: 0, y: 2.7 },
+    { kind: 'slope_run', axis: 'x', to: 'to' },
+  ], { to: { x: 2, z: 0 } })]);
+  const green = resolveMepRoutes(withY, emptySources).routes[0];
+  assert.deepEqual(green.unresolved, []);
+  assert.ok(Math.abs(green.points[green.points.length - 1].y! - 2.69) <= 1e-9, `terminal y ${green.points[green.points.length - 1].y} !== 2.69`);
+});
+
 test('反例：to/from 断引用 → unresolved 含 to/from 与 via、无不完整几何（红/绿）', () => {
   const brokenTo = slopeConfig([slopeRoute('syn-master', MASTER_VIA, { to: 'missing_terminal' })]);
   const toEntry = resolveMepRoutes(brokenTo, emptySources).routes[0];
