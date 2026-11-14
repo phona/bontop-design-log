@@ -11,7 +11,7 @@
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import type { HvacDiagram } from '../../shared/hvac-diagram-schema.js';
+import type { HvacDiagram } from '../../shared/types.js';
 
 const WALLS = [{ id: 'w_test', x1: 0, z1: 0, x2: 4, z2: 0, height: 2.8 }];
 const ROOMS = [{ id: 'test_room', name: 'Test', x: 2, z: 0, width: 4, depth: 2, height: 2.8, type: 'private' as const, boundary_count: 4 }];

@@ -56,7 +56,7 @@ test('正例：批量与逐件在多段墙上给出同一位置，且该位置�
   });
   assert.deepEqual(indexes.furnitureDiagnostics, []);
   const host = indexes.mountHosts.get('test.arc_cab');
-  assert.ok(host, '批量解算出的宿主必须进 mountHosts');
+  assert.ok(host?.x !== undefined && host?.z !== undefined, '批量解算出的宿主必须进 mountHosts 且有位置');
   const single = resolveFurniturePlacement(item, wallSegmentsFromElements([ARC_WALL]));
   assert.ok(single.placement, '逐件解算必须解出位置');
   assert.ok(Math.abs(host.x - single.placement.x) < 1e-9, `批量 x=${host.x} 与逐件 x=${single.placement.x} 不一致`);
