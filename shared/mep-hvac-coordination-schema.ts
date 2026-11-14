@@ -298,7 +298,10 @@ const VIA_SHAFT_CONSISTENCY_TOLERANCE = 0.005;
  * 高度首步为 route.from_height）；目标 to 为数值或字面 'to'（to 端点在该轴上的坐标）；
  * 不得声明步内 y、不引用竖井；缺 slope / 缺起算标高 / 零行程 → 显式失败。末步为
  * slope_run 时落点必须平面重合 to 端点，否则整条 via 失败（终端标高由末步落点派生）。
- * 绝对坐标步原样透传。任一步失败即整条 via 失败（fail-closed，不给半条路径）。
+ * 绝对坐标步原样透传；缺 y 的绝对步清除标高游标——后续 slope_run 不得沿用旧标高
+ * （否则与下游层高回退形成虚构上坡，PR #233 二审 blocking），而以「缺少有效起算
+ * 标高」显式失败；带 y 的绝对步照旧同步推进游标。任一步失败即整条 via 失败
+ * （fail-closed，不给半条路径）。
  * 本函数也是 facts-lint 吊顶净空等只持端点记录的消费方复用同一求解器的出口——
  * 不得另写第二套步语义。
  */
@@ -312,7 +315,10 @@ export function resolveMepViaSteps(
   // 当前平面游标：from_drop 在上一关系步的落点竖降，不返回 from.x。
   let cursor = { x: from.x, z: from.z };
   // 当前标高游标：slope_run 的起算标高（首步为 route.from_height；绝对步/竖井步
-  // 落点带 y 时同步推进，坡度跑始终从上一落点的真实高度起算）。
+  // 落点带 y 时同步推进，坡度跑始终从上一落点的真实高度起算；绝对步缺 y 时清零——
+  // 该点下游按层高回退，沿用旧游标会使后续坡度步从旧标高起算、与回退值形成虚构
+  // 上坡（PR #233 二审 blocking：2.70 起算、1% 坡，1m 行程后 2.69，而前一点回退
+  // 2.65，实成 40mm 上坡）；清零后后续 slope_run 以「缺少有效起算标高」显式失败）。
   let cursorY: number | undefined = typeof route.from_height === 'number' && Number.isFinite(route.from_height)
     ? route.from_height
     : undefined;
@@ -320,7 +326,8 @@ export function resolveMepViaSteps(
     if (isMepViaCoordinate(step)) {
       points.push({ x: step.x, z: step.z, ...(step.y !== undefined ? { y: step.y } : {}) });
       cursor = { x: step.x, z: step.z };
-      if (step.y !== undefined) cursorY = step.y;
+      // 无 y 的绝对步不推进标高游标——它没有真实高度可继承；带 y 时照旧同步。
+      cursorY = step.y !== undefined ? step.y : undefined;
       continue;
     }
     if (step.kind === 'slope_run') {
