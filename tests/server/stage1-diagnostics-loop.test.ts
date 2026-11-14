@@ -66,6 +66,37 @@ test('B：已渲染件失败不重复——逐件循环已报的失败，批量�
   );
 });
 
+test('D：阶段外宿主锚点仍解出——电视只在 furnishingsAll，锚点沙发照常渲染、不报断引用', async () => {
+  const { buildScene } = await import('../../shared/render/SceneBuilder.js');
+  // Codex 修复轮 blocking 的复现形状：批量解算（全量宿主）得 (11, 7.7) 且无诊断，
+  // 过滤后的逐件解算曾报 anchor host not found 并跳过沙发。
+  const tv = { id: 'test.tv', type: 'tv_65', x: 11, z: 8.0, rotation: 270 };
+  const sofa = {
+    id: 'test.sofa',
+    type: 'sofa_3seat',
+    anchor: { source: 'furniture' as const, id: 'test.tv', offset: { x: 0, z: -0.3 } },
+    rotation: 270,
+  };
+  const result = buildScene({
+    rooms: ROOMS,
+    walls: WALLS,
+    elements: [],
+    furnishings: { test_room: [sofa] },
+    furnishingsAll: { test_room: [tv, sofa] },
+  });
+  assert.deepEqual(result.report.placementDiagnostics, []);
+  const host = result.index.mountHosts?.get('test.sofa');
+  assert.ok(host?.x !== undefined && host?.z !== undefined, '锚点沙发必须进 mountHosts 且有位置');
+  assert.ok(Math.abs(host.x - 11) < 1e-9, `沙发 x 应为 11，实际 ${host.x}`);
+  assert.ok(Math.abs(host.z - 7.7) < 1e-9, `沙发 z 应为 7.7，实际 ${host.z}`);
+  const placed = result.index.furnitureMeshes.find(
+    (group) => String(group.userData.furnishingType) === 'sofa_3seat',
+  );
+  assert.ok(placed, '锚点沙发必须进场景，不因宿主阶段外被跳过');
+  assert.ok(Math.abs(placed.position.x - 11) < 1e-9, `渲染 x 应为 11，实际 ${placed.position.x}`);
+  assert.ok(Math.abs(placed.position.z - 7.7) < 1e-9, `渲染 z 应为 7.7，实际 ${placed.position.z}`);
+});
+
 test('C1：链正常时阶段外链条家具不误报——批量与逐件共用同一份链锚点', async () => {
   const { buildScene } = await import('../../shared/render/SceneBuilder.js');
   const result = buildScene(chainInputs({ withPenetration: true }));
