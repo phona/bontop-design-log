@@ -7,7 +7,7 @@
  *
  * 复用既有单一实现：splitSegmentByOpenings（shared/wall-segments.ts，墙洞切分与 3D 渲染同口径）、
  * resolveFurniturePlacement（shared/furniture-placement.ts，摆位与 3D 渲染同口径）、
- * resolveMepRoutes / mepRoutePoints / resolveMepEndpoint（MEP 折线与 3D 渲染同口径）。
+ * resolveMepRoutes / resolveMepEndpoint（MEP 折线与 3D 渲染同口径）。
  *
  * 点位圈心口径（2026-11-07 业主裁定「DXF 迁就 3D 投影」，issue #98 S1）：沿墙点位的圈心 =
  * 墙线 datum + THIN_PLATE_FACE_OFFSET（0.075m = 半墙厚 0.06 + 墙缝 0.005 + 半件厚 0.01），
@@ -26,7 +26,7 @@
  */
 
 import { type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type PlumbingPoint, type RoomLayout, type SceneElement } from '../types.js';
-import { type MepCoordination, type MepEndpointSources, mepRoutePoints, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
+import { type MepCoordination, type MepEndpointSources, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
 import { centerlineSamples } from '../arc-polyline.js';
 
 import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement } from '../furniture-placement.js';
@@ -155,6 +155,9 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   // pointWalls 用本次装配的墙元素，mountHosts 用 house.furnishings 全量表（DXF 恒为全案口径，
   // 不按阶段过滤）。电气/给排水点位与 MEP 端点共用同一份 shared/point-placement.ts 解算。
   // house.furnishings 缺失时 mountHosts 为 undefined——保留「无家具上下文」的既有语义。
+  // （二阶段 S1 修复轮审计）本处 furnitureDiagnostics 不另设门禁：emitFurniture 对同一份
+  // furnishings、同一细分段口径逐件解算，失败即进 errors 使导出失败——批量诊断与逐件
+  // 诊断同源同输入，无第二口径可分裂；链示意件由 emitFurniture 按类型跳过，不进批量口径。
   const placementIndexes = buildPlacementIndexes({
     geometry: { walls: wallsById.values() },
     furnishings: house.furnishings,
@@ -686,7 +689,7 @@ function emitFloorAndWallFinishes(
   }
 }
 
-// --- MEP（与 3D 渲染同口径：resolveMepRoutes → mepRoutePoints）---
+// --- MEP（与 3D 渲染同口径：resolveMepRoutes → resolved.points）---
 
 /** 候选/需求示意/非物理/待复核路线不是施工放线依据（codex 审 2026-11-03 blocking）——隔离 M-CAND。 */
 function isCandidateRoute(resolved: ReturnType<typeof resolveMepRoutes>['routes'][number]): boolean {
@@ -718,7 +721,7 @@ function emitMep(
       errors.push(`mep route ${resolved.route.id}: 端点未解析（${resolved.unresolved.join('/')}）——不导出该路线，修复声明后重导`);
       continue;
     }
-    const points = mepRoutePoints(resolved.route, resolved.from, resolved.to);
+    const points = resolved.points;
     if (points.length < 2) continue;
     const candidate = isCandidateRoute(resolved);
     const layer = candidate ? DXF_LAYERS.M_CAND : DXF_LAYERS.M_ROUTE;
@@ -740,7 +743,7 @@ function emitMep(
     // ascii 模式显式用 id（codex 十三审 minor）：中文 label 剥离后多条同专业路线文字相同，
     // 无法对应回配置核验；utf8 保持 label 优先。
     const name = labelsMode === 'ascii' ? resolved.route.id : (resolved.route.label ?? resolved.route.id);
-    // 标高读 mepRoutePoints 生成点首尾（codex 九审 blocking）：实际几何用了
+    // 标高读统一出口 resolved.points 首尾（codex 九审 blocking）：实际几何用了
     // route.from_height/to_height 覆盖端点原始 y，读 resolved.from/to 会标错覆盖值。
     const fromY = points[0]?.y;
     const toY = points[points.length - 1]?.y;

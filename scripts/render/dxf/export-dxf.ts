@@ -13,7 +13,7 @@ import { mergeSceneElements, parseOverlayFiles } from '../../../server/overlay-m
 import { loadMepCoordinationConfig } from '../../../server/config-loader.js';
 import { ProjectRenderFactsLoader } from '../../../server/project-render-facts-loader.js';
 import { endpointSourcesFromFacts } from '../../../shared/mep-hvac-coordination-schema.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
 import { buildProjectDxf } from '../../../shared/dxf/project-dxf.js';
 import type { PointCircuitTopologyLike } from '../../../shared/point-circuits.js';
 
@@ -26,8 +26,9 @@ function main(): void {
   if (!facts) throw new Error('render facts 加载失败（config/electrical|plumbing|ceiling|hvac.yaml）');
 
   const mepConfig = loadMepCoordinationConfig();
-  // 点位宿主墙索引：MEP 路线端点与 E-*/P-POINTS 出图共用 shared/point-placement.ts 单一解算。
-  const mepSources = endpointSourcesFromFacts(facts, pointWallIndexFromElements(catalog.getWalls()), pointMountHostIndex(Object.values(catalog.getFurnishings()).flat()));
+  // 点位宿主墙索引：MEP 路线端点与 E-*/P-POINTS 出图共用 buildPlacementIndexes 单一产地。
+  const dxfIndexes = buildPlacementIndexes({ geometry: { walls: catalog.getWalls() }, furnishings: catalog.getFurnishings() });
+  const mepSources = endpointSourcesFromFacts(facts, dxfIndexes.pointWalls, dxfIndexes.mountHosts);
   // 点位 → 回路 单一派生（issue #98 S3）：图上「点位属于哪条回路」的标注源。点位侧 circuit
   // 字段已退役，只认 topology 的 member_point_ids + controls。
   const pointCircuitSources = parseYaml(readFileSync('config/electrical-topology.yaml', 'utf-8')) as PointCircuitTopologyLike;

@@ -4,6 +4,7 @@ import test from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
   endpointSourcesFromFacts,
+  isMepViaCoordinate,
   parseMepCoordination,
   resolveMepRoutes,
 } from '../../shared/mep-hvac-coordination-schema.js';
@@ -89,9 +90,9 @@ function independentLayerLength(layer: string): number {
     const resolved = resolution.routes.find((item) => item.route.id === route.id);
     if (!resolved || resolved.unresolved.length > 0 || !resolved.metadata.physicalRoute) continue;
     const points: Array<[number, number, number]> = [];
-    // 与 mepRoutePoints 同优先级：路由自己声明的 from_height/to_height 优先于点位高度
+    // 与统一出口 resolved.points 同优先级：路由自己声明的 from_height/to_height 优先于点位高度
     if (resolved.from) points.push([resolved.from.x, route.from_height ?? resolved.from.y ?? 0, resolved.from.z]);
-    for (const via of route.via) points.push([via.x, via.y ?? 0, via.z]);
+    for (const via of resolved.viaPoints) points.push([via.x, via.y ?? 0, via.z]);
     if (resolved.to) points.push([resolved.to.x, route.to_height ?? resolved.to.y ?? 0, resolved.to.z]);
     // 零平面位移（首末平面点重合）的路由只贡献竖向长度，仓库口径不计为 physical 折线；本独立实现同步排除
     const first = points[0];
@@ -436,7 +437,7 @@ test('回路缺 breaker 声明即抛错：漏保数量不能靠"没声明=没有
 test('折线点缺 y 标高即抛错：不按 0 算（否则吊顶内的水平段变成竖直段）', () => {
   const broken = coordination.routes.map((route) => (
     route.id === 'strong-main'
-      ? { ...route, via: route.via.map((point) => ({ x: point.x, z: point.z })) }
+      ? { ...route, via: route.via.filter(isMepViaCoordinate).map((point) => ({ x: point.x, z: point.z })) }
       : route
   ));
   const brokenResolution = resolveMepRoutes({ ...coordination, routes: broken } as typeof coordination, sources);

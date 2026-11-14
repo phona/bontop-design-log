@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { MepCoordination, MepRoute } from '@shared/mep-hvac-coordination-schema';
-import { isMepPhysicalRoute, mepRoutePoints, resolveMepEndpoint, type MepEndpointSources } from '@shared/mep-hvac-coordination-schema';
+import { isMepPhysicalRoute, resolveMepRoutes, type MepEndpointSources } from '@shared/mep-hvac-coordination-schema';
 import { lintLevel, type MepLintResult } from '@shared/mep-hvac-lint';
 
 export interface MepRenderReport {
@@ -11,10 +11,6 @@ export interface MepRenderReport {
 }
 
 function hexColor(value: string): number { return Number.parseInt(value.replace(/^#/, ''), 16); }
-
-function heightOf(point: { y?: number }, fallback: number, override?: number): number {
-  return override ?? point.y ?? fallback;
-}
 
 function orientSegment(mesh: THREE.Mesh, start: THREE.Vector3, end: THREE.Vector3): void {
   const direction = new THREE.Vector3().subVectors(end, start);
@@ -55,11 +51,13 @@ export class MepCoordinationRenderer {
     this.clear();
     this.renderReport = { total: config.routes.length, resolved: 0, skipped: 0, skippedRoutes: [] };
     this.endpointIndex.clear();
-    for (const route of config.routes) {
+    // 折线一律取统一出口 resolved.points（issue #98 二阶段 S1）：端点标高已含
+    // from_height/to_height 覆盖、via 已解关系步；未解路由跳过（预览层，不抛错）。
+    const report = resolveMepRoutes(config, sources);
+    for (const resolved of report.routes) {
+      const route = resolved.route;
       const layer = config.layers[route.layer];
-      const from = resolveMepEndpoint(route.from, sources);
-      const to = resolveMepEndpoint(route.to, sources);
-      if (!from || !to) {
+      if (resolved.unresolved.length > 0) {
         this.renderReport.skipped += 1;
         this.renderReport.skippedRoutes.push(route.id);
         console.warn(`[mep] skipped unresolved route ${route.id}`);
@@ -68,11 +66,11 @@ export class MepCoordinationRenderer {
       this.renderReport.resolved += 1;
       const fromPoint: Extract<MepRoute['from'], object> | undefined = typeof route.from === 'object' ? route.from : undefined;
       const toPoint: Extract<MepRoute['to'], object> | undefined = typeof route.to === 'object' ? route.to : undefined;
-      const rawPoints = [
-        { ...from, y: heightOf(from, layer.height, route.from_height) },
-        ...route.via,
-        { ...to, y: heightOf(to, layer.height, route.to_height) },
-      ];
+      // 端点标高 fallback（旧 heightOf 口径）只作用于首末点：via 的 y 缺声明时保持
+      // undefined（Vector3 映射时再取 layer.height），与旧 rawPoints 逐位一致。
+      const rawPoints = resolved.points.map((point, index) => (index === 0 || index === resolved.points.length - 1
+        ? { ...point, y: point.y ?? layer.height }
+        : point));
       const points = rawPoints.map((point) => new THREE.Vector3(point.x, point.y ?? layer.height, point.z));
       const group = new THREE.Group();
       group.name = `mep:route:${route.id}`;

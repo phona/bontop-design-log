@@ -3,7 +3,8 @@ import { load as parseYaml } from 'js-yaml';
 import { parseElectricalPoints, parseCeilingZones, parseProjectHvacFacts, parseProjectRenderFactsProjection } from '../../../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsFromFiles } from '../../project/project-render-facts-projection.js';
 import { buildHvacBuilderSources, buildHvacEntityDescriptors, expectedHvacExportIds } from '../../../shared/render/HvacBuilder.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
+import type { FurnishingsYaml } from '../../../shared/types.js';
 import { resolveLayout } from '../../../server/layout-resolver.js';
 
 const projection = buildProjectRenderFactsFromFiles();
@@ -33,11 +34,14 @@ const hvac = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
 const plan = hvac.plans[0];
 const electrical = parseElectricalPoints(readFileSync('config/electrical.yaml', 'utf8'));
 const ceiling = parseCeilingZones(readFileSync('config/model/envelope/ceiling.yaml', 'utf8'));
-const walls = pointWallIndexFromElements(
-  resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0]).walls,
-);
-const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
-const mountHosts = pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never);
+const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
+// （二阶段 S1）宿主索引一律取 buildPlacementIndexes 产物（家具由共享解算一次解出）。
+const renderFactsGateIndexes = buildPlacementIndexes({
+  geometry: { walls: resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0]).walls },
+  furnishings: house.furnishings ?? {},
+});
+const walls = renderFactsGateIndexes.pointWalls;
+const mountHosts = renderFactsGateIndexes.mountHosts;
 const base = { hvac, electrical, ceiling, outdoor: [plan.outdoor] };
 const fullSources = buildHvacBuilderSources({ ...base, pointWalls: walls, mountHosts });
 const noWallSources = buildHvacBuilderSources(base);

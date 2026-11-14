@@ -161,6 +161,60 @@ describe('lighting fixture derivation fail-closed', () => {
     assert.equal(derived[0].temperatureK, 3000);
   });
 
+  it('rejects a night_light positioned only by a furniture anchor (no mounting orientation)', () => {
+    // issue #98 二阶段 S1 收口：anchor: {source: furniture} 只表示相对位置，不提供安装
+    // 朝向；夜灯渲染（NightLightGeometry）必需 wallSide 或 furniture_face mountAnchor。
+    // 旧正例曾断言投影位置 (11.5, 0.4, 7.7)——那正是下游抛错的投影，改为反例。
+    assert.throws(
+      () => buildRenderLightingFixtures(
+        [{ id: 'night-sofa', room: 'living_dining', type: 'night_light', height: 0.4, anchor: { source: 'furniture', id: 'test.sofa', offset: { x: 0.5, z: 0 } } }],
+        [override('night-sofa')],
+        new Map([['test.sofa', { id: 'test.sofa', x: 11.0, z: 7.7, rotation: 0, width: 2.2, depth: 1.0 }]]),
+        new Map(),
+      ),
+      /夜灯不支持仅凭 furniture anchor 定位/,
+    );
+  });
+
+  it('rejects a night_light with a furniture anchor at the config parsing entry', () => {
+    // 与投影边界同款禁令，走真实解析入口 parseElectricalPoints。
+    assert.throws(
+      () => parseElectricalPoints([
+        '- id: night-sofa',
+        '  room: living_dining',
+        '  type: night_light',
+        '  anchor: { source: furniture, id: test.sofa, offset: { x: 0.5, z: 0 } }',
+        '  height: 0.4',
+      ].join('\n')),
+      /夜灯 night-sofa 不支持仅凭 furniture anchor 定位/,
+    );
+  });
+
+  it('surfaces the night_light anchor rejection in a full runtime scene build', () => {
+    // 全场景入口 buildRuntimeScene：拒绝须在灯具派生处以可读诊断显形，而不是建成场景后
+    // 由 NightLightGeometry 抛不透明的 "must have a wallSide or furniture_face anchor"。
+    const nightPoint: ElectricalPoint = { id: 'night-sofa', room: 'living_dining', type: 'night_light', height: 0.4, anchor: { source: 'furniture', id: 'test.sofa', offset: { x: 0.5, z: 0 } } };
+    const nightOverride: RenderLightingOverride = { id: 'night-sofa', anchorY_offset: 0, basis: 'probe', reason: 'probe', applies_to: ['web', 'blender'] };
+    const inputs = { ...loadSceneInputs(), electrical: [nightPoint], renderOverrides: [nightOverride] };
+    assert.throws(
+      () => buildRuntimeScene(inputs as Parameters<typeof buildRuntimeScene>[0]),
+      /夜灯不支持仅凭 furniture anchor 定位/,
+    );
+  });
+
+  it('derives anchor fixtures of other types from the host centre + offset without declared x/z', () => {
+    // anchor 只表示相对位置：非夜灯灯具不需要安装朝向，投影只需平面位置，故仍可锚定。
+    // 机制测试（合成夹具）：证明收口只禁夜灯 + furniture anchor，不动其他灯具的 anchor 路径。
+    const derived = buildRenderLightingFixtures(
+      [{ id: 'downlight-sofa', room: 'living_dining', type: 'downlight', height: 0.4, anchor: { source: 'furniture', id: 'test.sofa', offset: { x: 0.5, z: 0 } } }],
+      [override('downlight-sofa')],
+      new Map([['test.sofa', { id: 'test.sofa', x: 11.0, z: 7.7, rotation: 0, width: 2.2, depth: 1.0 }]]),
+      new Map(),
+    );
+    assert.equal(derived.length, 1);
+    assert.deepEqual(derived[0].position, { x: 11.5, y: 0.4, z: 7.7 });
+  });
+
   it('throws when a lighting fixture has no render override', () => {
     assert.throws(
       () => buildRenderLightingFixtures([point({ id: 'orphan', type: 'ceiling_light' })], []),

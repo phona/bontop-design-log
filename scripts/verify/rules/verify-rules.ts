@@ -1,9 +1,10 @@
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { VALID_CEILING_TYPES } from '../../../server/config-loader.js';
-import { FURNITURE_DIMS } from '../../../shared/types.js';
+import { FURNITURE_DIMS, type FurnishingsYaml } from '../../../shared/types.js';
 import { suppressedWallIdSet } from '../../../shared/suppression.js';
 import { CEILING_TRADE_CLASSES } from '../../../shared/ceiling-takeoff.js';
-import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../../shared/point-placement.js';
+import { resolvePointPlacementInWalls } from '../../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 
@@ -87,9 +88,11 @@ function main(): void {
   // 字段删除**静默空转**（undefined 参与比较恒 false、NaN 距离永不越限——门禁全绿而规则
   // 已死）。一律先过 shared/point-placement.ts 单一解算器（与 3D/DXF/MEP/lint 同源），
   // 解算失败即 error 显形，不兜底、不跳过。
-  const pointWalls = pointWallIndexFromElements(walls);
-  const houseForMountHosts = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: Record<string, Array<Record<string, unknown>>> };
-  const mountHosts = pointMountHostIndex(Object.values(houseForMountHosts.furnishings ?? {}).flat() as never);
+  const houseForMountHosts = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: FurnishingsYaml };
+  // （二阶段 S1）宿主索引一律取 buildPlacementIndexes 产物（家具由共享解算一次解出）。
+  const rulesIndexes = buildPlacementIndexes({ geometry: { walls }, furnishings: houseForMountHosts.furnishings ?? {} });
+  const pointWalls = rulesIndexes.pointWalls;
+  const mountHosts = rulesIndexes.mountHosts;
   for (const [source, items] of [['electrical', electrical], ['plumbing', plumbing]] as const) {
     for (const item of items) {
       const { placement, diagnostic } = resolvePointPlacementInWalls(item as never, pointWalls, mountHosts);

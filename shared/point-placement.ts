@@ -39,7 +39,7 @@
  */
 
 import type { WallSide } from './types.js';
-import { WALL_THICKNESS, declaredFurnitureDims, type PlacementItem } from './furniture-placement.js';
+import { WALL_THICKNESS, declaredFurnitureDims, type PlacementItem, type ResolvedFurnitureHost } from './furniture-placement.js';
 import { pointAlongPolyline, polylineLength } from './wall-segments.js';
 
 /** 墙段最小形态（SceneSegment 同构；ChainWallLike / InfrastructureWallSegment 亦满足）。 */
@@ -75,8 +75,8 @@ export interface PointPlacementInput {
   /** 家具挂载定位来源（issue #98 S2：位置 = 宿主脸 + along（沿脸位置）+ face_offset，
    * 灯体半厚 + surface_gap 由渲染管线（NightLightGeometry）在其上追加）。 */
   mount?: { furniture_id: string; face: WallSide; surface_gap?: number; along?: number; face_offset?: number };
-  /** 锚点引用定位来源（S4：F 组转家具挂载 / 暖通 ref 通道）。 */
-  anchor?: { source: string; id: string };
+  /** 锚点引用定位来源（S4：F 组转家具挂载 / 暖通 ref 通道；二阶段 S1：`furniture` 来源 = 宿主家具中心 + 世界轴 offset）。 */
+  anchor?: { source: string; id: string; offset?: { x: number; z: number } };
   /** 宿主意图标注（只作文档与校验输入，不参与解算）。 */
   host_intent?: string;
 }
@@ -135,6 +135,29 @@ export function pointMountHostIndex(items: Iterable<PlacementItem>): Map<string,
       ...(item.rotation !== undefined ? { rotation: item.rotation } : {}),
       ...(dims.width !== undefined ? { width: dims.width } : {}),
       ...(dims.depth !== undefined ? { depth: dims.depth } : {}),
+    });
+  }
+  return index;
+}
+
+/**
+ * 从已解家具结果建 mount 宿主索引（issue #98 二阶段 S1）：与 pointMountHostIndex
+ * 同一 Map 形态，但 x/z 来自 resolveFurniturePlacements 的解算结果而非条目手写
+ * x/z——墙锚/挂载/锚点派生家具至此才进宿主索引。生产路径一律走本函数；
+ * pointMountHostIndex 只保留给迁移期 / 测试直接调用（语义不变）。
+ */
+export function pointMountHostIndexFromResolved(
+  resolved: ReadonlyMap<string, ResolvedFurnitureHost>,
+): Map<string, PointMountHost> {
+  const index = new Map<string, PointMountHost>();
+  for (const host of resolved.values()) {
+    index.set(host.id, {
+      id: host.id,
+      x: host.x,
+      z: host.z,
+      ...(host.rotation !== undefined ? { rotation: host.rotation } : {}),
+      ...(host.width !== undefined ? { width: host.width } : {}),
+      ...(host.depth !== undefined ? { depth: host.depth } : {}),
     });
   }
   return index;
@@ -307,6 +330,47 @@ function pointAndTangentOnPolyline(
 }
 
 /**
+ * 锚点定位解析（issue #98 二阶段 S1）：`furniture` 来源 = 宿主家具中心 + 世界轴 offset。
+ * 高度仍由点位自身的 `height` 声明给出（锚点只解平面 x/z）。其它来源仍未实现——
+ * hvac ref 通道改走 resolveMepEndpoint（MEP 端点），不在本解算器里。
+ * 缺 mountHosts 时与 resolveMountedPoint 同一口径当场抛（调用方接线缺陷）。
+ * anchor 与 x/z 不得共存（声明 x/z 会成为 stale 第二事实源，见 schema
+ * refinePointPlacement 同款禁令；检查放在 source 判定之后，hvac + x/z 仍先报“未实现”）。
+ */
+function resolveAnchoredPoint(
+  anchor: NonNullable<PointPlacementInput['anchor']>,
+  id: string,
+  mountHosts: ReadonlyMap<string, PointMountHost> | undefined,
+  x?: number,
+  z?: number,
+): PointPlacementResolution {
+  if (anchor.source !== 'furniture') {
+    return {
+      placement: null,
+      diagnostic: `点位 ${id}: anchor 定位解析未实现（source "${anchor.source}"；当前只支持 furniture；暖通 ref 通道改走 resolveMepEndpoint）`,
+    };
+  }
+  if (x !== undefined || z !== undefined) {
+    return {
+      placement: null,
+      diagnostic: `点位 ${id}: anchor 与 x/z 不得同时声明（anchor 坐标来自宿主，声明 x/z 会成为 stale 第二事实源）`,
+    };
+  }
+  if (mountHosts === undefined) {
+    throw new Error(`点位 ${id}: anchor 定位要求调用方提供家具宿主索引（mountHosts）；3D/DXF/MEP/校验入口均须从 resolveFurniturePlacements 的解算结果建 pointMountHostIndexFromResolved 传入`);
+  }
+  const host = mountHosts.get(anchor.id);
+  if (!host || host.x === undefined || host.z === undefined) {
+    return {
+      placement: null,
+      diagnostic: `点位 ${id}: anchor 宿主家具 "${anchor.id}" 不在家具宿主索引或未放置（断引用 / count-only 条目无平面几何，不得锚定）`,
+    };
+  }
+  const offset = anchor.offset ?? { x: 0, z: 0 };
+  return { placement: { kind: 'absolute', x: host.x + offset.x, z: host.z + offset.z } };
+}
+
+/**
  * 点位定位解算。定位来源必须唯一（与 resolveFurniturePlacement 同构）：
  * `wall + along` / `mount` / `anchor` / `absolute` 四者之一，同时声明多个即诊断失败。
  * 越界（along 超出墙段总长 / 宿主脸长度）返回诊断，**不 clamp**。
@@ -335,10 +399,7 @@ export function resolvePointPlacement(
     if (hasWallAnchor || hasAbsoluteFlag) {
       return { placement: null, diagnostic: `点位 ${id}: anchor 与 wall/absolute 不得同时声明（定位来源必须唯一）` };
     }
-    return {
-      placement: null,
-      diagnostic: `点位 ${id}: anchor 定位解析未实现（S4：F 组转家具挂载 / 暖通 ref 通道改走本解算器）`,
-    };
+    return resolveAnchoredPoint(point.anchor, id, mountHosts, point.x, point.z);
   }
 
   if (hasWallAnchor && hasAbsoluteFlag) {

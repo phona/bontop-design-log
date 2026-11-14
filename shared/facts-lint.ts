@@ -9,6 +9,7 @@ import {
   SUPPORT_FLOOR_BAND_MAX,
   type FootprintPoint,
 } from './mep-hvac-lint.js';
+import { mepRoutePoints, type MepRoute } from './mep-hvac-coordination-schema.js';
 import type { CeilingZone } from './types.js';
 import { ALL_MODEL_TARGET } from './package-objects.js';
 //
@@ -1772,7 +1773,14 @@ const CEILING_CARRIED_LAYERS_FACTS = new Set([
 interface CeilingClearanceZone { id: string; footprint: FootprintPoint[]; surface: number }
 interface ClearancePoint { x: number; z: number; y?: number }
 
-/** 复刻 shared/mep-hvac-coordination-schema.ts 的 mepRoutePoints：from + via + to，y 取 *route 的高度字段。 */
+/**
+ * 统一出口兼容壳的调用点：原始记录只组装成兼容壳所需的最小形状（id / via / from_height /
+ * to_height），from/to 取预解的 endpoints 数据集，与旧复刻同口径。不走全量
+ * MepRouteSchema.parse——facts 探针的合成记录常缺 status/from/to 等字段（见
+ * tests/server/facts-lint.test.ts 的 `bad` 路线），全量解析会把一条本可核的路线
+ * 误判为 unresolvable。关系型 via 仍由兼容壳抛错，由 runCeilingClearance 转
+ * ceiling_clearance_unresolvable——不静默跳过、不给半条路径。
+ */
 function clearanceRoutePoints(route: Record<string, unknown>, endpoints: Record<string, { x: number; z: number; y?: number }>): ClearancePoint[] {
   const pointOf = (endpoint: unknown): ClearancePoint | undefined => {
     if (typeof endpoint === 'string') return endpoints[endpoint];
@@ -1781,19 +1789,14 @@ function clearanceRoutePoints(route: Record<string, unknown>, endpoints: Record<
     }
     return undefined;
   };
-  const heights = (route as { from_height?: unknown; to_height?: unknown });
-  const from = pointOf(route.from);
-  const to = pointOf(route.to);
-  const via = Array.isArray(route.via) ? route.via.filter(isRecord).map((v) => ({
-    x: v.x as number,
-    z: v.z as number,
-    y: typeof v.y === 'number' ? (v.y as number) : undefined,
-  })) : [];
-  return [
-    ...(from ? [{ ...from, y: typeof heights.from_height === 'number' ? heights.from_height : from.y }] : []),
-    ...via,
-    ...(to ? [{ ...to, y: typeof heights.to_height === 'number' ? heights.to_height : to.y }] : []),
-  ];
+  const via = Array.isArray(route.via) ? route.via.filter(isRecord) : [];
+  const shellRoute = {
+    id: str(route.id),
+    via,
+    ...(typeof route.from_height === 'number' ? { from_height: route.from_height } : {}),
+    ...(typeof route.to_height === 'number' ? { to_height: route.to_height } : {}),
+  } as MepRoute;
+  return mepRoutePoints(shellRoute, pointOf(route.from), pointOf(route.to));
 }
 
 function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex, contract: Contract): void {
@@ -1850,7 +1853,14 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
   for (const route of routes) {
     if (!isRecord(route)) continue;
     if (typeof route.layer === 'string' && !CEILING_CARRIED_LAYERS_FACTS.has(route.layer)) continue;
-    const points = clearanceRoutePoints(route, endpoints);
+    let points: ClearancePoint[];
+    try {
+      points = clearanceRoutePoints(route, endpoints);
+    } catch (error) {
+      add(result, issue('error', 'ceiling_clearance_unresolvable', `${contract.id}：路由 ${str(route.id)} 无法解析为 MEP 路线（${error instanceof Error ? error.message : String(error)}），不静默跳过`, source));
+      tally(result, 'ceiling_clearance_unresolvable');
+      continue;
+    }
     if (!points.length) continue;
     const layerHeight = typeof route.layer === 'string' ? layerHeights.get(route.layer) : undefined;
     const yOf = (p: ClearancePoint): number => p.y ?? layerHeight ?? 0;

@@ -155,11 +155,8 @@ test('R25 project branches meet one declared wye and meet their declared minimum
   const resolved = resolveMepRoutes(project, sources).routes;
   for (const id of ['condensate-living', 'condensate-dining']) {
     const entry = resolved.find((item) => item.route.id === id)!;
-    const points = [
-      { ...entry.from!, y: entry.route.from_height ?? entry.from!.y },
-      ...entry.route.via,
-      { ...entry.to!, y: entry.route.to_height ?? entry.to!.y },
-    ];
+    // （二阶段 S1）折线取统一出口的 points（端点标高已含 from_height/to_height 覆盖）。
+    const points = entry.points;
     for (let index = 1; index < points.length; index += 1) {
       const a = points[index - 1], b = points[index];
       const horizontal = Math.hypot(b.x - a.x, b.z - a.z);

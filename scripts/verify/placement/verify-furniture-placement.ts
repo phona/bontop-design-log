@@ -5,9 +5,10 @@ import { loadCeilingConfig, loadElectricalConfig, loadPlumbingConfig } from '../
 import { FURNITURE_DIMS, CONDENSATE_CHAIN_FURNITURE_TYPES, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type FurnitureAnchor, type FurnitureMount, type VanityLayoutDecl } from '../../../shared/types.js';
 import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, type PlacementAnchors } from '../../../shared/furniture-placement.js';
 import { diffCondensateChainPlanAgainstMep, deriveMepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
-import { endpointSourcesFromFacts, parseMepCoordination, resolveMepEndpoint } from '../../../shared/mep-hvac-coordination-schema.js';
+import { endpointSourcesFromFacts, parseMepCoordination, resolveMepRoute } from '../../../shared/mep-hvac-coordination-schema.js';
 import { parseProjectHvacFacts } from '../../../shared/project-render-facts-schema.js';
-import { pointMountHostIndex, pointWallIndexFromElements, resolvePointPlacementInWalls, type PointWall } from '../../../shared/point-placement.js';
+import { pointWallIndexFromElements, resolvePointPlacementInWalls, type PointWall } from '../../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
 import { findDuplicateFurnitureIds } from '../../../shared/furniture-object-id.js';
 
 const EPS = 0.01;
@@ -205,6 +206,14 @@ function main(): void {
   });
   const condensateChain = anchors.condensateChain;
   for (const diagnostic of chainDiagnostics) errors.push(`condensate chain: ${diagnostic}`);
+  // （二阶段 S1）批量家具解算诊断：buildPlacementIndexes 一次解出全部家具（与逐件
+  // resolvePlacement 同源），有 id 的条目解不出即 error（无来源规则）；mountHosts /
+  // pointWalls 亦由此产出，供下方 MEP 对照共用——同一份解算，不另立第二张表。
+  // 注意：解算失败的条目会在此与逐件循环各报一次（两处同根因）；门禁只关心非空与否。
+  const placementIndexes = buildPlacementIndexes({ geometry: { walls }, furnishings, anchors });
+  for (const diagnostic of placementIndexes.furnitureDiagnostics ?? []) {
+    errors.push(`furniture "${diagnostic.id}": ${diagnostic.diagnostic}`);
+  }
   for (const wallId of anchoredWallIds) {
     const wall = walls.find((candidate) => candidate.id === wallId);
     if (!wall?.line_datum) {
@@ -523,30 +532,28 @@ function main(): void {
   // mep layers 表 condensate 层高 2.65 画示意，MEP 路线按 DEC-2026-10-06-R5 抬入降板空腔
   // （2.70–2.75），该差异已作为遗留登记在 condensate-master 的 reason 里。
   if (condensateChain && mepRoute) {
-    const mepSources = {
+    const resolvedMep = resolveMepRoute(mepRoute, {
       electrical: loadElectricalConfig(),
       plumbing: [],
       ceiling: loadCeilingConfig(),
       hvacAnchors: hvacDiagram?.anchors ?? [],
       hvacTerminals: hvacDiagram?.terminals ?? [],
       outdoor: [],
-      // 点位宿主墙索引（issue #98 S1）：冷凝链 ↔ MEP 对照的端点与 DXF/3D 同一解算。
-      pointWalls: pointWallIndexFromElements(walls),
-      // mount 家具宿主索引（issue #98 S2 / 第五阶段 S1）：B 轨潜伏缺口——本装配点漏传
+      // 点位宿主墙索引（issue #98 S1）与 mount 家具宿主索引（S2 / 第五阶段 S1）：
+      // 与逐件循环同一份 buildPlacementIndexes 产物。B 轨潜伏缺口——本装配点漏传
       // mountHosts 时，起夜灯等 mount 端点在 MEP 侧解不出（回落声明坐标，断言期相等故不显形）。
-      mountHosts: pointMountHostIndex(Object.values(furnishings).flat() as never),
-    };
-    const from = resolveMepEndpoint(mepRoute.from, mepSources, mepCoordination.junctions);
-    const to = resolveMepEndpoint(mepRoute.to, mepSources, mepCoordination.junctions);
-    if (from && to) {
-      const rawPlan = [from, ...mepRoute.via, to].map((point) => ({ x: point.x, z: point.z }));
+      pointWalls: placementIndexes.pointWalls,
+      mountHosts: placementIndexes.mountHosts,
+    }, mepCoordination.junctions, mepCoordination.shafts);
+    if (resolvedMep.unresolved.length === 0) {
+      const rawPlan = resolvedMep.points.map((point) => ({ x: point.x, z: point.z }));
       const mepPlan = rawPlan.filter((point, index) =>
         index === 0 || Math.hypot(point.x - rawPlan[index - 1].x, point.z - rawPlan[index - 1].z) > 1e-9);
       for (const finding of diffCondensateChainPlanAgainstMep(condensateChain.plan, mepPlan)) {
         errors.push(finding);
       }
     } else {
-      errors.push('condensate chain: MEP condensate-master 端点解析失败（from/to 缺位置或 ref 断链），对照做不了');
+      errors.push(`condensate chain: MEP condensate-master 未解析（${resolvedMep.unresolved.join('/')}）：${resolvedMep.diagnostics.join('；')}，对照做不了`);
     }
   }
 

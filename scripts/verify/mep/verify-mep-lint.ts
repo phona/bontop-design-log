@@ -8,8 +8,8 @@ import { endpointSourcesFromFacts, parseMepCoordination, validateMepCoordination
 import { lintLevel, lintMepCoordination, MEP_LINT_CATEGORIES, type MepLintResult } from '../../../shared/mep-hvac-lint.js';
 import { appendUnadjudicatedWarningFindings, parseMepWarningAdjudication } from '../../../shared/mep-warning-adjudication.js';
 import { parseElectricalPoints, parsePlumbingPoints } from '../../../shared/project-render-facts-schema.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../../shared/point-placement.js';
-import type { ProjectRenderFacts } from '../../../shared/types.js';
+import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
+import type { FurnishingsYaml, ProjectRenderFacts } from '../../../shared/types.js';
 
 function load<T>(path: string): T { return yaml.load(readFileSync(path, 'utf8')) as T; }
 
@@ -23,13 +23,14 @@ export function runMepLint(): MepLintResult {
   const overlay = parseOverlayFiles();
   const plan = hvac.plans[0];
   const layout = resolveLayout(geometry as Parameters<typeof resolveLayout>[0]);
-  const house = load<{ furnishings?: Record<string, Array<Record<string, unknown>>> }>('config/house.yaml');
+  const house = load<{ furnishings?: FurnishingsYaml }>('config/house.yaml');
   // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：路线端点与 DXF/3D
-  // 共用 shared/point-placement.ts 单一解算。
+  // 共用 buildPlacementIndexes 单一产地（家具由共享解算一次解出，不再直读手写 x/z）。
+  const lintIndexes = buildPlacementIndexes({ geometry: { walls: layout.walls }, furnishings: house.furnishings ?? {} });
   const sources = endpointSourcesFromFacts(
     { electrical, plumbing, ceiling, hvac },
-    pointWallIndexFromElements(layout.walls),
-    pointMountHostIndex(Object.values(house.furnishings ?? {}).flat() as never),
+    lintIndexes.pointWalls,
+    lintIndexes.mountHosts,
   );
   // Keep the cross-file coordination contract on the same verify:mep gate as
   // geometry lint.  Lint is intentionally permissive for inferred/pending

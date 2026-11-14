@@ -22,7 +22,6 @@
  */
 
 import {
-  mepRoutePoints,
   type MepRoute,
   type MepRouteResolutionReport,
 } from './mep-hvac-coordination-schema.js';
@@ -85,7 +84,7 @@ export interface MepTakeoffRules {
   non_mep_items?: Array<{ id: string; reason: string }>;
   /**
    * 给排水路由需要跨规格时，必须按 route point index 显式分段。
-   * from_index/to_index 指 mepRoutePoints(route, resolved.from, resolved.to) 的下标，
+   * from_index/to_index 指统一出口 resolved.points 的下标，
    * 每一段覆盖 from_index 到 to_index 之间的折线边。未声明分段时只接受两端规格完全一致的路由。
    */
   pipe_route_segments?: Record<string, Array<{
@@ -265,7 +264,7 @@ function requireRule(value: unknown, key: string, minimum = Number.EPSILON): num
   return value as number;
 }
 
-/** 折线点最小形状（mepRoutePoints 的产出 / route.via 的声明）。 */
+/** 折线点最小形状（统一出口 resolved.points 的产出 / route.via 的声明）。 */
 type RoutePoint = { x: number; z: number; y?: number };
 
 /**
@@ -329,8 +328,7 @@ function routePointDistance(points: Array<{ x: number; z: number; y?: number }>,
   return length;
 }
 
-function routeLength(route: MepRoute, from?: { x: number; z: number; y?: number }, to?: { x: number; z: number; y?: number }): number {
-  const points = mepRoutePoints(route, from, to);
+function routeLength(route: MepRoute, points: Array<{ x: number; z: number; y?: number }>): number {
   let length = 0;
   for (let i = 1; i < points.length; i += 1) {
     length += routeSegmentLength(points[i - 1], points[i], `路由 ${route.id}`);
@@ -361,7 +359,7 @@ function terminalDropSpan(
   // 两者都缺 → 旧代码取 0，于是 `Math.max(0, 0 − pointHeight)` 恒为 0，**整段下引管消失**
   // （已画线点位因此系统性少算约 2.2m/个）。标高不可默认：缺声明就抛错。
   // 注：routeLength 的 requirePointY 已经先对同一个表达式 fail-closed（它用的就是
-  // `mepRoutePoints` 的 `to_height ?? to.y`），所以这个分支今天不可达——保留它是为了让
+  // 统一出口 resolved.points 的 `to_height ?? to.y`），所以这个分支今天不可达——保留它是为了让
   // 本函数自身自洽，将来若有人在新路径上先调它，不会静默退回 0。
   let endY: number;
   if (route.to_height !== undefined) endY = route.to_height;
@@ -429,7 +427,7 @@ export function unionPlanLength(paths: Array<Array<{ x: number; z: number }>>, c
  *   生产约 34 个竖直位置曾因此累计多计约 1.70m。unionPlanLength 本体不改，
  *   诊断口径（drawnRouteUnionM 等）保持原义。
  * - **缺失标高 fail-closed**：任一点 y 缺失/非有限数即抛错。旧实现用 ?? 0 兜底，
- *   缺标高的点被当成 y=0 静默出数。生产主路径的 y 由 mepRoutePoints 保证、
+ *   缺标高的点被当成 y=0 静默出数。生产主路径的 y 由统一出口 resolved.points 保证、
  *   routeLength 已先 fail-closed；导出函数自身守同一口径，不许直接调用者绕过。
  */
 export function pricedCircuitLength(paths: Array<Array<{ x: number; z: number; y?: number }>>): number {
@@ -658,10 +656,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       // A pending reserve must not become routed coverage or consume material.
       continue;
     }
-    penetrations += countRoutePenetrations(route, mepRoutePoints(route, resolved.from, resolved.to), penetrationWallById, unresolved);
-    const drawnLength = routeLength(route, resolved.from, resolved.to);
+    penetrations += countRoutePenetrations(route, resolved.points, penetrationWallById, unresolved);
+    const drawnLength = routeLength(route, resolved.points);
     drawnMWithoutDrop += drawnLength;
-    const points3d = mepRoutePoints(route, resolved.from, resolved.to);
+    const points3d = resolved.points;
     const planPath = points3d.map((point) => ({ x: point.x, z: point.z }));
     drawnPlanPaths.push(planPath);
     if (route.layer === 'strong_power') strongPaths.push(planPath);
@@ -687,8 +685,8 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       circuitPaths.set(circuitId, list);
     }
     const endRoom = typeof route.to === 'string' ? roomOf(route.to) : undefined;
-    if (endRoom) bumpRoom(endRoom, 'drawnRouteM', routeLength(route, resolved.from, resolved.to));
-    else unassignedRouteM += routeLength(route, resolved.from, resolved.to);
+    if (endRoom) bumpRoom(endRoom, 'drawnRouteM', routeLength(route, resolved.points));
+    else unassignedRouteM += routeLength(route, resolved.points);
     const length = drawnLength + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to) : 0);
     layerLength[layer] = (layerLength[layer] ?? 0) + length;
     for (const endpoint of [route.from, route.to]) {
@@ -806,7 +804,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     buckets.set(key, bucket);
   };
   const routeSegments = (route: MepRoute, resolved: ResolvedMepRoute): Array<{ length: number; spec: PipeSegmentSpec }> | null => {
-    const points = mepRoutePoints(route, resolved.from, resolved.to);
+    const points = resolved.points;
     const declared = rules.pipe_route_segments?.[route.id];
     if (!declared) return null;
     const segments = declared.map((segment) => ({
@@ -876,7 +874,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         pipeUnresolved(route.id, `给水端点规格冲突（${ids[0]}=${specs[0]!.temp}/${specs[0]!.dn}，${ids[1]}=${specs[1]!.temp}/${specs[1]!.dn}）；禁止按首个端点扩散，需显式 pipe_route_segments`);
         return;
       }
-      const length = routeLength(route, resolved.from, resolved.to)
+      const length = routeLength(route, resolved.points)
         + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to) : 0);
       for (const key of pipeKeysForWater(specs[0]!.temp!, specs[0]!.dn!)) addPipe(water, key, length);
       return;
@@ -895,7 +893,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       pipeUnresolved(route.id, `排水端点口径冲突（${ids[0]}=de${dns[0]}，${ids[1]}=de${dns[1]}）；禁止按首个端点扩散，需显式 pipe_route_segments`);
       return;
     }
-    const length = routeLength(route, resolved.from, resolved.to)
+    const length = routeLength(route, resolved.points)
       + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to) : 0);
     addPipe(drainage, `de${dns[0]}`, length);
   };

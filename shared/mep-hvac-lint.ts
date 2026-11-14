@@ -2,7 +2,6 @@ import type { CeilingZone, ElectricalPoint, HvacAnchor, HvacTerminal, PlumbingPo
 import { resolvePointPlacementInWalls } from './point-placement.js';
 import {
   isMepPhysicalRoute,
-  mepRoutePoints,
   resolveMepEndpoint,
   resolveMepRoutes,
   type MepCoordination,
@@ -1222,8 +1221,16 @@ export function lintMepCoordination(config: MepCoordination, sources: MepEndpoin
     for (const endpoint of [route.from, route.to]) {
       if (typeof endpoint === 'string' && !ids.has(endpoint)) add(result, issue('error', 'endpoint_unknown', `MEP route ${route.id} references unknown endpoint ${endpoint}`, route.id));
     }
-    for (const side of item.unresolved) add(result, issue('error', 'endpoint_unresolved', `MEP route ${route.id} ${side} endpoint is unresolved`, route.id));
-    const points = mepRoutePoints(route, from, to);
+    for (const side of item.unresolved) {
+      // via 未解：统一出口的 diagnostics 已写明原因（竖井引用/一致性），直接引用；
+      // from/to 沿用既有端点口径。via 未解的路由 points 为 []（不给半条路径），
+      // 几何段（door_opening / route_not_orthogonal / 碰撞）随 points.length < 2 自然跳过。
+      const message = side === 'via'
+        ? `MEP route ${route.id} via is unresolved: ${item.diagnostics.join('；')}`
+        : `MEP route ${route.id} ${side} endpoint is unresolved`;
+      add(result, issue('error', 'endpoint_unresolved', message, route.id));
+    }
+    const points = item.points;
     const isRequirementLike = route.source_status === 'design_requirement' || route.route_kind === 'requirement' || route.route_kind === 'candidate';
     for (const side of ['from', 'to'] as const) {
       const endpoint = route[side];

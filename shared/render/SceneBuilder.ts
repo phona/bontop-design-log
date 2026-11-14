@@ -1502,13 +1502,19 @@ function addFurniture(
   report: SceneBuildReport,
   wallSegments: Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>,
   options?: SceneBuilderOptions,
+  preResolvedAnchors?: PlacementAnchors,
+  preResolvedHosts?: ReadonlyMap<string, PlacementItem>,
 ): void {
   // mount 宿主索引（稳定 id → 条目）：挂载家具的世界坐标由宿主摆位 + 宿主布局推出。
-  const hosts = furnitureHostIndex(Object.values(furnishings).flat());
+  // （二阶段 S1 修复轮 / Codex blocking）buildScene 传入全量宿主表时直接复用：逐件解算
+  // 的 hosts 必须与批量索引同一份全量表，否则阶段外宿主在批量侧解出、逐件侧断引用。
+  const hosts = preResolvedHosts ?? furnitureHostIndex(Object.values(furnishings).flat());
   // 主卫冷凝链（issue #98 PR-10）：整条链的锚点派生几何在此解出一次，摆位解算与配方
   // 布件共用同一份。解算失败（缺 hvac 投影 / 缺 MEP 穿墙点 / 衣柜断引用 / 段反向）时
   // 根因诊断记在链级，三件链条家具按件跳过——不按件重复三遍同一条根因。
-  const anchors = resolveScenePlacementAnchors(furnishings, wallSegments, hosts, options, report);
+  // （二阶段 S1 修复轮）buildScene 已提前解出同一份 anchors 时直接复用：批量索引与
+  // 逐件循环不得各自解算——否则阶段外链条家具在两路口径分裂；未传入时仍在此解出。
+  const anchors = preResolvedAnchors ?? resolveScenePlacementAnchors(furnishings, wallSegments, hosts, options, report);
   for (const [roomId, items] of Object.entries(furnishings)) {
     let index = 0;
     for (const item of items) {
@@ -1624,11 +1630,27 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   // 阶段可见性只该管几何渲染，不该让挂载点位失去定位宿主——night_corridor 挂
   // ld.wall_cabinet_tall，一期排除该柜，若宿主也被过滤则解算失败回落原点。
   const hostFurnishings = input.furnishingsAll ?? furnishings;
+  // （二阶段 S1 修复轮 / Codex blocking）宿主索引取全量表：阶段过滤只控制是否显示，
+  // 不控制定位宿主——锚点/挂载的宿主在阶段外时，逐件解算仍须解出（与点位 mountHosts
+  // 全量口径一致；night_corridor 挂阶段外 wall_cabinet_tall 即此前例）。过滤表重建
+  // hosts 会使批量解出、逐件报 anchor host not found，两路分裂。
+  const hostIndex = furnitureHostIndex(Object.values(hostFurnishings).flat());
+  // （二阶段 S1 修复轮）链锚点一次解出、两路共用：批量索引与逐件循环必须拿到同一份
+  // anchors——否则阶段外链条家具在批量侧报失败、逐件侧解出（或反之），诊断口径分裂。
+  // 链根因诊断由本调用入列一次，addFurniture 不再重复解算（见 preResolvedAnchors）。
+  const sceneAnchors = resolveScenePlacementAnchors(
+    furnishings,
+    index.wallSegments,
+    hostIndex,
+    input.options,
+    report,
+  );
   // 点位定位索引走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）：pointWalls 用
   // 本次建场的墙几何，mountHosts 用全量 furnishings——与 DXF/MEP/lint/闭合性断言同一构造。
   const placementIndexes = buildPlacementIndexes({
     geometry: { walls: input.walls },
     furnishings: hostFurnishings,
+    anchors: sceneAnchors,
   });
   index.pointWalls = placementIndexes.pointWalls;
   index.mountHosts = placementIndexes.mountHosts;
@@ -1645,7 +1667,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     if (duplicate) report.skippedPlumbing.push(`${point.id}:furnishing:${point.room}:${point.type}`);
     return !duplicate;
   });
-  const infrastructure = buildInfrastructure({ electrical: input.electrical ?? [], plumbing, pointWalls: index.pointWalls });
+  const infrastructure = buildInfrastructure({ electrical: input.electrical ?? [], plumbing, pointWalls: index.pointWalls, mountHosts: index.mountHosts });
   for (const diagnostic of infrastructure.placementDiagnostics) {
     report.placementDiagnostics.push(diagnostic);
   }
@@ -1660,7 +1682,20 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   }
   report.plumbing = infrastructure.plumbing.length;
   addCeilingZones(exportRoot, input.ceilingZones ?? [], input.rooms, report);
-  addFurniture(exportRoot, furnishings, report, index.wallSegments, input.options);
+  addFurniture(exportRoot, furnishings, report, index.wallSegments, input.options, sceneAnchors, hostIndex);
+  // （二阶段 S1 修复轮）批量诊断补入报告：逐件循环只走渲染表（阶段过滤），阶段外宿主
+  // 的解算失败只在批量解算里出现——不补入即静默丢件。已渲染件的失败逐件循环已报，
+  // 按 id 去重，不重复入列。
+  const renderedIds = new Set(
+    Object.values(furnishings).flatMap((items) => items
+      .map((item) => item.id)
+      .filter((id): id is string => id !== undefined)),
+  );
+  for (const diagnostic of placementIndexes.furnitureDiagnostics) {
+    if (!renderedIds.has(diagnostic.id)) {
+      report.placementDiagnostics.push(`furniture "${diagnostic.id}": ${diagnostic.diagnostic}`);
+    }
+  }
   if (input.lightingFixtures?.length) {
     const lighting = buildLightingFixtures(input.lightingFixtures, input.options?.lighting);
     exportRoot.add(lighting.group);

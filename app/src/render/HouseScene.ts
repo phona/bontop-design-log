@@ -2047,6 +2047,8 @@ export class HouseScene implements SceneApi {
       plumbing,
       // 点位宿主墙索引（issue #98 S1）：与 buildScene 首帧、DXF、MEP 共用同一解算。
       pointWalls: this.pointWallIndex,
+      // 家具宿主索引（issue #98 二阶段 S1）：mount / anchor 点位无它即抛错。
+      mountHosts: this.mountHostIndex,
     });
     this.electricalMeshes = result.electrical;
     this.infrastructureMeshes = result.objects;

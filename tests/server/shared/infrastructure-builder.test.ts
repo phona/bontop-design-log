@@ -74,3 +74,47 @@ test('shared plumbing shower uses the declared height as the finished-floor-to-h
   assert.equal(fixture.userData.placementHeight, 1.0);
   assert.equal(fixture.userData.heightMeaning, 'finished_floor_to_shower_head');
 });
+
+// issue #98 二阶段 S1（Codex 一审 blocking）：anchor / mount 点位须有家具宿主索引才能
+// 建场——SceneBuilder 与 HouseScene.placeInfrastructureFixtures 此前只传 pointWalls，
+// 合法 anchor 声明会让整个 buildScene 抛错。接线补齐后 anchor 插座落到宿主中心 + offset。
+test('shared infrastructure builder places anchor and mount points once mountHosts are wired', () => {
+  const mountHosts = new Map([
+    ['test.sofa', { id: 'test.sofa', x: 11.0, z: 7.7, rotation: 0, width: 2.2, depth: 1.0 }],
+    ['test.vanity', { id: 'test.vanity', x: 5, z: 5, rotation: 0, width: 0.9, depth: 0.5 }],
+  ]);
+  const built = buildInfrastructure({
+    electrical: [
+      { id: 'sock-sofa', room: 'room', type: 'socket', height: 0.4, anchor: { source: 'furniture', id: 'test.sofa', offset: { x: 0.5, z: 0 } } },
+      { id: 'sock-vanity', room: 'room', type: 'socket', height: 0.4, mount: { furniture_id: 'test.vanity', face: 'north', along: 0.25, surface_gap: 0.003 } },
+    ],
+    plumbing: [],
+    pointWalls: new Map(),
+    mountHosts,
+  });
+  assert.deepEqual(built.placementDiagnostics, []);
+  assert.equal(built.electrical.length, 2);
+  // anchor 点位：宿主中心 (11.0, 7.7) + offset (0.5, 0)，绝对落位不读声明 x/z。
+  assert.deepEqual(built.electrical[0].position.toArray(), [11.5, 0.4, 7.7]);
+  // mount 点位同链路可用（北脸 along 0.25，自 minX=4.55 向东 → x=4.8）。
+  assert.ok(Math.abs(built.electrical[1].position.x - 4.8) < 1e-9);
+  // mount 模型中心 = 解算位置 + 法线 ×（surface_gap + 半件厚）：北脸 datum z=4.75，
+  // 0.003 + 0.01 = 0.013，法线向北 → z=4.737。旧 0.075 墙口径会落在 4.675
+  //（Codex 三审 blocking），本断言钉住 z，防 x 单维断言漏检。
+  assert.ok(Math.abs(built.electrical[1].position.z - 4.737) < 1e-9,
+    `mount socket z = ${built.electrical[1].position.z}，应为 4.737`);
+});
+
+test('shared infrastructure builder fails closed when anchor points have no mountHosts', () => {
+  // 缺索引是调用方接线缺陷（与 mount 同一口径）：当场抛，不许带着空索引继续解算。
+  assert.throws(
+    () => buildInfrastructure({
+      electrical: [
+        { id: 'sock-sofa', room: 'room', type: 'socket', height: 0.4, anchor: { source: 'furniture', id: 'test.sofa', offset: { x: 0.5, z: 0 } } },
+      ],
+      plumbing: [],
+      pointWalls: new Map(),
+    }),
+    /anchor 定位要求调用方提供家具宿主索引/,
+  );
+});
