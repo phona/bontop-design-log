@@ -116,11 +116,13 @@ export function buildPlacementIndexes(input: {
 
 /**
  * 家具解算用墙段表（与 scripts/generate-dressing-map.ts 同一构造）：按墙 id 分组，
- * 每墙取主线（x1/z1/x2/z2）。注意：segments 细分段**未**透传——3 墙带弧形细分
- * （w_mb_south / w_bath_north / w_vrv_north 各 17 段），旧注释“本仓墙全部单段”不成立；
- * 现 4 件墙锚家具均在单段墙上（已核实），故等价性不受影响。弧形墙上锚家具需
- * resolveItem 改走折线累计（现取 segments[0]），属 Codex 三审 major，留人裁定，
- * 不在本 PR 改动范围。
+ * 每墙取细分段（有 segments 走 segments，无 segments 才取主线）。
+ *
+ * 口径与 resolveItem（shared/furniture-placement.ts，取 segments[0]）、SceneBuilder、
+ * DXF、verify-furniture-placement、pointWallIndexFromElements 完全一致：3 弧形墙
+ * （w_mb_south / w_bath_north / w_vrv_north 各 17 段）上，批量解算与逐件解算从此走
+ * 同一段；沿墙位置只在首段内有定义，超出首段域的 along 两路同报「outside wall span」，
+ * 不再一路放弦上、一路放弧上。现 4 件墙锚家具均在单段墙上，几何零漂移。
  */
 export function wallSegmentsFromElements(
   walls: Iterable<PointWallElementInput>,
@@ -128,8 +130,11 @@ export function wallSegmentsFromElements(
   const segments = new Map<string, WallLike[]>();
   for (const wall of walls) {
     if (wall.id === undefined || wall.x1 === undefined || wall.z1 === undefined || wall.x2 === undefined || wall.z2 === undefined) continue;
+    const wallSegments = wall.segments?.length
+      ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+      : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }];
     const list = segments.get(wall.id) ?? [];
-    list.push({ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 });
+    list.push(...wallSegments);
     segments.set(wall.id, list);
   }
   return segments;
