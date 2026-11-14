@@ -38,7 +38,7 @@ export const MepJunctionSchema = z.object({
 /**
  * 关系型 via 步（issue #98 二阶段 S3 关系步最小集，Stage 1 只建模式、不迁移任何路由）：
  * - `from_face_jog`：面管横移——从 from 端点平面位置横移至竖井轴（平面目标
- *   (shaft.x, from.z)，高度取已有 from_height，不重复声明）；面管下降拓扑的第一步，
+ *   (shaft.x, from.z)，高度只取已有 from_height，不得声明步内 y、不重复声明）；面管下降拓扑的第一步，
  *   须在 `from_drop` 之前（R-S3 裁定 Option 0：箱底先横移 0.06m 至 x=10.74 再竖降，
  *   不得静默改成在 from.x 竖降）。本步之后 `from_drop` 在当前位置竖降，不返回 from.x。
  * - `from_drop`：从**当前位置**（游标：上一关系步的平面点；首步即 from 端点）竖直落到
@@ -55,7 +55,17 @@ export const MepViaStepSchema = z.object({
   kind: z.enum(['from_face_jog', 'from_drop', 'shaft_corner', 'shaft_run']),
   shaft: z.string().min(1),
   y: z.number().finite().optional(),
-}).strict();
+}).strict().superRefine((step, ctx) => {
+  // from_face_jog 是纯水平横移：高度只取 route.from_height，不得声明步内 y——
+  // 否则横移段同时改高，形成可能逃过 MEP lint 的三维斜线（§10.3 R-S3 裁定）。
+  if (step.kind === 'from_face_jog' && step.y !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'from_face_jog 不得声明 y：高度只取 route.from_height',
+      path: ['y'],
+    });
+  }
+});
 export type MepViaStep = z.infer<typeof MepViaStepSchema>;
 export type MepVia = z.infer<typeof CoordinateSchema> | MepViaStep;
 
@@ -233,7 +243,8 @@ const VIA_SHAFT_CONSISTENCY_TOLERANCE = 0.005;
  * from_face_jog → (shaft.x, from.z)，高度取已有 from_height；from_drop → 游标平面点
  * （上一关系步的落点，首步即 from 端点），y 取竖井高度；shaft_corner → (shaft.x, from.z)
  * （垂线交点）；shaft_run → (shaft.x, to.z)（沿竖井 x 走到终点 z，末 jog 再折向终点）；
- * y 一律取步内声明或竖井高度（from_face_jog 例外：步内声明或 from_height）。
+ * y 一律取步内声明或竖井高度（from_face_jog 例外：高度只取 route.from_height，
+ * 不得声明步内 y；from_height 缺失或无效时显式失败）。
  * 绝对坐标步原样透传。任一步失败即整条 via 失败（fail-closed，不给半条路径）。
  * 本函数也是 facts-lint 吊顶净空等只持端点记录的消费方复用同一求解器的出口——
  * 不得另写第二套步语义。
@@ -247,9 +258,6 @@ export function resolveMepViaSteps(
   const points: Array<{ x: number; y?: number; z: number }> = [];
   // 当前平面游标：from_drop 在上一关系步的落点竖降，不返回 from.x。
   let cursor = { x: from.x, z: from.z };
-  // 面管横移步的高度：已有 from_height（箱底标高），不重复声明；from.y 为端点自身高度
-  // （电气点位 height/mount_height），两者一致时无差，from_height 优先。
-  const fromHeight = route.from_height ?? from.y;
   for (const step of route.via) {
     if (isMepViaCoordinate(step)) {
       points.push({ x: step.x, z: step.z, ...(step.y !== undefined ? { y: step.y } : {}) });
@@ -265,7 +273,15 @@ export function resolveMepViaSteps(
     }
     const y = step.y ?? shaft.y;
     if (step.kind === 'from_face_jog') {
-      points.push({ x: shaft.x, z: from.z, y: step.y ?? fromHeight });
+      // 横移步不得声明步内 y：高度只取 route.from_height；缺失或无效时显式失败，
+      // 不输出不完整几何。from.y 回退已删除——横移段改高会形成三维斜线。
+      if (step.y !== undefined) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 from_face_jog 不得声明 y（高度只取 route.from_height）` };
+      }
+      if (typeof route.from_height !== 'number' || !Number.isFinite(route.from_height)) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 from_face_jog 缺少有效 from_height（高度只取 route.from_height）` };
+      }
+      points.push({ x: shaft.x, z: from.z, y: route.from_height });
       cursor = { x: shaft.x, z: from.z };
     } else if (step.kind === 'from_drop') points.push({ x: cursor.x, z: cursor.z, y });
     else if (step.kind === 'shaft_corner') {

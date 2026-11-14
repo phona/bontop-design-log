@@ -14,6 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MepCoordinationSchema,
+  MepViaStepSchema,
   resolveMepRoute,
   resolveMepRoutes,
   validateMepCoordination,
@@ -257,7 +258,7 @@ test('面管下降（from_face_jog）：箱底横移 0.06m 至竖井轴再竖降
   assert.ok(Math.abs(length3d(r.points) - 8.32) < 1e-9, `sofa-r 三维长度应为 8.32m，实际 ${length3d(r.points)}`);
 });
 
-test('from_face_jog 高度取 from_height、不取竖井高度；步内 y 声明可覆盖', () => {
+test('from_face_jog 高度取 from_height、不取竖井高度', () => {
   const routes = [facePipeRoute('strong-power-living-sofa-l', 'sock_living_sofa_l')];
   const config = testConfig(routes, [{ id: 'shaft_entry', x: 10.74, z: 2.98, y: 0.02 }]);
   const resolved = resolveMepRoute(routes[0], makeSources({ x: 10.8, z: 2.98 }, 6.05, 9.35), config.junctions, config.shafts);
@@ -265,13 +266,28 @@ test('from_face_jog 高度取 from_height、不取竖井高度；步内 y 声明
   // 横移点 y=1.65（from_height），不是竖井高度 0.02。
   assert.equal(resolved.viaPoints[0].y, 1.65);
   assert.equal(resolved.viaPoints[1].y, 0.02);
-  // 步内 y 覆盖：横移步显式 y=1.20 时取 1.20，其余步不动。
-  const override = { ...routes[0], via: [{ kind: 'from_face_jog', shaft: 'shaft_entry', y: 1.2 }, { kind: 'from_drop', shaft: 'shaft_entry' }, { kind: 'shaft_run', shaft: 'shaft_entry' }] } as MepRoute;
-  const overridden = resolveMepRoute(override, makeSources({ x: 10.8, z: 2.98 }, 6.05, 9.35), config.junctions, config.shafts);
-  assert.deepEqual(overridden.unresolved, []);
-  assert.equal(overridden.viaPoints[0].y, 1.2);
-  assert.equal(overridden.viaPoints[0].x, 10.74);
-  assert.equal(overridden.points[0].y, 1.65);
+});
+
+test('from_face_jog 禁止声明步内 y：from_height=1.65 时 y=1.55 必须失败（schema 与求解器双边界）', () => {
+  const shaft = [{ id: 'shaft_entry', x: 10.74, z: 2.98, y: 0.02 }];
+  const sources = makeSources({ x: 10.8, z: 2.98 }, 6.05, 9.35);
+  // (a) schema 边界：from_face_jog 带 y 即解析失败；无 y 可解析，其他步带 y 仍可解析。
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'from_face_jog', shaft: 'shaft_entry', y: 1.55 }).success, false, 'from_face_jog 不得声明 y');
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'from_face_jog', shaft: 'shaft_entry' }).success, true);
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'from_drop', shaft: 'shaft_entry', y: 0.02 }).success, true);
+  // (b) 求解器边界（绕开 schema 解析的直接入口，如 facts-lint 的壳路由）：y=1.55 时整路由 fail-closed，不出局部几何。
+  const badStep = { ...facePipeRoute('strong-power-living-sofa-l', 'sock_living_sofa_l'), via: [{ kind: 'from_face_jog', shaft: 'shaft_entry', y: 1.55 }, { kind: 'from_drop', shaft: 'shaft_entry' }, { kind: 'shaft_run', shaft: 'shaft_entry' }] } as MepRoute;
+  const rejectedRoute = resolveMepRoute(badStep, sources, [], shaft);
+  assert.deepEqual(rejectedRoute.unresolved, ['via']);
+  assert.deepEqual(rejectedRoute.points, []);
+  assert.deepEqual(rejectedRoute.viaPoints, []);
+  assert.match(rejectedRoute.diagnostics[0], /from_face_jog 不得声明 y/);
+  // (c) 高度只取有效 from_height：缺失时同样显式失败，不回退到端点高度。
+  const noHeight = { ...facePipeRoute('strong-power-living-sofa-l', 'sock_living_sofa_l'), from_height: undefined };
+  const noHeightRoute = resolveMepRoute(noHeight, sources, [], shaft);
+  assert.deepEqual(noHeightRoute.unresolved, ['via']);
+  assert.deepEqual(noHeightRoute.points, []);
+  assert.match(noHeightRoute.diagnostics[0], /缺少有效 from_height/);
 });
 
 test('顺序是裁定的一部分：旧三步（先竖降再平移）与面管下降折线不同点，from_drop 须在横移后当前位置竖降', () => {
