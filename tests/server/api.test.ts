@@ -66,9 +66,10 @@ elements:
       assert.equal(res.body.house.platform?.name, 'VRV设备平台');
     }
     assert.ok(Array.isArray(res.body.house.sceneElements));
-    // 主卫冷凝链的 MEP 侧穿墙锚点（issue #98 PR-10）：三件遮蔽家具在建场时就要它，
-    // 页面在 /api/mep-coordination 之前只拿得到这一份——缺它链条家具会带诊断从场景消失。
-    assert.deepEqual(res.body.house.condensatePenetration, { x: 2.3, z: 2.86 });
+    // 主卧冷凝水穿墙锚点（issue #98 PR-10）：页面在 /api/mep-coordination 之前只拿得到这一份——
+    // 缺它场景建场会带诊断。2026-11-14 全带泵重画：穿墙改 w_mbath_south (2.3,2.86)
+    // → w_strip_east (4.2,4.6)，锚点取路由首条 penetration 声明墙的派生点。
+    assert.deepEqual(res.body.house.condensatePenetration, { x: 4.2, z: 4.6 });
   });
 
   it('GET /api/project phase=phase_1 filters deferred furnishings and curtains', async () => {

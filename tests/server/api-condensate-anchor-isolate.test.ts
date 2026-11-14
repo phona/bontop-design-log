@@ -137,7 +137,9 @@ describe('/api/project 冷凝锚点读取异常隔离（issue #98 宽容读取�
 
   it('锚点读取成功时行为不变：下发锚点，且不带任何诊断键', async () => {
     const res = await request(healthyApp).get('/api/project').expect(200);
-    assert.deepEqual(res.body.house.condensatePenetration, { x: 2.3, z: 2.86 }, '默认产地（真实 config）必须照常解出锚点');
+    // 2026-11-14 全带泵重画：condensate-master 穿墙改 w_mbath_south (2.3,2.86)
+    // → w_strip_east (4.2,4.6)，锚点取路由首条 penetration 声明墙的派生点。
+    assert.deepEqual(res.body.house.condensatePenetration, { x: 4.2, z: 4.6 }, '默认产地（真实 config）必须照常解出锚点');
     assert.equal(res.body.placementClosureDiagnostics, undefined, '无降级时不得下发诊断键（页面据此区分正常/降级）');
   });
 

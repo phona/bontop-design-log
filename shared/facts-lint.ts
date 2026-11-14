@@ -1775,14 +1775,15 @@ interface ClearancePoint { x: number; z: number; y?: number }
 
 /**
  * 统一出口兼容壳的调用点：原始记录只组装成兼容壳所需的最小形状（id / via / from_height /
- * to_height），from/to 取预解的 endpoints 数据集，与旧复刻同口径。不走全量
+ * to_height / slope），from/to 取预解的 endpoints 数据集，与旧复刻同口径。不走全量
  * MepRouteSchema.parse——facts 探针的合成记录常缺 status/from/to 等字段（见
  * tests/server/facts-lint.test.ts 的 `bad` 路线），全量解析会把一条本可核的路线
  * 误判为 unresolvable。关系型 via 不走兼容壳（它会抛错）——改调统一出口的同一求解器
  * resolveMepViaSteps（与 resolveMepRoutes 同源，不另写步语义）；步失败仍抛错，由
  * runCeilingClearance 转 ceiling_clearance_unresolvable——不静默跳过、不给半条路径。
  * shafts 取同一文档的顶层 shafts 表（runCeilingClearance 传入）；无表即 []，关系步
- * 随即断引用 fail-closed。
+ * 随即断引用 fail-closed。slope_run 步的坡度须随壳传入（2026-11-14 全带泵重画：
+ * 壳漏传 slope 会使五条冷凝水支管在 facts 契约里全报「缺少有效 slope」）。
  */
 function clearanceRoutePoints(
   route: Record<string, unknown>,
@@ -1801,11 +1802,12 @@ function clearanceRoutePoints(
   const to = pointOf(route.to);
   const fromHeight = typeof route.from_height === 'number' ? route.from_height : undefined;
   const toHeight = typeof route.to_height === 'number' ? route.to_height : undefined;
+  const slope = typeof route.slope === 'number' ? route.slope : undefined;
   if (via.some((step) => !isMepViaCoordinate(step as unknown as { x: number; z: number }))) {
     if (!from || !to) {
       throw new Error(`MEP route ${str(route.id)} 关系 via 无端点可解：${!from ? 'from' : 'to'} 端点未解析`);
     }
-    const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}) } as MepRoute;
+    const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}), ...(slope !== undefined ? { slope } : {}) } as MepRoute;
     const resolved = resolveMepViaSteps(shellRoute, from, to, shafts);
     if (resolved.diagnostic !== undefined) throw new Error(resolved.diagnostic);
     return [

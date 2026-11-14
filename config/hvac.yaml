@@ -226,7 +226,7 @@ plans:
           status: pending
           system: condensate
           position: { x: 6.8, y: 2.435, z: 3.7 }
-          reason: "R25 显式Y型汇流节点位于 (6.80,3.70,2.435)：客厅/餐厅φ25支管独立到节点，之后一根DN32主管接固定候选点。6cm局部接头包络为初步假设；节点落在既有vanity投影内，柜内竖管须确认现有服务空间与检修可达性，不改镜柜/柜体。"
+          reason: "R25 显式Y型汇流节点位于 (6.80,3.70,2.435)：客厅/餐厅φ25支管独立到节点，之后一根DN32主管接固定候选点。6cm局部接头包络为初步假设；节点落在既有vanity投影内，柜内竖管须确认现有服务空间与检修可达性，不改镜柜/柜体。；2026-11-14 全带泵重画（issue #98 MEP batch 1）：MEP 侧 R25 汇流节点已删除——五条支管改直达客卫固定候选点 (6.70,3.70)，不再经本节点合流；本锚点仅留作 R25 示意层墓碑（坐标不动），DN32 主管 from 已改内联坐标、几何不动仍作废，待五管汇流接法与下引点重裁后另案处理。"
         - id: condensate_living_outlet_candidate
           status: pending
           system: condensate
@@ -699,14 +699,14 @@ plans:
           from: condensate_dining_outlet_candidate
           to: condensate_living_dining_merge
           topology_role: branch
-          reason: "对应 MEP condensate-dining 独立φ25支管，R25 路径为出口候选 (7.60,4.34,2.52)→(6.60,4.34)→(6.60,3.90)→(6.80,3.70,2.435)；各段坡度约4.93%，末段45°进入vanity内显式汇流点。厂家出口/保温、柜内接头与清扫可达性待核；不改吊顶及家具。"
+          reason: "对应 MEP condensate-dining 独立φ25支管，R25 路径为出口候选 (7.60,4.34,2.52)→(6.60,4.34)→(6.60,3.90)→(6.80,3.70,2.435)；各段坡度约4.93%，末段45°进入vanity内显式汇流点。厂家出口/保温、柜内接头与清扫可达性待核；不改吊顶及家具。；2026-11-14 全带泵重画：MEP 侧本支管已改直达客卫固定候选点 (6.70,3.70)，不再经汇流节点（示意层未重画，见 MEP 配置）。"
         - id: condensate_living_candidate_route
           status: pending
           system: condensate
           from: condensate_living_outlet_candidate
           to: condensate_living_dining_merge
           topology_role: branch
-          reason: "对应 MEP condensate-living 独立φ25支管，R25 路径为出口候选 (10.70,4.95,2.52)→(11.20,4.95)→(11.20,4.50)→(6.50,4.50)→(6.50,3.70)→vanity 内汇流点 (6.80,3.70,2.435)；逐段坡度约1%–3%。避让最新送回风支路与强电主干；出口/保温是假设，柜内竖管须现场核现有服务空间，不变更家具。"
+          reason: "对应 MEP condensate-living 独立φ25支管，R25 路径为出口候选 (10.70,4.95,2.52)→(11.20,4.95)→(11.20,4.50)→(6.50,4.50)→(6.50,3.70)→vanity 内汇流点 (6.80,3.70,2.435)；逐段坡度约1%–3%。避让最新送回风支路与强电主干；出口/保温是假设，柜内竖管须现场核现有服务空间，不变更家具。；2026-11-14 全带泵重画：MEP 侧本支管已改直达客卫固定候选点 (6.70,3.70)，不再经汇流节点（示意层未重画，见 MEP 配置）。"
         - id: condensate_living_equipment_outlet
           status: pending
           system: condensate
@@ -727,7 +727,7 @@ plans:
           from: condensate_living_dining_merge
           to: condensate_living_candidate
           topology_role: shared_trunk
-          reason: "R25 唯一DN32共用主管：自vanity投影内节点 (6.80,3.70,2.435) 垂直下引至y=0.101，再以0.10m水平段按1%坡度连接固定候选点 (6.70,3.70,0.10)。接点不动；管径、6mm保温、防倒灌、清扫口及柜内检修空间待厂家/量房确认。"
+          reason: "R25 唯一DN32共用主管：自vanity投影内节点 (6.80,3.70,2.435) 垂直下引至y=0.101，再以0.10m水平段按1%坡度连接固定候选点 (6.70,3.70,0.10)。接点不动；管径、6mm保温、防倒灌、清扫口及柜内检修空间待厂家/量房确认。；2026-11-14 全带泵重画：MEP 侧主管 from 已改内联坐标、几何不动仍作废，待下引点重裁（示意层未重画，见 MEP 配置）。"
         - id: condensate_master_candidate_route
           status: pending
           system: condensate

@@ -353,7 +353,7 @@ export function lintHvacTerminals(input: HvacTerminalLintInput): HvacTerminalLin
  * branch_dining ↔ MEP refrigerant-dining via 节点的跨文件逐位 parity 门禁
  * （issue #98 S2-B 验伪轮修复：业主裁定三只裁了「对齐到 2.6」，对齐本身不产生门禁——
  * 既有 junction↔hvac-anchor 等值断言（mep-hvac-coordination-schema.ts:238-252）只遍历
- * MEP junctions（全仓仅 condensate_living_dining_merge），branch_dining 是 hvac.yaml route
+ * MEP junctions（2026-11-14 全带泵重画后 MEP junctions 为空——R25 汇流节点已删除），branch_dining 是 hvac.yaml route
  * via 引用的锚点、refrigerant-dining 的 (8.00,4.30,2.60) 是 MEP yaml 的 via 内联点，两文件
  * 之间此前无任何机器对账，变异 branch_dining y→2.55 时上述断言零红（空转面，独立验伪员
  * m2-dining255 实测）。§6.1-8 明文不许留无门禁的中间态，故补此对账。
