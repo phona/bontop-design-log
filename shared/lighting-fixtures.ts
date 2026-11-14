@@ -117,6 +117,13 @@ export function buildRenderLightingFixtures(
       planeX = placement.x;
       planeZ = placement.z;
     } else if (fixture.anchor !== undefined) {
+      // 夜灯 + furniture anchor 不支持（issue #98 二阶段 S1 收口）：anchor 只表示相对位置，
+      // 不提供安装朝向；夜灯渲染（NightLightGeometry）必需 wallSide 或 furniture_face
+      // mountAnchor。夜灯请用 wall（沿墙）或 mount（家具面挂载）定位——此处 fail-closed，
+      // 不产出无朝向的投影（下游 getNightLightMountNormal 会抛不透明的错）。
+      if (fixture.type === 'night_light' && fixture.anchor.source === 'furniture') {
+        throw new Error(`Lighting fixture ${fixture.id}: 夜灯不支持仅凭 furniture anchor 定位（anchor: {source: furniture} 只表示相对位置，不提供安装朝向）；请改用 wall（沿墙）或 mount（家具面挂载）定位`);
+      }
       // anchor 灯具（issue #98 二阶段 S1）：平面位置走同一解算（宿主中心 + offset），
       // 不读声明 x/z——anchor 本就不许带 x/z（schema 与解算器双禁令），else 分支的
       // “绝对灯位必须声明坐标”不适用于它。

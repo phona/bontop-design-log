@@ -128,7 +128,7 @@ const PointAnchorSchema = z.object({
  * x/z=(5.0,4.3) 后 MEP 端点与解算器分叉）都会读到 stale 值，而 schema 与 resolver 都不报。
  * 现 config 0 条违规（B §② 实跑 locatedPointsWithXz=[]）；禁它是为了「禁止回填 x/z」
  * （设计文档 §4.2 电气/给排水点位行）有机器执法，而不是只靠人口头纪律。
- */function refinePointPlacement<T extends { x?: number; z?: number; wall?: string; wall_side?: unknown; along?: number; face_offset?: number; mount?: unknown; anchor?: unknown; absolute?: boolean }>(
+ */function refinePointPlacement<T extends { id?: string; type?: string; x?: number; z?: number; wall?: string; wall_side?: unknown; along?: number; face_offset?: number; mount?: unknown; anchor?: { source?: string; id?: string; offset?: unknown } | unknown; absolute?: boolean }>(
   value: T,
   ctx: z.RefinementCtx,
 ): void {
@@ -164,6 +164,12 @@ const PointAnchorSchema = z.object({
   // absolute 来源是定位字段，对 wall/mount/anchor 是哑弹。
   if ((sources[0] === 'wall' || sources[0] === 'mount' || sources[0] === 'anchor') && (value.x !== undefined || value.z !== undefined)) {
     ctx.addIssue({ code: 'custom', message: `${sources[0]} 定位来源禁止同时声明 x/z（解算器只读 wall+along / mount.along / anchor 宿主坐标；声明 x/z 会成为 stale 第二事实源，探针 P1）` });
+  }
+  // 夜灯 + furniture anchor 不支持（issue #98 二阶段 S1 收口）：anchor: {source: furniture}
+  // 只表示相对位置，不提供安装朝向；夜灯渲染（NightLightGeometry）必需 wallSide 或
+  // furniture_face mountAnchor。夜灯必须用 wall（沿墙）或 mount（家具面挂载）定位。
+  if (value.type === 'night_light' && (value.anchor as { source?: string } | undefined)?.source === 'furniture') {
+    ctx.addIssue({ code: 'custom', message: `夜灯 ${value.id ?? '(未命名)'} 不支持仅凭 furniture anchor 定位：anchor: {source: furniture} 只表示相对位置，不提供安装朝向；请改用 wall（沿墙）或 mount（家具面挂载）定位` });
   }
 }
 
