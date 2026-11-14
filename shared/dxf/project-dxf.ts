@@ -155,6 +155,9 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   // pointWalls 用本次装配的墙元素，mountHosts 用 house.furnishings 全量表（DXF 恒为全案口径，
   // 不按阶段过滤）。电气/给排水点位与 MEP 端点共用同一份 shared/point-placement.ts 解算。
   // house.furnishings 缺失时 mountHosts 为 undefined——保留「无家具上下文」的既有语义。
+  // （二阶段 S1 修复轮审计）本处 furnitureDiagnostics 不另设门禁：emitFurniture 对同一份
+  // furnishings、同一细分段口径逐件解算，失败即进 errors 使导出失败——批量诊断与逐件
+  // 诊断同源同输入，无第二口径可分裂；链示意件由 emitFurniture 按类型跳过，不进批量口径。
   const placementIndexes = buildPlacementIndexes({
     geometry: { walls: wallsById.values() },
     furnishings: house.furnishings,
