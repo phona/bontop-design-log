@@ -116,8 +116,11 @@ export function buildPlacementIndexes(input: {
 
 /**
  * 家具解算用墙段表（与 scripts/generate-dressing-map.ts 同一构造）：按墙 id 分组，
- * 每墙取主线（x1/z1/x2/z2）。resolveItem 只取每墙第一段；本仓墙全部单段，
- * 与 SceneBuilder 的 segments 展开式构造等价（等价性由 Stage 1 等价校验覆盖）。
+ * 每墙取主线（x1/z1/x2/z2）。注意：segments 细分段**未**透传——3 墙带弧形细分
+ * （w_mb_south / w_bath_north / w_vrv_north 各 17 段），旧注释“本仓墙全部单段”不成立；
+ * 现 4 件墙锚家具均在单段墙上（已核实），故等价性不受影响。弧形墙上锚家具需
+ * resolveItem 改走折线累计（现取 segments[0]），属 Codex 三审 major，留人裁定，
+ * 不在本 PR 改动范围。
  */
 export function wallSegmentsFromElements(
   walls: Iterable<PointWallElementInput>,

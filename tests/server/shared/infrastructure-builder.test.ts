@@ -98,6 +98,11 @@ test('shared infrastructure builder places anchor and mount points once mountHos
   assert.deepEqual(built.electrical[0].position.toArray(), [11.5, 0.4, 7.7]);
   // mount 点位同链路可用（北脸 along 0.25，自 minX=4.55 向东 → x=4.8）。
   assert.ok(Math.abs(built.electrical[1].position.x - 4.8) < 1e-9);
+  // mount 模型中心 = 解算位置 + 法线 ×（surface_gap + 半件厚）：北脸 datum z=4.75，
+  // 0.003 + 0.01 = 0.013，法线向北 → z=4.737。旧 0.075 墙口径会落在 4.675
+  //（Codex 三审 blocking），本断言钉住 z，防 x 单维断言漏检。
+  assert.ok(Math.abs(built.electrical[1].position.z - 4.737) < 1e-9,
+    `mount socket z = ${built.electrical[1].position.z}，应为 4.737`);
 });
 
 test('shared infrastructure builder fails closed when anchor points have no mountHosts', () => {

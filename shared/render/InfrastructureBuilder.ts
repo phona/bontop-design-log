@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import type { ElectricalPoint, PlumbingPoint, WallSide } from '../types.js';
 import { buildFixture } from './FixtureFactory.js';
 import {
+  POINT_FIXTURE_HALF_THICKNESS,
   POINT_WALL_GAP,
   THIN_PLATE_FACE_OFFSET,
   type PointMountHost,
@@ -137,6 +138,9 @@ function resolveInfrastructure(
  * 口径（2026-11-07 业主裁定「DXF 迁就 3D 投影」）：先解析出墙线上的 datum 与侧别法线，
  * **再按薄板惯例偏移**（THIN_PLATE_FACE_OFFSET = 半墙厚 + 墙缝 + 半件厚 = 0.075m）——
  * 与 DXF 出图共用同一解算与同一偏移，施工图与模型从此按构造同点。
+ * mount 柜面点位例外（issue #98 二阶段 S1，Codex 三审 blocking）：datum 已在宿主脸上，
+ * 不得再叠加半墙厚；模型中心 = 解算位置（datum + 法线 × face_offset）+ 法线 ×
+ * （surface_gap + 半件厚），厚件同墙口径。
  */
 function placeModel(
   model: THREE.Group,
@@ -165,6 +169,20 @@ function placeModel(
   // other side (2026-10-26: the toilet marker's tank landed inside the children's room).
   // Anchor such a fixture by its wall-facing extreme, leaving only WALL_GAP to the wall face.
   const towardWall = recessed ? 0 : Math.max(0, -new THREE.Box3().setFromObject(model).min.z);
+  if (placement.kind === 'mount') {
+    // 柜面挂载（Codex 三审 blocking）：datum 已在宿主脸上（placement.x/z = datum + 法线 ×
+    // face_offset），0.075 的墙口径会把模型推出脸面 75mm（sock-vanity 北脸 datum z=4.75
+    // 曾落在 4.675）。模型中心 = 解算位置 + 法线 ×（surface_gap + 半件厚）；厚件同墙口径，
+    // 背面极值落回脸 + surface_gap。DXF 圈心取解算位置本身（face 点），与模型中心差
+    // surface_gap + 半件厚——与起夜灯同口径（NightLightGeometry 灯体亦追加 surface_gap）。
+    const mountGap = placement.surfaceGap ?? POINT_WALL_GAP;
+    const mountOffset = towardWall > WALL_THICKNESS
+      ? mountGap + towardWall - frontProjection
+      : mountGap + POINT_FIXTURE_HALF_THICKNESS - frontProjection;
+    model.position.set(placement.x + nx * mountOffset, y, placement.z + nz * mountOffset);
+    model.rotation.y = rotation;
+    return undefined;
+  }
   const offset = towardWall > WALL_THICKNESS
     ? WALL_THICKNESS / 2 + POINT_WALL_GAP + towardWall - frontProjection
     : THIN_PLATE_FACE_OFFSET - frontProjection;
