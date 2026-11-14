@@ -1,8 +1,9 @@
 /**
  * Issue #98 二阶段 Stage 3 真实配置回归：两条沙发 MEP 路由关系化（§10.5 A4/A5）。
  *
- * 真实 YAML + 内存改动；期望值全部从当前配置推导（竖井声明、解算端点、from_height、
- * 竖井高度），不写死 R6 偏移与历史绝对坐标；实验后不写盘。
+ * 真实 YAML + 内存改动；期望值全部从当前配置推导（解算端点、from_height），不写死 R6
+ * 偏移与历史绝对坐标；唯一例外是竖井轴坐标：R-S3 裁定值 (10.74, 2.98, 0.02) 作为独立
+ * 期望钉在 C1（钉裁定非历史；量房后合法改轴随新裁定更新）。实验后不写盘。
  * 覆盖：C1 迁移前后逐点等价、C2 沙发 +0.20m 端到端跟随、C4 反例 fail-closed、
  * C3 算量等价（新旧两份 coordination 的 takeoff 关键输出一致）。
  * lint / 3D / DXF / verify 由全套件 + verify:all + 导出脚本覆盖（见 PR 描述）。
@@ -32,6 +33,12 @@ const TOL = 0.005;
 const MOVE = 0.20;
 const ROUTE_L = 'strong-power-living-sofa-l';
 const ROUTE_R = 'strong-power-living-sofa-r';
+/**
+ * R-S3 裁定（2026-11-14，Option 0）：共享竖井 shaft_entry 的裁定坐标。
+ * 钉的是裁定（设计决策），不是历史坐标——量房后合法改轴须随新裁定同步更新本常量；
+ * 除竖井轴坐标外，其余期望仍从当前配置推导。
+ */
+const RULED_SHAFT = { id: 'shaft_entry', x: 10.74, z: 2.98, y: 0.02 };
 
 function loadAll() {
   const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
@@ -139,6 +146,11 @@ test('C1：两路由关系化——共享竖井只声明一次，解算折线与
   assert.equal(all.coordination.shafts.length, 1, 'shafts 表须只有一口竖井声明');
   const shaft = all.coordination.shafts[0];
   assert.equal(shaft.id, 'shaft_entry');
+  // 裁定值独立断言：竖井声明须等于 R-S3 裁定坐标。C1 的逐点等价若全从当前声明推导，
+  // shaft.x 误改会双侧同移而测不出（Codex major）——本断言是独立的第二道防线。
+  assert.equal(shaft.x, RULED_SHAFT.x, '竖井 x 须为 R-S3 裁定值 10.74');
+  assert.equal(shaft.z, RULED_SHAFT.z, '竖井 z 须为 R-S3 裁定值 2.98');
+  assert.equal(shaft.y, RULED_SHAFT.y, '竖井 y 须为 R-S3 裁定值 0.02');
   for (const id of [ROUTE_L, ROUTE_R]) {
     const route = all.coordination.routes.find((r) => r.id === id)!;
     assert.deepEqual(route.via.map((s: any) => s.kind), ['from_face_jog', 'from_drop', 'shaft_run'], `${id} via 须为裁定三步`);
@@ -163,12 +175,13 @@ test('C1：两路由关系化——共享竖井只声明一次，解算折线与
     const from = r.from!;
     const to = r.to!;
     const fromHeight = r.route.from_height!;
-    // 旧绝对几何由当前声明推导（非历史硬编码）：from → 面管横移 → 竖降 → 南行 → 横接入 to。
+    // 旧绝对几何：端点/from_height 取当前声明，竖井轴取 R-S3 裁定常量（独立期望——
+    // shaft.x 误改时本比较即失败；端点与 from_height 仍从配置推导，不钉历史坐标）。
     const expectedOld = [
       { ...from, y: fromHeight },
-      { x: shaft.x, z: from.z, y: fromHeight },
-      { x: shaft.x, z: from.z, y: shaft.y },
-      { x: shaft.x, z: to.z, y: shaft.y },
+      { x: RULED_SHAFT.x, z: from.z, y: fromHeight },
+      { x: RULED_SHAFT.x, z: from.z, y: RULED_SHAFT.y },
+      { x: RULED_SHAFT.x, z: to.z, y: RULED_SHAFT.y },
       { x: to.x, z: to.z, y: r.route.to_height },
       { ...to, y: r.route.to_height },
     ];
@@ -179,9 +192,10 @@ test('C1：两路由关系化——共享竖井只声明一次，解算折线与
     assert.equal(dedup(r.points).length, r.points.length, `${id} 不得含连续重复点`);
     assertOrthogonal(r.points, id);
     // 长度由声明推导，不钉死数值：平面 = 面管横移 + 南行 + 末 jog；三维 = 平面 + 竖降。
-    const planExpected = Math.abs(shaft.x - from.x) + Math.abs(to.z - from.z) + Math.abs(to.x - shaft.x);
+    // 横移/南行/末 jog 的竖井轴端取裁定常量（与 expectedOld 同口径，独立于声明）。
+    const planExpected = Math.abs(RULED_SHAFT.x - from.x) + Math.abs(to.z - from.z) + Math.abs(to.x - RULED_SHAFT.x);
     assert.ok(Math.abs(planLength(r.points) - planExpected) <= TOL, `${id} 平面长度须等于推导值`);
-    assert.ok(Math.abs(length3d(r.points) - (planExpected + (fromHeight - shaft.y))) <= TOL, `${id} 三维长度须等于推导值`);
+    assert.ok(Math.abs(length3d(r.points) - (planExpected + (fromHeight - RULED_SHAFT.y))) <= TOL, `${id} 三维长度须等于推导值`);
   }
   // 算量：两路由须进量、无 unresolved（材料算量另见 C3 等价测试）。
   for (const id of [ROUTE_L, ROUTE_R]) {

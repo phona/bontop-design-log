@@ -261,7 +261,7 @@ export function resolveMepViaSteps(
       return { points: [], diagnostic: `MEP route ${route.id} via 步 ${step.kind} 引用未知竖井 "${step.shaft}"（shafts 表里没有该 id）` };
     }
     if (Math.abs(shaft.z - from.z) > VIA_SHAFT_CONSISTENCY_TOLERANCE) {
-      return { points: [], diagnostic: `MEP route ${route.id} via 步 ${step.kind}：竖井 "${step.shaft}" z=${shaft.z} 与 from z=${from.z} 差 ${Math.abs(shaft.z - from.z).toFixed(3)}m，超过 ${VIA_SHAFT_CONSISTENCY_TOLERANCE}m（竖井 z 未裁定，S3 阻塞，见 §10.3 R-S3）` };
+      return { points: [], diagnostic: `MEP route ${route.id} via 步 ${step.kind}：竖井 "${step.shaft}" z=${shaft.z} 与 from z=${from.z} 差 ${Math.abs(shaft.z - from.z).toFixed(3)}m，超过 ${VIA_SHAFT_CONSISTENCY_TOLERANCE}m（竖井 z 须与 from.z 一致，见 §10.3 R-S3）` };
     }
     const y = step.y ?? shaft.y;
     if (step.kind === 'from_face_jog') {
