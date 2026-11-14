@@ -110,7 +110,12 @@ const PointMountSchema = z.object({
   /** 安装缝（米）；缺声明取渲染管线同款默认 0.003。 */
   surface_gap: finiteNumber.nonnegative().optional(),
 }).strict();
-const PointAnchorSchema = z.object({ source: nonEmpty, id: nonEmpty }).strict();
+const PointAnchorSchema = z.object({
+  source: nonEmpty,
+  id: nonEmpty,
+  /** 世界轴偏移（米）：相对宿主中心（issue #98 二阶段 S1，例：沙发相对电视 +3.58/−0.30）。 */
+  offset: z.object({ x: finiteNumber, z: finiteNumber }).strict().optional(),
+}).strict();
 
 /**
  * 定位来源唯一性 + x/z 条件必填。沿墙点位必须 wall+wall_side+along 齐备（x/z 删除后

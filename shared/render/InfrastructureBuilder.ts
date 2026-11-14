@@ -4,6 +4,7 @@ import { buildFixture } from './FixtureFactory.js';
 import {
   POINT_WALL_GAP,
   THIN_PLATE_FACE_OFFSET,
+  type PointMountHost,
   type PointPlacement,
   type PointPlacementInput,
   type PointWall,
@@ -16,6 +17,8 @@ export interface InfrastructureInput {
   plumbing: PlumbingPoint[];
   /** 点位宿主墙索引（id → 折线段 + line_datum）：沿墙点位改调 shared/point-placement.ts 单一解算。 */
   pointWalls?: ReadonlyMap<string, PointWall>;
+  /** 家具宿主索引（issue #98 二阶段 S1）：mount / anchor 点位无它即抛错（调用方接线缺陷）；与 buildScene 首帧、DXF、MEP 共用同一解算结果。 */
+  mountHosts?: ReadonlyMap<string, PointMountHost>;
 }
 
 const FIXTURE_TYPES: Record<string, string> = {
@@ -119,8 +122,9 @@ function buildWarmWhiteModularElectrical(point: ElectricalPoint): THREE.Group {
 function resolveInfrastructure(
   point: PointPlacementInput,
   pointWalls: ReadonlyMap<string, PointWall> | undefined,
+  mountHosts?: ReadonlyMap<string, PointMountHost>,
 ): { placement: PointPlacement | null; diagnostic?: string } {
-  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls);
+  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
   if (!placement && diagnostic === undefined) {
     return { placement: null, diagnostic: `点位 ${point.id}: 定位解算未返回结果（无诊断）` };
   }
@@ -142,12 +146,15 @@ function placeModel(
   frontProjection = 0,
   /** Recessed box (strong/weak panel): its body sits inside the wall and the door position is tuned by frontProjection, so the thin-panel convention stays. */
   recessed = false,
+  mountHosts?: ReadonlyMap<string, PointMountHost>,
 ): string | undefined {
-  const { placement, diagnostic } = resolveInfrastructure(point, pointWalls);
+  const { placement, diagnostic } = resolveInfrastructure(point, pointWalls, mountHosts);
   if (diagnostic !== undefined || !placement) return diagnostic ?? `点位 ${point.id}: 定位解算失败`;
   if (placement.kind === 'absolute') {
-    if (point.x === undefined || point.z === undefined) return `点位 ${point.id}: 绝对定位缺 x/z`;
-    model.position.set(point.x, y, point.z);
+    // 落位坐标一律取解算结果 placement.x/z：声明绝对点位时它 == point.x/z；anchor 点位
+    // 无声明 x/z，坐标来自宿主中心 + offset（issue #98 二阶段 S1）。读 point.x/z 会把
+    // anchor 点位误判为“绝对定位缺 x/z”而丢弃。
+    model.position.set(placement.x, y, placement.z);
     return undefined;
   }
   const rotation = Math.atan2(placement.normal.x, placement.normal.z);
@@ -188,7 +195,7 @@ function metadata(point: ElectricalPoint | PlumbingPoint, category: 'electrical'
   };
 }
 
-function buildElectrical(point: ElectricalPoint, pointWalls: ReadonlyMap<string, PointWall> | undefined): { model: THREE.Group | null; diagnostic?: string } {
+function buildElectrical(point: ElectricalPoint, pointWalls: ReadonlyMap<string, PointWall> | undefined, mountHosts?: ReadonlyMap<string, PointMountHost>): { model: THREE.Group | null; diagnostic?: string } {
   const fixtureType = FIXTURE_TYPES[point.type];
   if (!fixtureType) return { model: null };
   const model = point.appearance?.style === 'warm_white_matte_modular'
@@ -205,7 +212,7 @@ function buildElectrical(point: ElectricalPoint, pointWalls: ReadonlyMap<string,
       (point.depth ?? dimensions.depth) / dimensions.depth,
     );
   }
-  const diagnostic = placeModel(model, point, dimensions ? mountHeight! + panelHeight! / 2 : point.type === 'floor_socket' ? 0.05 : point.height!, pointWalls, dimensions?.frontProjection ?? 0, dimensions !== undefined);
+  const diagnostic = placeModel(model, point, dimensions ? mountHeight! + panelHeight! / 2 : point.type === 'floor_socket' ? 0.05 : point.height!, pointWalls, dimensions?.frontProjection ?? 0, dimensions !== undefined, mountHosts);
   if (diagnostic !== undefined) return { model: null, diagnostic };
   model.userData = metadata(point, 'electrical', {
     label: point.type === 'strong_panel' ? '强电箱' : point.type === 'weak_panel' ? '弱电箱' : point.type === 'ac_controller' ? '线控器' : undefined,
@@ -225,7 +232,7 @@ function buildElectrical(point: ElectricalPoint, pointWalls: ReadonlyMap<string,
   return { model };
 }
 
-function buildPlumbing(point: PlumbingPoint, pointWalls: ReadonlyMap<string, PointWall> | undefined): { model: THREE.Group | null; diagnostic?: string } {
+function buildPlumbing(point: PlumbingPoint, pointWalls: ReadonlyMap<string, PointWall> | undefined, mountHosts?: ReadonlyMap<string, PointMountHost>): { model: THREE.Group | null; diagnostic?: string } {
   const fixtureType = FIXTURE_TYPES[point.type];
   if (!fixtureType) return { model: null };
   const model = buildFixture(fixtureType);
@@ -243,9 +250,9 @@ function buildPlumbing(point: PlumbingPoint, pointWalls: ReadonlyMap<string, Poi
     model.scale.y = scaleY;
     // Align the recipe's actual lowest point to finished floor, preserving the
     // declared point height as the actual top of the generated fixture.
-    diagnostic = placeModel(model, point, -localBounds.min.y * scaleY, pointWalls);
+    diagnostic = placeModel(model, point, -localBounds.min.y * scaleY, pointWalls, 0, false, mountHosts);
   } else {
-    diagnostic = placeModel(model, point, placementHeight, pointWalls);
+    diagnostic = placeModel(model, point, placementHeight, pointWalls, 0, false, mountHosts);
   }
   if (diagnostic !== undefined) return { model: null, diagnostic };
   model.userData = metadata(point, 'plumbing', {
@@ -276,12 +283,12 @@ export function buildInfrastructure(input: InfrastructureInput): InfrastructureB
   const electrical: THREE.Group[] = [];
   const plumbing: THREE.Group[] = [];
   for (const point of input.electrical) {
-    const built = buildElectrical(point, input.pointWalls);
+    const built = buildElectrical(point, input.pointWalls, input.mountHosts);
     if (built.diagnostic !== undefined) placementDiagnostics.push(built.diagnostic);
     if (built.model) electrical.push(built.model);
   }
   for (const point of input.plumbing) {
-    const built = buildPlumbing(point, input.pointWalls);
+    const built = buildPlumbing(point, input.pointWalls, input.mountHosts);
     if (built.diagnostic !== undefined) placementDiagnostics.push(built.diagnostic);
     if (built.model) plumbing.push(built.model);
   }

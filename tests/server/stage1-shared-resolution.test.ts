@@ -16,6 +16,7 @@ import {
   resolvePointPlacementInWalls,
 } from '../../shared/point-placement.js';
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
+import { parseElectricalPoints } from '../../shared/project-render-facts-schema.js';
 import type { FurnishingsYaml } from '../../shared/types.js';
 
 const WALLS = new Map([['w1', [{ x1: 0, z1: 0, x2: 5, z2: 0 }]]]);
@@ -138,6 +139,26 @@ test('buildPlacementIndexes：诊断随 indexes 流出；缺 geometry 时部分�
   assert.equal(partial.pointWalls, undefined);
 });
 
+test('buildPlacementIndexes：墙输入为一次性 iterable（Map.values()）时两处索引都不丢墙', () => {
+  const wallsById = new Map([['w1', { id: 'w1', x1: 0, z1: 0, x2: 5, z2: 0 }]]);
+  const indexes = buildPlacementIndexes({
+    // DXF 入口（shared/dxf/project-dxf.ts）正是这样传 wallsById.values()：迭代器只能走一次，
+    // 旧实现先建 pointWalls 再建家具墙段，第二遍得到空表，墙锚家具被静默排除。
+    geometry: { walls: wallsById.values() },
+    furnishings: {
+      room: [
+        { type: 'cabinet', id: 'test.cab', wall: 'w1', wall_side: 'south', along: 2.5, width: 1.0, depth: 0.5 },
+      ],
+    },
+  });
+  assert.deepEqual(indexes.furnitureDiagnostics, []);
+  assert.ok(indexes.pointWalls?.has('w1'));
+  assert.deepEqual(
+    { x: indexes.mountHosts?.get('test.cab')?.x, z: indexes.mountHosts?.get('test.cab')?.z },
+    { x: 2.5, z: 0.31 },
+  );
+});
+
 test('点位 anchor furniture 来源：宿主中心 + offset；断引用 / 未实现来源 / 缺索引均显式处理', () => {
   const { placements } = resolveFurniturePlacements(TV_SOFA, WALLS);
   const mountHosts = pointMountHostIndexFromResolved(placements);
@@ -162,4 +183,24 @@ test('点位 anchor furniture 来源：宿主中心 + offset；断引用 / 未�
     ),
     /mountHosts/,
   );
+});
+
+test('anchor offset 走真实解析入口：parseElectricalPoints 接受 offset，解算与合成夹具同值', () => {
+  // Codex 一审 blocking：PointAnchorSchema 曾是严格 {source, id}，offset 声明写进
+  // electrical.yaml 会在真实加载入口被拒，合成测试绕过了它。本用例走真实解析入口。
+  const [point] = parseElectricalPoints([
+    '- id: sock_sofa',
+    '  room: living_dining',
+    '  type: socket',
+    '  anchor:',
+    '    source: furniture',
+    '    id: test.sofa',
+    '    offset: { x: 0.5, z: 0 }',
+    '  height: 0.4',
+  ].join('\n'));
+  const { placements } = resolveFurniturePlacements(TV_SOFA, WALLS);
+  const mountHosts = pointMountHostIndexFromResolved(placements);
+  const resolved = resolvePointPlacementInWalls(point, new Map(), mountHosts);
+  assert.equal(resolved.placement?.kind, 'absolute');
+  assert.deepEqual([resolved.placement?.x, resolved.placement?.z], [11.5, 7.7]);
 });

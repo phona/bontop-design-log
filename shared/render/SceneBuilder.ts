@@ -1645,7 +1645,7 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     if (duplicate) report.skippedPlumbing.push(`${point.id}:furnishing:${point.room}:${point.type}`);
     return !duplicate;
   });
-  const infrastructure = buildInfrastructure({ electrical: input.electrical ?? [], plumbing, pointWalls: index.pointWalls });
+  const infrastructure = buildInfrastructure({ electrical: input.electrical ?? [], plumbing, pointWalls: index.pointWalls, mountHosts: index.mountHosts });
   for (const diagnostic of infrastructure.placementDiagnostics) {
     report.placementDiagnostics.push(diagnostic);
   }

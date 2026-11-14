@@ -60,7 +60,7 @@ export class MepCoordinationRenderer {
       if (resolved.unresolved.length > 0) {
         this.renderReport.skipped += 1;
         this.renderReport.skippedRoutes.push(route.id);
-        console.warn(`[mep] skipped unresolved route ${route.id} (${resolved.unresolved.join('/')})`);
+        console.warn(`[mep] skipped unresolved route ${route.id}`);
         continue;
       }
       this.renderReport.resolved += 1;

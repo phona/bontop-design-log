@@ -1374,8 +1374,8 @@ export interface ElectricalPoint {
   face_offset?: number;
   /** 家具挂载定位来源（issue #98 S2 真挂载：位置 = 宿主脸 + along + face_offset，解析见 shared/point-placement.ts）。 */
   mount?: { furniture_id: string; face: WallSide; surface_gap?: number; along: number; face_offset?: number };
-  /** 锚点引用定位来源（S4：F 组转家具挂载 / 暖通 ref 通道）。 */
-  anchor?: { source: string; id: string };
+  /** 锚点引用定位来源（S4：F 组转家具挂载 / 暖通 ref 通道）。offset 为世界轴偏移（米），相对宿主中心（issue #98 二阶段 S1）。 */
+  anchor?: { source: string; id: string; offset?: { x: number; z: number } };
   /** 显式绝对坐标意图（C/D/E/F 组：顶面灯位/建筑服务基准/地面排水/器具邻接点）。 */
   absolute?: boolean;
   /** 宿主意图标注（只作文档与校验输入，不参与解算）。 */
@@ -1506,8 +1506,8 @@ export interface PlumbingPoint {
   face_offset?: number;
   /** 家具挂载定位来源（S4 启用）。 */
   mount?: { furniture_id: string; face: WallSide; surface_gap?: number };
-  /** 锚点引用定位来源（S4 启用）。 */
-  anchor?: { source: string; id: string };
+  /** 锚点引用定位来源（S4 启用）。offset 为世界轴偏移（米），相对宿主中心（issue #98 二阶段 S1）。 */
+  anchor?: { source: string; id: string; offset?: { x: number; z: number } };
   /** 显式绝对坐标意图（C/D/E/F 组）。 */
   absolute?: boolean;
   /** 宿主意图标注（只作文本与校验输入，不参与解算）。 */

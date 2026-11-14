@@ -90,9 +90,12 @@ export function buildPlacementIndexes(input: {
   furnishings?: FurnishingsYaml;
   anchors?: PlacementAnchors;
 }): PlacementIndexes {
-  const pointWalls = input.geometry === undefined
+  // 墙输入可能是一次性 iterable（如 Map.values()）：先物化为数组再供两个索引共用，
+  // 否则第二次遍历得到空墙表，墙锚家具被静默排除出 mountHosts。
+  const wallList = input.geometry === undefined ? undefined : [...input.geometry.walls];
+  const pointWalls = wallList === undefined
     ? undefined
-    : pointWallIndexFromElements(input.geometry.walls);
+    : pointWallIndexFromElements(wallList);
   if (input.furnishings === undefined) {
     return { pointWalls, mountHosts: undefined, furnitureDiagnostics: undefined };
   }
@@ -100,9 +103,9 @@ export function buildPlacementIndexes(input: {
   const items = Object.values(input.furnishings).flat();
   // 缺 geometry 时墙段表为空：墙锚家具显式失败（`wall "<id>" not found`），绝对/mount/
   // anchor 来源照常解算——绝对 x/z 是其自身声明来源，不是回落。
-  const wallSegments = input.geometry === undefined
+  const wallSegments = wallList === undefined
     ? new Map<string, WallLike[]>()
-    : wallSegmentsFromElements(input.geometry.walls);
+    : wallSegmentsFromElements(wallList);
   const resolved = resolveFurniturePlacements(items, wallSegments, input.anchors);
   return {
     pointWalls,
