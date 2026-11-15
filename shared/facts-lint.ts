@@ -1797,6 +1797,8 @@ interface ClearancePoint { x: number; z: number; y?: number }
  * resolveMepRoute 逐点一致，见 tests/server/facts-lint.test.ts 一致性测试）。
  * axes 取同一文档的顶层 axes 表（runCeilingClearance 传入，issue #98 MEP batch 3
  * 弱电）；无表即 []，axis_jog / axis_run 步随即断引用 fail-closed。
+ * axis_corner 步的高度须随壳传入 via_height（batch 7 风管家族：壳漏传 via_height
+ * 会使八条风管在 facts 契约里全报「缺少有效 via_height」——与 slope 漏传同病）。
  */
 export function clearanceRoutePoints(
   route: Record<string, unknown>,
@@ -1818,6 +1820,7 @@ export function clearanceRoutePoints(
   const fromHeight = typeof route.from_height === 'number' ? route.from_height : undefined;
   const toHeight = typeof route.to_height === 'number' ? route.to_height : undefined;
   const slope = typeof route.slope === 'number' ? route.slope : undefined;
+  const viaHeight = typeof route.via_height === 'number' ? route.via_height : undefined;
   const hasRelational = via.some((step) => !isMepViaCoordinate(step as unknown as { x: number; z: number }));
   // 带 level 的绝对弯点同样走统一求解（2026-11-15 修 Codex blocking）：兼容壳不解算
   // level，弯点丢高度后 yOf 静默回退层高，低于吊顶段漏报；未知 level 亦无诊断。
@@ -1826,7 +1829,7 @@ export function clearanceRoutePoints(
     if (!from || !to) {
       throw new Error(`MEP route ${str(route.id)} 关系 via / level 弯点无端点可解：${!from ? 'from' : 'to'} 端点未解析`);
     }
-    const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}), ...(toHeight !== undefined ? { to_height: toHeight } : {}), ...(slope !== undefined ? { slope } : {}) } as MepRoute;
+    const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}), ...(toHeight !== undefined ? { to_height: toHeight } : {}), ...(slope !== undefined ? { slope } : {}), ...(viaHeight !== undefined ? { via_height: viaHeight } : {}) } as MepRoute;
     const resolved = resolveMepViaSteps(shellRoute, from, to, shafts, axes, levels);
     if (resolved.diagnostic !== undefined) throw new Error(resolved.diagnostic);
     return [

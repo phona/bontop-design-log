@@ -4,7 +4,6 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import {
   endpointSourcesFromFacts,
-  mepRoutePoints,
   parseMepCoordination,
   resolveMepEndpoint,
   resolveMepRoutes,
@@ -85,9 +84,9 @@ test('S2 改绑后：5 条送/回风路线 to 按 id 绑定 terminal，解出端
 test('S2 改绑后新语义（M4 反转）：terminal 移位 → MEP 端点跟随，路线 y 仍由 to_height 把守', () => {
   // 旧断言（S1 迁移期）「terminal 移 0.30 → MEP 端点留原地、门禁红」在 S2 改绑后语义反转：
   // inline 副本已删，端点按 id 跟随 terminal——这正是改绑的目的（单一源生效，正确行为）。
-  // 新正确行为三段：① x/z 跟随；② to_height 是协调标高口径，mepRoutePoints 的 y =
-  // to_height ?? to.y 静默胜出——terminal.position.y 漂移不得拖动路线 y（丢了 to_height
-  // 才会静默改几何，设计文档 §4.3 目标形态「to_height 必填」的原因）；③ id 引用不再进
+  // 新正确行为三段：① x/z 跟随；② to_height 是协调标高口径，统一出口 resolveMepRoute 的
+  // 末点 y = to_height ?? 派生值 ?? to.y——terminal.position.y 漂移不得拖动路线 y（丢了
+  // to_height 才会静默改几何，设计文档 §4.3 目标形态「to_height 必填」的原因）；③ id 引用不再进
   // endpoint_not_bound_to_point 兜底（mep-hvac-lint.ts 的 typeof endpoint !== 'object' 跳过）。
   const routeId = 'return-air-living';
   const singleRoute = { ...mepConfig, routes: mepConfig.routes.filter((route) => route.id === routeId) };
@@ -104,7 +103,9 @@ test('S2 改绑后新语义（M4 反转）：terminal 移位 → MEP 端点跟�
     'S2 新语义：MEP 端点必须跟随 terminal（端点跟随 + to_height 一致性）');
   assert.ok(Math.abs(shifted.routes[0].to!.z - 4.725) < 1e-9);
   const route = mepConfig.routes.find((item) => item.id === routeId)!;
-  const points = mepRoutePoints(shifted.routes[0].route, shifted.routes[0].from, shifted.routes[0].to);
+  // batch 7 风管关系化后 return-air-living 含 axis_corner 步，纯绝对 via 兼容壳
+  // mepRoutePoints 按契约当场抛——改走统一出口的已解 points；断言值不变：末点 y 仍取 to_height。
+  const points = shifted.routes[0].points;
   assert.equal(points[points.length - 1].y, route.to_height,
     '路线末点 y 必须仍取 to_height（terminal y +0.10 不得拖动路线 y——to_height 静默胜出口径）');
   // lint 侧：改绑后归零（verify:mep errors 130→125 的那一格），terminal 移位后同样为 0——
