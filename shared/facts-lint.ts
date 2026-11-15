@@ -1790,6 +1790,8 @@ interface ClearancePoint { x: number; z: number; y?: number }
  * 为 slope_run 时终端取末步落点高度——hvac terminal 不回 y，旧口径 `to.y` 为空使
  * yOf 静默回退到冷凝水层高 2.65m，与统一出口的 2.6375–2.6846m 分叉；终端点现与
  * resolveMepRoute 逐点一致，见 tests/server/facts-lint.test.ts 一致性测试）。
+ * axes 取同一文档的顶层 axes 表（runCeilingClearance 传入，issue #98 MEP batch 3
+ * 弱电）；无表即 []，axis_join 步随即断引用 fail-closed。
  */
 export function clearanceRoutePoints(
   route: Record<string, unknown>,
