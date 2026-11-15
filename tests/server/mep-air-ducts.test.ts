@@ -173,7 +173,7 @@ test('反例：缺 via_height → schema 拒绝且求解器入口拒绝，不出
     { kind: 'axis_corner', x: 'to', z: 5.35 },
   ]);
   delete withoutHeight.via_height;
-  assert.throws(() => MepRouteSchema.parse(withoutHeight), /bad-no-height/);
+  assert.throws(() => MepRouteSchema.parse(withoutHeight), /MEP route syn-supply-living 含 axis_corner 步，必须声明 via_height/);
   const parsed = MepRouteSchema.parse(airRoute('syn-supply-living', [
     { kind: 'axis_corner', x: 'from', z: 5.35 },
     { kind: 'axis_corner', x: 'to', z: 5.35 },
@@ -233,11 +233,11 @@ test('反例：axis_corner 缺 x/z → schema 拒绝且求解器入口拒绝，�
 
 test('反例：未含 axis_corner 的路由声明 via_height → schema 拒绝（未被消费的高度是静默事实）', () => {
   const absolute = airRoute('syn-absolute', [{ x: 10.3, z: 5.35, y: 2.66 }]);
-  assert.throws(() => MepRouteSchema.parse(absolute), /bad-unused-height/);
+  assert.throws(() => MepRouteSchema.parse(absolute), /MEP route syn-absolute 未含 axis_corner 步，不得声明 via_height/);
   const slopeOnly = airRoute('syn-slope-only', [
     { kind: 'slope_run', axis: 'z', to: 'to' },
   ], { slope: 0.01, to_height: undefined });
-  assert.throws(() => MepRouteSchema.parse(slopeOnly), /bad-unused-height/);
+  assert.throws(() => MepRouteSchema.parse(slopeOnly), /MEP route syn-slope-only 未含 axis_corner 步，不得声明 via_height/);
 });
 
 test('反例：其他步型声明 x/z → schema 拒绝（x/z 只属于 axis_corner）', () => {

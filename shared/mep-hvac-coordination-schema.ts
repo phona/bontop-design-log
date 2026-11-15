@@ -413,14 +413,14 @@ export const MepRouteSchema = z.object({
   if (hasAxisCorner && route.via_height === undefined) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'MEP route bad-no-height 含 axis_corner 步，必须声明 via_height（高度只取 route.via_height 单点声明）',
+      message: `MEP route ${route.id} 含 axis_corner 步，必须声明 via_height（高度只取 route.via_height 单点声明）`,
       path: ['via_height'],
     });
   }
   if (!hasAxisCorner && route.via_height !== undefined) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: 'MEP route bad-unused-height 未含 axis_corner 步，不得声明 via_height（未被消费的高度声明是静默事实）',
+      message: `MEP route ${route.id} 未含 axis_corner 步，不得声明 via_height（未被消费的高度声明是静默事实）`,
       path: ['via_height'],
     });
   }
