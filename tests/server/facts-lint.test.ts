@@ -1471,9 +1471,9 @@ test('facts 门禁点位与统一出口逐点一致：五条冷凝水支管终�
   for (const rawRoute of raw.routes ?? []) {
     const id = String(rawRoute.id);
     const parsed = project.routes.find((r) => r.id === id)!;
-    const unified = resolveMepRoute(parsed, sources, project.junctions, shafts);
+    const unified = resolveMepRoute(parsed, sources, project.junctions, shafts, project.axes, project.levels);
     assert.deepEqual(unified.unresolved, [], `${id}: 统一出口须可解（否则 facts 侧无从比对）`);
-    const factsPoints = clearanceRoutePoints(rawRoute, endpoints, shafts);
+    const factsPoints = clearanceRoutePoints(rawRoute, endpoints, shafts, project.axes, project.levels);
     assertPointsClose(factsPoints, unified.points, id);
     if (branches.includes(id)) branchPoints.set(id, unified.points);
   }
