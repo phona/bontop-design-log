@@ -41,7 +41,10 @@ describe('phase scope', () => {
 
   it('keeps deferred fixed appliance topics out of phase 1 only', () => {
     const scopes = loadPhaseScopes();
-    for (const topic of ['dishwasher', 'water_purifier', 'dryer']) {
+    // 2026-11-15 一二期对调（#152）：洗碗机进一期，净水器/烘干机仍留二期。
+    assert.equal(isBudgetTopicIncluded('dishwasher', 'phase_1_basic_occupancy', scopes), true);
+    assert.equal(isBudgetTopicIncluded('dishwasher', 'full', scopes), true);
+    for (const topic of ['water_purifier', 'dryer']) {
       assert.equal(isBudgetTopicIncluded(topic, 'phase_1_basic_occupancy', scopes), false);
       assert.equal(isBudgetTopicIncluded(topic, 'full', scopes), true);
     }

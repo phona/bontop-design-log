@@ -1,7 +1,7 @@
 schema: schedule.phase-scope/v1
 project_id: bontop-design-log
 version: 1.0.0
-updated_at: 2026-11-09
+updated_at: 2026-11-15
 
 # 这里只保存对 house.yaml / overlay.yaml 对象的引用；坐标、尺寸和预算不在此重复。
 #
@@ -25,8 +25,8 @@ phases:
     curtain_rooms: [master_bedroom, study, bedroom_nw, master_bath, guest_bath]
     # 一期是冻结范围：未登记的房间或新家具默认不进入一期场景/算量。
     default_furnishing_policy: exclude
-    # 仅保留入住必需家电；洗碗机、净水器、烘干机在二期采购。
-    budget_exclude_topics: [dishwasher, water_purifier, dryer]
+    # 仅保留入住必需家电；净水器、烘干机在二期采购。洗碗机 2026-11-02 一二期对调进一期（#152，control.yaml COST-160-09）。
+    budget_exclude_topics: [water_purifier, dryer]
     furnishing_rules:
       master_bedroom:
         # placed：床/南北床头柜/台盆柜/低柜；count-only：龙头/床垫/窗帘/灯。
@@ -56,10 +56,10 @@ phases:
         include_ids: [bese.bed_150, bese.wardrobe_180]
         include_types: [mattress_150, ceiling_light]
       kitchen:
-        # placed：三段柜 run/台面桥/灶/烟机/水槽/热水器；count-only：地柜/吊柜/台面/灯计数。
-        include_ids: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.gas_stove, kitchen.range_hood, kitchen.sink, kitchen.water_heater]
+        # placed：三段柜 run/台面桥/灶/烟机/水槽/热水器/洗碗机；count-only：地柜/吊柜/台面/灯计数。
+        # 洗碗机 2026-11-15 一二期对调进一期（#152）：include_ids 纳入 kitchen.dishwasher，exclude_ids 移除。
+        include_ids: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.gas_stove, kitchen.range_hood, kitchen.sink, kitchen.water_heater, kitchen.dishwasher]
         include_types: [cabinet_base, cabinet_wall, countertop_quartz, ceiling_light]
-        exclude_ids: [kitchen.dishwasher]
       balcony:
         # placed：洗衣机；count-only：灯。
         include_ids: [balcony.washer]
