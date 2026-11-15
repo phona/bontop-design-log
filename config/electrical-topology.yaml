@@ -117,7 +117,7 @@ circuits:
     capacity: "≈2.2kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "洗碗机单独回路；容量/线径/断路器待确认（2kW 以上设备单独成路，GB 55038 7.4.4）"
+    note: "洗碗机单独回路；容量/线径/断路器待确认（2kW 以上设备单独成路，GB 55038 7.4.4）；2026-11-02 一二期对调（#152）：洗碗机进一期，本回路为一期回路"
   # DEC-2026-10-03-R1：原 dedicated_balcony_washer_dryer 一回路拆为两条（洗衣机 2.0kW 属 2kW 以上设备，GB 55038 7.4.4）。
   - id: dedicated_balcony_washer
     panel_id: panel_strong
@@ -302,5 +302,5 @@ pending_parameters:
   - "强弱电箱之间的实际分隔与进线关系待现场确认"
   - "空调6台内机供电分组待厂家配电图确认：成交型号为客厅71T2、餐厅42T2、主卧56T2、书房/儿童房/客房28T2×3，均为 P-SS 泵型；不得沿用型号功率/泵负荷估值作为定案。hvac_power_living 已含 sock_dining_ac；厂家需确认额定负荷、内机与泵供电/端子、集中或逐台供电方式，之后再冻结回路拆并及点位 type。"
   - "中央空调外机供电**已单独成路** hvac_power_outdoor_a2（DEC-2026-10-04-R2，当时为第 20 路；DEC-2026-10-05-R3 浴霸拆两路后回路总数 21）：20kW 外机（220V，DEC-2026-10-04-R1）按 GB 55038 7.4.4 属 2kW 及以上用电设备、已单独成路；箱体位数按 20 路重算后 R3 增至 21 路，双排结论不变。仍待厂家正式配电图与量房终核：断路器/线径（现 proposed C32A+漏保 / 4.0mm²(φ20)）、是否由强电箱单独放缆或接开发商外立面预留插座、点位 sock_vrf_outdoor_a2 最终落位；若厂家要求硬接线不设漏保，须重新定义该点位 type 与回路口径"
-  - "微蒸烤一体机候选（美的 GC5，额定 3200W，DEC-2026-10-05-R4 业主定标方向）：**已按 DEC-2026-10-06-R2 落 `sock_kitchen_oven` 预留点位**（config/electrical.yaml 厨房段，`position_status: pending` + `status: pending`，count 1 / height 1.2 台面高柜电位；注意 `status` 枚举只允许 measured/likely/inferred/pending，故预留层级落在 `position_status: pending` 而非任务书原拟的 `status: proposed`；不进 topology 回路、未激活前不占箱位，故本表 circuits 仍为 21 路）。落位硬约束：必须落在柜外/开放格可徒手插拔处，禁止藏在机器背后（同冰箱高柜取电可及性口径）。按 GB 55038 7.4.4 需 16A / 2.5mm² 专用回路（现厨房插座回路 4mm² 预留口径不足以共路承载 3,200W）。**激活条件 = 业主确认采购 + 橱柜 600 宽高柜冻结**（二者缺一不可）；**激活动作 = 新增 `dedicated_kitchen_oven` 回路（C16A+漏保 / 2.5mm² / capacity ≈3.2kW）并使 `fact.circuit_count` 走 21→22 同步**（circuits.length、config/acceptance.yaml 回路数、docs 规模口径、箱体位数四处同步）。水电交底前必须闭合；同档竞品比价未做"
+  - "微蒸烤一体机候选（美的 GC5，额定 3200W，DEC-2026-10-05-R4 业主定标方向；2026-11-02 一二期对调退至二期，#152）：**已按 DEC-2026-10-06-R2 落 `sock_kitchen_oven` 预留点位**（config/electrical.yaml 厨房段，`position_status: pending` + `status: pending`，count 1 / height 1.2 台面高柜电位；注意 `status` 枚举只允许 measured/likely/inferred/pending，故预留层级落在 `position_status: pending` 而非任务书原拟的 `status: proposed`；不进 topology 回路、未激活前不占箱位，故本表 circuits 仍为 20 路）。落位硬约束：必须落在柜外/开放格可徒手插拔处，禁止藏在机器背后（同冰箱高柜取电可及性口径）。按 GB 55038 7.4.4 需 16A / 2.5mm² 专用回路（现厨房插座回路 4mm² 预留口径不足以共路承载 3,200W）。**激活条件 = 二期业主确认采购（#152 路径 A/B）+ 橱柜 600 宽高柜冻结**（二者缺一不可）；**激活动作 = 新增 `dedicated_kitchen_oven` 回路（C16A+漏保 / 2.5mm² / capacity ≈3.2kW）并使 `fact.circuit_count` 走 20→21 同步**（circuits.length、config/acceptance.yaml 回路数、docs 规模口径、箱体位数四处同步）。二期路径 A/B/C 未定，B 路线管预埋时机（一期预埋 vs 二期再改造）未定；闭合时点随 B 路径定：若一期预埋须在一期水电交底前闭合，否则在二期水电交底前闭合；同档竞品比价未做"
   - "2026-10-17（DEC-2026-10-17-R20）：本批新增点位（sock_fridge_living、sock_waterbar、sock_kitchen_east_counter、sock_weakbox、net_master_ap、light_balcony_dome、night_living_mid）的 MEP 走线未画，属走线专项（与 verify:mep must-fix 存量清理同期，交底前必须闭合）；mep-hvac-coordination 中 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条旧位路线已随点位删除同步删除"

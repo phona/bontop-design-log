@@ -358,12 +358,6 @@ links:
     mapping_status: mapped
     # 2026-11-10（issue #191）：原 {room_ids: [balcony], types: [dryer]} 等价于 balcony.dryer。
     scope: [{source: furnishings, select: {ids: [balcony.dryer]}}]
-  - id: MODEL-P2-030
-    phase_id: phase_2_function_upgrade
-    budget_ref: {source: phase_2_scope, id: P2-030}
-    mapping_status: mapped
-    # 2026-11-10（issue #191）：原 {room_ids: [kitchen], types: [dishwasher]} 等价于 kitchen.dishwasher。
-    scope: [{source: furnishings, select: {ids: [kitchen.dishwasher]}}]
   - id: MODEL-P2-040
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-040}
