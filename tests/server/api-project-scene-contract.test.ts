@@ -28,7 +28,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
-import { parseSceneInput } from '../../shared/render/scene-input.js';
+import { parseSceneInput, type SceneInput } from '../../shared/render/scene-input.js';
 import { buildScene, type SceneBuildResult } from '../../shared/render/SceneBuilder.js';
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { buildHvacBuilderSources, hvacAnchorPositions, type HvacBuilderSources } from '../../shared/render/HvacBuilder.js';
@@ -52,6 +52,8 @@ interface BuiltFromResponse {
   result: SceneBuildResult;
   sources?: HvacBuilderSources;
   anchors: Map<string, { x: number; z: number }>;
+  /** parseSceneInput 的产物：建场实际消费的墙表（含回填后的 height），供墙顶标高断言。 */
+  input: SceneInput;
 }
 
 /**
@@ -104,7 +106,7 @@ function buildFromApiResponse(body: ProjectApiResponse, anchorWalls?: WallSegmen
   const anchors = projection && projection.hvac.status === 'implemented'
     ? hvacAnchorPositions(projection.hvac.diagram, sources)
     : new Map<string, { x: number; z: number }>();
-  return { result, sources, anchors };
+  return { result, sources, anchors, input };
 }
 
 /** 取一个空闲端口：起真 server 时不与并行测试/本机服务抢固定端口。 */
@@ -337,5 +339,27 @@ describe('契约：真实 /api/project-snapshot 响应 → 建场', { timeout: 1
     // 层级漂移的直接守卫：顶层有，house 内没有。
     assert.ok('renderFactsProjection' in full, 'renderFactsProjection 不在响应顶层');
     assert.ok(!('renderFactsProjection' in full.house), 'house 内出现了 renderFactsProjection 副本：层级重新漂移，消费方读顶层会拿到 undefined');
+  });
+
+  it('断言 5：快照建场后的墙顶标高与所属房间高一致（墙表无 height 时不得回落 3.0）', () => {
+    // 2026-11-15 Codex 六审 blocking：快照墙表（catalog.getWalls() → WallSegment）本身无
+    // height 字段；parseSceneInput 若不回填，SceneBuilder 按 wall.height ?? 3.0 回落，
+    // 当前房间 2.8m 的墙会被无诊断地抬高 200mm。期望高一律取快照响应里房间自带的高，
+    // 不写死 2.8——量房改层高时断言自动跟随。
+    for (const [name, build, body] of [['全量', fullBuild, full], ['一期', phase1Build, phase1]] as const) {
+      assert.ok(build.input.walls.length > 0, `${name} 建场墙表为空：断言自身失效`);
+      const roomHeightById = new Map(body.house.rooms.map((room) => [room.id, room.height]));
+      const fallbackHeight = body.house.rooms[0]?.height ?? 3;
+      for (const wall of build.input.walls) {
+        const expected = wall.rooms
+          ?.map((id) => roomHeightById.get(id))
+          .find((height) => height !== undefined) ?? fallbackHeight;
+        assert.equal(
+          wall.height,
+          expected,
+          `${name} 墙 ${wall.id ?? '(无 id)'} 顶标高 ${wall.height} ≠ 所属房间高 ${expected}（快照墙表缺 height 回填、SceneBuilder 回落 3.0）`,
+        );
+      }
+    }
   });
 });
