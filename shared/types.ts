@@ -2269,7 +2269,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   master_dressing_connection_storage: { width: 0.70, depth: 0.40 }, // R5 独立连接收纳段：recipe/runtime AABB 对齐，维护/安装条件仍 site_pending
   master_bedside_cabinet_north: { width: 0.24, depth: 0.30 }, // 历史 R3 类型，保留兼容尺寸但不再 placed
   master_bedside_tray_south: { width: 0.20, depth: 0.26 }, // 历史 R3 类型，保留兼容尺寸但不再 placed
-  study_seasonal_wardrobe_wall: { width: 1.70, depth: 0.55 }, // 2026-09-03 书房东墙季节后台柜：1.70m 沿墙×0.55m 深×2.40m 高（非通顶）；rotation=270 后长边沿世界 z、柜门朝西
+  study_seasonal_wardrobe_wall: { width: 1.70, depth: 0.55 }, // 2026-09-03 书房东墙季节后台柜：1.70m 沿墙×0.55m 深×2.40m 高（非通顶）；rotation=270 后长边沿世界 z、柜门朝西；2026-11-16 核实：1.70 是配方基数，不改——三件行内宽 1.80/0.322/1.86 各自优先（vanity_layout > inline > DIMS），改目录会动渲染门面余量（furniture-inline-dimensions.test.ts 钉住 stub 北端 6.128），不拆 type
   towel_set: { width: 0.04, depth: 0.28 }, // Blender add_bath_fixtures 比例的声明式毛巾杆+毛巾，按东墙贴靠投影登记
   sofa_3seat: { width: 2.8, depth: 0.9 },
   dining_table: { width: 1.4, depth: 0.8 },
@@ -2284,7 +2284,7 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   entry_half_height_cabinet: { width: 2.0, depth: 0.35 }, // 门内右手定制半高柜，沿 z=3.10-5.10 向客厅延伸
   wall_cabinet_tall: { width: 1.35, depth: 0.35 }, // 西墙实体墙段 z=5.55-6.90
   tv_wall_low: { width: 2.1, depth: 0.4 }, // DEC-029 西墙柜墙 TV 区悬空低柜（沿墙长度×进深，z 6.9-9.0）
-  desk: { width: 1.2, depth: 0.6 },
+  desk: { width: 1.2, depth: 0.6 }, // 2026-11-16 核实：0.6 是 study.desk 的目录值（该件无行内尺寸，走目录）；bnw.desk 窄桌行内 depth 0.45 优先，目录不改——同 type 两件不同深，拆 type 成本高于收益，行内值优先（vanity_layout > inline > DIMS）
   bookshelf: { width: 0.8, depth: 0.3 },
   squat_rack: { width: 1.515, depth: 0.95 },
   barbell_olympic: { width: 2.2, depth: 0.08 },
