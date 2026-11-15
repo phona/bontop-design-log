@@ -164,6 +164,44 @@ test('反例：零行程与末步未落到 to 端点 → 显式诊断、无不�
   assert.equal(green.unresolved, 0);
 });
 
+test('to:\'to\' 步零行程是合法落点——跳过本步、无重合点；字面零行程仍显式失败', () => {
+  // 零行程落点规则（issue #98 MEP batch 6，PR #234 major 根治）：to 步的目标即 to 端点，
+  // 端点落在当前轴线上时该腿退化——无行程、无标高变化，跳过与输出重合点几何全等。
+  // 字面目标的零行程仍显式失败（上一条反例钉死）。
+  const landed = slopeConfig([slopeRoute('syn-landed', [
+    { kind: 'slope_run', axis: 'x', to: 'to' },
+    { kind: 'slope_run', axis: 'z', to: 'to' },
+  ], { from: { x: 6.7, z: 5.1 }, to: { x: 6.7, z: 3.7 } })]);
+  const entry = resolveMepRoutes(landed, emptySources).routes[0];
+  assert.deepEqual(entry.unresolved, []);
+  // 首步 x→'to' 零行程被跳过：via 只有 z 向一段，终端即落点（2.70 − 0.01×1.40 = 2.686）。
+  assertPointsClose(entry.points, [
+    [6.7, 2.7, 5.1],
+    [6.7, 2.686, 3.7],
+    [6.7, 2.686, 3.7],
+  ], 'syn-landed');
+  assert.equal(entry.viaPoints.length, 1, 'zero-run to step must not emit a duplicate point');
+
+  // 对照：同一形态的字面零行程仍显式失败，不输出半条几何。
+  const literal = slopeConfig([slopeRoute('syn-literal', [
+    { kind: 'slope_run', axis: 'x', to: 6.7 },
+    { kind: 'slope_run', axis: 'z', to: 'to' },
+  ], { from: { x: 6.7, z: 5.1 }, to: { x: 6.7, z: 3.7 } })]);
+  const red = resolveMepViaSteps(literal.routes[0], { x: 6.7, z: 5.1 }, { x: 6.7, z: 3.7 }, []);
+  assert.deepEqual(red.points, []);
+  assert.match(red.diagnostic ?? '', /零行程/);
+
+  // 落点校验仍以最终游标为准：跳步后游标不到 to 端点仍显式失败。
+  const short = slopeConfig([slopeRoute('syn-short', [
+    { kind: 'slope_run', axis: 'x', to: 'to' },
+    { kind: 'slope_run', axis: 'z', to: 3.0 },
+  ], { from: { x: 6.7, z: 5.1 }, to: { x: 6.7, z: 3.7 } })]);
+  const shortEntry = resolveMepRoutes(short, emptySources).routes[0];
+  assert.deepEqual(shortEntry.unresolved, ['via']);
+  assert.deepEqual(shortEntry.points, []);
+  assert.match(shortEntry.diagnostics.join('；'), /末步 slope_run 未落到 to 端点/);
+});
+
 test('反例：无 y 绝对步后接 slope_run → 显式失败（旧标高游标须清除，不静默算错坡度）', () => {
   // PR #233 二审 blocking：from_height=2.70、slope=0.01，via=[{x:1,z:0} 无 y, slope_run x→'to']，
   // to=(2,0)。旧行为：末点 y=2.69 求解成功，但前一点下游按层高 2.65 回退，形成 40mm 上坡，

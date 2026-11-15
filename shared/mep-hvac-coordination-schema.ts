@@ -49,8 +49,10 @@ export const MepJunctionSchema = z.object({
  *   南行段沿竖井 x 走到插座的 z，末 jog 再折向终点；shaft.z 只参一致性校验，不进拐点。
  * - `slope_run`：沿单轴（`axis` x/z）按 `route.slope` × 行程派生高度的坡度跑——
  *   目标 `to` 为该轴上的数值坐标，或字面 `'to'`（取 to 端点在该轴上的坐标，端点移动
- *   时末步自动跟随）；起算标高为游标高度（首步即 `route.from_height`），不得声明步内
- *   y、不引用竖井；缺 slope / 缺起算标高 / 零行程 → 显式失败，不给半条路径。末步为
+ *   时任意步自动跟随，不仅末步）；起算标高为游标高度（首步即 `route.from_height`），不得声明步内
+ *   y、不引用竖井；缺 slope / 缺起算标高 / 字面目标零行程 → 显式失败，不给半条路径。
+ *   `to:'to'` 步的零行程是合法落点（端点落在当前轴线上，该腿退化、无行程无标高
+ *   变化，跳过本步）；字面目标的零行程仍显式失败。末步为
  *   slope_run 时其落点必须平面重合 to 端点，否则整条 via 失败（终端标高由末步落点
  *   派生，`to_height` 缺省时 to 点 y 即末步 y）。
  * 三步共享同一竖井（`shaft` id 必须在顶层 `shafts` 表里）；from 端点与竖井的
@@ -295,8 +297,9 @@ const VIA_SHAFT_CONSISTENCY_TOLERANCE = 0.005;
  * y 一律取步内声明或竖井高度（from_face_jog 例外：高度只取 route.from_height，
  * 不得声明步内 y；from_height 缺失或无效时显式失败）。
  * slope_run → 沿单轴按 route.slope × 行程派生高度（游标高度 − slope × |Δplan|，游标
- * 高度首步为 route.from_height）；目标 to 为数值或字面 'to'（to 端点在该轴上的坐标）；
- * 不得声明步内 y、不引用竖井；缺 slope / 缺起算标高 / 零行程 → 显式失败。末步为
+ * 高度首步为 route.from_height）；目标 to 为数值或字面 'to'（to 端点在该轴上的坐标，
+ * 任意步自动跟随）；不得声明步内 y、不引用竖井；缺 slope / 缺起算标高 / 字面目标
+ * 零行程 → 显式失败。to:'to' 步的零行程是合法落点（跳过，不输出重合点）。末步为
  * slope_run 时落点必须平面重合 to 端点，否则整条 via 失败（终端标高由末步落点派生）。
  * 绝对坐标步原样透传；缺 y 的绝对步清除标高游标——后续 slope_run 不得沿用旧标高
  * （否则与下游层高回退形成虚构上坡，PR #233 二审 blocking），而以「缺少有效起算
@@ -332,8 +335,9 @@ export function resolveMepViaSteps(
     }
     if (step.kind === 'slope_run') {
       // 坡度跑：高度只由 route.slope × 行程派生，不得声明步内 y（schema 与本入口双重
-      // fail-closed，与 from_face_jog 同口径）；缺 slope / 缺起算标高 / 零行程 → 显式失败，
-      // 不输出不完整几何。to: 'to' 取 to 端点在该轴上的坐标（端点移动时末步自动跟随）。
+      // fail-closed，与 from_face_jog 同口径）；缺 slope / 缺起算标高 / 字面目标零行程 →
+      // 显式失败，不输出不完整几何。to: 'to' 取 to 端点在该轴上的坐标（端点移动时
+      // 任意步自动跟随，不仅末步）。
       if (step.y !== undefined) {
         return { points: [], diagnostic: `MEP route ${route.id} via 步 slope_run 不得声明 y（高度由 route.slope × 行程派生）` };
       }
@@ -349,6 +353,13 @@ export function resolveMepViaSteps(
       const target = step.to === 'to' ? to[step.axis] : step.to;
       const run = Math.abs(target - cursor[step.axis]);
       if (run < 1e-9) {
+        // 零行程落点规则（issue #98 MEP batch 6，PR #234 major 根治）：
+        // to:'to' 步的目标即 to 端点——端点恰好落在当前轴线上时该腿退化为零行程，
+        // 无行程、无标高变化，跳过本步与输出重合点几何全等；若仍显式失败，端点移向
+        // 转角线仍会断路，“跟随端点”只兑现一半（未修前即如此：客卫支管终端移到折回
+        // 点 z=3.25 即报零行程）。字面目标的零行程仍显式失败：字面值是明确声明的
+        // 转角，零行程说明声明几何退化，值得显形（既有反例钉死）。
+        if (step.to === 'to') continue;
         return { points: [], diagnostic: `MEP route ${route.id} via 步 slope_run 零行程（${step.axis} 目标 ${target} 与当前 ${cursor[step.axis]} 重合）` };
       }
       const nextY = cursorY - route.slope * run;
@@ -394,11 +405,12 @@ export function resolveMepViaSteps(
   }
   // 末步为 slope_run 时落点必须平面重合 to 端点（否则终端无落点可派生——
   // to_height 缺省时 to 点 y 即末步 y，落点不到端点就是缺一段几何，不静默补段）。
+  // 以最终游标（非最后输出点）校验：零行程的 to 步被跳过时，最后输出点是上一落点，
+  // 但游标已在 to 端点上；无跳步时游标与最后输出点重合，口径不变。
   const lastStep = route.via[route.via.length - 1];
   if (lastStep && !isMepViaCoordinate(lastStep) && lastStep.kind === 'slope_run') {
-    const last = points[points.length - 1];
-    if (!last || Math.abs(last.x - to.x) > 1e-9 || Math.abs(last.z - to.z) > 1e-9) {
-      return { points: [], diagnostic: `MEP route ${route.id} 末步 slope_run 未落到 to 端点 (${to.x},${to.z})，实际 (${last?.x},${last?.z})（末步 to 须取 'to' 或与 to 端点同坐标）` };
+    if (Math.abs(cursor.x - to.x) > 1e-9 || Math.abs(cursor.z - to.z) > 1e-9) {
+      return { points: [], diagnostic: `MEP route ${route.id} 末步 slope_run 未落到 to 端点 (${to.x},${to.z})，实际 (${cursor.x},${cursor.z})（末步 to 须取 'to' 或与 to 端点同坐标）` };
     }
   }
   return { points };

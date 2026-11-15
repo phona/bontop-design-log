@@ -208,6 +208,95 @@ test('C2：客卫干区地漏北移 −0.20m，客卫支管与地漏支路跟随
   assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
 });
 
+test('C2：主卫立管双轴移动（x +0.10 / z +0.10），三条立管支路跟随、其余不动；复原则逐字节恢复', () => {
+  // PR #234 major 根治：中间步字面坐标改 to:'to' 后，立管沿另一轴移动不再断路。
+  // 旧行为（复现见 tmp/repro-234-major.ts）：x +0.10 时马桶/地漏支路、z +0.10 时淋浴支路
+  // 均以“末步 slope_run 未落到 to 端点”显式失败、points=[]。
+  const baseline = routePoints(resolveMepRoutes(project, realSources));
+  const followers = ['drain-mbath-toilet-to-riser', 'drain-mbath-shower-to-riser', 'drain-mbath-floor-to-riser'];
+  const expected: Record<string, { x: [number, number, number]; z: [number, number, number] }> = {
+    // 终端标高 = from_height − 1% × 总行程（x 移：西/北段行程各变；z 移同理）。
+    'drain-mbath-toilet-to-riser': { x: [0.4, 0.02095, 1.3], z: [0.3, 0.02095, 1.4] },
+    'drain-mbath-shower-to-riser': { x: [0.4, 0.021, 1.3], z: [0.3, 0.021, 1.4] },
+    'drain-mbath-floor-to-riser': { x: [0.4, 0.021, 1.3], z: [0.3, 0.019, 1.4] },
+  };
+  for (const [label, dx, dz] of [['x', 0.10, 0], ['z', 0, 0.10]] as const) {
+    const moved = routePoints(resolveMepRoutes(project, sourcesWithMovedPlumbing('drain_riser_master_bath', dx, dz)));
+    for (const id of followers) {
+      const points = JSON.parse(moved[id]) as Array<{ x: number; y?: number; z: number }>;
+      const terminal = points[points.length - 1];
+      const [x, y, z] = expected[id][label];
+      assert.ok(Math.abs(terminal.x - x) <= 1e-9 && Math.abs(terminal.y! - y) <= 1e-9 && Math.abs(terminal.z - z) <= 1e-9,
+        `${id} riser ${label}-move terminal ${JSON.stringify(terminal)} !== (${x},${y},${z})`);
+    }
+    // 绝对台盆支路终端随立管走（to_height 声明 0.315 不变），中间字面 via 不动。
+    const vanity = JSON.parse(moved['drain-mbath-vanity-to-riser']) as Array<{ x: number; y?: number; z: number }>;
+    const vanityTerminal = vanity[vanity.length - 1];
+    assert.ok(Math.abs(vanityTerminal.x - (0.3 + dx)) <= 1e-9 && Math.abs(vanityTerminal.y! - 0.315) <= 1e-9
+      && Math.abs(vanityTerminal.z - (1.3 + dz)) <= 1e-9,
+      `drain-mbath-vanity-to-riser terminal must follow the riser, got ${JSON.stringify(vanityTerminal)}`);
+    for (const id of DRAIN_IDS.filter((item) => !followers.includes(item) && item !== 'drain-mbath-vanity-to-riser')) {
+      assert.equal(moved[id], baseline[id], `${id} must not move on riser ${label}-move`);
+    }
+  }
+  const restored = routePoints(resolveMepRoutes(project, realSources));
+  assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
+});
+
+test('C2：客卫立管双轴移动（x +0.10 / z −0.10），两条立管支路跟随、其余不动；复原则逐字节恢复', () => {
+  const baseline = routePoints(resolveMepRoutes(project, realSources));
+  const followers = ['drain-gbath-shower-to-riser', 'drain-gbath-floor-to-riser'];
+  const expected: Record<string, { x: [number, number, number]; z: [number, number, number] }> = {
+    'drain-gbath-shower-to-riser': { x: [5.9, 0.021, 2.4], z: [5.8, 0.019, 2.3] },
+    'drain-gbath-floor-to-riser': { x: [5.9, 0.021, 2.4], z: [5.8, 0.019, 2.3] },
+  };
+  for (const [label, dx, dz] of [['x', 0.10, 0], ['z', 0, -0.10]] as const) {
+    const moved = routePoints(resolveMepRoutes(project, sourcesWithMovedPlumbing('drain_riser_guest_bath', dx, dz)));
+    for (const id of followers) {
+      const points = JSON.parse(moved[id]) as Array<{ x: number; y?: number; z: number }>;
+      const terminal = points[points.length - 1];
+      const [x, y, z] = expected[id][label];
+      assert.ok(Math.abs(terminal.x - x) <= 1e-9 && Math.abs(terminal.y! - y) <= 1e-9 && Math.abs(terminal.z - z) <= 1e-9,
+        `${id} riser ${label}-move terminal ${JSON.stringify(terminal)} !== (${x},${y},${z})`);
+    }
+    const vanity = JSON.parse(moved['drain-gbath-vanity-to-riser']) as Array<{ x: number; y?: number; z: number }>;
+    const vanityTerminal = vanity[vanity.length - 1];
+    assert.ok(Math.abs(vanityTerminal.x - (5.8 + dx)) <= 1e-9 && Math.abs(vanityTerminal.y! - 0.2695) <= 1e-9
+      && Math.abs(vanityTerminal.z - (2.4 + dz)) <= 1e-9,
+      `drain-gbath-vanity-to-riser terminal must follow the riser, got ${JSON.stringify(vanityTerminal)}`);
+    for (const id of DRAIN_IDS.filter((item) => !followers.includes(item) && item !== 'drain-gbath-vanity-to-riser')) {
+      assert.equal(moved[id], baseline[id], `${id} must not move on riser ${label}-move`);
+    }
+  }
+  const restored = routePoints(resolveMepRoutes(project, realSources));
+  assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
+});
+
+test('C2：零行程落点——客卫支管终端移到折回点 z=3.25、主卫马桶立管移到 from.z，路由照常解出', () => {
+  // 零行程落点规则：to 步零行程被跳过、不输出重合点，终端即落点（复现见 tmp/repro-234-major.ts，
+  // 未修前两例均显式失败：客卫支管报零行程，马桶支路报末步未落到 to 端点）。
+  // 非移动方断言由上面两条立管双轴测试覆盖（同为立管/地漏 z 向移动），本测试只钉落点语义。
+  const baseline = routePoints(resolveMepRoutes(project, realSources));
+  // 客卫支管终端 z→3.25：末步 z→'to' 零行程被跳过，终端标高 0.028 − 0.01×(0.15+0.80) = 0.0185。
+  const movedGuest = routePoints(resolveMepRoutes(project, sourcesWithMovedPlumbing('drain_gbath_floor', 0, 0.20)));
+  const guest = JSON.parse(movedGuest['drain-guest-bath']) as Array<{ x: number; y?: number; z: number }>;
+  assert.equal(guest.length, 4, 'skipped zero-run step must not emit a duplicate point');
+  const guestTerminal = guest[guest.length - 1];
+  assert.ok(Math.abs(guestTerminal.x - 6.45) <= 1e-9 && Math.abs(guestTerminal.y! - 0.0185) <= 1e-9
+    && Math.abs(guestTerminal.z - 3.25) <= 1e-9,
+    `drain-guest-bath terminal ${JSON.stringify(guestTerminal)} !== (6.45,0.0185,3.25)`);
+  // 主卫马桶立管 z→1.5（= from.z）：末步 z→'to' 零行程被跳过，终端标高 0.0417 − 0.01×1.975 = 0.02195。
+  const movedToilet = routePoints(resolveMepRoutes(project, sourcesWithMovedPlumbing('drain_riser_master_bath', 0, 0.20)));
+  const toilet = JSON.parse(movedToilet['drain-mbath-toilet-to-riser']) as Array<{ x: number; y?: number; z: number }>;
+  assert.equal(toilet.length, 3, 'skipped zero-run step must not emit a duplicate point');
+  const toiletTerminal = toilet[toilet.length - 1];
+  assert.ok(Math.abs(toiletTerminal.x - 0.3) <= 1e-9 && Math.abs(toiletTerminal.y! - 0.02195) <= 1e-9
+    && Math.abs(toiletTerminal.z - 1.5) <= 1e-9,
+    `drain-mbath-toilet-to-riser terminal ${JSON.stringify(toiletTerminal)} !== (0.3,0.02195,1.5)`);
+  const restored = routePoints(resolveMepRoutes(project, realSources));
+  assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
+});
+
 test('C3：DXF 与算量同读统一出口——DXF 无错且含 10 条迁移路由，算量未解仍只有 trunk_strong_main', () => {
   const dxfHouse = { rooms: [], furnishings: {} as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: [] };
   const dxf = buildProjectDxf({ house: dxfHouse, mep: { coordination: project, sources: realSources }, labels: 'ascii' });
