@@ -78,6 +78,9 @@ export const MepJunctionSchema = z.object({
  *   线跑，不查表；不得声明步内 y / shaft）。轴线值只在 `axes` 表声明一次，各路由引用
  *   id，改一处即全跟随。轴线可声明可选层高 `y`（batch 3 弱电）：声明时 `axis_jog`
  *   入轴须同层（|游标标高 − y| ≤ 0.005m），不声明 = 平面轴，不做层高校验。
+ *   给水批（issue #98 MEP batch 5）引入动机：垫层给水全程平标高（y=0.18/0.35/0.8），
+ *   slope_run 须正数坡度、竖井步只能沿竖井 x 跑，都表达不了“平着沿一轴走到某坐标”；
+ *   方向式 axis_run 即为此而生。
  * - `run`（issue #98 MEP batch 3 弱电遗留，仅用于既有三维斜段的原样保留——
  *   weak-master 南下段终点 y=2.4；issue #243 统一协议保留本 kind，不再新写）：
  *   方向式平跑（axis 'x'/'z'，不查表），步内 y 为终点标高声明值，缺省取游标高度；
