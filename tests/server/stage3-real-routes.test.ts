@@ -168,9 +168,16 @@ test('C1：两路由关系化——共享竖井只声明一次，解算折线与
   const table = all.coordination.routes.find((r) => r.id === 'strong-power-living-table')!;
   assert.deepEqual(table.via.map((s: any) => s.kind), ['from_face_jog', 'from_drop', 'shaft_run'], '餐桌路由 via 须为竖井三步');
   assert.ok(table.via.every((s: any) => s.shaft === 'shaft_entry'), '餐桌路由各步须引用同一竖井');
-  // 其余路由不动：红线路由 strong-ded-bathheaters-mbath 仍为绝对 via（本批不迁移，改道裁定待定）。
+  // 红线路由 strong-ded-bathheaters-mbath 已随 MEP gap-1 批关系化（2026-11-16）：
+  // 穿柜冲突改由顶封 25mm 线槽解决（infer，用户裁定），路由几何不变、改道裁定作废。
+  // 此处钉死迁移后的关系步序列，防止回退到绝对 via。
   const mbath = all.coordination.routes.find((r) => r.id === 'strong-ded-bathheaters-mbath')!;
-  assert.ok(mbath.via.every(isMepViaCoordinate), 'mbath 路由须仍为绝对 via');
+  assert.deepEqual(
+    mbath.via.map((s: any) => s.kind),
+    ['axis_jog', 'axis_run', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'],
+    'mbath 路由 via 须为 gap-1 迁移后的关系步',
+  );
+  assert.ok(!mbath.via.some(isMepViaCoordinate), 'mbath 路由须不再含绝对坐标步');
 
   for (const id of [ROUTE_L, ROUTE_R]) {
     const r = routeOf(report, id);
