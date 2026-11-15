@@ -1,5 +1,5 @@
 /**
- * 契约测试：真实 `/api/project` 响应 → 建场（issue #98 收尾，PR #122 §三.4）。
+ * 契约测试：真实 `/api/project-snapshot` 响应 → 建场（issue #98 收尾，PR #122 §三.4）。
  *
  * 由来：`renderFactsProjection` 与 `furnishingsAll` 这两个字段在全部测试文件里**零命中**，
  * 16 轮审查每轮 CI 全绿却一次没抓到「响应层级漂移 / 宿主表被阶段过滤」——因为没有任何
@@ -33,7 +33,7 @@ import { buildScene, type SceneBuildResult } from '../../shared/render/SceneBuil
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { buildHvacBuilderSources, hvacAnchorPositions, type HvacBuilderSources } from '../../shared/render/HvacBuilder.js';
 import { resolvePointPlacementInWalls } from '../../shared/point-placement.js';
-import type { ProjectApiResponse } from '../../shared/api-project.js';
+import type { ProjectApiResponse, ProjectSnapshotResponse } from '../../shared/api-project.js';
 import type { WallSegment } from '../../shared/types.js';
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
@@ -55,7 +55,7 @@ interface BuiltFromResponse {
 }
 
 /**
- * 把 `/api/project` 响应按 HouseScene.buildFromCatalog（app/src/render/HouseScene.ts:728-779）
+ * 把 `/api/project-snapshot` 响应按 HouseScene.buildFromCatalog（app/src/render/HouseScene.ts:728-779）
  * 的同一构造喂给建场链路：parseSceneInput → buildPlacementIndexes（墙几何 + 全量 furnishingsAll）
  * → buildHvacBuilderSources（投影 + electrical + 两份索引）→ buildScene。
  * 这里不手捏任何字段：输入就是 HTTP 响应本身。定位基准墙全量（#98 Tier 1）同样取自
@@ -121,7 +121,8 @@ async function reserveFreePort(): Promise<number> {
 }
 
 /**
- * 用 TypeScript AST 收集 app 侧对 `/api/project` 响应的**全部字段读取路径**。
+ * 用 TypeScript AST 收集 app 侧对快照响应（/api/project-snapshot，/api/project 的超集）的
+ * **全部字段读取路径**。
  * 扫描 `projectData.house.rooms` / `this.projectData?.materialPreview?.atlases` 这类属性链，
  * 返回去掉根标识符后的路径（如 `house.rooms`）。注释与类型位置不会被计入，
  * 因此这里列出的就是「app 真正消费的字段名」。
@@ -167,11 +168,11 @@ function lookupPath(root: unknown, path: string): unknown {
   return current;
 }
 
-describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 }, () => {
+describe('契约：真实 /api/project-snapshot 响应 → 建场', { timeout: 180_000 }, () => {
   let server: ChildProcess | undefined;
   let dataDir = '';
-  let full: ProjectApiResponse;
-  let phase1: ProjectApiResponse;
+  let full: ProjectSnapshotResponse;
+  let phase1: ProjectSnapshotResponse;
   let fullBuild: BuiltFromResponse;
   let phase1Build: BuiltFromResponse;
 
@@ -196,10 +197,10 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     server.stdout?.on('data', (chunk) => serverLogs.push(String(chunk)));
     server.stderr?.on('data', (chunk) => serverLogs.push(String(chunk)));
 
-    const base = `http://127.0.0.1:${port}/api/project`;
+    const base = `http://127.0.0.1:${port}/api/project-snapshot`;
     const deadline = Date.now() + 150_000;
     let lastError = '尚无响应';
-    let fullBody: ProjectApiResponse | undefined;
+    let fullBody: ProjectSnapshotResponse | undefined;
     while (Date.now() < deadline) {
       if (serverExited()) {
         throw new Error(`真实 server 提前退出（exitCode=${server.exitCode ?? server.signalCode}）：\n${serverLogs.join('')}`);
@@ -207,7 +208,7 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
       try {
         const response = await fetch(base);
         if (response.ok) {
-          fullBody = (await response.json()) as ProjectApiResponse;
+          fullBody = (await response.json()) as ProjectSnapshotResponse;
           break;
         }
         lastError = `HTTP ${response.status}: ${(await response.text()).slice(0, 2000)}`;
@@ -222,18 +223,17 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     full = fullBody;
 
     const phaseResponse = await fetch(`${base}?phase=phase_1_basic_occupancy`);
-    assert.equal(phaseResponse.status, 200, 'GET /api/project?phase=phase_1_basic_occupancy 必须 200');
-    phase1 = (await phaseResponse.json()) as ProjectApiResponse;
+    assert.equal(phaseResponse.status, 200, 'GET /api/project-snapshot?phase=phase_1_basic_occupancy 必须 200');
+    phase1 = (await phaseResponse.json()) as ProjectSnapshotResponse;
 
-    // 定位基准墙全量（#98 Tier 1）：与 App 的 fetchProjectSnapshot 同源，同一真 server
-    // 的 /api/project-snapshot 顶层 walls（本测试沿用独立的 /api/walls 端点取同一份表）。
-    const wallsResponse = await fetch(`http://127.0.0.1:${port}/api/walls`);
-    assert.equal(wallsResponse.status, 200, 'GET /api/walls 必须 200');
-    const anchorWalls = ((await wallsResponse.json()) as { walls: WallSegment[] }).walls;
-    assert.ok(Array.isArray(anchorWalls) && anchorWalls.length > 0, '/api/walls 必须返回非空墙表');
+    // 定位基准墙全量（#98 Tier 1，快照重做）：full / phase1 各自消费本快照顶层的 walls，
+    // 与 house.sceneElements / furnishings 同一次 catalog 载入——快照端点若漏发 walls，
+    // 这里当场红（不再像旧口径那样从独立 /api/walls 端点另取，绕过快照边界）。
+    assert.ok(Array.isArray(full.walls) && full.walls.length > 0, '全量快照响应缺非空顶层 walls：快照端点漏发墙表');
+    assert.ok(Array.isArray(phase1.walls) && phase1.walls.length > 0, '一期快照响应缺非空顶层 walls：快照端点漏发墙表');
 
-    fullBuild = buildFromApiResponse(full, anchorWalls);
-    phase1Build = buildFromApiResponse(phase1, anchorWalls);
+    fullBuild = buildFromApiResponse(full, full.walls);
+    phase1Build = buildFromApiResponse(phase1, phase1.walls);
   });
 
   after(async () => {
@@ -286,7 +286,7 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     }
     assert.ok(objectIds.includes('mb.full_height_cabinet'), '通顶柜 mb.full_height_cabinet 必须在场');
     // #98 Tier 1：玻璃线旁的墙锚家具须在场——厨房北柜锚 w_kit_north（suppressed 玻璃线，
-    // 只在 /api/walls 全量墙表里）；若建场链路没接 anchorWalls，这里当场红。
+    // 只在快照顶层 walls 全量墙表里）；若建场链路没接 anchorWalls，这里当场红。
     assert.ok(objectIds.includes('kitchen.cabinet_run_north_east'), '厨房北柜 kitchen.cabinet_run_north_east 必须在场（墙锚 w_kit_north 玻璃线）');
     assert.ok(objectIds.includes('mb.dressing_table'), '梳妆台 mb.dressing_table 必须在场（墙锚 w_west_upper 玻璃线）');
   });
