@@ -27,6 +27,8 @@ import type { PhaseId } from '../shared/types.js';
 // 从本文件迁出），消费方（路由响应类型）与生产者（本 catalog）不再各写一份。
 import type { BudgetCategory } from '../shared/api-project.js';
 import { filterFurnishings } from './phase-scope.js';
+import { buildPlacementIndexes } from '../shared/placement-indexes.js';
+import { furnitureObjectId } from '../shared/furniture-object-id.js';
 
 function isWithinDirectory(directory: string, candidate: string): boolean {
   const rel = relative(directory, candidate);
@@ -341,7 +343,10 @@ export class ProjectCatalog {
     if (!items) return {};
     const counts: Record<string, number> = {};
     for (const item of items) {
-      const placed = item.x !== undefined && item.z !== undefined;
+      // placed = 有世界位置的实例（x/z 绝对、wall 墙锚、mount/anchor 派生均算 1 件；
+      // 无 placement 声明的 count-only 条目按 item.count 计）。#98 Tier 1：旧口径只认
+      // x/z，会把已迁移的墙锚/锚点家具误当 count-only（有 count 时多计）。
+      const placed = (item.x !== undefined && item.z !== undefined) || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined;
       counts[item.type] = (counts[item.type] ?? 0) + (placed ? 1 : (item.count ?? 1));
     }
     return counts;
@@ -442,20 +447,29 @@ export class ProjectCatalog {
       }
     }
 
+    // #98 Tier 1：placed 坐标取共享解算结果（buildPlacementIndexes），不再直读声明 x/z——
+    // 墙锚/家具锚条目无声明 x/z，旧口径会把已迁移件静默排除出 placed（counts 仍含它们，
+    // 本方法目前无生产调用方，但详情输出是外部消费口径）。解不出的条目（诊断在
+    // furnitureDiagnostics）不在此列：verify:furniture 是其显形通道，与 verify-spatial
+    // 的 validateFurnitureFaceMounts 同口径。
+    const { mountHosts } = buildPlacementIndexes({ geometry: { walls: this.walls }, furnishings: this.furnishings });
     const items = this.furnishings[roomId] ?? [];
     const placed = items
-      .filter((i) => i.x !== undefined && i.z !== undefined)
-      .map((i) => ({
-        type: i.type,
-        x: i.x!,
-        z: i.z!,
-        rotation: i.rotation ?? 0,
-        ...(i.length !== undefined ? { length: i.length } : {}),
-        ...(i.depth !== undefined ? { depth: i.depth } : {}),
-        ...(i.cabinetHeight !== undefined ? { cabinetHeight: i.cabinetHeight } : {}),
-        ...(i.countertopThickness !== undefined ? { countertopThickness: i.countertopThickness } : {}),
-        ...(i.cutouts !== undefined ? { cutouts: i.cutouts } : {}),
-      }));
+      .flatMap((i, runtimeIndex) => {
+        const host = mountHosts.get(furnitureObjectId(roomId, i, runtimeIndex));
+        if (!host || host.x === undefined || host.z === undefined) return [];
+        return [{
+          type: i.type,
+          x: host.x,
+          z: host.z,
+          rotation: i.rotation ?? 0,
+          ...(i.length !== undefined ? { length: i.length } : {}),
+          ...(i.depth !== undefined ? { depth: i.depth } : {}),
+          ...(i.cabinetHeight !== undefined ? { cabinetHeight: i.cabinetHeight } : {}),
+          ...(i.countertopThickness !== undefined ? { countertopThickness: i.countertopThickness } : {}),
+          ...(i.cutouts !== undefined ? { cutouts: i.cutouts } : {}),
+        }];
+      });
 
     return {
       room,

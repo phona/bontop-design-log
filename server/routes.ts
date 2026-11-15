@@ -22,6 +22,7 @@ import type { CurrentScheme, CurtainState, ProjectRenderFacts, ProjectRenderFact
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import type { PresentationStateStore } from './presentation-state.js';
 import { filterCurtainElements, loadPhaseBudgetMeta, loadPhaseScopes, parsePhaseId } from './phase-scope.js';
+import type { PhaseId } from '../shared/types.js';
 import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-comparison.js';
 import { buildPaintCostComparison, loadPaintComparisonConfig } from './paint-cost-comparison.js';
 import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
@@ -470,6 +471,31 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ layouts: ProjectCatalog.getLayouts('.') });
   });
 
+  // 只读：定位基准墙全量（#98 Tier 1）。/api/project 的 house 刻意不下发 walls
+  //（api.test.ts 钉住 `house.walls === undefined`：响应只给合并后的 sceneElements，
+  //不给第二份原始墙表），但 sceneElements 不含 suppressed 墙（玻璃幕线，实体盒不
+  //渲染、由 curtain 替代），而玻璃线旁的落地家具正以这些墙线为墙锚基准——3D 建场与
+  //前端 DXF 导出都须以本端点为墙锚基准，与服务端 verify 同源，否则 10 件家具在浏览
+  //器侧解不出（3D 漏件、DXF fail-closed）。与 /api/project 各走各的口径，不混淆。
+  // layout 口径与 /project 一致：`?layout=` 时按该布局现载 catalog，否则用当前 catalog。
+  router.get('/walls', (req, res) => {
+    const rawLayoutName = req.query.layout;
+    if (rawLayoutName !== undefined && (typeof rawLayoutName !== 'string' || rawLayoutName.trim() === '')) {
+      res.status(400).json({ error: 'layout must be a single layout name' });
+      return;
+    }
+    let wallsCatalog: ProjectCatalog;
+    try {
+      wallsCatalog = rawLayoutName
+        ? ProjectCatalog.load('.', rawLayoutName as string)
+        : deps.catalog;
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    res.json({ walls: wallsCatalog.getWalls() });
+  });
+
   router.get('/model-package-links', (_req, res) => {
     try {
       res.json(loadModelPackageLinks());
@@ -666,29 +692,13 @@ export function createApiRouter(deps: ApiDeps): Router {
     }
   });
 
-  router.get('/project', (req, res) => {
-    const rawLayoutName = req.query.layout;
-    if (rawLayoutName !== undefined && (typeof rawLayoutName !== 'string' || rawLayoutName.trim() === '')) {
-      res.status(400).json({ error: 'layout must be a single layout name' });
-      return;
-    }
-    const layoutName = rawLayoutName as string | undefined;
-    let phase;
-    try {
-      phase = parsePhaseId(req.query.phase);
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
-      return;
-    }
-    let projectCatalog: ProjectCatalog;
-    try {
-      projectCatalog = layoutName
-        ? ProjectCatalog.load('.', layoutName)
-        : deps.catalog;
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
-      return;
-    }
+  /**
+   * /api/project 响应体构造（#98 Tier 1，Codex 三审 blocking）：项目与墙表必须来自
+   * 同一次 catalog 载入。/project 与 /project-snapshot 共用本函数——后者在同一份
+   * catalog 上多取 walls 一次拼成快照，不存在两次载入之间被 AI 会话改墙的窗口。
+   * walls 拼在顶层、house 外：house.walls 仍恒 undefined（api.test.ts 钉住）。
+   */
+  function buildProjectResponseBody(projectCatalog: ProjectCatalog, phase: PhaseId) {
     const overlay = deps.getOverlay();
     const sceneElements = mergeSceneElements(projectCatalog.getWalls(), overlay);
     // 模型包关联读取隔离（issue #195 第 4 条，同 PR #174/#182 的「宽容读取、局部降级」路子）。
@@ -802,7 +812,7 @@ export function createApiRouter(deps: ApiDeps): Router {
             : {}),
         }
       : undefined;
-    res.json({
+    return {
       phase,
       phaseMeta: { ...phaseScopes[phase], budget: loadPhaseBudgetMeta(phaseScopes[phase]) },
       modelPackageLinks: phase === 'full'
@@ -867,7 +877,66 @@ export function createApiRouter(deps: ApiDeps): Router {
       },
       budgetCategories: projectCatalog.getBudgetCategories(),
       environment: deps.getEnvironment?.() ?? null,
-    });
+    };
+  }
+
+  router.get('/project', (req, res) => {
+    const rawLayoutName = req.query.layout;
+    if (rawLayoutName !== undefined && (typeof rawLayoutName !== 'string' || rawLayoutName.trim() === '')) {
+      res.status(400).json({ error: 'layout must be a single layout name' });
+      return;
+    }
+    const layoutName = rawLayoutName as string | undefined;
+    let phase;
+    try {
+      phase = parsePhaseId(req.query.phase);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    let projectCatalog: ProjectCatalog;
+    try {
+      projectCatalog = layoutName
+        ? ProjectCatalog.load('.', layoutName)
+        : deps.catalog;
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    res.json(buildProjectResponseBody(projectCatalog, phase));
+  });
+  // 只读：项目 + 墙表同一快照（#98 Tier 1，Codex 三审 blocking）。/api/project 与
+  // /api/walls 各载一次 catalog：AI 会话在两次请求之间改墙时，sceneElements/碰撞墙
+  // 仍是旧位置、家具却按新墙表定位，along 合法即无诊断、静默错位；rebuildQueue 只串
+  // 行化页面切换，拦不住服务端更新。本端点与 /project 共用 buildProjectResponseBody，
+  // 同一份 catalog 上一次载入、一次拼装；walls 拼在顶层、house 外（house.walls 仍恒
+  // undefined，/project 契约不动）。建场入口（启动/布局/阶段）与 DXF 导出走本端点；
+  // /api/project 与 /api/walls 保留（前者是页面其他消费方的契约入口，后者供契约
+  // 测试与外部读取），不再有建场/导出路径分两次拉取项目与墙表。
+  router.get('/project-snapshot', (req, res) => {
+    const rawLayoutName = req.query.layout;
+    if (rawLayoutName !== undefined && (typeof rawLayoutName !== 'string' || rawLayoutName.trim() === '')) {
+      res.status(400).json({ error: 'layout must be a single layout name' });
+      return;
+    }
+    const layoutName = rawLayoutName as string | undefined;
+    let phase;
+    try {
+      phase = parsePhaseId(req.query.phase);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    let projectCatalog: ProjectCatalog;
+    try {
+      projectCatalog = layoutName
+        ? ProjectCatalog.load('.', layoutName)
+        : deps.catalog;
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    res.json({ ...buildProjectResponseBody(projectCatalog, phase), walls: projectCatalog.getWalls() });
   });
 
   router.get('/presentation-state', (_req, res) => {

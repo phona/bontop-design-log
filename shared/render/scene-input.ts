@@ -104,6 +104,17 @@ export function parseSceneInput(source: SceneInputSource): SceneInput {
   const suppliedElements = (source.elements ?? []).map(cloneElement);
   let walls = (source.walls ?? []).map(cloneWall);
 
+  // 墙高回填（#98 Tier 1 快照重做，Codex 六审 blocking）：快照墙表
+  //（catalog.getWalls() → WallSegment）本身无 height 字段；不回填时 SceneBuilder
+  // 按 wall.height ?? 3.0 回落，当前房间 2.8m 的墙会被无诊断地抬高 200mm。
+  // 回填口径与下方 sceneElements 派生分支同款：所属房间高 → 首房间高 → 3；
+  // 自带 height 的墙（ResolvedWall 等）原样保留，不覆盖。
+  for (const wall of walls) {
+    if (wall.height === undefined) {
+      wall.height = rooms.find((room) => wall.rooms?.includes(room.id))?.height ?? rooms[0]?.height ?? 3;
+    }
+  }
+
   if (walls.length === 0) {
     walls = suppliedElements
       .filter((element): element is Extract<SceneElement, { type: 'wall' }> => element.type === 'wall')

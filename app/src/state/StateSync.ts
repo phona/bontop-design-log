@@ -1,5 +1,5 @@
 import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, BudgetSnapshot, DesignCheckResult, ArchivedScheme, CurtainPresentationState, CurtainState } from '@shared/types';
-import type { ProjectApiResponse } from '@shared/api-project';
+import type { ProjectApiResponse, ProjectSnapshotResponse } from '@shared/api-project';
 import { apiWrite } from '../api-write.js';
 
 type SchemeCallback = (scheme: CurrentScheme) => void;
@@ -58,6 +58,11 @@ export class StateSync {
    * 拉取项目建场数据。返回类型 = shared/api-project.ts 的 ProjectApiResponse
    * （2026-11-09 issue #98 轨道③：边界从 any 变为共享类型）——字段层级以服务端
    * routes.ts 实际下发为准，例如 renderFactsProjection 在响应顶层（PR #162 归位）。
+   * 注意：返回对象就是 /api/project 的响应本身，不挂第二端点的数据——
+   * api-project-scene-contract 断言 4 用 AST 扫 app 侧全部 `projectData.*` 读取并
+   * 逐条到响应里取值，挂上去的字段会在该断言里判为「响应里不存在」。定位基准墙全量
+   * 不走这里：建场入口改走 fetchProjectSnapshot（/api/project-snapshot，项目与墙表
+   * 同一次服务端 catalog 载入），本方法只留给仍读 /api/project 的非建场消费方。
    */
   async fetchProject(options: ProjectFetchOptions = {}): Promise<ProjectApiResponse> {
     const phase = options.phase ?? this.phase;
@@ -75,6 +80,32 @@ export class StateSync {
       // 服务端故障，保留统一诊断。
       const detail = await response.text().catch(() => '');
       throw new Error(`Failed to fetch project: HTTP ${response.status}${detail ? ` — ${detail.slice(0, 500)}` : ''}`);
+    }
+    return response.json();
+  }
+
+  /**
+   * 拉取项目 + 定位基准墙全量的单次快照（#98 Tier 1，Codex 三审 blocking）。
+   * GET /api/project-snapshot：服务端在同一次 catalog 载入上拼装项目响应与墙表，
+   * 顶层 `walls` 与 house.sceneElements / furnishings 同一版本——AI 会话在两次请求
+   * 之间改墙的窗口不存在。建场入口（启动/布局/阶段）一律走这里，不再分两次拉
+   * /api/project + /api/walls（旧的两次取是同一主题的静默错位根因，已随本次重做退场）。
+   * 与 fetchProject 同口径（?layout= / ?phase= 同传）、同错误语义（非 2xx 抛错并带
+   * 服务端错误体）；墙表取不到不是降级项——快照整体失败即抛错，调用方按失败处理，
+   * 不拿旧墙表配新项目建场。
+   */
+  async fetchProjectSnapshot(options: ProjectFetchOptions = {}): Promise<ProjectSnapshotResponse> {
+    const phase = options.phase ?? this.phase;
+    const layout = options.layout ?? this.layout;
+    const query = new URLSearchParams();
+    if (layout) query.set('layout', layout);
+    if (phase !== 'full') query.set('phase', phase);
+    const queryString = query.toString();
+    const url = queryString ? `/api/project-snapshot?${queryString}` : '/api/project-snapshot';
+    const response = await fetch(url);
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new Error(`Failed to fetch project snapshot: HTTP ${response.status}${detail ? ` — ${detail.slice(0, 500)}` : ''}`);
     }
     return response.json();
   }

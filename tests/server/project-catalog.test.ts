@@ -137,6 +137,32 @@ describe('ProjectCatalog', () => {
     assert.deepEqual(catalog.getFurnishingCounts('nonexistent_room'), {});
   });
 
+  it('getRoomLayoutDetail includes wall-anchored and furniture-anchored items in placed (Tier 1 regression)', () => {
+    // #98 Tier 1：厨房 9 件与阳台 2 件改关系化后不再声明 x/z——placed 坐标须取共享解算结果，
+    // 旧口径（直读声明 x/z）会把它们静默排除出 placed，而 counts 仍含它们。
+    const catalog = ProjectCatalog.load('.');
+    const kitchen = catalog.getRoomLayoutDetail('kitchen');
+    assert.ok(kitchen);
+    const close = (a: number, b: number): boolean => Math.abs(a - b) < 1e-9;
+    const at = (type: string, x: number, z: number): boolean =>
+      kitchen.furnishings.placed.some((p) => p.type === type && close(p.x, x) && close(p.z, z));
+    assert.equal(kitchen.furnishings.placed.filter((p) => p.type === 'kitchen_cabinet_run').length, 3, '北墙两段 + 东墙一段 run 必须在 placed 里');
+    assert.ok(at('kitchen_cabinet_run', 7.86, 0.32), 'cabinet_run_north_west 应解在 (7.86, 0.32)');
+    assert.ok(at('kitchen_cabinet_run', 9.94, 0.32), 'cabinet_run_north_east 应解在 (9.94, 0.32)');
+    assert.ok(at('kitchen_cabinet_run', 10.48, 1.275), 'cabinet_run_east 应解在 (10.48, 1.275)');
+    assert.ok(at('kitchen_countertop_bridge', 8.8, 0.32), 'countertop_bridge 应解在 (8.8, 0.32)');
+    assert.ok(at('dishwasher', 8.8, 0.30), 'dishwasher（anchor ← bridge）应解在 (8.8, 0.30)');
+    assert.ok(at('gas_stove', 10.5, 1.5), 'gas_stove（anchor ← east run）应解在 (10.5, 1.5)');
+    assert.ok(at('range_hood', 10.5, 1.5), 'range_hood（anchor ← stove）应解在 (10.5, 1.5)');
+    assert.ok(at('sink', 9.5, 0.30), 'sink（anchor ← NE run）应解在 (9.5, 0.30)');
+    assert.ok(at('mijia_ro_purifier_1400g_under_sink_preview', 10.05, 0.32), 'ro_purifier（anchor ← NE run）应解在 (10.05, 0.32)');
+
+    const balcony = catalog.getRoomLayoutDetail('balcony');
+    assert.ok(balcony);
+    assert.ok(balcony.furnishings.placed.some((p) => p.type === 'washer' && close(p.x, 5.95) && close(p.z, 1.5)), 'washer（墙锚）应解在 (5.95, 1.5)');
+    assert.ok(balcony.furnishings.placed.some((p) => p.type === 'dryer' && close(p.x, 5.95) && close(p.z, 1.5)), 'dryer（anchor ← washer，叠放）应解在 (5.95, 1.5)');
+  });
+
   it('getRoomLayoutDetail returns undefined for unknown room', () => {
     const catalog = ProjectCatalog.load('.');
     assert.equal(catalog.getRoomLayoutDetail('nonexistent_room'), undefined);

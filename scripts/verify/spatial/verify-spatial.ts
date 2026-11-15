@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import * as THREE from 'three';
 import type { resolveLayout } from '../../../server/layout-resolver.js';
 import type { parseCeilingZones } from '../../../shared/project-render-facts-schema.js';
-import { FURNITURE_DIMS, type FurnishingsYaml, type ElectricalPoint, type RenderLightingOverride, type SceneElement, type ResolvedWall, type ResolvedRoom } from '../../../shared/types.js';
+import { type FurnishingsYaml, type ElectricalPoint, type RenderLightingOverride, type SceneElement, type ResolvedWall, type ResolvedRoom } from '../../../shared/types.js';
 import {
   deriveRuntimeGlassJoins,
   makeSpatialReport,
@@ -209,26 +209,32 @@ function validateLighting(
 function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings: FurnishingsYaml, walls: Iterable<PointWallElementInput>): SpatialIssue[] {
   const issues: SpatialIssue[] = [];
   const source = 'config/electrical.yaml + config/house.yaml';
+  // （二阶段 S1）宿主索引取 buildPlacementIndexes 产物（家具由共享解算一次解出）；
+  // 本函数不传 anchors（冷凝链锚点在 validateScene 另建），anchor 模式家具在此显式失败，
+  // 由 verify:furniture 门禁（传 anchors）覆盖——同一根因只一处红。
+  // #98 Tier 1：placed 不再由声明 x/z + FURNITURE_DIMS 手算——墙锚家具无 x/z 会被
+  // 静默跳过（夜灯宿主房间错配警告漏报）；改由同一份解算结果推 bounds，解不出的宿主
+  // 在 verify:furniture 显形，不在此处静默消失。
+  const mountHosts = buildPlacementIndexes({ geometry: { walls }, furnishings }).mountHosts;
   const placed = new Map<string, { room: string; item: FurnishingsYaml[string][number]; bounds: { minX: number; maxX: number; minZ: number; maxZ: number } }>();
 
   for (const [room, items] of Object.entries(furnishings)) {
     let runtimeIndex = 0;
     for (const item of items) {
-      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
+      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined;
       if (!isPlaced) continue;
       const id = furnitureObjectId(room, item, runtimeIndex);
       runtimeIndex++;
-      if (item.x === undefined || item.z === undefined) continue;
-      const dimensions = FURNITURE_DIMS[item.type];
-      if (!dimensions) continue;
-      const radians = (item.rotation ?? 0) * Math.PI / 180;
-      const widthX = Math.abs(Math.cos(radians)) * dimensions.width + Math.abs(Math.sin(radians)) * dimensions.depth;
-      const depthZ = Math.abs(Math.sin(radians)) * dimensions.width + Math.abs(Math.cos(radians)) * dimensions.depth;
+      const host = mountHosts.get(id);
+      if (!host || host.x === undefined || host.z === undefined || host.width === undefined || host.depth === undefined) continue;
+      const radians = (host.rotation ?? 0) * Math.PI / 180;
+      const widthX = Math.abs(Math.cos(radians)) * host.width + Math.abs(Math.sin(radians)) * host.depth;
+      const depthZ = Math.abs(Math.sin(radians)) * host.width + Math.abs(Math.cos(radians)) * host.depth;
       placed.set(id, { room, item, bounds: {
-        minX: item.x - widthX / 2,
-        maxX: item.x + widthX / 2,
-        minZ: item.z - depthZ / 2,
-        maxZ: item.z + depthZ / 2,
+        minX: host.x - widthX / 2,
+        maxX: host.x + widthX / 2,
+        minZ: host.z - depthZ / 2,
+        maxZ: host.z + depthZ / 2,
       } });
     }
   }
@@ -237,10 +243,6 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
   // shared/point-placement.ts 单一解算器解出，手写 x/z 与 0.01m 贴脸容差校验随之退役。
   // 声明层校验剩下的三件事：宿主可解（断引用/count-only/越脸在解算器诊断里显形）、
   // 安装缝合法、房间一致；迁移期另断言「解析结果 == 声明 x/z」（容差 0.005m，S3 删 x/z 后撤销）。
-  // （二阶段 S1）宿主索引取 buildPlacementIndexes 产物（家具由共享解算一次解出）；
-  // 本函数不传 anchors（冷凝链锚点在 validateScene 另建），anchor 模式家具在此显式失败，
-  // 由 verify:furniture 门禁（传 anchors）覆盖——同一根因只一处红。
-  const mountHosts = buildPlacementIndexes({ geometry: { walls }, furnishings }).mountHosts;
   for (const point of electrical) {
     const anchor = point.mountAnchor;
     if (!anchor) continue;
@@ -386,7 +388,7 @@ function main(): void {
   }
 
   const report = makeSpatialReport(issues.sort((a, b) => a.code.localeCompare(b.code) || a.entity.localeCompare(b.entity) || a.message.localeCompare(b.message)));
-  const output = JSON.stringify({ version: 1, report, inputs: { rooms: layout.rooms.length, walls: layout.walls.length, suppressedWalls: [...new Set(suppressIds)].length, placedFurniture: Object.values(house.furnishings ?? {}).flat().filter((item) => item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined).length }, ...(layoutWarnings.length > 0 ? { runtimeWarnings: layoutWarnings } : {}) }, null, 2);
+  const output = JSON.stringify({ version: 1, report, inputs: { rooms: layout.rooms.length, walls: layout.walls.length, suppressedWalls: [...new Set(suppressIds)].length, placedFurniture: Object.values(house.furnishings ?? {}).flat().filter((item) => item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined).length }, ...(layoutWarnings.length > 0 ? { runtimeWarnings: layoutWarnings } : {}) }, null, 2);
   if (args.has('--json')) console.log(output);
   else {
     console.log(`Spatial validation: ${report.counts.errors} error(s), ${report.counts.warnings} warning(s), ${report.counts.info} info`);

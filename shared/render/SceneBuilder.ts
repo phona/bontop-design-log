@@ -1656,7 +1656,10 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   index.mountHosts = placementIndexes.mountHosts;
   const placedFurnitureKeys = new Set(
     Object.entries(furnishings).flatMap(([roomId, items]) => items
-      .filter((item) => item.x !== undefined && item.z !== undefined)
+      // placed = 有世界位置的实例（x/z 绝对、wall 墙锚、mount/anchor 派生均算）。
+      // #98 Tier 1：旧口径只认 x/z，已迁移的墙锚洗衣机不再「拥有」对应 plumbing 点，
+      // 洗烘点位会被重复建模（今天无 washer 型 plumbing 点，属潜伏缺口）。
+      .filter((item) => (item.x !== undefined && item.z !== undefined) || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined)
       .map((item) => `${roomId}:${item.type}`)),
   );
   // Plumbing points remain in the index/report contract, but a placed furnishing

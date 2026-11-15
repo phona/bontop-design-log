@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { load } from 'js-yaml';
 import { FURNITURE_DIMS } from '../../shared/types.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
 
 // 2026-10-05 父母房↔书房功能互换 v0（迭代 parent-room-study-swap-20261005，候选未冻结）：
 // bedroom_se 书房→客房（wardrobe_180 北墙边吊下 + bed_150 床头靠东外墙）；
@@ -11,12 +14,39 @@ import { FURNITURE_DIMS } from '../../shared/types.js';
 // 轻训练/重型器械整体删除（recipe/dims 在 shared/* 保留，预算与采购条目已移除）。
 // 本文件取代原 study-seasonal-storage.test.ts（书房后台柜 + 轻训练三件套收纳态专项，已随功能互换作废）。
 
-type Furnishing = { type: string; x?: number; z?: number; rotation?: number; width?: number; depth?: number };
+type Furnishing = {
+  type: string; id?: string; x?: number; z?: number; rotation?: number;
+  width?: number; depth?: number; cabinetHeight?: number;
+  // 摆位声明字段（定位形式）：resolveRoom() 剥离，deepEqual 不钉定位形式。
+  wall?: string; wall_side?: string; along?: number; wall_clearance?: number;
+  anchor?: unknown; mount?: unknown;
+};
 type Aabb = { minX: number; maxX: number; minZ: number; maxZ: number };
 
 const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: Record<string, Furnishing[]> };
-const guest = house.furnishings.bedroom_se; // 客房（原书房）
-const study = house.furnishings.study;      // 书房（原父母房）
+
+// 全屋家具一次解算（#98 Tier 1）：关系化家具的坐标取 buildPlacementIndexes 的解算结果
+// （与 3D/DXF/verify 同源）；绝对家具的解算值与声明一致。resolveRoom() 把解算坐标覆盖
+// 进声明、剥离摆位声明字段，几何测试只断言几何身份、不因迁移改表达形式而逐条改期望值。
+const STUDY_FURNITURE_HOSTS = buildPlacementIndexes({
+  geometry: { walls: resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls },
+  furnishings: house.furnishings as unknown as FurnishingsYaml,
+}).mountHosts;
+
+function resolveRoom(items: Furnishing[]): Furnishing[] {
+  const round9 = (value: number): number => Math.round(value * 1e9) / 1e9;
+  return items.map((item) => {
+    if (item.id === undefined) return item;
+    const host = STUDY_FURNITURE_HOSTS?.get(item.id);
+    assert.ok(host !== undefined && Number.isFinite(host.x) && Number.isFinite(host.z),
+      `${item.id}: 家具摆位解算失败（无宿主或坐标非有限数）`);
+    const { wall: _wall, wall_side: _wallSide, along: _along, wall_clearance: _clearance, anchor: _anchor, mount: _mount, ...geometry } = item;
+    return { ...geometry, x: round9(host.x as number), z: round9(host.z as number) };
+  });
+}
+
+const guest = resolveRoom(house.furnishings.bedroom_se); // 客房（原书房）
+const study = resolveRoom(house.furnishings.study);      // 书房（原父母房）
 
 const GAP_EPS = 1e-9;
 
@@ -31,7 +61,7 @@ const BAY_INNER_Z = 7.60;
 const STUDY_NORTH_DROP: Aabb = { minX: 4.20, maxX: 7.20, minZ: 5.55, maxZ: 6.45 };
 
 function placed(room: Furnishing[], type: string): Furnishing {
-  const item = room.find((candidate) => candidate.type === type && candidate.x !== undefined && candidate.z !== undefined);
+  const item = room.find((candidate) => candidate.type === type);
   assert.ok(item, `missing placed ${type}`);
   return item;
 }

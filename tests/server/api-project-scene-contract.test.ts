@@ -1,5 +1,5 @@
 /**
- * 契约测试：真实 `/api/project` 响应 → 建场（issue #98 收尾，PR #122 §三.4）。
+ * 契约测试：真实 `/api/project-snapshot` 响应 → 建场（issue #98 收尾，PR #122 §三.4）。
  *
  * 由来：`renderFactsProjection` 与 `furnishingsAll` 这两个字段在全部测试文件里**零命中**，
  * 16 轮审查每轮 CI 全绿却一次没抓到「响应层级漂移 / 宿主表被阶段过滤」——因为没有任何
@@ -28,12 +28,13 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
-import { parseSceneInput } from '../../shared/render/scene-input.js';
+import { parseSceneInput, type SceneInput } from '../../shared/render/scene-input.js';
 import { buildScene, type SceneBuildResult } from '../../shared/render/SceneBuilder.js';
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { buildHvacBuilderSources, hvacAnchorPositions, type HvacBuilderSources } from '../../shared/render/HvacBuilder.js';
 import { resolvePointPlacementInWalls } from '../../shared/point-placement.js';
-import type { ProjectApiResponse } from '../../shared/api-project.js';
+import type { ProjectApiResponse, ProjectSnapshotResponse } from '../../shared/api-project.js';
+import type { WallSegment } from '../../shared/types.js';
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
@@ -51,20 +52,26 @@ interface BuiltFromResponse {
   result: SceneBuildResult;
   sources?: HvacBuilderSources;
   anchors: Map<string, { x: number; z: number }>;
+  /** parseSceneInput 的产物：建场实际消费的墙表（含回填后的 height），供墙顶标高断言。 */
+  input: SceneInput;
 }
 
 /**
- * 把 `/api/project` 响应按 HouseScene.buildFromCatalog（app/src/render/HouseScene.ts:728-779）
+ * 把 `/api/project-snapshot` 响应按 HouseScene.buildFromCatalog（app/src/render/HouseScene.ts:728-779）
  * 的同一构造喂给建场链路：parseSceneInput → buildPlacementIndexes（墙几何 + 全量 furnishingsAll）
  * → buildHvacBuilderSources（投影 + electrical + 两份索引）→ buildScene。
- * 这里不手捏任何字段：输入就是 HTTP 响应本身。
+ * 这里不手捏任何字段：输入就是 HTTP 响应本身。定位基准墙全量（#98 Tier 1）同样取自
+ * 真 server 的 /api/project-snapshot（与 App 的 fetchProjectSnapshot 同源），经 parseSceneInput
+ * 的 walls 入参传入——sceneElements 不含 suppressed 玻璃线，不传它则玻璃线旁的墙锚家具
+ * 在建场结果里缺席。
  */
-function buildFromApiResponse(body: ProjectApiResponse): BuiltFromResponse {
+function buildFromApiResponse(body: ProjectApiResponse, anchorWalls?: WallSegment[]): BuiltFromResponse {
   const house = body.house;
   const input = parseSceneInput({
     rooms: house.rooms ?? [],
     platform: house.platform,
     elements: house.sceneElements,
+    walls: anchorWalls,
     ceilingZones: house.ceilingZones,
     furnishings: house.furnishings,
     furnishingsAll: house.furnishingsAll,
@@ -99,7 +106,7 @@ function buildFromApiResponse(body: ProjectApiResponse): BuiltFromResponse {
   const anchors = projection && projection.hvac.status === 'implemented'
     ? hvacAnchorPositions(projection.hvac.diagram, sources)
     : new Map<string, { x: number; z: number }>();
-  return { result, sources, anchors };
+  return { result, sources, anchors, input };
 }
 
 /** 取一个空闲端口：起真 server 时不与并行测试/本机服务抢固定端口。 */
@@ -116,7 +123,8 @@ async function reserveFreePort(): Promise<number> {
 }
 
 /**
- * 用 TypeScript AST 收集 app 侧对 `/api/project` 响应的**全部字段读取路径**。
+ * 用 TypeScript AST 收集 app 侧对快照响应（/api/project-snapshot，/api/project 的超集）的
+ * **全部字段读取路径**。
  * 扫描 `projectData.house.rooms` / `this.projectData?.materialPreview?.atlases` 这类属性链，
  * 返回去掉根标识符后的路径（如 `house.rooms`）。注释与类型位置不会被计入，
  * 因此这里列出的就是「app 真正消费的字段名」。
@@ -162,11 +170,11 @@ function lookupPath(root: unknown, path: string): unknown {
   return current;
 }
 
-describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 }, () => {
+describe('契约：真实 /api/project-snapshot 响应 → 建场', { timeout: 180_000 }, () => {
   let server: ChildProcess | undefined;
   let dataDir = '';
-  let full: ProjectApiResponse;
-  let phase1: ProjectApiResponse;
+  let full: ProjectSnapshotResponse;
+  let phase1: ProjectSnapshotResponse;
   let fullBuild: BuiltFromResponse;
   let phase1Build: BuiltFromResponse;
 
@@ -191,10 +199,10 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     server.stdout?.on('data', (chunk) => serverLogs.push(String(chunk)));
     server.stderr?.on('data', (chunk) => serverLogs.push(String(chunk)));
 
-    const base = `http://127.0.0.1:${port}/api/project`;
+    const base = `http://127.0.0.1:${port}/api/project-snapshot`;
     const deadline = Date.now() + 150_000;
     let lastError = '尚无响应';
-    let fullBody: ProjectApiResponse | undefined;
+    let fullBody: ProjectSnapshotResponse | undefined;
     while (Date.now() < deadline) {
       if (serverExited()) {
         throw new Error(`真实 server 提前退出（exitCode=${server.exitCode ?? server.signalCode}）：\n${serverLogs.join('')}`);
@@ -202,7 +210,7 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
       try {
         const response = await fetch(base);
         if (response.ok) {
-          fullBody = (await response.json()) as ProjectApiResponse;
+          fullBody = (await response.json()) as ProjectSnapshotResponse;
           break;
         }
         lastError = `HTTP ${response.status}: ${(await response.text()).slice(0, 2000)}`;
@@ -217,11 +225,17 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     full = fullBody;
 
     const phaseResponse = await fetch(`${base}?phase=phase_1_basic_occupancy`);
-    assert.equal(phaseResponse.status, 200, 'GET /api/project?phase=phase_1_basic_occupancy 必须 200');
-    phase1 = (await phaseResponse.json()) as ProjectApiResponse;
+    assert.equal(phaseResponse.status, 200, 'GET /api/project-snapshot?phase=phase_1_basic_occupancy 必须 200');
+    phase1 = (await phaseResponse.json()) as ProjectSnapshotResponse;
 
-    fullBuild = buildFromApiResponse(full);
-    phase1Build = buildFromApiResponse(phase1);
+    // 定位基准墙全量（#98 Tier 1，快照重做）：full / phase1 各自消费本快照顶层的 walls，
+    // 与 house.sceneElements / furnishings 同一次 catalog 载入——快照端点若漏发 walls，
+    // 这里当场红（不再像旧口径那样从独立 /api/walls 端点另取，绕过快照边界）。
+    assert.ok(Array.isArray(full.walls) && full.walls.length > 0, '全量快照响应缺非空顶层 walls：快照端点漏发墙表');
+    assert.ok(Array.isArray(phase1.walls) && phase1.walls.length > 0, '一期快照响应缺非空顶层 walls：快照端点漏发墙表');
+
+    fullBuild = buildFromApiResponse(full, full.walls);
+    phase1Build = buildFromApiResponse(phase1, phase1.walls);
   });
 
   after(async () => {
@@ -273,6 +287,10 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
       assert.ok(!objectIds.includes(id), `退役链件 ${id} 不得再建场`);
     }
     assert.ok(objectIds.includes('mb.full_height_cabinet'), '通顶柜 mb.full_height_cabinet 必须在场');
+    // #98 Tier 1：玻璃线旁的墙锚家具须在场——厨房北柜锚 w_kit_north（suppressed 玻璃线，
+    // 只在快照顶层 walls 全量墙表里）；若建场链路没接 anchorWalls，这里当场红。
+    assert.ok(objectIds.includes('kitchen.cabinet_run_north_east'), '厨房北柜 kitchen.cabinet_run_north_east 必须在场（墙锚 w_kit_north 玻璃线）');
+    assert.ok(objectIds.includes('mb.dressing_table'), '梳妆台 mb.dressing_table 必须在场（墙锚 w_west_upper 玻璃线）');
   });
 
   it('断言 3：一期响应里 night_corridor 的标注坐标不是 (0,0)', () => {
@@ -321,5 +339,27 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     // 层级漂移的直接守卫：顶层有，house 内没有。
     assert.ok('renderFactsProjection' in full, 'renderFactsProjection 不在响应顶层');
     assert.ok(!('renderFactsProjection' in full.house), 'house 内出现了 renderFactsProjection 副本：层级重新漂移，消费方读顶层会拿到 undefined');
+  });
+
+  it('断言 5：快照建场后的墙顶标高与所属房间高一致（墙表无 height 时不得回落 3.0）', () => {
+    // 2026-11-15 Codex 六审 blocking：快照墙表（catalog.getWalls() → WallSegment）本身无
+    // height 字段；parseSceneInput 若不回填，SceneBuilder 按 wall.height ?? 3.0 回落，
+    // 当前房间 2.8m 的墙会被无诊断地抬高 200mm。期望高一律取快照响应里房间自带的高，
+    // 不写死 2.8——量房改层高时断言自动跟随。
+    for (const [name, build, body] of [['全量', fullBuild, full], ['一期', phase1Build, phase1]] as const) {
+      assert.ok(build.input.walls.length > 0, `${name} 建场墙表为空：断言自身失效`);
+      const roomHeightById = new Map(body.house.rooms.map((room) => [room.id, room.height]));
+      const fallbackHeight = body.house.rooms[0]?.height ?? 3;
+      for (const wall of build.input.walls) {
+        const expected = wall.rooms
+          ?.map((id) => roomHeightById.get(id))
+          .find((height) => height !== undefined) ?? fallbackHeight;
+        assert.equal(
+          wall.height,
+          expected,
+          `${name} 墙 ${wall.id ?? '(无 id)'} 顶标高 ${wall.height} ≠ 所属房间高 ${expected}（快照墙表缺 height 回填、SceneBuilder 回落 3.0）`,
+        );
+      }
+    }
   });
 });

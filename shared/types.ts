@@ -2112,7 +2112,11 @@ export interface FurnishingItem {
   wall?: string;
   wall_side?: WallSide;
   along?: number;
-  /** Minimum finish-face retreat for a wall-anchored body (metres). */
+  /**
+   * Finish-face retreat for a wall-anchored body (metres). May be negative:
+   * line-authored legacy backs sit inside the 0.06 finish-face datum
+   * (back at wall line − |clearance|), preserved as-is by equivalence migration.
+   */
   wall_clearance?: number;
   /** Declarative dimensions for a continuous cabinet run (metres). */
   length?: number;

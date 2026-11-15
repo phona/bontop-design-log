@@ -30,6 +30,7 @@ import type {
   ProjectRenderFactsProjection,
   RoomLayout,
   SceneElement,
+  WallSegment,
 } from './types.js';
 import type { ModelPackageLink } from './model-package-links.js';
 import type { EnvironmentConfig } from './environment-schema.js';
@@ -181,4 +182,18 @@ export interface ProjectApiResponse {
   budgetCategories: BudgetCategory[];
   /** 环境/气候配置（光照/日照/湿度分析用）；未就绪时为 null。 */
   environment: EnvironmentConfig | null;
+}
+
+/**
+ * GET /api/project-snapshot 的完整响应（#98 Tier 1，Codex 三审 blocking）。
+ * 与 /api/project 共用同一份响应体构造（server/routes.ts 的 buildProjectResponseBody，
+ * 同一次 catalog 载入），只在顶层多一个 `walls`：定位基准墙全量（含 suppressed 玻璃线），
+ * 与 house.sceneElements / furnishings 来自同一份 catalog，不存在两次载入之间被改墙的窗口。
+ * `house.walls` 仍恒 undefined（/api/project 契约不动，api.test.ts 钉住）；建场入口读
+ * 的是本类型的 `walls`，不是 `projectData.walls`——后者在 /api/project 里不存在，
+ * api-project-scene-contract 断言 4 会把它判为「响应里不存在的字段」。
+ */
+export interface ProjectSnapshotResponse extends ProjectApiResponse {
+  /** 定位基准墙全量：与本响应其余字段同一快照；缺省只发生在快照构造失败时（不静默补旧表）。 */
+  walls: WallSegment[];
 }

@@ -151,7 +151,9 @@ export function validateMepParticipation(inputs: MepParticipationInput, antiConf
   for (const items of Object.values(inputs.house.furnishings ?? {})) {
     for (const entry of items ?? []) {
       const raw = entry as Record<string, unknown>;
-      if (raw.x === undefined && raw.z === undefined && raw.wall === undefined && raw.along === undefined) continue;
+      // 无 placement 声明（x/z、wall、mount、anchor 全缺）才算未摆位；#98 Tier 1：
+      // 墙锚/家具锚条目无 x/z 但有真实位置，旧口径漏 mount/anchor 会静默跳过。
+      if (raw.x === undefined && raw.z === undefined && raw.wall === undefined && raw.along === undefined && raw.mount === undefined && raw.anchor === undefined) continue;
       placed.add(String(raw.type ?? ''));
     }
   }

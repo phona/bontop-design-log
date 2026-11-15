@@ -228,3 +228,29 @@ test('anchor 与 x/z 不得共存：解算器与 schema 双禁令', () => {
     /anchor 定位来源禁止同时声明 x\/z/,
   );
 });
+
+test('墙锚 length 型柜体：沿墙长度取 length，行内无 width 时不报 no width/depth', () => {
+  // Tier 1 厨房柜 run（kitchen_cabinet_run / kitchen_countertop_bridge）只有
+  // length + depth：行内无 width、FURNITURE_DIMS 目录无该类型。墙锚合法域与中心
+  // 一律按 length 计（与 verify-furniture 的 AABB 口径、DXF 的 furnitureFootprint、
+  // resolver-baseline 的 referenceFootprint 同口径）；改动前本条解算报
+  // no width/depth（红绿验证见 PR 描述）。
+  const run: PlacementItem = {
+    type: 'kitchen_cabinet_run', id: 'test.run',
+    wall: 'w1', wall_side: 'south', along: 2.5,
+    length: 1.28, depth: 0.6, wall_clearance: -0.04,
+  };
+  const { placement, diagnostic } = resolveFurniturePlacement(run, WALLS);
+  assert.equal(diagnostic, undefined);
+  // 中心 = 墙线点 (2.5, 0) + 南法线 × (0.06 − 0.04 + 0.30) = (2.5, 0.32)。
+  assert.deepEqual([placement!.x, placement!.z], [2.5, 0.32]);
+  // 沿墙合法域按 length 计：along 0.5 < length/2 = 0.64 应越界诊断。
+  const out = resolveFurniturePlacement({ ...run, along: 0.5 }, WALLS);
+  assert.match(out.diagnostic ?? '', /outside wall span/);
+  // length 缺失且无行内 width/目录宽时仍报 no width/depth（不静默发明）。
+  const noLength = resolveFurniturePlacement(
+    { type: 'kitchen_cabinet_run', id: 'test.run2', wall: 'w1', wall_side: 'south', along: 2.5, depth: 0.6 },
+    WALLS,
+  );
+  assert.match(noLength.diagnostic ?? '', /no width\/depth/);
+});
