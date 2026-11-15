@@ -9,7 +9,7 @@ import {
   SUPPORT_FLOOR_BAND_MAX,
   type FootprintPoint,
 } from './mep-hvac-lint.js';
-import { derivedSlopeRunToHeight, isMepViaCoordinate, mepRoutePoints, resolveMepViaSteps, type MepRoute, type MepShaft } from './mep-hvac-coordination-schema.js';
+import { derivedSlopeRunToHeight, isMepViaCoordinate, mepRoutePoints, resolveMepViaSteps, type MepAxis, type MepRoute, type MepShaft } from './mep-hvac-coordination-schema.js';
 import type { CeilingZone } from './types.js';
 import { ALL_MODEL_TARGET } from './package-objects.js';
 //
@@ -1788,11 +1788,14 @@ interface ClearancePoint { x: number; z: number; y?: number }
  * 为 slope_run 时终端取末步落点高度——hvac terminal 不回 y，旧口径 `to.y` 为空使
  * yOf 静默回退到冷凝水层高 2.65m，与统一出口的 2.6375–2.6846m 分叉；终端点现与
  * resolveMepRoute 逐点一致，见 tests/server/facts-lint.test.ts 一致性测试）。
+ * axes 取同一文档的顶层 axes 表（runCeilingClearance 传入，issue #98 MEP batch 3
+ * 弱电）；无表即 []，axis_join 步随即断引用 fail-closed。
  */
 export function clearanceRoutePoints(
   route: Record<string, unknown>,
   endpoints: Record<string, { x: number; z: number; y?: number }>,
   shafts: MepShaft[] = [],
+  axes: MepAxis[] = [],
 ): ClearancePoint[] {
   const pointOf = (endpoint: unknown): ClearancePoint | undefined => {
     if (typeof endpoint === 'string') return endpoints[endpoint];
@@ -1812,7 +1815,7 @@ export function clearanceRoutePoints(
       throw new Error(`MEP route ${str(route.id)} 关系 via 无端点可解：${!from ? 'from' : 'to'} 端点未解析`);
     }
     const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}), ...(slope !== undefined ? { slope } : {}) } as MepRoute;
-    const resolved = resolveMepViaSteps(shellRoute, from, to, shafts);
+    const resolved = resolveMepViaSteps(shellRoute, from, to, shafts, axes);
     if (resolved.diagnostic !== undefined) throw new Error(resolved.diagnostic);
     return [
       { ...from, y: fromHeight ?? from.y },
@@ -1885,12 +1888,16 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
   const shafts: MepShaft[] = Array.isArray((doc as Record<string, unknown>).shafts)
     ? ((doc as Record<string, unknown>).shafts as MepShaft[])
     : [];
+  // 同一文档的顶层 axes 表：共用轴线（issue #98 MEP batch 3 弱电）；无表即 []。
+  const axes: MepAxis[] = Array.isArray((doc as Record<string, unknown>).axes)
+    ? ((doc as Record<string, unknown>).axes as MepAxis[])
+    : [];
   for (const route of routes) {
     if (!isRecord(route)) continue;
     if (typeof route.layer === 'string' && !CEILING_CARRIED_LAYERS_FACTS.has(route.layer)) continue;
     let points: ClearancePoint[];
     try {
-      points = clearanceRoutePoints(route, endpoints, shafts);
+      points = clearanceRoutePoints(route, endpoints, shafts, axes);
     } catch (error) {
       add(result, issue('error', 'ceiling_clearance_unresolvable', `${contract.id}：路由 ${str(route.id)} 无法解析为 MEP 路线（${error instanceof Error ? error.message : String(error)}），不静默跳过`, source));
       tally(result, 'ceiling_clearance_unresolvable');
