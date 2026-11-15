@@ -271,8 +271,10 @@ const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
 // 2026-11-16 强电关系化：ceiling_clearance_unverified 42→43（study-curtain 新增 2 处、
 // mbath-service 消失 1 处、weak-master 移区）、penetration_door_clearance 17→18、
 // shear_wall_penetration 12→13（strong-light-child 补 w_strip_east 穿墙声明 +1）。
+// 2026-11-16 Codex blocking 修复：study-curtain 升位前移（(7.20,6) 先升至 2.70 再南行），
+// ceiling_clearance_unverified 43→41（2 处 110mm hit 清零），同步收紧上限。
 const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
-  ceiling_clearance_unverified: 43,
+  ceiling_clearance_unverified: 41,
   penetration_door_clearance: 18,
   shear_wall_penetration: 13,
   shear_wall_parallel_route: 7,
@@ -471,7 +473,7 @@ test('verify:mep JSON has stable result and exit contract', () => {
   assert.ok(Array.isArray(result.warnings));
   // F4：退出码按 JSON 实际 errors 是否非空动态断言——must_fix 清零后 exit 0 属预期，
   // 错误仍存在时必须 exit 1（生产契约：scripts/verify/mep/verify-mep-lint.ts 末尾
-  // `if (result.errors.length > 0) process.exitCode = 1`）。现值 errors 93 条，仍断言 exit 1。
+  // `if (result.errors.length > 0) process.exitCode = 1`）。现值 errors 91 条，仍断言 exit 1。
   assert.equal(status, result.errors.length > 0 ? 1 : 0, `verify:mep 退出码须与 errors 是否非空一致：errors ${result.errors.length} 条时应 exit ${result.errors.length > 0 ? 1 : 0}，实际 ${status}`);
   // Codex 二审 major：删掉钉死总数后 JSON 汇总字段 counts.errors / counts.warnings 再无人读，
   // 汇总算错会静默通过。补内部一致性断言（汇总 == 数组长度），不是钉死总数：总数随几何变仍自由，
