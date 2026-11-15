@@ -2318,11 +2318,9 @@ export class App {
       // 不再分两次拉 /api/project + /api/walls——两次拉取之间 AI 会话改墙时，旧项目
       // 配新墙表（或反之）会静默错位出图。其余端点（render-facts / furnishings /
       // config-status / topology / mep）仍各拉一次，各自的失败隔离口径不变。
-      const [factsResponse, mepResponse, furnishingsResponse, snapshotResponse, configStatusResponse, topologyResponse] = await Promise.all([
+      const [factsResponse, mepResponse, snapshotResponse, configStatusResponse, topologyResponse] = await Promise.all([
         fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
-        // /api/furnishings 每次请求直读 house.yaml（与 CLI 同全案口径）。
-        fetch('/api/furnishings').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/project-snapshot').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         // 配置加载状态核验（codex 十六审 blocking）：loader 重载失败会保留上次成功数据且
         // render-facts 仍 200——HTTP 成功不等于数据新鲜，必须查 status。
@@ -2335,7 +2333,8 @@ export class App {
       // 保守规则（codex 十六/十七/十八审 blocking 收口）：任何配置重载失败都不能假装数据
       // 新鲜——facts loader 是整包缓存（electrical/plumbing/ceiling/hvac/overrides/lighting
       // 任一失败整份 stale），geometry/overlay loader 同理。失败即隔离：facts 与几何全弃，
-      // 只保留直读磁盘的 furnishings + 完整 D-NOTES。config-status 本身失败同样不视为已核验。
+      // 只保留快照的 furnishingsAll + 完整 D-NOTES（四审 blocking 后 furnishings 不再直读
+      // 磁盘，见下方）。config-status 本身失败同样不视为已核验。
       const configStatusTrusted = configStatusResponse !== null;
       const failedPaths = configStatuses.filter((item) => item.status === 'failed').map((item) => String(item.path ?? 'unknown'));
       const configReloadDegraded = !configStatusTrusted || failedPaths.length > 0;
@@ -2348,13 +2347,27 @@ export class App {
         ? (snapshotResponse.house as Partial<ProjectApiHouse> | undefined) ?? undefined
         : undefined);
       // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
+      // 家具声明与定位墙表来自同一份快照（#98 Tier 1，Codex 四审 blocking）：取快照
+      // house.furnishingsAll（全量、不按阶段过滤，与顶层 walls 同一次 catalog 载入），
+      // 不再另拉 /api/furnishings——两次请求之间墙起点移动、家具 along 同步补偿时，
+      // 旧家具配新墙仍能合法解算、静默导出错误位置，config-status 全成功也识别不了
+      // 这种跨批次组合。降级口径沿用十六/十七/十八审 carve-out：configReloadDegraded
+      // 时几何与墙表隔离、furnishingsAll 仍保留——有墙锚的家具无墙可解、进 errors
+      // fail-closed（一审 stale 墙用例钉住）；注意降级快照里的 furnishingsAll 是上次
+      // 成功载入的旧表，绝对点位仍按旧值出图，图纸 D-NOTES 已声明 CONFIG RELOAD
+      // FAILED + GEOMETRY NOT EXPORTED，降级仍画绝对家具本身是另一主题（旧直读口径
+      // 同样如此），不在本次 blocking 范围内。
       // null 规范化为 undefined（codex 十五审 major）：null 会穿透 undefined 判空直接进
       // Object.entries 抛错，整次导出中止、缺失说明也无法交付。
-      const furnishings: FurnishingsYaml | undefined = (furnishingsResponse ?? undefined) as FurnishingsYaml | undefined;
+      const furnishings: FurnishingsYaml | undefined = (
+        snapshotResponse !== null
+          ? (snapshotResponse.house?.furnishingsAll as FurnishingsYaml | undefined) ?? undefined
+          : undefined
+      );
       // 端点解析的宿主索引（issue #98 S1/S2）走 shared/placement-indexes.ts 单一产地（疗法②）：
       // 沿墙/挂载点位不再声明绝对 x/z，MEP 端点与 3D/DXF/lint 共用同一解算——墙几何取自本次
       // 快照顶层的 walls 全量表（含 suppressed 玻璃线，带 line_datum），与 house 来自同一份
-      // catalog，家具宿主取自 /api/furnishings（全量 house.yaml，不按阶段过滤）。walls 缺省时
+      // catalog，家具宿主取自同一份快照的 house.furnishingsAll（全量，不按阶段过滤）。walls 缺省时
       // 回落 sceneElements 墙（旧行为）。几何不可得则 M-* 图层整体不导出（端点解不出比缺图更危险：
       // 路线会静默错位），由 D-NOTES 声明。
       // 墙表遵守同一配置可信性门禁（#98 Tier 1，Codex 一审 blocking）：模型几何重载失败后
@@ -2378,7 +2391,7 @@ export class App {
       // 降级说明随图交付（codex 七审 major）：施工方拿到的 DXF 必须能区分「没设计」和「导出时接口失败」。
       // 家具全案口径后 PHASE 固定 full（3D 页面可能按阶段渲染，图内注明，codex 十一审 major）。
       const notes: string[] = ['PHASE: full (all furnishings; the 3D view may render a phase-filtered subset)'];
-      if (!furnishings) notes.push('FURNISHINGS NOT EXPORTED: furnishings API failed at export time');
+      if (!furnishings) notes.push('FURNISHINGS NOT EXPORTED: project-snapshot API failed at export time');
       if (!projectHouse) {
         notes.push(configReloadDegraded
           ? 'GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: config reload failed — last-good server cache not trusted'

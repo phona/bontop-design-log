@@ -902,11 +902,11 @@ describe('App', () => {
   });
 
   it('model-geometry reload failed → stale walls carried by the snapshot are NOT used for DXF furniture placement (codex 一审 blocking)', async () => {
-    // 快照仍 200 返回旧墙表（服务端保留上次成功数据），/api/furnishings 直读磁盘是新家具：
+    // 快照仍 200 返回旧墙表（服务端保留上次成功数据），快照里的 furnishingsAll 是新家具：
     // 旧墙上的 along 仍合法时，旧实现会静默按旧几何出图。本用例的家具只在旧墙表上可解——
     // 门禁生效时导出必须 fail-closed（定位诊断），而不是交付按旧墙定位的图纸。
-    // 快照重做后旧墙表不再走独立的 /api/walls，而是随快照顶层 walls 一起下发；
-    // configReloadDegraded 门禁必须把整份快照的几何与墙表一起隔离。
+    // 快照重做后旧墙表与家具声明同在快照里（顶层 walls + house.furnishingsAll，同一份
+    // catalog）；configReloadDegraded 门禁必须把整份快照的几何与墙表一起隔离，家具无墙可解。
     const staleWall = { id: 'w_stale', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
     const staleAnchored = { type: 'master_dressing_table', id: 'f_stale', wall: 'w_stale', wall_side: 'south', along: 1.0, wall_clearance: 0 };
     vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
@@ -914,12 +914,9 @@ describe('App', () => {
       if (urlStr.includes('/api/config-status')) {
         return { ok: true, json: async () => ({ configs: [{ path: 'config/layout/model-geometry.yaml', status: 'failed' }] }) } as Response;
       }
-      if (urlStr.includes('/api/furnishings')) {
-        return { ok: true, json: async () => ({ living_room: [staleAnchored] }) } as Response;
-      }
       if (urlStr.includes('/api/project')) {
         // 快照整体被隔离：sceneElements 不含 w_stale、顶层 walls 同样被丢弃，家具无处可解
-        return { ok: true, json: async () => ({ house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, walls: [staleWall] }) } as Response;
+        return { ok: true, json: async () => ({ house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [], furnishingsAll: { living_room: [staleAnchored] } }, walls: [staleWall] }) } as Response;
       }
       if (urlStr.includes('/api/schedule/state')) {
         return { ok: false, status: 503 } as Response;
@@ -942,6 +939,51 @@ describe('App', () => {
     expect(consoleError).toHaveBeenCalledWith('[dxf] placement error:', expect.stringContaining('w_stale'));
     toast.mockRestore();
     consoleError.mockRestore();
+  });
+
+  it('DXF export uses the snapshot furnishingsAll, not a separately fetched /api/furnishings table (codex 四审 blocking)', async () => {
+    // 快照里的家具（f_snap，锚 w_snap）与另拉的 /api/furnishings 里的家具（f_other，
+    // 锚不存在的 w_other）故意不一致：旧实现用后者配快照墙表——along 合法时静默导出
+    // 错误位置，config-status 全成功也识别不了。本用例钉住：导出必须用快照内的
+    // furnishingsAll，/api/furnishings 的返回即使可达也不得进图。
+    const snapWall = { id: 'w_snap', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
+    const snapFurniture = { type: 'master_dressing_table', id: 'f_snap', wall: 'w_snap', wall_side: 'south', along: 1.0, wall_clearance: 0, width: 1.2, depth: 0.5 };
+    const otherFurniture = { type: 'kitchen_cabinet_run', id: 'f_other', wall: 'w_other', wall_side: 'south', along: 1.0, length: 1.0, depth: 0.6 };
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/project-snapshot')) {
+        return { ok: true, json: async () => ({ house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [{ type: 'wall', id: 'w_snap', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' }], furnishingsAll: { living_room: [snapFurniture] } }, walls: [snapWall] }) } as Response;
+      }
+      if (urlStr.includes('/api/furnishings')) {
+        return { ok: true, json: async () => ({ living_room: [otherFurniture] }) } as Response;
+      }
+      if (urlStr.includes('/api/render-facts') && !urlStr.includes('/api/render-facts/projection')) {
+        return { ok: true, json: async () => ({ electrical: [], plumbing: [], ceiling: [], hvac: null }) } as Response;
+      }
+      if (urlStr.includes('/api/config-status')) {
+        return { ok: true, json: async () => ({ configs: [] }) } as Response;
+      }
+      if (urlStr.includes('/api/mep-coordination') || urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    vi.spyOn(app['houseScene'], 'buildFromCatalog').mockImplementation(async () => undefined);
+    await app.start();
+    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(createdBlobs.length).toBe(1);
+    const text = await createdBlobs[0].text();
+    expect(text).toContain('master_dressing_table');
+    expect(text).not.toContain('kitchen_cabinet_run');
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('DXF 已导出'));
+    toast.mockRestore();
   });
 
   it('phase switch re-fetches the project snapshot for the active layout, and a failed switch restores the previous table (codex 一审 blocking)', async () => {
