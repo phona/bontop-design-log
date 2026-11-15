@@ -1788,6 +1788,8 @@ interface ClearancePoint { x: number; z: number; y?: number }
  * 为 slope_run 时终端取末步落点高度——hvac terminal 不回 y，旧口径 `to.y` 为空使
  * yOf 静默回退到冷凝水层高 2.65m，与统一出口的 2.6375–2.6846m 分叉；终端点现与
  * resolveMepRoute 逐点一致，见 tests/server/facts-lint.test.ts 一致性测试）。
+ * axis_corner 步的高度须随壳传入 via_height（batch 7 风管家族：壳漏传 via_height
+ * 会使八条风管在 facts 契约里全报「缺少有效 via_height」——与 slope 漏传同病）。
  */
 export function clearanceRoutePoints(
   route: Record<string, unknown>,
@@ -1807,11 +1809,12 @@ export function clearanceRoutePoints(
   const fromHeight = typeof route.from_height === 'number' ? route.from_height : undefined;
   const toHeight = typeof route.to_height === 'number' ? route.to_height : undefined;
   const slope = typeof route.slope === 'number' ? route.slope : undefined;
+  const viaHeight = typeof route.via_height === 'number' ? route.via_height : undefined;
   if (via.some((step) => !isMepViaCoordinate(step as unknown as { x: number; z: number }))) {
     if (!from || !to) {
       throw new Error(`MEP route ${str(route.id)} 关系 via 无端点可解：${!from ? 'from' : 'to'} 端点未解析`);
     }
-    const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}), ...(slope !== undefined ? { slope } : {}) } as MepRoute;
+    const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}), ...(slope !== undefined ? { slope } : {}), ...(viaHeight !== undefined ? { via_height: viaHeight } : {}) } as MepRoute;
     const resolved = resolveMepViaSteps(shellRoute, from, to, shafts);
     if (resolved.diagnostic !== undefined) throw new Error(resolved.diagnostic);
     return [

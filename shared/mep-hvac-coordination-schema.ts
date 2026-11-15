@@ -53,17 +53,27 @@ export const MepJunctionSchema = z.object({
  *   y、不引用竖井；缺 slope / 缺起算标高 / 零行程 → 显式失败，不给半条路径。末步为
  *   slope_run 时其落点必须平面重合 to 端点，否则整条 via 失败（终端标高由末步落点
  *   派生，`to_height` 缺省时 to 点 y 即末步 y）。
+ * - `axis_corner`：轴向拐点（issue #98 batch 7 风管家族）——每轴独立取 `from` 端点 /
+ *   `to` 端点 / 数值字面（如 `(from.x, to.z)`、`(to.x, from.z)`、`(from.x, 行值)`）；
+ *   高度只取 `route.via_height` 单点声明，不得声明步内 y、不引用竖井、不走坡度
+ *   （axis/to 均禁）；送/回风 via y 是手写中间值（送风 2.66、回风 2.70、bottom 2.62），
+ *   无可声明的派生规则（from_height − 固定落差 / to_height + 固定值均不成立），故不
+ *   套 from_face_jog（取 from_height 会改几何）也不套 slope_run；缺 via_height /
+ *   缺 x/z → 显式失败。落点同时推进平面游标与标高游标，后续 slope_run 从 via_height 起算。
  * 三步共享同一竖井（`shaft` id 必须在顶层 `shafts` 表里）；from 端点与竖井的
  * z 必须一致（|shaft.z − from.z| ≤ 0.005m，解算器内校验——0.02m 的差恰等于
  * ORTHOGONAL_TOLERANCE，lint 拦不住，见 §10.3 R-S3）。
  */
 export const MepViaStepSchema = z.object({
-  kind: z.enum(['from_face_jog', 'from_drop', 'shaft_corner', 'shaft_run', 'slope_run']),
+  kind: z.enum(['from_face_jog', 'from_drop', 'shaft_corner', 'shaft_run', 'slope_run', 'axis_corner']),
   shaft: z.string().min(1).optional(),
   /** slope_run：沿哪条轴跑（x = 东西向，z = 南北向）。 */
   axis: z.enum(['x', 'z']).optional(),
   /** slope_run：该轴上的目标坐标；字面 'to' = to 端点在该轴上的坐标。 */
   to: z.union([z.number().finite(), z.literal('to')]).optional(),
+  /** axis_corner：每轴的取值——字面 'from' / 'to' = 对应端点在该轴上的坐标，数值 = 手写行值。 */
+  x: z.union([z.number().finite(), z.literal('from'), z.literal('to')]).optional(),
+  z: z.union([z.number().finite(), z.literal('from'), z.literal('to')]).optional(),
   y: z.number().finite().optional(),
 }).strict().superRefine((step, ctx) => {
   // from_face_jog 是纯水平横移：高度只取 route.from_height，不得声明步内 y——
@@ -74,6 +84,52 @@ export const MepViaStepSchema = z.object({
       message: 'from_face_jog 不得声明 y：高度只取 route.from_height',
       path: ['y'],
     });
+  }
+  // axis_corner 是轴向拐点：高度只取 route.via_height 单点声明，不得声明步内 y、
+  // 不引用竖井、不走坡度；x/z 缺一不可（缺了轴，拐点无法派生）。
+  if (step.kind === 'axis_corner') {
+    if (step.y !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'axis_corner 不得声明 y：高度只取 route.via_height',
+        path: ['y'],
+      });
+    }
+    if (step.shaft !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'axis_corner 不引用竖井，不得声明 shaft',
+        path: ['shaft'],
+      });
+    }
+    if (step.axis !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'axis_corner 不走坡度，不得声明 axis',
+        path: ['axis'],
+      });
+    }
+    if (step.to !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'axis_corner 不走坡度，不得声明 to',
+        path: ['to'],
+      });
+    }
+    if (step.x === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'axis_corner 必须声明 x（\'from\' / \'to\' / 数值）',
+        path: ['x'],
+      });
+    }
+    if (step.z === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'axis_corner 必须声明 z（\'from\' / \'to\' / 数值）',
+        path: ['z'],
+      });
+    }
   }
   // slope_run 是纯坡度派生步：高度由 route.slope × 行程算出，不得声明步内 y、不引用竖井；
   // axis / to 缺一不可（缺了目标，落点无法派生）。
@@ -106,12 +162,20 @@ export const MepViaStepSchema = z.object({
         path: ['to'],
       });
     }
-  } else if (step.shaft === undefined) {
+  } else if (step.kind !== 'axis_corner' && step.shaft === undefined) {
     // 四种竖井步仍须声明 shaft（原 schema 必填，改可选后由本分支接住）。
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: `${step.kind} 必须声明 shaft`,
       path: ['shaft'],
+    });
+  }
+  // x/z 轴向取值只属于 axis_corner：其他步型声明 x/z 是未被消费的静默事实。
+  if (step.kind !== 'axis_corner' && (step.x !== undefined || step.z !== undefined)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: '只有 axis_corner 步可声明 x/z',
+      path: ['x'],
     });
   }
 });
@@ -127,9 +191,12 @@ export const MepShaftSchema = z.object({
 }).strict();
 export type MepShaft = z.infer<typeof MepShaftSchema>;
 
-/** via 步是纯坐标（绝对弯点）还是关系步。 */
+/** via 步是纯坐标（绝对弯点）还是关系步。带 kind 的步一律是关系步——
+ * 即使 x/z 双为数值（如 axis_corner 的行值步），也不得误判为绝对坐标
+ * （否则求解器会把它当绝对点透传、丢掉 via_height 高度，见 batch 7 回归测试）。 */
 export function isMepViaCoordinate(step: MepVia): step is { x: number; z: number; y?: number; source_status?: MepSourceStatus; construction_status?: MepStatus } {
-  return typeof (step as { x?: unknown }).x === 'number' && typeof (step as { z?: unknown }).z === 'number';
+  return typeof (step as { kind?: unknown }).kind !== 'string'
+    && typeof (step as { x?: unknown }).x === 'number' && typeof (step as { z?: unknown }).z === 'number';
 }
 
 export const MepRouteSchema = z.object({
@@ -150,9 +217,28 @@ export const MepRouteSchema = z.object({
   insulation_thickness: z.number().finite().nonnegative().optional(),
   insulation_status: z.enum(['assumed', 'confirmed']).optional(),
   from_height: z.number().finite().optional(), to_height: z.number().finite().optional(),
+  /** axis_corner 步的高度单点声明（batch 7 风管家族）：含 axis_corner 步的路由必填，
+   * 不含的路由禁填——未被消费的高度声明是静默事实（见下方 superRefine）。 */
+  via_height: z.number().finite().optional(),
   from: EndpointSchema, to: EndpointSchema, via: z.array(z.union([CoordinateSchema, MepViaStepSchema])).default([]),
   label: z.string().min(1).optional(), reason: z.string().min(1).optional(),
-}).strict();
+}).strict().superRefine((route, ctx) => {
+  const hasAxisCorner = route.via.some((step) => !isMepViaCoordinate(step) && step.kind === 'axis_corner');
+  if (hasAxisCorner && route.via_height === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'MEP route bad-no-height 含 axis_corner 步，必须声明 via_height（高度只取 route.via_height 单点声明）',
+      path: ['via_height'],
+    });
+  }
+  if (!hasAxisCorner && route.via_height !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'MEP route bad-unused-height 未含 axis_corner 步，不得声明 via_height（未被消费的高度声明是静默事实）',
+      path: ['via_height'],
+    });
+  }
+});
 export const MepCoordinationSchema = z.object({
   version: z.string(), status: z.string(), note: z.string().optional(),
   // Zod 4 enum-key records are exhaustive: every route layer needs render metadata,
@@ -298,6 +384,9 @@ const VIA_SHAFT_CONSISTENCY_TOLERANCE = 0.005;
  * 高度首步为 route.from_height）；目标 to 为数值或字面 'to'（to 端点在该轴上的坐标）；
  * 不得声明步内 y、不引用竖井；缺 slope / 缺起算标高 / 零行程 → 显式失败。末步为
  * slope_run 时落点必须平面重合 to 端点，否则整条 via 失败（终端标高由末步落点派生）。
+ * axis_corner → 每轴独立取 from / to / 数值字面，高度只取 route.via_height 单点声明；
+ * 不得声明步内 y、不引用竖井；缺 via_height / 缺 x/z → 显式失败。落点同时推进平面
+ * 游标与标高游标（后续 slope_run 从 via_height 起算）。
  * 绝对坐标步原样透传；缺 y 的绝对步清除标高游标——后续 slope_run 不得沿用旧标高
  * （否则与下游层高回退形成虚构上坡，PR #233 二审 blocking），而以「缺少有效起算
  * 标高」显式失败；带 y 的绝对步照旧同步推进游标。任一步失败即整条 via 失败
@@ -357,6 +446,31 @@ export function resolveMepViaSteps(
       points.push(next);
       cursor = { x: next.x, z: next.z };
       cursorY = nextY;
+      continue;
+    }
+    if (step.kind === 'axis_corner') {
+      // 轴向拐点：每轴取 from / to / 数值字面，高度只取 route.via_height 单点声明
+      // （送/回风 via y 是手写中间值 2.66/2.70/2.62，无可声明派生规则，不得静默取
+      // from_height）；缺 via_height / 步内 y / shaft / 缺 x/z → 显式失败。落点同时
+      // 推进平面游标与标高游标——后续 slope_run 从 via_height 起算。
+      if (step.y !== undefined) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 axis_corner 不得声明 y（高度只取 route.via_height）` };
+      }
+      if (step.shaft !== undefined) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 axis_corner 不引用竖井，不得声明 shaft` };
+      }
+      if (step.x === undefined || step.z === undefined) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 axis_corner 缺少 x/z（须声明每轴取 'from' / 'to' / 数值）` };
+      }
+      if (typeof route.via_height !== 'number' || !Number.isFinite(route.via_height)) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 axis_corner 缺少有效 via_height（高度只取 route.via_height 单点声明）` };
+      }
+      const resolveAxis = (axis: 'x' | 'z', value: number | 'from' | 'to'): number =>
+        value === 'from' ? from[axis] : value === 'to' ? to[axis] : value;
+      const next = { x: resolveAxis('x', step.x), z: resolveAxis('z', step.z), y: route.via_height };
+      points.push(next);
+      cursor = { x: next.x, z: next.z };
+      cursorY = route.via_height;
       continue;
     }
     const shaft = shafts.find((item) => item.id === step.shaft);
@@ -518,8 +632,8 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
     const from = resolveMepEndpoint(route.from, sources, config.junctions);
     const to = resolveMepEndpoint(route.to, sources, config.junctions);
     for (const step of route.via) {
-      // slope_run 不引用竖井（schema 已禁 shaft 声明），不进竖井存在性检查。
-      if (!isMepViaCoordinate(step) && step.kind !== 'slope_run' && (step.shaft === undefined || !shaftIds.has(step.shaft))) throw new Error(`MEP route ${route.id} via 步 ${step.kind} 引用未知竖井 "${step.shaft}"`);
+      // slope_run / axis_corner 不引用竖井（schema 已禁 shaft 声明），不进竖井存在性检查。
+      if (!isMepViaCoordinate(step) && step.kind !== 'slope_run' && step.kind !== 'axis_corner' && (step.shaft === undefined || !shaftIds.has(step.shaft))) throw new Error(`MEP route ${route.id} via 步 ${step.kind} 引用未知竖井 "${step.shaft}"`);
     }
     const requirementRoute = route.route_kind === 'requirement' || route.source_status === 'design_requirement';
     const candidateRoute = route.route_kind === 'candidate';
