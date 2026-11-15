@@ -625,6 +625,58 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       `改桥接台面也必须让施工归属包 PKG-110 stale；实际 stale：${stale.join(', ') || '（无）'}`);
   });
 
+  // 2026-11-15 issue #98 MEP batch 7 PR #237 Codex 三审 blocking（开放项 R13）：
+  // SCH-160-01 验电源与给排水，但洗碗机三接口不在 PKG-160 scope 里，改接口不 stale。
+  // 洗碗机对调进一期后三接口均为一期验收依赖，MODEL-PKG-160 已按 id 纳入；
+  // 本组三用例守「改任一接口 → PKG-160 stale」（R13 补丁级关闭条件）。
+  it('洗碗机给水接口补入：改 faucet_kitchen_dishwasher 的 height，PKG-160 必须 stale', () => {
+    const plumbingPath = join(sandbox, 'config/plumbing.yaml');
+    const text = readFileSync(plumbingPath, 'utf8');
+    const anchor = '  host_intent: "kitchen.dishwasher 洗碗机进水"\n  x: 9.30\n  z: 0.30\n  height: 0.3\n';
+    assert.equal(text.split(anchor).length - 1, 1, 'faucet_kitchen_dishwasher 坐标块锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    writeFileSync(plumbingPath, text.replace(anchor, '  host_intent: "kitchen.dishwasher 洗碗机进水"\n  x: 9.30\n  z: 0.30\n  height: 0.4\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-160'),
+      `改洗碗机给水高度必须让挂 SCH-160-01 的 PKG-160 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+  });
+
+  it('洗碗机排水接口补入：改 drain_kitchen_dishwasher 的 height，PKG-160 必须 stale', () => {
+    const plumbingPath = join(sandbox, 'config/plumbing.yaml');
+    const text = readFileSync(plumbingPath, 'utf8');
+    const anchor = '  type: drain\n  drain_dn: 50\n  absolute: true\n  x: 9.00\n  z: 0.30\n  height: 0.02\n';
+    assert.equal(text.split(anchor).length - 1, 1, 'drain_kitchen_dishwasher 坐标块锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    writeFileSync(plumbingPath, text.replace(anchor, '  type: drain\n  drain_dn: 50\n  absolute: true\n  x: 9.00\n  z: 0.30\n  height: 0.03\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-160'),
+      `改洗碗机排水高度必须让挂 SCH-160-01 的 PKG-160 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+  });
+
+  it('洗碗机电源接口补入：改 sock_kitchen_dishwasher 的 height，PKG-160 必须 stale', () => {
+    const electricalPath = join(sandbox, 'config/electrical.yaml');
+    const text = readFileSync(electricalPath, 'utf8');
+    const anchor = '  host_intent: "kitchen.dishwasher 洗碗机舱位旁（可徒手插拔口径）"\n  x: 9.30\n  z: 0.30\n  height: 0.3\n';
+    assert.equal(text.split(anchor).length - 1, 1, 'sock_kitchen_dishwasher 坐标块锚点必须恰出现一次');
+    const baseline = fingerprintsNow();
+    writeFileSync(electricalPath, text.replace(anchor, '  host_intent: "kitchen.dishwasher 洗碗机舱位旁（可徒手插拔口径）"\n  x: 9.30\n  z: 0.30\n  height: 0.4\n'));
+    const afterState = fingerprintsNow().state;
+    const stale = afterState.control.work_packages
+      .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
+      .map((pkg: AnyRecord) => pkg.id)
+      .sort();
+    assert.ok(stale.includes('PKG-160'),
+      `改洗碗机插座高度必须让挂 SCH-160-01 的 PKG-160 stale；实际 stale：${stale.join(', ') || '（无）'}`);
+  });
+
   it('门禁补洞：工作包 targets 必须覆盖其全部 SCH 检查点名对象的并集', () => {
     const universe = objectUniverse();
     // 每条 SCH 检查 → 所属包（按 control.yaml 的嵌套位置）。

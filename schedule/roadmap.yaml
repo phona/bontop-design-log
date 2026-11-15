@@ -20,7 +20,7 @@ phases:
     name: 二期功能升级
     status: proposed
     depends_on: [phase_1_basic_occupancy]
-    budget: {estimate_min_cny: 42100, estimate_max_cny: 67200, ceiling_cny: null}
+    budget: {estimate_min_cny: 43400, estimate_max_cny: 67400, ceiling_cny: null}
     scope: 电视系统、补充家电、窗帘电机、小件家具及健身设备，以及一期后移的主卧定制衣柜、壁床柜、客厅低柜/大收纳柜/展示柜、咖啡桌/地灯/绿植、复杂灯光、客厅书房窗帘和东南书房/西北次卧家具
     activation_gate: 一期竣工结算完成，业主重新确认范围和预算上限
   - id: phase_3_styling

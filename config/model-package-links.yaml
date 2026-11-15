@@ -332,8 +332,13 @@ links:
       # 没有宿主引用可供闭包跟随，故必须显式纳入。与第 9 轮「PKG-110 纳入家电」互为反向。
       - {source: furnishings, select: {ids: [kitchen.cabinet_run_north_west, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.countertop_bridge, kitchen.sink]}}
       - {source: furnishings, select: {ids: [gbath.robot_dock]}}
-      - {source: electrical, select: {ids: [sock_fridge_living, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}} # sock_kitchen_fridge → sock_fridge_living（DEC-2026-10-17-R20 冰箱点位迁客餐厅西侧重绑）
-      - {source: plumbing, select: {ids: [faucet_balcony_washer, drain_balcony_washer, faucet_gbath_vanity, drain_gbath_vanity]}}
+      # 2026-11-15（issue #98 MEP batch 7 PR #237 Codex 三审 blocking；开放项 R13）：
+      # SCH-160-01「必需家电逐台安装和接口试运行」验电源与给排水，但洗碗机三接口
+      # 不在 scope 里——改任一接口的 height，PKG-160 摘要不变、旧通过记录不 stale。
+      # 洗碗机 2026-11-02 对调进一期（#152，COST-160-09）后三接口均为一期验收依赖，
+      # 故按稳定 id 直选纳入（与 R11 柜体、R9 家电同一处理）。
+      - {source: electrical, select: {ids: [sock_fridge_living, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_kitchen_dishwasher, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}} # sock_kitchen_fridge → sock_fridge_living（DEC-2026-10-17-R20 冰箱点位迁客餐厅西侧重绑）
+      - {source: plumbing, select: {ids: [faucet_balcony_washer, drain_balcony_washer, faucet_gbath_vanity, drain_gbath_vanity, faucet_kitchen_dishwasher, drain_kitchen_dishwasher]}}
   - id: MODEL-PKG-170
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-170}
@@ -358,12 +363,6 @@ links:
     mapping_status: mapped
     # 2026-11-10（issue #191）：原 {room_ids: [balcony], types: [dryer]} 等价于 balcony.dryer。
     scope: [{source: furnishings, select: {ids: [balcony.dryer]}}]
-  - id: MODEL-P2-030
-    phase_id: phase_2_function_upgrade
-    budget_ref: {source: phase_2_scope, id: P2-030}
-    mapping_status: mapped
-    # 2026-11-10（issue #191）：原 {room_ids: [kitchen], types: [dishwasher]} 等价于 kitchen.dishwasher。
-    scope: [{source: furnishings, select: {ids: [kitchen.dishwasher]}}]
   - id: MODEL-P2-040
     phase_id: phase_2_function_upgrade
     budget_ref: {source: phase_2_scope, id: P2-040}
@@ -464,6 +463,17 @@ links:
     # 保留原沿革：2026-10-13 DEC-2026-10-13-R1 移除 track_light、R5 移除 led_strip；
     # 2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位。
     scope: [{source: electrical, select: {ids: [light_dining_pendant, light_corridor_1, light_entry_down, light_entry_foyer]}}] # 2026-10-13 DEC-2026-10-13-R1 移除 track_light、R5 移除 led_strip；2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位，换成 ceiling_light（留着会让 assertSelector 拒掉）
+
+  - id: MODEL-P2-170
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-170}
+    mapping_status: partial
+    # 2026-11-15（issue #98 一二期对调，Codex 五审 major）：GC5 由一期退至二期后新增
+    # P2-170，原 MODEL-P2-030 是洗碗机链接、随对调删除，未留 GC5 链接，致二期清单显示
+    # “待补数据映射”。GC5 机器本身尚未采购、模型里无家具对象，故只 partial：已建模的唯一
+    # 接口是厨房预留点位 sock_kitchen_oven（position_status/status 均为 pending，16A
+    # 专用回路候选第 21 路、未激活）；机器对象待二期选品 + 橱柜 600 宽高柜冻结后补。
+    scope: [{source: electrical, select: {ids: [sock_kitchen_oven]}}]
 
   - id: MODEL-P3-010
     phase_id: phase_3_styling

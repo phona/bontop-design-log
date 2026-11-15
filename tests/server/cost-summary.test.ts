@@ -952,7 +952,9 @@ describe('成本总表 cost-summary', () => {
 
   it('覆盖检查：全部未决条目已登记归属，三类计数对上未决总数', () => {
     const { coverage } = data;
-    assert.equal(coverage.scannedComponentCount, 106);
+    // 2026-11-15 一二期对调（#152）：新增 COST-160-09 洗碗机 → 107（GC5 COST-160-08
+    // 退二期、planned 0，仍计组件；未决三类计数与双归属条目不变）。
+    assert.equal(coverage.scannedComponentCount, 107);
     assert.equal(coverage.scannedQuoteRoundCount, 27);
     assert.ok(coverage.unresolvedItemCount > 0, '必须真的扫到未决条目');
     // 集合语义：双归属条目在两个分类各计一次，三类之和 = 未决总数 + 双归属数

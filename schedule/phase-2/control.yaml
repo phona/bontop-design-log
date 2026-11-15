@@ -8,8 +8,8 @@ decision_state: alignment_required
 depends_on: [phase_1_basic_occupancy]
 currency: CNY
 budget:
-  estimate_min_cny: 42100
-  estimate_max_cny: 67200
+  estimate_min_cny: 43400
+  estimate_max_cny: 67400
   ceiling_cny: null
   approved_cny: null
 activation_gates:
@@ -34,7 +34,6 @@ activation_gates:
 items:
   - {id: P2-010, name: 电视及电视墙系统（含客厅低柜）, estimate_min_cny: 11000, estimate_max_cny: 14000, status: proposed}
   - {id: P2-020, name: 烘干机, estimate_min_cny: 2500, estimate_max_cny: 4500, status: proposed}
-  - {id: P2-030, name: 洗碗机, estimate_min_cny: 2500, estimate_max_cny: 4000, status: proposed}
   - {id: P2-040, name: 净水器, estimate_min_cny: 1500, estimate_max_cny: 2500, status: proposed}
   - {id: P2-060, name: 客厅咖啡桌、地灯、绿植等小件家具, estimate_min_cny: 2000, estimate_max_cny: 4000, status: proposed}
   - {id: P2-070, name: 窗帘电机, estimate_min_cny: 3000, estimate_max_cny: 4000, status: proposed}
@@ -47,9 +46,10 @@ items:
   - {id: P2-140, name: 客厅大收纳柜（一期后移）, estimate_min_cny: 2000, estimate_max_cny: 4000, status: proposed}
   - {id: P2-150, name: 展示柜（一期后移）, estimate_min_cny: 1000, estimate_max_cny: 3000, status: proposed}
   - {id: P2-160, name: 复杂灯光升级（筒射灯轨道灯，一期后移）, estimate_min_cny: 2000, estimate_max_cny: 4000, status: proposed}
+  - {id: P2-170, name: 微蒸烤一体机 GC5, estimate_min_cny: 3800, estimate_max_cny: 4200, status: proposed, note: "2026-11-02 一二期对调（#152）：GC5 由一期退至二期（原一期目标 ≤3,800、封顶 4,200，见 phase-1 COST-160-08）；专用回路 dedicated_kitchen_oven 为候选第 21 路（现 20 路），二期路径 A/B/C 未定，B 路线管预埋时机（一期预埋 vs 二期再改造）未定。"}
 audit:
   status: not_started
-  note: 明细合计为¥42,100—¥67,200；云鲸JX超薄上下水版（现行候选，2026-11-03业主拍板由J6改JX，非最终锁定）已按业主确认的3,000元移入一期，不在二期重复计费；范围未冻结前不得采购
+  note: 明细合计为¥43,400—¥67,400；洗碗机已按 2026-11-02 一二期对调（#152）移入一期（占用原 GC5 的 ¥4,000 slot），不在二期重复计费；微蒸烤 GC5 同日由一期退至二期（P2-170，¥3,800—¥4,200）；云鲸JX超薄上下水版（现行候选，2026-11-03业主拍板由J6改JX，非最终锁定）已按业主确认的3,000元移入一期，不在二期重复计费；范围未冻结前不得采购
   record_schema:
     required: [id, gate_id, status, checked_at, checked_by, evidence, gate_spec_sha256, project_data_sha256]
     status_values: [pending, passed, failed, not_applicable]
