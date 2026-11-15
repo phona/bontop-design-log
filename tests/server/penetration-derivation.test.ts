@@ -1,12 +1,13 @@
 /**
  * penetration at 单一源收敛的回归与可见性（issue #98 第五阶段 S3）。
  *
- * - 钉值断言：45 条已删除的可派生 at，其「路线折线 ∩ 墙段唯一交点」派生值必须逐一等于
+ * - 钉值断言：46 条已删除的可派生 at，其「路线折线 ∩ 墙段唯一交点」派生值必须逐一等于
  *   删除前的手写声明值（≤1e-9，删除前实跑最大偏差 4.441e-16）。表值即被删字面量的墓碑。
  * - 可见性断言：12 条不可派生的保留手写声明（7 共线 + 1 端点压墙线 + 4 意图点）+ 3 条
  *   偏差待量房（B 类）在 lint 里不再「静默不可见」——内存突变演练证明删除/漂移会被抓。
  * - fail-closed：孔数计数与冷凝链锚点派生对「不可派生且无手写 at」必须报错，不发明数值。
- * - 计数回归：takeoff 孔数 46（mep-quotes 元/孔增项的量）与 lint penetration_* 计数不变。
+ * - 计数回归：takeoff 孔数 47（mep-quotes 元/孔增项的量）；lint penetration_* 计数见
+ *   「真实配置 lint」测试（2026-11-16 关系化批：door_clearance 17→18、shear 12→13）。
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -131,9 +132,14 @@ const PIN_46: Array<[string, string, number, number]> = [
   ['strong-light-balcony', 'w_balc_east', 7.2, 2.17],
 ];
 
-/** 保留手写的 15 条（12 不可派生 C/D/E + 3 偏差 B），at 不得删。 */
-const KEPT_15: Array<[string, string]> = [
+/** 保留手写的 16 条（12 不可派生 C/D/E + 3 偏差 B + 1 新增可派生但保留手写）。新增
+ * strong-light-child@w_strip_east（2026-11-16 关系化批 gap-2：斜线拆正交后新露出的严格穿点
+ * (4.2,4.6)，派生值与声明 at 严格相等——实测 deriveMepPenetrationPoint 得 (4.2,4.6)，
+ * w_strip_east 为 x=4.2、z[4.30,5.55] 墙段，穿点在墙段内部非端点；本批新增声明带手写 at，
+ * 删 at 是后续 S-phase 的事，不在本批；本测试只钉 at/height/note 在场）。 */
+const KEPT_16: Array<[string, string]> = [
   ['strong-light-child', 'w_nw_south'],
+  ['strong-light-child', 'w_strip_east'],
   ['weak-master', 'w_strip_east'],
   ['water-hot-water-gbath-requirement', 'w_gbath_south'],
   ['strong-ac-study', 'w_be_west'],
@@ -166,7 +172,10 @@ test('46 条被删 at：派生交点逐一等于被删声明值（≤1e-9）', (
   // w_st_north (5.40,5.55)，新增 1 条穿墙声明（旧路由 z=6.0/6.10 全程在墙南、
   // 从未穿该墙）；condensate-master 1 换 1（w_mbath_south→w_strip_east），
   // condensate-child 声明不变（穿点由 (5.6,3.87) 改 (5.6,4.20)）。
-  assert.equal(declarationsOf(config).length, 61, '穿墙声明总数应保持 61（at 删除不改条目数）');
+  // 2026-11-16 关系化批：声明总数 61→62——strong-light-child 新增 w_strip_east
+  // 声明 1 条（gap-2 斜线拆正交：旧对角 (4.35,4.6)→(4.1,4.0) 不穿该墙，新正交腿
+  // (4.35,4.6)→(4.1,4.6) 在 (4.2,4.6) 严格穿墙，带手写 at，见 KEPT_16；PIN_46 派生表不变）。
+  assert.equal(declarationsOf(config).length, 62, '穿墙声明总数应为 62（61 + strong-light-child 新增 w_strip_east 1 条）');
   for (const [routeId, wallId, x, z] of PIN_46) {
     const route = config.routes.find((item) => item.id === routeId);
     assert.ok(route, `route ${routeId} 存在`);
@@ -181,9 +190,9 @@ test('46 条被删 at：派生交点逐一等于被删声明值（≤1e-9）', (
   }
 });
 
-test('15 条保留手写：at 原样在场，height/note 未动', () => {
+test('16 条保留手写：at 原样在场，height/note 未动', () => {
   const flat = declarationsOf(config);
-  for (const [routeId, wallId] of KEPT_15) {
+  for (const [routeId, wallId] of KEPT_16) {
     const found = flat.find((d) => d.route.id === routeId && d.wall === wallId);
     assert.ok(found, `${routeId}@${wallId} 声明在场`);
     assert.ok(found.entry.at !== undefined, `${routeId}@${wallId} 的 at 保留手写`);
@@ -207,7 +216,7 @@ test('15 条保留手写：at 原样在场，height/note 未动', () => {
   }
 });
 
-test('takeoff 孔数 = 46（派生口径），与旧数组长度口径一致', () => {
+test('takeoff 孔数 = 47（派生口径），与旧数组长度口径一致', () => {
   const rules = load<MepTakeoffRules>('config/mep-takeoff.yaml');
   const topology = load<{ circuits: never[]; controls?: never[] }>(rules.sources.circuits);
   const takeoffInput = {
@@ -221,8 +230,10 @@ test('takeoff 孔数 = 46（派生口径），与旧数组长度口径一致', (
   };
   const withWalls = computeMepTakeoff({ ...takeoffInput, penetrationWalls: catalog.getWalls() });
   const legacy = computeMepTakeoff(takeoffInput);
-  assert.equal(withWalls.devices.penetrations, 46, '派生口径孔数（喂 mep-quotes extra_penetration 元/孔）');
-  assert.equal(legacy.devices.penetrations, 46, '旧口径（未传墙几何的手搭输入路径）同值');
+  // 2026-11-16 关系化批：46→47——strong-light-child 新增 w_strip_east 声明 1 条
+  // （(4.2,4.6)，height 2.55，派生严格交点与声明 at 相等），该孔计入 takeoff。
+  assert.equal(withWalls.devices.penetrations, 47, '派生口径孔数（喂 mep-quotes extra_penetration 元/孔）');
+  assert.equal(legacy.devices.penetrations, 47, '旧口径（未传墙几何的手搭输入路径）同值');
   const deriveErrors = withWalls.unresolved.filter((item) => item.reason.includes('穿墙声明'));
   assert.deepEqual(deriveErrors, [], '派生口径下不允许出现不可定位的穿墙声明');
 });
@@ -349,7 +360,7 @@ test('lint 可见性（验伪轮）：E 类沿墙正交滑动不误伤（设计�
   assert.deepEqual(mismatch, [], '保持压墙线+正交对齐的沿墙滑动不误伤（量房自由度）');
 });
 
-test('真实配置 lint：penetration_* 计数与 2026-11-14 全带泵重画后一致', () => {
+test('真实配置 lint：penetration_* 计数与 2026-11-16 关系化批后一致', () => {
   const result = lintMepCoordination(config, sources, lintContext());
   const all = [...result.errors, ...result.warnings];
   const count = (code: string): number => all.filter((issue) => issue.code === code).length;
@@ -358,13 +369,17 @@ test('真实配置 lint：penetration_* 计数与 2026-11-14 全带泵重画后�
   // w_strip_east (4.20,4.60)：距门洞 d_mb 仅 0.05m（过门头穿梁），墙体剪力墙
   // inferred；其余 penetration_* 计数不变（parent 新增的 w_st_north 穿点
   // (5.40,5.55) 在门洞 d_study 西侧、无剪力墙声明，不进这两项）。
-  assert.equal(count('penetration_door_clearance'), 17);
+  // 2026-11-16 关系化批：penetration_door_clearance 17→18、shear_wall_penetration
+  // 12→13——均来自 strong-light-child 新增的同一穿点 w_strip_east (4.20,4.60)
+  // 声明（实测 lint：door_clearance 新增 strong-light-child 1 条，shear 新增
+  // strong-light-child 1 条；其余 penetration_* 计数不变）。
+  assert.equal(count('penetration_door_clearance'), 18);
   assert.equal(count('penetration_wall_unknown'), 0);
   assert.equal(count('penetration_declaration_orphaned'), 0);
   assert.equal(count('penetration_declaration_incomplete'), 0);
   assert.equal(count('penetration_missing'), 0);
   assert.equal(count('penetration_point_mismatch'), 0);
-  assert.equal(count('shear_wall_penetration'), 12);
+  assert.equal(count('shear_wall_penetration'), 13);
 });
 
 test('冷凝链锚点 deriveMepPenetrationAt：新穿点 (4.20,4.60) 可派生，旧墙正确诊断，fail-closed 三态', () => {
@@ -399,7 +414,7 @@ test('冷凝链锚点 deriveMepPenetrationAt：新穿点 (4.20,4.60) 可派生�
   assert.ok(!('point' in hugDerived) && typeof hugDerived.diagnostic === 'string', 'C 形无唯一交点必须 fail-closed 给诊断');
 });
 
-test('穿墙计数契约：61 条声明 / 33 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
+test('穿墙计数契约：62 条声明 / 33 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
   // config/facts.yaml 的 fact.mep_penetration_declarations 只锚定文档清点句的文本（facts-lint 的
   // derived 选择器表达不了「跨路线嵌套数组求和 + 去重」）；本断言从配置机器计算两数并要求文档
   // 同值——guidance:37 的「40 条 / 21 孔位」正是这样 stale 的。孔位 = 同墙同坐标去重（多条路线共用一孔）。
@@ -428,7 +443,11 @@ test('穿墙计数契约：61 条声明 / 33 个孔位（手写 at 或派生点�
   // 仍 33——旧主卧孔 w_mbath_south@2.300,2.860 随旧路由消失（−1），新 parent
   // 孔 w_st_north@5.400,5.550 补入（+1），新主卧孔与 strong-ac-master 等共用
   // w_strip_east@4.200,4.600（+0），儿童房孔 (5.6,3.87)→(5.6,4.20) 平移（+0）。
-  assert.equal(declarations.length, 61, '穿墙声明条目数变了：同步施工指导文档清点句与 facts 契约');
+  // 2026-11-16 关系化批：声明 61→62（strong-light-child 新增 w_strip_east 1 条），
+  // 孔位仍 33——新声明点 (4.2,4.6) 与既有孔 w_strip_east@4.200,4.600 去重同孔（+0）。
+  // 注意：本断言的文档清点句部分依赖 docs/mep-construction-guidance.md 同步更新
+  // （另一路负责；该文档现行句仍为 61 条，更新前本测试的文档句断言会红）。
+  assert.equal(declarations.length, 62, '穿墙声明条目数变了：同步施工指导文档清点句与 facts 契约');
   assert.equal(holes.size, 33, '孔位数变了：同步施工指导文档清点句与 facts 契约');
   const guidance = readFileSync('docs/mep-construction-guidance.md', 'utf8');
   assert.ok(guidance.includes(`合计 **${declarations.length} 条声明、落在 ${holes.size} 个不同孔位**`),

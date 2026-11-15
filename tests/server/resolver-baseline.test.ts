@@ -820,9 +820,11 @@ describe('柜宽变化（issue #192 第 3 项）', () => {
   it('半高柜变宽后 MEP 算量（drawnM）按端点位移的几何增量跟着走', () => {
     // 算量链：柜宽 → 挂载点 night_living_mid → 路由 strong-light-entry-night-mid 的 to 端点
     // → routeLength → shared/mep-takeoff 的 conduit.drawnM。
-    // 路由末段 = 最后 via (11.42,4.80,y=0.02) → to 端点（to_height 0.30）：改宽前 to=(11.42,4.80)
-    // ⇒ 竖直 0.28m；柜宽 2.00→1.60 后 to=(11.42,5.00) ⇒ 末段 =
-    // hypot(0, 0.30−0.02, 0.20) = 0.344093…。全屋只有该路由的端点位移，所以 drawnM 的增量
+    // 2026-11-16 MEP 关系化后，本路由的 via 是关系步：level y=0.02 → axis_run x 跟 to.x →
+    // axis_run z 跟 to.z。折线 = from (12.77,4.37,0.30) 落 0.02 → 西行至 x=11.42 →
+    // 南行至 to.z → 竖直升 0.28 端接。柜宽 2.00→1.60 后 to=(11.42,5.00)：末 via 也跟到
+    // (11.42,5.00,0.02)，末段仍是竖直 0.28m（不变）；动的是 z 向轴跑段：4.80−4.37=0.43
+    // → 5.00−4.37=0.63，增量恰为 0.20。全屋只有该路由的端点位移，所以 drawnM 的增量
     // 必须恰好等于这段几何增量（增量由声明值 + 解出的端点手算，从 takeoff 结果反推不算）。
     const rules = readYaml(MEP_RULES_PATH) as MepTakeoffRules;
     const coordination = parseMepCoordination(readFileSync(COORDINATION_PATH, 'utf8'));
@@ -872,11 +874,25 @@ describe('柜宽变化（issue #192 第 3 项）', () => {
     assertXZ(routeBefore.to, { x: 11.42, z: 4.80 }, '改宽前路由端点');
     assertXZ(routeAfter.to, { x: 11.42, z: 5.00 }, '改宽后路由端点');
 
+    // 关系步口径：末 via 是 axis_run z 跟 to，不是固定弯点——改宽后它也移到 (11.42,5.00,0.02)。
+    const lastViaAfter = routeAfter.viaPoints[routeAfter.viaPoints.length - 1]!;
+    assertXZ(lastViaAfter, { x: 11.42, z: 5.00 }, `${routeId} 改宽后末 via 跟 to 走（axis_run 关系步）`);
+    assertClose(lastViaAfter.y ?? NaN, 0.02, `${routeId} 改宽后末 via 标高`);
+
     const endY = routeDecl.to_height as number;
     const viaY = lastVia.y as number;
-    const expectedDelta = Math.hypot(routeAfter.to.x - lastVia.x, endY - viaY, routeAfter.to.z - lastVia.z)
-      - Math.hypot(routeBefore.to.x - lastVia.x, endY - viaY, routeBefore.to.z - lastVia.z);
-    assertClose(after.takeoff.conduit.drawnM - before.takeoff.conduit.drawnM, expectedDelta, 'drawnM 增量 = 手算末段增量');
+    // 末段（末 via → to）改宽前后都是竖直 0.28m，增量为 0；增量全在 z 向轴跑段
+    // （上一 via 的 z=4.37 不动，末 via 的 z 从 4.80 走到 5.00）：0.43 → 0.63。
+    const zRunBefore = lastVia.z - routeBefore.viaPoints[routeBefore.viaPoints.length - 2]!.z;
+    const zRunAfter = lastViaAfter.z - routeAfter.viaPoints[routeAfter.viaPoints.length - 2]!.z;
+    assertClose(zRunBefore, 0.43, `${routeId} 改宽前 z 向轴跑段`);
+    assertClose(zRunAfter, 0.63, `${routeId} 改宽后 z 向轴跑段`);
+    const finalBefore = Math.hypot(routeBefore.to.x - lastVia.x, endY - viaY, routeBefore.to.z - lastVia.z);
+    const finalAfter = Math.hypot(routeAfter.to.x - lastViaAfter.x, endY - (lastViaAfter.y as number), routeAfter.to.z - lastViaAfter.z);
+    assertClose(finalBefore, 0.28, `${routeId} 改宽前末段竖直 0.28m`);
+    assertClose(finalAfter, 0.28, `${routeId} 改宽后末段仍竖直 0.28m（不跟着变）`);
+    const expectedDelta = (zRunAfter - zRunBefore) + (finalAfter - finalBefore);
+    assertClose(after.takeoff.conduit.drawnM - before.takeoff.conduit.drawnM, expectedDelta, 'drawnM 增量 = 手算轴跑段增量 + 末段增量（0）');
     assert.ok(expectedDelta > 0, '本案例的算量增量必须为正（否则测试证明不了「跟着走」）');
 
     // 反向对照：其余挂载点不动时算量不动（同一次比对里，night_corridor 的宿主未改）。

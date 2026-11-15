@@ -237,7 +237,9 @@ test('R9 master-bedroom furniture set places the full-height cabinet and removes
   // → 世界 z = 1.10 + 2.51 = 3.61。宽/深/柜身高行内声明（FURNITURE_DIMS 不再是
   // 第二套尺寸来源；PR-9「行内不写第二套」口径由 #116 参数化单点声明取代）。
   const cabinet = master.find((item) => item.type === 'mb_full_height_cabinet');
-  assert.deepEqual(cabinet, { type: 'mb_full_height_cabinet', id: 'mb.full_height_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015 });
+  // 2026-11-16 用户裁定（浴霸穿柜改顶封 25mm 线槽 infer）：本条带 note + blocker，
+  // 期望记录须与 config/house.yaml 的该记录原样一致（blocker 为未决口径的单一真相）。
+  assert.deepEqual(cabinet, { type: 'mb_full_height_cabinet', id: 'mb.full_height_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015, note: '顶封线槽（infer，2026-11-16 用户裁定）：顶封留 25mm 线槽，Ø20 线管于 y=2.7 穿柜，路由不变。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。', blocker: { kind: 'site_measurement', owner: ['量房'], trigger: '量房数据（过梁高度/顶封实测/墙位）', reverses_if: '量房实测顶封净空不足 25mm 或过梁高度与 y=2.7 线槽冲突时，改走线方式或重定线槽位', rationale: '无量房数据时先选默认方案（infer）：顶封留 25mm 线槽供 Ø20 线管于 y=2.7 穿柜，路由不变；量房后按实测重决。换路方案（x=1.3 南行）作废：x=1.3 在门洞 d_mbath [1.15,1.95] 正上方，需确认过梁高度，不比线槽便宜。' } });
   for (const type of ['mb_vanity_lower_board_bridge', 'mb_vanity_main_board_bridge']) {
     assert.equal(master.some((item) => item.type === type), false, `${type} must be removed from active placed set`);
     assert.equal((FURNITURE_DIMS as Record<string, unknown>)[type], undefined, `${type} fixture dimensions must be removed`);

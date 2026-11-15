@@ -336,6 +336,65 @@ function collectHvacReferenceRows(): PendingCarrierItem[] {
   });
 }
 
+// ── house.yaml furnishings：带 pending 语义的家具 ──────────────────────────────
+// 2026-11-16 用户裁定：mb.full_height_cabinet 顶封留 25mm 线槽（infer），未决口径结构化
+// 到 blocker 字段。家具不是 SceneElement，不进 collectElements；blocker 一出现，
+// 反向扫描就把 furnishings.master_bedroom 报成未登记载体段，必须在这里登记并生成行。
+// 读法与梁/hvac 一致：数值与 blocker 原样取自权威 config，不抄第二份；家具条目无 status
+// 字段，行状态取 inferred（note 载明 infer 的推断值，不得当施工依据）。
+
+interface FurniturePendingSource {
+  id: string;
+  type: string;
+  note?: string;
+  blocker?: ComponentBlocker;
+}
+
+function readFurniturePendingItems(room: string): FurniturePendingSource[] {
+  const file = 'config/house.yaml';
+  const doc = asRecord(readYamlDocument(file), file);
+  const furnishings = doc.furnishings;
+  if (!furnishings || typeof furnishings !== 'object' || Array.isArray(furnishings)) {
+    throw new Error(`${file} 缺 furnishings 段：家具载体无法按房间读`);
+  }
+  const items = (furnishings as Record<string, unknown>)[room];
+  if (!Array.isArray(items)) throw new Error(`${file} furnishings.${room} 不是数组`);
+  const pending: FurniturePendingSource[] = [];
+  for (const entry of items) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const record = entry as Record<string, unknown>;
+    if (!hasPendingSemantics(record)) continue;
+    const blocker = record.blocker as ComponentBlocker | undefined;
+    pending.push({
+      id: requireString(record.id, `${file} furnishings.${room} 的 pending 家具`),
+      type: requireString(record.type, `${file} furnishings.${room} 的 pending 家具类型`),
+      ...(typeof record.note === 'string' ? { note: record.note } : {}),
+      ...(blocker ? { blocker } : {}),
+    });
+  }
+  return pending;
+}
+
+function collectFurniturePendingRows(room: string): PendingCarrierItem[] {
+  return readFurniturePendingItems(room).map((item) => ({
+    id: `furniture:${item.id}`,
+    kind: 'furniture',
+    label: `家具 ${item.id}`,
+    room,
+    status: 'inferred',
+    blocker: item.blocker ?? {
+      kind: 'site_measurement',
+      owner: ['量房'],
+      trigger: '量房实测（该家具未申报 blocker，按其结构化待核字段/note 纳入清单）',
+      reverses_if: '实测后按结果回改或销号',
+      rationale: item.note ?? '（无 note）',
+    },
+    // 量什么：blocker.trigger 已写明（过梁高度/顶封实测/墙位）；当前推断值：note 原文。
+    measure: item.blocker?.trigger ?? '量房实测',
+    currentValue: item.note ?? item.blocker?.rationale ?? '（无 note）',
+  }));
+}
+
 // ── 载体登记表 ──────────────────────────────────────────────────────────────
 
 /**
@@ -370,6 +429,14 @@ export const PENDING_CARRIERS: readonly PendingCarrier[] = [
     description: '梁体读数的 hvac 权威副本（邻户参考 + survey_confirmation）：测试/施工前必须现场复核',
     pendingIds: () => readHvacReferenceConstraints().map((c) => `hvac:ref:${c.id}`).sort(),
     rows: collectHvacReferenceRows,
+  },
+  {
+    id: 'furniture:master_bedroom',
+    file: 'config/house.yaml',
+    section: 'furnishings.master_bedroom',
+    description: '带 blocker 的主卧家具（2026-11-16 顶封线槽 infer）：不是 SceneElement，行由本表并入量房清单',
+    pendingIds: () => readFurniturePendingItems('master_bedroom').map((item) => `furniture:${item.id}`).sort(),
+    rows: () => collectFurniturePendingRows('master_bedroom'),
   },
 ];
 

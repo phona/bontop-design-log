@@ -349,10 +349,10 @@ test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，�
   assert.match(axisById.get('corridor_axis')!.reason!, /走廊\/客厅边吊主干轴线/, '走廊轴 reason 须写清主干轴线来源');
 
   const expectedKinds: Record<string, string[]> = {
-    'refrigerant-trunk': ['vertical_to', 'absolute', 'axis_jog', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'],
+    'refrigerant-trunk': ['vertical_to', 'absolute', 'absolute', 'axis_jog', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'],
     'refrigerant-master': ['axis_jog', 'axis_run', 'axis_run', 'axis_run'],
     'refrigerant-parent': ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'vertical_to', 'axis_run'],
-    'refrigerant-study': ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
+    'refrigerant-study': ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
     'refrigerant-child': ['axis_jog', 'axis_run', 'axis_run', 'axis_run'],
     'refrigerant-dining': ['axis_run'],
   };
@@ -366,11 +366,12 @@ test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，�
     assert.equal(route.construction_status, 'pending');
     assert.match(route.reason!, /2026-11-15 issue #98 MEP batch 4/, `${id} reason 须记迁移注记`);
   }
-  // trunk 唯一剩余绝对点：外机接管斜 jog (7.05,0.55)，无已声明锚点可复用；平面绝对、
-  // 高度取 level_kitchen_b_270（2026-11-15 修 Codex major：字面 y 会把标高游标重置）。
+  // trunk 两处剩余绝对点：外机接管斜 jog (6.4,0.5)→(7.05,0.55) 本批拆为两段正交
+  // 绝对步 (7.05,0.5) 再 (7.05,0.55)，无已声明锚点可复用；平面绝对、高度取
+  // level_kitchen_b_270（2026-11-15 修 Codex major：字面 y 会把标高游标重置）。
   const trunk = all.coordination.routes.find((r) => r.id === 'refrigerant-trunk')!;
-  assert.equal(trunk.via.filter(isMepViaCoordinate).length, 1, 'trunk 须恰剩一个绝对步');
-  assert.deepEqual(trunk.via.filter(isMepViaCoordinate), [{ x: 7.05, z: 0.55, level: 'level_kitchen_b_270' }], 'trunk 剩余绝对点须为外机接管斜 jog（平面绝对、高度取标高层）');
+  assert.equal(trunk.via.filter(isMepViaCoordinate).length, 2, 'trunk 须恰剩两个绝对步');
+  assert.deepEqual(trunk.via.filter(isMepViaCoordinate), [{ x: 7.05, z: 0.5, level: 'level_kitchen_b_270' }, { x: 7.05, z: 0.55, level: 'level_kitchen_b_270' }], 'trunk 剩余绝对点须为外机接管斜 jog 拆出的两个角点（平面绝对、高度取标高层）');
   // 其余五条须全关系化。
   for (const id of ROUTES.filter((x) => x !== 'refrigerant-trunk')) {
     assert.ok(all.coordination.routes.find((r) => r.id === id)!.via.every((s) => !isMepViaCoordinate(s)), `${id} 须全关系化`);
@@ -391,6 +392,7 @@ test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，�
       expectedOld[id] = [
         F,
         { x: from.x, z: from.z, y: LEVEL_KITCHEN_B_270 },
+        { x: 7.05, z: 0.5, y: LEVEL_KITCHEN_B_270 },
         { x: 7.05, z: 0.55, y: LEVEL_KITCHEN_B_270 },
         { x: AXIS_TRUNK_X745, z: 0.55, y: LEVEL_KITCHEN_B_270 },
         { x: AXIS_TRUNK_X745, z: 3, y: LEVEL_KITCHEN_B_270 },
@@ -421,6 +423,7 @@ test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，�
         { x: AXIS_BE_WEST_X1340, z: AXIS_LIVING_SOUTH_Z555, y: fh },
         { x: AXIS_BE_WEST_X1340, z: 5.9, y: fh },
         { x: 13.6, z: 5.9, y: fh },
+        { x: to.x, z: 5.9, y: fh },
         T,
       ];
     } else if (id === 'refrigerant-child') {
@@ -446,28 +449,27 @@ test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，�
     assert.equal(r.points.length, expectedOld[id].length, `${id} 折线原始点数须与旧几何一致`);
     assert.equal(dedup(r.points).length, expected.length, `${id} 去重点数须与旧几何一致`);
     dedup(r.points).forEach((p, i) => assertPointClose(p, expected[i], `${id} 第 ${i} 点`));
-    // trunk 第 2 段（points[1]→[2]）为外机接管斜 jog（6.4,0.5)→(7.05,0.55)，平面斜向——
-    // 本批唯一留绝对的点，无已声明锚点可正交化；其余段（含其余五条全段）须正交。
+    // trunk 外机接管斜 jog (6.4,0.5)→(7.05,0.55) 本批已拆为两段正交绝对步
+    // (6.4,0.5)→(7.05,0.5)→(7.05,0.55)，全段正交、无斜段残留；jog 终点为 points[3]。
     if (id === 'refrigerant-trunk') {
       for (let i = 1; i < r.points.length; i++) {
-        if (i === 2) continue;
         const a = r.points[i - 1]!;
         const b = r.points[i]!;
         assert.ok(Math.abs(a.x - b.x) <= TOL || Math.abs(a.z - b.z) <= TOL, `${id} 第 ${i} 段不是正交段`);
       }
-      const jog = r.points[2]!;
-      assert.deepEqual([jog.x, jog.z], [7.05, 0.55], 'trunk 斜 jog 点须为旧绝对值 (7.05,0.55)');
+      const jog = r.points[3]!;
+      assert.deepEqual([jog.x, jog.z], [7.05, 0.55], 'trunk 斜 jog 拆分终点须为旧绝对值 (7.05,0.55)');
     } else if (id === 'refrigerant-study') {
-      // study 末段 (13.6,5.9)→(15.1,5.85) 在旧绝对几何里本就是斜向（内机不在 z=5.9 线上），
-      // 本批原样保留、不引入新斜段；其余段须正交。
-      for (let i = 1; i < r.points.length - 1; i++) {
+      // study 末段本批已由 x-run 拆为正交：(13.6,5.9)→(15.1,5.9) 再南 0.05 至内机，
+      // 全段正交；末段须为 (Δx=0, Δz=−0.05)，不得改值。
+      for (let i = 1; i < r.points.length; i++) {
         const a = r.points[i - 1]!;
         const b = r.points[i]!;
         assert.ok(Math.abs(a.x - b.x) <= TOL || Math.abs(a.z - b.z) <= TOL, `${id} 第 ${i} 段不是正交段`);
       }
       const last = r.points[r.points.length - 1]!;
       const prev = r.points[r.points.length - 2]!;
-      assert.ok(Math.abs((last.x - prev.x) - 1.5) <= TOL && Math.abs((last.z - prev.z) + 0.05) <= TOL, 'study 末段须为旧绝对斜向 (Δx=1.5, Δz=−0.05)，不得改值');
+      assert.ok(Math.abs((last.x - prev.x) - 0) <= TOL && Math.abs((last.z - prev.z) + 0.05) <= TOL, 'study 末段须为正交南移 (Δx=0, Δz=−0.05)，不得改值');
     } else {
       assertOrthogonal(r.points, id);
     }
@@ -524,7 +526,9 @@ test('C2：主管轴 7.45→7.55——只改一处声明，trunk 跟随、其余
   const ra = routeOf(after.report, 'refrigerant-trunk');
   assert.deepEqual(ra.unresolved, [], 'trunk 移动后须解出');
   assert.equal(ra.points.length, rb.points.length, 'trunk 移动前后点数须一致');
-  for (const i of [3, 4, 5, 6]) {
+  // 插点后点序号移位：跟随轴的四点现为 [4,5,6,7]（(7.45,0.55) 入轴点、(7.45,3)
+  // 南下点、落点、(7.45,4.6) 沿轴点）；[0] 起升点、[1]–[3] 绝对 jog 段不动。
+  for (const i of [4, 5, 6, 7]) {
     assert.ok(Math.abs((ra.points[i]!.x - rb.points[i]!.x) - 0.1) <= TOL, `trunk 第 ${i} 点 x 须东移 0.10m`);
   }
   assert.deepEqual(ra.points[0], rb.points[0], 'trunk 起升点（外机端）不得移动');
@@ -547,13 +551,14 @@ test('C2：标高层 2.7→2.8——只改一处声明，trunk 厨房段跟随�
   const rb = routeOf(before.report, 'refrigerant-trunk');
   const ra = routeOf(after.report, 'refrigerant-trunk');
   assert.deepEqual(ra.unresolved, [], 'trunk 移动后须解出');
-  // 厨房段统一跟随标高层：起升点升 0.10m；绝对 jog (7.05,0.55) 平面仍字面、高度取
-  // level_kitchen_b_270（2026-11-15 修 Codex major），故入轴/南下各点同升 0.10m；
-  // vertical_to 落至 to_height 2.6 的各点不动，起升段 2.00m→2.10m 与竖降段 0.10m→0.20m 各 +0.10m。
-  for (const i of [0, 1, 2, 3]) {
+  // 厨房段统一跟随标高层：起升点升 0.10m；两个绝对 jog 点 (7.05,0.5)/(7.05,0.55)
+  // 平面仍字面、高度取 level_kitchen_b_270（2026-11-15 修 Codex major），故入轴/
+  // 南下各点同升 0.10m；vertical_to 落至 to_height 2.6 的各点不动，起升段
+  // 2.00m→2.10m 与竖降段 0.10m→0.20m 各 +0.10m。
+  for (const i of [0, 1, 2, 3, 4]) {
     assert.ok(Math.abs((ra.viaPoints[i]!.y! - rb.viaPoints[i]!.y!) - 0.1) <= TOL, `trunk 第 ${i} 点须升 0.10m（厨房段跟随标高层）`);
   }
-  assert.deepEqual(ra.viaPoints.slice(4), rb.viaPoints.slice(4), 'trunk 落至 to_height 后的各点不得移动');
+  assert.deepEqual(ra.viaPoints.slice(5), rb.viaPoints.slice(5), 'trunk 落至 to_height 后的各点不得移动');
   assert.ok(Math.abs(planLength(ra.points) - planLength(rb.points)) <= TOL, 'trunk 平面长度须不变');
   assert.ok(Math.abs((length3d(ra.points) - length3d(rb.points)) - 0.2) <= TOL, 'trunk 三维长度须 +0.20m（起升段与竖降段各 +0.10m）');
   for (const id of ROUTES.filter((x) => x !== 'refrigerant-trunk')) {
@@ -618,8 +623,8 @@ test('C4：反例——轴线/标高层缺失一律 fail-closed，不出局部�
   const base = resolveChain(all, all.furnishings);
   assert.deepEqual(base.report.diagnostics, [], '基线须无诊断');
 
-  // (1) axes 表整体缺失：二十条具名轴线路由（强电 8 + 弱电 7 + 冷媒 5）全部 via 未解；
-  // dining 只用方向型 axis_run（axis 'x'，不查表），仍解出；解出总数 117 条。
+  // (1) axes 表整体缺失：四十九条具名轴线路由（强电 37 + 弱电 7 + 冷媒 5）全部 via 未解；
+  // dining 只用方向型 axis_run（axis 'x'，不查表），仍解出；解出总数 88 条。
   const noAxesCoord = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
   noAxesCoord.axes = [];
   const noAxes = resolveMepRoutes(noAxesCoord, base.sources);
@@ -630,7 +635,7 @@ test('C4：反例——轴线/标高层缺失一律 fail-closed，不出局部�
     assert.match(r.diagnostics[0], /引用未知轴线/, `${id} 诊断须点名轴线`);
   }
   assert.deepEqual(routeOf(noAxes, 'refrigerant-dining').unresolved, [], 'dining 只用方向型 axis_run，不查 axes 表，须仍解出');
-  assert.equal(noAxes.routes.filter((r) => r.unresolved.length === 0).length, 117, '其余路由不得被牵连（137 − 20 条具名轴线路由）');
+  assert.equal(noAxes.routes.filter((r) => r.unresolved.length === 0).length, 88, '其余路由不得被牵连（137 − 49 条具名轴线路由）');
 
   // (2) 只删走廊轴：四条支路 + trunk（末步沿走廊轴）失败；dining 不引用走廊轴，仍解出。
   const noCorridorCoord = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;

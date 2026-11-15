@@ -314,19 +314,24 @@ const WEAK_IDS = ['weak-main-living', 'weak-master', 'weak-parent', 'weak-study'
  * C1 基线：merge-base（origin/master 211831e8）绝对 via 的解算点列，减去每条首个
  * 重复点（from 点与首个 via 点平面重合、标高相同，零长段；按 PR #231 C1 口径去重，
  * 其余逐点等价，容差 1e-9）。三维/平面长度为同基线实算值。
+ * 例外（gap-2 正交拆分，本批）：weak-main-living / weak-master / weak-parent 的末段
+ * 斜线被拆为正交腿——main-living 末段 +x-run 至 7.2（z=7.6）再 +z-run 至 7.7，
+ * master 末段 +x-run 至 4.2 再 +z-run 至 6.5，parent 末段 +x-run 至 7.2；
+ * 新增点均为斜线拆分角点（落在原斜线两端构成的正交包络上），其余点与基线一致，
+ * 长度按新折线实算（平面/三维长度见 EXPECTED_LENGTHS）。
  * [x, y, z]。
  */
 const EXPECTED_POINTS: Record<string, Array<[number, number, number]>> = {
   'weak-main-living': [
-    [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [7.3, 2.6, 4.38], [7.3, 2.6, 7.6], [7.2, 0.3, 7.7],
+    [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [7.3, 2.6, 4.38], [7.3, 2.6, 7.6], [7.2, 2.6, 7.6], [7.2, 2.6, 7.7], [7.2, 0.3, 7.7],
   ],
   'weak-master': [
     [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [7.2, 2.6, 4.38], [4.6, 2.6, 4.38], [4.6, 2.6, 4.55],
-    [4.05, 2.6, 4.55], [4.1, 2.6, 4.55], [4.1, 2.4, 6.3], [4.2, 0.3, 6.5],
+    [4.05, 2.6, 4.55], [4.1, 2.6, 4.55], [4.1, 2.6, 6.3], [4.1, 2.4, 6.3], [4.2, 2.4, 6.3], [4.2, 2.4, 6.5], [4.2, 0.3, 6.5],
   ],
   'weak-parent': [
     [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [5.5, 2.6, 4.38], [5.5, 2.6, 5.7],
-    [7, 2.6, 5.7], [7, 2.6, 7.6], [7.2, 0.3, 7.6],
+    [7, 2.6, 5.7], [7, 2.6, 7.6], [7.2, 2.6, 7.6], [7.2, 0.3, 7.6],
   ],
   'weak-study': [
     [10.8, 2.6, 2.98], [10.8, 2.6, 4.55], [12.65, 2.6, 4.55], [12.65, 2.6, 5.55],
@@ -346,9 +351,9 @@ const EXPECTED_POINTS: Record<string, Array<[number, number, number]>> = {
 };
 /** [平面长度, 三维长度]，merge-base 基线实算值（1e-9 容差）。 */
 const EXPECTED_LENGTHS: Record<string, [number, number]> = {
-  'weak-main-living': [8.261421356, 10.424343724],
-  'weak-master': [10.343606798, 12.243262704],
-  'weak-parent': [11.62, 13.728679276],
+  'weak-main-living': [8.32, 10.62],
+  'weak-master': [10.42, 12.72],
+  'weak-parent': [11.62, 13.92],
   'weak-study': [7.476619038, 9.663160468],
   'weak-gateway': [6.32, 8.522172887],
   'weak-ap': [3.97, 3.97],
@@ -432,8 +437,11 @@ test('C2 传动：net_parent 南移 0.20m，weak-parent 末段跟随、weak-main
   const moved = weakPoints(resolveMepRoutes(project, movedSources));
   const parent = JSON.parse(moved['weak-parent']) as Array<{ x: number; y?: number; z: number }>;
   const parentBase = JSON.parse(baseline['weak-parent']) as Array<{ x: number; y?: number; z: number }>;
-  assert.deepEqual(parent.slice(0, -2), parentBase.slice(0, -2), 'weak-parent: 非末段点须不动');
-  assert.equal(parent[parent.length - 2].z, 7.8, 'weak-parent: 末段 axis_run to:\'to\' 须跟随至 7.8');
+  // 末段现为三点（gap-2 拆分后新增 x-run 一步）：z-run to:'to'（7,7.6）→ x-run
+  // to:'to'（7.2,7.6）→ 终端（7.2,0.3,7.6），三点均跟随 net_parent；其余五点不动。
+  assert.deepEqual(parent.slice(0, -3), parentBase.slice(0, -3), 'weak-parent: 非末段点须不动');
+  assert.equal(parent[parent.length - 3].z, 7.8, 'weak-parent: 末段 axis_run z to:\'to\' 须跟随至 7.8');
+  assert.equal(parent[parent.length - 2].z, 7.8, 'weak-parent: 末段 axis_run x to:\'to\' 须跟随至 7.8');
   assert.equal(parent[parent.length - 1].z, 7.8, 'weak-parent: 终端须跟随至 7.8');
   // 字面 7.6 的 weak-main-living 与其余 5 条须纹丝不动。
   for (const id of WEAK_IDS.filter((item) => item !== 'weak-parent')) {
@@ -443,11 +451,13 @@ test('C2 传动：net_parent 南移 0.20m，weak-parent 末段跟随、weak-main
   assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
 });
 
-test('C3 消费者对账：lint 90/171 与逐路由计数同基线、DXF 无错且含 7 条弱电 id、算量 unresolved 仍只有 trunk_strong_main', () => {
-  // lint：raw 口径 90 errors / 171 warnings（与 merge-base 基线实算一致；verify:mep
-  // CLI 口径 117/231 由 mep-guidance-baseline 测试另行钉死）。
+test('C3 消费者对账：lint 64/171 与逐路由计数同基线、DXF 无错且含 7 条弱电 id、算量 unresolved 仍只有 trunk_strong_main', () => {
+  // lint：raw 口径 64 errors / 171 warnings（本批实算；gap-2 正交拆分后三条弱电的
+  // route_not_orthogonal 消失，overlap 计数随折线变化；childbed 竖直优先修法另增
+  // 1 处冷媒/childbed 重叠 error 与 1 处 envelope warning；verify:mep CLI 口径由
+  // mep-guidance-baseline 测试另行钉死）。
   const lintResult = lintMepCoordination(project, realSources);
-  assert.equal(lintResult.errors.length, 90, `lint errors 应为 90，实际 ${lintResult.errors.length}`);
+  assert.equal(lintResult.errors.length, 64, `lint errors 应为 64，实际 ${lintResult.errors.length}`);
   assert.equal(lintResult.warnings.length, 171, `lint warnings 应为 171，实际 ${lintResult.warnings.length}`);
   const perRoute = (issues: Array<{ code: string; routeId?: string }>): Record<string, Record<string, number>> => {
     const out: Record<string, Record<string, number>> = {};
@@ -459,9 +469,9 @@ test('C3 消费者对账：lint 90/171 与逐路由计数同基线、DXF 无错�
     return out;
   };
   assert.deepEqual(perRoute(lintResult.errors), {
-    'weak-main-living': { route_not_orthogonal: 1, route_overlap: 3 },
-    'weak-master': { route_not_orthogonal: 1, route_overlap: 7 },
-    'weak-parent': { route_not_orthogonal: 1, route_overlap: 7 },
+    'weak-main-living': { route_overlap: 4 },
+    'weak-master': { route_overlap: 8 },
+    'weak-parent': { route_overlap: 7 },
     'weak-study': { route_overlap: 5 },
     'weak-gateway': { route_overlap: 3 },
     'weak-ap': { route_overlap: 2 },
@@ -484,7 +494,8 @@ test('C3 消费者对账：lint 90/171 与逐路由计数同基线、DXF 无错�
   for (const id of WEAK_IDS) {
     assert.ok(new RegExp(`${id}(?!-master)`).test(dxf.dxf), `DXF 须导出 ${id}`);
   }
-  // 算量：unresolved 仍只有 trunk_strong_main（弱电 7 条全进量）。
+  // 算量：unresolved 仍只有 trunk_strong_main（主干未归属回路，pending）。
+  // water-master-bath 的 pipe_route_segments 已随 gap-2 末段拆分同步延至下标 4，不再 unresolved。
   const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepTakeoffRules;
   const topology = parseYaml(readFileSync('config/electrical-topology.yaml', 'utf8')) as {
     circuits: TakeoffCircuit[];
@@ -550,6 +561,7 @@ test('C4：删 weak_axis_438 → 五条 unresolved、lint endpoint_unresolved、
   });
   const healthy = computeMepTakeoff(takeoffInput(project));
   const broken = computeMepTakeoff(takeoffInput(corrupted));
+  // 健康态 unresolved 仍只有 trunk_strong_main。
   assert.deepEqual(healthy.unresolved.map((item) => item.id), ['trunk_strong_main']);
   for (const id of five) {
     assert.ok(broken.unresolved.some((item) => item.id === id), `takeoff unresolved 须含 ${id}`);
