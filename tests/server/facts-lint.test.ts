@@ -1095,6 +1095,95 @@ test('ceiling_clearance：按共享 footprint 核点与穿越线段；走地分�
   assert.equal(gone.errors.filter((i) => i.code === 'count_mirror_unresolvable').length, 1);
 });
 
+// ─── 纯坐标 via 的 level 不得绕过统一标高解算（2026-11-15 修 Codex blocking）───
+//
+// clearanceRoutePoints 曾只在 via 含关系步时走统一求解器；纯坐标 via 走兼容壳
+// mepRoutePoints，带 level 的弯点丢高度、yOf 静默回退层高 2.6m，低于吊顶面 2.5m
+// 的 2.3m 段漏报。本组两测：① level 弯点低于吊顶面时实算须计 1 处冲突；
+// ② 未知 level 须报 ceiling_clearance_unresolvable，不得静默跳过。
+test('ceiling_clearance：纯坐标 via 的 level 弯点低于吊顶面时须计入冲突', () => {
+  const contract = {
+    id: 'c.probe_pure_level', kind: 'ceiling_clearance' as const, severity: 'error' as const,
+    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/model/envelope/ceiling.yaml',
+    endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
+    default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 1,
+    prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
+  };
+  const files = {
+    'config/mep.yaml': [
+      'layers:',
+      '  strong_power: { height: 2.6 }',
+      'levels:',
+      '  - { id: low, y: 2.3, reason: test }',
+      'routes:',
+      '  - id: level_below',
+      '    layer: strong_power',
+      '    from_height: 2.6',
+      '    to_height: 2.6',
+      '    from: {x: 7.0, z: 4.6}',
+      '    via: [{x: 8.0, z: 4.6, level: low}]',
+      '    to: {x: 8.5, z: 4.6}',
+    ].join('\n'),
+    'config/model/envelope/ceiling.yaml': [
+      '- id: drop_a',
+      '  room: living_dining',
+      '  type: drop',
+      '  thickness: 0.30',
+      '  area: [7.20, 4.30, 13.40, 5.20]',
+    ].join('\n'),
+    'docs/guidance.md': '冲突 1 处\n',
+  };
+  const datasets = {
+    'mep.endpoints': {},
+    'mep.room_heights': { living_dining: 2.8 },
+  };
+  // 弯点 y=2.3 低于完成面 2.5：旧口径（兼容壳丢高度、yOf 回退层高 2.6）实算 0 处，
+  // 与登记 1 处漂移即红；新口径（统一求解器解算 level）实算 1 处，全绿。
+  const result = lintFacts({ ...emptyRegistry, contracts: [contract] }, workspaceOf(files, datasets));
+  assert.equal(result.errors.length, 0, result.errors.map((e) => e.message).join('\n'));
+  assert.match((result.notes ?? []).join('\n'), /实算 1 处/);
+});
+
+test('ceiling_clearance：纯坐标 via 引用未知 level 须报 unresolvable，不得静默跳过', () => {
+  const contract = {
+    id: 'c.probe_pure_level_missing', kind: 'ceiling_clearance' as const, severity: 'error' as const,
+    source: 'config/mep.yaml', items_path: 'routes', ceiling_source: 'config/model/envelope/ceiling.yaml',
+    endpoints_key: 'mep.endpoints', room_heights_key: 'mep.room_heights',
+    default_room_height: 2.8, tolerance: 0.005, registered_conflicts: 0,
+    prose: [{ path: 'docs/guidance.md', extract: '冲突\\s*(\\d+)\\s*处', expect_matches: 1 }],
+  };
+  const files = {
+    'config/mep.yaml': [
+      'layers:',
+      '  strong_power: { height: 2.6 }',
+      'routes:',
+      '  - id: level_unknown',
+      '    layer: strong_power',
+      '    from_height: 2.6',
+      '    to_height: 2.6',
+      '    from: {x: 7.0, z: 4.6}',
+      '    via: [{x: 8.0, z: 4.6, level: missing}]',
+      '    to: {x: 8.5, z: 4.6}',
+    ].join('\n'),
+    'config/model/envelope/ceiling.yaml': [
+      '- id: drop_a',
+      '  room: living_dining',
+      '  type: drop',
+      '  thickness: 0.30',
+      '  area: [7.20, 4.30, 13.40, 5.20]',
+    ].join('\n'),
+    'docs/guidance.md': '冲突 0 处\n',
+  };
+  const datasets = {
+    'mep.endpoints': {},
+    'mep.room_heights': { living_dining: 2.8 },
+  };
+  const result = lintFacts({ ...emptyRegistry, contracts: [contract] }, workspaceOf(files, datasets));
+  const unresolvable = result.errors.filter((i) => i.code === 'ceiling_clearance_unresolvable');
+  assert.equal(unresolvable.length, 1, result.errors.map((e) => `${e.code}: ${e.message}`).join('\n'));
+  assert.match(unresolvable[0].message, /引用未知标高层 "missing"/);
+});
+
 test('ceiling_clearance：管线保温外包络穿出完成面时计入登记数', () => {
   const contract = {
     id: 'c.probe_insulated_ceiling', kind: 'ceiling_clearance' as const, severity: 'error' as const,
@@ -1472,9 +1561,9 @@ test('facts 门禁点位与统一出口逐点一致：五条冷凝水支管终�
   for (const rawRoute of raw.routes ?? []) {
     const id = String(rawRoute.id);
     const parsed = project.routes.find((r) => r.id === id)!;
-    const unified = resolveMepRoute(parsed, sources, project.junctions, shafts, axes);
+    const unified = resolveMepRoute(parsed, sources, project.junctions, shafts, project.axes, project.levels);
     assert.deepEqual(unified.unresolved, [], `${id}: 统一出口须可解（否则 facts 侧无从比对）`);
-    const factsPoints = clearanceRoutePoints(rawRoute, endpoints, shafts, axes);
+    const factsPoints = clearanceRoutePoints(rawRoute, endpoints, shafts, project.axes, project.levels);
     assertPointsClose(factsPoints, unified.points, id);
     if (branches.includes(id)) branchPoints.set(id, unified.points);
   }

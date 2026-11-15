@@ -368,6 +368,9 @@ test('C1 等价：7 条弱电路由逐点等于 merge-base 基线，轴声明独
     { id: 'corridor_axis', axis: 'z', value: 4.6, reason: '走廊/客厅边吊主干轴线 z=4.6（本文件头注；ceiling_living x[7.2,13.4]×z[4.3,5.55] 边吊内轴线，98 个既有弯点落在上面，43 条路由共用）' },
     { id: 'weak_axis_438', axis: 'z', value: 4.38, y: 2.6 },
     { id: 'weak_axis_455', axis: 'z', value: 4.55, y: 2.6 },
+    { id: 'axis_trunk_x745', axis: 'x', value: 7.45, reason: 'x=7.45 冷媒主管轴，与 strong-ac-outdoor 外机供电共用。来源：餐厅西侧服务带 note「藏冷媒主管 x=7.45 轴线」+ refrigerant-trunk / strong-ac-outdoor 既有几何。' },
+    { id: 'axis_living_south_z555', axis: 'z', value: 5.55, reason: 'z=5.55 客厅北缘边吊南缘 / w_st_north 墙线。来源：ceiling_living area 南缘 z=5.55 + 墙顶点 v_mb_ne/v_st_ne z=5.55。refrigerant-study 沿此线东行至 w_be_west。' },
+    { id: 'axis_be_west_x1340', axis: 'x', value: 13.4, reason: 'x=13.4 w_be_west 墙线 / ceiling_living 东缘。来源：墙顶点 v_be_sw/v_be_se_s x=13.40 + ceiling_living area 东缘 x=13.40。refrigerant-study 沿此线南下至穿点。' },
   ]);
   assert.doesNotThrow(() => validateMepCoordination(project, realSources));
   const report = resolveMepRoutes(project, realSources);

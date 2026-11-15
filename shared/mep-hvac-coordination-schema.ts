@@ -20,6 +20,22 @@ const CoordinateSchema = z.object({
   x: z.number().finite(), z: z.number().finite(), y: z.number().finite().optional(),
   source_status: MepSourceStatusSchema.optional(), construction_status: MepStatusSchema.optional(),
 }).strict();
+/**
+ * via 里的绝对弯点（issue #98 MEP batch 4 修 Codex major）：平面坐标仍为字面值，
+ * 高度只取其一——字面 `y`，或 levels 表里的标高层 `level`（解算时取 level.y，
+ * 改层即全程跟随）。二者并存即 parse 失败：字面 y 会把此前 vertical_to 升到的
+ * 标高游标重置回字面值，改层后只有起升点跟随、其余段留旧高，形成无诊断的 0.10m
+ * 高差（refrigerant-trunk 旧 jog (7.05,0.55,y:2.7) 即此例）。from/to 端点仍用
+ * CoordinateSchema，不得声明 level。
+ */
+export const MepViaCoordinateSchema = CoordinateSchema.extend({
+  /** 绝对弯点高度取 levels 表里的标高层 id（与 y 二选一）。 */
+  level: z.string().min(1).optional(),
+}).strict().superRefine((step, ctx) => {
+  if (step.level !== undefined && step.y !== undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: '绝对弯点不得同时声明 y 与 level（高度只取其一）', path: ['level'] });
+  }
+});
 const EndpointSchema = z.union([z.string().min(1), CoordinateSchema]);
 const DimensionSchema = z.number().finite().positive();
 const JunctionPositionSchema = z.object({ x: z.number().finite(), z: z.number().finite(), y: z.number().finite() }).strict();
@@ -71,12 +87,22 @@ export const MepJunctionSchema = z.object({
  *   竖向移到显式 y（`y` 必填，为该步自身的声明设计值，须在路由 reason 里写清来源）；
  *   只供户外 2.55→2.70 升位与弱电箱 1.65→0.45 下引这类“标高游标必须跳变”的腿；
  *   不得声明 shaft / axis / to；缺 y / 非有限数 / 零行程 → 显式失败。
+ * - `vertical_to`（issue #98 MEP batch 4 冷媒；issue #243 统一协议保留）：游标平面点不动，
+ *   高度取 route.from_height / to_height（`height: 'from' / 'to'`）或 levels 表里的标高层
+ *   （`level`），二者恰选其一；不得声明步内 y / shaft / axis / to；目标缺失 / 未知标高层 /
+ *   零行程 → 显式失败。`level`（字面 y 的步）与 `vertical_to`（符号标高源的步）并存：
+ *   前者取字面高度，后者取已声明高度，不得混用。
+ * - 绝对弯点（issue #98 MEP batch 4）：平面坐标仍为字面值；高度只取其一——字面 `y`，或
+ *   levels 表标高层（`level`，解算时取 level.y，改层即全程跟随；与 `y` 并存即 parse 失败）。
+ * 标高层（`levels` 表）与轴线（`axes` 表）与 `shafts` 并列为顶层表：轴是平面概念，不带
+ * 标高（强电 2.55 与冷媒 2.60 共用同一条 z=4.6 走廊轴时各取各的高度）；层是高度概念，
+ * 只声明 y，一个已声明的恒定高度（如厨房铝扣板段既有合规带高 2.70）。
  * 三步共享同一竖井（`shaft` id 必须在顶层 `shafts` 表里）；from 端点与竖井的
  * z 必须一致（|shaft.z − from.z| ≤ 0.005m，解算器内校验——0.02m 的差恰等于
  * ORTHOGONAL_TOLERANCE，lint 拦不住，见 §10.3 R-S3）。
  */
 export const MepViaStepSchema = z.object({
-  kind: z.enum(['from_face_jog', 'from_drop', 'shaft_corner', 'shaft_run', 'slope_run', 'axis_jog', 'axis_run', 'run', 'level']),
+  kind: z.enum(['from_face_jog', 'from_drop', 'shaft_corner', 'shaft_run', 'slope_run', 'axis_jog', 'axis_run', 'run', 'vertical_to', 'level']),
   shaft: z.string().min(1).optional(),
   /** axis 字段按 kind 重载（issue #243 统一协议）：方向 'x'|'z'（slope_run / 方向式
    *  axis_run / run，沿该轴跑）或顶层 axes 表里的共享轴线 id（axis_jog / 命名式 axis_run）。
@@ -85,10 +111,23 @@ export const MepViaStepSchema = z.object({
   axis: z.union([z.enum(['x', 'z']), z.string().min(1)]).optional(),
   /** slope_run / axis_run / run：该轴上的目标坐标；字面 'to' = to 端点在该轴上的坐标。 */
   to: z.union([z.number().finite(), z.literal('to')]).optional(),
+  /** vertical_to：目标标高取 route.from_height（'from'）或 route.to_height（'to'）。 */
+  height: z.enum(['from', 'to']).optional(),
+  /** vertical_to：目标标高取 levels 表里的标高层 id（与 height 二选一）。 */
+  level: z.string().min(1).optional(),
   /** level：竖向目标标高（必填）；run：终点标高声明值（仅弱电既有斜段遗留，缺省取
    *  游标高度）；其余 kind 禁 y。 */
   y: z.number().finite().optional(),
 }).strict().superRefine((step, ctx) => {
+  // height / level 只属于 vertical_to（目标标高源）与绝对弯点（MepViaCoordinateSchema）：
+  // 其余 kind 声明即错（目标标高不由本步决定），不得静默忽略。
+  if (step.kind !== 'vertical_to' && (step.height !== undefined || step.level !== undefined)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `${step.kind} 不得声明 height/level（目标标高不由本步决定）`,
+      path: ['height'],
+    });
+  }
   // from_face_jog 是纯水平横移：高度只取 route.from_height，不得声明步内 y——
   // 否则横移段同时改高，形成可能逃过 MEP lint 的三维斜线（§10.3 R-S3 裁定）。
   if (step.kind === 'from_face_jog' && step.y !== undefined) {
@@ -212,10 +251,28 @@ export const MepViaStepSchema = z.object({
     if (step.to !== undefined) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'level 不声明 to：平面点不动，只改标高', path: ['to'] });
     }
+  } else if (step.kind === 'vertical_to') {
+    // vertical_to 是竖直升/落：游标平面点不动，高度取 route.from_height / to_height
+    //（height: 'from' / 'to'）或 levels 表里的标高层（level），二者恰选其一，不得声明步内 y。
+    if (step.y !== undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'vertical_to 不得声明 y：高度取 route.from_height/to_height 或已声明的标高层', path: ['y'] });
+    }
+    if (step.shaft !== undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'vertical_to 不引用竖井，不得声明 shaft', path: ['shaft'] });
+    }
+    if (step.axis !== undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'vertical_to 不得声明 axis（竖直步不沿平面轴跑）', path: ['axis'] });
+    }
+    if (step.to !== undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'vertical_to 不得声明 to（目标标高由 height/level 决定）', path: ['to'] });
+    }
+    if ((step.height === undefined) === (step.level === undefined)) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'vertical_to 必须声明 height（from/to）或 level（标高层 id）二者之一', path: ['height'] });
+    }
   }
 });
 export type MepViaStep = z.infer<typeof MepViaStepSchema>;
-export type MepVia = z.infer<typeof CoordinateSchema> | MepViaStep;
+export type MepVia = z.infer<typeof MepViaCoordinateSchema> | MepViaStep;
 
 /** 共享轴线（关系型 via 的引用目标，与 shafts 并列的顶层表，issue #98 MEP batch 2 强电 /
  *  batch 3 弱电；issue #243 统一协议：`at` 改名 `value`，`y` 为可选层高——声明时
@@ -240,8 +297,20 @@ export const MepShaftSchema = z.object({
 }).strict();
 export type MepShaft = z.infer<typeof MepShaftSchema>;
 
+/**
+ * 标高层（vertical_to / 绝对弯点的引用目标，与 shafts / axes 并列的顶层表，issue #98
+ * MEP batch 4 冷媒）：一个已声明的恒定高度（如厨房铝扣板段既有合规带高 2.70）。
+ * reason 须写清来源与共用家族。
+ */
+export const MepLevelSchema = z.object({
+  id: z.string().min(1),
+  y: z.number().finite(),
+  reason: z.string().min(1).optional(),
+}).strict();
+export type MepLevel = z.infer<typeof MepLevelSchema>;
+
 /** via 步是纯坐标（绝对弯点）还是关系步。 */
-export function isMepViaCoordinate(step: MepVia): step is { x: number; z: number; y?: number; source_status?: MepSourceStatus; construction_status?: MepStatus } {
+export function isMepViaCoordinate(step: MepVia): step is { x: number; z: number; y?: number; level?: string; source_status?: MepSourceStatus; construction_status?: MepStatus } {
   return typeof (step as { x?: unknown }).x === 'number' && typeof (step as { z?: unknown }).z === 'number';
 }
 
@@ -263,7 +332,7 @@ export const MepRouteSchema = z.object({
   insulation_thickness: z.number().finite().nonnegative().optional(),
   insulation_status: z.enum(['assumed', 'confirmed']).optional(),
   from_height: z.number().finite().optional(), to_height: z.number().finite().optional(),
-  from: EndpointSchema, to: EndpointSchema, via: z.array(z.union([CoordinateSchema, MepViaStepSchema])).default([]),
+  from: EndpointSchema, to: EndpointSchema, via: z.array(z.union([MepViaCoordinateSchema, MepViaStepSchema])).default([]),
   label: z.string().min(1).optional(), reason: z.string().min(1).optional(),
 }).strict();
 export const MepCoordinationSchema = z.object({
@@ -275,6 +344,7 @@ export const MepCoordinationSchema = z.object({
   junctions: z.array(MepJunctionSchema).default([]),
   shafts: z.array(MepShaftSchema).default([]),
   axes: z.array(MepAxisSchema).default([]),
+  levels: z.array(MepLevelSchema).default([]),
 }).strict();
 export type MepRoute = z.infer<typeof MepRouteSchema>;
 export type MepJunction = z.infer<typeof MepJunctionSchema>;
@@ -350,8 +420,8 @@ function samePlanPoint(a?: { x: number; z: number }, b?: { x: number; z: number 
 export function mepRoutePoints(resolved: ResolvedMepRoute): Array<{ x: number; y?: number; z: number }>;
 /**
  * 兼容壳（issue #98 二阶段 S1）：只接受纯绝对 via。关系型 via 必须走统一出口
- * resolveMepRoutes / resolveMepRoute（带完整上下文：端点源 + junctions + shafts）；
- * 关系步传进来即当场抛，不静默接受；本函数亦不调统一出口（新旧接口不互递归）。
+ * resolveMepRoutes / resolveMepRoute（带完整上下文：端点源 + junctions + shafts +
+ * axes + levels）；关系步传进来即当场抛，不静默接受；本函数亦不调统一出口（新旧接口不互递归）。
  */
 export function mepRoutePoints(route: MepRoute, from?: { x: number; z: number; y?: number }, to?: { x: number; z: number; y?: number }): Array<{ x: number; y?: number; z: number }>;
 export function mepRoutePoints(
@@ -363,6 +433,11 @@ export function mepRoutePoints(
   const route = routeOrResolved;
   if (route.via.some((step) => !isMepViaCoordinate(step))) {
     throw new Error(`mepRoutePoints 是纯绝对 via 兼容壳：路由 ${route.id} 含关系型 via 步，须走 resolveMepRoutes / resolveMepRoute 统一出口`);
+  }
+  // 带 level 的绝对弯点同样拒收（2026-11-15 修 Codex blocking）：本壳无 levels 表可解，
+  // 弯点会丢高度、消费方 yOf 静默回退层高；level 须走统一出口解算。
+  if (route.via.some((step) => isMepViaCoordinate(step) && typeof (step as { level?: unknown }).level === 'string')) {
+    throw new Error(`mepRoutePoints 是纯绝对 via 兼容壳：路由 ${route.id} 的绝对弯点含 level，须走 resolveMepRoutes / resolveMepRoute 统一出口解算标高`);
   }
   return [
     ...(from ? [{ ...from, y: route.from_height ?? from.y }] : []),
@@ -424,11 +499,15 @@ const VIA_AXIS_HEIGHT_TOLERANCE = 0.005;
  * run → 方向式平跑（axis x/z），步内 y 为终点标高声明值（仅 weak-master 既有
  * 三维斜段遗留，缺省取游标高度；新写平跑用 axis_run）；缺 axis / 缺 to / 零行程
  * → 显式失败。轴线声明 y 时 axis_jog 入轴须同层（差 > 0.005m 显式失败）。
+ * vertical_to → 游标平面点不动，高度取 route.from_height / to_height（height:
+ * 'from' / 'to'）或 levels 表标高层（level），二者恰选其一；目标缺失 / 未知标高层 /
+ * 零行程 → 显式失败。目标高度不由游标派生，游标未知时仍可落点。
  * level → 游标平面点竖向移到显式 y（缺 y / 非有限数 / 缺起算标高 / 零行程 → 显式
  * 失败）。axis_jog / axis_run 一律不得声明步内 y（level 的 y 是本步的竖向目标，
  * run 的 y 是既有斜段终点标高遗留——schema 与本入口双重 fail-closed），不得引用
  * 竖井；任一步失败即整条 via 失败（fail-closed，不给半条路径）。
- * 绝对坐标步原样透传；缺 y 的绝对步清除标高游标——后续 slope_run 不得沿用旧标高
+ * 绝对坐标步原样透传；可声明 level 取 levels 表标高层高度（解算时取 level.y，改层
+ * 即全程跟随，与字面 y 二选一）；缺 y 且缺 level 的绝对步清除标高游标——后续 slope_run 不得沿用旧标高
  * （否则与下游层高回退形成虚构上坡，PR #233 二审 blocking），而以「缺少有效起算
  * 标高」显式失败；带 y 的绝对步照旧同步推进游标。任一步失败即整条 via 失败
  * （fail-closed，不给半条路径）。
@@ -441,6 +520,7 @@ export function resolveMepViaSteps(
   to: { x: number; z: number; y?: number },
   shafts: MepShaft[],
   axes: MepAxis[] = [],
+  levels: MepLevel[] = [],
 ): { points: Array<{ x: number; y?: number; z: number }>; diagnostic?: string } {
   const points: Array<{ x: number; y?: number; z: number }> = [];
   // 当前平面游标：from_drop 在上一关系步的落点竖降，不返回 from.x。
@@ -455,10 +535,23 @@ export function resolveMepViaSteps(
     : undefined;
   for (const step of route.via) {
     if (isMepViaCoordinate(step)) {
-      points.push({ x: step.x, z: step.z, ...(step.y !== undefined ? { y: step.y } : {}) });
+      // 绝对弯点：平面坐标照旧字面；高度只取其一——字面 y，或 levels 表标高层
+      // （level，解算时取 level.y，改层即跟随；与 y 并存、未知标高层 → 显式失败）。
+      // 无 y 且无 level 时不推进标高游标——它没有真实高度可继承；带 y 或 level 时照旧同步。
+      let stepY = step.y;
+      if (step.level !== undefined) {
+        if (step.y !== undefined) {
+          return { points: [], diagnostic: `MEP route ${route.id} via 绝对步不得同时声明 y 与 level（高度只取其一）` };
+        }
+        const level = levels.find((item) => item.id === step.level);
+        if (!level) {
+          return { points: [], diagnostic: `MEP route ${route.id} via 绝对步引用未知标高层 "${step.level}"（levels 表里没有该 id）` };
+        }
+        stepY = level.y;
+      }
+      points.push({ x: step.x, z: step.z, ...(stepY !== undefined ? { y: stepY } : {}) });
       cursor = { x: step.x, z: step.z };
-      // 无 y 的绝对步不推进标高游标——它没有真实高度可继承；带 y 时照旧同步。
-      cursorY = step.y !== undefined ? step.y : undefined;
+      cursorY = stepY;
       continue;
     }
     if (step.kind === 'slope_run') {
@@ -491,6 +584,39 @@ export function resolveMepViaSteps(
       points.push(next);
       cursor = { x: next.x, z: next.z };
       cursorY = nextY;
+      continue;
+    }
+    if (step.kind === 'vertical_to') {
+      // 竖直升/落：游标平面点不动，高度取 route.from_height / to_height（height:
+      // 'from' / 'to'）或 levels 表里的标高层（level），二者恰选其一；不得声明步内 y；
+      // 目标缺失 / 未知标高层 / 零行程（游标已知且与目标同高）→ 显式失败。目标高度不由
+      // 游标派生，故游标未知时仍可落点（落点平面 + 目标高度均已确定），只设游标为目标值。
+      if (step.y !== undefined) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 vertical_to 不得声明 y（高度取 route.from_height/to_height 或已声明的标高层）` };
+      }
+      let targetY: number | undefined;
+      if (step.height !== undefined && step.level !== undefined) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 vertical_to 不得同时声明 height 与 level（二者恰选其一）` };
+      }
+      if (step.height === 'from') {
+        targetY = route.from_height;
+      } else if (step.height === 'to') {
+        targetY = route.to_height;
+      } else if (step.level !== undefined) {
+        const level = levels.find((item) => item.id === step.level);
+        if (!level) {
+          return { points: [], diagnostic: `MEP route ${route.id} via 步 vertical_to 引用未知标高层 "${step.level}"（levels 表里没有该 id）` };
+        }
+        targetY = level.y;
+      }
+      if (targetY === undefined || !Number.isFinite(targetY)) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 vertical_to 缺少有效目标标高（height 须指向已声明的 from_height/to_height，level 须指向 levels 表）` };
+      }
+      if (cursorY !== undefined && Math.abs(targetY - cursorY) < 1e-9) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 vertical_to 零行程（目标 ${targetY} 与当前 ${cursorY} 同高）` };
+      }
+      points.push({ x: cursor.x, z: cursor.z, y: targetY });
+      cursorY = targetY;
       continue;
     }
     if (step.kind === 'axis_jog' || step.kind === 'axis_run' || step.kind === 'run' || step.kind === 'level') {
@@ -527,6 +653,9 @@ export function resolveMepViaSteps(
       if (step.kind === 'axis_jog') {
         if (step.shaft !== undefined || step.to !== undefined) {
           return { points: [], diagnostic: `MEP route ${route.id} via 步 axis_jog 不得声明 shaft/to（落点为游标在轴向上的正交投影）` };
+        }
+        if (step.axis === 'x' || step.axis === 'z') {
+          return { points: [], diagnostic: `MEP route ${route.id} via 步 axis_jog 缺少有效 axis（须声明 axes 表里的轴线 id，不得为方向 x/z）` };
         }
         const axis = axes.find((item) => item.id === step.axis);
         if (!axis) {
@@ -684,6 +813,7 @@ export function resolveMepRoute(
   junctions: MepJunction[] = [],
   shafts: MepShaft[] = [],
   axes: MepAxis[] = [],
+  levels: MepLevel[] = [],
 ): ResolvedMepRoute {
   const from = resolveMepEndpoint(route.from, sources, junctions);
   const to = resolveMepEndpoint(route.to, sources, junctions);
@@ -704,7 +834,7 @@ export function resolveMepRoute(
       unresolved.push('via');
       diagnostics.push(`MEP route ${route.id} via 未解：${!from ? 'from' : 'to'} 端点未解析，关系步无${!from ? '起点' : '终点'}`);
     } else {
-      const via = resolveMepViaSteps(route, from, to, shafts, axes);
+      const via = resolveMepViaSteps(route, from, to, shafts, axes, levels);
       if (via.diagnostic !== undefined) {
         unresolved.push('via');
         diagnostics.push(via.diagnostic);
@@ -713,7 +843,32 @@ export function resolveMepRoute(
       }
     }
   } else {
-    viaPoints = route.via.filter(isMepViaCoordinate).map((step) => ({ x: step.x, z: step.z, ...(step.y !== undefined ? { y: step.y } : {}) }));
+    // 全绝对 via：弯点照旧直通；带 level 的弯点须在此同样解算高度（与求解器同口径），
+    // 未知标高层 / y 与 level 并存 → 显式失败，不静默丢高度、不出局部几何。
+    const absolutePoints: Array<{ x: number; y?: number; z: number }> = [];
+    let absoluteDiagnostic: string | undefined;
+    for (const step of route.via.filter(isMepViaCoordinate)) {
+      let stepY = step.y;
+      if (step.level !== undefined) {
+        if (step.y !== undefined) {
+          absoluteDiagnostic = `MEP route ${route.id} via 绝对步不得同时声明 y 与 level（高度只取其一）`;
+          break;
+        }
+        const level = levels.find((item) => item.id === step.level);
+        if (!level) {
+          absoluteDiagnostic = `MEP route ${route.id} via 绝对步引用未知标高层 "${step.level}"（levels 表里没有该 id）`;
+          break;
+        }
+        stepY = level.y;
+      }
+      absolutePoints.push({ x: step.x, z: step.z, ...(stepY !== undefined ? { y: stepY } : {}) });
+    }
+    if (absoluteDiagnostic !== undefined) {
+      unresolved.push('via');
+      diagnostics.push(absoluteDiagnostic);
+    } else {
+      viaPoints = absolutePoints;
+    }
   }
   // 终端标高：to_height 声明优先；缺省且末步为 slope_run 时取末步落点高度
   // （见 derivedSlopeRunToHeight：hvac terminal 的 resolveMepEndpoint 本就不回 y）。
@@ -727,7 +882,7 @@ export function resolveMepRoute(
 }
 
 export function resolveMepRoutes(config: MepCoordination, sources: MepEndpointSources): MepRouteResolutionReport {
-  const routes = config.routes.map((route) => resolveMepRoute(route, sources, config.junctions, config.shafts, config.axes ?? []));
+  const routes = config.routes.map((route) => resolveMepRoute(route, sources, config.junctions, config.shafts, config.axes ?? [], config.levels ?? []));
   return {
     total: routes.length,
     resolved: routes.filter((item) => item.unresolved.length === 0).length,
@@ -761,6 +916,8 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
   if (shaftIds.size !== config.shafts.length) throw new Error('Duplicate MEP shaft id');
   const axisIds = new Set((config.axes ?? []).map((axis) => axis.id));
   if (axisIds.size !== (config.axes ?? []).length) throw new Error('Duplicate MEP axis id');
+  const levelIds = new Set((config.levels ?? []).map((level) => level.id));
+  if (levelIds.size !== (config.levels ?? []).length) throw new Error('Duplicate MEP level id');
   const routeIds = new Set<string>();
   for (const route of config.routes) {
     if (routeIds.has(route.id)) throw new Error(`Duplicate MEP route id: ${route.id}`);
@@ -772,11 +929,20 @@ export function validateMepCoordination(config: MepCoordination, sources: MepEnd
     const from = resolveMepEndpoint(route.from, sources, config.junctions);
     const to = resolveMepEndpoint(route.to, sources, config.junctions);
     for (const step of route.via) {
+      // 绝对弯点的 level 引用 levels 表（与 vertical_to 同口径）。
+      if (isMepViaCoordinate(step)) {
+        if (step.level !== undefined && !levelIds.has(step.level)) throw new Error(`MEP route ${route.id} via 绝对步引用未知标高层 "${step.level}"`);
+        continue;
+      }
       // slope_run / run / level 不引用竖井与轴线表（schema 已禁越权字段），不进
       // 存在性检查；axis_jog / 命名式 axis_run 引用 axes 表，查轴线 id；
       // 方向式 axis_run（axis 'x'/'z'）不查表。
-      if (isMepViaCoordinate(step)) continue;
       if (step.kind === 'slope_run' || step.kind === 'run' || step.kind === 'level') continue;
+      // vertical_to 的 level 引用 levels 表；不引用竖井，不进竖井存在性检查。
+      if (step.kind === 'vertical_to') {
+        if (step.level !== undefined && !levelIds.has(step.level)) throw new Error(`MEP route ${route.id} via 步 vertical_to 引用未知标高层 "${step.level}"`);
+        continue;
+      }
       if (step.kind === 'axis_jog' || step.kind === 'axis_run') {
         if (step.axis === 'x' || step.axis === 'z') continue;
         if (step.axis === undefined || !axisIds.has(step.axis)) throw new Error(`MEP route ${route.id} via 步 ${step.kind} 引用未知轴线 "${step.axis}"`);

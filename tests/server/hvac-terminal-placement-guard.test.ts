@@ -375,10 +375,13 @@ test('红：hvac 侧 branch_dining y 漂移 2.6→2.55（验伪员主变异 m2-d
 });
 
 test('红：MEP 侧 via y 漂移 2.6→2.55（负对照 m2-mepside 复刻，内存变异）→ 同一断言红', () => {
+  // 2026-11-15 issue #98 MEP batch 4：refrigerant-dining via 已关系化为单步 axis_run
+  //（落点 y 取标高游标，首步即 route.from_height），不再有可改 y 的绝对步；变异改
+  // from_height 2.6→2.55（同一字段、同一断言、同一计数——步内 y 仍被 schema 禁止）。
   const driftedMep = {
     ...mepConfig,
     routes: mepConfig.routes.map((route) => route.id === 'refrigerant-dining'
-      ? { ...route, via: route.via.map((node, index) => index === 0 && 'x' in node ? { ...node, y: 2.55 } : node) }
+      ? { ...route, from_height: 2.55 }
       : route),
   };
   const issues = lintHvacMepNodeParity({ anchors: diagram.anchors, mepRoutes: resolveMepRoutes(driftedMep, mepSources).routes });
