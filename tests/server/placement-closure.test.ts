@@ -9,15 +9,21 @@ import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { assertPlacementHostClosure, collectPlacementHostClosureViolations, type PlacementClosurePoint } from '../../server/placement-closure.js';
 import { pointMountHostIndex } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
 import { parseElectricalPoints, parsePlumbingPoints } from '../../shared/project-render-facts-schema.js';
-import type { PlacementItem } from '../../shared/furniture-placement.js';
 
 const read = (relative: string): string => readFileSync(new URL(`../../${relative}`, import.meta.url), 'utf8');
 
+// （#98 Tier 2）宿主表改走共享解算：墙锚/anchor 家具无声明 x/z，直读原始 YAML
+// 的 pointMountHostIndex 会把它排除出表（缺平面几何），night_corridor 等挂载点
+// 的闭合断言随即误报。只改取数来源：与 /api/project 同一 buildPlacementIndexes。
 /** 全量 furnishings 的定位宿主表（与 /api/project 的 house.furnishingsAll 同构造）。 */
 const hostIndexFromHouse = (): ReturnType<typeof pointMountHostIndex> => {
-  const house = parseYaml(read('config/house.yaml')) as { furnishings?: Record<string, PlacementItem[]> };
-  return pointMountHostIndex(Object.values(house.furnishings ?? {}).flat());
+  const house = parseYaml(read('config/house.yaml')) as { furnishings?: FurnishingsYaml };
+  const layout = resolveLayout(parseYaml(read('config/layout/model-geometry.yaml')) as VertexLayoutYaml);
+  return buildPlacementIndexes({ geometry: { walls: layout.walls }, furnishings: house.furnishings ?? {} }).mountHosts;
 };
 
 const point = (id: string, mount?: { furniture_id: string }): PlacementClosurePoint => ({ id, mount });

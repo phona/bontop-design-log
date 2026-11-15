@@ -268,3 +268,43 @@ test('electrical JSON CLI emits pure JSON', () => {
   assert.equal(result.counts.byCode?.bath_socket_splash_box_undeclared ?? 0, 0);
   assert.equal(result.counts.byCode?.rcd_missing_on_socket_circuit ?? 0, 0);
 });
+
+// ── #238 Codex major 回归：tv_socket_near_tv_stand 须经共享解算取低柜位置 ──
+// Tier 2 前本检查直读声明 x/z；tv_wall_low 改锚 ld.tv_65 后无声明坐标，检查静默死亡。
+// 修复后低柜位置取 buildPlacementIndexes 宿主解算（与 verify-rules 同源）：
+//   ① 真实配置下检查不触发（插座与低柜约 0.41m，≤1.5m）；
+//   ② 电视锚点东移 3.0m（低柜跟随），检查跟踪移动并触发；
+//   ③ 小幅东移 0.5m 仍在阈值内，不触发；
+//   ④ 低柜锚点断引用（解不出位置）报 error，不静默跳过。
+// 断言只看 code/id，不钉距离数值与被移坐标的历史值；家具变动一律按稳定 id 结构化改字段。
+test('tv socket check tracks relational tv_wall_low via shared placement resolution (#238)', () => {
+  const topology = parseElectricalTopology(raw, points);
+  const base = (cachedContext ??= layoutContext());
+  const lintWith = (furnishings: FurnishingsYaml) =>
+    lintElectricalTopology(topology, points, { ...base, furnishings });
+  const tvWarnings = (result: ReturnType<typeof lintElectricalTopology>) =>
+    result.warnings.filter((issue) => issue.code === 'tv_socket_near_tv_stand');
+  const realFurnishings = (base.furnishings ?? {}) as FurnishingsYaml;
+  const withTvMoved = (dx: number): FurnishingsYaml => {
+    const copy = JSON.parse(JSON.stringify(realFurnishings)) as FurnishingsYaml;
+    const tv = Object.values(copy).flat().find((item) => item.id === 'ld.tv_65');
+    assert.ok(tv && typeof tv.x === 'number', 'ld.tv_65 must exist with declared x in the fixture');
+    tv.x += dx;
+    return copy;
+  };
+
+  // ① 真实配置：检查不触发（活着的证据在 ②/④：同一检查在移动/断引用下会触发）。
+  assert.equal(tvWarnings(lintWith(realFurnishings)).length, 0);
+  // ② 电视东移 3.0m：低柜跟随，插座与低柜距离超 1.5m，检查触发且只报 sock_living_tv。
+  assert.deepEqual(tvWarnings(lintWith(withTvMoved(3.0))).map((issue) => issue.id), ['sock_living_tv']);
+  // ③ 小幅东移 0.5m：仍在阈值内，不触发。
+  assert.equal(tvWarnings(lintWith(withTvMoved(0.5))).length, 0);
+  // ④ 低柜锚点断引用：位置解不出，报 error（fail-closed），不静默跳过。
+  const dangling = JSON.parse(JSON.stringify(realFurnishings)) as FurnishingsYaml;
+  const cabinet = Object.values(dangling).flat().find((item) => item.id === 'ld.tv_wall_low');
+  assert.ok(cabinet?.anchor, 'ld.tv_wall_low must exist with an anchor in the fixture');
+  cabinet.anchor.id = 'ld.nonexistent';
+  const danglingResult = lintWith(dangling);
+  assert.equal(danglingResult.errors.filter((issue) => issue.code === 'tv_stand_position_unresolved').length, 1);
+  assert.equal(tvWarnings(danglingResult).length, 0);
+});
