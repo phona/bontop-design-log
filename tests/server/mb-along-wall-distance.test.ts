@@ -1,9 +1,9 @@
 // 主卫东墙（w_mbath_east）along 语义收口：issue #98 删除「along = 绝对 z」历史特例后，
 // along 一律是「从墙段起点顶点沿墙向的距离」（与 overlay.yaml wall_region/paint_region 的
-// along 区间同一口径）。本文件把 1 件受影响家具（2026-11-13 issue #116 通顶柜）的世界
-// 包络用手算基准钉死，并证明越界的 along 不再被静默解析成绝对坐标，而是走 PR-3 已建的
-// 摆位诊断链（页面 / DXF / verify:furniture）。原 4 件（底柜 + 双悬浮板 + PVC 墙行包管）
-// 已随 #116 退役，清单守卫现只认通顶柜 1 件。
+// along 区间同一口径）。本文件把受影响家具（2026-11-13 issue #116 通顶柜；2026-11-15
+// #98 Tier 1 书房季节柜两腿）的世界包络用手算基准钉死，并证明越界的 along 不再被静默解析
+// 成绝对坐标，而是走 PR-3 已建的摆位诊断链（页面 / DXF / verify:furniture）。原 4 件
+// （底柜 + 双悬浮板 + PVC 墙行包管）已随 #116 退役，清单守卫现认通顶柜 + 两腿共 3 件。
 //
 // 期望值全部手算写死（算式见各断言旁注释），不经被测代码推导；墙几何与条目声明从
 // config/layout/model-geometry.yaml、config/house.yaml 实读，防止本文件字面输入随配置漂移。
@@ -24,12 +24,19 @@ const ROOT = resolve(import.meta.dirname, '../..');
 
 interface WallLike { x1: number; z1: number; x2: number; z2: number }
 
-// 手抄 config/layout/model-geometry.yaml 的两面宿主墙几何（下方有实读一致性断言）。
+// 手抄 config/layout/model-geometry.yaml 的宿主墙几何（下方有实读一致性断言）。
 // w_mbath_east：v_bath_ne(2.60,1.10) → v_bath_s(2.60,4.30)，长 3.20；
 // w_mb_east：    v_mb_ne (4.20,5.55) → v_mb_se(4.20,9.80)，长 4.25。
+// w_mbath_south：v_mb_sw(0.00,2.86) → v_mbath_se(2.60,2.86)，长 2.60；
+// w_west_upper：v_mb_nw(0.00,5.55) → v_sw(0.00,9.80)，但 v_sw 带 radius 1.00 圆角，
+// resolveLayout 的直段止于 z=8.80（9.80−1.00）——手抄值须与实读一致，取 8.80。
+// 后两面是 #98 Tier 1 新增墙锚家具（洗手柜 / 梳妆台）的宿主墙：DXF 与 SceneBuilder
+// 的合成场景只喂 master_bedroom 条目时须含它们，否则健康态即报 wall not found。
 const WALLS: Record<string, WallLike> = {
   w_mbath_east: { x1: 2.60, z1: 1.10, x2: 2.60, z2: 4.30 },
   w_mb_east: { x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 },
+  w_mbath_south: { x1: 0.00, z1: 2.86, x2: 2.60, z2: 2.86 },
+  w_west_upper: { x1: 0.00, z1: 5.55, x2: 0.00, z2: 8.80 },
 };
 
 function segments(...ids: string[]): Map<string, WallLike[]> {
@@ -95,13 +102,17 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     closeTo(WALL_THICKNESS, 0.12);
   });
 
-  it('受影响条目清单已穷尽：这两面墙上只有这 1 件挂墙家具，且 along = 原绝对 z − 墙起点 z', () => {
+  it('受影响条目清单已穷尽：这两面墙上只有这 3 件挂墙家具，且 along = 原绝对 z − 墙起点 z', () => {
     // 清单穷尽性守卫：原特例只在 w_mbath_east / w_mb_east 上生效，house.yaml 里挂在这两面
-    // 墙上的家具必须且只能是被改写的条目——新增第 2 件而不按沿墙距离书写时这里显形。
+    // 墙上的家具必须且只能是被改写的条目——新增第 4 件而不按沿墙距离书写时这里显形。
     // 右侧期望值是改前（along 当绝对 z）的世界锚点 z，逐件手抄自 git 历史里的原声明。
     // 2026-11-13 issue #116：底柜 + 双悬浮板 + PVC 墙行包管退役，只剩通顶柜 1 件。
+    // 2026-11-15 #98 Tier 1：书房季节柜两腿（step_north / step_south）改墙锚至 w_mb_east，
+    // 沿墙距离按同一口径书写（along = 世界锚点 z − 墙起点 z），清单扩为 3 件。
     const historicalAnchorZ: Record<string, number> = {
       'mb.full_height_cabinet': 3.61,
+      'study.seasonal_wardrobe_step_north': 6.289,
+      'study.seasonal_wardrobe_step_south': 7.38,
     };
     const anchored = Object.entries(houseFurnishings()).flatMap(([room, items]) =>
       items
@@ -110,7 +121,7 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     assert.deepEqual(
       anchored.map(({ item }) => item.id).sort(),
       Object.keys(historicalAnchorZ).sort(),
-      '这两面墙上的挂墙家具必须恰好是被特例改写的 1 件',
+      '这两面墙上的挂墙家具必须恰好是被特例改写的 3 件',
     );
     for (const { room, item } of anchored) {
       const wall = WALLS[item.wall as string];
@@ -217,9 +228,13 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
 
   it('DXF：越界 along 令整次导出失败，合法 along 导出改前同一组中心文字坐标', () => {
     const items = masterBedroomItems();
-    const wall: Extract<SceneElement, { type: 'wall' }> = { type: 'wall', id: 'w_mbath_east', ...WALLS.w_mbath_east };
+    // 合成场景须含 master_bedroom 全部条目的宿主墙：通顶柜 w_mbath_east、洗手柜
+    // w_mbath_south（#98 Tier 1 墙锚）、梳妆台 + 凳 w_west_upper（#98 Tier 1 墙锚），
+    // 否则健康态即报 wall not found——与本文件 DXF 测试的「合成场景须自备宿主墙」同理。
+    const walls: Array<Extract<SceneElement, { type: 'wall' }>> = (['w_mbath_east', 'w_mbath_south', 'w_west_upper'] as const)
+      .map((id) => ({ type: 'wall', id, ...WALLS[id] }));
     const dxfInput = (furnishings: FurnishingItem[]) => ({
-      house: { rooms: [masterBedroomRoom()], furnishings: { master_bedroom: furnishings } as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: [wall] },
+      house: { rooms: [masterBedroomRoom()], furnishings: { master_bedroom: furnishings } as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: walls },
     });
 
     const healthy = buildProjectDxf(dxfInput(items));
@@ -248,6 +263,8 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
       { id: 'w_mbath_east', ...WALLS.w_mbath_east, height: 2.8 },
       { id: 'w_mb_east', ...WALLS.w_mb_east, height: 2.8 },
       { id: 'w_mbath_south', x1: 0.40, z1: 2.86, x2: 2.60, z2: 2.86, height: 2.8 },
+      // #98 Tier 1：梳妆台 + 凳墙锚至 w_west_upper，合成场景须含该墙，否则健康态即报诊断。
+      { id: 'w_west_upper', ...WALLS.w_west_upper, height: 2.8 },
     ];
     const chainOptions = {
       hvac: {

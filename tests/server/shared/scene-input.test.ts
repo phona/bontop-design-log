@@ -48,3 +48,23 @@ test('scene input parser preserves and clones rounded platform points', () => {
   assert.notEqual(result.platform?.points?.[3], source.platform.points[3]);
   assert.deepEqual(source, before);
 });
+
+test('scene input parser uses supplied anchor walls without rendering them as solid walls', () => {
+  // #98 Tier 1 3D 路径：/api/walls 下发的全量墙（含 suppressed 玻璃线）经
+  // HouseScene.buildFromCatalog 以 source.walls 传入；sceneElements 里没有这些墙
+  //（实体盒不渲染、由 curtain 替代），但墙锚家具以它们的墙线为基准。供了 walls 就
+  //以它为准，且不因为 walls 里有墙就往 elements 里补实体墙——否则玻璃幕会渲成实墙。
+  const glassWall = { id: 'w_glass', x1: 0, z1: 0, x2: 5, z2: 0, height: 2.8, line_datum: 'centerline' as const };
+  const solidWall = { type: 'wall' as const, id: 'w_solid', x1: 0, z1: 5, x2: 5, z2: 5 };
+  const result = parseSceneInput({
+    rooms: [{ id: 'room', name: 'Room', x: 2.5, z: 2.5, width: 5, depth: 5, height: 3, type: 'public' }],
+    elements: [solidWall],
+    walls: [glassWall, { id: 'w_solid', x1: 0, z1: 5, x2: 5, z2: 5, height: 3 }],
+  });
+  assert.equal(result.walls.length, 2);
+  assert.ok(result.walls.some((wall) => wall.id === 'w_glass'));
+  assert.equal(result.walls.find((wall) => wall.id === 'w_glass')?.line_datum, 'centerline');
+  // 玻璃墙只进定位墙表，不进渲染元素。
+  assert.equal(result.elements.filter((entry) => entry.type === 'wall').length, 1);
+  assert.ok(!result.elements.some((entry) => entry.id === 'w_glass'));
+});

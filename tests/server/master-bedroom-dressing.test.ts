@@ -7,11 +7,18 @@ import { buildFixture, setNorthWallWardrobe950DoorConfiguration, type NorthWallW
 import { buildInfrastructure } from '../../shared/render/InfrastructureBuilder.js';
 import { pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import type { VertexLayoutYaml } from '../../shared/types.js';
+import type { FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { buildLightingFixtures } from '../../shared/render/LightingFixtureBuilder.js';
 import * as THREE from 'three';
 
-type Furnishing = { type: string; x?: number; z?: number; rotation?: number };
+type Furnishing = {
+  type: string; id?: string; x?: number; z?: number; rotation?: number;
+  width?: number; depth?: number;
+  // 摆位声明字段（定位形式）：placed() 返回几何身份时剥离，deepEqual 不钉定位形式。
+  wall?: string; wall_side?: string; along?: number; wall_clearance?: number;
+  anchor?: unknown; mount?: unknown;
+};
 type ElectricalPoint = {
   id: string;
   type?: string;
@@ -69,9 +76,21 @@ function fixtureSize(type: string): THREE.Vector3 {
 }
 
 function placed(type: string, room: Furnishing[] = master): Furnishing {
-  const item = room.find((candidate) => candidate.type === type && candidate.x !== undefined && candidate.z !== undefined);
+  const item = room.find((candidate) => candidate.type === type);
   assert.ok(item, `missing placed ${type}`);
-  return item;
+  // 关系化家具不再声明 x/z：坐标取 buildPlacementIndexes 的解算结果（与 3D/DXF/
+  // verify 同源），与本文件 point()/plumbPoint() 的「解算覆盖声明」同一口径；绝对家具
+  // 的解算值与声明一致。返回几何身份（类型/id/尺寸/旋转 + 解算坐标），摆位声明字段
+  // （wall/along/anchor/mount）是定位形式、不进 deepEqual——形式由 Tier 1 结构测试覆盖，
+  // 几何测试不因迁移改表达形式而逐条改期望值。
+  const host = item.id === undefined ? undefined : MB_FURNITURE_HOSTS?.get(item.id);
+  assert.ok(host !== undefined && Number.isFinite(host.x) && Number.isFinite(host.z),
+    `${type}: 家具摆位解算失败（无宿主或坐标非有限数）`);
+  const { wall: _wall, wall_side: _wallSide, along: _along, wall_clearance: _clearance, anchor: _anchor, mount: _mount, ...geometry } = item;
+  // 解算器浮点噪声（~1e-15m）归一到 1e-9m：与本文件 GAP_EPS 同口径，deepEqual
+  // 才能逐位比对；几何容差仍是 0.005m，归一不掩盖任何真实漂移。
+  const round9 = (value: number): number => Math.round(value * 1e9) / 1e9;
+  return { ...geometry, x: round9(host.x as number), z: round9(host.z as number) };
 }
 
 // 主卧宿主墙索引（issue #98 S1/S3）：点位定位走 shared/point-placement.ts 单一解算，
@@ -80,6 +99,13 @@ function placed(type: string, room: Furnishing[] = master): Furnishing {
 const MB_POINT_WALLS = pointWallIndexFromElements(
   resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls,
 );
+
+// 家具摆位解算索引（#98 Tier 1，见 placed()）：全屋 furnishings + 全量墙一次解算，
+// mountHosts 按声明 id 索引；解算失败的件不在表里，placed() 显式断言、不静默跳过。
+const MB_FURNITURE_HOSTS = buildPlacementIndexes({
+  geometry: { walls: resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls },
+  furnishings: house.furnishings as unknown as FurnishingsYaml,
+}).mountHosts;
 
 function plumbPoint(id: string): PlumbingPoint {
   const found = plumbing.find((candidate) => candidate.id === id);

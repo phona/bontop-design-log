@@ -934,3 +934,45 @@ test('project-dxf: 合法沿墙点位照常出圈且不产生 errors（fail-clos
   assert.equal(circles[0]['10'], '500.0000');
   assert.equal(circles[0]['20'], '-75.0000');
 });
+
+test('project-dxf: 玻璃线旁落地家具——墙只在 anchorWalls 时照常出图（#98 Tier 1）', () => {
+  // suppressed 墙（玻璃幕）不在 sceneElements 里（实体盒不渲染、由 curtain 替代），
+  // 但落地家具以其墙线为墙锚基准：3D/verify 以全量墙解算，DXF 须同源。
+  // anchorWalls 缺省时回落 sceneElements 墙——下条测试钉住该回落仍 fail-closed。
+  const glassWall = { id: 'w_glass', x1: 0, z1: 0, x2: 4, z2: 0, line_datum: 'centerline' } as const;
+  const input: ProjectDxfInput = {
+    house: {
+      rooms: [],
+      furnishings: {
+        test: [{ type: 'shelf', id: 't.shelf', wall: 'w_glass', wall_side: 'south', along: 1.0, wall_clearance: 0 }],
+      },
+      electrical: [],
+      ceilingZones: [],
+      sceneElements: [],
+      anchorWalls: [glassWall],
+    },
+  };
+  const result = buildProjectDxf(input);
+  assert.deepEqual(result.errors, []);
+  assert.ok((result.stats[DXF_LAYERS.FURN[0]] ?? 0) > 0, '墙锚置物架应在 A-FURN 出外框');
+  // 中心 (1.0, 0.26) → DXF (1000, -260)：外框 4 角 x ∈ {600, 1400}、y ∈ {-60, -460}。
+  const furnLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.FURN[0]);
+  assert.ok(furnLines.length > 0, 'A-FURN 应有外框线段');
+  assert.ok(furnLines.some(([x1, y1]) => x1 === 600 && y1 === -60), '外框角点应含 (600,-60)');
+});
+
+test('project-dxf: anchorWalls 缺省时玻璃线墙锚仍 fail-closed（回落旧行为）', () => {
+  const result = buildProjectDxf({
+    house: {
+      rooms: [],
+      furnishings: {
+        test: [{ type: 'shelf', id: 't.shelf', wall: 'w_glass', wall_side: 'south', along: 1.0, wall_clearance: 0 }],
+      },
+      electrical: [],
+      ceilingZones: [],
+      sceneElements: [],
+    },
+  });
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /wall "w_glass" not found/);
+});

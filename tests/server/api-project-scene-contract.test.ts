@@ -34,6 +34,7 @@ import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { buildHvacBuilderSources, hvacAnchorPositions, type HvacBuilderSources } from '../../shared/render/HvacBuilder.js';
 import { resolvePointPlacementInWalls } from '../../shared/point-placement.js';
 import type { ProjectApiResponse } from '../../shared/api-project.js';
+import type { WallSegment } from '../../shared/types.js';
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
@@ -57,14 +58,18 @@ interface BuiltFromResponse {
  * 把 `/api/project` 响应按 HouseScene.buildFromCatalog（app/src/render/HouseScene.ts:728-779）
  * 的同一构造喂给建场链路：parseSceneInput → buildPlacementIndexes（墙几何 + 全量 furnishingsAll）
  * → buildHvacBuilderSources（投影 + electrical + 两份索引）→ buildScene。
- * 这里不手捏任何字段：输入就是 HTTP 响应本身。
+ * 这里不手捏任何字段：输入就是 HTTP 响应本身。定位基准墙全量（#98 Tier 1）同样取自
+ * 真 server 的独立端点 /api/walls（与 App 的 fetchAnchorWalls 同源），经 parseSceneInput
+ * 的 walls 入参传入——sceneElements 不含 suppressed 玻璃线，不传它则玻璃线旁的墙锚家具
+ * 在建场结果里缺席。
  */
-function buildFromApiResponse(body: ProjectApiResponse): BuiltFromResponse {
+function buildFromApiResponse(body: ProjectApiResponse, anchorWalls?: WallSegment[]): BuiltFromResponse {
   const house = body.house;
   const input = parseSceneInput({
     rooms: house.rooms ?? [],
     platform: house.platform,
     elements: house.sceneElements,
+    walls: anchorWalls,
     ceilingZones: house.ceilingZones,
     furnishings: house.furnishings,
     furnishingsAll: house.furnishingsAll,
@@ -220,8 +225,14 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     assert.equal(phaseResponse.status, 200, 'GET /api/project?phase=phase_1_basic_occupancy 必须 200');
     phase1 = (await phaseResponse.json()) as ProjectApiResponse;
 
-    fullBuild = buildFromApiResponse(full);
-    phase1Build = buildFromApiResponse(phase1);
+    // 定位基准墙全量（#98 Tier 1）：与 App 的 fetchAnchorWalls 同源，同一真 server。
+    const wallsResponse = await fetch(`http://127.0.0.1:${port}/api/walls`);
+    assert.equal(wallsResponse.status, 200, 'GET /api/walls 必须 200');
+    const anchorWalls = ((await wallsResponse.json()) as { walls: WallSegment[] }).walls;
+    assert.ok(Array.isArray(anchorWalls) && anchorWalls.length > 0, '/api/walls 必须返回非空墙表');
+
+    fullBuild = buildFromApiResponse(full, anchorWalls);
+    phase1Build = buildFromApiResponse(phase1, anchorWalls);
   });
 
   after(async () => {
@@ -273,6 +284,10 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
       assert.ok(!objectIds.includes(id), `退役链件 ${id} 不得再建场`);
     }
     assert.ok(objectIds.includes('mb.full_height_cabinet'), '通顶柜 mb.full_height_cabinet 必须在场');
+    // #98 Tier 1：玻璃线旁的墙锚家具须在场——厨房北柜锚 w_kit_north（suppressed 玻璃线，
+    // 只在 /api/walls 全量墙表里）；若建场链路没接 anchorWalls，这里当场红。
+    assert.ok(objectIds.includes('kitchen.cabinet_run_north_east'), '厨房北柜 kitchen.cabinet_run_north_east 必须在场（墙锚 w_kit_north 玻璃线）');
+    assert.ok(objectIds.includes('mb.dressing_table'), '梳妆台 mb.dressing_table 必须在场（墙锚 w_west_upper 玻璃线）');
   });
 
   it('断言 3：一期响应里 night_corridor 的标注坐标不是 (0,0)', () => {

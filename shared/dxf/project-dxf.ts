@@ -29,10 +29,10 @@ import { type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type Plum
 import { type MepCoordination, type MepEndpointSources, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
 import { centerlineSamples } from '../arc-polyline.js';
 
-import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement } from '../furniture-placement.js';
+import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement, type WallLike } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
-import { resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall } from '../point-placement.js';
-import { buildPlacementIndexes } from '../placement-indexes.js';
+import { resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall, type PointWallElementInput } from '../point-placement.js';
+import { buildPlacementIndexes, wallSegmentsFromElements } from '../placement-indexes.js';
 import { derivePointCircuits, type PointCircuitTopologyLike } from '../point-circuits.js';
 import { DxfWriter } from './dxf-writer.js';
 
@@ -69,6 +69,15 @@ export interface ProjectDxfHouse {
   electrical?: ElectricalPoint[];
   ceilingZones?: CeilingZone[];
   sceneElements?: SceneElement[];
+  /**
+   * 定位基准墙全量（#98 Tier 1）：含 suppressed 墙（玻璃幕线）。sceneElements 不含
+   * suppressed 墙（实体盒不渲染、由 curtain 替代），但家具墙锚以墙线为基准——3D/
+   * verify 均以全量墙解算；DXF 若只用 sceneElements，玻璃线旁的落地家具会
+   * `wall "..." not found` 而整单 fail-closed 误杀。缺省回落 sceneElements 墙
+   * （旧行为）。只供定位解算（点位 + 家具）；墙体渲染/饰面/洞口仍只用 sceneElements，
+   * suppressed 墙不画成实体墙。
+   */
+  anchorWalls?: Iterable<PointWallElementInput>;
 }
 
 export interface ProjectDxfInput {
@@ -151,15 +160,20 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   for (const element of house.sceneElements ?? []) {
     if (element.type === 'wall') wallsById.set(element.id, element);
   }
+  // 定位基准墙段（#98 Tier 1）：anchorWalls（全量墙，含 suppressed 玻璃线）优先，
+  // 缺省回落 sceneElements 墙。3D/verify/DXF 从此同一份墙段表解算家具与点位；
+  // 墙体渲染/饰面/洞口仍只用 wallsById（sceneElements），suppressed 墙不画成实体墙。
+  const anchorWallSegments = wallSegmentsFromElements(house.anchorWalls ?? [...wallsById.values()]);
   // 点位定位索引（issue #98 S1/S2）走 shared/placement-indexes.ts 单一产地（疗法②）：
-  // pointWalls 用本次装配的墙元素，mountHosts 用 house.furnishings 全量表（DXF 恒为全案口径，
-  // 不按阶段过滤）。电气/给排水点位与 MEP 端点共用同一份 shared/point-placement.ts 解算。
+  // pointWalls 用定位基准墙（anchorWalls 全量，含 suppressed 玻璃线），mountHosts 用
+  // house.furnishings 全量表（DXF 恒为全案口径，不按阶段过滤）。电气/给排水点位与 MEP
+  // 端点共用同一份 shared/point-placement.ts 解算。
   // house.furnishings 缺失时 mountHosts 为 undefined——保留「无家具上下文」的既有语义。
   // （二阶段 S1 修复轮审计）本处 furnitureDiagnostics 不另设门禁：emitFurniture 对同一份
   // furnishings、同一细分段口径逐件解算，失败即进 errors 使导出失败——批量诊断与逐件
   // 诊断同源同输入，无第二口径可分裂；链示意件由 emitFurniture 按类型跳过，不进批量口径。
   const placementIndexes = buildPlacementIndexes({
-    geometry: { walls: wallsById.values() },
+    geometry: { walls: house.anchorWalls ?? [...wallsById.values()] },
     furnishings: house.furnishings,
   });
   const pointWalls: ReadonlyMap<string, PointWall> = placementIndexes.pointWalls ?? new Map();
@@ -175,7 +189,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('furnishings: 无输入，A-FURN 图层为空（家具摆位未导出——数据不可得时禁止用页面缓存当施工摆位）');
     notes.push('FURNISHINGS NOT EXPORTED: furnishings data unavailable at export time');
   } else {
-    emitFurniture(writer, house.furnishings, wallsById, warnings, label, errors);
+    emitFurniture(writer, house.furnishings, anchorWallSegments, warnings, label, errors);
   }
   if (house.electrical === undefined) {
     warnings.push('electrical: 无输入，E-* 图层为空（电气点位未导出——数据不可得时禁止用页面缓存当施工点位）');
@@ -393,7 +407,7 @@ function emitRooms(writer: DxfWriter, rooms: RoomLayout[], inputLabels: 'utf8' |
 function emitFurniture(
   writer: DxfWriter,
   furnishings: FurnishingsYaml,
-  wallsById: Map<string, Extract<SceneElement, { type: 'wall' }>>,
+  anchorWallSegments: Map<string, WallLike[]>,
   warnings: string[],
   label: (text: string, fallback?: string) => string,
   errors: string[],
@@ -401,11 +415,9 @@ function emitFurniture(
   // 墙锚参照线与 3D 同口径（codex 二十审 major，SceneBuilder.wallSegments）：带 segments
   // 细分的墙优先传细分段——resolveFurniturePlacement 以数组首段算方向/along 合法域，
   // 主线直传会把 3D 中合法（或被跳过）的锚定家具画错位置或错误保留。
-  const wallSegments = new Map(wallsById.size > 0
-    ? [...wallsById.entries()].map(([id, wall]) => [id, wall.segments?.length
-      ? wall.segments
-      : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]])
-    : []);
+  // 墙段表由调用方经 wallSegmentsFromElements 从 anchorWalls（全量墙，含 suppressed
+  // 玻璃线）一次建成，与 placementIndexes 同源；此处不再从 sceneElements 手算第二份。
+  const wallSegments = anchorWallSegments;
   // mount 宿主索引与 3D 同一份实现：挂载家具的世界坐标由宿主摆位推出（issue #98 PR-3）。
   const hosts = furnitureHostIndex(Object.values(furnishings ?? {}).flat());
   for (const [roomId, items] of Object.entries(furnishings ?? {})) {

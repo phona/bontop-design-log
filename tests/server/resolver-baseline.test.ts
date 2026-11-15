@@ -129,9 +129,50 @@ function wallNormal(tangent: { x: number; z: number }, side: WallSide): { x: num
 }
 
 /**
+ * 圆角切点（本文件自己的独立推导，不 import shared/arc.ts）：
+ * 角点 C、两邻点 A（本墙 from 侧）与 B（邻墙 to 侧）、半径 r。
+ * 切点距角点 d = r / tan(θ/2)，θ 为两邻边夹角（acos 归一化点积）。
+ * 返回本墙侧切点（角点沿 A 方向退 d）；夹角退化或切点出边返回 null。
+ * 共线（θ≈0 或 π）时无圆角：返回角点本身，即墙段不修剪（与生产 tangentArc
+ * 返回 null → 不修剪一致）。
+ */
+function tangentPointOnWall(
+  corner: { x: number; z: number },
+  legA: { x: number; z: number },
+  legB: { x: number; z: number },
+  radius: number,
+): { x: number; z: number } | null {
+  if (!(radius > 0)) return null;
+  const toA = { x: legA.x - corner.x, z: legA.z - corner.z };
+  const toB = { x: legB.x - corner.x, z: legB.z - corner.z };
+  const lenA = Math.hypot(toA.x, toA.z);
+  const lenB = Math.hypot(toB.x, toB.z);
+  if (lenA < 1e-9 || lenB < 1e-9) return null;
+  const uA = { x: toA.x / lenA, z: toA.z / lenA };
+  const uB = { x: toB.x / lenB, z: toB.z / lenB };
+  const cos = Math.max(-1, Math.min(1, uA.x * uB.x + uA.z * uB.z));
+  const theta = Math.acos(cos);
+  if (theta < 0.001 || Math.abs(theta - Math.PI) < 0.001) return { x: corner.x, z: corner.z };
+  const tangent = radius / Math.tan(theta / 2);
+  if (tangent > lenA + 0.001 || tangent > lenB + 0.001) return null;
+  return { x: corner.x + uA.x * tangent, z: corner.z + uA.z * tangent };
+}
+
+/**
  * 独立墙段：raw `walls[].from/to` + `vertices[]`（模型几何的原始声明，不经 resolveLayout）。
- * 只建本文件真的会引用的墙；圆弧端点（radius）墙会导致端点坐标不是顶点本身，直接拒绝，
- * 逼新增引用墙时先补圆弧参考实现——不静默用弦线顶替。
+ * 只建本文件真的会引用的墙。
+ *
+ * 圆角端点（radius）的处理（2026-11-15 #98 Tier 1：mb.dressing_table 墙锚到 w_west_upper，
+ * 其 to 端 v_sw 带 radius=1.00）：
+ * - `to` 端圆角：弧归下一面墙，本墙只留直线段、末端修剪到切点（切点距角点 r/tan(θ/2)，
+ *   θ 为本墙与下一面墙在角点的夹角，见 tangentPointOnWall）。修剪后的端点与生产 layout 的
+ *   segments[0] 逐值对照（全量复算开头的墙段一致性断言），不是弦线顶替——along 在直线段内时
+ *   datum 与弦线同值，但墙长/合法域不同，错了会在此被抓住。
+ * - `from` 端圆角：生产会把该墙解成弧采样多段（圆角归本墙），单段直墙参考实现无法表示，
+ *   直接拒绝（全量复算的 segments.length === 1 断言是第二道守卫）；新增此类引用墙时须先补
+ *   多段参考实现。
+ * 解不出的圆角（无邻墙/切点出边）一律抛错，不回落弦线；生产侧在这些情形保留整墙不修剪，
+ * 分歧须人工裁定，不得静默取任一侧。
  */
 function rawWallSegments(ids: ReadonlySet<string>): Map<string, { x1: number; z1: number; x2: number; z2: number }> {
   const vertices = new Map(geometryDecl.vertices.map((vertex) => [vertex.id, vertex]));
@@ -144,10 +185,35 @@ function rawWallSegments(ids: ReadonlySet<string>): Map<string, { x1: number; z1
     const from = vertices.get(wall.from);
     const to = vertices.get(wall.to);
     if (!from || !to) throw new Error(`墙 ${wall.id} 的 from/to 顶点不在 vertices 声明里`);
-    if (from.radius !== undefined || to.radius !== undefined) {
-      throw new Error(`墙 ${wall.id} 的端点带 radius（圆弧采样），独立参考实现只覆盖直墙`);
+    if (from.radius !== undefined) {
+      throw new Error(
+        `墙 ${wall.id} 的 from 端点带 radius：生产 layout 会把该墙解成弧采样多段（圆角归本墙），`
+        + '单段直墙参考实现无法表示——新增此类引用墙时须先补多段参考实现',
+      );
     }
-    index.set(wall.id, { x1: from.x, z1: from.z, x2: to.x, z2: to.z });
+    let x2 = to.x;
+    let z2 = to.z;
+    if (to.radius !== undefined) {
+      const nextWall = geometryDecl.walls.find((candidate) => candidate.from === wall.to);
+      if (!nextWall) {
+        throw new Error(
+          `墙 ${wall.id} 的 to 端点带 radius=${to.radius} 但找不到以该顶点为 from 的下一面墙：`
+          + '转角夹角无法确定，参考实现拒绝用弦线顶替（生产侧此时保留整墙不修剪——分歧须人工裁定）',
+        );
+      }
+      const nextTo = vertices.get(nextWall.to);
+      if (!nextTo) throw new Error(`墙 ${nextWall.id} 的 to 顶点不在 vertices 声明里`);
+      const trimmed = tangentPointOnWall(to, from, nextTo, to.radius);
+      if (!trimmed) {
+        throw new Error(
+          `墙 ${wall.id} 的 to 端圆角解不出切点（夹角退化或切点超出邻边）：`
+          + '参考实现拒绝回落弦线（生产侧此时保留整墙不修剪——分歧须人工裁定）',
+        );
+      }
+      x2 = trimmed.x;
+      z2 = trimmed.z;
+    }
+    index.set(wall.id, { x1: from.x, z1: from.z, x2, z2 });
   }
   return index;
 }
@@ -445,11 +511,16 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     // （2026-11-13 issue #116：原底柜 mb.vanity_base_cabinet 退役，同数由通顶柜承接。）
     // gbath.mirror_cabinet：墙线 7.20、west ⇒ 中心 x = 7.20−0.06−0.14/2 = 7.07；z = 3.955。
     // gbath.heated_towel_rack：墙线 5.60、east ⇒ 中心 x = 5.60+0.06+0.10/2 = 5.71；z = 3.55+0.405 = 3.955。
+    // mb.dressing_table：墙 w_west_upper (0,5.55)→(0,9.80)，to 端 v_sw 带 radius=1.00，
+    // 转角 90°（下一面墙 w_mb_south 向东），切点距角点 1.00/tan45° = 1.00 ⇒ 修剪后墙段
+    // (0,5.55)→(0,8.80)，切向 +z；east 侧法线 (+1,0)；along 0.50 ⇒ datum (0,6.05)；
+    // 柜深 0.45、clearance 0.14 ⇒ 中心 x = 0.06+0.14+0.225 = 0.425。
     const anchors: Array<{ id: string; x: number; z: number }> = [
       { id: 'gbath.vanity', x: 6.89, z: 3.955 },
       { id: 'mb.full_height_cabinet', x: 2.2425, z: 3.61 },
       { id: 'gbath.mirror_cabinet', x: 7.07, z: 3.955 },
       { id: 'gbath.heated_towel_rack', x: 5.71, z: 3.955 },
+      { id: 'mb.dressing_table', x: 0.425, z: 6.05 },
     ];
     for (const anchor of anchors) {
       const item = furnishingById(anchor.id);
@@ -496,7 +567,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     }
   });
 
-  it('全量独立复算：79 沿墙点位 + 2 挂载点位 + 4 挂墙家具 + 全部绝对家具逐条对照', () => {
+  it('全量独立复算：79 沿墙点位 + 2 挂载点位 + 17 挂墙家具 + 全部绝对家具逐条对照', () => {
     // 参考实现的墙几何来自 raw vertices + wall from/to；先证明它与生产 layout 的墙段一致，
     // 否则参考值与被测输入不是同一份声明，对照无意义。
     for (const wallId of referencedWallIds) {
@@ -554,7 +625,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
       assert.ok(placement, `${item.id}: 必须有摆位`);
       assertXZ(placement, reference, `${item.id}`);
     }
-    assert.equal(wallFurniture, 4, '挂墙家具数量变化：新增/删除对象必须同步更新本基准的覆盖口径');
+    assert.equal(wallFurniture, 17, '挂墙家具数量变化：新增/删除对象必须同步更新本基准的覆盖口径');
 
     let absoluteFurniture = 0;
     for (const item of allRawFurnishings) {

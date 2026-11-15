@@ -87,7 +87,9 @@ export function filterFurnishings(
         const admittedByType = rule.include_types?.includes(item.type) ?? false;
         if (!admittedById && !admittedByType) return false;
       }
-      const placed = item.x !== undefined && item.z !== undefined;
+      // placed = 有世界位置的实例（x/z 绝对、wall 墙锚、mount/anchor 派生均算 placed）。
+      // #98 Tier 1：旧口径只认 x/z，已迁移的墙锚/锚点家具会被 exclude_placed 漏放行。
+      const placed = (item.x !== undefined && item.z !== undefined) || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined;
       if (rule.exclude_placed && placed) return false;
       if (item.id !== undefined && rule.exclude_ids?.includes(item.id)) return false;
       if (rule.exclude_types?.includes(item.type)) return false;

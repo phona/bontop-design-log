@@ -1,4 +1,4 @@
-import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, BudgetSnapshot, DesignCheckResult, ArchivedScheme, CurtainPresentationState, CurtainState } from '@shared/types';
+import type { CurrentScheme, VisualCommand, SelectionPatch, DecisionLogEntry, BudgetSnapshot, DesignCheckResult, ArchivedScheme, CurtainPresentationState, CurtainState, WallSegment } from '@shared/types';
 import type { ProjectApiResponse } from '@shared/api-project';
 import { apiWrite } from '../api-write.js';
 
@@ -58,6 +58,11 @@ export class StateSync {
    * 拉取项目建场数据。返回类型 = shared/api-project.ts 的 ProjectApiResponse
    * （2026-11-09 issue #98 轨道③：边界从 any 变为共享类型）——字段层级以服务端
    * routes.ts 实际下发为准，例如 renderFactsProjection 在响应顶层（PR #162 归位）。
+   * 注意：返回对象就是 /api/project 的响应本身，不挂第二端点的数据——
+   * api-project-scene-contract 断言 4 用 AST 扫 app 侧全部 `projectData.*` 读取并
+   * 逐条到响应里取值，挂上去的字段会在该断言里判为「响应里不存在」。定位基准墙全量
+   * 另走 fetchAnchorWalls（/api/walls），由 App 侧单独持有、经 buildFromCatalog
+   * 第二参数传入（#98 Tier 1）。
    */
   async fetchProject(options: ProjectFetchOptions = {}): Promise<ProjectApiResponse> {
     const phase = options.phase ?? this.phase;
@@ -77,6 +82,31 @@ export class StateSync {
       throw new Error(`Failed to fetch project: HTTP ${response.status}${detail ? ` — ${detail.slice(0, 500)}` : ''}`);
     }
     return response.json();
+  }
+
+  /**
+   * 拉取定位基准墙全量（#98 Tier 1，独立端点 /api/walls）。与 fetchProject 分开：
+   * /api/project 的 house 刻意不下发 walls（api.test.ts 钉住 house.walls），而
+   * sceneElements 不含 suppressed 玻璃线——玻璃线旁的落地家具正以这些墙线为墙锚基准，
+   * 3D 建场与前端 DXF 导出须以此表解算。取不到时返回 undefined，建场回退到
+   * sceneElements 墙表、缺失家具走 placementDiagnostics 显形，不静默少件。
+   * layout 与 fetchProject 同口径（?layout= 同传）。
+   */
+  async fetchAnchorWalls(layout?: string): Promise<WallSegment[] | undefined> {
+    try {
+      const wallsQuery = new URLSearchParams();
+      const resolvedLayout = layout ?? this.layout;
+      if (resolvedLayout) wallsQuery.set('layout', resolvedLayout);
+      const wallsQueryString = wallsQuery.toString();
+      const wallsUrl = wallsQueryString ? `/api/walls?${wallsQueryString}` : '/api/walls';
+      const wallsResponse = await fetch(wallsUrl);
+      if (!wallsResponse.ok) return undefined;
+      const wallsData = (await wallsResponse.json()) as { walls?: unknown };
+      return Array.isArray(wallsData?.walls) ? (wallsData.walls as WallSegment[]) : undefined;
+    } catch (err) {
+      console.warn('[fetchAnchorWalls] /api/walls unavailable, falling back to sceneElements walls:', err);
+      return undefined;
+    }
   }
 
   async getCurrentScheme(): Promise<CurrentScheme> {

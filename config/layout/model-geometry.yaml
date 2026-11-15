@@ -248,6 +248,7 @@ walls:
     from: v_bath_ap
     to: v_mb_sw
     height: 2.8
+    line_datum: centerline   # 2026-11-15 #98 Tier 1：落地毛巾架沿此玻璃线定位的沿墙基准，不作挂载主张
     suppressed:
       reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
       replacement: west_curtain
@@ -262,6 +263,7 @@ walls:
     from: v_mb_nw
     to: v_sw
     height: 2.8
+    line_datum: centerline   # 2026-11-15 #98 Tier 1：落地梳妆台沿此玻璃线定位的沿墙基准，不作挂载主张
     suppressed:
       reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
       replacement: west_curtain
@@ -451,6 +453,7 @@ walls:
     from: v_bath_ne
     to: v_nw_ne
     height: 2.8
+    line_datum: centerline   # 2026-11-15 #98 Tier 1：落地置物架沿此玻璃线定位的沿墙基准，不作挂载主张
     suppressed:
       reason: "主卫/西北次卧北墙实体删除，改玻璃幕墙"
       replacement: north_recess_curtain
@@ -465,6 +468,7 @@ walls:
     from: v_kit_w
     to: v_ent_nw
     height: 2.8
+    line_datum: centerline   # 2026-11-15 #98 Tier 1：北墙落地柜+台面沿此玻璃线定位的沿墙基准，不作挂载主张
     suppressed:
       reason: "厨房北墙实体删除，改玻璃幕墙"
       replacement: kitchen_north_curtain

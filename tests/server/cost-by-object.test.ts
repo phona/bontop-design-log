@@ -42,7 +42,9 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     const mb = ledgerOf('mb.washbasin_cabinet');
     assert.equal(mb.roomId, 'master_bedroom');
     assert.equal(mb.type, 'mb_washbasin_cabinet');
-    assert.equal(mb.placement, 'absolute');
+    // #98 Tier 1：洗手柜由绝对坐标改墙锚（w_mbath_south 南侧）——摆位形式随迁移变，
+    // 对象身份（ref/type/room）不变；与已是 wall 的 gbath.vanity 同口径。
+    assert.equal(mb.placement, 'wall');
     const gbath = ledgerOf('gbath.vanity');
     assert.equal(gbath.roomId, 'guest_bath');
     assert.equal(gbath.type, 'vanity');

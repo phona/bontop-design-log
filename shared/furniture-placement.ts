@@ -306,9 +306,15 @@ function resolveItem(
     if (length <= 1e-9) {
       return { placement: null, diagnostic: `wall "${item.wall}" has zero length` };
     }
-    const dims = declaredFurnitureDims(item);
+    // 墙锚外框取 furnitureFootprint（不取 declaredFurnitureDims）：length 型柜体
+    // （kitchen_cabinet_run / kitchen_countertop_bridge / bath_side_cabinet）
+    // 只有行内 length + depth、目录无宽，旧口径直接报 no width/depth；沿墙合法域与
+    // 中心偏移的 along 方向外框即 length（与 3D 建模、verify AABB、DXF 同口径）。
+    // 挂载宿主外框（resolveFurniturePlacements）仍取 declaredFurnitureDims，
+    // 台面外伸不进宿主外框——两者刻意不同，见 ResolvedFurnitureHost 注释。
+    const dims = furnitureFootprint(item);
     if (dims.width === undefined || dims.depth === undefined) {
-      return { placement: null, diagnostic: `no width/depth for type "${item.type}"（行内声明与 FURNITURE_DIMS 目录均缺，无法定位）` };
+      return { placement: null, diagnostic: `no width/depth for type "${item.type}"（行内声明与 FURNITURE_DIMS 目录/length 均缺，无法定位）` };
     }
     // along 合法域 = 墙段内缩家具半宽——整件必须落在墙段上。
     // 该校验原为 verify-furniture-placement 的本地复算，PR-3 迁到共享解算：3D/DXF 与

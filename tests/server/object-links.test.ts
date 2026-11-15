@@ -476,12 +476,22 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
   // 不纳入则移动 gas_stove 不会让 PKG-110 摘要变化、旧的接口冻结与安装空间通过记录继续有效。
   it('SCH 被验设备纳入挂载包：改灶具声明，PKG-110 必须 stale', () => {
     const housePath = join(sandbox, 'config/house.yaml');
+    // 灶具 2026-11-15 #98 Tier 1 改 anchor 形式后无声明 x/z——改 anchor.offset.x
+    // 即改位置（+0.15m，等价于旧绝对坐标 x: 10.50 → 10.65 的移动量）。
+    // 先结构化校验形式与现值（按稳定 id 取对象），再只改该行 offset 文本：全文件
+    // 重dump 会洗掉注释与流式格式，后续同沙箱的文本注入（桥接台面长度等）即失效。
+    const houseDoc = parseYaml(readFileSync(housePath, 'utf8')) as AnyRecord;
+    const stove = (houseDoc.furnishings.kitchen as AnyRecord[]).find((item) => item.id === 'kitchen.gas_stove');
+    assert.ok(stove, 'config/house.yaml 必须有 kitchen.gas_stove');
+    assert.equal(stove.anchor?.source, 'furniture', '灶具须为 anchor 形式（#98 Tier 1）');
+    assert.equal(stove.anchor?.id, 'kitchen.cabinet_run_east', '灶具须锚定东墙柜体');
+    assert.equal(stove.anchor?.offset?.x, 0.02, '灶具 anchor.offset.x 现值须为 0.02');
     const lines = readFileSync(housePath, 'utf8').split('\n');
     const idAt = lines.findIndex((line) => /^\s*- \{ type: gas_stove, id: kitchen\.gas_stove/.test(line));
-    assert.ok(idAt >= 0, 'config/house.yaml 必须有 kitchen.gas_stove');
+    assert.ok(idAt >= 0, 'config/house.yaml 必须有 kitchen.gas_stove 行');
     const before = lines[idAt];
-    const moved = before.replace('x: 10.50', 'x: 10.65');
-    assert.ok(moved !== before, `必须能改动 gas_stove 的 x：${before.slice(0, 90)}`);
+    const moved = before.replace('offset: { x: 0.02, z: 0.225 }', 'offset: { x: 0.17, z: 0.225 }');
+    assert.ok(moved !== before, `必须能改动 gas_stove 的 anchor.offset.x：${before.slice(0, 120)}`);
 
     const patched = [...lines];
     patched[idAt] = moved;

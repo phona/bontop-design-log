@@ -470,6 +470,31 @@ export function createApiRouter(deps: ApiDeps): Router {
     res.json({ layouts: ProjectCatalog.getLayouts('.') });
   });
 
+  // 只读：定位基准墙全量（#98 Tier 1）。/api/project 的 house 刻意不下发 walls
+  //（api.test.ts 钉住 `house.walls === undefined`：响应只给合并后的 sceneElements，
+  //不给第二份原始墙表），但 sceneElements 不含 suppressed 墙（玻璃幕线，实体盒不
+  //渲染、由 curtain 替代），而玻璃线旁的落地家具正以这些墙线为墙锚基准——3D 建场与
+  //前端 DXF 导出都须以本端点为墙锚基准，与服务端 verify 同源，否则 10 件家具在浏览
+  //器侧解不出（3D 漏件、DXF fail-closed）。与 /api/project 各走各的口径，不混淆。
+  // layout 口径与 /project 一致：`?layout=` 时按该布局现载 catalog，否则用当前 catalog。
+  router.get('/walls', (req, res) => {
+    const rawLayoutName = req.query.layout;
+    if (rawLayoutName !== undefined && (typeof rawLayoutName !== 'string' || rawLayoutName.trim() === '')) {
+      res.status(400).json({ error: 'layout must be a single layout name' });
+      return;
+    }
+    let wallsCatalog: ProjectCatalog;
+    try {
+      wallsCatalog = rawLayoutName
+        ? ProjectCatalog.load('.', rawLayoutName as string)
+        : deps.catalog;
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    res.json({ walls: wallsCatalog.getWalls() });
+  });
+
   router.get('/model-package-links', (_req, res) => {
     try {
       res.json(loadModelPackageLinks());

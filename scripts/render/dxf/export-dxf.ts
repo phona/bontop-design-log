@@ -40,6 +40,9 @@ function main(): void {
       electrical: facts.electrical,
       ceilingZones: facts.ceiling,
       sceneElements: mergeSceneElements(catalog.getWalls(), overlay),
+      // 定位基准墙全量（含 suppressed 玻璃线）：sceneElements 不含 suppressed 墙，
+      // 玻璃线旁的落地家具墙锚在 DXF 里须同 3D/verify 一份墙段表解算（#98 Tier 1）。
+      anchorWalls: catalog.getWalls(),
     },
     plumbing: facts.plumbing,
     mep: { coordination: mepConfig, sources: mepSources },

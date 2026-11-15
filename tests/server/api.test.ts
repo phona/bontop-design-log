@@ -275,6 +275,29 @@ elements:
     assert.equal(res.body.house.walls, undefined);
   });
 
+  it('GET /api/walls returns the full anchor-wall table including suppressed glass lines', async () => {
+    // #98 Tier 1：/api/project 的 house 刻意不下发 walls（上条测试钉住），但 3D 建场
+    // 与前端 DXF 导出解玻璃线旁的墙锚家具须以全量墙表为基准——本端点是唯一来源。
+    const res = await request(app).get('/api/walls').expect(200);
+    const walls = res.body.walls as Array<{ id?: string; line_datum?: string }>;
+    assert.ok(Array.isArray(walls));
+    // 全量墙表比 sceneElements 的墙多：suppressed 玻璃线只在前者里。
+    const projectRes = await request(app).get('/api/project').expect(200);
+    const sceneWalls = (projectRes.body.house.sceneElements as Array<{ id?: string; type?: string }>)
+      .filter((e) => e.type === 'wall');
+    assert.ok(walls.length > sceneWalls.length);
+    for (const id of ['w_kit_north', 'w_west_lower', 'w_west_upper', 'w_nw_north']) {
+      const wall = walls.find((w) => w.id === id);
+      assert.ok(wall, `missing anchor wall ${id}`);
+      assert.equal(wall.line_datum, 'centerline');
+      assert.ok(!sceneWalls.some((w) => w.id === id), `${id} must stay out of sceneElements`);
+    }
+  });
+
+  it('GET /api/walls rejects an empty layout query', async () => {
+    await request(app).get('/api/walls?layout=').expect(400);
+  });
+
   it('POST /api/visual-commands creates a command', async () => {
     const res = await request(app)
       .post('/api/visual-commands')

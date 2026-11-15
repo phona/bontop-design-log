@@ -167,6 +167,14 @@ export class App {
    * 每次使用前按需判空收窄；禁止 as any 绕过。
    */
   private projectData: ProjectApiResponse | null = null;
+  /**
+   * 定位基准墙全量（#98 Tier 1）：StateSync.fetchAnchorWalls 从独立端点 /api/walls
+   * 拉取，与 projectData 分开持有——projectData 就是 /api/project 的响应本身，
+   * 挂上去的字段会被 api-project-scene-contract 断言 4 判为「响应里不存在」。
+   * 经 HouseScene.buildFromCatalog 第二参数传入建场；取不到时 undefined，
+   * 建场回退到 sceneElements 墙表、缺失家具走 placementDiagnostics 显形。
+   */
+  private anchorWalls: import('@shared/types').WallSegment[] | undefined;
   private phase: PhaseId = 'full';
   private activeLayout = 'model-geometry';
   private phaseReloading = false;
@@ -342,6 +350,9 @@ export class App {
     try {
     this.stateSync.setPhase(this.phase);
     this.projectData = await this.stateSync.fetchProject({ phase: this.phase });
+    // 定位基准墙全量与项目数据同布局（#98 Tier 1）：失败只降级（undefined），
+    // 建场回退到 sceneElements 墙表、缺失家具走 placementDiagnostics 显形。
+    this.anchorWalls = await this.stateSync.fetchAnchorWalls();
     // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断建场与预览。
     this.reportPlacementClosureDiagnostics(this.projectData);
     const previewAtlasConfig = this.projectData?.materialPreview?.atlases as MaterialPreviewAtlasConfig[] | undefined;
@@ -359,7 +370,7 @@ export class App {
     // HouseScene.buildFromCatalog 直接读 projectData.renderFactsProjection 构造 HVAC 源，
     // 四个建场入口因此拿到的都是同一份投影（layout 切换不再漏）。
 
-    await this.houseScene.buildFromCatalog(this.projectData);
+    await this.houseScene.buildFromCatalog(this.projectData, this.anchorWalls);
     this.reportPlacementDiagnostics();
     this.annotationRenderer = new AnnotationRenderer(
       this.houseScene.scene,
@@ -2266,7 +2277,7 @@ export class App {
       // projectData 缓存不再作为导出输入（十五审）：全部四路拉取失败时仍可导出骨架 + D-NOTES。
       // 全量新鲜拉取（codex 十二～十五审 blocking 系列）：projectData 是页面加载缓存，
       // 点位/家具/吊顶/几何的编辑都不回写——导出前重新拉服务端当前状态，杜绝混用新旧数据。
-      const [factsResponse, mepResponse, furnishingsResponse, projectResponse, configStatusResponse, topologyResponse] = await Promise.all([
+      const [factsResponse, mepResponse, furnishingsResponse, projectResponse, configStatusResponse, topologyResponse, wallsResponse] = await Promise.all([
         fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         // /api/furnishings 每次请求直读 house.yaml（与 CLI 同全案口径）。
@@ -2278,6 +2289,10 @@ export class App {
         // 回路拓扑（issue #98 S3）：DXF 图上「点位属于哪条回路」的标注源（点位侧 circuit
         // 字段已退役，只认 topology 的 member_point_ids + controls）。缺它只丢回路标注。
         fetch('/api/electrical-topology').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        // 定位基准墙全量（#98 Tier 1）：独立端点 /api/walls——/api/project 的 house
+        // 刻意不下发 walls（api.test.ts 钉住），sceneElements 又不含 suppressed 玻璃线，
+        // 玻璃线旁的落地家具墙锚须以此表解算（与 3D/verify 同源）。
+        fetch('/api/walls').then((response) => (response.ok ? response.json() : null)).catch(() => null),
       ]);
       const configStatuses = (configStatusResponse?.configs ?? []) as Array<{ path?: string; status?: string }>;
       // 保守规则（codex 十六/十七/十八审 blocking 收口）：任何配置重载失败都不能假装数据
@@ -2301,13 +2316,19 @@ export class App {
       const furnishings: FurnishingsYaml | undefined = (furnishingsResponse ?? undefined) as FurnishingsYaml | undefined;
       // 端点解析的宿主索引（issue #98 S1/S2）走 shared/placement-indexes.ts 单一产地（疗法②）：
       // 沿墙/挂载点位不再声明绝对 x/z，MEP 端点与 3D/DXF/lint 共用同一解算——墙几何取自本次
-      // /api/project 的 sceneElements（带 line_datum），家具宿主取自 /api/furnishings（全量
-      // house.yaml，不按阶段过滤）。几何不可得则 M-* 图层整体不导出（端点解不出比缺图更危险：
+      // /api/walls 的全量表（含 suppressed 玻璃线，带 line_datum），家具宿主取自
+      // /api/furnishings（全量 house.yaml，不按阶段过滤）。walls 缺省时回落 sceneElements
+      // 墙（旧行为）。几何不可得则 M-* 图层整体不导出（端点解不出比缺图更危险：
       // 路线会静默错位），由 D-NOTES 声明。
+      const anchorWalls: import('@shared/types').WallSegment[] | undefined = (
+        wallsResponse !== null && Array.isArray((wallsResponse as { walls?: unknown }).walls)
+          ? (wallsResponse as { walls: import('@shared/types').WallSegment[] }).walls
+          : undefined
+      );
       const dxfPlacementIndexes = buildPlacementIndexes({
         geometry: {
-          walls: ((projectHouse?.sceneElements ?? []) as PointWallElementInput[])
-            .filter((element) => (element as { type?: string }).type === 'wall'),
+          walls: (anchorWalls ?? ((projectHouse?.sceneElements ?? []) as PointWallElementInput[])
+            .filter((element) => (element as { type?: string }).type === 'wall')) as PointWallElementInput[],
         },
         furnishings,
       });
@@ -2328,6 +2349,7 @@ export class App {
       if (failedPaths.length > 0) notes.push(`CONFIG RELOAD FAILED: ${failedPaths.join(', ')} — affected layers excluded`);
       if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
+      if (!anchorWalls) notes.push('ANCHOR WALLS DEGRADED: walls API failed at export time — furniture placement fell back to sceneElements walls (suppressed glass-line walls excluded)');
       // 拉到的拓扑必须真的是拓扑（ circuits 数组）：接口降级/空响应时按缺失处理并随图声明，
       // 不把 `{}` 当电路表喂给装配器（那会让整次导出抛在解算器里）。
       const pointCircuitSources = (topologyResponse !== null && Array.isArray((topologyResponse as { circuits?: unknown }).circuits)
@@ -2346,6 +2368,9 @@ export class App {
           // 的 ceilingZones 优先取 render-facts），不可兜底（codex 十六审 blocking）。
           ceilingZones: factsStale ? undefined : ((facts?.ceiling ?? projectHouse?.ceilingZones) ?? undefined),
           sceneElements: projectHouse?.sceneElements ?? undefined,
+          // 定位基准墙全量（含 suppressed 玻璃线）：sceneElements 不含 suppressed 墙，
+          // 玻璃线旁的落地家具墙锚在 DXF 里须同 3D/verify 一份墙段表解算（#98 Tier 1）。
+          anchorWalls,
         },
         plumbing: facts?.plumbing,
         mep,
@@ -3041,6 +3066,8 @@ export class App {
       this.projectData = data;
       this.activeLayout = layoutName;
       this.stateSync.setLayout(layoutName);
+      // 定位基准墙全量随布局换（#98 Tier 1）：墙表按布局走，失败只降级（undefined）。
+      this.anchorWalls = await this.stateSync.fetchAnchorWalls(layoutName);
       // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断布局切换预览。
       this.reportPlacementClosureDiagnostics(data);
     } catch (error) {
@@ -3054,7 +3081,7 @@ export class App {
     // 2026-11-09 修 Codex 第 8 轮 blocking：布局切换建场同样要先补 render-facts 投影
     // （/api/project 不返回该字段）。漏它则 SceneBuilder 解不出 indoor_master 锚点，
     // 三件冷凝链家具带诊断跳过，页面缺件。
-    await this.houseScene.buildFromCatalog(this.projectData);
+    await this.houseScene.buildFromCatalog(this.projectData, this.anchorWalls);
     this.reportPlacementDiagnostics();
     this.annotationRenderer?.clear();
     this.annotationRenderer = new AnnotationRenderer(
@@ -3090,7 +3117,7 @@ export class App {
       // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断阶段切换预览。
       this.reportPlacementClosureDiagnostics(data);
       this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
-      await this.houseScene.buildFromCatalog(data);
+      await this.houseScene.buildFromCatalog(data, this.anchorWalls);
       this.reportPlacementDiagnostics();
       this.annotationRenderer?.clear();
       this.annotationRenderer = new AnnotationRenderer(
@@ -3133,7 +3160,7 @@ export class App {
         this.collision.setWalls(this.extractWalls(previousProjectData?.house?.sceneElements));
         // previousProjectData 为 null 只发生在首次加载尚未成功时：没有旧建场数据可恢复，
         // 跳过场景重建（不把 null 强转成 ProjectData）。
-        if (previousProjectData) await this.houseScene.buildFromCatalog(previousProjectData);
+        if (previousProjectData) await this.houseScene.buildFromCatalog(previousProjectData, this.anchorWalls);
         this.reportPlacementDiagnostics();
         this.annotationRenderer?.clear();
         this.annotationRenderer = new AnnotationRenderer(

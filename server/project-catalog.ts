@@ -341,7 +341,10 @@ export class ProjectCatalog {
     if (!items) return {};
     const counts: Record<string, number> = {};
     for (const item of items) {
-      const placed = item.x !== undefined && item.z !== undefined;
+      // placed = 有世界位置的实例（x/z 绝对、wall 墙锚、mount/anchor 派生均算 1 件；
+      // 无 placement 声明的 count-only 条目按 item.count 计）。#98 Tier 1：旧口径只认
+      // x/z，会把已迁移的墙锚/锚点家具误当 count-only（有 count 时多计）。
+      const placed = (item.x !== undefined && item.z !== undefined) || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined;
       counts[item.type] = (counts[item.type] ?? 0) + (placed ? 1 : (item.count ?? 1));
     }
     return counts;
