@@ -181,6 +181,13 @@ export class App {
   private phase: PhaseId = 'full';
   private activeLayout = 'model-geometry';
   private phaseReloading = false;
+  /**
+   * 重建串行化（#98 Tier 1，Codex 二审 blocking）：布局/阶段重建各含两次 await
+   * （项目 + 墙表），连续切换会在 await 间交错——旧切换恢复后用新 projectData 配旧
+   * 墙表建场，同名墙坐标不同即静默错位。所有重建（布局/阶段）排入同一条 promise 链，
+   * 一次只跑一个；每轮用自己的快照（项目 + 墙表配对提交），不重读共享字段。队尾即最终态。
+   */
+  private rebuildQueue: Promise<void> = Promise.resolve();
   private renderFacts?: ProjectRenderFacts;
   private topics: Topic[] = [];
   private rafId?: number;
@@ -3067,15 +3074,25 @@ export class App {
     this.overviewMenu.setArchivedSchemes(archives);
   }
 
-  private async handleLayoutChange(layoutName: string): Promise<void> {
+  private handleLayoutChange(layoutName: string): Promise<void> {
+    const run = this.rebuildQueue.then(() => this.doLayoutChange(layoutName));
+    this.rebuildQueue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async doLayoutChange(layoutName: string): Promise<void> {
     const previousLayout = this.activeLayout;
+    // 同一次切换的完整快照：项目与墙表配对提交，建场与面板一律读本次快照、不重读共享字段。
+    let data: ProjectApiResponse | undefined;
+    let walls: import('@shared/types').WallSegment[] | undefined;
     try {
-      const data = await this.stateSync.fetchProject({ phase: this.phase, layout: layoutName });
+      data = await this.stateSync.fetchProject({ phase: this.phase, layout: layoutName });
+      // 定位基准墙全量随布局换（#98 Tier 1）：墙表按布局走，失败只降级（undefined）。
+      walls = await this.stateSync.fetchAnchorWalls(layoutName);
       this.projectData = data;
       this.activeLayout = layoutName;
       this.stateSync.setLayout(layoutName);
-      // 定位基准墙全量随布局换（#98 Tier 1）：墙表按布局走，失败只降级（undefined）。
-      this.anchorWalls = await this.stateSync.fetchAnchorWalls(layoutName);
+      this.anchorWalls = walls;
       // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断布局切换预览。
       this.reportPlacementClosureDiagnostics(data);
     } catch (error) {
@@ -3085,11 +3102,12 @@ export class App {
       this.showToast('布局切换失败，已恢复当前布局');
       return;
     }
-    this.collision.setWalls(this.extractWalls(this.projectData?.house?.sceneElements));
+    if (data === undefined) return;
+    this.collision.setWalls(this.extractWalls(data.house?.sceneElements));
     // 2026-11-09 修 Codex 第 8 轮 blocking：布局切换建场同样要先补 render-facts 投影
     // （/api/project 不返回该字段）。漏它则 SceneBuilder 解不出 indoor_master 锚点，
     // 三件冷凝链家具带诊断跳过，页面缺件。
-    await this.houseScene.buildFromCatalog(this.projectData, this.anchorWalls);
+    await this.houseScene.buildFromCatalog(data, walls);
     this.reportPlacementDiagnostics();
     this.annotationRenderer?.clear();
     this.annotationRenderer = new AnnotationRenderer(
@@ -3101,7 +3119,7 @@ export class App {
     // mount 挂载点位的宿主索引同源注入（issue #98 S2）。
     await this.refreshInfrastructure();
     this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
-    this.analysisTools.setRooms(this.projectData?.house?.rooms ?? []);
+    this.analysisTools.setRooms(data.house?.rooms ?? []);
     this.analysisTools.checkFurnitureCollisions();
     const [scheme, presentationState] = await Promise.all([
       this.stateSync.fetchScheme(),
@@ -3112,7 +3130,13 @@ export class App {
     this.requestRender();
   }
 
-  private async handlePhaseChange(phase: PhaseId): Promise<void> {
+  private handlePhaseChange(phase: PhaseId): Promise<void> {
+    const run = this.rebuildQueue.then(() => this.doPhaseChange(phase));
+    this.rebuildQueue = run.catch(() => undefined);
+    return run;
+  }
+
+  private async doPhaseChange(phase: PhaseId): Promise<void> {
     if (phase === this.phase || this.phaseReloading) return;
     const previousPhase = this.phase;
     const previousLayout = this.activeLayout;
@@ -3120,17 +3144,21 @@ export class App {
     const previousAnchorWalls = this.anchorWalls;
     this.phaseReloading = true;
     this.overviewMenu.setPhaseLoading(true);
+    // 同一次切换的完整快照：项目与墙表配对提交，建场读本次快照；共享字段（墙表/项目/
+    // 阶段）只在建场成功后一起提交——建场前失败/中断不留半份新状态。
+    let data: ProjectApiResponse;
+    let walls: import('@shared/types').WallSegment[] | undefined;
     try {
       this.stateSync.setPhase(phase);
-      const data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
+      data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
       // 定位基准墙全量随阶段重建同布局刷新（#98 Tier 1，Codex 一审 blocking）：墙表只在启动/
       // 布局切换时刷新时，AI 会话移墙后切阶段会拿新项目 + 旧墙表建场，挂靠对象静默不跟随。
       // 与 projectData 同源同布局拉取，失败只降级（undefined）。
-      this.anchorWalls = await this.stateSync.fetchAnchorWalls(this.activeLayout);
+      walls = await this.stateSync.fetchAnchorWalls(this.activeLayout);
       // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断阶段切换预览。
       this.reportPlacementClosureDiagnostics(data);
-      this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
-      await this.houseScene.buildFromCatalog(data, this.anchorWalls);
+      this.collision.setWalls(this.extractWalls(data.house?.sceneElements));
+      await this.houseScene.buildFromCatalog(data, walls);
       this.reportPlacementDiagnostics();
       this.annotationRenderer?.clear();
       this.annotationRenderer = new AnnotationRenderer(
@@ -3140,8 +3168,10 @@ export class App {
       );
       await this.refreshInfrastructure();
       this.analysisTools.setFurnitureMeshes(this.houseScene.getFurnitureMeshes());
-      this.analysisTools.setRooms(data?.house?.rooms ?? []);
+      this.analysisTools.setRooms(data.house?.rooms ?? []);
       this.analysisTools.checkFurnitureCollisions();
+      // 建场成功后一起提交：墙表/项目/阶段三者同批，半份新状态不进共享字段。
+      this.anchorWalls = walls;
       this.projectData = data;
       this.phase = phase;
       this.overviewMenu.setActiveLayout(this.activeLayout);

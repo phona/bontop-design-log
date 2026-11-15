@@ -981,6 +981,58 @@ describe('App', () => {
     expect(app['phase']).toBe('phase_1_basic_occupancy');
   });
 
+  it('concurrent layout switches never mix project and walls: last click wins with its own pair (codex 二审 blocking)', async () => {
+    // 布局切换含两次 await（项目 + 墙表）：A 的墙表后返回时，旧实现用已更新的共享
+    // projectData（B）配 A 的墙表建场，同名墙坐标不同即静默错位。本用例把 A 的墙表
+    // 挂起，让 B 的切换先完成——旧实现末次建场必为 (B 项目, A 墙表)；串行化后每轮
+    // 用自己的快照，末次建场必为 (B 项目, B 墙表)，共享态亦为 B。
+    const wallA = { id: 'w_a', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
+    const wallB = { id: 'w_b', x1: 0, z1: 0, x2: 5, z2: 0, line_datum: 'centerline' };
+    const projectA = { house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, layoutMarker: 'a' };
+    const projectB = { house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, layoutMarker: 'b' };
+    let releaseWallsA!: () => void;
+    const wallsAGate = new Promise<void>((resolve) => { releaseWallsA = () => resolve(); });
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/project') && urlStr.includes('layout=layout_a')) {
+        return { ok: true, json: async () => projectA } as Response;
+      }
+      if (urlStr.includes('/api/project') && urlStr.includes('layout=layout_b')) {
+        return { ok: true, json: async () => projectB } as Response;
+      }
+      if (urlStr.includes('/api/walls') && urlStr.includes('layout=layout_a')) {
+        await wallsAGate;
+        return { ok: true, json: async () => ({ walls: [wallA] }) } as Response;
+      }
+      if (urlStr.includes('/api/walls') && urlStr.includes('layout=layout_b')) {
+        return { ok: true, json: async () => ({ walls: [wallB] }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    const buildSpy = vi.spyOn(app['houseScene'], 'buildFromCatalog').mockImplementation(async () => undefined);
+    buildSpy.mockClear();
+
+    const switchA = app['handleLayoutChange']('layout_a');
+    const switchB = app['handleLayoutChange']('layout_b');
+    // 放行一个宏任务：B 的两次拉取（立即）走完，A 仍挂在墙表门上
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    releaseWallsA();
+    await Promise.all([switchA, switchB]);
+
+    expect(buildSpy.mock.calls.map(([data, walls]) => [data, walls])).toEqual([
+      [projectA, [wallA]],
+      [projectB, [wallB]],
+    ]);
+    expect(app['projectData']).toBe(projectB);
+    expect(app['anchorWalls']).toEqual([wallB]);
+    expect(app['activeLayout']).toBe('layout_b');
+  });
+
   // 点包 3D 高亮的聚合路径（highlightApprovalPackage）：房间/对象走 highlightObjects、
   // 点位走 highlightPoints（第三步落地后点位不再被静默丢弃）。start() 已把 projectData
   // 拉到手，这里只覆写 links 响应，验证聚合口径与「失败不打断审批流」。
