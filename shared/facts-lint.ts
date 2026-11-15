@@ -9,7 +9,7 @@ import {
   SUPPORT_FLOOR_BAND_MAX,
   type FootprintPoint,
 } from './mep-hvac-lint.js';
-import { derivedSlopeRunToHeight, isMepViaCoordinate, mepRoutePoints, resolveMepViaSteps, type MepRoute, type MepShaft } from './mep-hvac-coordination-schema.js';
+import { derivedSlopeRunToHeight, isMepViaCoordinate, mepRoutePoints, resolveMepViaSteps, type MepAxis, type MepLevel, type MepRoute, type MepShaft } from './mep-hvac-coordination-schema.js';
 import type { CeilingZone } from './types.js';
 import { ALL_MODEL_TARGET } from './package-objects.js';
 //
@@ -1781,9 +1781,11 @@ interface ClearancePoint { x: number; z: number; y?: number }
  * 误判为 unresolvable。关系型 via 不走兼容壳（它会抛错）——改调统一出口的同一求解器
  * resolveMepViaSteps（与 resolveMepRoutes 同源，不另写步语义）；步失败仍抛错，由
  * runCeilingClearance 转 ceiling_clearance_unresolvable——不静默跳过、不给半条路径。
- * shafts 取同一文档的顶层 shafts 表（runCeilingClearance 传入）；无表即 []，关系步
+ * shafts / axes / levels 取同一文档的顶层表（runCeilingClearance 传入）；无表即 []，关系步
  * 随即断引用 fail-closed。slope_run 步的坡度须随壳传入（2026-11-14 全带泵重画：
- * 壳漏传 slope 会使五条冷凝水支管在 facts 契约里全报「缺少有效 slope」）。
+ * 壳漏传 slope 会使五条冷凝水支管在 facts 契约里全报「缺少有效 slope」）；vertical_to
+ * 步的 to_height 亦须随壳传入（2026-11-15 冷媒家族关系化：壳漏传 to_height 会使
+ * vertical_to height:'to' 全报「缺少有效目标标高」）。
  * 终端标高与统一出口同一派生（2026-11-15 PR #233 blocking 修复：to_height 缺省且末步
  * 为 slope_run 时终端取末步落点高度——hvac terminal 不回 y，旧口径 `to.y` 为空使
  * yOf 静默回退到冷凝水层高 2.65m，与统一出口的 2.6375–2.6846m 分叉；终端点现与
@@ -1793,6 +1795,8 @@ export function clearanceRoutePoints(
   route: Record<string, unknown>,
   endpoints: Record<string, { x: number; z: number; y?: number }>,
   shafts: MepShaft[] = [],
+  axes: MepAxis[] = [],
+  levels: MepLevel[] = [],
 ): ClearancePoint[] {
   const pointOf = (endpoint: unknown): ClearancePoint | undefined => {
     if (typeof endpoint === 'string') return endpoints[endpoint];
@@ -1811,8 +1815,8 @@ export function clearanceRoutePoints(
     if (!from || !to) {
       throw new Error(`MEP route ${str(route.id)} 关系 via 无端点可解：${!from ? 'from' : 'to'} 端点未解析`);
     }
-    const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}), ...(slope !== undefined ? { slope } : {}) } as MepRoute;
-    const resolved = resolveMepViaSteps(shellRoute, from, to, shafts);
+    const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}), ...(toHeight !== undefined ? { to_height: toHeight } : {}), ...(slope !== undefined ? { slope } : {}) } as MepRoute;
+    const resolved = resolveMepViaSteps(shellRoute, from, to, shafts, axes, levels);
     if (resolved.diagnostic !== undefined) throw new Error(resolved.diagnostic);
     return [
       { ...from, y: fromHeight ?? from.y },
@@ -1880,17 +1884,23 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
   }
 
   const conflicts: string[] = [];
-  // 同一文档的顶层 shafts 表：关系型 via 的引用目标（issue #98 二阶段 S3）；
-  // 无表即 []，关系步随即断引用 fail-closed，不静默回退绝对坐标。
+  // 同一文档的顶层 shafts / axes / levels 表：关系型 via 的引用目标（issue #98 二阶段 S3
+  // 竖井；MEP batch 4 轴线与标高层）；无表即 []，关系步随即断引用 fail-closed，不静默回退绝对坐标。
   const shafts: MepShaft[] = Array.isArray((doc as Record<string, unknown>).shafts)
     ? ((doc as Record<string, unknown>).shafts as MepShaft[])
+    : [];
+  const axes: MepAxis[] = Array.isArray((doc as Record<string, unknown>).axes)
+    ? ((doc as Record<string, unknown>).axes as MepAxis[])
+    : [];
+  const levels: MepLevel[] = Array.isArray((doc as Record<string, unknown>).levels)
+    ? ((doc as Record<string, unknown>).levels as MepLevel[])
     : [];
   for (const route of routes) {
     if (!isRecord(route)) continue;
     if (typeof route.layer === 'string' && !CEILING_CARRIED_LAYERS_FACTS.has(route.layer)) continue;
     let points: ClearancePoint[];
     try {
-      points = clearanceRoutePoints(route, endpoints, shafts);
+      points = clearanceRoutePoints(route, endpoints, shafts, axes, levels);
     } catch (error) {
       add(result, issue('error', 'ceiling_clearance_unresolvable', `${contract.id}：路由 ${str(route.id)} 无法解析为 MEP 路线（${error instanceof Error ? error.message : String(error)}），不静默跳过`, source));
       tally(result, 'ceiling_clearance_unresolvable');

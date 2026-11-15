@@ -547,7 +547,7 @@ function main(): void {
       // mountHosts 时，起夜灯等 mount 端点在 MEP 侧解不出（回落声明坐标，断言期相等故不显形）。
       pointWalls: placementIndexes.pointWalls,
       mountHosts: placementIndexes.mountHosts,
-    }, mepCoordination.junctions, mepCoordination.shafts);
+    }, mepCoordination.junctions, mepCoordination.shafts, mepCoordination.axes, mepCoordination.levels);
     if (resolvedMep.unresolved.length === 0) {
       const rawPlan = resolvedMep.points.map((point) => ({ x: point.x, z: point.z }));
       const mepPlan = rawPlan.filter((point, index) =>
