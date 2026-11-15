@@ -148,9 +148,11 @@ export function lintElectricalTopology(
     if (point.wall && context.layout && !context.layout.walls.some((wall) => wall.id === point.wall)) issue('warning', 'unknown_wall', `Point ${point.id} references unknown wall ${point.wall}`, point.id);
   }
   const tvSocket = pointMap.get('sock_living_tv');
+  // #238 Codex major：低柜不得只按声明 x/z 找——Tier 2 起 tv_wall_low 锚 ld.tv_65、无声明坐标，
+  // 带 x/z 条件会把关系锚低柜排除出本检查（静默死亡）。位置在下面经共享解算取。
   const tvCabinet = Object.values(context.furnishings ?? {})
     .flat()
-    .find((item) => item.type === 'tv_wall_low' && typeof item.x === 'number' && typeof item.z === 'number');
+    .find((item) => item.type === 'tv_wall_low');
   // (e) 防生活阳台式复发：ceiling_light 预算行（count>0，缺省=1）所在房间必须有至少一个照明类点位。
   const roomsWithCeilingLightBudget = new Set<string>();
   for (const [roomId, items] of Object.entries(context.furnishings ?? {})) {
@@ -178,13 +180,29 @@ export function lintElectricalTopology(
   };
   // tv 插座 ↔ tv_wall_low 低柜 ≤1.5m（与 config/verify-rules.yaml 的 tv_socket_to_stand 同口径，
   // 两条门禁各自显形）。平面坐标走单一解算（issue #98 S3：tv 插座是沿墙点位，不再声明绝对 x/z）。
-  if (tvSocket && tvCabinet && typeof tvCabinet.x === 'number' && typeof tvCabinet.z === 'number') {
+  // 低柜位置：绝对声明优先；关系锚家具（Tier 2 起 tv_wall_low 锚 ld.tv_65）取共享解算的宿主位置
+  // （上文 buildPlacementIndexes 产物，与 verify-rules 的 furnitureItems 同源）；有 id 却解不出
+  // 位置是定位失败，报 error 显形，不得静默跳过（#238 Codex major）。
+  if (tvSocket && tvCabinet) {
     const plan = planOf(tvSocket);
-    if (plan) {
-      const separation = Math.hypot(plan.x - tvCabinet.x, plan.z - tvCabinet.z);
-      if (separation > 1.5) {
-        issue('warning', 'tv_socket_near_tv_stand', `TV socket ${tvSocket.id} is ${separation.toFixed(2)}m from tv_wall_low; expected <= 1.50m`, tvSocket.id);
+    let cabinetX = tvCabinet.x;
+    let cabinetZ = tvCabinet.z;
+    if ((cabinetX === undefined || cabinetZ === undefined) && tvCabinet.id !== undefined) {
+      const host = mountHosts?.get(tvCabinet.id);
+      if (host !== undefined) {
+        cabinetX = host.x;
+        cabinetZ = host.z;
       }
+    }
+    if (typeof cabinetX === 'number' && typeof cabinetZ === 'number') {
+      if (plan) {
+        const separation = Math.hypot(plan.x - cabinetX, plan.z - cabinetZ);
+        if (separation > 1.5) {
+          issue('warning', 'tv_socket_near_tv_stand', `TV socket ${tvSocket.id} is ${separation.toFixed(2)}m from tv_wall_low; expected <= 1.50m`, tvSocket.id);
+        }
+      }
+    } else if (tvCabinet.id !== undefined) {
+      issue('error', 'tv_stand_position_unresolved', `tv_wall_low (${tvCabinet.id}) has no resolvable position (declared x/z missing and shared placement resolution returned none); TV-socket distance check cannot run`, tvCabinet.id);
     }
   }
   for (const point of points) {
