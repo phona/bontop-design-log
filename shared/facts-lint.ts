@@ -1785,7 +1785,7 @@ interface ClearancePoint { x: number; z: number; y?: number }
  * 随即断引用 fail-closed。slope_run 步的坡度须随壳传入（2026-11-14 全带泵重画：
  * 壳漏传 slope 会使五条冷凝水支管在 facts 契约里全报「缺少有效 slope」）。
  * axes 同理取同一文档的顶层 axes 表（issue #98 MEP batch 2 强电干线切片）：
- * 轴线步的引用目标，无表即 []，axis_entry / axis_run 随即断引用 fail-closed。
+ * 轴线步的引用目标，无表即 []，axis_jog / axis_run 随即断引用 fail-closed。
  * 终端标高与统一出口同一派生（2026-11-15 PR #233 blocking 修复：to_height 缺省且末步
  * 为 slope_run 时终端取末步落点高度——hvac terminal 不回 y，旧口径 `to.y` 为空使
  * yOf 静默回退到冷凝水层高 2.65m，与统一出口的 2.6375–2.6846m 分叉；终端点现与

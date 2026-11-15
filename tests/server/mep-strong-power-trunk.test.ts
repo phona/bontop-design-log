@@ -135,15 +135,15 @@ const OLD_VIA: Record<SliceId, Array<{ x: number; z: number; y: number }>> = {
 };
 
 const EXPECTED_KINDS: Record<SliceId, string[]> = {
-  'strong-main': ['axis_entry', 'axis_run'],
-  'strong-ac-living': ['axis_entry', 'axis_run'],
-  'strong-ac-dining': ['axis_entry', 'axis_run'],
-  'strong-ac-master': ['axis_entry', 'axis_run'],
-  'strong-ac-parent': ['axis_entry', 'axis_run', 'run_to'],
-  'strong-ac-child': ['axis_entry', 'axis_run', 'run_to'],
-  'strong-ac-study': ['axis_entry', 'axis_run', 'run_to', 'run_to', 'run_to', 'run_to'],
-  'strong-ac-outdoor': ['axis_entry', 'axis_run', 'run_to', 'vertical_jog', 'run_to', 'run_to'],
-  'strong-power-weakbox': ['from_face_jog', 'vertical_jog', 'run_to', 'run_to'],
+  'strong-main': ['axis_jog', 'axis_run'],
+  'strong-ac-living': ['axis_jog', 'axis_run'],
+  'strong-ac-dining': ['axis_jog', 'axis_run'],
+  'strong-ac-master': ['axis_jog', 'axis_run'],
+  'strong-ac-parent': ['axis_jog', 'axis_run', 'axis_run'],
+  'strong-ac-child': ['axis_jog', 'axis_run', 'axis_run'],
+  'strong-ac-study': ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
+  'strong-ac-outdoor': ['axis_jog', 'axis_run', 'axis_run', 'level', 'axis_run', 'axis_run'],
+  'strong-power-weakbox': ['from_face_jog', 'level', 'axis_run', 'axis_run'],
   'strong-power-living-table': ['from_face_jog', 'from_drop', 'shaft_run'],
 };
 
@@ -315,9 +315,9 @@ test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折
   for (const id of SLICE_IDS) {
     const route = all.coordination.routes.find((r) => r.id === id)!;
     assert.deepEqual(route.via.map((s: any) => s.kind), EXPECTED_KINDS[id], `${id} via 步型须为预期序列`);
-    // 非 vertical_jog 步不得声明 y（高度取标高游标）；vertical_jog 的 y 是本步竖向目标。
+    // 非 level 步不得声明 y（高度取标高游标）；level 的 y 是本步竖向目标。
     for (const step of route.via as any[]) {
-      if (step.kind === 'vertical_jog') assert.ok(Number.isFinite(step.y), `${id} vertical_jog 须声明有限数 y`);
+      if (step.kind === 'level') assert.ok(Number.isFinite(step.y), `${id} level 须声明有限数 y`);
       else assert.equal(step.y, undefined, `${id} ${step.kind} 不得声明 y`);
     }
     assert.equal(route.construction_status, 'pending', `${id} 施工状态须留 pending`);
@@ -325,7 +325,7 @@ test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折
     assert.equal(route.source_status, 'proposed', `${id} 来源状态须为 proposed`);
     assert.ok((route.reason ?? '').includes('2026-11-15 #98 MEP batch 2'), `${id} reason 须记 batch 2 迁移说明`);
   }
-  // outdoor / weakbox 的 vertical_jog 目标值。
+  // outdoor / weakbox 的 level 目标值。
   const outdoor = all.coordination.routes.find((r) => r.id === 'strong-ac-outdoor')!;
   assert.equal((outdoor.via as any[])[3].y, 2.7, 'outdoor 升位须为 2.70（不得改标高）');
   const weakbox = all.coordination.routes.find((r) => r.id === 'strong-power-weakbox')!;
@@ -504,16 +504,16 @@ function axisConfig(routes: Array<Record<string, unknown>>, axes: unknown = AXIS
   return MepCoordinationSchema.parse({ version: '1', status: 'preliminary', layers: axisLayers, routes, junctions: [], shafts: [], axes });
 }
 const AXIS_VIA = [
-  { kind: 'axis_entry', axis_id: 'corridor_axis' },
-  { kind: 'axis_run', axis_id: 'corridor_axis', to: 'to' },
+  { kind: 'axis_jog', axis: 'corridor_axis' },
+  { kind: 'axis_run', axis: 'corridor_axis', to: 'to' },
 ];
 const OUTDOOR_VIA = [
-  { kind: 'axis_entry', axis_id: 'corridor_axis' },
-  { kind: 'axis_run', axis_id: 'corridor_axis', to: 7.45 },
-  { kind: 'run_to', axis: 'z', to: 3.0 },
-  { kind: 'vertical_jog', y: 2.7 },
-  { kind: 'run_to', axis: 'z', to: 'to' },
-  { kind: 'run_to', axis: 'x', to: 'to' },
+  { kind: 'axis_jog', axis: 'corridor_axis' },
+  { kind: 'axis_run', axis: 'corridor_axis', to: 7.45 },
+  { kind: 'axis_run', axis: 'z', to: 3.0 },
+  { kind: 'level', y: 2.7 },
+  { kind: 'axis_run', axis: 'z', to: 'to' },
+  { kind: 'axis_run', axis: 'x', to: 'to' },
 ];
 
 test('C4a：合成反例——断引用/越权字段/零行程/离轴/缺 y 一律 fail-closed（红/绿）', () => {
@@ -530,41 +530,43 @@ test('C4a：合成反例——断引用/越权字段/零行程/离轴/缺 y 一�
   assert.throws(() => validateMepCoordination(unknown, emptySources), /引用未知轴线 "corridor_axis"/);
   const green = resolveMepRoutes(axisConfig([axisRoute('syn-ok', AXIS_VIA)]), emptySources);
   assert.equal(green.unresolved, 0, '对照组须解出');
-  // 越权字段：axis_entry 声明 y / shaft（schema 拒绝 + 求解器入口拒绝）。
-  assert.throws(() => axisConfig([axisRoute('syn-y', [{ kind: 'axis_entry', axis_id: 'corridor_axis', y: 2.55 }, AXIS_VIA[1]])]), /axis_entry 不得声明 y/);
-  failClosed(axisRoute('syn-y', [{ kind: 'axis_entry', axis_id: 'corridor_axis', y: 2.55 }, AXIS_VIA[1]]) as MepRoute, /不得声明 y/);
-  assert.throws(() => axisConfig([axisRoute('syn-shaft', [{ kind: 'axis_entry', axis_id: 'corridor_axis', shaft: 'shaft_entry' }, AXIS_VIA[1]])]), /axis_entry 不引用竖井/);
-  failClosed(axisRoute('syn-shaft', [{ kind: 'axis_entry', axis_id: 'corridor_axis', shaft: 'shaft_entry' }, AXIS_VIA[1]]) as MepRoute, /不得声明 shaft/);
-  // 离轴 axis_run（缺 axis_entry）：不静默沿错误线位跑。
+  // 越权字段：axis_jog 声明 y / shaft（schema 拒绝 + 求解器入口拒绝）。
+  assert.throws(() => axisConfig([axisRoute('syn-y', [{ kind: 'axis_jog', axis: 'corridor_axis', y: 2.55 }, AXIS_VIA[1]])]), /axis_jog 不得声明 y/);
+  failClosed(axisRoute('syn-y', [{ kind: 'axis_jog', axis: 'corridor_axis', y: 2.55 }, AXIS_VIA[1]]) as MepRoute, /不得声明 y/);
+  assert.throws(() => axisConfig([axisRoute('syn-shaft', [{ kind: 'axis_jog', axis: 'corridor_axis', shaft: 'shaft_entry' }, AXIS_VIA[1]])]), /axis_jog 不引用竖井/);
+  failClosed(axisRoute('syn-shaft', [{ kind: 'axis_jog', axis: 'corridor_axis', shaft: 'shaft_entry' }, AXIS_VIA[1]]) as MepRoute, /不得声明 shaft/);
+  // 离轴 axis_run（缺 axis_jog）：不静默沿错误线位跑。
   failClosed(axisRoute('syn-offaxis', [AXIS_VIA[1]]) as MepRoute, /不在轴线 "corridor_axis" 上/);
-  // 零行程：axis_entry 已在轴上；axis_run 目标即当前点；run_to 目标即当前点。
+  // 零行程：axis_jog 已在轴上；axis_run 目标即当前点；axis_run 目标即当前点。
   const onAxis = resolveMepViaSteps(axisRoute('syn-zero-entry', AXIS_VIA) as MepRoute, { x: 10.8, z: 4.6, y: 2.55 }, to, [], AXIS_TABLE);
   assert.deepEqual(onAxis.points, []);
-  assert.match(onAxis.diagnostic ?? '', /axis_entry 零行程/);
-  failClosed(axisRoute('syn-zero-run', [{ kind: 'axis_entry', axis_id: 'corridor_axis' }, { kind: 'axis_run', axis_id: 'corridor_axis', to: 10.8 }]) as MepRoute, /axis_run 零行程/);
-  failClosed(axisRoute('syn-zero-runto', [{ kind: 'axis_entry', axis_id: 'corridor_axis' }, { kind: 'axis_run', axis_id: 'corridor_axis', to: 7.2 }, { kind: 'run_to', axis: 'z', to: 4.6 }]) as MepRoute, /run_to 零行程/);
+  assert.match(onAxis.diagnostic ?? '', /axis_jog 零行程/);
+  failClosed(axisRoute('syn-zero-run', [{ kind: 'axis_jog', axis: 'corridor_axis' }, { kind: 'axis_run', axis: 'corridor_axis', to: 10.8 }]) as MepRoute, /axis_run 零行程/);
+  failClosed(axisRoute('syn-zero-runto', [{ kind: 'axis_jog', axis: 'corridor_axis' }, { kind: 'axis_run', axis: 'corridor_axis', to: 7.2 }, { kind: 'axis_run', axis: 'z', to: 4.6 }]) as MepRoute, /axis_run 零行程/);
   // 缺 to 的 axis_run（schema 拒绝 + 求解器入口拒绝）。
-  assert.throws(() => axisConfig([axisRoute('syn-noto', [AXIS_VIA[0], { kind: 'axis_run', axis_id: 'corridor_axis' }])]), /axis_run 必须声明 to/);
-  failClosed(axisRoute('syn-noto', [AXIS_VIA[0], { kind: 'axis_run', axis_id: 'corridor_axis' }]) as MepRoute, /缺少 to/);
-  // run_to 缺 axis / 缺 to / 带 shaft / 带 axis_id（schema 拒绝）。
-  assert.throws(() => axisConfig([axisRoute('syn-noaxis', [{ kind: 'run_to', to: 5.5 }])]), /run_to 必须声明 axis/);
-  assert.throws(() => axisConfig([axisRoute('syn-noto2', [{ kind: 'run_to', axis: 'z' }])]), /run_to 必须声明 to/);
-  assert.throws(() => axisConfig([axisRoute('syn-rshaft', [{ kind: 'run_to', axis: 'z', to: 5.5, shaft: 'shaft_entry' }])]), /run_to 不引用竖井/);
-  assert.throws(() => axisConfig([axisRoute('syn-raxisid', [{ kind: 'run_to', axis: 'z', to: 5.5, axis_id: 'corridor_axis' }])]), /run_to 不引用轴线表/);
-  // 非轴线步声明 axis_id（schema 拒绝 + 求解器入口拒绝）：axis_id 为全步型共用可选字段，
-  // 竖井步/坡度步带 axis_id 会静默忽略——Codex major；竖井步以 shaft_run 为代表（四种共用
-  // 同一 schema 分支与同一入口检查点）。
-  assert.throws(() => axisConfig([axisRoute('syn-shaftrun-axisid', [{ kind: 'shaft_run', shaft: 'shaft_entry', axis_id: 'corridor_axis' }])]), /shaft_run 不引用轴线表/);
-  failClosed(axisRoute('syn-shaftrun-axisid', [{ kind: 'shaft_run', shaft: 'shaft_entry', axis_id: 'corridor_axis' }]) as MepRoute, /不引用轴线表/);
-  assert.throws(() => axisConfig([axisRoute('syn-sloperun-axisid', [{ kind: 'slope_run', axis: 'x', to: 5.0, axis_id: 'corridor_axis' }], { slope: 0.01 })]), /slope_run 不引用轴线表/);
-  failClosed(axisRoute('syn-sloperun-axisid', [{ kind: 'slope_run', axis: 'x', to: 5.0, axis_id: 'corridor_axis' }], { slope: 0.01 }) as MepRoute, /不引用轴线表/);
-  // vertical_jog 缺 y / 带 shaft / 零行程 / 非有限数 y（schema 拒绝 + 求解器入口拒绝）。
-  assert.throws(() => axisConfig([axisRoute('syn-noy', [{ kind: 'vertical_jog' }])]), /vertical_jog 必须声明 y/);
-  failClosed(axisRoute('syn-noy', [{ kind: 'vertical_jog' }]) as MepRoute, /必须声明有限数 y/);
-  assert.throws(() => axisConfig([axisRoute('syn-vshaft', [{ kind: 'vertical_jog', y: 2.7, shaft: 'shaft_entry' }])]), /vertical_jog 不引用竖井/);
-  failClosed(axisRoute('syn-vzero', [{ kind: 'vertical_jog', y: 2.55 }]) as MepRoute, /vertical_jog 零行程/);
-  failClosed(axisRoute('syn-vnan', [{ kind: 'vertical_jog', y: Number.NaN }]) as MepRoute, /必须声明有限数 y/);
-  // 缺 from_height：axis_entry 无起算标高。
+  assert.throws(() => axisConfig([axisRoute('syn-noto', [AXIS_VIA[0], { kind: 'axis_run', axis: 'corridor_axis' }])]), /axis_run 必须声明 to/);
+  failClosed(axisRoute('syn-noto', [AXIS_VIA[0], { kind: 'axis_run', axis: 'corridor_axis' }]) as MepRoute, /缺少 to/);
+  // axis_run 缺 axis / 缺 to / 带 shaft（schema 拒绝）；axis_jog 的 axis 不得为方向
+  // （统一协议后 axis 单字段重载：方向与轴线 id 不能同存一字段，旧“axis_run 带 axis_id”
+  // 越权情形已无写法，本行改为 axis_jog 取方向的拒绝用例）。
+  assert.throws(() => axisConfig([axisRoute('syn-noaxis', [{ kind: 'axis_run', to: 5.5 }])]), /axis_run 必须声明 axis/);
+  assert.throws(() => axisConfig([axisRoute('syn-noto2', [{ kind: 'axis_run', axis: 'z' }])]), /axis_run 必须声明 to/);
+  assert.throws(() => axisConfig([axisRoute('syn-rshaft', [{ kind: 'axis_run', axis: 'z', to: 5.5, shaft: 'shaft_entry' }])]), /axis_run 不引用竖井/);
+  assert.throws(() => axisConfig([axisRoute('syn-jogdir', [{ kind: 'axis_jog', axis: 'z' }, AXIS_VIA[1]])]), /axis_jog 的 axis 须为轴线 id/);
+  // 非轴线步声明轴线 id（schema 拒绝 + 求解器入口拒绝）：axis 为全步型共用可选字段，
+  // 竖井步带 axis 会静默忽略——Codex major；竖井步以 shaft_run 为代表（四种共用
+  // 同一 schema 分支与同一入口检查点）；slope_run 的 axis 须为方向，带轴线 id 同样拒绝。
+  assert.throws(() => axisConfig([axisRoute('syn-shaftrun-axisid', [{ kind: 'shaft_run', shaft: 'shaft_entry', axis: 'corridor_axis' }])]), /shaft_run 不引用轴线表/);
+  failClosed(axisRoute('syn-shaftrun-axisid', [{ kind: 'shaft_run', shaft: 'shaft_entry', axis: 'corridor_axis' }]) as MepRoute, /不引用轴线表/);
+  assert.throws(() => axisConfig([axisRoute('syn-sloperun-axisid', [{ kind: 'slope_run', axis: 'corridor_axis', to: 5.0 }], { slope: 0.01 })]), /slope_run 的 axis 须为方向/);
+  failClosed(axisRoute('syn-sloperun-axisid', [{ kind: 'slope_run', axis: 'corridor_axis', to: 5.0 }], { slope: 0.01 }) as MepRoute, /的 axis 须为方向/);
+  // level 缺 y / 带 shaft / 零行程 / 非有限数 y（schema 拒绝 + 求解器入口拒绝）。
+  assert.throws(() => axisConfig([axisRoute('syn-noy', [{ kind: 'level' }])]), /level 必须声明 y/);
+  failClosed(axisRoute('syn-noy', [{ kind: 'level' }]) as MepRoute, /必须声明有限数 y/);
+  assert.throws(() => axisConfig([axisRoute('syn-vshaft', [{ kind: 'level', y: 2.7, shaft: 'shaft_entry' }])]), /level 不引用竖井/);
+  failClosed(axisRoute('syn-vzero', [{ kind: 'level', y: 2.55 }]) as MepRoute, /level 零行程/);
+  failClosed(axisRoute('syn-vnan', [{ kind: 'level', y: Number.NaN }]) as MepRoute, /必须声明有限数 y/);
+  // 缺 from_height：axis_jog 无起算标高。
   const noHeight = axisRoute('syn-noheight', AXIS_VIA, { from_height: undefined }) as MepRoute;
   delete (noHeight as Record<string, unknown>).from_height;
   const redHeight = resolveMepViaSteps(noHeight, { x: 10.8, z: 2.98 }, to, [], AXIS_TABLE);
@@ -619,18 +621,18 @@ test('C4b：真实配置反例——axes 表缺失时 8 条轴路由 unresolved�
   for (const id of SLICE_IDS) assert.ok(healthyDxf.dxf.includes(id), `健康 DXF 须含 ${id}`);
 });
 
-test('C4c：真实配置反例——outdoor vertical_jog 删 y 时整条 unresolved，schema 即拒绝', () => {
+test('C4c：真实配置反例——outdoor level 删 y 时整条 unresolved，schema 即拒绝', () => {
   const all = loadAll();
   const broken = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
   const idx = broken.routes.findIndex((r) => r.id === 'strong-ac-outdoor');
   delete ((broken.routes[idx].via as any[])[3] as Record<string, unknown>).y;
-  assert.throws(() => MepCoordinationSchema.parse(JSON.parse(JSON.stringify(broken))), /vertical_jog 必须声明 y/);
+  assert.throws(() => MepCoordinationSchema.parse(JSON.parse(JSON.stringify(broken))), /level 必须声明 y/);
   // 绕过 schema 直接解算：同样 fail-closed。
   const before = resolveChain(all, all.furnishings);
   const after = resolveChain(all, all.furnishings, broken as MepCoordination);
   const r = routeOf(after.report, 'strong-ac-outdoor');
   assert.deepEqual(r.unresolved, ['via']);
   assert.deepEqual(r.points, []);
-  assert.ok(r.diagnostics.some((d) => d.includes('vertical_jog') && d.includes('y')), '诊断须点名 vertical_jog 缺 y');
+  assert.ok(r.diagnostics.some((d) => d.includes('level') && d.includes('y')), '诊断须点名 level 缺 y');
   assert.deepEqual(slicePoints(after.report, 'strong-ac-living'), slicePoints(before.report, 'strong-ac-living'), 'living 不得受影响');
 });
