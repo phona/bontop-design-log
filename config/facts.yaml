@@ -576,11 +576,11 @@ facts:
         severity: error
         expect_matches: 1
 
-  # 穿墙声明计数（issue #98 第五阶段 S3，2026-11-08）：route 级 penetration 数组合计 60 条、
+  # 穿墙声明计数（issue #98 第五阶段 S3，2026-11-08）：route 级 penetration 数组合计 61 条、
   # 去重后 33 个孔位（wall@at；at 删除后由路线几何派生，孔位集不变）。kind 用 narrative 锚定
   # 施工指导文档的清点句——facts-lint 现有 derived 选择器（#length/#field_sum/#find）表达不了
   # 「跨路线嵌套数组求和 + 去重计数」，扩展选择器登记为后续项；机器计数契约（61 条全集、
-  # 45 钉值、15 保留）在 tests/server/penetration-derivation.test.ts，改配置必须同改测试。
+  # 46 钉值、15 保留）在 tests/server/penetration-derivation.test.ts，改配置必须同改测试。
   # 2026-11-14 全带泵重画：60→61（condensate-parent 新增 w_st_north 穿墙声明 1 条），
   # 孔位仍 33（旧主卧孔消失、新 parent 孔补入、新主卧孔共孔，见 docs/mep-construction-guidance.md:37）。
   - id: fact.mep_penetration_declarations

@@ -75,13 +75,14 @@ function lintContext(): MepLintLayoutContext {
   };
 }
 
-// ── 45 条被删 at 的钉值墓碑（删除前 derive-assert 实跑导出；偏差全部 ≤1e-9） ──
+// ── 46 条被删 at 的钉值墓碑（删除前 derive-assert 实跑导出；偏差全部 ≤1e-9） ──
 // 2026-11-14 全带泵重画（issue #98 MEP batch 1）：condensate-master 旧 pin
 // (w_mbath_south, 2.3, 2.86) 随整条旧路由作废——新路由不再穿主卫，改钉新穿点
 // (w_strip_east, 4.2, 4.6)；condensate-child 穿点由 (5.6, 3.87) 改 (5.6, 4.20)。
-// 条目数仍 45（一换一），孔位计数不受影响（新主卧孔与 strong-ac-master 等
+// condensate-parent 新增穿点 (w_st_north, 5.4, 5.55) 进钉值表。
+// 条目数 45→46（master 一换一 + parent 新增 1 条），孔位计数不受影响（新主卧孔与 strong-ac-master 等
 // 共用 w_strip_east@4.2,4.6 去重后同一孔）。
-const PIN_45: Array<[string, string, number, number]> = [
+const PIN_46: Array<[string, string, number, number]> = [
   ['strong-ac-master', 'w_strip_east', 4.2, 4.6],
   ['strong-ac-parent', 'w_st_north', 5.5, 5.55],
   ['strong-ac-child', 'w_nw_south', 4.35, 4.3],
@@ -121,6 +122,7 @@ const PIN_45: Array<[string, string, number, number]> = [
   ['refrigerant-parent', 'w_st_north', 5.5, 5.55],
   ['refrigerant-child', 'w_nw_south', 4.35, 4.3],
   ['condensate-master', 'w_strip_east', 4.2, 4.6],
+  ['condensate-parent', 'w_st_north', 5.4, 5.55],
   ['condensate-study', 'w_be_west', 13.4, 6.29],
   ['condensate-child', 'w_gbath_west_open_vanity', 5.6, 4.2],
   ['strong-power-parent-child-study-curtain', 'w_st_north', 5.5, 5.55],
@@ -158,14 +160,14 @@ const declarationsOf = (parsed: MepCoordination): Array<{ route: MepRoute; wall:
   return out;
 };
 
-test('45 条被删 at：派生交点逐一等于被删声明值（≤1e-9）', () => {
+test('46 条被删 at：派生交点逐一等于被删声明值（≤1e-9）', () => {
   const declared = new Set(declarationsOf(config).map((d) => `${d.route.id}@${d.wall}`));
   // 2026-11-14 全带泵重画：声明总数 60→61——condensate-parent 新路由正交穿
   // w_st_north (5.40,5.55)，新增 1 条穿墙声明（旧路由 z=6.0/6.10 全程在墙南、
   // 从未穿该墙）；condensate-master 1 换 1（w_mbath_south→w_strip_east），
   // condensate-child 声明不变（穿点由 (5.6,3.87) 改 (5.6,4.20)）。
   assert.equal(declarationsOf(config).length, 61, '穿墙声明总数应保持 61（at 删除不改条目数）');
-  for (const [routeId, wallId, x, z] of PIN_45) {
+  for (const [routeId, wallId, x, z] of PIN_46) {
     const route = config.routes.find((item) => item.id === routeId);
     assert.ok(route, `route ${routeId} 存在`);
     assert.ok(!declarationsOf(config).some((d) => d.route.id === routeId && d.wall === wallId && d.entry.at !== undefined),
@@ -179,7 +181,7 @@ test('45 条被删 at：派生交点逐一等于被删声明值（≤1e-9）', (
   }
 });
 
-test('15 条保留手写：at 原样在场，height/note 未动（60 条声明全集不变）', () => {
+test('15 条保留手写：at 原样在场，height/note 未动', () => {
   const flat = declarationsOf(config);
   for (const [routeId, wallId] of KEPT_15) {
     const found = flat.find((d) => d.route.id === routeId && d.wall === wallId);
@@ -397,12 +399,12 @@ test('冷凝链锚点 deriveMepPenetrationAt：新穿点 (4.20,4.60) 可派生�
   assert.ok(!('point' in hugDerived) && typeof hugDerived.diagnostic === 'string', 'C 形无唯一交点必须 fail-closed 给诊断');
 });
 
-test('穿墙计数契约：60 条声明 / 33 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
+test('穿墙计数契约：61 条声明 / 33 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
   // config/facts.yaml 的 fact.mep_penetration_declarations 只锚定文档清点句的文本（facts-lint 的
   // derived 选择器表达不了「跨路线嵌套数组求和 + 去重」）；本断言从配置机器计算两数并要求文档
   // 同值——guidance:37 的「40 条 / 21 孔位」正是这样 stale 的。孔位 = 同墙同坐标去重（多条路线共用一孔）。
   // **覆盖边界（评审员变异实测，勿过度声称）**：本测试只钉「孔位计数 + 声明条目数」两个数。
-  // ① 孔位**坐标移动**（路线改道但孔数不变）它抓不到——由同文件 PIN_45 逐点钉值测试负责；
+  // ① 孔位**坐标移动**（路线改道但孔数不变）它抓不到——由同文件 PIN_46 逐点钉值测试负责；
   // ② 文档里另一处历史旧值句它抓不到（只查规范句，verify:facts 的 mirror 同口径）；
   // ③ 有手写 at 的声明改指向不存在的墙它抓不到（孔 key 照算），由 KEPT_15 + takeoff + lint 抓。
   // 三条边界都有既有守卫兜底，但不要以为这一条是全能的。
