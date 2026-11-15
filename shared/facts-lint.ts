@@ -1781,6 +1781,9 @@ interface ClearancePoint { x: number; z: number; y?: number }
  * 误判为 unresolvable。关系型 via 不走兼容壳（它会抛错）——改调统一出口的同一求解器
  * resolveMepViaSteps（与 resolveMepRoutes 同源，不另写步语义）；步失败仍抛错，由
  * runCeilingClearance 转 ceiling_clearance_unresolvable——不静默跳过、不给半条路径。
+ * 带 level 的绝对弯点同样走统一求解（2026-11-15 修 Codex blocking）：兼容壳
+ * mepRoutePoints 不解算 level，弯点会丢高度、yOf 静默回退层高，低于吊顶段漏报；
+ * 未知 level 在此亦无诊断。统一求解器已在绝对步分支解算 level（未知/并存即显式失败）。
  * shafts / axes / levels 取同一文档的顶层表（runCeilingClearance 传入）；无表即 []，关系步
  * 随即断引用 fail-closed。slope_run 步的坡度须随壳传入（2026-11-14 全带泵重画：
  * 壳漏传 slope 会使五条冷凝水支管在 facts 契约里全报「缺少有效 slope」）；vertical_to
@@ -1811,9 +1814,13 @@ export function clearanceRoutePoints(
   const fromHeight = typeof route.from_height === 'number' ? route.from_height : undefined;
   const toHeight = typeof route.to_height === 'number' ? route.to_height : undefined;
   const slope = typeof route.slope === 'number' ? route.slope : undefined;
-  if (via.some((step) => !isMepViaCoordinate(step as unknown as { x: number; z: number }))) {
+  const hasRelational = via.some((step) => !isMepViaCoordinate(step as unknown as { x: number; z: number }));
+  // 带 level 的绝对弯点同样走统一求解（2026-11-15 修 Codex blocking）：兼容壳不解算
+  // level，弯点丢高度后 yOf 静默回退层高，低于吊顶段漏报；未知 level 亦无诊断。
+  const hasLevelCoordinate = via.some((step) => isMepViaCoordinate(step as unknown as { x: number; z: number }) && typeof (step as { level?: unknown }).level === 'string');
+  if (hasRelational || hasLevelCoordinate) {
     if (!from || !to) {
-      throw new Error(`MEP route ${str(route.id)} 关系 via 无端点可解：${!from ? 'from' : 'to'} 端点未解析`);
+      throw new Error(`MEP route ${str(route.id)} 关系 via / level 弯点无端点可解：${!from ? 'from' : 'to'} 端点未解析`);
     }
     const shellRoute = { id: str(route.id), via, ...(fromHeight !== undefined ? { from_height: fromHeight } : {}), ...(toHeight !== undefined ? { to_height: toHeight } : {}), ...(slope !== undefined ? { slope } : {}) } as MepRoute;
     const resolved = resolveMepViaSteps(shellRoute, from, to, shafts, axes, levels);

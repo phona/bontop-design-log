@@ -406,6 +406,11 @@ export function mepRoutePoints(
   if (route.via.some((step) => !isMepViaCoordinate(step))) {
     throw new Error(`mepRoutePoints 是纯绝对 via 兼容壳：路由 ${route.id} 含关系型 via 步，须走 resolveMepRoutes / resolveMepRoute 统一出口`);
   }
+  // 带 level 的绝对弯点同样拒收（2026-11-15 修 Codex blocking）：本壳无 levels 表可解，
+  // 弯点会丢高度、消费方 yOf 静默回退层高；level 须走统一出口解算。
+  if (route.via.some((step) => isMepViaCoordinate(step) && typeof (step as { level?: unknown }).level === 'string')) {
+    throw new Error(`mepRoutePoints 是纯绝对 via 兼容壳：路由 ${route.id} 的绝对弯点含 level，须走 resolveMepRoutes / resolveMepRoute 统一出口解算标高`);
+  }
   return [
     ...(from ? [{ ...from, y: route.from_height ?? from.y }] : []),
     ...route.via.filter(isMepViaCoordinate),
