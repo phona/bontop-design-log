@@ -332,8 +332,13 @@ links:
       # 没有宿主引用可供闭包跟随，故必须显式纳入。与第 9 轮「PKG-110 纳入家电」互为反向。
       - {source: furnishings, select: {ids: [kitchen.cabinet_run_north_west, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.countertop_bridge, kitchen.sink]}}
       - {source: furnishings, select: {ids: [gbath.robot_dock]}}
-      - {source: electrical, select: {ids: [sock_fridge_living, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}} # sock_kitchen_fridge → sock_fridge_living（DEC-2026-10-17-R20 冰箱点位迁客餐厅西侧重绑）
-      - {source: plumbing, select: {ids: [faucet_balcony_washer, drain_balcony_washer, faucet_gbath_vanity, drain_gbath_vanity]}}
+      # 2026-11-15（issue #98 MEP batch 7 PR #237 Codex 三审 blocking；开放项 R13）：
+      # SCH-160-01「必需家电逐台安装和接口试运行」验电源与给排水，但洗碗机三接口
+      # 不在 scope 里——改任一接口的 height，PKG-160 摘要不变、旧通过记录不 stale。
+      # 洗碗机 2026-11-02 对调进一期（#152，COST-160-09）后三接口均为一期验收依赖，
+      # 故按稳定 id 直选纳入（与 R11 柜体、R9 家电同一处理）。
+      - {source: electrical, select: {ids: [sock_fridge_living, sock_kitchen_hood, sock_kitchen_gas, sock_kitchen_oven, sock_kitchen_dishwasher, sock_balcony_washer, sock_balcony_dryer, sock_balcony_waterheater, sock_gbath_robot]}} # sock_kitchen_fridge → sock_fridge_living（DEC-2026-10-17-R20 冰箱点位迁客餐厅西侧重绑）
+      - {source: plumbing, select: {ids: [faucet_balcony_washer, drain_balcony_washer, faucet_gbath_vanity, drain_gbath_vanity, faucet_kitchen_dishwasher, drain_kitchen_dishwasher]}}
   - id: MODEL-PKG-170
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-170}
