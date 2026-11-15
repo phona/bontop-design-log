@@ -1890,7 +1890,7 @@ function runCeilingClearance(ws: FactsWorkspace, result: FactsLintResult, lines:
   const shafts: MepShaft[] = Array.isArray((doc as Record<string, unknown>).shafts)
     ? ((doc as Record<string, unknown>).shafts as MepShaft[])
     : [];
-  // 同一文档的顶层 axes 表：轴线步的引用目标（issue #98 MEP batch 2）；无表即 []。
+  // 同一文档的顶层 axes 表：轴线步的引用目标（issue #98 MEP batch 2 强电 / batch 3 弱电）；无表即 []。
   const axes: MepAxis[] = Array.isArray((doc as Record<string, unknown>).axes)
     ? ((doc as Record<string, unknown>).axes as MepAxis[])
     : [];

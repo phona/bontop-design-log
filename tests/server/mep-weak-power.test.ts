@@ -1,7 +1,7 @@
 /**
  * Issue #98 MEP batch 3（弱电）：7 条 weak_power 路由的关系型 via。
  *
- * 新步型 axis_join / run / level（shared/mep-hvac-coordination-schema.ts）：
+ * 新步型 axis_jog / axis_run / run（仅带 y 斜段遗留） / level（shared/mep-hvac-coordination-schema.ts）：
  * 共用轴线只在顶层 axes 表声明一次（weak_axis_438 z=4.38、5 条共用；weak_axis_455
  * z=4.55、2 条共用），北上段 x=10.8 不另声明——7 条共用同一 from 端点
  * panel_weak_entry_left（解算落点 (10.80,2.98)），游标 x 即 from.x，箱位移动自动跟随。
@@ -53,8 +53,8 @@ function weakSources(panel: { x: number; z: number } = { x: 10.8, z: 2.98 }, net
 
 function weakAxes(): MepCoordination['axes'] {
   return [
-    { id: 'weak_axis_438', axis: 'z', at: 4.38, y: 2.6 },
-    { id: 'weak_axis_455', axis: 'z', at: 4.55, y: 2.6 },
+    { id: 'weak_axis_438', axis: 'z', value: 4.38, y: 2.6 },
+    { id: 'weak_axis_455', axis: 'z', value: 4.55, y: 2.6 },
   ];
 }
 
@@ -104,12 +104,12 @@ function length3d(points: ReadonlyArray<{ x: number; y?: number; z: number }>): 
 }
 
 const LIVING_VIA = [
-  { kind: 'axis_join', axis_id: 'weak_axis_438' },
-  { kind: 'run', axis: 'x', to: 7.3 },
-  { kind: 'run', axis: 'z', to: 'to' },
+  { kind: 'axis_jog', axis: 'weak_axis_438' },
+  { kind: 'axis_run', axis: 'x', to: 7.3 },
+  { kind: 'axis_run', axis: 'z', to: 'to' },
 ];
 
-test('A1：axis_join + run 解出弱电形折线：入轴、沿轴、末步 to:\'to\' 跟随终端', () => {
+test('A1：axis_jog + axis_run 解出弱电形折线：入轴、沿轴、末步 to:\'to\' 跟随终端', () => {
   const config = weakConfig([weakRoute('syn-living', LIVING_VIA)]);
   assert.doesNotThrow(() => validateMepCoordination(config, weakSources()));
   const entry = resolveMepRoutes(config, weakSources()).routes[0];
@@ -124,7 +124,7 @@ test('A1：axis_join + run 解出弱电形折线：入轴、沿轴、末步 to:\
   assert.ok(Math.abs(planLength(entry.points) - 8.22) < 1e-9, `平面长度应为 8.22m，实际 ${planLength(entry.points)}`);
 });
 
-test('A2：axis_join fail-closed：未知轴线 / 已在轴线上 / 错层入轴 / 缺 from_height', () => {
+test('A2：axis_jog fail-closed：未知轴线 / 已在轴线上 / 错层入轴 / 缺 from_height', () => {
   const sources = weakSources();
   const axes = weakAxes();
   // 未知轴线。
@@ -142,7 +142,7 @@ test('A2：axis_join fail-closed：未知轴线 / 已在轴线上 / 错层入轴
   assert.deepEqual(onAxis.points, []);
   assert.match(onAxis.diagnostic ?? '', /零行程/);
   // 错层入轴：轴线层高 2.55，游标 2.6，差 0.05m。
-  const wrongLayerAxes = [{ id: 'weak_axis_438', axis: 'z', at: 4.38, y: 2.55 }] as MepCoordination['axes'];
+  const wrongLayerAxes = [{ id: 'weak_axis_438', axis: 'z', value: 4.38, y: 2.55 }] as MepCoordination['axes'];
   const wrongLayer = resolveMepViaSteps(
     weakRoute('syn-living', LIVING_VIA) as unknown as MepRoute,
     { x: 10.8, z: 2.98 }, { x: 7.2, z: 7.6 }, [], wrongLayerAxes,
@@ -159,39 +159,39 @@ test('A2：axis_join fail-closed：未知轴线 / 已在轴线上 / 错层入轴
   assert.equal(green.unresolved, 0);
 });
 
-test('A3：axis_join schema：步内 y / 缺 axis_id / 声明 shaft 或 to 即拒绝', () => {
-  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_join', axis_id: 'weak_axis_438', y: 2.6 }).success, false, 'axis_join 不得声明 y');
-  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_join' }).success, false, 'axis_join 必须声明 axis_id');
-  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_join', axis_id: 'weak_axis_438', shaft: 'shaft_entry' }).success, false, 'axis_join 不引用竖井');
-  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_join', axis_id: 'weak_axis_438', to: 7.3 }).success, false, 'axis_join 不声明 to');
-  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_join', axis_id: 'weak_axis_438' }).success, true);
+test('A3：axis_jog schema：步内 y / 缺 axis / 声明 shaft 或 to 即拒绝', () => {
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_jog', axis: 'weak_axis_438', y: 2.6 }).success, false, 'axis_jog 不得声明 y');
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_jog' }).success, false, 'axis_jog 必须声明 axis');
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_jog', axis: 'weak_axis_438', shaft: 'shaft_entry' }).success, false, 'axis_jog 不引用竖井');
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_jog', axis: 'weak_axis_438', to: 7.3 }).success, false, 'axis_jog 不声明 to');
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_jog', axis: 'weak_axis_438' }).success, true);
   // 求解器入口同样拒绝步内 y（绕开 schema 的直接入口）。
   const badStep = weakRoute('syn-living', [
-    { kind: 'axis_join', axis_id: 'weak_axis_438', y: 2.6 },
-    { kind: 'run', axis: 'x', to: 7.3 },
+    { kind: 'axis_jog', axis: 'weak_axis_438', y: 2.6 },
+    { kind: 'axis_run', axis: 'x', to: 7.3 },
   ]) as unknown as MepRoute;
   const red = resolveMepViaSteps(badStep, { x: 10.8, z: 2.98 }, { x: 7.2, z: 7.6 }, [], weakAxes());
   assert.deepEqual(red.points, []);
-  assert.match(red.diagnostic ?? '', /axis_join 不得声明 y/);
+  assert.match(red.diagnostic ?? '', /axis_jog 不得声明 y/);
 });
 
-test('A4：run fail-closed：缺 axis / 缺 to / 零行程 / 缺 from_height；to:\'to\' 跟随终端移动', () => {
+test('A4：axis_run fail-closed：缺 axis / 缺 to / 零行程 / 缺 from_height；to:\'to\' 跟随终端移动', () => {
   const sources = weakSources();
   const axes = weakAxes();
   const missingAxis = resolveMepViaSteps(
-    weakRoute('syn-living', [{ kind: 'axis_join', axis_id: 'weak_axis_438' }, { kind: 'run', to: 7.3 }]) as unknown as MepRoute,
+    weakRoute('syn-living', [{ kind: 'axis_jog', axis: 'weak_axis_438' }, { kind: 'axis_run', to: 7.3 }]) as unknown as MepRoute,
     { x: 10.8, z: 2.98 }, { x: 7.2, z: 7.6 }, [], axes,
   );
   assert.deepEqual(missingAxis.points, []);
-  assert.match(missingAxis.diagnostic ?? '', /缺少 axis\/to/);
+  assert.match(missingAxis.diagnostic ?? '', /缺少 axis/);
   const missingTo = resolveMepViaSteps(
-    weakRoute('syn-living', [{ kind: 'axis_join', axis_id: 'weak_axis_438' }, { kind: 'run', axis: 'x' }]) as unknown as MepRoute,
+    weakRoute('syn-living', [{ kind: 'axis_jog', axis: 'weak_axis_438' }, { kind: 'axis_run', axis: 'x' }]) as unknown as MepRoute,
     { x: 10.8, z: 2.98 }, { x: 7.2, z: 7.6 }, [], axes,
   );
   assert.deepEqual(missingTo.points, []);
-  assert.match(missingTo.diagnostic ?? '', /缺少 axis\/to/);
+  assert.match(missingTo.diagnostic ?? '', /缺少 to/);
   const zeroRun = resolveMepViaSteps(
-    weakRoute('syn-living', [{ kind: 'axis_join', axis_id: 'weak_axis_438' }, { kind: 'run', axis: 'x', to: 10.8 }]) as unknown as MepRoute,
+    weakRoute('syn-living', [{ kind: 'axis_jog', axis: 'weak_axis_438' }, { kind: 'axis_run', axis: 'x', to: 10.8 }]) as unknown as MepRoute,
     { x: 10.8, z: 2.98 }, { x: 7.2, z: 7.6 }, [], axes,
   );
   assert.deepEqual(zeroRun.points, []);
@@ -212,8 +212,8 @@ test('A4：run fail-closed：缺 axis / 缺 to / 零行程 / 缺 from_height；t
 
 test('A5：run 带 y 原样保留三维斜段：南下段终点标高 2.4（weak-master 口径），不是高度越权', () => {
   const masterVia = [
-    { kind: 'axis_join', axis_id: 'weak_axis_438' },
-    { kind: 'run', axis: 'x', to: 4.1 },
+    { kind: 'axis_jog', axis: 'weak_axis_438' },
+    { kind: 'axis_run', axis: 'x', to: 4.1 },
     { kind: 'run', axis: 'z', to: 6.3, y: 2.4 },
   ];
   const entry = resolveMepRoutes(weakConfig([weakRoute('syn-master', masterVia, { to: { x: 4.2, z: 6.5, y: 0.3 } })]), weakSources()).routes[0];
@@ -229,14 +229,14 @@ test('A6：level fail-closed：缺 y / 零高差 / 缺起算标高；升层亦�
   const sources = weakSources();
   const axes = weakAxes();
   const base = [
-    { kind: 'axis_join', axis_id: 'weak_axis_455' },
-    { kind: 'run', axis: 'x', to: 10.5 },
+    { kind: 'axis_jog', axis: 'weak_axis_455' },
+    { kind: 'axis_run', axis: 'x', to: 10.5 },
   ];
   // 降层 2.6→2.51 与升层 2.51→2.7 均可解。
   const dropRise = resolveMepRoutes(weakConfig([weakRoute('syn-ap-master', [
     ...base,
     { kind: 'level', y: 2.51 },
-    { kind: 'run', axis: 'x', to: 7.2 },
+    { kind: 'axis_run', axis: 'x', to: 7.2 },
     { kind: 'level', y: 2.7 },
   ])]), sources).routes[0];
   assert.deepEqual(dropRise.unresolved, []);
@@ -248,14 +248,14 @@ test('A6：level fail-closed：缺 y / 零高差 / 缺起算标高；升层亦�
     { x: 10.8, z: 2.98 }, { x: 7.2, z: 7.6 }, [], axes,
   );
   assert.deepEqual(noY.points, []);
-  assert.match(noY.diagnostic ?? '', /缺少有效 y/);
+  assert.match(noY.diagnostic ?? '', /必须声明有限数 y/);
   // 零高差：目标与游标同高。
   const zeroDelta = resolveMepViaSteps(
     weakRoute('syn-ap-master', [...base, { kind: 'level', y: 2.6 }]) as unknown as MepRoute,
     { x: 10.8, z: 2.98 }, { x: 7.2, z: 7.6 }, [], axes,
   );
   assert.deepEqual(zeroDelta.points, []);
-  assert.match(zeroDelta.diagnostic ?? '', /零高差/);
+  assert.match(zeroDelta.diagnostic ?? '', /零行程/);
   // 缺起算标高。
   const noHeight = weakRoute('syn-ap-master', [...base, { kind: 'level', y: 2.51 }], { from_height: undefined }) as unknown as MepRoute;
   const noHeightResult = resolveMepViaSteps(noHeight, { x: 10.8, z: 2.98 }, { x: 7.2, z: 7.6 }, [], axes);
@@ -263,26 +263,27 @@ test('A6：level fail-closed：缺 y / 零高差 / 缺起算标高；升层亦�
   assert.match(noHeightResult.diagnostic ?? '', /缺少有效起算标高/);
 });
 
-test('A7：三新步 schema 互斥：run 带 shaft、level 带 axis、slope_run 带 axis_id 即拒绝', () => {
-  assert.equal(MepViaStepSchema.safeParse({ kind: 'run', axis: 'x', to: 7.3, shaft: 'shaft_entry' }).success, false, 'run 不引用竖井');
-  assert.equal(MepViaStepSchema.safeParse({ kind: 'run', axis: 'x', to: 7.3, axis_id: 'weak_axis_438' }).success, false, 'run 不引用轴线');
+test('A7：三新步 schema 互斥：axis_run 带 shaft、axis_jog 方向轴、slope_run 轴线 id 即拒绝', () => {
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_run', axis: 'x', to: 7.3, shaft: 'shaft_entry' }).success, false, 'axis_run 不引用竖井');
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_jog', axis: 'z' }).success, false, 'axis_jog 的 axis 须为轴线 id（方向值不合法）');
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'slope_run', axis: 'weak_axis_438', to: 4.6 }).success, false, 'slope_run 的 axis 须为方向（轴线 id 不合法）');
   assert.equal(MepViaStepSchema.safeParse({ kind: 'level', y: 2.51, axis: 'x' }).success, false, 'level 不声明 axis');
   assert.equal(MepViaStepSchema.safeParse({ kind: 'level', y: 2.51, shaft: 'shaft_entry' }).success, false, 'level 不引用竖井');
   assert.equal(MepViaStepSchema.safeParse({ kind: 'level' }).success, false, 'level 必须声明 y');
-  assert.equal(MepViaStepSchema.safeParse({ kind: 'slope_run', axis: 'z', to: 4.6, axis_id: 'weak_axis_438' }).success, false, 'slope_run 不引用轴线');
-  assert.equal(MepViaStepSchema.safeParse({ kind: 'run', axis: 'x', to: 7.3 }).success, true);
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_run', axis: 'x', to: 7.3 }).success, true);
+  assert.equal(MepViaStepSchema.safeParse({ kind: 'axis_run', axis: 'weak_axis_438', to: 7.3 }).success, true, 'axis_run 命名轴形式合法');
   assert.equal(MepViaStepSchema.safeParse({ kind: 'level', y: 2.51 }).success, true);
 });
 
 test('A8：validateMepCoordination：未知轴线 / 重复轴线 id 即抛', () => {
   const badAxis = weakConfig([weakRoute('syn-living', [
-    { kind: 'axis_join', axis_id: 'weak_axis_missing' },
-    { kind: 'run', axis: 'x', to: 7.3 },
+    { kind: 'axis_jog', axis: 'weak_axis_missing' },
+    { kind: 'axis_run', axis: 'x', to: 7.3 },
   ])]);
   assert.throws(() => validateMepCoordination(badAxis, weakSources()), /引用未知轴线 "weak_axis_missing"/);
   const dupAxes = weakConfig([weakRoute('syn-living', LIVING_VIA)], [
-    { id: 'weak_axis_438', axis: 'z', at: 4.38, y: 2.6 },
-    { id: 'weak_axis_438', axis: 'z', at: 4.4, y: 2.6 },
+    { id: 'weak_axis_438', axis: 'z', value: 4.38, y: 2.6 },
+    { id: 'weak_axis_438', axis: 'z', value: 4.4, y: 2.6 },
   ]);
   assert.throws(() => validateMepCoordination(dupAxes, weakSources()), /Duplicate MEP axis id/);
   const green = weakConfig([weakRoute('syn-living', LIVING_VIA)]);
@@ -364,8 +365,9 @@ test('C1 等价：7 条弱电路由逐点等于 merge-base 基线，轴声明独
   // 轴声明本身钉死（#231 残留教训：C1 旧基线取自迁移后配置，轴改值会双侧同移而测不出；
   // 此处独立断言裁定轴值，不依赖点列比较）。
   assert.deepEqual(project.axes, [
-    { id: 'weak_axis_438', axis: 'z', at: 4.38, y: 2.6 },
-    { id: 'weak_axis_455', axis: 'z', at: 4.55, y: 2.6 },
+    { id: 'corridor_axis', axis: 'z', value: 4.6, reason: '走廊/客厅边吊主干轴线 z=4.6（本文件头注；ceiling_living x[7.2,13.4]×z[4.3,5.55] 边吊内轴线，98 个既有弯点落在上面，43 条路由共用）' },
+    { id: 'weak_axis_438', axis: 'z', value: 4.38, y: 2.6 },
+    { id: 'weak_axis_455', axis: 'z', value: 4.55, y: 2.6 },
   ]);
   assert.doesNotThrow(() => validateMepCoordination(project, realSources));
   const report = resolveMepRoutes(project, realSources);
@@ -391,7 +393,7 @@ test('C1 等价：7 条弱电路由逐点等于 merge-base 基线，轴声明独
 test('C2 传动：weak_axis_438 4.38→4.40，五条跟随、两条不动；复原则逐字节恢复', () => {
   const baseline = weakPoints(resolveMepRoutes(project, realSources));
   const moved = structuredClone(project);
-  moved.axes.find((axis) => axis.id === 'weak_axis_438')!.at = 4.40;
+  moved.axes.find((axis) => axis.id === 'weak_axis_438')!.value = 4.40;
   const movedReport = resolveMepRoutes(moved, realSources);
   assert.equal(movedReport.unresolved, 0);
   const movedPoints = weakPoints(movedReport);
@@ -428,7 +430,7 @@ test('C2 传动：net_parent 南移 0.20m，weak-parent 末段跟随、weak-main
   const parent = JSON.parse(moved['weak-parent']) as Array<{ x: number; y?: number; z: number }>;
   const parentBase = JSON.parse(baseline['weak-parent']) as Array<{ x: number; y?: number; z: number }>;
   assert.deepEqual(parent.slice(0, -2), parentBase.slice(0, -2), 'weak-parent: 非末段点须不动');
-  assert.equal(parent[parent.length - 2].z, 7.8, 'weak-parent: 末段 run to:\'to\' 须跟随至 7.8');
+  assert.equal(parent[parent.length - 2].z, 7.8, 'weak-parent: 末段 axis_run to:\'to\' 须跟随至 7.8');
   assert.equal(parent[parent.length - 1].z, 7.8, 'weak-parent: 终端须跟随至 7.8');
   // 字面 7.6 的 weak-main-living 与其余 5 条须纹丝不动。
   for (const id of WEAK_IDS.filter((item) => item !== 'weak-parent')) {

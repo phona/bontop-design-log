@@ -61,6 +61,18 @@ const AXIS_IDS = [
   'strong-ac-study',
   'strong-ac-outdoor',
 ] as const;
+/** 引用弱电轴的 7 条路由（issue #98 MEP batch 3；与 AXIS_IDS 并列，C4b 合并统计）。 */
+const WEAK_AXIS_IDS = [
+  'weak-main-living',
+  'weak-master',
+  'weak-parent',
+  'weak-study',
+  'weak-gateway',
+  'weak-ap',
+  'weak-ap-master',
+] as const;
+/** 全部 15 条轴路由（强电 8 + 弱电 7；issue #243 统一协议后 axes 表缺失即全断）。 */
+const ALL_AXIS_IDS = [...AXIS_IDS, ...WEAK_AXIS_IDS] as const;
 /** 走廊轴裁定值（本文件头注 + ceiling_living 边吊内轴线，独立期望——axes 表值误改
  *  时 C1 即失败；C2a 再证改值全跟随）。 */
 const CORRIDOR_AXIS = { id: 'corridor_axis', axis: 'z' as const, value: 4.6 };
@@ -296,11 +308,19 @@ test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折
   assert.doesNotThrow(() => validateMepCoordination(all.coordination, resolveChain(all, all.furnishings).sources), '迁移后 coordination 须通过 schema 校验');
 
   // 共享基准只声明一次，各路由共同引用。
-  assert.equal(all.coordination.axes.length, 1, 'axes 表须只有一条轴线声明');
+  assert.equal(all.coordination.axes.length, 3, 'axes 表须只有三条轴线声明（强电 corridor_axis + 弱电两条）');
   assert.deepEqual(
     { id: all.coordination.axes[0].id, axis: all.coordination.axes[0].axis, value: all.coordination.axes[0].value },
     CORRIDOR_AXIS,
     '走廊轴须为裁定值 corridor_axis z=4.6（独立期望，表值误改即失败）',
+  );
+  assert.deepEqual(
+    all.coordination.axes.slice(1).map((a) => ({ id: a.id, axis: a.axis, value: a.value, y: a.y })),
+    [
+      { id: 'weak_axis_438', axis: 'z', value: 4.38, y: 2.6 },
+      { id: 'weak_axis_455', axis: 'z', value: 4.55, y: 2.6 },
+    ],
+    '弱电轴须为裁定值（独立期望，表值误改即失败）',
   );
   assert.equal(all.coordination.shafts.length, 1, 'shafts 表须只有一口竖井声明');
   assert.equal(all.coordination.shafts[0].id, 'shaft_entry');
@@ -577,7 +597,7 @@ test('C4a：合成反例——断引用/越权字段/零行程/离轴/缺 y 一�
   assert.equal(fixed.unresolved, 0, '补回后须解出');
 });
 
-test('C4b：真实配置反例——axes 表缺失时 8 条轴路由 unresolved、其余 133 条照常解出', () => {
+test('C4b：真实配置反例——axes 表缺失时 15 条轴路由 unresolved、其余 122 条照常解出', () => {
   const all = loadAll();
   const before = resolveChain(all, all.furnishings);
   assert.deepEqual(before.report.diagnostics, [], '基线须无诊断');
@@ -585,24 +605,24 @@ test('C4b：真实配置反例——axes 表缺失时 8 条轴路由 unresolved�
   broken.axes = [];
   const after = resolveChain(all, all.furnishings, broken);
   const unresolvedIds = after.report.routes.filter((r) => r.unresolved.length > 0).map((r) => r.route.id).sort();
-  assert.deepEqual(unresolvedIds, [...AXIS_IDS].sort(), '恰好 8 条轴路由 unresolved');
-  for (const id of AXIS_IDS) {
+  assert.deepEqual(unresolvedIds, [...ALL_AXIS_IDS].sort(), '恰好 15 条轴路由 unresolved（强电 8 + 弱电 7）');
+  for (const id of ALL_AXIS_IDS) {
     const r = routeOf(after.report, id);
     assert.deepEqual(r.unresolved, ['via'], `${id} unresolved 须为 via`);
     assert.deepEqual(r.points, [], `${id} 不得出半条几何`);
-    assert.ok(r.diagnostics.some((d) => d.includes('corridor_axis')), `${id} 诊断须点名 corridor_axis`);
+    assert.ok(r.diagnostics.some((d) => d.includes('引用未知轴线')), `${id} 诊断须点名所引轴线`);
   }
-  assert.equal(after.report.resolved, before.report.total - 8, '其余路由须照常解出');
-  // lint：8 条各报一条 endpoint_unresolved error。
+  assert.equal(after.report.resolved, before.report.total - 15, '其余路由须照常解出');
+  // lint：15 条各报一条 endpoint_unresolved error。
   const lint = lintMepCoordination(broken, before.sources);
   const endpointErrors = lint.errors.filter((e) => e.code === 'endpoint_unresolved');
-  assert.equal(endpointErrors.length, 8, 'lint 须报 8 条 endpoint_unresolved');
-  assert.deepEqual(endpointErrors.map((e) => e.routeId).sort(), [...AXIS_IDS].sort());
-  assert.ok(endpointErrors.every((e) => e.message.includes('corridor_axis')), 'lint 诊断须点名 corridor_axis');
-  // takeoff：broken 的新 unresolved 恰好为 8 条（kind error）。
+  assert.equal(endpointErrors.length, 15, 'lint 须报 15 条 endpoint_unresolved');
+  assert.deepEqual(endpointErrors.map((e) => e.routeId).sort(), [...ALL_AXIS_IDS].sort());
+  assert.ok(endpointErrors.every((e) => e.message.includes('引用未知轴线')), 'lint 诊断须点名所引轴线');
+  // takeoff：broken 的新 unresolved 恰好为 15 条（kind error）。
   const brokenUnresolved = after.takeoff.unresolved.filter((u) => u.kind === 'error').map((u) => u.id).sort();
   const healthyUnresolved = before.takeoff.unresolved.filter((u) => u.kind === 'error').map((u) => u.id).sort();
-  assert.deepEqual(brokenUnresolved.filter((id) => !healthyUnresolved.includes(id)), [...AXIS_IDS].sort(), 'takeoff 新增 error unresolved 恰好为 8 条轴路由');
+  assert.deepEqual(brokenUnresolved.filter((id) => !healthyUnresolved.includes(id)), [...ALL_AXIS_IDS].sort(), 'takeoff 新增 error unresolved 恰好为 15 条轴路由');
   // DXF：errors 点名 broken 路由且不含其几何；健康 DXF 无 errors 且含切片路由。
   // labels:'ascii'（utf8 模式写 route.label 中文名，id 只作 fallback；ascii 模式显式用 id）。
   const dxfInput = (coord: MepCoordination) => ({
@@ -611,8 +631,8 @@ test('C4b：真实配置反例——axes 表缺失时 8 条轴路由 unresolved�
     labels: 'ascii' as const,
   });
   const brokenDxf = buildProjectDxf(dxfInput(broken) as any);
-  assert.equal(brokenDxf.errors.length, 8, 'DXF 须报 8 条路由错误');
-  for (const id of AXIS_IDS) {
+  assert.equal(brokenDxf.errors.length, 15, 'DXF 须报 15 条路由错误');
+  for (const id of ALL_AXIS_IDS) {
     assert.ok(brokenDxf.errors.some((e) => e.includes(id)), `DXF 错误须点名 ${id}`);
     assert.ok(!brokenDxf.dxf.includes(id), `DXF 不得含 broken 路由 ${id} 的几何`);
   }
