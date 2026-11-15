@@ -218,6 +218,11 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
   const mountHosts = buildPlacementIndexes({ geometry: { walls }, furnishings }).mountHosts;
   const placed = new Map<string, { room: string; item: FurnishingsYaml[string][number]; bounds: { minX: number; maxX: number; minZ: number; maxZ: number } }>();
 
+  // （二阶段 Tier 2）`placed` 的位置来源改走共享解算（与上方 mountHosts 同一份
+  // buildPlacementIndexes 结果）：直读声明 x/z 会把墙锚/anchor 家具排除出本表——
+  // ld.wall_cabinet_tall 关系化后，night_corridor 的房间一致性检查（host.room）
+  // 会悄悄消失。解不出的宿主仍跳过，其显式失败由 verify:furniture 门禁覆盖
+  // （本函数不传 anchors，见下）。只改位置来源，不改校验逻辑。
   for (const [room, items] of Object.entries(furnishings)) {
     let runtimeIndex = 0;
     for (const item of items) {

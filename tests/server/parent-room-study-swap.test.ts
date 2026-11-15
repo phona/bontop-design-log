@@ -60,6 +60,11 @@ const BAY_INNER_Z = 7.60;
 // 书房北墙边吊段 z[5.55,6.45]（底 2.50m）
 const STUDY_NORTH_DROP: Aabb = { minX: 4.20, maxX: 7.20, minZ: 5.55, maxZ: 6.45 };
 
+// placed() 取 resolveRoom() 已解算的条目（Tier 1）：全屋一次解算已把墙锚/anchor
+// 家具的坐标解出并 round9 归一（解算器浮点噪声 ~1e-15m），直接读原始 hosts 会丢
+// 归一（study.chair 会得 6.300000000000001 而非 6.3）。Tier 2 的直接读 hosts
+// 写法针对旧版 placed() 的 x/z 过滤器，与 Tier 1 的 resolveRoom 同一缺口、
+// 已被其覆盖，故不采用。
 function placed(room: Furnishing[], type: string): Furnishing {
   const item = room.find((candidate) => candidate.type === type);
   assert.ok(item, `missing placed ${type}`);

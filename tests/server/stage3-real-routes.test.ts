@@ -164,9 +164,13 @@ test('C1：两路由关系化——共享竖井只声明一次，解算折线与
     assert.equal(route.diameter, 0.02);
     assert.equal(route.from, 'panel_strong_entry_left');
   }
-  // 其余路由不动：餐桌路由仍为绝对 via（本阶段不迁移）。
+  // 本批新增：餐桌路由已随强电干线切片关系化（竖井三步，与 sofa 两路由同轴）。
   const table = all.coordination.routes.find((r) => r.id === 'strong-power-living-table')!;
-  assert.ok(table.via.every(isMepViaCoordinate), '餐桌路由须仍为绝对 via');
+  assert.deepEqual(table.via.map((s: any) => s.kind), ['from_face_jog', 'from_drop', 'shaft_run'], '餐桌路由 via 须为竖井三步');
+  assert.ok(table.via.every((s: any) => s.shaft === 'shaft_entry'), '餐桌路由各步须引用同一竖井');
+  // 其余路由不动：红线路由 strong-ded-bathheaters-mbath 仍为绝对 via（本批不迁移，改道裁定待定）。
+  const mbath = all.coordination.routes.find((r) => r.id === 'strong-ded-bathheaters-mbath')!;
+  assert.ok(mbath.via.every(isMepViaCoordinate), 'mbath 路由须仍为绝对 via');
 
   for (const id of [ROUTE_L, ROUTE_R]) {
     const r = routeOf(report, id);
@@ -322,14 +326,20 @@ test('C4：反例——断引用/不一致一律 fail-closed，不出局部几�
   const noShaftCoord = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
   noShaftCoord.shafts = [];
   const noShaft = resolveMepRoutes(noShaftCoord, base.sources);
-  for (const id of [ROUTE_L, ROUTE_R]) {
+  // 受牵连的路由即引用同一竖井的路由，从配置推导、不钉死条数（后续批迁移更多路由
+  // 上同一竖井时本断言仍成立；当前为 sofa-l/r + living-table + weakbox 共 4 条）。
+  const shaftUsers = all.coordination.routes.filter((r) =>
+    r.via.some((s: any) => !isMepViaCoordinate(s) && s.shaft === 'shaft_entry'),
+  );
+  for (const id of shaftUsers.map((r) => r.id)) {
     const r = routeOf(noShaft, id);
     assert.deepEqual(r.unresolved, ['via'], `${id} 竖井缺失须 via 未解`);
     assert.deepEqual(r.points, [], `${id} 竖井缺失不得出局部几何`);
     assert.match(r.diagnostics[0], /引用未知竖井 "shaft_entry"/, `${id} 诊断须点名竖井`);
   }
-  // 其余 135 条路由不受影响（仍全解出）。
-  assert.equal(noShaft.routes.filter((r) => r.unresolved.length === 0).length, 135, '其余路由不得被牵连');
+  // 其余路由不受影响（仍全解出）；受牵连的须恰好是引用该竖井的路由。
+  assert.equal(noShaft.routes.filter((r) => r.unresolved.length === 0).length, noShaft.routes.length - shaftUsers.length, '其余路由不得被牵连');
+  assert.deepEqual(noShaft.routes.filter((r) => r.unresolved.length > 0).map((r) => r.route.id).sort(), shaftUsers.map((r) => r.id).sort(), '受牵连的须恰好是引用该竖井的路由');
 
   // (2) 共享轴 z 与落点不一致（2.96 vs 2.98）。
   const staleCoord = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
@@ -371,7 +381,7 @@ test('C4：反例——断引用/不一致一律 fail-closed，不出局部几�
     resolution: noShaft,
     rules: all.rules,
   });
-  for (const id of [ROUTE_L, ROUTE_R]) {
+  for (const id of shaftUsers.map((r) => r.id)) {
     const entry = brokenTakeoff.unresolved.find((u) => u.id === id);
     assert.ok(entry, `算量 unresolved 须含 ${id}`);
     assert.equal(entry!.kind, 'error', `${id} 须为 error 级（不可报价）`);
@@ -379,7 +389,7 @@ test('C4：反例——断引用/不一致一律 fail-closed，不出局部几�
   assert.equal(brokenTakeoff.feasibleForQuote, false, '求解失败时 feasibleForQuote 须为 false');
   const healthyIds = new Set(base.takeoff.unresolved.map((u) => u.id));
   const newIds = brokenTakeoff.unresolved.map((u) => u.id).filter((id) => !healthyIds.has(id));
-  assert.deepEqual(newIds.sort(), [ROUTE_L, ROUTE_R], '新增 unresolved 须恰为两路由（无牵连）');
+  assert.deepEqual(newIds.sort(), shaftUsers.map((r) => r.id).sort(), '新增 unresolved 须恰为引用该竖井的路由（无牵连）');
 
   // (5b) DXF：同一求解失败进装配 errors，该路由折线不进图。
   const dxfSources = {

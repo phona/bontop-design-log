@@ -26,11 +26,11 @@ import {
 import { parseElectricalPoints, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsFromFiles } from '../../scripts/project/project-render-facts-projection.js';
 import { buildRuntimeScene, loadSceneInputs } from '../../shared/penetration/scene.js';
-import { pointMountHostIndex, pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import type { PlacementItem } from '../../shared/furniture-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { load as parseYaml } from 'js-yaml';
-import type { ElectricalPoint, RenderLightingFixture, RenderLightingOverride, VertexLayoutYaml } from '../../shared/types.js';
+import type { ElectricalPoint, FurnishingsYaml, RenderLightingFixture, RenderLightingOverride, VertexLayoutYaml } from '../../shared/types.js';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const read = (relative: string) => readFileSync(new URL(`../../${relative}`, import.meta.url), 'utf8');
@@ -40,11 +40,15 @@ const houseElectrical = () => parseElectricalPoints(read('config/electrical.yaml
 const houseOverrides = () => parseRenderLightingOverrides(read('config/render/overrides.yaml'));
 /**
  * mount 挂载灯（issue #98 S2 起夜灯）的宿主索引：与投影脚本/服务端同一构造
- * （pointMountHostIndex + house.yaml furnishings）。
+ * （buildPlacementIndexes 共享解算 + house.yaml furnishings；#98 Tier 2：直读
+ * pointMountHostIndex 会把墙锚/anchor 宿主排除出表，night_corridor 即断引用）。
  */
 const houseMountHosts = () => {
-  const house = parseYaml(read('config/house.yaml')) as { furnishings?: Record<string, PlacementItem[]> };
-  return pointMountHostIndex(Object.values(house.furnishings ?? {}).flat());
+  const house = parseYaml(read('config/house.yaml')) as { furnishings?: FurnishingsYaml };
+  return buildPlacementIndexes({
+    geometry: { walls: resolveLayout(parseYaml(read('config/layout/model-geometry.yaml')) as VertexLayoutYaml).walls },
+    furnishings: house.furnishings ?? {},
+  }).mountHosts;
 };
 
 /**

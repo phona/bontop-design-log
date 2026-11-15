@@ -264,6 +264,14 @@ items:
 
       今天零实际损害：schedule/phase-1/control.yaml 的 audit_log.status 为 empty，
       项目里没有任何验收通过记录。
+
+      2026-11-15 补丁级落地（PR #237，Codex 三审 blocking）：洗碗机三接口
+      （sock_kitchen_dishwasher / faucet_kitchen_dishwasher /
+      drain_kitchen_dishwasher）已按稳定 id 纳入 MODEL-PKG-160 scope，
+      PKG-160 targets 同步 24→27；回归测试
+      tests/server/object-links.test.ts 新增三用例（改任一接口 height，
+      PKG-160 必须 stale），红绿验证：scope 回退时 3/3 失败、补上后 3/3 通过。
+      本条仍 OPEN：结构级（五个实例全有回归测试 + 第六条机器自动报出）未满足。
     needs: >-
       把「验收依赖」从人工转录变成**机器可同步**的。三个方向供设计侧裁定：
       ① 给 SCH/验收项加显式 objects 声明（现在只有 acceptance.yaml 的 67 条有，

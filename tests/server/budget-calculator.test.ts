@@ -1161,7 +1161,7 @@ describe('BudgetCalculator', () => {
     assert.ok(furnitureSoft && furnitureSoft.autoActual >= 2200, 'dresser + pending wardrobe both flow into furniture_soft');
   });
 
-  it('phase 1 excludes deferred fixed appliances while retaining the declarative robot count line', () => {
+  it('phase 1 includes the dishwasher after the 2026-11-02 swap (#152), still excludes the other deferred fixed appliances', () => {
     const catalog = ProjectCatalog.load('.');
     const realRules = RuleEngine.load('config/design-rules.yaml').getConfig();
     const calc = new BudgetCalculator(catalog, realRules);
@@ -1175,11 +1175,11 @@ describe('BudgetCalculator', () => {
     );
     assert.deepEqual(
       [...applianceTopics].sort(),
-      ['gas_stove', 'robot_vacuum', 'shower_enclosure', 'washer'],
-      '一期家电动态估算只保留已纳入一期的家电主题',
+      ['dishwasher', 'gas_stove', 'robot_vacuum', 'shower_enclosure', 'washer'],
+      '一期家电动态估算只保留已纳入一期的家电主题（2026-11-15 一二期对调 #152：洗碗机进一期）',
     );
     assert.equal(snapshot.lineItems.find((item) => item.topic === 'robot_vacuum')?.cost, 3099);
-    for (const deferred of ['dishwasher', 'water_purifier', 'dryer']) {
+    for (const deferred of ['water_purifier', 'dryer']) {
       assert.equal(snapshot.lineItems.some((item) => item.topic === deferred), false, `${deferred} must stay in phase 2`);
     }
   });

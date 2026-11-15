@@ -445,8 +445,8 @@ furnishings:
   master_bedroom:
     # 房间寝区 x∈[0,4.20] z∈[5.55,9.80]；南侧上飘窗室内占用带 z=8.70..9.80
     - { type: bed_180, id: mb.bed_180, x: 3.20, z: 7.40, rotation: 270 }     # 保留；runtime mesh z[6.47,8.33]
-    - { type: master_bedside_cabinet_350_north, id: mb.bedside_cabinet_north, x: 4.01, z: 6.245, rotation: 0 } # R6 北侧床头柜：380W×350D×500H候选，服务北插座 z=6.95
-    - { type: master_bedside_cabinet_350_south, id: mb.bedside_cabinet_south, x: 4.01, z: 8.555, rotation: 0 } # R6 南侧床头柜：380W×350D×500H候选，服务南插座/双控；闭帘软包络仅warning/BLOCKED
+    - { type: master_bedside_cabinet_350_north, id: mb.bedside_cabinet_north, anchor: { source: furniture, id: mb.bed_180, offset: { x: 0.81, z: -1.155 } }, rotation: 0 } # R6 北侧床头柜：380W×350D×500H候选，服务北插座 z=6.95
+    - { type: master_bedside_cabinet_350_south, id: mb.bedside_cabinet_south, anchor: { source: furniture, id: mb.bed_180, offset: { x: 0.81, z: 1.155 } }, rotation: 0 } # R6 南侧床头柜：380W×350D×500H候选，服务南插座/双控；闭帘软包络仅warning/BLOCKED
     - { type: mb_washbasin_cabinet, id: mb.washbasin_cabinet, wall: w_mbath_south, wall_side: south, rotation: 0, along: 0.575, wall_clearance: -0.01 } # 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：东移 5cm 且收宽 1.10→1.05（世界 x[0.05,1.10]），西让百叶升降缝、东留门套缝，盆/龙头/墙排居中至 x=0.575；2026-09-01 纯洗手柜：取消梳妆膝位，东侧封闭抽屉收纳，贴 w_mbath_south 南脸；待量房确认墙排与抽屉避让
     - { type: faucet }                                           # 随台盆外移（预算 count-only），给水见 plumbing.yaml faucet_mbath_vanity
     - { type: master_dressing_table, id: mb.dressing_table, wall: w_west_upper, wall_side: east, rotation: 90, along: 0.50, wall_clearance: 0.14 } # 2026-09-04 R1 候选未冻结：贴窗梳妆位——900W×450D×750H 四腿开放式独立桌贴西侧北段玻璃；AABB x[0.20,0.65] z[5.60,6.50]；rotation=90 局部长边沿世界 z、正面（抽屉/座位侧）朝东，使用者坐东侧面向西玻璃；桌背（西缘 x=0.20）与玻璃幕墙 x=0 留约 0.20m 通风/冷凝缝；西窗帘线 x[1.10,1.35] 在桌东侧，不压帘；北缘避门扇扫掠 z≤5.55
@@ -473,9 +473,9 @@ furnishings:
   bedroom_nw:
     # 房间 x∈[2.60,5.60] z∈[1.10,4.30]，南门 d_bnw @(5.0,4.30) swing x∈[4.55,5.45] z∈[3.40,4.30]
     - { type: bed_150, id: bnw.bed_150, x: 4.60, z: 2.30, rotation: 270 }       # 床头靠东墙，1.5m床改善通道（DEC-2026-08-02-013）
-    - { type: wardrobe_180, id: bnw.wardrobe_180, x: 3.50, z: 4.00, rotation: 0 }    # B案（2026-08-21 业主拍板）南墙西段通顶柜；x∈[2.6,4.4]避门洞4.55；柜前通道0.65m；推拉门（DEC-2026-08-02-013）；2026-08-26 上方为南墙边吊（底2.50m）：柜体2.40+顶封板0.10抵边吊底
-    - { type: desk, id: bnw.desk, x: 2.90, z: 2.10, rotation: 90, width: 1.2, depth: 0.45 }  # B案：窄桌靠西侧采光位；东缘避开 w_mbath_east 实体墙，北移避开书桌椅重叠，西/北墙均玻璃幕不可挂载，电位改地插
-    - { type: chair, id: bnw.chair, x: 3.35, z: 3.00, rotation: 270 }         # B案书桌椅（桌-床间0.5档，现实可推入桌下）
+    - { type: wardrobe_180, id: bnw.wardrobe_180, wall: w_nw_south, wall_side: north, along: 0.90, wall_clearance: -0.06, rotation: 0 }    # B案（2026-08-21 业主拍板）南墙西段通顶柜；x∈[2.6,4.4]避门洞4.55；柜前通道0.65m；推拉门（DEC-2026-08-02-013）；2026-08-26 上方为南墙边吊（底2.50m）：柜体2.40+顶封板0.10抵边吊底；#98 Tier 2 墙锚 w_nw_south：wall_clearance −0.06 = 柜背贴墙线（现模型南缘 z=4.30=墙线），非完成面；量房复核柜背位置时改此一值
+    - { type: desk, id: bnw.desk, wall: w_mbath_east, wall_side: east, along: 1.00, wall_clearance: 0.015, rotation: 90, width: 1.2, depth: 0.45 }  # B案：窄桌靠西侧采光位；东缘避开 w_mbath_east 实体墙，北移避开书桌椅重叠，西/北墙均玻璃幕不可挂载，电位改地插；#98 Tier 2 墙锚 w_mbath_east（inferred 剪力墙，非玻璃幕；桌西缘离东完成面 0.015m）
+    - { type: chair, id: bnw.chair, anchor: { source: furniture, id: bnw.desk, offset: { x: 0.45, z: 0.90 } }, rotation: 270 }         # B案书桌椅（桌-床间0.5档，现实可推入桌下）
     - { type: shelf, id: bnw.shelf, wall: w_nw_north, wall_side: south, rotation: 0, along: 0.40, wall_clearance: -0.06 }           # DEC-023 西北角置物架（贴北墙+西墙转角，书/杂物开架收纳，上飘窗窗下墙；窗位 inferred，落位待量房复核）
     - { type: mattress_150 }
     - { type: curtain_set }
@@ -489,7 +489,7 @@ furnishings:
     # bed_150 床头靠东外墙（rotation=270，床头在局部 -z → 世界 +x），AABB x[14.35,16.35] z[6.85,8.35]：同时远离电梯井（北）与客厅电视墙（西），床尾半进凸窗带 z[7.60,8.70]（bay_sill 仅占 2.07m 以上高度，床高 <2.07m 不冲突）；
     # 柜前通道 6.15→6.85 = 0.70m ≥ 0.65m 惯例；床南缘距南玻璃 0.35m。
     # site_pending：凸窗带可站人性/飘窗台高 2.07m（量房 #20）、东墙 shear inferred 防倾倒锚固、床头双侧电位与床头柜/行李架（二期）。
-    - { type: wardrobe_180, id: bese.wardrobe_180, x: 15.25, z: 5.85, rotation: 180 } # 1.8m×0.6m×2.40m 推拉门成品衣柜（北墙边吊下；随功能自原父母房迁入；PKG-150 一期家具池）；AABB x[14.35,16.15] z[5.55,6.15]：西缘 14.35 避 d_bese 门扫掠（x≤14.30）、东缘留 0.25m 完成面余量、柜顶 2.50m 抵边吊底
+    - { type: wardrobe_180, id: bese.wardrobe_180, anchor: { source: furniture, id: bese.bed_150, offset: { x: -0.10, z: -1.75 } }, rotation: 180 } # 1.8m×0.6m×2.40m 推拉门成品衣柜（北墙边吊下；随功能自原父母房迁入；PKG-150 一期家具池）；AABB x[14.35,16.15] z[5.55,6.15]：西缘 14.35 避 d_bese 门扫掠（x≤14.30）、东缘留 0.25m 完成面余量、柜顶 2.50m 抵边吊底；#98 Tier 2 anchor 相对床——北墙线已随 R01 移至 z=4.82，墙锚需 0.67m 假缝隙，不取
     - { type: bed_150, id: bese.bed_150, x: 15.35, z: 7.60, rotation: 270 }     # 床头靠东外墙；AABB x[14.35,16.35] z[6.85,8.35]；成品可搬走（DEC-2026-08-02-013 弹性设计转写对象）
     - { type: mattress_150 }
     - { type: curtain_set }
@@ -511,16 +511,16 @@ furnishings:
   living_dining:
     # 房间 x∈[7.20,13.40] z∈[2.40,9.80]，开放连通走廊，无门 swing（DEC-021）
     # 西墙电视背景柜墙只依附已存在的实体墙 z=5.55-9.00，不侵入餐厅/门厅过道。
-    - { type: wall_cabinet_tall, id: ld.wall_cabinet_tall, x: 7.375, z: 6.225, rotation: 270 } # 通顶柜 z=5.55-6.90，面朝东侧客厅；浅 PET+局部开放格
-    - { type: tv_wall_low, id: ld.tv_wall_low, x: 7.48, z: 8.00, rotation: 270 }         # 2.1m 深胡桃带细腿落地低柜，面朝东侧客厅；沿 w_st_east +x 最小脱离 slab 约5mm，z/电视轴线保持
+    - { type: wall_cabinet_tall, id: ld.wall_cabinet_tall, anchor: { source: furniture, id: ld.tv_65, offset: { x: -0.045, z: -1.775 } }, rotation: 270 } # 通顶柜 z=5.55-6.90，面朝东侧客厅；浅 PET+局部开放格
+    - { type: tv_wall_low, id: ld.tv_wall_low, anchor: { source: furniture, id: ld.tv_65, offset: { x: 0.06, z: 0 } }, rotation: 270 }         # 2.1m 深胡桃带细腿落地低柜，面朝东侧客厅；沿 w_st_east +x 最小脱离 slab 约5mm，z/电视轴线保持
     - { type: tv_65, id: ld.tv_65, x: 7.42, z: 8.00, rotation: 270 }               # 65寸电视居中挂墙，面朝东侧沙发
     - { type: floor_lamp, id: ld.floor_lamp, anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: 0, z: 1.65 } }, rotation: 0 } # 沙发南臂地插位（sock_living_sofa_r@9.35），anchor 相对沙发 (0,+1.65)
-    - { type: plant_fiddle, id: ld.plant_fiddle, x: 7.93, z: 9.18, rotation: 270 } # 琴叶榕：电视柜东移后最小联动东移 30mm，保持南侧玻璃净距与落地摆放
+    - { type: plant_fiddle, id: ld.plant_fiddle, anchor: { source: furniture, id: ld.tv_65, offset: { x: 0.51, z: 1.18 } }, rotation: 270 } # 琴叶榕：电视柜东移后最小联动东移 30mm，保持南侧玻璃净距与落地摆放
     - { type: sofa_3seat, id: ld.sofa_3seat, anchor: { source: furniture, id: ld.tv_65, offset: { x: 3.58, z: -0.30 } }, rotation: 270 } # 面朝西看电视；偏移 (+3.58,-0.30) 为已裁定设计值。R6 裁定 2026-11-14（业主按最佳实践默认批准）：−0.30m 为已裁定设计值，非残留。依据：3.58m 看 65 寸电视，偏 0.30m 不到 5°，可忽略；移回同轴会把沙发南侧通道从 0.70m 压到 0.40m，低于 0.50m 通道规则（校验报 warn）。翻盘条件：量房发现房间比模型深，或业主改要正对电视。基准 ld.tv_65 不迁移
     - { type: coffee_table, id: ld.coffee_table, anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: -1.30, z: 0 } }, rotation: 0 }  # 沙发与电视柜之间，anchor 相对沙发 (-1.30,0)
     # 门内右手定制半高柜：从门内向客厅延伸，柜高 1.5m；玄关侧封闭，餐厅侧开放，柜顶以上可见餐厅。
     # footprint x=11.065-11.415、z=3.35-5.35；北缘脱黑块南墙面 z=3.25 净空 0.10m；柜东缘 11.415 距新门洞西缘 11.54 留 0.125m，与旧口径一致（门扇内开进北侧入户花园，柜在墙南侧亦不挡扫掠），东侧主通道 1.725m。
-    - { type: entry_half_height_cabinet, id: ld.entry_half_height_cabinet, x: 11.24, z: 4.35, rotation: 90 }  # 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随南墙南移 0.10m、西移 0.26m 避新门洞西缘（东缘距门洞 0.125m）；2026-10-26 DEC-2026-10-26-R01（用户批准）：再南移 0.25m 避黑块南墙（原 4.10 北端压入块体 0.15m，与 DEC 名义足迹口径一致）
+    - { type: entry_half_height_cabinet, id: ld.entry_half_height_cabinet, x: 11.24, z: 4.35, rotation: 90 }  # 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随南墙南移 0.10m、西移 0.26m 避新门洞西缘（东缘距门洞 0.125m）；2026-10-26 DEC-2026-10-26-R01（用户批准）：再南移 0.25m 避黑块南墙（原 4.10 北端压入块体 0.15m，与 DEC 名义足迹口径一致）；#98 Tier 2 核实：保持绝对——邻墙均不满足墙锚沿墙域/贴墙缝隙（w_ent_south_w 与 w_blk_south 沿墙域为空、w_ent_west 沿墙为负），无合适家具宿主，不编造跟随关系
     # 2026-10-16 概念布局更新：餐桌改南北向、日常四座中心 (9.80,3.45)；来客六人时桌椅组仅作临时预演整体南移0.32m并加两端椅，不写入日常家具数量。
     # 冰箱改到客餐厅西侧候选位，正面朝东；机身后到客卫东墙运行时约43mm。厂家净空、后罩/散热、电源与检修条件仍 site_pending。
     # 2026-10-16 水吧V2模型预演：用800×420×850mm独立低柜候选替换落地茶吧机+390mm边柜候选；S1与同一台EM450均上台面，磨豆机未定SKU不建模。此为摆位预演，不含墙控/电源/门扇/检修通过结论。
@@ -533,17 +533,17 @@ furnishings:
     - { type: ceiling_light, count: 2 }
     # 2026-10-16 业主确认的西侧概念位（非施工定位）：中心(7.5025,2.9865)、rotation=270，机门朝东；world footprint x[7.203,7.802] / z[2.567,3.406]。
     # 客卫东墙实体东面 x=7.26（2026-10-23 DEC-2026-10-23-R04：墙线 7.10→7.20，冰箱随墙东移 0.10，后距约43mm 不变）；厂家安装净空/背部防护/检修换机路径未确认。供电见 sock_fridge_living（DEC-2026-10-17-R20 落位，position_status pending 随冰箱厂家净空终核）。
-    - { type: fridge, id: ld.fridge, x: 7.6025, z: 2.9865, rotation: 270 }
+    - { type: fridge, id: ld.fridge, wall: w_gbath_east, wall_side: east, along: 0.5865, wall_clearance: 0.0425, rotation: 270 }
     # 2026-10-16 水吧V2候选柜：独立低柜800W×420D×850H，中心(7.43,3.87)，rotation=90、正面朝东；AABB x[7.22,7.64]/z[3.47,4.27]。
     # 以当前850mm名义带复核后收为800mm外宽，给冰箱南缘和墙段端部留几何缓冲；这些不是厂家安装净距。
-    - { type: waterbar_low_cabinet_800_preview, id: ld.waterbar_cabinet, x: 7.43, z: 3.87, rotation: 90 }
+    - { type: waterbar_low_cabinet_800_preview, id: ld.waterbar_cabinet, anchor: { source: furniture, id: ld.fridge, offset: { x: -0.1725, z: 0.8835 } }, rotation: 90 }
     # 米家即热饮水机S1按业主尺寸312×106×280mm落台，面朝东；顶部y=1.13m。设备脚下台面y=0.85m。
     # 2026-10-17 V6（官方三视图修正，DEC-2026-10-17-R11）：出水腔在106mm窄面，312长轴转为东西向
     # （local +z=东=出水腔，local -z=西=水箱端）；中心西移 x7.50→7.47 使机身x[7.314,7.626]整体落在
-    # 台面x[7.22,7.64]内，接水盘前缘与包络东缘平齐不悬挑。z=3.64与rotation=90保持不变。
-    - { type: mijia_instant_dispenser_s1_preview, id: ld.dispenser_s1, x: 7.47, z: 3.64, rotation: 90 }
-    # 同一台EM450从厨房移至餐厅候选位，按220×285×305mm，面朝东；底面y=0.85m、顶面y=1.155m。未新增第二台。
-    - { type: coffee_machine_em450, id: ld.coffee_machine, x: 7.37, z: 4.00, rotation: 90 }
+    # 台面x[7.22,7.64]内，接水盘前缘与包络东缘平齐不悬挑。z=3.64与rotation=90保持不变。；#98 Tier 2 anchor 相对水吧柜（柜面物；家具 mount 仅支持 robot_bay/vanity 槽位，countertop 槽位无额外语义，沿用 anchor）
+    - { type: mijia_instant_dispenser_s1_preview, id: ld.dispenser_s1, anchor: { source: furniture, id: ld.waterbar_cabinet, offset: { x: 0.04, z: -0.23 } }, rotation: 90 }
+    # 同一台EM450从厨房移至餐厅候选位，按220×285×305mm，面朝东；底面y=0.85m、顶面y=1.155m。未新增第二台。；#98 Tier 2 anchor 相对水吧柜，同上
+    - { type: coffee_machine_em450, id: ld.coffee_machine, anchor: { source: furniture, id: ld.waterbar_cabinet, offset: { x: -0.06, z: 0.13 } }, rotation: 90 }
   kitchen:
     # 3D 用显式柜体段：北墙玻璃幕只做落地柜+台面；东墙实体墙承载灶台与烟机；冰箱已移至客餐厅候选位。
     # 北墙 run 拆两段留洗碗机位 x∈[8.50,9.10]（2026-08-23；紧贴水槽柜 x≥9.10 西侧，上下水就近；

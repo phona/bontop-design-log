@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
+  derivedSlopeRunToHeight,
   endpointSourcesFromFacts,
   isMepViaCoordinate,
   parseMepCoordination,
@@ -87,17 +88,21 @@ for (const point of [...electrical, ...plumbing]) {
 }
 
 /** 测试内独立实现：逐 physical route 用原始 via 折线 + 竖向下引段重算层长，与模块输出交叉验证。 */
-function independentLayerLength(layer: string): number {
+function independentLayerLength(layer: string, coord: typeof coordination = coordination, reso: typeof resolution = resolution): number {
   let total = 0;
-  for (const route of coordination.routes) {
+  for (const route of coord.routes) {
     if (route.layer !== layer) continue;
-    const resolved = resolution.routes.find((item) => item.route.id === route.id);
+    const resolved = reso.routes.find((item) => item.route.id === route.id);
     if (!resolved || resolved.unresolved.length > 0 || !resolved.metadata.physicalRoute) continue;
     const points: Array<[number, number, number]> = [];
-    // 与统一出口 resolved.points 同优先级：路由自己声明的 from_height/to_height 优先于点位高度
+    // 与统一出口 resolved.points 同优先级：路由自己声明的 from_height/to_height 优先于点位高度；
+    // slope_run 路由删了 to_height，终端标高由末步落点派生（与解算器共用 derivedSlopeRunToHeight
+    // 单一实现，见 schema：to_height ?? 派生落点 ?? 端点 y）。直接读端点 y 会错：立管端点
+    // 本就不带 y（会把终端当成 y=0、凭空多出约 0.02m 竖直段），客卫支管派生终端 0.0165m
+    // 也会被端点高度 0.02m 顶回、多出 0.0035m 上升段——两种都会让本交叉验证超 1e-6 容差。
     if (resolved.from) points.push([resolved.from.x, route.from_height ?? resolved.from.y ?? 0, resolved.from.z]);
     for (const via of resolved.viaPoints) points.push([via.x, via.y ?? 0, via.z]);
-    if (resolved.to) points.push([resolved.to.x, route.to_height ?? resolved.to.y ?? 0, resolved.to.z]);
+    if (resolved.to) points.push([resolved.to.x, route.to_height ?? derivedSlopeRunToHeight(route, resolved.viaPoints) ?? resolved.to.y ?? 0, resolved.to.z]);
     // 零平面位移（首末平面点重合）的路由只贡献竖向长度，仓库口径不计为 physical 折线；本独立实现同步排除
     const first = points[0];
     const last = points[points.length - 1];
@@ -113,11 +118,13 @@ function independentLayerLength(layer: string): number {
     for (let i = 1; i < points.length; i += 1) {
       total += Math.hypot(points[i][0] - points[i - 1][0], points[i][1] - points[i - 1][1], points[i][2] - points[i - 1][2]);
     }
-    // 竖向下引段：终点有点位高度声明时，to_height − height（负值取 0）
+    // 竖向下引段：终点有点位高度声明时，末点 y − height（负值取 0）。
+    // issue #243 step 4：末点 y 为统一来源（与生产实现同口径）；旧口径 to_height ?? 端点 y
+    // 对删了 to_height 的 slope_run 路由会读 stale 声明（客卫支管：端点 0.02m vs 派生 0.0165m）。
     if (typeof route.to === 'string') {
       const height = pointHeights.get(route.to);
-      if (height !== undefined && resolved.to) {
-        total += Math.max(0, (route.to_height ?? resolved.to.y ?? 0) - height);
+      if (height !== undefined && points.length > 0) {
+        total += Math.max(0, points[points.length - 1][1] - height);
       }
     }
   }
@@ -131,6 +138,38 @@ test('层长双实现交叉验证（折线 + 竖向下引段）', () => {
   assert.ok(Math.abs(takeoff.conduit.drainageM - independentLayerLength('drainage')) < 1e-6);
   // 已画线端点以顶面设备为主（空调插座 2.5m/灯具 2.7~2.8m），竖向下引实测量级应在个位数米
   assert.ok(takeoff.conduit.terminalDropM > 0 && takeoff.conduit.terminalDropM < 5, `竖向下引段 ${takeoff.conduit.terminalDropM}m`);
+});
+
+test('终端下引跟随派生终端：客卫支管坡度 1%→0.5%，下引段按派生终端计（issue #243 step 4）', () => {
+  // 旧口径读 route.to_height ?? 端点 y：drain-guest-bath 删了 to_height，端点
+  // drain_gbath_floor y=0.02，下引恒为 0——坡度一动、派生终端变了，下引也不跟随。
+  // 新口径读统一出口末点 y：坡度 0.005 时派生终端高于点位 0.02m，超出部分必须进量。
+  const mutated = structuredClone(coordination);
+  const guest = mutated.routes.find((route) => route.id === 'drain-guest-bath')!;
+  assert.equal(guest.slope, 0.01);
+  guest.slope = 0.005;
+  const mutatedResolution = resolveMepRoutes(mutated, sources);
+  const baseTerminal = resolution.routes.find((item) => item.route.id === 'drain-guest-bath')!.points.at(-1)?.y;
+  const mutatedTerminal = mutatedResolution.routes.find((item) => item.route.id === 'drain-guest-bath')!.points.at(-1)?.y;
+  assert.ok(baseTerminal !== undefined && Math.abs(baseTerminal - 0.0165) < 1e-9, `基线派生终端须为 0.0165m，实际 ${baseTerminal}`);
+  assert.ok(mutatedTerminal !== undefined && mutatedTerminal > 0.02, `坡度减半后派生终端须高于点位 0.02m，实际 ${mutatedTerminal}`);
+  const mutatedTakeoff = computeMepTakeoff({
+    electrical: electrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: plumbing as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'],
+    circuits: topology.circuits,
+    controls: topology.controls ?? [],
+    routes: mutated.routes,
+    resolution: mutatedResolution,
+    rules,
+  });
+  assert.deepEqual(mutatedTakeoff.unresolved.map((item) => item.id), ['trunk_strong_main']);
+  const expectedDrop = mutatedTerminal - 0.02;
+  assert.ok(
+    Math.abs((mutatedTakeoff.conduit.terminalDropM - takeoff.conduit.terminalDropM) - expectedDrop) < 1e-9,
+    `下引增量须等于派生终端超出点位的部分 ${expectedDrop}，实际 ${mutatedTakeoff.conduit.terminalDropM - takeoff.conduit.terminalDropM}`,
+  );
+  // 交叉验证在变异配置上仍成立（独立实现同口径读末点 y；旧口径会在此差 expectedDrop）。
+  assert.ok(Math.abs(mutatedTakeoff.conduit.drainageM - independentLayerLength('drainage', mutated, mutatedResolution)) < 1e-6);
 });
 
 test('导线按 topology wire_size 分桶，不按 id 猜', () => {
@@ -439,8 +478,12 @@ test('回路缺 breaker 声明即抛错：漏保数量不能靠"没声明=没有
 });
 
 test('折线点缺 y 标高即抛错：不按 0 算（否则吊顶内的水平段变成竖直段）', () => {
+  // 目标路由动态选取：首条含绝对弯点的路由（强电干线切片后 strong-main 已关系化，
+  // 钉死它会随后续批迁移而失效；选首条含坐标 via 的路由，本质是“任一绝对弯点缺 y 即抛”）。
+  const target = coordination.routes.find((route) => route.via.some(isMepViaCoordinate));
+  assert.ok(target, '须有一条含绝对弯点的路由可供构造缺 y 场景');
   const broken = coordination.routes.map((route) => (
-    route.id === 'strong-main'
+    route.id === target.id
       ? { ...route, via: route.via.filter(isMepViaCoordinate).map((point) => ({ x: point.x, z: point.z })) }
       : route
   ));

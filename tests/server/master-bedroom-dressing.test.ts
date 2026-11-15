@@ -75,6 +75,15 @@ function fixtureSize(type: string): THREE.Vector3 {
   return new THREE.Box3().setFromObject(fixture!).getSize(new THREE.Vector3());
 }
 
+// （#98 Tier 2）placed() 的 x/z 改走共享解算：墙锚/anchor 家具无声明 x/z，直读原始
+// YAML 会把它当「未摆位」丢掉（两床头柜锚床后即如此）。只改取数来源：位置取
+// buildPlacementIndexes 的解算结果，类型/id/rotation 取声明；返回形状与断言目标一致
+// （{type, id, x, z, rotation}），断言值一字不动。
+const PLACED_HOSTS = buildPlacementIndexes({
+  geometry: { walls: resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls },
+  furnishings: house.furnishings as unknown as FurnishingsYaml,
+}).mountHosts;
+
 function placed(type: string, room: Furnishing[] = master): Furnishing {
   const item = room.find((candidate) => candidate.type === type);
   assert.ok(item, `missing placed ${type}`);

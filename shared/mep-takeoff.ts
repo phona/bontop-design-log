@@ -346,23 +346,42 @@ function routeLength(route: MepRoute, points: Array<{ x: number; z: number; y?: 
  * 竖向下引段的标高跨度：{ endY（路由终点标高）, pointHeight（点位安装高度） }。
  * 不适用（终点非点位引用 / 端点未解析 / 点位无高度声明 / 终点不高于点位）返回 null。
  * terminalDrop（诊断长度）与回路计价的下引 stub 共用同一判定，不许两处各算一套。
+ * 终端标高统一来源（issue #243 step 4）：统一出口折线的末点 y（派生值）；折线为空时
+ * 才回退到 route.to_height ?? 端点 y。旧口径（to_height ?? to.y）对删了 to_height 的
+ * slope_run 路由会读到端点 y——派生终端与端点声明不一致时，下引段按 stale 的声明算，
+ * 终端一动（立管/端点移位）下引不跟随、静默少算。末点缺 y 即抛错（不默认 0）；
+ * 折线与声明都缺也抛错。
+ * 终点不高于点位（endY <= pointHeight）仍返回 null、下引计 0：这是既有口径，不是
+ * 几何不一致——灯具（路由 2.7m vs 灯 2.8m，灯在顶面上）、热水器进水（垫层 0.18m
+ * vs 器具接管 1.2m，立管属器具自带尾段）等 13 条路由都按此口径不计下引；把负落差
+ * 一律当错误会把既有设计误判（2026-11-15 实测：drain-guest-bath 派生 0.0165m
+ * vs 点位 0.02m 差 0.0035m，v1 估算容差内，与灯具/热水器的负落差同口径）。
  */
 function terminalDropSpan(
   route: MepRoute,
   points: Map<string, { height?: number }>,
   to: { x: number; z: number; y?: number } | undefined,
+  resolvedPoints?: Array<{ x: number; z: number; y?: number }>,
 ): { endY: number; pointHeight: number } | null {
   if (typeof route.to !== 'string') return null;
   const pointHeight = points.get(route.to)?.height;
   if (to === undefined || pointHeight === undefined) return null;
-  // 竖向下引段的终点标高：路由自己声明的 to_height 优先，其次才是解析出的端点 y。
+  // 竖向下引段的终点标高：统一出口折线末点 y 优先；折线为空才回退到声明。
   // 两者都缺 → 旧代码取 0，于是 `Math.max(0, 0 − pointHeight)` 恒为 0，**整段下引管消失**
   // （已画线点位因此系统性少算约 2.2m/个）。标高不可默认：缺声明就抛错。
-  // 注：routeLength 的 requirePointY 已经先对同一个表达式 fail-closed（它用的就是
-  // 统一出口 resolved.points 的 `to_height ?? to.y`），所以这个分支今天不可达——保留它是为了让
-  // 本函数自身自洽，将来若有人在新路径上先调它，不会静默退回 0。
+  // 注：routeLength 的 requirePointY 已经先对折线点 fail-closed（末点缺 y 时本函数
+  // 不可达——保留末点缺 y 的抛错是为了让本函数自身自洽，将来若有人在新路径上先调它，
+  // 不会静默退回 0）。
   let endY: number;
-  if (route.to_height !== undefined) endY = route.to_height;
+  const last = resolvedPoints?.[resolvedPoints.length - 1];
+  if (last !== undefined) {
+    if (last.y === undefined) {
+      throw new Error(
+        `路由 ${route.id} 的终端标高无法确定（统一出口折线末点缺 y）：竖向下引段会整段消失，已画线点位将少算约 2.2m/个管。请到 config/mep-hvac-coordination.yaml 补该点的 y（或该路由的 from_height/to_height）`,
+      );
+    }
+    endY = last.y;
+  } else if (route.to_height !== undefined) endY = route.to_height;
   else if (to.y !== undefined) endY = to.y;
   else {
     throw new Error(
@@ -377,8 +396,9 @@ function terminalDrop(
   route: MepRoute,
   points: Map<string, { height?: number }>,
   to: { x: number; z: number; y?: number } | undefined,
+  resolvedPoints?: Array<{ x: number; z: number; y?: number }>,
 ): number {
-  const span = terminalDropSpan(route, points, to);
+  const span = terminalDropSpan(route, points, to, resolvedPoints);
   return span ? span.endY - span.pointHeight : 0;
 }
 
@@ -674,7 +694,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         // 这段已声明的管线不在基数内（评审实测强电 0.95m）。把下引作为终端点
         // (x,z) 处的纯竖直 stub 两点路径并入本回路——pricedCircuitLength 的同
         // (x,z) y 区间合并会与路由自身竖直边去重，同一根立管只计一次。
-        const span = terminalDropSpan(route, pointHeights, resolved.to);
+        const span = terminalDropSpan(route, pointHeights, resolved.to, points3d);
         if (span && resolved.to) {
           list.push([
             { x: resolved.to.x, z: resolved.to.z, y: span.endY },
@@ -687,7 +707,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     const endRoom = typeof route.to === 'string' ? roomOf(route.to) : undefined;
     if (endRoom) bumpRoom(endRoom, 'drawnRouteM', routeLength(route, resolved.points));
     else unassignedRouteM += routeLength(route, resolved.points);
-    const length = drawnLength + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to) : 0);
+    const length = drawnLength + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) : 0);
     layerLength[layer] = (layerLength[layer] ?? 0) + length;
     for (const endpoint of [route.from, route.to]) {
       if (typeof endpoint === 'string') drawnPointIds.add(endpoint);
@@ -837,7 +857,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     }
     return segments.map((segment, index) => ({
       length: routePointDistance(points, segment.fromIndex, segment.toIndex, `路由 ${route.id}`)
-        + (index === segments.length - 1 && rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to) : 0),
+        + (index === segments.length - 1 && rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, points) : 0),
       spec: segment,
     }));
   };
@@ -875,7 +895,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         return;
       }
       const length = routeLength(route, resolved.points)
-        + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to) : 0);
+        + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) : 0);
       for (const key of pipeKeysForWater(specs[0]!.temp!, specs[0]!.dn!)) addPipe(water, key, length);
       return;
     }
@@ -894,7 +914,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       return;
     }
     const length = routeLength(route, resolved.points)
-      + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to) : 0);
+      + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) : 0);
     addPipe(drainage, `de${dns[0]}`, length);
   };
   for (const route of routes) {
