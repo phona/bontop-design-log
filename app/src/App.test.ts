@@ -353,7 +353,7 @@ describe('App', () => {
     const app = new App(canvas);
     await app.start();
 
-    expect(global.fetch).toHaveBeenCalledWith('/api/project');
+    expect(global.fetch).toHaveBeenCalledWith('/api/project-snapshot');
   });
 
   it('should start render loop', async () => {
@@ -901,10 +901,12 @@ describe('App', () => {
     expect(text).not.toContain('w_cached');
   });
 
-  it('model-geometry reload failed → stale /api/walls table is NOT used for DXF furniture placement (codex 一审 blocking)', async () => {
-    // /api/walls 仍 200 返回旧墙表（服务端保留上次成功数据），/api/furnishings 直读磁盘是新家具：
+  it('model-geometry reload failed → stale walls carried by the snapshot are NOT used for DXF furniture placement (codex 一审 blocking)', async () => {
+    // 快照仍 200 返回旧墙表（服务端保留上次成功数据），/api/furnishings 直读磁盘是新家具：
     // 旧墙上的 along 仍合法时，旧实现会静默按旧几何出图。本用例的家具只在旧墙表上可解——
     // 门禁生效时导出必须 fail-closed（定位诊断），而不是交付按旧墙定位的图纸。
+    // 快照重做后旧墙表不再走独立的 /api/walls，而是随快照顶层 walls 一起下发；
+    // configReloadDegraded 门禁必须把整份快照的几何与墙表一起隔离。
     const staleWall = { id: 'w_stale', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
     const staleAnchored = { type: 'master_dressing_table', id: 'f_stale', wall: 'w_stale', wall_side: 'south', along: 1.0, wall_clearance: 0 };
     vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
@@ -912,15 +914,12 @@ describe('App', () => {
       if (urlStr.includes('/api/config-status')) {
         return { ok: true, json: async () => ({ configs: [{ path: 'config/layout/model-geometry.yaml', status: 'failed' }] }) } as Response;
       }
-      if (urlStr.includes('/api/walls')) {
-        return { ok: true, json: async () => ({ walls: [staleWall] }) } as Response;
-      }
       if (urlStr.includes('/api/furnishings')) {
         return { ok: true, json: async () => ({ living_room: [staleAnchored] }) } as Response;
       }
       if (urlStr.includes('/api/project')) {
-        // projectHouse 同样被隔离：sceneElements 不含 w_stale，家具无处可解
-        return { ok: true, json: async () => ({ house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] } }) } as Response;
+        // 快照整体被隔离：sceneElements 不含 w_stale、顶层 walls 同样被丢弃，家具无处可解
+        return { ok: true, json: async () => ({ house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, walls: [staleWall] }) } as Response;
       }
       if (urlStr.includes('/api/schedule/state')) {
         return { ok: false, status: 503 } as Response;
@@ -945,8 +944,8 @@ describe('App', () => {
     consoleError.mockRestore();
   });
 
-  it('phase switch re-fetches anchor walls for the active layout, and a failed switch restores the previous table (codex 一审 blocking)', async () => {
-    // 启动时墙表是 w_start；AI 会话移墙后切阶段，项目响应与墙表必须同批刷新——
+  it('phase switch re-fetches the project snapshot for the active layout, and a failed switch restores the previous table (codex 一审 blocking)', async () => {
+    // 启动时快照里的墙表是 w_start；AI 会话移墙后切阶段，项目响应与墙表必须同批刷新——
     // 旧实现只换项目不换墙表，挂靠对象静默按旧墙解算。回滚同样不混装：切换中途失败时，
     // 旧项目 + 旧墙表一起恢复，而不是新墙表配旧项目。
     const startWall = { id: 'w_start', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
@@ -955,9 +954,9 @@ describe('App', () => {
     let wallsVersion = 'start';
     vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
-      if (urlStr.includes('/api/walls')) {
+      if (urlStr.includes('/api/project-snapshot')) {
         const wall = wallsVersion === 'start' ? startWall : wallsVersion === 'phase' ? phaseWall : rollbackWall;
-        return { ok: true, json: async () => ({ walls: [wall] }) } as Response;
+        return { ok: true, json: async () => ({ ...mockProjectData, walls: [wall] }) } as Response;
       }
       if (urlStr.includes('/api/schedule/state')) {
         return { ok: false, status: 503 } as Response;
@@ -981,31 +980,25 @@ describe('App', () => {
     expect(app['phase']).toBe('phase_1_basic_occupancy');
   });
 
-  it('concurrent layout switches never mix project and walls: last click wins with its own pair (codex 二审 blocking)', async () => {
-    // 布局切换含两次 await（项目 + 墙表）：A 的墙表后返回时，旧实现用已更新的共享
-    // projectData（B）配 A 的墙表建场，同名墙坐标不同即静默错位。本用例把 A 的墙表
-    // 挂起，让 B 的切换先完成——旧实现末次建场必为 (B 项目, A 墙表)；串行化后每轮
-    // 用自己的快照，末次建场必为 (B 项目, B 墙表)，共享态亦为 B。
+  it('concurrent layout switches never mix project and walls: last click wins with its own snapshot (codex 二审 blocking)', async () => {
+    // 布局切换曾含两次 await（项目 + 墙表）：A 的墙表后返回时，旧实现用已更新的共享
+    // projectData（B）配 A 的墙表建场，同名墙坐标不同即静默错位。快照重做后每轮只拉
+    // 一次 /api/project-snapshot，串行化后每轮用自己的快照，末次建场必为
+    // (B 项目, B 墙表)，共享态亦为 B。本用例把 A 的快照挂起、让 B 排队等 A 完成。
     const wallA = { id: 'w_a', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
     const wallB = { id: 'w_b', x1: 0, z1: 0, x2: 5, z2: 0, line_datum: 'centerline' };
-    const projectA = { house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, layoutMarker: 'a' };
-    const projectB = { house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, layoutMarker: 'b' };
-    let releaseWallsA!: () => void;
-    const wallsAGate = new Promise<void>((resolve) => { releaseWallsA = () => resolve(); });
+    const snapshotA = { house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, walls: [wallA], layoutMarker: 'a' };
+    const snapshotB = { house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, walls: [wallB], layoutMarker: 'b' };
+    let releaseSnapshotA!: () => void;
+    const snapshotAGate = new Promise<void>((resolve) => { releaseSnapshotA = () => resolve(); });
     vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
-      if (urlStr.includes('/api/project') && urlStr.includes('layout=layout_a')) {
-        return { ok: true, json: async () => projectA } as Response;
+      if (urlStr.includes('/api/project-snapshot') && urlStr.includes('layout=layout_a')) {
+        await snapshotAGate;
+        return { ok: true, json: async () => snapshotA } as Response;
       }
-      if (urlStr.includes('/api/project') && urlStr.includes('layout=layout_b')) {
-        return { ok: true, json: async () => projectB } as Response;
-      }
-      if (urlStr.includes('/api/walls') && urlStr.includes('layout=layout_a')) {
-        await wallsAGate;
-        return { ok: true, json: async () => ({ walls: [wallA] }) } as Response;
-      }
-      if (urlStr.includes('/api/walls') && urlStr.includes('layout=layout_b')) {
-        return { ok: true, json: async () => ({ walls: [wallB] }) } as Response;
+      if (urlStr.includes('/api/project-snapshot') && urlStr.includes('layout=layout_b')) {
+        return { ok: true, json: async () => snapshotB } as Response;
       }
       if (urlStr.includes('/api/schedule/state')) {
         return { ok: false, status: 503 } as Response;
@@ -1019,17 +1012,62 @@ describe('App', () => {
 
     const switchA = app['handleLayoutChange']('layout_a');
     const switchB = app['handleLayoutChange']('layout_b');
-    // 放行一个宏任务：B 的两次拉取（立即）走完，A 仍挂在墙表门上
+    // 放行一个宏任务：B 的快照（立即）走完，A 仍挂在快照门上
     await new Promise((resolve) => setTimeout(resolve, 0));
-    releaseWallsA();
+    releaseSnapshotA();
     await Promise.all([switchA, switchB]);
 
     expect(buildSpy.mock.calls.map(([data, walls]) => [data, walls])).toEqual([
-      [projectA, [wallA]],
-      [projectB, [wallB]],
+      [snapshotA, [wallA]],
+      [snapshotB, [wallB]],
     ]);
-    expect(app['projectData']).toBe(projectB);
+    expect(app['projectData']).toBe(snapshotB);
     expect(app['anchorWalls']).toEqual([wallB]);
+    expect(app['activeLayout']).toBe('layout_b');
+  });
+
+  it('stale snapshot arriving late never overwrites a newer committed snapshot (codex 三审 blocking)', async () => {
+    // 快照 A 挂起、快照 B 先完成：两个 doLayoutChange 直接并发（绕过 rebuildQueue 串行化），
+    // A 的快照后返回时 B 已提交——提交水位必须让 A 静默丢弃（不提交、不建场），末态必为 B。
+    // 断言按稳定对象 id 定位（墙 id w_b、项目 layoutMarker），不钉任何坐标值。
+    const wallA = { id: 'w_a', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
+    const wallB = { id: 'w_b', x1: 0, z1: 0, x2: 5, z2: 0, line_datum: 'centerline' };
+    const snapshotA = { house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, walls: [wallA], layoutMarker: 'a' };
+    const snapshotB = { house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] }, walls: [wallB], layoutMarker: 'b' };
+    let releaseSnapshotA!: () => void;
+    const snapshotAGate = new Promise<void>((resolve) => { releaseSnapshotA = () => resolve(); });
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/project-snapshot') && urlStr.includes('layout=layout_a')) {
+        await snapshotAGate;
+        return { ok: true, json: async () => snapshotA } as Response;
+      }
+      if (urlStr.includes('/api/project-snapshot') && urlStr.includes('layout=layout_b')) {
+        return { ok: true, json: async () => snapshotB } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    const buildSpy = vi.spyOn(app['houseScene'], 'buildFromCatalog').mockImplementation(async () => undefined);
+    buildSpy.mockClear();
+
+    const switchA = app['doLayoutChange']('layout_a');
+    const switchB = app['doLayoutChange']('layout_b');
+    // 放行一个宏任务：B 的快照（立即）走完并提交，A 仍挂在快照门上
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    releaseSnapshotA();
+    await Promise.all([switchA, switchB]);
+
+    // A 的快照后返回：只建过 B，共享态亦为 B
+    expect(buildSpy.mock.calls.map(([data, walls]) => [data, walls])).toEqual([
+      [snapshotB, [wallB]],
+    ]);
+    expect(app['projectData']).toBe(snapshotB);
+    expect((app['anchorWalls'] ?? []).map((w) => w.id)).toEqual(['w_b']);
     expect(app['activeLayout']).toBe('layout_b');
   });
 

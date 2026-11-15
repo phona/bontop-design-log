@@ -298,6 +298,31 @@ elements:
     await request(app).get('/api/walls?layout=').expect(400);
   });
 
+  it('GET /api/project-snapshot returns the /api/project body plus top-level walls from the same load', async () => {
+    // #98 Tier 1 快照重做（Codex 三审 blocking）：项目与墙表必须来自同一次 catalog
+    // 载入。快照 = /api/project 响应原样 + 顶层 walls；house.walls 仍恒 undefined。
+    const [projectRes, snapshotRes, wallsRes] = await Promise.all([
+      request(app).get('/api/project').expect(200),
+      request(app).get('/api/project-snapshot').expect(200),
+      request(app).get('/api/walls').expect(200),
+    ]);
+    assert.equal(snapshotRes.body.house.walls, undefined);
+    assert.ok(Array.isArray(snapshotRes.body.walls));
+    assert.deepEqual(snapshotRes.body.walls, wallsRes.body.walls);
+    // 字节兼容：去掉 walls 键后，快照与 /api/project 逐字节相同（同一份构造、同一 key 序）。
+    const { walls: _snapshotWalls, ...snapshotWithoutWalls } = snapshotRes.body;
+    assert.equal(JSON.stringify(snapshotWithoutWalls), JSON.stringify(projectRes.body));
+  });
+
+  it('GET /api/project-snapshot honors phase and rejects bad layout/phase queries like /api/project', async () => {
+    const res = await request(app).get('/api/project-snapshot?phase=phase_1_basic_occupancy').expect(200);
+    assert.equal(res.body.phase, 'phase_1_basic_occupancy');
+    assert.ok(Array.isArray(res.body.walls));
+    assert.equal(res.body.house.walls, undefined);
+    await request(app).get('/api/project-snapshot?layout=').expect(400);
+    await request(app).get('/api/project-snapshot?phase=phase_9').expect(400);
+  });
+
   it('POST /api/visual-commands creates a command', async () => {
     const res = await request(app)
       .post('/api/visual-commands')

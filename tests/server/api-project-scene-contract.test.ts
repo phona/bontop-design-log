@@ -59,7 +59,7 @@ interface BuiltFromResponse {
  * 的同一构造喂给建场链路：parseSceneInput → buildPlacementIndexes（墙几何 + 全量 furnishingsAll）
  * → buildHvacBuilderSources（投影 + electrical + 两份索引）→ buildScene。
  * 这里不手捏任何字段：输入就是 HTTP 响应本身。定位基准墙全量（#98 Tier 1）同样取自
- * 真 server 的独立端点 /api/walls（与 App 的 fetchAnchorWalls 同源），经 parseSceneInput
+ * 真 server 的 /api/project-snapshot（与 App 的 fetchProjectSnapshot 同源），经 parseSceneInput
  * 的 walls 入参传入——sceneElements 不含 suppressed 玻璃线，不传它则玻璃线旁的墙锚家具
  * 在建场结果里缺席。
  */
@@ -225,7 +225,8 @@ describe('契约：真实 /api/project 响应 → 建场', { timeout: 180_000 },
     assert.equal(phaseResponse.status, 200, 'GET /api/project?phase=phase_1_basic_occupancy 必须 200');
     phase1 = (await phaseResponse.json()) as ProjectApiResponse;
 
-    // 定位基准墙全量（#98 Tier 1）：与 App 的 fetchAnchorWalls 同源，同一真 server。
+    // 定位基准墙全量（#98 Tier 1）：与 App 的 fetchProjectSnapshot 同源，同一真 server
+    // 的 /api/project-snapshot 顶层 walls（本测试沿用独立的 /api/walls 端点取同一份表）。
     const wallsResponse = await fetch(`http://127.0.0.1:${port}/api/walls`);
     assert.equal(wallsResponse.status, 200, 'GET /api/walls 必须 200');
     const anchorWalls = ((await wallsResponse.json()) as { walls: WallSegment[] }).walls;

@@ -22,6 +22,7 @@ import type { CurrentScheme, CurtainState, ProjectRenderFacts, ProjectRenderFact
 import type { EnvironmentConfig } from '../shared/environment-schema.js';
 import type { PresentationStateStore } from './presentation-state.js';
 import { filterCurtainElements, loadPhaseBudgetMeta, loadPhaseScopes, parsePhaseId } from './phase-scope.js';
+import type { PhaseId } from '../shared/types.js';
 import { buildTileCostComparison, loadTileComparisonConfig } from './tile-cost-comparison.js';
 import { buildPaintCostComparison, loadPaintComparisonConfig } from './paint-cost-comparison.js';
 import { computeCeilingTakeoff } from '../shared/ceiling-takeoff.js';
@@ -691,29 +692,13 @@ export function createApiRouter(deps: ApiDeps): Router {
     }
   });
 
-  router.get('/project', (req, res) => {
-    const rawLayoutName = req.query.layout;
-    if (rawLayoutName !== undefined && (typeof rawLayoutName !== 'string' || rawLayoutName.trim() === '')) {
-      res.status(400).json({ error: 'layout must be a single layout name' });
-      return;
-    }
-    const layoutName = rawLayoutName as string | undefined;
-    let phase;
-    try {
-      phase = parsePhaseId(req.query.phase);
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
-      return;
-    }
-    let projectCatalog: ProjectCatalog;
-    try {
-      projectCatalog = layoutName
-        ? ProjectCatalog.load('.', layoutName)
-        : deps.catalog;
-    } catch (err) {
-      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
-      return;
-    }
+  /**
+   * /api/project 响应体构造（#98 Tier 1，Codex 三审 blocking）：项目与墙表必须来自
+   * 同一次 catalog 载入。/project 与 /project-snapshot 共用本函数——后者在同一份
+   * catalog 上多取 walls 一次拼成快照，不存在两次载入之间被 AI 会话改墙的窗口。
+   * walls 拼在顶层、house 外：house.walls 仍恒 undefined（api.test.ts 钉住）。
+   */
+  function buildProjectResponseBody(projectCatalog: ProjectCatalog, phase: PhaseId) {
     const overlay = deps.getOverlay();
     const sceneElements = mergeSceneElements(projectCatalog.getWalls(), overlay);
     // 模型包关联读取隔离（issue #195 第 4 条，同 PR #174/#182 的「宽容读取、局部降级」路子）。
@@ -827,7 +812,7 @@ export function createApiRouter(deps: ApiDeps): Router {
             : {}),
         }
       : undefined;
-    res.json({
+    return {
       phase,
       phaseMeta: { ...phaseScopes[phase], budget: loadPhaseBudgetMeta(phaseScopes[phase]) },
       modelPackageLinks: phase === 'full'
@@ -892,7 +877,66 @@ export function createApiRouter(deps: ApiDeps): Router {
       },
       budgetCategories: projectCatalog.getBudgetCategories(),
       environment: deps.getEnvironment?.() ?? null,
-    });
+    };
+  }
+
+  router.get('/project', (req, res) => {
+    const rawLayoutName = req.query.layout;
+    if (rawLayoutName !== undefined && (typeof rawLayoutName !== 'string' || rawLayoutName.trim() === '')) {
+      res.status(400).json({ error: 'layout must be a single layout name' });
+      return;
+    }
+    const layoutName = rawLayoutName as string | undefined;
+    let phase;
+    try {
+      phase = parsePhaseId(req.query.phase);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    let projectCatalog: ProjectCatalog;
+    try {
+      projectCatalog = layoutName
+        ? ProjectCatalog.load('.', layoutName)
+        : deps.catalog;
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    res.json(buildProjectResponseBody(projectCatalog, phase));
+  });
+  // 只读：项目 + 墙表同一快照（#98 Tier 1，Codex 三审 blocking）。/api/project 与
+  // /api/walls 各载一次 catalog：AI 会话在两次请求之间改墙时，sceneElements/碰撞墙
+  // 仍是旧位置、家具却按新墙表定位，along 合法即无诊断、静默错位；rebuildQueue 只串
+  // 行化页面切换，拦不住服务端更新。本端点与 /project 共用 buildProjectResponseBody，
+  // 同一份 catalog 上一次载入、一次拼装；walls 拼在顶层、house 外（house.walls 仍恒
+  // undefined，/project 契约不动）。建场入口（启动/布局/阶段）与 DXF 导出走本端点；
+  // /api/project 与 /api/walls 保留（前者是页面其他消费方的契约入口，后者供契约
+  // 测试与外部读取），不再有建场/导出路径分两次拉取项目与墙表。
+  router.get('/project-snapshot', (req, res) => {
+    const rawLayoutName = req.query.layout;
+    if (rawLayoutName !== undefined && (typeof rawLayoutName !== 'string' || rawLayoutName.trim() === '')) {
+      res.status(400).json({ error: 'layout must be a single layout name' });
+      return;
+    }
+    const layoutName = rawLayoutName as string | undefined;
+    let phase;
+    try {
+      phase = parsePhaseId(req.query.phase);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    let projectCatalog: ProjectCatalog;
+    try {
+      projectCatalog = layoutName
+        ? ProjectCatalog.load('.', layoutName)
+        : deps.catalog;
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      return;
+    }
+    res.json({ ...buildProjectResponseBody(projectCatalog, phase), walls: projectCatalog.getWalls() });
   });
 
   router.get('/presentation-state', (_req, res) => {

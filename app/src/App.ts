@@ -74,7 +74,7 @@ import './ui/keybindings.js';
 import { parseProjectRenderFactsProjection } from '@shared/project-render-facts-schema';
 import { buildHvacBuilderSources } from '@shared/render/HvacBuilder';
 import type { CaptureOptions, RoomAuditCaptureOptions, FurnishingsYaml } from '@shared/types';
-import type { ProjectApiHouse, ProjectApiResponse } from '@shared/api-project';
+import type { ProjectApiHouse, ProjectApiResponse, ProjectSnapshotResponse } from '@shared/api-project';
 import type { CurrentScheme, CurtainPresentationState, CurtainState, DecisionLogEntry, ProjectRenderFacts, ProjectRenderFactsProjection, Topic, SelectionPatch, ElectricalTopology, ElectricalCircuitPurpose, BudgetSnapshot, MaterialAppearance, MaterialPreviewAtlasConfig } from '@shared/types';
 import { endpointSourcesFromFacts, type MepCoordination } from '@shared/mep-hvac-coordination-schema';
 import type { PointWallElementInput } from '@shared/point-placement';
@@ -168,13 +168,14 @@ export class App {
    */
   private projectData: ProjectApiResponse | null = null;
   /**
-   * 定位基准墙全量（#98 Tier 1）：StateSync.fetchAnchorWalls 从独立端点 /api/walls
-   * 拉取，与 projectData 分开持有——projectData 就是 /api/project 的响应本身，
-   * 挂上去的字段会被 api-project-scene-contract 断言 4 判为「响应里不存在」。
-   * 经 HouseScene.buildFromCatalog 第二参数传入建场；取不到时 undefined，
-   * 建场回退到 sceneElements 墙表、缺失家具走 placementDiagnostics 显形。
-   * 新鲜性与 projectData 绑定（Codex 一审 blocking）：每次重建项目数据时同布局
-   * 一并刷新（start / 布局切换 / 阶段切换），回滚时随 projectData 一起恢复；
+   * 定位基准墙全量（#98 Tier 1）：与 projectData 同一次快照下发（StateSync.fetchProjectSnapshot
+   * 的 /api/project-snapshot，顶层 walls），与 projectData 分开持有——projectData 就是
+   * /api/project 的响应本身，挂上去的字段会被 api-project-scene-contract 断言 4 判为
+   * 「响应里不存在」（walls 只在快照响应里，App 只从快照局部量读它，见 start/doLayoutChange/
+   * doPhaseChange，不读 projectData.walls）。经 HouseScene.buildFromCatalog 第二参数传入建场；
+   * 快照整体失败即抛错、不拿旧墙表配新项目建场。
+   * 新鲜性与 projectData 绑定（Codex 一审 blocking）：每次重建项目数据时同布局一并刷新
+   * （start / 布局切换 / 阶段切换），回滚时随 projectData 一起恢复；
    * DXF 导出另受 configReloadDegraded 门禁（与 projectHouse 同规则）。
    */
   private anchorWalls: import('@shared/types').WallSegment[] | undefined;
@@ -186,8 +187,21 @@ export class App {
    * （项目 + 墙表），连续切换会在 await 间交错——旧切换恢复后用新 projectData 配旧
    * 墙表建场，同名墙坐标不同即静默错位。所有重建（布局/阶段）排入同一条 promise 链，
    * 一次只跑一个；每轮用自己的快照（项目 + 墙表配对提交），不重读共享字段。队尾即最终态。
+   * （2026-11-15 快照重做：两次 await 已并为一次 /api/project-snapshot 拉取，串行化
+   * 保留——它是队尾即最终态的第二道防线；真正防「旧快照后完成」的是下面的快照序号。）
    */
   private rebuildQueue: Promise<void> = Promise.resolve();
+  /**
+   * 快照序号（#98 Tier 1，Codex 三审 blocking 快照重做）：每次建场拉取（启动/布局/
+   * 阶段）先自增取号；提交时把号记进已提交水位。await 回来后只当取号高于已提交水位
+   * 才提交——旧快照即使后完成也不覆盖新快照已提交的共享态。rebuildQueue 只串行化
+   * 页面切换，拦不住启动与切换的交错（start() 不走队列）；水位是最后一道防线。
+   * 注意水位语义：只拦「已有更新的快照提交过」的旧快照；更新的请求若只是在途
+   * （未提交），旧快照仍可提交、更新的请求随后覆盖——不丢首建、不留空场景。
+   * 丢弃旧快照时静默返回，不报错、不回滚。
+   */
+  private projectSnapshotSeq = 0;
+  private projectSnapshotCommittedSeq = 0;
   private renderFacts?: ProjectRenderFacts;
   private topics: Topic[] = [];
   private rafId?: number;
@@ -359,10 +373,22 @@ export class App {
     this.readyState = 'loading';
     try {
     this.stateSync.setPhase(this.phase);
-    this.projectData = await this.stateSync.fetchProject({ phase: this.phase });
-    // 定位基准墙全量与项目数据同布局（#98 Tier 1）：失败只降级（undefined），
-    // 建场回退到 sceneElements 墙表、缺失家具走 placementDiagnostics 显形。
-    this.anchorWalls = await this.stateSync.fetchAnchorWalls();
+    // 单次快照（#98 Tier 1，Codex 三审 blocking）：项目与墙表同一次服务端 catalog
+    // 载入，不再分两次拉 /api/project + /api/walls。walls 只从快照局部量读——
+    // projectData 本身仍是 /api/project 的响应形状，不读 projectData.walls。
+    const snapshotSeq = ++this.projectSnapshotSeq;
+    const snapshot = await this.stateSync.fetchProjectSnapshot({ phase: this.phase });
+    // 旧快照后完成：已有更新的快照提交过时不提交本份，后续初始化读当前共享态
+    // （胜出的切换已提交）；更新的请求若只是在途，本份仍提交、随后被覆盖。
+    if (snapshotSeq > this.projectSnapshotCommittedSeq) {
+      this.projectData = snapshot;
+      this.anchorWalls = snapshot.walls;
+      this.projectSnapshotCommittedSeq = snapshotSeq;
+    }
+    // 建场输入取当前共享态（本份快照，或胜出切换已提交的更新快照）。`?? snapshot`
+    // 只是类型收窄：水位语义保证旧快照被丢弃时共享态必为已提交的更新快照（非 null），
+    // 该分支实际走不到；即使走到也只影响本次建场的局部输入，不改共享态。
+    const projectData = this.projectData ?? snapshot;
     // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断建场与预览。
     this.reportPlacementClosureDiagnostics(this.projectData);
     const previewAtlasConfig = this.projectData?.materialPreview?.atlases as MaterialPreviewAtlasConfig[] | undefined;
@@ -380,7 +406,7 @@ export class App {
     // HouseScene.buildFromCatalog 直接读 projectData.renderFactsProjection 构造 HVAC 源，
     // 四个建场入口因此拿到的都是同一份投影（layout 切换不再漏）。
 
-    await this.houseScene.buildFromCatalog(this.projectData, this.anchorWalls);
+    await this.houseScene.buildFromCatalog(projectData, this.anchorWalls);
     this.reportPlacementDiagnostics();
     this.annotationRenderer = new AnnotationRenderer(
       this.houseScene.scene,
@@ -2287,22 +2313,23 @@ export class App {
       // projectData 缓存不再作为导出输入（十五审）：全部四路拉取失败时仍可导出骨架 + D-NOTES。
       // 全量新鲜拉取（codex 十二～十五审 blocking 系列）：projectData 是页面加载缓存，
       // 点位/家具/吊顶/几何的编辑都不回写——导出前重新拉服务端当前状态，杜绝混用新旧数据。
-      const [factsResponse, mepResponse, furnishingsResponse, projectResponse, configStatusResponse, topologyResponse, wallsResponse] = await Promise.all([
+      // 项目 + 墙表同一次快照（#98 Tier 1，Codex 三审 blocking 快照重做）：
+      // /api/project-snapshot 在同一次服务端 catalog 载入上拼装项目响应与顶层 walls，
+      // 不再分两次拉 /api/project + /api/walls——两次拉取之间 AI 会话改墙时，旧项目
+      // 配新墙表（或反之）会静默错位出图。其余端点（render-facts / furnishings /
+      // config-status / topology / mep）仍各拉一次，各自的失败隔离口径不变。
+      const [factsResponse, mepResponse, furnishingsResponse, snapshotResponse, configStatusResponse, topologyResponse] = await Promise.all([
         fetch('/api/render-facts').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         fetch('/api/mep-coordination').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         // /api/furnishings 每次请求直读 house.yaml（与 CLI 同全案口径）。
         fetch('/api/furnishings').then((response) => (response.ok ? response.json() : null)).catch(() => null),
-        fetch('/api/project').then((response) => (response.ok ? response.json() : null)).catch(() => null),
+        fetch('/api/project-snapshot').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         // 配置加载状态核验（codex 十六审 blocking）：loader 重载失败会保留上次成功数据且
         // render-facts 仍 200——HTTP 成功不等于数据新鲜，必须查 status。
         fetch('/api/config-status').then((response) => (response.ok ? response.json() : null)).catch(() => null),
         // 回路拓扑（issue #98 S3）：DXF 图上「点位属于哪条回路」的标注源（点位侧 circuit
         // 字段已退役，只认 topology 的 member_point_ids + controls）。缺它只丢回路标注。
         fetch('/api/electrical-topology').then((response) => (response.ok ? response.json() : null)).catch(() => null),
-        // 定位基准墙全量（#98 Tier 1）：独立端点 /api/walls——/api/project 的 house
-        // 刻意不下发 walls（api.test.ts 钉住），sceneElements 又不含 suppressed 玻璃线，
-        // 玻璃线旁的落地家具墙锚须以此表解算（与 3D/verify 同源）。
-        fetch('/api/walls').then((response) => (response.ok ? response.json() : null)).catch(() => null),
       ]);
       const configStatuses = (configStatusResponse?.configs ?? []) as Array<{ path?: string; status?: string }>;
       // 保守规则（codex 十六/十七/十八审 blocking 收口）：任何配置重载失败都不能假装数据
@@ -2317,8 +2344,8 @@ export class App {
       const mepPayload = mepResponse as (MepCoordination & { lint?: MepLintResult }) | null;
       // 几何/overlay loader 重载失败同规则（codex 十八审 blocking）：隔离 projectHouse，
       // 不让旧墙体/旧洞口与新家具混装。
-      const projectHouse: Partial<ProjectApiHouse> | undefined = (!configReloadDegraded && projectResponse !== null
-        ? (projectResponse.house as Partial<ProjectApiHouse> | undefined) ?? undefined
+      const projectHouse: Partial<ProjectApiHouse> | undefined = (!configReloadDegraded && snapshotResponse !== null
+        ? (snapshotResponse.house as Partial<ProjectApiHouse> | undefined) ?? undefined
         : undefined);
       // 与 App MEP 视图同款守卫（hvac.plans 缺失时端点解析必炸）：缺数据只降级 M-* 图层。
       // null 规范化为 undefined（codex 十五审 major）：null 会穿透 undefined 判空直接进
@@ -2326,16 +2353,16 @@ export class App {
       const furnishings: FurnishingsYaml | undefined = (furnishingsResponse ?? undefined) as FurnishingsYaml | undefined;
       // 端点解析的宿主索引（issue #98 S1/S2）走 shared/placement-indexes.ts 单一产地（疗法②）：
       // 沿墙/挂载点位不再声明绝对 x/z，MEP 端点与 3D/DXF/lint 共用同一解算——墙几何取自本次
-      // /api/walls 的全量表（含 suppressed 玻璃线，带 line_datum），家具宿主取自
-      // /api/furnishings（全量 house.yaml，不按阶段过滤）。walls 缺省时回落 sceneElements
-      // 墙（旧行为）。几何不可得则 M-* 图层整体不导出（端点解不出比缺图更危险：
+      // 快照顶层的 walls 全量表（含 suppressed 玻璃线，带 line_datum），与 house 来自同一份
+      // catalog，家具宿主取自 /api/furnishings（全量 house.yaml，不按阶段过滤）。walls 缺省时
+      // 回落 sceneElements 墙（旧行为）。几何不可得则 M-* 图层整体不导出（端点解不出比缺图更危险：
       // 路线会静默错位），由 D-NOTES 声明。
       // 墙表遵守同一配置可信性门禁（#98 Tier 1，Codex 一审 blocking）：模型几何重载失败后
-      // /api/walls 仍从保留上次成功数据的 deps.catalog 返回 200——不隔离时旧墙表会与直读
+      // 快照仍从保留上次成功数据的 catalog 返回 200——不隔离时旧墙表会与直读
       // 磁盘的新家具混装，along 仍合法就静默交付按旧几何定位的图纸。与 projectHouse 同规则。
       const anchorWalls: import('@shared/types').WallSegment[] | undefined = (
-        !configReloadDegraded && wallsResponse !== null && Array.isArray((wallsResponse as { walls?: unknown }).walls)
-          ? (wallsResponse as { walls: import('@shared/types').WallSegment[] }).walls
+        !configReloadDegraded && snapshotResponse !== null && Array.isArray((snapshotResponse as { walls?: unknown }).walls)
+          ? (snapshotResponse as { walls: import('@shared/types').WallSegment[] }).walls
           : undefined
       );
       const dxfPlacementIndexes = buildPlacementIndexes({
@@ -2355,7 +2382,7 @@ export class App {
       if (!projectHouse) {
         notes.push(configReloadDegraded
           ? 'GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: config reload failed — last-good server cache not trusted'
-          : 'GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: project API failed at export time');
+          : 'GEOMETRY/ROOMS/CEILINGS NOT EXPORTED: project-snapshot API failed at export time');
       }
       if (factsStale) notes.push('RENDER FACTS STALE: config reload failed — electrical/plumbing/ceilings/MEP NOT EXPORTED (server last-good cache not trusted)');
       if (!configStatusTrusted) notes.push('CONFIG STATUS UNVERIFIED: config-status API failed at export time');
@@ -2364,7 +2391,7 @@ export class App {
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
       if (!anchorWalls) notes.push(configReloadDegraded
         ? 'ANCHOR WALLS NOT EXPORTED: config reload failed — last-good server cache not trusted (furniture placement fell back to sceneElements walls, suppressed glass-line walls excluded)'
-        : 'ANCHOR WALLS DEGRADED: walls API failed at export time — furniture placement fell back to sceneElements walls (suppressed glass-line walls excluded)');
+        : 'ANCHOR WALLS DEGRADED: project-snapshot API failed at export time — furniture placement fell back to sceneElements walls (suppressed glass-line walls excluded)');
       // 拉到的拓扑必须真的是拓扑（ circuits 数组）：接口降级/空响应时按缺失处理并随图声明，
       // 不把 `{}` 当电路表喂给装配器（那会让整次导出抛在解算器里）。
       const pointCircuitSources = (topologyResponse !== null && Array.isArray((topologyResponse as { circuits?: unknown }).circuits)
@@ -2376,10 +2403,10 @@ export class App {
           rooms: projectHouse?.rooms ?? undefined,
           furnishings,
           // 电气/水路/吊顶/MEP 全部来自本次拉取的 facts（codex 十二～十四审 blocking），
-          // 几何来自本次 /api/project（十五审）——任何一项不可得宁可缺图层并在 D-NOTES
+          // 几何来自本次 /api/project-snapshot（十五审）——任何一项不可得宁可缺图层并在 D-NOTES
           // 声明，也不混用页面缓存。
           electrical: facts?.electrical as never,
-          // factsStale 时 projectHouse.ceilingZones 同样来自 stale facts 缓存（/api/project
+          // factsStale 时 projectHouse.ceilingZones 同样来自 stale facts 缓存（/api/project-snapshot
           // 的 ceilingZones 优先取 render-facts），不可兜底（codex 十六审 blocking）。
           ceilingZones: factsStale ? undefined : ((facts?.ceiling ?? projectHouse?.ceilingZones) ?? undefined),
           sceneElements: projectHouse?.sceneElements ?? undefined,
@@ -3082,17 +3109,22 @@ export class App {
 
   private async doLayoutChange(layoutName: string): Promise<void> {
     const previousLayout = this.activeLayout;
-    // 同一次切换的完整快照：项目与墙表配对提交，建场与面板一律读本次快照、不重读共享字段。
+    // 同一次切换的完整快照：单次 /api/project-snapshot 拉取，项目与墙表同一版本、
+    // 配对提交，建场与面板一律读本次快照、不重读共享字段。
     let data: ProjectApiResponse | undefined;
     let walls: import('@shared/types').WallSegment[] | undefined;
     try {
-      data = await this.stateSync.fetchProject({ phase: this.phase, layout: layoutName });
-      // 定位基准墙全量随布局换（#98 Tier 1）：墙表按布局走，失败只降级（undefined）。
-      walls = await this.stateSync.fetchAnchorWalls(layoutName);
+      const snapshotSeq = ++this.projectSnapshotSeq;
+      const snapshot: ProjectSnapshotResponse = await this.stateSync.fetchProjectSnapshot({ phase: this.phase, layout: layoutName });
+      // 旧快照后完成（已有更新的切换先提交）：静默丢弃，不提交、不建场。
+      if (snapshotSeq <= this.projectSnapshotCommittedSeq) return;
+      data = snapshot;
+      walls = snapshot.walls;
       this.projectData = data;
       this.activeLayout = layoutName;
       this.stateSync.setLayout(layoutName);
       this.anchorWalls = walls;
+      this.projectSnapshotCommittedSeq = snapshotSeq;
       // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断布局切换预览。
       this.reportPlacementClosureDiagnostics(data);
     } catch (error) {
@@ -3144,17 +3176,22 @@ export class App {
     const previousAnchorWalls = this.anchorWalls;
     this.phaseReloading = true;
     this.overviewMenu.setPhaseLoading(true);
-    // 同一次切换的完整快照：项目与墙表配对提交，建场读本次快照；共享字段（墙表/项目/
-    // 阶段）只在建场成功后一起提交——建场前失败/中断不留半份新状态。
+    // 同一次切换的完整快照：单次 /api/project-snapshot 拉取，建场读本次快照；共享字段
+    // （墙表/项目/阶段）只在建场成功后一起提交——建场前失败/中断不留半份新状态。
     let data: ProjectApiResponse;
     let walls: import('@shared/types').WallSegment[] | undefined;
     try {
       this.stateSync.setPhase(phase);
-      data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
-      // 定位基准墙全量随阶段重建同布局刷新（#98 Tier 1，Codex 一审 blocking）：墙表只在启动/
-      // 布局切换时刷新时，AI 会话移墙后切阶段会拿新项目 + 旧墙表建场，挂靠对象静默不跟随。
-      // 与 projectData 同源同布局拉取，失败只降级（undefined）。
-      walls = await this.stateSync.fetchAnchorWalls(this.activeLayout);
+      const snapshotSeq = ++this.projectSnapshotSeq;
+      const snapshot: ProjectSnapshotResponse = await this.stateSync.fetchProjectSnapshot({ phase, layout: this.activeLayout });
+      // 旧快照后完成（已有更新的切换先提交）：静默丢弃——先把切阶段前预置的
+      // StateSync.phase 恢复，再返回（finally 会收 phaseLoading UI）。
+      if (snapshotSeq <= this.projectSnapshotCommittedSeq) {
+        this.stateSync.setPhase(previousPhase);
+        return;
+      }
+      data = snapshot;
+      walls = snapshot.walls;
       // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断阶段切换预览。
       this.reportPlacementClosureDiagnostics(data);
       this.collision.setWalls(this.extractWalls(data.house?.sceneElements));
@@ -3174,6 +3211,7 @@ export class App {
       this.anchorWalls = walls;
       this.projectData = data;
       this.phase = phase;
+      this.projectSnapshotCommittedSeq = snapshotSeq;
       this.overviewMenu.setActiveLayout(this.activeLayout);
       this.topics = new TopicRegistry(this.houseScene).list();
       this.schemePanel.init(this.topics, (topicId: string, optionId: string) => {

@@ -451,27 +451,30 @@ describe('StateSync', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/project?layout=neighbor-baseline&phase=phase_1_basic_occupancy');
   });
 
-  it('fetchAnchorWalls returns the full wall table and passes the selected layout', async () => {
-    const walls = [{ id: 'w_kit_north', x1: 7.2, z1: 0, x2: 10.6, z2: 0, line_datum: 'centerline' }];
+  it('fetchProjectSnapshot hits the single snapshot endpoint with the selected layout and phase', async () => {
+    const snapshot = { walls: [{ id: 'w_kit_north', x1: 7.2, z1: 0, x2: 10.6, z2: 0, line_datum: 'centerline' }] };
     const fetchMock = vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url;
-      if (urlStr.includes('/api/walls')) {
-        return { ok: true, json: async () => ({ walls }) } as Response;
+      if (urlStr.includes('/api/project-snapshot')) {
+        return { ok: true, json: async () => snapshot } as Response;
       }
       return { ok: true, json: async () => ({}) } as Response;
     });
 
+    stateSync.setPhase('phase_1_basic_occupancy');
     stateSync.setLayout('neighbor-baseline');
-    await expect(stateSync.fetchAnchorWalls()).resolves.toEqual(walls);
-    expect(fetchMock).toHaveBeenCalledWith('/api/walls?layout=neighbor-baseline');
+    await expect(stateSync.fetchProjectSnapshot()).resolves.toEqual(snapshot);
+    expect(fetchMock).toHaveBeenCalledWith('/api/project-snapshot?layout=neighbor-baseline&phase=phase_1_basic_occupancy');
   });
 
-  it('fetchAnchorWalls degrades to undefined instead of throwing when the endpoint fails', async () => {
-    vi.spyOn(global, 'fetch').mockResolvedValue({ ok: false, status: 500 } as Response);
-    await expect(stateSync.fetchAnchorWalls()).resolves.toBeUndefined();
+  it('fetchProjectSnapshot surfaces the server status and body on failure (no silent fallback to stale walls)', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: async () => JSON.stringify({ error: '服务端内部错误' }),
+    } as Response);
 
-    vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Network error'));
-    await expect(stateSync.fetchAnchorWalls()).resolves.toBeUndefined();
+    await expect(stateSync.fetchProjectSnapshot()).rejects.toThrow(/HTTP 500[\s\S]*服务端内部错误/);
   });
 
   it('surfaces the server status and body on a failed project fetch (no dropped diagnostics)', async () => {

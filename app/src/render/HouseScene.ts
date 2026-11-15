@@ -750,7 +750,7 @@ export class HouseScene implements SceneApi {
       rooms: projectData.house.rooms ?? [],
       platform: projectData.house.platform,
       elements: projectData.house.sceneElements,
-      // 定位基准墙全量（#98 Tier 1）：独立端点 /api/walls 下发的表，由 App 经
+      // 定位基准墙全量（#98 Tier 1）：/api/project-snapshot 顶层 walls 下发的表，由 App 经
       // buildFromCatalog 第二参数传入——不挂在 projectData 上（api-project-scene-
       // contract 断言 4 会把 projectData.* 读取逐条到 /api/project 响应里取值，
       // 该字段不是该响应的字段）。含 suppressed 玻璃线；缺省时 parseSceneInput
