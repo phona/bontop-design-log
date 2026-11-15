@@ -164,9 +164,12 @@ test('反例：零行程与末步未落到 to 端点 → 显式诊断、无不�
   assert.equal(green.unresolved, 0);
 });
 
-test('to:\'to\' 步零行程是合法落点——跳过本步、无重合点；字面零行程仍显式失败', () => {
-  // 零行程落点规则（issue #98 MEP batch 6，PR #234 major 根治）：to 步的目标即 to 端点，
-  // 端点落在当前轴线上时该腿退化——无行程、无标高变化，跳过与输出重合点几何全等。
+test('to:\'to\' 步零行程是合法落点——输出重合落点、不改点数；字面零行程仍显式失败', () => {
+  // 零行程落点规则（issue #98 MEP batch 6，PR #234 major 根治，二审修正）：to 步的目标即 to 端点，
+  // 端点落在当前轴线上时该腿退化——无行程、无标高变化，仍输出落点（与上一落点重合的零长段）。
+  // 不得跳过：跳过会断两条下游不变量——derivedSlopeRunToHeight 取末点 y（全跳过时 viaPoints
+  // 为空、终端标高静默回退到 to.y，二审 blocking）；mep-takeoff 的 pipe_route_segments
+  // 按下标分段（跳过一步即点数 −1、to_index 越界、整条路由掉出算量，二审 major）。
   // 字面目标的零行程仍显式失败（上一条反例钉死）。
   const landed = slopeConfig([slopeRoute('syn-landed', [
     { kind: 'slope_run', axis: 'x', to: 'to' },
@@ -174,13 +177,15 @@ test('to:\'to\' 步零行程是合法落点——跳过本步、无重合点；�
   ], { from: { x: 6.7, z: 5.1 }, to: { x: 6.7, z: 3.7 } })]);
   const entry = resolveMepRoutes(landed, emptySources).routes[0];
   assert.deepEqual(entry.unresolved, []);
-  // 首步 x→'to' 零行程被跳过：via 只有 z 向一段，终端即落点（2.70 − 0.01×1.40 = 2.686）。
+  // 首步 x→'to' 零行程仍输出落点：与起点重合的零长段，点数不变（from + 2 步 + to = 4 点），
+  // 终端仍由坡度派生（2.70 − 0.01×1.40 = 2.686）。
   assertPointsClose(entry.points, [
+    [6.7, 2.7, 5.1],
     [6.7, 2.7, 5.1],
     [6.7, 2.686, 3.7],
     [6.7, 2.686, 3.7],
   ], 'syn-landed');
-  assert.equal(entry.viaPoints.length, 1, 'zero-run to step must not emit a duplicate point');
+  assert.equal(entry.viaPoints.length, 2, 'zero-run to step must still emit its landing point (point count invariant)');
 
   // 对照：同一形态的字面零行程仍显式失败，不输出半条几何。
   const literal = slopeConfig([slopeRoute('syn-literal', [
@@ -191,7 +196,7 @@ test('to:\'to\' 步零行程是合法落点——跳过本步、无重合点；�
   assert.deepEqual(red.points, []);
   assert.match(red.diagnostic ?? '', /零行程/);
 
-  // 落点校验仍以最终游标为准：跳步后游标不到 to 端点仍显式失败。
+  // 落点校验仍以最终游标为准：末步到不了 to 端点仍显式失败（每步恰输出一点，游标恒等于末点）。
   const short = slopeConfig([slopeRoute('syn-short', [
     { kind: 'slope_run', axis: 'x', to: 'to' },
     { kind: 'slope_run', axis: 'z', to: 3.0 },
@@ -200,6 +205,26 @@ test('to:\'to\' 步零行程是合法落点——跳过本步、无重合点；�
   assert.deepEqual(shortEntry.unresolved, ['via']);
   assert.deepEqual(shortEntry.points, []);
   assert.match(shortEntry.diagnostics.join('；'), /末步 slope_run 未落到 to 端点/);
+});
+
+test('全零行程：起终点重合时终端标高仍由坡度游标派生、不回退到 to.y', () => {
+  // 二审 blocking 反例：起终点同为 (6.7,3.7)、from_height=2.7、终点 y=0.02，两步分别沿 x/z 到 'to'。
+  // 旧跳过规则下 viaPoints 为空、derivedSlopeRunToHeight 回 undefined、终端标高静默回退到 to.y=0.02，
+  // 凭空产生 2.68m 竖段。输出落点后 viaPoints 末点 y 即游标高度 2.7，终端标高正确。
+  const degenerate = slopeConfig([slopeRoute('syn-degenerate', [
+    { kind: 'slope_run', axis: 'x', to: 'to' },
+    { kind: 'slope_run', axis: 'z', to: 'to' },
+  ], { from: { x: 6.7, z: 3.7, y: 0.02 }, to: { x: 6.7, z: 3.7, y: 0.02 } })]);
+  const entry = resolveMepRoutes(degenerate, emptySources).routes[0];
+  assert.deepEqual(entry.unresolved, []);
+  assert.equal(entry.viaPoints.length, 2, 'both zero-run steps must emit their landing points');
+  assertPointsClose(entry.points, [
+    [6.7, 2.7, 3.7],
+    [6.7, 2.7, 3.7],
+    [6.7, 2.7, 3.7],
+    [6.7, 2.7, 3.7],
+  ], 'syn-degenerate');
+  assert.equal(entry.points[entry.points.length - 1].y, 2.7, 'terminal height must stay at from_height, never fall back to to.y=0.02');
 });
 
 test('反例：无 y 绝对步后接 slope_run → 显式失败（旧标高游标须清除，不静默算错坡度）', () => {

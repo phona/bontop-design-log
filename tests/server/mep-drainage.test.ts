@@ -273,28 +273,98 @@ test('C2：客卫立管双轴移动（x +0.10 / z −0.10），两条立管支�
 });
 
 test('C2：零行程落点——客卫支管终端移到折回点 z=3.25、主卫马桶立管移到 from.z，路由照常解出', () => {
-  // 零行程落点规则：to 步零行程被跳过、不输出重合点，终端即落点（复现见 tmp/repro-234-major.ts，
-  // 未修前两例均显式失败：客卫支管报零行程，马桶支路报末步未落到 to 端点）。
-  // 非移动方断言由上面两条立管双轴测试覆盖（同为立管/地漏 z 向移动），本测试只钉落点语义。
+  // 零行程落点规则（二审修正）：to 步零行程仍输出落点（与上一落点重合的零长段，不改点数），
+  // 终端即落点（复现见 tmp/repro-234-major.ts，未修前两例均显式失败：客卫支管报零行程，
+  // 马桶支路报末步未落到 to 端点）。非移动方断言由上面两条立管双轴测试覆盖（同为立管/地漏 z 向移动），
+  // 本测试只钉落点语义。
   const baseline = routePoints(resolveMepRoutes(project, realSources));
-  // 客卫支管终端 z→3.25：末步 z→'to' 零行程被跳过，终端标高 0.028 − 0.01×(0.15+0.80) = 0.0185。
+  // 客卫支管终端 z→3.25：末步 z→'to' 零行程仍输出重合落点，点数 5（from + 3 步 + to），
+  // 终端标高 0.028 − 0.01×(0.15+0.80) = 0.0185。
   const movedGuest = routePoints(resolveMepRoutes(project, sourcesWithMovedPlumbing('drain_gbath_floor', 0, 0.20)));
   const guest = JSON.parse(movedGuest['drain-guest-bath']) as Array<{ x: number; y?: number; z: number }>;
-  assert.equal(guest.length, 4, 'skipped zero-run step must not emit a duplicate point');
+  assert.equal(guest.length, 5, 'zero-run to step must still emit its landing point (point count invariant)');
+  assert.deepEqual(
+    { x: guest[3].x, y: guest[3].y, z: guest[3].z },
+    { x: guest[2].x, y: guest[2].y, z: guest[2].z },
+    'zero-run landing point must coincide with the previous point (zero-length leg)',
+  );
   const guestTerminal = guest[guest.length - 1];
   assert.ok(Math.abs(guestTerminal.x - 6.45) <= 1e-9 && Math.abs(guestTerminal.y! - 0.0185) <= 1e-9
     && Math.abs(guestTerminal.z - 3.25) <= 1e-9,
     `drain-guest-bath terminal ${JSON.stringify(guestTerminal)} !== (6.45,0.0185,3.25)`);
-  // 主卫马桶立管 z→1.5（= from.z）：末步 z→'to' 零行程被跳过，终端标高 0.0417 − 0.01×1.975 = 0.02195。
+  // 主卫马桶立管 z→1.5（= from.z）：末步 z→'to' 零行程仍输出重合落点，点数 4（from + 2 步 + to），
+  // 终端标高 0.0417 − 0.01×1.975 = 0.02195。
   const movedToilet = routePoints(resolveMepRoutes(project, sourcesWithMovedPlumbing('drain_riser_master_bath', 0, 0.20)));
   const toilet = JSON.parse(movedToilet['drain-mbath-toilet-to-riser']) as Array<{ x: number; y?: number; z: number }>;
-  assert.equal(toilet.length, 3, 'skipped zero-run step must not emit a duplicate point');
+  assert.equal(toilet.length, 4, 'zero-run to step must still emit its landing point (point count invariant)');
+  assert.deepEqual(
+    { x: toilet[2].x, y: toilet[2].y, z: toilet[2].z },
+    { x: toilet[1].x, y: toilet[1].y, z: toilet[1].z },
+    'zero-run landing point must coincide with the previous point (zero-length leg)',
+  );
   const toiletTerminal = toilet[toilet.length - 1];
   assert.ok(Math.abs(toiletTerminal.x - 0.3) <= 1e-9 && Math.abs(toiletTerminal.y! - 0.02195) <= 1e-9
     && Math.abs(toiletTerminal.z - 1.5) <= 1e-9,
     `drain-mbath-toilet-to-riser terminal ${JSON.stringify(toiletTerminal)} !== (0.3,0.02195,1.5)`);
   const restored = routePoints(resolveMepRoutes(project, realSources));
   assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
+});
+
+test('C2b：立管移动 5cm 后算量仍含淋浴支路（to_index 不越界，管长只短 0.05m）', () => {
+  // 二审 major 反例：客卫立管 z 2.40→2.45 时 drain-gbath-shower-to-riser 首步零行程；
+  // 旧跳过规则下点数 4→3、to_index: 3 越界、整条路由掉出算量（drainageM 22.578→22.435m）。
+  // 输出落点后点数仍为 4，算量下标有效，管长只短去零的 z 腿 0.05m。
+  const movedSources = sourcesWithMovedPlumbing('drain_riser_guest_bath', 0, 0.05);
+  const movedReport = resolveMepRoutes(project, movedSources);
+  const shower = movedReport.routes.find((item) => item.route.id === 'drain-gbath-shower-to-riser')!;
+  assert.deepEqual(shower.unresolved, []);
+  assert.equal(shower.points.length, 4, 'point count must stay 4 so takeoff to_index: 3 stays in bounds');
+  const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepTakeoffRules;
+  const topology = parseYaml(readFileSync('config/electrical-topology.yaml', 'utf8')) as {
+    circuits: TakeoffCircuit[];
+    controls?: Array<{ switch_point_ids?: string[]; target_point_ids?: string[] }>;
+  };
+  const takeoffInput = {
+    electrical: electrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: plumbing as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'],
+    circuits: topology.circuits,
+    controls: topology.controls ?? [],
+    routes: project.routes,
+    rules,
+  };
+  const baseTakeoff = computeMepTakeoff({ ...takeoffInput, resolution: resolveMepRoutes(project, realSources) });
+  const movedTakeoff = computeMepTakeoff({ ...takeoffInput, resolution: movedReport });
+  assert.deepEqual(movedTakeoff.unresolved.map((item) => item.id), ['trunk_strong_main']);
+  // 管长只短去真实缩短的部分：三条以该立管为终点的路由（淋浴/地漏/台盆支路，均单段声明 0→3）
+  // 各自 3D 折线长的变化之和——由统一出口解出的 points 直接算，不抄生产实现。
+  // 旧跳过规则下淋浴支路整条掉出算量，pipe.totalDrainageM 会多丢约 0.50m（整条支路长）。
+  const polyline3d = (points: Array<{ x: number; y?: number; z: number }>): number => {
+    let length = 0;
+    for (let i = 1; i < points.length; i += 1) {
+      length += Math.hypot(
+        points[i].x - points[i - 1].x,
+        (points[i].y ?? 0) - (points[i - 1].y ?? 0),
+        points[i].z - points[i - 1].z,
+      );
+    }
+    return length;
+  };
+  const baseReport = resolveMepRoutes(project, realSources);
+  let expectedDrop = 0;
+  for (const id of ['drain-gbath-shower-to-riser', 'drain-gbath-floor-to-riser', 'drain-gbath-vanity-to-riser']) {
+    const basePoints = baseReport.routes.find((item) => item.route.id === id)!.points;
+    const movedPoints = movedReport.routes.find((item) => item.route.id === id)!.points;
+    expectedDrop += polyline3d(basePoints) - polyline3d(movedPoints);
+  }
+  assert.ok(expectedDrop > 0 && expectedDrop < 0.2,
+    `sanity: three riser routes must shorten by less than the move allows, got ${expectedDrop}`);
+  // 管桶在汇总时乘损耗系数 units.loss.pipe（1.08，见 shared/mep-takeoff.ts:906-907），
+  // 故管长变化 = 折线变化 × 该系数；不乘会把 0.143 误判成 0.155。
+  const pipeLoss = rules.units?.loss?.pipe ?? 1;
+  assert.ok(
+    Math.abs((baseTakeoff.pipe.totalDrainageM - movedTakeoff.pipe.totalDrainageM) - expectedDrop * pipeLoss) <= 1e-9,
+    `pipe.totalDrainageM must drop by exactly the shortened legs × loss (${expectedDrop * pipeLoss}): ${baseTakeoff.pipe.totalDrainageM} -> ${movedTakeoff.pipe.totalDrainageM}`,
+  );
 });
 
 test('C3：DXF 与算量同读统一出口——DXF 无错且含 10 条迁移路由，算量未解仍只有 trunk_strong_main', () => {
