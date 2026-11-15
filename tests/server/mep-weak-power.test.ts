@@ -451,17 +451,19 @@ test('C2 传动：net_parent 南移 0.20m，weak-parent 末段跟随、weak-main
   assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
 });
 
-test('C3 消费者对账：lint 62/169 与逐路由计数同基线、DXF 无错且含 7 条弱电 id、算量 unresolved 仍只有 trunk_strong_main', () => {
-  // lint：raw 口径 62 errors / 169 warnings（本批实算；gap-2 正交拆分后三条弱电的
+test('C3 消费者对账：lint 60/167 与逐路由计数同基线、DXF 无错且含 7 条弱电 id、算量 unresolved 仍只有 trunk_strong_main', () => {
+  // lint：raw 口径 60 errors / 167 warnings（本批实算；gap-2 正交拆分后三条弱电的
   // route_not_orthogonal 消失，overlap 计数随折线变化；childbed 竖直优先修法另增
   // 1 处冷媒/childbed 重叠 error 与 1 处 envelope warning；2026-11-16 Codex blocking
   // 修复：study-curtain 南行段升至 2.70m，与 weak-main-living / weak-parent 的 2.55m
   // 共线重叠消失 2 处，errors 64→62；同批 2 处 ceiling_clearance_unverified 警告
-  // 随 110mm hit 清零，warnings 171→169；verify:mep CLI 口径由
-  // mep-guidance-baseline 测试另行钉死）。
+  // 随 110mm hit 清零，warnings 171→169；2026-11-16 Codex blocking 修复（第二轮）：
+  // childbed 升位移至南行段 (5.60,4.00)，与冷媒主管/支管的 2 处重叠 error 与
+  // 冷凝水主管/支管的 2 处 envelope warning 同批消失，errors 62→60、warnings 169→167；
+  // verify:mep CLI 口径由 mep-guidance-baseline 测试另行钉死）。
   const lintResult = lintMepCoordination(project, realSources);
-  assert.equal(lintResult.errors.length, 62, `lint errors 应为 62，实际 ${lintResult.errors.length}`);
-  assert.equal(lintResult.warnings.length, 169, `lint warnings 应为 169，实际 ${lintResult.warnings.length}`);
+  assert.equal(lintResult.errors.length, 60, `lint errors 应为 60，实际 ${lintResult.errors.length}`);
+  assert.equal(lintResult.warnings.length, 167, `lint warnings 应为 167，实际 ${lintResult.warnings.length}`);
   const perRoute = (issues: Array<{ code: string; routeId?: string }>): Record<string, Record<string, number>> => {
     const out: Record<string, Record<string, number>> = {};
     for (const issue of issues) {

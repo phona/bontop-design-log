@@ -76,7 +76,7 @@
     },
     {
       "code": "route_overlap",
-      "count": 49,
+      "count": 47,
       "category": "envelope_approximation",
       "disposition": "pending_adjudication",
       "basis": "DEC-2026-10-17-R20 登记为 warning 侧新条目（此前该 code 主在 must_fix 桶，不经本台账）；现值含 weak-ap-master 与送/回风干管近似包络 +2。｜DEC-2026-10-22-R01 对账：warning 侧实算 39（R25 外包络复核口径），据实更新 35→39；error 侧 69 条仍属 must_fix 硬门禁、不经本台账。｜2026-11-14 全带泵重画对账：warning 侧实算 39→53（五管同端点 (6.70,3.70) 汇流 +9、儿童房 2 条由 must_fix 迁入 envelope、餐厅末段 jog 与浴霸/客卫强电轴 2 处、客厅西行段与送风支管 1 处），据实更新；error 侧 59 条仍属 must_fix 硬门禁、不经本台账。｜2026-11-16 强电关系化对账：warning 侧实算 53→48（strong-light-child 斜段拆分后其 5 处近似包络重叠消失），据实更新；error 侧 59 条仍属 must_fix 硬门禁、不经本台账。｜2026-11-16 并行改动（strong-power-parent-child-childbed 段几何调整）：warning 侧实算 48→49（与 condensate-master 新增 1 处），error 侧 59→60（与 refrigerant-master / refrigerant-child 各新增 1 处、与 refrigerant-child 旧 1 处消失），本台账 warning 侧据实更新 48→49。"
@@ -173,11 +173,11 @@
     }
   ],
   "summary": {
-    "mep_total_warnings": 231,
+    "mep_total_warnings": 229,
     "mep_buckets": {
-      "must_fix_before_briefing": 91,
+      "must_fix_before_briefing": 89,
       "survey_dependent": 92,
-      "envelope_approximation": 139
+      "envelope_approximation": 137
     },
     "electrical_total_warnings": 52,
     "electrical_by_disposition": {
@@ -190,7 +190,7 @@
   },
   "final_state": {
     "status": "open",
-    "lint": "verify:mep 93 errors（must_fix 在册，硬门禁）/ 233 warnings（survey 94 + envelope 139）· routes 137/137 resolved；verify:electrical 0 error / 52 warnings（2026-11-16 强电关系化对账实测）",
+    "lint": "verify:mep 89 errors（must_fix 在册，硬门禁）/ 229 warnings（survey 92 + envelope 137）· routes 137/137 resolved；verify:electrical 0 error / 52 warnings（2026-11-16 强电关系化对账实测；同日 Codex blocking 修复两轮后现值）",
     "tests": "tests/server/mep-guidance-baseline.test.ts 动态对账本文数与 docs/mep-construction-guidance.md §0/§6、docs/pending-site-data.md 表头口径",
     "disclaimer": "全部 route 仍为 preliminary/proposed/pending，非施工放线依据；DEC-2026-10-06-R1 新增 6 条 design_requirement 给排水需求路线、以及 2026-11-14 全带泵重画后的 condensate 五条支管（泵扬 2.70 + 1% 坡直达客卫固定候选点，R5 残留已关闭）同样不构成放线许可；本台账只记录「哪些 warning 可以带着走、哪些必须交底前清」，不构成任何放线许可"
   }

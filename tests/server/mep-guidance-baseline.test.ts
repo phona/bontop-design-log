@@ -138,8 +138,13 @@ test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必�
   //    route_overlap must_fix 60→58（与 weak-main-living / weak-parent 的 2.55m 共线
   //    重叠消失 2 处）、ceiling_clearance_unverified 43→41（2 处 110mm hit 清零），
   //    当前实算 91 errors / 231 warnings。
+  //    2026-11-16 Codex blocking 修复（PR #248，第二轮）：strong-power-parent-child-childbed
+  //    升位由 (4.35,4.60) 移至南行段 (5.60,4.00)——原竖直段穿冷媒主管/支管（2.60m 沿
+  //    z=4.6）与冷凝水主管（约 2.69m）中心线共 3 处；route_overlap must_fix 58→56、
+  //    envelope 49→47（冷凝水主管 1 处 + 冷凝水支管 1 处 envelope warning 同批消失），
+  //    当前实算 89 errors / 229 warnings。
   //    注：本数以 cabinetHeight: 2.80（总高）实测；若误写 2.50 会把柜压扁、少计 2 条。
-  assert.equal(mep.counts.errors, 91, `verify:mep must_fix errors 应为 91，实际 ${mep.counts.errors}`);
+  assert.equal(mep.counts.errors, 89, `verify:mep must_fix errors 应为 89，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 
