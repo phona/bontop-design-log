@@ -65,8 +65,10 @@ export const MepJunctionSchema = z.object({
  *   南行段沿竖井 x 走到插座的 z，末 jog 再折向终点；shaft.z 只参一致性校验，不进拐点。
  * - `slope_run`：沿单轴（`axis` x/z）按 `route.slope` × 行程派生高度的坡度跑——
  *   目标 `to` 为该轴上的数值坐标，或字面 `'to'`（取 to 端点在该轴上的坐标，端点移动
- *   时末步自动跟随）；起算标高为游标高度（首步即 `route.from_height`），不得声明步内
- *   y、不引用竖井；缺 slope / 缺起算标高 / 零行程 → 显式失败，不给半条路径。末步为
+ *   时任意步自动跟随，不仅末步）；起算标高为游标高度（首步即 `route.from_height`），不得声明步内
+ *   y、不引用竖井；缺 slope / 缺起算标高 / 字面目标零行程 → 显式失败，不给半条路径。
+ *   `to:'to'` 步的零行程是合法落点（端点落在当前轴线上，该腿退化、无行程无标高
+ *   变化，仍输出落点——与上一落点重合的零长段，不改点数）；字面目标的零行程仍显式失败。末步为
  *   slope_run 时其落点必须平面重合 to 端点，否则整条 via 失败（终端标高由末步落点
  *   派生，`to_height` 缺省时 to 点 y 即末步 y）。
  * - `axis_jog` / `axis_run`（issue #98 MEP batch 2 强电干线切片；issue #243 统一协议
@@ -491,8 +493,10 @@ const VIA_AXIS_HEIGHT_TOLERANCE = 0.005;
  * y 一律取步内声明或竖井高度（from_face_jog 例外：高度只取 route.from_height，
  * 不得声明步内 y；from_height 缺失或无效时显式失败）。
  * slope_run → 沿单轴按 route.slope × 行程派生高度（游标高度 − slope × |Δplan|，游标
- * 高度首步为 route.from_height）；目标 to 为数值或字面 'to'（to 端点在该轴上的坐标）；
- * 不得声明步内 y、不引用竖井；缺 slope / 缺起算标高 / 零行程 → 显式失败。末步为
+ * 高度首步为 route.from_height）；目标 to 为数值或字面 'to'（to 端点在该轴上的坐标，
+ * 任意步自动跟随）；不得声明步内 y、不引用竖井；缺 slope / 缺起算标高 / 字面目标
+ * 零行程 → 显式失败。to:'to' 步的零行程是合法落点（仍输出落点，与上一落点重合
+ * 的零长段，不改点数）。末步为
  * slope_run 时落点必须平面重合 to 端点，否则整条 via 失败（终端标高由末步落点派生）。
  * axis_jog → 游标正交移上命名轴线（落点为游标在轴向上的正交投影，高度取当前标高
  * 游标；轴线未知 / 缺起算标高 / 已在轴上（零行程）→ 显式失败）；axis_run → 方向式
@@ -559,8 +563,9 @@ export function resolveMepViaSteps(
     }
     if (step.kind === 'slope_run') {
       // 坡度跑：高度只由 route.slope × 行程派生，不得声明步内 y（schema 与本入口双重
-      // fail-closed，与 from_face_jog 同口径）；缺 slope / 缺起算标高 / 零行程 → 显式失败，
-      // 不输出不完整几何。to: 'to' 取 to 端点在该轴上的坐标（端点移动时末步自动跟随）。
+      // fail-closed，与 from_face_jog 同口径）；缺 slope / 缺起算标高 / 字面目标零行程 →
+      // 显式失败，不输出不完整几何。to: 'to' 取 to 端点在该轴上的坐标（端点移动时
+      // 任意步自动跟随，不仅末步）。
       if (step.y !== undefined) {
         return { points: [], diagnostic: `MEP route ${route.id} via 步 slope_run 不得声明 y（高度由 route.slope × 行程派生）` };
       }
@@ -579,6 +584,22 @@ export function resolveMepViaSteps(
       const target = step.to === 'to' ? to[step.axis] : step.to;
       const run = Math.abs(target - cursor[step.axis]);
       if (run < 1e-9) {
+        // 零行程落点规则（issue #98 MEP batch 6，PR #234 major 根治，二审修正）：
+        // to:'to' 步的目标即 to 端点——端点恰好落在当前轴线上时该腿退化为零行程，
+        // 无行程、无标高变化，仍输出落点（与上一落点重合的零长段），不得跳过。
+        // 跳过会断两条下游不变量：① derivedSlopeRunToHeight 取末点 y，全跳过时
+        // viaPoints 为空、终端标高静默回退到 to.y（2.7→0.02 的虚构 2.68m 竖段，
+        // 二审 blocking）；② mep-takeoff 的 pipe_route_segments 按下标分段，跳过
+        // 一步即点数 −1、to_index 越界、整条路由掉出算量（二审 major）。
+        // 零长段下游均已容忍：正交检查要求 dx/dz 双超公差才报；closestSegmentDistance3d
+        // 有 aa/cc < 1e-12 退化分支；gravitySlopeDeficits 与 wall-drain 汇总均
+        // `run < 1e-6 continue`；算量按段长求和，零长段贡献 0。字面目标的零行程仍
+        // 显式失败：字面值是明确声明的转角，零行程说明声明几何退化，值得显形
+        // （既有反例钉死）。
+        if (step.to === 'to') {
+          points.push({ x: cursor.x, z: cursor.z, y: cursorY });
+          continue;
+        }
         return { points: [], diagnostic: `MEP route ${route.id} via 步 slope_run 零行程（${step.axis} 目标 ${target} 与当前 ${cursor[step.axis]} 重合）` };
       }
       const nextY = cursorY - route.slope * run;
@@ -777,11 +798,11 @@ export function resolveMepViaSteps(
   }
   // 末步为 slope_run 时落点必须平面重合 to 端点（否则终端无落点可派生——
   // to_height 缺省时 to 点 y 即末步 y，落点不到端点就是缺一段几何，不静默补段）。
+  // 每步恰输出一点，故最终游标恒等于最后输出点；以游标校验即以末点校验。
   const lastStep = route.via[route.via.length - 1];
   if (lastStep && !isMepViaCoordinate(lastStep) && lastStep.kind === 'slope_run') {
-    const last = points[points.length - 1];
-    if (!last || Math.abs(last.x - to.x) > 1e-9 || Math.abs(last.z - to.z) > 1e-9) {
-      return { points: [], diagnostic: `MEP route ${route.id} 末步 slope_run 未落到 to 端点 (${to.x},${to.z})，实际 (${last?.x},${last?.z})（末步 to 须取 'to' 或与 to 端点同坐标）` };
+    if (Math.abs(cursor.x - to.x) > 1e-9 || Math.abs(cursor.z - to.z) > 1e-9) {
+      return { points: [], diagnostic: `MEP route ${route.id} 末步 slope_run 未落到 to 端点 (${to.x},${to.z})，实际 (${cursor.x},${cursor.z})（末步 to 须取 'to' 或与 to 端点同坐标）` };
     }
   }
   return { points };

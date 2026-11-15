@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { load as parseYaml } from 'js-yaml';
 import {
+  derivedSlopeRunToHeight,
   endpointSourcesFromFacts,
   isMepViaCoordinate,
   parseMepCoordination,
@@ -94,10 +95,14 @@ function independentLayerLength(layer: string): number {
     const resolved = resolution.routes.find((item) => item.route.id === route.id);
     if (!resolved || resolved.unresolved.length > 0 || !resolved.metadata.physicalRoute) continue;
     const points: Array<[number, number, number]> = [];
-    // 与统一出口 resolved.points 同优先级：路由自己声明的 from_height/to_height 优先于点位高度
+    // 与统一出口 resolved.points 同优先级：路由自己声明的 from_height/to_height 优先于点位高度；
+    // slope_run 路由删了 to_height，终端标高由末步落点派生（与解算器共用 derivedSlopeRunToHeight
+    // 单一实现，见 schema：to_height ?? 派生落点 ?? 端点 y）。直接读端点 y 会错：立管端点
+    // 本就不带 y（会把终端当成 y=0、凭空多出约 0.02m 竖直段），客卫支管派生终端 0.0165m
+    // 也会被端点高度 0.02m 顶回、多出 0.0035m 上升段——两种都会让本交叉验证超 1e-6 容差。
     if (resolved.from) points.push([resolved.from.x, route.from_height ?? resolved.from.y ?? 0, resolved.from.z]);
     for (const via of resolved.viaPoints) points.push([via.x, via.y ?? 0, via.z]);
-    if (resolved.to) points.push([resolved.to.x, route.to_height ?? resolved.to.y ?? 0, resolved.to.z]);
+    if (resolved.to) points.push([resolved.to.x, route.to_height ?? derivedSlopeRunToHeight(route, resolved.viaPoints) ?? resolved.to.y ?? 0, resolved.to.z]);
     // 零平面位移（首末平面点重合）的路由只贡献竖向长度，仓库口径不计为 physical 折线；本独立实现同步排除
     const first = points[0];
     const last = points[points.length - 1];
