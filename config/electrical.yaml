@@ -811,7 +811,7 @@
   type: socket
   height: 1.85
   count: 1
-  note: "洗衣机插座（DEC-2026-10-03-R1 背景：生活阳台实测仅 1.60×1.20m，东墙门洞 d_kit_balc 占 z[1.20,2.00]，无侧置检修带；旧 h=1.2 落在洗烘叠放体内（叠放后总高约 1.70m）。2026-11-16 用户裁定（infer）：h=1.85（叠放高约 1.70m + 0.15m），插座在机器顶部以上可及；SKU 冻住后（#33）复核高度。排水可继续藏后。见 pending-site-data #33）。本条未决口径已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "洗衣机插座（DEC-2026-10-03-R1 背景：生活阳台实测仅 1.60×1.20m，东墙门洞 d_kit_balc 占 z[1.20,2.00]，无侧置检修带；旧 h=1.2 落在洗烘叠放体内（叠放后总高约 1.70m）。2026-11-16 用户裁定（infer）：h=1.85（叠放高约 1.70m + 0.15m），插座在机器顶部以上可及；SKU 冻住后（#33）复核高度。排水可继续藏后。见 pending-site-data #33）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   status: pending
   blocker:
@@ -829,7 +829,7 @@
   type: socket
   height: 1.85
   count: 1
-  note: "烘干机插座（叠放；DEC-2026-10-03-R1：同 washer 口径，旧 h=1.2 在叠放体内；2026-11-16 用户裁定（infer）：h=1.85（叠放高约 1.70m + 0.15m），与 washer 同高；与 washer 拆为两条专用回路——GB 55038 7.4.4 要求 2kW 及以上用电设备回路分别设置。SKU 冻住后（#33）复核高度。见 pending-site-data #33）。本条未决口径已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "烘干机插座（叠放；DEC-2026-10-03-R1：同 washer 口径，旧 h=1.2 在叠放体内；2026-11-16 用户裁定（infer）：h=1.85（叠放高约 1.70m + 0.15m），与 washer 同高；与 washer 拆为两条专用回路——GB 55038 7.4.4 要求 2kW 及以上用电设备回路分别设置。SKU 冻住后（#33）复核高度。见 pending-site-data #33）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   status: pending
   blocker:

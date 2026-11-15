@@ -472,7 +472,7 @@ furnishings:
     #   内机出口示意 mb.condensate_pipe 随冷凝链退役已删（链几何是其唯一 mesh 来源，留置会触发
     #   verify:spatial 的 furniture_runtime_missing）；待全带泵改路由另案落仓时再按新路由重建。
     #   待决（现场补）：柜内物品清单 + #105/#116 共用容量表、柜商报价（未定价）、56T2 厂家安装图。
-    - { type: mb_full_height_cabinet, id: mb.full_height_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015, note: "顶封线槽（infer，2026-11-16 用户裁定）：顶封留 25mm 线槽，Ø20 线管于 y=2.7 穿柜，解决 strong-ded-bathheaters-mbath 穿柜冲突，路由不变；量房后按过梁高度/顶封实测/墙位重决。", blocker: {kind: site_measurement, owner: ["量房"], trigger: "量房数据（过梁高度/顶封实测/墙位）", reverses_if: "量房实测顶封净空不足 25mm 或过梁高度与 y=2.7 线槽冲突时，改走线方式或重定线槽位", rationale: "无量房数据时先选默认方案（infer）：顶封留 25mm 线槽供 Ø20 线管于 y=2.7 穿柜，路由不变；量房后按实测重决。换路方案（x=1.3 南行）作废：x=1.3 在门洞 d_mbath [1.15,1.95] 正上方，需确认过梁高度，不比线槽便宜。"} }
+    - { type: mb_full_height_cabinet, id: mb.full_height_cabinet, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015, note: "顶封线槽（infer，2026-11-16 用户裁定）：顶封留 25mm 线槽，Ø20 线管于 y=2.7 穿柜，路由不变。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。", blocker: {kind: site_measurement, owner: ["量房"], trigger: "量房数据（过梁高度/顶封实测/墙位）", reverses_if: "量房实测顶封净空不足 25mm 或过梁高度与 y=2.7 线槽冲突时，改走线方式或重定线槽位", rationale: "无量房数据时先选默认方案（infer）：顶封留 25mm 线槽供 Ø20 线管于 y=2.7 穿柜，路由不变；量房后按实测重决。换路方案（x=1.3 南行）作废：x=1.3 在门洞 d_mbath [1.15,1.95] 正上方，需确认过梁高度，不比线槽便宜。"} }
     # mattress/curtain/ceiling count-only entries remain after placed furniture
     - { type: mattress_180 }
     - { type: curtain_set }
