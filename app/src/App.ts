@@ -173,6 +173,9 @@ export class App {
    * 挂上去的字段会被 api-project-scene-contract 断言 4 判为「响应里不存在」。
    * 经 HouseScene.buildFromCatalog 第二参数传入建场；取不到时 undefined，
    * 建场回退到 sceneElements 墙表、缺失家具走 placementDiagnostics 显形。
+   * 新鲜性与 projectData 绑定（Codex 一审 blocking）：每次重建项目数据时同布局
+   * 一并刷新（start / 布局切换 / 阶段切换），回滚时随 projectData 一起恢复；
+   * DXF 导出另受 configReloadDegraded 门禁（与 projectHouse 同规则）。
    */
   private anchorWalls: import('@shared/types').WallSegment[] | undefined;
   private phase: PhaseId = 'full';
@@ -2320,8 +2323,11 @@ export class App {
       // /api/furnishings（全量 house.yaml，不按阶段过滤）。walls 缺省时回落 sceneElements
       // 墙（旧行为）。几何不可得则 M-* 图层整体不导出（端点解不出比缺图更危险：
       // 路线会静默错位），由 D-NOTES 声明。
+      // 墙表遵守同一配置可信性门禁（#98 Tier 1，Codex 一审 blocking）：模型几何重载失败后
+      // /api/walls 仍从保留上次成功数据的 deps.catalog 返回 200——不隔离时旧墙表会与直读
+      // 磁盘的新家具混装，along 仍合法就静默交付按旧几何定位的图纸。与 projectHouse 同规则。
       const anchorWalls: import('@shared/types').WallSegment[] | undefined = (
-        wallsResponse !== null && Array.isArray((wallsResponse as { walls?: unknown }).walls)
+        !configReloadDegraded && wallsResponse !== null && Array.isArray((wallsResponse as { walls?: unknown }).walls)
           ? (wallsResponse as { walls: import('@shared/types').WallSegment[] }).walls
           : undefined
       );
@@ -2349,7 +2355,9 @@ export class App {
       if (failedPaths.length > 0) notes.push(`CONFIG RELOAD FAILED: ${failedPaths.join(', ')} — affected layers excluded`);
       if (!facts) notes.push('PLUMBING NOT EXPORTED: render-facts API failed at export time');
       if (!mep) notes.push('MEP NOT EXPORTED: mep-coordination API failed at export time');
-      if (!anchorWalls) notes.push('ANCHOR WALLS DEGRADED: walls API failed at export time — furniture placement fell back to sceneElements walls (suppressed glass-line walls excluded)');
+      if (!anchorWalls) notes.push(configReloadDegraded
+        ? 'ANCHOR WALLS NOT EXPORTED: config reload failed — last-good server cache not trusted (furniture placement fell back to sceneElements walls, suppressed glass-line walls excluded)'
+        : 'ANCHOR WALLS DEGRADED: walls API failed at export time — furniture placement fell back to sceneElements walls (suppressed glass-line walls excluded)');
       // 拉到的拓扑必须真的是拓扑（ circuits 数组）：接口降级/空响应时按缺失处理并随图声明，
       // 不把 `{}` 当电路表喂给装配器（那会让整次导出抛在解算器里）。
       const pointCircuitSources = (topologyResponse !== null && Array.isArray((topologyResponse as { circuits?: unknown }).circuits)
@@ -3109,11 +3117,16 @@ export class App {
     const previousPhase = this.phase;
     const previousLayout = this.activeLayout;
     const previousProjectData = this.projectData;
+    const previousAnchorWalls = this.anchorWalls;
     this.phaseReloading = true;
     this.overviewMenu.setPhaseLoading(true);
     try {
       this.stateSync.setPhase(phase);
       const data = await this.stateSync.fetchProject({ phase, layout: this.activeLayout });
+      // 定位基准墙全量随阶段重建同布局刷新（#98 Tier 1，Codex 一审 blocking）：墙表只在启动/
+      // 布局切换时刷新时，AI 会话移墙后切阶段会拿新项目 + 旧墙表建场，挂靠对象静默不跟随。
+      // 与 projectData 同源同布局拉取，失败只降级（undefined）。
+      this.anchorWalls = await this.stateSync.fetchAnchorWalls(this.activeLayout);
       // 宽容读取（issue #98）：闭合性失败随 200 下发诊断——显形但不中断阶段切换预览。
       this.reportPlacementClosureDiagnostics(data);
       this.collision.setWalls(this.extractWalls(data?.house?.sceneElements));
@@ -3156,6 +3169,7 @@ export class App {
       this.phase = previousPhase;
       this.activeLayout = previousLayout;
       this.projectData = previousProjectData;
+      this.anchorWalls = previousAnchorWalls;
       try {
         this.collision.setWalls(this.extractWalls(previousProjectData?.house?.sceneElements));
         // previousProjectData 为 null 只发生在首次加载尚未成功时：没有旧建场数据可恢复，

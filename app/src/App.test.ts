@@ -901,6 +901,86 @@ describe('App', () => {
     expect(text).not.toContain('w_cached');
   });
 
+  it('model-geometry reload failed → stale /api/walls table is NOT used for DXF furniture placement (codex 一审 blocking)', async () => {
+    // /api/walls 仍 200 返回旧墙表（服务端保留上次成功数据），/api/furnishings 直读磁盘是新家具：
+    // 旧墙上的 along 仍合法时，旧实现会静默按旧几何出图。本用例的家具只在旧墙表上可解——
+    // 门禁生效时导出必须 fail-closed（定位诊断），而不是交付按旧墙定位的图纸。
+    const staleWall = { id: 'w_stale', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
+    const staleAnchored = { type: 'master_dressing_table', id: 'f_stale', wall: 'w_stale', wall_side: 'south', along: 1.0, wall_clearance: 0 };
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/config-status')) {
+        return { ok: true, json: async () => ({ configs: [{ path: 'config/layout/model-geometry.yaml', status: 'failed' }] }) } as Response;
+      }
+      if (urlStr.includes('/api/walls')) {
+        return { ok: true, json: async () => ({ walls: [staleWall] }) } as Response;
+      }
+      if (urlStr.includes('/api/furnishings')) {
+        return { ok: true, json: async () => ({ living_room: [staleAnchored] }) } as Response;
+      }
+      if (urlStr.includes('/api/project')) {
+        // projectHouse 同样被隔离：sceneElements 不含 w_stale，家具无处可解
+        return { ok: true, json: async () => ({ house: { rooms: [{ id: 'living_room', name: 'Living', x: 0, z: 0, width: 5, depth: 4, height: 3, type: 'public' }], sceneElements: [] } }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    const toast = vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mockDocument.createElement.mockClear();
+    const handler = exportDxfButton.addEventListener.mock.calls.find((call) => call[0] === 'click')?.[1] as () => Promise<void>;
+
+    await handler();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const anchor = mockDocument.createElement.mock.results.map((result: any) => result.value).find((el: any) => el.tagName === 'a');
+    expect(anchor).toBeUndefined();
+    expect(toast).toHaveBeenCalledWith(expect.stringContaining('DXF 导出失败'));
+    expect(consoleError).toHaveBeenCalledWith('[dxf] placement error:', expect.stringContaining('w_stale'));
+    toast.mockRestore();
+    consoleError.mockRestore();
+  });
+
+  it('phase switch re-fetches anchor walls for the active layout, and a failed switch restores the previous table (codex 一审 blocking)', async () => {
+    // 启动时墙表是 w_start；AI 会话移墙后切阶段，项目响应与墙表必须同批刷新——
+    // 旧实现只换项目不换墙表，挂靠对象静默按旧墙解算。回滚同样不混装：切换中途失败时，
+    // 旧项目 + 旧墙表一起恢复，而不是新墙表配旧项目。
+    const startWall = { id: 'w_start', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
+    const phaseWall = { id: 'w_phase', x1: 0, z1: 0, x2: 5, z2: 0, line_datum: 'centerline' };
+    const rollbackWall = { id: 'w_rollback', x1: 0, z1: 0, x2: 9, z2: 0, line_datum: 'centerline' };
+    let wallsVersion = 'start';
+    vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
+      const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;
+      if (urlStr.includes('/api/walls')) {
+        const wall = wallsVersion === 'start' ? startWall : wallsVersion === 'phase' ? phaseWall : rollbackWall;
+        return { ok: true, json: async () => ({ walls: [wall] }) } as Response;
+      }
+      if (urlStr.includes('/api/schedule/state')) {
+        return { ok: false, status: 503 } as Response;
+      }
+      return defaultFetchMock(url);
+    });
+    const app = new App(canvas);
+    await app.start();
+    expect(app['anchorWalls']).toEqual([startWall]);
+    vi.spyOn(app as any, 'showToast').mockImplementation(() => undefined);
+
+    wallsVersion = 'phase';
+    await app['handlePhaseChange']('phase_1_basic_occupancy');
+    expect(app['anchorWalls']).toEqual([phaseWall]);
+    expect(app['phase']).toBe('phase_1_basic_occupancy');
+
+    wallsVersion = 'rollback';
+    vi.spyOn(app['houseScene'], 'buildFromCatalog').mockRejectedValueOnce(new Error('boom'));
+    await app['handlePhaseChange']('full');
+    expect(app['anchorWalls']).toEqual([phaseWall]);
+    expect(app['phase']).toBe('phase_1_basic_occupancy');
+  });
+
   // 点包 3D 高亮的聚合路径（highlightApprovalPackage）：房间/对象走 highlightObjects、
   // 点位走 highlightPoints（第三步落地后点位不再被静默丢弃）。start() 已把 projectData
   // 拉到手，这里只覆写 links 响应，验证聚合口径与「失败不打断审批流」。
