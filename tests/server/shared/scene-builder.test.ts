@@ -9,7 +9,8 @@ import { buildFixture, getNorthWallWardrobe950DoorAabb, getRecipeTypes, setNorth
 import { buildScene } from '../../../shared/render/SceneBuilder.js';
 import { buildCliHouseScene } from '../../../scripts/render/cli-house-scene.js';
 import { FURNITURE_DIMS, getPartitionWardrobeDoorAabbs } from '../../../shared/types.js';
-import type { HvacDiagram, LightingRenderConfig, RenderLightingFixture, SceneElement } from '../../../shared/types.js';
+import type { FurnishingsYaml, HvacDiagram, LightingRenderConfig, RenderLightingFixture, SceneElement, VertexLayoutYaml } from '../../../shared/types.js';
+import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
 import { readFileSync as readTextFile } from 'node:fs';
 import { load } from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
@@ -103,11 +104,16 @@ test('R5 partition wardrobe recipe remains available for legacy data', () => {
 });
 
 test('R6 bedside centers remain fixed while real mesh height is 0.495–0.505m', () => {
-  const house = load(readTextFile('config/house.yaml', 'utf8')) as { furnishings: { master_bedroom: Array<{ type: string; z?: number }> } };
-  const master = house.furnishings.master_bedroom;
-  assert.equal(master.find((item) => item.type === 'bed_180')?.z, 7.40);
-  assert.equal(master.find((item) => item.type === 'master_bedside_cabinet_350_north')?.z, 6.245);
-  assert.equal(master.find((item) => item.type === 'master_bedside_cabinet_350_south')?.z, 8.555);
+  // （#98 Tier 2）床头柜中心改走共享解算：两柜锚床后无声明 z，直读 raw YAML 会得
+  // undefined。钉的是中心位置（6.245/8.555）不是声明形式，解算值与旧绝对值相等。
+  const house = load(readTextFile('config/house.yaml', 'utf8')) as { furnishings: FurnishingsYaml };
+  const hosts = buildPlacementIndexes({
+    geometry: { walls: resolveLayout(load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls },
+    furnishings: house.furnishings,
+  }).mountHosts;
+  assert.equal(hosts.get('mb.bed_180')?.z, 7.40);
+  assert.equal(hosts.get('mb.bedside_cabinet_north')?.z, 6.245);
+  assert.equal(hosts.get('mb.bedside_cabinet_south')?.z, 8.555);
   for (const type of ['master_bedside_cabinet_350_north', 'master_bedside_cabinet_350_south']) {
     const fixture = buildFixture(type);
     assert.ok(fixture);

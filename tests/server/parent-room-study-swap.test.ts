@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { load } from 'js-yaml';
-import { FURNITURE_DIMS } from '../../shared/types.js';
+import { FURNITURE_DIMS, type FurnishingsYaml, type VertexLayoutYaml } from '../../shared/types.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 
 // 2026-10-05 父母房↔书房功能互换 v0（迭代 parent-room-study-swap-20261005，候选未冻结）：
 // bedroom_se 书房→客房（wardrobe_180 北墙边吊下 + bed_150 床头靠东外墙）；
@@ -11,7 +13,7 @@ import { FURNITURE_DIMS } from '../../shared/types.js';
 // 轻训练/重型器械整体删除（recipe/dims 在 shared/* 保留，预算与采购条目已移除）。
 // 本文件取代原 study-seasonal-storage.test.ts（书房后台柜 + 轻训练三件套收纳态专项，已随功能互换作废）。
 
-type Furnishing = { type: string; x?: number; z?: number; rotation?: number; width?: number; depth?: number };
+type Furnishing = { type: string; id?: string; x?: number; z?: number; rotation?: number; width?: number; depth?: number };
 type Aabb = { minX: number; maxX: number; minZ: number; maxZ: number };
 
 const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: Record<string, Furnishing[]> };
@@ -30,10 +32,29 @@ const BAY_INNER_Z = 7.60;
 // 书房北墙边吊段 z[5.55,6.45]（底 2.50m）
 const STUDY_NORTH_DROP: Aabb = { minX: 4.20, maxX: 7.20, minZ: 5.55, maxZ: 6.45 };
 
+// （#98 Tier 2）placed() 的 x/z 改走共享解算：墙锚/anchor 家具无声明 x/z，直读原始
+// YAML 会把它当「未摆位」丢掉（东南衣柜锚床后即如此）。只改取数来源：位置取
+// buildPlacementIndexes 的解算结果，类型/id/rotation/行内宽深取声明；返回形状与断言
+// 目标一致（{type, id, x, z, rotation}，有行内宽深时附带供 worldAabb 用），断言值一字不动。
+const PLACED_HOSTS = buildPlacementIndexes({
+  geometry: { walls: resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls },
+  furnishings: house.furnishings as unknown as FurnishingsYaml,
+}).mountHosts;
+
 function placed(room: Furnishing[], type: string): Furnishing {
-  const item = room.find((candidate) => candidate.type === type && candidate.x !== undefined && candidate.z !== undefined);
+  const item = room.find((candidate) => candidate.type === type);
   assert.ok(item, `missing placed ${type}`);
-  return item;
+  const host = item.id !== undefined ? PLACED_HOSTS.get(item.id) : undefined;
+  assert.ok(host !== undefined && host.x !== undefined && host.z !== undefined, `missing placed ${type}`);
+  return {
+    type: item.type,
+    id: item.id,
+    x: host.x!,
+    z: host.z!,
+    ...(item.rotation !== undefined ? { rotation: item.rotation } : {}),
+    ...(item.width !== undefined ? { width: item.width } : {}),
+    ...(item.depth !== undefined ? { depth: item.depth } : {}),
+  };
 }
 
 // 世界 AABB：奇数 quarter-turn 旋转交换 width/depth（与 verify-furniture-placement 同口径；

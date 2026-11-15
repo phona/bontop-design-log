@@ -95,13 +95,16 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     closeTo(WALL_THICKNESS, 0.12);
   });
 
-  it('受影响条目清单已穷尽：这两面墙上只有这 1 件挂墙家具，且 along = 原绝对 z − 墙起点 z', () => {
+  it('受影响条目清单已穷尽：这两面墙上只有这 2 件挂墙家具，且 along = 原绝对 z − 墙起点 z', () => {
     // 清单穷尽性守卫：原特例只在 w_mbath_east / w_mb_east 上生效，house.yaml 里挂在这两面
-    // 墙上的家具必须且只能是被改写的条目——新增第 2 件而不按沿墙距离书写时这里显形。
+    // 墙上的家具必须且只能是登记的条目——新增而不按沿墙距离书写时这里显形。
     // 右侧期望值是改前（along 当绝对 z）的世界锚点 z，逐件手抄自 git 历史里的原声明。
     // 2026-11-13 issue #116：底柜 + 双悬浮板 + PVC 墙行包管退役，只剩通顶柜 1 件。
+    // （#98 Tier 2）新增第 2 件 bnw.desk：沿墙距离书写（along 1.00 = 原绝对 z 2.10 − 起点 z 1.10），
+    // 与通顶柜同一条 along 规则核对。
     const historicalAnchorZ: Record<string, number> = {
       'mb.full_height_cabinet': 3.61,
+      'bnw.desk': 2.10,
     };
     const anchored = Object.entries(houseFurnishings()).flatMap(([room, items]) =>
       items
@@ -110,7 +113,7 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     assert.deepEqual(
       anchored.map(({ item }) => item.id).sort(),
       Object.keys(historicalAnchorZ).sort(),
-      '这两面墙上的挂墙家具必须恰好是被特例改写的 1 件',
+      '这两面墙上的挂墙家具必须恰好是登记的 2 件',
     );
     for (const { room, item } of anchored) {
       const wall = WALLS[item.wall as string];

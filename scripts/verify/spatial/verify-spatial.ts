@@ -211,24 +211,29 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
   const source = 'config/electrical.yaml + config/house.yaml';
   const placed = new Map<string, { room: string; item: FurnishingsYaml[string][number]; bounds: { minX: number; maxX: number; minZ: number; maxZ: number } }>();
 
+  // （二阶段 Tier 2）`placed` 的位置来源改走共享解算（与下方 mountHosts 同一份
+  // buildPlacementIndexes 结果）：直读声明 x/z 会把墙锚/anchor 家具排除出本表——
+  // ld.wall_cabinet_tall 关系化后，night_corridor 的房间一致性检查（host.room）
+  // 会悄悄消失。解不出的宿主仍跳过，其显式失败由 verify:furniture 门禁覆盖
+  // （本函数不传 anchors，见下）。只改位置来源，不改校验逻辑。
+  const mountHosts = buildPlacementIndexes({ geometry: { walls }, furnishings }).mountHosts;
   for (const [room, items] of Object.entries(furnishings)) {
     let runtimeIndex = 0;
     for (const item of items) {
-      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined;
-      if (!isPlaced) continue;
       const id = furnitureObjectId(room, item, runtimeIndex);
       runtimeIndex++;
-      if (item.x === undefined || item.z === undefined) continue;
+      const host = item.id !== undefined ? mountHosts.get(item.id) : undefined;
+      if (!host || host.x === undefined || host.z === undefined) continue;
       const dimensions = FURNITURE_DIMS[item.type];
       if (!dimensions) continue;
       const radians = (item.rotation ?? 0) * Math.PI / 180;
       const widthX = Math.abs(Math.cos(radians)) * dimensions.width + Math.abs(Math.sin(radians)) * dimensions.depth;
       const depthZ = Math.abs(Math.sin(radians)) * dimensions.width + Math.abs(Math.cos(radians)) * dimensions.depth;
       placed.set(id, { room, item, bounds: {
-        minX: item.x - widthX / 2,
-        maxX: item.x + widthX / 2,
-        minZ: item.z - depthZ / 2,
-        maxZ: item.z + depthZ / 2,
+        minX: host.x - widthX / 2,
+        maxX: host.x + widthX / 2,
+        minZ: host.z - depthZ / 2,
+        maxZ: host.z + depthZ / 2,
       } });
     }
   }
@@ -240,7 +245,7 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
   // （二阶段 S1）宿主索引取 buildPlacementIndexes 产物（家具由共享解算一次解出）；
   // 本函数不传 anchors（冷凝链锚点在 validateScene 另建），anchor 模式家具在此显式失败，
   // 由 verify:furniture 门禁（传 anchors）覆盖——同一根因只一处红。
-  const mountHosts = buildPlacementIndexes({ geometry: { walls }, furnishings }).mountHosts;
+  // mountHosts 已在上方 `placed` 构造时一次解出（同一份 buildPlacementIndexes 结果）。
   for (const point of electrical) {
     const anchor = point.mountAnchor;
     if (!anchor) continue;

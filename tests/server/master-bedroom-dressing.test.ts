@@ -7,11 +7,12 @@ import { buildFixture, setNorthWallWardrobe950DoorConfiguration, type NorthWallW
 import { buildInfrastructure } from '../../shared/render/InfrastructureBuilder.js';
 import { pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import type { VertexLayoutYaml } from '../../shared/types.js';
+import type { FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { buildLightingFixtures } from '../../shared/render/LightingFixtureBuilder.js';
 import * as THREE from 'three';
 
-type Furnishing = { type: string; x?: number; z?: number; rotation?: number };
+type Furnishing = { type: string; id?: string; x?: number; z?: number; rotation?: number };
 type ElectricalPoint = {
   id: string;
   type?: string;
@@ -68,10 +69,21 @@ function fixtureSize(type: string): THREE.Vector3 {
   return new THREE.Box3().setFromObject(fixture!).getSize(new THREE.Vector3());
 }
 
+// （#98 Tier 2）placed() 的 x/z 改走共享解算：墙锚/anchor 家具无声明 x/z，直读原始
+// YAML 会把它当「未摆位」丢掉（两床头柜锚床后即如此）。只改取数来源：位置取
+// buildPlacementIndexes 的解算结果，类型/id/rotation 取声明；返回形状与断言目标一致
+// （{type, id, x, z, rotation}），断言值一字不动。
+const PLACED_HOSTS = buildPlacementIndexes({
+  geometry: { walls: resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls },
+  furnishings: house.furnishings as unknown as FurnishingsYaml,
+}).mountHosts;
+
 function placed(type: string, room: Furnishing[] = master): Furnishing {
-  const item = room.find((candidate) => candidate.type === type && candidate.x !== undefined && candidate.z !== undefined);
+  const item = room.find((candidate) => candidate.type === type);
   assert.ok(item, `missing placed ${type}`);
-  return item;
+  const host = item.id !== undefined ? PLACED_HOSTS.get(item.id) : undefined;
+  assert.ok(host !== undefined && host.x !== undefined && host.z !== undefined, `missing placed ${type}`);
+  return { type: item.type, id: item.id, x: host.x!, z: host.z!, rotation: item.rotation };
 }
 
 // 主卧宿主墙索引（issue #98 S1/S3）：点位定位走 shared/point-placement.ts 单一解算，

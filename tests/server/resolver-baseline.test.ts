@@ -32,7 +32,6 @@ import { load as parseYaml } from 'js-yaml';
 
 import { resolveLayout } from '../../server/layout-resolver.js';
 import {
-  pointMountHostIndex,
   pointWallIndexFromElements,
   resolvePointPlacementInWalls,
   type PointMountHost,
@@ -57,7 +56,8 @@ import {
   resolveMepRoutes,
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { computeMepTakeoff, type MepTakeoffRules, type TakeoffCircuit } from '../../shared/mep-takeoff.js';
-import { FURNITURE_DIMS, type FurnishingItem, type VertexLayoutYaml, type WallSide } from '../../shared/types.js';
+import { FURNITURE_DIMS, type FurnishingItem, type FurnishingsYaml, type VertexLayoutYaml, type WallSide } from '../../shared/types.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 
 /* ───────────────────────── 声明源（纯 config，无 3D/DXF） ───────────────────────── */
 
@@ -283,8 +283,14 @@ function hostIndex(items: FurnishingItem[]): Map<string, PlacementItem> {
   return furnitureHostIndex(items as unknown as PlacementItem[]);
 }
 
+// （#98 Tier 2）宿主索引改走共享解算：墙锚/anchor 家具无声明 x/z，直读原始 YAML
+// 的 pointMountHostIndex 会把它排除出表，night_corridor 等挂载点随即断引用。
+// 只改取数来源；mountHostsWithWidth 保持「先改宽再解算」顺序（宽 override 后再解算）。
 function mountHostIndex(items: FurnishingItem[]): Map<string, PointMountHost> {
-  return pointMountHostIndex(items as unknown as PlacementItem[]);
+  return buildPlacementIndexes({
+    geometry: { walls: resolvedLayout.walls },
+    furnishings: { __test__: items } as unknown as FurnishingsYaml,
+  }).mountHosts;
 }
 
 const baseMountHosts = mountHostIndex(allRawFurnishings);
@@ -316,6 +322,15 @@ function furnishingById(id: string): FurnishingItem {
   const item = allRawFurnishings.find((candidate) => candidate.id === id);
   assert.ok(item, `config/house.yaml 里必须有 ${id}`);
   return item;
+}
+
+/** 参考解用的宿主条目（#98 Tier 2）：声明字段取 raw，位置取 baseMountHosts 的解算值——
+ * anchor/墙锚家具无声明 x/z，参考解直接读 raw 会得 undefined。手算期望值不动。 */
+function resolvedHostItem(id: string): FurnishingItem {
+  const item = furnishingById(id);
+  const host = baseMountHosts.get(id);
+  assert.ok(host !== undefined && host.x !== undefined && host.z !== undefined, `宿主 ${id} 解不出位置`);
+  return { ...item, x: host.x, z: host.z };
 }
 
 function cloneFurnishings(): FurnishingItem[] {
@@ -419,7 +434,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     // rot270 后 x∈[7.20,7.55]、z∈[5.55,6.90]；north 脸 z = 5.55；along 0.25 自西端 minX 7.20 向东
     // ⇒ x = 7.45；face_offset 缺省 0。
     const corridor = pointById('night_corridor');
-    const corridorReference = referenceMountPoint(corridor.mount!, furnishingById(corridor.mount!.furniture_id));
+    const corridorReference = referenceMountPoint(corridor.mount!, resolvedHostItem(corridor.mount!.furniture_id));
 
     const anchors = [
       { point: living, reference: livingReference, x: 11.42, z: 4.80, datum: { x: 11.415, z: 4.80 } },
@@ -496,7 +511,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     }
   });
 
-  it('全量独立复算：79 沿墙点位 + 2 挂载点位 + 4 挂墙家具 + 全部绝对家具逐条对照', () => {
+  it('全量独立复算：79 沿墙点位 + 2 挂载点位 + 7 挂墙家具 + 全部绝对家具逐条对照', () => {
     // 参考实现的墙几何来自 raw vertices + wall from/to；先证明它与生产 layout 的墙段一致，
     // 否则参考值与被测输入不是同一份声明，对照无意义。
     for (const wallId of referencedWallIds) {
@@ -529,8 +544,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     for (const point of allRawPoints) {
       if (point.mount === undefined) continue;
       mountPoints += 1;
-      const host = allRawFurnishings.find((item) => item.id === point.mount!.furniture_id);
-      assert.ok(host, `${point.id}: 宿主 ${point.mount.furniture_id} 不在 house.yaml`);
+      const host = resolvedHostItem(point.mount!.furniture_id);
       const reference = referenceMountPoint(point.mount, host);
       const { placement, diagnostic } = resolvePoint(point, baseMountHosts);
       assert.equal(diagnostic, undefined, `${point.id}: ${diagnostic ?? ''}`);
@@ -554,7 +568,9 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
       assert.ok(placement, `${item.id}: 必须有摆位`);
       assertXZ(placement, reference, `${item.id}`);
     }
-    assert.equal(wallFurniture, 4, '挂墙家具数量变化：新增/删除对象必须同步更新本基准的覆盖口径');
+    // （#98 Tier 2）4→7：本批新增 3 件墙锚家具（bnw.wardrobe_180、bnw.desk、ld.fridge）；
+    // 逐件对照循环是数据驱动的，7 件已全部通过独立参考解核对，本行只更新覆盖口径。
+    assert.equal(wallFurniture, 7, '挂墙家具数量变化：新增/删除对象必须同步更新本基准的覆盖口径');
 
     let absoluteFurniture = 0;
     for (const item of allRawFurnishings) {
