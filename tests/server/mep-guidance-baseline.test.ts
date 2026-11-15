@@ -116,8 +116,13 @@ test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必�
   //    +2：新通顶柜 mb.full_height_cabinet（柜身 2.50 + 顶封至 2.80，全高包络）引入
   //    condensate-master 1.61m 与 strong-ded-bathheaters-mbath 1.41m 穿入新柜——前者随
   //    全带泵改路由另案重画，后者待改道/开检修槽裁定；净 125→124）。其余 code 不变。
+  //    2026-11-14 issue #98 MEP batch 1 全带泵重画：五条冷凝水支管改泵扬 2.70 + 1%
+  //    坡直达客卫固定候选点，R25 汇流节点删除；must_fix 124→117（route_overlap 63→59：
+  //    儿童房 4 条 must_fix 重叠随改道消失；route_furniture_collision 9→8：主卧 1.61m
+  //    穿柜碰撞消除；unsupported_span 8→6：主卧/书房竖直下引段消失；其余 must_fix
+  //    code 不变），warnings 226→231（survey 98→91、envelope 128→140，见 guidance §6 表）。
   //    注：本数以 cabinetHeight: 2.80（总高）实测；若误写 2.50 会把柜压扁、少计 2 条。
-  assert.equal(mep.counts.errors, 124, `verify:mep must_fix errors 应为 124，实际 ${mep.counts.errors}`);
+  assert.equal(mep.counts.errors, 117, `verify:mep must_fix errors 应为 117，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 
@@ -286,7 +291,7 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
   // 旧基线 0 error / 22 warning、15 条已接受项、68 条路线 / 13 个吊顶分区、13 处穿墙点
   assert.equal(/0 error \/ 22 warning/.test(guidance), false, '§6 的旧基线「0 error / 22 warning」必须已替换为实跑口径');
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
-  assert.match(guidance, /涉及\s*\*\*39 条路线 \/ 13 个吊顶分区\*\*/); // 2026-11-12 后现值 39/13（吊顶下调，三区内 y 2.50–2.65 的 39 处 hit 合法消失）
+  assert.match(guidance, /涉及\s*\*\*35 条路线 \/ 12 个吊顶分区\*\*/); // 2026-11-14 全带泵重画后现值 35/12（五条冷凝水支管 8 处低于完成面 hit 合法消失；ceiling_master_bath 随主卧竖直下引段消除退出涉及集合）
   // DEC-2026-10-28-R05：三个旧 curtain_box_* 分区退出涉及集合，分区数合法回到 13（16→13），旧快照守卫改钉路线数
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
   assert.equal(/design-datum\.yaml`（13 处）/.test(guidance), false, '§1 的穿墙点留档条数必须已按 design-datum.yaml 实条数改写');

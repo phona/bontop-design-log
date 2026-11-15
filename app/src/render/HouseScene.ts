@@ -806,7 +806,8 @@ export class HouseScene implements SceneApi {
         materialProvider,
         curtainRooms: input.rooms,
         hvac: hvacDiagram && hvacSources ? { diagram: hvacDiagram, sources: hvacSources } : undefined,
-        // 主卫冷凝链穿墙锚点（issue #98 PR-10）：缺它三件链条家具解不出锚点、会带诊断跳过。
+        // condensate-master 穿墙锚点（issue #98 PR-10 立项；三件链家具已随 #116 删除、
+        // 链随 2026-11-14 全带泵重画退役，现为路由首条穿墙声明 w_strip_east 的派生点）。
         condensatePenetration: projectData.house.condensatePenetration,
       },
     });

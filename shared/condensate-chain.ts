@@ -497,6 +497,14 @@ export interface BuildCondensateChainInput {
 export function buildCondensateChain(
   input: BuildCondensateChainInput,
 ): { geometry: CondensateChainGeometry | null; diagnostics: string[] } {
+  // 2026-11-14 全带泵重画：链已退役（两宿主皆无）时直接返回无链无诊断——
+  // 退役判定须在穿墙点检查之前：新 condensate-master 不再穿 w_mbath_south，
+  // 穿墙点检查先失败会把退役链报成错误（verify:furniture 误红）。与
+  // resolveCondensateChain 首行退役分支同口径，也与 generate-dressing-map.ts
+  // 顶注的「双宿主均缺席时返回空几何、无诊断」一致。
+  if (input.wardrobe === undefined && input.wallRun === undefined) {
+    return { geometry: null, diagnostics: [] };
+  }
   const unit = input.hvacAnchors.get('indoor_master');
   if (!unit) {
     return {
