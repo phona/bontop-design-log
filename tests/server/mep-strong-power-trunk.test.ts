@@ -551,6 +551,13 @@ test('C4a：合成反例——断引用/越权字段/零行程/离轴/缺 y 一�
   assert.throws(() => axisConfig([axisRoute('syn-noto2', [{ kind: 'run_to', axis: 'z' }])]), /run_to 必须声明 to/);
   assert.throws(() => axisConfig([axisRoute('syn-rshaft', [{ kind: 'run_to', axis: 'z', to: 5.5, shaft: 'shaft_entry' }])]), /run_to 不引用竖井/);
   assert.throws(() => axisConfig([axisRoute('syn-raxisid', [{ kind: 'run_to', axis: 'z', to: 5.5, axis_id: 'corridor_axis' }])]), /run_to 不引用轴线表/);
+  // 非轴线步声明 axis_id（schema 拒绝 + 求解器入口拒绝）：axis_id 为全步型共用可选字段，
+  // 竖井步/坡度步带 axis_id 会静默忽略——Codex major；竖井步以 shaft_run 为代表（四种共用
+  // 同一 schema 分支与同一入口检查点）。
+  assert.throws(() => axisConfig([axisRoute('syn-shaftrun-axisid', [{ kind: 'shaft_run', shaft: 'shaft_entry', axis_id: 'corridor_axis' }])]), /shaft_run 不引用轴线表/);
+  failClosed(axisRoute('syn-shaftrun-axisid', [{ kind: 'shaft_run', shaft: 'shaft_entry', axis_id: 'corridor_axis' }]) as MepRoute, /不引用轴线表/);
+  assert.throws(() => axisConfig([axisRoute('syn-sloperun-axisid', [{ kind: 'slope_run', axis: 'x', to: 5.0, axis_id: 'corridor_axis' }], { slope: 0.01 })]), /slope_run 不引用轴线表/);
+  failClosed(axisRoute('syn-sloperun-axisid', [{ kind: 'slope_run', axis: 'x', to: 5.0, axis_id: 'corridor_axis' }], { slope: 0.01 }) as MepRoute, /不引用轴线表/);
   // vertical_jog 缺 y / 带 shaft / 零行程 / 非有限数 y（schema 拒绝 + 求解器入口拒绝）。
   assert.throws(() => axisConfig([axisRoute('syn-noy', [{ kind: 'vertical_jog' }])]), /vertical_jog 必须声明 y/);
   failClosed(axisRoute('syn-noy', [{ kind: 'vertical_jog' }]) as MepRoute, /必须声明有限数 y/);

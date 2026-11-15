@@ -439,8 +439,12 @@ test('回路缺 breaker 声明即抛错：漏保数量不能靠"没声明=没有
 });
 
 test('折线点缺 y 标高即抛错：不按 0 算（否则吊顶内的水平段变成竖直段）', () => {
+  // 目标路由动态选取：首条含绝对弯点的路由（强电干线切片后 strong-main 已关系化，
+  // 钉死它会随后续批迁移而失效；选首条含坐标 via 的路由，本质是“任一绝对弯点缺 y 即抛”）。
+  const target = coordination.routes.find((route) => route.via.some(isMepViaCoordinate));
+  assert.ok(target, '须有一条含绝对弯点的路由可供构造缺 y 场景');
   const broken = coordination.routes.map((route) => (
-    route.id === 'strong-main'
+    route.id === target.id
       ? { ...route, via: route.via.filter(isMepViaCoordinate).map((point) => ({ x: point.x, z: point.z })) }
       : route
   ));

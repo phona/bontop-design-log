@@ -108,6 +108,13 @@ export const MepViaStepSchema = z.object({
         path: ['shaft'],
       });
     }
+    if (step.axis_id !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'slope_run 不引用轴线表，不得声明 axis_id',
+        path: ['axis_id'],
+      });
+    }
     if (step.axis === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -129,6 +136,15 @@ export const MepViaStepSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: `${step.kind} 必须声明 shaft`,
         path: ['shaft'],
+      });
+    }
+    // 四种竖井步都不引用轴线表：axis_id 为全步型共用可选字段，带它会被静默忽略
+    // （Codex major——竖井步的轴线关系不存在，声明即错，不是未生效的提示）。
+    if (step.axis_id !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${step.kind} 不引用轴线表，不得声明 axis_id`,
+        path: ['axis_id'],
       });
     }
   } else if (step.kind === 'axis_entry') {
@@ -440,6 +456,9 @@ export function resolveMepViaSteps(
       if (step.y !== undefined) {
         return { points: [], diagnostic: `MEP route ${route.id} via 步 slope_run 不得声明 y（高度由 route.slope × 行程派生）` };
       }
+      if (step.axis_id !== undefined) {
+        return { points: [], diagnostic: `MEP route ${route.id} via 步 slope_run 不引用轴线表，不得声明 axis_id` };
+      }
       if (typeof route.slope !== 'number' || !Number.isFinite(route.slope) || route.slope <= 0) {
         return { points: [], diagnostic: `MEP route ${route.id} via 步 slope_run 缺少有效 slope（须声明正数坡度）` };
       }
@@ -546,6 +565,11 @@ export function resolveMepViaSteps(
       points.push(next);
       cursor = { x: next.x, z: next.z };
       continue;
+    }
+    // 非轴线步不得声明 axis_id：axis_id 只属于 axis_entry / axis_run；竖井步带它会被
+    // 静默忽略（schema 与本入口双重 fail-closed；Codex major）。
+    if (step.axis_id !== undefined) {
+      return { points: [], diagnostic: `MEP route ${route.id} via 步 ${step.kind} 不引用轴线表，不得声明 axis_id` };
     }
     const shaft = shafts.find((item) => item.id === step.shaft);
     if (!shaft) {
