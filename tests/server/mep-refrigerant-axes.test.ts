@@ -19,6 +19,7 @@ import {
   endpointSourcesFromFacts,
   isMepViaCoordinate,
   MepCoordinationSchema,
+  MepViaCoordinateSchema,
   MepViaStepSchema,
   parseMepCoordination,
   resolveMepRoutes,
@@ -237,6 +238,8 @@ test('C0：新步型反例——求解器入口 fail-closed（缺失/越权/断�
     { via: [{ kind: 'vertical_to', height: 'to', y: 2.75 }], match: /不得声明 y/, what: 'vertical_to 步内 y 越权' },
     { via: [{ kind: 'axis_jog', axis: 'x' }], match: /缺少有效 axis/, what: 'axis_jog axis 为方向 x/z' },
     { via: [{ kind: 'slope_run', axis: 'ax', to: 9 }], match: /axis 只能是 x 或 z/, what: 'slope_run axis 引用轴线 id' },
+    { via: [{ x: 5, z: 2, level: 'missing' }], match: /引用未知标高层 "missing"/, what: '绝对弯点未知标高层' },
+    { via: [{ x: 5, z: 2, y: 2.6, level: 'lv' }], match: /不得同时声明 y 与 level/, what: '绝对弯点 y 与 level 并存' },
   ];
   for (const c of cases) {
     // 零行程用例（axis_jog 已在轴线、axis_run 零行程、vertical_to 同高）须从已在目标的游标出发。
@@ -245,6 +248,11 @@ test('C0：新步型反例——求解器入口 fail-closed（缺失/越权/断�
     assert.deepEqual(out.points, [], `${c.what} 不得出局部几何`);
     assert.ok(out.diagnostic !== undefined && c.match.test(out.diagnostic), `${c.what} 诊断须显式（实际：${out.diagnostic})`);
   }
+  // 健康对照：绝对弯点取 level 时高度即 level.y，标高游标同步推进、后续关系步跟随。
+  const levelOk = resolveMepViaSteps({ ...shell, via: [{ x: 5, z: 2, level: 'lv' }, { kind: 'axis_run', axis: 'x', to: 9 }] } as unknown as MepRoute, from, to, [], axes, levels);
+  assert.deepEqual(levelOk.diagnostic, undefined, '绝对弯点取 level 须解出');
+  assert.equal(levelOk.points[0]!.y, 2.7, '绝对弯点高度须为 level.y');
+  assert.equal(levelOk.points[1]!.y, 2.7, '后续关系步须跟随 level 高度');
   // 缺起算标高：from 无 y 且 from_height 缺失时，axis_jog / axis_run 不得沿用旧标高。
   const noHeightShell = { id: 'test-route', via: [] } as unknown as MepRoute;
   for (const via of [[{ kind: 'axis_jog', axis: 'ax' }], [{ kind: 'axis_run', axis: 'x', to: 9 }]]) {
@@ -279,6 +287,10 @@ test('C0：新步型反例——schema 层拒绝越权/缺失声明（parse 即�
   assert.doesNotThrow(() => MepViaStepSchema.parse({ kind: 'axis_run', axis: 'z', to: 'to' }));
   assert.doesNotThrow(() => MepViaStepSchema.parse({ kind: 'vertical_to', height: 'to' }));
   assert.doesNotThrow(() => MepViaStepSchema.parse({ kind: 'vertical_to', level: 'lv' }));
+  // 绝对弯点 level 口径（2026-11-15 修 Codex major）：平面仍字面，高度只取 y 或 level 其一。
+  assert.throws(() => MepViaCoordinateSchema.parse({ x: 7.05, z: 0.55, y: 2.7, level: 'lv' }), /不得同时声明 y 与 level/, '绝对弯点 y 与 level 并存须在 schema 层拒绝');
+  assert.doesNotThrow(() => MepViaCoordinateSchema.parse({ x: 7.05, z: 0.55, level: 'lv' }));
+  assert.doesNotThrow(() => MepViaCoordinateSchema.parse({ x: 7.05, z: 0.55, y: 2.7 }));
 });
 
 test('C0：validate 层——轴线/标高层断引用与重复 id 一律拒绝', () => {
@@ -293,6 +305,9 @@ test('C0：validate 层——轴线/标高层断引用与重复 id 一律拒绝'
   const unknownLevel = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
   unknownLevel.routes.find((r) => r.id === 'refrigerant-trunk')!.via = [{ kind: 'vertical_to', level: 'level_missing' }] as any;
   assert.throws(() => validateMepCoordination(unknownLevel, base.sources), /引用未知标高层 "level_missing"/, 'vertical_to 断引用须在 validate 层拒绝');
+  const unknownLevelJog = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
+  unknownLevelJog.routes.find((r) => r.id === 'refrigerant-trunk')!.via[1] = { x: 7.05, z: 0.55, level: 'level_missing' } as any;
+  assert.throws(() => validateMepCoordination(unknownLevelJog, base.sources), /引用未知标高层 "level_missing"/, '绝对弯点断引用须在 validate 层拒绝');
   const dupAxis = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
   dupAxis.axes.push({ id: 'axis_corridor_z46', axis: 'z', value: 4.6, reason: 'dup' });
   assert.throws(() => validateMepCoordination(dupAxis, base.sources), /Duplicate MEP axis id/, '重复轴线 id 须拒绝');
@@ -350,10 +365,11 @@ test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，�
     assert.equal(route.construction_status, 'pending');
     assert.match(route.reason!, /2026-11-15 issue #98 MEP batch 4/, `${id} reason 须记迁移注记`);
   }
-  // trunk 唯一剩余绝对点：外机接管斜 jog (7.05,0.55)，无已声明锚点可复用。
+  // trunk 唯一剩余绝对点：外机接管斜 jog (7.05,0.55)，无已声明锚点可复用；平面绝对、
+  // 高度取 level_kitchen_b_270（2026-11-15 修 Codex major：字面 y 会把标高游标重置）。
   const trunk = all.coordination.routes.find((r) => r.id === 'refrigerant-trunk')!;
   assert.equal(trunk.via.filter(isMepViaCoordinate).length, 1, 'trunk 须恰剩一个绝对步');
-  assert.deepEqual(trunk.via.filter(isMepViaCoordinate), [{ x: 7.05, z: 0.55, y: 2.7 }], 'trunk 剩余绝对点须为外机接管斜 jog');
+  assert.deepEqual(trunk.via.filter(isMepViaCoordinate), [{ x: 7.05, z: 0.55, level: 'level_kitchen_b_270' }], 'trunk 剩余绝对点须为外机接管斜 jog（平面绝对、高度取标高层）');
   // 其余五条须全关系化。
   for (const id of ROUTES.filter((x) => x !== 'refrigerant-trunk')) {
     assert.ok(all.coordination.routes.find((r) => r.id === id)!.via.every((s) => !isMepViaCoordinate(s)), `${id} 须全关系化`);
@@ -520,7 +536,7 @@ test('C2：主管轴 7.45→7.55——只改一处声明，trunk 跟随、其余
   }
 });
 
-test('C2：标高层 2.7→2.8——只改一处声明，trunk 起升点跟随、其余五条不动', () => {
+test('C2：标高层 2.7→2.8——只改一处声明，trunk 厨房段跟随、落点后不动、其余五条不动', () => {
   const all = loadAll();
   const before = resolveMepOnly(all, all.coordination);
   const moved = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
@@ -530,11 +546,15 @@ test('C2：标高层 2.7→2.8——只改一处声明，trunk 起升点跟随�
   const rb = routeOf(before.report, 'refrigerant-trunk');
   const ra = routeOf(after.report, 'refrigerant-trunk');
   assert.deepEqual(ra.unresolved, [], 'trunk 移动后须解出');
-  assert.ok(Math.abs((ra.viaPoints[0]!.y! - rb.viaPoints[0]!.y!) - 0.1) <= TOL, 'trunk 起升点须升 0.10m');
-  // 其余拐点不动：其后绝对 jog (7.05,0.55,2.7) 带 y，会把标高游标同步回 2.7——
-  // 关系步只跟随游标，故入轴/南下各点仍为 2.7（游标语义，见求解器「带 y 的绝对步
-  // 照旧同步推进游标」）；vertical_to 落至 to_height 2.6 的各点亦不动。
-  assert.deepEqual(ra.viaPoints.slice(1), rb.viaPoints.slice(1), 'trunk 其余拐点不得移动（绝对 jog 把游标同步回 2.7）');
+  // 厨房段统一跟随标高层：起升点升 0.10m；绝对 jog (7.05,0.55) 平面仍字面、高度取
+  // level_kitchen_b_270（2026-11-15 修 Codex major），故入轴/南下各点同升 0.10m；
+  // vertical_to 落至 to_height 2.6 的各点不动，起升段 2.00m→2.10m 与竖降段 0.10m→0.20m 各 +0.10m。
+  for (const i of [0, 1, 2, 3]) {
+    assert.ok(Math.abs((ra.viaPoints[i]!.y! - rb.viaPoints[i]!.y!) - 0.1) <= TOL, `trunk 第 ${i} 点须升 0.10m（厨房段跟随标高层）`);
+  }
+  assert.deepEqual(ra.viaPoints.slice(4), rb.viaPoints.slice(4), 'trunk 落至 to_height 后的各点不得移动');
+  assert.ok(Math.abs(planLength(ra.points) - planLength(rb.points)) <= TOL, 'trunk 平面长度须不变');
+  assert.ok(Math.abs((length3d(ra.points) - length3d(rb.points)) - 0.2) <= TOL, 'trunk 三维长度须 +0.20m（起升段与竖降段各 +0.10m）');
   for (const id of ROUTES.filter((x) => x !== 'refrigerant-trunk')) {
     assert.deepEqual(routeOf(after.report, id).points, routeOf(before.report, id).points, `${id} 不得移动`);
   }
