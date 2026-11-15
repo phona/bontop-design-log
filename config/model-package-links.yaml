@@ -464,6 +464,17 @@ links:
     # 2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位。
     scope: [{source: electrical, select: {ids: [light_dining_pendant, light_corridor_1, light_entry_down, light_entry_foyer]}}] # 2026-10-13 DEC-2026-10-13-R1 移除 track_light、R5 移除 led_strip；2026-10-16 DEC-2026-10-16-R12 餐厅灯 pendant→ceiling_light 后 pendant 无在役点位，换成 ceiling_light（留着会让 assertSelector 拒掉）
 
+  - id: MODEL-P2-170
+    phase_id: phase_2_function_upgrade
+    budget_ref: {source: phase_2_scope, id: P2-170}
+    mapping_status: partial
+    # 2026-11-15（issue #98 一二期对调，Codex 五审 major）：GC5 由一期退至二期后新增
+    # P2-170，原 MODEL-P2-030 是洗碗机链接、随对调删除，未留 GC5 链接，致二期清单显示
+    # “待补数据映射”。GC5 机器本身尚未采购、模型里无家具对象，故只 partial：已建模的唯一
+    # 接口是厨房预留点位 sock_kitchen_oven（position_status/status 均为 pending，16A
+    # 专用回路候选第 21 路、未激活）；机器对象待二期选品 + 橱柜 600 宽高柜冻结后补。
+    scope: [{source: electrical, select: {ids: [sock_kitchen_oven]}}]
+
   - id: MODEL-P3-010
     phase_id: phase_3_styling
     budget_ref: {source: phase_3_scope, id: P3-010}
