@@ -402,6 +402,57 @@ function terminalDrop(
   return span ? span.endY - span.pointHeight : 0;
 }
 
+/**
+ * 起点竖直 stub（terminalDrop 的镜像）：折线起点标高高于起点位安装高度时，
+ * 位点到折线起点之间那段竖直管/线此前只字未计——terminalDrop 只覆盖 to 端。
+ * 实测 13 条路由共 0.2962m（排水 10 条 0.1462m + 强电 3 条 0.15m，
+ * 如 strong-light-entry-night-corridor 自 light_corridor_1 2.5m 上行至
+ * 折线起点 2.55m 的 0.05m），每条均 ≤0.05m、低于 ±0.15m 精度线，但无守卫时
+ * 将来一条起点在 0.3m 插座、from_height 2.55m 的路由会静默少算 2.25m。
+ * 负落差（起点标高 ≤ 位点高度）与 to 端同口径不计——器具自带尾段。
+ */
+function fromDropSpan(
+  route: MepRoute,
+  points: Map<string, { height?: number }>,
+  from: { x: number; z: number; y?: number } | undefined,
+  resolvedPoints?: Array<{ x: number; z: number; y?: number }>,
+): { startY: number; pointHeight: number } | null {
+  if (typeof route.from !== 'string') return null;
+  const pointHeight = points.get(route.from)?.height;
+  if (from === undefined || pointHeight === undefined) return null;
+  // 起点标高：统一出口折线首点 y 优先；折线为空才回退到声明。
+  // 两者都缺 → 旧代码取 0，于是 `Math.max(0, 0 − pointHeight)` 恒为 0，整段起点
+  // stub 消失。标高不可默认：缺声明就抛错（与 terminalDropSpan 同口径）。
+  let startY: number;
+  const first = resolvedPoints?.[0];
+  if (first !== undefined) {
+    if (first.y === undefined) {
+      throw new Error(
+        `路由 ${route.id} 的起点标高无法确定（统一出口折线首点缺 y）：竖直起点段会整段消失，已画线点位将少算管。请到 config/mep-hvac-coordination.yaml 补该点的 y（或该路由的 from_height/to_height）`,
+      );
+    }
+    startY = first.y;
+  } else if (route.from_height !== undefined) startY = route.from_height;
+  else if (from.y !== undefined) startY = from.y;
+  else {
+    throw new Error(
+      `路由 ${route.id} 的起点标高无法确定（from_height 与端点 y 均未声明）：竖直起点段会整段消失，已画线点位将少算管。请到 config/mep-hvac-coordination.yaml 补 from_height`,
+    );
+  }
+  if (startY <= pointHeight) return null;
+  return { startY, pointHeight };
+}
+
+function fromDrop(
+  route: MepRoute,
+  points: Map<string, { height?: number }>,
+  from: { x: number; z: number; y?: number } | undefined,
+  resolvedPoints?: Array<{ x: number; z: number; y?: number }>,
+): number {
+  const span = fromDropSpan(route, points, from, resolvedPoints);
+  return span ? span.startY - span.pointHeight : 0;
+}
+
 
 /**
  * 并排去重长度：多回路经常沿同一条天花轴线（走廊 z=4.6 / 边吊）并排走，
@@ -849,13 +900,23 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
             { x: resolved.to.x, z: resolved.to.z, y: span.pointHeight },
           ]);
         }
+        // 起点 stub 与终端下引同口径：折线起点高于起点位安装高度时，位点到
+        // 折线起点那段竖直管/线并入本回路（量价算法审计 D3：此前只计 to 端，
+        // from 端 13 条路由共 0.2962m 静默漏计）。
+        const fromSpan = fromDropSpan(route, pointHeights, resolved.from, points3d);
+        if (fromSpan && resolved.from) {
+          list.push([
+            { x: resolved.from.x, z: resolved.from.z, y: fromSpan.startY },
+            { x: resolved.from.x, z: resolved.from.z, y: fromSpan.pointHeight },
+          ]);
+        }
       }
       circuitPaths.set(circuitId, list);
     }
     const endRoom = typeof route.to === 'string' ? roomOf(route.to) : undefined;
     if (endRoom) bumpRoom(endRoom, 'drawnRouteM', routeLength(route, resolved.points));
     else unassignedRouteM += routeLength(route, resolved.points);
-    const length = drawnLength + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) : 0);
+    const length = drawnLength + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) + fromDrop(route, pointHeights, resolved.from, resolved.points) : 0);
     layerLength[layer] = (layerLength[layer] ?? 0) + length;
     for (const endpoint of [route.from, route.to]) {
       if (typeof endpoint === 'string') drawnPointIds.add(endpoint);

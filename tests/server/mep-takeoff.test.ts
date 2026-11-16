@@ -127,6 +127,14 @@ function independentLayerLength(layer: string, coord: typeof coordination = coor
         total += Math.max(0, points[points.length - 1][1] - height);
       }
     }
+    // 起点 stub：首点 y − 起点位高度（负值取 0），与生产实现 fromDrop 同口径
+    // （量价算法审计 D3：此前只计 to 端，from 端 13 条路由共 0.2962m 静默漏计）。
+    if (typeof route.from === 'string') {
+      const fromHeight = pointHeights.get(route.from);
+      if (fromHeight !== undefined && points.length > 0) {
+        total += Math.max(0, points[0][1] - fromHeight);
+      }
+    }
   }
   return total;
 }
@@ -170,6 +178,37 @@ test('终端下引跟随派生终端：客卫支管坡度 1%→0.5%，下引段�
   );
   // 交叉验证在变异配置上仍成立（独立实现同口径读末点 y；旧口径会在此差 expectedDrop）。
   assert.ok(Math.abs(mutatedTakeoff.conduit.drainageM - independentLayerLength('drainage', mutated, mutatedResolution)) < 1e-6);
+});
+
+test('起点竖直 stub 计入层长：折线起点高于起点位安装高度的部分不是凭空消失（量价算法审计 D3）', () => {
+  // 独立复算：逐 physical route 取统一出口折线首点 y − 起点位高度（负值取 0），
+  // 与 production 的 fromDropSpan 同规则、不同实现。实测 13 条：排水 10 条
+  // 0.1462m（drain-master-bath 0.0245 最大）+ 强电 3 条 0.15m（入户灯路各 0.05m）。
+  const fromDropByLayer: Record<string, number> = {};
+  let fromDropTotal = 0;
+  for (const route of coordination.routes) {
+    const resolved = resolution.routes.find((item) => item.route.id === route.id);
+    if (!resolved || resolved.unresolved.length > 0 || !resolved.metadata.physicalRoute) continue;
+    if (typeof route.from !== 'string') continue;
+    const height = pointHeights.get(route.from);
+    if (height === undefined) continue;
+    const firstY = resolved.points[0]?.y ?? (route as { from_height?: number }).from_height ?? resolved.from?.y;
+    if (firstY === undefined) continue;
+    const drop = Math.max(0, firstY - height);
+    if (drop > 0) {
+      fromDropByLayer[route.layer] = (fromDropByLayer[route.layer] ?? 0) + drop;
+      fromDropTotal += drop;
+    }
+  }
+  assert.ok(Math.abs(fromDropTotal - 0.2962) < 1e-6, `起点 stub 合计须为 0.2962m，实际 ${fromDropTotal}`);
+  assert.ok(Math.abs((fromDropByLayer.drainage ?? 0) - 0.1462) < 1e-6, `排水起点 stub 须为 0.1462m，实际 ${fromDropByLayer.drainage}`);
+  assert.ok(Math.abs((fromDropByLayer.strong_power ?? 0) - 0.15) < 1e-6, `强电起点 stub 须为 0.15m，实际 ${fromDropByLayer.strong_power}`);
+  // terminalDropM 是 drawnM − drawnMWithoutDrop 的派生值：修前只含 to 端下引
+  // 1.6m，修后须含两端（1.6 + 0.2962 = 1.8962）。
+  assert.ok(Math.abs(takeoff.conduit.terminalDropM - 1.8962) < 1e-6, `终端竖直段须为 1.8962m（含起点 stub 0.2962），实际 ${takeoff.conduit.terminalDropM}`);
+  // 层长交叉验证在修后仍成立（independentLayerLength 已同步含起点 stub）。
+  assert.ok(Math.abs(takeoff.conduit.drainageM - independentLayerLength('drainage')) < 1e-6);
+  assert.ok(Math.abs(takeoff.conduit.strongPowerM - independentLayerLength('strong_power')) < 1e-6);
 });
 
 test('导线按 topology wire_size 分桶，不按 id 猜', () => {
