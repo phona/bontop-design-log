@@ -30,6 +30,7 @@
  */
 
 import { openingsAlongWall, type WallOpeningSpan } from './wall-segments.js';
+import { overlapArea, signedPolygonArea } from './polygon-area.js';
 
 const EPS = 1e-9;
 
@@ -1014,142 +1015,40 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   return result;
 }
 
-/** 两条线段是否严格交叉（proper crossing）：端点互在对方异侧且不共线。共线重叠/端点相接只有零面积接触，不算交叉。 */
-function masonrySegmentsProperlyCross(
-  a: { x: number; z: number },
-  b: { x: number; z: number },
-  c: { x: number; z: number },
-  d: { x: number; z: number },
-): boolean {
-  const cross = (p: { x: number; z: number }, q: { x: number; z: number }, r: { x: number; z: number }): number =>
-    (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
-  const d1 = cross(c, d, a);
-  const d2 = cross(c, d, b);
-  const d3 = cross(a, b, c);
-  const d4 = cross(a, b, d);
-  const eps = 1e-12;
-  return ((d1 > eps && d2 < -eps) || (d1 < -eps && d2 > eps))
-    && ((d3 > eps && d4 < -eps) || (d3 < -eps && d4 > eps));
-}
-
-/** 带符号多边形面积的 2 倍（鞋带公式）：>0 逆时针，<0 顺时针，0 退化。 */
-function masonrySignedPolygonArea2(points: Array<{ x: number; z: number }>): number {
-  let sum = 0;
-  for (let i = 0; i < points.length; i += 1) {
-    const p = points[i];
-    const q = points[(i + 1) % points.length];
-    sum += p.x * q.z - q.x * p.z;
-  }
-  return sum;
-}
-
 /**
- * 共线重叠边的内外侧关系：两边沿同一条直线重叠一段正长度时，两多边形的内部分居
- * 该边的同侧还是异侧。内侧由绕向定（CCW 内在边的左侧，CW 在右侧）；两边沿重叠
- * 段同向时同侧 ⟺ 绕向相同，反向时同侧 ⟺ 绕向相反。同侧重叠含一段半圆盘交叠
- * （正面积）；异侧重叠只是贴边（零面积接触）。退化（零面积）多边形无内侧，返回
- * 两项皆 false。
+ * floor_region 与单个已计费房间的交叠面积（精确面积比较，不再枚举几何情形）。
+ *
+ * 判定史：审计初版用采样点（顶点内收 5mm + 形心），漏「房间卡在中间带」的穿越
+ * （第 2 轮）；改顶点严格在内 + 边严格交叉，漏共线重叠（第 3 轮）；补共线同侧
+ * 与边中点，漏边经凹角顶点穿出缺口（第 4 轮）。手写谓词每轮漏一种 realistic
+ * 构形——第 4 轮改为面积比较，一了百了：交叠面积 0 → 房外；等于区域轮廓面积
+ * → 房内；介于其间 → 横跨。overlapArea（Sutherland–Hodgman，凸多边形作裁剪
+ * 边）是 shared/polygon-area.ts 的全仓唯一实现，与 facts-lint 的 overlap 契约
+ * 同源。
+ * 两多边形皆非凸时 exact=false：无法精确计算，本模块 fail-closed 抛错（不静
+ * 默按 extra/跳过）。现行数据不触发（全部 floor_region 皆凸，总有凸的一方
+ * 可作裁剪边）。
+ * 比较基准是轮廓鞋带面积（尖角口径），不是 region.areaSqm（调用方给的圆角
+ * 面积）：圆角只影响角部 0.21㎡ 级的边界，分类只问「有没有/全不全」。
  */
-function masonryCollinearOverlapSides(
-  a: Array<{ x: number; z: number }>,
-  b: Array<{ x: number; z: number }>,
-): { same: boolean; opposite: boolean } {
-  const result = { same: false, opposite: false };
-  const orientA = Math.sign(masonrySignedPolygonArea2(a));
-  const orientB = Math.sign(masonrySignedPolygonArea2(b));
-  if (orientA === 0 || orientB === 0) return result;
-  const distToLine = (p: { x: number; z: number }, p1: { x: number; z: number }, p2: { x: number; z: number }): number => {
-    const dx = p2.x - p1.x;
-    const dz = p2.z - p1.z;
-    const len = Math.hypot(dx, dz);
-    if (len <= 1e-9) return Number.POSITIVE_INFINITY;
-    return Math.abs((p.x - p1.x) * dz - (p.z - p1.z) * dx) / len;
-  };
-  for (let i = 0; i < a.length; i += 1) {
-    const a1 = a[i];
-    const a2 = a[(i + 1) % a.length];
-    const adx = a2.x - a1.x;
-    const adz = a2.z - a1.z;
-    const aLen = Math.hypot(adx, adz);
-    if (aLen <= 1e-9) continue;
-    for (let j = 0; j < b.length; j += 1) {
-      const b1 = b[j];
-      const b2 = b[(j + 1) % b.length];
-      // b 边的两端点都压在 a 边的直线上才算共线（两点定直线）。
-      if (distToLine(b1, a1, a2) > 1e-6 || distToLine(b2, a1, a2) > 1e-6) continue;
-      const t1 = ((b1.x - a1.x) * adx + (b1.z - a1.z) * adz) / (aLen * aLen);
-      const t2 = ((b2.x - a1.x) * adx + (b2.z - a1.z) * adz) / (aLen * aLen);
-      const lo = Math.max(0, Math.min(t1, t2));
-      const hi = Math.min(1, Math.max(t1, t2));
-      if ((hi - lo) * aLen <= 1e-9) continue;
-      const sameDir = (b2.x - b1.x) * adx + (b2.z - b1.z) * adz > 0;
-      if (sameDir ? orientA === orientB : orientA !== orientB) result.same = true;
-      else result.opposite = true;
-    }
+function floorRegionRoomOverlap(
+  region: MasonryFloorRegionInput,
+  room: MasonryRoomInput,
+): { overlapSqm: number; regionSharpSqm: number } | null {
+  const points = region.points ?? [];
+  if (points.length < 3) return null;
+  const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
+  if (!roomPoints) return null;
+  const { area, exact } = overlapArea(points, roomPoints);
+  if (!exact) {
+    throw new Error(
+      `floor_region ${region.id} 与房间 ${room.id} 皆为非凸多边形，交叠面积无法精确计算：请拆成凸块或显式裁定（不静默按 extra/跳过）`,
+    );
   }
-  return result;
+  return { overlapSqm: area, regionSharpSqm: Math.abs(signedPolygonArea(points)) };
 }
 
-/**
- * 两简单多边形是否共享正面积，四条充要情形（缺一不可）：
- * （a）任一顶点严格在对方内；（b）任一对边严格交叉；（c）共线重叠且内侧同向；
- * （d）任一边中点严格在对方内——补顶点与交叉都抓不到的情形：边两端点压在对方
- * 边界上、边穿过对方内部（如三角区一角压在房间边上、另两角一内一外）。
- * 贴边/共线异侧/端点相接只有零面积接触，不算共享——`main_corridor_floor`
- * 的顶点压在房间边线上、面积全在房外，仍算房外。故意不用多边形裁剪算面积：
- * 本模块已决定不引入第二套 polygon-clipping 实现（见内部面层分区的包围盒
- * 守卫注记）。
- * 残留理论缺口（未闭合，需裁剪才分得清）：边恰好穿过非凸房间的两个自反顶点、
- * 中点又落在缺口里——三重测度零巧合，现行数据无此构形，出现即由量对账显形。
- */
-function masonryPolygonsSharePositiveArea(
-  a: Array<{ x: number; z: number }>,
-  b: Array<{ x: number; z: number }>,
-): boolean {
-  const strictlyInside = (point: { x: number; z: number }, polygon: Array<{ x: number; z: number }>): boolean =>
-    masonryPointInPolygonOrOnEdge(point, polygon, 1e-6) && !masonryPointOnPolygonEdge(point, polygon, 1e-6);
-  if (a.some((point) => strictlyInside(point, b))) return true;
-  if (b.some((point) => strictlyInside(point, a))) return true;
-  const edgeMidpointStrictlyInside = (poly: Array<{ x: number; z: number }>, other: Array<{ x: number; z: number }>): boolean => {
-    for (let i = 0; i < poly.length; i += 1) {
-      const p = poly[i];
-      const q = poly[(i + 1) % poly.length];
-      if (Math.hypot(q.x - p.x, q.z - p.z) <= 1e-9) continue;
-      const mid = { x: (p.x + q.x) / 2, z: (p.z + q.z) / 2 };
-      if (strictlyInside(mid, other)) return true;
-    }
-    return false;
-  };
-  if (edgeMidpointStrictlyInside(a, b) || edgeMidpointStrictlyInside(b, a)) return true;
-  if (masonryPolygonsEdgesProperlyCross(a, b)) return true;
-  return masonryCollinearOverlapSides(a, b).same;
-}
-
-/** 两多边形的边是否有一对严格交叉（退化零长边跳过）。 */
-function masonryPolygonsEdgesProperlyCross(
-  a: Array<{ x: number; z: number }>,
-  b: Array<{ x: number; z: number }>,
-): boolean {
-  for (let i = 0; i < a.length; i += 1) {
-    const a1 = a[i];
-    const a2 = a[(i + 1) % a.length];
-    if (Math.hypot(a2.x - a1.x, a2.z - a1.z) <= 1e-9) continue;
-    for (let j = 0; j < b.length; j += 1) {
-      const b1 = b[j];
-      const b2 = b[(j + 1) % b.length];
-      if (Math.hypot(b2.x - b1.x, b2.z - b1.z) <= 1e-9) continue;
-      if (masonrySegmentsProperlyCross(a1, a2, b1, b2)) return true;
-    }
-  }
-  return false;
-}
-
-/**
- * floor_region 轮廓是否全部落在某个已计费房间内（多边形包含优先，轴对齐矩形回落包围盒）。
- * 三条缺一不可：顶点全在内或边上；轮廓边与房间边无严格交叉（非凸房间里轮廓边
- * 可能切过缺口——顶点全在房内、边爬出房外）；无共线异侧重叠（轮廓贴在房间边外、
- * 面积却在房外，如沿房间边共线、顶点全压边线上的外贴矩形）。
- */
+/** floor_region 轮廓是否全部落在某个已计费房间内（多边形包含优先，轴对齐矩形回落包围盒）。 */
 function floorRegionInsideCostedRoom(
   region: MasonryFloorRegionInput,
   costedRooms: MasonryRoomInput[],
@@ -1158,29 +1057,18 @@ function floorRegionInsideCostedRoom(
   if (points.length < 3) return false;
   const candidates = region.room ? costedRooms.filter((room) => room.id === region.room) : costedRooms;
   return candidates.some((room) => {
-    const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
-    if (!roomPoints) return false;
-    return points.every((point) => masonryPointInPolygonOrOnEdge(point, roomPoints, 1e-6))
-      && !masonryPolygonsEdgesProperlyCross(points, roomPoints)
-      && !masonryCollinearOverlapSides(points, roomPoints).opposite;
+    const rel = floorRegionRoomOverlap(region, room);
+    if (!rel) return false;
+    const eps = 1e-6 * Math.max(1, rel.regionSharpSqm);
+    return Math.abs(rel.overlapSqm - rel.regionSharpSqm) <= eps;
   });
 }
 
 /**
  * 横跨判定：floor_region 与某个已计费房间共享正面积、且不全在该房间内。
  * 与 floorRegionInsideCostedRoom 互补：全在内 → 跳过（已由房间 footprint 算过）；
- * 零面积接触（贴边/共线异侧）→ 不算横跨，整块 extra；共享正面积 → 两头都沾，整块
- * extra 会重复计房内部分，必须抛错等拆分。
- *
- * 旧口径（量价算法审计初版）：顶点向形心内收 5mm + 形心采样，采样点一内一外才
- * 判横跨。采样漏掉「区域宽、房间卡在中间带、顶点与形心全在房外」的穿越：房间
- * [0,1]×[0,1]、区域 [-1,5]×[0.25,0.75] 穿过房间 0.5㎡，全部采样点却在房外，
- * 0.5㎡ 静默重复计（Codex blocking，PR #255 复审第 2 轮）。第 2 轮改用顶点严格
- * 在内 + 边严格交叉的精确判定，不再采样；但共线重叠仍漏：房间 [0,1]×[0,1]、
- * 区域 [0.5,1.5]×[0,1] 共用南北边、重叠 0.5㎡，顶点无一严格在内、边无一严格
- * 交叉，dryFloorSqm 得 2（真实并集 1.5）。第 3 轮补共线同侧重叠与边中点两条
- * （Codex blocking，PR #255 复审第 3 轮），四条件齐全，见
- * masonryPolygonsSharePositiveArea。
+ * 零面积接触（贴边）→ 不算横跨，整块 extra；共享正面积 → 两头都沾，整块 extra
+ * 会重复计房内部分，必须抛错等拆分。
  */
 function floorRegionPartiallyInsideCostedRoom(
   region: MasonryFloorRegionInput,
@@ -1190,10 +1078,10 @@ function floorRegionPartiallyInsideCostedRoom(
   if (points.length < 3) return false;
   const candidates = region.room ? costedRooms.filter((room) => room.id === region.room) : costedRooms;
   return candidates.some((room) => {
-    const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
-    if (!roomPoints) return false;
-    if (floorRegionInsideCostedRoom(region, [room])) return false;
-    return masonryPolygonsSharePositiveArea(points, roomPoints);
+    const rel = floorRegionRoomOverlap(region, room);
+    if (!rel) return false;
+    const eps = 1e-6 * Math.max(1, rel.regionSharpSqm);
+    return rel.overlapSqm > eps && rel.overlapSqm < rel.regionSharpSqm - eps;
   });
 }
 

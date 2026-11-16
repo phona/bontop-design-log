@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { roundedPolygonArea } from '../../../shared/polygon-area.js';
+import { overlapArea, roundedPolygonArea } from '../../../shared/polygon-area.js';
 
 /**
  * shared/polygon-area.ts 的圆角闭式解。2026-11-16 量价算法审计 D1：
@@ -87,4 +87,48 @@ test('顺时针轮廓与逆时针等面积：凹圆角与尖角', () => {
     { x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 3 }, { x: 0, z: 3 },
   ];
   assert.ok(Math.abs(roundedPolygonArea([...sharp].reverse()) - 12) < 1e-9);
+});
+
+test('overlapArea：矩形交叠 / 不交 / 包含，皆精确（搬家自 facts-lint，PR #255 复审第 4 轮）', () => {
+  const room = [
+    { x: 0, z: 0 }, { x: 1, z: 0 }, { x: 1, z: 1 }, { x: 0, z: 1 },
+  ];
+  // 共线重叠 0.5㎡（第 3 轮反例的几何）。
+  const overlap = overlapArea(
+    [{ x: 0.5, z: 0 }, { x: 1.5, z: 0 }, { x: 1.5, z: 1 }, { x: 0.5, z: 1 }],
+    room,
+  );
+  assert.equal(overlap.exact, true);
+  assert.ok(Math.abs(overlap.area - 0.5) < 1e-9);
+  // 不交。
+  const disjoint = overlapArea(
+    [{ x: 2, z: 0 }, { x: 3, z: 0 }, { x: 3, z: 1 }, { x: 2, z: 1 }],
+    room,
+  );
+  assert.equal(disjoint.exact, true);
+  assert.ok(Math.abs(disjoint.area - 0) < 1e-9);
+  // 包含：小矩形全在房内，交叠 = 小矩形面积。
+  const contained = overlapArea(
+    [{ x: 0.25, z: 0.25 }, { x: 0.75, z: 0.25 }, { x: 0.75, z: 0.75 }, { x: 0.25, z: 0.75 }],
+    room,
+  );
+  assert.equal(contained.exact, true);
+  assert.ok(Math.abs(contained.area - 0.25) < 1e-9);
+  // 顺时针输入同样精确（clip 前归一化为逆时针，D10）。
+  const cw = overlapArea(
+    [{ x: 0.5, z: 0 }, { x: 0.5, z: 1 }, { x: 1.5, z: 1 }, { x: 1.5, z: 0 }],
+    [...room].reverse(),
+  );
+  assert.equal(cw.exact, true);
+  assert.ok(Math.abs(cw.area - 0.5) < 1e-9);
+});
+
+test('overlapArea：两多边形皆非凸时 exact=false（调用方 fail-closed）', () => {
+  const l1 = [
+    { x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 2 },
+  ];
+  const l2 = [
+    { x: 0.5, z: 0.5 }, { x: 2.5, z: 0.5 }, { x: 2.5, z: 1.5 }, { x: 1.5, z: 1.5 }, { x: 1.5, z: 2.5 }, { x: 0.5, z: 2.5 },
+  ];
+  assert.equal(overlapArea(l1, l2).exact, false);
 });

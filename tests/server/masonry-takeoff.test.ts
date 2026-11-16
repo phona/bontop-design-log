@@ -695,3 +695,32 @@ test('横跨判定覆盖共线重叠与边中点（Codex blocking，PR #255 复�
   ));
   close(cap.dryFloorSqm, 3.5, '缺口盖帽 0.5㎡ 作 extra，房间 3㎡ + extra 0.5㎡');
 });
+
+test('横跨判定改面积比较：边经凹角顶点穿出缺口不再被整块跳过（Codex blocking，PR #255 复审第 4 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  const lroom = [{
+    id: 'lroom',
+    areaSqm: 3,
+    points: [{ x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 2 }],
+  }];
+  // 三角区 (2,1),(1,2),(0,0)：三顶点全压在房间边线上、对角边穿过缺口，
+  // 0.5㎡ 在房外。手写谓词（顶点 + 交叉 + 共线 + 中点）判为全在内而跳过，
+  // dryFloorSqm 得 3（真实并集 3.5）；面积比较（交叠 1.0 < 轮廓 1.5）必须抛错。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      lroom,
+      [{ id: 'tri', areaSqm: 1.5, points: [{ x: 2, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 0 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+});
