@@ -463,13 +463,25 @@ test('双控行程取开关间最小子树，不取点位类型分摊（2026-11-
     { routeId: 'r4', a: 'swB', b: 'nightY', length: 5, stubA: 0, stubB: 0 },
   ];
   assert.equal(travelerSubtreeLength(edges, ['swA', 'swB']), 7);
-  // 三控：最小生成树取两条短边，不取 10m 的第三边。
+  // 三控：精确最小子树取两条短边，不取 10m 的第三边。
   const threeWay: TravelerGraphEdge[] = [
     { routeId: 't1', a: 'swA', b: 'swB', length: 2, stubA: 0, stubB: 0 },
     { routeId: 't2', a: 'swB', b: 'swC', length: 3, stubA: 0, stubB: 0 },
     { routeId: 't3', a: 'swA', b: 'swC', length: 10, stubA: 0, stubB: 0 },
   ];
   assert.equal(travelerSubtreeLength(threeWay, ['swA', 'swB', 'swC']), 5);
+  // 星形三控：三开关两两直连各 2m、各自到接线盒 O 均为 1.1m——度量闭包 MST
+  // 取两条直连边得 4m，精确最小子树经 O 只需 3.3m（Codex blocking③，PR #255
+  // 复审；初版 Kruskal 近似在此多算 0.7m × 附加芯数 × 损耗系数）。
+  const star: TravelerGraphEdge[] = [
+    { routeId: 's-ab', a: 'swA', b: 'swB', length: 2, stubA: 0, stubB: 0 },
+    { routeId: 's-bc', a: 'swB', b: 'swC', length: 2, stubA: 0, stubB: 0 },
+    { routeId: 's-ac', a: 'swA', b: 'swC', length: 2, stubA: 0, stubB: 0 },
+    { routeId: 's-ao', a: 'swA', b: 'O', length: 1.1, stubA: 0, stubB: 0 },
+    { routeId: 's-bo', a: 'swB', b: 'O', length: 1.1, stubA: 0, stubB: 0 },
+    { routeId: 's-co', a: 'swC', b: 'O', length: 1.1, stubA: 0, stubB: 0 },
+  ];
+  assert.ok(Math.abs(travelerSubtreeLength(star, ['swA', 'swB', 'swC']) - 3.3) < 1e-9);
   // 单控不成组、无路不通，各计 0；折线未下引的 stub 只计成员开关端。
   assert.equal(travelerSubtreeLength(edges, ['swA']), 0);
   assert.equal(travelerSubtreeLength(edges, ['swA', 'swZ']), 0);

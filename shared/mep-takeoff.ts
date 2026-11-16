@@ -615,9 +615,10 @@ export function countRoutePenetrations(
  *   - 书房/儿童房双控是星形（两开关各接灯位、无开关直连线），行程应走灯位接线盒
  *     全程（7.350m / 6.889m），旧口径只算一半，少算 3.675m / 3.445m。
  * 新口径：控制声明（config/electrical-topology.yaml 的 controls，成员 ≥2 即多控）
- * 是唯一依据；行程 = 该控制各开关之间在已画强电路由图上的最小子树（两开关为最短路，
- * 三开关为最小生成树并集），边长取路由 3D 折线长（折线已含开关下引段），
- * 折线未下引到开关时另加端点 stub（折线端点标高 − 开关安装高度）。
+ * 是唯一依据；行程 = 该控制各开关之间在已画强电路由图上的精确最小子树
+ * （Dreyfus–Wagner；初版的度量闭包 MST 近似在星形图上多算，见
+ * travelerSubtreeLength，Codex blocking③），边长取路由 3D 折线长（折线已含
+ * 开关下引段），折线未下引到开关时另加端点 stub（折线端点标高 − 开关安装高度）。
  * 无路可通（如客厅双控开关未画线）计 0——未画线不进量，缺口由 coverage.unroutedPoints 显形。
  */
 export interface TravelerGraphEdge {
@@ -653,11 +654,9 @@ function travelerAdjacency(edges: TravelerGraphEdge[], members: ReadonlySet<stri
   return adjacency;
 }
 
-/** 加权 Dijkstra：返回从 from 到 to 的最短路边下标序列，无路返回 null。 */
-function travelerShortestPath(adjacency: TravelerAdjacency, from: string, to: string): number[] | null {
-  if (from === to) return [];
+/** 加权 Dijkstra：返回从 from 到各节点的最短路距离（不可达的节点不在表中）。 */
+function travelerDistances(adjacency: TravelerAdjacency, from: string): Map<string, number> {
   const dist = new Map<string, number>([[from, 0]]);
-  const prev = new Map<string, { node: string; edge: number }>();
   const done = new Set<string>();
   for (;;) {
     let current: string | undefined;
@@ -665,67 +664,101 @@ function travelerShortestPath(adjacency: TravelerAdjacency, from: string, to: st
     for (const [node, d] of dist) {
       if (!done.has(node) && d < best) { best = d; current = node; }
     }
-    if (current === undefined) return null;
-    if (current === to) break;
+    if (current === undefined) return dist;
     done.add(current);
     for (const step of adjacency.get(current) ?? []) {
       const nd = best + step.weight;
       if (nd < (dist.get(step.to) ?? Number.POSITIVE_INFINITY) - 1e-9) {
         dist.set(step.to, nd);
-        prev.set(step.to, { node: current, edge: step.edge });
       }
     }
   }
-  const path: number[] = [];
-  let node = to;
-  while (node !== from) {
-    const step = prev.get(node);
-    if (!step) return null;
-    path.push(step.edge);
-    node = step.node;
-  }
-  return path.reverse();
 }
 
 /**
- * 连接一组开关的最小行程网络长度（Kruskal：开关间两两最短路作边、取最小生成树、
- * 并集去重）。无路连接的开关不贡献（未画线不进量）。
+ * Dreyfus–Wagner 精确最小 Steiner 树：端点集 terminals 在最短路度量 d 下的
+ * 最小子树长。dp[mask][v] = 以 v 为根、覆盖 mask 端点的最小子树；子集拆分 +
+ * 度量闭包松弛各一遍即精确（d 满足三角不等式，松弛幂等）。复杂度 O(3^k · n)，
+ * live 只有双控/三控（k ≤ 3），可忽略。真子集的数值恒小于 mask，掩码按数值
+ * 递增枚举时拆分用的 dp 已是最终值。
+ */
+function travelerSteinerLength(terminals: string[], nodes: string[], d: (a: string, b: string) => number): number {
+  const k = terminals.length;
+  const full = (1 << k) - 1;
+  const dp: Array<Map<string, number>> = [];
+  for (let mask = 1; mask <= full; mask++) dp[mask] = new Map<string, number>();
+  terminals.forEach((terminal, i) => {
+    for (const v of nodes) dp[1 << i].set(v, d(terminal, v));
+  });
+  for (let mask = 1; mask <= full; mask++) {
+    // 子集拆分：在根 v 处把 mask 拆成两棵子树相并（sub 与 other 各枚举一次）。
+    for (let sub = (mask - 1) & mask; sub > 0; sub = (sub - 1) & mask) {
+      const other = mask ^ sub;
+      if (other === 0 || sub > other) continue;
+      for (const v of nodes) {
+        const sum = (dp[sub].get(v) ?? Infinity) + (dp[other].get(v) ?? Infinity);
+        if (sum < (dp[mask].get(v) ?? Infinity)) dp[mask].set(v, sum);
+      }
+    }
+    // 度量闭包松弛：根可沿最短路滑动，dp[mask][v] = min_u dp[mask][u] + d(u, v)。
+    const relaxed = new Map<string, number>();
+    for (const v of nodes) {
+      let best = dp[mask].get(v) ?? Infinity;
+      for (const u of nodes) {
+        const cand = (dp[mask].get(u) ?? Infinity) + d(u, v);
+        if (cand < best) best = cand;
+      }
+      relaxed.set(v, best);
+    }
+    dp[mask] = relaxed;
+  }
+  return Math.min(...nodes.map((v) => dp[full].get(v) ?? Infinity));
+}
+
+/**
+ * 连接一组开关的最小行程网络长度（精确最小子树，Dreyfus–Wagner）。
+ * 无路连接的开关不贡献（未画线不进量）；开关组不连通时按连通分量分别算后相加。
  * 边长已含折线长；stub 按“端点是本控制成员开关”计入（每条入选边各计其成员端）。
+ *
+ * 旧口径（量价算法审计初版）：开关间两两最短路作边、取最小生成树、并集去重。
+ * 度量闭包上的 MST 只是 Steiner 树的近似——星形图会多算：A/B/C 两两直连各
+ * 2m、各自到接线盒 O 均为 1.1m 时，MST 取两条直连边得 4m，而经 O 的已画网络
+ * 只需 3.3m（Codex blocking③，PR #255 复审）。本函数改求精确最小子树；计价
+ * 口径不变（边权仍是折线长 + 成员端 stub），live 生产值不受影响。
  */
 export function travelerSubtreeLength(edges: TravelerGraphEdge[], switches: string[]): number {
   const members = [...new Set(switches)];
   if (members.length < 2 || edges.length === 0) return 0;
   const memberSet = new Set(members);
   const adjacency = travelerAdjacency(edges, memberSet);
-  const edgeWeight = (edge: TravelerGraphEdge): number =>
-    edge.length + (memberSet.has(edge.a) ? edge.stubA : 0) + (memberSet.has(edge.b) ? edge.stubB : 0);
-  const pairPaths = new Map<string, { distance: number; path: number[] }>();
-  for (let i = 0; i < members.length; i += 1) {
-    for (let j = i + 1; j < members.length; j += 1) {
-      const path = travelerShortestPath(adjacency, members[i], members[j]);
-      if (path) {
-        pairPaths.set(`${i}:${j}`, { distance: path.reduce((sum, edgeIndex) => sum + edgeWeight(edges[edgeIndex]), 0), path });
+  const nodes = [...adjacency.keys()];
+  const nodeIndex = new Map(nodes.map((node, i) => [node, i]));
+  // 全点对最短路距离（边权与旧口径一致：折线长 + 成员端 stub）。
+  const dists = nodes.map((from) => travelerDistances(adjacency, from));
+  const d = (a: string, b: string): number => {
+    const ia = nodeIndex.get(a);
+    const ib = nodeIndex.get(b);
+    if (ia === undefined || ib === undefined) return Number.POSITIVE_INFINITY;
+    return dists[ia].get(b) ?? Number.POSITIVE_INFINITY;
+  };
+  // 开关按连通性分组：不连通的开关不贡献，只在各自连通分量内算最小子树。
+  const seen = new Set<string>();
+  let total = 0;
+  for (const start of members) {
+    if (seen.has(start) || !nodeIndex.has(start)) continue;
+    const component = new Set<string>();
+    const queue = [start];
+    seen.add(start);
+    while (queue.length > 0) {
+      const current = queue.pop()!;
+      component.add(current);
+      for (const step of adjacency.get(current) ?? []) {
+        if (!seen.has(step.to)) { seen.add(step.to); queue.push(step.to); }
       }
     }
+    const terminals = members.filter((m) => component.has(m));
+    if (terminals.length >= 2) total += travelerSteinerLength(terminals, nodes, d);
   }
-  const order = [...pairPaths.entries()].sort((a, b) => a[1].distance - b[1].distance);
-  const parent = members.map((_, i) => i);
-  const find = (x: number): number => {
-    let r = x;
-    while (parent[r] !== r) r = parent[r];
-    return r;
-  };
-  const used = new Set<number>();
-  for (const [key, { path }] of order) {
-    const [a, b] = key.split(':').map(Number);
-    const ra = find(a);
-    const rb = find(b);
-    if (ra === rb) continue;
-    parent[ra] = rb;
-    for (const edgeIndex of path) used.add(edgeIndex);
-  }
-  let total = 0;
-  for (const edgeIndex of used) total += edgeWeight(edges[edgeIndex]);
   return total;
 }
 
