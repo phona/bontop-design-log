@@ -550,6 +550,134 @@ export function countRoutePenetrations(
   return count;
 }
 
+/**
+ * 双控/多控附加控制线的走线图边（2026-11-16 量价算法审计）。
+ *
+ * 旧口径（已删）：按点位 type === 'switch_2way'，把每条触及该点的路由长度
+ * 对半分给端点、再 × 附加芯数。它读的是点位类型而不是控制声明，且对半分
+ * 没有任何走线依据——实测四处错：
+ *   - switch_parent_door 的控制已于 2026-10-27 裁定为单控（control_parent_bed_door
+ *     kind: switch），点位 type 仍是 switch_2way，旧口径多算 1.950m；
+ *   - switch_guest_bed → night_guest_head 的起夜灯支路不是双控行程，旧口径多算 0.475m；
+ *   - 主卧吸顶灯支路（light_master_dome ↔ switch_master_bed_north）不是行程，
+ *     旧口径多算 3.369m；
+ *   - 书房/儿童房双控是星形（两开关各接灯位、无开关直连线），行程应走灯位接线盒
+ *     全程（7.350m / 6.889m），旧口径只算一半，少算 3.675m / 3.445m。
+ * 新口径：控制声明（config/electrical-topology.yaml 的 controls，成员 ≥2 即多控）
+ * 是唯一依据；行程 = 该控制各开关之间在已画强电路由图上的最小子树（两开关为最短路，
+ * 三开关为最小生成树并集），边长取路由 3D 折线长（折线已含开关下引段），
+ * 折线未下引到开关时另加端点 stub（折线端点标高 − 开关安装高度）。
+ * 无路可通（如客厅双控开关未画线）计 0——未画线不进量，缺口由 coverage.unroutedPoints 显形。
+ */
+export interface TravelerGraphEdge {
+  routeId: string;
+  a: string;
+  b: string;
+  length: number;
+  stubA: number;
+  stubB: number;
+  circuit?: string;
+}
+
+export function travelerNodeKey(endpoint: string | { x: number; z: number }): string {
+  return typeof endpoint === 'string'
+    ? endpoint
+    : `coord:${Math.round(endpoint.x * 1000)},${Math.round(endpoint.z * 1000)}`;
+}
+
+type TravelerAdjacency = Map<string, Array<{ to: string; edge: number; weight: number }>>;
+
+function travelerAdjacency(edges: TravelerGraphEdge[], members: ReadonlySet<string>): TravelerAdjacency {
+  const adjacency: TravelerAdjacency = new Map();
+  const link = (from: string, to: string, edge: number, weight: number): void => {
+    const list = adjacency.get(from) ?? [];
+    list.push({ to, edge, weight });
+    adjacency.set(from, list);
+  };
+  edges.forEach((item, index) => {
+    const weight = item.length + (members.has(item.a) ? item.stubA : 0) + (members.has(item.b) ? item.stubB : 0);
+    link(item.a, item.b, index, weight);
+    link(item.b, item.a, index, weight);
+  });
+  return adjacency;
+}
+
+/** 加权 Dijkstra：返回从 from 到 to 的最短路边下标序列，无路返回 null。 */
+function travelerShortestPath(adjacency: TravelerAdjacency, from: string, to: string): number[] | null {
+  if (from === to) return [];
+  const dist = new Map<string, number>([[from, 0]]);
+  const prev = new Map<string, { node: string; edge: number }>();
+  const done = new Set<string>();
+  for (;;) {
+    let current: string | undefined;
+    let best = Number.POSITIVE_INFINITY;
+    for (const [node, d] of dist) {
+      if (!done.has(node) && d < best) { best = d; current = node; }
+    }
+    if (current === undefined) return null;
+    if (current === to) break;
+    done.add(current);
+    for (const step of adjacency.get(current) ?? []) {
+      const nd = best + step.weight;
+      if (nd < (dist.get(step.to) ?? Number.POSITIVE_INFINITY) - 1e-9) {
+        dist.set(step.to, nd);
+        prev.set(step.to, { node: current, edge: step.edge });
+      }
+    }
+  }
+  const path: number[] = [];
+  let node = to;
+  while (node !== from) {
+    const step = prev.get(node);
+    if (!step) return null;
+    path.push(step.edge);
+    node = step.node;
+  }
+  return path.reverse();
+}
+
+/**
+ * 连接一组开关的最小行程网络长度（Kruskal：开关间两两最短路作边、取最小生成树、
+ * 并集去重）。无路连接的开关不贡献（未画线不进量）。
+ * 边长已含折线长；stub 按“端点是本控制成员开关”计入（每条入选边各计其成员端）。
+ */
+export function travelerSubtreeLength(edges: TravelerGraphEdge[], switches: string[]): number {
+  const members = [...new Set(switches)];
+  if (members.length < 2 || edges.length === 0) return 0;
+  const memberSet = new Set(members);
+  const adjacency = travelerAdjacency(edges, memberSet);
+  const edgeWeight = (edge: TravelerGraphEdge): number =>
+    edge.length + (memberSet.has(edge.a) ? edge.stubA : 0) + (memberSet.has(edge.b) ? edge.stubB : 0);
+  const pairPaths = new Map<string, { distance: number; path: number[] }>();
+  for (let i = 0; i < members.length; i += 1) {
+    for (let j = i + 1; j < members.length; j += 1) {
+      const path = travelerShortestPath(adjacency, members[i], members[j]);
+      if (path) {
+        pairPaths.set(`${i}:${j}`, { distance: path.reduce((sum, edgeIndex) => sum + edgeWeight(edges[edgeIndex]), 0), path });
+      }
+    }
+  }
+  const order = [...pairPaths.entries()].sort((a, b) => a[1].distance - b[1].distance);
+  const parent = members.map((_, i) => i);
+  const find = (x: number): number => {
+    let r = x;
+    while (parent[r] !== r) r = parent[r];
+    return r;
+  };
+  const used = new Set<number>();
+  for (const [key, { path }] of order) {
+    const [a, b] = key.split(':').map(Number);
+    const ra = find(a);
+    const rb = find(b);
+    if (ra === rb) continue;
+    parent[ra] = rb;
+    for (const edgeIndex of path) used.add(edgeIndex);
+  }
+  let total = 0;
+  for (const edgeIndex of used) total += edgeWeight(edges[edgeIndex]);
+  return total;
+}
+
 export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const { electrical, plumbing, circuits, controls = [], routes, resolution, rules, penetrationWalls } = input;
   const penetrationWallById = penetrationWalls
@@ -591,6 +719,8 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const { pointCircuits: pointCircuit } = derivePointCircuits({ circuits, controls });
   const resolvedById = new Map(resolution.routes.map((item) => [item.route.id, item]));
   const drawnPlanPaths: Array<Array<{ x: number; z: number }>> = [];
+  /** 双控行程图边：已画强电物理路由（主循环内构造，见 travelerSubtreeLength）。 */
+  const travelerEdges: TravelerGraphEdge[] = [];
   /** 每条回路的画线路由平面路径（同回路 union：同一回路内共享段只铺一次管、只穿一次线）。 */
   const circuitPaths = new Map<string, Array<Array<{ x: number; z: number; y?: number }>>>();
   const strongPaths: Array<Array<{ x: number; z: number }>> = [];
@@ -615,7 +745,6 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   // ---------- 1. 逐路由：物理路由计长 + 归属；要求路由只显形 ----------
   const layerLength: Record<string, number> = {};
   const circuitConduit = new Map<string, number>();
-  const switch2WayLength = new Map<string, number>();
   let trunkConduitM = 0;
   let controlConduitM = 0;
   let drawnMWithoutDrop = 0;
@@ -638,10 +767,6 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       return;
     }
     if (route.layer !== 'strong_power') return;
-    for (const id of ids) {
-      const point = elecById.get(id);
-      if (point?.type === 'switch' || point?.type === 'switch_2way') switch2WayLength.set(id, (switch2WayLength.get(id) ?? 0) + length / Math.max(ids.length, 1));
-    }
     const circuitId = ids.map((id) => pointCircuit.get(id)).find((value): value is string => Boolean(value));
     if (circuitId) {
       circuitConduit.set(circuitId, (circuitConduit.get(circuitId) ?? 0) + length);
@@ -680,6 +805,29 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     const drawnLength = routeLength(route, resolved.points);
     drawnMWithoutDrop += drawnLength;
     const points3d = resolved.points;
+    if (route.layer === 'strong_power') {
+      // 双控行程图边（量价算法审计）：边长取 3D 折线长；折线端点未下引到开关时
+      // 另加 stub（端点标高 − 开关安装高度）。回路归属与 circuitPaths 同口径（to 端优先）。
+      const stubAt = (endpoint: string | { x: number; z: number }, endY: number): number => {
+        if (typeof endpoint !== 'string') return 0;
+        const height = pointHeights.get(endpoint)?.height;
+        if (height === undefined) return 0;
+        return Math.max(0, endY - height);
+      };
+      const firstY = requirePointY(points3d[0], `路由 ${route.id}`);
+      const lastY = requirePointY(points3d[points3d.length - 1], `路由 ${route.id}`);
+      travelerEdges.push({
+        routeId: route.id,
+        a: travelerNodeKey(route.from),
+        b: travelerNodeKey(route.to),
+        length: drawnLength,
+        stubA: stubAt(route.from, firstY),
+        stubB: stubAt(route.to, lastY),
+        circuit: typeof route.to === 'string'
+          ? pointCircuit.get(route.to)
+          : typeof route.from === 'string' ? pointCircuit.get(route.from) : undefined,
+      });
+    }
     const planPath = points3d.map((point) => ({ x: point.x, z: point.z }));
     drawnPlanPaths.push(planPath);
     if (route.layer === 'strong_power') strongPaths.push(planPath);
@@ -787,10 +935,20 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     bucket.circuits.push(circuit.id);
     buckets.set(wireSize, bucket);
   }
+  // 双控/多控附加控制线（2026-11-16 量价算法审计）：按控制声明逐组算行程，不再按点位 type 分摊。
+  // 成员 ≥2 即多控；行程 = 该控制各开关在已画强电路由图上的最小子树（见 travelerSubtreeLength），
+  // 只在受控灯具所在回路的边上找路（跨回路串线不是行程）；无路可通计 0（未画线不进量）。
   let dualControlExtraM = 0;
-  for (const [pointId, length] of switch2WayLength) {
-    if (elecById.get(pointId)?.type !== 'switch_2way') continue;
-    dualControlExtraM += length * dualControlExtraCores;
+  for (const control of controls) {
+    const switches = [...new Set(control.switch_point_ids ?? [])];
+    if (switches.length < 2) continue;
+    const targetCircuit = (control.target_point_ids ?? [])
+      .map((id) => pointCircuit.get(id))
+      .find((value): value is string => Boolean(value));
+    const usable = targetCircuit === undefined
+      ? travelerEdges
+      : travelerEdges.filter((edge) => edge.circuit === targetCircuit);
+    dualControlExtraM += travelerSubtreeLength(usable, switches) * dualControlExtraCores;
   }
   // 损耗系数在上方 requireRule 已取值（缺失即抛错），此处直接乘。
   // 旧代码 `validFinite(...) ? ... : 1` 会让缺失损耗的导线按"零损耗"计价——少买 5%~8% 的线。
@@ -1014,15 +1172,19 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       const bucket = [...buckets.values()].find((item) => item.circuits.includes(circuit.id));
       // 与分桶计价同一基数（平面 union + 竖直段），诊断表不许再报纯平面值误导采购。
       const conduit = circuitPriced.get(circuit.id) ?? 0;
+      // 芯数取本回路自己的 purpose 声明，不取分桶首条回路的 cores：同一线径分桶
+      // 混装不同芯数时，旧口径会把首条回路的芯数套到全桶回路的诊断 wireM 上
+      // （2026-11-16 量价算法审计；现行数据全为 3 芯未触发，属防御性修正）。
+      const cores = rules.units.cores_by_purpose[circuit.purpose ?? ''] ?? 0;
       return {
         circuitId: circuit.id,
         purpose: circuit.purpose ?? '未声明',
         wireSize: bucket?.wireSize ?? '未解析',
         conduitM: conduit,
-        cores: bucket?.cores ?? 0,
+        cores,
         // 用同一个已校验的 wireLoss：旧代码这里直接乘 rules.units.loss.wire，
         // 缺失时整列 wireM 变 NaN（诊断表上一片 NaN，看不出是缺配置）。
-        wireM: conduit * (bucket?.cores ?? 0) * wireLoss,
+        wireM: conduit * cores * wireLoss,
       };
     }).sort((a, b) => b.conduitM - a.conduitM),
     requirementRoutes,

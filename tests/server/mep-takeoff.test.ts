@@ -9,7 +9,7 @@ import {
   parseMepCoordination,
   resolveMepRoutes,
 } from '../../shared/mep-hvac-coordination-schema.js';
-import { computeMepTakeoff, parseWireSizeMm2, pricedCircuitLength, unionPlanLength, type MepTakeoffRules, type TakeoffCircuit } from '../../shared/mep-takeoff.js';
+import { computeMepTakeoff, parseWireSizeMm2, pricedCircuitLength, travelerSubtreeLength, unionPlanLength, type MepTakeoffRules, type TakeoffCircuit, type TravelerGraphEdge } from '../../shared/mep-takeoff.js';
 import { pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
@@ -414,6 +414,66 @@ routes:
     `导线增量应为 7.0875，实际 ${on.wire.totalWireM - off.wire.totalWireM}`);
 });
 
+test('双控行程取开关间最小子树，不取点位类型分摊（2026-11-16 量价算法审计）', () => {
+  // 手工图：swA—3m—lightX—4m—swB，另有 swA—swB 直连 10m（更长，不取）、
+  // swB—5m—nightY（死胡同，不取）。旧口径按点位 type 对半分会算出 (3+10)/2 + (4+10+5)/2 = 16m。
+  const edges: TravelerGraphEdge[] = [
+    { routeId: 'r1', a: 'swA', b: 'lightX', length: 3, stubA: 0, stubB: 0 },
+    { routeId: 'r2', a: 'lightX', b: 'swB', length: 4, stubA: 0, stubB: 0 },
+    { routeId: 'r3', a: 'swA', b: 'swB', length: 10, stubA: 0, stubB: 0 },
+    { routeId: 'r4', a: 'swB', b: 'nightY', length: 5, stubA: 0, stubB: 0 },
+  ];
+  assert.equal(travelerSubtreeLength(edges, ['swA', 'swB']), 7);
+  // 三控：最小生成树取两条短边，不取 10m 的第三边。
+  const threeWay: TravelerGraphEdge[] = [
+    { routeId: 't1', a: 'swA', b: 'swB', length: 2, stubA: 0, stubB: 0 },
+    { routeId: 't2', a: 'swB', b: 'swC', length: 3, stubA: 0, stubB: 0 },
+    { routeId: 't3', a: 'swA', b: 'swC', length: 10, stubA: 0, stubB: 0 },
+  ];
+  assert.equal(travelerSubtreeLength(threeWay, ['swA', 'swB', 'swC']), 5);
+  // 单控不成组、无路不通，各计 0；折线未下引的 stub 只计成员开关端。
+  assert.equal(travelerSubtreeLength(edges, ['swA']), 0);
+  assert.equal(travelerSubtreeLength(edges, ['swA', 'swZ']), 0);
+  const stubbed: TravelerGraphEdge[] = [
+    { routeId: 's1', a: 'swA', b: 'lightX', length: 3, stubA: 1.5, stubB: 0 },
+    { routeId: 's2', a: 'lightX', b: 'swB', length: 4, stubA: 0, stubB: 2 },
+  ];
+  assert.equal(travelerSubtreeLength(stubbed, ['swA', 'swB']), 10.5);
+});
+
+test('双控附加控制线按控制声明算行程：生产值 21.77385m（2026-11-16 量价算法审计）', () => {
+  // 独立推导（测试内手写循环，不复用 takeoff 的图算法）：行程边按控制声明手点——
+  // 主卧三控：north↔L + north↔door；书房双控：灯↔门口 + 灯↔床头；
+  // 儿童房双控：灯↔门口 + 灯↔床头。客厅双控未画线计 0；书房门口单控计 0；
+  // 起夜支路（switch_guest_bed → night_guest_head）不是行程，不计。
+  // 旧口径（点位 type + 对半分）算出 20.3821m，本断言在其上会红。
+  const byId = new Map(resolution.routes.map((item) => [item.route.id, item]));
+  const yOf = (point: { y?: number }): number => {
+    if (point.y === undefined) throw new Error('test setup: resolved point missing y');
+    return point.y;
+  };
+  const len = (id: string): number => {
+    const points = (byId.get(id) as { points: Array<{ x: number; y?: number; z: number }> }).points;
+    let total = 0;
+    for (let i = 1; i < points.length; i += 1) {
+      total += Math.hypot(points[i].x - points[i - 1].x, yOf(points[i]) - yOf(points[i - 1]), points[i].z - points[i - 1].z);
+    }
+    return total;
+  };
+  const travelerM = len('strong-light-bedrooms-master-bed-l') + len('strong-light-bedrooms-master-door')
+    + len('strong-light-bedrooms-study-door') + len('strong-light-bedrooms-study-guest-bed')
+    + len('strong-light-bedrooms-child-door') + len('strong-light-bedrooms-child-bed');
+  const expected = travelerM * rules.units.dual_control_extra_cores * rules.units.loss.wire;
+  assert.ok(Math.abs(takeoff.wire.dualControlExtraM - expected) < 1e-6,
+    `双控附加应为行程 ${travelerM.toFixed(3)}m × 1 芯 × 1.05 = ${expected.toFixed(5)}m，实际 ${takeoff.wire.dualControlExtraM}`);
+});
+
+test('byCircuit 诊断导线量之和等于总量减双控附加（分桶芯数取本回路声明）', () => {
+  const sum = takeoff.byCircuit.reduce((total, item) => total + item.wireM, 0);
+  assert.ok(Math.abs(sum - (takeoff.wire.totalWireM - takeoff.wire.dualControlExtraM)) < 1e-6,
+    `byCircuit 之和 ${sum} 应等于 totalWireM − dualControlExtraM ${takeoff.wire.totalWireM - takeoff.wire.dualControlExtraM}`);
+});
+
 /**
  * 2026-10-14 阶段 4：算量规则/坐标缺失一律 fail-closed，不按兜底值继续算。
  *
@@ -461,6 +521,75 @@ test('管件数量由声明的 fitting_per_meter 派生，并随 takeoff 输出�
   assert.ok(Math.abs(takeoff.pipe.fittings.ppr - water * rules.units.fitting_per_meter.ppr) < 1e-9);
   assert.ok(Math.abs(takeoff.pipe.fittings.pvc - drainage * rules.units.fitting_per_meter.pvc) < 1e-9);
   assert.ok(takeoff.pipe.fittings.ppr > 0 && takeoff.pipe.fittings.pvc > 0, '管件数必须是正数（0 = 静默漏计）');
+});
+
+test('同线径分桶混装不同芯数时 byCircuit 取本回路芯数（2026-11-16 量价算法审计）', () => {
+  // 两回路同为 2.5mm²，但 purpose 芯数不同（lighting 2 芯 / ordinary_power 4 芯）。
+  // 旧口径取分桶首条回路的 cores：B 回路的诊断 wireM 会按 2 芯算（11.13m），
+  // 正确应为 4 芯（22.26m）。总量（totalWireM）一直按各回路芯数累加，是对的，只验 byCircuit。
+  const synthRules = cloneRules();
+  synthRules.units.cores_by_purpose = { lighting: 2, ordinary_power: 4 };
+  const synthElectrical = [
+    { id: 'sock_a', type: 'socket', room: 'test_room', x: 3, z: 0, height: 0.3 },
+    { id: 'sock_b', type: 'socket', room: 'test_room', x: 3, z: 1, height: 0.3 },
+  ];
+  const synthCoordination = parseMepCoordination(`
+version: '1'
+status: synthetic-test
+layers:
+  strong_power: { label: 强电, color: '#000000', height: 2.55 }
+  weak_power: { label: 弱电, color: '#000000', height: 2.55 }
+  water_supply: { label: 给水, color: '#000000', height: 0.18 }
+  drainage: { label: 排水, color: '#000000', height: 0.1 }
+  refrigerant: { label: 冷媒, color: '#000000', height: 2.4 }
+  condensate: { label: 冷凝水, color: '#000000', height: 2.4 }
+  supply_air: { label: 送风, color: '#000000', height: 2.4 }
+  return_air: { label: 回风, color: '#000000', height: 2.4 }
+routes:
+  - id: test-mixed-a
+    layer: strong_power
+    status: inferred
+    route_kind: physical
+    from: { x: 0, z: 0, y: 2.55 }
+    via: [{ x: 3, z: 0, y: 2.55 }]
+    to: sock_a
+    to_height: 2.55
+  - id: test-mixed-b
+    layer: strong_power
+    status: inferred
+    route_kind: physical
+    from: { x: 0, z: 1, y: 2.55 }
+    via: [{ x: 3, z: 1, y: 2.55 }]
+    to: sock_b
+    to_height: 2.55
+`);
+  const synthSources = endpointSourcesFromFacts({
+    electrical: synthElectrical as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'],
+    plumbing: [] as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'],
+    ceiling: [] as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['ceiling'],
+    hvac: { plans: [] } as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['hvac'],
+  });
+  const synthResolution = resolveMepRoutes(synthCoordination, synthSources);
+  const synthCircuits = [
+    { id: 'TEST-M1', purpose: 'lighting', wire_size: '2.5mm²(φ20)', breaker: 'C16', member_point_ids: ['sock_a'] },
+    { id: 'TEST-M2', purpose: 'ordinary_power', wire_size: '2.5mm²(φ20)', breaker: 'C20', member_point_ids: ['sock_b'] },
+  ] as TakeoffCircuit[];
+  const synth = computeMepTakeoff({
+    electrical: synthElectrical as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: [] as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'],
+    circuits: synthCircuits,
+    controls: [],
+    routes: synthCoordination.routes,
+    resolution: synthResolution,
+    rules: synthRules,
+  });
+  const byId = new Map(synth.byCircuit.map((item) => [item.circuitId, item]));
+  // 每回路计价 5.30m（3m 平面 union 3.05 + 下引 2.25）；A: 5.30×2×1.05=11.13，B: 5.30×4×1.05=22.26。
+  assert.ok(Math.abs((byId.get('TEST-M1')?.wireM ?? -1) - 11.13) < 1e-6,
+    `A 回路诊断 wireM 应为 11.13，实际 ${byId.get('TEST-M1')?.wireM}`);
+  assert.ok(Math.abs((byId.get('TEST-M2')?.wireM ?? -1) - 22.26) < 1e-6,
+    `B 回路诊断 wireM 应为 22.26（4 芯），实际 ${byId.get('TEST-M2')?.wireM}`);
+  assert.equal(byId.get('TEST-M2')?.cores, 4);
 });
 
 test('回路缺 breaker 声明即抛错：漏保数量不能靠"没声明=没有"少算', () => {
