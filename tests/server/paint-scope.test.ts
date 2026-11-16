@@ -715,6 +715,27 @@ test('paint cost comparison refuses to run when declarations drift from wall_fin
   );
 });
 
+test('paint cost comparison refuses a topcoat material without loss_rate instead of substituting the planning multiplier（量价算法审计 D13）', () => {
+  // 旧口径 material.loss_rate ?? planning.loss_multiplier：材料缺损耗率时
+  // 对比悄悄按 1.1 计价，而预算 pricingOf 缺 loss_rate 即抛错——同一材料在
+  // 两边口径不一。live latex_paint_01 的 loss_rate 为 1.1，本测试只动合成副本。
+  const layout = resolveLayout(MG);
+  const catalog = ProjectCatalog.load('.');
+  const config = loadPaintComparisonConfig();
+  // 注意：catalog 是类实例，{...catalog} 会丢原型方法（getRooms 等）；
+  // 用原型链 + own 属性复制，只覆盖 getOption。
+  const rigged: any = Object.assign(Object.create(Object.getPrototypeOf(catalog)), catalog);
+  rigged.getOption = (topic: string, id: string) => {
+    const option = catalog.getOption(topic, id);
+    if (topic === 'paint' && option) return { ...option, loss_rate: undefined };
+    return option;
+  };
+  assert.throws(
+    () => buildPaintCostComparison(layout, config, rigged),
+    /loss_rate is missing/,
+  );
+});
+
 test('paint scope reconciliation stays free of browser globals and HVAC coupling', () => {
   const sceneBuilder = readFileSync('shared/render/SceneBuilder.ts', 'utf8');
   assert.ok(!/window|document|HTMLCanvasElement|fetch/.test(sceneBuilder));
