@@ -25,7 +25,7 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import express from 'express';
-import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -35,12 +35,35 @@ import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
-import { ConfigRegistry } from '../../server/config-loader.js';
+import { ConfigRegistry, loadCeilingConfig, loadElectricalConfig, loadMepCoordinationConfig, loadPlumbingConfig } from '../../server/config-loader.js';
 import { parseOverlay } from '../../server/overlay-merge.js';
 import type { PlacementClosureApiDiagnostics } from '../../shared/api-project.js';
+import { deriveMepPenetrationAt } from '../../shared/condensate-chain.js';
+import { endpointSourcesFromFacts } from '../../shared/mep-hvac-coordination-schema.js';
+import { parseProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
 
 const ROOT = resolve(import.meta.dirname, '../..');
 const TEST_DATA_DIR = './tmp/test-data-api-condensate-anchor-isolate';
+
+/**
+ * 冷凝锚点期望值：与服务端同一派生（server/routes.ts defaultCondensateMasterPenetration）
+ * ——取 condensate-master 路由首条 penetration 声明墙，由路线几何派生交点。
+ * 不钉 (4.2,4.6) 字面：墙变、线变，锚点跟随。
+ */
+function expectedCondensatePenetration(): { x: number; z: number } | undefined {
+  const route = loadMepCoordinationConfig().routes.find((item) => item.id === 'condensate-master');
+  const wall = (route as unknown as { penetration?: Array<{ wall?: unknown }> } | undefined)?.penetration?.[0]?.wall;
+  if (!route || typeof wall !== 'string') return undefined;
+  return deriveMepPenetrationAt(route, wall, {
+    sources: endpointSourcesFromFacts({
+      electrical: loadElectricalConfig(),
+      plumbing: loadPlumbingConfig(),
+      ceiling: loadCeilingConfig(),
+      hvac: parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')),
+    }),
+    walls: ProjectCatalog.load('.').getWalls(),
+  }).point;
+}
 
 /** 真实的读取失败形态：MEP 协调配置暂时不可解析（js-yaml 抛出的原始文案）。 */
 const READ_FAILURE = 'config/mep-hvac-coordination.yaml 暂时不可解析：unexpected end of the stream within a flow collection';
@@ -138,8 +161,11 @@ describe('/api/project 冷凝锚点读取异常隔离（issue #98 宽容读取�
   it('锚点读取成功时行为不变：下发锚点，且不带任何诊断键', async () => {
     const res = await request(healthyApp).get('/api/project').expect(200);
     // 2026-11-14 全带泵重画：condensate-master 穿墙改 w_mbath_south (2.3,2.86)
-    // → w_strip_east (4.2,4.6)，锚点取路由首条 penetration 声明墙的派生点。
-    assert.deepEqual(res.body.house.condensatePenetration, { x: 4.2, z: 4.6 }, '默认产地（真实 config）必须照常解出锚点');
+    // → w_strip_east，锚点取路由首条 penetration 声明墙的派生点（与服务端同一派生，
+    // 见本文件 expectedCondensatePenetration），不钉字面坐标。
+    const expectedAnchor = expectedCondensatePenetration();
+    assert.ok(expectedAnchor, '测试前置：锚点须能从真实 config 派生');
+    assert.deepEqual(res.body.house.condensatePenetration, expectedAnchor, '默认产地（真实 config）必须照常解出锚点');
     assert.equal(res.body.placementClosureDiagnostics, undefined, '无降级时不得下发诊断键（页面据此区分正常/降级）');
   });
 

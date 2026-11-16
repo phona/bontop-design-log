@@ -2,18 +2,41 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import request from 'supertest';
 import express from 'express';
-import { mkdirSync, rmSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { ProjectCatalog } from '../../server/project-catalog.js';
 import { DesignState } from '../../server/design-state.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import { BudgetCalculator } from '../../server/budget-calculator.js';
 import { ArchivedSchemesStore } from '../../server/archived-schemes.js';
 import { createApiRouter } from '../../server/routes.js';
-import { ConfigRegistry } from '../../server/config-loader.js';
+import { ConfigRegistry, loadCeilingConfig, loadElectricalConfig, loadMepCoordinationConfig, loadPlumbingConfig } from '../../server/config-loader.js';
 import { parseOverlay } from '../../server/overlay-merge.js';
 import { PresentationStateStore } from '../../server/presentation-state.js';
+import { deriveMepPenetrationAt } from '../../shared/condensate-chain.js';
+import { endpointSourcesFromFacts } from '../../shared/mep-hvac-coordination-schema.js';
+import { parseProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
 
 const TEST_DATA_DIR = './tmp/test-data-api';
+
+/**
+ * 冷凝锚点期望值：与服务端同一派生（server/routes.ts defaultCondensateMasterPenetration）
+ * ——取 condensate-master 路由首条 penetration 声明墙，由路线几何派生交点。
+ * 不钉 (4.2,4.6) 字面：墙变、线变，锚点跟随。
+ */
+function expectedCondensatePenetration(): { x: number; z: number } | undefined {
+  const route = loadMepCoordinationConfig().routes.find((item) => item.id === 'condensate-master');
+  const wall = (route as unknown as { penetration?: Array<{ wall?: unknown }> } | undefined)?.penetration?.[0]?.wall;
+  if (!route || typeof wall !== 'string') return undefined;
+  return deriveMepPenetrationAt(route, wall, {
+    sources: endpointSourcesFromFacts({
+      electrical: loadElectricalConfig(),
+      plumbing: loadPlumbingConfig(),
+      ceiling: loadCeilingConfig(),
+      hvac: parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8')),
+    }),
+    walls: ProjectCatalog.load('.').getWalls(),
+  }).point;
+}
 
 describe('REST API', () => {
   let app: express.Express;
@@ -67,9 +90,11 @@ elements:
     }
     assert.ok(Array.isArray(res.body.house.sceneElements));
     // 主卧冷凝水穿墙锚点（issue #98 PR-10）：页面在 /api/mep-coordination 之前只拿得到这一份——
-    // 缺它场景建场会带诊断。2026-11-14 全带泵重画：穿墙改 w_mbath_south (2.3,2.86)
-    // → w_strip_east (4.2,4.6)，锚点取路由首条 penetration 声明墙的派生点。
-    assert.deepEqual(res.body.house.condensatePenetration, { x: 4.2, z: 4.6 });
+    // 缺它场景建场会带诊断。锚点取路由首条 penetration 声明墙的派生点（与服务端同一派生，
+    // 见本文件 expectedCondensatePenetration），不钉字面坐标。
+    const expectedAnchor = expectedCondensatePenetration();
+    assert.ok(expectedAnchor, '测试前置：锚点须能从真实 config 派生');
+    assert.deepEqual(res.body.house.condensatePenetration, expectedAnchor);
   });
 
   it('GET /api/project phase=phase_1 filters deferred furnishings and curtains', async () => {
