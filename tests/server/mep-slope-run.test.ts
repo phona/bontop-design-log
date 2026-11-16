@@ -301,14 +301,15 @@ test('传播实验：共享终端声明东移 0.30m，五条支管末段跟随�
       : terminal),
   };
   const moved = branchPoints(resolveMepRoutes(project, movedSources));
+  // 共享终端声明位置从 realSources 读：末两点（末步落点 + 派生终端点）跟随终端东移；其余点逐点相同。
+  const candidate = realSources.hvacTerminals.find((t) => t.id === 'condensate_living_candidate')!;
   for (const id of BRANCH_IDS) {
     const points = JSON.parse(moved[id]) as Array<{ x: number; y?: number; z: number }>;
     const base = JSON.parse(baseline[id]) as Array<{ x: number; y?: number; z: number }>;
-    // 末两点（末步落点 + 派生终端点）跟随终端东移；其余点逐点相同。
     assert.deepEqual(points.slice(0, -2), base.slice(0, -2), `${id}: non-terminal points must not move`);
     for (const point of points.slice(-2)) {
-      assert.ok(Math.abs(point.x - 7.0) <= 1e-9, `${id}: terminal x ${point.x} !== 7.00`);
-      assert.ok(Math.abs(point.z - 3.7) <= 1e-9, `${id}: terminal z ${point.z} !== 3.70`);
+      assert.ok(Math.abs(point.x - (candidate.position.x + 0.30)) <= 1e-9, `${id}: terminal x ${point.x} 须为终端声明 x + 0.30（本测试注入量）`);
+      assert.ok(Math.abs(point.z - candidate.position.z) <= 1e-9, `${id}: terminal z ${point.z} 须为终端声明 z`);
     }
   }
   const restored = branchPoints(resolveMepRoutes(project, realSources));
@@ -328,11 +329,20 @@ test('传播实验：主卧内机东移 0.20m，主卧支管起点跟随、到�
   const moved = resolveMepRoutes(project, movedSources);
   const master = moved.routes.find((item) => item.route.id === 'condensate-master')!;
   assert.deepEqual(master.unresolved, []);
-  assert.ok(Math.abs(master.points[0].x - 3.9) <= 1e-9, `master start x ${master.points[0].x} !== 3.90`);
+  // 起点 = 移动后的主卧内机吊顶机位 x（基线值 + 本测试注入的 0.20）。
+  const movedZone = (movedCeiling as Array<{ id: string; x: number }>).find((zone) => zone.id === 'ac_master')!;
+  assert.ok(Math.abs(master.points[0].x - movedZone.x) <= 1e-9, `master start x ${master.points[0].x} 须为移动后内机机位 x ${movedZone.x}`);
+  // 终端 = 共享终端声明位置（不动）；到点标高 = from_height − 坡度×行程
+  // （行程 0.50 + 2.68 + 0.90 + 0.12 = 4.20m，from_height 2.70 − 0.01×4.20 = 2.658m）。
+  const candidate = realSources.hvacTerminals.find((t) => t.id === 'condensate_living_candidate')!;
   const terminal = master.points[master.points.length - 1];
-  assert.ok(Math.abs(terminal.x - 6.7) <= 1e-9 && Math.abs(terminal.z - 3.7) <= 1e-9);
-  // 行程 0.50 + 2.68 + 0.90 + 0.12 = 4.20m，到点 2.70 − 0.042 = 2.658m。
-  assert.ok(Math.abs(terminal.y! - 2.658) <= 1e-9, `master terminal y ${terminal.y} !== 2.658`);
+  assert.ok(Math.abs(terminal.x - candidate.position.x) <= 1e-9 && Math.abs(terminal.z - candidate.position.z) <= 1e-9,
+    `master terminal 须为共享终端声明位置 (${candidate.position.x},${candidate.position.z})`);
+  const route = project.routes.find((item) => item.id === 'condensate-master')!;
+  const run = master.points.reduce((sum, point, index) => index === 0
+    ? 0 : sum + Math.hypot(point.x - master.points[index - 1].x, point.z - master.points[index - 1].z), 0);
+  assert.ok(Math.abs(terminal.y! - (route.from_height! - route.slope! * run)) <= 1e-9,
+    `master terminal y ${terminal.y} 须为 from_height − 坡度×行程`);
   for (const id of BRANCH_IDS.filter((item) => item !== 'condensate-master')) {
     assert.equal(JSON.stringify(moved.routes.find((item) => item.route.id === id)!.points), baseline[id], `${id} must not move`);
   }

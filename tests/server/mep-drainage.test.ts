@@ -22,10 +22,9 @@ import type { FurnishingsYaml, ProjectRenderFacts, VertexLayoutYaml } from '../.
  * （沿轴按 route.slope 派生高度，末步 to:'to' 跟随端点），to_height 删除、终端标高由
  * 末步落点派生；3 条带 via 路由因坡度链与 1% 派生差超 0.005m 留绝对，4 条无 via 路由
  * 本就是端点驱动。slope_run 机制本身（schema + 求解器双重 fail-closed、红绿反例）
- * 已由 tests/server/mep-slope-run.test.ts 覆盖，本文件只钉本批的等价/传动/消费方对账。
+ * 已由 tests/server/mep-slope-run.test.ts 覆盖；本文件只钉本批的传动/消费方对账，
+ * 逐点等价证明在批 6 PR 记录与 git 历史里（merge-base 211831e8 实测基线已删），不在套件里。
  */
-
-const TOL_M = 0.005;
 
 const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as ProjectRenderFacts['electrical'];
 const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as ProjectRenderFacts['plumbing'];
@@ -53,20 +52,13 @@ const DRAIN_IDS = [
   'drain-gbath-secondary-requirement',
 ];
 
-/** merge-base（211831e8）解算器实测的逐点基线——字面量钉死，不取自迁移后配置。 */
-const BASELINE: Record<string, Array<[number, number, number]>> = {
-  'drain-master-bath': [[0.6, 0.0445, 2.2], [1.2, 0.0385, 2.2], [1.2, 0.028, 1.15], [2, 0.02, 1.15]],
-  'drain-guest-bath': [[6.3, 0.028, 2.45], [6.45, 0.028, 2.45], [6.45, 0.02, 3.25], [6.45, 0.02, 3.05]],
-  'drain-garden-requirement': [[13, 0.0265, 1.5], [11.5, 0.0115, 1.5], [10.85, 0.005, 1.5]],
-  'drain-mbath-toilet-to-riser': [[2.275, 0.0417, 1.5], [0.3, 0.022, 1.5], [0.3, 0.02, 1.3]],
-  'drain-mbath-shower-to-riser': [[0.6, 0.032, 2.2], [0.6, 0.023, 1.3], [0.3, 0.02, 1.3]],
-  'drain-mbath-floor-to-riser': [[2, 0.0385, 1.15], [0.3, 0.0215, 1.15], [0.3, 0.02, 1.3]],
-  'drain-gbath-shower-to-riser': [[6.3, 0.0255, 2.45], [6.3, 0.025, 2.4], [5.8, 0.02, 2.4]],
-  'drain-gbath-floor-to-riser': [[6.45, 0.033, 3.05], [5.8, 0.0265, 3.05], [5.8, 0.02, 2.4]],
-  'drain-mbath-secondary-requirement': [[2, 0.02, 1.15], [1.7, 0.017, 1.15], [1.4, 0.014, 1.15]],
-  'drain-gbath-secondary-requirement': [[6.6, 0.02, 3.05], [6.6, 0.017, 2.75], [6.6, 0.014, 2.45]],
-};
-const MIGRATED_IDS = Object.keys(BASELINE);
+/** 批 6 迁移的 10 条路由（逐点基线已删，见文件头注释）。 */
+const MIGRATED_IDS = [
+  'drain-master-bath', 'drain-guest-bath', 'drain-garden-requirement',
+  'drain-mbath-toilet-to-riser', 'drain-mbath-shower-to-riser', 'drain-mbath-floor-to-riser',
+  'drain-gbath-shower-to-riser', 'drain-gbath-floor-to-riser',
+  'drain-mbath-secondary-requirement', 'drain-gbath-secondary-requirement',
+];
 
 function routePoints(report: ReturnType<typeof resolveMepRoutes>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -74,17 +66,158 @@ function routePoints(report: ReturnType<typeof resolveMepRoutes>): Record<string
   return out;
 }
 
-function assertPointsClose(
-  actual: ReadonlyArray<{ x: number; y?: number; z: number }>,
-  expected: ReadonlyArray<[number, number, number]>,
-  where: string,
+const TOL = 1e-9;
+
+function dedup(points: ReadonlyArray<{ x: number; y?: number; z: number }>): Array<{ x: number; y?: number; z: number }> {
+  return points.filter((point, index) => index === 0
+    || point.x !== points[index - 1].x || point.y !== points[index - 1].y || point.z !== points[index - 1].z);
+}
+
+function assertOrthogonal(points: ReadonlyArray<{ x: number; z: number }>, what: string): void {
+  for (let i = 1; i < points.length; i += 1) {
+    const dx = Math.abs(points[i].x - points[i - 1].x);
+    const dz = Math.abs(points[i].z - points[i - 1].z);
+    assert.ok(dx <= TOL || dz <= TOL, `${what} 第 ${i} 段须正交（dx ${dx}, dz ${dz}）`);
+  }
+}
+
+function assertNoRetrace(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  const seen = new Set<string>();
+  for (let i = 1; i < points.length; i += 1) {
+    const key = `${points[i - 1].x},${points[i - 1].y ?? 0},${points[i - 1].z}|${points[i].x},${points[i].y ?? 0},${points[i].z}`;
+    assert.ok(!seen.has(key), `${what} 第 ${i} 段不得与更早的段重合（往返折返）`);
+    seen.add(key);
+  }
+}
+
+function assertNoDuplicates(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  const d = dedup(points);
+  const trailingDup =
+    points.length >= 2 &&
+    d.length === points.length - 1 &&
+    Math.abs(points[points.length - 1].x - points[points.length - 2].x) <= TOL &&
+    Math.abs(points[points.length - 1].z - points[points.length - 2].z) <= TOL &&
+    Math.abs((points[points.length - 1].y ?? 0) - (points[points.length - 2].y ?? 0)) <= TOL;
+  assert.ok(
+    d.length === points.length || trailingDup,
+    `${what} 不得含连续重复点（末点追加端点重复除外）：去重后 ${d.length} 点，原 ${points.length} 点`,
+  );
+}
+
+/**
+ * 本路由每个 x/z 须来自声明：本路由 from/to 端点（已解出）、本路由任一步的数值 to
+ * 或绝对步坐标、轴线表。'to' 目标取 to 端点值，已由 entry.to 覆盖。
+ */
+function assertNoInventedCoords(
+  points: ReadonlyArray<{ x: number; y?: number; z: number }>,
+  entry: ReturnType<typeof resolveMepRoutes>['routes'][number],
+  coordination: MepCoordination,
+  what: string,
 ): void {
-  assert.equal(actual.length, expected.length, `${where}: point count ${actual.length} !== ${expected.length}`);
-  for (let index = 0; index < expected.length; index += 1) {
-    const [x, y, z] = expected[index];
-    assert.ok(Math.abs(actual[index].x - x) <= TOL_M, `${where}[${index}].x ${actual[index].x} !== ${x}`);
-    assert.ok(Math.abs((actual[index].y ?? NaN) - y) <= TOL_M, `${where}[${index}].y ${actual[index].y} !== ${y}`);
-    assert.ok(Math.abs(actual[index].z - z) <= TOL_M, `${where}[${index}].z ${actual[index].z} !== ${z}`);
+  const axes = coordination.axes ?? [];
+  const allowedX = new Set<number>();
+  const allowedZ = new Set<number>();
+  if (entry.from) { allowedX.add(entry.from.x); allowedZ.add(entry.from.z); }
+  if (entry.to) { allowedX.add(entry.to.x); allowedZ.add(entry.to.z); }
+  for (const step of entry.route.via) {
+    if ('to' in step && typeof step.to === 'number') {
+      if (step.axis === 'x') allowedX.add(step.to);
+      if (step.axis === 'z') allowedZ.add(step.to);
+    }
+    if ('x' in step && typeof step.x === 'number') allowedX.add(step.x);
+    if ('z' in step && typeof step.z === 'number') allowedZ.add(step.z);
+  }
+  for (const axis of axes) {
+    if (axis.axis === 'x') allowedX.add(axis.value);
+    if (axis.axis === 'z') allowedZ.add(axis.value);
+  }
+  for (const point of points) {
+    assert.ok(allowedX.has(point.x), `${what} x=${point.x} 不在任何声明值里（端点/轴线/数值 to）`);
+    assert.ok(allowedZ.has(point.z), `${what} z=${point.z} 不在任何声明值里（端点/轴线/数值 to）`);
+  }
+}
+
+/**
+ * 排水迁移路由持续不变式：起点 = from + from_height；每点标高 = from_height −
+ * 坡度×累计行程（末点复点零行程，标高与落点同）；正交；点数 = from + 每步一落点 +
+ * 派生终端复点；末点复刻末步落点且平面为 to 端点；每个 x/z 来自声明。
+ * 历史逐点等价证明在批 6 PR 记录与 git 历史里，不在套件里。
+ */
+function assertDrainRouteInvariants(
+  entry: ReturnType<typeof resolveMepRoutes>['routes'][number],
+  coordination: MepCoordination,
+  what: string,
+): void {
+  const route = entry.route;
+  const pts = entry.points;
+  assert.deepEqual(entry.unresolved, [], `${what} 须解出`);
+  assert.deepEqual(entry.diagnostics, [], `${what} 须无诊断`);
+  assert.ok(Math.abs(pts[0].x - entry.from!.x) <= TOL && Math.abs(pts[0].y! - route.from_height!) <= TOL && Math.abs(pts[0].z - entry.from!.z) <= TOL,
+    `${what} 起点须为 from + from_height`);
+  const [landing, terminal] = pts.slice(-2);
+  assert.deepEqual([terminal.x, terminal.y, terminal.z], [landing.x, landing.y, landing.z],
+    `${what}: terminal point must duplicate the last slope_run landing`);
+  assert.ok(Math.abs(terminal.x - entry.to!.x) <= TOL && Math.abs(terminal.z - entry.to!.z) <= TOL,
+    `${what} 末点平面须为 to 端点`);
+  let run = 0;
+  for (let i = 0; i < pts.length; i += 1) {
+    if (i > 0) run += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
+    assert.ok(Math.abs(pts[i].y! - (route.from_height! - route.slope! * run)) <= TOL,
+      `${what} 第 ${i + 1} 点标高须为 from_height − 坡度×累计行程`);
+  }
+  assert.equal(pts.length, route.via.length + 2, `${what} 点数须为 from + 每步一落点 + 派生终端复点`);
+  assertOrthogonal(pts, what);
+  assertNoRetrace(pts, what);
+  assertNoDuplicates(pts, what);
+  assertNoInventedCoords(pts, entry, coordination, what);
+}
+
+/**
+ * C2 跟随断言：移动地漏后，路线须仍由同一声明步推导——起点为移动后的 from 端点
+ * （是地漏则跟随，否则不动）；每步落点的步进轴须为该步声明目标（数字目标，或 'to'
+ * → to 端点移动后的位置：to 是地漏取移动后地漏位置，否则取基线同落点同轴值，
+ * 即未移动的 to 端点值）；另一轴须与前一点同（正交）；终端复点须与末步落点重合；
+ * 每点标高恒为 from_height − 坡度×累计行程（按移动后点列的行程算）。
+ * 基线/移动后点列均以 routePoints 的 JSON 快照传入；地漏移动后位置由调用方
+ * 从 plumbing 声明 + 本测试注入的位移算出。
+ */
+function assertFollowsMove(
+  baselineJson: string,
+  movedJson: string,
+  route: MepCoordination['routes'][number],
+  drainId: string,
+  drainMoved: { x: number; z: number },
+  what: string,
+): void {
+  const basePts = JSON.parse(baselineJson) as Array<{ x: number; y?: number; z: number }>;
+  const movedPts = JSON.parse(movedJson) as Array<{ x: number; y?: number; z: number }>;
+  assert.equal(movedPts.length, basePts.length, `${what} 点数不得变`);
+  const startTarget = route.from === drainId ? drainMoved : { x: basePts[0].x, z: basePts[0].z };
+  assert.ok(Math.abs(movedPts[0].x - startTarget.x) <= TOL && Math.abs(movedPts[0].z - startTarget.z) <= TOL,
+    `${what} 起点须为移动后的 from 端点`);
+  let run = 0;
+  for (let i = 0; i < movedPts.length; i += 1) {
+    if (i > 0) run += Math.hypot(movedPts[i].x - movedPts[i - 1].x, movedPts[i].z - movedPts[i - 1].z);
+    assert.ok(Math.abs(movedPts[i].y! - (route.from_height! - route.slope! * run)) <= TOL,
+      `${what} 第 ${i + 1} 点标高须为 from_height − 坡度×累计行程`);
+    if (i === 0) continue;
+    if (i === movedPts.length - 1) {
+      const prev = movedPts[i - 1];
+      assert.deepEqual([movedPts[i].x, movedPts[i].y, movedPts[i].z], [prev.x, prev.y, prev.z],
+        `${what} 终端复点须与末步落点重合`);
+      continue;
+    }
+    const step = route.via[i - 1] as { kind?: string; axis?: string; to?: unknown };
+    assert.ok(step.kind === 'slope_run' && (step.axis === 'x' || step.axis === 'z'),
+      `${what} 第 ${i} 步须为 slope_run x/z 步`);
+    const axis = step.axis as 'x' | 'z';
+    const other = axis === 'x' ? 'z' : 'x';
+    const target = typeof step.to === 'number' ? step.to
+      : route.to === drainId ? drainMoved[axis] : basePts[i][axis];
+    assert.ok(Math.abs(movedPts[i][axis] - target) <= TOL,
+      `${what} 第 ${i + 1} 点 ${axis} 须为该步声明目标 ${target}`);
+    assert.ok(Math.abs(movedPts[i][other] - movedPts[i - 1][other]) <= TOL,
+      `${what} 第 ${i + 1} 点 ${other} 须与前一点同（正交）`);
   }
 }
 
@@ -92,36 +225,32 @@ function planLength(points: ReadonlyArray<{ x: number; z: number }>): number {
   return points.slice(1).reduce((sum, point, index) => sum + Math.hypot(point.x - points[index].x, point.z - points[index].z), 0);
 }
 
-test('C1：10 条迁移路由逐点等价 vs merge-base 基线（容差 0.005m），末点为派生终端复点', () => {
+test('C1：10 条迁移路由满足持续不变式（端点/1% 坡/正交/点数/末点为派生终端复点）', () => {
   const report = resolveMepRoutes(project, realSources);
   assert.equal(report.unresolved, 0);
   for (const id of MIGRATED_IDS) {
     const route = project.routes.find((item) => item.id === id)!;
     const entry = report.routes.find((item) => item.route.id === id)!;
-    assert.deepEqual(entry.unresolved, [], `${id} must resolve`);
     // 迁移形态：全 slope_run 步、to_height 已删（终端标高由末步落点派生）。
     assert.ok(route.via.length > 0 && route.via.every((step) => !('x' in step) && step.kind === 'slope_run'),
       `${id}: via must be all slope_run, got ${JSON.stringify(route.via)}`);
     assert.equal(route.to_height, undefined, `${id}: to_height must be deleted (terminal height derives from the last slope_run landing)`);
-    // 解算点 = 基线点 + 末尾一个与末步落点重合的派生终端点（与 slope_run 合成测试同口径）。
-    assert.equal(entry.points.length, BASELINE[id].length + 1, `${id}: point count`);
-    assertPointsClose(entry.points.slice(0, -1), BASELINE[id], id);
-    const [landing, terminal] = entry.points.slice(-2);
-    assert.deepEqual([terminal.x, terminal.y, terminal.z], [landing.x, landing.y, landing.z],
-      `${id}: terminal point must duplicate the last slope_run landing`);
-    assert.ok(Math.abs(planLength(entry.points) - planLength(BASELINE[id].map(([x, , z]) => ({ x, z })))) <= 1e-9,
-      `${id}: plan length must not change`);
+    assertDrainRouteInvariants(entry, project, id);
   }
 });
 
-test('C1：客卫支管越过终点的 z=3.25 折回段原样保留，终端派生 0.0165m', () => {
+test('C1：客卫支管越过终点的折回段原样保留，终端标高由 1% 坡派生', () => {
+  const route = project.routes.find((item) => item.id === 'drain-guest-bath')!;
   const entry = resolveMepRoutes(project, realSources).routes.find((item) => item.route.id === 'drain-guest-bath')!;
   assert.deepEqual(entry.unresolved, []);
-  // via 第 2 步仍冲到 z=3.25 再折回 z=3.05，不得“修顺”。
-  assert.ok(Math.abs(entry.viaPoints[1].z - 3.25) <= 1e-9, `overshoot corner z ${entry.viaPoints[1].z} !== 3.25`);
-  // 0.028 − 0.01×(0.15+0.80+0.20) = 0.0165（旧 to_height 0.02，差 0.0035m，在容差内）。
+  // via 第 2 步仍冲到其声明 z 再折回终点 z，不得“修顺”：拐点 z 须为该步声明 to。
+  const overshoot = (route.via as Array<{ kind?: string; to?: unknown }>)[1]!.to;
+  assert.ok(typeof overshoot === 'number', 'drain-guest-bath 第 2 步须声明数字 overshoot z');
+  assert.ok(Math.abs(entry.viaPoints[1].z - overshoot) <= TOL, `overshoot corner z ${entry.viaPoints[1].z} !== 声明值 ${overshoot}`);
+  // 终端标高 = from_height − 坡度×行程（旧 to_height 0.02 已删，差值在容差内）。
   const terminal = entry.points[entry.points.length - 1];
-  assert.ok(Math.abs(terminal.y! - 0.0165) <= 1e-9, `terminal y ${terminal.y} !== 0.0165`);
+  assert.ok(Math.abs(terminal.y! - (route.from_height! - route.slope! * planLength(entry.points))) <= TOL,
+    `terminal y ${terminal.y} 须为 from_height − 坡度×行程`);
 });
 
 test('留绝对钉死：3 条带 via 路由坡度链与 1% 派生差超容差，不得强行 slope_run', () => {
@@ -165,22 +294,15 @@ function sourcesWithMovedPlumbing(id: string, dx: number, dz: number): MepEndpoi
 test('C2：主卫干区地漏东移 0.20m，三条相关路由跟随、其余 14 条不动；复原则逐字节恢复', () => {
   const baseline = routePoints(resolveMepRoutes(project, realSources));
   const moved = routePoints(resolveMepRoutes(project, sourcesWithMovedPlumbing('drain_mbath_floor', 0.20, 0)));
-  const followers: Record<string, { firstX: number; terminal: [number, number, number] }> = {
-    // 终端/起点跟随地漏东移；行程各 +0.20m，1% 坡使标高各 −0.002m。
-    // drain-master-bath 的起点是淋浴地漏（不动），只有终端跟随。
-    'drain-master-bath': { firstX: 0.6, terminal: [2.2, 0.018, 1.15] },
-    'drain-mbath-floor-to-riser': { firstX: 2.2, terminal: [0.3, 0.018, 1.3] },
-    'drain-mbath-secondary-requirement': { firstX: 2.2, terminal: [1.4, 0.012, 1.15] },
-  };
-  for (const [id, expected] of Object.entries(followers)) {
-    const points = JSON.parse(moved[id]) as Array<{ x: number; y?: number; z: number }>;
-    assert.ok(Math.abs(points[0].x - expected.firstX) <= 1e-9, `${id}: first point x ${points[0].x} !== ${expected.firstX}`);
-    const terminal = points[points.length - 1];
-    const [x, y, z] = expected.terminal;
-    assert.ok(Math.abs(terminal.x - x) <= 1e-9 && Math.abs(terminal.y! - y) <= 1e-9 && Math.abs(terminal.z - z) <= 1e-9,
-      `${id}: terminal ${JSON.stringify(terminal)} !== (${x},${y},${z})`);
+  // 地漏基线位置从 plumbing 声明读，移动后位置 = 基线 + 本测试注入的位移。
+  // drain-master-bath 的起点是淋浴地漏（不动），只有终端跟随。
+  const drainBase = (plumbing as unknown as Array<{ id: string; x: number; z: number }>).find((p) => p.id === 'drain_mbath_floor')!;
+  const drainMoved = { x: drainBase.x + 0.20, z: drainBase.z };
+  const followers = ['drain-master-bath', 'drain-mbath-floor-to-riser', 'drain-mbath-secondary-requirement'];
+  for (const id of followers) {
+    assertFollowsMove(baseline[id], moved[id], project.routes.find((item) => item.id === id)!, 'drain_mbath_floor', drainMoved, id);
   }
-  for (const id of DRAIN_IDS.filter((item) => !(item in followers))) {
+  for (const id of DRAIN_IDS.filter((item) => !followers.includes(item))) {
     assert.equal(moved[id], baseline[id], `${id} must not move`);
   }
   const restored = routePoints(resolveMepRoutes(project, realSources));
@@ -190,18 +312,13 @@ test('C2：主卫干区地漏东移 0.20m，三条相关路由跟随、其余 14
 test('C2：客卫干区地漏北移 −0.20m，客卫支管与地漏支路跟随、其余不动；复原则逐字节恢复', () => {
   const baseline = routePoints(resolveMepRoutes(project, realSources));
   const moved = routePoints(resolveMepRoutes(project, sourcesWithMovedPlumbing('drain_gbath_floor', 0, -0.20)));
-  const guestBath = JSON.parse(moved['drain-guest-bath']) as Array<{ x: number; y?: number; z: number }>;
-  // 末步 z→'to' 落 (6.45,2.85)：0.028 − 0.01×(0.15+0.80+0.40) = 0.0145。
-  const guestTerminal = guestBath[guestBath.length - 1];
-  assert.ok(Math.abs(guestTerminal.x - 6.45) <= 1e-9 && Math.abs(guestTerminal.y! - 0.0145) <= 1e-9 && Math.abs(guestTerminal.z - 2.85) <= 1e-9,
-    `drain-guest-bath terminal ${JSON.stringify(guestTerminal)} !== (6.45,0.0145,2.85)`);
-  const floorRiser = JSON.parse(moved['drain-gbath-floor-to-riser']) as Array<{ x: number; y?: number; z: number }>;
-  assert.ok(Math.abs(floorRiser[0].z - 2.85) <= 1e-9, 'drain-gbath-floor-to-riser start must follow the floor drain north');
-  const floorTerminal = floorRiser[floorRiser.length - 1];
-  // 起点北移后 z 向行程 0.65m→0.45m：0.033 − 0.0065 − 0.0045 = 0.022。
-  assert.ok(Math.abs(floorTerminal.x - 5.8) <= 1e-9 && Math.abs(floorTerminal.y! - 0.022) <= 1e-9 && Math.abs(floorTerminal.z - 2.4) <= 1e-9,
-    `drain-gbath-floor-to-riser terminal ${JSON.stringify(floorTerminal)} !== (5.8,0.022,2.4)`);
-  for (const id of DRAIN_IDS.filter((item) => item !== 'drain-guest-bath' && item !== 'drain-gbath-floor-to-riser')) {
+  const drainBase = (plumbing as unknown as Array<{ id: string; x: number; z: number }>).find((p) => p.id === 'drain_gbath_floor')!;
+  const drainMoved = { x: drainBase.x, z: drainBase.z - 0.20 };
+  const followers = ['drain-guest-bath', 'drain-gbath-floor-to-riser'];
+  for (const id of followers) {
+    assertFollowsMove(baseline[id], moved[id], project.routes.find((item) => item.id === id)!, 'drain_gbath_floor', drainMoved, id);
+  }
+  for (const id of DRAIN_IDS.filter((item) => !followers.includes(item))) {
     assert.equal(moved[id], baseline[id], `${id} must not move`);
   }
   const restored = routePoints(resolveMepRoutes(project, realSources));

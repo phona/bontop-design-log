@@ -35,6 +35,12 @@ function gravity(id: string, from: { x: number; z: number; y: number }, to: { x:
   };
 }
 
+function planLength(points: ReadonlyArray<{ x: number; z: number }>): number {
+  let total = 0;
+  for (let i = 1; i < points.length; i += 1) total += Math.hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z);
+  return total;
+}
+
 test('same-layer condensate pipes that share a centerline still report a physical overlap', () => {
   const routes = [
     gravity('pipe-a', { x: 0, z: 0, y: 2 }, { x: 1, z: 0, y: 1.99 }),
@@ -146,11 +152,15 @@ test('R25 all-pump branches run 2.70m + 1% slope to the fixed guest-bath termina
   assert.equal(project.junctions.length, 0);
   const branchIds = ['condensate-master', 'condensate-living', 'condensate-dining', 'condensate-parent', 'condensate-child'];
   const resolved = resolveMepRoutes(project, sources).routes;
+  // 固定候选点声明位置（hvac.yaml condensate_living_candidate，2026-10-05 业主裁定改线）：
+  // 五条支管的终端平面须与之一致，标高由 1% 坡派生，不钉 (6.70,3.70) 字面。
+  const candidate = sources.hvacTerminals.find((t) => t.id === 'condensate_living_candidate')!.position!;
   for (const id of branchIds) {
     const entry = resolved.find((item) => item.route.id === id)!;
     assert.equal(entry.unresolved.length, 0, `${id} must resolve`);
     const route = entry.route;
     assert.equal(route.to, 'condensate_living_candidate');
+    // 2.70m 泵抬顶与 1% 坡为已裁定设计值（2026-11-13/14 全带泵重画；坡度≥1% 业界最佳实践），钉值保留。
     assert.equal(route.from_height, 2.70);
     assert.equal(route.slope, 0.01);
     assert.equal(route.route_kind, 'candidate');
@@ -159,8 +169,10 @@ test('R25 all-pump branches run 2.70m + 1% slope to the fixed guest-bath termina
     const points = entry.points;
     assert.equal(points[0].y, 2.70, `${id} starts at the pump-lift top`);
     const terminal = points[points.length - 1];
-    assert.equal(terminal.x, 6.70);
-    assert.equal(terminal.z, 3.70);
+    assert.ok(Math.abs(terminal.x - candidate.x) <= 1e-9 && Math.abs(terminal.z - candidate.z) <= 1e-9,
+      `${id} terminal 平面须为候选点声明位置 (${candidate.x},${candidate.z})`);
+    assert.ok(Math.abs(terminal.y! - (route.from_height - route.slope! * planLength(points))) <= 0.001,
+      `${id} terminal 标高须为 from_height − 坡度×行程`);
     for (let index = 1; index < points.length; index += 1) {
       const a = points[index - 1], b = points[index];
       const horizontal = Math.hypot(b.x - a.x, b.z - a.z);
@@ -171,10 +183,24 @@ test('R25 all-pump branches run 2.70m + 1% slope to the fixed guest-bath termina
       assert.ok(Math.abs(b.x - a.x) < 1e-9 || Math.abs(b.z - a.z) < 1e-9, `${id} segment ${index} is not orthogonal in plan`);
     }
   }
-  // DN32 主管：from 由节点 id 改内联坐标，解出折线与旧几何逐点相同，仍按现路由作废。
+  // DN32 主管：from 由节点 id 改内联坐标；折线由声明派生（起点=from+from_height，
+  // 中点=from 处竖降至末段坡度起算高，末点=候选点声明位置），不与旧几何逐点对照。
   const trunk = resolved.find((item) => item.route.id === 'condensate-living-dining-trunk')!;
-  assert.deepEqual(trunk.route.from, { x: 6.8, z: 3.7 });
-  assert.deepEqual(trunk.points.map((p) => [p.x, p.y, p.z]), [[6.8, 2.435, 3.7], [6.8, 0.101, 3.7], [6.7, 0.1, 3.7]]);
+  assert.ok(typeof trunk.route.from === 'object' && trunk.route.from !== null, 'trunk from 须为内联坐标（节点 id 已删）');
+  assert.equal(trunk.route.to, 'condensate_living_candidate');
+  const trunkFrom = trunk.route.from as { x: number; z: number };
+  const trunkPoints = trunk.points;
+  assert.equal(trunkPoints.length, 3, 'trunk 须为 from→竖降落点→候选点三点');
+  assert.ok(Math.abs(trunkPoints[0].x - trunkFrom.x) <= 1e-9 && Math.abs(trunkPoints[0].z - trunkFrom.z) <= 1e-9, 'trunk 起点平面须为 from');
+  assert.ok(Math.abs(trunkPoints[0].y! - trunk.route.from_height!) <= 1e-9, 'trunk 起点标高须为 from_height');
+  const trunkTerminal = trunkPoints[trunkPoints.length - 1];
+  assert.ok(Math.abs(trunkTerminal.x - candidate.x) <= 1e-9 && Math.abs(trunkTerminal.z - candidate.z) <= 1e-9,
+    `trunk 末点平面须为候选点声明位置 (${candidate.x},${candidate.z})`);
+  assert.ok(Math.abs(trunkTerminal.y! - (candidate.y ?? trunk.route.to_height)) <= 1e-9, 'trunk 末点标高须为候选点声明高度');
+  // 中点与起点同平面（from 处竖降），末段按 1% 坡起算：中点 y = 末点 y + 坡度×末段水平行程。
+  assert.ok(Math.abs(trunkPoints[1].x - trunkFrom.x) <= 1e-9 && Math.abs(trunkPoints[1].z - trunkFrom.z) <= 1e-9, 'trunk 中点须与起点同平面（竖降段）');
+  const trunkLastRun = Math.hypot(trunkTerminal.x - trunkPoints[1].x, trunkTerminal.z - trunkPoints[1].z);
+  assert.ok(Math.abs(trunkPoints[1].y! - (trunkTerminal.y! + trunk.route.slope! * trunkLastRun)) <= 0.001, 'trunk 中点标高须为末段 1% 坡起算高');
   // 东南客房（condensate-study）终端待定，本批不动：仍为旧绝对重力路由。
   const study = resolved.find((item) => item.route.id === 'condensate-study')!;
   assert.equal(study.route.to, 'condensate_study_candidate');

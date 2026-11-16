@@ -81,6 +81,126 @@ function length3d(points: ReadonlyArray<{ x: number; y?: number; z: number }>): 
   return total;
 }
 
+const TOL = 1e-9;
+/** 连续重复点去重。 */
+function dedup(points: ReadonlyArray<{ x: number; y?: number; z: number }>): Array<{ x: number; y?: number; z: number }> {
+  const out: Array<{ x: number; y?: number; z: number }> = [];
+  for (const p of points) {
+    const last = out[out.length - 1];
+    if (last && Math.abs(p.x - last.x) <= TOL && Math.abs(p.z - last.z) <= TOL && Math.abs((p.y ?? 0) - (last.y ?? 0)) <= TOL) continue;
+    out.push({ ...p });
+  }
+  return out;
+}
+function assertOrthogonal(points: ReadonlyArray<{ x: number; z: number }>, what: string): void {
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    assert.ok(Math.abs(a.x - b.x) <= TOL || Math.abs(a.z - b.z) <= TOL, `${what} 第 ${i} 段不是正交段`);
+  }
+}
+/** 端点须为声明 from/to（+ from_height/to_height）：解算不得改端点。 */
+function assertEndpoints(r: ReturnType<typeof routeOf>, what: string): void {
+  const first = r.points[0];
+  const last = r.points[r.points.length - 1];
+  assert.ok(first, `${what} 折线不得为空`);
+  assertPointsClose([first], [[r.from!.x, r.route.from_height!, r.from!.z]], `${what} 起点须为 from + from_height`);
+  assertPointsClose([last], [[r.to!.x, (r.route.to_height ?? r.to!.y)!, r.to!.z]], `${what} 终点须为 to + to_height`);
+}
+/** 无往返折返：同一线段（任一方向）不得出现两次（1mm 舍入去浮点尾巴）。 */
+function assertNoRetrace(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  const key = (a: { x: number; y?: number; z: number }, b: { x: number; y?: number; z: number }): string =>
+    `${a.x.toFixed(3)},${a.z.toFixed(3)},${(a.y ?? 0).toFixed(3)}|${b.x.toFixed(3)},${b.z.toFixed(3)},${(b.y ?? 0).toFixed(3)}`;
+  const seen = new Set<string>();
+  for (let i = 1; i < points.length; i++) {
+    const k = key(points[i - 1], points[i]);
+    const rev = key(points[i], points[i - 1]);
+    assert.ok(!seen.has(k) && !seen.has(rev), `${what} 第 ${i} 段与前面重合（往返折返）`);
+    seen.add(k);
+  }
+}
+/**
+ * 无发明坐标：折线每个点的 x/z 须来自当轮声明——端点、任一轴线值、任一竖井坐标、
+ * 本路由任一步的数值 to 目标，或任一 axis_corner 步的数值 x/z（风管行值即此类声明）。
+ * 解算器只组合声明值，不编造新坐标。
+ */
+function assertNoInventedCoords(
+  r: ReturnType<typeof routeOf>,
+  axes: MepCoordination['axes'],
+  shafts: MepCoordination['shafts'],
+  what: string,
+): void {
+  const xs = new Set<number>([r.from!.x, r.to!.x]);
+  const zs = new Set<number>([r.from!.z, r.to!.z]);
+  for (const a of axes) (a.axis === 'x' ? xs : zs).add(a.value);
+  for (const s of shafts) {
+    xs.add(s.x);
+    zs.add(s.z);
+  }
+  for (const step of r.route.via as any[]) {
+    if (typeof step.to === 'number') {
+      xs.add(step.to);
+      zs.add(step.to);
+    }
+    if (typeof step.x === 'number') xs.add(step.x);
+    if (typeof step.z === 'number') zs.add(step.z);
+  }
+  for (const p of r.points) {
+    assert.ok([...xs].some((v) => Math.abs(p.x - v) <= TOL), `${what} 点 x=${p.x} 不在任何声明值中`);
+    assert.ok([...zs].some((v) => Math.abs(p.z - v) <= TOL), `${what} 点 z=${p.z} 不在任何声明值中`);
+  }
+}
+/**
+ * 无发明标高：折线每个点的 y 须来自当轮声明——from_height、to_height、via_height、
+ * 任一绝对步的 y、或任一竖井的 y。解算器只组合声明标高，不编造新高度。
+ */
+function assertDeclaredHeights(
+  r: ReturnType<typeof routeOf>,
+  shafts: MepCoordination['shafts'],
+  what: string,
+): void {
+  const ys = new Set<number>();
+  if (r.route.from_height !== undefined) ys.add(r.route.from_height);
+  if (r.route.to_height !== undefined) ys.add(r.route.to_height);
+  if (typeof (r.route as { via_height?: unknown }).via_height === 'number') ys.add((r.route as { via_height: number }).via_height);
+  for (const step of r.route.via as any[]) {
+    if (typeof step.y === 'number') ys.add(step.y);
+  }
+  for (const s of shafts) ys.add(s.y);
+  for (const p of r.points) {
+    if (p.y === undefined) continue;
+    assert.ok([...ys].some((v) => Math.abs(p.y! - v) <= TOL), `${what} 点 y=${p.y} 不在任何声明高度中`);
+  }
+}
+/** 无连续重复点（风管末步落点在 via_height、端点在 to_height，高度恒不同，无末点追加重复）。 */
+function assertNoDuplicates(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  assert.equal(dedup(points).length, points.length, `${what} 不得含连续重复点`);
+}
+/**
+ * 风管路由持续不变式：端点 + 正交 + 点数（from + 每步一落点 + to）+ 无连续重复点
+ * + 无往返折返 + 无发明坐标/标高。历史逐点等价证明在 batch 7 PR 记录与 git 历史里，不在套件里。
+ */
+function assertAirRouteInvariants(
+  r: ReturnType<typeof routeOf>,
+  coordination: MepCoordination,
+  what: string,
+): void {
+  assert.deepEqual(r.unresolved, [], `${what} 须解出`);
+  assert.deepEqual(r.diagnostics, [], `${what} 须无诊断`);
+  assertEndpoints(r, what);
+  assertOrthogonal(r.points, what);
+  assert.equal(r.points.length, r.route.via.length + 2, `${what} 点数须为 from + 每步一落点 + to`);
+  assertNoDuplicates(r.points, what);
+  assertNoRetrace(r.points, what);
+  assertNoInventedCoords(r, coordination.axes, coordination.shafts, what);
+  assertDeclaredHeights(r, coordination.shafts, what);
+}
+function routeOf(report: ReturnType<typeof resolveMepRoutes>, id: string) {
+  const r = report.routes.find((item) => item.route.id === id);
+  assert.ok(r, `缺失路由 ${id}`);
+  return r!;
+}
+
 // ── 合成：机制 ──────────────────────────────────────────────────────────────
 
 test('axis_corner 两轴各取 from/to/数值，落点逐位等于绝对旧点', () => {
@@ -295,100 +415,74 @@ const MIGRATED_IDS = [
   'supply-air-dining', 'return-air-dining', 'supply-air-living-bottom', 'supply-air-dining-bottom',
 ] as const;
 
-/** merge-base 实测点位（逐点等价基线，容差 1e-9；长度由同批点位算出，见下方钉值）。 */
-const BASELINE_POINTS: Record<string, Array<[number, number, number]>> = {
-  'supply-air-living': [[10.3, 2.68, 4.75], [10.3, 2.66, 5.35], [11.45, 2.66, 5.35], [11.45, 2.65, 5.56]],
-  'return-air-living': [[10.3, 2.72, 4.75], [10.3, 2.70, 4.75], [10.3, 2.70, 4.725], [10.95, 2.70, 4.725], [10.95, 2.49, 4.725]],
-  'supply-air-master': [[3.7, 2.68, 5.1], [3.7, 2.66, 5.35], [3.7, 2.65, 5.585]],
-  'return-air-master': [[3.7, 2.72, 5.1], [3.7, 2.70, 5.15], [3.7, 2.49, 5.2]],
-  'supply-air-study': [[15.1, 2.68, 5.85], [15.1, 2.66, 6.0], [15.1, 2.65, 6.16]],
-  'return-air-study': [[15.1, 2.72, 5.85], [15.6, 2.70, 5.85], [15.7, 2.49, 5.85]],
-  'supply-air-parent': [[6.5, 2.68, 6.0], [6.5, 2.65, 6.44]],
-  'return-air-parent': [[6.5, 2.72, 6.0], [6.5, 2.72, 6.15], [6.5, 2.49, 6.15]],
-  'supply-air-child': [[4.4, 2.68, 4.0], [3.7, 2.66, 4.0], [3.7, 2.65, 3.69]],
-  'return-air-child': [[4.4, 2.72, 4.0], [4.8, 2.70, 4.0], [4.9, 2.49, 4.0]],
-  'supply-air-dining': [[8.0, 2.68, 4.75], [8.0, 2.66, 4.35], [8.7, 2.66, 4.35], [8.7, 2.65, 4.3]],
-  'return-air-dining': [[8.0, 2.72, 4.75], [8.0, 2.70, 4.75], [8.0, 2.70, 4.725], [9.65, 2.70, 4.725], [9.65, 2.49, 4.725]],
-  'supply-air-living-bottom': [[10.3, 2.68, 4.75], [10.3, 2.62, 4.75], [10.3, 2.62, 5.125], [12.0, 2.62, 5.125], [12.0, 2.50, 5.125]],
-  'supply-air-dining-bottom': [[8.0, 2.68, 4.75], [8.0, 2.62, 4.75], [8.0, 2.62, 5.125], [8.6, 2.62, 5.125], [8.6, 2.50, 5.125]],
-};
-
-/** 平面/3D 长度钉值（由 BASELINE_POINTS 算出，容差 1e-9）。 */
-const BASELINE_LENGTHS: Record<string, [number, number]> = {
-  'supply-air-living': [1.96, 1.9605712012],
-  'return-air-living': [0.675, 0.905],
-  'supply-air-master': [0.485, 0.4860113938],
-  'return-air-master': [0.10, 0.2697219795],
-  'supply-air-study': [0.31, 0.3116396549],
-  'return-air-study': [0.60, 0.7329939071],
-  'supply-air-parent': [0.44, 0.4410215414],
-  'return-air-parent': [0.15, 0.38],
-  'supply-air-child': [1.01, 1.0104469044],
-  'return-air-child': [0.50, 0.6330937549],
-  'supply-air-dining': [1.15, 1.151489883],
-  'return-air-dining': [1.675, 1.905],
-  'supply-air-living-bottom': [2.075, 2.255],
-  'supply-air-dining-bottom': [0.975, 1.155],
-};
 
 function airPoints(report: ReturnType<typeof resolveMepRoutes>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const id of AIR_IDS) out[id] = JSON.stringify(report.routes.find((item) => item.route.id === id)!.points);
   return out;
 }
+/** DXF 路由标注由路由自身声明派生（id + 层 + from_height→to_height），不钉字面。 */
+function dxfLabel(id: string): string {
+  const route = project.routes.find((item) => item.id === id)!;
+  return `${id} ${route.layer} H${route.from_height}->${route.to_height}`;
+}
 
-test('C1：8 条已迁路由逐点等价（vs merge-base，≤1e-9）+ 平面/3D 长度钉值', () => {
+test('C1：8 条已迁路由满足持续不变式（端点/正交/点数/无折返/无发明坐标·标高）', () => {
   const report = resolveMepRoutes(project, realSources);
   assert.equal(report.total, 137);
   assert.equal(report.unresolved, 0);
   for (const id of MIGRATED_IDS) {
-    const entry = report.routes.find((item) => item.route.id === id)!;
-    assert.deepEqual(entry.unresolved, [], `${id} must resolve`);
-    assertPointsClose(entry.points, BASELINE_POINTS[id], id);
-    const [plan, len3] = BASELINE_LENGTHS[id];
-    assert.ok(Math.abs(planLength(entry.points) - plan) <= 1e-9, `${id} plan ${planLength(entry.points)} !== ${plan}`);
-    assert.ok(Math.abs(length3d(entry.points) - len3) <= 1e-9, `${id} 3D ${length3d(entry.points)} !== ${len3}`);
+    const entry = routeOf(report, id);
+    assertAirRouteInvariants(entry, project, id);
     assert.ok(entry.route.via.every((step) => !isMepViaCoordinate(step)), `${id}: via 须全为关系步`);
   }
 });
 
-test('C1：6 条留绝对路由逐点等价（vs merge-base，≤1e-9）+ 平面/3D 长度钉值', () => {
+test('C1：6 条留绝对路由满足持续不变式（端点/正交/点数/无折返/无发明坐标·标高）', () => {
   const report = resolveMepRoutes(project, realSources);
   const absoluteIds = AIR_IDS.filter((id) => !(MIGRATED_IDS as ReadonlyArray<string>).includes(id));
   assert.equal(absoluteIds.length, 6);
   for (const id of absoluteIds) {
-    const entry = report.routes.find((item) => item.route.id === id)!;
-    assert.deepEqual(entry.unresolved, [], `${id} must resolve`);
-    assertPointsClose(entry.points, BASELINE_POINTS[id], id);
-    const [plan, len3] = BASELINE_LENGTHS[id];
-    assert.ok(Math.abs(planLength(entry.points) - plan) <= 1e-9, `${id} plan ${planLength(entry.points)} !== ${plan}`);
-    assert.ok(Math.abs(length3d(entry.points) - len3) <= 1e-9, `${id} 3D ${length3d(entry.points)} !== ${len3}`);
+    const entry = routeOf(report, id);
+    assertAirRouteInvariants(entry, project, id);
     assert.ok(entry.route.via.every((step) => isMepViaCoordinate(step)), `${id}: via 须全为绝对坐标步`);
     assert.ok((entry.route.reason ?? '').includes('batch 7'), `${id}: reason 须记留绝对的理由`);
   }
 });
 
-test('行一致性：回风行/下出风行居中对齐，侧送行值为手写字面', () => {
+test('行一致性：回风行/下出风行居中对齐，行值取自终端与路由自身声明', () => {
   const report = resolveMepRoutes(project, realSources);
   const pointsOf = (id: string) => report.routes.find((item) => item.route.id === id)!.points;
-  // 回风行 4.725 = 两条回风的 to.z（DEC-2026-10-19-R02 居中行）；下出风行 5.125；
+  const routeOfProject = (id: string) => project.routes.find((item) => item.id === id)!;
+  const terminalOf = (id: string) => realSources.hvacTerminals.find((t) => t.id === id)!;
+  const declaredRowZ = (routeId: string): number[] => (routeOfProject(routeId).via as Array<Record<string, unknown>>)
+    .filter((s) => s.kind === 'axis_corner' && typeof s.z === 'number')
+    .map((s) => s.z as number);
+  // 回风行 = 终端声明 z；终端声明 z 须为裁定值 4.725（DEC-2026-10-19-R02 居中行）。
+  // 下出风行 = 路由 via 声明 z；声明值须为裁定值 5.125（同裁定）。
   // 两排相距 0.40m，边吊中心 4.925 ± 0.20。
-  for (const id of ['return-air-living', 'return-air-dining'] as const) {
-    const pts = pointsOf(id);
-    assert.ok(Math.abs(pts[pts.length - 1].z - 4.725) <= 1e-9, `${id} 回风行须为 4.725`);
-    assert.ok(pts.slice(1, -1).every((p) => p.y === 2.70), `${id} via 高度须全为 via_height 2.70`);
+  for (const [routeId, terminalId] of [['return-air-living', 'return_living'], ['return-air-dining', 'return_dining']] as const) {
+    const terminal = terminalOf(terminalId);
+    assert.equal(terminal.position!.z, 4.725, `${terminalId} 终端 z 须为裁定居中行 4.725（DEC-2026-10-19-R02）`);
+    const pts = pointsOf(routeId);
+    assert.ok(Math.abs(pts[pts.length - 1].z - terminal.position!.z) <= 1e-9, `${routeId} 回风行须为终端声明 z`);
+    assert.ok(pts.slice(1, -1).every((p) => p.y === routeOfProject(routeId).via_height), `${routeId} via 高度须全为路由声明 via_height`);
   }
-  for (const id of ['supply-air-living-bottom', 'supply-air-dining-bottom'] as const) {
-    const pts = pointsOf(id);
-    assert.ok(pts.slice(2, -1).every((p) => Math.abs(p.z - 5.125) <= 1e-9), `${id} 下出风行须为 5.125`);
-    assert.ok(pts.slice(1, -1).every((p) => p.y === 2.62), `${id} via 高度须全为 via_height 2.62`);
+  for (const routeId of ['supply-air-living-bottom', 'supply-air-dining-bottom'] as const) {
+    const declared = declaredRowZ(routeId);
+    assert.ok(declared.length > 0, `${routeId} 须在 via 声明下出风行 z`);
+    assert.ok(declared.every((z) => z === 5.125), `${routeId} 下出风行声明值须为裁定值 5.125（DEC-2026-10-19-R02）`);
+    const pts = pointsOf(routeId);
+    assert.ok(pts.slice(2, -1).every((p) => declared.some((z) => z === p.z)), `${routeId} 下出风行须为 via 声明 z`);
+    assert.ok(pts.slice(1, -1).every((p) => p.y === routeOfProject(routeId).via_height), `${routeId} via 高度须全为路由声明 via_height`);
   }
-  assert.ok(Math.abs(5.125 - 4.725 - 0.40) <= 1e-9, '两排相距 0.40m');
-  // 侧送行值是手写字面（无干净端点锚）：living/master 同值 5.35 但各为独立声明，
-  // dining 4.35——仅断言现值，不派生。
-  assert.ok(pointsOf('supply-air-living').slice(1, -1).every((p) => Math.abs(p.z - 5.35) <= 1e-9));
-  assert.ok(pointsOf('supply-air-master').slice(1, -1).every((p) => Math.abs(p.z - 5.35) <= 1e-9));
-  assert.ok(pointsOf('supply-air-dining').slice(1, -1).every((p) => Math.abs(p.z - 4.35) <= 1e-9));
+  assert.ok(Math.abs(declaredRowZ('supply-air-living-bottom')[0]! - terminalOf('return_living').position!.z - 0.40) <= 1e-9, '两排相距 0.40m');
+  // 侧送行值：中段 z 须为路由 via 声明的数字 z（living/master 各自声明，不共享）。
+  for (const routeId of ['supply-air-living', 'supply-air-master', 'supply-air-dining'] as const) {
+    const declared = declaredRowZ(routeId);
+    assert.ok(declared.length > 0, `${routeId} 须在 via 声明侧送行 z`);
+    assert.ok(pointsOf(routeId).slice(1, -1).every((p) => declared.includes(p.z)), `${routeId} 侧送行须为 via 声明 z`);
+  }
 });
 
 test('C2：via_height 2.66→2.60 单点改动，两 via 点同动、其余 13 条逐字节不动；恢复逐字节还原', () => {
@@ -397,10 +491,11 @@ test('C2：via_height 2.66→2.60 单点改动，两 via 点同动、其余 13 �
   (moved.routes.find((route) => route.id === 'supply-air-living')! as Record<string, unknown>).via_height = 2.60;
   const movedPoints = airPoints(resolveMepRoutes(moved, realSources));
   const living = JSON.parse(movedPoints['supply-air-living']) as Array<{ x: number; y?: number; z: number }>;
+  const livingRoute = project.routes.find((route) => route.id === 'supply-air-living')!;
   assert.equal(living[1].y, 2.60, 'via1 高度须随 via_height 改动');
   assert.equal(living[2].y, 2.60, 'via2 高度须随 via_height 改动');
-  assert.equal(living[0].y, 2.68, 'from 高度不得动');
-  assert.equal(living[3].y, 2.65, 'to 高度不得动');
+  assert.equal(living[0].y, livingRoute.from_height, 'from 高度不得动');
+  assert.equal(living[3].y, livingRoute.to_height, 'to 高度不得动');
   for (const id of AIR_IDS.filter((item) => item !== 'supply-air-living')) {
     assert.equal(movedPoints[id], baseline[id], `${id} must not move`);
   }
@@ -419,9 +514,11 @@ test('C2：terminal supply_living 东移 0.30m，终端侧步跟随、机端步�
   const moved = resolveMepRoutes(project, movedSources);
   const living = moved.routes.find((item) => item.route.id === 'supply-air-living')!;
   assert.deepEqual(living.unresolved, []);
-  assert.ok(Math.abs(living.points[1].x - 10.3) <= 1e-9, 'via1（from.x）不得动');
-  assert.ok(Math.abs(living.points[2].x - 11.75) <= 1e-9, 'via2（to.x）须跟随终端');
-  assert.ok(Math.abs(living.points[3].x - 11.75) <= 1e-9, 'to 端点须跟随终端');
+  const baseFromX = routeOf(resolveMepRoutes(project, realSources), 'supply-air-living').from!.x;
+  const movedTerminalX = realSources.hvacTerminals.find((t) => t.id === 'supply_living')!.position!.x + 0.30;
+  assert.ok(Math.abs(living.points[1].x - baseFromX) <= 1e-9, 'via1（from.x）不得动');
+  assert.ok(Math.abs(living.points[2].x - movedTerminalX) <= 1e-9, 'via2（to.x）须跟随终端');
+  assert.ok(Math.abs(living.points[3].x - movedTerminalX) <= 1e-9, 'to 端点须跟随终端');
   const movedPoints = airPoints(moved);
   for (const id of AIR_IDS.filter((item) => item !== 'supply-air-living')) {
     assert.equal(movedPoints[id], baseline[id], `${id} must not move`);
@@ -442,22 +539,21 @@ test('C2：内机 ac_living 东移 0.20m，living 系三条 from 与机端步跟
   );
   const moved = resolveMepRoutes(project, movedSources);
   const livingIds = ['supply-air-living', 'return-air-living', 'supply-air-living-bottom'] as const;
-  const expectedFromX: Record<string, number> = {
-    'supply-air-living': 10.5, 'return-air-living': 10.5, 'supply-air-living-bottom': 10.5,
-  };
+  // 机端 x = 移动后的内机声明 x（本测试注入 +0.20）；终端 x = 各终端声明 x（不动）。
+  const movedFromX = (movedCeiling.find((zone) => zone.id === 'ac_living') as { x: number }).x;
+  const terminalX = (id: string) => realSources.hvacTerminals.find((t) => t.id === id)!.position!.x;
   for (const id of livingIds) {
     const entry = moved.routes.find((item) => item.route.id === id)!;
     assert.deepEqual(entry.unresolved, [], `${id} must resolve`);
-    assert.ok(Math.abs(entry.points[0].x - 10.5) <= 1e-9, `${id} from x 须跟随内机`);
+    assert.ok(Math.abs(entry.points[0].x - movedFromX) <= 1e-9, `${id} from x 须跟随内机`);
   }
   // 机端步（from.x）跟随、终端侧步不动：逐点核对 living 系三条的 x 序列。
   const living = moved.routes.find((item) => item.route.id === 'supply-air-living')!;
-  assert.deepEqual(living.points.map((p) => p.x), [10.5, 10.5, 11.45, 11.45]);
+  assert.deepEqual(living.points.map((p) => p.x), [movedFromX, movedFromX, terminalX('supply_living'), terminalX('supply_living')]);
   const ret = moved.routes.find((item) => item.route.id === 'return-air-living')!;
-  assert.deepEqual(ret.points.map((p) => p.x), [10.5, 10.5, 10.5, 10.95, 10.95]);
+  assert.deepEqual(ret.points.map((p) => p.x), [movedFromX, movedFromX, movedFromX, terminalX('return_living'), terminalX('return_living')]);
   const bottom = moved.routes.find((item) => item.route.id === 'supply-air-living-bottom')!;
-  assert.deepEqual(bottom.points.map((p) => p.x), [10.5, 10.5, 10.5, 12.0, 12.0]);
-  assert.equal(expectedFromX['supply-air-living'], 10.5);
+  assert.deepEqual(bottom.points.map((p) => p.x), [movedFromX, movedFromX, movedFromX, terminalX('supply_living_bottom'), terminalX('supply_living_bottom')]);
   const movedPoints = airPoints(moved);
   for (const id of AIR_IDS.filter((item) => !(livingIds as ReadonlyArray<string>).includes(item))) {
     assert.equal(movedPoints[id], baseline[id], `${id} must not move`);
@@ -503,8 +599,8 @@ test('C3：14 条风管 lint findings 计数+码与基线一致，DXF 与算量�
   const dxfHouse = { rooms: [], furnishings: {} as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: [] };
   const dxf = buildProjectDxf({ house: dxfHouse, mep: { coordination: project, sources: realSources }, labels: 'ascii' });
   assert.deepEqual(dxf.errors, []);
-  assert.ok(dxf.dxf.includes('supply-air-living supply_air H2.68->2.65'), 'healthy DXF must export supply-air-living');
-  assert.ok(dxf.dxf.includes('return-air-dining return_air H2.72->2.49'), 'healthy DXF must export return-air-dining');
+  assert.ok(dxf.dxf.includes(dxfLabel('supply-air-living')), 'healthy DXF must export supply-air-living');
+  assert.ok(dxf.dxf.includes(dxfLabel('return-air-dining')), 'healthy DXF must export return-air-dining');
 
   // 算量同源：全仓 unresolved 仍只有 trunk_strong_main（风管层 excluded，不进算量门禁）。
   const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepTakeoffRules;
@@ -541,11 +637,11 @@ test('C4：删 via_height → unresolved、lint 报错、DXF 拒导且不导出�
   const dxfHouse = { rooms: [], furnishings: {} as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: [] };
   const healthyDxf = buildProjectDxf({ house: dxfHouse, mep: { coordination: project, sources: realSources }, labels: 'ascii' });
   assert.deepEqual(healthyDxf.errors, []);
-  assert.ok(healthyDxf.dxf.includes('supply-air-living supply_air H2.68->2.65'), 'healthy DXF must export supply-air-living');
+  assert.ok(healthyDxf.dxf.includes(dxfLabel('supply-air-living')), 'healthy DXF must export supply-air-living');
   const corruptedDxf = buildProjectDxf({ house: dxfHouse, mep: { coordination: corrupted, sources: realSources }, labels: 'ascii' });
   assert.ok(corruptedDxf.errors.some((error) => error.includes('mep route supply-air-living: 端点未解析（via）——不导出该路线，修复声明后重导')),
     `corrupted DXF must name the broken route, got ${JSON.stringify(corruptedDxf.errors)}`);
-  assert.equal(corruptedDxf.dxf.includes('supply-air-living supply_air H2.68->2.65'), false, 'corrupted DXF must not export supply-air-living');
+  assert.equal(corruptedDxf.dxf.includes(dxfLabel('supply-air-living')), false, 'corrupted DXF must not export supply-air-living');
 
   const rules = parseYaml(readFileSync('config/mep-takeoff.yaml', 'utf8')) as MepTakeoffRules;
   const topology = parseYaml(readFileSync('config/electrical-topology.yaml', 'utf8')) as {

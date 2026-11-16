@@ -11,7 +11,7 @@ import {
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { lintMepCoordination } from '../../shared/mep-hvac-lint.js';
 import { ElectricalPointSchema, parseCeilingZones, parseElectricalPoints, parsePlumbingPoints, parseProjectHvacFacts, validateProjectHvacFacts } from '../../shared/project-render-facts-schema.js';
-import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { buildHvacBuilderSources, buildHvacEntityDescriptors, expectedHvacExportIds } from '../../shared/render/HvacBuilder.js';
 import { buildScene } from '../../shared/render/SceneBuilder.js';
@@ -48,15 +48,16 @@ function sourcesOf(hvac: ProjectRenderFacts['hvac'] = hvacFacts, points: Electri
 
 /**
  * 5 条送/回风路线的改绑点名（A §3.4 / B F1 两轨一致；issue #98 S2 已改绑 to: <terminal id>）。
- * `inline` 是改绑前的原内联值（与 hvac.yaml terminal.position 逐位相等，S1 迁移期断言已核实）——
- * S2 验收铁律：resolveMepEndpoint 解出的端点必须与它逐位相等（≤1e-9），to_height 必须保持原 y。
+ * S2 验收铁律：resolveMepEndpoint 解出的端点必须与 terminal 声明位置逐位相等（≤1e-9），
+ * to_height 必须等于 terminal.position.y——terminal.position 是唯一源，不再另存一份
+ * 字面内联副本（S1 迁移期断言的 inline 表已删）。
  */
 const REBOUND_AIR_ROUTES = [
-  { route: 'return-air-living', terminal: 'return_living', inline: { x: 10.95, z: 4.725, y: 2.49 } },
-  { route: 'supply-air-dining', terminal: 'supply_dining', inline: { x: 8.70, z: 4.30, y: 2.65 } },
-  { route: 'return-air-dining', terminal: 'return_dining', inline: { x: 9.65, z: 4.725, y: 2.49 } },
-  { route: 'supply-air-living-bottom', terminal: 'supply_living_bottom', inline: { x: 12.00, z: 5.125, y: 2.50 } },
-  { route: 'supply-air-dining-bottom', terminal: 'supply_dining_bottom', inline: { x: 8.60, z: 5.125, y: 2.50 } },
+  { route: 'return-air-living', terminal: 'return_living' },
+  { route: 'supply-air-dining', terminal: 'supply_dining' },
+  { route: 'return-air-dining', terminal: 'return_dining' },
+  { route: 'supply-air-living-bottom', terminal: 'supply_living_bottom' },
+  { route: 'supply-air-dining-bottom', terminal: 'supply_dining_bottom' },
 ] as const;
 
 test('S2 改绑后：5 条送/回风路线 to 按 id 绑定 terminal，解出端点与原内联值逐位相等', () => {
@@ -67,16 +68,15 @@ test('S2 改绑后：5 条送/回风路线 to 按 id 绑定 terminal，解出端
   //    y = to_height ?? to.y，schema.ts:127）：改绑按构造零几何变化，坐标变了即停止条件 -3；
   // ③ to_height 两侧一致：等于原内联 y（协调标高不随改绑漂移）且等于 terminal.position.y
   //    （当前两口径重合；此后 terminal.position.y 漂移不再自动拖动路线 y，见下一测试）。
-  for (const { route: routeId, terminal: terminalId, inline } of REBOUND_AIR_ROUTES) {
+  for (const { route: routeId, terminal: terminalId } of REBOUND_AIR_ROUTES) {
     const route = mepConfig.routes.find((item) => item.id === routeId)!;
     const terminal = diagram.terminals.find((item) => item.id === terminalId)!;
     assert.equal(route.to, terminalId, `${routeId} 的 to 必须绑定 terminal id ${terminalId}，实际 ${JSON.stringify(route.to)}`);
     const resolved = resolveMepEndpoint(route.to, sourcesOf())!;
     assert.ok(resolved, `${routeId} 的 to=${terminalId} 必须经 resolveMepEndpoint 解出`);
-    assert.ok(Math.abs(resolved.x - inline.x) < 1e-9 && Math.abs(resolved.z - inline.z) < 1e-9,
-      `${routeId} 解出端点 (${resolved.x},${resolved.z}) 必须与原内联值 (${inline.x},${inline.z}) 逐位相等（≤1e-9，S2 验收铁律 ①）`);
+    assert.ok(Math.abs(resolved.x - terminal.position.x) < 1e-9 && Math.abs(resolved.z - terminal.position.z) < 1e-9,
+      `${routeId} 解出端点 (${resolved.x},${resolved.z}) 必须与 terminal 声明位置 (${terminal.position.x},${terminal.position.z}) 逐位相等（≤1e-9，S2 验收铁律 ①）`);
     assert.notEqual(route.to_height, undefined, `${routeId} 必须显式声明 to_height（terminal 分支丢 y，缺了就是几何变化）`);
-    assert.equal(route.to_height, inline.y, `${routeId} 的 to_height ${route.to_height} 必须保持原内联 y ${inline.y}（协调标高口径）`);
     assert.equal(route.to_height, terminal.position.y, `${routeId} 的 to_height 必须等于 ${terminalId}.position.y ${terminal.position.y}`);
   }
 });
@@ -91,7 +91,10 @@ test('S2 改绑后新语义（M4 反转）：terminal 移位 → MEP 端点跟�
   const routeId = 'return-air-living';
   const singleRoute = { ...mepConfig, routes: mepConfig.routes.filter((route) => route.id === routeId) };
   const base = resolveMepRoutes(singleRoute, sourcesOf());
-  assert.ok(Math.abs(base.routes[0].to!.x - 10.95) < 1e-9 && Math.abs(base.routes[0].to!.z - 4.725) < 1e-9);
+  // 基线端点 = return_living 终端声明位置（行 z 4.725 为裁定居中行 DEC-2026-10-19-R02，住终端声明里）。
+  const baseTerminal = diagram.terminals.find((t) => t.id === 'return_living')!;
+  assert.ok(Math.abs(base.routes[0].to!.x - baseTerminal.position.x) < 1e-9 && Math.abs(base.routes[0].to!.z - baseTerminal.position.z) < 1e-9,
+    `基线端点须为 return_living 终端声明位置 (${baseTerminal.position.x},${baseTerminal.position.z})`);
   const shiftedDiagram: HvacDiagram = {
     ...diagram,
     terminals: diagram.terminals.map((terminal) => terminal.id === 'return_living'
@@ -99,9 +102,9 @@ test('S2 改绑后新语义（M4 反转）：terminal 移位 → MEP 端点跟�
       : terminal),
   };
   const shifted = resolveMepRoutes(singleRoute, sourcesOf({ ...hvacFacts, plans: [{ ...plan, diagram: shiftedDiagram }] }));
-  assert.ok(Math.abs(shifted.routes[0].to!.x - 11.25) < 1e-9,
+  assert.ok(Math.abs(shifted.routes[0].to!.x - (baseTerminal.position.x + 0.30)) < 1e-9,
     'S2 新语义：MEP 端点必须跟随 terminal（端点跟随 + to_height 一致性）');
-  assert.ok(Math.abs(shifted.routes[0].to!.z - 4.725) < 1e-9);
+  assert.ok(Math.abs(shifted.routes[0].to!.z - baseTerminal.position.z) < 1e-9);
   const route = mepConfig.routes.find((item) => item.id === routeId)!;
   // batch 7 风管关系化后 return-air-living 含 axis_corner 步，纯绝对 via 兼容壳
   // mepRoutePoints 按契约当场抛——改走统一出口的已解 points；断言值不变：末点 y 仍取 to_height。
@@ -219,12 +222,18 @@ test('E2/E7 回归：真实 config 的全部 MEP 路线端点解析与 hvac anch
   const report = resolveMepRoutes(mepConfig, sourcesOf());
   assert.equal(report.total, 137);
   assert.equal(report.unresolved, 0);
+  const livingAnchor = diagram.anchors.find((a) => a.id === 'indoor_living')!;
+  assert.ok(livingAnchor.ref, 'indoor_living 须以 ref 引用吊顶机位');
+  const livingZone = ceiling.find((z) => z.id === livingAnchor.ref!.id)!;
   const living = resolveMepEndpoint('indoor_living', sourcesOf())!;
-  assert.ok(Math.abs(living.x - 10.3) < 1e-9 && Math.abs(living.z - 4.75) < 1e-9, 'ceiling ref 直读权威对象');
+  assert.ok(Math.abs(living.x - livingZone.x!) < 1e-9 && Math.abs(living.z - livingZone.z!) < 1e-9, 'ceiling ref 直读权威对象');
+  // power_child 与 sock_child_ac 沿墙解算须一致：MEP 端点解算与点位解算同源，声明 x/z 已删（S3），两路不得各说各话。
   const power = resolveMepEndpoint('power_child', sourcesOf())!;
   const child = electrical.find((point) => point.id === 'sock_child_ac')!;
-  assert.ok(Math.abs(power.x - 5.6) < 1e-9 && Math.abs(power.z - 4.0) < 1e-9,
-    `sock_child_ac 沿墙解果 (5.6,4.0)，实际 (${power.x},${power.z})（声明 ${JSON.stringify({ x: child.x, z: child.z })} 已删）`);
+  const { placement: childPlacement } = resolvePointPlacementInWalls(child, pointWalls, mountHosts);
+  assert.ok(childPlacement, 'sock_child_ac 沿墙解算须有解');
+  assert.ok(Math.abs(power.x - childPlacement.x) < 1e-9 && Math.abs(power.z - childPlacement.z) < 1e-9,
+    `MEP 端点 (${power.x},${power.z}) 须等于点位沿墙解果 (${childPlacement.x},${childPlacement.z})`);
 });
 
 test('normalizeCeilingZone 共享实现：area-only 分区两路解出同一中心', async () => {
