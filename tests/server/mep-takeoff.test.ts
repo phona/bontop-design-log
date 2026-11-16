@@ -9,7 +9,7 @@ import {
   parseMepCoordination,
   resolveMepRoutes,
 } from '../../shared/mep-hvac-coordination-schema.js';
-import { computeMepTakeoff, parseWireSizeMm2, pricedCircuitLength, travelerSubtreeLength, unionPlanLength, type MepTakeoffRules, type TakeoffCircuit, type TravelerGraphEdge } from '../../shared/mep-takeoff.js';
+import { computeMepTakeoff, parseWireSizeMm2, pricedCircuitLength, travelerNodeKey, travelerSubtreeLength, unionPlanLength, type MepTakeoffRules, type TakeoffCircuit, type TravelerGraphEdge } from '../../shared/mep-takeoff.js';
 import { pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
@@ -490,6 +490,20 @@ test('双控行程取开关间最小子树，不取点位类型分摊（2026-11-
     { routeId: 's2', a: 'lightX', b: 'swB', length: 4, stubA: 0, stubB: 2 },
   ];
   assert.equal(travelerSubtreeLength(stubbed, ['swA', 'swB']), 10.5);
+  // 同 x/z 不同标高是不同的物理点：swA—(0,0,y=2.5) 与 (0,0,y=0.5)—swB
+  // 之间未画连接，行程应为 0；旧 travelerNodeKey 只取 x/z，两端合并成一个
+  // 节点、凭空算出 2m（Codex blocking，PR #255 复审第 4 轮）。
+  const heights: TravelerGraphEdge[] = [
+    { routeId: 'h1', a: 'swA', b: travelerNodeKey({ x: 0, z: 0 }, 2.5), length: 1, stubA: 0, stubB: 0 },
+    { routeId: 'h2', a: travelerNodeKey({ x: 0, z: 0 }, 0.5), b: 'swB', length: 1, stubA: 0, stubB: 0 },
+  ];
+  assert.equal(travelerSubtreeLength(heights, ['swA', 'swB']), 0);
+  // 对照：同 x/z 同标高的两端是同一个点，行程照常连通。
+  const sameHeight: TravelerGraphEdge[] = [
+    { routeId: 'h3', a: 'swA', b: travelerNodeKey({ x: 0, z: 0 }, 2.5), length: 1, stubA: 0, stubB: 0 },
+    { routeId: 'h4', a: travelerNodeKey({ x: 0, z: 0 }, 2.5), b: 'swB', length: 1, stubA: 0, stubB: 0 },
+  ];
+  assert.equal(travelerSubtreeLength(sameHeight, ['swA', 'swB']), 2);
 });
 
 test('双控附加控制线按控制声明算行程：生产值 21.77385m（2026-11-16 量价算法审计）', () => {

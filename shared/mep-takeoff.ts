@@ -631,10 +631,19 @@ export interface TravelerGraphEdge {
   circuit?: string;
 }
 
-export function travelerNodeKey(endpoint: string | { x: number; z: number }): string {
-  return typeof endpoint === 'string'
-    ? endpoint
-    : `coord:${Math.round(endpoint.x * 1000)},${Math.round(endpoint.z * 1000)}`;
+/**
+ * 路由端点 → 图节点。字符串端点是点位 id（同一 id 即同一物理点）；坐标端点
+ * 必须带标高：同一 x/z 在不同高度是不同的物理点（吊顶接线盒 y=2.5 与地面点
+ * y=0.5），丢掉 y 会把未画连接的两端合并、凭空造出连接（Codex blocking，
+ * PR #255 复审第 4 轮：两条各 1m 的边本不连通，旧 2D 口径算出行程 2m）。
+ * endY 取解算后折线的端点标高（requirePointY）；缺省时退回旧 2D 口径，仅供
+ * 未带标高的调用方兼容——生产路径（computeMepTakeoff）一律传标高。
+ */
+export function travelerNodeKey(endpoint: string | { x: number; z: number }, endY?: number): string {
+  if (typeof endpoint === 'string') return endpoint;
+  return endY === undefined
+    ? `coord:${Math.round(endpoint.x * 1000)},${Math.round(endpoint.z * 1000)}`
+    : `coord:${Math.round(endpoint.x * 1000)},${Math.round(endpoint.z * 1000)},${Math.round(endY * 1000)}`;
 }
 
 type TravelerAdjacency = Map<string, Array<{ to: string; edge: number; weight: number }>>;
@@ -902,8 +911,8 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       const lastY = requirePointY(points3d[points3d.length - 1], `路由 ${route.id}`);
       travelerEdges.push({
         routeId: route.id,
-        a: travelerNodeKey(route.from),
-        b: travelerNodeKey(route.to),
+        a: travelerNodeKey(route.from, firstY),
+        b: travelerNodeKey(route.to, lastY),
         length: drawnLength,
         stubA: stubAt(route.from, firstY),
         stubB: stubAt(route.to, lastY),
