@@ -104,8 +104,8 @@ function assertEndpoints(r: ReturnType<typeof routeOf>, what: string): void {
   const first = r.points[0];
   const last = r.points[r.points.length - 1];
   assert.ok(first, `${what} 折线不得为空`);
-  assertPointsClose([first], [[r.from!.x, r.route.from_height, r.from!.z]], `${what} 起点须为 from + from_height`);
-  assertPointsClose([last], [[r.to!.x, r.route.to_height ?? r.to!.y, r.to!.z]], `${what} 终点须为 to + to_height`);
+  assertPointsClose([first], [[r.from!.x, r.route.from_height!, r.from!.z]], `${what} 起点须为 from + from_height`);
+  assertPointsClose([last], [[r.to!.x, (r.route.to_height ?? r.to!.y)!, r.to!.z]], `${what} 终点须为 to + to_height`);
 }
 /** 无往返折返：同一线段（任一方向）不得出现两次（1mm 舍入去浮点尾巴）。 */
 function assertNoRetrace(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
@@ -473,7 +473,7 @@ test('行一致性：回风行/下出风行居中对齐，行值取自终端与�
     assert.ok(declared.length > 0, `${routeId} 须在 via 声明下出风行 z`);
     assert.ok(declared.every((z) => z === 5.125), `${routeId} 下出风行声明值须为裁定值 5.125（DEC-2026-10-19-R02）`);
     const pts = pointsOf(routeId);
-    assert.ok(pts.slice(2, -1).every((p) => declared.includes(p.z)), `${routeId} 下出风行须为 via 声明 z`);
+    assert.ok(pts.slice(2, -1).every((p) => declared.some((z) => z === p.z)), `${routeId} 下出风行须为 via 声明 z`);
     assert.ok(pts.slice(1, -1).every((p) => p.y === routeOfProject(routeId).via_height), `${routeId} via 高度须全为路由声明 via_height`);
   }
   assert.ok(Math.abs(declaredRowZ('supply-air-living-bottom')[0]! - terminalOf('return_living').position!.z - 0.40) <= 1e-9, '两排相距 0.40m');

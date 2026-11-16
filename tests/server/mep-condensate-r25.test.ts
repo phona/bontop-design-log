@@ -192,7 +192,7 @@ test('R25 all-pump branches run 2.70m + 1% slope to the fixed guest-bath termina
   const trunkPoints = trunk.points;
   assert.equal(trunkPoints.length, 3, 'trunk 须为 from→竖降落点→候选点三点');
   assert.ok(Math.abs(trunkPoints[0].x - trunkFrom.x) <= 1e-9 && Math.abs(trunkPoints[0].z - trunkFrom.z) <= 1e-9, 'trunk 起点平面须为 from');
-  assert.ok(Math.abs(trunkPoints[0].y! - trunk.route.from_height) <= 1e-9, 'trunk 起点标高须为 from_height');
+  assert.ok(Math.abs(trunkPoints[0].y! - trunk.route.from_height!) <= 1e-9, 'trunk 起点标高须为 from_height');
   const trunkTerminal = trunkPoints[trunkPoints.length - 1];
   assert.ok(Math.abs(trunkTerminal.x - candidate.x) <= 1e-9 && Math.abs(trunkTerminal.z - candidate.z) <= 1e-9,
     `trunk 末点平面须为候选点声明位置 (${candidate.x},${candidate.z})`);

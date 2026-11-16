@@ -341,7 +341,7 @@ test('传播实验：主卧内机东移 0.20m，主卧支管起点跟随、到�
   const route = project.routes.find((item) => item.id === 'condensate-master')!;
   const run = master.points.reduce((sum, point, index) => index === 0
     ? 0 : sum + Math.hypot(point.x - master.points[index - 1].x, point.z - master.points[index - 1].z), 0);
-  assert.ok(Math.abs(terminal.y! - (route.from_height - route.slope! * run)) <= 1e-9,
+  assert.ok(Math.abs(terminal.y! - (route.from_height! - route.slope! * run)) <= 1e-9,
     `master terminal y ${terminal.y} 须为 from_height − 坡度×行程`);
   for (const id of BRANCH_IDS.filter((item) => item !== 'condensate-master')) {
     assert.equal(JSON.stringify(moved.routes.find((item) => item.route.id === id)!.points), baseline[id], `${id} must not move`);

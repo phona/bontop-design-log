@@ -152,7 +152,7 @@ function assertDrainRouteInvariants(
   const pts = entry.points;
   assert.deepEqual(entry.unresolved, [], `${what} 须解出`);
   assert.deepEqual(entry.diagnostics, [], `${what} 须无诊断`);
-  assert.ok(Math.abs(pts[0].x - entry.from!.x) <= TOL && Math.abs(pts[0].y! - route.from_height) <= TOL && Math.abs(pts[0].z - entry.from!.z) <= TOL,
+  assert.ok(Math.abs(pts[0].x - entry.from!.x) <= TOL && Math.abs(pts[0].y! - route.from_height!) <= TOL && Math.abs(pts[0].z - entry.from!.z) <= TOL,
     `${what} 起点须为 from + from_height`);
   const [landing, terminal] = pts.slice(-2);
   assert.deepEqual([terminal.x, terminal.y, terminal.z], [landing.x, landing.y, landing.z],
@@ -162,7 +162,7 @@ function assertDrainRouteInvariants(
   let run = 0;
   for (let i = 0; i < pts.length; i += 1) {
     if (i > 0) run += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z);
-    assert.ok(Math.abs(pts[i].y! - (route.from_height - route.slope! * run)) <= TOL,
+    assert.ok(Math.abs(pts[i].y! - (route.from_height! - route.slope! * run)) <= TOL,
       `${what} 第 ${i + 1} 点标高须为 from_height − 坡度×累计行程`);
   }
   assert.equal(pts.length, route.via.length + 2, `${what} 点数须为 from + 每步一落点 + 派生终端复点`);
@@ -198,7 +198,7 @@ function assertFollowsMove(
   let run = 0;
   for (let i = 0; i < movedPts.length; i += 1) {
     if (i > 0) run += Math.hypot(movedPts[i].x - movedPts[i - 1].x, movedPts[i].z - movedPts[i - 1].z);
-    assert.ok(Math.abs(movedPts[i].y! - (route.from_height - route.slope! * run)) <= TOL,
+    assert.ok(Math.abs(movedPts[i].y! - (route.from_height! - route.slope! * run)) <= TOL,
       `${what} 第 ${i + 1} 点标高须为 from_height − 坡度×累计行程`);
     if (i === 0) continue;
     if (i === movedPts.length - 1) {
@@ -249,7 +249,7 @@ test('C1：客卫支管越过终点的折回段原样保留，终端标高由 1%
   assert.ok(Math.abs(entry.viaPoints[1].z - overshoot) <= TOL, `overshoot corner z ${entry.viaPoints[1].z} !== 声明值 ${overshoot}`);
   // 终端标高 = from_height − 坡度×行程（旧 to_height 0.02 已删，差值在容差内）。
   const terminal = entry.points[entry.points.length - 1];
-  assert.ok(Math.abs(terminal.y! - (route.from_height - route.slope! * planLength(entry.points))) <= TOL,
+  assert.ok(Math.abs(terminal.y! - (route.from_height! - route.slope! * planLength(entry.points))) <= TOL,
     `terminal y ${terminal.y} 须为 from_height − 坡度×行程`);
 });
 
