@@ -49,6 +49,11 @@ const CEILING_SPEC: QuoteCardSpec<CeilingQuoteRateKey> = {
     aluminum_buckle_sqm: '厨卫铝扣板（㎡）',
   },
   fallbackLabel: 'base.json',
+  // 量价算法审计 D5：ceiling_zones 的量 = 总净面积 − 窗帘盒，已含石膏板满吊
+  // 平顶（flatNetAreaM2）与厨卫铝扣板（aluminumBuckleM2）的面积。一张卡同时
+  // 给两边计价会把这两块面积算两次。现行三张卡都用 out_of_scope 避开了
+  // （一张只报混合行、一张只报拆分行、一张只报铝扣板行），声明即守卫。
+  overlaps: [{ container: 'ceiling_zones', parts: ['gypsum_flat_sqm', 'aluminum_buckle_sqm'] }],
 };
 
 export const CEILING_QUOTE_RATE_LABEL = CEILING_SPEC.labels;
