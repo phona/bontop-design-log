@@ -58,3 +58,33 @@ test('圆角点缺 cx/cz 即抛错，不静默按尖角算', () => {
     /半径必须为正/,
   );
 });
+
+test('顺时针轮廓与逆时针等面积：凸圆角修正须随绕向变号（Codex blocking，PR #255 复审第 3 轮）', () => {
+  // 2×2 矩形一角 R1：CCW 得 4 − (1 − π/4) = 3.785398…；旧式把修正直接加在
+  // 带符号面积上，CW 得 4.214602（凸角越加越大），镜像校验会把正确的 CW 圆角
+  // 房判成漂移。layout-resolver 先归一化为 CCW 故生产房间面积不受影响，但
+  // budget 的 floor_region 与镜像校验直接传原始绕向。
+  const ccw = [
+    { x: 0, z: 0 },
+    { x: 2, z: 0 },
+    { x: 2, z: 2, radius: 1, cx: 1, cz: 1 },
+    { x: 0, z: 2 },
+  ];
+  const expected = 4 - (1 - Math.PI / 4);
+  assert.ok(Math.abs(roundedPolygonArea(ccw) - expected) < 1e-9, `CCW got ${roundedPolygonArea(ccw)}`);
+  assert.ok(Math.abs(roundedPolygonArea([...ccw].reverse()) - expected) < 1e-9, `CW got ${roundedPolygonArea([...ccw].reverse())}`);
+});
+
+test('顺时针轮廓与逆时针等面积：凹圆角与尖角', () => {
+  const concave = [
+    { x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 2 }, { x: 1, z: 2 },
+    { x: 1, z: 1, radius: 0.5, cx: 0.5, cz: 1.5 },
+    { x: 0, z: 1 },
+  ];
+  const expectedConcave = 3 + (0.125 - 0.25 * (Math.PI / 2 - 1) / 2);
+  assert.ok(Math.abs(roundedPolygonArea([...concave].reverse()) - expectedConcave) < 1e-9);
+  const sharp = [
+    { x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 3 }, { x: 0, z: 3 },
+  ];
+  assert.ok(Math.abs(roundedPolygonArea([...sharp].reverse()) - 12) < 1e-9);
+});

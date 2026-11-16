@@ -67,7 +67,14 @@ export function roundedPolygonArea(points: CurtainPoint[]): number {
     const segment = corner.radius * corner.radius * (theta - Math.sin(theta)) / 2;
     const cut = cornerArea - segment;
     const turn = (corner.x - prev.x) * (next.z - corner.z) - (corner.z - prev.z) * (next.x - corner.x);
-    area += orient * turn > 0 ? -cut : cut;
+    // 凸角 ⟺ 转向与绕向同号（CCW 凸角左转、CW 凸角右转）；修正量作用在面积的
+    // 幅值上，再乘绕向回到带符号面积。旧式 `area += orient * turn > 0 ? -cut : cut`
+    // 把修正直接加在带符号面积上：CCW 是对的，CW 时凸角反而越加越大（2×2 矩形
+    // 一角 R1：CCW 得 3.7854，同一轮廓反向得 4.2146——Codex blocking，PR #255
+    // 复审第 3 轮）。layout-resolver 先归一化为 CCW 故生产房间面积不受影响；
+    // 但 budget 的 floor_region 与镜像校验直接传原始绕向，CW 圆角房会被误判。
+    const convex = orient * turn > 0;
+    area += orient * (convex ? -cut : cut);
   }
   return Math.abs(area);
 }
