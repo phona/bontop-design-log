@@ -300,7 +300,56 @@ function resolveItem(
   if (!validateSupportDeclaration(`furniture "${item.id ?? item.type}"`, item.support, supportErrors)) {
     return { placement: null, diagnostic: supportErrors.join('；') };
   }
+  // 定位数值须在解算入口验证（2026-11-16 Codex 二审 blocking）：与 support 声明同理，
+  // YAML 类型断言不验数值——room_dx/room_dz、along、x/z、anchor 偏移为 NaN/null/
+  // 字符串时 undefined 检查放行，加法产出 NaN 或字符串坐标，所谓成功解算仍携带错误几何。
+  const numberErrors: string[] = [];
+  if (!validatePlacementNumbers(item, dims, numberErrors)) {
+    return { placement: null, diagnostic: numberErrors.join('；') };
+  }
   return result;
+}
+
+/**
+ * 定位数值运行时校验（2026-11-16 Codex 二审 blocking）：一件 placed 家具的全部定位
+ * 数值输入（绝对 x/z、墙锚 along/wall_clearance、房间偏移 room_dx/room_dz、家具锚点
+ * 偏移）须为有限数；尺寸（行内 / FURNITURE_DIMS / length 任一来源）须为有限正数。
+ * 校验点唯一、放在解算门禁（resolveItem）里，各分支（wall/room/absolute/anchor）
+ * 不再各自补 undefined 检查——NaN 会让范围比较恒 false、加法产出 NaN、字符串产出
+ * 字符串坐标，三者都曾静默通过。
+ */
+function validatePlacementNumbers(
+  item: PlacementItem,
+  dims: { width: number | undefined; depth: number | undefined },
+  errors: string[],
+): boolean {
+  const label = `furniture "${item.id ?? item.type}"`;
+  let valid = true;
+  const finiteField = (field: string, value: unknown): void => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      const shown = value === null ? 'null' : typeof value === 'string' ? JSON.stringify(value) : String(value);
+      errors.push(`${label}: ${field} 须为有限数（收到 ${shown}）`);
+      valid = false;
+    }
+  };
+  for (const field of ['x', 'z', 'along', 'wall_clearance', 'room_dx', 'room_dz'] as const) {
+    const value = item[field];
+    if (value !== undefined) finiteField(field, value);
+  }
+  if (item.anchor?.offset !== undefined) {
+    finiteField('anchor.offset.x', item.anchor.offset.x);
+    finiteField('anchor.offset.z', item.anchor.offset.z);
+  }
+  for (const [field, value] of [
+    ['width', dims.width],
+    ['depth', dims.depth],
+  ] as const) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+      errors.push(`${label}: ${field} 须为有限正数（收到 ${String(value)}）`);
+      valid = false;
+    }
+  }
+  return valid;
 }
 
 function resolveItemInner(

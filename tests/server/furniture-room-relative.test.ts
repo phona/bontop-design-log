@@ -157,6 +157,47 @@ describe('furniture 解算器 DIMS/support 强制（2026-11-16 DDD 模型约束�
     assert.match(empty.diagnostic ?? '', /未知的 support kind/);
   });
 
+  it('placed 条目定位数值非法（NaN/null/字符串偏移、NaN 尺寸）：解算入口拒绝（2026-11-16 Codex 二审 blocking）', () => {
+    // 同 support 声明一样，YAML 类型断言不验数值：旧实现只查 undefined，NaN 偏移
+    // 与 NaN 尺寸都曾返回 placement（加法产出 NaN、字符串产出字符串坐标）。
+    const nanRoom = resolveFurniturePlacement(
+      { type: 'dining_table', id: 't7', room: 'living_dining', room_dx: Number.NaN, room_dz: 1, support: { kind: 'floor' } } as unknown as PlacementItem,
+      NO_WALLS, NO_HOSTS, ANCHORS,
+    );
+    assert.equal(nanRoom.placement, null);
+    assert.match(nanRoom.diagnostic ?? '', /room_dx 须为有限数/);
+    const stringRoom = resolveFurniturePlacement(
+      { type: 'dining_table', id: 't8', room: 'living_dining', room_dx: '1', room_dz: 1, support: { kind: 'floor' } } as unknown as PlacementItem,
+      NO_WALLS, NO_HOSTS, ANCHORS,
+    );
+    assert.equal(stringRoom.placement, null);
+    assert.match(stringRoom.diagnostic ?? '', /room_dx 须为有限数/);
+    const nullRoom = resolveFurniturePlacement(
+      { type: 'dining_table', id: 't9', room: 'living_dining', room_dx: null, room_dz: 1, support: { kind: 'floor' } } as unknown as PlacementItem,
+      NO_WALLS, NO_HOSTS, ANCHORS,
+    );
+    assert.equal(nullRoom.placement, null);
+    assert.match(nullRoom.diagnostic ?? '', /room_dx 须为有限数/);
+    const nanDims = resolveFurniturePlacement(
+      { type: 'no_such_type_xyz', id: 't10', x: 1, z: 1, width: Number.NaN, depth: 0.4, support: { kind: 'floor' } },
+      NO_WALLS, NO_HOSTS, undefined,
+    );
+    assert.equal(nanDims.placement, null);
+    assert.match(nanDims.diagnostic ?? '', /width 须为有限正数/);
+    const nanOffset = resolveFurniturePlacement(
+      { type: 'chair', id: 't11', anchor: { source: 'furniture', id: 'd', offset: { x: Number.NaN, z: 0 } }, support: { kind: 'floor' } } as unknown as PlacementItem,
+      NO_WALLS, new Map([['d', { type: 'dining_table', id: 'd', x: 9.8, z: 3.45, support: { kind: 'floor' } }]]), undefined,
+    );
+    assert.equal(nanOffset.placement, null);
+    assert.match(nanOffset.diagnostic ?? '', /anchor\.offset\.x 须为有限数/);
+    const nanAlong = resolveFurniturePlacement(
+      { type: 'dining_table', id: 't12', wall: 'w_test', wall_side: 'south', along: Number.NaN, wall_clearance: 0, support: { kind: 'floor' } } as unknown as PlacementItem,
+      new Map([['w_test', [{ x1: 0, z1: 0, x2: 2, z2: 0 }]]]), NO_HOSTS, undefined,
+    );
+    assert.equal(nanAlong.placement, null);
+    assert.match(nanAlong.diagnostic ?? '', /along 须为有限数/);
+  });
+
   it('count-only 条目（无 id、无定位声明）：豁免 DIMS/support，返回 null 且无诊断', () => {
     const { placement, diagnostic } = resolveFurniturePlacement(
       { type: 'dining_table', count: 2 }, NO_WALLS, NO_HOSTS, undefined,
