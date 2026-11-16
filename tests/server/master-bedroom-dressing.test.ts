@@ -732,9 +732,12 @@ test('south-window-band low dresser uses the 2026-09-06 east-shifted transform a
   const dresserDecl = master.find((item) => item.type === 'master_hot_season_low_dresser');
   assert.ok(dresserDecl, 'missing master_hot_season_low_dresser');
   const dresser = placed('master_hot_season_low_dresser');
-  // 低柜是 Tier 3 可移动件（绝对摆位，设计输入）：位置不钉字面量，由窗带/不重叠/
-  // 插座间距三条关系守住；此处只守摆位形式（声明 x/z、无墙锚/挂载）与朝向。
-  assert.ok(dresserDecl.x !== undefined && dresserDecl.z !== undefined, 'low dresser must stay absolute (Tier 3 movable)');
+  // 低柜是 Tier 3 可移动件（房间相对摆位，设计输入）：位置不钉字面量，由窗带/不重叠/
+  // 插座间距三条关系守住；此处只守摆位形式（声明 room/room_dx/room_dz、无墙锚/挂载）与朝向。
+  // （2026-11-16 DDD 模型约束 rebase 跟进：#254 的本条断言写的是绝对摆位，
+  //  rebase 后低柜已迁为房间相对——断言形式跟进，关系断言不动。）
+  assert.equal(dresserDecl.room, 'master_bedroom', 'low dresser must stay room-relative (Tier 3 movable)');
+  assert.ok(dresserDecl.room_dx !== undefined && dresserDecl.room_dz !== undefined, 'low dresser must carry room_dx/room_dz');
   assert.equal(dresserDecl.wall, undefined);
   assert.equal(dresserDecl.anchor, undefined);
   assert.equal(dresserDecl.mount, undefined);
