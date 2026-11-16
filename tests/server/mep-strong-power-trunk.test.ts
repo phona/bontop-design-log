@@ -576,7 +576,7 @@ test('C3：算量自洽——takeoff 各输出由同一份解算结果独立重�
   }
   // 只有 position_status/status 都为 pending 的点位才延期（与 takeoff 同口径）。
   const isDeferred = (p: any): boolean => p !== undefined && p.position_status === 'pending' && p.status === 'pending';
-  const counted = (route: MepRoute): { drawn: number; drop: number; points: Array<{ x: number; z: number; y?: number }> } | null => {
+  const counted = (route: MepRoute): { drawn: number; drop: number; fromStub: number; points: Array<{ x: number; z: number; y?: number }> } | null => {
     if (!covered.has(route.layer)) return null;
     const res = report.routes.find((item) => item.route.id === route.id);
     if (!res || res.unresolved.length > 0 || !res.metadata.physicalRoute) return null;
@@ -588,7 +588,17 @@ test('C3：算量自洽——takeoff 各输出由同一份解算结果独立重�
       const h = pointHeights.get(route.to)!;
       if (lastY !== undefined && lastY > h) drop = lastY - h;
     }
-    return { drawn, drop, points: res.points };
+    // 起点竖直 stub（terminalDrop 的镜像，量价算法审计 D3）：折线起点标高
+    // 高于起点位安装高度时，位点到折线起点那段竖直管/线同样进层长与
+    // terminalDropM（takeoff 侧 fromDrop）；只计 to 端会少算 13 条路由
+    // 共 0.2962m（强电 3 条 0.15m）。
+    let fromStub = 0;
+    if (all.rules.include_terminal_drop && typeof route.from === 'string' && pointHeights.has(route.from)) {
+      const firstY = res.points[0]?.y;
+      const h = pointHeights.get(route.from)!;
+      if (firstY !== undefined && firstY > h) fromStub = firstY - h;
+    }
+    return { drawn, drop, fromStub, points: res.points };
   };
   let strongSum = 0;
   let dropSum = 0;
@@ -599,10 +609,10 @@ test('C3：算量自洽——takeoff 各输出由同一份解算结果独立重�
     const c = counted(route);
     if (!c) continue;
     if (route.layer === 'strong_power') {
-      strongSum += c.drawn + c.drop;
+      strongSum += c.drawn + c.drop + c.fromStub;
       strongPaths.push(c.points.map((p) => ({ x: p.x, z: p.z })));
     }
-    dropSum += c.drop;
+    dropSum += c.drop + c.fromStub;
     drawnPaths.push(c.points.map((p) => ({ x: p.x, z: p.z })));
     if (typeof route.to === 'string' && elecById.get(route.to)?.room === 'living_dining') livingSum += c.drawn;
   }
