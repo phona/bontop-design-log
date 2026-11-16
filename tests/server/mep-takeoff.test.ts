@@ -769,6 +769,79 @@ test('双控行程图须切分线段内部接入点：删去冗余 via 点不得
   assert.equal(otherHeight.wire.dualControlExtraM, 0);
 });
 
+test('双控行程节点身份须统一：ID 端点与坐标切分点同位置即同一节点（Codex blocking，PR #255 复审第 8 轮）', () => {
+  // 与第 7 轮夹具同一几何，但 r2 终点改写为灯位 ID L，L 解析到与 (1,0)
+  // 完全相同的位置。旧建图下 L 成节点 'L'、切分点成 'coord:1000,0,2500'，
+  // 同一物理接点两个节点、行程归零；修复后坐标点先查端点登记表，落在本回
+  // 路某点位 ID 的已解位置上时改用 ID，行程仍为 2m。
+  const miniRules: MepTakeoffRules = {
+    sources: {
+      electrical_points: 'config/electrical.yaml',
+      plumbing_points: 'config/plumbing.yaml',
+      circuits: 'config/electrical-topology.yaml',
+      routes: 'config/mep-hvac-coordination.yaml',
+      hvac: 'config/hvac.yaml',
+    },
+    covered_layers: ['strong_power'],
+    excluded_layers: [],
+    units: {
+      cores_by_purpose: {},
+      dual_control_extra_cores: 1,
+      loss: { wire: 1.05, pipe: 1.08 },
+      fitting_per_meter: { ppr: 0.35, pvc: 0.27 },
+    },
+    trunk_wire_size: null,
+    include_terminal_drop: true,
+    panel: { main_switch_poles: 1, spd_modules: 1, spare_ratio: 0, round_up: false },
+  };
+  const r1 = { id: 'r1', layer: 'strong_power', from: 'swA', to: { x: 0, z: 0 }, route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const r2 = { id: 'r2', layer: 'strong_power', from: 'swB', to: 'lightJ', route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const resolution = {
+    total: 2,
+    resolved: 2,
+    unresolved: 0,
+    diagnostics: [],
+    routes: [
+      {
+        route: r1,
+        from: { x: 2, z: 0, y: 2.5 },
+        to: { x: 0, z: 0, y: 2.5 },
+        points: [{ x: 2, y: 2.5, z: 0 }, { x: 0, y: 2.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+      {
+        route: r2,
+        from: { x: 1, z: 1, y: 2.5 },
+        to: { x: 1, z: 0, y: 2.5 },
+        points: [{ x: 1, y: 2.5, z: 1 }, { x: 1, y: 2.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+    ],
+  } as unknown as Parameters<typeof computeMepTakeoff>[0]['resolution'];
+  const mini = computeMepTakeoff({
+    electrical: [
+      { id: 'swA', room: 'living', type: 'switch', height: 2.5 },
+      { id: 'swB', room: 'living', type: 'switch', height: 2.5 },
+      { id: 'light1', room: 'living', type: 'light', height: 2.5 },
+      { id: 'lightJ', room: 'living', type: 'light', height: 2.5 },
+    ] as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: [],
+    circuits: [{ id: 'c1', wire_size: '1.5mm²(φ16)', breaker: '漏保', member_point_ids: ['swA', 'swB', 'light1', 'lightJ'] }],
+    controls: [{ id: 'ctl1', switch_point_ids: ['swA', 'swB'], target_point_ids: ['light1'] }],
+    routes: [r1, r2],
+    resolution,
+    rules: miniRules,
+  });
+  assert.ok(Math.abs(mini.wire.dualControlExtraM - 2.1) < 1e-9);
+  // 生产值 20.69445m 不变：live 切分点均不与 ID 端点位置重合，统一身份无新增连接。
+});
+
 test('双控附加控制线按控制声明算行程：生产值 20.69445m（2026-11-16 量价算法审计）', () => {
   // 独立推导（测试内手写循环，不复用 takeoff 的图算法）：行程边按控制声明手点——
   // 主卧三控：north↔L + north↔door；书房双控：灯↔门口 + 灯↔床头；

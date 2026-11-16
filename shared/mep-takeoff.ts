@@ -647,6 +647,23 @@ export function travelerNodeKey(endpoint: string | { x: number; z: number }, end
 }
 
 /**
+ * 坐标点的图节点身份（Codex blocking，PR #255 复审第 8 轮）：同一物理接点必须
+ * 只有一个节点。路由端点用点位 ID、切分点用坐标 key 时，ID L 与坐标 (1,0)
+ * 解析到同一位置却成两个不连通节点，行程归零。本函数把坐标点先查登记表：
+ * 该坐标恰是某点位 ID 的已解位置（折线端点）时用 ID，否则用坐标 key。
+ * 开关终端与 stub 的关联不变：stub 只挂字符串端点所在的边端（成员判定见
+ * travelerAdjacency），坐标端点的 stub 恒为 0，不因统一身份多计。
+ * 同一坐标两个 ID 时先登记者为准——两件设备同点是数据问题，不在本修复内。
+ */
+export function travelerCoordNodeKey(
+  point: { x: number; z: number; y: number },
+  idByCoord: ReadonlyMap<string, string> | undefined,
+): string {
+  const key = travelerNodeKey(point, point.y);
+  return idByCoord?.get(key) ?? key;
+}
+
+/**
  * 点 p 是否落在 3D 线段 a→b 的内部（不含端点）：以变化最大的轴作参数轴求 t，
  * 其余两轴按插值核对；t ∈ (0,1) 才算内部。端点本身已是图节点，不切分。
  * 用于行程图切分（Codex blocking，PR #255 复审第 7 轮）：同回路另一条路由的
@@ -851,6 +868,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   // 落在线段内部仍悬空（删去冗余 via 点即复现：几何不变，行程 2.1m → 0）。
   // 按回路分桶，只认同回路的实际接入；非强电/非 physical 路由不进图，也不提供切分点。
   const travelerJunctionByCircuit = new Map<string, Array<{ x: number; z: number; y: number }>>();
+  // 端点身份登记（Codex blocking，PR #255 复审第 8 轮）：字符串端点的已解位置
+  // （折线端点）→ ID；坐标切分点/坐标端点落在此处时改用 ID，同一物理接点只
+  // 有一个节点。按回路分桶——跨回路同坐标不得统一。
+  const travelerIdByCoordByCircuit = new Map<string, Map<string, string>>();
   for (const route of routes) {
     if (route.layer !== 'strong_power') continue;
     const resolved = resolvedById.get(route.id);
@@ -864,6 +885,15 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       list.push({ x: point.x, z: point.z, y: requirePointY(point, `路由 ${route.id}`) });
     }
     travelerJunctionByCircuit.set(circuit, list);
+    const idByCoord = travelerIdByCoordByCircuit.get(circuit) ?? new Map<string, string>();
+    const registerEndpoint = (endpoint: string | { x: number; z: number }, point: { x: number; z: number; y?: number } | undefined): void => {
+      if (typeof endpoint !== 'string' || point === undefined) return;
+      const key = travelerNodeKey(point, requirePointY(point, `路由 ${route.id}`));
+      if (!idByCoord.has(key)) idByCoord.set(key, endpoint);
+    };
+    registerEndpoint(route.from, resolved.points[0]);
+    registerEndpoint(route.to, resolved.points[resolved.points.length - 1]);
+    travelerIdByCoordByCircuit.set(circuit, idByCoord);
   }
   /** 每条回路的画线路由平面路径（同回路 union：同一回路内共享段只铺一次管、只穿一次线）。 */
   const circuitPaths = new Map<string, Array<Array<{ x: number; z: number; y?: number }>>>();
@@ -971,6 +1001,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         ? pointCircuit.get(route.to)
         : typeof route.from === 'string' ? pointCircuit.get(route.from) : undefined;
       const junctions = circuit === undefined ? [] : (travelerJunctionByCircuit.get(circuit) ?? []);
+      // 坐标点的节点身份：落在本回路某点位 ID 的已解位置上时用 ID（第 8 轮），
+      // 否则用坐标 key。字符串端点本身即 ID，不走登记表。
+      const idByCoord = circuit === undefined ? undefined : travelerIdByCoordByCircuit.get(circuit);
+      const keyOf = (node: { x: number; z: number; y: number }): string => travelerCoordNodeKey(node, idByCoord);
       for (let i = 1; i < points3d.length; i += 1) {
         const fromPoint = points3d[i - 1];
         const toPoint = points3d[i];
@@ -993,8 +1027,8 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
           const bNode = nodes[k];
           travelerEdges.push({
             routeId: route.id,
-            a: i === 1 && k === 1 ? travelerNodeKey(route.from, aNode.y) : travelerNodeKey(aNode, aNode.y),
-            b: i === points3d.length - 1 && k === nodes.length - 1 ? travelerNodeKey(route.to, bNode.y) : travelerNodeKey(bNode, bNode.y),
+            a: i === 1 && k === 1 && typeof route.from === 'string' ? route.from : keyOf(aNode),
+            b: i === points3d.length - 1 && k === nodes.length - 1 && typeof route.to === 'string' ? route.to : keyOf(bNode),
             length: routeSegmentLength(aNode, bNode, `路由 ${route.id}`),
             stubA: i === 1 && k === 1 ? stubAt(route.from, aNode.y) : 0,
             stubB: i === points3d.length - 1 && k === nodes.length - 1 ? stubAt(route.to, bNode.y) : 0,
