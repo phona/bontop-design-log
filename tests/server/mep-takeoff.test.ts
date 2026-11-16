@@ -211,6 +211,78 @@ test('起点竖直 stub 计入层长：折线起点高于起点位安装高度�
   assert.ok(Math.abs(takeoff.conduit.strongPowerM - independentLayerLength('strong_power')) < 1e-6);
 });
 
+test('起点竖直段须进入给排水采购量，不只进层长（Codex blocking，PR #255 复审第 5 轮）', () => {
+  // D3 只补了层长 conduit：attributePipe/routeSegments 另起炉灶按折线重算长度、
+  // 只补 terminalDrop，起点段从采购量里静默漏掉。最小输入：1m 水平排水路线 +
+  // 1m 起点竖直段（from 点位高 0m、折线起点高 1m、to 点位高 1m 故终端下引为 0）。
+  // 修复前 conduit.drainageM = 2m 但 pipe.totalDrainageM = 1.08（只计折线 ×1.08）。
+  const baseRules: MepTakeoffRules = {
+    sources: {
+      electrical_points: 'config/electrical.yaml',
+      plumbing_points: 'config/plumbing.yaml',
+      circuits: 'config/electrical-topology.yaml',
+      routes: 'config/mep-hvac-coordination.yaml',
+      hvac: 'config/hvac.yaml',
+    },
+    covered_layers: ['drainage'],
+    excluded_layers: [],
+    units: {
+      cores_by_purpose: {},
+      dual_control_extra_cores: 0,
+      loss: { wire: 1.05, pipe: 1.08 },
+      fitting_per_meter: { ppr: 0.35, pvc: 0.27 },
+    },
+    trunk_wire_size: null,
+    include_terminal_drop: true,
+    panel: { main_switch_poles: 1, spd_modules: 1, spare_ratio: 0, round_up: false },
+  };
+  const route = {
+    id: 'probe-drain',
+    layer: 'drainage',
+    from: 'drain_from',
+    to: 'drain_to',
+    route_kind: 'physical',
+  } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const resolution = {
+    total: 1,
+    resolved: 1,
+    unresolved: 0,
+    diagnostics: [],
+    routes: [{
+      route,
+      from: { x: 0, z: 0, y: 1 },
+      to: { x: 1, z: 0, y: 1 },
+      points: [{ x: 0, y: 1, z: 0 }, { x: 1, y: 1, z: 0 }],
+      viaPoints: [],
+      unresolved: [],
+      diagnostics: [],
+      metadata: { physicalRoute: true, routeKind: 'physical' },
+    }],
+  } as unknown as Parameters<typeof computeMepTakeoff>[0]['resolution'];
+  const plumbing = [
+    { id: 'drain_from', room: 'guest_bath', type: 'drain', height: 0, drain_dn: 110 },
+    { id: 'drain_to', room: 'guest_bath', type: 'drain', height: 1, drain_dn: 110 },
+  ] as unknown as Parameters<typeof computeMepTakeoff>[0]['plumbing'];
+  const run = (rules: MepTakeoffRules) => computeMepTakeoff({
+    electrical: [], plumbing, circuits: [], controls: [], routes: [route], resolution, rules,
+  });
+  // 端点推断口径（无 pipe_route_segments）：折线 1m + 起点段 1m，再 ×1.08。
+  const inferred = run(baseRules);
+  assert.equal(inferred.conduit.drainageM, 2);
+  assert.ok(Math.abs(inferred.pipe.totalDrainageM - 2.16) < 1e-9);
+  // 显式分段口径：起点段进首段（单段路由首尾同一段，两项都加；给水 fallback
+  // 与分段共用同一行修正，此处只钉排水两条路）。
+  const segmented = run({
+    ...baseRules,
+    pipe_route_segments: { 'probe-drain': [{ from_index: 0, to_index: 1, drain_dn: 110 }] },
+  });
+  assert.ok(Math.abs(segmented.pipe.totalDrainageM - 2.16) < 1e-9);
+  // 生产量：排水起点 stub 0.1462m（D3 实测，10 条）× 1.08 = 0.157896m 进入
+  // totalDrainageM（24.384521593854366 → 24.54241759385437，de110 +0.023436、
+  // de50 +0.13446）；给水无 fromDrop，总量不变。
+  assert.ok(Math.abs(takeoff.pipe.totalDrainageM - 24.54241759385437) < 1e-9);
+});
+
 test('导线按 topology wire_size 分桶，不按 id 猜', () => {
   const bySize = new Map(takeoff.wire.bySize.map((bucket) => [bucket.wireSize, bucket]));
   assert.deepEqual([...bySize.keys()].sort(), ['1.5', '2.5', '4.0']);

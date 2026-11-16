@@ -1118,6 +1118,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     }
     return segments.map((segment, index) => ({
       length: routePointDistance(points, segment.fromIndex, segment.toIndex, `路由 ${route.id}`)
+        // 起点 stub 与终端下引同口径：折线起点高于起点位安装高度时，位点到折线
+        // 起点那段竖直管进首段（审计 D3 只补了层长 conduit，管材分桶漏了它，
+        // Codex blocking，PR #255 复审第 5 轮；单段路由首尾同一段，两项都加）。
+        + (index === 0 && rules.include_terminal_drop ? fromDrop(route, pointHeights, resolved.from, points) : 0)
         + (index === segments.length - 1 && rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, points) : 0),
       spec: segment,
     }));
@@ -1156,7 +1160,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         return;
       }
       const length = routeLength(route, resolved.points)
-        + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) : 0);
+        + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) + fromDrop(route, pointHeights, resolved.from, resolved.points) : 0);
       for (const key of pipeKeysForWater(specs[0]!.temp!, specs[0]!.dn!)) addPipe(water, key, length);
       return;
     }
@@ -1175,7 +1179,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       return;
     }
     const length = routeLength(route, resolved.points)
-      + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) : 0);
+      + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) + fromDrop(route, pointHeights, resolved.from, resolved.points) : 0);
     addPipe(drainage, `de${dns[0]}`, length);
   };
   for (const route of routes) {
