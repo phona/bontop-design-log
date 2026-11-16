@@ -20,6 +20,7 @@ const migrated: PlacementItem = {
   wall_side: 'west',
   along: 0.405,
   rotation: 270,
+  support: { kind: 'wall', bottom: 1.1 },
 };
 
 describe('furniture placement 定位来源唯一性（issue #98 修复项 C）', () => {

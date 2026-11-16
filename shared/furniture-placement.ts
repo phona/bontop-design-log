@@ -3,15 +3,17 @@
  * DXF 导出需要同一口径但不引入 three.js），SceneBuilder 改为 re-export，全仓仍只有这一份实现。
  *
  * issue #98 PR-3 起兼作「定位声明解算器」：挂墙（wall/wall_side/along）、挂载宿主
- * （mount: {furniture_id, slot}）、锚点引用（anchor: {source, id}，PR-10）、
- * 绝对 x/z 四种定位声明都在这里解算，解析失败返回 **诊断文本**而不是 null——null 只保留给
+ * （mount: {furniture_id, slot}）、锚点引用（anchor: {source, id}，PR-10）、房间相对
+ * （room/room_dx/room_dz，2026-11-16 DDD 模型约束）、绝对 x/z 五种定位声明都在这里解算，
+ * 解析失败返回 **诊断文本**而不是 null——null 只保留给
  * count-only 条目（无平面几何，预期跳过），「声明了却解不出来」必须让页面/DXF/verify:furniture 显形并失败。
  * （二阶段 S1 无来源规则：声明了稳定 id 的条目无任何定位来源也算「声明了却解不出来」，
  * 同样出诊断；无 id 的 count-only / type-only 条目仍合法 null。）
  */
 
-import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS, type FurnishingItem, type VanityLayout, type VanityLayoutDecl, type WallSide } from './types.js';
+import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS, type FurnishingItem, type FurnishingSupport, type VanityLayout, type VanityLayoutDecl, type WallSide } from './types.js';
 import type { CondensateChainGeometry } from './condensate-chain.js';
+import { validateSupportDeclaration } from './furniture-support.js';
 
 /**
  * 墙体完成面基厚（渲染与摆位共用的单一声明）。
@@ -52,7 +54,19 @@ export interface FurniturePlacementResolution {
 /** 摆位解算可见的最小条目形态（house.yaml FurnishingItem 的定位相关子集）。 */
 export type PlacementItem = Pick<FurnishingItem,
   | 'type' | 'id' | 'rotation' | 'wall' | 'wall_side' | 'along' | 'x' | 'z'
-  | 'wall_clearance' | 'width' | 'depth' | 'length' | 'vanity_layout' | 'mount' | 'anchor'>;
+  | 'wall_clearance' | 'width' | 'depth' | 'length' | 'vanity_layout' | 'mount' | 'anchor'
+  | 'room' | 'room_dx' | 'room_dz' | 'support' | 'count'>;
+
+/**
+ * 房间相对摆位用的房间包络：中心 + 总尺寸（与 shared/types.ts RoomLayout 同口径；
+ * 西北角 = (x − width/2, z − depth/2)，与 verify-furniture-placement 的 roomBounds 同构造）。
+ */
+export interface RoomAnchor {
+  x: number;
+  z: number;
+  width: number;
+  depth: number;
+}
 
 /**
  * 锚点派生摆位的上下文（issue #98 PR-10）：`anchor: {source, id}` 声明按来源解析。
@@ -63,6 +77,12 @@ export interface PlacementAnchors {
   hvacAnchors?: ReadonlyMap<string, { x: number; z: number }>;
   /** 主卫冷凝链派生几何（shared/condensate-chain.ts 解出），供 `anchor: {source: 'chain'}` 引用。 */
   condensateChain?: CondensateChainGeometry;
+  /**
+   * 房间包络（room id → 中心 + 尺寸），供 `room` / `room_dx` / `room_dz` 房间相对摆位引用。
+   * 缺失或查无此房间时房间相对条目诊断失败（不回落绝对坐标）——调用方（3D/DXF/verify）
+   * 须从 model-geometry.yaml 的 rooms 传入；不提供即显形，不静默。
+   */
+  rooms?: ReadonlyMap<string, RoomAnchor>;
 }
 
 /** 链上可引用的锚点名 → geometry.points 键（house.yaml 写名字，不写坐标）。 */
@@ -244,7 +264,116 @@ export function resolveFurniturePlacements(
   return { placements, diagnostics };
 }
 
+/**
+ * 摆位解算 + 模型完整性门禁（2026-11-16 DDD 模型约束）：一件 placed 家具必须同时有
+ * 尺寸（行内 / FURNITURE_DIMS / vanity_layout / length 任一来源）与支撑声明（support）。
+ * 缺任一即诊断失败，不静默放行——尺寸缺失时 verify 的重叠/包络检查无从下手（此前只在
+ * verify 侧记一条 warning 后跳过该件），支撑缺失时「不悬空」无从校验。count-only 条目
+ * （placement 为 null）不受此限。递归宿主（mount/anchor 的 host）同样走本函数，宿主
+ * 缺尺寸/支撑时挂件连带失败（诊断透传宿主根因）。
+ */
 function resolveItem(
+  item: PlacementItem,
+  wallSegments: Map<string, WallLike[]>,
+  hosts: ReadonlyMap<string, PlacementItem> | undefined,
+  anchors: PlacementAnchors | undefined,
+  visited: ReadonlySet<string>,
+): FurniturePlacementResolution {
+  const result = resolveItemInner(item, wallSegments, hosts, anchors, visited);
+  if (result.placement === null || result.diagnostic !== undefined) return result;
+  // hvac/chain 锚点是 MEP/冷凝链的零维点位（借用家具解算器取位置），不是家具实体：
+  // 无尺寸、无支撑，不适用 DIMS/support 强制——但豁免只给协调示意件（2026-11-16
+  // Codex 四审 major：旧实现只看 anchor.source，普通家具挂个 HVAC/chain 锚点也
+  // 能绕过全部 DIMS/support/数值校验）。家具锚（source: 'furniture'）与
+  // mount/wall/room/绝对摆位均为家具实体，须过 DIMS/support 门。
+  if (
+    item.anchor !== undefined
+    && (item.anchor.source === 'hvac' || item.anchor.source === 'chain')
+    && COORDINATION_SCHEMATIC_FURNITURE_TYPES.has(item.type)
+  ) {
+    return result;
+  }
+  const dims = furnitureFootprint(item);
+  if (dims.width === undefined || dims.depth === undefined) {
+    return { placement: null, diagnostic: `no width/depth for type "${item.type}"（行内声明与 FURNITURE_DIMS 目录/length 均缺，无法定位）` };
+  }
+  if (item.support === undefined) {
+    return { placement: null, diagnostic: `furniture "${item.id ?? item.type}" 缺少 support 支撑声明（placed 条目必填：floor/wall/furniture/inset/ceiling，见 shared/types.ts FurnishingSupport）` };
+  }
+  // 声明本身须在解算入口验证（2026-11-16 Codex 一审 blocking）：YAML 类型断言不验
+  // 数据，`{}`、拼错的 kind、缺必填数值都会在几何比较里静默通过（NaN 比较恒 false）。
+  const supportErrors: string[] = [];
+  if (!validateSupportDeclaration(`furniture "${item.id ?? item.type}"`, item.support, supportErrors)) {
+    return { placement: null, diagnostic: supportErrors.join('；') };
+  }
+  // 定位数值须在解算入口验证（2026-11-16 Codex 二审 blocking）：与 support 声明同理，
+  // YAML 类型断言不验数值——room_dx/room_dz、along、x/z、anchor 偏移为 NaN/null/
+  // 字符串时 undefined 检查放行，加法产出 NaN 或字符串坐标，所谓成功解算仍携带错误几何。
+  const numberErrors: string[] = [];
+  if (!validatePlacementNumbers(item, dims, numberErrors)) {
+    return { placement: null, diagnostic: numberErrors.join('；') };
+  }
+  return result;
+}
+
+/**
+ * 定位数值运行时校验（2026-11-16 Codex 二审 blocking）：一件 placed 家具的全部定位
+ * 数值输入（绝对 x/z、墙锚 along/wall_clearance、房间偏移 room_dx/room_dz、家具锚点
+ * 偏移）须为有限数；尺寸（行内 / FURNITURE_DIMS / length 任一来源）须为有限正数。
+ * 校验点唯一、放在解算门禁（resolveItem）里，各分支（wall/room/absolute/anchor）
+ * 不再各自补 undefined 检查——NaN 会让范围比较恒 false、加法产出 NaN、字符串产出
+ * 字符串坐标，三者都曾静默通过。
+ */
+function validatePlacementNumbers(
+  item: PlacementItem,
+  dims: { width: number | undefined; depth: number | undefined },
+  errors: string[],
+): boolean {
+  const label = `furniture "${item.id ?? item.type}"`;
+  let valid = true;
+  const finiteField = (field: string, value: unknown): void => {
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      const shown = value === null ? 'null' : typeof value === 'string' ? JSON.stringify(value) : String(value);
+      errors.push(`${label}: ${field} 须为有限数（收到 ${shown}）`);
+      valid = false;
+    }
+  };
+  for (const field of ['x', 'z', 'along', 'wall_clearance', 'room_dx', 'room_dz'] as const) {
+    const value = item[field];
+    if (value !== undefined) finiteField(field, value);
+  }
+  if (item.anchor?.offset !== undefined) {
+    finiteField('anchor.offset.x', item.anchor.offset.x);
+    finiteField('anchor.offset.z', item.anchor.offset.z);
+  }
+  // 显式声明的原始尺寸须先验（2026-11-16 Codex 三审 blocking）：declaredFurnitureDims
+  // 用 ?? 兜底，显式 width: null / depth: null 会被替换为目录值——门禁若只验兜底后
+  // 的尺寸就会放行，而 FixtureFactory/SceneBuilder 用 !== undefined 判断后直接拿
+  // null 做除数（null / 目录宽 = 0），模型被压扁、渲染与图纸分裂。length 同理
+  // （furnitureFootprint 把它当 width 用）。
+  for (const field of ['width', 'depth', 'length'] as const) {
+    const value = item[field];
+    if (value !== undefined) {
+      if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+        const shown = value === null ? 'null' : typeof value === 'string' ? JSON.stringify(value) : String(value);
+        errors.push(`${label}: ${field} 须为有限正数（收到 ${shown}）`);
+        valid = false;
+      }
+    }
+  }
+  for (const [field, value] of [
+    ['width', dims.width],
+    ['depth', dims.depth],
+  ] as const) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+      errors.push(`${label}: ${field} 须为有限正数（收到 ${String(value)}）`);
+      valid = false;
+    }
+  }
+  return valid;
+}
+
+function resolveItemInner(
   item: PlacementItem,
   wallSegments: Map<string, WallLike[]>,
   hosts: ReadonlyMap<string, PlacementItem> | undefined,
@@ -259,10 +388,14 @@ function resolveItem(
 
   const hasWallAnchor = item.wall !== undefined || item.wall_side !== undefined || item.along !== undefined;
   const hasAbsolute = item.x !== undefined || item.z !== undefined;
+  const hasRoomAnchor = item.room !== undefined || item.room_dx !== undefined || item.room_dz !== undefined;
 
   if (item.mount !== undefined) {
     if (item.anchor !== undefined) {
       return { placement: null, diagnostic: 'mount 与 anchor 不得同时声明（定位来源必须唯一）' };
+    }
+    if (hasRoomAnchor) {
+      return { placement: null, diagnostic: 'mount 与 room/room_dx/room_dz 不得同时声明（定位来源必须唯一）' };
     }
     if (hasAbsolute) {
       return { placement: null, diagnostic: 'mount 与绝对 x/z 不得同时声明（世界坐标由宿主槽位推出，禁写第二来源）' };
@@ -277,6 +410,9 @@ function resolveItem(
     if (hasAbsolute) {
       return { placement: null, diagnostic: 'anchor 与绝对 x/z 不得同时声明（世界坐标由锚点推出，禁写第二来源）' };
     }
+    if (hasRoomAnchor) {
+      return { placement: null, diagnostic: 'anchor 与 room/room_dx/room_dz 不得同时声明（定位来源必须唯一）' };
+    }
     if (hasWallAnchor) {
       return { placement: null, diagnostic: 'anchor 与 wall/wall_side/along 不得同时声明（定位来源必须唯一）' };
     }
@@ -289,6 +425,9 @@ function resolveItem(
       // 必须当场诊断失败——此前只有 mount（宿主槽位）/ anchor（锚点派生）分支配了这条
       // 互斥，wall 分支漏配，第二份坐标源静默被墙锚优先吞掉，verify/DXF 全绿。
       return { placement: null, diagnostic: 'wall/wall_side/along 与绝对 x/z 不得同时声明（世界坐标由墙锚推出，禁写第二来源）' };
+    }
+    if (hasRoomAnchor) {
+      return { placement: null, diagnostic: 'wall/wall_side/along 与 room/room_dx/room_dz 不得同时声明（定位来源必须唯一）' };
     }
     if (item.wall === undefined || item.wall_side === undefined || item.along === undefined) {
       return { placement: null, diagnostic: 'wall anchor requires wall, wall_side, and along' };
@@ -364,6 +503,27 @@ function resolveItem(
         wallId: item.wall,
         wallSide: item.wall_side,
         anchorAlong: item.along,
+      },
+    };
+  }
+
+  if (hasRoomAnchor) {
+    if (hasAbsolute) {
+      return { placement: null, diagnostic: 'room/room_dx/room_dz 与绝对 x/z 不得同时声明（世界坐标由房间包络推出，禁写第二来源）' };
+    }
+    if (item.room === undefined || item.room_dx === undefined || item.room_dz === undefined) {
+      return { placement: null, diagnostic: '房间相对摆位须同时声明 room、room_dx、room_dz（三者缺一即定位来源不完整）' };
+    }
+    const room = anchors?.rooms?.get(item.room);
+    if (!room) {
+      return { placement: null, diagnostic: `room "${item.room}" 未在解算上下文中找到（调用方须从 model-geometry.yaml 的 rooms 传入 PlacementAnchors.rooms）` };
+    }
+    // 房间包络西北角（minX, minZ）+ 东向/南向偏移；西北角不跟随房间南/东墙移动
+    // （与 `along` 自墙段起点计量的语义一致），房间整体移动时家具跟随。
+    return {
+      placement: {
+        x: room.x - room.width / 2 + item.room_dx,
+        z: room.z - room.depth / 2 + item.room_dz,
       },
     };
   }

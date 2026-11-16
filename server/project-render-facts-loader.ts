@@ -84,6 +84,7 @@ export class ProjectRenderFactsLoader implements StatusLoader {
     const { pointWalls, mountHosts } = buildPlacementIndexes({
       geometry: loadedLayout,
       furnishings: loadedFurnishings,
+      anchors: { rooms: new Map((loadedLayout?.rooms ?? []).map((room) => [room.id, room])) },
     });
     // 读不到 house.yaml 时保留「空表而非 undefined」的既有语义：挂载灯由 fail-closed 抛错显形。
     this.mountHosts = mountHosts ?? new Map();

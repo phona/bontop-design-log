@@ -26,7 +26,7 @@ export function runMepLint(): MepLintResult {
   const house = load<{ furnishings?: FurnishingsYaml }>('config/house.yaml');
   // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：路线端点与 DXF/3D
   // 共用 buildPlacementIndexes 单一产地（家具由共享解算一次解出，不再直读手写 x/z）。
-  const lintIndexes = buildPlacementIndexes({ geometry: { walls: layout.walls }, furnishings: house.furnishings ?? {} });
+  const lintIndexes = buildPlacementIndexes({ geometry: { walls: layout.walls }, furnishings: house.furnishings ?? {}, anchors: { rooms: new Map(layout.rooms.map((room) => [room.id, room])) } });
   const sources = endpointSourcesFromFacts(
     { electrical, plumbing, ceiling, hvac },
     lintIndexes.pointWalls,

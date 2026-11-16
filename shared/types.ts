@@ -2063,6 +2063,31 @@ export interface FurnitureAnchor {
 }
 
 /**
+ * 竖向支撑声明（2026-11-16 DDD 模型约束）：一件 placed 家具必须显式声明它靠什么承托，
+ * 「不悬空」是对象自身的模型约束，不是事后校验约定。`support` 与定位声明（wall/anchor/
+ * mount/room/绝对 x/z）正交：定位声明定平面位置，支撑声明定竖向承托。
+ *
+ * 五种承托（校验语义见 scripts/verify/placement/verify-furniture-placement.ts 的
+ * 支撑检查；底/顶高取 FixtureFactory 建模实测 Box3，与 SceneBuilder 同口径）：
+ * - `floor`：落地，建模底 = 0（地面）。
+ * - `wall`：挂墙，`bottom` = 挂件建模最低点（灯/镜柜/毛巾架/油烟机/壁挂炉等）。
+ * - `furniture`：搁置在另一件家具的水平面上，`host` 为承托件的稳定 id（可多件，如
+ *   桥接台面跨两段柜体），`surface` = 承托面高度，建模底须等于它。
+ * - `inset`：嵌装进另一件家具的台面开孔（水槽/灶具），`host` + `surface` = 台面高度；
+ *   建模底在台面之下、建模顶在台面之上（盆体/炉体沉入开孔、沿口搭在台面上）。
+ * - `ceiling`：吊顶面挂件（排气扇），`face` = 吊顶完成面高度，建模顶须等于
+ *   `face − drop`（`drop` 缺省为 0；排气扇 `drop: 0.075` 是 2026-11-12 配方注释
+ *   钉死的顶缘与完成面间隙，不可静默改 0）。
+ * 缺失即摆位解算诊断失败（shared/furniture-placement.ts）；count-only 条目不需要。
+ */
+export type FurnishingSupport =
+  | { kind: 'floor' }
+  | { kind: 'wall'; bottom: number }
+  | { kind: 'furniture'; host: string | string[]; surface: number }
+  | { kind: 'inset'; host: string | string[]; surface: number }
+  | { kind: 'ceiling'; face: number; drop?: number };
+
+/**
  * 客卫台盆柜（type:'vanity'）布局参数（DEC-2026-11-05-R5 定案「仓+抽屉」）。
  * 柜体分割的唯一声明源：3D FixtureFactory.buildVanity、摆位解算（robot_dock 挂载）、
  * DXF/校验外框全部读这里，FURNITURE_DIMS 不再存 vanity 尺寸（同一数字只留一处）。
@@ -2130,6 +2155,20 @@ export interface FurnishingItem {
   mount?: FurnitureMount;
   /** 锚点派生摆位：挂到另一份配置的锚点对象上（见 FurnitureAnchor），禁写 x/z。 */
   anchor?: FurnitureAnchor;
+  /**
+   * 房间相对摆位（2026-11-16 DDD 模型约束）：位置 = 房间包络西北角（minX, minZ）
+   * + (room_dx 东向, room_dz 南向)。房间包络取 model-geometry.yaml 的 room bbox
+   * （与 verify-furniture-placement 的 roomBounds 同口径）；西北角是包络的 minX/minZ，
+   * 不跟随房间南/东墙移动（与 `along` 自墙段起点计量的语义一致）。与 wall/anchor/mount/
+   * 绝对 x/z 互斥；room_dx/room_dz 须与 room 成对出现。
+   */
+  room?: string;
+  /** 房间相对摆位：自房间包络西北角向东的距离（m），只允许与 `room` 成对声明。 */
+  room_dx?: number;
+  /** 房间相对摆位：自房间包络西北角向南的距离（m），只允许与 `room` 成对声明。 */
+  room_dz?: number;
+  /** 竖向支撑声明（2026-11-16 DDD 模型约束）：placed 条目必填，见 FurnishingSupport；count-only 条目不需要。 */
+  support?: FurnishingSupport;
   /** type:'vanity' 的柜体分割参数；缺失或非法即定位诊断失败（不静默按默认值建模）。 */
   vanity_layout?: VanityLayoutDecl;
 }

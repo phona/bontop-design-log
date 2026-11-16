@@ -66,7 +66,7 @@ function resolveFactExpression(raw: string | undefined): number | string | undef
 
   // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：与 verify:mep /
   // takeoff:mep / DXF 同一解算，量只有一份（家具由共享解算一次解出，不再直读手写 x/z）。
-const takeoffGateIndexes = buildPlacementIndexes({ geometry: { walls: ProjectCatalog.load('.').getWalls() }, furnishings: ProjectCatalog.load('.').getFurnishings() });
+const takeoffGateIndexes = buildPlacementIndexes({ geometry: { walls: ProjectCatalog.load('.').getWalls() }, furnishings: ProjectCatalog.load('.').getFurnishings(), anchors: { rooms: new Map(ProjectCatalog.load('.').getRooms().map((room) => [room.id, room])) } });
 const sources = endpointSourcesFromFacts({
   electrical: electrical as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['electrical'],
   plumbing: plumbing as unknown as Parameters<typeof endpointSourcesFromFacts>[0]['plumbing'],

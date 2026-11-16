@@ -125,7 +125,7 @@ describe('Stage 2：verify-rules 直读 x/z 的静默跳过一次收口', () => 
       // 结构化追加一个不存在的房间，放一件 anchor 沙发副本（合成条目，偏移为测试选定值）。
       const { path, doc } = loadHouseYaml(sandbox);
       (doc.furnishings as YamlDoc).no_such_room = [
-        { type: 'sofa_3seat', id: 'ld.sofa_test', anchor: { source: 'furniture', id: 'ld.tv_65', offset: { x: 3.58, z: -0.30 } }, rotation: 270 },
+        { type: 'sofa_3seat', id: 'ld.sofa_test', anchor: { source: 'furniture', id: 'ld.tv_65', offset: { x: 3.58, z: -0.30 } }, rotation: 270, support: { kind: 'floor' } },
       ];
       saveYamlFile(path, doc);
       const { status, output } = runVerifyRules(sandbox);

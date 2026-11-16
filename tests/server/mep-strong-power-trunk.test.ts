@@ -163,8 +163,11 @@ function resolveChain(all: ReturnType<typeof loadAll>, furnishings: FurnishingsY
     wallSegments.set(wall.id ?? '', list);
   }
   const items = Object.values(furnishings).flat();
-  const { placements, diagnostics } = resolveFurniturePlacements(items, wallSegments as any);
-  const { mountHosts } = buildPlacementIndexes({ geometry: { walls: all.layout.walls }, furnishings });
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；不传时 7 件
+  // 房间相对家具诊断失败（不回落绝对坐标）。
+  const rooms = new Map(all.layout.rooms.map((room) => [room.id, room]));
+  const { placements, diagnostics } = resolveFurniturePlacements(items, wallSegments as any, { rooms });
+  const { mountHosts } = buildPlacementIndexes({ geometry: { walls: all.layout.walls }, furnishings, anchors: { rooms } });
   const sources = endpointSourcesFromFacts(
     { electrical: all.electrical, plumbing: all.plumbing, ceiling: all.ceiling, hvac: all.hvac } as any,
     all.pointWalls,

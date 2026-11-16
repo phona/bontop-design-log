@@ -475,10 +475,10 @@ function loadCabinetRunTakeoff(catalog: ProjectCatalog): Map<string, { projected
   };
   for (const [roomId, items] of Object.entries(catalog.getFurnishings())) {
     for (const item of items) {
-      // count-only 条目不带几何：无 x/z 且无 wall/mount/anchor 任一 placement 声明。
+      // count-only 条目不带几何：无 x/z 且无 wall/mount/anchor/room 任一 placement 声明。
       // （#98 Tier 1：墙锚/家具锚的柜体 run 仍有 length/cabinetHeight 几何，不得按「无 x/z」跳过——
       //  旧守卫会把 3 段 run + 桥的柜体 4.2226㎡ / 台面 5.51m 静默清零，见本 PR 等价快照。）
-      const hasPlacement = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined;
+      const hasPlacement = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined || item.room !== undefined;
       if (!hasPlacement) continue;
       if (item.type === 'kitchen_cabinet_run') {
         const length = item.length;

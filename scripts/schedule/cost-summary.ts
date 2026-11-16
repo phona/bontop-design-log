@@ -942,7 +942,8 @@ const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknow
     controls?: Parameters<typeof computeMepTakeoff>[0]['controls'];
   };
   // 宿主索引单一产地（issue #98 二阶段 S1）：见下 endpointSourcesFromFacts 的 costIndexes。
-  const costIndexes = buildPlacementIndexes({ geometry: { walls: ProjectCatalog.load('.').getWalls() }, furnishings: ProjectCatalog.load('.').getFurnishings() });
+  const costCatalog = ProjectCatalog.load('.');
+  const costIndexes = buildPlacementIndexes({ geometry: { walls: costCatalog.getWalls() }, furnishings: costCatalog.getFurnishings(), anchors: { rooms: new Map(costCatalog.getRooms().map((room) => [room.id, room])) } });
   const sources = endpointSourcesFromFacts({
     electrical,
     plumbing,

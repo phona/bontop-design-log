@@ -390,10 +390,10 @@ describe('condensate coordination fixtures', () => {
     hvacAnchors: new Map([['indoor_master', { x: 3.70, z: 5.10 }]]),
     hvacTerminals: [{ id: 'condensate_master_candidate', position: { x: 2.0, y: 0.1, z: 2.5 } }],
     mepRoute: { penetration: [{ wall: 'w_mbath_south', at: { x: 2.30, z: 2.86 } }] },
-    wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 },
+    wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0, support: { kind: 'floor' as const } },
     // along 2.60 = 沿墙距离（自起点顶点 v_bath_ne z=1.10 起算）→ 世界锚点 z=3.70，
     // 即管行 z[3.10,4.30] 中点（issue #98 PR-9 删除「along = 绝对 z」特例后的口径）。
-    wallRun: { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270 },
+    wallRun: { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270, support: { kind: 'floor' as const } },
     wallSegments: new Map([
       ['w_mb_east', [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }]],
       ['w_mbath_east', [{ x1: 2.60, z1: 1.10, x2: 2.60, z2: 4.30 }]],
@@ -488,7 +488,7 @@ describe('condensate coordination fixtures', () => {
   it('follows the anchors when the wardrobe or the penetration moves', () => {
     const movedWardrobe = buildCondensateChain({
       ...chainAnchors,
-      wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.55, z: 4.59, rotation: 0 },
+      wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.55, z: 4.59, rotation: 0, support: { kind: 'floor' as const } },
     });
     expect(movedWardrobe.diagnostics).toEqual([]);
     // 衣柜东移 0.10m：服务带锚点与两段（entry/chase）一起东移，接口仍重合。
@@ -512,7 +512,7 @@ describe('condensate coordination fixtures', () => {
       ...chainAnchors,
       // 衣柜北移 0.10m（南缘 4.30→4.40）：柜顶下落段止于新南缘，墙行包管 along 没跟着改
       // → 接口不重合，整条链作废并显形，而不是画一条对不上包管的管。
-      wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.69, rotation: 0 },
+      wardrobe: { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.69, rotation: 0, support: { kind: 'floor' as const } },
     });
     expect(broken.geometry).toBeNull();
     expect(broken.diagnostics.some((line) => line.includes('接口不重合'))).toBe(true);

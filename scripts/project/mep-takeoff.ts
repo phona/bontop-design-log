@@ -62,7 +62,7 @@ if (typeof AREA_SQM !== 'number' || !(AREA_SQM > 0)) {
 
 // 点位宿主墙索引（issue #98 S1）+ mount 家具宿主索引（issue #98 S2）：路线端点与 DXF/3D 共用
 // buildPlacementIndexes 单一产地（家具由共享解算一次解出，不再直读手写 x/z）。
-const takeoffIndexes = buildPlacementIndexes({ geometry: { walls: catalog.getWalls() }, furnishings: house.furnishings ?? {} });
+const takeoffIndexes = buildPlacementIndexes({ geometry: { walls: catalog.getWalls() }, furnishings: house.furnishings ?? {}, anchors: { rooms: new Map(catalog.getRooms().map((room) => [room.id, room])) } });
 const sources = endpointSourcesFromFacts({
   electrical,
   plumbing,

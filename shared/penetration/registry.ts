@@ -283,11 +283,14 @@ function placedClearanceIssues(inputs: SceneInputs, collected: ReturnType<typeof
     .filter((wall) => wall.id !== undefined)
     .map((wall) => [wall.id as string, wall.segments?.length ? wall.segments : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }]]));
   const hosts = furnitureHostIndex(Object.values(inputs.house.furnishings ?? {}).flat());
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；不传时 `room`
+  // 条目诊断失败、placement 为 null，本循环会静默跳过该件（净距校验漏掉它）。
+  const rooms = new Map(inputs.layout.rooms.map((room) => [room.id, room]));
   for (const [roomId, items] of Object.entries(inputs.house.furnishings ?? {})) {
     let runtimeIndex = 0;
     for (const raw of items) {
       const item = raw as unknown as Record<string, unknown>;
-      const { placement } = resolveFurniturePlacement(raw, wallSegments, hosts);
+      const { placement } = resolveFurniturePlacement(raw, wallSegments, hosts, { rooms });
       if (!placement) continue;
       const type = String(item.type ?? '');
       const runtimeId = furnitureObjectId(roomId, raw, runtimeIndex);

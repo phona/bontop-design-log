@@ -84,7 +84,7 @@ describe('gbath wall datum (2026-11-06 口径 A)', () => {
     // 手算：中心 x = 7.20 − 0.06(半墙厚) − 0.0(clearance) − 0.14/2 = 7.07；
     // 背面 = 7.07 + 0.07 = 7.14；along 0.405 → z = 3.55 + 0.405 = 3.955，宽 0.66 → z[3.625,4.285]。
     const placement = resolve(
-      { type: 'mirror_cabinet_gbath', wall: 'w_gbath_east_open_vanity', wall_side: 'west', rotation: 270, along: 0.405, wall_clearance: 0.0 },
+      { type: 'mirror_cabinet_gbath', wall: 'w_gbath_east_open_vanity', wall_side: 'west', rotation: 270, along: 0.405, wall_clearance: 0.0, support: { kind: 'wall', bottom: 1.1 } },
     );
     closeTo(placement.x, 7.07);
     closeTo(placement.z, 3.955);
@@ -98,7 +98,7 @@ describe('gbath wall datum (2026-11-06 口径 A)', () => {
     // 手算：中心 x = 5.60 + 0.06(半墙厚) + 0.0(clearance) + 0.10/2 = 5.71；
     // 背面 = 5.71 − 0.05 = 5.66；along 0.405 → z = 3.955，宽 0.55 → z[3.68,4.23]。
     const placement = resolve(
-      { type: 'heated_towel_rack', wall: 'w_gbath_west_open_vanity', wall_side: 'east', along: 0.405, wall_clearance: 0.0, rotation: 90 },
+      { type: 'heated_towel_rack', wall: 'w_gbath_west_open_vanity', wall_side: 'east', along: 0.405, wall_clearance: 0.0, rotation: 90, support: { kind: 'wall', bottom: 1.05 } },
     );
     closeTo(placement.x, 5.71);
     closeTo(placement.z, 3.955);
@@ -114,7 +114,7 @@ describe('gbath wall datum (2026-11-06 口径 A)', () => {
     // 删除了本墙「along = 绝对 z」的历史特例，世界位置不变）→ z = 1.10 + 2.51 = 3.61；
     // 宽 1.38 → z[2.92,4.30]。
     const placement = resolve(
-      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, wall_clearance: 0.015 },
+      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, wall_clearance: 0.015, support: { kind: 'floor' } },
     );
     closeTo(placement.x, 2.2425);
     closeTo(placement.z, 3.61);

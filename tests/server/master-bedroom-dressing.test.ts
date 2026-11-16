@@ -20,6 +20,7 @@ type Furnishing = {
   wall?: string; wall_side?: string; along?: number; wall_clearance?: number;
   anchor?: unknown; mount?: unknown;
   note?: string; blocker?: unknown;
+  support?: unknown; room?: string; room_dx?: number; room_dz?: number;
 };
 type ElectricalPoint = {
   id: string;
@@ -85,9 +86,13 @@ function fixtureSize(type: string): THREE.Vector3 {
 // YAML 会把它当「未摆位」丢掉（两床头柜锚床后即如此）。只改取数来源：位置取
 // buildPlacementIndexes 的解算结果，类型/id/rotation 取声明；返回形状与断言目标一致
 // （{type, id, x, z, rotation}），断言值一字不动。
+// 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；不传时 7 件
+// 房间相对家具不在 mountHosts 里，placed() 断言「解算失败」。
+const PLACED_LAYOUT = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
 const PLACED_HOSTS = buildPlacementIndexes({
-  geometry: { walls: resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls },
+  geometry: { walls: PLACED_LAYOUT.walls },
   furnishings: house.furnishings as unknown as FurnishingsYaml,
+  anchors: { rooms: new Map(PLACED_LAYOUT.rooms.map((room) => [room.id, room])) },
 }).mountHosts;
 
 function placed(type: string, room: Furnishing[] = master): Furnishing {
@@ -101,7 +106,7 @@ function placed(type: string, room: Furnishing[] = master): Furnishing {
   const host = item.id === undefined ? undefined : MB_FURNITURE_HOSTS?.get(item.id);
   assert.ok(host !== undefined && Number.isFinite(host.x) && Number.isFinite(host.z),
     `${type}: 家具摆位解算失败（无宿主或坐标非有限数）`);
-  const { wall: _wall, wall_side: _wallSide, along: _along, wall_clearance: _clearance, anchor: _anchor, mount: _mount, ...geometry } = item;
+  const { wall: _wall, wall_side: _wallSide, along: _along, wall_clearance: _clearance, anchor: _anchor, mount: _mount, support: _support, room: _room, room_dx: _roomDx, room_dz: _roomDz, ...geometry } = item;
   // 解算器浮点噪声（~1e-15m）归一到 1e-9m：与本文件 GAP_EPS 同口径，deepEqual
   // 才能逐位比对；几何容差仍是 0.005m，归一不掩盖任何真实漂移。
   const round9 = (value: number): number => Math.round(value * 1e9) / 1e9;
@@ -117,9 +122,11 @@ const MB_POINT_WALLS = pointWallIndexFromElements(
 
 // 家具摆位解算索引（#98 Tier 1，见 placed()）：全屋 furnishings + 全量墙一次解算，
 // mountHosts 按声明 id 索引；解算失败的件不在表里，placed() 显式断言、不静默跳过。
+// 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入（与 PLACED_HOSTS 同源）。
 const MB_FURNITURE_HOSTS = buildPlacementIndexes({
-  geometry: { walls: resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls },
+  geometry: { walls: PLACED_LAYOUT.walls },
   furnishings: house.furnishings as unknown as FurnishingsYaml,
+  anchors: { rooms: new Map(PLACED_LAYOUT.rooms.map((room) => [room.id, room])) },
 }).mountHosts;
 
 function plumbPoint(id: string): PlumbingPoint {
@@ -364,6 +371,9 @@ test('R9 master-bedroom furniture set places the full-height cabinet and removes
   assert.equal(cabinet.depth, 0.565);
   assert.equal(cabinet.cabinetHeight, 2.80);
   assert.equal(cabinet.wall_clearance, 0.015);
+  // DDD 模型约束（支撑声明）：柜体落地，support 声明须为 floor（原 verbatim
+  // deepEqual 里带的 support 字段，改结构断言后保留为声明锁）。
+  assert.deepEqual(cabinet.support, { kind: 'floor' });
   const cabinetPlaced = placed('mb_full_height_cabinet');
   const cabinetExpected = fullHeightCabinetCenter();
   assert.ok(Math.abs(cabinetPlaced.x! - cabinetExpected.x) < GAP_EPS && Math.abs(cabinetPlaced.z! - cabinetExpected.z) < GAP_EPS,
@@ -722,9 +732,12 @@ test('south-window-band low dresser uses the 2026-09-06 east-shifted transform a
   const dresserDecl = master.find((item) => item.type === 'master_hot_season_low_dresser');
   assert.ok(dresserDecl, 'missing master_hot_season_low_dresser');
   const dresser = placed('master_hot_season_low_dresser');
-  // 低柜是 Tier 3 可移动件（绝对摆位，设计输入）：位置不钉字面量，由窗带/不重叠/
-  // 插座间距三条关系守住；此处只守摆位形式（声明 x/z、无墙锚/挂载）与朝向。
-  assert.ok(dresserDecl.x !== undefined && dresserDecl.z !== undefined, 'low dresser must stay absolute (Tier 3 movable)');
+  // 低柜是 Tier 3 可移动件（房间相对摆位，设计输入）：位置不钉字面量，由窗带/不重叠/
+  // 插座间距三条关系守住；此处只守摆位形式（声明 room/room_dx/room_dz、无墙锚/挂载）与朝向。
+  // （2026-11-16 DDD 模型约束 rebase 跟进：#254 的本条断言写的是绝对摆位，
+  //  rebase 后低柜已迁为房间相对——断言形式跟进，关系断言不动。）
+  assert.equal(dresserDecl.room, 'master_bedroom', 'low dresser must stay room-relative (Tier 3 movable)');
+  assert.ok(dresserDecl.room_dx !== undefined && dresserDecl.room_dz !== undefined, 'low dresser must carry room_dx/room_dz');
   assert.equal(dresserDecl.wall, undefined);
   assert.equal(dresserDecl.anchor, undefined);
   assert.equal(dresserDecl.mount, undefined);

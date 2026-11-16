@@ -36,9 +36,11 @@ const electrical = parseElectricalPoints(readFileSync('config/electrical.yaml', 
 const ceiling = parseCeilingZones(readFileSync('config/model/envelope/ceiling.yaml', 'utf8'));
 const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
 // （二阶段 S1）宿主索引一律取 buildPlacementIndexes 产物（家具由共享解算一次解出）。
+const renderFactsGateLayout = resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0]);
 const renderFactsGateIndexes = buildPlacementIndexes({
-  geometry: { walls: resolveLayout(parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0]).walls },
+  geometry: { walls: renderFactsGateLayout.walls },
   furnishings: house.furnishings ?? {},
+  anchors: { rooms: new Map(renderFactsGateLayout.rooms.map((room) => [room.id, room])) },
 });
 const walls = renderFactsGateIndexes.pointWalls;
 const mountHosts = renderFactsGateIndexes.mountHosts;

@@ -19,8 +19,8 @@ const anchors: Pick<BuildCondensateChainInput, 'hvacAnchors' | 'hvacTerminals' |
   hvacTerminals: [{ id: 'condensate_master_candidate', position: { x: 2.0, y: 0.1, z: 2.5 } }],
   mepRoute: { penetration: [{ wall: 'w_mbath_south', at: { x: 2.30, z: 2.86 } }] },
 };
-const wardrobe = { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 };
-const wallRun = { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270 };
+const wardrobe = { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0, support: { kind: 'floor' as const } };
+const wallRun = { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270, support: { kind: 'floor' as const } };
 const wallSegments = new Map<string, Array<{ x1: number; z1: number; x2: number; z2: number }>>([
   ['w_mb_east', [{ x1: 4.20, z1: 5.55, x2: 4.20, z2: 9.80 }]],
   ['w_mbath_east', [{ x1: 2.60, z1: 1.10, x2: 2.60, z2: 4.30 }]],
@@ -204,6 +204,41 @@ test('家具摆位解算：anchor 声明解出链上点，绝对 x/z 对三件�
   ).diagnostic?.includes('unknown chain anchor point'));
 });
 
+test('hvac/chain 豁免只给协调示意件：普通家具挂 HVAC 锚点仍须过 DIMS/support 门（2026-11-16 Codex 四审 major）', () => {
+  const { geometry } = chainWith();
+  assert.ok(geometry);
+  const placementAnchors = {
+    hvacAnchors: anchors.hvacAnchors,
+    condensateChain: geometry,
+  };
+  // bed_180 有目录尺寸、无 support：旧实现只看 anchor.source 就豁免，直接放行。
+  const bed = resolveFurniturePlacement(
+    { type: 'bed_180', anchor: { source: 'hvac', id: 'indoor_master' } },
+    wallSegments,
+    undefined,
+    placementAnchors,
+  );
+  assert.equal(bed.placement, null);
+  assert.match(bed.diagnostic ?? '', /缺少 support/);
+  // 无目录尺寸的未知类型：豁免前同样放行。
+  const unknown = resolveFurniturePlacement(
+    { type: 'unknown-type', anchor: { source: 'hvac', id: 'indoor_master' } },
+    wallSegments,
+    undefined,
+    placementAnchors,
+  );
+  assert.equal(unknown.placement, null);
+  assert.match(unknown.diagnostic ?? '', /no width\/depth/);
+  // 示意件本身仍豁免（正向对照）。
+  const outlet = resolveFurniturePlacement(
+    { type: 'condensate_pipe_ac_outlet', anchor: { source: 'hvac', id: 'indoor_master' } },
+    wallSegments,
+    undefined,
+    placementAnchors,
+  );
+  assert.ok(outlet.placement);
+});
+
 test('家具链 ↔ MEP 平面折线对照：重合无发现，漂移即显形', () => {
   const { geometry } = chainWith();
   assert.ok(geometry);
@@ -232,9 +267,9 @@ test('buildScene 侧锚点接线：合成 diagram + 穿墙点解出三件，缺�
   } as unknown as HvacDiagram;
   const furnishings = {
     master_bedroom: [
-      { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 },
+      { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0, support: { kind: 'floor' as const } },
       { type: 'condensate_pipe_ac_outlet', id: 'mb.condensate_pipe', anchor: { source: 'hvac' as const, id: 'indoor_master' }, rotation: 0 },
-      { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270 },
+      { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270, support: { kind: 'floor' as const } },
       { type: 'mb_vanity_pvc_wardrobe_entry', id: 'mb.vanity_pvc_wardrobe_entry', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
       { type: 'mb_vanity_pvc_service_chase', id: 'mb.vanity_pvc_service_chase', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
     ],

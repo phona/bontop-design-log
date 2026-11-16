@@ -60,7 +60,7 @@ export function buildCliHouseScene(
   const hvacDiagram = hvacFacts.plans[0]?.diagram;
   // 点位宿主墙索引（issue #98 S3）+ 家具宿主索引（issue #98 S2 / 第五阶段 S1）：
   // 暖通 ref → 电气点位的坐标走单一解算器，两份索引与 MEP/DXF/verify 同一构造。
-  const cliSceneIndexes = buildPlacementIndexes({ geometry: { walls: resolved.walls }, furnishings: house.furnishings ?? {} });
+  const cliSceneIndexes = buildPlacementIndexes({ geometry: { walls: resolved.walls }, furnishings: house.furnishings ?? {}, anchors: { rooms: new Map(resolved.rooms.map((room) => [room.id, room])) } });
   const hvacSources = buildHvacBuilderSources({
     projection,
     // 吊顶分区源（codex 5088dc1b 前一轮 blocking 的回归）：不带 renderFactsPath 时 projection

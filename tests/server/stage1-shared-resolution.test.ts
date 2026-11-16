@@ -28,16 +28,16 @@ const VANITY_LAYOUT = {
 
 /** Stage 2 真实几何的合成复刻：tv_65 (7.42, 8.00) + offset (+3.58, −0.30) = 沙发 (11.00, 7.70)。 */
 const TV_SOFA: PlacementItem[] = [
-  { type: 'tv_65', id: 'test.tv', x: 7.42, z: 8.0 },
-  { type: 'sofa_3seat', id: 'test.sofa', anchor: { source: 'furniture', id: 'test.tv', offset: { x: 3.58, z: -0.3 } } },
+  { type: 'tv_65', id: 'test.tv', x: 7.42, z: 8.0, support: { kind: 'wall', bottom: 1.1 } },
+  { type: 'sofa_3seat', id: 'test.sofa', anchor: { source: 'furniture', id: 'test.tv', offset: { x: 3.58, z: -0.3 } }, support: { kind: 'floor' } },
 ];
 
 test('批量解算：绝对 + 墙锚 + 挂载 + 家具锚点一次解出，与单件解算同值', () => {
   const list: PlacementItem[] = [
     ...TV_SOFA,
-    { type: 'cabinet', id: 'test.cab', wall: 'w1', wall_side: 'south', along: 2.5, width: 1.0, depth: 0.5 },
-    { type: 'vanity', id: 'test.vanity', x: 5, z: 5, vanity_layout: VANITY_LAYOUT },
-    { type: 'robot_dock', id: 'test.dock', mount: { furniture_id: 'test.vanity', slot: 'robot_bay' }, width: 0.4, depth: 0.4 },
+    { type: 'cabinet', id: 'test.cab', wall: 'w1', wall_side: 'south', along: 2.5, width: 1.0, depth: 0.5, support: { kind: 'floor' } },
+    { type: 'vanity', id: 'test.vanity', x: 5, z: 5, vanity_layout: VANITY_LAYOUT, support: { kind: 'floor' } },
+    { type: 'robot_dock', id: 'test.dock', mount: { furniture_id: 'test.vanity', slot: 'robot_bay' }, width: 0.4, depth: 0.4, support: { kind: 'floor' } },
   ];
   const { placements, diagnostics } = resolveFurniturePlacements(list, WALLS);
   assert.deepEqual(diagnostics, []);
@@ -100,7 +100,7 @@ test('家具锚点：断引用 / 循环 / 宿主无位置 / offset 越权均显�
 test('pointMountHostIndexFromResolved：与旧索引同形态，x/z 来自解算结果；墙锚家具至此进索引', () => {
   const list: PlacementItem[] = [
     ...TV_SOFA,
-    { type: 'cabinet', id: 'test.cab', wall: 'w1', wall_side: 'south', along: 2.5, width: 1.0, depth: 0.5, rotation: 90 },
+    { type: 'cabinet', id: 'test.cab', wall: 'w1', wall_side: 'south', along: 2.5, width: 1.0, depth: 0.5, rotation: 90, support: { kind: 'floor' } },
   ];
   const { placements } = resolveFurniturePlacements(list, WALLS);
   const hosts = pointMountHostIndexFromResolved(placements);
@@ -119,8 +119,8 @@ test('pointMountHostIndexFromResolved：与旧索引同形态，x/z 来自解算
 test('buildPlacementIndexes：诊断随 indexes 流出；缺 geometry 时部分上下文显式受限、不回落手写 x/z', () => {
   const furnishings: FurnishingsYaml = {
     room: [
-      { type: 'tv_65', id: 'test.tv', x: 7.42, z: 8.0 },
-      { type: 'cabinet', id: 'test.cab', wall: 'w1', wall_side: 'south', along: 2.5, width: 1.0, depth: 0.5 },
+      { type: 'tv_65', id: 'test.tv', x: 7.42, z: 8.0, support: { kind: 'wall', bottom: 1.1 } },
+      { type: 'cabinet', id: 'test.cab', wall: 'w1', wall_side: 'south', along: 2.5, width: 1.0, depth: 0.5, support: { kind: 'floor' } },
     ],
   };
   const full = buildPlacementIndexes({
@@ -147,7 +147,7 @@ test('buildPlacementIndexes：墙输入为一次性 iterable（Map.values()）�
     geometry: { walls: wallsById.values() },
     furnishings: {
       room: [
-        { type: 'cabinet', id: 'test.cab', wall: 'w1', wall_side: 'south', along: 2.5, width: 1.0, depth: 0.5 },
+        { type: 'cabinet', id: 'test.cab', wall: 'w1', wall_side: 'south', along: 2.5, width: 1.0, depth: 0.5, support: { kind: 'floor' } },
       ],
     },
   });
@@ -239,6 +239,7 @@ test('墙锚 length 型柜体：沿墙长度取 length，行内无 width 时不�
     type: 'kitchen_cabinet_run', id: 'test.run',
     wall: 'w1', wall_side: 'south', along: 2.5,
     length: 1.28, depth: 0.6, wall_clearance: -0.04,
+    support: { kind: 'floor' },
   };
   const { placement, diagnostic } = resolveFurniturePlacement(run, WALLS);
   assert.equal(diagnostic, undefined);

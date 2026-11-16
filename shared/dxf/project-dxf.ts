@@ -29,7 +29,7 @@ import { type CeilingZone, type ElectricalPoint, type FurnishingsYaml, type Plum
 import { type MepCoordination, type MepEndpointSources, resolveMepEndpoint, resolveMepRoutes } from '../mep-hvac-coordination-schema.js';
 import { centerlineSamples } from '../arc-polyline.js';
 
-import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement, type WallLike } from '../furniture-placement.js';
+import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement, type RoomAnchor, type WallLike } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
 import { resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall, type PointWallElementInput } from '../point-placement.js';
 import { buildPlacementIndexes, wallSegmentsFromElements } from '../placement-indexes.js';
@@ -172,9 +172,13 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   // （二阶段 S1 修复轮审计）本处 furnitureDiagnostics 不另设门禁：emitFurniture 对同一份
   // furnishings、同一细分段口径逐件解算，失败即进 errors 使导出失败——批量诊断与逐件
   // 诊断同源同输入，无第二口径可分裂；链示意件由 emitFurniture 按类型跳过，不进批量口径。
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；不传时 `room`
+  // 条目诊断失败（不回落绝对坐标），逐件导出随即 fail-closed。
+  const rooms = house.rooms === undefined ? undefined : new Map(house.rooms.map((room) => [room.id, room]));
   const placementIndexes = buildPlacementIndexes({
     geometry: { walls: house.anchorWalls ?? [...wallsById.values()] },
     furnishings: house.furnishings,
+    anchors: rooms === undefined ? undefined : { rooms },
   });
   const pointWalls: ReadonlyMap<string, PointWall> = placementIndexes.pointWalls ?? new Map();
   const pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined = placementIndexes.mountHosts;
@@ -189,7 +193,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('furnishings: 无输入，A-FURN 图层为空（家具摆位未导出——数据不可得时禁止用页面缓存当施工摆位）');
     notes.push('FURNISHINGS NOT EXPORTED: furnishings data unavailable at export time');
   } else {
-    emitFurniture(writer, house.furnishings, anchorWallSegments, warnings, label, errors);
+    emitFurniture(writer, house.furnishings, anchorWallSegments, warnings, label, errors, rooms);
   }
   if (house.electrical === undefined) {
     warnings.push('electrical: 无输入，E-* 图层为空（电气点位未导出——数据不可得时禁止用页面缓存当施工点位）');
@@ -411,6 +415,7 @@ function emitFurniture(
   warnings: string[],
   label: (text: string, fallback?: string) => string,
   errors: string[],
+  rooms?: ReadonlyMap<string, RoomAnchor>,
 ): void {
   // 墙锚参照线与 3D 同口径（codex 二十审 major，SceneBuilder.wallSegments）：带 segments
   // 细分的墙优先传细分段——resolveFurniturePlacement 以数组首段算方向/along 合法域，
@@ -428,7 +433,7 @@ function emitFurniture(
         warnings.push(`furniture ${roomId}:${item.type}: 协调示意件（冷凝水走向代理），DXF 不画——几何以 M-CAND 候选路线为准`);
         continue;
       }
-      const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts);
+      const { placement, diagnostic } = resolveFurniturePlacement(item, wallSegments, hosts, rooms === undefined ? undefined : { rooms });
       if (diagnostic !== undefined) {
         // 定位声明解不出来 = 施工摆位不可得：整次导出失败，不出缺件图纸（issue #98 PR-3）。
         errors.push(`furniture ${roomId}:${item.type}: ${diagnostic}`);

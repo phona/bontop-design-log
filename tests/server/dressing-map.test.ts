@@ -23,7 +23,7 @@ function sectionFor(furnishings: FurnishingsYaml) {
 
 test('家具三态①：有效摆位进已摆位行，数量按实例数', () => {
   const { lines, failures } = sectionFor({
-    bedroom_nw: [{ type: 'bed_150', id: 'bnw.bed_150', x: 4.6, z: 2.3, rotation: 270 }],
+    bedroom_nw: [{ type: 'bed_150', id: 'bnw.bed_150', x: 4.6, z: 2.3, rotation: 270, support: { kind: 'floor' } }],
   });
   assert.deepEqual(failures, []);
   assert.deepEqual(lines, ['| bedroom_nw | bed_150 | 1 | 1.5×2 | (4.6, 2.3) / 270° |']);
@@ -41,7 +41,7 @@ test('行内尺寸优先于目录：无目录条目的参数化柜仍显示行�
   const { placement, diagnostic } = resolveFurniturePlacement(real, context.wallSegments, context.hosts, context.anchors);
   assert.equal(diagnostic, undefined, `unexpected diagnostic: ${diagnostic ?? ''}`);
   assert.ok(placement, 'mb.full_height_cabinet must resolve against real walls');
-  // 墙锚与绝对 x/z 不得同时声明：合成条目只取绝对字段（类型/id/旋转/行内尺寸），
+  // 墙锚与绝对 x/z 不得同时声明：合成条目只取绝对字段（类型/id/旋转/行内尺寸/支撑），
   // 墙锚字段（wall/wall_side/along/wall_clearance）剥掉，摆位置只来自解算结果。
   const fixture = {
     type: real.type,
@@ -51,6 +51,7 @@ test('行内尺寸优先于目录：无目录条目的参数化柜仍显示行�
     rotation: real.rotation,
     width: real.width,
     depth: real.depth,
+    support: real.support,
   };
   const { lines, failures } = sectionFor({
     master_bedroom: [fixture],

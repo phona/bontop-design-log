@@ -947,7 +947,7 @@ describe('App', () => {
     // 错误位置，config-status 全成功也识别不了。本用例钉住：导出必须用快照内的
     // furnishingsAll，/api/furnishings 的返回即使可达也不得进图。
     const snapWall = { id: 'w_snap', x1: 0, z1: 0, x2: 2, z2: 0, line_datum: 'centerline' };
-    const snapFurniture = { type: 'master_dressing_table', id: 'f_snap', wall: 'w_snap', wall_side: 'south', along: 1.0, wall_clearance: 0, width: 1.2, depth: 0.5 };
+    const snapFurniture = { type: 'master_dressing_table', id: 'f_snap', wall: 'w_snap', wall_side: 'south', along: 1.0, wall_clearance: 0, width: 1.2, depth: 0.5, support: { kind: 'floor' as const } };
     const otherFurniture = { type: 'kitchen_cabinet_run', id: 'f_other', wall: 'w_other', wall_side: 'south', along: 1.0, length: 1.0, depth: 0.6 };
     vi.spyOn(global, 'fetch').mockImplementation(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url;

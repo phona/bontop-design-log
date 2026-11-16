@@ -172,6 +172,7 @@ export function lintElectricalTopology(
   const { pointWalls, mountHosts } = buildPlacementIndexes({
     geometry: context.layout,
     furnishings: context.furnishings,
+    anchors: { rooms: new Map((context.layout?.rooms ?? []).map((room) => [room.id, room])) },
   });
   const planOf = (point: ElectricalPoint): { x: number; z: number } | undefined => {
     const { placement } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);

@@ -37,6 +37,7 @@ function makeItem(along: number) {
     along,
     width: 0.4,
     depth: 0.3,
+    support: { kind: 'floor' as const },
     rotation: 0,
   };
 }

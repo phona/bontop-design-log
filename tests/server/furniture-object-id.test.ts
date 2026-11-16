@@ -36,7 +36,8 @@ function allRuntimeFurnitureIds(furnishings: FurnishingsYaml, roomId?: string): 
  * anchor——2026-11-07 PR-10 起锚点派生也是一种定位声明，见 resolveItem）。
  */
 function isPlaced(item: FurnishingItem): boolean {
-  return item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined;
+  // 2026-11-16 DDD 模型约束：房间相对（room/room_dx/room_dz）也是一种定位声明。
+  return item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined || item.room !== undefined;
 }
 
 describe('furnitureObjectId', () => {

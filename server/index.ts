@@ -199,6 +199,7 @@ const apiDeps = {
     const placementIndexes = buildPlacementIndexes({
       geometry: { walls: catalog.getWalls() },
       furnishings: catalog.getFurnishings(),
+      anchors: { rooms: new Map(catalog.getRooms().map((room) => [room.id, room])) },
     });
     return buildProjectRenderFactsProjection(
       facts,

@@ -176,7 +176,7 @@ export function indexAuthorityObjects(source: string, doc: unknown): AuthorityOb
           // count-only 条目没有 runtime 对象（无 x/z、无 wall/mount/anchor）。
           // 这是 `collectDeclaredFurnitureIds` 的同一判据（shared/furniture-object-id.ts）——
           // 它们**不是** placed 工程对象，AGENTS.md「count-only 只喂预算/库存」就是这么划的界。
-          const placed = !!(item.mount || item.wall || item.anchor || item.x !== undefined || item.z !== undefined);
+          const placed = !!(item.mount || item.wall || item.anchor || item.room !== undefined || item.x !== undefined || item.z !== undefined);
           if (!placed) {
             // 兜底（OI-79）：它们虽不进 objectIds，但**是商品事实**，验收正文会直接点名
             // （SCH-150-02「逐件检查…床垫匹配…」）。在 OI-79 的「采购的东西也对象化后关联进
