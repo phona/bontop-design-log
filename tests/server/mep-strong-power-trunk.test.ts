@@ -79,11 +79,44 @@ const REFRIGERANT_AXIS_IDS = [
   'refrigerant-study',
   'refrigerant-child',
 ] as const;
-/** 全部 20 条轴路由（强电 8 + 弱电 7 + 冷媒 5；issue #243 统一协议后 axes 表缺失即全断）。 */
-const ALL_AXIS_IDS = [...AXIS_IDS, ...WEAK_AXIS_IDS, ...REFRIGERANT_AXIS_IDS] as const;
-/** 进算量的轴路由（强电 8 + 弱电 7；冷媒 5 条在 mep-takeoff.yaml 的 excluded_layers 里，
- *  求解失败不进 takeoff unresolved——C4b 算量断言只钉这 15 条）。 */
-const TAKEOFF_AXIS_IDS = [...AXIS_IDS, ...WEAK_AXIS_IDS] as const;
+/** 本批迁移新增的 29 条轴路由（强电：专用 5 + 照明 9 + 普通 15；均引用 axes 表——
+ *  C4b 实算：axes 表缺失时与原 20 条同断，合计 49 条）。 */
+const NEW_STRONG_AXIS_IDS = [
+  'strong-ded-bathheaters-gbath',
+  'strong-ded-bathheaters-mbath',
+  'strong-ded-dishwasher',
+  'strong-ded-fridge-living',
+  'strong-ded-washer-dryer',
+  'strong-light-balcony',
+  'strong-light-child',
+  'strong-light-corridor',
+  'strong-light-entry-base',
+  'strong-light-kitchen',
+  'strong-light-living',
+  'strong-light-master',
+  'strong-light-parent',
+  'strong-light-study',
+  'strong-power-garden',
+  'strong-power-gbath',
+  'strong-power-kitchen',
+  'strong-power-kitchen-east',
+  'strong-power-living',
+  'strong-power-master',
+  'strong-power-mbath-service',
+  'strong-power-parent',
+  'strong-power-parent-child-childbed',
+  'strong-power-parent-child-guest-bed-r',
+  'strong-power-parent-child-guest-north',
+  'strong-power-parent-child-guest-west',
+  'strong-power-parent-child-study-curtain',
+  'strong-power-study',
+  'strong-power-waterbar',
+] as const;
+/** 全部 49 条轴路由（强电 37 + 弱电 7 + 冷媒 5；issue #243 统一协议后 axes 表缺失即全断）。 */
+const ALL_AXIS_IDS = [...AXIS_IDS, ...NEW_STRONG_AXIS_IDS, ...WEAK_AXIS_IDS, ...REFRIGERANT_AXIS_IDS] as const;
+/** 进算量的轴路由（强电 37 + 弱电 7；冷媒 5 条在 mep-takeoff.yaml 的 excluded_layers 里，
+ *  求解失败不进 takeoff unresolved——C4b 算量断言只钉这 44 条）。 */
+const TAKEOFF_AXIS_IDS = [...AXIS_IDS, ...NEW_STRONG_AXIS_IDS, ...WEAK_AXIS_IDS] as const;
 /** 走廊轴裁定值（本文件头注 + ceiling_living 边吊内轴线，独立期望——axes 表值误改
  *  时 C1 即失败；C2a 再证改值全跟随）。 */
 const CORRIDOR_AXIS = { id: 'corridor_axis', axis: 'z' as const, value: 4.6 };
@@ -92,6 +125,9 @@ const CORRIDOR_AXIS = { id: 'corridor_axis', axis: 'z' as const, value: 4.6 };
  * 旧绝对 via（origin/master 逐字转录，y 如旧几何；from/to 端点与 from_height/
  * to_height 从当前配置推导，不钉历史坐标——端点若被改动，C1 即按新端点比对，
  * 不会把旧端点当正确值）。
+ * 例外：strong-ac-child 末行后补角点 (5.6, 4.0, 2.55)——本批 gap-2 将末段 x–y 斜线
+ * (4.35,4.0,2.55)→to(5.6,4.0,2.7) 拆为正交两段所致（平面投影不变，3D 长 +0.141m），
+ * 非转录；余 9 行仍为逐字转录。
  */
 const OLD_VIA: Record<SliceId, Array<{ x: number; z: number; y: number }>> = {
   'strong-main': [
@@ -124,6 +160,7 @@ const OLD_VIA: Record<SliceId, Array<{ x: number; z: number; y: number }>> = {
     { x: 4.35, z: 4.6, y: 2.55 },
     { x: 4.35, z: 4.35, y: 2.55 },
     { x: 4.35, z: 4.0, y: 2.55 },
+    { x: 5.6, z: 4.0, y: 2.55 },
   ],
   'strong-ac-study': [
     { x: 7.2, z: 4.6, y: 2.55 },
@@ -163,21 +200,23 @@ const EXPECTED_KINDS: Record<SliceId, string[]> = {
   'strong-ac-dining': ['axis_jog', 'axis_run'],
   'strong-ac-master': ['axis_jog', 'axis_run'],
   'strong-ac-parent': ['axis_jog', 'axis_run', 'axis_run'],
-  'strong-ac-child': ['axis_jog', 'axis_run', 'axis_run'],
+  'strong-ac-child': ['axis_jog', 'axis_run', 'axis_run', 'axis_run'],
   'strong-ac-study': ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
   'strong-ac-outdoor': ['axis_jog', 'axis_run', 'axis_run', 'level', 'axis_run', 'axis_run'],
   'strong-power-weakbox': ['from_face_jog', 'level', 'axis_run', 'axis_run'],
   'strong-power-living-table': ['from_face_jog', 'from_drop', 'shaft_run'],
 };
 
-/** 红线路由 strong-ded-bathheaters-mbath 的旧绝对 via（本批不动，C1 钉住不动）。 */
+/** strong-ded-bathheaters-mbath 的现行 via（本批 51 条迁移为关系步；旧绝对 via 见 git 历史——
+ *  末段 y–z 斜线 (2.0,4.6,2.55)→(2.0,2.86,2.7) 同批 gap-2 正交化：vertical_to 原地升至 2.7
+ *  后再南行，平面投影不变，3D 长 +0.144m）。 */
 const MBATH_VIA = [
-  { x: 7.2, z: 4.6, y: 2.55 },
-  { x: 4.1, z: 4.6, y: 2.55 },
-  { x: 2.0, z: 4.6, y: 2.55 },
-  { x: 2.0, z: 2.86, y: 2.7 },
-  { x: 2.0, z: 2.7, y: 2.7 },
-  { x: 1.3, z: 2.7, y: 2.7 },
+  { kind: 'axis_jog', axis: 'corridor_axis' },
+  { kind: 'axis_run', axis: 'corridor_axis', to: 4.1 },
+  { kind: 'axis_run', axis: 'corridor_axis', to: 2 },
+  { kind: 'vertical_to', height: 'to' },
+  { kind: 'axis_run', axis: 'z', to: 'to' },
+  { kind: 'axis_run', axis: 'x', to: 'to' },
 ];
 
 function loadAll() {
@@ -345,12 +384,12 @@ test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折
   assert.equal(all.coordination.shafts.length, 1, 'shafts 表须只有一口竖井声明');
   assert.equal(all.coordination.shafts[0].id, 'shaft_entry');
 
-  // 切片计数：strong_power 69 条，关系型 12 条（本批 10 + sofa-l/r），剩余绝对 57 条。
+  // 切片计数：strong_power 69 条，关系型 63 条（batch 2 的 10 + sofa-l/r 2 + 本批迁移 51），剩余绝对 6 条。
   const strong = all.coordination.routes.filter((r) => r.layer === 'strong_power');
   assert.equal(strong.length, 69, 'strong_power 须为 69 条');
   const relational = strong.filter((r) => r.via.some((s: any) => typeof s === 'object' && 'kind' in s));
-  assert.equal(relational.length, 12, '关系型须为 12 条（本批 10 + sofa-l/r）');
-  assert.equal(strong.length - relational.length, 57, '剩余绝对须为 57 条（后续切片）');
+  assert.equal(relational.length, 63, '关系型须为 63 条（batch 2 的 10 + sofa-l/r 2 + 本批迁移 51）');
+  assert.equal(strong.length - relational.length, 6, '剩余绝对须为 6 条（后续切片）');
 
   for (const id of SLICE_IDS) {
     const route = all.coordination.routes.find((r) => r.id === id)!;
@@ -375,9 +414,9 @@ test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折
     const route = all.coordination.routes.find((r) => r.id === id)!;
     assert.deepEqual(route.via.map((s: any) => s.kind), ['from_face_jog', 'from_drop', 'shaft_run'], `${id} 须仍为三步`);
   }
-  // 红线路由原样不动：绝对 via 逐字等于 master。
+  // mbath 已随本批 51 条迁移为关系步：via 须为上述六步（旧绝对 via 作废，见 MBATH_VIA 上注）。
   const mbath = all.coordination.routes.find((r) => r.id === 'strong-ded-bathheaters-mbath')!;
-  assert.deepEqual(mbath.via, MBATH_VIA, 'mbath 须仍为旧绝对 via（本批不碰）');
+  assert.deepEqual(mbath.via, MBATH_VIA, 'mbath 须为本批迁移后的关系 via');
 
   // 逐路由逐点等价：新折线 vs 旧绝对几何（dedup + stripCollinear 后逐点比对 + 长度相等）。
   for (const id of SLICE_IDS) {
@@ -617,7 +656,7 @@ test('C4a：合成反例——断引用/越权字段/零行程/离轴/缺 y 一�
   assert.equal(fixed.unresolved, 0, '补回后须解出');
 });
 
-test('C4b：真实配置反例——axes 表缺失时 20 条轴路由 unresolved、其余 117 条照常解出', () => {
+test('C4b：真实配置反例——axes 表缺失时 49 条轴路由 unresolved、其余 88 条照常解出', () => {
   const all = loadAll();
   const before = resolveChain(all, all.furnishings);
   assert.deepEqual(before.report.diagnostics, [], '基线须无诊断');
@@ -625,24 +664,24 @@ test('C4b：真实配置反例——axes 表缺失时 20 条轴路由 unresolved
   broken.axes = [];
   const after = resolveChain(all, all.furnishings, broken);
   const unresolvedIds = after.report.routes.filter((r) => r.unresolved.length > 0).map((r) => r.route.id).sort();
-  assert.deepEqual(unresolvedIds, [...ALL_AXIS_IDS].sort(), '恰好 20 条轴路由 unresolved（强电 8 + 弱电 7 + 冷媒 5）');
+  assert.deepEqual(unresolvedIds, [...ALL_AXIS_IDS].sort(), '恰好 49 条轴路由 unresolved（强电 37 + 弱电 7 + 冷媒 5）');
   for (const id of ALL_AXIS_IDS) {
     const r = routeOf(after.report, id);
     assert.deepEqual(r.unresolved, ['via'], `${id} unresolved 须为 via`);
     assert.deepEqual(r.points, [], `${id} 不得出半条几何`);
     assert.ok(r.diagnostics.some((d) => d.includes('引用未知轴线')), `${id} 诊断须点名所引轴线`);
   }
-  assert.equal(after.report.resolved, before.report.total - 20, '其余路由须照常解出');
-  // lint：20 条各报一条 endpoint_unresolved error。
+  assert.equal(after.report.resolved, before.report.total - 49, '其余路由须照常解出');
+  // lint：49 条各报一条 endpoint_unresolved error。
   const lint = lintMepCoordination(broken, before.sources);
   const endpointErrors = lint.errors.filter((e) => e.code === 'endpoint_unresolved');
-  assert.equal(endpointErrors.length, 20, 'lint 须报 20 条 endpoint_unresolved');
+  assert.equal(endpointErrors.length, 49, 'lint 须报 49 条 endpoint_unresolved');
   assert.deepEqual(endpointErrors.map((e) => e.routeId).sort(), [...ALL_AXIS_IDS].sort());
   assert.ok(endpointErrors.every((e) => e.message.includes('引用未知轴线')), 'lint 诊断须点名所引轴线');
-  // takeoff：broken 的新 unresolved 恰好为 20 条（kind error）。
+  // takeoff：broken 的新 unresolved 恰好为 44 条（kind error）。
   const brokenUnresolved = after.takeoff.unresolved.filter((u) => u.kind === 'error').map((u) => u.id).sort();
   const healthyUnresolved = before.takeoff.unresolved.filter((u) => u.kind === 'error').map((u) => u.id).sort();
-  assert.deepEqual(brokenUnresolved.filter((id) => !healthyUnresolved.includes(id)), [...TAKEOFF_AXIS_IDS].sort(), 'takeoff 新增 error unresolved 恰好为 15 条进算量轴路由（冷媒 5 条 excluded，不进算量）');
+  assert.deepEqual(brokenUnresolved.filter((id) => !healthyUnresolved.includes(id)), [...TAKEOFF_AXIS_IDS].sort(), 'takeoff 新增 error unresolved 恰好为 44 条进算量轴路由（冷媒 5 条 excluded，不进算量）');
   // DXF：errors 点名 broken 路由且不含其几何；健康 DXF 无 errors 且含切片路由。
   // labels:'ascii'（utf8 模式写 route.label 中文名，id 只作 fallback；ascii 模式显式用 id）。
   const dxfInput = (coord: MepCoordination) => ({
@@ -651,10 +690,16 @@ test('C4b：真实配置反例——axes 表缺失时 20 条轴路由 unresolved
     labels: 'ascii' as const,
   });
   const brokenDxf = buildProjectDxf(dxfInput(broken) as any);
-  assert.equal(brokenDxf.errors.length, 20, 'DXF 须报 20 条路由错误');
+  assert.equal(brokenDxf.errors.length, 49, 'DXF 须报 49 条路由错误');
+  // 子串匹配会把 healthy 长 id（如 strong-power-living-sofa-l）误判为 broken 的
+  // strong-power-living：须按 token 边界匹配（前后都不是 id 字符）。
+  const dxfHasToken = (text: string, id: string): boolean => {
+    const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?<![A-Za-z0-9_-])${escaped}(?![A-Za-z0-9_-])`).test(text);
+  };
   for (const id of ALL_AXIS_IDS) {
     assert.ok(brokenDxf.errors.some((e) => e.includes(id)), `DXF 错误须点名 ${id}`);
-    assert.ok(!brokenDxf.dxf.includes(id), `DXF 不得含 broken 路由 ${id} 的几何`);
+    assert.ok(!dxfHasToken(brokenDxf.dxf, id), `DXF 不得含 broken 路由 ${id} 的几何`);
   }
   const healthyDxf = buildProjectDxf(dxfInput(all.coordination) as any);
   assert.deepEqual(healthyDxf.errors, [], '健康 DXF 须无 errors');

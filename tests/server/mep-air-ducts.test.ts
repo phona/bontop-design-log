@@ -472,7 +472,7 @@ test('C3：14 条风管 lint findings 计数+码与基线一致，DXF 与算量�
   const expectedCounts: Record<string, number> = {
     'supply-air-living': 0, 'return-air-living': 4, 'supply-air-master': 2, 'return-air-master': 2,
     'supply-air-study': 1, 'return-air-study': 2, 'supply-air-parent': 2, 'return-air-parent': 1,
-    'supply-air-child': 1, 'return-air-child': 2, 'supply-air-dining': 3, 'return-air-dining': 4,
+    'supply-air-child': 1, 'return-air-child': 1, 'supply-air-dining': 3, 'return-air-dining': 4,
     'supply-air-living-bottom': 1, 'supply-air-dining-bottom': 1,
   };
   const expectedCodes: Record<string, string[]> = {
@@ -484,7 +484,7 @@ test('C3：14 条风管 lint findings 计数+码与基线一致，DXF 与算量�
     'supply-air-parent': ['route_clearance_unverified', 'supply_return_overlap'],
     'return-air-parent': ['ceiling_clearance_unverified'],
     'supply-air-child': ['route_overlap'],
-    'return-air-child': ['ceiling_clearance_unverified', 'route_overlap'],
+    'return-air-child': ['ceiling_clearance_unverified'],  // 2026-11-16 第四轮：strong-light-child 往返折返消除，与 return-air-child 的 1 处 route_overlap warning 同批消失
     'supply-air-dining': ['route_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified'],
     'return-air-dining': ['ceiling_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified'],
     'supply-air-living-bottom': ['ceiling_clearance_unverified'],
@@ -497,7 +497,7 @@ test('C3：14 条风管 lint findings 计数+码与基线一致，DXF 与算量�
     assert.equal(found.length, expectedCounts[id], `${id} findings ${found.length} !== ${expectedCounts[id]}`);
     if (expectedCodes[id]) assert.deepEqual(found.map((issue) => issue.code).sort(), [...expectedCodes[id]].sort(), `${id} codes`);
   }
-  assert.equal(total, 26, '14 条风管 findings 合计须为 26');
+  assert.equal(total, 25, '14 条风管 findings 合计须为 25');
 
   // DXF 与 lint/takeoff 同读统一出口：健康态 errors 为空、含本批路线标注。
   const dxfHouse = { rooms: [], furnishings: {} as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: [] };

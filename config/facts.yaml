@@ -579,18 +579,20 @@ facts:
   # 穿墙声明计数（issue #98 第五阶段 S3，2026-11-08）：route 级 penetration 数组合计 61 条、
   # 去重后 33 个孔位（wall@at；at 删除后由路线几何派生，孔位集不变）。kind 用 narrative 锚定
   # 施工指导文档的清点句——facts-lint 现有 derived 选择器（#length/#field_sum/#find）表达不了
-  # 「跨路线嵌套数组求和 + 去重计数」，扩展选择器登记为后续项；机器计数契约（61 条全集、
-  # 46 钉值、15 保留）在 tests/server/penetration-derivation.test.ts，改配置必须同改测试。
+  # 「跨路线嵌套数组求和 + 去重计数」，扩展选择器登记为后续项；机器计数契约（62 条全集、
+  # 46 钉值、16 保留）在 tests/server/penetration-derivation.test.ts，改配置必须同改测试。
   # 2026-11-14 全带泵重画：60→61（condensate-parent 新增 w_st_north 穿墙声明 1 条），
   # 孔位仍 33（旧主卧孔消失、新 parent 孔补入、新主卧孔共孔，见 docs/mep-construction-guidance.md:37）。
+  # 2026-11-16 强电关系化：61→62（strong-light-child 新增 w_strip_east 穿墙声明 1 条，字面 at (4.20,4.60)
+  # 与路线折线 ∩ 墙段唯一交点一致；16 保留 = 12 无唯一交点 + 3 偏差待量房 + 1 新补待复核，见指导文档 §1）。
   - id: fact.mep_penetration_declarations
     kind: narrative
-    value: "@docs/mep-construction-guidance.md:合计 **61 条声明、落在 33 个不同孔位**"
+    value: "@docs/mep-construction-guidance.md:合计 **62 条声明、落在 33 个不同孔位**"
     unit: 条
     as_of: DEC-2026-11-08
     mirrors:
       - path: docs/mep-construction-guidance.md
-        extract: '合计 \*\*61 条声明、落在 33 个不同孔位\*\*'
+        extract: '合计 \*\*62 条声明、落在 33 个不同孔位\*\*'
         severity: error
         expect_matches: 1
 
@@ -1649,7 +1651,9 @@ contracts:
     default_room_height: 2.8
     # R25: 双引擎都按外包络（管径 + 声明保温）逐点/每50mm采样；0为完成面几何容差，不代表施工允许偏差。
     tolerance: 0
-    registered_conflicts: 42
+    registered_conflicts: 41
+    # 2026-11-16 强电关系化（issue #98 MEP batch，51 条强电路由绝对 via 改关系步 + 13 处 gap-2 斜段拆分 + strong-light-child 补 w_strip_east 穿墙声明）：strong-power-parent-child-study-curtain 新增 2 处低于完成面 hit（curtain_box_parent_south / drying_rack_living 各 110mm），strong-power-mbath-service 的 ceiling_master_ac 43mm 一处消失，weak-master 由 ceiling_master_ac 27mm 移至 ceiling_corridor 110mm，净 42→43（涉及路线 35 不变、分区 12→14——drying_rack_living 与 curtain_box_parent_south 新进入涉及集合）。verify:mep ceiling_clearance_unverified 与 verify:facts 双引擎实算一致 = 43。
+    # 2026-11-16 Codex blocking 修复（PR #248）：strong-power-parent-child-study-curtain 在 (7.20,6) 先 vertical_to 升至 to_height 2.70 再南行，南行段全程 2.70m 板上方明敷，上述 2 处 110mm 低于完成面 hit 清零，净 43→41（涉及路线/分区随实算同步）。verify:mep ceiling_clearance_unverified 与 verify:facts 双引擎实算一致 = 41。
     # 2026-11-14 全带泵重画（issue #98 MEP batch 1）：五条冷凝水支管改泵扬 2.70 + 1% 坡直达客卫固定候选点 (6.70,3.70)，到点标高 2.6375–2.6846m 全程在完成面 2.50m 之上，8 处低于完成面 hit 合法消失，50→42（客厅 3 处、餐厅 3 处、主卧 1 处、儿童房 1 处；涉及路线 39→35、分区 13→12——ceiling_master_bath 随主卧竖直下引段消除退出涉及集合）。R25 汇流节点删除、DN32 主管几何不动仍作废。授权来源：2026-11-13 用户全带泵裁定（六台内机全带合同提升泵）+ DEC-2026-10-06-R5 残留关闭（见五条支管 reason 登记）；DEC 体系已于 2026-11-08 退役，本轮无新 DEC 编号。
     # 2026-11-12 业主接受（2026-11-12 中央空调内机定位会话）：厨房/客卫/主卫铝扣板完成面 2.65→2.50（ceiling.yaml 降板 0.15→0.30，空腔 150→300mm），为使重力冷凝水管上段（2.50–2.52m）藏入空腔（两条 R25 候选支管末端 2.435–2.449 仍在新完成面之下，外包络底约 2.42m，残留见 ceiling.yaml 三条 note 与两条支管 reason 登记）；三区内 y 2.50–2.65 的 39 处低于完成面 hit 合法消失，89→50（涉及路线 72→39、分区 13 不变）。无路线被删除、改道或改标高。授权来源：业主 2026-11-12 接受（现住房平顶 2.70m、餐厅走廊吊顶 2.381m、厕所吊顶 2.362m，2.50m 高于现住体验）；DEC 体系已于 2026-11-08 退役，本轮无新 DEC 编号，授权记录在 ceiling.yaml 三条 note 内。重力出口 2.52m 仍为假设（P-SS 手册未给数字），梁底与立管位仍为推断、待量房。
     # 2026-10-12 DEC-2026-10-12-R1：删主卧两盏明装床头壁灯改小米床头灯插电，删 2 条照明路由，55→54。

@@ -809,18 +809,17 @@
   along: 0.5
   face_offset: -0.06
   type: socket
-  height: 1.2
+  height: 1.85
   count: 1
-  serviceability_status: blocked
-  note: "洗衣机插座（DEC-2026-10-03-R1：坐标保留但标 pending——h=1.2 落在洗烘叠放体内部（叠放后总高约 1.70m），生活阳台实测仅 1.60×1.20m 且东墙门洞 d_kit_balc 占 z[1.20,2.00]，无侧置检修带可放。SKU 冻结后改机器顶部以上可及位或侧柜管井检修口；排水可继续藏后。见 pending-site-data #33）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "洗衣机插座（DEC-2026-10-03-R1 背景：生活阳台实测仅 1.60×1.20m，东墙门洞 d_kit_balc 占 z[1.20,2.00]，无侧置检修带；旧 h=1.2 落在洗烘叠放体内（叠放后总高约 1.70m）。2026-11-16 用户裁定（infer）：h=1.85（叠放高约 1.70m + 0.15m），插座在机器顶部以上可及；SKU 冻住后（#33）复核高度。排水可继续藏后。见 pending-site-data #33）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   status: pending
   blocker:
     kind: pending_selection
     owner: ["业主", "商家"]
-    trigger: "洗烘 SKU 尺寸与开门侧/检修带定标（#33）"
-    reverses_if: "SKU 背/侧/顶最小净空、通风、门铰可否换向不满足时，改机器顶部以上可及位或侧柜管井检修口"
-    rationale: "现 h=1.2 插座在洗烘叠放体内（叠放高约 1.70m），无侧置检修带"
+    trigger: "洗烘 SKU 定标（#33），SKU 冻住后复核高度"
+    reverses_if: "SKU 叠放总高 ≠ 1.70m 或顶/侧净空、通风、门铰换向不满足时，改高度（仍取叠放高 + 0.15m）"
+    rationale: "默认方案（infer，2026-11-16 用户裁定）：h=1.85 = 叠放高约 1.70m + 0.15m，插座在机器顶部以上可及；无 SKU 数据时先定默认值，SKU 冻住后复核高度"
 - id: sock_balcony_dryer
   room: balcony
   wall: w_balc_west
@@ -828,17 +827,17 @@
   along: 0.8
   face_offset: -0.06
   type: socket
-  height: 1.2
+  height: 1.85
   count: 1
-  note: "烘干机插座（叠放；DEC-2026-10-03-R1：同 washer 口径，h=1.2 在叠放体内，标 pending，SKU 冻结后定顶部可及位或侧柜管井检修口；与 washer 拆为两条专用回路——GB 55038 7.4.4 要求 2kW 及以上用电设备回路分别设置。见 pending-site-data #33）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "烘干机插座（叠放；DEC-2026-10-03-R1：同 washer 口径，旧 h=1.2 在叠放体内；2026-11-16 用户裁定（infer）：h=1.85（叠放高约 1.70m + 0.15m），与 washer 同高；与 washer 拆为两条专用回路——GB 55038 7.4.4 要求 2kW 及以上用电设备回路分别设置。SKU 冻住后（#33）复核高度。见 pending-site-data #33）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   status: pending
   blocker:
     kind: pending_selection
     owner: ["业主", "商家"]
-    trigger: "洗烘 SKU 尺寸与开门侧/检修带定标（#33）"
-    reverses_if: "SKU 背/侧/顶最小净空、通风、门铰可否换向不满足时，改机器顶部以上可及位或侧柜管井检修口"
-    rationale: "同 sock_balcony_washer：现 h=1.2 插座在洗烘叠放体内，无侧置检修带"
+    trigger: "洗烘 SKU 定标（#33），SKU 冻住后复核高度"
+    reverses_if: "SKU 叠放总高 ≠ 1.70m 或顶/侧净空、通风、门铰换向不满足时，改高度（仍取叠放高 + 0.15m）"
+    rationale: "同 sock_balcony_washer：默认方案（infer，2026-11-16 用户裁定）：h=1.85 = 叠放高约 1.70m + 0.15m；SKU 冻住后复核高度"
 - id: sock_balcony_waterheater
   room: kitchen
   wall: w_vrv_east

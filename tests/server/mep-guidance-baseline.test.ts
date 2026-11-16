@@ -121,8 +121,35 @@ test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必�
   //    儿童房 4 条 must_fix 重叠随改道消失；route_furniture_collision 9→8：主卧 1.61m
   //    穿柜碰撞消除；unsupported_span 8→6：主卧/书房竖直下引段消失；其余 must_fix
   //    code 不变），warnings 226→231（survey 98→91、envelope 128→140，见 guidance §6 表）。
+  //    2026-11-16 issue #98 MEP batch 强电关系化：51 条强电路由绝对 via 改关系步（逐点等价）
+  //    + 13 处 gap-2 斜段拆分 + strong-light-child 补 w_strip_east 穿墙声明；must_fix 117→92
+  //    （route_not_orthogonal 27→0：斜段全部正交化；route_endpoint_unusable 1→0：
+  //    sock_balcony_washer/dryer h 1.2→1.85、washer blocked 清除；unsupported_span 6→9：
+  //    新增 strong-light-master / strong-light-bedrooms-master-bed-north /
+  //    strong-light-bedrooms-child-door 3 条；route_overlap 59 不变），warnings 231→232
+  //    （survey 91→94：ceiling_clearance_unverified 42→43、penetration_door_clearance 17→18、
+  //    shear_wall_penetration 12→13；envelope 140→138：route_overlap 53→48、
+  //    route_clearance_unverified 35→38，见 guidance §6 表）；电气 53→52
+  //    （circuit_member_dangling_or_superseded 随 washer blocked 清除归零）。
+  //    同日并行改动（strong-power-parent-child-childbed 段几何调整，未提交）：route_overlap
+  //    must_fix 59→60、envelope 48→49，当前实算 93 errors / 233 warnings。
+  //    2026-11-16 Codex blocking 修复（PR #248）：strong-power-parent-child-study-curtain
+  //    在 (7.20,6) 先 vertical_to 升至 2.70 再南行，南行段全程 2.70m 板上方明敷；
+  //    route_overlap must_fix 60→58（与 weak-main-living / weak-parent 的 2.55m 共线
+  //    重叠消失 2 处）、ceiling_clearance_unverified 43→41（2 处 110mm hit 清零），
+  //    当前实算 91 errors / 231 warnings。
+  //    2026-11-16 Codex blocking 修复（PR #248，第二轮）：strong-power-parent-child-childbed
+  //    升位由 (4.35,4.60) 移至南行段 (5.60,4.00)——原竖直段穿冷媒主管/支管（2.60m 沿
+  //    z=4.6）与冷凝水主管（约 2.69m）中心线共 3 处；route_overlap must_fix 58→56、
+  //    envelope 49→47（冷凝水主管 1 处 + 冷凝水支管 1 处 envelope warning 同批消失），
+  //    当前实算 89 errors / 229 warnings。
+  //    2026-11-16 Codex blocking 修复（PR #248，第四轮）：7 条路由往返折返同批消除
+  //    （strong-light-master/parent/child/study、strong-power-mbath-service、
+  //    strong-power-parent-child-guest-bed-r、strong-light-bedrooms-child-door）；
+  //    unsupported_span 9→8（child-door 改走 x=4.10 带北行后东行）、route_overlap
+  //    envelope 47→45、route_clearance_unverified 38→37，当前实算 88 errors / 226 warnings。
   //    注：本数以 cabinetHeight: 2.80（总高）实测；若误写 2.50 会把柜压扁、少计 2 条。
-  assert.equal(mep.counts.errors, 117, `verify:mep must_fix errors 应为 117，实际 ${mep.counts.errors}`);
+  assert.equal(mep.counts.errors, 88, `verify:mep must_fix errors 应为 88，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 
@@ -291,7 +318,7 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
   // 旧基线 0 error / 22 warning、15 条已接受项、68 条路线 / 13 个吊顶分区、13 处穿墙点
   assert.equal(/0 error \/ 22 warning/.test(guidance), false, '§6 的旧基线「0 error / 22 warning」必须已替换为实跑口径');
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
-  assert.match(guidance, /涉及\s*\*\*35 条路线 \/ 12 个吊顶分区\*\*/); // 2026-11-14 全带泵重画后现值 35/12（五条冷凝水支管 8 处低于完成面 hit 合法消失；ceiling_master_bath 随主卧竖直下引段消除退出涉及集合）
+  assert.match(guidance, /涉及\s*\*\*34 条路线 \/ 12 个吊顶分区\*\*/); // 2026-11-16 Codex blocking 修复后现值 34/12（study-curtain 2 处 110mm hit 清零，该路由退出涉及集合，curtain_box_parent_south 与 drying_rack_living 退出涉及分区）
   // DEC-2026-10-28-R05：三个旧 curtain_box_* 分区退出涉及集合，分区数合法回到 13（16→13），旧快照守卫改钉路线数
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
   assert.equal(/design-datum\.yaml`（13 处）/.test(guidance), false, '§1 的穿墙点留档条数必须已按 design-datum.yaml 实条数改写');

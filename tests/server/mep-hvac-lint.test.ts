@@ -105,14 +105,22 @@ const KNOWN_INACCESSIBLE_ENDPOINTS: ReadonlyArray<{ routeId: string; pointId: st
 // route_overlap 63→59（儿童房 4 处 must_fix 重叠消除：ac-child 斜升段避让、bathheaters 段
 // 避让、childbed/door-light 两处改 candidate 后迁入 envelope 桶）、unsupported_span 8→6
 // （主卧/书房竖直下引段消除）；其余 6 码现值不变。survey/envelope 两桶的同批登记见各表上方。
+// 2026-11-16 强电关系化（issue #98 MEP batch，verify:mep 117/231 → 92/232 实测）：
+// route_not_orthogonal 27→0（gap-2 斜段全部拆分正交化）、route_endpoint_unusable 1→0
+// （strong-ded-washer-dryer：sock_balcony_washer/dryer h 1.2→1.85、washer blocked 清除）、
+// unsupported_span 6→9（新增 3 条：strong-light-master 1.13m、
+// strong-light-bedrooms-master-bed-north 0.40m、strong-light-bedrooms-child-door 0.90m，
+// 均为斜段拆分后正交段在开放空间无依托）；route_overlap 59→60（同日并行改动：
+// strong-power-parent-child-childbed 段几何调整，与 refrigerant-master / refrigerant-child
+// 各新增 1 处、与 refrigerant-child 旧 1 处消失，净 +1）。
 const MUST_FIX_ROUTE_CEILINGS: Readonly<Record<string, number>> = {
-  route_overlap: 59,
-  route_not_orthogonal: 27,
+  route_overlap: 60,
+  route_not_orthogonal: 0,
   suppressed_wall_crossing: 7,
-  unsupported_span: 6,
+  unsupported_span: 9,
   mep_endpoint_service_conflict: 2,
   door_opening_collision: 1,
-  route_endpoint_unusable: 1,
+  route_endpoint_unusable: 0,
   floor_band_method_mismatch: 1,
 };
 // realContext harness（无家具/飘窗/可达性上下文）的 must_fix 分桶上限：两家具类为 0。
@@ -139,6 +147,10 @@ const NO_LAYOUT_MUST_FIX_CEILINGS: Readonly<Record<string, number>> = {
   door_opening_collision: 0,
   route_furniture_collision: 0,
   endpoint_inaccessible: 0,
+  // 2026-11-16 强电关系化：无 layout 口径下 strong-power-living-robot 的斜段拆分后新增
+  // 0.70m 地面带水平段（guest-door 1.24m 仍在），floor_band_method_mismatch 1→2；
+  // verify:mep 全上下文仍为 1 条（仅 guest-door），故只抬 no-layout 一侧的单独立上限。
+  floor_band_method_mismatch: 2,
 };
 function assertMustFixCeilings(codes: ReadonlyArray<{ code: string; count: number }>, ceilings: Readonly<Record<string, number>>, where: string): void {
   for (const { code, count } of codes) {
@@ -256,10 +268,15 @@ const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
 // （主卧新穿墙 w_strip_east 各 +1：门洞 d_mb 净距 0.05m、剪力墙 inferred）；ceiling_clearance
 // 50→42（客厅/餐厅末端低于完成面与主卧/儿童房竖直段消除）、shear_wall_parallel_route 8→7
 // （主卧沿 w_mbath_east 平行段消除）为减少、同步收紧上限。
+// 2026-11-16 强电关系化：ceiling_clearance_unverified 42→43（study-curtain 新增 2 处、
+// mbath-service 消失 1 处、weak-master 移区）、penetration_door_clearance 17→18、
+// shear_wall_penetration 12→13（strong-light-child 补 w_strip_east 穿墙声明 +1）。
+// 2026-11-16 Codex blocking 修复：study-curtain 升位前移（(7.20,6) 先升至 2.70 再南行），
+// ceiling_clearance_unverified 43→41（2 处 110mm hit 清零），同步收紧上限。
 const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
-  ceiling_clearance_unverified: 42,
-  penetration_door_clearance: 17,
-  shear_wall_penetration: 12,
+  ceiling_clearance_unverified: 41,
+  penetration_door_clearance: 18,
+  shear_wall_penetration: 13,
   shear_wall_parallel_route: 7,
   route_insulation_unverified: 7,
   inline_endpoint_without_point_anchor: 6,
@@ -271,9 +288,13 @@ const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
 // 起点共享锚点重叠为改写措辞、净 0）、nonphysical_route 8→11（主卧/书房/儿童房改 candidate
 // +3）、route_overlap_declared_trunk 14→11（R25 汇流节点删除 −3）、unsupported_span 2→0
 // （客厅 3.82m / 餐厅 0.44m 斜段消除）。
+// 2026-11-16 强电关系化：route_overlap 53→48（strong-light-child 斜段拆分后其 5 处近似包络
+// 重叠消失，同步收紧上限）、route_clearance_unverified 35→38（gap-2 斜段拆分后同批 21 条
+// 路线内实例 +3）；同日并行改动：route_overlap 48→49（strong-power-parent-child-childbed
+// 段几何调整，与 condensate-master 新增 1 处）。
 const ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
-  route_overlap: 53,
-  route_clearance_unverified: 35,
+  route_overlap: 49,
+  route_clearance_unverified: 38,
   route_overlap_declared_trunk: 11,
   bay_sill_crossing_declared: 11,
   reference_constraint_uncertain: 11,
@@ -308,9 +329,11 @@ const REAL_CONTEXT_ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
   bay_sill_crossing_declared: 0,
   route_furniture_collision: 0,
 };
-// 无依托段总数上限（must_fix ≤6 + envelope ≤0；只许减少）。
+// 无依托段总数上限（must_fix ≤9 + envelope ≤0；只许减少）。
 // 2026-11-14 全带泵重画 10→6（客厅/餐厅斜段与主卧/书房竖直段共 4 条消除）。
-const UNSUPPORTED_SPAN_CEILING = 6;
+// 2026-11-16 强电关系化 6→9（gap-2 斜段拆分新增 3 条：strong-light-master、
+// strong-light-bedrooms-master-bed-north、strong-light-bedrooms-child-door）。
+const UNSUPPORTED_SPAN_CEILING = 9;
 // 最长无依托段上限（strong-power-child 现值 2.04m；只许缩短）。
 // 2026-11-14 全带泵重画 3.82m→2.04m（客厅 3.82m 斜段消除）。
 const LONGEST_UNSUPPORTED_SPAN_CEILING_M = 2.04;
@@ -450,7 +473,7 @@ test('verify:mep JSON has stable result and exit contract', () => {
   assert.ok(Array.isArray(result.warnings));
   // F4：退出码按 JSON 实际 errors 是否非空动态断言——must_fix 清零后 exit 0 属预期，
   // 错误仍存在时必须 exit 1（生产契约：scripts/verify/mep/verify-mep-lint.ts 末尾
-  // `if (result.errors.length > 0) process.exitCode = 1`）。现值 errors 124 条，仍断言 exit 1。
+  // `if (result.errors.length > 0) process.exitCode = 1`）。现值 errors 91 条，仍断言 exit 1。
   assert.equal(status, result.errors.length > 0 ? 1 : 0, `verify:mep 退出码须与 errors 是否非空一致：errors ${result.errors.length} 条时应 exit ${result.errors.length > 0 ? 1 : 0}，实际 ${status}`);
   // Codex 二审 major：删掉钉死总数后 JSON 汇总字段 counts.errors / counts.warnings 再无人读，
   // 汇总算错会静默通过。补内部一致性断言（汇总 == 数组长度），不是钉死总数：总数随几何变仍自由，
@@ -850,7 +873,7 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
     assert.match(strip[0].message, /过门头穿梁，需核梁底与套管/);
     assert.equal(strip[0].category, 'survey_dependent');
   }
-  // penetration_door_clearance 由 survey 上限 16 把守，不再钉死 16。
+  // penetration_door_clearance 由 survey 上限 18 把守，不再钉死 18。
   // (d) 剪力墙并行 8 → 14（2026-10-07 M04/M05 补路由贴剪力墙竖槽，见各条 reason 扫筋声明）
   // 同 strip 一样用 if 守卫：该实例消失即问题已清，不抛 TypeError。
   const masterParallel = result.warnings.find((i) => i.code === 'shear_wall_parallel_route' && i.routeId === 'strong-power-master');
@@ -867,7 +890,7 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
     assert.ok(Number(parts[1]) >= 1.0, `strong-power-master 剪力墙并行长度 ${parts[1]}m 已 < 报警阈值 1.0m（计舍入容差）：该警告应已消失或消息口径已变`);
     assert.ok(Number(parts[2]) <= 0.15, `strong-power-master 剪力墙贴墙距离 ${parts[2]}m 已 > 报警阈值 0.15m：该警告应已消失或消息口径已变`);
   }
-  // shear_wall_parallel_route 由 survey 上限 8 把守，不再钉死 8。
+  // shear_wall_parallel_route 由 survey 上限 7 把守，不再钉死 7。
   // DEC-2026-10-13-R3 锁定改善：重画后的两条路由不得再贴 w_mb_east 长距离平行。
   // 若将来有人把几何改回贴墙（或把灯位改回 (2.60,7.60) 而不同步路由），这里立即 fail——
   // 正是本轮第一次提交时漏掉同步、导致 shear 13→11 / unsupported_span 7→9 双向漂移的那个失效模式。
@@ -899,7 +922,7 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // 但 weak-ap reason 明说客厅中部保持原顶 2.80m 无吊顶——两处自相矛盾被机器显形）
   // F01 改线批：33 条命中清至 8 条显式保留（每条 reason 带 DEC-2026-10-07-F01 归因）
   const flying = [...result.errors, ...result.warnings].filter((i) => i.code === 'unsupported_span');
-  assert.ok(flying.length <= UNSUPPORTED_SPAN_CEILING, '无依托段总数不得超过已知待决上限 6（must_fix ≤6 + envelope ≤0）：增长须显式登记并写清原因');
+  assert.ok(flying.length <= UNSUPPORTED_SPAN_CEILING, '无依托段总数不得超过已知待决上限 9（must_fix ≤9 + envelope ≤0）：增长须显式登记并写清原因');
   // Codex 二审 minor：flying.reduce 无初始值，空数组抛错；且下文曾强制 condensate-living 在飞线集里，
   // 该飞线清掉时测试反会红。空集即全部飞线已清，是好事：最长段只在非空时查，成员身份不再强制。
   if (flying.length > 0) {
