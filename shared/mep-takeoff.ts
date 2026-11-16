@@ -646,6 +646,38 @@ export function travelerNodeKey(endpoint: string | { x: number; z: number }, end
     : `coord:${Math.round(endpoint.x * 1000)},${Math.round(endpoint.z * 1000)},${Math.round(endY * 1000)}`;
 }
 
+/**
+ * 点 p 是否落在 3D 线段 a→b 的内部（不含端点）：以变化最大的轴作参数轴求 t，
+ * 其余两轴按插值核对；t ∈ (0,1) 才算内部。端点本身已是图节点，不切分。
+ * 用于行程图切分（Codex blocking，PR #255 复审第 7 轮）：同回路另一条路由的
+ * 端点/折线点落在某段内部时，该段须在此切分、统一节点，否则接入悬空——
+ * 附加导线数量不能依赖冗余 via 点是否存在。
+ */
+export function travelerInteriorT(
+  a: { x: number; z: number; y: number },
+  b: { x: number; z: number; y: number },
+  p: { x: number; z: number; y: number },
+): number | null {
+  const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z;
+  const adx = Math.abs(dx), ady = Math.abs(dy), adz = Math.abs(dz);
+  let t: number;
+  if (adx >= ady && adx >= adz) {
+    if (adx < EPS) return null;
+    t = (p.x - a.x) / dx;
+    if (Math.abs(a.y + t * dy - p.y) > EPS || Math.abs(a.z + t * dz - p.z) > EPS) return null;
+  } else if (ady >= adx && ady >= adz) {
+    if (ady < EPS) return null;
+    t = (p.y - a.y) / dy;
+    if (Math.abs(a.x + t * dx - p.x) > EPS || Math.abs(a.z + t * dz - p.z) > EPS) return null;
+  } else {
+    if (adz < EPS) return null;
+    t = (p.z - a.z) / dz;
+    if (Math.abs(a.x + t * dx - p.x) > EPS || Math.abs(a.y + t * dy - p.y) > EPS) return null;
+  }
+  if (t <= EPS || t >= 1 - EPS) return null;
+  return t;
+}
+
 type TravelerAdjacency = Map<string, Array<{ to: string; edge: number; weight: number }>>;
 
 function travelerAdjacency(edges: TravelerGraphEdge[], members: ReadonlySet<string>): TravelerAdjacency {
@@ -814,6 +846,25 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const drawnPlanPaths: Array<Array<{ x: number; z: number }>> = [];
   /** 双控行程图边：已画强电物理路由（主循环内构造，见 travelerSubtreeLength）。 */
   const travelerEdges: TravelerGraphEdge[] = [];
+  // 行程图切分点（Codex blocking，PR #255 复审第 7 轮）：同回路其他路由的折线点
+  // 落在某段内部时，该段须在此切分——第 6 轮只把已有折线顶点建成节点，接入点
+  // 落在线段内部仍悬空（删去冗余 via 点即复现：几何不变，行程 2.1m → 0）。
+  // 按回路分桶，只认同回路的实际接入；非强电/非 physical 路由不进图，也不提供切分点。
+  const travelerJunctionByCircuit = new Map<string, Array<{ x: number; z: number; y: number }>>();
+  for (const route of routes) {
+    if (route.layer !== 'strong_power') continue;
+    const resolved = resolvedById.get(route.id);
+    if (!resolved || resolved.unresolved.length > 0 || !resolved.metadata.physicalRoute) continue;
+    const circuit = typeof route.to === 'string'
+      ? pointCircuit.get(route.to)
+      : typeof route.from === 'string' ? pointCircuit.get(route.from) : undefined;
+    if (circuit === undefined) continue;
+    const list = travelerJunctionByCircuit.get(circuit) ?? [];
+    for (const point of resolved.points) {
+      list.push({ x: point.x, z: point.z, y: requirePointY(point, `路由 ${route.id}`) });
+    }
+    travelerJunctionByCircuit.set(circuit, list);
+  }
   /** 每条回路的画线路由平面路径（同回路 union：同一回路内共享段只铺一次管、只穿一次线）。 */
   const circuitPaths = new Map<string, Array<Array<{ x: number; z: number; y?: number }>>>();
   const strongPaths: Array<Array<{ x: number; z: number }>> = [];
@@ -914,22 +965,42 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       // 间最短路），stub 仍只挂在两端（首段 a 端挂 from stub、末段 b 端挂 to
       // stub，中途段 stub 为 0）。零长重合段成自环，Dijkstra/Steiner 不取它，
       // 不影响度量，故不特殊跳过。
+      // （第 7 轮补）同回路其他路由的点落在段内部时，在此切分：切分点按 t 排序
+      // 去重；stub 仍只挂整条路由的首/末子边。
+      const circuit = typeof route.to === 'string'
+        ? pointCircuit.get(route.to)
+        : typeof route.from === 'string' ? pointCircuit.get(route.from) : undefined;
+      const junctions = circuit === undefined ? [] : (travelerJunctionByCircuit.get(circuit) ?? []);
       for (let i = 1; i < points3d.length; i += 1) {
         const fromPoint = points3d[i - 1];
         const toPoint = points3d[i];
         const fromY = requirePointY(fromPoint, `路由 ${route.id}`);
         const toY = requirePointY(toPoint, `路由 ${route.id}`);
-        travelerEdges.push({
-          routeId: route.id,
-          a: i === 1 ? travelerNodeKey(route.from, fromY) : travelerNodeKey(fromPoint, fromY),
-          b: i === points3d.length - 1 ? travelerNodeKey(route.to, toY) : travelerNodeKey(toPoint, toY),
-          length: routeSegmentLength(fromPoint, toPoint, `路由 ${route.id}`),
-          stubA: i === 1 ? stubAt(route.from, fromY) : 0,
-          stubB: i === points3d.length - 1 ? stubAt(route.to, toY) : 0,
-          circuit: typeof route.to === 'string'
-            ? pointCircuit.get(route.to)
-            : typeof route.from === 'string' ? pointCircuit.get(route.from) : undefined,
-        });
+        const from3d = { x: fromPoint.x, z: fromPoint.z, y: fromY };
+        const to3d = { x: toPoint.x, z: toPoint.z, y: toY };
+        const cuts = junctions
+          .map((p) => ({ p, t: travelerInteriorT(from3d, to3d, p) }))
+          .filter((item): item is { p: { x: number; z: number; y: number }; t: number } => item.t !== null)
+          .sort((m, n) => m.t - n.t)
+          .filter((item, index, arr) => index === 0 || Math.abs(item.t - arr[index - 1].t) > EPS);
+        const nodes: Array<{ x: number; z: number; y: number }> = [
+          from3d,
+          ...cuts.map((item) => item.p),
+          to3d,
+        ];
+        for (let k = 1; k < nodes.length; k += 1) {
+          const aNode = nodes[k - 1];
+          const bNode = nodes[k];
+          travelerEdges.push({
+            routeId: route.id,
+            a: i === 1 && k === 1 ? travelerNodeKey(route.from, aNode.y) : travelerNodeKey(aNode, aNode.y),
+            b: i === points3d.length - 1 && k === nodes.length - 1 ? travelerNodeKey(route.to, bNode.y) : travelerNodeKey(bNode, bNode.y),
+            length: routeSegmentLength(aNode, bNode, `路由 ${route.id}`),
+            stubA: i === 1 && k === 1 ? stubAt(route.from, aNode.y) : 0,
+            stubB: i === points3d.length - 1 && k === nodes.length - 1 ? stubAt(route.to, bNode.y) : 0,
+            circuit,
+          });
+        }
       }
     }
     const planPath = points3d.map((point) => ({ x: point.x, z: point.z }));

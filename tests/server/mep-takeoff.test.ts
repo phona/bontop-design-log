@@ -648,12 +648,128 @@ test('双控行程建图须认中途接入点：路由端点落在别条折线�
     resolution,
     rules: miniRules,
   });
-  // 行程 2m × 1 附加芯 × 1.05 损耗 = 2.1m。生产值 21.77385m 不变（live
-  // 无中途接入——逐段建边只改图结构，不改端点间最短路度量）。
+  // 行程 2m × 1 附加芯 × 1.05 损耗 = 2.1m。生产值见下个测试（第 7 轮后为
+  // 20.69445m：儿童房两开关经 Q1 接入，不再双计灯头→Q1 的 0.514m）。
   assert.ok(Math.abs(mini.wire.dualControlExtraM - 2.1) < 1e-9);
 });
 
-test('双控附加控制线按控制声明算行程：生产值 21.77385m（2026-11-16 量价算法审计）', () => {
+test('双控行程图须切分线段内部接入点：删去冗余 via 点不得改变行程（Codex blocking，PR #255 复审第 7 轮）', () => {
+  // 与上个测试同一几何，但 r1 删去共线中间点 (1,0)，只留 (2,0)→(0,0) 一段：
+  // 接入点 (1,0) 落在线段内部。旧逐段建边只认折线顶点，(1,0) 悬空、行程计 0；
+  // 修复后该段在 (1,0) 处切分，行程仍为 2m。附加导线数量不能依赖冗余 via
+  // 点是否存在。
+  const miniRules: MepTakeoffRules = {
+    sources: {
+      electrical_points: 'config/electrical.yaml',
+      plumbing_points: 'config/plumbing.yaml',
+      circuits: 'config/electrical-topology.yaml',
+      routes: 'config/mep-hvac-coordination.yaml',
+      hvac: 'config/hvac.yaml',
+    },
+    covered_layers: ['strong_power'],
+    excluded_layers: [],
+    units: {
+      cores_by_purpose: {},
+      dual_control_extra_cores: 1,
+      loss: { wire: 1.05, pipe: 1.08 },
+      fitting_per_meter: { ppr: 0.35, pvc: 0.27 },
+    },
+    trunk_wire_size: null,
+    include_terminal_drop: true,
+    panel: { main_switch_poles: 1, spd_modules: 1, spare_ratio: 0, round_up: false },
+  };
+  const r1 = { id: 'r1', layer: 'strong_power', from: 'swA', to: { x: 0, z: 0 }, route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const r2 = { id: 'r2', layer: 'strong_power', from: 'swB', to: { x: 1, z: 0 }, route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const resolution = {
+    total: 2,
+    resolved: 2,
+    unresolved: 0,
+    diagnostics: [],
+    routes: [
+      {
+        route: r1,
+        from: { x: 2, z: 0, y: 2.5 },
+        to: { x: 0, z: 0, y: 2.5 },
+        points: [{ x: 2, y: 2.5, z: 0 }, { x: 0, y: 2.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+      {
+        route: r2,
+        from: { x: 1, z: 1, y: 2.5 },
+        to: { x: 1, z: 0, y: 2.5 },
+        points: [{ x: 1, y: 2.5, z: 1 }, { x: 1, y: 2.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+    ],
+  } as unknown as Parameters<typeof computeMepTakeoff>[0]['resolution'];
+  const mini = computeMepTakeoff({
+    electrical: [
+      { id: 'swA', room: 'living', type: 'switch', height: 2.5 },
+      { id: 'swB', room: 'living', type: 'switch', height: 2.5 },
+      { id: 'light1', room: 'living', type: 'light', height: 2.5 },
+    ] as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: [],
+    circuits: [{ id: 'c1', wire_size: '1.5mm²(φ16)', breaker: '漏保', member_point_ids: ['swA', 'swB', 'light1'] }],
+    controls: [{ id: 'ctl1', switch_point_ids: ['swA', 'swB'], target_point_ids: ['light1'] }],
+    routes: [r1, r2],
+    resolution,
+    rules: miniRules,
+  });
+  assert.ok(Math.abs(mini.wire.dualControlExtraM - 2.1) < 1e-9);
+  // 对照：异标高接入不成节点——r2 整条折线改到 y=0.5（与 r1 的 y=2.5 不同），
+  // (1,0) 不再落在 r1 线段上（标高不一致），行程仍为 0。同回路、同标高才
+  // 切分，跨高度串线不是接入。
+  const lowResolution = {
+    total: 2,
+    resolved: 2,
+    unresolved: 0,
+    diagnostics: [],
+    routes: [
+      {
+        route: r1,
+        from: { x: 2, z: 0, y: 2.5 },
+        to: { x: 0, z: 0, y: 2.5 },
+        points: [{ x: 2, y: 2.5, z: 0 }, { x: 0, y: 2.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+      {
+        route: r2,
+        from: { x: 1, z: 1, y: 0.5 },
+        to: { x: 1, z: 0, y: 0.5 },
+        points: [{ x: 1, y: 0.5, z: 1 }, { x: 1, y: 0.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+    ],
+  } as unknown as Parameters<typeof computeMepTakeoff>[0]['resolution'];
+  const otherHeight = computeMepTakeoff({
+    electrical: [
+      { id: 'swA', room: 'living', type: 'switch', height: 2.5 },
+      { id: 'swB', room: 'living', type: 'switch', height: 0.5 },
+      { id: 'light1', room: 'living', type: 'light', height: 2.5 },
+    ] as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: [],
+    circuits: [{ id: 'c1', wire_size: '1.5mm²(φ16)', breaker: '漏保', member_point_ids: ['swA', 'swB', 'light1'] }],
+    controls: [{ id: 'ctl1', switch_point_ids: ['swA', 'swB'], target_point_ids: ['light1'] }],
+    routes: [r1, r2],
+    resolution: lowResolution,
+    rules: miniRules,
+  });
+  assert.equal(otherHeight.wire.dualControlExtraM, 0);
+});
+
+test('双控附加控制线按控制声明算行程：生产值 20.69445m（2026-11-16 量价算法审计）', () => {
   // 独立推导（测试内手写循环，不复用 takeoff 的图算法）：行程边按控制声明手点——
   // 主卧三控：north↔L + north↔door；书房双控：灯↔门口 + 灯↔床头；
   // 儿童房双控：灯↔门口 + 灯↔床头。客厅双控未画线计 0；书房门口单控计 0；
@@ -672,9 +788,17 @@ test('双控附加控制线按控制声明算行程：生产值 21.77385m（2026
     }
     return total;
   };
+  // 主卧 6.498m、书房 7.350m：两组无中途接入，行程 = 各路由长之和。
+  // 儿童房 5.861m（第 7 轮修正，原 6.889m）：child-bed 的转弯点
+  // Q1 (4.1,3.214,2.7) 落在 child-door 的 (4.1,2.7)→(4.1,4.3) 段内部，
+  // 两开关经 Q1 相连，不再经灯头绕行——灯头→Q1 的 0.514m（z 2.7→3.214）
+  // 旧树双计（两路由各含一次），新树只在 Q1 会合处计一次，减 2×0.514：
+  // switch_child→Q1 2.861m + switch_child_bed→Q1 3.0m = 5.861m。
+  // 行程合计 6.498 + 7.350 + 5.861 = 19.709m。
   const travelerM = len('strong-light-bedrooms-master-bed-l') + len('strong-light-bedrooms-master-door')
     + len('strong-light-bedrooms-study-door') + len('strong-light-bedrooms-study-guest-bed')
-    + len('strong-light-bedrooms-child-door') + len('strong-light-bedrooms-child-bed');
+    + len('strong-light-bedrooms-child-door') + len('strong-light-bedrooms-child-bed')
+    - 2 * (3.214 - 2.7);
   const expected = travelerM * rules.units.dual_control_extra_cores * rules.units.loss.wire;
   assert.ok(Math.abs(takeoff.wire.dualControlExtraM - expected) < 1e-6,
     `双控附加应为行程 ${travelerM.toFixed(3)}m × 1 芯 × 1.05 = ${expected.toFixed(5)}m，实际 ${takeoff.wire.dualControlExtraM}`);
