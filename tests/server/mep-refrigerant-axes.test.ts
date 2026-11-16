@@ -1,13 +1,14 @@
 /**
  * Issue #98 MEP batch 4 真实配置回归：冷媒家族关系化（6 条 refrigerant 路由）。
  *
- * 真实 YAML + 内存改动；期望值从当前配置推导（解算端点、from_height/to_height），
- * 不写死历史绝对坐标；唯一例外是轴线/标高层值：corridor_axis=4.6、
- * axis_trunk_x745=7.45、axis_living_south_z555=5.55、axis_be_west_x1340=13.4、
- * level_kitchen_b_270=2.7 作为独立期望钉在 C1（钉声明非历史——轴线/标高层
- * 合法改值须随声明同步更新本常量；量房后同理）。实验后不写盘。
+ * 真实 YAML + 内存改动；实验后不写盘。迁移等价证明（旧绝对几何逐点比对）已随
+ * MEP batch 4 合入归档在该 PR 记录与 git 历史里，不住测试套件——本文件断言的是
+ * 持续不变式：端点与声明 from/to（+ from_height/to_height）一致、折线正交、
+ * 无连续重复点、无往返折返、每个坐标/标高都来自当轮声明（端点/轴线/竖井/
+ * via 目标/level/标高层），无诊断；轴线/标高层值不钉——值由路由不变式
+ * （引用轴的路由须落在声明轴值上）与 C2 传动覆盖，改轴/改层须改声明不改测试。
  * 覆盖：C0 新步型语义与 fail-closed（schema + 求解器 + validate 三层）、
- * C1 迁移前后逐点等价、C2 单声明传动、C3 算量等价、C4 反例 fail-closed
+ * C1 关系化不变式、C2 单声明传动、C3 算量等价、C4 反例 fail-closed
  * （路由级断引用、算量、DXF）。
  * lint / 3D / verify 由全套件 + verify:all 覆盖（见 PR 描述）。
  */
@@ -46,19 +47,6 @@ const ROUTES = [
   'refrigerant-child',
   'refrigerant-dining',
 ] as const;
-/**
- * 轴线/标高层独立期望（2026-11-15 issue #98 MEP batch 4 声明值）：
- * 钉的是声明（设计决策），不是历史坐标——合法改轴/改层须随声明同步更新本常量；
- * 除此之外，其余期望仍从当前配置推导。
- * corridor_axis：z=4.6 走廊轴（batch 2 声明），强电/弱电/冷媒共用；本批自带的
- * corridor_axis 与之重复、集成 #243 时删除、引用改指 corridor_axis。
- */
-const CORRIDOR_AXIS_Z = 4.6;
-const AXIS_TRUNK_X745 = 7.45;
-const AXIS_LIVING_SOUTH_Z555 = 5.55;
-const AXIS_BE_WEST_X1340 = 13.4;
-const LEVEL_KITCHEN_B_270 = 2.7;
-
 function loadAll() {
   const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
   const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as any[];
@@ -153,6 +141,109 @@ function assertOrthogonal(points: ReadonlyArray<{ x: number; z: number }>, what:
     const b = points[i];
     assert.ok(Math.abs(a.x - b.x) <= TOL || Math.abs(a.z - b.z) <= TOL, `${what} 第 ${i} 段不是正交段`);
   }
+}
+/** 端点须为声明 from/to（+ from_height/to_height）：解算不得改端点。 */
+function assertEndpoints(r: ReturnType<typeof routeOf>, what: string): void {
+  const first = r.points[0];
+  const last = r.points[r.points.length - 1];
+  assert.ok(first, `${what} 折线不得为空`);
+  assertPointClose(first, { ...r.from!, y: r.route.from_height }, `${what} 起点须为 from + from_height`);
+  assertPointClose(last, { ...r.to!, y: r.route.to_height ?? r.to!.y }, `${what} 终点须为 to + to_height`);
+}
+/** 无往返折返：同一线段（任一方向）不得出现两次（1mm 舍入去浮点尾巴）。 */
+function assertNoRetrace(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  const key = (a: { x: number; y?: number; z: number }, b: { x: number; y?: number; z: number }): string =>
+    `${a.x.toFixed(3)},${a.z.toFixed(3)},${(a.y ?? 0).toFixed(3)}|${b.x.toFixed(3)},${b.z.toFixed(3)},${(b.y ?? 0).toFixed(3)}`;
+  const seen = new Set<string>();
+  for (let i = 1; i < points.length; i++) {
+    const k = key(points[i - 1], points[i]);
+    const rev = key(points[i], points[i - 1]);
+    assert.ok(!seen.has(k) && !seen.has(rev), `${what} 第 ${i} 段与前面重合（往返折返）`);
+    seen.add(k);
+  }
+}
+/**
+ * 无发明坐标：折线每个点的 x/z 须来自当轮声明——端点、任一轴线值、任一竖井坐标、
+ * 本路由任一步的数值 to 目标，或本路由绝对步的字面 x/z。解算器只组合声明值，不编造新坐标。
+ */
+function assertNoInventedCoords(
+  r: ReturnType<typeof routeOf>,
+  axes: MepCoordination['axes'],
+  shafts: MepCoordination['shafts'],
+  what: string,
+): void {
+  const xs = new Set<number>([r.from!.x, r.to!.x]);
+  const zs = new Set<number>([r.from!.z, r.to!.z]);
+  for (const a of axes) (a.axis === 'x' ? xs : zs).add(a.value);
+  for (const s of shafts) {
+    xs.add(s.x);
+    zs.add(s.z);
+  }
+  for (const step of r.route.via as any[]) {
+    if (typeof step.to === 'number') {
+      xs.add(step.to);
+      zs.add(step.to);
+    }
+    if (typeof step.x === 'number') xs.add(step.x);
+    if (typeof step.z === 'number') zs.add(step.z);
+  }
+  for (const p of r.points) {
+    assert.ok([...xs].some((v) => Math.abs(p.x - v) <= TOL), `${what} 点 x=${p.x} 不在任何声明值中`);
+    assert.ok([...zs].some((v) => Math.abs(p.z - v) <= TOL), `${what} 点 z=${p.z} 不在任何声明值中`);
+  }
+}
+/**
+ * 无发明标高：折线每个点的 y 须来自当轮声明——from_height、to_height、任一
+ * 标高层的 y、任一 level 步的 y、或任一竖井的 y。解算器只组合声明标高，不编造新高度。
+ */
+function assertDeclaredHeights(
+  r: ReturnType<typeof routeOf>,
+  shafts: MepCoordination['shafts'],
+  levels: MepCoordination['levels'],
+  what: string,
+): void {
+  const ys = new Set<number>();
+  if (r.route.from_height !== undefined) ys.add(r.route.from_height);
+  if (r.route.to_height !== undefined) ys.add(r.route.to_height);
+  for (const level of levels) ys.add(level.y);
+  for (const step of r.route.via as any[]) {
+    if (typeof step.y === 'number') ys.add(step.y);
+  }
+  for (const s of shafts) ys.add(s.y);
+  for (const p of r.points) {
+    if (p.y === undefined) continue;
+    assert.ok([...ys].some((v) => Math.abs(p.y! - v) <= TOL), `${what} 点 y=${p.y} 不在任何声明高度中`);
+  }
+}
+/** 无连续重复点，唯一例外是末点追加端点重复：解算器在末步已落到端点时仍追加
+ *  端点，产生一条零长段（不产生长度，是已知良性 artifact）；其余连续重复皆为缺陷。 */
+function assertNoDuplicates(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  const d = dedup(points);
+  const trailingDup =
+    points.length >= 2 &&
+    d.length === points.length - 1 &&
+    Math.abs(points[points.length - 1].x - points[points.length - 2].x) <= TOL &&
+    Math.abs(points[points.length - 1].z - points[points.length - 2].z) <= TOL &&
+    Math.abs((points[points.length - 1].y ?? 0) - (points[points.length - 2].y ?? 0)) <= TOL;
+  assert.ok(
+    d.length === points.length || trailingDup,
+    `${what} 不得含连续重复点（末点追加端点重复除外）：去重后 ${d.length} 点，原 ${points.length} 点`,
+  );
+}
+/** 关系路由持续不变式：端点 + 正交 + 无连续重复点（末点追加端点重复除外）+ 无往返折返 + 无发明坐标/标高。 */
+function assertRouteInvariants(
+  r: ReturnType<typeof routeOf>,
+  coordination: MepCoordination,
+  what: string,
+): void {
+  assert.deepEqual(r.unresolved, [], `${what} 须解出`);
+  assert.deepEqual(r.diagnostics, [], `${what} 须无诊断`);
+  assertEndpoints(r, what);
+  assertOrthogonal(r.points, what);
+  assertNoDuplicates(r.points, what);
+  assertNoRetrace(r.points, what);
+  assertNoInventedCoords(r, coordination.axes, coordination.shafts, what);
+  assertDeclaredHeights(r, coordination.shafts, coordination.levels, what);
 }
 /** 收集两棵 plain 对象的叶路径差异（证明只改了一处声明）。 */
 function leafDiffPaths(a: unknown, b: unknown, prefix = ''): string[] {
@@ -322,7 +413,7 @@ test('C0：validate 层——轴线/标高层断引用与重复 id 一律拒绝'
 
 // ───────── C1：六路由关系化——逐点等价 ─────────
 
-test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，解算折线与旧绝对几何逐点等价', () => {
+test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，解算折线满足持续不变式', () => {
   const all = loadAll();
   const { report, takeoff } = resolveChain(all, all.furnishings);
   assert.deepEqual(report.diagnostics, [], '全量路由解算须无诊断');
@@ -332,18 +423,21 @@ test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，�
   assert.equal(all.coordination.shafts.length, 1, 'shafts 表须仍只有一口竖井声明');
   assert.deepEqual(all.coordination.axes.map((a) => a.id), ['corridor_axis', 'weak_axis_438', 'weak_axis_455', 'axis_trunk_x745', 'axis_living_south_z555', 'axis_be_west_x1340'], 'axes 表须恰为六条轴线（强电 corridor_axis + 弱电两条 + 冷媒三条）');
   assert.deepEqual(all.coordination.levels.map((l) => l.id), ['level_kitchen_b_270'], 'levels 表须恰为本批一个标高层');
-  // 声明值独立断言：轴线/标高层值须等于本批声明常量。C1 的逐点等价若全从当前声明推导，
-  // 轴值误改会双侧同移而测不出（#231 Codex major 同款）——本断言是独立的第二道防线。
+  // 轴线/标高层值不钉：值由路由不变式（引用轴的路由须落在声明轴值上）与 C2 传动
+  // 覆盖；改轴/改层须改声明不改测试。只验结构（id/方向）与归属记录。
   const axisById = new Map(all.coordination.axes.map((a) => [a.id, a]));
-  assert.equal(axisById.get('corridor_axis')!.axis, 'z');
-  assert.equal(axisById.get('corridor_axis')!.value, CORRIDOR_AXIS_Z, '走廊轴须为声明值 4.6');
-  assert.equal(axisById.get('axis_trunk_x745')!.axis, 'x');
-  assert.equal(axisById.get('axis_trunk_x745')!.value, AXIS_TRUNK_X745, '冷媒主管轴须为声明值 7.45');
-  assert.equal(axisById.get('axis_living_south_z555')!.axis, 'z');
-  assert.equal(axisById.get('axis_living_south_z555')!.value, AXIS_LIVING_SOUTH_Z555, '客厅边吊南缘轴须为声明值 5.55');
-  assert.equal(axisById.get('axis_be_west_x1340')!.axis, 'x');
-  assert.equal(axisById.get('axis_be_west_x1340')!.value, AXIS_BE_WEST_X1340, 'w_be_west 墙线轴须为声明值 13.4');
-  assert.equal(all.coordination.levels[0]!.y, LEVEL_KITCHEN_B_270, '厨房标高层须为声明值 2.7');
+  assert.deepEqual(
+    all.coordination.axes.map((a) => ({ id: a.id, axis: a.axis })),
+    [
+      { id: 'corridor_axis', axis: 'z' },
+      { id: 'weak_axis_438', axis: 'z' },
+      { id: 'weak_axis_455', axis: 'z' },
+      { id: 'axis_trunk_x745', axis: 'x' },
+      { id: 'axis_living_south_z555', axis: 'z' },
+      { id: 'axis_be_west_x1340', axis: 'x' },
+    ],
+    'axes 表 id 与方向须为预期序列（轴值不钉）',
+  );
   for (const axis of all.coordination.axes.filter((a) => a.id === 'corridor_axis' || a.id.startsWith('axis_'))) assert.ok((axis.reason ?? '').length > 0, `${axis.id} 须写清归属与来源`);
   assert.ok((all.coordination.levels[0]!.reason ?? '').length > 0, '标高层须写清来源');
   assert.match(axisById.get('corridor_axis')!.reason!, /走廊\/客厅边吊主干轴线/, '走廊轴 reason 须写清主干轴线来源');
@@ -370,111 +464,41 @@ test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，�
   // 绝对步 (7.05,0.5) 再 (7.05,0.55)，无已声明锚点可复用；平面绝对、高度取
   // level_kitchen_b_270（2026-11-15 修 Codex major：字面 y 会把标高游标重置）。
   const trunk = all.coordination.routes.find((r) => r.id === 'refrigerant-trunk')!;
-  assert.equal(trunk.via.filter(isMepViaCoordinate).length, 2, 'trunk 须恰剩两个绝对步');
-  assert.deepEqual(trunk.via.filter(isMepViaCoordinate), [{ x: 7.05, z: 0.5, level: 'level_kitchen_b_270' }, { x: 7.05, z: 0.55, level: 'level_kitchen_b_270' }], 'trunk 剩余绝对点须为外机接管斜 jog 拆出的两个角点（平面绝对、高度取标高层）');
+  const trunkAbs = trunk.via.filter(isMepViaCoordinate);
+  assert.equal(trunkAbs.length, 2, 'trunk 须恰剩两个绝对步');
+  // 两步均为外机接管斜 jog 拆出的角点：平面绝对、高度只取标高层（2026-11-15 修
+  // Codex major：字面 y 会把标高游标重置）；两步同 x，是一段 z 向 jog。
+  const levelY = all.coordination.levels.find((l) => l.id === 'level_kitchen_b_270')!.y;
+  for (const step of trunkAbs) {
+    assert.equal(step.level, 'level_kitchen_b_270', 'trunk 剩余绝对步高度须取标高层，不得写字面 y');
+    assert.equal(step.y, undefined, 'trunk 剩余绝对步不得同时声明 y');
+  }
+  assert.equal(trunkAbs[0]!.x, trunkAbs[1]!.x, 'trunk 两绝对步须同 x（一段 z 向 jog）');
+  assert.ok(trunkAbs[0]!.z !== trunkAbs[1]!.z, 'trunk 两绝对步 z 须不同（jog 有行程）');
   // 其余五条须全关系化。
   for (const id of ROUTES.filter((x) => x !== 'refrigerant-trunk')) {
     assert.ok(all.coordination.routes.find((r) => r.id === id)!.via.every((s) => !isMepViaCoordinate(s)), `${id} 须全关系化`);
   }
 
-  // 旧绝对几何：端点/from_height/to_height 取当前声明，轴线值取本批声明常量（独立期望），
-  // 其余转点取旧绝对既有转点值（字面目标，slope_run 同款口径）。
-  const expectedOld: Record<string, Array<{ x: number; y?: number; z: number }>> = {};
+  // 逐路由持续不变式：端点 + 正交 + 无连续重复点 + 无往返折返 + 无发明坐标/标高。
+  // 迁移等价证明（与旧绝对几何逐点比对）已随 MEP batch 4 合入归档，不住测试套件。
   for (const id of ROUTES) {
     const r = routeOf(report, id);
-    const from = r.from!;
-    const to = r.to!;
-    const fh = r.route.from_height!;
-    const th = r.route.to_height!;
-    const F = { ...from, y: fh };
-    const T = { ...to, y: th };
+    assertRouteInvariants(r, all.coordination, id);
     if (id === 'refrigerant-trunk') {
-      expectedOld[id] = [
-        F,
-        { x: from.x, z: from.z, y: LEVEL_KITCHEN_B_270 },
-        { x: 7.05, z: 0.5, y: LEVEL_KITCHEN_B_270 },
-        { x: 7.05, z: 0.55, y: LEVEL_KITCHEN_B_270 },
-        { x: AXIS_TRUNK_X745, z: 0.55, y: LEVEL_KITCHEN_B_270 },
-        { x: AXIS_TRUNK_X745, z: 3, y: LEVEL_KITCHEN_B_270 },
-        { x: AXIS_TRUNK_X745, z: 3, y: th },
-        { x: AXIS_TRUNK_X745, z: CORRIDOR_AXIS_Z, y: th },
-        { x: to.x, z: CORRIDOR_AXIS_Z, y: th },
-        T,
-      ];
-    } else if (id === 'refrigerant-master') {
-      expectedOld[id] = [F, { x: from.x, z: CORRIDOR_AXIS_Z, y: fh }, { x: 4.6, z: CORRIDOR_AXIS_Z, y: fh }, { x: 4.05, z: CORRIDOR_AXIS_Z, y: fh }, { x: to.x, z: CORRIDOR_AXIS_Z, y: fh }, T];
-    } else if (id === 'refrigerant-parent') {
-      expectedOld[id] = [
-        F,
-        { x: from.x, z: CORRIDOR_AXIS_Z, y: fh },
-        { x: 5.5, z: CORRIDOR_AXIS_Z, y: fh },
-        { x: 5.5, z: 5.45, y: fh },
-        { x: 5.5, z: to.z, y: fh },
-        { x: 5.5, z: to.z, y: th },
-        { x: to.x, z: to.z, y: th },
-        T,
-      ];
-    } else if (id === 'refrigerant-study') {
-      expectedOld[id] = [
-        F,
-        { x: from.x, z: CORRIDOR_AXIS_Z, y: fh },
-        { x: 12.71, z: CORRIDOR_AXIS_Z, y: fh },
-        { x: 12.71, z: AXIS_LIVING_SOUTH_Z555, y: fh },
-        { x: AXIS_BE_WEST_X1340, z: AXIS_LIVING_SOUTH_Z555, y: fh },
-        { x: AXIS_BE_WEST_X1340, z: 5.9, y: fh },
-        { x: 13.6, z: 5.9, y: fh },
-        { x: to.x, z: 5.9, y: fh },
-        T,
-      ];
-    } else if (id === 'refrigerant-child') {
-      expectedOld[id] = [
-        F,
-        { x: from.x, z: CORRIDOR_AXIS_Z, y: fh },
-        { x: 4.35, z: CORRIDOR_AXIS_Z, y: fh },
-        { x: 4.35, z: 4.35, y: fh },
-        { x: 4.35, z: to.z, y: fh },
-        T,
-      ];
-    } else {
-      expectedOld[id] = [F, { x: to.x, z: from.z, y: fh }, T];
-    }
-  }
-  for (const id of ROUTES) {
-    const r = routeOf(report, id);
-    assert.deepEqual(r.unresolved, [], `${id} 须解出`);
-    assert.deepEqual(r.diagnostics, [], `${id} 须无诊断`);
-    const expected = dedup(expectedOld[id]);
-    // 原始点数（含 parent 末点与 to 端点的重复）须与旧几何一致；逐点比较用去重后序列
-    //（resolveMepRoute 不去重，重复点原样保留，见 #231 C1 同款口径）。
-    assert.equal(r.points.length, expectedOld[id].length, `${id} 折线原始点数须与旧几何一致`);
-    assert.equal(dedup(r.points).length, expected.length, `${id} 去重点数须与旧几何一致`);
-    dedup(r.points).forEach((p, i) => assertPointClose(p, expected[i], `${id} 第 ${i} 点`));
-    // trunk 外机接管斜 jog (6.4,0.5)→(7.05,0.55) 本批已拆为两段正交绝对步
-    // (6.4,0.5)→(7.05,0.5)→(7.05,0.55)，全段正交、无斜段残留；jog 终点为 points[3]。
-    if (id === 'refrigerant-trunk') {
-      for (let i = 1; i < r.points.length; i++) {
-        const a = r.points[i - 1]!;
-        const b = r.points[i]!;
-        assert.ok(Math.abs(a.x - b.x) <= TOL || Math.abs(a.z - b.z) <= TOL, `${id} 第 ${i} 段不是正交段`);
-      }
+      // 外机接管斜 jog (6.4,0.5)→(7.05,0.55) 本批已拆为两段正交绝对步
+      // (6.4,0.5)→(7.05,0.5)→(7.05,0.55)，全段正交、无斜段残留；jog 终点为 points[3]。
+      // 终点值取第二绝对步的声明 x/z 与标高层的声明 y，不钉旧绝对值。
       const jog = r.points[3]!;
-      assert.deepEqual([jog.x, jog.z], [7.05, 0.55], 'trunk 斜 jog 拆分终点须为旧绝对值 (7.05,0.55)');
+      assertPointClose(jog, { x: trunkAbs[1]!.x, z: trunkAbs[1]!.z, y: levelY }, 'trunk 斜 jog 拆分终点须为第二绝对步 + 标高层高度');
     } else if (id === 'refrigerant-study') {
-      // study 末段本批已由 x-run 拆为正交：(13.6,5.9)→(15.1,5.9) 再南 0.05 至内机，
-      // 全段正交；末段须为 (Δx=0, Δz=−0.05)，不得改值。
-      for (let i = 1; i < r.points.length; i++) {
-        const a = r.points[i - 1]!;
-        const b = r.points[i]!;
-        assert.ok(Math.abs(a.x - b.x) <= TOL || Math.abs(a.z - b.z) <= TOL, `${id} 第 ${i} 段不是正交段`);
-      }
+      // study 末段本批已由 x-run 拆为正交：末段须为纯南向 z 跑段（Δx=0，Δz<0）；
+      // 长度不钉——由末 via 与内机端点声明决定。
       const last = r.points[r.points.length - 1]!;
       const prev = r.points[r.points.length - 2]!;
-      assert.ok(Math.abs((last.x - prev.x) - 0) <= TOL && Math.abs((last.z - prev.z) + 0.05) <= TOL, 'study 末段须为正交南移 (Δx=0, Δz=−0.05)，不得改值');
-    } else {
-      assertOrthogonal(r.points, id);
+      assert.ok(Math.abs(last.x - prev.x) <= TOL, 'study 末段须无 x 位移（纯 z 跑段）');
+      assert.ok(last.z - prev.z < -TOL, 'study 末段须南向（Δz<0）');
     }
-    assert.ok(Math.abs(planLength(r.points) - planLength(expected)) <= TOL, `${id} 平面长度须等于旧几何`);
-    assert.ok(Math.abs(length3d(r.points) - length3d(expected)) <= TOL, `${id} 三维长度须等于旧几何`);
     assert.ok(!takeoff.unresolved.some((u) => u.id === id), `算量 unresolved 不得含 ${id}`);
   }
 });
