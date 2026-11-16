@@ -648,3 +648,50 @@ test('横跨判定不用采样：顶点与形心全在房外的穿越仍须抛�
     /横跨已计费房间边界/,
   );
 });
+
+test('横跨判定覆盖共线重叠与边中点（Codex blocking，PR #255 复审第 3 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  const square = [{ id: 'room', areaSqm: 1, rect: { x: 0.5, z: 0.5, width: 1, depth: 1 } }];
+  // 共线重叠：区域 [0.5,1.5]×[0,1] 与房间共用南北边、重叠 0.5㎡——顶点无一
+  // 严格在内、边无一严格交叉，旧判定（顶点 + 交叉）漏判，dryFloorSqm 得 2
+  //（真实并集 1.5）。共线同侧重叠必须抛错。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      square,
+      [{ id: 'collinear', areaSqm: 1, points: [{ x: 0.5, z: 0 }, { x: 1.5, z: 0 }, { x: 1.5, z: 1 }, { x: 0.5, z: 1 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+  // 边中点：三角区两顶点压在房间南北边上、第三角在房外，一条边穿过房内——
+  // 顶点与交叉都抓不到，边中点 (0.5,0.5) 严格在房内，必须抛错（共享 0.25㎡）。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      square,
+      [{ id: 'edge_mid', areaSqm: 0.5, points: [{ x: 0.5, z: 0 }, { x: 0.5, z: 1 }, { x: 1.5, z: 0.5 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+  // 对照：缺口盖帽——L 形房缺口上的三角区三顶点全压在缺口边线上、面积全在房外
+  //（共线异侧重叠）。旧全在内判定（顶点 + 交叉）会误判为房内而跳过，0.5㎡
+  // 凭空消失；共线异侧条件必须把它判为房外、照常计 extra。
+  const lroom = [{
+    id: 'lroom',
+    areaSqm: 3,
+    points: [{ x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 2 }],
+  }];
+  const cap = computeMasonryTakeoff(minimal(
+    lroom,
+    [{ id: 'notch_cap', areaSqm: 0.5, points: [{ x: 1, z: 1 }, { x: 2, z: 1 }, { x: 1, z: 2 }] } as any],
+  ));
+  close(cap.dryFloorSqm, 3.5, '缺口盖帽 0.5㎡ 作 extra，房间 3㎡ + extra 0.5㎡');
+});
