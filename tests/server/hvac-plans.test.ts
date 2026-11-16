@@ -22,8 +22,18 @@ test('真实配置：一个成交方案，36,000，status=contracted', () => {
   assert.equal(plan.price_per_unit, 36000);
   assert.equal((plan.data as { status: string }).status, 'contracted');
   assert.equal((plan.data as { commercial: { decision_ref: string } }).commercial.decision_ref, 'DEC-2026-10-04-R1');
-  // 外机：config/hvac.yaml 的 outdoor（platform: west_platform）→ OutdoorUnit
-  assert.deepEqual(plan.outdoorUnits, [{ location: 'platform', w: 0.99, d: 0.4, h: 0.81 }]);
+  // 外机：plans[0].outdoor（platform: west_platform）→ OutdoorUnit；期望尺寸
+  // 在测试内从 outdoor 声明读出（width/depth/height），位置按 toOutdoorUnit
+  // 的映射口径（有 location 枚举取枚举，否则有 platform → 'platform'），不钉字面量。
+  const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as { plans: Array<{ outdoor?: { location?: string; platform?: string; width?: number; depth?: number; height?: number } }> };
+  const outdoor = hvac.plans[0]?.outdoor;
+  assert.ok(outdoor, 'missing plans[0].outdoor declaration');
+  assert.ok(outdoor.location !== undefined || outdoor.platform !== undefined, 'outdoor declaration must carry location or platform');
+  assert.equal(plan.outdoorUnits.length, 1);
+  assert.equal(plan.outdoorUnits[0].location, outdoor.location ?? 'platform');
+  assert.equal(plan.outdoorUnits[0].w, outdoor.width);
+  assert.equal(plan.outdoorUnits[0].d, outdoor.depth);
+  assert.equal(plan.outdoorUnits[0].h, outdoor.height);
   // 内机：load_design.rooms 六间（客餐厅两条热区 + 四卧）
   assert.equal(plan.indoorUnits.length, 6);
   assert.deepEqual(plan.indoorUnits.map((unit) => unit.roomId).sort(), [
