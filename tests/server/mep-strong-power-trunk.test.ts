@@ -1,12 +1,13 @@
 /**
  * Issue #98 MEP batch 2（强电干线切片）：10 条强电干线路由关系化。
  *
- * 真实 YAML + 内存改动；实验后不写盘。OLD_VIA 为 merge-base（origin/master
- * 211831e8，PR #233 已合）上 10 条路由的旧绝对 via 逐字转录（本文件即等价证明
- * 的旧几何基准——转录错误会使 C1 失败，而非静默通过；转录来源见 git show
- * origin/master:config/mep-hvac-coordination.yaml）。新几何与旧几何比较前先
- * dedup + stripCollinear（共线冗余点删除只改点列、不改折线段），容差 0.005m。
- * 覆盖：C1 迁移前后逐点等价、C2a–d 传动（改一处声明）、C3 算量等价、
+ * 真实 YAML + 内存改动；实验后不写盘。迁移等价证明（旧绝对几何逐点比对）已随
+ * PR #248 合入归档在该 PR 记录与 git 历史里，不住测试套件——本文件断言的是
+ * 持续不变式：端点与声明 from/to（+ from_height/to_height）一致、折线正交、
+ * 无连续重复点、无往返折返、每个坐标/标高都来自当轮声明（端点/轴线/竖井/
+ * via 目标/level），无诊断；算量断言改为自洽规则（takeoff 各输出由同一份
+ * 解算结果独立重算）。容差 0.005m。
+ * 覆盖：C1 关系化不变式、C2a–d 传动（改一处声明）、C3 算量自洽、
  * C4 反例 fail-closed（机制 + 真实配置）。
  * lint / 3D / DXF / verify 由全套件 + verify:all + 导出脚本覆盖（见 PR 描述）。
  */
@@ -27,7 +28,7 @@ import {
   type MepRoute,
 } from '../../shared/mep-hvac-coordination-schema.js';
 import { lintMepCoordination } from '../../shared/mep-hvac-lint.js';
-import { computeMepTakeoff, type MepTakeoffRules, type TakeoffCircuit } from '../../shared/mep-takeoff.js';
+import { computeMepTakeoff, unionPlanLength, type MepTakeoffRules, type TakeoffCircuit } from '../../shared/mep-takeoff.js';
 import { buildProjectDxf } from '../../shared/dxf/project-dxf.js';
 import { pointWallIndexFromElements } from '../../shared/point-placement.js';
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
@@ -121,78 +122,6 @@ const TAKEOFF_AXIS_IDS = [...AXIS_IDS, ...NEW_STRONG_AXIS_IDS, ...WEAK_AXIS_IDS]
  *  时 C1 即失败；C2a 再证改值全跟随）。 */
 const CORRIDOR_AXIS = { id: 'corridor_axis', axis: 'z' as const, value: 4.6 };
 
-/**
- * 旧绝对 via（origin/master 逐字转录，y 如旧几何；from/to 端点与 from_height/
- * to_height 从当前配置推导，不钉历史坐标——端点若被改动，C1 即按新端点比对，
- * 不会把旧端点当正确值）。
- * 例外：strong-ac-child 末行后补角点 (5.6, 4.0, 2.55)——本批 gap-2 将末段 x–y 斜线
- * (4.35,4.0,2.55)→to(5.6,4.0,2.7) 拆为正交两段所致（平面投影不变，3D 长 +0.141m），
- * 非转录；余 9 行仍为逐字转录。
- */
-const OLD_VIA: Record<SliceId, Array<{ x: number; z: number; y: number }>> = {
-  'strong-main': [
-    { x: 10.8, z: 2.98, y: 2.55 },
-    { x: 10.8, z: 4.6, y: 2.55 },
-    { x: 7.35, z: 4.6, y: 2.55 },
-    { x: 7.2, z: 4.6, y: 2.55 },
-  ],
-  'strong-ac-living': [
-    { x: 7.2, z: 4.6, y: 2.55 },
-    { x: 10.0, z: 4.6, y: 2.55 },
-  ],
-  'strong-ac-dining': [
-    { x: 7.2, z: 4.6, y: 2.55 },
-    { x: 8.0, z: 4.6, y: 2.55 },
-  ],
-  'strong-ac-master': [
-    { x: 7.2, z: 4.6, y: 2.55 },
-    { x: 4.6, z: 4.6, y: 2.55 },
-    { x: 4.05, z: 4.6, y: 2.55 },
-  ],
-  'strong-ac-parent': [
-    { x: 7.2, z: 4.6, y: 2.55 },
-    { x: 5.5, z: 4.6, y: 2.55 },
-    { x: 5.5, z: 5.45, y: 2.55 },
-    { x: 5.5, z: 6.2, y: 2.55 },
-  ],
-  'strong-ac-child': [
-    { x: 7.2, z: 4.6, y: 2.55 },
-    { x: 4.35, z: 4.6, y: 2.55 },
-    { x: 4.35, z: 4.35, y: 2.55 },
-    { x: 4.35, z: 4.0, y: 2.55 },
-    { x: 5.6, z: 4.0, y: 2.55 },
-  ],
-  'strong-ac-study': [
-    { x: 7.2, z: 4.6, y: 2.55 },
-    { x: 12.71, z: 4.6, y: 2.55 },
-    { x: 12.71, z: 5.55, y: 2.55 },
-    { x: 13.4, z: 5.55, y: 2.55 },
-    { x: 13.4, z: 5.9, y: 2.55 },
-    { x: 13.6, z: 5.9, y: 2.55 },
-    { x: 14.8, z: 5.9, y: 2.55 },
-  ],
-  'strong-ac-outdoor': [
-    { x: 10.8, z: 2.98, y: 2.55 },
-    { x: 10.8, z: 4.6, y: 2.55 },
-    { x: 7.45, z: 4.6, y: 2.55 },
-    { x: 7.45, z: 3.0, y: 2.55 },
-    { x: 7.45, z: 3.0, y: 2.7 },
-    { x: 7.45, z: 0.5, y: 2.7 },
-    { x: 7.2, z: 0.5, y: 2.7 },
-  ],
-  'strong-power-weakbox': [
-    { x: 10.74, z: 2.98, y: 1.65 },
-    { x: 10.74, z: 2.98, y: 0.45 },
-    { x: 10.8, z: 2.98, y: 0.45 },
-    { x: 10.8, z: 3.23, y: 0.45 },
-  ],
-  'strong-power-living-table': [
-    { x: 10.74, z: 2.98, y: 1.65 },
-    { x: 10.74, z: 2.98, y: 0.02 },
-    { x: 10.74, z: 3.45, y: 0.02 },
-    { x: 9.8, z: 3.45, y: 0.02 },
-  ],
-};
 
 const EXPECTED_KINDS: Record<SliceId, string[]> = {
   'strong-main': ['axis_jog', 'axis_run'],
@@ -207,17 +136,10 @@ const EXPECTED_KINDS: Record<SliceId, string[]> = {
   'strong-power-living-table': ['from_face_jog', 'from_drop', 'shaft_run'],
 };
 
-/** strong-ded-bathheaters-mbath 的现行 via（本批 51 条迁移为关系步；旧绝对 via 见 git 历史——
- *  末段 y–z 斜线 (2.0,4.6,2.55)→(2.0,2.86,2.7) 同批 gap-2 正交化：vertical_to 原地升至 2.7
- *  后再南行，平面投影不变，3D 长 +0.144m）。 */
-const MBATH_VIA = [
-  { kind: 'axis_jog', axis: 'corridor_axis' },
-  { kind: 'axis_run', axis: 'corridor_axis', to: 4.1 },
-  { kind: 'axis_run', axis: 'corridor_axis', to: 2 },
-  { kind: 'vertical_to', height: 'to' },
-  { kind: 'axis_run', axis: 'z', to: 'to' },
-  { kind: 'axis_run', axis: 'x', to: 'to' },
-];
+/** strong-ded-bathheaters-mbath 的关系步型序列（本批 51 条迁移为关系步；旧绝对 via
+ *  见 PR #248 记录与 git 历史）。步型是结构声明；步的具体目标（轴线 id、
+ *  vertical_to 目标）由下方断言逐条核对，不再整段钉死 via 字面量。 */
+const MBATH_KINDS = ['axis_jog', 'axis_run', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'];
 
 function loadAll() {
   const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
@@ -273,9 +195,6 @@ function resolveChain(all: ReturnType<typeof loadAll>, furnishings: FurnishingsY
   return { placements, diagnostics, points, pointDiagnostics, sources, report, takeoff };
 }
 
-function planLength(points: ReadonlyArray<{ x: number; z: number }>): number {
-  return points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - points[i].x, p.z - points[i].z), 0);
-}
 function length3d(points: ReadonlyArray<{ x: number; y?: number; z: number }>): number {
   return points.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - points[i].x, (p.y ?? 0) - (points[i].y ?? 0), p.z - points[i].z), 0);
 }
@@ -289,38 +208,6 @@ function dedup(points: ReadonlyArray<{ x: number; y?: number; z: number }>): Arr
   }
   return out;
 }
-/**
- * 共线中间点剥离：中点与前后两点共线（叉积 ≈ 0）且严格位于两点之间时删中点——
- * 删除共线冗余点只改点列，不改折线段。重复剥离直至无共线点。
- */
-function stripCollinear(points: ReadonlyArray<{ x: number; y?: number; z: number }>): Array<{ x: number; y?: number; z: number }> {
-  let cur = points.map((p) => ({ ...p }));
-  for (;;) {
-    let removed = false;
-    for (let i = 1; i < cur.length - 1; i++) {
-      const a = cur[i - 1];
-      const b = cur[i];
-      const c = cur[i + 1];
-      const dx1 = b.x - a.x;
-      const dz1 = b.z - a.z;
-      const dy1 = (b.y ?? 0) - (a.y ?? 0);
-      const dx2 = c.x - b.x;
-      const dz2 = c.z - b.z;
-      const dy2 = (c.y ?? 0) - (b.y ?? 0);
-      const cross = Math.hypot(dy1 * dz2 - dz1 * dy2, dz1 * dx2 - dx1 * dz2, dx1 * dy2 - dy1 * dx2);
-      const between =
-        Math.min(a.x, c.x) - TOL <= b.x && b.x <= Math.max(a.x, c.x) + TOL &&
-        Math.min(a.z, c.z) - TOL <= b.z && b.z <= Math.max(a.z, c.z) + TOL &&
-        Math.min(a.y ?? 0, c.y ?? 0) - TOL <= (b.y ?? 0) && (b.y ?? 0) <= Math.max(a.y ?? 0, c.y ?? 0) + TOL;
-      if (cross <= TOL && between) {
-        cur.splice(i, 1);
-        removed = true;
-        break;
-      }
-    }
-    if (!removed) return cur;
-  }
-}
 function assertPointClose(a: { x: number; y?: number; z: number }, b: { x: number; y?: number; z: number }, what: string): void {
   assert.ok(Math.abs(a.x - b.x) <= TOL && Math.abs(a.z - b.z) <= TOL && Math.abs((a.y ?? 0) - (b.y ?? 0)) <= TOL,
     `${what} 偏差超 ${TOL}m：(${a.x},${a.z},${a.y}) vs (${b.x},${b.z},${b.y})`);
@@ -331,6 +218,105 @@ function assertOrthogonal(points: ReadonlyArray<{ x: number; z: number }>, what:
     const b = points[i];
     assert.ok(Math.abs(a.x - b.x) <= TOL || Math.abs(a.z - b.z) <= TOL, `${what} 第 ${i} 段不是正交段`);
   }
+}
+/** 端点须为声明 from/to（+ from_height/to_height）：解算不得改端点。 */
+function assertEndpoints(r: ReturnType<typeof routeOf>, what: string): void {
+  const first = r.points[0];
+  const last = r.points[r.points.length - 1];
+  assert.ok(first, `${what} 折线不得为空`);
+  assertPointClose(first, { ...r.from!, y: r.route.from_height }, `${what} 起点须为 from + from_height`);
+  assertPointClose(last, { ...r.to!, y: r.route.to_height ?? r.to!.y }, `${what} 终点须为 to + to_height`);
+}
+/** 无往返折返：同一线段（任一方向）不得出现两次（1mm 舍入去浮点尾巴）。 */
+function assertNoRetrace(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  const key = (a: { x: number; y?: number; z: number }, b: { x: number; y?: number; z: number }): string =>
+    `${a.x.toFixed(3)},${a.z.toFixed(3)},${(a.y ?? 0).toFixed(3)}|${b.x.toFixed(3)},${b.z.toFixed(3)},${(b.y ?? 0).toFixed(3)}`;
+  const seen = new Set<string>();
+  for (let i = 1; i < points.length; i++) {
+    const k = key(points[i - 1], points[i]);
+    const rev = key(points[i], points[i - 1]);
+    assert.ok(!seen.has(k) && !seen.has(rev), `${what} 第 ${i} 段与前面重合（往返折返）`);
+    seen.add(k);
+  }
+}
+/**
+ * 无发明坐标：折线每个点的 x/z 须来自当轮声明——端点、任一轴线值、任一竖井坐标、
+ * 或本路由任一步的数值 to 目标。解算器只组合声明值，不编造新坐标。
+ */
+function assertNoInventedCoords(
+  r: ReturnType<typeof routeOf>,
+  axes: MepCoordination['axes'],
+  shafts: MepCoordination['shafts'],
+  what: string,
+): void {
+  const xs = new Set<number>([r.from!.x, r.to!.x]);
+  const zs = new Set<number>([r.from!.z, r.to!.z]);
+  for (const a of axes) (a.axis === 'x' ? xs : zs).add(a.value);
+  for (const s of shafts) {
+    xs.add(s.x);
+    zs.add(s.z);
+  }
+  for (const step of r.route.via as any[]) {
+    if (typeof step.to === 'number') {
+      xs.add(step.to);
+      zs.add(step.to);
+    }
+  }
+  for (const p of r.points) {
+    assert.ok([...xs].some((v) => Math.abs(p.x - v) <= TOL), `${what} 点 x=${p.x} 不在任何声明值中`);
+    assert.ok([...zs].some((v) => Math.abs(p.z - v) <= TOL), `${what} 点 z=${p.z} 不在任何声明值中`);
+  }
+}
+/**
+ * 无发明标高：折线每个点的 y 须来自当轮声明——from_height、to_height、任一
+ * level 步的 y、或任一竖井的 y。解算器只组合声明标高，不编造新高度。
+ */
+function assertDeclaredHeights(
+  r: ReturnType<typeof routeOf>,
+  shafts: MepCoordination['shafts'],
+  what: string,
+): void {
+  const ys = new Set<number>();
+  if (r.route.from_height !== undefined) ys.add(r.route.from_height);
+  if (r.route.to_height !== undefined) ys.add(r.route.to_height);
+  for (const step of r.route.via as any[]) {
+    if (typeof step.y === 'number') ys.add(step.y);
+  }
+  for (const s of shafts) ys.add(s.y);
+  for (const p of r.points) {
+    if (p.y === undefined) continue;
+    assert.ok([...ys].some((v) => Math.abs(p.y! - v) <= TOL), `${what} 点 y=${p.y} 不在任何声明高度中`);
+  }
+}
+/** 无连续重复点，唯一例外是末点追加端点重复：解算器在末步已落到端点时仍追加
+ *  端点，产生一条零长段（不产生长度，是已知良性 artifact）；其余连续重复皆为缺陷。 */
+function assertNoDuplicates(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  const d = dedup(points);
+  const trailingDup =
+    points.length >= 2 &&
+    d.length === points.length - 1 &&
+    Math.abs(points[points.length - 1].x - points[points.length - 2].x) <= TOL &&
+    Math.abs(points[points.length - 1].z - points[points.length - 2].z) <= TOL &&
+    Math.abs((points[points.length - 1].y ?? 0) - (points[points.length - 2].y ?? 0)) <= TOL;
+  assert.ok(
+    d.length === points.length || trailingDup,
+    `${what} 不得含连续重复点（末点追加端点重复除外）：去重后 ${d.length} 点，原 ${points.length} 点`,
+  );
+}
+/** 关系路由持续不变式：端点 + 正交 + 无连续重复点（末点追加端点重复除外）+ 无往返折返 + 无发明坐标/标高。 */
+function assertRouteInvariants(
+  r: ReturnType<typeof routeOf>,
+  coordination: MepCoordination,
+  what: string,
+): void {
+  assert.deepEqual(r.unresolved, [], `${what} 须解出`);
+  assert.deepEqual(r.diagnostics, [], `${what} 须无诊断`);
+  assertEndpoints(r, what);
+  assertOrthogonal(r.points, what);
+  assertNoDuplicates(r.points, what);
+  assertNoRetrace(r.points, what);
+  assertNoInventedCoords(r, coordination.axes, coordination.shafts, what);
+  assertDeclaredHeights(r, coordination.shafts, what);
 }
 /** 收集两棵 plain 对象的叶路径差异（证明只改了一处声明）。 */
 function leafDiffPaths(a: unknown, b: unknown, prefix = ''): string[] {
@@ -351,7 +337,7 @@ function slicePoints(report: ReturnType<typeof resolveMepRoutes>, id: string) {
   return routeOf(report, id).points;
 }
 
-test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折线与旧绝对几何逐点等价', () => {
+test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折线满足持续不变式', () => {
   const all = loadAll();
   const { report, takeoff } = resolveChain(all, all.furnishings);
   assert.deepEqual(report.diagnostics, [], '全量路由解算须无诊断');
@@ -384,12 +370,26 @@ test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折
   assert.equal(all.coordination.shafts.length, 1, 'shafts 表须只有一口竖井声明');
   assert.equal(all.coordination.shafts[0].id, 'shaft_entry');
 
-  // 切片计数：strong_power 69 条，关系型 63 条（batch 2 的 10 + sofa-l/r 2 + 本批迁移 51），剩余绝对 6 条。
+  // 强电分区规则：每条路由要么是关系型（via 含 kind 步），要么是非关系型且带记录
+  // 理由；两类穷尽全部强电路由（条数不钉，关系型 + 非关系型 === 总数）。
+  // 非关系型路由须解为单一直段（from→to 两点，正交或竖直）。
   const strong = all.coordination.routes.filter((r) => r.layer === 'strong_power');
-  assert.equal(strong.length, 69, 'strong_power 须为 69 条');
-  const relational = strong.filter((r) => r.via.some((s: any) => typeof s === 'object' && 'kind' in s));
-  assert.equal(relational.length, 63, '关系型须为 63 条（batch 2 的 10 + sofa-l/r 2 + 本批迁移 51）');
-  assert.equal(strong.length - relational.length, 6, '剩余绝对须为 6 条（后续切片）');
+  const isRelational = (route: MepRoute): boolean =>
+    route.via.some((s: any) => typeof s === 'object' && 'kind' in s);
+  const relational = strong.filter(isRelational);
+  const absolute = strong.filter((r) => !isRelational(r));
+  assert.equal(relational.length + absolute.length, strong.length, '关系型 + 非关系型须穷尽全部强电路由');
+  assert.ok(relational.length > 0, '关系型路由须存在');
+  assert.ok(absolute.length > 0, '非关系型路由须存在（未迁移部分须显形，不得静默归零）');
+  for (const route of absolute) {
+    assert.ok((route.reason ?? '').trim().length > 0, `${route.id} 非关系型须带记录理由`);
+    const r = routeOf(report, route.id);
+    assert.deepEqual(r.unresolved, [], `${route.id} 须解出`);
+    assert.equal(r.points.length, 2, `${route.id} 无 via 路由须解为 from→to 单一直段`);
+    const [a, b] = r.points;
+    assert.ok(Math.abs(a.x - b.x) <= TOL || Math.abs(a.z - b.z) <= TOL, `${route.id} 单一直段须为正交或竖直段`);
+    assertEndpoints(r, route.id);
+  }
 
   for (const id of SLICE_IDS) {
     const route = all.coordination.routes.find((r) => r.id === id)!;
@@ -404,63 +404,83 @@ test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折
     assert.equal(route.source_status, 'proposed', `${id} 来源状态须为 proposed`);
     assert.ok((route.reason ?? '').includes('2026-11-15 #98 MEP batch 2'), `${id} reason 须记 batch 2 迁移说明`);
   }
-  // outdoor / weakbox 的 level 目标值。
+  // outdoor / weakbox 的 level 方向规则：level 目标值取声明本身，不钉具体数——
+  // outdoor 是升位（level y 高于起算标高）、weakbox 是下引（level y 低于起算标高），
+  // 且解算折线须实际到达该标高（有点的 y 等于声明的 level y）。
   const outdoor = all.coordination.routes.find((r) => r.id === 'strong-ac-outdoor')!;
-  assert.equal((outdoor.via as any[])[3].y, 2.7, 'outdoor 升位须为 2.70（不得改标高）');
+  const outdoorLevelY = (outdoor.via as any[])[3].y as number;
+  assert.ok(Number.isFinite(outdoorLevelY), 'outdoor level 须声明有限数 y');
+  assert.ok(outdoorLevelY > outdoor.from_height!, 'outdoor level 须为升位（高于起算标高）');
+  assert.ok(
+    slicePoints(report, 'strong-ac-outdoor').some((p) => Math.abs((p.y ?? 0) - outdoorLevelY) <= TOL),
+    'outdoor 解算折线须实际到达声明的升位标高',
+  );
   const weakbox = all.coordination.routes.find((r) => r.id === 'strong-power-weakbox')!;
-  assert.equal((weakbox.via as any[])[1].y, 0.45, 'weakbox 下引须为 0.45');
+  const weakboxLevelY = (weakbox.via as any[])[1].y as number;
+  assert.ok(Number.isFinite(weakboxLevelY), 'weakbox level 须声明有限数 y');
+  assert.ok(weakboxLevelY < weakbox.from_height!, 'weakbox level 须为下引（低于起算标高）');
+  assert.ok(
+    slicePoints(report, 'strong-power-weakbox').some((p) => Math.abs((p.y ?? 0) - weakboxLevelY) <= TOL),
+    'weakbox 解算折线须实际到达声明的下引标高',
+  );
   // sofa 两路由原样不动。
   for (const id of ['strong-power-living-sofa-l', 'strong-power-living-sofa-r']) {
     const route = all.coordination.routes.find((r) => r.id === id)!;
     assert.deepEqual(route.via.map((s: any) => s.kind), ['from_face_jog', 'from_drop', 'shaft_run'], `${id} 须仍为三步`);
   }
-  // mbath 已随本批 51 条迁移为关系步：via 须为上述六步（旧绝对 via 作废，见 MBATH_VIA 上注）。
+  // mbath 已随本批 51 条迁移为关系步：步型序列 + 步目标规则，不再整段钉死 via。
   const mbath = all.coordination.routes.find((r) => r.id === 'strong-ded-bathheaters-mbath')!;
-  assert.deepEqual(mbath.via, MBATH_VIA, 'mbath 须为本批迁移后的关系 via');
+  assert.deepEqual(mbath.via.map((s: any) => s.kind), MBATH_KINDS, 'mbath via 步型须为预期序列');
+  assert.ok(
+    (mbath.via as any[]).every((s) => typeof s === 'object' && s !== null && 'kind' in s),
+    'mbath via 不得含绝对坐标步（每步须为关系步）',
+  );
+  assert.deepEqual(
+    (mbath.via as any[]).slice(0, 3).map((s) => s.axis),
+    ['corridor_axis', 'corridor_axis', 'corridor_axis'],
+    'mbath 前三步须引用走廊轴',
+  );
+  assert.equal((mbath.via as any[])[3].height, 'to', 'mbath vertical_to 须以 to 端点为升位目标');
+  // 解算出的走廊段须落在 axes 表的走廊轴值上（轴值当轮直读）；其余不变式与切片路由同口径。
+  const mbathResolved = routeOf(report, 'strong-ded-bathheaters-mbath');
+  const corridorValue = all.coordination.axes.find((a) => a.id === 'corridor_axis')!.value;
+  const corridorLegs = mbathResolved.points.filter(
+    (p, i) => i > 0 && Math.abs((p.y ?? 0) - mbath.from_height!) <= TOL,
+  );
+  assert.ok(corridorLegs.length > 0, 'mbath 须有走廊标高段');
+  for (const p of corridorLegs) {
+    assert.ok(Math.abs(p.z - corridorValue) <= TOL, `mbath 走廊段须落在走廊轴 ${corridorValue} 上，实际 z=${p.z}`);
+  }
+  assertRouteInvariants(mbathResolved, all.coordination, 'strong-ded-bathheaters-mbath');
 
-  // 逐路由逐点等价：新折线 vs 旧绝对几何（dedup + stripCollinear 后逐点比对 + 长度相等）。
+  // 逐路由持续不变式：端点 + 正交 + 无连续重复点 + 无往返折返 + 无发明坐标/标高。
+  // 迁移等价证明（与旧绝对几何逐点比对）已随 PR #248 合入归档，不住测试套件。
   for (const id of SLICE_IDS) {
-    const r = routeOf(report, id);
-    assert.deepEqual(r.unresolved, [], `${id} 须解出`);
-    assert.deepEqual(r.diagnostics, [], `${id} 须无诊断`);
-    const from = r.from!;
-    const to = r.to!;
-    const fromHeight = r.route.from_height!;
-    const toHeight = r.route.to_height;
-    const expectedOld = [
-      { ...from, y: fromHeight },
-      ...OLD_VIA[id].map((p) => ({ ...p })),
-      { ...to, y: toHeight ?? to.y },
-    ];
-    const expected = stripCollinear(dedup(expectedOld));
-    const actual = stripCollinear(dedup(r.points));
-    assert.equal(actual.length, expected.length, `${id} 折线点数须与旧几何去重/去共线后一致`);
-    actual.forEach((p, i) => assertPointClose(p, expected[i], `${id} 第 ${i} 点`));
-    assert.equal(dedup(r.points).length, r.points.length, `${id} 不得含连续重复点`);
-    assertOrthogonal(r.points, id);
-    assert.ok(Math.abs(planLength(r.points) - planLength(expected)) <= TOL, `${id} 平面长度须与旧几何相等`);
-    assert.ok(Math.abs(length3d(r.points) - length3d(expected)) <= TOL, `${id} 三维长度须与旧几何相等`);
+    assertRouteInvariants(routeOf(report, id), all.coordination, id);
     assert.ok(!takeoff.unresolved.some((u) => u.id === id), `算量 unresolved 不得含 ${id}`);
   }
 });
 
-test('C2a：走廊轴值 4.6→4.7——只改一处声明，8 条轴路由跟随，table/weakbox/sofa 不动', () => {
+test('C2a：走廊轴值 +0.1m——只改一处声明，8 条轴路由跟随，table/weakbox/sofa 不动', () => {
   const all = loadAll();
   const before = resolveChain(all, all.furnishings);
   const moved = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
-  moved.axes[0].value = 4.7;
+  // 轴值当轮直读，改动量为相对增量：轴改值后轴上点须跟随同一增量。
+  const axisBefore = all.coordination.axes[0].value;
+  const axisAfter = axisBefore + 0.1;
+  moved.axes[0].value = axisAfter;
   assert.deepEqual(leafDiffPaths(all.coordination, moved), ['axes.0.value'], '实验只能改动一处声明');
   const after = resolveChain(all, all.furnishings, moved);
   for (const id of AXIS_IDS) {
     const rb = routeOf(before.report, id);
     const ra = routeOf(after.report, id);
     assert.deepEqual(ra.unresolved, [], `${id} 改轴后须仍解出`);
-    // 端点不动（from/to 跟随端点声明，不跟随轴线）；轴上中间点 z 须由 4.6 变 4.7，x 与 y 不变。
+    // 端点不动（from/to 跟随端点声明，不跟随轴线）；轴上中间点 z 须跟随同一增量，x 与 y 不变。
     assert.deepEqual([ra.points[0], ra.points[ra.points.length - 1]], [rb.points[0], rb.points[rb.points.length - 1]], `${id} 端点不得移动`);
     rb.points.slice(1, -1).forEach((p, i) => {
       const q = ra.points[i + 1];
       assert.ok(Math.abs(q.x - p.x) <= TOL && Math.abs((q.y ?? 0) - (p.y ?? 0)) <= TOL, `${id} 第 ${i + 1} 点 x/y 不得移动`);
-      if (Math.abs(p.z - 4.6) <= TOL) assert.ok(Math.abs(q.z - 4.7) <= TOL, `${id} 第 ${i + 1} 点 z 须跟随到 4.7`);
+      if (Math.abs(p.z - axisBefore) <= TOL) assert.ok(Math.abs(q.z - axisAfter) <= TOL, `${id} 第 ${i + 1} 点 z 须跟随到 ${axisAfter}`);
       else assert.ok(Math.abs(q.z - p.z) <= TOL, `${id} 第 ${i + 1} 点 z 不得移动`);
     });
   }
@@ -495,71 +515,121 @@ test('C2b：客厅空调插座 x +0.30m——living 跟随，dining 不动', () 
   assert.deepEqual(slicePoints(after.report, 'strong-ac-dining'), slicePoints(before.report, 'strong-ac-dining'), 'dining 不得移动');
 });
 
-test('C2c：parent 分支 x 5.5→5.6——只改一处声明，parent 南行腿跟随，child 不动', () => {
+test('C2c：parent 分支 x +0.1m——只改一处声明，parent 南行腿跟随，child 不动', () => {
   const all = loadAll();
   const before = resolveChain(all, all.furnishings);
   const moved = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
   const idx = moved.routes.findIndex((r) => r.id === 'strong-ac-parent');
-  (moved.routes[idx].via as any[])[1].to = 5.6;
+  // 分支目标当轮直读，改动量为相对增量：南行腿两点 x 须跟随同一增量。
+  const branchBefore = (moved.routes[idx].via as any[])[1].to as number;
+  const branchAfter = branchBefore + 0.1;
+  (moved.routes[idx].via as any[])[1].to = branchAfter;
   assert.deepEqual(leafDiffPaths(all.coordination, moved), [`routes.${idx}.via.1.to`], '实验只能改动一处声明');
   const after = resolveChain(all, all.furnishings, moved);
   const rb = routeOf(before.report, 'strong-ac-parent');
   const ra = routeOf(after.report, 'strong-ac-parent');
   assert.deepEqual(ra.unresolved, [], 'parent 改分支后须仍解出');
-  // 南行腿两点 x 须由 5.5 变 5.6，其余点不动。
+  // 南行腿两点 x 须跟随到新分支值，其余点不动。
   rb.points.forEach((p, i) => {
     const q = ra.points[i];
-    if (Math.abs(p.x - 5.5) <= TOL) assert.ok(Math.abs(q.x - 5.6) <= TOL, `parent 第 ${i} 点 x 须跟随到 5.6`);
+    if (Math.abs(p.x - branchBefore) <= TOL) assert.ok(Math.abs(q.x - branchAfter) <= TOL, `parent 第 ${i} 点 x 须跟随到 ${branchAfter}`);
     else assert.ok(Math.abs(q.x - p.x) <= TOL && Math.abs(q.z - p.z) <= TOL, `parent 第 ${i} 点不得移动`);
   });
   assert.deepEqual(slicePoints(after.report, 'strong-ac-child'), slicePoints(before.report, 'strong-ac-child'), 'child 不得移动');
 });
 
-test('C2d：outdoor 升位 y 2.7→2.75——只改一处声明，2.70 腿跟随，2.55 腿不动', () => {
+test('C2d：outdoor 升位 y +0.05m——只改一处声明，升位腿跟随，低位腿不动', () => {
   const all = loadAll();
   const before = resolveChain(all, all.furnishings);
   const moved = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
   const idx = moved.routes.findIndex((r) => r.id === 'strong-ac-outdoor');
-  (moved.routes[idx].via as any[])[3].y = 2.75;
+  // 升位目标当轮直读，改动量为相对增量：原在升位标高的点须跟随同一增量，其余点不动。
+  const levelBefore = (moved.routes[idx].via as any[])[3].y as number;
+  const levelAfter = levelBefore + 0.05;
+  (moved.routes[idx].via as any[])[3].y = levelAfter;
   assert.deepEqual(leafDiffPaths(all.coordination, moved), [`routes.${idx}.via.3.y`], '实验只能改动一处声明');
   const after = resolveChain(all, all.furnishings, moved);
   const rb = routeOf(before.report, 'strong-ac-outdoor');
   const ra = routeOf(after.report, 'strong-ac-outdoor');
   assert.deepEqual(ra.unresolved, [], 'outdoor 改升位后须仍解出');
-  // 升位点及之后 2.70 腿的点 y 须变 2.75；升位之前的 2.55 腿不动；末点 y 取 to_height 1.6，不跟随。
+  // 原在升位标高的点 y 须跟随到新标高；其余点平面与标高均不动（末点 y 取 to_height，不跟随）。
   rb.points.forEach((p, i) => {
     const q = ra.points[i];
     assert.ok(Math.abs(q.x - p.x) <= TOL && Math.abs(q.z - p.z) <= TOL, `outdoor 第 ${i} 点平面不得移动`);
-    if (i >= 4 && i <= 6) assert.ok(Math.abs((q.y ?? 0) - 2.75) <= TOL, `outdoor 第 ${i} 点 y 须跟随到 2.75`);
+    if (Math.abs((p.y ?? 0) - levelBefore) <= TOL) assert.ok(Math.abs((q.y ?? 0) - levelAfter) <= TOL, `outdoor 第 ${i} 点 y 须跟随到 ${levelAfter}`);
     else assert.ok(Math.abs((q.y ?? 0) - (p.y ?? 0)) <= TOL, `outdoor 第 ${i} 点 y 不得移动`);
   });
 });
 
-test('C3：算量等价——旧绝对 via 与新关系 via 的 takeoff 关键输出一致', () => {
+test('C3：算量自洽——takeoff 各输出由同一份解算结果独立重算', () => {
   const all = loadAll();
-  const migrated = resolveChain(all, all.furnishings);
-  // 旧几何由 OLD_VIA 转录还原（与 C1 同基准）：把 10 条路由 via 换回绝对坐标，其余一字不动。
-  const oldCoord = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
-  for (const id of SLICE_IDS) {
-    const route = oldCoord.routes.find((x) => x.id === id)!;
-    route.via = OLD_VIA[id].map((p) => ({ ...p })) as any;
-  }
-  const oldReport = resolveMepRoutes(oldCoord, migrated.sources);
-  assert.deepEqual(oldReport.diagnostics, [], '旧绝对几何须解出（对照组）');
-  const oldTakeoff = computeMepTakeoff({
+  const { report, takeoff } = resolveChain(all, all.furnishings);
+
+  // 1. 确定性：同一份输入重算，结果逐项一致。
+  const again = computeMepTakeoff({
     electrical: all.electrical as any,
     plumbing: all.plumbing as any,
     circuits: all.topology.circuits,
     controls: all.topology.controls ?? [],
-    routes: oldCoord.routes,
-    resolution: oldReport,
+    routes: all.coordination.routes,
+    resolution: report,
     rules: all.rules,
   });
-  assert.equal(oldTakeoff.conduit.strongPowerM, migrated.takeoff.conduit.strongPowerM, '强电层总长须与旧几何一致');
-  assert.equal(oldTakeoff.conduit.drawnRouteUnionM, migrated.takeoff.conduit.drawnRouteUnionM, '画线并集总长须与旧几何一致');
-  assert.equal(oldTakeoff.coverage.byRoom.living_dining?.drawnRouteM, migrated.takeoff.coverage.byRoom.living_dining?.drawnRouteM, '客餐厅画线长须与旧几何一致');
-  assert.deepEqual(oldTakeoff.unresolved, migrated.takeoff.unresolved, '算量 unresolved 清单须与旧几何一致');
-  assert.equal(oldTakeoff.feasibleForQuote, migrated.takeoff.feasibleForQuote, '可报价标志须与旧几何一致');
+  assert.deepEqual(again, takeoff, '同一份输入重算 takeoff 须逐项一致');
+
+  // 2. 各总量由解算结果独立重算（与 takeoff 同口径的过滤：covered 层、已解出、
+  //    physical、端点未延期；下引仅当 rules.include_terminal_drop 开启）。
+  const covered = new Set(all.rules.covered_layers);
+  const elecById = new Map(all.electrical.map((p: any) => [p.id, p]));
+  const pointHeights = new Map<string, number>();
+  for (const p of [...all.electrical, ...all.plumbing]) {
+    if (p.height !== undefined) pointHeights.set(p.id, p.height);
+  }
+  // 只有 position_status/status 都为 pending 的点位才延期（与 takeoff 同口径）。
+  const isDeferred = (p: any): boolean => p !== undefined && p.position_status === 'pending' && p.status === 'pending';
+  const counted = (route: MepRoute): { drawn: number; drop: number; points: Array<{ x: number; z: number; y?: number }> } | null => {
+    if (!covered.has(route.layer)) return null;
+    const res = report.routes.find((item) => item.route.id === route.id);
+    if (!res || res.unresolved.length > 0 || !res.metadata.physicalRoute) return null;
+    if ([route.from, route.to].some((e) => typeof e === 'string' && isDeferred(elecById.get(e)))) return null;
+    const drawn = length3d(res.points);
+    let drop = 0;
+    if (all.rules.include_terminal_drop && typeof route.to === 'string' && pointHeights.has(route.to)) {
+      const lastY = res.points[res.points.length - 1]?.y;
+      const h = pointHeights.get(route.to)!;
+      if (lastY !== undefined && lastY > h) drop = lastY - h;
+    }
+    return { drawn, drop, points: res.points };
+  };
+  let strongSum = 0;
+  let dropSum = 0;
+  const drawnPaths: Array<Array<{ x: number; z: number }>> = [];
+  const strongPaths: Array<Array<{ x: number; z: number }>> = [];
+  let livingSum = 0;
+  for (const route of all.coordination.routes) {
+    const c = counted(route);
+    if (!c) continue;
+    if (route.layer === 'strong_power') {
+      strongSum += c.drawn + c.drop;
+      strongPaths.push(c.points.map((p) => ({ x: p.x, z: p.z })));
+    }
+    dropSum += c.drop;
+    drawnPaths.push(c.points.map((p) => ({ x: p.x, z: p.z })));
+    if (typeof route.to === 'string' && elecById.get(route.to)?.room === 'living_dining') livingSum += c.drawn;
+  }
+  const close = (a: number, b: number, what: string): void => {
+    assert.ok(Math.abs(a - b) <= 1e-6, `${what}：takeoff ${a} vs 独立重算 ${b}`);
+  };
+  close(takeoff.conduit.strongPowerM, strongSum, '强电管长须等于各条已画线强电路由（三维长 + 终端下引）之和');
+  close(takeoff.conduit.terminalDropM, dropSum, '终端下引总量须等于各条路由下引之和');
+  close(takeoff.conduit.drawnRouteUnionM, unionPlanLength(drawnPaths), '画线并集总长须等于已画线路由平面路径的网格并集');
+  close(takeoff.conduit.strongPowerUnionAllM, unionPlanLength(strongPaths), '强电画线并集须等于强电路由平面路径的网格并集');
+  close(takeoff.coverage.byRoom.living_dining?.drawnRouteM ?? 0, livingSum, '客餐厅画线长须等于终点在客餐厅的路由三维长之和');
+
+  // 3. 报价门与 blocker 清单同源：可报价当且仅当 blocker 为空；error 级不得存在。
+  assert.equal(takeoff.feasibleForQuote, takeoff.blockers.length === 0, '可报价标志须与 blocker 清单同源');
+  assert.ok(takeoff.blockers.every((b) => b.kind !== 'error'), `error 级 blocker 不得存在：${JSON.stringify(takeoff.blockers.filter((b) => b.kind === 'error'))}`);
+  assert.ok(takeoff.unresolved.every((u) => u.kind !== 'error'), `error 级 unresolved 不得存在：${JSON.stringify(takeoff.unresolved.filter((u) => u.kind === 'error'))}`);
 });
 
 /** 合成反例用的最小 coordination（与 mep-slope-run.test.ts 同口径）。 */

@@ -242,11 +242,14 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
 
     const healthy = buildProjectDxf(dxfInput(items));
     assert.deepEqual(healthy.errors, []);
-    // 中心文字坐标（DXF x = local_x×1000、y = −local_z×1000，4 位小数）：与「along 当绝对 z」
-    // 时代的手写值逐位相同——通顶柜中心仍为 (2242.5000, −3610.0000)，与原三件柜组同值。
+    // 中心文字坐标（DXF x = local_x×1000、y = −local_z×1000，4 位小数）：期望值由
+    // 通顶柜的解算摆位换算得出，不钉手写坐标——DXF 导出须把解算出的摆位中心
+    // 原样印出来（解算本身由本文件前半与 resolver-baseline 覆盖，导出只验印字）。
     // 2026-11-13 issue #116：pvc_box（冷凝水走向代理，DXF 不画、只告警）随冷凝链退役，
     // 协调示意件告警在本房已无主体。
-    assert.ok(healthy.dxf.includes('10\n2242.5000\n20\n-3610.0000'), '通顶柜中心文字坐标');
+    const cabinet = resolveOk(byId(items, 'mb.full_height_cabinet'), segments('w_mbath_east'));
+    const expectedCenterText = `10\n${(cabinet.x * 1000).toFixed(4)}\n20\n${(-cabinet.z * 1000).toFixed(4)}`;
+    assert.ok(healthy.dxf.includes(expectedCenterText), '通顶柜中心文字坐标应等于解算摆位的 DXF 换算');
 
     const broken = JSON.parse(JSON.stringify(items)) as FurnishingItem[];
     byId(broken, 'mb.full_height_cabinet').along = 3.61;
