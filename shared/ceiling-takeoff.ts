@@ -194,9 +194,13 @@ function resolveTreatment(
       perimeterM += -2 * r + (Math.PI * r) / 2;
     }
     if (f > 0) {
-      // 阴角：加料 f²(1 − π/4)，两条邻边各长出 f，换成 πf/2 的弧。
+      // 阴角：加料 f²(1 − π/4)，轮廓沿两条邻边各跑出 f 后由 πf/2 的弧接回——
+      // 但周长只净增 πf/2：入边长出 f、出边短掉 f，两者抵消（2026-11-16 量价算法审计 C-1：
+      // 旧式 `+2f + πf/2` 把两条边都算成 +f，与 builder 的 buildMixedRectangleOutline 轮廓
+      // 实测周长差整整 2f/个阴角——北带 +0.60m、西带 +0.30m；弧心/切点走 tangentArc 的
+      // 镜像凹弧同理：入边短 f、出边长 f，同样只净增 πf/2）。
       netAreaM2 += f * f * CORNER_AREA_K;
-      perimeterM += 2 * f + (Math.PI * f) / 2;
+      perimeterM += (Math.PI * f) / 2;
     }
   }
   return { radii, fillets, netAreaM2, perimeterM };

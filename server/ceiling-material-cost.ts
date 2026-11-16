@@ -558,7 +558,7 @@ export function computeCeilingMaterialCost(
       const upperBound = derivedComponents.filter((c) => c.usageStatus === 'model_derived_upper_bound');
       if (upperBound.length > 0) {
         warnings.push(
-          `${item.name}：${upperBound.map((c) => `${c.component} ${c.metresPerSqm[0]} 米每平米`).join('、')} 取的是**全部分区周长上界**，真实边龙骨只沿墙与错台边缘（本案分区碎，10 区周长 70.95m ÷ 23.222㎡），实际用量低于此值，须现场核定`,
+          `${item.name}：${upperBound.map((c) => `${c.component} ${c.metresPerSqm[0]} 米每平米`).join('、')} 取的是**全部分区周长上界**，真实边龙骨只沿墙与错台边缘（本案分区碎，10 区周长 69.775m ÷ 24.2666㎡），实际用量低于此值，须现场核定`,
         );
       }
     }
