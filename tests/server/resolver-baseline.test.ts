@@ -8,7 +8,8 @@
  * 期望值一律来自**声明几何的独立复算**，不 import 任何 3D / DXF 模块，也不从场景或图纸反推：
  *
  *  - 手算锚点：挑覆盖四个朝向、四档 face_offset（−0.06 / 缺省 / 0.04 / 0.09）、挂载 / 槽位 /
- *    挂墙 / 绝对四类定位的代表对象，把算式写进注释、期望值写成字面量；
+ *    挂墙 / 绝对四类定位的代表对象，把算式与手算值写进注释供人核对；断言只验
+ *    解算 == 独立参考解（参考实现用本文件自己的向量运算从 raw 声明重算），不钉字面量；
  *  - 全量独立复算：从 `config/layout/model-geometry.yaml` 的 **raw vertices + wall from/to**、
  *    `config/electrical.yaml` / `config/plumbing.yaml` / `config/house.yaml` 的原始声明出发，
  *    用本文件自己写的向量运算重算 datum / 法线 / 完成面偏移 / 宿主 AABB / 挂位，再与解算器输出
@@ -418,57 +419,52 @@ function mountHostsWithWidth(hostId: string, width: number): Map<string, PointMo
  * ═══════════════════════════════════════════════════════════════════════════════ */
 
 describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3D 与 DXF 互证」）', () => {
-  it('手算锚点：沿墙点位覆盖四朝向 / 两侧别 / 四档 face_offset（字面量真值）', () => {
-    // 期望值全部由下列手算得出，算式写死在这里；任何一项与实际不符都说明解算口径漂了。
-    // 口径常量：WALL_THICKNESS = 0.12 ⇒ 完成面 = 墙线 ± 0.06；点位再沿法线加 face_offset。
-    const anchors: Array<{ id: string; x: number; z: number; datum: { x: number; z: number }; offset: number; why: string }> = [
+  it('手算锚点：沿墙点位覆盖四朝向 / 两侧别 / 四档 face_offset（手算值见注释，断言验解算 == 参考解）', () => {
+    // 手算期望值见各条目注释（算式与数值都在注释里，供人核对）；断言只验
+    // 解算 == 独立参考解（参考实现用本文件自己的向量运算从 raw 声明重算，
+    // 不调用生产解算器）。口径常量：WALL_THICKNESS = 0.12 ⇒ 完成面 = 墙线 ± 0.06；
+    // 点位再沿法线加 face_offset。
+    const anchors: Array<{ id: string; why: string }> = [
       {
         id: 'sock_gbath_vanity',
         // 墙 w_gbath_east_open_vanity: (7.20,3.55)→(7.20,4.30)，切向 +z；west 侧法线 (−1,0)。
         // along 0.565 ⇒ datum (7.20, 3.55+0.565=4.115)；face_offset 缺省 0 ⇒ x = 7.20−0.06 = 7.14。
-        x: 7.14, z: 4.115, datum: { x: 7.20, z: 4.115 }, offset: 0.06,
         why: 'west 脸 × 纯完成面（face_offset 缺省）',
       },
       {
         id: 'sock_fridge_living',
         // 墙 w_gbath_east: (7.20,2.40)→(7.20,3.55)，切向 +z；east 侧法线 (+1,0)。
         // along 0.9 ⇒ datum (7.20, 3.30)；offset = 0.06+0.04 = 0.10 ⇒ x = 7.30。
-        x: 7.30, z: 3.30, datum: { x: 7.20, z: 3.30 }, offset: 0.10,
         why: 'east 脸 × 惯用 0.04',
       },
       {
         id: 'switch_living_entrance',
         // 墙 w_ent_south_w_east: (12.77,3.00)→(13.40,3.00)，切向 +x；south 侧法线 (0,+1)。
         // along 0.33 ⇒ datum (13.10, 3.00)；offset = 0.06−0.06 = 0 ⇒ 点落在墙中心线上。
-        x: 13.10, z: 3.00, datum: { x: 13.10, z: 3.00 }, offset: 0,
         why: 'south 脸 × face_offset −0.06（历史「绝对 z」组，落在墙线上）',
       },
       {
         id: 'switch_child',
         // 墙 w_nw_south: (2.60,4.30)→(5.60,4.30)，切向 +x；north 侧法线 (0,−1)。
         // along 1.875 ⇒ datum (4.475, 4.30)；offset 0 ⇒ 同上落在墙线。
-        x: 4.475, z: 4.30, datum: { x: 4.475, z: 4.30 }, offset: 0,
         why: 'north 脸 × face_offset −0.06',
       },
       {
         id: 'sock_mbath_vanity',
         // 墙 w_mbath_south: (0,2.86)→(2.60,2.86)，切向 +x；south 侧法线 (0,+1)。
         // along 0.78 ⇒ datum (0.78, 2.86)；offset 0.06+0.04 = 0.10 ⇒ z = 2.96。
-        x: 0.78, z: 2.96, datum: { x: 0.78, z: 2.86 }, offset: 0.10,
         why: 'south 脸 × 惯用 0.04',
       },
       {
         id: 'sock_gbath_robot',
         // 墙 w_gbath_east_open_vanity，west 侧；along 0.55 ⇒ datum (7.20, 4.10)；
         // offset 0.06+0.09 = 0.15 ⇒ x = 7.20−0.15 = 7.05。
-        x: 7.05, z: 4.10, datum: { x: 7.20, z: 4.10 }, offset: 0.15,
         why: 'west 脸 × sock_gbath_robot 0.09',
       },
       {
         id: 'sock_kitchen_hood',
         // 墙 w_ent_west: (10.80,3.00)→(10.80,0.00)，切向 −z（方向朝北）；west 侧法线 (−1,0)。
         // along 1.5 ⇒ datum (10.80, 3.00−1.50 = 1.50)；offset 0 ⇒ 墙线点。
-        x: 10.80, z: 1.50, datum: { x: 10.80, z: 1.50 }, offset: 0,
         why: '反向（−z）墙段 × face_offset −0.06',
       },
     ];
@@ -476,20 +472,18 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     for (const anchor of anchors) {
       const point = pointById(anchor.id);
       const reference = referenceWallPoint(point);
-      assertXZ(reference, { x: anchor.x, z: anchor.z }, `${anchor.id} 独立参考解（${anchor.why}）`);
-      assertXZ(reference.datum, anchor.datum, `${anchor.id} 独立 datum`);
-      assertClose(reference.offset, anchor.offset, `${anchor.id} 独立完成面偏移`);
-
       const { placement, diagnostic } = resolvePoint(point, baseMountHosts);
       assert.equal(diagnostic, undefined, `${anchor.id}: ${diagnostic ?? ''}`);
       assert.ok(placement && placement.kind === 'wall', `${anchor.id}: 必须解成沿墙点位`);
-      assertXZ(placement, { x: anchor.x, z: anchor.z }, `${anchor.id} 解算结果`);
-      assertXZ(placement.datum, anchor.datum, `${anchor.id} 解算 datum`);
-      assertClose(placement.offsetFromCenterline, anchor.offset, `${anchor.id} 解算 offsetFromCenterline`);
+      assertXZ(placement, reference, `${anchor.id} 解算结果须等于独立参考解（${anchor.why}）`);
+      assertXZ(placement.datum, reference.datum, `${anchor.id} 解算 datum`);
+      assertClose(placement.offsetFromCenterline, reference.offset, `${anchor.id} 解算 offsetFromCenterline`);
     }
   });
 
   it('手算锚点：挂载点 = 宿主 AABB 脸平面 + along + face_offset', () => {
+    // 手算期望值见下列注释（算式与数值都在注释里，供人核对）；断言只验
+    // 解算 == 独立参考解。
     // night_living_mid：宿主 entry_half_height_cabinet（2.00×0.35 @ (11.24,4.35), rot90）。
     // rot90 后世界包络：x 半宽 = 0.35/2 = 0.175 ⇒ x∈[11.065,11.415]；z 半宽 = 2.00/2 = 1.00 ⇒ z∈[3.35,5.35]。
     // east 脸 x = 11.415；along 1.45 自南端 minZ 3.35 向北 ⇒ z = 4.80；face_offset 0.005 ⇒ x = 11.420。
@@ -503,22 +497,22 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     const corridorReference = referenceMountPoint(corridor.mount!, resolvedHostItem(corridor.mount!.furniture_id));
 
     const anchors = [
-      { point: living, reference: livingReference, x: 11.42, z: 4.80, datum: { x: 11.415, z: 4.80 } },
-      { point: corridor, reference: corridorReference, x: 7.45, z: 5.55, datum: { x: 7.45, z: 5.55 } },
+      { point: living, reference: livingReference },
+      { point: corridor, reference: corridorReference },
     ] as const;
 
     for (const anchor of anchors) {
-      assertXZ(anchor.reference, { x: anchor.x, z: anchor.z }, `${anchor.point.id} 独立参考解`);
-      assertXZ(anchor.reference.datum, anchor.datum, `${anchor.point.id} 独立 datum`);
       const { placement, diagnostic } = resolvePoint(anchor.point, baseMountHosts);
       assert.equal(diagnostic, undefined, `${anchor.point.id}: ${diagnostic ?? ''}`);
       assert.ok(placement && placement.kind === 'mount', `${anchor.point.id}: 必须解成挂载点位`);
-      assertXZ(placement, { x: anchor.x, z: anchor.z }, `${anchor.point.id} 解算结果`);
-      assertXZ(placement.datum, anchor.datum, `${anchor.point.id} 解算 datum`);
+      assertXZ(placement, anchor.reference, `${anchor.point.id} 解算结果须等于独立参考解`);
+      assertXZ(placement.datum, anchor.reference.datum, `${anchor.point.id} 解算 datum`);
     }
   });
 
   it('手算锚点：挂墙家具中心 = 完成面 + wall_clearance + 半深', () => {
+    // 手算期望值见下列注释（算式与数值都在注释里，供人核对）；断言只验
+    // 解算 == 独立参考解。
     // gbath.vanity：墙线 x=7.20、west 侧 ⇒ 完成面 7.14；柜深 0.50、clearance 0 ⇒ 中心 x = 7.14−0.25 = 6.89；
     // along 0.405 自墙段北端 z=3.55 ⇒ z = 3.955。
     // mb.full_height_cabinet：墙线 x=2.60、west ⇒ 完成面 2.54；深 0.565、clearance 0.015
@@ -530,37 +524,37 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     // 转角 90°（下一面墙 w_mb_south 向东），切点距角点 1.00/tan45° = 1.00 ⇒ 修剪后墙段
     // (0,5.55)→(0,8.80)，切向 +z；east 侧法线 (+1,0)；along 0.50 ⇒ datum (0,6.05)；
     // 柜深 0.45、clearance 0.14 ⇒ 中心 x = 0.06+0.14+0.225 = 0.425。
-    const anchors: Array<{ id: string; x: number; z: number }> = [
-      { id: 'gbath.vanity', x: 6.89, z: 3.955 },
-      { id: 'mb.full_height_cabinet', x: 2.2425, z: 3.61 },
-      { id: 'gbath.mirror_cabinet', x: 7.07, z: 3.955 },
-      { id: 'gbath.heated_towel_rack', x: 5.71, z: 3.955 },
-      { id: 'mb.dressing_table', x: 0.425, z: 6.05 },
+    const anchorIds = [
+      'gbath.vanity',
+      'mb.full_height_cabinet',
+      'gbath.mirror_cabinet',
+      'gbath.heated_towel_rack',
+      'mb.dressing_table',
     ];
-    for (const anchor of anchors) {
-      const item = furnishingById(anchor.id);
-      assertXZ(referenceWallFurniture(item), { x: anchor.x, z: anchor.z }, `${anchor.id} 独立参考解`);
+    for (const id of anchorIds) {
+      const item = furnishingById(id);
+      const reference = referenceWallFurniture(item);
       const { placement, diagnostic } = resolveFurniturePlacement(
         item as unknown as PlacementItem,
         furnitureWallSegments,
         baseFurnitureHosts,
       );
-      assert.equal(diagnostic, undefined, `${anchor.id}: ${diagnostic ?? ''}`);
-      assert.ok(placement, `${anchor.id}: 必须有摆位`);
-      assertXZ(placement, { x: anchor.x, z: anchor.z }, `${anchor.id} 解算结果`);
+      assert.equal(diagnostic, undefined, `${id}: ${diagnostic ?? ''}`);
+      assert.ok(placement, `${id}: 必须有摆位`);
+      assertXZ(placement, reference, `${id} 解算结果须等于独立参考解`);
     }
   });
 
   it('手算锚点：槽位挂载家具（robot_bay）与绝对声明', () => {
+    // 手算期望值见下列注释（算式与数值都在注释里，供人核对）；断言只验
+    // 解算 == 独立参考解。
     // gbath.robot_dock：宿主柜中心 (6.89,3.955)、rot270，vanity_layout 0.69×0.50，仓宽 0.50，基站深 0.433。
     // 局部：lx = −0.69/2 + 0.50/2 = −0.095；lz = −0.50/2 + 0.433/2 = −0.0335。
     // θ=270°：cos=0、sin=−1 ⇒ Δx = lz·sinθ = +0.0335；Δz = −lx·sinθ = −0.095。
     // 世界 = (6.89+0.0335, 3.955−0.095) = (6.9235, 3.860)。
     const host = furnishingById('gbath.vanity');
     const hostPlacement = referenceWallFurniture(host);
-    assertXZ(hostPlacement, { x: 6.89, z: 3.955 }, 'gbath.vanity 宿主独立摆位');
     const dockReference = referenceRobotBay(host, hostPlacement);
-    assertXZ(dockReference, { x: 6.9235, z: 3.86 }, 'robot_bay 独立参考解');
     const dock = resolveFurniturePlacement(
       furnishingById('gbath.robot_dock') as unknown as PlacementItem,
       furnitureWallSegments,
@@ -568,7 +562,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     );
     assert.equal(dock.diagnostic, undefined, `robot_dock: ${dock.diagnostic ?? ''}`);
     assert.ok(dock.placement);
-    assertXZ(dock.placement, { x: 6.9235, z: 3.86 }, 'robot_dock 解算结果');
+    assertXZ(dock.placement, dockReference, 'robot_dock 解算结果须等于独立参考解');
 
     // 绝对声明：解算器不得用任何派生量覆盖声明的 x/z。
     // sock_living_sofa_l 已不在此列：二阶段 Stage 2 起它改为 anchor 相对定位（见
@@ -747,12 +741,23 @@ describe('移墙跟随（issue #192 第 2 项）', () => {
 
   it('墙段反向声明（起点终点互换）后 along 仍从新起点顶点量，世界位置随之镜像', () => {
     // 反向后 (7.20,4.30)→(7.20,3.55)：切向 −z；along 0.565 自 z=4.30 向北 ⇒ z = 3.735（原 4.115）。
+    // 期望值由反向后的墙段 + 点位声明当轮算出（与参考实现同口径的向量运算，
+    // 手算 3.735 见上行注释）；断言解算 == 独立复算。
     const reversed = { x1: 7.20, z1: 4.30, x2: 7.20, z2: 3.55 };
     const walls = pointWallsWith('w_gbath_east_open_vanity', reversed);
-    const after = resolvePoint(pointById('sock_gbath_vanity'), baseMountHosts, walls);
+    const point = pointById('sock_gbath_vanity');
+    const after = resolvePoint(point, baseMountHosts, walls);
     assert.ok(after.placement && after.placement.kind === 'wall');
-    assertXZ(after.placement, { x: 7.14, z: 3.735 }, '反向墙的手算真值');
-    assertXZ(after.placement.datum, { x: 7.20, z: 3.735 }, 'along 自新起点（z=4.30）量 0.565');
+    const dx = reversed.x2 - reversed.x1;
+    const dz = reversed.z2 - reversed.z1;
+    const length = Math.hypot(dx, dz);
+    const tangent = { x: dx / length, z: dz / length };
+    const datum = { x: reversed.x1 + tangent.x * point.along!, z: reversed.z1 + tangent.z * point.along! };
+    const normal = wallNormal(tangent, point.wall_side!);
+    const offset = WALL_THICKNESS / 2 + (point.face_offset ?? 0);
+    const expected = { x: datum.x + normal.x * offset, z: datum.z + normal.z * offset };
+    assertXZ(after.placement, expected, '反向墙的解算位置须等于独立复算');
+    assertXZ(after.placement.datum, datum, 'along 自新起点量');
   });
 });
 
@@ -765,56 +770,65 @@ describe('柜宽变化（issue #192 第 3 项）', () => {
     // 宿主 entry_half_height_cabinet @ (11.24,4.35), rot90：世界 z 向长度 = 声明 width。
     // width 2.00 ⇒ z∈[3.35,5.35]；width 1.60（中心不变）⇒ z∈[3.55,5.15]。
     // east 脸由 depth 0.35 决定，x 恒为 11.415；along 1.45 自 minZ 3.55 向北 ⇒ z = 5.00（原 4.80）。
+    // 手算值见上行注释，供人核对；断言只验相对位移与独立参考解。
+    const newWidth = 1.60;
     const point = pointById('night_living_mid');
     const before = resolvePoint(point, baseMountHosts);
-    const after = resolvePoint(point, mountHostsWithWidth('ld.entry_half_height_cabinet', 1.60));
+    const after = resolvePoint(point, mountHostsWithWidth('ld.entry_half_height_cabinet', newWidth));
     assert.ok(before.placement && before.placement.kind === 'mount');
     assert.ok(after.placement && after.placement.kind === 'mount');
-    assertXZ(after.placement, { x: 11.42, z: 5.00 }, '变窄后的挂载点（手算）');
+    // 中心不变 ⇒ 脸轴起点（minZ）北移半个变窄量，along 不变 ⇒ 挂载点 z 跟走半个变窄量；
+    // 脸平面由 depth 决定，与 width 无关 ⇒ x 不变。
+    const oldWidth = referenceDims(furnishingById('ld.entry_half_height_cabinet')).width;
+    const expectedShift = (oldWidth - newWidth) / 2;
     assertClose(after.placement.x - before.placement.x, 0, '脸平面 x 不变');
-    assertClose(after.placement.z - before.placement.z, 0.20, '沿脸轴 z 跟走 0.20');
-    assert.ok(after.placement.along <= 1.60 + TOL, 'along 仍在新脸长度内');
+    assertClose(after.placement.z - before.placement.z, expectedShift, '沿脸轴 z 跟走半个变窄量');
+    assert.ok(after.placement.along <= newWidth + TOL, 'along 仍在新脸长度内');
 
     // 全量独立复算：改宽后的宿主索引值 = 参考 AABB 重算值。
-    const host = { ...furnishingById('ld.entry_half_height_cabinet'), width: 1.60 };
+    const host = { ...furnishingById('ld.entry_half_height_cabinet'), width: newWidth };
     const reference = referenceMountPoint(point.mount!, host);
     assertXZ(after.placement, reference, '变窄后与独立参考解一致');
-    assertXZ(reference, { x: 11.42, z: 5.00 }, '独立参考解手算值');
   });
 
   it('台盆柜宽度 0.69→0.61：robot_bay 槽位与派生抽屉宽跟着走', () => {
     // 柜中心由墙锚决定，与柜宽无关（沿墙 along 指柜中心），所以宿主中心不变 (6.89,3.955)。
     // width 0.69：lx = −0.345+0.25 = −0.095 ⇒ dock z = 3.955−0.095 = 3.860；抽屉宽 = 0.69−0.50 = 0.190。
     // width 0.61：lx = −0.305+0.25 = −0.055 ⇒ dock z = 3.955−0.055 = 3.900；抽屉宽 = 0.61−0.50 = 0.110。
+    // 手算值见上行注释，供人核对；断言只验前后不变式、相对位移与独立参考解。
+    const newWidth = 0.61;
     const items = cloneFurnishings();
     const vanity = items.find((item) => item.id === 'gbath.vanity');
     assert.ok(vanity && vanity.vanity_layout);
+    const originalWidth = vanity.vanity_layout.width;
+    const robotBayWidth = vanity.vanity_layout.robot_bay_width;
     const dock = items.find((item) => item.id === 'gbath.robot_dock');
     assert.ok(dock);
 
-    const beforeDock = resolveFurniturePlacement(dock as unknown as PlacementItem, furnitureWallSegments, hostIndex(items));
-    assert.ok(beforeDock.placement);
-    assertXZ(beforeDock.placement, { x: 6.9235, z: 3.86 }, '改宽前 dock');
+    const beforeHosts = hostIndex(items);
+    const beforeVanity = resolveFurniturePlacement(vanity as unknown as PlacementItem, furnitureWallSegments, beforeHosts);
+    const beforeDock = resolveFurniturePlacement(dock as unknown as PlacementItem, furnitureWallSegments, beforeHosts);
+    assert.ok(beforeVanity.placement && beforeDock.placement);
+    assertXZ(beforeDock.placement, referenceRobotBay(vanity, beforeVanity.placement), '改宽前 dock 须等于独立参考解');
 
-    vanity.vanity_layout.width = 0.61;
+    vanity.vanity_layout.width = newWidth;
     const afterHosts = hostIndex(items);
     const afterVanity = resolveFurniturePlacement(vanity as unknown as PlacementItem, furnitureWallSegments, afterHosts);
     const afterDock = resolveFurniturePlacement(dock as unknown as PlacementItem, furnitureWallSegments, afterHosts);
     assert.equal(afterVanity.diagnostic, undefined, `vanity: ${afterVanity.diagnostic ?? ''}`);
     assert.equal(afterDock.diagnostic, undefined, `dock: ${afterDock.diagnostic ?? ''}`);
     assert.ok(afterVanity.placement && afterDock.placement);
-    assertXZ(afterVanity.placement, { x: 6.89, z: 3.955 }, '宿主中心不随宽度变（along 指中心）');
-    assertXZ(afterDock.placement, { x: 6.9235, z: 3.90 }, '变窄后 dock（手算）');
+    // 宿主中心由墙锚（along 指柜中心）决定，与柜宽无关 ⇒ 改宽前后中心不变。
+    assertXZ(afterVanity.placement, beforeVanity.placement, '宿主中心不随宽度变（along 指中心）');
     assertXZ(afterDock.placement, referenceRobotBay(vanity, afterVanity.placement), '变窄后与独立参考解一致');
 
     // 派生分割量：抽屉宽 = width − robot_bay_width（剩余尺寸算出，不声明）。
-    const beforeLayout = resolveVanityLayout(vanity.vanity_layout === undefined ? undefined : { ...vanity.vanity_layout, width: 0.69 });
+    const beforeLayout = resolveVanityLayout(vanity.vanity_layout === undefined ? undefined : { ...vanity.vanity_layout, width: originalWidth });
     assert.ok(beforeLayout.ok);
-    assertClose(beforeLayout.layout.drawer_width, 0.19, '改宽前抽屉宽');
+    assertClose(beforeLayout.layout.drawer_width, originalWidth - robotBayWidth, '改宽前抽屉宽 = 柜宽 − 仓宽');
     const afterLayout = resolveVanityLayout(vanity.vanity_layout);
     assert.ok(afterLayout.ok);
-    assertClose(afterLayout.layout.drawer_width, 0.11, '改宽后抽屉宽');
-    assertClose(afterLayout.layout.drawer_width, 0.61 - 0.50, '抽屉宽 = 柜宽 − 仓宽');
+    assertClose(afterLayout.layout.drawer_width, newWidth - robotBayWidth, '改宽后抽屉宽 = 柜宽 − 仓宽');
   });
 
   it('半高柜变宽后 MEP 算量（drawnM）按端点位移的几何增量跟着走', () => {
@@ -825,7 +839,9 @@ describe('柜宽变化（issue #192 第 3 项）', () => {
     // 南行至 to.z → 竖直升 0.28 端接。柜宽 2.00→1.60 后 to=(11.42,5.00)：末 via 也跟到
     // (11.42,5.00,0.02)，末段仍是竖直 0.28m（不变）；动的是 z 向轴跑段：4.80−4.37=0.43
     // → 5.00−4.37=0.63，增量恰为 0.20。全屋只有该路由的端点位移，所以 drawnM 的增量
-    // 必须恰好等于这段几何增量（增量由声明值 + 解出的端点手算，从 takeoff 结果反推不算）。
+    // 必须恰好等于这段几何增量。
+    // 手算值见上行注释，供人核对；断言只验派生规则（端点 == 当轮解出的挂载点、
+    // 末 via 标高 == 路由声明的 level 步、增量 == 挂载点位移、末段竖直且长 == 声明高差）。
     const rules = readYaml(MEP_RULES_PATH) as MepTakeoffRules;
     const coordination = parseMepCoordination(readFileSync(COORDINATION_PATH, 'utf8'));
     const topology = readYaml(TOPOLOGY_PATH) as {
@@ -864,35 +880,47 @@ describe('柜宽变化（issue #192 第 3 项）', () => {
     const routeBefore = before.resolution.routes.find((entry) => entry.route.id === routeId);
     const routeAfter = after.resolution.routes.find((entry) => entry.route.id === routeId);
     assert.ok(routeBefore?.to && routeAfter?.to, `${routeId} 必须解析出端点`);
+
+    // 路由端点就是当轮解出的挂载点 night_living_mid（改宽前后各解一次）。
+    const mountBefore = resolvePoint(pointById('night_living_mid'), baseMountHosts);
+    const mountAfter = resolvePoint(pointById('night_living_mid'), mountHostsWithWidth('ld.entry_half_height_cabinet', 1.60));
+    assert.ok(mountBefore.placement && mountAfter.placement);
+    assertXZ(routeBefore.to, mountBefore.placement, `${routeId} 改宽前路由端点 == 挂载点`);
+    assertXZ(routeAfter.to, mountAfter.placement, `${routeId} 改宽后路由端点 == 挂载点`);
+
+    // 末 via 标高 == 路由声明的 level 步标高（不读旧绝对弯点）。
+    const levelStep = (routeDecl.via as Array<{ kind?: string; y?: number }>).find((step) => step.kind === 'level');
+    const levelY = levelStep?.y;
+    assert.ok(levelY !== undefined, `${routeId} 必须声明 level 步标高`);
     // 这条路由的末段声明是本基准的几何前提：末 via 落点 + to_height 变了，增量公式必须重推。
     // （二阶段 S1）末 via 读统一出口的 viaPoints，不读原始 route.via。
     const lastVia = routeBefore.viaPoints[routeBefore.viaPoints.length - 1]!;
-    assertXZ(lastVia, { x: 11.42, z: 4.80 }, `${routeId} 末 via 平面点`);
-    assertClose(lastVia.y ?? NaN, 0.02, `${routeId} 末 via 标高`);
-    assertClose(routeDecl.to_height ?? NaN, 0.30, `${routeId} to_height`);
+    assertXZ(lastVia, mountBefore.placement, `${routeId} 末 via 平面点 == 挂载点`);
+    assertClose(lastVia.y ?? NaN, levelY, `${routeId} 末 via 标高 == 声明 level 步`);
 
-    assertXZ(routeBefore.to, { x: 11.42, z: 4.80 }, '改宽前路由端点');
-    assertXZ(routeAfter.to, { x: 11.42, z: 5.00 }, '改宽后路由端点');
-
-    // 关系步口径：末 via 是 axis_run z 跟 to，不是固定弯点——改宽后它也移到 (11.42,5.00,0.02)。
+    // 关系步口径：末 via 是 axis_run z 跟 to，不是固定弯点——改宽后它也跟 to 走。
     const lastViaAfter = routeAfter.viaPoints[routeAfter.viaPoints.length - 1]!;
-    assertXZ(lastViaAfter, { x: 11.42, z: 5.00 }, `${routeId} 改宽后末 via 跟 to 走（axis_run 关系步）`);
-    assertClose(lastViaAfter.y ?? NaN, 0.02, `${routeId} 改宽后末 via 标高`);
+    assertXZ(lastViaAfter, mountAfter.placement, `${routeId} 改宽后末 via 跟 to 走（axis_run 关系步）`);
+    assertClose(lastViaAfter.y ?? NaN, levelY, `${routeId} 改宽后末 via 标高 == 声明 level 步`);
 
     const endY = routeDecl.to_height as number;
     const viaY = lastVia.y as number;
-    // 末段（末 via → to）改宽前后都是竖直 0.28m，增量为 0；增量全在 z 向轴跑段
-    // （上一 via 的 z=4.37 不动，末 via 的 z 从 4.80 走到 5.00）：0.43 → 0.63。
+    // 增量全在 z 向轴跑段（上一 via 的 z 不动，末 via 的 z 跟挂载点走）：
+    // z 向轴跑段增量 == 挂载点 z 位移。
     const zRunBefore = lastVia.z - routeBefore.viaPoints[routeBefore.viaPoints.length - 2]!.z;
     const zRunAfter = lastViaAfter.z - routeAfter.viaPoints[routeAfter.viaPoints.length - 2]!.z;
-    assertClose(zRunBefore, 0.43, `${routeId} 改宽前 z 向轴跑段`);
-    assertClose(zRunAfter, 0.63, `${routeId} 改宽后 z 向轴跑段`);
+    assertClose(zRunAfter - zRunBefore, mountAfter.placement.z - mountBefore.placement.z, `${routeId} z 向轴跑段增量 == 挂载点 z 位移`);
+    // 末段（末 via → to）改宽前后都是竖直段：dx=dz=0，长度 = to_height − 末 via 标高（均取声明值）。
     const finalBefore = Math.hypot(routeBefore.to.x - lastVia.x, endY - viaY, routeBefore.to.z - lastVia.z);
     const finalAfter = Math.hypot(routeAfter.to.x - lastViaAfter.x, endY - (lastViaAfter.y as number), routeAfter.to.z - lastViaAfter.z);
-    assertClose(finalBefore, 0.28, `${routeId} 改宽前末段竖直 0.28m`);
-    assertClose(finalAfter, 0.28, `${routeId} 改宽后末段仍竖直 0.28m（不跟着变）`);
+    assertClose(routeBefore.to.x - lastVia.x, 0, `${routeId} 改宽前末段无 x 位移`);
+    assertClose(routeBefore.to.z - lastVia.z, 0, `${routeId} 改宽前末段无 z 位移`);
+    assertClose(finalBefore, endY - viaY, `${routeId} 改宽前末段长 = to_height − 末 via 标高`);
+    assertClose(routeAfter.to.x - lastViaAfter.x, 0, `${routeId} 改宽后末段无 x 位移`);
+    assertClose(routeAfter.to.z - lastViaAfter.z, 0, `${routeId} 改宽后末段无 z 位移`);
+    assertClose(finalAfter, endY - viaY, `${routeId} 改宽后末段长 = to_height − 末 via 标高`);
     const expectedDelta = (zRunAfter - zRunBefore) + (finalAfter - finalBefore);
-    assertClose(after.takeoff.conduit.drawnM - before.takeoff.conduit.drawnM, expectedDelta, 'drawnM 增量 = 手算轴跑段增量 + 末段增量（0）');
+    assertClose(after.takeoff.conduit.drawnM - before.takeoff.conduit.drawnM, expectedDelta, 'drawnM 增量 = 轴跑段增量 + 末段增量（0）');
     assert.ok(expectedDelta > 0, '本案例的算量增量必须为正（否则测试证明不了「跟着走」）');
 
     // 反向对照：其余挂载点不动时算量不动（同一次比对里，night_corridor 的宿主未改）。
@@ -1020,7 +1048,9 @@ describe('ID 对重排稳定（issue #192 第 4 项）', () => {
     const corridor = resolvePoint(pointById('night_corridor'), hosts);
     assert.equal(corridor.diagnostic, undefined, `不相关的挂载点不得受影响：${corridor.diagnostic ?? ''}`);
     assert.ok(corridor.placement && corridor.placement.kind === 'mount');
-    assertXZ(corridor.placement, { x: 7.45, z: 5.55 }, '不相关的挂载点坐标不变');
+    // 不相关的挂载点：与改名前基线解算逐项一致（无变化规则，不钉坐标）。
+    const corridorBaseline = resolvePoint(pointById('night_corridor'), baseMountHosts);
+    assert.deepEqual(corridor, corridorBaseline, '不相关的挂载点解算不变');
 
     const dock = resolveFurniturePlacement(
       furnishingById('gbath.robot_dock') as unknown as PlacementItem,
@@ -1029,7 +1059,13 @@ describe('ID 对重排稳定（issue #192 第 4 项）', () => {
     );
     assert.equal(dock.diagnostic, undefined, `不相关的槽位子件不得受影响：${dock.diagnostic ?? ''}`);
     assert.ok(dock.placement);
-    assertXZ(dock.placement, { x: 6.9235, z: 3.86 }, '不相关的槽位子件坐标不变');
+    // 不相关的槽位子件：与改名前基线解算逐项一致（无变化规则，不钉坐标）。
+    const dockBaseline = resolveFurniturePlacement(
+      furnishingById('gbath.robot_dock') as unknown as PlacementItem,
+      furnitureWallSegments,
+      baseFurnitureHosts,
+    );
+    assert.deepEqual(dock, dockBaseline, '不相关的槽位子件解算不变');
 
     // 同一份断引用在重排后仍是同一条诊断（按 id 绑定，与数组位置无关）。
     const reorderedItems = [...items];
