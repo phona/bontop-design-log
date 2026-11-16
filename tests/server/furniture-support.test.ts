@@ -104,6 +104,15 @@ describe('furniture 支撑检查（2026-11-16 DDD 模型约束）', () => {
     assert.equal(errorsFor({ kind: 'wall' } as FurnishingSupport, null).length, 1);
   });
 
+  it('非法包络：非有限数 / 倒置包络一律报错（2026-11-16 Codex 四审 blocking）', () => {
+    // 旧实现直接对 bottom/top 做比较：NaN 比较恒 false，倒置包络也只在部分 kind 下
+    // 触线——两者都返回零错误，门禁显示通过而几何已无效。包络是合成值，不钉配方数字。
+    assert.match(errorsFor({ kind: 'floor' }, { bottom: Number.NaN, top: Number.NaN })[0], /非有限/);
+    assert.match(errorsFor({ kind: 'floor' }, { bottom: 0, top: -1 })[0], /倒置/);
+    assert.match(errorsFor({ kind: 'wall', bottom: 1.1 }, { bottom: Number.NaN, top: 1.9 })[0], /非有限/);
+    assert.equal(errorsFor({ kind: 'floor' }, { bottom: 0, top: 0.75 }).length, 0, '有限且正向包络仍通过');
+  });
+
   it('SUPPORT_EPS = 5mm（与起夜灯挂载漂移容差同量级）', () => {
     assert.equal(SUPPORT_EPS, 0.005);
   });

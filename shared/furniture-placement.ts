@@ -282,9 +282,15 @@ function resolveItem(
   const result = resolveItemInner(item, wallSegments, hosts, anchors, visited);
   if (result.placement === null || result.diagnostic !== undefined) return result;
   // hvac/chain 锚点是 MEP/冷凝链的零维点位（借用家具解算器取位置），不是家具实体：
-  // 无尺寸、无支撑，不适用 DIMS/support 强制。家具锚（source: 'furniture'）与
+  // 无尺寸、无支撑，不适用 DIMS/support 强制——但豁免只给协调示意件（2026-11-16
+  // Codex 四审 major：旧实现只看 anchor.source，普通家具挂个 HVAC/chain 锚点也
+  // 能绕过全部 DIMS/support/数值校验）。家具锚（source: 'furniture'）与
   // mount/wall/room/绝对摆位均为家具实体，须过 DIMS/support 门。
-  if (item.anchor !== undefined && (item.anchor.source === 'hvac' || item.anchor.source === 'chain')) {
+  if (
+    item.anchor !== undefined
+    && (item.anchor.source === 'hvac' || item.anchor.source === 'chain')
+    && COORDINATION_SCHEMATIC_FURNITURE_TYPES.has(item.type)
+  ) {
     return result;
   }
   const dims = furnitureFootprint(item);

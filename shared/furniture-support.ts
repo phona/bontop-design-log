@@ -84,6 +84,16 @@ export function checkSupport(
   if (!validateSupportDeclaration(label, support, errors)) return;
   if (!bounds) return; // 无模型（如冷凝链示意件）：无竖向几何可比，跳过（不报错）。
   const { bottom, top } = bounds;
+  // 包络本身先验（2026-11-16 Codex 四审 blocking）：非有限数或倒置包络时，所有
+  // 大小比较恒 false、门禁静默通过；须在比较前拒绝。
+  if (!Number.isFinite(bottom) || !Number.isFinite(top)) {
+    errors.push(`${label}: 建模包络非有限数（bottom ${bottom}、top ${top}），拒绝比较`);
+    return;
+  }
+  if (bottom > top + SUPPORT_EPS) {
+    errors.push(`${label}: 建模包络倒置（bottom ${bottom}m > top ${top}m），拒绝比较`);
+    return;
+  }
   if (support.kind === 'floor') {
     if (Math.abs(bottom) > SUPPORT_EPS) {
       errors.push(`${label}: 落地件建模底 ${bottom.toFixed(3)}m ≠ 地面 0（悬空/下沉 ${Math.abs(bottom).toFixed(3)}m）`);
