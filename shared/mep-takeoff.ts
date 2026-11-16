@@ -907,19 +907,30 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         if (height === undefined) return 0;
         return Math.max(0, endY - height);
       };
-      const firstY = requirePointY(points3d[0], `路由 ${route.id}`);
-      const lastY = requirePointY(points3d[points3d.length - 1], `路由 ${route.id}`);
-      travelerEdges.push({
-        routeId: route.id,
-        a: travelerNodeKey(route.from, firstY),
-        b: travelerNodeKey(route.to, lastY),
-        length: drawnLength,
-        stubA: stubAt(route.from, firstY),
-        stubB: stubAt(route.to, lastY),
-        circuit: typeof route.to === 'string'
-          ? pointCircuit.get(route.to)
-          : typeof route.from === 'string' ? pointCircuit.get(route.from) : undefined,
-      });
+      // 行程图按折线逐段建边（Codex blocking，PR #255 复审第 6 轮）：整条折线压成
+      // 一条 from→to 边会丢掉中途接入点——另一条路由的端点落在某段中途时，两开
+      // 关在图上不连通、行程计 0，coverage 也不报（两开关都有 physical route）。
+      // 逐段建边后中途点成为图节点，接入即连通；最短路度量不变（分段不改端点
+      // 间最短路），stub 仍只挂在两端（首段 a 端挂 from stub、末段 b 端挂 to
+      // stub，中途段 stub 为 0）。零长重合段成自环，Dijkstra/Steiner 不取它，
+      // 不影响度量，故不特殊跳过。
+      for (let i = 1; i < points3d.length; i += 1) {
+        const fromPoint = points3d[i - 1];
+        const toPoint = points3d[i];
+        const fromY = requirePointY(fromPoint, `路由 ${route.id}`);
+        const toY = requirePointY(toPoint, `路由 ${route.id}`);
+        travelerEdges.push({
+          routeId: route.id,
+          a: i === 1 ? travelerNodeKey(route.from, fromY) : travelerNodeKey(fromPoint, fromY),
+          b: i === points3d.length - 1 ? travelerNodeKey(route.to, toY) : travelerNodeKey(toPoint, toY),
+          length: routeSegmentLength(fromPoint, toPoint, `路由 ${route.id}`),
+          stubA: i === 1 ? stubAt(route.from, fromY) : 0,
+          stubB: i === points3d.length - 1 ? stubAt(route.to, toY) : 0,
+          circuit: typeof route.to === 'string'
+            ? pointCircuit.get(route.to)
+            : typeof route.from === 'string' ? pointCircuit.get(route.from) : undefined,
+        });
+      }
     }
     const planPath = points3d.map((point) => ({ x: point.x, z: point.z }));
     drawnPlanPaths.push(planPath);

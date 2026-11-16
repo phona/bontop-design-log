@@ -578,6 +578,81 @@ test('双控行程取开关间最小子树，不取点位类型分摊（2026-11-
   assert.equal(travelerSubtreeLength(sameHeight, ['swA', 'swB']), 2);
 });
 
+test('双控行程建图须认中途接入点：路由端点落在别条折线中途即连通（Codex blocking，PR #255 复审第 6 轮）', () => {
+  // 最小输入（同回路、同标高 y=2.5，开关 stub 均为 0）：
+  //   r1: swA(2,0) → J(0,0)，折线经中途点 (1,0)，长 2m；
+  //   r2: swB(1,1) → 接入点 (1,0)，长 1m。
+  // 已画网络 swA—swB 应为 2m（(2,0)→(1,0) 1m + (1,0)→(1,1) 1m）；
+  // 旧建图把整条折线压成一条 from→to 边，(1,0) 节点悬空、行程计 0，
+  // 两开关又都有 physical route，coverage 也不报，静默漏计。
+  const miniRules: MepTakeoffRules = {
+    sources: {
+      electrical_points: 'config/electrical.yaml',
+      plumbing_points: 'config/plumbing.yaml',
+      circuits: 'config/electrical-topology.yaml',
+      routes: 'config/mep-hvac-coordination.yaml',
+      hvac: 'config/hvac.yaml',
+    },
+    covered_layers: ['strong_power'],
+    excluded_layers: [],
+    units: {
+      cores_by_purpose: {},
+      dual_control_extra_cores: 1,
+      loss: { wire: 1.05, pipe: 1.08 },
+      fitting_per_meter: { ppr: 0.35, pvc: 0.27 },
+    },
+    trunk_wire_size: null,
+    include_terminal_drop: true,
+    panel: { main_switch_poles: 1, spd_modules: 1, spare_ratio: 0, round_up: false },
+  };
+  const r1 = { id: 'r1', layer: 'strong_power', from: 'swA', to: { x: 0, z: 0 }, route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const r2 = { id: 'r2', layer: 'strong_power', from: 'swB', to: { x: 1, z: 0 }, route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const resolution = {
+    total: 2,
+    resolved: 2,
+    unresolved: 0,
+    diagnostics: [],
+    routes: [
+      {
+        route: r1,
+        from: { x: 2, z: 0, y: 2.5 },
+        to: { x: 0, z: 0, y: 2.5 },
+        points: [{ x: 2, y: 2.5, z: 0 }, { x: 1, y: 2.5, z: 0 }, { x: 0, y: 2.5, z: 0 }],
+        viaPoints: [{ x: 1, y: 2.5, z: 0 }],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+      {
+        route: r2,
+        from: { x: 1, z: 1, y: 2.5 },
+        to: { x: 1, z: 0, y: 2.5 },
+        points: [{ x: 1, y: 2.5, z: 1 }, { x: 1, y: 2.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+    ],
+  } as unknown as Parameters<typeof computeMepTakeoff>[0]['resolution'];
+  const mini = computeMepTakeoff({
+    electrical: [
+      { id: 'swA', room: 'living', type: 'switch', height: 2.5 },
+      { id: 'swB', room: 'living', type: 'switch', height: 2.5 },
+      { id: 'light1', room: 'living', type: 'light', height: 2.5 },
+    ] as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: [],
+    circuits: [{ id: 'c1', wire_size: '1.5mm²(φ16)', breaker: '漏保', member_point_ids: ['swA', 'swB', 'light1'] }],
+    controls: [{ id: 'ctl1', switch_point_ids: ['swA', 'swB'], target_point_ids: ['light1'] }],
+    routes: [r1, r2],
+    resolution,
+    rules: miniRules,
+  });
+  // 行程 2m × 1 附加芯 × 1.05 损耗 = 2.1m。生产值 21.77385m 不变（live
+  // 无中途接入——逐段建边只改图结构，不改端点间最短路度量）。
+  assert.ok(Math.abs(mini.wire.dualControlExtraM - 2.1) < 1e-9);
+});
+
 test('双控附加控制线按控制声明算行程：生产值 21.77385m（2026-11-16 量价算法审计）', () => {
   // 独立推导（测试内手写循环，不复用 takeoff 的图算法）：行程边按控制声明手点——
   // 主卧三控：north↔L + north↔door；书房双控：灯↔门口 + 灯↔床头；
