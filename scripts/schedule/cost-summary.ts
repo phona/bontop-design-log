@@ -1483,7 +1483,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     // 改走 resolved 面积 roomArea（主卫圆角 −0.2146㎡，18.496→18.2814㎡）。
     const wetArea = catalog.getRooms()
       .filter((room: AnyRecord) => room.needs_waterproof === true)
-      .reduce((sum: number, room: AnyRecord) => sum + roomArea(room), 0);
+      .reduce((sum: number, room: AnyRecord) => sum + roomArea(room as unknown as Parameters<typeof roomArea>[0]), 0);
     if (Math.abs(wetArea * wetRate - waterproof.actual) > 1) {
       throw new Error(`cost summary: 防水人工对不上（${qty(wetArea, 2)} ㎡ × ${wetRate} = ${qty(wetArea * wetRate, 2)}，科目 actual = ${waterproof.actual}）`);
     }

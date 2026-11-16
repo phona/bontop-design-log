@@ -852,8 +852,9 @@ describe('成本总表 cost-summary', () => {
     const tamperQty = (key: string, delta: number) => {
       const copy = structuredClone(comparison) as AnyRecord;
       const row = (copy.rows as AnyRecord[]).find((r) => r.key === key);
+      assert.ok(row, `报价行 ${key} 须存在才能篡改其量`);
       row.quantity += delta;
-      return copy;
+      return copy as unknown as Parameters<typeof assertActiveMepQuoteIntegrity>[0];
     };
     assert.throws(
       () => assertActiveMepQuoteIntegrity(tamperQty('wire_1_5', -1), fallback, takeoff),

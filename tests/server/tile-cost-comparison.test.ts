@@ -106,7 +106,7 @@ describe('tile cost comparison', () => {
 
   it('refuses a masonry takeoff without floorRegionExtraSqm instead of treating it as zero（量价算法审计 D4）', () => {
     assert.throws(
-      () => buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, { ...projectTakeoff, floorRegionExtraSqm: undefined }, projectScheme),
+      () => buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, { ...projectTakeoff, floorRegionExtraSqm: undefined } as unknown as typeof projectTakeoff, projectScheme),
       /floorRegionExtraSqm/,
     );
   });
