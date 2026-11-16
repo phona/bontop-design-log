@@ -718,12 +718,26 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   // （wall_region + sill 的 front 竖面）——`wall_region` 是单张 PlaneGeometry、不拆洞，
   // 盖住洞口就是实打实多算。水平台面（top / underside）不在 F07a 现行范围内。
   const openingsByWall = new Map<string, WallOpeningSpan[]>();
+  // 量价算法审计 M-2：openingsAlongWall 会静默跳过投影落到墙段外的洞口
+  // （中心不在任一段内 → 整个跳过）；那样的洞口既逃过 F07a 瓷砖盖洞校验，
+  // 也逃过 openingSill 的 fail-closed 抛错。投影数必须等于声明数。
+  const declaredOpenings: Array<{ id: string; wall: string }> = [];
+  for (const wall of input.walls) {
+    for (const opening of wall.openings ?? []) declaredOpenings.push({ id: opening.id, wall: wall.id });
+  }
   for (const wall of input.walls) {
     const spans = openingsAlongWall(wall);
     if (spans.length) {
       openingsByWall.set(wall.id, spans);
       result.openingsProjected += spans.length;
     }
+  }
+  if (result.openingsProjected !== declaredOpenings.length) {
+    const projectedIds = new Set([...openingsByWall.values()].flat().map((span) => span.id));
+    const skipped = declaredOpenings.filter((opening) => !projectedIds.has(opening.id));
+    throw new Error(
+      `洞口投影丢失 ${skipped.length} 个（声明 ${declaredOpenings.length} 个、投影 ${result.openingsProjected} 个）：${skipped.map((opening) => `${opening.id}@${opening.wall}`).join('、')}——洞口中心落在墙段外（错挂到别的墙上了）；F07a 瓷砖盖洞校验与 openingSill 标高守卫都等不到它`,
+    );
   }
   if (openingsByWall.size === 0) {
     result.unresolved.push({
@@ -868,6 +882,14 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
       result.skippedInsideRoomFloorRegionIds.push(region.id);
       continue;
     }
+    // 量价算法审计：横跨已计费房间边界的 floor_region（一部分点在房间内、
+    // 一部分在外）不能整块按 extra 计——房内部分已由房间 footprint 算过，
+    // 整块 extra 会重复计。须拆成两块（房内随房间、房外作 extra）或显式裁定。
+    if (region.points?.length && region.points.length >= 3 && floorRegionPartiallyInsideCostedRoom(region, costedRooms)) {
+      throw new Error(
+        `floor_region ${region.id} 横跨已计费房间边界（一部分在房间内、一部分在外）：整块按 extra 计会与房间 footprint 重复计。请拆成两块（房内部分随房间、房外部分作 extra）或显式裁定`,
+      );
+    }
     result.floorRegionExtraSqm += region.areaSqm;
     if (region.follow && wetRoomIds.has(region.follow)) externalWetExtra += region.areaSqm;
     else externalDryExtra += region.areaSqm;
@@ -981,6 +1003,43 @@ function floorRegionInsideCostedRoom(
     const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
     if (!roomPoints) return false;
     return points.every((point) => masonryPointInPolygonOrOnEdge(point, roomPoints, 1e-6));
+  });
+}
+
+/**
+ * 横跨判定：floor_region 的一部分面积在某个已计费房间内、另一部分在外。
+ * 与 floorRegionInsideCostedRoom（全点在内才算房内）互补：全在内 → 跳过
+ * （已由房间 footprint 算过）；全在外 → 整块 extra；横跨 → 两头都沾，
+ * 整块 extra 会重复计房内部分，必须抛错等拆分。
+ *
+ * 不能直接用顶点判：边贴边的区域顶点全落在相邻房间的边界线上
+ * （main_corridor_floor 的 4 个顶点全在房间边线上，但整块面积都在房间
+ * 之外）。改用采样点——顶点向形心内收 5mm + 形心本身——才代表区域的
+ * 真实内外。
+ */
+function floorRegionPartiallyInsideCostedRoom(
+  region: MasonryFloorRegionInput,
+  costedRooms: MasonryRoomInput[],
+): boolean {
+  const points = region.points ?? [];
+  if (points.length < 3) return false;
+  const cx = points.reduce((sum, point) => sum + point.x, 0) / points.length;
+  const cz = points.reduce((sum, point) => sum + point.z, 0) / points.length;
+  const samples = points.map((point) => {
+    const dx = cx - point.x;
+    const dz = cz - point.z;
+    const length = Math.hypot(dx, dz);
+    if (length <= 1e-9) return { x: point.x, z: point.z };
+    const step = Math.min(0.005, length);
+    return { x: point.x + (dx / length) * step, z: point.z + (dz / length) * step };
+  });
+  samples.push({ x: cx, z: cz });
+  const candidates = region.room ? costedRooms.filter((room) => room.id === region.room) : costedRooms;
+  return candidates.some((room) => {
+    const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
+    if (!roomPoints) return false;
+    const inside = samples.map((point) => masonryPointInPolygonOrOnEdge(point, roomPoints, 1e-6));
+    return inside.some(Boolean) && !inside.every(Boolean);
   });
 }
 

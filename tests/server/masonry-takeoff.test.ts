@@ -526,3 +526,57 @@ test('纯函数：masonryTileableWallLength 与 tmp/verify-wall-tile.ts 的 tile
   // suppress 的墙不计：主卫北墙/西墙整段是玻璃幕墙
   close(masonryTileableWallLength(points('master_bath'), walls.filter((wall) => !wall.suppressed)), 4.36);
 });
+
+// ── 量价算法审计：静默跳过的输入必须抛错 ───────────────────────────────────
+
+test('洞口投影丢失即抛错：错挂到别的墙上的洞口不得静默跳过（审计 M-2）', () => {
+  const input = buildInput();
+  const wallWithOpenings = input.walls.find((wall) => (wall.openings?.length ?? 0) > 0)!;
+  assert.ok(wallWithOpenings, '测试前提：至少有一面墙带洞口');
+  // 把第一个洞口的中心挪到 100m 外：投影落不到任一墙段上。
+  const moved: MasonryTakeoffInput = {
+    ...input,
+    walls: input.walls.map((wall) => wall.id === wallWithOpenings.id
+      ? {
+          ...wall,
+          openings: wall.openings!.map((opening, index) => index === 0
+            ? { ...opening, x: (opening as any).x + 100, z: (opening as any).z + 100 }
+            : opening),
+        }
+      : wall),
+  };
+  assert.throws(() => computeMasonryTakeoff(moved), /洞口投影丢失/);
+  // 对照组：未动的输入照常通过，投影数等于声明数
+  const live = computeMasonryTakeoff(buildInput());
+  const declared = buildInput().walls.reduce((sum, wall) => sum + (wall.openings?.length ?? 0), 0);
+  assert.equal(live.openingsProjected, declared, '现行 9 个洞口全部投影，无丢失');
+});
+
+test('横跨已计费房间边界的 floor_region 不得整块按 extra 计（审计）', () => {
+  const input = buildInput();
+  // living_dining 东缘 x=13.40（z 4.82–9.80 段）：1×1 方块一半在房内、一半在房外。
+  const straddle: MasonryTakeoffInput['floorRegions'] = [{
+    id: 'straddle_probe',
+    areaSqm: 1.0,
+    points: [
+      { x: 12.9, z: 6.5 }, { x: 13.9, z: 6.5 },
+      { x: 13.9, z: 7.5 }, { x: 12.9, z: 7.5 },
+    ],
+  } as any];
+  assert.throws(
+    () => computeMasonryTakeoff({ ...input, floorRegions: [...(input.floorRegions ?? []), ...straddle] }),
+    /横跨已计费房间边界/,
+  );
+  // 对照组：整块在房外的 extra 与整块在房内的 skip 都照常通过
+  // （房外探针放在建筑轮廓以北的空地上，不在任何房间内）
+  const outside: MasonryTakeoffInput['floorRegions'] = [{
+    id: 'outside_probe',
+    areaSqm: 1.0,
+    points: [
+      { x: 14.0, z: 10.5 }, { x: 15.0, z: 10.5 },
+      { x: 15.0, z: 11.5 }, { x: 14.0, z: 11.5 },
+    ],
+  } as any];
+  const outsideResult = computeMasonryTakeoff({ ...input, floorRegions: [...(input.floorRegions ?? []), ...outside] });
+  close(outsideResult.floorRegionExtraSqm, computeMasonryTakeoff(buildInput()).floorRegionExtraSqm + 1.0);
+});

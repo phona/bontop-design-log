@@ -268,3 +268,18 @@ test('铝扣板缺 buckle_panel.module 即抛错，不按 0 块计价', () => {
   assert.equal(gypsum.byClass.gypsum_board.panelCount, 0);
   assert.ok(gypsum.aluminumBucklePanelCount > 0, '对照组：声明完整时板块数照常算出');
 });
+
+test('cove_fillets 声明即抛错：上部翻弧的算量未实现，不得静默少算（审计）', () => {
+  const zone = {
+    id: 'cove_probe', room: 'living_dining', type: 'drop' as const,
+    thickness: 0.3, area: [0, 0, 1, 1] as [number, number, number, number],
+    cove_fillets: { south: 0.15 },
+  };
+  assert.throws(
+    () => computeCeilingTakeoff([zone as any], rooms),
+    /cove_fillets/,
+  );
+  // 对照组：不带 cove 的同形分区照常算出
+  const plain = computeCeilingTakeoff([{ ...zone, cove_fillets: undefined } as any], rooms);
+  assert.equal(plain.zones.length, 1);
+});

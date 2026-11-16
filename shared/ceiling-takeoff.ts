@@ -267,6 +267,15 @@ export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeo
   const solid: Array<{ zone: CeilingZone; x1: number; z1: number; x2: number; z2: number; width: number; depth: number; measured: CeilingTakeoffZone }> = [];
 
   for (const zone of [...zones].sort((a, b) => a.id.localeCompare(b.id))) {
+    // 量价算法审计：cove_fillets（上部翻弧，DEC-2026-10-08-R05 已全部取消）
+    // 的算量从未实现——builder 会渲出弧面（每米多 πr/2 石膏板面），takeoff
+    // 却只字不读，声明即静默少算。重声明前须先实现弧面算量，在此之前抛错。
+    const coveEntries = Object.entries(zone.cove_fillets ?? {}).filter(([, radius]) => typeof radius === 'number' && radius > 0);
+    if (coveEntries.length > 0) {
+      throw new Error(
+        `吊顶分区 ${zone.id} 声明了 cove_fillets（${coveEntries.map(([edge, radius]) => `${edge} R${radius}`).join('、')}）：上部翻弧的石膏板弧面（每米 πr/2）算量未实现，声明即静默少算。须先实现 cove 弧面算量（或确认取消），再声明`,
+      );
+    }
     if (!SOLID_CEILING_TYPES.has(zone.type) || zone.area === undefined || zone.thickness === undefined) {
       result.excludedIds.push(zone.id);
       continue;
