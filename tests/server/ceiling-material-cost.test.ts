@@ -44,29 +44,51 @@ test('张价按各观察自己的规格折算：verified 优先，取整到元',
 });
 
 test('龙骨按「米价 × 用量」逐构件折算，用量可复核', () => {
-  const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
+  const config = loadCeilingMaterialCost();
+  const result = computeCeilingMaterialCost(config, takeoff);
   const frame = result.items.find((item) => item.id === 'lanzhen50_frame')!;
   assert.equal(frame.basis, 'per_metre_derived');
   assert.equal(frame.derivedComponents.length, 3);
-  const main = frame.derivedComponents.find((c) => c.component === '主龙骨')!;
-  assert.equal(main.rateYuanPerMetre, 8.5);
-  assert.deepEqual(main.metresPerSqm, [0.83, 1.25]); // 间距 800–1200mm
-  assert.deepEqual(main.perSqm, [7, 11]);
-  assert.equal(main.usageStatus, 'unconfirmed', '间距用量未经施工图确认');
-  const sub = frame.derivedComponents.find((c) => c.component === '副龙骨')!;
-  assert.equal(sub.rateYuanPerMetre, 6.34);
-  assert.deepEqual(sub.metresPerSqm, [2.5, 3.33]); // 间距 400–300mm
-  assert.deepEqual(sub.perSqm, [16, 21]);
-  // 边龙骨由 takeoff 周长实算：70.675m ÷ 24.2666㎡ = 2.91，不许手抄（R01 重算：门厅区 1.0584→2.561 后周长与面积同增，米数反降；扩深后面积和周长都按现行分区重算）
-  const edge = frame.derivedComponents.find((c) => c.component === '边龙骨')!;
-  assert.equal(edge.rateYuanPerMetre, 4.1);
-  assert.deepEqual(edge.metresPerSqm, [2.91, 2.91]);
-  assert.deepEqual(edge.perSqm, [12, 12]); // R01 重算
-  assert.equal(edge.usageStatus, 'model_derived_upper_bound');
-  assert.equal(frame.perSqm!.min, 35); // 7 + 16 + 12（R01 重算：边龙骨 13→12）
-  assert.equal(frame.perSqm!.max, 44); // 11 + 21 + 12
-  assert.ok(frame.derivation!.includes('8.5元/米'));
-  assert.ok(frame.derivation!.includes('2.91米每平米'));
+  // 参考实现（PR #253 round 3）：期望值在测试内从间距规则 + takeoff + 证据米价重算。
+  // 取整与实现同口径（roundMoney/round2）；米价从 cost yaml 的 comparable 观察读出，不手写。
+  const roundMoney = (value: number): number => Math.round(value + Number.EPSILON);
+  const round2 = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+  const frameConfig = config.items.find((item) => item.id === 'lanzhen50_frame')!;
+  const rateOf = (component: string): number => {
+    const observation = frameConfig.observations.find(
+      (obs) => obs.grade === 'comparable' && obs.component === component && obs.rate !== undefined,
+    );
+    assert.ok(observation, `missing comparable rate observation for ${component}`);
+    return observation!.rate!;
+  };
+  // 间距规则（GB/T 11981 + 施工技术要点）：米数 = 1/间距，区间两端取 1/最大间距与 1/最小间距。
+  const metresFromSpacing = (minMm: number, maxMm: number): [number, number] =>
+    [round2(1 / (maxMm / 1000)), round2(1 / (minMm / 1000))];
+  const assertComponent = (component: string, metres: [number, number], usageStatus: string): [number, number] => {
+    const derived = frame.derivedComponents.find((c) => c.component === component)!;
+    assert.ok(derived, `missing derived component ${component}`);
+    const rate = rateOf(component);
+    const expectedPerSqm: [number, number] = [roundMoney(metres[0] * rate), roundMoney(metres[1] * rate)];
+    assert.equal(derived.rateYuanPerMetre, rate, `${component} 米价须取 cost yaml 的 comparable 观察价`);
+    assert.deepEqual(derived.metresPerSqm, metres, `${component} 用量须由间距规则/takeoff 导出`);
+    assert.deepEqual(derived.perSqm, expectedPerSqm, `${component} 每平米价须为米价 × 用量（取整到元）`);
+    assert.equal(derived.usageStatus, usageStatus);
+    return expectedPerSqm;
+  };
+  const mainPerSqm = assertComponent('主龙骨', metresFromSpacing(800, 1200), 'unconfirmed');
+  const subPerSqm = assertComponent('副龙骨', metresFromSpacing(300, 400), 'unconfirmed');
+  // 边龙骨由 takeoff 周长实算（全部分区周长 ÷ 石膏板净面积），不手抄——yaml 的
+  // source_note 旧值（72.335m/25.406㎡ → 2.85）与测试旧注（70.675m/24.2666㎡）均已过期，
+  // 以现行 takeoff 对象重算为准。
+  const areaSqm = takeoff.gypsumBoardM2;
+  const perimeter = takeoff.byClass[config.area_basis].perimeterM;
+  const edgeMetres = round2(perimeter / areaSqm);
+  const edgePerSqm = assertComponent('边龙骨', [edgeMetres, edgeMetres], 'model_derived_upper_bound');
+  // 项合计 = 各构件每平米价之和（取整到元）。
+  assert.equal(frame.perSqm!.min, roundMoney(mainPerSqm[0] + subPerSqm[0] + edgePerSqm[0]));
+  assert.equal(frame.perSqm!.max, roundMoney(mainPerSqm[1] + subPerSqm[1] + edgePerSqm[1]));
+  assert.ok(frame.derivation!.includes(`${rateOf('主龙骨')}元/米`));
+  assert.ok(frame.derivation!.includes(`${edgeMetres}米每平米`));
   assert.equal(frame.basisUsed, 'comparable', '米价是可耐福普通/卡式系列，蓝臻本身无公开价');
 });
 
