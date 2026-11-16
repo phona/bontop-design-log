@@ -269,10 +269,27 @@ test('钉：25 个吊顶口与 5 个冷凝候选坐标零变化（S2 不动坐�
     assert.deepEqual([terminal.position.x, terminal.position.y, terminal.position.z], expected, `${id} 的 position 在 S2 不得变化`);
   }
   // 散文改字对象里的 anchor（冷凝出口候选住 anchors 不住 terminals）——坐标原样。
+  // 餐厅冷凝出口候选是路由假设（reason 明言 2.52m 自然排水口及坐标均为假设，须厂家
+  // 图确认），不是设计定值：它相对餐厅内机中心的偏移才是规则——机位中心西 0.40m、
+  // 北 0.41m（reason 载明的偏移量），机位移动时候选须跟随；高度与客厅出口候选共用
+  // 同一自然排水口假设（两候选 y 相等）。若内机移位而候选未跟随，这里即红。
   const diningCandidate = diagram.anchors.find((anchor) => anchor.id === 'condensate_dining_outlet_candidate')!;
   assert.ok(diningCandidate, '缺少 condensate_dining_outlet_candidate');
-  assert.deepEqual([diningCandidate.position!.x, diningCandidate.position!.y, diningCandidate.position!.z], [7.6, 2.52, 4.34],
-    'condensate_dining_outlet_candidate 的 position 在改字时不得变化');
+  assert.ok(diningCandidate.position, 'condensate_dining_outlet_candidate 须声明 position');
+  const diningUnit = diagram.anchors.find((anchor) => anchor.id === 'indoor_dining')!;
+  assert.ok(diningUnit, '缺少 indoor_dining');
+  assert.ok(diningUnit.ref, 'indoor_dining 须以 ref 引用吊顶机位');
+  const diningUnitZone = zoneById.get(diningUnit.ref.id);
+  assert.ok(diningUnitZone, `吊顶机位 ${diningUnit.ref.id} 必须存在`);
+  assert.ok(diningUnitZone.x !== undefined && diningUnitZone.z !== undefined, '吊顶机位须声明 x/z');
+  assert.ok(Math.abs(diningCandidate.position.x - (diningUnitZone.x - 0.40)) < 1e-9,
+    `餐厅冷凝出口候选 x 应为机位中心西 0.40m：机位 ${diningUnitZone.x}，候选 ${diningCandidate.position.x}`);
+  assert.ok(Math.abs(diningCandidate.position.z - (diningUnitZone.z - 0.41)) < 1e-9,
+    `餐厅冷凝出口候选 z 应为机位中心北 0.41m：机位 ${diningUnitZone.z}，候选 ${diningCandidate.position.z}`);
+  const livingCandidate = diagram.anchors.find((anchor) => anchor.id === 'condensate_living_outlet_candidate')!;
+  assert.ok(livingCandidate?.position, '缺少 condensate_living_outlet_candidate');
+  assert.equal(diningCandidate.position.y, livingCandidate.position.y,
+    '两间冷凝出口候选须共用同一自然排水口高度假设');
 });
 
 test('钉：branch_dining 对齐 MEP 2.6（裁定三），x/z 未动；其余 4 个 branch 位置一个不动（裁定四）', () => {
