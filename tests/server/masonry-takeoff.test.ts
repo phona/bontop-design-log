@@ -604,3 +604,47 @@ test('横跨已计费房间边界的 floor_region 不得整块按 extra 计（�
   const outsideResult = computeMasonryTakeoff({ ...input, floorRegions: [...(input.floorRegions ?? []), ...outside] });
   close(outsideResult.floorRegionExtraSqm, computeMasonryTakeoff(buildInput()).floorRegionExtraSqm + 1.0);
 });
+
+test('横跨判定不用采样：顶点与形心全在房外的穿越仍须抛错（Codex blocking，PR #255 复审第 2 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  // Codex 反例：房间 [0,1]×[0,1]，区域 [-1,5]×[0.25,0.75]——4 个顶点与形心
+  // 全在房外，但区域穿过房间 0.5㎡。旧采样口径（顶点内收 5mm + 形心）全点在外、
+  // 不抛错，dryFloorSqm 得 4（真实并集 3.5）。精确判定（边严格交叉）必须抛错。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      [{ id: 'room', areaSqm: 1, rect: { x: 0.5, z: 0.5, width: 1, depth: 1 } }],
+      [{ id: 'cross', areaSqm: 3, points: [{ x: -1, z: 0.25 }, { x: 5, z: 0.25 }, { x: 5, z: 0.75 }, { x: -1, z: 0.75 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+  // 对照：只贴边（共用一条房间边、面积全在房外）是零面积接触，不算横跨，照常计 extra。
+  const touching = computeMasonryTakeoff(minimal(
+    [{ id: 'room', areaSqm: 1, rect: { x: 0.5, z: 0.5, width: 1, depth: 1 } }],
+    [{ id: 'touch', areaSqm: 1, points: [{ x: 1, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }] } as any],
+  ));
+  close(touching.dryFloorSqm, 2, '贴边区域 1㎡ 作 extra，房间 1㎡ + extra 1㎡');
+  // 非凸房间缺口：L 形房（缺 [1,2]×[1,2]），三角区三顶点全在房内、但一条边
+  // 切过缺口——旧顶点判会当成全在内而跳过（缺口部分 0.045㎡ 凭空消失），
+  // 边交叉条件必须把它判为横跨而抛错。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      [{
+        id: 'lroom',
+        areaSqm: 3,
+        points: [{ x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 2 }],
+      }],
+      [{ id: 'notch_cut', areaSqm: 0.845, points: [{ x: 1.8, z: 0.5 }, { x: 0.5, z: 1.8 }, { x: 0.5, z: 0.5 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+});

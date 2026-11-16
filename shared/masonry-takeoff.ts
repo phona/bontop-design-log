@@ -371,13 +371,12 @@ export function masonryPointAt(wall: MasonryWallInput, distance: number): { x: n
 // 非门缺 sill **抛错**。本案 model-geometry 的 9 条 openings 全部是 door，
 // 现行数据零行为变化；将来若有窗/垭口声明缺 sill，这里会红而不是静默少扣。
 
-/** 点是否在多边形内或边上。边界算「内」：`corridor_floor` 的四角正压在邻房边上。 */
-export function masonryPointInPolygonOrOnEdge(
+/** 点是否压在多边形某条边上（距离 ≤ tolerance）。严格在内 = 在内或边上且不在边上。 */
+function masonryPointOnPolygonEdge(
   point: { x: number; z: number },
   polygon: Array<{ x: number; z: number }>,
   tolerance = 1e-6,
 ): boolean {
-  if (polygon.length < 3) return false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const a = polygon[j];
     const b = polygon[i];
@@ -391,6 +390,17 @@ export function masonryPointInPolygonOrOnEdge(
     const cz = a.z + dz * t;
     if (Math.hypot(point.x - cx, point.z - cz) <= tolerance) return true;
   }
+  return false;
+}
+
+/** 点是否在多边形内或边上。边界算「内」：`corridor_floor` 的四角正压在邻房边上。 */
+export function masonryPointInPolygonOrOnEdge(
+  point: { x: number; z: number },
+  polygon: Array<{ x: number; z: number }>,
+  tolerance = 1e-6,
+): boolean {
+  if (polygon.length < 3) return false;
+  if (masonryPointOnPolygonEdge(point, polygon, tolerance)) return true;
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const a = polygon[j];
@@ -1004,7 +1014,80 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   return result;
 }
 
-/** floor_region 轮廓四角是否全部落在某个已计费房间内（多边形包含优先，轴对齐矩形回落包围盒）。 */
+/** 两条线段是否严格交叉（proper crossing）：端点互在对方异侧且不共线。共线重叠/端点相接只有零面积接触，不算交叉。 */
+function masonrySegmentsProperlyCross(
+  a: { x: number; z: number },
+  b: { x: number; z: number },
+  c: { x: number; z: number },
+  d: { x: number; z: number },
+): boolean {
+  const cross = (p: { x: number; z: number }, q: { x: number; z: number }, r: { x: number; z: number }): number =>
+    (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
+  const d1 = cross(c, d, a);
+  const d2 = cross(c, d, b);
+  const d3 = cross(a, b, c);
+  const d4 = cross(a, b, d);
+  const eps = 1e-12;
+  return ((d1 > eps && d2 < -eps) || (d1 < -eps && d2 > eps))
+    && ((d3 > eps && d4 < -eps) || (d3 < -eps && d4 > eps));
+}
+
+/**
+ * 两简单多边形是否共享正面积：任一顶点严格在对方内，或任一对边严格交叉。
+ * 贴边/共线/端点相接只有零面积接触，不算共享——`main_corridor_floor` 的顶点
+ * 压在房间边线上、面积全在房外，仍算房外。故意不用多边形裁剪算面积：本模块
+ * 已决定不引入第二套 polygon-clipping 实现（见内部面层分区的包围盒守卫注记）；
+ * 顶点 + 严格交叉已是正面积交叠的充要条件，只剩一种退化情形判不准（见下）。
+ */
+function masonryPolygonsSharePositiveArea(
+  a: Array<{ x: number; z: number }>,
+  b: Array<{ x: number; z: number }>,
+): boolean {
+  const strictlyInside = (point: { x: number; z: number }, polygon: Array<{ x: number; z: number }>): boolean =>
+    masonryPointInPolygonOrOnEdge(point, polygon, 1e-6) && !masonryPointOnPolygonEdge(point, polygon, 1e-6);
+  if (a.some((point) => strictlyInside(point, b))) return true;
+  if (b.some((point) => strictlyInside(point, a))) return true;
+  for (let i = 0; i < a.length; i += 1) {
+    const a1 = a[i];
+    const a2 = a[(i + 1) % a.length];
+    if (Math.hypot(a2.x - a1.x, a2.z - a1.z) <= 1e-9) continue;
+    for (let j = 0; j < b.length; j += 1) {
+      const b1 = b[j];
+      const b2 = b[(j + 1) % b.length];
+      if (Math.hypot(b2.x - b1.x, b2.z - b1.z) <= 1e-9) continue;
+      if (masonrySegmentsProperlyCross(a1, a2, b1, b2)) return true;
+    }
+  }
+  return false;
+}
+
+/** 两多边形的边是否有一对严格交叉（退化零长边跳过）。 */
+function masonryPolygonsEdgesProperlyCross(
+  a: Array<{ x: number; z: number }>,
+  b: Array<{ x: number; z: number }>,
+): boolean {
+  for (let i = 0; i < a.length; i += 1) {
+    const a1 = a[i];
+    const a2 = a[(i + 1) % a.length];
+    if (Math.hypot(a2.x - a1.x, a2.z - a1.z) <= 1e-9) continue;
+    for (let j = 0; j < b.length; j += 1) {
+      const b1 = b[j];
+      const b2 = b[(j + 1) % b.length];
+      if (Math.hypot(b2.x - b1.x, b2.z - b1.z) <= 1e-9) continue;
+      if (masonrySegmentsProperlyCross(a1, a2, b1, b2)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * floor_region 轮廓是否全部落在某个已计费房间内（多边形包含优先，轴对齐矩形回落包围盒）。
+ * 顶点全在内还不够：非凸房间里轮廓边可能切过缺口（顶点全在房内、边爬出房外）——
+ * 轮廓边与房间边严格交叉即不算全在内。
+ * 残留退化情形（与审计原顶点判同口径，未闭合）：轮廓顶点全压在同一房间边线上、
+ * 边沿房间边共线、面积却在房外——顶点 + 交叉判不出，需面积/裁剪才分得清；现行
+ * 数据无此构形（走廊区顶点分跨多间房），出现即由量对账显形，不静默多算。
+ */
 function floorRegionInsideCostedRoom(
   region: MasonryFloorRegionInput,
   costedRooms: MasonryRoomInput[],
@@ -1015,20 +1098,22 @@ function floorRegionInsideCostedRoom(
   return candidates.some((room) => {
     const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
     if (!roomPoints) return false;
-    return points.every((point) => masonryPointInPolygonOrOnEdge(point, roomPoints, 1e-6));
+    return points.every((point) => masonryPointInPolygonOrOnEdge(point, roomPoints, 1e-6))
+      && !masonryPolygonsEdgesProperlyCross(points, roomPoints);
   });
 }
 
 /**
- * 横跨判定：floor_region 的一部分面积在某个已计费房间内、另一部分在外。
- * 与 floorRegionInsideCostedRoom（全点在内才算房内）互补：全在内 → 跳过
- * （已由房间 footprint 算过）；全在外 → 整块 extra；横跨 → 两头都沾，
- * 整块 extra 会重复计房内部分，必须抛错等拆分。
+ * 横跨判定：floor_region 与某个已计费房间共享正面积、且不全在该房间内。
+ * 与 floorRegionInsideCostedRoom 互补：全在内 → 跳过（已由房间 footprint 算过）；
+ * 零面积接触（贴边/共线）→ 不算横跨，整块 extra；共享正面积 → 两头都沾，整块
+ * extra 会重复计房内部分，必须抛错等拆分。
  *
- * 不能直接用顶点判：边贴边的区域顶点全落在相邻房间的边界线上
- * （main_corridor_floor 的 4 个顶点全在房间边线上，但整块面积都在房间
- * 之外）。改用采样点——顶点向形心内收 5mm + 形心本身——才代表区域的
- * 真实内外。
+ * 旧口径（量价算法审计初版）：顶点向形心内收 5mm + 形心采样，采样点一内一外才
+ * 判横跨。采样漏掉「区域宽、房间卡在中间带、顶点与形心全在房外」的穿越：房间
+ * [0,1]×[0,1]、区域 [-1,5]×[0.25,0.75] 穿过房间 0.5㎡，全部采样点却在房外，
+ * 0.5㎡ 静默重复计（Codex blocking，PR #255 复审第 2 轮）。改用顶点严格在内 +
+ * 边严格交叉的精确判定，不再采样。
  */
 function floorRegionPartiallyInsideCostedRoom(
   region: MasonryFloorRegionInput,
@@ -1036,23 +1121,12 @@ function floorRegionPartiallyInsideCostedRoom(
 ): boolean {
   const points = region.points ?? [];
   if (points.length < 3) return false;
-  const cx = points.reduce((sum, point) => sum + point.x, 0) / points.length;
-  const cz = points.reduce((sum, point) => sum + point.z, 0) / points.length;
-  const samples = points.map((point) => {
-    const dx = cx - point.x;
-    const dz = cz - point.z;
-    const length = Math.hypot(dx, dz);
-    if (length <= 1e-9) return { x: point.x, z: point.z };
-    const step = Math.min(0.005, length);
-    return { x: point.x + (dx / length) * step, z: point.z + (dz / length) * step };
-  });
-  samples.push({ x: cx, z: cz });
   const candidates = region.room ? costedRooms.filter((room) => room.id === region.room) : costedRooms;
   return candidates.some((room) => {
     const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
     if (!roomPoints) return false;
-    const inside = samples.map((point) => masonryPointInPolygonOrOnEdge(point, roomPoints, 1e-6));
-    return inside.some(Boolean) && !inside.every(Boolean);
+    if (floorRegionInsideCostedRoom(region, [room])) return false;
+    return masonryPolygonsSharePositiveArea(points, roomPoints);
   });
 }
 
