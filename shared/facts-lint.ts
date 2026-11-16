@@ -1308,8 +1308,14 @@ function clipPolygon(subject: Pt[], clip: Pt[]): Pt[] {
 }
 
 function overlapArea(a: Pt[], b: Pt[]): { area: number; exact: boolean } {
-  if (polygonConvex(b)) return { area: shoelace(clipPolygon(a, b)), exact: true };
-  if (polygonConvex(a)) return { area: shoelace(clipPolygon(b, a)), exact: true };
+  // 量价算法审计 D10：Sutherland–Hodgman 的 clip 边必须逆时针（左手边为内侧）。
+  // 数据集多边形不保证绕向（kitchen、entry_garden 的 boundary 是顺时针），
+  // 顺时针 clip 边会把交集算成补集——整块落在顺时针房间里的无 follow 区域
+  // 会被漏报（交集算成 0），或面积算错。clip 前一律归一化为逆时针。
+  const aCCW = ensureCCW(a);
+  const bCCW = ensureCCW(b);
+  if (polygonConvex(bCCW)) return { area: shoelace(clipPolygon(aCCW, bCCW)), exact: true };
+  if (polygonConvex(aCCW)) return { area: shoelace(clipPolygon(bCCW, aCCW)), exact: true };
   const inside = (p: Pt, poly: Pt[]) => {
     let hit = false;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
@@ -1318,8 +1324,43 @@ function overlapArea(a: Pt[], b: Pt[]): { area: number; exact: boolean } {
     }
     return hit;
   };
-  const touches = a.some((p) => inside(p, b)) || b.some((p) => inside(p, a));
+  // 两个非凸多边形：仅凭顶点在对方内会漏掉「边交叉、顶点全在外」的交叠。
+  // 严格相交（proper crossing，不含共线/端点相接——贴边相邻的房间共用
+  // 一条边，不得误报）同样算接触，面积记为不可精确计算。
+  const touches = a.some((p) => inside(p, b)) || b.some((p) => inside(p, a)) || edgesCross(aCCW, bCCW);
   return { area: touches ? Number.NaN : 0, exact: false };
+}
+
+/** 带符号多边形面积（x/z 平面）：>0 逆时针，<0 顺时针。 */
+function signedPolygonArea(pts: Pt[]): number {
+  if (pts.length < 3) return 0;
+  let area = 0;
+  for (let i = 0; i < pts.length; i += 1) {
+    const j = (i + 1) % pts.length;
+    area += pts[i].x * pts[j].z - pts[j].x * pts[i].z;
+  }
+  return area / 2;
+}
+
+function ensureCCW(pts: Pt[]): Pt[] {
+  return signedPolygonArea(pts) < 0 ? [...pts].reverse() : pts;
+}
+
+/** 两组折线的边是否严格相交（proper crossing）。共线或端点相接返回 false。 */
+function edgesCross(a: Pt[], b: Pt[]): boolean {
+  const orient = (p: Pt, q: Pt, r: Pt): number => (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
+  for (let i = 0; i < a.length; i += 1) {
+    const a1 = a[i], a2 = a[(i + 1) % a.length];
+    for (let j = 0; j < b.length; j += 1) {
+      const b1 = b[j], b2 = b[(j + 1) % b.length];
+      const d1 = orient(a1, a2, b1);
+      const d2 = orient(a1, a2, b2);
+      const d3 = orient(b1, b2, a1);
+      const d4 = orient(b1, b2, a2);
+      if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+    }
+  }
+  return false;
 }
 
 /**
