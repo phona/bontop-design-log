@@ -134,6 +134,29 @@ describe('furniture 解算器 DIMS/support 强制（2026-11-16 DDD 模型约束�
     assert.match(diagnostic ?? '', /缺少 support 支撑声明/);
   });
 
+  it('placed 条目 support 声明非法（拼错 kind/缺数值/空对象）：解算入口拒绝，不静默通过', () => {
+    // 2026-11-16 Codex 一审 blocking：YAML 类型断言不验数据，非法声明曾在几何比较
+    // 里静默通过（缺失数值 → NaN 比较恒 false；未知 kind 落在全部分支之外）。
+    const typo = resolveFurniturePlacement(
+      { type: 'dining_table', id: 't4', x: 9.8, z: 3.45, support: { kind: 'wal', bottom: 1.1 } } as unknown as PlacementItem,
+      NO_WALLS, NO_HOSTS, undefined,
+    );
+    assert.equal(typo.placement, null);
+    assert.match(typo.diagnostic ?? '', /未知的 support kind/);
+    const noValue = resolveFurniturePlacement(
+      { type: 'dining_table', id: 't5', x: 9.8, z: 3.45, support: { kind: 'wall' } } as unknown as PlacementItem,
+      NO_WALLS, NO_HOSTS, undefined,
+    );
+    assert.equal(noValue.placement, null);
+    assert.match(noValue.diagnostic ?? '', /缺必填数值 bottom/);
+    const empty = resolveFurniturePlacement(
+      { type: 'dining_table', id: 't6', x: 9.8, z: 3.45, support: {} } as unknown as PlacementItem,
+      NO_WALLS, NO_HOSTS, undefined,
+    );
+    assert.equal(empty.placement, null);
+    assert.match(empty.diagnostic ?? '', /未知的 support kind/);
+  });
+
   it('count-only 条目（无 id、无定位声明）：豁免 DIMS/support，返回 null 且无诊断', () => {
     const { placement, diagnostic } = resolveFurniturePlacement(
       { type: 'dining_table', count: 2 }, NO_WALLS, NO_HOSTS, undefined,

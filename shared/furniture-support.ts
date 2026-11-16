@@ -21,6 +21,53 @@ export interface FurnishingBuiltBounds {
 // 5mm 只消浮点/取整噪声，不掩盖厘米级悬空。
 export const SUPPORT_EPS = 0.005;
 
+/** 支撑声明的合法 kind（与 shared/types.ts FurnishingSupport 的联合成员同口径）。 */
+export const SUPPORT_KINDS: ReadonlySet<string> = new Set(['floor', 'wall', 'furniture', 'inset', 'ceiling']);
+
+/**
+ * 支撑声明的运行时校验（2026-11-16 Codex 一审 blocking）：YAML 经 TypeScript 类型断言
+ * 读入，不验证数据——`{}`、拼错的 kind、缺必填数值都曾静默通过本模块（缺失数值产生
+ * NaN，比较条件恒为 false；未知 kind 落在全部分支之外，零错误）。本函数在几何比较
+ * 之前先验声明本身：kind 须在联合内、各 kind 的必填字段须齐全且数值有限、宿主须为
+ * 非空 id。返回是否合法；不合法时逐条入 errors，调用方不再做几何比较。
+ */
+export function validateSupportDeclaration(label: string, support: unknown, errors: string[]): boolean {
+  if (typeof support !== 'object' || support === null || Array.isArray(support)) {
+    errors.push(`${label}: support 支撑声明须为对象（收到 ${Array.isArray(support) ? '数组' : support === null ? 'null' : typeof support}）`);
+    return false;
+  }
+  const declaration = support as Record<string, unknown>;
+  const kind = declaration.kind;
+  if (typeof kind !== 'string' || !SUPPORT_KINDS.has(kind)) {
+    errors.push(`${label}: 未知的 support kind ${JSON.stringify(kind)}（须为 floor/wall/furniture/inset/ceiling 之一）`);
+    return false;
+  }
+  const finiteNumber = (field: string): boolean => {
+    const value = declaration[field];
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      errors.push(`${label}: ${kind} 支撑缺必填数值 ${field}（须为有限数，收到 ${String(value)}）`);
+      return false;
+    }
+    return true;
+  };
+  let valid = true;
+  if (kind === 'wall') {
+    valid = finiteNumber('bottom') && valid;
+  } else if (kind === 'furniture' || kind === 'inset') {
+    const host = declaration.host;
+    const hostIds = Array.isArray(host) ? host : [host];
+    if (hostIds.length === 0 || hostIds.some((id) => typeof id !== 'string' || id.length === 0)) {
+      errors.push(`${label}: ${kind} 支撑缺有效宿主 host（须为非空 id 或非空 id 数组）`);
+      valid = false;
+    }
+    valid = finiteNumber('surface') && valid;
+  } else if (kind === 'ceiling') {
+    valid = finiteNumber('face') && valid;
+    if (declaration.drop !== undefined) valid = finiteNumber('drop') && valid;
+  }
+  return valid;
+}
+
 export function checkSupport(
   label: string,
   support: FurnishingSupport | undefined,
@@ -33,6 +80,8 @@ export function checkSupport(
     errors.push(`${label}: 缺少 support 支撑声明（placed 条目必填）`);
     return;
   }
+  // 声明本身先验（非法声明不做几何比较：缺失数值会算出 NaN、比较恒 false 而静默通过）。
+  if (!validateSupportDeclaration(label, support, errors)) return;
   if (!bounds) return; // 无模型（如冷凝链示意件）：无竖向几何可比，跳过（不报错）。
   const { bottom, top } = bounds;
   if (support.kind === 'floor') {

@@ -13,6 +13,7 @@
 
 import { CONDENSATE_CHAIN_FURNITURE_TYPES, FURNITURE_DIMS, type FurnishingItem, type FurnishingSupport, type VanityLayout, type VanityLayoutDecl, type WallSide } from './types.js';
 import type { CondensateChainGeometry } from './condensate-chain.js';
+import { validateSupportDeclaration } from './furniture-support.js';
 
 /**
  * 墙体完成面基厚（渲染与摆位共用的单一声明）。
@@ -292,6 +293,12 @@ function resolveItem(
   }
   if (item.support === undefined) {
     return { placement: null, diagnostic: `furniture "${item.id ?? item.type}" 缺少 support 支撑声明（placed 条目必填：floor/wall/furniture/inset/ceiling，见 shared/types.ts FurnishingSupport）` };
+  }
+  // 声明本身须在解算入口验证（2026-11-16 Codex 一审 blocking）：YAML 类型断言不验
+  // 数据，`{}`、拼错的 kind、缺必填数值都会在几何比较里静默通过（NaN 比较恒 false）。
+  const supportErrors: string[] = [];
+  if (!validateSupportDeclaration(`furniture "${item.id ?? item.type}"`, item.support, supportErrors)) {
+    return { placement: null, diagnostic: supportErrors.join('；') };
   }
   return result;
 }

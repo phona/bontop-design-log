@@ -570,7 +570,7 @@ furnishings:
     - { type: cabinet_base, count: 5.0 }      # budget/inventory count-only; cabinet module count awaits cabinet shop breakdown. Modeled cabinet run total = north 2.96 + east trial 1.95 = 4.91m; countertop bridge adds 0.60m for 5.51m total worktop.
     - { type: cabinet_wall, count: 2.0 }
     - { type: countertop_quartz, count: 5.0 } # DEC-014 同地柜
-    - { type: gas_stove, id: kitchen.gas_stove, support: { kind: inset, host: kitchen.cabinet_run_north_east, surface: 0.89 }, anchor: { source: furniture, id: kitchen.cabinet_run_east, offset: { x: 0.02, z: 0.225 } }, rotation: 90 }  # 2026-10-14 trial: aligned in z with inferred exhaust anchor; SKU/site pending
+    - { type: gas_stove, id: kitchen.gas_stove, support: { kind: inset, host: kitchen.cabinet_run_east, surface: 0.89 }, anchor: { source: furniture, id: kitchen.cabinet_run_east, offset: { x: 0.02, z: 0.225 } }, rotation: 90 }  # 2026-10-14 trial: aligned in z with inferred exhaust anchor; SKU/site pending
     - { type: range_hood, id: kitchen.range_hood, support: { kind: wall, bottom: 1.35 }, anchor: { source: furniture, id: kitchen.gas_stove, offset: { x: 0, z: 0 } }, rotation: 90 } # 2026-10-14 trial: centered with cooktop; inferred duct unchanged
     - { type: sink, id: kitchen.sink, support: { kind: inset, host: kitchen.cabinet_run_north_east, surface: 0.89 }, anchor: { source: furniture, id: kitchen.cabinet_run_north_east, offset: { x: -0.44, z: -0.02 } }, rotation: 0 }         # DEC-2026-08-02-013 北墙水槽
     # 热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开阳台门洞和北墙地柜；燃气路由/CO 安全红线待物业/燃气公司确认

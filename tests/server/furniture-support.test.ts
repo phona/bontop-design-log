@@ -83,6 +83,27 @@ describe('furniture 支撑检查（2026-11-16 DDD 模型约束）', () => {
     assert.deepEqual(errorsFor({ kind: 'floor' }, null), []);
   });
 
+  it('非法声明：空对象/拼错 kind/缺必填数值/非有限数一律报错（2026-11-16 Codex 一审 blocking）', () => {
+    // 旧实现对这些输入返回零错误：{} 与拼错 kind 落在全部分支之外；缺失数值产生 NaN，
+    // 比较恒 false。以下全是合成声明，不钉任何配方数字。
+    const malformed = (support: unknown) =>
+      errorsFor(support as FurnishingSupport, { bottom: 0, top: 0.75 });
+    assert.match(malformed({})[0], /未知的 support kind/);
+    assert.match(malformed({ kind: 'wal', bottom: 1.1 })[0], /未知的 support kind/);
+    assert.match(malformed({ kind: 'wall' })[0], /缺必填数值 bottom/);
+    assert.match(malformed({ kind: 'wall', bottom: Number.NaN })[0], /缺必填数值 bottom/);
+    assert.match(malformed({ kind: 'wall', bottom: Infinity })[0], /缺必填数值 bottom/);
+    assert.match(malformed({ kind: 'ceiling' })[0], /缺必填数值 face/);
+    assert.match(malformed({ kind: 'ceiling', face: 2.5, drop: Number.NaN })[0], /缺必填数值 drop/);
+    assert.match(malformed({ kind: 'furniture', host: 'ld.waterbar_cabinet' })[0], /缺必填数值 surface/);
+    assert.match(malformed({ kind: 'furniture', host: '', surface: 0.85 })[0], /缺有效宿主 host/);
+    assert.match(malformed({ kind: 'furniture', host: [], surface: 0.85 })[0], /缺有效宿主 host/);
+    assert.match(malformed({ kind: 'inset', host: 'kitchen.cabinet_run_east', surface: Number.NaN })[0], /缺必填数值 surface/);
+    assert.match(malformed('wall')[0], /须为对象/);
+    // 声明非法时即使无建模包络也报错：声明有效性与几何无关。
+    assert.equal(errorsFor({ kind: 'wall' } as FurnishingSupport, null).length, 1);
+  });
+
   it('SUPPORT_EPS = 5mm（与起夜灯挂载漂移容差同量级）', () => {
     assert.equal(SUPPORT_EPS, 0.005);
   });
