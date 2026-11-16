@@ -728,11 +728,18 @@ test('C4：反例——轴线/标高层缺失一律 fail-closed，不出局部�
   } as unknown as MepCoordination;
   const brokenDxf = buildProjectDxf({ house: { furnishings: {}, sceneElements: [] }, mep: { coordination: dxfCoord, sources: dxfSources } });
   assert.ok(brokenDxf.errors.some((e) => e.includes('refrigerant-master')), 'DXF errors 须点名失败路由');
-  assert.ok(!brokenDxf.dxf.includes('4050'), 'DXF 不得出失败路由的折线（x=4.05 转点的毫米坐标不得出现）');
+  // 转点毫米坐标由路由自身声明派生：via 末个数字 axis_run to（末段转向前最后一个轴值）×1000，
+  // 不硬编码 '4050'（toDxf 口径：local_x × 1000）。
+  const numericTurns = (masterRoute.via as Array<{ kind?: string; to?: unknown }>)
+    .filter((step) => step.kind === 'axis_run' && typeof step.to === 'number')
+    .map((step) => step.to as number);
+  assert.ok(numericTurns.length > 0, 'refrigerant-master 须有数字 axis_run 转点');
+  const turnMm = String(Math.round(numericTurns[numericTurns.length - 1]! * 1000));
+  assert.ok(!brokenDxf.dxf.includes(turnMm), `DXF 不得出失败路由的折线（x=${numericTurns[numericTurns.length - 1]} 转点的毫米坐标不得出现）`);
   // 健康对照：轴线在表时同一通道出图、errors 为空、折线在图内。
   const healthyCoord = JSON.parse(JSON.stringify(dxfCoord)) as MepCoordination;
   healthyCoord.axes = [{ id: 'corridor_axis', axis: 'z', value: 4.6, reason: 'test' }];
   const healthyDxf = buildProjectDxf({ house: { furnishings: {}, sceneElements: [] }, mep: { coordination: healthyCoord, sources: dxfSources } });
   assert.deepEqual(healthyDxf.errors, [], '健康轴线时 DXF 须无 errors');
-  assert.ok(healthyDxf.dxf.includes('4050'), '健康轴线时 DXF 须含 x=4.05 转点折线');
+  assert.ok(healthyDxf.dxf.includes(turnMm), `健康轴线时 DXF 须含 x=${numericTurns[numericTurns.length - 1]} 转点折线`);
 });
