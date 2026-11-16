@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { load } from 'js-yaml';
 import { FURNITURE_DIMS, isCurtainSoftEnvelopePreview, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type RenderLightingFixture } from '../../shared/types.js';
+import { WALL_THICKNESS } from '../../shared/furniture-placement.js';
 import { buildFixture, setNorthWallWardrobe950DoorConfiguration, type NorthWallWardrobe950DoorConfiguration, setNorthWallWardrobe950DoorState } from '../../shared/render/FixtureFactory.js';
 import { buildInfrastructure } from '../../shared/render/InfrastructureBuilder.js';
 import { pointWallIndexFromElements, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
@@ -14,10 +15,11 @@ import * as THREE from 'three';
 
 type Furnishing = {
   type: string; id?: string; x?: number; z?: number; rotation?: number;
-  width?: number; depth?: number;
+  width?: number; depth?: number; cabinetHeight?: number;
   // 摆位声明字段（定位形式）：placed() 返回几何身份时剥离，deepEqual 不钉定位形式。
   wall?: string; wall_side?: string; along?: number; wall_clearance?: number;
   anchor?: unknown; mount?: unknown;
+  note?: string; blocker?: unknown;
 };
 type ElectricalPoint = {
   id: string;
@@ -50,17 +52,21 @@ const RUNTIME_EPS = 1e-6;
 
 test('R6 curtain soft envelope stays separate from hard floor collision', () => {
   assert.equal(isCurtainSoftEnvelopePreview(MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE), true);
+  // topBox z[8.7, 8.95] 是 R6 裁定值（沙发偏移 −0.30m 的窗帘软包络），按裁定值例外保留。
   assert.deepEqual(MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE.topBox, { z: [8.7, 8.95], ceilingOnly: true, confidence: 'confirmed', status: 'confirmed' });
-  assert.deepEqual(MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE.closedDrop, {
-    wallZ: 9.8,
-    interiorOffset: 0.12,
-    thickness: 0.12,
-    z: [9.56, 9.68],
-    confidence: 'inferred',
-    status: 'site_pending',
-    conflictLevel: 'warning',
-    acceptance: 'BLOCKED',
-  });
+  // closedDrop：wallZ 为主卧南缘（房间几何南边缘）；z 带由 wallZ 与本条自身的
+  // interiorOffset/thickness 算出（外缘 = wallZ − interiorOffset，内缘再 − thickness）。
+  const masterRoom = MB_LAYOUT.rooms.find((room) => room.id === 'master_bedroom');
+  assert.ok(masterRoom, 'missing master_bedroom room');
+  const roomSouthEdge = masterRoom!.z + masterRoom!.depth / 2;
+  const closedDrop = MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE.closedDrop;
+  assert.ok(Math.abs(closedDrop.wallZ - roomSouthEdge) < GAP_EPS, `closedDrop wallZ ${closedDrop.wallZ} must be the master bedroom south edge ${roomSouthEdge}`);
+  assert.ok(Math.abs(closedDrop.z[0] - (closedDrop.wallZ - closedDrop.thickness - closedDrop.interiorOffset)) < GAP_EPS);
+  assert.ok(Math.abs(closedDrop.z[1] - (closedDrop.wallZ - closedDrop.interiorOffset)) < GAP_EPS);
+  assert.equal(closedDrop.confidence, 'inferred');
+  assert.equal(closedDrop.status, 'site_pending');
+  assert.equal(closedDrop.conflictLevel, 'warning');
+  assert.equal(closedDrop.acceptance, 'BLOCKED');
   assert.equal(MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE.openStack.end, null);
   assert.equal(MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE.openStack.status, 'site_pending');
   assert.equal(MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE.floorHardExclusion, null);
@@ -193,6 +199,89 @@ function aabbIntersects(a: RuntimeAabb, b: RuntimeAabb): boolean {
   return a.minX < b.maxX && a.maxX > b.minX && a.minY < b.maxY && a.maxY > b.minY && a.minZ < b.maxZ && a.maxZ > b.minZ;
 }
 
+// ── 规则断言参考实现（PR #253 round 3）：期望值在测试内从声明重算，不抄录
+// 已解算坐标。与 resolver-baseline 的独立参考实现同口径：参考实现读原始几何
+// （经 resolveLayout 的墙段/房间/洞口），不读解算结果；墙锚家具的深度轴垂直于墙面。
+const MB_LAYOUT = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
+
+function mbWall(id: string): { x1: number; z1: number; x2: number; z2: number } {
+  const wall = MB_LAYOUT.walls.find((candidate) => candidate.id === id);
+  assert.ok(wall, `missing wall ${id}`);
+  return wall!;
+}
+
+// 挂面法线（轴向墙）：east → +x，west → −x，south → +z，north → −z。
+function wallSideNormal(wallSide: string): { x: number; z: number } {
+  if (wallSide === 'east') return { x: 1, z: 0 };
+  if (wallSide === 'west') return { x: -1, z: 0 };
+  if (wallSide === 'south') return { x: 0, z: 1 };
+  if (wallSide === 'north') return { x: 0, z: -1 };
+  throw new Error(`unknown wall_side ${wallSide}`);
+}
+
+/** 墙锚家具的参考中心：墙段起点 + 沿墙方向 × along，法线偏移半墙厚 + clearance + 深度/2。 */
+function referenceWallFurnitureCenter(
+  wallId: string, wallSide: string, along: number, wallClearance: number, depth: number,
+): { x: number; z: number } {
+  const wall = mbWall(wallId);
+  const length = Math.hypot(wall.x2 - wall.x1, wall.z2 - wall.z1);
+  const dirX = (wall.x2 - wall.x1) / length;
+  const dirZ = (wall.z2 - wall.z1) / length;
+  const normal = wallSideNormal(wallSide);
+  const offset = WALL_THICKNESS / 2 + wallClearance + depth / 2;
+  return { x: wall.x1 + dirX * along + normal.x * offset, z: wall.z1 + dirZ * along + normal.z * offset };
+}
+
+/** 沿墙点位的参考位置：墙段起点 + 沿墙方向 × along，法线偏移半墙厚 + face_offset。 */
+function referenceWallPoint(
+  wallId: string, wallSide: string, along: number, faceOffset: number,
+): { x: number; z: number } {
+  const wall = mbWall(wallId);
+  const length = Math.hypot(wall.x2 - wall.x1, wall.z2 - wall.z1);
+  const dirX = (wall.x2 - wall.x1) / length;
+  const dirZ = (wall.z2 - wall.z1) / length;
+  const normal = wallSideNormal(wallSide);
+  const offset = WALL_THICKNESS / 2 + faceOffset;
+  return { x: wall.x1 + dirX * along + normal.x * offset, z: wall.z1 + dirZ * along + normal.z * offset };
+}
+
+/** anchor 挂载家具的期望位置：宿主已解算位置 + 声明 offset（世界轴，不旋转）。 */
+function anchorExpected(hostType: string, item: Furnishing, room: Furnishing[] = master): { x: number; z: number } {
+  const anchor = item.anchor as { source: string; id: string; offset: { x: number; z: number } } | undefined;
+  assert.ok(anchor, `${item.type} must declare an anchor`);
+  const host = placed(hostType, room);
+  return { x: host.x! + anchor.offset.x, z: host.z! + anchor.offset.z };
+}
+
+/** anchor 声明的宿主 id（须为期望的宿主对象）。 */
+function anchorHostId(item: Furnishing): string {
+  const anchor = item.anchor as { source: string; id: string; offset: { x: number; z: number } } | undefined;
+  assert.ok(anchor, `${item.type} must declare an anchor`);
+  return anchor.id;
+}
+
+/**
+ * 尺寸双源对账：fixture mesh 实测 footprint 与尺寸声明（FURNITURE_DIMS 或行内
+ * width/depth）须在同一量级。容差是构造细节 allowance——实测最大偏差为床 rail
+ * 外伸 0.06m（mesh x 1.86 vs DIMS 1.8）、桌板边 0.01m、抽屉面 0.014m；换 SKU
+ * 的尺寸差 ≥0.10m 仍会被抓住。mesh 概念与 footprint 不同的件（如植物冠幅）
+ * 不适用本 helper（本文件无此 pin）。
+ */
+function assertMeshMatchesDims(type: string, width: number, depth: number, tolerance: number, what: string): void {
+  const size = fixtureSize(type);
+  assert.ok(Math.abs(size.x - width) <= tolerance, `${what} mesh x ${size.x} vs 声明宽 ${width}（容差 ${tolerance}）`);
+  assert.ok(Math.abs(size.z - depth) <= tolerance, `${what} mesh z ${size.z} vs 声明深 ${depth}（容差 ${tolerance}）`);
+}
+
+/** 通顶柜的参考中心（行内声明：w_mbath_east 西侧，along 2.51，clearance 0.015，深 0.565）。 */
+function fullHeightCabinetCenter(): { x: number; z: number } {
+  const cabinet = master.find((item) => item.type === 'mb_full_height_cabinet');
+  assert.ok(cabinet, 'missing mb_full_height_cabinet');
+  return referenceWallFurnitureCenter(
+    cabinet.wall!, cabinet.wall_side!, cabinet.along!, cabinet.wall_clearance!, cabinet.depth!,
+  );
+}
+
 test('950 left shift clears d_mb while preserving the north-wall room envelope', () => {
   const currentMaxX = 3.55;
   const targetMaxX = 3.25;
@@ -206,14 +295,37 @@ test('950 left shift clears d_mb while preserving the north-wall room envelope',
 });
 
 test('R9 master-bedroom furniture set places the full-height cabinet and removes R5/R6 objects', () => {
-  assert.deepEqual(placed('bed_180'), { type: 'bed_180', id: 'mb.bed_180', x: 3.20, z: 7.40, rotation: 270 });
-  assert.deepEqual(placed('master_bedside_cabinet_350_north'), { type: 'master_bedside_cabinet_350_north', id: 'mb.bedside_cabinet_north', x: 4.01, z: 6.245, rotation: 0 });
-  assert.deepEqual(placed('master_bedside_cabinet_350_south'), { type: 'master_bedside_cabinet_350_south', id: 'mb.bedside_cabinet_south', x: 4.01, z: 8.555, rotation: 0 });
-  assert.deepEqual(FURNITURE_DIMS.master_bedside_cabinet_350_north, { width: 0.38, depth: 0.35 });
-  assert.deepEqual(FURNITURE_DIMS.master_bedside_cabinet_350_south, { width: 0.38, depth: 0.35 });
+  // 床是睡眠区布局原点（设计输入，PR #247）：x 可由东墙线 + 深度/2 派生（床东缘
+  // 贴东墙线，rotation 270 后世界 x 向跨度为 DIMS depth）；z 无派生源——没有任何
+  // 对象锚定床，床是床头柜的锚源；z 保留为具名设计输入锁，不得静默删。
+  const bed = placed('bed_180');
+  const eastWall = mbWall('w_mb_east');
+  assert.equal(bed.type, 'bed_180');
+  assert.equal(bed.id, 'mb.bed_180');
+  assert.ok(Math.abs(bed.x! - (eastWall.x1 - FURNITURE_DIMS.bed_180.depth / 2)) < GAP_EPS,
+    `bed x ${bed.x} must be the east wall line minus half the bed depth`);
+  assert.equal(bed.z, 7.40, 'bed z is the sleeping-zone layout origin (design input, PR #247)');
+  assert.equal(bed.rotation, 270);
+  // 床头柜锚床：位置 = 床位置 + 声明 offset（世界轴，不旋转），宿主须为 mb.bed_180。
+  for (const type of ['master_bedside_cabinet_350_north', 'master_bedside_cabinet_350_south'] as const) {
+    const decl = master.find((item) => item.type === type);
+    assert.ok(decl, `missing ${type}`);
+    assert.equal(anchorHostId(decl), 'mb.bed_180', `${type} must anchor to mb.bed_180`);
+    const expected = anchorExpected('bed_180', decl);
+    const cabinet = placed(type);
+    assert.equal(cabinet.type, type);
+    assert.equal(cabinet.id, decl.id);
+    assert.ok(Math.abs(cabinet.x! - expected.x) < GAP_EPS && Math.abs(cabinet.z! - expected.z) < GAP_EPS,
+      `${type} must sit at bed + declared anchor offset`);
+    assert.equal(cabinet.rotation, decl.rotation);
+    // 尺寸双源对账：mesh 实测 footprint == DIMS（柜体 recipe 与目录严格一致）。
+    assertMeshMatchesDims(type, FURNITURE_DIMS[type].width, FURNITURE_DIMS[type].depth, 1e-6, type);
+  }
   assert.ok(fixtureSize('master_bedside_cabinet_350_north').y >= 0.495 && fixtureSize('master_bedside_cabinet_350_north').y <= 0.505);
   assert.ok(fixtureSize('master_bedside_cabinet_350_south').y >= 0.495 && fixtureSize('master_bedside_cabinet_350_south').y <= 0.505);
-  assert.deepEqual(FURNITURE_DIMS.bed_180, { width: 1.8, depth: 2.0 });
+  // 床尺寸双源对账：mesh 宽 1.86 vs DIMS 1.8 差 0.06m 是 rail 外伸（每侧 30mm），
+  // 在构造细节容差内；换 SKU 的尺寸差 ≥0.10m 仍会被抓住。
+  assertMeshMatchesDims('bed_180', FURNITURE_DIMS.bed_180.width, FURNITURE_DIMS.bed_180.depth, 0.07, 'bed_180');
   for (const type of ['socket', 'switch', 'switch_2way']) {
     const fixture = buildFixture(type);
     assert.ok(fixture);
@@ -237,38 +349,69 @@ test('R9 master-bedroom furniture set places the full-height cabinet and removes
   // → 世界 z = 1.10 + 2.51 = 3.61。宽/深/柜身高行内声明（FURNITURE_DIMS 不再是
   // 第二套尺寸来源；PR-9「行内不写第二套」口径由 #116 参数化单点声明取代）。
   const cabinet = master.find((item) => item.type === 'mb_full_height_cabinet');
-  // 2026-11-16 用户裁定（浴霸穿柜改顶封 25mm 线槽 infer）：本条带 note + blocker，
-  // 期望记录须与 config/house.yaml 的该记录原样一致（blocker 为未决口径的单一真相）。
-  assert.deepEqual(cabinet, { type: 'mb_full_height_cabinet', id: 'mb.full_height_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015, note: '顶封线槽（infer，2026-11-16 用户裁定）：顶封留 25mm 线槽，Ø20 线管于 y=2.7 穿柜，路由不变。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。', blocker: { kind: 'site_measurement', owner: ['量房'], trigger: '量房数据（过梁高度/顶封实测/墙位）', reverses_if: '量房实测顶封净空不足 25mm 或过梁高度与 y=2.7 线槽冲突时，改走线方式或重定线槽位', rationale: '无量房数据时先选默认方案（infer）：顶封留 25mm 线槽供 Ø20 线管于 y=2.7 穿柜，路由不变；量房后按实测重决。换路方案（x=1.3 南行）作废：x=1.3 在门洞 d_mbath [1.15,1.95] 正上方，需确认过梁高度，不比线槽便宜。' } });
+  // 2026-11-16 用户裁定（浴霸穿柜改顶封 25mm 线槽 infer）：本条带 note + blocker。
+  // 原 verbatim deepEqual 改结构断言：摆位形式逐字段、摆位由墙锚参考实现重算、
+  // 尺寸由 mesh 对账、blocker 按字段查（kind/owner 精确，trigger/reverses_if/
+  // rationale 与 note 只查决策标记，不钉原文 prose）。
+  assert.ok(cabinet, 'missing mb_full_height_cabinet');
+  assert.equal(cabinet.type, 'mb_full_height_cabinet');
+  assert.equal(cabinet.id, 'mb.full_height_cabinet');
+  assert.equal(cabinet.wall, 'w_mbath_east');
+  assert.equal(cabinet.wall_side, 'west');
+  assert.equal(cabinet.rotation, 270);
+  assert.equal(cabinet.along, 2.51);
+  assert.equal(cabinet.width, 1.38);
+  assert.equal(cabinet.depth, 0.565);
+  assert.equal(cabinet.cabinetHeight, 2.80);
+  assert.equal(cabinet.wall_clearance, 0.015);
+  const cabinetPlaced = placed('mb_full_height_cabinet');
+  const cabinetExpected = fullHeightCabinetCenter();
+  assert.ok(Math.abs(cabinetPlaced.x! - cabinetExpected.x) < GAP_EPS && Math.abs(cabinetPlaced.z! - cabinetExpected.z) < GAP_EPS,
+    `cabinet must sit at the wall-anchor reference (w_mbath_east + along + clearance + depth/2)`);
+  assertMeshMatchesDims('mb_full_height_cabinet', cabinet.width!, cabinet.depth!, 1e-6, 'mb_full_height_cabinet');
+  assert.ok(Math.abs(fixtureSize('mb_full_height_cabinet').y - cabinet.cabinetHeight!) < 1e-6, 'cabinet mesh height must equal the declared cabinetHeight');
+  assert.match(cabinet.note ?? '', /25mm/);
+  const blocker = cabinet.blocker as { kind?: string; owner?: unknown; trigger?: string; reverses_if?: string; rationale?: string } | undefined;
+  assert.ok(blocker, 'cabinet must carry a blocker');
+  assert.equal(blocker.kind, 'site_measurement');
+  assert.deepEqual(blocker.owner, ['量房']);
+  assert.match(blocker.trigger ?? '', /量房/);
+  assert.match(blocker.reverses_if ?? '', /25mm|过梁/);
+  assert.match(blocker.rationale ?? '', /infer/);
   for (const type of ['mb_vanity_lower_board_bridge', 'mb_vanity_main_board_bridge']) {
     assert.equal(master.some((item) => item.type === type), false, `${type} must be removed from active placed set`);
     assert.equal((FURNITURE_DIMS as Record<string, unknown>)[type], undefined, `${type} fixture dimensions must be removed`);
   }
   const cabinetFixture = buildFixture('mb_full_height_cabinet');
   assert.ok(cabinetFixture);
-  // 摆位中心 = 墙线 2.60 − 半墙厚 0.06 − wall_clearance 0.015 − 深 0.565/2 = 2.2425
-  //（2026-11-06 口径 A 校验共享化后按真实摆位取值；旧 2.2575 系忽略 clearance 的幻影中心）。
-  cabinetFixture!.position.set(2.2425, 0, 3.61);
+  // 摆位中心由墙锚参考实现重算（墙线 − 半墙厚 − clearance − 深/2，见 fullHeightCabinetCenter）；
+  // 包络由中心 + 行内宽/深/柜身高派生（rotation 270：世界 x 向跨度为深，z 向跨度为宽）。
+  const cabinetCenter = fullHeightCabinetCenter();
+  cabinetFixture!.position.set(cabinetCenter.x, 0, cabinetCenter.z);
   cabinetFixture!.rotation.y = THREE.MathUtils.degToRad(270);
   cabinetFixture!.updateMatrixWorld(true);
   const cabinetBox = new THREE.Box3().setFromObject(cabinetFixture!);
-  assert.ok(Math.abs(cabinetBox.min.x - 1.96) < 1e-6 && Math.abs(cabinetBox.max.x - 2.525) < 1e-6);
-  assert.ok(Math.abs(cabinetBox.min.z - 2.92) < 1e-6 && Math.abs(cabinetBox.max.z - 4.30) < 1e-6);
-  assert.ok(Math.abs(cabinetBox.min.y - 0) < 1e-6 && Math.abs(cabinetBox.max.y - 2.80) < 1e-6, 'cabinet must run floor to ceiling: carcass 0–2.50 + fixed header 2.50–2.80');
+  assert.ok(Math.abs(cabinetBox.min.x - (cabinetCenter.x - cabinet!.depth! / 2)) < 1e-6 && Math.abs(cabinetBox.max.x - (cabinetCenter.x + cabinet!.depth! / 2)) < 1e-6);
+  assert.ok(Math.abs(cabinetBox.min.z - (cabinetCenter.z - cabinet!.width! / 2)) < 1e-6 && Math.abs(cabinetBox.max.z - (cabinetCenter.z + cabinet!.width! / 2)) < 1e-6);
+  assert.ok(Math.abs(cabinetBox.min.y - 0) < 1e-6 && Math.abs(cabinetBox.max.y - cabinet!.cabinetHeight!) < 1e-6, 'cabinet must run floor to ceiling: carcass 0–2.50 + fixed header 2.50–2.80');
   assert.equal(buildFixture('mb_vanity_continuous_closure_cabinet'), null);
 });
 
 test('R9 vanity boards anchor to the wall west finish without bridge geometry', () => {
+  // 悬浮板与通顶柜同 footprint：摆位中心由墙锚参考实现重算，包络由中心 + 柜行内宽/深派生
+  //（rotation 270：世界 x 向跨度为深，z 向跨度为宽）。y 带是 recipe 值，无配置源，保留。
+  const cabinet = master.find((item) => item.type === 'mb_full_height_cabinet');
+  assert.ok(cabinet, 'missing mb_full_height_cabinet');
+  const cabinetCenter = fullHeightCabinetCenter();
   for (const [type, yBand] of [['mb_vanity_lower_board', [0.965, 1.035]], ['mb_vanity_main_board', [1.515, 1.585]]] as const) {
     const board = buildFixture(type);
     assert.ok(board, `missing fixture ${type}`);
-    // 摆位中心 2.2425（口径 A 真实摆位，见上方 baseCabinet 注释）。
-    board!.position.set(2.2425, 0, 3.61);
+    board!.position.set(cabinetCenter.x, 0, cabinetCenter.z);
     board!.rotation.y = THREE.MathUtils.degToRad(270);
     board!.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(board!);
-    assert.ok(Math.abs(box.min.z - 2.92) < 1e-6 && Math.abs(box.max.z - 4.30) < 1e-6, `${type} z[${box.min.z},${box.max.z}]`);
-    assert.ok(Math.abs(box.min.x - 1.96) < 1e-6 && Math.abs(box.max.x - 2.525) < 1e-6, `${type} AABB must be x[1.96,2.525]`);
+    assert.ok(Math.abs(box.min.z - (cabinetCenter.z - cabinet.width! / 2)) < 1e-6 && Math.abs(box.max.z - (cabinetCenter.z + cabinet.width! / 2)) < 1e-6, `${type} z[${box.min.z},${box.max.z}]`);
+    assert.ok(Math.abs(box.min.x - (cabinetCenter.x - cabinet.depth! / 2)) < 1e-6 && Math.abs(box.max.x - (cabinetCenter.x + cabinet.depth! / 2)) < 1e-6, `${type} AABB must match the cabinet footprint`);
     assert.ok(box.min.y >= yBand[0] - 1e-6 && box.max.y <= yBand[1] + 1e-6, `${type} y band ${box.min.y}..${box.max.y}`);
     const endFinish = board!.children.find((child) => child.userData.part === 'wardrobe-side-board-end');
     assert.equal(endFinish, undefined, `${type} must remain a plain floating board without a wardrobe-colored end panel`);
@@ -278,42 +421,70 @@ test('R9 vanity boards anchor to the wall west finish without bridge geometry', 
 test('R9 full-height cabinet header closes the cabinet-to-ceiling seam (issue #116)', () => {
   // 2026-11-13 issue #116：950 衣柜 + 顶封退役，悬浮板位改通顶定制柜——柜身到 2.50m、
   // 固定顶封到 2.80m；柜顶为干净固定板（全带泵后无冷凝水管过柜顶，不设托盘/检修口/带子）。
+  const cabinetDecl = master.find((item) => item.type === 'mb_full_height_cabinet');
+  assert.ok(cabinetDecl, 'missing mb_full_height_cabinet');
+  const cabinetCenter = fullHeightCabinetCenter();
   const cabinet = buildFixture('mb_full_height_cabinet');
   assert.ok(cabinet, 'missing mb_full_height_cabinet fixture');
-  cabinet!.position.set(2.2425, 0, 3.61);
+  cabinet!.position.set(cabinetCenter.x, 0, cabinetCenter.z);
   cabinet!.rotation.y = THREE.MathUtils.degToRad(270);
   cabinet!.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(cabinet!);
-  // 包络与原底柜/悬浮板组同 footprint，顶部改为柜身 + 固定顶封到净高
-  assert.ok(Math.abs(box.min.x - 1.96) < 1e-6 && Math.abs(box.max.x - 2.525) < 1e-6, `cabinet x[${box.min.x},${box.max.x}]`);
-  assert.ok(Math.abs(box.min.z - 2.92) < 1e-6 && Math.abs(box.max.z - 4.30) < 1e-6, `cabinet z[${box.min.z},${box.max.z}]`);
-  assert.ok(Math.abs(box.min.y - 0) < 1e-6 && Math.abs(box.max.y - 2.80) < 1e-6, `cabinet y[${box.min.y},${box.max.y}]`);
-  // 固定顶封：与柜身同 footprint，2.50–2.80m 不可开启
+  // 包络由中心 + 行内宽/深/柜身高派生（rotation 270：世界 x 向跨度为深，z 向跨度为宽）
+  assert.ok(Math.abs(box.min.x - (cabinetCenter.x - cabinetDecl.depth! / 2)) < 1e-6 && Math.abs(box.max.x - (cabinetCenter.x + cabinetDecl.depth! / 2)) < 1e-6, `cabinet x[${box.min.x},${box.max.x}]`);
+  assert.ok(Math.abs(box.min.z - (cabinetCenter.z - cabinetDecl.width! / 2)) < 1e-6 && Math.abs(box.max.z - (cabinetCenter.z + cabinetDecl.width! / 2)) < 1e-6, `cabinet z[${box.min.z},${box.max.z}]`);
+  assert.ok(Math.abs(box.min.y - 0) < 1e-6 && Math.abs(box.max.y - cabinetDecl.cabinetHeight!) < 1e-6, `cabinet y[${box.min.y},${box.max.y}]`);
+  // 固定顶封：与柜身同 footprint，2.50–2.80m 不可开启（y 带是 recipe 值：柜身 2.50m
+  // 为 #116 设计值，顶封到 2.80m 净高；x/z 由中心 + 行内尺寸派生）
   const parts: THREE.Object3D[] = [];
   cabinet!.traverse((object) => { if (object.userData.part) parts.push(object); });
   const header = parts.find((part) => part.userData.part === 'full-height-header');
   assert.ok(header, 'missing full-height-header');
   const headerBox = new THREE.Box3().setFromObject(header!);
-  assert.ok(Math.abs(headerBox.min.x - 1.96) < 1e-6 && Math.abs(headerBox.max.x - 2.525) < 1e-6, `header x[${headerBox.min.x},${headerBox.max.x}]`);
-  assert.ok(Math.abs(headerBox.min.z - 2.92) < 1e-6 && Math.abs(headerBox.max.z - 4.30) < 1e-6, `header z[${headerBox.min.z},${headerBox.max.z}]`);
-  assert.ok(Math.abs(headerBox.min.y - 2.50) < 1e-6 && Math.abs(headerBox.max.y - 2.80) < 1e-6, `header y[${headerBox.min.y},${headerBox.max.y}]`);
+  assert.ok(Math.abs(headerBox.min.x - (cabinetCenter.x - cabinetDecl.depth! / 2)) < 1e-6 && Math.abs(headerBox.max.x - (cabinetCenter.x + cabinetDecl.depth! / 2)) < 1e-6, `header x[${headerBox.min.x},${headerBox.max.x}]`);
+  assert.ok(Math.abs(headerBox.min.z - (cabinetCenter.z - cabinetDecl.width! / 2)) < 1e-6 && Math.abs(headerBox.max.z - (cabinetCenter.z + cabinetDecl.width! / 2)) < 1e-6, `header z[${headerBox.min.z},${headerBox.max.z}]`);
+  assert.ok(Math.abs(headerBox.min.y - 2.50) < 1e-6 && Math.abs(headerBox.max.y - cabinetDecl.cabinetHeight!) < 1e-6, `header y[${headerBox.min.y},${headerBox.max.y}]`);
   // 不侵 d_mb 开启门扇带 x[3.30,4.20] z[4.63,4.67]
-  assert.ok(box.max.x <= 2.525 + 1e-9, 'cabinet must remain within the west finish envelope');
-  // 不压回风格栅底面包络：return_master x[3.45,3.95] z[5.075,5.325]
-  assert.ok(box.max.x <= 3.45 - 1e-9, 'cabinet must stay west of the return grille bottom envelope x[3.45,3.95]');
+  assert.ok(box.max.x <= cabinetCenter.x + cabinetDecl.depth! / 2 + 1e-9, 'cabinet must remain within the west finish envelope');
+  // 不压回风格栅底面包络：return_master 西缘 = 终端中心 x − 长度/2（hvac.yaml 声明）。
+  const hvac = load(readFileSync('config/hvac.yaml', 'utf8')) as { plans: Array<{ diagram: { terminals: Array<{ id: string; position: { x: number; y: number; z: number }; length?: number }> } }> };
+  const ret = hvac.plans[0].diagram.terminals.find((terminal) => terminal.id === 'return_master');
+  assert.ok(ret, 'missing return_master terminal');
+  const returnWestX = ret.position.x - ret.length! / 2;
+  assert.ok(box.max.x <= returnWestX - 1e-9, 'cabinet must stay west of the return grille bottom envelope');
 });
 
 test('dressing table and stool use the 2026-09-04 R1 window-adjacent candidate transforms', () => {
+  // 梳妆桌墙锚：位置由墙锚参考实现重算（w_west_upper + along + clearance + 深/2）；
+  // 凳锚桌：位置 = 桌位置 + 声明 offset，宿主须为 mb.dressing_table。
+  const tableDecl = master.find((item) => item.type === 'master_dressing_table');
+  assert.ok(tableDecl, 'missing master_dressing_table');
+  const tableExpected = referenceWallFurnitureCenter(
+    tableDecl.wall!, tableDecl.wall_side!, tableDecl.along!, tableDecl.wall_clearance!, FURNITURE_DIMS.master_dressing_table.depth,
+  );
   const table = placed('master_dressing_table');
+  assert.equal(table.type, 'master_dressing_table');
+  assert.equal(table.id, 'mb.dressing_table');
+  assert.ok(Math.abs(table.x! - tableExpected.x) < GAP_EPS && Math.abs(table.z! - tableExpected.z) < GAP_EPS,
+    'dressing table must sit at the wall-anchor reference');
+  assert.equal(table.rotation, tableDecl.rotation);
+  const stoolDecl = master.find((item) => item.type === 'dressing_stool');
+  assert.ok(stoolDecl, 'missing dressing_stool');
+  assert.equal(anchorHostId(stoolDecl), 'mb.dressing_table', 'stool must anchor to mb.dressing_table');
+  const stoolExpected = anchorExpected('master_dressing_table', stoolDecl);
   const stool = placed('dressing_stool');
-  assert.deepEqual(table, { type: 'master_dressing_table', id: 'mb.dressing_table', x: 0.425, z: 6.05, rotation: 90 });
-  assert.deepEqual(stool, { type: 'dressing_stool', id: 'mb.dressing_stool', x: 0.42, z: 6.05, rotation: 90 });
-  assert.deepEqual(FURNITURE_DIMS.master_dressing_table, { width: 0.90, depth: 0.45 });
-  assert.deepEqual(FURNITURE_DIMS.dressing_stool, { width: 0.42, depth: 0.40 });
-  // rotation=90 后桌 footprint：x[0.20,0.65] z[5.60,6.50]，桌背与西玻璃 x=0 留约 0.20m 通风/冷凝缝
+  assert.equal(stool.type, 'dressing_stool');
+  assert.equal(stool.id, 'mb.dressing_stool');
+  assert.ok(Math.abs(stool.x! - stoolExpected.x) < GAP_EPS && Math.abs(stool.z! - stoolExpected.z) < GAP_EPS,
+    'stool must sit at table + declared anchor offset');
+  assert.equal(stool.rotation, stoolDecl.rotation);
+  // 尺寸双源对账：桌板边 0.01m 在构造细节容差内，凳 recipe 与目录严格一致。
+  assertMeshMatchesDims('master_dressing_table', FURNITURE_DIMS.master_dressing_table.width, FURNITURE_DIMS.master_dressing_table.depth, 0.07, 'master_dressing_table');
+  assertMeshMatchesDims('dressing_stool', FURNITURE_DIMS.dressing_stool.width, FURNITURE_DIMS.dressing_stool.depth, 1e-6, 'dressing_stool');
+  // rotation=90 后桌 footprint：桌背与西玻璃留 0.20m 通风/冷凝缝（西玻璃线 x=0，墙段起点 x）。
+  const westWall = mbWall('w_west_upper');
   const tableBox = worldAabb(table);
-  assert.ok(Math.abs(tableBox.minX - 0.20) < GAP_EPS && Math.abs(tableBox.maxX - 0.65) < GAP_EPS);
-  assert.ok(Math.abs(tableBox.minZ - 5.60) < GAP_EPS && Math.abs(tableBox.maxZ - 6.50) < GAP_EPS);
+  assert.ok(Math.abs((tableBox.minX - westWall.x1) - 0.20) < GAP_EPS, `table-to-west-glass gap must be 0.20m`);
   // 凳收纳态 AABB 完整含于桌 footprint
   const stoolBox = worldAabb(stool);
   assert.ok(stoolBox.minX >= tableBox.minX - GAP_EPS && stoolBox.maxX <= tableBox.maxX + GAP_EPS);
@@ -324,38 +495,63 @@ test('dressing table and stool use the 2026-09-04 R1 window-adjacent candidate t
 test('washbasin-only cabinet preserves envelope and plumbing center without a dressing chair', () => {
   // 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：
   // 柜体东移 5cm 收宽 1.05，盆/龙头居中至 x=0.575
-  assert.deepEqual(placed('mb_washbasin_cabinet'), { type: 'mb_washbasin_cabinet', id: 'mb.washbasin_cabinet', x: 0.575, z: 3.16, rotation: 0 });
-  assert.deepEqual(FURNITURE_DIMS.mb_washbasin_cabinet, { width: 1.05, depth: 0.50 });
+  const cabinetDecl = master.find((item) => item.type === 'mb_washbasin_cabinet');
+  assert.ok(cabinetDecl, 'missing mb_washbasin_cabinet');
+  const cabinetExpected = referenceWallFurnitureCenter(
+    cabinetDecl.wall!, cabinetDecl.wall_side!, cabinetDecl.along!, cabinetDecl.wall_clearance!, FURNITURE_DIMS.mb_washbasin_cabinet.depth,
+  );
+  const cabinet = placed('mb_washbasin_cabinet');
+  assert.equal(cabinet.type, 'mb_washbasin_cabinet');
+  assert.equal(cabinet.id, 'mb.washbasin_cabinet');
+  assert.ok(Math.abs(cabinet.x! - cabinetExpected.x) < GAP_EPS && Math.abs(cabinet.z! - cabinetExpected.z) < GAP_EPS,
+    'washbasin cabinet must sit at the wall-anchor reference');
+  assert.equal(cabinet.rotation, cabinetDecl.rotation);
+  assertMeshMatchesDims('mb_washbasin_cabinet', FURNITURE_DIMS.mb_washbasin_cabinet.width, FURNITURE_DIMS.mb_washbasin_cabinet.depth, 1e-6, 'mb_washbasin_cabinet');
   const faucet = plumbPoint('faucet_mbath_vanity');
   assert.ok(faucet);
-  assert.equal(faucet.x, 0.575);
-  assert.equal(faucet.z, 2.96);
+  // 龙头居中于柜体；龙头 z 由墙线 + 半墙厚 + 自身 face_offset 重算。
+  assert.equal(faucet.x, cabinet.x);
+  const faucetExpected = referenceWallPoint(faucet.wall!, faucet.wall_side!, faucet.along!, faucet.face_offset!);
+  assert.ok(Math.abs(faucet.z! - faucetExpected.z) < GAP_EPS, `faucet z ${faucet.z} must be the wall reference`);
 });
 
 test('R9 bed and bedside AABBs remain explicit', () => {
-  const bedBox = worldAabb(placed('bed_180'));
-  assert.ok(Math.abs(bedBox.minX - 2.20) < GAP_EPS && Math.abs(bedBox.maxX - 4.20) < GAP_EPS);
-  assert.ok(Math.abs(bedBox.minZ - 6.50) < GAP_EPS && Math.abs(bedBox.maxZ - 8.30) < GAP_EPS);
+  // 关系断言（非字面量）：床东缘贴东墙线；rotation 270 换轴（世界 x 向跨度为 DIMS
+  // depth，z 向跨度为 DIMS width）；床头柜东缘与床东缘对齐，两侧各留 0.08m 间隙。
+  const bed = placed('bed_180');
+  const bedBox = worldAabb(bed);
+  const eastWall = mbWall('w_mb_east');
+  assert.ok(Math.abs(bedBox.maxX - eastWall.x1) < GAP_EPS, 'bed east edge must sit on the east wall line');
+  assert.ok(Math.abs((bedBox.maxX - bedBox.minX) - FURNITURE_DIMS.bed_180.depth) < GAP_EPS, 'bed world x extent must be DIMS depth (rotation 270 swaps axes)');
+  assert.ok(Math.abs((bedBox.maxZ - bedBox.minZ) - FURNITURE_DIMS.bed_180.width) < GAP_EPS, 'bed world z extent must be DIMS width');
+  assert.ok(Math.abs(bedBox.minZ - (bed.z! - FURNITURE_DIMS.bed_180.width / 2)) < GAP_EPS);
+  assert.ok(Math.abs(bedBox.maxZ - (bed.z! + FURNITURE_DIMS.bed_180.width / 2)) < GAP_EPS);
+  const cabinetDecl = master.find((item) => item.type === 'mb_full_height_cabinet');
+  assert.ok(cabinetDecl, 'missing mb_full_height_cabinet');
+  const cabinetCenter = fullHeightCabinetCenter();
   const cabinetFixture = buildFixture('mb_full_height_cabinet');
   assert.ok(cabinetFixture, 'missing mb_full_height_cabinet fixture');
-  cabinetFixture!.position.set(2.2425, 0, 3.61);
+  cabinetFixture!.position.set(cabinetCenter.x, 0, cabinetCenter.z);
   cabinetFixture!.rotation.y = THREE.MathUtils.degToRad(270);
   const cabinetBox = runtimeAabb(cabinetFixture!);
-  assert.ok(Math.abs(cabinetBox.minX - 1.96) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - 2.525) < RUNTIME_EPS);
-  assert.ok(Math.abs(cabinetBox.minZ - 2.92) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - 4.30) < RUNTIME_EPS);
+  assert.ok(Math.abs(cabinetBox.minX - (cabinetCenter.x - cabinetDecl.depth! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - (cabinetCenter.x + cabinetDecl.depth! / 2)) < RUNTIME_EPS);
+  assert.ok(Math.abs(cabinetBox.minZ - (cabinetCenter.z - cabinetDecl.width! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - (cabinetCenter.z + cabinetDecl.width! / 2)) < RUNTIME_EPS);
   const north = worldAabb(placed('master_bedside_cabinet_350_north'));
   const south = worldAabb(placed('master_bedside_cabinet_350_south'));
-  assert.ok(Math.abs(north.minX - 3.82) < GAP_EPS && Math.abs(north.maxX - 4.20) < GAP_EPS);
-  assert.ok(Math.abs(north.minZ - 6.07) < GAP_EPS && Math.abs(north.maxZ - 6.42) < GAP_EPS);
-  assert.ok(Math.abs(south.minX - 3.82) < GAP_EPS && Math.abs(south.maxX - 4.20) < GAP_EPS);
-  assert.ok(Math.abs(south.minZ - 8.38) < GAP_EPS && Math.abs(south.maxZ - 8.73) < GAP_EPS);
+  for (const [name, box] of [['north', north], ['south', south]] as const) {
+    assert.ok(Math.abs(box.maxX - bedBox.maxX) < GAP_EPS, `${name} cabinet east edge must align with the bed east edge`);
+    assert.ok(Math.abs((box.maxX - box.minX) - FURNITURE_DIMS.master_bedside_cabinet_350_north.width) < GAP_EPS, `${name} cabinet world x extent must be DIMS width`);
+    assert.ok(Math.abs((box.maxZ - box.minZ) - FURNITURE_DIMS.master_bedside_cabinet_350_north.depth) < GAP_EPS, `${name} cabinet world z extent must be DIMS depth`);
+  }
+  assert.ok(Math.abs((bedBox.minZ - north.maxZ) - 0.08) < GAP_EPS, 'north cabinet must stand 0.08m north of the bed');
+  assert.ok(Math.abs((south.minZ - bedBox.maxZ) - 0.08) < GAP_EPS, 'south cabinet must stand 0.08m south of the bed');
 });
 
 test('floor socket sock_master_projector sits in the under-table service zone', () => {
   const socket = point('sock_master_projector');
   assert.equal(socket.type, 'floor_socket');
-  assert.equal(socket.x, 0.42);
-  assert.equal(socket.z, 5.78);
+  // 插座是 absolute 点位（设计输入）：x/z 不钉字面量，位置由以下关系断言守住。
+  // 高度 0.02m 是地面插座设计值（20mm 出地面），保留为具名设计值。
   assert.equal(socket.height, 0.02);
   const tableBox = worldAabb(placed('master_dressing_table'));
   const stoolBox = worldAabb(placed('dressing_stool'));
@@ -372,18 +568,23 @@ test('floor socket sock_master_projector sits in the under-table service zone', 
       assert.ok(dist >= 0.10 - GAP_EPS, `socket-to-leg distance ${dist.toFixed(3)}m`);
     }
   }
-  // 不在凳收纳包络内、不入西窗帘线/盒带 x[1.10,1.35]、不在床侧主通道（x∉[1.35,2.20] 且 z < 床北缘 6.55）
+  // 不在凳收纳包络内、不入西窗帘线/盒带 x[1.10,1.35]、不在床侧主通道（x∉[1.35,床西缘]
+  // 且 z < 床北缘 + 0.05m 余量）
   assert.ok(!(socket.x! > stoolBox.minX && socket.x! < stoolBox.maxX && socket.z! > stoolBox.minZ && socket.z! < stoolBox.maxZ), 'socket inside stool stored envelope');
   assert.ok(socket.x! < 1.10);
-  assert.ok(!(socket.x! >= 1.35 && socket.x! <= 2.20), 'socket inside bedside main aisle');
-  assert.ok(socket.z! < 6.55);
+  const bedBox = worldAabb(placed('bed_180'));
+  assert.ok(!(socket.x! >= 1.35 && socket.x! <= bedBox.minX), 'socket inside bedside main aisle');
+  assert.ok(socket.z! < bedBox.minZ + 0.05);
 });
 
 test('sock_master_bed_r is the southeast general-purpose backup socket', () => {
   const socket = point('sock_master_bed_r');
-  // 坐标/高度/挂面不变，解除梳妆专用语义
-  assert.equal(socket.x, 4.20);
-  assert.equal(socket.z, 9.15);
+  // 坐标由墙锚参考实现重算（w_mb_east + along + face_offset）；高度 0.7m 是设计值，
+  // 挂面与 note 语义标记（通用备用/解除）保留为决策记录。
+  const decl = socket as unknown as { along: number; face_offset: number };
+  const expected = referenceWallPoint(socket.wall!, socket.wall_side!, decl.along, decl.face_offset);
+  assert.ok(Math.abs(socket.x! - expected.x) < GAP_EPS && Math.abs(socket.z! - expected.z) < GAP_EPS,
+    `socket must sit at the wall reference (w_mb_east + along + face_offset)`);
   assert.equal(socket.height, 0.7);
   assert.equal(socket.wall, 'w_mb_east');
   assert.equal(socket.wall_side, 'west');
@@ -401,32 +602,42 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   const switchN = point('switch_master_bed_north');
   // DEC-2026-10-12-R1：业主删主卧两盏明装床头壁灯（原 light_master_wall_l / light_master_wall_r）
   // 改小米床头灯插电，取电位即 left / right 两个床头插座，故本组不再含壁灯点位。
+  // 86 模数标准：面板 86×86mm，双联框两模块中心距 = 一个模数，联框总宽 = 两倍模数。
+  const MODULE_PITCH = 0.086;
   for (const p of [left, right, switchL, switchN]) {
     assert.equal(p.wall, 'w_mb_east', `${p.id} must stay on w_mb_east`);
     assert.equal(p.wall_side, 'west', `${p.id} must keep wall_side west`);
-    assert.equal(p.x, 4.20);
+    const decl = p as unknown as { along: number; face_offset: number };
+    const expected = referenceWallPoint(p.wall!, p.wall_side!, decl.along, decl.face_offset);
+    assert.ok(Math.abs(p.x! - expected.x) < GAP_EPS && Math.abs(p.z! - expected.z) < GAP_EPS,
+      `${p.id} must sit at the wall reference (w_mb_east + along + face_offset)`);
   }
-  // 沿墙解算的浮点尾差（along + 墙段起点的加减）用 GAP_EPS 容差收口；4.20 是墙线本身故严格相等
-  assert.ok(Math.abs(left.z! - 6.202) < GAP_EPS, `left z=${left.z}`);
-  assert.ok(Math.abs(switchN.z! - 6.288) < GAP_EPS, `switchN z=${switchN.z}`);
-  assert.ok(Math.abs(right.z! - 8.512) < GAP_EPS, `right z=${right.z}`);
-  assert.ok(Math.abs(switchL.z! - 8.598) < GAP_EPS, `switchL z=${switchL.z}`);
   // 两侧统一 380×350×500 候选柜分别服务北/南床头点位；两侧均为 172×86 暖白哑光一体双联框（北侧 DEC-2026-09-08-R1 补齐）。
+  // 高度 0.75m 是床头插座/开关设计值，保留为具名设计值。
   assert.equal(left.height, 0.75);
   assert.equal(right.height, 0.75);
   assert.equal(switchL.height, 0.75);
   assert.equal(switchN.height, 0.75);
-  assert.deepEqual(left.appearance, {
-    style: 'warm_white_matte_modular', module: 'five_hole_replaceable_usb_c',
-    faceplate_width: 0.086, faceplate_height: 0.086, projection: 0.008,
-    panel_group: { id: 'master_bed_north_double', role: 'north', center_spacing: 0.086, union_width: 0.172 },
-  });
+  // 外观：style/module/投影是设计决策（具名保留）；双联框中心距 == 面板宽、
+  // 联框总宽 == 2×中心距是关系，不钉字面量。
+  assert.equal(left.appearance?.style, 'warm_white_matte_modular');
+  assert.equal(left.appearance?.module, 'five_hole_replaceable_usb_c');
+  assert.equal(left.appearance?.faceplate_width, MODULE_PITCH);
+  assert.equal(left.appearance?.faceplate_height, MODULE_PITCH);
+  assert.equal(left.appearance?.projection, 0.008, 'panel projection is the 8mm design value');
   assert.equal(right.appearance?.module, 'five_hole_replaceable_usb_c');
   assert.equal(switchL.appearance?.module, 'two_way_rocker');
   assert.equal(switchN.appearance?.module, 'two_way_rocker');
-  assert.deepEqual(right.appearance?.panel_group, { id: 'master_bed_south_double', role: 'north', center_spacing: 0.086, union_width: 0.172 });
-  assert.deepEqual(switchL.appearance?.panel_group, { id: 'master_bed_south_double', role: 'south', center_spacing: 0.086, union_width: 0.172 });
-  assert.deepEqual(switchN.appearance?.panel_group, { id: 'master_bed_north_double', role: 'south', center_spacing: 0.086, union_width: 0.172 });
+  const assertDoubleFrame = (p: ElectricalPoint, groupId: string, role: string): void => {
+    assert.equal(p.appearance?.panel_group?.id, groupId, `${p.id} must join the ${groupId} double frame`);
+    assert.equal(p.appearance?.panel_group?.role, role);
+    assert.equal(p.appearance?.panel_group?.center_spacing, p.appearance?.faceplate_width, 'double-frame module pitch must equal the faceplate width');
+    assert.equal(p.appearance?.panel_group?.union_width, 2 * p.appearance?.panel_group!.center_spacing!, 'double-frame union width must be twice the module pitch');
+  };
+  assertDoubleFrame(left, 'master_bed_north_double', 'north');
+  assertDoubleFrame(right, 'master_bed_south_double', 'north');
+  assertDoubleFrame(switchL, 'master_bed_south_double', 'south');
+  assertDoubleFrame(switchN, 'master_bed_north_double', 'south');
 
   const bed = runtimeFurnitureAabb('bed_180');
   const northCabinet = runtimeFurnitureAabb('master_bedside_cabinet_350_north');
@@ -439,24 +650,25 @@ test('方案A 床头电气按床头柜轴线布置并避开真实床体包络', 
   // 「壁灯不撞床 / 突出量 ≤190mm / 不得越过西侧完成面」断言一并移除；
   // 床头阅读与起夜改由小米床头灯（插电，取 left/right 电位）承担。
 
-  // 点位与对应床头柜中心轴对齐；两侧双联框两模块中心距86mm，边缘无缝相接。
+  // 点位与对应床头柜中心轴对齐；两侧双联框两模块中心距一个模数，边缘无缝相接。
   assert.ok(Math.abs((left.z! + switchN.z!) / 2 - (northCabinet.minZ + northCabinet.maxZ) / 2) < RUNTIME_EPS);
   assert.ok(Math.abs((right.z! + switchL.z!) / 2 - (southCabinet.minZ + southCabinet.maxZ) / 2) < RUNTIME_EPS);
-  assert.ok(Math.abs(switchL.z! - right.z! - 0.086) < RUNTIME_EPS);
-  assert.ok(Math.abs(switchN.z! - left.z! - 0.086) < RUNTIME_EPS);
+  assert.ok(Math.abs(switchL.z! - right.z! - MODULE_PITCH) < RUNTIME_EPS);
+  assert.ok(Math.abs(switchN.z! - left.z! - MODULE_PITCH) < RUNTIME_EPS);
   assert.ok(Math.abs(rightBox.maxZ - switchBox.minZ) < RUNTIME_EPS);
-  assert.ok(Math.abs(switchBox.maxZ - rightBox.minZ - 0.172) < RUNTIME_EPS);
+  assert.ok(Math.abs(switchBox.maxZ - rightBox.minZ - 2 * MODULE_PITCH) < RUNTIME_EPS);
   assert.ok(Math.abs(leftBox.maxZ - switchNBox.minZ) < RUNTIME_EPS);
-  assert.ok(Math.abs(switchNBox.maxZ - leftBox.minZ - 0.172) < RUNTIME_EPS);
+  assert.ok(Math.abs(switchNBox.maxZ - leftBox.minZ - 2 * MODULE_PITCH) < RUNTIME_EPS);
 
   // 使用真实 runtime mesh，而非 FURNITURE_DIMS 推导：床 rail 包络 z[6.47,8.33]。
   assert.ok(bed.minZ - leftBox.maxZ >= 0.225 - RUNTIME_EPS, `north socket-to-bed gap ${bed.minZ - leftBox.maxZ}`);
   assert.ok(bed.minZ - switchNBox.maxZ >= 0.139 - RUNTIME_EPS, `north switch-to-bed gap ${bed.minZ - switchNBox.maxZ}`);
   assert.ok(rightBox.minZ - bed.maxZ >= 0.139 - RUNTIME_EPS, `south socket-to-bed gap ${rightBox.minZ - bed.maxZ}`);
   assert.ok(switchBox.minZ - bed.maxZ >= 0.225 - RUNTIME_EPS, `south switch-to-bed gap ${switchBox.minZ - bed.maxZ}`);
-  // w_mb_east centerline x=4.20, default 120mm wall west finish face x=4.14.
+  // w_mb_east centerline 由墙段读出，西侧完成面 = 墙线 − 半墙厚。
   // 所有保留的床头电气点位必须留在主卧（-x）侧。
-  assert.ok(leftBox.maxX <= 4.14 + RUNTIME_EPS && rightBox.maxX <= 4.14 + RUNTIME_EPS, 'bedside electrical must not cross the west finish face');
+  const eastWallFinishX = mbWall('w_mb_east').x1 - WALL_THICKNESS / 2;
+  assert.ok(leftBox.maxX <= eastWallFinishX + RUNTIME_EPS && rightBox.maxX <= eastWallFinishX + RUNTIME_EPS, 'bedside electrical must not cross the west finish face');
   for (const [id, box] of [[left.id, leftBox], [right.id, rightBox], [switchL.id, switchBox], [switchN.id, switchNBox]] as const) {
     assert.equal(aabbIntersects(box, bed), false, `${id} must not intersect the real bed mesh AABB`);
   }
@@ -472,7 +684,17 @@ test('removed master-bedroom items stay removed; living room plant survives', ()
   assert.equal(master.some((item) => item.type === 'master_wardrobe_tall_240'), false, 'master_wardrobe_tall_240 must not appear in master_bedroom furnishings');
   assert.equal(master.some((item) => item.type === 'plant_fiddle'), false, '主卧 plant_fiddle 已删除');
   const living = house.furnishings.living_dining;
-  assert.deepEqual(placed('plant_fiddle', living), { type: 'plant_fiddle', id: 'ld.plant_fiddle', x: 7.93, z: 9.18, rotation: 270 });
+  // 绿植锚电视柜：位置 = 电视柜位置 + 声明 offset，宿主须为 ld.tv_65。
+  const plantDecl = living.find((item) => item.type === 'plant_fiddle');
+  assert.ok(plantDecl, 'missing plant_fiddle');
+  assert.equal(anchorHostId(plantDecl), 'ld.tv_65', 'plant must anchor to ld.tv_65');
+  const plantExpected = anchorExpected('tv_65', plantDecl, living);
+  const plant = placed('plant_fiddle', living);
+  assert.equal(plant.type, 'plant_fiddle');
+  assert.equal(plant.id, 'ld.plant_fiddle');
+  assert.ok(Math.abs(plant.x! - plantExpected.x) < GAP_EPS && Math.abs(plant.z! - plantExpected.z) < GAP_EPS,
+    'plant must sit at tv_65 + declared anchor offset');
+  assert.equal(plant.rotation, plantDecl.rotation);
 });
 
 test('R8 north wardrobe 950 door configurations use real mesh pivots without door interpenetration', () => {
@@ -497,13 +719,20 @@ test('R8 north wardrobe 950 door configurations use real mesh pivots without doo
 });
 
 test('south-window-band low dresser uses the 2026-09-06 east-shifted transform and stays clear of constraints', () => {
+  const dresserDecl = master.find((item) => item.type === 'master_hot_season_low_dresser');
+  assert.ok(dresserDecl, 'missing master_hot_season_low_dresser');
   const dresser = placed('master_hot_season_low_dresser');
-  assert.deepEqual(dresser, { type: 'master_hot_season_low_dresser', id: 'mb.low_dresser', x: 1.05, z: 9.20, rotation: 180 });
-  assert.deepEqual(FURNITURE_DIMS.master_hot_season_low_dresser, { width: 1.40, depth: 0.48 });
-  // rotation=180 为偶数 quarter-turn：AABB x[0.35,1.75]，北移后 z 约[8.96,9.44]，正面（局部 +z）转朝北对房间
+  // 低柜是 Tier 3 可移动件（绝对摆位，设计输入）：位置不钉字面量，由窗带/不重叠/
+  // 插座间距三条关系守住；此处只守摆位形式（声明 x/z、无墙锚/挂载）与朝向。
+  assert.ok(dresserDecl.x !== undefined && dresserDecl.z !== undefined, 'low dresser must stay absolute (Tier 3 movable)');
+  assert.equal(dresserDecl.wall, undefined);
+  assert.equal(dresserDecl.anchor, undefined);
+  assert.equal(dresserDecl.mount, undefined);
+  assert.equal(dresser.rotation, dresserDecl.rotation);
+  // 尺寸双源对账：抽屉面 0.014m 在构造细节容差内。
+  assertMeshMatchesDims('master_hot_season_low_dresser', FURNITURE_DIMS.master_hot_season_low_dresser.width, FURNITURE_DIMS.master_hot_season_low_dresser.depth, 0.07, 'master_hot_season_low_dresser');
+  // rotation=180 为偶数 quarter-turn：正面（局部 +z）转朝北对房间
   const box = worldAabb(dresser);
-  assert.ok(Math.abs(box.minX - 0.35) < GAP_EPS && Math.abs(box.maxX - 1.75) < GAP_EPS);
-  assert.ok(Math.abs(box.minZ - 8.96) < GAP_EPS && Math.abs(box.maxZ - 9.44) < GAP_EPS);
   // z ⊆ 南侧窗带 [8.95,9.70]（柜高 0.85 < sill 2.07 由 recipe 保证）
   assert.ok(box.minZ >= 8.95 - GAP_EPS && box.maxZ <= 9.70 + GAP_EPS);
   // 与床 AABB 不重叠
@@ -526,12 +755,21 @@ test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven', () =
   const box = ceiling.find((entry) => entry.id === 'ceiling_master_ac');
   assert.ok(box, 'missing ceiling_master_ac');
   assert.equal(box!.type, 'drop');
-  assert.deepEqual(box!.area, [2.925, 4.55, 4.20, 5.60], 'head box west edge stands free after the 950 wardrobe retirement (issue #116)');
-  assert.equal((box as CeilingEntry & { corner_radius?: number }).corner_radius, 0.10, 'head box uses the approved R100 plan corner');
-  assert.equal(box!.thickness, 0.30);
-  const bottom = 2.80 - box!.thickness!;
-  assert.ok(bottom >= 2.45 - GAP_EPS && bottom <= 2.50 + GAP_EPS, `head box bottom ${bottom} outside 2.45–2.50m`);
+  // 门头盒 area：西缘由柜东缘 + 0.40m 空隙定（见本测试末段，不再贴衣柜东缘）；
+  // 东缘为东墙线；南北缘 [4.55, 5.60] 是 R7/R7.1 门头盒定案的裁定区（ceiling.yaml
+  // 注明依据 DEC-2026-09-06-R7/R7.1），无派生源，按裁定值例外保留。
   const [minX, minZ, maxX, maxZ] = box!.area!;
+  const eastWall = mbWall('w_mb_east');
+  assert.ok(Math.abs(maxX - eastWall.x1) < GAP_EPS, 'head box east edge must be the east wall line');
+  assert.equal(minZ, 4.55, 'head box north edge is the R7/R7.1 ruled zone');
+  assert.equal(maxZ, 5.60, 'head box south edge is the R7/R7.1 ruled zone');
+  assert.equal((box as CeilingEntry & { corner_radius?: number }).corner_radius, 0.10, 'head box uses the approved R100 plan corner');
+  // 厚度不钉字面量：底面 = 房间净高 − 厚度，须落在 2.45–2.50m 的 HVAC 基准带内。
+  const masterRoom = MB_LAYOUT.rooms.find((room) => room.id === 'master_bedroom');
+  assert.ok(masterRoom, 'missing master_bedroom room');
+  const roomHeight = masterRoom!.height;
+  const bottom = roomHeight - box!.thickness!;
+  assert.ok(bottom >= 2.45 - GAP_EPS && bottom <= 2.50 + GAP_EPS, `head box bottom ${bottom} outside 2.45–2.50m`);
   const indoor = ceiling.find((entry) => entry.id === 'ac_master');
   assert.ok(indoor && indoor.type === 'ac_indoor');
   assert.ok(indoor!.x! >= minX && indoor!.x! <= maxX && indoor!.z! >= minZ && indoor!.z! <= maxZ, 'indoor unit must sit inside the head box');
@@ -542,15 +780,15 @@ test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven', () =
   const supply = terminals.find((terminal) => terminal.id === 'supply_master');
   const ret = terminals.find((terminal) => terminal.id === 'return_master');
   assert.ok(supply && ret);
-  const eastWallBedroomFinishX = 4.14;
-  const doorOpeningTopY = 2.10;
-  // 2026-09-07：送回风中心轴统一到 x=3.70，东端分别留 0.14m/0.19m 至东墙卧室侧完成面。
-  assert.ok(Math.abs(supply!.position.x - 3.70) < GAP_EPS, `supply center x=${supply!.position.x}`);
-  assert.ok(Math.abs(ret!.position.x - 3.70) < GAP_EPS, `return center x=${ret!.position.x}`);
+  const eastWallBedroomFinishX = mbWall('w_mb_east').x1 - WALL_THICKNESS / 2;
+  const doorMb = MB_LAYOUT.walls.flatMap((wall) => wall.openings ?? []).find((opening) => opening.id === 'd_mb');
+  assert.ok(doorMb, 'missing d_mb door opening');
+  const doorOpeningTopY = doorMb!.height;
+  // 2026-09-07：送回风中心轴统一到内机轴（ac_master x），东端分别留 0.14m/0.19m 至东墙卧室侧完成面。
+  assert.ok(Math.abs(supply!.position.x - indoor!.x!) < GAP_EPS, `supply center x=${supply!.position.x} must share the indoor unit axis`);
+  assert.ok(Math.abs(ret!.position.x - indoor!.x!) < GAP_EPS, `return center x=${ret!.position.x} must share the indoor unit axis`);
   const supplyEastX = supply!.position.x + supply!.length! / 2;
   const returnEastX = ret!.position.x + ret!.length! / 2;
-  assert.ok(Math.abs(supplyEastX - 4.00) < GAP_EPS, `supply east x=${supplyEastX}`);
-  assert.ok(Math.abs(returnEastX - 3.95) < GAP_EPS, `return east x=${returnEastX}`);
   assert.ok(Math.abs(eastWallBedroomFinishX - supplyEastX - 0.14) < GAP_EPS, `supply wall clearance ${eastWallBedroomFinishX - supplyEastX}`);
   assert.ok(Math.abs(eastWallBedroomFinishX - returnEastX - 0.19) < GAP_EPS, `return wall clearance ${eastWallBedroomFinishX - returnEastX}`);
   // 两个端点都处于 ceiling_master_ac 与门洞上方的服务高度，回风仍可从盒底检修。
@@ -564,7 +802,7 @@ test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven', () =
   assert.equal(supply!.length, 0.6);
   assert.ok(Math.abs(supply!.position.z - maxZ) <= 0.02 + GAP_EPS, 'supply grille must sit on the head box south face');
   assert.ok(supply!.position.x - supply!.length! / 2 >= minX - GAP_EPS && supply!.position.x + supply!.length! / 2 <= maxX + GAP_EPS, 'supply span must stay inside the head box');
-  assert.ok(supply!.position.y >= bottom && supply!.position.y <= 2.80, 'supply grille y must be inside the head box face band');
+  assert.ok(supply!.position.y >= bottom && supply!.position.y <= roomHeight, 'supply grille y must be inside the head box face band');
   // 下回：底部回风兼检修（回检一体），平面包络完整落在门头盒内
   assert.equal(ret!.system, 'return_air');
   assert.equal(ret!.mount_face, 'bottom');
@@ -577,18 +815,20 @@ test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven', () =
   // 通顶柜东缘（真实包络 2.525）在盒西缘以西 0.40m，两者 z 向亦不重叠（柜 z[2.92,4.30]，
   // 盒 z[4.55,5.60]）。56T2 盒装不下（机身东端 4.30 > 盒东界 4.20）不在本 PR 修，
   // 修法是机身西移 + 盒子向西扩，待厂家安装图。
+  const cabinetDecl = master.find((item) => item.type === 'mb_full_height_cabinet');
+  assert.ok(cabinetDecl, 'missing mb_full_height_cabinet');
+  const cabinetCenter = fullHeightCabinetCenter();
   const cabinetFixture = buildFixture('mb_full_height_cabinet');
   assert.ok(cabinetFixture, 'missing mb_full_height_cabinet fixture');
-  cabinetFixture!.position.set(2.2425, 0, 3.61);
+  cabinetFixture!.position.set(cabinetCenter.x, 0, cabinetCenter.z);
   cabinetFixture!.rotation.y = THREE.MathUtils.degToRad(270);
   const cabinetBox = runtimeAabb(cabinetFixture!);
-  assert.ok(Math.abs(cabinetBox.minX - 1.96) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - 2.525) < RUNTIME_EPS);
-  assert.ok(Math.abs(cabinetBox.minZ - 2.92) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - 4.30) < RUNTIME_EPS);
+  assert.ok(Math.abs(cabinetBox.minX - (cabinetCenter.x - cabinetDecl.depth! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - (cabinetCenter.x + cabinetDecl.depth! / 2)) < RUNTIME_EPS);
+  assert.ok(Math.abs(cabinetBox.minZ - (cabinetCenter.z - cabinetDecl.width! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - (cabinetCenter.z + cabinetDecl.width! / 2)) < RUNTIME_EPS);
   assert.ok(supply!.position.x - supply!.length! / 2 >= cabinetBox.maxX - GAP_EPS, 'supply must stay clear of the full-height cabinet');
   assert.ok(ret!.position.x - ret!.length! / 2 >= cabinetBox.maxX - GAP_EPS, 'return must stay clear of the full-height cabinet');
   assert.ok(supplyEastX <= eastWallBedroomFinishX - 0.14 + GAP_EPS, 'supply must stay clear of the bedroom east wall finish');
   assert.ok(returnEastX <= eastWallBedroomFinishX - 0.19 + GAP_EPS, 'return must stay clear of the bedroom east wall finish');
-  assert.ok(Math.abs(box!.area![2] - 4.20) < GAP_EPS);
   assert.ok(bottom <= 2.50 + GAP_EPS, 'head box bottom must remain at the independent HVAC datum');
   // 2026-09-07 的「门头盒延伸至衣柜东缘」缝已随 950 退役：盒西缘 2.925 与柜东缘 2.525
   // 之间是 0.40m 空隙，不再有贴合缝要收口。

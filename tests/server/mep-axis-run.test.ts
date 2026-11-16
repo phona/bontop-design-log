@@ -197,33 +197,123 @@ const WATER_IDS = [
 const LEFT_ABSOLUTE_IDS = ['water-garden-requirement', 'water-kitchen-dishwasher-branch', 'water-purifier-branch'];
 
 /**
- * C1 基线：merge-base（211831e8，PR #233 已合）上 17 条给水路由的已解算点，
- * 由统一出口实跑导出（逐点数值，非手写）。迁移只改几何表达——本表钉死“几何
- * 不得漂移”，容差 0.005m。日后合法改线须同步更新本表并说明理由（与 PR #231
- * C1 同口径：钉的是合并基线几何，不是历史配置值）。
+ * C1：给水路由持续不变式（PR #253：逐点基线表转规则断言，口径同 PR #251
+ * 的 mep-air-ducts / mep-drainage）：
+ * - 起点 = from + from_height；末点 = to + to_height；
+ * - 每点标高 ∈ {from_height, to_height} ∪ {绝对步声明的 y}（给水平跑，
+ *   不声明坡度、不走竖井）；
+ * - 点数 = from + 每步一落点 + 末点（via 为空的支管为 2 点）；
+ * - axis_run 步的对应腿只沿该步声明的轴走；绝对步与末点 riser 不在此限——
+ *   guest-bath 首步保留的绝对落点是斜向 jog，hot-water-gbath 的末点 riser
+ *   平面位移随 to 端点走（dx 0.09 / dz 1.505），两者都不正交，不是缺陷，
+ *   是保留的绝对表达；
+ * - 无往返折返、无连续重复点、每个 x/z 来自声明（端点/数值 to/绝对步/轴线表）。
+ * 逐点等价证明（merge-base 211831e8，PR #233）在 PR 记录与 git 历史里，
+ * 不在套件里。C2 传播实验的 moved 逐点期望与 C3/C4 保持原样。
  */
-const BASELINE_POINTS: Record<string, Array<[number, number, number]>> = {
-  // water-master-bath：本批 gap-2 在末段补 {kind: axis_run, axis: z, to: 'to'} 一步拆斜线，
-  // 4 点→5 点：新增角点 (2.6, 0.18, 1.5) 为 z-run 落点；平面投影不变（3.485m），末段由
-  // y–z 斜线改为两段正交腿（3D 长 3.625m→4.105m）。其余 16 条仍为 merge-base 原值。
-  'water-master-bath': [[0.575, 0.18, 2.96], [0.575, 0.18, 2.8], [2.6, 0.18, 2.8], [2.6, 0.18, 1.5000000000000002], [2.6, 0.8, 1.5000000000000002]],
-  'water-guest-bath': [[7.140000000000001, 0.18, 3.955], [7.2, 0.18, 3.9], [7.2, 0.18, 3.55], [6.7, 0.18, 3.55], [6.7, 0.18, 3.2], [7.2, 0.18, 3.2], [7.2, 0.18, 3.05], [7.2, 0.8, 3.05]],
-  'water-balcony': [[7.3, 0.8, 1], [7.3, 0.8, 1.02], [6, 0.8, 1.02], [6, 0.8, 1.5], [5.6, 0.8, 1.5]],
-  'water-kitchen-requirement': [[7.35, 0.18, 0.45], [8.6, 0.18, 0.45], [9.5, 0.18, 0.45], [9.5, 0.8, 0.3]],
-  'water-garden-requirement': [[10.5, 0.5, 0.5], [10.5, 0.7, 1.42], [10.85, 0.72, 1.42], [10.85, 0.8, 1.5]],
-  'water-water-heater-inlet-requirement': [[7.35, 0.18, 0.45], [7.35, 0.18, 1], [7.3, 0.18, 1]],
-  'water-hot-water-mbath-requirement': [[0.5, 0.18, 2.76], [0.575, 0.18, 2.76], [0.575, 0.8, 2.96]],
-  'water-hot-water-gbath-requirement': [[7.2, 0.18, 2.4499999999999997], [7.05, 0.18, 2.45], [7.140000000000001, 0.8, 3.955]],
-  'water-water-heater-recirc-requirement': [[0.5, 0.35, 2.76], [0.4, 0.35, 2.76], [0.4, 0.35, 2.6]],
-  'water-kitchen-dishwasher-branch': [[9.5, 0.3, 0.3], [8.8, 0.3, 0.3]],
-  'water-v1-heater-to-mbath-hot': [[7.3, 0.18, 1], [7.3, 0.18, 2.76], [0.5, 0.18, 2.76]],
-  'water-v1-entry-to-mbath-cold': [[7.35, 0.18, 0.45], [7.35, 0.18, 2.76], [0.5, 0.18, 2.76]],
-  'water-v1-heater-to-gbath-hot': [[7.3, 0.18, 1], [7.3, 0.18, 2.45], [7.2, 0.18, 2.4499999999999997]],
-  'water-v1-entry-to-gbath-cold': [[7.35, 0.18, 0.45], [7.35, 0.18, 2.45], [7.2, 0.18, 2.4499999999999997]],
-  'water-purifier-branch': [[9.5, 0.8, 0.3], [9.5, 0.3, 0.3]],
-  'water-v1-recirc-loop': [[0.5, 0.35, 2.76], [0.5, 0.35, 1], [7.3, 0.35, 1]],
-  'water-entry-valve-requirement': [[9.5, 0.18, 0.3], [7.35, 0.18, 0.3], [7.35, 0.18, 0.45]],
-};
+const TOL = 1e-9;
+
+function dedup(points: ReadonlyArray<{ x: number; y?: number; z: number }>): Array<{ x: number; y?: number; z: number }> {
+  return points.filter((point, index) => index === 0
+    || point.x !== points[index - 1].x || point.y !== points[index - 1].y || point.z !== points[index - 1].z);
+}
+
+function assertNoRetrace(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  const seen = new Set<string>();
+  for (let i = 1; i < points.length; i += 1) {
+    const key = `${points[i - 1].x},${points[i - 1].y ?? 0},${points[i - 1].z}|${points[i].x},${points[i].y ?? 0},${points[i].z}`;
+    assert.ok(!seen.has(key), `${what} 第 ${i} 段不得与更早的段重合（往返折返）`);
+    seen.add(key);
+  }
+}
+
+function assertNoDuplicates(points: ReadonlyArray<{ x: number; y?: number; z: number }>, what: string): void {
+  const d = dedup(points);
+  const trailingDup =
+    points.length >= 2 &&
+    d.length === points.length - 1 &&
+    Math.abs(points[points.length - 1].x - points[points.length - 2].x) <= TOL &&
+    Math.abs(points[points.length - 1].z - points[points.length - 2].z) <= TOL &&
+    Math.abs((points[points.length - 1].y ?? 0) - (points[points.length - 2].y ?? 0)) <= TOL;
+  assert.ok(
+    d.length === points.length || trailingDup,
+    `${what} 不得含连续重复点（末点追加端点重复除外）：去重后 ${d.length} 点，原 ${points.length} 点`,
+  );
+}
+
+/**
+ * 本路由每个 x/z 须来自声明：本路由 from/to 端点（已解出）、本路由任一步的数值 to
+ * 或绝对步坐标、轴线表。'to' 目标取 to 端点值，已由 entry.to 覆盖。
+ */
+function assertNoInventedCoords(
+  points: ReadonlyArray<{ x: number; y?: number; z: number }>,
+  entry: ReturnType<typeof resolveMepRoutes>['routes'][number],
+  coordination: MepCoordination,
+  what: string,
+): void {
+  const axes = coordination.axes ?? [];
+  const allowedX = new Set<number>();
+  const allowedZ = new Set<number>();
+  if (entry.from) { allowedX.add(entry.from.x); allowedZ.add(entry.from.z); }
+  if (entry.to) { allowedX.add(entry.to.x); allowedZ.add(entry.to.z); }
+  for (const step of entry.route.via) {
+    if ('to' in step && typeof step.to === 'number') {
+      if (step.axis === 'x') allowedX.add(step.to);
+      if (step.axis === 'z') allowedZ.add(step.to);
+    }
+    if ('x' in step && typeof step.x === 'number') allowedX.add(step.x);
+    if ('z' in step && typeof step.z === 'number') allowedZ.add(step.z);
+  }
+  for (const axis of axes) {
+    if (axis.axis === 'x') allowedX.add(axis.value);
+    if (axis.axis === 'z') allowedZ.add(axis.value);
+  }
+  for (const point of points) {
+    assert.ok(allowedX.has(point.x), `${what} x=${point.x} 不在任何声明值里（端点/轴线/数值 to）`);
+    assert.ok(allowedZ.has(point.z), `${what} z=${point.z} 不在任何声明值里（端点/轴线/数值 to）`);
+  }
+}
+
+function assertWaterRouteInvariants(
+  entry: ReturnType<typeof resolveMepRoutes>['routes'][number],
+  coordination: MepCoordination,
+  what: string,
+): void {
+  const route = entry.route;
+  const pts = entry.points;
+  assert.deepEqual(entry.unresolved, [], `${what} 须解出`);
+  assert.deepEqual(entry.diagnostics, [], `${what} 须无诊断`);
+  assert.ok(pts.length >= 2, `${what} 至少须有起点与末点`);
+  assert.ok(Math.abs(pts[0].x - entry.from!.x) <= TOL && Math.abs(pts[0].y! - route.from_height!) <= TOL && Math.abs(pts[0].z - entry.from!.z) <= TOL,
+    `${what} 起点须为 from + from_height`);
+  const terminal = pts[pts.length - 1];
+  assert.ok(Math.abs(terminal.x - entry.to!.x) <= TOL && Math.abs(terminal.y! - route.to_height!) <= TOL && Math.abs(terminal.z - entry.to!.z) <= TOL,
+    `${what} 末点须为 to + to_height`);
+  assert.equal(pts.length, route.via.length + 2, `${what} 点数须为 from + 每步一落点 + 末点`);
+  const allowedY = new Set<number>([route.from_height!, route.to_height!]);
+  for (const step of route.via) {
+    if ('y' in step && typeof step.y === 'number') allowedY.add(step.y);
+  }
+  for (let i = 0; i < pts.length; i += 1) {
+    assert.ok([...allowedY].some((y) => Math.abs(pts[i].y! - y) <= TOL),
+      `${what} 第 ${i + 1} 点标高 ${pts[i].y} 不在任何声明标高里`);
+  }
+  // axis_run 步的对应腿只沿该步声明的轴走；绝对步与末点 riser 不在此限（见本段头注）。
+  for (let i = 0; i < route.via.length; i += 1) {
+    const step = route.via[i];
+    if (!('kind' in step) || step.kind !== 'axis_run') continue;
+    const prev = pts[i];
+    const landing = pts[i + 1];
+    if (step.axis === 'x') {
+      assert.ok(Math.abs(landing.z - prev.z) <= TOL, `${what} 第 ${i + 1} 步 axis_run x 不得改 z`);
+    } else if (step.axis === 'z') {
+      assert.ok(Math.abs(landing.x - prev.x) <= TOL, `${what} 第 ${i + 1} 步 axis_run z 不得改 x`);
+    }
+  }
+  assertNoRetrace(pts, what);
+  assertNoDuplicates(pts, what);
+  assertNoInventedCoords(pts, entry, coordination, what);
+}
 
 function waterPoints(report: ReturnType<typeof resolveMepRoutes>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -240,14 +330,12 @@ function movePlumbingPoint(id: string, mutate: (entry: Record<string, unknown>) 
   return parseYaml(dumpYaml(list)) as ProjectRenderFacts['plumbing'];
 }
 
-test('C1：17 条给水路由逐点等价 merge-base（容差 0.005m），点数与诊断全同', () => {
+test('C1：17 条给水路由满足持续不变式（端点/标高/点数/轴腿/无折返/无编造坐标）', () => {
   const report = resolveMepRoutes(project, realSources);
   assert.equal(report.unresolved, 0, `unresolved routes: ${JSON.stringify(report.diagnostics)}`);
   for (const id of WATER_IDS) {
     const entry = report.routes.find((item) => item.route.id === id)!;
-    assert.deepEqual(entry.unresolved, [], `${id} must resolve`);
-    assert.deepEqual(entry.diagnostics, [], `${id} must have no diagnostics`);
-    assertPointsClose(entry.points, BASELINE_POINTS[id], id, 0.005);
+    assertWaterRouteInvariants(entry, project, id);
   }
   // 迁移后 via 形式：14 条全关系步（含 guest-bath 首步保留的 1 个绝对落点），3 条留绝对。
   for (const id of WATER_IDS.filter((item) => !LEFT_ABSOLUTE_IDS.includes(item))) {

@@ -32,7 +32,7 @@ import { parseSceneInput, type SceneInput } from '../../shared/render/scene-inpu
 import { buildScene, type SceneBuildResult } from '../../shared/render/SceneBuilder.js';
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { buildHvacBuilderSources, hvacAnchorPositions, type HvacBuilderSources } from '../../shared/render/HvacBuilder.js';
-import { resolvePointPlacementInWalls } from '../../shared/point-placement.js';
+import { resolvePointPlacementInWalls, pointMountHostBounds } from '../../shared/point-placement.js';
 import type { ProjectApiResponse, ProjectSnapshotResponse } from '../../shared/api-project.js';
 import type { WallSegment } from '../../shared/types.js';
 
@@ -318,9 +318,19 @@ describe('契约：真实 /api/project-snapshot 响应 → 建场', { timeout: 1
     );
     assert.ok(placement, `night_corridor 标注坐标解不出（${diagnostic ?? '无诊断'}）——宿主表若被阶段过滤，标注只能落到原点`);
     assert.notDeepEqual([placement.x, placement.z], [0, 0], 'night_corridor 标注坐标落回原点：宿主表被阶段过滤');
-    // config/electrical.yaml 的 NP-5 口径：wall_cabinet_tall 北脸 x=7.20+0.25、z=5.55。
-    assert.ok(Math.abs(placement.x - 7.45) < 1e-6 && Math.abs(placement.z - 5.55) < 1e-6,
-      `night_corridor 标注坐标 (${placement.x}, ${placement.z}) 偏离宿主脸声明值 (7.45, 5.55)`);
+    // 宿主脸派生（PR #253 round 3）：期望值在测试内从宿主包络与 mount 声明重算——
+    // 北脸 z = 包络 minZ，x = 包络 minX + along；不抄录 (7.45, 5.55)。
+    const mount = (nightCorridor as unknown as { mount?: { furniture_id: string; face: string; along: number } }).mount;
+    assert.ok(mount, 'night_corridor must declare a mount');
+    assert.equal(mount.face, 'north');
+    const host = phase1Build.result.index.mountHosts.get(mount.furniture_id);
+    assert.ok(host, `mount host ${mount.furniture_id} must be in the build index`);
+    const hostBounds = pointMountHostBounds(host);
+    assert.ok(hostBounds, `mount host ${mount.furniture_id} must have computable bounds`);
+    const expectedX = hostBounds.minX + mount.along;
+    const expectedZ = hostBounds.minZ;
+    assert.ok(Math.abs(placement.x - expectedX) < 1e-6 && Math.abs(placement.z - expectedZ) < 1e-6,
+      `night_corridor 标注坐标 (${placement.x}, ${placement.z}) 偏离宿主脸派生值 (${expectedX}, ${expectedZ})`);
   });
 
   it('断言 4：响应字段与 app 侧消费的字段名逐一对应（renderFactsProjection 层级漂移守护）', () => {
