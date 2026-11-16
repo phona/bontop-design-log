@@ -32,11 +32,33 @@ test('家具三态①：有效摆位进已摆位行，数量按实例数', () =>
 test('行内尺寸优先于目录：无目录条目的参数化柜仍显示行内宽×深（issue #116 通顶柜）', () => {
   // declaredFurnitureDims 口径（行内 > 目录）：通顶柜 mb_full_height_cabinet 无
   // FURNITURE_DIMS 条目，旧实现只读目录会写成「体块无尺寸记录」。
+  // 通顶柜的真实声明是墙锚（无 x/z）：先用真实墙段解算摆位，再以解算出的摆位
+  // 喂合成绝对条目——本测试只验「行内尺寸显示」，墙锚解算由 resolver-baseline /
+  // mb-along-wall-distance 覆盖。期望行由条目自身的行内宽/深与解算摆位拼出，不钉绝对坐标。
+  const context = loadDressingMapContext();
+  const real = context.furnishings.master_bedroom?.find((item) => item.id === 'mb.full_height_cabinet');
+  assert.ok(real, 'mb.full_height_cabinet must be declared in config/house.yaml');
+  const { placement, diagnostic } = resolveFurniturePlacement(real, context.wallSegments, context.hosts, context.anchors);
+  assert.equal(diagnostic, undefined, `unexpected diagnostic: ${diagnostic ?? ''}`);
+  assert.ok(placement, 'mb.full_height_cabinet must resolve against real walls');
+  // 墙锚与绝对 x/z 不得同时声明：合成条目只取绝对字段（类型/id/旋转/行内尺寸），
+  // 墙锚字段（wall/wall_side/along/wall_clearance）剥掉，摆位置只来自解算结果。
+  const fixture = {
+    type: real.type,
+    id: real.id,
+    x: placement.x,
+    z: placement.z,
+    rotation: real.rotation,
+    width: real.width,
+    depth: real.depth,
+  };
   const { lines, failures } = sectionFor({
-    master_bedroom: [{ type: 'mb_full_height_cabinet', id: 'mb.full_height_cabinet', x: 2.2425, z: 3.61, rotation: 270, width: 1.38, depth: 0.565 }],
+    master_bedroom: [fixture],
   });
   assert.deepEqual(failures, []);
-  assert.deepEqual(lines, ['| master_bedroom | mb_full_height_cabinet | 1 | 1.38×0.565 | (2.2425, 3.61) / 270° |']);
+  assert.deepEqual(lines, [
+    `| master_bedroom | ${real.type} | 1 | ${real.width}×${real.depth} | (${placement.x}, ${placement.z}) / ${real.rotation}° |`,
+  ]);
 });
 
 test('家具三态②：count-only 按声明 count 累计，不按条目数（厨房 5/2/5 不得写成 1）', () => {
@@ -108,8 +130,16 @@ test('灯光摆放单：沿墙/挂载起夜灯输出解算坐标，不再是 (�
     assert.ok(match, `${id} 的位置列必须是数值坐标（当前行：${row}）`);
     return `(${match[1]}, ${match[2]})`;
   };
-  // 三件历史报告点：位置来自墙锚 / 家具挂载的单一解算，与 config note 的设计值一致。
-  assert.equal(positionOf('night_guest_head'), '(16.4, 8.55)');
-  assert.equal(positionOf('night_living_mid'), '(11.42, 4.8)');
-  assert.equal(positionOf('night_corridor'), '(7.45, 5.55)');
+  // 三件历史报告点：位置来自墙锚 / 家具挂载的单一解算（config note 明言平面位置
+  // 只有解算器一个来源）；期望值由同一解算器独立复算、按地图的坐标显示格式
+  // （3 位小数、去浮点尾巴）拼出，验的是「地图把解算坐标印进正确的行」，
+  // 解算本身由 resolver-baseline 覆盖。
+  const formatCoord = (value: number): string => String(Number(value.toFixed(3)));
+  for (const id of ['night_guest_head', 'night_living_mid', 'night_corridor']) {
+    const point = lights.find((candidate) => candidate.id === id);
+    assert.ok(point, `${id} must be declared in config/electrical.yaml`);
+    const { placement } = resolvePointPlacementInWalls(point, context.pointWalls, context.mountHosts);
+    assert.ok(placement, `${id} must resolve`);
+    assert.equal(positionOf(id), `(${formatCoord(placement.x)}, ${formatCoord(placement.z)})`);
+  }
 });
