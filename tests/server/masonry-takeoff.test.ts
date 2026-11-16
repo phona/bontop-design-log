@@ -256,6 +256,30 @@ test('floor_region：走廊 3.75㎡ 计入，落在已计费房内的 9.311㎡ �
   assert.deepEqual(result.excludedFloorRegionIds, ['entry_garden_floor', 'north_platform_floor']);
 });
 
+test('floor_region extra 按 follow 分干/湿：外部湿区只进湿区（Codex blocking②）', () => {
+  // 合成外部湿区 1㎡（房外探针位，与 straddle 对照组同址，follow 指向客卫）：
+  // 混合量 +1，但干区拆分不动、湿区拆分 +1；dryFloorSqm 不动、wetFloorSqm +1。
+  // 旧口径只出混合量，tile-cost-comparison 曾把它全数当干区（多算木纹砖及干区人工）。
+  const input = buildInput();
+  const base = computeMasonryTakeoff(input);
+  const wetOutside: MasonryTakeoffInput['floorRegions'] = [{
+    id: 'outside_wet_probe',
+    areaSqm: 1.0,
+    points: [
+      { x: 14.0, z: 10.5 }, { x: 15.0, z: 10.5 },
+      { x: 15.0, z: 11.5 }, { x: 14.0, z: 11.5 },
+    ],
+    follow: 'guest_bath',
+  } as any];
+  const result = computeMasonryTakeoff({ ...input, floorRegions: [...(input.floorRegions ?? []), ...wetOutside] });
+  close(result.floorRegionExtraSqm, base.floorRegionExtraSqm + 1.0);
+  close(result.floorRegionExtraDrySqm, base.floorRegionExtraDrySqm, '外部湿区不进干区拆分');
+  close(result.floorRegionExtraWetSqm, base.floorRegionExtraWetSqm + 1.0);
+  close(result.floorRegionExtraDrySqm + result.floorRegionExtraWetSqm, result.floorRegionExtraSqm, '干湿拆分之和必须等于混合量');
+  close(result.dryFloorSqm, base.dryFloorSqm, '干区总量不动');
+  close(result.wetFloorSqm, base.wetFloorSqm + 1.0);
+});
+
 test('防水台延长米 33.440m（按构件对 run 取并集，一条矮台只算一次台长）', () => {
   const result = computeMasonryTakeoff(buildInput());
   close(result.extrasLinearM, 33.440331156477376);

@@ -82,13 +82,18 @@ describe('tile cost comparison', () => {
   it('counts dry floor outside rooms in the dry base instead of pricing rooms only（量价算法审计 D4）', () => {
     // 房间外干区地面（live：走廊 main_corridor_floor 3.75㎡）必须进干区基数：
     // 预算 dryFloorSqm 计入它，旧口径只加干区房间，少算 3.75㎡（材料 −¥493、
-    // 人工 −¥281.25）。合成验证：extras 改量时基数等量跟随，extras 归零时基数
-    // 回到纯房间值 115.973。
+    // 人工 −¥281.25）。合成验证：干区 extras 改量时基数等量跟随，extras 归零时
+    // 基数回到纯房间值 115.973。
+    // Codex blocking②（PR #255 复审）：floorRegionExtraSqm 是干湿混合量——
+    // 房间外湿区（follow 指向湿区房）不得进干区基数。合成验证：只加湿区 extra
+    // 时干区基数不动；只加干区 extra 时基数等量跟随。
     const base = buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, projectTakeoff, projectScheme);
     assert.equal(base.area.netDryAreaSqm, 119.723);
-    const plusTwo = buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, { ...projectTakeoff, floorRegionExtraSqm: projectTakeoff.floorRegionExtraSqm + 2 }, projectScheme);
-    assert.equal(plusTwo.area.netDryAreaSqm, 121.723);
-    const zeroExtra = buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, { ...projectTakeoff, floorRegionExtraSqm: 0 }, projectScheme);
+    const plusTwoDry = buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, { ...projectTakeoff, floorRegionExtraSqm: projectTakeoff.floorRegionExtraSqm + 2, floorRegionExtraDrySqm: projectTakeoff.floorRegionExtraDrySqm + 2 }, projectScheme);
+    assert.equal(plusTwoDry.area.netDryAreaSqm, 121.723);
+    const plusTwoWet = buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, { ...projectTakeoff, floorRegionExtraSqm: projectTakeoff.floorRegionExtraSqm + 2, floorRegionExtraWetSqm: projectTakeoff.floorRegionExtraWetSqm + 2 }, projectScheme);
+    assert.equal(plusTwoWet.area.netDryAreaSqm, 119.723);
+    const zeroExtra = buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, { ...projectTakeoff, floorRegionExtraSqm: 0, floorRegionExtraDrySqm: 0, floorRegionExtraWetSqm: 0 }, projectScheme);
     assert.equal(zeroExtra.area.netDryAreaSqm, 115.973);
   });
 
@@ -108,6 +113,13 @@ describe('tile cost comparison', () => {
     assert.throws(
       () => buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, { ...projectTakeoff, floorRegionExtraSqm: undefined } as unknown as typeof projectTakeoff, projectScheme),
       /floorRegionExtraSqm/,
+    );
+  });
+
+  it('refuses a masonry takeoff whose dry/wet extra split does not add up to the total（Codex blocking②）', () => {
+    assert.throws(
+      () => buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, { ...projectTakeoff, floorRegionExtraDrySqm: projectTakeoff.floorRegionExtraDrySqm + 2 }, projectScheme),
+      /floorRegionExtraDrySqm \+ floorRegionExtraWetSqm must equal floorRegionExtraSqm/,
     );
   });
 

@@ -283,6 +283,15 @@ export interface MasonryTakeoffResult {
   totalRoomFloorSqm: number;
   /** floor_region 里**要加进**算量的房间外面积（不在任何已计费房间内、也未 excluded）。 */
   floorRegionExtraSqm: number;
+  /**
+   * 房间外面积里的干区部分（㎡）：`follow` 未指向湿区房的 extra。调用方按干区
+   * 计价基数取这一项，不许再拿混合的 floorRegionExtraSqm 当干区量（Codex
+   * blocking②，PR #255 复审：混合量含外部湿区，tile-cost-comparison 曾把它
+   * 全数加进干区基数）。dry + wet 必须等于 floorRegionExtraSqm。
+   */
+  floorRegionExtraDrySqm: number;
+  /** 房间外面积里的湿区部分（㎡）：`follow` 指向湿区房的 extra。 */
+  floorRegionExtraWetSqm: number;
   /** 房间 footprint 内由内部面层分区转移出的面积；它不是额外面积，不改变全屋总量。 */
   floorRegionInternalSqm: number;
   /** 内部面层分区，budget/material comparison按region.follow解析选材。 */
@@ -495,6 +504,8 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
     sillFaceLinearM: 0,
     totalRoomFloorSqm: 0,
     floorRegionExtraSqm: 0,
+    floorRegionExtraDrySqm: 0,
+    floorRegionExtraWetSqm: 0,
     floorRegionInternalSqm: 0,
     floorMaterialRegions: [],
     floorRegionExcludedSqm: 0,
@@ -904,6 +915,8 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   }
   result.dryFloorSqm = result.dryRoomFloorSqm + externalDryExtra + transferWetToDry - transferDryToWet;
   result.wetFloorSqm = result.wetRoomFloorSqm + externalWetExtra + transferDryToWet - transferWetToDry;
+  result.floorRegionExtraDrySqm = externalDryExtra;
+  result.floorRegionExtraWetSqm = externalWetExtra;
   result.totalRoomFloorSqm = result.dryRoomFloorSqm + result.wetRoomFloorSqm;
 
   // ── 7. 汇总：逐房 + 总数 + 独立推导对账 ─────────────────────────────────
