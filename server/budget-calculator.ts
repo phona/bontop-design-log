@@ -342,6 +342,11 @@ export function roomArea(room: RoomLayout): number {
   return room.area;
 }
 
+/** lineItem calcMode 的全集。'length' 与 'area' 同走 perRoom 分支（延米量源），
+ * 只是 quantityField 的口径不同。未知值会让 fixed/count 分支都不进、整行
+ * 静默消失——量价算法审计 D12。 */
+const KNOWN_CALC_MODES = ['area', 'fixed', 'count', 'length'] as const;
+
 /**
  * 仍按房间公式取量的 quantityField（count 制与遗留别名）。
  *
@@ -731,7 +736,9 @@ export class BudgetCalculator {
           cat.actual += rate;
           continue;
         default:
-          continue;
+          // 量价算法审计 D12：base.json 里新增的 labor area 若不在上面，旧代码
+          // 静默跳过整个人工行（金额归零、无 pending、无报错）。未知 area 即抛错。
+          throw new Error(`[budget-calculator] 分类 ${cat.key} 的 labor area ${JSON.stringify(area)} 未知（只认 floor/wet_floor_tile/wall_tile/ceiling/ceiling_zones/curtain_box_linear/paint_wall/wet_floor/door_count/fixture_count/fixed）——人工会被静默跳过`);
       }
       if (rate === null || rate === undefined) {
         // 待报价：数量入 pendingLabor 显形，金额不编（README：没有无依据决策）
@@ -781,6 +788,11 @@ export class BudgetCalculator {
       if (!categoryKey) continue;
 
       const calcMode = li.calcMode ?? 'area';
+      // 量价算法审计 D12：calcMode 拼错（或新增未实现的值）时，fixed/count 分支
+      // 都不进，非 perRoom 的 topic 直接整行静默消失。只认四种口径。
+      if (!(KNOWN_CALC_MODES as readonly string[]).includes(calcMode)) {
+        throw new Error(`[budget-calculator] lineItem topic ${li.topic} 的 calcMode ${JSON.stringify(calcMode)} 未知（只认 ${KNOWN_CALC_MODES.join('、')}）——fixed/count 分支都不进，整行会被静默丢掉`);
+      }
 
       if (calcMode === 'fixed') {
         const optionId = scheme.selections[li.topic]?.default;
@@ -844,7 +856,14 @@ export class BudgetCalculator {
         const declaredField = isDeclaredQuantityField(li.quantityField) ? li.quantityField : null;
         const declared = declaredField ? this.declaredQuantities() : null;
         const quantityFn = li.quantityField ? QUANTITY_FORMULAS[li.quantityField] : null;
-        if (!paintScope && !declared && !quantityFn) continue;
+        // 量价算法审计 D12：quantityField 写错名（或新增未接入的量）时整行静默
+        // 消失。未声明 quantityField 的 perRoom 行同样无量可取——一并抛错。
+        if (!paintScope && !declared && !quantityFn) {
+          throw new Error(
+            `[budget-calculator] lineItem topic ${li.topic} 的 quantityField ${JSON.stringify(li.quantityField)} 没有对应的量源`
+            + `（paintScopeArea / 声明表 ${DECLARED_QUANTITY_FIELDS.join('、')} / QUANTITY_FORMULAS ${Object.keys(QUANTITY_FORMULAS).join('、')}）——整行会被静默丢掉`,
+          );
+        }
 
         for (const room of rooms) {
           const overrideOptionId = scheme.selections[li.topic]?.roomOverrides?.[room.id];

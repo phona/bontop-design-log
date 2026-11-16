@@ -27,7 +27,7 @@ const rulesConfig: DesignRulesConfig = {
       // 2026-10-13 预算计算架构根治（commit 749426e0）阶段 2 第二半：wetWallArea 拍系数已删除，墙砖量改由
       // shared/masonry-takeoff.ts 从 overlay 声明实算（字段名 masonryTileArea）。
       { topic: 'wall', quantityField: 'masonryTileArea' },
-      { topic: 'paint', quantityField: 'paintWallArea' },
+      { topic: 'paint', quantityField: 'paintScopeArea' },
       { topic: 'hvac' },
       { topic: 'robot_vacuum', calcMode: 'count' },
     ],
@@ -106,7 +106,7 @@ describe('Budget + Risks + Schemes API', () => {
     assert.match(body.tileBudgetPreview.scopeNote, /excludes bathroom, walls, balcony, and extras/);
     assert.deepEqual(
       body.tileBudgetPreview.dryFloorMaterialAndOrdinaryLaborByCandidate.map((row: { candidateId: string; sameScopeSubtotalYuan: number }) => [row.candidateId, row.sameScopeSubtotalYuan]),
-      [['kt_200x1200', 23835.98], ['jinyi_approx_900x150', 25216.38]] // R01 重算；2026-11-16 D1：干区材料 −28.01、人工 −16.05
+      [['kt_200x1200', 24610.23], ['jinyi_approx_900x150', 26031.63]] // R01 重算；2026-11-16 D1：干区材料 −28.01、人工 −16.05；D4：干区基数改 rooms + 3.75㎡ 走廊 extra（材料 +493/+534、人工 +281.25）
     );
     assert.equal(body.totalActual, calc.calculate(state.getCurrentScheme()).totalActual);
     assert.deepEqual(body.categories.map((item: { key: string; actual: number }) => [item.key, item.actual]),

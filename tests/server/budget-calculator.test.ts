@@ -33,7 +33,7 @@ const rulesConfig: DesignRulesConfig = {
         'master_bedroom', 'study', 'bedroom_nw', 'bedroom_se',
       ] },
       { topic: 'wall', quantityField: 'masonryTileArea' },
-      { topic: 'paint', quantityField: 'paintWallArea' },
+      { topic: 'paint', quantityField: 'paintScopeArea' },
       { topic: 'hvac' },
     ],
   },
@@ -337,6 +337,82 @@ describe('BudgetCalculator', () => {
     assert.equal(curtainItems.length, 0);
   });
 
+  // ── 量价算法审计 D12：静默丢行的三处继续改为抛错 ─────────────────────────
+  // 注意：上面那条「未注册 topic 返回 0」的行为仍保留——toilet/shower/vanity/
+  // faucet 四个 lineItem 的 topic 本就不在材料目录里（只有 PKG-100 估算覆盖），
+  // !topic 的 continue 是有意的；这里只堵「topic 存在、但 calcMode/量源/人工
+  // area 写错」那三类——它们在旧代码里同样是整行静默消失。
+
+  it('throws on an unknown calcMode instead of silently dropping the line (audit D12)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const config: DesignRulesConfig = {
+      ...rulesConfig,
+      budget: {
+        ...rulesConfig.budget,
+        lineItems: [
+          ...(rulesConfig.budget?.lineItems ?? []),
+          { topic: 'floor', quantityField: 'floorArea', calcMode: 'bogus' as any },
+        ],
+      },
+    };
+    const calc = new BudgetCalculator(catalog, config);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A2', roomOverrides: {} },
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    assert.throws(() => calc.calculate(scheme), /calcMode "bogus" 未知/);
+  });
+
+  it('throws on an unknown quantityField instead of silently dropping the line (audit D12)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const config: DesignRulesConfig = {
+      ...rulesConfig,
+      budget: {
+        ...rulesConfig.budget,
+        lineItems: [
+          ...(rulesConfig.budget?.lineItems ?? []),
+          { topic: 'floor', quantityField: 'windowLength' },
+        ],
+      },
+    };
+    const calc = new BudgetCalculator(catalog, config);
+    const scheme: CurrentScheme = {
+      updatedAt: new Date().toISOString(),
+      selections: {
+        hvac: { default: 'A2', roomOverrides: {} },
+        floor: { default: 'floor_tile_01', roomOverrides: {} },
+        wall: { default: 'wall_tile_01', roomOverrides: {} },
+        paint: { default: 'latex_paint_01', roomOverrides: {} },
+      },
+    };
+    assert.throws(() => calc.calculate(scheme), /quantityField "windowLength" 没有对应的量源/);
+  });
+
+  it('throws on an unknown labor area instead of silently skipping it (audit D12)', () => {
+    const catalog = ProjectCatalog.load('.');
+    const calc = new BudgetCalculator(catalog, rulesConfig);
+    // computeLabor 是私有方法：calculate() 从 config/budget/base.json 直读人工行，
+    // 测 fail-closed 分支只能直调（as any）。其余参数取最小 fake：bogus area 在
+    // switch 的 default 即抛错，走不到 takeoff/rooms 的消费处。
+    const categories: any[] = [{ key: 'probe', actual: 0, pendingLabor: [] }];
+    const baseRaw: any = { probe: { labor: [{ area: 'bogus_area', rate: 50, unit: '㎡' }] } };
+    assert.throws(
+      () => (calc as any).computeLabor(categories, baseRaw, [], 'full', {}, {}),
+      /labor area "bogus_area" 未知/,
+    );
+    // 对照组：现行 10 个人工 area 全是已处理分支，不抛错
+    const liveAreas = ['floor', 'wet_floor_tile', 'wall_tile', 'ceiling_zones', 'curtain_box_linear', 'paint_wall', 'wet_floor', 'door_count', 'fixture_count', 'fixed'];
+    for (const area of liveAreas) {
+      const raw: any = { probe: { labor: [{ area, rate: 50, unit: '㎡' }] } };
+      assert.doesNotThrow(() => (calc as any).computeLabor([{ key: 'probe', actual: 0, pendingLabor: [] }], raw, [], 'full', { totalNetAreaM2: 0, curtainBoxM2: 0, curtainBoxLinearM: 0 }, {}));
+    }
+  });
+
   it('handles room overrides', () => {
     const catalog = ProjectCatalog.load('.');
     const calc = new BudgetCalculator(catalog, rulesConfig);
@@ -467,8 +543,11 @@ describe('BudgetCalculator', () => {
     const painting = snapshot.categories.find((c) => c.key === 'painting');
     assert.ok(painting);
     // 阶段 5 口径变更：painting 的候选材料款不进 actual，actual = 纯人工。
-    // 注意本文件顶部的 rulesConfig fixture 里 paint 行项仍用旧字段名 `paintWallArea`，
-    // 因此这个 fixture 下 painting 的材料行为 0（生产 config 用 paintScopeArea，材料额 1,567）。
+    // 2026-11-16 量价算法审计 D12：本 fixture 的 paint 行项曾用旧字段名
+    // `paintWallArea`（生产 config 用 paintScopeArea），旧代码遇到无量源的
+    // quantityField 是静默丢行，于是这个 fixture 下 painting 的材料额一直是 0，
+    // 注释还把它写成了既定事实。现 fixture 已改用 paintScopeArea，paint 材料
+    // 正常计入（autoActual 1,648.36，候选价；actual 仍为纯人工 7,751）。
     // 故此处只断言口径不变量，不断言具体金额——具体金额由 paint-scope.test.ts 用真实 config 钉。
     assert.ok(painting.actual > 0, `painting 应有人工费进 actual（实际 ${painting.actual}）`);
     assert.equal(
