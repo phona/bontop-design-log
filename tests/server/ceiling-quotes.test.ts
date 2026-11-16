@@ -42,10 +42,12 @@ function quotesFile(quotes: unknown[], active: string): string {
 
 const THREE_CARDS = [
   // 2026-11-16 量价算法审计 D5：a/b 两张卡必须报互不重叠的行——ceiling_zones
-  // 的量已含 gypsum_flat_sqm 与 aluminum_buckle_sqm 的面积，同时报两边会
-  // 把这两块面积算两次（compareQuoteCards 遇此即抛错）。旧夹具曾让 a/b 五
-  // 行全报，总额里平顶与铝扣板各算了两遍，断言还把它钉成了正确值。
-  { id: 'a', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted', out_of_scope: ['gypsum_flat_sqm', 'aluminum_buckle_sqm'], rates: { ceiling_zones: { per_unit: 45, unit: '元/㎡', scope_note: '含辅材' }, curtain_box_linear: { per_unit: 30, unit: '元/m', scope_note: '含安装' }, gypsum_edge_drop_linear: { per_unit: 170, unit: '元/m', scope_note: '含辅材' } } },
+  // 的量已含 gypsum_flat_sqm、aluminum_buckle_sqm 的面积与边吊带的带面，
+  // 同时报两边会把这部分量算两次（compareQuoteCards 遇此即抛错）。旧夹具曾让
+  // a/b 五行全报，总额里平顶与铝扣板各算了两遍，断言还把它钉成了正确值。
+  // D5 初版漏了边吊行：a 卡仍同时报了混合行与边吊行（Codex blocking①，
+  // PR #255 复审），本轮把边吊行也移出 a 卡、只留拆分行卡 b 报它。
+  { id: 'a', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted', out_of_scope: ['gypsum_flat_sqm', 'aluminum_buckle_sqm', 'gypsum_edge_drop_linear'], rates: { ceiling_zones: { per_unit: 45, unit: '元/㎡', scope_note: '含辅材' }, curtain_box_linear: { per_unit: 30, unit: '元/m', scope_note: '含安装' } } },
   { id: 'b', contractor: '乙', quoted_at: '2026-10-09', status: 'candidate', out_of_scope: ['ceiling_zones'], rates: { curtain_box_linear: { per_unit: 26, unit: '元/m', scope_note: '不含电源预留' }, gypsum_edge_drop_linear: { per_unit: 150, unit: '元/m', scope_note: '不含耗材' }, gypsum_flat_sqm: { per_unit: 140, unit: '元/㎡', scope_note: '不含耗材' }, aluminum_buckle_sqm: { per_unit: 145, unit: '元/㎡', scope_note: '不含开孔' } } },
   { id: 'c', contractor: '丙', quoted_at: null, status: 'candidate', rates: {} },
 ];
@@ -74,17 +76,19 @@ test('并排对比：总额、差额、可比性标记', () => {
   const a = comparison.find((entry) => entry.id === 'a')!;
   const b = comparison.find((entry) => entry.id === 'b')!;
   const c = comparison.find((entry) => entry.id === 'c')!;
-  // a：45×板面 + 30×17.85 + 170×21.375（R01 重算后量）。平顶与铝扣板行是
-  // out_of_scope——它们的面积已含在板面里，再报就是重复计（审计 D5）。
+  // a：45×板面 + 30×17.85（R01 重算后量）。平顶、铝扣板与边吊行是
+  // out_of_scope——它们的面积/带面已含在板面里，再报就是重复计（审计 D5；
+  // 边吊带初版漏列，a 卡曾同时报混合行与边吊行、总额里 170×21.375 被算了
+  // 两遍，Codex blocking① 补上后此处不再含边吊项）。
   assert.ok(Math.abs(a.total! - (
     45 * (takeoff.totalNetAreaM2 - takeoff.curtainBoxM2)
-    + 30 * 17.85 + 170 * 21.375
+    + 30 * 17.85
   )) < 1e-6);
   assert.equal(a.active, true);
-  // 2026-11-16 审计 D5：a 卡把平顶/铝扣板行标为 out_of_scope（它们的面积已含
-  // 在板面里），按模块既有规则，带 out_of_scope 行的卡即 comparable:false
-  //（总额不含那两行，须由其他报价单覆盖）。旧夹具五全行报、comparable:true，
-  // 恰是 D5 的双计形态。
+  // 2026-11-16 审计 D5：a 卡把平顶/铝扣板/边吊行标为 out_of_scope（它们的
+  // 面积/带面已含在板面里），按模块既有规则，带 out_of_scope 行的卡即
+  // comparable:false（总额不含那三行，须由其他报价单覆盖）。旧夹具五全行报、
+  // comparable:true，恰是 D5 的双计形态。
   assert.equal(a.comparable, false);
   assert.ok(a.comparability_notes.some((note) => note.includes('不在本家报价范围')));
   // b 相对生效中的 a 的差额
@@ -97,11 +101,46 @@ test('并排对比：总额、差额、可比性标记', () => {
   assert.ok(c.comparability_notes.some((note) => note.includes('待报价')));
   // 报了价但没写 scope_note → 明确标记「不可直接比较」（AGENTS.md 采购铁律）。
   // 2026-11-16 审计 D5：此卡不得同时报 ceiling_zones 与 gypsum_flat_sqm
-  //（后者面积已含在前者里），故只报混合行 + 边吊 + 窗帘盒。
-  const noScope = parseCeilingQuotes(quotesFile([{ id: 'ns', contractor: '丁', quoted_at: '2026-10-09', status: 'candidate', rates: { ceiling_zones: { per_unit: 42, unit: '元/㎡' }, gypsum_edge_drop_linear: { per_unit: 170, unit: '元/m' }, curtain_box_linear: { per_unit: 30, unit: '元/m' } } }], 'ns'));
+  // 或 gypsum_edge_drop_linear（后两者面积/带面已含在前者里），故只报混合行
+  // + 窗帘盒；同时报两边时 compareQuoteCards 直接抛错（见下个测试），不是
+  // comparable:false。
+  const noScope = parseCeilingQuotes(quotesFile([{ id: 'ns', contractor: '丁', quoted_at: '2026-10-09', status: 'candidate', rates: { ceiling_zones: { per_unit: 42, unit: '元/㎡' }, curtain_box_linear: { per_unit: 30, unit: '元/m' } } }], 'ns'));
   const nsRow = compareCeilingQuotes(noScope, takeoff, fallback)[0];
   assert.equal(nsRow.comparable, false);
   assert.ok(nsRow.comparability_notes.some((note) => note.includes('不可直接比较')));
+});
+
+test('重叠守卫：混合行与平顶/边吊行同时计价即抛错（审计 D5，Codex blocking①）', () => {
+  // 边吊带净面积 17.956㎡ 已含在 ceiling_zones 的量里，边吊按米报的是整条带
+  // 的做法——同时报两边，总额会把带面算两次（21.375m×170 元 ≈ 3,633.75 元）。
+  // D5 初版守卫漏了边吊行，审计夹具 a 卡正是此形态，断言还把它钉成了正确值。
+  // 金额用容差比对：21.375m 是浮点求和结果（21.374999999999996），170×它
+  // 得 3633.7499999999995，不是字面 3633.75。
+  const bothEdge = parseCeilingQuotes(quotesFile([{ id: 'e', contractor: '丁', quoted_at: '2026-10-09', status: 'candidate', rates: { ceiling_zones: { per_unit: 45, unit: '元/㎡', scope_note: '含辅材' }, gypsum_edge_drop_linear: { per_unit: 170, unit: '元/m', scope_note: '含辅材' }, curtain_box_linear: { per_unit: 30, unit: '元/m', scope_note: '含安装' } } }], 'e'));
+  assert.throws(
+    () => compareCeilingQuotes(bothEdge, takeoff, fallback),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /重复计/);
+      assert.match(error.message, /石膏板边吊/);
+      const amount = Number(error.message.match(/重复计 ([\d.]+) 元/)?.[1]);
+      assert.ok(Math.abs(amount - 21.375 * 170) < 1e-6, `重复计金额应 ≈ 3633.75，实际 ${amount}`);
+      return true;
+    },
+  );
+  // 平顶行同理：6.311㎡×140 元/㎡ ≈ 883.54 元会被算两次。
+  const bothFlat = parseCeilingQuotes(quotesFile([{ id: 'f', contractor: '丁', quoted_at: '2026-10-09', status: 'candidate', rates: { ceiling_zones: { per_unit: 45, unit: '元/㎡', scope_note: '含辅材' }, gypsum_flat_sqm: { per_unit: 140, unit: '元/㎡', scope_note: '含辅材' } } }], 'f'));
+  assert.throws(
+    () => compareCeilingQuotes(bothFlat, takeoff, fallback),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.match(error.message, /重复计/);
+      assert.match(error.message, /石膏板满吊平顶/);
+      const amount = Number(error.message.match(/重复计 ([\d.]+) 元/)?.[1]);
+      assert.ok(Math.abs(amount - 6.311 * 140) < 1e-6, `重复计金额应 ≈ 883.54，实际 ${amount}`);
+      return true;
+    },
+  );
 });
 
 test('生效单价以报价为准，未声明行回落 base.json 并标记 source', () => {
@@ -302,6 +341,6 @@ test('现行三张卡都不触发重叠守卫：混合行与拆分行互斥（�
   assert.equal(comparison.length, 3);
   for (const entry of comparison) {
     const priced = entry.rows.filter((row) => !row.out_of_scope && row.subtotal !== null).map((row) => row.key);
-    assert.ok(!(priced.includes('ceiling_zones') && (priced.includes('gypsum_flat_sqm') || priced.includes('aluminum_buckle_sqm'))), `${entry.id} 不应同时计价混合行与拆分行`);
+    assert.ok(!(priced.includes('ceiling_zones') && (priced.includes('gypsum_flat_sqm') || priced.includes('aluminum_buckle_sqm') || priced.includes('gypsum_edge_drop_linear'))), `${entry.id} 不应同时计价混合行与拆分行`);
   }
 });

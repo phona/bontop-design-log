@@ -50,10 +50,15 @@ const CEILING_SPEC: QuoteCardSpec<CeilingQuoteRateKey> = {
   },
   fallbackLabel: 'base.json',
   // 量价算法审计 D5：ceiling_zones 的量 = 总净面积 − 窗帘盒，已含石膏板满吊
-  // 平顶（flatNetAreaM2）与厨卫铝扣板（aluminumBuckleM2）的面积。一张卡同时
-  // 给两边计价会把这两块面积算两次。现行三张卡都用 out_of_scope 避开了
-  // （一张只报混合行、一张只报拆分行、一张只报铝扣板行），声明即守卫。
-  overlaps: [{ container: 'ceiling_zones', parts: ['gypsum_flat_sqm', 'aluminum_buckle_sqm'] }],
+  // 平顶（flatNetAreaM2）、厨卫铝扣板（aluminumBuckleM2）与边吊带净面积
+  // （edgeDropNetAreaM2，实测 17.956㎡）。边吊按延长米报的是整条带的做法
+  // （包工包料），与板面按㎡报的是同一块带面——一张卡同时给两边计价会把这
+  // 块带面算两次。D5 初版只列了平顶与铝扣板，漏了边吊行（Codex blocking①，
+  // PR #255 复审：审计夹具 a 卡因此同时报了混合行与边吊行，总额里
+  // 21.375m×170 元被算了两遍，断言还把它钉成了正确值）。现行三张卡都用
+  // out_of_scope 避开了（一张只报混合行、一张只报拆分行、一张只报铝扣板行），
+  // 声明即守卫。
+  overlaps: [{ container: 'ceiling_zones', parts: ['gypsum_flat_sqm', 'aluminum_buckle_sqm', 'gypsum_edge_drop_linear'] }],
 };
 
 export const CEILING_QUOTE_RATE_LABEL = CEILING_SPEC.labels;
