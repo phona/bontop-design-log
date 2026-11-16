@@ -340,6 +340,21 @@ function validatePlacementNumbers(
     finiteField('anchor.offset.x', item.anchor.offset.x);
     finiteField('anchor.offset.z', item.anchor.offset.z);
   }
+  // 显式声明的原始尺寸须先验（2026-11-16 Codex 三审 blocking）：declaredFurnitureDims
+  // 用 ?? 兜底，显式 width: null / depth: null 会被替换为目录值——门禁若只验兜底后
+  // 的尺寸就会放行，而 FixtureFactory/SceneBuilder 用 !== undefined 判断后直接拿
+  // null 做除数（null / 目录宽 = 0），模型被压扁、渲染与图纸分裂。length 同理
+  // （furnitureFootprint 把它当 width 用）。
+  for (const field of ['width', 'depth', 'length'] as const) {
+    const value = item[field];
+    if (value !== undefined) {
+      if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+        const shown = value === null ? 'null' : typeof value === 'string' ? JSON.stringify(value) : String(value);
+        errors.push(`${label}: ${field} 须为有限正数（收到 ${shown}）`);
+        valid = false;
+      }
+    }
+  }
   for (const [field, value] of [
     ['width', dims.width],
     ['depth', dims.depth],

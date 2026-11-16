@@ -196,6 +196,21 @@ describe('furniture 解算器 DIMS/support 强制（2026-11-16 DDD 模型约束�
     );
     assert.equal(nanAlong.placement, null);
     assert.match(nanAlong.diagnostic ?? '', /along 须为有限数/);
+    // 显式 null 尺寸不得经目录兜底绕过门禁（2026-11-16 Codex 三审 blocking）：
+    // declaredFurnitureDims 用 ??，width: null 会被换成目录宽、解算放行，而建模侧
+    // 用 !== undefined 判断后拿 null 做除数（null / 目录宽 = 0），模型被压扁。
+    const nullWidth = resolveFurniturePlacement(
+      { type: 'dining_table', id: 't13', x: 9.8, z: 3.45, width: null, depth: 0.8, support: { kind: 'floor' } } as unknown as PlacementItem,
+      NO_WALLS, NO_HOSTS, undefined,
+    );
+    assert.equal(nullWidth.placement, null);
+    assert.match(nullWidth.diagnostic ?? '', /width 须为有限正数/);
+    const nullDepth = resolveFurniturePlacement(
+      { type: 'dining_table', id: 't14', x: 9.8, z: 3.45, width: 1.4, depth: null, support: { kind: 'floor' } } as unknown as PlacementItem,
+      NO_WALLS, NO_HOSTS, undefined,
+    );
+    assert.equal(nullDepth.placement, null);
+    assert.match(nullDepth.diagnostic ?? '', /depth 须为有限正数/);
   });
 
   it('count-only 条目（无 id、无定位声明）：豁免 DIMS/support，返回 null 且无诊断', () => {
