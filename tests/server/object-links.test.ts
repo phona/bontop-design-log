@@ -334,9 +334,9 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
     const housePath = join(sandbox, 'config/house.yaml');
     const text = readFileSync(housePath, 'utf8');
     // 二阶段 Stage 2 起茶几为 anchor 相对定位（相对沙发），改 offset 即改声明。
-    const anchor = `{ type: coffee_table, id: ld.coffee_table, anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: -1.30, z: 0 } }, rotation: 0 }`;
+    const anchor = `{ type: coffee_table, id: ld.coffee_table, support: { kind: floor }, anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: -1.30, z: 0 } }, rotation: 0 }`;
     assert.equal(text.split(anchor).length - 1, 1, '家具声明锚点必须恰出现一次');
-    writeFileSync(housePath, text.replace(anchor, `{ type: coffee_table, id: ld.coffee_table, anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: -1.29, z: 0 } }, rotation: 0 }`));
+    writeFileSync(housePath, text.replace(anchor, `{ type: coffee_table, id: ld.coffee_table, support: { kind: floor }, anchor: { source: furniture, id: ld.sofa_3seat, offset: { x: -1.29, z: 0 } }, rotation: 0 }`));
 
     const afterState = loadScheduleState(sandbox, {
       modelPackageLinks: loadModelPackageLinks(join(sandbox, 'config/model-package-links.yaml'), {root: sandbox}),

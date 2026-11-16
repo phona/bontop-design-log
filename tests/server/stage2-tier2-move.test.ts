@@ -35,6 +35,9 @@ function loadRealConfig() {
   const furnishings = house.furnishings ?? {};
   const catalog = ProjectCatalog.load('.');
   const walls = catalog.getWalls();
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；不传时 7 件
+  // 房间相对家具诊断失败（不回落绝对坐标）。
+  const rooms = new Map(catalog.getRooms().map((room) => [room.id, room]));
   const wallSegments = new Map<string, any[]>();
   for (const wall of walls) {
     const key = wall.id ?? '';
@@ -42,13 +45,13 @@ function loadRealConfig() {
     list.push(wall);
     wallSegments.set(key, list);
   }
-  return { furnishings, walls, wallSegments };
+  return { furnishings, walls, wallSegments, rooms };
 }
 
-function resolveAll(furnishings: FurnishingsYaml, walls: ReturnType<ProjectCatalog['getWalls']>, wallSegments: Map<string, any[]>) {
+function resolveAll(furnishings: FurnishingsYaml, walls: ReturnType<ProjectCatalog['getWalls']>, wallSegments: Map<string, any[]>, rooms: ReadonlyMap<string, { x: number; z: number; width: number; depth: number }>) {
   const items = Object.values(furnishings).flat();
-  const { placements, diagnostics } = resolveFurniturePlacements(items, wallSegments as any);
-  const { pointWalls, mountHosts } = buildPlacementIndexes({ geometry: { walls }, furnishings });
+  const { placements, diagnostics } = resolveFurniturePlacements(items, wallSegments as any, { rooms });
+  const { pointWalls, mountHosts } = buildPlacementIndexes({ geometry: { walls }, furnishings, anchors: { rooms } });
   const points = new Map<string, { x: number; z: number }>();
   const pointDiagnostics: string[] = [];
   for (const pt of loadElectricalConfig()) {
@@ -184,8 +187,8 @@ test('Tier 2 结构：13 件为关系声明，入户柜保持绝对', () => {
 });
 
 test('Tier 2 传动 G1：电视东移 0.20m，电视轴三件 + 沙发链 + 夜灯跟随', () => {
-  const { furnishings, walls, wallSegments } = loadRealConfig();
-  const before = resolveAll(furnishings, walls, wallSegments);
+  const { furnishings, walls, wallSegments, rooms } = loadRealConfig();
+  const before = resolveAll(furnishings, walls, wallSegments, rooms);
   assert.deepEqual(before.diagnostics, [], '基线家具解算须无诊断');
   assert.deepEqual(before.pointDiagnostics, [], '基线点位解算须无诊断');
   const fBefore = furnitureMap(before);
@@ -194,7 +197,7 @@ test('Tier 2 传动 G1：电视东移 0.20m，电视轴三件 + 沙发链 + 夜�
     item.x += MOVE;
     return 'x';
   });
-  const after = resolveAll(moved, walls, wallSegments);
+  const after = resolveAll(moved, walls, wallSegments, rooms);
   assert.deepEqual(after.diagnostics, [], '移动后家具解算须无诊断');
   assert.deepEqual(after.pointDiagnostics, [], '移动后点位解算须无诊断');
   const fAfter = furnitureMap(after);
@@ -211,7 +214,7 @@ test('Tier 2 传动 G1：电视东移 0.20m，电视轴三件 + 沙发链 + 夜�
   }
   for (const id of UNTOUCHED_POINTS) assertFixed(before.points, after.points, id);
   // 还原：复解原始配置与实验前逐点一致。
-  const restored = resolveAll(furnishings, walls, wallSegments);
+  const restored = resolveAll(furnishings, walls, wallSegments, rooms);
   const fRestored = furnitureMap(restored);
   for (const [id, p] of fBefore) {
     const r = pos(fRestored, id);
@@ -220,8 +223,8 @@ test('Tier 2 传动 G1：电视东移 0.20m，电视轴三件 + 沙发链 + 夜�
 });
 
 test('Tier 2 传动 G3：床南移 0.20m，两床头柜跟随', () => {
-  const { furnishings, walls, wallSegments } = loadRealConfig();
-  const before = resolveAll(furnishings, walls, wallSegments);
+  const { furnishings, walls, wallSegments, rooms } = loadRealConfig();
+  const before = resolveAll(furnishings, walls, wallSegments, rooms);
   assert.deepEqual(before.diagnostics, [], '基线家具解算须无诊断');
   const fBefore = furnitureMap(before);
   const { moved } = singleDeclarationMove(furnishings, 'master_bedroom', 'mb.bed_180', (item) => {
@@ -229,7 +232,7 @@ test('Tier 2 传动 G3：床南移 0.20m，两床头柜跟随', () => {
     item.z += MOVE;
     return 'z';
   });
-  const after = resolveAll(moved, walls, wallSegments);
+  const after = resolveAll(moved, walls, wallSegments, rooms);
   assert.deepEqual(after.diagnostics, [], '移动后家具解算须无诊断');
   const fAfter = furnitureMap(after);
   for (const id of ['mb.bedside_cabinet_north', 'mb.bedside_cabinet_south']) {
@@ -239,7 +242,7 @@ test('Tier 2 传动 G3：床南移 0.20m，两床头柜跟随', () => {
     if (id === 'mb.bed_180') continue;
     assertFixed(fBefore, fAfter, id);
   }
-  const restored = resolveAll(furnishings, walls, wallSegments);
+  const restored = resolveAll(furnishings, walls, wallSegments, rooms);
   const fRestored = furnitureMap(restored);
   for (const [id, p] of fBefore) {
     const r = pos(fRestored, id);
@@ -248,8 +251,8 @@ test('Tier 2 传动 G3：床南移 0.20m，两床头柜跟随', () => {
 });
 
 test('Tier 2 传动 G4a：西北衣柜沿墙东移 0.20m，桌椅不动', () => {
-  const { furnishings, walls, wallSegments } = loadRealConfig();
-  const before = resolveAll(furnishings, walls, wallSegments);
+  const { furnishings, walls, wallSegments, rooms } = loadRealConfig();
+  const before = resolveAll(furnishings, walls, wallSegments, rooms);
   assert.deepEqual(before.diagnostics, [], '基线家具解算须无诊断');
   const fBefore = furnitureMap(before);
   const { moved } = singleDeclarationMove(furnishings, 'bedroom_nw', 'bnw.wardrobe_180', (item) => {
@@ -257,14 +260,14 @@ test('Tier 2 传动 G4a：西北衣柜沿墙东移 0.20m，桌椅不动', () => 
     item.along += MOVE;
     return 'along';
   });
-  const after = resolveAll(moved, walls, wallSegments);
+  const after = resolveAll(moved, walls, wallSegments, rooms);
   assert.deepEqual(after.diagnostics, [], '移动后家具解算须无诊断');
   const fAfter = furnitureMap(after);
   assertMovedBy(fBefore, fAfter, 'bnw.wardrobe_180', MOVE, 0);
   for (const id of ['bnw.desk', 'bnw.chair', 'bnw.bed_150', 'ld.wall_cabinet_tall', 'ld.tv_wall_low', 'ld.plant_fiddle', 'mb.bedside_cabinet_north', 'bese.wardrobe_180', 'ld.fridge', 'ld.waterbar_cabinet']) {
     assertFixed(fBefore, fAfter, id);
   }
-  const restored = resolveAll(furnishings, walls, wallSegments);
+  const restored = resolveAll(furnishings, walls, wallSegments, rooms);
   const fRestored = furnitureMap(restored);
   for (const [id, p] of fBefore) {
     const r = pos(fRestored, id);
@@ -273,8 +276,8 @@ test('Tier 2 传动 G4a：西北衣柜沿墙东移 0.20m，桌椅不动', () => 
 });
 
 test('Tier 2 传动 G4b：西北书桌沿墙南移 0.20m，椅跟随、衣柜不动', () => {
-  const { furnishings, walls, wallSegments } = loadRealConfig();
-  const before = resolveAll(furnishings, walls, wallSegments);
+  const { furnishings, walls, wallSegments, rooms } = loadRealConfig();
+  const before = resolveAll(furnishings, walls, wallSegments, rooms);
   assert.deepEqual(before.diagnostics, [], '基线家具解算须无诊断');
   const fBefore = furnitureMap(before);
   const { moved } = singleDeclarationMove(furnishings, 'bedroom_nw', 'bnw.desk', (item) => {
@@ -282,7 +285,7 @@ test('Tier 2 传动 G4b：西北书桌沿墙南移 0.20m，椅跟随、衣柜不
     item.along += MOVE;
     return 'along';
   });
-  const after = resolveAll(moved, walls, wallSegments);
+  const after = resolveAll(moved, walls, wallSegments, rooms);
   assert.deepEqual(after.diagnostics, [], '移动后家具解算须无诊断');
   const fAfter = furnitureMap(after);
   assertMovedBy(fBefore, fAfter, 'bnw.desk', 0, MOVE);
@@ -290,7 +293,7 @@ test('Tier 2 传动 G4b：西北书桌沿墙南移 0.20m，椅跟随、衣柜不
   for (const id of ['bnw.wardrobe_180', 'bnw.bed_150', 'ld.wall_cabinet_tall', 'ld.tv_wall_low', 'ld.plant_fiddle', 'mb.bedside_cabinet_north', 'bese.wardrobe_180', 'ld.fridge', 'ld.waterbar_cabinet']) {
     assertFixed(fBefore, fAfter, id);
   }
-  const restored = resolveAll(furnishings, walls, wallSegments);
+  const restored = resolveAll(furnishings, walls, wallSegments, rooms);
   const fRestored = furnitureMap(restored);
   for (const [id, p] of fBefore) {
     const r = pos(fRestored, id);
@@ -299,8 +302,8 @@ test('Tier 2 传动 G4b：西北书桌沿墙南移 0.20m，椅跟随、衣柜不
 });
 
 test('Tier 2 传动 G5：东南床东移 0.20m，衣柜跟随', () => {
-  const { furnishings, walls, wallSegments } = loadRealConfig();
-  const before = resolveAll(furnishings, walls, wallSegments);
+  const { furnishings, walls, wallSegments, rooms } = loadRealConfig();
+  const before = resolveAll(furnishings, walls, wallSegments, rooms);
   assert.deepEqual(before.diagnostics, [], '基线家具解算须无诊断');
   const fBefore = furnitureMap(before);
   const { moved } = singleDeclarationMove(furnishings, 'bedroom_se', 'bese.bed_150', (item) => {
@@ -308,7 +311,7 @@ test('Tier 2 传动 G5：东南床东移 0.20m，衣柜跟随', () => {
     item.x += MOVE;
     return 'x';
   });
-  const after = resolveAll(moved, walls, wallSegments);
+  const after = resolveAll(moved, walls, wallSegments, rooms);
   assert.deepEqual(after.diagnostics, [], '移动后家具解算须无诊断');
   const fAfter = furnitureMap(after);
   assertMovedBy(fBefore, fAfter, 'bese.wardrobe_180', MOVE, 0);
@@ -316,7 +319,7 @@ test('Tier 2 传动 G5：东南床东移 0.20m，衣柜跟随', () => {
     if (id === 'bese.bed_150') continue;
     assertFixed(fBefore, fAfter, id);
   }
-  const restored = resolveAll(furnishings, walls, wallSegments);
+  const restored = resolveAll(furnishings, walls, wallSegments, rooms);
   const fRestored = furnitureMap(restored);
   for (const [id, p] of fBefore) {
     const r = pos(fRestored, id);
@@ -325,8 +328,8 @@ test('Tier 2 传动 G5：东南床东移 0.20m，衣柜跟随', () => {
 });
 
 test('Tier 2 传动 G6a：冰箱离墙东移 0.20m，水吧簇四件跟随；沿墙南移 0.20m 越出短墙域必 fail-closed', () => {
-  const { furnishings, walls, wallSegments } = loadRealConfig();
-  const before = resolveAll(furnishings, walls, wallSegments);
+  const { furnishings, walls, wallSegments, rooms } = loadRealConfig();
+  const before = resolveAll(furnishings, walls, wallSegments, rooms);
   assert.deepEqual(before.diagnostics, [], '基线家具解算须无诊断');
   const fBefore = furnitureMap(before);
   // 沿墙方向 0.20m 不可行：w_gbath_east 全长仅 1.15m，冰箱沿墙域 [0.4165, 0.7335]，
@@ -338,7 +341,7 @@ test('Tier 2 传动 G6a：冰箱离墙东移 0.20m，水吧簇四件跟随；沿
     item.wall_clearance += MOVE;
     return 'wall_clearance';
   });
-  const after = resolveAll(moved, walls, wallSegments);
+  const after = resolveAll(moved, walls, wallSegments, rooms);
   assert.deepEqual(after.diagnostics, [], '移动后家具解算须无诊断');
   const fAfter = furnitureMap(after);
   for (const id of ['ld.fridge', 'ld.waterbar_cabinet', 'ld.dispenser_s1', 'ld.coffee_machine']) {
@@ -347,7 +350,7 @@ test('Tier 2 传动 G6a：冰箱离墙东移 0.20m，水吧簇四件跟随；沿
   for (const id of ['ld.wall_cabinet_tall', 'ld.tv_wall_low', 'ld.plant_fiddle', 'ld.sofa_3seat', 'mb.bedside_cabinet_north', 'bnw.wardrobe_180', 'bnw.desk', 'bnw.chair', 'bese.wardrobe_180', ...UNTOUCHED_FURNITURE]) {
     assertFixed(fBefore, fAfter, id);
   }
-  const restored = resolveAll(furnishings, walls, wallSegments);
+  const restored = resolveAll(furnishings, walls, wallSegments, rooms);
   const fRestored = furnitureMap(restored);
   for (const [id, p] of fBefore) {
     const r = pos(fRestored, id);
@@ -359,7 +362,7 @@ test('Tier 2 传动 G6a：冰箱离墙东移 0.20m，水吧簇四件跟随；沿
     item.along += MOVE;
     return 'along';
   });
-  const rejected = resolveAll(movedAlong, walls, wallSegments);
+  const rejected = resolveAll(movedAlong, walls, wallSegments, rooms);
   const fridgeDiag = rejected.diagnostics.find((d) => d.id === 'ld.fridge');
   assert.ok(fridgeDiag && fridgeDiag.diagnostic.includes('outside wall span'), `冰箱沿墙越界须报 outside wall span，实际：${JSON.stringify(rejected.diagnostics)}`);
   for (const id of ['ld.fridge', 'ld.waterbar_cabinet', 'ld.dispenser_s1', 'ld.coffee_machine']) {
@@ -369,8 +372,8 @@ test('Tier 2 传动 G6a：冰箱离墙东移 0.20m，水吧簇四件跟随；沿
 });
 
 test('Tier 2 传动 G6b：水吧柜相对冰箱南移 0.20m，柜面两件跟随、冰箱不动', () => {
-  const { furnishings, walls, wallSegments } = loadRealConfig();
-  const before = resolveAll(furnishings, walls, wallSegments);
+  const { furnishings, walls, wallSegments, rooms } = loadRealConfig();
+  const before = resolveAll(furnishings, walls, wallSegments, rooms);
   assert.deepEqual(before.diagnostics, [], '基线家具解算须无诊断');
   const fBefore = furnitureMap(before);
   const { moved } = singleDeclarationMove(furnishings, 'living_dining', 'ld.waterbar_cabinet', (item) => {
@@ -378,7 +381,7 @@ test('Tier 2 传动 G6b：水吧柜相对冰箱南移 0.20m，柜面两件跟随
     item.anchor.offset.z += MOVE;
     return 'anchor.offset.z';
   });
-  const after = resolveAll(moved, walls, wallSegments);
+  const after = resolveAll(moved, walls, wallSegments, rooms);
   assert.deepEqual(after.diagnostics, [], '移动后家具解算须无诊断');
   const fAfter = furnitureMap(after);
   for (const id of ['ld.waterbar_cabinet', 'ld.dispenser_s1', 'ld.coffee_machine']) {
@@ -387,7 +390,7 @@ test('Tier 2 传动 G6b：水吧柜相对冰箱南移 0.20m，柜面两件跟随
   for (const id of ['ld.fridge', 'ld.wall_cabinet_tall', 'ld.tv_wall_low', 'ld.plant_fiddle', 'ld.sofa_3seat', 'mb.bedside_cabinet_north', 'bnw.wardrobe_180', 'bnw.desk', 'bnw.chair', 'bese.wardrobe_180', ...UNTOUCHED_FURNITURE]) {
     assertFixed(fBefore, fAfter, id);
   }
-  const restored = resolveAll(furnishings, walls, wallSegments);
+  const restored = resolveAll(furnishings, walls, wallSegments, rooms);
   const fRestored = furnitureMap(restored);
   for (const [id, p] of fBefore) {
     const r = pos(fRestored, id);

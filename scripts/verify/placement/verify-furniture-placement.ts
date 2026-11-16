@@ -2,8 +2,10 @@ import { readFileSync } from 'node:fs';
 import { load as loadYaml } from 'js-yaml';
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { loadCeilingConfig, loadElectricalConfig, loadPlumbingConfig } from '../../../server/config-loader.js';
-import { FURNITURE_DIMS, CONDENSATE_CHAIN_FURNITURE_TYPES, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type FurnitureAnchor, type FurnitureMount, type VanityLayoutDecl } from '../../../shared/types.js';
+import { FURNITURE_DIMS, CONDENSATE_CHAIN_FURNITURE_TYPES, MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE, type FurnishingCutout, type FurnishingSupport, type FurnitureAnchor, type FurnitureMount, type VanityLayoutDecl } from '../../../shared/types.js';
 import { declaredFurnitureDims, furnitureHostIndex, resolveFurniturePlacement, type PlacementAnchors } from '../../../shared/furniture-placement.js';
+import { furnishingBuiltBounds } from '../../../shared/render/FixtureFactory.js';
+import { checkSupport } from '../../../shared/furniture-support.js';
 import { diffCondensateChainPlanAgainstMep, deriveMepPenetrationAt, resolveCondensatePlacementAnchors } from '../../../shared/condensate-chain.js';
 import { endpointSourcesFromFacts, parseMepCoordination, resolveMepRoute } from '../../../shared/mep-hvac-coordination-schema.js';
 import { parseProjectHvacFacts } from '../../../shared/project-render-facts-schema.js';
@@ -21,7 +23,10 @@ interface Aabb {
 }
 
 type WallSide = 'north' | 'south' | 'east' | 'west';
-type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number; wall_clearance?: number; vanity_layout?: VanityLayoutDecl; mount?: FurnitureMount; anchor?: FurnitureAnchor };
+type PlacedItem = { type: string; length?: number; depth?: number; width?: number; x?: number; z?: number; rotation?: number; roomId?: string; wall?: string; wall_side?: WallSide; along?: number; wall_clearance?: number; vanity_layout?: VanityLayoutDecl; mount?: FurnitureMount; anchor?: FurnitureAnchor; support?: FurnishingSupport; cabinetHeight?: number; countertopThickness?: number; cutouts?: FurnishingCutout[] };
+
+// 支撑检查见 shared/furniture-support.ts（纯函数，测试在
+// tests/server/furniture-support.test.ts）；本文件只负责把建模包络传进去。
 
 // 2026-11-13 issue #116：底柜 + 双悬浮板 + PVC 包管已删，由通顶定制柜 mb_full_height_cabinet
 // 取代（同墙 w_mbath_east 西侧、朝西、rotation 270、沿墙锚点；包络目标 x[1.960,2.525] z[2.920,4.300] 不变）。
@@ -207,6 +212,9 @@ function main(): void {
     wallSegments,
     hosts,
   });
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；`room` 条目由
+  // 西北角 + 偏移推出。不传时房间相对条目诊断失败（不回落绝对坐标）。
+  anchors.rooms = rooms;
   const condensateChain = anchors.condensateChain;
   for (const diagnostic of chainDiagnostics) errors.push(`condensate chain: ${diagnostic}`);
   // （二阶段 S1）批量家具解算诊断：buildPlacementIndexes 一次解出全部家具（与逐件
@@ -270,9 +278,15 @@ function main(): void {
 
       const box = itemAabb(item, placed.x, placed.z, rotation);
       if (!box) {
-        warnings.push(`${label}: no dims in FURNITURE_DIMS, bounds checks skipped`);
+        // 2026-11-16 DDD 模型约束：尺寸缺失已是摆位解算诊断（shared/furniture-placement.ts），
+        // 能走到这里说明解算器漏放——按 error 显形，不再 warning 后跳过（此前该件的重叠/
+        // 包络/门扇检查会被静默跳过）。
+        errors.push(`${label}: no dims in FURNITURE_DIMS, bounds checks cannot run (resolver should have rejected this item)`);
         return;
       }
+
+      // 支撑检查（2026-11-16 DDD 模型约束）：建模竖向包络须符合支撑声明（见 checkSupport）。
+      checkSupport(label, item.support, furnishingBuiltBounds(item), hosts, errors);
 
       const anchoredVanity = MB_VANITY_TYPES.has(item.type) && item.wall === 'w_mbath_east' && item.wall_side === 'west';
       if (!anchoredVanity && (box.minX < roomBounds.minX - EPS || box.maxX > roomBounds.maxX + EPS ||

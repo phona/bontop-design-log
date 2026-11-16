@@ -37,6 +37,9 @@ function loadRealConfig() {
   const furnishings = house.furnishings ?? {};
   const catalog = ProjectCatalog.load('.');
   const walls = catalog.getWalls();
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；不传时 7 件
+  // 房间相对家具诊断失败（不回落绝对坐标）。
+  const rooms = new Map(catalog.getRooms().map((room) => [room.id, room]));
   const wallSegments = new Map<string, any[]>();
   for (const wall of walls) {
     const key = wall.id ?? '';
@@ -44,13 +47,13 @@ function loadRealConfig() {
     list.push(wall);
     wallSegments.set(key, list);
   }
-  return { furnishings, walls, wallSegments };
+  return { furnishings, walls, wallSegments, rooms };
 }
 
-function resolveAll(furnishings: FurnishingsYaml, walls: ReturnType<ProjectCatalog['getWalls']>, wallSegments: Map<string, any[]>) {
+function resolveAll(furnishings: FurnishingsYaml, walls: ReturnType<ProjectCatalog['getWalls']>, wallSegments: Map<string, any[]>, rooms: ReadonlyMap<string, { x: number; z: number; width: number; depth: number }>) {
   const items = Object.values(furnishings).flat();
-  const { placements, diagnostics } = resolveFurniturePlacements(items, wallSegments as any);
-  const { pointWalls, mountHosts } = buildPlacementIndexes({ geometry: { walls }, furnishings });
+  const { placements, diagnostics } = resolveFurniturePlacements(items, wallSegments as any, { rooms });
+  const { pointWalls, mountHosts } = buildPlacementIndexes({ geometry: { walls }, furnishings, anchors: { rooms } });
   const points = new Map<string, { x: number; z: number }>();
   const pointDiagnostics: string[] = [];
   for (const pt of loadElectricalConfig()) {
@@ -117,8 +120,8 @@ function moveExperiment(
   fixed: string[],
   movedDelta: { dx: number; dz: number },
 ) {
-  const { furnishings, walls, wallSegments } = loadRealConfig();
-  const before = resolveAll(furnishings, walls, wallSegments);
+  const { furnishings, walls, wallSegments, rooms } = loadRealConfig();
+  const before = resolveAll(furnishings, walls, wallSegments, rooms);
   assert.deepEqual(before.diagnostics, [], '基线家具解算须无诊断');
   assert.deepEqual(before.pointDiagnostics, [], '基线点位解算须无诊断');
 
@@ -131,7 +134,7 @@ function moveExperiment(
   const index = furnishings[room].findIndex((i) => i.id === movedId);
   assert.deepEqual(changed, [`${room}.${index}.along`], '实验只能改动一处声明');
 
-  const after = resolveAll(moved, walls, wallSegments);
+  const after = resolveAll(moved, walls, wallSegments, rooms);
   assert.deepEqual(after.diagnostics, [], '移动后家具解算须无诊断');
   assert.deepEqual(after.pointDiagnostics, [], '移动后点位解算须无诊断');
 

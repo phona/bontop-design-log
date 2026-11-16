@@ -154,7 +154,7 @@ describe('正式交付路径保持失败（严格输出：同样断引用，DXF 
       house: {
         electrical: [BROKEN_POINT],
         furnishings: {
-          living_dining: [{ id: 'ld.real_table', type: 'desk', x: 1, z: 1, width: 1.2, depth: 0.6, rotation: 0 }],
+          living_dining: [{ id: 'ld.real_table', type: 'desk', x: 1, z: 1, width: 1.2, depth: 0.6, rotation: 0, support: { kind: 'floor' } }],
         },
         sceneElements: [],
       },

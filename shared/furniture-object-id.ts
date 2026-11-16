@@ -17,7 +17,7 @@ export function furnitureObjectId(roomId: string, item: Pick<FurnishingItem, 'id
 }
 
 /** 条目摆位方式（与 shared/furniture-placement.ts 的四种定位声明 + count-only 一一对应）。 */
-export type FurniturePlacementKind = 'mount' | 'wall' | 'anchor' | 'absolute' | 'count_only';
+export type FurniturePlacementKind = 'mount' | 'wall' | 'anchor' | 'absolute' | 'room' | 'count_only';
 
 export interface DeclaredFurnitureIdEntry {
   id: string;
@@ -53,9 +53,11 @@ export function collectDeclaredFurnitureIds(furnishings: FurnishingsYaml): Decla
           ? 'wall'
           : item.anchor
             ? 'anchor'
-            : (item.x !== undefined || item.z !== undefined)
-              ? 'absolute'
-              : 'count_only';
+            : item.room !== undefined
+              ? 'room'
+              : (item.x !== undefined || item.z !== undefined)
+                ? 'absolute'
+                : 'count_only';
       entries.push({
         id: item.id,
         roomId,

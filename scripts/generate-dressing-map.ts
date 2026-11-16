@@ -123,6 +123,9 @@ export function loadDressingMapContext(): DressingMapContext {
   const furnishings = house.furnishings ?? {};
   const catalog = ProjectCatalog.load('.');
   const walls = catalog.getWalls();
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；`room` 条目由
+  // 西北角 + 偏移推出。不传时房间相对条目诊断失败（不回落绝对坐标）。
+  const rooms = new Map(catalog.getRooms().map((room) => [room.id, room]));
   const wallSegments = new Map<string, WallLike[]>();
   for (const wall of walls) {
     const key = wall.id ?? '';
@@ -132,7 +135,7 @@ export function loadDressingMapContext(): DressingMapContext {
   }
   const hosts = furnitureHostIndex(Object.values(furnishings).flat());
   // 点位/家具宿主索引单一产地（issue #98 疗法②）：生产消费方与脚本同一条构造。
-  const { pointWalls, mountHosts } = buildPlacementIndexes({ geometry: { walls }, furnishings });
+  const { pointWalls, mountHosts } = buildPlacementIndexes({ geometry: { walls }, furnishings, anchors: { rooms } });
 
   const hvacFacts = parseProjectHvacFacts(readFileSync('config/hvac.yaml', 'utf8'));
   const electrical = loadElectricalConfig();
@@ -159,6 +162,7 @@ export function loadDressingMapContext(): DressingMapContext {
     wallSegments,
     hosts,
   });
+  anchors.rooms = rooms;
   return {
     furnishings,
     electrical,

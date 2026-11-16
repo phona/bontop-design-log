@@ -665,7 +665,7 @@ test('project-dxf: 协调示意家具不进 A-FURN，告警显形（codex 十一
   input.house.furnishings = {
     master_bedroom: [
       { type: 'mb_vanity_pvc_wardrobe_entry', x: 4.10, z: 4.62 }, // 端点锚，居中会漂移
-      { type: 'bed_150', x: 1, z: 1 },
+      { type: 'bed_150', x: 1, z: 1, support: { kind: 'floor' } },
     ],
   };
   const result = buildProjectDxf(input);
@@ -708,7 +708,7 @@ test('project-dxf: electrical 缺省时 E-* 为空 + D-NOTE + 告警，不缓存
 
 test('project-dxf: furnishings 缺省时 A-FURN 为空 + D-NOTE + 告警（codex 十四审 blocking）', () => {
   const input = baseInput();
-  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', x: 1, z: 1 }] };
+  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', x: 1, z: 1, support: { kind: 'floor' } }] };
   const withData = buildProjectDxf(input);
   assert.ok(withData.stats[DXF_LAYERS.FURN[0]] > 0);
   const input2 = baseInput();
@@ -723,7 +723,7 @@ test('project-dxf: furnishings 缺省时 A-FURN 为空 + D-NOTE + 告警（codex
 test('project-dxf: length 型家具外框用显式 length，不吃目录宽（codex 十六审 major）', () => {
   const input = baseInput();
   // bath_side_cabinet 目录宽 0.45；显式 length 0.90 / depth 0.50 → 外框应为 900×500mm
-  input.house.furnishings = { master_bedroom: [{ type: 'bath_side_cabinet', x: 1, z: 1, length: 0.90, depth: 0.50 }] };
+  input.house.furnishings = { master_bedroom: [{ type: 'bath_side_cabinet', x: 1, z: 1, length: 0.90, depth: 0.50, support: { kind: 'floor' } }] };
   const result = buildProjectDxf(input);
   const furnLines = linesOn(parseEntities(result.dxf), DXF_LAYERS.FURN[0]);
   // 旋转 0：矩形四边中应存在跨越 900mm 的水平边与 500mm 的竖直边
@@ -818,7 +818,7 @@ test('project-dxf: 墙锚家具按细分段参照（与 3D 同口径，codex 二
     { x1: 0, z1: 0, x2: 1, z2: 0 },
     { x1: 1, z1: 0, x2: 4, z2: 0 },
   ];
-  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 2.0 }] };
+  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 2.0, support: { kind: 'floor' } }] };
   const result = buildProjectDxf(input);
   assert.equal(result.stats[DXF_LAYERS.FURN[0]], undefined);
   // 越界锚定必须显形为摆位诊断（导出失败），不是静默跳过。
@@ -829,7 +829,7 @@ test('project-dxf: 墙锚家具按细分段参照（与 3D 同口径，codex 二
     { x1: 0, z1: 0, x2: 2, z2: 0 },
     { x1: 2, z1: 0, x2: 4, z2: 0 },
   ];
-  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 1.0 }] };
+  input.house.furnishings = { master_bedroom: [{ type: 'bed_150', wall: 'w_north', wall_side: 'south', along: 1.0, support: { kind: 'floor' } }] };
   const result2 = buildProjectDxf(input);
   assert.ok((result2.stats[DXF_LAYERS.FURN[0]] ?? 0) > 0);
   assert.deepEqual(result2.errors, []);
@@ -944,7 +944,7 @@ test('project-dxf: 玻璃线旁落地家具——墙只在 anchorWalls 时照常
     house: {
       rooms: [],
       furnishings: {
-        test: [{ type: 'shelf', id: 't.shelf', wall: 'w_glass', wall_side: 'south', along: 1.0, wall_clearance: 0 }],
+        test: [{ type: 'shelf', id: 't.shelf', wall: 'w_glass', wall_side: 'south', along: 1.0, wall_clearance: 0, support: { kind: 'floor' } }],
       },
       electrical: [],
       ceilingZones: [],
@@ -966,7 +966,7 @@ test('project-dxf: anchorWalls 缺省时玻璃线墙锚仍 fail-closed（回落�
     house: {
       rooms: [],
       furnishings: {
-        test: [{ type: 'shelf', id: 't.shelf', wall: 'w_glass', wall_side: 'south', along: 1.0, wall_clearance: 0 }],
+        test: [{ type: 'shelf', id: 't.shelf', wall: 'w_glass', wall_side: 'south', along: 1.0, wall_clearance: 0, support: { kind: 'floor' } }],
       },
       electrical: [],
       ceilingZones: [],

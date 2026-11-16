@@ -26,6 +26,7 @@ function wallCabinet(id: string, along: number) {
     width: 0.4,
     depth: 0.3,
     rotation: 0,
+    support: { kind: 'floor' as const },
   };
 }
 
@@ -70,12 +71,13 @@ test('D：阶段外宿主锚点仍解出——电视只在 furnishingsAll，锚�
   const { buildScene } = await import('../../shared/render/SceneBuilder.js');
   // Codex 修复轮 blocking 的复现形状：批量解算（全量宿主）得 (11, 7.7) 且无诊断，
   // 过滤后的逐件解算曾报 anchor host not found 并跳过沙发。
-  const tv = { id: 'test.tv', type: 'tv_65', x: 11, z: 8.0, rotation: 270 };
+  const tv = { id: 'test.tv', type: 'tv_65', x: 11, z: 8.0, rotation: 270, support: { kind: 'wall' as const, bottom: 1.1 } };
   const sofa = {
     id: 'test.sofa',
     type: 'sofa_3seat',
     anchor: { source: 'furniture' as const, id: 'test.tv', offset: { x: 0, z: -0.3 } },
     rotation: 270,
+    support: { kind: 'floor' as const },
   };
   const result = buildScene({
     rooms: ROOMS,
@@ -138,9 +140,9 @@ function chainInputs(options: { withPenetration?: boolean } = {}) {
   } as unknown as HvacDiagram;
   const furnishings = {
     master_bedroom: [
-      { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 },
+      { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0, support: { kind: 'floor' as const } },
       { type: 'condensate_pipe_ac_outlet', id: 'mb.condensate_pipe', anchor: { source: 'hvac' as const, id: 'indoor_master' }, rotation: 0 },
-      { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270 },
+      { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west' as const, along: 2.60, rotation: 270, support: { kind: 'floor' as const } },
       { type: 'mb_vanity_pvc_wardrobe_entry', id: 'mb.vanity_pvc_wardrobe_entry', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
       { type: 'mb_vanity_pvc_service_chase', id: 'mb.vanity_pvc_service_chase', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
     ],

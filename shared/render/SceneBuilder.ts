@@ -1645,6 +1645,9 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
     input.options,
     report,
   );
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入，`room` 条目由
+  // 西北角 + 偏移推出；不传时房间相对条目诊断失败（不回落绝对坐标）。
+  sceneAnchors.rooms = new Map(input.rooms.map((room) => [room.id, room]));
   // 点位定位索引走 shared/placement-indexes.ts 单一产地（issue #98 疗法②）：pointWalls 用
   // 本次建场的墙几何，mountHosts 用全量 furnishings——与 DXF/MEP/lint/闭合性断言同一构造。
   const placementIndexes = buildPlacementIndexes({
@@ -1656,10 +1659,10 @@ export function buildScene(input: SceneBuilderInput): SceneBuildResult {
   index.mountHosts = placementIndexes.mountHosts;
   const placedFurnitureKeys = new Set(
     Object.entries(furnishings).flatMap(([roomId, items]) => items
-      // placed = 有世界位置的实例（x/z 绝对、wall 墙锚、mount/anchor 派生均算）。
+      // placed = 有世界位置的实例（x/z 绝对、wall 墙锚、mount/anchor/room 派生均算）。
       // #98 Tier 1：旧口径只认 x/z，已迁移的墙锚洗衣机不再「拥有」对应 plumbing 点，
       // 洗烘点位会被重复建模（今天无 washer 型 plumbing 点，属潜伏缺口）。
-      .filter((item) => (item.x !== undefined && item.z !== undefined) || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined)
+      .filter((item) => (item.x !== undefined && item.z !== undefined) || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined || item.room !== undefined)
       .map((item) => `${roomId}:${item.type}`)),
   );
   // Plumbing points remain in the index/report contract, but a placed furnishing

@@ -108,7 +108,7 @@ function main(): void {
         rooms: inputs.layout.rooms.length,
         walls: inputs.layout.walls.length,
         suppressedWalls: [...new Set(inputs.suppressIds)].length,
-        placedFurniture: Object.values(inputs.house.furnishings ?? {}).flat().filter((item) => item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined).length,
+        placedFurniture: Object.values(inputs.house.furnishings ?? {}).flat().filter((item) => item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined || item.room !== undefined).length,
         runtimeObjects: collected
           ? { furniture: collected.furniture.length, walls: collected.walls.length, glass: collected.glass.length, ceilings: collected.ceilings.length }
           : null,

@@ -238,7 +238,7 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     rooms: [{ id: 'master_bedroom', name: '主卧', x: 2.1, z: 5.55, width: 4.2, depth: 4.25, height: 2.8, type: 'private', boundary_count: 4 }],
     walls: [{ id: 'w_mbath_east', x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3, height: 2.8 }],
     elements: [],
-    furnishings: { master_bedroom: types.map((type) => ({ type, ...(type === 'mb_vanity_base_cabinet' ? {} : { width: 1.38, depth: 0.565 }), wall: 'w_mbath_east', wall_side: 'west' as const, along, rotation: 270 })) },
+    furnishings: { master_bedroom: types.map((type) => ({ type, ...(type === 'mb_vanity_base_cabinet' ? {} : { width: 1.38, depth: 0.565 }), wall: 'w_mbath_east', wall_side: 'west' as const, along, rotation: 270, support: { kind: 'floor' as const } })) },
   });
   const groups = result.index.furnitureMeshes.filter((group) => types.includes(String(group.userData.objectId).split(':')[2]));
   assert.equal(groups.length, types.length);
@@ -299,10 +299,10 @@ test('FixtureFactory builds the master-bedroom vanity types as independent scene
     elements: [],
     furnishings: {
       master_bedroom: [
-        { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0 },
+        { type: 'master_north_wall_wardrobe_950', id: 'mb.wardrobe_950', x: 2.45, z: 4.59, rotation: 0, support: { kind: 'floor' } },
         { type: 'condensate_pipe_ac_outlet', id: 'mb.condensate_pipe', anchor: { source: 'hvac' as const, id: 'indoor_master' }, rotation: 0 },
         // along 2.60 = 沿墙距离（自 v_bath_ne z=1.10 起算）→ 世界 z=3.70（管行 z[3.10,4.30] 中点）。
-        { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west', along: 2.60, rotation: 270 },
+        { type: 'mb_vanity_pvc_box', id: 'mb.vanity_pvc_box', wall: 'w_mbath_east', wall_side: 'west', along: 2.60, rotation: 270, support: { kind: 'floor' } },
         { type: 'mb_vanity_pvc_wardrobe_entry', id: 'mb.vanity_pvc_wardrobe_entry', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
         { type: 'mb_vanity_pvc_service_chase', id: 'mb.vanity_pvc_service_chase', anchor: { source: 'chain' as const, id: 'wardrobe_east_band' }, rotation: 0 },
       ],
@@ -745,7 +745,7 @@ test('shared SceneBuilder builds rooms, split walls, overlays, ceiling zones, an
     walls: [{ id: 'wall:test', x1: 0, z1: 0, x2: 4, z2: 0, height: 2.8 }],
     elements,
     ceilingZones: [{ id: 'drop', room: 'room', type: 'drop', thickness: 0.12, area: [0.5, 0.5, 2.5, 2.5] }],
-    furnishings: { room: [{ type: 'bed_150', x: 2, z: 2, rotation: 90 }, { type: 'not-a-fixture', x: 1, z: 1 }] },
+    furnishings: { room: [{ type: 'bed_150', x: 2, z: 2, rotation: 90, support: { kind: 'floor' } }, { type: 'not-a-fixture', x: 1, z: 1 }] },
   });
 
   assert.equal(result.scene.getObjectByName('HOUSE_EXPORT'), result.exportRoot);
@@ -758,7 +758,11 @@ test('shared SceneBuilder builds rooms, split walls, overlays, ceiling zones, an
   assert.equal(result.report.walls, 2);
   assert.equal(result.report.ceilingZones, 1);
   assert.equal(result.report.furniture, 1);
-  assert.deepEqual(result.report.skippedFurniture, ['room:not-a-fixture']);
+  // not-a-fixture 无 DIMS、无配方：2026-11-16 DDD 模型约束起在解算器即失败（无尺寸），
+  // 进 placementDiagnostics（定位失败通道），不再是「解出后无配方」的 skippedFurniture。
+  assert.deepEqual(result.report.skippedFurniture, []);
+  assert.ok(result.report.placementDiagnostics.some((line) => line.includes('not-a-fixture') && line.includes('no width/depth')),
+    `not-a-fixture 须因无 DIMS 进 placementDiagnostics，实得：${JSON.stringify(result.report.placementDiagnostics)}`);
   assert.equal(result.index.curtains.size, 0);
   assert.equal(result.index.curtainRuns.size, 0);
   assert.equal(result.index.lintels.get('wall:test')?.length, 1);
@@ -808,9 +812,9 @@ test('shared SceneBuilder keeps long furniture child names bounded and role-read
     elements: [],
     furnishings: {
       kitchen: [
-        { type: 'sink', x: 9.5, z: 0.3 },
-        { type: 'gas_stove', x: 10.5, z: 1.18 },
-        { type: 'dishwasher', x: 8.8, z: 0.3 },
+        { type: 'sink', x: 9.5, z: 0.3, support: { kind: 'inset', host: 'kitchen.cabinet_run_north_east', surface: 0.89 } },
+        { type: 'gas_stove', x: 10.5, z: 1.18, support: { kind: 'inset', host: 'kitchen.cabinet_run_north_east', surface: 0.89 } },
+        { type: 'dishwasher', x: 8.8, z: 0.3, support: { kind: 'floor' } },
       ],
     },
   });
@@ -836,7 +840,7 @@ test('shared SceneBuilder places towel_set with stable metadata and local bounds
     rooms: [],
     walls: [],
     elements: [],
-    furnishings: { master_bath: [{ type: 'towel_set', x: 0.24, z: 2.23, rotation: 0 }] },
+    furnishings: { master_bath: [{ type: 'towel_set', x: 0.24, z: 2.23, rotation: 0, support: { kind: 'wall', bottom: 0.825 } }] },
   });
   const towelSet = result.exportRoot.getObjectByName('furniture:master_bath:towel_set:0');
   assert.ok(towelSet);
@@ -861,8 +865,8 @@ test('shared SceneBuilder deduplicates placed toilet and washer geometry against
     walls: [],
     elements: [],
     furnishings: {
-      master_bath: [{ type: 'toilet', x: 2.3, z: 1.5 }],
-      balcony: [{ type: 'washer', x: 5.95, z: 1.5 }],
+      master_bath: [{ type: 'toilet', x: 2.3, z: 1.5, support: { kind: 'floor' } }],
+      balcony: [{ type: 'washer', x: 5.95, z: 1.5, support: { kind: 'floor' } }],
     },
     plumbing: [
       { id: 'toilet-point', room: 'master_bath', type: 'toilet', x: 2.6, z: 1.5 },
@@ -1372,8 +1376,8 @@ test('kitchen countertop cutouts preserve the outer slab and rotate with the fur
     elements: [],
     furnishings: {
       kitchen: [
-        { type: 'kitchen_cabinet_run', x: 0, z: 0, rotation: 0, length: 1.68, depth: 0.6, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [cutout] },
-        { type: 'kitchen_cabinet_run', x: 10.48, z: 1, rotation: 90, length: 1.4, depth: 0.6, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: 'cooktop', id: 'cooktop-test', offset: [-0.18, 0.02] as [number, number], size: [0.45, 0.75] as [number, number] }] },
+        { type: 'kitchen_cabinet_run', x: 0, z: 0, rotation: 0, length: 1.68, depth: 0.6, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [cutout], support: { kind: 'floor' } },
+        { type: 'kitchen_cabinet_run', x: 10.48, z: 1, rotation: 90, length: 1.4, depth: 0.6, cabinetHeight: 0.86, countertopThickness: 0.03, cutouts: [{ kind: 'cooktop', id: 'cooktop-test', offset: [-0.18, 0.02] as [number, number], size: [0.45, 0.75] as [number, number] }], support: { kind: 'floor' } },
       ],
     },
   });
@@ -1406,9 +1410,9 @@ test('kitchen countertop bridge is countertop-only and closes the dishwasher gap
     elements: [],
     furnishings: {
       kitchen: [
-        { type: 'kitchen_cabinet_run', x: 7.86, z: 0.32, rotation: 0, length: 1.28, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 },
-        { type: 'kitchen_countertop_bridge', x: 8.80, z: 0.32, rotation: 0, length: 0.60, depth: 0.60, countertopThickness: 0.03 },
-        { type: 'kitchen_cabinet_run', x: 9.94, z: 0.32, rotation: 0, length: 1.68, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03 },
+        { type: 'kitchen_cabinet_run', x: 7.86, z: 0.32, rotation: 0, length: 1.28, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, support: { kind: 'floor' } },
+        { type: 'kitchen_countertop_bridge', x: 8.80, z: 0.32, rotation: 0, length: 0.60, depth: 0.60, countertopThickness: 0.03, support: { kind: 'furniture', host: ['kitchen.cabinet_run_north_west', 'kitchen.cabinet_run_north_east'], surface: 0.86 } },
+        { type: 'kitchen_cabinet_run', x: 9.94, z: 0.32, rotation: 0, length: 1.68, depth: 0.60, cabinetHeight: 0.86, countertopThickness: 0.03, support: { kind: 'floor' } },
       ],
     },
   });

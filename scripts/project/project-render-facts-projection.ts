@@ -27,9 +27,11 @@ export function buildProjectRenderFactsFromFiles(rootDir = '.'): ProjectRenderFa
   validateProjectHvacFacts(facts.hvac, facts);
   // 宿主墙 + mount 家具宿主索引（issue #98 S3/S2）：与 3D/DXF/MEP/penetration 同一构造，
   // 一律取 buildPlacementIndexes 产物（家具由共享解算一次解出，不再直读手写 x/z）。
+  const renderFactsLayout = resolveLayout(parseYaml(readFileSync(path('config/layout/model-geometry.yaml'), 'utf-8')) as VertexLayoutYaml);
   const renderFactsIndexes = buildPlacementIndexes({
-    geometry: { walls: resolveLayout(parseYaml(readFileSync(path('config/layout/model-geometry.yaml'), 'utf-8')) as VertexLayoutYaml).walls },
+    geometry: { walls: renderFactsLayout.walls },
     furnishings: (parseYaml(readFileSync(path('config/house.yaml'), 'utf8')) as { furnishings?: FurnishingsYaml }).furnishings ?? {},
+    anchors: { rooms: new Map(renderFactsLayout.rooms.map((room) => [room.id, room])) },
   });
   return buildProjectRenderFactsProjection(
     facts,

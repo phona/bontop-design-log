@@ -334,9 +334,12 @@ export function loadSceneInputs(options: LoadSceneOptions = {}): SceneInputs {
 /** 构建 runtime 场景。抛错即调用方出口，这里不吞。 */
 export function buildRuntimeScene(inputs: SceneInputs): ReturnType<typeof buildScene> {
   // 点位定位索引单一产地（issue #98 疗法②）：墙取 layout.walls，宿主取全量 house.furnishings。
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入，否则 `room` 条目
+  // 在本批解算中失败（不回落绝对坐标）。
   const placementIndexes = buildPlacementIndexes({
     geometry: inputs.layout,
     furnishings: inputs.house.furnishings,
+    anchors: { rooms: new Map(inputs.layout.rooms.map((room) => [room.id, room])) },
   });
   return buildScene({
     rooms: inputs.layout.rooms,

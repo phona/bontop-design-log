@@ -343,10 +343,10 @@ export class ProjectCatalog {
     if (!items) return {};
     const counts: Record<string, number> = {};
     for (const item of items) {
-      // placed = 有世界位置的实例（x/z 绝对、wall 墙锚、mount/anchor 派生均算 1 件；
+      // placed = 有世界位置的实例（x/z 绝对、wall 墙锚、mount/anchor 派生、room 房间相对均算 1 件；
       // 无 placement 声明的 count-only 条目按 item.count 计）。#98 Tier 1：旧口径只认
       // x/z，会把已迁移的墙锚/锚点家具误当 count-only（有 count 时多计）。
-      const placed = (item.x !== undefined && item.z !== undefined) || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined;
+      const placed = (item.x !== undefined && item.z !== undefined) || item.wall !== undefined || item.mount !== undefined || item.anchor !== undefined || item.room !== undefined;
       counts[item.type] = (counts[item.type] ?? 0) + (placed ? 1 : (item.count ?? 1));
     }
     return counts;
@@ -452,7 +452,7 @@ export class ProjectCatalog {
     // 本方法目前无生产调用方，但详情输出是外部消费口径）。解不出的条目（诊断在
     // furnitureDiagnostics）不在此列：verify:furniture 是其显形通道，与 verify-spatial
     // 的 validateFurnitureFaceMounts 同口径。
-    const { mountHosts } = buildPlacementIndexes({ geometry: { walls: this.walls }, furnishings: this.furnishings });
+    const { mountHosts } = buildPlacementIndexes({ geometry: { walls: this.walls }, furnishings: this.furnishings, anchors: { rooms: this.rooms } });
     const items = this.furnishings[roomId] ?? [];
     const placed = items
       .flatMap((i, runtimeIndex) => {

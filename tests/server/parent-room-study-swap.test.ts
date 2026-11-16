@@ -20,6 +20,7 @@ type Furnishing = {
   // 摆位声明字段（定位形式）：resolveRoom() 剥离，deepEqual 不钉定位形式。
   wall?: string; wall_side?: string; along?: number; wall_clearance?: number;
   anchor?: unknown; mount?: unknown;
+  support?: unknown; room?: string; room_dx?: number; room_dz?: number;
 };
 type Aabb = { minX: number; maxX: number; minZ: number; maxZ: number };
 
@@ -28,9 +29,12 @@ const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: 
 // 全屋家具一次解算（#98 Tier 1）：关系化家具的坐标取 buildPlacementIndexes 的解算结果
 // （与 3D/DXF/verify 同源）；绝对家具的解算值与声明一致。resolveRoom() 把解算坐标覆盖
 // 进声明、剥离摆位声明字段，几何测试只断言几何身份、不因迁移改表达形式而逐条改期望值。
+// 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入。
+const STUDY_LAYOUT = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
 const STUDY_FURNITURE_HOSTS = buildPlacementIndexes({
-  geometry: { walls: resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml).walls },
+  geometry: { walls: STUDY_LAYOUT.walls },
   furnishings: house.furnishings as unknown as FurnishingsYaml,
+  anchors: { rooms: new Map(STUDY_LAYOUT.rooms.map((room) => [room.id, room])) },
 }).mountHosts;
 
 function resolveRoom(items: Furnishing[]): Furnishing[] {
@@ -40,7 +44,7 @@ function resolveRoom(items: Furnishing[]): Furnishing[] {
     const host = STUDY_FURNITURE_HOSTS?.get(item.id);
     assert.ok(host !== undefined && Number.isFinite(host.x) && Number.isFinite(host.z),
       `${item.id}: 家具摆位解算失败（无宿主或坐标非有限数）`);
-    const { wall: _wall, wall_side: _wallSide, along: _along, wall_clearance: _clearance, anchor: _anchor, mount: _mount, ...geometry } = item;
+    const { wall: _wall, wall_side: _wallSide, along: _along, wall_clearance: _clearance, anchor: _anchor, mount: _mount, support: _support, room: _room, room_dx: _roomDx, room_dz: _roomDz, ...geometry } = item;
     return { ...geometry, x: round9(host.x as number), z: round9(host.z as number) };
   });
 }

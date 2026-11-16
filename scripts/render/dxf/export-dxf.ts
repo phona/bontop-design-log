@@ -27,7 +27,7 @@ function main(): void {
 
   const mepConfig = loadMepCoordinationConfig();
   // 点位宿主墙索引：MEP 路线端点与 E-*/P-POINTS 出图共用 buildPlacementIndexes 单一产地。
-  const dxfIndexes = buildPlacementIndexes({ geometry: { walls: catalog.getWalls() }, furnishings: catalog.getFurnishings() });
+  const dxfIndexes = buildPlacementIndexes({ geometry: { walls: catalog.getWalls() }, furnishings: catalog.getFurnishings(), anchors: { rooms: new Map(catalog.getRooms().map((room) => [room.id, room])) } });
   const mepSources = endpointSourcesFromFacts(facts, dxfIndexes.pointWalls, dxfIndexes.mountHosts);
   // 点位 → 回路 单一派生（issue #98 S3）：图上「点位属于哪条回路」的标注源。点位侧 circuit
   // 字段已退役，只认 topology 的 member_point_ids + controls。

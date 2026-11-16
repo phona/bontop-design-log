@@ -90,7 +90,9 @@ function main(): void {
   // 解算失败即 error 显形，不兜底、不跳过。
   const houseForMountHosts = yaml.load(fs.readFileSync('config/house.yaml', 'utf-8')) as { furnishings?: FurnishingsYaml };
   // （二阶段 S1）宿主索引一律取 buildPlacementIndexes 产物（家具由共享解算一次解出）。
-  const rulesIndexes = buildPlacementIndexes({ geometry: { walls }, furnishings: houseForMountHosts.furnishings ?? {} });
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；不传时 7 件
+  // 房间相对家具诊断失败（不回落绝对坐标），[furniture] 校验随之 error。
+  const rulesIndexes = buildPlacementIndexes({ geometry: { walls }, furnishings: houseForMountHosts.furnishings ?? {}, anchors: { rooms: roomMap } });
   const pointWalls = rulesIndexes.pointWalls;
   const mountHosts = rulesIndexes.mountHosts;
   for (const [source, items] of [['electrical', electrical], ['plumbing', plumbing]] as const) {

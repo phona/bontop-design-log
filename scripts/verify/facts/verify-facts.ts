@@ -119,7 +119,7 @@ const mepEndpoints: Record<string, { x: number; z: number; y?: number }> = {};
 // （二阶段 S1）点位宿主墙索引（S1）与 mount 家具宿主索引（S2）一律取 buildPlacementIndexes
 // 产物，与 verify:mep 同一解算；家具解算诊断由 verify:furniture 门禁负责，本文件不重复计入。
 const factsCatalog = ProjectCatalog.load('.');
-const factsPlacementIndexes = buildPlacementIndexes({ geometry: { walls: factsCatalog.getWalls() }, furnishings: factsCatalog.getFurnishings() });
+const factsPlacementIndexes = buildPlacementIndexes({ geometry: { walls: factsCatalog.getWalls() }, furnishings: factsCatalog.getFurnishings(), anchors: { rooms: new Map(factsCatalog.getRooms().map((room) => [room.id, room])) } });
 const mepSources = mepDocs.length ? endpointSourcesFromFacts({
   electrical: mepDocs[0].doc,
   plumbing: mepDocs[1].doc,

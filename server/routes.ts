@@ -317,6 +317,7 @@ export function createApiRouter(deps: ApiDeps): Router {
       const placementIndexes = buildPlacementIndexes({
         geometry: { walls: deps.catalog.getWalls() },
         furnishings: deps.catalog.getFurnishings(),
+        anchors: { rooms: new Map(deps.catalog.getRooms().map((room) => [room.id, room])) },
       });
       const sources = endpointSourcesFromFacts(facts, placementIndexes.pointWalls, placementIndexes.mountHosts);
       validateMepCoordination(config, sources);
@@ -730,6 +731,7 @@ export function createApiRouter(deps: ApiDeps): Router {
     const { mountHosts } = buildPlacementIndexes({
       geometry: { walls: projectCatalog.getWalls() },
       furnishings: furnishingsAll,
+      anchors: { rooms: new Map(projectCatalog.getRooms().map((room) => [room.id, room])) },
     });
     // 交付闭合性检查（PR #122 §一.1）：任何被交付点位声明的物理宿主必须存在于定位宿主表。
     // **宽容读取**（issue #98，PR #122 深审 high 修复）：/api/project 是页面预览入口，不是

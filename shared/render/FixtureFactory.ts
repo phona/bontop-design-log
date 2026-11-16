@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
-import type { FurnishingCutout, VanityLayout } from '../types.js';
+import { FURNITURE_DIMS, type FurnishingCutout, type FurnishingItem, type VanityLayout } from '../types.js';
+import { resolveVanityLayout } from '../furniture-placement.js';
 import { CHAIN_SCHEMATIC_Y, CONDENSATE_CHAIN_FURNITURE_TYPES, type CondensateChainGeometry } from '../condensate-chain.js';
 
 interface FixturePart {
@@ -1047,9 +1048,12 @@ const FIXTURE_RECIPES: FixtureRecipe[] = [
     ],
   },
   {
+    // 2026-11-16 DDD 模型约束：洗衣机底 0.4775→0.425（0.85m 机身落地，底 0.0525→0）。
+    // 旧值底缘悬空 52.5mm 且与烘干机支架口径冲突（烘干机注释「y 0.88 起」，旧机顶 0.9025
+    // 会顶入烘干机 22.5mm；修后机顶 0.85，支架 0.85–0.88，烘干机底 0.88，链条自洽）。
     type: 'washer',
     parts: [
-      { shape: 'box', size: [0.60, 0.85, 0.60], position: [0, 0.4775, 0], color: '#eeeeee', roughness: 0.4 },
+      { shape: 'box', size: [0.60, 0.85, 0.60], position: [0, 0.425, 0], color: '#eeeeee', roughness: 0.4 },
     ],
   },
   // ── 电器（house.yaml furnishings，2026-08-23 补缺员）──
@@ -1575,6 +1579,67 @@ export function buildFixture(type: string): THREE.Group | null {
     addPart(group, type, index, { ...part, position: [x, y + recipe.offsetY, z] });
   });
   return group;
+}
+
+/**
+ * 为一件 furnishing 建出 3D 模型（与 SceneBuilder.buildFurniture 同分发；verify 的支撑
+ * 检查与测试共用这一份，不另立第二套建模口径）。返回 null 表示该件无模型（冷凝链示意件
+ * 走链几何、vanity 布局非法等——调用方按「无模型」处理，不静默发明）。
+ * 注意：本函数与 SceneBuilder.buildFurniture 是两份分发，必须同步改动；支撑检查是
+ * 哨兵——两路漂移时建模底/顶对不上支撑声明，verify:furniture 即红。
+ */
+export function buildFurnishingModel(item: FurnishingItem): THREE.Group | null {
+  if (item.type === 'kitchen_cabinet_run' && item.length !== undefined && item.depth !== undefined) {
+    return buildKitchenCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight, countertopThickness: item.countertopThickness, cutouts: item.cutouts });
+  }
+  if (item.type === 'kitchen_countertop_bridge' && item.length !== undefined && item.depth !== undefined && item.countertopThickness !== undefined) {
+    return buildKitchenCountertopBridge({ length: item.length, depth: item.depth, countertopThickness: item.countertopThickness });
+  }
+  if (item.type === 'bath_side_cabinet' && item.length !== undefined && item.depth !== undefined) {
+    return buildBathSideCabinetRun({ length: item.length, depth: item.depth, cabinetHeight: item.cabinetHeight });
+  }
+  if (item.type === 'wardrobe_180') return buildWardrobe180(item.cabinetHeight);
+  if (item.type === 'vanity') {
+    const layout = resolveVanityLayout(item.vanity_layout);
+    if (!layout.ok) return null;
+    return buildVanity(layout.layout);
+  }
+  const model = buildFixture(item.type);
+  if (model && item.width !== undefined && item.depth !== undefined) {
+    // 行内尺寸优先于目录尺寸（与 SceneBuilder.buildFurniture 同口径）。
+    const dims = FURNITURE_DIMS[item.type];
+    if (dims && dims.width > 0 && dims.depth > 0) {
+      model.scale.set(item.width / dims.width, 1, item.depth / dims.depth);
+    } else {
+      const box = new THREE.Box3().setFromObject(model);
+      const builtWidth = box.max.x - box.min.x;
+      const builtDepth = box.max.z - box.min.z;
+      if (builtWidth > 0 && builtDepth > 0) {
+        model.scale.set(item.width / builtWidth, 1, item.depth / builtDepth);
+      }
+    }
+  }
+  if (model && item.cabinetHeight !== undefined && item.cabinetHeight > 0) {
+    // 行内高度优先：Y 缩放分母用 Box3 实测总高（与 SceneBuilder.buildFurniture 同口径）。
+    const box = new THREE.Box3().setFromObject(model);
+    const builtHeight = box.max.y - box.min.y;
+    if (builtHeight > 0) {
+      model.scale.y = item.cabinetHeight / builtHeight;
+    }
+  }
+  return model;
+}
+
+/**
+ * 一件 furnishing 的建模竖向包络（Box3 实测 y 向最小/最大值，与 SceneBuilder 渲染同口径）。
+ * 支撑检查读它：floor/wall/furniture 比底，inset 比「底 < 面 ≤ 顶」，ceiling 比顶。
+ * 无模型时返回 null（调用方按该件无竖向几何处理）。
+ */
+export function furnishingBuiltBounds(item: FurnishingItem): { bottom: number; top: number } | null {
+  const model = buildFurnishingModel(item);
+  if (!model) return null;
+  const box = new THREE.Box3().setFromObject(model);
+  return { bottom: box.min.y, top: box.max.y };
 }
 
 /** 定制 1.8m 衣柜：保持 1.8×0.6 外轮廓，补足门板、踢脚、顶封板与内部层板。 */

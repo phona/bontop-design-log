@@ -226,7 +226,7 @@ function validateFurnitureFaceMounts(electrical: ElectricalPoint[], furnishings:
   for (const [room, items] of Object.entries(furnishings)) {
     let runtimeIndex = 0;
     for (const item of items) {
-      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined;
+      const isPlaced = item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined || item.room !== undefined;
       if (!isPlaced) continue;
       const id = furnitureObjectId(room, item, runtimeIndex);
       runtimeIndex++;
@@ -297,6 +297,9 @@ function validateScene(inputs: SceneInputs, scene: ReturnType<typeof buildRuntim
     wallSegments: scene.index.wallSegments,
     hosts,
   });
+  // 房间相对摆位（2026-11-16 DDD 模型约束）：房间包络随解算上下文传入；`room` 条目由
+  // 西北角 + 偏移推出。不传时房间相对条目诊断失败（不回落绝对坐标）。
+  placementAnchors.rooms = new Map(inputs.layout.rooms.map((room) => [room.id, room]));
   const collected = collectPenetrationObjects(scene, structuralPaths);
   const furnitureById = new Map(collected.furnitureEntries.map((entry) => [entry.entity, entry]));
   // 「合法重叠」白名单 2026-10-09 从本文件的 relationships 迁入
@@ -393,7 +396,7 @@ function main(): void {
   }
 
   const report = makeSpatialReport(issues.sort((a, b) => a.code.localeCompare(b.code) || a.entity.localeCompare(b.entity) || a.message.localeCompare(b.message)));
-  const output = JSON.stringify({ version: 1, report, inputs: { rooms: layout.rooms.length, walls: layout.walls.length, suppressedWalls: [...new Set(suppressIds)].length, placedFurniture: Object.values(house.furnishings ?? {}).flat().filter((item) => item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined).length }, ...(layoutWarnings.length > 0 ? { runtimeWarnings: layoutWarnings } : {}) }, null, 2);
+  const output = JSON.stringify({ version: 1, report, inputs: { rooms: layout.rooms.length, walls: layout.walls.length, suppressedWalls: [...new Set(suppressIds)].length, placedFurniture: Object.values(house.furnishings ?? {}).flat().filter((item) => item.x !== undefined || item.z !== undefined || item.wall !== undefined || item.along !== undefined || item.mount !== undefined || item.anchor !== undefined || item.room !== undefined).length }, ...(layoutWarnings.length > 0 ? { runtimeWarnings: layoutWarnings } : {}) }, null, 2);
   if (args.has('--json')) console.log(output);
   else {
     console.log(`Spatial validation: ${report.counts.errors} error(s), ${report.counts.warnings} warning(s), ${report.counts.info} info`);

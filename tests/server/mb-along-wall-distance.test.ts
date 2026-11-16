@@ -182,11 +182,11 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
   it('along 自起点顶点沿墙向量起算：墙段反向声明时同一点落在另一端', () => {
     // 同一锚点世界 z=3.61：正向墙（v_bath_ne→v_bath_s）along 2.51；反向声明则 along 0.69。
     const forward = resolveOk(
-      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015 },
+      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, width: 1.38, depth: 0.565, wall_clearance: 0.015, support: { kind: 'floor' } },
       segments('w_mbath_east'),
     );
     const reversed = resolveOk(
-      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 0.69, width: 1.38, depth: 0.565, wall_clearance: 0.015 },
+      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 0.69, width: 1.38, depth: 0.565, wall_clearance: 0.015, support: { kind: 'floor' } },
       new Map([['w_mbath_east', [{ x1: 2.60, z1: 4.30, x2: 2.60, z2: 1.10 }]]]),
     );
     closeTo(forward.z, 3.61);
@@ -222,7 +222,7 @@ describe('w_mbath_east / w_mb_east along 语义（issue #98：绝对 z 特例已
     assert.equal(mbEast.diagnostic, 'wall anchor along=8.82 places furniture outside wall span [0.690, 3.560] on "w_mb_east"');
     // 合法沿墙距离仍可解：along 2.00 自 v_mb_ne(4.20,5.55) 向南 → z=7.55。
     const legal = resolveOk(
-      { type: 'mb_vanity_base_cabinet', wall: 'w_mb_east', wall_side: 'west', rotation: 270, along: 2.00, width: 1.38, depth: 0.565 },
+      { type: 'mb_vanity_base_cabinet', wall: 'w_mb_east', wall_side: 'west', rotation: 270, along: 2.00, width: 1.38, depth: 0.565, support: { kind: 'floor' } },
       segments('w_mb_east'),
     );
     closeTo(legal.x, 3.8575); // 4.20 − 0.06(半墙厚) − 0 − 0.565/2

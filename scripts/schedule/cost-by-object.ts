@@ -199,6 +199,7 @@ const PLACEMENT_LABELS: Record<FurniturePlacementKind, string> = {
   wall: '挂墙（wall/along）',
   anchor: '锚点派生（anchor，见 shared/condensate-chain.ts）',
   absolute: '绝对坐标（x/z）',
+  room: '房间相对（room/room_dx/room_dz）',
   count_only: 'count-only（无 runtime 对象）',
 };
 
@@ -259,11 +260,12 @@ export function hasBusinessLink(ledger: ObjectLedger): boolean {
   return ledger.packageLinks.length > 0 || ledger.costItems.length > 0;
 }
 
-/** 摆位方式判定与 collectDeclaredFurnitureIds 同口径（mount > wall > anchor > 绝对 x/z > count-only）。 */
+/** 摆位方式判定与 collectDeclaredFurnitureIds 同口径（mount > wall > anchor > room > 绝对 x/z > count-only）。 */
 function placementOf(item: AnyRecord): FurniturePlacementKind {
   if (item.mount) return 'mount';
   if (item.wall) return 'wall';
   if (item.anchor) return 'anchor';
+  if (item.room !== undefined) return 'room';
   if (item.x !== undefined || item.z !== undefined) return 'absolute';
   return 'count_only';
 }
