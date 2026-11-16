@@ -1368,7 +1368,9 @@ function edgesCross(a: Pt[], b: Pt[]): boolean {
  *
  * `ignore_follow`（默认 true）：overlay 的 floor_region 若声明了 `follow: <room>`，
  * 说明它是有意的子区域（跟随某房间地材、过渡地面、设备平台），与房间重叠是设计而非
- * 缺陷。只抓「没有 follow 声明却整块落在别人房间里」的那类——corridor_floor 即此。
+ * 缺陷。只抓「没有 follow 声明却整块落在别人房间里」的那类——现行 6 个
+ * floor_region 全声明了 follow（含 corridor_floor 的 follow: study），该类暂无
+ * 实例；组被滤空时另发 overlap_contract_vacuous 警告，见下。
  * 被忽略的项进 notes，不静默。
  */
 function runOverlap(ws: FactsWorkspace, result: FactsLintResult, contract: Contract): void {
@@ -1391,6 +1393,23 @@ function runOverlap(ws: FactsWorkspace, result: FactsLintResult, contract: Contr
   });
   if (ignored > 0) {
     note(result, `${contract.id}：${ignored} 个 floor_region 声明了 follow（有意的子区域/过渡地面），按约定不计交叠`);
+  }
+  // 量价算法审计 D9：follow 过滤会把一组滤空——现行 6 个 floor_region 全声明了
+  // follow，于是本契约实际比较 0 对多边形，永远不可能报出交叠，安全网是
+  // 空转的。组被滤空即发警告（不是 error：数据本身没错，错的是契约的覆盖面；
+  // 改契约口径——比如校验 follow 声明本身是否真实——是后续 redesign）。
+  for (let g = 0; g < groups.length; g += 1) {
+    const rawCount = Array.isArray(ws.datasets?.[names[g]]) ? (ws.datasets[names[g]] as unknown[]).length : 0;
+    if (rawCount > 0 && groups[g].polys.length === 0) {
+      const item = issue(
+        'warning',
+        'overlap_contract_vacuous',
+        `${contract.id}：${names[g]} 组 ${rawCount} 条全被 follow 过滤，实际比较 0 对多边形——本契约空转，交叠永远报不出。须 redesign 契约口径（例如校验 follow 声明本身是否真实），或补一条无 follow 的 fixture 区域`,
+        `datasets:${names[g]}`,
+      );
+      add(result, item);
+      tally(result, item.code);
+    }
   }
   for (let i = 0; i < groups.length; i += 1) {
     for (let j = i + 1; j < groups.length; j += 1) {

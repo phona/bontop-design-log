@@ -1643,3 +1643,30 @@ test('overlap：两个非凸多边形边交叉、顶点全在外时仍须检出�
   assert.equal(result.errors[0].code, 'polygon_overlap');
   assert.match(result.errors[0].message, /面积不可精确计算/);
 });
+
+test('overlap：一组全被 follow 滤空时发 vacuous 警告，不静默空转（审计 D9）', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{ id: 'c.layout_region_room_overlap', kind: 'overlap', datasets: ['layout.floor_regions', 'layout.rooms'] }],
+  };
+  const sq = (x1: number, z1: number, x2: number, z2: number) => [
+    { x: x1, z: z1 }, { x: x2, z: z1 }, { x: x2, z: z2 }, { x: x1, z: z2 },
+  ];
+  // 现行实况：6 个 floor_region 全声明 follow，契约比较 0 对
+  const vacuous = lintFacts(registry, workspaceOf({}, {
+    'layout.floor_regions': [{ id: 'corridor_floor', follow: 'study', points: sq(0, 0, 5, 5) }],
+    'layout.rooms': [{ id: 'study', polygon: sq(0, 0, 10, 10) }],
+  }));
+  assert.equal(vacuous.errors.length, 0, '空转本身不是数据错，不升 error');
+  assert.equal(vacuous.warnings.filter((i) => i.code === 'overlap_contract_vacuous').length, 1);
+  assert.match(vacuous.warnings[0].message, /实际比较 0 对多边形/);
+  // 对照组：只要有一条无 follow，契约就在比较，不发警告
+  const live = lintFacts(registry, workspaceOf({}, {
+    'layout.floor_regions': [
+      { id: 'corridor_floor', follow: 'study', points: sq(0, 0, 5, 5) },
+      { id: 'orphan_floor', points: sq(20, 20, 25, 25) },
+    ],
+    'layout.rooms': [{ id: 'study', polygon: sq(0, 0, 10, 10) }],
+  }));
+  assert.equal(live.warnings.filter((i) => i.code === 'overlap_contract_vacuous').length, 0);
+});
