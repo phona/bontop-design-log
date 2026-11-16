@@ -439,7 +439,18 @@ export function buildTileCostComparison(
     requiredPositiveNumber(areaSqm, `Resolved area for ${id}`);
     return { id: room.id, name: room.name, areaSqm };
   });
-  const netDryAreaSqm = round3(rooms.reduce((sum, room) => sum + room.areaSqm, 0));
+  // 干区计价基数 = 干区房间面积 + 房间外的干区地面（floorRegionExtraSqm）。
+  // 后者 live 只有 main_corridor_floor 3.75㎡（走廊地面，不属于任何房间，
+  // 但预算 dryFloorSqm 计入它）；旧口径只加干区房间，少算 3.75㎡（KT 材料
+  // −¥493、锦艺材料 −¥534、人工 −¥281.25）。房间内转移区（guest_bath_open_vanity_floor
+  // 1.125㎡）不加在这里——它在 currentInternalFloorRegions 单独计价；
+  // 干区基数 + 内部转移区 == 预算 dryFloorSqm（见测试交叉验证）。
+  // 房间外干区面积缺声明不回落 0：缺了就是算量输入不完整，直接抛错。
+  const extraDrySqm = takeoff.floorRegionExtraSqm;
+  if (!Number.isFinite(extraDrySqm) || extraDrySqm < 0) {
+    throw new Error('masonry takeoff floorRegionExtraSqm must be a finite number >= 0');
+  }
+  const netDryAreaSqm = round3(rooms.reduce((sum, room) => sum + room.areaSqm, 0) + extraDrySqm);
 
   const candidates = config.candidates.map((candidate): TileCandidateComparison => {
     requiredPositiveNumber(candidate.dimensions_mm.length, `${candidate.id} tile length`);

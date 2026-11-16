@@ -68,11 +68,11 @@ describe('GET /api/tiles/comparison', () => {
     assert.equal(response.statusCode, 200);
     const body = response.body as Record<string, any>;
 
-    assert.equal(body.area.netDryAreaSqm, 115.973); // R01 重算；2026-11-16 D1 主卧圆角 −0.2146
+    assert.equal(body.area.netDryAreaSqm, 119.723); // R01 重算；2026-11-16 D1 主卧圆角 −0.2146；2026-11-16 D4 走廊地面 3.75㎡ 计入干区基数
     assert.equal(body.candidates.length, 2);
     assert.deepEqual(
       body.candidates.map((candidate: { modeled: { requiredPieces: number } }) => candidate.modeled.requiredPieces),
-      [522, 928], // R01 重算：干区面积 112.272→116.187；2026-11-16 D1 主卧圆角 −0.2146 → 115.973
+      [539, 958], // R01 重算：干区面积 112.272→116.187；2026-11-16 D1 主卧圆角 −0.2146 → 115.973；2026-11-16 D4 走廊地面 3.75㎡ 计入干区基数 → 119.723
     );
     assert.deepEqual(
       body.candidates.map((candidate: { quoted: { pieces: number } }) => candidate.quoted.pieces),
@@ -110,7 +110,7 @@ describe('GET /api/tiles/comparison', () => {
     assert.equal(body.storeQuotes[1].additionalLines[3].roomId, null);
     assert.deepEqual(
       body.scenarioTotals.map((item: { totalProvisionalFloorMaterialsYuan: number }) => item.totalProvisionalFloorMaterialsYuan),
-      [16320, 17700.4], // R01 重算：干区面积 112.272→116.187；2026-11-16 D1：干区材料 −28.01、湿区材料 −17.38
+      [16813, 18234.4], // R01 重算：干区面积 112.272→116.187；2026-11-16 D1：干区材料 −28.01、湿区材料 −17.38；2026-11-16 D4：走廊地面 3.75㎡ 计入干区基数，干区材料 +493/+534
     );
     assert.equal(body.scenarioTotals[1].fullStoreSchemeComparable, false);
     assert.match(body.scenarioTotals[1].scopeStatus, /not_full_store_scheme_total/);
@@ -123,7 +123,7 @@ describe('GET /api/tiles/comparison', () => {
     assert.equal(body.ktBathFloorModel.modeledMaterialCostYuan, 588);
     assert.equal(body.ktBathFloorModel.quotedMaterialTotalYuan, 840);
     assert.equal(body.ktNewSchemeFloorMaterials.unchangedBalconyBaselineMaterialYuan, 156);
-    assert.equal(body.ktNewSchemeFloorMaterials.totalProvisionalFloorMaterialsYuan, 16056); // R01 重算：15167+588+156+174；2026-11-16 D1：干区材料 −29 → 16056
+    assert.equal(body.ktNewSchemeFloorMaterials.totalProvisionalFloorMaterialsYuan, 16549); // R01 重算：15167+588+156+174；2026-11-16 D1：干区材料 −29 → 16056；2026-11-16 D4：干区材料 +493 → 16549
     assert.deepEqual(body.ktNewSchemeFloorMaterials.currentBaselineRoomIdsIncluded, ['balcony']);
     assert.deepEqual(body.ktNewSchemeFloorMaterials.currentBaselineFloorRegionIdsIncluded, ['guest_bath_open_vanity_floor']);
     assert.equal(body.ktNewSchemeFloorMaterials.supersededBathroomBaselineIncluded, false);
@@ -132,7 +132,7 @@ describe('GET /api/tiles/comparison', () => {
     assert.equal(body.feeStatus.installation.status, 'unknown');
     assert.equal(body.masonryRateCard.floor_rates_yuan_per_sqm.find((rate: { specification: string }) => rate.specification.includes('木纹砖'))?.price, 75);
     assert.equal(body.masonryRateCard.extras.length, 13);
-    assert.equal(body.masonryLaborEstimate.mainDryFloor.laborSubtotalYuan, 8697.98);
+    assert.equal(body.masonryLaborEstimate.mainDryFloor.laborSubtotalYuan, 8979.23);
     assert.equal(body.masonryLaborEstimate.ktBathroomFloors.flatOnlyInterpretationYuan, 600);
     assert.equal(body.masonryLaborEstimate.ktBathroomFloors.additiveIfConfirmedInterpretationYuan, 896.82);
     assert.equal(body.masonryLaborEstimate.currentInternalFloorRegions.subtotalYuan, 84.38);
@@ -140,7 +140,7 @@ describe('GET /api/tiles/comparison', () => {
     assert.equal(body.masonryLaborEstimate.includedInOwnerLaborBudgetPool, false);
     assert.deepEqual(
       body.dryFloorMaterialAndOrdinaryLaborByCandidate.map((item: { candidateId: string; sameScopeSubtotalYuan: number }) => [item.candidateId, item.sameScopeSubtotalYuan]),
-      [['kt_200x1200', 23835.98], ['jinyi_approx_900x150', 25216.38]], // R01 重算；2026-11-16 D1：干区材料 −28.01、人工 −16.05
+      [['kt_200x1200', 24610.23], ['jinyi_approx_900x150', 26031.63]], // R01 重算；2026-11-16 D1：干区材料 −28.01、人工 −16.05；2026-11-16 D4：走廊地面 3.75㎡ 计入干区基数，材料 +493/+534、人工 +281.25
     );
     assert.equal(body.dryFloorMaterialAndOrdinaryLaborByCandidate[0].excludesBathroom, true);
     assert.equal(body.dryFloorMaterialAndOrdinaryLaborByCandidate[0].includedInOwnerLaborBudgetPool, false);
