@@ -97,6 +97,22 @@ export type MepQuoteComparison = QuoteCardComparison<MepQuoteRateKey>;
 /** 每个计价行的工程量：量只有一份，全部来自 takeoff（或人工行的固定次数）。 */
 export function mepQuoteQuantities(takeoff: MepTakeoff, areaSqm: number): Record<MepQuoteRateKey, number> {
   const wire = (size: string): number => takeoff.wire.bySize.find((bucket) => bucket.wireSize === size)?.wireM ?? 0;
+  /**
+   * 双控附加线（2026-11-16 量价算法审计 D6）：`takeoff.wire.dualControlExtraM`
+   * 是行程附加芯的损耗后米数，但 bySize 只含各回路导线，不含它——报价行若只读
+   * bySize 会漏计 21.774m。现行四组多控（客厅/主卧门/书房/儿童房）受控对象
+   * 全是灯具，走 1.5mm²；非灯具多控出现时，此归属须随控制目标重算，
+   * computeActiveMepQuote 的「Σwire == totalWireM」不变量断言只防漏计、不防错配。
+   */
+  const dualControlExtraM = takeoff.wire.dualControlExtraM;
+  /**
+   * Cat6 第二根（2026-11-16 量价算法审计 D7）：net_gateway 有两根 Cat6
+   * （WAN 上联 + LAN 回弱电箱），`takeoff.cable.extraCoresApplied` 记的是
+   * 损耗前米数，报价行须与 cat6M 同口径乘损耗系数（`wire.lossApplied`），
+   * 否则漏计 8.522m（损耗后 8.948m）。
+   */
+  const cat6ExtraM = Object.values(takeoff.cable.extraCoresApplied).reduce((sum, meters) => sum + meters, 0)
+    * takeoff.wire.lossApplied;
   const water = (key: string): number => takeoff.pipe.water.find((bucket) => bucket.key === key)?.meters ?? 0;
   const drain = (key: string): number => takeoff.pipe.drainage.find((bucket) => bucket.key === key)?.meters ?? 0;
   const hot = takeoff.pipe.water.filter((bucket) => bucket.key.startsWith('hot') || bucket.key.startsWith('mixed'))
@@ -132,7 +148,7 @@ export function mepQuoteQuantities(takeoff: MepTakeoff, areaSqm: number): Record
     fitting_pvc: takeoff.pipe.fittings.pvc,
     conduit_20: takeoff.conduit.strongPowerTotalM,
     conduit_25: takeoff.conduit.weakPowerTotalM,
-    wire_1_5: wire('1.5'),
+    wire_1_5: wire('1.5') + dualControlExtraM,
     wire_2_5: wire('2.5'),
     wire_4_0: wire('4.0'),
     wire_trunk: takeoff.trunkConduitM,
@@ -146,7 +162,7 @@ export function mepQuoteQuantities(takeoff: MepTakeoff, areaSqm: number): Record
     gas_alarm_kit: declaredRequired('gas_alarm_kit'),
     exhaust_duct_kit: declaredRequired('exhaust_duct_kit'),
     hot_pipe_insulation: hot,
-    cat6: takeoff.cable.cat6M,
+    cat6: takeoff.cable.cat6M + cat6ExtraM,
     labor_by_area: areaSqm,
     extra_penetration: takeoff.devices.penetrations,
     extra_leb_install: declaredRequired('leb_kits'),

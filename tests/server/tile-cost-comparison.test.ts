@@ -27,7 +27,7 @@ describe('tile cost comparison', () => {
       'living_dining', 'kitchen', 'master_bedroom', 'study', 'bedroom_nw', 'bedroom_se',
     ]);
     assert.equal(result.area.rooms.length, 6);
-    assert.equal(result.area.netDryAreaSqm, 116.187); // R01 重算：客餐厅 +1.725、东南房 +2.19，干区净面积 112.272→116.187
+    assert.equal(result.area.netDryAreaSqm, 115.973); // R01 重算：客餐厅 +1.725、东南房 +2.19，干区净面积 112.272→116.187；2026-11-16 D1 主卧圆角 −0.2146 → 115.973
     assert.ok(!result.area.dryRoomIds.some(id => /bath|balcony|toilet/i.test(id)));
 
     const kt = result.candidates.find(candidate => candidate.id === 'kt_200x1200')!;
@@ -36,9 +36,9 @@ describe('tile cost comparison', () => {
     assert.equal(kt.materialValidation.materialSpec, '200x1200mm');
     assert.equal(kt.materialValidation.materialPriceYuan, 29);
     assert.equal(kt.materialValidation.coveragePerUnitSqm, 0.24);
-    assert.equal(kt.modeled.requiredPieces, 523);
+    assert.equal(kt.modeled.requiredPieces, 522);
     assert.equal(kt.quoted.pieces, 516);
-    assert.equal(kt.quoteVsModel.quotedPieceDelta, -7); // R01 重算后模型需片数 523，报价 516 反而少模型 7 片，门店复核补片
+    assert.equal(kt.quoteVsModel.quotedPieceDelta, -6); // R01 重算后模型需片数 523，报价 516 反而少模型 7 片，门店复核补片；2026-11-16 D1 主卧圆角 −0.2146，模型需片数 522，报价少模型 6 片
     assert.equal(kt.quoted.coverageSqm, 123.84);
     assert.equal(kt.quoted.materialTotalYuan, 14964);
     assert.equal(kt.quoted.reportedFullMaterialTotalYuan, 21108);
@@ -50,9 +50,9 @@ describe('tile cost comparison', () => {
     assert.equal(jinyi.materialValidation.materialPriceYuan, 17.8);
     assert.equal(jinyi.materialValidation.coveragePerUnitSqm, 0.135);
     assert.equal(jinyi.dimensionsStatus, 'nominal_approximate_quoted');
-    assert.equal(jinyi.modeled.requiredPieces, 930);
+    assert.equal(jinyi.modeled.requiredPieces, 928);
     assert.equal(jinyi.quoted.pieces, 970);
-    assert.equal(jinyi.quoteVsModel.quotedPieceDelta, 40); // R01 重算：970−930
+    assert.equal(jinyi.quoteVsModel.quotedPieceDelta, 42); // R01 重算：970−930；2026-11-16 D1 主卧圆角 −0.2146，模型需片数 930→928，报价多模型 42 片
     assert.equal(jinyi.quoted.coverageSqm, 130.95);
     assert.equal(jinyi.quoted.materialTotalYuan, 17266);
     assert.equal(jinyi.quoted.reportedFullMaterialTotalYuan, 23926);
@@ -74,8 +74,8 @@ describe('tile cost comparison', () => {
     config.candidates[0].carton_size = 10;
     const result = buildTileCostComparison(projectLayout, config, projectCatalog, projectTakeoff, projectScheme);
     const kt = result.candidates[0];
-    assert.equal(kt.modeled.piecesBeforeCartonRounding, 523);
-    assert.equal(kt.modeled.requiredPieces, 530); // R01 重算后 523 片，整箱 10 片进位至 530
+    assert.equal(kt.modeled.piecesBeforeCartonRounding, 522);
+    assert.equal(kt.modeled.requiredPieces, 530); // R01 重算后 523 片，整箱 10 片进位至 530；2026-11-16 D1 后 522 片，仍进位至 530
     assert.equal(kt.modeled.cartonRoundingApplied, true);
   });
 
@@ -99,31 +99,31 @@ describe('tile cost comparison', () => {
       ['balcony', 'floor_tile_antislip_400'],
       ['guest_bath', 'floor_tile_deco_small'],
     ]);
-    assert.deepEqual(result.wetBaseline.items.map(item => item.netAreaSqm), [4.576, 1.92, 2.235]); // R04：客卫 +0.21㎡
-    assert.deepEqual(result.wetBaseline.items.map(item => item.modeledQuantity), [31, 13, 2.46]);
-    assert.deepEqual(result.wetBaseline.items.map(item => item.materialCostYuan), [372, 156, 492]);
-    assert.equal(result.wetBaseline.netAreaSqm, 8.731);
-    assert.equal(result.wetBaseline.materialCostYuan, 1020);
+    assert.deepEqual(result.wetBaseline.items.map(item => item.netAreaSqm), [4.361, 1.92, 2.235]); // R04：客卫 +0.21㎡；2026-11-16 D1 主卫圆角 −0.2146，4.576→4.361
+    assert.deepEqual(result.wetBaseline.items.map(item => item.modeledQuantity), [30, 13, 2.46]);
+    assert.deepEqual(result.wetBaseline.items.map(item => item.materialCostYuan), [360, 156, 492]);
+    assert.equal(result.wetBaseline.netAreaSqm, 8.516);
+    assert.equal(result.wetBaseline.materialCostYuan, 1008);
     assert.deepEqual(result.currentInternalFloorRegions.items.map(item => [item.regionId, item.materialId, item.netAreaSqm, item.modeledQuantity, item.materialCostYuan]), [
       ['guest_bath_open_vanity_floor', 'floor_tile_kt_200x1200_01', 1.125, 6, 174],
     ]);
     assert.equal(result.currentInternalFloorRegions.netAreaSqm, 1.125);
-    assert.deepEqual(result.scenarioTotals.map(item => item.totalProvisionalFloorMaterialsYuan), [16361, 17748]); // R01 重算：干区 +3.915㎡
+    assert.deepEqual(result.scenarioTotals.map(item => item.totalProvisionalFloorMaterialsYuan), [16320, 17700.4]); // R01 重算：干区 +3.915㎡；2026-11-16 D1：干区材料 −28.01、湿区材料 −17.38
   });
 
   it('totals the KT floor scheme with only the unchanged balcony baseline, not superseded bathroom baseline', () => {
     const result = buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, projectTakeoff, projectScheme);
-    assert.equal(result.ktNewSchemeFloorMaterials.dryMainFloorMaterialYuan, 15167); // R01 重算：干区 +3.915㎡
+    assert.equal(result.ktNewSchemeFloorMaterials.dryMainFloorMaterialYuan, 15138); // R01 重算：干区 +3.915㎡；2026-11-16 D1 主卧圆角 −0.2146，15167→15138
     assert.equal(result.ktNewSchemeFloorMaterials.ktBathroomFloorMaterialYuan, 588);
     assert.equal(result.ktNewSchemeFloorMaterials.unchangedBalconyBaselineMaterialYuan, 156);
     assert.equal(result.ktNewSchemeFloorMaterials.currentInternalFloorRegionsMaterialYuan, 174);
     assert.deepEqual(result.ktNewSchemeFloorMaterials.currentBaselineRoomIdsIncluded, ['balcony']);
     assert.deepEqual(result.ktNewSchemeFloorMaterials.currentBaselineFloorRegionIdsIncluded, ['guest_bath_open_vanity_floor']);
     assert.equal(result.ktNewSchemeFloorMaterials.supersededBathroomBaselineIncluded, false);
-    assert.equal(result.ktNewSchemeFloorMaterials.totalProvisionalFloorMaterialsYuan, 16085); // R01 重算：15167+588+156+174
+    assert.equal(result.ktNewSchemeFloorMaterials.totalProvisionalFloorMaterialsYuan, 16056); // R01 重算：15167+588+156+174；2026-11-16 D1：干区材料 −29 → 16056
     // The current bathroom baseline now contains the master bath + 2.235㎡ guest inner bath;
     // the 1.125㎡ open vanity region is listed separately and is not hidden in the small-flower area.
-    assert.equal(result.wetBaseline.materialCostYuan, 1020);
+    assert.equal(result.wetBaseline.materialCostYuan, 1008);
   });
 
   it('exposes the mason rate card and separate net-area labor scenarios without adding labor to budget pools', () => {
@@ -134,18 +134,18 @@ describe('tile cost comparison', () => {
     assert.equal(result.masonryRateCard.wall_rates_yuan_per_sqm.find(rate => rate.specification === '600x1200')?.price, 65);
     assert.equal(result.masonryRateCard.conditional_addons.find(addon => addon.id === 'floor_protection_film')?.price, 5);
 
-    assert.equal(labor.mainDryFloor.netAreaSqm, 116.187);
+    assert.equal(labor.mainDryFloor.netAreaSqm, 115.973);
     assert.equal(labor.mainDryFloor.rateYuanPerSqm, 75);
-    assert.equal(labor.mainDryFloor.laborSubtotalYuan, 8714.03);
+    assert.equal(labor.mainDryFloor.laborSubtotalYuan, 8697.98);
     assert.equal(labor.mainDryFloor.fishbonePremiumYuanPerSqm, 50);
     assert.equal(labor.mainDryFloor.fishboneEquivalentRateYuanPerSqm, 125);
-    assert.equal(labor.ktBathroomFloors.netAreaSqm, 6.811);
+    assert.equal(labor.ktBathroomFloors.netAreaSqm, 6.596);
     assert.equal(labor.ktBathroomFloors.areaRateYuanPerSqm, 45);
-    assert.equal(labor.ktBathroomFloors.areaRateSubtotalYuan, 306.5);
+    assert.equal(labor.ktBathroomFloors.areaRateSubtotalYuan, 296.82);
     assert.equal(labor.ktBathroomFloors.roomCount, 2);
     assert.equal(labor.ktBathroomFloors.flatOnlyInterpretationYuan, 600);
-    assert.equal(labor.ktBathroomFloors.additiveIfConfirmedInterpretationYuan, 906.5);
-    assert.deepEqual(labor.ktBathroomFloors.interpretations.map(option => option.dryPlusBathroomLaborYuan), [9314.03, 9620.53]);
+    assert.equal(labor.ktBathroomFloors.additiveIfConfirmedInterpretationYuan, 896.82);
+    assert.deepEqual(labor.ktBathroomFloors.interpretations.map(option => option.dryPlusBathroomLaborYuan), [9297.98, 9594.8]);
     assert.equal(labor.currentInternalFloorRegions.netAreaSqm, 1.125);
     assert.equal(labor.currentInternalFloorRegions.rateYuanPerSqm, 75);
     assert.equal(labor.currentInternalFloorRegions.subtotalYuan, 84.38);
@@ -179,11 +179,11 @@ describe('tile cost comparison', () => {
     const result = buildTileCostComparison(projectLayout, loadTileComparisonConfig(), projectCatalog, projectTakeoff, projectScheme);
     assert.deepEqual(
       result.dryFloorMaterialAndOrdinaryLaborByCandidate.map(item => [item.candidateId, item.sameScopeSubtotalYuan]),
-      [['kt_200x1200', 23881.03], ['jinyi_approx_900x150', 25268.03]], // R01 重算：干区 +3.915㎡
+      [['kt_200x1200', 23835.98], ['jinyi_approx_900x150', 25216.38]], // R01 重算：干区 +3.915㎡；2026-11-16 D1：干区材料 −28.01、人工 −16.05
     );
     for (const item of result.dryFloorMaterialAndOrdinaryLaborByCandidate) {
-      assert.equal(item.netAreaSqm, 116.187);
-      assert.equal(item.ordinaryLaborSubtotalYuan, 8714.03);
+      assert.equal(item.netAreaSqm, 115.973);
+      assert.equal(item.ordinaryLaborSubtotalYuan, 8697.98);
       assert.equal(item.excludesBathroom, true);
       assert.equal(item.excludesWalls, true);
       assert.equal(item.excludesBalcony, true);

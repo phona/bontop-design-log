@@ -106,7 +106,7 @@ describe('Budget + Risks + Schemes API', () => {
     assert.match(body.tileBudgetPreview.scopeNote, /excludes bathroom, walls, balcony, and extras/);
     assert.deepEqual(
       body.tileBudgetPreview.dryFloorMaterialAndOrdinaryLaborByCandidate.map((row: { candidateId: string; sameScopeSubtotalYuan: number }) => [row.candidateId, row.sameScopeSubtotalYuan]),
-      [['kt_200x1200', 23881.03], ['jinyi_approx_900x150', 25268.03]] // R01 重算，
+      [['kt_200x1200', 23835.98], ['jinyi_approx_900x150', 25216.38]] // R01 重算；2026-11-16 D1：干区材料 −28.01、人工 −16.05
     );
     assert.equal(body.totalActual, calc.calculate(state.getCurrentScheme()).totalActual);
     assert.deepEqual(body.categories.map((item: { key: string; actual: number }) => [item.key, item.actual]),

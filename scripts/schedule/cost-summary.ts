@@ -57,7 +57,8 @@
  *    施工界面未书面划清（interface_pending）——见该行 tierReason 与层级守卫。
  *  防水人工 366 ← 计算器科目 waterproof 的 actual。经核：该科目 verified/candidate/
  *    manual/auto 全为 0，366 纯粹是 computeLabor 的防水人工——base.json 费率 20 元/㎡ ×
- *    needs_waterproof 房间面积 18.286 ㎡。（曾被误读为「材料候选价」，以数据为准纠正：
+ *    needs_waterproof 房间面积 18.2814 ㎡（2026-11-16 量价算法审计 D2：resolved 面积，
+ *    主卫圆角扣 0.2146㎡；旧值 18.496㎡/¥370 为 bbox 口径）。（曾被误读为「材料候选价」，以数据为准纠正：
  *    未定价的是防水**材料**，不是人工。）金额虽为费率实算，但 QR-2026-10-03-03 的
  *    dedup_rule 明文「若瓦工 18,500 元预算池已含防水人工，最终报价必须去重」且未关闭，
  *    本行可能已含于泥瓦行内——去重关闭前只入暂估层（评审 P1）。
@@ -132,6 +133,7 @@ import {
   BudgetCalculator,
   loadMasonryTakeoff,
   loadPaintScopeAreaByRoom,
+  roomArea,
 } from '../../server/budget-calculator.js';
 import { loadPaintScopeInputs } from '../../server/paint-cost-comparison.js';
 import {
@@ -140,6 +142,7 @@ import {
   mepQuoteFallback,
   type MepQuoteComparison,
   type MepQuoteFallback,
+  type MepQuoteRateKey,
 } from '../../server/mep-quotes.js';
 import {
   computeMepTakeoff,
@@ -978,7 +981,7 @@ const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknow
   if (comparison.total == null || comparison.pendingRows.length) {
     throw new Error(`cost summary: 生效水电报价卡 ${comparison.id} 存在待报价行（${comparison.pendingRows.join(', ')}），总额不可用`);
   }
-  assertActiveMepQuoteIntegrity(comparison, fallback);
+  assertActiveMepQuoteIntegrity(comparison, fallback, takeoff);
   return { comparison, takeoff, areaSqm };
 }
 
@@ -1002,15 +1005,40 @@ const ceiling = parseYaml(readFileSync(sourceFile('ceiling'), 'utf8')) as unknow
  * 断言 contracted > 0、灯具行断言 amount > 0、美缝断言 target > 0）——算
  * 量整体归零会静默出 ¥0 行、NaN 会渲染成 ¥NaN 且全文全等校验因确定性输
  * 出而通过。故 total 必须有限且 > 0。
+ * ④ **导线/网线量与 takeoff 对账**（2026-11-16 量价算法审计 D6/D7，
+ * 仅 takeoff 传入时查）：报价行 wire_1_5+wire_2_5+wire_4_0 必须等于
+ * `takeoff.wire.totalWireM`（含双控附加线 dualControlExtraM；wire_trunk
+ * 是主干线、另行计价，不在 totalWireM 内），cat6 必须等于
+ * `cat6M + ΣextraCoresApplied×lossApplied`（net_gateway 第二根线）。
+ * 两处都曾静默漏计（D6 ¥54.87、D7 ¥24.88）。
  * out_of_scope 行不参与以上三查（它们已被排除在总额外，处置走
  * assertMepOutOfScopeDispositions 的登记通道）。
  */
 export function assertActiveMepQuoteIntegrity(
   comparison: MepQuoteComparison,
   fallback: MepQuoteFallback,
+  takeoff?: MepTakeoff,
 ): void {
   if (typeof comparison.total !== 'number' || !Number.isFinite(comparison.total) || comparison.total <= 0) {
     throw new Error(`cost summary: 生效水电报价卡 ${comparison.id} 总额不健全（total=${comparison.total}）——总额必须是有限正数；算量整体归零或出现 NaN 时不得静默出 ¥0 / ¥NaN 水电行`);
+  }
+  if (takeoff) {
+    const qty = (key: MepQuoteRateKey): number => {
+      const row = comparison.rows.find((r) => r.key === key);
+      if (!row || typeof row.quantity !== 'number' || !Number.isFinite(row.quantity)) {
+        throw new Error(`cost summary: 生效水电报价卡 ${comparison.id} 缺 ${key} 计价行数量，无法与 takeoff 对账`);
+      }
+      return row.quantity;
+    };
+    const wireSum = qty('wire_1_5') + qty('wire_2_5') + qty('wire_4_0');
+    if (Math.abs(wireSum - takeoff.wire.totalWireM) > 1e-6) {
+      throw new Error(`cost summary: 报价导线量 ${wireSum} ≠ takeoff.wire.totalWireM ${takeoff.wire.totalWireM}——双控附加线（dualControlExtraM ${takeoff.wire.dualControlExtraM}m）漏进报价行或被重复计入；wire_trunk（主干线）另行计价，不参与本式`);
+    }
+    const extraCat6 = Object.values(takeoff.cable.extraCoresApplied).reduce((sum, meters) => sum + meters, 0)
+      * takeoff.wire.lossApplied;
+    if (Math.abs(qty('cat6') - (takeoff.cable.cat6M + extraCat6)) > 1e-6) {
+      throw new Error(`cost summary: 报价 cat6 量 ${qty('cat6')} ≠ cat6M ${takeoff.cable.cat6M} + 第二根线 ${extraCat6}（net_gateway extraCoresApplied × 损耗）——第二根 Cat6 漏进报价行`);
+    }
   }
   for (const row of comparison.rows) {
     if (row.out_of_scope) continue;
@@ -1451,9 +1479,11 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     const baseRaw = JSON.parse(readFileSync('config/budget/base.json', 'utf8')) as AnyRecord;
     const wetRate = baseRaw.categories?.waterproof?.labor?.rate;
     if (typeof wetRate !== 'number') throw new Error('cost summary: base.json 的 waterproof.labor.rate 缺失');
+    // 2026-11-16 量价算法审计 D2：曾与计算器用同一套 bbox 公式互相印证；
+    // 改走 resolved 面积 roomArea（主卫圆角 −0.2146㎡，18.496→18.2814㎡）。
     const wetArea = catalog.getRooms()
       .filter((room: AnyRecord) => room.needs_waterproof === true)
-      .reduce((sum: number, room: AnyRecord) => sum + room.width * room.depth, 0);
+      .reduce((sum: number, room: AnyRecord) => sum + roomArea(room), 0);
     if (Math.abs(wetArea * wetRate - waterproof.actual) > 1) {
       throw new Error(`cost summary: 防水人工对不上（${qty(wetArea, 2)} ㎡ × ${wetRate} = ${qty(wetArea * wetRate, 2)}，科目 actual = ${waterproof.actual}）`);
     }

@@ -14,7 +14,7 @@ import type {
   DesignOption,
 } from '../shared/types.js';
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
-import { tangentArc } from '../shared/arc.js';
+import { roundedPolygonArea } from '../shared/polygon-area.js';
 import {
   computeMasonryTakeoff,
   type MasonryFloorRegionInput,
@@ -274,71 +274,6 @@ export function loadMasonryTakeoff(
   });
 }
 
-/** 几何容差：声明坐标只到 0.01m，边界贴合判定用 1e-6 足够，又不至于把隔壁区域吞进来。 */
-const GEO_EPS = 1e-6;
-
-/**
- * 带圆角的多边形面积（㎡）。
- *
- * 圆角**不能**按外接矩形算：`north_platform_floor` 的 NW 角 r=1.0，直角外接算出 1.60㎡，
- * 真实 1.3854㎡（1.60 − [0.5 − π/4]）。做法与 shared/render 的圆角同一套几何——圆心 + 半径
- * 在两条邻边上定切点、锐角面积减圆弓面积；这里取闭式解（不采样折线），所以不存在
- * 「渲染端折线段数不同导致面积对不上」的第二套口径。切点落在邻边线段之外、圆心与半径
- * 不自洽、弧心与邻边不相切、扫角退化时直接抛错（fail-closed）：一条坏弧声明应该让预算
- * 算不出来，而不是悄悄少算 0.21㎡。
- *
- * 切点与弧心统一走 `shared/arc.ts` 的 `tangentArc`（原 `tangentPointOnEdge` 本地副本，
- * 2026-11-07 issue #98 第三阶段 S2 删除）：floor_region 圆角点带声明式 cx/cz，
- * 走 descriptor 的「垂足 = 切点」形态，其越界/不自洽/相切校验即本函数的 fail-closed 守卫。
- */
-function roundedPolygonArea(points: CurtainPoint[]): number {
-  const signed = points.reduce((sum, p, i) => {
-    const q = points[(i + 1) % points.length];
-    return sum + p.x * q.z - q.x * p.z;
-  }, 0) / 2;
-  const orient = Math.sign(signed) || 1;
-  let area = signed;
-  for (let i = 0; i < points.length; i++) {
-    const corner = points[i];
-    if (corner.radius === undefined) continue;
-    if (!(corner.radius > 0)) {
-      throw new Error(`floor_region 圆角半径必须为正（第 ${i} 点 radius=${corner.radius}）`);
-    }
-    if (corner.cx === undefined || corner.cz === undefined) {
-      throw new Error(`floor_region 圆角点缺 cx/cz（第 ${i} 点），弧心不可定位`);
-    }
-    const center = { x: corner.cx, z: corner.cz };
-    const prev = points[(i - 1 + points.length) % points.length];
-    const next = points[(i + 1) % points.length];
-    // 切点/弧心解算唯一入口（shared/arc.ts）。返回 null = 切点落在邻边线段之外、
-    // 半径与弧心不自洽、弧心与邻边不相切或夹角退化——预算算不出来，不悄悄少算一块地。
-    const arc = tangentArc(corner, prev, next, corner.radius, center);
-    if (!arc) {
-      throw new Error(
-        `floor_region 圆角点（第 ${i} 点）无法由 tangentArc 解出切点：切点落在邻边线段之外、半径与弧心不自洽、弧心与邻边不相切或夹角退化`,
-      );
-    }
-    const t1 = arc.start;
-    const t2 = arc.end;
-    // 被圆角替掉的锐角三角形面积
-    const cornerArea = Math.abs(
-      (t1.x - corner.x) * (t2.z - corner.z) - (t2.x - corner.x) * (t1.z - corner.z)
-    ) / 2;
-    const a = { x: t1.x - center.x, z: t1.z - center.z };
-    const b = { x: t2.x - center.x, z: t2.z - center.z };
-    const theta = Math.atan2(Math.abs(a.x * b.z - a.z * b.x), a.x * b.x + a.z * b.z);
-    if (theta <= GEO_EPS || Math.PI - theta <= GEO_EPS) {
-      throw new Error(`floor_region 圆角扫角退化（${theta.toFixed(6)} rad），弧声明与邻边不匹配`);
-    }
-    // 弦与弧之间的圆弓面积（凸角时被磨掉、凹角时被补回的那一块）
-    const segment = corner.radius * corner.radius * (theta - Math.sin(theta)) / 2;
-    const cut = cornerArea - segment;
-    const turn = (corner.x - prev.x) * (next.z - corner.z) - (corner.z - prev.z) * (next.x - corner.x);
-    area += orient * turn > 0 ? -cut : cut;
-  }
-  return Math.abs(area);
-}
-
 export function loadPaintScopeAreaByRoom(
   catalog: ProjectCatalog,
   inputs = loadPaintScopeInputs(),
@@ -395,10 +330,10 @@ function fallbackCeilingRates(baseRaw: Record<string, BudgetCategoryRaw>): Recor
  * 旧代码 `room.area ?? room.width * room.depth` 在异形房上退回 bbox 面积——本案 11 房里
  * 6 房带 `points`（主卧 L 形、客房南向凹口…），bbox 与多边形面积最大差 0.6㎡/间，
  * 而 `RoomLayout.area` 是 optional 所以类型系统不拦。`resolveLayout` 恒给 `area`
- * （server/layout-resolver.ts 的 polygonArea），所以生产路径不会缺；缺了就是数据漏洞，
+ * （server/layout-resolver.ts 的 roundedPolygonArea），所以生产路径不会缺；缺了就是数据漏洞，
  * 必须抛错而不是悄悄换一个更大的数——那会让"少算/多算"看不出是口径问题。
  */
-function roomArea(room: RoomLayout): number {
+export function roomArea(room: RoomLayout): number {
   if (typeof room.area !== 'number' || !Number.isFinite(room.area)) {
     throw new Error(
       `房间 ${room.id} 缺 resolved area（RoomLayout.area）：异形房不能用 width×depth 的 bbox 面积代替。请检查 model-geometry.yaml 的 boundary 与 server/layout-resolver.ts 的解算结果`,
@@ -757,9 +692,13 @@ export class BudgetCalculator {
         // 防水工（base.json 的 waterproof 分类）按 needs_waterproof 房间计。
         // 与瓦工的 `wet_floor_tile` 是两件事：防水 ≠ 贴砖，且口径不同（这里含厨房，
         // 而厨房地面走干区木纹砖档，见 config/tile-comparison.yaml 的 dry_room_ids）。
+        // 2026-11-16 量价算法审计 D2：曾用 bbox（width×depth），主卫圆角多算
+        // 0.2146㎡（18.496→18.2814㎡，¥370→¥366）；改走 resolved 面积 roomArea，
+        // 与材料侧同口径。cost-summary.ts 的防水交叉核对须同步改，否则两边
+        // 用同一套错公式互相印证。
         case 'wet_floor': {
           const wetRooms = rooms.filter((r) => r.needs_waterproof === true);
-          quantity = wetRooms.reduce((sum, r) => sum + r.width * r.depth, 0);
+          quantity = wetRooms.reduce((sum, r) => sum + roomArea(r), 0);
           break;
         }
         case 'door_count': {

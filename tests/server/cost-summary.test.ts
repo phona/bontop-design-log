@@ -844,6 +844,27 @@ describe('成本总表 cost-summary', () => {
     const fallback = mepQuoteFallback(labor);
     // 真实数据零影响：现行 5 张卡均声明全部 32 行、单位与规范表一致
     assert.doesNotThrow(() => assertActiveMepQuoteIntegrity(comparison, fallback), '现行生效卡必须通过完整性断言');
+    // 2026-11-16 量价算法审计 D6/D7：完整 takeoff 下，报价行导线量必须与
+    // takeoff.wire.totalWireM 对账（含双控附加线）、cat6 必须含 net_gateway
+    // 第二根线。旧 mepQuoteQuantities 只读 bySize/cat6M，漏计 21.774m 导线
+    // （¥54.87）与 8.948m 网线（¥24.88）——本断言在旧代码上必须抛错。
+    assert.doesNotThrow(() => assertActiveMepQuoteIntegrity(comparison, fallback, takeoff), '现行生效卡 + 完整 takeoff 必须通过导线/网线对账');
+    const tamperQty = (key: string, delta: number) => {
+      const copy = structuredClone(comparison) as AnyRecord;
+      const row = (copy.rows as AnyRecord[]).find((r) => r.key === key);
+      row.quantity += delta;
+      return copy;
+    };
+    assert.throws(
+      () => assertActiveMepQuoteIntegrity(tamperQty('wire_1_5', -1), fallback, takeoff),
+      /totalWireM/,
+      'wire_1_5 少 1m 必须抛错点名 totalWireM',
+    );
+    assert.throws(
+      () => assertActiveMepQuoteIntegrity(tamperQty('cat6', -1), fallback, takeoff),
+      /cat6/,
+      'cat6 少 1m 必须抛错点名第二根线',
+    );
     const compareWith = (mutate: (card: AnyRecord) => void) => {
       const file = structuredClone(loadMepQuotes()) as unknown as AnyRecord;
       const card = (file.quotes as AnyRecord[]).find((quote) => quote.id === file.active) as AnyRecord;

@@ -10,6 +10,7 @@ import type {
   CurtainPoint,
 } from '../shared/types.js';
 import { tangentArc } from '../shared/arc.js';
+import { roundedPolygonArea } from '../shared/polygon-area.js';
 
 interface VMap {
   id: string;
@@ -178,7 +179,18 @@ function resolveRoom(
   const b = bbox(ccw);
   const width = b.maxX - b.minX;
   const depth = b.maxZ - b.minZ;
-  const area = Math.abs(polygonArea(ccw));
+  // 面积必须扣圆角：尖角鞋带公式把 r=1.0 的圆角按外接矩形算，每角多算
+  // r²(1−π/4) = 0.2146㎡（2026-11-16 量价算法审计 D1：主卧 v_sw、主卫
+  // v_bath_nw、平台 v_vrv_n 三处；地面总量多算 0.4292㎡，约 ¥72.29）。
+  // 与 floor_region 同源：shared/polygon-area.ts 的 roundedPolygonArea。
+  // 弧心解不出的圆角点（tangentArc 返回 null）退化成尖角——与上面 pts 构造
+  // 时「解不出不给 cx/cz、轮廓退化成尖角」同向，且该情形墙弧侧先 fail-closed。
+  const areaPoints = ccw.map((p) =>
+    p.radius !== undefined && (p.cx === undefined || p.cz === undefined)
+      ? { ...p, radius: undefined, cx: undefined, cz: undefined }
+      : p,
+  );
+  const area = roundedPolygonArea(areaPoints);
   const isRect = isAxisAlignedRectangle(ccw) && !ccw.some(p => p.radius);
 
   const rawType = (def as RoomDef).type ?? 'public';

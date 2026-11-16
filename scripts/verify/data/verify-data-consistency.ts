@@ -1,12 +1,14 @@
 // verify-data-consistency.ts
 // 数据漂移防线（单一权威源 = config/layout/model-geometry.yaml）：
-//  A. house.yaml rooms 的 width/length/area 为镜像字段，须与模型 bbox/鞋带面积一致；
+//  A. house.yaml rooms 的 width/length/area 为镜像字段，须与模型 bbox/圆角面积一致；
 //  B. house.yaml gift_areas 的 expected_centroid 须与模型 room/platform bbox 中心一致；
 //  C. electrical/plumbing 点位声明的 wall 段须包含其 x/z 坐标（容差 0.15m）。
 // 量房修正时只改 model-geometry.yaml，再跑 verify:all，本脚本会列出需同步的镜像字段与点位。
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
 import { resolveLayout } from '../../../server/layout-resolver.js';
+import { tangentArc } from '../../../shared/arc.js';
+import { roundedPolygonArea } from '../../../shared/polygon-area.js';
 import { suppressedWallIdSet } from '../../../shared/suppression.js';
 import {
   checkWallPointPlacements,
@@ -16,7 +18,7 @@ import {
   type PlacementWall,
 } from '../placement/verify-point-placement.js';
 
-type Pt = { x: number; z: number };
+type Pt = { x: number; z: number; radius?: number };
 
 const load = (p: string): any => yaml.load(fs.readFileSync(p, 'utf8'));
 
@@ -64,7 +66,7 @@ checkUniqueIds(elec, 'electrical.yaml');
 checkUniqueIds(plumb, 'plumbing.yaml');
 
 const verts = new Map<string, Pt>(
-  (mg.vertices as any[]).map((v) => [v.id, { x: v.x, z: v.z }]),
+  (mg.vertices as any[]).map((v) => [v.id, { x: v.x, z: v.z, ...(v.radius !== undefined ? { radius: v.radius } : {}) }]),
 );
 
 function polyOf(boundary: string[]): Pt[] {
@@ -73,15 +75,6 @@ function polyOf(boundary: string[]): Pt[] {
     if (!v) throw new Error(`unknown vertex ${id}`);
     return v;
   });
-}
-
-function shoelace(pts: Pt[]): number {
-  let area = 0;
-  for (let i = 0; i < pts.length; i++) {
-    const j = (i + 1) % pts.length;
-    area += pts[i].x * pts[j].z - pts[j].x * pts[i].z;
-  }
-  return Math.abs(area / 2);
 }
 
 interface ModelRoom { w: number; d: number; area: number; cx: number; cz: number }
@@ -114,10 +107,23 @@ function register(id: string, boundary: string[]): void {
   const zs = pts.map((p) => p.z);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
   const minZ = Math.min(...zs), maxZ = Math.max(...zs);
+  // 面积必须扣圆角：与 layout-resolver 同源（shared/polygon-area.ts）。
+  // 尖角鞋带公式把 r=1.0 圆角按外接矩形算，每角多算 0.2146㎡（2026-11-16 量价
+  // 算法审计 D1）；镜像校验若还用尖角口径，会把正确的镜像（26.63）判成漂移。
+  // 弧心解不出的圆角点退化成尖角（与 layout-resolver 同向）。
+  const areaPoints = pts.map((p, i) => {
+    if (p.radius === undefined) return { x: p.x, z: p.z };
+    const prev = pts[(i - 1 + pts.length) % pts.length];
+    const next = pts[(i + 1) % pts.length];
+    const arc = tangentArc(p, prev, next, p.radius);
+    return arc
+      ? { x: p.x, z: p.z, radius: p.radius, cx: arc.center.x, cz: arc.center.z }
+      : { x: p.x, z: p.z };
+  });
   modelRooms.set(id, {
     w: maxX - minX,
     d: maxZ - minZ,
-    area: shoelace(pts),
+    area: roundedPolygonArea(areaPoints),
     cx: (minX + maxX) / 2,
     cz: (minZ + maxZ) / 2,
   });
