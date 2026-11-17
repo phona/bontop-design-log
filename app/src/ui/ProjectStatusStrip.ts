@@ -9,19 +9,14 @@
 // 审批·下一步（onOpenApproval 回调由 App 接线到 navigateToApproval）。
 // 取数失败时整条变错误态，点整条改为重试取数，不导航。
 //
-// 里程碑日是业主 2026-11-17 明示的真实日期（收房 11-26 周四、量房 11-27
-// 周五、拆改 12-01 周二），不是排程锚点（anchor_date 仍 null，另题裁定），
-// 天数按本地今天现算；日期过了显示「今天」/「已过 N 天」，不造假。
+// 里程碑日来自快照 `snapshot.schedule.milestones`，唯一来源是 control.yaml
+// work_calendar.milestones（业主 2026-11-17 明示的真实日期：收房 11-26 周四、
+// 量房 11-27 周五、拆改 12-01 周二），不是排程锚点（anchor_date 仍 null，另题
+// 裁定）；天数按本地今天现算；日期过了显示「今天」/「已过 N 天」，不造假。
+// 快照无 schedule/milestones（旧快照）时不画里程碑段，不回退到 UI 硬编码。
 // 进度条是图形 + 文字双通道：就绪包 x/25 配文字，不只靠颜色。
 import type { ScheduleSnapshot } from '@shared/schedule-state';
 import { escapeHtml } from './escape-html.js';
-
-/** 业主明示的里程碑（2026-11-17）：收房 / 量房 / 拆改进场。 */
-export const MILESTONES: ReadonlyArray<{ key: string; label: string; date: string }> = [
-  { key: 'handover', label: '收房', date: '2026-11-26' },
-  { key: 'survey', label: '量房', date: '2026-11-27' },
-  { key: 'demolition', label: '拆改', date: '2026-12-01' },
-];
 
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
@@ -128,14 +123,18 @@ export class ProjectStatusStrip {
     }
     const phase = this.payload.phase;
     const counts = this.payload.counts;
-    const milestones = MILESTONES.map(
+    const milestones = (this.payload.schedule?.milestones ?? []).map(
       (m) => `<span class="status-strip-milestone"><strong>${escapeHtml(m.label)}</strong> ${m.date.slice(5)}（${escapeHtml(milestoneText(m.date, now))}）</span>`,
     ).join('<span class="status-strip-sep">·</span>');
     const ready = counts.ready_packages;
     const total = counts.packages;
     const pct = total > 0 ? Math.round((ready / total) * 100) : 0;
+    // 里程碑段缺失时不留空分隔符（旧快照无 schedule 键）。
+    const milestoneSegment = milestones
+      ? `<span class="status-strip-sep">｜</span>${milestones}`
+      : '';
     this.el.innerHTML = `<span class="status-strip-date">${escapeHtml(today)}</span>
-      <span class="status-strip-sep">｜</span>${milestones}
+      ${milestoneSegment}
       <span class="status-strip-sep">｜</span><span>当前门禁：${escapeHtml(phase.current_gate)}</span>
       <span class="status-strip-sep">｜</span><span>open 门禁 ${counts.open_decision_gates} 条</span>
       <span class="status-strip-sep">｜</span><span>缺口 ${money(phase.known_pending_gap_cny)}</span>

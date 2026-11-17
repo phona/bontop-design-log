@@ -29,6 +29,17 @@ function snapshot(): ScheduleSnapshot {
     next_actions: [],
     stale_audits: [],
     package_gate_issues: [],
+    schedule: {
+      anchor_date: null,
+      calendar: {workdays: [1, 2, 3, 4, 5, 6], rest_dates: [], extra_workdates: []},
+      milestones: [
+        {key: 'handover', label: '收房', date: '2026-11-26'},
+        {key: 'survey', label: '量房', date: '2026-11-27'},
+        {key: 'demolition', label: '拆改', date: '2026-12-01'},
+      ],
+      ordinals: [],
+      packages: {},
+    },
   };
 }
 
@@ -101,9 +112,17 @@ describe('ProjectStatusStrip', () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('network down'); }) as never);
     await strip.refresh();
     expect(document.querySelector('#project-status-strip')!.textContent).toContain('取数失败');
-    const callsBefore = fetchMock.mock.calls.length;
-    void callsBefore;
     (document.querySelector('#project-status-strip') as HTMLElement).click();
     expect(onOpenApproval).toHaveBeenCalledTimes(1);
+  });
+
+  it('旧快照无 schedule 键：不画里程碑段，不崩（不回退 UI 硬编码）', async () => {
+    const {schedule: _schedule, ...legacy} = snapshot();
+    void _schedule;
+    vi.stubGlobal('fetch', vi.fn(async () => ({ok: true, status: 200, json: async () => legacy})) as never);
+    const strip = new ProjectStatusStrip({onOpenApproval: () => {}});
+    strip.mount();
+    await vi.waitFor(() => expect(document.querySelector('#project-status-strip')!.textContent).toContain('当前门禁'));
+    expect(document.querySelector('#project-status-strip')!.textContent).not.toContain('收房');
   });
 });

@@ -35,6 +35,7 @@ function scheduleView(overrides: Partial<ScheduleProjectionView> = {}): Schedule
   return {
     anchor_date: null,
     calendar: {workdays: [1, 2, 3, 4, 5], rest_dates: [], extra_workdates: []},
+    milestones: [],
     ordinals: [1, 2, 3, 4, 5, 6].map((ord) => ({ord, date: null})),
     packages: {
       'PKG-010': projectionPkg(),

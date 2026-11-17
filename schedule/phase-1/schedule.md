@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"248d8e99e5f4e8bbacd3b6fcf358337d9f603dd5ff5fae800d9d62c209ebaf51","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"231aa7de72c5f7936c7999bb65b82d67d9d453701bc0abfe0f82b018bb439949","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
 # 一期施工计划
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:7b035ba94eab947a18a166e7e6a75d9dd9f88711adb4519d1b034a1c676b8a16`（2 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:c3893f25987c0444964c70e540ecb836c146de33801b6fc4faba0e26569cb2d2`（2 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
