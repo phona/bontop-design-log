@@ -258,7 +258,7 @@ hard_finish_quote_rounds:
       owner_current_cny: null
       price_type: candidate
       status: pending_quote
-      dedup_rule: 打包一口价口径，必须按点位/米数/回路拆项报价；开槽回填（COST-040-08）与燃气改造（COST-040-09）单独列价，防止施工方以“全包”重复计费
+      dedup_rule: 打包一口价口径，必须按点位/米数/回路拆项报价；开槽回填（COST-040-08）与燃气改造（COST-040-09）单独列价，防止水电师傅以“全包”重复计费
       locked_cny: null
       contract_ref: null
       evidence_path: null
@@ -714,7 +714,7 @@ glossary:
   - term: 阻塞项
     plain_description: 当前尚未解决、会导致某项工作不能开始或不能完成的事情，例如未交房、墙体性质不明或厂家图纸未确认。
   - term: 付款门槛
-    plain_description: 付款前必须完成的检查条件。对应验收和证据未通过时，即使施工方提出申请也不应支付该节点款。
+    plain_description: 付款前必须完成的检查条件。对应验收和证据未通过时，即使负责该包的师傅或供应商提出申请也不应支付该节点款。
   - term: 拆改
     plain_description: 拆除允许拆除的墙体或构件，并按图新建墙体、调整门洞或空间边界。承重墙、梁柱和楼板不能凭经验拆除。
   - term: 水电改造
@@ -732,9 +732,9 @@ glossary:
   - term: 放线
     plain_description: 按设计图把新墙、门洞、柜体、插座、空调风口和吊顶边界等位置，用墨线、胶带或记号笔标到现场，供各工种共同复核后施工。
   - term: 深化图
-    plain_description: 厂家或专业施工方根据现场尺寸，把设计意图细化成可以生产和安装的尺寸图、节点图及接口图。
+    plain_description: 厂家或专业师傅根据现场尺寸，把设计意图细化成可以生产和安装的尺寸图、节点图及接口图。
   - term: 图纸会审
-    plain_description: 业主、设计师、施工方和设备厂家把各自图纸放在一起核对，提前找出尺寸、管线、柜门、灯具和设备之间的冲突。
+    plain_description: 业主、拆改/水电/空调等各包师傅和设备厂家把各自图纸放在一起核对，提前找出尺寸、管线、柜门、灯具和设备之间的冲突。
   - term: 隐蔽工程
     plain_description: 完工后会被墙面、地面或吊顶遮住，无法直接检查的管线、防水、龙骨和设备安装内容。
   - term: 保压试验
@@ -803,6 +803,52 @@ glossary:
     plain_description: 安装在厨房排烟通道接口处、用于减少公共烟道气味和油烟倒灌的部件，需要与烟管和烟道接口匹配并密封。
   - term: 角阀、软管和混水阀
     plain_description: 角阀用于单独关闭某个洁具的供水；软管连接固定水口和洁具；混水阀把冷热水混合到所需温度。三者都要明确品牌、数量和安装责任。
+  - term: 业主
+    plain_description: 自装的项目经理与系统集成。无设计师、无总包：设计由助手经 bontop-design-log 配置落定、业主拍板；业主现场拍照归档、助手审计、业主拍板（通过/整改/放行/付款），无证据判 pending、不判 passed。负责全部包的组织与验收拍板。关键到场：2026-11-26 收房、2026-11-27 亲自牵头量房、2026-12-01 拆改进场。
+  - term: 拆改师傅
+    plain_description: 负责 PKG-010 施工现场保护与放线、PKG-020 拆改、墙体新建与清运，参与 PKG-000 协调。量房日到场提供放线输入，2026-12-01 进场。承重墙、梁柱和楼板不能凭经验拆，BLK-STRUCTURE 未关闭不得拆改。人选、报价待定。
+  - term: 水电师傅
+    plain_description: 负责 PKG-040 水电改造（7–12 工作日）、PKG-120 灯具、PKG-125 开关插座与智能设备安装，配合 PKG-100 洁具与 PKG-160 家电安装。与空调一装并行，接口冻结见 BLK-MEP-INTERFACE-FREEZE。须在深化会审前定下。人选、报价待定。
+  - term: 空调商
+    plain_description: "昊昊（美的），唯一具名方。合同 2026-10-04 已签 ¥36,000，一拖六 20kW 外机 + 6 台双出风内机全带冷凝水提升泵，含辅材，不含复合风管与风口加长（¥100/m 另计）、不含税。方案未最终定，2026-11-27 量房定位后定方案下单。负责 PKG-030 一装（约 2026-12-07~10，拆改后）与 PKG-140 二装（约 2027-02）。主卧 56T2 双出风 1200mm。厂家安装图 #39 与内机出水口实高待确认（仓内 2.52m 为假设）。接口：与水电并行，隐蔽验收过才能封吊顶。"
+  - term: 防水师傅
+    plain_description: 负责 PKG-050 防水及闭水（4–6 工作日）。闭水验收过才能贴砖。两卫沉箱二次排水接口待量房确认。人选、报价待定。
+  - term: 瓦工师傅
+    plain_description: 负责 PKG-060 泥瓦与铺贴（12–18 工作日），配合 PKG-135 踢脚。瓦工人工预算池 ¥18,500（2026-10-03 轮次，待书面报价），瓷砖主材封顶 ¥20,000。门与接缝落点须在铺贴开工前冻结（BLK-DOOR-BEFORE-TILE，D20）。人选待定。
+  - term: 吊顶师傅
+    plain_description: 负责 PKG-070 吊顶龙骨、隐蔽复验与封板（8–12 工作日），与泥瓦并行。空调一装与水电隐蔽验收过才能封板。吊顶完成面 2.50m。人选、报价待定。
+  - term: 涂装师傅
+    plain_description: 负责 PKG-080 墙顶面基层与涂装（12–18 工作日）。待泥瓦与吊顶完。人选、报价待定。
+  - term: 美缝师傅
+    plain_description: 负责 PKG-065 卫生间美缝先行（1–2 工作日）、PKG-130 其余区域美缝（3–5 工作日）。人选、报价待定。
+  - term: 门供应商
+    plain_description: 负责 PKG-090 室内门及厨房门。复尺后按复尺单生产，报价含安装等边界待书面确认。具名、报价待定。
+  - term: 洁具供应商
+    plain_description: 负责 PKG-100 两个卫生间的洁具与五金，配合水电师傅。主卫浴室柜 SKU 未定（BLK-MASTER-VANITY-SKU），冻结前不下单。具名、报价待定。
+  - term: 橱柜供应商
+    plain_description: 负责 PKG-110 橱柜及台面。复尺后按复尺单与确认版深化图下单。具名、报价待定。
+  - term: 窗帘供应商
+    plain_description: 负责 PKG-145 一期窗帘、纱帘与手动轨道。电动窗帘暂不装，只预留电源。具名、报价待定。
+  - term: 家具供应商
+    plain_description: 负责 PKG-150 一期家具。具名、报价待定。
+  - term: 定制供应商
+    plain_description: 负责 PKG-150 定制收纳。通顶定制柜等按复尺与确认版深化图下单。具名、报价待定。
+  - term: 家电供应商
+    plain_description: 负责 PKG-160 必需家电安装与接口测试，配合水电师傅。冰箱型号须净开口复测后锁定。公开参考价不是合同价，须逐台书面报价。具名待定。
+  - term: 灯具供应商
+    plain_description: 负责 PKG-120 一期基础灯具，配合水电师傅。客厅主灯待选（磁吸轨道已砍）。具名、报价待定。
+  - term: 智能设备供应商
+    plain_description: 负责 PKG-125 开关插座面板与一期基础智能设备，配合水电师傅。小米生态方向、优先 Zigbee、保留传统接线与物理开关 fallback；型号待逐个按 HA 兼容性核对。具名、报价待定。
+  - term: 踢脚线供应商
+    plain_description: 负责 PKG-135 踢脚线与收边，配合瓦工师傅。全屋漆面墙脚用奶白瓷砖踢脚线、高度 80mm 可调。具名、报价待定。
+  - term: 燃气单位
+    plain_description: 热水器燃气安装审批与燃气改造验收方。热水器类别已定燃气，现场安装条件待确认（BLK-WATER-HEATER-SITE）。联系方式与报批手续待定。
+  - term: 物业
+    plain_description: 负责 PKG-005 物业装修手续与收费。报批、进场许可、装修收费与施工时间/清运规则须在开工前确认；PKG-005 须与 PKG-000 尾巴并行跑，否则 2026-12-01 拆改会被卡住。
+  - term: 保洁
+    plain_description: 负责 PKG-135 竣工深度清洁。人选、报价待定。
+  - term: 各供应商
+    plain_description: 泛指当包涉及的各供应商，不单独派活；责任按门/洁具/橱柜等各供应商条目分，见 PKG-170 竣工联合验收。
 
 work_packages:
   - id: PKG-000
@@ -899,7 +945,7 @@ work_packages:
         checkpoint: payment
         item: 报价和合同口径完整
         method: 比较至少三份同口径报价并核对数量、单价、辅材、安装、损耗、增项和付款节点
-        pass_condition: 一期承诺额不超过总控且预备金未打包给施工方
+        pass_condition: 一期承诺额不超过总控且预备金未打包给任何一包师傅/供应商
         evidence_required: [quote_comparison, signed_contract, owner_budget_approval_if_overrun]
 
   - id: PKG-005
@@ -1118,10 +1164,10 @@ work_packages:
         - {id: COST-040-12, name: "燃气报警器与电磁切断阀", description: "厨房设可燃气体报警并与电磁切断阀联动；型号、安装位与燃气公司验收要求须先确认", quantity_basis: "1套，型号与位见 pending-site-data 第32，数量由 declared_devices 声明（依据 config/acceptance.yaml check_elec_gas_alarm）", planned_cny: null, status: quantity_pending}
         - {id: COST-040-13, name: "入户阀件三件套", description: "入户总阀DN20全径通径、可调减压阀设定0.25兆帕并锁紧调节螺母、反冲洗前置过滤器位带专用排污口与旁通三通；即使本期不装前置机，三通与排污管也必须埋到位以保证后期可在线拆洗不断全屋水。前置过滤器本体属设备不在本项", quantity_basis: "1套，数量由 declared_devices 声明（依据 config/acceptance.yaml check_plumb_prefilter_and_prv）", planned_cny: null, status: quote_pending}
         - {id: COST-040-14, name: "PPR热水管保温套管", description: "热水管与回水管保温；冷凝水管保温归中央空调合同（COST-030-02），本项不重复计取", quantity_basis: "米数由 takeoff 给水冷热水桶派生（当前mixed/20与hot桶合计约23.7米，含1.08损耗）", planned_cny: null, status: quote_pending}
-        - {id: COST-040-15, name: "封槽料与阴阳角网格布", description: "开槽回填水泥或石膏、阴阳角PVC角条与接缝网格布；属水电开槽后的收口，与PKG-080基层修补的边界须书面划清，防止两边都说含", quantity_basis: "按开槽米数包干（开槽长度由施工方按放线图报，业主以隐蔽照片核）", planned_cny: null, status: interface_pending}
+        - {id: COST-040-15, name: "封槽料与阴阳角网格布", description: "开槽回填水泥或石膏、阴阳角PVC角条与接缝网格布；属水电开槽后的收口，与PKG-080基层修补的边界须书面划清，防止两边都说含", quantity_basis: "按开槽米数包干（开槽长度由水电师傅按放线图报，业主以隐蔽照片核）", planned_cny: null, status: interface_pending}
         - {id: COST-040-16, name: "穿墙套管与防火封堵", description: "新建隔墙砌筑时预埋线管与套管（不后剔）、穿越外墙与结构墙的套管、穿墙孔防火封堵泥；new_partition 预埋属本项目铁律", quantity_basis: "穿墙孔个数由 takeoff 派生（当前35孔）；新建隔墙预埋按拆改图（PKG-020）界面划分", planned_cny: null, status: interface_pending}
         - {id: COST-040-17, name: "浴霸排风管与外墙防火止回阀", description: "两卫浴霸排风管出外墙、φ100防火止回阀与套管、外立面开孔（需物业核定）；验收项check_hvac_exhaust_outlet目前只挂在PKG-030，施工与材料由本项承接", quantity_basis: "2套，数量由 declared_devices 声明（依据 config/acceptance.yaml check_hvac_exhaust_outlet）", planned_cny: null, status: quantity_pending}
-        - {id: COST-040-18, name: "辅材与耗材包干", description: "接线端子、管卡、胀塞、PVC胶水、绝缘胶带、生料带、黄腊管、穿线钢丝；须明确施工方含还是业主另购，禁止与各主材项重复计取", quantity_basis: "包干；若施工方口径为辅材另计，须在报价单逐项列并同类项合并", planned_cny: null, status: duplication_check_required}
+        - {id: COST-040-18, name: "辅材与耗材包干", description: "接线端子、管卡、胀塞、PVC胶水、绝缘胶带、生料带、黄腊管、穿线钢丝；须明确水电师傅含还是业主另购，禁止与各主材项重复计取", quantity_basis: "包干；若水电师傅口径为辅材另计，须在报价单逐项列并同类项合并", planned_cny: null, status: duplication_check_required}
         - {id: COST-040-19, name: "二级浪涌保护器", description: "强电箱内二级SPD；20路加2P进线开关加浪涌对390mm箱体需双排，SPD与换箱决策联动。2026-10-12 分层复核：¥120/只 对正泰口径偏上但在合理上限（NXU-Ⅱ 20kA/275V 2P 京东比价最低 ¥78.68、NXU-ⅡG-40kA 到手 ¥74.91 → ¥75–120），对施耐德口径严重偏低（R9L01050 划线 ¥508.53/到手 ¥346 → ¥346–509），须分层写。另：该行未含 SPD 前级过电流保护器（GB 18802.1/GB 50057 要求），若单设 2P 32A 则 +1 只/+2 模数；正泰 NXU-Ⅱ 2P = 18mm = 1 模数，已验证 mep-takeoff.yaml 的 spd_modules: 1 假设成立", quantity_basis: "1只；若开发商原有箱体已带SPD则本项核减，须拍照存证", planned_cny: null, status: "site_measurement_pending"}
         - {id: COST-040-20, name: 家用断路器与漏电保护器（20 回路）, description: "此前无成本行（COST-040-10 只覆盖箱体）。按 config/electrical-topology.yaml 20 条回路实算：4 路照明 1P C16 + 16 路 1P+N 漏保（C16×5/C20×10/C32×1，C32 为中央空调外机 20kW proposed）+ 1×2P 63A 进线 + 1×SPD。正泰中档 ¥700–1,000（NXBLE-40 1P+N ¥29.42–47.13、NXB-63 1P C16 ¥8.5–18.9、NB3-63 2P 63A ¥34.9–46.61、NXU-Ⅱ SPD ¥74.91–78.68）；施耐德/ABB 上位 ¥1,800–3,000（iC65N 1P ¥21.91–38.99、Acti9 iDPNa Vigi+ 1P+N ¥74.27–129、R9L01050 SPD ¥346–508.53）；差 ¥1,100–2,000 须业主裁定档位。三条合同硬边界：① 必须写明「1P+N 一体式漏保（18mm）」而非「空开+漏保附件拼配」——28 模数只在前者成立，拼配则 4+16×2+2+1 = 38 位，双排也未必够；② 必须写清「含/不含空开」（config/mep-labor.yaml 已警告市面「元/米」报价多含配件/空开，与自购材料不可相加），最稳为混合——师傅供 1P 微断、漏保业主自购（差价最大、假货风险最高，要求逐只防伪码首次查询通过）；③ 甲方自购器件时乙方不得以配件费/空开费/总闸费/箱内器件费等任何名目重复计取。规格反转：进线 27.9kW 与 ≥10mm² 单相约 11kW 无法自洽，若三相进户则总开/SPD 极数/双排结论全部重算（pending-site-data #45）；空调外机若铭牌最大输入接近三代 8.56kW/39A，则 C32A+4.0mm² 不合格需升 C40/C50+6mm²", quantity_basis: "22 只（20 回路 + 2P 进线 + SPD 前级如单设另计）", planned_cny: null, status: quantity_pending}
     duration_workdays: {min: 7, max: 12}
@@ -1326,7 +1372,7 @@ work_packages:
     budget:
       planned_cny: 6000
       estimated_need_cny: 18000
-      estimated_need_note: 2026-10-05（DEC-2026-10-05-R3）业主定标后重算：石膏板吊顶与窗帘盒目标 13,500 + 铝扣板裸价目标 4,500 = 18,000，对父包口径 17,037 的缺口由 ≈6,000 收窄到 ≈1,000，随龙骨/开孔全包与灯 4000K 谈判收口。原 2026-10-03 捆绑报价 9,537（含 2 浴霸+凉霸+灯）中：凉霸不做（-999）、浴霸划出自购定入 COST-100-06（奥普 S2-Air×2 ≈1,362，QR-2026-10-05-01）；4,500 为设备拆分后反推目标，非成交价，裸价重报待取得。拟议 2026-10-08（DEC-2026-10-08-C03，截至 2026-10-07 尚未发生）：计划将多家施工方报价统一进 config/ceiling-quotes.yaml 比价与切换；工程量由吊顶算量子系统实算不变，卡内只写单价与含项范围。本包 estimated_need 18,000 是目标口径，实际以生效报价卡 + COST-070 逐项报价为准
+      estimated_need_note: 2026-10-05（DEC-2026-10-05-R3）业主定标后重算：石膏板吊顶与窗帘盒目标 13,500 + 铝扣板裸价目标 4,500 = 18,000，对父包口径 17,037 的缺口由 ≈6,000 收窄到 ≈1,000，随龙骨/开孔全包与灯 4000K 谈判收口。原 2026-10-03 捆绑报价 9,537（含 2 浴霸+凉霸+灯）中：凉霸不做（-999）、浴霸划出自购定入 COST-100-06（奥普 S2-Air×2 ≈1,362，QR-2026-10-05-01）；4,500 为设备拆分后反推目标，非成交价，裸价重报待取得。拟议 2026-10-08（DEC-2026-10-08-C03，截至 2026-10-07 尚未发生）：计划将多家吊顶师傅报价统一进 config/ceiling-quotes.yaml 比价与切换；工程量由吊顶算量子系统实算不变，卡内只写单价与含项范围。本包 estimated_need 18,000 是目标口径，实际以生效报价卡 + COST-070 逐项报价为准
       funding_status: owner_review_pending_20261003
       contracted_cny: null
       paid_cny: 0
@@ -1993,7 +2039,7 @@ work_packages:
   - id: PKG-900
     sequence: 900
     name: 硬装预备金
-    description: 由业主保留、用于量房误差或确实无法预见事项的备用额度，不是施工方可以默认使用的费用；每次动用都要有原因、报价和书面批准。
+    description: 由业主保留、用于量房误差或确实无法预见事项的备用额度，不是任何一包师傅/供应商可以默认使用的费用；每次动用都要有原因、报价和书面批准。
     budget_pool: hard_finish
     budget: {planned_cny: 5000, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: contingency}
     duration_workdays: {min: 0, max: 0}
