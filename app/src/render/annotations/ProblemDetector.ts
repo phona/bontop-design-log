@@ -29,6 +29,8 @@ export interface PlumbingPoint {
   z: number;
   height?: number;
   note?: string;
+  /** 沿墙位置由同墙宿主花洒派生（混水阀冷水接口）；豁免判定用它确认配对关系与声明间距。 */
+  along_host?: { id: string; offset: number };
 }
 
 export interface CeilingZone {
@@ -148,10 +150,12 @@ export class ProblemDetector {
 
     for (let i = 0; i < plumbing.length; i++) {
       for (let j = i + 1; j < plumbing.length; j++) {
-        // 混水阀冷水接口与花洒本体相距 150mm 是标准间距（设计使然），不是重叠；
-        // 只豁免 shower↔shower_inlet 这一对——两个接口之间仍按 0.2m 判定。
+        // 混水阀冷水接口与花洒本体相距 150mm 是标准间距（设计使然），不是重叠；但只豁免
+        // 「接口的 along_host 确实指向该花洒、且实测间距与声明 offset 相符（容差 0.02m）」
+        // 的配对。接口误移、与另一套花洒碰撞、或两点重合时，仍按 0.2m 判定（Codex review
+        // 5938169611 minor：此前按类型组合一律豁免，同坐标也不报）。
         const pair = [plumbing[i].type, plumbing[j].type].sort().join('+');
-        if (pair === 'shower+shower_inlet') continue;
+        if (pair === 'shower+shower_inlet' && this._isDeclaredMixerPair(plumbing[i], plumbing[j])) continue;
         if (this._dist2d(plumbing[i], plumbing[j]) < 0.2) {
           problems.push({
             type: 'point_overlap',
@@ -201,6 +205,19 @@ export class ProblemDetector {
       pz >= zMin - tolerance &&
       pz <= zMax + tolerance
     );
+  }
+
+  /**
+   * 混水阀配对豁免：接口（shower_inlet）的 along_host 必须指向该花洒，且两点实测平面
+   * 距离与声明 offset 的绝对值相符（容差 0.02m，消浮点与面偏移噪声）。两点重合（距 0）
+   * 或接口指向另一套花洒时不豁免——0.2m 重叠判定照常跑。
+   */
+  private _isDeclaredMixerPair(a: PlumbingPoint, b: PlumbingPoint): boolean {
+    const shower = a.type === 'shower' ? a : b.type === 'shower' ? b : undefined;
+    const inlet = a.type === 'shower_inlet' ? a : b.type === 'shower_inlet' ? b : undefined;
+    if (!shower || !inlet || inlet.along_host === undefined) return false;
+    if (inlet.along_host.id !== shower.id) return false;
+    return Math.abs(this._dist2d(shower, inlet) - Math.abs(inlet.along_host.offset)) <= 0.02;
   }
 
   private _dist2d(a: { x: number; z: number }, b: { x: number; z: number }): number {

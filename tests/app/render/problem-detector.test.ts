@@ -116,14 +116,41 @@ describe('ProblemDetector', () => {
 
   // PR #260 第二轮修复（Codex blocking 跟进）：花洒与冷水接口相距 150mm 是标准
   // 混水阀间距，不是重叠——shower↔shower_inlet 这一对不报 point_overlap。
+  // 第三轮（Codex review 5938169611 minor）：豁免只认 along_host 指向该花洒、
+  // 且间距与声明 offset 相符的配对——fixture 须带 along_host 声明。
   it('no overlap for shower and its cold-water inlet 150mm apart', () => {
     const detector = new ProblemDetector();
     const plumbing = [
       { id: 'shower_mbath', room: 'master_bath', x: 0.5, z: 2.76, height: 1.0, type: 'shower' as const },
-      { id: 'shower_mbath_cold_inlet', room: 'master_bath', x: 0.35, z: 2.76, height: 1.0, type: 'shower_inlet' as const },
+      { id: 'shower_mbath_cold_inlet', room: 'master_bath', x: 0.35, z: 2.76, height: 1.0, type: 'shower_inlet' as const, along_host: { id: 'shower_mbath', offset: -0.15 } },
     ];
     const problems = detector.checkPointOverlap([], plumbing);
     assert.equal(problems.length, 0);
+  });
+
+  // 接口与花洒同坐标（误移/重合）时豁免不适用——间距 0 与声明 offset 0.15 不符，照常报重叠。
+  it('still flags a cold-water inlet sitting on top of its shower', () => {
+    const detector = new ProblemDetector();
+    const plumbing = [
+      { id: 'shower_mbath', room: 'master_bath', x: 0.5, z: 2.76, height: 1.0, type: 'shower' as const },
+      { id: 'shower_mbath_cold_inlet', room: 'master_bath', x: 0.5, z: 2.76, height: 1.0, type: 'shower_inlet' as const, along_host: { id: 'shower_mbath', offset: -0.15 } },
+    ];
+    const problems = detector.checkPointOverlap([], plumbing);
+    assert.equal(problems.length, 1);
+    assert.equal(problems[0].type, 'point_overlap');
+  });
+
+  // 接口 along_host 指向另一套花洒时不豁免——即使与这套花洒恰好相距 150mm。
+  it('still flags an inlet whose along_host points at a different shower', () => {
+    const detector = new ProblemDetector();
+    const plumbing = [
+      { id: 'shower_a', room: 'master_bath', x: 0.5, z: 2.76, height: 1.0, type: 'shower' as const },
+      { id: 'shower_b', room: 'master_bath', x: 3.0, z: 2.76, height: 1.0, type: 'shower' as const },
+      { id: 'inlet_a', room: 'master_bath', x: 0.35, z: 2.76, height: 1.0, type: 'shower_inlet' as const, along_host: { id: 'shower_b', offset: -0.15 } },
+    ];
+    const problems = detector.checkPointOverlap([], plumbing);
+    assert.equal(problems.length, 1);
+    assert.equal(problems[0].type, 'point_overlap');
   });
 
   // 豁免只针对 shower↔shower_inlet 这一对：两个接口之间仍按 0.2m 判定。
