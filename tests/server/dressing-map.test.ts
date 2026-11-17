@@ -114,13 +114,62 @@ test('冷凝链已退役：真实配置不再解出链几何，退役三件不�
   }
 });
 
+test('灯光摆放单：along_host 起夜灯（宿主为灯具筛选外的插座）能解出坐标', () => {
+  const context = loadDressingMapContext();
+  const lights = context.electrical.filter((point) => isLightingFixtureType(point.type));
+  // 宿主必须是灯具筛选外的点位（插座）：若索引只由 lights 建，宿主不在索引里，
+  // 解算报「断引用」——本测试钉的就是「索引取自全量 electrical + plumbing」这一口径。
+  const host = context.electrical.find((point) => point.id === 'sock_master_bed_r');
+  assert.ok(host, 'sock_master_bed_r must be declared in config/electrical.yaml');
+  assert.ok(!lights.some((point) => point.id === host.id), '宿主插座不得在灯具筛选结果里');
+  assert.equal(host.type, 'socket');
+  assert.ok(host.wall !== undefined && host.along !== undefined, '宿主须为沿墙点位');
+
+  // 合成 along_host 起夜灯：只声明宿主 + 偏移，不声明 wall/mount/anchor/absolute。
+  const synthetic = {
+    id: 'night_test_along_host',
+    room: 'master_bedroom',
+    type: 'night_light',
+    along_host: { id: host.id, offset: 0.15 },
+    height: 0.3,
+  } as const;
+  const section = buildLightingSection(
+    [synthetic],
+    () => '—',
+    (point) => resolvePointPlacementInWalls(point, context.pointWalls, context.mountHosts, context.pointSiblings),
+  );
+  assert.deepEqual(section.failures, []);
+
+  // 派生规则（不钉绝对坐标）：沿墙位置 = 宿主解算 along + 声明 offset，墙/面继承宿主
+  // 的解算结果（解算器即按 hostResolved.placement 派生，不读宿主的字面字段）。
+  const { placement, diagnostic } = resolvePointPlacementInWalls(synthetic, context.pointWalls, context.mountHosts, context.pointSiblings);
+  assert.equal(diagnostic, undefined, `unexpected diagnostic: ${diagnostic ?? ''}`);
+  assert.ok(placement, 'along_host 起夜灯必须解出位置');
+  assert.equal(placement.kind, 'wall');
+  const hostPlacement = resolvePointPlacementInWalls(host, context.pointWalls, context.mountHosts, context.pointSiblings).placement;
+  assert.ok(hostPlacement, '宿主插座必须解出位置');
+  assert.equal(hostPlacement.kind, 'wall');
+  if (placement.kind === 'wall' && hostPlacement.kind === 'wall') {
+    assert.equal(placement.wallId, hostPlacement.wallId);
+    assert.equal(placement.wallSide, hostPlacement.wallSide);
+    assert.equal(placement.along, hostPlacement.along + 0.15);
+  }
+  const formatCoord = (value: number): string => String(Number(value.toFixed(3)));
+  const row = section.lines.find((line) => line.startsWith('| night_test_along_host |'));
+  assert.ok(row, '合成起夜灯必须出现在灯光点位表里');
+  assert.ok(
+    row.includes(`(${formatCoord(placement.x)}, ${formatCoord(placement.z)})`),
+    `位置列必须是解算坐标（当前行：${row}）`,
+  );
+});
+
 test('灯光摆放单：沿墙/挂载起夜灯输出解算坐标，不再是 (—, —)', () => {
   const context = loadDressingMapContext();
   const lights = context.electrical.filter((point) => isLightingFixtureType(point.type));
   const section = buildLightingSection(
     lights,
     () => '—',
-    (point) => resolvePointPlacementInWalls(point, context.pointWalls, context.mountHosts),
+    (point) => resolvePointPlacementInWalls(point, context.pointWalls, context.mountHosts, context.pointSiblings),
   );
   assert.deepEqual(section.failures, []);
 
@@ -139,7 +188,7 @@ test('灯光摆放单：沿墙/挂载起夜灯输出解算坐标，不再是 (�
   for (const id of ['night_guest_head', 'night_living_mid', 'night_corridor']) {
     const point = lights.find((candidate) => candidate.id === id);
     assert.ok(point, `${id} must be declared in config/electrical.yaml`);
-    const { placement } = resolvePointPlacementInWalls(point, context.pointWalls, context.mountHosts);
+    const { placement } = resolvePointPlacementInWalls(point, context.pointWalls, context.mountHosts, context.pointSiblings);
     assert.ok(placement, `${id} must resolve`);
     assert.equal(positionOf(id), `(${formatCoord(placement.x)}, ${formatCoord(placement.z)})`);
   }
