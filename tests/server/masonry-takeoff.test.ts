@@ -231,6 +231,14 @@ test('全部贴砖 38.628㎡ = wall_region + sill_region + pipe_box', () => { //
   close(result.byRoom.guest_bath.pipeBoxTileSqm, 1.0, '客卫盒两面 0.20m × 2.50m');
   close(result.byRoom.kitchen.pipeBoxTileSqm, 0.644, '厨房盒两面 0.20m × 1.61m（只包台面以上）');
   assert.deepEqual(Object.keys(result.byZone), ['visible'], 'C18 废止杂砖后全部 zone=visible');
+  // 分区汇总必须等于全量（Codex review 5938395280 minor）：包管盒面只进了
+  // 总量与 byRoom、没进 byZone 时，分区合计 35.9836㎡、总量 38.6276㎡，差 2.644㎡。
+  close(
+    Object.values(result.byZone).reduce((sum, area) => sum + area, 0),
+    result.totalTileSqm,
+    '分区面积之和必须等于贴砖全量',
+  );
+  close(result.byZone.visible, result.totalTileSqm, '全部 zone=visible 时 visible 分区即全量');
 });
 
 // ── ②a 包管盒：pipe_box 声明派生 ────────────────────────────────────────────

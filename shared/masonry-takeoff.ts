@@ -193,6 +193,12 @@ export interface MasonryPipeBoxInput {
   top: number;
   /** 立管外径（毫米，DN110 = 110）：砂浆填充量 =（盒截面 − 管截面）× 高。 */
   pipeDiameterMm: number;
+  /**
+   * 贴砖分区（与 wall/sill_region 的 zone 同口径，缺省 'visible'）：
+   * 盒面面积进 byZone 的分区键。Codex review 5938395280 minor——盒面只进
+   * 总量与 byRoom 时分区合计少 2.644㎡；声明了 zone 的盒按声明分区。
+   */
+  zone?: string;
 }
 
 /** 一条包管盒派生后的量。 */
@@ -201,9 +207,11 @@ export interface MasonryPipeBoxResult {
   room: string;
   riser: string;
   pipes: 1 | 2;
+  /** 贴砖分区（盒声明的 zone，缺省 'visible'；盒面面积进 byZone 的分区键）。 */
+  zone: string;
   /** 盒高 = top − bottom（米）。 */
   heightM: number;
-  /** 盒面贴砖面积（㎡）= 各面宽之和 × 高；进 totalTileSqm 与该房 tileSqm。 */
+  /** 盒面贴砖面积（㎡）= 各面宽之和 × 高；进 totalTileSqm、该房 tileSqm 与 byZone。 */
   tileSqm: number;
   /** 板材面积（㎡）= tileSqm（同面同板）。 */
   boardSqm: number;
@@ -1109,11 +1117,15 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
       throw new Error(`pipe_box ${box.id}: 管截面合计 ${pipeAreaSqm.toFixed(4)}㎡ 不小于盒截面 ${boxSectionSqm.toFixed(4)}㎡，灌浆量算不出——盒截面或管径声明有误`);
     }
     const mortarCum = (boxSectionSqm - pipeAreaSqm) * heightM;
+    // 分区键与 wall/sill_region 同口径（zone 缺省 'visible'）：盒面面积必须
+    // 同时进 byZone，否则分区合计少盒面 2.644㎡（Codex review 5938395280 minor）。
+    const zone = box.zone ?? 'visible';
     result.pipeBoxes.push({
       id: box.id,
       room: box.room,
       riser: box.riser,
       pipes: box.pipes,
+      zone,
       heightM,
       tileSqm,
       boardSqm: tileSqm,
@@ -1128,6 +1140,7 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
     const bucket = result.byRoom[box.room]!;
     bucket.pipeBoxTileSqm += tileSqm;
     bucket.tileSqm += tileSqm;
+    result.byZone[zone] = (result.byZone[zone] ?? 0) + tileSqm;
   }
 
   result.wallTileSqm = result.regions.filter((region) => region.kind === 'wall').reduce((sum, region) => sum + region.areaSqm, 0);

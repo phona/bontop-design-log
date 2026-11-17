@@ -293,6 +293,7 @@ export function loadMasonryTakeoff(
       bottom: Number(element.bottom),
       top: Number(element.top),
       pipeDiameterMm: Number(element.pipeDiameterMm ?? 110),
+      ...(element.zone !== undefined ? { zone: String(element.zone) } : {}),
     }));
 
   return computeMasonryTakeoff({

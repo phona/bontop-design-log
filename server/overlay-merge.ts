@@ -321,6 +321,11 @@ const PipeBoxSchema = z
     /** 立管外径（毫米，DN110 = 110）：砂浆填充量 =（盒截面 − 管截面合计）× 高。 */
     pipeDiameterMm: z.number().positive().default(110),
     /**
+     * 贴砖分区（与 wall/sill_region 的 zone 同口径，缺省 'visible'）：
+     * 盒面面积进 byZone 的分区键（Codex review 5938395280 minor）。
+     */
+    zone: z.string().min(1).optional(),
+    /**
      * 声明状态：构件状态唯一字段，词汇与 shared/types.ts 的 ComponentStatus 同源
      * （measured / likely / inferred / pending / confirmed / undeclared）。
      * 包管盒现为 inferred = 未量房推断，量房后复核（复核触发见 blocker）。
