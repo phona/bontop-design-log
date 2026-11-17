@@ -53,7 +53,7 @@
   water_temp: "cold"
   water_dn: 20
   height: 1.0
-  note: "主卫淋浴冷水进水口（2026-11-17 量价算法审计 D4 跟进，Codex blocking）：与热水立管同为混水阀两进水口，标准间距 150mm（infer）；花洒挂南墙、使用者面朝南，热水左（东）、冷水右（西），故冷口在热水西侧 0.15m（沿位由宿主花洒派生 along_host: shower_mbath -0.15，宿主移动本口自动跟随）；热水立管保持花洒点位 (0.50,2.76)，对中偏差 75mm 在 v1 ±0.3m 不确定度内。冷水干管末段绕热水立管南侧 z=2.61 bypass 后北折进冷立管（见 water-v1-entry-to-mbath-cold）。量房后按实测阀体位置回写。"
+  note: "主卫淋浴冷水进水口（2026-11-17 量价算法审计 D4 跟进，Codex blocking）：与热水立管同为混水阀两进水口，标准间距 150mm（infer）；花洒挂南墙、使用者面朝南，热水左（东）、冷水右（西），故冷口在热水西侧 0.15m（沿位由宿主花洒派生 along_host: shower_mbath -0.15，宿主移动本口自动跟随）；热水立管保持花洒点位 (0.50,2.76)，对中偏差 75mm 在 v1 ±0.3m 不确定度内。冷水干管末段绕热水立管北侧 z=2.61 bypass 后南折进冷立管（见 water-v1-entry-to-mbath-cold）。量房后按实测阀体位置回写。"
   status: inferred
 
 - id: toilet_mbath

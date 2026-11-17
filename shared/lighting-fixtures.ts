@@ -105,6 +105,11 @@ export function buildRenderLightingFixtures(
     // 基准）仍是「声明 x/z + overrides 偏移」口径，缺 x/z 即 fail-closed，不猜坐标。
     let planeX: number;
     let planeZ: number;
+    // 沿墙派生灯具继承的安装朝向（PR #260 第六轮，Codex review 5940396191 major）：
+    // 解算器从宿主继承 wallSide，但投影只透传声明的 fixture.wallSide；along_host
+    // 允许省略 wall_side（schema refine 只要求 id + offset），丢继承值会让夜灯下游
+    // getNightLightMountNormal 抛错。wall 分支不需要它（schema 要求 wall_side 齐备）。
+    let resolvedWallSide: RenderLightingFixture['wallSide'];
     if (fixture.mount !== undefined) {
       const { placement, diagnostic } = resolvePointPlacementInWalls(fixture, undefined, mountHosts);
       if (!placement || placement.kind !== 'mount') {
@@ -146,6 +151,7 @@ export function buildRenderLightingFixtures(
       }
       planeX = placement.x;
       planeZ = placement.z;
+      resolvedWallSide = placement.wallSide;
     } else {
       if (fixture.x === undefined || fixture.z === undefined) {
         throw new Error(`Lighting fixture ${fixture.id} has no electrical x/z: 绝对灯位必须声明坐标`);
@@ -156,6 +162,8 @@ export function buildRenderLightingFixtures(
     if (fixture.mountAnchor && fixture.type !== 'night_light') {
       throw new Error(`Furniture-face mount is only supported for night_light fixtures: ${fixture.id}`);
     }
+    // 声明 wallSide 优先，否则取沿墙派生继承的侧别（只 along_host 分支会设置它）。
+    const effectiveWallSide = fixture.wallSide ?? resolvedWallSide;
     return {
       id: fixture.id,
       room: fixture.room,
@@ -173,7 +181,7 @@ export function buildRenderLightingFixtures(
       ...(fixture.heads !== undefined ? { heads: fixture.heads } : {}),
       ...(fixture.recessed !== undefined ? { recessed: fixture.recessed } : {}),
       ...(fixture.wall !== undefined ? { wallId: fixture.wall } : {}),
-      ...(fixture.wallSide !== undefined ? { wallSide: fixture.wallSide } : {}),
+      ...(effectiveWallSide !== undefined ? { wallSide: effectiveWallSide } : {}),
       ...(fixture.mountAnchor !== undefined ? { mountAnchor: fixture.mountAnchor } : {}),
     };
   });
