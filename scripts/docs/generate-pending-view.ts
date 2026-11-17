@@ -98,6 +98,14 @@ export function collectRows(): Row[] {
       ...(element.notForConstruction !== undefined ? { not_for_construction: element.notForConstruction } : {}),
     });
     if (!isPending && !needsSurvey && !marked) continue;
+    // pipe_box 不许合成 blocker：采集侧已校验（未确认的盒缺 blocker 即抛错，见
+    // shared/element-sources.ts），此处是视图侧最后一道防线——万一将来某条采集路径
+    // 绕过校验漏进来，视图也不得把它渲成「已登记属主」（Codex review 5935989455
+    // blocking）。其它 kind 的 fallback 保持原样：inferred 但 note 明写待量房的构件
+    // 仍要进清单（2026-11-09 修 Codex major 的判据），它们的 blocker 确实未声明。
+    if (state.kind === 'pipe_box' && !element.blocker) {
+      throw new Error(`待决视图：pipe_box ${state.id} 缺 blocker，拒绝合成 fallback blocker；先给该盒补 blocker`);
+    }
     const markerText = [
       element.constructionStatus === 'pending' ? 'construction_status=pending' : undefined,
       element.notForConstruction ? 'not_for_construction=true' : undefined,
@@ -132,7 +140,12 @@ export function collectRows(): Row[] {
       });
     }
   }
-  return rows.sort((a, b) => a.blocker.kind.localeCompare(b.blocker.kind) || a.id.localeCompare(b.id));
+  // 去重：同一构件不得在采集侧与载体侧各出一行。pipe_box 同时被 collectElements()
+  // 与 pending-carriers 采集——载体行胜出（它带 measure/当前推断文本，采集行没有）。
+  // 载体行后压入，Map.set 覆盖即载体胜出；其它 kind 今天无 id 碰撞，去重对它们是空操作。
+  const byRowId = new Map<string, Row>();
+  for (const row of rows) byRowId.set(row.id, row);
+  return [...byRowId.values()].sort((a, b) => a.blocker.kind.localeCompare(b.blocker.kind) || a.id.localeCompare(b.id));
 }
 
 function table(title: string, rows: Row[], note: string): string {

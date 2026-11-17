@@ -1,7 +1,15 @@
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
-import { parseCeilingZones, parseElectricalPoints, parsePlumbingPoints, parseProjectHvacFacts } from './project-render-facts-schema.js';
-import { sourceFile } from './envelope-sources.js';
+import { load as parseYaml } from 'js-yaml';
+import {
+  ComponentBlockerSchema,
+  parseCeilingZones,
+  parseElectricalPoints,
+  parsePlumbingPoints,
+  parseProjectHvacFacts,
+  pipeBoxBlockerRequired,
+} from './project-render-facts-schema.js';
+import { SOURCES, sourceFile } from './envelope-sources.js';
 import type { ElementInput, ElementKind } from './element-state.js';
 
 /**
@@ -198,6 +206,52 @@ export function collectElements(): ElementInput[] {
       ...(zone.blocker ? { blocker: zone.blocker } : {}),
       ...(decision ? { decision } : {}),
       ...(zone.note ? { note: zone.note } : {}),
+    });
+  }
+
+  // 包管盒（pipe_box）：config/model/envelope/openings.yaml 的声明（PR #259 第二轮，
+  // Codex review 5935989455 blocking：此前 pipe_box 不进采集，checkBlockers 永远看不到它）。
+  // overlay 是多文件源（openings + floor-zones + finish-defaults），sourceFile('overlay')
+  // 拒绝单文件读取；包管盒只住 openings.yaml——取注册表的首个文件路径单点读，
+  // 并断言它就是 openings.yaml（注册表顺序一变，这里必须跟着炸，而不是静默读错文件）。
+  // 读的是原始 YAML（不走 server/overlay-merge.ts 的 zod 解析——shared 层不 import server），
+  // 因此 blocker 必填规则要在这里再拦一道：与 schema 共用 pipeBoxBlockerRequired，
+  // 未确认的盒缺 blocker 即抛错，不许流进投影与待决视图后再由视图合成。
+  const openingsFile = SOURCES.overlay.files[0];
+  if (!openingsFile.endsWith('openings.yaml')) {
+    throw new Error(`element-sources: overlay 注册表首文件不是 openings.yaml（${openingsFile}），包管盒采集路径失效`);
+  }
+  const overlayDoc = parseYaml(read(openingsFile)) as { elements?: unknown[] };
+  if (!Array.isArray(overlayDoc?.elements)) {
+    throw new Error(`${openingsFile} 缺 elements 段：包管盒无法采集`);
+  }
+  for (const entry of overlayDoc.elements) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const record = entry as Record<string, unknown>;
+    if (record.type !== 'pipe_box') continue;
+    const id = record.id;
+    if (typeof id !== 'string' || !id) throw new Error(`${openingsFile} 的 pipe_box 缺 id`);
+    const status = typeof record.status === 'string' ? record.status : undefined;
+    if (
+      status !== undefined &&
+      !['measured', 'likely', 'inferred', 'pending', 'confirmed', 'undeclared'].includes(status)
+    ) {
+      throw new Error(`${openingsFile} 的 pipe_box ${id} status 非法：${status}`);
+    }
+    const blocker = record.blocker === undefined ? undefined : ComponentBlockerSchema.parse(record.blocker);
+    if (pipeBoxBlockerRequired(status) && blocker === undefined) {
+      throw new Error(
+        `${openingsFile} 的 pipe_box ${id}（status=${status ?? '缺省'}）未声明 blocker：未确认的盒必须说清卡在谁/何时解锁/何时反转，见 server/overlay-merge.ts 的 PipeBoxSchema`,
+      );
+    }
+    elements.push({
+      id: `pipe_box:${id}`,
+      kind: 'pipe_box',
+      label: `包管盒 ${id}`,
+      ...(typeof record.room === 'string' && record.room ? { room: record.room } : {}),
+      ...(status ? { configStatus: status } : {}),
+      ...(blocker ? { blocker } : {}),
+      ...(typeof record.note === 'string' && record.note ? { note: record.note } : {}),
     });
   }
 

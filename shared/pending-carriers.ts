@@ -446,26 +446,36 @@ function readPipeBoxPendingItems(): PipeBoxPendingSource[] {
   return pending;
 }
 
-function collectPipeBoxPendingRows(): PendingCarrierItem[] {
-  return readPipeBoxPendingItems().map((box) => ({
+/**
+ * 包管盒载体行（Codex review 5935989455 blocking，PR #259 第二轮）：blocker 必须
+ * 原样取对象自己的声明，缺了即抛错——不许合成一个 owner 量房的 fallback blocker。
+ * 合成行看起来「已登记属主」，实则掩盖了缺失的真实声明；schema（overlay-merge.ts）
+ * 与采集侧（element-sources.ts）已保证合法状态下盒必带 blocker，此处是原始 YAML
+ * 直读的最后一道防线。家具载体的同形态 fallback 是 2026-11-16 既有写法，不在本轮动。
+ */
+export function buildPipeBoxPendingRow(box: PipeBoxPendingSource): PendingCarrierItem {
+  if (!box.blocker) {
+    throw new Error(
+      `包管盒 ${box.id}（status=${box.status ?? 'inferred'}）未声明 blocker：待决视图不得合成 fallback blocker，先在 config/model/envelope/openings.yaml 给该盒补 blocker`,
+    );
+  }
+  return {
     id: `pipe_box:${box.id}`,
     kind: 'pipe_box',
     label: `包管盒 ${box.id}`,
     room: box.room,
     status: box.status ?? 'inferred',
     ...(box.note ? { note: box.note } : {}),
-    blocker: box.blocker ?? {
-      kind: 'site_measurement',
-      owner: ['量房'],
-      trigger: '量房实测（该包管盒未申报 blocker，按其结构化待核字段/note 纳入清单）',
-      reverses_if: '实测后按结果回改或销号',
-      rationale: box.note ?? '（无 note）',
-    },
+    blocker: box.blocker,
     // 量什么：blocker.trigger 已写明（立管实位/吊柜遮挡）；当前推断值：盒截面/盒高/管数。
     // 吊柜遮挡只问厨房盒（0.89m 以上外露段是否被吊柜盖住）；两卫盒问立管是否在房内/西北角。
     measure: `立管 ${box.riser} 实位（模型位 ±0.3m 推断）${box.room === 'kitchen' ? '、吊柜是否遮住 0.89m 以上外露段' : '、是否在房内/西北角'}、盒高 ${box.bottom.toFixed(2)}–${box.top.toFixed(2)}m`,
     currentValue: `${box.pipes === 1 ? '单管' : '双管'} ${box.width.toFixed(2)}×${box.depth.toFixed(2)}m、${box.faces} 面盒；status=${box.status ?? 'inferred'}、量房前不入施工`,
-  }));
+  };
+}
+
+function collectPipeBoxPendingRows(): PendingCarrierItem[] {
+  return readPipeBoxPendingItems().map((box) => buildPipeBoxPendingRow(box));
 }
 
 // ── 载体登记表 ──────────────────────────────────────────────────────────────

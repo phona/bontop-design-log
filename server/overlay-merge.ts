@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { isWallSuppressed } from '../shared/suppression.js';
 import { deriveSkirtingRegions } from '../shared/skirting-derivation.js';
-import { ComponentBlockerSchema } from '../shared/project-render-facts-schema.js';
+import { ComponentBlockerSchema, pipeBoxBlockerRequired } from '../shared/project-render-facts-schema.js';
 import type { BaySillSegment, BaySillWallReference, SceneElement, WallSegment, CurtainPoint, WallPaintBand, WallTileBand } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
@@ -329,11 +329,13 @@ const PipeBoxSchema = z
     /**
      * 未决声明（决策铁律第 1 条：每个新引入的部件必须说清卡在谁、什么事件解锁、
      * 什么条件下反转）。inferred 盒的量房复核走这里，不只写 note——note 是散文，
-     * blocker 才是带 owner/trigger 的结构化声明。status 为 pending/undeclared 时必填
-     * （checkBlockers 门禁）；inferred 同样填写，使复核任务有属主、可查询。
-     * 注意：overlay envelope 元素目前不进 collectElements() 的状态采集（电气/
-     * 给排水/吊顶三类才进），本 blocker 暂只作对象 intent 落点 + 成本待核清单
-     * 的复核依据；采集覆盖是另案机制改动，不在本 PR 里扩。
+     * blocker 才是带 owner/trigger 的结构化声明。必填规则（Codex review 5935989455
+     * blocking）：只有 measured/confirmed 的盒可以不带 blocker；pending/undeclared/
+     * inferred/likely/缺省 status 一律必填，由下方 refine + pipeBoxBlockerRequired
+     * 强制执行——缺了即 parse 失败，不许流进待决视图后再合成 fallback blocker。
+     * 采集侧：overlay envelope 元素自本轮进 collectElements()（shared/element-sources.ts），
+     * checkBlockers 门禁对 pipe_box 同样生效；pending 载体行也不再合成 blocker
+     *（shared/pending-carriers.ts 的 buildPipeBoxPendingRow 缺 blocker 即抛错）。
      */
     blocker: ComponentBlockerSchema.optional(),
     note: z.string().min(1).optional(),
@@ -341,6 +343,10 @@ const PipeBoxSchema = z
   .strict()
   .refine((box) => box.top > box.bottom, {
     message: 'pipe_box top 必须高于 bottom',
+  })
+  .refine((box) => !pipeBoxBlockerRequired(box.status) || box.blocker !== undefined, {
+    message:
+      'pipe_box status 为 pending/undeclared/inferred/likely 或缺省时必须声明 blocker（卡在谁/何时解锁/何时反转），不许留空后由视图合成',
   });
 
 const OverlaySchema = z

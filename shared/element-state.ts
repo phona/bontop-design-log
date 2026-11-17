@@ -24,7 +24,7 @@ export type ElementStatus = 'measured' | 'confirmed' | 'inferred' | 'pending' | 
 
 export type ElementKind =
   | 'electrical' | 'plumbing' | 'ceiling' | 'furniture' | 'hvac'
-  | 'mep_route' | 'room' | 'wall' | 'opening' | 'material' | 'budget';
+  | 'mep_route' | 'room' | 'wall' | 'opening' | 'material' | 'budget' | 'pipe_box';
 
 /** 调用方从配置里收集到的构件最小描述。id 与 3D `userData.objectId` 同源。 */
 export interface ElementInput {
