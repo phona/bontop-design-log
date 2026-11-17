@@ -26,7 +26,7 @@ import {
 import { parseElectricalPoints, parseRenderLightingOverrides } from '../../shared/project-render-facts-schema.js';
 import { buildProjectRenderFactsFromFiles } from '../../scripts/project/project-render-facts-projection.js';
 import { buildRuntimeScene, loadSceneInputs } from '../../shared/penetration/scene.js';
-import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { pointWallIndexFromElements, pointPlacementIndex, resolvePointPlacementInWalls } from '../../shared/point-placement.js';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { load as parseYaml } from 'js-yaml';
@@ -145,6 +145,26 @@ describe('lighting fixture derivation parity', () => {
     for (const type of ['socket', 'switch', 'network', 'floor_socket', 'strong_panel', 'weak_panel', 'ac_controller', 'switch_2way', 'usb'] as const) {
       assert.equal(isLightingFixtureType(type), false, type);
     }
+  });
+
+  // PR #260 第五轮修复（Codex review 5939681715 major）：灯具派生不走 along_host 分支——
+  // 无 mount/wall/anchor 的派生灯具落进 else 分支按绝对灯位要求 x/z，直接抛错。修复后
+  // along_host 走单一解算（与 3D/DXF/MEP 同源），位置与解算器派生值一致。宿主取真实点位
+  // sock_living_tv（w_st_east，along 2.15）；派生灯沿墙 +0.5m。
+  it('derives an along_host fixture from its host socket', () => {
+    const host = houseElectrical().find((candidate) => candidate.id === 'sock_living_tv')!;
+    const fixture = point({
+      id: 'night_probe', type: 'night_light', room: 'living_dining', height: 0.3,
+      wallSide: 'east', along_host: { id: 'sock_living_tv', offset: 0.5 }, x: undefined, z: undefined,
+    });
+    const derived = buildRenderLightingFixtures([host, fixture], [override('night_probe')], houseMountHosts(), housePointWalls());
+    assert.equal(derived.length, 1);
+    assert.equal(derived[0].id, 'night_probe');
+    assert.equal(derived[0].position.y, 0.3);
+    const expected = resolvePointPlacementInWalls(fixture, housePointWalls(), houseMountHosts(), pointPlacementIndex([host, fixture]));
+    assert.ok(expected.placement && expected.placement.kind === 'wall', `host must resolve: ${expected.diagnostic ?? ''}`);
+    assert.ok(Math.abs(derived[0].position.x - expected.placement.x) < 1e-6, `x drift: ${derived[0].position.x} vs ${expected.placement.x}`);
+    assert.ok(Math.abs(derived[0].position.z - expected.placement.z) < 1e-6, `z drift: ${derived[0].position.z} vs ${expected.placement.z}`);
   });
 });
 

@@ -6,7 +6,7 @@ import type {
   ResolvedRoom,
 } from './types.js';
 import { ceilingFootprint, ceilingSurfaceY, isSolidCeilingZone, pointInFootprint } from './mep-hvac-lint.js';
-import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from './point-placement.js';
+import { pointPlacementIndex, resolvePointPlacementInWalls, type PointMountHost, type PointWall } from './point-placement.js';
 
 /**
  * 灯具渲染派生：**唯一实现**。
@@ -75,6 +75,9 @@ export function buildRenderLightingFixtures(
   const fixtures = electrical.filter((point) => LIGHT_TYPES.has(point.type));
   const fixtureIds = new Set(fixtures.map((fixture) => fixture.id));
   const overrideById = new Map<string, RenderLightingOverride>();
+  // 沿墙派生（along_host）灯具须由同批点位索引解算（PR #260 第五轮，Codex review
+  // 5939681715 major）：缺 siblings 时解算器即诊断失败，灯具派生不得回落声明 x/z。
+  const siblings = pointPlacementIndex(electrical);
 
   for (const override of overrides) {
     if (!fixtureIds.has(override.id)) {
@@ -130,6 +133,16 @@ export function buildRenderLightingFixtures(
       const { placement, diagnostic } = resolvePointPlacementInWalls(fixture, pointWalls, mountHosts);
       if (!placement || placement.kind !== 'absolute') {
         throw new Error(`Lighting fixture ${fixture.id}: anchor 定位解析失败（${diagnostic ?? '解算器未返回结果'}；调用方须提供 mountHosts）`);
+      }
+      planeX = placement.x;
+      planeZ = placement.z;
+    } else if (fixture.along_host !== undefined) {
+      // 沿墙派生灯具（PR #260 第五轮，Codex review 5939681715 major）：宿主沿墙位置
+      // 先解出，再按宿主墙 + 派生 along 走同一沿墙分支；调用方须传 pointWalls，缺它即
+      // fail-closed，不回落声明 x/z（沿墙派生灯具本就不声明 x/z）。
+      const { placement, diagnostic } = resolvePointPlacementInWalls(fixture, pointWalls, mountHosts, siblings);
+      if (!placement || placement.kind !== 'wall') {
+        throw new Error(`Lighting fixture ${fixture.id}: along_host 定位解析失败（${diagnostic ?? '解算器未返回结果'}；调用方须提供 pointWalls 与同批点位索引）`);
       }
       planeX = placement.x;
       planeZ = placement.z;

@@ -5,7 +5,7 @@ import type {
   FurnishingsYaml,
   ResolvedLayout,
 } from './types.js';
-import { resolvePointPlacementInWalls } from './point-placement.js';
+import { pointPlacementIndex, resolvePointPlacementInWalls } from './point-placement.js';
 import { buildPlacementIndexes } from './placement-indexes.js';
 import { derivePointCircuits } from './point-circuits.js';
 
@@ -174,8 +174,20 @@ export function lintElectricalTopology(
     furnishings: context.furnishings,
     anchors: { rooms: new Map((context.layout?.rooms ?? []).map((room) => [room.id, room])) },
   });
+  // PR #260 第五轮（Codex review 5939681715 major）：沿墙派生（along_host）点位须由
+  // 同批点位索引解算——缺 siblings 时解算器即诊断失败。lint 是校验入口，先把全部
+  // along_host 点位解一遍：解不出的报 error（fail-closed），不许被下面三处位置检查
+  // （重叠/窗帘/tv 距离）静默跳过。真实配置目前无电气 along_host 点位，本段只守将来。
+  const siblings = pointPlacementIndex(points);
+  for (const point of points) {
+    if (point.along_host === undefined) continue;
+    const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts, siblings);
+    if (!placement) {
+      issue('error', 'point_placement_unresolved', `Electrical point ${point.id} (along_host → ${point.along_host.id}) cannot be resolved: ${diagnostic ?? '解算器未返回位置'}`, point.id);
+    }
+  }
   const planOf = (point: ElectricalPoint): { x: number; z: number } | undefined => {
-    const { placement } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+    const { placement } = resolvePointPlacementInWalls(point, pointWalls, mountHosts, siblings);
     if (placement) return { x: placement.x, z: placement.z };
     return typeof point.x === 'number' && typeof point.z === 'number' ? { x: point.x, z: point.z } : undefined;
   };

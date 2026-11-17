@@ -210,14 +210,18 @@ export class ProblemDetector {
   /**
    * 混水阀配对豁免：接口（shower_inlet）的 along_host 必须指向该花洒，且两点实测平面
    * 距离与声明 offset 的绝对值相符（容差 0.02m，消浮点与面偏移噪声）。两点重合（距 0）
-   * 或接口指向另一套花洒时不豁免——0.2m 重叠判定照常跑。
+   * 或接口指向另一套花洒时不豁免——0.2m 重叠判定照常跑。零间距须显式排除：offset=0
+   * 的 along_host 派生点与宿主重合时，|0−0|≤0.02 也满足旧式子（PR #260 第五轮，
+   * Codex review 5939681715 minor）。
    */
   private _isDeclaredMixerPair(a: PlumbingPoint, b: PlumbingPoint): boolean {
     const shower = a.type === 'shower' ? a : b.type === 'shower' ? b : undefined;
     const inlet = a.type === 'shower_inlet' ? a : b.type === 'shower_inlet' ? b : undefined;
     if (!shower || !inlet || inlet.along_host === undefined) return false;
     if (inlet.along_host.id !== shower.id) return false;
-    return Math.abs(this._dist2d(shower, inlet) - Math.abs(inlet.along_host.offset)) <= 0.02;
+    const dist = this._dist2d(shower, inlet);
+    if (dist <= 0.02) return false;
+    return Math.abs(dist - Math.abs(inlet.along_host.offset)) <= 0.02;
   }
 
   private _dist2d(a: { x: number; z: number }, b: { x: number; z: number }): number {

@@ -164,4 +164,19 @@ describe('ProblemDetector', () => {
     assert.equal(problems.length, 1);
     assert.equal(problems[0].type, 'point_overlap');
   });
+
+  // PR #260 第五轮修复（Codex review 5939681715 minor）：零偏移豁免漏洞——along_host
+  // offset=0 时接口与花洒完全重合，旧判定 |0−0|≤0.02 仍豁免，与注释「两点重合不豁免」
+  // 相反。修复后零间距不豁免，重叠照常报。
+  it('still flags a zero-offset inlet coincident with its shower', () => {
+    const detector = new ProblemDetector();
+    const plumbing = [
+      { id: 'shower_mbath', room: 'master_bath', x: 0.5, z: 2.76, height: 1.0, type: 'shower' as const },
+      { id: 'shower_mbath_cold_inlet', room: 'master_bath', x: 0.5, z: 2.76, height: 1.0, type: 'shower_inlet' as const, along_host: { id: 'shower_mbath', offset: 0 } },
+    ];
+    const problems = detector.checkPointOverlap([], plumbing);
+    assert.equal(problems.length, 1);
+    assert.equal(problems[0].type, 'point_overlap');
+  });
+
 });

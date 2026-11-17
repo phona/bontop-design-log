@@ -6,7 +6,7 @@ import type {
   ElectricalTopologyStatus,
   ElectricalCircuitPurpose,
 } from '@shared/types';
-import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
+import { pointPlacementIndex, resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
 
 export interface ElectricalTopologyRenderSummary {
   panels: number;
@@ -66,10 +66,13 @@ export class ElectricalTopologyRenderer {
     this.clear();
     this.diagnostics = [];
     const pointMap = new Map(points.map((point) => [point.id, point]));
+    // 沿墙派生（along_host）点位须由同批点位索引解算（PR #260 第五轮，Codex review
+    // 5939681715 major）：缺 siblings 时解算器即诊断失败，成员 marker 被跳过。
+    const siblings = pointPlacementIndex(points);
     // 平面坐标单一解算（issue #98 S1/S3）：沿墙点位 = 完成面基点（与 MEP 端点/标注层同源），
     // mount 挂载点位 = 宿主脸解果，绝对点位 = 声明值。解算失败记诊断并跳过——不拿 0/NaN 画节点。
     const planOf = (point: ElectricalPoint): { x: number; z: number } | undefined => {
-      const { placement: resolved, diagnostic } = resolvePointPlacementInWalls(point, placement.pointWalls, placement.mountHosts);
+      const { placement: resolved, diagnostic } = resolvePointPlacementInWalls(point, placement.pointWalls, placement.mountHosts, siblings);
       if (resolved) return { x: resolved.x, z: resolved.z };
       this.diagnostics.push(`electrical-topology: ${point.id}: ${diagnostic ?? '解算器未返回位置'}`);
       return undefined;
