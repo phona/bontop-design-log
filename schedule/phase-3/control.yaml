@@ -28,13 +28,13 @@ activation_gates:
   - id: P3-GATE-03
     status: blocked
     item: 业主确认三期具体项目和预算上限
-    owner_roles: [业主, 设计师, 供应商]
+    owner_roles: [业主, 供应商]
     pass_condition: 每个保留项目有尺寸、安装/摆放方式、维护条件、报价、验收标准和预算批准；固定灯位或电气变更已转为工程工作包
     evidence_required: [approved_phase_scope, written_quotes, approved_work_package_plan]
   - id: P3-GATE-04
     status: blocked
     item: 二期对三期涉及空间的影响已完成或冻结
-    owner_roles: [业主, 设计师]
+    owner_roles: [业主]
     pass_condition: 二期已完成，或其对墙面、窗帘、灯光、家具和动线的影响范围已有书面冻结基线
     evidence_required: [phase_2_closeout_or_scope_freeze]
 observation_log_schema:
