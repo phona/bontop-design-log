@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { load as parseYaml } from 'js-yaml';
 import { findRouteRetraces, type MepPoint3D } from '../../shared/mep-retrace.js';
+import {
+  endpointSourcesFromFacts,
+  parseMepCoordination,
+  resolveMepRoutes,
+} from '../../shared/mep-hvac-coordination-schema.js';
+import { pointWallIndexFromElements } from '../../shared/point-placement.js';
+import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
+import { resolveLayout } from '../../server/layout-resolver.js';
+import type { FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
 
 const p = (x: number, y: number, z: number): MepPoint3D => ({ x, y, z });
 
@@ -44,4 +55,36 @@ test('垂直折返同样检出（strong-light-entry-night-corridor 形态）', (
   assert.equal(found.length, 1);
   assert.ok(Math.abs(found[0].overlapM - 0.15) < 1e-9);
   assert.equal(found[0].direction, 'opposite');
+});
+
+/**
+ * 全仓折返不变式（量价算法审计跟进）：全部已解算路由逐条过检测器，
+ * 任何一条折返（出后沿同一线折回）都须失败——折返段在 routeLength 里
+ * 被双计。2026-11-17 审计检出 4 处（strong-light-dining 0.30m、
+ * strong-power-garden 0.30m、weak-master 0.05m、
+ * strong-light-entry-night-corridor 0.15m），几何修后须归零。
+ */
+test('全仓折返不变式：全部已解算路由无折返', () => {
+  const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
+  const electrical = parseYaml(readFileSync('config/electrical.yaml', 'utf8')) as any[];
+  const plumbing = parseYaml(readFileSync('config/plumbing.yaml', 'utf8')) as any[];
+  const ceiling = parseYaml(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as any[];
+  const hvac = parseYaml(readFileSync('config/hvac.yaml', 'utf8')) as any;
+  const geometry = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml;
+  const layout = resolveLayout(geometry);
+  const pointWalls = pointWallIndexFromElements(layout.walls);
+  const { mountHosts } = buildPlacementIndexes({ geometry: { walls: layout.walls }, furnishings: house.furnishings ?? {} });
+  const sources = endpointSourcesFromFacts({ electrical, plumbing, ceiling, hvac } as any, pointWalls, mountHosts);
+  const coordination = parseMepCoordination(readFileSync('config/mep-hvac-coordination.yaml', 'utf8'));
+  const resolution = resolveMepRoutes(coordination, sources);
+  const folded: string[] = [];
+  for (const item of resolution.routes) {
+    const points = item.points ?? [];
+    if (points.length < 2) continue;
+    const found = findRouteRetraces(points as MepPoint3D[]);
+    if (found.length > 0) {
+      folded.push(`${item.route.id}: ${found.map((f) => `段${f.segmentA}→${f.segmentB} 重叠${f.overlapM.toFixed(2)}m`).join('；')}`);
+    }
+  }
+  assert.deepEqual(folded, [], `折返路由须为 0 条，检出 ${folded.length} 条：${folded.join(' | ')}`);
 });
