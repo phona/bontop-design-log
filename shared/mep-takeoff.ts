@@ -876,6 +876,22 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const { pointCircuits: pointCircuit } = derivePointCircuits({ circuits, controls });
   const resolvedById = new Map(resolution.routes.map((item) => [item.route.id, item]));
   const drawnPlanPaths: Array<Array<{ x: number; z: number }>> = [];
+  // ---------- 双控行程图规格（PR #255 结构性收尾，2026-11-17）----------
+  // 第 6–14 轮 Codex 审出的洞全在这张图的构造里，且全是一个根因：同一规则写在
+  // 两处、改了一处漏了另一处。本块是图的唯一规格；改构造先改这里，矩阵测试
+  // tests/server/mep-takeoff-traveler-matrix.test.ts 按“接入点位置 × 路由有效性
+  // × stub 高度 × 开关 × 回路归属”穷举已知维度。
+  //  不变量一（进图集合）：一条路由进图当且仅当 isTravelerRoute 为真——强电层、
+  //    在 covered_layers 内、已解析且 physical、端点无待激活。切分点收集与图边
+  //    构造共用这一判断（两处各写一份是第 14 轮的洞：待激活路由的 via 点进了
+  //    切分、却不进边，行程被静默抬高）。
+  //  不变量二（节点身份）：每个物理点恰好一个节点。坐标端点以 travelerNodeKey
+  //    （x,z,y）为 key；点位 ID 只经独立 stub 边接入图；坐标接入点与 stub 安装
+  //    点端同位置时以零长身份边连通（第 12 轮），安装点端登记为切分点（第 13 轮）。
+  //    不许再加第二套身份登记（第 8 轮的登记表已退役）。
+  //  不变量三（长度口径）：每段在每个接入点切分（段内、端点、stub 中途、安装点
+  //    端皆然）；下引长度只由 countedDropM 定——开关关掉时基础导线与 stub 都计 0，
+  //    开时都按“端点标高 − 安装高度”计（第 13 轮的洞正是两处分叉）。
   /** 双控行程图边：已画强电物理路由（主循环内构造，见 travelerSubtreeLength）。 */
   const travelerEdges: TravelerGraphEdge[] = [];
   /** 行程图有效路由（结构性收尾）：切分点收集与图边构造共用这一判断。待激活
