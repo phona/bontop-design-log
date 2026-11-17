@@ -316,10 +316,10 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   // DEC-2026-10-17-R20：删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由，
   //   sock_kitchen_fridge / sock_parent_bed_l 两点随之退出 routed（97→95）；本轮新增 7 电气点 +
   //   faucet_kitchen_dishwasher 均未画路由，全部落在 unrouted 侧显形（routed 不增）。
-  assert.equal(takeoff.coverage.routedPointIds.length, 101); // DEC-2026-10-27-R01 删床头开关与供电路，routed 点位 102→101； // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
+  assert.equal(takeoff.coverage.routedPointIds.length, 103); // 2026-11-17 量价算法审计跟进 blocking 2：两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet 随冷干管改道进入 routed，101→103； // DEC-2026-10-27-R01 删床头开关与供电路，routed 点位 102→101； // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
   assert.equal(takeoff.coverage.byType.socket?.routed, 36); // DEC-2026-10-17-R20：删 sock_kitchen_fridge / sock_parent_bed_l（原 routed）后 34→32；同批走线专项 sock_fridge_living / sock_waterbar / sock_weakbox / sock_kitchen_east_counter 四个插座点位随新路线进入 routed 32→36
   assert.equal(takeoff.coverage.byType.faucet?.routed, 5);
-  assert.equal(takeoff.coverage.byType.shower?.routed, 2);
+  assert.equal(takeoff.coverage.byType.shower?.routed, 4); // 2026-11-17 量价算法审计跟进 blocking 2：新增两卫淋浴冷水进口点位（type: shower）随冷干管进入 routed，2→4
   assert.equal(takeoff.coverage.byType.drain?.routed, 11);
   // W03 注意：两卫 4 处地漏**本来就在 routed 里**（drain-master-bath / drain-guest-bath 已把它们连成链），
   // 只是链子在 drain_mbath_floor / drain_gbath_floor 断头、没接立管；W03 补的是"接到立管"而非覆盖率，
@@ -328,7 +328,7 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   assert.equal(takeoff.coverage.byType.drain_riser?.routed, 4);
   assert.equal(takeoff.coverage.byType.water_supply?.routed, 1);
   assert.equal(takeoff.coverage.byType.water_heater?.routed, 1);
-  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 101); // DEC-2026-10-27-R01 删床头开关（已路由点），常量 102→101（未路由数不变）；R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97；DEC-2026-10-17-R20 已路由 97→95（+8 新点全部未路由：7 电气 + faucet_kitchen_dishwasher）；同批走线专项 7 条新路线后已路由 95→102
+  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 103); // 2026-11-17 量价算法审计跟进 blocking 2：已路由 101→103（未路由数不变）；DEC-2026-10-27-R01 删床头开关（已路由点），常量 102→101（未路由数不变）；R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97；DEC-2026-10-17-R20 已路由 97→95（+8 新点全部未路由：7 电气 + faucet_kitchen_dishwasher）；同批走线专项 7 条新路线后已路由 95→102
   // 未路由点位逐条显形，不进采购量
   assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
 });

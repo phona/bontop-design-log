@@ -467,10 +467,12 @@ test('C3 消费者对账：lint 60/164 与逐路由计数同基线、DXF 无错�
   // 2026-11-17 量价算法审计 D4：立管补 0.82m 后显形 9 处重叠——热水需求路由与
   // 干管末段重叠 4 处（envelope route_overlap 警告）+ 回水三通/客卫汇流 5 处转
   // shared_trunk 声明警告，warnings 164→173；errors 不变（声明挡住 5 处 must_fix）。
+  // 2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，3 处假共干管声明
+  // 撤销 + 2 处需求路线/冷立管重叠消失，warnings 173→168；errors 不变。
   // verify:mep CLI 口径由 mep-guidance-baseline 测试另行钉死）。
   const lintResult = lintMepCoordination(project, realSources);
   assert.equal(lintResult.errors.length, 60, `lint errors 应为 60，实际 ${lintResult.errors.length}`);
-  assert.equal(lintResult.warnings.length, 173, `lint warnings 应为 173，实际 ${lintResult.warnings.length}`);
+  assert.equal(lintResult.warnings.length, 168, `lint warnings 应为 168，实际 ${lintResult.warnings.length}`);
   const perRoute = (issues: Array<{ code: string; routeId?: string }>): Record<string, Record<string, number>> => {
     const out: Record<string, Record<string, number>> = {};
     for (const issue of issues) {

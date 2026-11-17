@@ -576,7 +576,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     }
   });
 
-  it('全量独立复算：79 沿墙点位 + 2 挂载点位 + 20 挂墙家具 + 全部绝对家具逐条对照', () => {
+  it('全量独立复算：81 沿墙点位 + 2 挂载点位 + 20 挂墙家具 + 全部绝对家具逐条对照', () => {
     // 参考实现的墙几何来自 raw vertices + wall from/to；先证明它与生产 layout 的墙段一致，
     // 否则参考值与被测输入不是同一份声明，对照无意义。
     for (const wallId of referencedWallIds) {
@@ -603,7 +603,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
       assertXZ(placement.normal, reference.normal, `${point.id} normal`);
       assertClose(placement.offsetFromCenterline, reference.offset, `${point.id} offset`);
     }
-    assert.equal(wallPoints, 79, '沿墙点位数量变化：新增/删除点位必须同步更新本基准的覆盖口径');
+    assert.equal(wallPoints, 81, '沿墙点位数量变化：新增/删除点位必须同步更新本基准的覆盖口径');
 
     let mountPoints = 0;
     for (const point of allRawPoints) {

@@ -3,7 +3,7 @@
 // 守的不变量（2026-11-08 issue #98 第六阶段 S2-A「状态上对象」后）：
 //   ① 派生优先级只剩 [conflict, config_status, fallback]——**状态不查表**：
 //      原量房台账（已于 S2-B 退场） 的 ledger 规则与 note 内 DEC 编号的 decision 规则都已退役；
-//   ② census：total=165 不变、undeclared≤2、statusSource 全部来自 config 声明；
+//   ② census：total=167 不变、undeclared≤2、statusSource 全部来自 config 声明；
 //   ③ 每个 pending/undeclared 构件都带结构完整的 blocker（kind/owner/trigger/reverses_if/rationale）；
 //   ④ 台账解析本身仍可用（shared/pending-ledger.ts 还被 server 侧消费），能区分
 //      「元素 id」与「类型/字段引用」——它只是不再是状态来源。
@@ -351,14 +351,14 @@ describe('element census snapshot', () => {
   //      补申报，undeclared 随之下降）→ 合法改进，更新此快照并在 commit 里说明来历；
   //   ④ 采集器新接了一份权威状态源（如本次接入 config/hvac.yaml）→ 相应构件不再是申报缺口，
   //      数字下降，在 commit 里说明来历；反向同理：采集器新接一类此前未采集的构件
-  //      （2026-11-17 PR #259 第二轮接 pipe_box 3 盒），总数上升 162→165，
+  //      （2026-11-17 PR #259 第二轮接 pipe_box 3 盒、量价算法审计跟进 blocking 2 新增两卫淋浴冷水进口点位），总数上升 162→167，
   //      undeclared/pending/门禁计数不变——更新快照时同样在 commit 里说明来历。
   // 用空 issues 求 undeclared：把「申报缺口」与「门禁当前有没有 error」解耦，
   // 否则一个真实冲突会让这个数莫名少 1，掩盖申报缺口本身。
   it('pins the element census so undeclared elements cannot slip in silently', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, issues: [] });
-    assert.equal(result.summary.total, 165, '构件总数（电气 104 + 给排水 33 + 吊顶/HVAC 25 + 包管盒 3；2026-11-17 PR #259 第二轮 pipe_box 进采集 162→165；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104；2026-11-08 issue #98 S1-B 状态申报只补字段不增删构件；S2-A 同）');
+    assert.equal(result.summary.total, 167, '构件总数（电气 104 + 给排水 35 + 吊顶/HVAC 25 + 包管盒 3；2026-11-17 PR #259 第二轮 pipe_box 进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，新增两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet，给排水 33→35，总数 162→167；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104；2026-11-08 issue #98 S1-B 状态申报只补字段不增删构件；S2-A 同）');
     // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
     // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
     // DEC-2026-10-28-R05：主卧南窗帘盒归位时 note 补了 DEC 全引 → 该盒不再是申报缺口，5→4。

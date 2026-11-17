@@ -198,7 +198,7 @@ describe('point placement consumers share one resolution (3D / DXF / MEP)', () =
       assert.ok(distanceToLine > 0.07, `${point.id}: 渲染位置应离开墙身（距墙线 ${distanceToLine.toFixed(3)}m）`);
       checked++;
     }
-    assert.equal(checked, 79);
+    assert.equal(checked, 81); // 79 沿墙 + 2 新增冷水进口点位（2026-11-17 量价算法审计跟进 blocking 2）
   });
 
   it('resolves every point the electrical topology view needs (S3 regression: B1 class)', () => {
@@ -244,7 +244,7 @@ describe('point placement consumers share one resolution (3D / DXF / MEP)', () =
       }
       checked++;
     }
-    // 79 沿墙 + 2 挂载（night_living_mid / night_corridor 都是 MEP 路线端点）
-    assert.equal(checked, 81);
+    // 81 沿墙 + 2 挂载（night_living_mid / night_corridor 都是 MEP 路线端点）
+    assert.equal(checked, 83);
   });
 });

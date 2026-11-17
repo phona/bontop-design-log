@@ -375,6 +375,10 @@ test('传播实验：热水器锚点东移 0.20m，五条热侧路由跟随、�
 test('传播实验：主卫花洒沿墙东移 0.20m，五条主卫路由起/终点跟随、其余 12 条不动；复原则恢复', () => {
   const baseline = waterPoints(resolveMepRoutes(project, realSources));
   const movedPlumbing = movePlumbingPoint('shower_mbath', (entry) => { entry.along = 0.7; });
+  // 冷水进口是同一混水阀的另一进水口（沿 0.35，与热水口间距 150mm），花洒整体东移时同移 0.20m。
+  const coldInlet = (movedPlumbing as unknown as Array<Record<string, unknown>>).find((item) => item.id === 'shower_mbath_cold_inlet');
+  assert.ok(coldInlet, 'shower_mbath_cold_inlet 必须存在');
+  coldInlet.along = 0.55;
   const movedSources = endpointSourcesFromFacts({ electrical, plumbing: movedPlumbing, ceiling, hvac }, pointWalls, realMountHosts);
   const moved = waterPoints(resolveMepRoutes(project, movedSources));
   const followers = ['water-hot-water-mbath-requirement', 'water-water-heater-recirc-requirement', 'water-v1-recirc-loop', 'water-v1-heater-to-mbath-hot', 'water-v1-entry-to-mbath-cold'];
@@ -388,9 +392,12 @@ test('传播实验：主卫花洒沿墙东移 0.20m，五条主卫路由起/终�
   assert.ok(Math.abs(movedPoints('water-water-heater-recirc-requirement')[0].x - 0.7) <= 1e-9, 'recirc-requirement from must follow');
   assertPointsClose(movedPoints('water-v1-recirc-loop'), [[0.7, 0.35, 2.76], [0.7, 0.35, 1], [7.3, 0.35, 1]], 'v1-recirc-loop moved', 1e-9);
   // 花洒作 to 的两条：终点东移，axis_run 落点（取 to.z）不动。
-  // D4 起终点为第 4 点（[2] 为 via-x 中间点，花洒平面位；[3] 为立管顶端）。
+  // D4 起热干管终点为第 4 点（[2] 为 via-x 中间点，花洒平面位；[3] 为立管顶端）。
   assert.ok(Math.abs(movedPoints('water-v1-heater-to-mbath-hot')[3].x - 0.7) <= 1e-9, 'v1-heater-mbath to must follow');
-  assert.ok(Math.abs(movedPoints('water-v1-entry-to-mbath-cold')[3].x - 0.7) <= 1e-9, 'v1-entry-mbath to must follow');
+  // 冷干管终点为第 5 点：冷进口随花洒同移 0.20m（沿 0.35→0.55），[2] 为 bypass 腿西端、
+  // [3] 为 bypass 腿顶端、[4] 为立管终点，三者 x 均为冷进口沿位。
+  assert.ok(Math.abs(movedPoints('water-v1-entry-to-mbath-cold')[3].x - 0.55) <= 1e-9, 'v1-entry-mbath bypass top must follow cold inlet');
+  assert.ok(Math.abs(movedPoints('water-v1-entry-to-mbath-cold')[4].x - 0.55) <= 1e-9, 'v1-entry-mbath to must follow cold inlet');
   const restored = waterPoints(resolveMepRoutes(project, realSources));
   assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
 });
