@@ -349,3 +349,21 @@ test('包管价：材料行单位不匹配即抛错，不得按元/㎡、元/m³
   // 砂浆改成按吨卖：300 元/t 不能当 300 元/m³ 乘体积。
   assert.throws(() => pipeBoxMaterialPrices(withUnit('mortar', '元/t')), /mortar.*元\/t.*元\/m³/);
 });
+
+test('包管价：人工行单位不匹配即抛错，不得按元/条悄悄算（Codex review 5939967533 blocking）', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  const domain = masonryCardDomain(card);
+  const withLaborUnit = (unit: string) => ({
+    ...card,
+    domain: {
+      ...domain,
+      extras: domain.extras.map((row) =>
+        row.label === '卫生间贴砖灌砂浆包管' ? { ...row, unit } : row,
+      ),
+    },
+  });
+  // 单管价改成按米卖：200 元/m 不能当 200 元/条乘盒数，数值不变对账也发现不了。
+  assert.throws(() => pipeBoxLaborPrices(withLaborUnit('元/m')), /卫生间贴砖灌砂浆包管.*元\/m.*元\/条/);
+  // 单位正确时读数不变。
+  assert.deepEqual(pipeBoxLaborPrices(withLaborUnit('元/条')), { singleCnyPerBox: 200, doubleCnyPerBox: 300 });
+});

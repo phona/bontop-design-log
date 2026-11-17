@@ -262,6 +262,11 @@ export function pipeBoxLaborPrices(card: MasonryQuote): PipeBoxLaborPrices {
   if (!extra) {
     throw new Error(`masonry-quotes: 卡 ${card.id} 的 domain.extras 缺「卫生间贴砖灌砂浆包管」行，包管人工无法定价`);
   }
+  // 单价的单位是计价口径的一部分：人工按条（元/条）。卡行改成元/m 后数值不变，
+  // 对账契约也发现不了——单位不匹配即抛错，不得悄悄按元/条算（Codex review 5939967533 blocking）。
+  if (extra.unit !== '元/条') {
+    throw new Error(`masonry-quotes: 卡 ${card.id} 的「卫生间贴砖灌砂浆包管」行单位是「${extra.unit}」，不是「元/条」——包管人工按条计价，单位不匹配不得换算`);
+  }
   const match = extra.note?.match(/双管\s*(\d+(?:\.\d+)?)\s*元\/条/);
   if (!match) {
     throw new Error(`masonry-quotes: 卡 ${card.id} 的「卫生间贴砖灌砂浆包管」note 里解析不到双管单价（须写「双管 N 元/条」）`);
