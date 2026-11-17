@@ -1267,6 +1267,11 @@ function addOverlayElement(root: THREE.Group, element: Exclude<SceneElement, { t
     case 'curtain':
       addCurtain(root, element, rooms, provider, index);
       return;
+    case 'pipe_box':
+      // 包管盒不渲染：立管位是 infer（±0.3m），量房前渲成实体会把未核实几何
+      // 当成事实；量只走 masonry-takeoff（见 shared/masonry-takeoff.ts）。
+      // 碰撞：不需要（贴墙角盒，不占通道）。
+      return;
     default: {
       const exhaustive: never = element;
       report.unsupported.push(`${id}: unsupported element ${(exhaustive as { type: string }).type}`);

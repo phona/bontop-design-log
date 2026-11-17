@@ -147,6 +147,22 @@ function buildInput(): MasonryTakeoffInput {
         follow: element.follow,
         room: element.room,
       })),
+    // 包管盒（2026-11-17）：overlay pipe_box 声明 → takeoff 输入。装载口径与
+    // server/budget-calculator.ts 同源。
+    pipeBoxes: elements
+      .filter((element) => element.type === 'pipe_box')
+      .map((element) => ({
+        id: element.id,
+        room: element.room,
+        riser: element.riser,
+        pipes: element.pipes ?? 1,
+        width: element.width,
+        depth: element.depth,
+        faces: element.faces,
+        bottom: element.bottom,
+        top: element.top,
+        pipeDiameterMm: element.pipeDiameterMm ?? 110,
+      })),
     // 厨卫铝扣板完成面。必填、不设默认值（阶段 4 要清掉的正是 `?? 2.65` 这类兜底）。
     clearHeight: 2.65,
   };
@@ -206,11 +222,127 @@ test('sill_region 20 段实算 15.468㎡（含卧室/书房防水台 front+top�
   close(front.top, 2.83, 'front 是竖面，top = sill + height');
 });
 
-test('全部贴砖 35.984㎡ = wall_region + sill_region', () => { // R04 后实算（原 36.724）；2026-11-12 PR #225 砖带随吊顶下调 2.65→2.50，−1.035
+test('全部贴砖 38.628㎡ = wall_region + sill_region + pipe_box', () => { // R04 后实算（原 36.724）；2026-11-12 PR #225 砖带随吊顶下调 2.65→2.50，−1.035；2026-11-17 包管盒面 +2.644
   const result = computeMasonryTakeoff(buildInput());
-  close(result.totalTileSqm, 35.983599347, undefined, 1e-4);
-  close(result.totalTileSqm, result.wallTileSqm + result.sillTileSqm);
+  close(result.totalTileSqm, 38.627599347, undefined, 1e-4);
+  close(result.totalTileSqm, result.wallTileSqm + result.sillTileSqm + result.pipeBoxTileSqm);
+  close(result.pipeBoxTileSqm, 2.644);
+  close(result.byRoom.master_bath.pipeBoxTileSqm, 1.0, '主卫盒两面 0.20m × 2.50m');
+  close(result.byRoom.guest_bath.pipeBoxTileSqm, 1.0, '客卫盒两面 0.20m × 2.50m');
+  close(result.byRoom.kitchen.pipeBoxTileSqm, 0.644, '厨房盒两面 0.20m × 1.61m（只包台面以上）');
   assert.deepEqual(Object.keys(result.byZone), ['visible'], 'C18 废止杂砖后全部 zone=visible');
+  // 分区汇总必须等于全量（Codex review 5938395280 minor）：包管盒面只进了
+  // 总量与 byRoom、没进 byZone 时，分区合计 35.9836㎡、总量 38.6276㎡，差 2.644㎡。
+  close(
+    Object.values(result.byZone).reduce((sum, area) => sum + area, 0),
+    result.totalTileSqm,
+    '分区面积之和必须等于贴砖全量',
+  );
+  close(result.byZone.visible, result.totalTileSqm, '全部 zone=visible 时 visible 分区即全量');
+});
+
+// ── ②a 包管盒：pipe_box 声明派生 ────────────────────────────────────────────
+
+test('pipe_box 3 条：逐条盒面/板材/砂浆 + 条数', () => {
+  const result = computeMasonryTakeoff(buildInput());
+  assert.equal(result.pipeBoxCount, 3, '主卫/客卫/厨房各 1 条');
+  assert.equal(result.pipeBoxSingleCount, 3, '均为单管');
+  assert.equal(result.pipeBoxDoubleCount, 0);
+  close(result.pipeBoxTileSqm, 2.644);
+  close(result.pipeBoxBoardSqm, 2.644, '板材同面同板');
+  close(result.pipeBoxMortarCum, 0.201583069, undefined, 1e-6);
+  const byId = new Map(result.pipeBoxes.map((box) => [box.id, box]));
+  const mbath = byId.get('pipe_box_mbath_riser')!;
+  close(mbath.heightM, 2.5);
+  close(mbath.tileSqm, 1.0);
+  close(mbath.mortarCum, 0.076241706, undefined, 1e-6);
+  const kitchen = byId.get('pipe_box_kitchen_riser')!;
+  close(kitchen.heightM, 1.61);
+  close(kitchen.tileSqm, 0.644);
+  close(kitchen.mortarCum, 0.049099658, undefined, 1e-6);
+});
+
+test('pipe_box 双管：砂浆按管数扣除（Codex blocking①）', () => {
+  const base = buildInput();
+  const input: MasonryTakeoffInput = {
+    ...base,
+    pipeBoxes: [{
+      id: 'probe-double', room: 'master_bath', riser: 'drain_riser_master_bath',
+      pipes: 2, width: 0.2, depth: 0.2, faces: 2, bottom: 0, top: 2.5,
+      pipeDiameterMm: 110,
+    } as any],
+  };
+  const result = computeMasonryTakeoff(input);
+  const box = result.pipeBoxes[0];
+  close(box.tileSqm, 1.0, '盒面与单管同');
+  // (0.04 − 2×π×0.055²) × 2.5 = 0.052483411；只扣一根管会错算成 0.076241706
+  close(box.mortarCum, 0.052483411, undefined, 1e-6);
+  assert.equal(result.pipeBoxDoubleCount, 1);
+  // 守卫也按管数合计：双 DN110（0.0190㎡）塞不进 0.13×0.13 盒（0.0169㎡）；单管同盒合法
+  const tiny: MasonryTakeoffInput = {
+    ...base,
+    pipeBoxes: [{ ...input.pipeBoxes![0], id: 'probe-tiny', width: 0.13, depth: 0.13 } as any],
+  };
+  assert.throws(() => computeMasonryTakeoff(tiny), /不小于盒截面/);
+  const tinySingle: MasonryTakeoffInput = {
+    ...base,
+    pipeBoxes: [{ ...input.pipeBoxes![0], id: 'probe-tiny-single', pipes: 1, width: 0.13, depth: 0.13 } as any],
+  };
+  assert.doesNotThrow(() => computeMasonryTakeoff(tinySingle));
+});
+
+test('pipe_box fail-closed：未知房间/非法 pipes/faces/顶底倒置/管比盒粗', () => {
+  const base = buildInput();
+  const bad = (patch: Record<string, unknown>): MasonryTakeoffInput => ({
+    ...base,
+    pipeBoxes: [{
+      id: 'probe', room: 'master_bath', riser: 'drain_riser_master_bath',
+      pipes: 1, width: 0.2, depth: 0.2, faces: 2, bottom: 0, top: 2.5,
+      pipeDiameterMm: 110, ...patch,
+    } as any],
+  });
+  assert.throws(() => computeMasonryTakeoff(bad({ room: 'no_such_room' })), /references unknown room no_such_room/);
+  assert.throws(() => computeMasonryTakeoff(bad({ pipes: 3 })), /pipes 必须是 1/);
+  assert.throws(() => computeMasonryTakeoff(bad({ faces: 4 })), /faces 必须是 2/);
+  assert.throws(() => computeMasonryTakeoff(bad({ top: 0 })), /must exceed bottom/);
+  assert.throws(() => computeMasonryTakeoff(bad({ pipeDiameterMm: 300 })), /不小于盒截面/);
+});
+
+test('pipe_box 顶标高受净高约束：盒顶超净高即抛错，与 wall_region 同口径（Codex review 5940338419 major）', () => {
+  const base = buildInput();
+  // Codex 内存复现原形：净高 2.50m、盒顶 3.00m 的声明仍算出吊顶以上部分的量。
+  // 盒顶与贴砖顶同口径，超净高是声明错、不是可钳位的量——与 wall_region 一样抛错，不夹取。
+  const over: MasonryTakeoffInput = {
+    ...base,
+    clearHeight: 2.50,
+    pipeBoxes: [{
+      id: 'probe-over-clear', room: 'master_bath', riser: 'drain_riser_master_bath',
+      pipes: 1, width: 0.2, depth: 0.2, faces: 2, bottom: 0, top: 3.00,
+      pipeDiameterMm: 110,
+    } as any],
+  };
+  assert.throws(() => computeMasonryTakeoff(over), /超净高/);
+  // 边界：盒顶恰等于净高仍合法（生产口径：净高 2.50、主卫/客卫盒顶 2.50），
+  // 与 wall_region「top > clearHeight + EPS 才抛」同口径。
+  const atCap: MasonryTakeoffInput = { ...base, clearHeight: 2.50 };
+  assert.doesNotThrow(() => computeMasonryTakeoff(atCap));
+  close(computeMasonryTakeoff(atCap).pipeBoxTileSqm, 2.644);
+});
+
+test('pipe_box 声明与给排水立管对得上：3 条已包、阳台立管与冷凝水立管未包', () => {
+  const plumbing: any = load(readFileSync('config/plumbing.yaml', 'utf8'));
+  const risers = new Map<string, any>(plumbing.filter((point: any) => point.type === 'drain_riser').map((riser: any) => [riser.id, riser]));
+  const boxes: any[] = (OV.elements ?? []).filter((element: any) => element.type === 'pipe_box');
+  assert.equal(boxes.length, 3);
+  for (const box of boxes) {
+    const riser = risers.get(box.riser);
+    assert.ok(riser, `pipe_box ${box.id} 引用的立管 ${box.riser} 必须在 plumbing.yaml`);
+    assert.equal(riser.drain_dn, 110, `立管 ${box.riser} 是 DN110，与盒的 pipeDiameterMm 一致`);
+    assert.equal(box.pipeDiameterMm, 110);
+  }
+  const boxed = new Set(boxes.map((box) => box.riser));
+  assert.ok(!boxed.has('drain_riser_balcony'), '阳台立管在室外无釉面阳台，不包');
+  assert.ok(![...boxed].some((riser) => String(riser).includes('condensate')), '冷凝水立管藏在主卫浴室柜内，不包');
 });
 
 test('along 单位是米不是毫米（0.60–3.00 = 2.4m，除 1000 会得 0.02㎡）', () => { // R01：同 2.40m 厨房段随南端重锚

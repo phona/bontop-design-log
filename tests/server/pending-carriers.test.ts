@@ -43,6 +43,29 @@ describe('待决视图载体覆盖', () => {
     }
   });
 
+  it('包管盒逐条进入量房清单，字段完整且标明推断', () => {
+    const rows = collectRows();
+    const boxes = rows.filter((row) => row.id.startsWith('pipe_box:'));
+    const carrier = PENDING_CARRIERS.find((item) => item.id === 'envelope:pipe_box');
+    assert.ok(carrier, '载体表必须登记 envelope:pipe_box');
+    assert.equal(boxes.length, 3);
+    assert.equal(boxes.length, carrier.pendingIds().length);
+    assert.deepEqual(
+      boxes.map((row) => row.id).sort(),
+      ['pipe_box:pipe_box_gbath_riser', 'pipe_box:pipe_box_kitchen_riser', 'pipe_box:pipe_box_mbath_riser'],
+    );
+    for (const row of boxes) {
+      assert.equal(row.kind, 'pipe_box');
+      assert.equal(row.status, 'inferred');
+      assert.equal(row.blocker.kind, 'site_measurement');
+      assert.deepEqual(row.blocker.owner, ['业主']);
+      assert.match(row.blocker.trigger, /2026-11-27 量房/);
+      assert.ok(row.measure, `${row.id} 缺「量什么/当前值」`);
+      assert.match(row.measure, /立管/);
+      assert.match(row.measure, /当前推断/);
+    }
+  });
+
   it('hvac reference_constraints 逐条进入量房清单（梁底读数的权威副本）', () => {
     const rows = collectRows();
     const refs = rows.filter((row) => row.id.startsWith('hvac:ref:'));

@@ -24,6 +24,7 @@ import {
   isValidCalendarDateText,
   sectionAnchorsContractTotal,
   sectionContainsAmountToken,
+  pipeBoxTileLaborNote,
   DUAL_ATTRIBUTIONS,
   OUT_OF_SCOPE_DISPOSITIONS,
   PENDING_COUNTED_STATUS_LABELS,
@@ -40,6 +41,17 @@ import {
   mepQuoteFallback,
   parseMepQuotes,
 } from '../../server/mep-quotes.js';
+import { loadFloorRoomSplit, loadMasonryTakeoff } from '../../server/budget-calculator.js';
+import { ProjectCatalog } from '../../server/project-catalog.js';
+import {
+  activeMasonryCard,
+  loadMasonryQuotes,
+  masonryQuoteFallback,
+  masonrySpecSelection,
+  pipeBoxCosts,
+  resolveActiveMasonryRates,
+} from '../../server/masonry-quotes.js';
+import type { CurrentScheme } from '../../shared/types.js';
 
 /**
  * 成本总表（schedule/phase-1/cost.md）的口径防线。业主 2026-10-23 裁定：
@@ -976,7 +988,8 @@ describe('成本总表 cost-summary', () => {
     const { coverage } = data;
     // 2026-11-15 一二期对调（#152）：新增 COST-160-09 洗碗机 → 107（GC5 COST-160-08
     // 退二期、planned 0，仍计组件；未决三类计数与双归属条目不变）。
-    assert.equal(coverage.scannedComponentCount, 107);
+    // 2026-11-17 包管量入账：新增 COST-060-09 包管板材与砂浆主材 → 108（未决 +1，走未定价与待核）。
+    assert.equal(coverage.scannedComponentCount, 108);
     assert.equal(coverage.scannedQuoteRoundCount, 27);
     assert.ok(coverage.unresolvedItemCount > 0, '必须真的扫到未决条目');
     // 集合语义：双归属条目在两个分类各计一次，三类之和 = 未决总数 + 双归属数
@@ -1094,7 +1107,7 @@ describe('成本总表 cost-summary', () => {
     assert.ok(!markdown.includes('非硬装'), '不得出现把空调划到硬装之外的板块');
   });
 
-  it('待核计入状态分类：必填 fail-closed，全量 16 条逐条钉死，渲染计数由期望表推导', () => {
+  it('待核计入状态分类：必填 fail-closed，全量 17 条逐条钉死，渲染计数由期望表推导', () => {
     // 复审 P2：待核清单里混着「钱已在合计里、只待事项核对关闭」的条目（封槽
     // 界面、线控器确认、防水去重），总述若笼统称「待核取得价格后会增加总
     // 额」，读者会把已计入的钱再加一遍。每条待核必须有 countedStatus 分类，
@@ -1104,11 +1117,12 @@ describe('成本总表 cost-summary', () => {
     const illegal = [{ ...bare[0], countedStatus: 'maybe' }] as unknown as PendingEntry[];
     assert.throws(() => assertPendingClassifications(illegal), /缺计入状态分类/, '非法分类值必须被拦下');
     assert.doesNotThrow(() => assertPendingClassifications(data.pendingChecks));
-    // 全量钉死（复审 P2 续）：16 条待核的 id → 计入状态以字面期望表写全，
+    // 全量钉死（复审 P2 续）：17 条待核的 id → 计入状态以字面期望表写全，
     // 逐条断言与登记一致；任何一条被误改分类（哪怕三类总数恰好不变、动态计
     // 数仍自洽）都会令本测试变红。改判须有事实依据并同步改本表。
     const EXPECTED_COUNTED_STATUS: Record<string, PendingCountedStatus> = {
       'pending-sill-tile-labor': 'uncounted', // COST-060-05 小砖条人工：注脚明示未计入泥瓦行
+      'pending-pipe-box-materials': 'uncounted', // COST-060-09 包管板材与砂浆主材：未计入泥瓦行
       'pending-lighting-install-labor': 'uncertain', // COST-120-02：是否含于水电合同未定
       'pending-panel-install-labor': 'uncertain', // COST-125-03：是否含于水电合同未定
       'pending-waterproof-dedup': 'counted', // 防水人工 ¥366 已在防水人工行，只待去重核对
@@ -1125,7 +1139,7 @@ describe('成本总表 cost-summary', () => {
       'pending-demolition-haulage-dedup': 'counted', // 清运 ¥1,059 已在拆改行实付锚内，只待核重
       'pending-fixed-cabinetry': 'uncounted', // QR-2026-10-03-26 固定柜体：未计入任何行
     };
-    assert.equal(data.pendingChecks.length, 16, '待核条目恰为 16 条（与期望表同量）');
+    assert.equal(data.pendingChecks.length, 17, '待核条目恰为 17 条（与期望表同量）');
     const byId = new Map(data.pendingChecks.map((entry) => [entry.id, entry.countedStatus]));
     assert.deepEqual(
       [...byId.keys()].sort(),
@@ -1142,7 +1156,7 @@ describe('成本总表 cost-summary', () => {
     const uncountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncounted').length;
     const uncertainN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncertain').length;
     assert.equal(countedN, expectedCount('counted'), '已计入条数必须与期望表一致（4）');
-    assert.equal(uncountedN, expectedCount('uncounted'), '未计入条数必须与期望表一致（9）');
+    assert.equal(uncountedN, expectedCount('uncounted'), '未计入条数必须与期望表一致（10）');
     assert.equal(uncertainN, expectedCount('uncertain'), '待确认条数必须与期望表一致（3）');
     // 渲染：总述三类条数由登记生成、与期望值一致；每条待核行带自己的分类标签
     const markdown = renderCostSummary(data, '# 测试表头\n\n');
@@ -1222,5 +1236,136 @@ describe('成本总表 cost-summary', () => {
       assert.ok(line, `未定价清单必须含 ${row.name}`);
       assert.equal(line.split('|')[3]?.trim(), '未定价', `${row.name} 的成本列必须是「未定价」而不是金额`);
     }
+  });
+});
+
+describe('包管价：生成器读生效卡，不许手写单价（Codex review 5935989455 major）', () => {
+  it('泥瓦行与待核注脚的包管金额必须等于卡价实算', () => {
+    const catalog = ProjectCatalog.load('.');
+    const takeoff = loadMasonryTakeoff(catalog);
+    const card = activeMasonryCard(loadMasonryQuotes());
+    const costs = pipeBoxCosts(
+      {
+        singleCount: takeoff.pipeBoxSingleCount,
+        doubleCount: takeoff.pipeBoxDoubleCount,
+        boardSqm: takeoff.pipeBoxBoardSqm,
+        mortarCum: takeoff.pipeBoxMortarCum,
+      },
+      card,
+    );
+    const masonry = rowById(data, 'cost-masonry');
+    assert.ok(masonry, '泥瓦行必须存在');
+    // 卡价一变，生成器必须跟；手写常量会在这里红（金额对不上卡价实算）。
+    assert.ok(
+      masonry!.derivation.includes(`= ¥${costs.laborCny}`),
+      `泥瓦行 derivation 的包管人工必须是卡价实算 ¥${costs.laborCny}`,
+    );
+    assert.ok(
+      masonry!.derivation.includes(`约 ¥${costs.materialCny}`),
+      `泥瓦行 derivation 的包管板材/砂浆主材必须是卡价实算 ¥${costs.materialCny}`,
+    );
+    const laborNote = data.pendingChecks.find((entry) => entry.id === 'pending-sill-tile-labor');
+    assert.ok(laborNote?.note.includes(`= ¥${costs.laborCny}`), '包管人工待核注脚必须是卡价实算');
+    const materialNote = data.pendingChecks.find((entry) => entry.id === 'pending-pipe-box-materials');
+    assert.ok(materialNote?.note.includes(`合计约 ¥${costs.materialCny}`), '包管板材/砂浆待核注脚必须是卡价实算');
+    // 注脚点名的锚点必须是真的——此前注脚称锚点在 masonry-labor.yaml，生成器根本不读卡。
+    assert.ok(laborNote?.note.includes('生效卡 extras'), '包管人工注脚必须点名生效卡 extras 锚点');
+    assert.ok(
+      materialNote?.note.includes('domain.pipe_box_material_reference'),
+      '包管板材/砂浆注脚必须点名 domain.pipe_box_material_reference 锚点',
+    );
+  });
+
+  it('盒面贴砖人工费率必须跟卡走：注脚费率 = 解析器对现行选型的取值（Codex review 5937110969 major）', () => {
+    const catalog = ProjectCatalog.load('.');
+    const takeoff = loadMasonryTakeoff(catalog);
+    const scheme = JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme;
+    const resolved = resolveActiveMasonryRates(
+      loadMasonryQuotes(),
+      masonryQuoteFallback(JSON.parse(readFileSync('config/budget/base.json', 'utf8')).categories),
+      masonrySpecSelection(catalog, scheme, loadFloorRoomSplit()),
+    ).wall_tile;
+    assert.notEqual(resolved.per_unit, null, '现行墙砖选型必须在费率卡上有行，否则注脚无费率可写');
+    const laborNote = data.pendingChecks.find((entry) => entry.id === 'pending-sill-tile-labor');
+    // 手写 50 的旧注脚在这里红：它含费率值却不含卡行锚点，选型一变（600×1200 → 65）就漂移。
+    assert.ok(
+      laborNote?.note.includes(`（${resolved.per_unit} 元/㎡`),
+      '注脚费率必须是解析器取值，不是手写常量',
+    );
+    assert.ok(
+      laborNote?.note.includes(`wall_rates「${resolved.matchedSpecification}」行`),
+      '注脚必须点名费率卡行，选型一变读者能对上',
+    );
+    assert.ok(
+      laborNote?.note.includes(`已含约 ¥${Math.round(takeoff.pipeBoxTileSqm * resolved.per_unit!)}`),
+      '盒面人工金额必须按解析费率实算',
+    );
+  });
+
+  it('直接报价也是合法卡价：matchedSpecification null 但 source 为 quote 时不抛错（Codex review 5938395280 major）', () => {
+    // 书面报价的常见形状：卡里直接声明 rates.wall_tile.per_unit，解析器回
+    // source 'quote' + matchedSpecification null。旧判据只看 matchedSpecification
+    // 是否为 null，一登记直接报价成本总表就抛错。
+    const direct = pipeBoxTileLaborNote(
+      { per_unit: 58, unit: '元/㎡', source: 'quote', matchedSpecification: null, specs: ['300x600'] },
+      2.644,
+    );
+    assert.equal(direct.perSqm, 58);
+    assert.ok(direct.fragment.includes('（58 元/㎡'), '注脚费率必须是直接报价的取值');
+    assert.ok(direct.fragment.includes('直接报价'), '直接报价的注脚必须写明来源，不得写 wall_rates「null」行');
+    assert.ok(!direct.fragment.includes('null'), '注脚不得出现 null 字面量');
+    assert.ok(direct.fragment.includes('已含约 ¥153'), '盒面人工金额必须按直接报价实算（2.644 × 58 ≈ 153）');
+  });
+
+  it('待报价不阻断成本总表：per_unit null 时注脚显形待报价、不抛错（Codex review 5939002602 major）', () => {
+    // 生效卡未报价、选型规格无匹配行时解析器合法返回 per_unit null（见
+    // masonry-quotes.ts resolveActiveMasonryRates 的待报价显形口径）。
+    // 注脚只用于未计入 need 的去重说明，不得因此让整个 buildCostSummary 失败。
+    const unquoted = pipeBoxTileLaborNote(
+      { per_unit: null, unit: '元/㎡', source: 'base.json', matchedSpecification: null, specs: [] },
+      2.644,
+    );
+    assert.equal(unquoted.perSqm, null);
+    assert.ok(unquoted.fragment.includes('2.644'), '注脚必须保留盒面数量');
+    assert.ok(unquoted.fragment.includes('待报价'), '注脚必须显形人工待报价');
+    assert.ok(!unquoted.fragment.includes('已含约'), '未报价时不得写已含金额');
+  });
+
+  it('规格行命中的注脚片段与现行生产文本一致', () => {
+    const spec = pipeBoxTileLaborNote(
+      { per_unit: 50, unit: '元/㎡', source: 'quote', matchedSpecification: '300x600', specs: ['300x600'] },
+      2.644,
+    );
+    assert.equal(
+      spec.fragment,
+      '面积费率（50 元/㎡，费率锚点 config/masonry-labor.yaml 生效卡 wall_rates「300x600」行、生成器按选型规格实读）已含约 ¥132 盒面贴砖人工',
+    );
+  });
+
+  it('回落费率仍抛错：per_unit 非空但 source 不是 quote 时不是卡价', () => {
+    // base.json 兜底即使给了数也不是费率卡行——判据是来源，不是 per_unit 是否为空。
+    // per_unit null 不在此列：那是合法待报价，见上一条（Codex review 5939002602 major）。
+    assert.throws(
+      () =>
+        pipeBoxTileLaborNote(
+          { per_unit: 45, unit: '元/㎡', source: 'base.json', matchedSpecification: null, specs: [] },
+          2.644,
+        ),
+      /未取自费率卡/,
+    );
+  });
+
+  it('非面积单位仍抛错：per_unit 非空、source 为 quote，但 unit 不是 元/㎡ 时不得按面积算（Codex review 5940338419 blocking）', () => {
+    // 解析器只要求 unit 非空（见 quote-cards.ts ResolvedQuoteRate），卡行改成
+    // 元/条后注脚仍会硬编码「58 元/㎡」并乘盒面面积，篡改报价口径。单位必须在
+    // 计价前校验，与 rounds 6/7 的板材/砂浆/人工单位校验同口径。
+    assert.throws(
+      () =>
+        pipeBoxTileLaborNote(
+          { per_unit: 58, unit: '元/条', source: 'quote', matchedSpecification: null, specs: ['300x600'] },
+          2.644,
+        ),
+      /元\/㎡/,
+    );
   });
 });

@@ -60,13 +60,13 @@ const fmt2 = (n: number): string => n.toFixed(2);
 const round4 = (n: number): string => String(parseFloat(n.toFixed(4)));
 const round3 = (n: number): string => String(parseFloat(n.toFixed(3)));
 
-function masonryAreas(): { wall: number; sill: number } {
+function masonryAreas(): { wall: number; sill: number; pipeBox: number } {
   // 2026-11-07 issue #98 第三阶段 S4：贴砖带下沉为墙/构件特征后，装配改走**生产唯一入口**
   // server/budget-calculator.ts 的 loadMasonryTakeoff（此前本脚本手抄了第三份
   // config→模块输入装配，连 wall_region/sill_region 的过滤都抄了一份——面层配方一改类型名
   // 就会静默算出 0 ㎡）。面积数学仍只有 shared/masonry-takeoff.ts 一处。
   const result = loadMasonryTakeoff(ProjectCatalog.load('.'));
-  return { wall: result.wallTileSqm, sill: result.sillTileSqm };
+  return { wall: result.wallTileSqm, sill: result.sillTileSqm, pipeBox: result.pipeBoxTileSqm };
 }
 
 interface Ctx {
@@ -157,7 +157,7 @@ const SECTIONS: Section[] = [
         source: 'config/layout/model-geometry.yaml（墙 finish.tile_bands 声明 + 几何）+ config/model/envelope/openings.yaml（bay_sill finish.tile）+ config/tile-comparison.yaml（干湿分区）+ config/model/envelope/ceiling.yaml（净高上限）→ server/budget-calculator.ts loadMasonryTakeoff → shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts',
         note: () => {
           const a = masonryAreas();
-          return `窗台/防水台 bay_sill finish.tile 另计 ${round3(a.sill)} ㎡；合计 ${round4(a.wall + a.sill)} ㎡由契约 c.masonry_tile_area_parity 三方对账 ※`;
+          return `窗台/防水台 bay_sill finish.tile 另计 ${round3(a.sill)} ㎡、包管盒面 pipe_box 另计 ${round3(a.pipeBox)} ㎡；合计 ${round4(a.wall + a.sill + a.pipeBox)} ㎡由契约 c.masonry_tile_area_parity 三方对账 ※`;
         },
       },
     ],

@@ -395,6 +395,107 @@ function collectFurniturePendingRows(room: string): PendingCarrierItem[] {
   }));
 }
 
+// ── envelope:pipe_box：排水立管包管盒（2026-11-17 入账） ────────────────────
+// 包管盒不是 SceneElement 的 pending 采集对象（collectElements 只枚举电气/给排水/
+// 吊顶），但 blocker 一出现，反向扫描就把 openings.yaml 的 elements 段报成未登记
+// 载体段——与 2026-11-16 主卧家具（顶封线槽 infer）同一形态，必须在这里登记并生成行。
+// 行状态取对象自己的 status，缺省即 undeclared（与 element-state 的缺省派生一致，
+// 不许默认 inferred——未声明就是未声明）；blocker 原样取自权威段，不抄第二份。
+
+interface PipeBoxPendingSource {
+  id: string;
+  room: string;
+  riser: string;
+  pipes: number;
+  width: number;
+  depth: number;
+  faces: number;
+  bottom: number;
+  top: number;
+  status?: string;
+  note?: string;
+  blocker?: ComponentBlocker;
+}
+
+/**
+ * 单条 pipe_box 记录 → 待决源条目（Codex review 5936494593 major，PR #259 第三轮）。
+ * pipes 与 PipeBoxSchema 对齐：省略即单管 1（schema `.default(1)`）；只接受 1/2，
+ * 其余值仍抛错——不许把非法管数悄悄当成单管/双管。单点抽成导出函数，只为测试能
+ * 直接喂一条省略 pipes 的记录；collectRows 的活路仍走 readPipeBoxPendingItems。
+ */
+export function parsePipeBoxPendingItem(record: Record<string, unknown>, file: string): PipeBoxPendingSource {
+  const blocker = record.blocker as ComponentBlocker | undefined;
+  return {
+    id: requireString(record.id, `${file} 的 pending 包管盒`),
+    room: requireString(record.room, `${file} ${String(record.id)}.room`),
+    riser: requireString(record.riser, `${file} ${String(record.id)}.riser`),
+    pipes: parsePipeBoxPipes(record.pipes, `${file} ${String(record.id)}.pipes`),
+    width: requireNumber(record.width, `${file} ${String(record.id)}.width`),
+    depth: requireNumber(record.depth, `${file} ${String(record.id)}.depth`),
+    faces: requireNumber(record.faces, `${file} ${String(record.id)}.faces`),
+    bottom: requireNumber(record.bottom, `${file} ${String(record.id)}.bottom`),
+    top: requireNumber(record.top, `${file} ${String(record.id)}.top`),
+    ...(typeof record.status === 'string' ? { status: record.status } : {}),
+    ...(typeof record.note === 'string' ? { note: record.note } : {}),
+    ...(blocker ? { blocker } : {}),
+  };
+}
+
+function parsePipeBoxPipes(value: unknown, what: string): number {
+  if (value === undefined) return 1;
+  const pipes = requireNumber(value, what);
+  if (pipes !== 1 && pipes !== 2) throw new Error(`${what} 只能是 1（单管）或 2（双管），现为 ${pipes}`);
+  return pipes;
+}
+
+function readPipeBoxPendingItems(): PipeBoxPendingSource[] {
+  const file = 'config/model/envelope/openings.yaml';
+  const doc = asRecord(readYamlDocument(file), file);
+  const elements = doc.elements;
+  if (!Array.isArray(elements)) throw new Error(`${file} 缺 elements 段：包管盒载体无法按条目读`);
+  const pending: PipeBoxPendingSource[] = [];
+  for (const entry of elements) {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+    const record = entry as Record<string, unknown>;
+    if (record.type !== 'pipe_box') continue;
+    if (!hasPendingSemantics(record)) continue;
+    pending.push(parsePipeBoxPendingItem(record, file));
+  }
+  return pending;
+}
+
+/**
+ * 包管盒载体行（Codex review 5935989455 blocking，PR #259 第二轮）：blocker 必须
+ * 原样取对象自己的声明，缺了即抛错——不许合成一个 owner 量房的 fallback blocker。
+ * 合成行看起来「已登记属主」，实则掩盖了缺失的真实声明；schema（overlay-merge.ts）
+ * 与采集侧（element-sources.ts）已保证合法状态下盒必带 blocker，此处是原始 YAML
+ * 直读的最后一道防线。家具载体的同形态 fallback 是 2026-11-16 既有写法，不在本轮动。
+ */
+export function buildPipeBoxPendingRow(box: PipeBoxPendingSource): PendingCarrierItem {
+  if (!box.blocker) {
+    throw new Error(
+      `包管盒 ${box.id}（status=${box.status ?? 'undeclared'}）未声明 blocker：待决视图不得合成 fallback blocker，先在 config/model/envelope/openings.yaml 给该盒补 blocker`,
+    );
+  }
+  return {
+    id: `pipe_box:${box.id}`,
+    kind: 'pipe_box',
+    label: `包管盒 ${box.id}`,
+    room: box.room,
+    status: box.status ?? 'undeclared',
+    ...(box.note ? { note: box.note } : {}),
+    blocker: box.blocker,
+    // 量什么：blocker.trigger 已写明（立管实位/吊柜遮挡）；当前推断值：盒截面/盒高/管数。
+    // 吊柜遮挡只问厨房盒（0.89m 以上外露段是否被吊柜盖住）；两卫盒问立管是否在房内/西北角。
+    measure: `立管 ${box.riser} 实位（模型位 ±0.3m 推断）${box.room === 'kitchen' ? '、吊柜是否遮住 0.89m 以上外露段' : '、是否在房内/西北角'}、盒高 ${box.bottom.toFixed(2)}–${box.top.toFixed(2)}m`,
+    currentValue: `${box.pipes === 1 ? '单管' : '双管'} ${box.width.toFixed(2)}×${box.depth.toFixed(2)}m、${box.faces} 面盒；status=${box.status ?? 'undeclared'}、量房前不入施工`,
+  };
+}
+
+function collectPipeBoxPendingRows(): PendingCarrierItem[] {
+  return readPipeBoxPendingItems().map((box) => buildPipeBoxPendingRow(box));
+}
+
 // ── 载体登记表 ──────────────────────────────────────────────────────────────
 
 /**
@@ -437,6 +538,14 @@ export const PENDING_CARRIERS: readonly PendingCarrier[] = [
     description: '带 blocker 的主卧家具（2026-11-16 顶封线槽 infer）：不是 SceneElement，行由本表并入量房清单',
     pendingIds: () => readFurniturePendingItems('master_bedroom').map((item) => `furniture:${item.id}`).sort(),
     rows: () => collectFurniturePendingRows('master_bedroom'),
+  },
+  {
+    id: 'envelope:pipe_box',
+    file: 'config/model/envelope/openings.yaml',
+    section: 'elements',
+    description: '排水立管包管盒（2026-11-17 入账）：不是 SceneElement，行由本表并入量房清单',
+    pendingIds: () => readPipeBoxPendingItems().map((box) => `pipe_box:${box.id}`).sort(),
+    rows: collectPipeBoxPendingRows,
   },
 ];
 

@@ -18,6 +18,9 @@ import {
   masonryQuoteQuantities,
   masonrySpecSelection,
   parseMasonryQuotes,
+  pipeBoxCosts,
+  pipeBoxLaborPrices,
+  pipeBoxMaterialPrices,
   resolveActiveMasonryRates,
   setActiveMasonryQuote,
 } from '../../server/masonry-quotes.js';
@@ -52,11 +55,11 @@ test('量只有一份：masonryQuoteQuantities 全部来自 shared/masonry-takeo
   assert.ok(Math.abs(quantities.wet_floor - takeoff.wetFloorSqm) < 1e-12, '湿区地面 = wetFloorSqm');
   assert.ok(Math.abs(quantities.wall_tile - takeoff.totalTileSqm) < 1e-12, '墙砖+防水台 = totalTileSqm');
   // DEC-2026-10-18-TILE-02 将客卫门外1.125㎡从湿区转入木纹砖干区；
-  // DEC-2026-10-25-R01 重算后全屋材料桶为干区121.0624 / 湿区6.811，贴砖35.9836㎡（2026-11-12 PR #225：砖带 2.65→2.50，−1.035）。
+  // DEC-2026-10-25-R01 重算后全屋材料桶为干区121.0624 / 湿区6.811，贴砖38.6276㎡（2026-11-12 PR #225：砖带 2.65→2.50，−1.035；2026-11-17 包管盒面 +2.644）。
   // 2026-11-16 量价算法审计 D1：主卧/主卫圆角各 −0.2146㎡，干区 120.8478 / 湿区 6.5964（全精度钉值，圆角闭式解带浮点尾）。
   assert.ok(Math.abs(quantities.floor - 120.84779816339746) < 1e-6, `干区地面实测 ${quantities.floor}`);
   assert.ok(Math.abs(quantities.wet_floor - 6.596398163397449) < 1e-6, `湿区地面实测 ${quantities.wet_floor}`);
-  assert.ok(Math.abs(quantities.wall_tile - 35.98359934708642) < 1e-6, `贴砖实测 ${quantities.wall_tile}`);
+  assert.ok(Math.abs(quantities.wall_tile - 38.627599347086424) < 1e-6, `贴砖实测 ${quantities.wall_tile}`);
 });
 
 test('文件是合法 quote-cards：parseQuoteCards 不再抛「rates 必须是对象」', () => {
@@ -113,6 +116,15 @@ test('规格解析：干区木纹砖 75、墙砖 300×600 取 50、湿区 400×4
   assert.equal(resolved.wet_floor.source, 'base.json');
 });
 
+test('选型一变费率跟变：墙砖改 600×1200 → 65（Codex review 5937110969 major 的漂移方向）', () => {
+  const file = parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8'));
+  const fallback = masonryQuoteFallback(baseJson.categories);
+  const resolved = resolveActiveMasonryRates(file, fallback, { wall_tile: ['600x1200mm'] });
+  assert.equal(resolved.wall_tile.per_unit, 65);
+  assert.equal(resolved.wall_tile.matchedSpecification, '600x1200');
+  assert.equal(resolved.wall_tile.source, 'quote');
+});
+
 test('base.json 兜底：floor 45 / wet_floor_tile null / wall_tile null', () => {
   const fallback = masonryQuoteFallback(baseJson.categories);
   assert.equal(fallback.floor.per_unit, 45, '干区兜底仍是 base.json 的 45（= 卡上 600x600 行）');
@@ -139,11 +151,11 @@ test('computeLabor 按三行计价：干区 75、墙砖 50、湿区待报价', (
   const snapshot = new BudgetCalculator(catalog, realRules).calculate(scheme);
   const masonry = snapshot.categories.find((c) => c.key === 'masonry');
   assert.ok(masonry);
-  // round(75 × 120.8478) + round(50 × 35.98359934708642) = 9064 + 1799（DEC-2026-10-25-R01 重算后量；2026-11-12 PR #225 砖带下调 −52；2026-11-16 量价算法审计 D1 主卧圆角 −0.2146㎡，干区人工 −16）。
+  // round(75 × 120.8478) + round(50 × 38.627599347086424) = 9064 + 1931（DEC-2026-10-25-R01 重算后量；2026-11-12 PR #225 砖带下调 −52；2026-11-16 量价算法审计 D1 主卧圆角 −0.2146㎡，干区人工 −16；2026-11-17 包管盒面 +2.644㎡，人工 +132）。
   // 其中客卫开放洗漱区1.125㎡按木纹砖干区人工计价；湿区费率仍待报价。
   // 阶段 5 口径变更：actual = 已取证材料款 + 人工（不含 candidateActual）。
   // 本 fixture 材料款全未取证 → actual 就是纯人工。
-  assert.equal(masonry.actual, 9064 + 1799, '瓦工人工按费率卡解析价逐行计价（R01 重算）');
+  assert.equal(masonry.actual, 9064 + 1931, '瓦工人工按费率卡解析价逐行计价（R01 重算）');
   assert.deepEqual(masonry.pendingLabor, [
     { area: 'wet_floor_tile', quantity: takeoff.wetFloorSqm, unit: '元/㎡', reason: 'rate 待报价' },
   ], '湿区必须显形为待报价，而不是按 45 元/㎡ 悄悄计入');
@@ -223,4 +235,135 @@ test('hvac 选项来自 config/hvac.yaml：一个成交方案、36,000、status 
   assert.equal(a2.price_per_unit, 36000);
   assert.equal((a2.data as { status: string }).status, 'contracted');
   assert.equal((a2.data as { commercial: { vendor: string } }).commercial.vendor.includes('美的'), true);
+});
+
+// ─── 包管价：生成器不得手写单价（Codex review 5935989455 major，PR #259 第二轮）───
+// 人工读生效卡 extras「卫生间贴砖灌砂浆包管」（单管价 = price，双管价 = note 里
+// 「双管 N 元/条」）；板材/砂浆读生效卡 domain.pipe_box_material_reference。
+// 三个读数函数是生成器与 verify:facts 对账数据集的唯一入口——改卡价只改卡，
+// 生成器与对账自动跟；卡里缺项即抛错，不许悄悄退回旧价。
+
+test('包管价：生效卡实算（单管 200 / 双管 300 / 板材 35 / 砂浆 300）', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  assert.deepEqual(pipeBoxLaborPrices(card), { singleCnyPerBox: 200, doubleCnyPerBox: 300 });
+  assert.deepEqual(pipeBoxMaterialPrices(card), { boardCnyPerSqm: 35, mortarCnyPerCum: 300 });
+  const costs = pipeBoxCosts(
+    {
+      singleCount: takeoff.pipeBoxSingleCount,
+      doubleCount: takeoff.pipeBoxDoubleCount,
+      boardSqm: takeoff.pipeBoxBoardSqm,
+      mortarCum: takeoff.pipeBoxMortarCum,
+    },
+    card,
+  );
+  assert.equal(costs.laborCny, 600, '生产 3 条单管 × 200 = 600');
+  assert.equal(costs.boardCny, 93, '板材 round(2.644 × 35) = 93');
+  assert.equal(costs.mortarCny, 60, '砂浆 round(0.2016 × 300) = 60');
+  assert.equal(costs.materialCny, 153, '板材 + 砂浆 = 153');
+});
+
+test('包管价：卡价变了，读数必须跟——不得是生成器里的手写常量', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  const domain = masonryCardDomain(card);
+  const repriced = {
+    ...card,
+    domain: {
+      ...domain,
+      extras: domain.extras.map((row) =>
+        row.label === '卫生间贴砖灌砂浆包管'
+          ? { ...row, price: 250, note: '单管250元/条，双管350元/条' }
+          : row,
+      ),
+      pipe_box_material_reference: [
+        { material: 'fiber_cement_board', unit: '元/㎡', price: 40, evidence: '夹具价' },
+        { material: 'mortar', unit: '元/m³', price: 320, evidence: '夹具价' },
+      ],
+    },
+  };
+  assert.deepEqual(pipeBoxLaborPrices(repriced), { singleCnyPerBox: 250, doubleCnyPerBox: 350 });
+  assert.deepEqual(pipeBoxMaterialPrices(repriced), { boardCnyPerSqm: 40, mortarCnyPerCum: 320 });
+  const costs = pipeBoxCosts({ singleCount: 3, doubleCount: 1, boardSqm: 2.644, mortarCum: 0.2016 }, repriced);
+  assert.equal(costs.laborCny, 3 * 250 + 1 * 350);
+  assert.equal(costs.boardCny, Math.round(2.644 * 40));
+  assert.equal(costs.mortarCny, Math.round(0.2016 * 320));
+  assert.equal(costs.materialCny, costs.boardCny + costs.mortarCny);
+});
+
+test('包管价：卡里缺项即抛错，不许悄悄退回旧价', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  const domain = masonryCardDomain(card);
+  // extras 缺包管行
+  assert.throws(
+    () =>
+      pipeBoxLaborPrices({
+        ...card,
+        domain: { ...domain, extras: domain.extras.filter((row) => row.label !== '卫生间贴砖灌砂浆包管') },
+      }),
+    /卫生间贴砖灌砂浆包管/,
+  );
+  // note 里没有双管价
+  assert.throws(
+    () =>
+      pipeBoxLaborPrices({
+        ...card,
+        domain: {
+          ...domain,
+          extras: domain.extras.map((row) =>
+            row.label === '卫生间贴砖灌砂浆包管' ? { ...row, note: '单管200元/条' } : row,
+          ),
+        },
+      }),
+    /双管/,
+  );
+  // 缺材料登记段
+  const { pipe_box_material_reference: _dropped, ...domainWithoutMaterials } = domain;
+  assert.throws(() => pipeBoxMaterialPrices({ ...card, domain: domainWithoutMaterials }), /pipe_box_material_reference/);
+  // 缺砂浆行
+  assert.throws(
+    () =>
+      pipeBoxMaterialPrices({
+        ...card,
+        domain: {
+          ...domain,
+          pipe_box_material_reference: domain.pipe_box_material_reference.filter((row) => row.material !== 'mortar'),
+        },
+      }),
+    /mortar/,
+  );
+});
+
+test('包管价：材料行单位不匹配即抛错，不得按元/㎡、元/m³悄悄换算（Codex review 5939002602 blocking）', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  const domain = masonryCardDomain(card);
+  const withUnit = (material: string, unit: string) => ({
+    ...card,
+    domain: {
+      ...domain,
+      pipe_box_material_reference: domain.pipe_box_material_reference.map((row) =>
+        row.material === material ? { ...row, unit } : row,
+      ),
+    },
+  });
+  // 板材改成按张卖：35 元/张不能当 35 元/㎡ 乘面积，数值不变对账也发现不了。
+  assert.throws(() => pipeBoxMaterialPrices(withUnit('fiber_cement_board', '元/张')), /fiber_cement_board.*元\/张.*元\/㎡/);
+  // 砂浆改成按吨卖：300 元/t 不能当 300 元/m³ 乘体积。
+  assert.throws(() => pipeBoxMaterialPrices(withUnit('mortar', '元/t')), /mortar.*元\/t.*元\/m³/);
+});
+
+test('包管价：人工行单位不匹配即抛错，不得按元/条悄悄算（Codex review 5939967533 blocking）', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  const domain = masonryCardDomain(card);
+  const withLaborUnit = (unit: string) => ({
+    ...card,
+    domain: {
+      ...domain,
+      extras: domain.extras.map((row) =>
+        row.label === '卫生间贴砖灌砂浆包管' ? { ...row, unit } : row,
+      ),
+    },
+  });
+  // 单管价改成按米卖：200 元/m 不能当 200 元/条乘盒数，数值不变对账也发现不了。
+  assert.throws(() => pipeBoxLaborPrices(withLaborUnit('元/m')), /卫生间贴砖灌砂浆包管.*元\/m.*元\/条/);
+  // 单位正确时读数不变。
+  assert.deepEqual(pipeBoxLaborPrices(withLaborUnit('元/条')), { singleCnyPerBox: 200, doubleCnyPerBox: 300 });
 });

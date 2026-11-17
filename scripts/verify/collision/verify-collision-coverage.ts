@@ -60,7 +60,7 @@ function main() {
   // 房间特征——它们都是「要刷漆/贴砖的声明面」，不产碰撞体、不进 first-person 碰撞
   // （与下沉前 wall_region/sill_region/paint_region/paint_sill_region/paint_ceiling_region
   // 被登记为 non-collidable 是同一结论）。漏登记新元素类型仍会 fail-closed 报 unknown。
-  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'frosted_privacy', 'shower_screen', 'curtain', 'skirting_region']); // 踢脚线墙脚薄片饰面，与 floor_region 同款不需要碰撞（DEC-2026-10-28-R02）
+  const nonCollidableTypes = new Set(['floor_region', 'bay_sill', 'railing_run', 'frosted_privacy', 'shower_screen', 'curtain', 'skirting_region', 'pipe_box']); // 踢脚线墙脚薄片饰面，与 floor_region 同款不需要碰撞（DEC-2026-10-28-R02）；包管盒（2026-11-17）贴墙角、不占通道、不进 first-person 碰撞
   const conditionalCollidableTypes = new Set(['sliding_door_run']);
 
   for (const el of overlay.elements ?? []) {

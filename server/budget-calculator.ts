@@ -100,7 +100,7 @@ export function pricingOf(option: DesignOption, label: string): { pricePerUnit: 
  * `dry_room_ids` 早已在该文件里声明（干区净铺面积 111.864㎡ 的权威源），湿区 counterpart
  * 放在同一处，避免「同一事实存两处」。两表必须非空且不交叠（模块自身也会复核交叠）。
  */
-function loadFloorRoomSplit(): { dryRoomIds: string[]; wetRoomIds: string[] } {
+export function loadFloorRoomSplit(): { dryRoomIds: string[]; wetRoomIds: string[] } {
   const config = load(readFileSync('config/tile-comparison.yaml', 'utf8')) as {
     dry_room_ids?: unknown;
     wet_room_ids?: unknown;
@@ -277,6 +277,25 @@ export function loadMasonryTakeoff(
 
   const floorRoomSplit = loadFloorRoomSplit();
 
+  // 包管盒（2026-11-17）：overlay pipe_box 声明 → takeoff 输入。schema 已在
+  // server/overlay-merge.ts 校验形状（pipes 1|2、faces 2|3、top > bottom）；
+  // 这里只做字段映射，量与守卫（未知房间、管截面 ≥ 盒截面）都在 shared/masonry-takeoff.ts。
+  const pipeBoxes: MasonryTakeoffInput['pipeBoxes'] = overlayElements
+    .filter((element) => element.type === 'pipe_box')
+    .map((element) => ({
+      id: String(element.id),
+      room: String(element.room),
+      riser: String(element.riser),
+      pipes: Number(element.pipes ?? 1) as 1 | 2,
+      width: Number(element.width),
+      depth: Number(element.depth),
+      faces: Number(element.faces) as 2 | 3,
+      bottom: Number(element.bottom),
+      top: Number(element.top),
+      pipeDiameterMm: Number(element.pipeDiameterMm ?? 110),
+      ...(element.zone !== undefined ? { zone: String(element.zone) } : {}),
+    }));
+
   return computeMasonryTakeoff({
     walls,
     wallRegions,
@@ -286,6 +305,7 @@ export function loadMasonryTakeoff(
     dryRoomIds: floorRoomSplit.dryRoomIds,
     wetRoomIds: floorRoomSplit.wetRoomIds,
     floorRegions,
+    pipeBoxes,
     // 厨卫铝扣板完成面（config/model/envelope/ceiling.yaml 的 ceiling_kitchen / ceiling_master_bath /
     // ceiling_guest_bath，2026-11-12 已下调至「完成面 2.50m」，本值已同批下调，见 PR #225 Codex 复审 blocking②）
     // = 贴砖带顶标高上限。必填、不设默认值。

@@ -131,6 +131,7 @@ import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import {
   BudgetCalculator,
+  loadFloorRoomSplit,
   loadMasonryTakeoff,
   loadPaintScopeAreaByRoom,
   roomArea,
@@ -144,6 +145,17 @@ import {
   type MepQuoteFallback,
   type MepQuoteRateKey,
 } from '../../server/mep-quotes.js';
+import {
+  activeMasonryCard,
+  loadMasonryQuotes,
+  masonryQuoteFallback,
+  masonrySpecSelection,
+  pipeBoxCosts,
+  pipeBoxLaborPrices,
+  pipeBoxMaterialPrices,
+  resolveActiveMasonryRates,
+  type MasonryResolvedRate,
+} from '../../server/masonry-quotes.js';
 import {
   computeMepTakeoff,
   type MepTakeoff,
@@ -1357,6 +1369,47 @@ function assertCoverage(
   };
 }
 
+/**
+ * 盒面贴砖人工费率注脚片段（Codex review 5937110969 major：不许手写 50/㎡；
+ * Codex review 5938395280 major：直接报价也是合法卡价；
+ * Codex review 5939002602 major：待报价是合法状态，不得阻断成本总表）。
+ * 费率必须取自费率卡：直接报价（source 'quote'、matchedSpecification null）
+ * 与规格行命中（source 'quote'、matchedSpecification 有值）都合法；
+ * per_unit null 是合法待报价——注脚保留盒面数量并显形待报价，不抛错；
+ * 只有回落给了数（source 非 'quote' 且 per_unit 非空，如 base.json）才抛错。
+ * 直接报价的注脚写「直接报价」而不是 wall_rates「null」行。
+ */
+export function pipeBoxTileLaborNote(
+  rate: MasonryResolvedRate,
+  pipeBoxTileSqm: number,
+): { perSqm: number | null; fragment: string } {
+  if (rate.per_unit === null) {
+    // 合法待报价：生效卡未报价、选型规格无匹配行（解析器口径见
+    // resolveActiveMasonryRates）。注脚只用于未计入 need 的去重说明，
+    // 保留盒面数量并显形待报价，不得让整个 buildCostSummary 失败。
+    return {
+      perSqm: null,
+      fragment: `盒面 ${qty(pipeBoxTileSqm, 3)}㎡贴砖人工待报价（费率卡未报价、选型规格无匹配行）`,
+    };
+  }
+  if (rate.source !== 'quote') {
+    throw new Error('cost summary: 墙砖人工费率未取自费率卡（直接报价或选型规格行命中才合法；base.json 回落无墙砖兜底），盒面贴砖人工无法计价');
+  }
+  if (rate.unit !== '元/㎡') {
+    // 注脚固定写「元/㎡」并乘盒面面积：单位不是面积价时，沿用注脚会篡改报价口径
+    // （Codex review 5940338419 blocking；与板材/砂浆/人工单位校验同口径）。
+    throw new Error(`cost summary: 墙砖人工费率单位必须是 元/㎡（盒面贴砖按面积计价），rates.wall_tile 实际单位为「${rate.unit}」——卡行改单位后不得沿用面积注脚`);
+  }
+  const anchor =
+    rate.matchedSpecification === null
+      ? '直接报价（rates.wall_tile.per_unit）'
+      : `wall_rates「${rate.matchedSpecification}」行、生成器按选型规格实读`;
+  return {
+    perSqm: rate.per_unit,
+    fragment: `面积费率（${rate.per_unit} 元/㎡，费率锚点 config/masonry-labor.yaml 生效卡 ${anchor}）已含约 ${yuan(Math.round(pipeBoxTileSqm * rate.per_unit))} 盒面贴砖人工`,
+  };
+}
+
 export function buildCostSummary(control: AnyRecord): CostSummaryData {
   const catalog = ProjectCatalog.load('.');
   const rulesConfig = RuleEngine.load('config/design-rules.yaml').getConfig();
@@ -1499,11 +1552,35 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     });
   }
 
+  // 包管价读卡（PR #259 第二轮，Codex review 5935989455 major）：此前生成器手写
+  // 单管 ¥200/双管 ¥300/板材 ¥35/㎡/砂浆 ¥300/m³，卡价一变生成值照旧错。
+  // 本轮起人工与板材/砂浆价一律读生效卡（server/masonry-quotes.ts 的 pipeBoxCosts），
+  // 泥瓦行与下方待核注脚共用同一张卡；卡缺项即抛错。control.yaml 登记侧由
+  // c.masonry_pipe_box_labor_parity / c.masonry_pipe_box_material_parity 对账。
+  const masonryCard = activeMasonryCard(loadMasonryQuotes());
+
   // ── 泥瓦（PKG-060）：estimated_need，构成断言 ──
   {
     const need = needOf(control, 'PKG-060');
-    const tileSqm = loadMasonryTakeoff(catalog).totalTileSqm;
-    const wallTilePart = 2519; // 2026-11-12 PR #225：墙砖量 37.0186→35.9836 ㎡ ×70 ≈ 2,519（R04 后 2,591）
+    // 包管派生量与墙砖全量同取一次 takeoff（Codex blocking②）：注脚数字不许手抄常量，
+    // 盒截面改了但注脚没跟时，生成结果与实算脱节；control.yaml 登记侧由
+    // c.masonry_pipe_box_*_parity 对账（verify:facts）。
+    const masonryTakeoff = loadMasonryTakeoff(catalog);
+    const tileSqm = masonryTakeoff.totalTileSqm;
+    const pipeBoxTileCny = Math.round(masonryTakeoff.pipeBoxTileSqm * 70);
+    const pipeBoxPrices = pipeBoxCosts(
+      {
+        singleCount: masonryTakeoff.pipeBoxSingleCount,
+        doubleCount: masonryTakeoff.pipeBoxDoubleCount,
+        boardSqm: masonryTakeoff.pipeBoxBoardSqm,
+        mortarCum: masonryTakeoff.pipeBoxMortarCum,
+      },
+      masonryCard,
+    );
+    const pipeBoxLabor = pipeBoxLaborPrices(masonryCard);
+    const pipeBoxLaborCny = pipeBoxPrices.laborCny;
+    const pipeBoxMaterialCny = pipeBoxPrices.materialCny;
+    const wallTilePart = 2704; // 2026-11-17 包管量入账：墙砖量 35.9836→38.6276 ㎡（pipe_box 盒面 +2.644）×70 ≈ 2,704（R04 后 2,591；2026-11-12 PR #225 后 2,519）
     if (Math.abs(tileSqm * 70 - wallTilePart) > 1) {
       throw new Error(`cost summary: 墙砖主材对不上（${qty(tileSqm, 4)} ㎡ × 70 = ${qty(tileSqm * 70, 2)}，映射登记 ${wallTilePart}）`);
     }
@@ -1518,7 +1595,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       tierReason: '构成含瓷砖封顶价、瓦工预算池（quote_pending）、待报价辅材与候选墙砖，均未锁价',
       // need 构成逐项对应：-01 主材封顶、-04 人工池、-02 辅材、-08 墙砖；其余四项不在构成内，另列待核。
       coversItems: ['COST-060-01', 'COST-060-02', 'COST-060-04', 'COST-060-08', 'QR-2026-10-03-04', 'QR-2026-10-03-05', 'QR-2026-10-03-06'],
-      derivation: `业主询价轮次（QR-2026-10-03-04/05/06）：瓷砖主材封顶 ${yuan(20000)} + 瓦工人工预算池 ${yuan(18500)} + 辅材约 ${yuan(4000)} = ${yuan(42500)}；墙砖主材按 DEC-2026-10-16-TILE-01 终核另计：masonry-takeoff 全量 ${qty(tileSqm, 4)} ㎡ × wall_tile_01 候选 ${yuan(70)}/㎡ ≈ ${yuan(wallTilePart)}；合计 = PKG-060 的 estimated_need_cny ${yuan(need)}。COST-060-05 小砖条人工待书面报价、未计入 need（已登记在未定价与待核清单）`,
+      derivation: `业主询价轮次（QR-2026-10-03-04/05/06）：瓷砖主材封顶 ${yuan(20000)} + 瓦工人工预算池 ${yuan(18500)} + 辅材约 ${yuan(4000)} = ${yuan(42500)}；墙砖主材按 DEC-2026-10-16-TILE-01 终核另计：masonry-takeoff 全量 ${qty(tileSqm, 4)} ㎡ × wall_tile_01 候选 ${yuan(70)}/㎡ ≈ ${yuan(wallTilePart)}（含包管盒面 ${qty(masonryTakeoff.pipeBoxTileSqm, 3)}㎡ × 70 ≈ ${yuan(pipeBoxTileCny)}）；合计 = PKG-060 的 estimated_need_cny ${yuan(need)}。COST-060-05 小砖条人工与包管人工（单管 ${masonryTakeoff.pipeBoxSingleCount}×${pipeBoxLabor.singleCnyPerBox} + 双管 ${masonryTakeoff.pipeBoxDoubleCount}×${pipeBoxLabor.doubleCnyPerBox} = ${yuan(pipeBoxLaborCny)}）待书面报价、未计入 need（已登记在未定价与待核清单）；COST-060-09 包管板材与砂浆主材约 ${yuan(pipeBoxMaterialCny)} 待供应商确认、未计入 need（同清单）`,
     });
   }
 
@@ -1717,10 +1794,40 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   //    价行内的瓦工池，按 uncertain 的自有定义「是否已含未定」改判，自主扫
   //    描 C1；与搬运退补区分：搬运的待决是未来施工合同的范围、无现行定价
   //    行可含，仍判 uncounted）；
-  //  uncounted（9 条）——小砖条人工、燃气管道费、空调合同外增量（COST-030-02
+  //  uncounted（10 条）——小砖条人工、包管板材与砂浆主材、燃气管道费、空调合同外增量（COST-030-02
   //    待核面）、空调可能增项、搬运退补、南阳台范围、吊顶龙骨、闭水责任、
   //    固定柜体：注脚均明示未计入任何定价行；其中含或然/待裁定/范围未定项，
   //    须确认纳入一期、实际发生且未被其他行包含后才进总额。
+  // 包管派生量与泥瓦行同取一次 takeoff（Codex blocking②）：注脚里的条数/面积/体积
+  // 不许手抄常量；control.yaml 登记侧由 c.masonry_pipe_box_*_parity 对账。
+  const pipeBoxTakeoff = loadMasonryTakeoff(catalog);
+  const pipeBoxPrices = pipeBoxCosts(
+    {
+      singleCount: pipeBoxTakeoff.pipeBoxSingleCount,
+      doubleCount: pipeBoxTakeoff.pipeBoxDoubleCount,
+      boardSqm: pipeBoxTakeoff.pipeBoxBoardSqm,
+      mortarCum: pipeBoxTakeoff.pipeBoxMortarCum,
+    },
+    masonryCard,
+  );
+  const pipeBoxLabor = pipeBoxLaborPrices(masonryCard);
+  const pipeBoxMaterial = pipeBoxMaterialPrices(masonryCard);
+  const pipeBoxLaborCny = pipeBoxPrices.laborCny;
+  const pipeBoxBoardCny = pipeBoxPrices.boardCny;
+  const pipeBoxMortarCny = pipeBoxPrices.mortarCny;
+  // 盒面贴砖人工费率（Codex review 5937110969 major）：不许手写 50/㎡——与泥瓦行
+  // 同读生效卡 resolveActiveMasonryRates（选型规格 → wall_rates 行），选型一变
+  // （如改 600×1200 → 65）费率跟变；回落给了数（非卡价）时抛错，不许悄悄按旧价；
+  // 合法待报价（per_unit null）时注脚显形待报价，不阻断成本总表。
+  // 直接报价与规格行命中都是合法卡价（Codex review 5938395280 major），
+  // 判据见 pipeBoxTileLaborNote。
+  const wallTileLaborRate = resolveActiveMasonryRates(
+    loadMasonryQuotes(),
+    masonryQuoteFallback(JSON.parse(readFileSync('config/budget/base.json', 'utf8')).categories),
+    masonrySpecSelection(catalog, scheme, loadFloorRoomSplit()),
+  ).wall_tile;
+  const wallTileLabor = pipeBoxTileLaborNote(wallTileLaborRate, pipeBoxTakeoff.pipeBoxTileSqm);
+  const wallTileLaborPerSqm = wallTileLabor.perSqm;
   const pendingChecks: PendingEntry[] = [
     {
       id: 'pending-sill-tile-labor',
@@ -1728,8 +1835,17 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-060'],
       statusLabel: 'quote_pending · 待书面报价',
       countedStatus: 'uncounted',
-      note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价`,
+      note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价。另：包管人工 ${pipeBoxTakeoff.pipeBoxCount} 条（单管 ${pipeBoxTakeoff.pipeBoxSingleCount} × ${yuan(pipeBoxLabor.singleCnyPerBox)} + 双管 ${pipeBoxTakeoff.pipeBoxDoubleCount} × ${yuan(pipeBoxLabor.doubleCnyPerBox)}）= ${yuan(pipeBoxLaborCny)}（主卫/客卫/厨房，infer——量房 11-27 复核；费率锚点 config/masonry-labor.yaml 生效卡 extras「卫生间贴砖灌砂浆包管」，生成器实读该行），待书面报价、未计入 need；单管 ¥${pipeBoxLabor.singleCnyPerBox}/条含贴砖，而盒面 ${qty(pipeBoxTakeoff.pipeBoxTileSqm, 3)}㎡ 已进 totalTileSqm、${wallTileLabor.fragment}，书面报价须确认拆分、不得双计`,
       coversItems: ['COST-060-05'],
+    },
+    {
+      id: 'pending-pipe-box-materials',
+      name: '包管板材与砂浆主材',
+      packageIds: ['PKG-060'],
+      statusLabel: 'quote_pending · 待供应商确认',
+      countedStatus: 'uncounted',
+      note: `未计入泥瓦行：9mm 纤维水泥压力板 ${qty(pipeBoxTakeoff.pipeBoxBoardSqm, 3)}㎡ × ${yuan(pipeBoxMaterial.boardCnyPerSqm)}/㎡ ≈ ${yuan(pipeBoxBoardCny)} + 灌砂浆 ${qty(pipeBoxTakeoff.pipeBoxMortarCum, 4)}m³ × ${yuan(pipeBoxMaterial.mortarCnyPerCum)}/m³ ≈ ${yuan(pipeBoxMortarCny)}，合计约 ${yuan(pipeBoxBoardCny + pipeBoxMortarCny)}；量自 shared/masonry-takeoff.ts 的 pipe_box 声明派生（${pipeBoxTakeoff.pipeBoxCount} 条：单管 ${pipeBoxTakeoff.pipeBoxSingleCount}、双管 ${pipeBoxTakeoff.pipeBoxDoubleCount}，infer——量房 11-27 复核）。板材与砂浆单价均为市场价 infer/待核实（非门店成交价），锚点 config/masonry-labor.yaml 生效卡 domain.pipe_box_material_reference（生成器实读该登记）；辅材由谁供应仍未知，待供应商确认后计入`,
+      coversItems: ['COST-060-09'],
     },
     {
       id: 'pending-lighting-install-labor',

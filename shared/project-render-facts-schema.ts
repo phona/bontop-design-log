@@ -54,6 +54,18 @@ export const ComponentBlockerSchema = z.object({
   reverses_if: nonEmpty,
   rationale: nonEmpty,
 }).strict();
+
+/**
+ * pipe_box 的 blocker 必填规则（Codex review 5935989455 blocking，PR #259 第二轮）：
+ * 只有实测（measured）与已确认（confirmed）的盒可以不带 blocker——这两者已无未决口径。
+ * 其余一切状态（pending / undeclared / inferred / likely / 缺省）都必须声明 blocker，
+ * 否则「卡在谁」无属主，待决视图一旦合成 fallback 就会把它渲成已登记。
+ * server/overlay-merge.ts 的 schema 与 shared/element-sources.ts 的采集侧共用此判据，
+ * 两处不得各写一份（各写一份必漂移）。
+ */
+export function pipeBoxBlockerRequired(status: string | undefined): boolean {
+  return status !== 'measured' && status !== 'confirmed';
+}
 const Vec3Schema = z.object({ x: finiteNumber, y: finiteNumber, z: finiteNumber }).strict();
 const FurnitureFaceMountAnchorProjectionSchema = z.object({
   kind: z.literal('furniture_face'),

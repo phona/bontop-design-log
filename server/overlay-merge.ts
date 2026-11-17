@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { isWallSuppressed } from '../shared/suppression.js';
 import { deriveSkirtingRegions } from '../shared/skirting-derivation.js';
+import { ComponentBlockerSchema, pipeBoxBlockerRequired } from '../shared/project-render-facts-schema.js';
 import type { BaySillSegment, BaySillWallReference, SceneElement, WallSegment, CurtainPoint, WallPaintBand, WallTileBand } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
@@ -291,6 +292,68 @@ const CurtainSchema = z
     message: 'Must specify points, wall, or walls',
   });
 
+// 包管（pipe_box）：排水立管的贴砖包管盒。masonry-takeoff 的声明源——
+// 盒面贴砖面积进 totalTileSqm（COST-060-08）、条数/板材/砂浆量由
+// shared/masonry-takeoff.ts 自本声明派生；人工单价（单管 ¥200/条、双管 ¥300/条）
+// 住 config/masonry-labor.yaml extras，见 COST-060-05。
+// 盒不渲染（SceneBuilder 显式跳过）：立管位是 infer（±0.3m），量房前渲成实体
+// 会把未核实几何当成事实；量房后若立管位确认，可再议是否出网。
+// 碰撞：不需要（贴墙角盒，不占通道；见 AGENTS.md「碰撞/相机修改铁律」）。
+const PipeBoxSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('pipe_box'),
+    room: z.string().min(1),
+    /** 引用的排水立管 id（config/plumbing.yaml 的 risers）。 */
+    riser: z.string().min(1),
+    /** 单管 1 / 双管 2（人工按条计：单管 ¥200/条、双管 ¥300/条）。 */
+    pipes: z.union([z.literal(1), z.literal(2)]).default(1),
+    /** 盒截面宽（米，沿墙面方向）。 */
+    width: z.number().positive(),
+    /** 盒截面深（米，出墙方向）。 */
+    depth: z.number().positive(),
+    /** 贴砖面数：2 = 墙角盒（两面），3 = 平墙盒（正面 + 两侧）。 */
+    faces: z.union([z.literal(2), z.literal(3)]),
+    /** 盒底标高（米）。厨房盒自台面起：bottom = 台面完成面 0.89。 */
+    bottom: z.number().min(0),
+    /** 盒顶标高（米）。厨卫铝扣板完成面 2.50。 */
+    top: z.number().positive(),
+    /** 立管外径（毫米，DN110 = 110）：砂浆填充量 =（盒截面 − 管截面合计）× 高。 */
+    pipeDiameterMm: z.number().positive().default(110),
+    /**
+     * 贴砖分区（与 wall/sill_region 的 zone 同口径，缺省 'visible'）：
+     * 盒面面积进 byZone 的分区键（Codex review 5938395280 minor）。
+     */
+    zone: z.string().min(1).optional(),
+    /**
+     * 声明状态：构件状态唯一字段，词汇与 shared/types.ts 的 ComponentStatus 同源
+     * （measured / likely / inferred / pending / confirmed / undeclared）。
+     * 包管盒现为 inferred = 未量房推断，量房后复核（复核触发见 blocker）。
+     */
+    status: z.enum(['measured', 'likely', 'inferred', 'pending', 'confirmed', 'undeclared']).optional(),
+    /**
+     * 未决声明（决策铁律第 1 条：每个新引入的部件必须说清卡在谁、什么事件解锁、
+     * 什么条件下反转）。inferred 盒的量房复核走这里，不只写 note——note 是散文，
+     * blocker 才是带 owner/trigger 的结构化声明。必填规则（Codex review 5935989455
+     * blocking）：只有 measured/confirmed 的盒可以不带 blocker；pending/undeclared/
+     * inferred/likely/缺省 status 一律必填，由下方 refine + pipeBoxBlockerRequired
+     * 强制执行——缺了即 parse 失败，不许流进待决视图后再合成 fallback blocker。
+     * 采集侧：overlay envelope 元素自本轮进 collectElements()（shared/element-sources.ts），
+     * checkBlockers 门禁对 pipe_box 同样生效；pending 载体行也不再合成 blocker
+     *（shared/pending-carriers.ts 的 buildPipeBoxPendingRow 缺 blocker 即抛错）。
+     */
+    blocker: ComponentBlockerSchema.optional(),
+    note: z.string().min(1).optional(),
+  })
+  .strict()
+  .refine((box) => box.top > box.bottom, {
+    message: 'pipe_box top 必须高于 bottom',
+  })
+  .refine((box) => !pipeBoxBlockerRequired(box.status) || box.blocker !== undefined, {
+    message:
+      'pipe_box status 为 pending/undeclared/inferred/likely 或缺省时必须声明 blocker（卡在谁/何时解锁/何时反转），不许留空后由视图合成',
+  });
+
 const OverlaySchema = z
   .object({
     version: z.literal(1),
@@ -307,6 +370,7 @@ const OverlaySchema = z
           BaySillSchema,
           RailingRunSchema,
           CurtainSchema,
+          PipeBoxSchema,
         ])
       )
       .default([]),

@@ -24,6 +24,7 @@ import { endpointSourcesFromFacts, resolveMepEndpoint } from '../../../shared/me
 import { ProjectCatalog } from '../../../server/project-catalog.js';
 import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
 import { BudgetCalculator, loadMasonryTakeoff } from '../../../server/budget-calculator.js';
+import { activeMasonryCard, loadMasonryQuotes, pipeBoxCosts } from '../../../server/masonry-quotes.js';
 import { loadModelPackageLinks } from '../../../server/model-package-links.js';
 import { ALL_MODEL_TARGET } from '../../../shared/package-objects.js';
 import { loadOverlayDoc } from '../../../server/overlay-merge.js';
@@ -195,6 +196,18 @@ const coverageFiles = [
 function computeBudgetParityDatasets(): Record<string, unknown> {
   const catalog = ProjectCatalog.load('.');
   const takeoff = loadMasonryTakeoff(catalog);
+  // 包管价（2026-11-17 第二轮，Codex major）：与生成器共用 pipeBoxCosts——
+  // 同一份卡价实算，既是 c.masonry_pipe_box_labor/material_parity 的机器源，
+  // 也是生成器金额的交叉核对。卡价一变，两侧同动、契约即红，逼着有意重钉登记。
+  const pipeBoxPrices = pipeBoxCosts(
+    {
+      singleCount: takeoff.pipeBoxSingleCount,
+      doubleCount: takeoff.pipeBoxDoubleCount,
+      boardSqm: takeoff.pipeBoxBoardSqm,
+      mortarCum: takeoff.pipeBoxMortarCum,
+    },
+    activeMasonryCard(loadMasonryQuotes()),
+  );
 
   // ② 真实预算快照的逐 topic 计价量。方案取当前选型（floor/wall/paint/hvac/cabinet/countertop），
   //    与 tests/server/budget-calculator.test.ts 的基线方案一致——换选型只换单价，不换量。
@@ -231,6 +244,16 @@ function computeBudgetParityDatasets(): Record<string, unknown> {
       wallTileSqm: takeoff.wallTileSqm,
       sillTileSqm: takeoff.sillTileSqm,
       totalTileSqm: takeoff.totalTileSqm,
+      // 包管盒派生量（2026-11-17 入账；Codex blocking② 的对账腿）：
+      // 板材 = 盒面、砂浆 =（盒截面 − 管截面合计）× 高，均由 pipe_box 声明派生。
+      pipeBoxCount: takeoff.pipeBoxCount,
+      pipeBoxSingleCount: takeoff.pipeBoxSingleCount,
+      pipeBoxDoubleCount: takeoff.pipeBoxDoubleCount,
+      pipeBoxTileSqm: takeoff.pipeBoxTileSqm,
+      pipeBoxBoardSqm: takeoff.pipeBoxBoardSqm,
+      pipeBoxMortarCum: takeoff.pipeBoxMortarCum,
+      pipeBoxLaborCny: pipeBoxPrices.laborCny,
+      pipeBoxMaterialCny: pipeBoxPrices.materialCny,
       wallRegionCount: takeoff.regions.filter((region) => region.kind === 'wall').length,
       sillRegionCount: takeoff.regions.filter((region) => region.kind === 'sill').length,
       dryFloorSqm: takeoff.dryFloorSqm,

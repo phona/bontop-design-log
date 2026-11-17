@@ -36,11 +36,12 @@ describe('shared/schedule-state: 真实仓集成', () => {
     // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed（PKG-090）→ 118。
     // 2026-11-15 一二期对调（#152）：新增 COST-160-09 洗碗机 → 107（GC5 COST-160-08
     // 退二期、planned 0，仍计组件；未报价 89 不变）。
+    // 2026-11-17 包管量入账：新增 COST-060-09 包管板材与砂浆主材 → 108，未报价 89→90。
     // orderedPackages 按原语义过滤 sequence<900（PKG-900 预备金不进施工顺序），故 24。
     assert.equal(state.control.work_packages.length, 25);
     assert.equal(state.orderedPackages.length, 24);
-    assert.equal(state.componentIds.size, 107);
-    assert.equal(state.unpricedComponents.length, 89);
+    assert.equal(state.componentIds.size, 108);
+    assert.equal(state.unpricedComponents.length, 90);
     assert.equal(state.usedCheckIds.size, 118);
     // 当前真实状态：25 包全部 blocked、0 个 ready（design v2 §4 的口径）
     assert.equal(state.orderedPackages.filter((pkg: AnyRecord) => state.effectiveReadiness(pkg) === 'ready').length, 0);
