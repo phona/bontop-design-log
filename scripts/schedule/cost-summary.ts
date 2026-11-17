@@ -1371,17 +1371,28 @@ function assertCoverage(
 
 /**
  * 盒面贴砖人工费率注脚片段（Codex review 5937110969 major：不许手写 50/㎡；
- * Codex review 5938395280 major：直接报价也是合法卡价）。
+ * Codex review 5938395280 major：直接报价也是合法卡价；
+ * Codex review 5939002602 major：待报价是合法状态，不得阻断成本总表）。
  * 费率必须取自费率卡：直接报价（source 'quote'、matchedSpecification null）
  * 与规格行命中（source 'quote'、matchedSpecification 有值）都合法；
- * 只有回落（source 非 'quote'，如 base.json）或 per_unit null 才抛错。
+ * per_unit null 是合法待报价——注脚保留盒面数量并显形待报价，不抛错；
+ * 只有回落给了数（source 非 'quote' 且 per_unit 非空，如 base.json）才抛错。
  * 直接报价的注脚写「直接报价」而不是 wall_rates「null」行。
  */
 export function pipeBoxTileLaborNote(
   rate: MasonryResolvedRate,
   pipeBoxTileSqm: number,
-): { perSqm: number; fragment: string } {
-  if (rate.per_unit === null || rate.source !== 'quote') {
+): { perSqm: number | null; fragment: string } {
+  if (rate.per_unit === null) {
+    // 合法待报价：生效卡未报价、选型规格无匹配行（解析器口径见
+    // resolveActiveMasonryRates）。注脚只用于未计入 need 的去重说明，
+    // 保留盒面数量并显形待报价，不得让整个 buildCostSummary 失败。
+    return {
+      perSqm: null,
+      fragment: `盒面 ${qty(pipeBoxTileSqm, 3)}㎡贴砖人工待报价（费率卡未报价、选型规格无匹配行）`,
+    };
+  }
+  if (rate.source !== 'quote') {
     throw new Error('cost summary: 墙砖人工费率未取自费率卡（直接报价或选型规格行命中才合法；base.json 回落无墙砖兜底），盒面贴砖人工无法计价');
   }
   const anchor =
@@ -1801,7 +1812,8 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   const pipeBoxMortarCny = pipeBoxPrices.mortarCny;
   // 盒面贴砖人工费率（Codex review 5937110969 major）：不许手写 50/㎡——与泥瓦行
   // 同读生效卡 resolveActiveMasonryRates（选型规格 → wall_rates 行），选型一变
-  // （如改 600×1200 → 65）费率跟变；费率未取自卡行时抛错，不许悄悄按旧价。
+  // （如改 600×1200 → 65）费率跟变；回落给了数（非卡价）时抛错，不许悄悄按旧价；
+  // 合法待报价（per_unit null）时注脚显形待报价，不阻断成本总表。
   // 直接报价与规格行命中都是合法卡价（Codex review 5938395280 major），
   // 判据见 pipeBoxTileLaborNote。
   const wallTileLaborRate = resolveActiveMasonryRates(

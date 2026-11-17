@@ -1317,6 +1317,20 @@ describe('包管价：生成器读生效卡，不许手写单价（Codex review 
     assert.ok(direct.fragment.includes('已含约 ¥153'), '盒面人工金额必须按直接报价实算（2.644 × 58 ≈ 153）');
   });
 
+  it('待报价不阻断成本总表：per_unit null 时注脚显形待报价、不抛错（Codex review 5939002602 major）', () => {
+    // 生效卡未报价、选型规格无匹配行时解析器合法返回 per_unit null（见
+    // masonry-quotes.ts resolveActiveMasonryRates 的待报价显形口径）。
+    // 注脚只用于未计入 need 的去重说明，不得因此让整个 buildCostSummary 失败。
+    const unquoted = pipeBoxTileLaborNote(
+      { per_unit: null, unit: '元/㎡', source: 'base.json', matchedSpecification: null, specs: [] },
+      2.644,
+    );
+    assert.equal(unquoted.perSqm, null);
+    assert.ok(unquoted.fragment.includes('2.644'), '注脚必须保留盒面数量');
+    assert.ok(unquoted.fragment.includes('待报价'), '注脚必须显形人工待报价');
+    assert.ok(!unquoted.fragment.includes('已含约'), '未报价时不得写已含金额');
+  });
+
   it('规格行命中的注脚片段与现行生产文本一致', () => {
     const spec = pipeBoxTileLaborNote(
       { per_unit: 50, unit: '元/㎡', source: 'quote', matchedSpecification: '300x600', specs: ['300x600'] },
@@ -1330,18 +1344,11 @@ describe('包管价：生成器读生效卡，不许手写单价（Codex review 
 
   it('回落费率仍抛错：per_unit 非空但 source 不是 quote 时不是卡价', () => {
     // base.json 兜底即使给了数也不是费率卡行——判据是来源，不是 per_unit 是否为空。
+    // per_unit null 不在此列：那是合法待报价，见上一条（Codex review 5939002602 major）。
     assert.throws(
       () =>
         pipeBoxTileLaborNote(
           { per_unit: 45, unit: '元/㎡', source: 'base.json', matchedSpecification: null, specs: [] },
-          2.644,
-        ),
-      /未取自费率卡/,
-    );
-    assert.throws(
-      () =>
-        pipeBoxTileLaborNote(
-          { per_unit: null, unit: '元/㎡', source: 'base.json', matchedSpecification: null, specs: [] },
           2.644,
         ),
       /未取自费率卡/,
