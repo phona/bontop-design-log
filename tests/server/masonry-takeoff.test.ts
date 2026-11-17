@@ -308,6 +308,27 @@ test('pipe_box fail-closed：未知房间/非法 pipes/faces/顶底倒置/管比
   assert.throws(() => computeMasonryTakeoff(bad({ pipeDiameterMm: 300 })), /不小于盒截面/);
 });
 
+test('pipe_box 顶标高受净高约束：盒顶超净高即抛错，与 wall_region 同口径（Codex review 5940338419 major）', () => {
+  const base = buildInput();
+  // Codex 内存复现原形：净高 2.50m、盒顶 3.00m 的声明仍算出吊顶以上部分的量。
+  // 盒顶与贴砖顶同口径，超净高是声明错、不是可钳位的量——与 wall_region 一样抛错，不夹取。
+  const over: MasonryTakeoffInput = {
+    ...base,
+    clearHeight: 2.50,
+    pipeBoxes: [{
+      id: 'probe-over-clear', room: 'master_bath', riser: 'drain_riser_master_bath',
+      pipes: 1, width: 0.2, depth: 0.2, faces: 2, bottom: 0, top: 3.00,
+      pipeDiameterMm: 110,
+    } as any],
+  };
+  assert.throws(() => computeMasonryTakeoff(over), /超净高/);
+  // 边界：盒顶恰等于净高仍合法（生产口径：净高 2.50、主卫/客卫盒顶 2.50），
+  // 与 wall_region「top > clearHeight + EPS 才抛」同口径。
+  const atCap: MasonryTakeoffInput = { ...base, clearHeight: 2.50 };
+  assert.doesNotThrow(() => computeMasonryTakeoff(atCap));
+  close(computeMasonryTakeoff(atCap).pipeBoxTileSqm, 2.644);
+});
+
 test('pipe_box 声明与给排水立管对得上：3 条已包、阳台立管与冷凝水立管未包', () => {
   const plumbing: any = load(readFileSync('config/plumbing.yaml', 'utf8'));
   const risers = new Map<string, any>(plumbing.filter((point: any) => point.type === 'drain_riser').map((riser: any) => [riser.id, riser]));

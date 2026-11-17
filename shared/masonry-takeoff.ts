@@ -1103,6 +1103,11 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
     if (!(box.top > box.bottom)) {
       throw new Error(`pipe_box ${box.id}: top ${box.top} must exceed bottom ${box.bottom}`);
     }
+    if (box.top > clearHeightFor(box.room) + EPS) {
+      // 盒顶与贴砖顶同口径：超净高是声明错，不是可钳位的量——与 wall_region
+      // （642 行）一样抛错，不夹取（Codex review 5940338419 major）。
+      throw new Error(`pipe_box ${box.id}: 顶标高 ${box.top} 超净高 ${clearHeightFor(box.room)}（盒面贴砖/板材/砂浆不得算吊顶以上部分）`);
+    }
     if (!(box.pipeDiameterMm > 0)) {
       throw new Error(`pipe_box ${box.id}: pipeDiameterMm 必须为正，实际 ${box.pipeDiameterMm}`);
     }
