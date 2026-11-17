@@ -1395,6 +1395,11 @@ export function pipeBoxTileLaborNote(
   if (rate.source !== 'quote') {
     throw new Error('cost summary: 墙砖人工费率未取自费率卡（直接报价或选型规格行命中才合法；base.json 回落无墙砖兜底），盒面贴砖人工无法计价');
   }
+  if (rate.unit !== '元/㎡') {
+    // 注脚固定写「元/㎡」并乘盒面面积：单位不是面积价时，沿用注脚会篡改报价口径
+    // （Codex review 5940338419 blocking；与板材/砂浆/人工单位校验同口径）。
+    throw new Error(`cost summary: 墙砖人工费率单位必须是 元/㎡（盒面贴砖按面积计价），rates.wall_tile 实际单位为「${rate.unit}」——卡行改单位后不得沿用面积注脚`);
+  }
   const anchor =
     rate.matchedSpecification === null
       ? '直接报价（rates.wall_tile.per_unit）'

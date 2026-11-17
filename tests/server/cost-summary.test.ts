@@ -1354,4 +1354,18 @@ describe('包管价：生成器读生效卡，不许手写单价（Codex review 
       /未取自费率卡/,
     );
   });
+
+  it('非面积单位仍抛错：per_unit 非空、source 为 quote，但 unit 不是 元/㎡ 时不得按面积算（Codex review 5940338419 blocking）', () => {
+    // 解析器只要求 unit 非空（见 quote-cards.ts ResolvedQuoteRate），卡行改成
+    // 元/条后注脚仍会硬编码「58 元/㎡」并乘盒面面积，篡改报价口径。单位必须在
+    // 计价前校验，与 rounds 6/7 的板材/砂浆/人工单位校验同口径。
+    assert.throws(
+      () =>
+        pipeBoxTileLaborNote(
+          { per_unit: 58, unit: '元/条', source: 'quote', matchedSpecification: null, specs: ['300x600'] },
+          2.644,
+        ),
+      /元\/㎡/,
+    );
+  });
 });
