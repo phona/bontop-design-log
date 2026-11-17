@@ -994,13 +994,18 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         : typeof route.from === 'string' ? pointCircuit.get(route.from) : undefined;
       const junctions = circuit === undefined ? [] : (travelerJunctionByCircuit.get(circuit) ?? []);
       const keyOf = (node: { x: number; z: number; y: number }): string => travelerNodeKey(node, node.y);
-      for (let i = 1; i < points3d.length; i += 1) {
-        const fromPoint = points3d[i - 1];
-        const toPoint = points3d[i];
-        const fromY = requirePointY(fromPoint, `路由 ${route.id}`);
-        const toY = requirePointY(toPoint, `路由 ${route.id}`);
-        const from3d = { x: fromPoint.x, z: fromPoint.z, y: fromY };
-        const to3d = { x: toPoint.x, z: toPoint.z, y: toY };
+      // 一段 3D 线段按同回路接入点切分后逐小段建边（第 6/7 轮）：接入点落在
+      // 段内部时在此成节点，否则接入悬空。折线段与 stub 竖直段走同一切分——
+      // 支路接在 stub 中途时也须在接入点处成节点（第 11 轮 blocking：旧模型
+      // stub 边不参与切分，接入点悬空、两开关不连通、行程静默归零）。
+      // fromKey/toKey 是两端图节点：折线段两端用坐标 key，stub 段的安装点端
+      // 用点位 ID。
+      const pushCutEdges = (
+        from3d: { x: number; z: number; y: number },
+        to3d: { x: number; z: number; y: number },
+        fromKey: string,
+        toKey: string,
+      ): void => {
         const cuts = junctions
           .map((p) => ({ p, t: travelerInteriorT(from3d, to3d, p) }))
           .filter((item): item is { p: { x: number; z: number; y: number }; t: number } => item.t !== null)
@@ -1011,25 +1016,46 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
           ...cuts.map((item) => item.p),
           to3d,
         ];
+        const keys = [fromKey, ...cuts.map((item) => keyOf(item.p)), toKey];
         for (let k = 1; k < nodes.length; k += 1) {
-          const aNode = nodes[k - 1];
-          const bNode = nodes[k];
           travelerEdges.push({
             routeId: route.id,
-            a: keyOf(aNode),
-            b: keyOf(bNode),
-            length: routeSegmentLength(aNode, bNode, `路由 ${route.id}`),
+            a: keys[k - 1],
+            b: keys[k],
+            length: routeSegmentLength(nodes[k - 1], nodes[k], `路由 ${route.id}`),
             circuit,
           });
         }
+      };
+      for (let i = 1; i < points3d.length; i += 1) {
+        const fromPoint = points3d[i - 1];
+        const toPoint = points3d[i];
+        const fromY = requirePointY(fromPoint, `路由 ${route.id}`);
+        const toY = requirePointY(toPoint, `路由 ${route.id}`);
+        const from3d = { x: fromPoint.x, z: fromPoint.z, y: fromY };
+        const to3d = { x: toPoint.x, z: toPoint.z, y: toY };
+        pushCutEdges(from3d, to3d, keyOf(from3d), keyOf(to3d));
       }
       // 终端 stub 边（第 9/10 轮）：每个字符串端点各一条独立边，安装点 → 折线
       // 端点坐标 key，边长 = 端点标高 − 安装高度（折线已下引到安装点时为 0，
       // 仍建边不断开终端与图的连接）。同一开关是多条路由端点时各边平行，
       // 最短路只取最小的一条，下引只计一次、不重复计。
+      // （第 11 轮）竖直段存在（端点标高高于安装高度）时按同一规则切分；
+      // 无中途接入点时各小段长度之和仍等于原 stub 长，生产值不变。
+      // 标高不高于安装高度时沿用旧口径——单条零长边不断开终端连接。
       const terminalStubEdge = (endpoint: string | { x: number; z: number }, point: { x: number; z: number; y?: number }): void => {
         if (typeof endpoint !== 'string') return;
         const y = requirePointY(point, `路由 ${route.id}`);
+        const height = pointHeights.get(endpoint)?.height;
+        if (height !== undefined && y > height) {
+          pushCutEdges(
+            { x: point.x, z: point.z, y: height },
+            { x: point.x, z: point.z, y },
+            endpoint,
+            travelerNodeKey({ x: point.x, z: point.z }, y),
+          );
+          return;
+        }
         travelerEdges.push({
           routeId: route.id,
           a: endpoint,
