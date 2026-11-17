@@ -273,3 +273,54 @@ test('重叠行一边待报价时不抛错：总额本就是 null，尚未多算
   assert.equal(comparison.total, null);
   assert.deepEqual(comparison.pendingRows, ['part']);
 });
+
+// ─── D5 补：零金额行不是重复收费（Codex major，PR #255 复审第 14 轮）───
+
+type ZeroKey = 'total' | 'partZeroQty' | 'partZeroRate';
+
+const ZERO_SPEC: QuoteCardSpec<ZeroKey> = {
+  keys: ['total', 'partZeroQty', 'partZeroRate'],
+  labels: { total: '整包（㎡）', partZeroQty: '零量子项（㎡）', partZeroRate: '免费子项（㎡）' },
+  fallbackLabel: 'base.json',
+  overlaps: [{ container: 'total', parts: ['partZeroQty', 'partZeroRate'] }],
+};
+
+const ZERO_QUANTITIES: Record<ZeroKey, number> = { total: 100, partZeroQty: 0, partZeroRate: 40 };
+const ZERO_FALLBACK: Record<ZeroKey, { per_unit: number | null; unit: string }> = {
+  total: { per_unit: 10, unit: '元/㎡' },
+  partZeroQty: { per_unit: 20, unit: '元/㎡' },
+  partZeroRate: { per_unit: 0, unit: '元/㎡' },
+};
+
+test('重叠行零金额不触发：数量为 0 或单价为 0 的行不增加总额（Codex major，PR #255 复审第 14 轮）', () => {
+  // 复现：总行 100㎡×10 元，子行 0㎡×20 元与 40㎡×0 元——两子行 subtotal 均为 0，
+  // 总额只含总行 1000 元。旧守卫只看 subtotal 非 null，两行都被判“重复计 0 元”；
+  // compareQuoteCards 遍历全部候选，一张这样的卡就能阻断整个报价比较及调用它的预算快照。
+  const zero = parseQuoteCards(file([{
+    id: 'x', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted',
+    rates: {
+      total: { per_unit: 10, unit: '元/㎡', scope_note: '含子项' },
+      partZeroQty: { per_unit: 20, unit: '元/㎡', scope_note: '子项单报' },
+      partZeroRate: { per_unit: 0, unit: '元/㎡', scope_note: '免费子项' },
+    },
+  }], 'x'), ZERO_SPEC);
+  const comparison = compareQuoteCards(zero, ZERO_QUANTITIES, ZERO_FALLBACK, ZERO_SPEC)[0];
+  assert.equal(comparison.total, 1000);
+  assert.equal(comparison.rows.find((row) => row.key === 'partZeroQty')!.subtotal, 0);
+  assert.equal(comparison.rows.find((row) => row.key === 'partZeroRate')!.subtotal, 0);
+});
+
+test('重叠行容器为 0 时不触发：整包免费、子项单独收费只计一次（Codex major，PR #255 复审第 14 轮）', () => {
+  // 对照：容器行数量为 0（subtotal 0），子项 40㎡×20 元 = 800 元单独收费——
+  // 重叠的量只在子项行收了一次钱，总额 800 元，不抛错。
+  const containerZero = parseQuoteCards(file([{
+    id: 'x', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted',
+    rates: {
+      total: { per_unit: 10, unit: '元/㎡', scope_note: '含子项' },
+      partZeroQty: { per_unit: 20, unit: '元/㎡', scope_note: '子项单报' },
+      partZeroRate: { per_unit: 0, unit: '元/㎡', scope_note: '免费子项' },
+    },
+  }], 'x'), ZERO_SPEC);
+  const comparison = compareQuoteCards(containerZero, { total: 0, partZeroQty: 40, partZeroRate: 0 }, ZERO_FALLBACK, ZERO_SPEC)[0];
+  assert.equal(comparison.total, 800);
+});

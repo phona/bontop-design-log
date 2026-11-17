@@ -134,11 +134,13 @@ export interface QuoteCardSpec<Key extends string> {
   fallbackLabel?: string;
   /**
    * 量重叠声明：container 行的量已含 parts 各行的量（同一物理量在两行里各
-   * 出现一次）。一张卡若同时给 container 与任一 part 计价（两行都实际计价、
-   * subtotal 非 null），总额会把那部分量算两次——compareQuoteCards 直接抛错。
+   * 出现一次）。一张卡若同时给 container 与任一 part 计价（两行都实际收钱、
+   * subtotal > 0），总额会把那部分量算两次——compareQuoteCards 直接抛错。
    * 声明是域知识（只有域知道哪两行是包含关系），不声明即不检查。一边待报价
    * （per_unit null）时总额本就是 null、尚未多算，不抛错；待报价行一旦补价，
-   * 守卫即刻拦下。
+   * 守卫即刻拦下。一边 subtotal 为 0（数量为 0 或单价为 0）时重叠的量没收过
+   * 钱，不抛错（PR #255 复审第 14 轮：旧守卫只看 subtotal 非 null，合法的
+   * 0 元行也会抛“重复计 0 元”，一张卡阻断整个报价比较）。
    */
   overlaps?: ReadonlyArray<{ container: Key; parts: readonly Key[] }>;
 }
@@ -386,14 +388,15 @@ export function compareQuoteCards<Key extends string>(
     });
     const pricedRows = rows.filter((row) => !row.out_of_scope);
     // 量价算法审计 D5：container 行的量已含 parts 行的量（spec.overlaps 声明）。
-    // 一张卡同时给两边计价，总额会把那部分量算两次。只在两边都实际计价
-    // （subtotal 非 null）时抛错——一边待报价时总额本就是 null，尚未多算。
+    // 一张卡同时给两边计价，总额会把那部分量算两次。只在两边都实际收钱
+    // （subtotal > 0）时抛错——一边待报价时总额本就是 null，尚未多算；一边
+    // subtotal 为 0 时重叠的量没收过钱（PR #255 复审第 14 轮）。
     for (const overlap of spec.overlaps ?? []) {
       const containerRow = pricedRows.find((row) => row.key === overlap.container);
-      if (!containerRow || containerRow.subtotal === null) continue;
+      if (!containerRow || containerRow.subtotal === null || containerRow.subtotal <= 0) continue;
       for (const part of overlap.parts) {
         const partRow = pricedRows.find((row) => row.key === part);
-        if (partRow && partRow.subtotal !== null) {
+        if (partRow && partRow.subtotal !== null && partRow.subtotal > 0) {
           fail(`卡 ${quote.id} 同时给 ${spec.labels[overlap.container]} 与 ${spec.labels[part]} 计价：前者的量 ${containerRow.quantity} 已含后者的量 ${partRow.quantity}，总额会重复计 ${partRow.subtotal} 元。请把其中一行标 out_of_scope`);
         }
       }
