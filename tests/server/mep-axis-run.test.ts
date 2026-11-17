@@ -361,8 +361,9 @@ test('传播实验：热水器锚点东移 0.20m，五条热侧路由跟随、�
   // balcony：起点与首落点随 heater 东移，x=6.0 以东全不动。
   assertPointsClose(movedPoints('water-balcony'), [[7.5, 0.8, 1], [7.5, 0.8, 1.02], [6, 0.8, 1.02], [6, 0.8, 1.5], [5.6, 0.8, 1.5]], 'balcony moved', 1e-9);
   // 两条热干管：起点与 axis_run 落点随 heater 东移，终点（花洒）不动。
-  assertPointsClose(movedPoints('water-v1-heater-to-mbath-hot'), [[7.5, 0.18, 1], [7.5, 0.18, 2.76], [0.5, 0.18, 2.76]], 'v1-heater-mbath moved', 1e-9);
-  assertPointsClose(movedPoints('water-v1-heater-to-gbath-hot'), [[7.5, 0.18, 1], [7.5, 0.18, 2.45], [7.2, 0.18, 2.4499999999999997]], 'v1-heater-gbath moved', 1e-9);
+  // D4 起末段为 0.82m 纯竖直立管：终点在花洒高 1.00m（平面位同 [2]）。
+  assertPointsClose(movedPoints('water-v1-heater-to-mbath-hot'), [[7.5, 0.18, 1], [7.5, 0.18, 2.76], [0.5, 0.18, 2.76], [0.5, 1, 2.76]], 'v1-heater-mbath moved', 1e-9);
+  assertPointsClose(movedPoints('water-v1-heater-to-gbath-hot'), [[7.5, 0.18, 1], [7.5, 0.18, 2.45], [7.2, 0.18, 2.4499999999999997], [7.2, 1, 2.4499999999999997]], 'v1-heater-gbath moved', 1e-9);
   // 回水环：axis_run 落点 (0.5,1.0) 不动（to.z 未变），只有终点随 heater 东移。
   assertPointsClose(movedPoints('water-v1-recirc-loop'), [[0.5, 0.35, 2.76], [0.5, 0.35, 1], [7.5, 0.35, 1]], 'v1-recirc-loop moved', 1e-9);
   // 进水需求：axis_run 沿 z 跑、落点 x 取 from.x=7.35 不动，只有终点（热水器）东移。
@@ -387,8 +388,9 @@ test('传播实验：主卫花洒沿墙东移 0.20m，五条主卫路由起/终�
   assert.ok(Math.abs(movedPoints('water-water-heater-recirc-requirement')[0].x - 0.7) <= 1e-9, 'recirc-requirement from must follow');
   assertPointsClose(movedPoints('water-v1-recirc-loop'), [[0.7, 0.35, 2.76], [0.7, 0.35, 1], [7.3, 0.35, 1]], 'v1-recirc-loop moved', 1e-9);
   // 花洒作 to 的两条：终点东移，axis_run 落点（取 to.z）不动。
-  assert.ok(Math.abs(movedPoints('water-v1-heater-to-mbath-hot')[2].x - 0.7) <= 1e-9, 'v1-heater-mbath to must follow');
-  assert.ok(Math.abs(movedPoints('water-v1-entry-to-mbath-cold')[2].x - 0.7) <= 1e-9, 'v1-entry-mbath to must follow');
+  // D4 起终点为第 4 点（[2] 为 via-x 中间点，花洒平面位；[3] 为立管顶端）。
+  assert.ok(Math.abs(movedPoints('water-v1-heater-to-mbath-hot')[3].x - 0.7) <= 1e-9, 'v1-heater-mbath to must follow');
+  assert.ok(Math.abs(movedPoints('water-v1-entry-to-mbath-cold')[3].x - 0.7) <= 1e-9, 'v1-entry-mbath to must follow');
   const restored = waterPoints(resolveMepRoutes(project, realSources));
   assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
 });
