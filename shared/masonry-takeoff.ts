@@ -1037,7 +1037,8 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
  * 同源。
  * 两多边形皆非凸时 exact=false：无法精确计算，本模块 fail-closed 抛错（不静
  * 默按 extra/跳过）。现行数据不触发（全部 floor_region 皆凸，总有凸的一方
- * 可作裁剪边）。
+ * 可作裁剪边）。包围盒完全不相交时交叠必为 0，先短路返回、不抛错（Codex major，
+ * PR #255 跟进）；fail 守卫只对真正需要非凸求交的组合保留。
  * 比较基准是轮廓采样面积（同一圆角口径），不是 region.areaSqm（调用方给的圆角
  * 面积）：圆角只影响角部 0.21㎡ 级的边界，分类只问「有没有/全不全」。
  * 房间轮廓取实际圆角边界（见 roundedOutlinePoints）：房间面积已扣圆角，
@@ -1058,7 +1059,12 @@ function floorRegionRoomOverlap(
   const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
   if (!roomPoints) return null;
   const regionOutline = roundedOutlinePoints(points);
-  const { area, exact } = overlapArea(regionOutline, roundedOutlinePoints(roomPoints));
+  const roomOutline = roundedOutlinePoints(roomPoints);
+  // 完全分离的组合不调 overlapArea：包围盒不相交 ⇒ 交叠必为 0，直接按房外计。
+  if (outlinesDisjointByBbox(regionOutline, roomOutline)) {
+    return { overlapSqm: 0, regionOutlineSqm: Math.abs(signedPolygonArea(regionOutline)) };
+  }
+  const { area, exact } = overlapArea(regionOutline, roomOutline);
   if (!exact) {
     throw new Error(
       `floor_region ${region.id} 与房间 ${room.id} 皆为非凸多边形，交叠面积无法精确计算：请拆成凸块或显式裁定（不静默按 extra/跳过）`,
@@ -1140,6 +1146,25 @@ function floorRegionBoundsOverlap(a: MasonryFloorRegionInput, b: MasonryFloorReg
   const maxBz = Math.max(...pointsB.map((point) => point.z));
   return Math.min(maxAx, maxBx) - Math.max(minAx, minBx) > EPS
     && Math.min(maxAz, maxBz) - Math.max(minAz, minBz) > EPS;
+}
+
+/**
+ * 两轮廓的包围盒是否完全不相交（与 floorRegionBoundsOverlap 同一 EPS 口径：
+ * 任一方向的重叠宽 ≤ EPS 即不相交）。包围盒不相交 ⇒ 多边形必不相交 ⇒ 交叠
+ * 面积必为 0，无需求交（Codex major，PR #255 跟进：旧口径两边皆非凸即
+ * exact=false、调用方无条件抛错，合法的非凸地面区会被远处无关的非凸房间阻断）。
+ */
+function outlinesDisjointByBbox(a: Array<{ x: number; z: number }>, b: Array<{ x: number; z: number }>): boolean {
+  const minAx = Math.min(...a.map((point) => point.x));
+  const maxAx = Math.max(...a.map((point) => point.x));
+  const minAz = Math.min(...a.map((point) => point.z));
+  const maxAz = Math.max(...a.map((point) => point.z));
+  const minBx = Math.min(...b.map((point) => point.x));
+  const maxBx = Math.max(...b.map((point) => point.x));
+  const minBz = Math.min(...b.map((point) => point.z));
+  const maxBz = Math.max(...b.map((point) => point.z));
+  return Math.min(maxAx, maxBx) - Math.max(minAx, minBx) <= EPS
+    || Math.min(maxAz, maxBz) - Math.max(minAz, minBz) <= EPS;
 }
 
 /** `resolveRoom` 的 x/z/width/depth（中心 + 尺寸）→ 四角折线。 */

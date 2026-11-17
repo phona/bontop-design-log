@@ -791,6 +791,48 @@ test('圆角房间的包含判定须按圆角边界：切除角内的地面区�
   close(inside.dryFloorSqm, 4 - (1 - Math.PI / 4), '房内区跳过，干区只计房间面积');
 });
 
+test('完全分离的非凸房间与地面区不得抛错阻断预算（Codex major，PR #255 跟进）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  // Codex 反例：3㎡ L 形房间（缺 [1,2]×[1,2]）+ 同形地面区向东平移 10m——
+  // 包围盒完全不相交，交叠面积必为 0。旧口径 overlapArea 两边皆非凸即
+  // exact=false、调用方无条件抛错，合法的非凸地面区会被远处无关的非凸房间
+  // 阻断，整张预算算不出来。包围盒不相交时应直接按房外计 extra，不调 overlapArea。
+  const lroom = [{
+    id: 'lroom',
+    areaSqm: 3,
+    points: [{ x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 2 }],
+  }];
+  const farRegion = [{
+    id: 'far_region',
+    areaSqm: 3,
+    points: [{ x: 10, z: 0 }, { x: 12, z: 0 }, { x: 12, z: 1 }, { x: 11, z: 1 }, { x: 11, z: 2 }, { x: 10, z: 2 }],
+  } as any];
+  const result = computeMasonryTakeoff(minimal(lroom as any, farRegion));
+  close(result.floorRegionExtraSqm, 3, '分离的非凸地面区 3㎡ 作 extra');
+  close(result.dryFloorSqm, 6, '房间 3㎡ + extra 3㎡，不得抛错');
+  // 对照：真正相交的非凸组合仍须抛错（fail 守卫只对需要非凸求交的组合保留）。
+  // 同形 L 区只平移 1m：两非凸轮廓在 [1,2]×[0,1] 相交 1㎡，包围盒不分离，
+  // overlapArea 仍 exact=false，必须抛错、不得按 extra 计。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(lroom as any, [{
+      id: 'overlap_region',
+      areaSqm: 3,
+      points: [{ x: 1, z: 0 }, { x: 3, z: 0 }, { x: 3, z: 1 }, { x: 2, z: 1 }, { x: 2, z: 2 }, { x: 1, z: 2 }],
+    } as any])),
+    /皆为非凸多边形/,
+  );
+});
+
 test('圆角地面区与同轮廓房间不得误判横跨：同为 2×2m R1 时须整块判房内（Codex major，PR #255 复审第 11 轮）', () => {
   const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
     walls: [],
