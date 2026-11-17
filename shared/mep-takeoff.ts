@@ -521,12 +521,20 @@ export function unionPlanLength(paths: Array<Array<{ x: number; z: number }>>, c
   }
   const seen = new Set<string>();
   let total = 0;
-  // 端点键按 1µm 舍入：同一交点经不同线段算出的坐标有双精度尾巴
+  // 端点键按 1µm 量化：同一交点经不同线段算出的坐标有双精度尾巴
   // （~1e-15）与切分参数合并误差（≤1e-9），1µm 内视为同一点；仓内
-  // 最小特征为 1mm，不存在 1µm 级的真实不同端点。
+  // 最小特征为 1mm，不存在 1µm 级的真实不同端点。量化到整数微米后
+  // 再归一化 -0：微小负残差（如 -1e-17）直接 toFixed(6) 会写成
+  // "-0.000000"，与 "0.000000" 去重失败，同一几何因声明方向不同
+  // 而多算（Codex blocking：[-0.01,0.02] 与 [0,1.02] 正向 1.05m、
+  // 反向 1.03m，期望均为 1.03m）。
+  const qi = (v: number): number => {
+    const r = Math.round(v * 1e6);
+    return r === 0 ? 0 : r;
+  };
   const keyOf = (x1: number, z1: number, x2: number, z2: number): string => {
-    const a = `${x1.toFixed(6)},${z1.toFixed(6)}`;
-    const b = `${x2.toFixed(6)},${z2.toFixed(6)}`;
+    const a = `${qi(x1)},${qi(z1)}`;
+    const b = `${qi(x2)},${qi(z2)}`;
     return a < b ? `${a}|${b}` : `${b}|${a}`;
   };
   for (let i = 0; i < segments.length; i += 1) {
