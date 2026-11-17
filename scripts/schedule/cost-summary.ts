@@ -1503,7 +1503,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   {
     const need = needOf(control, 'PKG-060');
     const tileSqm = loadMasonryTakeoff(catalog).totalTileSqm;
-    const wallTilePart = 2519; // 2026-11-12 PR #225：墙砖量 37.0186→35.9836 ㎡ ×70 ≈ 2,519（R04 后 2,591）
+    const wallTilePart = 2704; // 2026-11-17 包管量入账：墙砖量 35.9836→38.6276 ㎡（pipe_box 盒面 +2.644）×70 ≈ 2,704（R04 后 2,591；2026-11-12 PR #225 后 2,519）
     if (Math.abs(tileSqm * 70 - wallTilePart) > 1) {
       throw new Error(`cost summary: 墙砖主材对不上（${qty(tileSqm, 4)} ㎡ × 70 = ${qty(tileSqm * 70, 2)}，映射登记 ${wallTilePart}）`);
     }
@@ -1518,7 +1518,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       tierReason: '构成含瓷砖封顶价、瓦工预算池（quote_pending）、待报价辅材与候选墙砖，均未锁价',
       // need 构成逐项对应：-01 主材封顶、-04 人工池、-02 辅材、-08 墙砖；其余四项不在构成内，另列待核。
       coversItems: ['COST-060-01', 'COST-060-02', 'COST-060-04', 'COST-060-08', 'QR-2026-10-03-04', 'QR-2026-10-03-05', 'QR-2026-10-03-06'],
-      derivation: `业主询价轮次（QR-2026-10-03-04/05/06）：瓷砖主材封顶 ${yuan(20000)} + 瓦工人工预算池 ${yuan(18500)} + 辅材约 ${yuan(4000)} = ${yuan(42500)}；墙砖主材按 DEC-2026-10-16-TILE-01 终核另计：masonry-takeoff 全量 ${qty(tileSqm, 4)} ㎡ × wall_tile_01 候选 ${yuan(70)}/㎡ ≈ ${yuan(wallTilePart)}；合计 = PKG-060 的 estimated_need_cny ${yuan(need)}。COST-060-05 小砖条人工待书面报价、未计入 need（已登记在未定价与待核清单）`,
+      derivation: `业主询价轮次（QR-2026-10-03-04/05/06）：瓷砖主材封顶 ${yuan(20000)} + 瓦工人工预算池 ${yuan(18500)} + 辅材约 ${yuan(4000)} = ${yuan(42500)}；墙砖主材按 DEC-2026-10-16-TILE-01 终核另计：masonry-takeoff 全量 ${qty(tileSqm, 4)} ㎡ × wall_tile_01 候选 ${yuan(70)}/㎡ ≈ ${yuan(wallTilePart)}（含包管盒面 2.644㎡ × 70 ≈ ${yuan(185)}）；合计 = PKG-060 的 estimated_need_cny ${yuan(need)}。COST-060-05 小砖条人工与包管人工（3 条 × 200 = ${yuan(600)}）待书面报价、未计入 need（已登记在未定价与待核清单）；COST-060-09 包管板材与砂浆主材约 ${yuan(153)} 待供应商确认、未计入 need（同清单）`,
     });
   }
 
@@ -1717,7 +1717,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   //    价行内的瓦工池，按 uncertain 的自有定义「是否已含未定」改判，自主扫
   //    描 C1；与搬运退补区分：搬运的待决是未来施工合同的范围、无现行定价
   //    行可含，仍判 uncounted）；
-  //  uncounted（9 条）——小砖条人工、燃气管道费、空调合同外增量（COST-030-02
+  //  uncounted（10 条）——小砖条人工、包管板材与砂浆主材、燃气管道费、空调合同外增量（COST-030-02
   //    待核面）、空调可能增项、搬运退补、南阳台范围、吊顶龙骨、闭水责任、
   //    固定柜体：注脚均明示未计入任何定价行；其中含或然/待裁定/范围未定项，
   //    须确认纳入一期、实际发生且未被其他行包含后才进总额。
@@ -1728,8 +1728,17 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-060'],
       statusLabel: 'quote_pending · 待书面报价',
       countedStatus: 'uncounted',
-      note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价`,
+      note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价。另：包管人工 3 条 × ${yuan(200)}/条 = ${yuan(600)}（主卫/客卫/厨房，均为单管，infer——量房 11-27 复核；费率锚点 config/masonry-labor.yaml extras「卫生间贴砖灌砂浆包管」），待书面报价、未计入 need；¥200/条含贴砖，而盒面 2.644㎡ 已进 totalTileSqm、面积费率（50 元/㎡）已含约 ${yuan(132)} 盒面贴砖人工，书面报价须确认拆分、不得双计`,
       coversItems: ['COST-060-05'],
+    },
+    {
+      id: 'pending-pipe-box-materials',
+      name: '包管板材与砂浆主材',
+      packageIds: ['PKG-060'],
+      statusLabel: 'quote_pending · 待供应商确认',
+      countedStatus: 'uncounted',
+      note: `未计入泥瓦行：9mm 纤维水泥压力板 2.644㎡ × ${yuan(35)}/㎡ ≈ ${yuan(93)} + 灌砂浆 0.2016m³ × ${yuan(300)}/m³ ≈ ${yuan(60)}，合计约 ${yuan(153)}；量自 shared/masonry-takeoff.ts 的 pipe_box 声明派生（3 条，均为单管，infer——量房 11-27 复核）。板材与砂浆单价均为市场价 infer/待核实（非门店成交价）；辅材由谁供应仍未知，待供应商确认后计入`,
+      coversItems: ['COST-060-09'],
     },
     {
       id: 'pending-lighting-install-labor',
