@@ -1758,6 +1758,28 @@ contracts:
       - { label: '声明实算（shared/masonry-takeoff.ts pipe_box 灌浆 =（盒截面 − 管截面合计）× 高）', value: 'dataset:budget.masonry.pipeBoxMortarCum' }
       - { label: 'control.yaml COST-060-09 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-09.quantity_declared.pipe_box_mortar_cum' }
 
+  # ①d 包管人工价：生效卡费率 × takeoff 条数 == control.yaml COST-060-05 登记。
+  #    能抓到：费率卡改了单管/双管价、或条数变了，但 control.yaml 登记没跟
+  #    （Codex review 5935989455 major：生成器手写单价时，卡价一变、生成值与
+  #    登记值同时错却互相印证；本条把卡价实算与登记值对上，卡价漂移即红）。
+  - id: c.masonry_pipe_box_labor_parity
+    kind: quantity_parity
+    unit: 元
+    tolerance: 1
+    compare:
+      - { label: '卡价实算（生效卡 extras「卫生间贴砖灌砂浆包管」× takeoff 条数）', value: 'dataset:budget.masonry.pipeBoxLaborCny' }
+      - { label: 'control.yaml COST-060-05 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-05.quantity_declared.pipe_box_labor_cny' }
+
+  # ①e 包管板材与砂浆主材价：生效卡 domain 登记价 × takeoff 量 == control.yaml COST-060-09 登记。
+  #    能抓到：domain.pipe_box_material_reference 改价、或盒截面改了量变了，但登记没跟。
+  - id: c.masonry_pipe_box_material_parity
+    kind: quantity_parity
+    unit: 元
+    tolerance: 1
+    compare:
+      - { label: '卡价实算（domain.pipe_box_material_reference × takeoff 量）', value: 'dataset:budget.masonry.pipeBoxMaterialCny' }
+      - { label: 'control.yaml COST-060-09 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-09.quantity_declared.pipe_box_material_cny' }
+
   # ② 地面面积：材料侧（预算 lineItems）== 人工侧（takeoff 干+湿）== control.yaml 登记。
   #    能抓到：材料侧与人工侧重新分叉（旧口径差 3.75㎡ 主走廊）、干/湿区房表改了一处
   #    另一处没改、把 bbox 面积塞回异形房（每间最多多算 0.6㎡）。

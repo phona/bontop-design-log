@@ -110,6 +110,21 @@ quotes:
         - { label: 卫生间淋浴区做下沉式, price: 200, unit: 元/间 }
         - { label: 卫生间做隔断预埋玻璃卡槽, price: 200, unit: 元/间 }
 
+      # 包管板材与砂浆主材参考价（PR #259 第二轮，Codex review 5935989455 major）：
+      # 此前生成器手写 ¥35/㎡ 与 ¥300/m³，卡价一变生成值照旧错。本段是这两项单价的
+      # 唯一登记处——生成器（scripts/schedule/cost-summary.ts）与对账数据集
+      # （scripts/verify/facts/verify-facts.ts）都读这里；缺段、缺行、缺 evidence
+      # 即抛错。单价为市场价 infer/待核实，非门店成交价。
+      pipe_box_material_reference:
+        - material: fiber_cement_board
+          unit: 元/㎡
+          price: 35
+          evidence: 市场价 infer（待核实，非门店成交价）——9mm 纤维水泥压力板包管板材
+        - material: mortar
+          unit: 元/m³
+          price: 300
+          evidence: 市场价 infer（待核实，非门店成交价）——包管灌砂浆
+
       notes:
         - 转角统一做圆弧工艺不另外收费。
         - 密缝以及薄贴工艺单价另议。

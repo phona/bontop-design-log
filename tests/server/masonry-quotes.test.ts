@@ -18,6 +18,9 @@ import {
   masonryQuoteQuantities,
   masonrySpecSelection,
   parseMasonryQuotes,
+  pipeBoxCosts,
+  pipeBoxLaborPrices,
+  pipeBoxMaterialPrices,
   resolveActiveMasonryRates,
   setActiveMasonryQuote,
 } from '../../server/masonry-quotes.js';
@@ -223,4 +226,99 @@ test('hvac 选项来自 config/hvac.yaml：一个成交方案、36,000、status 
   assert.equal(a2.price_per_unit, 36000);
   assert.equal((a2.data as { status: string }).status, 'contracted');
   assert.equal((a2.data as { commercial: { vendor: string } }).commercial.vendor.includes('美的'), true);
+});
+
+// ─── 包管价：生成器不得手写单价（Codex review 5935989455 major，PR #259 第二轮）───
+// 人工读生效卡 extras「卫生间贴砖灌砂浆包管」（单管价 = price，双管价 = note 里
+// 「双管 N 元/条」）；板材/砂浆读生效卡 domain.pipe_box_material_reference。
+// 三个读数函数是生成器与 verify:facts 对账数据集的唯一入口——改卡价只改卡，
+// 生成器与对账自动跟；卡里缺项即抛错，不许悄悄退回旧价。
+
+test('包管价：生效卡实算（单管 200 / 双管 300 / 板材 35 / 砂浆 300）', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  assert.deepEqual(pipeBoxLaborPrices(card), { singleCnyPerBox: 200, doubleCnyPerBox: 300 });
+  assert.deepEqual(pipeBoxMaterialPrices(card), { boardCnyPerSqm: 35, mortarCnyPerCum: 300 });
+  const costs = pipeBoxCosts(
+    {
+      singleCount: takeoff.pipeBoxSingleCount,
+      doubleCount: takeoff.pipeBoxDoubleCount,
+      boardSqm: takeoff.pipeBoxBoardSqm,
+      mortarCum: takeoff.pipeBoxMortarCum,
+    },
+    card,
+  );
+  assert.equal(costs.laborCny, 600, '生产 3 条单管 × 200 = 600');
+  assert.equal(costs.boardCny, 93, '板材 round(2.644 × 35) = 93');
+  assert.equal(costs.mortarCny, 60, '砂浆 round(0.2016 × 300) = 60');
+  assert.equal(costs.materialCny, 153, '板材 + 砂浆 = 153');
+});
+
+test('包管价：卡价变了，读数必须跟——不得是生成器里的手写常量', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  const domain = masonryCardDomain(card);
+  const repriced = {
+    ...card,
+    domain: {
+      ...domain,
+      extras: domain.extras.map((row) =>
+        row.label === '卫生间贴砖灌砂浆包管'
+          ? { ...row, price: 250, note: '单管250元/条，双管350元/条' }
+          : row,
+      ),
+      pipe_box_material_reference: [
+        { material: 'fiber_cement_board', unit: '元/㎡', price: 40, evidence: '夹具价' },
+        { material: 'mortar', unit: '元/m³', price: 320, evidence: '夹具价' },
+      ],
+    },
+  };
+  assert.deepEqual(pipeBoxLaborPrices(repriced), { singleCnyPerBox: 250, doubleCnyPerBox: 350 });
+  assert.deepEqual(pipeBoxMaterialPrices(repriced), { boardCnyPerSqm: 40, mortarCnyPerCum: 320 });
+  const costs = pipeBoxCosts({ singleCount: 3, doubleCount: 1, boardSqm: 2.644, mortarCum: 0.2016 }, repriced);
+  assert.equal(costs.laborCny, 3 * 250 + 1 * 350);
+  assert.equal(costs.boardCny, Math.round(2.644 * 40));
+  assert.equal(costs.mortarCny, Math.round(0.2016 * 320));
+  assert.equal(costs.materialCny, costs.boardCny + costs.mortarCny);
+});
+
+test('包管价：卡里缺项即抛错，不许悄悄退回旧价', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  const domain = masonryCardDomain(card);
+  // extras 缺包管行
+  assert.throws(
+    () =>
+      pipeBoxLaborPrices({
+        ...card,
+        domain: { ...domain, extras: domain.extras.filter((row) => row.label !== '卫生间贴砖灌砂浆包管') },
+      }),
+    /卫生间贴砖灌砂浆包管/,
+  );
+  // note 里没有双管价
+  assert.throws(
+    () =>
+      pipeBoxLaborPrices({
+        ...card,
+        domain: {
+          ...domain,
+          extras: domain.extras.map((row) =>
+            row.label === '卫生间贴砖灌砂浆包管' ? { ...row, note: '单管200元/条' } : row,
+          ),
+        },
+      }),
+    /双管/,
+  );
+  // 缺材料登记段
+  const { pipe_box_material_reference: _dropped, ...domainWithoutMaterials } = domain;
+  assert.throws(() => pipeBoxMaterialPrices({ ...card, domain: domainWithoutMaterials }), /pipe_box_material_reference/);
+  // 缺砂浆行
+  assert.throws(
+    () =>
+      pipeBoxMaterialPrices({
+        ...card,
+        domain: {
+          ...domain,
+          pipe_box_material_reference: domain.pipe_box_material_reference.filter((row) => row.material !== 'mortar'),
+        },
+      }),
+    /mortar/,
+  );
 });

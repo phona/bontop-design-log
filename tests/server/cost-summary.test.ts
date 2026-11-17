@@ -40,6 +40,9 @@ import {
   mepQuoteFallback,
   parseMepQuotes,
 } from '../../server/mep-quotes.js';
+import { loadMasonryTakeoff } from '../../server/budget-calculator.js';
+import { ProjectCatalog } from '../../server/project-catalog.js';
+import { activeMasonryCard, loadMasonryQuotes, pipeBoxCosts } from '../../server/masonry-quotes.js';
 
 /**
  * 成本总表（schedule/phase-1/cost.md）的口径防线。业主 2026-10-23 裁定：
@@ -1224,5 +1227,43 @@ describe('成本总表 cost-summary', () => {
       assert.ok(line, `未定价清单必须含 ${row.name}`);
       assert.equal(line.split('|')[3]?.trim(), '未定价', `${row.name} 的成本列必须是「未定价」而不是金额`);
     }
+  });
+});
+
+describe('包管价：生成器读生效卡，不许手写单价（Codex review 5935989455 major）', () => {
+  it('泥瓦行与待核注脚的包管金额必须等于卡价实算', () => {
+    const catalog = ProjectCatalog.load('.');
+    const takeoff = loadMasonryTakeoff(catalog);
+    const card = activeMasonryCard(loadMasonryQuotes());
+    const costs = pipeBoxCosts(
+      {
+        singleCount: takeoff.pipeBoxSingleCount,
+        doubleCount: takeoff.pipeBoxDoubleCount,
+        boardSqm: takeoff.pipeBoxBoardSqm,
+        mortarCum: takeoff.pipeBoxMortarCum,
+      },
+      card,
+    );
+    const masonry = rowById(data, 'cost-masonry');
+    assert.ok(masonry, '泥瓦行必须存在');
+    // 卡价一变，生成器必须跟；手写常量会在这里红（金额对不上卡价实算）。
+    assert.ok(
+      masonry!.derivation.includes(`= ¥${costs.laborCny}`),
+      `泥瓦行 derivation 的包管人工必须是卡价实算 ¥${costs.laborCny}`,
+    );
+    assert.ok(
+      masonry!.derivation.includes(`约 ¥${costs.materialCny}`),
+      `泥瓦行 derivation 的包管板材/砂浆主材必须是卡价实算 ¥${costs.materialCny}`,
+    );
+    const laborNote = data.pendingChecks.find((entry) => entry.id === 'pending-sill-tile-labor');
+    assert.ok(laborNote?.note.includes(`= ¥${costs.laborCny}`), '包管人工待核注脚必须是卡价实算');
+    const materialNote = data.pendingChecks.find((entry) => entry.id === 'pending-pipe-box-materials');
+    assert.ok(materialNote?.note.includes(`合计约 ¥${costs.materialCny}`), '包管板材/砂浆待核注脚必须是卡价实算');
+    // 注脚点名的锚点必须是真的——此前注脚称锚点在 masonry-labor.yaml，生成器根本不读卡。
+    assert.ok(laborNote?.note.includes('生效卡 extras'), '包管人工注脚必须点名生效卡 extras 锚点');
+    assert.ok(
+      materialNote?.note.includes('domain.pipe_box_material_reference'),
+      '包管板材/砂浆注脚必须点名 domain.pipe_box_material_reference 锚点',
+    );
   });
 });

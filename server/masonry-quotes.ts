@@ -128,12 +128,21 @@ export interface MasonryExtra {
   note?: string;
 }
 
+/** 包管板材/砂浆主材参考价行（PR #259 第二轮）：单价的唯一登记处，生成器与对账同读。 */
+export interface PipeBoxMaterialReferenceRow {
+  material: string;
+  unit: string;
+  price: number;
+  evidence: string;
+}
+
 export interface MasonryCardDomain {
   floor_rates_yuan_per_sqm: MasonrySpecRateRow[];
   wall_rates_yuan_per_sqm: MasonrySpecRateRow[];
   conditional_addons: MasonryConditionalAddon[];
   extras: MasonryExtra[];
   notes: string[];
+  pipe_box_material_reference: PipeBoxMaterialReferenceRow[];
   bathroom_floor_charge_interpretations: {
     source_text: string;
     selection_status: string;
@@ -206,14 +215,98 @@ export function masonryCardDomain(card: MasonryQuote): MasonryCardDomain {
   if (!interpretations || typeof interpretations !== 'object' || !Array.isArray(interpretations.options)) {
     throw new Error(`masonry-quotes: ${card.id}.domain.bathroom_floor_charge_interpretations 形状不对`);
   }
+  // 包管板材/砂浆主材参考价（PR #259 第二轮）：生成器此前手写 ¥35/㎡ 与 ¥300/m³，
+  // 卡价一变生成值照旧错。本段必填——缺段、缺行、缺 evidence 即抛错，不许静默退回旧价。
+  const materialReference = domainArray(domain.pipe_box_material_reference, 'pipe_box_material_reference', card.id).map((row, index) => {
+    const record = (row ?? {}) as Record<string, unknown>;
+    for (const field of ['material', 'unit', 'evidence']) {
+      if (typeof record[field] !== 'string' || !(record[field] as string)) {
+        throw new Error(`masonry-quotes: ${card.id}.domain.pipe_box_material_reference[${index}] 缺 ${field}`);
+      }
+    }
+    if (typeof record.price !== 'number' || !Number.isFinite(record.price) || record.price < 0) {
+      throw new Error(`masonry-quotes: ${card.id}.domain.pipe_box_material_reference[${index}].price 必须是非负数字`);
+    }
+    return {
+      material: record.material as string,
+      unit: record.unit as string,
+      price: record.price as number,
+      evidence: record.evidence as string,
+    };
+  });
   return {
     floor_rates_yuan_per_sqm: specRows(domain.floor_rates_yuan_per_sqm, 'floor_rates_yuan_per_sqm'),
     wall_rates_yuan_per_sqm: specRows(domain.wall_rates_yuan_per_sqm, 'wall_rates_yuan_per_sqm'),
     conditional_addons: addons,
     extras,
     notes: domainArray(domain.notes, 'notes', card.id).map((note) => String(note)),
+    pipe_box_material_reference: materialReference,
     bathroom_floor_charge_interpretations: interpretations,
   };
+}
+
+// ─── 包管价：生成器不得手写单价（Codex review 5935989455 major，PR #259 第二轮）───
+// 人工读生效卡 extras「卫生间贴砖灌砂浆包管」（单管价 = price，双管价 = note 里
+// 「双管 N 元/条」）；板材/砂浆读 domain.pipe_box_material_reference。
+// 三个函数是生成器与 verify:facts 对账数据集的唯一入口——改卡价只改卡，生成器与
+// 对账自动跟；卡里缺项即抛错，不许悄悄退回旧价。
+
+export interface PipeBoxLaborPrices {
+  singleCnyPerBox: number;
+  doubleCnyPerBox: number;
+}
+
+export function pipeBoxLaborPrices(card: MasonryQuote): PipeBoxLaborPrices {
+  const domain = masonryCardDomain(card);
+  const extra = domain.extras.find((row) => row.label === '卫生间贴砖灌砂浆包管');
+  if (!extra) {
+    throw new Error(`masonry-quotes: 卡 ${card.id} 的 domain.extras 缺「卫生间贴砖灌砂浆包管」行，包管人工无法定价`);
+  }
+  const match = extra.note?.match(/双管\s*(\d+(?:\.\d+)?)\s*元\/条/);
+  if (!match) {
+    throw new Error(`masonry-quotes: 卡 ${card.id} 的「卫生间贴砖灌砂浆包管」note 里解析不到双管单价（须写「双管 N 元/条」）`);
+  }
+  return { singleCnyPerBox: extra.price, doubleCnyPerBox: Number(match[1]) };
+}
+
+export interface PipeBoxMaterialPrices {
+  boardCnyPerSqm: number;
+  mortarCnyPerCum: number;
+}
+
+export function pipeBoxMaterialPrices(card: MasonryQuote): PipeBoxMaterialPrices {
+  const domain = masonryCardDomain(card);
+  const find = (material: string) =>
+    domain.pipe_box_material_reference.find((row) => row.material === material);
+  const board = find('fiber_cement_board');
+  const mortar = find('mortar');
+  if (!board) {
+    throw new Error(`masonry-quotes: 卡 ${card.id} 的 domain.pipe_box_material_reference 缺 fiber_cement_board 行，包管板材无法定价`);
+  }
+  if (!mortar) {
+    throw new Error(`masonry-quotes: 卡 ${card.id} 的 domain.pipe_box_material_reference 缺 mortar 行，包管砂浆无法定价`);
+  }
+  return { boardCnyPerSqm: board.price, mortarCnyPerCum: mortar.price };
+}
+
+/** pipe_box 量（shared/masonry-takeoff.ts 的派生聚合）→ 价。 */
+export interface PipeBoxTakeoffQuantities {
+  singleCount: number;
+  doubleCount: number;
+  boardSqm: number;
+  mortarCum: number;
+}
+
+export function pipeBoxCosts(
+  takeoff: PipeBoxTakeoffQuantities,
+  card: MasonryQuote,
+): { laborCny: number; boardCny: number; mortarCny: number; materialCny: number } {
+  const labor = pipeBoxLaborPrices(card);
+  const material = pipeBoxMaterialPrices(card);
+  const laborCny = takeoff.singleCount * labor.singleCnyPerBox + takeoff.doubleCount * labor.doubleCnyPerBox;
+  const boardCny = Math.round(takeoff.boardSqm * material.boardCnyPerSqm);
+  const mortarCny = Math.round(takeoff.mortarCum * material.mortarCnyPerCum);
+  return { laborCny, boardCny, mortarCny, materialCny: boardCny + mortarCny };
 }
 
 // ─── 按选型规格解析单价 ───────────────────────────────────────────────────────

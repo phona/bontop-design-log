@@ -234,6 +234,8 @@ test('真实仓：预算口径与层高禁用契约已登记', () => {
     'c.masonry_tile_area_parity',
     'c.masonry_pipe_box_board_parity',
     'c.masonry_pipe_box_mortar_parity',
+    'c.masonry_pipe_box_labor_parity',
+    'c.masonry_pipe_box_material_parity',
     'c.floor_quantity_parity',
     'c.cabinet_length_parity',
     'c.cabinet_area_parity',
@@ -255,6 +257,8 @@ test('真实仓：墙砖面积三处一致（38.6276㎡），橱柜/地面两处
   assert.match(run.stdout, /c\.masonry_tile_area_parity：3 处一致 = 38\.627599347086424/); // 2026-11-12 PR #225：砖带 2.65→2.50，37.01859934708642→35.983599347086425；2026-11-17 包管盒面 +2.644 → 38.627599347086424
   assert.match(run.stdout, /c\.masonry_pipe_box_board_parity：2 处一致 = 2\.644/); // 2026-11-17 包管入账；Codex blocking②：板材对账腿
   assert.match(run.stdout, /c\.masonry_pipe_box_mortar_parity：2 处一致 = 0\.20158/); // 同上：砂浆对账腿（盒截面改、盒面不动时仍能抓漂移）
+  assert.match(run.stdout, /c\.masonry_pipe_box_labor_parity：2 处一致 = 600 元/); // 2026-11-17 第二轮：卡价实算（3 条单管 × 200）== COST-060-05 登记
+  assert.match(run.stdout, /c\.masonry_pipe_box_material_parity：2 处一致 = 153 元/); // 同上：卡价实算（板材 93 + 砂浆 60）== COST-060-09 登记
   assert.match(run.stdout, /c\.floor_quantity_parity：3 处一致 = 127\.44419632679491/); // R01 重算：地面总量 123.9584→127.8734（浮点和原样打印）；2026-11-16 D1 扣圆角 −0.4292 → 127.4442
   assert.match(run.stdout, /c\.cabinet_length_parity：3 处一致 = 5\.51/);
   assert.match(run.stdout, /c\.cabinet_area_parity：3 处一致 = 4\.2226/);
@@ -319,4 +323,35 @@ test('真实仓负例：COST-060-09 板材登记值改坏，verify-facts 必须�
   assert.ok(mismatch, '登记值改坏必须被 c.masonry_pipe_box_board_parity 抓到');
   assert.match(mismatch!.message, /2\.644/);
   assert.match(mismatch!.message, /9\.99/);
+});
+
+test('真实仓负例：COST-060-05 包管人工登记值改坏，verify-facts 必须报 c.masonry_pipe_box_labor_parity', () => {
+  // 同上，证明包管人工价对账腿真的能抓到「卡价改了、登记侧停在旧轮次」
+  // （Codex review 5935989455 major：生成器手写单价时，卡价一变、生成值与登记值同时错却互相印证）。
+  const registry = parseYaml(readFileSync('config/facts.yaml', 'utf8')) as FactsRegistry;
+  const control = parseYaml(readFileSync('schedule/phase-1/control.yaml', 'utf8')) as any;
+  const component = (control.work_packages ?? [])
+    .flatMap((pkg: any) => pkg.budget?.components ?? [])
+    .find((item: any) => item.id === 'COST-060-05');
+  assert.ok(component?.quantity_declared, 'COST-060-05 必须带结构化 quantity_declared');
+  component.quantity_declared.pipe_box_labor_cny = 999;
+
+  const ws: FactsWorkspace = {
+    read: (rel) => { try { return readFileSync(rel, 'utf8'); } catch { return null; } },
+    load: (rel) => {
+      if (rel === 'schedule/phase-1/control.yaml') return control;
+      try { return parseYaml(readFileSync(rel, 'utf8')); } catch { return null; }
+    },
+    grep: () => [],
+    datasets: {
+      'budget.masonry': { totalTileSqm: 36.72359934704321, pipeBoxBoardSqm: 2.644, pipeBoxMortarCum: 0.20158306949330873, pipeBoxLaborCny: 600, pipeBoxMaterialCny: 153 },
+      'budget.line_items': { floor: 123.34, wall: 36.72359934704321, cabinet: 3.7496, countertop: 4.96 },
+      'budget.cabinet': { countertopLengthM: 4.96, projectedAreaSqm: 3.7496 },
+    },
+  };
+  const result = lintFacts(registry, ws);
+  const mismatch = result.errors.find((issue) => issue.code === 'parity_mismatch' && issue.message.includes('c.masonry_pipe_box_labor_parity'));
+  assert.ok(mismatch, '登记值改坏必须被 c.masonry_pipe_box_labor_parity 抓到');
+  assert.match(mismatch!.message, /600/);
+  assert.match(mismatch!.message, /999/);
 });
