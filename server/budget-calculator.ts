@@ -259,7 +259,16 @@ export function loadMasonryTakeoff(
         id: String(element.id),
         // 面积为调用方责任（圆角闭式解见本文件 roundedPolygonArea）——模块不读文件系统。
         areaSqm: roundedPolygonArea(points),
-        points: points.map((point) => ({ x: point.x, z: point.z })),
+        // 圆角信息（radius/cx/cz）必须透传：包含判定按实际圆角边界算，剥掉它会使
+        // 带圆角的地面区与同轮廓房间的比较口径分叉、误判横跨（Codex major，
+        // PR #255 复审第 11 轮）。与房间轮廓适配器同口径。
+        points: points.map((point) => ({
+          x: point.x,
+          z: point.z,
+          ...(point.radius !== undefined ? { radius: point.radius } : {}),
+          ...(point.cx !== undefined ? { cx: point.cx } : {}),
+          ...(point.cz !== undefined ? { cz: point.cz } : {}),
+        })),
         excluded: element.excluded === true,
         follow: element.follow as string | undefined,
         room: element.room as string | undefined,

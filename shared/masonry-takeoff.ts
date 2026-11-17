@@ -148,8 +148,11 @@ export interface MasonryFloorRegionInput {
    * 随「地面材料/人工共用出口」一并上移。
    */
   areaSqm: number;
-  /** region 轮廓（顺序顶点）；给了才能判「整块落在已计费房间内」。 */
-  points?: Array<{ x: number; z: number }>;
+  /** region 轮廓（顺序顶点）；给了才能判「整块落在已计费房间内」。
+   * 圆角信息（radius/cx/cz）须随轮廓透传：包含判定按实际圆角边界算，
+   * 剥掉它会使带圆角的地面区与同轮廓房间的比较口径分叉、误判横跨
+   * （Codex major，PR #255 复审第 11 轮）。 */
+  points?: CurtainPoint[];
   /** 显式 `excluded: true`（开发商已铺 / 业主裁定不铺）——不计，但留档。 */
   excluded?: boolean;
   /** 手工覆盖「整块落在已计费房间内」的结论；不给则由本模块按几何判。 */
@@ -1035,41 +1038,47 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
  * 两多边形皆非凸时 exact=false：无法精确计算，本模块 fail-closed 抛错（不静
  * 默按 extra/跳过）。现行数据不触发（全部 floor_region 皆凸，总有凸的一方
  * 可作裁剪边）。
- * 比较基准是轮廓鞋带面积（尖角口径），不是 region.areaSqm（调用方给的圆角
+ * 比较基准是轮廓采样面积（同一圆角口径），不是 region.areaSqm（调用方给的圆角
  * 面积）：圆角只影响角部 0.21㎡ 级的边界，分类只问「有没有/全不全」。
- * 房间轮廓取实际圆角边界（见 roomOutlinePoints）：房间面积已扣圆角，
+ * 房间轮廓取实际圆角边界（见 roundedOutlinePoints）：房间面积已扣圆角，
  * 包含判定若仍用尖角轮廓，圆角切除角内的区域会被判房内跳过、静默少算
  * （Codex blocking，PR #255 复审第 10 轮：2×2m R1 房的 [0,0.1]² 区域
  * 少算 0.01㎡）。采样弦落在弧内侧（轮廓略小于真实圆角房），紧贴弧带的
  * 区域会判为横跨而抛错——显式阻断，不静默跳过。
+ * 地面区轮廓同样按实际圆角边界采样（第 11 轮 major）：只采房间一边时，
+ * 同轮廓的圆角地面区会拿交叠面积（圆角口径 3.785398㎡）与尖角面积（4㎡）
+ * 比较、误判横跨；两边同一采样口径时，同轮廓即交叠等于轮廓面积、判房内。
  */
 function floorRegionRoomOverlap(
   region: MasonryFloorRegionInput,
   room: MasonryRoomInput,
-): { overlapSqm: number; regionSharpSqm: number } | null {
+): { overlapSqm: number; regionOutlineSqm: number } | null {
   const points = region.points ?? [];
   if (points.length < 3) return null;
   const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
   if (!roomPoints) return null;
-  const { area, exact } = overlapArea(points, roomOutlinePoints(roomPoints));
+  const regionOutline = roundedOutlinePoints(points);
+  const { area, exact } = overlapArea(regionOutline, roundedOutlinePoints(roomPoints));
   if (!exact) {
     throw new Error(
       `floor_region ${region.id} 与房间 ${room.id} 皆为非凸多边形，交叠面积无法精确计算：请拆成凸块或显式裁定（不静默按 extra/跳过）`,
     );
   }
-  return { overlapSqm: area, regionSharpSqm: Math.abs(signedPolygonArea(points)) };
+  return { overlapSqm: area, regionOutlineSqm: Math.abs(signedPolygonArea(regionOutline)) };
 }
 
 /**
- * 房间轮廓的实际边界：无圆角点时原样返回尖角折线；有圆角点时按
+ * 轮廓的实际边界：无圆角点时原样返回尖角折线；有圆角点时按
  * shared/arc-polyline.ts 的 centerlineSamples 把弧展开为密采样折线（与
  * DXF/3D 同一套弧口径，默认 32 步/半圆、R1 弦矢距约 4.8mm）。解不出的
  * 圆角点退化成尖角——与 layout-resolver 房间面积的同向退化一致（那边
  * tangentArc 解不出时也不给 cx/cz、面积按尖角算），面积与判定不分叉。
+ * 房间与地面区共用此函数：同一声明轮廓采出同一折线，交叠与轮廓面积
+ * 才在同一口径下可比（第 11 轮 major）。
  */
-function roomOutlinePoints(roomPoints: CurtainPoint[]): Array<{ x: number; z: number }> {
-  if (!roomPoints.some((point) => point.radius !== undefined)) return roomPoints;
-  const samples = centerlineSamples(roomPoints, true);
+function roundedOutlinePoints(outlinePoints: CurtainPoint[]): Array<{ x: number; z: number }> {
+  if (!outlinePoints.some((point) => point.radius !== undefined)) return outlinePoints;
+  const samples = centerlineSamples(outlinePoints, true);
   // 闭合轮廓末点重复首点；overlapArea 按自动闭合算，掐掉重复末点。
   if (samples.length > 1) {
     const first = samples[0];
@@ -1090,8 +1099,8 @@ function floorRegionInsideCostedRoom(
   return candidates.some((room) => {
     const rel = floorRegionRoomOverlap(region, room);
     if (!rel) return false;
-    const eps = 1e-6 * Math.max(1, rel.regionSharpSqm);
-    return Math.abs(rel.overlapSqm - rel.regionSharpSqm) <= eps;
+    const eps = 1e-6 * Math.max(1, rel.regionOutlineSqm);
+    return Math.abs(rel.overlapSqm - rel.regionOutlineSqm) <= eps;
   });
 }
 
@@ -1111,8 +1120,8 @@ function floorRegionPartiallyInsideCostedRoom(
   return candidates.some((room) => {
     const rel = floorRegionRoomOverlap(region, room);
     if (!rel) return false;
-    const eps = 1e-6 * Math.max(1, rel.regionSharpSqm);
-    return rel.overlapSqm > eps && rel.overlapSqm < rel.regionSharpSqm - eps;
+    const eps = 1e-6 * Math.max(1, rel.regionOutlineSqm);
+    return rel.overlapSqm > eps && rel.overlapSqm < rel.regionOutlineSqm - eps;
   });
 }
 

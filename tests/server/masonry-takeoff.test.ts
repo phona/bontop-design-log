@@ -134,7 +134,15 @@ function buildInput(): MasonryTakeoffInput {
             return sum + point.x * next.z - next.x * point.z;
           }, 0) / 2,
         ),
-        points: (element.points ?? []).map((point: any) => ({ x: point.x, z: point.z })),
+        // 圆角信息（radius/cx/cz）必须透传：包含判定按实际圆角边界算，与生产适配器同口径
+        // （Codex major，PR #255 复审第 11 轮）。
+        points: (element.points ?? []).map((point: any) => ({
+          x: point.x,
+          z: point.z,
+          ...(point.radius !== undefined ? { radius: point.radius } : {}),
+          ...(point.cx !== undefined ? { cx: point.cx } : {}),
+          ...(point.cz !== undefined ? { cz: point.cz } : {}),
+        })),
         excluded: element.excluded === true,
         follow: element.follow,
         room: element.room,
@@ -781,4 +789,49 @@ test('圆角房间的包含判定须按圆角边界：切除角内的地面区�
   assert.ok(inside.skippedInsideRoomFloorRegionIds.includes('inside_probe'),
     '整块在房内的区域仍须跳过');
   close(inside.dryFloorSqm, 4 - (1 - Math.PI / 4), '房内区跳过，干区只计房间面积');
+});
+
+test('圆角地面区与同轮廓房间不得误判横跨：同为 2×2m R1 时须整块判房内（Codex major，PR #255 复审第 11 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  // 2×2m 房间与地面区同一轮廓、(0,0) 角同为 R1（弧心 (1,1)）：两者真实边界
+  // 完全一致、面积均为 4 − (1 − π/4) = 3.785398㎡。旧判定用地面区尖角轮廓
+  // （4㎡）与房间圆角采样轮廓求交、再拿交叠 3.785398㎡ 与尖角 4㎡ 比较，
+  // 误判横跨而抛错，合法的重合声明使预算算量失败。两边须用同一圆角口径比较。
+  const outline = [
+    { x: 0, z: 0, radius: 1, cx: 1, cz: 1 },
+    { x: 2, z: 0 },
+    { x: 2, z: 2 },
+    { x: 0, z: 2 },
+  ];
+  const room = [{ id: 'room', areaSqm: 4 - (1 - Math.PI / 4), points: outline }];
+  const region = [{ id: 'same_outline', areaSqm: 4 - (1 - Math.PI / 4), points: outline }];
+  const result = computeMasonryTakeoff(minimal(room as any, region as any));
+  assert.ok(result.skippedInsideRoomFloorRegionIds.includes('same_outline'),
+    '同轮廓圆角地面区须整块判房内跳过，不得误判横跨');
+  close(result.dryFloorSqm, 4 - (1 - Math.PI / 4), '房内区跳过，干区只计房间面积');
+  // 对照：同轮廓但地面区向外伸出 0.5m 时仍是真横跨，须照常抛错（fail-closed 不变）。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(room as any, [{
+      id: 'straddling_probe',
+      areaSqm: 0,
+      points: [
+        { x: 0, z: 0, radius: 1, cx: 1, cz: 1 },
+        { x: 2.5, z: 0 },
+        { x: 2.5, z: 2 },
+        { x: 0, z: 2 },
+      ],
+    } as any])),
+    /横跨已计费房间边界/,
+    '同轮廓向外伸出时仍须判横跨抛错',
+  );
 });
