@@ -612,91 +612,91 @@ global_blockers:
     status: site_pending
     item: 尚未交房，无法完成现场量房及房屋查验
     clears_when: 交房查验完成并归档现场记录
-    owner_roles: [业主, 施工方, 设计师]
+    owner_roles: [业主, 拆改师傅]
     trigger: 交房与现场查验必须在开工交底和水电放位之前完成；未闭环则 原量房台账（已退场） 中影响施工的现场数据仍为待确认，水电与中央空调点位只能停在暂记值，开工日期顺延且后续深化缺现场依据
   - id: BLK-STRUCTURE
     status: site_pending
     item: 墙体结构、梁底及允许打孔或穿墙条件未确认
     clears_when: 结构资料与现场复核结果完成会签
-    owner_roles: [业主, 施工方, 设计师]
+    owner_roles: [业主, 拆改师傅]
     trigger: 结构会签必须在水电放位、吊顶标高确定与空调穿墙孔开工前完成；未闭环则剪力墙穿墙与高于梁底的走线会被 verify:mep 判为 shear_wall_penetration / beam_collision，返工要凿墙并拆吊顶
   - id: BLK-HVAC-DEEPENING
     status: site_pending
     item: 中央空调管线、冷凝水、风口和检修口尚未完成厂家深化及三方会审
     clears_when: 空调、设计和施工三方签认深化图
-    owner_roles: [空调商, 设计师, 施工方, 业主]
+    owner_roles: [空调商, 业主, 吊顶师傅]
     trigger: 三方会审与深化图签认必须在中央空调内机下单之前完成；本次审计确认装修期内换机只补差价、而内机下单后返工不是零成本——未闭环则风口、检修口与冷凝水管位只能按暂记值施工，封板后调整要拆吊顶并重新下单
   - id: BLK-SOUTH-BALCONY
     status: alignment_required
     item: 南阳台使用方式、地面和预算边界未冻结
     clears_when: 业主确认范围并同步预算及施工图
-    owner_roles: [业主, 设计师, 施工方]
+    owner_roles: [业主, 瓦工师傅]
     trigger: 南阳台范围与地面做法必须在水电放位和泥瓦铺贴前冻结；未闭环则 COST-060-07 南阳台铺贴范围无法计入已确定工程量，泥瓦收口与一期预算口径同时悬空
   - id: BLK-GAS-DOOR
     status: site_pending
     item: 燃气厨房门的现场验收要求未确认
     clears_when: 燃气单位或物业书面确认厨房分隔要求
-    owner_roles: [业主, 施工方, 燃气单位, 物业]
+    owner_roles: [业主, 门供应商, 燃气单位, 物业]
     trigger: 厨房门形式与燃气分隔要求必须在厨房门套下单和泥瓦收口前取得燃气单位或物业的书面确认；未闭环只能按最严做法预留门洞与门宽，后期调整涉及门套与墙面双返工
   - id: BLK-DOOR-BEFORE-TILE
     status: site_pending
     item: 两卫门未定，干湿接缝落点未定——D20 未拍板，门扇尺寸、单包/双包、门套厚度与外凸量均未定，门洞实测与商家书面确认未归档
     clears_when: D20 拍板并归档两卫门洞实测记录、商家书面确认与接缝落门下的排版图
-    owner_roles: [业主, 门供应商, 施工方]
+    owner_roles: [业主, 门供应商, 瓦工师傅]
     trigger: 门与接缝落点必须在泥瓦铺贴开工前冻结；未闭环则瓦工一旦起铺，干湿接缝位置即固定，事后发现露在门外只能返工重贴或加过门石/收口条遮盖
   - id: BLK-MASTER-WARDROBE
     status: alignment_required
     item: 主卧通顶定制柜（必须定制）随2026-09-12压缩决策整体后移至二期，一期用成品衣架和斗柜过渡；门扇、位置、高度及空调检修关系仍未关闭
     clears_when: 二期启动前深化图经业主、设计和厂家共同确认
-    owner_roles: [业主, 设计师, 定制供应商]
+    owner_roles: [业主, 定制供应商]
     trigger: 门扇、位置、高度与空调检修关系必须在二期深化图确认与定制柜下单前关闭；未闭环则一期成品衣架和斗柜的过渡占地白占，二期柜体还可能与空调检修口冲突，定制柜返工不是零成本
   - id: BLK-CURTAIN-SCOPE
     status: alignment_required
     item: "一期窗帘范围需要统一：本阻塞项写主卧/父母房/西北次卧，PKG-145写主卧/书房/西北次卧，schedule/phase-scope.yaml还包含两个卫生间；未统一前不冻结采购范围"
     clears_when: 业主确认一期窗帘房间与产品范围，并同步本阻塞项、PKG-145、phase-scope.yaml 和预算
-    owner_roles: [业主, 设计师, 窗帘供应商]
+    owner_roles: [业主, 窗帘供应商]
     trigger: 逐房遮光要求、布纱组合与轨道形式必须在窗帘下单和轨道安装前冻结；范围冲突未闭环时，一期窗帘 5,000 元额度无法形成有效报价，卧室先住后改还要二次上门拆装轨道
   - id: BLK-PHASE1-APPLIANCES
     status: alignment_required
     item: 一期家电额度在原9,000元下探组合基础上追加云鲸JX超薄上下水版3,000元，2026-11-02 一二期对调（#152）：GC5 退二期，洗碗机按 4,000 元占用原 GC5 slot 进入一期（超 ¥4,000 部分需另批），家电池现按16,099元控制；JX为现行候选（2026-11-03业主拍板由J6改JX，非最终锁定，DEC-2026-11-03-R1）、金额3,099元业主2026-11-04确认（含¥99追加批复，DEC-2026-11-04-R2，家电池与一期上限同步调整为16,099/210,099），客卫台盆下安装条件仍待现场复核；冰箱、洗衣机、燃气灶、吸油烟机及燃气热水器的具体型号和含安装报价仍未冻结
     clears_when: 形成逐台设备清单、型号尺寸和含安装报价，并确认总额不超过一期额度或另行批准资金
-    owner_roles: [业主, 设计师, 家电供应商, 水电施工]
+    owner_roles: [业主, 家电供应商, 水电师傅]
     trigger: 逐台型号尺寸与含安装报价必须在家电下单前冻结，电位与上下水接口须在水电隐蔽验收前锁定；未闭环则 16,099 元额度仍按候选价记账，到货尺寸可能对不上已留电位和柜格，退换要二次上门并动已封板吊顶
   - id: BLK-WATER-HEATER-SITE
     status: site_pending
     item: 已确认一期采用燃气热水器；模型虽有厨房西侧实体墙的暂定协调点，但交房前仍未确认是否已有开发商设备、实际安装墙面、燃气表位置、排烟路径、冷凝水排放和物业审批条件
     clears_when: 现场核对现有设备和燃气条件，形成最终安装位置、排烟、给排水、专用电路及物业审批记录
-    owner_roles: [业主, 施工方, 水电施工, 物业]
+    owner_roles: [业主, 水电师傅, 物业]
     trigger: 安装墙面、燃气表位置、排烟路径、冷凝水排放、给排水与专用电路必须在热水器下单和水电隐蔽验收前现场确认；未闭环则 KL7PRO 不得下单，暂记协调点 sock_balcony_waterheater 可能落位错误，返工要改电位、穿墙并动排烟道
   - id: BLK-MEP-INTERFACE-FREEZE
     status: alignment_required
     item: 水电与中央空调的接口未联合冻结——点位与回路、吊顶内分层标高（#41 分区口径）、穿墙孔位高度、冷凝水接入点与立管、检修口与风口均未会签
     clears_when: 水电、空调、设计、施工四方联合交底并签认点位回路标高孔位与冷凝水接点；纪要明确 PKG-030 和 PKG-040 并行或先后施工，签认记录归档
-    owner_roles: [水电施工, 空调商, 设计师, 施工方, 业主]
+    owner_roles: [水电师傅, 空调商, 业主, 吊顶师傅]
     trigger: 四方联合交底必须在吊顶封板之前、也就是水电隐蔽验收与空调第一次安装之前完成；未闭环则点位回路标高孔位与冷凝水接点没有会签依据，封板后任何调整都要拆吊顶，verify:mep 的穿墙与梁底判据也无从校验
   - id: BLK-CABINET-FREEZE-FOR-MEP
     status: alignment_required
     item: 橱柜深化图是水电点位的 owner（微蒸烤预留点位 sock_kitchen_oven、厨房台面电位、客卫扫地机基站柜格上下水）但尚未冻结，而橱柜安装包排在 seq 110、晚于水电 seq 40
     clears_when: 橱柜深化图与水电点位表双向核对完成，微蒸烤预留点位、台面电位与基站柜格落实到图（设计冻结前置，不是安装前置）
-    owner_roles: [橱柜供应商, 设计师, 业主]
+    owner_roles: [橱柜供应商, 业主]
     trigger: 橱柜深化图必须在水电放位（seq 40）之前冻结，而不是等橱柜安装（seq 110）；未闭环则微蒸烤预留点位 sock_kitchen_oven、厨房台面电位与扫地机基站柜格上下水只能按推测预留，柜体到场后对不上要凿墙改管并重贴砖
   - id: BLK-SURVEY-DATA-FREEZE
     status: site_pending
     item: "影响水电与中央空调施工的现场数据尚未全部实测、显式豁免或登记为阻塞；当前清单和数据状态见 原量房台账（已退场）"
     clears_when: 影响水电与中央空调的条目逐项转为实测值或显式豁免，并回填 config 与 原量房台账（已退场）
-    owner_roles: [业主, 施工方, 设计师]
+    owner_roles: [业主, 拆改师傅, 水电师傅, 空调商]
     trigger: 影响水电与中央空调的待填项必须在水电放位与空调深化前逐项转为实测值或显式豁免；未闭环的项目保持 blocked，设计侧与施工侧不得按不同暂定值放线施工
   - id: BLK-FRIDGE-FIT
     status: site_pending
     item: 设计模型把冰箱位暂记为约700毫米宽×700毫米深，当前收集到的501升候选有宽约833毫米者，冰箱型号不能在净开口复测前下单
     clears_when: 现场复测完成面净宽、净深、净高、开门余量和散热缝，并筛选出尺寸满足的型号
-    owner_roles: [业主, 设计师, 家电供应商]
+    owner_roles: [业主, 家电供应商]
     trigger: 完成面净宽、净深、净高、开门余量与散热缝必须在冰箱下单前复测并锁定型号；未闭环则宽约 833 毫米的 501 升候选放不进约 700 毫米的暂记开口，下单后只能退换或改柜体
   - id: BLK-MASTER-VANITY-SKU
     status: alignment_required
     item: 主卫浴室柜预算已按1,500元入账（DEC-2026-10-07-R02），但柜型、台盆形式与龙头形式未定（路径A 柜体+岩板台面+台上盆+壁挂龙头单配 / B 成品一体盆柜全包 / C 维持R12设计3,000）。若弃用台上盆与壁挂龙头，则 faucet_mbath_vanity 盆心 x=0.575、drain_mbath_vanity 墙排中心、water-master-bath 穿 w_mbath_south 点 x=0.575（该路线为 plan_supported，DEC-2026-10-06-R1 刚正交化，且同时供台盆龙头与马桶）与 DEC-2026-10-03-R1 的预埋口径同时作废，主卫给排水退回 pending 重画；厂家电商/1688 方案的 MOQ、起批数、运费、是否含安装与南宁配送口径亦未核
     clears_when: 柜体SKU与台盆/龙头形式冻结，主卫给排水预埋点回填或重画并经量房复核，且含安装的南宁到手价取得
-    owner_roles: [业主, 设计师, 洁具供应商]
+    owner_roles: [业主, 洁具供应商]
     trigger: 柜体 SKU 与台盆/龙头形式必须在主卫给排水预埋（水电隐蔽验收）之前冻结；未闭环则 faucet_mbath_vanity、drain_mbath_vanity 与 water-master-bath 三个预埋点连同 DEC-2026-10-03-R1 口径一起作废，主卫给排水退回 pending 重画，返工要动已贴砖墙面
 
 glossary:
@@ -820,7 +820,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-HANDOVER, BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-GAS-DOOR, BLK-SURVEY-DATA-FREEZE]
-    owner_roles: [业主, 设计师, 施工方, 空调商]
+    owner_roles: [业主, 拆改师傅, 水电师傅, 空调商]
     payment_gate: GATE-000-COMPLETE
     # 对象 targets（issue #191）：MODEL-PKG-000 显式声明 mapping_status: project_scope（全项目范围），
     # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
@@ -833,7 +833,7 @@ work_packages:
         checkpoint: pre_handover_design
         can_run_while_blocked: true
         does_not_release_construction: true
-        owner_roles: [业主, 设计师]
+        owner_roles: [业主]
         item: 建立交房前初版设计基线（仅预演，不作施工图）
         method: 只使用当前权威配置、已有DEC和可追溯证据；逐项标记 confirmed、inferred、site_pending 或 user_decision。可并行比较平面、家具、吊顶/HVAC、照明和机电方案；尺寸依赖梁位、立管或现场净空的部分保留选项，不猜坐标或最终接口。
         pass_condition: 初版基线写清目标、优先级、采用的事实及来源、未决现场变量、备选路径、什么实测结果会反转当前方案；明确标注“不可施工/不可放线/不可下单”。
@@ -843,7 +843,7 @@ work_packages:
         checkpoint: pre_handover_site_prep
         can_run_while_blocked: true
         does_not_release_construction: true
-        owner_roles: [业主, 设计师, 施工方]
+        owner_roles: [业主, 拆改师傅]
         item: 整理交房量房路线和现场资料责任表
         method: 按 原量房台账（已退场） 的编号把任务分为量房当日实测、深化冻结前关闭、下单前核验、供应商资料待补和业主决策；每项标出负责人、输入工具/资料、照片/记录方式、影响工作包与触发点。
         pass_condition: 影响下一步水电、空调、结构和柜体接口的项目能按房间和现场路线执行；不能当日解决的项目有 owner、触发条件和保持 blocked 的工作包；本检查通过不关闭任何 site_pending blocker。
@@ -856,7 +856,7 @@ work_packages:
         pass_condition: 形成逐房测量记录和可定位照片索引；交房缺陷有责任方与处理状态；未能实测的项目保留原状态并登记负责人和触发条件。
         evidence_required: [handover_defect_record, measurement_record, site_photo_index]
         coordination:
-          required_roles: [业主, 施工方, 设计师]
+          required_roles: [业主, 拆改师傅, 空调商]
           mode: onsite
           lead_time_workdays: 3
           owner_role: 业主
@@ -879,10 +879,10 @@ work_packages:
         pass_condition: 施工图和专业深化图有一致的冻结版本；影响近期工序的冲突已关闭；剩余 site_pending 项有负责人、触发节点和停工边界。
         evidence_required: [signed_drawing_set, coordination_record, closed_conflict_register]
         coordination:
-          required_roles: [业主, 设计师, 施工方, 空调商, 橱柜供应商]
+          required_roles: [业主, 拆改师傅, 水电师傅, 空调商, 橱柜供应商]
           mode: onsite
           lead_time_workdays: 5
-          owner_role: 设计师
+          owner_role: 业主
           status: pending_invite
           actor: {name: null, org: null}
           confirmed_at: null
@@ -952,7 +952,7 @@ work_packages:
   - id: PKG-010
     sequence: 10
     name: 施工现场保护与施工位置标记
-    description: 施工方进场后先保护电梯、公区、入户门、窗户和已有成品，再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。
+    description: 拆改师傅进场后先保护电梯、公区、入户门、窗户和已有成品，再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。
     budget_pool: hard_finish
     budget: {planned_cny: 0, contracted_cny: null, paid_cny: 0, forecast_cny: null, source_ref: pending_contractor_quote, funding_status: contract_inclusion_pending}
     duration_workdays: {min: 2, max: 3}
@@ -960,7 +960,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-HANDOVER]
-    owner_roles: [施工方, 设计师, 业主]
+    owner_roles: [拆改师傅, 业主]
     payment_gate: GATE-010-SITE-READY
     # 对象 targets（issue #191）：MODEL-PKG-010 显式声明 mapping_status: project_scope（全项目范围），
     # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
@@ -979,13 +979,13 @@ work_packages:
         checkpoint: before_start
         item: 图纸上的施工位置已经标到现场并共同核对
         method: 逐房核对新墙、门洞、柜体、水电点位、空调内机、送回风口、检修口和吊顶边界的现场标记
-        pass_condition: 关键位置和尺寸与确认图纸一致，业主、设计师和施工方完成现场交底签认
+        pass_condition: 关键位置和尺寸与确认图纸一致，业主和拆改师傅完成现场交底签认
         evidence_required: [setting_out_photos, signed_site_brief]
         coordination:
-          required_roles: [业主, 设计师, 施工方]
+          required_roles: [业主, 拆改师傅]
           mode: onsite
           lead_time_workdays: 2
-          owner_role: 设计师
+          owner_role: 业主
           status: pending_invite
           actor: {name: null, org: null}
           confirmed_at: null
@@ -1013,7 +1013,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-STRUCTURE]
-    owner_roles: [施工方, 设计师, 业主]
+    owner_roles: [拆改师傅, 业主]
     payment_gate: GATE-020-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-020 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1054,7 +1054,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-STRUCTURE, BLK-HVAC-DEEPENING, BLK-MEP-INTERFACE-FREEZE, BLK-SURVEY-DATA-FREEZE]
-    owner_roles: [空调商, 设计师, 施工方, 业主]
+    owner_roles: [空调商, 业主, 水电师傅]
     payment_gate: GATE-030-FIRST-FIX
     # 对象 targets（issue #191）：= MODEL-PKG-030 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1122,7 +1122,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-HVAC-DEEPENING, BLK-MEP-INTERFACE-FREEZE, BLK-CABINET-FREEZE-FOR-MEP, BLK-SURVEY-DATA-FREEZE]
-    owner_roles: [水电施工, 设计师, 空调商, 业主]
+    owner_roles: [水电师傅, 空调商, 业主]
     payment_gate: GATE-040-HIDDEN-WORK
     # 对象 targets（issue #191）：= MODEL-PKG-040 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1138,10 +1138,10 @@ work_packages:
         pass_condition: 签认记录覆盖全部六台内机与外机，供电回路、控制线、冷凝水接入点与分层标高无冲突
         evidence_required: [coordination_record, circuit_schedule, signed_interface_sheet]
         coordination:
-          required_roles: [业主, 设计师, 空调商, 水电施工]
+          required_roles: [业主, 空调商, 水电师傅]
           mode: onsite
           lead_time_workdays: 3
-          owner_role: 设计师
+          owner_role: 业主
           status: pending_invite
           actor: {name: null, org: null}
           confirmed_at: null
@@ -1169,10 +1169,10 @@ work_packages:
         pass_condition: 两项阻断均有书面解除证据，微蒸烤预留点位、分层标高、穿墙孔位高度与冷凝水接点已落实到交底单
         evidence_required: [signed_interface_sheet, cabinet_drawing_reference, briefing_sheet]
         coordination:
-          required_roles: [业主, 设计师, 空调商, 橱柜供应商]
+          required_roles: [业主, 空调商, 橱柜供应商]
           mode: onsite
           lead_time_workdays: 3
-          owner_role: 设计师
+          owner_role: 业主
           status: pending_invite
           actor: {name: null, org: null}
           confirmed_at: null
@@ -1198,7 +1198,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [防水施工, 施工方, 业主]
+    owner_roles: [防水师傅, 业主]
     payment_gate: GATE-050-FLOOD-TEST
     # 对象 targets（issue #191）：= MODEL-PKG-050 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1244,7 +1244,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-SOUTH-BALCONY, BLK-DOOR-BEFORE-TILE]
-    owner_roles: [泥瓦施工, 设计师, 业主]
+    owner_roles: [瓦工师傅, 业主]
     payment_gate: GATE-060-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-060 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1280,7 +1280,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [美缝施工, 业主]
+    owner_roles: [美缝师傅, 业主]
     payment_gate: GATE-065-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-065 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1335,7 +1335,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-HVAC-DEEPENING]
-    owner_roles: [吊顶施工, 空调商, 水电施工, 设计师, 业主]
+    owner_roles: [吊顶师傅, 空调商, 水电师傅, 业主]
     payment_gate: GATE-070-CEILING-CLOSED
     # 对象 targets（issue #191）：= MODEL-PKG-070 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1351,7 +1351,7 @@ work_packages:
         pass_condition: PKG-030与PKG-040关键验收全部通过并完成相关方签字
         evidence_required: [signed_ceiling_close_permit, concealed_work_photos]
         coordination:
-          required_roles: [业主, 施工方, 设计师, 空调商]
+          required_roles: [业主, 吊顶师傅, 空调商, 水电师傅]
           mode: onsite
           lead_time_workdays: 3
           owner_role: 业主
@@ -1389,7 +1389,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [涂装施工, 设计师, 业主]
+    owner_roles: [涂装师傅, 业主]
     payment_gate: GATE-080-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-080 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1404,13 +1404,13 @@ work_packages:
         method: 在实际墙面制作样板并在日间、夜间照明条件下观察
         pass_condition: 色号、光泽和使用房间经业主确认
         evidence_required: [signed_sample_photos]
-        # mode=remote：method 的现场观察由设计师与涂装施工完成，pass_condition 的确认动作
+        # mode=remote：method 的现场观察由业主与涂装师傅完成，pass_condition 的确认动作
         # （色号/光泽/房间）不必到场——样板照片远程签认即满足「经业主确认」。
         coordination:
-          required_roles: [业主, 设计师]
+          required_roles: [业主, 涂装师傅]
           mode: remote
           lead_time_workdays: 2
-          owner_role: 设计师
+          owner_role: 业主
           status: pending_invite
           actor: {name: null, org: null}
           confirmed_at: null
@@ -1438,7 +1438,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-GAS-DOOR]
-    owner_roles: [门供应商, 施工方, 业主]
+    owner_roles: [门供应商, 业主]
     payment_gate: GATE-090-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-090 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1492,7 +1492,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-MASTER-VANITY-SKU]
-    owner_roles: [洁具供应商, 水电施工, 业主]
+    owner_roles: [洁具供应商, 水电师傅, 业主]
     payment_gate: GATE-100-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-100 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1534,7 +1534,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [橱柜供应商, 设计师, 业主]
+    owner_roles: [橱柜供应商, 业主]
     payment_gate: GATE-110-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-110 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1577,7 +1577,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [电工, 灯具供应商, 业主]
+    owner_roles: [水电师傅, 灯具供应商, 业主]
     payment_gate: GATE-120-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-120 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1614,7 +1614,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [电工, 智能设备供应商, 业主]
+    owner_roles: [水电师傅, 智能设备供应商, 业主]
     payment_gate: GATE-125-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-125 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1650,7 +1650,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [美缝施工, 业主]
+    owner_roles: [美缝师傅, 业主]
     payment_gate: GATE-130-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-130 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1695,7 +1695,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [施工方, 踢脚线供应商, 保洁, 业主]
+    owner_roles: [瓦工师傅, 踢脚线供应商, 保洁, 业主]
     payment_gate: GATE-135-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-135 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1756,7 +1756,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [业主, 施工方, 水电施工, 空调商]
+    owner_roles: [业主, 水电师傅, 空调商]
     payment_gate: GATE-142-OCCUPANCY-RELEASE
     # 对象 targets（issue #191）：MODEL-PKG-142 显式声明 mapping_status: project_scope（全项目范围），
     # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
@@ -1813,7 +1813,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-CURTAIN-SCOPE]
-    owner_roles: [窗帘供应商, 设计师, 业主]
+    owner_roles: [窗帘供应商, 业主]
     payment_gate: GATE-145-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-145 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1865,7 +1865,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [家具供应商, 定制供应商, 设计师, 业主]
+    owner_roles: [家具供应商, 定制供应商, 业主]
     payment_gate: GATE-150-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-150 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1926,7 +1926,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: [BLK-PHASE1-APPLIANCES, BLK-WATER-HEATER-SITE, BLK-FRIDGE-FIT]
-    owner_roles: [家电供应商, 水电施工, 业主]
+    owner_roles: [家电供应商, 水电师傅, 业主]
     payment_gate: GATE-160-COMPLETE
     # 对象 targets（issue #191）：= MODEL-PKG-160 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
@@ -1952,7 +1952,7 @@ work_packages:
     readiness: blocked
     status: not_started
     blockers: []
-    owner_roles: [业主, 设计师, 施工方, 各供应商]
+    owner_roles: [业主, 拆改师傅, 水电师傅, 空调商, 瓦工师傅, 吊顶师傅, 涂装师傅, 各供应商]
     payment_gate: GATE-170-FINAL
     # 对象 targets（issue #191）：MODEL-PKG-170 显式声明 mapping_status: project_scope（全项目范围），
     # 对象集按定义是「任何对象变化都要复核」。这里用 "*" 标记而不是复制全模型 id
