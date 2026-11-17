@@ -60,7 +60,7 @@ import { buildScene, refreshSlidingDoorGroup, type CurtainBuildEntry, type Scene
 import { buildHvacGeometry, type HvacEntityIndex } from '@shared/render/HvacGeometryBuilder';
 import { buildHvacBuilderSources, expectedHvacExportIds, type HvacBuilderSources } from '@shared/render/HvacBuilder';
 import { buildInfrastructure } from '@shared/render/InfrastructureBuilder';
-import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
+import { pointPlacementIndex, resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
 import { buildPlacementIndexes } from '@shared/placement-indexes';
 import { computeLayoutBounds, DEFAULT_LAYOUT_BOUNDS, type LayoutBounds } from '@shared/render/layout-bounds';
 import { computeCeilingTakeoff, type CeilingTakeoff, type CeilingTradeClass } from '@shared/ceiling-takeoff';
@@ -601,7 +601,9 @@ export class HouseScene implements SceneApi {
     // 2026-11-09 修 Codex minor：shower_gbath 的 x/z 声明已在第四阶段 S3 删光（改 wall/along 定位），
     // 原分支因此必然回落到硬编码 (7.10, 2.45)——而单一解算器的现位是 (7.20, 2.45)，差 100mm，
     // 且后续调 along 审计图也不跟随。改走 resolvePointPlacementInWalls，与 3D/标注/DXF/MEP 同口径。
-    const showerPlacement = shower ? resolvePointPlacementInWalls(shower, this.pointWallIndex, this.mountHostIndex).placement : undefined;
+    // 沿墙派生（along_host）审计点须传同批点位索引（PR #260 第六轮，Codex review 5940396191
+    // major 同类）：缺 siblings 时解算器即诊断失败，本处会静默回落硬编码坐标。
+    const showerPlacement = shower ? resolvePointPlacementInWalls(shower, this.pointWallIndex, this.mountHostIndex, pointPlacementIndex(this.auditPlumbing)).placement : undefined;
     const showerPoint = showerPlacement ? { x: showerPlacement.x, z: showerPlacement.z } : { x: 7.10, z: 2.45 };
     const dividerZ = screenBox ? (screenBox.minZ + screenBox.maxZ) / 2 : 2.80;
     const vanitySouth = vanityBox?.minZ ?? dividerZ;

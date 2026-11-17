@@ -100,4 +100,27 @@ describe('ElectricalTopologyRenderer', () => {
     expect(renderer.getDiagnostics()[0]).toMatch(/sock_orphan: .*w_missing/);
     renderer.dispose();
   });
+
+  // PR #260 第五轮修复（Codex review 5939681715 major）：回路图沿墙派生（along_host）
+  // 成员须经单一解算——此前 render 的 planOf 不传 siblings，派生点位解不出，marker 被
+  // 记诊断跳过（面板/回路计数缩水）。修复后 siblings 取自本次 render 的完整点位清单。
+  it('resolves along_host members through the single point-placement solver', () => {
+    const hostPoints: ElectricalPoint[] = [
+      { id: 'panel', room: 'entry', type: 'strong_panel', x: 0, z: 0, height: 1.5 },
+      { id: 'sock_wall', room: 'living', type: 'socket', wall: 'w_test', wallSide: 'west', along: 2, height: 0.3 },
+      { id: 'sock_derived', room: 'living', type: 'socket', wallSide: 'west', along_host: { id: 'sock_wall', offset: 0.5 }, height: 0.3 },
+    ];
+    const derivedTopology: ElectricalTopology = {
+      ...topology,
+      circuits: topology.circuits.map((circuit) => ({ ...circuit, member_point_ids: ['sock_derived'] })),
+    };
+    const renderer = new ElectricalTopologyRenderer(new THREE.Group());
+    renderer.render(derivedTopology, hostPoints, { pointWalls });
+    // 宿主沿墙 along 2 → 派生 along 2.5；完成面 = 墙线 x=4 − 半墙厚 0.06 = 3.94
+    expect(renderer.getSummary()).toEqual({ panels: 1, circuits: 3, edges: 3, skippedEdges: 0, skippedPanels: 0 });
+    expect(renderer.getDiagnostics()).toEqual([]);
+    const marker = renderer.getCircuitObject('hvac')?.children.find((child) => child.userData.type === 'electrical_topology_edge') as THREE.Mesh;
+    expect(marker.position.toArray()).toEqual([3.94, 0.3, 2.5]);
+    renderer.dispose();
+  });
 });

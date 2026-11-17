@@ -33,6 +33,7 @@ import { load as parseYaml } from 'js-yaml';
 
 import { resolveLayout } from '../../server/layout-resolver.js';
 import {
+  pointPlacementIndex,
   pointWallIndexFromElements,
   resolvePointPlacementInWalls,
   type PointMountHost,
@@ -89,6 +90,7 @@ interface RawPoint {
   wall_side?: WallSide;
   wallSide?: WallSide;
   along?: number;
+  along_host?: { id: string; offset: number };
   face_offset?: number;
   x?: number;
   z?: number;
@@ -244,6 +246,33 @@ function referenceWallPoint(point: RawPoint): {
   return { datum, normal, x: datum.x + normal.x * offset, z: datum.z + normal.z * offset, offset };
 }
 
+/** 沿墙派生点位的有效墙 + 沿位：沿 along_host 链向上追到宿主沿墙点位，沿位逐级累加 offset。 */
+function effectiveWallAlong(point: RawPoint): { wall: string; along: number } {
+  if (point.along_host === undefined) {
+    if (point.wall === undefined || point.along === undefined) throw new Error(`点位 ${point.id}: 参考解要求 wall + along`);
+    return { wall: point.wall, along: point.along };
+  }
+  const host = pointById(point.along_host.id);
+  const hostEffective = effectiveWallAlong(host);
+  return { wall: hostEffective.wall, along: hostEffective.along + point.along_host.offset };
+}
+
+/**
+ * 参考解：沿墙派生点位 = 宿主墙 + 派生沿位（与生产侧 synthetic 同式：face_offset 取本点声明，
+ * wall_side 取本点声明——须与宿主一致，生产侧不一致即诊断）。
+ */
+function referenceAlongHostPoint(point: RawPoint): {
+  datum: { x: number; z: number };
+  normal: { x: number; z: number };
+  x: number;
+  z: number;
+  offset: number;
+} {
+  if (point.along_host === undefined) throw new Error(`点位 ${point.id}: 参考解要求 along_host`);
+  const { wall, along } = effectiveWallAlong(point);
+  return referenceWallPoint({ ...point, wall, along, along_host: undefined });
+}
+
 /** length 型家具：外框宽 = 声明的 length（与 3D 建模同优先级，见 shared/furniture-placement.ts 头注）。 */
 const LENGTH_BASED_TYPES = new Set(['kitchen_cabinet_run', 'kitchen_countertop_bridge', 'bath_side_cabinet']);
 
@@ -362,6 +391,8 @@ function mountHostIndex(items: FurnishingItem[]): Map<string, PointMountHost> {
 
 const baseMountHosts = mountHostIndex(allRawFurnishings);
 const baseFurnitureHosts = hostIndex(allRawFurnishings);
+/** 同批点位索引（along_host 宿主查找用；重 id 取首条，与生产 pointPlacementIndex 同口径）。 */
+const pointIndex = pointPlacementIndex(allRawPoints);
 
 /* ─────────────────────────────── 断言工具 ─────────────────────────────── */
 
@@ -576,7 +607,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     }
   });
 
-  it('全量独立复算：79 沿墙点位 + 2 挂载点位 + 20 挂墙家具 + 全部绝对家具逐条对照', () => {
+  it('全量独立复算：79 沿墙点位 + 2 沿墙派生点位 + 2 挂载点位 + 20 挂墙家具 + 全部绝对家具逐条对照', () => {
     // 参考实现的墙几何来自 raw vertices + wall from/to；先证明它与生产 layout 的墙段一致，
     // 否则参考值与被测输入不是同一份声明，对照无意义。
     for (const wallId of referencedWallIds) {
@@ -603,7 +634,24 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
       assertXZ(placement.normal, reference.normal, `${point.id} normal`);
       assertClose(placement.offsetFromCenterline, reference.offset, `${point.id} offset`);
     }
+    // 2026-11-17 Codex blocking（#260 第二轮）：两卫淋浴冷水进口由 wall+along 改为 along_host 派生，
+    // 沿墙点位 81→79（派生 2 点见下节，解算仍须与独立参考解一致）。
     assert.equal(wallPoints, 79, '沿墙点位数量变化：新增/删除点位必须同步更新本基准的覆盖口径');
+
+    let derivedWallPoints = 0;
+    for (const point of allRawPoints) {
+      if (point.along_host === undefined) continue;
+      derivedWallPoints += 1;
+      const reference = referenceAlongHostPoint(point);
+      const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, baseMountHosts, pointIndex);
+      assert.equal(diagnostic, undefined, `${point.id}: ${diagnostic ?? ''}`);
+      assert.ok(placement && placement.kind === 'wall', `${point.id}: 必须解成沿墙点位`);
+      assertXZ(placement, reference, `${point.id}`);
+      assertXZ(placement.datum, reference.datum, `${point.id} datum`);
+      assertXZ(placement.normal, reference.normal, `${point.id} normal`);
+      assertClose(placement.offsetFromCenterline, reference.offset, `${point.id} offset`);
+    }
+    assert.equal(derivedWallPoints, 2, '沿墙派生点位数量变化：新增/删除点位必须同步更新本基准的覆盖口径');
 
     let mountPoints = 0;
     for (const point of allRawPoints) {

@@ -77,6 +77,13 @@ export interface PointPlacementInput {
   mount?: { furniture_id: string; face: WallSide; surface_gap?: number; along?: number; face_offset?: number };
   /** 锚点引用定位来源（S4：F 组转家具挂载 / 暖通 ref 通道；二阶段 S1：`furniture` 来源 = 宿主家具中心 + 世界轴 offset）。 */
   anchor?: { source: string; id: string; offset?: { x: number; z: number } };
+  /**
+   * 沿墙位置由同墙宿主点位派生：along = 宿主 along + offset（混水阀双进水口等
+   * 成对点位；宿主移动本点自动跟随）。与 wall/along/mount/anchor/absolute 互斥，
+   * 定位来源必须唯一；面（wall_side）与 face_offset 仍由本点声明（须与宿主同面）。
+   * 解算入口是 resolvePointPlacementInWalls（需宿主墙 + 点位索引）。
+   */
+  along_host?: { id: string; offset: number };
   /** 宿主意图标注（只作文档与校验输入，不参与解算）。 */
   host_intent?: string;
 }
@@ -383,6 +390,11 @@ export function resolvePointPlacement(
 ): PointPlacementResolution {
   const id = point.id ?? '(无 id)';
   const wallSide = point.wall_side ?? point.wallSide;
+  // along_host 不在本函数解：宿主墙查找要整张墙索引（resolvePointPlacementInWalls
+  // 才持有），直接调本函数会把宿主墙当成缺失——报明，不回落。
+  if (point.along_host !== undefined) {
+    return { placement: null, diagnostic: `点位 ${id}: along_host 定位须走 resolvePointPlacementInWalls（需宿主墙索引 + 点位索引）` };
+  }
   // wall_side 单独出现**不是**定位来源（它只是「装在哪一面」的标注，没有宿主墙定不了位）：
   // 只有 wall / along 触发沿墙分支，wall_side alone 落到绝对分支或「未声明来源」诊断。
   const hasWallAnchor = point.wall !== undefined || point.along !== undefined;
@@ -511,14 +523,65 @@ export function pointWallIndexFromElements(
 }
 
 /**
+ * 同批点位按 id 建索引（along_host 宿主查找用；重 id 取首条，与 MEP 端点 find 同口径）。
+ */
+export function pointPlacementIndex(points: ReadonlyArray<PointPlacementInput>): ReadonlyMap<string, PointPlacementInput> {
+  const index = new Map<string, PointPlacementInput>();
+  for (const point of points) {
+    if (point.id !== undefined && !index.has(point.id)) index.set(point.id, point);
+  }
+  return index;
+}
+
+/**
  * 便捷包装：调用方持有 `id → PointWall`（折线段 + line_datum）时不必自己拆 lineDatum。
- * 与四参版同一解算，只是把宿主墙查找收在一处。
+ * 与四参版同一解算，只是把宿主墙查找收在一处。along_host 点位在此解：宿主沿墙位置
+ * 先解出（宿主本身也可 along_host，链式跟随、成环即诊断），再按宿主墙 + 派生 along
+ * 走同一沿墙分支；调用方须传同批点位索引（siblings），缺它即诊断（不静默回落字面量）。
  */
 export function resolvePointPlacementInWalls(
   point: PointPlacementInput,
   walls: ReadonlyMap<string, PointWall> | undefined,
   mountHosts?: ReadonlyMap<string, PointMountHost>,
+  siblings?: ReadonlyMap<string, PointPlacementInput>,
+  _visited?: ReadonlySet<string>,
 ): PointPlacementResolution {
+  const id = point.id ?? '(无 id)';
+  if (point.along_host !== undefined) {
+    const hasWallAnchor = point.wall !== undefined || point.along !== undefined;
+    if (point.mount !== undefined || point.anchor !== undefined || hasWallAnchor || point.absolute === true) {
+      return { placement: null, diagnostic: `点位 ${id}: along_host 与 wall/mount/anchor/absolute 不得同时声明（定位来源必须唯一）` };
+    }
+    if (siblings === undefined) {
+      return { placement: null, diagnostic: `点位 ${id}: along_host 定位要求调用方提供点位索引（siblings）；3D/DXF/MEP/校验入口均须传入同批点位索引` };
+    }
+    const hostId = point.along_host.id;
+    if ((_visited ?? new Set()).has(hostId)) {
+      return { placement: null, diagnostic: `点位 ${id}: along_host 宿主链成环（${[...(_visited ?? []), hostId].join(' → ')}）` };
+    }
+    const host = siblings.get(hostId);
+    if (!host) {
+      return { placement: null, diagnostic: `点位 ${id}: along_host 宿主点位 "${hostId}" 不在点位索引里（断引用）` };
+    }
+    const visited = new Set(_visited ?? []);
+    visited.add(id);
+    const hostResolved = resolvePointPlacementInWalls(host, walls, mountHosts, siblings, visited);
+    if (!hostResolved.placement || hostResolved.placement.kind !== 'wall') {
+      return { placement: null, diagnostic: hostResolved.diagnostic ?? `点位 ${id}: along_host 宿主 "${hostId}" 未解出沿墙位置（宿主须为沿墙点位）` };
+    }
+    const declaredSide = point.wall_side ?? point.wallSide;
+    if (declaredSide !== undefined && declaredSide !== hostResolved.placement.wallSide) {
+      return { placement: null, diagnostic: `点位 ${id}: along_host 声明 wall_side "${declaredSide}" 与宿主 "${hostId}" 的 "${hostResolved.placement.wallSide}" 不一致（面由宿主决定）` };
+    }
+    const synthetic: PointPlacementInput = {
+      ...point,
+      wall: hostResolved.placement.wallId,
+      along: hostResolved.placement.along + point.along_host.offset,
+      wall_side: declaredSide ?? hostResolved.placement.wallSide,
+      along_host: undefined,
+    };
+    return resolvePointPlacementInWalls(synthetic, walls, mountHosts, siblings, visited);
+  }
   const host = point.wall !== undefined ? walls?.get(point.wall) : undefined;
   return resolvePointPlacement(point, host ? new Map([[point.wall!, host.segments]]) : undefined, host?.line_datum, mountHosts);
 }

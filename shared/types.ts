@@ -1385,6 +1385,11 @@ export interface ElectricalPoint {
   absolute?: boolean;
   /** 宿主意图标注（只作文档与校验输入，不参与解算）。 */
   host_intent?: string;
+  /**
+   * 沿墙位置由同墙宿主点位派生：along = 宿主 along + offset（成对点位；
+   * 解算见 shared/point-placement.ts resolvePointPlacementInWalls，宿主移动本点自动跟随）。
+   */
+  along_host?: { id: string; offset: number };
   mountAnchor?: FurnitureFaceMountAnchor;
   temp?: number;
   count?: number;
@@ -1485,7 +1490,7 @@ export interface ElectricalLintResult {
 // pending-site-data #6/#7/#16/#19（排水立管）、#9/#18（燃气表）、#10/#17（厨房排烟道，
 // 业主 2026-10-05 批准并入 plumbing.yaml，不新建 ductwork.yaml）。三个值都只承载
 // **已登记的推断锚点**：坐标必须能在 原量房台账（已于 S2-B 退场） 找到出处，一个数都不新造。
-export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor' | 'leb' | 'drain_riser' | 'gas_meter' | 'duct' | 'water_supply' | 'water_heater';
+export type PlumbingPointType = 'faucet' | 'toilet' | 'shower' | 'shower_inlet' | 'drain' | 'washer' | 'faucet_outdoor' | 'leb' | 'drain_riser' | 'gas_meter' | 'duct' | 'water_supply' | 'water_heater';
 
 /**
  * 给排水点位精度等级。取值口径与 原量房台账（已于 S2-B 退场） 的三级精度一致
@@ -1517,6 +1522,11 @@ export interface PlumbingPoint {
   absolute?: boolean;
   /** 宿主意图标注（只作文本与校验输入，不参与解算）。 */
   host_intent?: string;
+  /**
+   * 沿墙位置由同墙宿主点位派生：along = 宿主 along + offset（混水阀双进水口等成对点位；
+   * 解算见 shared/point-placement.ts resolvePointPlacementInWalls，宿主移动本点自动跟随）。
+   */
+  along_host?: { id: string; offset: number };
   note?: string;
   height?: number;
   /** 精度等级（推断/实测口径）。构件状态的唯一字段（issue #98 S2-A）。 */

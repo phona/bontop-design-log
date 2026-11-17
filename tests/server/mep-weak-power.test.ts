@@ -319,6 +319,8 @@ const WEAK_IDS = ['weak-main-living', 'weak-master', 'weak-parent', 'weak-study'
  * master 末段 +x-run 至 4.2 再 +z-run 至 6.5，parent 末段 +x-run 至 7.2；
  * 新增点均为斜线拆分角点（落在原斜线两端构成的正交包络上），其余点与基线一致，
  * 长度按新折线实算（平面/三维长度见 EXPECTED_LENGTHS）。
+ * 例外（2026-11-17 Retrace）：weak-master 删 x→4.05 往返点（[4.05, 2.6, 4.55]），
+ * 点列与长度同步减 0.10m（10.42/12.72→10.32/12.62）。
  * [x, y, z]。
  */
 const EXPECTED_POINTS: Record<string, Array<[number, number, number]>> = {
@@ -327,7 +329,7 @@ const EXPECTED_POINTS: Record<string, Array<[number, number, number]>> = {
   ],
   'weak-master': [
     [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [7.2, 2.6, 4.38], [4.6, 2.6, 4.38], [4.6, 2.6, 4.55],
-    [4.05, 2.6, 4.55], [4.1, 2.6, 4.55], [4.1, 2.6, 6.3], [4.1, 2.4, 6.3], [4.2, 2.4, 6.3], [4.2, 2.4, 6.5], [4.2, 0.3, 6.5],
+    [4.1, 2.6, 4.55], [4.1, 2.6, 6.3], [4.1, 2.4, 6.3], [4.2, 2.4, 6.3], [4.2, 2.4, 6.5], [4.2, 0.3, 6.5],
   ],
   'weak-parent': [
     [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [5.5, 2.6, 4.38], [5.5, 2.6, 5.7],
@@ -352,7 +354,7 @@ const EXPECTED_POINTS: Record<string, Array<[number, number, number]>> = {
 /** [平面长度, 三维长度]，merge-base 基线实算值（1e-9 容差）。 */
 const EXPECTED_LENGTHS: Record<string, [number, number]> = {
   'weak-main-living': [8.32, 10.62],
-  'weak-master': [10.42, 12.72],
+  'weak-master': [10.32, 12.62], // 2026-11-17 Retrace：删 x→4.05 往返段（0.55+0.05→0.50，−0.10m）
   'weak-parent': [11.62, 13.92],
   'weak-study': [7.476619038, 9.663160468],
   'weak-gateway': [6.32, 8.522172887],
@@ -462,10 +464,15 @@ test('C3 消费者对账：lint 60/164 与逐路由计数同基线、DXF 无错�
   // 冷凝水主管/支管的 2 处 envelope warning 同批消失，errors 62→60、warnings 169→167；
   // 2026-11-16 Codex blocking 修复（第四轮）：7 条路由往返折返同批消除，
   // route_overlap envelope 47→45、route_clearance_unverified 38→37，warnings 167→164；
+  // 2026-11-17 量价算法审计 D4：立管补 0.82m 后显形 9 处重叠——热水需求路由与
+  // 干管末段重叠 4 处（envelope route_overlap 警告）+ 回水三通/客卫汇流 5 处转
+  // shared_trunk 声明警告，warnings 164→173；errors 不变（声明挡住 5 处 must_fix）。
+  // 2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，3 处假共干管声明
+  // 撤销 + 2 处需求路线/冷立管重叠消失，warnings 173→168；errors 不变。
   // verify:mep CLI 口径由 mep-guidance-baseline 测试另行钉死）。
   const lintResult = lintMepCoordination(project, realSources);
   assert.equal(lintResult.errors.length, 60, `lint errors 应为 60，实际 ${lintResult.errors.length}`);
-  assert.equal(lintResult.warnings.length, 164, `lint warnings 应为 164，实际 ${lintResult.warnings.length}`);
+  assert.equal(lintResult.warnings.length, 168, `lint warnings 应为 168，实际 ${lintResult.warnings.length}`);
   const perRoute = (issues: Array<{ code: string; routeId?: string }>): Record<string, Record<string, number>> => {
     const out: Record<string, Record<string, number>> = {};
     for (const issue of issues) {

@@ -6,7 +6,7 @@ import type {
   ResolvedRoom,
 } from './types.js';
 import { ceilingFootprint, ceilingSurfaceY, isSolidCeilingZone, pointInFootprint } from './mep-hvac-lint.js';
-import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from './point-placement.js';
+import { pointPlacementIndex, resolvePointPlacementInWalls, type PointMountHost, type PointWall } from './point-placement.js';
 
 /**
  * 灯具渲染派生：**唯一实现**。
@@ -75,6 +75,9 @@ export function buildRenderLightingFixtures(
   const fixtures = electrical.filter((point) => LIGHT_TYPES.has(point.type));
   const fixtureIds = new Set(fixtures.map((fixture) => fixture.id));
   const overrideById = new Map<string, RenderLightingOverride>();
+  // 沿墙派生（along_host）灯具须由同批点位索引解算（PR #260 第五轮，Codex review
+  // 5939681715 major）：缺 siblings 时解算器即诊断失败，灯具派生不得回落声明 x/z。
+  const siblings = pointPlacementIndex(electrical);
 
   for (const override of overrides) {
     if (!fixtureIds.has(override.id)) {
@@ -102,6 +105,11 @@ export function buildRenderLightingFixtures(
     // 基准）仍是「声明 x/z + overrides 偏移」口径，缺 x/z 即 fail-closed，不猜坐标。
     let planeX: number;
     let planeZ: number;
+    // 沿墙派生灯具继承的安装朝向（PR #260 第六轮，Codex review 5940396191 major）：
+    // 解算器从宿主继承 wallSide，但投影只透传声明的 fixture.wallSide；along_host
+    // 允许省略 wall_side（schema refine 只要求 id + offset），丢继承值会让夜灯下游
+    // getNightLightMountNormal 抛错。wall 分支不需要它（schema 要求 wall_side 齐备）。
+    let resolvedWallSide: RenderLightingFixture['wallSide'];
     if (fixture.mount !== undefined) {
       const { placement, diagnostic } = resolvePointPlacementInWalls(fixture, undefined, mountHosts);
       if (!placement || placement.kind !== 'mount') {
@@ -133,6 +141,17 @@ export function buildRenderLightingFixtures(
       }
       planeX = placement.x;
       planeZ = placement.z;
+    } else if (fixture.along_host !== undefined) {
+      // 沿墙派生灯具（PR #260 第五轮，Codex review 5939681715 major）：宿主沿墙位置
+      // 先解出，再按宿主墙 + 派生 along 走同一沿墙分支；调用方须传 pointWalls，缺它即
+      // fail-closed，不回落声明 x/z（沿墙派生灯具本就不声明 x/z）。
+      const { placement, diagnostic } = resolvePointPlacementInWalls(fixture, pointWalls, mountHosts, siblings);
+      if (!placement || placement.kind !== 'wall') {
+        throw new Error(`Lighting fixture ${fixture.id}: along_host 定位解析失败（${diagnostic ?? '解算器未返回结果'}；调用方须提供 pointWalls 与同批点位索引）`);
+      }
+      planeX = placement.x;
+      planeZ = placement.z;
+      resolvedWallSide = placement.wallSide;
     } else {
       if (fixture.x === undefined || fixture.z === undefined) {
         throw new Error(`Lighting fixture ${fixture.id} has no electrical x/z: 绝对灯位必须声明坐标`);
@@ -143,6 +162,8 @@ export function buildRenderLightingFixtures(
     if (fixture.mountAnchor && fixture.type !== 'night_light') {
       throw new Error(`Furniture-face mount is only supported for night_light fixtures: ${fixture.id}`);
     }
+    // 声明 wallSide 优先，否则取沿墙派生继承的侧别（只 along_host 分支会设置它）。
+    const effectiveWallSide = fixture.wallSide ?? resolvedWallSide;
     return {
       id: fixture.id,
       room: fixture.room,
@@ -160,7 +181,7 @@ export function buildRenderLightingFixtures(
       ...(fixture.heads !== undefined ? { heads: fixture.heads } : {}),
       ...(fixture.recessed !== undefined ? { recessed: fixture.recessed } : {}),
       ...(fixture.wall !== undefined ? { wallId: fixture.wall } : {}),
-      ...(fixture.wallSide !== undefined ? { wallSide: fixture.wallSide } : {}),
+      ...(effectiveWallSide !== undefined ? { wallSide: effectiveWallSide } : {}),
       ...(fixture.mountAnchor !== undefined ? { mountAnchor: fixture.mountAnchor } : {}),
     };
   });

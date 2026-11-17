@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createSocketIcon, createSwitchIcon, createFloorSocketIcon, createNetworkIcon, createFaucetIcon, createShowerIcon, createToiletIcon, createDrainIcon, createWasherIcon, createCeilingZoneIndicator, createACIndoorIcon } from './icons.js';
 import { ProblemDetector, type ElectricalPoint as ProblemElectricalPoint, type PlumbingPoint as ProblemPlumbingPoint } from './ProblemDetector.js';
 import type { Problem, FurnitureItem, WallInfo } from './ProblemDetector.js';
-import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '@shared/point-placement';
+import { resolvePointPlacementInWalls, pointPlacementIndex, type PointMountHost, type PointPlacementInput, type PointWall } from '@shared/point-placement';
 
 /** 点位声明（/api/annotations/* 原始数组）：x/z 是迁移期断言字段，图标落位走解析器。 */
 interface ElectricalPoint extends ProblemElectricalPoint {
@@ -11,6 +11,7 @@ interface ElectricalPoint extends ProblemElectricalPoint {
   wall?: string;
   wallSide?: 'north' | 'south' | 'east' | 'west';
   along?: number;
+  along_host?: { id: string; offset: number };
   face_offset?: number;
   absolute?: boolean;
   mount?: { furniture_id: string; face: 'north' | 'south' | 'east' | 'west'; surface_gap?: number; along: number; face_offset?: number };
@@ -24,6 +25,7 @@ interface PlumbingPoint extends ProblemPlumbingPoint {
   wall?: string;
   wallSide?: 'north' | 'south' | 'east' | 'west';
   along?: number;
+  along_host?: { id: string; offset: number };
   face_offset?: number;
   absolute?: boolean;
   mount?: { furniture_id: string; face: 'north' | 'south' | 'east' | 'west'; surface_gap?: number; along: number; face_offset?: number };
@@ -83,6 +85,8 @@ export class AnnotationRenderer {
   private pointWalls: ReadonlyMap<string, PointWall> = new Map();
   /** mount 挂载点位的家具宿主索引（issue #98 S2）。 */
   private mountHosts: ReadonlyMap<string, PointMountHost> = new Map();
+  /** along_host 宿主查找用：同批点位索引（load() 时由本次电气 + 给排水建；与 3D/MEP 同口径）。 */
+  private siblings: ReadonlyMap<string, PointPlacementInput> = new Map();
   /**
    * 解算失败的点位诊断（issue #98 宽容读取，2026-11-10）。按 `${category}:${pointId}` 去重，
    * 顺序 = 首次遇见的顺序；`clear()` 时随本轮数据清空（诊断描述的是**当前这次**渲染）。
@@ -131,7 +135,7 @@ export class AnnotationRenderer {
     point: ElectricalPoint | PlumbingPoint,
     category: 'electrical' | 'plumbing',
   ): PlanResolution {
-    const { placement, diagnostic } = resolvePointPlacementInWalls(point, this.pointWalls, this.mountHosts);
+    const { placement, diagnostic } = resolvePointPlacementInWalls(point, this.pointWalls, this.mountHosts, this.siblings);
     if (placement) return { kind: 'placed', x: placement.x, z: placement.z };
     if (typeof point.x === 'number' && typeof point.z === 'number') {
       console.warn(`[annotations] ${point.id}: 定位解析失败，回落声明坐标（详见 verify:consistency）`);
@@ -196,6 +200,7 @@ export class AnnotationRenderer {
     this.electricalData = electrical;
     this.plumbingData = plumbing;
     this.ceilingData = ceiling;
+    this.siblings = pointPlacementIndex([...electrical, ...plumbing]);
 
     this.renderElectrical(electrical);
     this.renderPlumbing(plumbing);
@@ -280,6 +285,9 @@ export class AnnotationRenderer {
   private renderPlumbing(points: PlumbingPoint[]): void {
     const g = this.layerGroups.plumbing;
     points.forEach(p => {
+      // 混水阀冷水接口（shower_inlet）：暗藏管口、非可见器具，不画标注图标；
+      // 位置仍由单一解算器解算（planOf 参与 ProblemDetector 的点位池，见下）。
+      if (p.type === 'shower_inlet') return;
       const iconMap: Record<string, () => THREE.Sprite> = {
         faucet: createFaucetIcon,
         shower: createShowerIcon,
@@ -387,5 +395,6 @@ export class AnnotationRenderer {
     this.electricalData = [];
     this.plumbingData = [];
     this.ceilingData = [];
+    this.siblings = new Map();
   }
 }

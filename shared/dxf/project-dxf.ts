@@ -31,7 +31,7 @@ import { centerlineSamples } from '../arc-polyline.js';
 
 import { COORDINATION_SCHEMATIC_FURNITURE_TYPES, furnitureFootprint, furnitureHostIndex, resolveFurniturePlacement, type RoomAnchor, type WallLike } from '../furniture-placement.js';
 import { clipAlongSpan, pointAlongPolyline, polylineLength, splitSegmentByOpenings } from '../wall-segments.js';
-import { resolvePointPlacementInWalls, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall, type PointWallElementInput } from '../point-placement.js';
+import { resolvePointPlacementInWalls, pointPlacementIndex, THIN_PLATE_FACE_OFFSET, type PointMountHost, type PointPlacementInput, type PointWall, type PointWallElementInput } from '../point-placement.js';
 import { buildPlacementIndexes, wallSegmentsFromElements } from '../placement-indexes.js';
 import { derivePointCircuits, type PointCircuitTopologyLike } from '../point-circuits.js';
 import { DxfWriter } from './dxf-writer.js';
@@ -182,6 +182,9 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
   });
   const pointWalls: ReadonlyMap<string, PointWall> = placementIndexes.pointWalls ?? new Map();
   const pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined = placementIndexes.mountHosts;
+  // along_host 宿主查找用：同批点位索引（电气 + 给排水；3D/MEP/lint 同口径，见
+  // shared/point-placement.ts resolvePointPlacementInWalls）。
+  const pointSiblings = pointPlacementIndex([...(house.electrical ?? []), ...(plumbing ?? [])]);
   // 点位 → 回路 单一派生（issue #98 S3）：标注用，含 controls 反推出的开关归属。
   const pointCircuits = input.pointCircuitSources === undefined
     ? undefined
@@ -199,7 +202,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
     warnings.push('electrical: 无输入，E-* 图层为空（电气点位未导出——数据不可得时禁止用页面缓存当施工点位）');
     notes.push('ELECTRICAL NOT EXPORTED: electrical data unavailable at export time');
   } else {
-    emitElectrical(writer, house.electrical, pointWalls, pointMountHosts, warnings, errors, label, restrict, pointCircuits);
+    emitElectrical(writer, house.electrical, pointWalls, pointMountHosts, warnings, errors, label, restrict, pointCircuits, pointSiblings);
   }
   if (plumbing === undefined) {
     warnings.push('plumbing: 无输入，P-POINTS 图层为空（水路点位未导出）');
@@ -214,7 +217,7 @@ export function buildProjectDxf(input: ProjectDxfInput): ProjectDxfResult {
         || point.status === 'inferred' || point.status === 'pending'
         || /抽象服务点|不得.{0,6}开槽|不作为施工依据/.test(point.note ?? '');
       // 与电气同一解算（见 emitElectrical）：解析后坐标 = 墙线 datum + 薄板惯例 0.075m。
-      const position = resolvedPointPosition(point, pointWalls, pointMountHosts, errors);
+      const position = resolvedPointPosition(point, pointWalls, pointMountHosts, errors, pointSiblings);
       if (!position) continue;
       const [x, y] = toDxf(position.x, position.z);
       writer.addCircle(DXF_LAYERS.P_POINTS[0], x, y, POINT_RADIUS_MM);
@@ -487,8 +490,9 @@ function resolvedPointPosition(
   pointWalls: ReadonlyMap<string, PointWall>,
   pointMountHosts: ReadonlyMap<string, PointMountHost> | undefined,
   errors: string[],
+  siblings?: ReadonlyMap<string, PointPlacementInput>,
 ): { x: number; z: number } | null {
-  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, pointMountHosts);
+  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, pointMountHosts, siblings);
   if (diagnostic !== undefined || !placement) {
     // fail-closed（issue #98 疗法①，与 shared/lighting-fixtures.ts:65 / shared/point-placement.ts
     // resolveMountedPoint 同一口径）：不出圈 + 诊断进 errors，入口据此拒绝交付。
@@ -522,6 +526,7 @@ function emitElectrical(
   restrict: RestrictLabels,
   /** 点位 → 回路 单一派生（issue #98 S3）；undefined = 调用方未提供 topology，不标回路。 */
   pointCircuits?: ReadonlyMap<string, string>,
+  siblings?: ReadonlyMap<string, PointPlacementInput>,
 ): void {
   for (const point of points) {
     // 已知不可用/待核点位（codex 三审 blocking）：sock_balcony_washer 这类 blocked 点
@@ -532,7 +537,7 @@ function emitElectrical(
     // 解析后坐标（2026-11-07 业主裁定「DXF 迁就 3D 投影」）：沿墙点位取解算器墙线 datum 再按
     // 薄板惯例偏移 0.075m（与 3D 渲染同一解算、同一偏移）；mount 挂载点取宿主脸解果（S2）；
     // 解算失败不出圈，并把诊断计入 errors（整次导出失败，不交付缺点位图纸）。
-    const position = resolvedPointPosition(point, pointWalls, pointMountHosts, errors);
+    const position = resolvedPointPosition(point, pointWalls, pointMountHosts, errors, siblings);
     if (!position) continue;
     const [x, y] = toDxf(position.x, position.z);
     const layer = electricalLayer(point.type);

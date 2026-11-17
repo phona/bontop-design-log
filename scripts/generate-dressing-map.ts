@@ -41,7 +41,7 @@ import { parseProjectHvacFacts } from '../shared/project-render-facts-schema.js'
 import { buildPlacementIndexes } from '../shared/placement-indexes.js';
 import { buildHvacBuilderSources } from '../shared/render/HvacBuilder.js';
 import { isLightingFixtureType } from '../shared/lighting-fixtures.js';
-import { resolvePointPlacementInWalls, type PointMountHost, type PointPlacementResolution, type PointWall } from '../shared/point-placement.js';
+import { pointPlacementIndex, resolvePointPlacementInWalls, type PointMountHost, type PointPlacementInput, type PointPlacementResolution, type PointWall } from '../shared/point-placement.js';
 
 interface MaterialEntry {
   id: string;
@@ -108,6 +108,12 @@ export interface DressingMapContext {
   chainDiagnostics: string[];
   pointWalls: Map<string, PointWall>;
   mountHosts: Map<string, PointMountHost>;
+  /**
+   * 同批点位索引（along_host 宿主查找用）。取全量 electrical + plumbing，不取灯具
+   * 筛选结果——宿主可能是筛选外的插座（只取 lights 会漏宿主 → 断引用）。建在上下
+   * 文里，与 pointWalls / mountHosts 同一份，各消费方不各拼一份。
+   */
+  pointSiblings: ReadonlyMap<string, PointPlacementInput>;
 }
 
 /**
@@ -141,6 +147,9 @@ export function loadDressingMapContext(): DressingMapContext {
   const electrical = loadElectricalConfig();
   const plumbing = loadPlumbingConfig();
   const ceiling = loadCeilingConfig();
+  // along_host 宿主索引：全量 electrical + plumbing（与 DXF / MEP / electrical-lint
+  // 同一口径；宿主可能是灯具筛选外的插座，只取 lights 会漏宿主）。
+  const pointSiblings = pointPlacementIndex([...electrical, ...plumbing]);
   const hvacSources = buildHvacBuilderSources({ ceiling, electrical, hvac: hvacFacts, pointWalls, mountHosts });
   // 2026-11-14 全带泵重画：链已退役且新 condensate-master 不再穿 w_mbath_south——
   // 两宿主皆无时不派生穿墙点（不派生、不报错），有任一宿主时仍按旧口径派生并显形。
@@ -172,6 +181,7 @@ export function loadDressingMapContext(): DressingMapContext {
     chainDiagnostics: [...(penetration.diagnostic ? [penetration.diagnostic] : []), ...diagnostics],
     pointWalls,
     mountHosts,
+    pointSiblings,
   };
 }
 
@@ -341,7 +351,7 @@ function main(): void {
   const lightingSection = buildLightingSection(
     lights,
     (pointId) => pointCircuits.get(pointId) ?? '—',
-    (point) => resolvePointPlacementInWalls(point, context.pointWalls, context.mountHosts),
+    (point) => resolvePointPlacementInWalls(point, context.pointWalls, context.mountHosts, context.pointSiblings),
   );
   lines.push(...lightingSection.lines);
   failures.push(...lightingSection.failures);

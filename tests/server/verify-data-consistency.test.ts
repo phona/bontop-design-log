@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseElectricalPoints } from '../../shared/project-render-facts-schema.js';
-import { checkWallPointPlacements } from '../../scripts/verify/placement/verify-point-placement.js';
+import { checkWallPointPlacements, resolveAlongHostItems } from '../../scripts/verify/placement/verify-point-placement.js';
 
 const wall = {
   id: 'w_test',
@@ -118,5 +118,47 @@ describe('wall point placement consistency', () => {
     // 显式 wall_side 朝东后不再报错
     const fixed = checkWallPointPlacements([vertical], [{ id: 'p3', room: 'room_east', wall: 'w_test', wall_side: 'east', along: 5 }], new Set(), 0.15, centroids);
     assert.equal(fixed.some(i => i.level === 'error' && i.message.includes('异侧')), false);
+  });
+});
+
+describe('along_host derived placements (PR #260 fix round 3, Codex review 5938169611 blocking)', () => {
+  // 门洞 span [4,6]（fixture 墙 d_test）：宿主 along=3.5、offset=+1.5 → 派生 along=5.0 落入洞内；
+  // 等价字面 wall+along=5 已由上一组 'inside' 钉断——派生点位必须同等报错，不能静默跳过。
+  const host = { id: 'shower_test', room: 'room_test', wall: 'w_test', wall_side: 'north' as const, along: 3.5, face_offset: 0.04 };
+  const inletInOpening = { id: 'inlet_test', room: 'room_test', wall_side: 'north' as const, face_offset: 0.04, along_host: { id: 'shower_test', offset: 1.5 } };
+
+  it('errors for a derived point landing inside a door opening', () => {
+    const issues = checkWallPointPlacements([wall], [host, inletInOpening], new Set());
+    assert.equal(issues.some(i => i.level === 'error' && i.id === 'inlet_test' && i.opening === 'd_test'), true);
+  });
+
+  it('accepts a derived point outside the opening', () => {
+    const outside = { ...inletInOpening, id: 'inlet_outside', along_host: { id: 'shower_test', offset: 0.5 } };
+    const nearHost = { ...host, along: 1.5 };
+    const issues = checkWallPointPlacements([wall], [nearHost, outside], new Set());
+    assert.equal(issues.length, 0);
+  });
+
+  it('resolves the derived wall/along/side from the host', () => {
+    const { items, diagnostics } = resolveAlongHostItems([host, inletInOpening], [wall]);
+    assert.equal(diagnostics.length, 0);
+    const derived = items.find((item) => item.id === 'inlet_test');
+    assert.equal(derived?.wall, 'w_test');
+    assert.equal(derived?.along, 5);
+    assert.equal(derived?.wall_side, 'north');
+    assert.equal(derived?.along_host, undefined);
+  });
+
+  it('fails closed when the derived host does not exist', () => {
+    const broken = { ...inletInOpening, id: 'inlet_broken', along_host: { id: 'no_such_host', offset: 0.15 } };
+    const issues = checkWallPointPlacements([wall], [host, broken], new Set());
+    assert.equal(issues.some(i => i.level === 'error' && i.id === 'inlet_broken' && i.message.includes('no_such_host')), true);
+  });
+
+  it('fails closed when the derived along overruns the wall span', () => {
+    const farHost = { ...host, along: 9.5 };
+    const beyond = { ...inletInOpening, id: 'inlet_beyond', along_host: { id: 'shower_test', offset: 1 } };
+    const issues = checkWallPointPlacements([wall], [farHost, beyond], new Set());
+    assert.equal(issues.some(i => i.level === 'error' && i.id === 'inlet_beyond' && i.message.includes('越出墙段')), true);
   });
 });

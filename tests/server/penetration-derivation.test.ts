@@ -115,9 +115,9 @@ const PIN_46: Array<[string, string, number, number]> = [
   ['water-v1-heater-to-mbath-hot', 'w_gbath_east', 7.2, 2.76],
   ['water-v1-heater-to-mbath-hot', 'w_gbath_west', 5.6, 2.76],
   ['water-v1-heater-to-mbath-hot', 'w_mbath_east', 2.6, 2.76],
-  ['water-v1-entry-to-mbath-cold', 'w_gbath_east', 7.2, 2.76],
-  ['water-v1-entry-to-mbath-cold', 'w_gbath_west', 5.6, 2.76],
-  ['water-v1-entry-to-mbath-cold', 'w_mbath_east', 2.6, 2.76],
+  ['water-v1-entry-to-mbath-cold', 'w_gbath_east', 7.2, 2.61],
+  ['water-v1-entry-to-mbath-cold', 'w_gbath_west', 5.6, 2.61],
+  ['water-v1-entry-to-mbath-cold', 'w_mbath_east', 2.6, 2.61],
   ['refrigerant-trunk', 'w_vrv_east', 7.2, 0.55],
   ['refrigerant-master', 'w_strip_east', 4.2, 4.6],
   ['refrigerant-parent', 'w_st_north', 5.5, 5.55],
@@ -414,7 +414,7 @@ test('冷凝链锚点 deriveMepPenetrationAt：新穿点 (4.20,4.60) 可派生�
   assert.ok(!('point' in hugDerived) && typeof hugDerived.diagnostic === 'string', 'C 形无唯一交点必须 fail-closed 给诊断');
 });
 
-test('穿墙计数契约：62 条声明 / 33 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
+test('穿墙计数契约：62 条声明 / 36 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
   // config/facts.yaml 的 fact.mep_penetration_declarations 只锚定文档清点句的文本（facts-lint 的
   // derived 选择器表达不了「跨路线嵌套数组求和 + 去重」）；本断言从配置机器计算两数并要求文档
   // 同值——guidance:37 的「40 条 / 21 孔位」正是这样 stale 的。孔位 = 同墙同坐标去重（多条路线共用一孔）。
@@ -445,10 +445,12 @@ test('穿墙计数契约：62 条声明 / 33 个孔位（手写 at 或派生点�
   // w_strip_east@4.200,4.600（+0），儿童房孔 (5.6,3.87)→(5.6,4.20) 平移（+0）。
   // 2026-11-16 关系化批：声明 61→62（strong-light-child 新增 w_strip_east 1 条），
   // 孔位仍 33——新声明点 (4.2,4.6) 与既有孔 w_strip_east@4.200,4.600 去重同孔（+0）。
+  // 2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，冷腿 z=2.76→2.61
+  // 后三处穿墙点与热腿分孔（w_gbath_east/w_gbath_west/w_mbath_east 各 +1），孔位 33→36；声明仍 62。
   // 注意：本断言的文档清点句部分依赖 docs/mep-construction-guidance.md 同步更新
   // （另一路负责；该文档现行句仍为 61 条，更新前本测试的文档句断言会红）。
   assert.equal(declarations.length, 62, '穿墙声明条目数变了：同步施工指导文档清点句与 facts 契约');
-  assert.equal(holes.size, 33, '孔位数变了：同步施工指导文档清点句与 facts 契约');
+  assert.equal(holes.size, 36, '孔位数变了：同步施工指导文档清点句与 facts 契约');
   const guidance = readFileSync('docs/mep-construction-guidance.md', 'utf8');
   assert.ok(guidance.includes(`合计 **${declarations.length} 条声明、落在 ${holes.size} 个不同孔位**`),
     'docs/mep-construction-guidance.md 的穿墙清点句必须与配置机器计数同值');

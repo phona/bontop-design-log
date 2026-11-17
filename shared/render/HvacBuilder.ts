@@ -1,5 +1,5 @@
 import type { CeilingZone, ElectricalPoint, HvacAnchor, HvacDiagram, HvacTerminal, ProjectHvacFacts, ProjectRenderFactsProjection, Vec3, VrfOutdoorUnit } from '../types.js';
-import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '../point-placement.js';
+import { pointPlacementIndex, resolvePointPlacementInWalls, type PointMountHost, type PointWall } from '../point-placement.js';
 import { normalizeCeilingZone } from '../ceiling-zone.js';
 
 export interface HvacBuilderSources {
@@ -101,7 +101,11 @@ function resolveAnchor(anchor: HvacAnchor, sources: HvacBuilderSources): { posit
     // undefined 当坐标。（暖通对象化仍属阶段五，本段只保证坐标单一解算。）
     const item = sources.electrical?.find((point) => point.id === anchor.ref!.id);
     if (!item) return { diagnostic: `hvac anchor ${anchor.id}: ref electrical 宿主 "${anchor.ref.id}" 不在来源里（断引用，或调用方未传 electrical）` };
-    const { placement, diagnostic } = resolvePointPlacementInWalls(item, sources.pointWalls, sources.mountHosts);
+    // 沿墙派生（along_host）点位须由同批点位索引解算（PR #260 第五轮，Codex review
+    // 5939681715 major）：缺 siblings 时解算器即诊断失败，锚点实体被跳过。电气 ref
+    // 的宿主就是 sources.electrical 本批点位，索引就地建。
+    const siblings = sources.electrical ? pointPlacementIndex(sources.electrical) : undefined;
+    const { placement, diagnostic } = resolvePointPlacementInWalls(item, sources.pointWalls, sources.mountHosts, siblings);
     if (!placement) return { diagnostic: `hvac anchor ${anchor.id}: ${diagnostic ?? '点位定位解算失败'}` };
     return { position: { x: placement.x, y: item.height ?? 0, z: placement.z } };
   }

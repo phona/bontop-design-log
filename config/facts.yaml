@@ -585,14 +585,15 @@ facts:
   # 孔位仍 33（旧主卧孔消失、新 parent 孔补入、新主卧孔共孔，见 docs/mep-construction-guidance.md:37）。
   # 2026-11-16 强电关系化：61→62（strong-light-child 新增 w_strip_east 穿墙声明 1 条，字面 at (4.20,4.60)
   # 与路线折线 ∩ 墙段唯一交点一致；16 保留 = 12 无唯一交点 + 3 偏差待量房 + 1 新补待复核，见指导文档 §1）。
+  # 2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，冷腿 z=2.76→2.61 后三处穿墙点与热腿分孔，孔位 33→36；声明仍 62，见指导文档 §1 清点句。
   - id: fact.mep_penetration_declarations
     kind: narrative
-    value: "@docs/mep-construction-guidance.md:合计 **62 条声明、落在 33 个不同孔位**"
+    value: "@docs/mep-construction-guidance.md:合计 **62 条声明、落在 36 个不同孔位**"
     unit: 条
     as_of: DEC-2026-11-08
     mirrors:
       - path: docs/mep-construction-guidance.md
-        extract: '合计 \*\*62 条声明、落在 33 个不同孔位\*\*'
+        extract: '合计 \*\*62 条声明、落在 36 个不同孔位\*\*'
         severity: error
         expect_matches: 1
 

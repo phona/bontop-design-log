@@ -308,3 +308,45 @@ test('tv socket check tracks relational tv_wall_low via shared placement resolut
   assert.equal(danglingResult.errors.filter((issue) => issue.code === 'tv_stand_position_unresolved').length, 1);
   assert.equal(tvWarnings(danglingResult).length, 0);
 });
+
+// ── PR #260 第五轮修复（Codex review 5939681715 major）：电气侧 along_host 消费端 ──
+// schema 允许电气点位声明 along_host，但 lint 的 planOf 不传 siblings（解算器缺索引即
+// 诊断失败），且诊断被丢弃——沿墙派生点位会被三处位置检查静默跳过（重叠/窗帘/tv 距离）。
+// 修复后：lint 建 siblings 索引传入解算器；along_host 解算失败即报 point_placement_unresolved
+// error（fail-closed），不再静默跳过。宿主取真实点位 sock_living_tv（w_st_east，along 2.15）。
+test('along_host electrical point is lint-checked instead of silently skipped (collision)', () => {
+  const topology = parseElectricalTopology(raw, points);
+  // 派生点须与宿主同 face_offset（sock_living_tv 声明 face_offset: -0.06，落位墙中心线）：
+  // 不带 face_offset 时派生点落在完成面（x +0.06），与宿主平面距 0.063m > 0.05m 阈值，
+  // 本就不是重叠。带上同值后两点仅沿墙差 0.02m，必触发 point_coordinate_collision。
+  const derived: ElectricalPoint = {
+    id: 'sock_probe_derived', room: 'living_dining', type: 'socket', height: 0.3,
+    wallSide: 'east', face_offset: -0.06, along_host: { id: 'sock_living_tv', offset: 0.02 },
+  };
+  const result = lint(topology, [...points, derived]);
+  const hits = result.errors.filter((issue) => issue.code === 'point_coordinate_collision' && issue.message.includes('sock_probe_derived'));
+  assert.ok(hits.length >= 1, `expected the derived socket 0.02m from its host to collide; collision errors: ${JSON.stringify(result.errors.filter((i) => i.code === 'point_coordinate_collision'))}`);
+  assert.ok(hits.some((issue) => issue.message.includes('sock_living_tv')), 'collision must name the host socket');
+});
+
+test('broken along_host reference in electrical points surfaces a placement error', () => {
+  const topology = parseElectricalTopology(raw, points);
+  const broken: ElectricalPoint = {
+    id: 'sock_probe_broken', room: 'living_dining', type: 'socket', height: 0.3,
+    wallSide: 'east', along_host: { id: 'no_such_point', offset: 0.1 },
+  };
+  const result = lint(topology, [...points, broken]);
+  const hits = result.errors.filter((issue) => issue.code === 'point_placement_unresolved' && issue.id === 'sock_probe_broken');
+  assert.equal(hits.length, 1, `expected exactly one placement error for the dangling along_host ref; errors: ${JSON.stringify(result.errors)}`);
+  assert.match(hits[0].message, /no_such_point/);
+});
+
+test('along_host cycle in electrical points surfaces a placement error per member', () => {
+  const topology = parseElectricalTopology(raw, points);
+  const a: ElectricalPoint = { id: 'sock_probe_a', room: 'living_dining', type: 'socket', height: 0.3, wallSide: 'east', along_host: { id: 'sock_probe_b', offset: 0.1 } };
+  const b: ElectricalPoint = { id: 'sock_probe_b', room: 'living_dining', type: 'socket', height: 0.3, wallSide: 'east', along_host: { id: 'sock_probe_a', offset: 0.1 } };
+  const result = lint(topology, [...points, a, b]);
+  const hits = result.errors.filter((issue) => issue.code === 'point_placement_unresolved');
+  assert.equal(hits.length, 2, `expected both cycle members to fail closed; errors: ${JSON.stringify(result.errors)}`);
+  assert.deepEqual(hits.map((issue) => issue.id).sort(), ['sock_probe_a', 'sock_probe_b']);
+});

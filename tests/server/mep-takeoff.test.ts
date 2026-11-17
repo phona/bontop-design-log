@@ -316,10 +316,11 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   // DEC-2026-10-17-R20：删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由，
   //   sock_kitchen_fridge / sock_parent_bed_l 两点随之退出 routed（97→95）；本轮新增 7 电气点 +
   //   faucet_kitchen_dishwasher 均未画路由，全部落在 unrouted 侧显形（routed 不增）。
-  assert.equal(takeoff.coverage.routedPointIds.length, 101); // DEC-2026-10-27-R01 删床头开关与供电路，routed 点位 102→101； // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
+  assert.equal(takeoff.coverage.routedPointIds.length, 103); // 2026-11-17 量价算法审计跟进 blocking 2：两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet 随冷干管改道进入 routed，101→103； // DEC-2026-10-27-R01 删床头开关与供电路，routed 点位 102→101； // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
   assert.equal(takeoff.coverage.byType.socket?.routed, 36); // DEC-2026-10-17-R20：删 sock_kitchen_fridge / sock_parent_bed_l（原 routed）后 34→32；同批走线专项 sock_fridge_living / sock_waterbar / sock_weakbox / sock_kitchen_east_counter 四个插座点位随新路线进入 routed 32→36
   assert.equal(takeoff.coverage.byType.faucet?.routed, 5);
-  assert.equal(takeoff.coverage.byType.shower?.routed, 2);
+  assert.equal(takeoff.coverage.byType.shower?.routed, 2); // 2026-11-17 Codex blocking（#260 第二轮）：两卫淋浴冷水进口改 type: shower_inlet（不再渲染成花洒），shower 桶 4→2；routed 总数仍 103
+  assert.equal(takeoff.coverage.byType.shower_inlet?.routed, 2); // 两卫淋浴冷水进口（shower_inlet）随冷干管进入 routed，与 shower 桶分开计
   assert.equal(takeoff.coverage.byType.drain?.routed, 11);
   // W03 注意：两卫 4 处地漏**本来就在 routed 里**（drain-master-bath / drain-guest-bath 已把它们连成链），
   // 只是链子在 drain_mbath_floor / drain_gbath_floor 断头、没接立管；W03 补的是"接到立管"而非覆盖率，
@@ -328,7 +329,7 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   assert.equal(takeoff.coverage.byType.drain_riser?.routed, 4);
   assert.equal(takeoff.coverage.byType.water_supply?.routed, 1);
   assert.equal(takeoff.coverage.byType.water_heater?.routed, 1);
-  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 101); // DEC-2026-10-27-R01 删床头开关（已路由点），常量 102→101（未路由数不变）；R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97；DEC-2026-10-17-R20 已路由 97→95（+8 新点全部未路由：7 电气 + faucet_kitchen_dishwasher）；同批走线专项 7 条新路线后已路由 95→102
+  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 103); // 2026-11-17 量价算法审计跟进 blocking 2：已路由 101→103（未路由数不变）；DEC-2026-10-27-R01 删床头开关（已路由点），常量 102→101（未路由数不变）；R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97；DEC-2026-10-17-R20 已路由 97→95（+8 新点全部未路由：7 电气 + faucet_kitchen_dishwasher）；同批走线专项 7 条新路线后已路由 95→102
   // 未路由点位逐条显形，不进采购量
   assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
 });
@@ -403,8 +404,10 @@ test('未四舍五入：数量保留原始浮点', () => {
 /**
  * DEC-2026-10-23-R01：回路计价基数 pricedCircuitLength = 平面 union + 竖直段。
  * 修复前 unionPlanLength 只吃 {x,z}，竖直边整体归零（强电约 89m、导线低估约 36%）。
- * 断言一律写**绝对值**：竖直分量是精确算术（区间合并），平面分量是 5cm 网格量化
- * （3m 直线段 = 61 个 cell = 3.05）——两个口径分别钉死。旧写法用「计价 − 平面 union」
+ * 断言一律写**绝对值**：竖直分量是精确算术（区间合并），平面分量是精确并集
+ * （3m 直线段 = 3.00；2026-11-17 量价算法审计跟进 S1 把 5cm 网格并集改为精确
+ * 分段并集，旧 3.05 含一个栅格 cell 的系统多计）；斜边按欧氏真长（hypot），
+ * 不按平面 + |Δy| 分拆（同轮审计 S2）。旧写法用「计价 − 平面 union」
  * 差值隔离竖直分量，曾把纯竖直路径多出的一个网格 cell（0.05m）一并抵消，
  * 掩盖了退化路径的平面分量偏差（2026-10-23 评审 P2），禁止再用差值断言。
  */
@@ -416,9 +419,9 @@ test('pricedCircuitLength：纯竖直路径计入其高度', () => {
 
 test('pricedCircuitLength：混合路径 = 平面 union + 竖直下引', () => {
   const path = [{ x: 0, z: 0, y: 2.55 }, { x: 3, z: 0, y: 2.55 }, { x: 3, z: 0, y: 0.3 }];
-  // 平面 3m 直线段经 5cm 网格 = 3.05；竖直下引 2.25（精确）→ 合计 5.30。
-  assert.ok(Math.abs(pricedCircuitLength([path]) - 5.3) < 1e-6,
-    `混合路径应为 5.30，实际 ${pricedCircuitLength([path])}`);
+  // 平面 3m 直线段精确并集 = 3.00；竖直下引 2.25（精确）→ 合计 5.25。
+  assert.ok(Math.abs(pricedCircuitLength([path]) - 5.25) < 1e-6,
+    `混合路径应为 5.25，实际 ${pricedCircuitLength([path])}`);
 });
 
 test('pricedCircuitLength：平面重叠仍去重，同回路共享立管只计一次', () => {
@@ -429,17 +432,18 @@ test('pricedCircuitLength：平面重叠仍去重，同回路共享立管只计�
 test('pricedCircuitLength：不同位置的下引各计一次', () => {
   const a = [{ x: 0, z: 0, y: 2.55 }, { x: 3, z: 0, y: 2.55 }, { x: 3, z: 0, y: 0.3 }];
   const b = [{ x: 0, z: 0, y: 2.55 }, { x: 5, z: 0, y: 2.55 }, { x: 5, z: 0, y: 0.3 }];
-  // 平面 union：两条路径在 z=0 上 [0,3] 与 [0,5] 并集 = 5m → 101 cells = 5.05；
-  // 竖直：(3,0) 与 (5,0) 两处下引各 2.25 → 合计 9.55。
-  assert.ok(Math.abs(pricedCircuitLength([a, b]) - 9.55) < 1e-6,
-    `两处下引路径应为 9.55，实际 ${pricedCircuitLength([a, b])}`);
+  // 平面 union：两条路径在 z=0 上 [0,3] 与 [0,5] 并集 = 5m（精确）；
+  // 竖直：(3,0) 与 (5,0) 两处下引各 2.25 → 合计 9.50。
+  assert.ok(Math.abs(pricedCircuitLength([a, b]) - 9.5) < 1e-6,
+    `两处下引路径应为 9.50，实际 ${pricedCircuitLength([a, b])}`);
 });
 
-test('pricedCircuitLength：斜边的竖直分量逐边计入', () => {
+test('pricedCircuitLength：斜边按欧氏真长计，不按平面+竖直分拆（量价算法审计 S2）', () => {
   const path = [{ x: 0, z: 0, y: 0 }, { x: 1, z: 0, y: 1 }];
-  // 平面 1m 经网格 = 21 cells = 1.05；斜边 |Δy| = 1 逐边计入 → 合计 2.05。
-  assert.ok(Math.abs(pricedCircuitLength([path]) - 2.05) < 1e-6,
-    `斜边路径应为 2.05，实际 ${pricedCircuitLength([path])}`);
+  // 斜边 (0,0,0)→(1,0,1)：平面 1m、竖直 1m，欧氏真长 √2 ≈ 1.4142；
+  // 旧口径按平面 + |Δy| 分拆计 2.05（曼哈顿多计），S2 已废止。
+  assert.ok(Math.abs(pricedCircuitLength([path]) - Math.SQRT2) < 1e-6,
+    `斜边路径应为 √2 ≈ 1.4142，实际 ${pricedCircuitLength([path])}`);
 });
 
 test('pricedCircuitLength：点缺 y 标高即抛错，不许 ?? 0 兜底（评审 P2）', () => {
@@ -515,12 +519,12 @@ routes:
   });
   const off = runSynth(false);
   const on = runSynth(true);
-  // 关：只有平面 union——3m 直线段经 5cm 网格 = 61 cells = 3.05，下引不在计价内。
-  assert.ok(Math.abs(off.conduit.strongPowerTotalM - 3.05) < 1e-6,
-    `关下引时计价应为 3.05，实际 ${off.conduit.strongPowerTotalM}`);
-  // 开：+ 下引 2.25（精确算术）= 5.30；导线增量 = 下引 × 3 芯 × 1.05 损耗。
-  assert.ok(Math.abs(on.conduit.strongPowerTotalM - 5.3) < 1e-6,
-    `开下引时计价应为 5.30，实际 ${on.conduit.strongPowerTotalM}`);
+  // 关：只有平面 union——3m 直线段精确并集 = 3.00，下引不在计价内。
+  assert.ok(Math.abs(off.conduit.strongPowerTotalM - 3) < 1e-6,
+    `关下引时计价应为 3.00，实际 ${off.conduit.strongPowerTotalM}`);
+  // 开：+ 下引 2.25（精确算术）= 5.25；导线增量 = 下引 × 3 芯 × 1.05 损耗。
+  assert.ok(Math.abs(on.conduit.strongPowerTotalM - 5.25) < 1e-6,
+    `开下引时计价应为 5.25，实际 ${on.conduit.strongPowerTotalM}`);
   assert.ok(Math.abs((on.wire.totalWireM - off.wire.totalWireM) - 2.25 * 3 * 1.05) < 1e-6,
     `导线增量应为 7.0875，实际 ${on.wire.totalWireM - off.wire.totalWireM}`);
 });
@@ -1415,8 +1419,8 @@ test('管件数量由声明的 fitting_per_meter 派生，并随 takeoff 输出�
 
 test('同线径分桶混装不同芯数时 byCircuit 取本回路芯数（2026-11-16 量价算法审计）', () => {
   // 两回路同为 2.5mm²，但 purpose 芯数不同（lighting 2 芯 / ordinary_power 4 芯）。
-  // 旧口径取分桶首条回路的 cores：B 回路的诊断 wireM 会按 2 芯算（11.13m），
-  // 正确应为 4 芯（22.26m）。总量（totalWireM）一直按各回路芯数累加，是对的，只验 byCircuit。
+  // 旧口径取分桶首条回路的 cores：B 回路的诊断 wireM 会按 2 芯算（11.025m），
+  // 正确应为 4 芯（22.05m）。总量（totalWireM）一直按各回路芯数累加，是对的，只验 byCircuit。
   const synthRules = cloneRules();
   synthRules.units.cores_by_purpose = { lighting: 2, ordinary_power: 4 };
   const synthElectrical = [
@@ -1474,11 +1478,11 @@ routes:
     rules: synthRules,
   });
   const byId = new Map(synth.byCircuit.map((item) => [item.circuitId, item]));
-  // 每回路计价 5.30m（3m 平面 union 3.05 + 下引 2.25）；A: 5.30×2×1.05=11.13，B: 5.30×4×1.05=22.26。
-  assert.ok(Math.abs((byId.get('TEST-M1')?.wireM ?? -1) - 11.13) < 1e-6,
-    `A 回路诊断 wireM 应为 11.13，实际 ${byId.get('TEST-M1')?.wireM}`);
-  assert.ok(Math.abs((byId.get('TEST-M2')?.wireM ?? -1) - 22.26) < 1e-6,
-    `B 回路诊断 wireM 应为 22.26（4 芯），实际 ${byId.get('TEST-M2')?.wireM}`);
+  // 每回路计价 5.25m（3m 平面 union 3.00 精确 + 下引 2.25）；A: 5.25×2×1.05=11.025，B: 5.25×4×1.05=22.05。
+  assert.ok(Math.abs((byId.get('TEST-M1')?.wireM ?? -1) - 11.025) < 1e-6,
+    `A 回路诊断 wireM 应为 11.025，实际 ${byId.get('TEST-M1')?.wireM}`);
+  assert.ok(Math.abs((byId.get('TEST-M2')?.wireM ?? -1) - 22.05) < 1e-6,
+    `B 回路诊断 wireM 应为 22.05（4 芯），实际 ${byId.get('TEST-M2')?.wireM}`);
   assert.equal(byId.get('TEST-M2')?.cores, 4);
 });
 

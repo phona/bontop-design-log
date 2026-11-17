@@ -228,7 +228,7 @@ export function parseWireSizeMm2(raw: string | undefined): string | null {
   return match ? match[1] : null;
 }
 
-const SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'washer', 'faucet_outdoor', 'water_supply', 'water_heater']);
+const SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'shower_inlet', 'washer', 'faucet_outdoor', 'water_supply', 'water_heater']);
 const BOX_TYPES = new Set(['socket', 'floor_socket', 'switch', 'switch_2way', 'network', 'usb']);
 
 type PipeSegmentSpec = {
@@ -456,27 +456,111 @@ function fromDrop(
 
 /**
  * 并排去重长度：多回路经常沿同一条天花轴线（走廊 z=4.6 / 边吊）并排走，
- * Σ各条长度会把同一段路径算 N 次。本函数按 5cm 网格求平面路径并集，
+ * Σ各条长度会把同一段路径算 N 次。本函数按平面路径并集求精确长度，
  * 得到"走线长度"——**人工/开槽必须按这个数计价**（同一条槽并排 3~4 根管只开一次），
  * 而**管材必须按各条长度之和计价**（每回路各有其管）。两个数用途不同，不可互换。
+ *
+ * 精确分段并集（2026-11-17 量价算法审计 S1）：旧实现把路径栅格化到 5cm 网格
+ * 再数 cell，系统性多算（每条不连通路径多一个栅格 0.05m，生产 +0.5431m）。
+ * 现为精确并集：每条线段在它与其它线段的全部交点处切分（含共线重叠的端点），
+ * 切分后的小段按端点去重后按欧氏长求和。零长段（纯竖直路径的平面投影）
+ * 本身不贡献长度。`cell` 参数保留兼容旧调用签名，精确并集不再使用。
  */
 export function unionPlanLength(paths: Array<Array<{ x: number; z: number }>>, cell = 0.05): number {
-  const seen = new Set<string>();
+  void cell;
+  type Seg = { ax: number; az: number; bx: number; bz: number };
+  const segments: Seg[] = [];
   for (const points of paths) {
     for (let i = 1; i < points.length; i += 1) {
       const a = points[i - 1];
       const b = points[i];
-      const d = Math.hypot(b.x - a.x, b.z - a.z);
-      const steps = Math.max(1, Math.ceil(d / cell));
-      for (let step = 0; step <= steps; step += 1) {
-        const t = step / steps;
-        const x = Math.round((a.x + (b.x - a.x) * t) / cell) * cell;
-        const z = Math.round((a.z + (b.z - a.z) * t) / cell) * cell;
-        seen.add(`${x.toFixed(2)},${z.toFixed(2)}`);
+      if (a.x === b.x && a.z === b.z) continue;
+      segments.push({ ax: a.x, az: a.z, bx: b.x, bz: b.z });
+    }
+  }
+  const EPS = 1e-9;
+  const splits: number[][] = segments.map(() => [0, 1]);
+  const cross = (ux: number, uz: number, vx: number, vz: number): number => ux * vz - uz * vx;
+  for (let i = 0; i < segments.length; i += 1) {
+    const s = segments[i];
+    const dx1 = s.bx - s.ax;
+    const dz1 = s.bz - s.az;
+    const lenSq1 = dx1 * dx1 + dz1 * dz1;
+    for (let j = i + 1; j < segments.length; j += 1) {
+      const t = segments[j];
+      const dx2 = t.bx - t.ax;
+      const dz2 = t.bz - t.az;
+      const lenSq2 = dx2 * dx2 + dz2 * dz2;
+      const denom = cross(dx1, dz1, dx2, dz2);
+      if (Math.abs(denom) > EPS) {
+        // 非平行：唯一交点，落在两段内才切分。
+        const rx = t.ax - s.ax;
+        const rz = t.az - s.az;
+        const u = cross(rx, rz, dx2, dz2) / denom;
+        const v = cross(rx, rz, dx1, dz1) / denom;
+        if (u >= -EPS && u <= 1 + EPS && v >= -EPS && v <= 1 + EPS) {
+          splits[i].push(Math.min(1, Math.max(0, u)));
+          splits[j].push(Math.min(1, Math.max(0, v)));
+        }
+      } else if (Math.abs(cross(t.ax - s.ax, t.az - s.az, dx1, dz1)) <= EPS) {
+        // 共线：重叠区间的端点处切分（重叠长度为 0 的端点相接不切分）。
+        const proj = (px: number, pz: number): number => ((px - s.ax) * dx1 + (pz - s.az) * dz1) / lenSq1;
+        const u0 = proj(t.ax, t.az);
+        const u1 = proj(t.bx, t.bz);
+        const lo = Math.max(0, Math.min(u0, u1));
+        const hi = Math.min(1, Math.max(u0, u1));
+        if (hi - lo > EPS) {
+          splits[i].push(lo, hi);
+          const projJ = (px: number, pz: number): number => ((px - t.ax) * dx2 + (pz - t.az) * dz2) / lenSq2;
+          const v0 = projJ(s.ax, s.az);
+          const v1 = projJ(s.bx, s.bz);
+          splits[j].push(Math.max(0, Math.min(v0, v1)), Math.min(1, Math.max(v0, v1)));
+        }
       }
     }
   }
-  return seen.size * cell;
+  const seen = new Set<string>();
+  let total = 0;
+  // 端点键按 1µm 量化：同一交点经不同线段算出的坐标有双精度尾巴
+  // （~1e-15）与切分参数合并误差（≤1e-9），1µm 内视为同一点；仓内
+  // 最小特征为 1mm，不存在 1µm 级的真实不同端点。量化到整数微米后
+  // 再归一化 -0：微小负残差（如 -1e-17）直接 toFixed(6) 会写成
+  // "-0.000000"，与 "0.000000" 去重失败，同一几何因声明方向不同
+  // 而多算（Codex blocking：[-0.01,0.02] 与 [0,1.02] 正向 1.05m、
+  // 反向 1.03m，期望均为 1.03m）。
+  const qi = (v: number): number => {
+    const r = Math.round(v * 1e6);
+    return r === 0 ? 0 : r;
+  };
+  const keyOf = (x1: number, z1: number, x2: number, z2: number): string => {
+    const a = `${qi(x1)},${qi(z1)}`;
+    const b = `${qi(x2)},${qi(z2)}`;
+    return a < b ? `${a}|${b}` : `${b}|${a}`;
+  };
+  for (let i = 0; i < segments.length; i += 1) {
+    const s = segments[i];
+    // 切分参数按 EPS 归并（不向网格取整：取整会把 1/3 这类参数的误差
+    // 放大到端点、撞坏去重键）；归并误差 ≤ EPS × 段长，可忽略。
+    const raw = splits[i].slice().sort((a, b) => a - b);
+    const ts: number[] = [];
+    for (const v of raw) {
+      if (ts.length === 0 || v - ts[ts.length - 1] > EPS) ts.push(v);
+    }
+    for (let k = 1; k < ts.length; k += 1) {
+      const t0 = ts[k - 1];
+      const t1 = ts[k];
+      if (t1 - t0 <= EPS) continue;
+      const x1 = s.ax + (s.bx - s.ax) * t0;
+      const z1 = s.az + (s.bz - s.az) * t0;
+      const x2 = s.ax + (s.bx - s.ax) * t1;
+      const z2 = s.az + (s.bz - s.az) * t1;
+      const key = keyOf(x1, z1, x2, z2);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      total += Math.hypot(x2 - x1, z2 - z1);
+    }
+  }
+  return total;
 }
 
 /**
@@ -488,15 +572,22 @@ export function unionPlanLength(paths: Array<Array<{ x: number; z: number }>>, c
  * 实测现行强电路由约 89m 竖直行程不在计价内，导线总量因此低估约 36%。
  * 竖直段物理上每回路独占（各自的管、各自的线），不做跨回路去重；同一回路内多条
  * 路由共享同一根立管时（同 x,z 的纯竖直边），按 y 区间合并只计一次，与平面 union
- * 的去重哲学一致。带平面分量的斜边无法这样合并，其 |Δy| 按曼哈顿分量逐边计入。
+ * 的去重哲学一致。带平面分量的斜边无法这样合并：其平面分量已在平面 union
+ * 里计过一次，故只补超出平面的真长部分 hypot(平面, Δy) − 平面——
+ * 2026-11-17 前按 |Δy| 全额计入（曼哈顿拆分），3-4-5 斜边计 7m 而非
+ * 5m，生产计价基数 +0.9213m（量价算法审计 S2）。同一条斜边若在不同
+ * 高度重走同一平面段，每条各补各的超出部分（不同高度是不同的管）；
+ * 仅当两条斜边是同一条 3D 线的重复声明时才会多计——那是路由重复，
+ * 由重叠 lint 拦截，不属本函数口径。
  * 终端下引（路由终点标高 → 点位安装高度，config include_terminal_drop 开启时）由
  * computeMepTakeoff 以纯竖直 stub 路径并入本函数的入参，一并走区间合并计入。
  *
  * 2026-10-23 评审后修订（同 DEC 条目）：
  * - 纯竖直路径的**平面分量恒为 0**：整条路径同 (x,z) 时送 union 前剔除——
- *   unionPlanLength 的 5cm 网格会给退化路径也栅格化出一个 cell（0.05m），
- *   生产约 34 个竖直位置曾因此累计多计约 1.70m。unionPlanLength 本体不改，
- *   诊断口径（drawnRouteUnionM 等）保持原义。
+ *   2026-11-17 前 unionPlanLength 的 5cm 网格曾给退化路径也栅格化出一个
+ *   cell（0.05m），生产约 34 个竖直位置因此累计多计约 1.70m；S1 起精确
+ *   并集本身即跳过零长平面段、退化路径天然为 0，本处剔除仅作守卫保留。
+ *   诊断口径（drawnRouteUnionM 等）保持原义，只去掉网格误差。
  * - **缺失标高 fail-closed**：任一点 y 缺失/非有限数即抛错。旧实现用 ?? 0 兜底，
  *   缺标高的点被当成 y=0 静默出数。生产主路径的 y 由统一出口 resolved.points 保证、
  *   routeLength 已先 fail-closed；导出函数自身守同一口径，不许直接调用者绕过。
@@ -520,7 +611,9 @@ export function pricedCircuitLength(paths: Array<Array<{ x: number; z: number; y
     .filter((points) => points.some((p) => Math.hypot(p.x - points[0].x, p.z - points[0].z) > 1e-9));
   const plan = planPaths.length > 0 ? unionPlanLength(planPaths) : 0;
   const intervals = new Map<string, Array<[number, number]>>();
-  let slantedDy = 0;
+  // 斜边超出平面的真长部分：平面分量已由 union 计过一次，只补
+  // hypot(平面, Δy) − 平面（S2：旧实现按 |Δy| 全额计入，曼哈顿拆分）。
+  let slantedExcess = 0;
   for (const points of checked) {
     for (let i = 1; i < points.length; i += 1) {
       const a = points[i - 1];
@@ -534,11 +627,11 @@ export function pricedCircuitLength(paths: Array<Array<{ x: number; z: number; y
         list.push([Math.min(a.y, b.y), Math.max(a.y, b.y)]);
         intervals.set(key, list);
       } else {
-        slantedDy += dy;
+        slantedExcess += Math.hypot(planD, dy) - planD;
       }
     }
   }
-  let vertical = slantedDy;
+  let vertical = slantedExcess;
   for (const list of intervals.values()) {
     list.sort((p, q) => p[0] - q[0]);
     let curLo = list[0][0];

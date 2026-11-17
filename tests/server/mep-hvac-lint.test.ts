@@ -292,10 +292,13 @@ const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
 // 重叠消失，同步收紧上限）、route_clearance_unverified 35→38（gap-2 斜段拆分后同批 21 条
 // 路线内实例 +3）；同日并行改动：route_overlap 48→49（strong-power-parent-child-childbed
 // 段几何调整，与 condensate-master 新增 1 处）。
+// 2026-11-17 量价算法审计 D4：route_overlap_declared_trunk 11→16（立管补 0.82m 后，
+// 回水三通 4 处 + 客卫冷热汇流 1 处由 must_fix 转声明警告；envelope route_overlap
+// 同批 45→49 为热水需求路由与干管末段重叠的 4 处新警告，现值即上限、不另抬）。
 const ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
   route_overlap: 49,
   route_clearance_unverified: 38,
-  route_overlap_declared_trunk: 11,
+  route_overlap_declared_trunk: 16,
   bay_sill_crossing_declared: 11,
   reference_constraint_uncertain: 11,
   nonphysical_route: 11,
