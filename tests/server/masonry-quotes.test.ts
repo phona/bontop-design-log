@@ -116,6 +116,15 @@ test('规格解析：干区木纹砖 75、墙砖 300×600 取 50、湿区 400×4
   assert.equal(resolved.wet_floor.source, 'base.json');
 });
 
+test('选型一变费率跟变：墙砖改 600×1200 → 65（Codex review 5937110969 major 的漂移方向）', () => {
+  const file = parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8'));
+  const fallback = masonryQuoteFallback(baseJson.categories);
+  const resolved = resolveActiveMasonryRates(file, fallback, { wall_tile: ['600x1200mm'] });
+  assert.equal(resolved.wall_tile.per_unit, 65);
+  assert.equal(resolved.wall_tile.matchedSpecification, '600x1200');
+  assert.equal(resolved.wall_tile.source, 'quote');
+});
+
 test('base.json 兜底：floor 45 / wet_floor_tile null / wall_tile null', () => {
   const fallback = masonryQuoteFallback(baseJson.categories);
   assert.equal(fallback.floor.per_unit, 45, '干区兜底仍是 base.json 的 45（= 卡上 600x600 行）');

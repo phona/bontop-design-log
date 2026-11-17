@@ -131,6 +131,7 @@ import { buildPlacementIndexes } from '../../shared/placement-indexes.js';
 import { RuleEngine } from '../../server/rule-engine.js';
 import {
   BudgetCalculator,
+  loadFloorRoomSplit,
   loadMasonryTakeoff,
   loadPaintScopeAreaByRoom,
   roomArea,
@@ -147,9 +148,12 @@ import {
 import {
   activeMasonryCard,
   loadMasonryQuotes,
+  masonryQuoteFallback,
+  masonrySpecSelection,
   pipeBoxCosts,
   pipeBoxLaborPrices,
   pipeBoxMaterialPrices,
+  resolveActiveMasonryRates,
 } from '../../server/masonry-quotes.js';
 import {
   computeMepTakeoff,
@@ -1769,6 +1773,19 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   const pipeBoxLaborCny = pipeBoxPrices.laborCny;
   const pipeBoxBoardCny = pipeBoxPrices.boardCny;
   const pipeBoxMortarCny = pipeBoxPrices.mortarCny;
+  // 盒面贴砖人工费率（Codex review 5937110969 major）：不许手写 50/㎡——与泥瓦行
+  // 同读生效卡 resolveActiveMasonryRates（选型规格 → wall_rates 行），选型一变
+  // （如改 600×1200 → 65）费率跟变；费率未取自卡行时抛错，不许悄悄按旧价。
+  const wallTileLaborRate = resolveActiveMasonryRates(
+    loadMasonryQuotes(),
+    masonryQuoteFallback(JSON.parse(readFileSync('config/budget/base.json', 'utf8')).categories),
+    masonrySpecSelection(catalog, scheme, loadFloorRoomSplit()),
+  ).wall_tile;
+  if (wallTileLaborRate.per_unit === null || wallTileLaborRate.matchedSpecification === null) {
+    throw new Error('cost summary: 墙砖人工费率未取自费率卡行（选型规格在 wall_rates 无行、base.json 无墙砖兜底），盒面贴砖人工无法计价');
+  }
+  const wallTileLaborPerSqm = wallTileLaborRate.per_unit;
+  const wallTileLaborSpec = wallTileLaborRate.matchedSpecification;
   const pendingChecks: PendingEntry[] = [
     {
       id: 'pending-sill-tile-labor',
@@ -1776,7 +1793,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-060'],
       statusLabel: 'quote_pending · 待书面报价',
       countedStatus: 'uncounted',
-      note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价。另：包管人工 ${pipeBoxTakeoff.pipeBoxCount} 条（单管 ${pipeBoxTakeoff.pipeBoxSingleCount} × ${yuan(pipeBoxLabor.singleCnyPerBox)} + 双管 ${pipeBoxTakeoff.pipeBoxDoubleCount} × ${yuan(pipeBoxLabor.doubleCnyPerBox)}）= ${yuan(pipeBoxLaborCny)}（主卫/客卫/厨房，infer——量房 11-27 复核；费率锚点 config/masonry-labor.yaml 生效卡 extras「卫生间贴砖灌砂浆包管」，生成器实读该行），待书面报价、未计入 need；单管 ¥${pipeBoxLabor.singleCnyPerBox}/条含贴砖，而盒面 ${qty(pipeBoxTakeoff.pipeBoxTileSqm, 3)}㎡ 已进 totalTileSqm、面积费率（50 元/㎡）已含约 ${yuan(Math.round(pipeBoxTakeoff.pipeBoxTileSqm * 50))} 盒面贴砖人工，书面报价须确认拆分、不得双计`,
+      note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价。另：包管人工 ${pipeBoxTakeoff.pipeBoxCount} 条（单管 ${pipeBoxTakeoff.pipeBoxSingleCount} × ${yuan(pipeBoxLabor.singleCnyPerBox)} + 双管 ${pipeBoxTakeoff.pipeBoxDoubleCount} × ${yuan(pipeBoxLabor.doubleCnyPerBox)}）= ${yuan(pipeBoxLaborCny)}（主卫/客卫/厨房，infer——量房 11-27 复核；费率锚点 config/masonry-labor.yaml 生效卡 extras「卫生间贴砖灌砂浆包管」，生成器实读该行），待书面报价、未计入 need；单管 ¥${pipeBoxLabor.singleCnyPerBox}/条含贴砖，而盒面 ${qty(pipeBoxTakeoff.pipeBoxTileSqm, 3)}㎡ 已进 totalTileSqm、面积费率（${wallTileLaborPerSqm} 元/㎡，费率锚点 config/masonry-labor.yaml 生效卡 wall_rates「${wallTileLaborSpec}」行、生成器按选型规格实读）已含约 ${yuan(Math.round(pipeBoxTakeoff.pipeBoxTileSqm * wallTileLaborPerSqm))} 盒面贴砖人工，书面报价须确认拆分、不得双计`,
       coversItems: ['COST-060-05'],
     },
     {

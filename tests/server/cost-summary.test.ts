@@ -40,9 +40,17 @@ import {
   mepQuoteFallback,
   parseMepQuotes,
 } from '../../server/mep-quotes.js';
-import { loadMasonryTakeoff } from '../../server/budget-calculator.js';
+import { loadFloorRoomSplit, loadMasonryTakeoff } from '../../server/budget-calculator.js';
 import { ProjectCatalog } from '../../server/project-catalog.js';
-import { activeMasonryCard, loadMasonryQuotes, pipeBoxCosts } from '../../server/masonry-quotes.js';
+import {
+  activeMasonryCard,
+  loadMasonryQuotes,
+  masonryQuoteFallback,
+  masonrySpecSelection,
+  pipeBoxCosts,
+  resolveActiveMasonryRates,
+} from '../../server/masonry-quotes.js';
+import type { CurrentScheme } from '../../shared/types.js';
 
 /**
  * 成本总表（schedule/phase-1/cost.md）的口径防线。业主 2026-10-23 裁定：
@@ -1264,6 +1272,32 @@ describe('包管价：生成器读生效卡，不许手写单价（Codex review 
     assert.ok(
       materialNote?.note.includes('domain.pipe_box_material_reference'),
       '包管板材/砂浆注脚必须点名 domain.pipe_box_material_reference 锚点',
+    );
+  });
+
+  it('盒面贴砖人工费率必须跟卡走：注脚费率 = 解析器对现行选型的取值（Codex review 5937110969 major）', () => {
+    const catalog = ProjectCatalog.load('.');
+    const takeoff = loadMasonryTakeoff(catalog);
+    const scheme = JSON.parse(readFileSync('data/current-scheme.json', 'utf8')) as CurrentScheme;
+    const resolved = resolveActiveMasonryRates(
+      loadMasonryQuotes(),
+      masonryQuoteFallback(JSON.parse(readFileSync('config/budget/base.json', 'utf8')).categories),
+      masonrySpecSelection(catalog, scheme, loadFloorRoomSplit()),
+    ).wall_tile;
+    assert.notEqual(resolved.per_unit, null, '现行墙砖选型必须在费率卡上有行，否则注脚无费率可写');
+    const laborNote = data.pendingChecks.find((entry) => entry.id === 'pending-sill-tile-labor');
+    // 手写 50 的旧注脚在这里红：它含费率值却不含卡行锚点，选型一变（600×1200 → 65）就漂移。
+    assert.ok(
+      laborNote?.note.includes(`（${resolved.per_unit} 元/㎡`),
+      '注脚费率必须是解析器取值，不是手写常量',
+    );
+    assert.ok(
+      laborNote?.note.includes(`wall_rates「${resolved.matchedSpecification}」行`),
+      '注脚必须点名费率卡行，选型一变读者能对上',
+    );
+    assert.ok(
+      laborNote?.note.includes(`已含约 ¥${Math.round(takeoff.pipeBoxTileSqm * resolved.per_unit!)}`),
+      '盒面人工金额必须按解析费率实算',
     );
   });
 });

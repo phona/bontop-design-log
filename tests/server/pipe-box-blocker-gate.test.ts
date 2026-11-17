@@ -183,6 +183,27 @@ describe('pipe_box 载体行：缺 blocker 即抛错，不许合成 fallback（C
     assert.match(row.blocker.trigger, /2026-11-27 量房/);
     assert.ok(row.measure.includes('drain_riser_master_bath'));
   });
+
+  it('缺省 status 的盒 → 载体行 status=undeclared（Codex review 5937110969 minor；与 element-state 缺省派生一致）', () => {
+    const blocker = {
+      kind: 'site_measurement',
+      owner: ['业主'],
+      trigger: '2026-11-27 量房',
+      reverses_if: '实测后按结果回改或销号',
+      rationale: '立管实位未经实测',
+    } as const;
+    const { status, ...noStatus } = BOX;
+    assert.equal(status, 'inferred', '本用例的前提：BOX 声明了 inferred，要测的是去掉它');
+    const row = buildPipeBoxPendingRow({ ...noStatus, blocker: { ...blocker, owner: ['业主'] } });
+    assert.equal(row.status, 'undeclared');
+    assert.match(row.currentValue, /status=undeclared/);
+  });
+
+  it('缺省 status 且无 blocker → 抛错文案也写 undeclared，不写 inferred', () => {
+    const { status, ...noStatus } = BOX;
+    assert.equal(status, 'inferred', '本用例的前提：BOX 声明了 inferred，要测的是去掉它');
+    assert.throws(() => buildPipeBoxPendingRow(noStatus), /status=undeclared/);
+  });
 });
 
 describe('待决视图：pipe_box 不重复、不合成（载体行胜出）', () => {

@@ -100,7 +100,7 @@ export function pricingOf(option: DesignOption, label: string): { pricePerUnit: 
  * `dry_room_ids` 早已在该文件里声明（干区净铺面积 111.864㎡ 的权威源），湿区 counterpart
  * 放在同一处，避免「同一事实存两处」。两表必须非空且不交叠（模块自身也会复核交叠）。
  */
-function loadFloorRoomSplit(): { dryRoomIds: string[]; wetRoomIds: string[] } {
+export function loadFloorRoomSplit(): { dryRoomIds: string[]; wetRoomIds: string[] } {
   const config = load(readFileSync('config/tile-comparison.yaml', 'utf8')) as {
     dry_room_ids?: unknown;
     wet_room_ids?: unknown;

@@ -399,7 +399,8 @@ function collectFurniturePendingRows(room: string): PendingCarrierItem[] {
 // 包管盒不是 SceneElement 的 pending 采集对象（collectElements 只枚举电气/给排水/
 // 吊顶），但 blocker 一出现，反向扫描就把 openings.yaml 的 elements 段报成未登记
 // 载体段——与 2026-11-16 主卧家具（顶封线槽 infer）同一形态，必须在这里登记并生成行。
-// 行状态取对象自己的 status（inferred）；blocker 原样取自权威段，不抄第二份。
+// 行状态取对象自己的 status，缺省即 undeclared（与 element-state 的缺省派生一致，
+// 不许默认 inferred——未声明就是未声明）；blocker 原样取自权威段，不抄第二份。
 
 interface PipeBoxPendingSource {
   id: string;
@@ -473,7 +474,7 @@ function readPipeBoxPendingItems(): PipeBoxPendingSource[] {
 export function buildPipeBoxPendingRow(box: PipeBoxPendingSource): PendingCarrierItem {
   if (!box.blocker) {
     throw new Error(
-      `包管盒 ${box.id}（status=${box.status ?? 'inferred'}）未声明 blocker：待决视图不得合成 fallback blocker，先在 config/model/envelope/openings.yaml 给该盒补 blocker`,
+      `包管盒 ${box.id}（status=${box.status ?? 'undeclared'}）未声明 blocker：待决视图不得合成 fallback blocker，先在 config/model/envelope/openings.yaml 给该盒补 blocker`,
     );
   }
   return {
@@ -481,13 +482,13 @@ export function buildPipeBoxPendingRow(box: PipeBoxPendingSource): PendingCarrie
     kind: 'pipe_box',
     label: `包管盒 ${box.id}`,
     room: box.room,
-    status: box.status ?? 'inferred',
+    status: box.status ?? 'undeclared',
     ...(box.note ? { note: box.note } : {}),
     blocker: box.blocker,
     // 量什么：blocker.trigger 已写明（立管实位/吊柜遮挡）；当前推断值：盒截面/盒高/管数。
     // 吊柜遮挡只问厨房盒（0.89m 以上外露段是否被吊柜盖住）；两卫盒问立管是否在房内/西北角。
     measure: `立管 ${box.riser} 实位（模型位 ±0.3m 推断）${box.room === 'kitchen' ? '、吊柜是否遮住 0.89m 以上外露段' : '、是否在房内/西北角'}、盒高 ${box.bottom.toFixed(2)}–${box.top.toFixed(2)}m`,
-    currentValue: `${box.pipes === 1 ? '单管' : '双管'} ${box.width.toFixed(2)}×${box.depth.toFixed(2)}m、${box.faces} 面盒；status=${box.status ?? 'inferred'}、量房前不入施工`,
+    currentValue: `${box.pipes === 1 ? '单管' : '双管'} ${box.width.toFixed(2)}×${box.depth.toFixed(2)}m、${box.faces} 面盒；status=${box.status ?? 'undeclared'}、量房前不入施工`,
   };
 }
 
