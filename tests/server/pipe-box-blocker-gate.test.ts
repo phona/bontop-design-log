@@ -20,7 +20,7 @@ import {
   type BlockerSubject,
 } from '../../shared/element-blockers.js';
 import { collectRows } from '../../scripts/docs/generate-pending-view.js';
-import { buildPipeBoxPendingRow } from '../../shared/pending-carriers.js';
+import { buildPipeBoxPendingRow, parsePipeBoxPendingItem } from '../../shared/pending-carriers.js';
 
 const REAL_BLOCKER = `
     blocker:
@@ -202,5 +202,63 @@ describe('待决视图：pipe_box 不重复、不合成（载体行胜出）', (
     const ids = rows.map((row) => row.id);
     assert.equal(new Set(ids).size, ids.length, '待决视图不得有重复 id');
     assert.equal(rows.length, 96, `待决条目总数仍为 96：${rows.length}`);
+  });
+});
+
+describe('pipe_box 省略 pipes 即单管，不炸待决视图（Codex review 5936494593 major）', () => {
+  // PipeBoxSchema 把 pipes 声明为 .default(1)，省略是 schema 合法写法；
+  // 但载体直读曾用 requireNumber，省略即抛错，整份待决清单都生成不了。
+  // 反向锚：非法管数仍必须红，不是恒真式。
+  const BLOCKER = {
+    kind: 'site_measurement',
+    owner: ['业主'],
+    trigger: '2026-11-27 量房',
+    reverses_if: '实测后按结果回改或销号',
+    rationale: '立管实位未经实测',
+  } as const;
+  const RECORD = {
+    id: 'pipe_box_mbath_riser',
+    type: 'pipe_box',
+    room: 'master_bath',
+    riser: 'drain_riser_master_bath',
+    width: 0.2,
+    depth: 0.2,
+    faces: 2,
+    bottom: 0,
+    top: 2.5,
+    status: 'inferred',
+    note: '立管实位未经实测',
+    blocker: { ...BLOCKER, owner: ['业主'] },
+  } as Record<string, unknown>;
+
+  it('省略 pipes → 解析为 1，载体行渲染为单管，不抛错', () => {
+    const { pipes, ...rest } = RECORD;
+    assert.equal(pipes, undefined, '本用例的前提：记录确实省略了 pipes');
+    const source = parsePipeBoxPendingItem(rest, 'config/model/envelope/openings.yaml');
+    assert.equal(source.pipes, 1);
+    const row = buildPipeBoxPendingRow(source);
+    assert.equal(row.id, 'pipe_box:pipe_box_mbath_riser');
+    assert.match(row.currentValue, /^单管 0\.20×0\.20m/);
+  });
+
+  it('pipes: 2 → 解析为 2，渲染为双管', () => {
+    const source = parsePipeBoxPendingItem({ ...RECORD, pipes: 2 }, 'config/model/envelope/openings.yaml');
+    assert.equal(source.pipes, 2);
+    const row = buildPipeBoxPendingRow(source);
+    assert.match(row.currentValue, /^双管 0\.20×0\.20m/);
+  });
+
+  it('反向锚：pipes 为字符串仍抛错（不许悄悄当成数字）', () => {
+    assert.throws(
+      () => parsePipeBoxPendingItem({ ...RECORD, pipes: '1' }, 'config/model/envelope/openings.yaml'),
+      /pipes 缺有限数字段/,
+    );
+  });
+
+  it('反向锚：pipes 为 3 仍抛错（schema 只接受 1/2）', () => {
+    assert.throws(
+      () => parsePipeBoxPendingItem({ ...RECORD, pipes: 3 }, 'config/model/envelope/openings.yaml'),
+      /只能是 1（单管）或 2（双管）/,
+    );
   });
 });

@@ -416,6 +416,37 @@ interface PipeBoxPendingSource {
   blocker?: ComponentBlocker;
 }
 
+/**
+ * 单条 pipe_box 记录 → 待决源条目（Codex review 5936494593 major，PR #259 第三轮）。
+ * pipes 与 PipeBoxSchema 对齐：省略即单管 1（schema `.default(1)`）；只接受 1/2，
+ * 其余值仍抛错——不许把非法管数悄悄当成单管/双管。单点抽成导出函数，只为测试能
+ * 直接喂一条省略 pipes 的记录；collectRows 的活路仍走 readPipeBoxPendingItems。
+ */
+export function parsePipeBoxPendingItem(record: Record<string, unknown>, file: string): PipeBoxPendingSource {
+  const blocker = record.blocker as ComponentBlocker | undefined;
+  return {
+    id: requireString(record.id, `${file} 的 pending 包管盒`),
+    room: requireString(record.room, `${file} ${String(record.id)}.room`),
+    riser: requireString(record.riser, `${file} ${String(record.id)}.riser`),
+    pipes: parsePipeBoxPipes(record.pipes, `${file} ${String(record.id)}.pipes`),
+    width: requireNumber(record.width, `${file} ${String(record.id)}.width`),
+    depth: requireNumber(record.depth, `${file} ${String(record.id)}.depth`),
+    faces: requireNumber(record.faces, `${file} ${String(record.id)}.faces`),
+    bottom: requireNumber(record.bottom, `${file} ${String(record.id)}.bottom`),
+    top: requireNumber(record.top, `${file} ${String(record.id)}.top`),
+    ...(typeof record.status === 'string' ? { status: record.status } : {}),
+    ...(typeof record.note === 'string' ? { note: record.note } : {}),
+    ...(blocker ? { blocker } : {}),
+  };
+}
+
+function parsePipeBoxPipes(value: unknown, what: string): number {
+  if (value === undefined) return 1;
+  const pipes = requireNumber(value, what);
+  if (pipes !== 1 && pipes !== 2) throw new Error(`${what} 只能是 1（单管）或 2（双管），现为 ${pipes}`);
+  return pipes;
+}
+
 function readPipeBoxPendingItems(): PipeBoxPendingSource[] {
   const file = 'config/model/envelope/openings.yaml';
   const doc = asRecord(readYamlDocument(file), file);
@@ -427,21 +458,7 @@ function readPipeBoxPendingItems(): PipeBoxPendingSource[] {
     const record = entry as Record<string, unknown>;
     if (record.type !== 'pipe_box') continue;
     if (!hasPendingSemantics(record)) continue;
-    const blocker = record.blocker as ComponentBlocker | undefined;
-    pending.push({
-      id: requireString(record.id, `${file} 的 pending 包管盒`),
-      room: requireString(record.room, `${file} ${String(record.id)}.room`),
-      riser: requireString(record.riser, `${file} ${String(record.id)}.riser`),
-      pipes: requireNumber(record.pipes, `${file} ${String(record.id)}.pipes`),
-      width: requireNumber(record.width, `${file} ${String(record.id)}.width`),
-      depth: requireNumber(record.depth, `${file} ${String(record.id)}.depth`),
-      faces: requireNumber(record.faces, `${file} ${String(record.id)}.faces`),
-      bottom: requireNumber(record.bottom, `${file} ${String(record.id)}.bottom`),
-      top: requireNumber(record.top, `${file} ${String(record.id)}.top`),
-      ...(typeof record.status === 'string' ? { status: record.status } : {}),
-      ...(typeof record.note === 'string' ? { note: record.note } : {}),
-      ...(blocker ? { blocker } : {}),
-    });
+    pending.push(parsePipeBoxPendingItem(record, file));
   }
   return pending;
 }
