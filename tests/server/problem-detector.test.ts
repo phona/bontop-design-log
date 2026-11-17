@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { ProblemDetector } from '../../../app/src/render/annotations/ProblemDetector.js';
+import { ProblemDetector } from '../../app/src/render/annotations/ProblemDetector.js';
 
 describe('ProblemDetector', () => {
   it('detects socket behind furniture', () => {
