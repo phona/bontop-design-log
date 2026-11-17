@@ -24,6 +24,7 @@ import {
   isValidCalendarDateText,
   sectionAnchorsContractTotal,
   sectionContainsAmountToken,
+  pipeBoxTileLaborNote,
   DUAL_ATTRIBUTIONS,
   OUT_OF_SCOPE_DISPOSITIONS,
   PENDING_COUNTED_STATUS_LABELS,
@@ -1298,6 +1299,52 @@ describe('包管价：生成器读生效卡，不许手写单价（Codex review 
     assert.ok(
       laborNote?.note.includes(`已含约 ¥${Math.round(takeoff.pipeBoxTileSqm * resolved.per_unit!)}`),
       '盒面人工金额必须按解析费率实算',
+    );
+  });
+
+  it('直接报价也是合法卡价：matchedSpecification null 但 source 为 quote 时不抛错（Codex review 5938395280 major）', () => {
+    // 书面报价的常见形状：卡里直接声明 rates.wall_tile.per_unit，解析器回
+    // source 'quote' + matchedSpecification null。旧判据只看 matchedSpecification
+    // 是否为 null，一登记直接报价成本总表就抛错。
+    const direct = pipeBoxTileLaborNote(
+      { per_unit: 58, unit: '元/㎡', source: 'quote', matchedSpecification: null, specs: ['300x600'] },
+      2.644,
+    );
+    assert.equal(direct.perSqm, 58);
+    assert.ok(direct.fragment.includes('（58 元/㎡'), '注脚费率必须是直接报价的取值');
+    assert.ok(direct.fragment.includes('直接报价'), '直接报价的注脚必须写明来源，不得写 wall_rates「null」行');
+    assert.ok(!direct.fragment.includes('null'), '注脚不得出现 null 字面量');
+    assert.ok(direct.fragment.includes('已含约 ¥153'), '盒面人工金额必须按直接报价实算（2.644 × 58 ≈ 153）');
+  });
+
+  it('规格行命中的注脚片段与现行生产文本一致', () => {
+    const spec = pipeBoxTileLaborNote(
+      { per_unit: 50, unit: '元/㎡', source: 'quote', matchedSpecification: '300x600', specs: ['300x600'] },
+      2.644,
+    );
+    assert.equal(
+      spec.fragment,
+      '面积费率（50 元/㎡，费率锚点 config/masonry-labor.yaml 生效卡 wall_rates「300x600」行、生成器按选型规格实读）已含约 ¥132 盒面贴砖人工',
+    );
+  });
+
+  it('回落费率仍抛错：per_unit 非空但 source 不是 quote 时不是卡价', () => {
+    // base.json 兜底即使给了数也不是费率卡行——判据是来源，不是 per_unit 是否为空。
+    assert.throws(
+      () =>
+        pipeBoxTileLaborNote(
+          { per_unit: 45, unit: '元/㎡', source: 'base.json', matchedSpecification: null, specs: [] },
+          2.644,
+        ),
+      /未取自费率卡/,
+    );
+    assert.throws(
+      () =>
+        pipeBoxTileLaborNote(
+          { per_unit: null, unit: '元/㎡', source: 'base.json', matchedSpecification: null, specs: [] },
+          2.644,
+        ),
+      /未取自费率卡/,
     );
   });
 });

@@ -154,6 +154,7 @@ import {
   pipeBoxLaborPrices,
   pipeBoxMaterialPrices,
   resolveActiveMasonryRates,
+  type MasonryResolvedRate,
 } from '../../server/masonry-quotes.js';
 import {
   computeMepTakeoff,
@@ -1368,6 +1369,31 @@ function assertCoverage(
   };
 }
 
+/**
+ * 盒面贴砖人工费率注脚片段（Codex review 5937110969 major：不许手写 50/㎡；
+ * Codex review 5938395280 major：直接报价也是合法卡价）。
+ * 费率必须取自费率卡：直接报价（source 'quote'、matchedSpecification null）
+ * 与规格行命中（source 'quote'、matchedSpecification 有值）都合法；
+ * 只有回落（source 非 'quote'，如 base.json）或 per_unit null 才抛错。
+ * 直接报价的注脚写「直接报价」而不是 wall_rates「null」行。
+ */
+export function pipeBoxTileLaborNote(
+  rate: MasonryResolvedRate,
+  pipeBoxTileSqm: number,
+): { perSqm: number; fragment: string } {
+  if (rate.per_unit === null || rate.source !== 'quote') {
+    throw new Error('cost summary: 墙砖人工费率未取自费率卡（直接报价或选型规格行命中才合法；base.json 回落无墙砖兜底），盒面贴砖人工无法计价');
+  }
+  const anchor =
+    rate.matchedSpecification === null
+      ? '直接报价（rates.wall_tile.per_unit）'
+      : `wall_rates「${rate.matchedSpecification}」行、生成器按选型规格实读`;
+  return {
+    perSqm: rate.per_unit,
+    fragment: `面积费率（${rate.per_unit} 元/㎡，费率锚点 config/masonry-labor.yaml 生效卡 ${anchor}）已含约 ${yuan(Math.round(pipeBoxTileSqm * rate.per_unit))} 盒面贴砖人工`,
+  };
+}
+
 export function buildCostSummary(control: AnyRecord): CostSummaryData {
   const catalog = ProjectCatalog.load('.');
   const rulesConfig = RuleEngine.load('config/design-rules.yaml').getConfig();
@@ -1776,16 +1802,15 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   // 盒面贴砖人工费率（Codex review 5937110969 major）：不许手写 50/㎡——与泥瓦行
   // 同读生效卡 resolveActiveMasonryRates（选型规格 → wall_rates 行），选型一变
   // （如改 600×1200 → 65）费率跟变；费率未取自卡行时抛错，不许悄悄按旧价。
+  // 直接报价与规格行命中都是合法卡价（Codex review 5938395280 major），
+  // 判据见 pipeBoxTileLaborNote。
   const wallTileLaborRate = resolveActiveMasonryRates(
     loadMasonryQuotes(),
     masonryQuoteFallback(JSON.parse(readFileSync('config/budget/base.json', 'utf8')).categories),
     masonrySpecSelection(catalog, scheme, loadFloorRoomSplit()),
   ).wall_tile;
-  if (wallTileLaborRate.per_unit === null || wallTileLaborRate.matchedSpecification === null) {
-    throw new Error('cost summary: 墙砖人工费率未取自费率卡行（选型规格在 wall_rates 无行、base.json 无墙砖兜底），盒面贴砖人工无法计价');
-  }
-  const wallTileLaborPerSqm = wallTileLaborRate.per_unit;
-  const wallTileLaborSpec = wallTileLaborRate.matchedSpecification;
+  const wallTileLabor = pipeBoxTileLaborNote(wallTileLaborRate, pipeBoxTakeoff.pipeBoxTileSqm);
+  const wallTileLaborPerSqm = wallTileLabor.perSqm;
   const pendingChecks: PendingEntry[] = [
     {
       id: 'pending-sill-tile-labor',
@@ -1793,7 +1818,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       packageIds: ['PKG-060'],
       statusLabel: 'quote_pending · 待书面报价',
       countedStatus: 'uncounted',
-      note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价。另：包管人工 ${pipeBoxTakeoff.pipeBoxCount} 条（单管 ${pipeBoxTakeoff.pipeBoxSingleCount} × ${yuan(pipeBoxLabor.singleCnyPerBox)} + 双管 ${pipeBoxTakeoff.pipeBoxDoubleCount} × ${yuan(pipeBoxLabor.doubleCnyPerBox)}）= ${yuan(pipeBoxLaborCny)}（主卫/客卫/厨房，infer——量房 11-27 复核；费率锚点 config/masonry-labor.yaml 生效卡 extras「卫生间贴砖灌砂浆包管」，生成器实读该行），待书面报价、未计入 need；单管 ¥${pipeBoxLabor.singleCnyPerBox}/条含贴砖，而盒面 ${qty(pipeBoxTakeoff.pipeBoxTileSqm, 3)}㎡ 已进 totalTileSqm、面积费率（${wallTileLaborPerSqm} 元/㎡，费率锚点 config/masonry-labor.yaml 生效卡 wall_rates「${wallTileLaborSpec}」行、生成器按选型规格实读）已含约 ${yuan(Math.round(pipeBoxTakeoff.pipeBoxTileSqm * wallTileLaborPerSqm))} 盒面贴砖人工，书面报价须确认拆分、不得双计`,
+      note: `未计入泥瓦行：低反坎约 29.84 m × ${yuan(20)}/m 名义约 ${yuan(597)}、本轮增量约 ${yuan(394)}（DEC-2026-10-07-R05/R11 登记费率锚点）；若瓦工按常规墙地砖人工一并报价则去重、不得双计，宽飘窗台面贴砖另案核价。另：包管人工 ${pipeBoxTakeoff.pipeBoxCount} 条（单管 ${pipeBoxTakeoff.pipeBoxSingleCount} × ${yuan(pipeBoxLabor.singleCnyPerBox)} + 双管 ${pipeBoxTakeoff.pipeBoxDoubleCount} × ${yuan(pipeBoxLabor.doubleCnyPerBox)}）= ${yuan(pipeBoxLaborCny)}（主卫/客卫/厨房，infer——量房 11-27 复核；费率锚点 config/masonry-labor.yaml 生效卡 extras「卫生间贴砖灌砂浆包管」，生成器实读该行），待书面报价、未计入 need；单管 ¥${pipeBoxLabor.singleCnyPerBox}/条含贴砖，而盒面 ${qty(pipeBoxTakeoff.pipeBoxTileSqm, 3)}㎡ 已进 totalTileSqm、${wallTileLabor.fragment}，书面报价须确认拆分、不得双计`,
       coversItems: ['COST-060-05'],
     },
     {
