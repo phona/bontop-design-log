@@ -40,13 +40,21 @@ const GROUP_COLOR: Record<NextActionKind, string> = {
 const money = (value: number | null | undefined): string =>
   value == null ? '—' : `¥${value.toLocaleString('zh-CN')}`;
 
+export interface NextActionPanelOptions {
+  /** 「去总览看估算口径」按钮回调（App 接线到总览菜单；无回调时不渲染按钮）。 */
+  onOpenOverview?: () => void;
+}
+
 export class NextActionPanel {
   private el: HTMLDivElement | null = null;
   private visible = false;
   private payload: ScheduleSnapshot | null = null;
   private errorMessage: string | null = null;
 
-  constructor(private readonly selection: ScheduleSelectionStore) {}
+  constructor(
+    private readonly selection: ScheduleSelectionStore,
+    private readonly options: NextActionPanelOptions = {},
+  ) {}
 
   show(): void {
     if (!this.el) this.build();
@@ -95,11 +103,35 @@ export class NextActionPanel {
     const snapshot = this.payload;
     const phase = snapshot.phase;
     const counts = snapshot.counts;
+    // 预算条（图形 + 文字双通道）：已分配占上限的比例为蓝段，已知待补缺口为
+    // 上限之外的红段（缺口是上限外还要补的钱，不是上限内的余额）。上限/已分配
+    // 缺失时不画条，只留文字——不拿 0 当比例。
+    const ceiling = phase.ceiling_cny ?? null;
+    const allocated = phase.allocated_cny ?? null;
+    const gap = phase.known_pending_gap_cny ?? null;
+    const allocPct = ceiling && ceiling > 0 && allocated != null
+      ? Math.min(100, Math.round((allocated / ceiling) * 100))
+      : null;
+    const gapPct = ceiling && ceiling > 0 && gap != null && gap > 0
+      ? Math.max(2, Math.round((gap / ceiling) * 100))
+      : 0;
+    const budgetBar = allocPct === null ? '' : `<div style="margin-top:6px;" title="预算上限 ${money(ceiling)}：已分配 ${money(allocated)}（${allocPct}%），上限外已知待补缺口 ${money(gap)}">
+      <div style="display:flex;height:14px;border-radius:7px;overflow:hidden;background:rgba(255,255,255,.10);">
+        <div style="width:${allocPct}%;background:#5a7a99;"></div>
+        ${gapPct > 0 ? `<div style="width:${gapPct}%;background-image:repeating-linear-gradient(45deg,#d9534f 0 4px,#b03a37 4px 8px);"></div>` : ''}
+      </div>
+      <div style="display:flex;justify-content:space-between;color:#9aa4b2;font-size:10px;margin-top:2px;"><span>■ 已分配 ${allocPct}%</span><span>■ 缺口 ${money(gap)}（上限外）</span></div>
+    </div>`;
+    const overviewLink = this.options.onOpenOverview
+      ? ` <button type="button" data-open-overview style="cursor:pointer;padding:1px 8px;border-radius:5px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:11px;">去总览看估算口径 →</button>`
+      : '';
     const summary = `<div style="margin-bottom:10px;padding:8px 10px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:rgba(255,255,255,.04);font-size:12px;line-height:1.7;">
       <div><strong>${escapeHtml(phase.id)}</strong>｜当前门禁：${escapeHtml(phase.current_gate)}｜阶段状态：${escapeHtml(phase.status)}</div>
       <div style="color:#9aa4b2;">
         预算上限 ${money(phase.ceiling_cny)}｜已分配 ${money(phase.allocated_cny)}｜未分配 ${money(phase.unallocated_cny)}｜已知待补缺口 ${money(phase.known_pending_gap_cny)}
       </div>
+      ${budgetBar}
+      <div style="color:#9aa4b2;font-size:11px;">口径：本页是排期控制源（control.yaml）；总览→预算是场景动态估算口径，两处数不一样是口径不同。${overviewLink}</div>
       <div style="color:#d8d8e4;">
         未报价 ${counts.unpriced_components} 个｜open 门禁 ${counts.open_decision_gates} 条｜就绪包 ${counts.ready_packages} 个｜共 ${counts.packages} 个包 / ${counts.checks} 项检查
       </div>
@@ -129,13 +161,18 @@ export class NextActionPanel {
       const cards = sorted.map((item) => {
         const clickable = Boolean(item.package_id);
         const badge = `<span style="padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.08);color:#9aa4b2;font-size:10px;white-space:nowrap;">解除下游 ${item.unblocks} 项</span>`;
+        // 降密度：默认只露标题 + 「解除下游 N 项」关键数；长说明与 check 编号、
+        // 关联包提示收进 <details>，点「详情」再展开（不删内容，只是折叠）。
         return `<div data-action-ref="${escapeHtml(item.ref)}" data-action-kind="${escapeHtml(item.kind)}" data-action-pkg="${escapeHtml(item.package_id ?? '')}"
           style="margin-bottom:6px;padding:8px 10px;border:1px solid rgba(255,255,255,.12);border-left:3px solid ${color};border-radius:6px;background:rgba(255,255,255,.03);${clickable ? 'cursor:pointer;' : ''}">
           <div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;">
             <strong>${escapeHtml(item.title)}</strong>${badge}
           </div>
-          <div style="margin-top:4px;color:#9aa4b2;font-size:11px;">${escapeHtml(item.detail)}</div>
-          ${clickable ? `<div style="margin-top:4px;color:#6fa8dc;font-size:11px;">关联包 ${escapeHtml(item.package_id!)}（点这条选中该包）</div>` : ''}
+          <details class="action-detail" style="margin-top:2px;">
+            <summary style="cursor:pointer;color:#6fa8dc;font-size:11px;">详情</summary>
+            <div style="margin-top:4px;color:#9aa4b2;font-size:11px;">${escapeHtml(item.detail)}</div>
+            ${clickable ? `<div style="margin-top:4px;color:#6fa8dc;font-size:11px;">关联包 ${escapeHtml(item.package_id!)}（点这条选中该包）</div>` : ''}
+          </details>
         </div>`;
       }).join('');
       return `<div style="margin-bottom:12px;">
@@ -172,6 +209,10 @@ export class NextActionPanel {
   }
 
   private bind(body: HTMLElement): void {
+    body.querySelector('[data-open-overview]')?.addEventListener('click', (event) => {
+      event.stopPropagation();
+      this.options.onOpenOverview?.();
+    });
     for (const card of Array.from(body.querySelectorAll('[data-action-pkg]'))) {
       const node = card as HTMLElement;
       const packageId = node.dataset.actionPkg ?? '';

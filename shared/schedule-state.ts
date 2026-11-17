@@ -1465,10 +1465,19 @@ export interface SchedulePackageProjectionView {
   blocking_reasons: string[];
   constraints: ScheduleConstraintView[];
 }
+/** 业主明示的里程碑（2026-11-17，control.yaml work_calendar.milestones）：真实日历日期，
+ * 独立于 anchor_date，不参与排程投影、不推导工期；是首屏状态条倒计时的唯一来源。 */
+export interface ScheduleMilestone {
+  key: string;
+  label: string;
+  date: string;
+}
 export interface ScheduleProjectionView {
   /** 排程零点；null = 尚未定锚（此时 ordinals 的 date 全 null，UI 只显示「第 N 工作日」）。 */
   anchor_date: string | null;
   calendar: { workdays: number[]; rest_dates: string[]; extra_workdates: string[] };
+  /** 业主明示的里程碑（control.yaml 落源）；未声明 = []，不是缺字段。 */
+  milestones: ScheduleMilestone[];
   ordinals: ScheduleOrdinalView[];
   /** key = PKG id；只含主车道（sequence < 900）——PKG-900 侧车道不参与排程（设计 §4）。 */
   packages: Record<string, SchedulePackageProjectionView>;
@@ -1603,6 +1612,39 @@ function validateWorkCalendar(calendar: unknown, errors: string[], blockerStatus
   if (typeof anchorDate === 'string' && cal.anchor_status !== 'resolved') {
     errors.push(`work_calendar.anchor_date: anchor_date_without_resolved_status — anchor_date=${anchorDate} 但 anchor_status=${JSON.stringify(cal.anchor_status)}，锚点日期必须等 anchor_status: resolved 才允许填`);
   }
+  // 里程碑（2026-11-17）：业主明示的真实日期，独立于 anchor_date，不参与投影；
+  // 缺失 = 未声明（空数组），不是错误；一旦声明就必须形状合法、日期真实、key 唯一。
+  if (cal.milestones !== undefined && cal.milestones !== null) {
+    if (!Array.isArray(cal.milestones)) {
+      errors.push(`work_calendar.milestones: work_calendar_invalid — 必须是 {key, label, date} 数组（got ${JSON.stringify(cal.milestones)}）`);
+    } else {
+      const seenKeys = new Set<string>();
+      cal.milestones.forEach((item: unknown, index: number) => {
+        const label = `work_calendar.milestones[${index}]`;
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          errors.push(`${label}: work_calendar_invalid — 必须是 {key, label, date} 映射`);
+          return;
+        }
+        const record = item as AnyRecord;
+        if (typeof record.key !== 'string' || !record.key.trim()) {
+          errors.push(`${label}.key: work_calendar_invalid — 必须是非空字符串`);
+        } else if (seenKeys.has(record.key)) {
+          errors.push(`${label}.key: work_calendar_invalid — key 重复 ${JSON.stringify(record.key)}`);
+        } else {
+          seenKeys.add(record.key);
+        }
+        if (typeof record.label !== 'string' || !record.label.trim()) {
+          errors.push(`${label}.label: work_calendar_invalid — 必须是非空字符串`);
+        }
+        // normalizeCalendarDateText 对缺字段/非法串回 undefined，对 null 回 null——
+        // 两者都不是有效日期，都必须报错；只拦 undefined 会让缺 date / date: null
+        // 的里程碑通过校验、随后在 readMilestones 被静默丢弃（Codex 二审 blocking）。
+        if (typeof normalizeCalendarDateText(record.date) !== 'string') {
+          errors.push(`${label}.date: work_calendar_invalid — 须为真实存在的 YYYY-MM-DD（got ${JSON.stringify(record.date)}）`);
+        }
+      });
+    }
+  }
 }
 
 function validatePackageConstraints(pkg: AnyRecord, errors: string[], blockerStatusValues: Set<string>): void {
@@ -1728,14 +1770,32 @@ function declaredDateList(value: unknown): string[] {
     .filter((item): item is string => typeof item === 'string');
 }
 
+/** 里程碑的宽容读取（快照键用）：非法成员已被 load 校验报错，这里只滤掉不投。 */
+function readMilestones(declared: AnyRecord): ScheduleMilestone[] {
+  if (!Array.isArray(declared.milestones)) return [];
+  const milestones: ScheduleMilestone[] = [];
+  for (const item of declared.milestones) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+    const record = item as AnyRecord;
+    const date = normalizeCalendarDateText(record.date);
+    if (typeof record.key !== 'string' || !record.key.trim()) continue;
+    if (typeof record.label !== 'string' || !record.label.trim()) continue;
+    if (typeof date !== 'string') continue;
+    if (milestones.some((entry) => entry.key === record.key)) continue;
+    milestones.push({key: record.key, label: record.label, date});
+  }
+  return milestones;
+}
+
 /** work_calendar 声明的宽容读取（快照键用）：非法成员已被 load 校验报错，这里只滤掉不投。 */
-function readWorkCalendarSnapshot(control: AnyRecord): { anchor_date: string | null; calendar: { workdays: number[]; rest_dates: string[]; extra_workdates: string[] } } {
+function readWorkCalendarSnapshot(control: AnyRecord): { anchor_date: string | null; milestones: ScheduleMilestone[]; calendar: { workdays: number[]; rest_dates: string[]; extra_workdates: string[] } } {
   const declared = control.work_calendar && typeof control.work_calendar === 'object' && !Array.isArray(control.work_calendar)
     ? control.work_calendar as AnyRecord
     : {};
   const anchorDate = normalizeCalendarDateText(declared.anchor_date);
   return {
     anchor_date: typeof anchorDate === 'string' ? anchorDate : null,
+    milestones: readMilestones(declared),
     calendar: {
       workdays: Array.isArray(declared.workdays)
         ? declared.workdays.filter((day: unknown): day is number => Number.isInteger(day) && (day as number) >= 0 && (day as number) <= 6)
@@ -1847,6 +1907,7 @@ export function buildScheduleProjectionView(
     return {
       anchor_date: declared.anchor_date,
       calendar: declared.calendar,
+      milestones: declared.milestones,
       ordinals: [],
       packages: {},
     };
@@ -1886,6 +1947,7 @@ export function buildScheduleProjectionView(
   return {
     anchor_date: declared.anchor_date,
     calendar: declared.calendar,
+    milestones: declared.milestones,
     // ordinals 原样透传，不做第二次清空：无锚点时 date 全 null 已由模块输出边界保证
     // （设计 §18——名义纪元已退役，模块不会再产出纪元日期；装配层清空曾是冗余的第二道）。
     // UI 契约「未知保持未知，不造年月日」仍成立：锚点未定 → date null，锚点就绪 → 真实日期；

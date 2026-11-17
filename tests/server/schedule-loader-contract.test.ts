@@ -634,4 +634,44 @@ describe('排程投影在 load 期完成（§14/B2/B3/B4/B5，symlink 农场）'
     );
     assert.ok(state.scheduleProjection, '跳过该约束抬升不应让整份投影失败（模块 §14/B5 契约）');
   });
+
+  // PR #261 里程碑落源：控制源里的里程碑缺 date / date: null 时必须在 load 期报错，
+  // 不许校验放行后被 readMilestones 静默丢弃（Codex 二审 blocking）。
+  it('里程碑缺 date / date: null → work_calendar_invalid 进 load 期 errors，不静默丢', (t) => {
+    t.after(restoreControl);
+    for (const [name, broken] of [
+      ['缺 date 字段', '    - {key: handover, label: 收房}'],
+      ['date: null', '    - {key: handover, label: 收房, date: null}'],
+    ] as const) {
+      writeControl(replaceOnce(
+        pristineControlText,
+        "    - {key: handover, label: 收房, date: '2026-11-26'}",
+        broken,
+      ));
+      const state = loadSandbox();
+      assert.ok(
+        state.errors.some((error) => error.includes('work_calendar.milestones[0].date: work_calendar_invalid')),
+        `${name} 的里程碑必须在 load 期报错，实际 errors：${state.errors.join(' | ')}`,
+      );
+      assert.deepEqual(
+        buildScheduleSnapshot(state).schedule?.milestones ?? [],
+        [
+          {key: 'survey', label: '量房', date: '2026-11-27'},
+          {key: 'demolition', label: '拆改', date: '2026-12-01'},
+        ],
+        `${name} 时坏里程碑不得进快照，好的两条照常在（load 期 errors 已拦下整份快照对外，API 走 503）`,
+      );
+    }
+  });
+
+  it('里程碑完好时原样进快照（不静默丢、不改日期）', (t) => {
+    t.after(restoreControl);
+    const state = loadSandbox();
+    assert.deepEqual(state.errors, [], `控制源完好时 load 期不得有错，实际 errors：${state.errors.join(' | ')}`);
+    assert.deepEqual(buildScheduleSnapshot(state).schedule?.milestones, [
+      {key: 'handover', label: '收房', date: '2026-11-26'},
+      {key: 'survey', label: '量房', date: '2026-11-27'},
+      {key: 'demolition', label: '拆改', date: '2026-12-01'},
+    ]);
+  });
 });

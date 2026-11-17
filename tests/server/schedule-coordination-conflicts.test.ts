@@ -50,35 +50,24 @@ describe('真实 control.yaml：协调冲突进快照（与模块测试同口径
     // 没有同日已确认的真实占用 → conflicts 必空。
     assert.deepEqual(report!.conflicts, []);
 
-    // potential 4 簇：业主 7 / 设计师 6 / 施工方 3 / 空调商 3。
+    // potential 5 簇：业主 7 / 拆改师傅 3 / 水电师傅 2 / 空调商 2 簇（1–25 一簇、
+    // 26–55/37–73 一簇——同一角色两段窗口不相连时是两个簇，不是合并成一个）。
+    // 角色名随 PR #257 自装分包改名（施工方→拆改师傅/水电师傅、设计师并入业主）；
     // 逐条与 tests/server/schedule-projection.test.ts 的「§16 minor：当前试点协调数据」同值——
     // 该用例直接调模块，这里走 loader 摊平，两条路必须给出同一份 sch_ids。
-    const byRole = new Map(report!.potential.map((entry) => [entry.role, entry]));
+    // 注意：potential 是簇数组，同一角色可出现两次——不得用 Map 按 role 去重后断言，
+    // 否则第二簇（空调商 1–25）会被静默吞掉。
     assert.deepEqual(
-      [...byRole.keys()].sort(byRoleKey),
-      ['业主', '施工方', '空调商', '设计师'].sort(byRoleKey),
-      '只有同角色 onsite 且未确认的窗口才成簇（remote/notify 在模块分组前退出）',
+      report!.potential.map((entry) => ({role: entry.role, sch_ids: entry.sch_ids})),
+      [
+        {role: '业主', sch_ids: ['SCH-000-01', 'SCH-000-02', 'SCH-005-01', 'SCH-010-02', 'SCH-030-04', 'SCH-040-03', 'SCH-070-01']},
+        {role: '拆改师傅', sch_ids: ['SCH-000-01', 'SCH-000-02', 'SCH-010-02']},
+        {role: '水电师傅', sch_ids: ['SCH-030-04', 'SCH-070-01']},
+        {role: '空调商', sch_ids: ['SCH-000-01', 'SCH-000-02']},
+        {role: '空调商', sch_ids: ['SCH-030-04', 'SCH-040-03', 'SCH-070-01']},
+      ],
     );
-    assert.deepEqual(byRole.get('业主')?.sch_ids, [
-      'SCH-000-01',
-      'SCH-000-02',
-      'SCH-005-01',
-      'SCH-010-02',
-      'SCH-030-04',
-      'SCH-040-03',
-      'SCH-070-01',
-    ]);
-    assert.deepEqual(byRole.get('设计师')?.sch_ids, [
-      'SCH-000-01',
-      'SCH-000-02',
-      'SCH-010-02',
-      'SCH-030-04',
-      'SCH-040-03',
-      'SCH-070-01',
-    ]);
-    assert.deepEqual(byRole.get('施工方')?.sch_ids, ['SCH-000-01', 'SCH-000-02', 'SCH-010-02']);
-    assert.deepEqual(byRole.get('空调商')?.sch_ids, ['SCH-030-04', 'SCH-040-03', 'SCH-070-01']);
-    assert.equal(report!.potential.length, 4);
+    assert.equal(report!.potential.length, 5);
     // SCH-080-01 是 remote、SCH-090-01 是 notify：不进任何潜在簇（模块口径，不是 loader 过滤）
     for (const exitId of ['SCH-080-01', 'SCH-090-01']) {
       assert.ok(!report!.potential.some((entry) => entry.sch_ids.includes(exitId)), `${exitId} 不得进潜在簇`);
@@ -310,10 +299,10 @@ describe('沙箱（symlink 农场，js-yaml 改树）：空报告与真冲突', 
       assert.deepEqual(state.errors, []);
       const report = state.coordinationConflicts;
       assert.ok(report);
-      // 共同角色 = 业主 / 施工方 / 设计师（空调商与橱柜供应商只有 SCH-000-02 一条 → 不成簇）
+      // 共同角色 = 业主 / 拆改师傅 / 空调商（水电师傅与橱柜供应商只有 SCH-000-02 一条 → 不成簇）
       assert.deepEqual(
         report!.conflicts.map((entry) => entry.role).sort(byRoleKey),
-        ['业主', '施工方', '设计师'].sort(byRoleKey),
+        ['业主', '拆改师傅', '空调商'].sort(byRoleKey),
       );
       for (const conflict of report!.conflicts) {
         assert.deepEqual(conflict.sch_ids, ['SCH-000-01', 'SCH-000-02']);

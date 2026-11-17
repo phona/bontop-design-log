@@ -23,6 +23,8 @@ export interface OverviewMenuOptions {
   onClearCompare?: () => void;
   onCurtainStateChange?: (state: CurtainState) => void;
   onPhaseChange?: (phase: PhaseId) => void;
+  /** 预算口径说明里的「去审批·下一步」按钮回调（App 接线；无回调时不渲染按钮）。 */
+  onOpenApproval?: () => void;
 }
 
 export class OverviewMenu {
@@ -283,6 +285,22 @@ export class OverviewMenu {
       this.appendBudgetRow('已用', this.budget.totalActual);
       this.appendBudgetRow('剩余', this.budget.totalBudget - this.budget.totalActual);
     }
+    // 预算条（图形 + 文字双通道）+ 口径说明：本页是场景动态估算口径，与审批页
+    // 的排期控制源口径不是同一个数，两处各说各话是上一轮评审的 P1-3；这里写清
+    // 口径并互链，不再让业主对着两个数猜。
+    this.renderBudgetBar(phaseCeiling, phaseAllocated);
+    const caliber = document.createElement('div');
+    caliber.className = 'overview-empty overview-budget-caliber';
+    caliber.textContent = '口径：本页是场景动态估算口径（3D 场景口径）；排期口径（上限 / 已分配 / 已知待补缺口）见审批·下一步。';
+    this.budgetEl.appendChild(caliber);
+    if (this.callbacks.onOpenApproval) {
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'overview-budget-approval-link';
+      link.textContent = '去审批·下一步看排期口径 →';
+      link.addEventListener('click', () => this.callbacks.onOpenApproval?.());
+      this.budgetEl.appendChild(link);
+    }
     // 候选价门控汇总放在逐科列表之前，且**两个分支之后**：phaseCeiling 分支（一期相位）
     // 与旧口径分支都必须看得到，否则一期相位下业主根本看不到「这个预算数有多少是未取证的」。
     this.renderBudgetGateSummary(phaseCeiling !== undefined ? '场景动态估算' : '已用');
@@ -465,6 +483,27 @@ export class OverviewMenu {
       <span class="${valueClass}">${escapeHtml(shown)}</span>
     `;
     this.budgetEl.appendChild(row);
+  }
+
+  /**
+   * 预算条：已分配（或已用）占上限（或总预算）的比例。只画比例，不改任何数；
+   * 上限缺失时不画条。
+   */
+  private renderBudgetBar(ceiling: number | undefined, allocated: number | undefined): void {
+    const total = ceiling ?? this.budget?.totalBudget ?? null;
+    const used = allocated ?? this.budget?.totalActual ?? null;
+    if (total == null || total <= 0 || used == null) return;
+    const pct = Math.min(100, Math.round((used / total) * 100));
+    const bar = document.createElement('div');
+    bar.className = 'overview-budget-bar';
+    bar.title = `已分配 ${used.toLocaleString()} / 上限 ${total.toLocaleString()}（${pct}%）`;
+    bar.innerHTML = `
+      <div class="overview-budget-bar-track">
+        <div class="overview-budget-bar-fill" style="width:${pct}%"></div>
+      </div>
+      <div class="overview-budget-bar-label">■ 已分配 ${pct}%</div>
+    `;
+    this.budgetEl.appendChild(bar);
   }
 
   /**

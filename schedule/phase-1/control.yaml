@@ -43,6 +43,13 @@ work_calendar:
   extra_workdates: []
   anchor_date: null
   anchor_status: site_pending
+  # 业主明示的真实日历日期（2026-11-17）：收房 / 量房 / 拆改进场。独立于 anchor_date
+  # （锚点是 PKG-000 启动日，另题裁定；这里的日期不参与排程投影、不推导工期），
+  # 是首屏状态条倒计时的唯一来源——改日期只改这里，UI 不得再硬编码第二份。
+  milestones:
+    - {key: handover, label: 收房, date: '2026-11-26'}
+    - {key: survey, label: 量房, date: '2026-11-27'}
+    - {key: demolition, label: 拆改, date: '2026-12-01'}
 
 budget_pools:
   - id: hard_finish

@@ -1074,6 +1074,132 @@ body.mobile-chrome #data-ready-chip {
   pointer-events: none;
 }
 
+/* ============ 首屏项目状态条（2026-11-17 UI 视觉刷新） ============
+   固定左上，整条可点进审批·下一步；数据与 NextActionPanel 同源
+   （GET /api/schedule/state）。审批页开着时隐藏——那页已有同样摘要，
+   再挂一条是重复。进度条图形 + 文字双通道，不只靠颜色。 */
+#project-status-strip {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 90;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  max-width: min(880px, calc(100vw - 24px));
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(16, 18, 25, 0.92);
+  color: #e0e0e0;
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+#project-status-strip:focus-visible {
+  outline: 2px solid #6fa8dc;
+  outline-offset: 2px;
+}
+
+body.approval-page #project-status-strip {
+  display: none;
+}
+
+.status-strip-date {
+  font-weight: 700;
+  color: #e8f2ff;
+}
+
+.status-strip-milestone strong {
+  color: #e8f2ff;
+}
+
+.status-strip-sep {
+  color: #5a6474;
+}
+
+.status-strip-error {
+  color: #f0a9a5;
+}
+
+.status-strip-progress {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px;
+  height: 14px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.status-strip-progress-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: #5cb85c;
+  border-radius: 7px 0 0 7px;
+}
+
+.status-strip-progress-text {
+  position: relative;
+  font-size: 10px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  white-space: nowrap;
+}
+
+.status-strip-go {
+  color: #6fa8dc;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* 总览预算条（图形 + 文字双通道）与口径互链按钮 */
+.overview-budget-bar {
+  margin: 6px 0;
+}
+
+.overview-budget-bar-track {
+  height: 14px;
+  border-radius: 7px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.overview-budget-bar-fill {
+  height: 100%;
+  background: #5a7a99;
+  border-radius: 7px 0 0 7px;
+}
+
+.overview-budget-bar-label {
+  color: #9aa4b2;
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.overview-budget-caliber {
+  color: #9aa4b2;
+  font-size: 11px;
+}
+
+.overview-budget-approval-link {
+  cursor: pointer;
+  margin-top: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #6fa8dc;
+  background: #2f4a63;
+  color: #e8f2ff;
+  font-size: 12px;
+}
+
 #toolbar {
   position: fixed;
   top: 50px;
@@ -1640,10 +1766,22 @@ body.mobile-chrome #mode-indicator {
   max-width: 40vw;
 }
 
+/* 2026-11-17 视觉刷新：FULL DESIGN chip 原来 bottom 64px，与预演呼出按钮
+   （bottom 60px，同一右下角）重叠；抬到按钮上方（按钮高约 37px + 间隙）。 */
 body.mobile-chrome #phase-indicator {
-  bottom: calc(64px + env(safe-area-inset-bottom));
+  bottom: calc(116px + env(safe-area-inset-bottom));
   right: 8px;
   font-size: 10px;
+}
+
+/* 首屏状态条（移动端）：避让右上模式提示 chip，下移一行；触控目标 ≥44px。 */
+body.mobile-chrome #project-status-strip {
+  top: 38px;
+  left: 8px;
+  right: 8px;
+  max-width: none;
+  min-height: 44px;
+  font-size: 11px;
 }
 
 /* 工作台呼出按钮：避让底部 tab bar（等特异性、后声明，覆盖旧 ≤700px 底部贴条规则） */

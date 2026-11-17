@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GanttPanel, type GanttScenarioView } from './GanttPanel.js';
 import { ScheduleSelectionStore } from '../state/schedule-selection.js';
 import type {
+  ScheduleCheckView,
   SchedulePackageProjectionView,
   SchedulePackageView,
   ScheduleProjectionView,
@@ -34,6 +35,7 @@ function scheduleView(overrides: Partial<ScheduleProjectionView> = {}): Schedule
   return {
     anchor_date: null,
     calendar: {workdays: [1, 2, 3, 4, 5], rest_dates: [], extra_workdates: []},
+    milestones: [],
     ordinals: [1, 2, 3, 4, 5, 6].map((ord) => ({ord, date: null})),
     packages: {
       'PKG-010': projectionPkg(),
@@ -195,9 +197,25 @@ function stubClientWidth(width: number): () => void {
   };
 }
 
+function check(id: string, audit_status: string): ScheduleCheckView {
+  return {
+    id,
+    item: '检查',
+    source: 'package',
+    evidence_required: [],
+    audit_status,
+    check_spec_sha256: 'c'.repeat(64),
+  };
+}
+
 describe('GanttPanel', () => {
   beforeEach(() => {
     installDom();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   // 任务书 §4-1 / 设计 §7：min/max 画区间条，不是单值条；文字必须同时标下界与上界。
@@ -714,5 +732,139 @@ describe('GanttPanel', () => {
     expect(bodyText()).not.toContain('基线加载中');
     expect(bodyText()).toContain('当前为基线视图');
     expect(document.querySelector('#gantt-scenario')?.getAttribute('data-active')).toBe('false');
+  });
+
+  // ─── 2026-11-17 UI 视觉刷新（Frappe 视觉模式抄录，不换库） ─────────────
+
+  it('视觉刷新：圆角条 + 条内标签（基线条）+ 验收进度 overlay（不适用除外）', async () => {
+    const state = snapshot({
+      packages: [
+        pkg(),
+        pkg({
+          id: 'PKG-020',
+          name: '水电改造',
+          sequence: 20,
+          checks: [
+            check('SCH-020-01', 'passed'),
+            check('SCH-020-02', 'passed'),
+            check('SCH-020-03', 'pending'),
+            check('SCH-020-04', 'not_applicable'),
+          ],
+        }),
+        pkg({id: 'PKG-030', name: '瓦工铺贴', sequence: 30}),
+      ],
+    });
+    stubFetch({state});
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.gantt-row[data-pkg-id="PKG-020"]')).toBeTruthy());
+
+    const row = document.querySelector('.gantt-row[data-pkg-id="PKG-020"]') as HTMLElement;
+    const baseline = row.querySelector('.gantt-bar[data-lane="baseline"]') as HTMLElement;
+    expect(baseline.style.borderRadius).toBe('3px');
+    const label = baseline.querySelector('.gantt-bar-label') as HTMLElement;
+    expect(label).toBeTruthy();
+    expect(label.textContent).toBe('PKG-020');
+    // 预测条不重复写标签
+    expect(row.querySelector('.gantt-bar[data-lane="forecast"] .gantt-bar-label')).toBeNull();
+    // 验收 2/3（不适用 1 项扣掉分母）：overlay 宽 67%，摘要行写清口径
+    const progress = baseline.querySelector('.gantt-bar-progress') as HTMLElement;
+    expect(progress).toBeTruthy();
+    expect(progress.style.width).toBe('67%');
+    expect(row.textContent).toContain('验收 2/3');
+    // 0 项检查的包没有 overlay（不拿 0% 冒充进度）
+    const row010 = document.querySelector('.gantt-row[data-pkg-id="PKG-010"]') as HTMLElement;
+    expect(row010.querySelector('.gantt-bar-progress')).toBeNull();
+    expect(row010.textContent).toContain('验收 0 项');
+  });
+
+  it('视觉刷新：双行表头——上行序数周（每 5 个工作日一段），下行序数刻度', async () => {
+    stubFetch();
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#gantt-axis')).toBeTruthy());
+
+    const weekRow = document.querySelector('.gantt-week-row') as HTMLElement;
+    expect(weekRow.textContent).toContain('第 1 周');
+    expect(weekRow.textContent).toContain('第 2 周');
+    expect(weekRow.title).toContain('非日历周');
+    // 下行刻度仍在
+    expect(document.querySelector('.gantt-tick-row')?.textContent).toContain('第 1 工作日');
+  });
+
+  it('视觉刷新：锚点已定且今天是工作日时画今日线；锚点未定不画', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-04T08:00:00+08:00'));
+    const view = scheduleView({
+      anchor_date: '2026-03-02',
+      ordinals: [
+        {ord: 1, date: '2026-03-02'},
+        {ord: 2, date: '2026-03-03'},
+        {ord: 3, date: '2026-03-04'},
+        {ord: 4, date: '2026-03-05'},
+        {ord: 5, date: '2026-03-06'},
+        {ord: 6, date: '2026-03-09'},
+      ],
+    });
+    stubFetch({state: snapshot({schedule: view})});
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#gantt-today-line')).toBeTruthy());
+    expect(document.querySelector('#gantt-today-line')?.getAttribute('title')).toContain('第 3 工作日');
+  });
+
+  it('视觉刷新：锚点未定横幅显形（不造日期，说明去向）', async () => {
+    stubFetch();
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('#gantt-anchor-banner')).toBeTruthy());
+    expect(document.querySelector('#gantt-anchor-banner')?.textContent).toContain('锚点未定');
+    expect(document.querySelector('#gantt-anchor-banner')?.textContent).toContain('横轴只显示第 N 工作日');
+  });
+
+  it('视觉刷新：锚点未定没有今日线（不造日期、不画无位置的线）', async () => {
+    stubFetch();
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.gantt-row[data-pkg-id="PKG-020"]')).toBeTruthy());
+    expect(document.querySelector('#gantt-today-line')).toBeNull();
+  });
+
+  it('视觉刷新：密度切换——紧凑/舒适改条高与行距，标签只在舒适态写', async () => {
+    stubFetch();
+    const panel = new GanttPanel(new ScheduleSelectionStore());
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.gantt-row[data-pkg-id="PKG-020"]')).toBeTruthy());
+
+    const lane = () => document.querySelector('.gantt-row[data-pkg-id="PKG-020"] .gantt-lane') as HTMLElement;
+    expect(lane().style.height).toBe('18px');
+    expect(document.querySelector('.gantt-bar-label')).toBeTruthy();
+    (document.querySelector('[data-gantt-density]') as HTMLElement).click();
+    await vi.waitFor(() => expect((document.querySelector('.gantt-row[data-pkg-id="PKG-020"] .gantt-lane') as HTMLElement).style.height).toBe('12px'));
+    expect(document.querySelector('[data-gantt-density]')?.textContent).toContain('紧凑');
+    expect(document.querySelector('.gantt-bar-label')).toBeNull();
+    (document.querySelector('[data-gantt-density]') as HTMLElement).click();
+    await vi.waitFor(() => expect((document.querySelector('.gantt-row[data-pkg-id="PKG-020"] .gantt-lane') as HTMLElement).style.height).toBe('18px'));
+  });
+
+  it('视觉刷新：点条开 popup 速览（仍写选中态），点关闭关掉', async () => {
+    stubFetch();
+    const selection = new ScheduleSelectionStore();
+    const panel = new GanttPanel(selection);
+    panel.show();
+    await vi.waitFor(() => expect(document.querySelector('.gantt-row[data-pkg-id="PKG-020"]')).toBeTruthy());
+
+    (document.querySelector('.gantt-row[data-pkg-id="PKG-020"] .gantt-bar[data-lane="baseline"]') as HTMLElement).click();
+    // 点条仍写选中态（既有契约不丢）
+    expect(selection.get()).toEqual({packageId: 'PKG-020', checkId: null});
+    const popup = document.querySelector('#gantt-popup') as HTMLElement;
+    expect(popup).toBeTruthy();
+    expect(popup.textContent).toContain('PKG-020');
+    expect(popup.textContent).toContain('水电改造');
+    expect(popup.textContent).toContain('已选中此包');
+    // popup 不写配置、不跳页：没有高亮入口
+    expect(popup.querySelector('#gantt-highlight')).toBeNull();
+    (popup.querySelector('[data-gantt-popup-close]') as HTMLElement).click();
+    expect(document.querySelector('#gantt-popup')).toBeNull();
   });
 });
