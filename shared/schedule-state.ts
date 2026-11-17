@@ -1636,7 +1636,10 @@ function validateWorkCalendar(calendar: unknown, errors: string[], blockerStatus
         if (typeof record.label !== 'string' || !record.label.trim()) {
           errors.push(`${label}.label: work_calendar_invalid — 必须是非空字符串`);
         }
-        if (normalizeCalendarDateText(record.date) === undefined) {
+        // normalizeCalendarDateText 对缺字段/非法串回 undefined，对 null 回 null——
+        // 两者都不是有效日期，都必须报错；只拦 undefined 会让缺 date / date: null
+        // 的里程碑通过校验、随后在 readMilestones 被静默丢弃（Codex 二审 blocking）。
+        if (typeof normalizeCalendarDateText(record.date) !== 'string') {
           errors.push(`${label}.date: work_calendar_invalid — 须为真实存在的 YYYY-MM-DD（got ${JSON.stringify(record.date)}）`);
         }
       });
