@@ -286,6 +286,15 @@ export function pipeBoxMaterialPrices(card: MasonryQuote): PipeBoxMaterialPrices
   if (!mortar) {
     throw new Error(`masonry-quotes: 卡 ${card.id} 的 domain.pipe_box_material_reference 缺 mortar 行，包管砂浆无法定价`);
   }
+  // 单价的单位是计价口径的一部分：板材按面积（元/㎡）、砂浆按体积（元/m³）。
+  // 卡行改成元/张、元/t 后数值不变，对账契约也发现不了——单位不匹配即抛错，
+  // 不得悄悄按元/㎡、元/m³换算（Codex review 5939002602 blocking）。
+  if (board.unit !== '元/㎡') {
+    throw new Error(`masonry-quotes: 卡 ${card.id} 的 domain.pipe_box_material_reference 里 fiber_cement_board 行单位是「${board.unit}」，不是「元/㎡」——板材单价按面积计价，单位不匹配不得换算`);
+  }
+  if (mortar.unit !== '元/m³') {
+    throw new Error(`masonry-quotes: 卡 ${card.id} 的 domain.pipe_box_material_reference 里 mortar 行单位是「${mortar.unit}」，不是「元/m³」——砂浆单价按体积计价，单位不匹配不得换算`);
+  }
   return { boardCnyPerSqm: board.price, mortarCnyPerCum: mortar.price };
 }
 

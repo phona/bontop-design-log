@@ -331,3 +331,21 @@ test('包管价：卡里缺项即抛错，不许悄悄退回旧价', () => {
     /mortar/,
   );
 });
+
+test('包管价：材料行单位不匹配即抛错，不得按元/㎡、元/m³悄悄换算（Codex review 5939002602 blocking）', () => {
+  const card = activeMasonryCard(parseMasonryQuotes(readFileSync('config/masonry-labor.yaml', 'utf8')));
+  const domain = masonryCardDomain(card);
+  const withUnit = (material: string, unit: string) => ({
+    ...card,
+    domain: {
+      ...domain,
+      pipe_box_material_reference: domain.pipe_box_material_reference.map((row) =>
+        row.material === material ? { ...row, unit } : row,
+      ),
+    },
+  });
+  // 板材改成按张卖：35 元/张不能当 35 元/㎡ 乘面积，数值不变对账也发现不了。
+  assert.throws(() => pipeBoxMaterialPrices(withUnit('fiber_cement_board', '元/张')), /fiber_cement_board.*元\/张.*元\/㎡/);
+  // 砂浆改成按吨卖：300 元/t 不能当 300 元/m³ 乘体积。
+  assert.throws(() => pipeBoxMaterialPrices(withUnit('mortar', '元/t')), /mortar.*元\/t.*元\/m³/);
+});
