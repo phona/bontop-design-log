@@ -1241,6 +1241,88 @@ test('双控行程安装点端须登记为切分点：支路过另一开关安�
   assert.equal(mini.coverage.unroutedPoints.length, 0, '三点位都有 physical route，覆盖度不得报漏');
 });
 
+test('双控行程 stub 边长须受下引补计开关控制：关掉后不得多算（Codex blocking，PR #255 复审第 13 轮）', () => {
+  // 最小输入（同回路）：两开关安装高 1m；
+  //   rA: swA(0,0) → light，折线 (0,0,2.5) → (1,0,2.5)；
+  //   rB: swB(2,0) → light，折线 (2,0,2.5) → (1,0,2.5)。
+  // 两 stub 各 1.5m，顶部路线共 2m。
+  // 开关开启时行程 = (1.5 + 1 + 1 + 1.5)m × 1.05 = 5.25m；
+  // 关掉 include_terminal_drop 后 stub 不得再计长，行程 = 2m × 1.05 = 2.1m。
+  // 旧建图 terminalStubEdge 无条件带长度，基础导线却按开关决定是否补计下引，
+  // 关掉后附加线仍为 5.25m，静默多算 3.15m 并进入报价；生产该开关为 true，
+  // 故 live 不受影响（生产值 20.69445m 不变，见同文件生产值测试）。
+  const baseRules: MepTakeoffRules = {
+    sources: {
+      electrical_points: 'config/electrical.yaml',
+      plumbing_points: 'config/plumbing.yaml',
+      circuits: 'config/electrical-topology.yaml',
+      routes: 'config/mep-hvac-coordination.yaml',
+      hvac: 'config/hvac.yaml',
+    },
+    covered_layers: ['strong_power'],
+    excluded_layers: [],
+    units: {
+      cores_by_purpose: {},
+      dual_control_extra_cores: 1,
+      loss: { wire: 1.05, pipe: 1.08 },
+      fitting_per_meter: { ppr: 0.35, pvc: 0.27 },
+    },
+    trunk_wire_size: null,
+    include_terminal_drop: true,
+    panel: { main_switch_poles: 1, spd_modules: 1, spare_ratio: 0, round_up: false },
+  };
+  const rA = { id: 'rA', layer: 'strong_power', from: 'swA', to: 'light', route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const rB = { id: 'rB', layer: 'strong_power', from: 'swB', to: 'light', route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const resolution = {
+    total: 2,
+    resolved: 2,
+    unresolved: 0,
+    diagnostics: [],
+    routes: [
+      {
+        route: rA,
+        from: { x: 0, z: 0, y: 2.5 },
+        to: { x: 1, z: 0, y: 2.5 },
+        points: [{ x: 0, y: 2.5, z: 0 }, { x: 1, y: 2.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+      {
+        route: rB,
+        from: { x: 2, z: 0, y: 2.5 },
+        to: { x: 1, z: 0, y: 2.5 },
+        points: [{ x: 2, y: 2.5, z: 0 }, { x: 1, y: 2.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+    ],
+  } as unknown as Parameters<typeof computeMepTakeoff>[0]['resolution'];
+  const run = (includeTerminalDrop: boolean) => computeMepTakeoff({
+    electrical: [
+      { id: 'swA', room: 'living', type: 'switch', height: 1.0 },
+      { id: 'swB', room: 'living', type: 'switch', height: 1.0 },
+      { id: 'light', room: 'living', type: 'light', height: 2.5 },
+    ] as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: [],
+    circuits: [{ id: 'c1', wire_size: '1.5mm²(φ16)', breaker: '漏保', member_point_ids: ['swA', 'swB', 'light'] }],
+    controls: [{ id: 'ctl1', switch_point_ids: ['swA', 'swB'], target_point_ids: ['light'] }],
+    routes: [rA, rB],
+    resolution,
+    rules: { ...baseRules, include_terminal_drop: includeTerminalDrop },
+  });
+  const off = run(false);
+  assert.ok(Math.abs(off.wire.dualControlExtraM - 2.1) < 1e-9,
+    `关掉下引补计后行程应为 2m × 1.05 = 2.1m，实际 ${off.wire.dualControlExtraM}`);
+  assert.equal(off.coverage.unroutedPoints.length, 0, '三点位都有 physical route，覆盖度不得报漏');
+  const on = run(true);
+  assert.ok(Math.abs(on.wire.dualControlExtraM - 5.25) < 1e-9,
+    `开启下引补计时行程应为 5m × 1.05 = 5.25m，实际 ${on.wire.dualControlExtraM}`);
+});
+
 test('双控附加控制线按控制声明算行程：生产值 20.69445m（2026-11-16 量价算法审计）', () => {
   // 独立推导（测试内手写循环，不复用 takeoff 的图算法）：行程边按控制声明手点——
   // 主卧三控：north↔L + north↔door；书房双控：灯↔门口 + 灯↔床头；

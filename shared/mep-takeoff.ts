@@ -1021,6 +1021,9 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         to3d: { x: number; z: number; y: number },
         fromKey: string,
         toKey: string,
+        // （第 13 轮）zeroLength 时各小段边长记 0、连接不断：终端 stub 的下引
+        // 计长受 include_terminal_drop 开关控制，关掉时 stub 只作连接、不计长。
+        zeroLength = false,
       ): void => {
         // （第 12 轮）接入点恰落在段端点时：travelerInteriorT 只认内部点（t=0/1
         // 排除），端点本身已是图节点——但 stub 段的安装点端用点位 ID 作 key，
@@ -1053,7 +1056,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
             routeId: route.id,
             a: keys[k - 1],
             b: keys[k],
-            length: routeSegmentLength(nodes[k - 1], nodes[k], `路由 ${route.id}`),
+            length: zeroLength ? 0 : routeSegmentLength(nodes[k - 1], nodes[k], `路由 ${route.id}`),
             circuit,
           });
         }
@@ -1084,6 +1087,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
             { x: point.x, z: point.z, y },
             endpoint,
             travelerNodeKey({ x: point.x, z: point.z }, y),
+            // （第 13 轮）stub 边长受 include_terminal_drop 开关控制：关掉时
+            // 下引不计长，但边仍保留（零长）、开关仍经 stub 接入图——中途接入
+            // 点仍在 stub 上成节点，与基础导线按同一开关补计下引。
+            !rules.include_terminal_drop,
           );
           return;
         }
