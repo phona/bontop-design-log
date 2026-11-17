@@ -37,6 +37,7 @@ import { CeilingQuotePanel } from './render/analysis/CeilingQuotePanel.js';
 import { CeilingQuoteButton } from './ui/CeilingQuoteButton.js';
 import { SchedulePanel } from './ui/SchedulePanel.js';
 import { NextActionPanel } from './ui/NextActionPanel.js';
+import { ProjectStatusStrip } from './ui/ProjectStatusStrip.js';
 import { ScheduleDetailPanel } from './ui/ScheduleDetailPanel.js';
 import { FlowChartPanel } from './ui/FlowChartPanel.js';
 import { GanttPanel } from './ui/GanttPanel.js';
@@ -136,6 +137,9 @@ export class App {
   // 平级且互不引用：进度着色不碰 set*InspectionVisible、不共享材质。
   private scheduleSelection: ScheduleSelectionStore | null = null;
   private nextActionPanel: NextActionPanel | null = null;
+  // 首屏项目状态条（2026-11-17 UI 视觉刷新）：与 NextActionPanel 同源
+  //（GET /api/schedule/state），只读呈现；点整条进审批·下一步。
+  private projectStatusStrip: ProjectStatusStrip | null = null;
   private schedulePanel: SchedulePanel | null = null;
   private scheduleDetailPanel: ScheduleDetailPanel | null = null;
   private flowChartPanel: FlowChartPanel | null = null;
@@ -315,6 +319,7 @@ export class App {
       onClearCompare: () => this.handleClearCompare(),
       onCurtainStateChange: (state) => void this.handleCurtainStateChange(state),
       onPhaseChange: (phase) => void this.handlePhaseChange(phase),
+      onOpenApproval: () => this.navigateToApproval('next_action'),
     });
     this.modeIndicator = document.getElementById('mode-indicator') as HTMLDivElement;
     this.toastEl = document.getElementById('pointer-lock-toast') as HTMLDivElement;
@@ -484,7 +489,13 @@ export class App {
     // 2026-11-11 issue #202 S3 起共七个审批面板：next_action / schedule / detail / flow /
     // gantt（S2）/ roles / calendar（S3）。
     this.scheduleSelection = new ScheduleSelectionStore();
-    this.nextActionPanel = new NextActionPanel(this.scheduleSelection);
+    this.nextActionPanel = new NextActionPanel(this.scheduleSelection, {
+      onOpenOverview: () => this.toggleOverviewMenu(),
+    });
+    this.projectStatusStrip = new ProjectStatusStrip({
+      onOpenApproval: () => this.navigateToApproval('next_action'),
+    });
+    this.projectStatusStrip.mount();
     this.schedulePanel = new SchedulePanel(this.scheduleSelection, {
       onHighlight: (packageId) => this.viewPackageIn3d(packageId),
     });

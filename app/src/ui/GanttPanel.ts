@@ -109,10 +109,13 @@ const SCENARIO_WATERMARK = '演算视图，非计划；落配置走 AI 会话/PR
 const ACTIVE_BORDER = '#6fa8dc';
 const MAX_VISIBLE_REASONS = 2;
 const MAX_VISIBLE_CONSTRAINTS = 3;
+/** 序数周：自锚点（首个工作日序数）起每 5 个工作日为一周——序数周，非日历周。 */
+const WORKDAYS_PER_WEEK = 5;
 /** 宽屏横轴最多标 12 个刻度（超出按步长抽稀，首末必标）。 */
 const MAX_AXIS_TICKS = 12;
-/** 标签列宽（px）：宽屏包信息列；横轴刻度与它同宽对齐。 */
-const LABEL_COLUMN_PX = 240;
+/** 标签列宽（px）：宽屏包信息列；横轴刻度与它同宽对齐。2026-11-17 视觉刷新
+ * 240→200：把宽度还给条形区，包信息只留 ID/状态/名称，细目收进折叠。 */
+const LABEL_COLUMN_PX = 200;
 
 function labelOf(map: Record<string, string>, value: string | undefined): string {
   if (!value) return '—';
@@ -210,6 +213,20 @@ function tickOrds(bounds: ChartBounds): number[] {
   return ticks;
 }
 
+/** 横轴上行（周分组）：自首个工作日序数起每 5 个工作日一段。 */
+function weekGroupsOf(bounds: ChartBounds): Array<{week: number; start: number; end: number}> {
+  const groups: Array<{week: number; start: number; end: number}> = [];
+  let start = bounds.minOrd;
+  let week = 1;
+  while (start <= bounds.maxOrd) {
+    const end = Math.min(start + WORKDAYS_PER_WEEK - 1, bounds.maxOrd);
+    groups.push({week, start, end});
+    start = end + 1;
+    week += 1;
+  }
+  return groups;
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
 }
@@ -272,6 +289,13 @@ export class GanttPanel {
   private whatIfPending = false;
   private delayText = '';
   private layoutKey = 'wide';
+  /** 条形密度切换（视图切换器的本仓适配：横轴是工作日序数不是日期，Frappe 的
+   * 日/周/月粒度切换没有对应物；改切条形舒适/紧凑——只改呈现，不改数据）。 */
+  private compact = false;
+  /** 点击 popup（Frappe 的条点击弹窗的本仓适配）：只读速览 + 已选中提示；
+   * 元素挂 document.body（fixed 定位），render 时关闭，不随面板重渲残留。 */
+  private popupPkgId: string | null = null;
+  private popupEl: HTMLElement | null = null;
   private resizeObserver: ResizeObserver | null = null;
   /**
    * 取数世代（Codex 一审 blocking+major 的结构性重做，PR #218）：全面板唯一一条合并规则——
@@ -359,6 +383,9 @@ export class GanttPanel {
   // ─── 渲染 ────────────────────────────────────────────────────────────────
 
   private render(): void {
+    // popup 挂 document.body、重渲不自动消失：任何重渲都先关掉，免得旧包的
+    // 速览浮在新图上（点条开 popup 的路径在 render 之后才 showPopup）。
+    this.hidePopup();
     const body = this.el?.querySelector('#gantt-body') as HTMLElement | null;
     if (!body) return;
 
@@ -444,10 +471,18 @@ export class GanttPanel {
     const sourceLine = source === 'what-if'
       ? '数据只读自 <code>/api/schedule/what-if</code>（演算响应，不是计划）；点条只写共享选中态，不做 3D 高亮、不改任何配置——写路径一律走 PR。'
       : '数据只读自 <code>/api/schedule/state</code>（<code>schedule</code> 键）；点条只写共享选中态，不做 3D 高亮、不改任何配置——写路径一律走 PR。';
+    // 锚点未定占位态（2026-11-17 视觉刷新）：锚点是横轴真实日期的唯一来源，
+    // 未定时只显示第 N 工作日——这不是样式问题，是数据未定，必须在图上显形，
+    // 而不是让用户自己发现横轴没有日期。本面板不造日期；锚点、PKG-000 分拆
+    // 与春节停工另行裁定（另一题），不在这里改。
+    const anchorBanner = view.anchor_date ? '' : `<div id="gantt-anchor-banner" style="margin-bottom:8px;padding:8px 10px;border:1px solid rgba(233,196,106,.5);border-radius:6px;background:rgba(233,196,106,.10);color:#f4dfa8;font-size:12px;line-height:1.6;">
+      ⚠ 锚点未定：横轴只显示第 N 工作日，没有真实日期。锚点（PKG-000 启动日）一定后，横轴立即显示真实日期；锚点、PKG-000 分拆与春节停工另行裁定，不在本页改。
+    </div>`;
+    const densityButton = `<div style="margin-bottom:8px;"><button type="button" data-gantt-density style="cursor:pointer;padding:4px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.22);background:#2a2a3e;color:#ccd;font-size:12px;">条形：${this.compact ? '紧凑' : '舒适'}（点切换）</button></div>`;
     const head = `<div id="gantt-head" style="margin-bottom:8px;color:#9aa4b2;font-size:11px;line-height:1.7;">
       共 ${entries.length} 个主车道工作包｜${escapeHtml(this.anchorTextOf(view))}
       <br>${sourceLine}
-    </div>${this.renderLegend()}`;
+    </div>${anchorBanner}${this.renderLegend()}${densityButton}`;
 
     const rows = entries
       .map(([packageId, projection]) => this.renderRow(packageId, projection, bounds, narrow))
@@ -461,10 +496,29 @@ export class GanttPanel {
       </div>`;
     }
 
+    // 今日线要盖住横轴 + 全部行：轴与行包进同一相对定位容器，线按条的位置算
+    // （行内 padding 8px + 标签列 200px + 间距 8px = 216px 起，宽减 224px）。
     return `<div id="gantt-chart">${head}${scenarioBanner}
-      ${this.renderAxis(bounds, view)}
-      ${rows}
+      <div style="position:relative;">${this.renderAxis(bounds, view)}${this.todayLineOf(view, bounds)}${rows}</div>
     </div>`;
+  }
+
+  /**
+   * 今日线（Frappe 今日线的本仓适配）：只在锚点已定、且今天正好是某个工作日
+   * 序数对应的日期时才画——锚点未定（当前）或今天是周末/锚点之前，都没有
+   * 可画的位置，不画线、不造日期。线按条的位置算，与横轴刻度同口径。
+   */
+  private todayLineOf(view: ScheduleProjectionView, bounds: ChartBounds): string {
+    if (!view.anchor_date) return '';
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const entry = (Array.isArray(view.ordinals) ? view.ordinals : [])
+      .find((item) => typeof item.date === 'string' && item.date === today);
+    if (!entry) return '';
+    const span = Math.max(1, bounds.maxOrd - bounds.minOrd + 1);
+    const frac = (entry.ord - bounds.minOrd) / span;
+    const left = `calc(216px + (100% - 224px) * ${frac.toFixed(4)})`;
+    return `<div id="gantt-today-line" title="今天：第 ${entry.ord} 工作日（${escapeHtml(today)}）" style="position:absolute;top:0;bottom:0;left:${left};width:2px;margin-left:-1px;background:#d9534f;z-index:2;pointer-events:none;"><span style="position:absolute;top:0;left:3px;font-size:10px;color:#f0a9a5;background:rgba(217,83,79,.3);padding:1px 4px;border-radius:3px;white-space:nowrap;">今天</span></div>`;
   }
 
   private anchorTextOf(view: ScheduleProjectionView): string {
@@ -473,15 +527,22 @@ export class GanttPanel {
       : '锚点：未定｜横轴：第 N 工作日（不显示日期）';
   }
 
-  /** 图例：颜色与文字成对（基线/预测 + 斜纹尾语义）。 */
+  /** 图例：颜色与文字成对（基线/预测 + 斜纹尾语义 + 验收进度 overlay）。 */
   private renderLegend(): string {
     return `<div id="gantt-legend" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:8px;color:#9aa4b2;font-size:11px;">
       <span>${laneSwatch('baseline')}${LANE_LABEL.baseline}（实心 = min 口径下界，斜纹尾 = 到 max 上界）</span>
       <span>${laneSwatch('forecast')}${LANE_LABEL.forecast}（同口径；无 scenario 时与基线相同）</span>
+      <span>条内绿色 = 验收已通过比例（不适用除外）</span>
       <span>状态点旁一律有中文状态文字</span>
     </div>`;
   }
 
+  /**
+   * 双行表头（Frappe 双行表头的本仓适配）：上行是序数周（自首个工作日序数起
+   * 每 5 个工作日一段，非日历周），下行是原有工作日序数刻度。
+   * 横轴加 `padding:0 8px` 与行同口径：之前轴轨道从 208px 起、条从 216px
+   * 起，刻度与条恒差 8px——今日线要与条对齐，先把这个旧错位修掉。
+   */
   private renderAxis(bounds: ChartBounds, view: ScheduleProjectionView): string {
     const span = Math.max(1, bounds.maxOrd - bounds.minOrd + 1);
     // 日期只在锚点就绪时出现；锚点未定时模块输出 ordinals[].date 全 null（§18），
@@ -492,14 +553,22 @@ export class GanttPanel {
         if (typeof entry.date === 'string') dateByOrd.set(entry.ord, entry.date);
       }
     }
+    const weeks = weekGroupsOf(bounds).map(({week, start, end}) => {
+      const left = `${(((start - bounds.minOrd) / span) * 100).toFixed(3)}%`;
+      const width = `${(((end - start + 1) / span) * 100).toFixed(3)}%`;
+      return `<div class="gantt-week" data-week="${week}" style="position:absolute;left:${left};width:${width};text-align:center;font-size:10px;color:#7d8698;white-space:nowrap;overflow:hidden;border-left:1px solid rgba(255,255,255,.12);">第 ${week} 周</div>`;
+    }).join('');
     const ticks = tickOrds(bounds).map((ord) => {
       const left = `${(((ord - bounds.minOrd) / span) * 100).toFixed(3)}%`;
       const date = dateByOrd.get(ord);
       return `<div class="gantt-tick" data-ord="${ord}" style="position:absolute;left:${left};transform:translateX(-50%);font-size:10px;color:#9aa4b2;white-space:nowrap;">第 ${ord} 工作日${date ? `<span style="color:#7d8698;">（${escapeHtml(date)}）</span>` : ''}</div>`;
     }).join('');
-    return `<div id="gantt-axis" style="display:flex;gap:8px;margin-bottom:4px;">
+    return `<div id="gantt-axis" style="display:flex;gap:8px;margin-bottom:4px;padding:0 8px;box-sizing:border-box;">
       <div style="flex:0 0 ${LABEL_COLUMN_PX}px;color:#9aa4b2;font-size:10px;">包</div>
-      <div style="flex:1 1 auto;min-width:0;position:relative;height:16px;">${ticks}</div>
+      <div style="flex:1 1 auto;min-width:0;position:relative;height:32px;">
+        <div class="gantt-week-row" title="自锚点起每 5 个工作日为一周（序数周，非日历周）" style="position:absolute;left:0;right:0;top:0;height:14px;">${weeks}</div>
+        <div class="gantt-tick-row" style="position:absolute;left:0;right:0;top:16px;height:14px;">${ticks}</div>
+      </div>
     </div>`;
   }
 
@@ -553,16 +622,26 @@ export class GanttPanel {
       ...reasons.map((reason) => `阻塞解释：${reason}`),
     ].join('\n');
 
+    // 降密度（2026-11-17 视觉刷新）：行默认只留 ID/状态/名称 + 两条时间线；
+    // 口径文字、检查记录窗口、约束与阻塞解释收进 <details>，摘要行只露关键数
+    // （基线区间 + 阻塞/约束条数）。选中行自动展开（open 由 active 派生，
+    // 重渲后仍展开；summary 点按不冒泡到行选中，见 bind）。
+    const progress = this.checkProgressOf(packageId);
+    const progressText = progress ? `｜验收 ${progress.passed}/${progress.total}` : '｜验收 0 项';
+    const detailsSummary = `基线 第 ${projection.baseline.start_ord}–第 ${projection.baseline.end_ord_max} 工作日｜阻塞 ${reasons.length} 条｜约束 ${constraints.length} 条${progressText}`;
     const label = `<div class="gantt-label" style="flex:0 0 ${LABEL_COLUMN_PX}px;min-width:0;">
       <div style="display:flex;justify-content:space-between;gap:6px;align-items:center;">
         <strong style="font-size:12px;white-space:nowrap;">${escapeHtml(packageId)}</strong>
         <span style="font-size:11px;">${statusDot(status)}${escapeHtml(statusLabelOf(status))}</span>
       </div>
       <div style="margin-top:1px;font-size:12px;line-height:1.35;">${escapeHtml(name)}</div>
-      ${metrics}
-      ${checkLine}
-      ${constraintsLine}
-      ${reasonsLine}
+      <details class="gantt-row-details"${active ? ' open' : ''} style="margin-top:2px;">
+        <summary style="cursor:pointer;color:#6fa8dc;font-size:11px;">${escapeHtml(detailsSummary)}</summary>
+        ${metrics}
+        ${checkLine}
+        ${constraintsLine}
+        ${reasonsLine}
+      </details>
     </div>`;
 
     // 窄屏同样画「序数条」：百分比位置只依赖 ordinals 的上下界，不建日期轴；行改为单列
@@ -573,7 +652,23 @@ export class GanttPanel {
     </div>`;
 
     return `<div class="gantt-row" data-pkg-id="${escapeHtml(packageId)}" data-active="${active}" title="${escapeHtml(hoverText)}"
-      style="display:${narrow ? 'block' : 'flex'};gap:8px;padding:6px 8px;margin-bottom:6px;border-radius:6px;border:1px solid ${active ? ACTIVE_BORDER : 'rgba(255,255,255,.14)'};background:${active ? 'rgba(111,168,220,.14)' : 'rgba(255,255,255,.03)'};font-size:12px;cursor:pointer;overflow-wrap:break-word;${active ? `box-shadow:0 0 0 2px ${ACTIVE_BORDER};` : ''}">${label}${timeline}</div>`;
+      style="display:${narrow ? 'block' : 'flex'};gap:8px;padding:${this.compact ? '4px 8px' : '6px 8px'};margin-bottom:6px;border-radius:6px;border:1px solid ${active ? ACTIVE_BORDER : 'rgba(255,255,255,.14)'};background:${active ? 'rgba(111,168,220,.14)' : 'rgba(255,255,255,.03)'};font-size:12px;cursor:pointer;overflow-wrap:break-word;${active ? `box-shadow:0 0 0 2px ${ACTIVE_BORDER};` : ''}">${label}${timeline}</div>`;
+  }
+
+  /**
+   * 验收进度（Frappe 进度 overlay 的本仓适配）：已通过 / 全部检查项，
+   * 分母扣掉不适用（不适用不是要做的活）。0 项检查的包没有 overlay——
+   * 没有数据就不画进度，不拿 0% 冒充。演算视图下检查仍读基线快照
+   * （演算不改检查记录窗口，见 scenarioNoteText）。
+   */
+  private checkProgressOf(packageId: string): {passed: number; total: number} | null {
+    const checks = this.snapshotPackage(packageId)?.checks ?? [];
+    const applicable = checks.filter((check) => check.audit_status !== 'not_applicable');
+    if (applicable.length === 0) return null;
+    return {
+      passed: applicable.filter((check) => check.audit_status === 'passed').length,
+      total: applicable.length,
+    };
   }
 
   private renderLane(
@@ -584,22 +679,105 @@ export class GanttPanel {
   ): string {
     const geometry = geometryOf(window, bounds);
     const style = LANE_STYLE[kind];
-    const tail = window.end_ord_max > window.end_ord_min
+    const hasTail = window.end_ord_max > window.end_ord_min;
+    const tail = hasTail
       ? `<div class="gantt-bar-tail" style="position:absolute;left:${geometry.coreWidth};top:0;bottom:0;width:${geometry.tailWidth};box-sizing:border-box;border:1px dashed ${style.fill};border-radius:0 3px 3px 0;background-image:repeating-linear-gradient(45deg,${style.tail} 0 3px,transparent 3px 6px);"></div>`
       : '';
-    return `<div class="gantt-lane" data-lane="${kind}" style="position:relative;height:11px;">
+    // 圆角条形 + 条内标签（Frappe 视觉模式）：条容器圆角 + overflow 隐藏，
+    // 无尾段时核心段四角都圆；基线条内写包 ID（紧凑模式条太矮，标签不写）。
+    const barHeight = this.compact ? 10 : 16;
+    const laneHeight = this.compact ? 12 : 18;
+    const progress = this.checkProgressOf(packageId);
+    const progressPct = progress && progress.total > 0 ? Math.round((progress.passed / progress.total) * 100) : null;
+    const progressOverlay = progressPct === null ? '' : `<div class="gantt-bar-progress" title="验收已通过 ${progress!.passed}/${progress!.total}（不适用除外）" style="position:absolute;left:0;top:0;bottom:0;width:${progressPct}%;background:rgba(92,184,92,.38);border-right:${progressPct > 0 && progressPct < 100 ? '2px solid #5cb85c' : 'none'};z-index:1;"></div>`;
+    const barLabel = kind === 'baseline' && !this.compact
+      ? `<span class="gantt-bar-label" style="position:relative;z-index:2;display:block;height:${barHeight}px;line-height:${barHeight}px;padding-left:4px;font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(packageId)}</span>`
+      : '';
+    const title = progress
+      ? `${metricTextOf(kind, window)}｜验收已通过 ${progress.passed}/${progress.total}`
+      : metricTextOf(kind, window);
+    return `<div class="gantt-lane" data-lane="${kind}" style="position:relative;height:${laneHeight}px;">
       <div class="gantt-bar" data-pkg-id="${escapeHtml(packageId)}" data-lane="${kind}" data-start-ord="${window.start_ord}" data-end-min="${window.end_ord_min}" data-end-max="${window.end_ord_max}"
-        title="${escapeHtml(metricTextOf(kind, window))}"
-        style="position:absolute;left:${geometry.left};width:${geometry.width};top:0;height:10px;">
-        <div class="gantt-bar-core" style="position:absolute;left:0;top:0;bottom:0;width:${geometry.coreWidth};background:${style.fill};border-radius:3px 0 0 3px;"></div>
+        title="${escapeHtml(title)}"
+        style="position:absolute;left:${geometry.left};width:${geometry.width};top:0;height:${barHeight}px;border-radius:3px;overflow:hidden;">
+        <div class="gantt-bar-core" style="position:absolute;left:0;top:0;bottom:0;width:${geometry.coreWidth};background:${style.fill};border-radius:${hasTail ? '3px 0 0 3px' : '3px'};"></div>
         ${tail}
+        ${progressOverlay}
+        ${barLabel}
       </div>
     </div>`;
+  }
+
+  // ─── 点击 popup（Frappe 条点击弹窗的本仓适配） ────────────────────────────
+
+  /** 当前视图（演算态读演算投影，否则读基线）里某包的投影；popup 的事实来源。 */
+  private currentProjection(packageId: string): SchedulePackageProjectionView | undefined {
+    const view = this.whatIfSchedule ?? this.payload?.schedule;
+    return view?.packages?.[packageId];
+  }
+
+  private hidePopup(): void {
+    this.popupEl?.remove();
+    this.popupEl = null;
+    this.popupPkgId = null;
+  }
+
+  /**
+   * 条点击速览：只读事实（状态 / 基线窗口 / 验收进度 / 阻塞与约束数），
+   * 不跳页、不写配置；点条本身已写了选中态（见 bind），这里只提示
+   * 「已选中此包，详情见审批·详情页」。fixed 定位，按被点条的视口位置放，
+   * 放不下时往上/往左收；重渲、点 ×、点关闭都会关掉。
+   */
+  private showPopup(bar: Element | null, packageId: string): void {
+    this.hidePopup();
+    const projection = this.currentProjection(packageId);
+    const packageView = this.snapshotPackage(packageId);
+    if (!projection || !packageView) return;
+    const progress = this.checkProgressOf(packageId);
+    const reasons = projection.blocking_reasons ?? [];
+    const constraints = projection.constraints ?? [];
+    const el = document.createElement('div');
+    el.id = 'gantt-popup';
+    el.setAttribute('role', 'dialog');
+    el.setAttribute('aria-label', `${packageId} 速览`);
+    el.innerHTML = `<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;">
+        <strong style="font-size:13px;">${escapeHtml(packageId)} ${escapeHtml(packageView.name)}</strong>
+        <button type="button" data-gantt-popup-close aria-label="关闭" style="cursor:pointer;padding:0 6px;border-radius:4px;border:1px solid rgba(255,255,255,.22);background:#2a2a3e;color:#ccd;font-size:14px;line-height:1.4;">×</button>
+      </div>
+      <div style="margin-top:6px;font-size:12px;line-height:1.7;">
+        <div>${statusDot(packageView.effective_status)}状态：${escapeHtml(statusLabelOf(packageView.effective_status))}</div>
+        <div>${escapeHtml(metricTextOf('baseline', projection.baseline))}</div>
+        <div>${escapeHtml(metricTextOf('forecast', projection.forecast))}</div>
+        <div>验收已通过 ${progress ? `${progress.passed}/${progress.total}` : '0 项'}（不适用除外）｜阻塞 ${reasons.length} 条｜约束 ${constraints.length} 条</div>
+        <div style="color:#9aa4b2;font-size:11px;">已选中此包，详情见审批·详情页。</div>
+      </div>
+      <div style="margin-top:8px;text-align:right;"><button type="button" data-gantt-popup-close style="cursor:pointer;padding:4px 12px;border-radius:6px;border:1px solid #6fa8dc;background:#2f4a63;color:#e8f2ff;font-size:12px;">关闭</button></div>`;
+    el.style.cssText = 'position:fixed;z-index:300;max-width:320px;padding:10px 12px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:rgba(16,18,25,.97);color:#e0e0e0;box-shadow:0 8px 28px rgba(0,0,0,.55);font-size:12px;';
+    document.body.appendChild(el);
+    const rect = bar?.getBoundingClientRect();
+    const viewWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+    const viewHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+    let left = rect ? rect.left : 8;
+    let top = rect ? rect.bottom + 6 : 8;
+    if (viewWidth > 0) left = Math.max(8, Math.min(left, viewWidth - 340));
+    if (viewHeight > 0 && top + 220 > viewHeight) top = Math.max(8, (rect ? rect.top : 8) - 226);
+    el.style.left = `${Math.max(8, left)}px`;
+    el.style.top = `${Math.max(8, top)}px`;
+    el.querySelectorAll('[data-gantt-popup-close]').forEach((button) => {
+      button.addEventListener('click', () => this.hidePopup());
+    });
+    this.popupEl = el;
+    this.popupPkgId = packageId;
   }
 
   // ─── 事件 ────────────────────────────────────────────────────────────────
 
   private bind(body: HTMLElement): void {
+    // 行内 <details> 的 summary 点按不冒泡到行选中：否则已选中行的折叠永远
+    // 关不上（点 summary → 冒泡选中 → render() → active 行又自动展开）。
+    for (const summary of Array.from(body.querySelectorAll('.gantt-row-details > summary'))) {
+      summary.addEventListener('click', (event) => event.stopPropagation());
+    }
     for (const row of Array.from(body.querySelectorAll('.gantt-row[data-pkg-id]'))) {
       row.addEventListener('click', () => {
         const packageId = String((row as HTMLElement).dataset.pkgId ?? '');
@@ -610,6 +788,24 @@ export class GanttPanel {
         this.render();
       });
     }
+    // 点条：仍只写选中态（既有契约，测试钉住），再开 popup 速览。stopPropagation
+    // 拦住行点击——否则行处理会 render，清掉刚开的 popup。selection.set 经订阅
+    // 同步 render（先清旧 popup），随后按新条定位 popup；包已是选中态时 set
+    // 是空操作，旧条还在，同样能定位。
+    for (const bar of Array.from(body.querySelectorAll('.gantt-bar[data-pkg-id]'))) {
+      bar.addEventListener('click', (event) => {
+        event.stopPropagation();
+        const packageId = String((bar as HTMLElement).dataset.pkgId ?? '');
+        if (!packageId) return;
+        this.selection.set({packageId, checkId: null});
+        const fresh = body.querySelector(`.gantt-bar[data-pkg-id="${packageId}"][data-lane="baseline"]`);
+        this.showPopup(fresh, packageId);
+      });
+    }
+    body.querySelector('[data-gantt-density]')?.addEventListener('click', () => {
+      this.compact = !this.compact;
+      this.render();
+    });
 
     const input = body.querySelector('#gantt-delay-input') as HTMLInputElement | null;
     const readDelay = (): string => (input ? input.value : this.delayText);
