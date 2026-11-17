@@ -564,7 +564,13 @@ export function unionPlanLength(paths: Array<Array<{ x: number; z: number }>>, c
  * 实测现行强电路由约 89m 竖直行程不在计价内，导线总量因此低估约 36%。
  * 竖直段物理上每回路独占（各自的管、各自的线），不做跨回路去重；同一回路内多条
  * 路由共享同一根立管时（同 x,z 的纯竖直边），按 y 区间合并只计一次，与平面 union
- * 的去重哲学一致。带平面分量的斜边无法这样合并，其 |Δy| 按曼哈顿分量逐边计入。
+ * 的去重哲学一致。带平面分量的斜边无法这样合并：其平面分量已在平面 union
+ * 里计过一次，故只补超出平面的真长部分 hypot(平面, Δy) − 平面——
+ * 2026-11-17 前按 |Δy| 全额计入（曼哈顿拆分），3-4-5 斜边计 7m 而非
+ * 5m，生产计价基数 +0.9213m（量价算法审计 S2）。同一条斜边若在不同
+ * 高度重走同一平面段，每条各补各的超出部分（不同高度是不同的管）；
+ * 仅当两条斜边是同一条 3D 线的重复声明时才会多计——那是路由重复，
+ * 由重叠 lint 拦截，不属本函数口径。
  * 终端下引（路由终点标高 → 点位安装高度，config include_terminal_drop 开启时）由
  * computeMepTakeoff 以纯竖直 stub 路径并入本函数的入参，一并走区间合并计入。
  *
@@ -597,7 +603,9 @@ export function pricedCircuitLength(paths: Array<Array<{ x: number; z: number; y
     .filter((points) => points.some((p) => Math.hypot(p.x - points[0].x, p.z - points[0].z) > 1e-9));
   const plan = planPaths.length > 0 ? unionPlanLength(planPaths) : 0;
   const intervals = new Map<string, Array<[number, number]>>();
-  let slantedDy = 0;
+  // 斜边超出平面的真长部分：平面分量已由 union 计过一次，只补
+  // hypot(平面, Δy) − 平面（S2：旧实现按 |Δy| 全额计入，曼哈顿拆分）。
+  let slantedExcess = 0;
   for (const points of checked) {
     for (let i = 1; i < points.length; i += 1) {
       const a = points[i - 1];
@@ -611,11 +619,11 @@ export function pricedCircuitLength(paths: Array<Array<{ x: number; z: number; y
         list.push([Math.min(a.y, b.y), Math.max(a.y, b.y)]);
         intervals.set(key, list);
       } else {
-        slantedDy += dy;
+        slantedExcess += Math.hypot(planD, dy) - planD;
       }
     }
   }
-  let vertical = slantedDy;
+  let vertical = slantedExcess;
   for (const list of intervals.values()) {
     list.sort((p, q) => p[0] - q[0]);
     let curLo = list[0][0];
