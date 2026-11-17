@@ -190,7 +190,7 @@
   },
   "final_state": {
     "status": "open",
-    "lint": "verify:mep 88 errors（must_fix 在册，硬门禁）/ 235 warnings（survey 92 + envelope 143）· routes 137/137 resolved；verify:electrical 0 error / 52 warnings（2026-11-16 强电关系化对账实测；同日 Codex blocking 修复两轮后现值）",
+    "lint": "verify:mep 88 errors（must_fix 在册，硬门禁）/ 230 warnings（survey 92 + envelope 138）· routes 137/137 resolved；verify:electrical 0 error / 52 warnings（2026-11-16 强电关系化对账实测；同日 Codex blocking 修复两轮后现值）",
     "tests": "tests/server/mep-guidance-baseline.test.ts 动态对账本文数与 docs/mep-construction-guidance.md §0/§6、docs/pending-site-data.md 表头口径",
     "disclaimer": "全部 route 仍为 preliminary/proposed/pending，非施工放线依据；DEC-2026-10-06-R1 新增 6 条 design_requirement 给排水需求路线、以及 2026-11-14 全带泵重画后的 condensate 五条支管（泵扬 2.70 + 1% 坡直达客卫固定候选点，R5 残留已关闭）同样不构成放线许可；本台账只记录「哪些 warning 可以带着走、哪些必须交底前清」，不构成任何放线许可"
   }
