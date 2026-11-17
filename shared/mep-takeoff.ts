@@ -1006,6 +1006,21 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         fromKey: string,
         toKey: string,
       ): void => {
+        // （第 12 轮）接入点恰落在段端点时：travelerInteriorT 只认内部点（t=0/1
+        // 排除），端点本身已是图节点——但 stub 段的安装点端用点位 ID 作 key，
+        // 接入点的坐标 key 与之不同，两身份须以零长边连通，否则支路接在安装点
+        // 处悬空、行程静默归零。折线段两端本就是坐标 key，与接入点同 key 时
+        // 不建边（自环无意义）。
+        const samePoint = (p: { x: number; z: number; y: number }, q: { x: number; z: number; y: number }): boolean =>
+          Math.abs(p.x - q.x) <= EPS && Math.abs(p.z - q.z) <= EPS && Math.abs(p.y - q.y) <= EPS;
+        for (const p of junctions) {
+          if (samePoint(p, from3d) && fromKey !== keyOf(p)) {
+            travelerEdges.push({ routeId: route.id, a: fromKey, b: keyOf(p), length: 0, circuit });
+          }
+          if (samePoint(p, to3d) && toKey !== keyOf(p)) {
+            travelerEdges.push({ routeId: route.id, a: toKey, b: keyOf(p), length: 0, circuit });
+          }
+        }
         const cuts = junctions
           .map((p) => ({ p, t: travelerInteriorT(from3d, to3d, p) }))
           .filter((item): item is { p: { x: number; z: number; y: number }; t: number } => item.t !== null)

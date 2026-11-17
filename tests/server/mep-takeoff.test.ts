@@ -1088,6 +1088,82 @@ test('双控行程 stub 须参与接入点切分：支路接在竖直 stub 中�
   assert.equal(mini.coverage.unroutedPoints.length, 0, '三点位都有 physical route，覆盖度不得报漏');
 });
 
+test('双控行程 stub 底端接入须连通：支路接在开关安装点即连通（Codex blocking，PR #255 复审第 12 轮）', () => {
+  // 最小输入（同回路）：两开关安装高 1m，相距 2m；
+  //   rA: swA(0,0) → light1，折线 (0,0,2.5) → (2,0,2.5)；
+  //   rB: swB(2,0) → 接入点 (0,0,1)，折线 (2,0,1) → (0,0,1)。
+  // 正确行程 = 接入段 2m → 2.1m；
+  // 旧建图 travelerInteriorT 排除端点（t=0 不切分），stub 底端记点位 ID、折线用
+  // 坐标 key，两身份在安装点处不连通，行程静默计 0，且 unroutedPoints、
+  // unresolved 均为空（什么都不报）。
+  const miniRules: MepTakeoffRules = {
+    sources: {
+      electrical_points: 'config/electrical.yaml',
+      plumbing_points: 'config/plumbing.yaml',
+      circuits: 'config/electrical-topology.yaml',
+      routes: 'config/mep-hvac-coordination.yaml',
+      hvac: 'config/hvac.yaml',
+    },
+    covered_layers: ['strong_power'],
+    excluded_layers: [],
+    units: {
+      cores_by_purpose: {},
+      dual_control_extra_cores: 1,
+      loss: { wire: 1.05, pipe: 1.08 },
+      fitting_per_meter: { ppr: 0.35, pvc: 0.27 },
+    },
+    trunk_wire_size: null,
+    include_terminal_drop: true,
+    panel: { main_switch_poles: 1, spd_modules: 1, spare_ratio: 0, round_up: false },
+  };
+  const rA = { id: 'rA', layer: 'strong_power', from: 'swA', to: 'light1', route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const rB = { id: 'rB', layer: 'strong_power', from: 'swB', to: { x: 0, z: 0 }, route_kind: 'physical' } as unknown as Parameters<typeof computeMepTakeoff>[0]['routes'][number];
+  const resolution = {
+    total: 2,
+    resolved: 2,
+    unresolved: 0,
+    diagnostics: [],
+    routes: [
+      {
+        route: rA,
+        from: { x: 0, z: 0, y: 2.5 },
+        to: { x: 2, z: 0, y: 2.5 },
+        points: [{ x: 0, y: 2.5, z: 0 }, { x: 2, y: 2.5, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+      {
+        route: rB,
+        from: { x: 2, z: 0, y: 1 },
+        to: { x: 0, z: 0, y: 1 },
+        points: [{ x: 2, y: 1, z: 0 }, { x: 0, y: 1, z: 0 }],
+        viaPoints: [],
+        unresolved: [],
+        diagnostics: [],
+        metadata: { physicalRoute: true, routeKind: 'physical' },
+      },
+    ],
+  } as unknown as Parameters<typeof computeMepTakeoff>[0]['resolution'];
+  const mini = computeMepTakeoff({
+    electrical: [
+      { id: 'swA', room: 'living', type: 'switch', height: 1.0 },
+      { id: 'swB', room: 'living', type: 'switch', height: 1.0 },
+      { id: 'light1', room: 'living', type: 'light', height: 2.5 },
+    ] as unknown as Parameters<typeof computeMepTakeoff>[0]['electrical'],
+    plumbing: [],
+    circuits: [{ id: 'c1', wire_size: '1.5mm²(φ16)', breaker: '漏保', member_point_ids: ['swA', 'swB', 'light1'] }],
+    controls: [{ id: 'ctl1', switch_point_ids: ['swA', 'swB'], target_point_ids: ['light1'] }],
+    routes: [rA, rB],
+    resolution,
+    rules: miniRules,
+  });
+  assert.ok(Math.abs(mini.wire.dualControlExtraM - 2.1) < 1e-9,
+    `支路接在安装点时行程应为 2m × 1.05 = 2.1m，实际 ${mini.wire.dualControlExtraM}`);
+  assert.equal(mini.coverage.unroutedPoints.length, 0, '三点位都有 physical route，覆盖度不得报漏');
+});
+
 test('双控附加控制线按控制声明算行程：生产值 20.69445m（2026-11-16 量价算法审计）', () => {
   // 独立推导（测试内手写循环，不复用 takeoff 的图算法）：行程边按控制声明手点——
   // 主卧三控：north↔L + north↔door；书房双控：灯↔门口 + 灯↔床头；
