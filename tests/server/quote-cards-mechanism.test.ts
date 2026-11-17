@@ -217,3 +217,110 @@ test('既有吊顶卡没有 evidence → comparable 判据不变（不误伤）'
   const mepRaw = readFileSync('config/mep-quotes.yaml', 'utf8');
   assert.ok(!mepRaw.includes('evidence:'), '水电卡当前不带 evidence');
 });
+
+// ─── 缺口 D5：container 行与 part 行同时计价即重复计 ─────────────────────────
+// 量价算法审计 D5：ceiling_zones 的量已含 gypsum_flat_sqm / aluminum_buckle_sqm
+// 的面积；一张卡同时给两边计价，总额会把那部分量算两次。旧 compareQuoteCards
+// 只按行加总、没有任何守卫，新卡靠人工记住 out_of_scope 才不出错。
+
+type OverlapKey = 'total' | 'part';
+
+const OVERLAP_SPEC: QuoteCardSpec<OverlapKey> = {
+  keys: ['total', 'part'],
+  labels: { total: '整包（㎡）', part: '其中子项（㎡）' },
+  fallbackLabel: 'base.json',
+  overlaps: [{ container: 'total', parts: ['part'] }],
+};
+
+const OVERLAP_QUANTITIES: Record<OverlapKey, number> = { total: 100, part: 40 };
+const OVERLAP_FALLBACK: Record<OverlapKey, { per_unit: number | null; unit: string }> = {
+  total: { per_unit: 10, unit: '元/㎡' },
+  part: { per_unit: 20, unit: '元/㎡' },
+};
+
+test('重叠行同时计价即抛错：总额会把子项量算两次（审计 D5）', () => {
+  const both = parseQuoteCards(file([{
+    id: 'x', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted',
+    rates: {
+      total: { per_unit: 10, unit: '元/㎡', scope_note: '含子项' },
+      part: { per_unit: 20, unit: '元/㎡', scope_note: '子项单报' },
+    },
+  }], 'x'), OVERLAP_SPEC);
+  // 子项 40㎡ × 20 元/㎡ = 800 元会被算两次（一次在整包 100㎡ 里、一次单报）
+  assert.throws(() => compareQuoteCards(both, OVERLAP_QUANTITIES, OVERLAP_FALLBACK, OVERLAP_SPEC), /重复计 800 元/);
+});
+
+test('重叠行一边 out_of_scope 即不触发：只报一边是合法形态（审计 D5）', () => {
+  const oneSide = parseQuoteCards(file([{
+    id: 'x', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted',
+    out_of_scope: ['part'],
+    rates: { total: { per_unit: 10, unit: '元/㎡', scope_note: '含子项' } },
+  }], 'x'), OVERLAP_SPEC);
+  const comparison = compareQuoteCards(oneSide, OVERLAP_QUANTITIES, OVERLAP_FALLBACK, OVERLAP_SPEC)[0];
+  assert.equal(comparison.total, 1000);
+  assert.deepEqual(comparison.outOfScopeRows, ['part']);
+});
+
+test('重叠行一边待报价时不抛错：总额本就是 null，尚未多算（审计 D5）', () => {
+  const pending = parseQuoteCards(file([{
+    id: 'x', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted',
+    rates: {
+      total: { per_unit: 10, unit: '元/㎡', scope_note: '含子项' },
+      part: { per_unit: null, unit: '元/㎡' },
+    },
+  }], 'x'), OVERLAP_SPEC);
+  const comparison = compareQuoteCards(pending, OVERLAP_QUANTITIES, OVERLAP_FALLBACK, OVERLAP_SPEC)[0];
+  assert.equal(comparison.total, null);
+  assert.deepEqual(comparison.pendingRows, ['part']);
+});
+
+// ─── D5 补：零金额行不是重复收费（Codex major，PR #255 复审第 14 轮）───
+
+type ZeroKey = 'total' | 'partZeroQty' | 'partZeroRate';
+
+const ZERO_SPEC: QuoteCardSpec<ZeroKey> = {
+  keys: ['total', 'partZeroQty', 'partZeroRate'],
+  labels: { total: '整包（㎡）', partZeroQty: '零量子项（㎡）', partZeroRate: '免费子项（㎡）' },
+  fallbackLabel: 'base.json',
+  overlaps: [{ container: 'total', parts: ['partZeroQty', 'partZeroRate'] }],
+};
+
+const ZERO_QUANTITIES: Record<ZeroKey, number> = { total: 100, partZeroQty: 0, partZeroRate: 40 };
+const ZERO_FALLBACK: Record<ZeroKey, { per_unit: number | null; unit: string }> = {
+  total: { per_unit: 10, unit: '元/㎡' },
+  partZeroQty: { per_unit: 20, unit: '元/㎡' },
+  partZeroRate: { per_unit: 0, unit: '元/㎡' },
+};
+
+test('重叠行零金额不触发：数量为 0 或单价为 0 的行不增加总额（Codex major，PR #255 复审第 14 轮）', () => {
+  // 复现：总行 100㎡×10 元，子行 0㎡×20 元与 40㎡×0 元——两子行 subtotal 均为 0，
+  // 总额只含总行 1000 元。旧守卫只看 subtotal 非 null，两行都被判“重复计 0 元”；
+  // compareQuoteCards 遍历全部候选，一张这样的卡就能阻断整个报价比较及调用它的预算快照。
+  const zero = parseQuoteCards(file([{
+    id: 'x', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted',
+    rates: {
+      total: { per_unit: 10, unit: '元/㎡', scope_note: '含子项' },
+      partZeroQty: { per_unit: 20, unit: '元/㎡', scope_note: '子项单报' },
+      partZeroRate: { per_unit: 0, unit: '元/㎡', scope_note: '免费子项' },
+    },
+  }], 'x'), ZERO_SPEC);
+  const comparison = compareQuoteCards(zero, ZERO_QUANTITIES, ZERO_FALLBACK, ZERO_SPEC)[0];
+  assert.equal(comparison.total, 1000);
+  assert.equal(comparison.rows.find((row) => row.key === 'partZeroQty')!.subtotal, 0);
+  assert.equal(comparison.rows.find((row) => row.key === 'partZeroRate')!.subtotal, 0);
+});
+
+test('重叠行容器为 0 时不触发：整包免费、子项单独收费只计一次（Codex major，PR #255 复审第 14 轮）', () => {
+  // 对照：容器行数量为 0（subtotal 0），子项 40㎡×20 元 = 800 元单独收费——
+  // 重叠的量只在子项行收了一次钱，总额 800 元，不抛错。
+  const containerZero = parseQuoteCards(file([{
+    id: 'x', contractor: '甲', quoted_at: '2026-10-08', status: 'quoted',
+    rates: {
+      total: { per_unit: 10, unit: '元/㎡', scope_note: '含子项' },
+      partZeroQty: { per_unit: 20, unit: '元/㎡', scope_note: '子项单报' },
+      partZeroRate: { per_unit: 0, unit: '元/㎡', scope_note: '免费子项' },
+    },
+  }], 'x'), ZERO_SPEC);
+  const comparison = compareQuoteCards(containerZero, { total: 0, partZeroQty: 40, partZeroRate: 0 }, ZERO_FALLBACK, ZERO_SPEC)[0];
+  assert.equal(comparison.total, 800);
+});

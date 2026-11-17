@@ -14,7 +14,7 @@ import type {
   DesignOption,
 } from '../shared/types.js';
 import { computeCeilingTakeoff, type CeilingTakeoff } from '../shared/ceiling-takeoff.js';
-import { tangentArc } from '../shared/arc.js';
+import { roundedPolygonArea } from '../shared/polygon-area.js';
 import {
   computeMasonryTakeoff,
   type MasonryFloorRegionInput,
@@ -231,8 +231,18 @@ export function loadMasonryTakeoff(
     // 每间多算最多 0.6㎡，而这条路直接进 masonry 的材料与人工两侧金额。
     areaSqm: roomArea(room),
     // 异形房给 boundary 折线；轴对齐矩形房给包围盒（resolveRoom 的 x/z/width/depth 口径）。
+    // 圆角信息（radius/cx/cz）必须透传：包含判定按实际圆角边界算，剥掉它切除角内
+    // 的区域会被尖角轮廓误判为房内而跳过（Codex blocking，PR #255 复审第 10 轮）。
     ...((room.points ?? []).length
-      ? { points: room.points!.map((point) => ({ x: point.x, z: point.z })) }
+      ? {
+          points: room.points!.map((point) => ({
+            x: point.x,
+            z: point.z,
+            ...(point.radius !== undefined ? { radius: point.radius } : {}),
+            ...(point.cx !== undefined ? { cx: point.cx } : {}),
+            ...(point.cz !== undefined ? { cz: point.cz } : {}),
+          })),
+        }
       : { rect: { x: room.x, z: room.z, width: room.width, depth: room.depth } }),
   }));
 
@@ -249,7 +259,16 @@ export function loadMasonryTakeoff(
         id: String(element.id),
         // 面积为调用方责任（圆角闭式解见本文件 roundedPolygonArea）——模块不读文件系统。
         areaSqm: roundedPolygonArea(points),
-        points: points.map((point) => ({ x: point.x, z: point.z })),
+        // 圆角信息（radius/cx/cz）必须透传：包含判定按实际圆角边界算，剥掉它会使
+        // 带圆角的地面区与同轮廓房间的比较口径分叉、误判横跨（Codex major，
+        // PR #255 复审第 11 轮）。与房间轮廓适配器同口径。
+        points: points.map((point) => ({
+          x: point.x,
+          z: point.z,
+          ...(point.radius !== undefined ? { radius: point.radius } : {}),
+          ...(point.cx !== undefined ? { cx: point.cx } : {}),
+          ...(point.cz !== undefined ? { cz: point.cz } : {}),
+        })),
         excluded: element.excluded === true,
         follow: element.follow as string | undefined,
         room: element.room as string | undefined,
@@ -272,71 +291,6 @@ export function loadMasonryTakeoff(
     // = 贴砖带顶标高上限。必填、不设默认值。
     clearHeight: 2.50,
   });
-}
-
-/** 几何容差：声明坐标只到 0.01m，边界贴合判定用 1e-6 足够，又不至于把隔壁区域吞进来。 */
-const GEO_EPS = 1e-6;
-
-/**
- * 带圆角的多边形面积（㎡）。
- *
- * 圆角**不能**按外接矩形算：`north_platform_floor` 的 NW 角 r=1.0，直角外接算出 1.60㎡，
- * 真实 1.3854㎡（1.60 − [0.5 − π/4]）。做法与 shared/render 的圆角同一套几何——圆心 + 半径
- * 在两条邻边上定切点、锐角面积减圆弓面积；这里取闭式解（不采样折线），所以不存在
- * 「渲染端折线段数不同导致面积对不上」的第二套口径。切点落在邻边线段之外、圆心与半径
- * 不自洽、弧心与邻边不相切、扫角退化时直接抛错（fail-closed）：一条坏弧声明应该让预算
- * 算不出来，而不是悄悄少算 0.21㎡。
- *
- * 切点与弧心统一走 `shared/arc.ts` 的 `tangentArc`（原 `tangentPointOnEdge` 本地副本，
- * 2026-11-07 issue #98 第三阶段 S2 删除）：floor_region 圆角点带声明式 cx/cz，
- * 走 descriptor 的「垂足 = 切点」形态，其越界/不自洽/相切校验即本函数的 fail-closed 守卫。
- */
-function roundedPolygonArea(points: CurtainPoint[]): number {
-  const signed = points.reduce((sum, p, i) => {
-    const q = points[(i + 1) % points.length];
-    return sum + p.x * q.z - q.x * p.z;
-  }, 0) / 2;
-  const orient = Math.sign(signed) || 1;
-  let area = signed;
-  for (let i = 0; i < points.length; i++) {
-    const corner = points[i];
-    if (corner.radius === undefined) continue;
-    if (!(corner.radius > 0)) {
-      throw new Error(`floor_region 圆角半径必须为正（第 ${i} 点 radius=${corner.radius}）`);
-    }
-    if (corner.cx === undefined || corner.cz === undefined) {
-      throw new Error(`floor_region 圆角点缺 cx/cz（第 ${i} 点），弧心不可定位`);
-    }
-    const center = { x: corner.cx, z: corner.cz };
-    const prev = points[(i - 1 + points.length) % points.length];
-    const next = points[(i + 1) % points.length];
-    // 切点/弧心解算唯一入口（shared/arc.ts）。返回 null = 切点落在邻边线段之外、
-    // 半径与弧心不自洽、弧心与邻边不相切或夹角退化——预算算不出来，不悄悄少算一块地。
-    const arc = tangentArc(corner, prev, next, corner.radius, center);
-    if (!arc) {
-      throw new Error(
-        `floor_region 圆角点（第 ${i} 点）无法由 tangentArc 解出切点：切点落在邻边线段之外、半径与弧心不自洽、弧心与邻边不相切或夹角退化`,
-      );
-    }
-    const t1 = arc.start;
-    const t2 = arc.end;
-    // 被圆角替掉的锐角三角形面积
-    const cornerArea = Math.abs(
-      (t1.x - corner.x) * (t2.z - corner.z) - (t2.x - corner.x) * (t1.z - corner.z)
-    ) / 2;
-    const a = { x: t1.x - center.x, z: t1.z - center.z };
-    const b = { x: t2.x - center.x, z: t2.z - center.z };
-    const theta = Math.atan2(Math.abs(a.x * b.z - a.z * b.x), a.x * b.x + a.z * b.z);
-    if (theta <= GEO_EPS || Math.PI - theta <= GEO_EPS) {
-      throw new Error(`floor_region 圆角扫角退化（${theta.toFixed(6)} rad），弧声明与邻边不匹配`);
-    }
-    // 弦与弧之间的圆弓面积（凸角时被磨掉、凹角时被补回的那一块）
-    const segment = corner.radius * corner.radius * (theta - Math.sin(theta)) / 2;
-    const cut = cornerArea - segment;
-    const turn = (corner.x - prev.x) * (next.z - corner.z) - (corner.z - prev.z) * (next.x - corner.x);
-    area += orient * turn > 0 ? -cut : cut;
-  }
-  return Math.abs(area);
 }
 
 export function loadPaintScopeAreaByRoom(
@@ -395,10 +349,10 @@ function fallbackCeilingRates(baseRaw: Record<string, BudgetCategoryRaw>): Recor
  * 旧代码 `room.area ?? room.width * room.depth` 在异形房上退回 bbox 面积——本案 11 房里
  * 6 房带 `points`（主卧 L 形、客房南向凹口…），bbox 与多边形面积最大差 0.6㎡/间，
  * 而 `RoomLayout.area` 是 optional 所以类型系统不拦。`resolveLayout` 恒给 `area`
- * （server/layout-resolver.ts 的 polygonArea），所以生产路径不会缺；缺了就是数据漏洞，
+ * （server/layout-resolver.ts 的 roundedPolygonArea），所以生产路径不会缺；缺了就是数据漏洞，
  * 必须抛错而不是悄悄换一个更大的数——那会让"少算/多算"看不出是口径问题。
  */
-function roomArea(room: RoomLayout): number {
+export function roomArea(room: RoomLayout): number {
   if (typeof room.area !== 'number' || !Number.isFinite(room.area)) {
     throw new Error(
       `房间 ${room.id} 缺 resolved area（RoomLayout.area）：异形房不能用 width×depth 的 bbox 面积代替。请检查 model-geometry.yaml 的 boundary 与 server/layout-resolver.ts 的解算结果`,
@@ -406,6 +360,11 @@ function roomArea(room: RoomLayout): number {
   }
   return room.area;
 }
+
+/** lineItem calcMode 的全集。'length' 与 'area' 同走 perRoom 分支（延米量源），
+ * 只是 quantityField 的口径不同。未知值会让 fixed/count 分支都不进、整行
+ * 静默消失——量价算法审计 D12。 */
+const KNOWN_CALC_MODES = ['area', 'fixed', 'count', 'length'] as const;
 
 /**
  * 仍按房间公式取量的 quantityField（count 制与遗留别名）。
@@ -757,9 +716,13 @@ export class BudgetCalculator {
         // 防水工（base.json 的 waterproof 分类）按 needs_waterproof 房间计。
         // 与瓦工的 `wet_floor_tile` 是两件事：防水 ≠ 贴砖，且口径不同（这里含厨房，
         // 而厨房地面走干区木纹砖档，见 config/tile-comparison.yaml 的 dry_room_ids）。
+        // 2026-11-16 量价算法审计 D2：曾用 bbox（width×depth），主卫圆角多算
+        // 0.2146㎡（18.496→18.2814㎡，¥370→¥366）；改走 resolved 面积 roomArea，
+        // 与材料侧同口径。cost-summary.ts 的防水交叉核对须同步改，否则两边
+        // 用同一套错公式互相印证。
         case 'wet_floor': {
           const wetRooms = rooms.filter((r) => r.needs_waterproof === true);
-          quantity = wetRooms.reduce((sum, r) => sum + r.width * r.depth, 0);
+          quantity = wetRooms.reduce((sum, r) => sum + roomArea(r), 0);
           break;
         }
         case 'door_count': {
@@ -792,7 +755,9 @@ export class BudgetCalculator {
           cat.actual += rate;
           continue;
         default:
-          continue;
+          // 量价算法审计 D12：base.json 里新增的 labor area 若不在上面，旧代码
+          // 静默跳过整个人工行（金额归零、无 pending、无报错）。未知 area 即抛错。
+          throw new Error(`[budget-calculator] 分类 ${cat.key} 的 labor area ${JSON.stringify(area)} 未知（只认 floor/wet_floor_tile/wall_tile/ceiling/ceiling_zones/curtain_box_linear/paint_wall/wet_floor/door_count/fixture_count/fixed）——人工会被静默跳过`);
       }
       if (rate === null || rate === undefined) {
         // 待报价：数量入 pendingLabor 显形，金额不编（README：没有无依据决策）
@@ -842,6 +807,11 @@ export class BudgetCalculator {
       if (!categoryKey) continue;
 
       const calcMode = li.calcMode ?? 'area';
+      // 量价算法审计 D12：calcMode 拼错（或新增未实现的值）时，fixed/count 分支
+      // 都不进，非 perRoom 的 topic 直接整行静默消失。只认四种口径。
+      if (!(KNOWN_CALC_MODES as readonly string[]).includes(calcMode)) {
+        throw new Error(`[budget-calculator] lineItem topic ${li.topic} 的 calcMode ${JSON.stringify(calcMode)} 未知（只认 ${KNOWN_CALC_MODES.join('、')}）——fixed/count 分支都不进，整行会被静默丢掉`);
+      }
 
       if (calcMode === 'fixed') {
         const optionId = scheme.selections[li.topic]?.default;
@@ -905,7 +875,14 @@ export class BudgetCalculator {
         const declaredField = isDeclaredQuantityField(li.quantityField) ? li.quantityField : null;
         const declared = declaredField ? this.declaredQuantities() : null;
         const quantityFn = li.quantityField ? QUANTITY_FORMULAS[li.quantityField] : null;
-        if (!paintScope && !declared && !quantityFn) continue;
+        // 量价算法审计 D12：quantityField 写错名（或新增未接入的量）时整行静默
+        // 消失。未声明 quantityField 的 perRoom 行同样无量可取——一并抛错。
+        if (!paintScope && !declared && !quantityFn) {
+          throw new Error(
+            `[budget-calculator] lineItem topic ${li.topic} 的 quantityField ${JSON.stringify(li.quantityField)} 没有对应的量源`
+            + `（paintScopeArea / 声明表 ${DECLARED_QUANTITY_FIELDS.join('、')} / QUANTITY_FORMULAS ${Object.keys(QUANTITY_FORMULAS).join('、')}）——整行会被静默丢掉`,
+          );
+        }
 
         for (const room of rooms) {
           const overrideOptionId = scheme.selections[li.topic]?.roomOverrides?.[room.id];

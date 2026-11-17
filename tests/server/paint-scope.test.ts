@@ -426,20 +426,21 @@ test('paint wall segments and ceiling footprints are independently selected and 
   assert.equal(partialWallScope.ceilingAreaByRoom.main_corridor, scope.ceilingAreaByRoom.main_corridor);
 });
 /**
- * 顶面独立复算：Σ(8 间 footprint) − Σ(两间卫浴整间铝扣板投影) = 110.514㎡（DEC-2026-10-23-R04 后）。
+ * 顶面独立复算：Σ(8 间 footprint) − Σ(两间卫浴整间铝扣板投影) = 111.082㎡（DEC-2026-10-23-R04 后；
+ * 2026-11-16 量价算法审计 D1：主卧圆角 −0.2146㎡，111.297→111.082）。
  * 全部从 config 现算（resolveLayout + loadCeilingConfig + overlay 的 paint_ceiling_region），
  * 不写死旧的 103.224 冒充复算。
  */
 test('ceiling paint area equals the config footprints minus the whole-room aluminium-buckle projections', () => {
   const recomputed = ceilingPaintAreaFromConfig();
-  // footprint 口径先自证：8 间 paint_ceiling_region 含主走廊3.75㎡，合计119.233㎡（R01 重算：115.318 + 客餐厅 1.725 + 东南房 2.19）
-  assert.ok(Math.abs(recomputed.total + (3.36 + 4.576) - 119.233) <= 0.02,
-    `扣除前 footprint 合计应约 119.233 ㎡，实算 ${(recomputed.total + 3.36 + 4.576).toFixed(3)}`); // R01 重算
+  // footprint 口径先自证：8 间 paint_ceiling_region 含主走廊3.75㎡，合计119.018㎡（R01 重算：115.318 + 客餐厅 1.725 + 东南房 2.19；2026-11-16 D1 主卧圆角 −0.2146）
+  assert.ok(Math.abs(recomputed.total + (3.36 + 4.576) - 119.018) <= 0.02,
+    `扣除前 footprint 合计应约 119.018 ㎡，实算 ${(recomputed.total + 3.36 + 4.576).toFixed(3)}`); // R01 重算
   // 涂装顶面：两间卫浴的整间铝扣板顶面（客卫 3.36㎡ / 主卫 4.576㎡）不是普通乳胶漆面，必须扣除
-  assert.ok(Math.abs(recomputed.total - 111.297) <= 0.02,
-    `顶面涂装面积应约 111.297 ㎡（119.233 − 客卫 3.36 − 主卫 4.576），实算 ${recomputed.total.toFixed(3)}`);
-  assert.ok(Math.abs((119.233 - recomputed.total) - 7.936) <= 0.02,
-    `铝扣板扣除量应为 7.936 ㎡（3.36 + 4.576），实算 ${(119.233 - recomputed.total).toFixed(3)}`);
+  assert.ok(Math.abs(recomputed.total - 111.082) <= 0.02,
+    `顶面涂装面积应约 111.082 ㎡（119.018 − 客卫 3.36 − 主卫 4.576），实算 ${recomputed.total.toFixed(3)}`);
+  assert.ok(Math.abs((119.018 - recomputed.total) - 7.936) <= 0.02,
+    `铝扣板扣除量应为 7.936 ㎡（3.36 + 4.576），实算 ${(119.018 - recomputed.total).toFixed(3)}`);
 
   // 独立复算必须与 server 侧口径逐分对账：同一个数字不能有两套算法
   const catalog = ProjectCatalog.load('.');
@@ -525,7 +526,7 @@ test('ceiling-only paint selection can run without any wall paint regions', () =
   });
   assert.deepEqual(ceilingOnly.wallAreaByRoom, {});
   assert.equal(ceilingOnly.netWallAreaSqm, 0);
-  assert.equal(ceilingOnly.ceilingAreaSqm, 111.297); // R01 重算
+  assert.equal(ceilingOnly.ceilingAreaSqm, 111.082); // R01 重算；2026-11-16 D1 主卧圆角 −0.2146
 });
 
 test('net area equals gross minus door and window gaps, and matches the budget line items', () => {
@@ -537,8 +538,8 @@ test('net area equals gross minus door and window gaps, and matches the budget l
   assert.ok(Math.abs(scope.grossWallAreaSqm - 184.567) <= 0.02, `毛墙面 ${scope.grossWallAreaSqm}`);
   assert.ok(Math.abs(scope.netWallAreaSqm - 163.786) <= 0.02, `净墙面 ${scope.netWallAreaSqm}`);
   assert.ok(Math.abs(scope.netWallAreaSqm - (scope.grossWallAreaSqm - scope.doorGapAreaSqm - scope.windowGapAreaSqm)) <= 0.01);
-  assert.ok(Math.abs(scope.ceilingAreaSqm - 111.297) <= 0.02, `顶面 ${scope.ceilingAreaSqm}`);
-  assert.ok(Math.abs(scope.netAreaSqm - 313.544) <= 0.02, `墙+顶+窗台净面积 ${scope.netAreaSqm}`); // 2026-11-12：主卫完成面 2.65→2.50，净面积 313.921→313.544
+  assert.ok(Math.abs(scope.ceilingAreaSqm - 111.082) <= 0.02, `顶面 ${scope.ceilingAreaSqm}`); // R01 重算；2026-11-16 D1 主卧圆角 −0.2146
+  assert.ok(Math.abs(scope.netAreaSqm - 313.329) <= 0.02, `墙+顶+窗台净面积 ${scope.netAreaSqm}`); // 2026-11-12：主卫完成面 2.65→2.50，净面积 313.921→313.544；2026-11-16 D1 主卧圆角 −0.2146 → 313.329
   // 相邻飘窗背靠背的端面按「算 0 次」剔除后留 6 条指名 warning（bayCoversCap 安全网）
   assert.equal(scope.warnings.length, 6, `相邻飘窗内部接缝 warning：${scope.warnings.length} 条`);
   assert.ok(scope.warnings.every((w) => /excluded as an internal seam/.test(w)), 'warnings 只能是内部接缝剔除，不应夹带别的问题');
@@ -565,8 +566,8 @@ test('net area equals gross minus door and window gaps, and matches the budget l
   assert.equal(antiMoldSurfaces.length, 1, '防霉漆只用于主卫上飘窗');
 
   // 普通计费面积 = 净墙 + 顶 + 普通窗台（防霉漆窗台不按普通墙漆费率计费）
-  assert.equal(scope.ordinaryAreaSqm, 310.252, '普通计费 = 净墙 163.786 + 顶 111.297 + 普通窗台 35.169（R01 重算；DEC-2026-10-28-R05 窗帘盒归位后普通窗台 +1.100；2026-11-12 吊顶下调普通窗台 −0.114）');
-  assert.equal(scope.grossAreaSqm, 334.325, '毛面积含防霉漆窗台（R01 重算；DEC-2026-10-28-R05 窗帘盒归位后 +1.100；2026-11-12 吊顶下调 −0.377）');
+  assert.equal(scope.ordinaryAreaSqm, 310.037, '普通计费 = 净墙 163.786 + 顶 111.082 + 普通窗台 35.169（R01 重算；DEC-2026-10-28-R05 窗帘盒归位后普通窗台 +1.100；2026-11-12 吊顶下调普通窗台 −0.114；2026-11-16 D1 主卧圆角 −0.2146）');
+  assert.equal(scope.grossAreaSqm, 334.11, '毛面积含防霉漆窗台（R01 重算；DEC-2026-10-28-R05 窗帘盒归位后 +1.100；2026-11-12 吊顶下调 −0.377；2026-11-16 D1 主卧圆角 −0.2146）');
   // 守恒：普通 + 湿区 = 全部涂装面（netAreaSqm），一处不漏也不重复计
   assert.ok(
     Math.abs(scope.ordinaryAreaSqm + scope.antiMoldSqm - scope.netAreaSqm) <= 0.01,
@@ -583,8 +584,8 @@ test('net area equals gross minus door and window gaps, and matches the budget l
   const painting = snapshot.categories.find((category) => category.key === 'painting')!;
   // 阶段 5 口径变更：actual 只计已取证款 + 人工。painting 材料款是候选价 →
   // actual = 纯人工 7,369（旧 8,936.098 = 人工 7,369 + 候选材料 1,567）。
-  assert.ok(Math.abs(painting.actual - 7756) <= 1, `painting actual=${painting.actual}`); // R01 重算：计价面积 310.252×¥25 人工（DEC-2026-10-28-R05 窗帘盒归位后 +1.100；2026-11-12 吊顶下调 310.366→310.252，人工 7759→7756）
-  assert.ok(Math.abs(painting.candidateActual! - 1650) <= 1, `painting candidateActual=${painting.candidateActual}`); // R01 重算；DEC-2026-10-28-R05 窗帘盒归位后计价面积 +1.100，候选材料款 1644→1650
+  assert.ok(Math.abs(painting.actual - 7751) <= 1, `painting actual=${painting.actual}`); // R01 重算：计价面积 310.252×¥25 人工（DEC-2026-10-28-R05 窗帘盒归位后 +1.100；2026-11-12 吊顶下调 310.366→310.252，人工 7759→7756；2026-11-16 D1 主卧圆角 −0.2146，人工 →7751）
+  assert.ok(Math.abs(painting.candidateActual! - 1648.36) <= 1, `painting candidateActual=${painting.candidateActual}`); // R01 重算；DEC-2026-10-28-R05 窗帘盒归位后计价面积 +1.100，候选材料款 1644→1650；2026-11-16 D1 主卧圆角 −0.2146，材料款 1649.51→1648.36
   assert.equal(painting.status, 'ok');
 });
 
@@ -620,35 +621,35 @@ test('paint cost comparison outputs every declared scenario with coat/deduction 
   assert.equal(comparison.scenarios.length, 4);
 
   // 默认口径：2 遍面漆 + 1 遍底漆，扣门窗洞
-  // 计价面积是 ordinaryAreaSqm（312.732㎡）：防霉漆窗台单独计价，不按普通墙漆费率计费
+  // 计价面积是 ordinaryAreaSqm（310.037㎡）：防霉漆窗台单独计价，不按普通墙漆费率计费
   const twoCoats = byId.get('topcoats2_deduct')!;
-  assert.equal(twoCoats.areaSqm, 310.252);
+  assert.equal(twoCoats.areaSqm, 310.037);
   assert.equal(twoCoats.topcoatBuckets, 6, '2 遍面漆需 6 桶');
   assert.equal(twoCoats.primerBuckets, 3, '1 遍底漆需 3 桶');
   assert.equal(twoCoats.materialYuan, 5220);
-  assert.equal(twoCoats.laborYuan, 7756.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 吊顶下调计价面积 −0.114，人工 7759.15→7756.3
-  assert.equal(twoCoats.subtotalYuan, 12976.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
-  assert.equal(twoCoats.vsPlannedDeltaYuan, 1476.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
-  assert.equal(twoCoats.vsOwnerTargetDeltaYuan, 1976.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+  assert.equal(twoCoats.laborYuan, 7750.92); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 吊顶下调计价面积 −0.114，人工 7759.15→7756.3；2026-11-16 D1 主卧圆角 −0.2146，人工 →7750.92
+  assert.equal(twoCoats.subtotalYuan, 12970.92); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
+  assert.equal(twoCoats.vsPlannedDeltaYuan, 1470.92); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
+  assert.equal(twoCoats.vsOwnerTargetDeltaYuan, 1970.92); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
 
-  // 对照：不扣洞 = 普通计费面积 + 门窗洞占位（312.732 + 20.34 = 333.072㎡）
+  // 对照：不扣洞 = 普通计费面积 + 门窗洞占位（310.037 + 20.781 = 330.818㎡）
   const twoCoatsGross = byId.get('topcoats2_no_deduct')!;
-  assert.equal(twoCoatsGross.areaSqm, 331.033);
-  assert.equal(twoCoatsGross.laborYuan, 8275.83); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 吊顶下调计价面积 −0.114，人工 8278.67→8275.83
-  assert.equal(twoCoatsGross.subtotalYuan, 14655.83); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+  assert.equal(twoCoatsGross.areaSqm, 330.818);
+  assert.equal(twoCoatsGross.laborYuan, 8270.45); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 吊顶下调计价面积 −0.114，人工 8278.67→8275.83；2026-11-16 D1 主卧圆角 −0.2146，人工 →8270.45
+  assert.equal(twoCoatsGross.subtotalYuan, 14650.45); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
 
   const oneCoat = byId.get('topcoats1_deduct')!;
-  assert.equal(oneCoat.areaSqm, 310.252);
+  assert.equal(oneCoat.areaSqm, 310.037);
   assert.equal(oneCoat.topcoatBuckets, 3);
   assert.equal(oneCoat.materialYuan, 3480);
-  assert.equal(oneCoat.laborYuan, 7756.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
-  assert.equal(oneCoat.subtotalYuan, 11236.3); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+  assert.equal(oneCoat.laborYuan, 7750.92); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
+  assert.equal(oneCoat.subtotalYuan, 11230.92); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
 
   const oneCoatGross = byId.get('topcoats1_no_deduct')!;
-  assert.equal(oneCoatGross.areaSqm, 331.033);
-  assert.equal(oneCoatGross.subtotalYuan, 12915.83); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+  assert.equal(oneCoatGross.areaSqm, 330.818);
+  assert.equal(oneCoatGross.subtotalYuan, 12910.45); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
 
-  assert.deepEqual(comparison.reconciliation.modeledRangeCny, [11236.3, 14655.83]); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+  assert.deepEqual(comparison.reconciliation.modeledRangeCny, [11230.92, 14650.45]); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
 });
 
 test('paint cost comparison turns an all-in quote into comparable totals', () => {
@@ -662,13 +663,13 @@ test('paint cost comparison turns an all-in quote into comparable totals', () =>
   assert.equal(quote.form, 'turnkey_labor_and_material');
   assert.equal(quote.rateYuanPerSqm, 55);
   // 计价面积取普通计费面积（与默认情景同源：扣门窗洞，且防霉漆窗台不按普通漆计价）
-  assert.equal(quote.areaSqm, 310.252);
-  assert.equal(quote.totalYuan, 17063.86);            // 55 × 310.252；2026-11-12 吊顶下调计价面积 −0.114
-  assert.equal(quote.vsPlannedDeltaYuan, 5563.86);    // vs PKG-080 计划 11500；DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
-  assert.equal(quote.vsOwnerTargetDeltaYuan, 6063.86); // vs 业主目标 11000；DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上
+  assert.equal(quote.areaSqm, 310.037);
+  assert.equal(quote.totalYuan, 17052.04);            // 55 × 310.037；2026-11-12 吊顶下调计价面积 −0.114；2026-11-16 D1 主卧圆角 −0.2146
+  assert.equal(quote.vsPlannedDeltaYuan, 5552.04);    // vs PKG-080 计划 11500；DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
+  assert.equal(quote.vsOwnerTargetDeltaYuan, 6052.04); // vs 业主目标 11000；DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12 同上；2026-11-16 D1 同上
   // 与自下而上涂刷模型（2 遍 + 扣洞 = 11218.48）的差额 = 基层/腻子/样品保护的隐含额度
-  assert.equal(quote.vsBrushingModelDeltaYuan, 4087.56); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12：17063.86 − 12976.3
-  assert.equal(quote.impliedAllowanceYuanPerSqm, 13.17); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12：4087.56 / 310.252 = 13.17
+  assert.equal(quote.vsBrushingModelDeltaYuan, 4081.12); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12：17063.86 − 12976.3；2026-11-16 D1：17052.04 − 12970.92
+  assert.equal(quote.impliedAllowanceYuanPerSqm, 13.16); // DEC-2026-10-28-R05 窗帘盒归位后 +1.100㎡；2026-11-12：4087.56 / 310.252 = 13.17；2026-11-16 D1：4081.12 / 310.037 = 13.16
   // 覆盖范围/遍数未确认 → 状态显形，且 warning 必须提示
   assert.equal(quote.coverage, 'pending_confirmation');
   assert.equal(quote.coats, 'pending_confirmation');
@@ -711,6 +712,27 @@ test('paint cost comparison refuses to run when declarations drift from wall_fin
   assert.throws(
     () => buildPaintCostComparison(layout, config, rigged),
     /diverge from house.yaml wall_finish/,
+  );
+});
+
+test('paint cost comparison refuses a topcoat material without loss_rate instead of substituting the planning multiplier（量价算法审计 D13）', () => {
+  // 旧口径 material.loss_rate ?? planning.loss_multiplier：材料缺损耗率时
+  // 对比悄悄按 1.1 计价，而预算 pricingOf 缺 loss_rate 即抛错——同一材料在
+  // 两边口径不一。live latex_paint_01 的 loss_rate 为 1.1，本测试只动合成副本。
+  const layout = resolveLayout(MG);
+  const catalog = ProjectCatalog.load('.');
+  const config = loadPaintComparisonConfig();
+  // 注意：catalog 是类实例，{...catalog} 会丢原型方法（getRooms 等）；
+  // 用原型链 + own 属性复制，只覆盖 getOption。
+  const rigged: any = Object.assign(Object.create(Object.getPrototypeOf(catalog)), catalog);
+  rigged.getOption = (topic: string, id: string) => {
+    const option = catalog.getOption(topic, id);
+    if (topic === 'paint' && option) return { ...option, loss_rate: undefined };
+    return option;
+  };
+  assert.throws(
+    () => buildPaintCostComparison(layout, config, rigged),
+    /loss_rate is missing/,
   );
 });
 

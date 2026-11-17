@@ -12,6 +12,7 @@ import {
 import { derivedSlopeRunToHeight, isMepViaCoordinate, mepRoutePoints, resolveMepViaSteps, type MepAxis, type MepLevel, type MepRoute, type MepShaft } from './mep-hvac-coordination-schema.js';
 import type { CeilingZone } from './types.js';
 import { ALL_MODEL_TARGET } from './package-objects.js';
+import { overlapArea, shoelace } from './polygon-area.js'; // 交叠面积唯一实现（D10 起）移至 shared/polygon-area.ts，本文件只消费
 //
 // 本层防线解决什么问题
 // ───────────────────
@@ -410,15 +411,6 @@ function toNumber(raw: string): number {
 /** 几何/求和结果统一收敛到 4 位小数，消灭 1.6000000000000005 这类浮点尾巴。 */
 function round4(value: number): number { return Math.round(value * 1e4) / 1e4; }
 
-function shoelace(pts: Pt[]): number {
-  if (pts.length < 3) return 0;
-  let area = 0;
-  for (let i = 0; i < pts.length; i += 1) {
-    const j = (i + 1) % pts.length;
-    area += pts[i].x * pts[j].z - pts[j].x * pts[i].z;
-  }
-  return Math.abs(area / 2);
-}
 
 function bboxArea(pts: Pt[]): number {
   if (!pts.length) return 0;
@@ -1260,74 +1252,20 @@ function runParity(ws: FactsWorkspace, result: FactsLintResult, lines: LineIndex
   }
 }
 
-/** 分离轴 + Sutherland–Hodgman：多边形交叠面积。凸多边形必须作为裁剪多边形。 */
-function polygonConvex(pts: Pt[]): boolean {
-  if (pts.length < 3) return false;
-  let sign = 0;
-  for (let i = 0; i < pts.length; i += 1) {
-    const a = pts[i];
-    const b = pts[(i + 1) % pts.length];
-    const c = pts[(i + 2) % pts.length];
-    const cross = (b.x - a.x) * (c.z - b.z) - (b.z - a.z) * (c.x - b.x);
-    const s = cross > 1e-12 ? 1 : cross < -1e-12 ? -1 : 0;
-    if (s !== 0) {
-      if (sign !== 0 && s !== sign) return false;
-      sign = s;
-    }
-  }
-  return true;
-}
 
-function clipPolygon(subject: Pt[], clip: Pt[]): Pt[] {
-  let output = subject.slice();
-  for (let i = 0; i < clip.length; i += 1) {
-    const a = clip[i];
-    const b = clip[(i + 1) % clip.length];
-    const input = output;
-    output = [];
-    if (!input.length) break;
-    const side = (p: Pt) => (b.x - a.x) * (p.z - a.z) - (b.z - a.z) * (p.x - a.x);
-    for (let j = 0; j < input.length; j += 1) {
-      const current = input[j];
-      const previous = input[(j + input.length - 1) % input.length];
-      const sc = side(current);
-      const sp = side(previous);
-      if (sc >= 0) {
-        if (sp < 0) {
-          const t = sp / (sp - sc);
-          output.push({ x: previous.x + t * (current.x - previous.x), z: previous.z + t * (current.z - previous.z) });
-        }
-        output.push(current);
-      } else if (sp >= 0) {
-        const t = sp / (sp - sc);
-        output.push({ x: previous.x + t * (current.x - previous.x), z: previous.z + t * (current.z - previous.z) });
-      }
-    }
-  }
-  return output;
-}
 
-function overlapArea(a: Pt[], b: Pt[]): { area: number; exact: boolean } {
-  if (polygonConvex(b)) return { area: shoelace(clipPolygon(a, b)), exact: true };
-  if (polygonConvex(a)) return { area: shoelace(clipPolygon(b, a)), exact: true };
-  const inside = (p: Pt, poly: Pt[]) => {
-    let hit = false;
-    for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
-      const xi = poly[i].x, zi = poly[i].z, xj = poly[j].x, zj = poly[j].z;
-      if ((zi > p.z) !== (zj > p.z) && p.x < ((xj - xi) * (p.z - zi)) / (zj - zi) + xi) hit = !hit;
-    }
-    return hit;
-  };
-  const touches = a.some((p) => inside(p, b)) || b.some((p) => inside(p, a));
-  return { area: touches ? Number.NaN : 0, exact: false };
-}
+
+
+
 
 /**
  * T3.8 overlap：两个 dataset 的多边形两两求交。
  *
  * `ignore_follow`（默认 true）：overlay 的 floor_region 若声明了 `follow: <room>`，
  * 说明它是有意的子区域（跟随某房间地材、过渡地面、设备平台），与房间重叠是设计而非
- * 缺陷。只抓「没有 follow 声明却整块落在别人房间里」的那类——corridor_floor 即此。
+ * 缺陷。只抓「没有 follow 声明却整块落在别人房间里」的那类——现行 6 个
+ * floor_region 全声明了 follow（含 corridor_floor 的 follow: study），该类暂无
+ * 实例；组被滤空时另发 overlap_contract_vacuous 警告，见下。
  * 被忽略的项进 notes，不静默。
  */
 function runOverlap(ws: FactsWorkspace, result: FactsLintResult, contract: Contract): void {
@@ -1350,6 +1288,23 @@ function runOverlap(ws: FactsWorkspace, result: FactsLintResult, contract: Contr
   });
   if (ignored > 0) {
     note(result, `${contract.id}：${ignored} 个 floor_region 声明了 follow（有意的子区域/过渡地面），按约定不计交叠`);
+  }
+  // 量价算法审计 D9：follow 过滤会把一组滤空——现行 6 个 floor_region 全声明了
+  // follow，于是本契约实际比较 0 对多边形，永远不可能报出交叠，安全网是
+  // 空转的。组被滤空即发警告（不是 error：数据本身没错，错的是契约的覆盖面；
+  // 改契约口径——比如校验 follow 声明本身是否真实——是后续 redesign）。
+  for (let g = 0; g < groups.length; g += 1) {
+    const rawCount = Array.isArray(ws.datasets?.[names[g]]) ? (ws.datasets[names[g]] as unknown[]).length : 0;
+    if (rawCount > 0 && groups[g].polys.length === 0) {
+      const item = issue(
+        'warning',
+        'overlap_contract_vacuous',
+        `${contract.id}：${names[g]} 组 ${rawCount} 条全被 follow 过滤，实际比较 0 对多边形——本契约空转，交叠永远报不出。须 redesign 契约口径（例如校验 follow 声明本身是否真实），或补一条无 follow 的 fixture 区域`,
+        `datasets:${names[g]}`,
+      );
+      add(result, item);
+      tally(result, item.code);
+    }
   }
   for (let i = 0; i < groups.length; i += 1) {
     for (let j = i + 1; j < groups.length; j += 1) {

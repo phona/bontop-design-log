@@ -177,12 +177,12 @@ elements:
     assert.equal(gypsum.basisUsed, 'comparable');
     assert.equal(gypsum.offSpecEvidence.length, 2);
     assert.equal(gypsum.offSpecEvidence[0].sheet_size_m2, 3.6);
-    // 龙骨：逐构件折算 + 边龙骨用量由 takeoff 周长实算（2.91 米每平米，R01 重算）
+    // 龙骨：逐构件折算 + 边龙骨用量由 takeoff 周长实算（2.88 米每平米，R01 重算；2026-11-16 C-1：阴角周长修正后 2.91→2.88）
     const frame = res.body.items.find((item: { id: string }) => item.id === 'lanzhen50_frame');
     assert.equal(frame.basis, 'per_metre_derived');
     assert.equal(frame.derivedComponents.length, 3);
     const edge = frame.derivedComponents.find((c: { component: string }) => c.component === '边龙骨');
-    assert.deepEqual(edge.metresPerSqm, [2.91, 2.91]);
+    assert.deepEqual(edge.metresPerSqm, [2.88, 2.88]);
     assert.equal(edge.usageStatus, 'model_derived_upper_bound');
     assert.equal(frame.perSqm.min, 35);
     assert.equal(frame.perSqm.max, 44);

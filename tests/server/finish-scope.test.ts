@@ -18,7 +18,7 @@ const ROOT = path.resolve(import.meta.dirname, '../..');
 const readYaml = (file: string): any => parseYaml(readFileSync(path.join(ROOT, file), 'utf8'));
 // 输入装配与 verifier 共用同一实现（shared/finish/input.ts）：此前本文件抄了一份
 // 连 `/^walltile/` 前缀判定都复制的装配逻辑，S4 面层下沉后一并收敛。
-import { buildFinishScopeInput } from '../../shared/finish/input.js';
+import { buildFinishScopeInput, bandTop, roomRect } from '../../shared/finish/input.js';
 
 function buildInput(tolerance = 0.01) {
   return buildFinishScopeInput(tolerance);
@@ -431,4 +431,25 @@ test('finish-scope F09：拿不到锚不静默跳过 → finish.mesh_unattached_
 test('finish-scope F09：没采集场景网格时不判（与 F08 一致，不造 issue）', () => {
   const input = { ...buildInput(), sceneMeshes: undefined };
   assert.deepEqual(validateFinishScope(input).filter((i) => F09_CODES.includes(i.code)), []);
+});
+
+test('finish-scope 输入装配：贴砖/涂装带缺 height 即抛错，不回落 2.65/2.8 魔法数（量价算法审计 D3）', () => {
+  // 旧口径 band.height ?? 2.65（砖）/ ?? 2.8（漆）会让 F01/F03/F07 在凭空
+  // 发明的顶标高上跑检查——可能误报，也可能漏报。钱路（masonry-takeoff /
+  // paint-scope）对缺 height 早已是抛错口径，核查层须与之一致。
+  assert.equal(bandTop({ id: 'b1', height: 2.5 }, 'w_x', 'tile'), 2.5);
+  assert.equal(bandTop({ id: 'b2', height: 2.8 }, 'w_x', 'paint'), 2.8);
+  assert.throws(() => bandTop({ id: 'b3' }, 'w_x', 'tile'), /缺 height/);
+  assert.throws(() => bandTop({ id: 'b4' }, 'w_x', 'paint'), /缺 height/);
+  assert.throws(() => bandTop({ id: 'b5', height: NaN }, 'w_x', 'tile'), /缺 height/);
+  // live 数据全部带 height：装配本身在真实配置上不抛错（由本文件首个测试覆盖）。
+});
+
+test('finish-scope 输入装配：房间缺 width/depth 即抛错，不回落 0（量价算法审计 D3）', () => {
+  // 旧口径 room.width ?? 0 会把房间矩形压成一个点，F06 随后对该房间的任何
+  // 铝扣板 zone 都误报越界。解算器恒自 boundary 的 bbox 给出 width/depth，
+  // 缺了即布局本身已坏。
+  assert.deepEqual(roomRect({ id: 'r1', x: 1, z: 2, width: 3, depth: 4 }), { id: 'r1', x: 1, z: 2, width: 3, depth: 4 });
+  assert.throws(() => roomRect({ id: 'r2', x: 1, z: 2, depth: 4 }), /缺 width\/depth/);
+  assert.throws(() => roomRect({ id: 'r3', x: 1, z: 2, width: 3 }), /缺 width\/depth/);
 });

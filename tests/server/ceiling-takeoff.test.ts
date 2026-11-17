@@ -86,6 +86,53 @@ test('逐分区净面积与声明一致（含圆角/阴角修正）', () => {
   );
 });
 
+test('阴角周长只净增 πf/2：入边 +f、出边 −f 抵消（C-1 回归）', () => {
+  // 2026-11-16 量价算法审计 C-1：旧式 `+2f + πf/2` 把两条邻边都算成 +f，
+  // 每阴角多算 2f（北带 +0.60m、西带 +0.30m）。builder 的 buildMixedRectangleOutline
+  // 轮廓实测：入边跑出 f、出边短掉 f（镜像凹弧则反过来），周长只净增 πf/2。
+  const one = (id: string, area: [number, number, number, number], extra: Record<string, unknown>) => ({
+    id, room: 'kitchen', type: 'drop' as const, thickness: 0.3, area, trade: 'gypsum_board' as const, ...extra,
+  });
+  const fillet = computeCeilingTakeoff([one('f', [0, 0, 1, 1], { concave_fillets: { sw: 0.15 } })]);
+  assert.ok(Math.abs(fillet.zones[0].perimeterM - (4 + (Math.PI * 0.15) / 2)) < 1e-9);
+  assert.ok(Math.abs(fillet.zones[0].netAreaM2 - (1 + 0.15 * 0.15 * (1 - Math.PI / 4))) < 1e-9);
+  assert.ok(Math.abs(fillet.zones[0].expandedAreaM2 - (fillet.zones[0].netAreaM2 + fillet.zones[0].perimeterM * 0.3)) < 1e-9);
+  const mirrored = computeCeilingTakeoff([one('m', [0, 0, 1, 1], { concave_fillets: { se: 0.15 }, concave_fillets_open: { se: 'sw' } })]);
+  assert.ok(Math.abs(mirrored.zones[0].perimeterM - (4 + (Math.PI * 0.15) / 2)) < 1e-9);
+  const round = computeCeilingTakeoff([one('r', [0, 0, 1, 1], { corner_radii: { sw: 0.15 } })]);
+  assert.ok(Math.abs(round.zones[0].perimeterM - (4 - 2 * 0.15 + (Math.PI * 0.15) / 2)) < 1e-9);
+  // 实盘两带：解析周长 == builder 轮廓周长（采样弦误差 <0.002），不再是旧式的 +2f
+  assert.ok(Math.abs(byId.get('ceiling_dining_north_band')!.perimeterM - (7.2 + 2 * (Math.PI * 0.15) / 2)) < 1e-9);
+  assert.ok(Math.abs(byId.get('ceiling_dining_west_band')!.perimeterM - (4.8 - 2 * 0.15 + (Math.PI * 0.15) / 2 + (Math.PI * 0.15) / 2)) < 1e-9);
+  for (const id of ['ceiling_dining_north_band', 'ceiling_dining_west_band']) {
+    const rendered = outlinePerimeter(id);
+    assert.ok(rendered !== undefined, `${id} 渲染侧应能建出轮廓`);
+    assert.ok(Math.abs(byId.get(id)!.perimeterM - rendered!) < 0.002, `${id}: takeoff ${byId.get(id)!.perimeterM} vs render ${rendered}`);
+  }
+});
+
+/** 渲染侧轮廓周长（弧线采样成折线，弦略短于弧，误差 <0.002）。 */
+function outlinePerimeter(id: string): number | undefined {
+  const zone = zones.find((candidate) => candidate.id === id);
+  if (!zone?.area) return undefined;
+  const [x1, z1, x2, z2] = zone.area;
+  const radii = { nw: 0, ne: 0, se: 0, sw: 0 };
+  const fillets = { nw: 0, ne: 0, se: 0, sw: 0 };
+  for (const corner of ['nw', 'ne', 'se', 'sw'] as const) {
+    radii[corner] = zone.corner_radii?.[corner] ?? zone.corner_radius ?? 0;
+    fillets[corner] = zone.concave_fillets?.[corner] ?? 0;
+  }
+  const outline = buildMixedRectangleOutline(x1, z1, x2, z2, radii, fillets, zone.concave_fillets_open);
+  if (!outline) return undefined;
+  let sum = 0;
+  for (let i = 0; i < outline.length; i += 1) {
+    const a = outline[i];
+    const b = outline[(i + 1) % outline.length];
+    sum += Math.hypot(b.x - a.x, b.z - a.z);
+  }
+  return sum;
+}
+
 test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）一致', () => {
   // 2026-11-07（issue #98 第三阶段 S2）：buildMixedRectangleOutline 的凹角切点/弧心已改走
   // shared/arc.ts 的 tangentArc，所以本断言现在就是「闭式 vs descriptor 采样」的分区级实例；
@@ -118,7 +165,7 @@ test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   assert.equal(byClass.drying_rack.zones, 1);
   assert.ok(Math.abs(byClass.drying_rack.netAreaM2 - 1.08) < 1e-9);
   assert.ok(Math.abs(takeoff.totalNetAreaM2 - 46.385) < 0.01) // R01 重算：门厅区 +1.5026; // R04：北带 −0.06 + 客卫吊顶 +0.21
-  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 82.474) < 0.05); // R01 重算：门厅区展开面积 = 净 2.561 + 周长 6.54×厚 0.30；2026-11-12：厨房/客卫/主卫铝扣板 0.15→0.30，三区周长 (12.0+8.72+7.4)×0.15 = +4.218，78.256→82.474
+  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 82.204) < 0.05); // R01 重算：门厅区展开面积 = 净 2.561 + 周长 6.54×厚 0.30；2026-11-12：厨房/客卫/主卫铝扣板 0.15→0.30，三区周长 (12.0+8.72+7.4)×0.15 = +4.218，78.256→82.474；2026-11-16 量价算法审计 C-1：阴角周长 +2f 改 +πf/2（北带 −0.60m、西带 −0.30m），展开 −0.27 → 82.204
 });
 
 test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () => {
@@ -220,4 +267,19 @@ test('铝扣板缺 buckle_panel.module 即抛错，不按 0 块计价', () => {
   const gypsum = computeCeilingTakeoff(zones, rooms);
   assert.equal(gypsum.byClass.gypsum_board.panelCount, 0);
   assert.ok(gypsum.aluminumBucklePanelCount > 0, '对照组：声明完整时板块数照常算出');
+});
+
+test('cove_fillets 声明即抛错：上部翻弧的算量未实现，不得静默少算（审计）', () => {
+  const zone = {
+    id: 'cove_probe', room: 'living_dining', type: 'drop' as const,
+    thickness: 0.3, area: [0, 0, 1, 1] as [number, number, number, number],
+    cove_fillets: { south: 0.15 },
+  };
+  assert.throws(
+    () => computeCeilingTakeoff([zone as any], rooms),
+    /cove_fillets/,
+  );
+  // 对照组：不带 cove 的同形分区照常算出
+  const plain = computeCeilingTakeoff([{ ...zone, cove_fillets: undefined } as any], rooms);
+  assert.equal(plain.zones.length, 1);
 });

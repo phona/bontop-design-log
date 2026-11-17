@@ -194,9 +194,13 @@ function resolveTreatment(
       perimeterM += -2 * r + (Math.PI * r) / 2;
     }
     if (f > 0) {
-      // 阴角：加料 f²(1 − π/4)，两条邻边各长出 f，换成 πf/2 的弧。
+      // 阴角：加料 f²(1 − π/4)，轮廓沿两条邻边各跑出 f 后由 πf/2 的弧接回——
+      // 但周长只净增 πf/2：入边长出 f、出边短掉 f，两者抵消（2026-11-16 量价算法审计 C-1：
+      // 旧式 `+2f + πf/2` 把两条边都算成 +f，与 builder 的 buildMixedRectangleOutline 轮廓
+      // 实测周长差整整 2f/个阴角——北带 +0.60m、西带 +0.30m；弧心/切点走 tangentArc 的
+      // 镜像凹弧同理：入边短 f、出边长 f，同样只净增 πf/2）。
       netAreaM2 += f * f * CORNER_AREA_K;
-      perimeterM += 2 * f + (Math.PI * f) / 2;
+      perimeterM += (Math.PI * f) / 2;
     }
   }
   return { radii, fillets, netAreaM2, perimeterM };
@@ -263,6 +267,15 @@ export function computeCeilingTakeoff(zones: CeilingZone[], rooms?: CeilingTakeo
   const solid: Array<{ zone: CeilingZone; x1: number; z1: number; x2: number; z2: number; width: number; depth: number; measured: CeilingTakeoffZone }> = [];
 
   for (const zone of [...zones].sort((a, b) => a.id.localeCompare(b.id))) {
+    // 量价算法审计：cove_fillets（上部翻弧，DEC-2026-10-08-R05 已全部取消）
+    // 的算量从未实现——builder 会渲出弧面（每米多 πr/2 石膏板面），takeoff
+    // 却只字不读，声明即静默少算。重声明前须先实现弧面算量，在此之前抛错。
+    const coveEntries = Object.entries(zone.cove_fillets ?? {}).filter(([, radius]) => typeof radius === 'number' && radius > 0);
+    if (coveEntries.length > 0) {
+      throw new Error(
+        `吊顶分区 ${zone.id} 声明了 cove_fillets（${coveEntries.map(([edge, radius]) => `${edge} R${radius}`).join('、')}）：上部翻弧的石膏板弧面（每米 πr/2）算量未实现，声明即静默少算。须先实现 cove 弧面算量（或确认取消），再声明`,
+      );
+    }
     if (!SOLID_CEILING_TYPES.has(zone.type) || zone.area === undefined || zone.thickness === undefined) {
       result.excludedIds.push(zone.id);
       continue;

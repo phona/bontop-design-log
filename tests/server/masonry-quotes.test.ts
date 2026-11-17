@@ -53,8 +53,9 @@ test('量只有一份：masonryQuoteQuantities 全部来自 shared/masonry-takeo
   assert.ok(Math.abs(quantities.wall_tile - takeoff.totalTileSqm) < 1e-12, '墙砖+防水台 = totalTileSqm');
   // DEC-2026-10-18-TILE-02 将客卫门外1.125㎡从湿区转入木纹砖干区；
   // DEC-2026-10-25-R01 重算后全屋材料桶为干区121.0624 / 湿区6.811，贴砖35.9836㎡（2026-11-12 PR #225：砖带 2.65→2.50，−1.035）。
-  assert.ok(Math.abs(quantities.floor - 121.0624) < 1e-6, `干区地面实测 ${quantities.floor}`);
-  assert.ok(Math.abs(quantities.wet_floor - 6.811) < 1e-6, `湿区地面实测 ${quantities.wet_floor}`);
+  // 2026-11-16 量价算法审计 D1：主卧/主卫圆角各 −0.2146㎡，干区 120.8478 / 湿区 6.5964（全精度钉值，圆角闭式解带浮点尾）。
+  assert.ok(Math.abs(quantities.floor - 120.84779816339746) < 1e-6, `干区地面实测 ${quantities.floor}`);
+  assert.ok(Math.abs(quantities.wet_floor - 6.596398163397449) < 1e-6, `湿区地面实测 ${quantities.wet_floor}`);
   assert.ok(Math.abs(quantities.wall_tile - 35.98359934708642) < 1e-6, `贴砖实测 ${quantities.wall_tile}`);
 });
 
@@ -138,11 +139,11 @@ test('computeLabor 按三行计价：干区 75、墙砖 50、湿区待报价', (
   const snapshot = new BudgetCalculator(catalog, realRules).calculate(scheme);
   const masonry = snapshot.categories.find((c) => c.key === 'masonry');
   assert.ok(masonry);
-  // round(75 × 121.0624) + round(50 × 35.98359934708642) = 9080 + 1799（DEC-2026-10-25-R01 重算后量；2026-11-12 PR #225 砖带下调 −52）。
+  // round(75 × 120.8478) + round(50 × 35.98359934708642) = 9064 + 1799（DEC-2026-10-25-R01 重算后量；2026-11-12 PR #225 砖带下调 −52；2026-11-16 量价算法审计 D1 主卧圆角 −0.2146㎡，干区人工 −16）。
   // 其中客卫开放洗漱区1.125㎡按木纹砖干区人工计价；湿区费率仍待报价。
   // 阶段 5 口径变更：actual = 已取证材料款 + 人工（不含 candidateActual）。
   // 本 fixture 材料款全未取证 → actual 就是纯人工。
-  assert.equal(masonry.actual, 9080 + 1799, '瓦工人工按费率卡解析价逐行计价（R01 重算）');
+  assert.equal(masonry.actual, 9064 + 1799, '瓦工人工按费率卡解析价逐行计价（R01 重算）');
   assert.deepEqual(masonry.pendingLabor, [
     { area: 'wet_floor_tile', quantity: takeoff.wetFloorSqm, unit: '元/㎡', reason: 'rate 待报价' },
   ], '湿区必须显形为待报价，而不是按 45 元/㎡ 悄悄计入');
@@ -153,9 +154,14 @@ test('防水工的 wet_floor 不被瓦工费率覆盖', () => {
   const snapshot = new BudgetCalculator(catalog, realRules).calculate(scheme);
   const waterproof = snapshot.categories.find((c) => c.key === 'waterproof');
   assert.ok(waterproof);
-  // 防水仍按 base.json 的 20 元/㎡ × needs_waterproof 房间（含厨房）计价，与瓦工三行无关
+  // 防水仍按 base.json 的 20 元/㎡ × needs_waterproof 房间（含厨房）计价，与瓦工三行无关。
+  // 2026-11-16 量价算法审计 D2：期望必须用 resolved 面积（room.area），不用
+  // bbox（width×depth）——主卫圆角 0.2146㎡ 的差正是本测试要锁住的（旧期望 370 是 bbox 口径）。
   const wetRooms = catalog.getRooms().filter((room) => room.needs_waterproof === true);
-  const expected = Math.round(20 * wetRooms.reduce((sum, room) => sum + room.width * room.depth, 0));
+  const expected = Math.round(20 * wetRooms.reduce((sum, room) => {
+    assert.ok(typeof room.area === 'number', `房间 ${room.id} 缺 resolved area，防水期望不得退回 bbox`);
+    return sum + room.area;
+  }, 0));
   assert.equal(waterproof.actual, expected, `防水人工必须仍是 20 元/㎡ × 防水房（实测 ${waterproof.actual}）`);
 });
 

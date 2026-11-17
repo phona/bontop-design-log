@@ -29,7 +29,10 @@
  * 本模块**不 import three、不读文件系统**：CLI/verify 负责加载，server 与 app 共用同一份口径。
  */
 
+import { centerlineSamples } from './arc-polyline.js';
+import type { CurtainPoint } from './types.js';
 import { openingsAlongWall, type WallOpeningSpan } from './wall-segments.js';
+import { overlapArea, signedPolygonArea } from './polygon-area.js';
 
 const EPS = 1e-9;
 
@@ -120,8 +123,13 @@ export interface MasonryRoomInput {
   id: string;
   /** 地面铺砖面积（resolved footprint）。缺省 = 该房不进地面算量，并进 unresolved。 */
   areaSqm?: number;
-  /** boundary 折线（顺序顶点，自动闭合）。缺省 = 跳过脸侧校验，并进 unresolved。 */
-  points?: Array<{ x: number; z: number }>;
+  /**
+   * boundary 折线（顺序顶点，自动闭合）。缺省 = 跳过脸侧校验，并进 unresolved。
+   * 圆角点带 radius/cx/cz（与 layout-resolver 的 resolved 房间同形）：包含判定
+   * 按实际圆角边界算，缺了它圆角切除角内的区域会被尖角轮廓误判为房内而跳过
+   * （Codex blocking，PR #255 复审第 10 轮）。
+   */
+  points?: CurtainPoint[];
   /**
    * 轴对齐矩形房间的包围盒（`resolveRoom` 的 x/z/width/depth 口径：x/z 是中心）。
    * `points` 缺省时用它判「floor_region 整块落在已计费房间内」——与
@@ -140,8 +148,11 @@ export interface MasonryFloorRegionInput {
    * 随「地面材料/人工共用出口」一并上移。
    */
   areaSqm: number;
-  /** region 轮廓（顺序顶点）；给了才能判「整块落在已计费房间内」。 */
-  points?: Array<{ x: number; z: number }>;
+  /** region 轮廓（顺序顶点）；给了才能判「整块落在已计费房间内」。
+   * 圆角信息（radius/cx/cz）须随轮廓透传：包含判定按实际圆角边界算，
+   * 剥掉它会使带圆角的地面区与同轮廓房间的比较口径分叉、误判横跨
+   * （Codex major，PR #255 复审第 11 轮）。 */
+  points?: CurtainPoint[];
   /** 显式 `excluded: true`（开发商已铺 / 业主裁定不铺）——不计，但留档。 */
   excluded?: boolean;
   /** 手工覆盖「整块落在已计费房间内」的结论；不给则由本模块按几何判。 */
@@ -283,6 +294,15 @@ export interface MasonryTakeoffResult {
   totalRoomFloorSqm: number;
   /** floor_region 里**要加进**算量的房间外面积（不在任何已计费房间内、也未 excluded）。 */
   floorRegionExtraSqm: number;
+  /**
+   * 房间外面积里的干区部分（㎡）：`follow` 未指向湿区房的 extra。调用方按干区
+   * 计价基数取这一项，不许再拿混合的 floorRegionExtraSqm 当干区量（Codex
+   * blocking②，PR #255 复审：混合量含外部湿区，tile-cost-comparison 曾把它
+   * 全数加进干区基数）。dry + wet 必须等于 floorRegionExtraSqm。
+   */
+  floorRegionExtraDrySqm: number;
+  /** 房间外面积里的湿区部分（㎡）：`follow` 指向湿区房的 extra。 */
+  floorRegionExtraWetSqm: number;
   /** 房间 footprint 内由内部面层分区转移出的面积；它不是额外面积，不改变全屋总量。 */
   floorRegionInternalSqm: number;
   /** 内部面层分区，budget/material comparison按region.follow解析选材。 */
@@ -362,13 +382,12 @@ export function masonryPointAt(wall: MasonryWallInput, distance: number): { x: n
 // 非门缺 sill **抛错**。本案 model-geometry 的 9 条 openings 全部是 door，
 // 现行数据零行为变化；将来若有窗/垭口声明缺 sill，这里会红而不是静默少扣。
 
-/** 点是否在多边形内或边上。边界算「内」：`corridor_floor` 的四角正压在邻房边上。 */
-export function masonryPointInPolygonOrOnEdge(
+/** 点是否压在多边形某条边上（距离 ≤ tolerance）。严格在内 = 在内或边上且不在边上。 */
+function masonryPointOnPolygonEdge(
   point: { x: number; z: number },
   polygon: Array<{ x: number; z: number }>,
   tolerance = 1e-6,
 ): boolean {
-  if (polygon.length < 3) return false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const a = polygon[j];
     const b = polygon[i];
@@ -382,6 +401,17 @@ export function masonryPointInPolygonOrOnEdge(
     const cz = a.z + dz * t;
     if (Math.hypot(point.x - cx, point.z - cz) <= tolerance) return true;
   }
+  return false;
+}
+
+/** 点是否在多边形内或边上。边界算「内」：`corridor_floor` 的四角正压在邻房边上。 */
+export function masonryPointInPolygonOrOnEdge(
+  point: { x: number; z: number },
+  polygon: Array<{ x: number; z: number }>,
+  tolerance = 1e-6,
+): boolean {
+  if (polygon.length < 3) return false;
+  if (masonryPointOnPolygonEdge(point, polygon, tolerance)) return true;
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const a = polygon[j];
@@ -495,6 +525,8 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
     sillFaceLinearM: 0,
     totalRoomFloorSqm: 0,
     floorRegionExtraSqm: 0,
+    floorRegionExtraDrySqm: 0,
+    floorRegionExtraWetSqm: 0,
     floorRegionInternalSqm: 0,
     floorMaterialRegions: [],
     floorRegionExcludedSqm: 0,
@@ -718,12 +750,26 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   // （wall_region + sill 的 front 竖面）——`wall_region` 是单张 PlaneGeometry、不拆洞，
   // 盖住洞口就是实打实多算。水平台面（top / underside）不在 F07a 现行范围内。
   const openingsByWall = new Map<string, WallOpeningSpan[]>();
+  // 量价算法审计 M-2：openingsAlongWall 会静默跳过投影落到墙段外的洞口
+  // （中心不在任一段内 → 整个跳过）；那样的洞口既逃过 F07a 瓷砖盖洞校验，
+  // 也逃过 openingSill 的 fail-closed 抛错。投影数必须等于声明数。
+  const declaredOpenings: Array<{ id: string; wall: string }> = [];
+  for (const wall of input.walls) {
+    for (const opening of wall.openings ?? []) declaredOpenings.push({ id: opening.id, wall: wall.id });
+  }
   for (const wall of input.walls) {
     const spans = openingsAlongWall(wall);
     if (spans.length) {
       openingsByWall.set(wall.id, spans);
       result.openingsProjected += spans.length;
     }
+  }
+  if (result.openingsProjected !== declaredOpenings.length) {
+    const projectedIds = new Set([...openingsByWall.values()].flat().map((span) => span.id));
+    const skipped = declaredOpenings.filter((opening) => !projectedIds.has(opening.id));
+    throw new Error(
+      `洞口投影丢失 ${skipped.length} 个（声明 ${declaredOpenings.length} 个、投影 ${result.openingsProjected} 个）：${skipped.map((opening) => `${opening.id}@${opening.wall}`).join('、')}——洞口中心落在墙段外（错挂到别的墙上了）；F07a 瓷砖盖洞校验与 openingSill 标高守卫都等不到它`,
+    );
   }
   if (openingsByWall.size === 0) {
     result.unresolved.push({
@@ -868,6 +914,14 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
       result.skippedInsideRoomFloorRegionIds.push(region.id);
       continue;
     }
+    // 量价算法审计：横跨已计费房间边界的 floor_region（一部分点在房间内、
+    // 一部分在外）不能整块按 extra 计——房内部分已由房间 footprint 算过，
+    // 整块 extra 会重复计。须拆成两块（房内随房间、房外作 extra）或显式裁定。
+    if (region.points?.length && region.points.length >= 3 && floorRegionPartiallyInsideCostedRoom(region, costedRooms)) {
+      throw new Error(
+        `floor_region ${region.id} 横跨已计费房间边界（一部分在房间内、一部分在外）：整块按 extra 计会与房间 footprint 重复计。请拆成两块（房内部分随房间、房外部分作 extra）或显式裁定`,
+      );
+    }
     result.floorRegionExtraSqm += region.areaSqm;
     if (region.follow && wetRoomIds.has(region.follow)) externalWetExtra += region.areaSqm;
     else externalDryExtra += region.areaSqm;
@@ -882,6 +936,8 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   }
   result.dryFloorSqm = result.dryRoomFloorSqm + externalDryExtra + transferWetToDry - transferDryToWet;
   result.wetFloorSqm = result.wetRoomFloorSqm + externalWetExtra + transferDryToWet - transferWetToDry;
+  result.floorRegionExtraDrySqm = externalDryExtra;
+  result.floorRegionExtraWetSqm = externalWetExtra;
   result.totalRoomFloorSqm = result.dryRoomFloorSqm + result.wetRoomFloorSqm;
 
   // ── 7. 汇总：逐房 + 总数 + 独立推导对账 ─────────────────────────────────
@@ -969,7 +1025,70 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
   return result;
 }
 
-/** floor_region 轮廓四角是否全部落在某个已计费房间内（多边形包含优先，轴对齐矩形回落包围盒）。 */
+/**
+ * floor_region 与单个已计费房间的交叠面积（精确面积比较，不再枚举几何情形）。
+ *
+ * 判定史：审计初版用采样点（顶点内收 5mm + 形心），漏「房间卡在中间带」的穿越
+ * （第 2 轮）；改顶点严格在内 + 边严格交叉，漏共线重叠（第 3 轮）；补共线同侧
+ * 与边中点，漏边经凹角顶点穿出缺口（第 4 轮）。手写谓词每轮漏一种 realistic
+ * 构形——第 4 轮改为面积比较，一了百了：交叠面积 0 → 房外；等于区域轮廓面积
+ * → 房内；介于其间 → 横跨。overlapArea（Sutherland–Hodgman，凸多边形作裁剪
+ * 边）是 shared/polygon-area.ts 的全仓唯一实现，与 facts-lint 的 overlap 契约
+ * 同源。
+ * 两多边形皆非凸时 exact=false：无法精确计算，本模块 fail-closed 抛错（不静
+ * 默按 extra/跳过）。现行数据不触发（全部 floor_region 皆凸，总有凸的一方
+ * 可作裁剪边）。
+ * 比较基准是轮廓采样面积（同一圆角口径），不是 region.areaSqm（调用方给的圆角
+ * 面积）：圆角只影响角部 0.21㎡ 级的边界，分类只问「有没有/全不全」。
+ * 房间轮廓取实际圆角边界（见 roundedOutlinePoints）：房间面积已扣圆角，
+ * 包含判定若仍用尖角轮廓，圆角切除角内的区域会被判房内跳过、静默少算
+ * （Codex blocking，PR #255 复审第 10 轮：2×2m R1 房的 [0,0.1]² 区域
+ * 少算 0.01㎡）。采样弦落在弧内侧（轮廓略小于真实圆角房），紧贴弧带的
+ * 区域会判为横跨而抛错——显式阻断，不静默跳过。
+ * 地面区轮廓同样按实际圆角边界采样（第 11 轮 major）：只采房间一边时，
+ * 同轮廓的圆角地面区会拿交叠面积（圆角口径 3.785398㎡）与尖角面积（4㎡）
+ * 比较、误判横跨；两边同一采样口径时，同轮廓即交叠等于轮廓面积、判房内。
+ */
+function floorRegionRoomOverlap(
+  region: MasonryFloorRegionInput,
+  room: MasonryRoomInput,
+): { overlapSqm: number; regionOutlineSqm: number } | null {
+  const points = region.points ?? [];
+  if (points.length < 3) return null;
+  const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
+  if (!roomPoints) return null;
+  const regionOutline = roundedOutlinePoints(points);
+  const { area, exact } = overlapArea(regionOutline, roundedOutlinePoints(roomPoints));
+  if (!exact) {
+    throw new Error(
+      `floor_region ${region.id} 与房间 ${room.id} 皆为非凸多边形，交叠面积无法精确计算：请拆成凸块或显式裁定（不静默按 extra/跳过）`,
+    );
+  }
+  return { overlapSqm: area, regionOutlineSqm: Math.abs(signedPolygonArea(regionOutline)) };
+}
+
+/**
+ * 轮廓的实际边界：无圆角点时原样返回尖角折线；有圆角点时按
+ * shared/arc-polyline.ts 的 centerlineSamples 把弧展开为密采样折线（与
+ * DXF/3D 同一套弧口径，默认 32 步/半圆、R1 弦矢距约 4.8mm）。解不出的
+ * 圆角点退化成尖角——与 layout-resolver 房间面积的同向退化一致（那边
+ * tangentArc 解不出时也不给 cx/cz、面积按尖角算），面积与判定不分叉。
+ * 房间与地面区共用此函数：同一声明轮廓采出同一折线，交叠与轮廓面积
+ * 才在同一口径下可比（第 11 轮 major）。
+ */
+function roundedOutlinePoints(outlinePoints: CurtainPoint[]): Array<{ x: number; z: number }> {
+  if (!outlinePoints.some((point) => point.radius !== undefined)) return outlinePoints;
+  const samples = centerlineSamples(outlinePoints, true);
+  // 闭合轮廓末点重复首点；overlapArea 按自动闭合算，掐掉重复末点。
+  if (samples.length > 1) {
+    const first = samples[0];
+    const last = samples[samples.length - 1];
+    if (Math.abs(first.x - last.x) < 1e-9 && Math.abs(first.z - last.z) < 1e-9) samples.pop();
+  }
+  return samples;
+}
+
+/** floor_region 轮廓是否全部落在某个已计费房间内（多边形包含优先，轴对齐矩形回落包围盒）。 */
 function floorRegionInsideCostedRoom(
   region: MasonryFloorRegionInput,
   costedRooms: MasonryRoomInput[],
@@ -978,9 +1097,31 @@ function floorRegionInsideCostedRoom(
   if (points.length < 3) return false;
   const candidates = region.room ? costedRooms.filter((room) => room.id === region.room) : costedRooms;
   return candidates.some((room) => {
-    const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
-    if (!roomPoints) return false;
-    return points.every((point) => masonryPointInPolygonOrOnEdge(point, roomPoints, 1e-6));
+    const rel = floorRegionRoomOverlap(region, room);
+    if (!rel) return false;
+    const eps = 1e-6 * Math.max(1, rel.regionOutlineSqm);
+    return Math.abs(rel.overlapSqm - rel.regionOutlineSqm) <= eps;
+  });
+}
+
+/**
+ * 横跨判定：floor_region 与某个已计费房间共享正面积、且不全在该房间内。
+ * 与 floorRegionInsideCostedRoom 互补：全在内 → 跳过（已由房间 footprint 算过）；
+ * 零面积接触（贴边）→ 不算横跨，整块 extra；共享正面积 → 两头都沾，整块 extra
+ * 会重复计房内部分，必须抛错等拆分。
+ */
+function floorRegionPartiallyInsideCostedRoom(
+  region: MasonryFloorRegionInput,
+  costedRooms: MasonryRoomInput[],
+): boolean {
+  const points = region.points ?? [];
+  if (points.length < 3) return false;
+  const candidates = region.room ? costedRooms.filter((room) => room.id === region.room) : costedRooms;
+  return candidates.some((room) => {
+    const rel = floorRegionRoomOverlap(region, room);
+    if (!rel) return false;
+    const eps = 1e-6 * Math.max(1, rel.regionOutlineSqm);
+    return rel.overlapSqm > eps && rel.overlapSqm < rel.regionOutlineSqm - eps;
   });
 }
 

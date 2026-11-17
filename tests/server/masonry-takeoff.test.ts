@@ -73,8 +73,18 @@ function buildInput(): MasonryTakeoffInput {
     id: room.id,
     areaSqm: room.area ?? room.width * room.depth,
     // 异形房给 boundary 折线；轴对齐矩形房给包围盒（resolveRoom 的 x/z/width/depth 口径）。
+    // 圆角信息（radius/cx/cz）必须透传：包含判定按实际圆角边界算，剥掉它切除角内
+    // 的区域会被尖角轮廓误判为房内而跳过（Codex blocking，PR #255 复审第 10 轮）。
     ...((room.points ?? []).length
-      ? { points: room.points.map((point: any) => ({ x: point.x, z: point.z })) }
+      ? {
+          points: room.points.map((point: any) => ({
+            x: point.x,
+            z: point.z,
+            ...(point.radius !== undefined ? { radius: point.radius } : {}),
+            ...(point.cx !== undefined ? { cx: point.cx } : {}),
+            ...(point.cz !== undefined ? { cz: point.cz } : {}),
+          })),
+        }
       : { rect: { x: room.x, z: room.z, width: room.width, depth: room.depth } }),
   }));
 
@@ -124,7 +134,15 @@ function buildInput(): MasonryTakeoffInput {
             return sum + point.x * next.z - next.x * point.z;
           }, 0) / 2,
         ),
-        points: (element.points ?? []).map((point: any) => ({ x: point.x, z: point.z })),
+        // 圆角信息（radius/cx/cz）必须透传：包含判定按实际圆角边界算，与生产适配器同口径
+        // （Codex major，PR #255 复审第 11 轮）。
+        points: (element.points ?? []).map((point: any) => ({
+          x: point.x,
+          z: point.z,
+          ...(point.radius !== undefined ? { radius: point.radius } : {}),
+          ...(point.cx !== undefined ? { cx: point.cx } : {}),
+          ...(point.cz !== undefined ? { cz: point.cz } : {}),
+        })),
         excluded: element.excluded === true,
         follow: element.follow,
         room: element.room,
@@ -204,16 +222,16 @@ test('along 单位是米不是毫米（0.60–3.00 = 2.4m，除 1000 会得 0.02
   close(region.areaSqm, 2.4 * 2.50, '6.00㎡；若误按毫米会得到 0.024㎡'); // 2026-11-12 PR #225：砖带随吊顶下调 2.65→2.50，6.36→6.00
 });
 
-test('干区地面 116.1874㎡ / 湿区 7.936㎡ / 合计 124.1234㎡', () => { // 2026-10-25 DEC-2026-10-25-R01 重算：客餐厅 +1.725、东南房 +2.19 干（原 112.2724 / 7.936 / 120.2084）
+test('干区地面 115.9728㎡ / 湿区 7.7214㎡ / 合计 123.6942㎡', () => { // 2026-10-25 DEC-2026-10-25-R01 重算：客餐厅 +1.725、东南房 +2.19 干（原 112.2724 / 7.936 / 120.2084）；2026-11-16 量价算法审计 D1：主卧/主卫圆角各 −0.2146㎡，干区 116.1874→115.9728、湿区 7.936→7.7214
   const result = computeMasonryTakeoff(buildInput());
-  close(result.dryRoomFloorSqm, 116.1874);
-  close(result.wetRoomFloorSqm, 7.936);
-  close(result.totalRoomFloorSqm, 124.1234);
-  // 与 schedule/phase-1/control.yaml 的锚点（干区 116.1874 + 湿区 7.936 = 124.1234）逐位一致
+  close(result.dryRoomFloorSqm, 115.97279816339746);
+  close(result.wetRoomFloorSqm, 7.721398163397449);
+  close(result.totalRoomFloorSqm, 123.69419632679491);
+  // 与 schedule/phase-1/control.yaml 的锚点（干区 115.9728 + 湿区 7.7214 = 123.6942）逐位一致
   close(result.byRoom.living_dining.dryFloorSqm, 43.1734); // R01 重算
   close(result.byRoom.bedroom_se.dryFloorSqm, 15.18); // R01 重算：北墙线 5.55→4.82
   close(result.byRoom.kitchen.dryFloorSqm, 8.64, '厨房归干区主地面（KT 200×1200 木纹砖）');
-  close(result.byRoom.master_bath.wetFloorSqm, 4.576);
+  close(result.byRoom.master_bath.wetFloorSqm, 4.361398163397448);
   close(result.byRoom.guest_bath.wetFloorSqm, 2.235, '内卫小花砖余区'); // R04：客卫 +0.21㎡
   close(result.byRoom.guest_bath.dryFloorSqm, 1.125, '开放洗漱区跟随客餐厅木纹砖');
 });
@@ -227,10 +245,10 @@ test('房间内floor_region按follow转移干湿材质量且不改变全屋地�
     follow: 'living_dining',
     areaSqm: 1.125,
   }]);
-  close(result.dryFloorSqm, 121.0624, '干区总量包含客卫门外开放洗漱区（R01 重算：客餐厅 +1.725、东南房 +2.19）');
-  close(result.wetFloorSqm, 6.811, '湿区总量扣除客卫门外开放洗漱区');
-  close(result.dryFloorSqm + result.wetFloorSqm, 127.8734, '内部材质区转桶不改变包含走廊extra的全屋面积');
-  close(result.totalRoomFloorSqm, 124.1234, '房间footprint总量随客餐厅/东南房变化');
+  close(result.dryFloorSqm, 120.84779816339746, '干区总量包含客卫门外开放洗漱区（R01 重算：客餐厅 +1.725、东南房 +2.19；2026-11-16 D1 主卧圆角 −0.2146）');
+  close(result.wetFloorSqm, 6.596398163397449, '湿区总量扣除客卫门外开放洗漱区');
+  close(result.dryFloorSqm + result.wetFloorSqm, 127.44419632679491, '内部材质区转桶不改变包含走廊extra的全屋面积');
+  close(result.totalRoomFloorSqm, 123.69419632679491, '房间footprint总量随客餐厅/东南房变化');
 });
 
 test('内部地面材质分区若越出声明宿主房间则fail closed', () => {
@@ -251,9 +269,33 @@ test('floor_region：走廊 3.75㎡ 计入，落在已计费房内的 9.311㎡ �
   close(result.floorRegionExtraSqm, 3.75, 'main_corridor_floor（DEC-2026-10-09-P16）');
   close(result.floorRegionSkippedInsideRoomSqm, 9.311, 'corridor_floor 6.75（整块在 study 内）+ entry_foyer_floor 2.561（整块在 living_dining 内，R01 重算门厅区随南墙至 3.00 扩大）');
   close(result.floorRegionExcludedSqm, 14.765, 'entry_garden_floor 13.165（R01 重算花园南墙至 3.00）+ north_platform_floor 1.60（圆角真实面积 1.3854 由调用方给）');
-  close(result.dryFloorSqm, 116.1874 + 3.75 + 1.125, '干区含主走廊extra和客卫内部木纹区');
+  close(result.dryFloorSqm, 115.97279816339746 + 3.75 + 1.125, '干区含主走廊extra和客卫内部木纹区');
   assert.deepEqual(result.skippedInsideRoomFloorRegionIds, ['entry_foyer_floor', 'corridor_floor']);
   assert.deepEqual(result.excludedFloorRegionIds, ['entry_garden_floor', 'north_platform_floor']);
+});
+
+test('floor_region extra 按 follow 分干/湿：外部湿区只进湿区（Codex blocking②）', () => {
+  // 合成外部湿区 1㎡（房外探针位，与 straddle 对照组同址，follow 指向客卫）：
+  // 混合量 +1，但干区拆分不动、湿区拆分 +1；dryFloorSqm 不动、wetFloorSqm +1。
+  // 旧口径只出混合量，tile-cost-comparison 曾把它全数当干区（多算木纹砖及干区人工）。
+  const input = buildInput();
+  const base = computeMasonryTakeoff(input);
+  const wetOutside: MasonryTakeoffInput['floorRegions'] = [{
+    id: 'outside_wet_probe',
+    areaSqm: 1.0,
+    points: [
+      { x: 14.0, z: 10.5 }, { x: 15.0, z: 10.5 },
+      { x: 15.0, z: 11.5 }, { x: 14.0, z: 11.5 },
+    ],
+    follow: 'guest_bath',
+  } as any];
+  const result = computeMasonryTakeoff({ ...input, floorRegions: [...(input.floorRegions ?? []), ...wetOutside] });
+  close(result.floorRegionExtraSqm, base.floorRegionExtraSqm + 1.0);
+  close(result.floorRegionExtraDrySqm, base.floorRegionExtraDrySqm, '外部湿区不进干区拆分');
+  close(result.floorRegionExtraWetSqm, base.floorRegionExtraWetSqm + 1.0);
+  close(result.floorRegionExtraDrySqm + result.floorRegionExtraWetSqm, result.floorRegionExtraSqm, '干湿拆分之和必须等于混合量');
+  close(result.dryFloorSqm, base.dryFloorSqm, '干区总量不动');
+  close(result.wetFloorSqm, base.wetFloorSqm + 1.0);
 });
 
 test('防水台延长米 33.440m（按构件对 run 取并集，一条矮台只算一次台长）', () => {
@@ -525,4 +567,271 @@ test('纯函数：masonryTileableWallLength 与 tmp/verify-wall-tile.ts 的 tile
   close(masonryTileableWallLength(points('balcony'), walls), 4.0); // R04：北墙 1.50→1.60
   // suppress 的墙不计：主卫北墙/西墙整段是玻璃幕墙
   close(masonryTileableWallLength(points('master_bath'), walls.filter((wall) => !wall.suppressed)), 4.36);
+});
+
+// ── 量价算法审计：静默跳过的输入必须抛错 ───────────────────────────────────
+
+test('洞口投影丢失即抛错：错挂到别的墙上的洞口不得静默跳过（审计 M-2）', () => {
+  const input = buildInput();
+  const wallWithOpenings = input.walls.find((wall) => (wall.openings?.length ?? 0) > 0)!;
+  assert.ok(wallWithOpenings, '测试前提：至少有一面墙带洞口');
+  // 把第一个洞口的中心挪到 100m 外：投影落不到任一墙段上。
+  const moved: MasonryTakeoffInput = {
+    ...input,
+    walls: input.walls.map((wall) => wall.id === wallWithOpenings.id
+      ? {
+          ...wall,
+          openings: wall.openings!.map((opening, index) => index === 0
+            ? { ...opening, x: (opening as any).x + 100, z: (opening as any).z + 100 }
+            : opening),
+        }
+      : wall),
+  };
+  assert.throws(() => computeMasonryTakeoff(moved), /洞口投影丢失/);
+  // 对照组：未动的输入照常通过，投影数等于声明数
+  const live = computeMasonryTakeoff(buildInput());
+  const declared = buildInput().walls.reduce((sum, wall) => sum + (wall.openings?.length ?? 0), 0);
+  assert.equal(live.openingsProjected, declared, '现行 9 个洞口全部投影，无丢失');
+});
+
+test('横跨已计费房间边界的 floor_region 不得整块按 extra 计（审计）', () => {
+  const input = buildInput();
+  // living_dining 东缘 x=13.40（z 4.82–9.80 段）：1×1 方块一半在房内、一半在房外。
+  const straddle: MasonryTakeoffInput['floorRegions'] = [{
+    id: 'straddle_probe',
+    areaSqm: 1.0,
+    points: [
+      { x: 12.9, z: 6.5 }, { x: 13.9, z: 6.5 },
+      { x: 13.9, z: 7.5 }, { x: 12.9, z: 7.5 },
+    ],
+  } as any];
+  assert.throws(
+    () => computeMasonryTakeoff({ ...input, floorRegions: [...(input.floorRegions ?? []), ...straddle] }),
+    /横跨已计费房间边界/,
+  );
+  // 对照组：整块在房外的 extra 与整块在房内的 skip 都照常通过
+  // （房外探针放在建筑轮廓以北的空地上，不在任何房间内）
+  const outside: MasonryTakeoffInput['floorRegions'] = [{
+    id: 'outside_probe',
+    areaSqm: 1.0,
+    points: [
+      { x: 14.0, z: 10.5 }, { x: 15.0, z: 10.5 },
+      { x: 15.0, z: 11.5 }, { x: 14.0, z: 11.5 },
+    ],
+  } as any];
+  const outsideResult = computeMasonryTakeoff({ ...input, floorRegions: [...(input.floorRegions ?? []), ...outside] });
+  close(outsideResult.floorRegionExtraSqm, computeMasonryTakeoff(buildInput()).floorRegionExtraSqm + 1.0);
+});
+
+test('横跨判定不用采样：顶点与形心全在房外的穿越仍须抛错（Codex blocking，PR #255 复审第 2 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  // Codex 反例：房间 [0,1]×[0,1]，区域 [-1,5]×[0.25,0.75]——4 个顶点与形心
+  // 全在房外，但区域穿过房间 0.5㎡。旧采样口径（顶点内收 5mm + 形心）全点在外、
+  // 不抛错，dryFloorSqm 得 4（真实并集 3.5）。精确判定（边严格交叉）必须抛错。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      [{ id: 'room', areaSqm: 1, rect: { x: 0.5, z: 0.5, width: 1, depth: 1 } }],
+      [{ id: 'cross', areaSqm: 3, points: [{ x: -1, z: 0.25 }, { x: 5, z: 0.25 }, { x: 5, z: 0.75 }, { x: -1, z: 0.75 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+  // 对照：只贴边（共用一条房间边、面积全在房外）是零面积接触，不算横跨，照常计 extra。
+  const touching = computeMasonryTakeoff(minimal(
+    [{ id: 'room', areaSqm: 1, rect: { x: 0.5, z: 0.5, width: 1, depth: 1 } }],
+    [{ id: 'touch', areaSqm: 1, points: [{ x: 1, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }] } as any],
+  ));
+  close(touching.dryFloorSqm, 2, '贴边区域 1㎡ 作 extra，房间 1㎡ + extra 1㎡');
+  // 非凸房间缺口：L 形房（缺 [1,2]×[1,2]），三角区三顶点全在房内、但一条边
+  // 切过缺口——旧顶点判会当成全在内而跳过（缺口部分 0.045㎡ 凭空消失），
+  // 边交叉条件必须把它判为横跨而抛错。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      [{
+        id: 'lroom',
+        areaSqm: 3,
+        points: [{ x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 2 }],
+      }],
+      [{ id: 'notch_cut', areaSqm: 0.845, points: [{ x: 1.8, z: 0.5 }, { x: 0.5, z: 1.8 }, { x: 0.5, z: 0.5 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+});
+
+test('横跨判定覆盖共线重叠与边中点（Codex blocking，PR #255 复审第 3 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  const square = [{ id: 'room', areaSqm: 1, rect: { x: 0.5, z: 0.5, width: 1, depth: 1 } }];
+  // 共线重叠：区域 [0.5,1.5]×[0,1] 与房间共用南北边、重叠 0.5㎡——顶点无一
+  // 严格在内、边无一严格交叉，旧判定（顶点 + 交叉）漏判，dryFloorSqm 得 2
+  //（真实并集 1.5）。共线同侧重叠必须抛错。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      square,
+      [{ id: 'collinear', areaSqm: 1, points: [{ x: 0.5, z: 0 }, { x: 1.5, z: 0 }, { x: 1.5, z: 1 }, { x: 0.5, z: 1 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+  // 边中点：三角区两顶点压在房间南北边上、第三角在房外，一条边穿过房内——
+  // 顶点与交叉都抓不到，边中点 (0.5,0.5) 严格在房内，必须抛错（共享 0.25㎡）。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      square,
+      [{ id: 'edge_mid', areaSqm: 0.5, points: [{ x: 0.5, z: 0 }, { x: 0.5, z: 1 }, { x: 1.5, z: 0.5 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+  // 对照：缺口盖帽——L 形房缺口上的三角区三顶点全压在缺口边线上、面积全在房外
+  //（共线异侧重叠）。旧全在内判定（顶点 + 交叉）会误判为房内而跳过，0.5㎡
+  // 凭空消失；共线异侧条件必须把它判为房外、照常计 extra。
+  const lroom = [{
+    id: 'lroom',
+    areaSqm: 3,
+    points: [{ x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 2 }],
+  }];
+  const cap = computeMasonryTakeoff(minimal(
+    lroom,
+    [{ id: 'notch_cap', areaSqm: 0.5, points: [{ x: 1, z: 1 }, { x: 2, z: 1 }, { x: 1, z: 2 }] } as any],
+  ));
+  close(cap.dryFloorSqm, 3.5, '缺口盖帽 0.5㎡ 作 extra，房间 3㎡ + extra 0.5㎡');
+});
+
+test('横跨判定改面积比较：边经凹角顶点穿出缺口不再被整块跳过（Codex blocking，PR #255 复审第 4 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  const lroom = [{
+    id: 'lroom',
+    areaSqm: 3,
+    points: [{ x: 0, z: 0 }, { x: 2, z: 0 }, { x: 2, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 2 }],
+  }];
+  // 三角区 (2,1),(1,2),(0,0)：三顶点全压在房间边线上、对角边穿过缺口，
+  // 0.5㎡ 在房外。手写谓词（顶点 + 交叉 + 共线 + 中点）判为全在内而跳过，
+  // dryFloorSqm 得 3（真实并集 3.5）；面积比较（交叠 1.0 < 轮廓 1.5）必须抛错。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(
+      lroom,
+      [{ id: 'tri', areaSqm: 1.5, points: [{ x: 2, z: 1 }, { x: 1, z: 2 }, { x: 0, z: 0 }] } as any],
+    )),
+    /横跨已计费房间边界/,
+  );
+});
+
+test('圆角房间的包含判定须按圆角边界：切除角内的地面区不得判房内跳过（Codex blocking，PR #255 复审第 10 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  // 2×2m 房间，(0,0) 角 R1（弧心 (1,1)）：房间面积已扣圆角 = 4 − (1 − π/4)
+  // = 3.785398㎡。[0,0.1]×[0,0.1] 地面区完全位于圆角切除部分（距弧心最短
+  // 1.273m > 半径 1m），真实并集 = 房间 3.785398 + 区域 0.01 = 3.795398㎡。
+  // 旧判定用尖角轮廓求交：该区域被尖角轮廓完全包含，判房内跳过、0.01㎡
+  // 静默消失（dryFloorSqm 得 3.785398）。圆角边界判定必须把它计为 extra。
+  const room = [{
+    id: 'room',
+    areaSqm: 4 - (1 - Math.PI / 4),
+    points: [
+      { x: 0, z: 0, radius: 1, cx: 1, cz: 1 },
+      { x: 2, z: 0 },
+      { x: 2, z: 2 },
+      { x: 0, z: 2 },
+    ],
+  }];
+  const region = [{
+    id: 'corner_cut',
+    areaSqm: 0.01,
+    points: [{ x: 0, z: 0 }, { x: 0.1, z: 0 }, { x: 0.1, z: 0.1 }, { x: 0, z: 0.1 }],
+  } as any];
+  const result = computeMasonryTakeoff(minimal(room as any, region));
+  assert.ok(!result.skippedInsideRoomFloorRegionIds.includes('corner_cut'),
+    '切除角内的地面区不得列入房内跳过清单');
+  close(result.dryFloorSqm, 4 - (1 - Math.PI / 4) + 0.01,
+    '切除角内 0.01㎡ 作 extra，房间 3.785398㎡ + extra 0.01㎡');
+  // 对照：同一房间、整块在房内的区域仍照常跳过（圆角判定不得把房内区误判为 extra）。
+  const inside = computeMasonryTakeoff(minimal(room as any, [{
+    id: 'inside_probe',
+    areaSqm: 0.25,
+    points: [{ x: 1.5, z: 1.5 }, { x: 2, z: 1.5 }, { x: 2, z: 2 }, { x: 1.5, z: 2 }],
+  } as any]));
+  assert.ok(inside.skippedInsideRoomFloorRegionIds.includes('inside_probe'),
+    '整块在房内的区域仍须跳过');
+  close(inside.dryFloorSqm, 4 - (1 - Math.PI / 4), '房内区跳过，干区只计房间面积');
+});
+
+test('圆角地面区与同轮廓房间不得误判横跨：同为 2×2m R1 时须整块判房内（Codex major，PR #255 复审第 11 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  // 2×2m 房间与地面区同一轮廓、(0,0) 角同为 R1（弧心 (1,1)）：两者真实边界
+  // 完全一致、面积均为 4 − (1 − π/4) = 3.785398㎡。旧判定用地面区尖角轮廓
+  // （4㎡）与房间圆角采样轮廓求交、再拿交叠 3.785398㎡ 与尖角 4㎡ 比较，
+  // 误判横跨而抛错，合法的重合声明使预算算量失败。两边须用同一圆角口径比较。
+  const outline = [
+    { x: 0, z: 0, radius: 1, cx: 1, cz: 1 },
+    { x: 2, z: 0 },
+    { x: 2, z: 2 },
+    { x: 0, z: 2 },
+  ];
+  const room = [{ id: 'room', areaSqm: 4 - (1 - Math.PI / 4), points: outline }];
+  const region = [{ id: 'same_outline', areaSqm: 4 - (1 - Math.PI / 4), points: outline }];
+  const result = computeMasonryTakeoff(minimal(room as any, region as any));
+  assert.ok(result.skippedInsideRoomFloorRegionIds.includes('same_outline'),
+    '同轮廓圆角地面区须整块判房内跳过，不得误判横跨');
+  close(result.dryFloorSqm, 4 - (1 - Math.PI / 4), '房内区跳过，干区只计房间面积');
+  // 对照：同轮廓但地面区向外伸出 0.5m 时仍是真横跨，须照常抛错（fail-closed 不变）。
+  assert.throws(
+    () => computeMasonryTakeoff(minimal(room as any, [{
+      id: 'straddling_probe',
+      areaSqm: 0,
+      points: [
+        { x: 0, z: 0, radius: 1, cx: 1, cz: 1 },
+        { x: 2.5, z: 0 },
+        { x: 2.5, z: 2 },
+        { x: 0, z: 2 },
+      ],
+    } as any])),
+    /横跨已计费房间边界/,
+    '同轮廓向外伸出时仍须判横跨抛错',
+  );
 });

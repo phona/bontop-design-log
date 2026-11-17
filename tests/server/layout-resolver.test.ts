@@ -1,5 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { load as parseYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
 import type { VertexLayoutYaml } from '../../shared/types.js';
 
@@ -272,5 +274,59 @@ describe('regression: change south wall z → auto-propagate', () => {
     assert.ok(Math.abs(after.rooms[0].depth - 5.95) < 1e-10); // 10.25 - 4.30
     assert.equal(after.walls[0].z1, 10.25); // wall endpoint auto-updated
     assert.equal(after.walls[1].z2, 10.25); // w_liv_west endpoint also auto-updated (shared vertex)
+  });
+});
+
+describe('房间面积扣圆角（2026-11-16 量价算法审计 D1）', () => {
+  it('合成：4×3 矩形一角 r=1.0，面积 = 12 − (1−π/4)', () => {
+    const yaml = makeRectRoom();
+    yaml.vertices[0] = { id: 'v1', x: 0, z: 0, radius: 1.0 };
+    const result = resolveLayout(yaml);
+    assert.ok(Math.abs(result.rooms[0].area! - (12 - (1 - Math.PI / 4))) < 1e-9);
+  });
+
+  it('实盘：主卧/主卫/平台面积 = 独立鞋带 − Σr²(1−π/4)，三处圆角均为 90°', () => {
+    // 独立推导（不用 resolver 的 roundedPolygonArea）：in-test 鞋带 + 闭式扣减，
+    // 每处圆角先验内角确为 90° 才可用 r²(1−π/4)。
+    const raw = parseYaml(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml;
+    const verts = new Map(raw.vertices.map((v) => [v.id, v]));
+    const shoelace = (pts: Array<{ x: number; z: number }>): number => {
+      let s = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const q = pts[(i + 1) % pts.length];
+        s += pts[i].x * q.z - q.x * pts[i].z;
+      }
+      return Math.abs(s) / 2;
+    };
+    const expectedArea = (boundary: string[]): number => {
+      const pts = boundary.map((id) => verts.get(id)!);
+      let cut = 0;
+      for (let i = 0; i < pts.length; i++) {
+        const v = pts[i] as { x: number; z: number; radius?: number };
+        if (v.radius === undefined) continue;
+        const prev = pts[(i - 1 + pts.length) % pts.length];
+        const next = pts[(i + 1) % pts.length];
+        const ax = prev.x - v.x, az = prev.z - v.z;
+        const bx = next.x - v.x, bz = next.z - v.z;
+        const cos = (ax * bx + az * bz) / (Math.hypot(ax, az) * Math.hypot(bx, bz));
+        const deg = (Math.acos(Math.max(-1, Math.min(1, cos))) * 180) / Math.PI;
+        assert.ok(Math.abs(deg - 90) < 0.01, `圆角 ${v} 内角须为 90° 才能用闭式扣减，实测 ${deg}°`);
+        cut += v.radius * v.radius * (1 - Math.PI / 4);
+      }
+      return shoelace(pts) - cut;
+    };
+    const resolved = resolveLayout(raw);
+    const byId = new Map(resolved.rooms.map((r) => [r.id, r]));
+    for (const id of ['master_bedroom', 'master_bath'] as const) {
+      const def = raw.rooms.find((r) => r.id === id)!;
+      const want = expectedArea(def.boundary);
+      assert.ok(Math.abs(byId.get(id)!.area! - want) < 1e-6, `${id}: resolver ${byId.get(id)!.area} vs 独立推导 ${want}`);
+    }
+    const platformWant = expectedArea(raw.platform!.boundary);
+    assert.ok(Math.abs(resolved.platform!.area! - platformWant) < 1e-6);
+    // 绝对值锚点（Python 独立复核）：26.844−0.2146 / 4.576−0.2146 / 1.60−0.2146
+    assert.ok(Math.abs(byId.get('master_bedroom')!.area! - 26.6293981634) < 1e-6);
+    assert.ok(Math.abs(byId.get('master_bath')!.area! - 4.3613981634) < 1e-6);
+    assert.ok(Math.abs(resolved.platform!.area! - 1.3853981634) < 1e-6);
   });
 });

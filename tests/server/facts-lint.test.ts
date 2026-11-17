@@ -1579,3 +1579,94 @@ test('facts 门禁点位与统一出口逐点一致：五条冷凝水支管终�
     );
   }
 });
+
+// ─── 量价算法审计 D10：clip 前的绕向归一化 + 非凸边交叉检出 ────────────────
+
+test('overlap：顺时针房间里的无 follow 区域不得被漏报（审计 D10）', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.layout_region_room_overlap',
+      kind: 'overlap',
+      datasets: ['layout.floor_regions', 'layout.rooms'],
+    }],
+  };
+  // kitchen 的真实 boundary 绕向是顺时针（有符号面积 −8.64㎡）；
+  // 无 follow 区域整块落在它里面，旧代码把交集算成补集、面积 0，漏报。
+  const result = lintFacts(registry, workspaceOf({}, {
+    'layout.floor_regions': [{ id: 'kitchen_probe', points: [{ x: 8, z: 0.5 }, { x: 10, z: 0.5 }, { x: 10, z: 2 }, { x: 8, z: 2 }] }],
+    'layout.rooms': [
+      { id: 'kitchen', polygon: [{ x: 7.2, z: 0 }, { x: 7.2, z: 1 }, { x: 7.2, z: 2.2 }, { x: 7.2, z: 2.4 }, { x: 10.8, z: 2.4 }, { x: 10.8, z: 0 }] },
+    ],
+  }));
+  assert.equal(result.errors.length, 1);
+  assert.equal(result.errors[0].code, 'polygon_overlap');
+  assert.match(result.errors[0].message, /kitchen_probe 与 layout\.rooms\/kitchen 多边形交叠，交叠面积 3\.00㎡/);
+});
+
+test('overlap：贴边相邻（共用一条边、零面积接触）不得误报（审计 D10）', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.layout_region_room_overlap',
+      kind: 'overlap',
+      datasets: ['layout.floor_regions', 'layout.rooms'],
+    }],
+  };
+  // 区域贴着 kitchen 东墙 x=10.8，共用 z[0,2] 一段边，面积交叠为 0。
+  // 旧代码对顺时针 clip 边会把整块区域算成交叠（误报 2.40㎡）。
+  const result = lintFacts(registry, workspaceOf({}, {
+    'layout.floor_regions': [{ id: 'east_probe', points: [{ x: 10.8, z: 0 }, { x: 12, z: 0 }, { x: 12, z: 2 }, { x: 10.8, z: 2 }] }],
+    'layout.rooms': [
+      { id: 'kitchen', polygon: [{ x: 7.2, z: 0 }, { x: 7.2, z: 1 }, { x: 7.2, z: 2.2 }, { x: 7.2, z: 2.4 }, { x: 10.8, z: 2.4 }, { x: 10.8, z: 0 }] },
+    ],
+  }));
+  assert.equal(result.errors.filter((i) => i.code === 'polygon_overlap').length, 0);
+});
+
+test('overlap：两个非凸多边形边交叉、顶点全在外时仍须检出（审计 D10）', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{
+      id: 'c.o',
+      kind: 'overlap',
+      datasets: ['a', 'b'],
+    }],
+  };
+  // 两个 L 形：A 的底横条 x[0,4]×z[0,1] 与 B 的左竖条 x[2,3]×z[-1,3]
+  // 交叠 1㎡，但双方顶点没有一个落在对方里面——旧代码只凭顶点判，漏报。
+  const result = lintFacts(registry, workspaceOf({}, {
+    a: [{ id: 'a_l', points: [{ x: 0, z: 0 }, { x: 4, z: 0 }, { x: 4, z: 1 }, { x: 1, z: 1 }, { x: 1, z: 4 }, { x: 0, z: 4 }] }],
+    b: [{ id: 'b_l', points: [{ x: 2, z: -1 }, { x: 3, z: -1 }, { x: 3, z: 3 }, { x: 5, z: 3 }, { x: 5, z: 4 }, { x: 2, z: 4 }] }],
+  }));
+  assert.equal(result.errors.length, 1);
+  assert.equal(result.errors[0].code, 'polygon_overlap');
+  assert.match(result.errors[0].message, /面积不可精确计算/);
+});
+
+test('overlap：一组全被 follow 滤空时发 vacuous 警告，不静默空转（审计 D9）', () => {
+  const registry: FactsRegistry = {
+    ...emptyRegistry,
+    contracts: [{ id: 'c.layout_region_room_overlap', kind: 'overlap', datasets: ['layout.floor_regions', 'layout.rooms'] }],
+  };
+  const sq = (x1: number, z1: number, x2: number, z2: number) => [
+    { x: x1, z: z1 }, { x: x2, z: z1 }, { x: x2, z: z2 }, { x: x1, z: z2 },
+  ];
+  // 现行实况：6 个 floor_region 全声明 follow，契约比较 0 对
+  const vacuous = lintFacts(registry, workspaceOf({}, {
+    'layout.floor_regions': [{ id: 'corridor_floor', follow: 'study', points: sq(0, 0, 5, 5) }],
+    'layout.rooms': [{ id: 'study', polygon: sq(0, 0, 10, 10) }],
+  }));
+  assert.equal(vacuous.errors.length, 0, '空转本身不是数据错，不升 error');
+  assert.equal(vacuous.warnings.filter((i) => i.code === 'overlap_contract_vacuous').length, 1);
+  assert.match(vacuous.warnings[0].message, /实际比较 0 对多边形/);
+  // 对照组：只要有一条无 follow，契约就在比较，不发警告
+  const live = lintFacts(registry, workspaceOf({}, {
+    'layout.floor_regions': [
+      { id: 'corridor_floor', follow: 'study', points: sq(0, 0, 5, 5) },
+      { id: 'orphan_floor', points: sq(20, 20, 25, 25) },
+    ],
+    'layout.rooms': [{ id: 'study', polygon: sq(0, 0, 10, 10) }],
+  }));
+  assert.equal(live.warnings.filter((i) => i.code === 'overlap_contract_vacuous').length, 0);
+});

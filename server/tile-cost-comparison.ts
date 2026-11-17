@@ -439,7 +439,33 @@ export function buildTileCostComparison(
     requiredPositiveNumber(areaSqm, `Resolved area for ${id}`);
     return { id: room.id, name: room.name, areaSqm };
   });
-  const netDryAreaSqm = round3(rooms.reduce((sum, room) => sum + room.areaSqm, 0));
+  // 干区计价基数 = 干区房间面积 + 房间外的干区地面（floorRegionExtraDrySqm）。
+  // 后者 live 只有 main_corridor_floor 3.75㎡（走廊地面，不属于任何房间，
+  // 但预算 dryFloorSqm 计入它）；旧口径只加干区房间，少算 3.75㎡（KT 材料
+  // −¥493、锦艺材料 −¥534、人工 −¥281.25）。房间内转移区（guest_bath_open_vanity_floor
+  // 1.125㎡）不加在这里——它在 currentInternalFloorRegions 单独计价；
+  // 干区基数 + 内部转移区 == 预算 dryFloorSqm（见测试交叉验证）。
+  // 房间外干区面积缺声明不回落 0：缺了就是算量输入不完整，直接抛错。
+  // 注意：floorRegionExtraSqm 是干湿混合量（含 follow 指向湿区房的外部湿区），
+  // 不能直接加进干区基数（Codex blocking②，PR #255 复审：外部湿区 2㎡会被
+  // 当成干区，多算木纹砖及干区人工）。干/湿拆分由 masonry-takeoff 的 follow
+  // 口径导出（指向湿区房的 extra 进湿区，其余进干区），两项之和必须等于混合量。
+  const extraSqm = takeoff.floorRegionExtraSqm;
+  if (!Number.isFinite(extraSqm) || extraSqm < 0) {
+    throw new Error('masonry takeoff floorRegionExtraSqm must be a finite number >= 0');
+  }
+  const extraDrySqm = takeoff.floorRegionExtraDrySqm;
+  if (!Number.isFinite(extraDrySqm) || extraDrySqm < 0) {
+    throw new Error('masonry takeoff floorRegionExtraDrySqm must be a finite number >= 0');
+  }
+  const extraWetSqm = takeoff.floorRegionExtraWetSqm;
+  if (!Number.isFinite(extraWetSqm) || extraWetSqm < 0) {
+    throw new Error('masonry takeoff floorRegionExtraWetSqm must be a finite number >= 0');
+  }
+  if (Math.abs(extraDrySqm + extraWetSqm - extraSqm) > 1e-9) {
+    throw new Error('masonry takeoff floorRegionExtraDrySqm + floorRegionExtraWetSqm must equal floorRegionExtraSqm');
+  }
+  const netDryAreaSqm = round3(rooms.reduce((sum, room) => sum + room.areaSqm, 0) + extraDrySqm);
 
   const candidates = config.candidates.map((candidate): TileCandidateComparison => {
     requiredPositiveNumber(candidate.dimensions_mm.length, `${candidate.id} tile length`);

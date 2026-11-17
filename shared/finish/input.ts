@@ -26,6 +26,37 @@ import type { FinishScopeInput } from './rules.js';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');
 
+/**
+ * 贴砖/涂装带的顶标高：必须显式声明 height，缺了就抛错，不回落魔法数。
+ * 旧口径 `band.height ?? 2.65`（砖）/`?? 2.8`（漆）会让 F01/F03/F07 在
+ * 凭空发明的顶标高上跑重叠/超洞检查——可能误报，也可能漏报。钱路
+ * （masonry-takeoff / paint-scope）对缺 height 早已是抛错口径，核查层
+ * 须与之一致。注意：`bottom ?? 0` 不在此列——live 有 24 条 paint_bands
+ * 只声明 height 不声明 bottom，bottom 缺省即地面 0m 是既定约定。
+ */
+export function bandTop(band: { id?: unknown; height?: unknown }, wallId: string, kind: 'tile' | 'paint'): number {
+  if (typeof band.height !== 'number' || !Number.isFinite(band.height)) {
+    throw new Error(
+      `墙 ${wallId} 的${kind === 'tile' ? '贴砖' : '涂装'}带 ${String(band.id ?? '(未命名)')} 缺 height：顶标高不可默认（旧口径回落 ${kind === 'tile' ? '2.65' : '2.8'}m 会让 F01/F03/F07 在发明的标高上检查）。请到 config/layout/model-geometry.yaml 补 height`,
+    );
+  }
+  return band.height;
+}
+
+/**
+ * 房间矩形：width/depth 必须由解算器给出（resolveLayout 自 boundary 的
+ * bbox 算出），缺了就抛错，不回落 0。旧口径 `?? 0` 会把房间矩形压成一个点，
+ * F06（铝扣板越界）随后对该房间的任何 zone 都误报越界。
+ */
+export function roomRect(room: { id?: unknown; x?: unknown; z?: unknown; width?: unknown; depth?: unknown }): { id: string; x: number; z: number; width: number; depth: number } {
+  if (typeof room.width !== 'number' || !Number.isFinite(room.width) || typeof room.depth !== 'number' || !Number.isFinite(room.depth)) {
+    throw new Error(
+      `房间 ${String(room.id ?? '(未命名)')} 缺 width/depth：房间矩形不可回落 0（F06 会误报铝扣板越界）。请检查 config/layout/model-geometry.yaml 的房间 boundary 与解算`,
+    );
+  }
+  return { id: String(room.id), x: room.x as number, z: room.z as number, width: room.width, depth: room.depth };
+}
+
 function readYaml(file: string): any {
   return parseYaml(readFileSync(path.join(ROOT, file), 'utf8'));
 }
@@ -46,7 +77,7 @@ export function buildFinishScopeInput(tolerance = 0.01): FinishScopeInput {
       walls.push({
         id: band.id, wall: wall.id, room: band.room,
         along: [Math.min(...band.along), Math.max(...band.along)],
-        bottom: band.bottom ?? 0, top: band.height ?? 2.65,
+        bottom: band.bottom ?? 0, top: bandTop(band, wall.id, 'tile'),
         finish: 'tile', type: 'wall_region',
       });
     }
@@ -54,7 +85,7 @@ export function buildFinishScopeInput(tolerance = 0.01): FinishScopeInput {
       walls.push({
         id: band.id, wall: wall.id, room: band.room,
         along: [Math.min(...band.along), Math.max(...band.along)],
-        bottom: band.bottom ?? 0, top: band.height ?? 2.8,
+        bottom: band.bottom ?? 0, top: bandTop(band, wall.id, 'paint'),
         finish: 'paint', type: 'paint_region',
       });
     }
@@ -93,7 +124,7 @@ export function buildFinishScopeInput(tolerance = 0.01): FinishScopeInput {
     if (!zone.room) continue;
     ceilings.push({ id: zone.id, room: zone.room, type: zone.type, ...(zone.area ? { area: zone.area as [number, number, number, number] } : {}) });
   }
-  const roomRects: FinishScopeInput['roomRects'] = (layout.rooms as any[]).map((room) => ({ id: room.id, x: room.x, z: room.z, width: room.width ?? 0, depth: room.depth ?? 0 }));
+  const roomRects: FinishScopeInput['roomRects'] = (layout.rooms as any[]).map((room) => roomRect(room));
   // 顶面：只收显式声明的房间特征（S4 前是 paint_ceiling_region 元素）；不从墙面涂装房间集合推导。
   const ceilingPaintRooms = new Set<string>(
     (MG.rooms ?? []).filter((room: any) => room.ceiling_finish?.paint === true).map((room: any) => String(room.id)),

@@ -423,7 +423,13 @@ export function buildPaintCostComparison(
   if (materialEntry?.calc_mode && materialEntry.calc_mode !== 'area') {
     throw new Error(`${material.id} calc_mode must be area, got ${materialEntry.calc_mode}`);
   }
-  const lossRate = material.loss_rate ?? planning.loss_multiplier;
+  // 材料损耗率缺失不得用 planning.loss_multiplier 代替：预算 pricingOf 缺
+  // loss_rate 即抛错（量价算法审计 D13），两边口径须一致，否则同一材料在
+  // 对比里按 1.1 计价、在预算里抛错。live latex_paint_01 的 loss_rate 为 1.1。
+  if (material.loss_rate === undefined) {
+    throw new Error(`${material.id} loss_rate is missing: 涂装对比不得用 planning.loss_multiplier 代替材料损耗率`);
+  }
+  const lossRate = material.loss_rate;
   if (Math.abs(lossRate - planning.loss_multiplier) > 1e-9) {
     throw new Error(`${material.id} loss_rate ${lossRate} diverges from planning.loss_multiplier ${planning.loss_multiplier}`);
   }
