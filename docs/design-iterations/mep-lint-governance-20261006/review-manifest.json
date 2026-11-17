@@ -76,10 +76,10 @@
     },
     {
       "code": "route_overlap",
-      "count": 49,
+      "count": 47,
       "category": "envelope_approximation",
       "disposition": "pending_adjudication",
-      "basis": "DEC-2026-10-17-R20 登记为 warning 侧新条目（此前该 code 主在 must_fix 桶，不经本台账）；现值含 weak-ap-master 与送/回风干管近似包络 +2。｜DEC-2026-10-22-R01 对账：warning 侧实算 39（R25 外包络复核口径），据实更新 35→39；error 侧 69 条仍属 must_fix 硬门禁、不经本台账。｜2026-11-14 全带泵重画对账：warning 侧实算 39→53（五管同端点 (6.70,3.70) 汇流 +9、儿童房 2 条由 must_fix 迁入 envelope、餐厅末段 jog 与浴霸/客卫强电轴 2 处、客厅西行段与送风支管 1 处），据实更新；error 侧 59 条仍属 must_fix 硬门禁、不经本台账。｜2026-11-16 强电关系化对账：warning 侧实算 53→48（strong-light-child 斜段拆分后其 5 处近似包络重叠消失），据实更新；error 侧 59 条仍属 must_fix 硬门禁、不经本台账。｜2026-11-16 并行改动（strong-power-parent-child-childbed 段几何调整）：warning 侧实算 48→49（与 condensate-master 新增 1 处），error 侧 59→60（与 refrigerant-master / refrigerant-child 各新增 1 处、与 refrigerant-child 旧 1 处消失），本台账 warning 侧据实更新 48→49。｜2026-11-16 Codex blocking 修复对账（第四轮）：7 条路由往返折返同批消除，warning 侧实算 47→45，本台账据实更新。｜2026-11-17 量价算法审计跟进 D4：v1 给水干管补淋浴末端立管 4×0.82m 后，4 条回水/需求路线与淋浴立管的三通交叠新显形，warning 侧实算 45→49，据实更新。"
+      "basis": "DEC-2026-10-17-R20 登记为 warning 侧新条目（此前该 code 主在 must_fix 桶，不经本台账）；现值含 weak-ap-master 与送/回风干管近似包络 +2。｜DEC-2026-10-22-R01 对账：warning 侧实算 39（R25 外包络复核口径），据实更新 35→39；error 侧 69 条仍属 must_fix 硬门禁、不经本台账。｜2026-11-14 全带泵重画对账：warning 侧实算 39→53（五管同端点 (6.70,3.70) 汇流 +9、儿童房 2 条由 must_fix 迁入 envelope、餐厅末段 jog 与浴霸/客卫强电轴 2 处、客厅西行段与送风支管 1 处），据实更新；error 侧 59 条仍属 must_fix 硬门禁、不经本台账。｜2026-11-16 强电关系化对账：warning 侧实算 53→48（strong-light-child 斜段拆分后其 5 处近似包络重叠消失），据实更新；error 侧 59 条仍属 must_fix 硬门禁、不经本台账。｜2026-11-16 并行改动（strong-power-parent-child-childbed 段几何调整）：warning 侧实算 48→49（与 condensate-master 新增 1 处），error 侧 59→60（与 refrigerant-master / refrigerant-child 各新增 1 处、与 refrigerant-child 旧 1 处消失），本台账 warning 侧据实更新 48→49。｜2026-11-16 Codex blocking 修复对账（第四轮）：7 条路由往返折返同批消除，warning 侧实算 47→45，本台账据实更新。｜2026-11-17 量价算法审计跟进 D4：v1 给水干管补淋浴末端立管 4×0.82m 后，4 条回水/需求路线与淋浴立管的三通交叠新显形，warning 侧实算 45→49，据实更新。｜2026-11-17 量价算法审计跟进假共干管修复：冷热立管错开 150mm 后，两卫需求路线与冷立管的 2 处包络重叠消失，warning 侧实算 49→47，据实更新。"
     },
     {
       "code": "route_clearance_unverified",
@@ -97,10 +97,10 @@
     },
     {
       "code": "route_overlap_declared_trunk",
-      "count": 16,
+      "count": 13,
       "category": "envelope_approximation",
       "disposition": "accept",
-      "basis": "R16 声明通道（shared_trunk_with）；DEC-2026-10-17-R20 新路线 strong-ded-fridge-living/strong-power-kitchen-east/weak-ap-master 沿用既有干线声明，总数不变。｜DEC-2026-10-22-R01 对账：实算 14，据实更新 12→14。｜DEC-2026-10-23-R03 复核（PR #17 评审 P1）：客卫二次排水独立接立管、刻意不与 drain-guest-bath（淋浴→地漏串联支路）声明 shared_trunk，本条不变（14）。｜2026-11-14 全带泵重画对账：R25 显式汇流节点 condensate_living_dining_merge 删除，五条支管不再经节点合流，实算 14→11，据实更新。｜2026-11-17 量价算法审计跟进 D4：上述 4 处三通交叠 + 客卫冷热干管共立管 1 处共 5 处新增 shared_trunk_with 声明（DEC-2026-10-17-R16 三通/同立管通道），实算 11→16，据实更新。"
+      "basis": "R16 声明通道（shared_trunk_with）；DEC-2026-10-17-R20 新路线 strong-ded-fridge-living/strong-power-kitchen-east/weak-ap-master 沿用既有干线声明，总数不变。｜DEC-2026-10-22-R01 对账：实算 14，据实更新 12→14。｜DEC-2026-10-23-R03 复核（PR #17 评审 P1）：客卫二次排水独立接立管、刻意不与 drain-guest-bath（淋浴→地漏串联支路）声明 shared_trunk，本条不变（14）。｜2026-11-14 全带泵重画对账：R25 显式汇流节点 condensate_living_dining_merge 删除，五条支管不再经节点合流，实算 14→11，据实更新。｜2026-11-17 量价算法审计跟进 D4：上述 4 处三通交叠 + 客卫冷热干管共立管 1 处共 5 处新增 shared_trunk_with 声明（DEC-2026-10-17-R16 三通/同立管通道），实算 11→16，据实更新。｜2026-11-17 量价算法审计跟进假共干管修复：D4 的 5 处声明中有 3 处为假共干管（回水↔冷管 2 处、客卫冷↔热管 1 处）随冷热立管错开 150mm 撤销，实算 16→13，据实更新；余下 13 处为真同管（三通/共干管）。"
     },
     {
       "code": "nonphysical_route",
@@ -173,11 +173,11 @@
     }
   ],
   "summary": {
-    "mep_total_warnings": 235,
+    "mep_total_warnings": 230,
     "mep_buckets": {
       "must_fix_before_briefing": 88,
       "survey_dependent": 92,
-      "envelope_approximation": 143
+      "envelope_approximation": 138
     },
     "electrical_total_warnings": 52,
     "electrical_by_disposition": {

@@ -44,6 +44,19 @@
   note: "主卫淋浴花洒（2026-08-25 隔墙北移2.86随墙移：湿区西端 x[0,1.2]，花洒挂南墙朝北，玻璃隔断 x=1.2 左右分离）；**本轮不画 MEP route**：冷/热给水管路由既无 DEC 定案也无 prose 路径（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 热水器/龙头 SKU 后单独深化（pending #44）；状态依据：花洒本体与挂位为 2026-08-25 随隔墙北移确定的设计值（DEC 原文：git show 8abfbe3b:docs/decisions/12-plumbing.md 登记该两点给水路线端点内联问题），故 status=inferred；pending 的是给水管路而非本点位位置，路由缺口由 #44 跟踪"
   status: inferred
 
+- id: shower_mbath_cold_inlet
+  room: master_bath
+  wall: w_mbath_south
+  wall_side: north
+  along: 0.35
+  face_offset: 0.04
+  type: shower
+  water_temp: "cold"
+  water_dn: 20
+  height: 1.0
+  note: "主卫淋浴冷水进水口（2026-11-17 量价算法审计 D4 跟进，Codex blocking）：与热水立管同为混水阀两进水口，标准间距 150mm（infer）；花洒挂南墙、使用者面朝南，热水左（东）、冷水右（西），故冷口在热水西侧 0.15m（along 0.35，花洒本体 along 0.50）；热水立管保持花洒点位 (0.50,2.76)，对中偏差 75mm 在 v1 ±0.3m 不确定度内。冷水干管末段绕热水立管南侧 z=2.61 bypass 后北折进冷立管（见 water-v1-entry-to-mbath-cold）。量房后按实测阀体位置回写。"
+  status: inferred
+
 - id: toilet_mbath
   # S1-B 状态申报（issue #98）：依据 DEC-2026-10-03-R1（坐便器形式/坑距未定 #31；壁挂则现有给水位随假墙方案作废）
   status: inferred
@@ -142,6 +155,19 @@
   water_dn: 20
   height: 1.0
   note: "2026-08-29 客卫北端淋浴花洒；东墙实体墙西侧挂载，坐东朝西，淋浴区 z≈2.30~2.75；**本轮不画 MEP route**：给水管路由无定案（给水入户点 pending #8、热水器位置 pending #26），量房前画线等于编路由，待量房 + 花洒 SKU 后单独深化（pending #44）；状态依据：花洒本体与挂位为 2026-08-29 确定的设计值（DEC 原文：git show 8abfbe3b:docs/decisions/12-plumbing.md 登记该两点给水路线端点内联问题），故 status=inferred；pending 的是给水管路而非本点位位置"
+  status: inferred
+
+- id: shower_gbath_cold_inlet
+  room: guest_bath
+  wall: w_gbath_east
+  wall_side: west
+  along: 0.2
+  face_offset: -0.06
+  type: shower
+  water_temp: "cold"
+  water_dn: 20
+  height: 1.0
+  note: "客卫淋浴冷水进水口（2026-11-17 量价算法审计 D4 跟进，Codex blocking）：与热水立管同为混水阀两进水口，标准间距 150mm（infer）；花洒挂东墙、使用者面朝东，热水左（北）、冷水右（南），故冷口在热水南侧 0.15m（along 0.20，花洒本体 along 0.05）；热水立管保持花洒点位 (7.20,2.45)，对中偏差 75mm 在 v1 ±0.3m 不确定度内。量房后按实测阀体位置回写。"
   status: inferred
 
 - id: toilet_gbath

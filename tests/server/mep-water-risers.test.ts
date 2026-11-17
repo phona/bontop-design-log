@@ -7,6 +7,11 @@
  * 本测试钉住：每条干管解算折线末段须为同 (x,z) 的纯竖直段，
  * y 由 0.18 升至 1.00（立管 0.82m）。
  *
+ * 冷热立管分离（2026-11-17 D4 跟进，Codex blocking）：冷热不再共用
+ * 同一根立管——冷口为混水阀冷水进水口，与热水立管间距 150mm
+ * （标准混水阀间距，infer）：主卫冷口在热水西侧（x -0.15m，同 z），
+ * 客卫冷口在热水南侧（z +0.15m，同 x）。热水立管保持花洒点位。
+ *
  * 排除（不属于本测试、不在本 PR 计入）：
  * - 热水器端立管（2 × 1.02m）：器具自带尾段口径，不另计；
  * - 回水环路末端（0.65 + 0.85m）：回水在热水立管/热水器尾段处三通接入，
@@ -69,3 +74,24 @@ for (const routeId of RISER_ROUTES) {
     assert.ok(Math.abs(last.y - prev.y - 0.82) <= TOL, `${routeId} 立管长须为 0.82m`);
   });
 }
+
+function riserFoot(routeId: string): { x: number; z: number } {
+  const resolution = loadResolution();
+  const item = resolution.routes.find((r) => r.route.id === routeId);
+  assert.ok(item, `路由 ${routeId} 应可解算`);
+  const points = item.points ?? [];
+  const prev = points[points.length - 2];
+  assert.ok(prev.x !== undefined && prev.z !== undefined, `${routeId} 立管起点须有平面坐标`);
+  return { x: prev.x, z: prev.z };
+}
+
+test('D4 跟进：冷热立管间距 150mm、冷口在热水规定侧（关系断言，不钉绝对坐标）', () => {
+  const mbathHot = riserFoot('water-v1-heater-to-mbath-hot');
+  const mbathCold = riserFoot('water-v1-entry-to-mbath-cold');
+  assert.ok(Math.abs(mbathCold.z - mbathHot.z) <= TOL, `主卫冷热立管须同 z，实际热 ${mbathHot.z}、冷 ${mbathCold.z}`);
+  assert.ok(Math.abs(mbathHot.x - mbathCold.x - 0.15) <= TOL, `主卫冷口须在热水西侧 0.15m，实际热 x=${mbathHot.x}、冷 x=${mbathCold.x}`);
+  const gbathHot = riserFoot('water-v1-heater-to-gbath-hot');
+  const gbathCold = riserFoot('water-v1-entry-to-gbath-cold');
+  assert.ok(Math.abs(gbathCold.x - gbathHot.x) <= TOL, `客卫冷热立管须同 x，实际热 ${gbathHot.x}、冷 ${gbathCold.x}`);
+  assert.ok(Math.abs(gbathCold.z - gbathHot.z - 0.15) <= TOL, `客卫冷口须在热水南侧 0.15m，实际热 z=${gbathHot.z}、冷 z=${gbathCold.z}`);
+});
