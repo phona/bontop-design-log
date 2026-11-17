@@ -13,6 +13,12 @@
  */
 
 import { WALL_THICKNESS } from '../../../shared/furniture-placement.js';
+import {
+  pointPlacementIndex,
+  resolvePointPlacementInWalls,
+  type PointPlacementInput,
+  type PointWall,
+} from '../../../shared/point-placement.js';
 import { openingsAlongWall, pointAlongPolyline, polylineLength, type WallOpeningSpan } from '../../../shared/wall-segments.js';
 
 export type Point = { x: number; z: number };
@@ -45,6 +51,8 @@ export type PlacementItem = {
   wall?: string;
   wall_side?: 'north' | 'south' | 'east' | 'west';
   along?: number;
+  /** 沿墙位置由同墙宿主点位派生（along = 宿主 along + offset）；与 wall/along 互斥。 */
+  along_host?: { id: string; offset: number };
   face_offset?: number;
   x?: number;
   z?: number;
@@ -108,6 +116,50 @@ function openingSpans(wall: PlacementWall): WallOpeningSpan[] {
   });
 }
 
+/**
+ * along_host 派生点位先解算，再进墙面专项（Codex review 5938169611 blocking）。
+ *
+ * 派生点位没有字面 wall/along，`if (!item.wall) continue` 会把它整个跳过——洞口、侧别、
+ * 越界一项都不查。解算后的有效墙/沿位/侧别才是专项校验的输入；解算失败（断引用、成环、
+ * 宿主非沿墙、派生 along 越界、面不一致）返回 diagnostics，调用方按 error 记，不静默跳过。
+ * 非派生点位原样透传。
+ */
+export function resolveAlongHostItems(
+  items: PlacementItem[],
+  walls: PlacementWall[],
+): { items: PlacementItem[]; diagnostics: Array<{ id: string; message: string }> } {
+  if (!items.some((item) => item.along_host !== undefined)) {
+    return { items, diagnostics: [] };
+  }
+  const wallMap = new Map<string, PointWall>(
+    walls.map((wall) => [
+      wall.id,
+      {
+        segments: wall.segments?.length
+          ? wall.segments.map((segment) => ({ x1: segment.x1, z1: segment.z1, x2: segment.x2, z2: segment.z2 }))
+          : [{ x1: wall.x1, z1: wall.z1, x2: wall.x2, z2: wall.z2 }],
+        ...(wall.line_datum ? { line_datum: wall.line_datum } : {}),
+      },
+    ]),
+  );
+  const siblings = pointPlacementIndex(items as PointPlacementInput[]);
+  const diagnostics: Array<{ id: string; message: string }> = [];
+  const resolved = items.map((item) => {
+    if (item.along_host === undefined) return item;
+    const result = resolvePointPlacementInWalls(item as PointPlacementInput, wallMap, undefined, siblings);
+    if (!result.placement || result.placement.kind !== 'wall') {
+      diagnostics.push({
+        id: item.id,
+        message: result.diagnostic ?? `点位 ${item.id}: along_host 未解出沿墙位置`,
+      });
+      return item;
+    }
+    const { wallId, along, wallSide } = result.placement;
+    return { ...item, wall: wallId, along, wall_side: wallSide, along_host: undefined };
+  });
+  return { items: resolved, diagnostics };
+}
+
 export function checkWallPointPlacements(
   walls: PlacementWall[],
   items: PlacementItem[],
@@ -118,7 +170,13 @@ export function checkWallPointPlacements(
   const wallMap = new Map(walls.map(w => [w.id, w]));
   const issues: PlacementIssue[] = [];
 
-  for (const item of items) {
+  // 派生点位先解算：专项校验只认解算后的有效墙/沿位/侧别（见 resolveAlongHostItems）。
+  const { items: effectiveItems, diagnostics } = resolveAlongHostItems(items, walls);
+  for (const diagnostic of diagnostics) {
+    issues.push({ level: 'error', id: diagnostic.id, message: diagnostic.message });
+  }
+
+  for (const item of effectiveItems) {
     if (!item.wall) continue;
 
     const wall = wallMap.get(item.wall);
