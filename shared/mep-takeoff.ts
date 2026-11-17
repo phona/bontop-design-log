@@ -880,6 +880,22 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     for (const point of resolved.points) {
       list.push({ x: point.x, z: point.z, y: requirePointY(point, `路由 ${route.id}`) });
     }
+    // （第 13 轮）安装点端也是切分点：独立 stub 的安装点端（点位 ID 接入）
+    // 不在折线点里，支路恰好穿过另一开关的安装点时不在此切分、行程静默归零
+    // （第 12 轮只修了接在自己 stub 端点上的情形）。安装点与折线端点同 x/z，
+    // y 取点位声明高度；登记后 stub 自身的切分（第 12 轮身份边）把它与点位 ID
+    // 连通，穿过的支路经此坐标节点接入。与已有折线点重合时不重复登记。
+    const registerMountPoint = (endpoint: string | { x: number; z: number }, point: { x: number; z: number } | undefined): void => {
+      if (typeof endpoint !== 'string' || point === undefined) return;
+      const height = pointHeights.get(endpoint)?.height;
+      if (height === undefined) return;
+      const mount = { x: point.x, z: point.z, y: height };
+      if (!list.some((item) => Math.abs(item.x - mount.x) <= EPS && Math.abs(item.z - mount.z) <= EPS && Math.abs(item.y - mount.y) <= EPS)) {
+        list.push(mount);
+      }
+    };
+    registerMountPoint(route.from, resolved.points[0]);
+    registerMountPoint(route.to, resolved.points[resolved.points.length - 1]);
     travelerJunctionByCircuit.set(circuit, list);
   }
   /** 每条回路的画线路由平面路径（同回路 union：同一回路内共享段只铺一次管、只穿一次线）。 */
