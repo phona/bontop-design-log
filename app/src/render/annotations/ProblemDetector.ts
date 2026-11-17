@@ -24,7 +24,7 @@ export interface ElectricalPoint {
 export interface PlumbingPoint {
   id: string;
   room: string;
-  type: 'faucet' | 'toilet' | 'shower' | 'drain' | 'washer' | 'faucet_outdoor';
+  type: 'faucet' | 'toilet' | 'shower' | 'shower_inlet' | 'drain' | 'washer' | 'faucet_outdoor';
   x: number;
   z: number;
   height?: number;
@@ -148,6 +148,10 @@ export class ProblemDetector {
 
     for (let i = 0; i < plumbing.length; i++) {
       for (let j = i + 1; j < plumbing.length; j++) {
+        // 混水阀冷水接口与花洒本体相距 150mm 是标准间距（设计使然），不是重叠；
+        // 只豁免 shower↔shower_inlet 这一对——两个接口之间仍按 0.2m 判定。
+        const pair = [plumbing[i].type, plumbing[j].type].sort().join('+');
+        if (pair === 'shower+shower_inlet') continue;
         if (this._dist2d(plumbing[i], plumbing[j]) < 0.2) {
           problems.push({
             type: 'point_overlap',

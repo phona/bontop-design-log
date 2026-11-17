@@ -204,7 +204,7 @@ export const ElectricalPointSchema = z.object({
   serviceability_status: z.enum(['usable', 'blocked', 'superseded']).optional(), neutral: z.boolean().optional(),
 }).strict().superRefine(refinePointPlacement);
 export const PlumbingPointSchema = z.object({
-  id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'drain', 'washer', 'faucet_outdoor', 'leb', 'drain_riser', 'gas_meter', 'duct', 'water_supply', 'water_heater']),
+  id: z.string(), room: z.string(), type: z.enum(['faucet', 'toilet', 'shower', 'shower_inlet', 'drain', 'washer', 'faucet_outdoor', 'leb', 'drain_riser', 'gas_meter', 'duct', 'water_supply', 'water_heater']),
   x: finiteNumber.optional(), z: finiteNumber.optional(), wall: z.string().optional(), wall_side: WallSideSchema.optional(),
   along: finiteNumber.nonnegative().optional(), face_offset: finiteNumber.optional(),
   mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),

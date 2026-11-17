@@ -280,6 +280,9 @@ export class AnnotationRenderer {
   private renderPlumbing(points: PlumbingPoint[]): void {
     const g = this.layerGroups.plumbing;
     points.forEach(p => {
+      // 混水阀冷水接口（shower_inlet）：暗藏管口、非可见器具，不画标注图标；
+      // 位置仍由单一解算器解算（planOf 参与 ProblemDetector 的点位池，见下）。
+      if (p.type === 'shower_inlet') return;
       const iconMap: Record<string, () => THREE.Sprite> = {
         faucet: createFaucetIcon,
         shower: createShowerIcon,

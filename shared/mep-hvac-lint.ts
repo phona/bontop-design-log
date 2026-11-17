@@ -135,7 +135,7 @@ const ENDPOINT_BIND_TOLERANCE = 0.02;
 // 范围内的假象——5 条 inline `to:` 逐位抄写 hvac terminal 的 xyz（A §3.4 / B F1 两轨一致），
 // terminal 一移 MEP 端点留原地、两个 validator 不抛、lint 109/241 不变（探针 P2）。
 const ENDPOINT_BIND_LAYERS = new Set(['water_supply', 'drainage', 'strong_power', 'weak_power', 'supply_air', 'return_air']);
-const PLUMBING_SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'washer', 'faucet_outdoor', 'water_supply']);
+const PLUMBING_SUPPLY_TYPES = new Set(['faucet', 'toilet', 'shower', 'shower_inlet', 'washer', 'faucet_outdoor', 'water_supply']);
 const PLUMBING_DRAIN_TYPES = new Set(['drain', 'drain_riser']);
 /** Objects that can cover a plug or service point; ordinary movable furniture is handled by route collision, not assumed to block access. */
 const FURNITURE_ENDPOINT_ACCESS_TYPES = new Set(['wall_cabinet_tall', 'washer', 'dryer', 'dishwasher', 'fridge', 'water_heater', 'robot_dock_gbath']);

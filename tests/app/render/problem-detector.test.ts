@@ -113,4 +113,28 @@ describe('ProblemDetector', () => {
     assert.ok(types.has('socket_blocked'));
     assert.ok(types.has('point_overlap'));
   });
+
+  // PR #260 第二轮修复（Codex blocking 跟进）：花洒与冷水接口相距 150mm 是标准
+  // 混水阀间距，不是重叠——shower↔shower_inlet 这一对不报 point_overlap。
+  it('no overlap for shower and its cold-water inlet 150mm apart', () => {
+    const detector = new ProblemDetector();
+    const plumbing = [
+      { id: 'shower_mbath', room: 'master_bath', x: 0.5, z: 2.76, height: 1.0, type: 'shower' as const },
+      { id: 'shower_mbath_cold_inlet', room: 'master_bath', x: 0.35, z: 2.76, height: 1.0, type: 'shower_inlet' as const },
+    ];
+    const problems = detector.checkPointOverlap([], plumbing);
+    assert.equal(problems.length, 0);
+  });
+
+  // 豁免只针对 shower↔shower_inlet 这一对：两个接口之间仍按 0.2m 判定。
+  it('still flags two cold-water inlets too close together', () => {
+    const detector = new ProblemDetector();
+    const plumbing = [
+      { id: 'inlet_a', room: 'master_bath', x: 0.35, z: 2.76, height: 1.0, type: 'shower_inlet' as const },
+      { id: 'inlet_b', room: 'master_bath', x: 0.4, z: 2.76, height: 1.0, type: 'shower_inlet' as const },
+    ];
+    const problems = detector.checkPointOverlap([], plumbing);
+    assert.equal(problems.length, 1);
+    assert.equal(problems[0].type, 'point_overlap');
+  });
 });

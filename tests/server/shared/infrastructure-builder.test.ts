@@ -75,6 +75,22 @@ test('shared plumbing shower uses the declared height as the finished-floor-to-h
   assert.equal(fixture.userData.heightMeaning, 'finished_floor_to_shower_head');
 });
 
+// PR #260 第二轮修复（Codex blocking）：混水阀冷水接口是暗藏管口、不是花洒——
+// type: shower_inlet 不进 FIXTURE_TYPES，不生成花洒模型，也不产生定位诊断。
+// 若日后有人把它加回 fixture 表，本测试即红（两卫会各多出一套花洒）。
+test('shared plumbing shower_inlet builds no shower fixture', () => {
+  const built = buildInfrastructure({
+    electrical: [],
+    plumbing: [
+      { id: 'shower', room: 'bath', type: 'shower', x: 1, z: 2, height: 1.0 },
+      { id: 'shower_cold_inlet', room: 'bath', type: 'shower_inlet', x: 0.85, z: 2, height: 1.0 },
+    ],
+  });
+  assert.equal(built.plumbing.length, 1);
+  assert.equal(built.plumbing[0].userData.objectId, 'plumbing:shower');
+  assert.deepEqual(built.placementDiagnostics, []);
+});
+
 // issue #98 二阶段 S1（Codex 一审 blocking）：anchor / mount 点位须有家具宿主索引才能
 // 建场——SceneBuilder 与 HouseScene.placeInfrastructureFixtures 此前只传 pointWalls，
 // 合法 anchor 声明会让整个 buildScene 抛错。接线补齐后 anchor 插座落到宿主中心 + offset。
