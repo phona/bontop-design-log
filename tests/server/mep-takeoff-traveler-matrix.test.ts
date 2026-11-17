@@ -44,6 +44,8 @@ import {
  *  重复折线首点 ……… 同文件「第 10 轮」
  *  连通性缺口：
  *    双控组分属多分量… 本文件「双控组开关分属不连通分量时须登记连通性缺口」
+ *    跨回路开关……… 本文件「跨回路分支不得连通」（Codex major，PR #255 跟进 #256：
+ *      成员在别的回路有路由时，覆盖度不报漏、components 只剩一个分量，须另查）
  */
 
 type MiniPoint = { id: string; height: number; deferred?: boolean };
@@ -224,7 +226,10 @@ test('跨回路分支不得连通', () => {
   // C2 格：r2 换到回路 c2（swB 在 c2 成员里），仍穿过交点 (1,0,2.5)。
   // 切分点按回路分桶，r2 的点进 c2 的桶、r1 的段只认 c1 的切分点；且控制目标
   // 灯在 c1，行程只在 c1 的边上找路。两处都不得跨回路串线，行程计 0。
-  const { extra } = travelerCase({
+  // 跨回路缺口还须登记（Codex major，PR #255 跟进 #256）：swB 在 c2 有物理路由，
+  // 覆盖度按全局 drawnPointIds 算它已路由、components 在 c1 图里只剩 [swA]，
+  // 两处都不报——缺口只能由控制循环另查。
+  const { extra, unroutedIds, unresolvedIds } = travelerCase({
     points: CROSS_POINTS,
     routes: CROSS_ROUTES,
     circuits: [
@@ -235,6 +240,9 @@ test('跨回路分支不得连通', () => {
     target: 'light1',
   });
   assert.equal(extra, 0, `跨回路分支不得连通，实际 ${extra}`);
+  assert.deepEqual(unroutedIds, [], 'swB 在 c2 有物理路由，覆盖度不得报漏——缺口不在覆盖度里、在 unresolved 里');
+  assert.ok(unresolvedIds.includes('ctl1'),
+    `跨回路开关 swB 有路由却不在目标回路 c1 的行程图里，unresolved 须登记控制组 ctl1，实际 unresolved=${JSON.stringify(unresolvedIds)}`);
 });
 
 test('折线低于安装点时 stub 计 0、仍连通', () => {

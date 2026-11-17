@@ -1295,6 +1295,12 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   // 连通性缺口（Codex major，PR #255 跟进）：开关分属多个连通分量时组内连线未画全——
   // 附加线只按各分量内计、缺口不估算，但缺口必须登记进 unresolved，否则报价会把未画全的
   // 双控网络显示为完整计价。未画线的开关不在图里，已由 coverage.unroutedPoints 显形，不在此重复报。
+  // 跨回路缺口（Codex major，PR #255 跟进 #256）：成员在别的回路有物理路由时，
+  // travelerSwitchComponents 静默跳过它（不在 usable 图里），components 只剩一个分量；
+  // 而 unroutedPoints 按全局 drawnPointIds 建，该成员仍算已路由——“不在图里 ⇒ 覆盖度
+  // 显形”的假设对跨回路开关不成立。故另查：成员已画路由（在 drawnPointIds 里）却不在
+  // 目标回路图里，也登记同一缺口。未画线的成员不在 drawnPointIds 里，仍由覆盖度显形，
+  // 不在此重复报；目标回路未定（usable 即全图）时无此格。
   let dualControlExtraM = 0;
   for (const control of controls) {
     const switches = [...new Set(control.switch_point_ids ?? [])];
@@ -1307,10 +1313,21 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       : travelerEdges.filter((edge) => edge.circuit === targetCircuit);
     dualControlExtraM += travelerSubtreeLength(usable, switches) * dualControlExtraCores;
     const components = travelerSwitchComponents(usable, switches);
-    if (components.length > 1) {
+    const inUsable = new Set(components.flat());
+    const crossCircuit = targetCircuit === undefined
+      ? []
+      : switches.filter((member) => drawnPointIds.has(member) && !inUsable.has(member));
+    if (components.length > 1 || crossCircuit.length > 0) {
+      const gaps: string[] = [];
+      if (components.length > 1) {
+        gaps.push(`开关分属 ${components.length} 个不连通分量（${components.map((group) => group.join('+')).join(' / ')}）`);
+      }
+      if (crossCircuit.length > 0 && targetCircuit !== undefined) {
+        gaps.push(`开关 ${crossCircuit.join('、')} 有物理路由却不在目标回路 ${targetCircuit} 的行程图里（跨回路串线不是行程）`);
+      }
       unresolved.push({
         id: control.id ?? `control:${switches.join('+')}`,
-        reason: `双控组 ${control.id ?? switches.join('、')} 的开关分属 ${components.length} 个不连通分量（${components.map((group) => group.join('+')).join(' / ')}）：组内连线未画全，附加线只按各分量内计、缺口不估算`,
+        reason: `双控组 ${control.id ?? switches.join('、')}：${gaps.join('；')}，组内连线未画全，附加线只按已画部分计、缺口不估算`,
         kind: 'error',
       });
     }
