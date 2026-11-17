@@ -174,6 +174,43 @@ export interface MasonryFloorMaterialRegion {
   areaSqm: number;
 }
 
+/** overlay 的 pipe_box 声明（排水立管贴砖包管盒）。 */
+export interface MasonryPipeBoxInput {
+  id: string;
+  room: string;
+  /** 引用的排水立管 id（config/plumbing.yaml 的 risers；本模块只存证，不解析 plumbing.yaml）。 */
+  riser: string;
+  /** 单管 1 / 双管 2（人工按条计：单管 ¥200/条、双管 ¥300/条，见 config/masonry-labor.yaml extras）。 */
+  pipes: 1 | 2;
+  /** 盒截面宽（米，沿墙面方向）。 */
+  width: number;
+  /** 盒截面深（米，出墙方向）。 */
+  depth: number;
+  /** 贴砖面数：2 = 墙角盒（两面），3 = 平墙盒（正面 + 两侧）。 */
+  faces: 2 | 3;
+  /** 盒底 / 盒顶标高（米）。厨房盒自台面起（bottom = 台面完成面 0.89）。 */
+  bottom: number;
+  top: number;
+  /** 立管外径（毫米，DN110 = 110）：砂浆填充量 =（盒截面 − 管截面）× 高。 */
+  pipeDiameterMm: number;
+}
+
+/** 一条包管盒派生后的量。 */
+export interface MasonryPipeBoxResult {
+  id: string;
+  room: string;
+  riser: string;
+  pipes: 1 | 2;
+  /** 盒高 = top − bottom（米）。 */
+  heightM: number;
+  /** 盒面贴砖面积（㎡）= 各面宽之和 × 高；进 totalTileSqm 与该房 tileSqm。 */
+  tileSqm: number;
+  /** 板材面积（㎡）= tileSqm（同面同板）。 */
+  boardSqm: number;
+  /** 灌砂浆体积（m³）=（盒截面 − 管截面）× 高。 */
+  mortarCum: number;
+}
+
 export interface MasonryTakeoffInput {
   walls: MasonryWallInput[];
   wallRegions: MasonryWallRegionInput[];
@@ -186,6 +223,11 @@ export interface MasonryTakeoffInput {
   wetRoomIds: string[];
   /** overlay 的 floor_region（非房间地面）。 */
   floorRegions?: MasonryFloorRegionInput[];
+  /**
+   * overlay 的 pipe_box 声明（排水立管贴砖包管盒）。缺省 = 无包管盒。
+   * 盒面贴砖进 totalTileSqm；板材与砂浆量进 pipeBoxBoardSqm / pipeBoxMortarCum。
+   */
+  pipeBoxes?: MasonryPipeBoxInput[];
   /**
    * 贴砖带顶标高上限（厨卫铝扣板完成面 2.50；2026-11-12 吊顶下调后 7 条贴砖带 + 本值同批改，见 PR #225 Codex 复审 blocking②）。**必填，不设默认值**——
    * `?? 2.65` / `?? 2.8` 这类兜底正是「漏写一条 height 就静默少算一截」的机制。
@@ -242,6 +284,8 @@ export interface MasonryRoomTakeoff {
   wetFloorSqm: number;
   wallTileSqm: number;
   sillTileSqm: number;
+  /** 该房包管盒面贴砖面积（㎡）。 */
+  pipeBoxTileSqm: number;
   tileSqm: number;
   /** 该房贴砖声明的沿墙/沿台缘总长（米，逐面计）。 */
   declaredLinearM: number;
@@ -311,8 +355,21 @@ export interface MasonryTakeoffResult {
   floorRegionExcludedSqm: number;
   /** 整块落在已计费房间内而被跳过的面积合计（留档：再算即双计）。 */
   floorRegionSkippedInsideRoomSqm: number;
-  /** 全部贴砖面积 = wallTileSqm + sillTileSqm。 */
+  /** 全部贴砖面积 = wallTileSqm + sillTileSqm + pipeBoxTileSqm。 */
   totalTileSqm: number;
+  /** 包管盒逐条派生量（overlay pipe_box 声明）。 */
+  pipeBoxes: MasonryPipeBoxResult[];
+  /** 包管盒条数。 */
+  pipeBoxCount: number;
+  /** 单管 / 双管盒条数（人工按条计：单管 ¥200、双管 ¥300，见 COST-060-05）。 */
+  pipeBoxSingleCount: number;
+  pipeBoxDoubleCount: number;
+  /** 包管盒面贴砖面积（㎡）——进 totalTileSqm。 */
+  pipeBoxTileSqm: number;
+  /** 包管板材面积（㎡）= pipeBoxTileSqm（同面同板）。 */
+  pipeBoxBoardSqm: number;
+  /** 包管灌砂浆体积（m³）。 */
+  pipeBoxMortarCum: number;
   byRoom: Record<string, MasonryRoomTakeoff>;
   byZone: Record<string, number>;
   /** 独立推导的「可贴实体墙长」逐房（米）：房间 boundary 被未 suppress 实体墙覆盖的长度。 */
@@ -532,6 +589,13 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
     floorRegionExcludedSqm: 0,
     floorRegionSkippedInsideRoomSqm: 0,
     totalTileSqm: 0,
+    pipeBoxes: [],
+    pipeBoxCount: 0,
+    pipeBoxSingleCount: 0,
+    pipeBoxDoubleCount: 0,
+    pipeBoxTileSqm: 0,
+    pipeBoxBoardSqm: 0,
+    pipeBoxMortarCum: 0,
     byRoom: {},
     byZone: {},
     tileableWallLengthM: {},
@@ -947,6 +1011,7 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
       wetFloorSqm: 0,
       wallTileSqm: 0,
       sillTileSqm: 0,
+      pipeBoxTileSqm: 0,
       tileSqm: 0,
       declaredLinearM: 0,
       extrasLinearM: 0,
@@ -973,6 +1038,7 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
       wetFloorSqm: 0,
       wallTileSqm: 0,
       sillTileSqm: 0,
+      pipeBoxTileSqm: 0,
       tileSqm: 0,
       declaredLinearM: 0,
       extrasLinearM: 0,
@@ -1008,17 +1074,73 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
     result.declaredUnionLengthM[room.id] = union;
   }
 
+  // ── 包管盒：pipe_box 声明 → 条数 / 盒面贴砖 / 板材 / 灌砂浆 ─────────────
+  // 2026-11-17：此前本模块不派生包管量（见 extras_uncovered 旧 reason），人工单价
+  // （单管 ¥200/条、双管 ¥300/条）在 masonry-labor.yaml 却无量可乘。现在 pipe_box
+  // 是 overlay 声明源，量自声明派生：盒面贴砖进 totalTileSqm（COST-060-08），
+  // 板材与砂浆进 COST-060-09，人工条数挂 COST-060-05（待书面报价，不进 need）。
+  for (const box of input.pipeBoxes ?? []) {
+    if (!roomById.has(box.room)) {
+      throw new Error(`pipe_box ${box.id} references unknown room ${box.room}`);
+    }
+    if (box.pipes !== 1 && box.pipes !== 2) {
+      throw new Error(`pipe_box ${box.id}: pipes 必须是 1（单管）或 2（双管），实际 ${box.pipes}`);
+    }
+    if (box.faces !== 2 && box.faces !== 3) {
+      throw new Error(`pipe_box ${box.id}: faces 必须是 2（墙角盒）或 3（平墙盒），实际 ${box.faces}`);
+    }
+    if (!(box.width > 0) || !(box.depth > 0)) {
+      throw new Error(`pipe_box ${box.id}: width/depth 必须为正（盒截面），实际 ${box.width}×${box.depth}`);
+    }
+    if (!(box.top > box.bottom)) {
+      throw new Error(`pipe_box ${box.id}: top ${box.top} must exceed bottom ${box.bottom}`);
+    }
+    if (!(box.pipeDiameterMm > 0)) {
+      throw new Error(`pipe_box ${box.id}: pipeDiameterMm 必须为正，实际 ${box.pipeDiameterMm}`);
+    }
+    // 面宽：墙角盒两面 = [宽，深]；平墙盒三面 = [宽（正面），深，深（两侧）]。
+    const faceWidths = box.faces === 2 ? [box.width, box.depth] : [box.width, box.depth, box.depth];
+    const heightM = box.top - box.bottom;
+    const tileSqm = faceWidths.reduce((sum, width) => sum + width, 0) * heightM;
+    const boxSectionSqm = box.width * box.depth;
+    const pipeAreaSqm = Math.PI * Math.pow(box.pipeDiameterMm / 1000 / 2, 2);
+    if (pipeAreaSqm >= boxSectionSqm) {
+      throw new Error(`pipe_box ${box.id}: 管截面 ${pipeAreaSqm.toFixed(4)}㎡ 不小于盒截面 ${boxSectionSqm.toFixed(4)}㎡，灌浆量算不出——盒截面或管径声明有误`);
+    }
+    const mortarCum = (boxSectionSqm - pipeAreaSqm) * heightM;
+    result.pipeBoxes.push({
+      id: box.id,
+      room: box.room,
+      riser: box.riser,
+      pipes: box.pipes,
+      heightM,
+      tileSqm,
+      boardSqm: tileSqm,
+      mortarCum,
+    });
+    result.pipeBoxCount += 1;
+    if (box.pipes === 1) result.pipeBoxSingleCount += 1;
+    else result.pipeBoxDoubleCount += 1;
+    result.pipeBoxTileSqm += tileSqm;
+    result.pipeBoxBoardSqm += tileSqm;
+    result.pipeBoxMortarCum += mortarCum;
+    const bucket = result.byRoom[box.room]!;
+    bucket.pipeBoxTileSqm += tileSqm;
+    bucket.tileSqm += tileSqm;
+  }
+
   result.wallTileSqm = result.regions.filter((region) => region.kind === 'wall').reduce((sum, region) => sum + region.areaSqm, 0);
   result.sillTileSqm = result.regions.filter((region) => region.kind === 'sill').reduce((sum, region) => sum + region.areaSqm, 0);
-  result.totalTileSqm = result.wallTileSqm + result.sillTileSqm;
+  result.totalTileSqm = result.wallTileSqm + result.sillTileSqm + result.pipeBoxTileSqm;
 
   // 反边 / 开孔 / 壁龛等 extras 在 overlay 里**没有声明源**，无法派生延长米或个数——
   // 必须显形（control.yaml COST-060-05 锚点：反边 60 元/米、底盒开孔 20 元/个、壁龛 250/400 元/个）。
+  // 包管自 2026-11-17 起有 pipe_box 声明源（本模块派生），不再列入本条。
   result.unpriced.push({
     id: 'extras_uncovered',
     quantity: null,
     unit: '—',
-    reason: '反边/海棠角/底盒开孔/壁龛/包管在 overlay 无声明源，本模块不派生其延长米与个数（COST-060-05 锚点待报价轮）',
+    reason: '反边/海棠角/底盒开孔/壁龛在 overlay 无声明源，本模块不派生其延长米与个数（COST-060-05 锚点待报价轮）',
   });
 
   result.regions.sort((a, b) => a.id.localeCompare(b.id));

@@ -1,6 +1,6 @@
 # envelope/openings.yaml：围护构件对象（issue #98 第三阶段 S1 自 config/layout/overlay.yaml 原样搬迁）。
 # bay_sill 18 + curtain_run 5 + curtain 9 + railing_run 2 + shower_screen 3 + wall_run 1
-# + sliding_door_run 1 + frosted_privacy 1 = 40 个对象，id 零重编号。
+# + sliding_door_run 1 + frosted_privacy 1 + pipe_box 3 = 43 个对象，id 零重编号。
 # suppress 改判（2026-11-07 issue #98 第三阶段 S3）：原随本文件迁入的 suppress 8 条已迁往
 # config/layout/model-geometry.yaml 墙条目的 suppressed:{reason,replacement}（14 面墙，
 # replacement 直引本文件的 curtain_run/railing_run id）；语义唯一权威实现 shared/suppression.ts。
@@ -541,3 +541,53 @@ elements:
     height: 2.55
     panels: 4
     open: true
+
+  # === 包管（pipe_box，2026-11-17，infer：未量房推断） ===
+  # 排水立管 4 根里 3 根要包：主卫 / 客卫 / 厨房。量房触发（2026-11-27）：
+  # 主卫立管模型位在西北圆角切除区外（距弧心约 1.06m > r=1.00），须确认是否在房内；
+  # 厨房立管须确认吊柜是否遮住（遮住则本盒取消）；阳台立管不包（室外无釉面阳台、
+  # 位置只是排水路线端点）；冷凝水立管藏在主卫浴室柜内（mb.vanity_pvc_box），不包。
+  # 盒截面 0.20×0.20m（DN110 管外径 0.11m，单侧灌浆厚约 45mm）；盒面贴砖与厨卫
+  # 墙砖同款；板材 9mm 纤维水泥压力板（infer，待核实）、灌砂浆（infer，待核实）。
+  # 人工单管 ¥200/条（config/masonry-labor.yaml extras），3 条 = ¥600，待书面报价、
+  # 未计入 PKG-060 need（见 COST-060-05）；板材与砂浆主材约 ¥153，待供应商确认、
+  # 未计入 need（见 COST-060-09）。
+  - id: pipe_box_mbath_riser
+    type: pipe_box
+    room: master_bath
+    riser: drain_riser_master_bath
+    pipes: 1
+    width: 0.20
+    depth: 0.20
+    faces: 2
+    bottom: 0
+    top: 2.50
+    pipeDiameterMm: 110
+    status: infer
+    note: "墙角盒（两面 0.20m × 2.50m）。量房触发：模型立管位在西北圆角切除区外，须确认立管是否在主卫房内；在房内则本盒成立，不在则取消。"
+  - id: pipe_box_gbath_riser
+    type: pipe_box
+    room: guest_bath
+    riser: drain_riser_guest_bath
+    pipes: 1
+    width: 0.20
+    depth: 0.20
+    faces: 2
+    bottom: 0
+    top: 2.50
+    pipeDiameterMm: 110
+    status: infer
+    note: "墙角盒（两面 0.20m × 2.50m）。量房触发：复核立管位（西北角，距西墙/北墙各 0.20m）与墙面实测距。"
+  - id: pipe_box_kitchen_riser
+    type: pipe_box
+    room: kitchen
+    riser: drain_riser_kitchen
+    pipes: 1
+    width: 0.20
+    depth: 0.20
+    faces: 2
+    bottom: 0.89
+    top: 2.50
+    pipeDiameterMm: 110
+    status: infer
+    note: "墙角盒（两面 0.20m × 1.61m），只包台面以上露出段（台面完成面 0.89 → 吊顶完成面 2.50）；台面以下藏在地柜后不包。量房触发：确认吊柜是否遮住露出段——遮住则本盒取消。"

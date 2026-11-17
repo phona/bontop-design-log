@@ -1731,7 +1731,7 @@ contracts:
     unit: ㎡
     tolerance: 0.005
     compare:
-      - { label: '声明实算（shared/masonry-takeoff.ts，墙 finish.tile_bands + bay_sill finish.tile；2026-11-07 issue #98 S4 下沉，原 overlay wall_region + sill_region）', value: 'dataset:budget.masonry.totalTileSqm' }
+      - { label: '声明实算（shared/masonry-takeoff.ts，墙 finish.tile_bands + bay_sill finish.tile + pipe_box 盒面；2026-11-07 issue #98 S4 下沉，原 overlay wall_region + sill_region；2026-11-17 包管盒面入账）', value: 'dataset:budget.masonry.totalTileSqm' }
       - { label: 'control.yaml COST-060-08 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-08.quantity_declared.total_tile_sqm' }
       - { label: '预算实际计价量（快照 lineItems topic=wall）', value: 'dataset:budget.line_items.wall' }
 

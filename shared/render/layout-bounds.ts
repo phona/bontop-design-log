@@ -69,6 +69,9 @@ export function computeLayoutBounds(input: LayoutBoundsInput): LayoutBounds {
       case 'skirting_region':
         // 踢脚线常显条带（S5 起也下沉）：几何落在所引用墙的 along 区间内，bounds 同理由该墙线段承担。
         break;
+      case 'pipe_box':
+        // 包管盒不渲染、无线段/点位：盒贴所包立管的墙角，bounds 由宿主墙承担。
+        break;
       case 'curtain_run':
       case 'shower_screen':
         for (let i = 0; i < element.points.length - 1; i++) expandSegment(element.points[i].x, element.points[i].z, element.points[i + 1].x, element.points[i + 1].z, glassThickness / 2);

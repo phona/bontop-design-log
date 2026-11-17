@@ -291,6 +291,43 @@ const CurtainSchema = z
     message: 'Must specify points, wall, or walls',
   });
 
+// 包管（pipe_box）：排水立管的贴砖包管盒。masonry-takeoff 的声明源——
+// 盒面贴砖面积进 totalTileSqm（COST-060-08）、条数/板材/砂浆量由
+// shared/masonry-takeoff.ts 自本声明派生；人工单价（单管 ¥200/条、双管 ¥300/条）
+// 住 config/masonry-labor.yaml extras，见 COST-060-05。
+// 盒不渲染（SceneBuilder 显式跳过）：立管位是 infer（±0.3m），量房前渲成实体
+// 会把未核实几何当成事实；量房后若立管位确认，可再议是否出网。
+// 碰撞：不需要（贴墙角盒，不占通道；见 AGENTS.md「碰撞/相机修改铁律」）。
+const PipeBoxSchema = z
+  .object({
+    id: z.string().min(1),
+    type: z.literal('pipe_box'),
+    room: z.string().min(1),
+    /** 引用的排水立管 id（config/plumbing.yaml 的 risers）。 */
+    riser: z.string().min(1),
+    /** 单管 1 / 双管 2（人工按条计：单管 ¥200/条、双管 ¥300/条）。 */
+    pipes: z.union([z.literal(1), z.literal(2)]).default(1),
+    /** 盒截面宽（米，沿墙面方向）。 */
+    width: z.number().positive(),
+    /** 盒截面深（米，出墙方向）。 */
+    depth: z.number().positive(),
+    /** 贴砖面数：2 = 墙角盒（两面），3 = 平墙盒（正面 + 两侧）。 */
+    faces: z.union([z.literal(2), z.literal(3)]),
+    /** 盒底标高（米）。厨房盒自台面起：bottom = 台面完成面 0.89。 */
+    bottom: z.number().min(0),
+    /** 盒顶标高（米）。厨卫铝扣板完成面 2.50。 */
+    top: z.number().positive(),
+    /** 立管外径（毫米，DN110 = 110）：砂浆填充量 =（盒截面 − 管截面）× 高。 */
+    pipeDiameterMm: z.number().positive().default(110),
+    /** 声明状态：infer = 未量房推断，量房后复核（量房触发见各条 note）。 */
+    status: z.string().min(1).optional(),
+    note: z.string().min(1).optional(),
+  })
+  .strict()
+  .refine((box) => box.top > box.bottom, {
+    message: 'pipe_box top 必须高于 bottom',
+  });
+
 const OverlaySchema = z
   .object({
     version: z.literal(1),
@@ -307,6 +344,7 @@ const OverlaySchema = z
           BaySillSchema,
           RailingRunSchema,
           CurtainSchema,
+          PipeBoxSchema,
         ])
       )
       .default([]),

@@ -976,7 +976,8 @@ describe('成本总表 cost-summary', () => {
     const { coverage } = data;
     // 2026-11-15 一二期对调（#152）：新增 COST-160-09 洗碗机 → 107（GC5 COST-160-08
     // 退二期、planned 0，仍计组件；未决三类计数与双归属条目不变）。
-    assert.equal(coverage.scannedComponentCount, 107);
+    // 2026-11-17 包管量入账：新增 COST-060-09 包管板材与砂浆主材 → 108（未决 +1，走未定价与待核）。
+    assert.equal(coverage.scannedComponentCount, 108);
     assert.equal(coverage.scannedQuoteRoundCount, 27);
     assert.ok(coverage.unresolvedItemCount > 0, '必须真的扫到未决条目');
     // 集合语义：双归属条目在两个分类各计一次，三类之和 = 未决总数 + 双归属数
@@ -1094,7 +1095,7 @@ describe('成本总表 cost-summary', () => {
     assert.ok(!markdown.includes('非硬装'), '不得出现把空调划到硬装之外的板块');
   });
 
-  it('待核计入状态分类：必填 fail-closed，全量 16 条逐条钉死，渲染计数由期望表推导', () => {
+  it('待核计入状态分类：必填 fail-closed，全量 17 条逐条钉死，渲染计数由期望表推导', () => {
     // 复审 P2：待核清单里混着「钱已在合计里、只待事项核对关闭」的条目（封槽
     // 界面、线控器确认、防水去重），总述若笼统称「待核取得价格后会增加总
     // 额」，读者会把已计入的钱再加一遍。每条待核必须有 countedStatus 分类，
@@ -1104,11 +1105,12 @@ describe('成本总表 cost-summary', () => {
     const illegal = [{ ...bare[0], countedStatus: 'maybe' }] as unknown as PendingEntry[];
     assert.throws(() => assertPendingClassifications(illegal), /缺计入状态分类/, '非法分类值必须被拦下');
     assert.doesNotThrow(() => assertPendingClassifications(data.pendingChecks));
-    // 全量钉死（复审 P2 续）：16 条待核的 id → 计入状态以字面期望表写全，
+    // 全量钉死（复审 P2 续）：17 条待核的 id → 计入状态以字面期望表写全，
     // 逐条断言与登记一致；任何一条被误改分类（哪怕三类总数恰好不变、动态计
     // 数仍自洽）都会令本测试变红。改判须有事实依据并同步改本表。
     const EXPECTED_COUNTED_STATUS: Record<string, PendingCountedStatus> = {
       'pending-sill-tile-labor': 'uncounted', // COST-060-05 小砖条人工：注脚明示未计入泥瓦行
+      'pending-pipe-box-materials': 'uncounted', // COST-060-09 包管板材与砂浆主材：未计入泥瓦行
       'pending-lighting-install-labor': 'uncertain', // COST-120-02：是否含于水电合同未定
       'pending-panel-install-labor': 'uncertain', // COST-125-03：是否含于水电合同未定
       'pending-waterproof-dedup': 'counted', // 防水人工 ¥366 已在防水人工行，只待去重核对
@@ -1125,7 +1127,7 @@ describe('成本总表 cost-summary', () => {
       'pending-demolition-haulage-dedup': 'counted', // 清运 ¥1,059 已在拆改行实付锚内，只待核重
       'pending-fixed-cabinetry': 'uncounted', // QR-2026-10-03-26 固定柜体：未计入任何行
     };
-    assert.equal(data.pendingChecks.length, 16, '待核条目恰为 16 条（与期望表同量）');
+    assert.equal(data.pendingChecks.length, 17, '待核条目恰为 17 条（与期望表同量）');
     const byId = new Map(data.pendingChecks.map((entry) => [entry.id, entry.countedStatus]));
     assert.deepEqual(
       [...byId.keys()].sort(),
@@ -1142,7 +1144,7 @@ describe('成本总表 cost-summary', () => {
     const uncountedN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncounted').length;
     const uncertainN = data.pendingChecks.filter((entry) => entry.countedStatus === 'uncertain').length;
     assert.equal(countedN, expectedCount('counted'), '已计入条数必须与期望表一致（4）');
-    assert.equal(uncountedN, expectedCount('uncounted'), '未计入条数必须与期望表一致（9）');
+    assert.equal(uncountedN, expectedCount('uncounted'), '未计入条数必须与期望表一致（10）');
     assert.equal(uncertainN, expectedCount('uncertain'), '待确认条数必须与期望表一致（3）');
     // 渲染：总述三类条数由登记生成、与期望值一致；每条待核行带自己的分类标签
     const markdown = renderCostSummary(data, '# 测试表头\n\n');
