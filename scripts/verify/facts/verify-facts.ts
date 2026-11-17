@@ -231,6 +231,14 @@ function computeBudgetParityDatasets(): Record<string, unknown> {
       wallTileSqm: takeoff.wallTileSqm,
       sillTileSqm: takeoff.sillTileSqm,
       totalTileSqm: takeoff.totalTileSqm,
+      // 包管盒派生量（2026-11-17 入账；Codex blocking② 的对账腿）：
+      // 板材 = 盒面、砂浆 =（盒截面 − 管截面合计）× 高，均由 pipe_box 声明派生。
+      pipeBoxCount: takeoff.pipeBoxCount,
+      pipeBoxSingleCount: takeoff.pipeBoxSingleCount,
+      pipeBoxDoubleCount: takeoff.pipeBoxDoubleCount,
+      pipeBoxTileSqm: takeoff.pipeBoxTileSqm,
+      pipeBoxBoardSqm: takeoff.pipeBoxBoardSqm,
+      pipeBoxMortarCum: takeoff.pipeBoxMortarCum,
       wallRegionCount: takeoff.regions.filter((region) => region.kind === 'wall').length,
       sillRegionCount: takeoff.regions.filter((region) => region.kind === 'sill').length,
       dryFloorSqm: takeoff.dryFloorSqm,

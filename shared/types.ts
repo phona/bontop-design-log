@@ -1060,9 +1060,9 @@ export type SceneElement =
   | { type: 'shower_screen'; id: string; points: OverlayPoint[]; height: number; sill?: number }
   | { type: 'curtain'; id: string; points: CurtainPoint[]; height: number; room?: string; kind?: 'sheer_blackout' | 'blinds'; offset?: number }
   // 包管盒（2026-11-17）：排水立管贴砖包管盒。量走 masonry-takeoff，不渲染
-  // （SceneBuilder 显式跳过：立管位是 infer ±0.3m，量房前渲成实体会把未核实
+  // （SceneBuilder 显式跳过：立管位是 inferred ±0.3m，量房前渲成实体会把未核实
   // 几何当成事实）；碰撞不需要（贴墙角盒，不占通道）。
-  | { type: 'pipe_box'; id: string; room: string; riser: string; pipes: 1 | 2; width: number; depth: number; faces: 2 | 3; bottom: number; top: number; pipeDiameterMm: number; status?: string; note?: string };
+  | { type: 'pipe_box'; id: string; room: string; riser: string; pipes: 1 | 2; width: number; depth: number; faces: 2 | 3; bottom: number; top: number; pipeDiameterMm: number; status?: ComponentStatus; blocker?: ComponentBlocker; note?: string };
 
 export interface CadLayoutYaml {
   version: string;

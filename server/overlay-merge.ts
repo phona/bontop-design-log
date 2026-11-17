@@ -13,6 +13,7 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { isWallSuppressed } from '../shared/suppression.js';
 import { deriveSkirtingRegions } from '../shared/skirting-derivation.js';
+import { ComponentBlockerSchema } from '../shared/project-render-facts-schema.js';
 import type { BaySillSegment, BaySillWallReference, SceneElement, WallSegment, CurtainPoint, WallPaintBand, WallTileBand } from '../shared/types.js';
 
 const PointSchema = z.object({ x: z.number(), z: z.number() }).strict();
@@ -317,10 +318,24 @@ const PipeBoxSchema = z
     bottom: z.number().min(0),
     /** 盒顶标高（米）。厨卫铝扣板完成面 2.50。 */
     top: z.number().positive(),
-    /** 立管外径（毫米，DN110 = 110）：砂浆填充量 =（盒截面 − 管截面）× 高。 */
+    /** 立管外径（毫米，DN110 = 110）：砂浆填充量 =（盒截面 − 管截面合计）× 高。 */
     pipeDiameterMm: z.number().positive().default(110),
-    /** 声明状态：infer = 未量房推断，量房后复核（量房触发见各条 note）。 */
-    status: z.string().min(1).optional(),
+    /**
+     * 声明状态：构件状态唯一字段，词汇与 shared/types.ts 的 ComponentStatus 同源
+     * （measured / likely / inferred / pending / confirmed / undeclared）。
+     * 包管盒现为 inferred = 未量房推断，量房后复核（复核触发见 blocker）。
+     */
+    status: z.enum(['measured', 'likely', 'inferred', 'pending', 'confirmed', 'undeclared']).optional(),
+    /**
+     * 未决声明（决策铁律第 1 条：每个新引入的部件必须说清卡在谁、什么事件解锁、
+     * 什么条件下反转）。inferred 盒的量房复核走这里，不只写 note——note 是散文，
+     * blocker 才是带 owner/trigger 的结构化声明。status 为 pending/undeclared 时必填
+     * （checkBlockers 门禁）；inferred 同样填写，使复核任务有属主、可查询。
+     * 注意：overlay envelope 元素目前不进 collectElements() 的状态采集（电气/
+     * 给排水/吊顶三类才进），本 blocker 暂只作对象 intent 落点 + 成本待核清单
+     * 的复核依据；采集覆盖是另案机制改动，不在本 PR 里扩。
+     */
+    blocker: ComponentBlockerSchema.optional(),
     note: z.string().min(1).optional(),
   })
   .strict()

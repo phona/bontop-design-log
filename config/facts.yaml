@@ -1735,6 +1735,29 @@ contracts:
       - { label: 'control.yaml COST-060-08 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-08.quantity_declared.total_tile_sqm' }
       - { label: '预算实际计价量（快照 lineItems topic=wall）', value: 'dataset:budget.line_items.wall' }
 
+  # ①b 包管板材面积：takeoff 派生 == control.yaml COST-060-09 登记。
+  #    能抓到：盒截面改了但 control.yaml 登记没跟（Codex blocking② 的对账腿；
+  #    盒面贴砖已由上条契约覆盖，本条只对板材——板材与盒面同面积，但口径不同，
+  #    不能拿上条的通过当本条的通过）。
+  - id: c.masonry_pipe_box_board_parity
+    kind: quantity_parity
+    unit: ㎡
+    tolerance: 0.005
+    compare:
+      - { label: '声明实算（shared/masonry-takeoff.ts pipe_box 板材 = 盒面）', value: 'dataset:budget.masonry.pipeBoxBoardSqm' }
+      - { label: 'control.yaml COST-060-09 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-09.quantity_declared.pipe_box_board_sqm' }
+
+  # ①c 包管灌砂浆体积：takeoff 派生 == control.yaml COST-060-09 登记。
+  #    能抓到：盒截面改了但贴砖面积不变的漂移（0.20×0.20 改 0.15×0.25 时盒面
+  #    不动、砂浆已变——Codex blocking② 的原例）；双管扣管数也在此被对账。
+  - id: c.masonry_pipe_box_mortar_parity
+    kind: quantity_parity
+    unit: m³
+    tolerance: 0.001
+    compare:
+      - { label: '声明实算（shared/masonry-takeoff.ts pipe_box 灌浆 =（盒截面 − 管截面合计）× 高）', value: 'dataset:budget.masonry.pipeBoxMortarCum' }
+      - { label: 'control.yaml COST-060-09 quantity_declared 登记值', value: 'yaml:schedule/phase-1/control.yaml#COST-060-09.quantity_declared.pipe_box_mortar_cum' }
+
   # ② 地面面积：材料侧（预算 lineItems）== 人工侧（takeoff 干+湿）== control.yaml 登记。
   #    能抓到：材料侧与人工侧重新分叉（旧口径差 3.75㎡ 主走廊）、干/湿区房表改了一处
   #    另一处没改、把 bbox 面积塞回异形房（每间最多多算 0.6㎡）。

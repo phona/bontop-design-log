@@ -189,7 +189,7 @@ function render(rows: Row[]): string {
     '',
     `- 生成命令：\`npm run docs:generate-pending-view\``,
     `- 数据来源：config 里构件自己的 \`status\` / \`blocker\` / 施工闸门字段（**不读任何台账**）`,
-    `- 待决条目共 **${rows.length}** 个（场景构件 + \`model-geometry.yaml\` 结构梁 + \`hvac.yaml\` 参考约束）；另有 **${collectOpenItems().length}** 条独立未决项（\`config/open-items.yaml\`，无构件载体）`,
+    `- 待决条目共 **${rows.length}** 个（场景构件 + \`model-geometry.yaml\` 结构梁 + \`hvac.yaml\` 参考约束 + 主卧家具 + envelope 包管盒）；另有 **${collectOpenItems().length}** 条独立未决项（\`config/open-items.yaml\`，无构件载体）`,
     '',
     '## 按 blocker.kind 汇总',
     '',

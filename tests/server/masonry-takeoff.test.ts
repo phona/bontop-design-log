@@ -254,6 +254,35 @@ test('pipe_box 3 条：逐条盒面/板材/砂浆 + 条数', () => {
   close(kitchen.mortarCum, 0.049099658, undefined, 1e-6);
 });
 
+test('pipe_box 双管：砂浆按管数扣除（Codex blocking①）', () => {
+  const base = buildInput();
+  const input: MasonryTakeoffInput = {
+    ...base,
+    pipeBoxes: [{
+      id: 'probe-double', room: 'master_bath', riser: 'drain_riser_master_bath',
+      pipes: 2, width: 0.2, depth: 0.2, faces: 2, bottom: 0, top: 2.5,
+      pipeDiameterMm: 110,
+    } as any],
+  };
+  const result = computeMasonryTakeoff(input);
+  const box = result.pipeBoxes[0];
+  close(box.tileSqm, 1.0, '盒面与单管同');
+  // (0.04 − 2×π×0.055²) × 2.5 = 0.052483411；只扣一根管会错算成 0.076241706
+  close(box.mortarCum, 0.052483411, undefined, 1e-6);
+  assert.equal(result.pipeBoxDoubleCount, 1);
+  // 守卫也按管数合计：双 DN110（0.0190㎡）塞不进 0.13×0.13 盒（0.0169㎡）；单管同盒合法
+  const tiny: MasonryTakeoffInput = {
+    ...base,
+    pipeBoxes: [{ ...input.pipeBoxes![0], id: 'probe-tiny', width: 0.13, depth: 0.13 } as any],
+  };
+  assert.throws(() => computeMasonryTakeoff(tiny), /不小于盒截面/);
+  const tinySingle: MasonryTakeoffInput = {
+    ...base,
+    pipeBoxes: [{ ...input.pipeBoxes![0], id: 'probe-tiny-single', pipes: 1, width: 0.13, depth: 0.13 } as any],
+  };
+  assert.doesNotThrow(() => computeMasonryTakeoff(tinySingle));
+});
+
 test('pipe_box fail-closed：未知房间/非法 pipes/faces/顶底倒置/管比盒粗', () => {
   const base = buildInput();
   const bad = (patch: Record<string, unknown>): MasonryTakeoffInput => ({

@@ -1103,9 +1103,10 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
     const heightM = box.top - box.bottom;
     const tileSqm = faceWidths.reduce((sum, width) => sum + width, 0) * heightM;
     const boxSectionSqm = box.width * box.depth;
-    const pipeAreaSqm = Math.PI * Math.pow(box.pipeDiameterMm / 1000 / 2, 2);
+    // 管截面合计 = 管数 × 单管截面（双管盒只扣一根会高估砂浆；Codex blocking①）。
+    const pipeAreaSqm = box.pipes * Math.PI * Math.pow(box.pipeDiameterMm / 1000 / 2, 2);
     if (pipeAreaSqm >= boxSectionSqm) {
-      throw new Error(`pipe_box ${box.id}: 管截面 ${pipeAreaSqm.toFixed(4)}㎡ 不小于盒截面 ${boxSectionSqm.toFixed(4)}㎡，灌浆量算不出——盒截面或管径声明有误`);
+      throw new Error(`pipe_box ${box.id}: 管截面合计 ${pipeAreaSqm.toFixed(4)}㎡ 不小于盒截面 ${boxSectionSqm.toFixed(4)}㎡，灌浆量算不出——盒截面或管径声明有误`);
     }
     const mortarCum = (boxSectionSqm - pipeAreaSqm) * heightM;
     result.pipeBoxes.push({
