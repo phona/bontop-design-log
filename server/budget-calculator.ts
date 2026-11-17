@@ -231,8 +231,18 @@ export function loadMasonryTakeoff(
     // 每间多算最多 0.6㎡，而这条路直接进 masonry 的材料与人工两侧金额。
     areaSqm: roomArea(room),
     // 异形房给 boundary 折线；轴对齐矩形房给包围盒（resolveRoom 的 x/z/width/depth 口径）。
+    // 圆角信息（radius/cx/cz）必须透传：包含判定按实际圆角边界算，剥掉它切除角内
+    // 的区域会被尖角轮廓误判为房内而跳过（Codex blocking，PR #255 复审第 10 轮）。
     ...((room.points ?? []).length
-      ? { points: room.points!.map((point) => ({ x: point.x, z: point.z })) }
+      ? {
+          points: room.points!.map((point) => ({
+            x: point.x,
+            z: point.z,
+            ...(point.radius !== undefined ? { radius: point.radius } : {}),
+            ...(point.cx !== undefined ? { cx: point.cx } : {}),
+            ...(point.cz !== undefined ? { cz: point.cz } : {}),
+          })),
+        }
       : { rect: { x: room.x, z: room.z, width: room.width, depth: room.depth } }),
   }));
 

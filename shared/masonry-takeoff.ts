@@ -29,6 +29,8 @@
  * 本模块**不 import three、不读文件系统**：CLI/verify 负责加载，server 与 app 共用同一份口径。
  */
 
+import { centerlineSamples } from './arc-polyline.js';
+import type { CurtainPoint } from './types.js';
 import { openingsAlongWall, type WallOpeningSpan } from './wall-segments.js';
 import { overlapArea, signedPolygonArea } from './polygon-area.js';
 
@@ -121,8 +123,13 @@ export interface MasonryRoomInput {
   id: string;
   /** 地面铺砖面积（resolved footprint）。缺省 = 该房不进地面算量，并进 unresolved。 */
   areaSqm?: number;
-  /** boundary 折线（顺序顶点，自动闭合）。缺省 = 跳过脸侧校验，并进 unresolved。 */
-  points?: Array<{ x: number; z: number }>;
+  /**
+   * boundary 折线（顺序顶点，自动闭合）。缺省 = 跳过脸侧校验，并进 unresolved。
+   * 圆角点带 radius/cx/cz（与 layout-resolver 的 resolved 房间同形）：包含判定
+   * 按实际圆角边界算，缺了它圆角切除角内的区域会被尖角轮廓误判为房内而跳过
+   * （Codex blocking，PR #255 复审第 10 轮）。
+   */
+  points?: CurtainPoint[];
   /**
    * 轴对齐矩形房间的包围盒（`resolveRoom` 的 x/z/width/depth 口径：x/z 是中心）。
    * `points` 缺省时用它判「floor_region 整块落在已计费房间内」——与
@@ -1030,6 +1037,11 @@ export function computeMasonryTakeoff(input: MasonryTakeoffInput): MasonryTakeof
  * 可作裁剪边）。
  * 比较基准是轮廓鞋带面积（尖角口径），不是 region.areaSqm（调用方给的圆角
  * 面积）：圆角只影响角部 0.21㎡ 级的边界，分类只问「有没有/全不全」。
+ * 房间轮廓取实际圆角边界（见 roomOutlinePoints）：房间面积已扣圆角，
+ * 包含判定若仍用尖角轮廓，圆角切除角内的区域会被判房内跳过、静默少算
+ * （Codex blocking，PR #255 复审第 10 轮：2×2m R1 房的 [0,0.1]² 区域
+ * 少算 0.01㎡）。采样弦落在弧内侧（轮廓略小于真实圆角房），紧贴弧带的
+ * 区域会判为横跨而抛错——显式阻断，不静默跳过。
  */
 function floorRegionRoomOverlap(
   region: MasonryFloorRegionInput,
@@ -1039,13 +1051,32 @@ function floorRegionRoomOverlap(
   if (points.length < 3) return null;
   const roomPoints = room.points?.length ? room.points : rectCorners(room.rect);
   if (!roomPoints) return null;
-  const { area, exact } = overlapArea(points, roomPoints);
+  const { area, exact } = overlapArea(points, roomOutlinePoints(roomPoints));
   if (!exact) {
     throw new Error(
       `floor_region ${region.id} 与房间 ${room.id} 皆为非凸多边形，交叠面积无法精确计算：请拆成凸块或显式裁定（不静默按 extra/跳过）`,
     );
   }
   return { overlapSqm: area, regionSharpSqm: Math.abs(signedPolygonArea(points)) };
+}
+
+/**
+ * 房间轮廓的实际边界：无圆角点时原样返回尖角折线；有圆角点时按
+ * shared/arc-polyline.ts 的 centerlineSamples 把弧展开为密采样折线（与
+ * DXF/3D 同一套弧口径，默认 32 步/半圆、R1 弦矢距约 4.8mm）。解不出的
+ * 圆角点退化成尖角——与 layout-resolver 房间面积的同向退化一致（那边
+ * tangentArc 解不出时也不给 cx/cz、面积按尖角算），面积与判定不分叉。
+ */
+function roomOutlinePoints(roomPoints: CurtainPoint[]): Array<{ x: number; z: number }> {
+  if (!roomPoints.some((point) => point.radius !== undefined)) return roomPoints;
+  const samples = centerlineSamples(roomPoints, true);
+  // 闭合轮廓末点重复首点；overlapArea 按自动闭合算，掐掉重复末点。
+  if (samples.length > 1) {
+    const first = samples[0];
+    const last = samples[samples.length - 1];
+    if (Math.abs(first.x - last.x) < 1e-9 && Math.abs(first.z - last.z) < 1e-9) samples.pop();
+  }
+  return samples;
 }
 
 /** floor_region 轮廓是否全部落在某个已计费房间内（多边形包含优先，轴对齐矩形回落包围盒）。 */

@@ -73,8 +73,18 @@ function buildInput(): MasonryTakeoffInput {
     id: room.id,
     areaSqm: room.area ?? room.width * room.depth,
     // 异形房给 boundary 折线；轴对齐矩形房给包围盒（resolveRoom 的 x/z/width/depth 口径）。
+    // 圆角信息（radius/cx/cz）必须透传：包含判定按实际圆角边界算，剥掉它切除角内
+    // 的区域会被尖角轮廓误判为房内而跳过（Codex blocking，PR #255 复审第 10 轮）。
     ...((room.points ?? []).length
-      ? { points: room.points.map((point: any) => ({ x: point.x, z: point.z })) }
+      ? {
+          points: room.points.map((point: any) => ({
+            x: point.x,
+            z: point.z,
+            ...(point.radius !== undefined ? { radius: point.radius } : {}),
+            ...(point.cx !== undefined ? { cx: point.cx } : {}),
+            ...(point.cz !== undefined ? { cz: point.cz } : {}),
+          })),
+        }
       : { rect: { x: room.x, z: room.z, width: room.width, depth: room.depth } }),
   }));
 
@@ -723,4 +733,52 @@ test('横跨判定改面积比较：边经凹角顶点穿出缺口不再被整�
     )),
     /横跨已计费房间边界/,
   );
+});
+
+test('圆角房间的包含判定须按圆角边界：切除角内的地面区不得判房内跳过（Codex blocking，PR #255 复审第 10 轮）', () => {
+  const minimal = (rooms: MasonryTakeoffInput['rooms'], floorRegions: MasonryTakeoffInput['floorRegions']): MasonryTakeoffInput => ({
+    walls: [],
+    wallRegions: [],
+    sillRegions: [],
+    baySills: [],
+    rooms,
+    dryRoomIds: rooms.map((room) => room.id),
+    wetRoomIds: [],
+    floorRegions,
+    clearHeight: 2.65,
+  });
+  // 2×2m 房间，(0,0) 角 R1（弧心 (1,1)）：房间面积已扣圆角 = 4 − (1 − π/4)
+  // = 3.785398㎡。[0,0.1]×[0,0.1] 地面区完全位于圆角切除部分（距弧心最短
+  // 1.273m > 半径 1m），真实并集 = 房间 3.785398 + 区域 0.01 = 3.795398㎡。
+  // 旧判定用尖角轮廓求交：该区域被尖角轮廓完全包含，判房内跳过、0.01㎡
+  // 静默消失（dryFloorSqm 得 3.785398）。圆角边界判定必须把它计为 extra。
+  const room = [{
+    id: 'room',
+    areaSqm: 4 - (1 - Math.PI / 4),
+    points: [
+      { x: 0, z: 0, radius: 1, cx: 1, cz: 1 },
+      { x: 2, z: 0 },
+      { x: 2, z: 2 },
+      { x: 0, z: 2 },
+    ],
+  }];
+  const region = [{
+    id: 'corner_cut',
+    areaSqm: 0.01,
+    points: [{ x: 0, z: 0 }, { x: 0.1, z: 0 }, { x: 0.1, z: 0.1 }, { x: 0, z: 0.1 }],
+  } as any];
+  const result = computeMasonryTakeoff(minimal(room as any, region));
+  assert.ok(!result.skippedInsideRoomFloorRegionIds.includes('corner_cut'),
+    '切除角内的地面区不得列入房内跳过清单');
+  close(result.dryFloorSqm, 4 - (1 - Math.PI / 4) + 0.01,
+    '切除角内 0.01㎡ 作 extra，房间 3.785398㎡ + extra 0.01㎡');
+  // 对照：同一房间、整块在房内的区域仍照常跳过（圆角判定不得把房内区误判为 extra）。
+  const inside = computeMasonryTakeoff(minimal(room as any, [{
+    id: 'inside_probe',
+    areaSqm: 0.25,
+    points: [{ x: 1.5, z: 1.5 }, { x: 2, z: 1.5 }, { x: 2, z: 2 }, { x: 1.5, z: 2 }],
+  } as any]));
+  assert.ok(inside.skippedInsideRoomFloorRegionIds.includes('inside_probe'),
+    '整块在房内的区域仍须跳过');
+  close(inside.dryFloorSqm, 4 - (1 - Math.PI / 4), '房内区跳过，干区只计房间面积');
 });
