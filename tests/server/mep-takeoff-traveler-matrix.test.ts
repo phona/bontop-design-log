@@ -42,6 +42,8 @@ import {
  *    不同回路（C2）…… 本文件「跨回路分支不得连通」
  *  三开关星形 ………… mep-takeoff.test.ts「双控行程取开关间最小子树」
  *  重复折线首点 ……… 同文件「第 10 轮」
+ *  连通性缺口：
+ *    双控组分属多分量… 本文件「双控组开关分属不连通分量时须登记连通性缺口」
  */
 
 type MiniPoint = { id: string; height: number; deferred?: boolean };
@@ -83,7 +85,7 @@ function travelerCase(input: {
   switches: string[];
   target: string;
   includeTerminalDrop?: boolean;
-}): { extra: number; unroutedIds: string[] } {
+}): { extra: number; unroutedIds: string[]; unresolvedIds: string[] } {
   const routes = input.routes.map((r) => ({
     id: r.id,
     layer: r.layer ?? 'strong_power',
@@ -130,6 +132,7 @@ function travelerCase(input: {
   return {
     extra: out.wire.dualControlExtraM,
     unroutedIds: out.coverage.unroutedPoints.map((p) => p.id),
+    unresolvedIds: out.unresolved.map((u) => u.id),
   };
 }
 
@@ -261,4 +264,31 @@ test('折线低于安装点时 stub 计 0、仍连通', () => {
       `折线低于安装点时行程应为 2m × 1.05 = 2.1m（开关${includeTerminalDrop ? '开' : '关'}），实际 ${extra}`);
     assert.deepEqual(unroutedIds, [], '三点位都有 physical route，覆盖度不得报漏');
   }
+});
+
+test('双控组开关分属不连通分量时须登记连通性缺口（Codex major，PR #255 跟进）', () => {
+  // Codex 最小用例：同回路两开关各接一条物理上不连通的路由——r1 沿 z=0、
+  // r2 沿 z=5，两线无交点、无共享节点。行程计 0（未画线不进量、不估算），
+  // 但缺口必须显形：unresolved 须登记该控制组，否则报价会把未画全的双控
+  // 网络显示为完整计价。未画线的开关不在图里，已由覆盖度显形，不在此重复报。
+  const points: MiniPoint[] = [
+    { id: 'swA', height: 2.5 },
+    { id: 'swB', height: 2.5 },
+    { id: 'light1', height: 2.5 },
+  ];
+  const routes: MiniRoute[] = [
+    { id: 'r1', from: 'swA', to: 'light1', points: [{ x: 0, y: 2.5, z: 0 }, { x: 2, y: 2.5, z: 0 }] },
+    { id: 'r2', from: 'swB', to: { x: 2, z: 5 }, points: [{ x: 0, y: 2.5, z: 5 }, { x: 2, y: 2.5, z: 5 }] },
+  ];
+  const { extra, unroutedIds, unresolvedIds } = travelerCase({
+    points,
+    routes,
+    circuits: [{ id: 'c1', members: ['swA', 'swB', 'light1'] }],
+    switches: ['swA', 'swB'],
+    target: 'light1',
+  });
+  assert.equal(extra, 0, `不连通的双控组行程应为 0（不估算未画线），实际 ${extra}`);
+  assert.deepEqual(unroutedIds, [], '三点位都有 physical route，缺口不在覆盖度里、在 unresolved 里');
+  assert.ok(unresolvedIds.includes('ctl1'),
+    `双控组分属两个连通分量，unresolved 须登记控制组 ctl1，实际 unresolved=${JSON.stringify(unresolvedIds)}`);
 });

@@ -770,8 +770,40 @@ function travelerSteinerLength(terminals: string[], nodes: string[], d: (a: stri
 }
 
 /**
+ * 控制组各开关在行程图上的连通分量（只含已在图中的开关；未画线的开关不在图里，
+ * 已由 coverage.unroutedPoints 显形，不在此重复报）。
+ * travelerSubtreeLength 与连通性缺口诊断共用：分量划分只写一次
+ * （Codex major，PR #255 跟进：分量不足 2 个端点时旧代码静默计 0、无任何诊断）。
+ */
+export function travelerSwitchComponents(edges: TravelerGraphEdge[], switches: string[]): string[][] {
+  const members = [...new Set(switches)];
+  if (members.length < 2 || edges.length === 0) return [];
+  const adjacency = travelerAdjacency(edges);
+  const nodeIndex = new Set(adjacency.keys());
+  const seen = new Set<string>();
+  const components: string[][] = [];
+  for (const start of members) {
+    if (seen.has(start) || !nodeIndex.has(start)) continue;
+    const component = new Set<string>();
+    const queue = [start];
+    seen.add(start);
+    while (queue.length > 0) {
+      const current = queue.pop()!;
+      component.add(current);
+      for (const step of adjacency.get(current) ?? []) {
+        if (!seen.has(step.to)) { seen.add(step.to); queue.push(step.to); }
+      }
+    }
+    components.push(members.filter((m) => component.has(m)));
+  }
+  return components;
+}
+
+/**
  * 连接一组开关的最小行程网络长度（精确最小子树，Dreyfus–Wagner）。
  * 无路连接的开关不贡献（未画线不进量）；开关组不连通时按连通分量分别算后相加。
+ * 分量划分见 travelerSwitchComponents（与缺口诊断共用）；单端点分量计 0，
+ * 缺口由调用方按控制组登记进 unresolved（不估算未画线）。
  * 边权即边长；竖直 stub 是独立边（安装点 → 折线端点），成员开关只经该边接入图，
  * 非成员端点的 stub 边是叶边、永不入选——stub 不再按成员身份有条件计入
  * （PR #255 复审第 9/10 轮）。
@@ -797,21 +829,8 @@ export function travelerSubtreeLength(edges: TravelerGraphEdge[], switches: stri
     return dists[ia].get(b) ?? Number.POSITIVE_INFINITY;
   };
   // 开关按连通性分组：不连通的开关不贡献，只在各自连通分量内算最小子树。
-  const seen = new Set<string>();
   let total = 0;
-  for (const start of members) {
-    if (seen.has(start) || !nodeIndex.has(start)) continue;
-    const component = new Set<string>();
-    const queue = [start];
-    seen.add(start);
-    while (queue.length > 0) {
-      const current = queue.pop()!;
-      component.add(current);
-      for (const step of adjacency.get(current) ?? []) {
-        if (!seen.has(step.to)) { seen.add(step.to); queue.push(step.to); }
-      }
-    }
-    const terminals = members.filter((m) => component.has(m));
+  for (const terminals of travelerSwitchComponents(edges, switches)) {
     if (terminals.length >= 2) total += travelerSteinerLength(terminals, nodes, d);
   }
   return total;
@@ -1273,6 +1292,9 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   // 双控/多控附加控制线（2026-11-16 量价算法审计）：按控制声明逐组算行程，不再按点位 type 分摊。
   // 成员 ≥2 即多控；行程 = 该控制各开关在已画强电路由图上的最小子树（见 travelerSubtreeLength），
   // 只在受控灯具所在回路的边上找路（跨回路串线不是行程）；无路可通计 0（未画线不进量）。
+  // 连通性缺口（Codex major，PR #255 跟进）：开关分属多个连通分量时组内连线未画全——
+  // 附加线只按各分量内计、缺口不估算，但缺口必须登记进 unresolved，否则报价会把未画全的
+  // 双控网络显示为完整计价。未画线的开关不在图里，已由 coverage.unroutedPoints 显形，不在此重复报。
   let dualControlExtraM = 0;
   for (const control of controls) {
     const switches = [...new Set(control.switch_point_ids ?? [])];
@@ -1284,6 +1306,14 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       ? travelerEdges
       : travelerEdges.filter((edge) => edge.circuit === targetCircuit);
     dualControlExtraM += travelerSubtreeLength(usable, switches) * dualControlExtraCores;
+    const components = travelerSwitchComponents(usable, switches);
+    if (components.length > 1) {
+      unresolved.push({
+        id: control.id ?? `control:${switches.join('+')}`,
+        reason: `双控组 ${control.id ?? switches.join('、')} 的开关分属 ${components.length} 个不连通分量（${components.map((group) => group.join('+')).join(' / ')}）：组内连线未画全，附加线只按各分量内计、缺口不估算`,
+        kind: 'error',
+      });
+    }
   }
   // 损耗系数在上方 requireRule 已取值（缺失即抛错），此处直接乘。
   // 旧代码 `validFinite(...) ? ... : 1` 会让缺失损耗的导线按"零损耗"计价——少买 5%~8% 的线。
