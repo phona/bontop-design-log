@@ -851,6 +851,24 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const pointHeights = new Map<string, { height?: number }>();
   for (const point of [...electrical, ...plumbing]) if (point.height !== undefined) pointHeights.set(point.id, { height: point.height });
 
+  // 终端下引是否计长（DEC-2026-10-23-R01）：只在此读一次 rules.include_terminal_drop。
+  // 下引长度唯一入口 countedDropM 与回路计价基数的 span 门都用它；各处不许再写
+  // `rules.include_terminal_drop ? … : 0`。第 13 轮的洞正是 stub 另写一套
+  // （stubAt + zeroLength）与基础导线分叉，关掉开关后附加线多算 3.15m。
+  const includeTerminalDrop = rules.include_terminal_drop;
+  /**
+   * 端点下引计长（结构性收尾）：一条端点的下引长度只在这里定——开关关掉时计 0，
+   * 开时按“端点标高 − 安装高度”计（terminalDrop/fromDrop：标高不定即抛错，
+   * 端点不高于安装点计 0）。基础导线层长、管材分桶、回路计价基数与行程图 stub
+   * 都调它。
+   */
+  const countedDropM = (end: 'from' | 'to', route: MepRoute, resolved: ResolvedMepRoute): number => {
+    if (!includeTerminalDrop) return 0;
+    return end === 'to'
+      ? terminalDrop(route, pointHeights, resolved.to, resolved.points)
+      : fromDrop(route, pointHeights, resolved.from, resolved.points);
+  };
+
   // ---------- 点位 → 回路 单一派生（issue #98 S3，shared/point-circuits.ts）----------
   // 原三条声明通道：① topology.member_point_ids、② controls 反推、③ point.circuit 字段。
   // ③ 已退役（成员关系只住回路侧），①② 收拢成 derivePointCircuits 一处实现——
@@ -860,6 +878,19 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   const drawnPlanPaths: Array<Array<{ x: number; z: number }>> = [];
   /** 双控行程图边：已画强电物理路由（主循环内构造，见 travelerSubtreeLength）。 */
   const travelerEdges: TravelerGraphEdge[] = [];
+  /** 行程图有效路由（结构性收尾）：切分点收集与图边构造共用这一判断。待激活
+   * 端点不在图里（主循环的 deferredEndpoint 排除曾只写在图边构造一处，切分点
+   * 收集漏了它——第 14 轮的洞：待激活路由的 via 点进了切分、却不进边，行程被
+   * 静默抬高 2.1m）。 */
+  const isTravelerRoute = (route: MepRoute): boolean => {
+    if (route.layer !== 'strong_power') return false;
+    if (!covered.has(route.layer)) return false;
+    const resolved = resolvedById.get(route.id);
+    if (!resolved || resolved.unresolved.length > 0 || !resolved.metadata.physicalRoute) return false;
+    return ![route.from, route.to].some(
+      (endpoint) => typeof endpoint === 'string' && isDeferredElectricalPoint(elecById.get(endpoint)),
+    );
+  };
   // 行程图切分点（Codex blocking，PR #255 复审第 7 轮）：同回路其他路由的折线点
   // 落在某段内部时，该段须在此切分——第 6 轮只把已有折线顶点建成节点，接入点
   // 落在线段内部仍悬空（删去冗余 via 点即复现：几何不变，行程 2.1m → 0）。
@@ -869,9 +900,11 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
   // key 作节点，坐标切分点落在本回路某折线端点处时自然是同一坐标 key，不再
   // 需要把坐标统一成 ID；点位 ID 只经独立 stub 边接入图。）
   for (const route of routes) {
-    if (route.layer !== 'strong_power') continue;
+    if (!isTravelerRoute(route)) continue;
+    // isTravelerRoute 已保证 resolved 存在且 physical；这里只取回它（TS 无法
+    // 跨函数收窄，取不到即跳过，与旧行为一致）。
     const resolved = resolvedById.get(route.id);
-    if (!resolved || resolved.unresolved.length > 0 || !resolved.metadata.physicalRoute) continue;
+    if (!resolved) continue;
     const circuit = typeof route.to === 'string'
       ? pointCircuit.get(route.to)
       : typeof route.from === 'string' ? pointCircuit.get(route.from) : undefined;
@@ -982,17 +1015,16 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     const drawnLength = routeLength(route, resolved.points);
     drawnMWithoutDrop += drawnLength;
     const points3d = resolved.points;
-    if (route.layer === 'strong_power') {
+    // 与切分点收集共用 isTravelerRoute：到这里的路由本已通过主循环的层/解析/
+    // physical/待激活四道 continue，故此判断恒真——写出来是为让两处过滤永远
+    // 是同一函数，分叉即编译可见。
+    if (route.layer === 'strong_power' && isTravelerRoute(route)) {
       // 双控行程图边（量价算法审计）：边长取 3D 折线长；折线端点未下引到开关时，
-      // 开关节点经一条独立的竖直 stub 边接入图（安装点 → 折线端点，边长 =
-      // 端点标高 − 开关安装高度；Codex blocking，PR #255 复审第 9/10 轮）。
+      // 开关节点经一条独立的竖直 stub 边接入图（安装点 → 折线端点，边长由
+      // countedDropM 定，与基础导线同一口径；Codex blocking，PR #255 复审
+      // 第 9/10 轮）。stubAt 已退役：它的长度与 countedDropM 是同一量
+      // （端点标高 − 安装高度），两处各算一套是第 13 轮的洞。
       // 回路归属与 circuitPaths 同口径（to 端优先）。
-      const stubAt = (endpoint: string | { x: number; z: number }, endY: number): number => {
-        if (typeof endpoint !== 'string') return 0;
-        const height = pointHeights.get(endpoint)?.height;
-        if (height === undefined) return 0;
-        return Math.max(0, endY - height);
-      };
       // 行程图按折线逐段建边（Codex blocking，PR #255 复审第 6 轮）：整条折线压成
       // 一条 from→to 边会丢掉中途接入点——另一条路由的端点落在某段中途时，两开
       // 关在图上不连通、行程计 0，coverage 也不报（两开关都有 physical route）。
@@ -1021,8 +1053,8 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         to3d: { x: number; z: number; y: number },
         fromKey: string,
         toKey: string,
-        // （第 13 轮）zeroLength 时各小段边长记 0、连接不断：终端 stub 的下引
-        // 计长受 include_terminal_drop 开关控制，关掉时 stub 只作连接、不计长。
+        // zeroLength 时各小段边长记 0、连接不断（第 13 轮引入）：终端 stub 的下引
+        // 计长只由 countedDropM 定（结构性收尾），开关关掉时 stub 只作连接、不计长。
         zeroLength = false,
       ): void => {
         // （第 12 轮）接入点恰落在段端点时：travelerInteriorT 只认内部点（t=0/1
@@ -1077,7 +1109,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       // （第 11 轮）竖直段存在（端点标高高于安装高度）时按同一规则切分；
       // 无中途接入点时各小段长度之和仍等于原 stub 长，生产值不变。
       // 标高不高于安装高度时沿用旧口径——单条零长边不断开终端连接。
-      const terminalStubEdge = (endpoint: string | { x: number; z: number }, point: { x: number; z: number; y?: number }): void => {
+      const terminalStubEdge = (end: 'from' | 'to', endpoint: string | { x: number; z: number }, point: { x: number; z: number; y?: number }): void => {
         if (typeof endpoint !== 'string') return;
         const y = requirePointY(point, `路由 ${route.id}`);
         const height = pointHeights.get(endpoint)?.height;
@@ -1087,10 +1119,10 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
             { x: point.x, z: point.z, y },
             endpoint,
             travelerNodeKey({ x: point.x, z: point.z }, y),
-            // （第 13 轮）stub 边长受 include_terminal_drop 开关控制：关掉时
-            // 下引不计长，但边仍保留（零长）、开关仍经 stub 接入图——中途接入
-            // 点仍在 stub 上成节点，与基础导线按同一开关补计下引。
-            !rules.include_terminal_drop,
+            // 下引长度只由 countedDropM 定（结构性收尾）：开关关掉时 countedDropM
+            // 为 0，stub 以零长边保留、开关仍经 stub 接入图——中途接入点仍在
+            // stub 上成节点，与基础导线按同一开关补计下引。
+            countedDropM(end, route, resolved) === 0,
           );
           return;
         }
@@ -1098,12 +1130,12 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
           routeId: route.id,
           a: endpoint,
           b: travelerNodeKey({ x: point.x, z: point.z }, y),
-          length: stubAt(endpoint, y),
+          length: countedDropM(end, route, resolved),
           circuit,
         });
       };
-      terminalStubEdge(route.from, points3d[0]);
-      terminalStubEdge(route.to, points3d[points3d.length - 1]);
+      terminalStubEdge('from', route.from, points3d[0]);
+      terminalStubEdge('to', route.to, points3d[points3d.length - 1]);
     }
     const planPath = points3d.map((point) => ({ x: point.x, z: point.z }));
     drawnPlanPaths.push(planPath);
@@ -1113,7 +1145,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       // 回路路径保留 3D 点：计价基数 pricedCircuitLength 需要 via/端点的 y 算竖直段。
       const list = circuitPaths.get(circuitId) ?? [];
       list.push(points3d);
-      if (rules.include_terminal_drop) {
+      if (includeTerminalDrop) {
         // 终端下引进计价（DEC-2026-10-23-R01 评审后修订）：下引此前只进 drawn/layer
         // 诊断长度，circuitPaths 只有路由折线，报价卡从 strongPowerTotalM 取量时
         // 这段已声明的管线不在基数内（评审实测强电 0.95m）。把下引作为终端点
@@ -1142,7 +1174,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
     const endRoom = typeof route.to === 'string' ? roomOf(route.to) : undefined;
     if (endRoom) bumpRoom(endRoom, 'drawnRouteM', routeLength(route, resolved.points));
     else unassignedRouteM += routeLength(route, resolved.points);
-    const length = drawnLength + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) + fromDrop(route, pointHeights, resolved.from, resolved.points) : 0);
+    const length = drawnLength + countedDropM('to', route, resolved) + countedDropM('from', route, resolved);
     layerLength[layer] = (layerLength[layer] ?? 0) + length;
     for (const endpoint of [route.from, route.to]) {
       if (typeof endpoint === 'string') drawnPointIds.add(endpoint);
@@ -1305,8 +1337,8 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         // 起点 stub 与终端下引同口径：折线起点高于起点位安装高度时，位点到折线
         // 起点那段竖直管进首段（审计 D3 只补了层长 conduit，管材分桶漏了它，
         // Codex blocking，PR #255 复审第 5 轮；单段路由首尾同一段，两项都加）。
-        + (index === 0 && rules.include_terminal_drop ? fromDrop(route, pointHeights, resolved.from, points) : 0)
-        + (index === segments.length - 1 && rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, points) : 0),
+        + (index === 0 ? countedDropM('from', route, resolved) : 0)
+        + (index === segments.length - 1 ? countedDropM('to', route, resolved) : 0),
       spec: segment,
     }));
   };
@@ -1344,7 +1376,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
         return;
       }
       const length = routeLength(route, resolved.points)
-        + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) + fromDrop(route, pointHeights, resolved.from, resolved.points) : 0);
+        + countedDropM('to', route, resolved) + countedDropM('from', route, resolved);
       for (const key of pipeKeysForWater(specs[0]!.temp!, specs[0]!.dn!)) addPipe(water, key, length);
       return;
     }
@@ -1363,7 +1395,7 @@ export function computeMepTakeoff(input: MepTakeoffInput): MepTakeoff {
       return;
     }
     const length = routeLength(route, resolved.points)
-      + (rules.include_terminal_drop ? terminalDrop(route, pointHeights, resolved.to, resolved.points) + fromDrop(route, pointHeights, resolved.from, resolved.points) : 0);
+      + countedDropM('to', route, resolved) + countedDropM('from', route, resolved);
     addPipe(drainage, `de${dns[0]}`, length);
   };
   for (const route of routes) {
