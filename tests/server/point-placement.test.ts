@@ -20,13 +20,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { load as parseYaml } from 'js-yaml';
 import { resolveLayout } from '../../server/layout-resolver.js';
-import { parseElectricalPoints, parseElectricalTopology, parsePlumbingPoints } from '../../shared/project-render-facts-schema.js';
+import { parseElectricalPoints, parseElectricalTopology, parsePlumbingPoints, PlumbingPointSchema } from '../../shared/project-render-facts-schema.js';
 import {
+  pointPlacementIndex,
   pointWallIndexFromElements,
   resolvePointPlacement,
   resolvePointPlacementInWalls,
   THIN_PLATE_FACE_OFFSET,
   type PointMountHost,
+  type PointPlacementInput,
   type PointWall,
   type PointWallSegment,
 } from '../../shared/point-placement.js';
@@ -115,6 +117,99 @@ describe('point placement resolver (issue #98 S1/S2/S3)', () => {
   });
 });
 
+describe('along_host derived position (PR #260 fix round 2, Codex major)', () => {
+  // 横墙 (0,0)→(10,0)，北脸 = -z：宿主 along 5 → datum (5, 0)，落位 (5, -0.06)。
+  const walls = new Map<string, PointWall>([['w', { segments: [{ x1: 0, z1: 0, x2: 10, z2: 0 }], line_datum: 'centerline' }]]);
+  const host: PointPlacementInput = { id: 'shower', wall: 'w', wall_side: 'north', along: 5 };
+  const inlet: PointPlacementInput = { id: 'inlet', along_host: { id: 'shower', offset: -0.15 }, wall_side: 'north' };
+  const siblings = new Map<string, PointPlacementInput>([['shower', host], ['inlet', inlet]]);
+
+  it('derives along from the host plus offset (same wall, same side)', () => {
+    const { placement, diagnostic } = resolvePointPlacementInWalls(inlet, walls, undefined, siblings);
+    assert.equal(diagnostic, undefined);
+    assert.ok(placement && placement.kind === 'wall');
+    assert.equal(placement.wallId, 'w');
+    assert.equal(placement.wallSide, 'north');
+    assert.ok(Math.abs(placement.along - 4.85) < 1e-12, `expected along 4.85, got ${placement.along}`);
+    assert.equal(placement.datum.x, 4.85);
+    assert.equal(placement.datum.z, 0);
+    assert.ok(Math.abs(placement.x - 4.85) < 1e-12);
+    assert.ok(Math.abs(placement.z - (-0.06)) < 1e-12);
+  });
+
+  it('follows the host when only the host moves (no hand-moved inlet)', () => {
+    const movedHost: PointPlacementInput = { ...host, along: 5.2 };
+    const moved = new Map<string, PointPlacementInput>([['shower', movedHost], ['inlet', inlet]]);
+    const { placement } = resolvePointPlacementInWalls(inlet, walls, undefined, moved);
+    assert.ok(placement && placement.kind === 'wall');
+    assert.ok(Math.abs(placement.along - 5.05) < 1e-12, `expected along 5.05, got ${placement.along}`);
+  });
+
+  it('chains: an inlet of an inlet follows through the chain', () => {
+    const second: PointPlacementInput = { id: 'inlet2', along_host: { id: 'inlet', offset: 0.1 }, wall_side: 'north' };
+    const chained = new Map<string, PointPlacementInput>([['shower', host], ['inlet', inlet], ['inlet2', second]]);
+    const { placement } = resolvePointPlacementInWalls(second, walls, undefined, chained);
+    assert.ok(placement && placement.kind === 'wall');
+    assert.ok(Math.abs(placement.along - 4.95) < 1e-12, `expected along 4.95, got ${placement.along}`);
+  });
+
+  it('fails closed on a host cycle instead of recursing', () => {
+    const a: PointPlacementInput = { id: 'a', along_host: { id: 'b', offset: 0.1 }, wall_side: 'north' };
+    const b: PointPlacementInput = { id: 'b', along_host: { id: 'a', offset: 0.1 }, wall_side: 'north' };
+    const cyclic = new Map<string, PointPlacementInput>([['a', a], ['b', b]]);
+    const { placement, diagnostic } = resolvePointPlacementInWalls(a, walls, undefined, cyclic);
+    assert.equal(placement, null);
+    assert.match(diagnostic ?? '', /成环/);
+  });
+
+  it('fails closed when the host is not in the index (dangling reference)', () => {
+    const { placement, diagnostic } = resolvePointPlacementInWalls(inlet, walls, undefined, new Map([['inlet', inlet]]));
+    assert.equal(placement, null);
+    assert.match(diagnostic ?? '', /不在点位索引/);
+  });
+
+  it('fails closed when the caller provides no point index (no silent literal fallback)', () => {
+    const { placement, diagnostic } = resolvePointPlacementInWalls(inlet, walls);
+    assert.equal(placement, null);
+    assert.match(diagnostic ?? '', /点位索引/);
+  });
+
+  it('fails closed when the declared side disagrees with the host side', () => {
+    const wrongSide: PointPlacementInput = { ...inlet, wall_side: 'south' };
+    const { placement, diagnostic } = resolvePointPlacementInWalls(wrongSide, walls, undefined, siblings);
+    assert.equal(placement, null);
+    assert.match(diagnostic ?? '', /不一致/);
+  });
+
+  it('keeps along_host mutually exclusive with the other sources', () => {
+    const { diagnostic } = resolvePointPlacementInWalls({ ...inlet, wall: 'w', along: 4.85 }, walls, undefined, siblings);
+    assert.match(diagnostic ?? '', /不得同时声明/);
+  });
+
+  it('refuses to resolve along_host through the single-point entry (needs the wall index)', () => {
+    const { placement, diagnostic } = resolvePointPlacement(inlet, new Map([['w', [{ x1: 0, z1: 0, x2: 10, z2: 0 }]]]));
+    assert.equal(placement, null);
+    assert.match(diagnostic ?? '', /须走 resolvePointPlacementInWalls/);
+  });
+
+  it('schema: along_host plus wall/along is not a single source, and it bans x/z', () => {
+    // 不用 parsePlumbingPoints 的产出当底（它带 wallSide 投影字段，strict schema 会先报
+    // unrecognized_keys）；用最小字面量直测 refine。
+    const base = { id: 'shower_mbath_cold_inlet', room: 'master_bath', type: 'shower_inlet' as const, along_host: { id: 'shower_mbath', offset: -0.15 }, wall_side: 'north' as const };
+    assert.doesNotThrow(() => PlumbingPointSchema.parse(base));
+    assert.throws(() => PlumbingPointSchema.parse({ ...base, wall: 'w_mbath_south', along: 0.35 }), /定位来源必须唯一/);
+    assert.throws(() => PlumbingPointSchema.parse({ ...base, x: 0.35, z: 2.76 }), /禁止同时声明 x\/z/);
+    // 缺 offset 时内层 z.object 先报 invalid_type（path along_host.offset），refine 的
+    // 「沿位派生要求 id + offset 齐备」只兜非对象/非数字等走不到内层的形态。
+    assert.throws(() => PlumbingPointSchema.parse({ ...base, along_host: { id: 'shower_mbath' } }), /"along_host",\s*"offset"/);
+  });
+
+  it('pointPlacementIndex keeps the first entry on duplicate ids (same rule as MEP endpoints)', () => {
+    const index = pointPlacementIndex([host, { ...host, along: 9 }, inlet]);
+    assert.equal((index.get('shower') as { along?: number }).along, 5);
+  });
+});
+
 describe('point mount resolution (issue #98 S2 real mount)', () => {
   // 合成宿主：rot90 → AABB x[4.825,5.175]、z[4.0,6.0]；east 脸平面 x=5.175，脸轴 z 自南端 4.0 向北累计。
   const hostHosts = (): Map<string, PointMountHost> => new Map([
@@ -181,16 +276,19 @@ describe('point placement consumers share one resolution (3D / DXF / MEP)', () =
     // 三方同源的构造性证明：对全部沿墙点位，DXF 圈心（= 3D mesh 位置）= datum + 0.075·法线，
     // 与 InfrastructureBuilder.placeModel / project-dxf.resolvedPointPosition 用同一个解析器输出。
     let checked = 0;
+    // along_host 点位同样沿墙（经宿主派生）：过滤与解算都要把它算进来，否则 DXF/3D
+    // 漏画它还全绿。siblings 由同批点位建（3D/DXF/MEP 同口径）。
+    const siblings = pointPlacementIndex([...electrical, ...plumbing]);
     for (const point of [...electrical, ...plumbing] as Array<ElectricalPoint | PlumbingPoint>) {
-      if (!point.wall) continue;
-      const { placement } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+      if (!point.wall && !point.along_host) continue;
+      const { placement } = resolvePointPlacementInWalls(point, pointWalls, mountHosts, siblings);
       assert.ok(placement && placement.kind === 'wall', `${point.id}: 解算失败`);
       const rendered = {
         x: placement.datum.x + placement.normal.x * THIN_PLATE_FACE_OFFSET,
         z: placement.datum.z + placement.normal.z * THIN_PLATE_FACE_OFFSET,
       };
       // 渲染位置必须离开墙身（不再画在 120mm 墙体中心线上）
-      const wall = pointWalls.get(point.wall)!;
+      const wall = pointWalls.get(placement.wallId)!;
       const segment: PointWallSegment = wall.segments[0];
       const length = Math.hypot(segment.x2 - segment.x1, segment.z2 - segment.z1);
       assert.ok(length > 0);
@@ -231,9 +329,10 @@ describe('point placement consumers share one resolution (3D / DXF / MEP)', () =
     // WALL_THICKNESS/2 + face_offset 而不是 3D/DXF 的 datum + 0.075 薄板位置）；mount 挂载
     // 点位 = 宿主脸解果。S3 起这些点位不再声明 x/z，端点坐标按构造只有解算器一个来源。
     let checked = 0;
+    const siblings = pointPlacementIndex([...electrical, ...plumbing]);
     for (const point of [...electrical, ...plumbing]) {
-      if (!point.wall && !point.mount) continue;
-      const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+      if (!point.wall && !point.mount && !point.along_host) continue;
+      const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts, siblings);
       assert.equal(diagnostic, undefined, `${point.id}: ${diagnostic ?? ''}`);
       assert.ok(placement && (placement.kind === 'wall' || placement.kind === 'mount'), `${point.id}: 解算失败`);
       // 完成面基点必须离开墙中心线恰好一个「半墙厚 + face_offset」——端点既不在墙身里，
@@ -244,7 +343,7 @@ describe('point placement consumers share one resolution (3D / DXF / MEP)', () =
       }
       checked++;
     }
-    // 81 沿墙 + 2 挂载（night_living_mid / night_corridor 都是 MEP 路线端点）
+    // 79 沿墙 + 2 沿墙派生（两卫淋浴冷水进口，along_host）+ 2 挂载（night_living_mid / night_corridor 都是 MEP 路线端点）
     assert.equal(checked, 83);
   });
 });

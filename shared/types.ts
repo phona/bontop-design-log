@@ -1385,6 +1385,11 @@ export interface ElectricalPoint {
   absolute?: boolean;
   /** 宿主意图标注（只作文档与校验输入，不参与解算）。 */
   host_intent?: string;
+  /**
+   * 沿墙位置由同墙宿主点位派生：along = 宿主 along + offset（成对点位；
+   * 解算见 shared/point-placement.ts resolvePointPlacementInWalls，宿主移动本点自动跟随）。
+   */
+  along_host?: { id: string; offset: number };
   mountAnchor?: FurnitureFaceMountAnchor;
   temp?: number;
   count?: number;
@@ -1517,6 +1522,11 @@ export interface PlumbingPoint {
   absolute?: boolean;
   /** 宿主意图标注（只作文本与校验输入，不参与解算）。 */
   host_intent?: string;
+  /**
+   * 沿墙位置由同墙宿主点位派生：along = 宿主 along + offset（混水阀双进水口等成对点位；
+   * 解算见 shared/point-placement.ts resolvePointPlacementInWalls，宿主移动本点自动跟随）。
+   */
+  along_host?: { id: string; offset: number };
   note?: string;
   height?: number;
   /** 精度等级（推断/实测口径）。构件状态的唯一字段（issue #98 S2-A）。 */

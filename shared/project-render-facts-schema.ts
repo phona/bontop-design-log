@@ -140,7 +140,7 @@ const PointAnchorSchema = z.object({
  * x/z=(5.0,4.3) 后 MEP 端点与解算器分叉）都会读到 stale 值，而 schema 与 resolver 都不报。
  * 现 config 0 条违规（B §② 实跑 locatedPointsWithXz=[]）；禁它是为了「禁止回填 x/z」
  * （设计文档 §4.2 电气/给排水点位行）有机器执法，而不是只靠人口头纪律。
- */function refinePointPlacement<T extends { id?: string; type?: string; x?: number; z?: number; wall?: string; wall_side?: unknown; along?: number; face_offset?: number; mount?: unknown; anchor?: { source?: string; id?: string; offset?: unknown } | unknown; absolute?: boolean }>(
+ */function refinePointPlacement<T extends { id?: string; type?: string; x?: number; z?: number; wall?: string; wall_side?: unknown; along?: number; face_offset?: number; mount?: unknown; anchor?: { source?: string; id?: string; offset?: unknown } | unknown; absolute?: boolean; along_host?: { id?: string; offset?: unknown } | unknown }>(
   value: T,
   ctx: z.RefinementCtx,
 ): void {
@@ -150,17 +150,24 @@ const PointAnchorSchema = z.object({
     value.mount !== undefined ? 'mount' : undefined,
     value.anchor !== undefined ? 'anchor' : undefined,
     value.absolute === true ? 'absolute' : undefined,
+    value.along_host !== undefined ? 'along_host' : undefined,
   ].filter((source): source is string => source !== undefined);
   if (sources.length > 1) {
-    ctx.addIssue({ code: 'custom', message: `点位定位来源必须唯一，不得同时声明：${sources.join(' + ')}（wall+along / mount / anchor / absolute 四者之一）` });
+    ctx.addIssue({ code: 'custom', message: `点位定位来源必须唯一，不得同时声明：${sources.join(' + ')}（wall+along / mount / anchor / absolute / along_host 五者之一）` });
     return;
   }
   if (sources.length === 0) {
-    ctx.addIssue({ code: 'custom', message: '点位必须声明定位来源之一：wall+along / mount / anchor / absolute（x/z 是迁移期断言字段，不是定位来源）' });
+    ctx.addIssue({ code: 'custom', message: '点位必须声明定位来源之一：wall+along / mount / anchor / absolute / along_host（x/z 是迁移期断言字段，不是定位来源）' });
     return;
   }
   if (sources[0] === 'wall' && (value.wall === undefined || value.wall_side === undefined || value.along === undefined)) {
     ctx.addIssue({ code: 'custom', message: '沿墙定位要求 wall + wall_side + along 齐备' });
+  }
+  if (sources[0] === 'along_host') {
+    const alongHost = value.along_host as { id?: unknown; offset?: unknown } | undefined;
+    if (typeof alongHost?.id !== 'string' || alongHost.id.length === 0 || typeof alongHost.offset !== 'number' || !Number.isFinite(alongHost.offset)) {
+      ctx.addIssue({ code: 'custom', message: 'along_host 定位要求 id（宿主点位）+ offset（沿墙偏移，米，有符号）齐备' });
+    }
   }
   if (sources[0] === 'mount') {
     const mount = value.mount as { along?: number } | undefined;
@@ -171,11 +178,11 @@ const PointAnchorSchema = z.object({
   if (sources[0] === 'absolute' && (value.x === undefined || value.z === undefined)) {
     ctx.addIssue({ code: 'custom', message: '绝对定位（absolute）要求 x 与 z 齐备' });
   }
-  // wall / mount / anchor 来源禁带 x/z（issue #98 S1，E2；anchor 由二阶段 S1 补入）：
+  // wall / mount / anchor / along_host 来源禁带 x/z（issue #98 S1，E2；anchor 由二阶段 S1 补入；along_host 由 PR #260 第二轮补入）：
   // resolver 忽略它们，直读消费者会读到 stale 值（探针 P1 的失效模式）。x/z 只对
-  // absolute 来源是定位字段，对 wall/mount/anchor 是哑弹。
-  if ((sources[0] === 'wall' || sources[0] === 'mount' || sources[0] === 'anchor') && (value.x !== undefined || value.z !== undefined)) {
-    ctx.addIssue({ code: 'custom', message: `${sources[0]} 定位来源禁止同时声明 x/z（解算器只读 wall+along / mount.along / anchor 宿主坐标；声明 x/z 会成为 stale 第二事实源，探针 P1）` });
+  // absolute 来源是定位字段，对 wall/mount/anchor/along_host 是哑弹。
+  if ((sources[0] === 'wall' || sources[0] === 'mount' || sources[0] === 'anchor' || sources[0] === 'along_host') && (value.x !== undefined || value.z !== undefined)) {
+    ctx.addIssue({ code: 'custom', message: `${sources[0]} 定位来源禁止同时声明 x/z（解算器只读 wall+along / mount.along / anchor 宿主坐标 / along_host 宿主沿位；声明 x/z 会成为 stale 第二事实源，探针 P1）` });
   }
   // 夜灯 + furniture anchor 不支持（issue #98 二阶段 S1 收口）：anchor: {source: furniture}
   // 只表示相对位置，不提供安装朝向；夜灯渲染（NightLightGeometry）必需 wallSide 或
@@ -190,6 +197,8 @@ export const ElectricalPointSchema = z.object({
   x: finiteNumber.optional(), z: finiteNumber.optional(), wall: z.string().optional(), wall_side: WallSideSchema.optional(),
   along: finiteNumber.nonnegative().optional(), face_offset: finiteNumber.optional(),
   mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
+  // 沿墙位置由同墙宿主点位派生（along = 宿主 along + offset；解算见 shared/point-placement.ts）。
+  along_host: z.object({ id: z.string().min(1), offset: finiteNumber }).optional(),
   /** 宿主意图标注（F 组器具邻接点）：只作文档与校验输入，不参与解算。 */
   host_intent: nonEmpty.optional(),
   // 2026-11-07 issue #98 S3：点位侧 circuit 字段退役（成员关系只住 electrical-topology.yaml 的
@@ -208,6 +217,8 @@ export const PlumbingPointSchema = z.object({
   x: finiteNumber.optional(), z: finiteNumber.optional(), wall: z.string().optional(), wall_side: WallSideSchema.optional(),
   along: finiteNumber.nonnegative().optional(), face_offset: finiteNumber.optional(),
   mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
+  // 沿墙位置由同墙宿主点位派生（along = 宿主 along + offset；解算见 shared/point-placement.ts）。
+  along_host: z.object({ id: z.string().min(1), offset: finiteNumber }).optional(),
   host_intent: nonEmpty.optional(),
   note: z.string().optional(), height: finiteNumber.optional(),
   // 构件状态唯一字段（issue #98 S2-A）：给排水从来没有第二个状态字段，词汇与电气对齐。
@@ -524,6 +535,8 @@ export const PlumbingPointProjectionSchema = z.object({
   // 用同一解算器取解析后坐标，故投影必须带齐这四个字段（键序与 parsePlumbingPoints 产出一致）。
   along: finiteNumber.nonnegative().optional(), face_offset: finiteNumber.optional(),
   mount: PointMountSchema.optional(), anchor: PointAnchorSchema.optional(), absolute: z.boolean().optional(),
+  // 沿墙位置由同墙宿主点位派生（位置与 PlumbingPointSchema 对齐，见该处注释）。
+  along_host: z.object({ id: z.string().min(1), offset: finiteNumber }).optional(),
   host_intent: nonEmpty.optional(),
   note: z.string().optional(), height: finiteNumber.optional(),
   // 构件状态唯一字段（issue #98 S2-A）。声明位置必须与 parsePlumbingPoints 的产出键序一致。

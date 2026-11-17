@@ -5,6 +5,7 @@ import {
   POINT_FIXTURE_HALF_THICKNESS,
   POINT_WALL_GAP,
   THIN_PLATE_FACE_OFFSET,
+  pointPlacementIndex,
   type PointMountHost,
   type PointPlacement,
   type PointPlacementInput,
@@ -124,8 +125,9 @@ function resolveInfrastructure(
   point: PointPlacementInput,
   pointWalls: ReadonlyMap<string, PointWall> | undefined,
   mountHosts?: ReadonlyMap<string, PointMountHost>,
+  siblings?: ReadonlyMap<string, PointPlacementInput>,
 ): { placement: PointPlacement | null; diagnostic?: string } {
-  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts, siblings);
   if (!placement && diagnostic === undefined) {
     return { placement: null, diagnostic: `点位 ${point.id}: 定位解算未返回结果（无诊断）` };
   }
@@ -151,8 +153,9 @@ function placeModel(
   /** Recessed box (strong/weak panel): its body sits inside the wall and the door position is tuned by frontProjection, so the thin-panel convention stays. */
   recessed = false,
   mountHosts?: ReadonlyMap<string, PointMountHost>,
+  siblings?: ReadonlyMap<string, PointPlacementInput>,
 ): string | undefined {
-  const { placement, diagnostic } = resolveInfrastructure(point, pointWalls, mountHosts);
+  const { placement, diagnostic } = resolveInfrastructure(point, pointWalls, mountHosts, siblings);
   if (diagnostic !== undefined || !placement) return diagnostic ?? `点位 ${point.id}: 定位解算失败`;
   if (placement.kind === 'absolute') {
     // 落位坐标一律取解算结果 placement.x/z：声明绝对点位时它 == point.x/z；anchor 点位
@@ -213,7 +216,7 @@ function metadata(point: ElectricalPoint | PlumbingPoint, category: 'electrical'
   };
 }
 
-function buildElectrical(point: ElectricalPoint, pointWalls: ReadonlyMap<string, PointWall> | undefined, mountHosts?: ReadonlyMap<string, PointMountHost>): { model: THREE.Group | null; diagnostic?: string } {
+function buildElectrical(point: ElectricalPoint, pointWalls: ReadonlyMap<string, PointWall> | undefined, mountHosts?: ReadonlyMap<string, PointMountHost>, siblings?: ReadonlyMap<string, PointPlacementInput>): { model: THREE.Group | null; diagnostic?: string } {
   const fixtureType = FIXTURE_TYPES[point.type];
   if (!fixtureType) return { model: null };
   const model = point.appearance?.style === 'warm_white_matte_modular'
@@ -230,7 +233,7 @@ function buildElectrical(point: ElectricalPoint, pointWalls: ReadonlyMap<string,
       (point.depth ?? dimensions.depth) / dimensions.depth,
     );
   }
-  const diagnostic = placeModel(model, point, dimensions ? mountHeight! + panelHeight! / 2 : point.type === 'floor_socket' ? 0.05 : point.height!, pointWalls, dimensions?.frontProjection ?? 0, dimensions !== undefined, mountHosts);
+  const diagnostic = placeModel(model, point, dimensions ? mountHeight! + panelHeight! / 2 : point.type === 'floor_socket' ? 0.05 : point.height!, pointWalls, dimensions?.frontProjection ?? 0, dimensions !== undefined, mountHosts, siblings);
   if (diagnostic !== undefined) return { model: null, diagnostic };
   model.userData = metadata(point, 'electrical', {
     label: point.type === 'strong_panel' ? '强电箱' : point.type === 'weak_panel' ? '弱电箱' : point.type === 'ac_controller' ? '线控器' : undefined,
@@ -250,7 +253,7 @@ function buildElectrical(point: ElectricalPoint, pointWalls: ReadonlyMap<string,
   return { model };
 }
 
-function buildPlumbing(point: PlumbingPoint, pointWalls: ReadonlyMap<string, PointWall> | undefined, mountHosts?: ReadonlyMap<string, PointMountHost>): { model: THREE.Group | null; diagnostic?: string } {
+function buildPlumbing(point: PlumbingPoint, pointWalls: ReadonlyMap<string, PointWall> | undefined, mountHosts?: ReadonlyMap<string, PointMountHost>, siblings?: ReadonlyMap<string, PointPlacementInput>): { model: THREE.Group | null; diagnostic?: string } {
   const fixtureType = FIXTURE_TYPES[point.type];
   if (!fixtureType) return { model: null };
   const model = buildFixture(fixtureType);
@@ -268,9 +271,9 @@ function buildPlumbing(point: PlumbingPoint, pointWalls: ReadonlyMap<string, Poi
     model.scale.y = scaleY;
     // Align the recipe's actual lowest point to finished floor, preserving the
     // declared point height as the actual top of the generated fixture.
-    diagnostic = placeModel(model, point, -localBounds.min.y * scaleY, pointWalls, 0, false, mountHosts);
+    diagnostic = placeModel(model, point, -localBounds.min.y * scaleY, pointWalls, 0, false, mountHosts, siblings);
   } else {
-    diagnostic = placeModel(model, point, placementHeight, pointWalls, 0, false, mountHosts);
+    diagnostic = placeModel(model, point, placementHeight, pointWalls, 0, false, mountHosts, siblings);
   }
   if (diagnostic !== undefined) return { model: null, diagnostic };
   model.userData = metadata(point, 'plumbing', {
@@ -300,13 +303,15 @@ export function buildInfrastructure(input: InfrastructureInput): InfrastructureB
   const placementDiagnostics: string[] = [];
   const electrical: THREE.Group[] = [];
   const plumbing: THREE.Group[] = [];
+  // along_host 宿主查找用：同批点位索引（电气 + 给排水各一份来源，id 唯一）。
+  const siblings = pointPlacementIndex([...input.electrical, ...input.plumbing]);
   for (const point of input.electrical) {
-    const built = buildElectrical(point, input.pointWalls, input.mountHosts);
+    const built = buildElectrical(point, input.pointWalls, input.mountHosts, siblings);
     if (built.diagnostic !== undefined) placementDiagnostics.push(built.diagnostic);
     if (built.model) electrical.push(built.model);
   }
   for (const point of input.plumbing) {
-    const built = buildPlumbing(point, input.pointWalls, input.mountHosts);
+    const built = buildPlumbing(point, input.pointWalls, input.mountHosts, siblings);
     if (built.diagnostic !== undefined) placementDiagnostics.push(built.diagnostic);
     if (built.model) plumbing.push(built.model);
   }

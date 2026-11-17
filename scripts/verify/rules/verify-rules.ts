@@ -3,7 +3,7 @@ import { VALID_CEILING_TYPES } from '../../../server/config-loader.js';
 import { FURNITURE_DIMS, type FurnishingsYaml } from '../../../shared/types.js';
 import { suppressedWallIdSet } from '../../../shared/suppression.js';
 import { CEILING_TRADE_CLASSES } from '../../../shared/ceiling-takeoff.js';
-import { resolvePointPlacementInWalls } from '../../../shared/point-placement.js';
+import { resolvePointPlacementInWalls, pointPlacementIndex } from '../../../shared/point-placement.js';
 import { buildPlacementIndexes } from '../../../shared/placement-indexes.js';
 import * as fs from 'fs';
 import * as yaml from 'js-yaml';
@@ -95,9 +95,11 @@ function main(): void {
   const rulesIndexes = buildPlacementIndexes({ geometry: { walls }, furnishings: houseForMountHosts.furnishings ?? {}, anchors: { rooms: roomMap } });
   const pointWalls = rulesIndexes.pointWalls;
   const mountHosts = rulesIndexes.mountHosts;
+  // along_host 宿主查找用：同批点位索引（电气 + 给排水；3D/DXF/MEP/lint 同口径）。
+  const pointSiblings = pointPlacementIndex([...electrical, ...plumbing]);
   for (const [source, items] of [['electrical', electrical], ['plumbing', plumbing]] as const) {
     for (const item of items) {
-      const { placement, diagnostic } = resolvePointPlacementInWalls(item as never, pointWalls, mountHosts);
+      const { placement, diagnostic } = resolvePointPlacementInWalls(item as never, pointWalls, mountHosts, pointSiblings);
       if (!placement) {
         report('error', `[placement] ${source}/${item.id}: 定位解算失败（${diagnostic ?? '解算器未返回结果'}）`);
         continue;

@@ -319,7 +319,8 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   assert.equal(takeoff.coverage.routedPointIds.length, 103); // 2026-11-17 量价算法审计跟进 blocking 2：两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet 随冷干管改道进入 routed，101→103； // DEC-2026-10-27-R01 删床头开关与供电路，routed 点位 102→101； // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
   assert.equal(takeoff.coverage.byType.socket?.routed, 36); // DEC-2026-10-17-R20：删 sock_kitchen_fridge / sock_parent_bed_l（原 routed）后 34→32；同批走线专项 sock_fridge_living / sock_waterbar / sock_weakbox / sock_kitchen_east_counter 四个插座点位随新路线进入 routed 32→36
   assert.equal(takeoff.coverage.byType.faucet?.routed, 5);
-  assert.equal(takeoff.coverage.byType.shower?.routed, 4); // 2026-11-17 量价算法审计跟进 blocking 2：新增两卫淋浴冷水进口点位（type: shower）随冷干管进入 routed，2→4
+  assert.equal(takeoff.coverage.byType.shower?.routed, 2); // 2026-11-17 Codex blocking（#260 第二轮）：两卫淋浴冷水进口改 type: shower_inlet（不再渲染成花洒），shower 桶 4→2；routed 总数仍 103
+  assert.equal(takeoff.coverage.byType.shower_inlet?.routed, 2); // 两卫淋浴冷水进口（shower_inlet）随冷干管进入 routed，与 shower 桶分开计
   assert.equal(takeoff.coverage.byType.drain?.routed, 11);
   // W03 注意：两卫 4 处地漏**本来就在 routed 里**（drain-master-bath / drain-guest-bath 已把它们连成链），
   // 只是链子在 drain_mbath_floor / drain_gbath_floor 断头、没接立管；W03 补的是"接到立管"而非覆盖率，

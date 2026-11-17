@@ -1,7 +1,7 @@
 import { load as parseYaml } from 'js-yaml';
 import { z } from 'zod';
 import type { CeilingZone, ElectricalPoint, HvacAnchor, HvacTerminal, PlumbingPoint, VrfOutdoorUnit } from './types.js';
-import { resolvePointPlacementInWalls, type PointMountHost, type PointWall } from './point-placement.js';
+import { resolvePointPlacementInWalls, pointPlacementIndex, type PointMountHost, type PointPlacementInput, type PointWall } from './point-placement.js';
 import { normalizeCeilingZone } from './ceiling-zone.js';
 
 export const MepLayerSchema = z.enum([
@@ -1185,8 +1185,9 @@ function resolvedPointEndpoint(
   pointWalls: ReadonlyMap<string, PointWall> | undefined,
   y: number | undefined,
   mountHosts: ReadonlyMap<string, PointMountHost> | undefined,
+  siblings?: ReadonlyMap<string, PointPlacementInput>,
 ): { x: number; z: number; y?: number } | undefined {
-  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts);
+  const { placement, diagnostic } = resolvePointPlacementInWalls(point, pointWalls, mountHosts, siblings);
   if (!placement) {
     if (diagnostic === undefined) return undefined;
     // 无墙/家具上下文时（pointWalls 与 mountHosts 均缺失）退回声明坐标：断言模式下相等，
@@ -1203,10 +1204,12 @@ export function resolveMepEndpoint(endpoint: string | { x: number; z: number; y?
   if (typeof endpoint !== 'string') return endpoint;
   const junction = junctions.find((item) => item.id === endpoint);
   if (junction) return junction.position;
+  // along_host 宿主查找用：同批点位索引（电气 + 给排水各一份来源，id 唯一）。
+  const siblings = pointPlacementIndex([...sources.electrical, ...sources.plumbing]);
   const electrical = sources.electrical.find((item) => item.id === endpoint);
-  if (electrical) return resolvedPointEndpoint(electrical, sources.pointWalls, electrical.height ?? electrical.mount_height, sources.mountHosts);
+  if (electrical) return resolvedPointEndpoint(electrical, sources.pointWalls, electrical.height ?? electrical.mount_height, sources.mountHosts, siblings);
   const plumbing = sources.plumbing.find((item) => item.id === endpoint);
-  if (plumbing) return resolvedPointEndpoint(plumbing, sources.pointWalls, plumbing.height, sources.mountHosts);
+  if (plumbing) return resolvedPointEndpoint(plumbing, sources.pointWalls, plumbing.height, sources.mountHosts, siblings);
   const anchor = sources.hvacAnchors.find((item) => item.id === endpoint);
   if (anchor) {
     // junction↔anchor 门禁补 y（issue #98 S1）：原先这里只回 {x,z}，使

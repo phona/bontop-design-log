@@ -375,10 +375,9 @@ test('传播实验：热水器锚点东移 0.20m，五条热侧路由跟随、�
 test('传播实验：主卫花洒沿墙东移 0.20m，五条主卫路由起/终点跟随、其余 12 条不动；复原则恢复', () => {
   const baseline = waterPoints(resolveMepRoutes(project, realSources));
   const movedPlumbing = movePlumbingPoint('shower_mbath', (entry) => { entry.along = 0.7; });
-  // 冷水进口是同一混水阀的另一进水口（沿 0.35，与热水口间距 150mm），花洒整体东移时同移 0.20m。
-  const coldInlet = (movedPlumbing as unknown as Array<Record<string, unknown>>).find((item) => item.id === 'shower_mbath_cold_inlet');
-  assert.ok(coldInlet, 'shower_mbath_cold_inlet 必须存在');
-  coldInlet.along = 0.55;
+  // 冷水进口沿位由宿主花洒派生（along_host: shower_mbath -0.15）：本测试只移动宿主，
+  // 冷口与冷干管必须自动跟随 0.20m（沿 0.35→0.55），不手工搬冷口（旧写法两处手搬，
+  // 证明不了跟随，Codex major）。
   const movedSources = endpointSourcesFromFacts({ electrical, plumbing: movedPlumbing, ceiling, hvac }, pointWalls, realMountHosts);
   const moved = waterPoints(resolveMepRoutes(project, movedSources));
   const followers = ['water-hot-water-mbath-requirement', 'water-water-heater-recirc-requirement', 'water-v1-recirc-loop', 'water-v1-heater-to-mbath-hot', 'water-v1-entry-to-mbath-cold'];
