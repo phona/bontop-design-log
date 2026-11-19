@@ -216,10 +216,15 @@ jobs:
         run: |
           set -euo pipefail
           node .github/grok/build-prompt.mjs "$RUNNER_TEMP/grok-prompt.md"
+          # --json-schema 吃内联 JSON，不是文件路径（2026-11-19 实测：传路径报
+          # "invalid JSON: expected value at line 1 column 1"）。
+          # --output-format plain 的 stdout 仍是 JSON 信封
+          # { text, structuredOutput, usage, ... }，审查对象在 structuredOutput
+          # 里，由 extract-review.mjs 抽出来；不要直接拿 stdout 当审查 JSON。
           cmd=(
             grok
             --prompt-file "$RUNNER_TEMP/grok-prompt.md"
-            --json-schema "$GITHUB_WORKSPACE/.github/grok/review-schema.json"
+            --json-schema "$(cat "$GITHUB_WORKSPACE/.github/grok/review-schema.json")"
             --output-format plain
             --permission-mode plan
             --cwd "$GITHUB_WORKSPACE"
@@ -236,13 +241,14 @@ jobs:
           fi
           unset GITHUB_TOKEN GH_TOKEN
           set +e
-          "${cmd[@]}" >"$RUNNER_TEMP/grok-review.json" 2>"$RUNNER_TEMP/grok-stderr.txt"
+          "${cmd[@]}" >"$RUNNER_TEMP/grok-envelope.json" 2>"$RUNNER_TEMP/grok-stderr.txt"
           status=$?
           set -e
-          # stdout 即模型按 review-schema.json 输出的 JSON；plain 模式下不包信封。
-          # 空输出或非 JSON 由 publish 步的 parseReview 拦截；这里只做密钥 scrub。
+          node .github/grok/extract-review.mjs \
+            "$RUNNER_TEMP/grok-envelope.json" \
+            "$RUNNER_TEMP/grok-review.json"
           node .github/grok/render-review.mjs scrub "$status" \
-            "$RUNNER_TEMP/grok-review.json" \
+            "$RUNNER_TEMP/grok-envelope.json" \
             "$RUNNER_TEMP/grok-stderr.txt" \
             "$RUNNER_TEMP/grok-review.json"
 

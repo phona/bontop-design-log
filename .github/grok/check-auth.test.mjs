@@ -7,9 +7,20 @@ import test from 'node:test'
 import { inspectAuthFile } from './check-auth.mjs'
 
 const SECRET = 'super-secret-refresh-token-value'
+const ENTRY_KEY = 'https://auth.x.ai::b1a00492-073a-47ea-816f-4c329264a828'
+
+function entry(overrides = {}) {
+  return {
+    auth_mode: 'oidc',
+    key: 'eyJnotprinted',
+    refresh_token: SECRET,
+    expires_at: '2026-11-19T20:14:39.383267700Z',
+    ...overrides,
+  }
+}
 
 function writeAuth(obj, { fileMode = 0o600, dirMode = 0o700 } = {}) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-auth-'))
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'grok-auth-'))
   fs.chmodSync(dir, dirMode)
   const file = path.join(dir, 'auth.json')
   fs.writeFileSync(file, JSON.stringify(obj))
@@ -17,35 +28,38 @@ function writeAuth(obj, { fileMode = 0o600, dirMode = 0o700 } = {}) {
   return file
 }
 
-test('accepts chatgpt auth with a refresh token and private modes', () => {
-  const file = writeAuth({ auth_mode: 'chatgpt', tokens: { refresh_token: SECRET, access_token: 'eyJnotprinted' } })
+test('accepts oidc auth with access and refresh tokens and private modes', () => {
+  const file = writeAuth({ [ENTRY_KEY]: entry() })
   const result = inspectAuthFile(file)
   assert.equal(result.ok, true)
   assert.equal(result.reason.includes(SECRET), false)
   assert.equal(result.reason.includes('eyJ'), false)
 })
 
-test('rejects bad json, wrong mode, missing refresh, and loose permissions without echoing the file', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-auth-'))
+test('rejects bad json, wrong mode, missing tokens, and loose permissions without echoing the file', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'grok-auth-'))
   fs.chmodSync(dir, 0o700)
   const broken = path.join(dir, 'auth.json')
   fs.writeFileSync(broken, `{${SECRET}`)
   fs.chmodSync(broken, 0o600)
   assert.equal(inspectAuthFile(broken).reason, 'auth.json is not valid JSON')
 
-  const apiKey = writeAuth({ auth_mode: 'apikey', tokens: { refresh_token: SECRET } })
+  const apiKey = writeAuth({ [ENTRY_KEY]: entry({ auth_mode: 'apikey' }) })
   const rejected = inspectAuthFile(apiKey)
   assert.equal(rejected.ok, false)
-  assert.match(rejected.reason, /auth_mode_is_chatgpt=false/)
+  assert.match(rejected.reason, /auth_mode_is_oidc=false/)
   assert.equal(rejected.reason.includes(SECRET), false)
 
-  const loose = writeAuth({ auth_mode: 'chatgpt', tokens: { refresh_token: SECRET } }, { fileMode: 0o644 })
+  const noRefresh = writeAuth({ [ENTRY_KEY]: entry({ refresh_token: '' }) })
+  assert.match(inspectAuthFile(noRefresh).reason, /has_refresh_token=false/)
+
+  const loose = writeAuth({ [ENTRY_KEY]: entry() }, { fileMode: 0o644 })
   assert.match(inspectAuthFile(loose).reason, /expected 600/)
 })
 
 test('cli failure output does not contain the token', () => {
-  const file = writeAuth({ auth_mode: 'chatgpt', tokens: {} })
-  const child = spawnSync(process.execPath, [path.resolve('.github/codex/check-auth.mjs'), file], { encoding: 'utf8' })
+  const file = writeAuth({ [ENTRY_KEY]: entry({ refresh_token: '' }) })
+  const child = spawnSync(process.execPath, [path.resolve('.github/grok/check-auth.mjs'), file], { encoding: 'utf8' })
   assert.notEqual(child.status, 0)
   assert.equal(`${child.stdout}${child.stderr}`.includes(SECRET), false)
   assert.match(child.stderr, /has_refresh_token=false/)
