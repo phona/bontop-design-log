@@ -34,6 +34,7 @@ describe('shared/schedule-state: 真实仓集成', () => {
     // 25 phase-1 packages, 106 cost components (89 unpriced), 116 auditable checks
     // 2026-11-11 先定门再贴砖门禁新增 check_tile_door_gate（PKG-060 acceptance_refs）→ 117。
     // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed（PKG-090）→ 118。
+    // 2026-11-19 新增 check_wp_base_clean（防水前基层清理，PKG-050 acceptance_refs）→ 119。
     // 2026-11-15 一二期对调（#152）：新增 COST-160-09 洗碗机 → 107（GC5 COST-160-08
     // 退二期、planned 0，仍计组件；未报价 89 不变）。
     // 2026-11-17 包管量入账：新增 COST-060-09 包管板材与砂浆主材 → 108，未报价 89→90。
@@ -42,7 +43,7 @@ describe('shared/schedule-state: 真实仓集成', () => {
     assert.equal(state.orderedPackages.length, 24);
     assert.equal(state.componentIds.size, 108);
     assert.equal(state.unpricedComponents.length, 90);
-    assert.equal(state.usedCheckIds.size, 118);
+    assert.equal(state.usedCheckIds.size, 119);
     // 当前真实状态：25 包全部 blocked、0 个 ready（design v2 §4 的口径）
     assert.equal(state.orderedPackages.filter((pkg: AnyRecord) => state.effectiveReadiness(pkg) === 'ready').length, 0);
     assert.ok(state.openDecisionGates.length >= 1, '至少一条 open 决策门禁');
