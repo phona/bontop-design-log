@@ -35,6 +35,28 @@ phases:
     items:
       # DEC-2026-10-22-R02：淋浴区防水高度 1.8m 作废，改 ≥2.00m 且不低于喷淋口高度（GB 55038-2025）；
       # 仅 supersede D1=A 的防水高度部分，贴砖高度口径不变（防水与贴砖自此分开登记）。
+      - id: check_wp_base_clean
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-050]
+        item: "防水前基层清理检查"
+        when: before_waterproofing
+        method: |
+          1. 防水范围（两卫、厨房、北阳台）地面与墙面基层先清扫、再用工业吸尘器吸净浮灰浮沙，不得只扫一遍；松散水泥、起砂层、油污、脱模剂须铲除或清理干净，裂缝与孔洞先修补。
+          2. 管根、阴阳角、门槛、墙地交界、地漏周边重点清理，不得留灰堆、渣子。
+          3. 清理后手摸或白手套擦拭无明显浮灰；基层按所用防水产品说明处理湿度，不得带明水、不得带浮灰刷防水。
+          4. 清理完成到涂刷防水之间不得再落灰、踩脏；涂刷前复核一次，返灰返脏须重清并重新拍照。
+        standard: "基层坚实、无浮灰、无松散层、无油污；管根、阴阳角、门槛、墙地交界清理到位；手摸无明显浮灰；无明水、无积水"
+        severity: critical
+        rooms: [master_bath, guest_bath, kitchen, balcony]
+        evidence:
+          - "基层清理后照片（两卫、厨房、北阳台各一套：全景 + 管根、阴阳角、门槛特写）"
+          - "清理日期与涂刷日期记录（清理后、涂刷前）"
+        knowledge: |
+          浮灰是一层隔离层：防水涂料刷在浮灰上等于刷在灰上，粘不牢，闭水当时可能过，贴砖或使用后空鼓、起皮、渗漏，返工须砸砖。
+          本条只管防水区基层，不含全屋地面清扫；贴砖前地面清理另由 PKG-060 找平与铺贴工序承接。
+
       - id: check_wp_coats
         # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
         # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
