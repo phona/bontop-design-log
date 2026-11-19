@@ -1,15 +1,15 @@
-# 回应 Codex 审查（修复端）
+# 回应 Grok 审查（修复端）
 
-编码代理在为 Codex 审查改代码之前先读完本文件。审查端提示词是 `.github/prompts/pr-review.md`。审查 workflow 是 `.github/workflows/codex-pr-review.yml`。本文件只约束修复端。
+编码代理在为 Grok 审查改代码之前先读完本文件。审查端提示词是 `.github/prompts/pr-review.md`。审查 workflow 是 `.github/workflows/grok-pr-review.yml`。本文件只约束修复端。
 
-Codex 继续跑。有 `blocking` 时它发 `REQUEST_CHANGES` 并把检查标红；没有 `blocking` 时它发 `COMMENT`，不自动 `APPROVE`。不要关闭、跳过、放软这个 job，也不要改 `render-review.mjs` 的 `decideEvent`。
+Grok 继续跑。有 `blocking` 时它发 `REQUEST_CHANGES` 并把检查标红；没有 `blocking` 时它发 `COMMENT`，不自动 `APPROVE`。不要关闭、跳过、放软这个 job，也不要改 `render-review.mjs` 的 `decideEvent`。
 
 ## 开工前
 
-1. 读最新一条 Codex review 正文，按 `severity` 拆开。
+1. 读最新一条 Grok review 正文，按 `severity` 拆开。
 2. 列出 `major` / `minor` / `nit` 的标题。这些留在评论里，不为此开修复提交。修复说明里写上「本次未改」和标题，避免看起来像漏看。
 3. 每条 `blocking` 写明主题：模块或状态机，加上失败类（正确性、安全、静默删证据、异步交错/竞态/过期响应，或其他）。
-4. 用 `gh pr view <N> --json reviews,commits` 数这个主题上已经有几次 Codex `CHANGES_REQUESTED`。正在回应的这一次算进去。
+4. 用 `gh pr view <N> --json reviews,commits` 数这个主题上已经有几次 Grok `CHANGES_REQUESTED`。正在回应的这一次算进去。
 5. 先写下决定：修这个 `blocking`、重做一次状态机，或升级给人。决定写下来再改代码。
 
 业主在对话里点名要修的 `major` / `minor` / `nit`，按业主的要求做。那不是自动跟审。
@@ -42,22 +42,22 @@ Codex 继续跑。有 `blocking` 时它发 `REQUEST_CHANGES` 并把检查标红�
 
 ## 轮次预算
 
-同一主题最多自动回应 **3** 次 Codex `REQUEST_CHANGES`（业主口径是大约 3 轮；本玩法按 3 执行）。正在回应的这一次计入。
+同一主题最多自动回应 **3** 次 Grok `REQUEST_CHANGES`（业主口径是大约 3 轮；本玩法按 3 执行）。正在回应的这一次计入。
 
 - 第 1–3 次：若还没有重做过，可以做那一次重做；否则升级。两条路都不加计数器，也不再提交局部补丁。
 - 第 4 次起：该主题只由人处理。只留升级评论，不推修复提交。
 
-轮次按 Codex review 事件计，不按代理提交计。一次审查里的多条同一主题 `blocking` 算一轮。
+轮次按 Grok review 事件计，不按代理提交计。一次审查里的多条同一主题 `blocking` 算一轮。
 
 ## 升级评论
 
 用 PR 评论发出去（`gh pr comment <N> --body-file ...`），不要只写在对话里。
 
 ```
-## Codex 同主题停止自动修复
+## Grok 同主题停止自动修复
 
 主题：<模块或状态机，例如验收草稿 load/save>
-轮次：本 PR 上该主题的 Codex REQUEST_CHANGES 已有 <N> 轮（含本次）。审查：<review id 或时间>
+轮次：本 PR 上该主题的 Grok REQUEST_CHANGES 已有 <N> 轮（含本次）。审查：<review id 或时间>
 决定：不再自动改这个主题。
 已知风险：<引用这次 blocking 的标题和后果>
 如何验证：<人可以执行的检查>
