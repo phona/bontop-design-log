@@ -240,13 +240,28 @@ jobs:
             cmd+=(--reasoning-effort "$GROK_EFFORT")
           fi
           unset GITHUB_TOKEN GH_TOKEN
-          set +e
-          "${cmd[@]}" >"$RUNNER_TEMP/grok-envelope.json" 2>"$RUNNER_TEMP/grok-stderr.txt"
-          status=$?
-          set -e
-          node .github/grok/extract-review.mjs \
-            "$RUNNER_TEMP/grok-envelope.json" \
-            "$RUNNER_TEMP/grok-review.json"
+          # 模型偶发不按 schema 回（2026-11-19 首跑：8 分钟调用正常结束，
+          # 信封里既无 structuredOutput，text 也不是 JSON，extract 直接失败）。
+          # 只重试一次；两次都失败就 loud fail，不编审查。失败那次的
+          # stopReason/turns/text 开头由 extract-review 打印进日志。
+          attempt=1
+          while true; do
+            echo "Grok review attempt $attempt/2"
+            set +e
+            "${cmd[@]}" >"$RUNNER_TEMP/grok-envelope.json" 2>"$RUNNER_TEMP/grok-stderr.txt"
+            status=$?
+            set -e
+            echo "grok exit status: $status"
+            if node .github/grok/extract-review.mjs \
+              "$RUNNER_TEMP/grok-envelope.json" \
+              "$RUNNER_TEMP/grok-review.json"; then
+              break
+            fi
+            if [ "$attempt" -ge 2 ]; then
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+          done
           node .github/grok/render-review.mjs scrub "$status" \
             "$RUNNER_TEMP/grok-envelope.json" \
             "$RUNNER_TEMP/grok-stderr.txt" \

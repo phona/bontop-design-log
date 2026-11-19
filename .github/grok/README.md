@@ -71,6 +71,8 @@ GitHub 托管 runner 每次都是新磁盘。job 从 secret 恢复 `auth.json`�
 
 Grok CLI 目前钉在 `1.0.89`（2026-11-19 实测）。升级时改 workflow 安装行的版本号，并重新核对 `--prompt-file` / `--json-schema` / `--permission-mode` 仍在。两个实测过的坑：`--json-schema` 吃**内联 JSON**不是文件路径，传路径会报 `invalid JSON: expected value at line 1 column 1`；`--output-format plain` 的 stdout 仍是 JSON 信封 `{ text, structuredOutput, usage, ... }`，审查对象在 `structuredOutput` 里，由 `extract-review.mjs` 抽出来。
 
+第三个实测坑（2026-11-19 首跑，两次都撞上）：模型调用正常跑完 8 分钟，信封里却既无 `structuredOutput`，`text` 也不是 JSON——`extract-review.mjs` 直接失败，审查发不出去。修复：失败时把 `stopReason` / 轮数 / `text` 开头打印进日志（只凭「没有 structuredOutput」定位不了），workflow 对同一次审查只重试一次；两次都失败就 loud fail，不编一个假审查。
+
 本地核对审查脚本：
 
 ```bash

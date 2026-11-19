@@ -22,3 +22,19 @@ test('no usable review fails loudly instead of inventing one', () => {
   assert.throws(() => extractReview(JSON.stringify({ text: 'plain prose' })), /no structuredOutput/)
   assert.throws(() => extractReview(JSON.stringify({ structuredOutput: [] })), /no structuredOutput/)
 })
+
+test('failure message carries envelope diagnostics for the log', () => {
+  const envelope = JSON.stringify({
+    text: 'the model wrote prose instead of JSON',
+    stopReason: 'end_turn',
+    num_turns: 12,
+  })
+  assert.throws(
+    () => extractReview(envelope),
+    /stopReason=end_turn.*turns=12.*text=the model wrote prose/,
+  )
+  assert.throws(
+    () => extractReview(JSON.stringify({})),
+    /text missing/,
+  )
+})
