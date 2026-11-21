@@ -204,11 +204,14 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
     // w_mb_win was an unconfirmed CAD residue and is intentionally removed;
     // the shared master-bedroom/east-parent-room wall is continuous.
     assert.equal((masterBedroom.wallOpenings ?? []).some(o => o.id === 'w_mb_win'), false);
+    const bedroomDoors = (masterBedroom.wallOpenings ?? []).filter(o => o.type === 'door' || o.type === 'sliding_door');
+    assert.ok(bedroomDoors.some(o => o.id === 'd_mb'), 'master_bedroom should have entry d_mb');
     const masterBath = catalog.getRoom('master_bath');
     assert.ok(masterBath);
     const doors = (masterBath.wallOpenings ?? []).filter(o => o.type === 'door' || o.type === 'sliding_door');
-    assert.ok(doors.length >= 2, `master_bath should have suite entry d_mb + bath door d_mbath (sliding), got ${doors.length}`);
-    const door = doors.find(o => o.id === 'd_mb') ?? doors[0];
+    assert.equal(doors.some(o => o.id === 'd_mb'), false, 'd_mb is the master-bedroom entry, not a master_bath door');
+    assert.ok(doors.length >= 1, `master_bath should have bath door d_mbath, got ${doors.length}`);
+    const door = doors.find(o => o.id === 'd_mbath') ?? doors[0];
     assert.ok(door.x !== undefined && door.z !== undefined, 'door should have absolute x/z');
   });
 
