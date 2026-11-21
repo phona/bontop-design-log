@@ -587,7 +587,7 @@ walls:
     structure_status: inferred
     openings:
       # 2026-09-02：保持向内开，仅将合页由北端改至南端，反转 d_mb 开门方向；门洞位置不变
-      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.45, width: 0.9, height: 2.1, room: master_bath, swing: inward, hinge: start }
+      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.45, width: 0.9, height: 2.1, room: master_bedroom, swing: inward, hinge: start }
     finish:
       paint_bands:
         # ── 主走廊：只声明边界上实际存在的三段墙脸；门洞由实际墙洞裁切，开放边不补墙。 ──
@@ -595,7 +595,7 @@ walls:
           room: main_corridor
           along: [0.00, 1.25]
           height: 2.80
-          reason: "主走廊西侧墙面，沿 w_strip_east 全段；主卫门洞 d_mb 按实际扣除，涂装朝主走廊东侧墙脸"
+          reason: "主走廊西侧墙面，沿 w_strip_east 全段；主卧门洞 d_mb 按实际扣除，涂装朝主走廊东侧墙脸"
         - id: paint_master_bedroom_w_strip_east
           room: master_bedroom
           along: [0.00, 1.25]
