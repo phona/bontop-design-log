@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"4b8889380fba7e7d253518bbb4744deed21b3f36547a6afd26cff72b06682128","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"16ef36ae76397969170e0b923c0e890d435bed31ead78c494384032023dc380a","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
 # 一期施工计划
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:ac1cf4e6c990327d0979c2a312eae03447af232941d3b08d3e63c64b2f8678c2`（2 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:43550a2ac7d9d52cdbc27821749349d2e5342683ec984879b1a02f674f17b24e`（2 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -16,7 +16,7 @@
 |---:|---|---|---|---:|---|---|---|---|---:|
 | 0 | PKG-000 | 设计、量房与开工准备 | 交房前可先做有据可查的初版设计预演和现场资料准备；交房后再量房、回填配置、冻结专业图纸、同范围报价并签约。预演检查通过不代表具备施工放线或采购条件。 | 15—25天 | 无 | blocked | not_started | BLK-HANDOVER、BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-GAS-DOOR、BLK-SURVEY-DATA-FREEZE | ¥8,000 |
 | 5 | PKG-005 | 物业装修手续与物业收费 | 向物业提交装修申请，确认施工时间、人员进出、公区使用、垃圾清运和禁止施工事项；所有收费按物业票据记录，可退押金与实际消费分开记账。 | 3—7天 | PKG-000 | blocked | not_started | BLK-HANDOVER | ¥3,000 |
-| 10 | PKG-010 | 施工现场保护与施工位置标记 | 拆改师傅进场后先保护电梯、公区、入户门、窗户和已有成品——其中全屋玻璃在拆改前贴PE保护膜防切门洞水泥浆溅射划伤、智能锁包覆——再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。 | 2—3天 | PKG-005 | blocked | not_started | BLK-HANDOVER | ¥0 |
+| 10 | PKG-010 | 施工现场保护与施工位置标记 | 拆改师傅进场后先保护电梯、公区、入户门、窗户和已有成品，再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。 | 2—3天 | PKG-005 | blocked | not_started | BLK-HANDOVER | ¥0 |
 | 20 | PKG-020 | 拆改、墙体新建与清运 | 按确认图纸拆除允许拆除的墙体或构件，新建隔墙和门洞，并把施工垃圾运走；任何墙体性质未确认时都不能先拆再说。参考同户型半包实付（拆砌人工6,000元+物业垃圾清运1,059元），本包由5,000元上调至7,000元，差额2,000元经业主批准从未分配额度划拨。 | 5—8天 | PKG-010 | blocked | not_started | BLK-STRUCTURE | ¥7,000 |
 | 30 | PKG-030 | 中央空调第一次安装 | 在吊顶封闭前安装空调室内机、铜管、保温层、冷凝水排水管、风管和控制线，并完成压力保持、排水和检修空间检查。 | 4—7天 | PKG-020 | blocked | not_started | BLK-STRUCTURE、BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-SURVEY-DATA-FREEZE | ¥36,000 |
 | 40 | PKG-040 | 水电改造 | 根据家具和设备位置铺设电线、网线、给水管、排水管和热水回水管，设置插座、开关及专用电路；封墙封地前必须测试并拍照定位。 | 7—12天 | PKG-020 | blocked | not_started | BLK-HVAC-DEEPENING、BLK-MEP-INTERFACE-FREEZE、BLK-CABINET-FREEZE-FOR-MEP、BLK-SURVEY-DATA-FREEZE | ¥15,000 |
