@@ -721,6 +721,25 @@ phases:
         standard: "充氮焊接，无氧化皮"
         severity: critical
 
+      - id: check_hvac_pipe_size
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
+        item: "分歧箱至内机铜管管径核对"
+        when: before_covering
+        method: |
+          1. 厂家深化图须列出每台内机（客厅 71T2、餐厅 42T2、主卧 56T2、书房/儿童房/客房 28T2）的气管/液管管径与分歧箱型号对应表；无表不得开工。
+          2. 安装时按表逐台核对分歧箱出口至内机接口的气管、液管外径（卡尺实测或管体标识），与表不符不得焊接。
+          3. 分歧管按厂家要求方向安装（水平，不得倒装/竖装），与管径一并核对。
+        standard: "六台内机气管/液管外径与厂家配管表逐台一致；分歧管方向符合厂家要求"
+        severity: critical
+        evidence:
+          - "厂家配管表照片或截图（每台内机气管/液管管径可辨）"
+          - "逐台管径核对记录（气管/液管外径可辨）"
+        knowledge: |
+          来源：小红书 2026-11-23 09:57 轮新发现（倍莱冷暖《三分产品七分安装，铜管配错损坏压缩机》）：分歧箱到内机铜管尺寸配错 → 冷媒流量不足、制热差，久之损坏压缩机。仓内此前无管径口径，hvac.yaml 各冷媒支路均写“分歧、管径待厂家深化”，本条把“按厂家配管表逐台核对”立为封板前门禁；管径数值本身不写死在仓里，以厂家配管表为准。
+
       - id: check_hvac_vacuum
         # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
         # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。

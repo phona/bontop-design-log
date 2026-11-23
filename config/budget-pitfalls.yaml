@@ -184,6 +184,16 @@ pitfalls:
     description: "铜管焊接不充氮保护，内壁氧化 → 堵塞系统 → 压缩机损坏"
     mitigation: "要求充氮焊接，写进合同"
 
+  - id: ac_pipe_size_mismatch
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "分歧箱至内机铜管管径配错"
+    description: "分歧箱到内机的铜管尺寸配错 → 冷媒流量不足、制热差，时间一长损坏压缩机"
+    mitigation: "厂家深化图须列出每台内机气管/液管管径表；安装时逐台核对，封吊顶前验收"
+
   - id: ac_vacuum
     type: construction
     stage: installation

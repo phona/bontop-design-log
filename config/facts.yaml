@@ -1398,7 +1398,11 @@ contracts:
         # 2026-11-19 新增 check_wp_base_clean（防水前基层清理：清扫+工业吸尘+管根/阴阳角重点清理+手摸无浮灰，
         #   补照片里工业吸尘器与冲洗对应的工序缺口）→ 69 → 70；
         # 新项已挂 PKG-050 的 acceptance_refs 并 schedule:render 落 checklist。
-        expect_matches: 70
+        # 2026-11-23 新增 check_hvac_pipe_size（分歧箱至内机铜管管径核对，封板前门禁：按厂家配管表逐台核对
+        #   气管/液管外径与分歧管方向；来源：小红书 2026-11-23 09:57 轮新发现，倍莱冷暖《三分产品七分安装，
+        #   铜管配错损坏压缩机》：管径配错 → 冷媒流量不足、制热差，久之损坏压缩机）→ 70 → 71；
+        # 新项已挂 PKG-030 的 acceptance_refs 并 schedule:render 落 checklist。
+        expect_matches: 71
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写

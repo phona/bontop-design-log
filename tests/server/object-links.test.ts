@@ -124,8 +124,8 @@ describe('issue #191 验收项对象关联（验收标准二）', () => {
     for (const ref of pkg.acceptance_refs ?? []) refsByCheck.set(ref, [...(refsByCheck.get(ref) ?? []), pkg.id]);
   }
 
-  it('70 条验收项都登记了 objects.from_packages，且与 acceptance_refs 反查集合一致', () => {
-    assert.equal(items.length, 70, 'acceptance.yaml 必须 70 条'); // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed：68 → 69；2026-11-19 新增 check_wp_base_clean（防水前基层清理）：69 → 70
+  it('71 条验收项都登记了 objects.from_packages，且与 acceptance_refs 反查集合一致', () => {
+    assert.equal(items.length, 71, 'acceptance.yaml 必须 71 条'); // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed：68 → 69；2026-11-19 新增 check_wp_base_clean（防水前基层清理）：69 → 70；2026-11-23 新增 check_hvac_pipe_size（分歧箱至内机铜管管径核对）：70 → 71
     for (const item of items) {
       const declared = item.objects?.from_packages;
       assert.ok(Array.isArray(declared) && declared.length > 0, `${item.id} 必须登记 objects.from_packages`);
@@ -509,7 +509,7 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       `改灶具也必须让施工归属包 PKG-160 stale；实际 stale：${stale.join(', ') || '（无）'}`);
   });
 
-  // 门禁覆盖洞（第 9 轮暴露）：上面的扫描式门禁只扫 config/acceptance.yaml 的 70 条，
+  // 门禁覆盖洞（第 9 轮暴露）：上面的扫描式门禁只扫 config/acceptance.yaml 的 71 条，
   // **没扫 control.yaml 里 49 条 SCH-xxx 工作包内置检查**——而 SCH 正文用的是中文通称
   // （「烟机、灶具」）不是对象 id，词边界匹配扫不到。本条用另一条判据堵这个洞：
   // 每个工作包的 targets 必须覆盖「它全部 SCH 检查点名对象的并集」。
