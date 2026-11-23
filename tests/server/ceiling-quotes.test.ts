@@ -58,7 +58,7 @@ test('量与价分离：报价只改单价，工程量始终来自 takeoff', () 
   assert.ok(Math.abs(quantities.ceiling_zones - (takeoff.totalNetAreaM2 - takeoff.curtainBoxM2)) < 1e-9);
   assert.ok(Math.abs(quantities.curtain_box_linear - 17.85) < 1e-9);
   // C12：边吊按米、满吊按㎡，两者相加必须等于石膏板净面积（否则就是重复计费或漏计）
-  assert.ok(Math.abs(quantities.gypsum_edge_drop_linear - 21.375) < 1e-9, `边吊长度实测 ${quantities.gypsum_edge_drop_linear}`); // R04：餐厅北带长边 3.10→3.00
+  assert.ok(Math.abs(quantities.gypsum_edge_drop_linear - 24.3) < 1e-9, `边吊长度实测 ${quantities.gypsum_edge_drop_linear}`); // R04：餐厅北带长边 3.10→3.00；2026-11-23 通长假梁：门头盒长边 1.275→梁 4.20
   assert.ok(Math.abs(quantities.gypsum_flat_sqm - 6.311) < 1e-9, `平顶面积实测 ${quantities.gypsum_flat_sqm}`); // R01 重算：门厅满吊区 1.0584→2.561，平顶 4.8084→6.311
   // C13：厨卫铝扣板独立成行，量取 takeoff.aluminumBuckleM2
   assert.ok(Math.abs(quantities.aluminum_buckle_sqm - 16.576) < 1e-9); // R04：客卫吊顶 +0.21
@@ -79,7 +79,8 @@ test('并排对比：总额、差额、可比性标记', () => {
   // a：45×板面 + 30×17.85（R01 重算后量）。平顶、铝扣板与边吊行是
   // out_of_scope——它们的面积/带面已含在板面里，再报就是重复计（审计 D5；
   // 边吊带初版漏列，a 卡曾同时报混合行与边吊行、总额里 170×21.375 被算了
-  // 两遍，Codex blocking① 补上后此处不再含边吊项）。
+  // 两遍，Codex blocking① 补上后此处不再含边吊项）。21.375 是当时的边吊长边，
+  // 2026-11-23 通长假梁后为 24.30m。
   assert.ok(Math.abs(a.total! - (
     45 * (takeoff.totalNetAreaM2 - takeoff.curtainBoxM2)
     + 30 * 17.85
@@ -111,11 +112,10 @@ test('并排对比：总额、差额、可比性标记', () => {
 });
 
 test('重叠守卫：混合行与平顶/边吊行同时计价即抛错（审计 D5，Codex blocking①）', () => {
-  // 边吊带净面积 17.956㎡ 已含在 ceiling_zones 的量里，边吊按米报的是整条带
-  // 的做法——同时报两边，总额会把带面算两次（21.375m×170 元 ≈ 3,633.75 元）。
+  // 边吊带净面积 18.725㎡ 已含在 ceiling_zones 的量里，边吊按米报的是整条带
+  // 的做法——同时报两边，总额会把带面算两次（24.30m×170 元 ≈ 4,131.00 元）。
   // D5 初版守卫漏了边吊行，审计夹具 a 卡正是此形态，断言还把它钉成了正确值。
-  // 金额用容差比对：21.375m 是浮点求和结果（21.374999999999996），170×它
-  // 得 3633.7499999999995，不是字面 3633.75。
+  // 金额用容差比对：24.30m 是浮点求和结果，170×它得 4131.0，不是字面 4131.00。
   const bothEdge = parseCeilingQuotes(quotesFile([{ id: 'e', contractor: '丁', quoted_at: '2026-10-09', status: 'candidate', rates: { ceiling_zones: { per_unit: 45, unit: '元/㎡', scope_note: '含辅材' }, gypsum_edge_drop_linear: { per_unit: 170, unit: '元/m', scope_note: '含辅材' }, curtain_box_linear: { per_unit: 30, unit: '元/m', scope_note: '含安装' } } }], 'e'));
   assert.throws(
     () => compareCeilingQuotes(bothEdge, takeoff, fallback),
@@ -124,7 +124,7 @@ test('重叠守卫：混合行与平顶/边吊行同时计价即抛错（审计 
       assert.match(error.message, /重复计/);
       assert.match(error.message, /石膏板边吊/);
       const amount = Number(error.message.match(/重复计 ([\d.]+) 元/)?.[1]);
-      assert.ok(Math.abs(amount - 21.375 * 170) < 1e-6, `重复计金额应 ≈ 3633.75，实际 ${amount}`);
+      assert.ok(Math.abs(amount - 24.3 * 170) < 1e-6, `重复计金额应 ≈ 4131.00，实际 ${amount}`);
       return true;
     },
   );
@@ -265,11 +265,11 @@ test('分形态计价：边吊按米、平顶按㎡，两者相加 = 石膏板�
   const flat = card.rows.find((row) => row.key === 'gypsum_flat_sqm')!;
   assert.equal(edge.per_unit, 160);
   assert.equal(flat.per_unit, 155);
-  assert.ok(Math.abs(edge.quantity - 21.375) < 1e-9, '边吊长度取 8 个边吊分区的长边之和');
+  assert.ok(Math.abs(edge.quantity - 24.3) < 1e-9, '边吊长度取 8 个边吊分区的长边之和');
   assert.ok(Math.abs(flat.quantity - 6.311) < 1e-9, '平顶面积取主走廊 + 入户门厅两个满吊分区（R01 重算：门厅区 1.0584→2.561）');
-  // 边吊 21.375m×160 + 平顶 6.311㎡×155 + 窗帘盒 17.85m×105
-  assert.ok(Math.abs(card.total! - (21.375 * 160 + 6.311 * 155 + 17.85 * 105)) < 1e-6);
-  assert.ok(Math.abs(card.total! - 6272.455) < 1e-6); // R01 重算
+  // 边吊 24.30m×160 + 平顶 6.311㎡×155 + 窗帘盒 17.85m×105
+  assert.ok(Math.abs(card.total! - (24.3 * 160 + 6.311 * 155 + 17.85 * 105)) < 1e-6);
+  assert.ok(Math.abs(card.total! - 6740.455) < 1e-6); // R01 重算；2026-11-23 通长假梁 +468.00
 });
 
 test('out_of_scope 与待报价是两回事：不报的项目进总额、待报价的项目卡住总额', () => {
@@ -327,9 +327,9 @@ test('厨卫铝扣板独立计价（C13）：150 元/㎡ 估价卡 ¥2,486.40，
   const baseline = comparison.find((entry) => entry.id === 'baseline_self_computed')!;
   assert.deepEqual(baseline.outOfScopeRows, ['gypsum_edge_drop_linear', 'gypsum_flat_sqm', 'aluminum_buckle_sqm']);
   assert.deepEqual(baseline.pendingRows, ['curtain_box_linear']);
-  // 石膏板卡不报铝扣板 → 超出范围，总额仍是 6,272.455（R01 重算后平顶量）
+  // 石膏板卡不报铝扣板 → 超出范围，总额仍是 6,740.455（2026-11-23 通长假梁 +468.00）
   const gypsum = comparison.find((entry) => entry.id === 'owner_turnkey_20261008')!;
-  assert.ok(Math.abs(gypsum.total! - 6272.455) < 1e-6);
+  assert.ok(Math.abs(gypsum.total! - 6740.455) < 1e-6);
   assert.ok(gypsum.outOfScopeRows.includes('aluminum_buckle_sqm'));
 });
 

@@ -310,12 +310,12 @@
   room: master_bedroom
   type: socket
   absolute: true
-  host_intent: "ac_master 内机门头盒东端空腔（随冷媒管进盒）"
+  host_intent: "ac_master 内机通长假梁东端空腔（随冷媒管进梁）"
   x: 4.05
-  z: 4.60
+  z: 5.30
   height: 2.6
   count: 1
-  note: "主卧空调内机电源（2026-09-06 R7：门头盒东端空腔内，近走廊穿孔 z≈4.6；内机吊顶内供电常规做法，随冷媒管进盒）；状态依据：归入 topology 回路 hvac_power_bedrooms，主卧空调内机电源随冷媒管进门头盒为设计声明→inferred；盒内近走廊穿孔位置为设计值未实测"
+  note: "主卧空调内机电源（2026-11-23 业主裁定门头盒改通长假梁：电源点随梁东端空腔移至 (4.05,5.30)，x 沿用旧值、贴东墙进梁；走廊穿孔仍为 z≈4.6，穿孔至电源点 0.70m 南行段贴 w_strip_east 西脸（距墙 0.15m）；内机吊顶内供电常规做法，随冷媒管进梁）；状态依据：归入 topology 回路 hvac_power_bedrooms，主卧空调内机电源随冷媒管进梁为设计声明→inferred；梁内位置为设计值未实测"
   status: inferred
 
 - id: net_master_ap

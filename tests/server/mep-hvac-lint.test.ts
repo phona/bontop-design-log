@@ -113,6 +113,7 @@ const KNOWN_INACCESSIBLE_ENDPOINTS: ReadonlyArray<{ routeId: string; pointId: st
 // 均为斜段拆分后正交段在开放空间无依托）；route_overlap 59→60（同日并行改动：
 // strong-power-parent-child-childbed 段几何调整，与 refrigerant-master / refrigerant-child
 // 各新增 1 处、与 refrigerant-child 旧 1 处消失，净 +1）。
+// 2026-11-23 通长假梁改道后实算 unsupported_span 5、route_overlap 54。上限仍是 9 和 60，本轮不收紧。
 const MUST_FIX_ROUTE_CEILINGS: Readonly<Record<string, number>> = {
   route_overlap: 60,
   route_not_orthogonal: 0,
@@ -898,7 +899,7 @@ test('DEC-2026-10-06-R1 geometry fixes clear slope/orthogonal and reclassify ove
   // 若将来有人把几何改回贴墙（或把灯位改回 (2.60,7.60) 而不同步路由），这里立即 fail——
   // 正是本轮第一次提交时漏掉同步、导致 shear 13→11 / unsupported_span 7→9 双向漂移的那个失效模式。
   const shearRouteIds = result.warnings.filter((i) => i.code === 'shear_wall_parallel_route').map((i) => i.routeId);
-  assert.equal(shearRouteIds.includes('strong-light-master'), false, 'strong-light-master 应走 ceiling_master_ac 门头盒空腔，不得贴 w_mb_east 长距离平行');
+  assert.equal(shearRouteIds.includes('strong-light-master'), false, 'strong-light-master 不得贴 w_mb_east 长距离平行'); // 2026-11-23：梁内 z=5.08 横穿后，南行按 w_strip_east / w_mb_east 分段，每段重叠短于 1.0m
   assert.equal(shearRouteIds.includes('strong-light-bedrooms-master-bed-north'), false, 'strong-light-bedrooms-master-bed-north 同上');
   // F4：上面两条 false 是负向保护（已消除问题不得重现），保留；“已知问题必须存在”
   // 的正向断言已删——检测规则有效的证明在合成 fixture 用例

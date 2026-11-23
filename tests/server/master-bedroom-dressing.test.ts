@@ -761,34 +761,39 @@ test('south-window-band low dresser uses the 2026-09-06 east-shifted transform a
   }
 });
 
-test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven', () => {
+test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   type CeilingEntry = { id: string; room?: string; type: string; x?: number; z?: number; height?: number; thickness?: number; area?: [number, number, number, number]; power_point?: string };
   const ceiling = load(readFileSync('config/model/envelope/ceiling.yaml', 'utf8')) as CeilingEntry[];
   const hvac = load(readFileSync('config/hvac.yaml', 'utf8')) as { plans: Array<{ diagram: { terminals: Array<{ id: string; system: string; position: { x: number; y: number; z: number }; mount_face: string; length?: number }> } }> };
-  const box = ceiling.find((entry) => entry.id === 'ceiling_master_ac');
-  assert.ok(box, 'missing ceiling_master_ac');
-  assert.equal(box!.type, 'drop');
-  // 门头盒 area：西缘由柜东缘 + 0.40m 空隙定（见本测试末段，不再贴衣柜东缘）；
-  // 东缘为东墙线；南北缘 [4.55, 5.60] 是 R7/R7.1 门头盒定案的裁定区（ceiling.yaml
-  // 注明依据 DEC-2026-09-06-R7/R7.1），无派生源，按裁定值例外保留。
-  const [minX, minZ, maxX, maxZ] = box!.area!;
+  const beam = ceiling.find((entry) => entry.id === 'ceiling_master_beam');
+  assert.ok(beam, 'missing ceiling_master_beam');
+  assert.ok(!ceiling.some((entry) => entry.id === 'ceiling_master_ac'), 'ceiling_master_ac must be gone (2026-11-23 beam ruling)');
+  assert.equal(beam!.type, 'drop');
+  // 梁 area：全宽 x[0,4.20]（西端落西玻璃幕墙、东端为东墙线），深 0.50m；
+  // 南北缘 [5.05, 5.55] 是 2026-11-23 业主裁定的寝区与北侧套间条带分界线（z=5.55），无派生源，按裁定值例外保留。
+  const [minX, minZ, maxX, maxZ] = beam!.area!;
   const eastWall = mbWall('w_mb_east');
-  assert.ok(Math.abs(maxX - eastWall.x1) < GAP_EPS, 'head box east edge must be the east wall line');
-  assert.equal(minZ, 4.55, 'head box north edge is the R7/R7.1 ruled zone');
-  assert.equal(maxZ, 5.60, 'head box south edge is the R7/R7.1 ruled zone');
-  assert.equal((box as CeilingEntry & { corner_radius?: number }).corner_radius, 0.10, 'head box uses the approved R100 plan corner');
-  // 厚度不钉字面量：底面 = 房间净高 − 厚度，须落在 2.45–2.50m 的 HVAC 基准带内。
+  assert.ok(Math.abs(maxX - eastWall.x1) < GAP_EPS, 'beam east edge must be the east wall line');
   const masterRoom = MB_LAYOUT.rooms.find((room) => room.id === 'master_bedroom');
   assert.ok(masterRoom, 'missing master_bedroom room');
+  const westGlass = masterRoom!.x - masterRoom!.width / 2;
+  assert.ok(Math.abs(minX - westGlass) < GAP_EPS, 'beam west edge must be the west glass curtain line');
+  assert.equal(minZ, 5.05, 'beam north edge is the 2026-11-23 ruled zone');
+  assert.equal(maxZ, 5.55, 'beam south edge is the sleeping-area / suite-strip boundary');
+  assert.equal((beam as CeilingEntry & { corner_radius?: number }).corner_radius, undefined, 'wall-to-wall beam has no exposed plan corners');
+  // 厚度不钉字面量：底面 = 房间净高 − 厚度，须落在 2.45–2.50m 的 HVAC 基准带内。
   const roomHeight = masterRoom!.height;
-  const bottom = roomHeight - box!.thickness!;
-  assert.ok(bottom >= 2.45 - GAP_EPS && bottom <= 2.50 + GAP_EPS, `head box bottom ${bottom} outside 2.45–2.50m`);
+  const bottom = roomHeight - beam!.thickness!;
+  assert.ok(bottom >= 2.45 - GAP_EPS && bottom <= 2.50 + GAP_EPS, `beam bottom ${bottom} outside 2.45–2.50m`);
   const indoor = ceiling.find((entry) => entry.id === 'ac_master');
   assert.ok(indoor && indoor.type === 'ac_indoor');
-  assert.ok(indoor!.x! >= minX && indoor!.x! <= maxX && indoor!.z! >= minZ && indoor!.z! <= maxZ, 'indoor unit must sit inside the head box');
+  assert.ok(indoor!.x! >= minX && indoor!.x! <= maxX && indoor!.z! >= minZ && indoor!.z! <= maxZ, 'indoor unit must sit inside the beam');
+  // 56T2 实机 1200×450×200mm（P-S5 行，经销商参数表）：机身包络须落在梁内，z 向各留 25mm。
+  assert.ok(indoor!.x! - 0.60 >= minX - GAP_EPS && indoor!.x! + 0.60 <= maxX + GAP_EPS, '1200mm unit must fit the beam width with margin');
+  assert.ok(indoor!.z! - 0.225 >= minZ - GAP_EPS && indoor!.z! + 0.225 <= maxZ + GAP_EPS, '450mm unit must fit the beam depth with 25mm each side');
   assert.equal(indoor!.power_point, 'sock_master_ac');
   const acSocket = point('sock_master_ac');
-  assert.ok(acSocket.x! >= minX && acSocket.x! <= maxX && acSocket.z! >= minZ && acSocket.z! <= maxZ, 'sock_master_ac must sit inside the head box');
+  assert.ok(acSocket.x! >= minX && acSocket.x! <= maxX && acSocket.z! >= minZ && acSocket.z! <= maxZ, 'sock_master_ac must sit inside the beam');
   const terminals = hvac.plans[0].diagram.terminals;
   const supply = terminals.find((terminal) => terminal.id === 'supply_master');
   const ret = terminals.find((terminal) => terminal.id === 'return_master');
@@ -797,37 +802,35 @@ test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven', () =
   const doorMb = MB_LAYOUT.walls.flatMap((wall) => wall.openings ?? []).find((opening) => opening.id === 'd_mb');
   assert.ok(doorMb, 'missing d_mb door opening');
   const doorOpeningTopY = doorMb!.height;
-  // 2026-09-07：送回风中心轴统一到内机轴（ac_master x），东端分别留 0.14m/0.19m 至东墙卧室侧完成面。
+  // 2026-11-23：送回风中心轴统一到内机轴（ac_master x），东端分别留 0.39m/0.44m 至东墙卧室侧完成面。
   assert.ok(Math.abs(supply!.position.x - indoor!.x!) < GAP_EPS, `supply center x=${supply!.position.x} must share the indoor unit axis`);
   assert.ok(Math.abs(ret!.position.x - indoor!.x!) < GAP_EPS, `return center x=${ret!.position.x} must share the indoor unit axis`);
   const supplyEastX = supply!.position.x + supply!.length! / 2;
   const returnEastX = ret!.position.x + ret!.length! / 2;
-  assert.ok(Math.abs(eastWallBedroomFinishX - supplyEastX - 0.14) < GAP_EPS, `supply wall clearance ${eastWallBedroomFinishX - supplyEastX}`);
-  assert.ok(Math.abs(eastWallBedroomFinishX - returnEastX - 0.19) < GAP_EPS, `return wall clearance ${eastWallBedroomFinishX - returnEastX}`);
-  // 两个端点都处于 ceiling_master_ac 与门洞上方的服务高度，回风仍可从盒底检修。
+  assert.ok(Math.abs(eastWallBedroomFinishX - supplyEastX - 0.39) < GAP_EPS, `supply wall clearance ${eastWallBedroomFinishX - supplyEastX}`);
+  assert.ok(Math.abs(eastWallBedroomFinishX - returnEastX - 0.44) < GAP_EPS, `return wall clearance ${eastWallBedroomFinishX - returnEastX}`);
+  // 两个端点都处于梁与门洞上方的服务高度，回风仍可从梁底检修。
   assert.ok(supply!.position.y > doorOpeningTopY + GAP_EPS, `supply must clear door top y=${supply!.position.y}`);
   assert.ok(ret!.position.y > doorOpeningTopY + GAP_EPS, `return must clear door top y=${ret!.position.y}`);
-  assert.ok(supply!.position.z >= minZ - GAP_EPS && supply!.position.z <= maxZ + GAP_EPS, 'supply must remain over the head-box service footprint');
-  assert.ok(ret!.position.z >= minZ - GAP_EPS && ret!.position.z <= maxZ + GAP_EPS, 'return must remain over the head-box service footprint');
-  // 侧送：窄线形送风嵌门头盒南立面
+  assert.ok(supply!.position.z >= minZ - GAP_EPS && supply!.position.z <= maxZ + GAP_EPS, 'supply must remain over the beam service footprint');
+  assert.ok(ret!.position.z >= minZ - GAP_EPS && ret!.position.z <= maxZ + GAP_EPS, 'return must remain over the beam service footprint');
+  // 侧送：窄线形送风嵌梁南立面
   assert.equal(supply!.system, 'supply_air');
   assert.equal(supply!.mount_face, 'south');
   assert.equal(supply!.length, 0.6);
-  assert.ok(Math.abs(supply!.position.z - maxZ) <= 0.02 + GAP_EPS, 'supply grille must sit on the head box south face');
-  assert.ok(supply!.position.x - supply!.length! / 2 >= minX - GAP_EPS && supply!.position.x + supply!.length! / 2 <= maxX + GAP_EPS, 'supply span must stay inside the head box');
-  assert.ok(supply!.position.y >= bottom && supply!.position.y <= roomHeight, 'supply grille y must be inside the head box face band');
-  // 下回：底部回风兼检修（回检一体），平面包络完整落在门头盒内
+  assert.ok(Math.abs(supply!.position.z - maxZ) <= 0.02 + GAP_EPS, 'supply grille must sit on the beam south face');
+  assert.ok(supply!.position.x - supply!.length! / 2 >= minX - GAP_EPS && supply!.position.x + supply!.length! / 2 <= maxX + GAP_EPS, 'supply span must stay inside the beam');
+  assert.ok(supply!.position.y >= bottom && supply!.position.y <= roomHeight, 'supply grille y must be inside the beam face band');
+  // 下回：底部回风兼检修（回检一体），平面包络完整落在梁内
   assert.equal(ret!.system, 'return_air');
   assert.equal(ret!.mount_face, 'bottom');
   assert.equal(ret!.length, 0.5);
-  assert.ok(Math.abs(ret!.position.y - (bottom - 0.01)) <= 0.02 + GAP_EPS, 'return grille must sit on the head box bottom');
-  assert.ok(ret!.position.x - ret!.length! / 2 >= minX - GAP_EPS && ret!.position.x + ret!.length! / 2 <= maxX + GAP_EPS, 'return span must stay inside the head box');
-  assert.ok(ret!.position.z - 0.125 >= minZ - GAP_EPS && ret!.position.z + 0.125 <= maxZ + GAP_EPS, 'return footprint must stay inside the head box');
-  // 通顶柜完成面与门头盒底（2.50m）齐平；HVAC盒仍保持独立责任，不互相侵占。
-  // 2026-11-13 issue #116：950 衣柜退役，门头盒西缘 2.925 不再贴任何衣柜东缘——
-  // 通顶柜东缘（真实包络 2.525）在盒西缘以西 0.40m，两者 z 向亦不重叠（柜 z[2.92,4.30]，
-  // 盒 z[4.55,5.60]）。56T2 盒装不下（机身东端 4.30 > 盒东界 4.20）不在本 PR 修，
-  // 修法是机身西移 + 盒子向西扩，待厂家安装图。
+  assert.ok(Math.abs(ret!.position.y - (bottom - 0.01)) <= 0.02 + GAP_EPS, 'return grille must sit on the beam bottom');
+  assert.ok(ret!.position.x - ret!.length! / 2 >= minX - GAP_EPS && ret!.position.x + ret!.length! / 2 <= maxX + GAP_EPS, 'return span must stay inside the beam');
+  assert.ok(ret!.position.z - 0.125 >= minZ - GAP_EPS && ret!.position.z + 0.125 <= maxZ + GAP_EPS, 'return footprint must stay inside the beam');
+  // 通顶柜完成面与梁底（2.50m）齐平；HVAC 梁仍保持独立责任，不互相侵占。
+  // 2026-11-23 业主裁定：门头盒改通长假梁——56T2 盒装不下（机身东端 4.30 > 盒东界 4.20）
+  // 不再修盒，机身西移至 x=3.45（东端 4.05）+ 梁全宽通长，待厂家安装图核机身外廓与安装间隙。
   const cabinetDecl = master.find((item) => item.type === 'mb_full_height_cabinet');
   assert.ok(cabinetDecl, 'missing mb_full_height_cabinet');
   const cabinetCenter = fullHeightCabinetCenter();
@@ -840,10 +843,10 @@ test('R8 HVAC head box envelope: ceiling/hvac/electrical stay data-driven', () =
   assert.ok(Math.abs(cabinetBox.minZ - (cabinetCenter.z - cabinetDecl.width! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - (cabinetCenter.z + cabinetDecl.width! / 2)) < RUNTIME_EPS);
   assert.ok(supply!.position.x - supply!.length! / 2 >= cabinetBox.maxX - GAP_EPS, 'supply must stay clear of the full-height cabinet');
   assert.ok(ret!.position.x - ret!.length! / 2 >= cabinetBox.maxX - GAP_EPS, 'return must stay clear of the full-height cabinet');
-  assert.ok(supplyEastX <= eastWallBedroomFinishX - 0.14 + GAP_EPS, 'supply must stay clear of the bedroom east wall finish');
-  assert.ok(returnEastX <= eastWallBedroomFinishX - 0.19 + GAP_EPS, 'return must stay clear of the bedroom east wall finish');
-  assert.ok(bottom <= 2.50 + GAP_EPS, 'head box bottom must remain at the independent HVAC datum');
-  // 2026-09-07 的「门头盒延伸至衣柜东缘」缝已随 950 退役：盒西缘 2.925 与柜东缘 2.525
-  // 之间是 0.40m 空隙，不再有贴合缝要收口。
-  assert.ok(Math.abs(minX - cabinetBox.maxX - 0.40) <= RUNTIME_EPS, `head box west edge ${minX} must stand 0.40m east of the cabinet east edge ${cabinetBox.maxX}`);
+  assert.ok(supplyEastX <= eastWallBedroomFinishX - 0.39 + GAP_EPS, 'supply must stay clear of the bedroom east wall finish');
+  assert.ok(returnEastX <= eastWallBedroomFinishX - 0.44 + GAP_EPS, 'return must stay clear of the bedroom east wall finish');
+  assert.ok(bottom <= 2.50 + GAP_EPS, 'beam bottom must remain at the independent HVAC datum');
+  // 梁全宽通长：通顶柜东缘（真实包络 2.525）在梁 x 范围内，但两者 z 向不重叠
+  // （柜 z[2.92,4.30]，梁 z[5.05,5.55]），无贴合缝要收口。
+  assert.ok(cabinetBox.maxZ <= minZ - GAP_EPS, `cabinet north edge ${cabinetBox.maxZ} must stay north of the beam ${minZ}`);
 });

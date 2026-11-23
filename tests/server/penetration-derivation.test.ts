@@ -95,7 +95,8 @@ const PIN_46: Array<[string, string, number, number]> = [
   ['strong-light-parent', 'w_st_north', 5.5, 5.55],
   ['strong-ded-washer-dryer', 'w_balc_east', 7.2, 2.15],
   ['strong-ded-bathheaters-mbath', 'w_strip_east', 4.2, 4.6],
-  ['strong-ded-bathheaters-mbath', 'w_mbath_south', 2, 2.86],
+  // 2026-11-23：北行改到 x=2.43，穿 w_mbath_south 落在 d_mbath（x[1.15,1.95]）以东实体垛。
+  ['strong-ded-bathheaters-mbath', 'w_mbath_south', 2.43, 2.86],
   ['strong-ded-bathheaters-gbath', 'w_gbath_south', 6.7, 3.55],
   ['strong-power-master', 'w_strip_east', 4.2, 4.6],
   ['strong-power-parent', 'w_st_north', 5.5, 5.55],
@@ -373,7 +374,11 @@ test('真实配置 lint：penetration_* 计数与 2026-11-16 关系化批后一�
   // 12→13——均来自 strong-light-child 新增的同一穿点 w_strip_east (4.20,4.60)
   // 声明（实测 lint：door_clearance 新增 strong-light-child 1 条，shear 新增
   // strong-light-child 1 条；其余 penetration_* 计数不变）。
-  assert.equal(count('penetration_door_clearance'), 18);
+  // 2026-11-23 通长假梁改道：strong-ded-bathheaters-mbath 穿 w_mbath_south
+  // 由 x=2.0（门洞 d_mbath 内）改到 x=2.43（门洞以东实体垛），该条
+  // penetration_door_clearance 消失，实算 18→17。lint 上限仍是 18，这里只改
+  // 实算快照。shear_wall_penetration 仍是 13。
+  assert.equal(count('penetration_door_clearance'), 17);
   assert.equal(count('penetration_wall_unknown'), 0);
   assert.equal(count('penetration_declaration_orphaned'), 0);
   assert.equal(count('penetration_declaration_incomplete'), 0);

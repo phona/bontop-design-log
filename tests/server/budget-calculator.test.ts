@@ -580,12 +580,12 @@ describe('BudgetCalculator', () => {
     const snapshot = calc.calculate(scheme);
     const carpentry = snapshot.categories.find((c) => c.key === 'carpentry');
     assert.ok(carpentry);
-    // area: 'ceiling_zones' → shared/ceiling-takeoff.ts 的吊顶板面净面积（总净面积 46.385 − 窗帘盒 4.463 = 41.922㎡，R01 重算：门厅吊顶区 1.0584→2.561）× 40 元/㎡。
+    // area: 'ceiling_zones' → shared/ceiling-takeoff.ts 的吊顶板面净面积（总净面积 47.155 − 窗帘盒 4.463 = 42.692㎡，R01 重算：门厅吊顶区 1.0584→2.561；2026-11-23 通长假梁 +0.770）× 40 元/㎡。
     // 旧口径按房间面积合计 142.92㎡（¥5,717），把无吊顶平顶/电梯井/入户花园都计了费。
     // 注意：人工费进 cat.actual（不是 autoActual），与 computeLabor 既有口径一致。
     assert.ok(
-      Math.abs(carpentry.actual - Math.round(40 * (46.385 - 4.463))) <= 2,
-      `carpentry 板面人工应为 ~1677（40 元/㎡ × 41.922㎡），实际 ${carpentry.actual}`
+      Math.abs(carpentry.actual - Math.round(40 * (47.155 - 4.463))) <= 2,
+      `carpentry 板面人工应为 ~1708（40 元/㎡ × 42.692㎡），实际 ${carpentry.actual}`
     );
     assert.ok(carpentry.actual < carpentry.budget, '按分区实算后木工板面人工应低于预算');
     assert.ok(!('ceiling' in JSON.parse(readFileSync('config/budget/base.json', 'utf8')).categories.carpentry.labor), 'base.json 不应再引用废弃的 ceiling 键');
@@ -1314,7 +1314,7 @@ describe('BudgetCalculator', () => {
     // 实测 157870.46361048135，差额 +11,662 = 瓦工人工 +4,662 + hvac +7,000。
     // **当前实测 66,310**：65,922 + R01 重算净 +388（客餐厅 +1.725、东南房 +2.19 与门厅吊顶区 1.0584→2.561 传导至漆工/木工/瓦工人工与材料）；
     // actual 不含candidateActual材料款，只保留已取证款、人工/人工录入与其他明确来源。
-    assert.equal(snapshot.totalActual, 66488, '现行 totalActual 锚点（已含 R01 重算；DEC-2026-10-28-R05 窗帘盒归位后 66310→66337；DEC-2026-11-04-R2 批准 JX ¥99 追加后 price_per_unit 3000→3099，+99 至 66436；2026-11-12 吊顶下调：涂装计价面积 310.366→310.252㎡，PKG-080 人工 −¥3 至 66433；2026-11-12 PR #225 贴砖下调：masonry.actual 10931→10879，−52 至 66381；2026-11-16 量价算法审计 D1+D2：主卧/主卫扣圆角 −0.4292㎡，瓦工人工 −¥16、防水人工 −¥4、涂装人工 −¥5，66381→66356；2026-11-17 包管盒面：masonry.actual 10863→10995，+132 至 66488）');
+    assert.equal(snapshot.totalActual, 66515, '现行 totalActual 锚点（已含 R01 重算；DEC-2026-10-28-R05 窗帘盒归位后 66310→66337；DEC-2026-11-04-R2 批准 JX ¥99 追加后 price_per_unit 3000→3099，+99 至 66436；2026-11-12 吊顶下调：涂装计价面积 310.366→310.252㎡，PKG-080 人工 −¥3 至 66433；2026-11-12 PR #225 贴砖下调：masonry.actual 10931→10879，−52 至 66381；2026-11-16 量价算法审计 D1+D2：主卧/主卫扣圆角 −0.4292㎡，瓦工人工 −¥16、防水人工 −¥4、涂装人工 −¥5，66381→66356；2026-11-17 包管盒面：masonry.actual 10863→10995，+132 至 66488；2026-11-23 通长假梁：木工 +31（板面 41.922→42.692㎡）、涂装 −4（主卧飘窗窗台涂装面 −0.165㎡），66488→66515）');
     assert.ok(candidateTotal > 90000, `候选价应仍在 92,696 量级（当前 ${candidateTotal}），不得被静默清零`);
   });
 

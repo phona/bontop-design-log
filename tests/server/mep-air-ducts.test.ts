@@ -566,15 +566,15 @@ test('C3：14 条风管 lint findings 计数+码与基线一致，DXF 与算量�
   const lintResult = lintMepCoordination(project, realSources);
   const findingsOf = (id: string) => [...lintResult.errors, ...lintResult.warnings].filter((issue) => issue.routeId === id);
   const expectedCounts: Record<string, number> = {
-    'supply-air-living': 0, 'return-air-living': 4, 'supply-air-master': 2, 'return-air-master': 2,
+    'supply-air-living': 0, 'return-air-living': 4, 'supply-air-master': 0, 'return-air-master': 1, // 2026-11-23 通长假梁：送回风支管收进梁内，supply 的 supply_return_overlap + route_clearance 与 return 的 route_clearance 同批消失（两管 z 向仅在 5.30 相接、不再重叠）
     'supply-air-study': 1, 'return-air-study': 2, 'supply-air-parent': 2, 'return-air-parent': 1,
     'supply-air-child': 1, 'return-air-child': 1, 'supply-air-dining': 3, 'return-air-dining': 4,
     'supply-air-living-bottom': 1, 'supply-air-dining-bottom': 1,
   };
   const expectedCodes: Record<string, string[]> = {
     'return-air-living': ['ceiling_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified'],
-    'supply-air-master': ['route_clearance_unverified', 'supply_return_overlap'],
-    'return-air-master': ['ceiling_clearance_unverified', 'route_clearance_unverified'],
+    'supply-air-master': [], // 2026-11-23 通长假梁：支管收进梁内，findings 清零
+    'return-air-master': ['ceiling_clearance_unverified'], // 2026-11-23 通长假梁：route_clearance_unverified 随支管进梁消失
     'supply-air-study': ['route_clearance_unverified'],
     'return-air-study': ['ceiling_clearance_unverified', 'route_overlap'],
     'supply-air-parent': ['route_clearance_unverified', 'supply_return_overlap'],
@@ -593,7 +593,7 @@ test('C3：14 条风管 lint findings 计数+码与基线一致，DXF 与算量�
     assert.equal(found.length, expectedCounts[id], `${id} findings ${found.length} !== ${expectedCounts[id]}`);
     if (expectedCodes[id]) assert.deepEqual(found.map((issue) => issue.code).sort(), [...expectedCodes[id]].sort(), `${id} codes`);
   }
-  assert.equal(total, 25, '14 条风管 findings 合计须为 25');
+  assert.equal(total, 22, '14 条风管 findings 合计须为 22（2026-11-23 通长假梁：主卧送回风 3 处同批消失）');
 
   // DXF 与 lint/takeoff 同读统一出口：健康态 errors 为空、含本批路线标注。
   const dxfHouse = { rooms: [], furnishings: {} as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: [] };

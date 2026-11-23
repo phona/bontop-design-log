@@ -122,7 +122,8 @@ const EXPECTED_KINDS: Record<SliceId, string[]> = {
   'strong-main': ['axis_jog', 'axis_run'],
   'strong-ac-living': ['axis_jog', 'axis_run'],
   'strong-ac-dining': ['axis_jog', 'axis_run'],
-  'strong-ac-master': ['axis_jog', 'axis_run'],
+  // 2026-11-23：末段拆成「贴墙南行到插座 z」+「纯竖向 0.05m」，不再一腿同时跑平面和升高。
+  'strong-ac-master': ['axis_jog', 'axis_run', 'axis_run'],
   'strong-ac-parent': ['axis_jog', 'axis_run', 'axis_run'],
   'strong-ac-child': ['axis_jog', 'axis_run', 'axis_run', 'axis_run'],
   'strong-ac-study': ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
@@ -134,7 +135,9 @@ const EXPECTED_KINDS: Record<SliceId, string[]> = {
 /** strong-ded-bathheaters-mbath 的关系步型序列（本批 51 条迁移为关系步；旧绝对 via
  *  见 PR #248 记录与 git 历史）。步型是结构声明；步的具体目标（轴线 id、
  *  vertical_to 目标）由下方断言逐条核对，不再整段钉死 via 字面量。 */
-const MBATH_KINDS = ['axis_jog', 'axis_run', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'];
+// 2026-11-23：走廊轴之后先贴 w_nw_south（z=4.48）再西行到 x=2.43，然后才 vertical_to。
+// 旧序列在 y=2.55 上直飞主卫，门头盒改梁后那一段没有吊顶。
+const MBATH_KINDS = ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'];
 
 function loadAll() {
   const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };
@@ -425,22 +428,42 @@ test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折
     'mbath via 不得含绝对坐标步（每步须为关系步）',
   );
   assert.deepEqual(
-    (mbath.via as any[]).slice(0, 3).map((s) => s.axis),
-    ['corridor_axis', 'corridor_axis', 'corridor_axis'],
-    'mbath 前三步须引用走廊轴',
+    (mbath.via as any[]).slice(0, 2).map((s) => s.axis),
+    ['corridor_axis', 'corridor_axis'],
+    'mbath 前两步须引用走廊轴',
   );
-  assert.equal((mbath.via as any[])[3].height, 'to', 'mbath vertical_to 须以 to 端点为升位目标');
-  // 解算出的走廊段须落在 axes 表的走廊轴值上（轴值当轮直读）；其余不变式与切片路由同口径。
+  assert.equal((mbath.via as any[])[2].axis, 'z', 'mbath 第三步须沿 z 离开走廊轴');
+  assert.equal((mbath.via as any[])[2].to, 4.48, 'mbath 第三步须落到 z=4.48（w_nw_south 贴墙带）');
+  assert.equal((mbath.via as any[])[3].to, 2.43, 'mbath 西行须落到 x=2.43（距 w_mbath_east 0.17m，在通顶柜以东）');
+  assert.equal((mbath.via as any[])[4].height, 'to', 'mbath vertical_to 须以 to 端点为升位目标');
   const mbathResolved = routeOf(report, 'strong-ded-bathheaters-mbath');
   const corridorValue = all.coordination.axes.find((a) => a.id === 'corridor_axis')!.value;
-  const corridorLegs = mbathResolved.points.filter(
-    (p, i) => i > 0 && Math.abs((p.y ?? 0) - mbath.from_height!) <= TOL,
-  );
-  assert.ok(corridorLegs.length > 0, 'mbath 须有走廊标高段');
-  for (const p of corridorLegs) {
-    assert.ok(Math.abs(p.z - corridorValue) <= TOL, `mbath 走廊段须落在走廊轴 ${corridorValue} 上，实际 z=${p.z}`);
-  }
+  const onCorridor = mbathResolved.points.filter((p) => Math.abs(p.z - corridorValue) <= TOL);
+  assert.ok(onCorridor.length >= 2, 'mbath 须仍有落在走廊轴上的段');
+  const hugged = mbathResolved.points.filter((p) => Math.abs(p.z - 4.48) <= TOL && Math.abs(p.x - 2.43) <= TOL);
+  assert.ok(hugged.length >= 1, 'mbath 须经过 (2.43, 4.48) 墙角');
+  const northLeg = mbathResolved.points.filter((p) => Math.abs(p.x - 2.43) <= TOL && Math.abs((p.y ?? 0) - (mbath.to_height ?? 0)) <= TOL);
+  assert.ok(northLeg.length >= 2, 'mbath 北行段须在 x=2.43、升到 to_height 之后');
   assertRouteInvariants(mbathResolved, all.coordination, 'strong-ded-bathheaters-mbath');
+  // 台盆电源不穿通顶柜、不贴 w_mbath_east（那条墙是剪力墙，长距离并行会过 survey 上限）。
+  // x=1.92 在柜西缘 1.975 以西、局部梁头东缘 1.90 以东；z=2.96 贴 w_mbath_south。
+  const service = all.coordination.routes.find((r) => r.id === 'strong-power-mbath-service')!;
+  assert.deepEqual(
+    service.via.map((s: any) => s.kind),
+    ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
+    'mbath-service 不得再插入 level / vertical_to 去钻柜或降到垫层',
+  );
+  assert.deepEqual(
+    (service.via as any[]).filter((s) => typeof s.to === 'number').map((s) => s.to),
+    [4.1, 4.48, 1.92, 2.96],
+    'mbath-service 数字转点须为走廊出口、w_nw_south、柜西、台盆南墙',
+  );
+  const serviceResolved = routeOf(report, 'strong-power-mbath-service');
+  assert.ok(
+    serviceResolved.points.some((p) => Math.abs(p.x - 1.92) <= TOL && Math.abs(p.z - 2.96) <= TOL),
+    'mbath-service 须经过 (1.92, 2.96) 再西折下引',
+  );
+  assertRouteInvariants(serviceResolved, all.coordination, 'strong-power-mbath-service');
 
   // 逐路由持续不变式：端点 + 正交 + 无连续重复点 + 无往返折返 + 无发明坐标/标高。
   // 迁移等价证明（与旧绝对几何逐点比对）已随 PR #248 合入归档，不住测试套件。

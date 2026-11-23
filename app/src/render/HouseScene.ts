@@ -2579,7 +2579,7 @@ export class HouseScene implements SceneApi {
 
   /**
    * 给每个吊顶分区上色。必须走 `exportRoot.traverse` 而不是 `this.ceilingMeshes`：
-   * `SceneBuilder` 把 `ceilingPersistent`（圆角/阴角分区，含 ceiling_master_ac）排除在
+   * `SceneBuilder` 把 `ceilingPersistent`（圆角/阴角分区）排除在
    * ceilingMeshes 之外，只用那个数组会漏掉主卧门头盒。
    */
   private applyCeilingZoneColors(): void {
