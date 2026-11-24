@@ -505,7 +505,7 @@ plans:
           render_coordination: true
           system: condensate
           position: { x: 2.0, y: 0.1, z: 2.5 }
-          reason: "仅为冷凝水候选接入点，待量房确认；路线经空调盒/衣柜顶部隐藏后沿 w_mbath_east 西侧墙行进入主卫，不是地漏、立管或施工点，不得假定接入现有地漏。"
+          reason: "仅为冷凝水候选接入点，待量房确认。原先写的「路线经空调盒/衣柜顶部隐藏后沿 w_mbath_east 西侧墙行进入主卫」指 condensate_master_candidate_route 的已失效留档折线，该折线不参与现行路由。本点不是地漏、立管或施工点，不得假定接入现有地漏。替代路由待 #39 与量房后定，本条不新编路径坐标。"
         - id: condensate_study_candidate
           kind: condensate_drain_candidate
           status: pending
@@ -539,7 +539,7 @@ plans:
           position: { x: 3.45, y: 2.62, z: 5.535 }
           mount_face: south
           length: 0.6
-          reason: "主卧0.6m窄线形送风口（R9），中心轴统一至x=3.45，嵌通长假梁 ceiling_master_beam 南立面侧送朝南进睡眠区；东端x=3.75，距主卧东墙卧室侧完成面约0.39m；梁南缘 z=5.55，风口 z=5.535 距南立面 0.015m（沿用门头盒期南立面偏移）；实际长度按风量深化。2026-11-23 业主裁定门头盒改通长假梁，送风轴随机身中心西移 0.25m（3.70→3.45）。"
+          reason: "主卧0.6m窄线形送风口（R9），中心轴统一至x=3.45，嵌通长假梁 ceiling_master_beam 南立面侧送朝南进睡眠区；东端x=3.75，距主卧东墙卧室侧完成面约0.39m；梁南缘 z=5.55，风口 z=5.535 距南立面 0.015m（送风口槽位嵌于梁南立面，中心线在立面内 0.015m 是沿用门头盒期南立面偏移的预演口径；出风口实际高度待 #39，几何不动）；实际长度按风量深化。2026-11-23 业主裁定门头盒改通长假梁，送风轴随机身中心西移 0.25m（3.70→3.45）。"
         - id: return_master
           status: inferred
           system: return_air
@@ -734,7 +734,7 @@ plans:
           from: indoor_master
           to: condensate_master_candidate
           constraint_refs: [ref_master_bath_local_beam_head]
-          reason: "仅作协调示意：从 indoor_master 冷凝水出口 (3.45,5.30) 经延伸空调盒（原门头盒，已于 2026-11-23 改通长假梁；以下为 2026-11-14 全带泵重画前旧路由留档）进入通顶衣柜顶部服务带，沿 (4.10,4.62)→(2.925,4.62) 隐藏西行，柜内转至管心 x=2.50（w_mbath_east 西完成面 x≈2.54 外留约40mm，不穿墙），沿墙侧下行至 (2.50,3.10)，临近 w_mbath_south 向西短折至 x=2.30，并在 (2.30,2.86) 穿越该墙（避开 d_mbath 洞口 x[1.15,1.95] 与东端 T 墙角 x=2.60）；进入 ceiling_master_bath 后折至候选点上方 (2.00,2.50)，最后竖直下引到 (2.00,0.10,2.50)；管径、连续坡度、存水弯、立管接点和穿墙套管待现场及厂家深化确认，不代表施工。"
+          reason: "已失效留档、不参与现行路由（status 保持 pending：schema 只有 confirmed|inferred|pending，升 inferred 会把作废折线说成现行）。出口坐标已改到新机位 (3.45,5.30)，本条折线仍是 2026-11-14 全带泵重画前、经已删延伸空调盒（原门头盒）的旧路由：沿 (4.10,4.62)→(2.925,4.62) 西行，该段在新梁北缘 z=5.05 以北，现作废，不得进入算量。留档折线其余点：柜内转至管心 x=2.50（w_mbath_east 西完成面 x≈2.54 外留约40mm，不穿墙），沿墙侧下行至 (2.50,3.10)，临近 w_mbath_south 向西短折至 x=2.30，并在 (2.30,2.86) 穿越该墙（避开 d_mbath 洞口 x[1.15,1.95] 与东端 T 墙角 x=2.60），进入原 ceiling_master_bath 后折至候选点上方 (2.00,2.50)，最后竖直下引到 (2.00,0.10,2.50)。替代路由待 #39 与量房后定；本条不提供新路径坐标。MEP 侧 condensate-master 是另行已改到梁上、仍为 pending 的候选，不是本条。"
         - id: condensate_study_candidate_route
           status: pending
           system: condensate
