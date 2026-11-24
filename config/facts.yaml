@@ -1398,7 +1398,11 @@ contracts:
         # 2026-11-19 新增 check_wp_base_clean（防水前基层清理：清扫+工业吸尘+管根/阴阳角重点清理+手摸无浮灰，
         #   补照片里工业吸尘器与冲洗对应的工序缺口）→ 69 → 70；
         # 新项已挂 PKG-050 的 acceptance_refs 并 schedule:render 落 checklist。
-        expect_matches: 70
+        # 2026-11-23 新增 check_hvac_pipe_size（分歧器至内机铜管管径核对，封板前门禁：按厂家配管表逐台核对
+        #   气管/液管外径与分歧器方向；来源：小红书 2026-11-23 09:57 轮新发现，倍莱冷暖《三分产品七分安装，
+        #   铜管配错损坏压缩机》：管径配错 → 冷媒流量不足、制热差，久之损坏压缩机）→ 70 → 71；
+        # 新项已挂 PKG-030 的 acceptance_refs 并 schedule:render 落 checklist。
+        expect_matches: 71
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写
@@ -1929,7 +1933,7 @@ contracts:
   # ③ 验收项对象集：每条验收项的 objects.from_packages 必须等于引用它的工作包集合
   #    （acceptance_refs 反查）；对象集 = 这些工作包 targets 的并集。
   #    两种来源（from_packages / acceptance_refs）各自求并集后必须相等，派生不出对象集的
-  #    验收项直接报错。当前 70 条全部能被派生（无「无包引用」的孤儿项），其中
+  #    验收项直接报错。当前 71 条全部能被派生（无「无包引用」的孤儿项），其中
   #    check_window_* 6 条与 check_occ_formaldehyde 由 project_scope 包派生为 "*"。
   - id: c.acceptance_objects
     kind: object_link

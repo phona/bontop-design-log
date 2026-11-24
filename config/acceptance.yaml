@@ -721,6 +721,28 @@ phases:
         standard: "充氮焊接，无氧化皮"
         severity: critical
 
+      - id: check_hvac_pipe_size
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
+        item: "分歧器至内机铜管管径核对"
+        when: before_covering
+        method: |
+          1. 厂家深化图须列出每台内机（客厅 71T2、餐厅 42T2、主卧 56T2、书房/儿童房/客房 28T2）的气管/液管管径与分歧器型号对应表；无表不得开工。
+          2. 安装时按表逐台核对分歧器出口到六台内机的气管、液管外径（卡尺实测或管体标识），与表不符不得焊接。
+          3. 分歧器方向按厂家图核对，以厂家要求为准；图未标明方向则本项保持 pending，不得凭管径记录勾过。
+        standard: "六台内机气管/液管外径与厂家配管表逐台一致；分歧器方向符合厂家要求"
+        severity: critical
+        evidence:
+          - "厂家配管表照片或截图（每台内机气管/液管管径可辨）"
+          - "逐台管径核对记录（气管/液管外径可辨）"
+          - "厂家图中分歧器方向要求可辨（以厂家图为准；图未标明方向则本项保持 pending，不得凭管径记录勾过）"
+        knowledge: |
+          来源：小红书 2026-11-23 09:57 轮新发现（倍莱冷暖《三分产品七分安装，铜管配错损坏压缩机》）：分歧器到内机铜管尺寸配错 → 冷媒流量不足、制热差，久之损坏压缩机。
+          合同辅材表已有冷媒铜管 φ6.4×0.8 至 φ28.6×1.00，对象是专用分歧器 FQGBJ-01（docs/design-iterations/hvac-resix-20261003/evidence/evidence-notes.md 辅材一览）。config/mep-hvac-coordination.yaml 里 refrigerant-master、refrigerant-parent、refrigerant-study、refrigerant-child、refrigerant-dining 的 diameter 都是 0.019，refrigerant-trunk 是 0.032。
+          二者都不是逐台气管/液管外径的施工冻结值：支路 0.019 是这些支路共用的示意值，不是六台内机逐台气管/液管外径；reason 还写管径待厂家深化（refrigerant-trunk：「管径、分歧、套管待厂家深化」；refrigerant-dining：「分歧器、管径、套管与吊顶净高待深化」；其余支路 reason 写分歧器、套管或接管待深化，未给逐台外径）。hvac.yaml 冷媒支路 reason 仍写「分歧、管径、套管待量房及厂家深化」，那是待深化说明，不是逐台外径。不得把这些数抄进本条验收标准；逐台气管/液管外径与分歧器方向以厂家图为准，图未标明则本项保持 pending。
+
       - id: check_hvac_vacuum
         # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
         # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
