@@ -832,8 +832,9 @@ test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   assert.ok(ret!.position.x - ret!.length! / 2 >= minX - GAP_EPS && ret!.position.x + ret!.length! / 2 <= maxX + GAP_EPS, 'return span must stay inside the beam');
   assert.ok(ret!.position.z - 0.125 >= minZ - GAP_EPS && ret!.position.z + 0.125 <= maxZ + GAP_EPS, 'return footprint must stay inside the beam');
   // 通顶柜完成面与梁底（2.50m）齐平；HVAC 梁仍保持独立责任，不互相侵占。
-  // 2026-11-23 业主裁定：门头盒改通长假梁——56T2 盒装不下（机身东端 4.30 > 盒东界 4.20）
-  // 不再修盒，机身西移至 x=3.45（东端 4.05）+ 梁全宽通长，待厂家安装图核机身外廓与安装间隙。
+  // 2026-11-23 业主裁定：门头盒改通长假梁——按未核实的 1200 候选算，56T2 盒装不下（机身东端 4.30 > 盒东界 4.20）；
+  // 归档 900 候选的旧东端是 4.15，落在旧盒东界 4.20 以内，盒废弃的因果只在 1200 候选下成立。
+  // 不再修盒，机身西移至 x=3.45（按 1200 候选东端 4.05）+ 梁全宽通长，待厂家安装图核机身外廓与安装间隙。
   const cabinetDecl = master.find((item) => item.type === 'mb_full_height_cabinet');
   assert.ok(cabinetDecl, 'missing mb_full_height_cabinet');
   const cabinetCenter = fullHeightCabinetCenter();
@@ -851,5 +852,5 @@ test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   assert.ok(bottom <= 2.50 + GAP_EPS, 'beam bottom must remain at the independent HVAC datum');
   // 梁全宽通长：通顶柜东缘（真实包络 2.525）在梁 x 范围内，但两者 z 向不重叠
   // （柜 z[2.92,4.30]，梁 z[5.05,5.55]），无贴合缝要收口。
-  assert.ok(cabinetBox.maxZ <= minZ - GAP_EPS, `cabinet north edge ${cabinetBox.maxZ} must stay north of the beam ${minZ}`);
+  assert.ok(cabinetBox.maxZ <= minZ - GAP_EPS, `cabinet south edge ${cabinetBox.maxZ} must stay north of the beam ${minZ}`);
 });
