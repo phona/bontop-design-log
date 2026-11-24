@@ -194,6 +194,46 @@ pitfalls:
     description: "分歧器出口到六台内机的铜管尺寸配错 → 冷媒流量不足、制热差，时间一长损坏压缩机"
     mitigation: "厂家深化图须列出每台内机气管/液管管径表；安装时逐台核对，封吊顶前验收"
 
+  - id: ac_pressure_hold
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "冷媒管未做保压检漏"
+    description: "只抽真空不保压，慢漏查不出 → 冷媒渐漏、制冷差、压缩机损坏"
+    mitigation: "按厂家手册充氮保压并记录，保压不过不得抽真空"
+
+  - id: ac_pipe_insulation
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "冷媒铜管保温不到位"
+    description: "保温薄/接头裸露/气液管共用保温 → 结露滴水泡吊顶、冷量损失"
+    mitigation: "按合同 p2 厚度分开保温（φ6.4~19.1mm ≥15mm、φ19.1~31.8mm ≥10mm，转录级），接头包严，封板前验收"
+
+  - id: ac_pipe_wall_thin
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "铜管壁厚不足"
+    description: "薄壁铜管承压不足 → 高压下爆管、冷媒泄漏"
+    mitigation: "先按合同 p2 辅材表核对（转录级，#39 ⑥ 待核），厂家配管表有更严要求时从严；查管材证明或卡尺实测"
+
+  - id: ac_refrigerant_charge
+    type: construction
+    stage: installation
+    category: appliance_hvac
+    trigger: always
+    severity: high
+    title: "追加冷媒量不对"
+    description: "追加冷媒量不对 → 制冷制热差、压缩机损坏"
+    mitigation: "按厂家计算表追加并称重记录，超长配管按厂家曲线确认降额"
+
   - id: ac_vacuum
     type: construction
     stage: installation

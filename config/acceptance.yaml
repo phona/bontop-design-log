@@ -743,6 +743,64 @@ phases:
           合同辅材表已有冷媒铜管 φ6.4×0.8 至 φ28.6×1.00，对象是专用分歧器 FQGBJ-01（docs/design-iterations/hvac-resix-20261003/evidence/evidence-notes.md 辅材一览）。config/mep-hvac-coordination.yaml 里 refrigerant-master、refrigerant-parent、refrigerant-study、refrigerant-child、refrigerant-dining 的 diameter 都是 0.019，refrigerant-trunk 是 0.032。
           二者都不是逐台气管/液管外径的施工冻结值：支路 0.019 是这些支路共用的示意值，不是六台内机逐台气管/液管外径；reason 还写管径待厂家深化（refrigerant-trunk：「管径、分歧、套管待厂家深化」；refrigerant-dining：「分歧器、管径、套管与吊顶净高待深化」；其余支路 reason 写分歧器、套管或接管待深化，未给逐台外径）。hvac.yaml 冷媒支路 reason 仍写「分歧、管径、套管待量房及厂家深化」，那是待深化说明，不是逐台外径。不得把这些数抄进本条验收标准；逐台气管/液管外径与分歧器方向以厂家图为准，图未标明则本项保持 pending。
 
+      - id: check_hvac_pressure_hold
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
+        item: "冷媒管氮气保压检漏"
+        when: before_covering
+        method: |
+          1. 按厂家安装手册的保压压力与保压时长，向冷媒管路充氮保压；保压前记录压力表读数与环境温度。
+          2. 保压结束复核压力（须按温度修正读数），压降超过厂家允许值或发现泄漏点，不得抽真空，查漏修复后重新保压。
+          3. 保压记录须写明起止时间、压力、温度，由安装方、业主、美的厂家代表三方签认。
+        standard: "保压压力与时长符合厂家手册；修正后压降在厂家允许范围内，无泄漏"
+        severity: critical
+        evidence:
+          - "保压记录照片（压力表读数、起止时间可辨）"
+          - "由安装方、业主、美的厂家代表三方签认的保压记录"
+          - "厂家安装手册保压页照片或截图（保压压力、时长、允许压降可辨）"
+        knowledge: |
+          仓内此前只有抽真空项，保压只存在于水路打压；只抽真空不保压，慢漏查不出，冷媒渐漏致制冷差、压缩机损坏。保压压力与时长数值不写死在仓里，以厂家安装手册为准。
+
+      - id: check_hvac_insulation
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
+        item: "冷媒铜管保温"
+        when: before_covering
+        method: |
+          1. 按厂家/合同约定的保温厚度与做法逐段核查：气管、液管分别保温，不得共用一根保温套管。
+          2. 接头、弯头、阀门、分歧管处包严，无裸露铜管；保温层无破损、无脱落、无缝隙。
+          3. 保温厚度以合同 p2 转录厚度为准（铜管保温膜 φ6.4~19.1mm ≥15mm、φ19.1~31.8mm ≥10mm，转录级，#39 ⑥ 待原件核验），厂家/经销商书面确认有更严要求时从严；无厚度依据不得封板。
+        standard: "气管、液管分别保温；接头处包严无裸露；保温层完整无破损；保温厚度符合合同 p2（φ6.4~19.1mm ≥15mm、φ19.1~31.8mm ≥10mm，转录级）"
+        severity: major
+        evidence:
+          - "封板前保温照片（接头、分歧管处可辨）"
+          - "保温厚度实测记录或合同 p2 对照记录"
+        knowledge: |
+          仓内此前无冷媒管保温验收项；冷凝水管保温归空调包 COST-030-02，但冷媒管保温厚度/接头包严无人验。保温不到位会结露滴水进吊顶、冷量损失。
+
+      - id: check_hvac_wall_thickness
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-030]
+        item: "冷媒铜管壁厚核对"
+        when: before_covering
+        method: |
+          1. 先按合同 p2 辅材表核对，厂家配管表有更严要求时从严；两者缺一不可、无表不得开工。
+          2. 到货与安装时抽查：卡尺实测管端壁厚，或查管材厂家证明/管体标识；低于合同 p2 或厂家要求（取严者）不得使用。
+        standard: "各管径壁厚符合合同 p2 辅材表（转录级，#39 ⑥ 待原件核验），厂家配管表有更严要求时从严；管材证明或管体标识可查"
+        severity: critical
+        evidence:
+          - "壁厚抽查记录（管径与壁厚实测值可辨）"
+          - "管材厂家证明或管体标识照片"
+          - "合同 p2 辅材表对照记录（转录级）"
+        knowledge: |
+          合同 p2 辅材表已有分管径壁厚 φ6.4×0.8 / φ9.5×0.8 / φ12.7×0.8 / φ15.9×1.00 / φ19.1×1.00 / φ22.2×1.00 / φ25.4×1.00 / φ28.6×1.00，来源 docs/design-iterations/hvac-resix-20261003/evidence/evidence-notes.md 辅材一览表（转录自合同附件 p2，原件 contracts/2026-10-03/QR-2026-10-03-24_中央空调_合同附件p2_20261004.jpg；证据等级为转录级，原件核验待办 #39 ⑥，见 docs/pending-site-data.md）。R410A 高压，薄壁铜管承压不足有爆管、冷媒泄漏风险。
+
       - id: check_hvac_vacuum
         # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
         # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
@@ -752,6 +810,24 @@ phases:
         method: "看真空泵运行记录"
         standard: "≥ 15min，保持 -756mmHg"
         severity: critical
+
+      - id: check_hvac_refrigerant_charge
+        # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
+        # config/facts.yaml 的 c.acceptance_objects 契约断言它与工作包的 acceptance_refs 一致。
+        objects:
+          from_packages: [PKG-140]
+        item: "追加冷媒量核对"
+        method: |
+          1. 厂家深化须列出每路配管长度与追加冷媒量计算表；无表不得充注。
+          2. 充注时按表追加并称重记录，追加量与计算表一致；降额按厂家曲线确认；能力核对以经销商分房间冷负荷计算书到手后为准，计算书未到前不得用 7.1/2.8kW 估算判通过。
+          3. 充注后开机实测制冷/制热效果，与 check_hvac_cooling 一并验收。
+        standard: "追加量与厂家计算表一致（称重记录可查）；超长配管降额经厂家曲线确认"
+        severity: critical
+        evidence:
+          - "追加冷媒计算表与称重记录照片"
+          - "开机实测记录"
+        knowledge: |
+          hvac.yaml 只写“降额、组合运行能力及长配管修正须以厂家曲线与配管资料核实”，仓内此前无验收项核对追加量；追加不对会致制冷制热差、压缩机损坏。追加量数值不写死在仓里，以厂家计算表为准。
 
       - id: check_hvac_drain
         # 对象集（issue #191）= 引用本条的工作包 targets 并集；from_packages 记录派生来源，
