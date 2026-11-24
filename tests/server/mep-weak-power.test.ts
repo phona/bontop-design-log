@@ -345,10 +345,13 @@ const EXPECTED_POINTS: Record<string, Array<[number, number, number]>> = {
   'weak-ap': [
     [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [8.6, 2.6, 4.38], [8.6, 2.6, 4.75],
   ],
+  // 2026-11-23：穿墙仍在 (4.20,4.48) y=2.51。进梁后在 x=4.15 升到 2.64 再西行，
+  // 与照明 2.55、冷媒 2.60 错开；末点重复是解算器追加的端点，零长。
   'weak-ap-master': [
     [10.8, 2.6, 2.98], [10.8, 2.6, 4.55], [10.5, 2.6, 4.55], [10.5, 2.51, 4.55],
     [7.2, 2.51, 4.55], [4.6, 2.51, 4.55], [4.6, 2.51, 4.48], [4.15, 2.51, 4.48],
-    [4.15, 2.51, 4.95], [2.95, 2.51, 4.95], [2.95, 2.51, 5.3], [2.95, 2.7, 5.3], [2.8, 2.8, 6.0],
+    [4.15, 2.51, 5.08], [4.15, 2.64, 5.08], [2.8, 2.64, 5.08], [2.8, 2.8, 5.08],
+    [2.8, 2.8, 6.0], [2.8, 2.8, 6.0],
   ],
 };
 /** [平面长度, 三维长度]，merge-base 基线实算值（1e-9 容差）。 */
@@ -359,7 +362,7 @@ const EXPECTED_LENGTHS: Record<string, [number, number]> = {
   'weak-study': [7.476619038, 9.663160468],
   'weak-gateway': [6.32, 8.522172887],
   'weak-ap': [3.97, 3.97],
-  'weak-ap-master': [11.025891053, 11.312841615],
+  'weak-ap-master': [11.16, 11.54], // 2026-11-23 梁内改正交：平面 11.16、三维 11.54（含 2.51→2.64→2.80 两段竖管）
 };
 
 function weakPoints(report: ReturnType<typeof resolveMepRoutes>): Record<string, string> {
@@ -469,10 +472,16 @@ test('C3 消费者对账：lint 60/164 与逐路由计数同基线、DXF 无错�
   // shared_trunk 声明警告，warnings 164→173；errors 不变（声明挡住 5 处 must_fix）。
   // 2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，3 处假共干管声明
   // 撤销 + 2 处需求路线/冷立管重叠消失，warnings 173→168；errors 不变。
-  // verify:mep CLI 口径由 mep-guidance-baseline 测试另行钉死）。
+  // 2026-11-23 通长假梁：送回风支管收进梁内，warnings 168→165（supply-air-master 的
+  // supply_return_overlap + route_clearance_unverified 与 return-air-master 的
+  // route_clearance_unverified 同批消失）；当时 errors 仍是 60（route_overlap −1 与
+  // strong-ac-master 末段斜升 +1 相抵）。
+  // 2026-11-23 改道后 raw 口径 58/164：strong-ac-master 斜升已拆成正交腿（error −1），
+  // 另有 1 条非弱电 route_overlap error 与 1 条非弱电 warning 消失。弱电逐路由计数不变。
+  // 不抬 mep-hvac-lint 的分码上限。verify:mep CLI 口径由 mep-guidance-baseline 另行钉死。
   const lintResult = lintMepCoordination(project, realSources);
-  assert.equal(lintResult.errors.length, 60, `lint errors 应为 60，实际 ${lintResult.errors.length}`);
-  assert.equal(lintResult.warnings.length, 168, `lint warnings 应为 168，实际 ${lintResult.warnings.length}`);
+  assert.equal(lintResult.errors.length, 58, `lint errors 应为 58，实际 ${lintResult.errors.length}`);
+  assert.equal(lintResult.warnings.length, 164, `lint warnings 应为 164，实际 ${lintResult.warnings.length}`);
   const perRoute = (issues: Array<{ code: string; routeId?: string }>): Record<string, Record<string, number>> => {
     const out: Record<string, Record<string, number>> = {};
     for (const issue of issues) {

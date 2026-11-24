@@ -2579,8 +2579,11 @@ export class HouseScene implements SceneApi {
 
   /**
    * 给每个吊顶分区上色。必须走 `exportRoot.traverse` 而不是 `this.ceilingMeshes`：
-   * `SceneBuilder` 把 `ceilingPersistent`（圆角/阴角分区，含 ceiling_master_ac）排除在
-   * ceilingMeshes 之外，只用那个数组会漏掉主卧门头盒。
+   * `SceneBuilder` 把 `ceilingPersistent` 分区排除在 ceilingMeshes 之外，
+   * 只用那个数组会漏掉圆角/阴角分区。通长假梁 ceiling_master_beam 本身无
+   * radius/filletRadius 字段（`CeilingZoneBuilder` 只在 radius/filletRadius>0
+   * 时才设 ceilingPersistent），不走这条排除；这里走 traverse 是为覆盖全部
+   * ceiling_zone/ceiling_zone_solid，不依赖该排除。
    */
   private applyCeilingZoneColors(): void {
     this.exportRoot.traverse((object) => {

@@ -1394,7 +1394,7 @@ work_packages:
     # 对象 targets（issue #191）：= MODEL-PKG-070 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
     # 来源：ceiling(all=true) → 25。去重后共 25 个对象 id。
-    targets: [ac_child, ac_dining, ac_living, ac_master, ac_parent, ac_study, ceiling_child_ac, ceiling_corridor, ceiling_dining_north_band, ceiling_dining_west_band, ceiling_entry_foyer, ceiling_guest_bath, ceiling_kitchen, ceiling_living, ceiling_main_corridor, ceiling_master_ac, ceiling_master_bath, ceiling_study_ac, ceiling_study_ac_corner, curtain_box_living, curtain_box_master_south, curtain_box_master_west, curtain_box_parent_south, curtain_box_study_south, drying_rack_living]
+    targets: [ac_child, ac_dining, ac_living, ac_master, ac_parent, ac_study, ceiling_child_ac, ceiling_corridor, ceiling_dining_north_band, ceiling_dining_west_band, ceiling_entry_foyer, ceiling_guest_bath, ceiling_kitchen, ceiling_living, ceiling_main_corridor, ceiling_master_bath, ceiling_master_beam, ceiling_study_ac, ceiling_study_ac_corner, curtain_box_living, curtain_box_master_south, curtain_box_master_west, curtain_box_parent_south, curtain_box_study_south, drying_rack_living]
     acceptance_refs: [check_carp_keel, check_carp_board, check_hvac_access_coordination_before_ceiling]
     checks:
       - id: SCH-070-01

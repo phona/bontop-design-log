@@ -96,7 +96,7 @@ test('purchased indoor mapping stays aligned with ceiling entities and the six-u
   }
   assert.equal(expected.reduce((sum, item) => sum + item.kw, 0), load.indoor_nominal_kw_total);
   assert.ok(Math.abs(load.indoor_nominal_kw_total / load.outdoor_nominal_kw - 1.265) < 1e-9);
-  assert.equal(ceiling.find((zone) => zone.id === 'ac_master')?.x, 3.70);
+  assert.equal(ceiling.find((zone) => zone.id === 'ac_master')?.x, 3.45); // 2026-11-23 通长假梁：机位西移
 });
 
 test('HVAC schema rejects invalid status, missing reasons, non-finite positions, and dangling routes', () => {

@@ -70,7 +70,7 @@ export interface CeilingZone {
   buckle_panel: { module: 0.30 }    # 300×300 集成吊顶分格缝；可选 seam_width / seam_color
 ```
 
-- `corner_radius: 0.10` = **四个角同半径**（旧语义，`ceiling_living`/`ceiling_master_ac` 仍用它）。
+- `corner_radius: 0.10` = **四个角同半径**（旧语义；现行分区均已改用逐角 `corner_radii`，原用它的主卧门头盒 `ceiling_master_ac` 已于 2026-11-23 随通长假梁裁定删除）。
 - `corner_radii: { nw|ne|se|sw }` = **逐角覆盖**。角名是 `area [x1,z1,x2,z2]` 的四个平面角：`nw=(x1,z1)`、`ne=(x2,z1)`、`se=(x2,z2)`、`sw=(x1,z2)`。未列出的角回落到 `corner_radius`，两者都没给就是直角。
 - **第一轮口径（DEC-2026-10-07-R01，同日被 R04 改判）**：只给「外露阳角」倒圆，对接/同标高连续/贴墙一律直角——因为四角同半径会把对接/连续处切成凹口，平视俯视都读成"内圆弧"。
 - **第二轮口径（DEC-2026-10-07-R04，业主改判）**：餐区要"一圈圆"，统一 R150，且**阴角也要圆**（用 `concave_fillets` 见下）。即：外露阳角逐 R150 + 阴角逐 R150 圆弧拐肘；只有"沿台阶连续 / 贴墙 / 同标高对接"这些 invisible 的角保持直角。走廊↔设备带的 0.35m 错台、门厅 0.1m 折段不在餐区视野内，本轮不动。

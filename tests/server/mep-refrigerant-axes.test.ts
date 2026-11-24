@@ -447,7 +447,8 @@ test('C1：六条冷媒路由关系化——轴线/标高层只声明一次，�
 
   const expectedKinds: Record<string, string[]> = {
     'refrigerant-trunk': ['vertical_to', 'absolute', 'absolute', 'axis_jog', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'],
-    'refrigerant-master': ['axis_jog', 'axis_run', 'axis_run', 'axis_run'],
+    // 2026-11-23：穿孔后南行进梁、梁内西行到 x=3.62 再接入内机，避开回风管外包络。
+    'refrigerant-master': ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
     'refrigerant-parent': ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'vertical_to', 'axis_run'],
     'refrigerant-study': ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
     'refrigerant-child': ['axis_jog', 'axis_run', 'axis_run', 'axis_run'],

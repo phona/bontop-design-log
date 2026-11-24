@@ -92,7 +92,7 @@ test('龙骨按「米价 × 用量」逐构件折算，用量可复核', () => {
   assert.equal(frame.basisUsed, 'comparable', '米价是可耐福普通/卡式系列，蓝臻本身无公开价');
 });
 
-test('分区碎是本案的结构性成本：边龙骨上界是经验值的 7.7 倍', () => {
+test('分区碎是本案的结构性成本：边龙骨上界是经验值的 7.5 倍', () => {
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   const frame = result.items.find((item) => item.id === 'lanzhen50_frame')!;
   const edge = frame.derivedComponents.find((c) => c.component === '边龙骨')!;
@@ -110,23 +110,23 @@ test('材料合计区间与金额区间 = 各项相加 × takeoff 面积', () =>
   assert.equal(result.materialTotal.min, sumMin);
 });
 
-test('材料额度按施工方分形态口径算：112.8 元/㎡，判定 within_range（C12 修正 C11；R01 重算后基数 24.267㎡）', () => {
+test('材料额度按施工方分形态口径算：121.01 元/㎡，判定 above_range（C12 修正 C11；R01 重算后基数 24.267㎡；2026-11-23 通长假梁边吊 +2.925m）', () => {
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   assert.equal(result.contractor.basis, 'forms');
-  // 边吊 21.375m×160 + 平顶 6.311㎡×155 = 4,398.21；纯人工 21.375×60 + 6.311×60 = 1,661.16（R01 重算门厅区 1.0584→2.561）
+  // 边吊 24.30m×160 + 平顶 6.311㎡×155 = 4,866.21；纯人工 24.30×60 + 6.311×60 = 1,836.66（R01 重算门厅区 1.0584→2.561；2026-11-23 通长假梁边吊 21.375→24.30）
   const breakdown = result.contractor.formBreakdown!;
   assert.equal(breakdown.length, 2);
   assert.equal(breakdown[0].form, 'edge_drop');
-  assert.equal(breakdown[0].quantity, 21.37);
-  assert.equal(breakdown[0].turnkeyYuan, 3420);
-  assert.equal(breakdown[0].materialYuan, 2137.5);
+  assert.equal(breakdown[0].quantity, 24.3);
+  assert.equal(breakdown[0].turnkeyYuan, 3888);
+  assert.equal(breakdown[0].materialYuan, 2430);
   assert.equal(breakdown[1].form, 'flat');
   assert.equal(breakdown[1].turnkeyYuan, 978.2); // R01 重算：6.311×155
-  // 4,398.20 − 1,661.16 = 2,737.04 → ÷ 24.2666 = 112.8 元/㎡；面积基数与边吊长度随几何口径变，单价不变
-  assert.equal(result.contractor.allowancePerSqm, 112.8);
-  // 98～120 → 113.97 落在参考区间内
-  assert.equal(result.verdict, 'within_range');
-  assert.equal(result.slackVsMaxYuanPerSqm, -6.2);
+  // 4,866.21 − 1,836.66 = 3,029.55 → ÷ 25.0364 = 121.01 元/㎡；面积基数与边吊长度随几何口径变，单价不变
+  assert.equal(result.contractor.allowancePerSqm, 121.01);
+  // 2026-11-23 通长假梁：边吊 +2.925m（+468 元）只摊薄 0.770㎡ 石膏板，额度 112.8→121.01，越过参考上限 119
+  assert.equal(result.verdict, 'above_range');
+  assert.equal(result.slackVsMaxYuanPerSqm, 2.01);
 });
 
 test('C11 的「低于下限」是旧口径的假象：全按 155 元/㎡ 算额度只有 95', () => {

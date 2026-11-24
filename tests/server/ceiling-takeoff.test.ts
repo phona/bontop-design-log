@@ -76,8 +76,8 @@ test('逐分区净面积与声明一致（含圆角/阴角修正）', () => {
   assert.ok(Math.abs(byId.get('ceiling_main_corridor')!.netAreaM2 - 3.75) < 1e-9);
   // 客厅北缘边吊：6.20×1.25 − 两个外露东角 R100；走廊共边保持方正
   assert.ok(Math.abs(byId.get('ceiling_living')!.netAreaM2 - (7.75 - 2 * 0.01 * (1 - Math.PI / 4))) < 1e-9);
-  // 主卧门头盒：1.275×1.05 − 4×(0.10²(1−π/4))
-  assert.ok(Math.abs(byId.get('ceiling_master_ac')!.netAreaM2 - (1.33875 - 4 * 0.01 * (1 - Math.PI / 4))) < 1e-9);
+  // 主卧通长假梁：4.20×0.50 直角区，净面积 2.10（2026-11-23 门头盒改梁）
+  assert.ok(Math.abs(byId.get('ceiling_master_beam')!.netAreaM2 - 2.1) < 1e-9);
   // 餐厅服务带：一阳角 R150 配一阴角 R150，净面积回到外框
   assert.ok(Math.abs(byId.get('ceiling_dining_west_band')!.netAreaM2 - 0.95) < 1e-9);
   // 北带（DEC-2026-10-08-R05）：SW 阴角 + SE 镜像凹弧（填西南开口、与门厅西缘相切），两处各加料 0.15²(1−π/4)
@@ -138,7 +138,7 @@ test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）�
   // shared/arc.ts 的 tangentArc，所以本断言现在就是「闭式 vs descriptor 采样」的分区级实例；
   // 与具体分区无关的通用属性版本（budget 圆弓 r²(θ−sinθ)/2、ceiling K = 1−π/4 对同一
   // descriptor 采样，跨半径/夹角网格）见 tests/server/shared/arc.test.ts。
-  for (const id of ['ceiling_living', 'ceiling_master_ac', 'ceiling_dining_west_band', 'ceiling_dining_north_band']) {
+  for (const id of ['ceiling_living', 'ceiling_master_beam', 'ceiling_dining_west_band', 'ceiling_dining_north_band']) {
     const measured = byId.get(id)!;
     const rendered = outlineArea(id);
     assert.ok(rendered !== undefined, `${id} 渲染侧应能建出轮廓`);
@@ -153,7 +153,7 @@ test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）�
 test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   const { byClass } = takeoff;
   assert.equal(byClass.gypsum_board.zones, 10);
-  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 24.267) < 0.01); // R01 重算：门厅区 1.0584→2.561，石膏板净面积 +1.5026
+  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 25.036) < 0.01); // R01 重算：门厅区 1.0584→2.561，石膏板净面积 +1.5026；2026-11-23 通长假梁：门头盒净 1.330→梁 2.10，+0.770
   assert.equal(byClass.aluminum_buckle.zones, 3);
   assert.ok(Math.abs(byClass.aluminum_buckle.netAreaM2 - 16.576) < 0.01); // R04：客卫吊顶 +0.21
   assert.equal(byClass.aluminum_buckle.panelCount, 192);
@@ -164,8 +164,8 @@ test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   assert.equal(byClass.curtain_box.pricingUnit, 'linear_m');
   assert.equal(byClass.drying_rack.zones, 1);
   assert.ok(Math.abs(byClass.drying_rack.netAreaM2 - 1.08) < 1e-9);
-  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 46.385) < 0.01) // R01 重算：门厅区 +1.5026; // R04：北带 −0.06 + 客卫吊顶 +0.21
-  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 82.204) < 0.05); // R01 重算：门厅区展开面积 = 净 2.561 + 周长 6.54×厚 0.30；2026-11-12：厨房/客卫/主卫铝扣板 0.15→0.30，三区周长 (12.0+8.72+7.4)×0.15 = +4.218，78.256→82.474；2026-11-16 量价算法审计 C-1：阴角周长 +2f 改 +πf/2（北带 −0.60m、西带 −0.30m），展开 −0.27 → 82.204
+  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 47.155) < 0.01) // R01 重算：门厅区 +1.5026; // R04：北带 −0.06 + 客卫吊顶 +0.21；2026-11-23 通长假梁 +0.770
+  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 84.45) < 0.05); // R01 重算：门厅区展开面积 = 净 2.561 + 周长 6.54×厚 0.30；2026-11-12：厨房/客卫/主卫铝扣板 0.15→0.30，三区周长 (12.0+8.72+7.4)×0.15 = +4.218，78.256→82.474；2026-11-16 量价算法审计 C-1：阴角周长 +2f 改 +πf/2（北带 −0.60m、西带 −0.30m），展开 −0.27 → 82.204；2026-11-23 通长假梁：净 +0.770、周长 4.478→9.40（展开 +4.922×0.30=+1.477），82.204→84.450
 });
 
 test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () => {
@@ -198,7 +198,7 @@ test('完成面标高与房间对照：原顶房间显形，不静默跳过', ()
   assert.equal(takeoff.roomIdsWithCeiling.length, 10);
   assert.ok(takeoff.roomIdsWithCeiling.includes('main_corridor'), '走廊实际降板归属走廊语义区域');
   assert.ok(takeoff.roomIdsWithoutCeiling.includes('elevator_shaft'));
-  assert.ok(takeoff.roomIdsWithoutCeiling.includes('master_bedroom') === false, '主卧有门头盒吊顶');
+  assert.ok(takeoff.roomIdsWithoutCeiling.includes('master_bedroom') === false, '主卧有通长假梁吊顶');
   assert.deepEqual(takeoff.unknownRoomZoneIds, []);
 });
 

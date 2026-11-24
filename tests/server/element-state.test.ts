@@ -557,7 +557,7 @@ describe('note 与 blocker 不许并存两份（S2-A 评审 blocking 1 的防线
   const withBlocker = all.filter((item) => item.blocker);
 
   it('covers every blocker-carrying object', () => {
-    assert.equal(withBlocker.length, 39, `带 blocker 的构件数：${withBlocker.length}`);
+    assert.equal(withBlocker.length, 42, `带 blocker 的构件数：${withBlocker.length}`); // 2026-11-23 通长假梁：ceiling_master_beam（板底实测）+ ac_master（厂家图 #39）新增 blocker；2026-11-24 sock_master_ac 补 blocker（精确位置待 #39，status 仍为 inferred，census pending 不因此增加）
   });
 
   it('never repeats a blocker field verbatim inside the note', () => {

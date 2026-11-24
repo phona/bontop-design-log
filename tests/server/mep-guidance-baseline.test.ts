@@ -149,7 +149,10 @@ test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必�
   //    unsupported_span 9→8（child-door 改走 x=4.10 带北行后东行）、route_overlap
   //    envelope 47→45、route_clearance_unverified 38→37，当前实算 88 errors / 226 warnings。
   //    注：本数以 cabinetHeight: 2.80（总高）实测；若误写 2.50 会把柜压扁、少计 2 条。
-  assert.equal(mep.counts.errors, 88, `verify:mep must_fix errors 应为 88，实际 ${mep.counts.errors}`);
+  //    2026-11-23 通长假梁改道（门头盒暴露的飞线改贴墙/进梁，空调电源末段拆正交）：
+  //    verify:mep 实算 88→83（route_overlap 56→54、unsupported_span 8→5、
+  //    route_not_orthogonal 仍为 0）。这是几何变了以后的实算钉，不是放宽上限。
+  assert.equal(mep.counts.errors, 83, `verify:mep must_fix errors 应为 83，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 

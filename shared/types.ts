@@ -2304,10 +2304,10 @@ export const FURNITURE_DIMS: Record<string, { width: number; depth: number }> = 
   //   mb_vanity_pvc_wardrobe_entry / mb_vanity_pvc_service_chase：verify-furniture 仍按
   //     目录算它们的（豁免）方框，目录值是「零件长度须与相邻段接口坐标一致」的声明参照
   //     （FixtureFactory 链构建器不持长度常量），删了只多两条 no-dims 警告、无迁移去处。
-  condensate_pipe_ac_outlet: { width: 0.40, depth: 0.46 }, // ac_master 内冷凝水出口→延伸空调盒/衣柜顶部服务带；厂家出口位置 pending，横向取机身中心轴 x=3.70
-  mb_vanity_pvc_box: { width: 1.20, depth: 0.08 }, // w_mbath_east 西侧冷凝水墙行 (2.50,4.30)->(2.50,3.10)；中心离墙完成面约40mm，wall anchor 使用 w_mbath_east west，管径/坡度待深化
-  mb_vanity_pvc_wardrobe_entry: { width: 1.175, depth: 0.03 }, // 延伸空调盒/衣柜顶部服务带内的西行段
-  mb_vanity_pvc_service_chase: { width: 0.925, depth: 0.06 }, // 衣柜顶部至 w_mbath_south 穿点及主卫吊顶内短折/下引
+  condensate_pipe_ac_outlet: { width: 0.40, depth: 0.46 }, // ac_master 内冷凝水出口（冷凝链已退役，见 condensate-chain.ts；现行路由见 condensate-master：泵后梁内沿 z=5.30 东行至 x=4.12、贴 w_strip_east 北行穿墙进走廊）；厂家出口位置 pending，横向取机身中心轴 x=3.45
+  mb_vanity_pvc_box: { width: 1.20, depth: 0.08 }, // w_mbath_east 西侧冷凝水墙行 (2.50,4.30)->(2.50,3.10)——冷凝链已退役（2026-11-13 issue #116），本条仅作目录尺寸留档，不参与现行路由；中心离墙完成面约40mm，wall anchor 使用 w_mbath_east west，管径/坡度待深化
+  mb_vanity_pvc_wardrobe_entry: { width: 1.175, depth: 0.03 }, // 冷凝链已退役（2026-11-13 issue #116），本条仅作目录尺寸留档，不参与现行路由；现行冷凝路由见 condensate-master
+  mb_vanity_pvc_service_chase: { width: 0.925, depth: 0.06 }, // 冷凝链已退役（2026-11-13 issue #116），本条仅作目录尺寸留档，不参与现行路由；现行冷凝路由见 condensate-master
   mb_washbasin_cabinet: { width: 1.05, depth: 0.50 }, // 2026-09-02 初版：西让 5cm 百叶升降缝、东留 5cm 门套缝，收宽 1.10→1.05 且盆居中（假定玻璃通高，待量房终核）；2026-09-01 取消梳妆膝位，东侧封闭抽屉收纳
   master_dressing_table: { width: 0.90, depth: 0.45 }, // 2026-09-03 改 900W×450D×750H 四腿开放式独立桌并迁西侧北段：rotation=90 后长边沿世界 z、正面（抽屉/座位侧）朝东，桌面镜/桌灯在局部 -z 侧
   dressing_stool: { width: 0.42, depth: 0.40 }, // 可完整收进 master_dressing_table 台下的专用小凳

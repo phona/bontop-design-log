@@ -183,13 +183,14 @@ test('C1：两路由关系化——共享竖井只声明一次，解算折线满
   assert.deepEqual(table.via.map((s: any) => s.kind), ['from_face_jog', 'from_drop', 'shaft_run'], '餐桌路由 via 须为竖井三步');
   assert.ok(table.via.every((s: any) => s.shaft === 'shaft_entry'), '餐桌路由各步须引用同一竖井');
   // 红线路由 strong-ded-bathheaters-mbath 已随 MEP gap-1 批关系化（2026-11-16）：
-  // 穿柜冲突改由顶封 25mm 线槽解决（infer，用户裁定），路由几何不变、改道裁定作废。
-  // 此处钉死迁移后的关系步序列，防止回退到绝对 via。
+  // 穿柜冲突改由顶封 25mm 线槽解决（infer，用户裁定），改道裁定作废。
+  // 2026-11-23 通长假梁：走廊轴之后先收到 z=4.48，再西行到 x=2.43（d_mbath 以东实体垛），
+  // 多一步 axis_run。仍是关系步，不许退回绝对 via。
   const mbath = all.coordination.routes.find((r) => r.id === 'strong-ded-bathheaters-mbath')!;
   assert.deepEqual(
     mbath.via.map((s: any) => s.kind),
-    ['axis_jog', 'axis_run', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'],
-    'mbath 路由 via 须为 gap-1 迁移后的关系步',
+    ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'],
+    'mbath 路由 via 须为通长假梁改道后的关系步',
   );
   assert.ok(!mbath.via.some(isMepViaCoordinate), 'mbath 路由须不再含绝对坐标步');
 

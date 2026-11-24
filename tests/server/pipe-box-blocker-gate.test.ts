@@ -222,7 +222,7 @@ describe('待决视图：pipe_box 不重复、不合成（载体行胜出）', (
     const rows = collectRows();
     const ids = rows.map((row) => row.id);
     assert.equal(new Set(ids).size, ids.length, '待决视图不得有重复 id');
-    assert.equal(rows.length, 96, `待决条目总数仍为 96：${rows.length}`);
+    assert.equal(rows.length, 99, `待决条目总数仍为 99：${rows.length}`); // 2026-11-23 通长假梁：ceiling_master_beam（板底实测）+ ac_master（厂家图 #39）新增 blocker；2026-11-24 electrical:sock_master_ac 补 blocker（精确位置待 #39，status 仍为 inferred）后待决视图多这一行
   });
 });
 
