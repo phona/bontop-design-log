@@ -125,7 +125,7 @@ describe('issue #191 验收项对象关联（验收标准二）', () => {
   }
 
   it('71 条验收项都登记了 objects.from_packages，且与 acceptance_refs 反查集合一致', () => {
-    assert.equal(items.length, 71, 'acceptance.yaml 必须 71 条'); // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed：68 → 69；2026-11-19 新增 check_wp_base_clean（防水前基层清理）：69 → 70；2026-11-23 新增 check_hvac_pipe_size（分歧箱至内机铜管管径核对）：70 → 71
+    assert.equal(items.length, 71, 'acceptance.yaml 必须 71 条'); // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed：68 → 69；2026-11-19 新增 check_wp_base_clean（防水前基层清理）：69 → 70；2026-11-23 新增 check_hvac_pipe_size（分歧器至内机铜管管径核对）：70 → 71
     for (const item of items) {
       const declared = item.objects?.from_packages;
       assert.ok(Array.isArray(declared) && declared.length > 0, `${item.id} 必须登记 objects.from_packages`);
@@ -212,7 +212,7 @@ describe('issue #191 扫描式门禁：验收正文点名的对象必须被指�
     return {covered, wholeModel};
   }
 
-  it('70 条验收项四段正文点名的每个工程对象，都被其对象集或引用闭包覆盖', () => {
+  it('71 条验收项四段正文点名的每个工程对象，都被其对象集或引用闭包覆盖', () => {
     const universe = objectUniverse();
     assert.ok(universe.size > 500, `对象宇宙应有数百个 id，实得 ${universe.size}——枚举不全会导致漏报`);
 

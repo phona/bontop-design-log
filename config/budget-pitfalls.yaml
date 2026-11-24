@@ -190,8 +190,8 @@ pitfalls:
     category: appliance_hvac
     trigger: always
     severity: high
-    title: "分歧箱至内机铜管管径配错"
-    description: "分歧箱到内机的铜管尺寸配错 → 冷媒流量不足、制热差，时间一长损坏压缩机"
+    title: "分歧器至内机铜管管径配错"
+    description: "分歧器出口到六台内机的铜管尺寸配错 → 冷媒流量不足、制热差，时间一长损坏压缩机"
     mitigation: "厂家深化图须列出每台内机气管/液管管径表；安装时逐台核对，封吊顶前验收"
 
   - id: ac_vacuum
