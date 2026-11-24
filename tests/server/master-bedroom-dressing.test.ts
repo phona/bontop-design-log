@@ -787,10 +787,13 @@ test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   assert.ok(bottom >= 2.45 - GAP_EPS && bottom <= 2.50 + GAP_EPS, `beam bottom ${bottom} outside 2.45–2.50m`);
   const indoor = ceiling.find((entry) => entry.id === 'ac_master');
   assert.ok(indoor && indoor.type === 'ac_indoor');
-  assert.ok(indoor!.x! >= minX && indoor!.x! <= maxX && indoor!.z! >= minZ && indoor!.z! <= maxZ, 'indoor unit must sit inside the beam');
-  // 56T2 实机 1200×450×200mm（P-S5 行，经销商参数表）：机身包络须落在梁内，z 向各留 25mm。
-  assert.ok(indoor!.x! - 0.60 >= minX - GAP_EPS && indoor!.x! + 0.60 <= maxX + GAP_EPS, '1200mm unit must fit the beam width with margin');
-  assert.ok(indoor!.z! - 0.225 >= minZ - GAP_EPS && indoor!.z! + 0.225 <= maxZ + GAP_EPS, '450mm unit must fit the beam depth with 25mm each side');
+  assert.equal(indoor!.x, 3.45, 'indoor unit center x is the ruled axis (3.45, 5.30)');
+  assert.equal(indoor!.z, 5.3, 'indoor unit center z is the ruled axis (3.45, 5.30)');
+  assert.ok(indoor!.x! >= minX && indoor!.x! <= maxX && indoor!.z! >= minZ && indoor!.z! <= maxZ, 'indoor unit center must sit inside the beam');
+  // 1200×450 只是未核实的经销商参数表 P-S5 行取值，待厂家安装图 #39 复核，不是实机事实。
+  // 下面两行只预演这个 inferred 外廓是否还落在梁内，不把 1200×450 钉成已核实净空。
+  assert.ok(indoor!.x! - 0.60 >= minX - GAP_EPS && indoor!.x! + 0.60 <= maxX + GAP_EPS, 'inferred 1200mm dealer-row rehearsal must stay inside the beam width');
+  assert.ok(indoor!.z! - 0.225 >= minZ - GAP_EPS && indoor!.z! + 0.225 <= maxZ + GAP_EPS, 'inferred 450mm dealer-row rehearsal must stay inside the beam depth');
   assert.equal(indoor!.power_point, 'sock_master_ac');
   const acSocket = point('sock_master_ac');
   assert.ok(acSocket.x! >= minX && acSocket.x! <= maxX && acSocket.z! >= minZ && acSocket.z! <= maxZ, 'sock_master_ac must sit inside the beam');
