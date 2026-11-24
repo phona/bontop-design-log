@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"ce2ced95335a9c23c226b47d729e16faab29157cf8cf7b0705c4435c7ef0888c","config/decision-gates.yaml":"e1066799953f6aeb74e5234d4bdc7f153cf473b95d5eedb91bcce7174ba16012","config/electrical-topology.yaml":"8ea96920b06648679292bb1a08c87d29c1dbc37a658c05d95eeb992caaeebeb9","config/electrical.yaml":"a408c75200e70d7af6119a84eb38442181259a4508004f83b2fa541dd6992064","config/house.yaml":"9f74193ccdd24ddc8d2296b77bc27cfd0e39959c0e76f581843e8936a489f89c","config/hvac.yaml":"24c5559aca20e1784973e608eb5f13c3da4cbbe7dd1c1c749f3a68117292f6b7","config/layout/model-geometry.yaml":"473d81dbe5c8704db86db472a40624b4fa1a9f5abbb614385fdb4262026246ff","config/mep-hvac-coordination.yaml":"5fb375175568f0b9a014da7bfbd0f9e91bbbfae2f0a4df1b4c37088acf6bfca5","config/model-package-links.yaml":"963c62033e7f6717f73ee1d85b4c35fa63a65f9b3d4bfde839248fa9f81080b1","config/model/envelope/ceiling.yaml":"631a9036bde64067b9a3520a723e7ddec1a359aee1381fa260e78fe1185b9005","config/model/envelope/finish-defaults.yaml":"cfb08b4fefefc71aa1525c5172cc28596b855bc6b95eb576302512314a942b4d","config/model/envelope/floor-zones.yaml":"a2b1251d0dd6d65a093496188fa5be5c5ee514947a9756daecabbc60c9cd01f3","config/model/envelope/openings.yaml":"7c2f465020cd4a41d5535853ec042edf4618313959b15b593ab405db717a2b9f","config/plumbing.yaml":"99cb9622a2225e8fe54ce6a37dfffb6d6828325b27cb41ce9c3a56644fdc632c","schedule/phase-1/control.yaml":"f0c30467c743fab6d37592ef0b467053e13036b35d77bc914512ae9270570a61","schedule/phase-scope.yaml":"17d0874a87fc441c2ad66eb1abfc55d341abfc4e9e32229889998e9e227cc8b6","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"ce2ced95335a9c23c226b47d729e16faab29157cf8cf7b0705c4435c7ef0888c","config/decision-gates.yaml":"e1066799953f6aeb74e5234d4bdc7f153cf473b95d5eedb91bcce7174ba16012","config/electrical-topology.yaml":"8ea96920b06648679292bb1a08c87d29c1dbc37a658c05d95eeb992caaeebeb9","config/electrical.yaml":"a408c75200e70d7af6119a84eb38442181259a4508004f83b2fa541dd6992064","config/house.yaml":"9f74193ccdd24ddc8d2296b77bc27cfd0e39959c0e76f581843e8936a489f89c","config/hvac.yaml":"24c5559aca20e1784973e608eb5f13c3da4cbbe7dd1c1c749f3a68117292f6b7","config/layout/model-geometry.yaml":"473d81dbe5c8704db86db472a40624b4fa1a9f5abbb614385fdb4262026246ff","config/mep-hvac-coordination.yaml":"5fb375175568f0b9a014da7bfbd0f9e91bbbfae2f0a4df1b4c37088acf6bfca5","config/model-package-links.yaml":"963c62033e7f6717f73ee1d85b4c35fa63a65f9b3d4bfde839248fa9f81080b1","config/model/envelope/ceiling.yaml":"631a9036bde64067b9a3520a723e7ddec1a359aee1381fa260e78fe1185b9005","config/model/envelope/finish-defaults.yaml":"cfb08b4fefefc71aa1525c5172cc28596b855bc6b95eb576302512314a942b4d","config/model/envelope/floor-zones.yaml":"a2b1251d0dd6d65a093496188fa5be5c5ee514947a9756daecabbc60c9cd01f3","config/model/envelope/openings.yaml":"7c2f465020cd4a41d5535853ec042edf4618313959b15b593ab405db717a2b9f","config/plumbing.yaml":"99cb9622a2225e8fe54ce6a37dfffb6d6828325b27cb41ce9c3a56644fdc632c","schedule/phase-1/control.yaml":"4b8889380fba7e7d253518bbb4744deed21b3f36547a6afd26cff72b06682128","schedule/phase-scope.yaml":"17d0874a87fc441c2ad66eb1abfc55d341abfc4e9e32229889998e9e227cc8b6","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:802246d566eb24c4bae83feeae21fd4af8720287803822c1236df7fd7b2ddbfb`（17 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:10cf0a1546e326934efb2e445392172c4a1698eaf8b5b51eef386b8057231dbd`（17 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -224,7 +224,7 @@
 <a id="pkg-010"></a>
 ## PKG-010｜施工现场保护与施工位置标记
 
-- 通俗说明：拆改师傅进场后先保护电梯、公区、入户门、窗户和已有成品，再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。
+- 通俗说明：拆改师傅进场后先保护电梯、公区、入户门、窗户和已有成品——其中全屋玻璃在拆改前贴PE保护膜防切门洞水泥浆溅射划伤、智能锁包覆——再把图纸上的墙体、门洞、柜体、水电、空调和吊顶位置标到现场；各方核对无误后才开始拆改。该项暂列0元，优先要求包含在施工合同中。
 - 预算：¥0；合同：—；已付：¥0；预测：—
 - 依赖：PKG-005；就绪：`blocked`；执行：`not_started`
 - 责任角色：拆改师傅、业主；付款门槛：`GATE-010-SITE-READY`
@@ -243,7 +243,7 @@
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
 |---|---|---|---|---|---|---|---|---|
-| [ ] | SCH-010-01 | critical/before_start/阻塞解除后 | 公区、入户门、窗户和已有成品完成保护 | 逐处检查保护膜、保护板和护角是否连续、牢固，搬运通道和易碰位置是否覆盖 | 施工及搬运可能接触的位置均已保护，无明显裸露、松脱或影响消防通行的情况 | site_protection_photos | `9103f8197e31bc8e3207bdbe0afed62c0edf179ed853446343413d32e0e56c14` | pending |
+| [ ] | SCH-010-01 | critical/before_start/阻塞解除后 | 公区、入户门、窗户和已有成品完成保护 | 逐处检查保护膜、保护板和护角是否连续、牢固，搬运通道和易碰位置是否覆盖；全屋玻璃PE保护膜（防水泥浆溅射划伤的临时保护膜，非隔热膜）与智能锁包覆逐处核对 | 施工及搬运可能接触的位置均已保护，无明显裸露、松脱或影响消防通行的情况；全屋玻璃PE保护膜与智能锁包覆完整、无裸露 | site_protection_photos | `b8eeb55815165b7f6689405ef81ea8766b5936a29ead5faa818510ca339dc3b0` | pending |
 | [ ] | SCH-010-02 | major/before_start/阻塞解除后 | 图纸上的施工位置已经标到现场并共同核对 | 逐房核对新墙、门洞、柜体、水电点位、空调内机、送回风口、检修口和吊顶边界的现场标记 | 关键位置和尺寸与确认图纸一致，业主和拆改师傅完成现场交底签认 | setting_out_photos、signed_site_brief | `9fb2926d2d7b729aaa9db7a923b86d0cf7c08c101ea000af8caf369c85ac802c` | pending |
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
