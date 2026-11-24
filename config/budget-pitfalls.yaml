@@ -212,7 +212,7 @@ pitfalls:
     severity: high
     title: "冷媒铜管保温不到位"
     description: "保温薄/接头裸露/气液管共用保温 → 结露滴水泡吊顶、冷量损失"
-    mitigation: "按厂家要求厚度分开保温，接头包严，封板前验收"
+    mitigation: "按合同 p2 厚度分开保温（φ6.4~19.1mm ≥15mm、φ19.1~31.8mm ≥10mm，转录级），接头包严，封板前验收"
 
   - id: ac_pipe_wall_thin
     type: construction
@@ -222,7 +222,7 @@ pitfalls:
     severity: high
     title: "铜管壁厚不足"
     description: "薄壁铜管承压不足 → 高压下爆管、冷媒泄漏"
-    mitigation: "按厂家配管表核对壁厚，查管材证明或卡尺实测"
+    mitigation: "先按合同 p2 辅材表核对（转录级，#39 ⑥ 待核），厂家配管表有更严要求时从严；查管材证明或卡尺实测"
 
   - id: ac_refrigerant_charge
     type: construction
