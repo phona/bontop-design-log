@@ -1406,7 +1406,21 @@ contracts:
         #   check_hvac_insulation 冷媒铜管保温 / check_hvac_wall_thickness 冷媒铜管壁厚核对 /
         #   check_hvac_refrigerant_charge 追加冷媒量核对；来源：用户 2026-11-23 点选“四条都加上”）→ 71 → 75；
         # 新项已挂 PKG-030（前三项）/ PKG-140（追加冷媒）的 acceptance_refs 并 schedule:render 落 checklist。
-        expect_matches: 75
+        # 2026-11-25 新增 7 项石膏板吊顶验收（check_carp_frame 骨架 / check_carp_joint 板缝 /
+        #   check_carp_screw 螺钉 / check_carp_arc R150 圆弧 / check_carp_vent_access 风口与检修口 /
+        #   check_carp_concealed 封板前隐蔽验收 / check_carp_finish 成品验收；来源：业界最佳实践简报
+        #   GB 50210-2018 + 厂家做法 + 施工实操翻坑；check_carp_frame 挂 D9 龙骨间距档位门禁）→ 75 → 82；
+        # 新项已挂 PKG-070 的 acceptance_refs 并 schedule:render 落 checklist。
+        # 2026-11-25 混合方案调整（用户裁定）：龙脊改铝蜂窝板，新增 4 项蜂窝板验收
+        # （check_honeycomb_panel 板面与排版 / check_honeycomb_edge 切口与开孔封边 /
+        #   check_honeycomb_joint 与石膏交界收边 / check_honeycomb_opening 检修口与风口开槽）→ 82 → 86；
+        # 石膏 7 项改只覆盖石膏部位（餐厅带、主卧梁带等），不再覆盖龙脊；新项已挂 PKG-070 的
+        # acceptance_refs 并 schedule:render 落 checklist。
+        # 2026-11-25 混合方案最终范围（用户裁定）：蜂窝板扩大到四条卧室空调带，新增 1 项可拆卸挂装验收
+        # （check_honeycomb_removable）→ 86 → 87；石膏只剩餐厅带与门厅、均为普通板，绿板不再需要；
+        # 检修口改一块可拆板；龙脊东端 R100 改直角或收边条、方案待定；新项已挂 PKG-070 的
+        # acceptance_refs 并 schedule:render 落 checklist。
+        expect_matches: 87
         distinct: true
 
   # ④ prose 引用的仓库内路径必须真实存在。治「引用腐烂」：README / 文档 / 控制文件里写

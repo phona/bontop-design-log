@@ -124,8 +124,8 @@ describe('issue #191 验收项对象关联（验收标准二）', () => {
     for (const ref of pkg.acceptance_refs ?? []) refsByCheck.set(ref, [...(refsByCheck.get(ref) ?? []), pkg.id]);
   }
 
-  it('75 条验收项都登记了 objects.from_packages，且与 acceptance_refs 反查集合一致', () => {
-    assert.equal(items.length, 75, 'acceptance.yaml 必须 75 条'); // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed：68 → 69；2026-11-19 新增 check_wp_base_clean（防水前基层清理）：69 → 70；2026-11-23 新增 check_hvac_pipe_size（分歧箱至内机铜管管径核对）：70 → 71；2026-11-23 新增 4 项验收（保压/保温/壁厚/追加冷媒）：71 → 75
+  it('87 条验收项都登记了 objects.from_packages，且与 acceptance_refs 反查集合一致', () => {
+    assert.equal(items.length, 87, 'acceptance.yaml 必须 87 条'); // 2026-11-11 Codex 一审 blocking 拆分新增 check_tile_door_seam_closed：68 → 69；2026-11-19 新增 check_wp_base_clean（防水前基层清理）：69 → 70；2026-11-23 新增 check_hvac_pipe_size（分歧箱至内机铜管管径核对）：70 → 71；2026-11-23 新增 4 项验收（保压/保温/壁厚/追加冷媒）：71 → 75；2026-11-25 新增 7 项石膏板吊顶验收（骨架/板缝/螺钉/圆弧/风口检修口/封板前隐蔽/成品）：75 → 82；2026-11-25 混合方案最终范围新增 5 项蜂窝板验收（板面/封边/交界收边/可拆卸挂装/检修口可拆板）：82 → 87
     for (const item of items) {
       const declared = item.objects?.from_packages;
       assert.ok(Array.isArray(declared) && declared.length > 0, `${item.id} 必须登记 objects.from_packages`);
