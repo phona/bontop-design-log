@@ -1414,11 +1414,11 @@ contracts:
         # 2026-11-25 混合方案调整（用户裁定）：龙脊改铝蜂窝板，新增 4 项蜂窝板验收
         # （check_honeycomb_panel 板面与排版 / check_honeycomb_edge 切口与开孔封边 /
         #   check_honeycomb_joint 与石膏交界收边 / check_honeycomb_opening 检修口与风口开槽）→ 82 → 86；
-        # 石膏 7 项改只覆盖石膏部位（餐厅带、主卧梁带等），不再覆盖龙脊；新项已挂 PKG-070 的
+        # 石膏 7 项改只覆盖石膏部位（餐厅带、门厅、窗帘盒与晾衣架吊顶），不再覆盖龙脊；新项已挂 PKG-070 的
         # acceptance_refs 并 schedule:render 落 checklist。
         # 2026-11-25 混合方案最终范围（用户裁定）：蜂窝板扩大到四条卧室空调带，新增 1 项可拆卸挂装验收
-        # （check_honeycomb_removable）→ 86 → 87；石膏只剩餐厅带与门厅、均为普通板，绿板不再需要；
-        # 检修口改一块可拆板；龙脊东端 R100 改直角或收边条、方案待定；新项已挂 PKG-070 的
+        # （check_honeycomb_removable）→ 86 → 87；石膏只剩餐厅带、门厅、窗帘盒与晾衣架吊顶（板种待 D15 拍板）；
+        # 检修口改一块可拆板；龙脊东侧两个外露角（ne/se，原 R100）改直角或收边条、方案待定；新项已挂 PKG-070 的
         # acceptance_refs 并 schedule:render 落 checklist。
         expect_matches: 87
         distinct: true

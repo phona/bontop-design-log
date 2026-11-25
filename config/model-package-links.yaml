@@ -138,7 +138,11 @@ links:
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-070}
     mapping_status: mapped
-    scope: [{source: ceiling, select: {all: true}}]
+    scope:
+      - {source: ceiling, select: {all: true}}
+      # check_honeycomb_opening 点名六个 HVAC 检修/回风口位（issue #191 扫描式门禁）：
+      # 三处 600×600 独立检修口 + 三处回检一体；口位尺寸改动须使本包验收记录 stale。
+      - {source: hvac, select: {ids: [access_child, access_dining, access_study, return_living, return_master, return_parent]}}
   - id: MODEL-PKG-080
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-080}

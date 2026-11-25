@@ -94,7 +94,7 @@ decisions:
     question: 副龙骨取不超过 300mm 还是小于等于 40cm；主龙骨取 1000mm 以内还是小于等于 1.2m；吊杆与端头距离取哪档；是否按较严一档写进合同
     options:
       - 副龙骨 ≤300mm
-      - 副龙骨 ≤400mm（check_carp_keel 现行标准只写「龙骨间距 ≤400mm」、未分主副，本行是解释性归并）
+      - 副龙骨 ≤400mm（check_carp_keel 现行标准，2026-11-25 复核后明确为副龙骨档位）
       - 主龙骨 ≤1000mm
       - 主龙骨 ≤1200mm（报告旗标档位；2026-11-25 起由 check_carp_frame 以 GB 50210 口径承载为受门禁的工作标准，档位未拍板前不得判 passed，仍不是可直接判通过的验收线；1200mm 另见算量规范区间 800–1200mm，见 config/ceiling-material-cost.yaml 与 git show 8abfbe3b:docs/decisions/09-ceiling-takeoff.md）
     status: open
@@ -102,7 +102,8 @@ decisions:
     blocks:
       - check_carp_keel
       - check_carp_frame
-    blocked_effect: 报告口径为「按较严一档核对并写进合同后才升级为判据」；档位未写进合同前，check_carp_keel 的 400mm 与 check_carp_frame 的主龙骨/吊杆档位不得判 passed。
+      - check_carp_concealed
+    blocked_effect: 报告口径为「按较严一档核对并写进合同后才升级为判据」；档位未写进合同前，check_carp_keel 的 400mm、check_carp_frame 的主龙骨/吊杆档位与 check_carp_concealed 的吊杆档位不得判 passed。
 
   - id: D11
     topic: 空鼓分档与美缝天数
@@ -123,7 +124,7 @@ decisions:
   - id: D15
     topic: 石膏板与辅材档位
     scope: acceptance
-    question: 石膏板取 9.5mm 还是 12mm、耐潮还是耐水；铝扣板厚度、边框、烤漆覆膜、收边含不含报价；JS 涂料报 2009 版还是 2025 版；PPR S 系列是否写进合同（2026-11-25 最终范围：石膏只剩餐厅带与门厅、均为普通板，耐潮/耐水不再需要；厚度 9.5mm/12mm 仍待拍板）
+    question: 石膏板取 9.5mm 还是 12mm、耐潮还是耐水；铝扣板厚度、边框、烤漆覆膜、收边含不含报价；JS 涂料报 2009 版还是 2025 版；PPR S 系列是否写进合同（2026-11-25：厚度 9.5mm/12mm 与耐潮/耐水仍待拍板；餐厅西带藏冷媒主管，无内机不等于无结露来源，板种不得先下结论）
     options:
       - 石膏板 9.5mm
       - 石膏板 12mm
@@ -132,7 +133,8 @@ decisions:
     missing_evidence: "业主书面拍板记录"
     blocks:
       - check_carp_board
-    blocked_effect: 报告口径「条件不满足，回退到不下单」；厚度档位未定前 check_carp_board 不得判 passed；铝扣板与 JS 涂料仓内无验收项，属覆盖缺口。
+      - check_carp_arc
+    blocked_effect: 报告口径「条件不满足，回退到不下单」；厚度档位未定前 check_carp_board 与 check_carp_arc 不得判 passed；铝扣板与 JS 涂料仓内无验收项，属覆盖缺口。
 
   - id: D16
     topic: Low-E 膜面表述
