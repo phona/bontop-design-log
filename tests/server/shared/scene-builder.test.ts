@@ -962,7 +962,7 @@ test('shared SceneBuilder opens model d_mbath inward into master_bath toward +z'
   assert.ok(panel.position.z > 2.4, 'd_mbath panel must open toward the master_bath (+z) side');
 });
 
-test('shared SceneBuilder opens d_mb on the master_bath side of w_strip_east', () => {
+test('shared SceneBuilder opens d_mb on the master_bedroom side of w_strip_east', () => {
   const layout = resolveLayout(load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as never);
   const wall = layout.walls.find((candidate) => candidate.id === 'w_strip_east');
   assert.ok(wall);
@@ -985,7 +985,7 @@ test('shared SceneBuilder opens d_mb on the master_bath side of w_strip_east', (
   assert.ok(Math.abs(box.max.x - 4.2) < 1e-6, `d_mb wall-side edge: ${box.max.x}`);
   assert.ok(Math.abs(box.min.z - 4.63) < 1e-6, `d_mb hinge-side z: ${box.min.z}`);
   assert.ok(Math.abs(box.max.z - 4.67) < 1e-6, `d_mb hinge-side z: ${box.max.z}`);
-  assert.ok(box.max.x <= wall.x1 + 1e-6, 'd_mb panel must open toward the master_bath (west) side');
+  assert.ok(box.max.x <= wall.x1 + 1e-6, 'd_mb panel must open toward the master_bedroom (west) side');
 });
 
 test('shared SceneBuilder exports the R8 north wardrobe 950 with real hinged doors and declared dimensions', () => {

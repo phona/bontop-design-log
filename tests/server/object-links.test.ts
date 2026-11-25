@@ -865,7 +865,7 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
   it('门洞换宿主墙：只选 openings 的 PKG-090 必须 stale（摘要键含父墙）', () => {
     const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
     const text = readFileSync(geometryPath, 'utf8');
-    const opening = '      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.45, width: 0.9, height: 2.1, room: master_bath, swing: inward, hinge: start }\n';
+    const opening = '      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.45, width: 0.9, height: 2.1, room: master_bedroom, swing: inward, hinge: start }\n';
     const study = '      - { id: d_study, type: door, anchor: v_mb_ne, offset: 2.4, width: 0.9, height: 2.1, room: study }\n';
     assert.equal(text.split(opening).length - 1, 1, 'd_mb 声明锚点必须恰出现一次');
     assert.equal(text.split(study).length - 1, 1, 'd_study 声明锚点必须恰出现一次');
