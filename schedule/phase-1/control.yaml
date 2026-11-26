@@ -1393,9 +1393,9 @@ work_packages:
     payment_gate: GATE-070-CEILING-CLOSED
     # 对象 targets（issue #191）：= MODEL-PKG-070 的 scope 解析结果，唯一来源是链接 scope，
     # 本清单只是它的显式登记（config/facts.yaml 的 c.package_targets 断言两者相等）。
-    # 来源：ceiling(all=true) → 25。去重后共 25 个对象 id。
-    targets: [ac_child, ac_dining, ac_living, ac_master, ac_parent, ac_study, ceiling_child_ac, ceiling_corridor, ceiling_dining_north_band, ceiling_dining_west_band, ceiling_entry_foyer, ceiling_guest_bath, ceiling_kitchen, ceiling_living, ceiling_main_corridor, ceiling_master_bath, ceiling_master_beam, ceiling_study_ac, ceiling_study_ac_corner, curtain_box_living, curtain_box_master_south, curtain_box_master_west, curtain_box_parent_south, curtain_box_study_south, drying_rack_living]
-    acceptance_refs: [check_carp_keel, check_carp_board, check_hvac_access_coordination_before_ceiling]
+    # 来源：ceiling(all=true) 25 + hvac(ids: 检修/回风/送风口位/分歧区) 18。去重后共 43 个对象 id。
+    targets: [ac_child, ac_dining, ac_living, ac_master, ac_parent, ac_study, access_child, access_dining, access_study, branch_dining, ceiling_child_ac, ceiling_corridor, ceiling_dining_north_band, ceiling_dining_west_band, ceiling_entry_foyer, ceiling_guest_bath, ceiling_kitchen, ceiling_living, ceiling_main_corridor, ceiling_master_bath, ceiling_master_beam, ceiling_study_ac, ceiling_study_ac_corner, curtain_box_living, curtain_box_master_south, curtain_box_master_west, curtain_box_parent_south, curtain_box_study_south, drying_rack_living, return_child, return_dining, return_living, return_master, return_parent, return_study, supply_child, supply_dining, supply_dining_bottom, supply_living, supply_living_bottom, supply_master, supply_parent, supply_study]
+    acceptance_refs: [check_carp_keel, check_carp_board, check_carp_frame, check_carp_joint, check_carp_screw, check_carp_arc, check_carp_vent_access, check_carp_concealed, check_carp_finish, check_honeycomb_panel, check_honeycomb_edge, check_honeycomb_corner, check_honeycomb_joint, check_honeycomb_removable, check_honeycomb_opening, check_hvac_access_coordination_before_ceiling]
     checks:
       - id: SCH-070-01
         severity: critical
