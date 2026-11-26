@@ -132,13 +132,15 @@ decisions:
       - 石膏板 12mm
       - 背板 ≥9mm（现行 check_carp_board 口径）
       - 板缝毫米数（板缝 3–5mm、V 型槽深约板厚 2/3、≥50mm 接缝带、转角延伸 ≥300mm）按合同/厂家确认（可耐福官方安装手册原文未取得，未核实）
+      - 自攻螺钉钉距（板边 150–170mm、板中 ≤200mm、边距与钉头沉入 0.5–1mm）按合同/厂家确认（GB 50210-2018 第 7.2 节未给钉距，未核实）
     status: open
     missing_evidence: "业主书面拍板记录"
     blocks:
       - check_carp_board
       - check_carp_arc
       - check_carp_joint
-    blocked_effect: 报告口径「条件不满足，回退到不下单」；厚度档位未定前 check_carp_board 与 check_carp_arc 不得判 passed；板缝毫米数未按合同/厂家确认前 check_carp_joint 不得判 passed；铝扣板与 JS 涂料仓内无验收项，属覆盖缺口。
+      - check_carp_screw
+    blocked_effect: 报告口径「条件不满足，回退到不下单」；厚度档位未定前 check_carp_board 与 check_carp_arc 不得判 passed；板缝毫米数未按合同/厂家确认前 check_carp_joint 不得判 passed；钉距毫米数未按合同/厂家确认前 check_carp_screw 不得判 passed；铝扣板与 JS 涂料仓内无验收项，属覆盖缺口。
 
   - id: D16
     topic: Low-E 膜面表述
@@ -199,15 +201,16 @@ decisions:
   - id: D22
     topic: 龙脊东侧外露角（ne/se，原 R100）处理方案
     scope: acceptance
-    question: 龙脊东侧两个外露角（ne/se，原 R100）改直角还是收边条；模型 ceiling.yaml 上 corner_radii 仍是 ne/se 0.10，拍板后须同步模型
+    question: 龙脊东侧两个外露角（ne/se，原 R100）改直角、收边条，还是维持现行 R100；模型 ceiling.yaml 上 corner_radii 仍是 ne/se 0.10（R18 附则业主审定），改直角或收边条时拍板后须同步模型，维持现行 R100 时模型无需改动
     options:
       - 改直角
       - 收边条
+      - 维持现行 R100（corner_radii ne/se 0.10，R18 附则业主审定）
     status: open
     missing_evidence: "业主书面拍板记录；拍板后写入施工交底并同步模型"
     blocks:
       - check_honeycomb_corner
-    blocked_effect: 方案未拍板前 check_honeycomb_corner 不得判 passed，不得按任一方案验收；拍板后按方案验收并同步模型 corner_radii。
+    blocked_effect: 方案未拍板前 check_honeycomb_corner 不得判 passed，不得按任一方案验收；拍板后按方案验收，改直角或收边条时同步模型 corner_radii，维持现行 R100 时模型已是该值、无需同步。
 
   # ---- 不阻塞验收项的决策（scope: tracked，必须写 tracking_note）----
 
