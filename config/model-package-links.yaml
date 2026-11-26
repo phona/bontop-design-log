@@ -142,7 +142,11 @@ links:
       - {source: ceiling, select: {all: true}}
       # check_honeycomb_opening 点名六个 HVAC 检修/回风口位（issue #191 扫描式门禁）：
       # 三处 600×600 独立检修口 + 三处回检一体；口位尺寸改动须使本包验收记录 stale。
-      - {source: hvac, select: {ids: [access_child, access_dining, access_study, return_living, return_master, return_parent]}}
+      # check_honeycomb_opening 方法第 4 条依赖各 supply_* 与 return_dining / return_study /
+      # return_child（出风回风不短路）：口位挪位须使本包验收记录 stale，故一并选入。
+      # check_carp_vent_access 点名 branch_dining（餐厅带分歧区，(8.0, 4.3)）：分歧区检修口
+      # 位置，改动须使本包验收记录 stale，故一并选入。
+      - {source: hvac, select: {ids: [access_child, access_dining, access_study, branch_dining, return_child, return_dining, return_living, return_master, return_parent, return_study, supply_child, supply_dining, supply_dining_bottom, supply_living, supply_living_bottom, supply_master, supply_parent, supply_study]}}
   - id: MODEL-PKG-080
     phase_id: phase_1_basic_occupancy
     budget_ref: {source: phase_1_budget, id: PKG-080}

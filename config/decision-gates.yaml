@@ -91,19 +91,21 @@ decisions:
   - id: D9
     topic: 龙骨间距档位
     scope: acceptance
-    question: 副龙骨取不超过 300mm 还是小于等于 40cm；主龙骨取 1000mm 以内还是小于等于 1.2m；吊杆与端头距离取哪档；是否按较严一档写进合同
+    question: 副龙骨取不超过 300mm 还是小于等于 40cm；主龙骨取 1000mm 以内还是小于等于 1.2m；吊杆与端头距离、吊杆规格（φ8mm 以上镀锌）与主龙骨起拱（1‰–3‰）取哪档；是否按较严一档写进合同
     options:
       - 副龙骨 ≤300mm
       - 副龙骨 ≤400mm（check_carp_keel 现行标准，2026-11-25 复核后明确为副龙骨档位）
       - 主龙骨 ≤1000mm
-      - 主龙骨 ≤1200mm（报告旗标档位；2026-11-25 起由 check_carp_frame 以 GB 50210 口径承载为受门禁的工作标准，档位未拍板前不得判 passed，仍不是可直接判通过的验收线；1200mm 另见算量规范区间 800–1200mm，见 config/ceiling-material-cost.yaml 与 git show 8abfbe3b:docs/decisions/09-ceiling-takeoff.md）
+      - 主龙骨 ≤1200mm（报告旗标档位；1200mm 仅见于算量规范区间 800–1200mm，不是验收线；档位未拍板前不得判 passed，见 config/ceiling-material-cost.yaml 与 git show 8abfbe3b:docs/decisions/09-ceiling-takeoff.md）
+      - 吊杆 φ8mm 以上镀锌（check_carp_frame 现行工作数，待拍板）
+      - 主龙骨起拱 1‰–3‰（check_carp_frame 现行工作数，待拍板）
     status: open
     missing_evidence: "业主书面拍板记录"
     blocks:
       - check_carp_keel
       - check_carp_frame
       - check_carp_concealed
-    blocked_effect: 报告口径为「按较严一档核对并写进合同后才升级为判据」；档位未写进合同前，check_carp_keel 的 400mm、check_carp_frame 的主龙骨/吊杆档位与 check_carp_concealed 的吊杆档位不得判 passed。
+    blocked_effect: 报告口径为「按较严一档核对并写进合同后才升级为判据」；档位未写进合同前，check_carp_keel 的 400mm、check_carp_frame 的主龙骨/吊杆档位、φ8 吊杆规格与起拱档位与 check_carp_concealed 的吊杆档位不得判 passed。
 
   - id: D11
     topic: 空鼓分档与美缝天数
@@ -129,12 +131,14 @@ decisions:
       - 石膏板 9.5mm
       - 石膏板 12mm
       - 背板 ≥9mm（现行 check_carp_board 口径）
+      - 板缝毫米数（板缝 3–5mm、V 型槽深约板厚 2/3、≥50mm 接缝带、转角延伸 ≥300mm）按合同/厂家确认（可耐福官方安装手册原文未取得，未核实）
     status: open
     missing_evidence: "业主书面拍板记录"
     blocks:
       - check_carp_board
       - check_carp_arc
-    blocked_effect: 报告口径「条件不满足，回退到不下单」；厚度档位未定前 check_carp_board 与 check_carp_arc 不得判 passed；铝扣板与 JS 涂料仓内无验收项，属覆盖缺口。
+      - check_carp_joint
+    blocked_effect: 报告口径「条件不满足，回退到不下单」；厚度档位未定前 check_carp_board 与 check_carp_arc 不得判 passed；板缝毫米数未按合同/厂家确认前 check_carp_joint 不得判 passed；铝扣板与 JS 涂料仓内无验收项，属覆盖缺口。
 
   - id: D16
     topic: Low-E 膜面表述
@@ -168,6 +172,42 @@ decisions:
       - check_tile_door_gate
       - check_tile_door_seam_closed
     blocked_effect: 档位与实测值未书面拍板前，两项均不得判 passed；贴砖前拍板，贴砖后改是返工。两项分属不同包（PKG-060 贴砖前置 / PKG-090 装门复核），互不阻塞对方包的放行。开工侧另有 BLK-DOOR-BEFORE-TILE 挂在 PKG-060 的 blockers 上：D20 未拍板时铺贴包 readiness 保持 blocked，不得开工；check_tile_door_gate 本身是预演项，阻塞期间可判 passed，但通过不放行施工。
+
+  # 2026-11-26 第二轮 Grok 审 B2：蜂窝板验收要求铝蜂窝板，但 ceiling.yaml 上龙脊与四条
+  # 卧室带仍是 type: drop、算量 area_basis 仍是 gypsum_board，验收可以在权威模型仍是石膏板
+  # 时被记成 passed。模型与算量同步前五项蜂窝板验收不得判 passed。
+  - id: D21
+    topic: 吊顶模型与算量按蜂窝板方案同步
+    scope: acceptance
+    question: "龙脊与四条卧室空调带按铝蜂窝板验收，但 ceiling.yaml 上仍是 type: drop（客厅北缘带 note 仍写石膏板可视面，corner_radii ne/se 仍是 R100），config/ceiling-material-cost.yaml 的 area_basis 仍是 gypsum_board；模型与算量是否改到蜂窝板口径，还是蜂窝板验收改回石膏板"
+    options:
+      - 模型与算量按蜂窝板方案同步（ceiling.yaml type 与 area_basis 改到蜂窝板口径）
+      - 维持石膏板模型与算量，蜂窝板验收改回石膏板（推翻混合方案裁定）
+    status: open
+    missing_evidence: "量房实测数据；龙脊东侧外露角拍板（见 D22）；蜂窝板厂家深化"
+    blocks:
+      - check_honeycomb_panel
+      - check_honeycomb_edge
+      - check_honeycomb_joint
+      - check_honeycomb_removable
+      - check_honeycomb_opening
+    blocked_effect: 模型与算量未按蜂窝板方案同步前，五项蜂窝板验收不得判 passed；同步后以同步后的模型与算量为准，量房/深化时跟进。
+
+  # 2026-11-26 第二轮 Grok 审 B3：龙脊东侧两个外露角（ne/se，原 R100）改直角或收边条，
+  # 方案未拍板，check_honeycomb_edge 又同时背模型同步门禁——一验收项不得被两个决策阻塞，
+  # 故外露角拆出 check_honeycomb_corner 单独立项，本门禁只阻塞该项。
+  - id: D22
+    topic: 龙脊东侧外露角（ne/se，原 R100）处理方案
+    scope: acceptance
+    question: 龙脊东侧两个外露角（ne/se，原 R100）改直角还是收边条；模型 ceiling.yaml 上 corner_radii 仍是 ne/se 0.10，拍板后须同步模型
+    options:
+      - 改直角
+      - 收边条
+    status: open
+    missing_evidence: "业主书面拍板记录；拍板后写入施工交底并同步模型"
+    blocks:
+      - check_honeycomb_corner
+    blocked_effect: 方案未拍板前 check_honeycomb_corner 不得判 passed，不得按任一方案验收；拍板后按方案验收并同步模型 corner_radii。
 
   # ---- 不阻塞验收项的决策（scope: tracked，必须写 tracking_note）----
 

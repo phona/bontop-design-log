@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"36a5371f1a3e16faf6cc10c48e1b1941a5bfe2b877b100c81450bca083e93a4b","config/decision-gates.yaml":"e014e691946976f3d5078a6a851a123fd0e96a031d8007520016c283323ac9f8","config/electrical-topology.yaml":"8ea96920b06648679292bb1a08c87d29c1dbc37a658c05d95eeb992caaeebeb9","config/electrical.yaml":"5a4c05935462c3862e881ee0da2e17b0bf17e5c54b586fdbe396d1d198705e77","config/house.yaml":"93cfb0414a8d9eea02981d182cca91a0b6f3126a110d2af145f1ae226699e7a0","config/hvac.yaml":"4db1f50478027adc5764bd655b7abe69090d3d9988b9f6b988af9d58a0b9d69c","config/layout/model-geometry.yaml":"ba1b163b618e19f17acd3400479d88c37f1c47110c8e017b386dcd173544c0d1","config/mep-hvac-coordination.yaml":"60c788f4f031d64b1615ed43d040ea36d17b649842c57345ed62b16bd17392cd","config/model-package-links.yaml":"8a780cb324c24c7dad53eae02d506dea152724b572406c7e698e45df50b4474e","config/model/envelope/ceiling.yaml":"4f93c6b4c17288db0c9dcf5b2c05ea7af2eb406c67d1f677d1057e7f4e0f262a","config/model/envelope/finish-defaults.yaml":"cfb08b4fefefc71aa1525c5172cc28596b855bc6b95eb576302512314a942b4d","config/model/envelope/floor-zones.yaml":"a2b1251d0dd6d65a093496188fa5be5c5ee514947a9756daecabbc60c9cd01f3","config/model/envelope/openings.yaml":"7c2f465020cd4a41d5535853ec042edf4618313959b15b593ab405db717a2b9f","config/plumbing.yaml":"99cb9622a2225e8fe54ce6a37dfffb6d6828325b27cb41ce9c3a56644fdc632c","schedule/phase-1/control.yaml":"f55e6ac90dd317045cbcf7cade585aef1ca24fbbbdc98aed21092bd81fd5242e","schedule/phase-scope.yaml":"17d0874a87fc441c2ad66eb1abfc55d341abfc4e9e32229889998e9e227cc8b6","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"2b9a50a5f0326e9d8edfa6bde2263d0cbe63b83f063c93de2a0bdca2ab88874f","config/decision-gates.yaml":"24ed492eaa4f12ed082c57034e5ac7110677d48c53902914ae8f0e3e2416a7b5","config/electrical-topology.yaml":"8ea96920b06648679292bb1a08c87d29c1dbc37a658c05d95eeb992caaeebeb9","config/electrical.yaml":"5a4c05935462c3862e881ee0da2e17b0bf17e5c54b586fdbe396d1d198705e77","config/house.yaml":"93cfb0414a8d9eea02981d182cca91a0b6f3126a110d2af145f1ae226699e7a0","config/hvac.yaml":"4db1f50478027adc5764bd655b7abe69090d3d9988b9f6b988af9d58a0b9d69c","config/layout/model-geometry.yaml":"ba1b163b618e19f17acd3400479d88c37f1c47110c8e017b386dcd173544c0d1","config/mep-hvac-coordination.yaml":"60c788f4f031d64b1615ed43d040ea36d17b649842c57345ed62b16bd17392cd","config/model-package-links.yaml":"cad73b7ec31e526f34709ddc85dd0eec2a25ce49535234907366c8451cb61d65","config/model/envelope/ceiling.yaml":"4f93c6b4c17288db0c9dcf5b2c05ea7af2eb406c67d1f677d1057e7f4e0f262a","config/model/envelope/finish-defaults.yaml":"cfb08b4fefefc71aa1525c5172cc28596b855bc6b95eb576302512314a942b4d","config/model/envelope/floor-zones.yaml":"a2b1251d0dd6d65a093496188fa5be5c5ee514947a9756daecabbc60c9cd01f3","config/model/envelope/openings.yaml":"7c2f465020cd4a41d5535853ec042edf4618313959b15b593ab405db717a2b9f","config/plumbing.yaml":"99cb9622a2225e8fe54ce6a37dfffb6d6828325b27cb41ce9c3a56644fdc632c","schedule/phase-1/control.yaml":"18d3ce399e6ee63991bc1eb52ef692de2f8df87391aa8e3bb82b05cf0fd28dc9","schedule/phase-scope.yaml":"17d0874a87fc441c2ad66eb1abfc55d341abfc4e9e32229889998e9e227cc8b6","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:ae30f68aaf7ec595748c027c8ad9adb846bddc6f0fc659a842c45b4a9b8cb91a`（17 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:144f192b3106c7007b6115a1b3555f9ad7549cd49c3700ac861825cf29ed84f4`（17 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -34,7 +34,7 @@
 | 50 | [PKG-050｜防水及闭水](#pkg-050) | not_started | blocked | 11 | pending |
 | 60 | [PKG-060｜泥瓦与铺贴](#pkg-060) | not_started | blocked | 8 | pending |
 | 65 | [PKG-065｜卫生间美缝（先行）](#pkg-065) | not_started | blocked | 5 | pending |
-| 70 | [PKG-070｜吊顶龙骨、隐蔽复验与封板](#pkg-070) | not_started | blocked | 17 | pending |
+| 70 | [PKG-070｜吊顶龙骨、隐蔽复验与封板](#pkg-070) | not_started | blocked | 18 | pending |
 | 80 | [PKG-080｜墙顶面基层与涂装](#pkg-080) | not_started | blocked | 4 | pending |
 | 90 | [PKG-090｜室内门及厨房门](#pkg-090) | not_started | blocked | 4 | pending |
 | 100 | [PKG-100｜两个卫生间的洁具与五金](#pkg-100) | not_started | blocked | 3 | pending |
@@ -146,7 +146,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:83a388db04f7ecf6c68399ff711643478eebcc7ad8dc724ab432d4462d0f4f45`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:c8f4837ea8a04ee097849f9cef18becd78ff131f220301887dadfca01c9fde62`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -199,7 +199,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:83a388db04f7ecf6c68399ff711643478eebcc7ad8dc724ab432d4462d0f4f45`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:c8f4837ea8a04ee097849f9cef18becd78ff131f220301887dadfca01c9fde62`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -238,7 +238,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:83a388db04f7ecf6c68399ff711643478eebcc7ad8dc724ab432d4462d0f4f45`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:c8f4837ea8a04ee097849f9cef18becd78ff131f220301887dadfca01c9fde62`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -266,7 +266,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | collections=walls,openings | mapped |
 
-当前项目数据指纹：`sha256:8c04be3c5e5f934a57395966feb1958a915aa39c63d6b8bd8046c0d819eb5902`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:9f8d0662e47ebd75bb47d60eae5920c00362421ad9467747e4f8e39f6b92c6fe`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -310,7 +310,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_ac,sock_dining_ac,sock_master_ac,sock_parent_ac,sock_child_ac,sock_study_ac,sock_vrf_outdoor_a2,ac_panel_living,ac_panel_dining,ac_panel_master,ac_panel_parent,ac_panel_child,ac_panel_study | partial |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:906a7bd98a2193f24eb95b6feb8f0f9dffcdd7ed22229a8cefbd7b2e816ca1b3`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:da784508863dc5aadc0c3118421cfd7de45eb4fd91d7d20d524f000dacf43c66`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -369,7 +369,7 @@
 | [config/mep-hvac-coordination.yaml](../../config/mep-hvac-coordination.yaml) | layers=strong_power,weak_power,water_supply,drainage | partial |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:2d95ba35e6fd269569971abbdf151edc3e0a886446d1e721cf04575f046804ff`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:227b3b41f4a618f374f298822452a80b81c8fa9b1934f8860b54cdbc046d4c17`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -455,7 +455,7 @@
 | [config/model/envelope/finish-defaults.yaml](../../config/model/envelope/finish-defaults.yaml) | ids=kitchen_north_bay,mbath_north_waterproof_ledge,mbath_west_lower_waterproof_ledge | partial |
 | [config/house.yaml](../../config/house.yaml) | ids=gbath.vanity,mb.washbasin_cabinet | partial |
 
-当前项目数据指纹：`sha256:42b2695c9e0ed4e265cdd729411fe3c5ab67c7f056a437fe52c259ec1c293e9e`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:cc966222a7f0127816032cf24376bb52913fdc256cf5457ed89acd91833ee9ed`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -513,7 +513,7 @@
 | [config/model/envelope/finish-defaults.yaml](../../config/model/envelope/finish-defaults.yaml) | ids=bedroom_nw_north_waterproof_ledge,bedroom_se_south_waterproof_ledge,kitchen_north_bay,living_south_waterproof_ledge,master_bedroom_south_waterproof_ledge,master_bedroom_west_mid_waterproof_ledge,master_bedroom_west_upper_waterproof_ledge,mbath_north_waterproof_ledge,mbath_west_lower_waterproof_ledge,study_south_waterproof_ledge | mapped |
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | ids=d_gbath,d_mbath | mapped |
 
-当前项目数据指纹：`sha256:b1d063e0d182ae753b3c9965a3640db71a4fee4f25dbc3f72ddda6daa7bf8461`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:caab33bd1f974a048043e31094eaaa41769b89cd987d62d0ed91836948e0e435`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -571,7 +571,7 @@
 | [config/model/envelope/floor-zones.yaml](../../config/model/envelope/floor-zones.yaml) | ids=mbath_north_waterproof_ledge,mbath_west_lower_waterproof_ledge | mapped |
 | [config/model/envelope/finish-defaults.yaml](../../config/model/envelope/finish-defaults.yaml) | ids=mbath_north_waterproof_ledge,mbath_west_lower_waterproof_ledge | mapped |
 
-当前项目数据指纹：`sha256:435c6bf26190ee76fa88e28e0c3853607c0497ccfc7f38385f9c618547755682`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:3c4f6d0a22cceb4f64656d7c948612bec101bda088d9e9f032e585823a2186cc`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -613,9 +613,9 @@
 | 数据文件 | 本工作包引用范围 | 映射状态 |
 |---|---|---|
 | [config/model/envelope/ceiling.yaml](../../config/model/envelope/ceiling.yaml) | all=true | mapped |
-| [config/hvac.yaml](../../config/hvac.yaml) | ids=access_child,access_dining,access_study,return_living,return_master,return_parent | mapped |
+| [config/hvac.yaml](../../config/hvac.yaml) | ids=access_child,access_dining,access_study,branch_dining,return_child,return_dining,return_living,return_master,return_parent,return_study,supply_child,supply_dining,supply_dining_bottom,supply_living,supply_living_bottom,supply_master,supply_parent,supply_study | mapped |
 
-当前项目数据指纹：`sha256:0dd446c3cf62e652ac11cdce21c6521f56d67ea8bd5db60251da20f17617ffbd`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:40b8a19d558831d3e2c8a35cb49fd3a08f83718563779ed880815ae14e3de99b`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -634,23 +634,24 @@
 |---|---|---|---|---|---|---|---|---|
 | [ ] | check_carp_keel | critical/引用 | 吊顶副龙骨间距 | 测量副龙骨间距，检查吊杆是否牢固 | 副龙骨间距 ≤ 400mm，吊杆无松动 | 照片或检测记录 | `1a079739e6f310f3d6db635acc56d20115673ed8b6ba83a99cc7ad9a35335759` | pending |
 | [ ] | check_carp_board | major/引用 | 石膏板拼接 | 检查板间是否留缝、转角是否整板 | 板间留 V 型缝，转角用整板（7字角），背板 ≥ 9mm | 照片或检测记录 | `7bcb39f68a5c311d42a7c35f45d7efe625a18052445dadb190701a8d0969e60e` | pending |
-| [ ] | check_carp_frame | critical/引用 | 吊顶骨架：主龙骨、吊杆、起拱与边龙骨（餐厅带与门厅） | 1. 主龙骨间距实测 ≤1200mm，副龙骨间距见 check_carp_keel。<br>2. 吊杆间距实测 ≤1200mm，吊杆用 φ8mm 以上镀锌吊杆，必须吃进混凝土结构层，不得固定在轻质砖上；吊杆长度 >1500mm 时设反支撑。<br>3. 主龙骨按房间短向跨度 1‰–3‰ 起拱。<br>4. 边龙骨沿墙固定，膨胀螺栓打牢；螺栓间距档位未核实（400mm/600mm 两种说法），本条不写数字、不判间距。<br> | 主龙骨间距 ≤1200mm；吊杆间距 ≤1200mm，φ8mm 以上镀锌吊杆吃进混凝土；主龙骨起拱 1‰–3‰；边龙骨固定牢固（螺栓间距档位未核实，不判数字） | 骨架间距实测记录（主龙骨、吊杆、边龙骨间距可辨）、吊杆固定点照片（吃进混凝土可辨） | `0a29353edd0e40c812f262f66b8da9ef7c656836c9eb3940be78132cf6f6d029` | pending |
-| [ ] | check_carp_joint | critical/引用 | 石膏板板缝与接缝处理（餐厅带与门厅） | 1. 板缝留 3–5mm，板边开 V 型槽（深约板厚 2/3），填弹性嵌缝膏，再贴 ≥50mm 接缝带（牛皮纸带或网格带）；不许硬拼、不许只抹腻子。<br>2. 错缝安装，禁十字通缝；若双层板，上下层接缝错开 ≥300mm（300mm 未核实，施工指南参考值，以合同/厂家为准）。<br>3. 转角处用整板裁 L 型套割，每边从转角起延伸 ≥300mm，转角处不许有接缝。<br> | 板缝 3–5mm，V 型槽深约板厚 2/3，弹性嵌缝膏 + ≥50mm 接缝带；错缝、无十字通缝；转角 L 型整板套割、每边延伸 ≥300mm | 板缝与接缝处理照片（V 型槽、接缝带、转角 L 型整板可辨） | `60ea230f0a0269f8de88d4af54fa6e98e896184b7e2af75bf171a87e3a57ea55` | pending |
+| [ ] | check_carp_frame | critical/引用 | 吊顶骨架：主龙骨、吊杆、起拱与边龙骨（餐厅带与门厅） | 1. 主龙骨间距实测 ≤1200mm，副龙骨间距见 check_carp_keel。<br>2. 吊杆间距实测 ≤1200mm，吊杆用 φ8mm 以上镀锌吊杆，必须吃进混凝土结构层，不得固定在轻质砖上；吊杆长度 >1500mm 时设反支撑。<br>3. 主龙骨按房间短向跨度 1‰–3‰ 起拱。<br>4. 边龙骨沿墙固定，膨胀螺栓打牢；螺栓间距档位未核实（400mm/600mm 两种说法），本条不写数字、不判间距。<br> | 主龙骨间距 ≤1200mm；吊杆间距 ≤1200mm，φ8mm 以上镀锌吊杆吃进混凝土；主龙骨起拱 1‰–3‰；边龙骨固定牢固（螺栓间距档位未核实，不判数字）。以上间距、φ8 吊杆与起拱均为 D9 门禁下的工作数，待 D9 拍板，不是 GB 50210 验收线 | 骨架间距实测记录（主龙骨、吊杆间距可辨；边龙骨安装照片仅作记录，不判间距）、吊杆固定点照片（吃进混凝土可辨） | `2cb2244d29363de027b3eadc456dfe77f28aac13acb7595595772b89d365a715` | pending |
+| [ ] | check_carp_joint | critical/引用 | 石膏板板缝与接缝处理（餐厅带与门厅） | 1. 板缝留 3–5mm，板边开 V 型槽（深约板厚 2/3），填弹性嵌缝膏，再贴 ≥50mm 接缝带（牛皮纸带或网格带）；不许硬拼、不许只抹腻子。<br>2. 错缝安装，禁十字通缝；若双层板，上下层接缝错开 ≥300mm（300mm 未核实，施工指南参考值，以合同/厂家为准）。<br>3. 转角处用整板裁 L 型套割，每边从转角起延伸 ≥300mm（300mm 未核实，施工指南参考值，以合同/厂家为准），转角处不许有接缝。<br> | 板缝 3–5mm，V 型槽深约板厚 2/3，弹性嵌缝膏 + ≥50mm 接缝带；错缝、无十字通缝；转角 L 型整板套割、每边延伸 ≥300mm。以上毫米数未核实原文、可耐福官方安装手册原文未取得，以合同或厂家为准；待 D15 拍板 | 板缝与接缝处理照片（V 型槽、接缝带、转角 L 型整板可辨） | `12d60831f33b19d93ba84311d4c175de22523178aac34055dc981772f21ffff4` | pending |
 | [ ] | check_carp_screw | major/引用 | 石膏板自攻螺钉固定（餐厅带与门厅） | 1. 自攻螺钉板边钉距 150–170mm，板中钉距 ≤200mm；距板边纸包边 10–15mm、切割边 15–20mm。<br>2. 钉头沉入板面 0.5–1mm 且不破纸面，钉眼做防锈处理；固定顺序从板中间向四周。<br> | 板边钉距 150–170mm，板中钉距 ≤200mm；钉头沉入板面 0.5–1mm 不破纸面；钉眼防锈 | 螺钉间距与钉头沉入照片（钉距与钉头可辨） | `743d8d0f3ef7218cdc80b46a24411512181e55cde45f3ed4228054c7ab9de2a5` | pending |
 | [ ] | check_carp_arc | major/引用 | 吊顶圆弧（R150 餐厅带） | 1. 石膏板不得直接硬弯做 R150 圆弧：走背面刻痕板条弯弧，或用柔性石膏板（可弯曲板）；板厚（9.5mm/12mm）待 D15 拍板，刻痕/柔性做法按拍板后的板厚执行。<br>2. 弧段龙骨加密，弧线连续无折点；弧面与平面交接处贴防裂带加强。<br>3. 弧段先做一段样板，验收圆顺度后再批量做；样板未验收不得批量施工。<br> | R150 圆弧用刻痕板条或柔性板，不硬弯标准板；弧段龙骨加密、弧线连续无折点；样板段圆顺度验收通过后才批量做 | 圆弧样板段照片（弧线圆顺、无折点可辨）、弧段龙骨加密照片 | `1a7729a1fd59eec2be8a75b61d4ebdd9fa803a494be3adc5e40a1531a0f18baa` | pending |
-| [ ] | check_carp_vent_access | critical/引用 | 风口与检修口：尺寸、加固与定位（餐厅带与门厅） | 1. 先定检修口再排风口：餐厅带分歧区留检修口，尺寸按 hvac.yaml 已有口位 600×600（只许放大不许缩小），位置对准分歧器与阀门一侧；石膏部位已无内机，内机检修口见 check_honeycomb_opening；D10 的 350mm 建议下限不进验收项，由厂家图跟踪。<br>2. 风口开槽四周用木方/欧松板做木基层加固，风口框固定在木基层上；开孔边缘用收边条；开孔避开龙骨；封板前弹线定位、按线开孔。<br>3. 出风与回风不短路（仅当餐厅带/门厅设有送回风口时适用）：侧出风 + 下回风，或下出风 + 侧回风；出风避开床头与沙发位直吹；风口不紧贴墙边；风口内侧做保温防结露。<br> | 餐厅带分歧区检修口 600×600（只许放大不许缩小），位置对准分歧器与阀门一侧；风口开槽木基层加固、封板前弹线定位；出风回风不短路（仅当设有送回风口时适用） | 风口与检修口排版图（检修口、风口、灯具、窗帘盒同图）、风口开槽木基层与弹线定位照片 | `796f0a4e63bfe7f8692db7da5f45e981625c7b95c311b94d6552dd5140263dfe` | pending |
+| [ ] | check_carp_vent_access | critical/引用 | 风口与检修口：尺寸、加固与定位（餐厅带与门厅） | 1. 先定检修口再排风口：餐厅带分歧区（branch_dining (8.0, 4.3)，客厅北缘边吊北缘）留检修口，分歧器待深化、施工未冻结，尺寸与位置待深化、按厂家图 #39 定，本条不写 600×600 通过线；access_dining 归 check_honeycomb_opening，不由本条认领；石膏部位已无内机，内机检修口见 check_honeycomb_opening；D10 的 350mm 建议下限不进验收项，由厂家图跟踪。<br>2. 风口开槽四周用木方/欧松板做木基层加固，风口框固定在木基层上；开孔边缘用收边条；开孔避开龙骨；封板前弹线定位、按线开孔。<br>3. 出风与回风不短路（仅当餐厅带/门厅设有送回风口时适用）：侧出风 + 下回风，或下出风 + 侧回风；出风避开床头与沙发位直吹；风口不紧贴墙边；风口内侧做保温防结露。<br> | 餐厅带分歧区检修口待深化、按厂家图 #39 定（branch_dining (8.0, 4.3)，客厅北缘边吊北缘；分歧器待深化、施工未冻结）；风口开槽木基层加固、封板前弹线定位；出风回风不短路（仅当设有送回风口时适用） | 风口与检修口排版图（检修口、风口、灯具、窗帘盒同图）、风口开槽木基层与弹线定位照片 | `2f273c3de15b60654c6c1e42e3a1217ba5faea9cf474db84bc4a746f9690edd6` | pending |
 | [ ] | check_carp_concealed | critical/引用 | 封板前隐蔽验收：骨架复核与管线留档（餐厅带与门厅） | 1. 吊杆间距实测 ≤1200mm，手晃骨架无松动、无异响；龙骨间距已由 check_carp_frame 与 check_carp_keel 覆盖，本条复核吊杆与整体牢固。<br>2. 水电管线、空调铜管、冷凝水管、风口定位线已完成并拍照留档；隐蔽影像缺失不得封板。<br>3. 转角 L 型整板、风口木基层、检修口位置已按排版图落实。<br> | 吊杆间距 ≤1200mm、手晃骨架无松动；水电管线/铜管/冷凝水管/风口定位线拍照留档；转角整板、风口木基层、检修口位置按排版图落实 | 封板前骨架复核照片（吊杆间距、手晃检查记录）、封板前隐蔽影像（水电管线、铜管、冷凝水管、风口定位线各一套） | `d8b8f76dac67f70b0c901642e63b750ed1a1134a53f4aceaa975237289268942` | pending |
 | [ ] | check_carp_finish | major/引用 | 吊顶成品验收（GB 50210-2018，餐厅带与门厅） | 1. 表面平整度 ≤3mm（2m 靠尺 + 塞尺）。<br>2. 接缝直线度 ≤3mm（拉 5m 线，不足 5m 拉通线，钢直尺）。<br>3. 接缝高低差 ≤1mm（钢直尺 + 塞尺）。<br>4. 目视：无裂缝、无锈点、无波浪起伏；灯具、风口、检修口收口整齐、无下坠晃动。<br> | 平整度 ≤3mm；接缝直线度 ≤3mm；接缝高低差 ≤1mm；目视无裂缝、无锈点、无波浪起伏，收口整齐 | 成品平整度与接缝实测记录（靠尺、塞尺读数可辨） | `fc282b33045e4e67eebac98c97d969ae7f8610d3bf2894a240a2c2e30cafbebb` | pending |
-| [ ] | check_honeycomb_panel | major/引用 | 蜂窝板：板面平整与板缝排版 | 1. 安装前复核龙脊与四条卧室带龙骨与吊杆：按蜂窝板厂家系统验收（间距、吊点、调平以厂家手册为准），吊杆吃进混凝土结构层。<br>2. 板面平整度 ≤2mm（2m 靠尺 + 塞尺）；接缝直线度 ≤2mm（拉 5m 线，不足 5m 拉通线，钢直尺）；接缝高低差 ≤1mm（钢直尺 + 塞尺）。<br>3. 板缝排版：缝宽均匀、横平竖直；非整板布置在次要位置，接缝避开风口、检修口与结构变形缝；目视无波浪、无下坠、无色差、无划伤。<br> | 板面平整度 ≤2mm；接缝直线度 ≤2mm；接缝高低差 ≤1mm；板缝均匀、排版对齐，无波浪下坠 | 蜂窝板成品平整度与接缝实测记录（靠尺、塞尺读数可辨）、板缝排版照片（缝宽均匀、非整板位置可辨） | `5faf6f07e09153c0575b978c9734c4ed2e2b0cb7b675d51e65cb996a92690692` | pending |
-| [ ] | check_honeycomb_edge | major/引用 | 蜂窝板：切口与风口开孔封边 | 1. 板材切割断面封边严密，无裸露蜂窝芯、无毛刺、无崩边；切口封边条与板面同色、粘贴牢固。<br>2. 风口、灯孔、检修口开孔边缘加封边/收边条，开孔避开龙骨与吊杆；开孔尺寸按风口与灯具实物复核。<br>3. 龙脊东侧两个外露角（ne/se，原 R100 位置）按待定方案处理（直角或收边条，见 knowledge）；方案未拍板前不得放行；若走收边条，阳角收边条平直严密、无翘曲。<br> | 切口与开孔边缘封边严密、无裸露蜂窝芯、无毛刺崩边；龙脊东侧两个外露角（ne/se，原 R100）处理方案待定（直角或收边条），须业主拍板并写入施工交底后才按方案验收，拍板前不得放行 | 切口与开孔封边照片（封边严密、芯材不裸露可辨） | `c2bdd1e47e8b8bb5d6029e1b84e3d7be3a80f34b9e55f9dfc2cf4d8801e2041c` | pending |
-| [ ] | check_honeycomb_joint | major/引用 | 蜂窝板与石膏交界收边 | 1. 蜂窝板与石膏板交界处用收口条/压条收边，收边条平直、严密、无翘曲、无裂缝。<br>2. 两种面材完成面齐平，无明显错台（交界高差验收数未核实，以施工交底为准）；交界处留伸缩缝时按厂家与施工方商定做法封盖，不得留明缝积灰。<br>3. 交界收边在石膏批腻子刷漆前完成，收边条不受腻子污染。<br> | 交界收口条平直严密、无翘曲无裂缝；两种面材完成面齐平、无明显错台 | 蜂窝板与石膏交界收边照片（收口条平直、完成面齐平可辨） | `3ca0708010a36ec561e35d12215ed9f2e3aa5d7a5dd584aee9a1fb29b7f90e41` | pending |
-| [ ] | check_honeycomb_removable | major/引用 | 蜂窝板：可拆卸挂装，不胶粘 | 1. 蜂窝板用挂件/卡扣干挂，可单块拆卸，不得胶粘固定；板背与龙骨间不得打胶。<br>2. 单块板拆下后能原位复装，复装后平整度与接缝与相邻板一致，无需破坏相邻板。<br>3. 拆装演示：验收时现场拆一块板再复装，检查挂件无变形、板边无损伤。<br> | 挂件/卡扣干挂、可单块拆卸复装；不得胶粘 | 单块板拆卸复装演示照片（挂件、板边完好可辨） | `ec4141c92c53730dabb4209aca1f1eb4b95a6119d847719f7c829c5d220f3576` | pending |
-| [ ] | check_honeycomb_opening | critical/引用 | 蜂窝板：检修口与风口开槽 | 1. 检修口分两种实现：access_dining / access_study / access_child 三处按 hvac.yaml 已有口位 600×600（只许放大不许缩小）各设一块可拆板，不另开固定检修口框；return_living / return_master / return_parent 三处为回检一体（铰接回风格栅兼检修口），不另设面板；可拆板与回风格栅的位置在排版图上标明，拆下/打开后能站在梯子上直接操作电气盒与阀门。<br>2. 封板前弹线定位、按线开孔；开孔四周加固（木方/欧松板或厂家配套框），风口框固定在加固基层上；开孔避开龙骨与吊杆。<br>3. 封板前隐蔽复核：龙脊与四条卧室带龙骨/吊杆间距、手晃骨架，水电管线、空调铜管、冷凝水管、风口定位线拍照留档；隐蔽影像缺失不得封板。<br>4. 出风与回风不短路：侧出风 + 下回风，或下出风 + 侧回风；出风避开床头与沙发位直吹；风口不紧贴墙边；风口内侧做保温防结露。<br> | 检修口按 hvac.yaml 已有口位：三处 600×600（只许放大不许缩小）各一块可拆板实现，三处回检一体不另设面板；风口开槽加固、封板前弹线定位；封板前隐蔽拍照留档；出风回风不短路 | 龙脊与卧室带风口与检修口排版图（可拆板位置、风口、灯具同图）、风口开槽加固与弹线定位照片、龙脊与卧室带封板前隐蔽影像（龙骨/吊杆、铜管、冷凝水管、风口定位线各一套） | `49e023288adfe936b6d7b906a1bc626f4f8e07131469d2a848093c13e50d20d8` | pending |
+| [ ] | check_honeycomb_panel | major/引用 | 蜂窝板：板面平整与板缝排版 | 1. 安装前复核龙脊与四条卧室带龙骨与吊杆：按蜂窝板厂家系统验收（间距、吊点、调平以厂家手册为准），吊杆吃进混凝土结构层。<br>2. 板面平整度 ≤2mm（2m 靠尺 + 塞尺）；接缝直线度 ≤2mm（拉 5m 线，不足 5m 拉通线，钢直尺）；接缝高低差 ≤1mm（钢直尺 + 塞尺）。<br>3. 板缝排版：缝宽均匀、横平竖直；非整板布置在次要位置，接缝避开风口、检修口与结构变形缝；目视无波浪、无下坠、无色差、无划伤。<br> | 板面平整度 ≤2mm；接缝直线度 ≤2mm；接缝高低差 ≤1mm；板缝均匀、排版对齐，无波浪下坠；模型与算量未按蜂窝板方案同步前不得判 passed（待 D21 拍板） | 蜂窝板成品平整度与接缝实测记录（靠尺、塞尺读数可辨）、板缝排版照片（缝宽均匀、非整板位置可辨） | `82f8e12470e99643edfe73a538d030cdfda7ec63fca29aa62b772de76ba24419` | pending |
+| [ ] | check_honeycomb_edge | major/引用 | 蜂窝板：切口与风口开孔封边 | 1. 板材切割断面封边严密，无裸露蜂窝芯、无毛刺、无崩边；切口封边条与板面同色、粘贴牢固。<br>2. 风口、灯孔、检修口开孔边缘加封边/收边条，开孔避开龙骨与吊杆；开孔尺寸按风口与灯具实物复核。<br> | 切口与开孔边缘封边严密、无裸露蜂窝芯、无毛刺崩边；模型与算量未按蜂窝板方案同步前不得判 passed（待 D21 拍板） | 切口与开孔封边照片（封边严密、芯材不裸露可辨） | `366c8ac91d7edd36b20437e86ca778e3419e61058223af81e1904a3bd45aaa23` | pending |
+| [ ] | check_honeycomb_corner | major/引用 | 蜂窝板：龙脊东侧外露角处理（ne/se，原 R100） | 1. 龙脊东侧两个外露角（ne/se，原 R100 位置）按拍板后的方案处理：直角，或收边条；方案待 D22 拍板，拍板前不得放行，不得按任一方案验收。<br>2. 方案拍板并写入施工交底后按方案验收；若走收边条，阳角收边条平直严密、无翘曲。<br> | 龙脊东侧两个外露角（ne/se，原 R100）处理方案待定（直角或收边条），待 D22 拍板；拍板并写入施工交底后才按方案验收，拍板前不得放行 | 龙脊东侧外露角处理照片（直角或收边条按方案完工可辨） | `e80db550c0d6d604b461939379408bb5149a917e919ffe3b494e1ca71f5f2720` | pending |
+| [ ] | check_honeycomb_joint | major/引用 | 蜂窝板与石膏交界收边 | 1. 蜂窝板与石膏板交界处用收口条/压条收边，收边条平直、严密、无翘曲、无裂缝。<br>2. 两种面材完成面齐平，无明显错台（交界高差验收数未核实，以施工交底为准）；交界处留伸缩缝时按厂家与施工方商定做法封盖，不得留明缝积灰。<br>3. 交界收边在石膏批腻子刷漆前完成，收边条不受腻子污染。<br> | 交界收口条平直严密、无翘曲无裂缝；两种面材完成面齐平、无明显错台；模型与算量未按蜂窝板方案同步前不得判 passed（待 D21 拍板） | 蜂窝板与石膏交界收边照片（收口条平直、完成面齐平可辨） | `9706992784fbcc926ffd5cf8d29b069c00b6d7e31439d50383878de4de49030d` | pending |
+| [ ] | check_honeycomb_removable | major/引用 | 蜂窝板：可拆卸挂装，不胶粘 | 1. 蜂窝板用挂件/卡扣干挂，可单块拆卸，不得胶粘固定；板背与龙骨间不得打胶。<br>2. 单块板拆下后能原位复装，复装后平整度与接缝与相邻板一致，无需破坏相邻板。<br>3. 拆装演示：验收时现场拆一块板再复装，检查挂件无变形、板边无损伤。<br> | 挂件/卡扣干挂、可单块拆卸复装；不得胶粘；模型与算量未按蜂窝板方案同步前不得判 passed（待 D21 拍板） | 单块板拆卸复装演示照片（挂件、板边完好可辨） | `a1403e7904533c1fc631abe378b11389280dde79d386415ce2849548c9700723` | pending |
+| [ ] | check_honeycomb_opening | critical/引用 | 蜂窝板：检修口与风口开槽 | 1. 检修口分两种实现：access_dining / access_study / access_child 三处按 hvac.yaml 已有口位 600×600（只许放大不许缩小）各设一块可拆板，不另开固定检修口框（其中 access_child 底口待确认：机身 x=4.4 正处衣柜东缘，若实机压在衣柜上方则底口改侧口或移位，按厂家图 #39 定）；return_living / return_master / return_parent 三处为回检一体（铰接回风格栅兼检修口），不另设面板；可拆板与回风格栅的位置在排版图上标明，拆下/打开后能站在梯子上直接操作电气盒与阀门。<br>2. 封板前弹线定位、按线开孔；开孔四周加固（木方/欧松板或厂家配套框），风口框固定在加固基层上；开孔避开龙骨与吊杆。<br>3. 封板前隐蔽复核：龙脊与四条卧室带龙骨/吊杆间距、手晃骨架，水电管线、空调铜管、冷凝水管、风口定位线拍照留档；隐蔽影像缺失不得封板。<br>4. 出风与回风不短路：侧出风 + 下回风，或下出风 + 侧回风；出风避开床头与沙发位直吹；风口不紧贴墙边；风口内侧做保温防结露。<br> | 检修口按 hvac.yaml 已有口位：三处 600×600（只许放大不许缩小）各一块可拆板实现（其中 access_child 底口待确认：机身 x=4.4 正处衣柜东缘，若实机压在衣柜上方则改侧口或移位，按厂家图 #39 定），三处回检一体不另设面板；风口开槽加固、封板前弹线定位；封板前隐蔽拍照留档；出风回风不短路；模型与算量未按蜂窝板方案同步前不得判 passed（待 D21 拍板） | 龙脊与卧室带风口与检修口排版图（可拆板位置、风口、灯具同图）、风口开槽加固与弹线定位照片、龙脊与卧室带封板前隐蔽影像（龙骨/吊杆、铜管、冷凝水管、风口定位线各一套） | `2a772a1dacad7d3f0dd2c6e124d2403d92fdecc1975813b6f50364d9057d1a84` | pending |
 | [ ] | check_hvac_access_coordination_before_ceiling | critical/引用 | 封板前三方对接：检修口对准电控盒、回风密封、风口不被遮挡 | 1. 吊顶、空调、全屋定制三方在封板前对接定位：检修口对准电控盒、能伸头检修，不得被衣柜、灯具、窗帘盒挡住。<br>2. 回风口与吊顶之间缝隙要密封，不得留大缝吸吊顶内灰尘；密封后回风口滤网清洗频率要写进交接记录。<br>3. 送回风口与吊顶风口对齐、无遮挡；对不齐或被挡住，不得封板。<br> | 检修口对准电控盒且不被遮挡；回风缝隙密封；风口对齐无遮挡 | 封板前三方对接定位照片（检修口、电控盒、回风口位置可辨） | `4aa1836e136a0c635c297026bb2b9014626041d2757f4bc259fc44f9947d4e29` | pending |
 | [ ] | SCH-070-01 | critical/before_covering/阻塞解除后 | 吊顶封板联合验收 | 复查空调保压、冷凝水、风口、回风、检修口、上部水电和全部隐蔽影像 | PKG-030与PKG-040关键验收全部通过并完成相关方签字 | signed_ceiling_close_permit、concealed_work_photos | `7fb4536cff82b223d25c66e202f15dbba75293d79e1220029f09d0a88045b82a` | pending |
 | [ ] | SCH-070-02 | critical/completion/阻塞解除后 | 吊顶完成面和设备开口复核 | 测量标高、平整度、板缝处理、检修口和风口开孔尺寸 | 与确认图纸及厂家尺寸一致，设备可安装和检修 | measurement_record、completion_photos | `488f3b60398bec9a9c19e44a1b9a3eda19e6e29507c4b59ac4e19cadc6c97540` | pending |
 
-- [ ] 决策门禁：5 项检查被 2 个未拍板决策阻塞（D9 龙骨间距档位 → check_carp_keel、check_carp_frame、check_carp_concealed；D15 石膏板与辅材档位 → check_carp_board、check_carp_arc）；阻塞期间不得判 passed，付款门槛保持 pending，登记表见 config/decision-gates.yaml。
+- [ ] 决策门禁：12 项检查被 4 个未拍板决策阻塞（D9 龙骨间距档位 → check_carp_keel、check_carp_frame、check_carp_concealed；D15 石膏板与辅材档位 → check_carp_board、check_carp_joint、check_carp_arc；D21 吊顶模型与算量按蜂窝板方案同步 → check_honeycomb_panel、check_honeycomb_edge、check_honeycomb_joint、check_honeycomb_removable、check_honeycomb_opening；D22 龙脊东侧外露角（ne/se，原 R100）处理方案 → check_honeycomb_corner）；阻塞期间不得判 passed，付款门槛保持 pending，登记表见 config/decision-gates.yaml。
 
 - [ ] 所有 critical 检查通过；失败项已有整改和复验记录。
 - [ ] 必需证据路径已登记且文件可打开。
@@ -674,7 +675,7 @@
 | [config/model/envelope/floor-zones.yaml](../../config/model/envelope/floor-zones.yaml) | ids=bedroom_nw_north_bay,bedroom_se_south_bay,master_bath_west_bay,master_bath_west_lower_bay,master_bedroom_south_bay,master_bedroom_west_bay,master_bedroom_west_mid_bay,study_south_bay | mapped |
 | [config/model/envelope/finish-defaults.yaml](../../config/model/envelope/finish-defaults.yaml) | ids=bedroom_nw_north_bay,bedroom_se_south_bay,master_bath_west_bay,master_bath_west_lower_bay,master_bedroom_south_bay,master_bedroom_west_bay,master_bedroom_west_mid_bay,study_south_bay | mapped |
 
-当前项目数据指纹：`sha256:981735a863647a727a2d457ce4a15eff62cf5653441b0b1fa9848b35620265ac`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:f3f45fe5873c231116d39c3e3cdf7c178971753429773ac83e96728e18523d35`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -722,7 +723,7 @@
 | [config/model/envelope/floor-zones.yaml](../../config/model/envelope/floor-zones.yaml) | ids=guest_bath_open_vanity_floor | partial |
 | [config/model/envelope/finish-defaults.yaml](../../config/model/envelope/finish-defaults.yaml) | ids=guest_bath_open_vanity_floor | partial |
 
-当前项目数据指纹：`sha256:480cb17b598897695649df9bb2b5ee39310bc718b04cacdbf70ca0f252b9ba77`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:15f08991b5300bc7586f7758e24a247d12207a1bfcc8e4356a0578450e691ced`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -771,7 +772,7 @@
 | [config/model/envelope/floor-zones.yaml](../../config/model/envelope/floor-zones.yaml) | ids=shower_screen_mbath,shower_screen_gbath,vanity_screen_glass | partial |
 | [config/model/envelope/finish-defaults.yaml](../../config/model/envelope/finish-defaults.yaml) | ids=shower_screen_mbath,shower_screen_gbath,vanity_screen_glass | partial |
 
-当前项目数据指纹：`sha256:80b129d330066e39e40962384b1c6dafeca35e8075da9a506a26dc889d7b0bc0`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:5c557152f56ab1a5f36782c2e64d2f7fdc07b103c976c268dcc2580ceba7fb7f`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -817,7 +818,7 @@
 | [config/house.yaml](../../config/house.yaml) | ids=kitchen.gas_stove,kitchen.range_hood,kitchen.dishwasher | mapped |
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_kitchen_oven | mapped |
 
-当前项目数据指纹：`sha256:65e3c205096e9246764f9912178ca0c8d949912c06f12ed554c160a27e4f7a2c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:45df99d7e91e9831b1faf2a2f6d952131ff581d1c7dac321d40d4558047de81f`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -859,7 +860,7 @@
 |---|---|---|
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=light_balcony_dome,light_dining_pendant,light_living_dome,light_master_dome,light_parent_dome,light_child_dome,light_study_dome,light_corridor_1,light_entry_down,light_entry_foyer,light_kitchen_panel,night_guest_bed_side,night_guest_head,night_guest_door,night_living_north,night_living_mid,night_corridor | mapped |
 
-当前项目数据指纹：`sha256:000d5b169181254c92e0583023874df2b3f406d894b99feacbeaba49869a63b8`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:f14d2cf2c8808032d2e1d0b606825d9d8c1cffcd137062f43ebfe0293db589ac`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -898,7 +899,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_tv,sock_living_tv_high,net_living,sock_living_sofa_l,sock_living_sofa_r,sock_living_water,sock_living_table,sock_fridge_living,sock_waterbar,sock_living_curtain,sock_living_ac,sock_dining_ac,switch_living_entrance,switch_living_corridor,sock_master_bed_l,switch_master_bed_north,sock_master_bed_r,switch_master_bed_l,switch_master_door,sock_master_bed_r_head,sock_master_ac,net_master_ap,sock_parent_bed_r,switch_parent_door,sock_parent_desk,net_parent,sock_study_desk,net_study,sock_study_extra,switch_study,sock_child_bed,switch_child_bed,sock_child_desk,net_child,switch_child,sock_child_ac,sock_kitchen_counter,sock_kitchen_counter_east,sock_kitchen_east_counter,sock_kitchen_hood,sock_kitchen_purifier,sock_kitchen_gas,sock_kitchen_oven,switch_kitchen,sock_mbath_vanity,sock_mbath_toilet,sock_mbath_batheheater,sock_gbath_vanity,sock_gbath_vanity_2,sock_gbath_batheheater,sock_balcony_washer,sock_balcony_dryer,sock_balcony_waterheater,sock_vrf_outdoor_a2,sock_weakbox,sock_garden,switch_garden,switch_corridor,switch_dining,sock_kitchen_dishwasher,sock_master_curtain,sock_parent_curtain,sock_study_curtain,sock_study_ac,sock_parent_ac,sock_gbath_toilet,sock_balcony_drying,sock_living_drying,sock_gateway,net_gateway,net_ap_corridor,sock_living_tv_led,sock_master_projector,sock_gbath_towel,sock_gbath_robot,sock_living_robot,sock_guest_bed_l,sock_guest_bed_r,switch_guest_bed | mapped |
 | [config/electrical-topology.yaml](../../config/electrical-topology.yaml) | all=true | mapped |
 
-当前项目数据指纹：`sha256:b17afa66ec83c3e7cdcfcdea2e371e2a69d40822cc5222c2f330c2a5082b7597`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:8de20febf69c2300ec6c3c5ca6cdcb4a5043e462e83b4f6a92ad42f147f4b1be`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -945,7 +946,7 @@
 | [config/model/envelope/floor-zones.yaml](../../config/model/envelope/floor-zones.yaml) | ids=bedroom_nw_north_waterproof_ledge,bedroom_se_south_waterproof_ledge,kitchen_north_bay,living_south_waterproof_ledge,master_bedroom_south_waterproof_ledge,master_bedroom_west_mid_waterproof_ledge,master_bedroom_west_upper_waterproof_ledge,mbath_north_waterproof_ledge,mbath_west_lower_waterproof_ledge,study_south_waterproof_ledge | mapped |
 | [config/model/envelope/finish-defaults.yaml](../../config/model/envelope/finish-defaults.yaml) | ids=bedroom_nw_north_waterproof_ledge,bedroom_se_south_waterproof_ledge,kitchen_north_bay,living_south_waterproof_ledge,master_bedroom_south_waterproof_ledge,master_bedroom_west_mid_waterproof_ledge,master_bedroom_west_upper_waterproof_ledge,mbath_north_waterproof_ledge,mbath_west_lower_waterproof_ledge,study_south_waterproof_ledge | mapped |
 
-当前项目数据指纹：`sha256:f31fea4ea3946a04c7a6a6f44448c31a5fdddb3ac7ab683ac131d33ff70757d3`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:127917c6b958f471c34733038c77da8a6b8b995357bae0462816ea6c7244f6a0`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -992,7 +993,7 @@
 | [config/model/envelope/floor-zones.yaml](../../config/model/envelope/floor-zones.yaml) | ids=bedroom_nw_north_bay,bedroom_nw_north_waterproof_ledge,bedroom_se_south_bay,bedroom_se_south_waterproof_ledge,kitchen_north_bay,living_south_waterproof_ledge,master_bath_west_bay,master_bath_west_lower_bay,master_bedroom_south_bay,master_bedroom_south_waterproof_ledge,master_bedroom_west_bay,master_bedroom_west_mid_bay,master_bedroom_west_mid_waterproof_ledge,master_bedroom_west_upper_waterproof_ledge,mbath_north_waterproof_ledge,mbath_west_lower_waterproof_ledge,study_south_bay,study_south_waterproof_ledge | partial |
 | [config/model/envelope/finish-defaults.yaml](../../config/model/envelope/finish-defaults.yaml) | ids=bedroom_nw_north_bay,bedroom_nw_north_waterproof_ledge,bedroom_se_south_bay,bedroom_se_south_waterproof_ledge,kitchen_north_bay,living_south_waterproof_ledge,master_bath_west_bay,master_bath_west_lower_bay,master_bedroom_south_bay,master_bedroom_south_waterproof_ledge,master_bedroom_west_bay,master_bedroom_west_mid_bay,master_bedroom_west_mid_waterproof_ledge,master_bedroom_west_upper_waterproof_ledge,mbath_north_waterproof_ledge,mbath_west_lower_waterproof_ledge,study_south_bay,study_south_waterproof_ledge | partial |
 
-当前项目数据指纹：`sha256:e42d6f9bc00d2efcc6b5a620dbfabc5bfdecd3b8ecd3983c03d229c5afc3f53d`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:209abb1992cf934851af4d44bbda5766e583c093d5f411ac12143af3257f5a20`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1033,7 +1034,7 @@
 | [config/mep-hvac-coordination.yaml](../../config/mep-hvac-coordination.yaml) | layers=refrigerant,condensate,supply_air,return_air | partial |
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_ac,sock_dining_ac,sock_master_ac,sock_parent_ac,sock_child_ac,sock_study_ac,sock_vrf_outdoor_a2,ac_panel_living,ac_panel_dining,ac_panel_master,ac_panel_parent,ac_panel_child,ac_panel_study | partial |
 
-当前项目数据指纹：`sha256:906a7bd98a2193f24eb95b6feb8f0f9dffcdd7ed22229a8cefbd7b2e816ca1b3`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:da784508863dc5aadc0c3118421cfd7de45eb4fd91d7d20d524f000dacf43c66`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1075,7 +1076,7 @@
 | [config/model/envelope/ceiling.yaml](../../config/model/envelope/ceiling.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:83a388db04f7ecf6c68399ff711643478eebcc7ad8dc724ab432d4462d0f4f45`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:c8f4837ea8a04ee097849f9cef18becd78ff131f220301887dadfca01c9fde62`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1108,7 +1109,7 @@
 | [config/model/envelope/ceiling.yaml](../../config/model/envelope/ceiling.yaml) | trade=curtain_box | partial |
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_living_curtain,sock_master_curtain,sock_parent_curtain,sock_study_curtain | partial |
 
-当前项目数据指纹：`sha256:80534064423c0c2197371e55f2a9a343b3dd2d5729162b045a1299a0e9dc2aab`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:28edc69ea68f6a4df1409a5aabb581070b7cf2e84cb2eb8a14718b4599c6f803`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1145,7 +1146,7 @@
 |---|---|---|
 | [config/house.yaml](../../config/house.yaml) | all=true | partial |
 
-当前项目数据指纹：`sha256:4d2b1e947906b7bdaa646a8b3dd17471e06bb21383599435067162e837be49fd`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:9c5af9b26b52c006fe6cd688d911d11c9c53c0f2c8317b3835c8bb66fba5c5ed`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1198,7 +1199,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_fridge_living,sock_kitchen_hood,sock_kitchen_gas,sock_kitchen_oven,sock_kitchen_dishwasher,sock_balcony_washer,sock_balcony_dryer,sock_balcony_waterheater,sock_gbath_robot | partial |
 | [config/plumbing.yaml](../../config/plumbing.yaml) | ids=faucet_balcony_washer,drain_balcony_washer,faucet_gbath_vanity,drain_gbath_vanity,faucet_kitchen_dishwasher,drain_kitchen_dishwasher | partial |
 
-当前项目数据指纹：`sha256:e52d69e576bcdf26eeb9f44d9fcb6ab03e0075d655202c4347809c4c05fca33d`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:9973a15a3655d17a73c0b4f1c80cd91bc1f9516eaaeb364f3b55afc4079ed2cf`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1249,7 +1250,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 
-当前项目数据指纹：`sha256:83a388db04f7ecf6c68399ff711643478eebcc7ad8dc724ab432d4462d0f4f45`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:c8f4837ea8a04ee097849f9cef18becd78ff131f220301887dadfca01c9fde62`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1278,7 +1279,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 
-当前项目数据指纹：`sha256:83a388db04f7ecf6c68399ff711643478eebcc7ad8dc724ab432d4462d0f4f45`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:c8f4837ea8a04ee097849f9cef18becd78ff131f220301887dadfca01c9fde62`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
