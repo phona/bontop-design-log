@@ -1580,7 +1580,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     const pipeBoxLabor = pipeBoxLaborPrices(masonryCard);
     const pipeBoxLaborCny = pipeBoxPrices.laborCny;
     const pipeBoxMaterialCny = pipeBoxPrices.materialCny;
-    const wallTilePart = 2704; // 2026-11-17 包管量入账：墙砖量 35.9836→38.6276 ㎡（pipe_box 盒面 +2.644）×70 ≈ 2,704（R04 后 2,591；2026-11-12 PR #225 后 2,519）
+    const wallTilePart = 2672; // 2026-11-17 包管量入账：墙砖量 35.9836→38.6276 ㎡（pipe_box 盒面 +2.644）×70 ≈ 2,704（R04 后 2,591；2026-11-12 PR #225 后 2,519；2026-11-26 量房回填后 2,672：墙砖量 38.6276→38.1724 ㎡）
     if (Math.abs(tileSqm * 70 - wallTilePart) > 1) {
       throw new Error(`cost summary: 墙砖主材对不上（${qty(tileSqm, 4)} ㎡ × 70 = ${qty(tileSqm * 70, 2)}，映射登记 ${wallTilePart}）`);
     }

@@ -333,7 +333,7 @@ function main(): void {
   }
 
   // d_mb runtime 门扇扫掠域：w_strip_east 门洞 z[4.65,5.55]，门扇向西开启。
-  const MB_DOOR_SWEEP: Aabb = { minX: 3.30, maxX: 4.20, minZ: 4.65, maxZ: 5.55 };
+  const MB_DOOR_SWEEP: Aabb = { minX: 3.30, maxX: 4.16, minZ: 4.65, maxZ: 5.55 }; // 2026-11-26 量房：主卧东墙 4.20→4.16，门扇扫掠东缘随墙。
   const MB_SOUTH_CURTAIN_BOX_NORTH_Z = MASTER_BEDROOM_R6_CURTAIN_SOFT_ENVELOPE.topBox.z[0]; // 仅记录顶部盒体，不作为家具地面硬下限
   const MB_SOUTH_CLOSED_CURTAIN_ENVELOPE: Aabb = {
     minX: 0,
@@ -367,7 +367,7 @@ function main(): void {
       errors.push('master_bedroom: missing placed R7 380×350mm bedside cabinet');
       continue;
     }
-    if (cabinet.box.maxX > 4.20 + GAP_EPS || cabinet.box.minX < 3.82 - GAP_EPS) errors.push(`${cabinet.label}: AABB crosses east wall or misses target x[3.82,4.20]`);
+    if (cabinet.box.maxX > 4.16 + GAP_EPS || cabinet.box.minX < 3.78 - GAP_EPS) errors.push(`${cabinet.label}: AABB crosses east wall or misses target x[3.78,4.16]`); // 2026-11-26 量房：主卧东墙 4.20→4.16，床头柜目标 x[3.82,4.20]→x[3.78,4.16]。
     if (intersects(cabinet.box, MB_DOOR_SWEEP)) errors.push(`${cabinet.label}: intersects d_mb door sweep zone`);
     if (mbBed && intersects(cabinet.box, mbBed.box)) errors.push(`${cabinet.label}: overlaps bed`);
     if (cabinet.item.type === 'master_bedside_cabinet_350_south' && mbBed && cabinet.box.minZ < mbBed.box.maxZ + 0.035 - GAP_EPS) {

@@ -117,11 +117,18 @@
   height: 0.02
   note: "主卫干区地漏（地面；沉箱最低处候选锚点，与 #50 二次排水口 drain_mbath_floor 同位）；DEC-2026-10-08-W03 已画推断路线 drain-mbath-floor-to-riser（1% 坡接主卫推断立管，construction_status: pending、不作为施工依据），最低点与立管实测位待量房——注意与 #50 沉箱二次排水口是两回事、不得并入同一接点"
 
+  blocker:
+    kind: site_measurement
+    owner: ["量房"]
+    trigger: "量房已给出主卫下沉 350mm（2026-11-26 新出图纸 survey/701_survey_20261126_sheet.pdf，业主 300DPI 目视核实，见下沉350×2；ky51.dwg 无主卫下沉标注，不得以 DWG 为全）。仍缺沉箱最低点与二次排水口位（2026-11-27 现场核查，verify-first）。开挖前先核查开发商是否已设二次排水（#50）"
+    reverses_if: "地面泄水与防水层下二次排水不得并入同一接点；最低点实测后重画推断路线。若核查确认开发商已做二次排水且口位可用，自做方案停"
+    rationale: "2026-11-26 量房：主卫下沉深度 350mm（新出图纸 sheet，业主 300DPI 核实；DWG 仅客卫一处「下沉350」，主卫无标注；旧 300/330 分界线 pending #6/#19 作废）。模型没有沉箱深度字段，不新造 schema，数记在本 blocker。两卫均部分已回填（sheet 主卫标「部分已回填」；DWG 备注「卫生间部分已经回填」）：不得据此假定开发商已做或未做二次排水，须先核查，别直接开挖。仍缺：沉箱最低点与二次排水口位（2026-11-27 现场核查，verify-first）。2026-11-26 23:13 业主决定 2026-11-27 自行实地复测主卫下沉 350（觉量房数据不太准），复测数若与量房数不符，以复测为准。排水原则不改。"
+
 - id: faucet_gbath_vanity
   room: guest_bath
   wall: w_gbath_east_open_vanity
   wall_side: west
-  along: 0.405
+  along: 0.315
   type: faucet
   water_temp: "mixed"
   water_dn: 20
@@ -181,7 +188,7 @@
   water_temp: "cold"
   water_dn: 20
   height: 0.3
-  note: "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.75,3.05)，真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.20,3.05) h=0.3（2026-10-23 DEC-2026-10-23-R04 随东墙线 7.10→7.20 同步）、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31"
+  note: "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.90,3.05)，真实模型 AABB x[6.675,7.225]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.50,3.05) h=0.3（2026-10-23 DEC-2026-10-23-R04 随东墙线 7.10→7.20 同步）、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31"
 
 - id: drain_gbath_shower
   # S1-B 状态申报（issue #98）：依据 DEC-2026-10-08-W03 推断路线；立管实测位待量房
@@ -210,9 +217,9 @@
   blocker:
     kind: site_measurement
     owner: ["量房"]
-    trigger: "量房实测客卫沉箱最低点与二次排水口位（#74）"
-    reverses_if: "地面泄水与防水层下二次排水不得并入同一接点；最低点实测后重画推断路线"
-    rationale: "立管实测位待量房；本点兼作客卫沉箱二次排水口候选锚点，与 pending #74 同位登记"
+    trigger: "量房已给出客卫下沉 350mm（2026-11-26 ky51.json TEXT 层 YQ_ELEV「下沉350」，模型坐标 (7.17,2.87)）。仍缺沉箱最低点与二次排水口位（2026-11-27 现场核查，verify-first）。开挖前先核查开发商是否已设二次排水（#74）"
+    reverses_if: "地面泄水与防水层下二次排水不得并入同一接点；最低点实测后重画推断路线。若核查确认开发商已做二次排水且口位可用，自做方案停"
+    rationale: "2026-11-26 量房：下沉深度 350mm（邻户 330 仅参考，作废）。模型没有沉箱深度字段，不新造 schema，数记在本 blocker。DWG 备注「卫生间部分已经回填，卫生间防水已刷1米5，阳台也已刷防水」与 2026-10-23 客卫二次排水自做计划相撞：不得据此假定开发商已做或未做二次排水，须先核查，别直接开挖。新出图纸 sheet 同标两卫「部分已回填」（业主 300DPI 核实 2026-11-26）；仍缺最低点/口位，2026-11-27 现场核查。排水原则不改。"
 - id: faucet_kitchen_sink
   # S1-B 状态申报（issue #98）：依据 DEC-2026-08-02-013 台面定位与 2026-10-05 v1 推断；x 坐标以 #7/#16 立管与 #8 入户点为前提
   status: inferred
@@ -299,7 +306,7 @@
   drain_dn: 50
   absolute: true
   x: 6.5
-  z: 1.5
+  z: 0.35
   height: 0.02
   note: "生活阳台地漏（地面）；DEC-2026-10-06-R1：洗衣机排水改走专用墙排→阳台立管（见 MEP route drain-balcony），**不通本点**，两路不共用防反水；本点仅作阳台地面泄水。DEC-2026-10-08-W01：已画 MEP 路线 `drain-balcony-floor-to-riser`（同平面纯竖直接入 drain_riser_balcony，status inferred / construction_status pending / not_for_construction）；汇入形式（三通/存水弯/水封）与阳台排水立管实测位仍待量房（pending #51）"
 
@@ -352,7 +359,7 @@
   drain_dn: 50
   absolute: true
   x: 5.80
-  z: 1.50
+  z: 0.35
   height: 0.60
   note: "洗衣机墙排排水（不走地漏，防反水）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
@@ -477,7 +484,7 @@
   room: kitchen
   type: water_supply
   absolute: true
-  x: 7.35
+  x: 7.65
   z: 0.45
   height: 0.18
   water_temp: cold
@@ -494,7 +501,7 @@
   type: drain_riser
   absolute: true
   x: 6.50
-  z: 1.50
+  z: 0.35
   height: 0.586
   drain_dn: 110
   diameter: 0.075
@@ -511,7 +518,7 @@
   room: kitchen
   type: water_heater
   absolute: true
-  x: 7.30
+  x: 7.60
   z: 1.00
   height: 1.20
   water_temp: mixed

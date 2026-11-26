@@ -142,18 +142,19 @@ mep_coordination_types: []
 
 # 原始墙段端点落在另一墙段中部时，必须在此声明 T/L 接头；交叉线没有此声明会失败。
 junctions:
-  - { id: mbath_south_to_east, type: t, walls: [w_mbath_south, w_mbath_east], x: 2.60, z: 2.86 }
-  - { id: nw_north_to_balc_west, type: t, walls: [w_nw_north, w_balc_west], x: 5.60, z: 1.10 }
-  - { id: be_south_to_west, type: t, walls: [w_be_south, w_be_west], x: 13.40, z: 9.88 }
-  - { id: liv_south_to_be_west, type: t, walls: [w_liv_south, w_be_west], x: 13.40, z: 9.80, reason: "2026-10-23 DEC-2026-10-23-R04：东南房玻璃线 9.88 与客餐厅玻璃线 9.80 错台，w_be_west 南延跨过 w_liv_south 东端形成 T 接" }
-  - { id: foyer_outer_to_be_north, type: t, walls: [w_foyer_outer_east, w_be_north], x: 15.25, z: 4.82 }
-  - { id: strip_east_to_nw_south, type: t, walls: [w_strip_east, w_nw_south], x: 4.20, z: 4.30 }
-  - { id: vrv_gap_to_balc_west, type: t, walls: [w_vrv_nw_gap, w_balc_west], x: 5.60, z: 1.00 }
-  - { id: blk_north_to_ent_west, type: t, walls: [w_blk_north, w_ent_west], x: 10.80, z: 2.72, reason: "2026-10-26 DEC-2026-10-26-R01：黑块北脸西端落厨房东墙（w_ent_west）中部" }
-  - { id: blk_east_north_to_ent_south_w, type: t, walls: [w_blk_east_north, w_ent_south_w], x: 11.49, z: 3.00, reason: "2026-10-26 DEC-2026-10-26-R03：黑块东脸由 11.59 西缩至 11.49（避 d_ent 西铰链），本接点落入户南墙实墙段（x[10.80,11.54]），距门洞西 jamb 11.545 计 0.055m；块东脸量房终核" }
-  - { id: blk_east_south_to_ent_south_w, type: t, walls: [w_blk_east_south, w_ent_south_w], x: 11.49, z: 3.00, reason: "2026-10-26 DEC-2026-10-26-R03：黑块东脸由 11.59 西缩至 11.49（避 d_ent 西铰链），本接点落入户南墙实墙段（x[10.80,11.54]），距门洞西 jamb 11.545 计 0.055m；块东脸量房终核" }
-  - { id: pier_north_to_mb_east, type: t, walls: [w_pier_north, w_mb_east], x: 4.20, z: 8.31, reason: "2026-10-26 DEC-2026-10-26-R02：墙垛北脸西端落主卧东墙（w_mb_east）中部" }
-  - { id: pier_south_to_mb_east, type: t, walls: [w_pier_south, w_mb_east], x: 4.20, z: 8.71, reason: "2026-10-26 DEC-2026-10-26-R02：墙垛南脸西端落主卧东墙（w_mb_east）中部" }
+  - { id: mbath_south_to_east, type: t, walls: [w_mbath_south, w_mbath_east], x: 2.90, z: 2.655 }
+  - { id: nw_north_to_balc_west, type: t, walls: [w_nw_north, w_balc_west], x: 5.69, z: -0.04 }
+  - { id: be_south_to_west, type: t, walls: [w_be_south, w_be_west], x: 13.37, z: 8.47, reason: "2026-11-26 量房：东南房南墙收到 z=8.47，西墙 x=13.37" }
+  - { id: liv_south_to_be_west, type: t, walls: [w_liv_south, w_be_west], x: 13.37, z: 9.80, reason: "2026-11-26 量房：东南房南墙收到 z=8.47（R04 的 9.88 玻璃线作废），w_be_west x=13.37 自 z=8.47 续到南外线 z=9.80，落 w_liv_south 东端形成 T 接" }
+  - { id: foyer_outer_to_be_north, type: t, walls: [w_foyer_outer_east, w_be_north], x: 15.25, z: 4.035 }
+  - { id: strip_east_to_nw_south, type: t, walls: [w_strip_east, w_nw_south], x: 4.16, z: 3.75 }
+  - { id: vrv_gap_to_balc_west, type: t, walls: [w_vrv_nw_gap, w_balc_west], x: 5.69, z: -0.15, reason: "2026-11-26 量房：北墙拉直，平台北墙西端 x=5.69，z=-0.15" }
+  - { id: blk_north_to_ent_west, type: t, walls: [w_blk_north, w_ent_west], x: 11.11, z: 2.72, reason: "2026-10-26 DEC-2026-10-26-R01：黑块北脸西端落厨房东墙（w_ent_west）中部" }
+  - { id: kit_west_to_ent_west, type: t, walls: [w_kit_west, w_ent_west], x: 11.11, z: 2.40, reason: "2026-11-26 量房：厨房西墙南端（厨餐开口东 jamb x=11.11）落入户花园西墙中部" }
+  - { id: blk_east_north_to_ent_south_w, type: t, walls: [w_blk_east_north, w_ent_south_w], x: 11.80, z: 3.00, reason: "2026-11-26 量房：黑块东脸 x=11.80（DEC-2026-10-26-R03 的 11.49 作废）；本接点落入户南墙实墙段（x[11.11,12.77]）" }
+  - { id: blk_east_south_to_ent_south_w, type: t, walls: [w_blk_east_south, w_ent_south_w], x: 11.80, z: 3.00, reason: "2026-11-26 量房：黑块东脸 x=11.80（DEC-2026-10-26-R03 的 11.49 作废）；本接点落入户南墙实墙段（x[11.11,12.77]）" }
+  - { id: nw_south_to_gbath_west_open_vanity, type: t, walls: [w_nw_south, w_gbath_west_open_vanity], x: 5.69, z: 3.75, reason: "2026-11-26 量房：西北次卧南墙东端落客卫西侧开放洗漱区西墙中部" }
+  # 2026-11-26 量房：墙垛西脸在 x=4.37，主卧东墙在 x=4.16，不再 T 接。旧 pier_*_to_mb_east 接头删除。
 
 # 设备平台缺口与阳台西墙在量房线稿中保留 100mm 端部重合，作为一个
 # 声明式 T 接头处理；超过此值仍按墙线重复/穿插报错。
@@ -164,10 +165,9 @@ allowed_collinear_overlaps:
 # 这些声明不允许同一路径穿过任意实体墙；它们只消除三处结构性端部
 # 连接（VRV 栏杆收口、北凹口幕墙收口、东南凹口南幕墙 T 接）。
 allowed_overlay_wall_junctions:
-  - { element: vrv_nw_railing, wall: w_balc_west, type: overlap, x: 5.60, z: 1.05, max_overlap: 0.10, reason: "VRV 平台缺口与阳台西墙端部收口" }
-  - { element: north_recess_curtain, wall: w_balc_west, type: endpoint, x: 5.60, z: 1.10, reason: "北凹口幕墙与阳台西墙端部接头" }
-  - { element: south_east_curtain, wall: w_be_west, type: endpoint, x: 13.40, z: 9.88, reason: "东南房南幕墙西端与客房西墙南端同点收头（2026-10-23 DEC-2026-10-23-R04 玻璃线改 9.88 后由原凹口 T 接变为端点接；原 z=8.70 废止）" }
-  - { element: living_south_curtain, wall: w_be_west, type: endpoint, x: 13.40, z: 9.80, reason: "2026-10-23 DEC-2026-10-23-R04：客餐厅南幕墙东端收于东南房西墙（两玻璃线错台 0.08，幕墙端点抵 w_be_west 中段）" }
+  - { element: vrv_nw_railing, wall: w_balc_west, type: overlap, x: 5.69, z: -0.095, max_overlap: 0.11, reason: "2026-11-26 量房：VRV 平台缺口段与阳台西墙沿 x=5.69 重合 0.11m（z[−0.15,−0.04]），接点取重合段中点" }
+  - { element: north_recess_curtain, wall: w_balc_west, type: endpoint, x: 5.69, z: -0.04, reason: "2026-11-26：北窗玻璃东端落在西北次卧东北角，与阳台西墙（x=5.69，自 z=−0.15 起）端部相接" }
+  - { element: living_south_curtain, wall: w_liv_east_s, type: endpoint, x: 13.37, z: 9.80, reason: "2026-11-26：客餐厅南幕墙东端收于客厅东墙南段 w_liv_east_s（x=13.37，z=9.80）。东南房不再用通高幕墙。" }
 
 # 「合法重叠」白名单（relationships）已于 2026-10-09 整体迁入
 # config/anti-penetration.yaml 的 waivers[]：原 13 条只按 type + 两个 runtime id 声明，

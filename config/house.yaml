@@ -75,16 +75,16 @@ rooms:
     type: "private"
     wall_finish: "paint"
     needs_waterproof: false
-    width: 4.20
-    length: 6.94
-    height: 2.8
-    area: 26.63
+    width: 4.16
+    length: 7.15
+    height: 2.90
+    area: 28.30
     status: "design"
     orientation: "西南"
     notes: "尺寸镜像 model-geometry（2026-08-25 台盆外移：隔墙北移 z=2.86，套间条带加深，含条带；寝区本体约 17.9㎡，设计图标注 18.16㎡）；飘窗为上飘窗，保留不拆除"
     windows:
-      - width: 2.40
-        height: 1.50
+      - width: 3.90
+        height: 2.42
         position: "南墙"
       - width: 1.80
         height: 1.50
@@ -101,16 +101,16 @@ rooms:
     type: "private"
     wall_finish: "paint"
     needs_waterproof: false
-    width: 3.00
-    length: 3.20
+    width: 2.79
+    length: 3.79
     height: 2.8
-    area: 9.60
+    area: 10.57
     status: "design"
     orientation: "西北"
     notes: "镜像 model-geometry（南界保持原 z=4.30；客卫内卫南界独立北移至 z=3.55，西侧开放洗漱区边界墙与西北次卧南墙共享同一南端标高；设计图标注 8.39㎡，实际边界与面积待量房确认）"
     windows:
-      - width: 1.50
-        height: 1.40
+      - width: 2.785
+        height: 2.42
         position: "北墙"
     doors:
       - width: 0.90
@@ -124,19 +124,19 @@ rooms:
     type: "private"
     wall_finish: "paint"
     needs_waterproof: false
-    width: 3.00
-    length: 5.06
+    width: 2.96
+    length: 4.44
     height: 2.8
-    area: 15.18
+    area: 13.13
     status: "design"
     orientation: "东南"
     notes: "东南角客房（2026-10-05 功能互换：原书房改客房，供父母/客人；与主人区隔客餐厅+主走廊，不共墙）。镜像 model-geometry（2026-10-23 DEC-2026-10-23-R04 改判：南玻璃线 z=9.88——YS-01 东链读法，玻璃南 0.28 墙+1.02 飘台板外凸不入室；废止 2026-08-27 凹进 8.70 读法，该读法把飘台进深误作凹进深度；设计图净面积标注 8.35㎡ 系凹进读法下的净口径、随改判失效；自家量房终核玻璃线）。v0 候选未冻结：原『床尾半进凸窗带（z[7.60,8.70]）』以凹进读法为前提、随改判失效，床尾区按普通进深重新预演待业主定（见 DEC-2026-10-23-R04 复核项）；飘窗台 2.07m 系推断值（量房 #20 待核）；衣柜 final 选型与床头柜/床头双侧电位待 Q6 后补，见 docs/design-iterations/parent-room-study-swap-20261005/"
     windows:
-      - width: 1.50
-        height: 1.40
+      - width: 2.05
+        height: 2.42
         position: "南墙"
     doors:
-      - width: 0.90
+      - width: 0.885
         position: "连接过道"
     furniture_concept:
       - "床 1.5m × 2.0m"
@@ -148,19 +148,19 @@ rooms:
     type: "private"
     wall_finish: "paint"
     needs_waterproof: false
-    width: 3.00
-    length: 4.25
+    width: 2.99
+    length: 4.35
     height: 2.8
-    area: 12.75
+    area: 12.99
     status: "design"
     orientation: "南"
     notes: "左侧中间房间（2026-10-05 功能互换：原父母房改书房）。镜像 model-geometry（设计图标注面积待量房终核；模型多边形毛口径 12.75㎡；点石设计图该房净标注 8.39㎡ 属净口径、不同量纲；8.35㎡ 系东南客房 bedroom_se 标注，原记录误引于此已删，依据 DEC-2026-08-27-047（原文：git show 8abfbe3b:docs/decisions/02-layout-public.md#L389））。v0 候选未冻结：书桌椅原位；北墙边吊下为 1.70m 季节后台柜（由客房平移）；南墙书架/东墙柜体/起夜无关的其他储物扩容与书房电脑专用回路改道均待 Q3/Q4 后补，见 docs/design-iterations/parent-room-study-swap-20261005/"
     windows:
-      - width: 1.50
-        height: 1.40
+      - width: 2.78
+        height: 2.42
         position: "南墙"
     doors:
-      - width: 0.90
+      - width: 0.855
         position: "连接过道"
     furniture_concept:
       - "书桌 1.2m × 0.6m + 椅"
@@ -172,16 +172,16 @@ rooms:
     type: "public"
     wall_finish: "paint"
     needs_waterproof: false
-    width: 6.20
+    width: 6.22
     length: 7.40
-    height: 2.8
-    area: 43.1734
+    height: 2.82
+    area: 42.72
     status: "design"
     orientation: "南"
-    notes: "镜像 model-geometry 多边形（入户过渡带由 overlay floor_region 渲染、不计入房间多边形）；DEC-014/021 bbox 口径 45.88㎡；设计图合并标注 35.2㎡ 为旧口径"
+    notes: "镜像 model-geometry 多边形（入户过渡带由 overlay floor_region 渲染、不计入房间多边形）；DEC-014/021 bbox 口径 46.028㎡；设计图合并标注 35.2㎡ 为旧口径"
     windows:
-      - width: 4.50
-        height: 1.80
+      - width: 5.895
+        height: 2.42
         position: "南墙"
     doors: []
     furniture_concept:
@@ -195,10 +195,10 @@ rooms:
     type: "public"
     wall_finish: "paint"
     needs_waterproof: false
-    width: 3.00
-    length: 1.25
+    width: 2.99
+    length: 1.71
     height: 2.8
-    area: 3.75
+    area: 5.10
     status: "design"
     orientation: "东西向"
     notes: "开放式 semantic_only 主走廊区域，与model-geometry边界和ceiling_main_corridor投影一致；按实际存在的三段实体墙脸及对应吊顶独立计涂装，东侧开放接客餐厅且南侧部分开放，不新增实体隔墙。"
@@ -211,17 +211,17 @@ rooms:
     type: "service"
     wall_finish: "tile"
     needs_waterproof: true
-    width: 3.60
-    length: 2.40
+    width: 3.61
+    length: 2.55
     height: 2.8
-    area: 8.64
+    area: 9.21
     status: "design"
     orientation: "北"
-    notes: "开放式厨房，DEC-014 南界 z=2.9，DEC-021 缩至 z=2.4（3.6×2.4=8.64㎡，阳台门 swing 为下限）；开发商 6.09㎡ 为净面积标注口径，净尺寸待量房；需配大功率侧吸油烟机 ≥22m³/min"
+    notes: "开放式厨房，DEC-014 南界 z=2.9，DEC-021 缩至 z=2.4（3.61×2.55=9.2055㎡，阳台门 swing 为下限）；开发商 6.09㎡ 为净面积标注口径，净尺寸待量房；需配大功率侧吸油烟机 ≥22m³/min"
     windows:
-      - width: 1.20
-        height: 1.40
-        position: "北墙"
+      - width: 2.575
+        height: 2.425
+        position: "北侧外凸"
     doors: []
     furniture_concept:
       - "L 型地柜约 5.01m 实体柜段候选（北墙 2.96m 水槽切配 + 东墙 2.05m 灶台；台面桥另 0.60m；东墙端距长虹门轴留 0.05m）"
@@ -236,15 +236,15 @@ rooms:
     # 马桶区/干区 0.30m 砖带 + 上部乳胶漆；主卫有玻璃幕墙采光，漆面前提天然成立。
     wall_finish: "paint"
     needs_waterproof: true
-    width: 2.60
-    length: 1.76
+    width: 2.90
+    length: 3.045
     height: 2.8
-    area: 4.36
+    area: 8.8305
     status: "design"
     orientation: "内"
-    notes: "主卧套间直通；2026-08-25 台盆外移，隔墙北移至 z=2.86，待量房确认：主卫 2.60×1.76≈4.58㎡（镜像 model-geometry），内部左右分离（西淋浴湿区x[0,1.2]玻璃隔断/东侧马桶贴东墙），卫门内开平开洞[1.15,1.95]（门扇扫掠 z∈[2.06,2.86] 与马桶 z=1.5 不冲突），不要浴缸；台盆外移至套间条带（z[2.86,5.55] 归主卧）做干湿分离，洗漱+梳妆一体台贴新隔墙南脸"
+    notes: "主卧套间直通；2026-08-25 台盆外移，隔墙北移至 z=2.86，待量房确认：主卫实测 2.90×3.045≈8.8305㎡（2026-11-26 量房；旧 2.60×1.76≈4.58㎡ 作废），内部左右分离（西淋浴湿区x[0,1.2]玻璃隔断/东侧马桶贴东墙），卫门内开平开洞[1.15,1.95]（门扇扫掠 z∈[2.06,2.86] 与马桶 z=1.5 不冲突），不要浴缸；台盆外移至套间条带（z[2.86,5.55] 归主卧）做干湿分离，洗漱+梳妆一体台贴新隔墙南脸"
     windows:
-      - width: 0.60
+      - width: 2.41
         height: 1.00
         position: "北墙"
     doors:
@@ -262,10 +262,10 @@ rooms:
     # 上部乳胶漆，台盆后 0.77→1.10 防溅带（见 model-geometry 墙条目 finish.tile_bands / paint_bands）；前置北墙外窗已定，暗卫漆面风险解除。
     wall_finish: "paint"
     needs_waterproof: true
-    width: 1.60
-    length: 2.10
+    width: 1.81
+    length: 2.79
     height: 2.8
-    area: 3.36
+    area: 5.06
     status: "design"
     orientation: "内"
     notes: "镜像 model-geometry（x=5.60..7.20，z=2.20..4.30，有效深度 2.10m；东墙线 2026-10-23 DEC-2026-10-23-R04 按 YS-01 墙带西脸由 7.10 改 7.20）；南墙 w_gbath_south 位于 z=3.55，南侧 z=3.55..4.30 纳入客卫语义房间但保持走廊开放边，不新增第四面墙。东西两侧实体延伸墙至 z=4.30；南侧开放洗漱台靠东侧延伸墙西脸，背面朝东、正面朝西，中心贴靠东墙完成面。内卫由南至北为马桶区→淋浴区，z≈2.80 整面固定玻璃屏分隔（DEC-2026-09-07-054：无门，西端 x[5.60,6.30] 为 0.70m 开敞入口，降成本并免门铰链/密封条水垢维护，淋浴区不作完全封闭）；马桶实际模型 AABB 置于隔断南侧并由南墙外门洞西移避让。各墙体材质待量房确认。"
@@ -282,10 +282,10 @@ rooms:
     type: "public"
     wall_finish: "tile"
     needs_waterproof: true
-    width: 1.60
-    length: 1.20
+    width: 1.81
+    length: 1.51
     height: 2.8
-    area: 1.92
+    area: 2.73
     status: "design"
     orientation: "北"
     notes: "镜像 model-geometry（设计图标注 2.42㎡），开发商已用玻璃幕墙封闭，计入套内"
@@ -300,8 +300,8 @@ gift_areas:
   - name: "入户花园"
     id: "entry_garden"
     expected_centroid:  # gift 口径为 bbox 中心：x[10.80,15.25]→13.025，z[0,3.00]→1.50（2026-10-25 DEC-2026-10-25-R01 本体标定重算后 bbox 南缘 2.90→3.00）
-      x: 13.025
-      z: 1.50
+      x: 13.18
+      z: 1.43
     type: "public"
     wall_finish: "unpainted"
     needs_waterproof: false
@@ -346,18 +346,18 @@ gift_areas:
   - name: "西设备平台"
     id: "west_platform"
     expected_centroid:  # model-geometry 局部坐标系：平台 x∈[5.60,7.20] z∈[0,1.00]（旧值 -5.31,0.76 为废弃坐标系）
-      x: 6.40
-      z: 0.50
+      x: 6.60
+      z: 0.61
     type: "service"
     wall_finish: "paint"
     needs_waterproof: false
-    width: 1.60
-    length: 1.00
+    width: 1.81
+    length: 1.51
     height: 2.8
-    area: 1.60
+    area: 2.7331
     status: "design"
     orientation: "西"
-    notes: "701 唯一可用设备平台，赠送面积，面积约 1.60㎡（bbox 口径；含 r=1.0 西北圆角后可用约 1.39㎡，依据 model-geometry.yaml platform.boundary + overlay.yaml north_platform_floor）。因面积有限且西户专属，空调方案建议采用中央空调/多联机（一台外机），避免多台分体外机放不下。详见 docs/hvac/hvac_options_analysis.md（本区域未在当前效果图模型中渲染，以合同/物业图为准）"
+    notes: "701 唯一可用设备平台，赠送面积，面积约 2.7331㎡（2026-11-26 量房 bbox；旧 1.60㎡ / r=1.0 圆角可用 1.39㎡ 作废，依据 model-geometry.yaml platform.boundary + overlay.yaml north_platform_floor）。因面积有限且西户专属，空调方案建议采用中央空调/多联机（一台外机），避免多台分体外机放不下。详见 docs/hvac/hvac_options_analysis.md（本区域未在当前效果图模型中渲染，以合同/物业图为准）"
 
 mechanical_electrical_plumbing:
   hvac:
@@ -380,7 +380,7 @@ mechanical_electrical_plumbing:
       - room: "东南客房"
         type: "双出风带泵内机 /P-SS，28T2（合同容量判读 2.8kW）"
     notes:
-      - "因仅有一个 1.60㎡ 设备平台（模型 bbox 口径；含 r=1.0 西北圆角可用约 1.39㎡），分体机外机位不足，多联机为唯一可行架构"
+      - "因仅有一个 2.7331㎡ 设备平台（2026-11-26 量房 bbox；旧 1.60㎡ / r=1.0 圆角可用约 1.39㎡ 作废），分体机外机位不足，多联机为唯一可行架构"
       - "现行合同配置六台均为 /P-SS 带泵双出风内机；更改内机形式或型号需另行确认，不沿用历史壁挂机备选。"
       - "DEC-2026-09-07-055 深化（原选品为占位，未作真实研究）：内机标称合计 21.4kW，外机 6HP 连接率 138% 超行业上限（120-130%）出局，定为 7HP 级（≈18kW，连接率≈1.19，两人低同开可接受）；品牌未定，短名单与价格见 docs/hvac/hvac-deepening-20260907.md，预算差额约 0~+7k 待业主拍板"
 
@@ -453,14 +453,14 @@ furnishings:
   # 各行均带「#98 Tier 3」注释，下次扫描可直接核对，不再推断。
   master_bedroom:
     # 房间寝区 x∈[0,4.20] z∈[5.55,9.80]；南侧上飘窗室内占用带 z=8.70..9.80
-    - { type: bed_180, id: mb.bed_180, support: { kind: floor }, x: 3.20, z: 7.40, rotation: 270 }     # 保留；runtime mesh z[6.47,8.33]；#98 Tier 3 保持绝对——锚链根：mb.bedside_cabinet_north/south 锚它（2 个跟随件）；东缘贴 w_mb_east（连续实体剪力墙，墙线 x=4.20），但床位为寝区布局原点（设计输入），位置由布局定、不由墙推导
+    - { type: bed_180, id: mb.bed_180, support: { kind: floor }, x: 3.16, z: 7.40, rotation: 270 }     # 保留；runtime mesh z[6.47,8.33]；#98 Tier 3 保持绝对——锚链根：mb.bedside_cabinet_north/south 锚它（2 个跟随件）；东缘贴 w_mb_east（连续实体剪力墙，墙线 x=4.16），但床位为寝区布局原点（设计输入），位置由布局定、不由墙推导
     - { type: master_bedside_cabinet_350_north, id: mb.bedside_cabinet_north, support: { kind: floor }, anchor: { source: furniture, id: mb.bed_180, offset: { x: 0.81, z: -1.155 } }, rotation: 0 } # R6 北侧床头柜：380W×350D×500H候选，服务北插座 z=6.95
     - { type: master_bedside_cabinet_350_south, id: mb.bedside_cabinet_south, support: { kind: floor }, anchor: { source: furniture, id: mb.bed_180, offset: { x: 0.81, z: 1.155 } }, rotation: 0 } # R6 南侧床头柜：380W×350D×500H候选，服务南插座/双控；闭帘软包络仅warning/BLOCKED
     - { type: mb_washbasin_cabinet, id: mb.washbasin_cabinet, support: { kind: floor }, wall: w_mbath_south, wall_side: south, rotation: 0, along: 0.575, wall_clearance: -0.01 } # 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：东移 5cm 且收宽 1.10→1.05（世界 x[0.05,1.10]），西让百叶升降缝、东留门套缝，盆/龙头/墙排居中至 x=0.575；2026-09-01 纯洗手柜：取消梳妆膝位，东侧封闭抽屉收纳，贴 w_mbath_south 南脸；待量房确认墙排与抽屉避让
     - { type: faucet }                                           # 随台盆外移（预算 count-only），给水见 plumbing.yaml faucet_mbath_vanity
     - { type: master_dressing_table, id: mb.dressing_table, support: { kind: floor }, wall: w_west_upper, wall_side: east, rotation: 90, along: 0.50, wall_clearance: 0.14 } # 2026-09-04 R1 候选未冻结：贴窗梳妆位——900W×450D×750H 四腿开放式独立桌贴西侧北段玻璃；AABB x[0.20,0.65] z[5.60,6.50]；rotation=90 局部长边沿世界 z、正面（抽屉/座位侧）朝东，使用者坐东侧面向西玻璃；桌背（西缘 x=0.20）与玻璃幕墙 x=0 留约 0.20m 通风/冷凝缝；西窗帘线 x[1.10,1.35] 在桌东侧，不压帘；北缘避门扇扫掠 z≤5.55
     - { type: dressing_stool, id: mb.dressing_stool, support: { kind: floor }, anchor: { source: furniture, id: mb.dressing_table, offset: { x: -0.005, z: 0 } }, rotation: 90 } # 2026-09-04 R1 候选未冻结：随桌贴窗，收纳态完整收入桌下（AABB x[0.22,0.62] z[5.84,6.26] ⊂ 桌 footprint），使用时向东拉出
-    - { type: master_hot_season_low_dresser, id: mb.low_dresser, support: { kind: floor }, room: master_bedroom, room_dx: 1.05, room_dz: 6.34, rotation: 180 } # 2026-09-08：北移避开西南圆弧玻璃幕；1400W×480D×850H（h<2.07 不挡窗带），抽屉朝北；西端距西帘堆叠侧留余量，南帘堆叠端 site_pending；#98 Tier 3 房间相对——可搬动成品低柜（默认口径，待业主否决）：无跟随件，玻璃幕侧无墙可锚
+    - { type: master_hot_season_low_dresser, id: mb.low_dresser, support: { kind: floor }, room: master_bedroom, room_dx: 1.05, room_dz: 6.55, rotation: 180 } # 2026-09-08：北移避开西南圆弧玻璃幕；1400W×480D×850H（h<2.07 不挡窗带），抽屉朝北；西端距西帘堆叠侧留余量，南帘堆叠端 site_pending；#98 Tier 3 房间相对——可搬动成品低柜（默认口径，待业主否决）：无跟随件，玻璃幕侧无墙可锚
     # 2026-11-13 issue #116（业主裁定，supersede DEC-045）：悬浮板位改通顶定制柜。
     # 参数化单点定义——现场调整只改本条参数，不改他处：
     #   width 1.38（沿墙）× depth 0.565 × cabinetHeight 2.80（总高 = 柜身 2.50 + 顶封板 0.30；
@@ -474,16 +474,16 @@ furnishings:
     #   内机出口示意 mb.condensate_pipe 随冷凝链退役已删（链几何是其唯一 mesh 来源，留置会触发
     #   verify:spatial 的 furniture_runtime_missing）；待全带泵改路由另案落仓时再按新路由重建。
     #   待决（现场补）：柜内物品清单 + #105/#116 共用容量表、柜商报价（未定价）、56T2 厂家安装图。
-    - { type: mb_full_height_cabinet, id: mb.full_height_cabinet, support: { kind: floor }, wall: w_mbath_east, wall_side: west, rotation: 270, along: 2.51, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015, note: "顶封线槽（infer，2026-11-16 用户裁定）：顶封留 25mm 线槽，Ø20 线管于 y=2.7 穿柜，路由不变。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。", blocker: {kind: site_measurement, owner: ["量房"], trigger: "量房数据（过梁高度/顶封实测/墙位）", reverses_if: "量房实测顶封净空不足 25mm 或过梁高度与 y=2.7 线槽冲突时，改走线方式或重定线槽位", rationale: "无量房数据时先选默认方案（infer）：顶封留 25mm 线槽供 Ø20 线管于 y=2.7 穿柜，路由不变；量房后按实测重决。换路方案（x=1.3 南行）作废：x=1.3 在门洞 d_mbath [1.15,1.95] 正上方，需确认过梁高度，不比线槽便宜。"} }
+    - { type: mb_full_height_cabinet, id: mb.full_height_cabinet, support: { kind: floor }, wall: w_mbath_east, wall_side: west, rotation: 270, along: 3.65, width: 1.38, depth: 0.565, cabinetHeight: 2.80, wall_clearance: 0.015, note: "顶封线槽（infer，2026-11-16 用户裁定）：顶封留 25mm 线槽，Ø20 线管于 y=2.7 穿柜，路由不变。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。", blocker: {kind: site_measurement, owner: ["量房"], trigger: "量房数据（过梁高度/顶封实测/墙位）", reverses_if: "量房实测顶封净空不足 25mm 或过梁高度与 y=2.7 线槽冲突时，改走线方式或重定线槽位", rationale: "无量房数据时先选默认方案（infer）：顶封留 25mm 线槽供 Ø20 线管于 y=2.7 穿柜，路由不变；量房后按实测重决。换路方案（x=1.3 南行）作废：x=1.3 在门洞 d_mbath [1.15,1.95] 正上方，需确认过梁高度，不比线槽便宜。"} }
     # mattress/curtain/ceiling count-only entries remain after placed furniture
     - { type: mattress_180 }
     - { type: curtain_set }
     - { type: ceiling_light }
   bedroom_nw:
     # 房间 x∈[2.60,5.60] z∈[1.10,4.30]，南门 d_bnw @(5.0,4.30) swing x∈[4.55,5.45] z∈[3.40,4.30]
-    - { type: bed_150, id: bnw.bed_150, support: { kind: floor }, room: bedroom_nw, room_dx: 2.00, room_dz: 1.20, rotation: 270 }       # 床头靠东墙，1.5m床改善通道（DEC-2026-08-02-013）；#98 Tier 3 房间相对——可搬动床具（默认口径，待业主否决）：无跟随件，锚墙无收益
+    - { type: bed_150, id: bnw.bed_150, support: { kind: floor }, room: bedroom_nw, room_dx: 1.79, room_dz: 1.20, rotation: 270 }       # 床头靠东墙，1.5m床改善通道（DEC-2026-08-02-013）；#98 Tier 3 房间相对——可搬动床具（默认口径，待业主否决）：无跟随件，锚墙无收益
     - { type: wardrobe_180, id: bnw.wardrobe_180, support: { kind: floor }, wall: w_nw_south, wall_side: north, along: 0.90, wall_clearance: -0.06, rotation: 0 }    # B案（2026-08-21 业主拍板）南墙西段通顶柜；x∈[2.6,4.4]避门洞4.55；柜前通道0.65m；推拉门（DEC-2026-08-02-013）；2026-08-26 上方为南墙边吊（底2.50m）：柜体2.40+顶封板0.10抵边吊底；#98 Tier 2 墙锚 w_nw_south：wall_clearance −0.06 = 柜背贴墙线（现模型南缘 z=4.30=墙线），非完成面；量房复核柜背位置时改此一值
-    - { type: desk, id: bnw.desk, support: { kind: floor }, wall: w_mbath_east, wall_side: east, along: 1.00, wall_clearance: 0.015, rotation: 90, width: 1.2, depth: 0.45 }  # B案：窄桌靠西侧采光位；东缘避开 w_mbath_east 实体墙，北移避开书桌椅重叠，西/北墙均玻璃幕不可挂载，电位改地插；#98 Tier 2 墙锚 w_mbath_east（inferred 剪力墙，非玻璃幕；桌西缘离东完成面 0.015m）
+    - { type: desk, id: bnw.desk, support: { kind: floor }, wall: w_mbath_east, wall_side: east, along: 1.30, wall_clearance: 0.015, rotation: 90, width: 1.2, depth: 0.45 }  # B案：窄桌靠西侧采光位；东缘避开 w_mbath_east 实体墙，北移避开书桌椅重叠，西/北墙均玻璃幕不可挂载，电位改地插；#98 Tier 2 墙锚 w_mbath_east（inferred 剪力墙，非玻璃幕；桌西缘离东完成面 0.015m）；2026-11-26 量房：床西移 0.21m 后与桌椅重叠，桌沿墙南移 0.30m（along 1.00→1.30），椅随桌同移
     - { type: chair, id: bnw.chair, support: { kind: floor }, anchor: { source: furniture, id: bnw.desk, offset: { x: 0.45, z: 0.90 } }, rotation: 270 }         # B案书桌椅（桌-床间0.5档，现实可推入桌下）
     - { type: shelf, id: bnw.shelf, support: { kind: floor }, wall: w_nw_north, wall_side: south, rotation: 0, along: 0.40, wall_clearance: -0.06 }           # DEC-023 西北角置物架（贴北墙+西墙转角，书/杂物开架收纳，上飘窗窗下墙；窗位 inferred，落位待量房复核）
     - { type: mattress_150 }
@@ -495,11 +495,11 @@ furnishings:
     # 移除 desk/chair/study_seasonal_wardrobe_wall 与轻训练三件（bench_adjustable/adjustable_dumbbell_pair/rollable_training_mat）；
     # 移入 bed_150 + mattress_150 + wardrobe_180（原父母房随功能迁入）。
     # 摆位约束：wardrobe_180 北墙边吊下 x[14.20,16.00] z[5.55,6.15]（2.40m 柜体+0.10m 顶封板抵 2.50m 吊底，与原父母房同一安装条件），rotation=180 柜门朝南、避 d_bese 扫掠（扫掠仅 z[5.65,6.55]，不冲突）；
-    # bed_150 床头靠东外墙（rotation=270，床头在局部 -z → 世界 +x），AABB x[14.35,16.35] z[6.85,8.35]：同时远离电梯井（北）与客厅电视墙（西），床尾半进凸窗带 z[7.60,8.70]（bay_sill 仅占 2.07m 以上高度，床高 <2.07m 不冲突）；
+    # bed_150 床头靠东外墙（rotation=270，床头在局部 -z → 世界 +x），AABB x[14.33,16.33] z[6.85,8.35]：同时远离电梯井（北）与客厅电视墙（西），床尾半进凸窗带 z[7.60,8.70]（bay_sill 仅占 2.07m 以上高度，床高 <2.07m 不冲突）；
     # 柜前通道 6.15→6.85 = 0.70m ≥ 0.65m 惯例；床南缘距南玻璃 0.35m。
     # site_pending：凸窗带可站人性/飘窗台高 2.07m（量房 #20）、东墙 shear inferred 防倾倒锚固、床头双侧电位与床头柜/行李架（二期）。
-    - { type: wardrobe_180, id: bese.wardrobe_180, support: { kind: floor }, anchor: { source: furniture, id: bese.bed_150, offset: { x: -0.10, z: -1.75 } }, rotation: 180 } # 1.8m×0.6m×2.40m 推拉门成品衣柜（北墙边吊下；随功能自原父母房迁入；PKG-150 一期家具池）；AABB x[14.35,16.15] z[5.55,6.15]：西缘 14.35 避 d_bese 门扫掠（x≤14.30）、东缘留 0.25m 完成面余量、柜顶 2.50m 抵边吊底；#98 Tier 2 anchor 相对床——北墙线已随 R01 移至 z=4.82，墙锚需 0.67m 假缝隙，不取
-    - { type: bed_150, id: bese.bed_150, support: { kind: floor }, x: 15.35, z: 7.60, rotation: 270 }     # 床头靠东外墙；AABB x[14.35,16.35] z[6.85,8.35]；成品可搬走（DEC-2026-08-02-013 弹性设计转写对象）；#98 Tier 3 保持绝对——锚链根：bese.wardrobe_180 锚它（1 个跟随件），不编造跟随关系
+    - { type: wardrobe_180, id: bese.wardrobe_180, support: { kind: floor }, anchor: { source: furniture, id: bese.bed_150, offset: { x: -0.10, z: -1.75 } }, rotation: 180 } # 1.8m×0.6m×2.40m 推拉门成品衣柜（北墙边吊下；随功能自原父母房迁入；PKG-150 一期家具池）；AABB x[14.33,16.13] z[5.55,6.15]：西缘 14.33 避 d_bese 门扫掠（x≤14.30）、东缘留 0.25m 完成面余量、柜顶 2.50m 抵边吊底；#98 Tier 2 anchor 相对床——北墙线已随 R01 移至 z=4.82，墙锚需 0.67m 假缝隙，不取
+    - { type: bed_150, id: bese.bed_150, support: { kind: floor }, x: 15.33, z: 7.60, rotation: 270 }     # 床头靠东外墙；AABB x[14.33,16.33] z[6.85,8.35]；成品可搬走（DEC-2026-08-02-013 弹性设计转写对象）；#98 Tier 3 保持绝对——锚链根：bese.wardrobe_180 锚它（1 个跟随件），不编造跟随关系
     - { type: mattress_150 }
     - { type: curtain_set }
     - { type: ceiling_light }
@@ -514,7 +514,7 @@ furnishings:
     - { type: chair, id: study.chair, support: { kind: floor }, anchor: { source: furniture, id: study.desk, offset: { x: -0.60, z: 0 } }, rotation: 90 }       # DEC-018 书桌椅（原位保留）；2026-10-26 DEC-2026-10-26-R02：随书桌东移至 (6.30,7.80)，椅在桌西侧、朝东（rotation 90）
     - { type: study_seasonal_wardrobe_wall, id: study.seasonal_wardrobe_wall, support: { kind: floor }, wall: w_st_north, wall_side: south, rotation: 0, along: 0.90, wall_clearance: -0.06, width: 1.80, depth: 0.55 } # 2026-10-05 由客房东墙平移，2026-10-27 业主裁定做齐平：北段向西延 0.10 顶西墙（1.70→1.80m），与南延腿西脸齐平在 x=4.20 成 L；AABB x[4.20,6.00] z[5.55,6.10]；rotation=0 柜门朝南；北缘贴北墙边吊、东端避 d_study 扫掠 x≥6.15；防倾倒固定待结构确认
     - { type: study_seasonal_wardrobe_wall, id: study.seasonal_wardrobe_step_north, support: { kind: floor }, wall: w_mb_east, wall_side: east, rotation: 90, along: 0.739, wall_clearance: -0.06, width: 0.322, depth: 0.55 } # 2026-10-27 DEC-2026-10-27-R02 通顶台阶北段：腿沿 z=6.45（边吊南缘）拆分，北段 z[6.128,6.45] 长 0.322m、中心 6.289；顶 2.40（与北段同 catalog，留 0.10 灰缝到边吊底 2.50，不变）；与南段高腿在 z=6.45 面接、无重叠；AABB x[4.20,4.75] z[6.128,6.45]；rotation=90 柜门朝东；防倾倒固定待结构确认
-    - { type: study_seasonal_wardrobe_wall, id: study.seasonal_wardrobe_step_south, support: { kind: floor }, wall: w_mb_east, wall_side: east, rotation: 90, along: 1.83, wall_clearance: -0.06, width: 1.86, depth: 0.55, cabinetHeight: 2.8 } # 2026-10-27 DEC-2026-10-27-R02 通顶台阶南段：z[6.45,8.31] 长 1.86m、中心 7.38；cabinetHeight 2.8（配方实建高 2.40 等比拉高 2.8/2.40，顶贴平顶 2.80，无缝无填缝）；南端贴墙垛北脸 8.31；AABB x[4.20,4.75] z[6.45,8.31]；rotation=90 柜门朝东；防倾倒固定待结构确认
+    - { type: study_seasonal_wardrobe_wall, id: study.seasonal_wardrobe_step_south, support: { kind: floor }, wall: w_mb_east, wall_side: east, rotation: 90, along: 1.79, wall_clearance: -0.06, width: 1.78, depth: 0.55, cabinetHeight: 2.8 } # 2026-10-27 DEC-2026-10-27-R02 通顶台阶南段：z[6.355,8.135] 长 1.78m、中心 7.245；cabinetHeight 2.8（配方实建高 2.40 等比拉高 2.8/2.40，顶贴平顶 2.80，无缝无填缝）；南端贴墙垛北脸 8.135；AABB x[4.16,4.71] z[6.355,8.135]；rotation=90 柜门朝东；防倾倒固定待结构确认
     - { type: curtain_set }
     - { type: ceiling_light }
   living_dining:
@@ -574,7 +574,7 @@ furnishings:
     - { type: range_hood, id: kitchen.range_hood, support: { kind: wall, bottom: 1.35 }, anchor: { source: furniture, id: kitchen.gas_stove, offset: { x: 0, z: 0 } }, rotation: 90 } # 2026-10-14 trial: centered with cooktop; inferred duct unchanged
     - { type: sink, id: kitchen.sink, support: { kind: inset, host: kitchen.cabinet_run_north_east, surface: 0.89 }, anchor: { source: furniture, id: kitchen.cabinet_run_north_east, offset: { x: -0.44, z: -0.02 } }, rotation: 0 }         # DEC-2026-08-02-013 北墙水槽
     # 热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开阳台门洞和北墙地柜；燃气路由/CO 安全红线待物业/燃气公司确认
-    - { type: water_heater, id: kitchen.water_heater, support: { kind: wall, bottom: 1.07 }, x: 7.30, z: 1.00, rotation: 270 } # #98 Tier 3 外：暂定位 pending-site-data #26（DIMS 同注），非设计绝对；量房/SKU 冻结后终核是否入 Tier 3 或改关系化
+    - { type: water_heater, id: kitchen.water_heater, support: { kind: wall, bottom: 1.07 }, x: 7.60, z: 1.00, rotation: 270 } # #98 Tier 3 外：暂定位 pending-site-data #26（DIMS 同注），非设计绝对；量房/SKU 冻结后终核是否入 Tier 3 或改关系化
     - { type: ceiling_light }
     # 2026-10-16 水吧V2净水器机身预演：按业主图示尺寸163W×445D×379Hmm，置于水槽柜组东侧相邻格、避开水槽开孔和东墙柜段，中心(10.05,0.32)，底面y=0.08。
     # 台面独立净水龙头位置与 RO 给排水仍待 SKU；电源 sock_kitchen_purifier 已随本预演位对齐（DEC-2026-10-17-R20，position_status pending）；机身为图示尺寸代理、SKU及内部格局待核。
@@ -584,7 +584,7 @@ furnishings:
     - { type: shower_set }
     - { type: towel_set, id: mbath.towel_set, support: { kind: wall, bottom: 0.825 }, wall: w_west_lower, wall_side: east, rotation: 0, along: 0.13, wall_clearance: 0.04 } # 暂定：来自 vanity/plumbing anchor 的设计位置，待量房确认
     # vanity/faucet 已外移至套间条带（2026-08-25，见 master_bedroom furnishings）
-    - { type: exhaust_fan, id: mbath.exhaust_fan, support: { kind: ceiling, face: 2.50, drop: 0.075 }, x: 1.00, z: 2.70 }                # DEC-019 湿区中心吊顶，避开内开门扇扫掠区；#98 Tier 3 保持绝对——顶面器具：按吊顶中心定位，无墙锚/家具宿主
+    - { type: exhaust_fan, id: mbath.exhaust_fan, support: { kind: ceiling, face: 2.50, drop: 0.075 }, x: 1.00, z: 2.49 }                # DEC-019 湿区中心吊顶，避开内开门扇扫掠区；#98 Tier 3 保持绝对——顶面器具：按吊顶中心定位，无墙锚/家具宿主
   guest_bath:
     # 南侧开放洗漱区纳入 guest_bath 语义边界；vanity 以 w_gbath_east_open_vanity 西侧完成面定位
     # （wall/wall_side/along 机制：along 自墙段北端量到柜中心，柜体在墙段上两端贴死），背面朝东、
@@ -596,12 +596,12 @@ furnishings:
     # 毛容约 56L、可用约 40L）。DEC-2026-09-09-R7 柜深 0.40→0.50 全藏基站。
     # 2026-11-06 口径 A：本墙已在 model-geometry.yaml 声明 line_datum: centerline（墙线=渲染墙盒中心线、
     # 完成面=线±半墙厚），本柜背沿即该口径的西完成面，结构真值待 pending #76 量房。
-    - { type: vanity, id: gbath.vanity, support: { kind: floor }, wall: w_gbath_east_open_vanity, wall_side: west, rotation: 270, along: 0.405, wall_clearance: 0.0, vanity_layout: { width: 0.69, depth: 0.50, height: 0.75, robot_bay_width: 0.50, robot_bay_clear_width: 0.46, panel_thickness: 0.02 } }
+    - { type: vanity, id: gbath.vanity, support: { kind: floor }, wall: w_gbath_east_open_vanity, wall_side: west, rotation: 270, along: 0.345, wall_clearance: 0.0, vanity_layout: { width: 0.69, depth: 0.50, height: 0.75, robot_bay_width: 0.50, robot_bay_clear_width: 0.46, panel_thickness: 0.02 } }
     - { type: faucet }
-    - { type: toilet, id: gbath.toilet, support: { kind: floor }, x: 6.75, z: 3.05, rotation: 270 }      # 2026-08-29 修正：靠东墙坐东朝西；真实模型 AABB x[6.525,7.075]、z[2.85,3.25]，完全位于玻璃隔断南侧且不越东墙；南门洞西移后避让 d_gbath 内开扫掠；#98 Tier 3 保持绝对——卫浴器具：给水点 toilet_gbath 服务马桶中心 (6.75,3.05)（见 plumbing.yaml）；排污口（坑距）未定（pending-site-data #31），未与立管/排污点绑定；不锚墙/家具
+    - { type: toilet, id: gbath.toilet, support: { kind: floor }, x: 6.90, z: 3.05, rotation: 270 }      # 2026-08-29 修正：靠东墙坐东朝西；真实模型 AABB x[6.675,7.225]、z[2.85,3.25]，完全位于玻璃隔断南侧且不越东墙；南门洞西移后避让 d_gbath 内开扫掠；#98 Tier 3 保持绝对——卫浴器具：马桶中心 (6.90,3.05)（2026-11-26 量房：东移 0.15m 避 d_gbath 门扫掠）；给水点 toilet_gbath 仍在旧中心 (6.75,3.05)（见 plumbing.yaml），待水电协调员同移 0.15m；排污口（坑距）未定（pending-site-data #31），未与立管/排污点绑定；不锚墙/家具
     - { type: shower_set }
     - { type: exhaust_fan, id: gbath.exhaust_fan, support: { kind: ceiling, face: 2.50, drop: 0.075 }, x: 6.35, z: 2.45 }                # 北侧淋浴区吊顶；#98 Tier 3 保持绝对——顶面器具：按吊顶中心定位，无墙锚/家具宿主
-    - { type: mirror_cabinet_gbath, id: gbath.mirror_cabinet, support: { kind: wall, bottom: 1.10 }, wall: w_gbath_east_open_vanity, wall_side: west, rotation: 270, along: 0.405, wall_clearance: 0.0 } # 2026-09-09 DEC-2026-09-09-R2 候选未冻结：镜柜（0.70×0.90×0.14，y[1.10,2.00]）替换台盆内置平镜；顶柜/层板暂不做（业主定"先一"）。挂在 placed 末尾，保持 vanity:0/toilet:1/exhaust_fan:2 的 GLB 节点序号不变。2026-11-06 口径 A（墙线=渲染墙盒中心线，model-geometry 本墙 line_datum 声明）通用完成面规则后：背面由墙线 7.20 移到西完成面 7.14，中心 x 7.13→7.07，消除原贴线姿态穿渲染墙盒 0.06；结构真值待 pending #76 量房
+    - { type: mirror_cabinet_gbath, id: gbath.mirror_cabinet, support: { kind: wall, bottom: 1.10 }, wall: w_gbath_east_open_vanity, wall_side: west, rotation: 270, along: 0.330, wall_clearance: 0.0 } # 2026-09-09 DEC-2026-09-09-R2 候选未冻结：镜柜（0.70×0.90×0.14，y[1.10,2.00]）替换台盆内置平镜；顶柜/层板暂不做（业主定"先一"）。挂在 placed 末尾，保持 vanity:0/toilet:1/exhaust_fan:2 的 GLB 节点序号不变。2026-11-06 口径 A（墙线=渲染墙盒中心线，model-geometry 本墙 line_datum 声明）通用完成面规则后：背面由墙线 7.20 移到西完成面 7.14，中心 x 7.13→7.07，消除原贴线姿态穿渲染墙盒 0.06；结构真值待 pending #76 量房
     - { type: robot_dock_gbath, id: gbath.robot_dock, support: { kind: floor }, mount: { furniture_id: gbath.vanity, slot: robot_bay }, rotation: 270 } # 2026-11-05 本 PR（DEC-2026-11-05-R5）：泊位随定案布局北移——机器人仓由柜体中位改为贴北端（排水穿墙端）；2026-11-06 issue #98 PR-3 起坐标不再手写，改挂 gbath.vanity 的 robot_bay 槽位（世界坐标由 resolveFurniturePlacement 从柜体摆位与 vanity_layout 推出，3D/DXF/校验同一解算）。云鲸 JX 超薄上下水版 YJCC034（京东 SKU 100237988935；官方说明书 J65 载 机器人 YJCC034 + 基站 YJCB034S，参数页 410×433×280mm / 8.71kg / 进水压力 0.08-0.8MPa，与仓库口径一致）。**DEC-2026-11-04-R4 的「格净宽 0.51 居中 + 两侧各 0.05 + 两条 0.075 旁柜」几何已被本 DEC 取代**：现行几何（FixtureFactory buildVanity，参数见 gbath.vanity 的 vanity_layout）= 北端机器人仓区 + 南端抽屉区；仓无底板、通高到盆底、仓门遮 y[0.15,0.75] 铰北侧外开、底缝供机器人（高 0.095m）关门进出；头顶余量兼作台盆排水过管走廊（下水器仓内转 90° 向北穿 w_gbath_south 排内卫沉箱，DEC-2026-09-09-R6），**头顶不得加固定层板**。J65 官方手册证伪 DEC-2026-11-04-R3 的推翻理由：超薄版尘袋/清洁液在基站**前面板**后（J65 p7 步骤 7/8），无顶部开盖机构；官方摆放口径=前方≥0.45m 空旷且无悬崖（2026-11-06 纠正：原「后≥0.3m」系误读图中临空边缘安全距离，非背向退墙要求，背沿贴墙不冲突）。仓门开启态与水平拉出整台基站断管仍待预演（设计目标、未经模型验证）；sock_gbath_robot 迁仓侧面（南侧隔板）后坐标待定，旧坐标 (7.05,4.10) 不得用于下单；柜内安装官方无章节，须云鲸官方预约勘测（400-080-0630 / 自主预约安装流程，请勿自行拆箱）
     # 2026-10-17 C 方案（DEC-2026-10-17-R20）：电热毛巾架落开放洗漱区西墙东脸，与台盆/镜柜同沿墙
     # 坐标（along 0.405，对齐台盆轴），
@@ -609,7 +609,7 @@ furnishings:
     # SKU 未选型，0.55×0.10×0.75 为图示代理尺寸；sock_gbath_towel 已同步迁位至同一轴线。
     # 2026-11-06 口径 A（墙线=渲染墙盒中心线，model-geometry 本墙 line_datum 声明）通用完成面规则后：
     # 背面由墙线 5.60 移到东完成面 5.66，中心 x 5.65→5.71，消除原贴线姿态穿渲染墙盒 0.06。
-    - { type: heated_towel_rack, id: gbath.heated_towel_rack, support: { kind: wall, bottom: 1.05 }, wall: w_gbath_west_open_vanity, wall_side: east, along: 0.405, wall_clearance: 0.0, rotation: 90 }
+    - { type: heated_towel_rack, id: gbath.heated_towel_rack, support: { kind: wall, bottom: 1.05 }, wall: w_gbath_west_open_vanity, wall_side: east, along: 0.275, wall_clearance: 0.0, rotation: 90 }
   balcony:
     # 洗烘叠放贴西墙（给水 faucet_balcony_washer / 墙排 drain_balcony_washer / 插座 sock_balcony_washer 均在 w_balc_west z=1.5）
     - { type: washer, id: balcony.washer, support: { kind: floor }, wall: w_balc_west, wall_side: east, rotation: 90, along: 0.50, wall_clearance: -0.01 }   # 10kg 滚筒贴西墙面朝东；与插座/给水偏差 0.35m（显形：插座与水源在墙线 z=1.5、机身中心离墙 0.35m，待量房/水电交底裁定，不静默改线）
@@ -643,10 +643,10 @@ constraints:
     - "任何外立面改动需物业/设计院审批"
     - "开敞外廊消防通道必须保持畅通"
   notes:
-    - "套内 94.76㎡（合同净口径）+ 赠送约 28.90㎡（模型 bbox 口径：入户花园 13.35㎡、南向大阳台 13.95㎡、西设备平台 1.60㎡）与预测建面 119.38㎡ **不可直接相加**：94.76 + 28.90 = 123.66 ≠ 119.38，三者分属净口径/毛口径/赠送计入规则三套规则，加法口径的对齐需合同分户图裁定，见 原量房台账 #40（已退场，未决项现由对象 blocker 承载）"
+    - "套内 94.76㎡（合同净口径）+ 赠送约 28.90㎡（模型 bbox 口径：入户花园 13.041㎡、南向大阳台 13.95㎡、西设备平台 2.7331㎡）与预测建面 119.38㎡ **不可直接相加**：94.76 + 28.90 = 123.66 ≠ 119.38，三者分属净口径/毛口径/赠送计入规则三套规则，加法口径的对齐需合同分户图裁定，见 原量房台账 #40（已退场，未决项现由对象 blocker 承载）"
     - "原顶（结构板底）约 2.8m，室内净高 2.8m，吊顶和柜体设计按 2.8m 净高"
     - "核心设计点：入户花园作为玄关过渡区，兼顾消防通道"
-    - "HVAC：仅西设备平台可用，面积约 1.60㎡（模型 bbox 口径；含 r=1.0 西北圆角可用约 1.39㎡），分体机外机难以全部安置，建议中央空调/多联机方案"
+    - "HVAC：仅西设备平台可用，面积约 2.7331㎡（2026-11-26 量房 bbox；旧 1.60㎡ / r=1.0 圆角可用约 1.39㎡ 作废），分体机外机难以全部安置，建议中央空调/多联机方案"
     - "窗帘为刚需：全屋玻璃幕墙（三层 Low-E 中空，隔热已满足），窗帘主功能为遮光+防眩光+隐私；主卧/次卧/客房/书房/客厅均需窗帘，主卧/客厅/客房/书房预留电动窗帘电源"
     - "预算目标：四池口径 192k（硬装 118k + 暖通 29k + 家具软装 35k + 家电 10k），ceiling 190k，务实档（历史口径；2026-09-12 起一期执行以 schedule/phase-1/control.yaml 的 20 万上限为准）"
 
