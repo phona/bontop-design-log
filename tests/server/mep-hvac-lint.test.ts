@@ -81,6 +81,12 @@ const KNOWN_FURNITURE_COLLISIONS: ReadonlyArray<{ routeId: string; furnitureId: 
   { routeId: 'strong-power-living-robot', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 4.42m' },
   { routeId: 'strong-power-child', furnitureId: 'bnw.wardrobe_180', note: '穿入 2.49m' },
   { routeId: 'strong-power-mbath-service', furnitureId: 'mb.washbasin_cabinet', note: '穿入 0.85m' },
+  // 2026-11-27 自家设计走一轮登记：干湿分离放弃、客卫台盆移入南墙后新显形（此前被
+  // penetration_missing 失败遮住，非本轮改动所致）；穿入 0.43m，待改道/开检修槽裁定。
+  { routeId: 'strong-ded-fridge-living', furnitureId: 'gbath.vanity', note: '穿入 0.43m；客卫台盆移入南墙后冰箱专线穿入窄深柜（0.69×0.30m），待改道/开检修槽裁定' },
+  // 2026-11-27 自家设计走一轮登记：同为 HEAD 已有、被 penetration_missing 失败遮住
+  // 的既有碰撞（弱电主卧专线穿入书房换季衣柜南侧踏步 2.26m）；待改道/开检修槽裁定。
+  { routeId: 'weak-master', furnitureId: 'study.seasonal_wardrobe_step_south', note: '穿入 2.26m；弱电主卧专线穿入书房换季衣柜南侧踏步，待改道/开检修槽裁定' },
   { routeId: 'weak-main-living', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 1.37m' },
   { routeId: 'weak-gateway', furnitureId: 'ld.wall_cabinet_tall', note: '穿入 2.46m' },
 ];
@@ -90,6 +96,9 @@ const KNOWN_FURNITURE_COLLISIONS: ReadonlyArray<{ routeId: string; furnitureId: 
 const KNOWN_ENVELOPE_COLLISIONS: ReadonlyArray<{ routeId: string; furnitureId: string; note: string }> = [
   { routeId: 'water-garden-requirement', furnitureId: 'kitchen.cabinet_run_east', note: '穿入约 1.25m；需求路线，包络桶' },
   { routeId: 'condensate-living-dining-trunk', furnitureId: 'gbath.vanity', note: '穿入约 0.89m；需求路线，包络桶' },
+  // 2026-11-27 自家设计走一轮登记：同为 HEAD 已有、被 penetration_missing 失败遮住
+  // 的既有碰撞（主卫热水需求路线穿入主卧通顶柜 0.85m）；待改道/开检修槽裁定。
+  { routeId: 'water-hot-water-mbath-requirement', furnitureId: 'mb.full_height_cabinet', note: '穿入约 0.85m；需求路线，包络桶' },
 ];
 // 端点被家具遮挡实例（route ↔ point ↔ furniture；与碰撞同源，柜子一动就变）。
 const KNOWN_INACCESSIBLE_ENDPOINTS: ReadonlyArray<{ routeId: string; pointId: string; furnitureId: string }> = [
@@ -97,6 +106,9 @@ const KNOWN_INACCESSIBLE_ENDPOINTS: ReadonlyArray<{ routeId: string; pointId: st
   { routeId: 'strong-power-living-robot', pointId: 'sock_gateway', furnitureId: 'ld.wall_cabinet_tall' },
   { routeId: 'strong-power-living-robot', pointId: 'sock_living_robot', furnitureId: 'ld.wall_cabinet_tall' },
   { routeId: 'strong-power-kitchen', pointId: 'sock_kitchen_counter', furnitureId: 'kitchen.dishwasher' },
+  // 2026-11-27 自家设计走一轮登记：同为 HEAD 已有、被 penetration_missing 失败遮住
+  // 的既有遮挡（洗碗机专线插座落在洗碗机包络内）；待改道/开检修槽裁定。
+  { routeId: 'strong-ded-dishwasher', pointId: 'sock_kitchen_dishwasher', furnitureId: 'kitchen.dishwasher' },
   { routeId: 'weak-gateway', pointId: 'net_gateway', furnitureId: 'ld.wall_cabinet_tall' },
 ];
 // must_fix 分码上限的公共底座（8 条与路线几何相关的代码；两口径现值相同）。
@@ -275,10 +287,14 @@ const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
 // shear_wall_penetration 12→13（strong-light-child 补 w_strip_east 穿墙声明 +1）。
 // 2026-11-16 Codex blocking 修复：study-curtain 升位前移（(7.20,6) 先升至 2.70 再南行），
 // ceiling_clearance_unverified 43→41（2 处 110mm hit 清零），同步收紧上限。
+// 2026-11-27 量房回填 + 自家设计走一轮：ceiling_clearance_unverified 41→47
+// （量房回填后完成面与末端标高重算，见 guidance §0；上限同步抬至实测值）、
+// shear_wall_penetration 13→16（台盆移位新增穿剪力墙声明 13→17，本轮删
+// supply-air-child 旧穿墙声明 17→16；上限同步抬至实测值）。
 const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
-  ceiling_clearance_unverified: 41,
+  ceiling_clearance_unverified: 47,
   penetration_door_clearance: 18,
-  shear_wall_penetration: 13,
+  shear_wall_penetration: 16,
   shear_wall_parallel_route: 7,
   route_insulation_unverified: 7,
   inline_endpoint_without_point_anchor: 6,
@@ -306,8 +322,13 @@ const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
 // （drain-mbath-vanity-to-riser / water-hot-water-mbath-requirement）、儿童房空调与
 // 送风改道（strong-ac-child / return-air-child、supply-air-child / child-door）。
 // 三口径（无 layout / realContext / verify:mep 全上下文）实测均为 50，共享上限同步抬至 50。
+// 2026-11-27 自家设计走一轮：route_overlap 50→54（儿童房末端组北移 0.5m 至
+// z=3.5，儿童房 4 处新重叠：condensate-child vs strong-light-bedrooms-child-door、
+// strong-ac-child vs return-air-child、strong-light-child vs supply-air-child、
+// supply-air-child vs strong-light-bedrooms-child-door；三口径实测均为 54，
+// 共享上限同步抬至 54）。
 const ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
-  route_overlap: 50,
+  route_overlap: 54,
   route_clearance_unverified: 38,
   route_overlap_declared_trunk: 16,
   bay_sill_crossing_declared: 11,

@@ -390,7 +390,7 @@ describe('element census snapshot', () => {
       );
     }
     assert.equal(result.summary.undeclared, 2, '只剩 2 个显形申报 undeclared 的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 38, '2026-11-08 issue #98 S2-A：38 个 pending 全部由 config status: pending 承载（原 S1-B 口径 37，其中 8 个原经 ledger 规则、2 个原为 undeclared 申报缺口；2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel 及其 pending_selection blocker，37→36；2026-11-27 业主裁定全屋增压泵只预留：新增 pump_booster_reserve / sock_booster_pump_reserve（status: pending），36→38）');
+    assert.equal(result.summary.pending, 37, '2026-11-08 issue #98 S2-A：37 个 pending 全部由 config status: pending 承载（原 S1-B 口径 37，其中 8 个原经 ledger 规则、2 个原为 undeclared 申报缺口；2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel 及其 pending_selection blocker，37→36；2026-11-27 业主裁定全屋增压泵只预留：新增 pump_booster_reserve / sock_booster_pump_reserve（status: pending），36→38；2026-11-27 自家设计走一轮：faucet_mbath_vanity 设计值已定（出水嘴 1.05m/阀体 1.00m），status pending→inferred，38→37）');
     const confirmed = result.states.filter((state) => state.status === 'confirmed');
     assert.equal(confirmed.length, 6, 'confirmed 剩 6 个且全部来自 hvac anchor（ac_* 成交映射），不再有 DEC 引用产生的 confirmed');
     for (const state of confirmed) assert.match(state.statusSource, /config\/hvac\.yaml/, `confirmed 的权威必须是 config/hvac.yaml：${state.id} → ${state.statusSource}`);
@@ -402,7 +402,7 @@ describe('element census snapshot', () => {
     const result = deriveElementStates({ elements, issues: [] });
     const statusById = new Map(result.states.map((state) => [state.id, state.status]));
     const gate = checkBlockers(elements as BlockerSubject[], (subject) => statusById.get(subject.id));
-    assert.equal(gate.checked, 40, `受门禁管辖的 pending/undeclared 构件数（pending 38 + undeclared 2）：${gate.checked}`);
+    assert.equal(gate.checked, 39, `受门禁管辖的 pending/undeclared 构件数（pending 37 + undeclared 2）：${gate.checked}`); // 2026-11-27 自家设计走一轮：faucet_mbath_vanity 设计值已定，status pending→inferred，40→39
     assert.deepEqual(gate.issues.map((issue) => formatBlockerIssue(issue)), [], '每个 pending/undeclared 构件都必须带结构完整的 blocker');
     // 反向锚：门禁不是恒真式——把一个对象的 blocker 抹掉，它必须报红。
     const stripped = elements.map((item) => (item.id === 'electrical:sock_child_ac' ? { ...item, blocker: undefined } : item));

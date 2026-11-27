@@ -75,8 +75,10 @@ export const LD_DECO_ROW_EPSILON_M = 0.005;
  * 证据：phase5-survey.md §3-7「两条底面行恰好铺满 [7.20,13.40]（A survey2 §C 实跑 tiles
  * band exactly），侧面南行缺口 [13.2,13.4]、北行缺口 [7.2,7.7]（R18 附则写明的有意空白）」；
  * 北行空白的 config 内声明见 hvac.yaml supply_dining / LD-deco-side-north reason
- * 「西端 x[7.20,7.70] 保持与餐厅西服务带 ceiling_dining_west_band 的正交交接、不贴百叶
+ * 「西端 x[7.15,7.70] 保持与餐厅西服务带 ceiling_dining_west_band 的正交交接、不贴百叶
  * （R18 附则）」。blank x1/x2 必须与带边界或相邻段端字面相等（ld_deco_row_gap 联合执法）。
+ * 2026-11-27 量房回填：设备带由 [7.20,13.40] 改为 [7.15,13.37]（客厅西墙 7.20→7.15、
+ * 东墙 13.40→13.37），北空白西端随之 7.20→7.15，南空白随行 z 5.56→5.465；各段端点同步改，见本轮 hvac.yaml。
  */
 export interface LdDecoIntentionalBlank {
   mount_face: 'north' | 'south' | 'east' | 'west' | 'bottom';
@@ -87,12 +89,12 @@ export interface LdDecoIntentionalBlank {
 }
 export const LD_DECO_INTENTIONAL_BLANKS: readonly LdDecoIntentionalBlank[] = [
   {
-    mount_face: 'north', z: 4.30, x1: 7.20, x2: 7.70,
-    basis: 'R18 附则：与 ceiling_dining_west_band 正交交接、不贴百叶（hvac.yaml supply_dining reason；phase5-survey.md §3-7 北行缺口）',
+    mount_face: 'north', z: 4.30, x1: 7.15, x2: 7.70,
+    basis: 'R18 附则：与 ceiling_dining_west_band 正交交接、不贴百叶（hvac.yaml supply_dining reason；phase5-survey.md §3-7 北行缺口）；2026-11-27 量房回填：空白西端随客厅西墙 7.20→7.15 外延至 7.15，东端 7.70 不动',
   },
   {
-    mount_face: 'south', z: 5.56, x1: 13.20, x2: 13.40,
-    basis: 'R18 附则：南侧立面东端有意空白（phase5-survey.md §3-7 南行缺口，A survey2 §C 实测）',
+    mount_face: 'south', z: 5.465, x1: 13.20, x2: 13.40,
+    basis: 'R18 附则：南侧立面东端有意空白（phase5-survey.md §3-7 南行缺口，A survey2 §C 实测）；2026-11-27 量房回填：南行 z 5.56→5.465（边吊南缘 5.55→5.455），空白随行北移，x 范围不动',
   },
 ];
 

@@ -81,7 +81,7 @@
  *  涂装 9,357 ← 计算器科目 painting：actual（人工，paint-scope 实算面积 × base.json
  *    费率 25 元/㎡）+ candidateActual（latex_paint_01 候选材料）。PKG-080 无
  *    estimated_need，包侧没有第二个数，不构成双算。
- *  洁具 14,798 ← PKG-100 estimated_need_cny（构成 5,598 + 3,500 + 1,300 + 1,100 +
+ *  洁具 14,026 ← PKG-100 estimated_need_cny（构成 4,826 + 3,500 + 1,300 + 1,100 +
  *    1,800 + 1,500，断言构成和；不含浴霸，见 need 注解）。科目 sanitary 的 1,600
  *    只是安装人工（200 元/件 × fixture_count），与本行同范围，不另计。
  *  橱柜 13,500 ← PKG-110 estimated_need_cny（构成 12,000 + 1,500，断言构成和）。
@@ -1675,7 +1675,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
   // ── 洁具（PKG-100）：estimated_need，构成断言 ──
   {
     const need = needOf(control, 'PKG-100');
-    assertDecomposition('cost-sanitary', [5598, 3500, 1300, 1100, 1800, 1500], need);
+    assertDecomposition('cost-sanitary', [4826, 3500, 1300, 1100, 1800, 1500], need);
     rows.push({
       id: 'cost-sanitary',
       name: '洁具与五金',
@@ -1686,7 +1686,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
       tierReason: '报价轮构成含封顶价与候选项（马桶未锁定、浴室柜待报价），未锁价',
       // need 构成逐项对应 -01..-05 与六条来源轮次；-06 浴霸自购，不计价登记。
       coversItems: ['COST-100-01', 'COST-100-02', 'COST-100-03', 'COST-100-04', 'COST-100-05', 'QR-2026-10-03-14', 'QR-2026-10-03-15', 'QR-2026-10-03-16', 'QR-2026-10-03-17', 'QR-2026-10-03-18', 'QR-2026-10-03-19'],
-      derivation: `业主询价轮次（2026-10-03）经 DEC-2026-10-05-R12、DEC-2026-10-07-R02 两次收口：智能马桶封顶 ${yuan(5598)}（九牧 ZQ6650 cap、未锁定）+ 浴室柜 ${yuan(3500)}（主卫 ${yuan(1500)} + 客卫 ${yuan(2000)}）+ 花洒 ${yuan(1300)} + 龙头下水角阀 ${yuan(1100)} + 固定玻璃屏 ${yuan(1800)} + 通用五金 ${yuan(1500)} = PKG-100 的 estimated_need_cny ${yuan(need)}。不含浴霸：COST-100-06 业主自购待决策（QR-2026-10-05-01 ${yuan(1362)}）未计入`,
+      derivation: `业主询价轮次（2026-10-03）经 DEC-2026-10-05-R12、DEC-2026-10-07-R02 两次收口，2026-11-27 自家设计走一轮马桶换型：智能马桶 ${yuan(4826)}（九牧 ZS690P ¥2,413.15/台×2=¥4,826.30，计价取整 ¥4,826；京东/天猫实付价，ZQ6650 cap 作废）+ 浴室柜 ${yuan(3500)}（主卫 ${yuan(1500)} + 客卫 ${yuan(2000)}）+ 花洒 ${yuan(1300)} + 龙头下水角阀 ${yuan(1100)} + 固定玻璃屏 ${yuan(1800)} + 通用五金 ${yuan(1500)} = PKG-100 的 estimated_need_cny ${yuan(need)}。不含浴霸：COST-100-06 业主自购待决策（QR-2026-10-05-01 ${yuan(1362)}）未计入`,
     });
   }
 

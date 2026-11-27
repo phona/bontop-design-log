@@ -152,7 +152,13 @@ test('§6 验收基线：MEP 三桶/电气规则组的条数与代码明细必�
   //    2026-11-23 通长假梁改道（门头盒暴露的飞线改贴墙/进梁，空调电源末段拆正交）：
   //    verify:mep 实算 88→83（route_overlap 56→54、unsupported_span 8→5、
   //    route_not_orthogonal 仍为 0）。这是几何变了以后的实算钉，不是放宽上限。
-  assert.equal(mep.counts.errors, 83, `verify:mep must_fix errors 应为 83，实际 ${mep.counts.errors}`);
+  //    2026-11-27 量房回填 + 自家设计走一轮：83→87（本轮接手时 HEAD 实测：
+  //    量房回填与干湿分离放弃移台盆后，客卫南缘入口墙新增穿墙未声明 18 处 +
+  //    孤儿声明 2 条；survey 91→95、envelope 134→132，见 guidance §6 表与台账）
+  //    →67（本轮：补 17 条客卫南缘入口墙穿墙声明 + 清 2 条孤儿声明，
+  //    penetration_missing 18→0、penetration_declaration_orphaned 2→0；
+  //    其余 must_fix 码不变）。这是几何变了以后的实算钉，不是放宽上限。
+  assert.equal(mep.counts.errors, 67, `verify:mep must_fix errors 应为 67，实际 ${mep.counts.errors}`);
   assert.equal(mep.categories.must_fix_before_briefing?.count, mep.counts.errors, 'errors 必须恰为 must_fix 桶计数（硬门禁口径）');
   assert.equal(electrical.counts.errors, 0, `verify:electrical 应 0 error，实际 ${electrical.counts.errors}`);
 
@@ -321,11 +327,8 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
   // 旧基线 0 error / 22 warning、15 条已接受项、68 条路线 / 13 个吊顶分区、13 处穿墙点
   assert.equal(/0 error \/ 22 warning/.test(guidance), false, '§6 的旧基线「0 error / 22 warning」必须已替换为实跑口径');
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
-  assert.match(guidance, /涉及\s*\*\*38 条路线 \/ 14 个吊顶分区\*\*/); // 2026-11-26/27 量房回填后现值 38/14（34/12→38/14：2026-11-26 回填主卧梁完成面 2.50→2.60 增 8 处、涉及路线 34→39；2026-11-27 业主实测主卧梁完成面 2.60→2.50，5 条主卧路由退出、4 条窗帘盒路由进入，39→38，分区 +curtain_box_study_south / curtain_box_parent_south →14）。
-  // 注意：38/14 是文档当前自述值；verify:facts 实算为 39 条路线 / 15 个吊顶分区（见 §0 测试）——
-  // 干湿分离重画一步漏记：strong-power-mbath-service 首次进入涉及集合（+1 路线）且 ceiling_master_bath
-  // 首次进入涉及分区（+1 分区），文档 prose 链只记了 +1 处、没记路线/分区增量。该漂移由 §0 测试钉住，
-  // 本行只钉「文档不是 2026-09-07 旧快照」，不等同于「文档与实算一致」。
+  assert.match(guidance, /涉及\s*\*\*39 条路线 \/ 15 个吊顶分区\*\*/); // 2026-11-27 自家设计走一轮对账后现值 39/15（2026-11-26/27 量房回填 38/14；干湿分离放弃后 strong-power-mbath-service 新入 ceiling_master_bath 涉及集合，+1 路线/+1 分区；此前 38/14 为漏记，文档 prose 链已补记，见 §0 测试）。
+  // 注意：本行只钉「文档不是 2026-09-07 旧快照」，不等同于「文档与实算一致」——与实算一致由 §0 测试钉住。
   // DEC-2026-10-28-R05：三个旧 curtain_box_* 分区退出涉及集合，分区数合法回到 13（16→13），旧快照守卫改钉路线数
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
   assert.equal(/design-datum\.yaml`（13 处）/.test(guidance), false, '§1 的穿墙点留档条数必须已按 design-datum.yaml 实条数改写');

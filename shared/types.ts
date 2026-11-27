@@ -1713,6 +1713,8 @@ export interface HvacReservedHole {
   not_for_construction: true;
   note: string;
   survey_confirmation: string;
+  // 2026-11-27 自家设计走一轮：本孔对应的冷媒路由 id（设计声明，infer）；null = 本轮设计无路由用此孔。
+  serves_route?: string | null;
 }
 
 export interface HvacDiagram {

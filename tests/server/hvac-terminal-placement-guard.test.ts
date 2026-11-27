@@ -129,15 +129,15 @@ test('绿：validateProjectHvacFacts（加载期门禁）对现配置不抛—�
   validateProjectHvacFacts(hvacFacts, { electrical, ceiling });
 });
 
-test('绿：LD-deco 铺满 lint——4 行精确铺满 [7.20,13.40]，R18 两条有意空白显式登记', () => {
+test('绿：LD-deco 铺满 lint——4 行精确铺满 [7.15,13.37]，R18 两条有意空白显式登记', () => {
   const issues = lintHvacLdDecoBandFill({ terminals: diagram.terminals, ceiling });
   assert.deepEqual(issues, [], `铺满 lint 必须全绿，实际：${issues.map((entry) => entry.message).join('；')}`);
-  // 例外登记快照（phase5-survey §3-7：两条底面行恰好铺满；侧面南 [13.2,13.4]、北 [7.2,7.7] 为 R18 有意空白）。
+  // 例外登记快照（phase5-survey §3-7：两条底面行恰好铺满；侧面南 [13.2,13.4]、北 [7.15,7.7] 为 R18 有意空白，北空白西端 2026-11-27 量房回填随西墙 7.20→7.15 外延）。
   assert.deepEqual(LD_DECO_INTENTIONAL_BLANKS.map((blank) => `${blank.mount_face}@${blank.z}:${blank.x1}-${blank.x2}`), [
-    'north@4.3:7.2-7.7',
-    'south@5.56:13.2-13.4',
+    'north@4.3:7.15-7.7',
+    'south@5.465:13.2-13.4',
   ]);
-  // 铺满证据（A survey2 §C tiles band exactly 同口径）：两行底面行的装饰+功能段并集端点。
+  // 铺满证据（A survey2 §C tiles band exactly 同口径）：两行底面行的装饰+功能段并集端点。（2026-11-27 量房回填：带 [7.20,13.40]→[7.15,13.37]。）
   const rowSegments = (z: number): Array<[number, number]> => diagram.terminals
     .filter((terminal) => terminal.mount_face === 'bottom' && Math.abs(terminal.position.z - z) < 1e-9)
     .map((terminal) => [terminal.position.x - terminal.length! / 2, terminal.position.x + terminal.length! / 2] as [number, number])
@@ -145,7 +145,7 @@ test('绿：LD-deco 铺满 lint——4 行精确铺满 [7.20,13.40]，R18 两条
   for (const z of [5.125, 4.725]) {
     const segments = rowSegments(z);
     assert.equal(segments.length, 5, `z=${z} 行应有 5 段（2 功能 + 3 装饰）`);
-    assert.ok(Math.abs(segments[0]![0] - 7.20) < 1e-9 && Math.abs(segments.at(-1)![1] - 13.40) < 1e-9, `z=${z} 行必须铺满 [7.20,13.40]`);
+    assert.ok(Math.abs(segments[0]![0] - 7.15) < 1e-9 && Math.abs(segments.at(-1)![1] - 13.37) < 1e-9, `z=${z} 行必须铺满 [7.15,13.37]`);
     for (let i = 1; i < segments.length; i += 1) {
       assert.ok(Math.abs(segments[i - 1]![1] - segments[i]![0]) < 1e-6, `z=${z} 行段间必须端点相接无缝无叠`);
     }
@@ -234,7 +234,7 @@ test('红：把 R18 有意空白堵上 → ld_deco_row_fills_intentional_blank�
     render_coordination: false,
     finish: 'matte_black',
     render_style: 'linear_slot',
-    reason: '探针：企图用装饰段补 [7.20,7.70] 正交交接空白',
+    reason: '探针：企图用装饰段补 [7.15,7.70] 正交交接空白',
   };
   const issues = lintHvacLdDecoBandFill({ terminals: [...diagram.terminals, blankFiller], ceiling });
   assert.ok(codesOf(issues).includes('ld_deco_row_fills_intentional_blank'),
@@ -252,16 +252,16 @@ test('红：带边界与登记空白脱钩（band x1 漂移）→ 铺满判定�
 
 // ─────────────────────────── 快照钉住（裁定二/三/四 + 机械项） ───────────────────────────
 
-test('钉：25 个吊顶口与 5 个冷凝候选坐标零变化（S2 不动坐标；例外 branch_dining y 与 2026-11-23 通长假梁 supply_master）', () => {
+test('钉：25 个吊顶口与 5 个冷凝候选坐标零变化（S2 不动坐标；例外 branch_dining y、2026-11-23 通长假梁 supply_master、2026-11-27 量房回填 supply_living/access_child/LD-deco-side-north）', () => {
   // 接触对象逐点位快照：offset 只加关系声明，position 一字不动（裁定一）。
   const pins: Array<[string, [number, number, number]]> = [
     ['access_dining', [8.00, 2.49, 4.70]],
     ['access_study', [15.05, 2.49, 5.85]],
-    ['access_child', [4.25, 2.49, 4.0]],
+    ['access_child', [4.25, 2.49, 3.5]], // 2026-11-27 量房回填：儿童房南墙边吊北移至 z[3.25,3.75]（带心 3.5），检修口随内机北移 0.5m；x=4.25、y=2.49 不动
     ['return_parent', [6.5, 2.49, 6.15]],
     ['supply_master', [3.45, 2.62, 5.44]], // 2026-11-27 Cluster D 修正：通长假梁南缘 5.55→5.455（量房回填），reason 规则“距梁南立面 0.015m”重算 5.455−0.015=5.44；x=3.45、y=2.62 不动
-    ['supply_living', [11.45, 2.65, 5.56]],
-    ['LD-deco-side-north', [11.55, 2.65, 4.30]],
+    ['supply_living', [11.45, 2.65, 5.465]], // 2026-11-27 量房回填：客厅北缘边吊南缘 5.55→5.455，风口中心随之北移至 5.465（南缘外 0.01m）；x=11.45、y=2.65 不动
+    ['LD-deco-side-north', [11.535, 2.65, 4.30]], // 2026-11-27 量房回填：客厅东墙 13.40→13.37，段长 3.7→3.67m、中心 x=11.535；y=2.65、z=4.30 不动
   ];
   for (const [id, expected] of pins) {
     const terminal = diagram.terminals.find((item) => item.id === id);

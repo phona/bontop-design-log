@@ -1,17 +1,21 @@
 /**
  * penetration at 单一源收敛的回归与可见性（issue #98 第五阶段 S3）。
  *
- * - 钉值断言：69 条已删除的可派生 at，其「路线折线 ∩ 墙段唯一交点」派生值必须逐一等于
+ * - 钉值断言：67 条已删除的可派生 at，其「路线折线 ∩ 墙段唯一交点」派生值必须逐一等于
  *   删除前的手写声明值（≤1e-9，删除前实跑最大偏差 4.441e-16）。表值即被删字面量的墓碑。
  *   2026-11-26/27 量房回填 PR #270：墙位/走线移动后 46→69（+32 新声明/−9 旧声明），
  *   其中 2 条孤儿声明（refrigerant-child@w_nw_south、condensate-child@w_gbath_west_open_vanity）
  *   不可派生、未进本表，见「穿墙计数契约」测试的注与模型缺口报告。
+ *   2026-11-27 自家设计走一轮：69→67——supply-air-child 两条（w_nw_south/w_strip_east）
+ *   随儿童房送风支管改道删除（新路由全程在房内、不再穿这两堵墙，旧穿点 (3.70,3.75)/
+ *   (4.16,4.00) 随旧路由作废）；两条孤儿声明本轮转正（refrigerant-child@w_nw_south
+ *   路线北移后穿点可派生、condensate-child 改道后两穿点均可派生），孤儿清零。
  * - 可见性断言：16 条保留手写声明（6 共线 C + 5 严格 strict + 5 意图点 E，D 类已空）在 lint 里
  *   不再「静默不可见」——内存突变演练证明删除/漂移会被抓。
  * - fail-closed：孔数计数与冷凝链锚点派生对「不可派生且无手写 at」必须报错，不发明数值。
- * - 计数回归：takeoff 孔数 71（mep-quotes 元/孔增项的量）；lint penetration_* 计数见
- *   「真实配置 lint」测试（2026-11-27 量房回填：door_clearance 17→11、shear 13→17；
- *   orphaned 2 + missing 18 为模型缺口，本文件不钉、不放行）。
+ * - 计数回归：takeoff 孔数 83（mep-quotes 元/孔增项的量）；lint penetration_* 计数见
+ *   「真实配置 lint」测试（2026-11-27 自家设计走一轮：door_clearance 11→17、shear 17→16；
+ *   orphaned 0、missing 0，上一轮的模型缺口已补齐）。
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -103,6 +107,12 @@ function lintContext(): MepLintLayoutContext {
 // refrigerant-trunk@w_vrv_east（改穿 w_balc_south + w_gbath_south）、
 // condensate-study@w_be_west（→ KEPT_16，两交点）、refrigerant-child@w_nw_south、
 // condensate-child@w_gbath_west_open_vanity（后两条为孤儿声明，不可派生，未进本表）。
+// 2026-11-27 自家设计走一轮：69→67。删 2 条：supply-air-child@w_nw_south、
+//   supply-air-child@w_strip_east（儿童房送风支管改道：内机与送风口北移至 z=3.5，风管全程在
+//   房内、不再穿这两堵墙，旧穿点 (3.70,3.75)/(4.16,4.00) 随旧路由作废；w_strip_east@4.160,4.000
+//   孔位仍由 strong-power-child 同点声明保留）。两条旧孤儿声明本轮转正，不进本表的原因消失：
+//   refrigerant-child@w_nw_south 路线北移后穿点 (4.35,3.75) 可派生（与 strong-ac-child 同孔）、
+//   condensate-child 改道后 w_nw_south (4.40,3.75) 与 w_gbath_west_open_vanity (5.69,3.84) 均可派生。
 // 浮点字面量为派生值的精确 double（如 1.3600000000000003、2.5549999999999997、
 // 6.676176470588235），不得四舍五入改写——断言允差 1e-9，但墓碑须与派生值逐位一致。
 const PIN_69: Array<[string, string, number, number]> = [
@@ -161,8 +171,6 @@ const PIN_69: Array<[string, string, number, number]> = [
   ['refrigerant-parent', 'w_st_north', 5.5, 5.455],
   ['condensate-master', 'w_strip_east', 4.16, 4.6],
   ['condensate-parent', 'w_st_north', 5.4, 5.455],
-  ['supply-air-child', 'w_nw_south', 3.7, 3.75],
-  ['supply-air-child', 'w_strip_east', 4.16, 4],
   ['strong-power-parent-child-study-curtain', 'w_st_north', 5.5, 5.455],
   ['strong-power-parent-child-guest-north', 'w_be_west', 13.37, 5.9],
   ['strong-ded-fridge-living', 'w_gbath_south', 7.45, 3.64],
@@ -223,7 +231,7 @@ const declarationsOf = (parsed: MepCoordination): Array<{ route: MepRoute; wall:
   return out;
 };
 
-test('69 条被删 at：派生交点逐一等于被删声明值（≤1e-9）', () => {
+test('67 条被删 at：派生交点逐一等于被删声明值（≤1e-9）', () => {
   const declared = new Set(declarationsOf(config).map((d) => `${d.route.id}@${d.wall}`));
   // 2026-11-14 全带泵重画：声明总数 60→61——condensate-parent 新路由正交穿
   // w_st_north (5.40,5.55)，新增 1 条穿墙声明（旧路由 z=6.0/6.10 全程在墙南、
@@ -249,7 +257,18 @@ test('69 条被删 at：派生交点逐一等于被删声明值（≤1e-9）', (
   //   另有 2 条孤儿声明仍计入 87（refrigerant-child@w_nw_south、
   //   condensate-child@w_gbath_west_open_vanity），但不可派生、未进 PIN_69——
   //   69 = 87 − 16 条保留手写 at − 2 条孤儿声明，见计数契约测试注。
-  assert.equal(declarationsOf(config).length, 87, '穿墙声明总数应为 87（62 + 34 − 9）');
+  // 2026-11-27 自家设计走一轮：声明总数 87→103（+18/−2）。新增 18 条：客卫南缘入口墙
+  //   w_gbath_south_entry 17 条（strong-ac-outdoor、strong-light-dining、strong-light-kitchen、
+  //   strong-ded-dishwasher、strong-ded-washer-dryer、strong-ded-bathheaters-gbath、
+  //   strong-power-kitchen、strong-power-gbath、refrigerant-trunk、condensate-living、
+  //   condensate-master、condensate-parent、condensate-dining、strong-ded-fridge-living、
+  //   strong-power-waterbar、strong-power-kitchen-east、strong-light-balcony）+
+  //   condensate-child@w_nw_south 1 条（冷凝水改道后新增穿儿童房南墙声明）。
+  //   删除 2 条：supply-air-child@w_nw_south/@w_strip_east（送风支管改道不再穿墙）。
+  //   两条旧孤儿声明本轮转正（均可派生），孤儿清零；67 = 103 − 16 条保留手写 at
+  //   − 20 条后加无 at 声明（17 条新墙声明 + refrigerant-child@w_nw_south +
+  //   condensate-child@w_nw_south/@w_gbath_west_open_vanity，自始无 at、可派生）。
+  assert.equal(declarationsOf(config).length, 103, '穿墙声明总数应为 103（87 + 18 − 2）');
   for (const [routeId, wallId, x, z] of PIN_69) {
     const route = config.routes.find((item) => item.id === routeId);
     assert.ok(route, `route ${routeId} 存在`);
@@ -299,7 +318,7 @@ test('16 条保留手写：at 原样在场，height/note 未动', () => {
   }
 });
 
-test('takeoff 孔数 = 71（派生口径），与旧数组长度口径一致', () => {
+test('takeoff 孔数 = 83（派生口径），与旧数组长度口径一致', () => {
   const rules = load<MepTakeoffRules>('config/mep-takeoff.yaml');
   const topology = load<{ circuits: never[]; controls?: never[] }>(rules.sources.circuits);
   const takeoffInput = {
@@ -325,8 +344,16 @@ test('takeoff 孔数 = 71（派生口径），与旧数组长度口径一致', (
   //   另：strong-ac-child 的 1 条声明因 sock_child_ac 双 pending（deferred）被 takeoff
   //   整路跳过，不计；2 条孤儿声明（refrigerant-child、condensate-child）所在路由层不在
   //   covered 内 / 为 candidate，均不到计数行，故 deriveErrors 仍为空。
-  assert.equal(withWalls.devices.penetrations, 71, '派生口径孔数（喂 mep-quotes extra_penetration 元/孔）');
-  assert.equal(legacy.devices.penetrations, 71, '旧口径（未传墙几何的手搭输入路径）同值');
+  // 2026-11-27 自家设计走一轮：71→83（+12）。新增计入 +12：新墙 w_gbath_south_entry
+  //   17 条声明中 12 条强电 physical 路由计入（strong-ac-outdoor、strong-light-dining、
+  //   strong-light-kitchen、strong-ded-dishwasher、strong-ded-washer-dryer、
+  //   strong-ded-bathheaters-gbath、strong-power-kitchen、strong-power-gbath、
+  //   strong-ded-fridge-living、strong-power-waterbar、strong-power-kitchen-east、
+  //   strong-light-balcony）；同墙 refrigerant-trunk ×1 与 condensate ×4（living/master/
+  //   parent/dining）层不在 covered 内，不计；condensate-child@w_nw_south 为 candidate
+  //   冷凝路由，不计；删除 2 条 supply-air-child 声明为 supply_air 层，本就不计。
+  assert.equal(withWalls.devices.penetrations, 83, '派生口径孔数（喂 mep-quotes extra_penetration 元/孔）');
+  assert.equal(legacy.devices.penetrations, 83, '旧口径（未传墙几何的手搭输入路径）同值');
   const deriveErrors = withWalls.unresolved.filter((item) => item.reason.includes('穿墙声明'));
   assert.deepEqual(deriveErrors, [], '派生口径下不允许出现不可定位的穿墙声明');
 });
@@ -477,17 +504,24 @@ test('真实配置 lint：penetration_* 计数与 2026-11-16 关系化批后一�
   //   （(13.37,5.46)，0.14m）。shear +4：新增声明落在剪力墙上
   //   （strong-power-child@w_strip_east、weak-master@w_mb_east、
   //   water-v1-recirc-loop@w_mbath_east、supply-air-child@w_strip_east），旧 13 条全留。
-  // orphaned/missing 仍钉 0：实算 orphaned 2（refrigerant-child@w_nw_south、
-  //   condensate-child@w_gbath_west_open_vanity，量房回填后路线移出墙段、声明未删）
-  //   与 missing 18（新墙 w_gbath_south_entry 上 18 条穿越路由缺穿透声明）均为
-  //   模型缺口——配置侧待补声明，本测试不放行、不改值，见本轮报告。
-  assert.equal(count('penetration_door_clearance'), 11);
+  // 2026-11-27 自家设计走一轮：door_clearance 11→17（+6）、shear 17→16（−1）。
+  // door +6 = 新墙 w_gbath_south_entry 上 6 条声明落在客卫门洞 d_gbath（x[5.815,6.680]）
+  //   0.15m 圈内（strong-ded-bathheaters-gbath (6.70, 0.02m)、strong-power-gbath (6.70, 0.02m)、
+  //   condensate-living (6.82, 0.14m)、condensate-master (6.58, 0.00m)、
+  //   condensate-parent (6.64, 0.00m)、condensate-dining (6.76, 0.08m)）；穿点均在门洞
+  //   跨度内、门头上方过梁上穿（标高 2.657m > 门顶 2.445m），不占门洞净空，见
+  //   condensate-parent 穿透 note——lint 计数如实记录，不放行、不改值。
+  // shear −1 = supply-air-child@w_strip_east 声明删除（送风支管改道不再穿该剪力墙）。
+  // orphaned/missing 均钉 0：上一轮的 2 条孤儿声明（refrigerant-child@w_nw_south、
+  //   condensate-child@w_gbath_west_open_vanity）本轮改道后均可派生，18 条 missing
+  //   （新墙 w_gbath_south_entry 缺声明）本轮 17 条声明补齐，模型缺口清零。
+  assert.equal(count('penetration_door_clearance'), 17);
   assert.equal(count('penetration_wall_unknown'), 0);
   assert.equal(count('penetration_declaration_orphaned'), 0);
   assert.equal(count('penetration_declaration_incomplete'), 0);
   assert.equal(count('penetration_missing'), 0);
   assert.equal(count('penetration_point_mismatch'), 0);
-  assert.equal(count('shear_wall_penetration'), 17);
+  assert.equal(count('shear_wall_penetration'), 16);
 });
 
 test('冷凝链锚点 deriveMepPenetrationAt：新穿点 (4.16,4.60) 可派生，旧墙正确诊断，fail-closed 三态', () => {
@@ -523,7 +557,7 @@ test('冷凝链锚点 deriveMepPenetrationAt：新穿点 (4.16,4.60) 可派生�
   assert.ok(!('point' in hugDerived) && typeof hugDerived.diagnostic === 'string', 'C 形无唯一交点必须 fail-closed 给诊断');
 });
 
-test('穿墙计数契约：87 条声明 / 48 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
+test('穿墙计数契约：103 条声明 / 55 个孔位（手写 at 或派生点去重），与施工指导文档清点句同值', () => {
   // config/facts.yaml 的 fact.mep_penetration_declarations 只锚定文档清点句的文本（facts-lint 的
   // derived 选择器表达不了「跨路线嵌套数组求和 + 去重」）；本断言从配置机器计算两数并要求文档
   // 同值——guidance:37 的「40 条 / 21 孔位」正是这样 stale 的。孔位 = 同墙同坐标去重（多条路线共用一孔）。
@@ -570,13 +604,18 @@ test('穿墙计数契约：87 条声明 / 48 个孔位（手写 at 或派生点�
   //   而 strong-light-child/weak-master 的手写 at (4.2,4.6) 未随墙重打、仍占一孔
   //   （属配置侧 at 滞后，见 KEPT_16 头注）。其余键均为量房墙位移动的同孔改号（净 0）。
   // 注意：本断言的文档清点句部分依赖 docs/mep-construction-guidance.md 同步更新
-  // （另一路负责；该文档现行句仍为 62 条，更新前本测试的文档句断言会红）。
-  // 模型缺口（本测试当前即因此红）：2 条孤儿声明 refrigerant-child@w_nw_south、
-  // condensate-child@w_gbath_west_open_vanity 不可派生，循环到它们时即断言失败——
-  // 声明数 87 含这两条（它们是声明，只是不产生孔位），孔位 48 不含它们；配置侧须删
-  // 声明或修路线后本测试方能通过，勿为通过而改本测试的派生断言。
-  assert.equal(declarations.length, 87, '穿墙声明条目数变了：同步施工指导文档清点句与 facts 契约');
-  assert.equal(holes.size, 48, '孔位数变了：同步施工指导文档清点句与 facts 契约');
+  // （本轮同批更新为 103 条 / 55 个孔位；若文档句滞后，本测试的文档句断言会红）。
+  // 2026-11-27 自家设计走一轮：声明 87→103（+18/−2，见 PIN_69 测试头注），
+  // 孔位 48→55（+8/−1，机器对账：新增键 8——新墙 w_gbath_south_entry 6 孔
+  //   （6.580/6.640/6.700/6.760/6.820/7.450 @ z=4.040）+ w_gbath_west_open_vanity@5.690,3.840
+  //   （condensate-child 改道新点）+ w_nw_south@4.400,3.750（condensate-child 新增声明）；
+  //   消失键 1——w_nw_south@3.700,3.750（supply-air-child 旧点随路由改道消失；
+  //   w_strip_east@4.160,4.000 孔仍由 strong-power-child 同点声明保留）。
+  //   两条旧孤儿声明转正后均产生孔位：refrigerant-child@w_nw_south (4.35,3.75) 与
+  //   strong-ac-child 同孔（+0）；condensate-child@w_gbath_west_open_vanity (5.69,3.84)
+  //   为新增键（计入 +8）。孤儿清零，本测试不再因此红。
+  assert.equal(declarations.length, 103, '穿墙声明条目数变了：同步施工指导文档清点句与 facts 契约');
+  assert.equal(holes.size, 55, '孔位数变了：同步施工指导文档清点句与 facts 契约');
   const guidance = readFileSync('docs/mep-construction-guidance.md', 'utf8');
   assert.ok(guidance.includes(`合计 **${declarations.length} 条声明、落在 ${holes.size} 个不同孔位**`),
     'docs/mep-construction-guidance.md 的穿墙清点句必须与配置机器计数同值');
