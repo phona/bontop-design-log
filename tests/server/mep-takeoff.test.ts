@@ -69,8 +69,8 @@ test('线径解析只认显式字符串，猜不了', () => {
   assert.equal(parseWireSizeMm2('待厂家铭牌核验'), null);
 });
 
-test('端点全部可解析：138 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
-  assert.equal(resolution.total, 137); // DEC-2026-10-27-R01 删床头路线 strong-light-bedrooms-parent-bed 后 138→137； // R1 删两条照明路由 137→135；R2 删四条卫浴照明路由 135→131；DEC-2026-10-13-R5 删电视墙灯带路由 131→130；DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由 130→128；同批走线专项为 7 个新点位补 7 条路线 128→135；DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条 135→136；DEC-2026-10-19-R25 新增客餐厅 DN32 共用主管 136→137；DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线 137→138
+test('端点全部可解析：139 条路由 0 悬空（含 hvac anchors 的 bend_corridor）', () => {
+  assert.equal(resolution.total, 139); // 2026-11-27 PR #270：机器人泊位上下水 +2，137→139；DEC-2026-10-27-R01 删床头路线 strong-light-bedrooms-parent-bed 后 138→137； // R1 删两条照明路由 137→135；R2 删四条卫浴照明路由 135→131；DEC-2026-10-13-R5 删电视墙灯带路由 131→130；DEC-2026-10-17-R20 删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由 130→128；同批走线专项为 7 个新点位补 7 条路线 128→135；DEC-2026-10-18-R21 补画 strong-power-living-water 下引 1 条 135→136；DEC-2026-10-19-R25 新增客餐厅 DN32 共用主管 136→137；DEC-2026-10-23-R03 新增客卫沉箱二次排水需求路线 137→138
   assert.equal(resolution.unresolved, 0);
 });
 
@@ -280,7 +280,14 @@ test('起点竖直段须进入给排水采购量，不只进层长（Codex block
   // 生产量：排水起点 stub 0.1462m（D3 实测，10 条）× 1.08 = 0.157896m 进入
   // totalDrainageM（24.384521593854366 → 24.54241759385437，de110 +0.023436、
   // de50 +0.13446）；给水无 fromDrop，总量不变。
-  assert.ok(Math.abs(takeoff.pipe.totalDrainageM - 24.54241759385437) < 1e-9);
+  // 2026-11-26/27 量房回填 PR #270：24.54241759385437 → 32.172003062806546（+7.629585），
+  // 五条排水路由 3D 长增量 ×1.08 精确分解（fromDrop stub 不变 0.1462m）：
+  // drain-robot-dock-to-riser 新增 +2.770138→+2.991750；
+  // drain-mbath-vanity-to-riser 重画 +1.329712→+1.436089；
+  // drain-gbath-shower-to-riser 立管改位 +1.500075→+1.620081；
+  // drain-gbath-floor-to-riser 立管改位 +1.200060→+1.296065；
+  // drain-gbath-vanity-to-riser 立管改位 +0.264445→+0.285601。
+  assert.ok(Math.abs(takeoff.pipe.totalDrainageM - 32.172003062806546) < 1e-9);
 });
 
 test('导线按 topology wire_size 分桶，不按 id 猜', () => {
@@ -316,12 +323,12 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   // DEC-2026-10-17-R20：删 strong-ded-fridge / strong-power-parent-child-parentbed-l 两条路由，
   //   sock_kitchen_fridge / sock_parent_bed_l 两点随之退出 routed（97→95）；本轮新增 7 电气点 +
   //   faucet_kitchen_dishwasher 均未画路由，全部落在 unrouted 侧显形（routed 不增）。
-  assert.equal(takeoff.coverage.routedPointIds.length, 103); // 2026-11-17 量价算法审计跟进 blocking 2：两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet 随冷干管改道进入 routed，101→103； // DEC-2026-10-27-R01 删床头开关与供电路，routed 点位 102→101； // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
+  assert.equal(takeoff.coverage.routedPointIds.length, 105); // 2026-11-27 PR #270：机器人泊位新增 faucet_robot_dock / drain_robot_dock 两点随新路线进入 routed，103→105；2026-11-17 量价算法审计跟进 blocking 2：两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet 随冷干管改道进入 routed，101→103； // DEC-2026-10-27-R01 删床头开关与供电路，routed 点位 102→101； // W02：+water_heater 锚点；R1 删两条照明路由后 104→102；R2 删四条卫浴照明路由后 102→98；DEC-2026-10-13-R5 删 strong-light-tv 后 98→97；DEC-2026-10-17-R20 删两条电源路由后 97→95；同批走线专项 7 条新路线覆盖 7 个新点位 95→102
   assert.equal(takeoff.coverage.byType.socket?.routed, 36); // DEC-2026-10-17-R20：删 sock_kitchen_fridge / sock_parent_bed_l（原 routed）后 34→32；同批走线专项 sock_fridge_living / sock_waterbar / sock_weakbox / sock_kitchen_east_counter 四个插座点位随新路线进入 routed 32→36
-  assert.equal(takeoff.coverage.byType.faucet?.routed, 5);
-  assert.equal(takeoff.coverage.byType.shower?.routed, 2); // 2026-11-17 Codex blocking（#260 第二轮）：两卫淋浴冷水进口改 type: shower_inlet（不再渲染成花洒），shower 桶 4→2；routed 总数仍 103
+  assert.equal(takeoff.coverage.byType.faucet?.routed, 6); // 2026-11-27 PR #270：faucet_robot_dock 随进水支路进入 routed，5→6
+  assert.equal(takeoff.coverage.byType.shower?.routed, 2); // 2026-11-17 Codex blocking（#260 第二轮）：两卫淋浴冷水进口改 type: shower_inlet（不再渲染成花洒），shower 桶 4→2；routed 总数仍 105
   assert.equal(takeoff.coverage.byType.shower_inlet?.routed, 2); // 两卫淋浴冷水进口（shower_inlet）随冷干管进入 routed，与 shower 桶分开计
-  assert.equal(takeoff.coverage.byType.drain?.routed, 11);
+  assert.equal(takeoff.coverage.byType.drain?.routed, 12); // 2026-11-27 PR #270：drain_robot_dock 随泵排支路进入 routed，11→12
   // W03 注意：两卫 4 处地漏**本来就在 routed 里**（drain-master-bath / drain-guest-bath 已把它们连成链），
   // 只是链子在 drain_mbath_floor / drain_gbath_floor 断头、没接立管；W03 补的是"接到立管"而非覆盖率，
   // 故 routed 仍为 104、排水 de50 由 16.09m → 21.39m（+5.30m）才是本轮的真实效果。
@@ -329,7 +336,7 @@ test('覆盖度契约：routed + unrouted 与点位数对齐（非水电设施�
   assert.equal(takeoff.coverage.byType.drain_riser?.routed, 4);
   assert.equal(takeoff.coverage.byType.water_supply?.routed, 1);
   assert.equal(takeoff.coverage.byType.water_heater?.routed, 1);
-  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 103); // 2026-11-17 量价算法审计跟进 blocking 2：已路由 101→103（未路由数不变）；DEC-2026-10-27-R01 删床头开关（已路由点），常量 102→101（未路由数不变）；R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97；DEC-2026-10-17-R20 已路由 97→95（+8 新点全部未路由：7 电气 + faucet_kitchen_dishwasher）；同批走线专项 7 条新路线后已路由 95→102
+  assert.equal(takeoff.coverage.unroutedPointIds.length, electricalCount + plumbingCount - 105); // 2026-11-27 PR #270：已路由 103→105（未路由数不变）；2026-11-17 量价算法审计跟进 blocking 2：已路由 101→103（未路由数不变）；DEC-2026-10-27-R01 删床头开关（已路由点），常量 102→101（未路由数不变）；R1：电气点位 107→105、已路由 104→102；R2：电气点位 105→101、已路由 102→98；DEC-2026-10-13-R5 电气点位 101→100、已路由 98→97；DEC-2026-10-17-R20 已路由 97→95（+8 新点全部未路由：7 电气 + faucet_kitchen_dishwasher）；同批走线专项 7 条新路线后已路由 95→102
   // 未路由点位逐条显形，不进采购量
   assert.equal(takeoff.coverage.unroutedPoints.length, takeoff.coverage.unroutedPointIds.length);
 });
@@ -1327,7 +1334,7 @@ test('双控行程 stub 边长须受下引补计开关控制：关掉后不得�
     `开启下引补计时行程应为 5m × 1.05 = 5.25m，实际 ${on.wire.dualControlExtraM}`);
 });
 
-test('双控附加控制线按控制声明算行程：生产值 20.69445m（2026-11-16 量价算法审计）', () => {
+test('双控附加控制线按控制声明算行程：生产值 20.61045m（2026-11-27 量房回填）', () => {
   // 独立推导（测试内手写循环，不复用 takeoff 的图算法）：行程边按控制声明手点——
   // 主卧三控：north↔L + north↔door；书房双控：灯↔门口 + 灯↔床头；
   // 儿童房双控：灯↔门口 + 灯↔床头。客厅双控未画线计 0；书房门口单控计 0；
@@ -1346,17 +1353,19 @@ test('双控附加控制线按控制声明算行程：生产值 20.69445m（2026
     }
     return total;
   };
-  // 主卧 6.498m、书房 7.350m：两组无中途接入，行程 = 各路由长之和。
-  // 儿童房 5.861m（第 7 轮修正，原 6.889m）：child-bed 的转弯点
-  // Q1 (4.1,3.214,2.7) 落在 child-door 的 (4.1,2.7)→(4.1,4.3) 段内部，
-  // 两开关经 Q1 相连，不再经灯头绕行——灯头→Q1 的 0.514m（z 2.7→3.214）
-  // 旧树双计（两路由各含一次），新树只在 Q1 会合处计一次，减 2×0.514：
-  // switch_child→Q1 2.861m + switch_child_bed→Q1 3.0m = 5.861m。
-  // 行程合计 6.498 + 7.350 + 5.861 = 19.709m。
+  // 主卧 6.403m（bed-l 2.310 不变 + door 4.093，灯头 z 6.288→6.193 短 0.095m）、
+  // 书房 6.685m（door 3.840 + guest-bed 2.845；门口开关 z 7.0→6.215、
+  // 客房床头开关 (16.4,8.55)→(16.33,7.14)）、儿童房 6.541m（door 2.825 + bed 3.716），
+  // 三组均无中途接入，行程 = 各路由长之和。
+  // 2026-11-27 量房回填：儿童房 Q1 修正（第 7 轮）作废——child-bed 转弯点
+  // (4.1,3.214,2.7)→(4.1,2.074,2.7)，两路由自灯头 (4.1,2.7) 反向分叉
+  // （door 北行至 z 3.75、bed 南行至 z 2.074），仅共灯头一点、无共线段，
+  // 不再扣 2×0.514；旧 Q1 (4.1,3.214) 仍在 child-door 段内，但 child-bed
+  // 已不再经过它。
+  // 行程合计 6.403 + 6.685 + 6.541 = 19.629m。
   const travelerM = len('strong-light-bedrooms-master-bed-l') + len('strong-light-bedrooms-master-door')
     + len('strong-light-bedrooms-study-door') + len('strong-light-bedrooms-study-guest-bed')
-    + len('strong-light-bedrooms-child-door') + len('strong-light-bedrooms-child-bed')
-    - 2 * (3.214 - 2.7);
+    + len('strong-light-bedrooms-child-door') + len('strong-light-bedrooms-child-bed');
   const expected = travelerM * rules.units.dual_control_extra_cores * rules.units.loss.wire;
   assert.ok(Math.abs(takeoff.wire.dualControlExtraM - expected) < 1e-6,
     `双控附加应为行程 ${travelerM.toFixed(3)}m × 1 芯 × 1.05 = ${expected.toFixed(5)}m，实际 ${takeoff.wire.dualControlExtraM}`);

@@ -321,48 +321,55 @@ const WEAK_IDS = ['weak-main-living', 'weak-master', 'weak-parent', 'weak-study'
  * 长度按新折线实算（平面/三维长度见 EXPECTED_LENGTHS）。
  * 例外（2026-11-17 Retrace）：weak-master 删 x→4.05 往返点（[4.05, 2.6, 4.55]），
  * 点列与长度同步减 0.10m（10.42/12.72→10.32/12.62）。
+ * 例外（2026-11-26/27 量房回填 PR #270）：弱电箱位随 w_ent_west 西移，出箱面 x 10.8→11.11；
+ * 客厅/书房北墙 z 5.55→5.455、东墙 x 13.40→13.37，net_living/net_parent/net_study 沿位跟随；
+ * weak-ap-master 穿点与 via 标高 2.51→2.65。点列与长度均为同基线实算值。
  * [x, y, z]。
  */
 const EXPECTED_POINTS: Record<string, Array<[number, number, number]>> = {
   'weak-main-living': [
-    [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [7.3, 2.6, 4.38], [7.3, 2.6, 7.6], [7.2, 2.6, 7.6], [7.2, 2.6, 7.7], [7.2, 0.3, 7.7],
+    [11.11, 2.6, 2.98], [11.11, 2.6, 4.38], [7.3, 2.6, 4.38], [7.3, 2.6, 7.6], [7.15, 2.6, 7.6], [7.15, 2.6, 7.605], [7.15, 0.3, 7.605],
   ],
   'weak-master': [
-    [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [7.2, 2.6, 4.38], [4.6, 2.6, 4.38], [4.6, 2.6, 4.55],
+    [11.11, 2.6, 2.98], [11.11, 2.6, 4.38], [7.2, 2.6, 4.38], [4.6, 2.6, 4.38], [4.6, 2.6, 4.55],
     [4.1, 2.6, 4.55], [4.1, 2.6, 6.3], [4.1, 2.4, 6.3], [4.2, 2.4, 6.3], [4.2, 2.4, 6.5], [4.2, 0.3, 6.5],
   ],
   'weak-parent': [
-    [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [5.5, 2.6, 4.38], [5.5, 2.6, 5.7],
-    [7, 2.6, 5.7], [7, 2.6, 7.6], [7.2, 2.6, 7.6], [7.2, 0.3, 7.6],
+    [11.11, 2.6, 2.98], [11.11, 2.6, 4.38], [5.5, 2.6, 4.38], [5.5, 2.6, 5.7],
+    [7, 2.6, 5.7], [7, 2.6, 7.505], [7.15, 2.6, 7.505], [7.15, 0.3, 7.505],
   ],
   'weak-study': [
-    [10.8, 2.6, 2.98], [10.8, 2.6, 4.55], [12.65, 2.6, 4.55], [12.65, 2.6, 5.55],
-    [13.34, 2.6, 5.55], [13.34, 2.6, 5.61], [13.34, 2.45, 5.61], [13.34, 2.45, 7.8], [13.4, 0.3, 7.9],
+    [11.11, 2.6, 2.98], [11.11, 2.6, 4.55], [12.65, 2.6, 4.55], [12.65, 2.6, 5.455],
+    [13.34, 2.6, 5.455], [13.34, 2.6, 5.61], [13.34, 2.45, 5.61], [13.34, 2.45, 7.8], [13.37, 2.45, 7.8], [13.37, 2.45, 7.115], [13.37, 0.3, 7.115],
   ],
   'weak-gateway': [
-    [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [7.3, 2.6, 4.38], [7.3, 2.6, 5.7], [7.2, 0.3, 5.7],
+    [11.11, 2.6, 2.98], [11.11, 2.6, 4.38], [7.3, 2.6, 4.38], [7.3, 2.6, 5.605], [7.15, 2.6, 5.605], [7.15, 0.3, 5.605],
   ],
   'weak-ap': [
-    [10.8, 2.6, 2.98], [10.8, 2.6, 4.38], [8.6, 2.6, 4.38], [8.6, 2.6, 4.75],
+    [11.11, 2.6, 2.98], [11.11, 2.6, 4.38], [8.6, 2.6, 4.38], [8.6, 2.6, 4.75],
   ],
   // 2026-11-23：穿墙仍在 (4.20,4.48) y=2.51。进梁后在 x=4.15 升到 2.64 再西行，
   // 与照明 2.55、冷媒 2.60 错开；末点重复是解算器追加的端点，零长。
+  // 2026-11-26 量房回填：穿墙与 via 标高 2.51→2.65（穿点与 level 步同升）；进梁后
+  // 在 x=4.15 微降至 2.64 再西行。2.65 升位新增 2 处 error + 3 处 warning（与
+  // strong-light-master / strong-light-bedrooms-master-bed-north / condensate-* 的
+  // 重叠），见 C3  ledger；升位本身无书面理据，config reason 仍写 2.51（过期文案，待补）。
   'weak-ap-master': [
-    [10.8, 2.6, 2.98], [10.8, 2.6, 4.55], [10.5, 2.6, 4.55], [10.5, 2.51, 4.55],
-    [7.2, 2.51, 4.55], [4.6, 2.51, 4.55], [4.6, 2.51, 4.48], [4.15, 2.51, 4.48],
-    [4.15, 2.51, 5.08], [4.15, 2.64, 5.08], [2.8, 2.64, 5.08], [2.8, 2.8, 5.08],
+    [11.11, 2.6, 2.98], [11.11, 2.6, 4.55], [10.5, 2.6, 4.55], [10.5, 2.65, 4.55],
+    [7.2, 2.65, 4.55], [4.6, 2.65, 4.55], [4.6, 2.65, 4.48], [4.15, 2.65, 4.48],
+    [4.15, 2.65, 5.08], [4.15, 2.64, 5.08], [2.8, 2.64, 5.08], [2.8, 2.8, 5.08],
     [2.8, 2.8, 6.0], [2.8, 2.8, 6.0],
   ],
 };
-/** [平面长度, 三维长度]，merge-base 基线实算值（1e-9 容差）。 */
+/** [平面长度, 三维长度]，merge-base 基线实算值（1e-9 容差）。2026-11-26/27 量房回填后同基线实算值。 */
 const EXPECTED_LENGTHS: Record<string, [number, number]> = {
-  'weak-main-living': [8.32, 10.62],
-  'weak-master': [10.32, 12.62], // 2026-11-17 Retrace：删 x→4.05 往返段（0.55+0.05→0.50，−0.10m）
-  'weak-parent': [11.62, 13.92],
-  'weak-study': [7.476619038, 9.663160468],
-  'weak-gateway': [6.32, 8.522172887],
-  'weak-ap': [3.97, 3.97],
-  'weak-ap-master': [11.16, 11.54], // 2026-11-23 梁内改正交：平面 11.16、三维 11.54（含 2.51→2.64→2.80 两段竖管）
+  'weak-main-living': [8.585, 10.885],
+  'weak-master': [10.63, 12.93], // 2026-11-17 Retrace：删 x→4.05 往返段（0.55+0.05→0.50，−0.10m）
+  'weak-parent': [11.785, 14.085],
+  'weak-study': [7.765, 10.065],
+  'weak-gateway': [6.585, 8.885],
+  'weak-ap': [4.28, 4.28],
+  'weak-ap-master': [11.47, 11.69], // 2026-11-23 梁内改正交：平面 11.16、三维 11.54（含 2.51→2.64→2.80 两段竖管）；2026-11-26 回填：平面 11.47（+0.31，出箱面东移）、三维 11.69（竖管 0.05+0.01+0.16）
 };
 
 function weakPoints(report: ReturnType<typeof resolveMepRoutes>): Record<string, string> {
@@ -379,13 +386,13 @@ test('C1 等价：7 条弱电路由逐点等于 merge-base 基线，轴声明独
     { id: 'weak_axis_438', axis: 'z', value: 4.38, y: 2.6 },
     { id: 'weak_axis_455', axis: 'z', value: 4.55, y: 2.6 },
     { id: 'axis_trunk_x745', axis: 'x', value: 7.45, reason: 'x=7.45 冷媒主管轴，与 strong-ac-outdoor 外机供电共用。来源：餐厅西侧服务带 note「藏冷媒主管 x=7.45 轴线」+ refrigerant-trunk / strong-ac-outdoor 既有几何。' },
-    { id: 'axis_living_south_z555', axis: 'z', value: 5.55, reason: 'z=5.55 客厅北缘边吊南缘 / w_st_north 墙线。来源：ceiling_living area 南缘 z=5.55 + 墙顶点 v_mb_ne/v_st_ne z=5.55。refrigerant-study 沿此线东行至 w_be_west。' },
-    { id: 'axis_be_west_x1340', axis: 'x', value: 13.4, reason: 'x=13.4 w_be_west 墙线 / ceiling_living 东缘。来源：墙顶点 v_be_sw/v_be_se_s x=13.40 + ceiling_living area 东缘 x=13.40。refrigerant-study 沿此线南下至穿点。' },
+    { id: 'axis_living_south_z555', axis: 'z', value: 5.455, reason: 'z=5.455 客厅北缘边吊南缘 / w_st_north 墙线。来源：ceiling_living area 南缘 z=5.455 + 墙顶点 v_mb_ne/v_st_ne z=5.455（量房回填 2026-11-26）。refrigerant-study 沿此线东行至 w_be_west。' },
+    { id: 'axis_be_west_x1340', axis: 'x', value: 13.37, reason: 'x=13.37 w_be_west 墙线 / ceiling_living 东缘。来源：墙顶点 v_be_sw/v_be_se_s x=13.37 + ceiling_living area 东缘 x=13.37（量房回填 2026-11-26）。refrigerant-study 沿此线南下至穿点。' },
   ]);
   assert.doesNotThrow(() => validateMepCoordination(project, realSources));
   const report = resolveMepRoutes(project, realSources);
-  assert.equal(report.total, 137, '路由总数不变');
-  assert.equal(report.resolved, 137);
+  assert.equal(report.total, 139, '路由总数不变'); // 2026-11-27 PR #270：机器人泊位上下水 +2，137→139
+  assert.equal(report.resolved, 139);
   assert.deepEqual(report.diagnostics, []);
   for (const id of WEAK_IDS) {
     const entry = report.routes.find((item) => item.route.id === id)!;
@@ -456,7 +463,7 @@ test('C2 传动：net_parent 南移 0.20m，weak-parent 末段跟随、weak-main
   assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
 });
 
-test('C3 消费者对账：lint 60/164 与逐路由计数同基线、DXF 无错且含 7 条弱电 id、算量 unresolved 仍只有 trunk_strong_main', () => {
+test('C3 消费者对账：lint 56/169 与逐路由计数同基线、DXF 无错且含 7 条弱电 id、算量 unresolved 仍只有 trunk_strong_main', () => {
   // lint：raw 口径 60 errors / 164 warnings（本批实算；gap-2 正交拆分后三条弱电的
   // route_not_orthogonal 消失，overlap 计数随折线变化；childbed 竖直优先修法另增
   // 1 处冷媒/childbed 重叠 error 与 1 处 envelope warning；2026-11-16 Codex blocking
@@ -478,10 +485,17 @@ test('C3 消费者对账：lint 60/164 与逐路由计数同基线、DXF 无错�
   // strong-ac-master 末段斜升 +1 相抵）。
   // 2026-11-23 改道后 raw 口径 58/164：strong-ac-master 斜升已拆成正交腿（error −1），
   // 另有 1 条非弱电 route_overlap error 与 1 条非弱电 warning 消失。弱电逐路由计数不变。
+  // 2026-11-26/27 量房回填 PR #270：errors 58→56、warnings 164→169。
+  // errors −2：主卧灯位改道（light_master_dome 移位）消掉 weak-master 与
+  // strong-light-bedrooms-master-bed-l / -bed-north 的 2 处 route_overlap。
+  // warnings +5：ceiling_clearance −1（return-air-master / return-air-parent 完成面下调）、
+  // route_clearance +2、route_overlap +4（weak-ap-master 2.51→2.65 升位新增 3 处
+  // route_overlap 警告，见 weak-ap-master 点列注；其余 +1 为 condensate-child 改道）。
+  // weak-master errors route_overlap 8→6（上文 2 处消失）；其余弱电逐路由计数不变。
   // 不抬 mep-hvac-lint 的分码上限。verify:mep CLI 口径由 mep-guidance-baseline 另行钉死。
   const lintResult = lintMepCoordination(project, realSources);
-  assert.equal(lintResult.errors.length, 58, `lint errors 应为 58，实际 ${lintResult.errors.length}`);
-  assert.equal(lintResult.warnings.length, 164, `lint warnings 应为 164，实际 ${lintResult.warnings.length}`);
+  assert.equal(lintResult.errors.length, 56, `lint errors 应为 56，实际 ${lintResult.errors.length}`);
+  assert.equal(lintResult.warnings.length, 169, `lint warnings 应为 169，实际 ${lintResult.warnings.length}`);
   const perRoute = (issues: Array<{ code: string; routeId?: string }>): Record<string, Record<string, number>> => {
     const out: Record<string, Record<string, number>> = {};
     for (const issue of issues) {
@@ -493,7 +507,7 @@ test('C3 消费者对账：lint 60/164 与逐路由计数同基线、DXF 无错�
   };
   assert.deepEqual(perRoute(lintResult.errors), {
     'weak-main-living': { route_overlap: 3 },
-    'weak-master': { route_overlap: 8 },
+    'weak-master': { route_overlap: 6 }, // 2026-11-27 回填：主卧灯位改道，2 处与 bed-l / bed-north 的重叠消失
     'weak-parent': { route_overlap: 6 },
     'weak-study': { route_overlap: 5 },
     'weak-gateway': { route_overlap: 3 },

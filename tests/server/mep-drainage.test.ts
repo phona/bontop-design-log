@@ -255,13 +255,16 @@ test('C1：客卫支管越过终点的折回段原样保留，终端标高由 1%
 
 test('留绝对钉死：3 条带 via 路由坡度链与 1% 派生差超容差，不得强行 slope_run', () => {
   // drain-kitchen-requirement：中段 0.2m 落 0.0075m（3.75%），1% 派生差 0.0055m；
-  // drain-mbath-vanity-to-riser：手写取整 0.35→0.34→0.33，1% 派生终端差 0.01565m；
+  // drain-mbath-vanity-to-riser：2026-11-27 干湿分离放弃重画（洗手台移入主卫内、贴东墙北段）：
+  // 单 via (0.3,0.325,0.535)，自 drain_mbath_vanity (2.80,0.535) 西行 2.50m 再南行 0.765m、
+  // 总行程 3.265m；1% 坡回算 via y = 0.35−0.025 = 0.325、终端 0.35−0.03265 = 0.31735≈0.317
+  // （声明 to_height 0.317）；旧双 via（手写取整 0.35→0.34→0.33）随旧布局作废。
   // drain-gbath-vanity-to-riser：2026-11-27 立管改至照片位 (7.38,1.48) 后重画为东行+北行，
   // 单 via (7.38,3.64,0.296)，1% 派生终端 0.27485，声明 to_height 0.275（差 0.00015m）。
   // 数值依据见本批 PR 描述；改高度是设计改动，不是迁移。
   const stayAbsolute: Record<string, { via: Array<[number, number, number]>; toHeight: number }> = {
     'drain-kitchen-requirement': { via: [[8.6, 0.029, 0.3], [8.6, 0.0215, 0.5]], toHeight: 0.005 },
-    'drain-mbath-vanity-to-riser': { via: [[0.575, 0.34, 2.7], [0.3, 0.33, 2.7]], toHeight: 0.315 },
+    'drain-mbath-vanity-to-riser': { via: [[0.3, 0.325, 0.535]], toHeight: 0.317 },
     'drain-gbath-vanity-to-riser': { via: [[7.38, 0.296, 3.64]], toHeight: 0.275 },
   };
   for (const [id, pinned] of Object.entries(stayAbsolute)) {
@@ -347,10 +350,10 @@ test('C2：主卫立管双轴移动（x +0.10 / z +0.10），三条立管支路�
       assert.ok(Math.abs(terminal.x - x) <= 1e-9 && Math.abs(terminal.y! - y) <= 1e-9 && Math.abs(terminal.z - z) <= 1e-9,
         `${id} riser ${label}-move terminal ${JSON.stringify(terminal)} !== (${x},${y},${z})`);
     }
-    // 绝对台盆支路终端随立管走（to_height 声明 0.315 不变），中间字面 via 不动。
+    // 绝对台盆支路终端随立管走（to_height 声明 0.317 不变），中间字面 via 不动。
     const vanity = JSON.parse(moved['drain-mbath-vanity-to-riser']) as Array<{ x: number; y?: number; z: number }>;
     const vanityTerminal = vanity[vanity.length - 1];
-    assert.ok(Math.abs(vanityTerminal.x - (0.3 + dx)) <= 1e-9 && Math.abs(vanityTerminal.y! - 0.315) <= 1e-9
+    assert.ok(Math.abs(vanityTerminal.x - (0.3 + dx)) <= 1e-9 && Math.abs(vanityTerminal.y! - 0.317) <= 1e-9
       && Math.abs(vanityTerminal.z - (1.3 + dz)) <= 1e-9,
       `drain-mbath-vanity-to-riser terminal must follow the riser, got ${JSON.stringify(vanityTerminal)}`);
     for (const id of DRAIN_IDS.filter((item) => !followers.includes(item) && item !== 'drain-mbath-vanity-to-riser')) {

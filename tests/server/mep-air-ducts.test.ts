@@ -429,7 +429,7 @@ function dxfLabel(id: string): string {
 
 test('C1：8 条已迁路由满足持续不变式（端点/正交/点数/无折返/无发明坐标·标高）', () => {
   const report = resolveMepRoutes(project, realSources);
-  assert.equal(report.total, 137);
+  assert.equal(report.total, 139); // 2026-11-27 PR #270：机器人泊位上下水 +2，137→139
   assert.equal(report.unresolved, 0);
   for (const id of MIGRATED_IDS) {
     const entry = routeOf(report, id);
@@ -566,22 +566,22 @@ test('C3：14 条风管 lint findings 计数+码与基线一致，DXF 与算量�
   const lintResult = lintMepCoordination(project, realSources);
   const findingsOf = (id: string) => [...lintResult.errors, ...lintResult.warnings].filter((issue) => issue.routeId === id);
   const expectedCounts: Record<string, number> = {
-    'supply-air-living': 0, 'return-air-living': 4, 'supply-air-master': 0, 'return-air-master': 1, // 2026-11-23 通长假梁：送回风支管收进梁内，supply 的 supply_return_overlap + route_clearance 与 return 的 route_clearance 同批消失（两管 z 向仅在 5.30 相接、不再重叠）
-    'supply-air-study': 1, 'return-air-study': 2, 'supply-air-parent': 2, 'return-air-parent': 1,
-    'supply-air-child': 1, 'return-air-child': 1, 'supply-air-dining': 3, 'return-air-dining': 4,
+    'supply-air-living': 0, 'return-air-living': 4, 'supply-air-master': 0, 'return-air-master': 0, // 2026-11-23 通长假梁：送回风支管收进梁内，supply 的 supply_return_overlap + route_clearance 与 return 的 route_clearance 同批消失（两管 z 向仅在 5.30 相接、不再重叠）；2026-11-26/27 量房回填：ceiling_master_beam 完成面 2.50→2.40，return-air-master 低点（≈2.40）不再低于完成面，其 ceiling_clearance_unverified 亦消失
+    'supply-air-study': 1, 'return-air-study': 2, 'supply-air-parent': 2, 'return-air-parent': 0, // 2026-11-26/27 量房回填：走廊完成面 2.50→2.39，return-air-parent 的 ceiling_clearance_unverified 亦消失（与 return-air-master 同机制）
+    'supply-air-child': 1, 'return-air-child': 1, 'supply-air-dining': 4, 'return-air-dining': 4, // 2026-11-26/27 量房回填：supply-air-dining +1（weak-ap-master 2.51→2.65 升位新增 route_overlap）
     'supply-air-living-bottom': 1, 'supply-air-dining-bottom': 1,
   };
   const expectedCodes: Record<string, string[]> = {
     'return-air-living': ['ceiling_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified'],
     'supply-air-master': [], // 2026-11-23 通长假梁：支管收进梁内，findings 清零
-    'return-air-master': ['ceiling_clearance_unverified'], // 2026-11-23 通长假梁：route_clearance_unverified 随支管进梁消失
+    'return-air-master': [], // 2026-11-23 通长假梁：route_clearance_unverified 随支管进梁消失；2026-11-26/27 回填：ceiling_master_beam 完成面 2.50→2.40，ceiling_clearance_unverified 亦消失，findings 清零
     'supply-air-study': ['route_clearance_unverified'],
     'return-air-study': ['ceiling_clearance_unverified', 'route_overlap'],
     'supply-air-parent': ['route_clearance_unverified', 'supply_return_overlap'],
-    'return-air-parent': ['ceiling_clearance_unverified'],
-    'supply-air-child': ['route_overlap'],
+    'return-air-parent': [], // 2026-11-26/27 量房回填：走廊完成面 2.50→2.39，ceiling_clearance_unverified 消失，findings 清零
+    'supply-air-child': ['route_clearance_unverified'], // 2026-11-26/27 量房回填：旧 route_overlap（vs strong-light-bedrooms-child-door seg#1，0.029m）随儿童房灯位改道消失；新 route_clearance_unverified（vs strong-power-parent-child-childbed seg#3，净距 <0.03m），条数仍为 1
     'return-air-child': ['ceiling_clearance_unverified'],  // 2026-11-16 第四轮：strong-light-child 往返折返消除，与 return-air-child 的 1 处 route_overlap warning 同批消失
-    'supply-air-dining': ['route_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified'],
+    'supply-air-dining': ['route_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified', 'route_overlap'], // 2026-11-26/27 回填：+1 route_overlap（vs weak-ap-master seg#4，0.020m；其 2.51→2.65 升位所致）
     'return-air-dining': ['ceiling_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified', 'route_clearance_unverified'],
     'supply-air-living-bottom': ['ceiling_clearance_unverified'],
     'supply-air-dining-bottom': ['ceiling_clearance_unverified'],
@@ -593,7 +593,7 @@ test('C3：14 条风管 lint findings 计数+码与基线一致，DXF 与算量�
     assert.equal(found.length, expectedCounts[id], `${id} findings ${found.length} !== ${expectedCounts[id]}`);
     if (expectedCodes[id]) assert.deepEqual(found.map((issue) => issue.code).sort(), [...expectedCodes[id]].sort(), `${id} codes`);
   }
-  assert.equal(total, 22, '14 条风管 findings 合计须为 22（2026-11-23 通长假梁：主卧送回风 3 处同批消失）');
+  assert.equal(total, 21, '14 条风管 findings 合计须为 21（2026-11-23 通长假梁：主卧送回风 3 处同批消失；2026-11-26/27 量房回填：return-air-master 与 return-air-parent 的 ceiling_clearance_unverified 各 1 处随完成面下调消失，supply-air-dining +1 处 weak-ap-master 升位重叠；净 22→21）');
 
   // DXF 与 lint/takeoff 同读统一出口：健康态 errors 为空、含本批路线标注。
   const dxfHouse = { rooms: [], furnishings: {} as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: [] };

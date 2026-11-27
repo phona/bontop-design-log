@@ -350,7 +350,10 @@ test('C1：17 条给水路由满足持续不变式（端点/标高/点数/轴腿
 
 test('传播实验：热水器锚点东移 0.20m，五条热侧路由跟随、其余 12 条逐字节不动；复原则恢复', () => {
   const baseline = waterPoints(resolveMepRoutes(project, realSources));
-  const movedPlumbing = movePlumbingPoint('water_heater', (entry) => { entry.x = 7.5; });
+  // 2026-11-26/27 量房回填：water_heater 基线 7.30→7.60（绝对点位 (7.60,1.00)），
+  // 东移 0.20m 的注入随之 7.5→7.8；旧注入 7.5 已低于基线且与 shower_gbath 解算位
+  // (7.50,2.45) 重合、触发 axis_run 零行程 fail-closed（解算器正确行为，非 bug）。
+  const movedPlumbing = movePlumbingPoint('water_heater', (entry) => { entry.x = 7.8; });
   const movedSources = endpointSourcesFromFacts({ electrical, plumbing: movedPlumbing, ceiling, hvac }, pointWalls, realMountHosts);
   const moved = waterPoints(resolveMepRoutes(project, movedSources));
   const followers = ['water-balcony', 'water-v1-heater-to-mbath-hot', 'water-v1-heater-to-gbath-hot', 'water-v1-recirc-loop', 'water-water-heater-inlet-requirement'];
@@ -359,15 +362,17 @@ test('传播实验：热水器锚点东移 0.20m，五条热侧路由跟随、�
   }
   const movedPoints = (id: string) => JSON.parse(moved[id]) as Array<{ x: number; y?: number; z: number }>;
   // balcony：起点与首落点随 heater 东移，x=6.0 以东全不动。
-  assertPointsClose(movedPoints('water-balcony'), [[7.5, 0.8, 1], [7.5, 0.8, 1.02], [6, 0.8, 1.02], [6, 0.8, 1.5], [5.6, 0.8, 1.5]], 'balcony moved', 1e-9);
+  // 2026-11-27 回填：faucet_balcony_washer 随 w_balc_west 改至 (5.69,0.35)（墙起 z 1.00→-0.15、墙 x 5.60→5.69）。
+  assertPointsClose(movedPoints('water-balcony'), [[7.8, 0.8, 1], [7.8, 0.8, 1.02], [6, 0.8, 1.02], [6, 0.8, 0.35], [5.69, 0.8, 0.35]], 'balcony moved', 1e-9);
   // 两条热干管：起点与 axis_run 落点随 heater 东移，终点（花洒）不动。
   // D4 起末段为 0.82m 纯竖直立管：终点在花洒高 1.00m（平面位同 [2]）。
-  assertPointsClose(movedPoints('water-v1-heater-to-mbath-hot'), [[7.5, 0.18, 1], [7.5, 0.18, 2.76], [0.5, 0.18, 2.76], [0.5, 1, 2.76]], 'v1-heater-mbath moved', 1e-9);
-  assertPointsClose(movedPoints('water-v1-heater-to-gbath-hot'), [[7.5, 0.18, 1], [7.5, 0.18, 2.45], [7.2, 0.18, 2.4499999999999997], [7.2, 1, 2.4499999999999997]], 'v1-heater-gbath moved', 1e-9);
+  // 2026-11-27 回填：shower_mbath 随 w_mbath_south 改至 z=2.555（墙 z 2.86→2.655）；shower_gbath 解算位 (7.50,2.45)。
+  assertPointsClose(movedPoints('water-v1-heater-to-mbath-hot'), [[7.8, 0.18, 1], [7.8, 0.18, 2.555], [0.5, 0.18, 2.555], [0.5, 1, 2.555]], 'v1-heater-mbath moved', 1e-9);
+  assertPointsClose(movedPoints('water-v1-heater-to-gbath-hot'), [[7.8, 0.18, 1], [7.8, 0.18, 2.45], [7.5, 0.18, 2.45], [7.5, 1, 2.45]], 'v1-heater-gbath moved', 1e-9);
   // 回水环：axis_run 落点 (0.5,1.0) 不动（to.z 未变），只有终点随 heater 东移。
-  assertPointsClose(movedPoints('water-v1-recirc-loop'), [[0.5, 0.35, 2.76], [0.5, 0.35, 1], [7.5, 0.35, 1]], 'v1-recirc-loop moved', 1e-9);
-  // 进水需求：axis_run 沿 z 跑、落点 x 取 from.x=7.35 不动，只有终点（热水器）东移。
-  assertPointsClose(movedPoints('water-water-heater-inlet-requirement'), [[7.35, 0.18, 0.45], [7.35, 0.18, 1], [7.5, 0.18, 1]], 'heater-inlet moved', 1e-9);
+  assertPointsClose(movedPoints('water-v1-recirc-loop'), [[0.5, 0.35, 2.555], [0.5, 0.35, 1], [7.8, 0.35, 1]], 'v1-recirc-loop moved', 1e-9);
+  // 进水需求：axis_run 沿 z 跑、落点 x 取 from.x=7.65 不动，只有终点（热水器）东移。
+  assertPointsClose(movedPoints('water-water-heater-inlet-requirement'), [[7.65, 0.18, 0.45], [7.65, 0.18, 1], [7.8, 0.18, 1]], 'heater-inlet moved', 1e-9);
   const restored = waterPoints(resolveMepRoutes(project, realSources));
   assert.deepEqual(restored, baseline, 'revert must restore byte-identical points');
 });
@@ -389,7 +394,7 @@ test('传播实验：主卫花洒沿墙东移 0.20m，五条主卫路由起/终�
   // (0.5,1.0)→(0.7,1.0) 随 from.x 走（axis_run 由游标出发）。
   assert.ok(Math.abs(movedPoints('water-hot-water-mbath-requirement')[0].x - 0.7) <= 1e-9, 'hot-water-mbath from must follow');
   assert.ok(Math.abs(movedPoints('water-water-heater-recirc-requirement')[0].x - 0.7) <= 1e-9, 'recirc-requirement from must follow');
-  assertPointsClose(movedPoints('water-v1-recirc-loop'), [[0.7, 0.35, 2.76], [0.7, 0.35, 1], [7.3, 0.35, 1]], 'v1-recirc-loop moved', 1e-9);
+  assertPointsClose(movedPoints('water-v1-recirc-loop'), [[0.7, 0.35, 2.555], [0.7, 0.35, 1], [7.6, 0.35, 1]], 'v1-recirc-loop moved', 1e-9); // 2026-11-27 回填：起点 z 随 shower_mbath 墙改至 2.555，终点 x 随 water_heater 改至 7.6
   // 花洒作 to 的两条：终点东移，axis_run 落点（取 to.z）不动。
   // D4 起热干管终点为第 4 点（[2] 为 via-x 中间点，花洒平面位；[3] 为立管顶端）。
   assert.ok(Math.abs(movedPoints('water-v1-heater-to-mbath-hot')[3].x - 0.7) <= 1e-9, 'v1-heater-mbath to must follow');

@@ -246,7 +246,7 @@ test('真实仓：预算口径与层高禁用契约已登记', () => {
   }
 });
 
-test('真实仓：墙砖面积三处一致（38.6276㎡），橱柜/地面两处口径各自闭合', (t) => { // DEC-2026-10-23-R04 后墙砖量；2026-11-12 PR #225 砖带 2.65→2.50，37.0186→35.9836；2026-11-17 包管盒面 +2.644，35.9836→38.6276
+test('真实仓：墙砖面积三处一致（38.2555㎡），橱柜/地面两处口径各自闭合', (t) => { // DEC-2026-10-23-R04 后墙砖量；2026-11-12 PR #225 砖带 2.65→2.50，37.0186→35.9836；2026-11-17 包管盒面 +2.644，35.9836→38.6276；2026-11-27 阳台门取消（item 1）：w_balc_east 待拆隔断两砖带删除 −0.216㎡，38.4715→38.2555
   // 直接跑入口脚本：契约 + 机器源 + 登记侧三方一起验，任何一侧坏都红。
   const run = spawnSync(process.execPath, ['--import', 'tsx', 'scripts/verify/facts/verify-facts.ts'], { encoding: 'utf8' });
   if ((run.error as NodeJS.ErrnoException | undefined)?.code === 'EPERM') {
@@ -254,12 +254,12 @@ test('真实仓：墙砖面积三处一致（38.6276㎡），橱柜/地面两处
     return;
   }
   assert.equal(run.status, 0, `verify-facts 必须退出 0。stderr: ${run.stderr}\nstdout: ${run.stdout}`);
-  assert.match(run.stdout, /c\.masonry_tile_area_parity：3 处一致 = 38\.627599347086424/); // 2026-11-12 PR #225：砖带 2.65→2.50，37.01859934708642→35.983599347086425；2026-11-17 包管盒面 +2.644 → 38.627599347086424
+  assert.match(run.stdout, /c\.masonry_tile_area_parity：3 处一致 = 38\.255544706188886/); // 2026-11-12 PR #225：砖带 2.65→2.50，37.01859934708642→35.983599347086425；2026-11-17 包管盒面 +2.644 → 38.627599347086424；2026-11-27 阳台门取消：w_balc_east 两砖带 −0.216 → 38.255544706188886（verify-facts 三处已一致，见 COST-060-08 quantity_declared total_tile_sqm 38.2555）
   assert.match(run.stdout, /c\.masonry_pipe_box_board_parity：2 处一致 = 2\.644/); // 2026-11-17 包管入账；Codex blocking②：板材对账腿
   assert.match(run.stdout, /c\.masonry_pipe_box_mortar_parity：2 处一致 = 0\.20158/); // 同上：砂浆对账腿（盒截面改、盒面不动时仍能抓漂移）
   assert.match(run.stdout, /c\.masonry_pipe_box_labor_parity：2 处一致 = 600 元/); // 2026-11-17 第二轮：卡价实算（3 条单管 × 200）== COST-060-05 登记
   assert.match(run.stdout, /c\.masonry_pipe_box_material_parity：2 处一致 = 153 元/); // 同上：卡价实算（板材 93 + 砂浆 60）== COST-060-09 登记
-  assert.match(run.stdout, /c\.floor_quantity_parity：3 处一致 = 127\.44419632679491/); // R01 重算：地面总量 123.9584→127.8734（浮点和原样打印）；2026-11-16 D1 扣圆角 −0.4292 → 127.4442
+  assert.match(run.stdout, /c\.floor_quantity_parity：3 处一致 = 136\.07293625617598/); // R01 重算：地面总量 123.9584→127.8734（浮点和原样打印）；2026-11-16 D1 扣圆角 −0.4292 → 127.4442；2026-11-27 量房回填房间边界重画（主卧 26.63→28.30、主卫 4.36→8.79、平台 1.39→2.73、客餐厅边界斜线改折线 +0.84）→ 136.0729（3d3e217e 镜像同步 COST-060-01 total 135.2312→136.0729 佐证）
   assert.match(run.stdout, /c\.cabinet_length_parity：3 处一致 = 5\.51/);
   assert.match(run.stdout, /c\.cabinet_area_parity：3 处一致 = 4\.2226/);
 });

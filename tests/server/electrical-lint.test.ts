@@ -60,7 +60,7 @@ test('real electrical topology parses and lints', () => {
   // +2 卫浴防溅 +17 开关零线口径 +0 插座回路 RCD（现有 16 路均已声明"漏保"）= 71
   // DEC-2026-10-06-R2 电气兜底轮：17 个开关补 neutral: true、2 个浴霸插座补防溅盒 note → 两类归零（-19）；
   // 新增微蒸烤预留点位 sock_kitchen_oven（未激活、不进 topology 回路）→ point_uncovered +1（29→30）→ 71-19+1=53
-  assert.equal(result.warnings.length, 52); // DEC-2026-10-28-R05 窗帘盒归位后 sock_study_curtain 贴玻璃线、curtain_power_near_curtain_wall 告警消失，54→53；DEC-2026-10-27-R01 删 switch_parent_bed（point_uncovered −1）55→54； // R1/R2 删点后由 53 降为 51（point_uncovered 30→28）；DEC-2026-10-17-R20 +3：point_uncovered +1（net_master_ap 未入回路）、circuit_member_dangling_or_superseded +1（sock_balcony_washer blocked 显形）、pending_parameter +1（dedicated_kitchen_fridge 改绑后参数待定）51→54；DEC-2026-10-23-R04 +1：curtain_power_near_curtain_wall（sock_study_curtain 距东南玻璃线 2.08m 超阈值）54→55；2026-11-16 强电关系化：sock_balcony_washer/dryer h 1.2→1.85、washer blocked 状态清除，circuit_member_dangling_or_superseded 1→0，53→52
+  assert.equal(result.warnings.length, 53); // 2026-11-27 增压泵预留插座 sock_booster_pump_reserve（reserve-only、未激活、不进 topology 回路）→ point_uncovered +1、warnings +1（52→53）；同 sock_kitchen_oven 预留口径； // DEC-2026-10-28-R05 窗帘盒归位后 sock_study_curtain 贴玻璃线、curtain_power_near_curtain_wall 告警消失，54→53；DEC-2026-10-27-R01 删 switch_parent_bed（point_uncovered −1）55→54； // R1/R2 删点后由 53 降为 51（point_uncovered 30→28）；DEC-2026-10-17-R20 +3：point_uncovered +1（net_master_ap 未入回路）、circuit_member_dangling_or_superseded +1（sock_balcony_washer blocked 显形）、pending_parameter +1（dedicated_kitchen_fridge 改绑后参数待定）51→54；DEC-2026-10-23-R04 +1：curtain_power_near_curtain_wall（sock_study_curtain 距东南玻璃线 2.08m 超阈值）54→55；2026-11-16 强电关系化：sock_balcony_washer/dryer h 1.2→1.85、washer blocked 状态清除，circuit_member_dangling_or_superseded 1→0，53→52
   assert.equal(result.counts.byCode.rcd_missing_on_socket_circuit ?? 0, 0); // 命中 0：16 路含 socket 成员的回路 breaker 均已声明"漏保"
   assert.equal(result.counts.byCode.bath_socket_splash_box_undeclared ?? 0, 0); // DEC-2026-10-06-R2：两卫浴霸插座 note 已补防溅盒声明（2→0）
   assert.equal(result.counts.byCode.switch_neutral_policy_undeclared ?? 0, 0); // DEC-2026-10-06-R2：17 个 switch/switch_2way 已补 neutral: true（17→0）
@@ -119,7 +119,7 @@ test('lint keeps historical uncovered points as warnings and maps circuit facts'
   assert.equal(result.warnings.filter((i) => i.code === 'control_target_circuit_unresolved').length, 0);
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered'));
   assert.equal(result.warnings.filter((i) => i.code === 'electrical_parameters_pending').length, 0);
-  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 28); // DEC-2026-10-27-R01 删 switch_parent_bed（未覆盖点）29→28； // 2026-10-05 R15：+switch_guest_bed（床头双控开关非负载点，28→29）// DEC-2026-10-06-R2：+sock_kitchen_oven（29→30）；DEC-2026-10-12-R1 删两盏壁灯（30→28）；R2 删 switch_mbath/switch_gbath 两个非负载开关点（28→26）→ 当前 26 // 外机点位已入回路，不增未覆盖；DEC-2026-10-17-R20：+net_master_ap 未入回路（28→29）
+  assert.equal(result.warnings.filter((i) => i.code === 'point_uncovered').length, 29); // 2026-11-27 增压泵预留插座 sock_booster_pump_reserve（reserve-only、未激活、不进 topology 回路）28→29； // DEC-2026-10-27-R01 删 switch_parent_bed（未覆盖点）29→28； // 2026-10-05 R15：+switch_guest_bed（床头双控开关非负载点，28→29）// DEC-2026-10-06-R2：+sock_kitchen_oven（29→30）；DEC-2026-10-12-R1 删两盏壁灯（30→28）；R2 删 switch_mbath/switch_gbath 两个非负载开关点（28→26）→ 当前 26 // 外机点位已入回路，不增未覆盖；DEC-2026-10-17-R20：+net_master_ap 未入回路（28→29）
   assert.ok(result.warnings.some((i) => i.code === 'point_uncovered' && i.id === 'switch_master_bed_l'));
 });
 

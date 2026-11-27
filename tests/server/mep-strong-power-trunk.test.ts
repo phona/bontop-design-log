@@ -137,6 +137,8 @@ const EXPECTED_KINDS: Record<SliceId, string[]> = {
  *  vertical_to 目标）由下方断言逐条核对，不再整段钉死 via 字面量。 */
 // 2026-11-23：走廊轴之后先贴 w_nw_south（z=4.48）再西行到 x=2.43，然后才 vertical_to。
 // 旧序列在 y=2.55 上直飞主卫，门头盒改梁后那一段没有吊顶。
+// 2026-11-26 量房回填：w_nw_south 4.30→3.75，贴墙带 4.48→3.93（墙南侧 0.18m 不变）；
+// w_mbath_east 2.60→2.90，西行落点 2.43→2.73（距墙西侧 0.17m 不变）。
 const MBATH_KINDS = ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'vertical_to', 'axis_run', 'axis_run'];
 
 function loadAll() {
@@ -433,26 +435,27 @@ test('C1：10 条路由关系化——axes/shafts 各只声明一次，解算折
     'mbath 前两步须引用走廊轴',
   );
   assert.equal((mbath.via as any[])[2].axis, 'z', 'mbath 第三步须沿 z 离开走廊轴');
-  assert.equal((mbath.via as any[])[2].to, 4.48, 'mbath 第三步须落到 z=4.48（w_nw_south 贴墙带）');
-  assert.equal((mbath.via as any[])[3].to, 2.43, 'mbath 西行须落到 x=2.43（距 w_mbath_east 0.17m，在通顶柜以东）');
+  assert.equal((mbath.via as any[])[2].to, 3.93, 'mbath 第三步须落到 z=3.93（w_nw_south 贴墙带，墙线 3.75 南侧 0.18m）');
+  assert.equal((mbath.via as any[])[3].to, 2.73, 'mbath 西行须落到 x=2.73（贴 w_mbath_east 西侧 0.17m）');
   assert.equal((mbath.via as any[])[4].height, 'to', 'mbath vertical_to 须以 to 端点为升位目标');
   const mbathResolved = routeOf(report, 'strong-ded-bathheaters-mbath');
   const corridorValue = all.coordination.axes.find((a) => a.id === 'corridor_axis')!.value;
   const onCorridor = mbathResolved.points.filter((p) => Math.abs(p.z - corridorValue) <= TOL);
   assert.ok(onCorridor.length >= 2, 'mbath 须仍有落在走廊轴上的段');
-  const hugged = mbathResolved.points.filter((p) => Math.abs(p.z - 4.48) <= TOL && Math.abs(p.x - 2.43) <= TOL);
-  assert.ok(hugged.length >= 1, 'mbath 须经过 (2.43, 4.48) 墙角');
-  const northLeg = mbathResolved.points.filter((p) => Math.abs(p.x - 2.43) <= TOL && Math.abs((p.y ?? 0) - (mbath.to_height ?? 0)) <= TOL);
-  assert.ok(northLeg.length >= 2, 'mbath 北行段须在 x=2.43、升到 to_height 之后');
+  const hugged = mbathResolved.points.filter((p) => Math.abs(p.z - 3.93) <= TOL && Math.abs(p.x - 2.73) <= TOL);
+  assert.ok(hugged.length >= 1, 'mbath 须经过 (2.73, 3.93) 墙角');
+  const northLeg = mbathResolved.points.filter((p) => Math.abs(p.x - 2.73) <= TOL && Math.abs((p.y ?? 0) - (mbath.to_height ?? 0)) <= TOL);
+  assert.ok(northLeg.length >= 2, 'mbath 北行段须在 x=2.73、升到 to_height 之后');
   assertRouteInvariants(mbathResolved, all.coordination, 'strong-ded-bathheaters-mbath');
   // 台盆电源不穿通顶柜、不贴 w_mbath_east（那条墙是剪力墙，长距离并行会过 survey 上限）。
   // x=1.92 在柜西缘 1.975 以西、局部梁头东缘 1.90 以东；z=2.96 贴 w_mbath_south。
   const service = all.coordination.routes.find((r) => r.id === 'strong-power-mbath-service')!;
   assert.deepEqual(
     service.via.map((s: any) => s.kind),
-    ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
+    ['axis_jog', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run', 'axis_run'],
     'mbath-service 不得再插入 level / vertical_to 去钻柜或降到垫层',
-  );
+  ); // 2026-11-27 干湿分离放弃、台盆插座移入主卫内：末段沿东墙北行穿 w_mbath_south 进主卫，
+  // 补一段 axis_run（z to 'to'）后才下引，6→7 步；仍无 level / vertical_to。
   assert.deepEqual(
     (service.via as any[]).filter((s) => typeof s.to === 'number').map((s) => s.to),
     [4.1, 4.48, 1.92, 2.96],
