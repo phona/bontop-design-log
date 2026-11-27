@@ -215,13 +215,19 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
     assert.ok(door.x !== undefined && door.z !== undefined, 'door should have absolute x/z');
   });
 
-  it('getDataPrecision reports inferred geometry and material confirmation stats (决策闭环)', () => {
+  it('getDataPrecision reports inferred geometry/structure but completed survey (决策闭环)', () => {
     const catalog = ProjectCatalog.load('.');
     const confidence = catalog.getDataPrecision();
+    // 2026-11-27 业主激光实测 + 修正版 DWG 后：geometry/structure 的 coarse 值仍为 inferred
+    // （两轮量房均无逐间净平面尺寸、无梁位平面），但 survey_completed 翻 true →
+    // overallMaturity 从 inferred 升 partial。逐项实测登记在 config/house.yaml 的 survey_coverage 段。
+    // 与 c38c6b5c（archive 分支，只基于 2026-11-26 PDF）不同：source_doc 不再指向 ky51，
+    // 改指 2026-11-27 权威量房登记 survey/701_survey_corrected.yaml。
     assert.equal(confidence.geometry, 'inferred');
     assert.equal(confidence.structure, 'inferred');
-    assert.equal(confidence.surveyCompleted, false);
-    assert.equal(confidence.overallMaturity, 'inferred');
+    assert.equal(confidence.surveyCompleted, true);
+    assert.equal(confidence.overallMaturity, 'partial');
+    assert.ok(confidence.sourceDoc?.includes('701_survey_corrected'), 'source_doc 指向 2026-11-27 权威量房登记');
     assert.ok(confidence.materials.total > 0, 'has materials');
     assert.ok(confidence.materials.candidate > 0, 'candidate materials exist');
     assert.equal(

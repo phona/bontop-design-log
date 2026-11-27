@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"212cc122e52879998b03907eab18b3d33d0a5970dbc75128bcbcd3c9d65d5faf","config/decision-gates.yaml":"e1066799953f6aeb74e5234d4bdc7f153cf473b95d5eedb91bcce7174ba16012","config/electrical-topology.yaml":"376ae4f4514db0e142535ce9e116ce7d89fee8b1f1b7cf062b2182025ac518d4","config/electrical.yaml":"75a6476a6a8208f0a0c0b2f1e229a60c1035f2e46cc0f24d33deca83fdfa864a","config/house.yaml":"84ed11ef4f525f47cf6bc81fd199be254e1c4c1bad0833e94bb801912950aac5","config/hvac.yaml":"1e9baf01d6280fd6c4351b2951eecac3cbec94a7f905db78d0798865c5be9480","config/layout/model-geometry.yaml":"c0aa02cb53b4e129b7c98682a53b3d89e14924ff3415fbb8a75d7e1010c3c97a","config/mep-hvac-coordination.yaml":"8c5bcfa6a3106407fa4a6763dcfc228abcca78151558dcfc1090a2e7871b8202","config/model-package-links.yaml":"b0bdb797b1962aad80e3f0af6bdccba8a21c51e0e9312c3b02ce2ce81760e891","config/model/envelope/ceiling.yaml":"1edc7f3e79896f6ec86cff17c3e84908a4c9192e82100e0006c328b34dc2adb1","config/model/envelope/finish-defaults.yaml":"cfb08b4fefefc71aa1525c5172cc28596b855bc6b95eb576302512314a942b4d","config/model/envelope/floor-zones.yaml":"75d5b0aa15d0cff4b2926aa4167a42a809c18dcc98dc9f29bf42fa07ffbaa786","config/model/envelope/openings.yaml":"de68a3b78a944cb2a0597949c2b105e57cbf10adf1439a6c5aada2bd127fd107","config/plumbing.yaml":"d3a76484b509f3d2418312eb8634e2168f0c0bd994bb79a644d8299a5be76e31","schedule/phase-1/control.yaml":"5e2316f2b272dc25e66465a608be9cbb67b19f65e1f6e67e8bc01fa5a40192a0","schedule/phase-scope.yaml":"17d0874a87fc441c2ad66eb1abfc55d341abfc4e9e32229889998e9e227cc8b6","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"212cc122e52879998b03907eab18b3d33d0a5970dbc75128bcbcd3c9d65d5faf","config/decision-gates.yaml":"e1066799953f6aeb74e5234d4bdc7f153cf473b95d5eedb91bcce7174ba16012","config/electrical-topology.yaml":"376ae4f4514db0e142535ce9e116ce7d89fee8b1f1b7cf062b2182025ac518d4","config/electrical.yaml":"75a6476a6a8208f0a0c0b2f1e229a60c1035f2e46cc0f24d33deca83fdfa864a","config/house.yaml":"ab0a6ea626b6d11c231533a59d63168371e0b6a35a652b535159eb0dd24221ac","config/hvac.yaml":"1e9baf01d6280fd6c4351b2951eecac3cbec94a7f905db78d0798865c5be9480","config/layout/model-geometry.yaml":"c0aa02cb53b4e129b7c98682a53b3d89e14924ff3415fbb8a75d7e1010c3c97a","config/mep-hvac-coordination.yaml":"8c5bcfa6a3106407fa4a6763dcfc228abcca78151558dcfc1090a2e7871b8202","config/model-package-links.yaml":"b0bdb797b1962aad80e3f0af6bdccba8a21c51e0e9312c3b02ce2ce81760e891","config/model/envelope/ceiling.yaml":"1edc7f3e79896f6ec86cff17c3e84908a4c9192e82100e0006c328b34dc2adb1","config/model/envelope/finish-defaults.yaml":"cfb08b4fefefc71aa1525c5172cc28596b855bc6b95eb576302512314a942b4d","config/model/envelope/floor-zones.yaml":"75d5b0aa15d0cff4b2926aa4167a42a809c18dcc98dc9f29bf42fa07ffbaa786","config/model/envelope/openings.yaml":"de68a3b78a944cb2a0597949c2b105e57cbf10adf1439a6c5aada2bd127fd107","config/plumbing.yaml":"d3a76484b509f3d2418312eb8634e2168f0c0bd994bb79a644d8299a5be76e31","schedule/phase-1/control.yaml":"71d567afe8867c2d29df89ab0009bb5c74c8f213262c7791a9eff496958af3eb","schedule/phase-scope.yaml":"17d0874a87fc441c2ad66eb1abfc55d341abfc4e9e32229889998e9e227cc8b6","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:ae24f0aa0871d570e668d54dccf297cdc40326a56896c430da560f43e07b416b`（17 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:1f1d0feee2945324ca462a7cdce63dd8e16748db2f94219c3fd428f00c3437dc`（17 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -146,7 +146,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:77d8c8fcd18c66d4563ebe6a9622883499553050c9d932be291616f1e6f8d8f9`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:283d6dc3aa08e6654494c8a7441699b4844af2710dfe0f0c39dbf2e79416af24`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -199,7 +199,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:77d8c8fcd18c66d4563ebe6a9622883499553050c9d932be291616f1e6f8d8f9`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:283d6dc3aa08e6654494c8a7441699b4844af2710dfe0f0c39dbf2e79416af24`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -238,7 +238,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:77d8c8fcd18c66d4563ebe6a9622883499553050c9d932be291616f1e6f8d8f9`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:283d6dc3aa08e6654494c8a7441699b4844af2710dfe0f0c39dbf2e79416af24`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -718,7 +718,7 @@
 |---|---|---|---|---|---|---:|---|
 | [ ] | — | COST-090-01 | 卧室和书房室内门 | 门扇门套门锁合页门吸运输安装和密封收边均需写明 | 4樘 | 待报价/待算量 | quote_pending |
 | [ ] | — | COST-090-02 | 卫生间门 | 写明防潮材质玻璃门锁门套安装和密封处理 | 2樘 | 待报价/待算量 | quote_pending |
-| [ ] | — | COST-090-03 | 厨房多扇联动玻璃推拉门 | 推动一扇门时相邻门扇可随动；写明门扇数量、轨道、玻璃、型材、五金、安装收边和燃气验收适用条件 | 1组 | 待报价/待算量 | gas_requirement_pending |
+| [ ] | — | COST-090-03 | 厨房多扇联动玻璃推拉门 | 推动一扇门时相邻门扇可随动；写明门扇数量、轨道、玻璃、型材、五金、安装收边和燃气验收适用条件。洞口实测 2794×2555mm（2026-11-27 业主激光实测，survey/701_survey_corrected.yaml openings_mm.kitchen_dining），面积 7.14㎡；E号门窗 ¥568/㎡ 单价未核实出处，须书面报价后重核，价格待复核；旧锚 ¥5,214.24（按旧洞口 3.6×2.55m = 9.18㎡ 算）已作废，不得再用 | 1组 | 待报价/待算量 | gas_requirement_pending |
 | [ ] | — | COST-090-04 | 门洞修正和额外基层 | 只有复尺发现确需处理时才发生，须先报价确认 | 待复尺 | 待报价/待算量 | site_measurement_pending |
 
 - [ ] 每个费用项均有数量、单价、品牌型号或服务边界；“待报价/待算量”没有被当作0元。
@@ -1062,7 +1062,7 @@
 | [config/model/envelope/ceiling.yaml](../../config/model/envelope/ceiling.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:77d8c8fcd18c66d4563ebe6a9622883499553050c9d932be291616f1e6f8d8f9`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:283d6dc3aa08e6654494c8a7441699b4844af2710dfe0f0c39dbf2e79416af24`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1236,7 +1236,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 
-当前项目数据指纹：`sha256:77d8c8fcd18c66d4563ebe6a9622883499553050c9d932be291616f1e6f8d8f9`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:283d6dc3aa08e6654494c8a7441699b4844af2710dfe0f0c39dbf2e79416af24`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1265,7 +1265,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 
-当前项目数据指纹：`sha256:77d8c8fcd18c66d4563ebe6a9622883499553050c9d932be291616f1e6f8d8f9`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:283d6dc3aa08e6654494c8a7441699b4844af2710dfe0f0c39dbf2e79416af24`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |

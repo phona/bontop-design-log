@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"5e2316f2b272dc25e66465a608be9cbb67b19f65e1f6e67e8bc01fa5a40192a0"} -->
+<!-- schedule-input-snapshot:{"schedule/phase-1/control.yaml":"71d567afe8867c2d29df89ab0009bb5c74c8f213262c7791a9eff496958af3eb"} -->
 # 一期预算控制表
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:df31f7f38b4e252a0c833b2165903d856bf495226a6e9f98ba451b41db8eace4`（1 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:211bad4cb316dcbd1f10e158958c1340a16b65f526a628ceaf1f75479b1b4a4b`（1 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -305,7 +305,7 @@
 |---|---|---|---|---|---:|---|
 | — | COST-090-01 | 卧室和书房室内门 | 门扇门套门锁合页门吸运输安装和密封收边均需写明 | 4樘 | 待报价/待算量 | quote_pending |
 | — | COST-090-02 | 卫生间门 | 写明防潮材质玻璃门锁门套安装和密封处理 | 2樘 | 待报价/待算量 | quote_pending |
-| — | COST-090-03 | 厨房多扇联动玻璃推拉门 | 推动一扇门时相邻门扇可随动；写明门扇数量、轨道、玻璃、型材、五金、安装收边和燃气验收适用条件 | 1组 | 待报价/待算量 | gas_requirement_pending |
+| — | COST-090-03 | 厨房多扇联动玻璃推拉门 | 推动一扇门时相邻门扇可随动；写明门扇数量、轨道、玻璃、型材、五金、安装收边和燃气验收适用条件。洞口实测 2794×2555mm（2026-11-27 业主激光实测，survey/701_survey_corrected.yaml openings_mm.kitchen_dining），面积 7.14㎡；E号门窗 ¥568/㎡ 单价未核实出处，须书面报价后重核，价格待复核；旧锚 ¥5,214.24（按旧洞口 3.6×2.55m = 9.18㎡ 算）已作废，不得再用 | 1组 | 待报价/待算量 | gas_requirement_pending |
 | — | COST-090-04 | 门洞修正和额外基层 | 只有复尺发现确需处理时才发生，须先报价确认 | 待复尺 | 待报价/待算量 | site_measurement_pending |
 
 ### PKG-100｜两个卫生间的洁具与五金

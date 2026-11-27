@@ -1485,7 +1485,7 @@ work_packages:
       components:
         - {id: COST-090-01, name: 卧室和书房室内门, description: 门扇门套门锁合页门吸运输安装和密封收边均需写明, quantity_basis: 4樘, planned_cny: null, status: quote_pending}
         - {id: COST-090-02, name: 卫生间门, description: 写明防潮材质玻璃门锁门套安装和密封处理, quantity_basis: 2樘, planned_cny: null, status: quote_pending}
-        - {id: COST-090-03, name: 厨房多扇联动玻璃推拉门, description: 推动一扇门时相邻门扇可随动；写明门扇数量、轨道、玻璃、型材、五金、安装收边和燃气验收适用条件, quantity_basis: 1组, planned_cny: null, status: gas_requirement_pending}
+        - {id: COST-090-03, name: 厨房多扇联动玻璃推拉门, description: "推动一扇门时相邻门扇可随动；写明门扇数量、轨道、玻璃、型材、五金、安装收边和燃气验收适用条件。洞口实测 2794×2555mm（2026-11-27 业主激光实测，survey/701_survey_corrected.yaml openings_mm.kitchen_dining），面积 7.14㎡；E号门窗 ¥568/㎡ 单价未核实出处，须书面报价后重核，价格待复核；旧锚 ¥5,214.24（按旧洞口 3.6×2.55m = 9.18㎡ 算）已作废，不得再用", quantity_basis: 1组, planned_cny: null, status: gas_requirement_pending}
         - {id: COST-090-04, name: 门洞修正和额外基层, description: 只有复尺发现确需处理时才发生，须先报价确认, quantity_basis: 待复尺, planned_cny: null, status: site_measurement_pending}
     duration_workdays: {min: 3, max: 5}
     dependencies: [PKG-060, PKG-080]

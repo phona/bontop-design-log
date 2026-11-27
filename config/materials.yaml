@@ -1679,8 +1679,9 @@ materials:
     unit: "㎡"
     price_per_unit: 0
     calc_mode: "fixed"
-    status: "provided_by_developer"
+    status: "candidate"
     appearance: { type: "solid_color", color: "#c7d7d5", finish: "soft", profile: "fluted" }
+    notes: "不单独计价：整樘门由 E号门窗供货（框+玻璃+安装全包，见 COST-090-03），玻璃费已含在门包价内；非开发商提供，不得标 provided_by_developer（同类无 topic_id 的纯渲染材质 shower_glass_01 / mirror_01 / rubber_floor_01 均标 candidate）"
 
   - id: "shower_glass_01"
     category: "淋浴玻璃"
