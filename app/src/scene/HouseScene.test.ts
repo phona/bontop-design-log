@@ -519,8 +519,9 @@ describe('HouseScene', () => {
     // 旧 mock 只给 exportRoot：墙长靠 wall mesh 的 geometry.parameters.width=3 反推，
     // 墙高根本没被用到。现在两者都来自 wallSegmentIndex / rooms（HouseScene.ts:1099-1102），
     // 所以必须补真实索引；顺带把虚构墙 w_x 换成真实布局里书房北墙 w_st_north
-    // （model-geometry：v_mb_ne→v_st_ne，3.00m；overlay 的 paint_study_w_st_north 正是 [0, 3.00]），
-    // 3m 声明的墙长依据从此是真的，不是测试里手编的 3。
+    // （model-geometry：v_mb_ne→v_st_ne，2.99m；model-geometry 的 paint_study_w_st_north 正是 [0, 2.99]），
+    // 2.99m 声明的墙长依据从此是真的，不是测试里手编的 3。2026-11-27 量房回填后该墙为 2.99m，
+    // 沿用旧 3.00m 会触发 outOfWallSpan、ready 恒 false。
     scene.wallSegmentIndex = realWallSegments;
     scene.rooms = realRooms;
     const mk = (objectId: string, regionId: string, along: [number, number], regionAlong: [number, number], width: number, height: number, rectBottom = 0) => {
@@ -540,16 +541,16 @@ describe('HouseScene', () => {
     };
     const wall = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
     wall.userData = { type: 'wall', objectId: 'w_st_north' };
-    (wall.geometry as any).parameters = { width: 3, height: 2.8, depth: 0.12 };
+    (wall.geometry as any).parameters = { width: 2.99, height: 2.8, depth: 0.12 };
     scene.exportRoot.add(wall);
-    // 一段 3m 声明被 0.9m 门洞拆成 左条 + 右条 + 楣上通长带
-    mk('r:s0', 'r', [0, 1.05], [0, 3], 1.05, 2.1, 0);
-    mk('r:s1', 'r', [1.95, 3], [0, 3], 1.05, 2.1, 0);
-    mk('r:s2', 'r', [0, 3], [0, 3], 3, 0.7, 2.1);
+    // 一段 2.99m 声明被 0.9m 门洞拆成 左条 + 右条 + 楣上通长带
+    mk('r:s0', 'r', [0, 1.05], [0, 2.99], 1.05, 2.1, 0);
+    mk('r:s1', 'r', [1.95, 2.99], [0, 2.99], 1.04, 2.1, 0);
+    mk('r:s2', 'r', [0, 2.99], [0, 2.99], 2.99, 0.7, 2.1);
 
     const status = scene.getPaintInspectionStatus();
-    expect(status.grossWallAreaSqm).toBeCloseTo(8.4, 3);   // 3 × 2.8
-    expect(status.wallAreaSqm).toBeCloseTo(6.51, 3);       // 1.05×2.1 ×2 + 3×0.7
+    expect(status.grossWallAreaSqm).toBeCloseTo(8.372, 3); // 2.99 × 2.8
+    expect(status.wallAreaSqm).toBeCloseTo(6.482, 3);     // 1.05×2.1 + 1.04×2.1 + 2.99×0.7
     expect(status.gapAreaSqm).toBeCloseTo(1.89, 3);        // 0.9 × 2.1
     expect(status.byRoom['study'].segments).toBe(1);
     expect(status.ready).toBe(true);
