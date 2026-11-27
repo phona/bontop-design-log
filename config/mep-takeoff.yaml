@@ -155,6 +155,10 @@ pipe_route_segments:
   drain-gbath-vanity-to-riser:      [{from_index: 0, to_index: 2, drain_dn: 50}]  # 2026-11-27 干湿分离放弃重画：折线为 3 点（0–2）
   drain-kitchen-sink-to-riser:      [{from_index: 0, to_index: 1, drain_dn: 50}]
   drain-kitchen-dishwasher-to-riser: [{from_index: 0, to_index: 1, drain_dn: 50}]
+  # 2026-11-27 PR #270 机器人泊位上下水（业主裁定主方案厨房水槽）：进水支路折线 3 点（0–2）、冷水 DN20；
+  # 排水折线 5 点（0–4）、整段 DN50（含与水槽主管共段 x[9.5,10.5]，同洗碗机排水口径）。
+  water-robot-dock-supply:          [{from_index: 0, to_index: 2, water_temp: cold, water_dn: 20}]
+  drain-robot-dock-to-riser:        [{from_index: 0, to_index: 4, drain_dn: 50}]
   # —— v1 估算干管（2026-10-07 提升为 physical；坐标取既有推断锚点，uncertainty ±0.3m，
   #    construction_status 恒 pending，量房日实测后改写；详见各路由 reason）——
   water-entry-valve-requirement:      [{from_index: 0, to_index: 2, water_temp: cold, water_dn: 25}]

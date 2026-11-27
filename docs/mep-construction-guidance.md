@@ -1,16 +1,16 @@
 # 机电走线施工指导（水路 / 电路 / 中央空调，燃气除外）
 
-> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（137 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73；2026-10-05 给排水 v1 补 5 条排水路线并改 water-kitchen-requirement 端点，73→78；2026-10-05 DEC-2026-10-05-R18 两台内机方向相反+下出风成组补 2 条送风路线，78→80；2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底补 7 条给排水路线，80→87；2026-10-07 v1 水路估算：6 条给水 + 1 条排水 requirement 按推断锚点提升为 physical（uncertainty ±0.3m、construction_status 恒 pending），并新增 5 条 water-v1-* 正交干管路由（热水器→两卫冷/热/回水），87→133；DEC-2026-10-07-R15 删除 NP-4b 夜灯路线后当前为 132；2026-10-08 DEC-2026-10-08-W01 上下水按最佳实践推断落库：新建 water_entry / drain_riser_balcony 两个推断点位（坐标取自既有候选路线端点，一个数都没新造），15 条给排水路线端点由内联坐标改绑点位 id，新增净水器进水与阳台地漏两条路线——132→134，给排水点位 27→29；全部 status: inferred / construction_status: pending / not_for_construction，量房日升级 measured；2026-10-12~10-17 各批删改以 config 同名头部计数链为准，DEC-2026-10-17-R20 水电 review 落地删除 2 条旧位路线（strong-ded-fridge / strong-power-parent-child-parentbed-l，新位走线专项另画），130→128；同批走线专项为 7 个新点位补 7 条路线（strong-ded-fridge-living / strong-power-waterbar / strong-power-kitchen-east / strong-power-weakbox / weak-ap-master / strong-light-balcony / strong-light-entry-night-mid），128→135；2026-10-23 DEC-2026-10-23-R03 客卫沉箱二次排水补 1 条需求路线，137→138；2026-10-27 DEC-2026-10-27-R01 书房删除床头开关，删 strong-light-bedrooms-parent-bed 路线，138→137）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
+> 状态：**协调级 v1（2026-09-01）**。本文档把 `config/mep-hvac-coordination.yaml`（139 条走线；2026-09-07 补全普通插座/照明/专用回路实体走线，DEC-2026-09-07-057；2026-10-04 DEC-2026-10-04-R2 补外机供电 strong-ac-outdoor，72→73；2026-10-05 给排水 v1 补 5 条排水路线并改 water-kitchen-requirement 端点，73→78；2026-10-05 DEC-2026-10-05-R18 两台内机方向相反+下出风成组补 2 条送风路线，78→80；2026-10-06 DEC-2026-10-06-R1 给排水缺项兜底补 7 条给排水路线，80→87；2026-10-07 v1 水路估算：6 条给水 + 1 条排水 requirement 按推断锚点提升为 physical（uncertainty ±0.3m、construction_status 恒 pending），并新增 5 条 water-v1-* 正交干管路由（热水器→两卫冷/热/回水），87→133；DEC-2026-10-07-R15 删除 NP-4b 夜灯路线后当前为 132；2026-10-08 DEC-2026-10-08-W01 上下水按最佳实践推断落库：新建 water_entry / drain_riser_balcony 两个推断点位（坐标取自既有候选路线端点，一个数都没新造），15 条给排水路线端点由内联坐标改绑点位 id，新增净水器进水与阳台地漏两条路线——132→134，给排水点位 27→29；全部 status: inferred / construction_status: pending / not_for_construction，量房日升级 measured；2026-10-12~10-17 各批删改以 config 同名头部计数链为准，DEC-2026-10-17-R20 水电 review 落地删除 2 条旧位路线（strong-ded-fridge / strong-power-parent-child-parentbed-l，新位走线专项另画），130→128；同批走线专项为 7 个新点位补 7 条路线（strong-ded-fridge-living / strong-power-waterbar / strong-power-kitchen-east / strong-power-weakbox / weak-ap-master / strong-light-balcony / strong-light-entry-night-mid），128→135；2026-10-23 DEC-2026-10-23-R03 客卫沉箱二次排水补 1 条需求路线，137→138；2026-10-27 DEC-2026-10-27-R01 书房删除床头开关，删 strong-light-bedrooms-parent-bed 路线，138→137；2026-11-27 PR #270 机器人泊位上下水补 2 条路线（water-robot-dock-supply / drain-robot-dock-to-riser），137→139）与邻户原始结构图（`survey/neighbor_ys01_original_structure_2025-06.png`）读出的墙体类型合并成一份施工沟通底稿。
 > **不是施工放线依据**：所有坐标为协调值，穿墙点、梁位、立管、墙体类型均需交房量房后终核修正。配置驱动，修正只改 yaml，渲染与校验自动跟随。
 
 ## 0. 规模口径（与 config/facts.yaml 对账）
 
 | 数据源 | 条目数 | 登记事实 |
 |---|---:|---|
-| `config/mep-hvac-coordination.yaml` | 共 137 条路由 | `fact.mep_routes_count` |
+| `config/mep-hvac-coordination.yaml` | 共 139 条路由 | `fact.mep_routes_count` |
 | `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
 | `config/electrical.yaml` | 共 103 个点位 | `fact.electrical_points_count` |
-| `config/plumbing.yaml` | 共 35 个点位 | `fact.plumbing_points_count` |
+| `config/plumbing.yaml` | 共 37 个点位 | `fact.plumbing_points_count` |
 | `config/model/envelope/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
 | `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 47 处 | 契约 `c.mep_layer_below_drop_bottom`（`registered_conflicts: 47`） |
 
