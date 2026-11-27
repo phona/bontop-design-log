@@ -26,10 +26,10 @@ describe('model-geometry layout matches floor plan', () => {
 
     assert(byId.has('balcony'));
     const balcony = byId.get('balcony')!;
-    assert(balcony.depth >= 1.0 && balcony.depth <= 1.5, 'balcony (生活阳台) depth ~1.2m');
+    assert(balcony.depth >= 1.4 && balcony.depth <= 1.6, 'balcony (生活阳台) depth ~1.51m（2026-11-27 量房回填：边界 [v_vrv_n, v_kit_w, v_balc_ne, v_balc_sw] = x[5.69,7.50] z[−0.15,1.36]，深 1.36−(−0.15)=1.51）');
 
     assert(byId.has('entry_garden'));
     const entry = byId.get('entry_garden')!;
-    assert(entry.width >= 4.3 && entry.width <= 4.6, 'entry garden width ~4.45m (x:[10.80,15.25])');
+    assert(entry.width >= 4.0 && entry.width <= 4.3, 'entry garden width ~4.14m (x:[11.11,15.25]；2026-11-27 量房回填：入户西墙 w_ent_west 10.80→11.11，宽 15.25−11.11=4.14)');
   });
 });

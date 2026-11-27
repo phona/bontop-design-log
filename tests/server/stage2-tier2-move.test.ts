@@ -327,15 +327,16 @@ test('Tier 2 传动 G5：东南床东移 0.20m，衣柜跟随', () => {
   }
 });
 
-test('Tier 2 传动 G6a：冰箱离墙东移 0.20m，水吧簇四件跟随；沿墙南移 0.20m 越出短墙域必 fail-closed', () => {
+test('Tier 2 传动 G6a：冰箱离墙东移 0.20m，水吧簇四件跟随；沿墙南移 0.30m 越出短墙域必 fail-closed', () => {
   const { furnishings, walls, wallSegments, rooms } = loadRealConfig();
   const before = resolveAll(furnishings, walls, wallSegments, rooms);
   assert.deepEqual(before.diagnostics, [], '基线家具解算须无诊断');
   const fBefore = furnitureMap(before);
-  // 沿墙方向 0.20m 不可行：w_gbath_east 全长仅 1.15m，冰箱沿墙域 [0.4165, 0.7335]，
-  // 现 along 0.5865 南移 0.20m 越出南端、北移 0.20m 越出北端——这是设计本身的几何约束，
-  // 不是实验取巧。故传动实验改走 wall_clearance +0.20m（东移），仍为单声明 0.20m 移动；
-  // 沿墙越界另立反例断言 fail-closed。
+  // 沿墙方向 0.20m 不可行：w_gbath_east 全长仅 1.24m（2026-11-27 量房回填：1.15→1.24），
+  // 冰箱沿墙域 [0.4165, 0.8235]，现 along 0.5865 南移 0.20m 得 0.7865 仍在域内、北移 0.20m
+  // 得 0.3865 越出北端——南向反例须加大到 +0.30m（0.8865 > 0.8235）才越出南端。
+  // 这是设计本身的几何约束，不是实验取巧。故传动实验改走 wall_clearance +0.20m（东移），
+  // 仍为单声明 0.20m 移动；沿墙越界另立反例断言 fail-closed（反例取 +0.30m）。
   const { moved } = singleDeclarationMove(furnishings, 'living_dining', 'ld.fridge', (item) => {
     assert.ok(typeof item.wall_clearance === 'number', '实验前置：冰箱须为墙锚');
     item.wall_clearance += MOVE;
@@ -357,9 +358,11 @@ test('Tier 2 传动 G6a：冰箱离墙东移 0.20m，水吧簇四件跟随；沿
     assert.ok(Math.abs(r.x - p.x) <= TOL && Math.abs(r.z - p.z) <= TOL, `${id} 还原后须回到实验前位置`);
   }
 
-  // 反例：沿墙南移 0.20m 越出 w_gbath_east 南端，解算须显式诊断、整簇不得出局部坐标。
+  // 反例：沿墙南移 0.30m 越出 w_gbath_east 南端（0.5865+0.30=0.8865 > 域南端 0.8235；
+  // +0.20m 得 0.7865 仍在域内，量房回填后墙长 1.15→1.24m、域 [0.4165,0.7335]→[0.4165,0.8235]），
+  // 解算须显式诊断、整簇不得出局部坐标。
   const { moved: movedAlong } = singleDeclarationMove(furnishings, 'living_dining', 'ld.fridge', (item) => {
-    item.along += MOVE;
+    item.along += 0.30;
     return 'along';
   });
   const rejected = resolveAll(movedAlong, walls, wallSegments, rooms);

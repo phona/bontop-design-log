@@ -441,21 +441,25 @@ describe('resolveWallRef', () => {
     assert.equal(northwestCurtain?.type, 'curtain_run');
     if (northwestCurtain?.type === 'curtain_run') {
       assert.equal(northwestCurtain.parts, undefined);
-      // 2026-09-17：西北角即圆角（w_west_top 已从 model-geometry 删除），本 run 从弧切点 (0,2.10) 起，不含折返
-      assert.deepEqual(northwestCurtain.points[0], { x: 0, z: 2.1 });
-      assert.ok(northwestCurtain.points.some((point) => point.radius === 1 && point.cx === 1 && point.cz === 2.1));
-      assert.deepEqual(northwestCurtain.points.at(-1), { x: 5.6, z: 1.1 });
+      // 2026-09-17：西北角即圆角（w_west_top 已从 model-geometry 删除），本 run 从弧切点起，不含折返；
+      // 2026-11-27 量房回填：圆角 r=1.00/圆心 (1,2.1) 作废——该凹进不存在，v_bath_nw 改 r=0.45/圆心 (0.45,0.06)，
+      // 弧切点 (0,0.06)，末点随 w_bath_north 直段北端 (5.69,−0.04)。
+      assert.deepEqual(northwestCurtain.points[0], { x: 0, z: 0.06 });
+      assert.ok(northwestCurtain.points.some((point) => point.radius === 0.45 && point.cx === 0.45 && point.cz === 0.06));
+      assert.deepEqual(northwestCurtain.points.at(-1), { x: 5.69, z: -0.04 });
     }
   });
 
-  it('preserves the v_vrv_n arc and ownership across the real railing refs', () => {
+  it('v_vrv_n arc removed by survey: VRV railing is a straight three-point polyline, bay refs unchanged', () => {
     const layout = resolveLayout(load(readFileSync('config/layout/model-geometry.yaml', 'utf8')) as VertexLayoutYaml);
     const overlay = parseOverlayFiles();
     const elements = mergeSceneElements(layout.walls, overlay);
     const railing = elements.find((element) => element.id === 'vrv_nw_railing');
     assert.equal(railing?.type, 'railing_run');
-    assert.ok(railing && railing.points.some((point) => point.radius === 1 && point.cx === 6.6 && point.cz === 1));
-    assert.deepEqual(railing?.points.at(-1), { x: 7.2, z: 0 });
+    // 2026-11-27 量房回填：v_vrv_n 的旧 radius 1.00 是 z=1.10 凹进圆角，该凹进不存在——
+    // 弧已删，栏杆为 w_vrv_east 南端 + w_kit_north 西端直折线三点，无任何带 radius 的点。
+    assert.ok(railing && !railing.points.some((point) => point.radius !== undefined));
+    assert.deepEqual(railing?.points, [{ x: 5.69, z: -0.04 }, { x: 5.69, z: -0.15 }, { x: 7.5, z: -0.15 }]);
 
     const bay = elements.find((element) => element.id === 'master_bath_west_bay');
     assert.equal(bay?.type, 'bay_sill');
@@ -466,7 +470,8 @@ describe('resolveWallRef', () => {
     assert.equal(refs[1]?.segments.filter((segment) => segment.kind === 'arc').length, 16);
     assert.equal(refs[1]?.segments.at(-1)?.kind, 'line');
     assert.equal(refs[1]?.segments[0].x1, 0);
-    assert.equal(refs[1]?.segments[0].z1, 2.1);
+    // 弧展开浮点噪声：z1 实值 0.06000000000000005（圆心 z=0.06），用容差不用 strictEqual。
+    assert.ok(Math.abs(refs[1]?.segments[0].z1! - 0.06) < 1e-9);
   });
 
   it('keeps the entry garden railing as a plain two-point line', () => {
@@ -474,7 +479,8 @@ describe('resolveWallRef', () => {
     const overlay = parseOverlayFiles();
     const elements = mergeSceneElements(layout.walls, overlay);
     const railing = elements.find((element) => element.id === 'entry_garden_north_railing');
-    assert.deepEqual(railing && railing.type === 'railing_run' ? railing.points : undefined, [{ x: 15.25, z: 0 }, { x: 10.8, z: 0 }]);
+    // 2026-11-27 量房回填：入户西墙 w_ent_west 10.80→11.11，北墙完成面 z 0→−0.15，栏杆西端随之 (10.8,0)→(11.11,−0.15)。
+    assert.deepEqual(railing && railing.type === 'railing_run' ? railing.points : undefined, [{ x: 15.25, z: 0 }, { x: 11.11, z: -0.15 }]);
   });
 });
 

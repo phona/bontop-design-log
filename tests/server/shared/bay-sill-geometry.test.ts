@@ -81,12 +81,13 @@ test('real bay footprints stay within their declared wall spans', () => {
     const box = baySillBbox(geometry);
     assert.ok(Number.isFinite(box.minX) && Number.isFinite(box.maxX) && Number.isFinite(box.minZ) && Number.isFinite(box.maxZ), bay.id);
     if (bay.id === 'master_bath_west_bay') {
-      // 主卫西北角上飘窗收敛到室内：绕内切圆角（圆心 (1,2.1) r=1）进入主卫，
-      // 占 x 0..2.6 / z 1.1..2.2 的室内条带，不越过幕墙墙线（x<0 或 z<1.1）。
-      assert.ok(box.minX >= -1e-6 && box.maxX <= 2.6 + 1e-6, JSON.stringify(box));
-      assert.ok(box.minZ >= 1.1 - 1e-6 && box.maxZ <= 2.2 + 1e-6, JSON.stringify(box));
+      // 主卫西北角上飘窗收敛到室内：绕内切圆角（2026-11-27 量房回填：圆心 (0.45,0.06) r=0.45；
+      // 旧 r=1.0/圆心 (1,2.1) 的凹进不存在）进入主卫，占 x 0..2.9 / z −0.39..0.71 的室内条带
+      // （北墙 z=−0.39 外延深 1.10m），不越过幕墙墙线（x<0 或 z<−0.39）；轮廓沿主卫南墙收到 z=2.655。
+      assert.ok(box.minX >= -1e-6 && box.maxX <= 2.9 + 1e-6, JSON.stringify(box));
+      assert.ok(box.minZ >= -0.39 - 1e-6 && box.maxZ <= 0.71 + 1e-6, JSON.stringify(box));
       for (const point of geometry.outline) {
-        assert.ok(point.x >= -1e-6 && point.x <= 2.6 + 1e-6 && point.z >= 1.1 - 1e-6 && point.z <= 2.86 + 1e-6, `point leaves room: ${JSON.stringify(point)}`);
+        assert.ok(point.x >= -1e-6 && point.x <= 2.9 + 1e-6 && point.z >= -0.39 - 1e-6 && point.z <= 2.655 + 1e-6, `point leaves room: ${JSON.stringify(point)}`);
       }
     }
   }

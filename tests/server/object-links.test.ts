@@ -737,10 +737,14 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
   // 房间/平台的 boundary、门洞 anchor 都以 id 引用顶点。只索引房间/墙/洞口时，移动一个顶点
   // 不会改变任何已收录对象的声明，引用闭包也无从捕获，移墙后相关包的旧通过记录仍显得有效。
   // 本用例改一个顶点坐标，断言「拥有该顶点的墙」所在包 stale，而无关的厨房橱柜包不动。
+  // 顶点选 v_balc_ne（生活阳台东北角，balcony 房间边界与厨房西墙共用；2026-11-27 量房回填前
+  // 用的是 v_gbath_se，客餐厅边界改折线后 v_gbath_se 进了 living_dining 边界，厨房柜体经
+  // w_ent_west 漆带的 room 字段连到 living_dining，闭包遂把 v_gbath_se 带进 PKG-110——
+  // 该顶点不再满足「无关包不动」的前提；闭包过度 stale 的生产侧问题见报告，另案处理）。
   it('移动一个顶点：引用它的墙/房间所在包 stale，无关包不动（顶点进对象索引）', () => {
     const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
     const text = readFileSync(geometryPath, 'utf8');
-    const anchor = 'id: v_gbath_se,x: 7.20,';
+    const anchor = 'id: v_balc_ne, x: 7.50,';
     assert.equal(text.split(anchor).length - 1, 1, '顶点锚点必须恰出现一次');
     // 上一用例已改 house.yaml；这里在「当前」状态上取基线，只比较顶点改动的影响。
     const baseline = loadScheduleState(sandbox, {
@@ -749,7 +753,7 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
     const baselineFingerprints = new Map(
       baseline.control.work_packages.map((pkg: AnyRecord) => [pkg.id, baseline.packageProjectFingerprint(pkg)]),
     );
-    writeFileSync(geometryPath, text.replace(anchor, 'id: v_gbath_se,x: 7.21,'));
+    writeFileSync(geometryPath, text.replace(anchor, 'id: v_balc_ne, x: 7.51,'));
 
     const afterState = loadScheduleState(sandbox, {
       modelPackageLinks: loadModelPackageLinks(join(sandbox, 'config/model-package-links.yaml'), {root: sandbox}),
@@ -758,13 +762,12 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
       .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baselineFingerprints.get(pkg.id))
       .map((pkg: AnyRecord) => pkg.id);
 
-    // v_gbath_se 是 w_gbath_south / w_gbath_east / w_gbath_east_open_vanity 的端点；
-    // 防水、铺贴、美缝、踢脚等包按墙/房间选对象，必须跟着 stale。
+    // v_balc_ne 是 balcony 房间边界顶点（厨房西墙共用）；防水、铺贴、美缝、踢脚等包按墙/房间选对象，必须跟着 stale。
     for (const pkgId of ['PKG-020', 'PKG-050', 'PKG-060', 'PKG-065', 'PKG-130', 'PKG-135']) {
-      assert.ok(stale.includes(pkgId), `${pkgId} 的 scope 含引用 v_gbath_se 的墙，顶点移动后必须 stale；实际 ${stale.join(', ')}`);
+      assert.ok(stale.includes(pkgId), `${pkgId} 的 scope 含引用 v_balc_ne 的墙/房间，顶点移动后必须 stale；实际 ${stale.join(', ')}`);
     }
-    // 厨房橱柜包只引用厨房墙（不引用 v_gbath_se），不得被无关几何改动打成 stale。
-    assert.ok(!stale.includes('PKG-110'), `PKG-110 与 v_gbath_se 无关，不应 stale；实际 ${stale.join(', ')}`);
+    // 厨房橱柜包只引用厨房墙/柜体（不引用 v_balc_ne），不得被无关几何改动打成 stale。
+    assert.ok(!stale.includes('PKG-110'), `PKG-110 与 v_balc_ne 无关，不应 stale；实际 ${stale.join(', ')}`);
     // 顶点必须真的进了摘要（否则上面「墙 stale」只是整份 model-geometry 兜底的假阳性）。
     const pkg020 = afterState.control.work_packages.find((pkg: AnyRecord) => pkg.id === 'PKG-020');
     const snapshot = afterState.packageProjectSnapshot(pkg020);
@@ -795,10 +798,10 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
   it('改被验柜体的 vanity_layout：挂该验收的 PKG-050 必须 stale', () => {
     const housePath = join(sandbox, 'config/house.yaml');
     const text = readFileSync(housePath, 'utf8');
-    const anchor = 'vanity_layout: { width: 0.69, depth: 0.50,';
+    const anchor = 'vanity_layout: { width: 0.69, depth: 0.30,';
     assert.equal(text.split(anchor).length - 1, 1, 'gbath.vanity vanity_layout 锚点必须恰出现一次');
     const baseline = fingerprintsNow();
-    writeFileSync(housePath, text.replace(anchor, 'vanity_layout: { width: 0.69, depth: 0.51,'));
+    writeFileSync(housePath, text.replace(anchor, 'vanity_layout: { width: 0.69, depth: 0.31,'));
     const afterState = fingerprintsNow().state;
     const stale = afterState.control.work_packages
       .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
@@ -813,10 +816,10 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
   it('改客卫门洞宽：挂该验收的 PKG-060 必须 stale', () => {
     const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
     const text = readFileSync(geometryPath, 'utf8');
-    const anchor = '      - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.45, width: 0.7, height: 2.1, room: guest_bath, swing: inward, hinge: start }';
+    const anchor = '      - { id: d_gbath, type: door, anchor: v_gbath_west_s, offset: 0.5575, width: 0.865, height: 2.445, room: guest_bath, swing: inward, hinge: start }';
     assert.equal(text.split(anchor).length - 1, 1, 'd_gbath 声明锚点必须恰出现一次');
     const baseline = fingerprintsNow();
-    writeFileSync(geometryPath, text.replace(anchor, anchor.replace('width: 0.7', 'width: 0.8')));
+    writeFileSync(geometryPath, text.replace(anchor, anchor.replace('width: 0.865', 'width: 0.965')));
     const afterState = fingerprintsNow().state;
     const stale = afterState.control.work_packages
       .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
@@ -825,16 +828,16 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
   });
 
   // 先定门再贴砖门禁（Codex 三审 blocking）：check_tile_door_seam_closed 正文按客卫干湿
-  // 分界（guest_bath_open_vanity_floor 的 z=3.55 边）复核关门后接缝不可见；地面分区施工
+  // 分界（guest_bath_open_vanity_floor 的 z=3.64 边）复核关门后接缝不可见；地面分区施工
   // 归属在 PKG-060，但复核记录挂在 PKG-090。MODEL-PKG-090 已按 id 直选该分区；本用例
-  // 守「分界边北移 → PKG-090 stale」，防止砖缝移出门下后旧复核通过记录仍有效。
+  // 守「分界边南移（+z 为南，z 3.64→3.69）→ PKG-090 stale」，防止砖缝移出门下后旧复核通过记录仍有效。
   it('改干湿分界边：挂该复核的 PKG-090 必须 stale', () => {
     const floorZonesPath = join(sandbox, 'config/model/envelope/floor-zones.yaml');
     const text = readFileSync(floorZonesPath, 'utf8');
-    const anchor = '  - id: guest_bath_open_vanity_floor\n    type: floor_region\n    points:\n      - { x: 5.60, z: 3.55 }';
+    const anchor = '  - id: guest_bath_open_vanity_floor\n    type: floor_region\n    points:\n      - { x: 5.69, z: 3.64 }';
     assert.equal(text.split(anchor).length - 1, 1, 'guest_bath_open_vanity_floor 声明锚点必须恰出现一次');
     const baseline = fingerprintsNow();
-    writeFileSync(floorZonesPath, text.replace(anchor, anchor.replace('z: 3.55', 'z: 3.60')));
+    writeFileSync(floorZonesPath, text.replace(anchor, anchor.replace('z: 3.64', 'z: 3.69')));
     const afterState = fingerprintsNow().state;
     const stale = afterState.control.work_packages
       .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))
@@ -866,12 +869,12 @@ describe('issue #191 对象粒度 stale（验收标准三）', () => {
     const geometryPath = join(sandbox, 'config/layout/model-geometry.yaml');
     const text = readFileSync(geometryPath, 'utf8');
     const opening = '      - { id: d_mb, type: door, anchor: v_mb_ne, offset: 0.45, width: 0.9, height: 2.1, room: master_bedroom, swing: inward, hinge: start }\n';
-    const study = '      - { id: d_study, type: door, anchor: v_mb_ne, offset: 2.4, width: 0.9, height: 2.1, room: study }\n';
+    const study = '      - { id: d_study, type: door, anchor: v_mb_ne, offset: 2.4, width: 0.855, height: 2.445, room: study }';  // 2026-11-26 起行尾带注记（宽高改 MW 855/MH 2445），锚点只取到 } 为止，不含换行
     assert.equal(text.split(opening).length - 1, 1, 'd_mb 声明锚点必须恰出现一次');
     assert.equal(text.split(study).length - 1, 1, 'd_study 声明锚点必须恰出现一次');
     const baseline = fingerprintsNow();
     // d_mb 从 w_strip_east 的 openings 段搬到 w_st_north 的 openings 段（洞声明本身不变）。
-    writeFileSync(geometryPath, text.replace(opening, '').replace(study, study + opening));
+    writeFileSync(geometryPath, text.replace(opening, '').replace(study, study + '\n' + opening));  // study 锚点不含换行，插入时补一个换行（d_study 行尾注记落为独立注释行，不影响解析）
     const afterState = fingerprintsNow().state;
     const stale = afterState.control.work_packages
       .filter((pkg: AnyRecord) => afterState.packageProjectFingerprint(pkg) !== baseline.fingerprints.get(pkg.id))

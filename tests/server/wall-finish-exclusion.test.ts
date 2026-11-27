@@ -93,7 +93,7 @@ test('mergeSceneElements 把墙的 finish 与 line_datum 透传成 wall 元素�
   const tileBands = walls.flatMap((element: any) => element.finish?.tile_bands ?? []);
   const paintBands = walls.flatMap((element: any) => element.finish?.paint_bands ?? []);
   assert.equal(tileBands.length, 18, '18 段贴砖带随墙进场景');
-  assert.equal(paintBands.length, 31, '31 段涂装带随墙进场景');
+  assert.equal(paintBands.length, 33, '33 段涂装带随墙进场景（2026-11-27 干湿分离放弃：主卫 paint_master_bath_w_mbath_east 1 段随通顶柜上墙裂为 below/above/mid_left/mid_right 4 段 +3；客卫 paint_guest_bath_w_gbath_east_open_vanity_upper 随开放区取消 −1；净 +2）');
   const datumWalls = walls.filter((element: any) => element.line_datum === 'centerline');
   assert.ok(datumWalls.length >= 18, '完成面宿主墙的 datum 必须透传（涂漆带出网要用）');
   // bay_sill 构件的面层配方同样透传（元素间引用 28 → 0：sill 的 tile/paint 就住在构件里）

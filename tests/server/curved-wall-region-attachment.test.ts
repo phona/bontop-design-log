@@ -17,9 +17,11 @@ import { computePaintScope, type PaintWallInput } from '../../shared/paint-scope
  * 成立；**弧墙上弦不是墙**，整块网格会飘在空中。sill_region 已在 DEC-2026-10-09-P14 修掉，
  * 这里守住另外两个分支。
  *
- * 真实反例：圆角墙 w_bath_north（r=1.0 圆角弧 + z=1.10 直线，17 段、沿墙总长 3.170m）上一条
- * 全跨度声明，弦中点被算成 (1.30,1.60)，离真实墙面 0.50m。修法：沿折线把 [from,to] 裁成一段段
+ * 真实反例：圆角墙 w_bath_north（r=0.45 圆角弧 + 直线，17 段、沿墙总长 3.157m）上一条
+ * 全跨度声明，弦中点被算成 (1.45,−0.165)，离真实墙面 0.225m。修法：沿折线把 [from,to] 裁成一段段
  * 直线，逐段出网（每段用自己的中点与旋转角/法线），直墙仍保持单块不拆。
+ * （2026-11-27 量房回填：旧 r=1.0/圆心 (1,2.1) 的凹进不存在，改 r=0.45/圆心 (0.45,0.06)；
+ * 总长 3.170→3.157m，弦与弧的差距随之收窄——“明显短于”的阈值由 0.3m 放到 0.2m，仍为墙长的 7%。）
  */
 
 const MG: any = load(readFileSync('config/layout/model-geometry.yaml', 'utf8'));
@@ -76,10 +78,10 @@ const straight = walls.find((wall) => wall.id === 'w_mbath_south');
 
 test('w_bath_north really is an arc wall (the fixture this regression guards)', () => {
   assert.ok(curved?.segments?.length > 1, 'w_bath_north 必须带多段折线（圆角弧）');
-  assert.ok(Math.abs(CURVED_TOTAL - 3.170) < 5e-3, `沿墙总长应为 3.170m，实际 ${CURVED_TOTAL.toFixed(3)}`);
+  assert.ok(Math.abs(CURVED_TOTAL - 3.157) < 5e-3, `沿墙总长应为 3.157m，实际 ${CURVED_TOTAL.toFixed(3)}`);
   // 起终点弦长明显短于沿墙长度：这正是「弦不是墙」的量化证据
   const chord = Math.hypot(curved.x2 - curved.x1, curved.z2 - curved.z1);
-  assert.ok(chord < CURVED_TOTAL - 0.3, `弦长 ${chord.toFixed(3)} 必须明显短于沿墙长 ${CURVED_TOTAL.toFixed(3)}`);
+  assert.ok(chord < CURVED_TOTAL - 0.2, `弦长 ${chord.toFixed(3)} 必须明显短于沿墙长 ${CURVED_TOTAL.toFixed(3)}`);
   assert.ok(straight && (straight.segments?.length ?? 0) <= 1, '对照组 w_mbath_south 必须是直墙');
 });
 
@@ -97,8 +99,8 @@ test('wall_region on the arc wall is split along the polyline and every piece hu
   } as any);
   assert.deepEqual(scene.report.unsupported, [], '弧墙上的声明必须能落地');
   const meshes = regionMeshes(scene.exportRoot, 'wall_region');
-  // 全跨度声明跨越全部 17 段折线 → 17 块；部分声明 0.5~2.0 跨越圆角第 6~16 段 + 直线段 → 12 块
-  assert.equal(meshes.length, 29, `应逐段出网，实际 ${meshes.length} 块`);
+  // 全跨度声明跨越全部 17 段折线 → 17 块；部分声明 0.5~2.0 跨越 6 段（r=0.45 弧更紧，同样 1.5m 区间盖的段数 12→6）→ 6 块
+  assert.equal(meshes.length, 23, `应逐段出网，实际 ${meshes.length} 块`);
   for (const mesh of meshes) {
     assert.ok(offWallDistance(mesh) <= 0.12, `${mesh.userData.objectId} 离墙 ${offWallDistance(mesh).toFixed(3)}m（悬空）`);
   }
@@ -131,7 +133,7 @@ test('wall_region on a straight wall stays a single mesh with the bare declarati
 
 test('paint_region on the arc wall is split per rect along the polyline and every piece hugs the wall', () => {
   // computePaintScope 把 wallLength round 到 3 位小数，声明区间必须落在其内
-  const span = Math.min(CURVED_TOTAL, 3.169);
+  const span = Math.min(CURVED_TOTAL, 3.157);
   const scene: any = buildScene({
     // line_datum 显式声明：完成面外偏移由 wallFaceOffset 解析器按它算（S4 起无私有常量，
     // 未声明的墙不出网——#76 量房未裁前不设默认值）。

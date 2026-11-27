@@ -11,6 +11,7 @@ import type { FurnishingsYaml, VertexLayoutYaml } from '../../shared/types.js';
 // bedroom_se 书房→客房（wardrobe_180 北墙边吊下 + bed_150 床头靠东外墙）；
 // study 父母房→书房（书桌椅原位 + study_seasonal_wardrobe_wall 由客房东墙平移至北墙边吊下）；
 // 2026-10-26 DEC-2026-10-26-R02（墙垛建模 + 衣柜南延）：书桌椅东移至 (6.90,7.80)/(6.30,7.80)，本文件坐标同步；“原位”指互换当时位置，现已作废。
+// 2026-11-27 量房回填：w_st_east 起点 (7.15,5.55)→(7.15,5.455)，along 2.25 不变 → 书桌椅 (6.85,7.705)/(6.25,7.705)（x 亦随东墙 7.20→7.15 西移 0.05）。
 // 轻训练/重型器械整体删除（recipe/dims 在 shared/* 保留，预算与采购条目已移除）。
 // 本文件取代原 study-seasonal-storage.test.ts（书房后台柜 + 轻训练三件套收纳态专项，已随功能互换作废）。
 
@@ -95,9 +96,10 @@ function overlaps(a: Aabb, b: Aabb): boolean {
 
 test('guest room wardrobe sits in the north-wall drop and clears the d_bese door sweep', () => {
   const wardrobe = placed(guest, 'wardrobe_180');
-  assert.deepEqual(wardrobe, { type: 'wardrobe_180', id: 'bese.wardrobe_180', x: 15.25, z: 5.85, rotation: 180 });
-  const box = worldAabb(wardrobe); // x[14.35,16.15] z[5.55,6.15]
-  assert.ok(Math.abs(box.minX - 14.35) < GAP_EPS && Math.abs(box.maxX - 16.15) < GAP_EPS);
+  // 2026-11-27：床南移贴南墙（x 15.35→15.33，随东墙内面西移 0.02），衣柜锚床 offset z −1.75→−1.87（不跟移，柜顶须抵北墙边吊），x 15.25→15.23。
+  assert.deepEqual(wardrobe, { type: 'wardrobe_180', id: 'bese.wardrobe_180', x: 15.23, z: 5.85, rotation: 180 });
+  const box = worldAabb(wardrobe); // x[14.33,16.13] z[5.55,6.15]
+  assert.ok(Math.abs(box.minX - 14.33) < GAP_EPS && Math.abs(box.maxX - 16.13) < GAP_EPS);
   assert.ok(Math.abs(box.minZ - 5.55) < GAP_EPS && Math.abs(box.maxZ - 6.15) < GAP_EPS);
   assert.equal(overlaps(box, BESE_DOOR_SWEEP), false, 'wardrobe enters the d_bese door sweep');
   assert.equal(overlaps(box, GUEST_NORTH_DROP), true, 'wardrobe must stay inside the north-wall drop segment');
@@ -106,10 +108,11 @@ test('guest room wardrobe sits in the north-wall drop and clears the d_bese door
 
 test('guest room bed keeps its headboard on the east exterior wall and clears the door sweep and south glass', () => {
   const bed = placed(guest, 'bed_150');
-  assert.deepEqual(bed, { type: 'bed_150', id: 'bese.bed_150', x: 15.35, z: 7.60, rotation: 270 });
-  const box = worldAabb(bed); // rotation=270：床头在局部 -z → 世界 +x；AABB x[14.35,16.35] z[6.85,8.35]
-  assert.ok(Math.abs(box.minX - 14.35) < GAP_EPS && Math.abs(box.maxX - 16.35) < GAP_EPS);
-  assert.ok(Math.abs(box.minZ - 6.85) < GAP_EPS && Math.abs(box.maxZ - 8.35) < GAP_EPS);
+  // 2026-11-27 业主授权按最佳实践调：床南缘贴死南墙内面 z=8.47（原 0.12m 离墙死角消除），床 (15.35,7.60)→(15.33,7.72)。
+  assert.deepEqual(bed, { type: 'bed_150', id: 'bese.bed_150', x: 15.33, z: 7.72, rotation: 270 });
+  const box = worldAabb(bed); // rotation=270：床头在局部 -z → 世界 +x；AABB x[14.33,16.33] z[6.97,8.47]
+  assert.ok(Math.abs(box.minX - 14.33) < GAP_EPS && Math.abs(box.maxX - 16.33) < GAP_EPS);
+  assert.ok(Math.abs(box.minZ - 6.97) < GAP_EPS && Math.abs(box.maxZ - 8.47) < GAP_EPS);
   assert.equal(overlaps(box, BESE_DOOR_SWEEP), false, 'bed enters the d_bese door sweep');
   assert.ok(box.maxZ <= GUEST_SOUTH_GLASS_Z - 0.20 + GAP_EPS, 'bed must keep ≥0.20m off the south glass z=8.70');
   // 床尾半进凸窗带：bay_sill 只占 2.07m 以上高度，床高 <2.07m 不冲突；柜体则不得越过 z=7.60
@@ -132,29 +135,34 @@ test('guest room keeps only sleeping furniture (no desk, chair, seasonal cabinet
 
 test('study keeps its desk and chair in place and takes over the seasonal backstage cabinet', () => {
   // R02（2026-10-26）：书桌椅东移（墙垛 x[4.20,4.63]×z[8.31,8.71] 建模后原桌位撞垛；插座/网口随移东墙）；旧坐标 (4.50,9.20)/(5.10,9.20) 作废。
-  assert.deepEqual(placed(study, 'desk'), { type: 'desk', id: 'study.desk', x: 6.90, z: 7.80, rotation: 90 });
-  assert.deepEqual(placed(study, 'chair'), { type: 'chair', id: 'study.chair', x: 6.30, z: 7.80, rotation: 90 });
+  // 2026-11-27 量房回填：w_st_east 起点北移 0.095（5.55→5.455），along 2.25 不变 → 书桌椅 (6.85,7.705)/(6.25,7.705)。
+  assert.deepEqual(placed(study, 'desk'), { type: 'desk', id: 'study.desk', x: 6.85, z: 7.705, rotation: 90 });
+  assert.deepEqual(placed(study, 'chair'), { type: 'chair', id: 'study.chair', x: 6.25, z: 7.705, rotation: 90 });
   const cabinet = placed(study, 'study_seasonal_wardrobe_wall');
-  assert.deepEqual(cabinet, { type: 'study_seasonal_wardrobe_wall', id: 'study.seasonal_wardrobe_wall', x: 5.10, z: 5.825, rotation: 0, width: 1.80, depth: 0.55 });
-  const box = worldAabb(cabinet); // x[4.20,6.00] z[5.55,6.10]（2026-10-27 齐平：北段西延顶墙）
-  assert.ok(Math.abs(box.minX - 4.20) < GAP_EPS && Math.abs(box.maxX - 6.00) < GAP_EPS);
-  assert.ok(Math.abs(box.minZ - 5.55) < GAP_EPS && Math.abs(box.maxZ - 6.10) < GAP_EPS);
+  // 北段柜：w_st_north 南移 0.095（5.55→5.455），along 0.90 不变 → (5.10,5.825)→(5.06,5.73)；西缘贴西墙线 x=4.16，北缘贴北墙线 z=5.455，仍齐平顶墙。
+  assert.deepEqual(cabinet, { type: 'study_seasonal_wardrobe_wall', id: 'study.seasonal_wardrobe_wall', x: 5.06, z: 5.73, rotation: 0, width: 1.80, depth: 0.55 });
+  const box = worldAabb(cabinet); // x[4.16,5.96] z[5.455,6.005]（2026-10-27 齐平：北段西延顶墙）
+  assert.ok(Math.abs(box.minX - 4.16) < GAP_EPS && Math.abs(box.maxX - 5.96) < GAP_EPS);
+  assert.ok(Math.abs(box.minZ - 5.455) < GAP_EPS && Math.abs(box.maxZ - 6.005) < GAP_EPS);
   assert.equal(overlaps(box, STUDY_DOOR_SWEEP), false, 'cabinet enters the d_study door sweep');
   assert.equal(overlaps(box, STUDY_NORTH_DROP), true, 'cabinet must stay inside the north-wall drop segment');
   // R02（2026-10-26）南延段：北段向南延至墙垛北脸 z=8.31（垛露出）；placed() 取首个同类型（北段），南延段按坐标另取。
   // R02（2026-10-27）通顶：腿沿 z=6.45（边吊南缘）拆为 stub + 高腿两件（同 x=4.475，按 z 区分）。
-  const legs = study.filter((item) => item.type === 'study_seasonal_wardrobe_wall' && item.x === 4.475);
+  const legs = study.filter((item) => item.type === 'study_seasonal_wardrobe_wall' && item.x === 4.435);
   assert.equal(legs.length, 2, '通顶腿应为 stub + 高腿两件');
-  const stub = legs.find((item) => item.z === 6.289);
-  const tall = legs.find((item) => item.z === 7.38);
-  assert.deepEqual(stub, { type: 'study_seasonal_wardrobe_wall', id: 'study.seasonal_wardrobe_step_north', x: 4.475, z: 6.289, rotation: 90, width: 0.322, depth: 0.55 });
-  assert.deepEqual(tall, { type: 'study_seasonal_wardrobe_wall', id: 'study.seasonal_wardrobe_step_south', x: 4.475, z: 7.38, rotation: 90, width: 1.86, depth: 0.55, cabinetHeight: 2.8 });
-  const stubBox = worldAabb(stub!); // x[4.20,4.75] z[6.128,6.45]（北端贴北段门面 6.128，南端贴边吊南缘）
-  assert.ok(Math.abs(stubBox.minX - 4.20) < GAP_EPS && Math.abs(stubBox.maxX - 4.75) < GAP_EPS);
-  assert.ok(Math.abs(stubBox.minZ - 6.128) < GAP_EPS && Math.abs(stubBox.maxZ - 6.45) < GAP_EPS);
-  const tallBox = worldAabb(tall!); // x[4.20,4.75] z[6.45,8.31]（北端贴边吊南缘，南端贴墙垛北脸）
-  assert.ok(Math.abs(tallBox.minX - 4.20) < GAP_EPS && Math.abs(tallBox.maxX - 4.75) < GAP_EPS);
-  assert.ok(Math.abs(tallBox.minZ - 6.45) < GAP_EPS && Math.abs(tallBox.maxZ - 8.31) < GAP_EPS);
+  const stub = legs.find((item) => item.z === 6.194);
+  const tall = legs.find((item) => item.z === 7.245);
+  // 2026-11-27 量房回填：w_mb_east 起点 (4.20,5.55)→(4.16,5.455)，两腿 x 4.475→4.435；
+  // step_north 沿位未重基（0.739 不变）→ 中心 6.289→6.194，南端 6.45→6.355（注记仍称 6.289/6.45，见报告待裁定）；
+  // step_south 沿位已重基（1.83→1.79，宽 1.86→1.78、柜高 2.8→2.909）→ 中心 7.245，z[6.355,8.135] 仍贴墙垛北脸 8.135。
+  assert.deepEqual(stub, { type: 'study_seasonal_wardrobe_wall', id: 'study.seasonal_wardrobe_step_north', x: 4.435, z: 6.194, rotation: 90, width: 0.322, depth: 0.55 });
+  assert.deepEqual(tall, { type: 'study_seasonal_wardrobe_wall', id: 'study.seasonal_wardrobe_step_south', x: 4.435, z: 7.245, rotation: 90, width: 1.78, depth: 0.55, cabinetHeight: 2.909 });
+  const stubBox = worldAabb(stub!); // x[4.16,4.71] z[6.033,6.355]（北端贴北段门面 6.033，南端贴高腿北端 6.355）
+  assert.ok(Math.abs(stubBox.minX - 4.16) < GAP_EPS && Math.abs(stubBox.maxX - 4.71) < GAP_EPS);
+  assert.ok(Math.abs(stubBox.minZ - 6.033) < GAP_EPS && Math.abs(stubBox.maxZ - 6.355) < GAP_EPS);
+  const tallBox = worldAabb(tall!); // x[4.16,4.71] z[6.355,8.135]（北端贴 stub 南端，南端贴墙垛北脸）
+  assert.ok(Math.abs(tallBox.minX - 4.16) < GAP_EPS && Math.abs(tallBox.maxX - 4.71) < GAP_EPS);
+  assert.ok(Math.abs(tallBox.minZ - 6.355) < GAP_EPS && Math.abs(tallBox.maxZ - 8.135) < GAP_EPS);
   // 卧室家具随功能迁出
   for (const removed of ['bed_150', 'mattress_150', 'wardrobe_180']) {
     assert.equal(study.some((item) => item.type === removed), false, `${removed} must not remain in study furnishings`);
