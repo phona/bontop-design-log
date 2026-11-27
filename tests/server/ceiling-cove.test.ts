@@ -25,10 +25,10 @@ test('DEC-2026-10-08-R05: 垂面弧全拆（回 R02 硬垂直面），三区均�
   assert.deepEqual(northBand?.concave_fillets, { sw: 0.15, se: 0.15 });
   assert.deepEqual(northBand?.concave_fillets_open, { se: 'sw' }, 'SE 凹弧填补西南开口（镜像，跨分区）');
   assert.equal(northBand?.corner_radii, undefined, '北带 SE 不再有阳角圆（R04 阳角圆已被 R05 废止）');
-  assert.deepEqual(northBand?.area, [7.80, 2.40, 10.80, 3.00]); // DEC-2026-10-23-R04：西端随餐厅服务带东移 7.70→7.80
+  assert.deepEqual(northBand?.area, [8.10, 2.40, 11.11, 3.00]); // DEC-2026-10-23-R04：西端随餐厅服务带东移 7.70→7.80；2026-11-27 量房回填：西界随厨餐洞口东移 7.80→8.10、东界随门厅西缘东移 10.80→11.11
   assert.deepEqual(westBand?.corner_radii, { nw: 0.15 });
   assert.deepEqual(westBand?.concave_fillets, { se: 0.15 });
-  assert.deepEqual(foyer?.area, [10.80, 3.00, 12.77, 4.30]); // R01 重算：门厅区随南墙至 3.00 与中竖墙至 12.77
+  assert.deepEqual(foyer?.area, [11.11, 3.00, 12.77, 4.155]); // R01 重算：门厅区随南墙至 3.00 与中竖墙至 12.77；2026-11-27 量房回填：西缘随厨餐洞口东移 10.80→11.11、北缘随餐厅北墙实测 4.30→4.155
 });
 
 test('DEC-2026-10-08-R05: 三区渲染均无 cove mesh，立面与平顶硬相交', () => {
@@ -39,34 +39,37 @@ test('DEC-2026-10-08-R05: 三区渲染均无 cove mesh，立面与平顶硬相�
   }
 });
 
-test('DEC-2026-10-08-R05: 门头盒 SE 镜像凹弧——切点 (10.65,3.00)/(10.80,3.15)，与门厅西缘相切、不扎进邻区', () => {
+test('DEC-2026-10-08-R05: 门头盒 SE 镜像凹弧——切点 (10.96,3.00)/(11.11,3.15)，与门厅西缘相切、不扎进邻区', () => {
   const group = buildCeilingZone(northBand!);
   assert.ok(group);
   const box = new Box3().setFromObject(group!);
   // 镜像凹弧向西南开口加料：南界仍 z=3.00（南缘切点），东缘延至 z=3.15（与门厅西缘的切点）
   assert.ok(Math.abs(box.max.z - 3.15) < 0.01, `轮廓南界应到 3.15（凹弧加料），实际 ${box.max.z}`);
-  assert.ok(Math.abs(box.max.x - 10.80) < 0.01, `轮廓东界应仍在 10.80（与门厅西缘共线），实际 ${box.max.x}`);
-  assert.ok(Math.abs(box.min.y - 2.50) < 0.01 && Math.abs(box.max.y - 2.80) < 0.01, '底面 2.50 / 原顶 2.80 不变');
+  assert.ok(Math.abs(box.max.x - 11.11) < 0.01, `轮廓东界应仍在 11.11（与门厅西缘共线），实际 ${box.max.x}`);
+  // 垂向：厚 0.30→0.32（2026-11-27 量房回填：餐厅实测层高 2.826、设计底 2.50 → 厚 0.32）；
+  // builder 默认原顶 2.8 时底 = 2.8−0.32+0.002(SLAB_EPS) = 2.482、顶 = 2.8+0.002 = 2.802；
+  // 设计底 2.50 以实测层高计（2.826−0.32 = 2.506 ≈ 2.50），此处 2.482 只是默认原顶 2.8 的夹具值
+  assert.ok(Math.abs(box.min.y - 2.482) < 0.01 && Math.abs(box.max.y - 2.802) < 0.01, `底面 2.482 / 原顶 2.802，实际 ${box.min.y} / ${box.max.y}`);
   assert.ok(group!.children.some((child) => child.userData.part === 'rounded-perimeter'), '凹弧分区走挤出周边');
 
   const radii = { nw: 0, ne: 0, se: 0, sw: 0 };
   const fillets = { nw: 0, ne: 0, se: 0.15, sw: 0.15 };
-  const outline = buildMixedRectangleOutline(7.70, 2.40, 10.80, 3.00, radii, fillets, { se: 'sw' })!;
+  const outline = buildMixedRectangleOutline(8.10, 2.40, 11.11, 3.00, radii, fillets, { se: 'sw' })!;
   assert.ok(outline, '镜像凹弧应能建出轮廓');
   // 两个切点必须精确在轮廓上（相切的条件）
-  assert.ok(hasPoint(outline, 10.65, 3.00), '南缘切点 (10.65,3.00) 应在轮廓上');
-  assert.ok(hasPoint(outline, 10.80, 3.15), '门厅西缘切点 (10.80,3.15) 应在轮廓上');
+  assert.ok(hasPoint(outline, 10.96, 3.00), '南缘切点 (10.96,3.00) 应在轮廓上');
+  assert.ok(hasPoint(outline, 11.11, 3.15), '门厅西缘切点 (11.11,3.15) 应在轮廓上');
   // SW 阴角（默认方向）不受影响
-  assert.ok(hasPoint(outline, 7.85, 3.00), 'SW 阴角南缘切点 (7.85,3.00) 仍在');
-  assert.ok(hasPoint(outline, 7.70, 3.15), 'SW 阴角西缘切点 (7.70,3.15) 仍在');
-  // 不加进邻区：没有任何点东于 x=10.80（门厅）或北于 z=2.85 的东缘段之外
-  assert.ok(outline.every((p) => p.x <= 10.80 + 1e-9), '镜像凹弧不得越过 x=10.80（不扎进门厅体量）');
+  assert.ok(hasPoint(outline, 8.25, 3.00), 'SW 阴角南缘切点 (8.25,3.00) 仍在');
+  assert.ok(hasPoint(outline, 8.10, 3.15), 'SW 阴角西缘切点 (8.10,3.15) 仍在');
+  // 不加进邻区：没有任何点东于 x=11.11（门厅）或北于 z=2.85 的东缘段之外
+  assert.ok(outline.every((p) => p.x <= 11.11 + 1e-9), '镜像凹弧不得越过 x=11.11（不扎进门厅体量）');
   assert.ok(outline.every((p) => p.z <= 3.15 + 1e-9), '轮廓南界不超过切点 z=3.15');
-  // 弧上点都在以 (10.65,3.15) 为圆心、R0.15 的圆上（切点之间的采样）
-  const arcPts = outline.filter((p) => p.x > 10.65 + 1e-6 && p.x < 10.80 - 1e-6 && p.z > 3.00 + 1e-6 && p.z < 3.15 - 1e-6);
+  // 弧上点都在以 (10.96,3.15) 为圆心、R0.15 的圆上（切点之间的采样）
+  const arcPts = outline.filter((p) => p.x > 10.96 + 1e-6 && p.x < 11.11 - 1e-6 && p.z > 3.00 + 1e-6 && p.z < 3.15 - 1e-6);
   assert.ok(arcPts.length >= 4, `应有足够弧采样点，实际 ${arcPts.length}`);
   for (const p of arcPts) {
-    assert.ok(Math.abs(Math.hypot(p.x - 10.65, p.z - 3.15) - 0.15) < 1e-6, '弧采样点应在 R0.15 圆上');
+    assert.ok(Math.abs(Math.hypot(p.x - 10.96, p.z - 3.15) - 0.15) < 1e-6, '弧采样点应在 R0.15 圆上');
   }
 });
 

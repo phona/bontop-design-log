@@ -2,7 +2,7 @@
  * Issue #98 二阶段 Stage 3 真实配置回归：两条沙发 MEP 路由关系化（§10.5 A4/A5）。
  *
  * 真实 YAML + 内存改动；期望值全部从当前配置推导（解算端点、from_height），不写死 R6
- * 偏移与历史绝对坐标；唯一例外是竖井轴坐标：R-S3 裁定值 (10.74, 2.98, 0.02) 作为独立
+ * 偏移与历史绝对坐标；唯一例外是竖井轴坐标：R-S3 裁定值 (11.05, 2.98, 0.02) 作为独立
  * 期望钉在 C1（钉裁定非历史；量房后合法改轴随新裁定更新）。实验后不写盘。
  * 覆盖：C1 关系化拓扑不变式、C2 沙发 +0.20m 端到端跟随、C4 反例 fail-closed、
  * C3 算量自洽（takeoff 各输出由同一份解算结果独立重算）。
@@ -34,11 +34,12 @@ const MOVE = 0.20;
 const ROUTE_L = 'strong-power-living-sofa-l';
 const ROUTE_R = 'strong-power-living-sofa-r';
 /**
- * R-S3 裁定（2026-11-14，Option 0）：共享竖井 shaft_entry 的裁定坐标。
+ * R-S3 裁定（2026-11-14，Option 0；2026-11-26 量房回填改轴）：共享竖井 shaft_entry 的裁定坐标。
  * 钉的是裁定（设计决策），不是历史坐标——量房后合法改轴须随新裁定同步更新本常量；
  * 除竖井轴坐标外，其余期望仍从当前配置推导。
+ * 2026-11-26 量房回填：配电箱落点 10.80→11.11（随花园西墙东移），轴线 10.74→11.05（= 11.11 − 0.06 jog）。
  */
-const RULED_SHAFT = { id: 'shaft_entry', x: 10.74, z: 2.98, y: 0.02 };
+const RULED_SHAFT = { id: 'shaft_entry', x: 11.05, z: 2.98, y: 0.02 };
 
 function loadAll() {
   const house = parseYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings?: FurnishingsYaml };

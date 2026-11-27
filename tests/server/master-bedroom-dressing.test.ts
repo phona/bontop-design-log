@@ -47,6 +47,9 @@ const house = load(readFileSync('config/house.yaml', 'utf8')) as { furnishings: 
 const electrical = load(readFileSync('config/electrical.yaml', 'utf8')) as ElectricalPoint[];
 const plumbing = load(readFileSync('config/plumbing.yaml', 'utf8')) as PlumbingPoint[];
 const master = house.furnishings.master_bedroom;
+// 2026-11-27 干湿分离放弃：通顶柜与洗手柜移入主卫（furnishings.master_bath），
+// 本文件涉及两柜的断言须读 master_bath；其余主卧件仍在 master_bedroom。
+const masterBath = house.furnishings.master_bath;
 
 const GAP_EPS = 1e-9;
 const RUNTIME_EPS = 1e-6;
@@ -280,9 +283,9 @@ function assertMeshMatchesDims(type: string, width: number, depth: number, toler
   assert.ok(Math.abs(size.z - depth) <= tolerance, `${what} mesh z ${size.z} vs 声明深 ${depth}（容差 ${tolerance}）`);
 }
 
-/** 通顶柜的参考中心（行内声明：w_mbath_east 西侧，along 2.51，clearance 0.015，深 0.565）。 */
+/** 通顶柜的参考中心（行内声明：w_mbath_east 西侧，along 2.245，clearance 0.015，深 0.565）。 */
 function fullHeightCabinetCenter(): { x: number; z: number } {
-  const cabinet = master.find((item) => item.type === 'mb_full_height_cabinet');
+  const cabinet = masterBath.find((item) => item.type === 'mb_full_height_cabinet');
   assert.ok(cabinet, 'missing mb_full_height_cabinet');
   return referenceWallFurnitureCenter(
     cabinet.wall!, cabinet.wall_side!, cabinet.along!, cabinet.wall_clearance!, cabinet.depth!,
@@ -351,12 +354,14 @@ test('R9 master-bedroom furniture set places the full-height cabinet and removes
   for (const removed of ['master_north_wall_wardrobe_950', 'master_wardrobe_top_pelmet', 'mb_vanity_base_cabinet', 'mb_vanity_lower_board', 'mb_vanity_main_board', 'mb_vanity_pvc_box', 'mb_vanity_pvc_wardrobe_entry', 'mb_vanity_pvc_service_chase', 'mb_condensate_pipe']) {
     assert.equal(master.some((item) => item.type === removed), false, `${removed} must be removed from master_bedroom furnishings (issue #116)`);
   }
-  // 通顶柜：单点参数化声明（house.yaml），沿墙 along 2.51 = 沿墙距离（自墙段起点顶点
-  // v_bath_ne z=1.10 向北量，2026-11-07 issue #98 删除本墙「along = 绝对 z」历史特例）
-  // → 世界 z = 1.10 + 2.51 = 3.61。宽/深/柜身高行内声明（FURNITURE_DIMS 不再是
-  // 第二套尺寸来源；PR-9「行内不写第二套」口径由 #116 参数化单点声明取代）。
-  const cabinet = master.find((item) => item.type === 'mb_full_height_cabinet');
-  // 2026-11-16 用户裁定（浴霸穿柜改顶封 25mm 线槽 infer）：本条带 note + blocker。
+  // 通顶柜：单点参数化声明（house.yaml，2026-11-27 起在 master_bath），沿墙 along 2.245 =
+  // 沿墙距离（自墙段起点顶点 v_bath_ne(2.90,−0.04) 向北量，2026-11-07 issue #98 删除本墙
+  // 「along = 绝对 z」历史特例）→ 世界 z = −0.04 + 2.245 = 2.205。宽/深/柜身高行内声明
+  // （FURNITURE_DIMS 不再是第二套尺寸来源；PR-9「行内不写第二套」口径由 #116 参数化单点声明取代）。
+  // 2026-11-27 干湿分离放弃后移入主卫：宽由 1.38 收窄为 0.90、高由 2.80（柜身 2.50 + 顶封 0.30）
+  // 降为 2.48——原 0.30m 顶封作废，柜顶留 20mm 顶缝（收口条封，通顶）。
+  const cabinet = masterBath.find((item) => item.type === 'mb_full_height_cabinet');
+  // 2026-11-27 业主裁定（干湿分离放弃、柜高 2.48、顶留 20mm）：本条带 note + blocker。
   // 原 verbatim deepEqual 改结构断言：摆位形式逐字段、摆位由墙锚参考实现重算、
   // 尺寸由 mesh 对账、blocker 按字段查（kind/owner 精确，trigger/reverses_if/
   // rationale 与 note 只查决策标记，不钉原文 prose）。
@@ -366,27 +371,30 @@ test('R9 master-bedroom furniture set places the full-height cabinet and removes
   assert.equal(cabinet.wall, 'w_mbath_east');
   assert.equal(cabinet.wall_side, 'west');
   assert.equal(cabinet.rotation, 270);
-  assert.equal(cabinet.along, 2.51);
-  assert.equal(cabinet.width, 1.38);
+  assert.equal(cabinet.along, 2.245);
+  assert.equal(cabinet.width, 0.90);
   assert.equal(cabinet.depth, 0.565);
-  assert.equal(cabinet.cabinetHeight, 2.80);
+  assert.equal(cabinet.cabinetHeight, 2.48);
   assert.equal(cabinet.wall_clearance, 0.015);
   // DDD 模型约束（支撑声明）：柜体落地，support 声明须为 floor（原 verbatim
   // deepEqual 里带的 support 字段，改结构断言后保留为声明锁）。
   assert.deepEqual(cabinet.support, { kind: 'floor' });
-  const cabinetPlaced = placed('mb_full_height_cabinet');
+  const cabinetPlaced = placed('mb_full_height_cabinet', masterBath);
   const cabinetExpected = fullHeightCabinetCenter();
   assert.ok(Math.abs(cabinetPlaced.x! - cabinetExpected.x) < GAP_EPS && Math.abs(cabinetPlaced.z! - cabinetExpected.z) < GAP_EPS,
     `cabinet must sit at the wall-anchor reference (w_mbath_east + along + clearance + depth/2)`);
+  // BUG-1（生产侧，shared/render/FixtureFactory.ts 的 mb_full_height_cabinet 配方仍为
+  // 1.38 宽 × 2.80 高，未随声明同步为 0.90 × 2.48）：以下三组 mesh 对账断言在配方修好前
+  // 必然失败，测试侧不断言放宽，留红待生产侧修。
   assertMeshMatchesDims('mb_full_height_cabinet', cabinet.width!, cabinet.depth!, 1e-6, 'mb_full_height_cabinet');
   assert.ok(Math.abs(fixtureSize('mb_full_height_cabinet').y - cabinet.cabinetHeight!) < 1e-6, 'cabinet mesh height must equal the declared cabinetHeight');
-  assert.match(cabinet.note ?? '', /25mm/);
+  assert.match(cabinet.note ?? '', /20mm/);
   const blocker = cabinet.blocker as { kind?: string; owner?: unknown; trigger?: string; reverses_if?: string; rationale?: string } | undefined;
   assert.ok(blocker, 'cabinet must carry a blocker');
   assert.equal(blocker.kind, 'site_measurement');
   assert.deepEqual(blocker.owner, ['量房']);
   assert.match(blocker.trigger ?? '', /量房/);
-  assert.match(blocker.reverses_if ?? '', /25mm|过梁/);
+  assert.match(blocker.reverses_if ?? '', /柜高随之再降/);
   assert.match(blocker.rationale ?? '', /infer/);
   for (const type of ['mb_vanity_lower_board_bridge', 'mb_vanity_main_board_bridge']) {
     assert.equal(master.some((item) => item.type === type), false, `${type} must be removed from active placed set`);
@@ -401,16 +409,19 @@ test('R9 master-bedroom furniture set places the full-height cabinet and removes
   cabinetFixture!.rotation.y = THREE.MathUtils.degToRad(270);
   cabinetFixture!.updateMatrixWorld(true);
   const cabinetBox = new THREE.Box3().setFromObject(cabinetFixture!);
+  // BUG-1（见上）：mesh 仍为 1.38 宽 × 2.80 高，z 向与 y 向包络断言在配方修好前必然失败。
   assert.ok(Math.abs(cabinetBox.min.x - (cabinetCenter.x - cabinet!.depth! / 2)) < 1e-6 && Math.abs(cabinetBox.max.x - (cabinetCenter.x + cabinet!.depth! / 2)) < 1e-6);
   assert.ok(Math.abs(cabinetBox.min.z - (cabinetCenter.z - cabinet!.width! / 2)) < 1e-6 && Math.abs(cabinetBox.max.z - (cabinetCenter.z + cabinet!.width! / 2)) < 1e-6);
-  assert.ok(Math.abs(cabinetBox.min.y - 0) < 1e-6 && Math.abs(cabinetBox.max.y - cabinet!.cabinetHeight!) < 1e-6, 'cabinet must run floor to ceiling: carcass 0–2.50 + fixed header 2.50–2.80');
+  assert.ok(Math.abs(cabinetBox.min.y - 0) < 1e-6 && Math.abs(cabinetBox.max.y - cabinet!.cabinetHeight!) < 1e-6, 'cabinet must run floor to the declared cabinetHeight 2.48 (20mm below the 2.50 ceiling; fixed header abolished 2026-11-27)');
   assert.equal(buildFixture('mb_vanity_continuous_closure_cabinet'), null);
 });
 
 test('R9 vanity boards anchor to the wall west finish without bridge geometry', () => {
   // 悬浮板与通顶柜同 footprint：摆位中心由墙锚参考实现重算，包络由中心 + 柜行内宽/深派生
   //（rotation 270：世界 x 向跨度为深，z 向跨度为宽）。y 带是 recipe 值，无配置源，保留。
-  const cabinet = master.find((item) => item.type === 'mb_full_height_cabinet');
+  // BUG-1（生产侧，FixtureFactory 的 mb_vanity_lower_board / mb_vanity_main_board 配方仍为
+  // 1.38 宽，未随通顶柜收窄为 0.90）：以下 z 向包络断言在配方修好前必然失败，测试侧不放宽。
+  const cabinet = masterBath.find((item) => item.type === 'mb_full_height_cabinet');
   assert.ok(cabinet, 'missing mb_full_height_cabinet');
   const cabinetCenter = fullHeightCabinetCenter();
   for (const [type, yBand] of [['mb_vanity_lower_board', [0.965, 1.035]], ['mb_vanity_main_board', [1.515, 1.585]]] as const) {
@@ -428,10 +439,12 @@ test('R9 vanity boards anchor to the wall west finish without bridge geometry', 
   }
 });
 
-test('R9 full-height cabinet header closes the cabinet-to-ceiling seam (issue #116)', () => {
-  // 2026-11-13 issue #116：950 衣柜 + 顶封退役，悬浮板位改通顶定制柜——柜身到 2.50m、
-  // 固定顶封到 2.80m；柜顶为干净固定板（全带泵后无冷凝水管过柜顶，不设托盘/检修口/带子）。
-  const cabinetDecl = master.find((item) => item.type === 'mb_full_height_cabinet');
+test('R9 full-height cabinet stops 20mm below the ceiling with no fixed header (2026-11-27)', () => {
+  // 2026-11-13 issue #116：950 衣柜 + 顶封退役，悬浮板位改通顶定制柜。
+  // 2026-11-27 声明改：柜高 2.48、原 0.30m 固定顶封作废、柜顶留 20mm 顶缝至 2.50m
+  // 铝扣板吊顶完成面（收口条封，通顶）。配方与断言同步：不再有 full-height-header 件，
+  // 柜顶即 cabinetHeight 2.48；旧“顶封 y 带 [2.50, 2.48]”断言自相矛盾，随作废删除。
+  const cabinetDecl = masterBath.find((item) => item.type === 'mb_full_height_cabinet');
   assert.ok(cabinetDecl, 'missing mb_full_height_cabinet');
   const cabinetCenter = fullHeightCabinetCenter();
   const cabinet = buildFixture('mb_full_height_cabinet');
@@ -444,16 +457,11 @@ test('R9 full-height cabinet header closes the cabinet-to-ceiling seam (issue #1
   assert.ok(Math.abs(box.min.x - (cabinetCenter.x - cabinetDecl.depth! / 2)) < 1e-6 && Math.abs(box.max.x - (cabinetCenter.x + cabinetDecl.depth! / 2)) < 1e-6, `cabinet x[${box.min.x},${box.max.x}]`);
   assert.ok(Math.abs(box.min.z - (cabinetCenter.z - cabinetDecl.width! / 2)) < 1e-6 && Math.abs(box.max.z - (cabinetCenter.z + cabinetDecl.width! / 2)) < 1e-6, `cabinet z[${box.min.z},${box.max.z}]`);
   assert.ok(Math.abs(box.min.y - 0) < 1e-6 && Math.abs(box.max.y - cabinetDecl.cabinetHeight!) < 1e-6, `cabinet y[${box.min.y},${box.max.y}]`);
-  // 固定顶封：与柜身同 footprint，2.50–2.80m 不可开启（y 带是 recipe 值：柜身 2.50m
-  // 为 #116 设计值，顶封到 2.80m 净高；x/z 由中心 + 行内尺寸派生）
+  // 固定顶封已作废：配方不得再有 full-height-header 件；柜顶 2.48 距 2.50m 吊顶完成面留 20mm 顶缝。
   const parts: THREE.Object3D[] = [];
   cabinet!.traverse((object) => { if (object.userData.part) parts.push(object); });
   const header = parts.find((part) => part.userData.part === 'full-height-header');
-  assert.ok(header, 'missing full-height-header');
-  const headerBox = new THREE.Box3().setFromObject(header!);
-  assert.ok(Math.abs(headerBox.min.x - (cabinetCenter.x - cabinetDecl.depth! / 2)) < 1e-6 && Math.abs(headerBox.max.x - (cabinetCenter.x + cabinetDecl.depth! / 2)) < 1e-6, `header x[${headerBox.min.x},${headerBox.max.x}]`);
-  assert.ok(Math.abs(headerBox.min.z - (cabinetCenter.z - cabinetDecl.width! / 2)) < 1e-6 && Math.abs(headerBox.max.z - (cabinetCenter.z + cabinetDecl.width! / 2)) < 1e-6, `header z[${headerBox.min.z},${headerBox.max.z}]`);
-  assert.ok(Math.abs(headerBox.min.y - 2.50) < 1e-6 && Math.abs(headerBox.max.y - cabinetDecl.cabinetHeight!) < 1e-6, `header y[${headerBox.min.y},${headerBox.max.y}]`);
+  assert.equal(header, undefined, 'fixed header abolished 2026-11-27: cabinet stops at 2.48 with a 20mm gap to the 2.50 ceiling, no header part');
   // 不侵 d_mb 开启门扇带 x[3.30,4.20] z[4.63,4.67]
   assert.ok(box.max.x <= cabinetCenter.x + cabinetDecl.depth! / 2 + 1e-9, 'cabinet must remain within the west finish envelope');
   // 不压回风格栅底面包络：return_master 西缘 = 终端中心 x − 长度/2（hvac.yaml 声明）。
@@ -503,14 +511,15 @@ test('dressing table and stool use the 2026-09-04 R1 window-adjacent candidate t
 });
 
 test('washbasin-only cabinet preserves envelope and plumbing center without a dressing chair', () => {
-  // 2026-09-02 初版（迭代 mb-washbasin-curtain-20260901，假定玻璃通高，待量房终核）：
-  // 柜体东移 5cm 收宽 1.05，盆/龙头居中至 x=0.575
-  const cabinetDecl = master.find((item) => item.type === 'mb_washbasin_cabinet');
+  // 2026-11-27 干湿分离放弃：洗手柜移入主卫、贴 w_mbath_east 西脸北段（沿位 0.575，
+  // 柜沿墙 z 0.01..1.06），中心 (2.60, 0.535)；盆/龙头居中于柜体。
+  // （旧注记「盆/龙头居中至 x=0.575」是南墙位时的绝对 x，现 0.575 为沿位值，勿混淆。）
+  const cabinetDecl = masterBath.find((item) => item.type === 'mb_washbasin_cabinet');
   assert.ok(cabinetDecl, 'missing mb_washbasin_cabinet');
   const cabinetExpected = referenceWallFurnitureCenter(
     cabinetDecl.wall!, cabinetDecl.wall_side!, cabinetDecl.along!, cabinetDecl.wall_clearance!, FURNITURE_DIMS.mb_washbasin_cabinet.depth,
   );
-  const cabinet = placed('mb_washbasin_cabinet');
+  const cabinet = placed('mb_washbasin_cabinet', masterBath);
   assert.equal(cabinet.type, 'mb_washbasin_cabinet');
   assert.equal(cabinet.id, 'mb.washbasin_cabinet');
   assert.ok(Math.abs(cabinet.x! - cabinetExpected.x) < GAP_EPS && Math.abs(cabinet.z! - cabinetExpected.z) < GAP_EPS,
@@ -519,9 +528,13 @@ test('washbasin-only cabinet preserves envelope and plumbing center without a dr
   assertMeshMatchesDims('mb_washbasin_cabinet', FURNITURE_DIMS.mb_washbasin_cabinet.width, FURNITURE_DIMS.mb_washbasin_cabinet.depth, 1e-6, 'mb_washbasin_cabinet');
   const faucet = plumbPoint('faucet_mbath_vanity');
   assert.ok(faucet);
-  // 龙头居中于柜体；龙头 z 由墙线 + 半墙厚 + 自身 face_offset 重算。
-  assert.equal(faucet.x, cabinet.x);
+  // 龙头沿墙居中于柜体：沿墙轴现为 z，龙头 z 与柜中心 z=0.535 对齐；龙头 x 由墙线 + 半墙厚 +
+  // 自身 face_offset 重算（壁挂龙头出水口在完成面外 0.04m → x=2.80，落在柜 x[2.35,2.85] 的
+  // 靠墙侧——旧断言 faucet.x == cabinet.x 是南墙位时的沿墙轴（x）巧合，柜改贴东墙后沿墙轴
+  // 为 z，x 不再居中，改钉 z 居中 + x 墙基准）。
+  assert.ok(Math.abs(faucet.z! - cabinet.z!) < GAP_EPS, `faucet z ${faucet.z} must center on the cabinet (z=${cabinet.z})`);
   const faucetExpected = referenceWallPoint(faucet.wall!, faucet.wall_side!, faucet.along!, faucet.face_offset!);
+  assert.ok(Math.abs(faucet.x! - faucetExpected.x) < GAP_EPS, `faucet x ${faucet.x} must be the wall reference`);
   assert.ok(Math.abs(faucet.z! - faucetExpected.z) < GAP_EPS, `faucet z ${faucet.z} must be the wall reference`);
 });
 
@@ -536,7 +549,7 @@ test('R9 bed and bedside AABBs remain explicit', () => {
   assert.ok(Math.abs((bedBox.maxZ - bedBox.minZ) - FURNITURE_DIMS.bed_180.width) < GAP_EPS, 'bed world z extent must be DIMS width');
   assert.ok(Math.abs(bedBox.minZ - (bed.z! - FURNITURE_DIMS.bed_180.width / 2)) < GAP_EPS);
   assert.ok(Math.abs(bedBox.maxZ - (bed.z! + FURNITURE_DIMS.bed_180.width / 2)) < GAP_EPS);
-  const cabinetDecl = master.find((item) => item.type === 'mb_full_height_cabinet');
+  const cabinetDecl = masterBath.find((item) => item.type === 'mb_full_height_cabinet');
   assert.ok(cabinetDecl, 'missing mb_full_height_cabinet');
   const cabinetCenter = fullHeightCabinetCenter();
   const cabinetFixture = buildFixture('mb_full_height_cabinet');
@@ -544,8 +557,11 @@ test('R9 bed and bedside AABBs remain explicit', () => {
   cabinetFixture!.position.set(cabinetCenter.x, 0, cabinetCenter.z);
   cabinetFixture!.rotation.y = THREE.MathUtils.degToRad(270);
   const cabinetBox = runtimeAabb(cabinetFixture!);
-  assert.ok(Math.abs(cabinetBox.minX - (cabinetCenter.x - cabinetDecl.depth! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - (cabinetCenter.x + cabinetDecl.depth! / 2)) < RUNTIME_EPS);
-  assert.ok(Math.abs(cabinetBox.minZ - (cabinetCenter.z - cabinetDecl.width! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - (cabinetCenter.z + cabinetDecl.width! / 2)) < RUNTIME_EPS);
+  // BUG-1（生产侧，见 R9 家具集测试）：mesh 仍为 1.38 宽，z 向包络断言在配方修好前必然失败。
+  // （两断言带 message：无 message 的 assert.ok 失败时 test runner 解析源码行会把 TS 的
+  // `width! / 2` 误读为正则而报 SyntaxError，掩盖真实断言失败；message 让失败直接可读。）
+  assert.ok(Math.abs(cabinetBox.minX - (cabinetCenter.x - cabinetDecl.depth! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - (cabinetCenter.x + cabinetDecl.depth! / 2)) < RUNTIME_EPS, `cabinet x extent must match the declared depth 0.565 (got [${cabinetBox.minX},${cabinetBox.maxX}])`);
+  assert.ok(Math.abs(cabinetBox.minZ - (cabinetCenter.z - cabinetDecl.width! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - (cabinetCenter.z + cabinetDecl.width! / 2)) < RUNTIME_EPS, `cabinet z extent must match the declared width 0.90 (got [${cabinetBox.minZ},${cabinetBox.maxZ}])`);
   const north = worldAabb(placed('master_bedside_cabinet_350_north'));
   const south = worldAabb(placed('master_bedside_cabinet_350_south'));
   for (const [name, box] of [['north', north], ['south', south]] as const) {
@@ -769,8 +785,9 @@ test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   assert.ok(beam, 'missing ceiling_master_beam');
   assert.ok(!ceiling.some((entry) => entry.id === 'ceiling_master_ac'), 'ceiling_master_ac must be gone (2026-11-23 beam ruling)');
   assert.equal(beam!.type, 'drop');
-  // 梁 area：全宽 x[0,4.20]（西端落西玻璃幕墙、东端为东墙线），深 0.50m；
-  // 南北缘 [5.05, 5.55] 是 2026-11-23 业主裁定的寝区与北侧套间条带分界线（z=5.55），无派生源，按裁定值例外保留。
+  // 梁 area：全宽 x[0,4.16]（西端落西玻璃幕墙、东端为东墙线），深 0.50m；
+  // 南北缘 [4.955, 5.455] 是 2026-11-23 业主裁定的寝区与北侧套间条带分界线（z=5.55），
+  // 2026-11-27 量房回填随墙起点北移 0.095m（厚 0.404、底仍 2.50m）。
   const [minX, minZ, maxX, maxZ] = beam!.area!;
   const eastWall = mbWall('w_mb_east');
   assert.ok(Math.abs(maxX - eastWall.x1) < GAP_EPS, 'beam east edge must be the east wall line');
@@ -778,8 +795,8 @@ test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   assert.ok(masterRoom, 'missing master_bedroom room');
   const westGlass = masterRoom!.x - masterRoom!.width / 2;
   assert.ok(Math.abs(minX - westGlass) < GAP_EPS, 'beam west edge must be the west glass curtain line');
-  assert.equal(minZ, 5.05, 'beam north edge is the 2026-11-23 ruled zone');
-  assert.equal(maxZ, 5.55, 'beam south edge is the sleeping-area / suite-strip boundary');
+  assert.equal(minZ, 4.955, 'beam north edge is the 2026-11-23 ruled zone, re-based by the 2026-11-27 survey');
+  assert.equal(maxZ, 5.455, 'beam south edge is the sleeping-area / suite-strip boundary, re-based by the 2026-11-27 survey');
   assert.equal((beam as CeilingEntry & { corner_radius?: number }).corner_radius, undefined, 'wall-to-wall beam has no exposed plan corners');
   // 厚度不钉字面量：底面 = 房间净高 − 厚度，须落在 2.45–2.50m 的 HVAC 基准带内。
   const roomHeight = masterRoom!.height;
@@ -787,11 +804,13 @@ test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   assert.ok(bottom >= 2.45 - GAP_EPS && bottom <= 2.50 + GAP_EPS, `beam bottom ${bottom} outside 2.45–2.50m`);
   const indoor = ceiling.find((entry) => entry.id === 'ac_master');
   assert.ok(indoor && indoor.type === 'ac_indoor');
-  assert.equal(indoor!.x, 3.45, 'indoor unit center x is the ruled axis (3.45, 5.30)');
-  assert.equal(indoor!.z, 5.3, 'indoor unit center z is the ruled axis (3.45, 5.30)');
+  assert.equal(indoor!.x, 3.45, 'indoor unit center x is the ruled axis (3.45, 5.205)');
+  assert.equal(indoor!.z, 5.205, 'indoor unit center z is the ruled axis (3.45, 5.205)');
   assert.ok(indoor!.x! >= minX && indoor!.x! <= maxX && indoor!.z! >= minZ && indoor!.z! <= maxZ, 'indoor unit center must sit inside the beam');
   // 1200×450 只是未核实的经销商参数表 P-S5 行取值，待厂家安装图 #39 复核，不是实机事实。
   // 下面两行只预演这个 inferred 外廓是否还落在梁内，不把 1200×450 钉成已核实净空。
+  // 2026-11-27 量房回填：梁北移 0.095m（z[5.05,5.55]→[4.955,5.455]），内机与送风口随梁
+  // 同量北移（内机 z 5.30→5.205 梁中心，送风口 5.535→5.44 贴南立面），外廓重算后仍落梁内。
   assert.ok(indoor!.x! - 0.60 >= minX - GAP_EPS && indoor!.x! + 0.60 <= maxX + GAP_EPS, 'inferred 1200mm dealer-row rehearsal must stay inside the beam width');
   assert.ok(indoor!.z! - 0.225 >= minZ - GAP_EPS && indoor!.z! + 0.225 <= maxZ + GAP_EPS, 'inferred 450mm dealer-row rehearsal must stay inside the beam depth');
   assert.equal(indoor!.power_point, 'sock_master_ac');
@@ -805,22 +824,26 @@ test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   const doorMb = MB_LAYOUT.walls.flatMap((wall) => wall.openings ?? []).find((opening) => opening.id === 'd_mb');
   assert.ok(doorMb, 'missing d_mb door opening');
   const doorOpeningTopY = doorMb!.height;
-  // 2026-11-23：送回风中心轴统一到内机轴（ac_master x），东端分别留 0.39m/0.44m 至东墙卧室侧完成面。
+  // 2026-11-23：送回风中心轴统一到内机轴（ac_master x），东端分别留 0.35m/0.40m 至东墙卧室侧完成面
+  // （2026-11-23 原值 0.39m/0.44m；2026-11-27 量房回填东墙线 4.20→4.16，完成面 4.14→4.10，
+  // 送回风口未动，余量随之各缩 0.04m——派生值重算，非口径改动）。
   assert.ok(Math.abs(supply!.position.x - indoor!.x!) < GAP_EPS, `supply center x=${supply!.position.x} must share the indoor unit axis`);
   assert.ok(Math.abs(ret!.position.x - indoor!.x!) < GAP_EPS, `return center x=${ret!.position.x} must share the indoor unit axis`);
   const supplyEastX = supply!.position.x + supply!.length! / 2;
   const returnEastX = ret!.position.x + ret!.length! / 2;
-  assert.ok(Math.abs(eastWallBedroomFinishX - supplyEastX - 0.39) < GAP_EPS, `supply wall clearance ${eastWallBedroomFinishX - supplyEastX}`);
-  assert.ok(Math.abs(eastWallBedroomFinishX - returnEastX - 0.44) < GAP_EPS, `return wall clearance ${eastWallBedroomFinishX - returnEastX}`);
+  assert.ok(Math.abs(eastWallBedroomFinishX - supplyEastX - 0.35) < GAP_EPS, `supply wall clearance ${eastWallBedroomFinishX - supplyEastX}`);
+  assert.ok(Math.abs(eastWallBedroomFinishX - returnEastX - 0.40) < GAP_EPS, `return wall clearance ${eastWallBedroomFinishX - returnEastX}`);
   // 两个端点都处于梁与门洞上方的服务高度，回风仍可从梁底检修。
   assert.ok(supply!.position.y > doorOpeningTopY + GAP_EPS, `supply must clear door top y=${supply!.position.y}`);
   assert.ok(ret!.position.y > doorOpeningTopY + GAP_EPS, `return must clear door top y=${ret!.position.y}`);
+  // 送风口已随梁北移至 z=5.44（贴梁南立面 5.455，距 0.015m），梁内断言按重定后位置钉死。
   assert.ok(supply!.position.z >= minZ - GAP_EPS && supply!.position.z <= maxZ + GAP_EPS, 'supply must remain over the beam service footprint');
   assert.ok(ret!.position.z >= minZ - GAP_EPS && ret!.position.z <= maxZ + GAP_EPS, 'return must remain over the beam service footprint');
   // 侧送：窄线形送风嵌梁南立面
   assert.equal(supply!.system, 'supply_air');
   assert.equal(supply!.mount_face, 'south');
   assert.equal(supply!.length, 0.6);
+  // 送风口 z=5.44 距新梁南缘 5.455 为 0.015m，贴南立面（2026-11-27 重定前为 5.535，距 0.08m）。
   assert.ok(Math.abs(supply!.position.z - maxZ) <= 0.02 + GAP_EPS, 'supply grille must sit on the beam south face');
   assert.ok(supply!.position.x - supply!.length! / 2 >= minX - GAP_EPS && supply!.position.x + supply!.length! / 2 <= maxX + GAP_EPS, 'supply span must stay inside the beam');
   assert.ok(supply!.position.y >= bottom && supply!.position.y <= roomHeight, 'supply grille y must be inside the beam face band');
@@ -835,7 +858,7 @@ test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   // 2026-11-23 业主裁定：门头盒改通长假梁——按未核实的 1200 候选算，56T2 盒装不下（机身东端 4.30 > 盒东界 4.20）；
   // 归档 900 候选的旧东端是 4.15，落在旧盒东界 4.20 以内，盒废弃的因果只在 1200 候选下成立。
   // 不再修盒，机身西移至 x=3.45（按 1200 候选东端 4.05）+ 梁全宽通长，待厂家安装图核机身外廓与安装间隙。
-  const cabinetDecl = master.find((item) => item.type === 'mb_full_height_cabinet');
+  const cabinetDecl = masterBath.find((item) => item.type === 'mb_full_height_cabinet');
   assert.ok(cabinetDecl, 'missing mb_full_height_cabinet');
   const cabinetCenter = fullHeightCabinetCenter();
   const cabinetFixture = buildFixture('mb_full_height_cabinet');
@@ -843,14 +866,17 @@ test('R8 HVAC beam envelope: ceiling/hvac/electrical stay data-driven', () => {
   cabinetFixture!.position.set(cabinetCenter.x, 0, cabinetCenter.z);
   cabinetFixture!.rotation.y = THREE.MathUtils.degToRad(270);
   const cabinetBox = runtimeAabb(cabinetFixture!);
-  assert.ok(Math.abs(cabinetBox.minX - (cabinetCenter.x - cabinetDecl.depth! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - (cabinetCenter.x + cabinetDecl.depth! / 2)) < RUNTIME_EPS);
-  assert.ok(Math.abs(cabinetBox.minZ - (cabinetCenter.z - cabinetDecl.width! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - (cabinetCenter.z + cabinetDecl.width! / 2)) < RUNTIME_EPS);
+  // BUG-1（生产侧，见 R9 家具集测试）：mesh 仍为 1.38 宽，z 向包络断言在配方修好前必然失败。
+  // （两断言带 message：无 message 的 assert.ok 失败时 test runner 解析源码行会把 TS 的
+  // `width! / 2` 误读为正则而报 SyntaxError，掩盖真实断言失败；message 让失败直接可读。）
+  assert.ok(Math.abs(cabinetBox.minX - (cabinetCenter.x - cabinetDecl.depth! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxX - (cabinetCenter.x + cabinetDecl.depth! / 2)) < RUNTIME_EPS, `cabinet x extent must match the declared depth 0.565 (got [${cabinetBox.minX},${cabinetBox.maxX}])`);
+  assert.ok(Math.abs(cabinetBox.minZ - (cabinetCenter.z - cabinetDecl.width! / 2)) < RUNTIME_EPS && Math.abs(cabinetBox.maxZ - (cabinetCenter.z + cabinetDecl.width! / 2)) < RUNTIME_EPS, `cabinet z extent must match the declared width 0.90 (got [${cabinetBox.minZ},${cabinetBox.maxZ}])`);
   assert.ok(supply!.position.x - supply!.length! / 2 >= cabinetBox.maxX - GAP_EPS, 'supply must stay clear of the full-height cabinet');
   assert.ok(ret!.position.x - ret!.length! / 2 >= cabinetBox.maxX - GAP_EPS, 'return must stay clear of the full-height cabinet');
-  assert.ok(supplyEastX <= eastWallBedroomFinishX - 0.39 + GAP_EPS, 'supply must stay clear of the bedroom east wall finish');
-  assert.ok(returnEastX <= eastWallBedroomFinishX - 0.44 + GAP_EPS, 'return must stay clear of the bedroom east wall finish');
+  assert.ok(supplyEastX <= eastWallBedroomFinishX - 0.35 + GAP_EPS, 'supply must stay clear of the bedroom east wall finish');
+  assert.ok(returnEastX <= eastWallBedroomFinishX - 0.40 + GAP_EPS, 'return must stay clear of the bedroom east wall finish');
   assert.ok(bottom <= 2.50 + GAP_EPS, 'beam bottom must remain at the independent HVAC datum');
-  // 梁全宽通长：通顶柜东缘（真实包络 2.525）在梁 x 范围内，但两者 z 向不重叠
-  // （柜 z[2.92,4.30]，梁 z[5.05,5.55]），无贴合缝要收口。
+  // 梁全宽通长：通顶柜东缘（声明包络 2.825）在梁 x 范围内，但两者 z 向不重叠
+  // （柜 z[1.755,2.655]，梁 z[4.955,5.455]），无贴合缝要收口。
   assert.ok(cabinetBox.maxZ <= minZ - GAP_EPS, `cabinet south edge ${cabinetBox.maxZ} must stay north of the beam ${minZ}`);
 });

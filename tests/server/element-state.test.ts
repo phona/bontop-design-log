@@ -358,7 +358,7 @@ describe('element census snapshot', () => {
   it('pins the element census so undeclared elements cannot slip in silently', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, issues: [] });
-    assert.equal(result.summary.total, 167, '构件总数（电气 104 + 给排水 35 + 吊顶/HVAC 25 + 包管盒 3；2026-11-17 PR #259 第二轮 pipe_box 进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，新增两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet，给排水 33→35，总数 162→167；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104；2026-11-08 issue #98 S1-B 状态申报只补字段不增删构件；S2-A 同）');
+    assert.equal(result.summary.total, 170, '构件总数（电气 104 + 给排水 38 + 吊顶/HVAC 25 + 包管盒 3；2026-11-17 PR #259 第二轮 pipe_box 进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，新增两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet，给排水 33→35，总数 162→167；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104；2026-11-08 issue #98 S1-B 状态申报只补字段不增删构件；S2-A 同；2026-11-27 业主裁定撤客卫电热毛巾架，删 sock_gbath_towel，电气 104→103，总数 167→166；2026-11-27 机器人泊位水路（item 2）：新增 faucet_robot_dock / drain_robot_dock，给排水 35→37，总数 166→168；2026-11-27 业主裁定全屋增压泵只预留：新增 pump_booster_reserve / sock_booster_pump_reserve，电气 103→104、给排水 37→38，总数 168→170');
     // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
     // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
     // DEC-2026-10-28-R05：主卧南窗帘盒归位时 note 补了 DEC 全引 → 该盒不再是申报缺口，5→4。
@@ -390,19 +390,19 @@ describe('element census snapshot', () => {
       );
     }
     assert.equal(result.summary.undeclared, 2, '只剩 2 个显形申报 undeclared 的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 37, '2026-11-08 issue #98 S2-A：37 个 pending 全部由 config status: pending 承载（原 S1-B 口径 37，其中 8 个原经 ledger 规则、2 个原为 undeclared 申报缺口）');
+    assert.equal(result.summary.pending, 38, '2026-11-08 issue #98 S2-A：38 个 pending 全部由 config status: pending 承载（原 S1-B 口径 37，其中 8 个原经 ledger 规则、2 个原为 undeclared 申报缺口；2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel 及其 pending_selection blocker，37→36；2026-11-27 业主裁定全屋增压泵只预留：新增 pump_booster_reserve / sock_booster_pump_reserve（status: pending），36→38）');
     const confirmed = result.states.filter((state) => state.status === 'confirmed');
     assert.equal(confirmed.length, 6, 'confirmed 剩 6 个且全部来自 hvac anchor（ac_* 成交映射），不再有 DEC 引用产生的 confirmed');
     for (const state of confirmed) assert.match(state.statusSource, /config\/hvac\.yaml/, `confirmed 的权威必须是 config/hvac.yaml：${state.id} → ${state.statusSource}`);
   });
 
   it('requires a complete blocker on every pending or undeclared element (S2-A 门禁)', () => {
-    // 这条断言是「未决项上对象」的机器约束：今天 39 个对象一个都不许漏。
+    // 这条断言是「未决项上对象」的机器约束：今天 40 个对象一个都不许漏。
     const elements = collectElements();
     const result = deriveElementStates({ elements, issues: [] });
     const statusById = new Map(result.states.map((state) => [state.id, state.status]));
     const gate = checkBlockers(elements as BlockerSubject[], (subject) => statusById.get(subject.id));
-    assert.equal(gate.checked, 39, `受门禁管辖的 pending/undeclared 构件数（pending 37 + undeclared 2）：${gate.checked}`);
+    assert.equal(gate.checked, 40, `受门禁管辖的 pending/undeclared 构件数（pending 38 + undeclared 2）：${gate.checked}`);
     assert.deepEqual(gate.issues.map((issue) => formatBlockerIssue(issue)), [], '每个 pending/undeclared 构件都必须带结构完整的 blocker');
     // 反向锚：门禁不是恒真式——把一个对象的 blocker 抹掉，它必须报红。
     const stripped = elements.map((item) => (item.id === 'electrical:sock_child_ac' ? { ...item, blocker: undefined } : item));
@@ -557,7 +557,7 @@ describe('note 与 blocker 不许并存两份（S2-A 评审 blocking 1 的防线
   const withBlocker = all.filter((item) => item.blocker);
 
   it('covers every blocker-carrying object', () => {
-    assert.equal(withBlocker.length, 42, `带 blocker 的构件数：${withBlocker.length}`); // 2026-11-23 通长假梁：ceiling_master_beam（板底实测）+ ac_master（厂家图 #39）新增 blocker；2026-11-24 sock_master_ac 补 blocker（精确位置待 #39，status 仍为 inferred，census pending 不因此增加）
+    assert.equal(withBlocker.length, 44, `带 blocker 的构件数：${withBlocker.length}`); // 2026-11-23 通长假梁：ceiling_master_beam（板底实测）+ ac_master（厂家图 #39）新增 blocker；2026-11-24 sock_master_ac 补 blocker（精确位置待 #39，status 仍为 inferred，census pending 不因此增加）；2026-11-27 业主裁定全屋增压泵只预留：新增 pump_booster_reserve / sock_booster_pump_reserve（+2），42→44（注：同日关掉的 gbath.vanity / gbath.robot_dock blocker 在 house.yaml 家具侧，不计入本数）
   });
 
   it('never repeats a blocker field verbatim inside the note', () => {
@@ -655,16 +655,18 @@ describe('构件状态唯一来源是 status 字段，position_status 不再是�
   });
 
   it('keeps position_status out of new declarations (regression anchor)', () => {
-    // 回归锚：position_status 已退役，电气配置里只允许存量 2 条（sock_child_ac /
-    // sock_kitchen_oven 两个预留占位点，是 shared/mep-takeoff.ts 算量延期判定
-    // 「status 与 position_status 均 pending」的一半）。两个面板点的冗余 position_status
+    // 回归锚：position_status 已退役，电气配置里只允许存量 3 条（sock_child_ac /
+    // sock_kitchen_oven / sock_booster_pump_reserve 三个预留占位点，是 shared/mep-takeoff.ts 算量延期判定
+    // 「status 与 position_status 均 pending」的一半；2026-11-27 增压泵预留插座加入，预留占位
+    // 不进算量仍须双 pending——字段仍只许这 3 个具名预留点用，不许扩到其他点位）。
+    // 两个面板点的冗余 position_status
     // 已在第 4 轮删掉（与 status 同一事实，双写）。
-    // 给任何点新增 position_status 都会让「位置待核」在状态机 / DXF / 算量三处静默分叉。
+    // 给任何其他点新增 position_status 都会让「位置待核」在状态机 / DXF / 算量三处静默分叉。
     const declared = (electricalPoints as Array<{ id: string; position_status?: string; status?: string }>)
       .filter((point) => point.position_status !== undefined)
       .map((point) => point.id)
       .sort();
-    assert.deepEqual(declared, ['sock_child_ac', 'sock_kitchen_oven'], 'position_status 只允许存量 2 条，新增即是回归');
+    assert.deepEqual(declared, ['sock_booster_pump_reserve', 'sock_child_ac', 'sock_kitchen_oven'], 'position_status 只允许 3 个具名预留占位点，新增即是回归');
     for (const point of electricalPoints as Array<{ id: string; position_status?: string; status?: string }>) {
       if (point.position_status === 'pending') {
         assert.equal(point.status, 'pending', `${point.id} 的 position_status=pending 只在 status 也 pending 时有意义（算量延期判定）`);

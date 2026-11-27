@@ -13,76 +13,78 @@ export_date: '2026-07-17'
 
 vertices:
   # 2026-09-17 业主确认：西北角即圆角本身，v_nw→v_bath_ap（西墙 z∈[0,2.10]）外轮廓不存在，v_nw/w_west_top 已删除
-  - { id: v_mb_sw,   x: 0.00,  z: 2.86 }   # 2026-08-25 台盆外移条带：隔墙再北移 0.4m（3.26→2.86，主卫进深 2.16→1.76m）；条带 x[0,4.2] 归主卧；全部尺寸待量房确认
-  - { id: v_mb_nw,   x: 0.00,  z: 5.55 }
-  - { id: v_sw,      x: 0.00,  z: 9.80, radius: 1.00 }
-  - { id: v_step_b,  x: 7.20,  z: 9.80 }
-  - { id: v_step_t,   x: 7.20,  z: 9.80 }
-  - { id: v_be_se_s,  x: 13.40, z: 9.88 }   # 2026-10-23 DEC-2026-10-23-R04：随东南房南玻璃线改 9.88（见 v_be_s_w 注）；客餐厅东南角仍为 v_liv_se_s 9.80
-  - { id: v_liv_se_s, x: 13.40, z: 9.80 }   # 2026-10-23 新增：客餐厅南墙东端（与东南房玻璃线 9.88 错台 0.08，同 YS-01 东链读法）
-  # 2026-10-23 DEC-2026-10-23-R04 改判（业主裁定采 YS-01 读法）：东南房南玻璃线 = 9.88（YS-01 东链自北累计：
-  # 井道南墙带 5.40–5.68 + 房进深至玻璃线 9.88），其南 0.28 墙 + 1.02 飘台板外凸至 11.18（飘台为室外结构、不入室）；
-  # 废止 2026-08-27「凹进至 8.70、z[8.70,9.80] 为室外凹口」读法——该读法把飘台进深 1020 误读为玻璃凹进深度，参考线差 1.30m
-  - { id: v_be_s_w,   x: 13.40, z: 9.88 }
-  - { id: v_be_s_e,   x: 16.40, z: 9.88 }
-  - { id: v_be_ne,   x: 16.40, z: 4.82 }   # 2026-10-25 R01 重算：北厚墙北脸线 4.82（原 R04 链值 5.55）
+  # 2026-11-26 量房回填（ky51.json 第一份平面，CAD→模型：(301954−x)/1000，9.80+(y+52846)/1000）。
+  # 外墙圆角半径 = 外线 r450 切弧（心距两外线均为 0.45）；并列 r530/r610 是向室内偏 80/160mm 的内线，不取。
+  - { id: v_mb_sw,   x: 0.00,  z: 2.655 }  # 主卫南墙南脸。墙体/EQUIP 双线 z=2.550（北脸）/2.655（南脸）；门洞缝 x 1.16..1.95
+  - { id: v_mb_nw,   x: 0.00,  z: 5.455 }  # 寝区北界南脸。西向尺寸链 5.23..5.45 为墙厚，南脸 z=5.455
+  - { id: v_sw,      x: 0.00,  z: 9.80, radius: 0.45 }  # 外线西南角。1-门窗线 V x=0 z 0.06..9.35 与 H z=9.80；r450 弧心 (0.45,9.35)
+  - { id: v_step_b,  x: 7.15,  z: 9.80 }  # 书房东墙 EQUIP V x=7.15 z 5.455..9.435，南端接外线 z=9.80
+  - { id: v_step_t,   x: 7.15,  z: 9.80 }
+  - { id: v_be_se_s,  x: 13.37, z: 8.47 }  # 东南房西南角（内墙）。墙体 H z=8.47 x 13.57..16.33；客厅东墙 EQUIP V x=13.37
+  - { id: v_liv_se_s, x: 13.37, z: 9.80 }  # 客厅南外线仍 z=9.80（1-门窗线 H z=9.80 x 0.45..13.57），东端 x=13.37
+  # 2026-11-26 量房推翻 DEC-2026-10-23-R04 的 9.88 玻璃幕墙读法。JSON：墙体 H z=8.47 x 13.57..16.33；
+  # 玻璃 1-门窗线 H z=8.65/8.73 x 13.92..15.978（CW 2050，文字 (14.73,8.15)）；外线 H z=8.882 x 13.57..16.57。
+  # 2026-08-27 凹进约 8.70 的读法与这条玻璃/墙带同族，R04 把飘台进深当成南幕墙作废。南边是 2050 窗，不是通高幕墙。
+  - { id: v_be_s_w,   x: 13.37, z: 8.47 }
+  - { id: v_be_s_e,   x: 16.33, z: 8.47 }  # 内墙东端。外皮 EQUIP V x=16.57 z 4.035..8.710，本模型线取与南墙墙体线相交的 x=16.33
+  - { id: v_be_ne,   x: 16.33, z: 4.035 }  # 北墙 EQUIP H z=4.035 x 13.005..16.570；东端外皮在 x=16.57，模型线收到内墙 x=16.33
   - { id: v_ent_ne,  x: 15.25, z: 0.00 }
-  - { id: v_foyer_se, x: 13.40, z: 2.90 }
-  - { id: v_foyer_ne, x: 15.25, z: 4.82 }   # 2026-10-25 R01 重算：随北厚墙北脸线 4.82（原 R04 链值 5.55）
+  - { id: v_foyer_se, x: 13.37, z: 2.90 }  # 仅随客厅东墙 x 13.40→13.37；z=2.90 未在本次门缝里改
+  - { id: v_foyer_ne, x: 15.25, z: 4.035 }  # 随东南房北墙 z=4.035
   - { id: v_ent_se,  x: 15.25, z: 2.90 }
-  - { id: v_ent_sw,  x: 10.80, z: 3.00 }   # 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：入户南墙西段线为薄段北脸 z=3.00，厨房东墙南延至此
-  # 2026-10-25 DEC-2026-10-25-R01 新增（本体标定重算）：中竖墙（墙带西脸 12.77–东脸 13.05，模型线取西脸 12.77）与南墙东墙垛交接点
-  - { id: v_cent_j,  x: 12.77, z: 3.00 }   # 南墙/中竖墙 T 接点（薄段东端 12.75，墙带西脸 12.77；南墙线取薄段北脸 3.00）
-  - { id: v_cent_n,  x: 12.77, z: 2.72 }   # 中竖墙北端（黑块北脸，本体标定 2.72）
-  - { id: v_cent_be, x: 12.77, z: 4.82 }   # 中竖墙南端，落北厚墙北脸线 z=4.82（R04 链值 5.55 同场修正）
-  - { id: v_blk_nw, x: 10.80, z: 2.72 }   # 2026-10-26 DEC-2026-10-26-R01 入户黑块西北角（块北脸/西脸交点）
-  - { id: v_blk_ne, x: 11.49, z: 2.72 }   # 黑块东北角（块北脸/东脸交点）
-  - { id: v_blk_e,  x: 11.49, z: 3.00 }   # 黑块东脸与入户南墙线交点
-  - { id: v_blk_se, x: 11.49, z: 3.25 }   # 黑块东南角（块东脸/南脸交点）
-  - { id: v_blk_sw, x: 10.80, z: 3.25 }   # 黑块西南角（块西脸/南脸交点）
-  - { id: v_ent_step, x: 13.40, z: 3.00 }   # 南墙东墙垛南端 / 门厅东墙折线点（新南墙 z=3.00 与旧南墙东段 z=2.90 的折线交接，折差 0.10 在容差内保留拓扑）
-  - { id: v_ent_nw,  x: 10.80, z: 0.00 }
-  - { id: v_bath_n,  x: 2.60,  z: 0.00 }
-  - { id: v_bath_s,  x: 2.60,  z: 4.30 }
-  - { id: v_mbath_se, x: 2.60, z: 2.86 }   # 2026-08-25 台盆外移条带：隔墙再北移 0.4m（3.26→2.86）后 w_mbath_south 与 w_mbath_east T 接点；待量房确认
-  - { id: v_vrv_n,   x: 5.60,  z: 0.00, radius: 1.00 }
-  - { id: v_vrv_sw,  x: 5.60,  z: 1.00 }
-  - { id: v_balc_sw, x: 5.60,  z: 2.20 }
-  - { id: v_nw_s,    x: 5.60,  z: 3.55 }   # 客卫内卫南墙西端；不再作为西北次卧南界端点
-  - { id: v_nw_bedroom_s, x: 5.60, z: 4.30 } # 西北次卧南墙东端，保持原 z=4.30 南界
-  - { id: v_gbath_west_s, x: 5.60, z: 4.30 } # 开放洗漱区西侧边界南端；不纳入 guest_bath room boundary
-  - { id: v_vrv_se,  x: 7.20,  z: 1.00 }
-  - { id: v_balc_ne, x: 7.20, z: 2.20 }
-  - { id: v_balc_se, x: 7.20, z: 2.20 }   # 2026-10-23 DEC-2026-10-23-R04：客卫/阳台东墙线 7.10→7.20（YS-01 墙带 7.20–7.38、西脸 7.20，与北段 w_balc_east 既有 7.20 拉直）
-  - { id: v_gbath_se,x: 7.20,  z: 3.55 }   # 2026-08-29 客卫内卫南墙东端；与 v_nw_s 同高；x 随 R04 改 7.20
-  - { id: v_gbath_east_s, x: 7.20, z: 4.30 } # 开放洗漱区东侧边界南端；不纳入 guest_bath room boundary；x 随 R04 改 7.20
-  - { id: v_kit_w,   x: 7.20,  z: 0.00 }
-  - { id: v_kit_s,   x: 7.20,  z: 4.30 }
-  - { id: v_ent_kit, x: 10.80, z: 4.30 }
-  # DEC-014 厨房新南界（创想图核对：与入户花园南墙 z=2.90 齐平）
-  - { id: v_kit_s2,  x: 7.20,  z: 2.40 }
-  - { id: v_ent_kit2, x: 10.80, z: 2.40 }
-  - { id: v_be_sw,   x: 13.40, z: 4.82 }   # 2026-10-25 R01 重算：北厚墙北脸线 4.82（原 R04 链值 5.55）
-  - { id: v_mb_ne,   x: 4.20,  z: 5.55 }
-  - { id: v_mb_se,   x: 4.20,  z: 9.80 }
-  - { id: v_pier_nw, x: 4.20,  z: 8.31 }
-  - { id: v_pier_ne, x: 4.63,  z: 8.31 }
-  - { id: v_pier_se, x: 4.63,  z: 8.71 }
-  - { id: v_pier_sw, x: 4.20,  z: 8.71 }
-  - { id: v_st_ne,   x: 7.20,  z: 5.55 }
-  - { id: v_suite_se, x: 2.60, z: 5.55 }
-  - { id: v_strip_ne, x: 4.20, z: 4.30 }
-  # 左翼北墙凹进顶点（主卫/西北次卧北墙 z=1.10，相比于 VRV/厨房 z=0 凹进 1.10m）
-  - { id: v_bath_nw,  x: 0.00,  z: 1.10, radius: 1.00 }
-  - { id: v_bath_ap,  x: 0.00,  z: 2.10 }
-  - { id: v_bath_ne,  x: 2.60,  z: 1.10 }
-  - { id: v_nw_ne,    x: 5.60,  z: 1.10 }
+  - { id: v_ent_sw,  x: 11.11, z: 3.00 }  # 入户西墙 EQUIP V x=11.105（模型 10.80→11.11）。该线实际 z −1.505..2.330，z=3.00 南端是入户南墙既有拓扑，门缝在 z≈2.27，见 d_ent 注
+  - { id: v_cent_j,  x: 12.77, z: 3.00 }   # 南墙/中竖墙 T 接点。中竖墙 EQUIP V x=12.765 z 2.275..4.155
+  - { id: v_cent_n,  x: 12.77, z: 2.72 }
+  - { id: v_cent_be, x: 12.77, z: 4.155 }  # 中竖墙南端落到 EQUIP H z=4.155（不是 4.82）
+  - { id: v_blk_nw, x: 11.11, z: 2.72 }  # 黑块随入户西墙 +0.31 平移，块内相对尺寸未改；本次门缝未单独证实这块体
+  - { id: v_blk_ne, x: 11.80, z: 2.72 }
+  - { id: v_blk_e,  x: 11.80, z: 3.00 }
+  - { id: v_blk_se, x: 11.80, z: 3.25 }
+  - { id: v_blk_sw, x: 11.11, z: 3.25 }
+  - { id: v_ent_step, x: 13.37, z: 3.00 }
+  - { id: v_ent_nw,  x: 11.11, z: -0.15 }  # 厨房北墙墙体 H z=−0.145 的东端接到入户西墙 x=11.11。外凸至 z=−1.51 是管线区（2026-11-26 业主裁定：里面燃气管道、外面排水），不是房间边界，不把房间边界拉到外玻璃
+  - { id: v_bath_n,  x: 2.90,  z: -0.04 }
+  - { id: v_bath_s,  x: 2.90,  z: 3.75 }  # 西北次卧南墙。墙体 H z=3.75 x 2.90..5.685
+  - { id: v_mbath_se, x: 2.90, z: 2.655 }  # 主卫东墙 EQUIP V x=2.90 与南墙 z=2.655 的 T 接
+  - { id: v_vrv_n,   x: 5.69,  z: -0.15 }  # 平台北墙西端。墙体 H z=−0.145 x 5.915..7.300。旧 radius 1.00 是 z=1.10 凹进圆角，该凹进不存在；外凸圆角在 (6.13,−1.06) 一带，是同一管线区外轮廓（2026-11-26 业主裁定：里面燃气管道、外面排水），不是房间边界，不挂在本点
+  - { id: v_vrv_sw,  x: 5.69,  z: 1.36 }
+  - { id: v_balc_sw, x: 5.69,  z: 1.36 }  # 客卫北墙。墙缝 EQUIP H z=1.230 / 1.485，玻璃 H z=1.325/1.405 x 6.33..6.88（CW 550）。模型线取玻璃中 z=1.36
+  - { id: v_nw_s,    x: 5.69,  z: 3.64 }  # 客卫内卫南墙。墙体 H z=3.64 x 5.815..7.285
+  - { id: v_nw_bedroom_s, x: 5.69, z: 3.75 }
+  - { id: v_gbath_west_s, x: 5.69, z: 4.04 }  # 客卫南缘入口墙线。2026-11-27 业主裁定：门洞在开发商留口（DWG z=4.04 短线 x 5.815..6.680），南缘墙线由 EQUIP H z=4.155 改至 4.04；入口前室深 0.40m（3.64..4.04）。EQUIP H 4.155 线（连续线）为南侧外缘/吊顶线，不再作本房间南缘。
+  - { id: v_vrv_se,  x: 7.50,  z: 1.36 }
+  - { id: v_balc_ne, x: 7.50, z: 1.36 }
+  - { id: v_balc_se, x: 7.50, z: 1.36 }
+  - { id: v_gbath_se,x: 7.50,  z: 3.64 }
+  - { id: v_gbath_east_s, x: 7.50, z: 4.04 }  # 客卫南缘入口墙线东端。2026-11-27 业主裁定：同 v_gbath_west_s，南缘墙线由 EQUIP H z=4.155 改至 4.04（开发商门洞线）。
+  - { id: v_kit_w,   x: 7.50,  z: -0.15 }  # 厨房西墙 EQUIP V x=7.50 z 0.675..4.155 的北端接到北墙 z=−0.145
+  - { id: v_kit_s,   x: 7.15,  z: 3.75 }  # 主走廊东北，随书房东墙 x=7.15 与西北次卧南墙 z=3.75
+  - { id: v_ent_kit, x: 11.11, z: 4.155 }
+  - { id: v_kit_s2,  x: 7.50,  z: 2.40 }  # 厨房–餐厅洞口西 jamb：厨房西墙 x=7.50
+  - { id: v_ent_kit2, x: 10.294, z: 2.40 }  # 洞口东 jamb。2026-11-27 业主实测洞口宽 2795/2793/2793，均值 2794；7.50..10.294 = 2.794。量房 MW 2785 作废（差 9mm）
+  - { id: v_kit_east_s, x: 11.11, z: 2.40 }  # 洞口以东墙垛，接到入户西墙 x=11.11
+  - { id: v_be_sw,   x: 13.37, z: 4.035 }  # 东南房西北角。北墙 z=4.035，西墙 EQUIP V x=13.37
+  - { id: v_mb_ne,   x: 4.16,  z: 5.455 }  # 主卧东墙 EQUIP V x=4.16
+  - { id: v_mb_se,   x: 4.16,  z: 9.80 }
+  - { id: v_pier_nw, x: 4.37,  z: 8.135 }  # 墙垛 EQUIP：V x=4.37、H z=8.135、x=4.67、z=8.64
+  - { id: v_pier_ne, x: 4.67,  z: 8.135 }
+  - { id: v_pier_se, x: 4.67,  z: 8.64 }
+  - { id: v_pier_sw, x: 4.37,  z: 8.64 }
+  - { id: v_st_ne,   x: 7.15,  z: 5.455 }
+  - { id: v_suite_se, x: 2.90, z: 5.455 }
+  - { id: v_strip_ne, x: 4.16, z: 3.75 }
+  # 北墙拉直：模型 z=1.10 凹进不存在。主卫北外线 z=−0.39（1-门窗线，CW 2410），西北次卧北墙 z=−0.04（墙体）。
+  - { id: v_bath_nw,  x: 0.00,  z: -0.39, radius: 0.45 }  # 外线西北角。r450 弧心 (0.45,0.06)，切点 (0,0.06) 与 (0.45,−0.39)
+  - { id: v_bath_ap,  x: 0.00,  z: 0.06 }  # 西墙直线起点 = 圆角切点。1-门窗线 V x=0 z 0.06..9.35
+  - { id: v_mbath_north_e, x: 2.90, z: -0.39 }  # 主卫北外线东端（线画到 x=2.89），在此折回西北次卧北墙
+  - { id: v_bath_ne,  x: 2.90,  z: -0.04 }  # 主卫东墙 / 西北次卧北墙交点。EQUIP V x=2.90 z −0.04..3.95
+  - { id: v_nw_ne,    x: 5.69,  z: -0.04 }  # 西北次卧东北。墙体 H z=−0.04 x 2.90..5.685；EQUIP V x=5.685
 
 rooms:
   - id: master_bedroom
     name: 主卧
-    boundary: [v_mb_sw, v_mbath_se, v_bath_s, v_strip_ne, v_mb_se, v_sw]  # 2026-08-25 台盆外移：隔墙再北移 z=2.86，套间条带（z[2.86/4.30,5.55]）归主卧，洗漱+梳妆一体区设于此
-    height: 2.8
+    boundary: [v_mb_sw, v_mbath_se, v_bath_s, v_strip_ne, v_mb_se, v_sw]  # 2026-11-26 量房：南隔墙 z=2.655，条带北缘随西北次卧南墙 z=3.75，东墙 x=4.16
+    height: 2.904  # 2026-11-27 业主实测 2899/2906/2906/2904，均值 2.904；量房 2900 作废（差 4mm）
     type: private
     ceiling_finish:
       paint: true
@@ -90,15 +92,15 @@ rooms:
   - id: study
     name: 书房
     boundary: [v_mb_ne, v_st_ne, v_step_b, v_mb_se]
-    height: 2.8
+    height: 2.909  # 2026-11-27 业主实测 2907/2909/2910，均值 2.909；2026-11-26 infer 2900 作废
     type: private
     ceiling_finish:
       paint: true
-      reason: "沿用现有原顶涂装口径；量房后核对吊顶/梁位"
+      reason: "沿用现有原顶涂装口径；层高 2.8 为 infer（2026-11-26 量房文字未落在本房间）"
   - id: living_dining
     name: 客餐厅
-    boundary: [v_kit_s2, v_ent_kit2, v_ent_sw, v_cent_j, v_cent_be, v_be_sw, v_liv_se_s, v_step_t]  # 2026-10-25 DEC-2026-10-25-R01（重算）：北缘随南墙至 3.00、东缘随中竖墙至 12.77、北厚墙处回 13.40
-    height: 2.8
+    boundary: [v_kit_s2, v_ent_kit2, v_kit_east_s, v_ent_sw, v_cent_j, v_cent_be, v_be_sw, v_liv_se_s, v_step_t, v_st_ne, v_kit_s, v_gbath_se]  # 2026-11-26：东墙 x=13.37，北厚墙改东南房北墙 z=4.035；厨房洞口 2.794（2026-11-27 实测）后接墙垛到 x=11.11；2026-11-27 业主确认：客餐厅两道薄隔墙存在，两道都得打掉、让客餐厅打通（业主决定 2026-11-27 12:33，未执行；拆除前不得删除模型隔墙，待拆除后按实测更新）。隔墙实测（业主，约数"不是很准"）：主段 3.4–3.5m + 转角第二段约 1.4m + 推拉门区一段约 2m，总长约 6.85m，高约 2.823m（客厅 2820/餐厅 2826 均值），拆除面积约 19.3㎡。模型 w_cent_south 仅 1.155m 与实测严重不符，不得用该数算拆除面积；隔墙在模型内暂无对应显式几何（见本条），拆除面积以实测约数为准。2026-11-27 边界修正：收边 v_step_t→v_kit_s2 原为直线对角，改为沿书房东墙/走廊东墙/客卫东墙的折线 v_st_ne→v_kit_s→v_gbath_se→v_kit_s2（paint_living_dining_w_st_east 偏边界 0.205m 的根因是边界错、漆带没错）；面积 42.72→43.56㎡（+0.84）
+    height: 2.820  # 2026-11-27 业主复测：南向客厅 2820、餐厅 2826；量房 2820 证实（首轮 2715 读数错误，作废）。无吊顶、地面平，楼板本身 2820（餐厅端 2826，高 6mm）
     type: public
     ceiling_finish:
       paint: true
@@ -109,7 +111,7 @@ rooms:
     # 实际地面由 overlay.main_corridor_floor 渲染/计量，实际吊顶由 ceiling_main_corridor 渲染/计量。
     # 东侧开放接客餐厅，不新增隔墙。
     boundary: [v_strip_ne, v_kit_s, v_st_ne, v_mb_ne]
-    height: 2.8
+    height: 2.898  # 2026-11-27 业主实测 2898/2898，均值 2.898
     type: public
     semantic_only: true
     ceiling_finish:
@@ -117,8 +119,10 @@ rooms:
       reason: "主走廊对应吊顶独立计涂装；ceiling_main_corridor 投影与主走廊边界一致，面积3.75㎡，沿用其已声明的完成面"
   - id: master_bath
     name: 主卫
-    boundary: [v_bath_nw, v_bath_ne, v_mbath_se, v_mb_sw]  # 2026-08-25 台盆外移条带，隔墙再北移 z=2.86，主卫进深 1.76m（西淋浴湿区/东马桶）；马桶 z=1.5 与门扇扫掠 z≥2.06 不冲突，净空待量房复核
-    height: 2.8
+    boundary: [v_bath_nw, v_mbath_north_e, v_bath_ne, v_mbath_se, v_mb_sw]  # 2026-11-26：北外线 z=−0.39 x 0..2.90，东墙 x=2.90，南墙 z=2.655。2900 文字在主卧不在本房间
+    # 2026-11-27 业主裁定放弃干湿分离：洗手台与通顶柜移入本卫内（洗手台贴东墙北段、通顶柜贴东墙南段收窄为 0.90m）；
+    # 通顶柜墙短 0.145m 的未决项随本次移位+收窄关闭（见 house.yaml mb.full_height_cabinet）。
+    height: 2.882  # 2026-11-27 业主实测 2879/2884（原文 28884 疑为 2884 录入误），均值 2.882。下沉是地面沉箱，不是层高（见 #50）
     type: service
     ceiling_finish:
       paint: true
@@ -126,53 +130,58 @@ rooms:
   - id: bedroom_nw
     name: 西北次卧
     boundary: [v_bath_ne, v_nw_ne, v_nw_bedroom_s, v_bath_s]
-    height: 2.8
+    height: 2.905  # 2026-11-27 业主实测 2900/2910/2905，均值 2.905；2026-11-26 infer 2900 作废
     type: private
     ceiling_finish:
       paint: true
       reason: "沿用现有原顶涂装口径；量房后核对吊顶/梁位"
   - id: guest_bath
     name: 客卫
-    # 内卫 + 南侧开放洗漱区纳入同一语义房间；南缘 v_gbath_east_s→v_gbath_west_s 无墙，保持开放第四面
+    # 内卫 + 南侧入口前室纳入同一语义房间；南缘 v_gbath_east_s→v_gbath_west_s 为入口墙（w_gbath_south_entry），
+    # 挂外门 d_gbath（2026-11-27 业主裁定移至开发商门洞 z=4.04）；内卫南墙 w_gbath_south 上与之对齐的
+    # 为无门扇垭口（open_gbath_inner），供入内卫通行。
+    # 2026-11-27 业主裁定放弃干湿分离：洗手台移入内卫（南墙内侧，东段），南侧不再是开放洗漱区、只作入口前室；
+    # 浴室柜族 0.515m 墙放不下 0.69m 柜的未决项随本次移位关闭（见 house.yaml gbath.vanity）。
     boundary: [v_balc_sw, v_balc_se, v_gbath_east_s, v_gbath_west_s, v_nw_s]
-    height: 2.8
+    height: 2.907  # 2026-11-27 业主实测：板底约 2.907（开发商通风槽口 2906/2908）；梁底 2.603（见 ceiling_guest_bath note）。下沉是地面沉箱，不是层高（见 #74）
     type: service
     ceiling_finish:
       paint: true
       reason: "沿用现有原顶涂装口径，扣除 ceiling_guest_bath 铝扣板投影"
   - id: kitchen
     name: 厨房
-    boundary: [v_kit_w, v_vrv_se, v_balc_ne, v_kit_s2, v_ent_kit2, v_ent_nw]
-    height: 2.8
+    boundary: [v_kit_w, v_vrv_se, v_kit_s2, v_ent_kit2, v_kit_east_s, v_ent_nw]
+    height: 2.910  # 2026-11-27 业主实测 2909/2915/2907，均值 2.910；量房 2820 作废（低 90mm）
+    # 净宽 2026-11-27 业主实测 3382/3383mm（两读数，净空面到面）。结构宽 3610（x 7.50..11.11 墙线间距）与净宽差 228mm，为东墙（w_ent_west，centerline x=11.11）伸入厨房的墙厚；西墙线 x=7.50 为厨房侧墙面，不另扣。结构宽不动，净宽为实测核对值。
     type: service
   - id: balcony
     name: 生活阳台
-    boundary: [v_vrv_sw, v_vrv_se, v_balc_ne, v_balc_sw]  # 2026-10-23 DEC-2026-10-23-R04：v_balc_se 随东墙线改 7.20 后与 v_balc_ne 同点，阳台多边形去重（原 0.10 错台边消失）
-    height: 2.8
+    boundary: [v_vrv_n, v_kit_w, v_balc_ne, v_balc_sw]  # 2026-11-26：北墙 z=−0.15 到客卫北墙 z=1.36 是同一段，JSON 无 z=1.00 分界。平台 slab 与本房间同轮廓
+    height: 2.8  # infer
     type: service
   - id: entry_garden
     name: 入户花园
-    boundary: [v_ent_nw, v_ent_sw, v_cent_j, v_ent_step, v_foyer_se, v_ent_se, v_ent_ne]  # 2026-10-25 DEC-2026-10-25-R01（重算）：南缘西段至 3.00、东段仍 2.90，折线在 13.40
-    height: 2.8
+    boundary: [v_ent_nw, v_ent_sw, v_cent_j, v_ent_step, v_foyer_se, v_ent_se, v_ent_ne]  # 2026-11-26：西墙 x=11.11，北端 z=−0.15。2820 文字不在本多边形内
+    height: 2.90  # 板底约 2.90（infer，与相邻房间板底一致）；吊顶完成面 2.674（2026-11-27 业主实测 2682/2681/2659，均值 2.674，开发商吊顶，见 ceiling.yaml）。2.674 是吊顶面，不是板底
     type: public
   - id: bedroom_se
     name: 客房
-    boundary: [v_be_sw, v_be_ne, v_be_s_e, v_be_s_w]  # 2026-10-23 DEC-2026-10-23-R04：南玻璃线 z=9.88（YS-01 东链读法），飘台板在其南外凸不入室；废止 2026-08-27 凹进 8.70 读法
-    height: 2.8
+    boundary: [v_be_sw, v_be_ne, v_be_s_e, v_be_s_w]  # 2026-11-26：北 z=4.035，南内墙 z=8.47，东内墙 x=16.33，西 x=13.37。R04 的 9.88 幕墙作废
+    height: 2.885  # 2026-11-27 业主实测 2886/2886/2884/2885，均值 2.885；2026-11-26 infer 2820 作废（低 65mm）
     type: private
     ceiling_finish:
       paint: true
       reason: "沿用现有原顶涂装口径；量房后核对吊顶/梁位"
   - id: elevator_shaft
     name: 电梯井
-    boundary: [v_ent_step, v_foyer_se, v_ent_se, v_foyer_ne, v_cent_be, v_cent_j]  # 2026-10-25 DEC-2026-10-25-R01（重算）：西缘随中竖墙至 12.77、南缘东段仍 2.90、北缘随北厚墙至 4.82
-    height: 2.8
+    boundary: [v_ent_step, v_foyer_se, v_ent_se, v_foyer_ne, v_cent_be, v_cent_j]
+    height: 2.8  # infer
     type: service
 
 platform:
   id: west_platform
   name: VRV设备平台
-  boundary: [v_vrv_n, v_kit_w, v_vrv_se, v_vrv_sw]
+  boundary: [v_vrv_n, v_kit_w, v_vrv_se, v_vrv_sw]  # 2026-11-26：与生活阳台同轮廓。JSON 在 z=−0.15 与 z=1.36 之间没有第二条分界，垫层南边无单独墙线
   height: 0.05
 
 walls:
@@ -240,14 +249,14 @@ walls:
   - id: w_west_ap
     from: v_bath_ap
     to: v_bath_nw
-    height: 2.8
+    height: 2.882
     suppressed:
       reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
       replacement: west_curtain
   - id: w_west_lower
     from: v_bath_ap
     to: v_mb_sw
-    height: 2.8
+    height: 2.882
     line_datum: centerline   # 2026-11-15 #98 Tier 1：落地毛巾架沿此玻璃线定位的沿墙基准，不作挂载主张
     suppressed:
       reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
@@ -255,14 +264,14 @@ walls:
   - id: w_west_mid
     from: v_mb_sw
     to: v_mb_nw
-    height: 2.8
+    height: 2.904
     suppressed:
       reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
       replacement: west_curtain
   - id: w_west_upper
     from: v_mb_nw
     to: v_sw
-    height: 2.8
+    height: 2.904
     line_datum: centerline   # 2026-11-15 #98 Tier 1：落地梳妆台沿此玻璃线定位的沿墙基准，不作挂载主张
     suppressed:
       reason: "西墙实体删除，改玻璃幕墙（2026-09-17 业主确认：西北角即圆角，w_west_top 段外轮廓不存在，已从 model-geometry 删除；玻璃从弧切点 z=2.10 无缝接往西墙幕墙，不长于圆角区域）"
@@ -272,31 +281,38 @@ walls:
   - id: w_mb_south
     from: v_sw
     to: v_mb_se
-    height: 2.8
+    height: 2.904
     suppressed:
       reason: "主卧+书房南墙实体删除，为飘窗让路（2026-10-05 功能互换后功能名，墙体不变）"
       replacement: west_curtain
   - id: w_st_south
     from: v_mb_se
     to: v_step_b
-    height: 2.8
+    height: 2.909
     suppressed:
       reason: "主卧+书房南墙实体删除，为飘窗让路（2026-10-05 功能互换后功能名，墙体不变）"
       replacement: west_curtain
   - id: w_liv_south
     from: v_step_t
     to: v_liv_se_s
-    height: 2.8
+    height: 2.820
     suppressed:
       reason: "客厅南墙落地玻璃幕"
       replacement: living_south_curtain
+  - id: w_liv_east_s
+    from: v_be_s_w
+    to: v_liv_se_s
+    height: 2.820
+    line_datum: centerline
+    # 2026-11-26：东南房南墙收到 z=8.47 后，客厅东墙 x=13.37 从 z=8.47 续到南外线 z=9.80。EQUIP V x=13.37 z 5.315..9.560
   - id: w_be_south
     from: v_be_s_w
     to: v_be_s_e
-    height: 2.8
-    suppressed:
-      reason: "东南次卧凸窗+东南圆角实体墙删除"
-      replacement: south_east_curtain
+    height: 2.885
+    line_datum: centerline
+    openings:
+      - { id: win_be_south, type: window, anchor: v_be_s_w, offset: 1.578, width: 2.05, height: 2.42, sill: 0.115, room: bedroom_se }  # CW 2050/CH 2420/LD 115，玻璃 x 13.92..15.978，中心 x=14.949，锚在 x=13.37
+    # 2026-11-26 取消幕墙 suppress：南边是墙上的 2050 窗，不是通高玻璃幕墙。south_east_curtain 不再接管本墙。
   # 外框 — 东墙（在 v_be_ne 处切开；东南角随书房凹口截止于 v_be_s_e）
   # structure 标注约定（2026-09-01，v1 初版）：来源为邻户同户型原始结构图（survey/neighbor_ys01_original_structure_2025-06.png），
   # 全部 structure_status: inferred，交房量房拿到确切结构图后转 confirmed；仅标注剪力墙/新建隔墙。
@@ -306,7 +322,7 @@ walls:
   - id: w_east_upper
     from: v_be_s_e
     to: v_be_ne
-    height: 2.8
+    height: 2.885
     line_datum: centerline
     structure: shear
     structure_status: inferred
@@ -320,7 +336,7 @@ walls:
   - id: w_foyer_outer_east
     from: v_ent_se
     to: v_foyer_ne
-    height: 2.8
+    height: 2.8  # 2026-11-27 业主裁定：入户花园什么都不需要动，恢复旧值 2.8；此前改 2.90（到板底推断）已撤销
   # w_foyer_north_east / w_elev_south 已删除（2026-08-23）：与 w_be_north 是同一堵物理墙
   # （z=5.55, x 13.40→16.40，南侧客房/北侧电梯井与电梯厅），重复定义导致 GLB 三层共面墙片
   # （wall:seg:11/12/42），Cycles 阴影光线被共面叠层在 t≈0 处截断 → 书房北墙整片死黑
@@ -328,71 +344,72 @@ walls:
   - id: w_ent_east
     from: v_ent_ne
     to: v_ent_se
-    height: 2.8
+    height: 2.900
   - id: w_ent_south_w
     from: v_ent_sw
     to: v_cent_j
-    height: 2.8
+    height: 2.900
     line_datum: centerline
     openings:
       # 2026-08-25 方向反转；2026-08-25 二次调整：向内开，合页移至 start 端
       # 2026-10-25 DEC-2026-10-25-R01：洞口即门宽——薄段 1.21m、span 11.54–12.75、中心 12.15，offset = 12.15−10.80 = 1.35，开发商送门+锁不做定制门扇
-      - { id: d_ent, type: door, anchor: v_ent_sw, offset: 1.35, width: 1.21, height: 2.1, room: entry_garden, swing: inward, hinge: start }
+      - { id: d_ent, type: door, anchor: v_ent_sw, offset: 1.075, width: 1.15, height: 2.32, room: entry_garden, swing: inward, hinge: start }  # 2026-11-26 MW 1150/MH 2320，文字 (12.54,3.15)。洞缝取 z≈2.27 的 EQUIP 竖缝 x 11.605..12.765（1.16m，与 1150 差 10mm）；墙仍在 z=3.00，中心沿墙 1.075
     finish:
       paint_bands:
         - id: paint_living_dining_w_ent_south_w
           room: living_dining
-          along: [0.00, 1.97]
+          along: [0.00, 1.66]
           height: 2.80
   # 2026-10-25 DEC-2026-10-25-R01 新增（重算）：南墙东墙垛段（中竖墙至门厅东墙折线点），开关/线控挂此段南脸
   - id: w_ent_south_w_east
     from: v_cent_j
     to: v_ent_step
-    height: 2.8
+    height: 2.900
     line_datum: centerline   # 2026-11-07 issue #98 S1 补：switch_living_entrance/ac_panel_living 挂此段南脸，wallFaceOffset 要显式基准（口径 A）
   # 2026-10-25 DEC-2026-10-25-R01 新增（重算）：门厅东墙折线段（新南墙 3.00 与旧南墙东段 2.90 之间的折线墙）
   - id: w_foyer_east_step
     from: v_ent_step
     to: v_foyer_se
-    height: 2.8
+    height: 2.900
     structure: shear
     structure_status: inferred
   # 2026-10-25 DEC-2026-10-25-R01 新增（重算）：中竖墙（北段为入户花园内墙垛、南段为客餐厅/电梯厅隔墙），替代旧 w_foyer_east / w_liv_east；北段 z[2.72,3.00]、南段 z[3.00,4.82]
   - id: w_cent_north
     from: v_cent_n
     to: v_cent_j
-    height: 2.8
+    height: 2.900
     structure: shear
     structure_status: inferred
   - id: w_cent_south
     from: v_cent_j
     to: v_cent_be
-    height: 2.8
+    height: 2.820
     line_datum: centerline
     structure: shear
     structure_status: inferred
+    # 2026-11-27 业主实测：客餐厅隔墙（待拆除，两道都打掉）实测主段 3.4–3.5m + 转角第二段约 1.4m + 推拉门区一段约 2m，总长约 6.85m、高约 2.823m、拆除面积约 19.3㎡（约数"不是很准"）。本墙模型长仅 1.155m（z 3.00→4.155），与实测严重不符——不得用 1.155m 算拆除面积；隔墙在模型内暂无对应显式几何，拆除前不得删除本墙，待拆除后按实测更新。另：本墙 structure 标 shear（inferred）——若待拆隔墙含剪力墙段，拆除前须结构复核。
     finish:
       paint_bands:
         - id: paint_living_dining_w_cent_south
           room: living_dining
-          along: [0.00, 1.82]
+          along: [0.00, 1.155]
           height: 2.80
           reason: "客餐厅墙面涂装（w_cent_south；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：替代旧 w_foyer_east / w_liv_east，z[3.00,4.82] 段）"
   - id: w_ent_south_e
     from: v_foyer_se
     to: v_ent_se
-    height: 2.8
+    height: 2.900
     openings:
       - { id: d_elev, type: door, anchor: v_foyer_se, offset: 0.925, width: 1.0, height: 2.1, room: elevator_shaft }
   - id: w_ent_west
     from: v_ent_sw
     to: v_ent_nw
-    height: 2.8   # 2026-10-25 DEC-2026-10-25-R01（重算）：南端随 v_ent_sw 延至 3.00；2026-10-26 DEC-2026-10-26-R01 黑块建模后，本墙为块西脸北段（南段由 w_blk_west 续接，块体另立 w_blk_* 五段墙，不再以本墙线代理）
+    height: 2.910   # 2026-10-25 DEC-2026-10-25-R01（重算）：南端随 v_ent_sw 延至 3.00；2026-10-26 DEC-2026-10-26-R01 黑块建模后，本墙为块西脸北段（南段由 w_blk_west 续接，块体另立 w_blk_* 五段墙，不再以本墙线代理）
     line_datum: centerline
     finish:
       tile_bands:
         # ── 厨房 4.80m（北墙 w_kit_north 3.60m 为 suppress_kitchen_north 玻璃幕墙不可贴；
-        #    z=2.40 的 3.60m 是四联动推拉门开口而非墙，均不在此列）──
+        #    z=2.40 的 2794×2555（7.14㎡）三联动推拉门开口而非墙，均不在此列）──
         # 2026-10-07 E2 落地（DEC-2026-10-07-C15）：三面可贴墙贴满至吊顶完成面 2.65（透过推拉门形成连续砖面），
         # 由 D1=A 建议基线 0.90m 升高；w_balc_east 阳台门段不在 E2 贴满范围（门洞占大半），维持 0.90m 防溅带。
         # 柜后遮蔽/可见的段内细分（吊柜包络）仍待 D7 橱柜布局收口，当前按整段口径记账。
@@ -413,24 +430,24 @@ walls:
   - id: w_blk_west
     from: v_ent_sw
     to: v_blk_sw
-    height: 2.8
+    height: 2.820
     line_datum: centerline   # 2026-11-07 issue #98 S1 补：sock_weakbox 由 w_ent_west 改挂本段（其声明 z=3.23 越出 w_ent_west 南端 0.23m，落在黑块西脸 z[3.00,3.25] 上；本段即 w_ent_west 注释所载「南段由 w_blk_west 续接」）
   - id: w_blk_south
     from: v_blk_sw
     to: v_blk_se
-    height: 2.8
+    height: 2.820
   - id: w_blk_east_south
     from: v_blk_e
     to: v_blk_se
-    height: 2.8
+    height: 2.820
   - id: w_blk_east_north
     from: v_blk_ne
     to: v_blk_e
-    height: 2.8
+    height: 2.900
   - id: w_blk_north
     from: v_blk_nw
     to: v_blk_ne
-    height: 2.8
+    height: 2.900
   # 组⑧原 suppress_entry_north_railing（1 墙）：入户花园北边实墙删除改栏杆，由 railing_run entry_garden_north_railing 接管。
   - id: w_ent_north_railing
     from: v_ent_ne
@@ -444,18 +461,25 @@ walls:
   # 组⑦原 suppress_north_recess（2 墙）：主卫/西北次卧北墙实体删除改玻璃幕墙，由 north_recess_curtain 接管。
   - id: w_bath_north
     from: v_bath_nw
-    to: v_bath_ne
-    height: 2.8
+    to: v_mbath_north_e
+    height: 2.882
     suppressed:
-      reason: "主卫/西北次卧北墙实体删除，改玻璃幕墙"
+      reason: "主卫北墙是窗（2026-11-26 JSON：1-门窗线 H z=−0.39/−0.15 x 0.45..2.89，尺寸链 2410，文字 CW2410 在 (1.41,0.41)，无 CH/LD）。玻璃幕墙由 north_recess_curtain 接管"
+      replacement: north_recess_curtain
+  - id: w_mbath_ne_return
+    from: v_mbath_north_e
+    to: v_bath_ne
+    height: 2.882
+    suppressed:
+      reason: "主卫北窗外线折到西北次卧北墙的 0.35m 回边，与北窗同一条玻璃带"
       replacement: north_recess_curtain
   - id: w_nw_north
     from: v_bath_ne
     to: v_nw_ne
-    height: 2.8
+    height: 2.905
     line_datum: centerline   # 2026-11-15 #98 Tier 1：落地置物架沿此玻璃线定位的沿墙基准，不作挂载主张
     suppressed:
-      reason: "主卫/西北次卧北墙实体删除，改玻璃幕墙"
+      reason: "西北次卧北墙是窗（2026-11-26 JSON：墙体 H z=−0.04 x 2.90..5.685，玻璃 1-门窗线 z=−0.22/−0.28，CW 2785/CH 2420/LD 115，文字 (4.08,0.63)）"
       replacement: north_recess_curtain
   - id: w_vrv_north
     from: v_vrv_n
@@ -467,10 +491,10 @@ walls:
   - id: w_kit_north
     from: v_kit_w
     to: v_ent_nw
-    height: 2.8
+    height: 2.910
     line_datum: centerline   # 2026-11-15 #98 Tier 1：北墙落地柜+台面沿此玻璃线定位的沿墙基准，不作挂载主张
     suppressed:
-      reason: "厨房北墙实体删除，改玻璃幕墙"
+      reason: "厨房北墙模型线是墙体 H z=−0.145 x 7.50..10.88（与平台北墙同 z，连续、线上无玻璃）。CW 2575 玻璃在外凸线 z=−1.23..−1.51；业主 2026-11-26 裁定：外凸是管线区（里面燃气管道、外面排水），不是房间边界，厨房北墙仍按 z=−0.15，不把房间拉到 z=−1.51；2575 玻璃属幕墙，由 kitchen_north_curtain 接管，不另建墙窗"
       replacement: kitchen_north_curtain
   # 内墙 — 左侧卧室区（2026-08-25 台盆外移条带：隔墙再北移 z=2.86；条带 x[0,4.2] z[2.86/4.30,5.55] 归主卧；
   # w_mbath_south 为主卫南隔墙，d_mbath 平开门内开进干区，门洞[1.15,1.95]（墙平行北移，沿墙 offset 不变；门扇扫掠 z∈[2.06,2.86] 与马桶 z=1.5 不冲突，待量房复核），西[0,1.2]淋浴湿区左右分离）
@@ -480,7 +504,7 @@ walls:
   - id: w_mbath_east
     from: v_bath_ne
     to: v_bath_s
-    height: 2.8
+    height: 2.905
     structure: shear
     structure_status: inferred
     line_datum: centerline
@@ -494,6 +518,13 @@ walls:
           height: 0.30
           zone: visible
           reason: 主卫东墙，马桶区非淋浴，按防水口径其他≥0.3m
+        - id: walltile_mbath_east_vanity_splash
+          room: master_bath
+          along: [0.05, 1.10]      # 2026-11-27 干湿分离放弃后台盆移入主卫内（柜沿墙 z 0.01..1.06），防溅带与柜同宽
+          bottom: 0.77
+          height: 1.10
+          zone: visible
+          reason: 台盆后防溅带（业主 2026-10-07 终裁）：台上盆+壁挂龙头（底座 0.80）溅水面，0.77 台面 → 1.10 镜下沿，材质与台面同材或 300×600 正砖
       paint_bands:
         - id: paint_bedroom_nw_w_mbath_east
           room: bedroom_nw
@@ -502,28 +533,49 @@ walls:
           reason: "西北次卧墙面涂装（w_mbath_east，主卫侧贴砖本侧涂漆；主卧侧另有一段见下）"
         - id: paint_master_bedroom_w_mbath_east
           room: master_bedroom
-          along: [1.76, 3.20]
+          along: [2.69, 3.20]
           height: 2.80
-          reason: "主卧墙面涂装（w_mbath_east z[2.86,4.30] 段；主卫侧同墙贴砖，本侧涂漆"
+          reason: "主卧墙面涂装（w_mbath_east z[2.65,3.16] 段；主卫侧同墙贴砖，本侧涂漆"
         # ── 主卫 2 段（2026-10-07 C16 终裁：与客卫同口径"带+漆"，wall_finish 改 paint 后由
         #    tmp/gen-paint-regions.ts 产出 2 段、人工剔除淋浴到顶跨）：西/北墙为玻璃幕墙（suppress）
         #    不漆不贴；w_mbath_south 掐掉淋浴砖到顶跨 [0,1.20]，只留干区 [1.20,2.60]（含门洞 d_mbath
         #    [1.15,1.95] 的跨内部分，净面积按拆洞实扣）。
-        - id: paint_master_bath_w_mbath_east
+        #    2026-11-27 干湿分离放弃、台盆移入东墙北段后：walltile_mbath_east_vanity_splash
+        #    占沿墙 [0.05,1.10]×[0.77,1.10]，原单段漆（[0,1.76]×[0.30,2.80]）按砖漆互斥
+        #    （DEC-2026-10-09-P07）拆为 4 段（下/上/左缝/右段），并集不变。
+        - id: paint_master_bath_w_mbath_east_below
           room: master_bath
           along: [0.00, 1.76]
           bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_mbath_east 的 0.30m 防水砖带
+          height: 0.77
+          reason: "主卫东墙（马桶区）涂装下段；0.30m 以下为 walltile_mbath_east 防水砖带、0.77 以上为防溅带，砖漆互斥不重叠（DEC-2026-10-09-P07）"
+        - id: paint_master_bath_w_mbath_east_above
+          room: master_bath
+          along: [0.00, 1.76]
+          bottom: 1.10
           height: 2.80
-          reason: "主卫东墙（马桶区）涂装；0.30m 以下为 walltile_mbath_east 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"
+          reason: "主卫东墙（马桶区）涂装上段；防溅带止于 1.10，以上至 2.80 平顶为漆面，砖漆互斥不重叠（DEC-2026-10-09-P07）"
+        - id: paint_master_bath_w_mbath_east_mid_left
+          room: master_bath
+          along: [0.00, 0.05]
+          bottom: 0.77
+          height: 1.10
+          reason: "主卫东墙（马桶区）涂装中段左缝；防溅带西缘以北 0.05m 窄条，砖漆互斥不重叠（DEC-2026-10-09-P07）"
+        - id: paint_master_bath_w_mbath_east_mid_right
+          room: master_bath
+          along: [1.10, 1.76]
+          bottom: 0.77
+          height: 1.10
+          reason: "主卫东墙（马桶区）涂装中段右段；防溅带以东至马桶区北缘，砖漆互斥不重叠（DEC-2026-10-09-P07）"
   - id: w_mbath_south
     from: v_mb_sw
     to: v_mbath_se
-    height: 2.8
+    height: 2.904
     line_datum: centerline
     structure: new_partition
     structure_status: inferred
     openings:
-      - { id: d_mbath, type: door, anchor: v_mb_sw, offset: 1.55, width: 0.8, height: 2.1, room: master_bath, swing: inward, hinge: end }  # 内开进主卫干区，东端合页；洞[1.15,1.95]（2026-08-25 墙平行北移至 z=2.86，沿墙 offset 不变）
+      - { id: d_mbath, type: door, anchor: v_mb_sw, offset: 1.555, width: 0.79, height: 2.45, room: master_bath, swing: inward, hinge: end }  # 2026-11-26 MW 790/MH 2450，文字 (1.83,2.40)。墙缝 H z=2.655 缺口 x 1.16..1.95，中心 1.555
     finish:
       tile_bands:
         - id: walltile_mbath_south_shower
@@ -555,33 +607,33 @@ walls:
   - id: w_nw_south
     from: v_bath_s
     to: v_nw_bedroom_s
-    height: 2.8
+    height: 2.905
     line_datum: centerline
     openings:
       # 2026-08-25 方向反转：默认 outward/start → inward/end；西北次卧南界保持原 z=4.30
-      - { id: d_bnw, type: door, anchor: v_nw_bedroom_s, offset: 0.6, width: 0.9, height: 2.1, room: bedroom_nw, swing: inward, hinge: end }
+      - { id: d_bnw, type: door, anchor: v_nw_bedroom_s, offset: 0.495, width: 0.98, height: 2.445, room: bedroom_nw, swing: inward, hinge: end }  # 2026-11-26 MW 980/MH 2445，文字 (5.40,3.85)。z=3.75 墙线只画到 x=4.705，缺口 4.705..5.685=0.98；锚在东端 x=5.69，中心沿墙 0.495
     finish:
       paint_bands:
         - id: paint_bedroom_nw_w_nw_south
           room: bedroom_nw
-          along: [0.00, 3.00]
+          along: [0.00, 2.79]
           height: 2.80
           reason: "西北次卧墙面涂装（w_nw_south，主卧侧另有一段见下）"
         - id: paint_main_corridor_w_nw_south
           room: main_corridor
-          along: [1.60, 3.00]
+          along: [1.26, 2.79]
           height: 2.80
-          reason: "主走廊南侧与西北次卧共墙的实体段，仅 x[4.20,5.60]（墙沿[1.60,3.00]）；西北次卧门洞 d_bnw 按实际扣除，涂装朝主走廊北侧墙脸；其余南侧保持开放"
+          reason: "主走廊南侧与西北次卧共墙的实体段，仅 x[4.16,5.69]（墙沿[1.26,2.79]）；西北次卧门洞 d_bnw 按实际扣除，涂装朝主走廊北侧墙脸；其余南侧保持开放"
         - id: paint_master_bedroom_w_nw_south
           room: master_bedroom
-          along: [0.00, 1.60]
+          along: [0.00, 1.26]
           height: 2.80
-          reason: "主卧墙面涂装（w_nw_south x[2.60,4.20] 段，西北次卧侧另有一段见上）"
+          reason: "主卧墙面涂装（w_nw_south x[2.90,4.16] 段，西北次卧侧另有一段见上）"
   # 套间条带东延墙（x=4.2，旧条带东墙 x=2.6 已拆除）
   - id: w_strip_east
     from: v_strip_ne
     to: v_mb_ne
-    height: 2.8
+    height: 2.904
     line_datum: centerline
     structure: shear
     structure_status: inferred
@@ -604,26 +656,26 @@ walls:
   - id: w_st_north
     from: v_mb_ne
     to: v_st_ne
-    height: 2.8
+    height: 2.909
     line_datum: centerline
     openings:
-      - { id: d_study, type: door, anchor: v_mb_ne, offset: 2.4, width: 0.9, height: 2.1, room: study }
+      - { id: d_study, type: door, anchor: v_mb_ne, offset: 2.4, width: 0.855, height: 2.445, room: study }  # 2026-11-26 宽高改 MW 855/MH 2445。位置未搬：文字 (8.60,6.28) 以东，JSON 缺口在 H z=5.455 的 x 7.630..8.485，既不在书房北墙 x≤7.15，也不在东墙 x=7.15。该处模型没有这堵墙，不补墙，沿墙 offset 保持 2.4
     finish:
       paint_bands:
         - id: paint_main_corridor_w_st_north
           room: main_corridor
-          along: [0.00, 3.00]
+          along: [0.00, 2.99]
           height: 2.80
           reason: "主走廊北侧墙面，沿 w_st_north 全段；书房门洞 d_study 按实际扣除，涂装朝主走廊南侧墙脸"
         - id: paint_study_w_st_north
           room: study
-          along: [0.00, 3.00]
+          along: [0.00, 2.99]
           height: 2.80
           reason: "书房墙面涂装（w_st_north）"
   - id: w_st_east
     from: v_st_ne
     to: v_step_b
-    height: 2.8
+    height: 2.909
     line_datum: centerline
     finish:
       paint_bands:
@@ -644,7 +696,7 @@ walls:
   - id: w_mb_east
     from: v_mb_ne
     to: v_mb_se
-    height: 2.8
+    height: 2.909
     line_datum: centerline
     structure: shear
     structure_status: inferred
@@ -666,19 +718,19 @@ walls:
   - id: w_pier_north
     from: v_pier_nw
     to: v_pier_ne
-    height: 2.8
+    height: 2.909
     structure: shear
     structure_status: inferred
   - id: w_pier_east
     from: v_pier_ne
     to: v_pier_se
-    height: 2.8
+    height: 2.909
     structure: shear
     structure_status: inferred
   - id: w_pier_south
     from: v_pier_se
     to: v_pier_sw
-    height: 2.8
+    height: 2.909
     structure: shear
     structure_status: inferred
   # 内墙 — VRV 平台 / 生活阳台 / 客卫
@@ -691,9 +743,9 @@ walls:
       reason: "VRV西北角实墙删除，改栏杆"
       replacement: vrv_nw_railing
   - id: w_balc_west
-    from: v_vrv_sw
+    from: v_vrv_n
     to: v_balc_sw
-    height: 2.8
+    height: 2.905
     line_datum: centerline
     finish:
       tile_bands:
@@ -715,12 +767,13 @@ walls:
           along: [0.10, 1.20]
           height: 2.80
           reason: "西北次卧墙面涂装（w_balc_west，与客卫/阳台共墙）"
-  # 客卫东西墙保持南北走向；内卫段至 z=3.55，开放洗漱区侧边界再向南延伸至 z=4.30。
-  # 延伸段纳入 guest_bath 语义房间的侧边界；南缘无墙，仍为开放边，不新增横隔墙或内部门。
+  # 客卫东西墙保持南北走向；内卫段至 z=3.55，开放洗漱区侧边界再向南延伸至 z=4.04（入口墙线，
+  # 2026-11-27 业主裁定由 EQUIP H 4.155 改至 4.04）。延伸段纳入 guest_bath 语义房间的侧边界；
+  # 南缘现为入口墙 w_gbath_south_entry（挂外门 d_gbath），内卫南墙上为无门扇垭口。
   - id: w_gbath_west
     from: v_balc_sw
     to: v_nw_s
-    height: 2.8
+    height: 2.907
     line_datum: centerline
     finish:
       tile_bands:
@@ -747,13 +800,13 @@ walls:
   - id: w_gbath_west_open_vanity
     from: v_nw_s
     to: v_gbath_west_s
-    height: 2.8
+    height: 2.907
     line_datum: centerline
     finish:
       tile_bands:
         - id: walltile_gbath_west_open_vanity
           room: guest_bath
-          along: [0.00, 0.75]      # 0.75m
+          along: [0.00, 0.40]      # 2026-11-27 墙段长 0.40（z 3.64..4.04，入口墙线南移）
           bottom: 0.00
           height: 0.30
           zone: visible
@@ -761,12 +814,12 @@ walls:
       paint_bands:
         - id: paint_bedroom_nw_w_gbath_west_open_vanity
           room: bedroom_nw
-          along: [0.00, 0.75]
+          along: [0.00, 0.11]
           height: 2.80
           reason: "西北次卧墙面涂装（w_gbath_west_open_vanity，客卫侧贴砖本侧涂漆）"
         - id: paint_guest_bath_w_gbath_west_open_vanity
           room: guest_bath
-          along: [0.00, 0.75]
+          along: [0.00, 0.40]
           bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_gbath_west_open_vanity 的 0.30m 防水砖带
           height: 2.80
           reason: "客卫开放洗漱区西墙（浴室柜对面）涂装；0.30m 以下为 walltile_gbath_west_open_vanity 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"
@@ -774,7 +827,9 @@ walls:
   - id: w_balc_south
     from: v_balc_sw
     to: v_balc_se
-    height: 2.8
+    height: 2.907
+    openings:
+      - { id: win_gbath_north, type: window, anchor: v_balc_sw, offset: 0.915, width: 0.55, height: 1.155, sill: 1.36, room: guest_bath }  # 2026-11-26 CW 550/CH 1155/LD 1360，文字 (6.71,2.10)。玻璃 H z=1.325/1.405 x 6.33..6.88，墙缝 z=1.230/1.485。中心 x=6.605，锚在 x=5.69
     finish:
       tile_bands:
         - id: walltile_balc_south
@@ -788,27 +843,63 @@ walls:
         # 2026-10-07 业主终裁（饰面"带+漆"，前置北墙外窗已定）：淋浴区砖到顶（吊顶完成面 2.65），
         # 马桶区/开放洗漱区 0.30m 砖带 + 上部乳胶漆，台盆后新增 0.77→1.10 防溅带；
         # 北墙窗洞的砖面扣减待量房开窗后按实计。
-        - id: walltile_gbath_north_shower
+        - id: walltile_gbath_north_shower_west
           room: guest_bath
-          along: [0.00, 1.60]      # 1.60m，客卫北墙（2026-10-23 DEC-2026-10-23-R04：东墙线 7.20 后北墙长 1.50→1.60，砖面随墙贴满）
+          along: [0.00, 0.64]
           bottom: 0.00
           height: 2.50
           zone: visible
-          reason: 客卫北墙，淋浴区砖到顶（业主 2026-10-07 终裁砖到顶，当时吊顶完成面 2.65；2026-11-12 吊顶下调至 2.50，砖到顶随之 2.50；北墙窗洞扣减量房后计）
+          reason: 客卫北墙窗西侧，砖到顶 2.50。2026-11-26 窗 win_gbath_north 沿墙 [0.64,1.19]，瓷砖不盖洞
+        - id: walltile_gbath_north_shower_east
+          room: guest_bath
+          along: [1.19, 1.81]
+          bottom: 0.00
+          height: 2.50
+          zone: visible
+          reason: 客卫北墙窗东侧，砖到顶 2.50
+        - id: walltile_gbath_north_sill
+          room: guest_bath
+          along: [0.64, 1.19]
+          bottom: 0.00
+          height: 1.36
+          zone: visible
+          reason: 客卫北窗台下砖，止于窗台 LD 1360。窗洞本身不贴
   - id: w_gbath_south
     from: v_nw_s
     to: v_gbath_se
-    height: 2.8
+    height: 2.907
     line_datum: centerline   # 2026-11-07 issue #98 S1 补：drain_gbath_vanity 挂此段北脸，wallFaceOffset 要显式基准（口径 A）
     openings:
-      # 2026-08-29：门洞西移至 x[5.60,6.30]，保持南墙外门内开并为马桶真实 AABB 让出扫掠净空
-      # DEC-2026-09-09-R3：铰链由东缘（end）改西缘（start）——东铰链 90° 开门叶立于 x=6.30 挡住马桶动线（叶尖距玻璃隔断仅 0.05m），且扫掠半径 0.70m 撞上西墙毛巾架（最近点 0.62m）；西铰链后叶贴西墙 z[2.85,3.55]，马桶/淋浴隔断/毛巾架（已迁马桶上方）全部让开
-      # DEC-2026-09-09-R4：门洞再东移 0.10m 至 x[5.70,6.40]——西缘原来顶着墙角（x=5.60 即西墙），铰链在角部时门叶中心落在西墙中线穿模不可见；东移后铰链 x=5.70，门叶贴西墙内侧可见，并获得 0.10m 门垛便于门套收口；马桶侧扫掠净距仍有 0.125m
-      - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.45, width: 0.7, height: 2.1, room: guest_bath, swing: inward, hinge: start }
+      # 2026-11-27 业主裁定：外门 d_gbath 移至南缘入口墙 w_gbath_south_entry（开发商门洞 z=4.04，见该墙）。
+      # 本墙上与之对齐的洞口改为无门扇垭口（cased_opening）：入内卫的通行口，洗手台（x 6.68..7.37）
+      # 与镜柜（x 6.70..7.36）均在洞口东缘以东，门洞东缘即柜西缘；垭口位置为按门扇扫掠与柜体布局
+      # 推断（infer），DWG 该线读法仍有歧义（量房 DWG 内卫南墙线连续无缝），待现场核对门洞口实物。
+      - { id: open_gbath_inner, type: cased_opening, anchor: v_nw_s, offset: 0.5575, width: 0.865, height: 2.445, sill: 0, room: guest_bath }  # 垭口 x[5.815,6.680]，与南缘外门同轴对齐；无门扇、无铰链、无扫掠；sill 0 = 落地通行口（与门同口径，墙面算量按落地洞口扣）
+    finish:
+      tile_bands:
+        - id: walltile_gbath_south_vanity_splash
+          room: guest_bath
+          along: [0.99, 1.68]      # 2026-11-27 干湿分离放弃后台盆移入内卫南墙内侧东段（柜沿墙 x 6.68..7.37），防溅带随之由 w_gbath_east_open_vanity 迁此
+          bottom: 0.77
+          height: 1.10
+          zone: visible
+          reason: 台盆后防溅带（业主 2026-10-07 终裁）：台上盆+壁挂龙头（底座 0.84）溅水面，0.77 台面 → 1.10 镜柜下沿，材质与台面同材或 300×600 正砖
+  # 客卫南缘入口墙（2026-11-27 业主裁定新建）：开发商留的门洞口，DWG z=4.04 短线 x 5.815..6.680，
+  # 比原模型内门（w_gbath_south 上 d_gbath，z=3.64）向走廊方向南移 0.40m。入口前室深 0.40m
+  # （3.64..4.04）。M3 已结：门扫掠距洗手台约 0.12m——铰链 (5.815,4.04)，叶长 0.865，弧在柜北脸
+  # z=3.58 处至 x=6.55，柜西缘 6.68，净距约 0.13m；镜柜净距约 0.15m；马桶净距约 0.51m。
+  # 洗手台从门洞最边缘处延伸过去（柜西缘贴门洞东缘 6.68），不顶门。饰面带待定（前室墙面做法未议），不先编。
+  - id: w_gbath_south_entry
+    from: v_gbath_west_s
+    to: v_gbath_east_s
+    height: 2.907
+    line_datum: centerline
+    openings:
+      - { id: d_gbath, type: door, anchor: v_gbath_west_s, offset: 0.5575, width: 0.865, height: 2.445, room: guest_bath, swing: inward, hinge: start }  # 2026-11-26 MW 865/MH 2445，文字 (6.83,3.86)。2026-11-27 量房 DWG 0.865 缝在 z=4.04 短线 x 5.815..6.680；offset 为洞口中心距锚点（layout-resolver 按中心解算），中心 6.2475−锚点 5.69=0.5575，使洞口 x[5.815,6.680] 对上 DWG 缝位。2026-11-27 业主裁定：门洞即开发商留口，直接能用、不用拆改；由内卫南墙（z=3.64）南移 0.40m 至此墙。M3 已结（门不影响洗手台，扫掠净距约 0.13m）。
   - id: w_gbath_east
     from: v_kit_s2
     to: v_gbath_se
-    height: 2.8   # 2026-10-23 DEC-2026-10-23-R04：起点由 v_balc_se 改 v_kit_s2——墙线拉直 7.20 后 z[2.20,2.40] 段与 w_kit_west 共线重合，改由 w_kit_west 单独承载（两面饰面各挂一段），本墙辖 z[2.40,3.55]
+    height: 2.907   # 2026-10-23 DEC-2026-10-23-R04：起点由 v_balc_se 改 v_kit_s2——墙线拉直 7.20 后 z[2.20,2.40] 段与 w_kit_west 共线重合，改由 w_kit_west 单独承载（两面饰面各挂一段），本墙辖 z[2.40,3.55]
     line_datum: centerline
     finish:
       tile_bands:
@@ -845,42 +936,29 @@ walls:
   - id: w_gbath_east_open_vanity
     from: v_gbath_se
     to: v_gbath_east_s
-    height: 2.8
+    height: 2.907
     line_datum: centerline
     finish:
       tile_bands:
         - id: walltile_gbath_east_open_vanity
           room: guest_bath
-          along: [0.00, 0.75]      # 0.75m
+          along: [0.00, 0.40]      # 2026-11-27 墙段 z 3.64..4.04，长 0.40（入口墙线南移；原 0.515 越界）
           bottom: 0.00
           height: 0.30
           zone: visible
-          reason: 客卫东侧开放洗漱区，悬浮台盆柜后 0.30m 防溅带正砖（柜体包络待与 JX YJCC034 实机同图会审，基站 410×433×280mm，柜体底缘 0.30 不动；C18 废止杂砖）
-        - id: walltile_gbath_east_vanity_splash
-          room: guest_bath
-          along: [0.00, 0.75]      # 0.75m，与下方柜后杂砖段同沿墙区间、竖向堆叠不重叠
-          bottom: 0.77
-          height: 1.10
-          zone: visible
-          reason: 台盆后防溅带（业主 2026-10-07 终裁）：台上盆+壁挂龙头（底座 0.84）溅水面，0.77 台面 → 1.10 镜柜下沿，材质与台面同材或 300×600 正砖
+          reason: 客卫东侧开放洗漱区 0.30m 墙裙砖带（2026-11-27 干湿分离放弃后台盆移入内卫南墙，防溅带随之迁走，见 w_gbath_south 的 walltile_gbath_south_vanity_splash；本墙只留 0.30m 墙裙）
       paint_bands:
         - id: paint_guest_bath_w_gbath_east_open_vanity_lower
           room: guest_bath
-          along: [0.00, 0.75]
-          bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：墙裙砖带 [0,0.30] 与防溅带 [0.77,1.10] 之间那一段
-          height: 0.77
-          reason: "客卫开放洗漱区东墙下段涂装；上是 walltile_gbath_east_open_vanity 0.30m 墙裙砖带、下是 walltile_gbath_east_vanity_splash 0.77→1.10 台盆防溅带，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"
-        - id: paint_guest_bath_w_gbath_east_open_vanity_upper
-          room: guest_bath
-          along: [0.00, 0.75]
-          bottom: 1.10                 # 砖漆互斥（DEC-2026-10-09-P07）：防溅带 [0.77,1.10] 以上至顶
+          along: [0.00, 0.40]
+          bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：2026-11-27 防溅带迁走后上下两段漆合并，0.30 以上至顶为漆面
           height: 2.80
-          reason: "客卫开放洗漱区东墙上段涂装；walltile_gbath_east_vanity_splash 防溅带止于 1.10，以上至 2.80 平顶为漆面，砖漆互斥不重叠（DEC-2026-10-09-P07）"
+          reason: "客卫开放洗漱区东墙涂装；下是 walltile_gbath_east_open_vanity 0.30m 墙裙砖带、以上至 2.80 平顶为漆面，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"
   # 内墙 — x=7.20 纵向墙（厨房西墙，在 v_vrv_se, v_balc_ne 处切开；DEC-014 南界缩至 z=2.90，z[2.9,4.3] 段由 w_gbath_east 覆盖；2026-10-23 R04 后该墙同在 x=7.20 全线拉直）
   - id: w_vrv_east
     from: v_kit_w
     to: v_vrv_se
-    height: 2.8
+    height: 2.910
     line_datum: centerline   # 2026-11-07 issue #98 S1 补：sock_balcony_waterheater/sock_vrf_outdoor_a2 挂此段东脸，wallFaceOffset 要显式基准（口径 A）
     finish:
       tile_bands:
@@ -896,46 +974,24 @@ walls:
           reason: 厨房西墙实墙段（与 VRV 设备间共墙），无橱柜遮蔽，E2 贴满至 2.50 正砖（2026-11-12 随吊顶下调）
   - id: w_balc_east
     from: v_vrv_se
-    to: v_balc_ne
-    height: 2.8
-    openings:
-      - { id: d_kit_balc, type: door, anchor: v_vrv_se, offset: 0.6, width: 0.8, height: 2.1, room: kitchen }
-    finish:
-      tile_bands:
-        - id: walltile_kitchen_balc_east_west
-          room: kitchen
-          along: [0.00, 0.20]      # 门洞 d_kit_balc [0.20,1.00] 西侧剩余段（DEC-2026-10-09-P11 拆分）
-          bottom: 0.00
-          height: 0.90
-          zone: visible
-          reason: "厨房西墙生活阳台门段西侧，辅助台面防溅带 0.90m 正砖；不在 E2 贴满范围。2026-10-09 由 walltile_kitchen_balc_east（整段 1.20m）拆分——门洞占中段 0.80m，瓷砖不扣洞（DEC-2026-10-09-P11）"
-        - id: walltile_kitchen_balc_east_east
-          room: kitchen
-          along: [1.00, 1.20]      # 门洞 d_kit_balc [0.20,1.00] 东侧剩余段（DEC-2026-10-09-P11 拆分）
-          bottom: 0.00
-          height: 0.90
-          zone: visible
-          reason: "厨房西墙生活阳台门段东侧，辅助台面防溅带 0.90m 正砖；不在 E2 贴满范围。2026-10-09 由 walltile_kitchen_balc_east（整段 1.20m）拆分——门洞占中段 0.80m，瓷砖不扣洞（DEC-2026-10-09-P11）"
-  - id: w_kit_west
-    from: v_balc_ne
     to: v_kit_s2
-    height: 2.8
+    height: 2.910
+    # 2026-11-27 业主确认：本墙（x=7.50，z 1.36..2.40，长 1.04m）整段为开发商仅为标记赠送
+    # 面积而砌的隔断，待拆除；阳台门 d_kit_balc 并不存在，门洞与门段贴砖带已随之删除。
+    # 墙体本身按仓内惯例拆除前保留在模型内，拆除执行后按实测删除。
+  - id: w_kit_west
+    from: v_ent_kit2
+    to: v_kit_east_s
+    height: 2.910
     finish:
       tile_bands:
         - id: walltile_kitchen_west_stub
           room: kitchen
-          along: [0.00, 0.20]      # 0.20m 残段
+          along: [0.00, 0.20]      # 2026-11-26 本墙改为洞口东垛 x 10.285..11.11，残段仍 0.20m
           bottom: 0.00
           height: 2.50
           zone: visible
-          reason: 西墙南端 0.20m 残段，E2 贴满至 2.50 正砖（2026-11-12 随吊顶下调）；“冰箱位背墙/高柜包络”仅为历史备注，DEC-2026-10-14试案将冰箱置于客餐厅，不能据此推断当前位置或柜体。
-        - id: walltile_gbath_east_shower_kitseg
-          room: guest_bath
-          along: [0.00, 0.20]      # z[2.20, 2.40] 段：2026-10-23 DEC-2026-10-23-R04 墙线拉直后该段由 w_kit_west 承载，西脸属客卫淋浴区
-          bottom: 0.00
-          height: 2.50
-          zone: visible
-          reason: 客卫东墙最北段（与 w_gbath_east 淋浴段同面连续），淋浴区砖到顶（业主 2026-10-07 终裁；2026-11-12 吊顶下调至 2.50，砖到顶随之 2.50）
+          reason: 厨房南洞口东垛 0.20m，E2 贴满至 2.50 正砖（2026-11-12 随吊顶下调）。客卫淋浴段已不在这堵墙上（原 walltile_gbath_east_shower_kitseg 随墙搬走删除，淋浴砖仍在 w_gbath_east）。
   # w_liv_west 已删除——主走廊与客厅开放贯通
   # 内墙 — 厨房 / 客餐厅 / 客房
   # w_kit_east 已删除（2026-08-23）：与 w_ent_west 是同一堵物理墙（x=10.8, z 0→2.9，西侧厨房/客餐厅、东侧入户花园），
@@ -943,12 +999,12 @@ walls:
   # 原 w_kit_east 的 4 个电气点位（z 1.0-2.05 均在 w_ent_west 跨度内）已改挂 w_ent_west。
   - id: w_be_west
     from: v_be_sw
-    to: v_be_se_s
-    height: 2.8
+    to: v_be_s_w
+    height: 2.885
     line_datum: centerline
     openings:
       # 2026-08-25 方向反转；2026-08-25 二次调整：向内开，合页移至 start 端
-      - { id: d_bese, type: door, anchor: v_be_se_s, offset: 3.78, width: 0.9, height: 2.1, room: bedroom_se, swing: inward, hinge: start }   # 2026-10-23 R04：anchor 随 v_be_se_s 南移 0.08，offset 3.70→3.78 保持洞口中心 z=6.10 不变
+      - { id: d_bese, type: door, anchor: v_be_s_w, offset: 3.598, width: 0.885, height: 2.465, room: bedroom_se, swing: inward, hinge: start }  # 2026-11-26 MW 885/MH 2465，文字 (13.25,5.23)。x=13.37 墙缝：z 4.430..5.315 无墙（0.885），中心 z=4.872；锚在南端 z=8.47，offset 3.598
     finish:
       paint_bands:
         - id: paint_bedroom_se_w_be_west
@@ -965,13 +1021,13 @@ walls:
   - id: w_be_north_west
     from: v_cent_be
     to: v_be_sw
-    height: 2.8
+    height: 2.820
     structure: shear
     structure_status: inferred   # 2026-10-25 DEC-2026-10-25-R01（重算）：北厚墙西段（中竖墙至客房西墙角），线 z=4.82
   - id: w_be_north
     from: v_be_sw
     to: v_be_ne
-    height: 2.8
+    height: 2.885
     line_datum: centerline
     structure: shear
     structure_status: inferred
@@ -980,7 +1036,7 @@ walls:
         # ── 客房 9.30m / 26.04㎡ ──
         - id: paint_bedroom_se_w_be_north
           room: bedroom_se
-          along: [0.00, 3.00]
+          along: [0.00, 2.96]
           height: 2.80
           reason: "客房墙面涂装（w_be_north）"
 

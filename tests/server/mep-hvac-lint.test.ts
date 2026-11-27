@@ -207,7 +207,8 @@ function assertKnownMustFixCodes(issues: ReadonlyArray<{ code: string }>, where:
  * 总数下降不再使测试变红（#227 Codex minor 的根因正在于此）。
  * 已知待决集合只许显式增删、不得静默扩表；某项消失（家具移走、路由改道）不使测试变红。
  */
-// 路线 id 登记集（137 条，2026-11-13 实测；新增路线须显式登记，删除不使测试变红）。
+// 路线 id 登记集（139 条，2026-11-27 实测；新增路线须显式登记，删除不使测试变红）。
+// 2026-11-27 PR #270：机器人泊位上下水补 2 条（water-robot-dock-supply / drain-robot-dock-to-riser），137→139。
 const KNOWN_ROUTE_IDS: ReadonlySet<string> = new Set([
   'strong-main', 'strong-ac-living', 'strong-ac-dining', 'strong-ac-master',
   'strong-ac-parent', 'strong-ac-child', 'strong-ac-study', 'strong-ac-outdoor',
@@ -243,7 +244,7 @@ const KNOWN_ROUTE_IDS: ReadonlySet<string> = new Set([
   'strong-light-entry-switch-garden', 'strong-light-entry-foyer', 'strong-light-entry-switch-corridor', 'strong-light-entry-night-living-north',
   'strong-light-entry-night-guest-door', 'strong-light-entry-night-corridor', 'strong-ded-fridge-living', 'strong-power-waterbar',
   'strong-power-kitchen-east', 'strong-power-weakbox', 'weak-ap-master', 'strong-light-balcony',
-  'strong-light-entry-night-mid',
+  'strong-light-entry-night-mid', 'water-robot-dock-supply', 'drain-robot-dock-to-riser',
 ]);
 // 警告代码已知待决集合（survey + envelope 两桶的并集；must_fix 见 KNOWN_MUST_FIX_CODES）。
 const KNOWN_WARNING_CODES: ReadonlySet<string> = new Set([
@@ -296,8 +297,17 @@ const SURVEY_CEILINGS: Readonly<Record<string, number>> = {
 // 2026-11-17 量价算法审计 D4：route_overlap_declared_trunk 11→16（立管补 0.82m 后，
 // 回水三通 4 处 + 客卫冷热汇流 1 处由 must_fix 转声明警告；envelope route_overlap
 // 同批 45→49 为热水需求路由与干管末段重叠的 4 处新警告，现值即上限、不另抬）。
+// 2026-11-27 量房回填 PR #270：route_overlap 49→50（净 +4：新增 7 处、消失 3 处）。
+// 新增 7 处——weak-ap-master 标高 2.51→2.65 升入冷凝/送风带 +3（condensate-master seg#4、
+// condensate-parent seg#5、supply-air-dining seg#1）；condensate-child 改道 +2
+// （strong-ded-bathheaters-gbath seg#4、strong-power-gbath seg#4）；主卧灯位改道 +2
+// （condensate-master seg#1 / strong-light-bedrooms-master-bed-north seg#3、
+// strong-light-master seg#4 / condensate-master seg#2）。消失 3 处——主卫洗手台改道
+// （drain-mbath-vanity-to-riser / water-hot-water-mbath-requirement）、儿童房空调与
+// 送风改道（strong-ac-child / return-air-child、supply-air-child / child-door）。
+// 三口径（无 layout / realContext / verify:mep 全上下文）实测均为 50，共享上限同步抬至 50。
 const ENVELOPE_CEILINGS: Readonly<Record<string, number>> = {
-  route_overlap: 49,
+  route_overlap: 50,
   route_clearance_unverified: 38,
   route_overlap_declared_trunk: 16,
   bay_sill_crossing_declared: 11,
@@ -1016,7 +1026,11 @@ test('DEC-2026-10-06-R5: carried layers are lifted into the drop-ceiling cavity 
   // 穿点高度随层高同步抬升（不能低于所在吊顶承载层标高，否则穿墙段埋在墙里）
   // 具名豁免：weak-ap-master 的 2.51 穿点是 DEC-2026-10-17-R20/R25 的刻意降层（在冷媒/强电
   // 交叉下方穿行、逐项净距已在该路线 reason 里算清，且仍高于走廊完成面 2.50）——豁免按精确值钉死，改值即红。
-  const SUB_BAND_PENETRATION_EXEMPTIONS: Record<string, number> = { 'weak-ap-master': 2.51 };
+  // 2026-11-26 量房回填后 weak-ap-master 穿点已升至 2.65（≥2.55，走高位分支），2.51 条目只留作历史口径。
+  // weak-master 的 2.40 穿点是 2026-11-26 量房回填新增的实测声明（正交穿主卧东墙 w_mb_east，
+  // 穿点 (4.16,6.30)，标高 2.40）：该路贴 w_mb_east 西侧南下时由 2.6 降至 2.4（level 步，
+  // 2026-11-15 #98 既有），穿墙高度与该路在该点的实际标高一致，不是错层——按同一具名豁免机制钉死精确值。
+  const SUB_BAND_PENETRATION_EXEMPTIONS: Record<string, number> = { 'weak-ap-master': 2.51, 'weak-master': 2.40 };
   for (const route of config.routes) {
     for (const p of (route.penetration ?? []) as Array<{ height?: number }>) {
       if (typeof p.height !== 'number') continue;
@@ -1091,19 +1105,23 @@ function supportContext(walls: Array<Record<string, unknown>> = [], zones: Array
 }
 const FAR_WALL = { id: 'w_far', x1: 50, z1: 0, x2: 50, z2: 2 };
 function flyingRoute(extra: Record<string, unknown> = {}) {
+  // 2026-11-27 量房回填：ceiling_master_bath 北扩至 z=-0.39、东扩至 x=2.90，旧坐标 (0,0)→(3,0)
+  // 落入该区空腔（完成面 2.50，管路 2.55 ≥ 2.50 即有依托）不再是“无依托开放空间”；
+  // 改取客餐厅中部原顶区 (8,7)→(11,7)——DEC-2026-10-13-R4 定案客厅中部不做平吊、无吊顶分区，
+  // 是现行模型里真正无吊顶的开放空间。crossed/cavity/jog 三处子用例随之平移，数值不变。
   return sample({
     id: 'fly', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
-    diameter: 0.02, from_height: 2.55, to_height: 2.55, from: { x: 0, z: 0, y: 2.55 }, to: { x: 3, z: 0, y: 2.55 }, ...extra,
+    diameter: 0.02, from_height: 2.55, to_height: 2.55, from: { x: 8, z: 7, y: 2.55 }, to: { x: 11, z: 7, y: 2.55 }, ...extra,
   });
 }
 
 test('a mid-room horizontal run with no ceiling, wall, or screed support is flagged as flying', () => {
   const result = lintMepCoordination(flyingRoute(), sources, supportContext([FAR_WALL]));
   const found = result.errors.find((i) => i.code === 'unsupported_span')!; // must_fix 桶，R19 起进 errors[]
-  assert.match(found.message, /flies unsupported for 3\.00m from \(0\.00,0\.00\) to \(3\.00,0\.00\) at 2\.55m/);
+  assert.match(found.message, /flies unsupported for 3\.00m from \(8\.00,7\.00\) to \(11\.00,7\.00\) at 2\.55m/);
   assert.equal(found.category, 'must_fix_before_briefing');
   // 多段飞线：报最长一段 + 缺口统计；两段各 1.20m、共 2.40m
-  const crossed = lintMepCoordination(flyingRoute(), sources, supportContext([{ id: 'w_mid', x1: 1.5, z1: -1, x2: 1.5, z2: 1 }]));
+  const crossed = lintMepCoordination(flyingRoute(), sources, supportContext([{ id: 'w_mid', x1: 9.5, z1: 6, x2: 9.5, z2: 8 }]));
   const crossedFound = crossed.errors.find((i) => i.code === 'unsupported_span')!;
   assert.match(crossedFound.message, /flies unsupported for 1\.20m/);
   assert.match(crossedFound.message, /2 unsupported gaps totalling 2\.40m/);
@@ -1111,7 +1129,7 @@ test('a mid-room horizontal run with no ceiling, wall, or screed support is flag
 
 test('runs inside a solid ceiling cavity, hugging a wall, crossing a wall, or in the screed are supported; open vertical drops are not', () => {
   // 吊顶空腔：实心分区（drop，完成面 = 2.8 − 0.3 = 2.50），管路 2.55 ≥ 2.50 即有依托
-  const cavity = { id: 'cz', room: 'r', type: 'drop', thickness: 0.3, area: [-1, -1, 4, 1] };
+  const cavity = { id: 'cz', room: 'r', type: 'drop', thickness: 0.3, area: [7, 6, 12, 8] };
   const covered = lintMepCoordination(flyingRoute(), sources, supportContext([FAR_WALL], [cavity]));
   assert.equal([...covered.errors, ...covered.warnings].some((i) => i.code === 'unsupported_span'), false);
   // 贴墙：0.10m ≤ 0.25m
@@ -1161,7 +1179,7 @@ test('hugging a suppressed curtain wall is not support, and confirmed routes esc
 
 test('endpoint jogs shorter than 0.3m and water layers stay out of the flying check', () => {
   // 0.25m 无依托 jog < 0.3m 阈值：不报
-  const jog = lintMepCoordination(flyingRoute({ to: { x: 0.25, z: 0, y: 2.55 } }), sources, supportContext([FAR_WALL]));
+  const jog = lintMepCoordination(flyingRoute({ to: { x: 8.25, z: 7, y: 2.55 } }), sources, supportContext([FAR_WALL]));
   assert.equal([...jog.errors, ...jog.warnings].some((i) => i.code === 'unsupported_span'), false);
   // 走地给排水分层不在吊顶承载层口径内（依托问题由坡度/正交规则管）
   const water = lintMepCoordination(sample({
@@ -1173,7 +1191,8 @@ test('endpoint jogs shorter than 0.3m and water layers stay out of the flying ch
 
 test('fixture tail/head runs (≤2m at soffit band, endpoint on a point) count as support, mid-runs and out-of-band y do not', () => {
   // 末段+首段设备接线段：两端都是点位、各 ≤2m、y=2.70（原顶暗敷带）→ 全豁免（DEC-2026-10-07-F02）
-  // sock_mbath_vanity (0.78,2.96) / sock_mbath_batheheater (1.30,2.70) 为 fixture 用真实点位
+  // sock_mbath_vanity / sock_mbath_batheheater 为 fixture 用真实点位（2026-11-27 主卫干湿分离
+  // 放弃后 vanity 移入主卫内、贴 w_mbath_east 东墙北段，旧 (0.78,2.96) 坐标作废；现解算约 (2.80,0.76)）
   const tail = lintMepCoordination(sample({
     id: 'tail-ok', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
     diameter: 0.02, from_height: 2.7, to_height: 2.7,
@@ -1187,11 +1206,14 @@ test('fixture tail/head runs (≤2m at soffit band, endpoint on a point) count a
     from: 'outdoor_a2', via: [], to: { x: 5.5, z: 0.35, y: 2.7 },
   }), sources, supportContext([FAR_WALL]));
   assert.equal([...head.errors, ...head.warnings].some((i) => i.code === 'unsupported_span'), false);
-  // 中段不豁免：首末段都合规，中间 1.25m 横移照报
+  // 中段不豁免：首末段都合规，中间 0.6m 横移照报
+  // 2026-11-27 量房回填：ceiling_master_bath 南扩至 z=2.655，旧中段 (2.0,1.5)→(2.6,0.4)
+  // 落入空腔有依托；中段改走 z=2.8（吊顶南缘外 0.15m 的开放空间）。首段大部在空腔内、
+  // 露出段仅约 0.16m（<0.3m 阈值），末段在带内且 ≤2m 仍豁免，唯中段 0.6m 飞线——断言语义不变。
   const mid = lintMepCoordination(sample({
     id: 'mid-no', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
     diameter: 0.02, from_height: 2.7, to_height: 2.7,
-    from: 'sock_mbath_vanity', via: [{ x: 2.0, z: 1.5, y: 2.7 }, { x: 2.6, z: 0.4, y: 2.7 }], to: 'sock_mbath_batheheater',
+    from: 'sock_mbath_vanity', via: [{ x: 2.0, z: 2.8, y: 2.7 }, { x: 2.6, z: 2.8, y: 2.7 }], to: 'sock_mbath_batheheater',
   }), sources, supportContext([FAR_WALL]));
   assert.ok([...mid.errors, ...mid.warnings].some((i) => i.code === 'unsupported_span'));
   // y 不在原顶暗敷带（2.66–2.85）且低于客卫完成面（2026-11-12 由 2.65 降至 2.50）：bend_corridor (7.2,4.3) 首段 1.12m ≤2m 但 y=2.40 → 照报
@@ -1211,10 +1233,12 @@ test('fixture tail/head runs (≤2m at soffit band, endpoint on a point) count a
   }), sources, supportContext([FAR_WALL]));
   assert.ok([...tooLong.errors, ...tooLong.warnings].some((i) => i.code === 'unsupported_span'));
   // 端点是内联坐标（非点位）：不构成设备接线语义，不豁免
+  // 2026-11-27 量房回填：ceiling_master_bath 北扩至 z=-0.39，旧坐标 (3,0)→(1.5,0) 落入空腔；
+  // 改取客餐厅中部原顶区 (11,7)→(9.5,7)（与 flyingRoute 同一无吊顶区），两段各 0.75m、共 1.5m。
   const inlineEnd = lintMepCoordination(sample({
     id: 'inline-no', layer: 'strong_power', status: 'inferred', source_status: 'proposed', method: 'conduit',
     diameter: 0.02, from_height: 2.7, to_height: 2.7,
-    from: { x: 3, z: 0, y: 2.7 }, via: [{ x: 2.25, z: 0, y: 2.7 }], to: { x: 1.5, z: 0, y: 2.7 },
+    from: { x: 11, z: 7, y: 2.7 }, via: [{ x: 10.25, z: 7, y: 2.7 }], to: { x: 9.5, z: 7, y: 2.7 },
   }), sources, supportContext([FAR_WALL]));
   assert.ok([...inlineEnd.errors, ...inlineEnd.warnings].some((i) => i.code === 'unsupported_span'));
 });

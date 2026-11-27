@@ -153,23 +153,24 @@ describe('infrastructure marker placement (real scene)', () => {
     // 权威墙脸：w_mbath_east / w_gbath_east 的 runtime wall mesh（东脸即儿童房/客厅侧）。
     const mbathEastFace = Math.max(...walls.filter((wall) => wall.wallId === 'w_mbath_east').map((wall) => wall.box.max.x));
     const gbathEastFace = Math.max(...walls.filter((wall) => wall.wallId === 'w_gbath_east').map((wall) => wall.box.max.x));
-    assert.ok(Math.abs(mbathEastFace - 2.66) < 1e-6, `w_mbath_east east face moved: ${mbathEastFace}`);
-    assert.ok(Math.abs(gbathEastFace - 7.26) < 1e-6, `w_gbath_east east face moved: ${gbathEastFace}`);
+    assert.ok(Math.abs(mbathEastFace - 2.96) < 1e-6, `w_mbath_east east face moved: ${mbathEastFace}`);
+    assert.ok(Math.abs(gbathEastFace - 7.56) < 1e-6, `w_gbath_east east face moved: ${gbathEastFace}`);
     assert.ok(mbath.box.max.x <= mbathEastFace + FAR_FACE_TOLERANCE,
       `toilet_mbath must not cross w_mbath_east east face ${mbathEastFace} (got max.x=${mbath.box.max.x})`);
     assert.ok(gbath.box.max.x <= gbathEastFace + FAR_FACE_TOLERANCE,
       `toilet_gbath must not cross w_gbath_east east face ${gbathEastFace} (got max.x=${gbath.box.max.x})`);
     // 深 fixture 锚定：水箱朝墙端贴到墙西脸、只留 WALL_GAP(5mm)，整体随之西移。
-    assert.ok(Math.abs(mbath.box.max.x - 2.535) < 0.002, `toilet_mbath tank back should stop at x=2.535 (got ${mbath.box.max.x})`);
-    assert.ok(Math.abs(mbath.box.min.x - 1.985) < 0.002, `toilet_mbath bowl end should reach x=1.985 (got ${mbath.box.min.x})`);
-    assert.ok(Math.abs(gbath.box.max.x - 7.135) < 0.002, `toilet_gbath tank back should stop at x=7.135 (got ${gbath.box.max.x})`);
-    assert.ok(Math.abs(gbath.box.min.x - 6.585) < 0.002, `toilet_gbath bowl end should reach x=6.585 (got ${gbath.box.min.x})`);
+    // 2026-11-27 量房回填：w_mbath_east 中心线 2.60→2.90（西脸 2.84）、w_gbath_east 7.20→7.50（西脸 7.44）。
+    assert.ok(Math.abs(mbath.box.max.x - 2.835) < 0.002, `toilet_mbath tank back should stop at x=2.835 (got ${mbath.box.max.x})`);
+    assert.ok(Math.abs(mbath.box.min.x - 2.285) < 0.002, `toilet_mbath bowl end should reach x=2.285 (got ${mbath.box.min.x})`);
+    assert.ok(Math.abs(gbath.box.max.x - 7.435) < 0.002, `toilet_gbath tank back should stop at x=7.435 (got ${gbath.box.max.x})`);
+    assert.ok(Math.abs(gbath.box.min.x - 6.885) < 0.002, `toilet_gbath bowl end should reach x=6.885 (got ${gbath.box.min.x})`);
     const tank = (group: MarkerEntry) => group.object.children.find((child) => child.userData.part === 'toilet-tank');
     const mbathTank = tank(mbath);
     const gbathTank = tank(gbath);
     assert.ok(mbathTank && gbathTank, 'toilet tank part must exist');
-    assert.ok(Math.abs(worldBox(mbathTank).max.x - 2.535) < 0.002, 'toilet_mbath tank must stop 5mm off the wall face');
-    assert.ok(Math.abs(worldBox(gbathTank).max.x - 7.135) < 0.002, 'toilet_gbath tank must stop 5mm off the wall face');
+    assert.ok(Math.abs(worldBox(mbathTank).max.x - 2.835) < 0.002, 'toilet_mbath tank must stop 5mm off the wall face');
+    assert.ok(Math.abs(worldBox(gbathTank).max.x - 7.435) < 0.002, 'toilet_gbath tank must stop 5mm off the wall face');
   });
 
   it('keeps the recessed panel boxes on the thin-panel convention (unchanged by the deep-fixture anchor)', () => {
@@ -180,15 +181,16 @@ describe('infrastructure marker placement (real scene)', () => {
     // 埋墙箱体豁免的位置哨兵：修复前后完全一致（弱电箱声明深度 0.30，recipe 缩放后朝墙厚
     // 0.15 > 墙厚，若误入深 fixture 分支会整体东移约 0.14m）。弱电箱盒体按设计跨立墙板
     // （body sits in the wall），故不受远面规则约束。
-    assert.ok(Math.abs(weak.box.min.x - 10.66) < 0.001, `weak panel min.x drifted: ${weak.box.min.x}`);
-    assert.ok(Math.abs(weak.box.max.x - 11.005) < 0.001, `weak panel max.x drifted: ${weak.box.max.x}`);
-    assert.ok(Math.abs(strong.box.min.x - 10.6829) < 0.001, `strong panel min.x drifted: ${strong.box.min.x}`);
-    assert.ok(Math.abs(strong.box.max.x - 10.91) < 0.001, `strong panel max.x drifted: ${strong.box.max.x}`);
+    // 2026-11-27 量房回填：w_ent_west 10.80→11.11，两箱整体东移 +0.31。
+    assert.ok(Math.abs(weak.box.min.x - 10.97) < 0.001, `weak panel min.x drifted: ${weak.box.min.x}`);
+    assert.ok(Math.abs(weak.box.max.x - 11.315) < 0.001, `weak panel max.x drifted: ${weak.box.max.x}`);
+    assert.ok(Math.abs(strong.box.min.x - 10.9929) < 0.001, `strong panel min.x drifted: ${strong.box.min.x}`);
+    assert.ok(Math.abs(strong.box.max.x - 11.22) < 0.001, `strong panel max.x drifted: ${strong.box.max.x}`);
   });
 });
 
 describe('placeModel anchoring rules (synthetic points)', () => {
-  // w_mbath_east 中心线段（与 model-geometry 一致）：slab x[2.540,2.660]，儿童房在 x>2.66。
+  // 合成墙段（旧口径中心线 x=2.6、slab x[2.540,2.660]；规则本身不依赖真实墙位，真实墙已随量房移到 x=2.90）。
   const wallSegments = new Map<string, PointWall>([
     ['w_mbath_east', { segments: [{ x1: 2.6, z1: 1.1, x2: 2.6, z2: 4.3 }], line_datum: 'centerline' }],
   ]);

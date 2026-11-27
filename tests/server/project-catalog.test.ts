@@ -147,20 +147,22 @@ describe('ProjectCatalog', () => {
     const at = (type: string, x: number, z: number): boolean =>
       kitchen.furnishings.placed.some((p) => p.type === type && close(p.x, x) && close(p.z, z));
     assert.equal(kitchen.furnishings.placed.filter((p) => p.type === 'kitchen_cabinet_run').length, 3, '北墙两段 + 东墙一段 run 必须在 placed 里');
-    assert.ok(at('kitchen_cabinet_run', 7.86, 0.32), 'cabinet_run_north_west 应解在 (7.86, 0.32)');
-    assert.ok(at('kitchen_cabinet_run', 9.94, 0.32), 'cabinet_run_north_east 应解在 (9.94, 0.32)');
-    assert.ok(at('kitchen_cabinet_run', 10.48, 1.275), 'cabinet_run_east 应解在 (10.48, 1.275)');
-    assert.ok(at('kitchen_countertop_bridge', 8.8, 0.32), 'countertop_bridge 应解在 (8.8, 0.32)');
-    assert.ok(at('dishwasher', 8.8, 0.30), 'dishwasher（anchor ← bridge）应解在 (8.8, 0.30)');
-    assert.ok(at('gas_stove', 10.5, 1.5), 'gas_stove（anchor ← east run）应解在 (10.5, 1.5)');
-    assert.ok(at('range_hood', 10.5, 1.5), 'range_hood（anchor ← stove）应解在 (10.5, 1.5)');
-    assert.ok(at('sink', 9.5, 0.30), 'sink（anchor ← NE run）应解在 (9.5, 0.30)');
-    assert.ok(at('mijia_ro_purifier_1400g_under_sink_preview', 10.05, 0.32), 'ro_purifier（anchor ← NE run）应解在 (10.05, 0.32)');
+    // 2026-11-27 量房回填：厨房北墙 w_kit_north 起点 7.20→7.50（x +0.30）、北墙完成面 z −0.15→0.17（z −0.15）；
+    // 入户西墙 w_ent_west 10.80→11.11（东段 x +0.31）；阳台 washer 随平台北墙改位 (5.95,1.5)→(6.04,0.35)。
+    assert.ok(at('kitchen_cabinet_run', 8.16, 0.17), 'cabinet_run_north_west 应解在 (8.16, 0.17)');
+    assert.ok(at('kitchen_cabinet_run', 10.24, 0.17), 'cabinet_run_north_east 应解在 (10.24, 0.17)');
+    assert.ok(at('kitchen_cabinet_run', 10.79, 1.275), 'cabinet_run_east 应解在 (10.79, 1.275)');
+    assert.ok(at('kitchen_countertop_bridge', 9.10, 0.17), 'countertop_bridge 应解在 (9.10, 0.17)');
+    assert.ok(at('dishwasher', 9.10, 0.15), 'dishwasher（anchor ← bridge）应解在 (9.10, 0.15)');
+    assert.ok(at('gas_stove', 10.81, 1.5), 'gas_stove（anchor ← east run）应解在 (10.81, 1.5)');
+    assert.ok(at('range_hood', 10.81, 1.5), 'range_hood（anchor ← stove）应解在 (10.81, 1.5)');
+    assert.ok(at('sink', 9.80, 0.15), 'sink（anchor ← NE run）应解在 (9.80, 0.15)');
+    assert.ok(at('mijia_ro_purifier_1400g_under_sink_preview', 10.35, 0.17), 'ro_purifier（anchor ← NE run）应解在 (10.35, 0.17)');
 
     const balcony = catalog.getRoomLayoutDetail('balcony');
     assert.ok(balcony);
-    assert.ok(balcony.furnishings.placed.some((p) => p.type === 'washer' && close(p.x, 5.95) && close(p.z, 1.5)), 'washer（墙锚）应解在 (5.95, 1.5)');
-    assert.ok(balcony.furnishings.placed.some((p) => p.type === 'dryer' && close(p.x, 5.95) && close(p.z, 1.5)), 'dryer（anchor ← washer，叠放）应解在 (5.95, 1.5)');
+    assert.ok(balcony.furnishings.placed.some((p) => p.type === 'washer' && close(p.x, 6.04) && close(p.z, 0.35)), 'washer（墙锚）应解在 (6.04, 0.35)');
+    assert.ok(balcony.furnishings.placed.some((p) => p.type === 'dryer' && close(p.x, 6.04) && close(p.z, 0.35)), 'dryer（anchor ← washer，叠放）应解在 (6.04, 0.35)');
   });
 
   it('getRoomLayoutDetail returns undefined for unknown room', () => {
@@ -215,13 +217,19 @@ describe('ProjectCatalog — vertex v2.0 data path', () => {
     assert.ok(door.x !== undefined && door.z !== undefined, 'door should have absolute x/z');
   });
 
-  it('getDataPrecision reports inferred geometry and material confirmation stats (决策闭环)', () => {
+  it('getDataPrecision reports inferred geometry/structure but completed survey (决策闭环)', () => {
     const catalog = ProjectCatalog.load('.');
     const confidence = catalog.getDataPrecision();
+    // 2026-11-27 业主激光实测 + 修正版 DWG 后：geometry/structure 的 coarse 值仍为 inferred
+    // （两轮量房均无逐间净平面尺寸、无梁位平面），但 survey_completed 翻 true →
+    // overallMaturity 从 inferred 升 partial。逐项实测登记在 config/house.yaml 的 survey_coverage 段。
+    // 与 c38c6b5c（archive 分支，只基于 2026-11-26 PDF）不同：source_doc 不再指向 ky51，
+    // 改指 2026-11-27 权威量房登记 survey/701_survey_corrected.yaml。
     assert.equal(confidence.geometry, 'inferred');
     assert.equal(confidence.structure, 'inferred');
-    assert.equal(confidence.surveyCompleted, false);
-    assert.equal(confidence.overallMaturity, 'inferred');
+    assert.equal(confidence.surveyCompleted, true);
+    assert.equal(confidence.overallMaturity, 'partial');
+    assert.ok(confidence.sourceDoc?.includes('701_survey_corrected'), 'source_doc 指向 2026-11-27 权威量房登记');
     assert.ok(confidence.materials.total > 0, 'has materials');
     assert.ok(confidence.materials.candidate > 0, 'candidate materials exist');
     assert.equal(

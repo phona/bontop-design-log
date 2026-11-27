@@ -36,7 +36,9 @@ test('行内尺寸优先于目录：无目录条目的参数化柜仍显示行�
   // 喂合成绝对条目——本测试只验「行内尺寸显示」，墙锚解算由 resolver-baseline /
   // mb-along-wall-distance 覆盖。期望行由条目自身的行内宽/深与解算摆位拼出，不钉绝对坐标。
   const context = loadDressingMapContext();
-  const real = context.furnishings.master_bedroom?.find((item) => item.id === 'mb.full_height_cabinet');
+  // 2026-11-27 干湿分离放弃：通顶柜由主卧衣柜改为主卫东墙通顶柜（house.yaml master_bath），
+  // 不再属于 master_bedroom；行内尺寸显示口径不变。
+  const real = context.furnishings.master_bath?.find((item) => item.id === 'mb.full_height_cabinet');
   assert.ok(real, 'mb.full_height_cabinet must be declared in config/house.yaml');
   const { placement, diagnostic } = resolveFurniturePlacement(real, context.wallSegments, context.hosts, context.anchors);
   assert.equal(diagnostic, undefined, `unexpected diagnostic: ${diagnostic ?? ''}`);
@@ -54,11 +56,11 @@ test('行内尺寸优先于目录：无目录条目的参数化柜仍显示行�
     support: real.support,
   };
   const { lines, failures } = sectionFor({
-    master_bedroom: [fixture],
+    master_bath: [fixture],
   });
   assert.deepEqual(failures, []);
   assert.deepEqual(lines, [
-    `| master_bedroom | ${real.type} | 1 | ${real.width}×${real.depth} | (${placement.x}, ${placement.z}) / ${real.rotation}° |`,
+    `| master_bath | ${real.type} | 1 | ${real.width}×${real.depth} | (${placement.x}, ${placement.z}) / ${real.rotation}° |`,
   ]);
 });
 

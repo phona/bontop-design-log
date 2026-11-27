@@ -157,7 +157,7 @@ test('Tier 1 结构：21 件确为墙锚/家具锚点关系，不带绝对 x/z',
     { room: 'study', id: 'study.seasonal_wardrobe_step_north', wall: 'w_mb_east', wall_side: 'east' },
     { room: 'study', id: 'study.seasonal_wardrobe_step_south', wall: 'w_mb_east', wall_side: 'east' },
     { room: 'balcony', id: 'balcony.washer', wall: 'w_balc_west', wall_side: 'east' },
-    { room: 'master_bedroom', id: 'mb.washbasin_cabinet', wall: 'w_mbath_south', wall_side: 'south' },
+    { room: 'master_bath', id: 'mb.washbasin_cabinet', wall: 'w_mbath_east', wall_side: 'west' },
     { room: 'master_bath', id: 'mbath.towel_set', wall: 'w_west_lower', wall_side: 'east' },
     { room: 'master_bedroom', id: 'mb.dressing_table', wall: 'w_west_upper', wall_side: 'east' },
     { room: 'bedroom_nw', id: 'bnw.shelf', wall: 'w_nw_north', wall_side: 'south' },
@@ -205,7 +205,7 @@ test('Tier 1 厨房北段：北柜东段沿墙 −0.20m，水槽与净水器跟�
 });
 
 test('Tier 1 厨房东段：东柜沿墙 −0.20m（南移），灶与烟机跟随，北段不动', () => {
-  // w_ent_west 自 (10.80,3.00) 向北：along −0.20 ⇒ 中心 z +0.20（南移）。
+  // w_ent_west 自 (11.11,3.00) 向北：along −0.20 ⇒ 中心 z +0.20（南移）。
   moveExperiment('kitchen', 'kitchen.cabinet_run_east', -MOVE,
     [
       { id: 'kitchen.gas_stove', dx: 0, dz: MOVE },
@@ -256,11 +256,13 @@ test('Tier 1 阳台：洗衣机沿墙 +0.20m，烘干机跟随（叠放）', () 
     { dx: 0, dz: MOVE });
 });
 
-test('Tier 1 主卫洗手柜：洗手柜沿墙 +0.20m，毛巾组不跟随（独立墙锚）', () => {
-  moveExperiment('master_bedroom', 'mb.washbasin_cabinet', MOVE,
+test('Tier 1 主卫洗手柜：洗手柜沿墙 +0.20m（南移，w_mbath_east 沿墙向 +z），毛巾组不跟随（独立墙锚）', () => {
+  // 2026-11-27 干湿分离放弃：洗手柜由 master_bedroom（w_mbath_south 南脸）移入 master_bath，
+  // 贴 w_mbath_east 西侧；沿墙向为 +z，along +0.20m ⇒ 中心 z +0.20（南移），x 不动。
+  moveExperiment('master_bath', 'mb.washbasin_cabinet', MOVE,
     [],
     ['mbath.towel_set', 'mb.dressing_table', 'mb.dressing_stool', 'mb.bed_180'],
-    { dx: MOVE, dz: 0 });
+    { dx: 0, dz: MOVE });
 });
 
 test('Tier 1 主卧梳妆：梳妆台沿墙 +0.20m，凳跟随', () => {

@@ -218,9 +218,10 @@ test('E8 三方配对：ceiling power_point == hvac power anchor ref == electric
 
 test('E2/E7 回归：真实 config 的全部 MEP 路线端点解析与 hvac anchor 平面位置零变化', () => {
   // 机制层改动的零几何证明：anchor-ref 改走单一解算、anchor 补 y、normalizeCeilingZone 抽共享
-  // 之后，137 条路线端点必须仍全部解析成功（resolveMepRoutes 的 from/to 平面值逐条比对快照）。
+  // 之后，139 条路线端点必须仍全部解析成功（resolveMepRoutes 的 from/to 平面值逐条比对快照）。
+  // 2026-11-27 PR #270：机器人泊位上下水 +2 条路线，137→139。
   const report = resolveMepRoutes(mepConfig, sourcesOf());
-  assert.equal(report.total, 137);
+  assert.equal(report.total, 139);
   assert.equal(report.unresolved, 0);
   const livingAnchor = diagram.anchors.find((a) => a.id === 'indoor_living')!;
   assert.ok(livingAnchor.ref, 'indoor_living 须以 ref 引用吊顶机位');

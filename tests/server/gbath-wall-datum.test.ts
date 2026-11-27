@@ -14,11 +14,15 @@ import type { FurnishingItem, VertexLayoutYaml } from '../../shared/types.js';
 
 interface WallLike { x1: number; z1: number; x2: number; z2: number }
 
-// 手抄 config/layout/model-geometry.yaml 的三面宿主墙几何（下方有实读一致性断言）。
+// 手抄 config/layout/model-geometry.yaml 的五面宿主墙几何（下方有实读一致性断言）。
+// 2026-11-27 干湿分离放弃：两卫洗漱件移入内卫，宿主墙由开放区短墙改为内卫南/西墙；
+// 主卫通顶柜随之贴 w_mbath_east（墙线 2.60→2.90、起止随量房回填）。
 const WALLS: Record<string, WallLike> = {
-  w_gbath_east_open_vanity: { x1: 7.20, z1: 3.55, x2: 7.20, z2: 4.30 },
-  w_gbath_west_open_vanity: { x1: 5.60, z1: 3.55, x2: 5.60, z2: 4.30 },
-  w_mbath_east: { x1: 2.60, z1: 1.10, x2: 2.60, z2: 4.30 },
+  w_gbath_east_open_vanity: { x1: 7.50, z1: 3.64, x2: 7.50, z2: 4.04 },
+  w_gbath_west_open_vanity: { x1: 5.69, z1: 3.64, x2: 5.69, z2: 4.04 },
+  w_gbath_south: { x1: 5.69, z1: 3.64, x2: 7.50, z2: 3.64 },
+  w_gbath_west: { x1: 5.69, z1: 1.36, x2: 5.69, z2: 3.64 },
+  w_mbath_east: { x1: 2.90, z1: -0.04, x2: 2.90, z2: 3.75 },
 };
 const SEGMENTS = new Map(Object.entries(WALLS).map(([id, wall]) => [id, [wall]]));
 
@@ -61,66 +65,71 @@ describe('gbath wall datum (2026-11-06 口径 A)', () => {
     }
   });
 
-  it('vanity is anchored to the datum finish face: center (6.89, 3.955), envelope x[6.64,7.14] z[3.61,4.30]', () => {
-    // 2026-11-06 issue #98 PR-3：vanity 不再写绝对 x/z，改 wall/wall_side/along 挂墙 +
-    // vanity_layout 声明分割。手算：中心 x = 7.20 − 0.06(半墙厚) − 0.0(clearance) − 0.50/2 = 6.89；
-    // 中心 z = 3.55(墙段北端) + 0.405(along) = 3.955，声明宽 0.69 → z[3.61,4.30]（两端贴死）。
+  it('vanity is anchored to the datum finish face: center (7.025, 3.43), envelope x[6.68,7.37] z[3.28,3.58]', () => {
+    // 2026-11-27 干湿分离放弃 + 业主裁定接受窄深柜：vanity 移入内卫南墙内侧东段（w_gbath_south 北脸），
+    // vanity_layout 0.69×0.30。手算：中心 x = 5.69(墙段西端) + 1.335(along) = 7.025；
+    // 中心 z = 3.64(墙线) − 0.06(半墙厚) − 0.0(clearance) − 0.30/2 = 3.43，宽 0.69 → x[6.68,7.37]，深 0.30 → z[3.28,3.58]。
     const vanity = guestBathItem('gbath.vanity');
     assert.equal(vanity.x, undefined, 'vanity must not declare absolute x (issue #98 PR-3)');
     assert.equal(vanity.z, undefined, 'vanity must not declare absolute z (issue #98 PR-3)');
-    assert.equal(vanity.wall, 'w_gbath_east_open_vanity');
-    assert.equal(vanity.wall_side, 'west');
-    closeTo(vanity.along as number, 0.405);
+    assert.equal(vanity.wall, 'w_gbath_south');
+    assert.equal(vanity.wall_side, 'north');
+    closeTo(vanity.along as number, 1.335);
     const placement = resolve(vanity);
-    closeTo(placement.x, 6.89);
-    closeTo(placement.z, 3.955);
-    closeTo(placement.x + 0.50 / 2, 7.14); // 背面（rotation=270，depth 沿世界 x）
-    closeTo(placement.x - 0.50 / 2, 6.64); // 正面
-    closeTo(placement.z - 0.69 / 2, 3.61); // 南端贴南墙南脸
-    closeTo(placement.z + 0.69 / 2, 4.30); // 北端贴墙段南端
+    closeTo(placement.x, 7.025);
+    closeTo(placement.z, 3.43);
+    closeTo(placement.z + 0.30 / 2, 3.58); // 背面（rotation=180，depth 沿世界 z，北向贴完成面）
+    closeTo(placement.z - 0.30 / 2, 3.28); // 正面
+    closeTo(placement.x - 0.69 / 2, 6.68); // 西端
+    closeTo(placement.x + 0.69 / 2, 7.37); // 东端
   });
 
-  it('mirror_cabinet_gbath back face lands on the finish face 7.14 (was on the wall line 7.20)', () => {
-    // 手算：中心 x = 7.20 − 0.06(半墙厚) − 0.0(clearance) − 0.14/2 = 7.07；
-    // 背面 = 7.07 + 0.07 = 7.14；along 0.405 → z = 3.55 + 0.405 = 3.955，宽 0.66 → z[3.625,4.285]。
-    const placement = resolve(
-      { type: 'mirror_cabinet_gbath', wall: 'w_gbath_east_open_vanity', wall_side: 'west', rotation: 270, along: 0.405, wall_clearance: 0.0, support: { kind: 'wall', bottom: 1.1 } },
-    );
-    closeTo(placement.x, 7.07);
-    closeTo(placement.z, 3.955);
-    closeTo(placement.x + 0.14 / 2, 7.14); // 背面贴完成面，不再穿渲染墙盒
-    closeTo(placement.x - 0.14 / 2, 7.00);
-    closeTo(placement.z - 0.66 / 2, 3.625);
-    closeTo(placement.z + 0.66 / 2, 4.285);
+  it('mirror_cabinet_gbath back face lands on the finish face 3.58 (was on the east open-vanity wall)', () => {
+    // 2026-11-27 干湿分离放弃：镜柜随台盆移入内卫南墙内侧（w_gbath_south 北脸，沿位 1.335 对齐台盆轴线）。
+    // 手算：中心 x = 5.69 + 1.335 = 7.025；中心 z = 3.64 − 0.06(半墙厚) − 0.0(clearance) − 0.14/2 = 3.51；
+    // 背面 = 3.51 + 0.07 = 3.58；宽 0.66 → x[6.695,7.355]。
+    const mirror = guestBathItem('gbath.mirror_cabinet');
+    assert.equal(mirror.wall, 'w_gbath_south');
+    assert.equal(mirror.wall_side, 'north');
+    closeTo(mirror.along as number, 1.335);
+    const placement = resolve(mirror);
+    closeTo(placement.x, 7.025);
+    closeTo(placement.z, 3.51);
+    closeTo(placement.z + 0.14 / 2, 3.58); // 背面贴完成面，不再穿渲染墙盒
+    closeTo(placement.z - 0.14 / 2, 3.44);
+    closeTo(placement.x - 0.66 / 2, 6.695);
+    closeTo(placement.x + 0.66 / 2, 7.355);
   });
 
-  it('heated_towel_rack back face lands on the west wall finish face 5.66 (was on the wall line 5.60)', () => {
-    // 手算：中心 x = 5.60 + 0.06(半墙厚) + 0.0(clearance) + 0.10/2 = 5.71；
-    // 背面 = 5.71 − 0.05 = 5.66；along 0.405 → z = 3.955，宽 0.55 → z[3.68,4.23]。
-    const placement = resolve(
-      { type: 'heated_towel_rack', wall: 'w_gbath_west_open_vanity', wall_side: 'east', along: 0.405, wall_clearance: 0.0, rotation: 90, support: { kind: 'wall', bottom: 1.05 } },
-    );
-    closeTo(placement.x, 5.71);
-    closeTo(placement.z, 3.955);
-    closeTo(placement.x - 0.10 / 2, 5.66); // 背面贴完成面，不再穿渲染墙盒
-    closeTo(placement.x + 0.10 / 2, 5.76);
-    closeTo(placement.z - 0.55 / 2, 3.68);
-    closeTo(placement.z + 0.55 / 2, 4.23);
+  it('towel_set back face lands on the west wall finish face 5.79 (was heated_towel_rack on the open-vanity wall)', () => {
+    // 2026-11-27 业主裁定撤电热毛巾架：改普通毛巾架落淋浴区西墙（w_gbath_west 东脸，沿位 1.25）。
+    // 手算：中心 x = 5.69 + 0.06(半墙厚) + 0.04(clearance) + 0.28/2 = 5.93；
+    // 背面 = 5.93 − 0.14 = 5.79；沿位 1.25 → z = 1.36 + 1.25 = 2.61，宽 0.04 → z[2.59,2.63]。
+    const towel = guestBathItem('gbath.towel_set');
+    assert.equal(towel.wall, 'w_gbath_west');
+    assert.equal(towel.wall_side, 'east');
+    closeTo(towel.along as number, 1.25);
+    const placement = resolve(towel);
+    closeTo(placement.x, 5.93);
+    closeTo(placement.z, 2.61);
+    closeTo(placement.x - 0.28 / 2, 5.79); // 背面贴完成面，不再穿渲染墙盒
+    closeTo(placement.x + 0.28 / 2, 6.07);
+    closeTo(placement.z - 0.04 / 2, 2.59);
+    closeTo(placement.z + 0.04 / 2, 2.63);
   });
 
   it('master mb_vanity_base_cabinet placement is unchanged by the datum refactor', () => {
-    // 手算：中心 x = 2.60 − 0.06(半墙厚) − 0.015(clearance) − 0.565/2 = 2.2425；
-    // along 2.51 为沿墙距离（自墙段起点顶点 v_bath_ne z=1.10 向北量；2026-11-07 issue #98
-    // 删除了本墙「along = 绝对 z」的历史特例，世界位置不变）→ z = 1.10 + 2.51 = 3.61；
-    // 宽 1.38 → z[2.92,4.30]。
+    // 2026-11-27 干湿分离放弃：通顶柜移入主卫、贴 w_mbath_east 西脸，沿位 2.245、宽 0.90、深 0.565、柜高 2.48。
+    // 手算：中心 x = 2.90 − 0.06(半墙厚) − 0.015(clearance) − 0.565/2 = 2.5425；
+    // 沿位 2.245 自墙段起点 (2.90,−0.04) 向北量 → z = −0.04 + 2.245 = 2.205；宽 0.90 → z[1.755,2.655]。
     const placement = resolve(
-      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.51, wall_clearance: 0.015, support: { kind: 'floor' } },
+      { type: 'mb_vanity_base_cabinet', wall: 'w_mbath_east', wall_side: 'west', rotation: 270, along: 2.245, wall_clearance: 0.015, support: { kind: 'floor' } },
     );
-    closeTo(placement.x, 2.2425);
-    closeTo(placement.z, 3.61);
-    closeTo(placement.x + 0.565 / 2, 2.525); // 背面（完成面 2.54 前 15mm 退让）
-    closeTo(placement.x - 0.565 / 2, 1.96);
-    closeTo(placement.z - 1.38 / 2, 2.92);
-    closeTo(placement.z + 1.38 / 2, 4.30);
+    closeTo(placement.x, 2.5425);
+    closeTo(placement.z, 2.205);
+    closeTo(placement.x + 0.565 / 2, 2.825); // 背面（完成面 2.84 前 15mm 退让）
+    closeTo(placement.x - 0.565 / 2, 2.26);
+    closeTo(placement.z - 0.90 / 2, 1.755);
+    closeTo(placement.z + 0.90 / 2, 2.655);
   });
 });

@@ -46,29 +46,34 @@ describe('furnitureObjectId', () => {
     assert.equal(furnitureObjectId('guest_bath', { type: 'toilet' }, 1), 'furniture:guest_bath:toilet:1');
   });
 
-  it('keeps gbath.vanity / gbath.robot_dock and every other guest_bath id when the two are reordered', () => {
+  it('keeps gbath.vanity / gbath.mirror_cabinet and every other guest_bath id when the two are reordered (dock 已移出客卫)', () => {
     const furnishings = loadSceneInputs().house.furnishings ?? {};
     const guestBath = furnishings.guest_bath ?? [];
     const vanityAt = guestBath.findIndex((item) => item.type === 'vanity');
-    const dockAt = guestBath.findIndex((item) => item.type === 'robot_dock_gbath');
-    assert.ok(vanityAt >= 0 && dockAt >= 0, 'guest_bath must declare vanity and robot_dock_gbath');
+    const mirrorAt = guestBath.findIndex((item) => item.type === 'mirror_cabinet_gbath');
+    assert.ok(vanityAt >= 0 && mirrorAt >= 0, 'guest_bath must declare vanity and mirror_cabinet_gbath');
     assert.equal(guestBath[vanityAt].id, 'gbath.vanity');
-    assert.equal(guestBath[dockAt].id, 'gbath.robot_dock');
+    assert.equal(guestBath[mirrorAt].id, 'gbath.mirror_cabinet');
+    // 2026-11-27 业主裁定：robot_dock 落厨房西墙北段（kitchen），不再是 guest_bath 成员，也不再是主走廊默认位。
+    const kitchen = furnishings.kitchen ?? [];
+    const dockAt = kitchen.findIndex((item) => item.type === 'robot_dock_gbath');
+    assert.ok(dockAt >= 0, 'kitchen must declare robot_dock_gbath (2026-11-27 业主裁定泊位)');
+    assert.equal(kitchen[dockAt].id, 'gbath.robot_dock');
+    assert.equal(guestBath.findIndex((item) => item.type === 'robot_dock_gbath'), -1, 'guest_bath must no longer declare robot_dock_gbath');
 
     const reordered: FurnishingItem[] = [...guestBath];
-    [reordered[vanityAt], reordered[dockAt]] = [reordered[dockAt], reordered[vanityAt]];
+    [reordered[vanityAt], reordered[mirrorAt]] = [reordered[mirrorAt], reordered[vanityAt]];
 
     const before = guestBathRuntimeIds(furnishings);
     const after = guestBathRuntimeIds({ ...furnishings, guest_bath: reordered });
 
     assert.equal(before.get('vanity'), 'gbath.vanity');
-    assert.equal(before.get('robot_dock_gbath'), 'gbath.robot_dock');
+    assert.equal(before.get('mirror_cabinet_gbath'), 'gbath.mirror_cabinet');
     assert.deepEqual([...after.entries()].sort(), [...before.entries()].sort(), 'swapping the two stable-id entries must not change any guest_bath runtime id');
     // PR-7 起客卫全部 placed 家具都带稳定 id：重排后同一组 id，没有一件退回下标口径。
     assert.equal(after.get('toilet'), 'gbath.toilet');
     assert.equal(after.get('exhaust_fan'), 'gbath.exhaust_fan');
-    assert.equal(after.get('mirror_cabinet_gbath'), 'gbath.mirror_cabinet');
-    assert.equal(after.get('heated_towel_rack'), 'gbath.heated_towel_rack');
+    assert.equal(after.get('towel_set'), 'gbath.towel_set');
     assert.equal(after.size, before.size);
 
     // 对照：去掉 id 后同样的重排会改掉下标 ID——证明上面的不变是 id 带来的。
@@ -76,7 +81,8 @@ describe('furnitureObjectId', () => {
     // （断引用诊断、不进场景），这正是稳定 id 承重的直接证据；其余家具下标同样漂移。
     const strip = (items: FurnishingItem[]) => items.map(({ id: _id, ...rest }) => rest);
     const indexedAfter = guestBathRuntimeIds({ ...furnishings, guest_bath: strip(reordered) });
-    assert.equal(indexedAfter.get('robot_dock_gbath'), undefined, '剥掉宿主稳定 id 后 mount 断引用，dock 不进场景');
+    // 重排后 vanity 在 placed 下标 3、mirror 在 placed 下标 0：剥掉稳定 id 后两者都退回下标口径。
+    assert.equal(indexedAfter.get('mirror_cabinet_gbath'), 'furniture:guest_bath:mirror_cabinet_gbath:0');
     assert.equal(indexedAfter.get('vanity'), 'furniture:guest_bath:vanity:3');
   });
 });

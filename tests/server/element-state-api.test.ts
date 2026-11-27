@@ -68,14 +68,14 @@ describe('element state API', () => {
     assert.equal(res.body.version, 1);
     assert.equal(res.body.withConflicts, false);
     assert.equal(res.body.cachedAt, null, '不带 conflicts 时不缓存，cachedAt 必须是 null');
-    assert.equal(res.body.states.length, 167);
-    assert.equal(res.body.summary.total, 167); // DEC-2026-10-12-R1 删主卧两盏壁灯元素（164→162）；R2 删两卫平板灯与墙控（162→158）；DEC-2026-10-13-R5 删电视墙灯带（158→157）；DEC-2026-10-17-R20 水电点位批：电气 100→105、给排水 32→33（157→163）；2026-11-17 PR #259 第二轮 pipe_box 3 盒进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2：新增两卫淋浴冷水进口点位，给排水 33→35（165→167）
+    assert.equal(res.body.states.length, 170);
+    assert.equal(res.body.summary.total, 170); // DEC-2026-10-12-R1 删主卧两盏壁灯元素（164→162）；R2 删两卫平板灯与墙控（162→158）；DEC-2026-10-13-R5 删电视墙灯带（158→157）；DEC-2026-10-17-R20 水电点位批：电气 100→105、给排水 32→33（157→163）；2026-11-17 PR #259 第二轮 pipe_box 3 盒进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2：新增两卫淋浴冷水进口点位，给排水 33→35（165→167）；2026-11-27 业主裁定撤客卫电热毛巾架，删 sock_gbath_towel，电气 104→103（167→166）；2026-11-27 扫地机器人泊位定厨房水槽供水，新增 faucet_robot_dock / drain_robot_dock，给排水 35→37（166→168）；2026-11-27 业主裁定全屋增压泵只预留，新增 pump_booster_reserve / sock_booster_pump_reserve，电气 103→104、给排水 37→38（168→170）
     // 与 tests/server/element-state.test.ts 的真实台账快照同口径：两个吊顶分区仍未挂 DEC；
     // 厨房烟机插座因本轮移到试案位置，显式 position_status: pending。
     assert.equal(res.body.summary.undeclared, 2);
-    assert.equal(res.body.summary.pending, 37); // 2026-11-08 issue #98 S1-B +2：sock_kitchen_dishwasher（note 明文「⚠️坐标待量房」）与 net_ap_corridor（note 明文「二者待网络方案定标后冻结」）由 DEC 引用 confirmed 降为 position_status: pending 显形——诚实降级，不是丢失；与 tests/server/element-state.test.ts 同口径（decision 通道归零、confirmed 73→6）。前史：DEC-2026-11-05-R5 新增 #75 水压实测绑 faucet_gbath_vanity（33→34）；2026-11-06 issue #98 PR-4 三点位显式申报：faucet_gbath_vanity 由 ledger 规则改走 config_status 规则（status: inferred，#75 仍作 openQuestion 挂带）pending 34→33；sock_gbath_robot 与 drain_gbath_vanity 原凭 note 内 DEC 引用落 confirmed，现显式 status: inferred（设计推断占位 / 精度三件套同口径），confirmed 77→75、inferred 49→52；含 #61 台盆镜柜、#64 冰箱新电源待定，以及试位中的 sock_kitchen_hood；DEC-2026-10-17-R20 +4：sock_fridge_living / sock_kitchen_east_counter / sock_weakbox（新增点位未画路由待复核）与 sock_gbath_towel（换墙迁移复核）落 pending（28→32）；DEC-2026-10-23-R03 +1：#74 改写显名 drain_gbath_floor（客卫二次排水锚点，与主卫 drain_mbath_floor 绑 #50 同口径）落 pending（32→33）；2026-11-06 issue #98 PR-6 +2：sock_gbath_vanity / sock_gbath_vanity_2 宿主核实=墙挂（不挂柜）并按口径 A 迁到西完成面 x 7.14，同步精度三件套 status: inferred + position_status: pending（x 依渲染基准先行、7.14/7.20 结构真值待 pending #76 量房），confirmed 75→73、pending 33→35
+    assert.equal(res.body.summary.pending, 38); // 2026-11-08 issue #98 S1-B +2：sock_kitchen_dishwasher（note 明文「⚠️坐标待量房」）与 net_ap_corridor（note 明文「二者待网络方案定标后冻结」）由 DEC 引用 confirmed 降为 position_status: pending 显形——诚实降级，不是丢失；与 tests/server/element-state.test.ts 同口径（decision 通道归零、confirmed 73→6）。前史：DEC-2026-11-05-R5 新增 #75 水压实测绑 faucet_gbath_vanity（33→34）；2026-11-06 issue #98 PR-4 三点位显式申报：faucet_gbath_vanity 由 ledger 规则改走 config_status 规则（status: inferred，#75 仍作 openQuestion 挂带）pending 34→33；sock_gbath_robot 与 drain_gbath_vanity 原凭 note 内 DEC 引用落 confirmed，现显式 status: inferred（设计推断占位 / 精度三件套同口径），confirmed 77→75、inferred 49→52；含 #61 台盆镜柜、#64 冰箱新电源待定，以及试位中的 sock_kitchen_hood；DEC-2026-10-17-R20 +4：sock_fridge_living / sock_kitchen_east_counter / sock_weakbox（新增点位未画路由待复核）与 sock_gbath_towel（换墙迁移复核）落 pending（28→32）；DEC-2026-10-23-R03 +1：#74 改写显名 drain_gbath_floor（客卫二次排水锚点，与主卫 drain_mbath_floor 绑 #50 同口径）落 pending（32→33）；2026-11-06 issue #98 PR-6 +2：sock_gbath_vanity / sock_gbath_vanity_2 宿主核实=墙挂（不挂柜）并按口径 A 迁到西完成面 x 7.14，同步精度三件套 status: inferred + position_status: pending（x 依渲染基准先行、7.14/7.20 结构真值待 pending #76 量房），confirmed 75→73、pending 33→35；2026-11-27 业主裁定撤客卫电热毛巾架，删 sock_gbath_towel 及其 pending_selection blocker（37→36）；2026-11-27 业主裁定全屋增压泵只预留，新增 pump_booster_reserve / sock_booster_pump_reserve（status: pending，36→38）
     assert.equal(res.body.summary.byStatus.undeclared, 2);
-    assert.ok(res.body.summary.byKind.electrical === 104 && res.body.summary.byKind.plumbing === 35); // DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104； // 电气点位 107→105（R1）→101（R2 删两卫平板灯与墙控）→100（DEC-2026-10-13-R5 删电视墙灯带）；DEC-2026-10-17-R20 100→105、给排水 32→33；2026-11-17 量价算法审计跟进 blocking 2：新增两卫淋浴冷水进口点位，给排水 33→35
+    assert.ok(res.body.summary.byKind.electrical === 104 && res.body.summary.byKind.plumbing === 38); // DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104； // 电气点位 107→105（R1）→101（R2 删两卫平板灯与墙控）→100（DEC-2026-10-13-R5 删电视墙灯带）；DEC-2026-10-17-R20 100→105、给排水 32→33；2026-11-17 量价算法审计跟进 blocking 2：新增两卫淋浴冷水进口点位，给排水 33→35；2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel，电气 104→103；2026-11-27 机器人泊位定厨房水槽供水，新增 faucet_robot_dock / drain_robot_dock，给排水 35→37；2026-11-27 全屋增压泵只预留，新增 pump_booster_reserve / sock_booster_pump_reserve，电气 103→104、给排水 37→38
   });
 
   it('GET /api/element-state?conflicts=1 attaches verifier conclusions and a cache timestamp', async () => {
@@ -84,7 +84,7 @@ describe('element state API', () => {
     assert.equal(typeof res.body.cachedAt, 'string');
     assert.ok(res.body.cachedAt.length > 0, '带 conflicts 时必须带 cachedAt，让人知道是不是旧数据');
     assert.ok(!Number.isNaN(Date.parse(res.body.cachedAt)), 'cachedAt 必须是 ISO 时间串');
-    assert.equal(res.body.summary.total, 167, '接上 verifier issue 后构件总数不变（DEC-2026-10-12-R1/R2 删壁灯与两卫平板灯后 164→158；DEC-2026-10-13-R5 删电视墙灯带后 158→157；DEC-2026-10-17-R20 水电点位批后 163；2026-11-17 PR #259 第二轮 pipe_box 3 盒进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2：新增两卫淋浴冷水进口点位后 167）');
+    assert.equal(res.body.summary.total, 170, '接上 verifier issue 后构件总数不变（DEC-2026-10-12-R1/R2 删壁灯与两卫平板灯后 164→158；DEC-2026-10-13-R5 删电视墙灯带后 158→157；DEC-2026-10-17-R20 水电点位批后 163；2026-11-17 PR #259 第二轮 pipe_box 3 盒进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2：新增两卫淋浴冷水进口点位后 167；2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel 后 166；2026-11-27 机器人泊位定厨房水槽供水，新增 faucet_robot_dock / drain_robot_dock 后 168；2026-11-27 全屋增压泵只预留，新增 pump_booster_reserve / sock_booster_pump_reserve 后 170）');
     // 冲突集合不能凭空消失：verify-spatial / penetration / electrical-lint 当前有 issue
     assert.ok(res.body.states.some((state: { conflicts: string[] }) => state.conflicts.length > 0));
   });
@@ -175,10 +175,10 @@ describe('element state API', () => {
     const missing = await request(createApp()).get('/api/element-state').expect(503);
     assert.equal(missing.body.error, 'element state is not ready');
 
-    // 成功路径永远带满 167 条（DEC-2026-10-12-R1/R2 前为 164，DEC-2026-10-13-R5 后为 157，DEC-2026-10-17-R20 后为 163；DEC-2026-10-27-R01 删床头开关后为 162；2026-11-17 PR #259 第二轮 pipe_box 3 盒进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2 新增两卫淋浴冷水进口点位后为 167）：契约里没有「空 states」这种合法响应。
+    // 成功路径永远带满 170 条（DEC-2026-10-12-R1/R2 前为 164，DEC-2026-10-13-R5 后为 157，DEC-2026-10-17-R20 后为 163；DEC-2026-10-27-R01 删床头开关后为 162；2026-11-17 PR #259 第二轮 pipe_box 3 盒进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2 新增两卫淋浴冷水进口点位后为 167；2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel 后为 166；2026-11-27 机器人泊位定厨房水槽供水，新增 faucet_robot_dock / drain_robot_dock 后为 168；2026-11-27 全屋增压泵只预留，新增 pump_booster_reserve / sock_booster_pump_reserve 后为 170）：契约里没有「空 states」这种合法响应。
     const ok = await request(createApp(getElementState)).get('/api/element-state').expect(200);
     assert.equal(ok.body.states.length, ok.body.summary.total);
-    assert.equal(ok.body.states.length, 167);
+    assert.equal(ok.body.states.length, 170);
   });
 
   it('rejects unrecognised flag values instead of silently reading them as false', async () => {

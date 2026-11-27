@@ -71,18 +71,18 @@ test('只量实心分区：19 个计量、6 台 ac_indoor 排除', () => {
 
 test('逐分区净面积与声明一致（含圆角/阴角修正）', () => {
   // 直角区：外框即净面积
-  assert.ok(Math.abs(byId.get('ceiling_kitchen')!.netAreaM2 - 8.64) < 1e-9);
-  assert.ok(Math.abs(byId.get('ceiling_guest_bath')!.netAreaM2 - 3.36) < 1e-9); // R04：东界 7.10→7.20
-  assert.ok(Math.abs(byId.get('ceiling_main_corridor')!.netAreaM2 - 3.75) < 1e-9);
-  // 客厅北缘边吊：6.20×1.25 − 两个外露东角 R100；走廊共边保持方正
-  assert.ok(Math.abs(byId.get('ceiling_living')!.netAreaM2 - (7.75 - 2 * 0.01 * (1 - Math.PI / 4))) < 1e-9);
-  // 主卧通长假梁：4.20×0.50 直角区，净面积 2.10（2026-11-23 门头盒改梁）
-  assert.ok(Math.abs(byId.get('ceiling_master_beam')!.netAreaM2 - 2.1) < 1e-9);
+  assert.ok(Math.abs(byId.get('ceiling_kitchen')!.netAreaM2 - 9.2055) < 1e-9); // 2026-11-27 量房：厨房 3.61×2.55
+  assert.ok(Math.abs(byId.get('ceiling_guest_bath')!.netAreaM2 - 4.8508) < 1e-9); // R04：东界 7.10→7.20；2026-11-27 量房：客卫 1.81×2.68、南缘改开发商门洞线 z=4.04
+  assert.ok(Math.abs(byId.get('ceiling_main_corridor')!.netAreaM2 - 5.09795) < 1e-9); // 2026-11-27 量房：主走廊 2.99×1.705（x[4.16,7.15]×z[3.75,5.455]）
+  // 客厅北缘边吊：6.22×1.155 − 两个外露东角 R100；走廊共边保持方正
+  assert.ok(Math.abs(byId.get('ceiling_living')!.netAreaM2 - (6.22 * 1.155 - 2 * 0.01 * (1 - Math.PI / 4))) < 1e-9);
+  // 主卧通长假梁：4.16×0.50 直角区，净面积 2.08（2026-11-23 门头盒改梁；2026-11-27 量房：东墙 4.20→4.16）
+  assert.ok(Math.abs(byId.get('ceiling_master_beam')!.netAreaM2 - 2.08) < 1e-9);
   // 餐厅服务带：一阳角 R150 配一阴角 R150，净面积回到外框
   assert.ok(Math.abs(byId.get('ceiling_dining_west_band')!.netAreaM2 - 0.95) < 1e-9);
   // 北带（DEC-2026-10-08-R05）：SW 阴角 + SE 镜像凹弧（填西南开口、与门厅西缘相切），两处各加料 0.15²(1−π/4)
   assert.ok(
-    Math.abs(byId.get('ceiling_dining_north_band')!.netAreaM2 - (1.80 + 2 * 0.15 * 0.15 * (1 - Math.PI / 4))) < 1e-9, // R04：西界 7.70→7.80，外框 1.86→1.80
+    Math.abs(byId.get('ceiling_dining_north_band')!.netAreaM2 - (3.01 * 0.6 + 2 * 0.15 * 0.15 * (1 - Math.PI / 4))) < 1e-9, // R04：西界 7.70→7.80，外框 1.86→1.80；2026-11-27 量房：西界 8.10、东界 11.11，外框 3.01×0.60=1.806
   );
 });
 
@@ -102,7 +102,7 @@ test('阴角周长只净增 πf/2：入边 +f、出边 −f 抵消（C-1 回归�
   const round = computeCeilingTakeoff([one('r', [0, 0, 1, 1], { corner_radii: { sw: 0.15 } })]);
   assert.ok(Math.abs(round.zones[0].perimeterM - (4 - 2 * 0.15 + (Math.PI * 0.15) / 2)) < 1e-9);
   // 实盘两带：解析周长 == builder 轮廓周长（采样弦误差 <0.002），不再是旧式的 +2f
-  assert.ok(Math.abs(byId.get('ceiling_dining_north_band')!.perimeterM - (7.2 + 2 * (Math.PI * 0.15) / 2)) < 1e-9);
+  assert.ok(Math.abs(byId.get('ceiling_dining_north_band')!.perimeterM - (7.22 + 2 * (Math.PI * 0.15) / 2)) < 1e-9); // 2026-11-27 量房：北带外框周长 7.20→7.22（3.01+0.60 两边）
   assert.ok(Math.abs(byId.get('ceiling_dining_west_band')!.perimeterM - (4.8 - 2 * 0.15 + (Math.PI * 0.15) / 2 + (Math.PI * 0.15) / 2)) < 1e-9);
   for (const id of ['ceiling_dining_north_band', 'ceiling_dining_west_band']) {
     const rendered = outlinePerimeter(id);
@@ -153,19 +153,19 @@ test('解析化面积与渲染轮廓（buildMixedRectangleOutline + shoelace）�
 test('分类小计：石膏板 / 铝扣板 / 窗帘盒 / 晾衣架', () => {
   const { byClass } = takeoff;
   assert.equal(byClass.gypsum_board.zones, 10);
-  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 25.036) < 0.01); // R01 重算：门厅区 1.0584→2.561，石膏板净面积 +1.5026；2026-11-23 通长假梁：门头盒净 1.330→梁 2.10，+0.770
+  assert.ok(Math.abs(byClass.gypsum_board.netAreaM2 - 24.7437) < 0.01); // R01 重算：门厅区 1.0584→2.561，石膏板净面积 +1.5026；2026-11-23 通长假梁：门头盒净 1.330→梁 2.10，+0.770；2026-11-27 量房回填：客厅北缘 7.7457→7.1798、主走廊 3.75→5.09795、门厅 2.561→1.9173、梁 2.10→2.08、北带 1.8097→1.8157、儿童房空调带 1.80→1.395、走廊 2.70→2.691、书房空调带 1.44→1.458、书房角 0.18→0.159，净 −0.29265
   assert.equal(byClass.aluminum_buckle.zones, 3);
-  assert.ok(Math.abs(byClass.aluminum_buckle.netAreaM2 - 16.576) < 0.01); // R04：客卫吊顶 +0.21
-  assert.equal(byClass.aluminum_buckle.panelCount, 192);
+  assert.ok(Math.abs(byClass.aluminum_buckle.netAreaM2 - 22.8868) < 0.01); // R04：客卫吊顶 +0.21；2026-11-27 量房回填：厨房 8.64→9.2055、主卫 4.576→8.8305、客卫 3.36→4.8508
+  assert.equal(byClass.aluminum_buckle.panelCount, 290);
   // 窗帘盒：5 个分区全部计入，另单列延长米（行业主口径是元/米）
   assert.equal(byClass.curtain_box.zones, 5);
-  assert.ok(Math.abs(byClass.curtain_box.netAreaM2 - 4.463) < 0.01);
-  assert.ok(Math.abs(byClass.curtain_box.linearM - 17.85) < 1e-9);
+  assert.ok(Math.abs(byClass.curtain_box.netAreaM2 - 4.4325) < 0.01); // 2026-11-27 量房回填：客厅盒 1.10→1.0925、主卧南盒 1.05→1.04、主卧西盒 0.825→0.8125、书房南盒（parent）0.75→0.7475、东南客房盒 0.7375→0.74
+  assert.ok(Math.abs(byClass.curtain_box.linearM - 17.73) < 1e-9); // 2026-11-27 量房回填：客厅盒 4.40→4.37、主卧南盒 4.20→4.16、主卧西盒 3.30→3.25、书房南盒（parent）3.00→2.99、东南客房盒 2.95→2.96，净 −0.12
   assert.equal(byClass.curtain_box.pricingUnit, 'linear_m');
   assert.equal(byClass.drying_rack.zones, 1);
-  assert.ok(Math.abs(byClass.drying_rack.netAreaM2 - 1.08) < 1e-9);
-  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 47.155) < 0.01) // R01 重算：门厅区 +1.5026; // R04：北带 −0.06 + 客卫吊顶 +0.21；2026-11-23 通长假梁 +0.770
-  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 84.45) < 0.05); // R01 重算：门厅区展开面积 = 净 2.561 + 周长 6.54×厚 0.30；2026-11-12：厨房/客卫/主卫铝扣板 0.15→0.30，三区周长 (12.0+8.72+7.4)×0.15 = +4.218，78.256→82.474；2026-11-16 量价算法审计 C-1：阴角周长 +2f 改 +πf/2（北带 −0.60m、西带 −0.30m），展开 −0.27 → 82.204；2026-11-23 通长假梁：净 +0.770、周长 4.478→9.40（展开 +4.922×0.30=+1.477），82.204→84.450
+  assert.ok(Math.abs(byClass.drying_rack.netAreaM2 - 1.11) < 1e-9); // 2026-11-27 量房：晾衣架 1.80×0.60=1.08→1.85×0.60=1.11
+  assert.ok(Math.abs(takeoff.totalNetAreaM2 - 53.173) < 0.01) // R01 重算：门厅区 +1.5026; // R04：北带 −0.06 + 客卫吊顶 +0.21；2026-11-23 通长假梁 +0.770；2026-11-27 量房回填：石膏板 −0.29265 + 铝扣板 +6.3108 + 窗帘盒 −0.03 + 晾衣架 +0.03，净 +6.01815；含客卫/走廊 0.4234㎡ 重叠双计（见上条测试，待裁定）
+  assert.ok(Math.abs(takeoff.totalExpandedAreaM2 - 100.168) < 0.05); // R01 重算：门厅区展开面积 = 净 2.561 + 周长 6.54×厚 0.30；2026-11-12：厨房/客卫/主卫铝扣板 0.15→0.30，三区周长 (12.0+8.72+7.4)×0.15 = +4.218，78.256→82.474；2026-11-16 量价算法审计 C-1：阴角周长 +2f 改 +πf/2（北带 −0.60m、西带 −0.30m），展开 −0.27 → 82.204；2026-11-23 通长假梁：净 +0.770、周长 4.478→9.40（展开 +4.922×0.30=+1.477），82.204→84.450；2026-11-27 量房回填：84.450→100.168（铝扣板净 +6.3108 且厚 0.41/0.382/0.407 展开、石膏板周长与厚度重算）
 });
 
 test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () => {
@@ -183,12 +183,13 @@ test('窗帘盒逐个点名：5 个都在，且都是显式声明的 trade', () 
 });
 
 test('铝扣板板块数：eps-ceil，浮点不会多算一块板', () => {
-  assert.equal(byId.get('ceiling_kitchen')!.panelCount, 96);   // ⌈3.6/0.3⌉×⌈2.4/0.3⌉
-  assert.equal(byId.get('ceiling_master_bath')!.panelCount, 54); // ⌈2.6/0.3⌉×⌈1.76/0.3⌉
+  assert.equal(byId.get('ceiling_kitchen')!.panelCount, 117);   // ⌈3.61/0.3⌉×⌈2.55/0.3⌉ = 13×9（2026-11-27 量房：厨房 3.61×2.55）
+  assert.equal(byId.get('ceiling_master_bath')!.panelCount, 110); // ⌈2.9/0.3⌉×⌈3.045/0.3⌉ = 10×11（2026-11-27 量房：主卫吊顶 2.90×3.045；房间面积 8.7870 含西南圆角切除，吊顶分区为整矩形 8.8305）
   // 旧宽 1.5/0.3 在浮点下是 5.000000000000001：裸 Math.ceil 会误算 6 列（eps-ceil 防线见实现）；
-  // 2026-10-23 R04 后客卫宽真实变为 1.60 → ⌈1.6/0.3⌉=6 列 × ⌈2.1/0.3⌉=7 行 = 42 为真值
-  assert.equal(byId.get('ceiling_guest_bath')!.panelCount, 42);
-  assert.equal(takeoff.aluminumBucklePanelCount, 192);
+  // 2026-10-23 R04 后客卫宽真实变为 1.60 → ⌈1.6/0.3⌉=6 列 × ⌈2.1/0.3⌉=7 行 = 42 为真值；
+  // 2026-11-27 量房后客卫 1.81×2.68 → ⌈1.81/0.3⌉=7 列 × ⌈2.68/0.3⌉=9 行 = 63
+  assert.equal(byId.get('ceiling_guest_bath')!.panelCount, 63);
+  assert.equal(takeoff.aluminumBucklePanelCount, 290);
 });
 
 test('完成面标高与房间对照：原顶房间显形，不静默跳过', () => {

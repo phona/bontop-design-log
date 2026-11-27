@@ -1580,7 +1580,7 @@ export function buildCostSummary(control: AnyRecord): CostSummaryData {
     const pipeBoxLabor = pipeBoxLaborPrices(masonryCard);
     const pipeBoxLaborCny = pipeBoxPrices.laborCny;
     const pipeBoxMaterialCny = pipeBoxPrices.materialCny;
-    const wallTilePart = 2704; // 2026-11-17 包管量入账：墙砖量 35.9836→38.6276 ㎡（pipe_box 盒面 +2.644）×70 ≈ 2,704（R04 后 2,591；2026-11-12 PR #225 后 2,519）
+    const wallTilePart = 2678; // 2026-11-17 包管量入账：墙砖量 35.9836→38.6276 ㎡（pipe_box 盒面 +2.644）×70 ≈ 2,704（R04 后 2,591；2026-11-12 PR #225 后 2,519；2026-11-26 量房回填后 2,672：墙砖量 38.6276→38.1724 ㎡；2026-11-27 业主实测回填后 2,670：墙砖量 38.1724→38.1363 ㎡，窗台面 15.9774→15.9413 ㎡；2026-11-27 干湿分离放弃后 2,698：台盆贴砖带移墙（客卫旧带 −0.170 + 新带 +0.228、主卫新带 +0.347），墙段 19.5510→19.9552 ㎡，全量 38.1363→38.5405 ㎡；2026-11-27 客卫门洞移至开发商口后 2,693：入口墙两侧饰面带 0.515→0.40m（墙砖 −0.069㎡），全量 38.5405→38.4715 ㎡；2026-11-27 阳台门取消后 2,678：w_balc_east 待拆隔断上的阳台门 d_kit_balc 并不存在，门段两砖带删除（墙砖 −0.216㎡），全量 38.4715→38.2555 ㎡）
     if (Math.abs(tileSqm * 70 - wallTilePart) > 1) {
       throw new Error(`cost summary: 墙砖主材对不上（${qty(tileSqm, 4)} ㎡ × 70 = ${qty(tileSqm * 70, 2)}，映射登记 ${wallTilePart}）`);
     }

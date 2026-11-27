@@ -110,23 +110,24 @@ test('材料合计区间与金额区间 = 各项相加 × takeoff 面积', () =>
   assert.equal(result.materialTotal.min, sumMin);
 });
 
-test('材料额度按施工方分形态口径算：121.01 元/㎡，判定 above_range（C12 修正 C11；R01 重算后基数 24.267㎡；2026-11-23 通长假梁边吊 +2.925m）', () => {
+test('材料额度按施工方分形态口径算：124.05 元/㎡，判定 above_range（C12 修正 C11；R01 重算后基数 24.267㎡；2026-11-23 通长假梁边吊 +2.925m；2026-11-27 量房回填：边吊 24.30→24.03m、平顶 6.311→7.01525㎡、基数 25.0364→24.7437㎡）', () => {
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   assert.equal(result.contractor.basis, 'forms');
-  // 边吊 24.30m×160 + 平顶 6.311㎡×155 = 4,866.21；纯人工 24.30×60 + 6.311×60 = 1,836.66（R01 重算门厅区 1.0584→2.561；2026-11-23 通长假梁边吊 21.375→24.30）
+  // 边吊 24.03m×160 + 平顶 7.01525㎡×155 = 4,932.16；纯人工 24.03×60 + 7.01525×60 = 1,862.72（R01 重算门厅区 1.0584→2.561；2026-11-23 通长假梁边吊 21.375→24.30）
   const breakdown = result.contractor.formBreakdown!;
   assert.equal(breakdown.length, 2);
   assert.equal(breakdown[0].form, 'edge_drop');
-  assert.equal(breakdown[0].quantity, 24.3);
-  assert.equal(breakdown[0].turnkeyYuan, 3888);
-  assert.equal(breakdown[0].materialYuan, 2430);
+  assert.equal(breakdown[0].quantity, 24.03);
+  assert.equal(breakdown[0].turnkeyYuan, 3844.8);
+  assert.equal(breakdown[0].materialYuan, 2403);
   assert.equal(breakdown[1].form, 'flat');
-  assert.equal(breakdown[1].turnkeyYuan, 978.2); // R01 重算：6.311×155
-  // 4,866.21 − 1,836.66 = 3,029.55 → ÷ 25.0364 = 121.01 元/㎡；面积基数与边吊长度随几何口径变，单价不变
-  assert.equal(result.contractor.allowancePerSqm, 121.01);
-  // 2026-11-23 通长假梁：边吊 +2.925m（+468 元）只摊薄 0.770㎡ 石膏板，额度 112.8→121.01，越过参考上限 119
+  assert.equal(breakdown[1].quantity, 7.02); // 7.01525 按 round2 显示
+  assert.equal(breakdown[1].turnkeyYuan, 1087.36); // R01 重算：6.311×155；量房回填后 7.01525×155
+  // 实现口径：allowance = round2(包工包料/㎡) − round2(纯人工/㎡) = 199.33 − 75.28 = 124.05 元/㎡；面积基数与边吊长度随几何口径变，单价不变
+  assert.equal(result.contractor.allowancePerSqm, 124.05);
+  // 2026-11-23 通长假梁：边吊 +2.925m（+468 元）只摊薄 0.770㎡ 石膏板，额度 112.8→121.01，越过参考上限 119；2026-11-27 量房回填：边吊 −0.27m、平顶 +0.70425㎡、基数 −0.29265㎡，额度 121.01→124.05，仍高于上限 119
   assert.equal(result.verdict, 'above_range');
-  assert.equal(result.slackVsMaxYuanPerSqm, 2.01);
+  assert.equal(result.slackVsMaxYuanPerSqm, 5.05);
 });
 
 test('C11 的「低于下限」是旧口径的假象：全按 155 元/㎡ 算额度只有 95', () => {
@@ -147,7 +148,9 @@ test('三态判定随单价变化，证明结论对单价敏感', () => {
       { form: 'flat' as const, unit: '元/㎡', turnkey_per_unit: turnkeyFlat, labor_only_per_unit: 60 },
     ] },
   });
-  assert.equal(computeCeilingMaterialCost(clamp(140, 135), takeoff).verdict, 'below_range');
+  // 量房回填后边吊/平顶占比变了：旧 (140,135) 的额度 98.96 已落入参考区间 [97,119]，不再是 below_range；
+  // 改用 (135,130) 恢复三态（额度 92.68 < 97）；(150,145)→111.50 within、(170,165)→136.60 above 不变
+  assert.equal(computeCeilingMaterialCost(clamp(135, 130), takeoff).verdict, 'below_range');
   assert.equal(computeCeilingMaterialCost(clamp(150, 145), takeoff).verdict, 'within_range');
   assert.equal(computeCeilingMaterialCost(clamp(170, 165), takeoff).verdict, 'above_range');
 });
@@ -166,8 +169,8 @@ test('敏感性：业主口径与可核实口径并列，差多少就是未核�
   const result = computeCeilingMaterialCost(loadCeilingMaterialCost(), takeoff);
   assert.deepEqual(result.ownerOnlyPerSqm, { min: 70, max: 115 });
   assert.deepEqual(result.ownerOnlyCoverage.missing, []);
-  // 分形态口径下额度 112.16 落在业主口径区间内；
-  // 未核实数据的影响改由 ownerOnly(70～115) 与 materialPerSqm(98～120) 的差体现
+  // 分形态口径下额度 124.05 高于业主口径区间 [70,115]；未核实数据的影响改由
+  // ownerOnly(70～115) 与 materialPerSqm(97～119) 的差体现（旧注 112.16 为 R01 前的额度，已过期）
   assert.ok(result.warnings.some((note) => note.includes('两个口径') || note.includes('业主转述')));
 });
 

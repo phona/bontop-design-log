@@ -1406,8 +1406,9 @@ export interface ElectricalPoint {
    *
    * 构件状态唯一来源是 `status`（见 ComponentStatus 注）。本字段只剩一个消费者：
    * `shared/mep-takeoff.ts` 的算量延期判定（`status === 'pending' && position_status === 'pending'`
-   * = 「点位尚未具备可报价/施工的稳定归属」）。当前仅 sock_child_ac / sock_kitchen_oven
-   * 两个预留占位点声明它；其余点位的「位置待核」已由 `status: pending` + `blocker` 承载。
+   * = 「点位尚未具备可报价/施工的稳定归属」）。当前仅 sock_child_ac / sock_kitchen_oven /
+   * sock_booster_pump_reserve 三个预留占位点声明它（2026-11-27 增压泵预留插座加入；双 pending
+   * 仍是算量延期的判定条件，字段只许具名预留点用）；其余点位的「位置待核」已由 `status: pending` + `blocker` 承载。
    */
   position_status?: ElectricalPointStatus;
   /** 未决声明：`status` 为 pending / undeclared 时必填（issue #98 S2-A）。 */
@@ -1700,11 +1701,26 @@ export interface HvacRoute {
   reason?: string;
 }
 
+export interface HvacReservedHole {
+  id: string;
+  status: 'inferred' | 'pending' | 'void';
+  room: string | null;
+  host: string;
+  position: { x: number; z: number; y: number } | null;
+  diameter_m: number;
+  source: string;
+  uncertainty_m: number | null;
+  not_for_construction: true;
+  note: string;
+  survey_confirmation: string;
+}
+
 export interface HvacDiagram {
   anchors: HvacAnchor[];
   terminals: HvacTerminal[];
   routes: HvacRoute[];
   reference_constraints: HvacReferenceConstraint[];
+  developer_reserved_holes?: HvacReservedHole[];
 }
 
 export interface HvacLoadDesignRoom {
@@ -2040,6 +2056,25 @@ export interface FurnishingCutout {
   center?: [number, number];
   offset?: [number, number];
   size: [number, number];
+  /** 缺口平开门（仅 robot_dock 缺口）：平时关着挡基站，维护时打开。 */
+  door?: FurnishingCutoutDoor;
+}
+
+/**
+ * 缺口平开门（2026-11-27 业主裁定）：缺口加一扇平开门，平时关着挡基站，
+ * 维护时打开。门底部留口供机器人进出，门不封死（留口即通风口）。
+ */
+export interface FurnishingCutoutDoor {
+  /** 平开门，合页装柜体端板上。 */
+  type: 'hinged';
+  /** 门板宽（m），与缺口同宽 0.45。 */
+  width_m: number;
+  /** 合页侧：柜体端板（缺口西端板）。 */
+  hinge: 'end_panel';
+  /** 门底部机器人进出开口 [宽, 高]（m）：约 0.40×0.12，对准基站正面（机器人实物 95mm 高、364mm 宽，留余量）；约数，现场按基站实物复核后钉死。 */
+  bottom_opening_m: [number, number];
+  /** 门不封死：底部开口即通风口，基站烘干拖布的热气须散出；门板顶部不顶死台面。 */
+  vented: boolean;
 }
 
 /**

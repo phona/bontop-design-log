@@ -652,7 +652,10 @@ test('C4：反例——轴线/标高层缺失一律 fail-closed，不出局部�
   assert.deepEqual(base.report.diagnostics, [], '基线须无诊断');
 
   // (1) axes 表整体缺失：四十九条具名轴线路由（强电 37 + 弱电 7 + 冷媒 5）全部 via 未解；
-  // dining 只用方向型 axis_run（axis 'x'，不查表），仍解出；解出总数 88 条。
+  // dining 只用方向型 axis_run（axis 'x'，不查表），仍解出；解出总数 90 条。
+  // 2026-11-27 PR #270：机器人泊位上下水 2 条新路线（water-robot-dock-supply /
+  // drain-robot-dock-to-riser）均只用方向型步（axis x/z），不查 axes 表，故随
+  // 总数 137→139 一并计入解出侧，88→90；具名轴线路由仍 49 条。
   const noAxesCoord = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;
   noAxesCoord.axes = [];
   const noAxes = resolveMepRoutes(noAxesCoord, base.sources);
@@ -663,7 +666,7 @@ test('C4：反例——轴线/标高层缺失一律 fail-closed，不出局部�
     assert.match(r.diagnostics[0], /引用未知轴线/, `${id} 诊断须点名轴线`);
   }
   assert.deepEqual(routeOf(noAxes, 'refrigerant-dining').unresolved, [], 'dining 只用方向型 axis_run，不查 axes 表，须仍解出');
-  assert.equal(noAxes.routes.filter((r) => r.unresolved.length === 0).length, 88, '其余路由不得被牵连（137 − 49 条具名轴线路由）');
+  assert.equal(noAxes.routes.filter((r) => r.unresolved.length === 0).length, 90, '其余路由不得被牵连（139 − 49 条具名轴线路由）');
 
   // (2) 只删走廊轴：四条支路 + trunk（末步沿走廊轴）失败；dining 不引用走廊轴，仍解出。
   const noCorridorCoord = JSON.parse(JSON.stringify(all.coordination)) as MepCoordination;

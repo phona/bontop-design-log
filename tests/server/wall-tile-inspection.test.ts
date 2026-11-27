@@ -174,11 +174,11 @@ test('wall-tile geometry matches the declared wall span and height', () => {
   const balcSouth = byId.get('walltile_balc_south')!;
   assert.ok(balcSouth, '阳台南墙（共墙阳台侧）声明缺失');
   assert.equal(balcSouth.userData.roomId, 'balcony');
-  // R11 D4=L 型：客厅防水台竖面（墙上竖直面 6.2×0.15）+ 水平台面（x=9.80 处、伸进室内 0.15）
+  // R11 D4=L 型：客厅防水台竖面（墙上竖直面 6.22×0.15）+ 水平台面（x=9.80 处、伸进室内 0.15）
   const front = byId.get('silltile_living_south_front')!;
   assert.ok(front, '防水台竖面贴砖带缺失');
   const frontGeo = front.geometry as unknown as { parameters: { width: number; height: number } };
-  assert.ok(Math.abs(frontGeo.parameters.width - 6.20) < 1e-6, `竖面宽应为 6.20，实际 ${frontGeo.parameters.width}`);
+  assert.ok(Math.abs(frontGeo.parameters.width - 6.22) < 1e-6, `竖面宽应为 6.22，实际 ${frontGeo.parameters.width}`); // PR #270：客餐厅南界由斜线改折线，防水台 6.20→6.22
   assert.ok(Math.abs(frontGeo.parameters.height - 0.15) < 1e-6, `竖面高应为 0.15，实际 ${frontGeo.parameters.height}`);
   assert.ok(Math.abs(front.position.y - 0.075) < 1e-6, `竖面中心应在地面以上 0.075，实际 ${front.position.y}`);
   assert.equal(front.userData.roomId, 'living_dining');
@@ -186,7 +186,7 @@ test('wall-tile geometry matches the declared wall span and height', () => {
   const top = byId.get('silltile_living_south_top')!;
   assert.ok(top, '防水台台面贴砖带缺失');
   const topGeo = top.geometry as unknown as { parameters: { width: number; height: number } };
-  assert.ok(Math.abs(topGeo.parameters.width - 6.20) < 1e-6);
+  assert.ok(Math.abs(topGeo.parameters.width - 6.22) < 1e-6); // PR #270：客餐厅南界由斜线改折线，防水台 6.20→6.22
   assert.ok(Math.abs(topGeo.parameters.height - 0.15) < 1e-6, `台面进深应为 0.15，实际 ${topGeo.parameters.height}`);
   assert.ok(Math.abs(top.position.y - 0.15) < 1e-6, `台面标高应为 0.15，实际 ${top.position.y}`);
   assert.ok(Math.abs(top.rotation.x - (-Math.PI / 2)) < 1e-6, '台面必须水平');
@@ -203,16 +203,10 @@ test('wall-tile geometry matches the declared wall span and height', () => {
   const dryGeo = dry.geometry as unknown as { parameters: { width: number; height: number } };
   assert.ok(Math.abs(dryGeo.parameters.width - 0.65) < 1e-6, `干区宽应为 0.65（让出门洞），实际 ${dryGeo.parameters.width}`);
   assert.ok(Math.abs(dryGeo.parameters.height - 0.30) < 1e-6);
-  // 厨房生活阳台门段：P11 起拆成东西两段（门洞 d_kit_balc 占中段 0.80m），各 0.20m × 0.90m
-  const balcW = byId.get('walltile_kitchen_balc_east_west')!;
-  const balcE = byId.get('walltile_kitchen_balc_east_east')!;
-  assert.ok(balcW && balcE, '厨房生活阳台门段必须拆成东西两段');
-  for (const [mesh, name] of [[balcW, '西段'], [balcE, '东段']] as const) {
-    const geo = mesh.geometry as unknown as { parameters: { width: number; height: number } };
-    assert.ok(Math.abs(geo.parameters.width - 0.20) < 1e-6, `${name}宽应为 0.20，实际 ${geo.parameters.width}`);
-    assert.ok(Math.abs(geo.parameters.height - 0.90) < 1e-6, `${name}高应为 0.90，实际 ${geo.parameters.height}`);
-    assert.equal(mesh.userData.roomId, 'kitchen');
-  }
+  // 厨房生活阳台门段：2026-11-27 阳台门 d_kit_balc 取消（w_balc_east 为待拆隔断），
+  // 门洞占中段的两段砖带（各 0.20m × 0.90m）随之删除；墙体本身拆除前保留在模型内。
+  assert.equal(byId.has('walltile_kitchen_balc_east_west'), false, '门段西段砖带已随 d_kit_balc 删除');
+  assert.equal(byId.has('walltile_kitchen_balc_east_east'), false, '门段东段砖带已随 d_kit_balc 删除');
   assert.equal(byId.has('walltile_kitchen_balc_east'), false, '整段 1.20m 的旧声明必须已拆分删除');
 });
 
@@ -298,25 +292,25 @@ test('wall-tile status surface mirrors HVAC: required/ready/missing + byRoom + b
     byHeightTier[tier].segments += 1; byHeightTier[tier].lengthM += len; byHeightTier[tier].areaSqm += len * band;
   }
   assert.deepEqual(Object.keys(byRoom).sort(), ['主卧', '主卫', '书房', '厨房', '客卫', '客房', '西北次卧', '客厅', '阳台'].sort());
-  assert.ok(Math.abs(byRoom['厨房'].lengthM - 11.20) < 1e-9, `厨房段长应为 11.20（墙砖 4.80 + 上飘窗 front 3.60 + underside 3.60 + 生活阳台门段拆分后 0.40 − 原整段 1.20，DEC-2026-10-09-P09/P11），实际 ${byRoom['厨房'].lengthM}`);
-  assert.ok(Math.abs(byRoom['主卫'].lengthM - 11.420331156954752) < 1e-9, `主卫应为 11.420331157（3.56m墙砖 + 西墙低反坎1.52m + w_bath_north弧墙 front/top 6.340331157，而不是2.60m弦长；DEC-2026-10-09-P11），实际 ${byRoom['主卫'].lengthM}`);
-  assert.ok(Math.abs(byRoom['客卫'].lengthM - 6.55) < 1e-9, `客卫应为 6.55（5.80 + 防溅带堆叠 0.75；DEC-2026-10-23-R04 北墙砖段随墙长 1.50→1.60），实际 ${byRoom['客卫'].lengthM}`);
+  assert.ok(Math.abs(byRoom['厨房'].lengthM - 10.82) < 1e-9, `厨房段长应为 10.82（墙砖 3.60：ent_west 2.40 + vrv_east 1.00 + west_stub 0.20；北飘窗 front 3.61 + underside 3.61；PR #270：门段两砖带随 d_kit_balc 删除 −0.40，北飘窗墙长 3.60→3.61 实测 +0.02；旧 11.20。注意：HEAD 旧断言 10.96 是错的——删带只记了 −0.24，实际两带各 0.20 共 −0.40），实际 ${byRoom['厨房'].lengthM}`);
+  assert.ok(Math.abs(byRoom['主卫'].lengthM - 16.11314902062964) < 1e-9, `主卫应为 16.113149021（墙砖 4.61：东墙 1.76 + 防溅带 1.05 + 南墙淋浴 1.15 + 干区 0.65；西下防水台 front/top 2.595×2 = 5.19；北墙 front/top 3.1566×2 = 6.313；PR #270：防溅带新增 +1.05、下防水台 0.76→2.595、北弧墙 3.1702→3.1566；DEC-2026-10-09-P11），实际 ${byRoom['主卫'].lengthM}`);
+  assert.ok(Math.abs(byRoom['客卫'].lengthM - 5.8) < 1e-9, `客卫应为 5.80（西墙 1.35 + 开放洗漱区 0.40 + 北墙淋浴西 0.64 + 东 0.62 + 北窗台 0.55 + 南防溅带 0.69 + 东淋浴 0.35 + 东余段 0.80 + 东开放洗漱区 0.40；PR #270：开放洗漱区 0.75→0.40 ×2、北墙 1.60 拆三段 0.64+0.62+0.55、南防溅带新增 0.69、东防溅带 0.75 删、kitseg 0.20 删；DEC-2026-10-23-R04 北墙砖段随墙长 1.50→1.60），实际 ${byRoom['客卫'].lengthM}`);
   assert.ok(Math.abs(byRoom['阳台'].lengthM - 2.80) < 1e-9, `阳台应为 2.80（南墙砖段随墙长 1.50→1.60，DEC-2026-10-23-R04），实际 ${byRoom['阳台'].lengthM}`);
-  assert.ok(Math.abs(byRoom['客厅'].lengthM - 12.40) < 1e-9, `客厅应为防水台 front+top 两段各 6.20m，实际 ${byRoom['客厅'].lengthM}`);
-  assert.ok(Math.abs(byRoom['主卧'].lengthM - 21.420331156) < 1e-9, `主卧应为 21.420331156（3.25+2.69+4.770165578m，各 front+top），实际 ${byRoom['主卧'].lengthM}`);
-  assert.ok(Math.abs(byRoom['书房'].lengthM - 6.00) < 1e-9, `书房应为 6.00（3.00m，各 front+top），实际 ${byRoom['书房'].lengthM}`);
-  assert.ok(Math.abs(byRoom['西北次卧'].lengthM - 6.00) < 1e-9, `西北次卧应为 6.00（3.00m，各 front+top），实际 ${byRoom['西北次卧'].lengthM}`);
-  assert.ok(Math.abs(byRoom['客房'].lengthM - 6.00) < 1e-9, `客房应为 6.00（3.00m，各 front+top），实际 ${byRoom['客房'].lengthM}`);
-  assert.ok(Math.abs(sillWallLength('w_bath_north') - 3.170165578477376) < 1e-9,
-    'w_bath_north 必须按 resolved 弧墙折线 3.170165578m 计，禁止退回 2.60m 弦长');
-  assert.deepEqual(Object.keys(byHeightTier).sort(), ['0.15', '0.30', '0.33', '0.71', '0.90', '1.10', '2.50'], '0.50 档随 C18 后 stale 挡水条删除；0.71/1.10 是厨房上飘窗 front/underside（DEC-2026-10-09-P09）');
+  assert.ok(Math.abs(byRoom['客厅'].lengthM - 12.44) < 1e-9, `客厅应为防水台 front+top 两段各 6.22m（PR #270：客餐厅南界折线后 6.20→6.22），实际 ${byRoom['客厅'].lengthM}`);
+  assert.ok(Math.abs(byRoom['主卧'].lengthM - 22.22314902062964) < 1e-9, `主卧应为 22.223149021（西上 3.895 + 西中 2.80 + 南 4.417，各 front+top；PR #270：西上 3.25→3.895、西中 2.69→2.80、南 4.770→4.417，实测回填），实际 ${byRoom['主卧'].lengthM}`);
+  assert.ok(Math.abs(byRoom['书房'].lengthM - 5.98) < 1e-9, `书房应为 5.98（2.99m，各 front+top；PR #270：3.00→2.99 实测），实际 ${byRoom['书房'].lengthM}`);
+  assert.ok(Math.abs(byRoom['西北次卧'].lengthM - 5.58) < 1e-9, `西北次卧应为 5.58（2.79m，各 front+top；PR #270：3.00→2.79 实测），实际 ${byRoom['西北次卧'].lengthM}`);
+  assert.ok(Math.abs(byRoom['客房'].lengthM - 5.92) < 1e-9, `客房应为 5.92（南窗台 front 2.96 + top 2.96；PR #270：3.00→2.96，front 高 0.15→0.115），实际 ${byRoom['客房'].lengthM}`);
+  assert.ok(Math.abs(sillWallLength('w_bath_north') - 3.1565745103148193) < 1e-9,
+    'w_bath_north 必须按 resolved 弧墙折线 3.156574510m 计，禁止退回 2.90m 弦长（PR #270：弧墙 r=1→r=0.45，北墙 z=1.10→−0.39）');
+  assert.deepEqual(Object.keys(byHeightTier).sort(), ['0.12', '0.15', '0.30', '0.33', '0.70', '1.10', '1.36', '2.50'], '0.50 档随 C18 后 stale 挡水条删除；0.70/1.10 是厨房上飘窗 front/underside（DEC-2026-10-09-P09；PR #270：front 高 0.71→0.70）；0.90 档随 2026-11-27 门段两砖带删除而消失；0.12 是东南客房窗台 front（高 0.115）；1.36 是客卫北窗台（0.55×1.36）');
   assert.equal(byHeightTier['2.50'].segments, 7, '砖到顶：客卫淋浴 3（R04 东墙段拆二）+ 厨房 E2 贴满 3 + 主卫淋浴 1（业主 2026-10-07 终裁）；2026-11-12 PR #225：砖到顶 2.65→2.50');
-  assert.equal(byHeightTier['0.90'].segments, 2, '厨房阳台门段杂砖带 P11 拆成东西两段（E2 贴满后仅此一处维持 0.90）');
+  assert.equal(byHeightTier['0.90'], undefined, '0.90 档已随 2026-11-27 厨房阳台门段两砖带删除而消失（此前仅此一处维持 0.90）');
   assert.equal(byHeightTier['0.30'].segments, 8, '两卫非淋浴 6 + 阳台 2');
-  assert.equal(byHeightTier['0.33'].segments, 1, '客卫台盆防溅带（0.77→1.10）');
-  assert.equal(byHeightTier['0.15'].segments, 18, '防水台竖面+台面：客厅 2 + 主卫 4 + 卧室/书房 12');
+  assert.equal(byHeightTier['0.33'].segments, 2, '台盆防溅带 2 段：主卫东墙 1.05 + 客卫南墙 0.69（均 0.77→1.10）');
+  assert.equal(byHeightTier['0.15'].segments, 17, '防水台竖面+台面：客厅 2 + 主卫 4 + 卧室/书房 11（PR #270：东南客房窗台 front 高 0.15→0.115，归入 0.12 档）');
   const total = Object.values(byRoom).reduce((s, v) => s + v.areaSqm, 0);
-  assert.ok(Math.abs(total - 35.983599347) < 1e-4, `总面积应为 35.983599347（2026-11-12 PR #225：7 条砖带 2.65→2.50，−1.035；R04 后 37.018599347），实际 ${total}`);
+  assert.ok(Math.abs(total - 35.611545) < 1e-4, `总面积应为 35.611545（PR #270：35.983599347→35.611545，−0.372；分项：2.50 档 −1.35、0.30 档 −0.21、0.33 档 +0.327、0.90 档 −0.36、0.71→0.70 档 −0.029、1.10 档 +0.011、0.15 档 +0.151、1.36 档 +0.748、0.12 档 +0.340。注意：HEAD 旧断言 35.767599347 是错的——删门段砖带只记了 −0.216，实际两带 0.40×0.90 = 0.36），实际 ${total}`);
 });
 
 test('HouseScene wall-tile audit surface stays independent of HVAC', () => {

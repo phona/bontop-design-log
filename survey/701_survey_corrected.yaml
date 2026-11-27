@@ -1,0 +1,195 @@
+# 701 修正量房数据（8栋701）—— AUTHORITATIVE
+#
+# 本文件是 8栋701 的权威量房数据源。2026-11-27 业主自带激光测距仪实测，
+# 凡与任何 DWG/PDF/量房图值冲突处，一律以本文件为准。
+# DWG 文件（survey/701_survey_20261126.dwg、survey/701_survey_20261127_corrected.dwg、
+# survey/701_survey_20261126.pdf、survey/701_survey_20261126_sheet.pdf）只是量房方原件，
+# 仅供参考；其中已被本文件纠正的数值（见文末 superseded_dwg_values）不得再当依据用。
+# 未来任何代理读到本仓量房数据，先读本文件，再读 DWG；DWG 值与本文件不一致时，
+# 不得用 DWG 值覆盖本文件，也不得向业主重复追问已被本文件纠正的数。
+#
+# 单位：全部线性尺寸为毫米（mm），除非另有注明。模型用米（mm / 1000）。
+# 测法：业主激光实测 2026-11-27。量房容差口径（业主 2026-11-27 裁定）：
+# 实测误差毫米至约 10cm 可接受，模型算错不可接受。
+# 首轮 2715mm 客厅读数是错的（2026-11-27 12:42 业主复测纠正），已作废，不得再引用。
+#
+# 来源：业主 2026-11-27 现场实测（Space 量房清单 s9-*，照片 1–55）+ 修正版 DWG
+# （survey/701_survey_20261127_corrected.dwg，md5 2574f022c3a852b7b4ee706133e289e9）
+# 交叉核对。用户实测与 DWG 冲突时以用户实测为准（DWG 仅在用户未测处作参考）。
+
+survey_date: "2026-11-27"
+surveyor: "业主（自带激光测距仪）"
+supersedes: "survey/701_survey_20261126.dwg 与 survey/701_survey_20261127_corrected.dwg 及一切量房图值（冲突处）"
+status: "authoritative"
+
+room_heights_mm:
+  # 地面到顶板（楼板底）的净高。入户花园与客卫是例外，见各条备注。
+  living: 2820            # 南向客厅。首轮 2715 读数错误作废；DWG 2820 在此处是对的
+  dining: 2826            # 餐厅。客餐厅均值 2823；与卧室圈（约 2898–2910）差约 80mm，不是初算的 185mm
+  kitchen: 2910           # DWG 写 2820 是错的
+  master_bedroom: 2904    # DWG 写 2900，差 4mm
+  study: 2909
+  bedroom_nw: 2905        # 儿童房（西北次卧）
+  bedroom_se: 2885        # 东南客房
+  corridor: 2898          # 走廊
+  entry_garden: 2674      # 入户花园：到吊顶的净高（有吊顶），不是楼板高；楼板约 2900
+  master_bath: 2882       # 实测 2879/2884 均值
+  guest_bath_beam_bottom: 2603  # 客卫：到梁底的净高；楼板约 2907
+
+bay_windows:
+  # 飘窗：sill = 窗台（飘窗台面）高，floor_to_bay = 地面到飘窗底（下飘窗下沿）的高度。
+  # “下吊 750”是飘窗下那截实墙的高度，不是吊顶。
+  kitchen:
+    sill_mm: 700          # 约数，不是 750
+    floor_to_bay_mm: 2201
+  master_bedroom:
+    sill_mm: 750
+    floor_to_bay_mm: 2149
+    depth_mm:
+      south: 1180
+      west: 960
+      north: 1184
+  study:
+    floor_to_bay_mm: 2163
+    sill_mm: 750          # 派生值（2909 − 2163 = 746，取整 750），不是实测，不得当实测值用
+  bedroom_nw:
+    floor_to_bay_mm: 2156
+    depth_mm: 1160        # 约数
+    sill_mm: 750          # 派生值（2905 − 2156 = 749，取整 750），不是实测，不得当实测值用
+  bedroom_se:
+    floor_to_bay_mm: 2150 # Space s9-7-2 四读数 2148/2156/2145/2151 均值约 2150
+    depth_mm: 1160
+    sill_mm: 735          # 派生值（2885 − 2150），不是实测，不得当实测值用
+
+sunken_boxes_mm:
+  # 沉箱下沉深度（地面到箱底）。两卫均部分回填。
+  master_bath:
+    boxes: [370, 330]     # 两个沉箱，约 370 与约 330；DWG 统一写 350 是错的
+    divider_ledge: "两沉箱之间有分隔坎（修正版 DWG 新增 2 条墙线，模型坐标 x 0.24–2.45、z 0.86 与 1.06，200mm 厚墙的第二面），模型不以墙几何建沉箱分隔，待对照确认"
+  guest_bath:
+    depth: 410            # DWG 写 350 是错的
+
+beam_bottoms_mm:
+  kitchen: 2600
+  master_bedroom: 2500    # 模型原值已正确，实测核对无误
+  corridor: 2545
+  guest_bath: 2603        # 客卫梁底（同 room_heights_mm.guest_bath_beam_bottom）；梁上有通风槽 2906/2908，主卫经此通风、不另开槽
+
+wall_thicknesses_mm:
+  # 10 项内墙实测（Space s9-11-14~23，照片 47–55）。模型墙体无 thickness 字段，只作记录。
+  # 照片多为卷尺量墙边/门框边，归属未逐一确认，按 item id 与数值原样记录，不得猜测对应墙。
+  # 唯一可锚定的：220 与 DWG 厨房西墙双面 x 7.28–7.50 = 220mm 吻合，极可能为厨房西墙。
+  - { item: "s9-11-14", value: 205 }
+  - { item: "s9-11-15", value: 480, note: "含门框宽度，有效约 240（业主注：有一些门框宽度，可能砍一半吧）" }
+  - { item: "s9-11-16", value: 210 }
+  - { item: "s9-11-17", value: 130 }
+  - { item: "s9-11-18", value: null, note: "厨房与儿童房无此种墙体；若有则与客卫同规格（无照片）" }
+  - { item: "s9-11-19", value: 220, note: "与 DWG 厨房西墙双面 x 7.28–7.50 = 220mm 吻合，极可能为厨房西墙" }
+  - { item: "s9-11-20", value: 250, note: "2050 − 1800" }
+  - { item: "s9-11-21", value: 183, note: "823 − 640" }
+  - { item: "s9-11-22", value: 120 }
+  - { item: "s9-11-23", value: 120 }
+
+kitchen_width_mm:
+  clear: [3382, 3383]     # 净宽，两读数，面到面净空
+  structural: 3610        # 结构宽（x 7.50..11.11 墙线间距）；与净宽差 228mm，为东墙（w_ent_west，centerline x=11.11）伸入厨房的墙厚；西墙线 x=7.50 为厨房侧墙面，不另扣
+  note: "客厅宽约 6m（约数）与 DWG 南玻璃 5895mm 吻合；餐厅/厨房约 3.3m（约数）与 DWG 约 3.61m 差约 300mm，是净空与结构口径之差，不是 DWG 错误；精确净宽须另测，不得凭约数改模型平面尺寸"
+
+openings_mm:
+  kitchen_dining:
+    width: 2794           # 厨房–餐厅洞口宽；DWG 2785，差 9mm
+    height: 2555          # 不变
+
+partition_demolition:
+  # 客餐厅两道薄隔墙，2026-11-27 业主确认两道都得打掉、让客餐厅打通。拆除尚未执行，
+  # 模型暂不删墙（按拆除后实测更新）。面积为约数（业主：不是很准），不得当结算量用。
+  # 模型 w_cent_south 仅 1.155m 与实测严重不符，不得用该数算拆除面积。
+  decision: "both_demolish"
+  segments_m:
+    main_run: 3.45        # 主段，3.4–3.5m 约数
+    return_leg: 1.4        # 转角第二段，约数
+    sliding_door_segment: 2.0  # 推拉门区一段，约数（照片 aaee451f）
+  total_length_m: 6.85
+  height_m: 2.823         # 客厅 2820 / 餐厅 2826 均值
+  area_m2: 19.3           # 约数：6.85 × 2.823
+  wall_note: "隔墙之一标注 structure shear（推断）；若待拆隔墙含剪力墙段，拆除前须结构复核（BLK-STRUCTURE）"
+
+kitchen_west_partition_demolition:
+  # 厨房西隔断（w_balc_east），与客餐厅两道薄隔墙分开记：不是同一拆除项，不得并入 19.3㎡。
+  # 2026-11-27 业主确认：开发商仅为标记赠送面积而砌的隔断，待拆除；阳台门 d_kit_balc 并不存在。
+  # 拆除尚未执行，模型暂不删墙（按拆除后实测更新），门洞与门段贴砖带已先行删除。
+  decision: "demolish"
+  wall_id: w_balc_east
+  range: "x=7.50，z 1.36..2.40"  # 模型整段即本隔断（v_vrv_se → v_kit_s2，长 1.04m）
+  length_m: 1.04
+  height_m: 2.91          # 厨房侧层高 2910（实测）；模型墙高 2.910 一致
+  area_m2: 3.03           # 1.04 × 2.91 = 3.0264，约数，不得当结算量用
+
+drainage:
+  master_bath:
+    secondary_drain: "exists"
+    diameter_mm: 140       # 约 140mm 圆孔，位于沉箱最低点
+    action: "verify_existing"  # 核查与立管连通、口径、堵塞、1% 找坡；倒水试通（待做）
+  guest_bath:
+    secondary_drain: "none"  # 全无排水口，须新建
+    action: "build_new_per_DEC-2026-10-06-R1"  # DN50 最低点 + 1% 找坡 + 独立于马桶/地漏支管 + 轻质回填 + 回填前通球与闭水
+
+risers:
+  guest_bath: "corner by window（照片确认）"   # 模型推断 (5.8, 2.4) 与照片差约 1.4m，推断待复核；照片说在窗边东北角
+  master_bath: "on balcony（照片确认，两根白色 PVC 管）"
+  balcony_ne_corner: "none"  # GLM/DWG 称阳台东北角有立管是错的；用户已否认，照片确认无
+
+ac_reserved_holes:
+  # 开发商预留空调铜管穿梁/穿墙圆孔（白色圈），业主 2026-11-27 11:51 实拍 6 张（survey/photos/ac_hole_*_20261127.jpg）。
+  # 孔位无实测坐标，仅按照片描述登记；穿点以经销商/厂家现场定位为准。ac_child 未决，照片不解决。
+  # 2026-11-27 业主确认修正：照片 #5（深灰墙）实为东南卧室门梁，入户花园无预留孔；H6/H7 为主卧
+  # 两垂直梁（a↔b 对应哪道梁未确证）；厨房阳台门上方墙孔随待拆隔断作废（H3 void）。
+  count: 7
+  usable_count: 6
+  void_count: 1
+  locations:
+    - "southeast bedroom door beam：1（原误登为 entry garden door-top wall）"
+    - "kitchen north beam：1"
+    - "kitchen balcony-door-top wall：1，VOID（宿主墙 w_balc_east 待拆，阳台门不存在）"
+    - "corridor beam near end：1"
+    - "corridor beam far end：1"
+    - "master bedroom, two perpendicular beams：2"
+  constraint: "制冷剂管只许走预留孔穿梁；走廊梁底 2.545 < 管 2.60 < 楼板 2.898，2.60 管须走预留孔穿该梁；厨房梁底 2.60 = 管 2.60，主管在厨房铝扣板段升至 2.70，6 张照片未见厨房梁孔（已报经销商确认，未证实冲突）"
+
+waterproofing_informational_only:
+  # 防水由业主重做，模型不更新防水高度。以下现场值为参考，不得当模型事实用。
+  site_values_mm: [1285, 2060]
+  note: "1285 低于开发商称的 1500，也低于淋浴区要求的 1800；仅作参考，防水重做后以新做法为准"
+
+superseded_dwg_values:
+  # DWG 里错的数（或易被误用的数）与本文件纠正后的值。读 DWG 时见到这些数，一律以本文件为准。
+  - { dwg: "客厅层高 2820（唯一高度）", corrected: "客厅 2820、餐厅 2826、卧室圈 2885–2910；客餐厅只比卧室圈低约 80mm" }
+  - { dwg: "厨房层高 2820", corrected: "厨房 2910" }
+  - { dwg: "入户花园层高 2820", corrected: "入户花园吊顶 2674（楼板约 2900）" }
+  - { dwg: "主卧层高 2900", corrected: "主卧 2904" }
+  - { dwg: "沉箱下沉 350（统一）", corrected: "主卫两沉箱约 370/约 330，客卫约 410" }
+  - { dwg: "厨房东西 3610", corrected: "结构 3610 不变；净宽 3382/3383（面到面）" }
+  - { dwg: "厨房–餐厅洞口 2785", corrected: "洞口宽 2794，高 2555 不变" }
+  - { dwg: "S:127㎡", corrected: "口径未核实（合同建筑面积不到 100㎡，使用口径约 120㎡含赠送与入户花园）；不得拿 127 算单价或当模型面积" }
+  - { dwg: "南北方向（原图）", corrected: "原图南北反了，须反转 180°（2026-11-26 业主纠正；修正版 DWG 已由量房方旋转 180° 修正）" }
+  - { dwg: "阳台东北角有立管（GLM/DWG 读法）", corrected: "阳台东北角无立管；主卫立管在阳台，客卫立管在窗边角落" }
+  - { dwg: "客卫有二次排水口（隐含）", corrected: "客卫无排水口，须新建；主卫排水口已存在（约 140mm 孔），待倒水试通" }
+  - { dwg: "（模型）w_cent_south 隔墙 1.155m", corrected: "实测隔墙约 3.45m + 约 1.4m + 约 2m，总长约 6.85m，拆除面积约 19.3㎡；1.155m 不得用" }
+
+dwg_provenance:
+  # DWG 原件的来历与比对结论（原件不动，只作参考）。权威值在本文件，不在 DWG 里。
+  original: "survey/701_survey_20261126.dwg（md5 7d88d693e6d4439f0535e97b84caa1ee，1,630,869 字节；标题“原始户型图”，S:127㎡，1:100，裸墙体量房图，无房间名无家具）"
+  corrected: "survey/701_survey_20261127_corrected.dwg（md5 2574f022c3a852b7b4ee706133e289e9，1,629,909 字节；量房方 2026-11-27 返修版，就用这版，不再向测量方要改动）"
+  corrected_diff: "全部尺寸值、门窗标注、注释、标题文字未变；改动有三：① 墙体层旋转 180°（DWG 点 293442, −59053 为中心，24 条旧墙线 22 条精确对应、24/24 在 10mm 内）——修正南北颠倒，修正后墙线与模型现有墙位一致，无墙位改动；② 新增 2 条墙线（模型 x 0.24–2.45、z 0.86 与 1.06，主卫双沉箱分隔坎）；③ 对象净 +9（+2 LINE、+2 LWPOLYLINE、+4 MLEADERSTYLE、+1 LEADER）"
+  sheet_pdf_note: "2026-11-26 出图纸（7m3n）比 DWG 多主卫标注（主卫下沉 350、部分已回填），DWG 仅客卫一处下沉 350；主卫深度以出图纸为准，但沉箱实测以本文件（约 370/约 330）为准"
+
+not_measured_or_derived:
+  # 仍未实测或只是派生的数，不得当实测值用。
+  - "东南客房飘窗窗台高约 735mm：派生（2885 − 2150），未实测"
+  - "书房飘窗窗台高 750mm：派生（2909 − 2163 = 746，取整 750），未实测"
+  - "儿童房飘窗窗台高 750mm：派生（2905 − 2156 = 749，取整 750），未实测"
+  - "墙厚 10 项的墙体归属：照片未逐一确认，按 item id 原样记录，不得猜测对应墙"
+  - "客卫立管精确坐标：照片定在窗边角落，模型推断 (5.8, 2.4) 待复核"
+  - "空调预留孔精确坐标：仅照片描述，无实测坐标；穿点以经销商/厂家现场定位为准"
+  - "餐厅/厨房约 3.3m：约数，精确净宽须另测"
+  - "隔墙拆除面积约 19.3㎡：约数（业主：不是很准），不得当结算量用"

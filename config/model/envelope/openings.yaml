@@ -87,7 +87,7 @@ elements:
   - id: north_recess_curtain
     type: curtain_run
     closed: false
-    walls: [w_bath_north, w_nw_north]
+    walls: [w_bath_north, w_mbath_ne_return, w_nw_north]
     height: 2.8
     join: continuous
 
@@ -99,13 +99,7 @@ elements:
     height: 2.8
     join: butt
 
-  # 南墙东段（东南次卧南侧幕墙）
-  - id: south_east_curtain
-    type: curtain_run
-    closed: false
-    wall: w_be_south
-    height: 2.8
-    join: butt
+  # 2026-11-26 量房：东南房南边是 2050 窗（win_be_south），不是通高幕墙。south_east_curtain 退场。
 
   # 飘窗
   # sill 口径 2026-08-21 修正：旧全屋 2.55 系客厅值误推广（2.55+0.45=3.0 穿楼板，无效）。
@@ -114,9 +108,9 @@ elements:
   - id: master_bedroom_west_bay
     type: bay_sill
     wall: w_west_upper
-    depth: 1.1
-    sill: 2.07
-    height: 0.76
+    depth: 0.96
+    sill: 2.149
+    height: 0.75
     reason: "主卧西墙飘窗（z=5.55~8.80 直墙段）"
     finish:
       paint:
@@ -143,10 +137,10 @@ elements:
   - id: master_bedroom_south_bay
     type: bay_sill
     wall: w_mb_south
-    depth: 1.1
-    sill: 2.07
-    height: 0.76
-    reason: "主卧南墙环幕飘窗（南缘 z=10.90）"
+    depth: 1.18
+    sill: 2.149
+    height: 0.75
+    reason: "主卧南墙环幕飘窗（南缘 z=10.90）。2026-11-27 业主实测：地面到下飘窗 2149，下飘窗高 750，深 1180；顶 2149+750=2899，对层高 2.904 差 5mm，闭合。量房 DWG 2165/750 作废。"
     finish:
       paint:
         - id: paint_master_bedroom_south_bay
@@ -159,9 +153,9 @@ elements:
     type: bay_sill
     wall: w_st_south
     depth: 1.1
-    sill: 2.07
-    height: 0.76
-    reason: "书房南墙飘窗（南缘 z=10.90，与主卧齐平）"
+    sill: 2.163
+    height: 0.75
+    reason: "书房南墙飘窗（南缘 z=10.90，与主卧齐平）。2026-11-27 业主实测：地面到下飘窗 2166/2163/2161，均值 2163，下飘窗高 750；顶 2163+750=2913，对层高 2.909 差 4mm，闭合。量房 DWG 2165/750 作废。"
     finish:
       paint:
         - id: paint_study_south_bay
@@ -173,10 +167,10 @@ elements:
   - id: bedroom_se_south_bay
     type: bay_sill
     wall: w_be_south
-    depth: 1.1
-    sill: 2.07
-    height: 0.76
-    reason: "客房南向凸窗（南缘 z=11.05）"
+    depth: 1.16
+    sill: 2.150
+    height: 0.735
+    reason: "客房南向凸窗（南缘 z=11.05）。2026-11-27 业主实测：地面到下飘窗 2148/2156/2145/2151，均值 2150；飘窗深 1160；顶 2150+735=2885，对层高 2.885 闭合。下飘窗高 735 为推导值（2885−2150），非实测，接近 750 标准；量房 DWG 2165/750 作废。"
     finish:
       paint:
         - id: paint_bedroom_se_south_bay
@@ -203,9 +197,9 @@ elements:
   - id: master_bedroom_west_mid_bay
     type: bay_sill
     wall: w_west_mid
-    depth: 1.1
-    sill: 2.07
-    height: 0.76
+    depth: 0.96
+    sill: 2.149
+    height: 0.75
     reason: "主卧西墙中段飘窗（2026-10-09 由 corridor_west_bay 改名，DEC-2026-10-09-P10：原名「走廊西墙」与几何不符——outline x[0,1.1]×z[2.86,5.55] 整块在 master_bedroom 矩形内，且模型里根本没有 corridor 这个 room，走廊本体在 x[4.2,7.2]×z[4.3,6.45]，离这扇窗 4 米。只改 id 不动几何/面积/room）"
     finish:
       paint:
@@ -238,10 +232,10 @@ elements:
   - id: bedroom_nw_north_bay
     type: bay_sill
     wall: w_nw_north
-    depth: 1.1
-    sill: 2.07
-    height: 0.76
-    reason: "西北次卧北墙飘窗（z=1.10 凹进段）"
+    depth: 1.16
+    sill: 2.156
+    height: 0.75
+    reason: "西北次卧北墙飘窗（北墙 z≈0；旧「z=1.10 凹进段」作废，2026-11-26 量房北墙拉直）。2026-11-27 业主实测：地面到下飘窗 2152/2159/2158，均值 2156，下飘窗高 750，深约 1160；顶 2156+750=2906，对层高 2.905 差 1mm，闭合。量房 DWG 2165/750 作废。"
     finish:
       paint:
         - id: paint_bedroom_nw_north_bay
@@ -254,9 +248,9 @@ elements:
     type: bay_sill
     wall: w_kit_north
     depth: 1.1
-    sill: 2.12
-    height: 0.71
-    reason: "厨房北墙飘窗（z=0 北缘）"
+    sill: 2.201
+    height: 0.70
+    reason: "厨房北墙飘窗（北缘 z=−0.15；旧「z=0」作废，2026-11-26 量房北墙 z=−0.145）。2026-11-27 业主实测：地面到下飘窗 2205/2201/2199，均值 2201，下飘窗高约 700（非 750）；顶 2201+700=2901，对层高 2.910 差 9mm，闭合。量房 DWG 2165/750 作废。"
     finish:
       tile:
         # ── 厨房上飘窗贴砖（2026-10-09 业主终裁：先刷漆 → 改贴砖，DEC-2026-10-09-P09）──
@@ -458,8 +452,8 @@ elements:
     wall: w_be_south
     depth: 0.15
     sill: 0.00
-    height: 0.15
-    reason: "东南客房南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01）"
+    height: 0.115
+    reason: "2026-11-26 量房：南边是 CW2050 窗，窗台 LD 115，反坎收到 115mm，不再按 150mm 通高幕墙根。front+top 贴砖不盖窗洞（DEC-2026-10-16-TILE-01 的 150 估算作废）"
     finish:
       tile:
         - id: silltile_bedroom_se_south_front
@@ -536,9 +530,9 @@ elements:
   - id: kitchen_dining_sliding_door
     type: sliding_door_run
     points:
-      - { x: 7.20, z: 2.40 }
-      - { x: 10.80, z: 2.40 }
-    height: 2.55
+      - { x: 7.50, z: 2.40 }
+      - { x: 10.294, z: 2.40 }
+    height: 2.555  # 2026-11-27 业主实测洞口宽 2794（2795/2793/2793），高 2555 不变；洞口 7.50..10.294=2.794，面积 7.14㎡。旧 3.60×2.55（9.18㎡）作废，价格待重核
     panels: 4
     open: true
 

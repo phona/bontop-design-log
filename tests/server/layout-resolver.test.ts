@@ -324,9 +324,13 @@ describe('房间面积扣圆角（2026-11-16 量价算法审计 D1）', () => {
     }
     const platformWant = expectedArea(raw.platform!.boundary);
     assert.ok(Math.abs(resolved.platform!.area! - platformWant) < 1e-6);
-    // 绝对值锚点（Python 独立复核）：26.844−0.2146 / 4.576−0.2146 / 1.60−0.2146
-    assert.ok(Math.abs(byId.get('master_bedroom')!.area! - 26.6293981634) < 1e-6);
-    assert.ok(Math.abs(byId.get('master_bath')!.area! - 4.3613981634) < 1e-6);
-    assert.ok(Math.abs(resolved.platform!.area! - 1.3853981634) < 1e-6);
+    // 绝对值锚点（Python 独立复核）：28.3435−0.0435 / 8.8305−0.0435 / 2.7331−0
+    // 2026-11-27 量房回填 + 干湿分离放弃后边界重画，旧锚点作废（26.6294/4.3614/1.3854）：
+    // 主卧鞋带 26.844→28.3435、主卫 4.576→8.8305（主卫边界含北侧 z[−0.39,2.655] 全段），
+    // 平台旧 1.6×1.00m r=1.0（约 1.39㎡）作废，现 1.81×1.51m bbox 2.7331㎡（见 hvac.yaml basis）；
+    // 每房仅一处 r=0.45 圆角，扣减 0.45²×(1−π/4)=0.0435；平台无圆角。
+    assert.ok(Math.abs(byId.get('master_bedroom')!.area! - 28.30004312808799) < 1e-6);
+    assert.ok(Math.abs(byId.get('master_bath')!.area! - 8.787043128087982) < 1e-6);
+    assert.ok(Math.abs(resolved.platform!.area! - 2.733099999999999) < 1e-6);
   });
 });

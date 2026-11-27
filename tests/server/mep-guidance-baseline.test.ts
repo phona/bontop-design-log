@@ -321,7 +321,11 @@ test('文档不许再把 2026-09-07 的快照当现行基线', () => {
   // 旧基线 0 error / 22 warning、15 条已接受项、68 条路线 / 13 个吊顶分区、13 处穿墙点
   assert.equal(/0 error \/ 22 warning/.test(guidance), false, '§6 的旧基线「0 error / 22 warning」必须已替换为实跑口径');
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
-  assert.match(guidance, /涉及\s*\*\*34 条路线 \/ 12 个吊顶分区\*\*/); // 2026-11-16 Codex blocking 修复后现值 34/12（study-curtain 2 处 110mm hit 清零，该路由退出涉及集合，curtain_box_parent_south 与 drying_rack_living 退出涉及分区）
+  assert.match(guidance, /涉及\s*\*\*38 条路线 \/ 14 个吊顶分区\*\*/); // 2026-11-26/27 量房回填后现值 38/14（34/12→38/14：2026-11-26 回填主卧梁完成面 2.50→2.60 增 8 处、涉及路线 34→39；2026-11-27 业主实测主卧梁完成面 2.60→2.50，5 条主卧路由退出、4 条窗帘盒路由进入，39→38，分区 +curtain_box_study_south / curtain_box_parent_south →14）。
+  // 注意：38/14 是文档当前自述值；verify:facts 实算为 39 条路线 / 15 个吊顶分区（见 §0 测试）——
+  // 干湿分离重画一步漏记：strong-power-mbath-service 首次进入涉及集合（+1 路线）且 ceiling_master_bath
+  // 首次进入涉及分区（+1 分区），文档 prose 链只记了 +1 处、没记路线/分区增量。该漂移由 §0 测试钉住，
+  // 本行只钉「文档不是 2026-09-07 旧快照」，不等同于「文档与实算一致」。
   // DEC-2026-10-28-R05：三个旧 curtain_box_* 分区退出涉及集合，分区数合法回到 13（16→13），旧快照守卫改钉路线数
   assert.equal(/68 条路线/.test(guidance), false, '§0 不许再出现旧口径 68 条路线');
   assert.equal(/design-datum\.yaml`（13 处）/.test(guidance), false, '§1 的穿墙点留档条数必须已按 design-datum.yaml 实条数改写');

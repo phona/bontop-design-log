@@ -12,7 +12,7 @@ version: '1.0'
 #    现 mount_height 1.65m 仅在双排时合规——箱体单/双排与容量列入 pending-site-data #30。
 # 口径：开关点位经 controls 绑定灯具、网络点位（含 DEC-2026-10-03-R1 新增 net_gateway / net_ap_corridor）
 # 归弱电箱系统，均不进入强电供电回路成员（Phase 1 口径）。
-# 点位口径：config/electrical.yaml 共 104 个点位（历史上 2026-10-06 R2 新增 sock_kitchen_oven 后为 111；DEC-2026-10-07-R12 删除客卫内置夜灯 NP-6/7/8、DEC-2026-10-07-R15 删除客厅 NP-4b 后减至 107；2026-10-12 业主裁定删主卧两盏明装床头壁灯（light_master_wall_l / light_master_wall_r）改小米床头灯插电后减至 105；2026-10-12 DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带、不另装平板灯，删 light_mbath_panel/light_gbath_panel/switch_mbath/switch_gbath 四点后减至 101；2026-10-13 DEC-2026-10-13-R5 业主裁定电视墙灯带不搞（删 light_tv_strip 与整条 lighting_tv_ambient 回路）后为 100；2026-10-17 DEC-2026-10-17-R20 水电点位 review 落地：+7（sock_fridge_living/sock_waterbar/sock_kitchen_east_counter/sock_weakbox/net_master_ap/light_balcony_dome/night_living_mid）−2（sock_kitchen_fridge/sock_parent_bed_l 删除）→105；2026-10-27 DEC-2026-10-27-R01 书房删除床头开关（删 switch_parent_bed）→104；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。2026-10-13 DEC-2026-10-13-R2 曾误判「主卫镜位零电位」并新增 sock_mbath_vanity，随即发现 config 早已存在同名点位（room master_bedroom、(0.78,2.96)、h=0.95、count 2、w_mbath_south 南脸），已撤销该新增——点位维持 101，见 DEC-2026-10-13-R2 的自我更正段（原文：git show 8abfbe3b:docs/decisions/06-electrical.md#L361）。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
+# 点位口径：config/electrical.yaml 共 104 个点位（历史上 2026-10-06 R2 新增 sock_kitchen_oven 后为 111；DEC-2026-10-07-R12 删除客卫内置夜灯 NP-6/7/8、DEC-2026-10-07-R15 删除客厅 NP-4b 后减至 107；2026-10-12 业主裁定删主卧两盏明装床头壁灯（light_master_wall_l / light_master_wall_r）改小米床头灯插电后减至 105；2026-10-12 DEC-2026-10-12-R2 业主裁定两卫照明用浴霸三合一自带、不另装平板灯，删 light_mbath_panel/light_gbath_panel/switch_mbath/switch_gbath 四点后减至 101；2026-10-13 DEC-2026-10-13-R5 业主裁定电视墙灯带不搞（删 light_tv_strip 与整条 lighting_tv_ambient 回路）后为 100；2026-10-17 DEC-2026-10-17-R20 水电点位 review 落地：+7（sock_fridge_living/sock_waterbar/sock_kitchen_east_counter/sock_weakbox/net_master_ap/light_balcony_dome/night_living_mid）−2（sock_kitchen_fridge/sock_parent_bed_l 删除）→105；2026-10-27 DEC-2026-10-27-R01 书房删除床头开关（删 switch_parent_bed）→104；2026-11-27 业主裁定撤客卫电热毛巾架（删 sock_gbath_towel）→103；2026-11-27 业主裁定全屋增压泵只预留（新增 sock_booster_pump_reserve，预留占位、双 pending）→104；登记日 2026-10-04 首登，与 fact.electrical_points_count 对账：点位增删必须同步此数）。2026-10-13 DEC-2026-10-13-R2 曾误判「主卫镜位零电位」并新增 sock_mbath_vanity，随即发现 config 早已存在同名点位（room master_bedroom、(0.78,2.96)、h=0.95、count 2、w_mbath_south 南脸），已撤销该新增——点位维持 101，见 DEC-2026-10-13-R2 的自我更正段（原文：git show 8abfbe3b:docs/decisions/06-electrical.md#L361）。新增点位为 position_status: pending 的预留接口，未激活前不进任何 topology 回路、不占箱位。
 
 panels:
   # id 是 topology 内部 panel 标识；source_point_id 指向 electrical.yaml 的真实箱体点位。
@@ -155,12 +155,12 @@ circuits:
     panel_id: panel_strong
     purpose: dedicated_load
     status: pending
-    member_point_ids: [sock_gbath_batheheater, sock_gbath_towel]
+    member_point_ids: [sock_gbath_batheheater]
     dedicated_load: true
-    capacity: "≈2.9kW（浴霸风暖 2750W＋电热毛巾架 0.1kW）"
+    capacity: "≈2.8kW（浴霸风暖 2750W）"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "客卫浴霸专用回路；毛巾架随本路；线控面板走浴霸线控，开关点位不入强电回路成员的口径不变"
+    note: "客卫浴霸专用回路；线控面板走浴霸线控，开关点位不入强电回路成员的口径不变"
   - id: ordinary_power_living
     panel_id: panel_strong
     purpose: ordinary_power
@@ -212,7 +212,7 @@ circuits:
     capacity: "≈1.5kW"
     wire_size: "2.5mm²(φ16)"
     breaker: "C20A+漏保"
-    note: "功能电源（智能马桶/台盆位/阳台晾衣/扫地机基站，DEC-2026-09-09-R1；DEC-2026-10-03-R1 移出 sock_kitchen_gas 并归入厨房回路，客卫毛巾架 sock_gbath_towel 归 dedicated_bath_heater_gbath（DEC-2026-10-05-R3 拆分后））；两个智能马桶位 position_status pending，交底前与给水错位并加防溅盒（GB 55038 7.4.5）"
+    note: "功能电源（智能马桶/台盆位/阳台晾衣/扫地机基站，DEC-2026-09-09-R1；DEC-2026-10-03-R1 移出 sock_kitchen_gas 并归入厨房回路）；两个智能马桶位 position_status pending，交底前与给水错位并加防溅盒（GB 55038 7.4.5）"
   - id: ordinary_power_kitchen
     panel_id: panel_strong
     purpose: ordinary_power

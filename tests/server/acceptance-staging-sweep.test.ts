@@ -16,6 +16,9 @@ import {
 } from '../../server/acceptance-draft-store.js';
 
 const DAY_MS = 86_400_000;
+// root 下 chmod 0o500/0o000 拦不住删除与读取（uid 0 绕过权限位），靠 chmod 复现权限故障的
+// 三条用例在 root 环境下无法失败——断言本身没错，跳过只限 root；非 root CI 上照常跑。
+const IS_ROOT = typeof process.getuid === 'function' && process.getuid() === 0;
 // 造时钟：固定 nowMs，所有「几天前」都相对它算，测试不依赖真实时间
 const NOW = Date.UTC(2026, 10, 4, 12, 0, 0);
 const STAGING_REL = 'tmp/capture/acceptance-staging';
@@ -207,7 +210,8 @@ describe('sweepAcceptanceStaging：启动清扫入口', () => {
     assert.match(lines[0], /扫到 0 项，删 0 项/);
   });
 
-  it('删除失败（权限）→ 记日志继续，其余超龄条目照删，不抛', () => {
+  it('删除失败（权限）→ 记日志继续，其余超龄条目照删，不抛', (t) => {
+    if (IS_ROOT) t.skip('root 下 chmod 0o500 拦不住删除，权限故障无法复现；非 root CI 上跑');
     const root = makeRoot();
     writeEntry(root, 'PKG-LOCKED/check/a.jpg');
     writeEntry(root, 'PKG-OLD/check/b.jpg');
@@ -325,7 +329,8 @@ describe('sweepAcceptanceStaging：启动清扫入口', () => {
     assert.match(lines[0], /真实路径.*与逻辑路径不一致/);
   });
 
-  it('读取失败进汇总：不把「没扫到」伪装成「没得扫」（codex 复审 minor）', () => {
+  it('读取失败进汇总：不把「没扫到」伪装成「没得扫」（codex 复审 minor）', (t) => {
+    if (IS_ROOT) t.skip('root 下 chmod 0o000 拦不住 readdir，读取故障无法复现；非 root CI 上跑');
     // 年轻子目录不可读时，早先静默 skip → 日志「扫到 N 项……失败 0 项」。现在读取
     // 失败必须进 result.failures 与汇总日志。
     const root = makeRoot();
@@ -370,7 +375,8 @@ describe('sweepAcceptanceStaging：启动清扫入口', () => {
     assert.match(lines[0], /真实路径.*不一致|符号链接/);
   });
 
-  it('删除失败的条目计入 kept：不把「没删掉」报成「没留下」（codex 复审 minor）', () => {
+  it('删除失败的条目计入 kept：不把「没删掉」报成「没留下」（codex 复审 minor）', (t) => {
+    if (IS_ROOT) t.skip('root 下 chmod 0o500 拦不住删除，删除故障无法复现；非 root CI 上跑');
     // 唯一的超龄文件删除失败（父目录只读 → EACCES）：文件还在盘上，kept 必须算它。
     const root = makeRoot();
     writeEntry(root, 'PKG-060/check_tile_gap/a.jpg');

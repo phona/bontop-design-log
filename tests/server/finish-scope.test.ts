@@ -51,22 +51,22 @@ test('finish-scope：C18 后的 stale 挡水条已删除，厨房东墙只剩整
 });
 
 test('finish-scope：height 字段是顶面标高不是高度（回归测试）', () => {
-  // walltile_gbath_east_vanity_splash: bottom 0.77 / height 1.10，reason 写「0.77 台面 → 1.10 镜柜下沿」
+  // walltile_gbath_south_vanity_splash: bottom 0.77 / height 1.10，reason 写「0.77 台面 → 1.10 镜柜下沿」
   // 若按 bottom+height 算成 [0.77,1.87]，竖向重叠会从 0.33 变 1.10——曾在这里算错。
-  // DEC-2026-10-09-P07 后该处的漆声明已拆成上下两段、让出两条砖带，所以不再有 issue；
-  // 这里改成直接钉 buildInput 解析出的竖向带，防止口径回退。
+  // 2026-11-27 干湿分离放弃后台盆移入内卫南墙，防溅带由 w_gbath_east_open_vanity 迁至
+  // w_gbath_south（沿 [0.99,1.68]），竖向数不变；东墙只剩 0.30m 墙裙 + 一段漆到顶，
+  // 上下两段漆合并为一段。南墙暂无漆声明（内隔墙双脸待 paint-scope 支持后增补）。
   const input = buildInput();
-  const splash = input.walls.find((w) => w.id === 'walltile_gbath_east_vanity_splash');
+  const splash = input.walls.find((w) => w.id === 'walltile_gbath_south_vanity_splash');
   assert.ok(splash, '台盆防溅带声明必须存在');
   assert.equal(splash.bottom, 0.77);
   assert.equal(splash.top, 1.1, 'height 是顶面标高：top 必须等于 1.10，不是 0.77+1.10=1.87');
   const lower = input.walls.find((w) => w.id === 'paint_guest_bath_w_gbath_east_open_vanity_lower');
   const upper = input.walls.find((w) => w.id === 'paint_guest_bath_w_gbath_east_open_vanity_upper');
-  assert.ok(lower && upper, '砖漆互斥后客卫开放洗漱区东墙必须拆成上下两段漆');
+  assert.ok(lower, '防溅带迁走后客卫东墙只剩一段漆到顶');
   assert.equal(lower.bottom, 0.30);
-  assert.equal(lower.top, 0.77);
-  assert.equal(upper.bottom, 1.10);
-  assert.equal(upper.top, 2.80);
+  assert.equal(lower.top, 2.80);
+  assert.equal(upper, undefined, '防溅带迁走后上下两段漆已合并，上段声明不再存在');
 });
 
 test('finish-scope：双面涂漆合法，跨房间不报', () => {

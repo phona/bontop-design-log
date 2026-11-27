@@ -138,7 +138,7 @@ test('真实配置：14 面 suppress 墙全部有 replacement 且引用自洽；
   };
   const structural = openings.elements.filter((element) => element.type === 'curtain_run' || element.type === 'railing_run') as unknown as Parameters<typeof validateWallSuppressions>[1];
   const suppressedWalls = geometry.walls.filter((w) => w.suppressed);
-  assert.equal(suppressedWalls.length, 14, '8 条原 suppress 声明覆盖 14 面墙（勘察文档 §1.1 实测值）');
+  assert.equal(suppressedWalls.length, 14, '2026-11-26 量房：w_be_south 退出幕墙，w_mbath_ne_return 加入北窗，仍是 14 面');
   assert.deepEqual(validateWallSuppressions(geometry.walls, structural), [], '真实配置的 replacement 直引用必须全部自洽');
 
   const specs = glassJoinSpecs(joinDeclarationsOf(openings.elements));
@@ -147,7 +147,7 @@ test('真实配置：14 面 suppress 墙全部有 replacement 且引用自洽；
   assert.equal(specs.length, 14, 'join 规格条数 = 原镜像表行数（一行一墙）');
   assert.deepEqual(specs.map((s) => `${s.wall}|${s.replacement}|${s.part ?? 'root'}|${s.join}`).sort(), [
     'w_bath_north|north_recess_curtain|root|continuous',
-    'w_be_south|south_east_curtain|root|butt',
+    'w_mbath_ne_return|north_recess_curtain|root|continuous',
     'w_ent_north_railing|entry_garden_north_railing|root|butt',
     'w_kit_north|kitchen_north_curtain|root|butt',
     'w_liv_south|living_south_curtain|root|butt',

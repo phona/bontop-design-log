@@ -429,7 +429,7 @@ scan:
     # 不是跨文件共享事实。真正有跨文件后果的三个尺寸已单列 fact：
     #   fact.outdoor_unit_dim（外机 0.99×0.40×0.81，决定西平台能否容纳）
     #   fact.kitchen_area / fact.kitchen_south_boundary（厨房 3.6×2.4）
-    #   fact.west_platform_area（平台 bbox 1.60㎡，prose 的 1.6×1.55 由该 fact 的注释对账）
+    #   fact.west_platform_area（平台 bbox 2.7331㎡，2026-11-26 量房；旧 1.60㎡ / prose 的 1.6×1.55 作废）
     - path: config/materials.yaml
       scalars: [dimension]
       pattern: '[×x]'
@@ -733,10 +733,12 @@ facts:
       # 正确做法是把「面积」单列一条 fact：权威值由 kitchen 多边形实测导出，
       # 镜像校验量房清单里手写的乘积，z 与面积两条互补，各自都能独立抓漂移。
       # 2026-10-04 A3：house.yaml 撤掉 area_sqm 文件级豁免后，kitchen room note 里的
-      # 「3.6×2.4=8.64㎡」必须被认领。与原量房台账那条是同一事实的两处复述，
-      # 各自 expect_matches: 1，任一被删 → mirror_unresolvable（禁止静默跳过）。
+      # 「3.61×2.55=9.2055㎡」必须被认领（2026-11-26 量房：x 7.50..11.11 = 3.61，
+      # z −0.15..2.40 = 2.55，多边形实测 9.2055㎡；旧 3.6×2.4=8.64 作废）。与原量房台账
+      # 那条是同一事实的两处复述，各自 expect_matches: 1，任一被删 → mirror_unresolvable
+      #（禁止静默跳过）。
       - path: config/house.yaml
-        extract: '3\.6×\d\.\d+=([\d.]+)㎡'
+        extract: '3\.61×\d\.\d+=([\d.]+)㎡'
         severity: error
         expect_matches: 1
 
@@ -748,8 +750,11 @@ facts:
       # 2026-11-09 S2-B：原唯一镜像指向量房手账里手写的「3.6×2.4」乘积，该文件已整份退场。
       # 同一句算术在 config/house.yaml 的 kitchen room notes 里也有（DEC-014 z=2.9 经
       # DEC-021 缩至 z=2.4），接回那里——活文件，改南界会同时改这里。
+      # 2026-11-26 量房：乘积第二因子 2.55 是进深（北缘 z=−0.15 到南界 z=2.40），不再
+      # 等于南界值——旧乘积正则会误抽 2.55 与权威值 2.40 对不上。故本镜像改抽 note 里
+      # 明写南界的「缩至 z=2.4」，乘积只由 fact.kitchen_area 对账。
       - path: config/house.yaml
-        extract: '3\.6×(\d\.\d+)=[\d.]+'
+        extract: '缩至 z=([\d.]+)'
         severity: error
         expect_matches: 1
   - id: fact.west_platform_area
@@ -761,12 +766,11 @@ facts:
         extract: '唯一可用设备平台，赠送面积，面积约\s*([\d.]+)\s*㎡'
         severity: error
         expect_matches: 1
-      # hvac.yaml 的「1.6×1.00m」是平台净尺寸叙述：首径 1.6 与模型 bbox 宽一致，
-      # 由它推出的 2.48㎡ 与模型 bbox 面积 1.60㎡ 的矛盾，由上面 house.yaml 的
-      # gift area 镜像与 c.layout_region_room_overlap（north_platform_floor ⊂
-      # west_platform，交叠 1.60㎡）共同暴露。这里只登记首径，避免量纲混淆。
+      # hvac.yaml 的「1.81×1.51m」是平台 bbox 尺寸叙述（2026-11-26 量房）：
+      # 与模型 bbox 面积 2.7331㎡ 一致；旧「1.6×1.00m」/ bbox 1.60㎡ / r=1.0 圆角
+      # 均作废（圆角凹进不存在）。这里只登记首径，避免量纲混淆。
       - path: config/hvac.yaml
-        extract: '西平台\s*1\.6×\d\.\d+m'
+        extract: '西平台\s*1\.81×1\.51m'
         severity: warning
         expect_matches: 1
       # 2026-10-04 A2/A3：撤掉 house.yaml 的 area_sqm 文件级豁免后，平台面积在
@@ -786,15 +790,14 @@ facts:
         severity: error
         expect_matches: 1
     exempt:
-      # 2026-10-04：1.39㎡ 是 bbox 1.60㎡ 扣除 r=1.0 西北圆角楔形后的**估算可用面积**
+      # 旧口径（2026-11-26 量房推翻）：1.39㎡ 是旧 bbox 1.60㎡ 扣除 r=1.0 西北圆角楔形后的**估算可用面积**
       # （1.60 − (1² − π·1²/4) = 1.60 − 0.2146 ≈ 1.385，文中取 1.39），不是独立事实。
-      # 权威值仍是本 fact 的 bbox 1.60㎡；圆角扣除量未做机读对账（引擎暂缺
-      # #rounded_area 算子），人工可依上式复核。若后续要给引擎补该算子，再把本条转 mirror。
-      # 2026-10-04 A2/A3：同一个 1.39㎡ 在 house.yaml 也有两处（hvac notes 与 572 行
-      # notes 汇总）。措辞锁定为「可用约 1.39㎡」，改成别的写法立刻 unregistered。
+      # 权威值是本 fact 的 bbox 2.7331㎡（r=1.0 圆角不存在）；圆角扣除量未做机读对账（引擎暂缺
+      # #rounded_area 算子）。本豁免只覆盖 house.yaml 里「旧 1.60㎡ / r=1.0 圆角可用约 1.39㎡ 作废」
+      # 两处历史措辞，改成别的写法立刻 unregistered。
       - path: config/house.yaml
         pattern: '可用约\s*1\.39㎡'
-        reason: 'bbox 1.60㎡ 扣除 r=1.0 圆角楔形后的估算可用面积，非独立事实；权威值见 fact.west_platform_area 的 bbox 1.60㎡（圆角扣除量暂无机读算子，人工可依 1.60 − (1² − π·1²/4) ≈ 1.385 复核）'
+        reason: '旧口径：旧 bbox 1.60㎡ 扣除 r=1.0 圆角楔形后的估算可用面积，非独立事实；权威值见 fact.west_platform_area 的 bbox 2.7331㎡（2026-11-26 量房，r=1.0 圆角不存在）'
 
   # 2026-10-05 功能互换（iteration parent-room-study-swap-20261005）：room id=study 的功能名
   # 由「父母房」改为「书房」，几何、面积、内机（ac_parent）与冷负荷分母均不变。fact id 保留
@@ -876,6 +879,8 @@ facts:
   # 2026-10-20 措施 1 新建：此前 44.58（2026-10-25 DEC-2026-10-25-R01 本体标定重算后为 43.1734）只在 config/hvac.yaml load_design.basis 与
   # 原量房台账 #39 以 prose 出现，无机器对账；建本条让
   # hvac.yaml 的叙述与速查表都不会静默漂移。
+  # 2026-11-26 量房：本体标定重算后为 42.72（旧 43.1734 作废）。
+  # 2026-11-27 客餐厅边界斜线改折线（PR #270）：权威值随新多边形改为 43.5618（旧 42.72 作废）。
   - id: fact.living_dining_area
     kind: derived
     value: "@config/layout/model-geometry.yaml:rooms#find:id=living_dining.boundary#shoelace"
@@ -887,20 +892,25 @@ facts:
         expect_matches: 1
       # 2026-10-20 措施 1：现行值速查表 mirror。
       # 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：速查表为两位小数（fmt2），43.1734 记 43.17，tolerance 0.01 吸收取舍（主卫面积同口径先例）；权威值仍为 geometry shoelace 43.1734。
+      # 2026-11-26 量房：权威值随新多边形改为 42.72（旧 43.1734 / 43.17 作废），速查表由 docs:generate-current-values 重生成同步。
+      # 2026-11-27 客餐厅边界斜线改折线（PR #270）：权威值随新多边形改为 43.5618（旧 42.72 作废），速查表由 docs:generate-current-values 重生成同步。
       - path: docs/CURRENT-VALUES.md
         extract: '^\| 客餐厅面积 \| ([\d.]+) ㎡ \|'
         severity: error
         expect_matches: 1
         tolerance: 0.01
 
-  # 主卫面积：2.60×1.76 = 4.576㎡（prose 记 4.58，tolerance 吸收两位小数取舍）。
+  # 主卫面积：2.90×3.045 = 8.8305㎡（2026-11-26 量房：x 0.00..2.90，z −0.39..2.655；
+  # 旧 2.60×1.76 = 4.576㎡ 作废）。镜像须由 house.yaml 协调员同步为新乘积形式
+  #「2.90×3.045≈8.8305㎡」，旧注「旧 2.60×1.76≈4.58㎡ 作废」在同步前会使本条
+  # mirror_unresolvable，禁止为此放宽正则回抽旧值。
   - id: fact.master_bath_area
     kind: derived
     value: "@config/layout/model-geometry.yaml:rooms#find:id=master_bath.boundary#bbox_area"
     unit: ㎡
     mirrors:
       - path: config/house.yaml
-        extract: '2\.60×\d\.\d+≈([\d.]+)㎡'
+        extract: '2\.90×3\.045≈([\d.]+)㎡'
         severity: error
         expect_matches: 1
         tolerance: 0.01
@@ -953,7 +963,7 @@ facts:
         reason: "house.yaml rooms/gift_areas 的 notes 里凡写「设计图标注 / 净标注 / 合并标注 / 净面积标注」的面积是点石设计图的人工标注口径（净口径），权威面积以 model-geometry 多边形与 fact.*_area 的机器推导为准；同一 note 里的模型口径数字（17.9/18.16/8.39/8.35/2.42 等）与净标注不同量纲，故整行豁免而不逐值对账"
       - path: config/house.yaml
         pattern: '开发商 6\.09㎡'
-        reason: "厨房 6.09㎡ 是开发商标注的净面积口径，与本 fact 的多边形毛口径（fact.kitchen_area，3.6×2.4=8.64㎡）不同量纲；同 note 已自证「净尺寸待量房」，净/毛关系随 #40 一并裁定"
+        reason: "厨房 6.09㎡ 是开发商标注的净面积口径，与本 fact 的多边形毛口径（fact.kitchen_area，3.61×2.55=9.2055㎡）不同量纲；同 note 已自证「净尺寸待量房」，净/毛关系随 #40 一并裁定"
       - path: config/house.yaml
         pattern: '南向大阳台\s*[\d.]+\s*㎡'
         reason: "south_balcony status: not_modeled——模型未按室内地面建模、无几何权威源，13.95㎡ 是合同图标注口径；待量房/合同图确认地面通铺与计入规则后再建 mirror（原量房台账 #40，已退场）"
@@ -1635,7 +1645,9 @@ contracts:
     path: config/electrical.yaml
     when: { field: type, pattern: '^(ceiling_light|pendant|dome|wall_lamp|downlight|led_strip|track_light)$' }
     then: [height]
-    max_abs: 2.8
+    # 2026-11-26 量房回填：主卧层高实测 2900（旧 2.80），上限 2.8→2.9；light_master_dome height 2.90 = 新主卧净高，合规。
+    # 2026-11-27 业主实测回填：书房层高 2909、儿童房 2905，分别超 2.9 上限；全屋最高层高为厨房 2.910，上限 2.9→2.91；light_parent_dome height 2.909 = 书房净高、light_child_dome height 2.905 = 儿童房净高，均合规。分房间净高判定由 verify:spatial 的 lighting_ceiling_host_invalid 承接（anchorY 不得出本房间高 +0.02），本常量只作全局粗 guard。
+    max_abs: 2.91
     max_abs_field: height
 
   # ⑥ MEP 路线标高不得低于它所经过的吊顶完成面。2026-10-04 A1 新增。
@@ -1663,9 +1675,15 @@ contracts:
     default_room_height: 2.8
     # R25: 双引擎都按外包络（管径 + 声明保温）逐点/每50mm采样；0为完成面几何容差，不代表施工允许偏差。
     tolerance: 0
-    registered_conflicts: 41
+    registered_conflicts: 47
+    # 2026-11-27 客卫门洞移至开发商口：47→47（净 0，涉及路线 39 不变、分区 15 不变；双引擎一致）：走廊开关 switch_corridor 由 w_gbath_east_open_vanity（沿位 0.435 越界）改挂南缘入口墙 w_gbath_south_entry（x=6.89，门东 jamb 外 0.21m），其竖直下引段由 (7.30,4.10) 移至 (6.89,4.08)——旧点在 ceiling_guest_bath 内（旧南缘 4.155 错伸入走廊带），新点在 ceiling_main_corridor 内；同批 ceiling_guest_bath 南缘随房间南缘 4.155→4.04 收回，(6.89,4.08) 不再触客卫吊顶——一处 hit 由客卫带转入走廊带，净 0，仍属已登记①类「竖直下引至设备点位的末点」同类残留。无标高改动；授权为本次客卫门洞移位本身（用户 2026-11-27 裁定）。
+    # 2026-11-27 盲审漂移修复（PR #270）：48→47（净 −1，涉及路线 38 不变、分区 14 不变；双引擎一致）：sock_gbath_towel 随电热毛巾架由开放洗漱区西墙迁回内卫东墙（B2），strong-ded-bathheaters-gbath 末段下引点由走廊带（z≈3.955，ceiling_main_corridor）移入客卫内（z=3.155，ceiling_guest_bath 既有 ① 类残留），走廊带 1 处低于完成面 hit 合法消失。无标高改动；授权为本次盲审漂移修复本身（2026-11-27 盲审 B2）。
+    # 2026-11-27 干湿分离放弃重画：47→48（净 +1，涉及路线 38 不变、分区 14 不变；双引擎一致）：strong-power-mbath-service 新增 1 处——台盆插座 sock_mbath_vanity 随台盆移入主卫内（贴东墙），供电路由末段改走主卫内、由 2.55m 竖直下引至插座 0.95m，全程低于主卫铝扣板吊顶完成面 2.50m（1560mm），属已登记①类「竖直下引至设备点位的末点」同类残留。原卧室侧插座无主卫吊顶可触（主卧无满吊、仅梁带），故此前无此 hit。无标高改动；授权为本次干湿分离放弃重画本身（用户 2026-11-27 裁定）。同批 shear_wall_parallel_route 警告 5→7（+2）：strong-power-mbath-service 与 water-hot-water-mbath-requirement 均因台盆/插座移入主卫、末段沿剪力墙 w_mbath_east 平行走线（2.20m/2.02m），属警告非错误，verify:mep 基线红内。
+    # 2026-11-27 业主实测回填：49→47（净 −2，涉及路线 39→38、分区 12→14；双引擎一致）：−6 ceiling_master_beam（主卧梁底实测 2.50，梁厚 0.30→0.404，梁完成面 2.60→2.50，5 条主卧路由 refrigerant-master / strong-ac-master / strong-light-master / strong-power-master / supply-air-master 退出涉及集合、weak-master 减 1 处——2026-11-26 回填把梁完成面抬到 2.60 是量房 2820/2900 混用厚度 0.30 的 artifact，本轮纠回设计完成面 2.50）；ceiling_child_ac 0（儿童房层高 2.80→2.905，厚度 0.30→0.405 保设计完成面 2.50，带内 strong-ac-child 路由 2.55m 仍在空腔内，无新增 hit；底标高本身仍未决，见该分区 blocker，ac_child 定后重算）；+3 curtain_box_study_south（东南客房层高 2.80→2.885，窗帘盒固定降 0.15m，盒底 2.65→2.735，strong-power-living / strong-power-living-water / strong-power-parent-child-guest-west-curtain 各 1 处）；+1 curtain_box_parent_south（书房层高 2.80→2.909，盒底 2.65→2.759，strong-power-parent-child-study-curtain 69mm）。客餐厅板底复测 2820（南向客厅）/2826（餐厅），量房 2820 证实（首轮 2715 读数错误，作废），客厅边吊与餐厅服务带厚度 0.30→0.320、完成面仍 2.50，客餐厅空腔 320mm（200mm 内机余量 120mm）。无路线增删改标高；DEC 体系已退役，无新 DEC 编号，授权为本次业主实测回填本身。
+    # 2026-11-26 MEP 正交修复：51→49（−2，涉及路线 39 不变、分区 12 不变；双引擎一致）：① weak-ap-master @ ceiling_living −1（level 2.51→2.65，外包络底 2.50→2.64，高于 ceiling_living 完成面 2.52）；② strong-light-bedrooms-master-bed-north @ ceiling_master_beam −1（删 2.55 下降步，梁内东行段 z=5.08、x 1.70→4.10 现 2.70，外包络底 2.69 高于 ceiling_master_beam 完成面 2.60；该删除同时在 (2.80,5.08) 与 weak-ap-master 竖管交会，见 route_overlap）。无路线增删；DEC 体系已退役，无新 DEC 编号，授权为本次量房回填的 MEP 修复本身。
     # 2026-11-16 强电关系化（issue #98 MEP batch，51 条强电路由绝对 via 改关系步 + 13 处 gap-2 斜段拆分 + strong-light-child 补 w_strip_east 穿墙声明）：strong-power-parent-child-study-curtain 新增 2 处低于完成面 hit（curtain_box_parent_south / drying_rack_living 各 110mm），strong-power-mbath-service 的 ceiling_master_ac 43mm 一处消失，weak-master 由 ceiling_master_ac 27mm 移至 ceiling_corridor 110mm，净 42→43（涉及路线 35 不变、分区 12→14——drying_rack_living 与 curtain_box_parent_south 新进入涉及集合）。verify:mep ceiling_clearance_unverified 与 verify:facts 双引擎实算一致 = 43。
     # 2026-11-16 Codex blocking 修复（PR #248）：strong-power-parent-child-study-curtain 在 (7.20,6) 先 vertical_to 升至 to_height 2.70 再南行，南行段全程 2.70m 板上方明敷，上述 2 处 110mm 低于完成面 hit 清零，净 43→41（涉及路线/分区随实算同步）。verify:mep ceiling_clearance_unverified 与 verify:facts 双引擎实算一致 = 41。
+    # 2026-11-26 量房回填：41→51（+14/−4，涉及路线 34→39、分区 12 不变）。无路线增删、无标高改动——mep-hvac-coordination.yaml 本轮只改 drain-gbath-secondary-requirement 一条 reason 文字（下沉实测 350mm）；增量全是实测几何重算：① 主卧层高实测 2900（旧 2.80）使 ceiling_master_beam 完成面 2.50→2.60，原在 2.55–2.60 层高的 6 条主卧路由（refrigerant-master / strong-ac-master / strong-light-master / strong-power-master / supply-air-master / weak-master）+ strong-light-bedrooms-master-bed-north / weak-ap-master 首次触面，+8；② ceiling_main_corridor 南缘随西北次卧南墙实测线 4.30→3.75，return-air-child 与 strong-ded-bathheaters-gbath 两点进入走廊带，+2（同两点随 ceiling_child_ac 南缘 4.30→3.75 移出该区，−2，净 0）；③ ceiling_guest_bath 北缘 2.20→1.36、东缘 7.20→7.50，strong-ded-fridge-living +1；④ ceiling_entry_foyer 随入户西墙与东南房北墙实测线移动，strong-light-entry-night-guest-door +1、strong-light-entry-night-living-north 由 ceiling_living 转入该带（该路由净 0）；⑤ ceiling_living 完成面随客餐厅层高实测 2820 升至 2.52，weak-ap-master 外包络底 2.50 现低出 20mm，+1；⑥ strong-light-entry-night-corridor 随 ceiling_living 南缘 5.55→5.455 移出，−1。verify:mep ceiling_clearance_unverified 与 verify:facts 双引擎实算一致 = 51。DEC 体系已于 2026-11-08 退役，本轮无新 DEC 编号；授权为本次量房回填本身（实测几何进仓），登记同步 prose 与本链条。repair_channel.decision_ref 仍挂 DEC-2026-10-06-R5——那是本契约检查范围的立约授权（R5 裁定分层标高升入降板空腔），不是本次增量的新裁定；control.yaml audit_log 不另立记录（其 record_schema 只收验收检查结果，见 shared/schedule-state.ts，无检查可挂）。
     # 2026-11-14 全带泵重画（issue #98 MEP batch 1）：五条冷凝水支管改泵扬 2.70 + 1% 坡直达客卫固定候选点 (6.70,3.70)，到点标高 2.6375–2.6846m 全程在完成面 2.50m 之上，8 处低于完成面 hit 合法消失，50→42（客厅 3 处、餐厅 3 处、主卧 1 处、儿童房 1 处；涉及路线 39→35、分区 13→12——ceiling_master_bath 随主卧竖直下引段消除退出涉及集合）。R25 汇流节点删除、DN32 主管几何不动仍作废。授权来源：2026-11-13 用户全带泵裁定（六台内机全带合同提升泵）+ DEC-2026-10-06-R5 残留关闭（见五条支管 reason 登记）；DEC 体系已于 2026-11-08 退役，本轮无新 DEC 编号。
     # 2026-11-12 业主接受（2026-11-12 中央空调内机定位会话）：厨房/客卫/主卫铝扣板完成面 2.65→2.50（ceiling.yaml 降板 0.15→0.30，空腔 150→300mm），为使重力冷凝水管上段（2.50–2.52m）藏入空腔（两条 R25 候选支管末端 2.435–2.449 仍在新完成面之下，外包络底约 2.42m，残留见 ceiling.yaml 三条 note 与两条支管 reason 登记）；三区内 y 2.50–2.65 的 39 处低于完成面 hit 合法消失，89→50（涉及路线 72→39、分区 13 不变）。无路线被删除、改道或改标高。授权来源：业主 2026-11-12 接受（现住房平顶 2.70m、餐厅走廊吊顶 2.381m、厕所吊顶 2.362m，2.50m 高于现住体验）；DEC 体系已于 2026-11-08 退役，本轮无新 DEC 编号，授权记录在 ceiling.yaml 三条 note 内。重力出口 2.52m 仍为假设（P-SS 手册未给数字），梁底与立管位仍为推断、待量房。
     # 2026-10-12 DEC-2026-10-12-R1：删主卧两盏明装床头壁灯改小米床头灯插电，删 2 条照明路由，55→54。
@@ -1708,7 +1726,7 @@ contracts:
     repair_channel:
       decision_ref: 'DEC-2026-10-06-R5'
       sync_files: [config/model/envelope/ceiling.yaml, docs/mep-construction-guidance.md, config/facts.yaml]
-    pending: "**2026-10-06 DEC-2026-10-06-R5 已裁定并执行**（#41 分层标高升入降板空腔，保走廊净高 2.50m；废止「降板加厚」方案②）。分层标高改为**分区口径**：A 区（走廊满吊/门厅满吊/客厅北缘边吊/餐厅两条服务带/各房边吊，完成面 2.50）强电 2.55 / 弱电 2.60 / 冷凝水 2.65 / 冷媒 2.60、上限 2.75；B 区（厨房铝扣板/主卫铝扣板/客卫铝扣板，完成面 2.65，空腔仅 150mm）进入该区的管路段 2.70–2.76；送风 2.68 / 回风 2.72 原位不变（已在空腔内，回风格栅面板贴完成面 2.49）。参考梁约束带内 ≤ 梁底−0.05（南窗带 2.73→2.68、厨房北窗带 2.65→2.60、厨房局部梁头 2.56→2.51、主卫梁头 2.41→2.36、走廊服务带 2.65→2.60）。**登记数 160 → 24**：其中 −20 为走地给排水（water_supply/drainage）按 DEC 配套口径修正退出比较、−136−20=−116 为吊顶承载层抬入空腔；verify:mep 与 verify:facts 双引擎实算一致 = 24。残留 24 处全部显式登记：① 竖直下引至设备点位的末点（to_height 0.02–1.60m，点位坐标在 config/electrical.yaml / config/plumbing.yaml，本轮禁改，竖直下引段本身合法）；② 贴在完成面上的设备开口（回风格栅 2.49，见 config/model/envelope/ceiling.yaml 回风口坐标 2.49）；③ 窗帘盒内电动窗帘电源（0.7m）；④ condensate-living / condensate-dining 两条绕不开走廊服务带梁带的候选路线（末端立管接点 (6.70,3.70) 固定、客卫吊顶区四面有墙，重力管不得上弯，无法同时满足「梁带内 ≤2.60」与「客卫段 ≥2.70」，按 DEC「确实绕不开的保留原标高」处理，量房实测梁底后复判）【2026-11-14 全带泵重画关闭：两条支管改泵扬 2.70 + 1% 坡，到点 2.6375/2.6846m 全程在完成面 2.50m 之上，本项 6 处 hit 随 50→42 消失；走廊梁底仍待量房复判（见五条支管 reason 登记）】。**分解链条**：144→149→154→153→160（历史，见下）→ 160→24（DEC-2026-10-06-R5：分层标高升入降板空腔，−136 为承载层抬入空腔、−20 为走地给排水按 DEC 配套口径修正退出比较）。#41 已裁定，decision_ref 由 pending 占位改为 DEC-2026-10-06-R5 全引；跟踪 原量房台账 #41（已退场，未决项现由对象 blocker 承载）（已改写为「已裁定 + 残留」）。"
+    pending: "**2026-10-06 DEC-2026-10-06-R5 已裁定并执行**（#41 分层标高升入降板空腔，保走廊净高 2.50m；废止「降板加厚」方案②）。分层标高改为**分区口径**：A 区（走廊满吊/门厅满吊/客厅北缘边吊/餐厅两条服务带/各房边吊，完成面 2.50）强电 2.55 / 弱电 2.60 / 冷凝水 2.65 / 冷媒 2.60、上限 2.75；B 区（厨房铝扣板/主卫铝扣板/客卫铝扣板，完成面 2.65，空腔仅 150mm）进入该区的管路段 2.70–2.76；送风 2.68 / 回风 2.72 原位不变（已在空腔内，回风格栅面板贴完成面 2.49）。参考梁约束带内 ≤ 梁底−0.05（南窗带 2.73→2.68、厨房北窗带 2.65→2.60、厨房局部梁头 2.56→2.51、主卫梁头 2.41→2.36、走廊服务带 2.65→2.60）。**登记数 160 → 24**：其中 −20 为走地给排水（water_supply/drainage）按 DEC 配套口径修正退出比较、−136−20=−116 为吊顶承载层抬入空腔；verify:mep 与 verify:facts 双引擎实算一致 = 24。残留 24 处全部显式登记：① 竖直下引至设备点位的末点（to_height 0.02–1.60m，点位坐标在 config/electrical.yaml / config/plumbing.yaml，本轮禁改，竖直下引段本身合法）；② 贴在完成面上的设备开口（回风格栅 2.49，见 config/model/envelope/ceiling.yaml 回风口坐标 2.49）；③ 窗帘盒内电动窗帘电源（0.7m）；④ condensate-living / condensate-dining 两条绕不开走廊服务带梁带的候选路线（末端立管接点 (6.70,3.70) 固定、客卫吊顶区四面有墙，重力管不得上弯，无法同时满足「梁带内 ≤2.60」与「客卫段 ≥2.70」，按 DEC「确实绕不开的保留原标高」处理，量房实测梁底后复判）【2026-11-14 全带泵重画关闭：两条支管改泵扬 2.70 + 1% 坡，到点 2.6375/2.6846m 全程在完成面 2.50m 之上，本项 6 处 hit 随 50→42 消失；走廊梁底仍待量房复判（见五条支管 reason 登记）】。**分解链条**：144→149→154→153→160（历史，见下）→ 160→24（DEC-2026-10-06-R5：分层标高升入降板空腔，−136 为承载层抬入空腔、−20 为走地给排水按 DEC 配套口径修正退出比较）。#41 已裁定，decision_ref 由 pending 占位改为 DEC-2026-10-06-R5 全引；跟踪 原量房台账 #41（已退场，未决项现由对象 blocker 承载）（已改写为「已裁定 + 残留」）。2026-11-26 量房回填：41→51（+14/−4，涉及路线 34→39、分区 12 不变；双引擎一致）。主因是主卧层高实测 2900 使 ceiling_master_beam 完成面 2.50→2.60（+8）；其余为吊顶分区/落点随实测几何移动（走廊带南缘 4.30→3.75、客卫带北缘 2.20→1.36、门厅带随实测墙线移动、客厅带完成面随层高 2820 升至 2.52）。无路线增删改标高；DEC 体系已退役，本轮无新 DEC 编号，授权为本次量房回填本身。2026-11-26 MEP 正交修复：51→49（−2，涉及路线 39 不变、分区 12 不变；双引擎一致）：weak-ap-master @ ceiling_living −1（level 2.51→2.65）、strong-light-bedrooms-master-bed-north @ ceiling_master_beam −1（删 2.55 下降步，东行段升至 2.70）。授权为本次量房回填的 MEP 修复本身。"
     # 历史分解链条（保留备查）：144→149（2026-10-05 给排水 v1 新增 5 条排水路线）；149→154（DEC-2026-10-05-R11 客餐厅冷凝水改线）；154→153（DEC-2026-10-05-R19 厨房铝扣板收回 z=2.4，refrigerant-trunk 该 hit 合法消失）；153→160（DEC-2026-10-06-R1 给排水缺项兜底新增 7 条 floor-branch 路线，每条在所经厨卫/套间吊顶 footprint 内新增 1 处 hit——给排水走地 0.02–0.45m 本就低于完成面，与既有给排水 floor-branch 路线同源、非 #41 分层标高问题）。
 
   - id: c.layout_region_room_overlap

@@ -353,20 +353,6 @@ function referenceMountPoint(
   return { x: datum.x + normal.x * offset, z: datum.z + normal.z * offset, datum };
 }
 
-/** 参考解：vanity 的 robot_bay 槽位（宿主局部系 → 世界；θ 旋转与 3D 摆放同一约定）。 */
-function referenceRobotBay(host: FurnishingItem, hostPlacement: { x: number; z: number }): { x: number; z: number } {
-  if (host.vanity_layout === undefined) throw new Error(`槽位宿主 ${host.id}: 缺 vanity_layout`);
-  const layout = host.vanity_layout;
-  const dockDims = FURNITURE_DIMS['robot_dock_gbath'];
-  const localX = -layout.width / 2 + layout.robot_bay_width / 2;
-  const localZ = -layout.depth / 2 + (dockDims?.depth ?? NaN) / 2;
-  const theta = ((host.rotation ?? 0) * Math.PI) / 180;
-  return {
-    x: hostPlacement.x + localX * Math.cos(theta) + localZ * Math.sin(theta),
-    z: hostPlacement.z - localX * Math.sin(theta) + localZ * Math.cos(theta),
-  };
-}
-
 /* ─────────────────────────────── 生产索引（被测） ─────────────────────────────── */
 
 const resolvedLayout = resolveLayout(geometryDecl as unknown as VertexLayoutYaml);
@@ -550,7 +536,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     // ⇒ 中心 x = 2.60−0.06−0.015−0.2825 = 2.2425；along 2.51 自 z=1.10 ⇒ z = 3.61。
     // （2026-11-13 issue #116：原底柜 mb.vanity_base_cabinet 退役，同数由通顶柜承接。）
     // gbath.mirror_cabinet：墙线 7.20、west ⇒ 中心 x = 7.20−0.06−0.14/2 = 7.07；z = 3.955。
-    // gbath.heated_towel_rack：墙线 5.60、east ⇒ 中心 x = 5.60+0.06+0.10/2 = 5.71；z = 3.55+0.405 = 3.955。
+    // gbath.towel_set：墙线 x=5.69、east ⇒ 完成面 5.75；深 0.28、clearance 0.04 ⇒ 中心 x = 5.69+0.06+0.04+0.28/2 = 5.93；along 1.25 自墙段北端 z=1.36 ⇒ z = 2.61。（2026-11-27 业主裁定撤电热毛巾架改普通毛巾架，落淋浴区西墙；沿位由 1.30 北移 0.05m 避让门扇扫掠弧。）
     // mb.dressing_table：墙 w_west_upper (0,5.55)→(0,9.80)，to 端 v_sw 带 radius=1.00，
     // 转角 90°（下一面墙 w_mb_south 向东），切点距角点 1.00/tan45° = 1.00 ⇒ 修剪后墙段
     // (0,5.55)→(0,8.80)，切向 +z；east 侧法线 (+1,0)；along 0.50 ⇒ datum (0,6.05)；
@@ -559,7 +545,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
       'gbath.vanity',
       'mb.full_height_cabinet',
       'gbath.mirror_cabinet',
-      'gbath.heated_towel_rack',
+      'gbath.towel_set',
       'mb.dressing_table',
     ];
     for (const id of anchorIds) {
@@ -576,16 +562,14 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     }
   });
 
-  it('手算锚点：槽位挂载家具（robot_bay）与绝对声明', () => {
+  it('手算锚点：独立墙锚家具（robot_dock 已移出台盆柜槽位）与绝对声明', () => {
     // 手算期望值见下列注释（算式与数值都在注释里，供人核对）；断言只验
     // 解算 == 独立参考解。
-    // gbath.robot_dock：宿主柜中心 (6.89,3.955)、rot270，vanity_layout 0.69×0.50，仓宽 0.50，基站深 0.433。
-    // 局部：lx = −0.69/2 + 0.50/2 = −0.095；lz = −0.50/2 + 0.433/2 = −0.0335。
-    // θ=270°：cos=0、sin=−1 ⇒ Δx = lz·sinθ = +0.0335；Δz = −lx·sinθ = −0.095。
-    // 世界 = (6.89+0.0335, 3.955−0.095) = (6.9235, 3.860)。
-    const host = furnishingById('gbath.vanity');
-    const hostPlacement = referenceWallFurniture(host);
-    const dockReference = referenceRobotBay(host, hostPlacement);
+    // 2026-11-27 业主裁定：gbath.robot_dock 不再挂 gbath.vanity 的 robot_bay 槽位，
+    // 改为独立墙锚家具落厨房西墙北段（w_vrv_east，wall_side east，along 0.87，rotation 90），
+    // 解算口径与其它墙锚家具一致（referenceWallFurniture 独立参考解）。
+    // 旧 robot_bay 槽位解算（宿主柜中心 (6.89,3.955)、rot270、0.69×0.50、仓宽 0.50、
+    // 基站深 0.433 ⇒ (6.9235,3.860)）已随槽位作废，见 git 历史。
     const dock = resolveFurniturePlacement(
       furnishingById('gbath.robot_dock') as unknown as PlacementItem,
       furnitureWallSegments,
@@ -593,7 +577,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     );
     assert.equal(dock.diagnostic, undefined, `robot_dock: ${dock.diagnostic ?? ''}`);
     assert.ok(dock.placement);
-    assertXZ(dock.placement, dockReference, 'robot_dock 解算结果须等于独立参考解');
+    assertXZ(dock.placement, referenceWallFurniture(furnishingById('gbath.robot_dock')), 'robot_dock 解算结果须等于独立参考解');
 
     // 绝对声明：解算器不得用任何派生量覆盖声明的 x/z。
     // sock_living_sofa_l 已不在此列：二阶段 Stage 2 起它改为 anchor 相对定位（见
@@ -607,7 +591,7 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     }
   });
 
-  it('全量独立复算：79 沿墙点位 + 2 沿墙派生点位 + 2 挂载点位 + 20 挂墙家具 + 全部绝对家具逐条对照', () => {
+  it('全量独立复算：78 沿墙点位 + 2 沿墙派生点位 + 2 挂载点位 + 21 挂墙家具 + 全部绝对家具逐条对照', () => {
     // 参考实现的墙几何来自 raw vertices + wall from/to；先证明它与生产 layout 的墙段一致，
     // 否则参考值与被测输入不是同一份声明，对照无意义。
     for (const wallId of referencedWallIds) {
@@ -636,7 +620,8 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
     }
     // 2026-11-17 Codex blocking（#260 第二轮）：两卫淋浴冷水进口由 wall+along 改为 along_host 派生，
     // 沿墙点位 81→79（派生 2 点见下节，解算仍须与独立参考解一致）。
-    assert.equal(wallPoints, 79, '沿墙点位数量变化：新增/删除点位必须同步更新本基准的覆盖口径');
+    // 2026-11-27 业主裁定撤客卫电热毛巾架，删 sock_gbath_towel，沿墙点位 79→78。
+    assert.equal(wallPoints, 78, '沿墙点位数量变化：新增/删除点位必须同步更新本基准的覆盖口径');
 
     let derivedWallPoints = 0;
     for (const point of allRawPoints) {
@@ -682,8 +667,9 @@ describe('独立几何基准（issue #192 第 1 项；issue #98「不能只用 3
       assertXZ(placement, reference, `${item.id}`);
     }
     // 集成合并：Tier 1 计 17 件，Tier 2 本批新增 3 件墙锚家具（bnw.wardrobe_180、bnw.desk、ld.fridge），
-    // 两批无重叠，合计 20 件；逐件对照循环是数据驱动的，本行只更新覆盖口径。
-    assert.equal(wallFurniture, 20, '挂墙家具数量变化：新增/删除对象必须同步更新本基准的覆盖口径');
+    // 两批无重叠，合计 20 件；2026-11-27 干湿分离放弃：gbath.robot_dock 由槽位挂载改为独立墙锚
+    // （厨房西墙北段 w_vrv_east，2026-11-27 业主裁定由主走廊北墙 w_nw_south 改锚至此），墙锚家具 +1，合计 21 件；逐件对照循环是数据驱动的，本行只更新覆盖口径。
+    assert.equal(wallFurniture, 21, '挂墙家具数量变化：新增/删除对象必须同步更新本基准的覆盖口径');
 
     let absoluteFurniture = 0;
     for (const item of allRawFurnishings) {
@@ -730,16 +716,17 @@ function furnitureWallsWith(wallId: string, segment: WallLike): Map<string, Wall
 
 describe('移墙跟随（issue #192 第 2 项）', () => {
   it('墙段整体平移 0.10m：本墙点位跟走，别墙点位不动', () => {
-    // w_gbath_east_open_vanity 原 (7.20,3.55)→(7.20,4.30)；整段东移 0.10 ⇒ (7.30,3.55)→(7.30,4.30)。
-    const moved = { x1: 7.30, z1: 3.55, x2: 7.30, z2: 4.30 };
-    const walls = pointWallsWith('w_gbath_east_open_vanity', moved);
+    // 2026-11-27 干湿分离放弃：台盆柜与插座由东侧开放区（w_gbath_east_open_vanity）移入内卫南墙。
+    // w_gbath_south 原 (5.69,3.64)→(7.50,3.64)；整段南移 0.10 ⇒ (5.69,3.74)→(7.50,3.74)。
+    const moved = { x1: 5.69, z1: 3.74, x2: 7.50, z2: 3.74 };
+    const walls = pointWallsWith('w_gbath_south', moved);
 
     const before = resolvePoint(pointById('sock_gbath_vanity'), baseMountHosts);
     const after = resolvePoint(pointById('sock_gbath_vanity'), baseMountHosts, walls);
     assert.ok(before.placement && before.placement.kind === 'wall');
     assert.ok(after.placement && after.placement.kind === 'wall');
-    assertXZ(after.placement, { x: before.placement.x + 0.10, z: before.placement.z }, '本墙点位随墙平移');
-    assertXZ(after.placement.datum, { x: before.placement.datum.x + 0.10, z: before.placement.datum.z }, 'datum 随墙平移');
+    assertXZ(after.placement, { x: before.placement.x, z: before.placement.z + 0.10 }, '本墙点位随墙平移');
+    assertXZ(after.placement.datum, { x: before.placement.datum.x, z: before.placement.datum.z + 0.10 }, 'datum 随墙平移');
 
     // 对照：另一面墙上的点位在同一个 walls 索引里不动（证明不是「所有点位都跟着变」）。
     const controlBefore = resolvePoint(pointById('switch_child'), baseMountHosts);
@@ -750,35 +737,44 @@ describe('移墙跟随（issue #192 第 2 项）', () => {
   });
 
   it('墙段起点沿墙轴平移 0.10m：along 从新起点量，点位沿墙向跟走、法向不变', () => {
-    // 墙段保持方向与长度，仅把起点/终点同时沿 +z 平移 0.10。
-    const moved = { x1: 7.20, z1: 3.65, x2: 7.20, z2: 4.40 };
-    const walls = pointWallsWith('w_gbath_east_open_vanity', moved);
+    // 墙段保持方向与长度，仅把起点/终点同时沿 +x 平移 0.10。
+    const moved = { x1: 5.79, z1: 3.64, x2: 7.60, z2: 3.64 };
+    const walls = pointWallsWith('w_gbath_south', moved);
     const before = resolvePoint(pointById('sock_gbath_vanity'), baseMountHosts);
     const after = resolvePoint(pointById('sock_gbath_vanity'), baseMountHosts, walls);
     assert.ok(before.placement && before.placement.kind === 'wall');
     assert.ok(after.placement && after.placement.kind === 'wall');
-    assertXZ(after.placement, { x: before.placement.x, z: before.placement.z + 0.10 }, 'along 起点随墙段起点');
+    assertXZ(after.placement, { x: before.placement.x + 0.10, z: before.placement.z }, 'along 起点随墙段起点');
   });
 
-  it('挂墙家具与它的挂载子件随宿主墙平移；别墙家具不动', () => {
-    const moved = { x1: 7.30, z1: 3.55, x2: 7.30, z2: 4.30 };
-    const walls = furnitureWallsWith('w_gbath_east_open_vanity', moved);
+  it('挂墙家具随宿主墙平移；别墙家具不动（robot_dock 已独立墙锚，不再是台盆柜挂载子件）', () => {
+    // 2026-11-27 干湿分离放弃：vanity/mirror 随 w_gbath_south；robot_dock 改锚厨房西墙北段 w_vrv_east
+    // （2026-11-27 业主裁定由主走廊北墙 w_nw_south 改锚至此），不再是台盆柜的挂载子件——移南墙时 dock 不动，移西墙时 dock 跟走。
+    const moved = { x1: 5.69, z1: 3.74, x2: 7.50, z2: 3.74 };
+    const walls = furnitureWallsWith('w_gbath_south', moved);
 
     const vanityBefore = resolveFurniturePlacement(furnishingById('gbath.vanity') as unknown as PlacementItem, furnitureWallSegments, baseFurnitureHosts);
     const vanityAfter = resolveFurniturePlacement(furnishingById('gbath.vanity') as unknown as PlacementItem, walls, baseFurnitureHosts);
     assert.ok(vanityBefore.placement && vanityAfter.placement);
-    assertXZ(vanityAfter.placement, { x: vanityBefore.placement.x + 0.10, z: vanityBefore.placement.z }, 'gbath.vanity 随墙');
+    assertXZ(vanityAfter.placement, { x: vanityBefore.placement.x, z: vanityBefore.placement.z + 0.10 }, 'gbath.vanity 随墙');
 
     const mirrorBefore = resolveFurniturePlacement(furnishingById('gbath.mirror_cabinet') as unknown as PlacementItem, furnitureWallSegments, baseFurnitureHosts);
     const mirrorAfter = resolveFurniturePlacement(furnishingById('gbath.mirror_cabinet') as unknown as PlacementItem, walls, baseFurnitureHosts);
     assert.ok(mirrorBefore.placement && mirrorAfter.placement);
-    assertXZ(mirrorAfter.placement, { x: mirrorBefore.placement.x + 0.10, z: mirrorBefore.placement.z }, 'gbath.mirror_cabinet 随墙');
+    assertXZ(mirrorAfter.placement, { x: mirrorBefore.placement.x, z: mirrorBefore.placement.z + 0.10 }, 'gbath.mirror_cabinet 随墙');
 
-    // 挂载子件：宿主柜跟着墙走 0.10，robot_bay 槽位必须整体跟走 0.10（不是回到声明原点）。
+    // robot_dock 不挂南墙：移南墙时它不动。
     const dockBefore = resolveFurniturePlacement(furnishingById('gbath.robot_dock') as unknown as PlacementItem, furnitureWallSegments, baseFurnitureHosts);
     const dockAfter = resolveFurniturePlacement(furnishingById('gbath.robot_dock') as unknown as PlacementItem, walls, baseFurnitureHosts);
     assert.ok(dockBefore.placement && dockAfter.placement);
-    assertXZ(dockAfter.placement, { x: dockBefore.placement.x + 0.10, z: dockBefore.placement.z }, 'robot_dock 随宿主墙');
+    assertXZ(dockAfter.placement, { x: dockBefore.placement.x, z: dockBefore.placement.z }, 'robot_dock 不随台盆柜墙');
+
+    // robot_dock 随自己的墙（厨房西墙北段 w_vrv_east，(7.50,−0.15)→(7.50,1.36)）东移 0.10。
+    const kitchenMoved = { x1: 7.60, z1: -0.15, x2: 7.60, z2: 1.36 };
+    const kitchenWalls = furnitureWallsWith('w_vrv_east', kitchenMoved);
+    const dockKitchenAfter = resolveFurniturePlacement(furnishingById('gbath.robot_dock') as unknown as PlacementItem, kitchenWalls, baseFurnitureHosts);
+    assert.ok(dockKitchenAfter.placement);
+    assertXZ(dockKitchenAfter.placement, { x: dockBefore.placement.x + 0.10, z: dockBefore.placement.z }, 'robot_dock 随厨房西墙');
 
     // 对照：另一面墙（w_mbath_east）上的家具不动。
     const controlBefore = resolveFurniturePlacement(furnishingById('mb.full_height_cabinet') as unknown as PlacementItem, furnitureWallSegments, baseFurnitureHosts);
@@ -788,11 +784,11 @@ describe('移墙跟随（issue #192 第 2 项）', () => {
   });
 
   it('墙段反向声明（起点终点互换）后 along 仍从新起点顶点量，世界位置随之镜像', () => {
-    // 反向后 (7.20,4.30)→(7.20,3.55)：切向 −z；along 0.565 自 z=4.30 向北 ⇒ z = 3.735（原 4.115）。
+    // 反向后 (7.50,3.64)→(5.69,3.64)：切向 −x；along 1.10 自 x=7.50 向西 ⇒ x = 6.40（原 6.79）。
     // 期望值由反向后的墙段 + 点位声明当轮算出（与参考实现同口径的向量运算，
-    // 手算 3.735 见上行注释）；断言解算 == 独立复算。
-    const reversed = { x1: 7.20, z1: 4.30, x2: 7.20, z2: 3.55 };
-    const walls = pointWallsWith('w_gbath_east_open_vanity', reversed);
+    // 手算 6.40 见上行注释）；断言解算 == 独立复算。
+    const reversed = { x1: 7.50, z1: 3.64, x2: 5.69, z2: 3.64 };
+    const walls = pointWallsWith('w_gbath_south', reversed);
     const point = pointById('sock_gbath_vanity');
     const after = resolvePoint(point, baseMountHosts, walls);
     assert.ok(after.placement && after.placement.kind === 'wall');
@@ -839,36 +835,30 @@ describe('柜宽变化（issue #192 第 3 项）', () => {
     assertXZ(after.placement, reference, '变窄后与独立参考解一致');
   });
 
-  it('台盆柜宽度 0.69→0.61：robot_bay 槽位与派生抽屉宽跟着走', () => {
-    // 柜中心由墙锚决定，与柜宽无关（沿墙 along 指柜中心），所以宿主中心不变 (6.89,3.955)。
-    // width 0.69：lx = −0.345+0.25 = −0.095 ⇒ dock z = 3.955−0.095 = 3.860；抽屉宽 = 0.69−0.50 = 0.190。
-    // width 0.61：lx = −0.305+0.25 = −0.055 ⇒ dock z = 3.955−0.055 = 3.900；抽屉宽 = 0.61−0.50 = 0.110。
-    // 手算值见上行注释，供人核对；断言只验前后不变式、相对位移与独立参考解。
+  it('台盆柜宽度 0.69→0.61：派生抽屉宽跟着走（robot_bay 槽位已随干湿分离放弃作废）', () => {
+    // 2026-11-27：gbath.robot_dock 不再挂 vanity 的 robot_bay 槽位，改宽不再带动 dock；
+    // 本测试只验派生分割量与宿主中心不变式。
+    // 柜中心由墙锚决定，与柜宽无关（沿墙 along 指柜中心），所以宿主中心不变 (7.025,3.43)。
+    // width 0.69：抽屉宽 = 0.69−0.50 = 0.190；width 0.61：抽屉宽 = 0.61−0.50 = 0.110。
+    // 手算值见上行注释，供人核对；断言只验前后不变式与派生规则。
     const newWidth = 0.61;
     const items = cloneFurnishings();
     const vanity = items.find((item) => item.id === 'gbath.vanity');
     assert.ok(vanity && vanity.vanity_layout);
     const originalWidth = vanity.vanity_layout.width;
     const robotBayWidth = vanity.vanity_layout.robot_bay_width;
-    const dock = items.find((item) => item.id === 'gbath.robot_dock');
-    assert.ok(dock);
 
     const beforeHosts = hostIndex(items);
     const beforeVanity = resolveFurniturePlacement(vanity as unknown as PlacementItem, furnitureWallSegments, beforeHosts);
-    const beforeDock = resolveFurniturePlacement(dock as unknown as PlacementItem, furnitureWallSegments, beforeHosts);
-    assert.ok(beforeVanity.placement && beforeDock.placement);
-    assertXZ(beforeDock.placement, referenceRobotBay(vanity, beforeVanity.placement), '改宽前 dock 须等于独立参考解');
+    assert.ok(beforeVanity.placement);
 
     vanity.vanity_layout.width = newWidth;
     const afterHosts = hostIndex(items);
     const afterVanity = resolveFurniturePlacement(vanity as unknown as PlacementItem, furnitureWallSegments, afterHosts);
-    const afterDock = resolveFurniturePlacement(dock as unknown as PlacementItem, furnitureWallSegments, afterHosts);
     assert.equal(afterVanity.diagnostic, undefined, `vanity: ${afterVanity.diagnostic ?? ''}`);
-    assert.equal(afterDock.diagnostic, undefined, `dock: ${afterDock.diagnostic ?? ''}`);
-    assert.ok(afterVanity.placement && afterDock.placement);
+    assert.ok(afterVanity.placement);
     // 宿主中心由墙锚（along 指柜中心）决定，与柜宽无关 ⇒ 改宽前后中心不变。
     assertXZ(afterVanity.placement, beforeVanity.placement, '宿主中心不随宽度变（along 指中心）');
-    assertXZ(afterDock.placement, referenceRobotBay(vanity, afterVanity.placement), '变窄后与独立参考解一致');
 
     // 派生分割量：抽屉宽 = width − robot_bay_width（剩余尺寸算出，不声明）。
     const beforeLayout = resolveVanityLayout(vanity.vanity_layout === undefined ? undefined : { ...vanity.vanity_layout, width: originalWidth });

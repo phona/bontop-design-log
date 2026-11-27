@@ -20,12 +20,12 @@
 # 派生锚点与重构前完全一致（data/project-render-facts.json 零变化）。
 - id: light_dining_pendant
   anchorY_offset: 0
-  basis: "DEC-2026-10-17-R8/R9：奶油云团吸顶造型采用业主主图比例预演；电气锚点取业主指定的餐厅平顶范围中心。挂点仍即安装完成面（2.8m）；底盘/PE云罩/三颗木球的可见下垂由共享几何表达，不把视觉末端写成电气高度"
+  basis: "DEC-2026-10-17-R8/R9：奶油云团吸顶造型采用业主主图比例预演；电气锚点取业主指定的餐厅平顶范围中心。挂点仍即安装完成面（2026-11-27 业主实测回填：客餐厅板底 2.80→2.820m（餐厅 2.826m），安装完成面同步改为 2.820/2.826m；首轮 2715 读数错误，作废）；底盘/PE云罩/三颗木球的可见下垂由共享几何表达，不把视觉末端写成电气高度"
   reason: "餐厅灯视觉包络从挂点向下约0.486m（吊球为主图比例估值）；渲染锚点随 electrical.yaml 定位，仍落在原顶安装面。"
   applies_to: [web, blender]
 - id: light_living_dome
   anchorY_offset: 0
-  basis: "DEC-2026-10-16-R2：渲染锚点继续与 electrical.height=2.80m 对齐为天花安装面；约0.30m悬垂由共享几何表达，不把视觉下沉写成电气高度。"
+  basis: "DEC-2026-10-16-R2：渲染锚点继续与 electrical.height 对齐为天花安装面（2026-11-27 业主实测回填：客厅板底 2.80→2.820m，electrical.height 同步改为 2.820m；首轮 2715 读数错误，作废）；约0.30m悬垂由共享几何表达，不把视觉下沉写成电气高度。"
   reason: "DEC-2026-10-13-R1曾将挂点从顶板面降25cm以表现通用灯罩下缘；DEC-2026-10-16-R1/R2均将锚点恢复到安装面2.80m，灯体外形高度只由共享几何控制。"
   applies_to: [web, blender]
 - id: light_master_dome
@@ -35,17 +35,17 @@
   applies_to: [web, blender]
 - id: light_parent_dome
   anchorY_offset: 0
-  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（父母房灯位落在原顶 2.80m 平顶区）；吸顶灯体下垂由共享几何表达"
+  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（父母房灯位落在原顶平顶区；2026-11-27 业主实测回填：书房板底 2.80→2.909m，安装完成面同步改为 2.909m）；吸顶灯体下垂由共享几何表达"
   reason: "原 -0.25（已审计 Blender 基线：最终渲染高度 2.55m）废弃，理由同主卧条。"
   applies_to: [web, blender]
 - id: light_child_dome
   anchorY_offset: 0
-  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（儿童房灯位落在原顶 2.80m 平顶区）；吸顶灯体下垂由共享几何表达"
+  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（儿童房灯位落在原顶平顶区；2026-11-27 业主实测回填：儿童房板底 2.80→2.905m，安装完成面同步改为 2.905m）；吸顶灯体下垂由共享几何表达"
   reason: "原 -0.25（已审计 Blender 基线：最终渲染高度 2.55m）废弃，理由同主卧条。"
   applies_to: [web, blender]
 - id: light_study_dome
   anchorY_offset: 0
-  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（客房灯位 (14.9,7.125) 不在任何吊顶分区 footprint 内，属原顶 2.80m 平顶区，原 basis 所指「避免穿出吊顶完成面」的风险对象不存在）；灯体下垂由共享几何表达"
+  basis: "DEC-2026-10-17-R12：渲染锚点即安装完成面（客房灯位 (14.9,7.125) 不在任何吊顶分区 footprint 内，属原顶平顶区（2026-11-27 业主实测回填：东南客房板底 2.80→2.885m，安装完成面同步改为 2.885m），原 basis 所指「避免穿出吊顶完成面」的风险对象不存在）；灯体下垂由共享几何表达"
   reason: "原 -0.5（已审计 Blender 基线：书房吸顶灯为避免嵌入顶面压到 2.30m）废弃：该处无吊顶分区可穿出，且 Blender 基线失去权威来源。"
   applies_to: [web, blender]
 - id: light_corridor_1
@@ -55,7 +55,7 @@
   applies_to: [web, blender]
 - id: light_entry_down
   anchorY_offset: 0
-  basis: "玄关筒灯明装贴安装完成面（2.8m），无吊顶下沉"
+  basis: "玄关筒灯明装贴安装完成面（2026-11-27 业主实测回填：入户花园板底 2.80→2.90m，安装完成面同步改为 2.90m），无吊顶下沉"
   reason: "已审计 Blender 基线：玄关筒灯最终渲染锚点。"
   applies_to: [web, blender]
 - id: light_entry_foyer

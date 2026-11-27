@@ -54,12 +54,13 @@ test('量只有一份：masonryQuoteQuantities 全部来自 shared/masonry-takeo
   assert.ok(Math.abs(quantities.floor - takeoff.dryFloorSqm) < 1e-12, '干区地面 = dryFloorSqm');
   assert.ok(Math.abs(quantities.wet_floor - takeoff.wetFloorSqm) < 1e-12, '湿区地面 = wetFloorSqm');
   assert.ok(Math.abs(quantities.wall_tile - takeoff.totalTileSqm) < 1e-12, '墙砖+防水台 = totalTileSqm');
-  // DEC-2026-10-18-TILE-02 将客卫门外1.125㎡从湿区转入木纹砖干区；
+  // DEC-2026-10-18-TILE-02 将客卫门外洗漱区从湿区转入木纹砖干区；
   // DEC-2026-10-25-R01 重算后全屋材料桶为干区121.0624 / 湿区6.811，贴砖38.6276㎡（2026-11-12 PR #225：砖带 2.65→2.50，−1.035；2026-11-17 包管盒面 +2.644）。
   // 2026-11-16 量价算法审计 D1：主卧/主卫圆角各 −0.2146㎡，干区 120.8478 / 湿区 6.5964（全精度钉值，圆角闭式解带浮点尾）。
-  assert.ok(Math.abs(quantities.floor - 120.84779816339746) < 1e-6, `干区地面实测 ${quantities.floor}`);
-  assert.ok(Math.abs(quantities.wet_floor - 6.596398163397449) < 1e-6, `湿区地面实测 ${quantities.wet_floor}`);
-  assert.ok(Math.abs(quantities.wall_tile - 38.627599347086424) < 1e-6, `贴砖实测 ${quantities.wall_tile}`);
+  // 2026-11-27 量房回填：干区 +2.3113（房间干区 +1.7877：客餐厅 +0.39、厨房 +0.57、东南房 −2.05、主卧/书房/西北次卧 +2.89；走廊 extra +0.9246；洗漱区 −0.401）、湿区 +6.3174（主卫 +4.4256、客卫湿区 +1.8918）、贴砖 −0.3721。
+  assert.ok(Math.abs(quantities.floor - 123.159093128088) < 1e-6, `干区地面实测 ${quantities.floor}`);
+  assert.ok(Math.abs(quantities.wet_floor - 12.913843128087985) < 1e-6, `湿区地面实测 ${quantities.wet_floor}`);
+  assert.ok(Math.abs(quantities.wall_tile - 38.255544706188886) < 1e-6, `贴砖实测 ${quantities.wall_tile}`);
 });
 
 test('文件是合法 quote-cards：parseQuoteCards 不再抛「rates 必须是对象」', () => {
@@ -151,11 +152,11 @@ test('computeLabor 按三行计价：干区 75、墙砖 50、湿区待报价', (
   const snapshot = new BudgetCalculator(catalog, realRules).calculate(scheme);
   const masonry = snapshot.categories.find((c) => c.key === 'masonry');
   assert.ok(masonry);
-  // round(75 × 120.8478) + round(50 × 38.627599347086424) = 9064 + 1931（DEC-2026-10-25-R01 重算后量；2026-11-12 PR #225 砖带下调 −52；2026-11-16 量价算法审计 D1 主卧圆角 −0.2146㎡，干区人工 −16；2026-11-17 包管盒面 +2.644㎡，人工 +132）。
-  // 其中客卫开放洗漱区1.125㎡按木纹砖干区人工计价；湿区费率仍待报价。
+  // round(75 × 123.1591) + round(50 × 38.255544706188886) = 9237 + 1913（DEC-2026-10-25-R01 重算后量；2026-11-12 PR #225 砖带下调 −52；2026-11-16 量价算法审计 D1 主卧圆角 −0.2146㎡，干区人工 −16；2026-11-17 包管盒面 +2.644㎡，人工 +132；2026-11-27 量房回填：干区 +2.3113㎡、贴砖 −0.3721㎡，人工 +155）。
+  // 其中客卫开放洗漱区0.724㎡按木纹砖干区人工计价；湿区费率仍待报价。
   // 阶段 5 口径变更：actual = 已取证材料款 + 人工（不含 candidateActual）。
   // 本 fixture 材料款全未取证 → actual 就是纯人工。
-  assert.equal(masonry.actual, 9064 + 1931, '瓦工人工按费率卡解析价逐行计价（R01 重算）');
+  assert.equal(masonry.actual, 9237 + 1913, '瓦工人工按费率卡解析价逐行计价（R01 重算）');
   assert.deepEqual(masonry.pendingLabor, [
     { area: 'wet_floor_tile', quantity: takeoff.wetFloorSqm, unit: '元/㎡', reason: 'rate 待报价' },
   ], '湿区必须显形为待报价，而不是按 45 元/㎡ 悄悄计入');

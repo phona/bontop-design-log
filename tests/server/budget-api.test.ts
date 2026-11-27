@@ -106,7 +106,7 @@ describe('Budget + Risks + Schemes API', () => {
     assert.match(body.tileBudgetPreview.scopeNote, /excludes bathroom, walls, balcony, and extras/);
     assert.deepEqual(
       body.tileBudgetPreview.dryFloorMaterialAndOrdinaryLaborByCandidate.map((row: { candidateId: string; sameScopeSubtotalYuan: number }) => [row.candidateId, row.sameScopeSubtotalYuan]),
-      [['kt_200x1200', 24610.23], ['jinyi_approx_900x150', 26031.63]] // R01 重算；2026-11-16 D1：干区材料 −28.01、人工 −16.05；D4：干区基数改 rooms + 3.75㎡ 走廊 extra（材料 +493/+534、人工 +281.25）
+      [['kt_200x1200', 25161.63], ['jinyi_approx_900x150', 26626.63]] // R01 重算；2026-11-16 D1：干区材料 −28.01、人工 −16.05；D4：干区基数改 rooms + 3.75㎡ 走廊 extra（材料 +493/+534、人工 +281.25）；2026-11-26/27 量房回填 PR #270：netDryArea 119.723→122.435㎡（+2.712 = 干区房间 +1.7877——客餐厅 +0.842、厨房 +0.5655、东南房 +0.382 为主——+ 走廊 extraDry 3.75→4.67455），材料 kt +348.00 / 锦艺 +391.60，人工 +203.40（75 元/㎡ × 2.712），小计 kt +551.40 / 锦艺 +595.00
     );
     assert.equal(body.totalActual, calc.calculate(state.getCurrentScheme()).totalActual);
     assert.deepEqual(body.categories.map((item: { key: string; actual: number }) => [item.key, item.actual]),

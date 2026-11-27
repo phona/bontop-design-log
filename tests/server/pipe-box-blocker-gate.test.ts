@@ -101,13 +101,13 @@ describe('pipe_box 进 collectElements：门禁看得见它', () => {
     }
   });
 
-  it('生产 3 盒派生为 inferred，不进 pending/undeclared 门禁计数（39 不变）', () => {
+  it('生产 3 盒派生为 inferred，不进 pending/undeclared 门禁计数（40 不变）', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, issues: [] });
     const statusById = new Map(result.states.map((state) => [state.id, state.status]));
     for (const id of BOX_IDS) assert.equal(statusById.get(id), 'inferred');
     const gate = checkBlockers(elements as BlockerSubject[], (subject) => statusById.get(subject.id));
-    assert.equal(gate.checked, 39, `受门禁管辖的 pending/undeclared 构件数仍为 39：${gate.checked}`);
+    assert.equal(gate.checked, 40, `受门禁管辖的 pending/undeclared 构件数仍为 40：${gate.checked}`); // 2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel（pending_selection blocker），39→38；2026-11-27 全屋增压泵只预留新增 pump_booster_reserve / sock_booster_pump_reserve（status: pending），38→40
     assert.deepEqual(gate.issues.map((issue) => formatBlockerIssue(issue)), [], '门禁仍全绿');
   });
 
@@ -222,7 +222,7 @@ describe('待决视图：pipe_box 不重复、不合成（载体行胜出）', (
     const rows = collectRows();
     const ids = rows.map((row) => row.id);
     assert.equal(new Set(ids).size, ids.length, '待决视图不得有重复 id');
-    assert.equal(rows.length, 99, `待决条目总数仍为 99：${rows.length}`); // 2026-11-23 通长假梁：ceiling_master_beam（板底实测）+ ac_master（厂家图 #39）新增 blocker；2026-11-24 electrical:sock_master_ac 补 blocker（精确位置待 #39，status 仍为 inferred）后待决视图多这一行
+    assert.equal(rows.length, 101, `待决条目总数仍为 101：${rows.length}`); // 2026-11-23 通长假梁：ceiling_master_beam（板底实测）+ ac_master（厂家图 #39）新增 blocker；2026-11-24 electrical:sock_master_ac 补 blocker（精确位置待 #39，status 仍为 inferred）后待决视图多这一行；2026-11-27 撤客卫电热毛巾架：删 gbath.heated_towel_rack（pending_adjudication blocker）与 sock_gbath_towel（pending_selection blocker），待决条目 99→97；2026-11-27 机器人泊位定厨房水槽供水，新增 faucet_robot_dock / drain_robot_dock（97→99）；2026-11-27 全屋增压泵只预留，新增 pump_booster_reserve / sock_booster_pump_reserve（99→101）
   });
 });
 

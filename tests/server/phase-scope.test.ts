@@ -9,7 +9,11 @@ describe('phase scope', () => {
       guest_bath: [
         { type: 'vanity', id: 'gbath.vanity', x: 6.79, z: 3.925 },
         { type: 'future_guest_bath_furniture', id: 'gbath.future_thing', x: 6.5, z: 3.5 },
-        { type: 'robot_dock_gbath', id: 'gbath.robot_dock', x: 6.823, z: 3.925 },
+      ],
+      // 2026-11-27 泊位改厨房西墙北段地柜缺口（a59f1940），phase-scope 厨房规则纳入
+      // gbath.robot_dock；夹具随之从 guest_bath 改 kitchen，位置取现模型 (7.78, 0.35)。
+      kitchen: [
+        { type: 'robot_dock_gbath', id: 'gbath.robot_dock', x: 7.78, z: 0.35 },
       ],
       bedroom_nw: [
         { type: 'future_bed', id: 'bnw.future_bed', x: 4.6, z: 2.3 },
@@ -17,8 +21,10 @@ describe('phase scope', () => {
       ],
     }, 'phase_1_basic_occupancy', scopes);
 
-    assert.deepEqual(filtered.guest_bath.map((item) => item.type), ['vanity', 'robot_dock_gbath']);
-    assert.deepEqual(filtered.guest_bath.map((item) => item.sourceIndex), [0, 2]);
+    assert.deepEqual(filtered.guest_bath.map((item) => item.type), ['vanity']);
+    assert.deepEqual(filtered.guest_bath.map((item) => item.sourceIndex), [0]);
+    assert.deepEqual(filtered.kitchen.map((item) => item.type), ['robot_dock_gbath']);
+    assert.equal(filtered.kitchen[0]?.sourceIndex, 0);
     assert.deepEqual(filtered.bedroom_nw.map((item) => item.type), ['curtain_set']);
     assert.equal(filtered.bedroom_nw[0]?.sourceIndex, 1);
   });
