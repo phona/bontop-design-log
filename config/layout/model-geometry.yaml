@@ -61,7 +61,7 @@ vertices:
   - { id: v_kit_s,   x: 7.15,  z: 3.75 }  # 主走廊东北，随书房东墙 x=7.15 与西北次卧南墙 z=3.75
   - { id: v_ent_kit, x: 11.11, z: 4.155 }
   - { id: v_kit_s2,  x: 7.50,  z: 2.40 }  # 厨房–餐厅洞口西 jamb：厨房西墙 x=7.50
-  - { id: v_ent_kit2, x: 10.285, z: 2.40 }  # 洞口东 jamb。EQUIP H z=1.550 x 10.285..10.865 与 V x=10.865；7.50..10.285 = 2.785 = MW 2785
+  - { id: v_ent_kit2, x: 10.294, z: 2.40 }  # 洞口东 jamb。2026-11-27 业主实测洞口宽 2795/2793/2793，均值 2794；7.50..10.294 = 2.794。量房 MW 2785 作废（差 9mm）
   - { id: v_kit_east_s, x: 11.11, z: 2.40 }  # 洞口以东墙垛，接到入户西墙 x=11.11
   - { id: v_be_sw,   x: 13.37, z: 4.035 }  # 东南房西北角。北墙 z=4.035，西墙 EQUIP V x=13.37
   - { id: v_mb_ne,   x: 4.16,  z: 5.455 }  # 主卧东墙 EQUIP V x=4.16
@@ -84,7 +84,7 @@ rooms:
   - id: master_bedroom
     name: 主卧
     boundary: [v_mb_sw, v_mbath_se, v_bath_s, v_strip_ne, v_mb_se, v_sw]  # 2026-11-26 量房：南隔墙 z=2.655，条带北缘随西北次卧南墙 z=3.75，东墙 x=4.16
-    height: 2.90  # 2026-11-26 量房 YQ_ELEV「2900」文字 (2.65,5.88) 落在本房间内。其余房间的 2820 不在本多边形内
+    height: 2.904  # 2026-11-27 业主实测 2899/2906/2906/2904，均值 2.904；量房 2900 作废（差 4mm）
     type: private
     ceiling_finish:
       paint: true
@@ -92,15 +92,15 @@ rooms:
   - id: study
     name: 书房
     boundary: [v_mb_ne, v_st_ne, v_step_b, v_mb_se]
-    height: 2.8  # infer：三个 2820 与一个 2900 的文字都不在本多边形内（最近的 2900 在主卧）
+    height: 2.909  # 2026-11-27 业主实测 2907/2909/2910，均值 2.909；2026-11-26 infer 2900 作废
     type: private
     ceiling_finish:
       paint: true
       reason: "沿用现有原顶涂装口径；层高 2.8 为 infer（2026-11-26 量房文字未落在本房间）"
   - id: living_dining
     name: 客餐厅
-    boundary: [v_kit_s2, v_ent_kit2, v_kit_east_s, v_ent_sw, v_cent_j, v_cent_be, v_be_sw, v_liv_se_s, v_step_t]  # 2026-11-26：东墙 x=13.37，北厚墙改东南房北墙 z=4.035；厨房洞口西段 2.785 后接墙垛到 x=11.11
-    height: 2.82  # 2026-11-26 量房 YQ_ELEV「2820」三处均落在本多边形或紧贴其北缘：(10.57,7.17)、(9.36,2.93)、(11.65,3.61)
+    boundary: [v_kit_s2, v_ent_kit2, v_kit_east_s, v_ent_sw, v_cent_j, v_cent_be, v_be_sw, v_liv_se_s, v_step_t]  # 2026-11-26：东墙 x=13.37，北厚墙改东南房北墙 z=4.035；厨房洞口 2.794（2026-11-27 实测）后接墙垛到 x=11.11；2026-11-27 业主确认：客餐厅两道薄隔墙存在，两道都得打掉、让客餐厅打通（业主决定 2026-11-27 12:33，未执行；拆除前不得删除模型隔墙，待拆除后按实测更新）。隔墙实测（业主，约数"不是很准"）：主段 3.4–3.5m + 转角第二段约 1.4m + 推拉门区一段约 2m，总长约 6.85m，高约 2.823m（客厅 2820/餐厅 2826 均值），拆除面积约 19.3㎡。模型 w_cent_south 仅 1.155m 与实测严重不符，不得用该数算拆除面积；隔墙在模型内暂无对应显式几何（见本条），拆除面积以实测约数为准
+    height: 2.820  # 2026-11-27 业主复测：南向客厅 2820、餐厅 2826；量房 2820 证实（首轮 2715 读数错误，作废）。无吊顶、地面平，楼板本身 2820（餐厅端 2826，高 6mm）
     type: public
     ceiling_finish:
       paint: true
@@ -111,7 +111,7 @@ rooms:
     # 实际地面由 overlay.main_corridor_floor 渲染/计量，实际吊顶由 ceiling_main_corridor 渲染/计量。
     # 东侧开放接客餐厅，不新增隔墙。
     boundary: [v_strip_ne, v_kit_s, v_st_ne, v_mb_ne]
-    height: 2.8  # infer：量房层高文字未落在本多边形内
+    height: 2.898  # 2026-11-27 业主实测 2898/2898，均值 2.898
     type: public
     semantic_only: true
     ceiling_finish:
@@ -120,7 +120,7 @@ rooms:
   - id: master_bath
     name: 主卫
     boundary: [v_bath_nw, v_mbath_north_e, v_bath_ne, v_mbath_se, v_mb_sw]  # 2026-11-26：北外线 z=−0.39 x 0..2.90，东墙 x=2.90，南墙 z=2.655。2900 文字在主卧不在本房间
-    height: 2.8  # infer：量房层高文字未落在本多边形内。下沉 350 是地面沉箱，不是层高（见 #50；2026-11-26 新出图纸 sheet，业主 300DPI 核实）
+    height: 2.882  # 2026-11-27 业主实测 2879/2884（原文 28884 疑为 2884 录入误），均值 2.882。下沉是地面沉箱，不是层高（见 #50）
     type: service
     ceiling_finish:
       paint: true
@@ -128,7 +128,7 @@ rooms:
   - id: bedroom_nw
     name: 西北次卧
     boundary: [v_bath_ne, v_nw_ne, v_nw_bedroom_s, v_bath_s]
-    height: 2.8  # infer：量房层高文字未落在本多边形内
+    height: 2.905  # 2026-11-27 业主实测 2900/2910/2905，均值 2.905；2026-11-26 infer 2900 作废
     type: private
     ceiling_finish:
       paint: true
@@ -137,7 +137,7 @@ rooms:
     name: 客卫
     # 内卫 + 南侧开放洗漱区纳入同一语义房间；南缘 v_gbath_east_s→v_gbath_west_s 无墙，保持开放第四面
     boundary: [v_balc_sw, v_balc_se, v_gbath_east_s, v_gbath_west_s, v_nw_s]
-    height: 2.8  # infer：量房层高文字未落在本多边形内。下沉 350 是地面沉箱，不是层高（见 #74）
+    height: 2.907  # 2026-11-27 业主实测：板底约 2.907（开发商通风槽口 2906/2908）；梁底 2.603（见 ceiling_guest_bath note）。下沉是地面沉箱，不是层高（见 #74）
     type: service
     ceiling_finish:
       paint: true
@@ -145,7 +145,8 @@ rooms:
   - id: kitchen
     name: 厨房
     boundary: [v_kit_w, v_vrv_se, v_kit_s2, v_ent_kit2, v_kit_east_s, v_ent_nw]
-    height: 2.8  # infer：2820 文字 (9.36,2.93) 在洞口以南的客餐厅，不在本多边形内
+    height: 2.910  # 2026-11-27 业主实测 2909/2915/2907，均值 2.910；量房 2820 作废（低 90mm）
+    # 净宽 2026-11-27 业主实测 3382/3383mm（两读数，净空面到面）。结构宽 3610（x 7.50..11.11 墙线间距）与净宽差 228mm，为东墙（w_ent_west，centerline x=11.11）伸入厨房的墙厚；西墙线 x=7.50 为厨房侧墙面，不另扣。结构宽不动，净宽为实测核对值。
     type: service
   - id: balcony
     name: 生活阳台
@@ -155,12 +156,12 @@ rooms:
   - id: entry_garden
     name: 入户花园
     boundary: [v_ent_nw, v_ent_sw, v_cent_j, v_ent_step, v_foyer_se, v_ent_se, v_ent_ne]  # 2026-11-26：西墙 x=11.11，北端 z=−0.15。2820 文字不在本多边形内
-    height: 2.8  # infer
+    height: 2.90  # 板底约 2.90（infer，与相邻房间板底一致）；吊顶完成面 2.674（2026-11-27 业主实测 2682/2681/2659，均值 2.674，开发商吊顶，见 ceiling.yaml）。2.674 是吊顶面，不是板底
     type: public
   - id: bedroom_se
     name: 客房
     boundary: [v_be_sw, v_be_ne, v_be_s_e, v_be_s_w]  # 2026-11-26：北 z=4.035，南内墙 z=8.47，东内墙 x=16.33，西 x=13.37。R04 的 9.88 幕墙作废
-    height: 2.8  # infer：量房层高文字未落在本多边形内
+    height: 2.885  # 2026-11-27 业主实测 2886/2886/2884/2885，均值 2.885；2026-11-26 infer 2820 作废（低 65mm）
     type: private
     ceiling_finish:
       paint: true
@@ -380,6 +381,7 @@ walls:
     line_datum: centerline
     structure: shear
     structure_status: inferred
+    # 2026-11-27 业主实测：客餐厅隔墙（待拆除，两道都打掉）实测主段 3.4–3.5m + 转角第二段约 1.4m + 推拉门区一段约 2m，总长约 6.85m、高约 2.823m、拆除面积约 19.3㎡（约数"不是很准"）。本墙模型长仅 1.155m（z 3.00→4.155），与实测严重不符——不得用 1.155m 算拆除面积；隔墙在模型内暂无对应显式几何，拆除前不得删除本墙，待拆除后按实测更新。另：本墙 structure 标 shear（inferred）——若待拆隔墙含剪力墙段，拆除前须结构复核。
     finish:
       paint_bands:
         - id: paint_living_dining_w_cent_south

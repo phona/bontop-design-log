@@ -34,12 +34,12 @@ import type { ElectricalPoint, RenderLightingFixture, ResolvedRoom } from '../..
 const read = (relative: string) => readFileSync(new URL(`../../${relative}`, import.meta.url), 'utf8');
 
 const MIGRATED_IDS = ['light_master_dome', 'light_parent_dome', 'light_child_dome', 'light_study_dome', 'light_kitchen_panel'] as const;
-// kitchen 宿主为 ceiling_kitchen 铝扣板完成面 2.50m（2026-11-12 由 2.65 下调），其余 4 盏落在原顶 2.80m 平顶区。
+// kitchen 宿主为 ceiling_kitchen 铝扣板完成面 2.50m（2026-11-12 由 2.65 下调），其余 4 盏落在原顶平顶区（各房实测板底：主卧 2.904/灯 2.90、书房 2.909、西北次卧 2.905、东南客房 2.885；2026-11-27 业主实测回填，旧 2.80 已废）。
 const MIGRATED_HEIGHTS: Record<(typeof MIGRATED_IDS)[number], number> = {
-  light_master_dome: 2.8,
-  light_parent_dome: 2.8,
-  light_child_dome: 2.8,
-  light_study_dome: 2.8,
+  light_master_dome: 2.9,
+  light_parent_dome: 2.909,
+  light_child_dome: 2.905,
+  light_study_dome: 2.885,
   light_kitchen_panel: 2.5,
 };
 
@@ -76,7 +76,7 @@ describe('DEC-2026-10-17-R12 吸顶灯锚点迁移', () => {
   it('kitchen 平板灯安装面 2.50 与 ceiling_kitchen 宿主面一致（宿主选择取最低实心面）', () => {
     const electrical = parseElectricalPoints(read('config/electrical.yaml'));
     const zones = parseCeilingZones(read('config/model/envelope/ceiling.yaml'));
-    const rooms = [room('kitchen')];
+    const rooms = [room('kitchen', 2.91)]; // 2026-11-27 业主实测厨房板底 2.910；合成房间高度须与实测一致，否则 thickness 反算的完成面漂移
     const point = electrical.find((candidate) => candidate.id === 'light_kitchen_panel');
     assert.ok(point);
     assert.equal(point.height, 2.5);
@@ -88,16 +88,20 @@ describe('DEC-2026-10-17-R12 吸顶灯锚点迁移', () => {
     assert.ok(Math.abs(host.surfaceY - 2.5) < 1e-9);
   });
 
-  it('4 间卧室 dome 点位均不在任何吊顶分区内（宿主回退原顶 2.80）', () => {
+  it('4 间卧室 dome 点位均不在任何吊顶分区内（宿主回退原顶，各房实测板底）', () => {
     const electrical = parseElectricalPoints(read('config/electrical.yaml'));
     const zones = parseCeilingZones(read('config/model/envelope/ceiling.yaml'));
-    const rooms = ['master_bedroom', 'study', 'bedroom_nw', 'bedroom_se'].map((id) => room(id));
+    // 2026-11-27 业主实测板底：主卧 2.904、书房 2.909、西北次卧 2.905、东南客房 2.885（旧 2.80 已废）
+    const rooms = (
+      { master_bedroom: 2.904, study: 2.909, bedroom_nw: 2.905, bedroom_se: 2.885 } as Record<string, number>
+    );
+    const roomList = Object.entries(rooms).map(([id, height]) => room(id, height));
     for (const id of ['light_master_dome', 'light_parent_dome', 'light_child_dome', 'light_study_dome'] as const) {
       const point = electrical.find((candidate) => candidate.id === id);
       assert.ok(point);
       assert.ok(point.x !== undefined && point.z !== undefined, `${id} 必须带 x/z`);
-      assert.equal(selectCeilingHost({ x: point.x, z: point.z }, zones, rooms), undefined, `${id} 应落在原顶平顶区`);
-      assert.equal(point.height, 2.8);
+      assert.equal(selectCeilingHost({ x: point.x, z: point.z }, zones, roomList), undefined, `${id} 应落在原顶平顶区`);
+      assert.equal(point.height, MIGRATED_HEIGHTS[id]);
     }
   });
 
