@@ -105,9 +105,9 @@ elements:
     assert.ok(res.body.house.furnishings.master_bedroom.some((i: { type: string }) => i.type === 'bed_180'));
     assert.ok(!res.body.house.furnishings.master_bedroom.some((i: { type: string }) => i.type === 'master_north_wall_wardrobe_950'));
     assert.ok(!res.body.house.furnishings.living_dining.some((i: { type: string }) => i.type === 'tv_65'));
-    const phaseRobot = res.body.house.furnishings.guest_bath.find((i: { type: string }) => i.type === 'robot_dock_gbath');
+    const phaseRobot = res.body.house.furnishings.kitchen.find((i: { type: string }) => i.type === 'robot_dock_gbath');
     assert.ok(phaseRobot, 'robot dock remains visible in the一期 scene payload');
-    assert.equal(phaseRobot.sourceIndex, 6, 'phase filtering exposes the authored house.yaml source index'); // DEC-2026-10-17-R20：guest_bath 删 count-only towel_set 与 ceiling_light 预算行、新增 placed heated_towel_rack 后，robot_dock_gbath 在 house.yaml guest_bath 段的下标 8→6
+    assert.equal(phaseRobot.sourceIndex, 12, 'phase filtering exposes the authored house.yaml source index'); // 2026-11-27 泊位改厨房西墙北段地柜缺口（a59f1940），phase-scope 厨房规则纳入 gbath.robot_dock；house.yaml kitchen 段下标 12
     assert.deepEqual(
       res.body.house.furnishings.bedroom_nw.filter((i: { type: string }) => i.type === 'mattress_150'),
       [],
@@ -151,16 +151,16 @@ elements:
     // C11：欧松板 27～29（verified）+ C7 同级旁证 26～30 + 龙骨按「米价 × 新周长用量」折算 36～45（R01）
     assert.equal(res.body.materialPerSqm.min, 97);
     assert.equal(res.body.materialPerSqm.max, 119);
-    // C12 起按施工方分形态口径（边吊 160/米 + 平顶 155/㎡）算额度 → 121.01 元/㎡（2026-11-23 通长假梁后越过参考上限 119）
-    // DEC-2026-10-25-R01 重算后石膏板基数 24.267㎡、边吊 21.375m；2026-11-23 通长假梁后基数 25.036㎡、边吊 24.30m。
+    // C12 起按施工方分形态口径（边吊 160/米 + 平顶 155/㎡）算额度 → 124.05 元/㎡（2026-11-23 通长假梁后越过参考上限 119；2026-11-27 量房回填后 121.01→124.05）
+    // DEC-2026-10-25-R01 重算后石膏板基数 24.267㎡、边吊 21.375m；2026-11-23 通长假梁后基数 25.036㎡、边吊 24.30m；2026-11-27 量房回填后基数 24.7437㎡、边吊 24.03m。
     assert.equal(res.body.contractor.basis, 'forms');
-    assert.equal(res.body.contractor.allowancePerSqm, 121.01);
+    assert.equal(res.body.contractor.allowancePerSqm, 124.05);
     assert.equal(res.body.contractor.formBreakdown.length, 2);
     assert.equal(res.body.verdict, 'above_range');
-    assert.equal(res.body.slackVsMaxYuanPerSqm, 2.01); // R01 重算；2026-11-23 通长假梁
+    assert.equal(res.body.slackVsMaxYuanPerSqm, 5.05); // R01 重算；2026-11-23 通长假梁；2026-11-27 量房回填（124.05−119）
     assert.deepEqual(res.body.ownerOnlyPerSqm, { min: 70, max: 115 });
     assert.ok(res.body.warnings.some((note: string) => note.includes('高于参考上限')),
-      '通长假梁后单位面积额度 121.01 高于参考上限 119，必须报高于区间');
+      '通长假梁后单位面积额度 124.05 高于参考上限 119，必须报高于区间');
     assert.ok(res.body.warnings.some((note: string) => note.includes('两个口径') || note.includes('业主转述')));
     assert.ok(res.body.warnings.some((note: string) => note.includes('未经施工图确认')));
     assert.ok(res.body.warnings.some((note: string) => note.includes('全部分区周长上界')));
@@ -193,16 +193,16 @@ elements:
   // C12：施工方其实按「边吊 160 元/米 + 平顶 155 元/㎡」两队计，代码现在能分开算
   it('GET /api/ceiling/quotes 分形态计价：边吊按米、平顶按㎡，总额不再被口径卡住', async () => {
     const res = await request(app).get('/api/ceiling/quotes').expect(200);
-    // 量：边吊长边 24.30m（按米计价，2026-11-23 通长假梁 21.375→24.30）、满吊平顶 6.311㎡（按㎡计价，R01 重算），
+    // 量：边吊长边 24.03m（按米计价，2026-11-23 通长假梁 21.375→24.30；2026-11-27 量房回填 24.30→24.03）、满吊平顶 7.01525㎡（按㎡计价，R01 重算；2026-11-27 量房回填 6.311→7.01525），
     // 覆盖不变量用**面积**验：边吊面积 + 平顶面积 = 石膏板净面积（两种单位不许相加）
-    assert.ok(Math.abs(res.body.quantities.gypsum_edge_drop_linear - 24.3) < 1e-9);
-    assert.ok(Math.abs(res.body.quantities.gypsum_flat_sqm - 6.311) < 1e-9);
+    assert.ok(Math.abs(res.body.quantities.gypsum_edge_drop_linear - 24.03) < 1e-9);
+    assert.ok(Math.abs(res.body.quantities.gypsum_flat_sqm - 7.01525) < 1e-9);
     assert.ok(Math.abs(res.body.takeoff.edgeDropNetAreaM2 + res.body.takeoff.flatNetAreaM2 - res.body.takeoff.gypsumNetAreaM2) < 1e-9);
     assert.deepEqual(res.body.takeoff.unclassifiedPricingFormIds, []);
     const card = res.body.comparison.find((entry: { id: string }) => entry.id === 'owner_turnkey_20261008')!;
-    // 24.30×160 + 6.311×155 + 17.85×105
-    assert.ok(Math.abs(card.total - (24.3 * 160 + 6.311 * 155 + 17.85 * 105)) < 1e-6);
-    assert.ok(Math.abs(card.total - 6740.455) < 1e-6);
+    // 24.03×160 + 7.01525×155 + 17.73×105（窗帘盒 17.85→17.73，2026-11-27 量房回填）
+    assert.ok(Math.abs(card.total - (24.03 * 160 + 7.01525 * 155 + 17.73 * 105)) < 1e-6);
+    assert.ok(Math.abs(card.total - 6793.81375) < 1e-6);
     assert.deepEqual(card.pendingRows, []);
     // 混合口径的板面行（含厨卫铝扣板）这家不报：超出范围，不算待报价
     assert.deepEqual(card.outOfScopeRows, ['ceiling_zones', 'aluminum_buckle_sqm']);

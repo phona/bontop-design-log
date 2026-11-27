@@ -211,7 +211,7 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
-  along: 0.652
+  along: 0.747
   face_offset: -0.06
   type: socket
   height: 0.75
@@ -225,7 +225,7 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
-  along: 0.738
+  along: 0.833
   face_offset: -0.06
   type: switch_2way
   height: 0.75
@@ -252,7 +252,7 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
-  along: 3.048
+  along: 3.143
   face_offset: -0.06
   type: switch_2way
   height: 0.75
@@ -277,7 +277,7 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
-  along: 2.962
+  along: 3.057
   face_offset: -0.06
   type: socket
   height: 0.75
@@ -298,7 +298,7 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
-  along: 3.134
+  along: 3.229
   face_offset: -0.06
   type: ac_controller
   height: 0.75
@@ -1038,7 +1038,7 @@
   room: master_bedroom
   wall: w_mb_east
   wall_side: west
-  along: 4.125
+  along: 4.22
   face_offset: -0.06
   type: socket
   height: 2.65

@@ -957,9 +957,10 @@ test('shared SceneBuilder opens model d_mbath inward into master_bath toward +z'
   const box = new THREE.Box3().setFromObject(panel);
   assert.ok(Math.abs(box.min.x - 1.93) < 1e-6, `d_mbath hinge-side x: ${box.min.x}`);
   assert.ok(Math.abs(box.max.x - 1.97) < 1e-6, `d_mbath hinge-side x: ${box.max.x}`);
-  assert.ok(Math.abs(box.min.z - 2.06) < 1e-6, `d_mbath sweep start: ${box.min.z}`);
-  assert.ok(Math.abs(box.max.z - 2.86) < 1e-6, `d_mbath sweep end: ${box.max.z}`);
-  assert.ok(panel.position.z > 2.4, 'd_mbath panel must open toward the master_bath (+z) side');
+  // 2026-11-27 量房回填：w_mbath_south 2.86→2.655，门扫掠随之北移——扫掠起止 1.865/2.655。
+  assert.ok(Math.abs(box.min.z - 1.865) < 1e-6, `d_mbath sweep start: ${box.min.z}`);
+  assert.ok(Math.abs(box.max.z - 2.655) < 1e-6, `d_mbath sweep end: ${box.max.z}`);
+  assert.ok(Math.abs(panel.position.z - 2.26) < 1e-6, 'd_mbath panel z must be the sweep midpoint 2.26 (opens toward the master_bath (+z) side)');
 });
 
 test('shared SceneBuilder opens d_mb on the master_bedroom side of w_strip_east', () => {
@@ -981,10 +982,11 @@ test('shared SceneBuilder opens d_mb on the master_bedroom side of w_strip_east'
   assert.ok(panel);
   result.exportRoot.updateMatrixWorld(true);
   const box = new THREE.Box3().setFromObject(panel);
-  assert.ok(Math.abs(box.min.x - 3.3) < 1e-6, `d_mb sweep start: ${box.min.x}`);
-  assert.ok(Math.abs(box.max.x - 4.2) < 1e-6, `d_mb wall-side edge: ${box.max.x}`);
-  assert.ok(Math.abs(box.min.z - 4.63) < 1e-6, `d_mb hinge-side z: ${box.min.z}`);
-  assert.ok(Math.abs(box.max.z - 4.67) < 1e-6, `d_mb hinge-side z: ${box.max.z}`);
+  // 2026-11-27 量房回填：w_strip_east 4.20→4.16、墙起点 5.55→5.455，门扇随之西移/北移。
+  assert.ok(Math.abs(box.min.x - 3.26) < 1e-6, `d_mb sweep start: ${box.min.x}`);
+  assert.ok(Math.abs(box.max.x - 4.16) < 1e-6, `d_mb wall-side edge: ${box.max.x}`);
+  assert.ok(Math.abs(box.min.z - 4.535) < 1e-6, `d_mb hinge-side z: ${box.min.z}`);
+  assert.ok(Math.abs(box.max.z - 4.575) < 1e-6, `d_mb hinge-side z: ${box.max.z}`);
   assert.ok(box.max.x <= wall.x1 + 1e-6, 'd_mb panel must open toward the master_bedroom (west) side');
 });
 
@@ -1038,12 +1040,14 @@ test('R9 SceneBuilder full-height cabinet anchors to the wall west finish with n
   result.exportRoot.updateMatrixWorld(true);
   const cabinet = furnitureByType(result, 'mb_full_height_cabinet');
   const cabinetBox = new THREE.Box3().setFromObject(cabinet);
-  assert.ok(Math.abs(cabinet.position.x - 2.2425) < 1e-6, `cabinet center x must be 2.2425m after 15mm finish retreat`);
-  assert.ok(Math.abs(cabinet.position.z - 3.61) < 1e-6, `cabinet center z must be 3.61m`);
-  assert.ok(Math.abs(cabinetBox.min.x - 1.960) < 1e-6 && Math.abs(cabinetBox.max.x - 2.525) < 1e-6, `cabinet AABB must be x[1.960,2.525] after finish retreat`);
-  assert.ok(Math.abs(cabinetBox.min.z - 2.92) < 1e-6, `cabinet must start at the bedroom-side finish of w_mbath_south`);
-  assert.ok(Math.abs(cabinetBox.max.z - 4.30) < 1e-6, `cabinet must terminate at wall north edge`);
-  assert.ok(Math.abs(cabinetBox.min.y - 0) < 1e-6 && Math.abs(cabinetBox.max.y - 2.80) < 1e-6, `cabinet must run floor to ceiling (carcass 0–2.50 + fixed header 2.50–2.80)`);
+  // 2026-11-27 干湿分离放弃后移入主卫：中心 (2.5425, 2.205)，AABB x[2.26,2.825] z[1.755,2.655] y[0,2.48]。
+  // 配方已与声明同口径（0.90×2.48，顶封作废），SceneBuilder 缩放为 1，故场景盒与声明一致。
+  assert.ok(Math.abs(cabinet.position.x - 2.5425) < 1e-6, `cabinet center x must be 2.5425m after 15mm finish retreat`);
+  assert.ok(Math.abs(cabinet.position.z - 2.205) < 1e-6, `cabinet center z must be 2.205m`);
+  assert.ok(Math.abs(cabinetBox.min.x - 2.26) < 1e-6 && Math.abs(cabinetBox.max.x - 2.825) < 1e-6, `cabinet AABB must be x[2.26,2.825] after finish retreat`);
+  assert.ok(Math.abs(cabinetBox.min.z - 1.755) < 1e-6, `cabinet north end must be 1.755m`);
+  assert.ok(Math.abs(cabinetBox.max.z - 2.655) < 1e-6, `cabinet south end must terminate at the w_mbath_south line 2.655`);
+  assert.ok(Math.abs(cabinetBox.min.y - 0) < 1e-6 && Math.abs(cabinetBox.max.y - 2.48) < 1e-6, `cabinet must run floor to the declared cabinetHeight 2.48 (20mm below the 2.50 ceiling; fixed header abolished 2026-11-27)`);
   assert.equal(result.index.furnitureMeshes.some((group) => group.userData.furnishingType === 'mb_vanity_continuous_closure_cabinet'), false);
   assert.equal(result.index.furnitureMeshes.some((group) => String(group.userData.furnishingType).endsWith('_board_bridge')), false);
 });
@@ -1052,27 +1056,27 @@ test('R9 SceneBuilder full-height cabinet follows inline width/depth edits (Code
   // 2026-11-13 issue #116 参数化单点定义：改 house.yaml 宽深一处，3D 必须跟随。
   // 旧实现只在 FURNITURE_DIMS 有条目时缩放；通顶柜无目录条目，改宽深后定位/DXF
   // 用新尺寸、3D 仍保持配方 1.38×0.565 且无诊断。现分母取实测包络，无第二份尺寸源。
-  // 改后值取收窄（width 1.20 / depth 0.50；加宽会顶出 w_mbath_east 墙段南端 z=4.30，
-  // 那是沿墙合法域的真约束、与缩放无关）：中心 x = 2.525−0.25 = 2.275（背脸贴墙
-  // 完成面 2.525 不动），AABB x[2.025,2.525] z[3.01,4.21]，总高仍 2.80。
+  // 改后值取收窄（width 0.80 / depth 0.50，总高随声明 2.48）：中心 x = 2.825−0.25 = 2.575
+  // （背脸贴墙完成面 2.825 不动），AABB x[2.325,2.825] z[1.805,2.605]，总高 2.48。
   const tmp = mkdtempSync(join(tmpdir(), 'mb-cabinet-parametric-'));
   try {
     const housePath = join(tmp, 'house.yaml');
     const mutated = readFileSync('config/house.yaml', 'utf8')
-      .replace('width: 1.38, depth: 0.565, cabinetHeight: 2.80', 'width: 1.20, depth: 0.50, cabinetHeight: 2.80');
-    assert.ok(mutated.includes('width: 1.20, depth: 0.50'), 'must mutate the cabinet declaration');
+      .replace('width: 0.90, depth: 0.565, cabinetHeight: 2.48', 'width: 0.80, depth: 0.50, cabinetHeight: 2.48');
+    assert.ok(mutated.includes('width: 0.80, depth: 0.50'), 'must mutate the cabinet declaration');
     writeFileSync(housePath, mutated, 'utf8');
     const result = buildCliHouseScene('config/layout/model-geometry.yaml', housePath);
     result.exportRoot.updateMatrixWorld(true);
     const cabinet = furnitureByType(result, 'mb_full_height_cabinet');
-    assert.ok(Math.abs(cabinet.position.x - 2.275) < 1e-6, `cabinet center x=${cabinet.position.x}`);
-    assert.ok(Math.abs(cabinet.position.z - 3.61) < 1e-6, `cabinet center z=${cabinet.position.z}`);
+    assert.ok(Math.abs(cabinet.position.x - 2.575) < 1e-6, `cabinet center x=${cabinet.position.x}`);
+    assert.ok(Math.abs(cabinet.position.z - 2.205) < 1e-6, `cabinet center z=${cabinet.position.z}`);
     const box = new THREE.Box3().setFromObject(cabinet);
-    assert.ok(Math.abs(box.min.x - 2.025) < 1e-6 && Math.abs(box.max.x - 2.525) < 1e-6, `cabinet AABB x[${box.min.x},${box.max.x}]`);
-    assert.ok(Math.abs(box.min.z - 3.01) < 1e-6 && Math.abs(box.max.z - 4.21) < 1e-6, `cabinet AABB z[${box.min.z},${box.max.z}]`);
-    assert.ok(Math.abs(box.min.y - 0) < 1e-6 && Math.abs(box.max.y - 2.80) < 1e-6, 'cabinet height must stay 2.80');
-    assert.ok(Math.abs(cabinet.scale.x - 1.20 / 1.38) < 1e-6, `scale.x must be 1.20/1.38, got ${cabinet.scale.x}`);
+    assert.ok(Math.abs(box.min.x - 2.325) < 1e-6 && Math.abs(box.max.x - 2.825) < 1e-6, `cabinet AABB x[${box.min.x},${box.max.x}]`);
+    assert.ok(Math.abs(box.min.z - 1.805) < 1e-6 && Math.abs(box.max.z - 2.605) < 1e-6, `cabinet AABB z[${box.min.z},${box.max.z}]`);
+    assert.ok(Math.abs(box.min.y - 0) < 1e-6 && Math.abs(box.max.y - 2.48) < 1e-6, 'cabinet height must stay 2.48');
+    assert.ok(Math.abs(cabinet.scale.x - 0.80 / 0.90) < 1e-6, `scale.x must be 0.80/0.90, got ${cabinet.scale.x}`);
     assert.ok(Math.abs(cabinet.scale.z - 0.50 / 0.565) < 1e-6, `scale.z must be 0.50/0.565, got ${cabinet.scale.z}`);
+    assert.ok(Math.abs(cabinet.scale.y - 2.48 / 2.48) < 1e-6, `scale.y must be 2.48/2.48, got ${cabinet.scale.y}`);
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
@@ -1083,19 +1087,22 @@ test('R11 SceneBuilder full-height cabinet and every child part stay inside the 
   result.exportRoot.updateMatrixWorld(true);
   const cabinet = furnitureByType(result, 'mb_full_height_cabinet');
   const cabinetBox = new THREE.Box3().setFromObject(cabinet);
-  assert.ok(Math.abs(cabinet.position.x - 2.2425) < 1e-6, `cabinet center x=${cabinet.position.x}`);
-  assert.ok(Math.abs(cabinet.position.z - 3.61) < 1e-6, `cabinet center z=${cabinet.position.z}`);
-  assert.ok(Math.abs(cabinetBox.min.x - 1.960) < 1e-6 && Math.abs(cabinetBox.max.x - 2.525) < 1e-6, `cabinet AABB x[${cabinetBox.min.x},${cabinetBox.max.x}]`);
-  assert.ok(Math.abs(cabinetBox.min.z - 2.92) < 1e-6 && Math.abs(cabinetBox.max.z - 4.30) < 1e-6, `cabinet AABB z[${cabinetBox.min.z},${cabinetBox.max.z}]`);
+  // 2026-11-27 干湿分离放弃后移入主卫：中心 (2.5425, 2.205)，包络 x[2.26,2.825] z[1.755,2.655]
+  // （南端贴 w_mbath_south 线 2.655；北端 1.755 距马桶南缘 1.725 留 0.03m 缝）。
+  // 零件仍按配方缩放（子件盒与整柜同包络），故逐件包络与整柜同值。
+  assert.ok(Math.abs(cabinet.position.x - 2.5425) < 1e-6, `cabinet center x=${cabinet.position.x}`);
+  assert.ok(Math.abs(cabinet.position.z - 2.205) < 1e-6, `cabinet center z=${cabinet.position.z}`);
+  assert.ok(Math.abs(cabinetBox.min.x - 2.26) < 1e-6 && Math.abs(cabinetBox.max.x - 2.825) < 1e-6, `cabinet AABB x[${cabinetBox.min.x},${cabinetBox.max.x}]`);
+  assert.ok(Math.abs(cabinetBox.min.z - 1.755) < 1e-6 && Math.abs(cabinetBox.max.z - 2.655) < 1e-6, `cabinet AABB z[${cabinetBox.min.z},${cabinetBox.max.z}]`);
   const parts: THREE.Object3D[] = [];
   cabinet.traverse((object) => { if (object.userData.part) parts.push(object); });
-  assert.deepEqual(parts.map((object) => object.userData.part), ['full-height-carcass', 'full-height-header', 'full-height-plinth', 'full-height-door-lower', 'full-height-door-lower', 'full-height-door-lower', 'full-height-door-upper', 'full-height-door-upper', 'full-height-door-upper', 'full-height-door-seam-1', 'full-height-door-seam-2']);
+  assert.deepEqual(parts.map((object) => object.userData.part), ['full-height-carcass', 'full-height-plinth', 'full-height-door-lower', 'full-height-door-lower', 'full-height-door-upper', 'full-height-door-upper', 'full-height-door-seam']);
   for (const part of parts) {
     const box = new THREE.Box3().setFromObject(part);
-    assert.ok(box.min.x >= 1.960 - 1e-6, `${part.userData.part} crosses west edge: ${box.min.x}`);
-    assert.ok(box.max.x <= 2.525 + 1e-6, `${part.userData.part} enters w_mbath_east wall/master_bath side: ${box.max.x}`);
-    assert.ok(box.min.z >= 2.92 - 1e-6, `${part.userData.part} enters master_bath across w_mbath_south: ${box.min.z}`);
-    assert.ok(box.max.z <= 4.30 + 1e-6, `${part.userData.part} crosses wardrobe alignment: ${box.max.z}`);
+    assert.ok(box.min.x >= 2.26 - 1e-6, `${part.userData.part} crosses west edge: ${box.min.x}`);
+    assert.ok(box.max.x <= 2.825 + 1e-6, `${part.userData.part} enters w_mbath_east wall: ${box.max.x}`);
+    assert.ok(box.min.z >= 1.755 - 1e-6, `${part.userData.part} crosses north end: ${box.min.z}`);
+    assert.ok(box.max.z <= 2.655 + 1e-6, `${part.userData.part} crosses south end (w_mbath_south line): ${box.max.z}`);
   }
 });
 
@@ -1124,9 +1131,9 @@ test('R7 full-height cabinet real-mesh collision check clears declared room obst
   }
   // 2026-11-13 issue #116：950 衣柜（三扇带铰链门、可八态开合）退役；通顶柜的门是
   // 平嵌面板、无建模铰链轴，故八态门矩阵无主体。改钉两件事：① 闭合态整柜实 mesh
-  // 与各障碍无交叠且有正净距；② 每扇下柜门（0.44m 宽、朝西开）的摆动扫掠盒
-  // （x 自柜前脸向西 0.46m、z 取门幅——铰链无论在南缘还是北缘，90° 扫掠都落
-  // 在此盒内）与各障碍无交叠。
+  // 与各障碍无交叠且有正净距；② 每扇下柜门（0.43m 宽、朝西开）的摆动扫掠盒
+  // （x 自柜前脸向西 0.45m、z 取门幅——铰链无论在南缘还是北缘，90° 扫掠都落
+  // 在此盒内）与各障碍无交叠。2026-11-27 柜收窄为 0.90m：两扇门 × 0.43m，顶封作废。
   const cabinetBox = new THREE.Box3().setFromObject(cabinet);
   let minimumClearance = Infinity;
   for (const [name, obstacle] of obstacles) {
@@ -1137,11 +1144,11 @@ test('R7 full-height cabinet real-mesh collision check clears declared room obst
   assert.ok(Number.isFinite(minimumClearance) && minimumClearance > 0, 'no positive modeled clearance');
   const lowerDoors: THREE.Object3D[] = [];
   cabinet.traverse((object) => { if (object.userData.part === 'full-height-door-lower') lowerDoors.push(object); });
-  assert.equal(lowerDoors.length, 3, 'cabinet must have three lower swing doors');
+  assert.equal(lowerDoors.length, 2, 'cabinet must have two lower swing doors');
   for (const [index, leaf] of lowerDoors.entries()) {
     const leafBox = new THREE.Box3().setFromObject(leaf);
     const sweep = new THREE.Box3(
-      new THREE.Vector3(leafBox.min.x - 0.46, leafBox.min.y, leafBox.min.z),
+      new THREE.Vector3(leafBox.min.x - 0.45, leafBox.min.y, leafBox.min.z),
       new THREE.Vector3(leafBox.min.x, leafBox.max.y, leafBox.max.z),
     );
     for (const [name, obstacle] of obstacles) {
@@ -1339,33 +1346,38 @@ test('floor regions are coplanar with room floors and railings use shared transp
   assert.ok(parts.filter((part) => (part as THREE.Mesh).geometry).every((part) => (part as THREE.Mesh).geometry!.getAttribute('position')!.count > 0));
 });
 
-test('real overlay/model geometry keeps VRV arc and west platform rounded and view-only', () => {
+test('real overlay/model geometry keeps VRV railing linear and west platform rectangular and view-only', () => {
+  // 2026-11-27 量房回填：v_vrv_n 的 radius 1.00 凹进圆角不存在（旧值是 z=1.10 凹进的误读），
+  // 栏杆改为 3 点直折线、平台边界改为纯矩形（BoxGeometry）；栏杆仍为 arc→linear，
+  // 平台仍只进 view-only 根，不进 export 根。
   const model = load(readTextFile('config/layout/model-geometry.yaml', 'utf8')) as Parameters<typeof resolveLayout>[0];
   const layout = resolveLayout(model);
   const overlay = parseOverlayFiles();
   const elements = mergeSceneElements(layout.walls, overlay);
   const railing = elements.find((element) => element.id === 'vrv_nw_railing');
   assert.equal(railing?.type, 'railing_run');
-  assert.deepEqual(railing?.points.find((point) => point.radius === 1), { x: 5.6, z: 0, radius: 1, cx: 6.6, cz: 1 });
+  assert.equal(railing?.points.find((point) => point.radius !== undefined), undefined, 'vrv_nw_railing must have no arc points');
+  assert.deepEqual(railing?.points, [{ x: 5.69, z: -0.04 }, { x: 5.69, z: -0.15 }, { x: 7.5, z: -0.15 }]);
   const result = buildScene({ rooms: layout.rooms, platform: layout.platform, walls: layout.walls, elements });
   const railingMesh = result.exportRoot.getObjectByName('vrv_nw_railing') as THREE.Group;
-  assert.equal(railingMesh.userData.geometryMode, 'arc');
+  assert.equal(railingMesh.userData.geometryMode, 'linear');
   const railingParts: THREE.Object3D[] = [];
   railingMesh.traverse((object) => { if (object.userData.part) railingParts.push(object); });
   assert.ok(railingParts.some((part) => part.userData.part === 'handrail'));
   assert.ok(railingParts.filter((part) => String(part.userData.part).startsWith('bar:')).length >= 2);
   railingMesh.updateMatrixWorld(true);
   const railingBox = new THREE.Box3().setFromObject(railingMesh);
-  assert.ok(railingBox.min.x >= 5.56 && railingBox.max.x <= 7.21);
-  assert.ok(railingBox.min.z >= -0.04 && railingBox.max.z <= 1.11);
+  assert.ok(Math.abs(railingBox.max.y - 1) < 0.02, `railing height must stay 1m: ${railingBox.max.y}`);
+  assert.ok(railingBox.min.x >= 5.65 && railingBox.max.x <= 7.52, `unexpected railing x bounds: ${railingBox.min.x}..${railingBox.max.x}`);
+  assert.ok(railingBox.min.z >= -0.19 && railingBox.max.z <= -0.02, `unexpected railing z bounds: ${railingBox.min.z}..${railingBox.max.z}`);
   const platformMesh = result.viewOnlyRoot.getObjectByName('platform_boundary') as THREE.Mesh;
   assert.ok(platformMesh);
   assert.equal(result.exportRoot.getObjectByName('platform_boundary'), undefined);
   platformMesh.updateMatrixWorld(true);
   const platformBox = new THREE.Box3().setFromObject(platformMesh);
-  assert.ok(platformBox.min.x >= 5.59 && platformBox.max.x <= 7.21);
-  assert.ok(platformBox.min.z >= -0.01 && platformBox.max.z <= 1.01);
-  assert.ok(platformMesh.geometry instanceof THREE.ExtrudeGeometry);
+  assert.ok(platformBox.min.x >= 5.68 && platformBox.max.x <= 7.51, `unexpected platform x bounds: ${platformBox.min.x}..${platformBox.max.x}`);
+  assert.ok(platformBox.min.z >= -0.16 && platformBox.max.z <= 1.37, `unexpected platform z bounds: ${platformBox.min.z}..${platformBox.max.z}`);
+  assert.ok(platformMesh.geometry instanceof THREE.BoxGeometry, 'rectangular platform must be a BoxGeometry, not ExtrudeGeometry');
 });
 
 test('kitchen countertop cutouts preserve the outer slab and rotate with the furnishing run', () => {

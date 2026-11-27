@@ -58,7 +58,7 @@ phases:
       kitchen:
         # placed：三段柜 run/台面桥/灶/烟机/水槽/热水器/洗碗机；count-only：地柜/吊柜/台面/灯计数。
         # 洗碗机 2026-11-15 一二期对调进一期（#152）：include_ids 纳入 kitchen.dishwasher，exclude_ids 移除。
-        include_ids: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.gas_stove, kitchen.range_hood, kitchen.sink, kitchen.water_heater, kitchen.dishwasher]
+        include_ids: [kitchen.cabinet_run_north_west, kitchen.countertop_bridge, kitchen.cabinet_run_north_east, kitchen.cabinet_run_east, kitchen.gas_stove, kitchen.range_hood, kitchen.sink, kitchen.water_heater, kitchen.dishwasher, gbath.robot_dock]
         include_types: [cabinet_base, cabinet_wall, countertop_quartz, ceiling_light]
       balcony:
         # placed：洗衣机；count-only：灯。
@@ -70,8 +70,8 @@ phases:
         include_ids: [mbath.toilet, mbath.towel_set, mbath.exhaust_fan]
         include_types: [shower_set]
       guest_bath:
-        # placed：台盆柜/马桶/排气扇/镜柜/机器人泊位；count-only：龙头/淋浴组。
-        include_ids: [gbath.vanity, gbath.toilet, gbath.exhaust_fan, gbath.mirror_cabinet, gbath.robot_dock]
+        # placed：台盆柜/马桶/排气扇/镜柜；count-only：龙头/淋浴组。
+        include_ids: [gbath.vanity, gbath.toilet, gbath.exhaust_fan, gbath.mirror_cabinet]
         include_types: [faucet, shower_set]
       entry_garden:
         # placed：换鞋站；count-only：鞋柜/灯。
