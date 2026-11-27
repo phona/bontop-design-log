@@ -426,6 +426,10 @@ export const HvacReservedHoleSchema = z.object({
   not_for_construction: z.literal(true),
   note: nonEmpty,
   survey_confirmation: nonEmpty,
+  // 2026-11-27 自家设计走一轮：孔与冷媒路由的对应声明（设计值，infer）。值为
+  // config/mep-hvac-coordination.yaml 的 route id；null = 本轮设计无路由用此孔
+  // （H2 距最近路由 1.26m 未分配、H3 作废）。只登记对应关系，不产生穿墙声明。
+  serves_route: nonEmpty.nullable().optional(),
 }).strict();
 export const HvacDiagramSchema = z.object({ anchors: z.array(HvacAnchorSchema), terminals: z.array(HvacTerminalSchema), routes: z.array(HvacRouteSchema), reference_constraints: z.array(HvacReferenceConstraintSchema), developer_reserved_holes: z.array(HvacReservedHoleSchema).optional() }).strict();
 export const HvacLoadDesignRoomSchema = z.object({

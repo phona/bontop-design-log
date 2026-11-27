@@ -151,7 +151,7 @@ pipe_route_segments:
   water-kitchen-requirement:        [{from_index: 0, to_index: 3, water_temp: mixed, water_dn: 20}]
   water-kitchen-dishwasher-branch:  [{from_index: 0, to_index: 1, water_temp: cold, water_dn: 20}]
   drain-balcony:                    [{from_index: 0, to_index: 1, drain_dn: 50}]
-  drain-mbath-vanity-to-riser:      [{from_index: 0, to_index: 2, drain_dn: 50}]  # 2026-11-27 干湿分离放弃重画：折线为 3 点（0–2）
+  drain-mbath-vanity-to-riser:      [{from_index: 0, to_index: 2, drain_dn: 50}]  # 2026-11-27 自家设计走一轮：墙排中心 0.35→0.45，via 仍绝对坐标（0.3,0.535,0.425），折线为 3 点（0–2）；整段 DN50 接 de110 立管
   drain-gbath-vanity-to-riser:      [{from_index: 0, to_index: 2, drain_dn: 50}]  # 2026-11-27 干湿分离放弃重画：折线为 3 点（0–2）
   drain-kitchen-sink-to-riser:      [{from_index: 0, to_index: 1, drain_dn: 50}]
   drain-kitchen-dishwasher-to-riser: [{from_index: 0, to_index: 1, drain_dn: 50}]

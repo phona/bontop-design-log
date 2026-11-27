@@ -7,16 +7,17 @@
   type: faucet
   water_temp: "mixed"
   water_dn: 20
-  height: 0.8
-  note: "2026-11-27 移入主卫内：龙头随台盆柜贴东墙北段（沿位 0.575，z≈0.535），给水改由东墙进（原南墙外移条带穿墙口径作废）；台上盆+壁挂龙头需单独定义冷热水预埋、暗装阀体/出水嘴高度与墙排中心，等后才能埋设，水电工不得按 0.8m 抽象点直接开槽（site_pending）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  height: 1.05
+  note: "2026-11-27 移入主卫内：龙头随台盆柜贴东墙北段（沿位 0.575，z≈0.535），给水改由东墙进（原南墙外移条带穿墙口径作废）；台上盆+壁挂龙头（DEC-2026-10-03-R1 路径 A）。2026-11-27 自家设计走一轮（infer）：出水嘴 1.05m（台上盆沿口约 0.89m，柜 0.75m + 台面 0.02m + 盆高约 0.12m，出水嘴高出沿口约 0.16m）、暗装阀体 1.00m、冷热水进水口间距 150mm（左热右冷）；水电工按本轮设计值开槽，型号锁定后复核，错了重定。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
-  status: pending
+  status: inferred
+  construction_status: pending
   blocker:
     kind: pending_selection
     owner: ["业主", "商家"]
     trigger: "台盆/龙头 SKU 冻结"
-    reverses_if: "SKU 变更致台上盆+壁挂龙头的冷热水预埋、暗装阀体/出水嘴高度与墙排中心重定义；水电工不得按 0.8m 抽象点直接开槽"
-    rationale: "h=0.8 是抽象服务点、不足施工，等台盆/龙头 SKU 冻结后才能埋设（site_pending）"
+    reverses_if: "SKU 冻结后若台上盆+壁挂龙头的暗装阀体/出水嘴高度与墙排中心与本轮设计值（阀体 1.00m/出水嘴 1.05m/墙排 0.45m）不符，按 SKU 重定；水电工按本轮设计值开槽，SKU 冻结后复核"
+    rationale: "本轮设计值（infer，2026-11-27 自家设计走一轮）：按台上盆+壁挂龙头（DEC-2026-10-03-R1 路径 A）定阀体 1.00m/出水嘴 1.05m/墙排 0.45m；SKU 未冻结，冻结后复核，错了重定"
 - id: drain_mbath_vanity
   # S1-B 状态申报（issue #98）：依据 DEC-2026-10-03-R1（台盆/龙头 SKU 未冻结、h=0.35 为抽象服务点）与 2026-10-05 给排水 v1 推断落库（立管 #19 推断值）
   status: inferred
@@ -28,8 +29,8 @@
   face_offset: 0.04
   type: drain
   drain_dn: 50
-  height: 0.35
-  note: "2026-11-27 移入主卫内：台盆墙排下水（h0.35）改由东墙北段直接入北沉箱接原立管，不再穿 w_mbath_south（原 2026-08-25 外移条带穿墙口径作废；MEP 路线 drain-mbath-vanity-to-riser 随之重画，见 mep-hvac-coordination.yaml）；立管 #19 推断值 (0.3,1.3) ±0.3m，量房日升级 measured；台盆/龙头 SKU 仍未冻结（DEC-2026-10-03-R1：台上盆+壁挂龙头的冷热水预埋、暗装阀体/出水嘴高度与墙排中心待 SKU），h=0.35 为抽象服务点，水电工不得按此直接开槽"
+  height: 0.45
+  note: "2026-11-27 移入主卫内：台盆墙排下水（墙排中心 0.45m）改由东墙北段直接入北沉箱接原立管，不再穿 w_mbath_south（原 2026-08-25 外移条带穿墙口径作废；MEP 路线 drain-mbath-vanity-to-riser 随之重画，见 mep-hvac-coordination.yaml）；立管 #19 推断值 (0.3,1.3) ±0.3m，量房日升级 measured；2026-11-27 自家设计走一轮（infer）：墙排中心 0.45m（存水弯在柜内，柜高 0.75m，墙排中心 0.45m 为台盆墙排标准值）；台盆/龙头 SKU 仍未冻结（DEC-2026-10-03-R1），水电工按本轮设计值开槽，SKU 冻结后复核，错了重定"
 
 - id: shower_mbath
   room: master_bath
@@ -132,10 +133,10 @@
   type: faucet
   water_temp: "mixed"
   water_dn: 20
-  height: 0.84
+  height: 1.0
   status: inferred
   construction_status: pending
-  note: "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.335，x≈7.025，与台盆共用中心线），底座标高约0.84m，贴近0.77m台面；墙面龙头挂南墙北脸（不挂柜）。原东侧开放区位（w_gbath_east_open_vanity，中心线 z=3.955）作废；扫地机基站进水三通随原仓取消而取消（2026-11-27 泊位落厨房西墙北段，见 gbath.robot_dock，水源已定厨房水槽）。status: inferred + construction_status: pending——本点为设计推断位、未实测，挂载与给排水按现场复核；所连 MEP 路线（water-guest-bath）按点位 id 绑定自动跟随，穿墙 penetration 已随移位取消（龙头与马桶同在内卫，给水不再穿南墙）"
+  note: "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.335，x≈7.025，与台盆共用中心线）；墙面龙头挂南墙北脸（不挂柜）。2026-11-27 自家设计走一轮（infer）：出水嘴 1.00m、暗装阀体 0.95m、冷热水进水口间距 150mm（左热右冷），出水嘴高出台面 0.77m 约 0.23m；水电工按本轮设计值开槽，台盆/龙头 SKU 冻结后复核，错了重定。原东侧开放区位（w_gbath_east_open_vanity，中心线 z=3.955）作废；扫地机基站进水三通随原仓取消而取消（2026-11-27 泊位落厨房西墙北段，见 gbath.robot_dock，水源已定厨房水槽）。status: inferred + construction_status: pending——本点为设计推断位、未实测，挂载与给排水按现场复核；所连 MEP 路线（water-guest-bath）按点位 id 绑定自动跟随，穿墙 penetration 已随移位取消（龙头与马桶同在内卫，给水不再穿南墙）"
 
 - id: drain_gbath_vanity
   room: guest_bath
@@ -145,10 +146,10 @@
   face_offset: -0.06
   type: drain
   drain_dn: 50
-  height: 0.3
+  height: 0.45
   status: inferred
   construction_status: pending
-  note: "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.335，x≈7.025，对齐台盆轴线）：台盆墙排由南墙北脸直接入内卫沉箱，不再穿墙（原 DEC-2026-09-09-R6 穿 w_gbath_south 口径作废；MEP 路线 drain-gbath-vanity-to-riser 随之重画，见 mep-hvac-coordination.yaml）；台盆 SKU 仍未冻结，柜内转 90° 的存水弯/净高待 SKU 冻结后终核（窄深柜 0.35m 下存水弯空间受限，见 gbath.vanity blocker）。本点为设计推断位、非实测，量房日升级 measured 后回写"
+  note: "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.335，x≈7.025，对齐台盆轴线）：台盆墙排由南墙北脸直接入内卫沉箱，不再穿墙（原 DEC-2026-09-09-R6 穿 w_gbath_south 口径作废；MEP 路线 drain-gbath-vanity-to-riser 随之重画，见 mep-hvac-coordination.yaml）；2026-11-27 自家设计走一轮（infer）：墙排中心 0.45m（存水弯在柜内；窄深柜深 0.30m，存水弯深约 0.25m 可容，见 gbath.vanity blocker）；台盆 SKU 仍未冻结，水电工按本轮设计值开槽，SKU 冻结后复核，错了重定。本点为设计推断位、非实测，量房日升级 measured 后回写"
 
 - id: shower_gbath
   room: guest_bath
@@ -422,7 +423,7 @@
   construction_status: pending
   not_for_construction: true
   uncertainty_m: 0.3
-  note: "主卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 原量房台账 #19（已退场，未决项现由对象 blocker 承载）（#6 卫生间排水立管同源）登记的主卫推断值 (0.3,1.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-mbath-vanity-to-riser / drain-mbath-toilet-to-riser 两条 v1 MEP route。⚠️ 推断位落在主卫西北圆弧幕墙的切角外侧（距弧心 (1.00,2.10) 1.06m > r=1.00），量房重点核立管是否在房间内侧；点位不声明 wall（不在任何墙线上，AGENTS.md 挂墙点位 wall_side 规则不适用）；DEC-2026-10-06-R1 管径分级：本主卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径 de110/de75/de50 分级留待 #41 轮批量裁定）。2026-11-27 业主照片核实：主卫排污立管在阳台（照片 39，两根白色 PVC 立管）。坐标仍为推断值（±0.3m），未实测。"
+  note: "主卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 原量房台账 #19（已退场，未决项现由对象 blocker 承载）（#6 卫生间排水立管同源）登记的主卫推断值 (0.3,1.3)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-mbath-vanity-to-riser / drain-mbath-toilet-to-riser 两条 v1 MEP route。⚠️ 推断位落在主卫西北圆弧幕墙的切角外侧（距弧心 (1.00,2.10) 1.06m > r=1.00），量房重点核立管是否在房间内侧；点位不声明 wall（不在任何墙线上，AGENTS.md 挂墙点位 wall_side 规则不适用）；DEC-2026-10-06-R1 管径分级：本主卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径 de110/de75/de50 分级留待 #41 轮批量裁定）。2026-11-27 业主照片核实：主卫排污立管在阳台（照片 39，两根白色 PVC 立管）。坐标仍为推断值（±0.3m），未实测。2026-11-27 自家设计走一轮：四条排水路由（台盆/马桶/淋浴/干区地漏）均按本推断坐标 (0.3,1.3)±0.3m 画线、标 infer；台盆路由 via 已改 slope_run 关系步，实测移位后自动跟随；实测后升级 measured 并回写。"
 
 - id: drain_riser_guest_bath
   room: guest_bath

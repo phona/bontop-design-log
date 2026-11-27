@@ -101,13 +101,13 @@ describe('pipe_box 进 collectElements：门禁看得见它', () => {
     }
   });
 
-  it('生产 3 盒派生为 inferred，不进 pending/undeclared 门禁计数（40 不变）', () => {
+  it('生产 3 盒派生为 inferred，不进 pending/undeclared 门禁计数（39）', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, issues: [] });
     const statusById = new Map(result.states.map((state) => [state.id, state.status]));
     for (const id of BOX_IDS) assert.equal(statusById.get(id), 'inferred');
     const gate = checkBlockers(elements as BlockerSubject[], (subject) => statusById.get(subject.id));
-    assert.equal(gate.checked, 40, `受门禁管辖的 pending/undeclared 构件数仍为 40：${gate.checked}`); // 2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel（pending_selection blocker），39→38；2026-11-27 全屋增压泵只预留新增 pump_booster_reserve / sock_booster_pump_reserve（status: pending），38→40
+    assert.equal(gate.checked, 39, `受门禁管辖的 pending/undeclared 构件数仍为 39：${gate.checked}`); // 2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel（pending_selection blocker），39→38；2026-11-27 全屋增压泵只预留新增 pump_booster_reserve / sock_booster_pump_reserve（status: pending），38→40；2026-11-27 自家设计走一轮：faucet_mbath_vanity 设计值已定（出水嘴 1.05m/阀体 1.00m），status pending→inferred，40→39
     assert.deepEqual(gate.issues.map((issue) => formatBlockerIssue(issue)), [], '门禁仍全绿');
   });
 
