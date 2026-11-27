@@ -609,7 +609,7 @@ walls:
     line_datum: centerline
     openings:
       # 2026-08-25 方向反转：默认 outward/start → inward/end；西北次卧南界保持原 z=4.30
-      - { id: d_bnw, type: door, anchor: v_nw_bedroom_s, offset: 0.495, width: 0.98, height: 2.445, room: bedroom_nw, swing: inward, hinge: end }  # 2026-11-26 MW 980/MH 2445，文字 (5.40,3.85)。z=3.95 墙线只画到 x=4.705，缺口 4.705..5.685=0.98；锚在东端 x=5.69，中心沿墙 0.495
+      - { id: d_bnw, type: door, anchor: v_nw_bedroom_s, offset: 0.495, width: 0.98, height: 2.445, room: bedroom_nw, swing: inward, hinge: end }  # 2026-11-26 MW 980/MH 2445，文字 (5.40,3.85)。z=3.75 墙线只画到 x=4.705，缺口 4.705..5.685=0.98；锚在东端 x=5.69，中心沿墙 0.495
     finish:
       paint_bands:
         - id: paint_bedroom_nw_w_nw_south
