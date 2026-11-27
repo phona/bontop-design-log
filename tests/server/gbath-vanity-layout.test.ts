@@ -164,8 +164,10 @@ describe('gbath vanity layout (issue #98 PR-3)', () => {
 
   it('机器人泊位落厨房西墙北段，不再挂台盆柜', () => {
     // 2026-11-27 干湿分离放弃：柜深 0.50→0.30m 后基站（433mm 深）放不进原机器人仓；
-    // 2026-11-27 业主裁定：泊位落厨房西墙北段（w_vrv_east），热水器北侧，面朝东进厨房。
+    // 2026-11-27 业主裁定：泊位落厨房西墙北段（w_vrv_east），热水器北侧，面朝南，机器人自南向北进站。
     // 业主原指定 z≈0.35，2026-11-27 晚业主裁定北侧地柜开口放基站，泊位移回原定位置，沿位 0.50（中心 z=0.35）。
+    // 朝向更正（2026-11-27 19:17 业主纠正）：a59f1940 写 rotation 90（面朝东）是错的——基站入柜口后东向进路被柜体挡住，
+    // 只能面朝南（rotation 0），机器人自南向北进站；东向进路问题随之作废。
     const guestItems = guestBathItems();
     assert.equal(guestItems.find((item) => item.id === 'gbath.robot_dock'), undefined, 'robot_dock must not be in guest_bath any more');
     const dock = byId(kitchenItems(), 'gbath.robot_dock');
@@ -174,7 +176,7 @@ describe('gbath vanity layout (issue #98 PR-3)', () => {
     assert.equal(dock.wall, 'w_vrv_east');
     assert.equal(dock.wall_side, 'east');
     closeTo(dock.along as number, 0.50);
-    assert.equal(dock.rotation, 90);
+    assert.equal(dock.rotation, 0);
     // 摆位手算：z = 墙段北端 −0.15 + 沿位 0.50 = 0.35；
     // x = 墙东完成面 7.56 + 基站深 0.433/2 = 7.7765。
     const hosts = furnitureHostIndex([...guestItems, ...kitchenItems()]);
