@@ -416,7 +416,7 @@ export const HvacReferenceConstraintSchema = z.object({
 export const HvacRouteSchema = reasonForUnconfirmed(z.object({ id: nonEmpty, status: HvacStatusSchema, system: HvacSystemSchema, from: nonEmpty, to: nonEmpty, via: z.array(nonEmpty).optional(), topology_role: z.enum(['equipment_outlet', 'branch', 'shared_trunk']).optional(), constraint_refs: z.array(nonEmpty).optional(), reason: z.string().optional() }).strict());
 export const HvacReservedHoleSchema = z.object({
   id: nonEmpty,
-  status: z.enum(['inferred', 'pending']),
+  status: z.enum(['inferred', 'pending', 'void']),
   room: nonEmpty.nullable(),
   host: nonEmpty,
   position: z.object({ x: finiteNumber, z: finiteNumber, y: finiteNumber }).strict().nullable(),

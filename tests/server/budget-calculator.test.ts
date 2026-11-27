@@ -912,15 +912,15 @@ describe('BudgetCalculator', () => {
     const masonry = snapshot.categories.find((c) => c.key === 'masonry');
     assert.ok(masonry);
 
-    // 墙砖：拍系数 65.6992㎡ → overlay 声明实算 38.6276㎡（wall_region 20.5155 + sill_region 15.4681 + pipe_box 盒面 2.644；
-    // 2026-10-23 DEC-2026-10-23-R04 前为 36.7236 = 21.2555 + 15.4681；2026-11-12 PR #225 砖带 2.65→2.50，37.0186→35.9836；2026-11-17 包管盒面 +2.644，35.9836→38.6276）。
-    // 按 wall_tile_01 的 70 元/㎡（12 元/片 ÷ 0.18 ㎡/片 × 1.05 损耗）从 4,598.94 降到 2,703.93（2026-11-12 PR #225：2,591.30→2,518.85；2026-11-17 包管盒面 +185.08 → 2,703.93）。
+    // 墙砖：拍系数 65.6992㎡ → overlay 声明实算 38.4116㎡（wall_region 20.2995 + sill_region 15.4681 + pipe_box 盒面 2.644；
+    // 2026-10-23 DEC-2026-10-23-R04 前为 36.7236 = 21.2555 + 15.4681；2026-11-12 PR #225 砖带 2.65→2.50，37.0186→35.9836；2026-11-17 包管盒面 +2.644，35.9836→38.6276；2026-11-27 阳台门取消、门段两砖带 −0.216，38.6276→38.4116）。
+    // 按 wall_tile_01 的 70 元/㎡（12 元/片 ÷ 0.18 ㎡/片 × 1.05 损耗）从 4,598.94 降到 2,688.81（2026-11-12 PR #225：2,591.30→2,518.85；2026-11-17 包管盒面 +185.08 → 2,703.93；2026-11-27 门段砖带 −15.12 → 2,688.81）。
     const wallQuantity = snapshot.lineItems.filter((li) => li.topic === 'wall').reduce((sum, li) => sum + li.quantity, 0);
-    assert.ok(Math.abs(wallQuantity - 38.627599347086424) < 1e-6,
-      `墙砖量必须等于 overlay 声明实算 38.6276㎡（wall 20.5155 + sill 15.4681 + pipe_box 2.644），实际 ${wallQuantity}`);
+    assert.ok(Math.abs(wallQuantity - 38.41159934708642) < 1e-6,
+      `墙砖量必须等于 overlay 声明实算 38.4116㎡（wall 20.2995 + sill 15.4681 + pipe_box 2.644），实际 ${wallQuantity}`);
     const wallCost = snapshot.lineItems.filter((li) => li.topic === 'wall').reduce((sum, li) => sum + li.cost, 0);
-    assert.ok(Math.abs(wallCost - 2703.9319542960498) < 1e-6,
-      `墙砖主材必须从 4,598.944 降到 2,703.932（38.6276㎡ × 70 元/㎡；2026-11-12 PR #225：37.0186→35.9836；2026-11-17 包管盒面 +2.644 → 38.6276），实际 ${wallCost}`);
+    assert.ok(Math.abs(wallCost - 2688.81195429605) < 1e-6,
+      `墙砖主材必须从 4,598.944 降到 2,688.812（38.4116㎡ × 70 元/㎡；2026-11-12 PR #225：37.0186→35.9836；2026-11-17 包管盒面 +2.644 → 38.6276；2026-11-27 门段砖带 −0.216 → 38.4116），实际 ${wallCost}`);
     // 客厅落地幕墙防水台（living_dining，sill_region front+top 1.86㎡）现在也进预算了——
     // 旧口径 wall.applyRooms 只有厨卫+阳台，这 1.86㎡ 被静默丢掉。
     const livingWall = snapshot.lineItems.find((li) => li.topic === 'wall' && li.roomId === 'living_dining');

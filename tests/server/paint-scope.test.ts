@@ -801,7 +801,7 @@ test('门洞缺 sill 取完成面 0m（有物理依据的默认），非门洞�
     [{ id: 'r', wall: 'w', room: 'room', along: [0, 3], bottom: 0, height: 2.8 }],
     [],
   ).regions[0];
-  // 门从完成面起算：model-geometry.yaml 的 9 条 openings 全是 door 且全不写 sill。
+  // 门从完成面起算：model-geometry.yaml 的 8 条 openings 全是 door 且全不写 sill。
   assert.ok(Math.abs(doorRegion.gaps[0].bottom) < 1e-9, '门洞洞底 = 完成面 0m');
   assert.ok(Math.abs(doorRegion.gaps[0].top - 2.1) < 1e-9);
   // 非门洞口（窗/垭口）不享受这个默认：缺 sill 必须抛错。

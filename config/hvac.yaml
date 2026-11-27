@@ -2,7 +2,7 @@ plans:
   - id: A2
     kind: vrf_ducted
     name: "美的领航者Ⅳ 一拖六（成交）"
-    summary: "20kW 外机 MJV-200W-E01-LHIV + 六台双出风 /P-SS 带冷凝提升泵内机；DEC-2026-10-04-R1 定标成交 ‖ 2026-11-27 业主实拍开发商预留空调孔 7 处（照片归档 survey/photos/ac_hole_*_20261127.jpg）：①入户花园门上方墙孔 1 处；②阳台门房间：梁孔 1 处 + 阳台门上方墙孔 1 处；③走廊梁孔 1 处（走廊梁底实测 2.545、板底 2.898，冷媒 2.60 在梁高带内，若主管过此梁须走孔、不得下穿吊顶）；④走廊远端梁孔 1 处；⑤另房间两垂直梁各 1 孔。孔位无实测坐标，仅按照片描述登记，不得据此定穿点；经销商/厂家 2026-11-27 现场定位时确认每孔对应管路。模型穿点（w_strip_east/w_st_north/w_nw_south/w_be_west，2.55）为推断值，未证实与开发商孔重合。孔位结构化登记见 diagram.developer_reserved_holes（H1–H7：H1 入户花园门上、H2 厨房北梁、H3 厨房阳台门上墙、H4 走廊梁近端、H5 走廊远端梁、H6/H7 另一间房两垂直梁（房间未确证、位置待定），全部 infer，待经销商/厂家现场定位核对）。ac_child 未决：照片不解决其越房与 w_nw_south 穿点孤悬，仍待业主裁定。"
+    summary: "20kW 外机 MJV-200W-E01-LHIV + 六台双出风 /P-SS 带冷凝提升泵内机；DEC-2026-10-04-R1 定标成交 ‖ 2026-11-27 业主实拍开发商预留空调孔 7 处（照片归档 survey/photos/ac_hole_*_20261127.jpg）：①入户花园无预留孔（照片 #5 深灰墙实为东南卧室门梁，见 H1）；②厨房：北梁孔 1 处（H2），阳台门上方墙孔 1 处已作废（H3，随待拆隔断取消）；③走廊梁孔 1 处（走廊梁底实测 2.545、板底 2.898，冷媒 2.60 在梁高带内，若主管过此梁须走孔、不得下穿吊顶）；④走廊远端梁孔 1 处；⑤主卧两垂直梁各 1 孔。孔位无实测坐标，仅按照片描述登记，不得据此定穿点；经销商/厂家 2026-11-27 现场定位时确认每孔对应管路。模型穿点（w_strip_east/w_st_north/w_nw_south/w_be_west，2.55）为推断值，未证实与开发商孔重合。孔位结构化登记见 diagram.developer_reserved_holes（H1–H7 登记 7 处、可用 6 处：H1 东南卧室门梁、H2 厨房北梁、H3 厨房阳台门上墙（void，随待拆隔断取消）、H4 走廊梁近端、H5 走廊远端梁、H6/H7 主卧两垂直梁（a↔b 对应哪道梁未确证）；可用孔全部 infer，待经销商/厂家现场定位核对）。ac_child 未决：照片不解决其越房与 w_nw_south 穿点孤悬，仍待业主裁定。"
     # 商务口径（2026-10-13 阶段 3 新增的**机器可读**块）：预算与选型面板的单价只读这里。
     # 历史：单价原先硬编码在 shared/houseData.ts 的七套 invented 报价表里（A2 = 29,000），
     # 与合同成交价 36,000 并存，业主端长期看到 29,000。那些表已删除。
@@ -215,17 +215,20 @@ plans:
         # 确认每孔对应管路。孔径约 0.10m 为照片估（白色套环外径），未实测。模型穿点
         # （w_strip_east/w_st_north/w_nw_south/w_be_west，2.55）为设计推断值，未证实与本列孔重合。
         # 本列只登记开发商孔，不产生 MEP 路线穿墙声明（penetration 计数不变）。
-        - id: hole_entry_garden_door
+        # 2026-11-27 业主确认修正：照片 #5（深灰墙）实为东南卧室门梁，入户花园无预留孔
+        # （H1 改登记）；H6/H7 为主卧两垂直梁；H3 宿主墙 w_balc_east 为待拆隔断，随墙作废
+        # （status void，留墓碑不删）。登记 7 处，可用 6 处。
+        - id: hole_bedroom_se_door_beam
           status: inferred
-          room: entry_garden
-          host: "入户花园门上方墙（d_ent 门顶墙，z=3.00）"
-          position: { x: 12.19, z: 3.00, y: 2.50 }
+          room: bedroom_se
+          host: "东南卧室门梁"
+          position: null
           diameter_m: 0.10
-          source: survey/photos/ac_hole_entry_garden_above_door_20261127.jpg
-          uncertainty_m: 0.3
+          source: survey/photos/ac_hole_bedroom_se_door_beam_20261127.jpg
+          uncertainty_m: null
           not_for_construction: true
-          note: "门上方墙孔：门洞中心 x=12.185（d_ent 锚点 11.11 + offset 1.075），门高 2.32、入户花园吊顶 2.674，孔取门顶上方 y=2.50。用途未明（该处无内机），现场定位时确认。"
-          survey_confirmation: "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路；不得据此开孔或穿梁。"
+          note: "照片 #5（深灰墙）实为东南卧室门梁上的孔，2026-11-27 业主确认：不是入户花园门上方墙孔，入户花园无预留空调孔。原登记 position {x: 12.19, z: 3.00, y: 2.50} 由入户花园门 d_ent 推导，现作废，不编坐标；精确位置待经销商/厂家现场定位时确认。"
+          survey_confirmation: "经销商/厂家现场定位时确认本孔对应管路与精确位置；不得据此开孔或穿梁。"
         - id: hole_kitchen_north_beam
           status: inferred
           room: kitchen
@@ -238,7 +241,7 @@ plans:
           note: "阳台那间房（厨房）梁孔，照片见梁西端附近白环；走廊照片同梁亦见（ac_hole_corridor_20261127.jpg 右上）。厨房梁底 2.60 = 冷媒主管标高 2.60，主管过此梁须走孔。"
           survey_confirmation: "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路；不得据此开孔或穿梁。"
         - id: hole_kitchen_balcony_door_wall
-          status: inferred
+          status: void
           room: kitchen
           host: "厨房西墙阳台门上方墙（d_kit_balc 门顶墙，x=7.50）"
           position: { x: 7.50, z: 1.88, y: 2.65 }
@@ -246,8 +249,8 @@ plans:
           source: survey/photos/ac_hole_balcony_room_beam_and_wall_20261127.jpg
           uncertainty_m: 0.3
           not_for_construction: true
-          note: "阳台门上方墙孔：门洞 z 1.36..2.40、中心 z=1.88，孔取门顶上方 y=2.65（板底 2.91 以下）。同张照片亦见梁孔（hole_kitchen_north_beam，计一次）。"
-          survey_confirmation: "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路；不得据此开孔或穿梁。"
+          note: "作废 2026-11-27（业主确认）：宿主墙 w_balc_east 为开发商仅为标记赠送面积而砌的隔断，待拆除，阳台门 d_kit_balc 并不存在；本孔随墙作废，不再定位、不再计入可用孔。厨房可用预留孔只剩 H2（hole_kitchen_north_beam）。原登记：阳台门上方墙孔，门洞 z 1.36..2.40、中心 z=1.88，孔取门顶上方 y=2.65（板底 2.91 以下）。同张照片亦见梁孔（hole_kitchen_north_beam，计一次）。"
+          survey_confirmation: "本孔已作废，不再现场定位；作废依据为 2026-11-27 业主确认（隔断待拆、无阳台门）。"
         - id: hole_corridor_beam_near
           status: inferred
           room: main_corridor
@@ -272,26 +275,26 @@ plans:
           survey_confirmation: "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路与所在梁；不得据此开孔或穿梁。"
         - id: hole_room_two_beams_a
           status: inferred
-          room: null
-          host: "另一间房两垂直梁之一（通向阳台侧开口上方梁）"
+          room: master_bedroom
+          host: "主卧两垂直梁之一（入口门梁 / 通向主卫方向梁之一，a↔b 对应关系未确证）"
           position: null
           diameter_m: 0.10
           source: survey/photos/ac_hole_room_two_beams_20261127.jpg
           uncertainty_m: null
           not_for_construction: true
-          note: "房间未确证：照片见两垂直梁各 1 孔（一孔在通向阳台侧开口上方梁、一孔在另一开口上方梁），但房间归属无法自照片判定（唯一有阳台直通门的房间是厨房，已另计两孔），不编坐标、不猜房间。现场定位时确认房间与梁。"
-          survey_confirmation: "经销商/厂家 2026-11-27 现场定位时确认本孔所在房间、梁与对应管路；不得据此开孔或穿梁。"
+          note: "2026-11-27 业主确认：本孔与 hole_room_two_beams_b 同属主卧，两垂直梁各 1 孔（一孔在主卧入口门梁上、一孔在通向主卫方向的梁上）。照片见两孔左右并列，但业主未说哪一孔对应哪道梁，a↔b 对应关系不得猜、不编坐标。现场定位时确认每孔所在梁与对应管路。"
+          survey_confirmation: "经销商/厂家 2026-11-27 现场定位时确认本孔所在梁与对应管路；不得据此开孔或穿梁。"
         - id: hole_room_two_beams_b
           status: inferred
-          room: null
-          host: "另一间房两垂直梁之二（另一开口上方梁）"
+          room: master_bedroom
+          host: "主卧两垂直梁之二（入口门梁 / 通向主卫方向梁之一，a↔b 对应关系未确证）"
           position: null
           diameter_m: 0.10
           source: survey/photos/ac_hole_room_two_beams_20261127.jpg
           uncertainty_m: null
           not_for_construction: true
-          note: "与 hole_room_two_beams_a 同房间、同照片，另一道垂直梁上的孔。房间未确证，位置待定，不编坐标。"
-          survey_confirmation: "经销商/厂家 2026-11-27 现场定位时确认本孔所在房间、梁与对应管路；不得据此开孔或穿梁。"
+          note: "与 hole_room_two_beams_a 同房间、同照片，主卧另一道垂直梁上的孔。两孔分属主卧入口门梁与通向主卫方向的梁，a↔b 对应关系未确证，不编坐标、不猜对应。"
+          survey_confirmation: "经销商/厂家 2026-11-27 现场定位时确认本孔所在梁与对应管路；不得据此开孔或穿梁。"
       anchors:
         - id: outdoor_a2
           status: confirmed

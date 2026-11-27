@@ -114,6 +114,17 @@ partition_demolition:
   area_m2: 19.3           # 约数：6.85 × 2.823
   wall_note: "隔墙之一标注 structure shear（推断）；若待拆隔墙含剪力墙段，拆除前须结构复核（BLK-STRUCTURE）"
 
+kitchen_west_partition_demolition:
+  # 厨房西隔断（w_balc_east），与客餐厅两道薄隔墙分开记：不是同一拆除项，不得并入 19.3㎡。
+  # 2026-11-27 业主确认：开发商仅为标记赠送面积而砌的隔断，待拆除；阳台门 d_kit_balc 并不存在。
+  # 拆除尚未执行，模型暂不删墙（按拆除后实测更新），门洞与门段贴砖带已先行删除。
+  decision: "demolish"
+  wall_id: w_balc_east
+  range: "x=7.50，z 1.36..2.40"  # 模型整段即本隔断（v_vrv_se → v_kit_s2，长 1.04m）
+  length_m: 1.04
+  height_m: 2.91          # 厨房侧层高 2910（实测）；模型墙高 2.910 一致
+  area_m2: 3.03           # 1.04 × 2.91 = 3.0264，约数，不得当结算量用
+
 drainage:
   master_bath:
     secondary_drain: "exists"
@@ -131,14 +142,18 @@ risers:
 ac_reserved_holes:
   # 开发商预留空调铜管穿梁/穿墙圆孔（白色圈），业主 2026-11-27 11:51 实拍 6 张（survey/photos/ac_hole_*_20261127.jpg）。
   # 孔位无实测坐标，仅按照片描述登记；穿点以经销商/厂家现场定位为准。ac_child 未决，照片不解决。
+  # 2026-11-27 业主确认修正：照片 #5（深灰墙）实为东南卧室门梁，入户花园无预留孔；H6/H7 为主卧
+  # 两垂直梁（a↔b 对应哪道梁未确证）；厨房阳台门上方墙孔随待拆隔断作废（H3 void）。
   count: 7
+  usable_count: 6
+  void_count: 1
   locations:
-    - "entry garden door-top wall：1"
-    - "balcony-door room beam：1"
-    - "same room balcony-door-top wall：1"
-    - "corridor beam：1"
-    - "corridor far-end beam：1"
-    - "another room, two perpendicular beams：2"
+    - "southeast bedroom door beam：1（原误登为 entry garden door-top wall）"
+    - "kitchen north beam：1"
+    - "kitchen balcony-door-top wall：1，VOID（宿主墙 w_balc_east 待拆，阳台门不存在）"
+    - "corridor beam near end：1"
+    - "corridor beam far end：1"
+    - "master bedroom, two perpendicular beams：2"
   constraint: "制冷剂管只许走预留孔穿梁；走廊梁底 2.545 < 管 2.60 < 楼板 2.898，2.60 管须走预留孔穿该梁；厨房梁底 2.60 = 管 2.60，主管在厨房铝扣板段升至 2.70，6 张照片未见厨房梁孔（已报经销商确认，未证实冲突）"
 
 waterproofing_informational_only:

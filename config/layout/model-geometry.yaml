@@ -976,24 +976,9 @@ walls:
     from: v_vrv_se
     to: v_kit_s2
     height: 2.910
-    openings:
-      - { id: d_kit_balc, type: door, anchor: v_vrv_se, offset: 0.52, width: 0.8, height: 2.1, room: kitchen }  # 墙段改为 z 1.36..2.40（长 1.04）。原 offset 0.6 会让 0.8 门洞越出北端，收到中段
-    finish:
-      tile_bands:
-        - id: walltile_kitchen_balc_east_west
-          room: kitchen
-          along: [0.00, 0.12]      # 门洞收到中段后北侧剩余（墙长 1.04，洞沿墙 0.12..0.92）
-          bottom: 0.00
-          height: 0.90
-          zone: visible
-          reason: "厨房西墙生活阳台门段西侧，辅助台面防溅带 0.90m 正砖；不在 E2 贴满范围。2026-10-09 由 walltile_kitchen_balc_east（整段 1.20m）拆分——门洞占中段 0.80m，瓷砖不扣洞（DEC-2026-10-09-P11）"
-        - id: walltile_kitchen_balc_east_east
-          room: kitchen
-          along: [0.92, 1.04]      # 门洞南侧剩余段
-          bottom: 0.00
-          height: 0.90
-          zone: visible
-          reason: "厨房西墙生活阳台门段东侧，辅助台面防溅带 0.90m 正砖；不在 E2 贴满范围。2026-10-09 由 walltile_kitchen_balc_east（整段 1.20m）拆分——门洞占中段 0.80m，瓷砖不扣洞（DEC-2026-10-09-P11）"
+    # 2026-11-27 业主确认：本墙（x=7.50，z 1.36..2.40，长 1.04m）整段为开发商仅为标记赠送
+    # 面积而砌的隔断，待拆除；阳台门 d_kit_balc 并不存在，门洞与门段贴砖带已随之删除。
+    # 墙体本身按仓内惯例拆除前保留在模型内，拆除执行后按实测删除。
   - id: w_kit_west
     from: v_ent_kit2
     to: v_kit_east_s

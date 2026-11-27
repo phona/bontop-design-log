@@ -232,7 +232,7 @@ envelopes:
   door_swing:
     enabled: true
     wedges: 3
-    note: "门扇 90° 扫掠扇形近似为 3 个有向盒；只对声明了 swing+hinge 的 door 建模（d_elev/d_study/d_kit_balc 未声明 swing，不猜）"
+    note: "门扇 90° 扫掠扇形近似为 3 个有向盒；只对声明了 swing+hinge 的 door 建模（d_elev/d_study 未声明 swing，不猜；d_kit_balc 已于 2026-11-27 随待拆隔断删除）"
   # 推拉门开启态：只对 overlay 的 sliding_door_run open:true 建模，面板叠收位置复刻 SceneBuilder。
   sliding_open:
     enabled: true

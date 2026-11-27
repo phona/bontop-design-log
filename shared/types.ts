@@ -1702,7 +1702,7 @@ export interface HvacRoute {
 
 export interface HvacReservedHole {
   id: string;
-  status: 'inferred' | 'pending';
+  status: 'inferred' | 'pending' | 'void';
   room: string | null;
   host: string;
   position: { x: number; z: number; y: number } | null;

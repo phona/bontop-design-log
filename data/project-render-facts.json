@@ -2581,21 +2581,17 @@
       ],
       "developer_reserved_holes": [
         {
-          "id": "hole_entry_garden_door",
+          "id": "hole_bedroom_se_door_beam",
           "status": "inferred",
-          "room": "entry_garden",
-          "host": "入户花园门上方墙（d_ent 门顶墙，z=3.00）",
-          "position": {
-            "x": 12.19,
-            "z": 3,
-            "y": 2.5
-          },
+          "room": "bedroom_se",
+          "host": "东南卧室门梁",
+          "position": null,
           "diameter_m": 0.1,
-          "source": "survey/photos/ac_hole_entry_garden_above_door_20261127.jpg",
-          "uncertainty_m": 0.3,
+          "source": "survey/photos/ac_hole_bedroom_se_door_beam_20261127.jpg",
+          "uncertainty_m": null,
           "not_for_construction": true,
-          "note": "门上方墙孔：门洞中心 x=12.185（d_ent 锚点 11.11 + offset 1.075），门高 2.32、入户花园吊顶 2.674，孔取门顶上方 y=2.50。用途未明（该处无内机），现场定位时确认。",
-          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路；不得据此开孔或穿梁。"
+          "note": "照片 #5（深灰墙）实为东南卧室门梁上的孔，2026-11-27 业主确认：不是入户花园门上方墙孔，入户花园无预留空调孔。原登记 position {x: 12.19, z: 3.00, y: 2.50} 由入户花园门 d_ent 推导，现作废，不编坐标；精确位置待经销商/厂家现场定位时确认。",
+          "survey_confirmation": "经销商/厂家现场定位时确认本孔对应管路与精确位置；不得据此开孔或穿梁。"
         },
         {
           "id": "hole_kitchen_north_beam",
@@ -2616,7 +2612,7 @@
         },
         {
           "id": "hole_kitchen_balcony_door_wall",
-          "status": "inferred",
+          "status": "void",
           "room": "kitchen",
           "host": "厨房西墙阳台门上方墙（d_kit_balc 门顶墙，x=7.50）",
           "position": {
@@ -2628,8 +2624,8 @@
           "source": "survey/photos/ac_hole_balcony_room_beam_and_wall_20261127.jpg",
           "uncertainty_m": 0.3,
           "not_for_construction": true,
-          "note": "阳台门上方墙孔：门洞 z 1.36..2.40、中心 z=1.88，孔取门顶上方 y=2.65（板底 2.91 以下）。同张照片亦见梁孔（hole_kitchen_north_beam，计一次）。",
-          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路；不得据此开孔或穿梁。"
+          "note": "作废 2026-11-27（业主确认）：宿主墙 w_balc_east 为开发商仅为标记赠送面积而砌的隔断，待拆除，阳台门 d_kit_balc 并不存在；本孔随墙作废，不再定位、不再计入可用孔。厨房可用预留孔只剩 H2（hole_kitchen_north_beam）。原登记：阳台门上方墙孔，门洞 z 1.36..2.40、中心 z=1.88，孔取门顶上方 y=2.65（板底 2.91 以下）。同张照片亦见梁孔（hole_kitchen_north_beam，计一次）。",
+          "survey_confirmation": "本孔已作废，不再现场定位；作废依据为 2026-11-27 业主确认（隔断待拆、无阳台门）。"
         },
         {
           "id": "hole_corridor_beam_near",
@@ -2668,28 +2664,28 @@
         {
           "id": "hole_room_two_beams_a",
           "status": "inferred",
-          "room": null,
-          "host": "另一间房两垂直梁之一（通向阳台侧开口上方梁）",
+          "room": "master_bedroom",
+          "host": "主卧两垂直梁之一（入口门梁 / 通向主卫方向梁之一，a↔b 对应关系未确证）",
           "position": null,
           "diameter_m": 0.1,
           "source": "survey/photos/ac_hole_room_two_beams_20261127.jpg",
           "uncertainty_m": null,
           "not_for_construction": true,
-          "note": "房间未确证：照片见两垂直梁各 1 孔（一孔在通向阳台侧开口上方梁、一孔在另一开口上方梁），但房间归属无法自照片判定（唯一有阳台直通门的房间是厨房，已另计两孔），不编坐标、不猜房间。现场定位时确认房间与梁。",
-          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔所在房间、梁与对应管路；不得据此开孔或穿梁。"
+          "note": "2026-11-27 业主确认：本孔与 hole_room_two_beams_b 同属主卧，两垂直梁各 1 孔（一孔在主卧入口门梁上、一孔在通向主卫方向的梁上）。照片见两孔左右并列，但业主未说哪一孔对应哪道梁，a↔b 对应关系不得猜、不编坐标。现场定位时确认每孔所在梁与对应管路。",
+          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔所在梁与对应管路；不得据此开孔或穿梁。"
         },
         {
           "id": "hole_room_two_beams_b",
           "status": "inferred",
-          "room": null,
-          "host": "另一间房两垂直梁之二（另一开口上方梁）",
+          "room": "master_bedroom",
+          "host": "主卧两垂直梁之二（入口门梁 / 通向主卫方向梁之一，a↔b 对应关系未确证）",
           "position": null,
           "diameter_m": 0.1,
           "source": "survey/photos/ac_hole_room_two_beams_20261127.jpg",
           "uncertainty_m": null,
           "not_for_construction": true,
-          "note": "与 hole_room_two_beams_a 同房间、同照片，另一道垂直梁上的孔。房间未确证，位置待定，不编坐标。",
-          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔所在房间、梁与对应管路；不得据此开孔或穿梁。"
+          "note": "与 hole_room_two_beams_a 同房间、同照片，主卧另一道垂直梁上的孔。两孔分属主卧入口门梁与通向主卫方向的梁，a↔b 对应关系未确证，不编坐标、不猜对应。",
+          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔所在梁与对应管路；不得据此开孔或穿梁。"
         }
       ]
     },
