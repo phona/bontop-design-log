@@ -1,0 +1,284 @@
+# 701 几何快照（8栋701）—— 模型几何状态 2026-11-27
+#
+# 本文件是 8栋701 三维模型在 2026-11-27 量房回填后的几何快照。
+# 来源：config/layout/model-geometry.yaml（几何唯一权威源）+
+# config/model/envelope/openings.yaml（飘窗/幕墙）+ config/house.yaml（房间镜像字段），
+# 取自 PR #270 分支 feat/survey-model-backfill @ 2be4d3ef。
+# 数值底本是 2026-11-27 业主激光实测（见 survey/701_survey_corrected.yaml，权威量房数据）；
+# 与任何 DWG/PDF 值冲突处，一律以业主实测与本文件为准，DWG 原件只作参考。
+# 本文件是快照（只读归档），不驱动模型：改几何只改 model-geometry.yaml，
+# 改完重新生成本文件，不得反向手改本文件去“修正”模型。
+#
+# 单位：米（m），除非另有注明。坐标系：x 东 / z 南（+ z = 南，− z = 北），与 model-geometry.yaml 一致。
+# 模型线 = 墙中心线（line_datum: centerline 的墙）；完成面 = 线 ± 半墙厚（0.06m）。
+#
+# 快照日期：2026-11-27。状态：snapshot（PR #270 未合入前为分支快照，合入后即为 master 几何）。
+
+snapshot_date: "2026-11-27"
+branch: "feat/survey-model-backfill"
+commit: "2be4d3ef"
+source_files:
+  - "config/layout/model-geometry.yaml"
+  - "config/model/envelope/openings.yaml"
+  - "config/house.yaml"
+authority: "model-geometry.yaml 是几何唯一权威源；本文件是它的只读快照。业主实测数优先于 DWG。"
+
+rooms:
+  # height_m = 模型层高（model-geometry.yaml rooms.height，地面到顶板底）。
+  # width_m / length_m / area_m2 = house.yaml 镜像字段（AGENTS.md：镜像字段，不驱动算量；
+  # 算量走 layout-resolver）。客餐厅面积 42.72 是镜像值，含隔墙区。
+  # entry_garden 的 height_m 是板底（infer），吊顶完成面见备注。
+  - id: living_dining
+    name: 客餐厅
+    height_m: 2.820
+    note: "南向客厅 2820、餐厅 2826（餐厅端高 6mm）；无吊顶，地面平。首轮 2715 读数错误作废。"
+    mirror: { width_m: 6.22, length_m: 7.4, area_m2: 42.72 }
+  - id: kitchen
+    name: 厨房
+    height_m: 2.910
+    note: "DWG 写 2820 是错的。净宽 3382/3383mm（面到面），结构宽 3610mm（x 7.50..11.11）。"
+    mirror: { width_m: 3.61, length_m: 2.55, area_m2: 9.21 }
+  - id: master_bedroom
+    name: 主卧
+    height_m: 2.904
+    note: "DWG 写 2900，差 4mm。"
+    mirror: { width_m: 4.16, length_m: 7.15, area_m2: 28.3 }
+  - id: study
+    name: 书房
+    height_m: 2.909
+    mirror: { width_m: 2.99, length_m: 4.35, area_m2: 12.99 }
+  - id: bedroom_nw
+    name: 西北次卧（儿童房）
+    height_m: 2.905
+    mirror: { width_m: 2.79, length_m: 3.79, area_m2: 10.57 }
+  - id: bedroom_se
+    name: 东南客房
+    height_m: 2.885
+    note: "2026-11-26 infer 2820 作废（低 65mm）。"
+    mirror: { width_m: 2.96, length_m: 4.44, area_m2: 13.13 }
+  - id: main_corridor
+    name: 主走廊
+    height_m: 2.898
+    note: "语义房间（semantic_only），地面/吊顶由 overlay 与 ceiling zone 计量。"
+    mirror: { width_m: 2.99, length_m: 1.71, area_m2: 5.1 }
+  - id: master_bath
+    name: 主卫
+    height_m: 2.882
+    note: "下沉是地面沉箱，不是层高。两沉箱约 370/约 330mm。"
+    mirror: { width_m: 2.9, length_m: 3.045, area_m2: 8.8305 }
+  - id: guest_bath
+    name: 客卫
+    height_m: 2.907
+    note: "2.907 是楼板底；梁底 2.603（梁上有通风槽 2906/2908，主卫经此通风）。下沉 410mm。"
+    mirror: { width_m: 1.81, length_m: 2.79, area_m2: 5.06 }
+  - id: entry_garden
+    name: 入户花园
+    height_m: 2.90
+    note: "2.90 是板底（infer，与相邻房间板底一致）；吊顶完成面 2.674（业主实测 2682/2681/2659 均值，开发商吊顶）。赠送面积，gift_areas 宽 6.7 × 长 1.65，面积 11.06㎡。"
+    mirror: { width_m: 6.7, length_m: 1.65, area_m2: 11.06 }
+  - id: balcony
+    name: 生活阳台
+    height_m: 2.8
+    note: "infer。北墙 z=−0.15 到客卫北墙 z=1.36 是同一段；未封闭（业主 2026-11-02 纠正）。"
+    mirror: { width_m: 1.81, length_m: 1.51, area_m2: 2.73 }
+  - id: elevator_shaft
+    name: 电梯井
+    height_m: 2.8
+    note: "infer。"
+    mirror: null
+
+walls_changed_in_backfill:
+  # 2026-11-26/27 量房回填改动的关键墙位（模型坐标，米）。旧值见各条备注。
+  - id: north_wall_straight
+    note: "北墙整条拉直在 z≈0；模型旧 z=1.10 凹进不存在。"
+    segments:
+      - { wall: "w_bath_north（主卫北外线）", z: -0.39, x_range: [0.0, 2.90] }
+      - { wall: "w_nw_north（西北次卧北墙）", z: -0.04, x_range: [2.90, 5.69] }
+      - { wall: "w_vrv_north / w_kit_north（平台/厨房北墙）", z: -0.15, x_range: [5.69, 11.11] }
+  - id: north_zone_east_walls
+    note: "北区三堵东墙 +0.30（旧模型值括号内）。"
+    segments:
+      - { wall: "w_mbath_east（主卫东墙）", x: 2.90, note: "旧 2.60" }
+      - { wall: "w_gbath_west / w_vrv_east（西北次卧东/平台西）", x: 5.69, note: "旧 5.60" }
+      - { wall: "w_kit_west / w_ent_west（厨房西/入户西）", x: 7.50, note: "厨房西旧 7.20" }
+      - { wall: "w_ent_west（入户西墙）", x: 11.11, note: "旧 10.80" }
+  - id: bedroom_se_shift
+    note: "东南客房整体北移约 1m；南边是墙 + 2050 窗，不是玻璃幕墙（R04 的 9.88 幕墙读法作废）。"
+    segments:
+      - { wall: "w_be_north（北墙）", z: 4.035, note: "旧 4.82" }
+      - { wall: "w_be_south（南内墙）", z: 8.47, note: "旧 9.88" }
+      - { wall: "w_be_south 玻璃线（CW 2050 窗）", z: "8.65/8.73", note: "窗，非通高幕墙" }
+      - { wall: "w_east_upper / w_be_s_e（东内墙）", x: 16.33, note: "旧 16.40；外皮 x=16.57" }
+  - id: south_glass_runs
+    note: "南边三跑玻璃（幕墙，CW/CH 2420，LD 115）。"
+    segments:
+      - { run: "living_south_curtain（客厅）", width_m: 5.895, x_range: [7.48, 13.37], z: 9.80, note: "模型旧 4.50m" }
+      - { run: "study south（书房）", width_m: 2.78, x_range: [4.37, 7.15], note: "模型旧 1.50m" }
+      - { run: "master south（主卧，含飘窗）", width_m: 3.90, x_range: [0.71, 4.16], note: "模型旧 2.40m + 飘窗" }
+  - id: west_wall_and_corners
+    note: "西墙整条 x=0.00（z 0.06..9.35）；外墙圆角 r450 外线切弧（模型旧 r1000 太大；并列 r530/r610 是向室内偏 80/160mm 的内线）。"
+    segments:
+      - { wall: "w_west_*（西墙，玻璃幕墙）", x: 0.0, z_range: [0.06, 9.35] }
+      - { corner: "西北角 v_bath_nw", radius_m: 0.45, center: [0.45, 0.06] }
+      - { corner: "西南角 v_sw", radius_m: 0.45, center: [0.45, 9.35] }
+  - id: kitchen_north_protrusion
+    note: "厨房北侧外凸至 z=−1.51（x 6.13..11.11）是管线区（里面燃气管道、外面排水），不是房间边界；厨房北墙仍按 z=−0.15。"
+    segments:
+      - { wall: "w_kit_north（厨房北墙）", z: -0.15, x_range: [7.50, 11.11] }
+      - { wall: "CW 2575 玻璃线（幕墙）", z: "-1.31/-1.39", x_range: [7.50, 10.08] }
+
+openings:
+  # 门洞 width/height 单位米；offset = 锚点到洞口中心距离（layout-resolver 按中心解算）。
+  # 门宽高多为 2026-11-26 量房 MW/MH 值；厨房–餐厅洞口宽为 2026-11-27 业主实测。
+  doors:
+    - { id: d_ent, name: "入户门", width_m: 1.15, height_m: 2.32, wall: "w_ent_south_w", room: "entry_garden" }
+    - { id: d_elev, name: "电梯厅门", width_m: 1.0, height_m: 2.1, wall: "w_ent_south_e", room: "elevator_shaft" }
+    - { id: d_mbath, name: "主卫门", width_m: 0.79, height_m: 2.45, wall: "w_mbath_south", room: "master_bath" }
+    - { id: d_bnw, name: "西北次卧门", width_m: 0.98, height_m: 2.445, wall: "w_nw_south", room: "bedroom_nw" }
+    - { id: d_mb, name: "主卧门", width_m: 0.9, height_m: 2.1, wall: "w_strip_east", room: "master_bedroom" }
+    - { id: d_study, name: "书房门", width_m: 0.855, height_m: 2.445, wall: "w_st_north", room: "study" }
+    - { id: d_gbath, name: "客卫门", width_m: 0.865, height_m: 2.445, wall: "w_gbath_south", room: "guest_bath", note: "offset 0.5575，洞口 x 5.815..6.680（对上 DWG 缝位）；z 向未决：DWG 缝在 z=4.04 短线，模型墙在 z=3.64，待现场确认" }
+    - { id: d_kit_balc, name: "厨房–阳台门", width_m: 0.8, height_m: 2.1, wall: "w_balc_east", room: "kitchen" }
+    - { id: d_bese, name: "东南客房门", width_m: 0.885, height_m: 2.465, wall: "w_be_west", room: "bedroom_se" }
+  kitchen_dining_opening:
+    width_m: 2.794
+    height_m: 2.555
+    note: "2026-11-27 业主实测宽 2795/2793/2793，均值 2794；DWG 2785 作废（差 9mm）。洞口西 jamb x=7.50，东 jamb x=10.294。"
+  windows:
+    - { id: win_be_south, name: "东南客房南窗", width_m: 2.05, height_m: 2.42, sill_m: 0.115, wall: "w_be_south", room: "bedroom_se", note: "CW 2050/CH 2420/LD 115" }
+    - { id: win_gbath_north, name: "客卫北窗", width_m: 0.55, height_m: 1.155, sill_m: 1.36, wall: "w_balc_south", room: "guest_bath", note: "CW 550/CH 1155/LD 1360；模型里是否按墙窗建仍未决（Grok 曾建为 win_gbath_north）" }
+  curtain_glass_calls:
+    # 南/北幕墙玻璃 callout（CW 宽 / CH 高 / LD 台高），DWG MTEXT 原值。
+    - { call: "CW 5895 / CH 2420 / LD 115", room: "living_dining" }
+    - { call: "CW 3900 / CH 2420 / LD 115", room: "master_bedroom" }
+    - { call: "CW 2780 / CH 2420 / LD 115", room: "study" }
+    - { call: "CW 2785 / CH 2420 / LD 115", room: "bedroom_nw" }
+    - { call: "CW 2575 / CH 2425", room: "kitchen" }
+    - { call: "CW 2410 / CH 2420", room: "master_bath" }
+    - { call: "CW 2050 / CH 2420 / LD 115", room: "bedroom_se" }
+    - { call: "705×1155 / LD 1360（高窗）", room: "master_bedroom west", note: "窗子本身就是幕墙，不另建墙" }
+
+bay_windows:
+  # 模型 bay_sill（openings.yaml）：sill = 地面到下飘窗底的高度（米），height = 下飘窗实墙高，
+  # depth = 飘窗进深。sill + height = 飘窗顶，应与房间层高闭合（差值见各条）。
+  # “下吊 750”是飘窗下那截实墙的高度，不是吊顶。
+  - id: master_bedroom_south_bay
+    room: master_bedroom
+    sill_m: 2.149
+    height_m: 0.75
+    depth_m: 1.18
+    note: "实测：地面到下飘窗 2149，下飘窗高 750，深 1180；顶 2149+750=2899，对层高 2.904 差 5mm，闭合。"
+  - id: master_bedroom_west_bay
+    room: master_bedroom
+    sill_m: 2.149
+    height_m: 0.75
+    depth_m: 0.96
+    note: "西墙飘窗（z=5.55~8.80 直墙段）；实测西向深 960。"
+  - id: master_bedroom_west_mid_bay
+    room: master_bedroom
+    sill_m: 2.149
+    height_m: 0.75
+    depth_m: 0.96
+    note: "西墙中段飘窗（z=2.86~5.55）。"
+  - id: study_south_bay
+    room: study
+    sill_m: 2.163
+    height_m: 0.75
+    depth_m: 1.10
+    note: "实测：地面到下飘窗 2166/2163/2161，均值 2163；顶 2163+750=2913，对层高 2.909 差 4mm，闭合。"
+  - id: bedroom_nw_north_bay
+    room: bedroom_nw
+    sill_m: 2.156
+    height_m: 0.75
+    depth_m: 1.16
+    note: "实测：地面到下飘窗 2152/2159/2158，均值 2156，深约 1160；顶 2156+750=2906，对层高 2.905 差 1mm，闭合。"
+  - id: bedroom_se_south_bay
+    room: bedroom_se
+    sill_m: 2.150
+    height_m: 0.735
+    depth_m: 1.16
+    note: "实测：地面到下飘窗 2148/2156/2145/2151，均值 2150，深 1160；顶 2150+735=2885，对层高 2.885 闭合。窗台高 735 为推导值（2885−2150），非实测。"
+  - id: kitchen_north_bay
+    room: kitchen
+    sill_m: 2.201
+    height_m: 0.70
+    depth_m: 1.10
+    note: "实测：地面到下飘窗 2205/2201/2199，均值 2201，下飘窗高约 700（非 750）；顶 2201+700=2901，对层高 2.910 差 9mm，闭合。"
+  - id: master_bath_west_bay
+    room: master_bath
+    sill_m: 2.07
+    height_m: 0.76
+    depth_m: 1.10
+    note: "主卫西北角飘窗；2.07/0.76 沿用旧值，待复尺（未实测）。"
+  - id: master_bath_west_lower_bay
+    room: master_bath
+    sill_m: 2.07
+    height_m: 0.76
+    depth_m: 1.10
+    note: "主卫西墙南段飘窗；2.07/0.76 沿用旧值，待复尺（未实测）。"
+  - id: living_south_waterproof_ledge
+    room: living_dining
+    sill_m: 0.0
+    height_m: 0.15
+    depth_m: 0.15
+    note: "客厅落地幕墙根部防水台（150 高 × 150 出檐，业界常规口径估算，量级待量房核实）。"
+
+beams:
+  # 实测梁底（业主 2026-11-27 激光实测）与模型梁表（推断值，不得作施工依据）分开登记。
+  measured_bottoms_m:
+    - { beam: "厨房梁", bottom_m: 2.60 }
+    - { beam: "主卧梁", bottom_m: 2.50, note: "梁 z 5.05–5.55，全宽 x 0–4.20，深 0.5m（PR #267）；模型原值已正确，实测核对无误" }
+    - { beam: "走廊梁（书房东墙延伸段）", bottom_m: 2.545, note: "书房东墙延伸到走廊上方形成的梁体，与主卧梁不是同一道梁" }
+    - { beam: "客卫梁", bottom_m: 2.603, note: "梁上有通风槽 2906/2908，主卫经此通风，不另开槽" }
+  model_beam_table:
+    note: "model-geometry.yaml beams 表全部 structure_status: inferred + not_for_construction: true，不得作为开孔/穿梁/压标高的施工依据；梁底权威输入是 config/hvac.yaml 的 reference_constraints。"
+    entries:
+      - { id: "beam_z555_x0_72", orientation: "east_west", line: "x 0.00..7.20, z=5.55", inferred_height_m: [0.35, 0.40] }
+      - { id: "beam_z430_x0_134", orientation: "east_west", line: "x 0.00..13.40, z=4.30", inferred_height_m: [0.40, 0.50] }
+      - { id: "beam_x720_z0_98", orientation: "north_south", line: "x=7.20, z 0.00..9.80", inferred_height_m: [0.40, 0.50] }
+      - { id: "beam_x1340_z0_98", orientation: "north_south", line: "x=13.40, z 0.00..9.80", inferred_height_m: [0.35, 0.40] }
+      - { id: "beam_curtain_wall_shallow_band", orientation: "east_west", note: "南/北幕墙带浅梁，梁底≈2.65–2.73（指针见 hvac reference_constraints）" }
+      - { id: "beam_kitchen_local_head", orientation: "north_south", note: "厨房局部梁头候选，梁底 2.56（指针见 hvac reference_constraints）" }
+      - { id: "beam_master_bath_local_head", orientation: "north_south", note: "主卫局部梁头候选，梁底 2.41/2.58（指针见 hvac reference_constraints）" }
+
+sunken_boxes_m:
+  # 沉箱下沉深度（地面到箱底）。两卫均部分回填。
+  - { room: "master_bath", boxes_m: [0.37, 0.33], note: "两个沉箱，约 370 与约 330；DWG 统一写 350 是错的。两沉箱之间有分隔坎（修正版 DWG 新增 2 条墙线，模型 x 0.24–2.45、z 0.86 与 1.06）" }
+  - { room: "guest_bath", boxes_m: [0.41], note: "DWG 写 350 是错的" }
+
+partition_demolition:
+  # 客餐厅两道薄隔墙，2026-11-27 业主确认两道都得打掉、让客餐厅打通。
+  # 拆除尚未执行：墙仍在模型里（不得删除），待拆除后按实测更新。
+  decision: "both_demolish"
+  status: "not_executed_still_in_model"
+  segments_m:
+    main_run: 3.45
+    return_leg: 1.4
+    sliding_door_segment: 2.0
+  total_length_m: 6.85
+  height_m: 2.823
+  area_m2: 19.3
+  note: "长度与面积均为约数（业主：不是很准），不得当结算量用。模型 w_cent_south 仅 1.155m 与实测严重不符，不得用该数算拆除面积。隔墙之一标注 structure shear（推断）；若待拆隔墙含剪力墙段，拆除前须结构复核（BLK-STRUCTURE）。"
+  wall_thickness_mm: 120
+
+wall_thicknesses_mm:
+  # 10 项内墙实测（Space s9-11-14~23）。模型墙体无 thickness 字段，只作记录。
+  - { item: "s9-11-14", value: 205 }
+  - { item: "s9-11-15", value: 480, note: "含门框宽度，有效约 240" }
+  - { item: "s9-11-16", value: 210 }
+  - { item: "s9-11-17", value: 130 }
+  - { item: "s9-11-18", value: null, note: "厨房与儿童房无此种墙体" }
+  - { item: "s9-11-19", value: 220, note: "与 DWG 厨房西墙双面 x 7.28–7.50 = 220mm 吻合，极可能为厨房西墙" }
+  - { item: "s9-11-20", value: 250, note: "2050 − 1800" }
+  - { item: "s9-11-21", value: 183, note: "823 − 640" }
+  - { item: "s9-11-22", value: 120 }
+  - { item: "s9-11-23", value: 120 }
+
+known_drifts_and_open_items:
+  # 本快照已知但未解决的口径漂移与未决项，读快照的人不得把它们当定论用。
+  - "house.yaml 房间 height 镜像值陈旧（多为 2.8），与模型层高不一致；AGENTS.md 只把 width/length/area 定为镜像字段，height 以 model-geometry.yaml 为准。"
+  - "客卫门洞 z 向未决：DWG 缝在 z=4.04 短线，模型墙在 z=3.64；待现场确认南边入口与洗手台区之间有无带门隔墙。"
+  - "客餐厅边界 jog 与涂装区 paint_living_dining_w_st_east 未决（面积 42.72→约 43.39 若修正）。"
+  - "AC 内机位置未决（ac_child 在 (4.4, 4.0)，穿点挂 w_nw_south；待经销商/厂家现场定位）。"
+  - "CW 550 处理未决（Grok 曾建为墙窗 win_gbath_north）。"
+  - "主卫/客卫洗手台与浴室柜已按 2026-11-27 放弃干湿分离的决定移入卫内（见 house.yaml furnishings），本快照只记几何，家具摆位以 house.yaml 为准。"
