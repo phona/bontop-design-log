@@ -191,6 +191,14 @@ waivers:
     owner: 业主
     expires: 2027-06-30
 
+  - id: kitchen_robot_dock_cabinet_notch
+    rule: pen.furniture.furniture
+    pair: [kitchen.cabinet_run_north_west, gbath.robot_dock]
+    kind: contained
+    reason: "2026-11-27 晚业主裁定柜子可以开口：扫地机基站（410×433×280mm）西段伸进北墙地柜西端缺口（config/house.yaml 在该柜体段显式声明 cutouts {kind: robot_dock, id: kitchen-robot-dock-notch}，开口按基站实物留余量、现场开孔），基站是柜体缺口内容物而非独立占地体；台面 0.86m 不动，缺口仅为柜体地面层开口。现场开孔尺寸与进出通道须随柜体下单前复核"
+    owner: 业主
+    expires: 2027-06-30
+
   # ── 主卫浴室柜组 / 主卧梳妆位 / 通顶衣柜收口 ──
   # 2026-11-13 issue #116：vanity_layers / vanity_layers_upper 两条豁免已删——
   # 底柜 + 双悬浮板由单一通顶柜 mb.full_height_cabinet 取代，无分层共面可豁免。

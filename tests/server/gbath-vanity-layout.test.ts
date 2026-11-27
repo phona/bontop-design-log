@@ -4,7 +4,7 @@
 // 2026-11-27 改动：台盆柜由东侧开放区（w_gbath_east_open_vanity，0.515m 墙）移入内卫南墙内侧
 // （w_gbath_south，沿位 1.335），深由 0.50 收窄为 0.30；机器人泊位由台盆柜机器人仓先移至主走廊
 // 北墙作默认位（w_nw_south，沿位 1.53），2026-11-27 业主裁定再改锚厨房西墙北段
-// （w_vrv_east，沿位 0.87，面朝东），不再挂 vanity 的 robot_bay。原 robot_bay 挂载派生
+// （w_vrv_east，沿位 0.50，面朝东），不再挂 vanity 的 robot_bay。原 robot_bay 挂载派生
 // 与跟随断言随本次改位删除（挂载机制本身仍由 shared/furniture-placement.ts 与其它测试覆盖）。
 // 期望值全部手算写死（算式见各断言旁注释），条目声明从 config/house.yaml 实读。
 import { readFileSync } from 'node:fs';
@@ -165,7 +165,7 @@ describe('gbath vanity layout (issue #98 PR-3)', () => {
   it('机器人泊位落厨房西墙北段，不再挂台盆柜', () => {
     // 2026-11-27 干湿分离放弃：柜深 0.50→0.30m 后基站（433mm 深）放不进原机器人仓；
     // 2026-11-27 业主裁定：泊位落厨房西墙北段（w_vrv_east），热水器北侧，面朝东进厨房。
-    // 业主原指定 z≈0.35 与北侧地柜冲突（柜体南沿 z=0.47），实落沿位 0.87（中心 z=0.72）。
+    // 业主原指定 z≈0.35，2026-11-27 晚业主裁定北侧地柜开口放基站，泊位移回原定位置，沿位 0.50（中心 z=0.35）。
     const guestItems = guestBathItems();
     assert.equal(guestItems.find((item) => item.id === 'gbath.robot_dock'), undefined, 'robot_dock must not be in guest_bath any more');
     const dock = byId(kitchenItems(), 'gbath.robot_dock');
@@ -173,14 +173,14 @@ describe('gbath vanity layout (issue #98 PR-3)', () => {
     assert.equal(dock.mount, undefined, 'robot_dock must not mount to the vanity any more');
     assert.equal(dock.wall, 'w_vrv_east');
     assert.equal(dock.wall_side, 'east');
-    closeTo(dock.along as number, 0.87);
+    closeTo(dock.along as number, 0.50);
     assert.equal(dock.rotation, 90);
-    // 摆位手算：z = 墙段北端 −0.15 + 沿位 0.87 = 0.72；
+    // 摆位手算：z = 墙段北端 −0.15 + 沿位 0.50 = 0.35；
     // x = 墙东完成面 7.56 + 基站深 0.433/2 = 7.7765。
     const hosts = furnitureHostIndex([...guestItems, ...kitchenItems()]);
     const placement = mustResolve(dock, hosts, segments({ w_vrv_east: KITCHEN_WEST_WALL_NORTH }));
     closeTo(placement.x, 7.7765);
-    closeTo(placement.z, 0.72);
+    closeTo(placement.z, 0.35);
   });
 
   it('resolveVanityLayout 派生抽屉区宽并拒绝非正数', () => {
