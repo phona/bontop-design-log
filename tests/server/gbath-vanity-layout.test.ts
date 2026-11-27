@@ -1,9 +1,10 @@
 // 客卫台盆柜布局（issue #98 PR-3 起；2026-11-27 干湿分离放弃后改位）。
 // 覆盖：vanity 挂墙定位 + vanity_layout 声明驱动、断引用/负净宽诊断（页面 + DXF + verify:furniture 三处消费）、
-// FixtureFactory.buildVanity 参数化几何、机器人泊位默认落主走廊。
+// FixtureFactory.buildVanity 参数化几何、机器人泊位落厨房西墙北段。
 // 2026-11-27 改动：台盆柜由东侧开放区（w_gbath_east_open_vanity，0.515m 墙）移入内卫南墙内侧
-// （w_gbath_south，沿位 1.335），深由 0.50 收窄为 0.30；机器人泊位由台盆柜机器人仓移至主走廊
-// 北墙作默认位（w_nw_south，沿位 1.53），不再挂 vanity 的 robot_bay。原 robot_bay 挂载派生
+// （w_gbath_south，沿位 1.335），深由 0.50 收窄为 0.30；机器人泊位由台盆柜机器人仓先移至主走廊
+// 北墙作默认位（w_nw_south，沿位 1.53），2026-11-27 业主裁定再改锚厨房西墙北段
+// （w_vrv_east，沿位 0.87，面朝东），不再挂 vanity 的 robot_bay。原 robot_bay 挂载派生
 // 与跟随断言随本次改位删除（挂载机制本身仍由 shared/furniture-placement.ts 与其它测试覆盖）。
 // 期望值全部手算写死（算式见各断言旁注释），条目声明从 config/house.yaml 实读。
 import { readFileSync } from 'node:fs';
@@ -29,7 +30,8 @@ interface WallLike { x1: number; z1: number; x2: number; z2: number }
 /** 手抄现行宿主墙几何（与 model-geometry.yaml 实读比对见 gbath-wall-datum.test.ts）。 */
 const SOUTH_WALL: WallLike = { x1: 5.69, z1: 3.64, x2: 7.50, z2: 3.64 }; // w_gbath_south（台盆/镜柜宿主）
 const EAST_WALL: WallLike = { x1: 7.50, z1: 2.40, x2: 7.50, z2: 3.64 }; // w_gbath_east（毛巾架宿主）
-const CORRIDOR_NORTH_WALL: WallLike = { x1: 2.90, z1: 3.75, x2: 5.69, z2: 3.75 }; // w_nw_south（机器人泊位默认宿主）
+const WEST_WALL: WallLike = { x1: 5.69, z1: 1.36, x2: 5.69, z2: 3.64 }; // w_gbath_west（淋浴区毛巾架宿主）
+const KITCHEN_WEST_WALL_NORTH: WallLike = { x1: 7.50, z1: -0.15, x2: 7.50, z2: 1.36 }; // w_vrv_east（机器人泊位宿主，厨房西墙北段）
 
 function segments(walls: Record<string, WallLike>): Map<string, WallLike[]> {
   return new Map(Object.entries(walls).map(([id, wall]) => [id, [wall]]));
@@ -45,10 +47,10 @@ function guestBathItems(): FurnishingItem[] {
   return JSON.parse(JSON.stringify(house.furnishings.guest_bath)) as FurnishingItem[];
 }
 
-/** 实读 house.yaml 的 main_corridor 条目（机器人泊位默认位）。 */
-function corridorItems(): FurnishingItem[] {
-  const house = loadYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings: { main_corridor: FurnishingItem[] } };
-  return JSON.parse(JSON.stringify(house.furnishings.main_corridor)) as FurnishingItem[];
+/** 实读 house.yaml 的 kitchen 条目（机器人泊位）。 */
+function kitchenItems(): FurnishingItem[] {
+  const house = loadYaml(readFileSync('config/house.yaml', 'utf8')) as { furnishings: { kitchen: FurnishingItem[] } };
+  return JSON.parse(JSON.stringify(house.furnishings.kitchen)) as FurnishingItem[];
 }
 
 function byId(items: FurnishingItem[], id: string): FurnishingItem {
@@ -160,24 +162,25 @@ describe('gbath vanity layout (issue #98 PR-3)', () => {
     closeTo(fixed.z, 3.43);
   });
 
-  it('机器人泊位默认落主走廊，不再挂台盆柜', () => {
-    // 2026-11-27 干湿分离放弃：柜深 0.50→0.30m 后基站（433mm 深）放不进原机器人仓，
-    // 泊位默认落主走廊北墙（用户首选方向），待业主定夺（走廊/主卫/另购薄款基站/取消）。
+  it('机器人泊位落厨房西墙北段，不再挂台盆柜', () => {
+    // 2026-11-27 干湿分离放弃：柜深 0.50→0.30m 后基站（433mm 深）放不进原机器人仓；
+    // 2026-11-27 业主裁定：泊位落厨房西墙北段（w_vrv_east），热水器北侧，面朝东进厨房。
+    // 业主原指定 z≈0.35 与北侧地柜冲突（柜体南沿 z=0.47），实落沿位 0.87（中心 z=0.72）。
     const guestItems = guestBathItems();
     assert.equal(guestItems.find((item) => item.id === 'gbath.robot_dock'), undefined, 'robot_dock must not be in guest_bath any more');
-    const dock = byId(corridorItems(), 'gbath.robot_dock');
+    const dock = byId(kitchenItems(), 'gbath.robot_dock');
     assert.equal(dock.type, 'robot_dock_gbath');
     assert.equal(dock.mount, undefined, 'robot_dock must not mount to the vanity any more');
-    assert.equal(dock.wall, 'w_nw_south');
-    assert.equal(dock.wall_side, 'south');
-    closeTo(dock.along as number, 1.53);
-    assert.equal(dock.rotation, 0);
-    // 摆位手算：x = 墙段西端 2.90 + 沿位 1.53 = 4.43；
-    // z = 墙南完成面 3.81 + 基站深 0.433/2 = 4.0265。
-    const hosts = furnitureHostIndex([...guestItems, ...corridorItems()]);
-    const placement = mustResolve(dock, hosts, segments({ w_nw_south: CORRIDOR_NORTH_WALL }));
-    closeTo(placement.x, 4.43);
-    closeTo(placement.z, 4.0265);
+    assert.equal(dock.wall, 'w_vrv_east');
+    assert.equal(dock.wall_side, 'east');
+    closeTo(dock.along as number, 0.87);
+    assert.equal(dock.rotation, 90);
+    // 摆位手算：z = 墙段北端 −0.15 + 沿位 0.87 = 0.72；
+    // x = 墙东完成面 7.56 + 基站深 0.433/2 = 7.7765。
+    const hosts = furnitureHostIndex([...guestItems, ...kitchenItems()]);
+    const placement = mustResolve(dock, hosts, segments({ w_vrv_east: KITCHEN_WEST_WALL_NORTH }));
+    closeTo(placement.x, 7.7765);
+    closeTo(placement.z, 0.72);
   });
 
   it('resolveVanityLayout 派生抽屉区宽并拒绝非正数', () => {
@@ -196,13 +199,15 @@ describe('gbath vanity layout (issue #98 PR-3)', () => {
     const items = guestBathItems();
     const southWall: Extract<SceneElement, { type: 'wall' }> = { type: 'wall', id: 'w_gbath_south', x1: SOUTH_WALL.x1, z1: SOUTH_WALL.z1, x2: SOUTH_WALL.x2, z2: SOUTH_WALL.z2 };
     const eastWall: Extract<SceneElement, { type: 'wall' }> = { type: 'wall', id: 'w_gbath_east', x1: EAST_WALL.x1, z1: EAST_WALL.z1, x2: EAST_WALL.x2, z2: EAST_WALL.z2 };
+    const westWall: Extract<SceneElement, { type: 'wall' }> = { type: 'wall', id: 'w_gbath_west', x1: WEST_WALL.x1, z1: WEST_WALL.z1, x2: WEST_WALL.x2, z2: WEST_WALL.z2 };
     const build = (furnishings: FurnishingItem[]) => buildScene({
       rooms: [ROOM],
       walls: [
         { id: 'w_gbath_south', ...SOUTH_WALL, height: 2.8 },
         { id: 'w_gbath_east', ...EAST_WALL, height: 2.8 },
+        { id: 'w_gbath_west', ...WEST_WALL, height: 2.8 },
       ],
-      elements: [southWall, eastWall],
+      elements: [southWall, eastWall, westWall],
       furnishings: { guest_bath: furnishings },
     });
 
@@ -210,14 +215,15 @@ describe('gbath vanity layout (issue #98 PR-3)', () => {
     assert.deepEqual(healthy.report.placementDiagnostics, []);
     const healthyVanity = healthy.index.furnitureMeshes.find((group) => group.userData.objectId === 'gbath.vanity');
     const healthyMirror = healthy.index.furnitureMeshes.find((group) => group.userData.objectId === 'gbath.mirror_cabinet');
-    const healthyTowel = healthy.index.furnitureMeshes.find((group) => group.userData.objectId === 'gbath.heated_towel_rack');
-    assert.ok(healthyVanity && healthyMirror && healthyTowel, 'vanity、mirror 与 towel rack 都必须进场景');
+    const healthyTowel = healthy.index.furnitureMeshes.find((group) => group.userData.objectId === 'gbath.towel_set');
+    assert.ok(healthyVanity && healthyMirror && healthyTowel, 'vanity、mirror 与 towel set 都必须进场景');
     closeTo(healthyVanity!.position.x, 7.025);
     closeTo(healthyVanity!.position.z, 3.43);
     closeTo(healthyMirror!.position.x, 7.025);
     closeTo(healthyMirror!.position.z, 3.51);
-    closeTo(healthyTowel!.position.x, 7.39);
-    closeTo(healthyTowel!.position.z, 3.155); // 2026-11-27：沿位 0.775→0.755 北移 0.02m，避让镜柜东南角（原 3.175 与镜柜重叠 0.015m）
+    // 2026-11-27 业主裁定撤电热毛巾架改普通毛巾架：淋浴区西墙沿位 1.25，x = 墙线 5.69 + 半墙厚 0.06 + clearance 0.04 + 深 0.28/2 = 5.93；z = 1.36 + 1.25 = 2.61（沿位由 1.30 北移 0.05m，避让门扇扫掠弧）。
+    closeTo(healthyTowel!.position.x, 5.93);
+    closeTo(healthyTowel!.position.z, 2.61);
     // 机器人泊位已移出客卫，不在客卫场景里。
     assert.ok(!healthy.index.furnitureMeshes.some((group) => group.userData.objectId === 'gbath.robot_dock'));
 
@@ -229,15 +235,16 @@ describe('gbath vanity layout (issue #98 PR-3)', () => {
     assert.match(negativeResult.report.placementDiagnostics[0], /剩余尺寸为负/);
     assert.ok(!negativeResult.index.furnitureMeshes.some((group) => group.userData.objectId === 'gbath.vanity'));
     assert.ok(negativeResult.index.furnitureMeshes.some((group) => group.userData.objectId === 'gbath.mirror_cabinet'));
-    assert.ok(negativeResult.index.furnitureMeshes.some((group) => group.userData.objectId === 'gbath.heated_towel_rack'));
+    assert.ok(negativeResult.index.furnitureMeshes.some((group) => group.userData.objectId === 'gbath.towel_set'));
   });
 
   it('DXF 导出：摆位诊断即失败（errors 非空），健康配置导出柜体外框', () => {
     const items = guestBathItems();
     const southWall: Extract<SceneElement, { type: 'wall' }> = { type: 'wall', id: 'w_gbath_south', x1: SOUTH_WALL.x1, z1: SOUTH_WALL.z1, x2: SOUTH_WALL.x2, z2: SOUTH_WALL.z2 };
     const eastWall: Extract<SceneElement, { type: 'wall' }> = { type: 'wall', id: 'w_gbath_east', x1: EAST_WALL.x1, z1: EAST_WALL.z1, x2: EAST_WALL.x2, z2: EAST_WALL.z2 };
+    const westWall: Extract<SceneElement, { type: 'wall' }> = { type: 'wall', id: 'w_gbath_west', x1: WEST_WALL.x1, z1: WEST_WALL.z1, x2: WEST_WALL.x2, z2: WEST_WALL.z2 };
     const dxfInput = (furnishings: FurnishingItem[]) => ({
-      house: { rooms: [ROOM], furnishings: { guest_bath: furnishings } as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: [southWall, eastWall] },
+      house: { rooms: [ROOM], furnishings: { guest_bath: furnishings } as FurnishingsYaml, electrical: [], ceilingZones: [], sceneElements: [southWall, eastWall, westWall] },
     });
 
     const healthy = buildProjectDxf(dxfInput(items));
@@ -248,7 +255,7 @@ describe('gbath vanity layout (issue #98 PR-3)', () => {
     // 组码序列：10=x、20=y（DXF y = −z×1000），fmt 4 位小数。
     assert.ok(healthy.dxf.includes('10\n7025.0000\n20\n-3430.0000'), '柜体中心文字坐标');
     // 机器人泊位已移出客卫，不在客卫 DXF 里。
-    assert.ok(!healthy.dxf.includes('10\n4430.0000\n20\n-4026.5000'), '基站中心不得出现在客卫 DXF');
+    assert.ok(!healthy.dxf.includes('10\n7776.5000\n20\n-720.0000'), '基站中心不得出现在客卫 DXF');
 
     const broken = JSON.parse(JSON.stringify(items)) as FurnishingItem[];
     (broken.find((item) => item.id === 'gbath.vanity')!.vanity_layout as VanityLayoutDecl).robot_bay_width = 0.80;

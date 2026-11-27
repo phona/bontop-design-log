@@ -256,12 +256,13 @@ test('C1：客卫支管越过终点的折回段原样保留，终端标高由 1%
 test('留绝对钉死：3 条带 via 路由坡度链与 1% 派生差超容差，不得强行 slope_run', () => {
   // drain-kitchen-requirement：中段 0.2m 落 0.0075m（3.75%），1% 派生差 0.0055m；
   // drain-mbath-vanity-to-riser：手写取整 0.35→0.34→0.33，1% 派生终端差 0.01565m；
-  // drain-gbath-vanity-to-riser：R01 立管接点下调 8mm，1% 派生终端差 0.008m。
+  // drain-gbath-vanity-to-riser：2026-11-27 立管改至照片位 (7.38,1.48) 后重画为东行+北行，
+  // 单 via (7.38,3.64,0.296)，1% 派生终端 0.27485，声明 to_height 0.275（差 0.00015m）。
   // 数值依据见本批 PR 描述；改高度是设计改动，不是迁移。
   const stayAbsolute: Record<string, { via: Array<[number, number, number]>; toHeight: number }> = {
     'drain-kitchen-requirement': { via: [[8.6, 0.029, 0.3], [8.6, 0.0215, 0.5]], toHeight: 0.005 },
     'drain-mbath-vanity-to-riser': { via: [[0.575, 0.34, 2.7], [0.3, 0.33, 2.7]], toHeight: 0.315 },
-    'drain-gbath-vanity-to-riser': { via: [[6.9, 0.2885, 2.45], [5.8, 0.277, 2.45]], toHeight: 0.2695 },
+    'drain-gbath-vanity-to-riser': { via: [[7.38, 0.296, 3.64]], toHeight: 0.275 },
   };
   for (const [id, pinned] of Object.entries(stayAbsolute)) {
     const route = project.routes.find((item) => item.id === id)!;
@@ -361,11 +362,14 @@ test('C2：主卫立管双轴移动（x +0.10 / z +0.10），三条立管支路�
 });
 
 test('C2：客卫立管双轴移动（x +0.10 / z −0.10），两条立管支路跟随、其余不动；复原则逐字节恢复', () => {
+  // 2026-11-27 立管改至照片位 (7.38,1.48)：淋浴支路曼哈顿 2.05m（北 0.97+东 1.08），
+  // 终端 0.0255−0.0205=0.005；地漏支路曼哈顿 2.50m（东 0.93+北 1.57），终端 0.033−0.025=0.008。
+  // x 移 +0.10：两支路各 +0.10m 行程，终端各 −0.001；z 移 −0.10：同理。
   const baseline = routePoints(resolveMepRoutes(project, realSources));
   const followers = ['drain-gbath-shower-to-riser', 'drain-gbath-floor-to-riser'];
   const expected: Record<string, { x: [number, number, number]; z: [number, number, number] }> = {
-    'drain-gbath-shower-to-riser': { x: [5.9, 0.021, 2.4], z: [5.8, 0.019, 2.3] },
-    'drain-gbath-floor-to-riser': { x: [5.9, 0.021, 2.4], z: [5.8, 0.019, 2.3] },
+    'drain-gbath-shower-to-riser': { x: [7.48, 0.004, 1.48], z: [7.38, 0.004, 1.38] },
+    'drain-gbath-floor-to-riser': { x: [7.48, 0.007, 1.48], z: [7.38, 0.007, 1.38] },
   };
   for (const [label, dx, dz] of [['x', 0.10, 0], ['z', 0, -0.10]] as const) {
     const moved = routePoints(resolveMepRoutes(project, sourcesWithMovedPlumbing('drain_riser_guest_bath', dx, dz)));
@@ -378,8 +382,8 @@ test('C2：客卫立管双轴移动（x +0.10 / z −0.10），两条立管支�
     }
     const vanity = JSON.parse(moved['drain-gbath-vanity-to-riser']) as Array<{ x: number; y?: number; z: number }>;
     const vanityTerminal = vanity[vanity.length - 1];
-    assert.ok(Math.abs(vanityTerminal.x - (5.8 + dx)) <= 1e-9 && Math.abs(vanityTerminal.y! - 0.2695) <= 1e-9
-      && Math.abs(vanityTerminal.z - (2.4 + dz)) <= 1e-9,
+    assert.ok(Math.abs(vanityTerminal.x - (7.38 + dx)) <= 1e-9 && Math.abs(vanityTerminal.y! - 0.275) <= 1e-9
+      && Math.abs(vanityTerminal.z - (1.48 + dz)) <= 1e-9,
       `drain-gbath-vanity-to-riser terminal must follow the riser, got ${JSON.stringify(vanityTerminal)}`);
     for (const id of DRAIN_IDS.filter((item) => !followers.includes(item) && item !== 'drain-gbath-vanity-to-riser')) {
       assert.equal(moved[id], baseline[id], `${id} must not move on riser ${label}-move`);

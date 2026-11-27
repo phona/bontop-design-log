@@ -54,11 +54,11 @@ describe('furnitureObjectId', () => {
     assert.ok(vanityAt >= 0 && mirrorAt >= 0, 'guest_bath must declare vanity and mirror_cabinet_gbath');
     assert.equal(guestBath[vanityAt].id, 'gbath.vanity');
     assert.equal(guestBath[mirrorAt].id, 'gbath.mirror_cabinet');
-    // 2026-11-27 干湿分离放弃：robot_dock 已默认落主走廊（main_corridor），不再是 guest_bath 成员。
-    const corridor = furnishings.main_corridor ?? [];
-    const dockAt = corridor.findIndex((item) => item.type === 'robot_dock_gbath');
-    assert.ok(dockAt >= 0, 'main_corridor must declare robot_dock_gbath (2026-11-27 泊位默认位)');
-    assert.equal(corridor[dockAt].id, 'gbath.robot_dock');
+    // 2026-11-27 业主裁定：robot_dock 落厨房西墙北段（kitchen），不再是 guest_bath 成员，也不再是主走廊默认位。
+    const kitchen = furnishings.kitchen ?? [];
+    const dockAt = kitchen.findIndex((item) => item.type === 'robot_dock_gbath');
+    assert.ok(dockAt >= 0, 'kitchen must declare robot_dock_gbath (2026-11-27 业主裁定泊位)');
+    assert.equal(kitchen[dockAt].id, 'gbath.robot_dock');
     assert.equal(guestBath.findIndex((item) => item.type === 'robot_dock_gbath'), -1, 'guest_bath must no longer declare robot_dock_gbath');
 
     const reordered: FurnishingItem[] = [...guestBath];
@@ -73,7 +73,7 @@ describe('furnitureObjectId', () => {
     // PR-7 起客卫全部 placed 家具都带稳定 id：重排后同一组 id，没有一件退回下标口径。
     assert.equal(after.get('toilet'), 'gbath.toilet');
     assert.equal(after.get('exhaust_fan'), 'gbath.exhaust_fan');
-    assert.equal(after.get('heated_towel_rack'), 'gbath.heated_towel_rack');
+    assert.equal(after.get('towel_set'), 'gbath.towel_set');
     assert.equal(after.size, before.size);
 
     // 对照：去掉 id 后同样的重排会改掉下标 ID——证明上面的不变是 id 带来的。

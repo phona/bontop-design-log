@@ -1,6 +1,6 @@
 # 装扮映射表（材质/家具/灯光的外观替换映射）
 
-生成：2026-11-13，数据源：materials.yaml / house.yaml furnishings（摆位走 shared/furniture-placement 解算器）/ electrical.yaml（灯具位置走 shared/point-placement 解算器）/ electrical-topology.yaml（回路列，S3 起单一派生）/ hvac.yaml + mep-hvac-coordination.yaml（冷凝链家具锚点）/ config/model/envelope/（openings+floor-zones+ceiling+finish-defaults）/ environment.yaml / data/current-scheme.json
+生成：2026-11-27，数据源：materials.yaml / house.yaml furnishings（摆位走 shared/furniture-placement 解算器）/ electrical.yaml（灯具位置走 shared/point-placement 解算器）/ electrical-topology.yaml（回路列，S3 起单一派生）/ hvac.yaml + mep-hvac-coordination.yaml（冷凝链家具锚点）/ config/model/envelope/（openings+floor-zones+ceiling+finish-defaults）/ environment.yaml / data/current-scheme.json
 
 数据规模：house.yaml furnishings 共 83 件（与 `fact.furnishings_count` 对账）。
 
@@ -60,78 +60,78 @@
 
 | 房间 | 类型 | 数量 | 宽×深 (m) | 摆位 (x, z) / 朝向 |
 |---|---|---|---|---|
-| master_bedroom | bed_180 | 1 | 1.8×2 | (3.2, 7.4) / 270° |
-| master_bedroom | master_bedside_cabinet_350_north | 1 | 0.38×0.35 | (4.01, 6.245) / 0° |
-| master_bedroom | master_bedside_cabinet_350_south | 1 | 0.38×0.35 | (4.01, 8.555) / 0° |
-| master_bedroom | mb_washbasin_cabinet | 1 | 1.05×0.5 | (0.575, 3.16) / 0° |
-| master_bedroom | master_dressing_table | 1 | 0.9×0.45 | (0.425, 6.05) / 90° |
-| master_bedroom | dressing_stool | 1 | 0.42×0.4 | (0.42, 6.05) / 90° |
-| master_bedroom | master_hot_season_low_dresser | 1 | 1.4×0.48 | (1.05, 9.2) / 180° |
-| master_bedroom | mb_full_height_cabinet | 1 | 1.38×0.565 | (2.243, 3.610) / 270°（解算） |
+| master_bedroom | bed_180 | 1 | 1.8×2 | (3.16, 7.4) / 270° |
+| master_bedroom | master_bedside_cabinet_350_north | 1 | 0.38×0.35 | (3.970, 6.245) / 0°（解算） |
+| master_bedroom | master_bedside_cabinet_350_south | 1 | 0.38×0.35 | (3.970, 8.555) / 0°（解算） |
+| master_bedroom | master_dressing_table | 1 | 0.9×0.45 | (0.425, 5.955) / 90°（解算） |
+| master_bedroom | dressing_stool | 1 | 0.42×0.4 | (0.420, 5.955) / 90°（解算） |
+| master_bedroom | master_hot_season_low_dresser | 1 | 1.4×0.48 | (1.050, 9.205) / 180°（解算） |
 | master_bedroom | faucet | 1 | — | count-only（无家具体块，按实物补摆） |
 | master_bedroom | mattress_180 | 1 | — | count-only（无家具体块，按实物补摆） |
 | master_bedroom | curtain_set | 1 | — | count-only（无家具体块，按实物补摆） |
 | master_bedroom | ceiling_light | 1 | — | count-only（无家具体块，按实物补摆） |
-| bedroom_nw | bed_150 | 1 | 1.5×2 | (4.6, 2.3) / 270° |
-| bedroom_nw | wardrobe_180 | 1 | 1.8×0.6 | (3.5, 4) / 0° |
-| bedroom_nw | desk | 1 | 1.2×0.45 | (2.9, 2.1) / 90° |
-| bedroom_nw | chair | 1 | 0.5×0.5 | (3.35, 3) / 270° |
-| bedroom_nw | shelf | 1 | 0.8×0.4 | (3, 1.3) / 0° |
+| bedroom_nw | bed_150 | 1 | 1.5×2 | (4.690, 1.160) / 270°（解算） |
+| bedroom_nw | wardrobe_180 | 1 | 1.8×0.6 | (3.800, 3.450) / 0°（解算） |
+| bedroom_nw | desk | 1 | 1.2×0.45 | (3.200, 1.260) / 90°（解算） |
+| bedroom_nw | chair | 1 | 0.5×0.5 | (3.650, 2.160) / 270°（解算） |
+| bedroom_nw | shelf | 1 | 0.8×0.4 | (3.300, 0.160) / 0°（解算） |
 | bedroom_nw | mattress_150 | 1 | — | count-only（无家具体块，按实物补摆） |
 | bedroom_nw | curtain_set | 1 | — | count-only（无家具体块，按实物补摆） |
 | bedroom_nw | ceiling_light | 1 | — | count-only（无家具体块，按实物补摆） |
-| bedroom_se | wardrobe_180 | 1 | 1.8×0.6 | (15.25, 5.85) / 180° |
-| bedroom_se | bed_150 | 1 | 1.5×2 | (15.35, 7.6) / 270° |
+| bedroom_se | wardrobe_180 | 1 | 1.8×0.6 | (15.230, 5.850) / 180°（解算） |
+| bedroom_se | bed_150 | 1 | 1.5×2 | (15.33, 7.72) / 270° |
 | bedroom_se | mattress_150 | 1 | — | count-only（无家具体块，按实物补摆） |
 | bedroom_se | curtain_set | 1 | — | count-only（无家具体块，按实物补摆） |
 | bedroom_se | ceiling_light | 1 | — | count-only（无家具体块，按实物补摆） |
-| study | desk | 1 | 1.2×0.6 | (6.9, 7.8) / 90° |
-| study | chair | 1 | 0.5×0.5 | (6.3, 7.8) / 90° |
-| study | study_seasonal_wardrobe_wall | 3 | 1.8×0.55 | (5.1, 5.825) / 0°；(4.475, 6.289) / 90°；(4.475, 7.38) / 90° |
+| study | desk | 1 | 1.2×0.6 | (6.850, 7.705) / 90°（解算） |
+| study | chair | 1 | 0.5×0.5 | (6.250, 7.705) / 90°（解算） |
+| study | study_seasonal_wardrobe_wall | 3 | 1.8×0.55 | (5.060, 5.730) / 0°（解算）；(4.435, 6.194) / 90°（解算）；(4.435, 7.245) / 90°（解算） |
 | study | curtain_set | 1 | — | count-only（无家具体块，按实物补摆） |
 | study | ceiling_light | 1 | — | count-only（无家具体块，按实物补摆） |
-| living_dining | wall_cabinet_tall | 1 | 1.35×0.35 | (7.375, 6.225) / 270° |
-| living_dining | tv_wall_low | 1 | 2.1×0.4 | (7.48, 8) / 270° |
+| living_dining | wall_cabinet_tall | 1 | 1.35×0.35 | (7.375, 6.225) / 270°（解算） |
+| living_dining | tv_wall_low | 1 | 2.1×0.4 | (7.480, 8.000) / 270°（解算） |
 | living_dining | tv_65 | 1 | 1.45×0.25 | (7.42, 8) / 270° |
-| living_dining | floor_lamp | 1 | 0.32×0.32 | (11, 9.35) / 0° |
-| living_dining | plant_fiddle | 1 | 0.5×0.5 | (7.93, 9.18) / 270° |
-| living_dining | sofa_3seat | 1 | 2.8×0.9 | (11, 7.7) / 270° |
-| living_dining | coffee_table | 1 | 0.7×0.7 | (9.7, 7.7) / 0° |
+| living_dining | floor_lamp | 1 | 0.32×0.32 | (11.000, 9.350) / 0°（解算） |
+| living_dining | plant_fiddle | 1 | 0.5×0.5 | (7.930, 9.180) / 270°（解算） |
+| living_dining | sofa_3seat | 1 | 2.8×0.9 | (11.000, 7.700) / 270°（解算） |
+| living_dining | coffee_table | 1 | 0.7×0.7 | (9.700, 7.700) / 0°（解算） |
 | living_dining | entry_half_height_cabinet | 1 | 2×0.35 | (11.24, 4.35) / 90° |
-| living_dining | dining_table | 1 | 1.4×0.8 | (9.8, 3.45) / 90° |
-| living_dining | dining_chair | 4 | 0.45×0.45 | (9.125, 3) / 90°；(10.475, 3) / 270°；(9.125, 3.9) / 90°；(10.475, 3.9) / 270° |
-| living_dining | fridge | 1 | 0.833×0.6 | (7.6025, 2.9865) / 270° |
-| living_dining | waterbar_low_cabinet_800_preview | 1 | 0.8×0.42 | (7.43, 3.87) / 90° |
-| living_dining | mijia_instant_dispenser_s1_preview | 1 | 0.106×0.312 | (7.47, 3.64) / 90° |
-| living_dining | coffee_machine_em450 | 1 | 0.22×0.285 | (7.37, 4) / 90° |
+| living_dining | dining_table | 1 | 1.4×0.8 | (9.750, 3.450) / 90°（解算） |
+| living_dining | dining_chair | 4 | 0.45×0.45 | (9.075, 3.000) / 90°（解算）；(10.425, 3.000) / 270°（解算）；(9.075, 3.900) / 90°（解算）；(10.425, 3.900) / 270°（解算） |
+| living_dining | fridge | 1 | 0.833×0.6 | (7.902, 2.986) / 270°（解算） |
+| living_dining | waterbar_low_cabinet_800_preview | 1 | 0.8×0.42 | (7.730, 3.870) / 90°（解算） |
+| living_dining | mijia_instant_dispenser_s1_preview | 1 | 0.106×0.312 | (7.770, 3.640) / 90°（解算） |
+| living_dining | coffee_machine_em450 | 1 | 0.22×0.285 | (7.670, 4.000) / 90°（解算） |
 | living_dining | curtain_set | 2 | — | count-only（无家具体块，按实物补摆） |
 | living_dining | ceiling_light | 2 | — | count-only（无家具体块，按实物补摆） |
-| kitchen | kitchen_cabinet_run | 3 | （体块无尺寸记录） | (7.86, 0.32) / 0°；(9.94, 0.32) / 0°；(10.48, 1.275) / 90° |
-| kitchen | kitchen_countertop_bridge | 1 | 0.6×0.6 | (8.8, 0.32) / 0° |
-| kitchen | dishwasher | 1 | 0.6×0.6 | (8.8, 0.3) / 0° |
-| kitchen | gas_stove | 1 | 0.75×0.6 | (10.5, 1.5) / 90° |
-| kitchen | range_hood | 1 | 0.9×0.5 | (10.5, 1.5) / 90° |
-| kitchen | sink | 1 | 0.8×0.6 | (9.5, 0.3) / 0° |
-| kitchen | water_heater | 1 | 0.36×0.16 | (7.3, 1) / 270° |
-| kitchen | mijia_ro_purifier_1400g_under_sink_preview | 1 | 0.163×0.445 | (10.05, 0.32) / 0° |
+| kitchen | kitchen_cabinet_run | 3 | （体块无尺寸记录） | (8.160, 0.170) / 0°（解算）；(10.240, 0.170) / 0°（解算）；(10.790, 1.275) / 90°（解算） |
+| kitchen | kitchen_countertop_bridge | 1 | 0.6×0.6 | (9.100, 0.170) / 0°（解算） |
+| kitchen | dishwasher | 1 | 0.6×0.6 | (9.100, 0.150) / 0°（解算） |
+| kitchen | gas_stove | 1 | 0.75×0.6 | (10.810, 1.500) / 90°（解算） |
+| kitchen | range_hood | 1 | 0.9×0.5 | (10.810, 1.500) / 90°（解算） |
+| kitchen | sink | 1 | 0.8×0.6 | (9.800, 0.150) / 0°（解算） |
+| kitchen | water_heater | 1 | 0.36×0.16 | (7.6, 1) / 270° |
+| kitchen | robot_dock_gbath | 1 | 0.41×0.433 | (7.777, 0.720) / 90°（解算） |
+| kitchen | mijia_ro_purifier_1400g_under_sink_preview | 1 | 0.163×0.445 | (10.350, 0.170) / 0°（解算） |
 | kitchen | cabinet_base | 5 | — | count-only（无家具体块，按实物补摆） |
 | kitchen | cabinet_wall | 2 | — | count-only（无家具体块，按实物补摆） |
 | kitchen | countertop_quartz | 5 | — | count-only（无家具体块，按实物补摆） |
 | kitchen | ceiling_light | 1 | — | count-only（无家具体块，按实物补摆） |
 | master_bath | toilet | 1 | 0.4×0.6 | (2.275, 1.5) / 270° |
-| master_bath | towel_set | 1 | 0.04×0.28 | (0.24, 2.23) / 0° |
-| master_bath | exhaust_fan | 1 | 0.3×0.3 | (1, 2.7) |
+| master_bath | mb_washbasin_cabinet | 1 | 1.05×0.5 | (2.600, 0.535) / 270°（解算） |
+| master_bath | mb_full_height_cabinet | 1 | 0.9×0.565 | (2.542, 2.205) / 270°（解算） |
+| master_bath | towel_set | 1 | 0.04×0.28 | (0.240, 2.230) / 0°（解算） |
+| master_bath | exhaust_fan | 1 | 0.3×0.3 | (1, 2.49) |
 | master_bath | shower_set | 1 | — | count-only（无家具体块，按实物补摆） |
-| guest_bath | vanity | 1 | 0.69×0.5 | (6.890, 3.955) / 270°（解算） |
-| guest_bath | toilet | 1 | 0.4×0.6 | (6.75, 3.05) / 270° |
+| guest_bath | vanity | 1 | 0.69×0.3 | (7.025, 3.430) / 180°（解算） |
+| guest_bath | toilet | 1 | 0.4×0.6 | (6.9, 3.05) / 270° |
 | guest_bath | exhaust_fan | 1 | 0.3×0.3 | (6.35, 2.45) |
-| guest_bath | mirror_cabinet_gbath | 1 | 0.66×0.14 | (7.070, 3.955) / 270°（解算） |
-| guest_bath | robot_dock_gbath | 1 | 0.41×0.433 | (6.924, 3.860) / 270°（解算） |
-| guest_bath | heated_towel_rack | 1 | 0.55×0.1 | (5.710, 3.955) / 90°（解算） |
+| guest_bath | mirror_cabinet_gbath | 1 | 0.66×0.14 | (7.025, 3.510) / 180°（解算） |
+| guest_bath | towel_set | 1 | 0.04×0.28 | (5.930, 2.610) / 0°（解算） |
 | guest_bath | faucet | 1 | — | count-only（无家具体块，按实物补摆） |
 | guest_bath | shower_set | 1 | — | count-only（无家具体块，按实物补摆） |
-| balcony | washer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
-| balcony | dryer | 1 | 0.6×0.6 | (5.95, 1.5) / 90° |
+| balcony | washer | 1 | 0.6×0.6 | (6.040, 0.350) / 90°（解算） |
+| balcony | dryer | 1 | 0.6×0.6 | (6.040, 0.350) / 90°（解算） |
 | balcony | ceiling_light | 1 | — | count-only（无家具体块，按实物补摆） |
 | entry_garden | garden_entry_station | 1 | 1.1×0.38 | (15.02, 1.35) / 270° |
 | entry_garden | shoe_cabinet | 1 | — | count-only（无家具体块，按实物补摆） |
@@ -142,20 +142,20 @@
 | id | 房间 | 类型 | 位置 (x, z) | 高度 (m) | 色温 (K) | 回路 | 备注 |
 |---|---|---|---|---|---|---|---|
 | light_balcony_dome | balcony | 吸顶灯 | (6.6, 1.15) | 2.8 | 4000 | lighting_bedrooms_bath | 生活阳台感应吸顶灯（DEC-2026-10-17-R20 补齐：阳台此前无任何灯具/开关，furnishings 预算行无对应点位）：光控+人体感应双模、带常亮档，无墙面开关——东墙门洞 d_kit_balc 占 z[1.20,2.00]，剩余墙垛 0.30/0.10m 容不下 86 底盒；点位避晾衣架主机 (6.40,1.60) 吊顶占用；归 lighting_bedrooms_bath。height=2.8 判定依据：config/ceiling.yaml（现 config/model/envelope/ceiling.yaml，issue #98 S1 搬迁）与 config/layout/overlay.yaml（现 config/model/envelope/*）均未声明 balcony 吊顶分区（2026-10-17 复核，paths 为搬迁前原文件），按原顶完成面落点。若后续阳台做铝扣板吊顶，height 随完成面同步下调 |
-| light_dining_pendant | living_dining | 天花灯 | (9.25, 3.65) | 2.8 | 3000 | lighting_dining | 餐厅灯天花出线（DEC-2026-08-02-013、DEC-021、DEC-034 为历史随餐桌灯位）。DEC-2026-10-16-R12 曾将灯位修正至桌心 (9.80,3.45) 并将 type 改为 ceiling_light；DEC-2026-10-17-R8 按业主奶油云团灯参考图替换造型；DEC-2026-10-17-R9 按业主选择移至餐厅平顶范围几何中心 (9.25,3.65)，餐桌保持 (9.80,3.45)。主体尺寸取用户参数图，木球/吊线为主图比例视觉估值；电气安装高度仍为2.80m。点位 id、dining 单独回路、墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1）和拓扑成员关系不变。灯到餐桌中心的水平偏移约0.585m；桌面照度目标150 lx/3000K/Ra≥90（100 lx为备选）须按实际 SKU 的3000K档光通量与配光核验，不能由商品标称3200lm或5–10㎡推定，见 schedule/procurement.md。 |
-| light_living_dome | living_dining | 吸顶灯 | (10.8, 7.15) | 2.8 | 3000 | lighting_living_base | 客厅基础光吸顶灯（DEC-2026-10-13-R1 推翻 DEC-2026-08-26-043 的明装轨道灯：原顶条件下明装轨道①无吊顶可藏 1.95m 走线，只能明装线槽外露；②4 个可调灯头是点状配光，实测口径 U₀≈0，客厅一般活动 100 lx 要求 U₀≥0.7，原理上不满足；③轨道+加固板+可调头是三重可调冗余，业主从未要求过重点照明。改为贴原顶 2.80 安装的宽配光吸顶灯，光通量按 7,100–8,500 lm 选型）。出线沿用 strong-light-living 既有路由，出 ceiling_living 边吊后明装线槽沿原顶板面敷设至灯位（见 config/mep-hvac-coordination.yaml）。状态依据：归入 topology 回路 lighting_living_base（confirmed），客厅基础光吸顶灯为设计声明→inferred；位置为设计值未实测 |
-| light_master_dome | master_bedroom | 吸顶灯 | (1.7, 6) | 2.8 | 3000 | lighting_bedrooms_bath | 主卧吸顶灯（DEC-2026-10-13-R3 移位：原 (2.60,7.60) 落在 bed_180 平面投影内（床 AABB x[2.30,4.10]×z[6.47,8.33]），既正压床头眩光，又把房间最远的条带洗漱区甩到 3.91m/入射角 57°、照度仅灯正下方 1/6。移位至 (1.70,6.00)：房间开敞中部、避床/衣柜/梳妆桌/窗帘盒，到条带台盆 3.05m、到通顶衣柜 1.60m、到梳妆桌 1.28m；牺牲的是床面环境光，但 DEC-2026-10-12-R1 已把两盏床头壁灯改为小米床头灯插电，床头阅读/起夜本就不再依赖吸顶灯——三个功能缺口各有专属光源，吸顶灯只管一般照明，居中才是正确分工）。状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），主卧吸顶灯为设计声明→inferred；位置为设计值未实测 |
-| light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.8 | 3000 | lighting_bedrooms_bath | 书房吸顶灯（2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），书房吸顶灯为设计声明→inferred；2026-10-05 功能互换位置不变，为设计值未实测 |
-| light_child_dome | bedroom_nw | 吸顶灯 | (4.1, 2.7) | 2.8 | 3000 | lighting_bedrooms_bath | 西北次卧吸顶灯；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），每室一吸顶灯为设计声明→inferred；位置为房间设计值未实测 |
-| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.8 | 3000 | lighting_bedrooms_bath | 客房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中；2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），客房吸顶灯为设计声明→inferred；位置随房间南缘凹进取居中，为设计值未实测 |
+| light_dining_pendant | living_dining | 天花灯 | (9.25, 3.65) | 2.826 | 3000 | lighting_dining | 餐厅灯天花出线（DEC-2026-08-02-013、DEC-021、DEC-034 为历史随餐桌灯位）。DEC-2026-10-16-R12 曾将灯位修正至桌心 (9.80,3.45) 并将 type 改为 ceiling_light；DEC-2026-10-17-R8 按业主奶油云团灯参考图替换造型；DEC-2026-10-17-R9 按业主选择移至餐厅平顶范围几何中心 (9.25,3.65)，餐桌保持 (9.80,3.45)。主体尺寸取用户参数图，木球/吊线为主图比例视觉估值；电气安装高度 2026-11-27 业主实测回填由 2.80m 改为 2.826m（餐厅板底复测 2826mm，灯挂原顶；首轮 2715 读数错误，作废）。点位 id、dining 单独回路、墙控 switch_dining（餐桌旁走廊墙 h1.3，DEC-2026-09-08-R1）和拓扑成员关系不变。灯到餐桌中心的水平偏移约0.585m；桌面照度目标150 lx/3000K/Ra≥90（100 lx为备选）须按实际 SKU 的3000K档光通量与配光核验，不能由商品标称3200lm或5–10㎡推定，见 schedule/procurement.md。 |
+| light_living_dome | living_dining | 吸顶灯 | (10.8, 7.15) | 2.82 | 3000 | lighting_living_base | 客厅基础光吸顶灯（DEC-2026-10-13-R1 推翻 DEC-2026-08-26-043 的明装轨道灯：原顶条件下明装轨道①无吊顶可藏 1.95m 走线，只能明装线槽外露；②4 个可调灯头是点状配光，实测口径 U₀≈0，客厅一般活动 100 lx 要求 U₀≥0.7，原理上不满足；③轨道+加固板+可调头是三重可调冗余，业主从未要求过重点照明。改为贴原顶安装的宽配光吸顶灯（2026-11-27 业主实测回填：客厅板底 2.80→2.820m，安装高度同步改为 2.820m；首轮 2715 读数错误，作废），光通量按 7,100–8,500 lm 选型）。出线沿用 strong-light-living 既有路由，出 ceiling_living 边吊后明装线槽沿原顶板面敷设至灯位（见 config/mep-hvac-coordination.yaml）。状态依据：归入 topology 回路 lighting_living_base（confirmed），客厅基础光吸顶灯为设计声明→inferred；位置为设计值未实测 |
+| light_master_dome | master_bedroom | 吸顶灯 | (1.7, 6) | 2.9 | 3000 | lighting_bedrooms_bath | 主卧吸顶灯（DEC-2026-10-13-R3 移位：原 (2.60,7.60) 落在 bed_180 平面投影内（床 AABB x[2.30,4.10]×z[6.47,8.33]），既正压床头眩光，又把房间最远的条带洗漱区甩到 3.91m/入射角 57°、照度仅灯正下方 1/6。移位至 (1.70,6.00)：房间开敞中部、避床/衣柜/梳妆桌/窗帘盒，到条带台盆 3.05m、到通顶衣柜 1.60m、到梳妆桌 1.28m；牺牲的是床面环境光，但 DEC-2026-10-12-R1 已把两盏床头壁灯改为小米床头灯插电，床头阅读/起夜本就不再依赖吸顶灯——三个功能缺口各有专属光源，吸顶灯只管一般照明，居中才是正确分工）。状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），主卧吸顶灯为设计声明→inferred；位置为设计值未实测 |
+| light_parent_dome | study | 吸顶灯 | (5.7, 7.675) | 2.909 | 3000 | lighting_bedrooms_bath | 书房吸顶灯（2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），书房吸顶灯为设计声明→inferred；2026-10-05 功能互换位置不变，为设计值未实测 |
+| light_child_dome | bedroom_nw | 吸顶灯 | (4.1, 2.7) | 2.905 | 3000 | lighting_bedrooms_bath | 西北次卧吸顶灯；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），每室一吸顶灯为设计声明→inferred；位置为房间设计值未实测 |
+| light_study_dome | bedroom_se | 吸顶灯 | (14.9, 7.125) | 2.885 | 3000 | lighting_bedrooms_bath | 客房吸顶灯（2026-08-27 房间南缘凹进至 z=8.70 后居中；2026-10-05 功能互换，id/位置不变）；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），客房吸顶灯为设计声明→inferred；位置随房间南缘凹进取居中，为设计值未实测 |
 | light_corridor_1 | main_corridor | 筒灯 | (5.7, 4.9) | 2.5 | 3000 | lighting_entry_base | 历史旧位：坐标由原(7.9,5.75)调整至既有ceiling_living范围(7.9,5.0)，避开电视高柜x≤7.55并靠近走廊口；原点嵌入既有边吊、不新增吊顶；这些旧位理由和坐标由DEC-2026-10-15-C02覆盖。当前点：因距餐厅下出风槽投影边约75mm，迁至主走廊中段(5.70,4.90)，嵌入ceiling_main_corridor吊底y=2.50；归入lighting_entry_base的回路与开关控制拓扑保持，线路同步协调。开孔、上方风管/梁/冷媒/冷凝水/桥架与龙骨净距待现场复核；坐标是设计候选值，未实测。状态依据：lighting_entry_base回路confirmed，当前灯位为业主明确确认的预演位置。 |
-| light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.8 | 3000 | lighting_entry_base | 玄关筒灯；状态依据：归入 topology 回路 lighting_entry_base（confirmed），玄关筒灯为设计声明→inferred；位置为设计值未实测 |
+| light_entry_down | entry_garden | 筒灯 | (13, 1.45) | 2.9 | 3000 | lighting_entry_base | 玄关筒灯；状态依据：归入 topology 回路 lighting_entry_base（confirmed），玄关筒灯为设计声明→inferred；位置为设计值未实测 |
 | light_entry_foyer | living_dining | 筒灯 | (12.4, 4.05) | 2.5 | 3000 | lighting_entry_base | 室内玄关门厅（门厅吊顶跨 entry_garden/living_dining 过渡带），不是入户花园；利用既有门厅吊顶，不新增吊顶/背景墙；位于红框中心附近，避让玄关半高柜与入户门开启区；状态依据：归入 topology 回路 lighting_entry_base（confirmed），门厅筒灯利用既有吊顶为设计声明→inferred；取红框中心避让半高柜与入户门，位置为设计值未实测；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随入户门厅吊顶北缘 2.90→3.00、东缘 13.40→12.77，仍在新吊顶内（新吊顶 z[3.00,4.30]，中心 z≈4.05，x 不变）。 |
 | light_kitchen_panel | kitchen | 吸顶灯 | (9, 1.2) | 2.5 | 4000 | lighting_bedrooms_bath | 厨房平板灯（4000K 工作区例外）；height=2.50 对齐 ceiling_kitchen 铝扣板吊顶完成面（2026-11-12 由 2.65 下调；DEC-2026-10-17-R12：安装完成面即吊顶底，原 2.8 与吊顶分区声明矛盾）；状态依据：归入 topology 回路 lighting_bedrooms_bath（DEC-2026-10-03-R1，proposed），厨卫 4000K 平板灯为设计声明→inferred；位置为设计值未实测 |
-| night_guest_bed_side | bedroom_se | 起夜灯 | (13.4, 7.6) | 0.3 | — | lighting_bedrooms_bath | 起夜 NP-1 床沿下位灯（R15）：挂在客房西墙 w_be_west 卧室侧、床西侧（上下床侧）地面引导，与床西缘距约 1.0m；避 d_bese 门扫掠域（z 6.05 洞口以北/以南均不侵入）；高度 0.30m 符合 night_light 0.25–0.40m 区间；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），起夜 NP-1 床沿灯为设计声明→inferred；挂 w_be_west 实体隔墙、高度符合夜灯区间，位置为设计值未实测 |
-| night_guest_head | bedroom_se | 起夜灯 | (16.4, 8.55) | 0.35 | — | lighting_bedrooms_bath | 起夜 NP-2 床头小夜灯（R15）：床头正上方低位，触摸+感应双模；w_east_upper 剪力墙 inferred，挂装条件 site_pending；回路归属 lighting_bedrooms_bath（proposed），起夜 NP-2 床头小夜灯（topology 回路）；；2026-10-28 DEC-2026-10-28-R04：随 switch_guest_bed 一并南移至 (16.40,8.55)——原 (16.40,7.60) 同被 bed_150 床头板遮挡（板顶 0.80m 高于本灯 0.35m，触摸位不可达、光线被挡回墙面），新位在床南缘外 0.20m、 bedside 即触即亮，且与 switch_guest_bed 保持同点竖直流叠（MEP strong-light-bedrooms-study-guest-night 共享下引段不变）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。 |
-| night_guest_door | living_dining | 起夜灯 | (13.4, 6.9) | 0.3 | — | lighting_entry_base | 起夜 NP-3 客房门外灯（R15）：挂在 d_bese 门洞以南的客厅侧墙面（门洞跨度约 z[5.65,6.55]，本点位 z=6.90 在跨度外 0.35m，避开 stay-in-opening 校验），出门即亮；w_be_west 为实体隔墙非玻璃幕墙；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-3 客房门外灯为设计声明→inferred；门洞以南避开门扇扫掠，位置为设计值未实测 |
-| night_living_north | living_dining | 起夜灯 | (12.77, 4.37) | 0.3 | — | lighting_entry_base | 起夜 NP-4a 客厅北段灯（R15）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-4a 客厅北段灯为设计声明→inferred；挂 w_liv_east 客厅侧，位置为设计值未实测；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随中竖墙西移至（12.77,4.37），挂 w_cent_south 西脸，距北厚墙角 4.82 南退 0.45m（原 5.55 角南退 0.45m 口径不变）。 |
+| night_guest_bed_side | bedroom_se | 起夜灯 | (13.37, 6.815) | 0.3 | — | lighting_bedrooms_bath | 起夜 NP-1 床沿下位灯（R15）：挂在客房西墙 w_be_west 卧室侧、床西侧（上下床侧）地面引导，与床西缘距约 1.0m；避 d_bese 门扫掠域（z 6.05 洞口以北/以南均不侵入）；高度 0.30m 符合 night_light 0.25–0.40m 区间；状态依据：归入 topology 回路 lighting_bedrooms_bath（proposed），起夜 NP-1 床沿灯为设计声明→inferred；挂 w_be_west 实体隔墙、高度符合夜灯区间，位置为设计值未实测 |
+| night_guest_head | bedroom_se | 起夜灯 | (16.33, 7.14) | 0.35 | — | lighting_bedrooms_bath | 起夜 NP-2 床头小夜灯（R15）：床头正上方低位，触摸+感应双模；w_east_upper 剪力墙 inferred，挂装条件 site_pending；回路归属 lighting_bedrooms_bath（proposed），起夜 NP-2 床头小夜灯（topology 回路）；；2026-10-28 DEC-2026-10-28-R04：随 switch_guest_bed 一并南移至 (16.40,8.55)——原 (16.40,7.60) 同被 bed_150 床头板遮挡（板顶 0.80m 高于本灯 0.35m，触摸位不可达、光线被挡回墙面），新位在床南缘外 0.20m、 bedside 即触即亮，且与 switch_guest_bed 保持同点竖直流叠（MEP strong-light-bedrooms-study-guest-night 共享下引段不变）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。 |
+| night_guest_door | living_dining | 起夜灯 | (13.37, 6.115) | 0.3 | — | lighting_entry_base | 起夜 NP-3 客房门外灯（R15）：挂在 d_bese 门洞以南的客厅侧墙面（门洞跨度约 z[4.43,5.315]，本点位 z=6.115 在跨度外 0.80m，避开 stay-in-opening 校验），出门即亮；w_be_west 为实体隔墙非玻璃幕墙；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-3 客房门外灯为设计声明→inferred；门洞以南避开门扇扫掠，位置为设计值未实测 |
+| night_living_north | living_dining | 起夜灯 | (12.77, 4) | 0.3 | — | lighting_entry_base | 起夜 NP-4a 客厅北段灯（R15）：w_liv_east 客厅侧，补客房门与走廊之间的北线引导；状态依据：归入 topology 回路 lighting_entry_base（confirmed），起夜 NP-4a 客厅北段灯为设计声明→inferred；挂 w_liv_east 客厅侧，位置为设计值未实测；2026-10-25 DEC-2026-10-25-R01（本体标定重算）：随中竖墙西移至（12.77,4.37），挂 w_cent_south 西脸，距北厚墙角 4.82 南退 0.45m（原 5.55 角南退 0.45m 口径不变）。 |
 | night_living_mid | living_dining | 起夜灯 | (11.42, 4.8) | 0.3 | — | lighting_entry_base | 起夜链中位补点（DEC-2026-10-17-R20）：night_living_north (13.40,5.10)→night_corridor (7.45,5.55) 之间约 6m 无低位引导，起夜主路径（客房门→走廊口）断链；吸附 entry_half_height_cabinet 东脸北端（面朝东侧主通道），仿 night_corridor (NP-5) 口径；固定方式/暗藏供电/感应朝向待柜体深化，site_pending。furniture_id 按稳定对象 id 绑定（issue #98 全屋 placed 家具已带 id，房间内重排不改 id，不再依赖 placed 序号）：宿主为 config/house.yaml living_dining 的 entry_half_height_cabinet，id ld.entry_half_height_cabinet；2026-10-25 DEC-2026-10-25-R01：随半高柜西移至东脸 11.415+0.005=11.42，z 不变。2026-11-07 issue #98 S2：mount_anchor（身份注记 + 手写 x/z 人工同步）升级为真挂载定位声明 mount——along=1.45 自东脸轴南端（z=3.35）向北累计、face_offset=0.005 系 R01 手工同步遗留（东脸 11.415+0.005=11.42，S2 显式化登记，柜体深化时可归零），surface_gap 0.003 缝隙由 NightLightGeometry 灯体偏移沿用；宿主移动灯自动跟随；x/z 迁移期断言字段已于 2026-11-07 S3 删除（断言期逐点证明解析结果 == 声明值），平面位置只有解算器一个来源。 |
 | night_corridor | living_dining | 起夜灯 | (7.45, 5.55) | 0.3 | — | lighting_entry_base | 起夜 NP-5 走廊口低位灯：吸附到 wall_cabinet_tall 北端板（ld.wall_cabinet_tall），面向走廊北侧，完成面缝隙 3mm；不设通道落地柱。柜体端板固定方式、暗藏供电和感应朝向待柜体/水电深化，site_pending；light_corridor_1 日常下照仅作兜底。；回路归属 lighting_entry_base（confirmed），起夜 NP-5 走廊口低位灯（topology 回路）；；2026-11-07 issue #98 S2：mount_anchor（身份注记 + 手写 x/z）升级为真挂载定位声明 mount——along=0.25 自北脸轴西端（x=7.20）向东累计、face_offset 缺省 0（贴脸，北脸平面 z=5.55 即原声明值）、surface_gap 0.003 缝隙由 NightLightGeometry 灯体偏移沿用；宿主移动灯自动跟随；x/z 迁移期断言字段已于 2026-11-07 S3 删除（断言期逐点证明解析结果 == 声明值），平面位置只有解算器一个来源。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。 |
 
@@ -172,16 +172,15 @@
 | kitchen_north_curtain | 玻璃幕墙 | 高 2.8m | Low-E 微反玻璃 |
 | north_recess_curtain | 玻璃幕墙 | 高 2.8m | Low-E 微反玻璃 |
 | living_south_curtain | 玻璃幕墙 | 高 2.8m | Low-E 微反玻璃 |
-| south_east_curtain | 玻璃幕墙 | 高 2.8m | Low-E 微反玻璃 |
-| master_bedroom_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧西墙飘窗（z=5.55~8.80 直墙段） |
-| master_bedroom_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧南墙环幕飘窗（南缘 z=10.90） |
-| study_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 书房南墙飘窗（南缘 z=10.90，与主卧齐平） |
-| bedroom_se_south_bay | 飘窗 | 深 1.1m / 台高 2.07m | 客房南向凸窗（南缘 z=11.05） |
+| master_bedroom_west_bay | 飘窗 | 深 0.96m / 台高 2.149m | 主卧西墙飘窗（z=5.55~8.80 直墙段） |
+| master_bedroom_south_bay | 飘窗 | 深 1.18m / 台高 2.149m | 主卧南墙环幕飘窗（南缘 z=10.90）。2026-11-27 业主实测：地面到下飘窗 2149，下飘窗高 750，深 1180；顶 2149+750=2899，对层高 2.904 差 5mm，闭合。量房 DWG 2165/750 作废。 |
+| study_south_bay | 飘窗 | 深 1.1m / 台高 2.163m | 书房南墙飘窗（南缘 z=10.90，与主卧齐平）。2026-11-27 业主实测：地面到下飘窗 2166/2163/2161，均值 2163，下飘窗高 750；顶 2163+750=2913，对层高 2.909 差 4mm，闭合。量房 DWG 2165/750 作废。 |
+| bedroom_se_south_bay | 飘窗 | 深 1.16m / 台高 2.15m | 客房南向凸窗（南缘 z=11.05）。2026-11-27 业主实测：地面到下飘窗 2148/2156/2145/2151，均值 2150；飘窗深 1160；顶 2150+735=2885，对层高 2.885 闭合。下飘窗高 735 为推导值（2885−2150），非实测，接近 750 标准；量房 DWG 2165/750 作废。 |
 | master_bath_west_lower_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卫西墙南段飘窗（2026-10-09 由 bedroom_nw_west_bay 改名，DEC-2026-10-09-P10：原名「西北次卧西墙」与几何不符——outline x[0,1.1]×z[2.10,2.86] 整块在 master_bath 矩形内，bedroom_nw 西界是 x=2.6。只改 id 不动几何/面积/room） |
-| master_bedroom_west_mid_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卧西墙中段飘窗（2026-10-09 由 corridor_west_bay 改名，DEC-2026-10-09-P10：原名「走廊西墙」与几何不符——outline x[0,1.1]×z[2.86,5.55] 整块在 master_bedroom 矩形内，且模型里根本没有 corridor 这个 room，走廊本体在 x[4.2,7.2]×z[4.3,6.45]，离这扇窗 4 米。只改 id 不动几何/面积/room） |
+| master_bedroom_west_mid_bay | 飘窗 | 深 0.96m / 台高 2.149m | 主卧西墙中段飘窗（2026-10-09 由 corridor_west_bay 改名，DEC-2026-10-09-P10：原名「走廊西墙」与几何不符——outline x[0,1.1]×z[2.86,5.55] 整块在 master_bedroom 矩形内，且模型里根本没有 corridor 这个 room，走廊本体在 x[4.2,7.2]×z[4.3,6.45]，离这扇窗 4 米。只改 id 不动几何/面积/room） |
 | master_bath_west_bay | 飘窗 | 深 1.1m / 台高 2.07m | 主卫西北角飘窗 |
-| bedroom_nw_north_bay | 飘窗 | 深 1.1m / 台高 2.07m | 西北次卧北墙飘窗（z=1.10 凹进段） |
-| kitchen_north_bay | 飘窗 | 深 1.1m / 台高 2.12m | 厨房北墙飘窗（z=0 北缘） |
+| bedroom_nw_north_bay | 飘窗 | 深 1.16m / 台高 2.156m | 西北次卧北墙飘窗（北墙 z≈0；旧「z=1.10 凹进段」作废，2026-11-26 量房北墙拉直）。2026-11-27 业主实测：地面到下飘窗 2152/2159/2158，均值 2156，下飘窗高 750，深约 1160；顶 2156+750=2906，对层高 2.905 差 1mm，闭合。量房 DWG 2165/750 作废。 |
+| kitchen_north_bay | 飘窗 | 深 1.1m / 台高 2.201m | 厨房北墙飘窗（北缘 z=−0.15；旧「z=0」作废，2026-11-26 量房北墙 z=−0.145）。2026-11-27 业主实测：地面到下飘窗 2205/2201/2199，均值 2201，下飘窗高约 700（非 750）；顶 2201+700=2901，对层高 2.910 差 9mm，闭合。量房 DWG 2165/750 作废。 |
 | living_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 客厅落地幕墙根部防水台（150 高 × 150 出檐常规口径，量级待量房核实）；竖面与水平台面由 sill_region 挂贴砖 |
 | mbath_west_lower_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卫西墙淋浴段（z[2.10,2.86] 直段）根部防水台，D4=L 同款 150×150 |
 | mbath_north_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卫北墙（x[0,2.60]，西段在淋浴湿区内）根部防水台，D4=L 同款 |
@@ -190,7 +189,7 @@
 | master_bedroom_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 主卧南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
 | study_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 书房南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
 | bedroom_nw_north_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 西北次卧北墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
-| bedroom_se_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 东南客房南墙落地幕墙根部低反坎；150×150mm估算，front+top贴砖，量房后复核（DEC-2026-10-16-TILE-01） |
+| bedroom_se_south_waterproof_ledge | 飘窗 | 深 0.15m / 台高 0m | 2026-11-26 量房：南边是 CW2050 窗，窗台 LD 115，反坎收到 115mm，不再按 150mm 通高幕墙根。front+top 贴砖不盖窗洞（DEC-2026-10-16-TILE-01 的 150 估算作废） |
 
 ## 5. 太阳定位参数
 

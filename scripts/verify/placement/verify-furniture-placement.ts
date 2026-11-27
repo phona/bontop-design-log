@@ -119,9 +119,7 @@ const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
   // 2026-11-13 issue #116：950 衣柜 + 顶封已删，其层叠豁免同步删除。
   ['bed_180', 'master_bedside_tray_south'], // 床架集成托盘位于床投影内，独立校验收起/使用态
   ['vanity', 'mirror_cabinet_gbath'], // DEC-2026-09-09-R2 镜柜挂墙位于台盆正上方（y[1.10,2.00] vs 台盆 ≤0.79），高度不冲突，平面 footprint 投影重叠属预期
-  ['vanity', 'robot_dock_gbath'], // DEC-2026-09-09-R6 基站泊入悬空台盆柜下（柜体底缘 y=0.30，基站顶 0.280，顶余 0.020；2026-11-02 本 PR 由 J6 改 JX YJCC034），竖向错层，平面投影重叠属预期
-  ['heated_towel_rack', 'vanity'], // 2026-11-27 干湿分离放弃后毛巾架落客卫东墙马桶上方（y[1.05,1.80]），与台盆柜（y≤0.75）竖向错层，平面投影重叠属预期
-  ['mirror_cabinet_gbath', 'robot_dock_gbath'], // DEC-2026-09-09-R5 镜柜（y[1.10,2.00]）与台下基站（y≤0.280）同墙柱竖向叠放，平面投影重叠属预期
+  ['water_heater', 'robot_dock_gbath'], // 2026-11-27 业主裁定泊位落厨房西墙：热水器壁挂（底 1.07m）与基站（顶 0.28m）竖向错层 0.79m，平面投影重叠 0.105m 无实体冲突；基站沿位 0.87 为贴北墙地柜南缘的最近可行位，避不开热水器投影
   // 2026-09-03：旧重型器械（squat_rack/barbell_olympic/weight_plate_set/rubber_training_mat）退出书房，相关重叠豁免同步删除。
 ];
 

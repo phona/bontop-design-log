@@ -51,12 +51,12 @@ vertices:
   - { id: v_balc_sw, x: 5.69,  z: 1.36 }  # 客卫北墙。墙缝 EQUIP H z=1.230 / 1.485，玻璃 H z=1.325/1.405 x 6.33..6.88（CW 550）。模型线取玻璃中 z=1.36
   - { id: v_nw_s,    x: 5.69,  z: 3.64 }  # 客卫内卫南墙。墙体 H z=3.64 x 5.815..7.285
   - { id: v_nw_bedroom_s, x: 5.69, z: 3.75 }
-  - { id: v_gbath_west_s, x: 5.69, z: 4.155 }  # 开放洗漱南缘。EQUIP H z=4.155（连续线，非虚线吊顶）
+  - { id: v_gbath_west_s, x: 5.69, z: 4.04 }  # 客卫南缘入口墙线。2026-11-27 业主裁定：门洞在开发商留口（DWG z=4.04 短线 x 5.815..6.680），南缘墙线由 EQUIP H z=4.155 改至 4.04；入口前室深 0.40m（3.64..4.04）。EQUIP H 4.155 线（连续线）为南侧外缘/吊顶线，不再作本房间南缘。
   - { id: v_vrv_se,  x: 7.50,  z: 1.36 }
   - { id: v_balc_ne, x: 7.50, z: 1.36 }
   - { id: v_balc_se, x: 7.50, z: 1.36 }
   - { id: v_gbath_se,x: 7.50,  z: 3.64 }
-  - { id: v_gbath_east_s, x: 7.50, z: 4.155 }
+  - { id: v_gbath_east_s, x: 7.50, z: 4.04 }  # 客卫南缘入口墙线东端。2026-11-27 业主裁定：同 v_gbath_west_s，南缘墙线由 EQUIP H z=4.155 改至 4.04（开发商门洞线）。
   - { id: v_kit_w,   x: 7.50,  z: -0.15 }  # 厨房西墙 EQUIP V x=7.50 z 0.675..4.155 的北端接到北墙 z=−0.145
   - { id: v_kit_s,   x: 7.15,  z: 3.75 }  # 主走廊东北，随书房东墙 x=7.15 与西北次卧南墙 z=3.75
   - { id: v_ent_kit, x: 11.11, z: 4.155 }
@@ -137,7 +137,9 @@ rooms:
       reason: "沿用现有原顶涂装口径；量房后核对吊顶/梁位"
   - id: guest_bath
     name: 客卫
-    # 内卫 + 南侧入口前室纳入同一语义房间；南缘 v_gbath_east_s→v_gbath_west_s 无墙，保持开放第四面。
+    # 内卫 + 南侧入口前室纳入同一语义房间；南缘 v_gbath_east_s→v_gbath_west_s 为入口墙（w_gbath_south_entry），
+    # 挂外门 d_gbath（2026-11-27 业主裁定移至开发商门洞 z=4.04）；内卫南墙 w_gbath_south 上与之对齐的
+    # 为无门扇垭口（open_gbath_inner），供入内卫通行。
     # 2026-11-27 业主裁定放弃干湿分离：洗手台移入内卫（南墙内侧，东段），南侧不再是开放洗漱区、只作入口前室；
     # 浴室柜族 0.515m 墙放不下 0.69m 柜的未决项随本次移位关闭（见 house.yaml gbath.vanity）。
     boundary: [v_balc_sw, v_balc_se, v_gbath_east_s, v_gbath_west_s, v_nw_s]
@@ -765,8 +767,9 @@ walls:
           along: [0.10, 1.20]
           height: 2.80
           reason: "西北次卧墙面涂装（w_balc_west，与客卫/阳台共墙）"
-  # 客卫东西墙保持南北走向；内卫段至 z=3.55，开放洗漱区侧边界再向南延伸至 z=4.30。
-  # 延伸段纳入 guest_bath 语义房间的侧边界；南缘无墙，仍为开放边，不新增横隔墙或内部门。
+  # 客卫东西墙保持南北走向；内卫段至 z=3.55，开放洗漱区侧边界再向南延伸至 z=4.04（入口墙线，
+  # 2026-11-27 业主裁定由 EQUIP H 4.155 改至 4.04）。延伸段纳入 guest_bath 语义房间的侧边界；
+  # 南缘现为入口墙 w_gbath_south_entry（挂外门 d_gbath），内卫南墙上为无门扇垭口。
   - id: w_gbath_west
     from: v_balc_sw
     to: v_nw_s
@@ -803,7 +806,7 @@ walls:
       tile_bands:
         - id: walltile_gbath_west_open_vanity
           room: guest_bath
-          along: [0.00, 0.515]      # 2026-11-26 墙段长 0.515
+          along: [0.00, 0.40]      # 2026-11-27 墙段长 0.40（z 3.64..4.04，入口墙线南移）
           bottom: 0.00
           height: 0.30
           zone: visible
@@ -816,7 +819,7 @@ walls:
           reason: "西北次卧墙面涂装（w_gbath_west_open_vanity，客卫侧贴砖本侧涂漆）"
         - id: paint_guest_bath_w_gbath_west_open_vanity
           room: guest_bath
-          along: [0.00, 0.515]
+          along: [0.00, 0.40]
           bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：让出 walltile_gbath_west_open_vanity 的 0.30m 防水砖带
           height: 2.80
           reason: "客卫开放洗漱区西墙（浴室柜对面）涂装；0.30m 以下为 walltile_gbath_west_open_vanity 防水砖带，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"
@@ -867,10 +870,11 @@ walls:
     height: 2.8
     line_datum: centerline   # 2026-11-07 issue #98 S1 补：drain_gbath_vanity 挂此段北脸，wallFaceOffset 要显式基准（口径 A）
     openings:
-      # 2026-08-29：门洞西移至 x[5.60,6.30]，保持南墙外门内开并为马桶真实 AABB 让出扫掠净空
-      # DEC-2026-09-09-R3：铰链由东缘（end）改西缘（start）——东铰链 90° 开门叶立于 x=6.30 挡住马桶动线（叶尖距玻璃隔断仅 0.05m），且扫掠半径 0.70m 撞上西墙毛巾架（最近点 0.62m）；西铰链后叶贴西墙 z[2.85,3.55]，马桶/淋浴隔断/毛巾架（已迁马桶上方）全部让开
-      # DEC-2026-09-09-R4：门洞再东移 0.10m 至 x[5.70,6.40]——西缘原来顶着墙角（x=5.60 即西墙），铰链在角部时门叶中心落在西墙中线穿模不可见；东移后铰链 x=5.70，门叶贴西墙内侧可见，并获得 0.10m 门垛便于门套收口；马桶侧扫掠净距仍有 0.125m
-      - { id: d_gbath, type: door, anchor: v_nw_s, offset: 0.5575, width: 0.865, height: 2.445, room: guest_bath, swing: inward, hinge: start }  # 2026-11-26 MW 865/MH 2445，文字 (6.83,3.86)。2026-11-27 量房 DWG 0.865 缝在 z=4.04 短线 x 5.815..6.680（与本墙 z=3.64 线不重合）；offset 为洞口中心距锚点（layout-resolver 按中心解算），中心 6.2475−锚点 5.69=0.5575，使洞口 x[5.815,6.680] 对上 DWG 缝位（原 offset 0.45 的洞口中心在 6.14、跨 x[5.708,6.573]）；z 向仍按本墙 3.64，DWG 的 z=4.04 短线是门洞线还是另有墙线待现场确认——见客卫门洞未决
+      # 2026-11-27 业主裁定：外门 d_gbath 移至南缘入口墙 w_gbath_south_entry（开发商门洞 z=4.04，见该墙）。
+      # 本墙上与之对齐的洞口改为无门扇垭口（cased_opening）：入内卫的通行口，洗手台（x 6.68..7.37）
+      # 与镜柜（x 6.70..7.36）均在洞口东缘以东，门洞东缘即柜西缘；垭口位置为按门扇扫掠与柜体布局
+      # 推断（infer），DWG 该线读法仍有歧义（量房 DWG 内卫南墙线连续无缝），待现场核对门洞口实物。
+      - { id: open_gbath_inner, type: cased_opening, anchor: v_nw_s, offset: 0.5575, width: 0.865, height: 2.445, sill: 0, room: guest_bath }  # 垭口 x[5.815,6.680]，与南缘外门同轴对齐；无门扇、无铰链、无扫掠；sill 0 = 落地通行口（与门同口径，墙面算量按落地洞口扣）
     finish:
       tile_bands:
         - id: walltile_gbath_south_vanity_splash
@@ -880,6 +884,18 @@ walls:
           height: 1.10
           zone: visible
           reason: 台盆后防溅带（业主 2026-10-07 终裁）：台上盆+壁挂龙头（底座 0.84）溅水面，0.77 台面 → 1.10 镜柜下沿，材质与台面同材或 300×600 正砖
+  # 客卫南缘入口墙（2026-11-27 业主裁定新建）：开发商留的门洞口，DWG z=4.04 短线 x 5.815..6.680，
+  # 比原模型内门（w_gbath_south 上 d_gbath，z=3.64）向走廊方向南移 0.40m。入口前室深 0.40m
+  # （3.64..4.04）。M3 已结：门扫掠距洗手台约 0.12m——铰链 (5.815,4.04)，叶长 0.865，弧在柜北脸
+  # z=3.58 处至 x=6.55，柜西缘 6.68，净距约 0.13m；镜柜净距约 0.15m；马桶净距约 0.51m。
+  # 洗手台从门洞最边缘处延伸过去（柜西缘贴门洞东缘 6.68），不顶门。饰面带待定（前室墙面做法未议），不先编。
+  - id: w_gbath_south_entry
+    from: v_gbath_west_s
+    to: v_gbath_east_s
+    height: 2.8
+    line_datum: centerline
+    openings:
+      - { id: d_gbath, type: door, anchor: v_gbath_west_s, offset: 0.5575, width: 0.865, height: 2.445, room: guest_bath, swing: inward, hinge: start }  # 2026-11-26 MW 865/MH 2445，文字 (6.83,3.86)。2026-11-27 量房 DWG 0.865 缝在 z=4.04 短线 x 5.815..6.680；offset 为洞口中心距锚点（layout-resolver 按中心解算），中心 6.2475−锚点 5.69=0.5575，使洞口 x[5.815,6.680] 对上 DWG 缝位。2026-11-27 业主裁定：门洞即开发商留口，直接能用、不用拆改；由内卫南墙（z=3.64）南移 0.40m 至此墙。M3 已结（门不影响洗手台，扫掠净距约 0.13m）。
   - id: w_gbath_east
     from: v_kit_s2
     to: v_gbath_se
@@ -926,7 +942,7 @@ walls:
       tile_bands:
         - id: walltile_gbath_east_open_vanity
           room: guest_bath
-          along: [0.00, 0.515]      # 2026-11-26 墙段 z 3.64..4.155，长 0.515（原 0.75 越界）
+          along: [0.00, 0.40]      # 2026-11-27 墙段 z 3.64..4.04，长 0.40（入口墙线南移；原 0.515 越界）
           bottom: 0.00
           height: 0.30
           zone: visible
@@ -934,7 +950,7 @@ walls:
       paint_bands:
         - id: paint_guest_bath_w_gbath_east_open_vanity_lower
           room: guest_bath
-          along: [0.00, 0.515]
+          along: [0.00, 0.40]
           bottom: 0.30                 # 砖漆互斥（DEC-2026-10-09-P07）：2026-11-27 防溅带迁走后上下两段漆合并，0.30 以上至顶为漆面
           height: 2.80
           reason: "客卫开放洗漱区东墙涂装；下是 walltile_gbath_east_open_vanity 0.30m 墙裙砖带、以上至 2.80 平顶为漆面，砖漆互斥不重叠（DEC-2026-10-09-P07，废止原「按桶吸收」口径）"

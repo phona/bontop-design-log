@@ -54,16 +54,16 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.ok(!mirror.includes('gbath.mirror_cabinet'));
   });
 
-  it('COST-160-06 targets = [gbath.robot_dock]，泊位已默认落主走廊、不再挂台盆柜（2026-11-27 干湿分离放弃）', () => {
+  it('COST-160-06 targets = [gbath.robot_dock]，泊位已定厨房西墙、不再挂台盆柜（2026-11-27 业主裁定）', () => {
     const {component} = componentOf('COST-160-06');
     assert.deepEqual(component.targets, ['gbath.robot_dock']);
     const dock = ledgerOf('gbath.robot_dock');
-    // 2026-11-27：台盆柜深 0.50→0.30m 后机器人仓放不进原位，泊位默认落主走廊北墙
-    // （w_nw_south，待业主定夺）；dock 不再挂 gbath.vanity 的 robot_bay，robot_bay 槽位已随
+    // 2026-11-27：台盆柜深 0.50→0.30m 后机器人仓放不进原位，泊位按业主裁定落厨房西墙北段
+    // （w_vrv_east，沿位 0.87，待水源定夺）；dock 不再挂 gbath.vanity 的 robot_bay，robot_bay 槽位已随
     // 干湿分离放弃作废，vanity_layout 仍保留 robot_bay_width 字段只因 schema 要求。
     assert.equal(dock.placement, 'wall');
     assert.equal(dock.mountHost, null);
-    assert.equal(dock.roomId, 'main_corridor');
+    assert.equal(dock.roomId, 'kitchen');
     assert.ok(!ledgerOf('gbath.vanity').mountedChildren.includes('gbath.robot_dock'));
   });
 

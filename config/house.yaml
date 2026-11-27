@@ -263,15 +263,15 @@ rooms:
     wall_finish: "paint"
     needs_waterproof: true
     width: 1.81
-    length: 2.79
+    length: 2.68
     height: 2.907
-    area: 5.06
+    area: 4.85
     status: "design"
     orientation: "内"
-    notes: "镜像 model-geometry（x=5.69..7.50，z=1.36..4.155；内卫 z 1.36..3.64、深 2.28m，南侧 3.64..4.155 为入口前室；东墙线 2026-11-26 量房改至 7.50，R04 的 7.20 作废）；南墙 w_gbath_south 位于 z=3.64，南侧 z=3.64..4.155 纳入客卫语义房间但保持走廊开放边，不新增第四面墙。东西两侧实体延伸墙至 z=4.155。2026-11-27 业主裁定放弃干湿分离：洗手台移入内卫、贴南墙内侧东段（0.69×0.30m 窄深柜，见 gbath.vanity），南侧只作入口前室。内卫由南至北为马桶区→淋浴区，z≈2.80 整面固定玻璃屏分隔（DEC-2026-09-07-054：无门，西端 x[5.60,6.30] 为 0.70m 开敞入口，降成本并免门铰链/密封条水垢维护，淋浴区不作完全封闭）；马桶实际模型 AABB 置于隔断南侧并由南墙外门洞西移避让。各墙体材质待量房确认。"
+    notes: "镜像 model-geometry（x=5.69..7.50，z=1.36..4.04；内卫 z 1.36..3.64、深 2.28m，南侧 3.64..4.04 为入口前室（深 0.40m）；东墙线 2026-11-26 量房改至 7.50，R04 的 7.20 作废）；南墙 w_gbath_south 位于 z=3.64（上为无门扇垭口 open_gbath_inner），南缘入口墙 w_gbath_south_entry 位于 z=4.04（挂外门 d_gbath，2026-11-27 业主裁定移至开发商门洞）。东西两侧实体延伸墙至 z=4.04。2026-11-27 业主裁定放弃干湿分离：洗手台移入内卫、贴南墙内侧东段（0.69×0.30m 窄深柜，见 gbath.vanity），南侧只作入口前室。内卫由南至北为马桶区→淋浴区，z≈2.80 整面固定玻璃屏分隔（DEC-2026-09-07-054：无门，西端 x[5.60,6.30] 为 0.70m 开敞入口，降成本并免门铰链/密封条水垢维护，淋浴区不作完全封闭）；马桶实际模型 AABB 置于隔断南侧并由南墙外门洞西移避让。各墙体材质待量房确认。"
     doors:
       - width: 0.70
-        position: "南侧外门：过道连接，内开（d_gbath，洞口 x[5.815,6.680]，2026-11-27 按量房 DWG 缝位由 offset 0.45 改 0.125；西移避让马桶真实 AABB 与扫掠）"
+        position: "南侧外门：过道连接，内开（d_gbath，洞口 x[5.815,6.680]，2026-11-27 业主裁定移至开发商门洞 z=4.04 南缘入口墙；门扫掠距洗手台约 0.12m，M3 已结）"
     furniture_concept:
       - "洗手台已移入客卫内、贴南墙内侧东段（0.69×0.30m 窄深柜，2026-11-27 干湿分离放弃后改位；机器人泊位随之取消，见 gbath.robot_dock）"
       - "南段马桶靠东墙，中心约 x=6.90,z=3.05，rotation=270（坐东朝西）；真实模型 AABB x[6.675,7.225]、z[2.85,3.25]，北缘距横向隔断 z=2.80 为0.05m，东缘距东墙西完成面约0.22m，完全位于隔断南侧（2026-11-26 量房：马桶东移 0.15m 避门扫掠；东墙线改至 7.50）"
@@ -492,12 +492,12 @@ furnishings:
     # 2026-10-05 功能互换 v0（候选未冻结，iteration parent-room-study-swap-20261005）：书房→客房。
     # 移除 desk/chair/study_seasonal_wardrobe_wall 与轻训练三件（bench_adjustable/adjustable_dumbbell_pair/rollable_training_mat）；
     # 移入 bed_150 + mattress_150 + wardrobe_180（原父母房随功能迁入）。
-    # 摆位约束：wardrobe_180 北墙边吊下 x[14.20,16.00] z[5.55,6.15]（2.40m 柜体+0.10m 顶封板抵 2.50m 吊底，与原父母房同一安装条件），rotation=180 柜门朝南、避 d_bese 扫掠（扫掠仅 z[5.65,6.55]，不冲突）；
-    # bed_150 床头靠东外墙（rotation=270，床头在局部 -z → 世界 +x），AABB x[14.33,16.33] z[6.85,8.35]：同时远离电梯井（北）与客厅电视墙（西），床尾半进凸窗带 z[7.60,8.47]（bay_sill 仅占 2.07m 以上高度，床高 <2.07m 不冲突）；
+    # 摆位约束：wardrobe_180 北墙边吊下 x[14.20,16.00] z[5.55,6.15]（2.40m 柜体+0.10m 顶封板抵 2.50m 吊底，与原父母房同一安装条件），rotation=180 柜门朝南、避 d_bese 扫掠（扫掠仅 z[5.65,6.55]，不冲突）；2026-11-27 床南移 0.12m 后衣柜不跟移（须留在边吊 ceiling_study_ac z[5.55,6.15] 下，锚点 offset z −1.75→−1.87，柜↔床间距 0.70→0.82m）；
+    # bed_150 床头靠东外墙（rotation=270，床头在局部 -z → 世界 +x），AABB x[14.33,16.33] z[6.97,8.47]：同时远离电梯井（北）与客厅电视墙（西），床尾半进凸窗带 z[7.60,8.47]（bay_sill 仅占 2.07m 以上高度，床高 <2.07m 不冲突）；
     # 柜前通道 6.15→6.85 = 0.70m ≥ 0.65m 惯例；床南缘距南墙 0.12m（2026-11-26 量房：南墙 z=8.47；M8 是否北移床待业主定）。
     # site_pending：凸窗带可站人性/飘窗台高 2.07m（量房 #20）、东墙 shear inferred 防倾倒锚固、床头双侧电位与床头柜/行李架（二期）。
-    - { type: wardrobe_180, id: bese.wardrobe_180, support: { kind: floor }, anchor: { source: furniture, id: bese.bed_150, offset: { x: -0.10, z: -1.75 } }, rotation: 180 } # 1.8m×0.6m×2.40m 推拉门成品衣柜（北墙边吊下；随功能自原父母房迁入；PKG-150 一期家具池）；AABB x[14.33,16.13] z[5.55,6.15]：西缘 14.33 避 d_bese 门扫掠（x≤14.30）、东缘留 0.25m 完成面余量、柜顶 2.50m 抵边吊底；#98 Tier 2 anchor 相对床——北墙线已随 R01 移至 z=4.82，墙锚需 0.67m 假缝隙，不取
-    - { type: bed_150, id: bese.bed_150, support: { kind: floor }, x: 15.33, z: 7.60, rotation: 270 }     # 床头靠东外墙；AABB x[14.33,16.33] z[6.85,8.35]；成品可搬走（DEC-2026-08-02-013 弹性设计转写对象）；#98 Tier 3 保持绝对——锚链根：bese.wardrobe_180 锚它（1 个跟随件），不编造跟随关系
+    - { type: wardrobe_180, id: bese.wardrobe_180, support: { kind: floor }, anchor: { source: furniture, id: bese.bed_150, offset: { x: -0.10, z: -1.87 } }, rotation: 180 } # 1.8m×0.6m×2.40m 推拉门成品衣柜（北墙边吊下；随功能自原父母房迁入；PKG-150 一期家具池）；AABB x[14.33,16.13] z[5.55,6.15]：西缘 14.33 避 d_bese 门扫掠（x≤14.30）、东缘留 0.25m 完成面余量、柜顶 2.50m 抵边吊底；#98 Tier 2 anchor 相对床——北墙线已随 R01 移至 z=4.82，墙锚需 0.67m 假缝隙，不取。2026-11-27 床南移 0.12m（贴南墙），衣柜不跟移：柜顶须抵北墙边吊 ceiling_study_ac（z[5.55,6.15]，内藏 ac_study 风管机，吊顶位置随空调待厂家定位、不得擅自挪），故锚点 offset z 由 −1.75 改 −1.87，柜↔床间距 0.70→0.82m。
+    - { type: bed_150, id: bese.bed_150, support: { kind: floor }, x: 15.33, z: 7.72, rotation: 270 }     # 床头靠东外墙；AABB x[14.33,16.33] z[6.97,8.47]；成品可搬走（DEC-2026-08-02-013 弹性设计转写对象）；#98 Tier 3 保持绝对——锚链根：bese.wardrobe_180 锚它（1 个跟随件），不编造跟随关系。2026-11-27 业主授权按最佳实践调：床南缘贴死南墙内面 z=8.47（0m），原 0.12m 离墙死角（吸尘不到、积灰）消除；不取留 0.5m 过道方案——南墙为 2050 窗墙、床北侧至衣柜 0.70m 铺床操作面已够，0.5m 南侧过道只是贴窗侧移窄条。
     - { type: mattress_150 }
     - { type: curtain_set }
     - { type: ceiling_light }
@@ -551,13 +551,6 @@ furnishings:
     - { type: mijia_instant_dispenser_s1_preview, id: ld.dispenser_s1, support: { kind: furniture, host: ld.waterbar_cabinet, surface: 0.85 }, anchor: { source: furniture, id: ld.waterbar_cabinet, offset: { x: 0.04, z: -0.23 } }, rotation: 90 }
     # 同一台EM450从厨房移至餐厅候选位，按220×285×305mm，面朝东；底面y=0.85m、顶面y=1.155m。未新增第二台。；#98 Tier 2 anchor 相对水吧柜，同上
     - { type: coffee_machine_em450, id: ld.coffee_machine, support: { kind: furniture, host: ld.waterbar_cabinet, surface: 0.85 }, anchor: { source: furniture, id: ld.waterbar_cabinet, offset: { x: -0.06, z: 0.13 } }, rotation: 90 }
-  main_corridor:
-    # 2026-11-27 干湿分离放弃后机器人泊位默认落主走廊（用户待定：走廊 / 主卫 / 另购薄款基站三选一）。
-    # 默认位贴主走廊北墙（w_nw_south 南脸，沿位 1.53，x 4.225..4.635，z 3.81..4.243），面朝南、机器人向南出入；
-    # 两侧余量各约 0.065m（西至主卧东墙 x=4.16、东至儿童房门 d_bnw 西缘 x=4.705），紧但不越界；
-    # 前方 0.45m 空旷（走廊南向 z 4.243..4.693 为空）。走廊无上下水，自动上下水版在此只能手动加水/排水，
-    # 或另走上下水管，待业主定泊位后随水电设计补。电源 sock_gbath_robot 随泊位迁至走廊西墙（w_strip_east 东脸）。
-    - { type: robot_dock_gbath, id: gbath.robot_dock, support: { kind: floor }, wall: w_nw_south, wall_side: south, rotation: 0, along: 1.53, blocker: {kind: pending_adjudication, owner: ["业主"], trigger: "2026-11-27 干湿分离放弃、台盆柜收窄为 0.30m 深后，基站（410×433×280mm）无处安放；本条为默认泊位", reverses_if: "业主定出泊位（走廊/主卫/另购薄款基站/取消）后重设挂位与电源", rationale: "原泊位在台盆柜机器人仓内（挂 gbath.vanity 的 robot_bay 槽位）；2026-11-27 柜深 0.50→0.30m 后基站（433mm 深）放不进。默认落主走廊北墙（用户首选方向），待业主定夺；走廊无上下水，自动上下水功能受限。云鲸 JX 超薄上下水版 YJCC034（京东 SKU 100237988935；基站 YJCB034S，410×433×280mm / 8.71kg / 进水压力 0.08-0.8MPa）。官方摆放口径=前方≥0.45m 空旷且无悬崖；柜内安装官方无章节，须云鲸官方预约勘测（400-080-0630）。"} }
   kitchen:
     # 3D 用显式柜体段：北墙玻璃幕只做落地柜+台面；东墙实体墙承载灶台与烟机；冰箱已移至客餐厅候选位。
     # 北墙 run 拆两段留洗碗机位 x∈[8.50,9.10]（2026-08-23；紧贴水槽柜 x≥9.10 西侧，上下水就近；
@@ -580,6 +573,7 @@ furnishings:
     - { type: sink, id: kitchen.sink, support: { kind: inset, host: kitchen.cabinet_run_north_east, surface: 0.89 }, anchor: { source: furniture, id: kitchen.cabinet_run_north_east, offset: { x: -0.44, z: -0.02 } }, rotation: 0 }         # DEC-2026-08-02-013 北墙水槽
     # 热水器挂厨房西侧、靠生活阳台玻璃幕墙的 w_vrv_east 实体墙厨房侧，避开阳台门洞和北墙地柜；燃气路由/CO 安全红线待物业/燃气公司确认
     - { type: water_heater, id: kitchen.water_heater, support: { kind: wall, bottom: 1.07 }, x: 7.60, z: 1.00, rotation: 270 } # #98 Tier 3 外：暂定位 pending-site-data #26（DIMS 同注），非设计绝对；量房/SKU 冻结后终核是否入 Tier 3 或改关系化
+    - { type: robot_dock_gbath, id: gbath.robot_dock, support: { kind: floor }, wall: w_vrv_east, wall_side: east, rotation: 90, along: 0.87, note: "2026-11-27 业主裁定泊位落厨房西墙北段（w_vrv_east 东脸，沿位 0.87，中心 (7.78, 0.72)，面朝东入厨房；走廊默认泊位关闭）。北段在热水器 (7.60,1.00) 北侧、阳台门 (z 1.36..2.40) 以北，脱离烹饪动线。沿位由业主口径 z≈0.35 北移至 0.72：z=0.35 会撞北墙地柜（柜南缘 z=0.47，基站 0.41 宽放不进柜与热水器之间 0.35m 空档），0.72 为贴柜南缘的最近可行位（北缘距柜 AABB 南缘 25mm）；热水器为壁挂（底 1.07m）、基站高 0.28m，平面投影重叠 0.105m 无实体冲突（见 verify-furniture-placement STACKED_PAIRS 豁免）。自动上下水水源未定二选一：厨房水槽约 1.9m（沿踢脚线走管）或穿西墙接阳台洗衣机供水；插座 sock_gbath_robot 随泊位同迁至本墙（新点位）。云鲸 JX 超薄上下水版 YJCC034（京东 SKU 100237988935；基站 YJCB034S，410×433×280mm / 8.71kg / 进水压力 0.08-0.8MPa）。官方摆放口径=前方≥0.45m 空旷且无悬崖；柜内安装官方无章节，须云鲸官方预约勘测（400-080-0630）。", blocker: {kind: pending_adjudication, owner: ["业主"], trigger: "自动上下水水源二选一未定（厨房水槽沿踢脚线约 1.9m / 穿西墙接阳台洗衣机供水）", reverses_if: "业主定出水源方案后按水路重设进水口位", rationale: "泊位已定厨房西墙，但自动上下水需进水+排水；水槽方案沿踢脚线走管约 1.9m，阳台方案穿西墙接洗衣机供水——两方案管路与开孔均未定，水电交底前须定夺。"} }
     - { type: ceiling_light }
     # 2026-10-16 水吧V2净水器机身预演：按业主图示尺寸163W×445D×379Hmm，置于水槽柜组东侧相邻格、避开水槽开孔和东墙柜段，中心(10.05,0.32)，底面y=0.08。
     # 台面独立净水龙头位置与 RO 给排水仍待 SKU；电源 sock_kitchen_purifier 已随本预演位对齐（DEC-2026-10-17-R20，position_status pending）；机身为图示尺寸代理、SKU及内部格局待核。
@@ -599,19 +593,18 @@ furnishings:
     # （龙头挂墙不挂柜，见 config/plumbing.yaml faucet_gbath_vanity）。柜体分割数值只在条目 vanity_layout 声明
     # （3D FixtureFactory.buildVanity、robot_dock 挂位解算、DXF 外框共用同一份；FURNITURE_DIMS 不再存副本）。
     # robot_bay 字段为 schema 必填保留，但仓深随柜深收为 0.30、基站（410×433×280mm）已放不进——泊位取消，
-    # 见 gbath.robot_dock（已移至主走廊作默认泊位，待业主定夺）。原 DEC-2026-11-05-R5 的北端机器人仓 + 南端抽屉分割作废。
+    # 见 gbath.robot_dock（2026-11-27 业主裁定泊位落厨房西墙北段，见该条）。原 DEC-2026-11-05-R5 的北端机器人仓 + 南端抽屉分割作废。
     # DEC-2026-09-09-R7 柜深 0.40→0.50 全藏基站的口径随本次收窄作废。
-    - { type: vanity, id: gbath.vanity, support: { kind: floor }, wall: w_gbath_south, wall_side: north, rotation: 180, along: 1.335, wall_clearance: 0.0, vanity_layout: { width: 0.69, depth: 0.30, height: 0.75, robot_bay_width: 0.50, robot_bay_clear_width: 0.46, panel_thickness: 0.02 }, blocker: {kind: pending_adjudication, owner: ["业主"], trigger: "2026-11-27 干湿分离放弃后改位：窄深柜 0.69×0.30m 是否接受（距马桶仅 0.03m）与机器人泊位另寻位置", reverses_if: "业主否决窄深柜或另有泊位方案时，重定柜深/柜位", rationale: "2026-11-27 干湿分离放弃：柜由东侧开放区（w_gbath_east_open_vanity，0.515m 墙）移入内卫南墙内侧东段（沿位 1.335，柜沿墙 x 6.68..7.37，门洞 d_gbath 已按 DWG 改至 x[5.815,6.680]、柜西缘贴门洞东缘）；深由 0.50 收窄为 0.30——起算面是墙北完成面 z=3.58（不是墙线 3.64），至马桶南缘 z=3.25 仅 0.33m，0.35 深柜会侵马桶 0.02m，0.30 深柜留 0.03m 缝（极紧，清洁/检修受限，台盆须配小尺寸盆）；robot_bay 字段为 schema 必填保留，仓深随柜深收为 0.30、基站（433mm 深）已放不进，泊位已默认落主走廊北墙（见 gbath.robot_dock，待业主定夺）。"} }
+    - { type: vanity, id: gbath.vanity, support: { kind: floor }, wall: w_gbath_south, wall_side: north, rotation: 180, along: 1.335, wall_clearance: 0.0, vanity_layout: { width: 0.69, depth: 0.30, height: 0.75, robot_bay_width: 0.50, robot_bay_clear_width: 0.46, panel_thickness: 0.02 }, blocker: {kind: pending_adjudication, owner: ["业主"], trigger: "2026-11-27 干湿分离放弃后改位：窄深柜 0.69×0.30m 是否接受（距马桶仅 0.03m）与机器人泊位另寻位置", reverses_if: "业主否决窄深柜或另有泊位方案时，重定柜深/柜位", rationale: "2026-11-27 干湿分离放弃：柜由东侧开放区（w_gbath_east_open_vanity，0.515m 墙）移入内卫南墙内侧东段（沿位 1.335，柜沿墙 x 6.68..7.37，门洞 d_gbath 已按 DWG 改至 x[5.815,6.680]、柜西缘贴门洞东缘）；深由 0.50 收窄为 0.30——起算面是墙北完成面 z=3.58（不是墙线 3.64），至马桶南缘 z=3.25 仅 0.33m，0.35 深柜会侵马桶 0.02m，0.30 深柜留 0.03m 缝（极紧，清洁/检修受限，台盆须配小尺寸盆）；robot_bay 字段为 schema 必填保留，仓深随柜深收为 0.30、基站（433mm 深）已放不进，泊位已按 2026-11-27 业主裁定落厨房西墙北段（见 gbath.robot_dock，水源待定）。"} }
     - { type: faucet }
     - { type: toilet, id: gbath.toilet, support: { kind: floor }, x: 6.90, z: 3.05, rotation: 270 }      # 2026-08-29 修正：靠东墙坐东朝西；真实模型 AABB x[6.675,7.225]、z[2.85,3.25]，完全位于玻璃隔断南侧且不越东墙；南门洞西移后避让 d_gbath 内开扫掠；#98 Tier 3 保持绝对——卫浴器具：马桶中心 (6.90,3.05)（2026-11-26 量房：东移 0.15m 避 d_gbath 门扫掠）；给水点 toilet_gbath 挂东墙、沿位 0.65（z=3.05）与马桶中心 z 对齐，马桶 x 向东移 0.15m 不影响墙挂水点，无需同移（2026-11-27 盲审 M13：原『待同移 0.15m』为误读，见 plumbing.yaml）；排污口（坑距）未定（pending-site-data #31），未与立管/排污点绑定；不锚墙/家具
     - { type: shower_set }
     - { type: exhaust_fan, id: gbath.exhaust_fan, support: { kind: ceiling, face: 2.50, drop: 0.075 }, x: 6.35, z: 2.45 }                # 北侧淋浴区吊顶；#98 Tier 3 保持绝对——顶面器具：按吊顶中心定位，无墙锚/家具宿主
     - { type: mirror_cabinet_gbath, id: gbath.mirror_cabinet, support: { kind: wall, bottom: 1.10 }, wall: w_gbath_south, wall_side: north, rotation: 180, along: 1.335, wall_clearance: 0.0 } # 2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.335，对齐台盆轴线，镜 0.66m 沿墙 x 6.70..7.36、y[1.10,2.00]）；原东侧开放区位（w_gbath_east_open_vanity）作废。镜柜（0.70×0.90×0.14）候选未冻结；顶柜/层板暂不做（业主定"先一"）。挂在 placed 末尾，保持 vanity:0/toilet:1/exhaust_fan:2 的 GLB 节点序号不变。结构真值待 pending #76 量房
-    # 2026-11-27 干湿分离放弃后改位：电热毛巾架落内卫东墙马桶上方（w_gbath_east 西脸，沿位 0.755，z 2.88..3.43，
-    # 马桶 AABB z[2.85,3.25] 上方、底 1.05m 高于马桶水箱）；原开放洗漱区西墙位（w_gbath_west_open_vanity）作废。
-    # SKU 未选型，0.55×0.10×0.75 为图示代理尺寸；sock_gbath_towel 已随架迁至同一沿位 0.755（2026-11-27 盲审 B2 修复）。
-    # ⚠️ 本位与 DEC-2026-10-17-R20 业主否决『马桶上方挂毛巾』的位置重合，否决是否解除待业主确认（见本条 blocker）。
-    - { type: heated_towel_rack, id: gbath.heated_towel_rack, support: { kind: wall, bottom: 1.05 }, wall: w_gbath_east, wall_side: west, along: 0.755, wall_clearance: 0.0, rotation: 270, blocker: {kind: pending_adjudication, owner: ["业主"], trigger: "电热毛巾架落马桶正上方，与 DEC-2026-10-17-R20 否决位置重合", reverses_if: "业主确认否决解除则保留本位；业主维持否决则另寻挂位并随迁插座", rationale: "2026-11-27 干湿分离放弃后架由开放洗漱区西墙移入内卫东墙马桶上方（沿位 0.755，z 2.88..3.43，马桶 AABB z[2.85,3.25] 上方）；DEC-2026-10-17-R20 业主因卫生观感否决『马桶上方挂毛巾』，本次落位与否决位置重合，需业主确认否决是否解除。插座 sock_gbath_towel 已随架迁至同一沿位。"} }
+    # 2026-11-27 业主裁定撤电热毛巾架：客卫有窗通风好，电热架多余；改普通毛巾架落淋浴区西墙
+    # （w_gbath_west 东脸，沿位 1.25，z≈2.61，淋浴入口旁、洗完伸手可及；不在马桶上方、不挡门与门开关；沿位由 1.30 北移 0.05m——原位东南角距门扇铰点 0.845m 小于门宽 0.865m，门扇扫掠会擦到，北移后距铰点 0.895m、净空 30mm）。
+    # 电热架插座 sock_gbath_towel 同批删除，dedicated_bath_heater_gbath 回路改终浴霸。
+    - { type: towel_set, id: gbath.towel_set, support: { kind: wall, bottom: 0.825 }, wall: w_gbath_west, wall_side: east, rotation: 0, along: 1.25, wall_clearance: 0.04 }
   balcony:
     # 洗烘叠放贴西墙（给水 faucet_balcony_washer / 墙排 drain_balcony_washer / 插座 sock_balcony_washer 均在 w_balc_west z=1.5）
     - { type: washer, id: balcony.washer, support: { kind: floor }, wall: w_balc_west, wall_side: east, rotation: 90, along: 0.50, wall_clearance: -0.01 }   # 10kg 滚筒贴西墙面朝东；与插座/给水偏差 0.35m（显形：插座与水源在墙线 z=1.5、机身中心离墙 0.35m，待量房/水电交底裁定，不静默改线）

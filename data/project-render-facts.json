@@ -461,7 +461,7 @@
       "type": "faucet",
       "wall": "w_gbath_south",
       "along": 1.335,
-      "note": "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.335，x≈7.025，与台盆共用中心线），底座标高约0.84m，贴近0.77m台面；墙面龙头挂南墙北脸（不挂柜）。原东侧开放区位（w_gbath_east_open_vanity，中心线 z=3.955）作废；扫地机基站进水三通随原仓取消而取消（2026-11-27 泊位默认落主走廊北墙，见 gbath.robot_dock，走廊无上下水）。status: inferred + construction_status: pending——本点为设计推断位、未实测，挂载与给排水按现场复核；所连 MEP 路线（water-guest-bath）按点位 id 绑定自动跟随，穿墙 penetration 已随移位取消（龙头与马桶同在内卫，给水不再穿南墙）",
+      "note": "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.335，x≈7.025，与台盆共用中心线），底座标高约0.84m，贴近0.77m台面；墙面龙头挂南墙北脸（不挂柜）。原东侧开放区位（w_gbath_east_open_vanity，中心线 z=3.955）作废；扫地机基站进水三通随原仓取消而取消（2026-11-27 泊位落厨房西墙北段，见 gbath.robot_dock，水源待定）。status: inferred + construction_status: pending——本点为设计推断位、未实测，挂载与给排水按现场复核；所连 MEP 路线（water-guest-bath）按点位 id 绑定自动跟随，穿墙 penetration 已随移位取消（龙头与马桶同在内卫，给水不再穿南墙）",
       "height": 0.84,
       "status": "inferred",
       "construction_status": "pending",
@@ -520,7 +520,7 @@
       "wall": "w_gbath_east",
       "along": 0.65,
       "face_offset": -0.06,
-      "note": "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.90,3.05)，真实模型 AABB x[6.675,7.225]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.50,3.05) h=0.3（东墙线 2026-11-26 量房改至 7.50；R04 的 7.20 作废）、sock_gbath_towel h=1.2、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31",
+      "note": "2026-08-29 客卫南段马桶给水；东墙实体墙西侧挂载，坐东朝西，服务马桶中心 (6.90,3.05)，真实模型 AABB x[6.675,7.225]、z[2.85,3.25]，完全位于隔断南侧并避开西侧入口及外门扫掠；DEC-2026-10-03-R1：与同柱电点 sock_gbath_toilet (7.50,3.05) h=0.3（东墙线 2026-11-26 量房改至 7.50；R04 的 7.20 作废）、干区地漏 drain_gbath_floor (6.45,3.05) 需统一竖向分层口径；坐便器形式与坑距未定，SKU 见 pending-site-data #31",
       "height": 0.3,
       "status": "inferred",
       "construction_status": "pending",
@@ -556,7 +556,7 @@
         "owner": [
           "量房"
         ],
-        "trigger": "2026-11-27 业主实测：客卫下沉 410/409，深约 410（量房 350 作废）；沉箱无排水口（业主确认，开发商未设）。二次排水按 DEC-2026-10-06-R1 自做：DN50 最低点、1% 找坡、独立接立管、轻质回填、回填前通球与闭水（#74）",
+        "trigger": "2026-11-27 业主实测：客卫下沉 410/409，深约 410（量房 350 作废）；沉箱无排水口（业主确认，开发商未设）。二次排水按 DEC-2026-10-06-R1 自做：DN50 最低点、1% 找坡、独立接立管、轻质回填、回填前通球与闭水（#74）。2026-11-27 业主裁定：客卫二次回填须重做——沉箱现部分回填，装新二次排水口须先挖开回填、装完口再用轻质材料重新填，属二次排水工程自带步骤。",
         "reverses_if": "地面泄水与防水层下二次排水不得并入同一接点；最低点实测后重画推断路线。若核查确认开发商已做二次排水且口位可用，自做方案停",
         "rationale": "2026-11-27 业主实测：客卫下沉 410mm（量房 350 作废），沉箱无二次排水口，开发商未设。按 2026-10-23 业主裁定自做二次排水（DEC-2026-10-06-R1：DN50 最低点 + 1% 找坡 + 独立于马桶/地漏支管 + 轻质回填 + 回填前通球与闭水）。模型没有沉箱深度字段，不新造 schema，数记在本 blocker。防水重做，防水高度不追。"
       },
@@ -741,13 +741,13 @@
       "id": "drain_riser_guest_bath",
       "room": "guest_bath",
       "type": "drain_riser",
-      "x": 5.8,
-      "z": 2.4,
+      "x": 7.38,
+      "z": 1.48,
       "absolute": true,
-      "note": "客卫排水立管锚点（2026-10-05 v1 落地）：坐标取自 原量房台账 #6（已退场，未决项现由对象 blocker 承载）（卫生间排水立管）登记的客卫推断值 (5.8,2.4)，属图纸/规范推断，不确定度 ±0.3m；竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + drain-gbath-vanity-to-riser；点位不声明 wall（不在任何墙线上）；DEC-2026-10-06-R1 管径分级：本客卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径分级留待 #41 轮）。2026-11-27 业主照片核实：客卫排污立管在窗边墙角（照片 15）。坐标仍为推断值（±0.3m），未实测。阳台东北角无立管（GLM/DWG 该处读法错误，业主否认、照片 15 证实）。",
+      "note": "客卫排水立管锚点（2026-10-05 v1 落地）：坐标原取自 原量房台账 #6（已退场，未决项现由对象 blocker 承载）（卫生间排水立管）登记的客卫推断值 (5.8,2.4)，属图纸/规范推断，不确定度 ±0.3m；2026-11-27 业主照片 738223_22_hkb3.jpg 核实：立管在北窗（CW 550）边东北墙角，两根白色 PVC 立管、前根较粗约 DN110、底有向西横弯头，紧贴东墙。2026-11-27 业主裁定按照片改至 (7.38,1.48)：东完成面 7.44、西减 DN110 半径约 0.055 得 7.385，北完成面 1.42、北加约 0.055 得 1.475，取整 7.38/1.48，不确定度 ±0.1m（照片估，未实测）。竖向立管无单一标高，管径按既有 drainage 路线口径 0.075m。不作为施工依据，量房日实测后升级 status: measured 并回写本点 + 三条客卫排水支路；点位不声明 wall（不在任何墙线上）；DEC-2026-10-06-R1 管径分级：本客卫排污立管口径 de110（diameter 0.075 为既有登记值不改，全宅管径分级留待 #41 轮）。阳台东北角无立管（GLM/DWG 该处读法错误，业主否认、照片 15 证实）。旧推断值 (5.8,2.4) 作废（偏约 1.9m）。",
       "status": "inferred",
       "construction_status": "pending",
-      "uncertainty_m": 0.3,
+      "uncertainty_m": 0.1,
       "not_for_construction": true,
       "diameter": 0.075,
       "drain_dn": 110
@@ -1088,7 +1088,7 @@
         5.69,
         1.36,
         7.5,
-        4.155
+        4.04
       ],
       "buckle_panel": {
         "module": 0.3
@@ -2546,6 +2546,119 @@
           "risk": "北侧窗带浅梁若为真，可能影响主管转入与吊顶净空。",
           "reason": "邻户图北侧窗带 LD:100 文字约在 (3.72,1.48)，此前漏登记；本条补登记，范围取文字点附近 ±0.2m 候选框。",
           "survey_confirmation": "量房实测该处窗带梁底与范围；不得据此开孔或穿梁。"
+        }
+      ],
+      "developer_reserved_holes": [
+        {
+          "id": "hole_entry_garden_door",
+          "status": "inferred",
+          "room": "entry_garden",
+          "host": "入户花园门上方墙（d_ent 门顶墙，z=3.00）",
+          "position": {
+            "x": 12.19,
+            "z": 3,
+            "y": 2.5
+          },
+          "diameter_m": 0.1,
+          "source": "survey/photos/ac_hole_entry_garden_above_door_20261127.jpg",
+          "uncertainty_m": 0.3,
+          "not_for_construction": true,
+          "note": "门上方墙孔：门洞中心 x=12.185（d_ent 锚点 11.11 + offset 1.075），门高 2.32、入户花园吊顶 2.674，孔取门顶上方 y=2.50。用途未明（该处无内机），现场定位时确认。",
+          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "hole_kitchen_north_beam",
+          "status": "inferred",
+          "room": "kitchen",
+          "host": "厨房北梁（CW 2575 窗上方梁，梁底 2.60、板底 2.91）",
+          "position": {
+            "x": 8.5,
+            "z": -0.15,
+            "y": 2.75
+          },
+          "diameter_m": 0.1,
+          "source": "survey/photos/ac_hole_balcony_room_beam_20261127.jpg",
+          "uncertainty_m": 0.3,
+          "not_for_construction": true,
+          "note": "阳台那间房（厨房）梁孔，照片见梁西端附近白环；走廊照片同梁亦见（ac_hole_corridor_20261127.jpg 右上）。厨房梁底 2.60 = 冷媒主管标高 2.60，主管过此梁须走孔。",
+          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "hole_kitchen_balcony_door_wall",
+          "status": "inferred",
+          "room": "kitchen",
+          "host": "厨房西墙阳台门上方墙（d_kit_balc 门顶墙，x=7.50）",
+          "position": {
+            "x": 7.5,
+            "z": 1.88,
+            "y": 2.65
+          },
+          "diameter_m": 0.1,
+          "source": "survey/photos/ac_hole_balcony_room_beam_and_wall_20261127.jpg",
+          "uncertainty_m": 0.3,
+          "not_for_construction": true,
+          "note": "阳台门上方墙孔：门洞 z 1.36..2.40、中心 z=1.88，孔取门顶上方 y=2.65（板底 2.91 以下）。同张照片亦见梁孔（hole_kitchen_north_beam，计一次）。",
+          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "hole_corridor_beam_near",
+          "status": "inferred",
+          "room": "main_corridor",
+          "host": "走廊梁近端（书房东墙延伸段梁，梁底 2.545、板底 2.898）",
+          "position": {
+            "x": 7.2,
+            "z": 3.89,
+            "y": 2.72
+          },
+          "diameter_m": 0.1,
+          "source": "survey/photos/ac_hole_corridor_20261127.jpg",
+          "uncertainty_m": 0.3,
+          "not_for_construction": true,
+          "note": "走廊梁孔近端：冷媒主管标高 2.60 在梁高带内（梁底 2.545 < 2.60 < 板底 2.898），主管过此梁须走孔、不得下穿吊顶。走廊照片两角度同孔（ac_hole_corridor_b_20261127.jpg），计一次。",
+          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "hole_corridor_beam_far",
+          "status": "inferred",
+          "room": "main_corridor",
+          "host": "走廊远端梁（走廊西端、主卧门侧梁）",
+          "position": {
+            "x": 4.2,
+            "z": 4,
+            "y": 2.72
+          },
+          "diameter_m": 0.1,
+          "source": "survey/photos/ac_hole_corridor_20261127.jpg",
+          "uncertainty_m": 0.5,
+          "not_for_construction": true,
+          "note": "走廊远端梁孔：照片远景小孔（走廊尽头开洞外见蓝楼），梁体归属未确证，位置不确定度 ±0.5m。现场定位时确认梁与管路。",
+          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔对应管路与所在梁；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "hole_room_two_beams_a",
+          "status": "inferred",
+          "room": null,
+          "host": "另一间房两垂直梁之一（通向阳台侧开口上方梁）",
+          "position": null,
+          "diameter_m": 0.1,
+          "source": "survey/photos/ac_hole_room_two_beams_20261127.jpg",
+          "uncertainty_m": null,
+          "not_for_construction": true,
+          "note": "房间未确证：照片见两垂直梁各 1 孔（一孔在通向阳台侧开口上方梁、一孔在另一开口上方梁），但房间归属无法自照片判定（唯一有阳台直通门的房间是厨房，已另计两孔），不编坐标、不猜房间。现场定位时确认房间与梁。",
+          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔所在房间、梁与对应管路；不得据此开孔或穿梁。"
+        },
+        {
+          "id": "hole_room_two_beams_b",
+          "status": "inferred",
+          "room": null,
+          "host": "另一间房两垂直梁之二（另一开口上方梁）",
+          "position": null,
+          "diameter_m": 0.1,
+          "source": "survey/photos/ac_hole_room_two_beams_20261127.jpg",
+          "uncertainty_m": null,
+          "not_for_construction": true,
+          "note": "与 hole_room_two_beams_a 同房间、同照片，另一道垂直梁上的孔。房间未确证，位置待定，不编坐标。",
+          "survey_confirmation": "经销商/厂家 2026-11-27 现场定位时确认本孔所在房间、梁与对应管路；不得据此开孔或穿梁。"
         }
       ]
     },

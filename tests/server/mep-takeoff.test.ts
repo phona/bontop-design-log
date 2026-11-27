@@ -370,7 +370,7 @@ test('空调层与非水电设施被排除并带 reason', () => {
 });
 
 test('设备量：底盒/模数/断路器/穿墙孔', () => {
-  assert.equal(takeoff.devices.boxes, 77); // DEC-2026-10-27-R01 删 switch_parent_bed 开关底盒 78→77； // DEC-2026-10-12-R2 删 switch_mbath/switch_gbath 两个开关底盒后 77→75；DEC-2026-10-17-R20 +sock_waterbar/+sock_weakbox/+sock_kitchen_east_counter 三个强电底盒（sock_fridge_living 换位 sock_kitchen_fridge 净 0；弱电 net_master_ap 与灯具点位不占强电底盒）75→78
+  assert.equal(takeoff.devices.boxes, 76); // DEC-2026-10-27-R01 删 switch_parent_bed 开关底盒 78→77；2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel 强电底盒 77→76； // DEC-2026-10-12-R2 删 switch_mbath/switch_gbath 两个开关底盒后 77→75；DEC-2026-10-17-R20 +sock_waterbar/+sock_weakbox/+sock_kitchen_east_counter 三个强电底盒（sock_fridge_living 换位 sock_kitchen_fridge 净 0；弱电 net_master_ap 与灯具点位不占强电底盒）75→78
   // 28 = ceil((20 回路 + 2P 进线 + 1 SPD) × 1.2)；DEC-2026-10-13-R5 删电视墙灯带整条照明回路后 21→20 路，模数 29→28、断路器 21→20
   assert.equal(takeoff.devices.panelModules, Math.ceil((20 + 2 + 1) * 1.2));
   assert.equal(takeoff.devices.breakers.total, 20);

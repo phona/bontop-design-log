@@ -1700,11 +1700,26 @@ export interface HvacRoute {
   reason?: string;
 }
 
+export interface HvacReservedHole {
+  id: string;
+  status: 'inferred' | 'pending';
+  room: string | null;
+  host: string;
+  position: { x: number; z: number; y: number } | null;
+  diameter_m: number;
+  source: string;
+  uncertainty_m: number | null;
+  not_for_construction: true;
+  note: string;
+  survey_confirmation: string;
+}
+
 export interface HvacDiagram {
   anchors: HvacAnchor[];
   terminals: HvacTerminal[];
   routes: HvacRoute[];
   reference_constraints: HvacReferenceConstraint[];
+  developer_reserved_holes?: HvacReservedHole[];
 }
 
 export interface HvacLoadDesignRoom {

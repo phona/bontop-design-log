@@ -53,7 +53,7 @@ test('real electrical topology parses and lints', () => {
   assert.equal(topology.controls.length, 9); // DEC-2026-10-12-R2 删 control_mbath_light / control_gbath_light 后 11→9
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'lighting').flatMap((circuit) => circuit.member_point_ids).length, 17); // R15 起夜灯并入照明回路；R12 删除客卫 3 灯、R15 删除 NP-4b（24→20）；R1 删主卧两盏壁灯（20→18）；R2 删两卫平板灯（18→16）；DEC-2026-10-13-R5 删电视墙灯带（16→15）；DEC-2026-10-17-R20 照明两回路 +light_balcony_dome/+night_living_mid（15→17）
   assert.equal(topology.circuits.filter((circuit) => circuit.purpose === 'ordinary_power').flatMap((circuit) => circuit.member_point_ids).length, 43); // 2026-10-05 R15 客房床头插座 ×2 并入 ordinary_power_parent_child（39→41）；DEC-2026-10-03-R1：+sock_living_tv_high +sock_kitchen_counter_east；DEC-2026-10-17-R20 +sock_waterbar/+sock_weakbox/+sock_kitchen_east_counter、−sock_parent_bed_l（41→43）
-  assert.equal(result.counts.coveredPoints, 74); // R15 增起夜点与床头插座；R12 删除客卫 3 灯、R15 删除 NP-4b 后 79→75；R1 删两盏壁灯后 75→73；R2 删两卫平板灯后 73→71；DEC-2026-10-13-R5 删电视墙灯带后 71→70（switch 点不计 covered，故删 switch_mbath/switch_gbath 不影响本数）。床头双控 switch_guest_bed 非负载点，仍计未覆盖；DEC-2026-10-17-R20 −sock_kitchen_fridge/−sock_parent_bed_l、+6 新点入回路（fridge 换绑 sock_fridge_living、sock_waterbar、sock_weakbox、sock_kitchen_east_counter、light_balcony_dome、night_living_mid）70→74
+  assert.equal(result.counts.coveredPoints, 73); // R15 增起夜点与床头插座；R12 删除客卫 3 灯、R15 删除 NP-4b 后 79→75；R1 删两盏壁灯后 75→73；R2 删两卫平板灯后 73→71；DEC-2026-10-13-R5 删电视墙灯带后 71→70（switch 点不计 covered，故删 switch_mbath/switch_gbath 不影响本数）。床头双控 switch_guest_bed 非负载点，仍计未覆盖；DEC-2026-10-17-R20 −sock_kitchen_fridge/−sock_parent_bed_l、+6 新点入回路（fridge 换绑 sock_fridge_living、sock_waterbar、sock_weakbox、sock_kitchen_east_counter、light_balcony_dome、night_living_mid）70→74；2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel（dedicated_bath_heater_gbath 成员）74→73
   assert.equal(result.errors.length, 0);
   assert.ok(result.warnings.length > 0);
   // 2026-10 三条规范规则（全部 warning）落地后的新计数：原 52 warnings = 9 dedicated + 29 uncovered + 14 pending
@@ -213,9 +213,9 @@ test('bathroom socket points must declare a splash box (GB 55038-2025 7.4.5)', (
   // DEC-2026-10-06-R2：两个卫浴高位浴霸点位 note 已补防溅盒声明 → 原违反方向清空（2→0）
   assert.deepEqual(idsOf(result, 'bath_socket_splash_box_undeclared'), []);
   const bathSockets = points.filter((point) => (point.room === 'master_bath' || point.room === 'guest_bath') && isSocket(point));
-  assert.equal(bathSockets.length, 8);
-  // DEC-2026-10-06-R2：两卫 8 个插座 note 全部声明"防溅"（原 6 个 + 本轮补齐的 2 个浴霸位）
-  assert.equal(bathSockets.filter((point) => /防溅/.test(point.note ?? '')).length, 8);
+  assert.equal(bathSockets.length, 7); // 2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel，两卫插座 8→7
+  // DEC-2026-10-06-R2：两卫 7 个插座 note 全部声明"防溅"（原 6 个 + 本轮补齐的 2 个浴霸位，减 2026-11-27 撤掉的毛巾架插座）
+  assert.equal(bathSockets.filter((point) => /防溅/.test(point.note ?? '')).length, 7);
   // 违反方向（剥掉本轮补的防溅声明后告警复现，证明判据就是 note 文本而非点位 id）
   const strippedNote = (note: string) => note.replace(/；DEC-2026-10-06-R2 插座带防溅盒（GB 55038-2025 7.4.5）/, '');
   const stripped = points.map((point) => (point.id === 'sock_mbath_batheheater' ? { ...point, note: strippedNote(point.note ?? '') } : point));

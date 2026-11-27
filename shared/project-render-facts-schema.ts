@@ -414,7 +414,20 @@ export const HvacReferenceConstraintSchema = z.object({
   }
 });
 export const HvacRouteSchema = reasonForUnconfirmed(z.object({ id: nonEmpty, status: HvacStatusSchema, system: HvacSystemSchema, from: nonEmpty, to: nonEmpty, via: z.array(nonEmpty).optional(), topology_role: z.enum(['equipment_outlet', 'branch', 'shared_trunk']).optional(), constraint_refs: z.array(nonEmpty).optional(), reason: z.string().optional() }).strict());
-export const HvacDiagramSchema = z.object({ anchors: z.array(HvacAnchorSchema), terminals: z.array(HvacTerminalSchema), routes: z.array(HvacRouteSchema), reference_constraints: z.array(HvacReferenceConstraintSchema) }).strict();
+export const HvacReservedHoleSchema = z.object({
+  id: nonEmpty,
+  status: z.enum(['inferred', 'pending']),
+  room: nonEmpty.nullable(),
+  host: nonEmpty,
+  position: z.object({ x: finiteNumber, z: finiteNumber, y: finiteNumber }).strict().nullable(),
+  diameter_m: finiteNumber.positive(),
+  source: nonEmpty,
+  uncertainty_m: finiteNumber.positive().nullable(),
+  not_for_construction: z.literal(true),
+  note: nonEmpty,
+  survey_confirmation: nonEmpty,
+}).strict();
+export const HvacDiagramSchema = z.object({ anchors: z.array(HvacAnchorSchema), terminals: z.array(HvacTerminalSchema), routes: z.array(HvacRouteSchema), reference_constraints: z.array(HvacReferenceConstraintSchema), developer_reserved_holes: z.array(HvacReservedHoleSchema).optional() }).strict();
 export const HvacLoadDesignRoomSchema = z.object({
   room: nonEmpty, basis: nonEmpty, load_kw: finiteNumber, indoor: nonEmpty, note: z.string().optional(),
 }).strict();
@@ -979,6 +992,10 @@ export function validateProjectHvacFacts(hvac: ProjectHvacFacts, facts: Pick<Pro
     for (const constraint of plan.diagram.reference_constraints) {
       if (constraintIds.has(constraint.id) || ids.has(constraint.id)) throw new Error(`Duplicate HVAC diagram id: ${constraint.id}`);
       constraintIds.add(constraint.id);
+    }
+    for (const hole of plan.diagram.developer_reserved_holes ?? []) {
+      if (constraintIds.has(hole.id) || ids.has(hole.id)) throw new Error(`Duplicate HVAC diagram id: ${hole.id}`);
+      constraintIds.add(hole.id);
     }
     const routeIds = new Set<string>();
     for (const route of plan.diagram.routes) {

@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:3681d10d21494367ba046cad563119e929a2553d64c9312cb1d8c63d7630e357 -->
+     inputs-fingerprint: sha256:15ee06692414d76d4cd125b4e82399cd38cb5a991d13e51993628d0700b66a62 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -23,7 +23,7 @@
 | 一期预算池 | 6 池：基础硬装 126000 / 中央空调 36000 / 一期家具 19000 / 必需家电 16099 / 设计与开工准备 8000 / 一期窗帘 5000 | schedule/phase-1/control.yaml:34-52 | 六池合计 = 执行上限；家电 16099 含 GC5 追加 4000 与 JX ¥99 追加（2026-11-04 DEC-2026-11-04-R2） |
 | 暖通执行池 | 36000 元 | schedule/phase-1/control.yaml:40 | 与合同成交价同额；原 33000 询价口径作废 |
 | 全硬装询价轮次目标 | all_in 205098 元（核心 187098 + 柜体 18000） | schedule/phase-1/control.yaml:203-207 | 业主提供的预算池/封顶/候选价，**不是合同承诺** |
-| 墙砖面积（墙 finish.tile_bands 实算） | 19.9552 ㎡ | config/layout/model-geometry.yaml（墙 finish.tile_bands 声明 + 几何）+ config/model/envelope/openings.yaml（bay_sill finish.tile）+ config/tile-comparison.yaml（干湿分区）+ config/model/envelope/ceiling.yaml（净高上限）→ server/budget-calculator.ts loadMasonryTakeoff → shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts | 窗台/防水台 bay_sill finish.tile 另计 15.941 ㎡、包管盒面 pipe_box 另计 2.644 ㎡；合计 38.5405 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※ |
+| 墙砖面积（墙 finish.tile_bands 实算） | 19.8862 ㎡ | config/layout/model-geometry.yaml（墙 finish.tile_bands 声明 + 几何）+ config/model/envelope/openings.yaml（bay_sill finish.tile）+ config/tile-comparison.yaml（干湿分区）+ config/model/envelope/ceiling.yaml（净高上限）→ server/budget-calculator.ts loadMasonryTakeoff → shared/masonry-takeoff.ts 实算；tests/server/masonry-takeoff.test.ts | 窗台/防水台 bay_sill finish.tile 另计 15.941 ㎡、包管盒面 pipe_box 另计 2.644 ㎡；合计 38.4715 ㎡由契约 c.masonry_tile_area_parity 三方对账 ※ |
 
 ## 暖通
 
@@ -44,7 +44,7 @@
 | 回路总数 | 20 路 | config/electrical-topology.yaml:5 | circuits.length=20；DEC-2026-10-13-R5 删电视墙灯带整条照明回路后回到 20；fact.circuit_count 对账 ※ |
 | 空调内机回路 | 2 路：hvac_power_living + hvac_power_bedrooms | config/electrical-topology.yaml:71,82 | 6 台内机暂并口径；厂家正式配电图确认前不冻结供电分组 |
 | 空调外机回路 | 1 路 hvac_power_outdoor_a2 | config/electrical-topology.yaml:94 | GB 55038 7.4.4 单独成路；C32A+漏保 / 4.0mm²(φ20) proposed，输入估 ≈6kW |
-| 电气点位数 | 104 个 | config/electrical-topology.yaml:15 | 即 config/electrical.yaml 条目数；点位增删必须同步此数与 fact.electrical_points_count ※ |
+| 电气点位数 | 103 个 | config/electrical-topology.yaml:15 | 即 config/electrical.yaml 条目数；点位增删必须同步此数与 fact.electrical_points_count ※ |
 | 强电箱 | 底边离地 1.65m；箱体 390×390×210mm | config/electrical.yaml:702-705 | 20 路 + 2P 进线 + 浪涌需**双排**；单/双排与进线截面待复测（pending-site-data.md #30） |
 
 ## 几何与标高
@@ -71,7 +71,7 @@
 
 | 口径 | 现行值 | 权威源（file:line） | 备注 |
 |---|---|---|---|
-| 未决断构件数 | 39 个构件 | config 各对象 status/blocker 字段（shared/pending-count.ts 派生） | 每个都带 blocker（kind/owner/trigger/reverses_if/rationale）；可读视图跑 npm run docs:generate-pending-view（输出 tmp/capture/）。原量房手账已于 S2-B 退场 |
+| 未决断构件数 | 38 个构件 | config 各对象 status/blocker 字段（shared/pending-count.ts 派生） | 每个都带 blocker（kind/owner/trigger/reverses_if/rationale）；可读视图跑 npm run docs:generate-pending-view（输出 tmp/capture/）。原量房手账已于 S2-B 退场 |
 | #30 强电箱规格 | pending（单/双排、回路数、进线截面） | config/electrical.yaml panel_strong_entry_left 的 blocker | 20 路 + 2P + 浪涌需双排；1.65m 底边仅在双排时合规 |
 | #39 暖通待验证项 | pending（外机实测尺寸/平台散热/厂家配电图/风口加长计价/冷负荷计算书） | config/hvac.yaml commercial 块 + plans 的 blocker | 已成交 36000，但上述项闭环前不冻结施工 |
 

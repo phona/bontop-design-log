@@ -358,7 +358,7 @@ describe('element census snapshot', () => {
   it('pins the element census so undeclared elements cannot slip in silently', () => {
     const elements = collectElements();
     const result = deriveElementStates({ elements, issues: [] });
-    assert.equal(result.summary.total, 167, '构件总数（电气 104 + 给排水 35 + 吊顶/HVAC 25 + 包管盒 3；2026-11-17 PR #259 第二轮 pipe_box 进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，新增两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet，给排水 33→35，总数 162→167；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104；2026-11-08 issue #98 S1-B 状态申报只补字段不增删构件；S2-A 同）');
+    assert.equal(result.summary.total, 166, '构件总数（电气 103 + 给排水 35 + 吊顶/HVAC 25 + 包管盒 3；2026-11-17 PR #259 第二轮 pipe_box 进采集 162→165；2026-11-17 量价算法审计跟进 blocking 2：冷热立管错开 150mm，新增两卫淋浴冷水进口点位 shower_mbath_cold_inlet / shower_gbath_cold_inlet，给排水 33→35，总数 162→167；R1 删两盏壁灯 107→105，R2 删两卫平板灯与墙控 105→101，DEC-2026-10-13-R5 删电视墙灯带 101→100；DEC-2026-10-17-R20 水电 review 落地：电气 +7 新增 −2 删除=105，给排水 +1 洗碗机给水=33；DEC-2026-10-27-R01 删 switch_parent_bed，电气 105→104；2026-11-08 issue #98 S1-B 状态申报只补字段不增删构件；S2-A 同；2026-11-27 业主裁定撤客卫电热毛巾架，删 sock_gbath_towel，电气 104→103，总数 167→166');
     // 申报缺口的历史：b0c425c 基线 74 → 电气 46 项按依据补申报 → hvac anchor 接入 6 项
     // → 给排水采集器补读 status 2 项 → 花洒 2 项补申报 → 15 → 吊顶分区补 DEC 溯源 10 项 → 5。
     // DEC-2026-10-28-R05：主卧南窗帘盒归位时 note 补了 DEC 全引 → 该盒不再是申报缺口，5→4。
@@ -390,19 +390,19 @@ describe('element census snapshot', () => {
       );
     }
     assert.equal(result.summary.undeclared, 2, '只剩 2 个显形申报 undeclared 的吊顶分区（ceiling_child_ac / ceiling_main_corridor）');
-    assert.equal(result.summary.pending, 37, '2026-11-08 issue #98 S2-A：37 个 pending 全部由 config status: pending 承载（原 S1-B 口径 37，其中 8 个原经 ledger 规则、2 个原为 undeclared 申报缺口）');
+    assert.equal(result.summary.pending, 36, '2026-11-08 issue #98 S2-A：36 个 pending 全部由 config status: pending 承载（原 S1-B 口径 37，其中 8 个原经 ledger 规则、2 个原为 undeclared 申报缺口；2026-11-27 撤客卫电热毛巾架删 sock_gbath_towel 及其 pending_selection blocker，37→36）');
     const confirmed = result.states.filter((state) => state.status === 'confirmed');
     assert.equal(confirmed.length, 6, 'confirmed 剩 6 个且全部来自 hvac anchor（ac_* 成交映射），不再有 DEC 引用产生的 confirmed');
     for (const state of confirmed) assert.match(state.statusSource, /config\/hvac\.yaml/, `confirmed 的权威必须是 config/hvac.yaml：${state.id} → ${state.statusSource}`);
   });
 
   it('requires a complete blocker on every pending or undeclared element (S2-A 门禁)', () => {
-    // 这条断言是「未决项上对象」的机器约束：今天 39 个对象一个都不许漏。
+    // 这条断言是「未决项上对象」的机器约束：今天 38 个对象一个都不许漏。
     const elements = collectElements();
     const result = deriveElementStates({ elements, issues: [] });
     const statusById = new Map(result.states.map((state) => [state.id, state.status]));
     const gate = checkBlockers(elements as BlockerSubject[], (subject) => statusById.get(subject.id));
-    assert.equal(gate.checked, 39, `受门禁管辖的 pending/undeclared 构件数（pending 37 + undeclared 2）：${gate.checked}`);
+    assert.equal(gate.checked, 38, `受门禁管辖的 pending/undeclared 构件数（pending 36 + undeclared 2）：${gate.checked}`);
     assert.deepEqual(gate.issues.map((issue) => formatBlockerIssue(issue)), [], '每个 pending/undeclared 构件都必须带结构完整的 blocker');
     // 反向锚：门禁不是恒真式——把一个对象的 blocker 抹掉，它必须报红。
     const stripped = elements.map((item) => (item.id === 'electrical:sock_child_ac' ? { ...item, blocker: undefined } : item));
