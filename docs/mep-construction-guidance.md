@@ -12,7 +12,7 @@
 | `config/electrical.yaml` | 共 104 个点位 | `fact.electrical_points_count` |
 | `config/plumbing.yaml` | 共 35 个点位 | `fact.plumbing_points_count` |
 | `config/model/envelope/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
-| `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 47 处 | 契约 `c.mep_layer_below_drop_bottom`（`registered_conflicts: 47`） |
+| `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 48 处 | 契约 `c.mep_layer_below_drop_bottom`（`registered_conflicts: 48`） |
 
 > 上表数字必须与 yaml 实际条目数一致，否则 `verify:facts` 的 count/fact 对账直接失败。
 >

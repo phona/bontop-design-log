@@ -40,10 +40,10 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     const {component} = componentOf('COST-100-02');
     assert.deepEqual(component.targets, ['mb.washbasin_cabinet', 'gbath.vanity']);
     const mb = ledgerOf('mb.washbasin_cabinet');
-    assert.equal(mb.roomId, 'master_bedroom');
+    assert.equal(mb.roomId, 'master_bath'); // 2026-11-27 干湿分离放弃：洗手柜由主卧条带移入主卫内
     assert.equal(mb.type, 'mb_washbasin_cabinet');
     // #98 Tier 1：洗手柜由绝对坐标改墙锚（w_mbath_south 南侧）——摆位形式随迁移变，
-    // 对象身份（ref/type/room）不变；与已是 wall 的 gbath.vanity 同口径。
+    // 对象身份（ref/type）不变；room 随干湿分离放弃由 master_bedroom 改为 master_bath。
     assert.equal(mb.placement, 'wall');
     const gbath = ledgerOf('gbath.vanity');
     assert.equal(gbath.roomId, 'guest_bath');
@@ -54,13 +54,17 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.ok(!mirror.includes('gbath.mirror_cabinet'));
   });
 
-  it('COST-160-06 targets = [gbath.robot_dock]，mount 挂 gbath.vanity 的 robot_bay', () => {
+  it('COST-160-06 targets = [gbath.robot_dock]，泊位已默认落主走廊、不再挂台盆柜（2026-11-27 干湿分离放弃）', () => {
     const {component} = componentOf('COST-160-06');
     assert.deepEqual(component.targets, ['gbath.robot_dock']);
     const dock = ledgerOf('gbath.robot_dock');
-    assert.equal(dock.placement, 'mount');
-    assert.equal(dock.mountHost, 'gbath.vanity');
-    assert.ok(ledgerOf('gbath.vanity').mountedChildren.includes('gbath.robot_dock'));
+    // 2026-11-27：台盆柜深 0.50→0.30m 后机器人仓放不进原位，泊位默认落主走廊北墙
+    // （w_nw_south，待业主定夺）；dock 不再挂 gbath.vanity 的 robot_bay，robot_bay 槽位已随
+    // 干湿分离放弃作废，vanity_layout 仍保留 robot_bay_width 字段只因 schema 要求。
+    assert.equal(dock.placement, 'wall');
+    assert.equal(dock.mountHost, null);
+    assert.equal(dock.roomId, 'main_corridor');
+    assert.ok(!ledgerOf('gbath.vanity').mountedChildren.includes('gbath.robot_dock'));
   });
 
   it('COST-150-01 targets = 主卧通顶定制柜 1 件（issue #116，2026-11-13）；金额边界仍 D19 未拍板', () => {
@@ -257,7 +261,8 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.match(text, /COST-100-02「浴室柜台盆和镜柜」/);
     assert.match(text, /planned ¥3,500/);
     assert.match(text, /合同 — · 已付 ¥0/, '实际侧取 PKG-100 budget 的 contracted/paid 登记');
-    assert.match(text, /挂载子件：gbath\.robot_dock/);
+    // 2026-11-27：机器人泊位移出客卫，vanity 不再有挂载子件（原「挂载子件：gbath.robot_dock」作废）。
+    assert.doesNotMatch(text, /挂载子件/);
   });
 
   it('inventory（真实控制源）：0 legacy、0 悬挂，五通道 + 宿主/包链接通道齐活', () => {
@@ -265,11 +270,13 @@ describe('cost:by-object（issue #98 PR-8，真实控制源）', () => {
     assert.equal(report.legacyRefs.length, 0, 'PR-7 全屋稳定 id 后不应再有 legacy 引用');
     assert.equal(report.danglingRefs.length, 0);
     const dock = ledgerOf('gbath.robot_dock');
-    for (const channel of ['anti_penetration_pair', 'cost_target', 'model_package_link']) {
+    // 2026-11-27：robot_dock_in_gbath_vanity_bay 豁免随泊位移出客卫作废，dock 不再有
+    // anti_penetration_pair 通道；vanity 亦不再是 mount host（house_mount_host 通道消失）。
+    for (const channel of ['cost_target', 'model_package_link']) {
       assert.ok(dock.references.some((ref) => ref.channel === channel), `${dock.ref} 缺通道 ${channel}`);
     }
     const vanity = ledgerOf('gbath.vanity');
-    for (const channel of ['anti_penetration_pair', 'cost_target', 'acceptance_text', 'house_mount_host', 'model_package_link']) {
+    for (const channel of ['cost_target', 'acceptance_text', 'model_package_link']) {
       assert.ok(vanity.references.some((ref) => ref.channel === channel), `${vanity.ref} 缺通道 ${channel}`);
     }
     const tall = ledgerOf('ld.wall_cabinet_tall');

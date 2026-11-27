@@ -65,8 +65,10 @@ function resolvePlacement(
     }
     // 策略性锚点约定（非几何复算）：主卫东墙柜必须钉在 w_mbath_east 西侧、朝西、rotation 270。
     // 2026-11-13 issue #116：冷凝水管行（mb_vanity_pvc_box）已删，该分支同步删除。
+    // 2026-11-27 干湿分离放弃：通顶柜移入主卫内，改挂 master_bath 房间键（原 master_bedroom），
+    // 锚点约定不变（仍为 w_mbath_east 西侧、朝西、rotation 270）。
     if (MB_VANITY_TYPES.has(item.type)) {
-      if (item.roomId !== 'master_bedroom' || item.wall !== 'w_mbath_east' || item.wall_side !== 'west' || item.rotation !== 270) {
+      if (item.roomId !== 'master_bath' || item.wall !== 'w_mbath_east' || item.wall_side !== 'west' || item.rotation !== 270) {
         errors.push(`${label}: east-wall cabinet anchor must use w_mbath_east west side at rotation 270`);
         return {};
       }
@@ -118,6 +120,7 @@ const STACKED_PAIRS: ReadonlyArray<readonly [string, string]> = [
   ['bed_180', 'master_bedside_tray_south'], // 床架集成托盘位于床投影内，独立校验收起/使用态
   ['vanity', 'mirror_cabinet_gbath'], // DEC-2026-09-09-R2 镜柜挂墙位于台盆正上方（y[1.10,2.00] vs 台盆 ≤0.79），高度不冲突，平面 footprint 投影重叠属预期
   ['vanity', 'robot_dock_gbath'], // DEC-2026-09-09-R6 基站泊入悬空台盆柜下（柜体底缘 y=0.30，基站顶 0.280，顶余 0.020；2026-11-02 本 PR 由 J6 改 JX YJCC034），竖向错层，平面投影重叠属预期
+  ['heated_towel_rack', 'vanity'], // 2026-11-27 干湿分离放弃后毛巾架落客卫东墙马桶上方（y[1.05,1.80]），与台盆柜（y≤0.75）竖向错层，平面投影重叠属预期
   ['mirror_cabinet_gbath', 'robot_dock_gbath'], // DEC-2026-09-09-R5 镜柜（y[1.10,2.00]）与台下基站（y≤0.280）同墙柱竖向叠放，平面投影重叠属预期
   // 2026-09-03：旧重型器械（squat_rack/barbell_olympic/weight_plate_set/rubber_training_mat）退出书房，相关重叠豁免同步删除。
 ];
@@ -137,6 +140,31 @@ function isMasterBedroomEastWallStackedPair(a: PlacedItem, b: PlacedItem): boole
 
 function intersects(a: Aabb, b: Aabb): boolean {
   return a.minX < b.maxX - EPS && a.maxX > b.minX + EPS && a.minZ < b.maxZ - EPS && a.maxZ > b.minZ + EPS;
+}
+
+// 门扇扫掠：门扇绕铰链旋转 90°，扫过的是四分之一圆盘，不是其外接正方形。
+// 2026-11-27 干湿分离放弃后客卫门 d_gbath 按 DWG 东移至 x[5.815,6.680]，马桶落在扫掠正方形
+// 的远角（距西铰链 0.899m > 扇长 0.865m，实余 34mm），正方形判据误报；改用铰链四分之一圆盘。
+// 门扇 hinge 字段（'start' | 'end'，墙段起/止端）已声明时用圆盘；未声明时退回保守正方形。
+interface DoorSwingArc { kind: 'arc'; hingeX: number; hingeZ: number; radius: number; xDir: 1 | -1; zDir: 1 | -1 }
+interface DoorSwingAabb { kind: 'aabb'; box: Aabb }
+type DoorSwing = DoorSwingArc | DoorSwingAabb;
+
+function arcIntersectsAabb(arc: DoorSwingArc, box: Aabb): boolean {
+  // 把家具 AABB 裁到扇形所在象限（铰链起、向门洞远端、向室内），再取裁后矩形离铰链最近点；
+  // 最近点距铰链 < 扇长 − EPS 即相交。EPS 与 AABB intersects 同口径：≤10mm 的擦边不报
+  // （客卫门 d_gbath 西铰链距马桶 0.899m、距台盆柜 0.867m，扇长 0.865m，实余 34mm/2mm；
+  // 儿童房门 d_bnw 东铰链距衣柜 0.985m，扇长 0.98m，实余 5mm——均为擦边，不报）。
+  const minX = arc.xDir > 0 ? Math.max(box.minX, arc.hingeX) : box.minX;
+  const maxX = arc.xDir > 0 ? box.maxX : Math.min(box.maxX, arc.hingeX);
+  const minZ = arc.zDir > 0 ? Math.max(box.minZ, arc.hingeZ) : box.minZ;
+  const maxZ = arc.zDir > 0 ? box.maxZ : Math.min(box.maxZ, arc.hingeZ);
+  if (minX > maxX || minZ > maxZ) return false;
+  const cx = Math.min(Math.max(arc.hingeX, minX), maxX);
+  const cz = Math.min(Math.max(arc.hingeZ, minZ), maxZ);
+  const dx = cx - arc.hingeX;
+  const dz = cz - arc.hingeZ;
+  return dx * dx + dz * dz < (arc.radius - EPS) * (arc.radius - EPS);
 }
 
 function main(): void {
@@ -248,7 +276,7 @@ function main(): void {
       maxZ: room.z + room.depth / 2,
     };
 
-    const doorSwings: Aabb[] = walls
+    const doorSwings: DoorSwing[] = walls
       .flatMap((w) => (w.openings ?? []).filter((o) => o.type === 'door' && o.room === roomId))
       .map((o) => {
         // Use the opening's resolved wall orientation. The room bbox is not
@@ -257,12 +285,23 @@ function main(): void {
         const horizontal = wall ? Math.abs(wall.x2 - wall.x1) >= Math.abs(wall.z2 - wall.z1) : true;
         const wallCenterX = wall ? (wall.x1 + wall.x2) / 2 : o.x!;
         const wallCenterZ = wall ? (wall.z1 + wall.z2) / 2 : o.z!;
+        const aabb: Aabb = horizontal
+          ? (() => { const inward = room.z > wallCenterZ ? 1 : -1; return { minX: o.x! - o.width / 2, maxX: o.x! + o.width / 2, minZ: inward > 0 ? o.z! : o.z! - o.width, maxZ: inward > 0 ? o.z! + o.width : o.z! }; })()
+          : (() => { const inward = room.x > wallCenterX ? 1 : -1; return { minX: inward > 0 ? o.x! : o.x! - o.width, maxX: inward > 0 ? o.x! + o.width : o.x!, minZ: o.z! - o.width / 2, maxZ: o.z! + o.width / 2 }; })();
+        // hinge 未声明时退回保守正方形。
+        if (!wall || o.hinge === undefined) return { kind: 'aabb', box: aabb } as DoorSwing;
         if (horizontal) {
           const inward = room.z > wallCenterZ ? 1 : -1;
-          return { minX: o.x! - o.width / 2, maxX: o.x! + o.width / 2, minZ: inward > 0 ? o.z! : o.z! - o.width, maxZ: inward > 0 ? o.z! + o.width : o.z! };
+          const westFirst = wall.x2 > wall.x1; // 墙段西→东时 start=西端
+          const hingeAtWest = (o.hinge === 'start') === westFirst;
+          const hingeX = hingeAtWest ? o.x! - o.width / 2 : o.x! + o.width / 2;
+          return { kind: 'arc', hingeX, hingeZ: o.z!, radius: o.width, xDir: hingeAtWest ? 1 : -1, zDir: inward } as DoorSwing;
         }
         const inward = room.x > wallCenterX ? 1 : -1;
-        return { minX: inward > 0 ? o.x! : o.x! - o.width, maxX: inward > 0 ? o.x! + o.width : o.x!, minZ: o.z! - o.width / 2, maxZ: o.z! + o.width / 2 };
+        const northFirst = wall.z2 > wall.z1; // 墙段北→南时 start=北端
+        const hingeAtNorth = (o.hinge === 'start') === northFirst;
+        const hingeZ = hingeAtNorth ? o.z! - o.width / 2 : o.z! + o.width / 2;
+        return { kind: 'arc', hingeX: o.x!, hingeZ, radius: o.width, xDir: inward, zDir: hingeAtNorth ? 1 : -1 } as DoorSwing;
       });
 
     const placedBoxes: Array<{ label: string; item: PlacedItem; box: Aabb }> = [];
@@ -295,8 +334,11 @@ function main(): void {
       }
 
       for (const swing of doorSwings) {
-        if (intersects(box, swing)) {
-          errors.push(`${label}: intersects door swing zone (${swing.minX.toFixed(2)},${swing.minZ.toFixed(2)})→(${swing.maxX.toFixed(2)},${swing.maxZ.toFixed(2)})`);
+        const hit = swing.kind === 'arc' ? arcIntersectsAabb(swing, box) : intersects(box, swing.box);
+        if (hit) {
+          errors.push(swing.kind === 'arc'
+            ? `${label}: intersects door swing arc (hinge (${swing.hingeX.toFixed(2)},${swing.hingeZ.toFixed(2)}) r=${swing.radius.toFixed(2)})`
+            : `${label}: intersects door swing zone (${swing.box.minX.toFixed(2)},${swing.box.minZ.toFixed(2)})→(${swing.box.maxX.toFixed(2)},${swing.box.maxZ.toFixed(2)})`);
         }
       }
 
@@ -316,19 +358,19 @@ function main(): void {
   // ---- 2026-09-03 专项：主卧家具化前台 + 书房季节后台（迭代 master-flexible-frontstage-20260903，候选未冻结判据）----
   const GAP_EPS = 1e-9;
 
-  // 主卫隔墙外柜组包络（2026-11-06 口径 A 校验共享化后按真实摆位钉死）：
-  // 背面 = 东墙线 2.60 − 半墙厚 0.06 − wall_clearance 0.015 = 2.525（完成面 2.54 前退让 15mm），
-  // 西缘 = 2.525 − 0.565 = 1.96；z[2.92,4.30] 不变（主卫南墙卧室侧完成面 / 衣柜侧对齐）。
-  // 旧目标 x[1.975,2.540] 是本地复算忽略 wall_clearance 的幻影包络，随共享化删除。
+  // 主卫东墙内通顶柜包络（2026-11-27 干湿分离放弃后移入主卫内，目标随之由卧室侧改内卫）：
+  // 背面 = 东墙线 2.90 − 半墙厚 0.06 − wall_clearance 0.015 = 2.825（完成面 2.84 前退让 15mm），
+  // 西缘 = 2.825 − 0.565 = 2.26；z[1.755,2.655]（沿位 2.245，柜宽 0.90；马桶南缘 z=1.725 以南仅 0.93m，
+  // 0.90m 柜留 0.03m 缝）。旧目标 x[1.960,2.525] z[2.920,4.300] 是卧室侧套间条带位，随 2026-11-27 移位作废。
   for (const type of MB_VANITY_CASEWORK_TYPES) {
-    const entry = placedIndex.get(`master_bedroom/${type}`);
+    const entry = placedIndex.get(`master_bath/${type}`);
     if (!entry) {
-      errors.push(`master_bedroom: missing placed ${type}`);
+      errors.push(`master_bath: missing placed ${type}`);
       continue;
     }
     const { box } = entry;
-    if (box.minX < 1.96 - GAP_EPS || box.maxX > 2.525 + GAP_EPS || box.minZ < 2.92 - GAP_EPS || box.maxZ > 4.30 + GAP_EPS) {
-      errors.push(`${entry.label}: 柜组包络 x[${box.minX.toFixed(3)},${box.maxX.toFixed(3)}] z[${box.minZ.toFixed(3)},${box.maxZ.toFixed(3)}] 越出真实摆位目标 x[1.960,2.525] z[2.920,4.300]`);
+    if (box.minX < 2.26 - GAP_EPS || box.maxX > 2.825 + GAP_EPS || box.minZ < 1.755 - GAP_EPS || box.maxZ > 2.655 + GAP_EPS) {
+      errors.push(`${entry.label}: 柜组包络 x[${box.minX.toFixed(3)},${box.maxX.toFixed(3)}] z[${box.minZ.toFixed(3)},${box.maxZ.toFixed(3)}] 越出真实摆位目标 x[2.260,2.825] z[1.755,2.655]`);
     }
   }
 

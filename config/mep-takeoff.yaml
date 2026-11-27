@@ -145,14 +145,14 @@ status_rule: '任何 covered_layers 内 physical route 的 construction_status �
 # mixed = 两根物理管（热 + 冷），由 pipeKeysForWater 自动拆成 mixed/dn 与 cold/dn 两个桶。
 pipe_route_segments:
   # —— 已画的末端支路（physical）——
-  water-master-bath:                [{from_index: 0, to_index: 1, water_temp: mixed, water_dn: 20}, {from_index: 1, to_index: 4, water_temp: cold, water_dn: 20}]  # 2026-11-16 MEP gap-2：末段斜线拆为 z-run 后折线为 5 点（0–4），冷水段延至下标 4
-  water-guest-bath:                 [{from_index: 0, to_index: 1, water_temp: mixed, water_dn: 20}, {from_index: 1, to_index: 8, water_temp: cold, water_dn: 20}]  # DEC-2026-10-17-R13：末端立管加正交就位角点后折线为 8 点（0–7）；2026-11-26 MEP 正交修复加 x-run 步，折线为 9 点（0–8），冷水段延至下标 8
+  water-master-bath:                [{from_index: 0, to_index: 1, water_temp: mixed, water_dn: 20}, {from_index: 1, to_index: 3, water_temp: cold, water_dn: 20}]  # 2026-11-27 干湿分离放弃重画：折线为 4 点（0–3），冷水段延至下标 3
+  water-guest-bath:                 [{from_index: 0, to_index: 1, water_temp: mixed, water_dn: 20}, {from_index: 1, to_index: 3, water_temp: cold, water_dn: 20}]  # 2026-11-27 干湿分离放弃重画：折线为 4 点（0–3），冷水段延至下标 3
   water-balcony:                    [{from_index: 0, to_index: 4, water_temp: mixed, water_dn: 20}]  # DEC-2026-10-08-W02：插入 0.08m 端点就位 jog via 后折线为 5 点（0–4）
   water-kitchen-requirement:        [{from_index: 0, to_index: 3, water_temp: mixed, water_dn: 20}]
   water-kitchen-dishwasher-branch:  [{from_index: 0, to_index: 1, water_temp: cold, water_dn: 20}]
   drain-balcony:                    [{from_index: 0, to_index: 1, drain_dn: 50}]
-  drain-mbath-vanity-to-riser:      [{from_index: 0, to_index: 3, drain_dn: 50}]
-  drain-gbath-vanity-to-riser:      [{from_index: 0, to_index: 3, drain_dn: 50}]
+  drain-mbath-vanity-to-riser:      [{from_index: 0, to_index: 2, drain_dn: 50}]  # 2026-11-27 干湿分离放弃重画：折线为 3 点（0–2）
+  drain-gbath-vanity-to-riser:      [{from_index: 0, to_index: 2, drain_dn: 50}]  # 2026-11-27 干湿分离放弃重画：折线为 3 点（0–2）
   drain-kitchen-sink-to-riser:      [{from_index: 0, to_index: 1, drain_dn: 50}]
   drain-kitchen-dishwasher-to-riser: [{from_index: 0, to_index: 1, drain_dn: 50}]
   # —— v1 估算干管（2026-10-07 提升为 physical；坐标取既有推断锚点，uncertainty ±0.3m，

@@ -194,14 +194,8 @@ waivers:
   # ── 主卫浴室柜组 / 主卧梳妆位 / 通顶衣柜收口 ──
   # 2026-11-13 issue #116：vanity_layers / vanity_layers_upper 两条豁免已删——
   # 底柜 + 双悬浮板由单一通顶柜 mb.full_height_cabinet 取代，无分层共面可豁免。
-
-  - id: robot_dock_in_gbath_vanity_bay
-    rule: pen.furniture.furniture
-    pair: [gbath.vanity, gbath.robot_dock]
-    kind: contained
-    reason: "客卫台盆下开放格（DEC-2026-11-04-R4，2026-11-05 几何落地）：基站 410×433×280mm 泊入格内——格净宽/仓深/顶余等现行数值以对象 gbath.robot_dock 的 mount 声明与 gbath.vanity 的 vanity_layout 为准（DEC-2026-11-04-R4 的「格净宽 0.51 居中 + 两侧各 0.05」几何已被 DEC-2026-11-05-R5 取代，不再复录），零件层面不相交；vanity 包络是含空腔的并集，AABB 重叠属内含关系而非互撞"
-    owner: 业主
-    expires: 2027-06-30
+  # 2026-11-27 干湿分离放弃：robot_dock_in_gbath_vanity_bay 豁免已删——基站由台盆柜机器人仓
+  # 移至主走廊北墙作默认位，不再泊入台盆下开放格，无内含关系可豁免（豁免数 11→10）。
 
   - id: dressing_stool_storage
     rule: pen.furniture.furniture
