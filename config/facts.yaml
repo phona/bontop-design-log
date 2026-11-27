@@ -880,6 +880,7 @@ facts:
   # 原量房台账 #39 以 prose 出现，无机器对账；建本条让
   # hvac.yaml 的叙述与速查表都不会静默漂移。
   # 2026-11-26 量房：本体标定重算后为 42.72（旧 43.1734 作废）。
+  # 2026-11-27 客餐厅边界斜线改折线（PR #270）：权威值随新多边形改为 43.5618（旧 42.72 作废）。
   - id: fact.living_dining_area
     kind: derived
     value: "@config/layout/model-geometry.yaml:rooms#find:id=living_dining.boundary#shoelace"
@@ -892,6 +893,7 @@ facts:
       # 2026-10-20 措施 1：现行值速查表 mirror。
       # 2026-10-25 DEC-2026-10-25-R01（本体标定重算）：速查表为两位小数（fmt2），43.1734 记 43.17，tolerance 0.01 吸收取舍（主卫面积同口径先例）；权威值仍为 geometry shoelace 43.1734。
       # 2026-11-26 量房：权威值随新多边形改为 42.72（旧 43.1734 / 43.17 作废），速查表由 docs:generate-current-values 重生成同步。
+      # 2026-11-27 客餐厅边界斜线改折线（PR #270）：权威值随新多边形改为 43.5618（旧 42.72 作废），速查表由 docs:generate-current-values 重生成同步。
       - path: docs/CURRENT-VALUES.md
         extract: '^\| 客餐厅面积 \| ([\d.]+) ㎡ \|'
         severity: error

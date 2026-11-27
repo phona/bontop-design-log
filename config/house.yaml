@@ -208,7 +208,7 @@ rooms:
     width: 6.22
     length: 7.40
     height: 2.82
-    area: 42.72
+    area: 43.56
     status: "design"
     orientation: "南"
     notes: "镜像 model-geometry 多边形（入户过渡带由 overlay floor_region 渲染、不计入房间多边形）；DEC-014/021 bbox 口径 46.028㎡；设计图合并标注 35.2㎡ 为旧口径"
