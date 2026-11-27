@@ -26,18 +26,23 @@ test('ceiling.yaml: every entry type is in VALID_CEILING_TYPES', () => {
 
 test('ceiling.yaml: corridor/foyer gap entries exist with matching floor_region areas', () => {
   const byId = new Map(entries.map((e) => [e.id, e]));
-  const expected: Record<string, [number, number, number, number]> = {
-    ceiling_main_corridor: [4.20, 4.30, 7.20, 5.55],
+  // 2026-11-27 量房回填：矩形随实测几何改（x 4.20→4.16、z 5.55→5.455、门厅西缘 10.80→11.11、
+  // 客卫南缘 4.155→4.04）；厚度不再是统一 0.30，而是实测板底高 − 2.50m 完成面：
+  // 主走廊 2.898−2.50=0.398、书房北缘 2.909−2.50=0.409、门厅板底约 2.90−2.50=0.40。
+  // 矩形与 floor-zones.yaml 对应 floor_region 一致（entry_foyer_floor x 11.11 起、
+  // main_corridor_floor x 4.16 / z 3.75 起）。
+  const expected: Record<string, { area: [number, number, number, number]; thickness: number }> = {
+    ceiling_main_corridor: { area: [4.16, 3.75, 7.15, 5.455], thickness: 0.398 },
     // 2026-08-26：父母房走廊吊顶收窄为衣柜深度边吊（z 5.55–6.45），z[6.45,7.8] 走廊地面由 study 房间基础顶面覆盖
-    ceiling_corridor: [4.20, 5.55, 7.20, 6.45],
-    ceiling_entry_foyer: [10.80, 3.00, 12.77, 4.30], // R01 重算
+    ceiling_corridor: { area: [4.16, 5.455, 7.15, 6.355], thickness: 0.409 },
+    ceiling_entry_foyer: { area: [11.11, 3.00, 12.77, 4.155], thickness: 0.40 }, // R01 重算
   };
-  for (const [id, area] of Object.entries(expected)) {
+  for (const [id, want] of Object.entries(expected)) {
     const e = byId.get(id);
     assert.ok(e, `missing ceiling entry ${id}`);
     assert.equal(e.type, 'drop');
-    assert.equal(e.thickness, 0.30);
-    assert.deepEqual(e.area, area);
+    assert.equal(e.thickness, want.thickness);
+    assert.deepEqual(e.area, want.area);
   }
 });
 
