@@ -1,8 +1,8 @@
-<!-- schedule-input-snapshot:{"config/acceptance.yaml":"212cc122e52879998b03907eab18b3d33d0a5970dbc75128bcbcd3c9d65d5faf","config/decision-gates.yaml":"e1066799953f6aeb74e5234d4bdc7f153cf473b95d5eedb91bcce7174ba16012","config/electrical-topology.yaml":"376ae4f4514db0e142535ce9e116ce7d89fee8b1f1b7cf062b2182025ac518d4","config/electrical.yaml":"75a6476a6a8208f0a0c0b2f1e229a60c1035f2e46cc0f24d33deca83fdfa864a","config/house.yaml":"8b9d29d1e8bffaf479e8210c5235ffd9ced9af5b71f4e711149eb01dcf43bde0","config/hvac.yaml":"63fa11e10dfcfd558574111bac55d7a45cd5eee3e28a121c8536b2b6b1e5d323","config/layout/model-geometry.yaml":"74bcd0d7833f19249a6924d85f4b2916aec340131f9cbe5d33cf9fa5c55ed368","config/mep-hvac-coordination.yaml":"a05665b661d8ba223c513afa79862e19b1fb794689d4bd232332f4d63f66332c","config/model-package-links.yaml":"b0bdb797b1962aad80e3f0af6bdccba8a21c51e0e9312c3b02ce2ce81760e891","config/model/envelope/ceiling.yaml":"1edc7f3e79896f6ec86cff17c3e84908a4c9192e82100e0006c328b34dc2adb1","config/model/envelope/finish-defaults.yaml":"cfb08b4fefefc71aa1525c5172cc28596b855bc6b95eb576302512314a942b4d","config/model/envelope/floor-zones.yaml":"75d5b0aa15d0cff4b2926aa4167a42a809c18dcc98dc9f29bf42fa07ffbaa786","config/model/envelope/openings.yaml":"de68a3b78a944cb2a0597949c2b105e57cbf10adf1439a6c5aada2bd127fd107","config/plumbing.yaml":"ca6001f174f84c05ffa908aeaa1b7789868679bd3026d504d6fcc7358fe4bd7f","schedule/phase-1/control.yaml":"7936ae6aa2448d2eb0677886553f68daeafd518f8fabee98f72ad35c3ce4df6e","schedule/phase-scope.yaml":"17d0874a87fc441c2ad66eb1abfc55d341abfc4e9e32229889998e9e227cc8b6","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
+<!-- schedule-input-snapshot:{"config/acceptance.yaml":"212cc122e52879998b03907eab18b3d33d0a5970dbc75128bcbcd3c9d65d5faf","config/decision-gates.yaml":"e1066799953f6aeb74e5234d4bdc7f153cf473b95d5eedb91bcce7174ba16012","config/electrical-topology.yaml":"376ae4f4514db0e142535ce9e116ce7d89fee8b1f1b7cf062b2182025ac518d4","config/electrical.yaml":"75a6476a6a8208f0a0c0b2f1e229a60c1035f2e46cc0f24d33deca83fdfa864a","config/house.yaml":"3d2eae8c302bbff0f29a9e35543d99d96ab97db8afa13a79c63f9aafc1371e9d","config/hvac.yaml":"63fa11e10dfcfd558574111bac55d7a45cd5eee3e28a121c8536b2b6b1e5d323","config/layout/model-geometry.yaml":"74bcd0d7833f19249a6924d85f4b2916aec340131f9cbe5d33cf9fa5c55ed368","config/mep-hvac-coordination.yaml":"a05665b661d8ba223c513afa79862e19b1fb794689d4bd232332f4d63f66332c","config/model-package-links.yaml":"b0bdb797b1962aad80e3f0af6bdccba8a21c51e0e9312c3b02ce2ce81760e891","config/model/envelope/ceiling.yaml":"1edc7f3e79896f6ec86cff17c3e84908a4c9192e82100e0006c328b34dc2adb1","config/model/envelope/finish-defaults.yaml":"cfb08b4fefefc71aa1525c5172cc28596b855bc6b95eb576302512314a942b4d","config/model/envelope/floor-zones.yaml":"75d5b0aa15d0cff4b2926aa4167a42a809c18dcc98dc9f29bf42fa07ffbaa786","config/model/envelope/openings.yaml":"de68a3b78a944cb2a0597949c2b105e57cbf10adf1439a6c5aada2bd127fd107","config/plumbing.yaml":"ca6001f174f84c05ffa908aeaa1b7789868679bd3026d504d6fcc7358fe4bd7f","schedule/phase-1/control.yaml":"7936ae6aa2448d2eb0677886553f68daeafd518f8fabee98f72ad35c3ce4df6e","schedule/phase-scope.yaml":"17d0874a87fc441c2ad66eb1abfc55d341abfc4e9e32229889998e9e227cc8b6","schedule/roadmap.yaml":"e0203255eae42123aa20e2faa8354636b889274cfd8d06e11858ac0674827409"} -->
 # 一期施工、预算与验收统一审计清单
 
 > 自动生成：请勿直接编辑。维护源：`schedule/phase-1/control.yaml`  
-> 项目数据指纹：`sha256:400f286c50f9fd6e7fd0b6fcc9c41a07dadc306ecc3c24310591fa6c9f386ef4`（17 个输入文件；验证时会检查本页是否过期）
+> 项目数据指纹：`sha256:e75f59cb025f87bb84f8a7b6bfbad939de6180e25b379037bc3b43975fb61ed3`（17 个输入文件；验证时会检查本页是否过期）
 > 控制源声明更新日期：2026-10-20  
 > 当前阶段：pre_handover；总体状态：planning
 
@@ -146,7 +146,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:ed98cc3f86903091ebfc011e935d8bb7d3c81eee1cfd1328ab646eb96a98892b`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:f3515f11937ddc9afde48616dd717679bd74ffc2334ece83cff194dad136fd1c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -199,7 +199,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:ed98cc3f86903091ebfc011e935d8bb7d3c81eee1cfd1328ab646eb96a98892b`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:f3515f11937ddc9afde48616dd717679bd74ffc2334ece83cff194dad136fd1c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -238,7 +238,7 @@
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:ed98cc3f86903091ebfc011e935d8bb7d3c81eee1cfd1328ab646eb96a98892b`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:f3515f11937ddc9afde48616dd717679bd74ffc2334ece83cff194dad136fd1c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -804,7 +804,7 @@
 | [config/house.yaml](../../config/house.yaml) | ids=kitchen.gas_stove,kitchen.range_hood,kitchen.dishwasher | mapped |
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_kitchen_oven | mapped |
 
-当前项目数据指纹：`sha256:5dcf0127fad0335e5ecf222f4d5cf10cf40693d1e3c65ea46caf2fde7ec0d423`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:28352cd8d0e49fa37737b913845c1e29a7539b0dfbb466c58d3c2143190bc072`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1062,7 +1062,7 @@
 | [config/model/envelope/ceiling.yaml](../../config/model/envelope/ceiling.yaml) | all=true | project_scope |
 | 现场待测数据：跑 `npm run docs:generate-pending-view` 生成待决视图；权威在 config 各对象自己的 `status`/`blocker` 字段与 `config/open-items.yaml`（原量房手账已于 S2-B 退场） | 按各项影响、状态和触发条件闭环 | site ledger |
 
-当前项目数据指纹：`sha256:ed98cc3f86903091ebfc011e935d8bb7d3c81eee1cfd1328ab646eb96a98892b`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:f3515f11937ddc9afde48616dd717679bd74ffc2334ece83cff194dad136fd1c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1132,7 +1132,7 @@
 |---|---|---|
 | [config/house.yaml](../../config/house.yaml) | all=true | partial |
 
-当前项目数据指纹：`sha256:58cac6bc6852121e17f159eadb583961cafe8d80078c4883dcf940231b5a48ec`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:2ae39b7c65575b4fde251e4f3fb7166652d73ecfda9ac9a002bcc9ffb92ff266`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1185,7 +1185,7 @@
 | [config/electrical.yaml](../../config/electrical.yaml) | ids=sock_fridge_living,sock_kitchen_hood,sock_kitchen_gas,sock_kitchen_oven,sock_kitchen_dishwasher,sock_balcony_washer,sock_balcony_dryer,sock_balcony_waterheater,sock_gbath_robot | partial |
 | [config/plumbing.yaml](../../config/plumbing.yaml) | ids=faucet_balcony_washer,drain_balcony_washer,faucet_gbath_vanity,drain_gbath_vanity,faucet_kitchen_dishwasher,drain_kitchen_dishwasher | partial |
 
-当前项目数据指纹：`sha256:e4991a37abe7eaab38b7b152bde0a6b4522baf9543ac2a9afb63282468138cfe`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:3af25463158c23be30be845873c8fde2748c6a28c174cb603a35882eb1443657`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 ### 预算拆分核对
@@ -1236,7 +1236,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 
-当前项目数据指纹：`sha256:ed98cc3f86903091ebfc011e935d8bb7d3c81eee1cfd1328ab646eb96a98892b`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:f3515f11937ddc9afde48616dd717679bd74ffc2334ece83cff194dad136fd1c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |
@@ -1265,7 +1265,7 @@
 |---|---|---|
 | [config/layout/model-geometry.yaml](../../config/layout/model-geometry.yaml) | all=true | project_scope |
 
-当前项目数据指纹：`sha256:ed98cc3f86903091ebfc011e935d8bb7d3c81eee1cfd1328ab646eb96a98892b`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
+当前项目数据指纹：`sha256:f3515f11937ddc9afde48616dd717679bd74ffc2334ece83cff194dad136fd1c`。记录检查通过时，将此指纹与检查标准指纹写入审计记录；任何输入变化都会把旧通过记录标为 stale。
 
 
 | 勾选 | ID | 级别/节点/执行窗口 | 验收项 | 方法 | 通过标准 | 必需证据 | 检查标准指纹 | 结果/签名/日期 |

@@ -2055,6 +2055,25 @@ export interface FurnishingCutout {
   center?: [number, number];
   offset?: [number, number];
   size: [number, number];
+  /** 缺口平开门（仅 robot_dock 缺口）：平时关着挡基站，维护时打开。 */
+  door?: FurnishingCutoutDoor;
+}
+
+/**
+ * 缺口平开门（2026-11-27 业主裁定）：缺口加一扇平开门，平时关着挡基站，
+ * 维护时打开。门底部留口供机器人进出，门不封死（留口即通风口）。
+ */
+export interface FurnishingCutoutDoor {
+  /** 平开门，合页装柜体端板上。 */
+  type: 'hinged';
+  /** 门板宽（m），与缺口同宽 0.45。 */
+  width_m: number;
+  /** 合页侧：柜体端板（缺口西端板）。 */
+  hinge: 'end_panel';
+  /** 门底部机器人进出开口 [宽, 高]（m）：约 0.40×0.12，对准基站正面（机器人实物 95mm 高、364mm 宽，留余量）；约数，现场按基站实物复核后钉死。 */
+  bottom_opening_m: [number, number];
+  /** 门不封死：底部开口即通风口，基站烘干拖布的热气须散出；门板顶部不顶死台面。 */
+  vented: boolean;
 }
 
 /**
