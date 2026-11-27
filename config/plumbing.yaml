@@ -115,7 +115,7 @@
   x: 2.0
   z: 1.15
   height: 0.02
-  note: "主卫干区地漏（地面；沉箱最低处候选锚点，与 #50 二次排水口 drain_mbath_floor 同位）；DEC-2026-10-08-W03 已画推断路线 drain-mbath-floor-to-riser（1% 坡接主卫推断立管，construction_status: pending、不作为施工依据），最低点与立管实测位待量房——注意与 #50 沉箱二次排水口是两回事、不得并入同一接点"
+  note: "主卫干区地漏（地面；沉箱最低处候选锚点，与 #50 二次排水口 drain_mbath_floor 同位）；DEC-2026-10-08-W03 已画推断路线 drain-mbath-floor-to-riser（1% 坡接主卫推断立管，construction_status: pending、不作为施工依据），最低点与立管实测位待量房——注意与 #50 沉箱二次排水口是两回事、不得并入同一接点。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   blocker:
     kind: site_measurement
@@ -524,6 +524,32 @@
   not_for_construction: true
   uncertainty_m: 0.3
   note: "给水入户点（台账 #8；DEC-2026-10-08-W01 按最佳实践推断落库；DEC-2026-10-07-F03 修正落位）。**两个语义解耦**：① 平台侧接入候选——水自 VRV 设备平台侧穿 w_vrv_east 垫层入户，接入折点 (7.00,0.45)（墙外侧）由 water-kitchen-requirement 的折线与穿墙声明表达，口径不变（pending #8 量房闭环）；② 本点位=穿墙后的**户内阀位锚点**（总阀→减压阀→前置过滤器安装位，acceptance.yaml check_plumb_prefilter_and_prv + pending #49 联动）——阀件必须在户内可操作位，落 (7.35,0.45)（厨房西北角、墙内侧 0.15m，bound 合规）。业界依据：新交付住宅水表井多在公区/户外，入户管通常经设备平台/管井进厨房；本户型厨房与平台仅一墙（x=7.2），是最短路径。**量房日第一项必须闭环**：拍全屋给水立管/水表/分水器 → 定 x/z/管径 → 回写本点并升 status: measured。在此之前不得作为施工依据（not_for_construction: true）。⚠️ 平台侧能否开孔/接管需物业确认；若物业禁止，入户点改厨房北墙或生活阳台，届时本点与 5 条引用路线一起改写。户内安装顺序按 acceptance.yaml check_plumb_prefilter_and_prv：总阀 → 减压阀 → 前置过滤器位"
+
+# === 2026-11-27 业主裁定：全屋增压泵不装、只预留（reserve-only）===
+# 泵位落东段地柜内主干管上（见 note）：不画泵体、不计入算量、不进验收必装项；
+# 插座见 config/electrical.yaml sock_booster_pump_reserve。
+- id: pump_booster_reserve
+  room: kitchen
+  type: water_supply
+  absolute: true
+  host_intent: "全屋增压泵预留位（reserve-only，不装泵；东段地柜内，主干管上）"
+  x: 8.30
+  z: 0.30
+  height: 0.18
+  water_temp: cold
+  water_dn: 25
+  diameter: 0.025
+  status: pending
+  construction_status: pending
+  not_for_construction: true
+  uncertainty_m: 0.3
+  blocker:
+    kind: pending_selection
+    owner: ["业主"]
+    trigger: "实测入户动压低于 0.15MPa，或双卫同时开水流明显变小"
+    reverses_if: "触发条件成立时加装增压泵，预留转实装（泵型/功率随 SKU 定，管路与回路随之落）；入户动压实测 ≥0.15MPa 且双卫同开无明显变小，预留维持 reserve-only、不激活"
+    rationale: "2026-11-27 业主裁定：全屋增压泵不装、只预留。依据：设计已有减压阀 0.25MPa（预期水压偏高而非偏低）、热水器自带增压、纯手持花洒；入户水压未实测（pending #8），预留是保险。"
+  note: "全屋增压泵预留位（2026-11-27 业主裁定不装、只预留，reserve-only）：只画预留位，不画泵体、不计入算量（无路由、无量）、不进验收必装项。**本轮不画 MEP route**（reserve-only 预留位，无管路；激活时随泵落管路与回路）。位置：厨房西北角入户阀位下游、东段地柜内主干管上 (8.30, 0.30)，阀位 water_entry (7.65, 0.45) 东 0.67m——东段地柜（x 8.00..8.80）是入户角唯一不撞扫地机基站/进站通道的柜内空间（基站占缺口 x 7.56..8.00、进站通道须留 0.45m 空旷），泵位与水槽/洗碗机共线主干管同高 0.18m。激活时该柜段须适配（抽屉拆除/开放格），属安装时柜体深化；位置随 water_entry 走（pending #8 量房闭环后同步复核，uncertainty ±0.3m）。电源见 sock_booster_pump_reserve（泵位西 0.15m、柜内 h=0.3、电源走地面）。定稿 CAD 与水电交底包必须带上这一项（位置 + 插座），不要漏。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
 - id: drain_riser_balcony
   room: balcony

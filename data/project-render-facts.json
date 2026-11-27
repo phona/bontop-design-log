@@ -440,7 +440,7 @@
       "x": 2,
       "z": 1.15,
       "absolute": true,
-      "note": "主卫干区地漏（地面；沉箱最低处候选锚点，与 #50 二次排水口 drain_mbath_floor 同位）；DEC-2026-10-08-W03 已画推断路线 drain-mbath-floor-to-riser（1% 坡接主卫推断立管，construction_status: pending、不作为施工依据），最低点与立管实测位待量房——注意与 #50 沉箱二次排水口是两回事、不得并入同一接点",
+      "note": "主卫干区地漏（地面；沉箱最低处候选锚点，与 #50 二次排水口 drain_mbath_floor 同位）；DEC-2026-10-08-W03 已画推断路线 drain-mbath-floor-to-riser（1% 坡接主卫推断立管，construction_status: pending、不作为施工依据），最低点与立管实测位待量房——注意与 #50 沉箱二次排水口是两回事、不得并入同一接点。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
       "height": 0.02,
       "status": "inferred",
       "blocker": {
@@ -873,6 +873,33 @@
       "water_dn": 25
     },
     {
+      "id": "pump_booster_reserve",
+      "room": "kitchen",
+      "type": "water_supply",
+      "x": 8.3,
+      "z": 0.3,
+      "absolute": true,
+      "host_intent": "全屋增压泵预留位（reserve-only，不装泵；东段地柜内，主干管上）",
+      "note": "全屋增压泵预留位（2026-11-27 业主裁定不装、只预留，reserve-only）：只画预留位，不画泵体、不计入算量（无路由、无量）、不进验收必装项。**本轮不画 MEP route**（reserve-only 预留位，无管路；激活时随泵落管路与回路）。位置：厨房西北角入户阀位下游、东段地柜内主干管上 (8.30, 0.30)，阀位 water_entry (7.65, 0.45) 东 0.67m——东段地柜（x 8.00..8.80）是入户角唯一不撞扫地机基站/进站通道的柜内空间（基站占缺口 x 7.56..8.00、进站通道须留 0.45m 空旷），泵位与水槽/洗碗机共线主干管同高 0.18m。激活时该柜段须适配（抽屉拆除/开放格），属安装时柜体深化；位置随 water_entry 走（pending #8 量房闭环后同步复核，uncertainty ±0.3m）。电源见 sock_booster_pump_reserve（泵位西 0.15m、柜内 h=0.3、电源走地面）。定稿 CAD 与水电交底包必须带上这一项（位置 + 插座），不要漏。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
+      "height": 0.18,
+      "status": "pending",
+      "blocker": {
+        "kind": "pending_selection",
+        "owner": [
+          "业主"
+        ],
+        "trigger": "实测入户动压低于 0.15MPa，或双卫同时开水流明显变小",
+        "reverses_if": "触发条件成立时加装增压泵，预留转实装（泵型/功率随 SKU 定，管路与回路随之落）；入户动压实测 ≥0.15MPa 且双卫同开无明显变小，预留维持 reserve-only、不激活",
+        "rationale": "2026-11-27 业主裁定：全屋增压泵不装、只预留。依据：设计已有减压阀 0.25MPa（预期水压偏高而非偏低）、热水器自带增压、纯手持花洒；入户水压未实测（pending #8），预留是保险。"
+      },
+      "construction_status": "pending",
+      "uncertainty_m": 0.3,
+      "not_for_construction": true,
+      "diameter": 0.025,
+      "water_temp": "cold",
+      "water_dn": 25
+    },
+    {
       "id": "drain_riser_balcony",
       "room": "balcony",
       "type": "drain_riser",
@@ -1250,7 +1277,7 @@
         3.75
       ],
       "pricing_form": "edge_drop",
-      "note": "儿童房南墙边吊（靠走廊一侧整条贯通，藏风管机，下接南墙通顶衣柜；侧送朝北下回），远离北墙飘窗（侵入区 z[1.1,2.2]）。2026-11-27 业主实测回填：儿童房板底 2.80→2.905，厚度 0.30→0.405 以保设计完成面 2.50（与其余降板区同口径；底标高本身仍未决，见 blocker，ac_child 定后重算）。本条未决口径已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
+      "note": "儿童房南墙边吊（靠走廊一侧整条贯通，藏风管机，下接南墙通顶衣柜；侧送朝北下回），远离北墙飘窗（侵入区 z[1.1,2.2]）。2026-11-27 业主实测回填：儿童房板底 2.80→2.905，厚度 0.30→0.405 以保设计完成面 2.50（与其余降板区同口径；底标高本身仍未决，见 blocker，ac_child 定后重算）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。",
       "status": "undeclared",
       "blocker": {
         "kind": "pending_adjudication",

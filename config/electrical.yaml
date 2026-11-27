@@ -577,6 +577,28 @@
     trigger: "橱柜深化定取电形式（柜下/端板翻盖 > 侧板电力轨道 > 升降插座）"
     reverses_if: "若北段划给高柜/烟管则须另找墙面，不能默认保留本点"
     rationale: "取电形式随橱柜深化定，水油环境最多 1 个升降插座、不作为唯一方案"
+
+# 2026-11-27 业主裁定：全屋增压泵不装、只预留——泵位插座（reserve-only，随泵位落柜内）：
+# status + position_status 双 pending（同 sock_kitchen_oven 预留口径）：未激活前不进 topology 回路、不占箱位、不计入算量。
+- id: sock_booster_pump_reserve
+  room: kitchen
+  type: socket
+  absolute: true
+  host_intent: "全屋增压泵预留插座（柜内，东段地柜，泵位西 0.15m，电源走地面）"
+  x: 8.15
+  z: 0.30
+  height: 0.3
+  count: 1
+  status: pending
+  position_status: pending
+  blocker:
+    kind: pending_selection
+    owner: ["业主"]
+    trigger: "同 pump_booster_reserve：实测入户动压低于 0.15MPa，或双卫同时开水流明显变小"
+    reverses_if: "触发条件成立时随泵一并激活，拆为独立回路（泵功率待 SKU 定）；未触发则维持预留、不进 topology 回路、不占箱位"
+    rationale: "2026-11-27 业主裁定增压泵只预留不装；插座随预留位落东段地柜内（泵位西 0.15m），电源走地面（同北墙切配区柜内预留口径）。"
+  note: "全屋增压泵预留插座（2026-11-27 业主裁定，reserve-only）：泵位 pump_booster_reserve (8.30, 0.30) 西 0.15m、柜内 h=0.3、电源走地面（同 sock_kitchen_counter 柜内预留口径）；未激活前不进 topology 回路、不占箱位、不计入算量。依据：设计已有减压阀 0.25MPa（预期水压偏高而非偏低）、热水器自带增压、纯手持花洒；入户水压未实测（pending #8），预留是保险。定稿 CAD 与水电交底包必须带上这一项（位置 + 泵位），不要漏。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+
 - id: sock_kitchen_counter_east
   room: kitchen
   wall: w_ent_west
@@ -764,7 +786,7 @@
   height: 1.0
   count: 1
   status: pending
-  note: "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.10，龙头轴线 1.335 以西 0.235m、≥0.15m 自有口径）；原东侧开放区位（w_gbath_east_open_vanity，沿位 0.475）作废。双联西位，带防溅盒；h=1.0 在台面 0.79m 与镜柜下缘 y=1.10 之间的露墙带；宿主核实=墙挂（不挂柜，柜体模型无背板）；原 2026-11-26 回填遗留的 0.074m 软告警（sock_gbath_vanity_2 距龙头）随本次移位消除。本条未决口径已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.10，龙头轴线 1.335 以西 0.235m、≥0.15m 自有口径）；原东侧开放区位（w_gbath_east_open_vanity，沿位 0.475）作废。双联西位，带防溅盒；h=1.0 在台面 0.79m 与镜柜下缘 y=1.10 之间的露墙带；宿主核实=墙挂（不挂柜，柜体模型无背板）；原 2026-11-26 回填遗留的 0.074m 软告警（sock_gbath_vanity_2 距龙头）随本次移位消除。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   blocker:
     kind: pending_vendor_drawing
@@ -781,7 +803,7 @@
   height: 1.0
   count: 1
   status: pending
-  note: "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.57，龙头轴线 1.335 以东 0.235m、≥0.15m 自有口径）；原东侧开放区位（w_gbath_east_open_vanity，沿位 0.389）作废。双联东位，带防溅盒；h=1.0 镜面下缘以下；ordinary_power_service 回路成员；宿主核实=墙挂（不挂柜，柜体模型无背板）。原 2026-11-26 回填遗留的本插座距龙头 0.074m（<0.15）软告警随本次移位消除（新间距 0.235m）。本条未决口径已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
+  note: "2026-11-27 干湿分离放弃后随台盆移入内卫南墙内侧（沿位 1.57，龙头轴线 1.335 以东 0.235m、≥0.15m 自有口径）；原东侧开放区位（w_gbath_east_open_vanity，沿位 0.389）作废。双联东位，带防溅盒；h=1.0 镜面下缘以下；ordinary_power_service 回路成员；宿主核实=墙挂（不挂柜，柜体模型无背板）。原 2026-11-26 回填遗留的本插座距龙头 0.074m（<0.15）软告警随本次移位消除（新间距 0.235m）。本条未决口径（卡在谁/何时解锁/何时反转/为何卡）已结构化到 blocker 字段，以 blocker 为单一真相，note 不再重复登记。"
 
   blocker:
     kind: pending_vendor_drawing

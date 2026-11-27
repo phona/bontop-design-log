@@ -2,7 +2,7 @@
 
 <!-- 生成物，禁止手改：由 scripts/docs/current-values-render.ts 从权威源渲染（文档精简批 4）。
      重跑：npm run docs:generate-current-values；校验：npm run verify:all -- --only verify-current-values
-     inputs-fingerprint: sha256:6b6ec8dada5c997e2a6cd296d5b5b9745c6cd97bdd1f398a1a49d4b77fd2930f -->
+     inputs-fingerprint: sha256:696ed1c1ec41f883cc511ddda81227b721d93da19c8b7969051a7817a20fcce6 -->
 
 > **本表是什么**：一张回答「现在的准数是什么」的表。服务两类读者——AI（grep 到冲突值时第一步查这里，判断哪条现行）和人（不用翻 5 份文档）。
 >
@@ -44,7 +44,7 @@
 | 回路总数 | 20 路 | config/electrical-topology.yaml:5 | circuits.length=20；DEC-2026-10-13-R5 删电视墙灯带整条照明回路后回到 20；fact.circuit_count 对账 ※ |
 | 空调内机回路 | 2 路：hvac_power_living + hvac_power_bedrooms | config/electrical-topology.yaml:71,82 | 6 台内机暂并口径；厂家正式配电图确认前不冻结供电分组 |
 | 空调外机回路 | 1 路 hvac_power_outdoor_a2 | config/electrical-topology.yaml:94 | GB 55038 7.4.4 单独成路；C32A+漏保 / 4.0mm²(φ20) proposed，输入估 ≈6kW |
-| 电气点位数 | 103 个 | config/electrical-topology.yaml:15 | 即 config/electrical.yaml 条目数；点位增删必须同步此数与 fact.electrical_points_count ※ |
+| 电气点位数 | 104 个 | config/electrical-topology.yaml:15 | 即 config/electrical.yaml 条目数；点位增删必须同步此数与 fact.electrical_points_count ※ |
 | 强电箱 | 底边离地 1.65m；箱体 390×390×210mm | config/electrical.yaml:702-705 | 20 路 + 2P 进线 + 浪涌需**双排**；单/双排与进线截面待复测（pending-site-data.md #30） |
 
 ## 几何与标高
@@ -71,7 +71,7 @@
 
 | 口径 | 现行值 | 权威源（file:line） | 备注 |
 |---|---|---|---|
-| 未决断构件数 | 38 个构件 | config 各对象 status/blocker 字段（shared/pending-count.ts 派生） | 每个都带 blocker（kind/owner/trigger/reverses_if/rationale）；可读视图跑 npm run docs:generate-pending-view（输出 tmp/capture/）。原量房手账已于 S2-B 退场 |
+| 未决断构件数 | 40 个构件 | config 各对象 status/blocker 字段（shared/pending-count.ts 派生） | 每个都带 blocker（kind/owner/trigger/reverses_if/rationale）；可读视图跑 npm run docs:generate-pending-view（输出 tmp/capture/）。原量房手账已于 S2-B 退场 |
 | #30 强电箱规格 | pending（单/双排、回路数、进线截面） | config/electrical.yaml panel_strong_entry_left 的 blocker | 20 路 + 2P + 浪涌需双排；1.65m 底边仅在双排时合规 |
 | #39 暖通待验证项 | pending（外机实测尺寸/平台散热/厂家配电图/风口加长计价/冷负荷计算书） | config/hvac.yaml commercial 块 + plans 的 blocker | 已成交 36000，但上述项闭环前不冻结施工 |
 

@@ -9,8 +9,8 @@
 |---|---:|---|
 | `config/mep-hvac-coordination.yaml` | 共 139 条路由 | `fact.mep_routes_count` |
 | `config/mep-hvac-coordination.yaml` | 共 8 层（强电/弱电/给水/排水/冷媒/冷凝水/送风/回风） | `fact.mep_layers_count` |
-| `config/electrical.yaml` | 共 103 个点位 | `fact.electrical_points_count` |
-| `config/plumbing.yaml` | 共 37 个点位 | `fact.plumbing_points_count` |
+| `config/electrical.yaml` | 共 104 个点位 | `fact.electrical_points_count` |
+| `config/plumbing.yaml` | 共 38 个点位 | `fact.plumbing_points_count` |
 | `config/model/envelope/ceiling.yaml` | 共 25 个吊顶分区 | `fact.ceiling_zones_count` |
 | `config/mep-hvac-coordination.yaml` 路线点位 vs 吊顶完成面 | 低于降板完成面的既有冲突 47 处 | 契约 `c.mep_layer_below_drop_bottom`（`registered_conflicts: 47`） |
 

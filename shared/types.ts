@@ -1406,8 +1406,9 @@ export interface ElectricalPoint {
    *
    * 构件状态唯一来源是 `status`（见 ComponentStatus 注）。本字段只剩一个消费者：
    * `shared/mep-takeoff.ts` 的算量延期判定（`status === 'pending' && position_status === 'pending'`
-   * = 「点位尚未具备可报价/施工的稳定归属」）。当前仅 sock_child_ac / sock_kitchen_oven
-   * 两个预留占位点声明它；其余点位的「位置待核」已由 `status: pending` + `blocker` 承载。
+   * = 「点位尚未具备可报价/施工的稳定归属」）。当前仅 sock_child_ac / sock_kitchen_oven /
+   * sock_booster_pump_reserve 三个预留占位点声明它（2026-11-27 增压泵预留插座加入；双 pending
+   * 仍是算量延期的判定条件，字段只许具名预留点用）；其余点位的「位置待核」已由 `status: pending` + `blocker` 承载。
    */
   position_status?: ElectricalPointStatus;
   /** 未决声明：`status` 为 pending / undeclared 时必填（issue #98 S2-A）。 */
