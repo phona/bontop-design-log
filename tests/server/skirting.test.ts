@@ -14,7 +14,7 @@ import { deriveSkirtingRegions } from '../../shared/skirting-derivation.js';
 //  ① **逐段等价**（验收铁律）：派生结果与原 24 段声明逐字段相等——原声明冻结在下面
 //     ORIGINAL_DECLARATIONS（删声明前的 finish-surfaces.yaml，锚点已解析为字面值）；
 //  ② §6.1 配对方法固化：全部 paint × skirting 按 (wall, room, along[0], along[1]) 四元组
-//     配对 24/24 命中，缺的 7 段正是两卫湿区（wet_room_ids 里的 guest_bath 5 + master_bath 2）；
+//     配对 24/24 命中，缺的 9 段正是两卫湿区（wet_room_ids 里的 guest_bath 4 + master_bath 5）；
 //  ③ buildScene 真的建出常显（visible=true）网格，门洞处实扣断开，高度取自锚点而非代码默认；
 //  ④ 选材方案里有 skirting 项且跟墙砖 default 相等；SCH-135-01 是放行卡点。
 
@@ -45,28 +45,28 @@ interface OriginalSkirtingDeclaration {
 const ORIGINAL_DECLARATIONS: OriginalSkirtingDeclaration[] = [
   { id: 'skirt_bedroom_nw_w_balc_west', type: 'skirting_region', wall: 'w_balc_west', room: 'bedroom_nw', along: [0.10, 1.20], bottom: 0, height: 0.08, color: '#e5e2db' },
   { id: 'skirt_bedroom_nw_w_gbath_west', type: 'skirting_region', wall: 'w_gbath_west', room: 'bedroom_nw', along: [0.00, 1.35], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_bedroom_nw_w_gbath_west_open_vanity', type: 'skirting_region', wall: 'w_gbath_west_open_vanity', room: 'bedroom_nw', along: [0.00, 0.75], bottom: 0, height: 0.08, color: '#e5e2db' },
+  { id: 'skirt_bedroom_nw_w_gbath_west_open_vanity', type: 'skirting_region', wall: 'w_gbath_west_open_vanity', room: 'bedroom_nw', along: [0.00, 0.11], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：开放洗漱区墙段 0.75→0.11（实测回填）
   { id: 'skirt_bedroom_nw_w_mbath_east', type: 'skirting_region', wall: 'w_mbath_east', room: 'bedroom_nw', along: [0.00, 3.20], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_bedroom_nw_w_nw_south', type: 'skirting_region', wall: 'w_nw_south', room: 'bedroom_nw', along: [0.00, 3.00], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_bedroom_se_w_be_north', type: 'skirting_region', wall: 'w_be_north', room: 'bedroom_se', along: [0.00, 3.00], bottom: 0, height: 0.08, color: '#e5e2db' },
+  { id: 'skirt_bedroom_nw_w_nw_south', type: 'skirting_region', wall: 'w_nw_south', room: 'bedroom_nw', along: [0.00, 2.79], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：w_nw_south 3.00→2.79（客卫深度实测）
+  { id: 'skirt_bedroom_se_w_be_north', type: 'skirting_region', wall: 'w_be_north', room: 'bedroom_se', along: [0.00, 2.96], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：w_be_north 3.00→2.96（实测回填）
   { id: 'skirt_bedroom_se_w_be_west', type: 'skirting_region', wall: 'w_be_west', room: 'bedroom_se', along: [0.00, 3.15], bottom: 0, height: 0.08, color: '#e5e2db' },
   { id: 'skirt_bedroom_se_w_east_upper', type: 'skirting_region', wall: 'w_east_upper', room: 'bedroom_se', along: [0.00, 3.15], bottom: 0, height: 0.08, color: '#e5e2db' },
   { id: 'skirt_living_dining_w_be_west', type: 'skirting_region', wall: 'w_be_west', room: 'living_dining', along: [0.00, 4.25], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_living_dining_w_ent_south_w', type: 'skirting_region', wall: 'w_ent_south_w', room: 'living_dining', along: [0.00, 1.97], bottom: 0, height: 0.08, color: '#e5e2db' },
+  { id: 'skirt_living_dining_w_ent_south_w', type: 'skirting_region', wall: 'w_ent_south_w', room: 'living_dining', along: [0.00, 1.66], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：w_ent_south_w 1.97→1.66（客餐厅南界折线）
   { id: 'skirt_living_dining_w_ent_west', type: 'skirting_region', wall: 'w_ent_west', room: 'living_dining', along: [0.00, 0.60], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_living_dining_w_cent_south', type: 'skirting_region', wall: 'w_cent_south', room: 'living_dining', along: [0.00, 1.82], bottom: 0, height: 0.08, color: '#e5e2db' },
+  { id: 'skirt_living_dining_w_cent_south', type: 'skirting_region', wall: 'w_cent_south', room: 'living_dining', along: [0.00, 1.155], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：w_cent_south 1.82→1.155（厨餐洞口 2794×2555 实测）
   { id: 'skirt_living_dining_w_st_east', type: 'skirting_region', wall: 'w_st_east', room: 'living_dining', along: [0.00, 4.25], bottom: 0, height: 0.08, color: '#e5e2db' },
   { id: 'skirt_main_corridor_w_strip_east', type: 'skirting_region', wall: 'w_strip_east', room: 'main_corridor', along: [0.00, 1.25], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_main_corridor_w_st_north', type: 'skirting_region', wall: 'w_st_north', room: 'main_corridor', along: [0.00, 3.00], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_main_corridor_w_nw_south', type: 'skirting_region', wall: 'w_nw_south', room: 'main_corridor', along: [1.60, 3.00], bottom: 0, height: 0.08, color: '#e5e2db' },
+  { id: 'skirt_main_corridor_w_st_north', type: 'skirting_region', wall: 'w_st_north', room: 'main_corridor', along: [0.00, 2.99], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：w_st_north 3.00→2.99（实测回填）
+  { id: 'skirt_main_corridor_w_nw_south', type: 'skirting_region', wall: 'w_nw_south', room: 'main_corridor', along: [1.26, 2.79], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：[1.60,3.00]→[1.26,2.79]（客卫深度实测，门洞分界跟随）
   { id: 'skirt_master_bedroom_w_mb_east', type: 'skirting_region', wall: 'w_mb_east', room: 'master_bedroom', along: [0.00, 4.25], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_master_bedroom_w_mbath_east', type: 'skirting_region', wall: 'w_mbath_east', room: 'master_bedroom', along: [1.76, 3.20], bottom: 0, height: 0.08, color: '#e5e2db' },
+  { id: 'skirt_master_bedroom_w_mbath_east', type: 'skirting_region', wall: 'w_mbath_east', room: 'master_bedroom', along: [2.69, 3.20], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：主卫东墙 [1.76,3.20]→[2.69,3.20]（主卫北移/东墙 x=2.6→2.9）
   { id: 'skirt_master_bedroom_w_mbath_south', type: 'skirting_region', wall: 'w_mbath_south', room: 'master_bedroom', along: [0.00, 2.60], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_master_bedroom_w_nw_south', type: 'skirting_region', wall: 'w_nw_south', room: 'master_bedroom', along: [0.00, 1.60], bottom: 0, height: 0.08, color: '#e5e2db' },
+  { id: 'skirt_master_bedroom_w_nw_south', type: 'skirting_region', wall: 'w_nw_south', room: 'master_bedroom', along: [0.00, 1.26], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：[0,1.60]→[0,1.26]（客卫深度实测，门洞分界跟随）
   { id: 'skirt_master_bedroom_w_strip_east', type: 'skirting_region', wall: 'w_strip_east', room: 'master_bedroom', along: [0.00, 1.25], bottom: 0, height: 0.08, color: '#e5e2db' },
   { id: 'skirt_study_w_mb_east', type: 'skirting_region', wall: 'w_mb_east', room: 'study', along: [0.00, 4.25], bottom: 0, height: 0.08, color: '#e5e2db' },
   { id: 'skirt_study_w_st_east', type: 'skirting_region', wall: 'w_st_east', room: 'study', along: [0.00, 4.25], bottom: 0, height: 0.08, color: '#e5e2db' },
-  { id: 'skirt_study_w_st_north', type: 'skirting_region', wall: 'w_st_north', room: 'study', along: [0.00, 3.00], bottom: 0, height: 0.08, color: '#e5e2db' },
+  { id: 'skirt_study_w_st_north', type: 'skirting_region', wall: 'w_st_north', room: 'study', along: [0.00, 2.99], bottom: 0, height: 0.08, color: '#e5e2db' }, // PR #270：w_st_north 3.00→2.99（实测回填）
 ];
 
 function wallLength(wallId: string): number {
@@ -109,19 +109,19 @@ test('skirting 派生 ≡ 原 24 段声明（逐字段相等，id/type/wall/room
   }
 });
 
-test('skirting 派生规则：§6.1 四元组配对 24/24，缺的 7 段正是两卫湿区', () => {
+test('skirting 派生规则：§6.1 四元组配对 24/24，缺的 9 段正是两卫湿区', () => {
   const paint = allPaintBands();
-  assert.equal(paint.length, 31, '全屋漆面带应为 31 段（派生基数的全集）');
+  assert.equal(paint.length, 33, '全屋漆面带应为 33 段（派生基数的全集；PR #270：主卫东墙拆 4 段 +3、客卫东上段删 −1，净 +2）');
   // 配对方法（迁移设计 §6.1）：按 (wall, room, along[0], along[1]) 四元组对全部
   // paint × skirting 配对。24/24 命中 = 每条非湿区漆面带恰好派生一条踢脚带。
   const skirtKeys = new Set(skirt.map((s: any) => [s.wall, s.room, s.along[0], s.along[1]].join('|')));
   const matched = paint.filter((p: any) => skirtKeys.has([p.wall, p.room, p.along[0], p.along[1]].join('|')));
-  assert.equal(matched.length, 24, `24/24 配对必须全部命中，实测 ${matched.length}/31`);
+  assert.equal(matched.length, 24, `24/24 配对必须全部命中，实测 ${matched.length}/33`);
   const unmatched = paint.filter((p: any) => !skirtKeys.has([p.wall, p.room, p.along[0], p.along[1]].join('|')));
-  assert.equal(unmatched.length, 7, `未配踢脚的漆面带必须恰为 7 段（两卫湿区），实测 ${unmatched.length}`);
+  assert.equal(unmatched.length, 9, `未配踢脚的漆面带必须恰为 9 段（两卫湿区），实测 ${unmatched.length}`);
   const byRoom: Record<string, number> = {};
   for (const p of unmatched) byRoom[p.room] = (byRoom[p.room] ?? 0) + 1;
-  assert.deepEqual(byRoom, { guest_bath: 5, master_bath: 2 }, '缺的 7 段必须正是 guest_bath 5 + master_bath 2');
+  assert.deepEqual(byRoom, { guest_bath: 4, master_bath: 5 }, '缺的 9 段必须正是 guest_bath 4 + master_bath 5（PR #270：主卫东墙拆 4 段使 master_bath 2→5，客卫东上段删使 guest_bath 5→4）');
   // 湿区判定唯一源：config/tile-comparison.yaml 的 wet_room_ids（不另列房间表）。
   assert.deepEqual([...wetRoomIds].sort(), ['guest_bath', 'master_bath'], '湿区表必须正是两卫');
   for (const p of unmatched) assert.ok(wetRoomIds.includes(p.room), `${p.id} 未配踢脚但房间不在湿区表——规则解释不通，按停止条件处理`);
@@ -193,9 +193,10 @@ test('buildScene renders derived skirting as visible opaque strips, door-split',
     assert.equal(m.userData.height, skirt[0].height, `${m.userData.objectId} 高度必须等于声明锚点值，不得用代码默认值`);
     assert.ok(Number(m.userData.lengthM) > 0, `${m.userData.objectId} lengthM 必须为正`);
   }
-  // 门洞实扣：西北次卧南墙 w_nw_south 的漆面段长 3.00m，门 d_bnw 宽 0.90m，净长应为 2.10m。
+  // 门洞实扣：西北次卧南墙 w_nw_south 的漆面段长 2.79m，门 d_bnw 宽 0.98m，净长应为 1.81m。
+  // （PR #270：漆面段 3.00→2.79、门 0.90→0.98，2026-11-26 实测 MW 980）
   const nw = meshes.filter((m: any) => m.userData.regionId === 'skirt_bedroom_nw_w_nw_south');
   const nwLength = nw.reduce((s: number, m: any) => s + Number(m.userData.lengthM), 0);
   assert.ok(nw.length >= 2, '门洞必须把该段拆成至少两块');
-  assert.ok(Math.abs(nwLength - 2.10) < 0.02, `门洞实扣后净长应为 2.10m，实测 ${nwLength.toFixed(3)}m`);
+  assert.ok(Math.abs(nwLength - 1.81) < 0.02, `门洞实扣后净长应为 1.81m，实测 ${nwLength.toFixed(3)}m`);
 });

@@ -15,14 +15,15 @@ import { loadCeilingConfig } from '../../server/config-loader.js';
  * 上飘窗漆面（paint_sill_region）的**世界坐标**对账（2026-10-09 主卫整改）。
  *
  * 为什么不能只对面积：旧实现把 Shape(x,z) 绕 X 轴 −90° 立起来时漏了 bay_sill 本体那步
- * `scale.y = -1`，于是底面整体镜像到对侧——真实飘窗脚印 z=[1.10,2.20]，高亮底面落在
- * z=[−2.20,−1.10]。**面积一模一样（2.536㎡）、包围盒完全不同**：预算里算了钱，3D 里
+ * `scale.y = -1`，于是底面整体镜像到对侧——真实飘窗脚印 z=[−0.39,0.71]，高亮底面落在
+ * z=[−0.71,0.39]。**面积一模一样（2.522㎡）、包围盒完全不同**：预算里算了钱，3D 里
  * 盖不到目标实体。所以这里逐顶点、逐包围盒、逐三角形对账，面积只是其中一项。
+ * （PR #270：主卫北墙 z=1.10→−0.39、东墙 x=2.6→2.9，脚印随之北移。）
  *
  * 三条不变量：
  *   ① underside 网格的世界坐标顶点集合 == bay_sill outline 在 (x, sill, z) 上的投影；
  *   ② underside 的 x/z 包围盒与 bay_sill 本体的 x/z 包围盒重合，且 y 恒等于 sill（水平面）；
- *   ③ 独立三角网格面积合计 == computePaintSillScope 的汇总口径（3.765㎡，全精度累加后 round3），
+ *   ③ 独立三角网格面积合计 == computePaintSillScope 的汇总口径（4.488㎡，全精度累加后 round3），
  *      且与「outline 鞋带 + 前缘/端面宽×高」的解析复算一致。
  */
 
@@ -127,9 +128,11 @@ test('paint_sill_region underside lands on the bay_sill footprint: world vertice
   const actual = new Set(worldVertices(underside).map(key));
   assert.deepEqual([...actual].sort(), [...expected].sort(),
     'underside 的世界坐标顶点必须与 bay_sill 脚印逐点同位（镜像到对侧时这一条立刻红）');
-  // 旧缺陷的定向回归：真实飘窗脚印 z ∈ [1.10, 2.20]，绝不允许出现负 z
+  // 旧缺陷的定向回归：真实飘窗脚印 x∈[0,2.9]、z∈[−0.39,0.71]，outline 点必须落在其内
+  // （PR #270：主卫北墙 z=1.10→−0.39、东墙 x=2.6→2.9；旧「z 必须为正」是旧 DWG 位置的
+  // 副产品，已随实测回填作废；镜像缺陷仍由上方的逐顶点同位断言守住）
   for (const point of geometry.outline) {
-    assert.ok(point.z > 0, `outline 点 z 应为正（室内侧），实际 ${point.z}`);
+    assert.ok(point.x >= -1e-9 && point.x <= 2.9 + 1e-9 && point.z >= -0.39 - 1e-9 && point.z <= 0.71 + 1e-9, `outline 点 (${point.x}, ${point.z}) 应落在脚印 x∈[0,2.9]、z∈[−0.39,0.71] 内`);
     assert.ok(actual.has(key({ x: point.x, y: sill, z: point.z })), `outline 点 (${point.x}, ${point.z}) 必须落在底面上`);
   }
 
@@ -142,14 +145,14 @@ test('paint_sill_region underside lands on the bay_sill footprint: world vertice
   assert.ok(near(undersideBox.max.z, bayBox.max.z), `底面 max.z ${undersideBox.max.z} != 实体 ${bayBox.max.z}`);
   assert.ok(near(undersideBox.min.y, sill) && near(undersideBox.max.y, sill), `底面必须是 y=${sill} 的水平面，实际 y∈[${undersideBox.min.y}, ${undersideBox.max.y}]`);
   assert.ok(bayBox.min.y <= sill + 1e-9, '底面标高必须落在实体根部');
-  // 具体数字（真实布局）：x∈[0,2.6]、z∈[1.1,2.2]、y=2.07
-  assert.ok(near(undersideBox.min.x, 0) && near(undersideBox.max.x, 2.6), `底面 x 包围盒 ${undersideBox.min.x}..${undersideBox.max.x}`);
-  assert.ok(near(undersideBox.min.z, 1.1) && near(undersideBox.max.z, 2.2), `底面 z 包围盒 ${undersideBox.min.z}..${undersideBox.max.z}`);
+  // 具体数字（真实布局）：x∈[0,2.9]、z∈[−0.39,0.71]、y=2.07
+  assert.ok(near(undersideBox.min.x, 0) && near(undersideBox.max.x, 2.9), `底面 x 包围盒 ${undersideBox.min.x}..${undersideBox.max.x}`);
+  assert.ok(near(undersideBox.min.z, -0.39) && near(undersideBox.max.z, 0.71), `底面 z 包围盒 ${undersideBox.min.z}..${undersideBox.max.z}`);
   assert.ok(near(undersideBox.min.y, 2.07) && near(undersideBox.max.y, 2.07), `底面 y 包围盒 ${undersideBox.min.y}..${undersideBox.max.y}`);
 
   // ── ③ 独立三角面积对账 ──
   const undersideArea = triangleArea(underside);
-  assert.ok(Math.abs(undersideArea - 2.536295751410121) < 1e-6, `底面三角面积 ${undersideArea}`);
+  assert.ok(Math.abs(undersideArea - 2.522489848) < 1e-6, `底面三角面积 ${undersideArea}`); // PR #270：主卫北移后脚印 2.536→2.522
   assert.ok(Math.abs(undersideArea - scope.surfaces.find((surface) => surface.kind === 'underside')!.areaSqm) < 1e-5,
     '三角面积必须等于声明的全精度面积（不再逐段 round3）');
 
@@ -165,8 +168,8 @@ test('paint_sill_region underside lands on the bay_sill footprint: world vertice
   const analytic = scope.surfaces.find((surface) => surface.kind === 'underside')!.areaSqm
     + frontWidth * (ceilingFinish - sill) + capWidth * (ceilingFinish - sill);
   assert.ok(Math.abs(meshTotal - analytic) < 1e-6, `三角网格合计 ${meshTotal} 与解析复算 ${analytic} 对不上`);
-  assert.ok(Math.abs(meshTotal - 3.7648127505531916) < 1e-5, `三角网格合计 ${meshTotal}（浏览器独立复算 3.764813㎡）`); // 2026-11-12：主卫完成面 2.65→2.50，前缘/端面外露高 0.58→0.43，网格合计 4.193365→3.764813
-  assert.equal(scope.totalAreaSqm, 3.765, '汇总口径 round3 后必须是 3.765㎡（旧逐段 round3 是 4.198㎡）'); // 2026-11-12 同上
+  assert.ok(Math.abs(meshTotal - 4.487851175526952) < 1e-5, `三角网格合计 ${meshTotal}（浏览器独立复算 4.487851㎡）`); // PR #270：主卫北移后前缘 1.757→3.471m，网格合计 3.764813→4.487851；2026-11-12：主卫完成面 2.65→2.50，前缘/端面外露高 0.58→0.43，网格合计 4.193365→3.764813
+  assert.equal(scope.totalAreaSqm, 4.488, '汇总口径 round3 后必须是 4.488㎡（旧逐段 round3 是 4.198㎡）'); // PR #270 同上
   assert.ok(Math.abs(scope.totalAreaSqm - meshTotal) < 5e-4, '汇总口径与三角网格复算必须同源');
 
   // 立面必须给真实标高（审计靠 bottom/top 算带高，不能是 0）
